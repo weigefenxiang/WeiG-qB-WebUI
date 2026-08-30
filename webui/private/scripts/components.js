@@ -14,16 +14,15 @@
   W.Components.sectionTitle=function(text,subtitle){var w=document.createElement('div');w.className='section-heading';var h=document.createElement('h2');h.textContent=text;w.appendChild(h);if(subtitle){var p=document.createElement('p');p.className='text-description';p.textContent=subtitle;w.appendChild(p);}return w;};
   W.Components.preferenceField=function(key,value,onChange,label){var info=W.SettingsSchema?W.SettingsSchema.describe(key):{title:label||key,description:'qBittorrent preference.',kind:'auto',known:false};var row=document.createElement('label');row.className='settings-row setting-card';row.dataset.settingKey=key;row.dataset.settingSearch=(info.title+' '+info.description+' '+key).toLowerCase();var copy=document.createElement('span');copy.className='settings-row__copy';var title=document.createElement('strong');title.textContent=info.title;title.title=info.title;var meta=document.createElement('small');meta.className='text-description';meta.textContent=info.description;copy.append(title,meta);var input;if(typeof value==='boolean'||info.kind==='boolean'){var switchWrap=document.createElement('span');switchWrap.className='switch-control';input=document.createElement('input');input.type='checkbox';input.checked=!!value;input.className='switch-input';var track=document.createElement('span');track.className='switch-track';var thumb=document.createElement('span');thumb.className='switch-thumb';track.appendChild(thumb);switchWrap.append(input,track);input.addEventListener('change',function(){onChange(key,input.checked);});row.append(copy,switchWrap);return row;}input=document.createElement('input');input.type=(typeof value==='number'||info.kind==='number')?'number':'text';input.value=value==null?'':String(value);input.className='field-input';input.autocomplete='off';input.addEventListener('change',function(){onChange(key,U.parseScalar(input.value));});row.append(copy,input);return row;};
 
-  /* v0.2.2 is intentionally loaded as a versioned spatial layer so qB 4.1.9
-   * can keep the stable Alternate-WebUI entry file while browsers receive a
-   * cache-busted visual/IA upgrade. */
+  /* Spatial assets keep stable filenames for qB 4.1.9 while the query string
+   * tracks the current product release and prevents stale browser caches. */
   (function loadSpatialV022(){
     if(document.querySelector('link[data-weigg-spatial="022"]'))return;
     var link=document.createElement('link');
-    link.rel='stylesheet';link.href='css/v022.css?v=0.2.2';link.dataset.weiggSpatial='022';
+    link.rel='stylesheet';link.href='css/v022.css?v=0.2.4';link.dataset.weiggSpatial='022';
     document.head.appendChild(link);
     var script=document.createElement('script');
-    script.src='scripts/spatial-v022.js?v=0.2.2';script.async=true;script.dataset.weiggSpatial='022';
+    script.src='scripts/spatial-v022.js?v=0.2.4';script.async=true;script.dataset.weiggSpatial='022';
     document.head.appendChild(script);
   })();
 })(window);
