@@ -2,101 +2,94 @@
 
 A premium, modular and high-performance Alternate WebUI for qBittorrent.
 
-Current version: **0.2.1**  
+Current version: **0.2.2**  
 Compatibility floor: **qBittorrent 4.1.9**  
 Compatibility target: **qBittorrent 4.1.x → current 5.x**, with capability-based forward compatibility.
 
-## v0.2.1 highlights
+## v0.2.2 — Nebula Spatial Console
 
-### Product navigation
+v0.2.2 focuses on spatial hierarchy and information architecture instead of adding more flat controls.
 
-Application navigation is now separated from Torrent filtering:
+### Spatial UI
 
-```text
-Topbar
-Torrents · Search · RSS · Logs · Settings · Contextual Search · Add Torrent
-
-Sidebar
-Torrent State · Trackers · Save Path · Categories · Tags · Connection
-```
-
-The Sidebar no longer mixes application pages with Torrent dataset filters. On phones, the main application destinations are exposed through a dedicated bottom navigation while the Drawer remains focused on Torrent filters.
-
-### Internationalization
-
-English is the **canonical source language**. UI text is resolved through the shared i18n layer rather than Feature-specific language checks.
-
-Current locale targets:
+The dark theme now uses explicit depth levels:
 
 ```text
-English
-简体中文
-繁體中文
-日本語
-한국어
+Void → Base → Panel → Card → Raised → Floating
 ```
 
-Behavior:
+Search/Input/Select controls are visibly separated from their surrounding panel even before focus. Hover adds a restrained cool edge/glow; focus adds a clear blue ring. Topbar, Stats, Settings, dialogs and DataGrid containers use material separation, top highlights and soft shadows rather than uniform black surfaces.
+
+The visual direction takes principles from precise premium dark interfaces while preserving WeiG's own identity: restrained hierarchy, floating chrome, premium dark materials, cool blue/violet accents, CSS starfield and interaction-only Nebula glow.
+
+### Sidebar and filters
+
+Desktop Sidebar is now intentionally compact and normally scrollbar-free.
+
+Permanent Sidebar content:
 
 ```text
-Manual language selection
-        ↓
-Browser language
-        ↓
-English fallback
+Torrent state
+All / Downloading / Seeding / Completed / Paused / Active / Stalled / Error / Private-PT
 ```
 
-Unsupported locales always fall back to English. The login screen follows the browser language as well.
-
-For qBittorrent settings terminology, existing official qBittorrent WebUI translations are the preferred terminology source. The upstream Simplified Chinese WebUI translation lives under `qBittorrent/qBittorrent/src/webui/www/translations/webui_zh_CN.ts`. WeiG-specific concepts such as Nebula Noir, Starfield and UI density are maintained by this project.
-
-### Settings UX
-
-Settings are no longer presented as a raw API-object editor.
-
-- Human-readable setting titles and descriptions come from a metadata schema.
-- Common qBittorrent Preferences have English canonical labels plus Simplified Chinese translations.
-- Unknown/new qB Preference keys receive a humanized English fallback rather than breaking the page.
-- Boolean values use the canonical WeiG Switch control instead of tiny native checkboxes.
-- Settings use a responsive card layout: 2 columns on normal desktop, 3 on very wide screens, 1 on smaller/mobile layouts.
-- Settings search filters the visible setting cards.
-- A Language card offers Browser/English/Chinese/Japanese/Korean selection.
-- Raw API keys are implementation metadata, not normal end-user labels.
-
-### Contextual search
-
-The Topbar search changes role with the active page:
+High-cardinality filters no longer permanently consume Sidebar height. Tracker, Save Path, Category and Tags move into a horizontal **Filter Shelf** with searchable Floating Popovers:
 
 ```text
-Torrents  → Search torrents…
-Settings  → Search settings…
-Search    → Search engine…
-RSS       → Search RSS…
-Logs      → Search logs…
+[ Tracker ▾ ] [ Save Path ▾ ] [ Category ▾ ] [ Tags ▾ ]
 ```
 
-The non-Torrent search routes no longer accidentally trigger hidden Torrent-list filtering requests.
+qBittorrent/WebAPI/compatibility details move to the bottom Status Dock and open in a compact connection popover.
 
-## v0.2 platform features
+### Settings cards
 
-- **Nebula Noir v2**: CSS starfield, layered 3D surfaces, restrained edge glow and Light/Dark/System appearance.
-- **Semantic Typography System**: Standard / Large (+2px) / XLarge (+3px) global scale. Large is the current default.
-- **Independent density**: Compact / Standard / Comfortable is separate from font size.
-- **20 / 50 / 100 / 200 server page sizes** with qB `limit` / `offset`.
-- **Virtual DOM windowing**: API page/cache size never maps directly to mounted Torrent rows.
-- **DataGrid v2**: sortable headers, resizable columns, column visibility/order controls and saved layout.
-- **Mobile v2**: dedicated Torrent cards, Drawer, touch-size controls, More actions and bottom app navigation.
-- **Whole-library catalog** fetched in bounded chunks for name/Tracker/save-path/PT filtering without whole-library DOM.
-- **Tracker privacy normalization** removes query/fragment credentials before display/filter keys.
-- **Private/PT filter** uses exact capability where available and configurable Tracker-domain heuristics on older qB.
-- **Expanded Torrent actions**: start/resume, pause/stop, force start, recheck, reannounce, sequential mode, first/last piece priority, auto management, queue top/bottom, rename, location, category, tags and Torrent limits where supported.
-- **Torrent Detail**: Overview, Files, Trackers, Peers and HTTP Sources.
-- **Search / RSS / Logs** are capability-aware; unsupported modules are hidden instead of exposing dead controls.
-- **Back/Home/Reload recovery**, background-tab polling slowdown and Reduced Motion remain hard invariants.
+Every standard Settings card now follows one consistent vertical structure:
+
+```text
+Title
+Description
+Control
+```
+
+- title remains a primary single line where practical;
+- description occupies the middle explanatory area;
+- Input/Select/Number controls use full-width bottom placement;
+- Switch controls sit at the bottom edge rather than floating beside the title;
+- desktop Settings use a readable two-column grid; tablet/phone use one column.
+
+### English + Chinese
+
+English is the canonical source language. **English and Simplified Chinese are the maintained product languages.**
+
+Resolution order:
+
+```text
+User language selection
+→ Browser language
+→ English fallback
+```
+
+qBittorrent terminology prefers official qBittorrent WebUI translations when available. WeiG-specific concepts are maintained by this project. Additional locale overlays may exist, but missing strings must fall back to English and never expose translation keys.
+
+## Core v0.2 platform
+
+- qBittorrent **4.1.9 compatibility floor** with capability-based support through current 5.x.
+- Real regression targets: **4.1.9.1 / WebAPI 2.2.1** and **5.2.0**.
+- `20 / 50 / 100 / 200` qB server page sizes using `limit` / `offset`.
+- Virtual DOM windowing: API/cache item count never maps directly to mounted rows.
+- Desktop DataGrid with sorting, resizable columns, show/hide, ordering and persistence.
+- Mobile Torrent cards, touch controls, Drawer/Bottom navigation and Action Sheet behavior.
+- Tracker privacy normalization removes query/fragment credentials before display/filter keys.
+- Private/PT filtering uses exact API capability where available and explicit Tracker-domain heuristics on older qB versions.
+- Torrent actions include start/resume, pause/stop, force start, recheck, reannounce, sequential mode, first/last piece priority, auto management, queue operations, rename, location, category, tags and limits where supported.
+- Torrent Detail includes Overview, Files, Trackers, Peers and HTTP Sources.
+- Metadata-driven Settings render only preferences exposed by the connected qB instance.
+- Search / RSS / Logs are capability-aware and hidden when unsupported.
+- Back/Home/Reload recovery, Reduced Motion and background-tab polling slowdown remain hard invariants.
 
 ## Compatibility model
 
-Feature/UI code does not scatter qB main-version conditions. Startup detects qBittorrent + WebAPI versions and creates a capability profile.
+Feature/UI code does not scatter qB main-version checks. Startup detects qBittorrent + WebAPI versions and creates a capability profile.
 
 Important bridges include:
 
@@ -106,32 +99,9 @@ pause / resume  ↔ stop / start
 paused filter   ↔ stopped filter
 ```
 
-Historical WebAPI anomalies are handled in the compatibility layer instead of Feature code.
-
-### Real regression labs
-
-```text
-Lab A: qBittorrent 4.1.9.1 / WebAPI 2.2.1
-Lab B: qBittorrent 5.2.0
-```
-
-Both are release-blocking stabilization targets. Static CI passing does **not** by itself certify every intermediate qB patch release; live API behavior continues to be tested on both ends of the supported range.
-
-## Tracker privacy
-
-Tracker URLs may include private passkeys or credentials. Display/filter values are normalized:
-
-```text
-https://tracker.m-team.cc/announce?credential=SECRET
-→
-https://tracker.m-team.cc/announce
-```
-
-Raw Tracker values are used only internally when a qB API operation genuinely requires the original value.
+Historical WebAPI anomalies stay inside the compatibility layer.
 
 ## Performance model
-
-Page size controls API/data navigation, not DOM count:
 
 ```text
 qB API:       limit=200&offset=0
@@ -139,18 +109,17 @@ Data models:  up to 200 for the page
 DOM:          viewport + overscan only
 ```
 
-Developer counters such as cache/DOM size live under **Settings → WeiG WebUI → Performance**, not the normal Torrent dashboard.
+Whole-library Tracker/Path/PT indexing is fetched in bounded chunks and never rendered as thousands of hidden DOM rows.
 
-## Manual installation
+## Tracker privacy
 
-1. Download or clone this repository.
-2. Use the repository `webui` directory as the qBittorrent Alternate WebUI root.
-3. Open **Tools → Preferences → Web UI** in qBittorrent.
-4. Enable **Use alternative WebUI**.
-5. Set the root folder to the local/container-visible `webui` directory.
-6. Restart qBittorrent or refresh the browser.
+```text
+https://tracker.m-team.cc/announce?credential=SECRET
+→
+https://tracker.m-team.cc/announce
+```
 
-The configured value is a **local filesystem path**, not a GitHub URL.
+Raw Tracker values are used only internally when a qB API operation genuinely requires them.
 
 ## Linux installer
 
@@ -159,7 +128,7 @@ curl -fsSL https://raw.githubusercontent.com/weigefenxiang/WeiG-qB-WebUI/main/in
 sh /tmp/weigg-qb-install.sh
 ```
 
-Known Docker `/config` mount:
+Known Docker `/config` root:
 
 ```sh
 sh /tmp/weigg-qb-install.sh \
@@ -173,19 +142,7 @@ List qB Docker candidates:
 sh /tmp/weigg-qb-install.sh --list-containers
 ```
 
-With multiple qBittorrent containers, the installer **refuses to guess**. Select one explicitly:
-
-```sh
-sh /tmp/weigg-qb-install.sh \
-  --container=qbittorrent \
-  --dir=/config/weigg-qb-webui
-```
-
-Optional safe config update:
-
-```sh
-sh /tmp/weigg-qb-install.sh --configure
-```
+When multiple qBittorrent containers exist, the installer refuses to guess. Select a target with `--container=` or `--config-root=`.
 
 Rollback:
 
@@ -193,24 +150,16 @@ Rollback:
 sh /tmp/weigg-qb-install.sh --rollback
 ```
 
-The installer backs up before replacement, rejects Docker overlay/rootfs template configs, validates `public/login.html` + `private/index.html`, and remembers the last destination.
-
 ## Windows installer
 
 ```powershell
 .\install.ps1
 ```
 
-Optional automatic qB configuration:
+Optional configuration:
 
 ```powershell
 .\install.ps1 -Configure
-```
-
-Custom destination:
-
-```powershell
-.\install.ps1 -Destination "D:\qBittorrent\WeiG-qB-WebUI"
 ```
 
 Rollback:
@@ -221,16 +170,19 @@ Rollback:
 
 ## Development
 
-Runtime remains plain HTML/CSS/JavaScript with no external runtime CDN/framework requirement.
+Runtime is plain HTML/CSS/JavaScript with no external runtime CDN/framework dependency.
 
 ```sh
 npm test
 ```
 
-CI now checks the v0.2.1 navigation/i18n/settings invariants, all runtime JavaScript modules, compatibility tokens, installer safety and no-external-runtime-asset rules.
+Documentation authority:
 
-Visual/UI changes must follow [`DESIGN.md`](./DESIGN.md). Engineering, compatibility, i18n and performance architecture are defined in [`docs/001.项目总方案.md`](./docs/001.%E9%A1%B9%E7%9B%AE%E6%80%BB%E6%96%B9%E6%A1%88.md).
+- [`DESIGN.md`](./DESIGN.md) — visual, typography, spatial, navigation, i18n and Settings design authority.
+- [`docs/001.项目总方案.md`](./docs/001.%E9%A1%B9%E7%9B%AE%E6%80%BB%E6%96%B9%E6%A1%88.md) — product plan and hard engineering rules.
+- [`docs/002.兼容与实现状态.md`](./docs/002.%E5%85%BC%E5%AE%B9%E4%B8%8E%E5%AE%9E%E7%8E%B0%E7%8A%B6%E6%80%81.md) — compatibility and current implementation status.
+- [`docs/003.项目架构.md`](./docs/003.%E9%A1%B9%E7%9B%AE%E6%9E%B6%E6%9E%84.md) — repository tree, runtime layers and module ownership.
 
-## v0.2.1 stabilization status
+## Stabilization status
 
-`0.2.1` is the integrated Navigation + i18n + Settings UX baseline. Repository CI is green. Final compatibility certification still requires live regression of this exact build on Lab A (4.1.9.1) and Lab B (5.2.0); live issues discovered there remain release-blocking.
+`0.2.2` is the integrated Spatial UI baseline. Repository CI validates JavaScript syntax, spatial UI invariants, pagination/VirtualList architecture, compatibility tokens, i18n/Settings metadata and installer safety. Final release certification still requires live regression on both real endpoints: qBittorrent 4.1.9.1 and qBittorrent 5.2.0.
