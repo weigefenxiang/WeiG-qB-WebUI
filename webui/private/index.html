@@ -1,147 +1,47 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-theme="dark">
+<html lang="zh-CN" data-theme="dark" data-font-size="large" data-density="standard" data-starfield="subtle" data-motion="system">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="color-scheme" content="dark light" />
   <meta name="theme-color" content="#070b14" />
   <title>WeiG qB WebUI</title>
-  <link rel="stylesheet" href="css/app.css?v=0.1.0" />
+  <link rel="stylesheet" href="css/app.css?v=0.2.0" />
 </head>
 <body>
   <a class="skip-link" href="#torrent-list">跳到种子列表</a>
   <div class="starfield" aria-hidden="true"><span class="stars stars-a"></span><span class="stars stars-b"></span><span class="nebula nebula-a"></span><span class="nebula nebula-b"></span></div>
-
   <div id="app" class="app-shell">
-    <header class="topbar surface surface--floating">
-      <div class="topbar__start">
-        <button id="menu-btn" class="icon-btn mobile-only" type="button" aria-label="打开导航" data-tooltip="导航">☰</button>
-        <button id="back-btn" class="icon-btn is-hidden" type="button" aria-label="返回" data-tooltip="返回">←</button>
-        <button id="brand-btn" class="brand" type="button" aria-label="返回种子列表">
-          <span class="brand__mark">W</span><span class="brand__text">WeiG qB</span>
-        </button>
-      </div>
-      <div class="topbar__search">
-        <label class="search-box" for="search-input"><span aria-hidden="true">⌕</span><input id="search-input" type="search" autocomplete="off" placeholder="搜索当前种子…" /></label>
-      </div>
-      <div class="topbar__actions">
-        <button id="add-btn" class="btn btn--primary" type="button"><span aria-hidden="true">＋</span><span class="desktop-label">添加种子</span></button>
-        <button id="refresh-btn" class="icon-btn" type="button" aria-label="刷新" data-tooltip="刷新">↻</button>
-        <button id="theme-btn" class="icon-btn" type="button" aria-label="切换主题" data-tooltip="切换主题">◐</button>
-      </div>
-    </header>
-
-    <aside id="sidebar" class="sidebar surface surface--panel" aria-label="种子筛选">
-      <div class="sidebar__section">
-        <div class="eyebrow">TORRENTS</div>
-        <nav id="filter-nav" class="nav-list">
-          <button class="nav-item is-active" data-filter="all" type="button"><span>全部</span></button>
-          <button class="nav-item" data-filter="downloading" type="button"><span>下载中</span></button>
-          <button class="nav-item" data-filter="seeding" type="button"><span>做种</span></button>
-          <button class="nav-item" data-filter="completed" type="button"><span>已完成</span></button>
-          <button class="nav-item" data-filter="paused" type="button"><span>已暂停</span></button>
-          <button class="nav-item" data-filter="active" type="button"><span>活动</span></button>
-          <button class="nav-item" data-filter="stalled" type="button"><span>停滞</span></button>
-          <button class="nav-item" data-filter="errored" type="button"><span>错误</span></button>
-        </nav>
-      </div>
-      <div class="sidebar__section sidebar__meta">
-        <div class="eyebrow">CONNECTION</div>
-        <div class="meta-line"><span>qBittorrent</span><strong id="qb-version">—</strong></div>
-        <div class="meta-line"><span>WebAPI</span><strong id="api-version">—</strong></div>
-        <div class="meta-line"><span>兼容模式</span><strong id="compat-mode">检测中</strong></div>
-      </div>
-    </aside>
-    <button id="drawer-scrim" class="drawer-scrim" type="button" aria-label="关闭导航"></button>
-
+    <header class="topbar surface surface--floating"><div class="topbar__start"><button id="menu-btn" class="icon-btn mobile-only" type="button" aria-label="打开导航">☰</button><button id="back-btn" class="icon-btn is-hidden" type="button" aria-label="返回" data-tooltip="返回">←</button><button id="brand-btn" class="brand" type="button" aria-label="返回种子列表"><span class="brand__mark">W</span><span class="brand__text">WeiG qB</span></button></div><div class="topbar__search"><label class="search-box" for="search-input"><span>⌕</span><input id="search-input" type="search" autocomplete="off" placeholder="搜索全部种子…" /></label></div><div class="topbar__actions"><button id="add-btn" class="btn btn--primary" type="button">＋ <span class="desktop-label">添加种子</span></button><button id="refresh-btn" class="icon-btn" type="button" aria-label="刷新">↻</button><button id="theme-btn" class="icon-btn" type="button" aria-label="切换主题">◐</button></div></header>
+    <aside id="sidebar" class="sidebar surface surface--panel">
+      <div class="sidebar__section"><div class="eyebrow">TORRENTS</div><nav id="filter-nav" class="nav-list"><button class="nav-item is-active" data-filter="all" type="button">全部</button><button class="nav-item" data-filter="downloading" type="button">下载中</button><button class="nav-item" data-filter="seeding" type="button">做种</button><button class="nav-item" data-filter="completed" type="button">已完成</button><button class="nav-item" data-filter="paused" type="button">已暂停</button><button class="nav-item" data-filter="active" type="button">活动</button><button class="nav-item" data-filter="stalled" type="button">停滞</button><button class="nav-item" data-filter="errored" type="button">错误</button><button class="nav-item" data-filter="private" type="button">私有 / PT</button></nav></div>
+      <div id="tracker-section" class="sidebar__section"><div class="eyebrow">TRACKERS</div><nav id="tracker-nav" class="nav-list compact-nav"><button class="nav-item is-active" data-tracker="" type="button">全部 Tracker</button><span class="sidebar-placeholder">正在建立 Tracker 索引…</span></nav></div>
+      <div id="savepath-section" class="sidebar__section"><div class="eyebrow">SAVE PATH</div><nav id="savepath-nav" class="nav-list compact-nav"><button class="nav-item is-active" data-savepath="" type="button">全部路径</button></nav></div>
+      <div id="category-section" class="sidebar__section"><div class="eyebrow">CATEGORIES</div><nav id="category-nav" class="nav-list compact-nav"><button class="nav-item is-active" data-category="" type="button">全部分类</button></nav></div>
+      <div id="tag-section" class="sidebar__section"><div class="eyebrow">TAGS</div><nav id="tag-nav" class="nav-list compact-nav"><button class="nav-item is-active" data-tag="" type="button">全部标签</button></nav></div>
+      <div class="sidebar__section"><div class="eyebrow">TOOLS</div><nav class="nav-list"><button class="nav-item" data-route="search" type="button">搜索引擎</button><button class="nav-item" data-route="rss" type="button">RSS</button><button class="nav-item" data-route="logs" type="button">日志</button><button class="nav-item" data-route="settings" type="button">设置</button></nav></div>
+      <div class="sidebar__section sidebar__meta"><div class="eyebrow">CONNECTION</div><div class="meta-line"><span>qBittorrent</span><strong id="qb-version">—</strong></div><div class="meta-line"><span>WebAPI</span><strong id="api-version">—</strong></div><div class="meta-line"><span>兼容模式</span><strong id="compat-mode">检测中</strong></div></div>
+    </aside><button id="drawer-scrim" class="drawer-scrim" type="button" aria-label="关闭导航"></button>
     <main class="workspace">
-      <section id="list-view" class="view is-active" aria-labelledby="page-title">
-        <div class="workspace__header">
-          <div>
-            <div class="eyebrow">LIBRARY</div>
-            <h1 id="page-title">全部种子</h1>
-            <p id="page-subtitle" class="muted">每批最多加载 50 个种子，避免大量 DOM 导致卡顿。</p>
-          </div>
-          <div class="toolbar surface surface--raised">
-            <button id="resume-btn" class="btn btn--ghost" type="button" disabled>▶ 开始</button>
-            <button id="pause-btn" class="btn btn--ghost" type="button" disabled>Ⅱ 暂停</button>
-            <button id="delete-btn" class="btn btn--danger-ghost" type="button" disabled>删除</button>
-          </div>
-        </div>
-
-        <div class="stats-grid" aria-label="传输状态">
-          <article class="stat-card surface surface--card"><span>下载</span><strong id="dl-speed">0 B/s</strong><small>当前全局速度</small></article>
-          <article class="stat-card surface surface--card"><span>上传</span><strong id="up-speed">0 B/s</strong><small>当前全局速度</small></article>
-          <article class="stat-card surface surface--card"><span>连接</span><strong id="connection-status">—</strong><small>qBittorrent WebAPI</small></article>
-          <article class="stat-card surface surface--card"><span>当前批次</span><strong id="page-range">0–0</strong><small>DOM 上限 50 行</small></article>
-        </div>
-
-        <section class="torrent-panel surface surface--panel" aria-label="种子列表">
-          <div class="torrent-table-head desktop-only" aria-hidden="true">
-            <span>名称</span><span>大小</span><span>进度</span><span>下载</span><span>上传</span><span>ETA</span><span>状态</span>
-          </div>
-          <div id="torrent-list" class="torrent-list" role="list" aria-live="polite"></div>
-          <div id="list-empty" class="empty-state is-hidden">
-            <div class="empty-state__icon">◇</div><h2>这里还没有种子</h2><p>添加 .torrent 文件或 Magnet 链接开始。</p><button class="btn btn--primary" id="empty-add-btn" type="button">＋ 添加种子</button>
-          </div>
-          <div id="list-loading" class="loading-state"><div class="spinner"></div><span>正在连接 qBittorrent…</span></div>
-          <div class="pager">
-            <button id="prev-btn" class="btn btn--ghost" type="button" disabled>← 上一批</button>
-            <span id="page-label">第 1 批 · 50/批</span>
-            <button id="next-btn" class="btn btn--ghost" type="button" disabled>下一批 →</button>
-          </div>
-        </section>
+      <section id="list-view" class="view is-active"><div class="workspace__header"><div><div class="eyebrow">LIBRARY</div><h1 id="page-title">全部种子</h1><p id="page-subtitle" class="text-description">服务端分页 + Virtual DOM；数据量不会直接变成 DOM 数量。</p></div><div class="toolbar surface surface--raised"><button id="resume-btn" class="btn btn--ghost" type="button" disabled>▶ 开始</button><button id="pause-btn" class="btn btn--ghost" type="button" disabled>Ⅱ 暂停</button><button id="more-actions-btn" class="btn btn--ghost" type="button" disabled>更多 ▾</button><button id="delete-btn" class="btn btn--danger-ghost" type="button" disabled>删除</button></div></div>
+        <div class="stats-grid"><article class="stat-card surface surface--card"><span class="text-label">下载速度</span><strong id="dl-speed">0 B/s</strong><small class="text-description">全局实时下载</small></article><article class="stat-card surface surface--card"><span class="text-label">上传速度</span><strong id="up-speed">0 B/s</strong><small class="text-description">全局实时上传</small></article><article class="stat-card surface surface--card"><span class="text-label">网络</span><strong id="connection-status">—</strong><small id="network-meta" class="text-description">连接状态</small></article><article class="stat-card surface surface--card"><span class="text-label">Torrent</span><strong id="torrent-count">—</strong><small id="page-range" class="text-description">正在统计…</small></article></div>
+        <section class="torrent-panel surface surface--panel"><div class="grid-toolbar"><div><label>每页 <select id="page-size"><option>20</option><option selected>50</option><option>100</option><option>200</option></select></label><button id="columns-btn" class="btn btn--ghost" type="button">列设置</button></div><div id="catalog-state" class="text-description">Tracker 索引准备中</div></div><div id="torrent-table-head" class="torrent-table-head desktop-only"></div><div id="torrent-list" class="torrent-list" role="list"></div><div id="list-empty" class="empty-state is-hidden"><div class="empty-state__icon">◇</div><h2>没有符合条件的种子</h2><p class="text-description">调整筛选条件，或添加新的 Torrent。</p><button class="btn btn--primary" id="empty-add-btn" type="button">＋ 添加种子</button></div><div id="list-loading" class="loading-state"><div class="spinner"></div><span>正在连接 qBittorrent…</span></div><div class="pager"><button id="prev-btn" class="btn btn--ghost" type="button" disabled>← 上一页</button><span id="page-label">第 1 页 · 每页 50</span><button id="next-btn" class="btn btn--ghost" type="button" disabled>下一页 →</button></div></section>
       </section>
-
-      <section id="detail-view" class="view" aria-labelledby="detail-title">
-        <div class="detail-hero surface surface--raised">
-          <div class="detail-hero__main"><div class="eyebrow">TORRENT DETAIL</div><h1 id="detail-title">—</h1><div id="detail-state" class="status-pill">—</div></div>
-          <div class="detail-progress"><div class="progress-track"><div id="detail-progress-bar" class="progress-fill"></div></div><strong id="detail-progress-text">0%</strong></div>
-        </div>
-        <div class="detail-tabs" role="tablist" aria-label="种子详情">
-          <button class="tab is-active" data-tab="overview" type="button">概览</button>
-          <button class="tab" data-tab="files" type="button">文件</button>
-          <button class="tab" data-tab="trackers" type="button">Trackers</button>
-          <button class="tab" data-tab="peers" type="button">Peers</button>
-        </div>
-        <div id="detail-content" class="detail-content surface surface--panel"></div>
-      </section>
+      <section id="detail-view" class="view"><div class="detail-hero surface surface--raised"><div><div class="eyebrow">TORRENT DETAIL</div><h1 id="detail-title">—</h1><div id="detail-state" class="status-pill">—</div></div><div class="detail-progress"><div class="progress-track"><div id="detail-progress-bar" class="progress-fill"></div></div><strong id="detail-progress-text">0%</strong></div></div><div class="detail-tabs" role="tablist"><button class="tab is-active" data-tab="overview">概览</button><button class="tab" data-tab="files">文件</button><button class="tab" data-tab="trackers">Trackers</button><button class="tab" data-tab="peers">Peers</button><button class="tab" data-tab="webseeds">HTTP Sources</button></div><div id="detail-content" class="detail-content surface surface--panel"></div></section>
+      <section id="settings-view" class="view"><div class="workspace__header"><div><div class="eyebrow">SETTINGS</div><h1>设置</h1><p class="text-description">界面设置与当前 qBittorrent 实际支持的 Preferences。</p></div><button id="save-settings-btn" class="btn btn--primary">保存 qB 设置</button></div><div class="settings-layout"><nav id="settings-tabs" class="settings-tabs surface surface--panel"><button class="nav-item is-active" data-settings-tab="weigg">WeiG WebUI</button><button class="nav-item" data-settings-tab="downloads">下载</button><button class="nav-item" data-settings-tab="connection">连接</button><button class="nav-item" data-settings-tab="speed">速度</button><button class="nav-item" data-settings-tab="bittorrent">BitTorrent</button><button class="nav-item" data-settings-tab="webui">Web UI</button><button class="nav-item" data-settings-tab="advanced">高级</button></nav><div id="settings-content" class="settings-content surface surface--panel"></div></div></section>
+      <section id="search-view" class="view"><div class="workspace__header"><div><div class="eyebrow">SEARCH</div><h1>搜索引擎</h1><p class="text-description">使用 qBittorrent Search API；不支持的旧 WebAPI 会自动隐藏入口。</p></div></div><div class="tool-page surface surface--panel"><div class="inline-form"><input id="engine-query" class="field-input" placeholder="输入关键词"><button id="engine-search-btn" class="btn btn--primary">搜索</button><button id="engine-stop-btn" class="btn btn--ghost">停止</button></div><div id="search-results" class="large-tool-list"></div></div></section>
+      <section id="rss-view" class="view"><div class="workspace__header"><div><div class="eyebrow">RSS</div><h1>RSS</h1><p class="text-description">Feed、文章与兼容的 RSS 操作。</p></div></div><div class="tool-page surface surface--panel"><div class="inline-form"><input id="rss-url" class="field-input" placeholder="RSS Feed URL"><button id="rss-add-btn" class="btn btn--primary">添加 Feed</button><button id="rss-refresh-btn" class="btn btn--ghost">刷新</button></div><div id="rss-content" class="large-tool-list"></div></div></section>
+      <section id="logs-view" class="view"><div class="workspace__header"><div><div class="eyebrow">LOGS</div><h1>日志</h1><p class="text-description">qBittorrent 执行日志；大列表采用窗口化。</p></div></div><div class="tool-page surface surface--panel"><div id="logs-content" class="large-tool-list"></div></div></section>
     </main>
-
-    <footer class="statusbar surface surface--floating">
-      <span><b>↓</b> <span id="status-dl">0 B/s</span></span><span><b>↑</b> <span id="status-up">0 B/s</span></span><span class="desktop-only">刷新 <span id="last-refresh">—</span></span><span id="status-message">正在初始化…</span>
-    </footer>
+    <footer class="statusbar surface surface--floating"><span class="status-speed status-speed--dl">↓ <strong id="status-dl">0 B/s</strong></span><span class="status-speed status-speed--up">↑ <strong id="status-up">0 B/s</strong></span><span id="status-connection">● —</span><span id="status-torrents">Torrent —</span><span class="desktop-only">刷新 <span id="last-refresh">—</span></span><span id="status-message">正在初始化…</span></footer>
   </div>
-
-  <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
-
-  <dialog id="add-dialog" class="dialog surface surface--modal">
-    <form id="add-form" method="dialog">
-      <div class="dialog__head"><div><div class="eyebrow">ADD TORRENT</div><h2>添加种子</h2></div><button class="icon-btn" value="cancel" aria-label="关闭" type="submit">×</button></div>
-      <label class="field"><span>Magnet / URL</span><textarea id="torrent-urls" rows="5" placeholder="magnet:?xt=urn:btih:…"></textarea></label>
-      <div class="or-divider"><span>或</span></div>
-      <label class="file-drop" for="torrent-files"><input id="torrent-files" type="file" accept=".torrent,application/x-bittorrent" multiple /><span>选择 .torrent 文件</span><small>可多选</small></label>
-      <label class="field"><span>保存路径（可选）</span><input id="save-path" type="text" autocomplete="off" placeholder="留空使用 qBittorrent 默认路径" /></label>
-      <div class="dialog__actions"><button class="btn btn--ghost" value="cancel" type="submit">取消</button><button id="add-submit" class="btn btn--primary" type="button">添加</button></div>
-    </form>
-  </dialog>
-
-  <dialog id="delete-dialog" class="dialog surface surface--modal">
-    <form method="dialog">
-      <div class="dialog__head"><div><div class="eyebrow danger-text">DANGER</div><h2>删除种子</h2></div><button class="icon-btn" value="cancel" aria-label="关闭" type="submit">×</button></div>
-      <p id="delete-copy" class="muted">确定删除选中的种子吗？</p>
-      <label class="check-row"><input id="delete-files" type="checkbox" /><span>同时删除下载的数据文件</span></label>
-      <div class="dialog__actions"><button class="btn btn--ghost" value="cancel" type="submit">取消</button><button id="delete-confirm" class="btn btn--danger" type="button">确认删除</button></div>
-    </form>
-  </dialog>
-
-  <div id="fatal" class="fatal is-hidden" role="alert">
-    <div class="fatal__card surface surface--modal"><h2>WebUI 无法继续加载</h2><p id="fatal-message">发生未知错误。</p><div class="fatal__actions"><button id="fatal-back" class="btn btn--ghost" type="button">← 返回</button><button id="fatal-home" class="btn btn--ghost" type="button">⌂ 首页</button><button class="btn btn--primary" type="button" onclick="location.reload()">↻ 重载</button></div></div>
-  </div>
-
-  <script src="scripts/core.js?v=0.1.0"></script>
-  <script src="scripts/qb-client.js?v=0.1.0"></script>
-  <script src="scripts/components.js?v=0.1.0"></script>
-  <script src="scripts/app.js?v=0.1.0"></script>
+  <div id="toast-region" class="toast-region" aria-live="polite"></div>
+  <dialog id="add-dialog" class="dialog surface surface--modal"><form method="dialog"><div class="dialog__head"><div><div class="eyebrow">ADD TORRENT</div><h2>添加种子</h2></div><button class="icon-btn" value="cancel">×</button></div><label class="field"><span>Magnet / URL</span><textarea id="torrent-urls" rows="5"></textarea></label><div class="or-divider"><span>或</span></div><label class="file-drop" for="torrent-files"><input id="torrent-files" type="file" accept=".torrent,application/x-bittorrent" multiple><span>选择 .torrent 文件</span><small>可多选</small></label><label class="field"><span>保存路径（可选）</span><input id="save-path" type="text"></label><div class="dialog__actions"><button class="btn btn--ghost" value="cancel">取消</button><button id="add-submit" class="btn btn--primary" type="button">添加</button></div></form></dialog>
+  <dialog id="delete-dialog" class="dialog surface surface--modal"><form method="dialog"><div class="dialog__head"><div><div class="eyebrow danger-text">DANGER</div><h2>删除种子</h2></div><button class="icon-btn" value="cancel">×</button></div><p id="delete-copy" class="text-description"></p><label class="check-row"><input id="delete-files" type="checkbox"><span>同时删除下载的数据文件</span></label><div class="dialog__actions"><button class="btn btn--ghost" value="cancel">取消</button><button id="delete-confirm" class="btn btn--danger" type="button">确认删除</button></div></form></dialog>
+  <dialog id="actions-dialog" class="dialog surface surface--modal"><div class="dialog__head"><div><div class="eyebrow">TORRENT ACTIONS</div><h2>更多操作</h2></div><button id="actions-close" class="icon-btn">×</button></div><div id="actions-grid" class="action-grid"></div></dialog>
+  <dialog id="prompt-dialog" class="dialog surface surface--modal"><div class="dialog__head"><div><div class="eyebrow">ACTION</div><h2 id="prompt-title">操作</h2></div><button id="prompt-close" class="icon-btn">×</button></div><label class="field"><span id="prompt-label">值</span><input id="prompt-value" type="text"></label><div class="dialog__actions"><button id="prompt-cancel" class="btn btn--ghost">取消</button><button id="prompt-confirm" class="btn btn--primary">确认</button></div></dialog>
+  <dialog id="columns-dialog" class="dialog surface surface--modal"><div class="dialog__head"><div><div class="eyebrow">DATAGRID</div><h2>列设置</h2></div><button id="columns-close" class="icon-btn">×</button></div><div id="columns-content" class="column-settings"></div><div class="dialog__actions"><button id="columns-reset" class="btn btn--ghost">恢复默认</button><button id="columns-done" class="btn btn--primary">完成</button></div></dialog>
+  <div id="fatal" class="fatal is-hidden"><div class="fatal__card surface surface--modal"><h2>WebUI 无法继续加载</h2><p id="fatal-message"></p><div class="fatal__actions"><button id="fatal-back" class="btn btn--ghost">← 返回</button><button id="fatal-home" class="btn btn--ghost">⌂ 首页</button><button class="btn btn--primary" onclick="location.reload()">↻ 重载</button></div></div></div>
+  <script src="scripts/core.js?v=0.2.0"></script><script src="scripts/qb-client.js?v=0.2.0"></script><script src="scripts/components.js?v=0.2.0"></script><script src="scripts/app.js?v=0.2.0"></script>
 </body>
 </html>
