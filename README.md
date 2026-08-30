@@ -2,9 +2,25 @@
 
 A premium, modular and high-performance Alternate WebUI for qBittorrent.
 
-Current version: **0.2.2**  
+Current version: **0.2.3**  
 Compatibility floor: **qBittorrent 4.1.9**  
 Compatibility target: **qBittorrent 4.1.x → current 5.x**, with capability-based forward compatibility.
+
+## v0.2.3 — Legacy login diagnostics hotfix
+
+The public login page now follows the qBittorrent 4.1.x form-encoded login contract more strictly and no longer reports every authentication failure as “Invalid username or password”.
+
+Login outcomes are separated into:
+
+```text
+Ok.       → authenticated, reload into private WebUI
+Fails.    → invalid username/password
+HTTP 403  → qBittorrent temporary client/IP ban
+other HTTP errors → reverse-proxy / Host / Origin / server rejection
+network failure   → connection failure
+```
+
+This matters especially on qBittorrent 4.1.x, where repeated failed logins can temporarily ban the client. The login UI is maintained in English and Simplified Chinese, with English fallback for missing locale-specific diagnostic text.
 
 ## v0.2.2 — Nebula Spatial Console
 
@@ -185,4 +201,4 @@ Documentation authority:
 
 ## Stabilization status
 
-`0.2.2` is the integrated Spatial UI baseline. Repository CI validates JavaScript syntax, spatial UI invariants, pagination/VirtualList architecture, compatibility tokens, i18n/Settings metadata and installer safety. Final release certification still requires live regression on both real endpoints: qBittorrent 4.1.9.1 and qBittorrent 5.2.0.
+`0.2.3` is the current integrated baseline: v0.2.2 Spatial UI plus the legacy-login diagnostics hotfix. Repository CI validates JavaScript syntax, login outcome handling, spatial UI invariants, pagination/VirtualList architecture, compatibility tokens, i18n/Settings metadata and installer safety. Final release certification still requires live regression on both real endpoints: qBittorrent 4.1.9.1 and qBittorrent 5.2.0.
