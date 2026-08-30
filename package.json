@@ -1,0 +1,9 @@
+{
+  "name": "weigg-qb-webui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node tests/smoke.mjs && node --check webui/private/scripts/core.js && node --check webui/private/scripts/qb-client.js && node --check webui/private/scripts/components.js && node --check webui/private/scripts/app.js"
+  }
+}
