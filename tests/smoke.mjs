@@ -1,6 +1,11 @@
 import fs from 'node:fs';
 
 const required = [
+  'README.md',
+  'DESIGN.md',
+  'docs/001.项目总方案.md',
+  'docs/002.兼容与实现状态.md',
+  'docs/003.项目架构.md',
   'webui/public/login.html',
   'webui/private/index.html',
   'webui/private/css/app.css',
@@ -20,6 +25,7 @@ const required = [
 for (const file of required) {
   if (!fs.existsSync(file)) throw new Error(`Missing ${file}`);
 }
+if (fs.readFileSync('VERSION','utf8').trim() !== '0.2.2') throw new Error('VERSION must be 0.2.2');
 
 const index = fs.readFileSync('webui/private/index.html', 'utf8');
 for (const id of ['torrent-list','back-btn','fatal-home','prev-btn','next-btn','page-size','tracker-nav','settings-view','settings-search-input','app-nav','mobile-bottom-nav','actions-dialog','columns-dialog']) {
@@ -85,6 +91,11 @@ for (const token of ['installFilterShelf','installConnectionDock','createFacet',
   if (!spatial.includes(token)) throw new Error(`v0.2.2 spatial controller missing: ${token}`);
 }
 if (/https?:\/\//.test(index + css + v021 + v022)) throw new Error('Runtime UI must not depend on external assets');
+
+const architecture = fs.readFileSync('docs/003.项目架构.md','utf8');
+for (const token of ['QBClient','spatial-v022.js','Data count != DOM count','ux-v021.js','English','简体中文']) {
+  if (!architecture.includes(token)) throw new Error(`Architecture documentation missing: ${token}`);
+}
 
 const installer = fs.readFileSync('installers/install.sh', 'utf8');
 for (const token of ['--container=*','--config-root=*','Multiple qBittorrent Docker containers found','/var/lib/docker/*','Installed and verified:']) {
