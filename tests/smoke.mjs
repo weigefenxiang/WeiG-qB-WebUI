@@ -25,7 +25,7 @@ const required = [
 for (const file of required) {
   if (!fs.existsSync(file)) throw new Error(`Missing ${file}`);
 }
-if (fs.readFileSync('VERSION','utf8').trim() !== '0.2.3') throw new Error('VERSION must be 0.2.3');
+if (fs.readFileSync('VERSION','utf8').trim() !== '0.2.4') throw new Error('VERSION must be 0.2.4');
 
 const login = fs.readFileSync('webui/public/login.html','utf8');
 for (const token of [
@@ -36,9 +36,11 @@ for (const token of [
   "x.text==='Ok.'",
   "kind:'banned'",
   "kind:'rejected'",
-  "用户名或密码错误。"
+  "用户名或密码错误。",
+  "WeiG-OpenWrt-AutoBuild/main/site/wrt/Wei.G.ico",
+  "border-radius:50%"
 ]) {
-  if (!login.includes(token)) throw new Error(`Legacy login invariant missing: ${token}`);
+  if (!login.includes(token)) throw new Error(`Legacy login/branding invariant missing: ${token}`);
 }
 
 const index = fs.readFileSync('webui/private/index.html', 'utf8');
@@ -84,7 +86,7 @@ for (const token of ['normalizeTracker','VirtualList','DataGrid','fontSize','ptT
 }
 
 const components = fs.readFileSync('webui/private/scripts/components.js','utf8');
-for (const token of ['SettingsSchema.describe','setting-card','switch-control',"'state.downloading'",'v022.css?v=0.2.2','spatial-v022.js?v=0.2.2']) {
+for (const token of ['SettingsSchema.describe','setting-card','switch-control',"'state.downloading'",'v022.css?v=0.2.4','spatial-v022.js?v=0.2.4']) {
   if (!components.includes(token)) throw new Error(`Component/spatial loader token missing: ${token}`);
 }
 
@@ -101,10 +103,10 @@ for (const token of ['--spatial-floating','filter-shelf','facet-popover','connec
   if (!v022.includes(token)) throw new Error(`v0.2.2 spatial style missing: ${token}`);
 }
 const spatial = fs.readFileSync('webui/private/scripts/spatial-v022.js','utf8');
-for (const token of ['installFilterShelf','installConnectionDock','createFacet','facet-search','settings-content']) {
-  if (!spatial.includes(token)) throw new Error(`v0.2.2 spatial controller missing: ${token}`);
+for (const token of ['installBranding','WeiG-OpenWrt-AutoBuild/main/site/wrt/Wei.G.ico','borderRadius=\'50%\'','installFilterShelf','installConnectionDock','createFacet','facet-search','settings-content']) {
+  if (!spatial.includes(token)) throw new Error(`v0.2.4 spatial/branding controller missing: ${token}`);
 }
-if (/https?:\/\//.test(index + css + v021 + v022)) throw new Error('Runtime UI must not depend on external assets');
+if (/https?:\/\//.test(index + css + v021 + v022)) throw new Error('Core runtime markup/CSS must not depend on external assets');
 
 const architecture = fs.readFileSync('docs/003.项目架构.md','utf8');
 for (const token of ['QBClient','spatial-v022.js','Data count != DOM count','ux-v021.js','English','简体中文']) {
@@ -116,4 +118,4 @@ for (const token of ['--container=*','--config-root=*','Multiple qBittorrent Doc
   if (!installer.includes(token)) throw new Error(`Installer safety token missing: ${token}`);
 }
 
-console.log('WeiG qB WebUI v0.2.3 smoke checks passed.');
+console.log('WeiG qB WebUI v0.2.4 smoke checks passed.');
