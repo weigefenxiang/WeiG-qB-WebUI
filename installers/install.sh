@@ -11,17 +11,37 @@ MODE="install"
 CONFIGURE=0
 DOCKER_CONTAINER=""
 DOCKER_CONFIG_ROOT=""
+CONTAINER_REQUESTED=""
+CONFIG_ROOT_REQUESTED=""
 
+usage() {
+  cat <<'EOF'
+Usage: install.sh [options]
+
+Options:
+  --update                  Update the selected installation.
+  --rollback                Roll back the last installation.
+  --configure               Update the detected qBittorrent config.
+  --dir=/path               WebUI path. For Docker, /config/... means container path.
+  --container=name_or_id    Select one qBittorrent Docker container explicitly.
+  --config-root=/host/path  Host path mounted as qBittorrent container /config.
+  --list-containers         List detected qBittorrent Docker containers and exit.
+  -h, --help                Show this help.
+EOF
+}
+
+LIST_CONTAINERS=0
 for arg in "$@"; do
   case "$arg" in
     --update) MODE="update" ;;
     --rollback) MODE="rollback" ;;
     --configure) CONFIGURE=1 ;;
     --dir=*) DEST=${arg#--dir=}; REQUESTED_DEST="$DEST"; QBT_ROOT_FOLDER="$DEST"; DEST_EXPLICIT=1 ;;
-    -h|--help)
-      echo "Usage: install.sh [--update|--rollback] [--configure] [--dir=/path/to/webui]"
-      exit 0
-      ;;
+    --container=*) CONTAINER_REQUESTED=${arg#--container=} ;;
+    --config-root=*) CONFIG_ROOT_REQUESTED=${arg#--config-root=} ;;
+    --list-containers) LIST_CONTAINERS=1 ;;
+    -h|--help) usage; exit 0 ;;
+    *) echo "Unknown option: $arg" >&2; usage >&2; exit 2 ;;
   esac
 done
 
@@ -40,21 +60,83 @@ is_safe_config_path() {
   esac
 }
 
-detect_qb_docker() {
+qb_container_lines() {
+  command -v docker >/dev/null 2>&1 || return 0
+  docker ps --format '{{.ID}}|{{.Image}}|{{.Names}}' 2>/dev/null | grep -Ei 'qbittorrent|qbit' || true
+}
+
+container_config_source() {
+  docker inspect -f '{{range .Mounts}}{{if eq .Destination "/config"}}{{.Source}}{{end}}{{end}}' "$1" 2>/dev/null || true
+}
+
+print_qb_containers() {
+  lines=$(qb_container_lines)
+  if [ -z "$lines" ]; then
+    echo "No running qBittorrent Docker containers detected."
+    return 0
+  fi
+  echo "Detected qBittorrent Docker containers:"
+  printf '%s\n' "$lines" | while IFS='|' read -r id image name; do
+    source=$(container_config_source "$id")
+    [ -n "$source" ] || source="(no /config mount detected)"
+    echo "  $name | $image | id=$id | /config -> $source"
+  done
+}
+
+select_qb_docker() {
   command -v docker >/dev/null 2>&1 || return 1
-  line=$(docker ps --format '{{.ID}}|{{.Image}}|{{.Names}}' 2>/dev/null | grep -Ei 'qbittorrent|qbit' | head -n1 || true)
-  [ -n "$line" ] || return 1
+
+  if [ -n "$CONFIG_ROOT_REQUESTED" ]; then
+    [ -d "$CONFIG_ROOT_REQUESTED" ] || { echo "Config root does not exist: $CONFIG_ROOT_REQUESTED" >&2; exit 2; }
+    DOCKER_CONFIG_ROOT=${CONFIG_ROOT_REQUESTED%/}
+    echo "Using explicit qBittorrent config root: $DOCKER_CONFIG_ROOT"
+
+    lines=$(qb_container_lines)
+    if [ -n "$lines" ]; then
+      printf '%s\n' "$lines" | while IFS='|' read -r id image name; do
+        source=$(container_config_source "$id")
+        if [ "$source" = "$DOCKER_CONFIG_ROOT" ]; then
+          echo "Matched Docker container: $name ($image)"
+        fi
+      done
+    fi
+    return 0
+  fi
+
+  lines=$(qb_container_lines)
+  [ -n "$lines" ] || return 1
+
+  if [ -n "$CONTAINER_REQUESTED" ]; then
+    line=$(printf '%s\n' "$lines" | awk -F'|' -v want="$CONTAINER_REQUESTED" '$1==want || $3==want {print; exit}')
+    [ -n "$line" ] || {
+      echo "Requested qBittorrent container not found: $CONTAINER_REQUESTED" >&2
+      print_qb_containers >&2
+      exit 2
+    }
+  else
+    count=$(printf '%s\n' "$lines" | grep -c . || true)
+    if [ "$count" -gt 1 ]; then
+      echo "Multiple qBittorrent Docker containers found; refusing to guess." >&2
+      print_qb_containers >&2
+      echo "Re-run with --container=<name> or --config-root=<host /config path>." >&2
+      exit 3
+    fi
+    line=$(printf '%s\n' "$lines" | head -n1)
+  fi
 
   id=${line%%|*}
   rest=${line#*|}
   image=${rest%%|*}
   name=${rest#*|}
-  source=$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/config"}}{{.Source}}{{end}}{{end}}' "$id" 2>/dev/null || true)
-  [ -n "$source" ] && [ -d "$source" ] || return 1
+  source=$(container_config_source "$id")
+  [ -n "$source" ] && [ -d "$source" ] || {
+    echo "Container $name does not expose a usable /config mount." >&2
+    exit 2
+  }
 
   DOCKER_CONTAINER="$name"
   DOCKER_CONFIG_ROOT="$source"
-  echo "Detected qBittorrent Docker container: $name ($image)"
+  echo "Selected qBittorrent Docker container: $name ($image)"
   echo "Container /config -> Host $source"
   return 0
 }
@@ -90,14 +172,19 @@ map_docker_destination() {
     *)
       DEST="$REQUESTED_DEST"
       QBT_ROOT_FOLDER="$REQUESTED_DEST"
-      echo "Warning: requested path is outside the detected Docker /config mount."
-      echo "qBittorrent may not be able to see: $REQUESTED_DEST"
+      echo "Warning: requested path is outside the selected Docker /config mount." >&2
+      echo "qBittorrent may not be able to see: $REQUESTED_DEST" >&2
       ;;
   esac
 }
 
+if [ "$LIST_CONTAINERS" -eq 1 ]; then
+  print_qb_containers
+  exit 0
+fi
+
 if [ "$MODE" != "rollback" ]; then
-  detect_qb_docker || true
+  select_qb_docker || true
   map_docker_destination
 fi
 
@@ -204,7 +291,6 @@ rollback() {
       echo "Restored qBittorrent config: $cfg"
     fi
   fi
-
   exit 0
 }
 
@@ -267,7 +353,6 @@ fi
 rm -rf "$DEST.new"
 mkdir -p "$DEST.new"
 cp -a "$SRC"/. "$DEST.new"/
-
 [ -f "$DEST.new/public/login.html" ] && [ -f "$DEST.new/private/index.html" ] || { echo "Installed payload validation failed." >&2; rm -rf "$DEST.new"; exit 1; }
 
 rm -rf "$DEST.old"
@@ -278,7 +363,6 @@ if ! mv "$DEST.new" "$DEST"; then
   exit 1
 fi
 rm -rf "$DEST.old"
-
 echo "Installed and verified: $DEST"
 
 cfg=$(find_config || true)
@@ -308,6 +392,6 @@ else
   fi
 fi
 
-echo "Rollback (same destination remembered automatically):"
+echo "Rollback (last destination is remembered automatically):"
 echo "  curl -fsSL https://raw.githubusercontent.com/$REPO/main/installers/install.sh -o /tmp/weigg-qb-install.sh"
 echo "  sh /tmp/weigg-qb-install.sh --rollback"
