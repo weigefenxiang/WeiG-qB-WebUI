@@ -1,0 +1,59 @@
+param(
+  [ValidateSet('Install','Update','Rollback')][string]$Mode='Install',
+  [string]$Destination="$env:LOCALAPPDATA\WeiG-qB-WebUI",
+  [switch]$Configure
+)
+$ErrorActionPreference='Stop'
+$Repo='weigefenxiang/WeiG-qB-WebUI'
+$State=Join-Path $env:APPDATA 'WeiG-qB-WebUI'
+$Backups=Join-Path $State 'backups'
+New-Item -ItemType Directory -Force -Path $Backups | Out-Null
+function Find-QBConfig {
+  $candidates=@(
+    (Join-Path $env:APPDATA 'qBittorrent\qBittorrent.ini'),
+    (Join-Path $env:APPDATA 'qBittorrent\qBittorrent.conf')
+  )
+  foreach($p in $candidates){ if(Test-Path $p){ return $p } }
+  return $null
+}
+function Backup-Current {
+  $stamp=Get-Date -Format 'yyyyMMdd-HHmmss'; $b=Join-Path $Backups $stamp; New-Item -ItemType Directory -Force -Path $b|Out-Null
+  if(Test-Path $Destination){ Copy-Item $Destination (Join-Path $b 'webui') -Recurse -Force }
+  $cfg=Find-QBConfig; if($cfg){ Copy-Item $cfg (Join-Path $b 'qBittorrent.conf') -Force }
+  Set-Content -Encoding UTF8 -Path (Join-Path $State 'last-backup') -Value $b
+  Write-Host "Backup: $b"
+}
+if($Mode -eq 'Rollback'){
+  $marker=Join-Path $State 'last-backup'; if(!(Test-Path $marker)){ throw 'No backup found.' }
+  $b=(Get-Content $marker -Raw).Trim(); $web=Join-Path $b 'webui'; if(!(Test-Path $web)){ throw "Backup webui missing: $b" }
+  if(Test-Path $Destination){ Remove-Item $Destination -Recurse -Force }; Copy-Item $web $Destination -Recurse -Force
+  $cfg=Find-QBConfig; $old=Join-Path $b 'qBittorrent.conf'; if($cfg -and (Test-Path $old)){ Copy-Item $old $cfg -Force }
+  Write-Host "Rolled back to: $b"; exit 0
+}
+Backup-Current
+$tmp=Join-Path ([IO.Path]::GetTempPath()) ("weigg-qb-"+[guid]::NewGuid().ToString('N')); New-Item -ItemType Directory -Force -Path $tmp|Out-Null
+try {
+  $zip=Join-Path $tmp 'source.zip'; Invoke-WebRequest -UseBasicParsing "https://github.com/$Repo/archive/refs/heads/main.zip" -OutFile $zip
+  Expand-Archive $zip (Join-Path $tmp 'src') -Force
+  $web=Get-ChildItem (Join-Path $tmp 'src') -Directory -Recurse | Where-Object {$_.Name -eq 'webui'} | Select-Object -First 1
+  if(!$web){ throw 'webui directory not found in archive.' }
+  $new="$Destination.new"; if(Test-Path $new){Remove-Item $new -Recurse -Force}; New-Item -ItemType Directory -Force -Path $new|Out-Null; Copy-Item (Join-Path $web.FullName '*') $new -Recurse -Force
+  if(!(Test-Path (Join-Path $new 'public\login.html')) -or !(Test-Path (Join-Path $new 'private\index.html'))){ throw 'Invalid WebUI package.' }
+  $old="$Destination.old"; if(Test-Path $old){Remove-Item $old -Recurse -Force}; if(Test-Path $Destination){Move-Item $Destination $old}; Move-Item $new $Destination; if(Test-Path $old){Remove-Item $old -Recurse -Force}
+  Write-Host "Installed: $Destination"
+  $cfg=Find-QBConfig
+  if($Configure -and $cfg){
+    Copy-Item $cfg "$cfg.weigg.bak" -Force
+    $text=Get-Content $cfg -Raw
+    if($text -match '(?m)^WebUI\\AlternativeUIEnabled='){ $text=[regex]::Replace($text,'(?m)^WebUI\\AlternativeUIEnabled=.*$','WebUI\AlternativeUIEnabled=true') } else { $text += "`r`nWebUI\AlternativeUIEnabled=true`r`n" }
+    $rootLine='WebUI\RootFolder='+$Destination
+    if($text -match '(?m)^WebUI\\RootFolder='){ $text=[regex]::Replace($text,'(?m)^WebUI\\RootFolder=.*$',[System.Text.RegularExpressions.MatchEvaluator]{param($m)$rootLine}) } else { $text += $rootLine+"`r`n" }
+    Set-Content -Path $cfg -Value $text -Encoding UTF8
+    Write-Host "Configured: $cfg"
+  } else {
+    Write-Host 'qBittorrent -> Tools -> Preferences -> Web UI -> Use alternative WebUI'
+    Write-Host "WebUI Root Folder: $Destination"
+    if($cfg){Write-Host "Detected config: $cfg"}
+  }
+  Write-Host 'Rollback: .\install.ps1 -Mode Rollback'
+} finally { if(Test-Path $tmp){Remove-Item $tmp -Recurse -Force} }
