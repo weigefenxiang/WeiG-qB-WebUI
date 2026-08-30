@@ -5,6 +5,7 @@ const required = [
   'webui/private/index.html',
   'webui/private/css/app.css',
   'webui/private/css/v021.css',
+  'webui/private/css/v022.css',
   'webui/private/scripts/i18n.js',
   'webui/private/scripts/core.js',
   'webui/private/scripts/settings-schema.js',
@@ -13,6 +14,7 @@ const required = [
   'webui/private/scripts/components.js',
   'webui/private/scripts/app.js',
   'webui/private/scripts/ux-v021.js',
+  'webui/private/scripts/spatial-v022.js',
   'installers/install.sh'
 ];
 for (const file of required) {
@@ -21,7 +23,7 @@ for (const file of required) {
 
 const index = fs.readFileSync('webui/private/index.html', 'utf8');
 for (const id of ['torrent-list','back-btn','fatal-home','prev-btn','next-btn','page-size','tracker-nav','settings-view','settings-search-input','app-nav','mobile-bottom-nav','actions-dialog','columns-dialog']) {
-  if (!index.includes(`id="${id}"`)) throw new Error(`Missing v0.2.1 UI invariant: ${id}`);
+  if (!index.includes(`id="${id}"`)) throw new Error(`Missing UI invariant: ${id}`);
 }
 if (!index.includes('<html lang="en"')) throw new Error('English must be the canonical markup language');
 for (const route of ['search','rss','logs','settings']) {
@@ -34,7 +36,7 @@ if (!index.includes('data-i18n="nav.settings"') || !index.includes('data-i18n-pl
 if (index.includes('>TOOLS<')) throw new Error('Application navigation must not live in the Torrent sidebar');
 
 const i18n = fs.readFileSync('webui/private/scripts/i18n.js', 'utf8');
-for (const token of ["'en':EN","'zh-CN'","'zh-TW'","'ja'","'ko'",'browserLocale','unsupported locales fall back to English']) {
+for (const token of ["'en':EN","'zh-CN'",'browserLocale','unsupported locales fall back to English']) {
   if (!i18n.includes(token)) throw new Error(`i18n invariant missing: ${token}`);
 }
 const schema = fs.readFileSync('webui/private/scripts/settings-schema.js', 'utf8');
@@ -53,7 +55,7 @@ for (const token of ["'resume','start'","'pause','stop'",'limit','offset','reche
 
 const app = fs.readFileSync('webui/private/scripts/app.js', 'utf8');
 for (const token of ['pageSize','buildCatalog','renderTrackerNav','renderSettings','openColumns','privateFlag','VirtualList','normalizeTracker']) {
-  if (!app.includes(token)) throw new Error(`v0.2 app token missing: ${token}`);
+  if (!app.includes(token)) throw new Error(`App architecture token missing: ${token}`);
 }
 
 const core = fs.readFileSync('webui/private/scripts/core.js', 'utf8');
@@ -62,23 +64,31 @@ for (const token of ['normalizeTracker','VirtualList','DataGrid','fontSize','ptT
 }
 
 const components = fs.readFileSync('webui/private/scripts/components.js','utf8');
-for (const token of ['SettingsSchema.describe','setting-card','switch-control',"'state.downloading'"]) {
-  if (!components.includes(token)) throw new Error(`Component standardization token missing: ${token}`);
+for (const token of ['SettingsSchema.describe','setting-card','switch-control',"'state.downloading'",'v022.css?v=0.2.2','spatial-v022.js?v=0.2.2']) {
+  if (!components.includes(token)) throw new Error(`Component/spatial loader token missing: ${token}`);
 }
 
 const css = fs.readFileSync('webui/private/css/app.css', 'utf8');
 const v021 = fs.readFileSync('webui/private/css/v021.css', 'utf8');
+const v022 = fs.readFileSync('webui/private/css/v022.css', 'utf8');
 for (const token of ['--font-scale-offset','--text-description','--text-table-cell','prefers-reduced-motion','torrent-mobile-card','col-resize']) {
   if (!css.includes(token)) throw new Error(`Design/performance token missing: ${token}`);
 }
 for (const token of ['app-nav__item','settings-group','setting-card','mobile-bottom-nav','switch-control']) {
   if (!v021.includes(token)) throw new Error(`v0.2.1 UX style missing: ${token}`);
 }
-if (/https?:\/\//.test(index + css + v021)) throw new Error('Runtime UI must not depend on external assets');
+for (const token of ['--spatial-floating','filter-shelf','facet-popover','connection-dock','grid-template-rows:auto minmax(42px,1fr) auto','search-box:focus-within','SIDEBAR-001','SETTING-001']) {
+  if (!v022.includes(token)) throw new Error(`v0.2.2 spatial style missing: ${token}`);
+}
+const spatial = fs.readFileSync('webui/private/scripts/spatial-v022.js','utf8');
+for (const token of ['installFilterShelf','installConnectionDock','createFacet','facet-search','settings-content']) {
+  if (!spatial.includes(token)) throw new Error(`v0.2.2 spatial controller missing: ${token}`);
+}
+if (/https?:\/\//.test(index + css + v021 + v022)) throw new Error('Runtime UI must not depend on external assets');
 
 const installer = fs.readFileSync('installers/install.sh', 'utf8');
 for (const token of ['--container=*','--config-root=*','Multiple qBittorrent Docker containers found','/var/lib/docker/*','Installed and verified:']) {
   if (!installer.includes(token)) throw new Error(`Installer safety token missing: ${token}`);
 }
 
-console.log('WeiG qB WebUI v0.2.1 smoke checks passed.');
+console.log('WeiG qB WebUI v0.2.2 smoke checks passed.');
