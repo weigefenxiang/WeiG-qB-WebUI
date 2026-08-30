@@ -2,9 +2,28 @@
 
 A premium, modular and high-performance Alternate WebUI for qBittorrent.
 
-Current version: **0.2.3**  
+Current version: **0.2.4**  
 Compatibility floor: **qBittorrent 4.1.9**  
 Compatibility target: **qBittorrent 4.1.x → current 5.x**, with capability-based forward compatibility.
+
+## v0.2.4 — Wei.G branding + cache-bust
+
+The WebUI now uses the project owner’s canonical **Wei.G** icon source from `WeiG-OpenWrt-AutoBuild/site/wrt/Wei.G.ico` for:
+
+- browser favicon;
+- login branding;
+- the authenticated Topbar brand mark.
+
+The login and Topbar marks are presented as circular brand surfaces. Spatial assets are cache-busted with `?v=0.2.4` so qBittorrent 4.1.x/browser static caching does not keep the previous letter `W` mark after upgrade.
+
+Current Lab A authentication result has also been isolated independently of the custom UI:
+
+```text
+HTTP/2 200
+Fails.
+```
+
+That response comes directly from qBittorrent 4.1.9.1 and means the submitted credentials do not match that instance’s current WebUI username/password hash. The request format, reverse proxy and WeiG login result handling are not the cause of this specific failure.
 
 ## v0.2.3 — Legacy login diagnostics hotfix
 
@@ -186,7 +205,7 @@ Rollback:
 
 ## Development
 
-Runtime is plain HTML/CSS/JavaScript with no external runtime CDN/framework dependency.
+Runtime is plain HTML/CSS/JavaScript with no external runtime framework or CDN dependency. The v0.2.4 brand image currently follows the canonical Wei.G asset in the companion repository; it can be vendored into a release package later without changing the UI contract.
 
 ```sh
 npm test
@@ -201,4 +220,4 @@ Documentation authority:
 
 ## Stabilization status
 
-`0.2.3` is the current integrated baseline: v0.2.2 Spatial UI plus the legacy-login diagnostics hotfix. Repository CI validates JavaScript syntax, login outcome handling, spatial UI invariants, pagination/VirtualList architecture, compatibility tokens, i18n/Settings metadata and installer safety. Final release certification still requires live regression on both real endpoints: qBittorrent 4.1.9.1 and qBittorrent 5.2.0.
+`0.2.4` is the current integrated baseline: v0.2.2 Spatial UI + v0.2.3 legacy-login diagnostics + Wei.G branding/cache-bust. Repository CI validates JavaScript syntax, login outcome handling, branding invariants, spatial UI invariants, pagination/VirtualList architecture, compatibility tokens, i18n/Settings metadata and installer safety. Final release certification still requires live regression on both real endpoints: qBittorrent 4.1.9.1 and qBittorrent 5.2.0.
