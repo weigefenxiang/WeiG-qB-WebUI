@@ -10,4 +10,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm test
+      - name: WebUI smoke and JavaScript syntax
+        run: npm test
+      - name: Linux installer syntax
+        run: sh -n installers/install.sh
+      - name: PowerShell installer syntax
+        shell: pwsh
+        run: |
+          $null = [scriptblock]::Create((Get-Content 'installers/install.ps1' -Raw))
+          Write-Host 'PowerShell installer syntax parsed.'
