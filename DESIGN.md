@@ -1,73 +1,136 @@
 # WeiG qB WebUI — Design System
 
-Version: 1.0  
-Status: Frozen baseline  
-Theme: Nebula Noir  
-Compatibility floor: qBittorrent 4.1.9
+Version: **1.1**  
+Status: **Frozen v0.2 visual baseline**  
+Theme: **Nebula Noir**  
+Compatibility floor: **qBittorrent 4.1.9**
+
+> This file is the single authority for UI and visual work. Any theme, typography, component, animation, DataGrid, mobile or layout change must read and follow this file first.
 
 ## 1. Design mission
 
-WeiG qB WebUI should feel like a premium control surface floating in deep space: dark, dimensional, precise, animated with restraint, information-dense on desktop, touch-first on mobile, and still smooth with very large torrent libraries.
+WeiG qB WebUI should feel like a premium control surface floating in deep space: dark, dimensional, precise, information-dense on desktop, touch-first on mobile, and smooth with very large torrent libraries.
 
-Primary references: Linear for hierarchy and theming, Raycast for search/floating interactions, Apple for motion and touch polish, and existing qBittorrent WebUIs only for product functionality—not visual identity.
+References are used for principles only: Linear for hierarchy and theming, Raycast for floating interactions, Apple for motion/touch polish, and existing qBittorrent WebUIs for product functionality. Do not copy another WebUI's visual identity.
 
 ## 2. Non-negotiable rules
 
-1. Dark mode is the primary design target; Light and System use the same semantic token system.
-2. Feature code must not hard-code theme colors, radii, shadows, motion timings or ad-hoc visual primitives.
-3. Button, IconButton, Tooltip, Dialog, Input, Menu, Card, Switch, Checkbox, Tabs and other primitives each have one canonical implementation.
-4. Every non-home view has a visible Back action; error states keep Retry, Back and Home recovery paths.
-5. Animation may enhance interaction but must not destabilize information or cause continuous high GPU/CPU load.
-6. Mobile is a first-class layout and interaction target, not a scaled desktop table.
-7. Large datasets must not map linearly to DOM node count.
-8. Hover-only behavior must always have a touch-accessible equivalent.
-9. All UI must respect `prefers-reduced-motion`.
-10. Visual polish must never hide torrent status, progress, speed, errors or destructive actions.
+1. Dark/Nebula Noir is the primary design target; Light/System use the same semantic token architecture.
+2. Feature code must not invent colors, radii, shadows, motion timings or typography sizes.
+3. Button, IconButton, Tooltip, Dialog, Input, Menu, Card, Switch, Checkbox, Tabs, DataGrid and other primitives have one canonical implementation.
+4. Every non-home view has a visible Back action. Error states retain Back/Home/Reload recovery.
+5. Mobile is a first-class interaction target, never a squeezed desktop table.
+6. Large datasets never map linearly to DOM nodes.
+7. Hover-only behavior always has a touch equivalent.
+8. Visual polish must never hide status, progress, speed, errors or destructive actions.
+9. Reduced Motion must be respected.
+10. Normal product UI must not expose developer counters such as DOM limits; diagnostics belong in Settings → Performance.
 
-## 3. Nebula Noir tokens
+## 3. Semantic typography — hard rules
 
-```css
-:root {
-  --bg-void: #05070d;
-  --bg-deep: #070b14;
-  --bg-base: #0a0f1c;
-  --bg-surface: #0e1525;
-  --bg-elevated: #131c2f;
-  --bg-floating: #18233a;
+### TYPO-001 — Every text element has a semantic role
 
-  --text-primary: #e8edf7;
-  --text-secondary: #b8c2d9;
-  --text-muted: #7f8aa5;
+Allowed roles:
 
-  --accent-primary: #7297ff;
-  --accent-secondary: #816fff;
-  --accent-cyan: #38d6ff;
-
-  --success: #39d98a;
-  --warning: #ffbd5a;
-  --danger: #ff667a;
-  --info: #54b8ff;
-
-  --radius-xs: 6px;
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 22px;
-  --radius-pill: 999px;
-
-  --motion-fast: 120ms;
-  --motion-normal: 180ms;
-  --motion-slow: 280ms;
-  --ease-standard: cubic-bezier(.2,.8,.2,1);
-  --ease-spring: cubic-bezier(.16,1,.3,1);
-}
+```text
+page-title
+section-title
+item-primary
+body
+data
+label
+description
+meta
+caption
+table-header
+table-cell
+status
+button
+input
+tooltip
 ```
 
-Do not use a flat pure-black page. Depth comes from distinct semantic surfaces.
+Examples:
 
-## 4. CSS starfield
+- Torrent names, Tracker names, Category names and primary Settings titles → `item-primary`.
+- Speeds, sizes, ETA, ratio, version values and numeric facts → `data`.
+- Field names and metadata keys → `label`.
+- Help text, current-speed descriptions and explanatory copy → `description`.
+- qBittorrent/WebAPI/compatibility secondary information → `meta`/`data`.
+- DataGrid headings → `table-header`.
+- DataGrid values → `table-cell`.
 
-The background is CSS-only and offline-safe. No remote images or CDN assets.
+### TYPO-002 — Feature CSS must not hard-code font sizes
+
+Feature selectors may consume semantic typography tokens but must not create `font-size: 13px`, `15px`, `17px`, etc. New typography values belong in the centralized token layer.
+
+### TYPO-003 — Global size changes use one offset
+
+When the overall UI is too small, increase the global typography scale by **2–3px**, rather than patching Torrent, Sidebar, Connection, Dialog and Settings individually.
+
+```css
+--font-scale-offset: 0px; /* Standard */
+--font-scale-offset: 2px; /* Large */
+--font-scale-offset: 3px; /* XLarge */
+```
+
+The v0.2 default is **Large (+2px)** based on real 4.1.9 desktop feedback.
+
+### TYPO-004 — Font size and UI density are independent
+
+Users may choose a large font with compact density, or a smaller font with comfortable density. Do not couple readable typography to huge rows.
+
+Semantic base scale:
+
+```text
+Page title      24px + offset
+Section title   18px + offset
+Item primary    15px + offset
+Body/Data       14px + offset
+Label           13px + offset
+Description     12px + offset
+Meta            12px + offset
+Caption         11px + offset
+Table header    13px + offset
+Table cell      13px + offset
+Status          12px + offset
+Button          13px + offset
+Input           14px + offset
+```
+
+Use system/offline-safe fonts only and tabular numerals for speeds, sizes, ratios and timers where possible.
+
+## 4. Density system
+
+Density is a global semantic setting:
+
+```text
+Compact
+Standard
+Comfortable
+```
+
+Desktop Torrent row targets are approximately 48 / 56 / 64px. Mobile cards may use independent heights appropriate for touch.
+
+## 5. Nebula Noir tokens
+
+Core surfaces:
+
+```text
+Void
+Deep
+Surface
+Elevated
+Floating
+```
+
+Core accent remains blue → violet → cyan. Status colors are semantic Success / Warning / Danger / Info. Avoid flat pure-black pages and giant high-saturation areas.
+
+Depth is expressed by brighter semantic surfaces, a thin translucent edge, top inner highlight, soft black shadow and very weak cool ambient glow.
+
+## 6. CSS starfield
+
+Starfield is CSS-only and offline-safe. No external wallpaper/CDN/canvas particle engine by default.
 
 Layers:
 
@@ -75,22 +138,23 @@ Layers:
 Void
 → far stars
 → near stars
-→ low-opacity blue/violet radial nebula
+→ low-opacity blue/violet nebula
 → sparse ambient glow
 ```
 
-Rules:
+Starfield setting:
 
-- far stars: ~1px, dim, mostly static;
-- near stars: 1–2px, sparse, extremely slow movement;
-- nebula: low-opacity radial gradients with large blur-like falloff;
-- background motion cycles should generally be 40–120 seconds;
-- no fast twinkle, particle explosions, mouse-driven full-page repaint, or default canvas particle engine;
-- Reduced Motion disables non-essential background motion.
+```text
+Off
+Subtle
+Full
+```
 
-## 5. Surface hierarchy and 3D depth
+Motion is very slow. No frequent blinking, particle explosions or pointer-driven full-page repaint.
 
-Only these surface classes exist:
+## 7. 3D surfaces
+
+Only these elevation classes exist:
 
 ```text
 Surface
@@ -101,218 +165,167 @@ Floating Panel
 Modal
 ```
 
-Elevation is expressed with a combination of:
+Cards may lift roughly `translateY(-2px)` on hover. Torrent rows remain visually lighter than cards/dialogs. Dialogs and floating controls may have stronger depth.
 
-- slightly brighter surface tone;
-- 1px translucent border;
-- subtle top inner highlight;
-- soft black outer shadow;
-- very weak cool ambient glow.
+## 8. Nebula Flow
 
-Key cards may move from `translateY(0)` to roughly `translateY(-2px)` on hover and return to near-flat on active press. Avoid exaggerated perspective or large scale transforms.
-
-Torrent rows stay visually lighter than dashboard cards, dialogs and floating panels.
-
-## 6. Nebula Flow
-
-Nebula Flow is the signature hover effect: a subdued blue → violet → cyan highlight that wakes along the edge of the currently interactive card or control.
+Nebula Flow is the signature interaction: a subdued blue → violet → cyan edge highlight that wakes only on the currently interacted element.
 
 Rules:
 
 - nearly invisible at rest;
-- appears only for the active hovered/focused element;
-- typical duration 1.2–1.8s;
-- never run the effect continuously across all torrent rows;
-- implement with transform/opacity-friendly pseudo-elements where possible.
+- hover/focus-triggered, not an endless effect on every row;
+- typical 1.2–1.8 second visual cycle;
+- use pseudo-elements, transform and opacity where possible;
+- disabled by Reduced Motion when non-essential.
 
-## 7. Typography
+## 9. Desktop DataGrid
 
-Use an offline-safe system-first stack, for example:
+Desktop Torrent list is a virtualized DataGrid, not one giant card per Torrent.
 
-```css
-font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-  "PingFang SC", "Microsoft YaHei", sans-serif;
-```
+Required behavior:
 
-Recommended scale:
+- column resize by pointer;
+- sortable headers;
+- selectable visible columns;
+- configurable order;
+- saved column width/order;
+- reset to defaults;
+- page sizes 20 / 50 / 100 / 200;
+- page size is a data-fetch setting, not a DOM-node count.
+
+Core/default columns prioritize:
 
 ```text
-Page title       22–24px
-Section title    16–18px
-Body             14px
-Torrent table    13–15px
-Metadata         12px
-Tooltip          12px
+Name
+Size
+Progress
+Download
+Upload
+ETA
+Status
 ```
 
-Speeds, sizes, ratios and timers should use tabular numerals where supported.
+Optional columns include Ratio, Tracker and Category, with future fields added through the same DataGrid schema.
 
-## 8. Canonical interaction primitives
+## 10. Large-list rule
 
-### Buttons
+API/cache count and rendered DOM count are separate concepts.
 
-Variants: `primary`, `secondary`, `ghost`, `danger`, `icon`.  
-Sizes: `small`, `medium`, `large`.
+```text
+200 models in page/cache
+!=
+200 mounted rows
+```
 
-All variants implement consistent default, hover, active, focus-visible, disabled and loading states. Toolbars favor Ghost and Icon buttons so the UI does not become a field of bright rectangles.
+Torrent, Files, Peers, Trackers, Logs, Search Results and other large lists use Virtual Window + overscan.
 
-### Tooltip
+Targets:
 
-One canonical floating tooltip: dark floating surface, 8px radius, thin border, soft shadow, small translate/fade entrance, roughly 300–400ms hover delay. Icon buttons require a tooltip or equivalent accessible name.
+```text
+Desktop visible/overscan Torrent DOM: normally ~20–60, preferably <100
+Mobile Torrent DOM: preferably <=50
+```
 
-### Dialogs and menus
+Performance diagnostic values belong in Settings, not the main dashboard.
 
-Dialogs are among the most elevated surfaces and may use restrained glass/blur. Destructive operations clearly distinguish “delete torrent” from “delete torrent and files”. Context menus use compact Raycast-like grouping, icons and clearly separated danger actions.
+## 11. Tracker privacy
 
-## 9. Desktop torrent list
+Tracker/announce URLs may contain secrets. Any display, filter key or local UI state must normalize them before presentation.
 
-Desktop uses an information-dense virtualized data table / floating-row hybrid, not one giant card per torrent.
+Example:
 
-Recommended row height: 44–52px.
+```text
+https://tracker.m-team.cc/announce?credential=SECRET
+→
+https://tracker.m-team.cc/announce
+```
 
-A row should prioritize:
+Never display or store query credentials/passkeys/tokens/fragments as a visual filter key. Filtering may use normalized scheme + host + non-default port + path.
 
-- name;
-- status;
-- size;
-- progress;
-- download/upload speed;
-- ETA;
-- ratio or other user-selected columns.
+For qB 5.x, an API-provided private flag may power exact Private filtering. For older qB versions lacking that capability, UI must label tracker-domain rules as PT heuristic rather than claiming exact private-torrent detection.
 
-Hover adds only a very light surface lift. Selection uses a soft accent background plus a narrow accent indicator.
+## 12. Mobile
 
-## 10. Mobile torrent list
+Mobile uses compact Torrent cards, Drawer navigation and a More/Action Sheet. It does not offer tiny draggable desktop column boundaries.
 
-Mobile does not compress the desktop table. It uses compact touch-first torrent cards, typically around 72–96px when possible.
-
-Default visible information:
+Default mobile card prioritizes:
 
 ```text
 Torrent name
 Status + progress
 Progress bar
-Download + upload speed
-ETA / ratio or another compact secondary metric
-More (…) action
+Download + upload
+ETA / size
+More action
 ```
 
-Secondary metadata moves into Torrent Detail.
+Mobile fields are configurable. Critical actions must have touch targets around 44×44px and cannot depend on hover/right-click.
 
-Touch targets must be at least about 44×44px. Desktop right-click actions must have a mobile More menu / action sheet equivalent. Long press may enhance interactions but cannot be the only way to access a command.
+Primary validation widths: 320, 375, 390, 430 and 768px, including portrait/landscape/software keyboard states.
 
-## 11. Mobile shell
+## 13. Status Dock
 
-Desktop and Mobile share stores, domain models, API code and primitives, but may use different navigation/layout composition.
+The bottom dock is a real operational status surface, not a developer debug bar. It may show global down/up speed, connection state, Torrent count and refresh status with readable semantic typography.
 
-Mobile shell:
+## 14. Settings
+
+WeiG UI Settings owns:
 
 ```text
-Top bar
-Main content
-Optional bottom action area
-Drawer replacing desktop sidebar
+Appearance
+Font size
+Density
+Starfield
+Motion
+Page size
+Refresh interval
+Column layout
+Mobile card fields
+PT tracker rules
+Performance diagnostics
 ```
 
-Torrent Detail keeps a visible top-left Back action. Tabs may scroll horizontally. Landscape and software-keyboard states must be tested.
+qBittorrent Settings must only render preferences returned by the connected version/capability profile. Do not expose a newer-version control to an old instance and pretend it works.
 
-Primary validation widths include 320, 375, 390, 430 and 768px.
+## 15. Canonical components
 
-## 12. Large-list visual/performance rules
-
-The visual system assumes a generic LargeList engine.
-
-Torrent API default batch size is 50. Data may be cached across pages, but DOM stays windowed to the viewport plus limited overscan.
-
-Targets:
+Use one implementation for:
 
 ```text
-Desktop torrent DOM: normally ~20–60 visible/overscan rows, preferably <100
-Mobile torrent DOM: preferably <=50
+Button
+IconButton
+Tooltip
+Dialog
+Drawer
+Action Sheet
+Input
+Select
+Switch
+Checkbox
+Tabs
+Menu
+Badge/Status
+Card/Panel
+DataGrid
+Pagination
+VirtualList
 ```
 
-The same rule applies to large Files, Peers, Trackers, Logs, Search results and RSS lists.
+Do not create feature-specific copies such as `SettingsButton`, `TorrentSpecialButton`, or local Tooltip implementations.
 
-Non-active detail tabs should not retain unnecessarily heavy DOM subtrees.
+## 16. Motion and performance
 
-Stable row/card heights are preferred so virtualization remains predictable.
-
-## 13. Rendering and motion performance
-
-Prefer `transform` and `opacity`. Avoid persistent animated blur, animated box-shadow over many elements, per-row backdrop filters, infinite gradient effects on every torrent, or full-list rebuilds during each refresh.
-
-Only changed visible data should visually update. A speed update must not reconstruct the entire torrent card.
+Prefer transform/opacity. Avoid persistent animated blur, box-shadow animation on many rows, per-row backdrop filters, endless gradients and full-list rebuilds.
 
 Principle:
 
 > Interaction moves. Information stays stable.
 
-## 14. Progress and state color
+## 17. Loading, empty and error states
 
-Progress uses a dark track and restrained semantic fill:
+Avoid full-page blocking spinners. Use local loading/skeleton states while navigation stays available. Empty states offer a clear next action. Feature errors must preserve a route to recovery.
 
-- downloading: blue/cyan accent;
-- seeding/completed: success green;
-- paused: muted neutral;
-- error: danger red.
+## 18. Definition of success
 
-Color is supplemental; state text/icons remain present so meaning is never color-only.
-
-## 15. Loading, empty and error states
-
-Avoid full-page blocking spinners. Use local skeletons and row placeholders while keeping navigation usable.
-
-Empty state remains visually calm and offers the primary next action, such as Add Torrent.
-
-Error surfaces must preserve at least Retry and Back, with Home available through the shell. Feature failure must not strand the user in a dead-end screen.
-
-## 16. Theme controls
-
-Initial appearance settings:
-
-```text
-Appearance: System / Light / Dark
-Dark theme: Nebula Noir
-Starfield: Off / Subtle / Full
-Motion: System / Reduced / Full
-```
-
-Future themes such as OLED Black, Deep Ocean or Midnight Violet must still use the same semantic token/component system.
-
-## 17. Design preview gate
-
-Before integrating a new visual system or major component into qBittorrent data flows, validate it in static previews/mocks.
-
-Planned design surfaces:
-
-```text
-design/preview-dark.html
-design/preview-light.html
-design/components.html
-design/desktop.html
-design/mobile.html
-design/torrent-list.html
-design/torrent-detail.html
-design/large-list.html
-```
-
-`large-list.html` must exercise at least 50, 500, 5,000 and 10,000 mocked torrents while confirming DOM count remains bounded.
-
-## 18. Visual anti-patterns
-
-Do not introduce:
-
-- random one-off button or tooltip styles;
-- arbitrary radii, shadow values or transition timings;
-- permanent neon/glow everywhere;
-- high-saturation rainbow gradients;
-- giant cards for every torrent;
-- endless simultaneous row animations;
-- unreadable glassmorphism;
-- hover-only critical actions;
-- desktop layouts merely squeezed into a phone;
-- decorative effects that degrade large-list scrolling.
-
-## 19. Definition of success
-
-The interface should look premium immediately, remain calm after extended use, keep torrent data precise and readable, work naturally with touch, and remain visually smooth even when the underlying library contains thousands of torrents.
+The UI should look premium at first glance, stay calm after long use, remain readable with the default Large typography, work naturally on touch devices, keep secrets out of tracker displays, and remain smooth even when the underlying library contains thousands of Torrents.
