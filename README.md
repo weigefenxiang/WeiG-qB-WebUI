@@ -23,6 +23,7 @@ Compatibility target: **qBittorrent 4.1.9 → current 5.x**
 - Reliable Back/Home/Reload recovery paths.
 - Reduced-motion support and background-tab polling slowdown.
 - Linux and Windows installers with backup, optional qBittorrent config update and rollback.
+- Multi-instance Docker safety: one instance may be auto-selected, but multiple qBittorrent containers require an explicit `--container` or `--config-root` target.
 - Zero-dependency smoke/JS syntax CI.
 
 ## Manual installation
@@ -39,20 +40,14 @@ The configured value is a **local filesystem path**, not a GitHub URL.
 ## Linux installer
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/weigefenxiang/WeiG-qB-WebUI/main/installers/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/weigefenxiang/WeiG-qB-WebUI/main/installers/install.sh -o /tmp/weigg-qb-install.sh
+sh /tmp/weigg-qb-install.sh
 ```
 
-Default destination:
+Default destination for a non-Docker install:
 
 ```text
 ~/.local/share/weigg-qb-webui
-```
-
-To also update a detected qBittorrent config:
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/weigefenxiang/WeiG-qB-WebUI/main/installers/install.sh -o /tmp/weigg-qb-install.sh
-sh /tmp/weigg-qb-install.sh --configure
 ```
 
 Custom path:
@@ -60,6 +55,38 @@ Custom path:
 ```sh
 sh /tmp/weigg-qb-install.sh --dir=/config/weigg-qb-webui
 ```
+
+To also update a safely detected qBittorrent config:
+
+```sh
+sh /tmp/weigg-qb-install.sh --configure
+```
+
+### Multiple qBittorrent Docker instances
+
+List candidates first:
+
+```sh
+sh /tmp/weigg-qb-install.sh --list-containers
+```
+
+When more than one qBittorrent container is running, the installer refuses to guess. Select the intended instance explicitly:
+
+```sh
+sh /tmp/weigg-qb-install.sh \
+  --container=qbittorrent \
+  --dir=/config/weigg-qb-webui
+```
+
+Or, if the host directory mounted as the target container's `/config` is already known, bypass container discovery entirely:
+
+```sh
+sh /tmp/weigg-qb-install.sh \
+  --config-root=/host/path/to/qbittorrent/config \
+  --dir=/config/weigg-qb-webui
+```
+
+The files are installed under the host config root while qBittorrent continues to use the container-visible path `/config/weigg-qb-webui`.
 
 Rollback:
 
