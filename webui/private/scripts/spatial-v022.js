@@ -12,7 +12,7 @@
   ];
 
   function installBranding(){
-    var icon='/Wei.G.ico';
+    var icon='https://raw.githubusercontent.com/weigefenxiang/WeiG-OpenWrt-AutoBuild/main/site/wrt/Wei.G.ico';
     var favicon=document.querySelector('link[rel~="icon"]');
     if(!favicon){favicon=document.createElement('link');favicon.rel='icon';document.head.appendChild(favicon);}
     favicon.type='image/png';favicon.href=icon;
