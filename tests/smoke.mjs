@@ -25,7 +25,21 @@ const required = [
 for (const file of required) {
   if (!fs.existsSync(file)) throw new Error(`Missing ${file}`);
 }
-if (fs.readFileSync('VERSION','utf8').trim() !== '0.2.2') throw new Error('VERSION must be 0.2.2');
+if (fs.readFileSync('VERSION','utf8').trim() !== '0.2.3') throw new Error('VERSION must be 0.2.3');
+
+const login = fs.readFileSync('webui/public/login.html','utf8');
+for (const token of [
+  "api/v2/auth/login",
+  "application/x-www-form-urlencoded",
+  "x.status===403",
+  "x.text==='Fails.'",
+  "x.text==='Ok.'",
+  "kind:'banned'",
+  "kind:'rejected'",
+  "用户名或密码错误。"
+]) {
+  if (!login.includes(token)) throw new Error(`Legacy login invariant missing: ${token}`);
+}
 
 const index = fs.readFileSync('webui/private/index.html', 'utf8');
 for (const id of ['torrent-list','back-btn','fatal-home','prev-btn','next-btn','page-size','tracker-nav','settings-view','settings-search-input','app-nav','mobile-bottom-nav','actions-dialog','columns-dialog']) {
@@ -102,4 +116,4 @@ for (const token of ['--container=*','--config-root=*','Multiple qBittorrent Doc
   if (!installer.includes(token)) throw new Error(`Installer safety token missing: ${token}`);
 }
 
-console.log('WeiG qB WebUI v0.2.2 smoke checks passed.');
+console.log('WeiG qB WebUI v0.2.3 smoke checks passed.');
