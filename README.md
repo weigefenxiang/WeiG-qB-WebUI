@@ -1,30 +1,80 @@
 # WeiG qB WebUI
 
-A premium, modular and high-performance alternate WebUI for qBittorrent.
+A premium, modular and high-performance Alternate WebUI for qBittorrent.
 
-Current version: **0.1.0**  
+Current version: **0.2.0**  
 Compatibility floor: **qBittorrent 4.1.9**  
-Compatibility target: **qBittorrent 4.1.9 → current 5.x**
+Compatibility target: **qBittorrent 4.1.x → current 5.x**, with capability-based forward compatibility.
 
-## What is implemented
+## v0.2 highlights
 
-- Nebula Noir dark UI with CSS starfield, layered 3D surfaces and restrained hover glow.
-- Light/Dark switching with no external CDN or runtime framework.
-- Responsive desktop/tablet/mobile layouts; mobile uses compact torrent cards, drawer navigation and touch-size controls.
-- qBittorrent version/WebAPI detection and compatibility routing.
-- qBittorrent 4.x `pause/resume` and 5.x `stop/start` compatibility with endpoint fallback.
-- qBittorrent 4.x `paused` and 5.x `stopped` filter compatibility.
-- Torrent list with server-side `limit=50` / `offset` paging to keep the main DOM bounded.
-- Torrent filtering and current-batch name search.
-- Add torrent by Magnet/URL or `.torrent` file.
-- Start, pause/stop and delete selected torrents, with optional data deletion confirmation.
-- Torrent details: overview, files, trackers and peers.
-- Files/trackers/peers use a virtual-window renderer so large child lists do not create one DOM node per item.
-- Reliable Back/Home/Reload recovery paths.
-- Reduced-motion support and background-tab polling slowdown.
-- Linux and Windows installers with backup, optional qBittorrent config update and rollback.
-- Multi-instance Docker safety: one instance may be auto-selected, but multiple qBittorrent containers require an explicit `--container` or `--config-root` target.
-- Zero-dependency smoke/JS syntax CI.
+- **Nebula Noir v2**: CSS starfield, stronger layered 3D surfaces, restrained edge glow and Light/Dark/System appearance.
+- **Semantic Typography System**: all UI text maps to centralized roles; Standard / Large (+2px) / XLarge (+3px) scale globally. Large is the v0.2 default.
+- **Independent density**: Compact / Standard / Comfortable is separate from font size.
+- **20 / 50 / 100 / 200 server page sizes** with `limit` / `offset`.
+- **Virtual DOM windowing**: a 200-item page does not mean 200 mounted Torrent rows. The same LargeList engine is used for large Detail/Log lists.
+- **DataGrid v2**: sortable headers, resizable columns, column visibility/order settings and saved layout.
+- **Mobile v2**: dedicated Torrent cards, Drawer navigation, touch-size controls and More/Action Sheet behavior instead of squeezing the desktop table.
+- **Global library catalog** built in bounded API chunks for whole-library name/Tracker/save-path filtering without mounting whole-library DOM.
+- **Tracker privacy normalization**: announce query/fragment credentials are removed before tracker display/filter keys. For example `https://tracker.example/announce?credential=...` is displayed as `https://tracker.example/announce`.
+- **Private/PT filter**: exact API capability on newer qB versions; configurable Tracker-domain PT heuristic on older qB versions that do not expose a private flag.
+- **Sidebar taxonomy**: Torrent state, Tracker, Save Path, Category and Tags (when supported).
+- **Expanded Torrent actions**: start/resume, pause/stop, force start, recheck, reannounce, sequential download, first/last piece priority, auto management, queue top/bottom, rename, location, category, tags and per-Torrent speed limits where supported.
+- **Torrent Detail**: Overview, Files with priority controls, Trackers with privacy-safe display and supported add/edit/remove operations, Peers and HTTP Sources.
+- **Settings Center**: WeiG UI settings plus current qBittorrent Preferences grouped by Downloads / Connection / Speed / BitTorrent / Web UI / Advanced. Only preferences actually returned by the connected qB version are editable.
+- **Search / RSS / Logs** capability-aware pages. Unsupported modules are hidden instead of presenting dead controls.
+- **Keyboard controls**: `Ctrl/Cmd+F`, `Ctrl/Cmd+A`, `Delete`, `Escape` with touch-equivalent actions.
+- **Back/Home/Reload recovery** remains a hard invariant.
+- **Background-tab polling slowdown** and Reduced Motion support.
+
+## Compatibility model
+
+The UI does not scatter qB version checks through Feature code. Startup detects qBittorrent version + WebAPI version and creates a capability map.
+
+Important compatibility bridges include:
+
+```text
+qB 4.x            qB 5.x
+pause / resume  ↔ stop / start
+paused filter   ↔ stopped filter
+```
+
+Historical WebAPI version anomalies are handled in the compatibility layer instead of Feature/UI code.
+
+### Real regression labs
+
+Two real environments are used as release-blocking targets during v0.2 stabilization:
+
+```text
+Lab A: qBittorrent 4.1.9.1 / WebAPI 2.2.1
+Lab B: qBittorrent 5.2.0
+```
+
+Static CI passing does **not** mean every patch release between them is automatically certified; the capability matrix and real-instance regression continue to be validated as v0.2 is exercised.
+
+## Tracker privacy
+
+Tracker URLs may include passkeys or credentials. WeiG qB WebUI normalizes Tracker values before presenting them in the UI or using them as filter keys.
+
+```text
+https://tracker.m-team.cc/announce?credential=SECRET
+→
+https://tracker.m-team.cc/announce
+```
+
+Do not depend on the UI to preserve a secret Tracker query value for display. Raw qBittorrent Tracker operations still use the original API value internally when an edit/remove operation requires it.
+
+## Performance model
+
+Page size controls API/data navigation, not DOM count:
+
+```text
+qB API:       limit=200&offset=0
+Data models:  up to 200 for that page
+DOM:          viewport + overscan only
+```
+
+Whole-library taxonomy/search indexing is fetched in bounded chunks and never rendered as thousands of hidden rows. Developer counters such as cached models/rendered DOM live under **Settings → WeiG WebUI → Performance**, not the main dashboard.
 
 ## Manual installation
 
@@ -32,7 +82,7 @@ Compatibility target: **qBittorrent 4.1.9 → current 5.x**
 2. Use the repository's `webui` directory as the qBittorrent Alternate WebUI root.
 3. In qBittorrent open **Tools → Preferences → Web UI**.
 4. Enable **Use alternative WebUI**.
-5. Set the WebUI root folder to the local `webui` directory.
+5. Set the WebUI root folder to the local/container-visible `webui` directory.
 6. Restart qBittorrent or refresh the browser.
 
 The configured value is a **local filesystem path**, not a GitHub URL.
@@ -44,41 +94,7 @@ curl -fsSL https://raw.githubusercontent.com/weigefenxiang/WeiG-qB-WebUI/main/in
 sh /tmp/weigg-qb-install.sh
 ```
 
-Default destination for a non-Docker install:
-
-```text
-~/.local/share/weigg-qb-webui
-```
-
-Custom path:
-
-```sh
-sh /tmp/weigg-qb-install.sh --dir=/config/weigg-qb-webui
-```
-
-To also update a safely detected qBittorrent config:
-
-```sh
-sh /tmp/weigg-qb-install.sh --configure
-```
-
-### Multiple qBittorrent Docker instances
-
-List candidates first:
-
-```sh
-sh /tmp/weigg-qb-install.sh --list-containers
-```
-
-When more than one qBittorrent container is running, the installer refuses to guess. Select the intended instance explicitly:
-
-```sh
-sh /tmp/weigg-qb-install.sh \
-  --container=qbittorrent \
-  --dir=/config/weigg-qb-webui
-```
-
-Or, if the host directory mounted as the target container's `/config` is already known, bypass container discovery entirely:
+For a Docker qBittorrent whose `/config` bind mount is known:
 
 ```sh
 sh /tmp/weigg-qb-install.sh \
@@ -86,7 +102,25 @@ sh /tmp/weigg-qb-install.sh \
   --dir=/config/weigg-qb-webui
 ```
 
-The files are installed under the host config root while qBittorrent continues to use the container-visible path `/config/weigg-qb-webui`.
+List qB Docker candidates:
+
+```sh
+sh /tmp/weigg-qb-install.sh --list-containers
+```
+
+When multiple qBittorrent containers are running, the installer **refuses to guess**. Choose one explicitly:
+
+```sh
+sh /tmp/weigg-qb-install.sh \
+  --container=qbittorrent \
+  --dir=/config/weigg-qb-webui
+```
+
+Optional safe config update:
+
+```sh
+sh /tmp/weigg-qb-install.sh --configure
+```
 
 Rollback:
 
@@ -94,9 +128,9 @@ Rollback:
 sh /tmp/weigg-qb-install.sh --rollback
 ```
 
-## Windows installer
+The installer backs up before replacement, rejects Docker overlay/rootfs template configs, validates `public/login.html` + `private/index.html`, and remembers the last destination for rollback.
 
-Run PowerShell, download `installers/install.ps1`, then:
+## Windows installer
 
 ```powershell
 .\install.ps1
@@ -120,20 +154,16 @@ Rollback:
 .\install.ps1 -Mode Rollback
 ```
 
-## Performance rules
-
-The main torrent list requests at most **50 torrents per batch**. Loading more data must never mean mounting thousands of torrent rows at once. Large detail lists use viewport windowing and overscan.
-
 ## Development
 
-Runtime files are plain HTML/CSS/JavaScript/SVG. Node.js is used only for repository checks.
+Runtime files remain plain HTML/CSS/JavaScript with no external runtime CDN/framework requirement.
 
 ```sh
 npm test
 ```
 
-Visual/UI work must follow [`DESIGN.md`](./DESIGN.md). Engineering architecture is defined in [`docs/001.项目总方案.md`](./docs/001.%E9%A1%B9%E7%9B%AE%E6%80%BB%E6%96%B9%E6%A1%88.md).
+Visual/UI changes must follow [`DESIGN.md`](./DESIGN.md). Engineering rules and compatibility/performance architecture are defined in [`docs/001.项目总方案.md`](./docs/001.%E9%A1%B9%E7%9B%AE%E6%80%BB%E6%96%B9%E6%A1%88.md).
 
-## Status
+## v0.2 stabilization status
 
-`0.1.0` is the first working product baseline. Static smoke tests are automated; real qBittorrent version-matrix testing should continue against representative 4.1.x–5.x instances before calling every patch release certified.
+`0.2.0` is the integrated v0.2 product baseline. Repository CI validates static product invariants, JavaScript syntax and installer safety. Final compatibility certification still requires exercising the updated UI against both real Lab A (4.1.9.1) and Lab B (5.2.0) and fixing any behavior revealed by those live APIs.
