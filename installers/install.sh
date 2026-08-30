@@ -4,16 +4,20 @@ set -eu
 REPO="weigefenxiang/WeiG-qB-WebUI"
 DEFAULT_DEST="${HOME}/.local/share/weigg-qb-webui"
 DEST="${WEIGG_QB_WEBUI_DIR:-$DEFAULT_DEST}"
+REQUESTED_DEST="$DEST"
+QBT_ROOT_FOLDER="$DEST"
 DEST_EXPLICIT=0
 MODE="install"
 CONFIGURE=0
+DOCKER_CONTAINER=""
+DOCKER_CONFIG_ROOT=""
 
 for arg in "$@"; do
   case "$arg" in
     --update) MODE="update" ;;
     --rollback) MODE="rollback" ;;
     --configure) CONFIGURE=1 ;;
-    --dir=*) DEST=${arg#--dir=}; DEST_EXPLICIT=1 ;;
+    --dir=*) DEST=${arg#--dir=}; REQUESTED_DEST="$DEST"; QBT_ROOT_FOLDER="$DEST"; DEST_EXPLICIT=1 ;;
     -h|--help)
       echo "Usage: install.sh [--update|--rollback] [--configure] [--dir=/path/to/webui]"
       exit 0
@@ -36,7 +40,81 @@ is_safe_config_path() {
   esac
 }
 
+detect_qb_docker() {
+  command -v docker >/dev/null 2>&1 || return 1
+  line=$(docker ps --format '{{.ID}}|{{.Image}}|{{.Names}}' 2>/dev/null | grep -Ei 'qbittorrent|qbit' | head -n1 || true)
+  [ -n "$line" ] || return 1
+
+  id=${line%%|*}
+  rest=${line#*|}
+  image=${rest%%|*}
+  name=${rest#*|}
+  source=$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/config"}}{{.Source}}{{end}}{{end}}' "$id" 2>/dev/null || true)
+  [ -n "$source" ] && [ -d "$source" ] || return 1
+
+  DOCKER_CONTAINER="$name"
+  DOCKER_CONFIG_ROOT="$source"
+  echo "Detected qBittorrent Docker container: $name ($image)"
+  echo "Container /config -> Host $source"
+  return 0
+}
+
+map_docker_destination() {
+  [ -n "$DOCKER_CONFIG_ROOT" ] || return 0
+
+  if [ "$DEST_EXPLICIT" -eq 0 ]; then
+    DEST="$DOCKER_CONFIG_ROOT/weigg-qb-webui"
+    QBT_ROOT_FOLDER="/config/weigg-qb-webui"
+    return 0
+  fi
+
+  case "$REQUESTED_DEST" in
+    /config)
+      DEST="$DOCKER_CONFIG_ROOT"
+      QBT_ROOT_FOLDER="/config"
+      ;;
+    /config/*)
+      rel=${REQUESTED_DEST#/config/}
+      DEST="$DOCKER_CONFIG_ROOT/$rel"
+      QBT_ROOT_FOLDER="/config/$rel"
+      ;;
+    "$DOCKER_CONFIG_ROOT")
+      DEST="$REQUESTED_DEST"
+      QBT_ROOT_FOLDER="/config"
+      ;;
+    "$DOCKER_CONFIG_ROOT"/*)
+      rel=${REQUESTED_DEST#"$DOCKER_CONFIG_ROOT"/}
+      DEST="$REQUESTED_DEST"
+      QBT_ROOT_FOLDER="/config/$rel"
+      ;;
+    *)
+      DEST="$REQUESTED_DEST"
+      QBT_ROOT_FOLDER="$REQUESTED_DEST"
+      echo "Warning: requested path is outside the detected Docker /config mount."
+      echo "qBittorrent may not be able to see: $REQUESTED_DEST"
+      ;;
+  esac
+}
+
+if [ "$MODE" != "rollback" ]; then
+  detect_qb_docker || true
+  map_docker_destination
+fi
+
 find_config() {
+  if [ -n "$DOCKER_CONFIG_ROOT" ]; then
+    for f in \
+      "$DOCKER_CONFIG_ROOT/qBittorrent/qBittorrent.conf" \
+      "$DOCKER_CONFIG_ROOT/qBittorrent/qBittorrent.ini" \
+      "$DOCKER_CONFIG_ROOT/qbittorrent/qBittorrent.conf" \
+      "$DOCKER_CONFIG_ROOT/qBittorrent.conf"; do
+      if [ -f "$f" ] && is_safe_config_path "$f"; then
+        printf '%s\n' "$f"
+        return 0
+      fi
+    done
+  fi
+
   for f in \
     "${XDG_CONFIG_HOME:-$HOME/.config}/qBittorrent/qBittorrent.conf" \
     "$HOME/.config/qBittorrent/qBittorrent.conf" \
@@ -89,8 +167,10 @@ backup_now() {
   fi
 
   printf '%s\n' "$DEST" > "$b/dest-path"
+  printf '%s\n' "$QBT_ROOT_FOLDER" > "$b/qb-root-folder"
   printf '%s\n' "$b" > "$STATE/last-backup"
   printf '%s\n' "$DEST" > "$STATE/last-dest"
+  printf '%s\n' "$QBT_ROOT_FOLDER" > "$STATE/last-qb-root-folder"
   echo "Backup: $b"
 }
 
@@ -134,6 +214,11 @@ command -v unzip >/dev/null 2>&1 || { echo "unzip is required." >&2; exit 1; }
 if ! command -v curl >/dev/null 2>&1 && ! command -v wget >/dev/null 2>&1; then
   echo "curl or wget is required." >&2
   exit 1
+fi
+
+if [ "$DEST" != "$REQUESTED_DEST" ]; then
+  echo "Host install path: $DEST"
+  echo "qBittorrent Root Folder: $QBT_ROOT_FOLDER"
 fi
 
 backup_now
@@ -205,16 +290,17 @@ if [ "$CONFIGURE" -eq 1 ]; then
   else
     printf '\nWebUI\\AlternativeUIEnabled=true\n' >> "$cfg"
   fi
-  esc=$(printf '%s' "$DEST" | sed 's/[&|]/\\&/g')
+  esc=$(printf '%s' "$QBT_ROOT_FOLDER" | sed 's/[&|]/\\&/g')
   if grep -q '^WebUI\\RootFolder=' "$cfg"; then
     sed -i "s|^WebUI\\RootFolder=.*|WebUI\\RootFolder=$esc|" "$cfg"
   else
-    printf 'WebUI\\RootFolder=%s\n' "$DEST" >> "$cfg"
+    printf 'WebUI\\RootFolder=%s\n' "$QBT_ROOT_FOLDER" >> "$cfg"
   fi
   echo "Configured: $cfg"
+  echo "qBittorrent Root Folder: $QBT_ROOT_FOLDER"
 else
   echo "qBittorrent -> Tools -> Preferences -> Web UI -> Use alternative WebUI"
-  echo "WebUI Root Folder: $DEST"
+  echo "WebUI Root Folder: $QBT_ROOT_FOLDER"
   if [ -n "$cfg" ]; then
     echo "Detected safe config: $cfg"
   else
