@@ -1,0 +1,21 @@
+(function(global){
+  'use strict';
+  var W=global.WeiG, U=W.util;
+  function ApiError(message,status,path){this.name='ApiError';this.message=message;this.status=status||0;this.path=path||'';}ApiError.prototype=Object.create(Error.prototype);
+  function Client(){this.qbVersion='0.0.0';this.webApiVersion='0.0.0';this.major=0;this.capabilities={};}
+  Client.prototype.request=async function(path,options){options=options||{};var init={method:options.method||'GET',credentials:'same-origin',headers:options.headers||{}};if(options.form){init.headers['Content-Type']='application/x-www-form-urlencoded; charset=UTF-8';init.body=U.form(options.form);}else if(options.body){init.body=options.body;}var res=await fetch('api/v2/'+path.replace(/^\//,''),init);if(res.status===403){location.reload();throw new ApiError('会话已失效',403,path);}if(!res.ok){var txt='';try{txt=await res.text();}catch(_e){}throw new ApiError(txt||('HTTP '+res.status),res.status,path);}if(options.type==='text')return res.text();if(options.type==='void')return null;var text=await res.text();if(!text)return null;try{return JSON.parse(text);}catch(e){throw new ApiError('API 返回了无法解析的数据',res.status,path);}};
+  Client.prototype.detect=async function(){var self=this;var results=await Promise.all([this.request('app/version',{type:'text'}),this.request('app/webapiVersion',{type:'text'}).catch(function(){return '2.0';})]);this.qbVersion=(results[0]||'0').trim();this.webApiVersion=(results[1]||'0').trim();this.major=parseInt(this.qbVersion,10)||0;var api=parseFloat(this.webApiVersion)||0;this.capabilities={legacy4:this.major===4,modern5:this.major>=5,tags:api>=2.3,renameFile:api>=2.4,contentPath:api>=2.61,renameFolder:api>=2.8,fileIndexes:api>=2.82,tagFilter:api>=2.83,certified:(this.major===4||this.major===5)};if(this.qbVersion==='4.3.3'){this.capabilities.renameFolder=true;}return self;};
+  Client.prototype.getTorrents=function(opts){opts=opts||{};var q=new URLSearchParams();['filter','category','tag','sort','reverse','limit','offset','hashes'].forEach(function(k){if(opts[k]!==undefined&&opts[k]!==null&&opts[k]!=='')q.set(k,String(opts[k]));});return this.request('torrents/info?'+q.toString());};
+  Client.prototype.getTransferInfo=function(){return this.request('transfer/info');};
+  Client.prototype._torrentAction=async function(hashes,legacy,modern){var preferred=this.major>=5?modern:legacy,fallback=this.major>=5?legacy:modern;try{return await this.request('torrents/'+preferred,{method:'POST',form:{hashes:hashes},type:'void'});}catch(e){if(e.status!==404&&e.status!==405)throw e;return this.request('torrents/'+fallback,{method:'POST',form:{hashes:hashes},type:'void'});}};
+  Client.prototype.resume=function(hashes){return this._torrentAction(hashes,'resume','start');};
+  Client.prototype.pause=function(hashes){return this._torrentAction(hashes,'pause','stop');};
+  Client.prototype.delete=function(hashes,deleteFiles){return this.request('torrents/delete',{method:'POST',form:{hashes:hashes,deleteFiles:!!deleteFiles},type:'void'});};
+  Client.prototype.add=function(urls,files,savepath){var fd=new FormData();if(urls&&urls.trim())fd.append('urls',urls.trim());if(savepath&&savepath.trim())fd.append('savepath',savepath.trim());Array.from(files||[]).forEach(function(file){fd.append('torrents',file,file.name);});return this.request('torrents/add',{method:'POST',body:fd,type:'text'});};
+  Client.prototype.properties=function(hash){return this.request('torrents/properties?hash='+encodeURIComponent(hash));};
+  Client.prototype.files=function(hash){return this.request('torrents/files?hash='+encodeURIComponent(hash));};
+  Client.prototype.trackers=function(hash){return this.request('torrents/trackers?hash='+encodeURIComponent(hash));};
+  Client.prototype.peers=async function(hash){var data=await this.request('sync/torrentPeers?rid=0&hash='+encodeURIComponent(hash));var peers=data&&data.peers||{};return Object.keys(peers).map(function(k){var p=peers[k]||{};p.__key=k;return p;});};
+  Client.prototype.logout=function(){return this.request('auth/logout',{method:'POST',type:'void'});};
+  W.ApiError=ApiError;W.QBClient=Client;
+})(window);
