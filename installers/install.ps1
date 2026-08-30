@@ -11,9 +11,19 @@ New-Item -ItemType Directory -Force -Path $Backups | Out-Null
 function Find-QBConfig {
   $candidates=@(
     (Join-Path $env:APPDATA 'qBittorrent\qBittorrent.ini'),
-    (Join-Path $env:APPDATA 'qBittorrent\qBittorrent.conf')
+    (Join-Path $env:APPDATA 'qBittorrent\qBittorrent.conf'),
+    (Join-Path $env:LOCALAPPDATA 'qBittorrent\qBittorrent.ini'),
+    (Join-Path $env:LOCALAPPDATA 'qBittorrent\qBittorrent.conf'),
+    (Join-Path $PWD 'qBittorrent.ini'),
+    (Join-Path $PWD 'qBittorrent.conf')
   )
-  foreach($p in $candidates){ if(Test-Path $p){ return $p } }
+  if($env:ProgramData){$candidates += (Join-Path $env:ProgramData 'qBittorrent\qBittorrent.ini')}
+  foreach($p in $candidates){ if($p -and (Test-Path $p)){ return $p } }
+  foreach($root in @($env:USERPROFILE,$PWD.Path)){
+    if(!$root -or !(Test-Path $root)){continue}
+    $found=Get-ChildItem $root -Filter 'qBittorrent.ini' -File -Recurse -Depth 5 -ErrorAction SilentlyContinue | Select-Object -First 1
+    if($found){return $found.FullName}
+  }
   return $null
 }
 function Backup-Current {
@@ -33,11 +43,21 @@ if($Mode -eq 'Rollback'){
 Backup-Current
 $tmp=Join-Path ([IO.Path]::GetTempPath()) ("weigg-qb-"+[guid]::NewGuid().ToString('N')); New-Item -ItemType Directory -Force -Path $tmp|Out-Null
 try {
-  $zip=Join-Path $tmp 'source.zip'; Invoke-WebRequest -UseBasicParsing "https://github.com/$Repo/archive/refs/heads/main.zip" -OutFile $zip
-  Expand-Archive $zip (Join-Path $tmp 'src') -Force
-  $web=Get-ChildItem (Join-Path $tmp 'src') -Directory -Recurse | Where-Object {$_.Name -eq 'webui'} | Select-Object -First 1
-  if(!$web){ throw 'webui directory not found in archive.' }
-  $new="$Destination.new"; if(Test-Path $new){Remove-Item $new -Recurse -Force}; New-Item -ItemType Directory -Force -Path $new|Out-Null; Copy-Item (Join-Path $web.FullName '*') $new -Recurse -Force
+  $releaseZip=Join-Path $tmp 'WeiG-qB-WebUI.zip'; $releaseOk=$false
+  try { Invoke-WebRequest -UseBasicParsing "https://github.com/$Repo/releases/latest/download/WeiG-qB-WebUI.zip" -OutFile $releaseZip; $releaseOk=$true } catch { $releaseOk=$false }
+  if($releaseOk){
+    try {
+      $sumFile=Join-Path $tmp 'SHA256SUMS'; Invoke-WebRequest -UseBasicParsing "https://github.com/$Repo/releases/latest/download/SHA256SUMS" -OutFile $sumFile
+      $expected=((Get-Content $sumFile | Select-Object -First 1) -split '\s+')[0].ToLowerInvariant(); $actual=(Get-FileHash $releaseZip -Algorithm SHA256).Hash.ToLowerInvariant(); if($expected -and $expected -ne $actual){throw 'SHA256 verification failed.'}
+    } catch { if($_.Exception.Message -eq 'SHA256 verification failed.'){throw} }
+    $root=Join-Path $tmp 'release'; Expand-Archive $releaseZip $root -Force; $web=Join-Path $root 'WeiG-qB-WebUI'
+  } else {
+    $zip=Join-Path $tmp 'source.zip'; Invoke-WebRequest -UseBasicParsing "https://github.com/$Repo/archive/refs/heads/main.zip" -OutFile $zip
+    $root=Join-Path $tmp 'src'; Expand-Archive $zip $root -Force
+    $web=(Get-ChildItem $root -Directory -Recurse | Where-Object {$_.Name -eq 'webui'} | Select-Object -First 1).FullName
+  }
+  if(!$web -or !(Test-Path $web)){ throw 'WebUI payload not found.' }
+  $new="$Destination.new"; if(Test-Path $new){Remove-Item $new -Recurse -Force}; New-Item -ItemType Directory -Force -Path $new|Out-Null; Copy-Item (Join-Path $web '*') $new -Recurse -Force
   if(!(Test-Path (Join-Path $new 'public\login.html')) -or !(Test-Path (Join-Path $new 'private\index.html'))){ throw 'Invalid WebUI package.' }
   $old="$Destination.old"; if(Test-Path $old){Remove-Item $old -Recurse -Force}; if(Test-Path $Destination){Move-Item $Destination $old}; Move-Item $new $Destination; if(Test-Path $old){Remove-Item $old -Recurse -Force}
   Write-Host "Installed: $Destination"
