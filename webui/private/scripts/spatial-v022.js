@@ -11,6 +11,24 @@
     {id:'tag-section',nav:'tag-nav',label:'sidebar.tags'}
   ];
 
+  function installBranding(){
+    var icon='/Wei.G.ico';
+    var favicon=document.querySelector('link[rel~="icon"]');
+    if(!favicon){favicon=document.createElement('link');favicon.rel='icon';document.head.appendChild(favicon);}
+    favicon.type='image/png';favicon.href=icon;
+    var mark=document.querySelector('.brand__mark');
+    if(mark){
+      mark.textContent='';
+      mark.style.borderRadius='50%';
+      mark.style.overflow='hidden';
+      mark.style.padding='2px';
+      var img=document.createElement('img');
+      img.src=icon;img.alt='Wei.G';
+      img.style.display='block';img.style.width='100%';img.style.height='100%';img.style.objectFit='cover';img.style.borderRadius='50%';
+      mark.appendChild(img);
+    }
+  }
+
   function closeAllFacets(except){
     U.$$('.facet-filter').forEach(function(wrap){
       if(except&&wrap===except)return;
@@ -165,6 +183,7 @@
   function init(){
     if(document.documentElement.dataset.spatialV022==='1')return;
     document.documentElement.dataset.spatialV022='1';
+    installBranding();
     installFilterShelf();
     installConnectionDock();
     observeSettings();
