@@ -1,23 +1,31 @@
 # WeiG qB WebUI — Design System
 
-Version: **1.2**  
-Status: **Frozen v0.2.1 UI baseline**  
-Theme: **Nebula Noir**  
+Version: **1.3**  
+Status: **Frozen v0.2.2 Spatial UI baseline**  
+Theme: **Nebula Spatial Console**  
 Compatibility floor: **qBittorrent 4.1.9**
 
-> This file is the single authority for UI and visual work. Any theme, typography, component, navigation, i18n, Settings, animation, DataGrid, mobile or layout change must read and follow this file first.
+> This file is the single authority for UI and visual work. Any theme, typography, component, navigation, i18n, Settings, animation, DataGrid, mobile, filtering or layout change must read and follow this file first.
 
 ## 1. Design mission
 
-WeiG qB WebUI should feel like a premium control surface floating in deep space: dark, dimensional, precise, information-dense on desktop, touch-first on mobile, multilingual without visual fragmentation, and smooth with very large Torrent libraries.
+WeiG qB WebUI should feel like a premium control console floating in deep space: precise, dimensional, calm, data-dense on desktop, touch-first on mobile, readable for long sessions, and smooth with very large Torrent libraries.
 
-References are principles only: Linear for hierarchy/theming, Raycast for floating interactions/search, Apple for motion/touch polish, and existing qBittorrent WebUIs for product functionality. Do not copy another WebUI's visual identity.
+Design references are principles only. The v0.2.2 direction combines:
+
+- Linear: hierarchy, restraint and precision;
+- Raycast: floating chrome, search and popovers;
+- Superhuman: premium dark surfaces and restrained purple/blue glow;
+- Revolut/BMW: material depth, dark-panel separation and instrument-like data presentation;
+- existing qBittorrent WebUIs: product functionality only.
+
+Do not copy another product's visual identity. The resulting language is **WeiG Nebula Spatial Console**.
 
 ## 2. Non-negotiable rules
 
-1. Dark/Nebula Noir is the primary visual target; Light/System use the same semantic token architecture.
+1. Dark/Nebula Spatial is the primary visual target; Light/System use the same semantic architecture.
 2. Feature code must not invent colors, radii, shadows, motion timings, typography sizes or translations.
-3. Button, IconButton, Tooltip, Dialog, Input, Menu, Card, Switch, Checkbox, Tabs, DataGrid and other primitives have one canonical implementation.
+3. Button, IconButton, Tooltip, Dialog, Input, Menu, Card, Switch, Tabs, DataGrid, Filter Popover and other primitives have one canonical implementation.
 4. Every non-home view has a visible Back action. Error states retain Back/Home/Reload recovery.
 5. Mobile is a first-class interaction target, never a squeezed desktop table.
 6. Large datasets never map linearly to DOM nodes.
@@ -26,13 +34,53 @@ References are principles only: Linear for hierarchy/theming, Raycast for floati
 9. Reduced Motion must be respected.
 10. Normal product UI must not expose developer counters such as DOM limits; diagnostics belong in Settings → Performance.
 11. English is the canonical source language. Locale-specific Feature branches are forbidden.
-12. Raw qB Preference/API keys are implementation metadata, not normal end-user labels.
+12. English and Simplified Chinese are maintained product languages. Missing translations always fall back to English.
+13. Raw qB Preference/API keys are implementation metadata, not normal end-user labels.
+14. High-cardinality filter lists must not permanently consume the desktop Sidebar.
+15. Search/Input controls must be visually distinguishable before focus, not only after click.
 
-## 3. Information architecture
+## 3. Spatial hierarchy — hard rules
+
+### SPATIAL-001 — Six semantic depth levels
+
+All major surfaces map to one of these levels:
+
+```text
+Void      page/background
+Base      workspace background
+Panel     Sidebar / table container / Settings section
+Card      stats and standard content cards
+Raised    search / toolbar / active control / detail summary
+Floating  popover / menu / dialog / action sheet
+```
+
+Increasing elevation changes more than background color. It may increase:
+
+- surface luminance;
+- thin cool-gray border visibility;
+- top inner highlight;
+- external black shadow;
+- extremely weak blue/violet ambient glow.
+
+Do not make all dark surfaces the same black.
+
+### SPATIAL-002 — Material before neon
+
+Premium depth comes from material separation, edges and lighting. Blue/violet/cyan accent wakes up mainly for selected, hover, focus, active and primary actions.
+
+Never compensate for poor hierarchy by adding constant neon everywhere.
+
+### SPATIAL-003 — Interaction depth
+
+Interactive cards and raised controls may lift roughly 1–2px on hover. The active element may receive a restrained cool glow. Large tables remain quiet at rest.
+
+> Interaction moves. Information stays stable.
+
+## 4. Information architecture
 
 ### IA-001 — Topbar owns application navigation
 
-Desktop application-level destinations live in the Topbar:
+Desktop application destinations live in the Topbar:
 
 ```text
 Torrents
@@ -44,30 +92,47 @@ Settings
 
 The Topbar also owns contextual search, Add Torrent and global utility actions.
 
-Do not place application pages in the Torrent Sidebar merely because space is available.
+### IA-002 — Sidebar is a compact Torrent state rail
 
-### IA-002 — Sidebar owns Torrent dataset filters
-
-The Sidebar is scoped to the current Torrent library:
+The desktop Sidebar permanently exposes only low-cardinality, high-frequency Torrent state filtering.
 
 ```text
-Torrent state
-Trackers
-Save Path
-Categories
-Tags
-Connection metadata
+All
+Downloading
+Seeding
+Completed
+Paused
+Active
+Stalled
+Error
+Private / PT
 ```
 
-It is not a second application menu.
+Do not permanently expand Tracker, Save Path, Category or Tag catalogs in the Sidebar.
 
-### IA-003 — Mobile uses dedicated application navigation
+### SIDEBAR-001 — Avoid nested desktop scrolling
 
-On phone layouts, primary application routes use a touch-first bottom navigation. The Drawer remains focused on Torrent filters. Low-frequency routes may move into a More surface when needed.
+At ordinary desktop heights the Sidebar should not have its own scrollbar. Prefer moving high-cardinality information to horizontal shelves, popovers, the Status Dock or other available workspace surfaces.
+
+On exceptionally small/mobile layouts, scrolling may be used as a fallback when required for accessibility.
+
+### FILTER-001 — High-cardinality filters use Filter Shelf + Popover
+
+Tracker, Save Path, Category and Tags live in a horizontal Filter Shelf above the Torrent data surface.
+
+```text
+[ Tracker ▾ ] [ Save Path ▾ ] [ Category ▾ ] [ Tags ▾ ]
+```
+
+Each facet opens a searchable Floating Popover. The underlying existing filter state remains canonical; the shelf is a presentation layer.
+
+On mobile, the same facet controls may open as bottom/floating sheets. Do not expose tiny desktop dropdown affordances.
+
+### IA-003 — Connection details belong to Status Dock
+
+qBittorrent version, WebAPI version and compatibility metadata do not consume permanent Sidebar height. The Status Dock exposes current connection state and opens a compact Floating details panel when requested.
 
 ### IA-004 — Search is contextual
-
-The same Topbar search surface changes meaning with the current Feature:
 
 ```text
 Torrents  → Search torrents
@@ -79,13 +144,13 @@ Logs      → Search logs
 
 A contextual search must never trigger hidden/off-route Feature work.
 
-## 4. Internationalization — hard rules
+## 5. Internationalization — hard rules
 
 ### I18N-001 — English canonical source
 
 All canonical product copy, semantic IDs and fallback labels are English. Other languages are translation overlays.
 
-Feature code should request semantic keys, for example:
+Feature code requests semantic keys such as:
 
 ```text
 nav.settings
@@ -96,9 +161,18 @@ state.downloading
 
 Do not add `if (lang === ...)` branches inside Features.
 
-### I18N-002 — Locale resolution
+### I18N-002 — Maintained languages
 
-Priority:
+Release-maintained UI languages:
+
+```text
+English (canonical)
+简体中文 (zh-CN)
+```
+
+Additional locale overlays may exist, but incomplete entries fall back to English and are not allowed to break layout or show raw translation keys.
+
+### I18N-003 — Locale resolution
 
 ```text
 Explicit user selection
@@ -106,27 +180,11 @@ Explicit user selection
 → English
 ```
 
-Automatic mode uses browser language preferences. Unsupported locales fall back to English without showing translation keys.
-
-### I18N-003 — Supported locale targets
-
-Initial runtime targets:
-
-```text
-English
-简体中文
-繁體中文
-日本語
-한국어
-```
-
-A locale may be partially translated; every missing entry must safely fall back to English.
+Automatic mode follows `navigator.languages`/browser preferences.
 
 ### I18N-004 — qB terminology source
 
 For qBittorrent concepts/settings, prefer terminology already used by official qBittorrent WebUI translation resources. WeiG-specific concepts are translated by this project.
-
-Translation priority:
 
 ```text
 Official qBittorrent terminology
@@ -134,34 +192,11 @@ Official qBittorrent terminology
 → English fallback
 ```
 
-### I18N-005 — Language selection is a normal setting
+### I18N-005 — No raw identifiers in product UI
 
-Settings must expose:
+Do not expose values such as `auto_tmm_enabled` or translation keys as normal setting labels. Internal identifiers may exist in developer diagnostics/search metadata only.
 
-```text
-Automatic (Browser)
-English
-简体中文
-繁體中文
-日本語
-한국어
-```
-
-Manual selection persists locally.
-
-### I18N-006 — No raw translation/API identifiers in product UI
-
-The UI must not expose values such as:
-
-```text
-settings.download.autoTmm
-auto_tmm_enabled
-web_ui_csrf_protection_enabled
-```
-
-as ordinary labels. Developer diagnostics may reveal identifiers when explicitly needed.
-
-## 5. Semantic typography — hard rules
+## 6. Semantic typography — hard rules
 
 ### TYPO-001 — Every text element has a semantic role
 
@@ -185,23 +220,13 @@ input
 tooltip
 ```
 
-Examples:
-
-- Torrent names, Tracker names, Category names and primary Settings titles → `item-primary`.
-- Speeds, sizes, ETA, ratio, version values and numeric facts → `data`.
-- Field names → `label`.
-- Help/explanatory copy → `description`.
-- qBittorrent/WebAPI/compatibility secondary information → `meta`/`data`.
-- DataGrid headings → `table-header`.
-- DataGrid values → `table-cell`.
-
 ### TYPO-002 — Feature CSS must not hard-code font sizes
 
-Feature selectors consume semantic typography tokens. New sizes belong in the token layer.
+Feature selectors consume centralized semantic typography tokens.
 
 ### TYPO-003 — Global size changes use one offset
 
-When the overall UI is too small, increase the global typography scale by **2–3px**, rather than patching Torrent, Sidebar, Connection, Dialog and Settings individually.
+If the whole product reads too small, increase the global typography offset by 2–3px rather than patching components individually.
 
 ```css
 --font-scale-offset: 0px; /* Standard */
@@ -211,61 +236,32 @@ When the overall UI is too small, increase the global typography scale by **2–
 
 Current default: **Large (+2px)**.
 
-### TYPO-004 — Font size and UI density are independent
+### TYPO-004 — Font size and density are independent
 
-Users may choose a large font with Compact density or smaller font with Comfortable density.
+Large typography may be combined with Compact density. Readability must not require wasting vertical space.
 
-Semantic base scale:
+## 7. Search and input surfaces
 
-```text
-Page title      24px + offset
-Section title   18px + offset
-Item primary    15px + offset
-Body/Data       14px + offset
-Label           13px + offset
-Description     12px + offset
-Meta            12px + offset
-Caption         11px + offset
-Table header    13px + offset
-Table cell      13px + offset
-Status          12px + offset
-Button          13px + offset
-Input           14px + offset
-```
+### INPUT-001 — Distinguishable at rest
 
-Use system/offline-safe fonts and tabular numerals for speeds, sizes, ratios and timers where possible.
+Search, Input and Select controls must be visually distinct from the page before interaction. Default state uses a Raised/Control surface with a visible edge and top highlight.
 
-## 6. Density system
-
-Global density:
+### INPUT-002 — Four interaction states
 
 ```text
-Compact
-Standard
-Comfortable
+Default
+Hover
+Focus-visible / focus-within
+Disabled
 ```
 
-Desktop Torrent row targets are approximately 48 / 56 / 64px. Mobile cards may use independent heights appropriate for touch.
+Hover adds a restrained cool edge/glow and may lift 1px. Focus uses a clear blue border plus soft 2–3px focus ring and ambient glow.
 
-## 7. Nebula Noir
+Do not use a near-black input that is indistinguishable from its surrounding black panel.
 
-Core surfaces:
+## 8. Nebula background
 
-```text
-Void
-Deep
-Surface
-Elevated
-Floating
-```
-
-Accent remains blue → violet → cyan. Status colors are semantic Success / Warning / Danger / Info. Avoid flat pure-black pages and giant high-saturation areas.
-
-Depth is expressed through brighter semantic surfaces, thin translucent edges, top inner highlight, soft black shadow and weak cool ambient glow.
-
-## 8. CSS starfield
-
-Starfield is CSS-only and offline-safe. No external wallpaper/CDN/canvas particle engine by default.
+Starfield remains CSS-only and offline-safe:
 
 ```text
 Void
@@ -285,26 +281,59 @@ Full
 
 No frequent blinking, particle explosions or pointer-driven full-page repaint.
 
-## 9. 3D surfaces and Nebula Flow
+## 9. Settings UX — hard rules
 
-Only these elevation classes exist:
+### SETTINGS-001 — Metadata-driven UI
+
+qB Preferences are rendered through a metadata layer, not raw key/value rows.
+
+Each known setting may define canonical English title, description, control type, category/section, units/options, capability/version constraints and localized copy.
+
+### SETTING-001 — Title → Description → Control
+
+Every standard Setting Card follows the same vertical information model:
 
 ```text
-Surface
-Panel
-Card
-Raised Card
-Floating Panel
-Modal
+Title            one primary line
+Description      middle explanatory area
+Control          bottom full-width or bottom-aligned control
 ```
 
-Cards may lift about `translateY(-2px)` on hover. Torrent rows remain visually lighter than cards/dialogs.
+Long titles should prefer a single-line ellipsis plus Tooltip instead of wrapping into three narrow lines.
 
-Nebula Flow is a subdued blue → violet → cyan edge highlight that appears only on the active hovered/focused surface. It must not run endlessly on all Torrent rows and must respect Reduced Motion.
+Descriptions normally reserve about two lines so neighboring cards remain visually aligned.
+
+### SETTINGS-002 — Two-column desktop default
+
+```text
+Desktop          2 columns
+Tablet           1 column
+Phone            1 column
+```
+
+Do not force three columns merely because a monitor is wide. Readability and card proportion have priority over filling every pixel.
+
+### SETTINGS-003 — Controls match semantics
+
+```text
+Boolean → Switch
+Path/Text → Input
+Enum → Select
+Number → numeric Input/control
+Dangerous action → dedicated confirmation flow
+```
+
+### SETTINGS-004 — Settings search
+
+Settings search may match localized title, canonical English title, description and internal key. The raw key does not need to be visibly rendered.
+
+### SETTINGS-005 — Dynamic qB capability
+
+Only settings returned/supported by the connected qB instance are presented as editable.
 
 ## 10. Desktop DataGrid
 
-Desktop Torrent list is a virtualized DataGrid, not one giant card per Torrent.
+Desktop Torrent list is a virtualized DataGrid.
 
 Required behavior:
 
@@ -329,8 +358,6 @@ ETA
 Status
 ```
 
-Optional columns include Ratio, Tracker and Category.
-
 ## 11. Large-list rule
 
 ```text
@@ -346,8 +373,6 @@ Desktop Torrent DOM: normally ~20–60, preferably <100
 Mobile Torrent DOM: preferably <=50
 ```
 
-Performance diagnostics belong in Settings, not the dashboard.
-
 ## 12. Tracker privacy
 
 Any Tracker/announce URL used for display, filtering or local UI state is normalized before presentation.
@@ -360,86 +385,17 @@ https://tracker.m-team.cc/announce
 
 Never expose query credentials/passkeys/tokens/fragments in normal UI.
 
-For qB 5.x, use exact private capability when available. Older qB versions use an explicitly labeled PT tracker-domain heuristic.
-
 ## 13. Mobile
 
-Mobile uses compact Torrent cards, Drawer filtering, More/Action Sheet and bottom application navigation. It never exposes tiny desktop column-resize handles.
-
-Default card prioritizes:
-
-```text
-Torrent name
-Status + progress
-Progress bar
-Download + upload
-ETA / size
-More action
-```
+Mobile uses compact Torrent cards, touch-first filters, Drawer/Bottom surfaces, More/Action Sheet and bottom application navigation. It never exposes tiny desktop column-resize handles.
 
 Critical touch targets are approximately 44×44px or larger. Primary validation widths: 320, 375, 390, 430 and 768px.
 
-## 14. Settings UX — hard rules
+## 14. Status Dock
 
-### SETTINGS-001 — Metadata-driven UI
+The Status Dock is operational, not a debug bar. It may expose down/up speed, connection state, Torrent count and refresh time. Detailed qB/WebAPI/compatibility metadata opens from the connection item rather than consuming permanent Sidebar space.
 
-qB Preferences are rendered through a metadata layer, not raw key/value rows.
-
-Each known setting may define:
-
-```text
-canonical English title
-description
-control type
-section/category
-units/options
-capability/version constraints
-localized title/description
-```
-
-Unknown qB Preference keys use a humanized English fallback and remain safely editable only when the underlying type is understood.
-
-### SETTINGS-002 — Card-based composition
-
-Desktop default:
-
-```text
-Category
-  → section heading
-  → two-column Setting cards
-```
-
-Very wide desktop may use three columns. Tablet/phone uses one column.
-
-Do not waste an entire viewport row on one small checkbox unless the content genuinely needs it.
-
-### SETTINGS-003 — Controls match data semantics
-
-Use canonical controls:
-
-```text
-Boolean → Switch
-Path/Text → Input
-Enum → Select
-Number → numeric control/input
-Dangerous operation → dedicated confirmation flow
-```
-
-Tiny browser-default checkboxes are not the standard Settings experience.
-
-### SETTINGS-004 — Settings search
-
-Settings has a dedicated search field. It may match translated title, canonical English title, description and internal key; the raw key does not need to be visibly rendered.
-
-### SETTINGS-005 — Dynamic qB capability
-
-Only settings returned/supported by the connected qB instance are presented as editable. Do not expose a newer-version setting to an older instance and pretend it works.
-
-## 15. Status Dock
-
-The bottom dock is an operational status surface, not a debug bar. It may show global down/up speed, connection state, Torrent count and refresh state with readable semantic typography.
-
-## 16. Canonical components
+## 15. Canonical components
 
 Use one implementation for:
 
@@ -451,9 +407,9 @@ Dialog
 Drawer
 Action Sheet
 Input
+Search
 Select
 Switch
-Checkbox
 Tabs
 Menu
 Badge/Status
@@ -462,20 +418,23 @@ DataGrid
 Pagination
 VirtualList
 Settings Card
+Filter Shelf
+Facet Popover
+Connection Popover
 ```
 
-Do not create feature-specific copies such as `SettingsButton`, `TorrentSpecialButton`, local Tooltip variants or one-off switches.
+Do not create feature-specific copies.
 
-## 17. Motion and performance
+## 16. Motion and performance
 
-Prefer transform/opacity. Avoid persistent animated blur, box-shadow animation on many rows, per-row backdrop filters, endless gradients and full-list rebuilds.
+Prefer static gradients, borders, transform and opacity. Avoid per-row backdrop filters, persistent blur animations, endless gradients, mass box-shadow animation and full-list rebuilds.
 
-> Interaction moves. Information stays stable.
+Nebula Flow remains interaction-triggered rather than permanently animated.
 
-## 18. Loading, empty and error states
+## 17. Light mode
 
-Avoid full-page blocking spinners. Use local loading/skeleton states while navigation remains usable. Empty states offer a clear next action. Feature failures must preserve recovery.
+Light mode preserves the same semantic depth structure with brighter materials, cool neutral borders and subdued shadows. It must not become a separate unrelated design system.
 
-## 19. Definition of success
+## 18. Definition of success
 
-The UI should look premium immediately, stay calm after long use, use consistent language and terminology, remain readable with the Large typography default, make Settings compact instead of sparse, work naturally on touch devices, keep Tracker secrets out of displays, and remain smooth with thousands of Torrents.
+The product should look materially layered even before interaction; Search and Settings controls must be easy to locate; the desktop Sidebar should remain calm and normally scrollbar-free; Settings should read top-to-bottom as Title → Description → Control; English and Simplified Chinese should feel native rather than patched; mobile must preserve the same hierarchy with touch-first composition; and thousands of Torrents must remain smooth.
