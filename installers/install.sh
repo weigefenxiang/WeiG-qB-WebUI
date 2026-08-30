@@ -1,23 +1,42 @@
 #!/usr/bin/env sh
 set -eu
+
 REPO="weigefenxiang/WeiG-qB-WebUI"
 DEFAULT_DEST="${HOME}/.local/share/weigg-qb-webui"
 DEST="${WEIGG_QB_WEBUI_DIR:-$DEFAULT_DEST}"
+DEST_EXPLICIT=0
 MODE="install"
 CONFIGURE=0
+
 for arg in "$@"; do
   case "$arg" in
     --update) MODE="update" ;;
     --rollback) MODE="rollback" ;;
     --configure) CONFIGURE=1 ;;
-    --dir=*) DEST=${arg#--dir=} ;;
-    -h|--help) echo "Usage: install.sh [--update|--rollback] [--configure] [--dir=/path/to/webui]"; exit 0 ;;
+    --dir=*) DEST=${arg#--dir=}; DEST_EXPLICIT=1 ;;
+    -h|--help)
+      echo "Usage: install.sh [--update|--rollback] [--configure] [--dir=/path/to/webui]"
+      exit 0
+      ;;
   esac
 done
+
 STATE="${HOME}/.config/weigg-qb-webui"
 BACKUPS="$STATE/backups"
 mkdir -p "$BACKUPS"
-find_config(){
+
+if [ "$MODE" = "rollback" ] && [ "$DEST_EXPLICIT" -eq 0 ] && [ -s "$STATE/last-dest" ]; then
+  DEST=$(cat "$STATE/last-dest")
+fi
+
+is_safe_config_path() {
+  case "$1" in
+    /var/lib/docker/*|*/overlayfs/*|*/overlay2/*|*/rootfs/*|*/snap/*) return 1 ;;
+    *) return 0 ;;
+  esac
+}
+
+find_config() {
   for f in \
     "${XDG_CONFIG_HOME:-$HOME/.config}/qBittorrent/qBittorrent.conf" \
     "$HOME/.config/qBittorrent/qBittorrent.conf" \
@@ -25,73 +44,184 @@ find_config(){
     "/config/qBittorrent/qBittorrent.conf" \
     "/config/qBittorrent/qBittorrent.ini" \
     "/config/qbittorrent/qBittorrent.conf" \
+    "/config/qbittorrent/qBittorrent.ini" \
     "/etc/qBittorrent/qBittorrent.conf" \
     "/var/lib/qbittorrent/.config/qBittorrent/qBittorrent.conf"; do
-    [ -f "$f" ] && { printf '%s\n' "$f"; return 0; }
+    if [ -f "$f" ] && is_safe_config_path "$f"; then
+      printf '%s\n' "$f"
+      return 0
+    fi
   done
+
   for root in /config /home /var/lib; do
     [ -d "$root" ] || continue
-    found=$(find "$root" -maxdepth 6 -type f \( -name qBittorrent.conf -o -name qBittorrent.ini \) 2>/dev/null | head -n1 || true)
-    [ -n "$found" ] && { printf '%s\n' "$found"; return 0; }
+    if [ "$root" = "/var/lib" ]; then
+      found=$(find "$root" \
+        \( -path '/var/lib/docker' -o -path '/var/lib/docker/*' \) -prune -o \
+        -maxdepth 6 -type f \( -name qBittorrent.conf -o -name qBittorrent.ini \) -print 2>/dev/null | head -n1 || true)
+    else
+      found=$(find "$root" -maxdepth 6 -type f \( -name qBittorrent.conf -o -name qBittorrent.ini \) 2>/dev/null | head -n1 || true)
+    fi
+    if [ -n "$found" ] && is_safe_config_path "$found"; then
+      printf '%s\n' "$found"
+      return 0
+    fi
   done
   return 1
 }
-backup_now(){
-  stamp=$(date '+%Y%m%d-%H%M%S'); b="$BACKUPS/$stamp"; mkdir -p "$b"
-  [ -d "$DEST" ] && cp -a "$DEST" "$b/webui"
-  cfg=$(find_config || true); [ -n "$cfg" ] && cp -a "$cfg" "$b/qBittorrent.conf"
-  printf '%s\n' "$b" > "$STATE/last-backup"; echo "Backup: $b"
+
+backup_now() {
+  stamp=$(date '+%Y%m%d-%H%M%S')
+  b="$BACKUPS/$stamp"
+  mkdir -p "$b"
+
+  if [ -d "$DEST" ]; then
+    cp -a "$DEST" "$b/webui"
+    printf '1\n' > "$b/had-webui"
+  else
+    printf '0\n' > "$b/had-webui"
+  fi
+
+  cfg=$(find_config || true)
+  if [ -n "$cfg" ]; then
+    cp -a "$cfg" "$b/qBittorrent.conf"
+    printf '%s\n' "$cfg" > "$b/config-path"
+  fi
+
+  printf '%s\n' "$DEST" > "$b/dest-path"
+  printf '%s\n' "$b" > "$STATE/last-backup"
+  printf '%s\n' "$DEST" > "$STATE/last-dest"
+  echo "Backup: $b"
 }
-rollback(){
+
+rollback() {
   [ -f "$STATE/last-backup" ] || { echo "No backup found." >&2; exit 1; }
-  b=$(cat "$STATE/last-backup"); [ -d "$b/webui" ] || { echo "Backup webui missing: $b" >&2; exit 1; }
-  rm -rf "$DEST"; mkdir -p "$(dirname "$DEST")"; cp -a "$b/webui" "$DEST"
-  cfg=$(find_config || true); [ -n "$cfg" ] && [ -f "$b/qBittorrent.conf" ] && cp -a "$b/qBittorrent.conf" "$cfg"
-  echo "Rolled back to: $b"; exit 0
+  b=$(cat "$STATE/last-backup")
+  [ -d "$b" ] || { echo "Backup directory missing: $b" >&2; exit 1; }
+
+  if [ -s "$b/dest-path" ] && [ "$DEST_EXPLICIT" -eq 0 ]; then
+    DEST=$(cat "$b/dest-path")
+  fi
+
+  had_webui=0
+  [ -s "$b/had-webui" ] && had_webui=$(cat "$b/had-webui")
+
+  rm -rf "$DEST"
+  if [ "$had_webui" = "1" ]; then
+    [ -d "$b/webui" ] || { echo "Backup WebUI missing: $b/webui" >&2; exit 1; }
+    mkdir -p "$(dirname "$DEST")"
+    cp -a "$b/webui" "$DEST"
+    echo "Restored previous WebUI: $DEST"
+  else
+    echo "Removed WeiG qB WebUI from: $DEST"
+  fi
+
+  if [ -s "$b/config-path" ] && [ -f "$b/qBittorrent.conf" ]; then
+    cfg=$(cat "$b/config-path")
+    if is_safe_config_path "$cfg"; then
+      mkdir -p "$(dirname "$cfg")"
+      cp -a "$b/qBittorrent.conf" "$cfg"
+      echo "Restored qBittorrent config: $cfg"
+    fi
+  fi
+
+  exit 0
 }
-[ "$MODE" = rollback ] && rollback
+
+[ "$MODE" = "rollback" ] && rollback
+
 command -v unzip >/dev/null 2>&1 || { echo "unzip is required." >&2; exit 1; }
+if ! command -v curl >/dev/null 2>&1 && ! command -v wget >/dev/null 2>&1; then
+  echo "curl or wget is required." >&2
+  exit 1
+fi
+
 backup_now
-TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT INT TERM
+TMP=$(mktemp -d)
+trap 'rm -rf "$TMP"' EXIT INT TERM
 PACKAGE="$TMP/WeiG-qB-WebUI.zip"
 RELEASE_URL="https://github.com/$REPO/releases/latest/download/WeiG-qB-WebUI.zip"
 SUM_URL="https://github.com/$REPO/releases/latest/download/SHA256SUMS"
 release_ok=0
+
 if command -v curl >/dev/null 2>&1; then
-  if curl -fsSL "$RELEASE_URL" -o "$PACKAGE"; then release_ok=1; fi
-elif command -v wget >/dev/null 2>&1; then
-  if wget -q "$RELEASE_URL" -O "$PACKAGE"; then release_ok=1; fi
+  if curl -fsSL "$RELEASE_URL" -o "$PACKAGE" 2>/dev/null; then release_ok=1; fi
 else
-  echo "curl or wget is required." >&2; exit 1
+  if wget -q "$RELEASE_URL" -O "$PACKAGE" 2>/dev/null; then release_ok=1; fi
 fi
+
 if [ "$release_ok" -eq 1 ]; then
+  echo "Source: latest GitHub Release"
   if command -v sha256sum >/dev/null 2>&1; then
-    if command -v curl >/dev/null 2>&1; then curl -fsSL "$SUM_URL" -o "$TMP/SHA256SUMS" || true; else wget -q "$SUM_URL" -O "$TMP/SHA256SUMS" || true; fi
-    if [ -s "$TMP/SHA256SUMS" ]; then (cd "$TMP" && sha256sum -c SHA256SUMS); fi
+    if command -v curl >/dev/null 2>&1; then
+      curl -fsSL "$SUM_URL" -o "$TMP/SHA256SUMS" 2>/dev/null || true
+    else
+      wget -q "$SUM_URL" -O "$TMP/SHA256SUMS" 2>/dev/null || true
+    fi
+    if [ -s "$TMP/SHA256SUMS" ]; then
+      (cd "$TMP" && sha256sum -c SHA256SUMS)
+    fi
   fi
   unzip -q "$PACKAGE" -d "$TMP/release"
   SRC="$TMP/release/WeiG-qB-WebUI"
 else
+  echo "No published Release found; using the current main branch."
   ARCHIVE="$TMP/source.zip"
-  if command -v curl >/dev/null 2>&1; then curl -fsSL "https://github.com/$REPO/archive/refs/heads/main.zip" -o "$ARCHIVE"; else wget -q "https://github.com/$REPO/archive/refs/heads/main.zip" -O "$ARCHIVE"; fi
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL "https://github.com/$REPO/archive/refs/heads/main.zip" -o "$ARCHIVE"
+  else
+    wget -q "https://github.com/$REPO/archive/refs/heads/main.zip" -O "$ARCHIVE"
+  fi
   unzip -q "$ARCHIVE" -d "$TMP/source"
   SRC=$(find "$TMP/source" -maxdepth 3 -type d -name webui | head -n1)
 fi
+
 [ -n "$SRC" ] && [ -d "$SRC" ] || { echo "WebUI payload not found." >&2; exit 1; }
-rm -rf "$DEST.new"; mkdir -p "$DEST.new"; cp -a "$SRC"/. "$DEST.new"/
-[ -f "$DEST.new/public/login.html" ] && [ -f "$DEST.new/private/index.html" ] || { echo "Invalid WebUI package." >&2; exit 1; }
-rm -rf "$DEST.old"; [ -d "$DEST" ] && mv "$DEST" "$DEST.old" || true; mv "$DEST.new" "$DEST"; rm -rf "$DEST.old"
-echo "Installed: $DEST"
+[ -f "$SRC/public/login.html" ] && [ -f "$SRC/private/index.html" ] || { echo "Source package is not a valid qBittorrent Alternate WebUI." >&2; exit 1; }
+
+rm -rf "$DEST.new"
+mkdir -p "$DEST.new"
+cp -a "$SRC"/. "$DEST.new"/
+
+[ -f "$DEST.new/public/login.html" ] && [ -f "$DEST.new/private/index.html" ] || { echo "Installed payload validation failed." >&2; rm -rf "$DEST.new"; exit 1; }
+
+rm -rf "$DEST.old"
+[ -d "$DEST" ] && mv "$DEST" "$DEST.old" || true
+if ! mv "$DEST.new" "$DEST"; then
+  [ -d "$DEST.old" ] && mv "$DEST.old" "$DEST" || true
+  echo "Installation failed; previous WebUI restored." >&2
+  exit 1
+fi
+rm -rf "$DEST.old"
+
+echo "Installed and verified: $DEST"
+
 cfg=$(find_config || true)
-if [ "$CONFIGURE" -eq 1 ] && [ -n "$cfg" ]; then
+if [ "$CONFIGURE" -eq 1 ]; then
+  [ -n "$cfg" ] || { echo "No safe qBittorrent config was found; WebUI files are installed but configuration was not changed." >&2; exit 2; }
   cp -a "$cfg" "$cfg.weigg.bak"
-  if grep -q '^WebUI\\AlternativeUIEnabled=' "$cfg"; then sed -i 's#^WebUI\\AlternativeUIEnabled=.*#WebUI\\AlternativeUIEnabled=true#' "$cfg"; else printf '\nWebUI\\AlternativeUIEnabled=true\n' >> "$cfg"; fi
+  if grep -q '^WebUI\\AlternativeUIEnabled=' "$cfg"; then
+    sed -i 's#^WebUI\\AlternativeUIEnabled=.*#WebUI\\AlternativeUIEnabled=true#' "$cfg"
+  else
+    printf '\nWebUI\\AlternativeUIEnabled=true\n' >> "$cfg"
+  fi
   esc=$(printf '%s' "$DEST" | sed 's/[&|]/\\&/g')
-  if grep -q '^WebUI\\RootFolder=' "$cfg"; then sed -i "s|^WebUI\\RootFolder=.*|WebUI\\RootFolder=$esc|" "$cfg"; else printf 'WebUI\\RootFolder=%s\n' "$DEST" >> "$cfg"; fi
+  if grep -q '^WebUI\\RootFolder=' "$cfg"; then
+    sed -i "s|^WebUI\\RootFolder=.*|WebUI\\RootFolder=$esc|" "$cfg"
+  else
+    printf 'WebUI\\RootFolder=%s\n' "$DEST" >> "$cfg"
+  fi
   echo "Configured: $cfg"
 else
   echo "qBittorrent -> Tools -> Preferences -> Web UI -> Use alternative WebUI"
   echo "WebUI Root Folder: $DEST"
-  [ -n "$cfg" ] && echo "Detected config: $cfg"
+  if [ -n "$cfg" ]; then
+    echo "Detected safe config: $cfg"
+  else
+    echo "No safe host qBittorrent config auto-detected; set the Root Folder manually."
+  fi
 fi
-echo "Rollback: sh install.sh --rollback"
+
+echo "Rollback (same destination remembered automatically):"
+echo "  curl -fsSL https://raw.githubusercontent.com/$REPO/main/installers/install.sh -o /tmp/weigg-qb-install.sh"
+echo "  sh /tmp/weigg-qb-install.sh --rollback"
