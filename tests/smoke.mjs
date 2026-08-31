@@ -64,8 +64,8 @@ for (const size of ['20','50','100','200']) {
 }
 if (!index.includes('data-i18n="nav.settings"') || !index.includes('data-i18n-placeholder="settings.search"')) throw new Error('Canonical i18n attributes missing');
 if (index.includes('>TOOLS<')) throw new Error('Application navigation must not live in the Torrent sidebar');
-for (const token of ['css/logs-v032.css?v=0.3.3','scripts/logs-v032.js?v=0.3.3']) {
-  if (!index.includes(token)) throw new Error(`v0.3.3 Logs asset missing: ${token}`);
+for (const token of ['css/logs-v032.css?v=0.3.2','scripts/logs-v032.js?v=0.3.2']) {
+  if (!index.includes(token)) throw new Error(`v0.3.2 runtime asset missing: ${token}`);
 }
 
 const i18n = fs.readFileSync('webui/private/scripts/i18n.js', 'utf8');
@@ -106,7 +106,7 @@ for (const token of ['normalizeTracker','VirtualList','DataGrid','fontSize','ptT
 }
 
 const components = fs.readFileSync('webui/private/scripts/components.js','utf8');
-for (const token of ['SettingsSchema.describe','setting-card','switch-control',"'state.downloading'",'v022.css?v=0.3.3','v030.css?v=0.3.3','spatial-v022.js?v=0.3.3','i18n-v030.js?v=0.3.3','v030.js?v=0.3.3','i18.onload=loadV030']) {
+for (const token of ['SettingsSchema.describe','setting-card','switch-control',"'state.downloading'",'v022.css?v=0.3.2','v030.css?v=0.3.2','spatial-v022.js?v=0.3.2','i18n-v030.js?v=0.3.2','v030.js?v=0.3.2','i18.onload=loadV030']) {
   if (!components.includes(token)) throw new Error(`Component/runtime loader token missing: ${token}`);
 }
 
