@@ -130,7 +130,12 @@ try {
         const beforePoll=parseStatus(await page.locator('.logs-v032-status').textContent()).total;
         await page.waitForFunction(previous=>{const m=(document.querySelector('.logs-v032-status')?.textContent||'').match(/(\d+)\s*\/\s*(\d+)/);return m&&Number(m[2])>previous;},beforePoll,{timeout:7000});
         const newestAfter=Number(await page.locator('.logs-v032-row').first().getAttribute('data-log-id'));assert(newestAfter>100,`${name}: incremental row did not appear at top`);
-        const list=page.locator('.logs-v032-list');await page.locator('[data-logs-follow] input').uncheck();await list.evaluate(node=>{node.scrollTop=240;});await page.waitForTimeout(80);
+        const list=page.locator('.logs-v032-list');
+        const follow=page.locator('[data-logs-follow]');
+        const followInput=follow.locator('input');
+        if(await followInput.isChecked())await follow.click();
+        assert(!(await followInput.isChecked()),`${name}: Follow latest control did not toggle off via canonical label`);
+        await list.evaluate(node=>{node.scrollTop=240;});await page.waitForTimeout(80);
         const scrollBefore=await list.evaluate(node=>node.scrollTop),totalBefore=parseStatus(await page.locator('.logs-v032-status').textContent()).total;
         await page.waitForFunction(previous=>{const m=(document.querySelector('.logs-v032-status')?.textContent||'').match(/(\d+)\s*\/\s*(\d+)/);return m&&Number(m[2])>previous;},totalBefore,{timeout:7000});
         const scrollAfter=await list.evaluate(node=>node.scrollTop);assert(scrollAfter>=scrollBefore+45,`${name}: newest-first insertion did not preserve viewed historical rows (${scrollBefore} -> ${scrollAfter})`);
