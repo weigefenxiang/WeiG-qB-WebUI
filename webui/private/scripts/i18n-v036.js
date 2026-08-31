@@ -29,7 +29,7 @@
     'v036.detail.backHint':'Return to the previous torrent list position',
     'v036.brand.ambient':'Ambient brand motion',
     'v036.storage.free':'Free',
-    'v036.storage.tooltip':'Free space on the filesystem containing qBittorrent’s default save path: {value}'
+    'v036.storage.tooltip':'Free space on the filesystem containing qBittorrent’s default save path: {value} ({bytes} bytes)'
   };
   var ZH={
     'v036.logs.normal':'普通',
@@ -59,7 +59,7 @@
     'v036.detail.backHint':'返回进入详情前的种子列表位置',
     'v036.brand.ambient':'环境品牌动效',
     'v036.storage.free':'可用',
-    'v036.storage.tooltip':'qBittorrent 默认保存路径所在文件系统的可用空间：{value}'
+    'v036.storage.tooltip':'qBittorrent 默认保存路径所在文件系统的可用空间：{value}（{bytes} 字节）'
   };
   function interpolate(value,vars){return String(value).replace(/\{(\w+)\}/g,function(_m,key){return vars&&vars[key]!==undefined?String(vars[key]):'{'+key+'}';});}
   function t(key,vars){var locale=W.I18n&&W.I18n.getLocale?W.I18n.getLocale():'en',dict=locale==='zh-CN'?ZH:EN,value=dict[key]!==undefined?dict[key]:(EN[key]!==undefined?EN[key]:key);return interpolate(value,vars);}
