@@ -10,8 +10,6 @@ html[data-density=comfortable]{--mobile-torrent-row-h:126px}
 .status-storage{display:inline-flex;align-items:center;gap:5px;min-width:0;color:var(--text-muted);white-space:nowrap;font-variant-numeric:tabular-nums}
 .status-storage strong{color:var(--text-secondary);font-weight:720}
 .status-storage__icon{color:var(--accent-cyan);font-size:.95em}
-.status-storage[data-tone=warning] strong{color:var(--warning)}
-.status-storage[data-tone=danger] strong{color:var(--danger)}
 
 /* STATUS-SEMANTIC-001: state is readable by text + tone; color never stands alone. */
 .status-pill{font-variant-numeric:tabular-nums;letter-spacing:-.012em;box-shadow:inset 0 1px rgba(255,255,255,.035)}
@@ -84,9 +82,9 @@ html[data-density=comfortable]{--mobile-torrent-row-h:126px}
   #search-view .inline-form,#rss-view .inline-form{flex:0 0 auto;margin-bottom:8px;gap:6px}
   #search-view .large-tool-list,#rss-view .large-tool-list,#logs-view .large-tool-list{flex:1 1 auto;min-height:0!important;max-height:none!important;overflow:auto;overscroll-behavior:contain}
 
-  /* Status dock keeps useful VPS/download-volume capacity visible on phones. */
+  /* Status dock keeps useful download-volume capacity visible on phones. */
   .statusbar{overflow:hidden;gap:8px;padding-inline:9px}
-  .status-storage{margin-left:auto;flex:0 0 auto;font-size:clamp(10px,2.8vw,12px)}
+  .statusbar>.status-storage{display:inline-flex!important;margin-left:auto;flex:0 0 auto;font-size:clamp(10px,2.8vw,12px)}
   .status-storage__label{display:none}
 }
 
