@@ -71,7 +71,10 @@ await new Promise((resolve, reject) => { server.once('error', reject); server.li
 
 function parseStatus(text) { const match=String(text||'').match(/(\d+)\s*\/\s*(\d+)/); return match?{shown:Number(match[1]),total:Number(match[2])}:{shown:-1,total:-1}; }
 async function choose(page,id,value){
-  const root=page.locator(`#${id}`);await root.locator('.ui-select__trigger').click();await root.locator(`.ui-select__option[data-value="${value}"]`).click();
+  const root=page.locator(`#${id}`);await root.locator('.ui-select__trigger').click();await page.locator(`#weigg-floating-layer .ui-select__option[data-value="${value}"]`).click();
+}
+async function chooseGlobalTimezone(page,value){
+  const root=page.locator('.status-timezone');await root.locator('.ui-select__trigger').click();await page.locator(`#weigg-floating-layer .ui-select__option[data-value="${value}"]`).click();
 }
 
 const browser = await chromium.launch({headless: true});
@@ -80,14 +83,16 @@ try {
     for (const [width, height] of viewports) {
       const context = await browser.newContext({viewport:{width,height},timezoneId:'UTC'});
       const page = await context.newPage(), errors=[];
-      page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });
+      page.on('console', msg => { if (msg.type() === 'error' && !/favicon|Wei\.G\.ico/i.test(msg.text())) errors.push(msg.text()); });
       page.on('pageerror', error => errors.push(String(error)));
       await page.goto(`http://${host}:${port}/${name}/#/logs`, {waitUntil:'networkidle'});
       await page.waitForSelector('.logs-v032-row');
+      await page.waitForFunction(()=>document.documentElement.dataset.v036==='1' && !!document.querySelector('[data-status-timezone]'));
+      await page.waitForTimeout(80);
 
       const base=await page.evaluate(()=>{
         const rect=node=>node?node.getBoundingClientRect():null, first=document.querySelector('.logs-v032-row'), firstTime=first?.querySelector('.logs-v032-time');
-        return {innerWidth,scrollWidth:document.documentElement.scrollWidth,visibleLogsNav:[...document.querySelectorAll('[data-route="logs"]')].some(node=>getComputedStyle(node).display!=='none'&&node.getBoundingClientRect().width>0),tool:rect(document.querySelector('#logs-view > .tool-page')),panel:rect(document.querySelector('.logs-v032-panel')),list:rect(document.querySelector('.logs-v032-list')),firstId:Number(first?.dataset.logId),firstDateTime:firstTime?.dateTime||'',firstText:firstTime?.textContent||'',status:document.querySelector('.logs-v032-status')?.textContent||'',nativeLogsSelects:document.querySelectorAll('.logs-v032-toolbar select:not(.ui-native-select)').length,customSelects:document.querySelectorAll('.logs-v032-toolbar .ui-select').length};
+        return {innerWidth,scrollWidth:document.documentElement.scrollWidth,visibleLogsNav:[...document.querySelectorAll('[data-route="logs"]')].some(node=>getComputedStyle(node).display!=='none'&&node.getBoundingClientRect().width>0),tool:rect(document.querySelector('#logs-view > .tool-page')),panel:rect(document.querySelector('.logs-v032-panel')),list:rect(document.querySelector('.logs-v032-list')),firstId:Number(first?.dataset.logId),firstDateTime:firstTime?.dateTime||'',firstText:firstTime?.textContent||'',status:document.querySelector('.logs-v032-status')?.textContent||'',nativeLogsSelects:document.querySelectorAll('.logs-v032-toolbar select:not(.ui-native-select)').length,customSelects:document.querySelectorAll('.logs-v032-toolbar .ui-select').length,toolbarTimezone:document.querySelectorAll('.logs-v032-toolbar .timezone-select').length,globalTimezone:document.querySelectorAll('[data-status-timezone] .status-timezone').length,globalTimezoneText:document.querySelector('.status-timezone .ui-select__value')?.textContent||''};
       });
       const initialStatus=parseStatus(base.status), renderedMs=Date.parse(base.firstDateTime), minMs=(baseSeconds+1)*1000,maxMs=(baseSeconds+100)*1000;
       assert(width<=820||base.visibleLogsNav,`${name} ${width}x${height}: desktop Logs navigation hidden`);
@@ -98,7 +103,10 @@ try {
       assert(base.firstId===100,`${name} ${width}x${height}: newest log must render first, got id ${base.firstId}`);
       assert(Number.isFinite(renderedMs)&&renderedMs>=minMs&&renderedMs<=maxMs,`${name} ${width}x${height}: normalized timestamp outside fixture range`);
       assert(base.nativeLogsSelects===0,`${name} ${width}x${height}: raw Logs select is visible`);
-      assert(base.customSelects>=2,`${name} ${width}x${height}: canonical Logs selects missing`);
+      assert(base.customSelects>=1,`${name} ${width}x${height}: canonical Logs size Select missing`);
+      assert(base.toolbarTimezone===0,`${name} ${width}x${height}: Logs toolbar must not own timezone selector`);
+      assert(base.globalTimezone===1,`${name} ${width}x${height}: global statusbar timezone missing`);
+      assert(/^UTC[+-]\d{2}:\d{2}\s*·/.test(base.globalTimezoneText),`${name} ${width}x${height}: global timezone lacks canonical UTC offset: ${base.globalTimezoneText}`);
 
       const autoHeight=base.tool.height;
       await choose(page,'logs-size-mode','compact');await page.waitForTimeout(180);
@@ -109,15 +117,19 @@ try {
       assert(max.mode,`${name} ${width}x${height}: Max class missing`);assert(max.headerDisplay==='none',`${name} ${width}x${height}: Max did not hide header`);assert(max.height>compact.height+20,`${name} ${width}x${height}: Max did not expand`);
       await choose(page,'logs-size-mode','auto');
 
-      const row100=page.locator('.logs-v032-row[data-log-id="100"] .logs-v032-time');
-      await row100.waitFor();
+      const row100=page.locator('.logs-v032-row[data-log-id="100"] .logs-v032-time');await row100.waitFor();
       const beforeZone={text:await row100.textContent(),iso:await row100.getAttribute('datetime')};
-      await choose(page,'logs-time-zone','Asia/Shanghai');await page.waitForTimeout(80);
+      if(width>820) await chooseGlobalTimezone(page,'Asia/Shanghai');
+      else await page.evaluate(()=>WeiG.Time.setZone('Asia/Shanghai'));
+      await page.waitForTimeout(80);
       const row100After=page.locator('.logs-v032-row[data-log-id="100"] .logs-v032-time');
-      const zoneState={zone:await page.evaluate(()=>WeiG.Time.getZone()),text:await row100After.textContent(),iso:await row100After.getAttribute('datetime')};
+      const zoneState={zone:await page.evaluate(()=>WeiG.Time.getZone()),text:await row100After.textContent(),iso:await row100After.getAttribute('datetime'),offset:await page.evaluate(()=>WeiG.Time.offsetLabel('Asia/Shanghai'))};
       assert(zoneState.zone==='Asia/Shanghai',`${name}: timezone preference was not stored`);
+      assert(zoneState.offset==='UTC+08:00',`${name}: Shanghai offset mismatch: ${zoneState.offset}`);
       assert(zoneState.text!==beforeZone.text,`${name}: timezone switch did not change rendered time`);
       assert(zoneState.iso===beforeZone.iso,`${name}: timezone switch changed source timestamp`);
+      const fractional=await page.evaluate(()=>({india:WeiG.Time.offsetLabel('Asia/Kolkata',new Date('2026-08-31T12:00:00Z')),nepal:WeiG.Time.offsetLabel('Asia/Kathmandu',new Date('2026-08-31T12:00:00Z'))}));
+      assert(fractional.india==='UTC+05:30',`${name}: +05:30 offset unsupported: ${fractional.india}`);assert(fractional.nepal==='UTC+05:45',`${name}: +05:45 offset unsupported: ${fractional.nepal}`);
 
       await page.locator('#logs-local-search').fill('Critical fixture log 100');await page.waitForTimeout(80);
       const searched=parseStatus(await page.locator('.logs-v032-status').textContent());assert(searched.shown===1,`${name} ${width}x${height}: search expected one row`);await page.locator('#logs-local-search').fill('');
@@ -130,20 +142,14 @@ try {
         const beforePoll=parseStatus(await page.locator('.logs-v032-status').textContent()).total;
         await page.waitForFunction(previous=>{const m=(document.querySelector('.logs-v032-status')?.textContent||'').match(/(\d+)\s*\/\s*(\d+)/);return m&&Number(m[2])>previous;},beforePoll,{timeout:7000});
         const newestAfter=Number(await page.locator('.logs-v032-row').first().getAttribute('data-log-id'));assert(newestAfter>100,`${name}: incremental row did not appear at top`);
-        const list=page.locator('.logs-v032-list');
-        const follow=page.locator('[data-logs-follow]');
-        const followInput=follow.locator('input');
-        if(await followInput.isChecked())await follow.click();
-        assert(!(await followInput.isChecked()),`${name}: Follow latest control did not toggle off via canonical label`);
-        await list.evaluate(node=>{node.scrollTop=240;});await page.waitForTimeout(80);
-        const scrollBefore=await list.evaluate(node=>node.scrollTop),totalBefore=parseStatus(await page.locator('.logs-v032-status').textContent()).total;
+        const list=page.locator('.logs-v032-list');const follow=page.locator('[data-logs-follow]');const followInput=follow.locator('input');if(await followInput.isChecked())await follow.click();assert(!(await followInput.isChecked()),`${name}: Follow latest control did not toggle off via canonical label`);
+        await list.evaluate(node=>{node.scrollTop=240;});await page.waitForTimeout(80);const scrollBefore=await list.evaluate(node=>node.scrollTop),totalBefore=parseStatus(await page.locator('.logs-v032-status').textContent()).total;
         await page.waitForFunction(previous=>{const m=(document.querySelector('.logs-v032-status')?.textContent||'').match(/(\d+)\s*\/\s*(\d+)/);return m&&Number(m[2])>previous;},totalBefore,{timeout:7000});
         const scrollAfter=await list.evaluate(node=>node.scrollTop);assert(scrollAfter>=scrollBefore+45,`${name}: newest-first insertion did not preserve viewed historical rows (${scrollBefore} -> ${scrollAfter})`);
       }
 
-      assert(errors.length===0,`${name} ${width}x${height}: browser console errors: ${errors.join(' | ')}`);
-      await context.close();
+      assert(errors.length===0,`${name} ${width}x${height}: browser console errors: ${errors.join(' | ')}`);await context.close();
     }
   }
-  console.log(`v0.3.6 Logs browser regression passed for ${Object.keys(variants).length} qB variants × ${viewports.length} viewports.`);
+  console.log(`v0.3.6 Logs/global-timezone browser regression passed for ${Object.keys(variants).length} qB variants × ${viewports.length} viewports.`);
 } finally { await browser.close(); await new Promise(resolve=>server.close(resolve)); }
