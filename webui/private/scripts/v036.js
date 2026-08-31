@@ -73,20 +73,17 @@
   function markRestore(){var ctx=listContext();if(!ctx)return;ctx.restore=true;writeListContext(ctx);}
   function restoreListContext(){
     var ctx=listContext(),route=W.Router&&W.Router.route?W.Router.route():{name:'home'};if(!ctx||!ctx.restore||route.name!=='home')return;
-    var target=Math.max(0,Number(ctx.scrollTop)||0),frames=0,maxFrames=18;
-    function applyFrame(){
+    var target=Math.max(0,Number(ctx.scrollTop)||0),tries=0,maxTries=12;
+    function apply(){
       var current=W.Router&&W.Router.route?W.Router.route():{name:'home'},list=U.$('torrent-list');
       if(current.name!=='home')return;
-      if(list&&list.clientHeight>0&&list.scrollHeight>list.clientHeight){
-        list.__weiggVirtualScrollTop=target;
-        list.scrollTop=target;
-        if(list.__weiggVirtualScrollHandler)list.__weiggVirtualScrollHandler();
-      }
-      frames++;
-      if(frames<maxFrames){requestAnimationFrame(applyFrame);return;}
+      if(!list||list.clientHeight<=0||list.scrollHeight<=list.clientHeight){if(tries++<maxTries)return setTimeout(apply,40);return;}
+      list.__weiggVirtualScrollTop=target;list.scrollTop=target;
+      if(list.__weiggVirtualScrollHandler)list.__weiggVirtualScrollHandler();
+      if(Math.abs(list.scrollTop-target)>3&&tries++<maxTries)return setTimeout(apply,40);
       ctx.restore=false;writeListContext(ctx);
     }
-    requestAnimationFrame(applyFrame);
+    requestAnimationFrame(function(){requestAnimationFrame(apply);});
   }
   function backFromDetail(){var route=W.Router&&W.Router.route?W.Router.route():{name:'home'},ctx=listContext();if(route.name!=='torrent')return false;markRestore();if(ctx&&ctx.hash&&ctx.savedAt&&Date.now()-ctx.savedAt<86400000){history.back();setTimeout(function(){var r=W.Router.route();if(r.name==='torrent')W.Router.home();},180);return true;}W.Router.home();return true;}
   function syncDetailBack(){
