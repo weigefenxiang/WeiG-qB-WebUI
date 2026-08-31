@@ -1,40 +1,42 @@
 # WeiG qB WebUI — Design System
 
-Version: **1.6**  
-Status: **v0.3.5 canonical component + cache identity baseline**  
+Version: **1.7**  
+Status: **v0.3.6 canonical interaction + ambient brand baseline**  
 Theme: **Nebula Spatial Console**  
 Compatibility floor: **qBittorrent 4.1.9**
 
-> This file is the single visual and interaction authority. New UI must extend these rules instead of creating feature-local design systems.
+> This file is the single visual and interaction authority. New UI extends these rules; it does not create a second local design system.
 
 ## 1. Mission
 
-WeiG qB WebUI is a premium qBittorrent control console: calm, dimensional, information-dense on desktop, touch-first on mobile and stable during long-running polling. Inspiration may come from Linear precision, Raycast floating chrome, Superhuman premium dark surfaces and instrument-like BMW/Revolut material separation, but the resulting identity must remain **WeiG Nebula Spatial Console**.
+WeiG qB WebUI is a premium qBittorrent control console: calm, dimensional, information-dense on desktop, touch-first on mobile, and stable during long-running polling.
 
-For v0.3.2 the design review also studied `VoltAgent/awesome-design-md`: its useful lesson is not to copy a screenshot, but to treat tokens, surfaces, spacing, component states and responsive behavior as an explicit reusable design contract. Raycast-like dark precision, Superhuman-like restrained depth and Warp-like technical data density are reference principles only.
+References may include Linear precision, Raycast floating chrome, Superhuman restrained depth, Warp technical density and the system-thinking examples collected by `VoltAgent/awesome-design-md`. The useful lesson is **tokens + reusable primitives + explicit interaction states**, not copying another product screenshot.
 
-Functionality may be compared with qBittorrent WebUIs such as VueTorrent, but another product's visual identity is never copied.
+The resulting visual identity remains **WeiG Nebula Spatial Console**.
 
 ## 2. Non-negotiable rules
 
-1. qBittorrent 4.1.9 remains the UI/interaction compatibility floor.
+1. qBittorrent **4.1.9** remains the compatibility floor.
 2. English is canonical source copy; English and Simplified Chinese are maintained languages.
 3. Missing translations fall back to English; raw translation keys never appear.
-4. Feature code does not invent colors, typography sizes, shadows, radii, motion or component variants.
+4. Feature code does not invent colors, typography sizes, shadows, radii, motion or duplicate components.
 5. Data count is not DOM count; large collections remain virtualized.
 6. **Polling must never destroy user interaction state.**
-7. Every non-home view retains Back; fatal states retain Back/Home/Reload.
+7. Every non-home route has a meaningful Back contract.
 8. Mobile is not a squeezed desktop DataGrid.
 9. Hover-only interaction always has keyboard/touch equivalents where meaningful.
 10. Reduced Motion is mandatory.
-11. High-cardinality filter catalogs never permanently fill the desktop Sidebar.
-12. Normal UI does not expose raw qB API/preference keys or developer rendering counters.
+11. High-cardinality filter catalogs do not permanently fill the desktop Sidebar.
+12. Normal UI does not expose raw qB API/preference keys or debug rendering counters.
 13. Tracker query/fragment credentials are never rendered in normal UI.
-14. Visual depth must improve clarity, not hide data or create continuous neon animation.
-15. Primary data-heavy pages use the canonical DataPage/DataPanel pattern instead of inventing feature-local fixed-height boxes.
-16. A primary data viewport must not use an arbitrary `max-height: 62vh` when the workspace can provide safe remaining height.
-17. **One semantic primitive has one canonical visual implementation.** A feature/version runtime may add behavior, but must not create a second Settings Card, DataGrid, Modal or Status system for the same semantic role.
-18. **HTML is a no-store bootstrap; local CSS/JS resource identity is the deployment Git SHA, not a product semver query.**
+14. Visual depth improves hierarchy; continuous neon animation is invalid.
+15. Primary data-heavy pages use canonical DataPage/DataPanel rather than feature-local boxes.
+16. A primary data viewport does not use arbitrary fixed `max-height` when safe remaining workspace exists.
+17. **One semantic primitive has one canonical visual implementation.**
+18. **HTML is a no-store bootstrap; CSS/JS identity is deployment Git SHA, not semver.**
+19. **User page, scroll, filter, detail-return context and display timezone are interaction state.**
+20. **Brand motion is ambient and occasional, never a permanent animation loop.**
 
 ## 3. Spatial hierarchy
 
@@ -49,21 +51,22 @@ Raised    search / toolbar / active input / detail summary
 Floating  menu / popover / dialog / action sheet
 ```
 
-Elevation changes surface luminance, border visibility, top inner highlight, shadow and at most a restrained cool ambient glow. Do not make all dark surfaces the same black.
+Elevation changes surface luminance, border visibility, top inner highlight and restrained shadow. Dark mode must still distinguish one material from another.
 
 ### SPATIAL-002 — Material before neon
 
-Default surfaces are quiet blue-black materials. Accent wakes up for hover, focus, selected, active and primary actions. Never solve weak hierarchy with constant glowing borders.
+Default surfaces are quiet blue-black materials. Accent wakes up for hover, focus, selected, active and primary actions. Constant glowing borders are not hierarchy.
 
 ### SPATIAL-003 — Interaction depth
 
-Raised interactive controls may move roughly 1px on hover. Card hover may lift at most about 2px. Dense Torrent rows stay quiet and only reveal a subtle selection/hover layer.
+- Raised controls may move about 1px on hover.
+- Card hover may lift at most about 2px.
+- Dense rows stay quiet and reveal only a subtle hover/selection layer.
+- Reduced Motion removes nonessential movement.
 
 ## 4. Information architecture
 
 ### IA-001 — Topbar owns application navigation
-
-Desktop destinations:
 
 ```text
 Torrents | Search | RSS | Logs | Settings
@@ -73,7 +76,7 @@ Topbar also owns contextual search, Add Torrent and global utilities.
 
 ### IA-002 — Sidebar is the Torrent state rail
 
-Permanent desktop items are low-cardinality states only:
+Permanent desktop items are low-cardinality states:
 
 ```text
 All
@@ -87,9 +90,9 @@ Error
 Private / PT
 ```
 
-### SIDEBAR-001 — No nested desktop scroll by default
+### SIDEBAR-001 — Avoid nested scroll
 
-At ordinary desktop heights the Sidebar should not need its own scrollbar. Tracker, Save Path, Category, Tag and detailed connection metadata belong elsewhere.
+Tracker, Save Path, Category, Tag and detailed connection metadata belong in facet/popover surfaces rather than forcing a second desktop scrollbar.
 
 ### FILTER-001 — Dynamic facets use Filter Shelf
 
@@ -97,11 +100,11 @@ At ordinary desktop heights the Sidebar should not need its own scrollbar. Track
 [ Tracker ▾ ] [ Save Path ▾ ] [ Category ▾ ] [ Tags ▾ ]
 ```
 
-Each opens a searchable Floating Popover. It is a view over canonical application filter state, not a second state store.
+Each opens a searchable Floating Popover over canonical application filter state.
 
-### IA-003 — Connection details live in Status/Transfer Dock
+### IA-003 — Connection lives in the Status/Transfer Dock
 
-qB version, WebAPI version and compatibility details open from the connection control rather than consuming permanent Sidebar height.
+qB version, WebAPI version and compatibility details open from the connection control.
 
 ### IA-004 — Search is contextual
 
@@ -109,19 +112,169 @@ qB version, WebAPI version and compatibility details open from the connection co
 Torrents → torrent search
 Settings → settings search
 Search   → qB Search Engine query
-RSS      → RSS search/filter
-Logs     → log search/filter
+RSS      → RSS filter
+Logs     → log search
 ```
 
-Off-route features must not run because the global search box changed.
+Off-route features do not run merely because the global search field changed.
 
-## 5. User position and polling
+## 5. Canonical components
 
-### SCROLL-001 — User position is state
+One implementation per semantic primitive:
 
-A user's current scroll position is part of interaction state. Automatic polling, row data refreshes, status updates and background re-renders must preserve it.
+```text
+Button / IconButton
+Input / Search
+Select / Listbox
+Switch
+CheckControl
+FilterChip
+Tooltip
+Dialog / Modal
+Drawer / Action Sheet
+Menu / Popover
+Badge / StatusPill
+Card / Panel
+Tabs
+DataGrid / Pagination / VirtualList
+Settings Card
+Filter Shelf / Facet Popover
+Connection Popover / Transfer Dock
+AmbientMark
+```
 
-Allowed deliberate resets include:
+Semantic ownership:
+
+```text
+Settings        → SettingCard / settings-control
+Torrent data    → DataGrid / VirtualList
+Logs            → DataPage / DataPanel / VirtualList
+Dialogs         → dialog + surface--modal
+Torrent state   → status-pill
+Global state    → Status / Transfer Dock
+Select          → W.Components.selectControl()
+Filter Chip     → W.Components.filterChip()
+Compact boolean → W.Components.checkControl()
+Brand motion    → W.AmbientMark
+Client time     → W.Time
+```
+
+### COMPONENT-001 — No feature-local clone
+
+A feature runtime may add behavior, validation or data semantics. It may not create a second Button, Select, Card, Chip, Badge, Modal or Popover visual system.
+
+## 6. Control state system
+
+### CONTROL-001 — Required states
+
+Every interactive primitive has:
+
+```text
+Default
+Hover
+Focus-visible
+Active / Selected
+Disabled
+```
+
+Default must already be visible against its parent surface. Focus uses a consistent cool-blue ring. Disabled controls do not lift or animate.
+
+### INPUT-001 — Visible at rest
+
+Search/Input/Select cannot disappear into a near-black panel. The control must have distinct border/surface before hover.
+
+### SELECT-001 — Canonical dark/light Listbox
+
+Visible Select UI uses `W.Components.selectControl()` rather than trusting the OS popup theme.
+
+Structure:
+
+```text
+Select Trigger
+└─ Floating Listbox
+   ├─ optional Search
+   ├─ Option
+   └─ Selected Option
+```
+
+Required keyboard/ARIA behavior:
+
+```text
+Arrow Up / Down
+Home / End
+Enter / Space
+Escape
+aria-haspopup=listbox
+role=listbox / option
+aria-selected
+```
+
+Legacy/native `<select>` may remain as a hidden data/compatibility bridge and is progressively upgraded by `upgradeNativeSelect(s)`.
+
+### CHIP-001
+
+Filter chips share one shape, padding, hover, active fill and focus ring. Logs severity filters use this primitive.
+
+### CHECK-001
+
+Compact booleans such as Logs “Follow latest” use one `CheckControl`. Settings booleans use the existing Switch; the two semantic roles are distinct and each has one implementation.
+
+## 7. Ambient brand motion
+
+### BRAND-001 — AmbientMark template
+
+The logo is wrapped by a reusable, product-neutral component:
+
+```text
+AmbientMark
+├─ Mark / Logo
+├─ Orbit layer
+├─ Spark layer
+├─ Shine layer
+└─ Ambient scheduler
+```
+
+CSS owns visual animation. JavaScript only selects **when** and **which short effect** runs.
+
+### BRAND-002 — Random, sparse, restrained
+
+Default is static. Typical scheduler contract:
+
+```text
+random interval: ~8–28 s
+some checks intentionally do nothing
+single event: ~1–2 s
+```
+
+Allowed effect pool:
+
+```text
+orbit
+spark
+3D tilt
+shine sweep
+soft breathe
+low-probability orbit + spark
+```
+
+Spark colors come from WeiG cool accents plus restrained semantic highlights. Random RGB nightclub effects are forbidden.
+
+### BRAND-003 — Performance/accessibility
+
+- no permanent RAF loop;
+- no continuous orbit;
+- scheduler pauses while `document.hidden`;
+- `prefers-reduced-motion: reduce` disables orbit/tilt/spark motion;
+- RNG can be injected for deterministic tests;
+- component is reusable by future WeiG sites without qB-specific code.
+
+## 8. User position and polling
+
+### SCROLL-001 — Position is state
+
+Polling, incremental updates and status refreshes preserve the user’s conceptual position.
+
+Allowed deliberate resets:
 
 ```text
 Filter/facet change
@@ -131,9 +284,7 @@ Search context change
 Explicit Go to top
 ```
 
-Manual refresh normally preserves current position unless the data context itself changed.
-
-### DATAFLOW-001 — Polling updates data, not navigation state
+### DATAFLOW-001 — Polling updates data, not navigation
 
 ```text
 Timer / event
@@ -145,46 +296,71 @@ Update cache/model
 Refresh visible virtual window
 ```
 
-Do not recreate the user's conceptual page every refresh. Recreating implementation objects is acceptable only when the container restores stable viewport/selection state and does not leak event handlers.
+Do not recreate the conceptual page every refresh.
 
 ### DATAFLOW-002 — No duplicate high-frequency polling
 
-A feature such as Transfer Graph should subscribe to an existing transfer stream when possible. Do not create independent 1s/2s loops for every card.
+Feature UI should subscribe to existing streams where possible rather than adding one timer per card.
 
-## 6. Empty states
+## 9. Torrent list and detail navigation
 
-### EMPTY-001 — Zero-result Torrent views are compact
+### NAV-001 — Context Back
 
-A filter with zero matching Torrents is a valid state, not a giant blank table.
-
-Desktop target structure:
+Torrent Detail places Back **to the left of Overview**:
 
 ```text
-Filter Shelf
-Stats / network context
-┌──────────────────────────────┐
-│ ◇                            │
-│ No torrents match            │
-│ Short explanation            │
-│ [Add Torrent] / clear action │
-└──────────────────────────────┘
+[ ← Back to torrents ] [ Overview ] [ Files ] [ Trackers ] [ Peers ] ...
 ```
 
-The empty surface is normally about **180–240px** tall rather than 60vh. Hide the meaningless table body/pager when zero results are confirmed. This applies consistently to Private/PT, Error, Downloading, Seeding, Completed, Paused, Active, Stalled and facet/search results.
+It returns to the list the user came from, not merely “the home route”.
 
-### EMPTY-002 — Preserve useful global context
+### NAV-002 — Preserve page + scroll
 
-Transfer/network stats and Filter Shelf may remain visible on an empty result because they describe qBittorrent itself, not only the current result set.
-
-## 7. Transfer Control Dock
-
-### DOCK-001 — Operational, centered and interactive
-
-The desktop bottom dock is centered visually and may contain:
+Example:
 
 ```text
-↓ current download
-↑ current upload
+Page 2 / scroll 600px
+        ↓
+Torrent Detail
+        ↓ Back or Esc
+Page 2 / scroll 600px
+```
+
+Page/filter state remains in the application model; list viewport position is explicitly restored.
+
+### NAV-003 — Safe fallback
+
+A directly opened `#/torrent/<hash>` without an internal list context falls back to Torrents home. Do not blindly call `history.back()` into an unrelated external page.
+
+### KEYBOARD-001 — Escape priority
+
+```text
+1. Select/Popover open → close it
+2. Dialog open         → dialog owns Esc
+3. Editable focused    → do not steal key
+4. Torrent Detail      → Context Back
+5. Torrent List        → existing list behavior
+```
+
+## 10. Empty states
+
+### EMPTY-001 — Zero result is compact
+
+A zero-result Torrent filter is valid, not a giant blank table. Typical desktop empty surface is roughly 180–240px with useful explanation/action.
+
+### EMPTY-002 — Keep useful global context
+
+Transfer/network stats and Filter Shelf may remain visible because they describe qB itself, not only the current result set.
+
+## 11. Transfer Control Dock
+
+### DOCK-001 — Operational and interactive
+
+Desktop bottom dock may contain:
+
+```text
+↓ download
+↑ upload
 ALT speed mode
 connection
 Torrent count
@@ -192,118 +368,37 @@ refresh time
 Transfer / session
 ```
 
-It is not a debug text strip.
-
 ### DOCK-002 — Speeds are controls
 
-Clicking global download/upload speed opens a Floating/Modal speed-limit control. The user must be able to see the current limit, choose common presets, set a custom value and return to unlimited.
-
-The default presets may include:
-
-```text
-Unlimited | 1 | 5 | 10 | 50 MiB/s | Custom
-```
+Clicking global DL/UL opens a shared modal/floating limit control with current value, presets, Custom and Unlimited.
 
 ### DOCK-003 — Alternative speed mode is explicit
 
-Alternative speed mode exposes active/inactive state through shape/fill/aria state, not color alone.
+State is expressed by shape/fill/aria, not color alone.
 
-### DOCK-004 — Connection item opens details
+### DOCK-004 — Connection opens diagnostics
 
-The connection control remains the entry for qBittorrent/WebAPI/compatibility metadata. Global rate controls do not replace connection diagnostics.
+Connection remains the entry to qB/WebAPI/compatibility metadata.
 
-## 8. Transfer graph and session stats
+## 12. Transfer graph and session stats
 
 ### TRANSFER-001 — Bounded local history
 
-Transfer history is transient UI telemetry. Keep a bounded in-memory ring buffer; v0.3 baseline maximum is **900 samples**. It is not a Torrent database and does not require a backend.
+Transfer history remains transient UI telemetry with maximum **900 samples**.
 
 ### TRANSFER-002 — Native lightweight chart
 
-Canvas/SVG is preferred over a large chart runtime. Graphs use semantic accent colors, subtle grid lines and clear DL/UL legend. Never animate hundreds of shadows or redraw when the dialog is closed if no visual update is needed.
+Canvas/SVG is preferred over a large chart runtime. Hidden charts do not keep doing visual work.
 
-### TRANSFER-003 — Useful session context
+### TRANSFER-003 — Unsupported data is honest
 
-Where supported, the Transfer surface may show:
+Unsupported fields render `—`, never fabricated values.
 
-- session downloaded/uploaded;
-- global DL/UL limit;
-- DHT nodes and peer connections;
-- free disk space;
-- current/history download/upload rates.
+## 13. Settings
 
-Unsupported fields display `—` rather than fake values.
+### SETTINGS-001 — Metadata driven
 
-## 9. Internationalization
-
-### I18N-001 — English canonical
-
-Semantic keys and canonical source labels are English. Feature code requests semantic meaning rather than branching on locale.
-
-### I18N-002 — Maintained languages
-
-```text
-English
-简体中文 (zh-CN)
-```
-
-Other overlays may exist, but missing strings fall back to English.
-
-### I18N-003 — Resolution
-
-```text
-Explicit user selection
-→ navigator.languages/browser locale
-→ English fallback
-```
-
-### I18N-004 — qB terminology
-
-Official qBittorrent wording/translation is preferred for qB concepts. WeiG-specific terms are maintained locally.
-
-### I18N-005 — Client errors follow the same rule
-
-Compatibility/API layers must not contain Chinese-only canonical errors. Error semantics are English canonical with localized presentation where available.
-
-## 10. Typography
-
-Every string uses a semantic role:
-
-```text
-page-title, section-title, item-primary, body, data,
-label, description, meta, caption, table-header,
-table-cell, status, button, input, tooltip
-```
-
-Feature CSS must not hard-code one-off font sizes. Global size changes use the shared offset:
-
-```css
-Standard  0px
-Large    +2px
-XLarge   +3px
-```
-
-Current default: **Large (+2px)**. Font size and density remain independent.
-
-## 11. Search and input surfaces
-
-### INPUT-001 — Visible at rest
-
-Search/Input/Select must already be distinct from their panel before interaction.
-
-### INPUT-002 — Required states
-
-```text
-Default → Hover → Focus-visible/focus-within → Disabled
-```
-
-Hover may add a restrained cool edge and 1px lift. Focus uses a visible blue edge + soft focus ring. A near-black input disappearing into a black background is invalid.
-
-## 12. Settings
-
-### SETTINGS-001 — Metadata-driven
-
-qB Preferences render through metadata describing English title, translation, description, type, category, units/options and capability constraints.
+Only Preferences actually returned/supported by the connected qB instance are editable.
 
 ### SETTING-001 — Title → Description → Control
 
@@ -313,21 +408,134 @@ Description
 Control
 ```
 
-Long titles prefer ellipsis + Tooltip. Boolean uses Switch; path/text uses Input; enum uses Select; number uses numeric input. Desktop defaults to two columns; tablet/phone one column.
-
-Only settings returned/supported by the connected qB instance are editable.
+Boolean → Switch  
+Path/text → Input  
+Enum → Select  
+Number → numeric input
 
 ### SETTINGS-002 — Canonical card ownership
 
-All Settings features use the same card geometry and interaction primitives. qB preference cards use `W.Components.preferenceField()`; WeiG read-only deployment information uses `W.Components.readonlySettingField()`; WeiG interface preferences use the existing `settings-control` primitive.
+qB preferences use `W.Components.preferenceField()`; WeiG deployment metadata uses `W.Components.readonlySettingField()`; WeiG UI preferences use `settings-control`.
 
-A compatibility layer may own validation, confirmation or save semantics, but it does not own a second visual grid. In particular, Alternative WebUI may keep its host-path guard and self-disable redirect while still rendering through the same SettingCard template as `Web UI port`, `CSRF protection` and other qB preferences.
+Alternative WebUI retains special path/disable safety behavior but uses the same visual Settings primitives.
 
-Feature-local CSS whose only purpose is to reimplement SettingCard layout is invalid.
+### SETTINGS-003 — Client display timezone
 
-## 13. DataGrid and virtualization
+Display timezone appears as a WeiG UI preference, stored in browser state, not qB Preferences.
 
-Desktop Torrent list supports sorting, column resize, show/hide/order, persisted widths/order and server page sizes:
+## 14. Logs
+
+### LOGS-001 — Logs are data
+
+Desktop row:
+
+```text
+Log message | Time | Level
+```
+
+qB levels:
+
+```text
+1 Normal
+2 Info
+4 Warning
+8 Critical
+```
+
+### LOGS-002 — Incremental + bounded
+
+Initial request uses `last_known_id=-1`; incremental calls use the current **maximum ID**. Main browser log buffer retains at most **5000 newest rows**.
+
+### LOGS-003 — Newest first
+
+Display order is descending ID/timestamp:
+
+```text
+Newest
+Older
+Oldest
+```
+
+The newest row belongs at the top; incremental cursor remains the maximum ID.
+
+### LOGS-004 — Follow latest under newest-first
+
+- Follow ON keeps the viewport at top.
+- Manual downward scroll disables Follow.
+- With Follow OFF, inserting rows above compensates scroll so the user keeps reading the same historical content.
+- Search/severity changes are deliberate context changes and may reset top.
+
+### LOGS-005 — Canonical controls only
+
+Logs compose Search + FilterChip + CheckControl + Select + Button + StatusPill + DataPanel + VirtualList. They do not implement local Button/Select/Chip styling.
+
+## 15. Client time zone
+
+### TIME-001 — Display layer only
+
+qB timestamp is normalized to epoch, then rendered through `W.Time` / `Intl.DateTimeFormat`.
+
+```text
+qB epoch
+→ stable normalized timestamp
+→ selected IANA timezone
+→ localized visible text
+```
+
+Changing time zone does not modify qB/server time.
+
+### TIME-002 — Sources
+
+First option is **System / Browser**. Supported browsers may enumerate IANA zones with `Intl.supportedValuesOf('timeZone')`; older browsers use a common-zone fallback list.
+
+### TIME-003 — One state store
+
+The selected value is stored under `weigg.timeZone`. Logs and Settings read/write the same value.
+
+### TIME-004 — Source timestamp remains immutable
+
+Changing timezone changes visible text only; epoch and `<time datetime>` remain unchanged.
+
+## 16. Internationalization
+
+### I18N-001 — English canonical
+
+Feature code requests semantic keys instead of branching directly on locale.
+
+### I18N-002 — Maintained languages
+
+```text
+English
+简体中文 (zh-CN)
+```
+
+### I18N-003 — Resolution
+
+```text
+Explicit user selection
+→ browser locale
+→ English fallback
+```
+
+### I18N-004 — Official qB terminology
+
+Use official qB wording where possible; WeiG-specific concepts are maintained locally.
+
+## 17. Typography
+
+Every string uses a semantic role:
+
+```text
+page-title, section-title, item-primary, body, data,
+label, description, meta, caption, table-header,
+table-cell, status, button, input, tooltip
+```
+
+Feature CSS does not hard-code arbitrary font sizes.
+
+## 18. DataGrid and virtualization
+
+Desktop Torrent list supports sorting, resize, show/hide/order and server page sizes:
 
 ```text
 20 / 50 / 100 / 200
@@ -339,15 +547,15 @@ Desktop Torrent list supports sorting, column resize, show/hide/order, persisted
 API/cache item count != mounted DOM count
 ```
 
-Torrent, Files, Peers, Trackers, Logs and similar lists use VirtualList + overscan. Typical Torrent DOM should remain viewport-sized, not library-sized.
+Torrent, Files, Peers, Trackers, Logs and similar high-cardinality lists remain virtualized.
 
-### SELECT-001 — Multi-select respects virtualization
+### SELECT-ROW-001
 
-Keyboard/mouse multi-selection must operate on data/selection state, never by mounting hidden rows. `Ctrl/Cmd+A`, Escape and Delete remain global list behaviors when focus is not inside an editable control. Shift-range behavior must clearly define whether it applies to rendered rows or the full logical dataset.
+Multi-selection operates on data/selection state rather than mounting hidden rows.
 
-## 14. Tracker privacy
+## 19. Tracker privacy
 
-Display/filter keys normalize Tracker URLs before presentation:
+Tracker display keys strip query/fragment credentials:
 
 ```text
 https://tracker.example/announce?passkey=SECRET#x
@@ -355,148 +563,56 @@ https://tracker.example/announce?passkey=SECRET#x
 https://tracker.example/announce
 ```
 
-Raw values are used only when an API mutation requires them.
+Raw values are retained only when mutation APIs require them.
 
-## 15. Mobile
+## 20. Mobile
 
-Mobile uses Torrent cards, bottom application navigation, Drawer/Sheet filters and touch-first action surfaces. Critical targets are approximately 44×44px or larger. Primary validation widths: 320, 375, 390, 430 and 768px.
+Mobile uses Torrent cards, bottom navigation, Drawer/Sheet filters and touch-first actions. Critical targets are roughly 44×44px or larger.
 
-Desktop Status Dock may be replaced by route-appropriate mobile surfaces rather than compressed into an unreadable strip.
-
-## 16. Canonical components
-
-One implementation per primitive:
+Validation widths include:
 
 ```text
-Button / IconButton / Tooltip / Dialog
-Drawer / Action Sheet / Input / Search / Select / Switch
-Tabs / Menu / Badge / Status / Card / Panel
-DataGrid / Pagination / VirtualList
-Settings Card / Filter Shelf / Facet Popover
-Connection Popover / Transfer Dock / Transfer Limit Dialog
+320
+375
+390
+430
+768
 ```
 
-Semantic ownership baseline:
+A custom Select becomes a mobile-safe floating/sheet-like surface rather than an unreadable desktop popup.
+
+## 21. Motion and performance
+
+Prefer static gradients, borders, transform and opacity. Avoid:
 
 ```text
-Settings        → SettingCard / settings-control
-Torrent data    → DataGrid / VirtualList
-Logs            → DataPage / DataPanel / VirtualList
-Dialogs         → dialog + surface--modal
-Torrent state   → status-pill
-Global state    → Status / Transfer Dock
+per-row backdrop filters
+persistent glow animation
+full-list rebuild animations
+hidden chart work
+permanent brand orbit
+continuous random spark generation
 ```
 
-## 17. Motion and performance
+Ambient motion is short, sparse and stopped when not visible.
 
-Prefer static gradients, borders, transform and opacity. Avoid per-row backdrop filters, persistent glow animation, full-list rebuild animations and continuous chart work while hidden. Respect `prefers-reduced-motion`.
+## 22. Cache identity
 
-## 18. Definition of success
+HTML declares no-store/no-cache metadata. Local CSS/JS direct and lazy assets are addressed by one deployment Git SHA through `buildAssetUrl()`.
 
-The UI is successful when it feels materially layered without being noisy; search/inputs are obvious; Sidebar is calm; zero-result pages are compact; polling never throws the user back to the top; global transfer controls are reachable from the dock; Settings read naturally top-to-bottom; English and Simplified Chinese both feel intentional; mobile remains touch-first; and thousands of Torrents do not become thousands of DOM nodes.
+File lineage names (`v022`, `v030`, `v036`) do not define cache identity.
 
-## 19. v0.3.2 Canonical DataPage / DataPanel
+## 23. Definition of success
 
-### DATA-PAGE-001 — One data-surface language
+The design succeeds when:
 
-Torrent, Logs, Search results, RSS lists, Files, Peers and Trackers should converge on:
-
-```text
-DataPage
-├─ Page Header
-├─ Context / Toolbar
-└─ DataPanel
-   ├─ Column Header (when tabular)
-   ├─ Virtualized viewport
-   ├─ Empty / Error state
-   └─ Footer / status
-```
-
-The feature may omit irrelevant rows, but it must reuse shared surface, spacing, focus and responsive contracts.
-
-### DATA-PAGE-002 — Remaining height belongs to primary data
-
-On desktop, a primary data page normally uses a grid with `auto minmax(0, 1fr)`. The DataPanel uses `min-height: 0` and consumes the safe remainder of the workspace. A fixed `max-height: 62vh` is not a valid default for a primary data viewport surrounded by unused space.
-
-### DATA-PAGE-003 — Compact / Auto / Max
-
-A primary DataPanel may expose:
-
-```text
-Compact  intentionally reduced working area
-Auto     fill remaining workspace (default)
-Max      hide nonessential page chrome and maximize data area
-```
-
-Window constraints always override a stored preference; no mode may overflow the usable viewport.
-
-### DATA-PAGE-004 — Feature-local virtualization ownership
-
-Torrent and Logs do not share one feature-owned VirtualList reference. Each data viewport owns its scroll state and virtualization instance.
-
-### LOGS-001 — Logs are data, not a debug box
-
-The canonical desktop row is:
-
-```text
-Log message | Time | Level
-```
-
-qB numeric levels are presented semantically:
-
-```text
-1 Normal
-2 Info
-4 Warning
-8 Critical
-```
-
-Normal/Info remain quiet; Warning/Critical receive restrained semantic emphasis.
-
-### LOGS-002 — Incremental and bounded
-
-Initial load uses `last_known_id=-1`; later refreshes request only rows newer than the current maximum id. Browser history is bounded to 5000 retained main-log rows. Polling runs only while the Logs route is active and slows when the document is hidden.
-
-### LOGS-003 — Follow latest is explicit
-
-Follow latest is a visible state. When disabled, incremental polling preserves the user's manual viewport. Search or severity changes are deliberate context changes and may reset the Logs viewport.
-
-### LOGS-004 — Mobile
-
-The three-column desktop row becomes a two-line mobile row: message first, time + level second. Auto / Compact / Max remains usable in the mobile shell without forcing horizontal table compression.
-
-## 20. v0.3.5 Build / cache identity
-
-### CACHE-001 — HTML is the fresh bootstrap
-
-`public/login.html` and `private/index.html` declare no-store/no-cache metadata and production deployment must preserve a no-store HTTP response for HTML. A CDN/reverse proxy must not override that contract with a cacheable HTML response.
-
-### CACHE-002 — One build SHA
-
-A deployed private page carries exactly one build identity:
-
-```html
-<meta name="weigg-build-sha" content="<40-character Git SHA>">
-```
-
-The product version (`VERSION`) describes the release; the Git SHA identifies exact deployed bytes. They are deliberately separate.
-
-### CACHE-003 — Direct and lazy assets share the SHA
-
-All local CSS/JS referenced by HTML use `?v=<Git SHA>`. Lazy runtime layers use `buildAssetUrl()` and the same HTML build SHA. Feature/version loaders must not carry their own `?v=0.x.y` revision.
-
-### CACHE-004 — Deployment identity is inspectable
-
-An installed payload contains:
-
-```text
-VERSION
-GIT_SHA
-private/weigg-install.json
-```
-
-`weigg-install.json` records `version`, `gitSha`, qB-visible path, host path and other installer metadata when known.
-
-### CACHE-005 — Cache safety is tested, not assumed
-
-Static tests reject semver asset cache busters and verify SHA injection. Browser tests verify the actual UI after the runtime layers load. Real deployment still checks final response headers at the public hostname because a proxy/CDN can alter server cache policy outside the WebUI repository.
+- surfaces feel layered but calm;
+- every Select/Button/Chip/Card looks like one product;
+- the logo occasionally feels alive without demanding attention;
+- Logs open with newest information first;
+- users can choose how timestamps are displayed without touching the server;
+- Page 2 → Detail → Back/Esc returns to Page 2 and the prior viewport;
+- polling never fights the user;
+- English and Simplified Chinese both feel intentional;
+- mobile remains touch-first;
+- thousands of Torrents do not become thousands of DOM nodes.
