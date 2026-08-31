@@ -14,7 +14,7 @@
     if(document.querySelector('link[data-weigg-layer="brand-031"]'))return;
     var link=document.createElement('link');
     link.rel='stylesheet';
-    link.href='css/brand-v031.css?v=0.3.1-brand1';
+    link.href=W.buildAssetUrl?W.buildAssetUrl('css/brand-v031.css'):'css/brand-v031.css';
     link.dataset.weiggLayer='brand-031';
     document.head.appendChild(link);
   }
@@ -85,7 +85,7 @@
     if(mark){
       mark.textContent='';
       mark.style.borderRadius='50%';
-      mark.style.overflow='hidden';
+      mark.style.overflow='visible';
       mark.style.padding='2px';
       var img=document.createElement('img');
       img.crossOrigin='anonymous';
