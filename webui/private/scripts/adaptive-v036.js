@@ -2,6 +2,7 @@
   'use strict';
   var W=global.WeiG,C=W&&W.Components;
   if(!W||!C)return;
+  function tr(key,fallback,vars){return W.V036I18n&&W.V036I18n.t?W.V036I18n.t(key,vars):fallback;}
 
   function ensureAdaptiveCssLast(){
     var link=document.querySelector('link[href*="mobile-v036.css"]');
@@ -68,23 +69,24 @@
     for(var i=0;i<units.length;i++){if(n>=units[i][1]||units[i][1]===1)return roundSignificant(n/units[i][1],3)+' '+units[i][0];}
     return '0 B';
   }
-  function storageTone(bytes){var n=Number(bytes)||0;if(n>0&&n<5*1073741824)return 'danger';if(n>0&&n<20*1073741824)return 'warning';return 'normal';}
+  function localizeStorage(node){
+    if(!node)return;var label=node.querySelector('.status-storage__label'),value=node.querySelector('strong'),shown=value?value.textContent:'—';if(label)label.textContent=tr('v036.storage.free','Free');node.title=tr('v036.storage.tooltip','Free space on the filesystem containing qBittorrent’s default save path: '+shown,{value:shown});
+  }
   function installStorageStatus(){
     var bar=document.querySelector('.statusbar');if(!bar)return null;
     var node=document.getElementById('status-free-space');
     if(!node){
-      node=document.createElement('span');node.id='status-free-space';node.className='status-storage';node.title='Free space on qBittorrent default save path';
+      node=document.createElement('span');node.id='status-free-space';node.className='status-storage';node.dataset.tone='neutral';
       var icon=document.createElement('span');icon.className='status-storage__icon';icon.textContent='◫';icon.setAttribute('aria-hidden','true');
-      var label=document.createElement('span');label.className='status-storage__label';label.textContent='Free';
+      var label=document.createElement('span');label.className='status-storage__label';
       var value=document.createElement('strong');value.textContent='—';
       node.append(icon,label,value);
     }
     var end=Array.from(bar.children).find(function(child){return child.classList&&child.classList.contains('statusbar__end');})||null;
-    if(node.parentElement!==bar||(end&&node.nextSibling!==end))bar.insertBefore(node,end);
-    return node;
+    if(node.parentElement!==bar||(end&&node.nextSibling!==end))bar.insertBefore(node,end);localizeStorage(node);return node;
   }
   function paintStorage(bytes){
-    var node=installStorageStatus();if(!node)return;lastFree=Number(bytes);node.hidden=false;var strong=node.querySelector('strong');if(strong)strong.textContent=formatFreeSpace(lastFree);node.dataset.tone=storageTone(lastFree);node.title='qBittorrent default save filesystem free space: '+formatFreeSpace(lastFree);
+    var node=installStorageStatus();if(!node)return;lastFree=Number(bytes);node.hidden=false;var strong=node.querySelector('strong');if(strong)strong.textContent=formatFreeSpace(lastFree);localizeStorage(node);
   }
   async function refreshStorage(){
     try{
@@ -102,6 +104,7 @@
   function init(){ensureAdaptiveCssLast();syncTorrentRowHeight();observeTorrentMeta();startStorage();setTimeout(function(){syncLateLayers();refreshStorage();},900);setTimeout(syncLateLayers,1800);setTimeout(syncLateLayers,2800);}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
   document.addEventListener('visibilitychange',function(){if(!document.hidden){syncLateLayers();refreshStorage();}});
+  global.addEventListener('weigg:languagechange',function(){localizeStorage(document.getElementById('status-free-space'));});
 
   W.MobileAdaptive={formatFreeSpace:formatFreeSpace,mobileRowHeight:mobileRowHeight,fitMobileMeta:fitMobileMeta,refreshStorage:refreshStorage};
 })(window);
