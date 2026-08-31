@@ -9,6 +9,19 @@
     if(link&&link.parentNode===document.head&&link!==document.head.lastElementChild)document.head.appendChild(link);
   }
 
+  /* SETTING-UNIT-002 — load the verified display-conversion layer after v036's base metadata wrapper. */
+  var advancedLoadTimer=null;
+  function ensureAdvancedRuntime(){
+    if(W.AdvancedSettingsV036||document.querySelector('script[data-weigg-layer="advanced-036"]'))return;
+    if(document.documentElement.dataset.v036!=='1'){
+      clearTimeout(advancedLoadTimer);advancedLoadTimer=setTimeout(ensureAdvancedRuntime,35);return;
+    }
+    var script=document.createElement('script');script.async=false;script.dataset.weiggLayer='advanced-036';script.src=W.buildAssetUrl?W.buildAssetUrl('scripts/advanced-v036.js'):'scripts/advanced-v036.js';
+    script.onload=function(){var active=document.querySelector('#settings-tabs [data-settings-tab="advanced"].is-active');if(active)active.click();};
+    document.head.appendChild(script);
+  }
+  ensureAdvancedRuntime();
+
   /* STATUS-SEMANTIC-001 — keep one StatusPill primitive, only refine semantic tones. */
   var baseState=C.state;
   var toneByState={
@@ -116,8 +129,8 @@
   }
   function startStorage(){clearInterval(storageTimer);installStorageStatus();refreshStorage();storageTimer=setInterval(function(){if(!document.hidden)refreshStorage();},30000);}
 
-  function syncLateLayers(){ensureAdaptiveCssLast();installStorageStatus();syncTorrentRowHeight();observeTorrentMeta();fitVisibleMobileMeta();}
-  function init(){ensureAdaptiveCssLast();syncTorrentRowHeight();observeTorrentMeta();startStorage();setTimeout(function(){syncLateLayers();refreshStorage();},900);setTimeout(syncLateLayers,1800);setTimeout(syncLateLayers,2800);}
+  function syncLateLayers(){ensureAdaptiveCssLast();ensureAdvancedRuntime();installStorageStatus();syncTorrentRowHeight();observeTorrentMeta();fitVisibleMobileMeta();}
+  function init(){ensureAdaptiveCssLast();ensureAdvancedRuntime();syncTorrentRowHeight();observeTorrentMeta();startStorage();setTimeout(function(){syncLateLayers();refreshStorage();},900);setTimeout(syncLateLayers,1800);setTimeout(syncLateLayers,2800);}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
   document.addEventListener('visibilitychange',function(){if(!document.hidden){syncLateLayers();refreshStorage();}});
   global.addEventListener('weigg:languagechange',function(){localizeStorage(document.getElementById('status-free-space'));});
