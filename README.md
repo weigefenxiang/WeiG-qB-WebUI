@@ -2,9 +2,43 @@
 
 A premium, modular and high-performance Alternate WebUI for qBittorrent.
 
-Current version: **0.3.2**  
+Current version: **0.3.3**  
 Compatibility floor: **qBittorrent 4.1.9**  
 Compatibility target: **qBittorrent 4.1.x → current 5.x**, using capability-based progressive enhancement.
+
+## v0.3.3 — Cross-version Logs browser regression gate
+
+v0.3.3 strengthens the v0.3.2 Logs work with an actual Chromium/Playwright browser regression instead of relying only on API-contract fixtures and JavaScript syntax checks.
+
+The browser gate serves the real `webui/private` runtime against two deterministic qB WebAPI fixtures:
+
+```text
+qBittorrent 4.1.9.1 / WebAPI 2.2.1 → legacy millisecond log timestamps
+qBittorrent 5.2.0   / WebAPI 2.15.1 → modern second log timestamps
+```
+
+Primary viewport coverage:
+
+```text
+390 × 844   mobile
+1366 × 768  compact desktop
+1920 × 1080 desktop
+```
+
+The gate validates the user-visible Logs route through a real browser:
+
+- cross-version timestamp normalization reaches the same valid time range;
+- adaptive DataPanel has no horizontal overflow and keeps useful height;
+- **Auto / Compact / Max** sizing changes the real layout as intended;
+- local log search narrows results correctly;
+- severity filtering leaves only the selected semantic level;
+- `last_known_id` incremental polling appends new rows;
+- **Follow latest OFF** preserves a manually selected viewport while new rows arrive;
+- browser console/page errors are treated as failures.
+
+This is a browser fixture certification layer, not a claim that a remote production qB instance has been interactively tested. Real-server certification remains separate and must never be inferred from fixture PASS.
+
+The v0.3.3 release changes validation/version metadata only; the shipped v0.3.2 Logs runtime assets are intentionally unchanged and retain their `?v=0.3.2` asset revision.
 
 ## v0.3.2 — Cross-version Logs + Adaptive DataPanel
 
@@ -279,15 +313,17 @@ Runtime is plain HTML/CSS/JavaScript without a runtime application framework.
 npm test
 ```
 
-The suite includes syntax/smoke checks plus `tests/compat-v030.mjs` for 4.1.9.1 / mature 4.x / 5.2.0 API semantics and `tests/log-compat-v032.mjs` for Logs capability, timestamp normalization and incremental `last_known_id` behavior.
+The static suite includes syntax/smoke checks, `tests/compat-v030.mjs` for 4.1.9.1 / mature 4.x / 5.2.0 API semantics, and `tests/log-compat-v032.mjs` for Logs capability, timestamp normalization and incremental `last_known_id` behavior.
+
+CI additionally runs `tests/browser-logs-v033.mjs` in headless Chromium. That browser gate exercises the actual WebUI runtime with qB 4.1.9.1 and qB 5.2.0 fixtures across mobile and desktop viewport classes.
 
 Documentation authority:
 
 - `DESIGN.md` — visual, interaction, typography, navigation, i18n, empty-state, Transfer Dock and DataPanel rules.
 - `docs/001.项目总方案.md` — product plan and engineering invariants.
-- `docs/002.兼容与实现状态.md` — compatibility matrix and current live/automated test state.
+- `docs/002.兼容与实现状态.md` — compatibility matrix and current live/automated status.
 - `docs/003.项目架构.md` — repository tree, runtime layers and ownership boundaries.
 
 ## Certification status
 
-`0.3.2` is the current integrated code baseline. Repository CI and compatibility fixtures can validate code contracts, but stable release certification still requires live regression on both release-blocking endpoints, including the 4.1.9 and 5.2 Logs UI, timestamp display, incremental refresh and Auto/Compact/Max resizing. A fixture PASS must never be reported as a live PASS.
+`0.3.3` adds the cross-version Chromium browser gate on top of the integrated v0.3.2 runtime. Repository CI, API-contract fixtures and browser fixtures can certify deterministic code/UI behavior, but stable real-server certification still requires interactive regression on the release-blocking qBittorrent **4.1.9.1** and **5.2.0** instances. A browser fixture PASS must never be reported as a production/live PASS.
