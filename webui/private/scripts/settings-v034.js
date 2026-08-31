@@ -39,6 +39,14 @@
   function mark(card){card.dataset[MARK]='1';return card;}
   function clearInjected(group){group.querySelectorAll('[data-v035-alt="1"]').forEach(function(node){node.remove();});}
   function readonly(key,title,description,val){return mark(W.Components.readonlySettingField(key,title,description,val));}
+  function preference(key,val,onChange,title,description){
+    var card=mark(W.Components.preferenceField(key,val,onChange,title));
+    var strong=card.querySelector('.settings-row__copy strong'),small=card.querySelector('.settings-row__copy small');
+    if(strong){strong.textContent=title;strong.title=title;}
+    if(small)small.textContent=description;
+    card.dataset.settingSearch=(title+' '+description+' '+key).toLowerCase();
+    return card;
+  }
   function renderUnsupported(group){group.appendChild(readonly('alternative_webui_support',t('v034.alt.title'),t('v034.alt.unsupported'),t('v034.alt.unavailable')));}
   function renderGroup(){
     var root=document.getElementById('settings-content');if(!root||!isWebUiTab())return;
@@ -46,8 +54,8 @@
     clearInjected(group);
     if(!state.prefs||!hasOwn(state.prefs,'alternative_webui_enabled')||!hasOwn(state.prefs,'alternative_webui_path')){renderUnsupported(group);return;}
 
-    var enabled=mark(W.Components.preferenceField('alternative_webui_enabled',!!value('alternative_webui_enabled'),function(key,val){setDraft(key,val);},t('v034.alt.enabled')));
-    var path=mark(W.Components.preferenceField('alternative_webui_path',String(value('alternative_webui_path')||''),function(key,val){setDraft(key,String(val||'').trim());},t('v034.alt.qbPath')));
+    var enabled=preference('alternative_webui_enabled',!!value('alternative_webui_enabled'),function(key,val){setDraft(key,val);},t('v034.alt.enabled'),t('v034.alt.enabledDesc'));
+    var path=preference('alternative_webui_path',String(value('alternative_webui_path')||''),function(key,val){setDraft(key,String(val||'').trim());},t('v034.alt.qbPath'),t('v034.alt.qbPathDesc'));
     group.append(enabled,path);
 
     var m=state.metadata||{};
