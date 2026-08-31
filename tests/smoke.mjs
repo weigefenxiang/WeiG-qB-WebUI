@@ -13,6 +13,7 @@ const required = [
   'webui/private/css/v022.css',
   'webui/private/css/v030.css',
   'webui/private/scripts/i18n.js',
+  'webui/private/scripts/i18n-v030.js',
   'webui/private/scripts/core.js',
   'webui/private/scripts/settings-schema.js',
   'webui/private/scripts/settings-translations.js',
@@ -64,6 +65,10 @@ const i18n = fs.readFileSync('webui/private/scripts/i18n.js', 'utf8');
 for (const token of ["'en':EN","'zh-CN'",'browserLocale','unsupported locales fall back to English']) {
   if (!i18n.includes(token)) throw new Error(`i18n invariant missing: ${token}`);
 }
+const i18n030 = fs.readFileSync('webui/private/scripts/i18n-v030.js','utf8');
+for (const token of ["'v030.limit.download':'Global download limit'","'v030.limit.download':'全局下载限速'","'v030.transfer.title':'Transfer & session'","'v030.transfer.title':'传输与会话'",'W.V030I18n']) {
+  if (!i18n030.includes(token)) throw new Error(`v0.3 translation overlay missing: ${token}`);
+}
 const schema = fs.readFileSync('webui/private/scripts/settings-schema.js', 'utf8');
 for (const token of ['auto_tmm_enabled','save_path','web_ui_port','humanize','pref.generic.desc']) {
   if (!schema.includes(token)) throw new Error(`Settings schema invariant missing: ${token}`);
@@ -93,7 +98,7 @@ for (const token of ['normalizeTracker','VirtualList','DataGrid','fontSize','ptT
 }
 
 const components = fs.readFileSync('webui/private/scripts/components.js','utf8');
-for (const token of ['SettingsSchema.describe','setting-card','switch-control',"'state.downloading'",'v022.css?v=0.3.0','v030.css?v=0.3.0','spatial-v022.js?v=0.3.0','v030.js?v=0.3.0']) {
+for (const token of ['SettingsSchema.describe','setting-card','switch-control',"'state.downloading'",'v022.css?v=0.3.0','v030.css?v=0.3.0','spatial-v022.js?v=0.3.0','i18n-v030.js?v=0.3.0','v030.js?v=0.3.0','i18.onload=loadV030']) {
   if (!components.includes(token)) throw new Error(`Component/runtime loader token missing: ${token}`);
 }
 
@@ -118,13 +123,14 @@ for (const token of ['installBranding','Wei.G.ico','borderRadius=\'50%\'','insta
   if (!spatial.includes(token)) throw new Error(`Spatial/branding controller missing: ${token}`);
 }
 const runtime = fs.readFileSync('webui/private/scripts/v030.js','utf8');
-for (const token of ['installScrollResetBoundaries','syncEmptyState','installDock','openSpeedDialog','toggleAltSpeed','openTransferDialog','MAX_SAMPLES=900','getMainData','weigg:transfer','installRenderedMultiSelect']) {
+for (const token of ['installScrollResetBoundaries','syncEmptyState','installDock','openSpeedDialog','toggleAltSpeed','openTransferDialog','MAX_SAMPLES=900','getMainData','weigg:transfer','installRenderedMultiSelect','W.V030I18n']) {
   if (!runtime.includes(token)) throw new Error(`v0.3 runtime controller missing: ${token}`);
 }
+if (runtime.includes("locale()==='zh-CN'")) throw new Error('v0.3 feature runtime must not branch directly on language');
 if (/https?:\/\//.test(index + css + v021 + v022 + v030)) throw new Error('Core runtime markup/CSS must not depend on external assets');
 
 const architecture = fs.readFileSync('docs/003.项目架构.md','utf8');
-for (const token of ['QBClient','spatial-v022.js','Data count != DOM count','ux-v021.js','English','简体中文']) {
+for (const token of ['QBClient','spatial-v022.js','v030.js','v030.css','Data count != DOM count','__weiggVirtualScrollTop','MAX 900','English','简体中文']) {
   if (!architecture.includes(token)) throw new Error(`Architecture documentation missing: ${token}`);
 }
 
