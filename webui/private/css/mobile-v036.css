@@ -22,18 +22,18 @@ html[data-density=comfortable]{--mobile-torrent-row-h:126px}
 .status-pill[data-tone=checking]{color:#ffe09b;background:linear-gradient(180deg,rgba(255,198,95,.13),rgba(255,198,95,.06));border-color:rgba(255,198,95,.21)}
 
 @media(max-width:820px){
-  /* MOBILE-LAYOUT-001: the shell owns viewport subtraction; pages consume the remaining track. */
+  /* MOBILE-LAYOUT-001: the shell owns viewport subtraction; pages consume only their grid track. */
   .app-shell{min-height:0}
-  .workspace{min-height:0;height:100%;overflow:hidden;padding:2px 1px 0;overscroll-behavior:contain}
-  .view{min-height:0;height:100%}
-  .view.is-active{display:flex;flex-direction:column;min-height:0}
+  .workspace{display:flex;flex-direction:column;min-height:0;height:auto;overflow:hidden;padding:2px 1px 0;overscroll-behavior:contain}
+  .view{min-height:0;height:auto}
+  .view.is-active{display:flex;flex:1 1 0;flex-direction:column;min-height:0;overflow:hidden}
 
   #list-view>.workspace__header,#list-view>.stats-grid{flex:0 0 auto}
   #list-view>.workspace__header{padding:2px 1px 8px}
   #list-view>.stats-grid{margin-bottom:7px}
-  #list-view>.torrent-panel{display:flex;flex:1 1 auto;flex-direction:column;min-height:0;overflow:hidden}
+  #list-view>.torrent-panel{display:flex;flex:1 1 0;flex-direction:column;min-height:0;max-height:100%;overflow:hidden}
   #list-view .grid-toolbar,#list-view .pager{flex:0 0 auto}
-  #torrent-list{flex:1 1 auto;height:auto!important;min-height:0!important;max-height:none!important;overscroll-behavior:contain}
+  #torrent-list{flex:1 1 0;height:auto!important;min-height:0!important;max-height:none!important;overscroll-behavior:contain}
   #list-view .empty-state,#list-view .loading-state{position:absolute;inset:54px 0 54px;z-index:3;min-height:0;background:linear-gradient(180deg,rgba(8,16,29,.88),rgba(8,16,29,.74));backdrop-filter:blur(7px)}
   #list-view .empty-state.is-hidden,#list-view .loading-state.is-hidden{display:none!important}
 
@@ -79,9 +79,9 @@ html[data-density=comfortable]{--mobile-torrent-row-h:126px}
   #search-view>.workspace__header,#rss-view>.workspace__header,#logs-view>.workspace__header{flex:0 0 auto;padding:2px 1px 8px}
   #search-view>.workspace__header .eyebrow,#rss-view>.workspace__header .eyebrow,#logs-view>.workspace__header .eyebrow{display:none}
   #search-view>.workspace__header h1,#rss-view>.workspace__header h1,#logs-view>.workspace__header h1{margin:2px 0}
-  #search-view>.tool-page,#rss-view>.tool-page,#logs-view>.tool-page{display:flex;flex:1 1 auto;flex-direction:column;min-height:0!important;padding:10px;overflow:hidden}
+  #search-view>.tool-page,#rss-view>.tool-page,#logs-view>.tool-page{display:flex;flex:1 1 0;flex-direction:column;min-height:0!important;padding:10px;overflow:hidden}
   #search-view .inline-form,#rss-view .inline-form{flex:0 0 auto;margin-bottom:8px;gap:6px}
-  #search-view .large-tool-list,#rss-view .large-tool-list,#logs-view .large-tool-list{flex:1 1 auto;min-height:0!important;max-height:none!important;overflow:auto;overscroll-behavior:contain}
+  #search-view .large-tool-list,#rss-view .large-tool-list,#logs-view .large-tool-list{flex:1 1 0;min-height:0!important;max-height:none!important;overflow:auto;overscroll-behavior:contain}
 
   /* Status dock keeps useful download-volume capacity visible on phones. */
   .statusbar{overflow:hidden;gap:8px;padding-inline:9px}
