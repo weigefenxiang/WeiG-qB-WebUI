@@ -16,6 +16,7 @@ jobs:
         run: |
           node --check tests/browser-logs-v033.mjs
           node --check tests/browser-settings-v034.mjs
+          node --check tests/browser-ui-v036.mjs
       - name: Linux installer syntax
         run: sh -n installers/install.sh
       - name: Live regression script syntax
@@ -42,3 +43,5 @@ jobs:
         run: node tests/browser-logs-v033.mjs
       - name: Cross-version Alternative WebUI settings regression
         run: node tests/browser-settings-v034.mjs
+      - name: Cross-version v0.3.6 interaction regression
+        run: node tests/browser-ui-v036.mjs
