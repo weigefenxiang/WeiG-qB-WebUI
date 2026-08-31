@@ -2,9 +2,37 @@
 
 A premium, modular and high-performance Alternate WebUI for qBittorrent.
 
-Current version: **0.3.5**  
+Current version: **0.3.6**  
 Compatibility floor: **qBittorrent 4.1.9**  
 Compatibility target: **qBittorrent 4.1.x → current 5.x**, using capability-based progressive enhancement.
+
+## v0.3.6 — Canonical interactions + context-safe navigation
+
+v0.3.6 consolidates shared interaction behavior instead of introducing new feature-local UI systems.
+
+The release adds one canonical custom Select primitive for progressively upgraded native selects, a reusable AmbientMark brand interaction with deterministic Reduced Motion behavior, one browser-timezone setting shared by Logs and Settings, and context-aware Torrent detail navigation.
+
+Torrent detail navigation now treats the list viewport as user state:
+
+```text
+Torrent list context
+  → open a visible Torrent
+  → Detail Back / Escape
+  → return to the same page and scroll viewport
+```
+
+The VirtualList ignores hidden-view teardown/layout transitions so a temporarily hidden Torrent list does not overwrite its remembered position with `0`. Detail-context restoration is bounded and only retries while the list is becoming measurable; it does not continuously fight later user scrolling.
+
+The v0.3.6 Chromium gate exercises qBittorrent **4.1.9.1 / 4.6.7 / 5.2.0** at **390×844 / 1366×768 / 1920×1080** and verifies:
+
+- canonical Select progressive enhancement;
+- AmbientMark structure, deterministic trigger and Reduced Motion disablement;
+- Detail Back placement and Escape navigation;
+- page + Torrent-list context restoration from an actually visible row;
+- no horizontal document overflow;
+- clean browser console/page-error state.
+
+Logs and Alternative WebUI browser regressions remain independent gates and run before the v0.3.6 interaction gate.
 
 ## v0.3.5 — Canonical Settings UI + Git SHA cache identity
 
@@ -345,7 +373,7 @@ List candidates:
 sh /tmp/weigg-qb-install.sh --list-containers
 ```
 
-After v0.3.5 installation/update, deployment identity is directly available:
+After v0.3.6 installation/update, deployment identity is directly available:
 
 ```sh
 cat /host/path/to/qbittorrent/config/weigg-qb-webui/VERSION
@@ -389,14 +417,15 @@ npm test
 
 The static suite includes syntax/smoke checks, `tests/compat-v030.mjs` for 4.1.9.1 / mature 4.x / 5.2.0 API semantics, `tests/log-compat-v032.mjs` for Logs capability/timestamp/incremental behavior, `tests/settings-v034.mjs` for Alternative WebUI/settings/install-metadata contracts, and `tests/cache-contract-v035.mjs` for HTML no-store + Git SHA asset identity.
 
-CI additionally runs two headless Chromium gates:
+CI additionally runs three headless Chromium gates:
 
 ```text
 tests/browser-logs-v033.mjs
 tests/browser-settings-v034.mjs
+tests/browser-ui-v036.mjs
 ```
 
-The v0.3.5 settings browser gate exercises the actual WebUI runtime with qB 4.1.9.1, qB 4.6.7 and qB 5.2.0 fixtures at three viewports. It verifies canonical SettingCard geometry, `/config/...` path writes, known host-path rejection, disable writes, Advanced duplicate suppression, install metadata including Git SHA, and browser console/page error cleanliness.
+The v0.3.6 browser gates exercise the actual WebUI runtime with qB 4.1.9.1, qB 4.6.7 and qB 5.2.0 fixtures at three viewports. They verify Logs compatibility, canonical Alternative WebUI SettingCard behavior, canonical Select/AmbientMark interaction, Detail Back/Escape list-context restoration, install metadata including Git SHA, and browser console/page-error cleanliness.
 
 Documentation authority:
 
@@ -408,4 +437,4 @@ Documentation authority:
 
 ## Certification status
 
-`0.3.5` unifies Alternative WebUI with the canonical Settings component system and adds deterministic Git-SHA asset identity on top of the v0.3.4 compatibility behavior. Repository CI, API-contract fixtures and browser fixtures can certify deterministic code/UI behavior, but stable real-server certification still requires interactive regression on the release-blocking qBittorrent **4.1.9.1** and **5.2.0** instances. A browser fixture PASS must never be reported as a production/live PASS.
+`0.3.6` adds canonical interaction primitives and context-safe Torrent detail navigation on top of the v0.3.5 Settings/cache contract and v0.3.4 Alternative WebUI compatibility behavior. Repository CI, API-contract fixtures and browser fixtures certify deterministic code/UI behavior, but stable real-server certification still requires interactive regression on the release-blocking qBittorrent **4.1.9.1** and **5.2.0** instances. A browser fixture PASS must never be reported as a production/live PASS.
