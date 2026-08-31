@@ -1,8 +1,7 @@
 (function(global){
   'use strict';
-  var W=global.WeiG;
-  if(!W||!W.util)return;
-  var U=W.util,T=W.t||function(k){return k;};
+  var W=global.WeiG,U=W.util,T=W.t||function(k){return k;};
+  var BRAND_ICON_URL='https://raw.githubusercontent.com/weigefenxiang/WeiG-OpenWrt-AutoBuild/main/site/wrt/Wei.G.ico';
 
   var FACETS=[
     {id:'tracker-section',nav:'tracker-nav',label:'sidebar.trackers'},
@@ -11,11 +10,77 @@
     {id:'tag-section',nav:'tag-nav',label:'sidebar.tags'}
   ];
 
-  function installBranding(){
-    var icon='https://raw.githubusercontent.com/weigefenxiang/WeiG-OpenWrt-AutoBuild/main/site/wrt/Wei.G.ico';
+  function installBrandStyles(){
+    if(document.querySelector('link[data-weigg-layer="brand-031"]'))return;
+    var link=document.createElement('link');
+    link.rel='stylesheet';
+    link.href='css/brand-v031.css?v=0.3.1-brand1';
+    link.dataset.weiggLayer='brand-031';
+    document.head.appendChild(link);
+  }
+
+  function ensureFavicon(){
     var favicon=document.querySelector('link[rel~="icon"]');
     if(!favicon){favicon=document.createElement('link');favicon.rel='icon';document.head.appendChild(favicon);}
-    favicon.type='image/png';favicon.href=icon;
+    favicon.type='image/png';
+    favicon.setAttribute('sizes','64x64');
+    return favicon;
+  }
+
+  function paintBrandFavicon(img){
+    var favicon=ensureFavicon();
+    try{
+      var canvas=document.createElement('canvas');
+      canvas.width=64;canvas.height=64;
+      var ctx=canvas.getContext('2d');
+      if(!ctx)throw new Error('Canvas unavailable');
+      ctx.clearRect(0,0,64,64);
+
+      ctx.save();
+      ctx.shadowColor='rgba(83,137,255,.52)';
+      ctx.shadowBlur=10;
+      var ring=ctx.createLinearGradient(8,8,56,56);
+      ring.addColorStop(0,'#38d6ff');
+      ring.addColorStop(.34,'#7297ff');
+      ring.addColorStop(.68,'#816fff');
+      ring.addColorStop(1,'#4f8cff');
+      ctx.fillStyle=ring;
+      ctx.beginPath();ctx.arc(32,32,29,0,Math.PI*2);ctx.fill();
+      ctx.restore();
+
+      ctx.fillStyle='#08111f';
+      ctx.beginPath();ctx.arc(32,32,25.5,0,Math.PI*2);ctx.fill();
+
+      ctx.save();
+      ctx.beginPath();ctx.arc(32,32,23.5,0,Math.PI*2);ctx.clip();
+      ctx.drawImage(img,8.5,8.5,47,47);
+      var gloss=ctx.createLinearGradient(13,10,48,54);
+      gloss.addColorStop(0,'rgba(255,255,255,.22)');
+      gloss.addColorStop(.34,'rgba(255,255,255,.045)');
+      gloss.addColorStop(.62,'rgba(255,255,255,0)');
+      gloss.addColorStop(1,'rgba(56,214,255,.07)');
+      ctx.fillStyle=gloss;ctx.fillRect(8,8,48,48);
+      ctx.restore();
+
+      ctx.lineWidth=1.35;
+      ctx.strokeStyle='rgba(226,236,255,.72)';
+      ctx.beginPath();ctx.arc(32,32,25.8,0,Math.PI*2);ctx.stroke();
+      favicon.href=canvas.toDataURL('image/png');
+    }catch(_e){favicon.href=BRAND_ICON_URL;}
+  }
+
+  function syncBrandCopy(){
+    var brand=U.$('brand-btn');if(!brand)return;
+    var label=T('app.home');
+    brand.setAttribute('aria-label',label);
+    brand.title=label;
+  }
+
+  function installBranding(){
+    var favicon=ensureFavicon();
+    favicon.href=BRAND_ICON_URL;
+    var back=U.$('back-btn');
+    if(back){back.textContent='';back.setAttribute('aria-hidden','true');back.tabIndex=-1;}
     var mark=document.querySelector('.brand__mark');
     if(mark){
       mark.textContent='';
@@ -23,10 +88,15 @@
       mark.style.overflow='hidden';
       mark.style.padding='2px';
       var img=document.createElement('img');
-      img.src=icon;img.alt='Wei.G';
-      img.style.display='block';img.style.width='100%';img.style.height='100%';img.style.objectFit='cover';img.style.borderRadius='50%';
+      img.crossOrigin='anonymous';
+      img.alt='Wei.G';
+      img.decoding='async';
+      img.addEventListener('load',function(){paintBrandFavicon(img);},{once:true});
+      img.addEventListener('error',function(){favicon.href=BRAND_ICON_URL;},{once:true});
+      img.src=BRAND_ICON_URL;
       mark.appendChild(img);
     }
+    syncBrandCopy();
   }
 
   function closeAllFacets(except){
@@ -218,12 +288,14 @@
       updateFacetTrigger(wrap,U.$(def.nav),def.label);
       var search=wrap.querySelector('.facet-search');if(search){search.placeholder=T('nav.search')+'…';search.setAttribute('aria-label',T('nav.search'));}
     });
+    syncBrandCopy();
     syncSettingsPresentation();
   }
 
   function init(){
     if(document.documentElement.dataset.spatialV022==='1')return;
     document.documentElement.dataset.spatialV022='1';
+    installBrandStyles();
     installBranding();
     installFilterShelf();
     installConnectionDock();
