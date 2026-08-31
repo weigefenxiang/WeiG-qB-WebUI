@@ -16,6 +16,8 @@ jobs:
         run: |
           mkdir -p release
           cp -a webui release/WeiG-qB-WebUI
+          find release/WeiG-qB-WebUI -type f \( -name '*.html' -o -name '*.js' -o -name '*.css' -o -name '*.json' -o -name 'GIT_SHA' \) -exec sed -i "s/__WEIGG_GIT_SHA__/${GITHUB_SHA}/g" {} +
+          printf '%s\n' "${GITHUB_SHA}" > release/WeiG-qB-WebUI/GIT_SHA
           cd release
           zip -r WeiG-qB-WebUI.zip WeiG-qB-WebUI
           sha256sum WeiG-qB-WebUI.zip > SHA256SUMS
