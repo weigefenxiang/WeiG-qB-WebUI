@@ -139,7 +139,7 @@ for (const token of ['installScrollResetBoundaries','syncEmptyState','installDoc
 }
 if (runtime.includes("locale()==='zh-CN'")) throw new Error('v0.3 feature runtime must not branch directly on language');
 const logsRuntime = fs.readFileSync('webui/private/scripts/logs-v032.js','utf8');
-for (const token of ['MAX_ITEMS=5000','lastId','fetchIncremental','state.virtual','logs-size-mode','Follow latest','last_known_id']) {
+for (const token of ['MAX_ITEMS=5000','lastId','fetchIncremental','state.virtual','logs-size-mode','Follow latest','client.logs(state.lastId)']) {
   if (!logsRuntime.includes(token)) throw new Error(`v0.3.2 Logs runtime missing: ${token}`);
 }
 if (/https?:\/\//.test(index + css + v021 + v022 + v030 + logs032)) throw new Error('Core runtime markup/CSS must not depend on external assets');
