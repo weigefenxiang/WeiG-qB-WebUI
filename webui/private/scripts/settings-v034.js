@@ -15,13 +15,6 @@
   function setDraft(key,val){state.draft[key]=val;cleanDraft();syncBadge();}
   function syncBadge(){var badge=document.querySelector('#alternative-webui-v034 .alt-webui-v034__badge');if(badge)badge.textContent=hasDraft()?t('v034.alt.pending'):t('v034.alt.current');}
 
-  function repairTagI18n(){
-    var tagAll=document.querySelector('#tag-nav [data-tag=""]');
-    if(!tagAll)return;
-    if(tagAll.getAttribute('data-i18n')!=='tag.all')tagAll.setAttribute('data-i18n','tag.all');
-    if(W.t)tagAll.textContent=W.t('tag.all');
-  }
-
   async function loadMetadata(){
     try{
       var res=await fetch('weigg-install.json',{cache:'no-store',credentials:'same-origin'});
@@ -153,7 +146,7 @@
       new MutationObserver(function(){if(isWebUiTab()&&!document.getElementById('alternative-webui-v034'))setTimeout(sync,0);if(isAdvancedTab())hideAdvancedDuplicates();}).observe(root,{childList:true});
     }
   }
-  function install(){repairTagI18n();installSaveBridge();installNavigationBridge();setTimeout(sync,0);}
+  function install(){installSaveBridge();installNavigationBridge();setTimeout(sync,0);}
   document.addEventListener('DOMContentLoaded',install);
   W.SettingsV034={sync:sync,saveAlternative:saveAlternative,state:state};
 })(window);
