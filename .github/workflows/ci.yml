@@ -12,8 +12,10 @@ jobs:
           node-version: 22
       - name: WebUI smoke and JavaScript syntax
         run: npm test
-      - name: Logs browser test syntax
-        run: node --check tests/browser-logs-v033.mjs
+      - name: Browser test syntax
+        run: |
+          node --check tests/browser-logs-v033.mjs
+          node --check tests/browser-settings-v034.mjs
       - name: Linux installer syntax
         run: sh -n installers/install.sh
       - name: Live regression script syntax
@@ -38,3 +40,5 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Cross-version Logs browser regression
         run: node tests/browser-logs-v033.mjs
+      - name: Cross-version Alternative WebUI settings regression
+        run: node tests/browser-settings-v034.mjs
