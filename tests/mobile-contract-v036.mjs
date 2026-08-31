@@ -30,6 +30,7 @@ const sandbox={
   setInterval:()=>1,
   clearInterval:()=>{},
   setTimeout:()=>1,
+  clearTimeout:()=>{},
   requestAnimationFrame:fn=>fn(),
   CustomEvent:function(){},
   document:{
@@ -53,6 +54,7 @@ sandbox.window={
   addEventListener(){},
   requestAnimationFrame:sandbox.requestAnimationFrame,
   setTimeout:sandbox.setTimeout,
+  clearTimeout:sandbox.clearTimeout,
   setInterval:sandbox.setInterval,
   clearInterval:sandbox.clearInterval
 };
