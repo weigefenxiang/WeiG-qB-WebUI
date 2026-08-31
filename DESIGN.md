@@ -1,7 +1,7 @@
 # WeiG qB WebUI — Design System
 
-Version: **1.5**  
-Status: **v0.3.2 adaptive data-surface baseline**  
+Version: **1.6**  
+Status: **v0.3.5 canonical component + cache identity baseline**  
 Theme: **Nebula Spatial Console**  
 Compatibility floor: **qBittorrent 4.1.9**
 
@@ -33,6 +33,8 @@ Functionality may be compared with qBittorrent WebUIs such as VueTorrent, but an
 14. Visual depth must improve clarity, not hide data or create continuous neon animation.
 15. Primary data-heavy pages use the canonical DataPage/DataPanel pattern instead of inventing feature-local fixed-height boxes.
 16. A primary data viewport must not use an arbitrary `max-height: 62vh` when the workspace can provide safe remaining height.
+17. **One semantic primitive has one canonical visual implementation.** A feature/version runtime may add behavior, but must not create a second Settings Card, DataGrid, Modal or Status system for the same semantic role.
+18. **HTML is a no-store bootstrap; local CSS/JS resource identity is the deployment Git SHA, not a product semver query.**
 
 ## 3. Spatial hierarchy
 
@@ -315,6 +317,14 @@ Long titles prefer ellipsis + Tooltip. Boolean uses Switch; path/text uses Input
 
 Only settings returned/supported by the connected qB instance are editable.
 
+### SETTINGS-002 — Canonical card ownership
+
+All Settings features use the same card geometry and interaction primitives. qB preference cards use `W.Components.preferenceField()`; WeiG read-only deployment information uses `W.Components.readonlySettingField()`; WeiG interface preferences use the existing `settings-control` primitive.
+
+A compatibility layer may own validation, confirmation or save semantics, but it does not own a second visual grid. In particular, Alternative WebUI may keep its host-path guard and self-disable redirect while still rendering through the same SettingCard template as `Web UI port`, `CSRF protection` and other qB preferences.
+
+Feature-local CSS whose only purpose is to reimplement SettingCard layout is invalid.
+
 ## 13. DataGrid and virtualization
 
 Desktop Torrent list supports sorting, column resize, show/hide/order, persisted widths/order and server page sizes:
@@ -364,6 +374,17 @@ Tabs / Menu / Badge / Status / Card / Panel
 DataGrid / Pagination / VirtualList
 Settings Card / Filter Shelf / Facet Popover
 Connection Popover / Transfer Dock / Transfer Limit Dialog
+```
+
+Semantic ownership baseline:
+
+```text
+Settings        → SettingCard / settings-control
+Torrent data    → DataGrid / VirtualList
+Logs            → DataPage / DataPanel / VirtualList
+Dialogs         → dialog + surface--modal
+Torrent state   → status-pill
+Global state    → Status / Transfer Dock
 ```
 
 ## 17. Motion and performance
@@ -443,3 +464,39 @@ Follow latest is a visible state. When disabled, incremental polling preserves t
 ### LOGS-004 — Mobile
 
 The three-column desktop row becomes a two-line mobile row: message first, time + level second. Auto / Compact / Max remains usable in the mobile shell without forcing horizontal table compression.
+
+## 20. v0.3.5 Build / cache identity
+
+### CACHE-001 — HTML is the fresh bootstrap
+
+`public/login.html` and `private/index.html` declare no-store/no-cache metadata and production deployment must preserve a no-store HTTP response for HTML. A CDN/reverse proxy must not override that contract with a cacheable HTML response.
+
+### CACHE-002 — One build SHA
+
+A deployed private page carries exactly one build identity:
+
+```html
+<meta name="weigg-build-sha" content="<40-character Git SHA>">
+```
+
+The product version (`VERSION`) describes the release; the Git SHA identifies exact deployed bytes. They are deliberately separate.
+
+### CACHE-003 — Direct and lazy assets share the SHA
+
+All local CSS/JS referenced by HTML use `?v=<Git SHA>`. Lazy runtime layers use `buildAssetUrl()` and the same HTML build SHA. Feature/version loaders must not carry their own `?v=0.x.y` revision.
+
+### CACHE-004 — Deployment identity is inspectable
+
+An installed payload contains:
+
+```text
+VERSION
+GIT_SHA
+private/weigg-install.json
+```
+
+`weigg-install.json` records `version`, `gitSha`, qB-visible path, host path and other installer metadata when known.
+
+### CACHE-005 — Cache safety is tested, not assumed
+
+Static tests reject semver asset cache busters and verify SHA injection. Browser tests verify the actual UI after the runtime layers load. Real deployment still checks final response headers at the public hostname because a proxy/CDN can alter server cache policy outside the WebUI repository.
