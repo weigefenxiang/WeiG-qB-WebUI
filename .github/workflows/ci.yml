@@ -19,6 +19,7 @@ jobs:
           node --check tests/browser-logs-v033.mjs
           node --check tests/browser-settings-v034.mjs
           node --check tests/browser-ui-v036.mjs
+          node --check tests/browser-mobile-v036.mjs
           node --check tests/compat-matrix-v036.mjs
       - name: Linux installer syntax
         run: sh -n installers/install.sh
@@ -48,3 +49,5 @@ jobs:
         run: node tests/browser-settings-v034.mjs
       - name: Full representative v0.3.6 interaction regression
         run: node tests/browser-ui-v036.mjs
+      - name: Mobile adaptive viewport and storage regression
+        run: node tests/browser-mobile-v036.mjs
