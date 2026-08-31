@@ -2,9 +2,48 @@
 
 A premium, modular and high-performance Alternate WebUI for qBittorrent.
 
-Current version: **0.3.3**  
+Current version: **0.3.4**  
 Compatibility floor: **qBittorrent 4.1.9**  
 Compatibility target: **qBittorrent 4.1.x → current 5.x**, using capability-based progressive enhancement.
+
+## v0.3.4 — Alternative WebUI Settings + Install Metadata
+
+v0.3.4 makes qBittorrent's own Alternative WebUI state visible and controllable from **Settings → Web UI** instead of silently omitting it.
+
+When qBittorrent actually returns the preferences, WeiG shows:
+
+```text
+Use Alternative WebUI
+qBittorrent WebUI path
+VPS / host path (when recorded by the installer)
+WeiG installed version
+container name (Docker installs)
+install/update timestamp
+```
+
+The compatibility rule is data-driven rather than major-version-driven: `alternative_webui_enabled` and `alternative_webui_path` are shown whenever they are present in `app/preferences`. This keeps the feature usable on the supported qBittorrent **4.1.9.1 / WebAPI 2.2.1** floor as well as **5.2.0 / WebAPI 2.15.1**.
+
+Docker paths are deliberately separated:
+
+```text
+VPS / host path
+/root/qbittorrent3/config/weigg-qb-webui
+        ↓ mounted as /config
+qBittorrent-visible path
+/config/weigg-qb-webui
+```
+
+Only the qBittorrent-visible path belongs in `alternative_webui_path`. The browser cannot infer the Docker host path from WebAPI, so Linux/Windows installers now write authenticated deployment metadata to `private/weigg-install.json`. The installed payload also includes `webui/VERSION`, making the deployed version directly verifiable from SSH/filesystem.
+
+Safety behavior:
+
+- writing a known VPS host path into the Docker qB path field is blocked;
+- changing the Alternative WebUI path requires confirmation because a wrong path can make the UI unreachable;
+- disabling Alternative WebUI requires an explicit confirmation;
+- after a successful disable, WeiG redirects to `/` so qBittorrent's built-in WebUI can take over;
+- the two Alternative WebUI preferences are hidden from the generic Advanced list once the dedicated settings surface owns them.
+
+CI adds a real Chromium regression for both qB 4.1.9.1 and qB 5.2.0 fixtures. It checks visible state/path metadata, host-path rejection, valid path writes, disable writes, duplicate suppression, responsive geometry, and browser error cleanliness.
 
 ## v0.3.3 — Cross-version Logs browser regression gate
 
@@ -150,11 +189,11 @@ Automated compatibility fixtures exercise three tiers:
 
 | Tier | Fixture | Expected behavior |
 | --- | --- | --- |
-| Legacy floor | 4.1.9.1 / WebAPI 2.2.1 | resume/pause, global limits, alt-speed, **Logs**, no Tags/private flag |
-| Mature 4.x | 4.6.x / WebAPI 2.8.3 | Tags/filter capabilities, Logs, still no exact private flag |
-| Modern target | 5.2.0 / WebAPI 2.14+ | start/stop, Tags, private flag, Logs, modern capability foundations |
+| Legacy floor | 4.1.9.1 / WebAPI 2.2.1 | resume/pause, global limits, alt-speed, Logs, Alternative WebUI prefs when returned, no Tags/private flag |
+| Mature 4.x | 4.6.x / WebAPI 2.8.3 | Tags/filter capabilities, Logs, Alternative WebUI prefs, still no exact private flag |
+| Modern target | 5.2.0 / WebAPI 2.15.1 | start/stop, Tags, private flag, Logs, Alternative WebUI prefs, modern capability foundations |
 
-Logs are native across the supported qB range; WeiG adds cross-version timestamp normalization plus search/filter/follow/adaptive-layout enhancements. Static fixtures are not a substitute for real-server certification. The release-blocking live targets remain qBittorrent **4.1.9.1** and **5.2.0**.
+Logs are native across the supported qB range; WeiG adds cross-version timestamp normalization plus search/filter/follow/adaptive-layout enhancements. Alternative WebUI settings are exposed from the real Preferences payload instead of guessed from qB major version. Static/browser fixtures are not substitutes for real-server certification. The release-blocking live targets remain qBittorrent **4.1.9.1** and **5.2.0**.
 
 ## VueTorrent gap review
 
@@ -207,6 +246,8 @@ qBittorrent terminology prefers official qB WebUI translations when available. F
 - Private/PT uses exact private metadata when available and explicit Tracker-domain rules on old qB.
 - Torrent actions, detail Files/Trackers/Peers/HTTP Sources, metadata-driven Settings, Search/RSS/Logs capability gating.
 - Logs use a separate route-local VirtualList and incremental stream so they do not overwrite Torrent viewport state.
+- Alternative WebUI enabled/path preferences are first-class Web UI settings when the backend returns them.
+- Installed payload contains `VERSION`; installer metadata can expose the qB/container path and VPS/host path without pretending WebAPI knows Docker host mounts.
 - Back/Home/Reload recovery and Reduced Motion remain hard invariants.
 
 ## Compatibility boundary
@@ -234,7 +275,7 @@ paused       ↔ stopped
 legacy log ms → normalized seconds ← modern log seconds
 ```
 
-Historical API exceptions remain inside `qb-client.js`.
+Historical API exceptions remain inside `qb-client.js`. Preference-owned features such as Alternative WebUI are gated by the actual Preferences keys returned by the server.
 
 ## Performance model
 
@@ -279,6 +320,13 @@ List candidates:
 sh /tmp/weigg-qb-install.sh --list-containers
 ```
 
+After v0.3.4 installation/update, deployment identity is directly available:
+
+```sh
+cat /host/path/to/qbittorrent/config/weigg-qb-webui/VERSION
+cat /host/path/to/qbittorrent/config/weigg-qb-webui/private/weigg-install.json
+```
+
 Rollback:
 
 ```sh
@@ -313,9 +361,16 @@ Runtime is plain HTML/CSS/JavaScript without a runtime application framework.
 npm test
 ```
 
-The static suite includes syntax/smoke checks, `tests/compat-v030.mjs` for 4.1.9.1 / mature 4.x / 5.2.0 API semantics, and `tests/log-compat-v032.mjs` for Logs capability, timestamp normalization and incremental `last_known_id` behavior.
+The static suite includes syntax/smoke checks, `tests/compat-v030.mjs` for 4.1.9.1 / mature 4.x / 5.2.0 API semantics, `tests/log-compat-v032.mjs` for Logs capability/timestamp/incremental behavior, and `tests/settings-v034.mjs` for Alternative WebUI/settings/install-metadata contracts.
 
-CI additionally runs `tests/browser-logs-v033.mjs` in headless Chromium. That browser gate exercises the actual WebUI runtime with qB 4.1.9.1 and qB 5.2.0 fixtures across mobile and desktop viewport classes.
+CI additionally runs two headless Chromium gates:
+
+```text
+tests/browser-logs-v033.mjs
+tests/browser-settings-v034.mjs
+```
+
+The v0.3.4 settings browser gate exercises the actual WebUI runtime with qB 4.1.9.1 and qB 5.2.0 fixtures, verifies `/config/...` path writes, rejects the known host path, verifies disable writes, and treats browser console/page errors as failures.
 
 Documentation authority:
 
@@ -326,4 +381,4 @@ Documentation authority:
 
 ## Certification status
 
-`0.3.3` adds the cross-version Chromium browser gate on top of the integrated v0.3.2 runtime. Repository CI, API-contract fixtures and browser fixtures can certify deterministic code/UI behavior, but stable real-server certification still requires interactive regression on the release-blocking qBittorrent **4.1.9.1** and **5.2.0** instances. A browser fixture PASS must never be reported as a production/live PASS.
+`0.3.4` adds first-class Alternative WebUI settings, install identity metadata and a cross-version Chromium settings gate on top of the v0.3.3 validation baseline. Repository CI, API-contract fixtures and browser fixtures can certify deterministic code/UI behavior, but stable real-server certification still requires interactive regression on the release-blocking qBittorrent **4.1.9.1** and **5.2.0** instances. A browser fixture PASS must never be reported as a production/live PASS.
