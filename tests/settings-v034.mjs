@@ -2,10 +2,10 @@ import fs from 'node:fs';
 function assert(condition,message){if(!condition)throw new Error(message);}
 const version=fs.readFileSync('VERSION','utf8').trim();
 const webVersion=fs.readFileSync('webui/VERSION','utf8').trim();
-assert(version==='0.3.5','Root VERSION must be 0.3.5');
+assert(version==='0.3.6','Root VERSION must be 0.3.6');
 assert(webVersion===version,'Installed webui/VERSION must match root VERSION');
 const index=fs.readFileSync('webui/private/index.html','utf8');
-for(const token of ['scripts/i18n-v034.js?v=__WEIGG_GIT_SHA__','scripts/settings-v034.js?v=__WEIGG_GIT_SHA__','data-i18n="tag.all"','name="weigg-build-sha" content="__WEIGG_GIT_SHA__"'])assert(index.includes(token),`v0.3.5 index token missing: ${token}`);
+for(const token of ['scripts/i18n-v034.js?v=__WEIGG_GIT_SHA__','scripts/settings-v034.js?v=__WEIGG_GIT_SHA__','data-i18n="tag.all"','name="weigg-build-sha" content="__WEIGG_GIT_SHA__"'])assert(index.includes(token),`v0.3.6 index token missing: ${token}`);
 assert(!index.includes('settings-v034.css'),'Alternative WebUI must not load a standalone CSS template');
 const runtime=fs.readFileSync('webui/private/scripts/settings-v034.js','utf8');
 for(const token of ['alternative_webui_enabled','alternative_webui_path','getPreferences','setPreferences','weigg-install.json','hostPath','gitSha','readonlySettingField','data-v035-alt','global.confirm','global.location.href=\'/\'','v034SaveBridge'])assert(runtime.includes(token),`Alternative WebUI runtime token missing: ${token}`);
@@ -16,6 +16,6 @@ for(const token of ['readonlySettingField','setting-card','field-input','buildAs
 const i18n=fs.readFileSync('webui/private/scripts/i18n-v034.js','utf8');
 for(const token of ["'v034.alt.qbPath':'qBittorrent WebUI path'","'v034.alt.qbPath':'qBittorrent WebUI 路径'","W.V034I18n"])assert(i18n.includes(token),`Alternative WebUI i18n token missing: ${token}`);
 const meta=JSON.parse(fs.readFileSync('webui/private/weigg-install.json','utf8'));
-assert(meta.version==='0.3.5','Fallback install metadata version mismatch');
+assert(meta.version==='0.3.6','Fallback install metadata version mismatch');
 assert(meta.gitSha==='__WEIGG_GIT_SHA__','Fallback metadata Git SHA placeholder mismatch');
-console.log('WeiG qB WebUI v0.3.5 Alternative WebUI canonical-card contract checks passed.');
+console.log('WeiG qB WebUI v0.3.6 Alternative WebUI canonical-card contract checks passed.');
