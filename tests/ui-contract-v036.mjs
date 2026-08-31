@@ -18,7 +18,7 @@ assert(version === '0.3.6' && webVersion === '0.3.6', 'v0.3.6 VERSION contract m
 for (const token of ['selectControl','upgradeNativeSelect','upgradeNativeSelects','closeSelects','filterChip','checkControl','W.Time','supportedValuesOf','weigg:timezonechange']) {
   assert(components.includes(token), `Canonical component/time token missing: ${token}`);
 }
-for (const token of ['AmbientMark','8000','28000','prefers-reduced-motion','torrentListContext.v036','detail-context-back','weigg:timeformatrefresh']) {
+for (const token of ['AmbientMark','8000','28000','prefers-reduced-motion','torrentListContext.v036','detail-context-back','weigg:timeformatrefresh','status-timezone','weigg-floating-layer']) {
   assert(runtime.includes(token), `v0.3.6 runtime token missing: ${token}`);
 }
 for (const token of ['.ui-select__trigger','.ui-select__menu','.ui-select__option','.ui-chip','.ui-check','.ambient-mark__orbit','.ambient-mark__spark','.detail-context-back']) {
@@ -29,9 +29,10 @@ assert(spatial.includes("W.buildAssetUrl?W.buildAssetUrl('css/brand-v031.css')")
 assert(!spatial.includes('?v=0.3.1-brand1'), 'Legacy semver brand cache key must be removed');
 assert(logs.includes('return bi-ai'), 'Logs must sort newest ID first');
 assert(logs.includes('state.items.slice(0,MAX_ITEMS)'), 'Newest-first Logs must retain the newest bounded rows');
-assert(logs.includes('W.Time') && logs.includes('logs-time-zone'), 'Logs timezone control missing');
+assert(logs.includes('W.Time') && logs.includes('TIME-002'), 'Logs must consume the global display-timezone contract');
+assert(!logs.includes('logs-time-zone'), 'Logs must not create a second route-local timezone control');
 assert(!logs.includes('function zh()') && !logs.includes('function text(en,cn)'), 'Logs must not branch directly on locale');
 assert(!logsCss.includes('.log-filter-chip{') && !logsCss.includes('.logs-follow-control{'), 'Logs CSS must not reimplement Chip/Follow primitives');
-assert(i18n.includes("'v036.logs.showing'") && i18n.includes("'v036.settings.timeZone'"), 'v0.3.6 i18n overlay incomplete');
+assert(i18n.includes("'v036.logs.showing'") && i18n.includes("'v036.settings.timeZone'") && i18n.includes("'v036.storage.free'"), 'v0.3.6 i18n overlay incomplete');
 
-console.log('v0.3.6 canonical controls, AmbientMark, timezone, newest-first Logs and context navigation contract passed.');
+console.log('v0.3.6 canonical controls, AmbientMark, global timezone, newest-first Logs and context navigation contract passed.');
