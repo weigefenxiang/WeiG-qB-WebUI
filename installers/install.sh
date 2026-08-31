@@ -60,6 +60,30 @@ is_safe_config_path() {
   esac
 }
 
+json_escape() {
+  printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+}
+
+write_install_metadata() {
+  [ -d "$DEST.new/private" ] || mkdir -p "$DEST.new/private"
+  meta_version=$(cat "$DEST.new/VERSION" 2>/dev/null || printf 'unknown')
+  meta_version=$(json_escape "$meta_version")
+  meta_container=$(json_escape "$DOCKER_CONTAINER")
+  meta_qb_path=$(json_escape "$QBT_ROOT_FOLDER")
+  meta_host_path=$(json_escape "$DEST")
+  meta_installed_at=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+  cat > "$DEST.new/private/weigg-install.json" <<EOF
+{
+  "version": "$meta_version",
+  "container": "$meta_container",
+  "qbPath": "$meta_qb_path",
+  "hostPath": "$meta_host_path",
+  "installedAt": "$meta_installed_at",
+  "installer": "linux"
+}
+EOF
+}
+
 qb_container_lines() {
   command -v docker >/dev/null 2>&1 || return 0
   docker ps --format '{{.ID}}|{{.Image}}|{{.Names}}' 2>/dev/null | grep -Ei 'qbittorrent|qbit' || true
@@ -93,12 +117,17 @@ select_qb_docker() {
 
     lines=$(qb_container_lines)
     if [ -n "$lines" ]; then
-      printf '%s\n' "$lines" | while IFS='|' read -r id image name; do
+      match=$(printf '%s\n' "$lines" | while IFS='|' read -r id image name; do
         source=$(container_config_source "$id")
         if [ "$source" = "$DOCKER_CONFIG_ROOT" ]; then
-          echo "Matched Docker container: $name ($image)"
+          printf '%s|%s\n' "$name" "$image"
         fi
-      done
+      done | head -n1)
+      if [ -n "$match" ]; then
+        DOCKER_CONTAINER=${match%%|*}
+        image=${match#*|}
+        echo "Matched Docker container: $DOCKER_CONTAINER ($image)"
+      fi
     fi
     return 0
   fi
@@ -353,7 +382,8 @@ fi
 rm -rf "$DEST.new"
 mkdir -p "$DEST.new"
 cp -a "$SRC"/. "$DEST.new"/
-[ -f "$DEST.new/public/login.html" ] && [ -f "$DEST.new/private/index.html" ] || { echo "Installed payload validation failed." >&2; rm -rf "$DEST.new"; exit 1; }
+write_install_metadata
+[ -f "$DEST.new/public/login.html" ] && [ -f "$DEST.new/private/index.html" ] && [ -f "$DEST.new/VERSION" ] && [ -f "$DEST.new/private/weigg-install.json" ] || { echo "Installed payload validation failed." >&2; rm -rf "$DEST.new"; exit 1; }
 
 rm -rf "$DEST.old"
 [ -d "$DEST" ] && mv "$DEST" "$DEST.old" || true
@@ -364,6 +394,8 @@ if ! mv "$DEST.new" "$DEST"; then
 fi
 rm -rf "$DEST.old"
 echo "Installed and verified: $DEST"
+echo "Installed version: $(cat "$DEST/VERSION")"
+echo "Install metadata: $DEST/private/weigg-install.json"
 
 cfg=$(find_config || true)
 if [ "$CONFIGURE" -eq 1 ]; then
