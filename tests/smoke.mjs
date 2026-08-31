@@ -70,7 +70,7 @@ for (const route of ['search','rss','logs','settings']) {
 for (const size of ['20','50','100','200']) {
   if (!index.includes(`<option${size === '50' ? ' selected' : ''}>${size}</option>`) && !index.includes(`<option>${size}</option>`)) throw new Error(`Missing page size ${size}`);
 }
-if (!index.includes('data-i18n="nav.settings"') || !index.includes('data-i18n-placeholder="settings.search"') || !index.includes('data-i18n="tag.all"')) throw new Error('Canonical i18n attributes missing');
+if (!index.includes('data-i18n="nav.settings"') || !index.includes('data-i18n-placeholder="settings.search"')) throw new Error('Canonical i18n attributes missing');
 if (index.includes('>TOOLS<')) throw new Error('Application navigation must not live in the Torrent sidebar');
 for (const token of ['css/logs-v032.css?v=0.3.2','scripts/logs-v032.js?v=0.3.2','css/settings-v034.css?v=0.3.4','scripts/i18n-v034.js?v=0.3.4','scripts/settings-v034.js?v=0.3.4']) {
   if (!index.includes(token)) throw new Error(`Runtime asset missing: ${token}`);
@@ -112,7 +112,7 @@ for (const token of ['pageSize','buildCatalog','renderTrackerNav','renderSetting
   if (!app.includes(token)) throw new Error(`App architecture token missing: ${token}`);
 }
 const settings034 = fs.readFileSync('webui/private/scripts/settings-v034.js','utf8');
-for (const token of ['alternative_webui_enabled','alternative_webui_path','getPreferences','setPreferences','weigg-install.json','hostPath','qbPath','v034SaveBridge','global.location.href=\'/\'']) {
+for (const token of ['alternative_webui_enabled','alternative_webui_path','getPreferences','setPreferences','weigg-install.json','hostPath','qbPath','v034SaveBridge','global.location.href=\'/\'','repairTagI18n',"setAttribute('data-i18n','tag.all')"]) {
   if (!settings034.includes(token)) throw new Error(`v0.3.4 Alternative WebUI runtime missing: ${token}`);
 }
 if (settings034.includes("getLocale()==='zh-CN'")) throw new Error('v0.3.4 feature runtime must not branch directly on language');
