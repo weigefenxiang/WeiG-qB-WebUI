@@ -15,14 +15,17 @@
   W.Components.preferenceField=function(key,value,onChange,label){var info=W.SettingsSchema?W.SettingsSchema.describe(key):{title:label||key,description:'qBittorrent preference.',kind:'auto',known:false};var row=document.createElement('label');row.className='settings-row setting-card';row.dataset.settingKey=key;row.dataset.settingSearch=(info.title+' '+info.description+' '+key).toLowerCase();var copy=document.createElement('span');copy.className='settings-row__copy';var title=document.createElement('strong');title.textContent=info.title;title.title=info.title;var meta=document.createElement('small');meta.className='text-description';meta.textContent=info.description;copy.append(title,meta);var input;if(typeof value==='boolean'||info.kind==='boolean'){var switchWrap=document.createElement('span');switchWrap.className='switch-control';input=document.createElement('input');input.type='checkbox';input.checked=!!value;input.className='switch-input';var track=document.createElement('span');track.className='switch-track';var thumb=document.createElement('span');thumb.className='switch-thumb';track.appendChild(thumb);switchWrap.append(input,track);input.addEventListener('change',function(){onChange(key,input.checked);});row.append(copy,switchWrap);return row;}input=document.createElement('input');input.type=(typeof value==='number'||info.kind==='number')?'number':'text';input.value=value==null?'':String(value);input.className='field-input';input.autocomplete='off';input.addEventListener('change',function(){onChange(key,U.parseScalar(input.value));});row.append(copy,input);return row;};
 
   /* Stable filenames keep old Alternate-WebUI roots compatible. Query strings
-   * are product-version cache busters; v0.3 layers remain presentation/runtime
-   * composition and do not own a second torrent state store. */
+   * are product-version cache busters. Runtime layers do not own a second
+   * Torrent state store. */
   (function loadRuntimeLayers(){
     function css(href,key){if(document.querySelector('link[data-weigg-layer="'+key+'"]'))return;var link=document.createElement('link');link.rel='stylesheet';link.href=href;link.dataset.weiggLayer=key;document.head.appendChild(link);}
-    function js(src,key){if(document.querySelector('script[data-weigg-layer="'+key+'"]'))return;var script=document.createElement('script');script.src=src;script.async=true;script.dataset.weiggLayer=key;document.head.appendChild(script);}
+    function asyncScript(src,key){if(document.querySelector('script[data-weigg-layer="'+key+'"]'))return;var script=document.createElement('script');script.src=src;script.async=true;script.dataset.weiggLayer=key;document.head.appendChild(script);}
+    function loadV030(){if(document.querySelector('script[data-weigg-layer="runtime-030"]'))return;var script=document.createElement('script');script.src='scripts/v030.js?v=0.3.0';script.async=false;script.dataset.weiggLayer='runtime-030';document.head.appendChild(script);}
     css('css/v022.css?v=0.3.0','spatial-022');
     css('css/v030.css?v=0.3.0','runtime-030');
-    js('scripts/spatial-v022.js?v=0.3.0','spatial-022');
-    js('scripts/v030.js?v=0.3.0','runtime-030');
+    asyncScript('scripts/spatial-v022.js?v=0.3.0','spatial-022');
+    if(W.V030I18n)loadV030();
+    else if(!document.querySelector('script[data-weigg-layer="i18n-030"]')){var i18=document.createElement('script');i18.src='scripts/i18n-v030.js?v=0.3.0';i18.async=false;i18.dataset.weiggLayer='i18n-030';i18.onload=loadV030;document.head.appendChild(i18);}
+    else{var existing=document.querySelector('script[data-weigg-layer="i18n-030"]');existing.addEventListener('load',loadV030,{once:true});}
   })();
 })(window);
