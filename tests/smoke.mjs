@@ -29,7 +29,7 @@ const required = [
 for (const file of required) {
   if (!fs.existsSync(file)) throw new Error(`Missing ${file}`);
 }
-if (fs.readFileSync('VERSION','utf8').trim() !== '0.3.0') throw new Error('VERSION must be 0.3.0');
+if (fs.readFileSync('VERSION','utf8').trim() !== '0.3.1') throw new Error('VERSION must be 0.3.1');
 
 const login = fs.readFileSync('webui/public/login.html','utf8');
 for (const token of [
@@ -93,12 +93,12 @@ for (const token of ['pageSize','buildCatalog','renderTrackerNav','renderSetting
 }
 
 const core = fs.readFileSync('webui/private/scripts/core.js', 'utf8');
-for (const token of ['normalizeTracker','VirtualList','DataGrid','fontSize','ptTrackers',"label:'Name'",'__weiggVirtualScrollTop','__weiggVirtualScrollHandler','preserve!==false','resetScroll']) {
+for (const token of ['normalizeTracker','VirtualList','DataGrid','fontSize','ptTrackers',"label:'Name'",'__weiggVirtualScrollTop','__weiggVirtualScrollHandler','preserve!==false','resetScroll','spacer.isConnected','spacer.parentNode!==self.el']) {
   if (!core.includes(token)) throw new Error(`Core architecture/scroll token missing: ${token}`);
 }
 
 const components = fs.readFileSync('webui/private/scripts/components.js','utf8');
-for (const token of ['SettingsSchema.describe','setting-card','switch-control',"'state.downloading'",'v022.css?v=0.3.0','v030.css?v=0.3.0','spatial-v022.js?v=0.3.0','i18n-v030.js?v=0.3.0','v030.js?v=0.3.0','i18.onload=loadV030']) {
+for (const token of ['SettingsSchema.describe','setting-card','switch-control',"'state.downloading'",'v022.css?v=0.3.1','v030.css?v=0.3.1','spatial-v022.js?v=0.3.1','i18n-v030.js?v=0.3.1','v030.js?v=0.3.1','i18.onload=loadV030']) {
   if (!components.includes(token)) throw new Error(`Component/runtime loader token missing: ${token}`);
 }
 
@@ -115,7 +115,7 @@ for (const token of ['app-nav__item','settings-group','setting-card','mobile-bot
 for (const token of ['--spatial-floating','filter-shelf','facet-popover','connection-dock','grid-template-rows:auto minmax(42px,1fr) auto','search-box:focus-within','SIDEBAR-001','SETTING-001']) {
   if (!v022.includes(token)) throw new Error(`v0.2.2 spatial style missing: ${token}`);
 }
-for (const token of ['torrent-panel.is-empty','transfer-dock','transfer-dialog','speed-presets','transfer-stats','transfer-chart-shell','EMPTY-001','DOCK-001','TRANSFER-001']) {
+for (const token of ['torrent-panel.is-empty','transfer-dock','transfer-dialog','speed-presets','transfer-stats','transfer-chart-shell','EMPTY-001','DOCK-001','TRANSFER-001','.statusbar--v030 .transfer-dock>.desktop-only']) {
   if (!v030.includes(token)) throw new Error(`v0.3 transfer/empty style missing: ${token}`);
 }
 const spatial = fs.readFileSync('webui/private/scripts/spatial-v022.js','utf8');
@@ -139,4 +139,4 @@ for (const token of ['--container=*','--config-root=*','Multiple qBittorrent Doc
   if (!installer.includes(token)) throw new Error(`Installer safety token missing: ${token}`);
 }
 
-console.log('WeiG qB WebUI v0.3.0 smoke checks passed.');
+console.log('WeiG qB WebUI v0.3.1 smoke checks passed.');
