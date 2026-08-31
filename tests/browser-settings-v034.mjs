@@ -66,6 +66,10 @@ const mime={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8',
 const server=http.createServer(async(req,res)=>{
   try{
     const url=new URL(req.url,`http://${host}:${port}`);
+    if(url.pathname==='/'){
+      res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-store'});
+      return res.end('<!doctype html><title>qBittorrent WebUI</title><p>Built-in qBittorrent WebUI</p>');
+    }
     const match=url.pathname.match(/^\/(qb4|qb5)(?:\/(.*))?$/);
     if(!match){res.writeHead(404);return res.end('not found');}
     const name=match[1],relative=match[2]||'';
@@ -128,7 +132,7 @@ try{
     await page.locator('#alternative-webui-v034 .alt-webui-v034__toggle').uncheck();
     page.once('dialog',dialog=>dialog.accept());
     await page.locator('#save-settings-btn').click();
-    await page.waitForFunction(()=>location.pathname==='/' || document.body.textContent.includes('not found'),null,{timeout:2500}).catch(()=>{});
+    await page.waitForFunction(()=>location.pathname==='/',null,{timeout:2500});
     assert(state[name].prefs.alternative_webui_enabled===false,`${name}: disable preference not saved`);
     assert(state[name].writes.some(x=>x.alternative_webui_enabled===false),`${name}: disable write payload missing`);
     assert(errors.length===0,`${name}: browser errors: ${errors.join(' | ')}`);
