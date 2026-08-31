@@ -1,7 +1,7 @@
 # WeiG qB WebUI — Design System
 
-Version: **1.4**  
-Status: **Frozen v0.3.0 interaction baseline**  
+Version: **1.5**  
+Status: **v0.3.2 adaptive data-surface baseline**  
 Theme: **Nebula Spatial Console**  
 Compatibility floor: **qBittorrent 4.1.9**
 
@@ -10,6 +10,8 @@ Compatibility floor: **qBittorrent 4.1.9**
 ## 1. Mission
 
 WeiG qB WebUI is a premium qBittorrent control console: calm, dimensional, information-dense on desktop, touch-first on mobile and stable during long-running polling. Inspiration may come from Linear precision, Raycast floating chrome, Superhuman premium dark surfaces and instrument-like BMW/Revolut material separation, but the resulting identity must remain **WeiG Nebula Spatial Console**.
+
+For v0.3.2 the design review also studied `VoltAgent/awesome-design-md`: its useful lesson is not to copy a screenshot, but to treat tokens, surfaces, spacing, component states and responsive behavior as an explicit reusable design contract. Raycast-like dark precision, Superhuman-like restrained depth and Warp-like technical data density are reference principles only.
 
 Functionality may be compared with qBittorrent WebUIs such as VueTorrent, but another product's visual identity is never copied.
 
@@ -29,6 +31,8 @@ Functionality may be compared with qBittorrent WebUIs such as VueTorrent, but an
 12. Normal UI does not expose raw qB API/preference keys or developer rendering counters.
 13. Tracker query/fragment credentials are never rendered in normal UI.
 14. Visual depth must improve clarity, not hide data or create continuous neon animation.
+15. Primary data-heavy pages use the canonical DataPage/DataPanel pattern instead of inventing feature-local fixed-height boxes.
+16. A primary data viewport must not use an arbitrary `max-height: 62vh` when the workspace can provide safe remaining height.
 
 ## 3. Spatial hierarchy
 
@@ -369,3 +373,73 @@ Prefer static gradients, borders, transform and opacity. Avoid per-row backdrop 
 ## 18. Definition of success
 
 The UI is successful when it feels materially layered without being noisy; search/inputs are obvious; Sidebar is calm; zero-result pages are compact; polling never throws the user back to the top; global transfer controls are reachable from the dock; Settings read naturally top-to-bottom; English and Simplified Chinese both feel intentional; mobile remains touch-first; and thousands of Torrents do not become thousands of DOM nodes.
+
+## 19. v0.3.2 Canonical DataPage / DataPanel
+
+### DATA-PAGE-001 — One data-surface language
+
+Torrent, Logs, Search results, RSS lists, Files, Peers and Trackers should converge on:
+
+```text
+DataPage
+├─ Page Header
+├─ Context / Toolbar
+└─ DataPanel
+   ├─ Column Header (when tabular)
+   ├─ Virtualized viewport
+   ├─ Empty / Error state
+   └─ Footer / status
+```
+
+The feature may omit irrelevant rows, but it must reuse shared surface, spacing, focus and responsive contracts.
+
+### DATA-PAGE-002 — Remaining height belongs to primary data
+
+On desktop, a primary data page normally uses a grid with `auto minmax(0, 1fr)`. The DataPanel uses `min-height: 0` and consumes the safe remainder of the workspace. A fixed `max-height: 62vh` is not a valid default for a primary data viewport surrounded by unused space.
+
+### DATA-PAGE-003 — Compact / Auto / Max
+
+A primary DataPanel may expose:
+
+```text
+Compact  intentionally reduced working area
+Auto     fill remaining workspace (default)
+Max      hide nonessential page chrome and maximize data area
+```
+
+Window constraints always override a stored preference; no mode may overflow the usable viewport.
+
+### DATA-PAGE-004 — Feature-local virtualization ownership
+
+Torrent and Logs do not share one feature-owned VirtualList reference. Each data viewport owns its scroll state and virtualization instance.
+
+### LOGS-001 — Logs are data, not a debug box
+
+The canonical desktop row is:
+
+```text
+Log message | Time | Level
+```
+
+qB numeric levels are presented semantically:
+
+```text
+1 Normal
+2 Info
+4 Warning
+8 Critical
+```
+
+Normal/Info remain quiet; Warning/Critical receive restrained semantic emphasis.
+
+### LOGS-002 — Incremental and bounded
+
+Initial load uses `last_known_id=-1`; later refreshes request only rows newer than the current maximum id. Browser history is bounded to 5000 retained main-log rows. Polling runs only while the Logs route is active and slows when the document is hidden.
+
+### LOGS-003 — Follow latest is explicit
+
+Follow latest is a visible state. When disabled, incremental polling preserves the user's manual viewport. Search or severity changes are deliberate context changes and may reset the Logs viewport.
+
+### LOGS-004 — Mobile
+
+The three-column desktop row becomes a two-line mobile row: message first, time + level second. Auto / Compact / Max remains usable in the mobile shell without forcing horizontal table compression.

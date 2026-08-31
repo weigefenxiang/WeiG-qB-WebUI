@@ -2,9 +2,28 @@
 
 A premium, modular and high-performance Alternate WebUI for qBittorrent.
 
-Current version: **0.3.1**  
+Current version: **0.3.2**  
 Compatibility floor: **qBittorrent 4.1.9**  
 Compatibility target: **qBittorrent 4.1.x → current 5.x**, using capability-based progressive enhancement.
+
+## v0.3.2 — Cross-version Logs + Adaptive DataPanel
+
+v0.3.2 fixes a compatibility mistake in the Logs gate and promotes Logs from a fixed-height utility box to a first-class adaptive data page.
+
+- qBittorrent **4.1.9.1 / WebAPI 2.2.1** Logs are no longer hidden by the incorrect `WebAPI >= 2.3.0` gate.
+- `QBClient.logs()` / `peerLogs()` normalize legacy millisecond timestamps and modern second timestamps to one stable seconds contract.
+- Logs use an independent VirtualList with incremental `last_known_id` polling, local search, semantic level filters, Follow latest and a bounded 5000-row in-browser buffer.
+- The Logs DataPanel supports **Auto / Compact / Max** sizing. Auto consumes the remaining workspace instead of stopping at `max-height: 62vh`.
+- The design rules were reviewed against `VoltAgent/awesome-design-md` principles: reusable tokens/components, restrained depth, explicit interaction states and responsive data surfaces rather than feature-local visual systems.
+
+The compatibility model is now explicit:
+
+```text
+Native       qB exposes the capability directly
+Compatible   QBClient translates old/new API vocabulary or data format
+Enhanced     WeiG JS derives safe convenience behavior from existing data
+Unavailable  backend data/write capability does not exist; do not fabricate it
+```
 
 ## v0.3.1 — Polling scroll stability hotfix
 
@@ -97,11 +116,11 @@ Automated compatibility fixtures exercise three tiers:
 
 | Tier | Fixture | Expected behavior |
 | --- | --- | --- |
-| Legacy floor | 4.1.9.1 / WebAPI 2.2.1 | resume/pause, global limits, alt-speed, no Tags/private flag |
-| Mature 4.x | 4.6.x / WebAPI 2.8.3 | Tags/filter capabilities, still no exact private flag |
-| Modern target | 5.2.0 / WebAPI 2.14.1 | start/stop, Tags, private flag, modern capability foundations |
+| Legacy floor | 4.1.9.1 / WebAPI 2.2.1 | resume/pause, global limits, alt-speed, **Logs**, no Tags/private flag |
+| Mature 4.x | 4.6.x / WebAPI 2.8.3 | Tags/filter capabilities, Logs, still no exact private flag |
+| Modern target | 5.2.0 / WebAPI 2.14+ | start/stop, Tags, private flag, Logs, modern capability foundations |
 
-Static fixtures are not a substitute for real-server certification. The release-blocking live targets remain qBittorrent **4.1.9.1** and **5.2.0**.
+Logs are native across the supported qB range; WeiG adds cross-version timestamp normalization plus search/filter/follow/adaptive-layout enhancements. Static fixtures are not a substitute for real-server certification. The release-blocking live targets remain qBittorrent **4.1.9.1** and **5.2.0**.
 
 ## VueTorrent gap review
 
@@ -128,6 +147,8 @@ Void → Base → Panel → Card → Raised → Floating
 
 Desktop Topbar owns application navigation. Sidebar owns low-cardinality Torrent state filters. Tracker / Save Path / Category / Tags use the searchable Filter Shelf. Connection details live in the Status Dock. Settings follow **Title → Description → Control** and default to a readable two-column desktop grid.
 
+Primary data-heavy pages should converge on the canonical DataPage/DataPanel pattern. Logs is the first v0.3.2 implementation: toolbar + table header + virtual viewport + compact empty/error/status surfaces, with the data area owning the remaining workspace height.
+
 ## Languages
 
 English is the canonical source language. **English and Simplified Chinese are maintained product languages.**
@@ -151,6 +172,7 @@ qBittorrent terminology prefers official qB WebUI translations when available. F
 - Tracker display/filter normalization strips query/fragment credentials.
 - Private/PT uses exact private metadata when available and explicit Tracker-domain rules on old qB.
 - Torrent actions, detail Files/Trackers/Peers/HTTP Sources, metadata-driven Settings, Search/RSS/Logs capability gating.
+- Logs use a separate route-local VirtualList and incremental stream so they do not overwrite Torrent viewport state.
 - Back/Home/Reload recovery and Reduced Motion remain hard invariants.
 
 ## Compatibility boundary
@@ -160,9 +182,11 @@ Feature/UI code must not scatter qB version checks.
 ```text
 qB API
   ↓
-QBClient + Capability
+QBClient + Capability + normalization
   ↓
 stable application semantics
+  ↓
+WeiG enhancement
   ↓
 Feature / UI
 ```
@@ -173,6 +197,7 @@ Important bridges include:
 qB 4.x          qB 5.x
 resume/pause ↔ start/stop
 paused       ↔ stopped
+legacy log ms → normalized seconds ← modern log seconds
 ```
 
 Historical API exceptions remain inside `qb-client.js`.
@@ -187,7 +212,7 @@ VirtualList
 viewport + overscan DOM only
 ```
 
-Whole-library Tracker/Path/PT catalogs are built in bounded data batches and never rendered as thousands of hidden rows. Transfer Graph samples are bounded separately and do not create Torrent DOM.
+Whole-library Tracker/Path/PT catalogs are built in bounded data batches and never rendered as thousands of hidden rows. Transfer Graph samples are bounded separately and do not create Torrent DOM. Logs retain at most 5000 main-log rows in browser memory while only the viewport + overscan are mounted.
 
 ## Tracker privacy
 
@@ -254,15 +279,15 @@ Runtime is plain HTML/CSS/JavaScript without a runtime application framework.
 npm test
 ```
 
-The suite includes syntax/smoke checks plus `tests/compat-v030.mjs` for 4.1.9.1 / mature 4.x / 5.2.0 API semantics.
+The suite includes syntax/smoke checks plus `tests/compat-v030.mjs` for 4.1.9.1 / mature 4.x / 5.2.0 API semantics and `tests/log-compat-v032.mjs` for Logs capability, timestamp normalization and incremental `last_known_id` behavior.
 
 Documentation authority:
 
-- `DESIGN.md` — visual, interaction, typography, navigation, i18n, empty-state and Transfer Dock rules.
+- `DESIGN.md` — visual, interaction, typography, navigation, i18n, empty-state, Transfer Dock and DataPanel rules.
 - `docs/001.项目总方案.md` — product plan and engineering invariants.
 - `docs/002.兼容与实现状态.md` — compatibility matrix and current live/automated test state.
 - `docs/003.项目架构.md` — repository tree, runtime layers and ownership boundaries.
 
 ## Certification status
 
-`0.3.1` is the current integrated baseline. Repository CI and compatibility fixtures can validate code contracts, but stable release certification still requires live regression on both release-blocking endpoints. A fixture PASS must never be reported as a 5.2.0 live PASS.
+`0.3.2` is the current integrated code baseline. Repository CI and compatibility fixtures can validate code contracts, but stable release certification still requires live regression on both release-blocking endpoints, including the 4.1.9 and 5.2 Logs UI, timestamp display, incremental refresh and Auto/Compact/Max resizing. A fixture PASS must never be reported as a live PASS.
