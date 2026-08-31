@@ -12,9 +12,11 @@ assert(index.indexOf('scripts/adaptive-v036.js')<index.indexOf('scripts/app.js')
 assert(css.includes('#torrent-list{flex:1 1 auto;height:auto!important;min-height:0!important'),'Torrent list must consume the remaining mobile viewport instead of subtracting magic pixels');
 assert(css.includes('.mobile-card-meta{display:flex!important'),'mobile torrent secondary metrics must use the one-line flex contract');
 assert(css.includes('white-space:nowrap'),'mobile torrent metrics must not wrap by default');
-assert(css.includes('font-size:clamp('),'mobile torrent metrics must shrink responsively before wrapping');
+assert(css.includes('font-size:var(--mobile-meta-font'),'mobile torrent metrics must allow runtime width fitting before wrapping');
+assert(css.includes('.mobile-card-meta.is-ultra-tight'),'extreme narrow-phone fitting must remain a canonical one-line state');
 assert(css.includes('#search-view>.tool-page')&&css.includes('#rss-view>.tool-page'),'Search and RSS must share the single-viewport tool-page contract');
 assert(css.includes('.status-pill[data-tone=stalled-up]')&&css.includes('.status-pill[data-tone=download]')&&css.includes('.status-pill[data-tone=seed]')&&css.includes('.status-pill[data-tone=stopped]'),'semantic torrent states must have distinct canonical tones');
+assert(js.includes('compactMetricText'),'mobile metric fitting must compact redundant spaces/decimal zeroes before shrinking text');
 assert(js.includes('free_space_on_disk'),'storage dock must consume qBittorrent sync/maindata free_space_on_disk');
 assert(js.includes('getMainData(storageRid)'),'free-space telemetry must use incremental sync rid after the initial full snapshot');
 assert(js.includes('30000'),'free-space polling must stay low-frequency rather than following the Torrent refresh loop');
@@ -35,6 +37,7 @@ const sandbox={
     readyState:'loading',
     addEventListener(){},
     querySelector(){return null;},
+    querySelectorAll(){return [];},
     getElementById(){return null;}
   }
 };
@@ -56,13 +59,15 @@ vm.runInNewContext(js,sandbox,{filename:'adaptive-v036.js'});
 const api=sandbox.window.WeiG.MobileAdaptive;
 assert(api&&typeof api.formatFreeSpace==='function','MobileAdaptive formatter must be exported for deterministic tests');
 const TiB=1024**4,GiB=1024**3,MiB=1024**2;
-assert(api.formatFreeSpace(1.234*TiB)==='1.23 TiB','1.234 TiB must display with 3 significant digits');
-assert(api.formatFreeSpace(12.34*GiB)==='12.3 GiB','12.34 GiB must display with 3 significant digits');
-assert(api.formatFreeSpace(987.6*MiB)==='988 MiB','987.6 MiB must display with 3 significant digits');
-assert(api.formatFreeSpace(0)==='0 B','zero bytes must remain explicit');
+assert(api.formatFreeSpace(1.234*TiB)==='1.23 TiB','single-digit IEC values should keep useful hundredths');
+assert(api.formatFreeSpace(12.34*GiB)==='12.3 GiB','two-digit IEC values should keep one decimal');
+assert(api.formatFreeSpace(987.6*MiB)==='988 MiB','three-digit IEC values should prefer whole units');
+assert(api.formatFreeSpace(9.876*GiB)==='9.88 GiB','sub-10 GiB values should retain useful precision');
+assert(api.formatFreeSpace(84.23*MiB)==='84.2 MiB','two-digit MiB values should keep one decimal');
+assert(api.formatFreeSpace(0)==='0 B','zero free bytes must remain explicit rather than fabricated as unavailable');
 assert(sandbox.window.WeiG.Components.state('stalledUP')[1]==='stalled-up','stalled seeding must have its own semantic tone');
 assert(sandbox.window.WeiG.Components.state('downloading')[1]==='download','downloading must have download tone');
 assert(sandbox.window.WeiG.Components.state('uploading')[1]==='seed','seeding must have seed tone');
 assert(sandbox.window.WeiG.Components.state('stoppedUP')[1]==='stopped','stopped torrents must have stopped tone');
 
-console.log('v0.3.6 mobile adaptive, semantic status and incremental 3-significant-digit storage contract passed.');
+console.log('v0.3.6 mobile adaptive, semantic status and human-readable incremental storage contract passed.');
