@@ -70,11 +70,11 @@ for (const token of ["'v030.limit.download':'Global download limit'","'v030.limi
   if (!i18n030.includes(token)) throw new Error(`v0.3 translation overlay missing: ${token}`);
 }
 const schema = fs.readFileSync('webui/private/scripts/settings-schema.js', 'utf8');
-for (const token of ['auto_tmm_enabled','save_path','web_ui_port','humanize','pref.generic.desc']) {
+for (const token of ['auto_tmm_enabled','save_path','web_ui_port','humanize','pref.generic.desc','max_ratio_act','max_seeding_time_act']) {
   if (!schema.includes(token)) throw new Error(`Settings schema invariant missing: ${token}`);
 }
 const translations = fs.readFileSync('webui/private/scripts/settings-translations.js', 'utf8');
-for (const token of ['Automatic Torrent Management','自动 Torrent 管理','Web UI port','Web UI 端口']) {
+for (const token of ['Automatic Torrent Management','自动 Torrent 管理','Web UI port','Web UI 端口','Share ratio action','分享率达限动作']) {
   if (!translations.includes(token)) throw new Error(`Settings translation missing: ${token}`);
 }
 
@@ -112,14 +112,14 @@ for (const token of ['--font-scale-offset','--text-description','--text-table-ce
 for (const token of ['app-nav__item','settings-group','setting-card','mobile-bottom-nav','switch-control']) {
   if (!v021.includes(token)) throw new Error(`v0.2.1 UX style missing: ${token}`);
 }
-for (const token of ['--spatial-floating','filter-shelf','facet-popover','connection-dock','grid-template-rows:auto minmax(42px,1fr) auto','search-box:focus-within','SIDEBAR-001','SETTING-001']) {
+for (const token of ['--spatial-floating','filter-shelf','facet-popover','connection-dock','grid-template-rows:auto auto auto','setting-card--half','is-tool-route','search-box:focus-within','SIDEBAR-001','SETTING-001']) {
   if (!v022.includes(token)) throw new Error(`v0.2.2 spatial style missing: ${token}`);
 }
 for (const token of ['torrent-panel.is-empty','transfer-dock','transfer-dialog','speed-presets','transfer-stats','transfer-chart-shell','EMPTY-001','DOCK-001','TRANSFER-001','.statusbar--v030 .transfer-dock>.desktop-only']) {
   if (!v030.includes(token)) throw new Error(`v0.3 transfer/empty style missing: ${token}`);
 }
 const spatial = fs.readFileSync('webui/private/scripts/spatial-v022.js','utf8');
-for (const token of ['installBranding','Wei.G.ico','borderRadius=\'50%\'','installFilterShelf','installConnectionDock','createFacet','facet-search','settings-content']) {
+for (const token of ['installBranding','Wei.G.ico','borderRadius=\'50%\'','installFilterShelf','installConnectionDock','createFacet','facet-search','settings-content','syncRouteFrame','syncSettingsTabState','balanceSettingGroups']) {
   if (!spatial.includes(token)) throw new Error(`Spatial/branding controller missing: ${token}`);
 }
 const runtime = fs.readFileSync('webui/private/scripts/v030.js','utf8');
