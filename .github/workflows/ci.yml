@@ -14,6 +14,8 @@ jobs:
         run: npm test
       - name: Linux installer syntax
         run: sh -n installers/install.sh
+      - name: Live regression script syntax
+        run: bash -n tests/live-qb52.sh
       - name: PowerShell installer syntax
         shell: pwsh
         run: |
