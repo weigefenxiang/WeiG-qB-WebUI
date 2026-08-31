@@ -67,8 +67,9 @@ html[data-density=comfortable]{--mobile-torrent-row-h:126px}
   .torrent-mobile-card>.progress-cell{grid-template-columns:minmax(42px,1fr) 42px;gap:6px}
   .torrent-mobile-card>.progress-cell .progress-track{height:5px}
   .torrent-mobile-card>.progress-cell .progress-number{font-size:10px}
-  .mobile-card-meta{display:flex!important;grid-template-columns:none!important;align-items:center;justify-content:space-between;gap:var(--mobile-meta-gap,clamp(3px,1.25vw,8px));margin-top:5px;min-width:0;max-width:100%;overflow:hidden;white-space:nowrap}
+  .mobile-card-meta{display:flex!important;grid-template-columns:none!important;align-items:center;justify-content:space-between;width:100%;gap:var(--mobile-meta-gap,clamp(3px,1.25vw,8px));margin-top:5px;min-width:0;max-width:100%;overflow:hidden;white-space:nowrap}
   .mobile-card-meta .cell{flex:0 0 auto;min-width:0;max-width:none;overflow:visible;text-overflow:clip;white-space:nowrap;font-size:var(--mobile-meta-font,clamp(9px,2.45vw,11px))!important;line-height:1.15;letter-spacing:-.028em;font-weight:610}
+  .mobile-card-meta.is-ultra-tight .cell{letter-spacing:-.06em}
   .mobile-card-meta .speed-dl{color:#81e6ff}.mobile-card-meta .speed-up{color:#bea9ff}
   @container (max-width:350px){.mobile-card-meta{--mobile-meta-gap:3px}.mobile-card-meta .cell{letter-spacing:-.038em}}
   @container (max-width:320px){.mobile-card-meta{--mobile-meta-gap:2px}}
