@@ -73,17 +73,20 @@
   function markRestore(){var ctx=listContext();if(!ctx)return;ctx.restore=true;writeListContext(ctx);}
   function restoreListContext(){
     var ctx=listContext(),route=W.Router&&W.Router.route?W.Router.route():{name:'home'};if(!ctx||!ctx.restore||route.name!=='home')return;
-    var target=Math.max(0,Number(ctx.scrollTop)||0),tries=0,maxTries=12;
-    function apply(){
+    var target=Math.max(0,Number(ctx.scrollTop)||0),frames=0,maxFrames=18;
+    function applyFrame(){
       var current=W.Router&&W.Router.route?W.Router.route():{name:'home'},list=U.$('torrent-list');
       if(current.name!=='home')return;
-      if(!list||list.clientHeight<=0||list.scrollHeight<=list.clientHeight){if(tries++<maxTries)return setTimeout(apply,50);return;}
-      list.__weiggVirtualScrollTop=target;list.scrollTop=target;
-      if(list.__weiggVirtualScrollHandler)list.__weiggVirtualScrollHandler();
-      if(Math.abs(list.scrollTop-target)>3&&tries++<maxTries)return setTimeout(apply,50);
+      if(list&&list.clientHeight>0&&list.scrollHeight>list.clientHeight){
+        list.__weiggVirtualScrollTop=target;
+        list.scrollTop=target;
+        if(list.__weiggVirtualScrollHandler)list.__weiggVirtualScrollHandler();
+      }
+      frames++;
+      if(frames<maxFrames){requestAnimationFrame(applyFrame);return;}
       ctx.restore=false;writeListContext(ctx);
     }
-    requestAnimationFrame(function(){requestAnimationFrame(apply);});
+    requestAnimationFrame(applyFrame);
   }
   function backFromDetail(){var route=W.Router&&W.Router.route?W.Router.route():{name:'home'},ctx=listContext();if(route.name!=='torrent')return false;markRestore();if(ctx&&ctx.hash&&ctx.savedAt&&Date.now()-ctx.savedAt<86400000){history.back();setTimeout(function(){var r=W.Router.route();if(r.name==='torrent')W.Router.home();},180);return true;}W.Router.home();return true;}
   function syncDetailBack(){
@@ -99,7 +102,7 @@
     if(document.documentElement.dataset.v036==='1')return;document.documentElement.dataset.v036='1';
     observeSelects();observeSettings();W.AmbientMark.install('.brand__mark');syncDetailBack();restoreListContext();
     document.addEventListener('click',captureDetailEntry,true);document.addEventListener('keydown',onEscape,true);
-    global.addEventListener('hashchange',function(){setTimeout(function(){syncDetailBack();restoreListContext();},50);});
+    global.addEventListener('hashchange',function(){setTimeout(function(){syncDetailBack();restoreListContext();},20);});
     global.addEventListener('weigg:languagechange',syncLocale);global.addEventListener('weigg:timezonechange',function(){global.dispatchEvent(new CustomEvent('weigg:timeformatrefresh'));});
     document.addEventListener('visibilitychange',function(){if(document.hidden)W.AmbientMark.stop();else W.AmbientMark.start();});
     setTimeout(function(){W.AmbientMark.install('.brand__mark');repairBrandAsset();upgradeSelects(document);injectTimeZoneSetting();syncDetailBack();},900);
