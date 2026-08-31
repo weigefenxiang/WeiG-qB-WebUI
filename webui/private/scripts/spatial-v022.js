@@ -152,11 +152,51 @@
     document.addEventListener('click',function(){panel.hidden=true;trigger.setAttribute('aria-expanded','false');});
   }
 
+  function syncRouteFrame(){
+    var shell=U.$('app');if(!shell)return;
+    var route=W.Router&&W.Router.route?W.Router.route():{name:'home'};
+    var name=route&&route.name||'home';
+    var torrentRoute=name==='home'||name==='torrent';
+    shell.classList.toggle('is-tool-route',!torrentRoute);
+    if(!torrentRoute){var sidebar=U.$('sidebar'),scrim=U.$('drawer-scrim');if(sidebar)sidebar.classList.remove('is-open');if(scrim)scrim.classList.remove('is-open');}
+  }
+
   function polishSettingCards(){
     U.$$('#settings-content .setting-card,#settings-content .settings-control').forEach(function(card){
       var title=card.querySelector('strong');
       if(title&&!title.title)title.title=title.textContent.trim();
     });
+  }
+
+  function syncSettingsTabState(){
+    var root=U.$('settings-content');if(!root)return;
+    var active=document.querySelector('#settings-tabs [data-settings-tab].is-active');
+    var tab=active&&active.dataset.settingsTab||'weigg';
+    root.dataset.settingsTab=tab;
+    var language=root.querySelector('[data-v021-language]');
+    if(language){var hide=tab!=='weigg';if(language.hidden!==hide)language.hidden=hide;}
+  }
+
+  function balanceSettingGroup(group){
+    var all=Array.from(group.children).filter(function(card){return card.matches&&card.matches('.setting-card,.settings-control');});
+    all.forEach(function(card){card.classList.remove('setting-card--half','setting-card--full');});
+    if(global.innerWidth<1500)return;
+    var cards=all.filter(function(card){return !card.hidden;});
+    var n=cards.length;if(!n)return;
+    if(n===1){cards[0].classList.add('setting-card--full');return;}
+    if(n===2||n===4){cards.forEach(function(card){card.classList.add('setting-card--half');});return;}
+    if(n%3===1&&n>4){cards.slice(-4).forEach(function(card){card.classList.add('setting-card--half');});return;}
+    if(n%3===2){cards.slice(-2).forEach(function(card){card.classList.add('setting-card--half');});}
+  }
+
+  function balanceSettingGroups(){
+    U.$$('#settings-content .settings-group').forEach(balanceSettingGroup);
+  }
+
+  function syncSettingsPresentation(){
+    polishSettingCards();
+    syncSettingsTabState();
+    balanceSettingGroups();
   }
 
   function observeSettings(){
@@ -166,9 +206,9 @@
     var pending=false;
     new MutationObserver(function(){
       if(pending)return;pending=true;
-      requestAnimationFrame(function(){pending=false;polishSettingCards();});
-    }).observe(root,{childList:true,subtree:true});
-    polishSettingCards();
+      requestAnimationFrame(function(){pending=false;syncSettingsPresentation();});
+    }).observe(root,{childList:true,subtree:true,attributes:true,attributeFilter:['hidden']});
+    syncSettingsPresentation();
   }
 
   function syncLocale(){
@@ -178,6 +218,7 @@
       updateFacetTrigger(wrap,U.$(def.nav),def.label);
       var search=wrap.querySelector('.facet-search');if(search){search.placeholder=T('nav.search')+'…';search.setAttribute('aria-label',T('nav.search'));}
     });
+    syncSettingsPresentation();
   }
 
   function init(){
@@ -186,11 +227,13 @@
     installBranding();
     installFilterShelf();
     installConnectionDock();
+    syncRouteFrame();
     observeSettings();
     document.addEventListener('click',function(){closeAllFacets();});
-    global.addEventListener('hashchange',function(){closeAllFacets();setTimeout(polishSettingCards,80);});
+    global.addEventListener('hashchange',function(){closeAllFacets();syncRouteFrame();setTimeout(syncSettingsPresentation,80);});
+    global.addEventListener('resize',function(){requestAnimationFrame(balanceSettingGroups);});
     global.addEventListener('weigg:languagechange',syncLocale);
-    setTimeout(function(){syncLocale();polishSettingCards();},900);
+    setTimeout(function(){syncLocale();syncSettingsPresentation();syncRouteFrame();},900);
   }
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(init,0);});

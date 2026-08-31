@@ -148,6 +148,9 @@ select{
   .sidebar>.sidebar__section:first-child{padding-bottom:0;margin-bottom:0;border-bottom:0}
   #filter-nav{display:grid;gap:3px}
   #filter-nav .nav-item{min-height:38px}
+  .app-shell.is-tool-route{grid-template-columns:minmax(0,1fr)}
+  .app-shell.is-tool-route>.sidebar,.app-shell.is-tool-route>.drawer-scrim{display:none!important}
+  .app-shell.is-tool-route>.workspace{grid-column:1}
 }
 @media(max-height:760px) and (min-width:821px){
   #filter-nav{gap:1px}
@@ -262,7 +265,9 @@ select{
   box-shadow:inset 2px 0 #6e9cff,0 0 24px rgba(80,116,220,.035);
 }
 
-/* SETTING-001: title -> description -> control, always vertical. */
+/* SETTING-001: title -> description -> control, compact and balanced. */
+.settings-header__actions{min-width:0!important}
+.settings-header__actions .settings-search-box{display:none!important}
 .settings-layout{grid-template-columns:210px minmax(0,1fr);gap:12px}
 .settings-content{padding:16px}
 .settings-group{
@@ -271,26 +276,27 @@ select{
   align-items:stretch!important;
 }
 .settings-group>.section-heading,.settings-group>.advanced-filter,.settings-group>p,.settings-content>.settings-group>.kv-grid{grid-column:1/-1!important}
+#settings-content:not([data-settings-tab="weigg"]) [data-v021-language]{display:none!important}
 .setting-card,.settings-control{
   display:grid!important;
   grid-template-columns:minmax(0,1fr)!important;
-  grid-template-rows:auto minmax(42px,1fr) auto;
+  grid-template-rows:auto auto auto;
   align-items:stretch!important;
-  gap:8px!important;
-  min-height:146px!important;
+  gap:6px!important;
+  min-height:124px!important;
   height:100%;
-  padding:14px!important;
-  border-color:rgba(154,180,229,.11)!important;
-  border-radius:12px!important;
+  padding:12px!important;
+  border-color:rgba(154,180,229,.10)!important;
+  border-radius:11px!important;
   background:
-    radial-gradient(circle at 100% 0%,rgba(88,121,219,.035),transparent 34%),
-    linear-gradient(180deg,rgba(18,30,49,.90),rgba(11,20,35,.90))!important;
-  box-shadow:0 10px 26px rgba(0,0,0,.15),inset 0 1px rgba(255,255,255,.05),inset 0 -1px rgba(0,0,0,.15)!important;
+    radial-gradient(circle at 100% 0%,rgba(88,121,219,.025),transparent 34%),
+    linear-gradient(180deg,rgba(18,30,49,.88),rgba(11,20,35,.88))!important;
+  box-shadow:0 8px 22px rgba(0,0,0,.13),inset 0 1px rgba(255,255,255,.045),inset 0 -1px rgba(0,0,0,.14)!important;
 }
 .setting-card:hover,.settings-control:hover{
   transform:translateY(-1px)!important;
-  border-color:rgba(112,151,255,.23)!important;
-  box-shadow:0 15px 34px rgba(0,0,0,.21),0 0 20px rgba(78,118,229,.035),inset 0 1px rgba(255,255,255,.065)!important;
+  border-color:rgba(112,151,255,.22)!important;
+  box-shadow:0 13px 30px rgba(0,0,0,.19),0 0 18px rgba(78,118,229,.03),inset 0 1px rgba(255,255,255,.06)!important;
 }
 .settings-row__copy,.settings-control>span{
   display:contents!important;
@@ -303,15 +309,18 @@ select{
   white-space:nowrap;
   font-size:var(--text-item-primary-size)!important;
   font-weight:720!important;
-  line-height:1.25!important;
+  line-height:1.22!important;
 }
 .settings-row__copy small,.settings-control small{
   grid-row:2;
-  display:block;
+  display:-webkit-box;
   max-width:60ch;
-  min-height:2.55em;
+  min-height:2.35em;
   align-self:start;
-  line-height:1.42!important;
+  overflow:hidden;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:2;
+  line-height:1.35!important;
   color:var(--text-muted);
 }
 .setting-card>.field-input,.setting-card>input:not(.switch-input),.setting-card>select,.settings-control>.field-input,.settings-control>select{
@@ -319,7 +328,7 @@ select{
   width:100%!important;
   min-width:0!important;
   max-width:none!important;
-  height:42px;
+  height:40px;
   justify-self:stretch;
 }
 .setting-card>.switch-control,.settings-control>.switch-control{
@@ -328,9 +337,11 @@ select{
   align-self:end;
   margin:0!important;
 }
+.setting-card input[type="number"]{-moz-appearance:textfield;appearance:textfield}
+.setting-card input[type="number"]::-webkit-outer-spin-button,.setting-card input[type="number"]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .section-heading{
   margin-top:2px;
-  padding:7px 4px 4px!important;
+  padding:6px 3px 3px!important;
 }
 .section-heading h2{letter-spacing:-.015em}
 .settings-tabs{
@@ -339,6 +350,10 @@ select{
 }
 .settings-tabs .nav-item:hover{background:rgba(104,141,231,.07)}
 .settings-tabs .nav-item.is-active{background:linear-gradient(180deg,rgba(91,129,226,.16),rgba(72,101,178,.09));box-shadow:inset 2px 0 #6b9cff,inset 0 1px rgba(255,255,255,.04)}
+.settings-content .kv-grid{gap:7px!important}
+.settings-content .kv{padding:9px 11px;border-radius:9px;background:rgba(255,255,255,.014);box-shadow:none}
+.settings-content .kv span{margin-bottom:3px}
+.settings-content .kv strong{font-size:var(--text-data)}
 
 .dialog{
   border-color:rgba(163,187,231,.17)!important;
@@ -373,7 +388,10 @@ html[data-theme="light"] select{
 }
 
 @media(min-width:1500px){
-  .settings-group{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+  .settings-group{grid-template-columns:repeat(6,minmax(0,1fr))!important}
+  .settings-group>.setting-card,.settings-group>.settings-control{grid-column:span 2}
+  .settings-group>.setting-card.setting-card--half,.settings-group>.settings-control.setting-card--half{grid-column:span 3}
+  .settings-group>.setting-card.setting-card--full,.settings-group>.settings-control.setting-card--full{grid-column:1/-1}
 }
 @media(max-width:980px){
   .filter-shelf{overflow-x:auto;scrollbar-width:none}
@@ -392,11 +410,11 @@ html[data-theme="light"] select{
   }
   .facet-popover .nav-list{max-height:48vh}
   .connection-dock__popover{position:fixed;left:10px;right:10px;bottom:calc(116px + env(safe-area-inset-bottom));width:auto}
-  .setting-card,.settings-control{min-height:142px!important}
+  .setting-card,.settings-control{min-height:118px!important}
 }
 @media(max-width:560px){
   .filter-shelf__summary{display:none}
-  .setting-card,.settings-control{min-height:138px!important;padding:14px!important}
+  .setting-card,.settings-control{min-height:116px!important;padding:12px!important}
 }
 
 @media(prefers-reduced-motion:reduce){
