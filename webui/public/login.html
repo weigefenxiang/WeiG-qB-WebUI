@@ -32,6 +32,7 @@
         ko:{title:'다시 오신 것을 환영합니다',lead:'qBittorrent WebUI에 로그인합니다.',user:'사용자 이름',pass:'비밀번호',sign:'로그인',busy:'로그인 중…',bad:'사용자 이름 또는 비밀번호가 올바르지 않습니다.',hint:'호환 대상: qBittorrent 4.1.9 → 현재 5.x.'}
       };
       function norm(v){v=String(v||'').toLowerCase();if(v.indexOf('zh-tw')===0||v.indexOf('zh-hk')===0||v.indexOf('zh-hant')===0)return'zh-TW';if(v.indexOf('zh')===0)return'zh-CN';if(v.indexOf('ja')===0)return'ja';if(v.indexOf('ko')===0)return'ko';if(v.indexOf('en')===0)return'en';return'';}
+      function classifyLogin(x){if(x.status===204)return'ok';if(x.status===401)return'bad';if(x.status===403)return'banned';if(!x.ok)return'rejected';if(x.text==='Ok.')return'ok';if(x.text==='Fails.')return'bad';return'unexpected';}
       var lang='en',list=navigator.languages||[navigator.language];for(var i=0;i<list.length;i++){var n=norm(list[i]);if(n){lang=n;break;}}
       var EN=D.en,L=D[lang]||EN;function tr(key,vars){var text=L[key]||EN[key]||key;Object.keys(vars||{}).forEach(function(k){text=text.replace('{'+k+'}',String(vars[k]));});return text;}
       document.documentElement.lang=lang;document.title='WeiG qB WebUI · '+tr('sign');document.getElementById('login-title').textContent=tr('title');document.getElementById('login-lead').textContent=tr('lead');document.getElementById('username-label').textContent=tr('user');document.getElementById('password-label').textContent=tr('pass');document.getElementById('login-btn').textContent=tr('sign');document.getElementById('login-hint').textContent=tr('hint');
@@ -44,11 +45,9 @@
         fetch('api/v2/auth/login',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body,credentials:'same-origin',cache:'no-store'}).then(function(r){
           return r.text().then(function(t){return{status:r.status,ok:r.ok,text:String(t||'').trim()};});
         }).then(function(x){
-          if(x.status===403)throw{kind:'banned',status:x.status};
-          if(!x.ok)throw{kind:'rejected',status:x.status};
-          if(x.text==='Ok.'){window.location.reload();return;}
-          if(x.text==='Fails.')throw{kind:'bad',status:x.status};
-          throw{kind:'unexpected',status:x.status};
+          var kind=classifyLogin(x);
+          if(kind==='ok'){window.location.reload();return;}
+          throw{kind:kind,status:x.status};
         }).catch(function(ex){
           pwd.value='';pwd.focus();
           if(ex&&ex.kind==='bad')err.textContent=tr('bad');
