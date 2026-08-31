@@ -47,7 +47,7 @@ jobs:
         run: node tests/browser-logs-v033.mjs
       - name: Cross-version Alternative WebUI settings regression
         run: node tests/browser-settings-v034.mjs
-      - name: Full representative v0.3.6 interaction regression
-        run: node tests/browser-ui-v036.mjs
       - name: Mobile adaptive viewport and storage regression
         run: node tests/browser-mobile-v036.mjs
+      - name: Full representative v0.3.6 interaction regression
+        run: node tests/browser-ui-v036.mjs
