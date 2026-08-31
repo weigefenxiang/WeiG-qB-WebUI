@@ -12,6 +12,8 @@ jobs:
           node-version: 22
       - name: WebUI smoke and JavaScript syntax
         run: npm test
+      - name: Logs browser test syntax
+        run: node --check tests/browser-logs-v033.mjs
       - name: Linux installer syntax
         run: sh -n installers/install.sh
       - name: Live regression script syntax
@@ -21,3 +23,18 @@ jobs:
         run: |
           $null = [scriptblock]::Create((Get-Content 'installers/install.ps1' -Raw))
           Write-Host 'PowerShell installer syntax parsed.'
+
+  browser:
+    runs-on: ubuntu-latest
+    needs: smoke
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Chromium test runtime
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Cross-version Logs browser regression
+        run: node tests/browser-logs-v033.mjs
