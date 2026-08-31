@@ -16,7 +16,9 @@ assert(css.includes('font-size:clamp('),'mobile torrent metrics must shrink resp
 assert(css.includes('#search-view>.tool-page')&&css.includes('#rss-view>.tool-page'),'Search and RSS must share the single-viewport tool-page contract');
 assert(css.includes('.status-pill[data-tone=stalled-up]')&&css.includes('.status-pill[data-tone=download]')&&css.includes('.status-pill[data-tone=seed]')&&css.includes('.status-pill[data-tone=stopped]'),'semantic torrent states must have distinct canonical tones');
 assert(js.includes('free_space_on_disk'),'storage dock must consume qBittorrent sync/maindata free_space_on_disk');
-assert(js.includes('15000'),'free-space polling must be low-frequency rather than tied to the torrent refresh loop');
+assert(js.includes('getMainData(storageRid)'),'free-space telemetry must use incremental sync rid after the initial full snapshot');
+assert(js.includes('30000'),'free-space polling must stay low-frequency rather than following the Torrent refresh loop');
+assert(js.includes('else if(lastFree!=null)paintStorage(lastFree)'),'unchanged partial sync responses must retain the last known free-space value');
 
 function BaseVirtualList(){}
 BaseVirtualList.prototype.setRowHeight=function(){};
@@ -63,4 +65,4 @@ assert(sandbox.window.WeiG.Components.state('downloading')[1]==='download','down
 assert(sandbox.window.WeiG.Components.state('uploading')[1]==='seed','seeding must have seed tone');
 assert(sandbox.window.WeiG.Components.state('stoppedUP')[1]==='stopped','stopped torrents must have stopped tone');
 
-console.log('v0.3.6 mobile adaptive, semantic status and 3-significant-digit storage contract passed.');
+console.log('v0.3.6 mobile adaptive, semantic status and incremental 3-significant-digit storage contract passed.');
