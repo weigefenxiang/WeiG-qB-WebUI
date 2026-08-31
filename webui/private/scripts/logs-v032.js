@@ -33,10 +33,10 @@
     var actions=document.createElement('div');actions.className='logs-v032-actions';
     var follow=C.checkControl(tr('v036.logs.follow',null,'Follow latest'),state.follow,function(checked){state.follow=checked;if(state.follow)scrollLatest();});follow.dataset.logsFollow='1';
     var size=C.selectControl({id:'logs-size-mode',value:state.sizeMode,options:[{value:'compact',label:tr('v036.logs.compact',null,'Compact')},{value:'auto',label:tr('v036.logs.auto',null,'Auto')},{value:'max',label:tr('v036.logs.max',null,'Max')}],ariaLabel:tr('v036.logs.auto',null,'Auto'),onChange:function(value){state.sizeMode=value;applySizeMode();setTimeout(function(){if(state.virtual&&state.virtual.render)state.virtual.render();},40);}});size.classList.add('logs-size-mode');
-    var zones=W.Time&&W.Time.zones?W.Time.zones():[{value:'system',label:'System / Browser'},{value:'UTC',label:'UTC'}];zones=zones.map(function(item){return item.value==='system'?{value:'system',label:tr('v036.time.system',null,'System / Browser')}:item;});
-    var timezone=C.selectControl({id:'logs-time-zone',value:W.Time&&W.Time.getZone?W.Time.getZone():'system',options:zones,className:'timezone-select',ariaLabel:tr('v036.logs.timeZone',null,'Time zone'),searchable:true,searchThreshold:12,searchPlaceholder:tr('v036.logs.timeZoneSearch',null,'Search time zones…'),onChange:function(value){if(W.Time&&W.Time.setZone)W.Time.setZone(value);renderRows(false,0);}});
     var refresh=makeButton('↻ '+tr('v036.logs.refresh',null,'Refresh'),'btn btn--ghost logs-refresh');
-    actions.append(follow,size,timezone,refresh);
+    /* TIME-002: Logs consume the global Display Time Zone from the status dock.
+       A second route-local timezone selector would create duplicate state/controls. */
+    actions.append(follow,size,refresh);
     toolbar.append(search,filters,actions);
 
     var panel=document.createElement('section');panel.className='logs-v032-panel surface surface--panel';
