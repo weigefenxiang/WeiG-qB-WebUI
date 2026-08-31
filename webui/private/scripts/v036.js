@@ -68,9 +68,23 @@
   /* NAV-001 — detail Back/Escape returns to the list context, not an arbitrary site. */
   var CONTEXT_KEY='weigg.torrentListContext.v036';
   function listContext(){try{return JSON.parse(sessionStorage.getItem(CONTEXT_KEY)||'null');}catch(_e){return null;}}
-  function saveListContext(){var list=U.$('torrent-list');try{sessionStorage.setItem(CONTEXT_KEY,JSON.stringify({hash:location.hash||'#/',scrollTop:list?list.scrollTop:0,pageLabel:U.$('page-label')?U.$('page-label').textContent:'',savedAt:Date.now(),restore:false}));}catch(_e){}}
-  function markRestore(){var ctx=listContext();if(!ctx)return;ctx.restore=true;try{sessionStorage.setItem(CONTEXT_KEY,JSON.stringify(ctx));}catch(_e){}}
-  function restoreListContext(){var ctx=listContext(),route=W.Router&&W.Router.route?W.Router.route():{name:'home'};if(!ctx||!ctx.restore||route.name!=='home')return;ctx.restore=false;try{sessionStorage.setItem(CONTEXT_KEY,JSON.stringify(ctx));}catch(_e){}var tries=0;function apply(){var list=U.$('torrent-list');if(!list&&tries++<8)return setTimeout(apply,50);if(list){list.__weiggVirtualScrollTop=Number(ctx.scrollTop)||0;list.scrollTop=Number(ctx.scrollTop)||0;if(list.__weiggVirtualScrollHandler)list.__weiggVirtualScrollHandler();}}setTimeout(apply,60);}
+  function writeListContext(ctx){try{sessionStorage.setItem(CONTEXT_KEY,JSON.stringify(ctx));}catch(_e){}}
+  function saveListContext(){var list=U.$('torrent-list');writeListContext({hash:location.hash||'#/',scrollTop:list?list.scrollTop:0,pageLabel:U.$('page-label')?U.$('page-label').textContent:'',savedAt:Date.now(),restore:false});}
+  function markRestore(){var ctx=listContext();if(!ctx)return;ctx.restore=true;writeListContext(ctx);}
+  function restoreListContext(){
+    var ctx=listContext(),route=W.Router&&W.Router.route?W.Router.route():{name:'home'};if(!ctx||!ctx.restore||route.name!=='home')return;
+    var target=Math.max(0,Number(ctx.scrollTop)||0),tries=0,maxTries=12;
+    function apply(){
+      var current=W.Router&&W.Router.route?W.Router.route():{name:'home'},list=U.$('torrent-list');
+      if(current.name!=='home')return;
+      if(!list||list.clientHeight<=0||list.scrollHeight<=list.clientHeight){if(tries++<maxTries)return setTimeout(apply,50);return;}
+      list.__weiggVirtualScrollTop=target;list.scrollTop=target;
+      if(list.__weiggVirtualScrollHandler)list.__weiggVirtualScrollHandler();
+      if(Math.abs(list.scrollTop-target)>3&&tries++<maxTries)return setTimeout(apply,50);
+      ctx.restore=false;writeListContext(ctx);
+    }
+    requestAnimationFrame(function(){requestAnimationFrame(apply);});
+  }
   function backFromDetail(){var route=W.Router&&W.Router.route?W.Router.route():{name:'home'},ctx=listContext();if(route.name!=='torrent')return false;markRestore();if(ctx&&ctx.hash&&ctx.savedAt&&Date.now()-ctx.savedAt<86400000){history.back();setTimeout(function(){var r=W.Router.route();if(r.name==='torrent')W.Router.home();},180);return true;}W.Router.home();return true;}
   function syncDetailBack(){
     var tabs=document.querySelector('#detail-view .detail-tabs'),route=W.Router&&W.Router.route?W.Router.route():{name:'home'};if(!tabs)return;var existing=tabs.querySelector('[data-v036-detail-back]');if(route.name!=='torrent'){if(existing)existing.remove();return;}if(existing){existing.querySelector('span').textContent=tr('v036.detail.back');existing.title=tr('v036.detail.backHint');return;}
