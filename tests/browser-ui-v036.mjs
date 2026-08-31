@@ -53,6 +53,8 @@ async function choose(page,nativeId,value){
   const custom=page.locator(`#${nativeId} + .ui-select`);await custom.locator('.ui-select__trigger').click();await custom.locator(`.ui-select__option[data-value="${value}"]`).click();
 }
 async function waitPageNumber(page,n){await page.waitForFunction(expected=>{const text=document.querySelector('#page-label')?.textContent||'';return new RegExp(`(?:Page|第)\\s*${expected}(?:\\s|\\/)`).test(text);},n,{timeout:2500});}
+async function visibleTorrentHash(list){return await list.evaluate(node=>{const box=node.getBoundingClientRect(),rows=[...node.querySelectorAll('[data-hash]')];const visible=rows.find(row=>{const r=row.getBoundingClientRect();return r.top>=box.top+4&&r.bottom<=box.bottom-4;});return (visible||rows[0])?.dataset.hash||'';});}
+function titleForHash(page,hash,mobile){return page.locator(`${mobile?'.torrent-mobile-card':'.torrent-row'}[data-hash="${hash}"] ${mobile?'.mobile-card-title':'.torrent-title'}`);}
 
 const browser=await chromium.launch({headless:true});
 try{
@@ -67,12 +69,13 @@ try{
       const triggered=await page.evaluate(()=>WeiG.AmbientMark.trigger('.brand__mark','orbit-spark'));assert(triggered,`${name}/${viewport.label}: AmbientMark deterministic trigger failed`);assert(await page.locator('.brand__mark').evaluate(el=>el.classList.contains('is-ambient-orbit')&&el.classList.contains('is-ambient-spark')),`${name}/${viewport.label}: AmbientMark classes missing`);
 
       await choose(page,'page-size','20');await page.waitForFunction(()=>document.querySelector('#page-size')?.value==='20');await page.locator('#next-btn').click();await waitPageNumber(page,2);
-      const list=page.locator('#torrent-list');await list.evaluate(node=>{node.scrollTop=160;});await page.waitForTimeout(80);const before=await list.evaluate(node=>node.scrollTop);
-      const title=viewport.width<=820?page.locator('.mobile-card-title').first():page.locator('.torrent-title').first();await title.click();await page.waitForFunction(()=>WeiG.Router.route().name==='torrent');await page.waitForSelector('[data-v036-detail-back]');
+      const list=page.locator('#torrent-list');await list.evaluate(node=>{node.scrollTop=160;});await page.waitForTimeout(80);const before=await list.evaluate(node=>node.scrollTop);const visibleHash=await visibleTorrentHash(list);assert(visibleHash,`${name}/${viewport.label}: no visible torrent row after scrolling`);
+      const mobile=viewport.width<=820,title=titleForHash(page,visibleHash,mobile);await title.click();await page.waitForFunction(()=>WeiG.Router.route().name==='torrent');await page.waitForSelector('[data-v036-detail-back]');
+      const saved=await page.evaluate(()=>JSON.parse(sessionStorage.getItem('weigg.torrentListContext.v036')||'null'));assert(saved&&Math.abs(Number(saved.scrollTop)-before)<=2,`${name}/${viewport.label}: entry context captured wrong scroll ${before} -> ${saved?.scrollTop}`);
       const backPlacement=await page.evaluate(()=>{const tabs=document.querySelector('.detail-tabs'),back=tabs?.querySelector('[data-v036-detail-back]');return !!back&&tabs.firstElementChild===back;});assert(backPlacement,`${name}/${viewport.label}: detail Back is not left of Overview`);
-      await page.locator('[data-v036-detail-back]').click();await page.waitForFunction(()=>WeiG.Router.route().name==='home');await waitPageNumber(page,2);await page.waitForTimeout(150);const after=await list.evaluate(node=>node.scrollTop);assert(Math.abs(after-before)<=8,`${name}/${viewport.label}: list scroll context not restored ${before} -> ${after}`);
+      await page.locator('[data-v036-detail-back]').click();await page.waitForFunction(()=>WeiG.Router.route().name==='home');await waitPageNumber(page,2);await page.waitForTimeout(180);const after=await list.evaluate(node=>node.scrollTop);assert(Math.abs(after-before)<=8,`${name}/${viewport.label}: list scroll context not restored ${before} -> ${after}`);
 
-      const titleAgain=viewport.width<=820?page.locator('.mobile-card-title').first():page.locator('.torrent-title').first();await titleAgain.click();await page.waitForFunction(()=>WeiG.Router.route().name==='torrent');await page.keyboard.press('Escape');await page.waitForFunction(()=>WeiG.Router.route().name==='home');await waitPageNumber(page,2);
+      const titleAgain=titleForHash(page,visibleHash,mobile);await titleAgain.click();await page.waitForFunction(()=>WeiG.Router.route().name==='torrent');await page.keyboard.press('Escape');await page.waitForFunction(()=>WeiG.Router.route().name==='home');await waitPageNumber(page,2);
       assert(errors.length===0,`${name}/${viewport.label}: browser errors: ${errors.join(' | ')}`);await context.close();
     }
   }
