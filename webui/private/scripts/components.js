@@ -20,12 +20,12 @@
   (function loadRuntimeLayers(){
     function css(href,key){if(document.querySelector('link[data-weigg-layer="'+key+'"]'))return;var link=document.createElement('link');link.rel='stylesheet';link.href=href;link.dataset.weiggLayer=key;document.head.appendChild(link);}
     function asyncScript(src,key){if(document.querySelector('script[data-weigg-layer="'+key+'"]'))return;var script=document.createElement('script');script.src=src;script.async=true;script.dataset.weiggLayer=key;document.head.appendChild(script);}
-    function loadV030(){if(document.querySelector('script[data-weigg-layer="runtime-030"]'))return;var script=document.createElement('script');script.src='scripts/v030.js?v=0.3.0';script.async=false;script.dataset.weiggLayer='runtime-030';document.head.appendChild(script);}
-    css('css/v022.css?v=0.3.0','spatial-022');
-    css('css/v030.css?v=0.3.0','runtime-030');
-    asyncScript('scripts/spatial-v022.js?v=0.3.0','spatial-022');
+    function loadV030(){if(document.querySelector('script[data-weigg-layer="runtime-030"]'))return;var script=document.createElement('script');script.src='scripts/v030.js?v=0.3.1';script.async=false;script.dataset.weiggLayer='runtime-030';document.head.appendChild(script);}
+    css('css/v022.css?v=0.3.1','spatial-022');
+    css('css/v030.css?v=0.3.1','runtime-030');
+    asyncScript('scripts/spatial-v022.js?v=0.3.1','spatial-022');
     if(W.V030I18n)loadV030();
-    else if(!document.querySelector('script[data-weigg-layer="i18n-030"]')){var i18=document.createElement('script');i18.src='scripts/i18n-v030.js?v=0.3.0';i18.async=false;i18.dataset.weiggLayer='i18n-030';i18.onload=loadV030;document.head.appendChild(i18);}
+    else if(!document.querySelector('script[data-weigg-layer="i18n-030"]')){var i18=document.createElement('script');i18.src='scripts/i18n-v030.js?v=0.3.1';i18.async=false;i18.dataset.weiggLayer='i18n-030';i18.onload=loadV030;document.head.appendChild(i18);}
     else{var existing=document.querySelector('script[data-weigg-layer="i18n-030"]');existing.addEventListener('load',loadV030,{once:true});}
   })();
 })(window);
