@@ -92,7 +92,7 @@ try{
     page.on('console',msg=>{if(msg.type()==='error')errors.push(msg.text());});
     page.on('pageerror',error=>errors.push(String(error)));
     await page.goto(`http://${host}:${port}/${name}/#/settings`,{waitUntil:'networkidle'});
-    await page.locator('[data-settings-tab="webui"]').click();
+    await page.locator('#settings-tabs button[data-settings-tab="webui"]').click();
     await page.waitForSelector('#alternative-webui-v034');
 
     const initial=await page.evaluate(()=>({
@@ -108,9 +108,9 @@ try{
     assert(initial.text.includes('0.3.4'),`${name}: installed version not shown`);
     assert(initial.scrollWidth<=initial.innerWidth+1,`${name}: settings horizontal overflow`);
 
-    await page.locator('[data-settings-tab="advanced"]').click();
+    await page.locator('#settings-tabs button[data-settings-tab="advanced"]').click();
     await page.waitForFunction(()=>![...document.querySelectorAll('#settings-content .settings-row')].some(row=>['alternative_webui_enabled','alternative_webui_path'].includes(row.dataset.key)&&!row.hidden),null,{timeout:1500});
-    await page.locator('[data-settings-tab="webui"]').click();
+    await page.locator('#settings-tabs button[data-settings-tab="webui"]').click();
     await page.waitForSelector('#alternative-webui-v034');
 
     const writesBeforeMistake=state[name].writes.length;
