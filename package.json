@@ -1,9 +1,9 @@
 {
   "name": "weigg-qb-webui",
-  "version": "0.2.4",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node tests/smoke.mjs && node --check webui/private/scripts/i18n.js && node --check webui/private/scripts/core.js && node --check webui/private/scripts/settings-schema.js && node --check webui/private/scripts/settings-translations.js && node --check webui/private/scripts/qb-client.js && node --check webui/private/scripts/components.js && node --check webui/private/scripts/app.js && node --check webui/private/scripts/ux-v021.js && node --check webui/private/scripts/spatial-v022.js"
+    "test": "node tests/smoke.mjs && node tests/compat-v030.mjs && node --check webui/private/scripts/i18n.js && node --check webui/private/scripts/core.js && node --check webui/private/scripts/settings-schema.js && node --check webui/private/scripts/settings-translations.js && node --check webui/private/scripts/qb-client.js && node --check webui/private/scripts/components.js && node --check webui/private/scripts/app.js && node --check webui/private/scripts/ux-v021.js && node --check webui/private/scripts/spatial-v022.js && node --check webui/private/scripts/v030.js"
   }
 }
