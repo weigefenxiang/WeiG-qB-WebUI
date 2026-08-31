@@ -47,7 +47,10 @@
         }).then(function(x){
           var kind=classifyLogin(x);
           if(kind==='ok'){window.location.reload();return;}
-          throw{kind:kind,status:x.status};
+          if(kind==='banned')throw{kind:'banned',status:x.status};
+          if(kind==='rejected')throw{kind:'rejected',status:x.status};
+          if(kind==='bad')throw{kind:'bad',status:x.status};
+          throw{kind:'unexpected',status:x.status};
         }).catch(function(ex){
           pwd.value='';pwd.focus();
           if(ex&&ex.kind==='bad')err.textContent=tr('bad');
