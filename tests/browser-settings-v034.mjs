@@ -109,9 +109,7 @@ try{
     assert(initial.scrollWidth<=initial.innerWidth+1,`${name}: settings horizontal overflow`);
 
     await page.locator('[data-settings-tab="advanced"]').click();
-    await page.waitForTimeout(80);
-    const duplicateVisible=await page.evaluate(()=>[...document.querySelectorAll('#settings-content .settings-row')].some(row=>['alternative_webui_enabled','alternative_webui_path'].includes(row.dataset.key)&&!row.hidden));
-    assert(!duplicateVisible,`${name}: Alternative WebUI preferences duplicated in Advanced`);
+    await page.waitForFunction(()=>![...document.querySelectorAll('#settings-content .settings-row')].some(row=>['alternative_webui_enabled','alternative_webui_path'].includes(row.dataset.key)&&!row.hidden),null,{timeout:1500});
     await page.locator('[data-settings-tab="webui"]').click();
     await page.waitForSelector('#alternative-webui-v034');
 
