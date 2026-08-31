@@ -59,7 +59,7 @@ html[data-density=comfortable]{--mobile-torrent-row-h:126px}
   #list-view .pager .btn{min-height:36px;padding-inline:9px}
   #page-label{min-width:0;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:clamp(10px,2.9vw,12px)}
 
-  /* MOBILE-CARD-001: dense but legible; the secondary metrics are one line. */
+  /* MOBILE-CARD-001: dense but legible; secondary metrics remain one line and auto-fit. */
   .torrent-mobile-card{height:calc(var(--mobile-torrent-row-h) - 6px)!important;padding:9px 10px;border-radius:12px;container-type:inline-size}
   .mobile-card-top{grid-template-columns:22px minmax(0,1fr) 38px;gap:6px}
   .mobile-card-title{font-size:clamp(13px,3.65vw,var(--text-item-primary));font-weight:680;letter-spacing:-.012em}
@@ -69,11 +69,11 @@ html[data-density=comfortable]{--mobile-torrent-row-h:126px}
   .torrent-mobile-card>.progress-cell{grid-template-columns:minmax(42px,1fr) 42px;gap:6px}
   .torrent-mobile-card>.progress-cell .progress-track{height:5px}
   .torrent-mobile-card>.progress-cell .progress-number{font-size:10px}
-  .mobile-card-meta{display:flex!important;grid-template-columns:none!important;align-items:center;justify-content:space-between;gap:clamp(4px,1.5vw,10px);margin-top:5px;min-width:0;overflow:hidden;white-space:nowrap}
-  .mobile-card-meta .cell{flex:0 1 auto;min-width:0;overflow:visible;text-overflow:clip;white-space:nowrap;font-size:clamp(9.5px,2.55vw,11.5px)!important;line-height:1.15;letter-spacing:-.022em;font-weight:610}
+  .mobile-card-meta{display:flex!important;grid-template-columns:none!important;align-items:center;justify-content:space-between;gap:var(--mobile-meta-gap,clamp(3px,1.25vw,8px));margin-top:5px;min-width:0;max-width:100%;overflow:hidden;white-space:nowrap}
+  .mobile-card-meta .cell{flex:0 0 auto;min-width:0;max-width:none;overflow:visible;text-overflow:clip;white-space:nowrap;font-size:var(--mobile-meta-font,clamp(9px,2.45vw,11px))!important;line-height:1.15;letter-spacing:-.028em;font-weight:610}
   .mobile-card-meta .speed-dl{color:#81e6ff}.mobile-card-meta .speed-up{color:#bea9ff}
-  @container (max-width:350px){.mobile-card-meta{gap:3px}.mobile-card-meta .cell{font-size:9.2px!important;letter-spacing:-.035em}}
-  @container (max-width:320px){.mobile-card-meta .cell{font-size:8.7px!important}}
+  @container (max-width:350px){.mobile-card-meta{--mobile-meta-gap:3px}.mobile-card-meta .cell{letter-spacing:-.038em}}
+  @container (max-width:320px){.mobile-card-meta{--mobile-meta-gap:2px}}
 
   /* TOOL-PAGE-001: Search/RSS/Logs are single-viewport tools on phones. */
   #search-view,#rss-view,#logs-view{overflow:hidden}
