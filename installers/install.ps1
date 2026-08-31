@@ -58,9 +58,21 @@ try {
   }
   if(!$web -or !(Test-Path $web)){ throw 'WebUI payload not found.' }
   $new="$Destination.new"; if(Test-Path $new){Remove-Item $new -Recurse -Force}; New-Item -ItemType Directory -Force -Path $new|Out-Null; Copy-Item (Join-Path $web '*') $new -Recurse -Force
-  if(!(Test-Path (Join-Path $new 'public\login.html')) -or !(Test-Path (Join-Path $new 'private\index.html'))){ throw 'Invalid WebUI package.' }
+  if(!(Test-Path (Join-Path $new 'public\login.html')) -or !(Test-Path (Join-Path $new 'private\index.html')) -or !(Test-Path (Join-Path $new 'VERSION'))){ throw 'Invalid WebUI package.' }
+  $version=(Get-Content (Join-Path $new 'VERSION') -Raw).Trim()
+  $meta=[ordered]@{
+    version=$version
+    container=$null
+    qbPath=$Destination
+    hostPath=$Destination
+    installedAt=[DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')
+    installer='windows'
+  }
+  $meta | ConvertTo-Json | Set-Content -Path (Join-Path $new 'private\weigg-install.json') -Encoding UTF8
   $old="$Destination.old"; if(Test-Path $old){Remove-Item $old -Recurse -Force}; if(Test-Path $Destination){Move-Item $Destination $old}; Move-Item $new $Destination; if(Test-Path $old){Remove-Item $old -Recurse -Force}
   Write-Host "Installed: $Destination"
+  Write-Host "Installed version: $version"
+  Write-Host "Install metadata: $(Join-Path $Destination 'private\weigg-install.json')"
   $cfg=Find-QBConfig
   if($Configure -and $cfg){
     Copy-Item $cfg "$cfg.weigg.bak" -Force
