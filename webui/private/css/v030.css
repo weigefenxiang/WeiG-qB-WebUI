@@ -1,4 +1,4 @@
-/* WeiG qB WebUI v0.3.0 — Stable Virtual UI + Transfer Control */
+/* WeiG qB WebUI v0.3.1 — Stable Virtual UI + Transfer Control */
 
 /* EMPTY-001: zero-result views must not reserve a full virtual-table viewport. */
 .torrent-panel.is-empty .torrent-table-head,
@@ -14,6 +14,8 @@
 .statusbar.statusbar--v030{display:flex;align-items:center;justify-content:center;padding:4px 10px;overflow:visible}
 .transfer-dock{display:flex;align-items:center;justify-content:center;gap:5px;min-width:0;max-width:100%;margin:auto}
 .transfer-dock>span,.transfer-dock>.connection-dock{white-space:nowrap}
+/* Refresh timestamp was redundant and caused users to correlate every poll with UI motion. Keep the DOM hook for legacy controller compatibility, but do not present it. */
+.statusbar--v030 .transfer-dock>.desktop-only{display:none!important}
 .transfer-dock__control{display:inline-flex;align-items:center;gap:5px;height:32px;padding:0 10px;border:1px solid transparent;border-radius:9px;background:transparent;color:var(--text-secondary);cursor:pointer;font-size:var(--text-status);font-variant-numeric:tabular-nums;transition:background var(--motion-fast),border-color var(--motion-fast),box-shadow var(--motion-fast),transform var(--motion-fast)}
 .transfer-dock__control strong{color:var(--text-primary);font-weight:760}
 .transfer-dock__control:hover{background:linear-gradient(180deg,rgba(114,151,255,.10),rgba(114,151,255,.045));border-color:rgba(114,151,255,.25);box-shadow:inset 0 1px rgba(255,255,255,.05),0 7px 20px rgba(0,0,0,.16),0 0 18px rgba(114,151,255,.06);transform:translateY(-1px)}
