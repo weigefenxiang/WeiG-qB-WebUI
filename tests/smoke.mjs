@@ -3,9 +3,9 @@ import fs from 'node:fs';
 const required = [
   'README.md','DESIGN.md','docs/001.项目总方案.md','docs/002.兼容与实现状态.md','docs/003.项目架构.md','docs/004.UI与缓存契约.md',
   'webui/VERSION','webui/GIT_SHA','webui/public/login.html','webui/private/index.html','webui/private/weigg-install.json',
-  'webui/private/css/app.css','webui/private/css/v021.css','webui/private/css/v022.css','webui/private/css/v030.css','webui/private/css/logs-v032.css','webui/private/css/v036.css','webui/private/css/brand-v031.css',
-  'webui/private/scripts/i18n.js','webui/private/scripts/i18n-v030.js','webui/private/scripts/i18n-v034.js','webui/private/scripts/i18n-v036.js','webui/private/scripts/core.js','webui/private/scripts/settings-schema.js','webui/private/scripts/settings-translations.js','webui/private/scripts/qb-client.js','webui/private/scripts/components.js','webui/private/scripts/app.js','webui/private/scripts/settings-v034.js','webui/private/scripts/ux-v021.js','webui/private/scripts/spatial-v022.js','webui/private/scripts/v030.js','webui/private/scripts/v036.js','webui/private/scripts/logs-v032.js',
-  'tests/compat-v030.mjs','tests/log-compat-v032.mjs','tests/browser-logs-v033.mjs','tests/settings-v034.mjs','tests/browser-settings-v034.mjs','tests/cache-contract-v035.mjs','tests/ui-contract-v036.mjs','tests/browser-ui-v036.mjs',
+  'webui/private/css/app.css','webui/private/css/v021.css','webui/private/css/v022.css','webui/private/css/v030.css','webui/private/css/logs-v032.css','webui/private/css/v036.css','webui/private/css/mobile-v036.css','webui/private/css/brand-v031.css',
+  'webui/private/scripts/i18n.js','webui/private/scripts/i18n-v030.js','webui/private/scripts/i18n-v034.js','webui/private/scripts/i18n-v036.js','webui/private/scripts/core.js','webui/private/scripts/settings-schema.js','webui/private/scripts/settings-translations.js','webui/private/scripts/qb-client.js','webui/private/scripts/components.js','webui/private/scripts/app.js','webui/private/scripts/settings-v034.js','webui/private/scripts/ux-v021.js','webui/private/scripts/spatial-v022.js','webui/private/scripts/v030.js','webui/private/scripts/v036.js','webui/private/scripts/adaptive-v036.js','webui/private/scripts/advanced-v036.js','webui/private/scripts/logs-v032.js',
+  'tests/compat-v030.mjs','tests/log-compat-v032.mjs','tests/browser-logs-v033.mjs','tests/settings-v034.mjs','tests/browser-settings-v034.mjs','tests/cache-contract-v035.mjs','tests/ui-contract-v036.mjs','tests/mobile-contract-v036.mjs','tests/advanced-contract-v036.mjs','tests/browser-ui-v036.mjs','tests/browser-mobile-v036.mjs','tests/compat-matrix-v036.mjs','tests/fixtures/qb-compat-matrix.json','tests/live-v036.sh',
   'installers/install.sh','installers/install.ps1'
 ];
 for (const file of required) if (!fs.existsSync(file)) throw new Error(`Missing ${file}`);
@@ -25,7 +25,7 @@ for(const size of ['20','50','100','200']) if(!index.includes(`<option${size==='
 if(!index.includes('data-i18n="nav.settings"')||!index.includes('data-i18n-placeholder="settings.search"')||!index.includes('data-i18n="tag.all"')) throw new Error('Canonical i18n attributes missing');
 if(index.includes('>TOOLS<')) throw new Error('Application navigation must not live in the Torrent sidebar');
 if(index.includes('settings-v034.css')) throw new Error('Alternative WebUI must not ship a standalone visual template');
-for(const token of ['css/app.css?v=__WEIGG_GIT_SHA__','css/logs-v032.css?v=__WEIGG_GIT_SHA__','scripts/logs-v032.js?v=__WEIGG_GIT_SHA__','scripts/i18n-v034.js?v=__WEIGG_GIT_SHA__','scripts/settings-v034.js?v=__WEIGG_GIT_SHA__','no-store, no-cache, must-revalidate','name="weigg-build-sha" content="__WEIGG_GIT_SHA__"']) if(!index.includes(token)) throw new Error(`Runtime/cache asset invariant missing: ${token}`);
+for(const token of ['css/app.css?v=__WEIGG_GIT_SHA__','css/logs-v032.css?v=__WEIGG_GIT_SHA__','css/mobile-v036.css?v=__WEIGG_GIT_SHA__','scripts/logs-v032.js?v=__WEIGG_GIT_SHA__','scripts/adaptive-v036.js?v=__WEIGG_GIT_SHA__','scripts/i18n-v034.js?v=__WEIGG_GIT_SHA__','scripts/settings-v034.js?v=__WEIGG_GIT_SHA__','no-store, no-cache, must-revalidate','name="weigg-build-sha" content="__WEIGG_GIT_SHA__"']) if(!index.includes(token)) throw new Error(`Runtime/cache asset invariant missing: ${token}`);
 if(/\?v=\d+\.\d+\.\d+/.test(index)) throw new Error('Private HTML must not use semver asset cache busters');
 
 const i18n=fs.readFileSync('webui/private/scripts/i18n.js','utf8');
@@ -35,7 +35,7 @@ for(const token of ["'v030.limit.download':'Global download limit'","'v030.limit
 const i18n034=fs.readFileSync('webui/private/scripts/i18n-v034.js','utf8');
 for(const token of ["'v034.alt.qbPath':'qBittorrent WebUI path'","'v034.alt.qbPath':'qBittorrent WebUI 路径'",'W.V034I18n']) if(!i18n034.includes(token)) throw new Error(`Alternative WebUI translation overlay missing: ${token}`);
 const i18n036=fs.readFileSync('webui/private/scripts/i18n-v036.js','utf8');
-for(const token of ["'v036.logs.follow':'Follow latest'","'v036.logs.follow':'跟随最新'","'v036.settings.timeZone':'Display time zone'",'W.V036I18n']) if(!i18n036.includes(token)) throw new Error(`v0.3.6 translation overlay missing: ${token}`);
+for(const token of ["'v036.logs.follow':'Follow latest'","'v036.logs.follow':'跟随最新'","'v036.settings.timeZone':'Display time zone'","'v036.storage.free':'Free'","'v036.storage.free':'可用'",'W.V036I18n']) if(!i18n036.includes(token)) throw new Error(`v0.3.6 translation overlay missing: ${token}`);
 
 const schema=fs.readFileSync('webui/private/scripts/settings-schema.js','utf8');
 for(const token of ['auto_tmm_enabled','save_path','web_ui_port','humanize','pref.generic.desc','max_ratio_act','max_seeding_time_act']) if(!schema.includes(token)) throw new Error(`Settings schema invariant missing: ${token}`);
@@ -60,13 +60,14 @@ const components=fs.readFileSync('webui/private/scripts/components.js','utf8');
 for(const token of ['SettingsSchema.describe','setting-card','switch-control','readonlySettingField',"'state.downloading'",'weigg-build-sha','currentBuildToken','buildAssetUrl',"css('css/v022.css'","css('css/v030.css'","css('css/v036.css'","asyncScript('scripts/spatial-v022.js'","buildAssetUrl('scripts/v030.js')","buildAssetUrl('scripts/v036.js')",'selectControl','upgradeNativeSelects','W.Time']) if(!components.includes(token)) throw new Error(`Component/runtime loader token missing: ${token}`);
 if(/\?v=\d+\.\d+\.\d+/.test(components)) throw new Error('Dynamic runtime loader must not use semver cache busters');
 
-const css=fs.readFileSync('webui/private/css/app.css','utf8'),v021=fs.readFileSync('webui/private/css/v021.css','utf8'),v022=fs.readFileSync('webui/private/css/v022.css','utf8'),v030=fs.readFileSync('webui/private/css/v030.css','utf8'),logs032=fs.readFileSync('webui/private/css/logs-v032.css','utf8'),v036=fs.readFileSync('webui/private/css/v036.css','utf8');
+const css=fs.readFileSync('webui/private/css/app.css','utf8'),v021=fs.readFileSync('webui/private/css/v021.css','utf8'),v022=fs.readFileSync('webui/private/css/v022.css','utf8'),v030=fs.readFileSync('webui/private/css/v030.css','utf8'),logs032=fs.readFileSync('webui/private/css/logs-v032.css','utf8'),v036=fs.readFileSync('webui/private/css/v036.css','utf8'),mobile036=fs.readFileSync('webui/private/css/mobile-v036.css','utf8');
 for(const token of ['--font-scale-offset','--text-description','--text-table-cell','prefers-reduced-motion','torrent-mobile-card','col-resize']) if(!css.includes(token)) throw new Error(`Design/performance token missing: ${token}`);
 for(const token of ['app-nav__item','settings-group','setting-card','mobile-bottom-nav','switch-control']) if(!v021.includes(token)) throw new Error(`v0.2.1 UX style missing: ${token}`);
 for(const token of ['--spatial-floating','filter-shelf','facet-popover','connection-dock','grid-template-rows:auto auto auto','setting-card--half','is-tool-route','search-box:focus-within','SIDEBAR-001','SETTING-001']) if(!v022.includes(token)) throw new Error(`v0.2.2 spatial style missing: ${token}`);
 for(const token of ['torrent-panel.is-empty','transfer-dock','transfer-dialog','speed-presets','transfer-stats','transfer-chart-shell','EMPTY-001','DOCK-001','TRANSFER-001','.statusbar--v030 .transfer-dock>.desktop-only']) if(!v030.includes(token)) throw new Error(`v0.3 transfer/empty style missing: ${token}`);
 for(const token of ['#logs-view.is-active','logs-size-compact','logs-size-max','logs-v032-panel','logs-v032-row']) if(!logs032.includes(token)) throw new Error(`v0.3.2 Logs style missing: ${token}`);
 for(const token of ['.ui-select__trigger','.ui-chip','.ui-check','.ambient-mark__orbit','.detail-context-back','prefers-reduced-motion']) if(!v036.includes(token)) throw new Error(`v0.3.6 canonical style missing: ${token}`);
+for(const token of ['#torrent-list{flex:1 1 0','mobile-card-meta','status-storage','stalled-up','#search-view>.tool-page']) if(!mobile036.includes(token)) throw new Error(`v0.3.6 mobile adaptive style missing: ${token}`);
 
 const spatial=fs.readFileSync('webui/private/scripts/spatial-v022.js','utf8');
 for(const token of ['installBranding','Wei.G.ico','borderRadius=\'50%\'','installFilterShelf','installConnectionDock','createFacet','facet-search','settings-content','syncRouteFrame','syncSettingsTabState','balanceSettingGroups','buildAssetUrl']) if(!spatial.includes(token)) throw new Error(`Spatial/branding controller missing: ${token}`);
@@ -75,11 +76,16 @@ const runtime=fs.readFileSync('webui/private/scripts/v030.js','utf8');
 for(const token of ['installScrollResetBoundaries','syncEmptyState','installDock','openSpeedDialog','toggleAltSpeed','openTransferDialog','MAX_SAMPLES=900','getMainData','weigg:transfer','installRenderedMultiSelect','W.V030I18n']) if(!runtime.includes(token)) throw new Error(`v0.3 runtime controller missing: ${token}`);
 if(runtime.includes("locale()==='zh-CN'")) throw new Error('v0.3 feature runtime must not branch directly on language');
 const runtime036=fs.readFileSync('webui/private/scripts/v036.js','utf8');
-for(const token of ['AmbientMark','torrentListContext.v036','detail-context-back','weigg:timezonechange','upgradeNativeSelects']) if(!runtime036.includes(token)) throw new Error(`v0.3.6 runtime controller missing: ${token}`);
+for(const token of ['AmbientMark','torrentListContext.v036','detail-context-back','weigg:timezonechange','upgradeNativeSelects','weigg-floating-layer']) if(!runtime036.includes(token)) throw new Error(`v0.3.6 runtime controller missing: ${token}`);
+const adaptive036=fs.readFileSync('webui/private/scripts/adaptive-v036.js','utf8');
+for(const token of ['compactMetricText','free_space_on_disk','getMainData(storageRid)','30000','advanced-v036.js']) if(!adaptive036.includes(token)) throw new Error(`v0.3.6 adaptive runtime missing: ${token}`);
+const advanced036=fs.readFileSync('webui/private/scripts/advanced-v036.js','utf8');
+for(const token of ['torrent_file_size_limit','1048576','socket_receive_buffer_size','socket_send_buffer_size','disk_queue_size','MoveToTrash','toDisplay','toRaw']) if(!advanced036.includes(token)) throw new Error(`v0.3.6 Advanced runtime missing: ${token}`);
 const logsRuntime=fs.readFileSync('webui/private/scripts/logs-v032.js','utf8');
-for(const token of ['MAX_ITEMS=5000','lastId','fetchIncremental','state.virtual','logs-size-mode','client.logs(state.lastId)','return bi-ai','logs-time-zone']) if(!logsRuntime.includes(token)) throw new Error(`v0.3.6 Logs runtime missing: ${token}`);
+for(const token of ['MAX_ITEMS=5000','lastId','fetchIncremental','state.virtual','logs-size-mode','client.logs(state.lastId)','return bi-ai','TIME-002']) if(!logsRuntime.includes(token)) throw new Error(`v0.3.6 Logs runtime missing: ${token}`);
+if(logsRuntime.includes('logs-time-zone')) throw new Error('Logs must not own a second timezone selector; Display Time Zone belongs to the global status dock');
 if(logsRuntime.includes('function zh()')||logsRuntime.includes('function text(en,cn)')) throw new Error('Logs runtime must use the i18n overlay rather than direct locale branching');
-if(/https?:\/\//.test(index+css+v021+v022+v030+logs032+v036)) throw new Error('Core runtime markup/CSS must not depend on external assets');
+if(/https?:\/\//.test(index+css+v021+v022+v030+logs032+v036+mobile036)) throw new Error('Core runtime markup/CSS must not depend on external assets');
 
 const architecture=fs.readFileSync('docs/003.项目架构.md','utf8');
 for(const token of ['QBClient','spatial-v022.js','v030.js','v030.css','Data count != DOM count','__weiggVirtualScrollTop','MAX 900','English','简体中文','logs-v032.js','logs-v032.css','settings-v034.js','weigg-install.json']) if(!architecture.includes(token)) throw new Error(`Architecture documentation missing: ${token}`);
