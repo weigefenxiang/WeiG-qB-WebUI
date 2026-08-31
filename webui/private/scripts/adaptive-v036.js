@@ -37,7 +37,7 @@
   global.addEventListener('resize',function(){requestAnimationFrame(syncTorrentRowHeight);},{passive:true});
 
   /* STORAGE-001 — free space on qBittorrent's default save filesystem. */
-  var storageClient=null,storageTimer=null,lastFree=null;
+  var storageClient=null,storageTimer=null,storageRid=0,lastFree=null;
   function roundSignificant(value,digits){
     if(!Number.isFinite(value)||value===0)return '0';
     var decimals=Math.max(0,digits-1-Math.floor(Math.log10(Math.abs(value))));
@@ -70,11 +70,14 @@
   async function refreshStorage(){
     try{
       storageClient=storageClient||new W.QBClient();
-      var data=await storageClient.getMainData(0),state=data&&data.server_state||{},free=state.free_space_on_disk;
-      if(free!==undefined&&free!==null&&Number.isFinite(Number(free)))paintStorage(free);else{var node=installStorageStatus();if(node)node.hidden=true;}
-    }catch(_e){var node=installStorageStatus();if(node&&lastFree==null)node.hidden=true;}
+      var data=await storageClient.getMainData(storageRid),nextRid=Number(data&&data.rid);if(Number.isFinite(nextRid)&&nextRid>=0)storageRid=nextRid;
+      var state=data&&data.server_state||{},free=state.free_space_on_disk;
+      if(free!==undefined&&free!==null&&Number.isFinite(Number(free)))paintStorage(free);
+      else if(lastFree!=null)paintStorage(lastFree);
+      else{var node=installStorageStatus();if(node)node.hidden=true;}
+    }catch(_e){storageRid=0;var node=installStorageStatus();if(node&&lastFree==null)node.hidden=true;}
   }
-  function startStorage(){clearInterval(storageTimer);installStorageStatus();refreshStorage();storageTimer=setInterval(function(){if(!document.hidden)refreshStorage();},15000);}
+  function startStorage(){clearInterval(storageTimer);installStorageStatus();refreshStorage();storageTimer=setInterval(function(){if(!document.hidden)refreshStorage();},30000);}
 
   function syncLateLayers(){ensureAdaptiveCssLast();installStorageStatus();syncTorrentRowHeight();}
   function init(){ensureAdaptiveCssLast();syncTorrentRowHeight();startStorage();setTimeout(function(){syncLateLayers();refreshStorage();},900);setTimeout(syncLateLayers,1800);setTimeout(syncLateLayers,2800);}
