@@ -267,7 +267,8 @@ select{
 .settings-content{padding:16px}
 .settings-group{
   grid-template-columns:repeat(2,minmax(0,1fr))!important;
-  gap:12px!important;
+  gap:10px!important;
+  align-items:stretch!important;
 }
 .settings-group>.section-heading,.settings-group>.advanced-filter,.settings-group>p,.settings-content>.settings-group>.kv-grid{grid-column:1/-1!important}
 .setting-card,.settings-control{
@@ -275,20 +276,21 @@ select{
   grid-template-columns:minmax(0,1fr)!important;
   grid-template-rows:auto minmax(42px,1fr) auto;
   align-items:stretch!important;
-  gap:10px!important;
-  min-height:158px!important;
-  padding:17px!important;
-  border-color:rgba(154,180,229,.13)!important;
-  border-radius:14px!important;
+  gap:8px!important;
+  min-height:146px!important;
+  height:100%;
+  padding:14px!important;
+  border-color:rgba(154,180,229,.11)!important;
+  border-radius:12px!important;
   background:
-    radial-gradient(circle at 100% 0%,rgba(88,121,219,.055),transparent 34%),
-    linear-gradient(180deg,rgba(19,32,53,.97),rgba(11,20,35,.97))!important;
-  box-shadow:0 15px 36px rgba(0,0,0,.19),inset 0 1px rgba(255,255,255,.06),inset 0 -1px rgba(0,0,0,.18)!important;
+    radial-gradient(circle at 100% 0%,rgba(88,121,219,.035),transparent 34%),
+    linear-gradient(180deg,rgba(18,30,49,.90),rgba(11,20,35,.90))!important;
+  box-shadow:0 10px 26px rgba(0,0,0,.15),inset 0 1px rgba(255,255,255,.05),inset 0 -1px rgba(0,0,0,.15)!important;
 }
 .setting-card:hover,.settings-control:hover{
-  transform:translateY(-2px)!important;
-  border-color:rgba(112,151,255,.25)!important;
-  box-shadow:0 21px 46px rgba(0,0,0,.25),0 0 25px rgba(78,118,229,.04),inset 0 1px rgba(255,255,255,.075)!important;
+  transform:translateY(-1px)!important;
+  border-color:rgba(112,151,255,.23)!important;
+  box-shadow:0 15px 34px rgba(0,0,0,.21),0 0 20px rgba(78,118,229,.035),inset 0 1px rgba(255,255,255,.065)!important;
 }
 .settings-row__copy,.settings-control>span{
   display:contents!important;
@@ -307,9 +309,9 @@ select{
   grid-row:2;
   display:block;
   max-width:60ch;
-  min-height:2.9em;
+  min-height:2.55em;
   align-self:start;
-  line-height:1.48!important;
+  line-height:1.42!important;
   color:var(--text-muted);
 }
 .setting-card>.field-input,.setting-card>input:not(.switch-input),.setting-card>select,.settings-control>.field-input,.settings-control>select{
@@ -323,7 +325,7 @@ select{
 .setting-card>.switch-control,.settings-control>.switch-control{
   grid-row:3;
   justify-self:end;
-  align-self:center;
+  align-self:end;
   margin:0!important;
 }
 .section-heading{
@@ -370,6 +372,9 @@ html[data-theme="light"] select{
   border-color:rgba(51,78,126,.16)!important;
 }
 
+@media(min-width:1500px){
+  .settings-group{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+}
 @media(max-width:980px){
   .filter-shelf{overflow-x:auto;scrollbar-width:none}
   .filter-shelf::-webkit-scrollbar{display:none}
@@ -387,11 +392,11 @@ html[data-theme="light"] select{
   }
   .facet-popover .nav-list{max-height:48vh}
   .connection-dock__popover{position:fixed;left:10px;right:10px;bottom:calc(116px + env(safe-area-inset-bottom));width:auto}
-  .setting-card,.settings-control{min-height:148px!important}
+  .setting-card,.settings-control{min-height:142px!important}
 }
 @media(max-width:560px){
   .filter-shelf__summary{display:none}
-  .setting-card,.settings-control{min-height:142px!important;padding:15px!important}
+  .setting-card,.settings-control{min-height:138px!important;padding:14px!important}
 }
 
 @media(prefers-reduced-motion:reduce){

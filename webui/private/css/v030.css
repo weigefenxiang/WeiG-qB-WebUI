@@ -28,14 +28,20 @@
 /* TRANSFER-001: global rate controls and graphs use the same Floating/Modal language. */
 .transfer-dialog{width:min(92vw,720px);max-height:min(86vh,760px);padding:0;overflow:hidden}
 .transfer-dialog::backdrop{background:rgba(1,4,10,.64);backdrop-filter:blur(4px)}
-.transfer-dialog__body{display:grid;gap:16px;padding:18px 20px 20px}
+.transfer-dialog .dialog__head{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:16px;margin:0;padding:18px 20px 0}
+.transfer-dialog .dialog__head>div{display:grid;gap:4px;min-width:0}
+.transfer-dialog .dialog__head .eyebrow{line-height:1.2}
+.transfer-dialog .dialog__head h2{margin:0;line-height:1.2}
+.transfer-dialog .dialog__head .icon-btn{align-self:start;margin:0}
+.transfer-dialog__body{display:grid;gap:14px;padding:16px 20px 20px}
 .transfer-dialog__current{display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding:13px 14px;border:1px solid var(--border);border-radius:12px;background:linear-gradient(180deg,rgba(25,36,59,.74),rgba(10,16,29,.72));box-shadow:inset 0 1px rgba(255,255,255,.05)}
 .transfer-dialog__current strong{font-size:var(--text-section-title);font-variant-numeric:tabular-nums}
 .speed-presets{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px}
-.speed-presets button{min-width:0}
+.speed-presets button{min-width:0;padding-left:9px;padding-right:9px;white-space:nowrap}
 .speed-custom{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end}
 .speed-custom label{display:grid;gap:7px;color:var(--text-secondary);font-size:var(--text-label)}
 .speed-custom .field-input{width:100%;min-height:42px}
+.speed-custom .btn{min-height:42px}
 .transfer-dialog .dialog__actions{padding:0}
 
 .transfer-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
