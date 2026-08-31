@@ -68,26 +68,29 @@ try{
     await page.goto(`http://${host}:${port}/${name}/#/`,{waitUntil:'networkidle'});
     await page.waitForSelector('.torrent-mobile-card');
     await page.waitForFunction(()=>window.WeiG?.MobileAdaptive&&document.querySelector('#status-free-space:not([hidden]) strong')?.textContent!=='—');
-    await page.waitForTimeout(60);
+    await page.waitForFunction(()=>{
+      const meta=document.querySelector('.mobile-card-meta');if(!meta||!window.WeiG?.MobileAdaptive)return false;
+      WeiG.MobileAdaptive.fitMobileMeta(meta);return meta.scrollWidth<=meta.clientWidth+2;
+    },null,{timeout:1800});
     const state=await page.evaluate(()=>{
       const workspace=document.querySelector('.workspace'),panel=document.querySelector('.torrent-panel'),list=document.querySelector('#torrent-list'),pager=document.querySelector('.pager'),meta=document.querySelector('.mobile-card-meta'),cells=[...meta.querySelectorAll('.cell')],storage=document.querySelector('#status-free-space strong'),tones=[...document.querySelectorAll('.torrent-mobile-card .status-pill')].map(n=>n.dataset.tone),rects=cells.map(n=>n.getBoundingClientRect());
       return {
         free:storage?.textContent,
-        formatted:[WeiG.MobileAdaptive.formatFreeSpace(1.234*(1024**4)),WeiG.MobileAdaptive.formatFreeSpace(12.34*(1024**3)),WeiG.MobileAdaptive.formatFreeSpace(987.6*(1024**2))],
+        formatted:[WeiG.MobileAdaptive.formatFreeSpace(1.234*(1024**4)),WeiG.MobileAdaptive.formatFreeSpace(12.34*(1024**3)),WeiG.MobileAdaptive.formatFreeSpace(987.6*(1024**2)),WeiG.MobileAdaptive.formatFreeSpace(9.876*(1024**3))],
         workspace:{top:workspace.getBoundingClientRect().top,bottom:workspace.getBoundingClientRect().bottom,height:workspace.clientHeight,scrollHeight:workspace.scrollHeight},
         panel:{bottom:panel.getBoundingClientRect().bottom,height:panel.getBoundingClientRect().height},
         list:{height:list.getBoundingClientRect().height,scrollHeight:list.scrollHeight},
         pager:{bottom:pager.getBoundingClientRect().bottom},
-        meta:{display:getComputedStyle(meta).display,clientWidth:meta.clientWidth,scrollWidth:meta.scrollWidth,tops:rects.map(r=>Math.round(r.top)),font:getComputedStyle(cells[0]).fontSize,gap:getComputedStyle(meta).gap},
+        meta:{display:getComputedStyle(meta).display,clientWidth:meta.clientWidth,scrollWidth:meta.scrollWidth,tops:rects.map(r=>Math.round(r.top)),font:getComputedStyle(cells[0]).fontSize,gap:getComputedStyle(meta).gap,text:cells.map(n=>n.textContent)},
         tones,
         doc:{width:document.documentElement.scrollWidth,innerWidth,scrollHeight:document.documentElement.scrollHeight,innerHeight}
       };
     });
     assert(state.free==='1.23 TiB',`${name}/${viewport.label}: free-space display expected 1.23 TiB, got ${state.free}`);
-    assert(JSON.stringify(state.formatted)===JSON.stringify(['1.23 TiB','12.3 GiB','988 MiB']),`${name}/${viewport.label}: 3-significant-digit formatter contract failed`);
+    assert(JSON.stringify(state.formatted)===JSON.stringify(['1.23 TiB','12.3 GiB','988 MiB','9.88 GiB']),`${name}/${viewport.label}: adaptive IEC formatter contract failed`);
     assert(state.meta.display==='flex',`${name}/${viewport.label}: mobile Torrent meta is not one-line flex`);
     assert(Math.max(...state.meta.tops)-Math.min(...state.meta.tops)<=3,`${name}/${viewport.label}: Torrent meta wrapped to multiple lines`);
-    assert(state.meta.scrollWidth<=state.meta.clientWidth+2,`${name}/${viewport.label}: Torrent meta overflows horizontally ${state.meta.scrollWidth}>${state.meta.clientWidth} at font ${state.meta.font}, gap ${state.meta.gap}`);
+    assert(state.meta.scrollWidth<=state.meta.clientWidth+2,`${name}/${viewport.label}: Torrent meta overflows horizontally ${state.meta.scrollWidth}>${state.meta.clientWidth} at font ${state.meta.font}, gap ${state.meta.gap}, text ${state.meta.text.join(' | ')}`);
     assert(state.list.height>=100,`${name}/${viewport.label}: adaptive Torrent list collapsed (${state.list.height}px)`);
     assert(Math.abs(state.panel.bottom-state.workspace.bottom)<=10,`${name}/${viewport.label}: Torrent panel leaves unused bottom workspace (${state.workspace.bottom-state.panel.bottom}px)`);
     assert(state.doc.width<=state.doc.innerWidth+1,`${name}/${viewport.label}: document horizontal overflow`);
