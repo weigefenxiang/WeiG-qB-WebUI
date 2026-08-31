@@ -32,7 +32,11 @@ function api(req,res,name,apiPath,url){
   if(apiPath==='app/buildInfo')return json(res,{});
   if(apiPath==='transfer/info')return json(res,{dl_info_speed:0,up_info_speed:0,dl_info_data:0,up_info_data:0,dl_rate_limit:0,up_rate_limit:0,connection_status:'connected',dht_nodes:32,total_peer_connections:4});
   if(apiPath==='transfer/speedLimitsMode')return text(res,'0');
-  if(apiPath==='sync/maindata')return json(res,{rid:1,full_update:true,torrents:{},categories:{},tags:[],server_state:{free_space_on_disk:FREE,connection_status:'connected',dl_info_speed:0,up_info_speed:0,dl_info_data:0,up_info_data:0,dl_rate_limit:0,up_rate_limit:0,dht_nodes:32,total_peer_connections:4}});
+  if(apiPath==='sync/maindata'){
+    const rid=Number(url.searchParams.get('rid')||0);
+    if(rid>0)return json(res,{rid:rid+1,full_update:false,server_state:{}});
+    return json(res,{rid:1,full_update:true,torrents:{},categories:{},tags:[],server_state:{free_space_on_disk:FREE,connection_status:'connected',dl_info_speed:0,up_info_speed:0,dl_info_data:0,up_info_data:0,dl_rate_limit:0,up_rate_limit:0,dht_nodes:32,total_peer_connections:4}});
+  }
   if(apiPath==='torrents/info'){
     const hashes=url.searchParams.get('hashes');if(hashes){const set=new Set(hashes.split('|'));return json(res,torrents.filter(t=>set.has(t.hash)));}
     const limit=Math.max(0,Number(url.searchParams.get('limit')||0)),offset=Math.max(0,Number(url.searchParams.get('offset')||0));
@@ -64,6 +68,7 @@ try{
     await page.goto(`http://${host}:${port}/${name}/#/`,{waitUntil:'networkidle'});
     await page.waitForSelector('.torrent-mobile-card');
     await page.waitForFunction(()=>window.WeiG?.MobileAdaptive&&document.querySelector('#status-free-space:not([hidden]) strong')?.textContent!=='—');
+    await page.waitForTimeout(60);
     const state=await page.evaluate(()=>{
       const workspace=document.querySelector('.workspace'),panel=document.querySelector('.torrent-panel'),list=document.querySelector('#torrent-list'),pager=document.querySelector('.pager'),meta=document.querySelector('.mobile-card-meta'),cells=[...meta.querySelectorAll('.cell')],storage=document.querySelector('#status-free-space strong'),tones=[...document.querySelectorAll('.torrent-mobile-card .status-pill')].map(n=>n.dataset.tone),rects=cells.map(n=>n.getBoundingClientRect());
       return {
@@ -73,7 +78,7 @@ try{
         panel:{bottom:panel.getBoundingClientRect().bottom,height:panel.getBoundingClientRect().height},
         list:{height:list.getBoundingClientRect().height,scrollHeight:list.scrollHeight},
         pager:{bottom:pager.getBoundingClientRect().bottom},
-        meta:{display:getComputedStyle(meta).display,clientWidth:meta.clientWidth,scrollWidth:meta.scrollWidth,tops:rects.map(r=>Math.round(r.top))},
+        meta:{display:getComputedStyle(meta).display,clientWidth:meta.clientWidth,scrollWidth:meta.scrollWidth,tops:rects.map(r=>Math.round(r.top)),font:getComputedStyle(cells[0]).fontSize,gap:getComputedStyle(meta).gap},
         tones,
         doc:{width:document.documentElement.scrollWidth,innerWidth,scrollHeight:document.documentElement.scrollHeight,innerHeight}
       };
@@ -82,11 +87,16 @@ try{
     assert(JSON.stringify(state.formatted)===JSON.stringify(['1.23 TiB','12.3 GiB','988 MiB']),`${name}/${viewport.label}: 3-significant-digit formatter contract failed`);
     assert(state.meta.display==='flex',`${name}/${viewport.label}: mobile Torrent meta is not one-line flex`);
     assert(Math.max(...state.meta.tops)-Math.min(...state.meta.tops)<=3,`${name}/${viewport.label}: Torrent meta wrapped to multiple lines`);
-    assert(state.meta.scrollWidth<=state.meta.clientWidth+2,`${name}/${viewport.label}: Torrent meta overflows horizontally`);
+    assert(state.meta.scrollWidth<=state.meta.clientWidth+2,`${name}/${viewport.label}: Torrent meta overflows horizontally ${state.meta.scrollWidth}>${state.meta.clientWidth} at font ${state.meta.font}, gap ${state.meta.gap}`);
     assert(state.list.height>=100,`${name}/${viewport.label}: adaptive Torrent list collapsed (${state.list.height}px)`);
     assert(Math.abs(state.panel.bottom-state.workspace.bottom)<=10,`${name}/${viewport.label}: Torrent panel leaves unused bottom workspace (${state.workspace.bottom-state.panel.bottom}px)`);
     assert(state.doc.width<=state.doc.innerWidth+1,`${name}/${viewport.label}: document horizontal overflow`);
     assert(state.tones.includes('stalled-up')&&state.tones.includes('download')&&state.tones.includes('seed')&&state.tones.includes('stopped'),`${name}/${viewport.label}: distinct semantic state tones missing`);
+
+    await page.evaluate(()=>WeiG.MobileAdaptive.refreshStorage());
+    await page.waitForTimeout(40);
+    const afterPartial=await page.locator('#status-free-space strong').textContent();
+    assert(afterPartial==='1.23 TiB',`${name}/${viewport.label}: incremental maindata without a free-space delta must retain last value, got ${afterPartial}`);
 
     for(const route of ['search','rss']){
       await page.locator(`#mobile-bottom-nav [data-route="${route}"]`).click();await page.waitForFunction(expected=>WeiG.Router.route().name===expected,route);await page.waitForTimeout(80);
@@ -98,5 +108,5 @@ try{
     assert(errors.length===0,`${name}/${viewport.label}: browser errors: ${errors.join(' | ')}`);
     await context.close();
   }
-  console.log('v0.3.6 mobile adaptive viewport, one-line Torrent metadata, semantic states, Search/RSS one-page layout and storage dock passed for qB 4.1.9.1 + 5.2.3 across 4 phone sizes.');
+  console.log('v0.3.6 mobile adaptive viewport, one-line Torrent metadata, semantic states, Search/RSS one-page layout and incremental storage dock passed for qB 4.1.9.1 + 5.2.3 across 4 phone sizes.');
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}
