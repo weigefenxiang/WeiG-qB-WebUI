@@ -41,7 +41,6 @@
     ]}
   };
 
-  function hasOwn(obj,key){return Object.prototype.hasOwnProperty.call(obj,key);}
   function toDisplay(key,raw){
     var meta=META[key];if(!meta||!meta.scale)return raw;
     var n=Number(raw);if(!Number.isFinite(n))return raw;
@@ -55,7 +54,12 @@
   }
   function titleWithUnit(title,meta){
     title=String(title||'');if(!meta||!meta.unit)return title;
-    var suffix=' ('+meta.unit+')';return title.endsWith(suffix)?title:title+suffix;
+    var suffix=' ('+meta.unit+')';if(title.endsWith(suffix))return title;
+    /* v036's earlier compatibility metadata may expose the raw API unit (B).
+       The verified display layer owns the final visible suffix, so replace one
+       existing trailing unit rather than stacking “(B) (MiB)”. */
+    title=title.replace(/\s+\((?:B|KiB|MiB|GiB|TiB|PiB|s|ms|min|%|port|connections|connections\/s|threads|files|requests|KiB\/s)\)$/,'');
+    return title+suffix;
   }
   function descriptionWithSpecial(description,meta){
     description=String(description||'qBittorrent preference.');
