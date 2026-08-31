@@ -13,6 +13,7 @@ DOCKER_CONTAINER=""
 DOCKER_CONFIG_ROOT=""
 CONTAINER_REQUESTED=""
 CONFIG_ROOT_REQUESTED=""
+SOURCE_SHA=""
 
 usage() {
   cat <<'EOF'
@@ -64,10 +65,31 @@ json_escape() {
   printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
 }
 
+valid_sha() {
+  printf '%s' "$1" | grep -Eq '^[0-9a-fA-F]{40}$'
+}
+
+resolve_main_sha() {
+  api="https://api.github.com/repos/$REPO/commits/main"
+  if command -v curl >/dev/null 2>&1; then
+    body=$(curl -fsSL -H 'Accept: application/vnd.github+json' "$api" 2>/dev/null || true)
+  else
+    body=$(wget -qO- "$api" 2>/dev/null || true)
+  fi
+  printf '%s\n' "$body" | sed -n 's/^[[:space:]]*"sha":[[:space:]]*"\([0-9a-fA-F]\{40\}\)".*/\1/p' | head -n1
+}
+
+inject_build_sha() {
+  valid_sha "$SOURCE_SHA" || { echo "Unable to resolve a valid 40-character Git SHA for this payload." >&2; exit 1; }
+  find "$DEST.new" -type f \( -name '*.html' -o -name '*.js' -o -name '*.css' -o -name '*.json' -o -name 'GIT_SHA' \) -exec sed -i "s/__WEIGG_GIT_SHA__/$SOURCE_SHA/g" {} +
+  printf '%s\n' "$SOURCE_SHA" > "$DEST.new/GIT_SHA"
+}
+
 write_install_metadata() {
   [ -d "$DEST.new/private" ] || mkdir -p "$DEST.new/private"
   meta_version=$(cat "$DEST.new/VERSION" 2>/dev/null || printf 'unknown')
   meta_version=$(json_escape "$meta_version")
+  meta_git_sha=$(json_escape "$SOURCE_SHA")
   meta_container=$(json_escape "$DOCKER_CONTAINER")
   meta_qb_path=$(json_escape "$QBT_ROOT_FOLDER")
   meta_host_path=$(json_escape "$DEST")
@@ -75,6 +97,7 @@ write_install_metadata() {
   cat > "$DEST.new/private/weigg-install.json" <<EOF
 {
   "version": "$meta_version",
+  "gitSha": "$meta_git_sha",
   "container": "$meta_container",
   "qbPath": "$meta_qb_path",
   "hostPath": "$meta_host_path",
@@ -364,8 +387,12 @@ if [ "$release_ok" -eq 1 ]; then
   fi
   unzip -q "$PACKAGE" -d "$TMP/release"
   SRC="$TMP/release/WeiG-qB-WebUI"
+  SOURCE_SHA=$(cat "$SRC/GIT_SHA" 2>/dev/null | tr -d '\r\n' || true)
+  valid_sha "$SOURCE_SHA" || { echo "Latest Release does not contain a valid GIT_SHA; refusing an unversioned asset deployment." >&2; exit 1; }
 else
   echo "No published Release found; using the current main branch."
+  SOURCE_SHA=$(resolve_main_sha)
+  valid_sha "$SOURCE_SHA" || { echo "Could not resolve the current main Git SHA." >&2; exit 1; }
   ARCHIVE="$TMP/source.zip"
   if command -v curl >/dev/null 2>&1; then
     curl -fsSL "https://github.com/$REPO/archive/refs/heads/main.zip" -o "$ARCHIVE"
@@ -382,8 +409,10 @@ fi
 rm -rf "$DEST.new"
 mkdir -p "$DEST.new"
 cp -a "$SRC"/. "$DEST.new"/
+inject_build_sha
 write_install_metadata
-[ -f "$DEST.new/public/login.html" ] && [ -f "$DEST.new/private/index.html" ] && [ -f "$DEST.new/VERSION" ] && [ -f "$DEST.new/private/weigg-install.json" ] || { echo "Installed payload validation failed." >&2; rm -rf "$DEST.new"; exit 1; }
+[ -f "$DEST.new/public/login.html" ] && [ -f "$DEST.new/private/index.html" ] && [ -f "$DEST.new/VERSION" ] && [ -f "$DEST.new/GIT_SHA" ] && [ -f "$DEST.new/private/weigg-install.json" ] || { echo "Installed payload validation failed." >&2; rm -rf "$DEST.new"; exit 1; }
+valid_sha "$(cat "$DEST.new/GIT_SHA" | tr -d '\r\n')" || { echo "Installed Git SHA validation failed." >&2; rm -rf "$DEST.new"; exit 1; }
 
 rm -rf "$DEST.old"
 [ -d "$DEST" ] && mv "$DEST" "$DEST.old" || true
@@ -395,6 +424,7 @@ fi
 rm -rf "$DEST.old"
 echo "Installed and verified: $DEST"
 echo "Installed version: $(cat "$DEST/VERSION")"
+echo "Installed Git SHA: $(cat "$DEST/GIT_SHA")"
 echo "Install metadata: $DEST/private/weigg-install.json"
 
 cfg=$(find_config || true)

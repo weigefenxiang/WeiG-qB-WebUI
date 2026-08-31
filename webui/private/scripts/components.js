@@ -13,19 +13,25 @@
   W.Components.kv=function(label,value){var el=document.createElement('div');el.className='kv';var a=document.createElement('span'),b=document.createElement('strong');a.textContent=label;b.textContent=value==null?'—':String(value);el.append(a,b);return el;};
   W.Components.sectionTitle=function(text,subtitle){var w=document.createElement('div');w.className='section-heading';var h=document.createElement('h2');h.textContent=text;w.appendChild(h);if(subtitle){var p=document.createElement('p');p.className='text-description';p.textContent=subtitle;w.appendChild(p);}return w;};
   W.Components.preferenceField=function(key,value,onChange,label){var info=W.SettingsSchema?W.SettingsSchema.describe(key):{title:label||key,description:'qBittorrent preference.',kind:'auto',known:false};var row=document.createElement('label');row.className='settings-row setting-card';row.dataset.settingKey=key;row.dataset.settingSearch=(info.title+' '+info.description+' '+key).toLowerCase();var copy=document.createElement('span');copy.className='settings-row__copy';var title=document.createElement('strong');title.textContent=info.title;title.title=info.title;var meta=document.createElement('small');meta.className='text-description';meta.textContent=info.description;copy.append(title,meta);var input;if(typeof value==='boolean'||info.kind==='boolean'){var switchWrap=document.createElement('span');switchWrap.className='switch-control';input=document.createElement('input');input.type='checkbox';input.checked=!!value;input.className='switch-input';var track=document.createElement('span');track.className='switch-track';var thumb=document.createElement('span');thumb.className='switch-thumb';track.appendChild(thumb);switchWrap.append(input,track);input.addEventListener('change',function(){onChange(key,input.checked);});row.append(copy,switchWrap);return row;}input=document.createElement('input');input.type=(typeof value==='number'||info.kind==='number')?'number':'text';input.value=value==null?'':String(value);input.className='field-input';input.autocomplete='off';input.addEventListener('change',function(){onChange(key,U.parseScalar(input.value));});row.append(copy,input);return row;};
+  W.Components.readonlySettingField=function(key,titleText,description,value){var row=document.createElement('div');row.className='settings-row setting-card';row.dataset.settingKey=key;row.dataset.settingReadonly='true';row.dataset.settingSearch=(String(titleText||'')+' '+String(description||'')+' '+String(value||'')+' '+key).toLowerCase();var copy=document.createElement('span');copy.className='settings-row__copy';var title=document.createElement('strong');title.textContent=titleText||key;title.title=title.textContent;var meta=document.createElement('small');meta.className='text-description';meta.textContent=description||'';copy.append(title,meta);var input=document.createElement('input');input.type='text';input.className='field-input';input.value=value==null?'—':String(value);input.readOnly=true;input.setAttribute('aria-readonly','true');input.title=input.value;row.append(copy,input);return row;};
 
-  /* Stable filenames keep old Alternate-WebUI roots compatible. Query strings
-   * are product-version cache busters. Runtime layers do not own a second
-   * Torrent state store. */
+  /* BUILD-001: HTML carries one deployment Git SHA. Every lazy asset reuses it. */
+  var buildToken=null;
+  function currentBuildToken(){if(buildToken)return buildToken;var meta=document.querySelector('meta[name="weigg-build-sha"]'),raw=String(meta&&meta.content||'').trim();buildToken=/^[0-9a-f]{7,40}$/i.test(raw)?raw:'dev';return buildToken;}
+  function buildAssetUrl(src){var sep=src.indexOf('?')>=0?'&':'?';return src+sep+'v='+encodeURIComponent(currentBuildToken());}
+  W.buildAssetUrl=buildAssetUrl;
+
+  /* Stable filenames keep old Alternate-WebUI roots compatible. Asset identity is
+   * the deployment Git SHA, never a hand-maintained product-version query. */
   (function loadRuntimeLayers(){
-    function css(href,key){if(document.querySelector('link[data-weigg-layer="'+key+'"]'))return;var link=document.createElement('link');link.rel='stylesheet';link.href=href;link.dataset.weiggLayer=key;document.head.appendChild(link);}
-    function asyncScript(src,key){if(document.querySelector('script[data-weigg-layer="'+key+'"]'))return;var script=document.createElement('script');script.src=src;script.async=true;script.dataset.weiggLayer=key;document.head.appendChild(script);}
-    function loadV030(){if(document.querySelector('script[data-weigg-layer="runtime-030"]'))return;var script=document.createElement('script');script.src='scripts/v030.js?v=0.3.2';script.async=false;script.dataset.weiggLayer='runtime-030';document.head.appendChild(script);}
-    css('css/v022.css?v=0.3.2','spatial-022');
-    css('css/v030.css?v=0.3.2','runtime-030');
-    asyncScript('scripts/spatial-v022.js?v=0.3.2','spatial-022');
+    function css(href,key){if(document.querySelector('link[data-weigg-layer="'+key+'"]'))return;var link=document.createElement('link');link.rel='stylesheet';link.href=buildAssetUrl(href);link.dataset.weiggLayer=key;document.head.appendChild(link);}
+    function asyncScript(src,key){if(document.querySelector('script[data-weigg-layer="'+key+'"]'))return;var script=document.createElement('script');script.src=buildAssetUrl(src);script.async=true;script.dataset.weiggLayer=key;document.head.appendChild(script);}
+    function loadV030(){if(document.querySelector('script[data-weigg-layer="runtime-030"]'))return;var script=document.createElement('script');script.src=buildAssetUrl('scripts/v030.js');script.async=false;script.dataset.weiggLayer='runtime-030';document.head.appendChild(script);}
+    css('css/v022.css','spatial-022');
+    css('css/v030.css','runtime-030');
+    asyncScript('scripts/spatial-v022.js','spatial-022');
     if(W.V030I18n)loadV030();
-    else if(!document.querySelector('script[data-weigg-layer="i18n-030"]')){var i18=document.createElement('script');i18.src='scripts/i18n-v030.js?v=0.3.2';i18.async=false;i18.dataset.weiggLayer='i18n-030';i18.onload=loadV030;document.head.appendChild(i18);}
+    else if(!document.querySelector('script[data-weigg-layer="i18n-030"]')){var i18=document.createElement('script');i18.src=buildAssetUrl('scripts/i18n-v030.js');i18.async=false;i18.dataset.weiggLayer='i18n-030';i18.onload=loadV030;document.head.appendChild(i18);}
     else{var existing=document.querySelector('script[data-weigg-layer="i18n-030"]');existing.addEventListener('load',loadV030,{once:true});}
   })();
 })(window);

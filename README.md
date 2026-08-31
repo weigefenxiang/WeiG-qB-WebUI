@@ -2,9 +2,37 @@
 
 A premium, modular and high-performance Alternate WebUI for qBittorrent.
 
-Current version: **0.3.4**  
+Current version: **0.3.5**  
 Compatibility floor: **qBittorrent 4.1.9**  
 Compatibility target: **qBittorrent 4.1.x → current 5.x**, using capability-based progressive enhancement.
+
+## v0.3.5 — Canonical Settings UI + Git SHA cache identity
+
+v0.3.5 removes the standalone Alternative WebUI visual subsystem introduced in v0.3.4. Alternative WebUI controls and install metadata now reuse the same canonical `setting-card` / `settings-row` components as the rest of **Settings → Web UI**. There is no feature-local card grid or feature-local Settings CSS.
+
+The UI primitive audit covers the existing runtime layers and establishes one owner per semantic surface:
+
+```text
+Settings        → SettingCard / settings-control
+Torrent data    → DataGrid / VirtualList
+Logs            → DataPage / DataPanel / VirtualList
+Dialogs         → dialog + surface--modal
+Status          → status-pill / status dock
+```
+
+The v0.3.5 browser gate exercises qBittorrent **4.1.9.1 / 4.6.7 / 5.2.0** fixtures at **390×844 / 1366×768 / 1920×1080** and checks that Alternative WebUI controls use the same card geometry, responsive columns, title/description/control order and overflow rules as normal qB settings.
+
+v0.3.5 also replaces hand-maintained `?v=0.x.y` resource revisions with a deployment Git SHA contract:
+
+```text
+HTML                    → no-store / no-cache metadata
+HTML build identity     → <meta name="weigg-build-sha" ...>
+CSS / JS URL            → ?v=<40-character Git SHA>
+Lazy runtime CSS / JS   → same Git SHA through buildAssetUrl()
+Installed identity      → VERSION + GIT_SHA + weigg-install.json.gitSha
+```
+
+Linux and Windows installers resolve or read the exact source SHA, inject it into the deployed payload, and refuse release payloads that cannot provide a valid `GIT_SHA`. Release packaging stamps `${GITHUB_SHA}` before creating the archive. This means a browser may safely cache a SHA-addressed static asset while a new deployment automatically receives a different URL. Reverse proxies/CDNs must preserve qBittorrent's HTML no-store behavior; production header verification remains a deployment test, not something static HTML can force through an intermediary.
 
 ## v0.3.4 — Alternative WebUI Settings + Install Metadata
 
@@ -33,7 +61,7 @@ qBittorrent-visible path
 /config/weigg-qb-webui
 ```
 
-Only the qBittorrent-visible path belongs in `alternative_webui_path`. The browser cannot infer the Docker host path from WebAPI, so Linux/Windows installers now write authenticated deployment metadata to `private/weigg-install.json`. The installed payload also includes `webui/VERSION`, making the deployed version directly verifiable from SSH/filesystem.
+Only the qBittorrent-visible path belongs in `alternative_webui_path`. The browser cannot infer the Docker host path from WebAPI, so Linux/Windows installers write authenticated deployment metadata to `private/weigg-install.json`.
 
 Safety behavior:
 
@@ -42,8 +70,6 @@ Safety behavior:
 - disabling Alternative WebUI requires an explicit confirmation;
 - after a successful disable, WeiG redirects to `/` so qBittorrent's built-in WebUI can take over;
 - the two Alternative WebUI preferences are hidden from the generic Advanced list once the dedicated settings surface owns them.
-
-CI adds a real Chromium regression for both qB 4.1.9.1 and qB 5.2.0 fixtures. It checks visible state/path metadata, host-path rejection, valid path writes, disable writes, duplicate suppression, responsive geometry, and browser error cleanliness.
 
 ## v0.3.3 — Cross-version Logs browser regression gate
 
@@ -76,8 +102,6 @@ The gate validates the user-visible Logs route through a real browser:
 - browser console/page errors are treated as failures.
 
 This is a browser fixture certification layer, not a claim that a remote production qB instance has been interactively tested. Real-server certification remains separate and must never be inferred from fixture PASS.
-
-The v0.3.3 release changes validation/version metadata only; the shipped v0.3.2 Logs runtime assets are intentionally unchanged and retain their `?v=0.3.2` asset revision.
 
 ## v0.3.2 — Cross-version Logs + Adaptive DataPanel
 
@@ -246,8 +270,9 @@ qBittorrent terminology prefers official qB WebUI translations when available. F
 - Private/PT uses exact private metadata when available and explicit Tracker-domain rules on old qB.
 - Torrent actions, detail Files/Trackers/Peers/HTTP Sources, metadata-driven Settings, Search/RSS/Logs capability gating.
 - Logs use a separate route-local VirtualList and incremental stream so they do not overwrite Torrent viewport state.
-- Alternative WebUI enabled/path preferences are first-class Web UI settings when the backend returns them.
-- Installed payload contains `VERSION`; installer metadata can expose the qB/container path and VPS/host path without pretending WebAPI knows Docker host mounts.
+- Alternative WebUI enabled/path preferences reuse canonical SettingCards when the backend returns them.
+- Installed payload contains `VERSION` and `GIT_SHA`; installer metadata exposes Git SHA, qB/container path and VPS/host path without pretending WebAPI knows Docker host mounts.
+- HTML is treated as a no-store bootstrap; local CSS/JS identity is the deployment Git SHA rather than the product version.
 - Back/Home/Reload recovery and Reduced Motion remain hard invariants.
 
 ## Compatibility boundary
@@ -320,10 +345,11 @@ List candidates:
 sh /tmp/weigg-qb-install.sh --list-containers
 ```
 
-After v0.3.4 installation/update, deployment identity is directly available:
+After v0.3.5 installation/update, deployment identity is directly available:
 
 ```sh
 cat /host/path/to/qbittorrent/config/weigg-qb-webui/VERSION
+cat /host/path/to/qbittorrent/config/weigg-qb-webui/GIT_SHA
 cat /host/path/to/qbittorrent/config/weigg-qb-webui/private/weigg-install.json
 ```
 
@@ -361,7 +387,7 @@ Runtime is plain HTML/CSS/JavaScript without a runtime application framework.
 npm test
 ```
 
-The static suite includes syntax/smoke checks, `tests/compat-v030.mjs` for 4.1.9.1 / mature 4.x / 5.2.0 API semantics, `tests/log-compat-v032.mjs` for Logs capability/timestamp/incremental behavior, and `tests/settings-v034.mjs` for Alternative WebUI/settings/install-metadata contracts.
+The static suite includes syntax/smoke checks, `tests/compat-v030.mjs` for 4.1.9.1 / mature 4.x / 5.2.0 API semantics, `tests/log-compat-v032.mjs` for Logs capability/timestamp/incremental behavior, `tests/settings-v034.mjs` for Alternative WebUI/settings/install-metadata contracts, and `tests/cache-contract-v035.mjs` for HTML no-store + Git SHA asset identity.
 
 CI additionally runs two headless Chromium gates:
 
@@ -370,15 +396,16 @@ tests/browser-logs-v033.mjs
 tests/browser-settings-v034.mjs
 ```
 
-The v0.3.4 settings browser gate exercises the actual WebUI runtime with qB 4.1.9.1 and qB 5.2.0 fixtures, verifies `/config/...` path writes, rejects the known host path, verifies disable writes, and treats browser console/page errors as failures.
+The v0.3.5 settings browser gate exercises the actual WebUI runtime with qB 4.1.9.1, qB 4.6.7 and qB 5.2.0 fixtures at three viewports. It verifies canonical SettingCard geometry, `/config/...` path writes, known host-path rejection, disable writes, Advanced duplicate suppression, install metadata including Git SHA, and browser console/page error cleanliness.
 
 Documentation authority:
 
-- `DESIGN.md` — visual, interaction, typography, navigation, i18n, empty-state, Transfer Dock and DataPanel rules.
+- `DESIGN.md` — visual, interaction, typography, navigation, i18n, empty-state, Transfer Dock, DataPanel and canonical UI primitive rules.
 - `docs/001.项目总方案.md` — product plan and engineering invariants.
 - `docs/002.兼容与实现状态.md` — compatibility matrix and current live/automated status.
 - `docs/003.项目架构.md` — repository tree, runtime layers and ownership boundaries.
+- `docs/004.UI与缓存契约.md` — UI primitive audit and HTML/Git-SHA cache contract.
 
 ## Certification status
 
-`0.3.4` adds first-class Alternative WebUI settings, install identity metadata and a cross-version Chromium settings gate on top of the v0.3.3 validation baseline. Repository CI, API-contract fixtures and browser fixtures can certify deterministic code/UI behavior, but stable real-server certification still requires interactive regression on the release-blocking qBittorrent **4.1.9.1** and **5.2.0** instances. A browser fixture PASS must never be reported as a production/live PASS.
+`0.3.5` unifies Alternative WebUI with the canonical Settings component system and adds deterministic Git-SHA asset identity on top of the v0.3.4 compatibility behavior. Repository CI, API-contract fixtures and browser fixtures can certify deterministic code/UI behavior, but stable real-server certification still requires interactive regression on the release-blocking qBittorrent **4.1.9.1** and **5.2.0** instances. A browser fixture PASS must never be reported as a production/live PASS.
