@@ -87,7 +87,10 @@
   }
   function hideAdvancedDuplicates(){
     if(!isAdvancedTab())return;
-    KEYS.forEach(function(key){var row=document.querySelector('#settings-content .settings-row[data-key="'+key+'"]');if(row)row.hidden=true;});
+    KEYS.forEach(function(key){
+      var selector='#settings-content .settings-row[data-key="'+key+'"],#settings-content .settings-row[data-setting-key="'+key+'"]';
+      document.querySelectorAll(selector).forEach(function(row){row.hidden=true;});
+    });
   }
   async function sync(){
     var root=document.getElementById('settings-content');if(!root)return;
@@ -137,13 +140,21 @@
     };
   }
   function installNavigationBridge(){
-    var tabs=document.getElementById('settings-tabs');if(tabs&&!tabs.dataset.v034TabsBridge){
-      tabs.dataset.v034TabsBridge='1';var original=tabs.onclick;
-      tabs.onclick=function(event){var result;if(typeof original==='function')result=original.call(tabs,event);setTimeout(sync,0);return result;};
+    var tabs=document.getElementById('settings-tabs');
+    if(tabs&&!tabs.dataset.v034TabsBridge){
+      tabs.dataset.v034TabsBridge='1';
+      tabs.addEventListener('click',function(event){
+        if(!event.target.closest('[data-settings-tab]'))return;
+        setTimeout(sync,0);
+        setTimeout(sync,80);
+      });
     }
     global.addEventListener('hashchange',function(){setTimeout(sync,0);});
     var root=document.getElementById('settings-content');if(root){
-      new MutationObserver(function(){if(isWebUiTab()&&!document.getElementById('alternative-webui-v034'))setTimeout(sync,0);if(isAdvancedTab())hideAdvancedDuplicates();}).observe(root,{childList:true});
+      new MutationObserver(function(){
+        if(isWebUiTab()&&!document.getElementById('alternative-webui-v034'))setTimeout(sync,0);
+        if(isAdvancedTab())hideAdvancedDuplicates();
+      }).observe(root,{childList:true,subtree:true});
     }
   }
   function install(){installSaveBridge();installNavigationBridge();setTimeout(sync,0);}
