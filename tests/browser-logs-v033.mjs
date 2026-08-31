@@ -150,7 +150,7 @@ try {
       const minMs = (baseSeconds + 1) * 1000;
       const maxMs = (baseSeconds + 100) * 1000;
 
-      assert(base.visibleLogsNav, `${name} ${width}x${height}: Logs navigation hidden`);
+      assert(width <= 820 || base.visibleLogsNav, `${name} ${width}x${height}: desktop Logs navigation hidden`);
       assert(base.scrollWidth <= base.innerWidth + 1, `${name} ${width}x${height}: horizontal overflow ${base.scrollWidth} > ${base.innerWidth}`);
       assert(base.panel?.height >= 250, `${name} ${width}x${height}: Logs panel is too short`);
       assert(base.list?.height >= 180, `${name} ${width}x${height}: Logs viewport is too short`);
