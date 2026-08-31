@@ -109,12 +109,15 @@ try {
       assert(max.mode,`${name} ${width}x${height}: Max class missing`);assert(max.headerDisplay==='none',`${name} ${width}x${height}: Max did not hide header`);assert(max.height>compact.height+20,`${name} ${width}x${height}: Max did not expand`);
       await choose(page,'logs-size-mode','auto');
 
-      const beforeZone=await page.locator('.logs-v032-time').first().textContent();
+      const row100=page.locator('.logs-v032-row[data-log-id="100"] .logs-v032-time');
+      await row100.waitFor();
+      const beforeZone={text:await row100.textContent(),iso:await row100.getAttribute('datetime')};
       await choose(page,'logs-time-zone','Asia/Shanghai');await page.waitForTimeout(80);
-      const zoneState=await page.evaluate(()=>({zone:WeiG.Time.getZone(),text:document.querySelector('.logs-v032-time')?.textContent||'',iso:document.querySelector('.logs-v032-time')?.dateTime||''}));
+      const row100After=page.locator('.logs-v032-row[data-log-id="100"] .logs-v032-time');
+      const zoneState={zone:await page.evaluate(()=>WeiG.Time.getZone()),text:await row100After.textContent(),iso:await row100After.getAttribute('datetime')};
       assert(zoneState.zone==='Asia/Shanghai',`${name}: timezone preference was not stored`);
-      assert(zoneState.text!==beforeZone,`${name}: timezone switch did not change rendered time`);
-      assert(zoneState.iso===base.firstDateTime,`${name}: timezone switch changed source timestamp`);
+      assert(zoneState.text!==beforeZone.text,`${name}: timezone switch did not change rendered time`);
+      assert(zoneState.iso===beforeZone.iso,`${name}: timezone switch changed source timestamp`);
 
       await page.locator('#logs-local-search').fill('Critical fixture log 100');await page.waitForTimeout(80);
       const searched=parseStatus(await page.locator('.logs-v032-status').textContent());assert(searched.shown===1,`${name} ${width}x${height}: search expected one row`);await page.locator('#logs-local-search').fill('');
