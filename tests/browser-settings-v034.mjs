@@ -10,21 +10,33 @@ const host = '127.0.0.1';
 const port = 8767;
 const variants = {
   qb4: { qb: 'v4.1.9.1', api: '2.2.1' },
+  qb46: { qb: 'v4.6.7', api: '2.8.3' },
   qb5: { qb: 'v5.2.0', api: '2.15.1' },
 };
+const viewports = [
+  {width:390,height:844,label:'mobile'},
+  {width:1366,height:768,label:'desktop'},
+  {width:1920,height:1080,label:'wide'},
+];
 const hostPath = '/root/qbittorrent3/config/weigg-qb-webui';
 const qbPath = '/config/weigg-qb-webui';
-const state = Object.fromEntries(Object.keys(variants).map(name => [name, {
+const gitSha = '1234567890abcdef1234567890abcdef12345678';
+function initialState(){return {
   prefs: {
     alternative_webui_enabled: true,
     alternative_webui_path: qbPath,
     web_ui_port: 8080,
     web_ui_username: 'admin',
     web_ui_upnp: false,
+    web_ui_csrf_protection_enabled:true,
+    web_ui_clickjacking_protection_enabled:true,
+    web_ui_host_header_validation_enabled:true,
   },
   writes: [],
-}]));
+};}
+const state = Object.fromEntries(Object.keys(variants).map(name => [name, initialState()]));
 
+function reset(name){state[name]=initialState();}
 function assert(condition, message) { if (!condition) throw new Error(message); }
 function writeJson(res, value) {
   res.writeHead(200, {'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store'});
@@ -70,11 +82,11 @@ const server=http.createServer(async(req,res)=>{
       res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-store'});
       return res.end('<!doctype html><title>qBittorrent WebUI</title><p>Built-in qBittorrent WebUI</p>');
     }
-    const match=url.pathname.match(/^\/(qb4|qb5)(?:\/(.*))?$/);
+    const match=url.pathname.match(/^\/(qb4|qb46|qb5)(?:\/(.*))?$/);
     if(!match){res.writeHead(404);return res.end('not found');}
     const name=match[1],relative=match[2]||'';
     if(relative.startsWith('api/v2/'))return await handleApi(req,res,name,relative.slice(7));
-    if(relative==='weigg-install.json')return writeJson(res,{version:'0.3.4',container:'qbittorrent3',qbPath,hostPath,installedAt:'2026-08-31T08:00:00Z',installer:'linux'});
+    if(relative==='weigg-install.json')return writeJson(res,{version:'0.3.5',gitSha,container:'qbittorrent3',qbPath,hostPath,installedAt:'2026-08-31T09:00:00Z',installer:'linux'});
     const requested=relative||'index.html';
     const file=path.resolve(webRoot,requested);
     if(!(file===webRoot||file.startsWith(webRoot+path.sep))){res.writeHead(403);return res.end('forbidden');}
@@ -87,47 +99,92 @@ await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(p
 const browser=await chromium.launch({headless:true});
 try{
   for(const name of Object.keys(variants)){
+    for(const viewport of viewports){
+      const page=await browser.newPage({viewport:{width:viewport.width,height:viewport.height}});
+      const errors=[];
+      page.on('console',msg=>{if(msg.type()==='error')errors.push(msg.text());});
+      page.on('pageerror',error=>errors.push(String(error)));
+      await page.goto(`http://${host}:${port}/${name}/#/settings`,{waitUntil:'networkidle'});
+      await page.locator('#settings-tabs [data-settings-tab="webui"]').click();
+      await page.waitForSelector('#settings-content [data-v035-alt="1"][data-setting-key="alternative_webui_enabled"]');
+      const layout=await page.evaluate(()=>{
+        const group=document.querySelector('#settings-content .settings-group');
+        const cards=[...document.querySelectorAll('#settings-content [data-v035-alt="1"]')];
+        const enabled=document.querySelector('#settings-content [data-setting-key="alternative_webui_enabled"]');
+        const path=document.querySelector('#settings-content [data-setting-key="alternative_webui_path"]');
+        const host=document.querySelector('#settings-content [data-setting-key="weigg_host_path"]');
+        const version=document.querySelector('#settings-content [data-setting-key="weigg_version"]');
+        const sha=document.querySelector('#settings-content [data-setting-key="weigg_git_sha"]');
+        const groupRect=group?.getBoundingClientRect();
+        const enabledRect=enabled?.getBoundingClientRect();
+        const pathRect=path?.getBoundingClientRect();
+        return {
+          cardCount:cards.length,
+          allCanonical:cards.every(card=>card.classList.contains('setting-card')&&card.classList.contains('settings-row')),
+          legacyVisual:document.querySelectorAll('[class*="alt-webui-v034__"]').length,
+          enabledChecked:enabled?.querySelector('.switch-input')?.checked,
+          pathValue:path?.querySelector('.field-input')?.value,
+          hostValue:host?.querySelector('.field-input')?.value,
+          versionValue:version?.querySelector('.field-input')?.value,
+          shaValue:sha?.querySelector('.field-input')?.value,
+          readonlyCount:cards.filter(card=>card.dataset.settingReadonly==='true').length,
+          ratio:groupRect&&enabledRect?enabledRect.width/groupRect.width:0,
+          heightDelta:enabledRect&&pathRect?Math.abs(enabledRect.height-pathRect.height):999,
+          scrollWidth:document.documentElement.scrollWidth,
+          innerWidth,
+          settingsCss:[...document.styleSheets].some(s=>String(s.href||'').includes('settings-v034.css')),
+        };
+      });
+      assert(layout.cardCount>=6,`${name}/${viewport.label}: expected Alternative WebUI + metadata canonical cards`);
+      assert(layout.allCanonical,`${name}/${viewport.label}: injected settings are not canonical setting-card/settings-row components`);
+      assert(layout.legacyVisual===0,`${name}/${viewport.label}: legacy Alternative WebUI visual classes still exist`);
+      assert(layout.enabledChecked===true,`${name}/${viewport.label}: Alternative WebUI toggle not enabled`);
+      assert(layout.pathValue===qbPath,`${name}/${viewport.label}: expected qB path ${qbPath}, got ${layout.pathValue}`);
+      assert(layout.hostValue===hostPath,`${name}/${viewport.label}: host path metadata not shown`);
+      assert(layout.versionValue==='0.3.5',`${name}/${viewport.label}: installed version not shown`);
+      assert(layout.shaValue===gitSha,`${name}/${viewport.label}: Git SHA not shown`);
+      assert(layout.readonlyCount>=4,`${name}/${viewport.label}: installer metadata must use canonical readonly cards`);
+      assert(layout.heightDelta<=12,`${name}/${viewport.label}: Alternative toggle/path cards are not visually equal-height`);
+      assert(layout.scrollWidth<=layout.innerWidth+1,`${name}/${viewport.label}: settings horizontal overflow`);
+      assert(!layout.settingsCss,`${name}/${viewport.label}: standalone settings-v034.css must not be loaded`);
+      if(viewport.width<600)assert(layout.ratio>0.88,`${name}/${viewport.label}: card should fill one-column mobile grid, ratio=${layout.ratio}`);
+      else if(viewport.width<1500)assert(layout.ratio>0.42&&layout.ratio<0.58,`${name}/${viewport.label}: card should match two-column Settings grid, ratio=${layout.ratio}`);
+      else assert(layout.ratio>0.27&&layout.ratio<0.39,`${name}/${viewport.label}: card should match three-card wide Settings grid, ratio=${layout.ratio}`);
+      assert(errors.length===0,`${name}/${viewport.label}: browser errors: ${errors.join(' | ')}`);
+      await page.close();
+    }
+  }
+
+  for(const name of Object.keys(variants)){
+    reset(name);
     const page=await browser.newPage({viewport:{width:1366,height:768}});
     const errors=[];
     page.on('console',msg=>{if(msg.type()==='error')errors.push(msg.text());});
     page.on('pageerror',error=>errors.push(String(error)));
     await page.goto(`http://${host}:${port}/${name}/#/settings`,{waitUntil:'networkidle'});
-    await page.locator('#settings-tabs button[data-settings-tab="webui"]').click();
-    await page.waitForSelector('#alternative-webui-v034');
+    await page.locator('#settings-tabs [data-settings-tab="webui"]').click();
+    await page.waitForSelector('#settings-content [data-setting-key="alternative_webui_path"]');
 
-    const initial=await page.evaluate(()=>({
-      enabled:document.querySelector('#alternative-webui-v034 .alt-webui-v034__toggle')?.checked,
-      path:document.querySelector('#alternative-webui-v034 .alt-webui-v034__path')?.value,
-      text:document.querySelector('#alternative-webui-v034')?.textContent||'',
-      scrollWidth:document.documentElement.scrollWidth,
-      innerWidth,
-    }));
-    assert(initial.enabled===true,`${name}: Alternative WebUI toggle not enabled`);
-    assert(initial.path===qbPath,`${name}: expected qB path ${qbPath}, got ${initial.path}`);
-    assert(initial.text.includes(hostPath),`${name}: host path metadata not shown`);
-    assert(initial.text.includes('0.3.4'),`${name}: installed version not shown`);
-    assert(initial.scrollWidth<=initial.innerWidth+1,`${name}: settings horizontal overflow`);
-
-    await page.locator('#settings-tabs button[data-settings-tab="advanced"]').click();
-    await page.waitForFunction(()=>![...document.querySelectorAll('#settings-content .settings-row')].some(row=>['alternative_webui_enabled','alternative_webui_path'].includes(row.dataset.key)&&!row.hidden),null,{timeout:1500});
-    await page.locator('#settings-tabs button[data-settings-tab="webui"]').click();
-    await page.waitForSelector('#alternative-webui-v034');
+    await page.locator('#settings-tabs [data-settings-tab="advanced"]').click();
+    await page.waitForFunction(()=>![...document.querySelectorAll('#settings-content .settings-row')].some(row=>['alternative_webui_enabled','alternative_webui_path'].includes(row.dataset.key||row.dataset.settingKey)&&!row.hidden),null,{timeout:1500});
+    await page.locator('#settings-tabs [data-settings-tab="webui"]').click();
+    await page.waitForSelector('#settings-content [data-setting-key="alternative_webui_path"]');
 
     const writesBeforeMistake=state[name].writes.length;
-    await page.locator('#alternative-webui-v034 .alt-webui-v034__path').fill(hostPath);
+    await page.locator('#settings-content [data-setting-key="alternative_webui_path"] .field-input').fill(hostPath);
     await page.locator('#save-settings-btn').click();
     await page.waitForTimeout(120);
     assert(state[name].writes.length===writesBeforeMistake,`${name}: host path mistake was sent to qBittorrent`);
 
     const changedPath='/config/weigg-qb-webui-alt';
-    await page.locator('#alternative-webui-v034 .alt-webui-v034__path').fill(changedPath);
+    await page.locator('#settings-content [data-setting-key="alternative_webui_path"] .field-input').fill(changedPath);
     page.once('dialog',dialog=>dialog.accept());
     await page.locator('#save-settings-btn').click();
-    await page.waitForFunction(expected=>document.querySelector('#alternative-webui-v034 .alt-webui-v034__path')?.value===expected,changedPath);
+    await page.waitForFunction(expected=>document.querySelector('#settings-content [data-setting-key="alternative_webui_path"] .field-input')?.value===expected,changedPath);
     assert(state[name].prefs.alternative_webui_path===changedPath,`${name}: valid qB path not saved`);
     assert(state[name].writes.some(x=>x.alternative_webui_path===changedPath),`${name}: path write payload missing`);
 
-    await page.locator('#alternative-webui-v034 .alt-webui-v034__toggle').uncheck();
+    await page.locator('#settings-content [data-setting-key="alternative_webui_enabled"] .switch-input').uncheck();
     page.once('dialog',dialog=>dialog.accept());
     await page.locator('#save-settings-btn').click();
     await page.waitForFunction(()=>location.pathname==='/',null,{timeout:2500});
@@ -136,7 +193,7 @@ try{
     assert(errors.length===0,`${name}: browser errors: ${errors.join(' | ')}`);
     await page.close();
   }
-  console.log('v0.3.4 Alternative WebUI browser regression passed for qB 4.1.9.1 and 5.2.0 fixtures.');
+  console.log('v0.3.5 canonical Alternative WebUI regression passed for qB 4.1.9.1, 4.6.7 and 5.2.0 across 3 viewports.');
 }finally{
   await browser.close();
   await new Promise(resolve=>server.close(resolve));
