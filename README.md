@@ -2,9 +2,24 @@
 
 A premium, modular and high-performance Alternate WebUI for qBittorrent.
 
-Current version: **0.3.0**  
+Current version: **0.3.1**  
 Compatibility floor: **qBittorrent 4.1.9**  
 Compatibility target: **qBittorrent 4.1.x → current 5.x**, using capability-based progressive enhancement.
+
+## v0.3.1 — Polling scroll stability hotfix
+
+Real qBittorrent 4.1.9 testing exposed one remaining VirtualList race: `app.js` clears the list container before constructing the next VirtualList. On some browsers the old scroll listener receives the transient programmatic `scrollTop = 0` caused by DOM teardown and overwrites the remembered user position immediately before the replacement list restores it.
+
+v0.3.1 hardens the VirtualList scroll handler so teardown-generated scroll events are ignored whenever the handler's own spacer is no longer connected to the active container. Normal user scroll events still update `__weiggVirtualScrollTop`.
+
+The visible `Refresh HH:MM:SS` readout has also been removed from the Transfer Dock. Polling continues normally; the timestamp was redundant operational noise and is not used as application state.
+
+Expected behavior:
+
+```text
+Automatic polling / manual Refresh → preserve current viewport
+Filter / facet / page / page-size / search context change → reset to top
+```
 
 ## v0.3.0 — Stable Virtual UI + Transfer Control
 
@@ -12,7 +27,7 @@ v0.3.0 focuses on interaction stability and daily-use completeness rather than a
 
 ### Scroll position is user state
 
-The Torrent VirtualList now preserves the user's scroll position across automatic polling and rerenders. The previous implementation recreated the virtual list on each refresh and could jump a user from the middle/bottom of a page back to the top.
+The Torrent VirtualList preserves the user's scroll position across automatic polling and rerenders.
 
 Deliberate context changes still reset the main list to the top:
 
@@ -33,7 +48,7 @@ The Filter Shelf and global transfer/network status remain available while the e
 
 ### Interactive Transfer Control Dock
 
-The desktop Status Dock is now a centered operational control surface.
+The desktop Status Dock is a centered operational control surface.
 
 ```text
 ↓ current download
@@ -41,7 +56,6 @@ The desktop Status Dock is now a centered operational control surface.
 ALT speed mode
 connection state
 Torrent count
-refresh time
 Transfer / session
 ```
 
@@ -79,7 +93,7 @@ Existing `Ctrl/Cmd+A`, Escape and Delete behavior remains. v0.3 also adds Ctrl/C
 
 ## Compatibility matrix
 
-Automated compatibility fixtures now exercise three tiers:
+Automated compatibility fixtures exercise three tiers:
 
 | Tier | Fixture | Expected behavior |
 | --- | --- | --- |
@@ -251,4 +265,4 @@ Documentation authority:
 
 ## Certification status
 
-`0.3.0` is the current integrated baseline. Repository CI and compatibility fixtures can validate code contracts, but stable release certification still requires live regression on both release-blocking endpoints. A fixture PASS must never be reported as a 5.2.0 live PASS.
+`0.3.1` is the current integrated baseline. Repository CI and compatibility fixtures can validate code contracts, but stable release certification still requires live regression on both release-blocking endpoints. A fixture PASS must never be reported as a 5.2.0 live PASS.
