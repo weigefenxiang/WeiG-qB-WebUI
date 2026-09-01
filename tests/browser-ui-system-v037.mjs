@@ -79,7 +79,9 @@ try{
     await page.locator('#mobile-bottom-nav [data-route="settings"]').click();await page.waitForFunction(()=>WeiG.Router.route().name==='settings');await page.waitForSelector('#settings-content .settings-row--canonical');
     const settings=await page.evaluate(()=>{const rows=Array.from(document.querySelectorAll('#settings-content .settings-row--canonical')).slice(0,8),heights=rows.map(x=>x.getBoundingClientRect().height),tz=document.querySelector('[data-v036-timezone]');return {max:Math.max(...heights),min:Math.min(...heights),timezone:!!tz};});
     assert(settings.max<90,`mobile Settings rows are still oversized (${settings.max}px)`);assert(settings.timezone,'display timezone must remain in Settings');
-    await page.evaluate(()=>document.querySelector('#settings-tabs [data-settings-tab="about"]')?.click());await page.waitForSelector('.about-surface .about-identity');
+    await page.evaluate(()=>document.querySelector('#settings-tabs [data-settings-tab="about"]')?.click());
+    await page.waitForSelector('.about-surface .about-identity');
+    await page.waitForFunction(()=>document.querySelectorAll('.about-facts-grid .about-fact').length>=4,null,{timeout:1500});
     const about=await page.evaluate(()=>{const facts=document.querySelector('.about-facts-grid'),rows=facts?Array.from(facts.children):[];return {one:document.querySelectorAll('#settings-content .about-surface').length,upstream:document.querySelector('.about-attribution')?.textContent||'',cards:document.querySelectorAll('#settings-content .about-surface .setting-card').length,facts:rows.length,singleColumn:rows.length<2||Math.abs(rows[0].getBoundingClientRect().left-rows[1].getBoundingClientRect().left)<2};});
     assert(about.one===1,'About must be one coherent surface');assert(/Christophe Dumez/.test(about.upstream),'About upstream attribution missing');assert(about.cards===0,'About must not remain a mosaic of setting cards');assert(about.facts>=4&&about.singleColumn,'mobile About facts must collapse to one compact column');
     assert(errors.length===0,`mobile UI system browser errors: ${errors.join(' | ')}`);await page.close();
