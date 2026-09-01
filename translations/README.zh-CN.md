@@ -12,7 +12,7 @@
 - [WeiG-qB-WebUI.zip](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/WeiG-qB-WebUI.zip)
 - [SHA256SUMS](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/SHA256SUMS)
 
-如果还没有发布 Release，就代表当前没有稳定版；`dev` 和 `main` 只用于开发/预发布测试，不作为普通用户稳定下载入口。
+如果还没有发布 Release，就代表当前没有稳定版；`dev` 和 `main` 只用于开发/预发布测试，不作为普通用户稳定下载入口。稳定安装器会 fail closed，不会在 Release 缺失时偷偷改用 branch archive。
 
 ### Linux / Docker / NAS 一键安装
 
@@ -20,7 +20,7 @@
 curl -fsSL https://raw.githubusercontent.com/weigefenxiang/WeiG-qB-WebUI/main/installers/install.sh -o /tmp/weigg-qb-install.sh && sh /tmp/weigg-qb-install.sh --configure
 ```
 
-安装器会识别常见 qBittorrent Docker 布局、自动备份、安装 Release 包、记录精确 Git SHA，并输出 qBittorrent 实际应填写的 WebUI 路径。
+安装器会识别常见 qBittorrent Docker 布局、自动备份、校验 Release checksum 与 exact Git SHA、检查完整 Alternate WebUI 入口，并输出 qBittorrent 实际应填写的 WebUI 路径。
 
 ### Windows PowerShell 一键安装
 
@@ -38,7 +38,9 @@ Docker 多容器、自定义路径、更新、回滚、NAS 与完整手动部署
 
 ## 兼容范围
 
-最低兼容目标：**qBittorrent 4.1.9.1 / WebAPI 2.2.1**。新版本能力按 WebAPI/capability 渐进启用，不按主版本写死。
+最低兼容目标：**qBittorrent 4.1.9.1 / WebAPI 2.2.1**。当前发布审计会检查从 4.1.9.1 到 5.2.3 的 **55 个官方正式 4.x/5.x release tags**，另外核对 current upstream WebAPI，并在 Linux 与 Windows Chromium 上运行 20 节点代表性交互矩阵。新版本能力按 WebAPI/capability 渐进启用，不按主版本写死。
+
+完整矩阵、官方源码审计与 LIVE gate 规则见：[兼容与实现状态](../docs/002.兼容与实现状态.md)。
 
 ## 文档
 
