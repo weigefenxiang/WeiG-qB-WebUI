@@ -100,6 +100,9 @@ for(const fixture of matrix.fixtures){
   if(fixture.capabilities?.logs!==undefined)assert.equal(c.capabilities.logs,fixture.capabilities.logs,`${tag}: logs capability mismatch`);
   if(fixture.capabilities?.exactPrivateFlag!==undefined)assert.equal(c.capabilities.privateFlag,fixture.capabilities.exactPrivateFlag,`${tag}: private capability mismatch`);
   if(fixture.capabilities?.structuredAdd!==undefined)assert.equal(c.capabilities.structuredTorrentAdd,fixture.capabilities.structuredAdd,`${tag}: structured add mismatch`);
+  if(fixture.qbVersion==='4.3.3')assert.equal(c.capabilities.renameFolder,true,`${tag}: 4.3.3 renameFolder compatibility exception`);
+  if(fixture.qbVersion==='4.3.0')assert.equal(c.capabilities.renameFolder,false,`${tag}: pre-4.3.3 renameFolder must remain unavailable`);
+  if(fixture.qbVersion==='4.3.9')assert.equal(c.capabilities.renameFolder,true,`${tag}: WebAPI 2.8.x renameFolder`);
 
   if(fixture.realRelease){
     const actionCalls=capture(c);
@@ -136,6 +139,6 @@ for(const fixture of matrix.fixtures){
   if(fixture.realRelease)assert.equal(c.capabilities.tags,expectedTags,`${tag}: tag capability threshold`);
 }
 
-assert.ok(realCount>=10,'release compatibility gate must cover at least 10 real qBittorrent releases');
-assert.ok(matrix.releaseGate.length>=10,'release gate must retain broad 4.x/5.x coverage');
+assert.ok(realCount>=18,'release compatibility gate must cover at least 18 source-verified real qBittorrent releases');
+assert.ok(matrix.releaseGate.length>=20,'release gate must retain 18 real releases plus upstream/sentinel coverage');
 console.log(`Release compatibility gate passed: ${realCount} real qBittorrent releases + ${matrix.fixtures.length-realCount} upstream/sentinel nodes; legacy/modern auth, action, filter, tracker, capability and Alternate WebUI entry contracts verified.`);
