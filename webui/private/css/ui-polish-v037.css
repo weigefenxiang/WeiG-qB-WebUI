@@ -6,6 +6,7 @@
   --settings-control-w:340px;
   --settings-rail-gap:32px;
   --action-control-h:44px;
+  --transfer-editor-w:720px;
 }
 
 /* A11Y-SKIP-001 — keep keyboard skip navigation without reserving document-flow height. */
@@ -21,12 +22,28 @@
   #list-view #torrent-list{height:auto!important;min-height:0!important;max-height:none!important}
 }
 
-/* STATUS-DOCK-002 */
+/* SETTINGS-VIEWPORT-001 — one canonical scrolling viewport for every Settings tab. */
+#settings-view.is-active{display:grid!important;grid-template-rows:auto minmax(0,1fr)!important;height:100%!important;min-height:0!important;overflow:hidden!important}
+#settings-view>.settings-header{min-height:0!important}
+#settings-view>.settings-layout{height:100%!important;min-height:0!important;overflow:hidden!important}
+#settings-view .settings-tabs{min-height:0!important;max-height:100%!important;overflow-y:auto!important;overscroll-behavior:contain;scrollbar-gutter:stable}
+#settings-view #settings-content{height:100%!important;min-height:0!important;max-height:100%!important;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain;scrollbar-gutter:stable;padding-bottom:24px!important}
+
+/* STATUS-DOCK-003 — runtime cluster is visually centered instead of being pushed right. */
 .statusbar{align-items:center!important;min-height:0!important;padding-block:0!important}
 .statusbar>*{align-self:center!important}
-.statusbar>span,.statusbar>button,.statusbar>div{min-height:30px;display:inline-flex;align-items:center}
+.statusbar>span,.statusbar>button,.statusbar>div{min-height:30px;align-items:center}
 #status-torrents{font-variant-numeric:tabular-nums}
 #status-message:empty{display:none!important}
+@media(min-width:821px){
+  .statusbar{display:grid!important;grid-template-columns:minmax(0,1fr) auto auto auto minmax(0,1fr)!important;column-gap:9px!important;position:relative!important}
+  #status-torrents{grid-column:1!important;justify-self:start!important;display:inline-flex!important}
+  .statusbar>.status-storage{grid-column:2!important;justify-self:end!important;display:inline-flex!important}
+  .statusbar>#transfer-capsule{grid-column:3!important;justify-self:center!important}
+  .statusbar>#status-connection{grid-column:4!important;justify-self:start!important;display:inline-flex!important}
+  .statusbar>#status-message{grid-column:5!important;justify-self:end!important;display:inline-flex!important}
+  .statusbar>span.desktop-only{display:none!important}
+}
 
 /* CONNECTION-002 */
 .connection-indicator{position:relative;gap:7px!important;padding-left:15px!important}
@@ -48,7 +65,7 @@
 .polish-tooltip{width:max-content;max-width:min(280px,calc(100vw - 16px));white-space:nowrap;transition:opacity var(--motion-fast),transform var(--motion-fast);transform:translateY(3px)}
 .polish-tooltip.is-visible{transform:none}
 
-/* TRANSFER-002 — download/upload is one control. */
+/* TRANSFER-003 — one generous editor for download/upload and normal/alternative modes. */
 .transfer-capsule--unified{gap:9px!important;min-height:32px!important;padding:0 11px!important}
 .transfer-capsule--unified:hover,.transfer-capsule--unified:focus-visible{border-color:rgba(56,214,255,.55)!important;background:linear-gradient(180deg,rgba(56,214,255,.12),rgba(56,214,255,.065))!important;box-shadow:0 0 0 3px rgba(56,214,255,.06),inset 0 1px rgba(255,255,255,.04)!important}
 .transfer-capsule--unified .status-speed{pointer-events:none!important;min-height:0!important}
@@ -57,23 +74,27 @@
 .transfer-capsule--unified[data-mode="alt"]{border-color:var(--ui-alt-border)!important;background:linear-gradient(180deg,rgba(137,108,255,.18),rgba(137,108,255,.09))!important;box-shadow:inset 0 0 20px rgba(137,108,255,.07)!important}
 .transfer-capsule--unified[data-mode="alt"]:hover{border-color:rgba(171,145,255,.62)!important;background:linear-gradient(180deg,rgba(137,108,255,.23),rgba(137,108,255,.11))!important}
 
-.transfer-rate-editor{width:min(560px,calc(100vw - 20px))!important;transition:background var(--motion-normal),box-shadow var(--motion-normal)}
+.transfer-rate-editor{width:min(var(--transfer-editor-w),calc(100vw - 48px))!important;max-height:calc(100dvh - 48px)!important;padding:0!important;overflow:auto!important;transition:background var(--motion-normal),box-shadow var(--motion-normal)}
+.transfer-rate-editor>.dialog__head{padding:22px 24px 16px!important}
+.transfer-rate-editor>.dialog__body{padding:0 24px 20px!important}
+.transfer-rate-editor>.dialog__actions{padding:0 24px 22px!important;gap:10px!important}
 .transfer-rate-editor[data-mode="alt"]{border-color:var(--ui-alt-border)!important;background:linear-gradient(180deg,rgba(34,29,65,.98),rgba(17,20,39,.98))!important;box-shadow:var(--shadow-lg),0 0 52px rgba(137,108,255,.10),inset 0 1px rgba(255,255,255,.06)!important}
-.transfer-editor-copy{margin:4px 0 0!important}
-.transfer-rate-editor .transfer-mode-switch{margin-bottom:14px}
+.transfer-editor-copy{margin:5px 0 0!important;max-width:560px}
+.transfer-rate-editor .transfer-mode-switch{margin:0 0 16px!important;padding:4px!important;border-radius:12px!important}
+.transfer-rate-editor .transfer-mode-switch button{min-height:40px!important}
 .transfer-rate-editor[data-mode="alt"] .transfer-mode-switch{border-color:rgba(154,126,255,.34);background:rgba(91,69,164,.09)}
 .transfer-rate-editor[data-mode="alt"] .transfer-mode-switch button.is-active[data-transfer-mode="alt"]{box-shadow:inset 0 0 18px rgba(137,108,255,.08),0 0 20px rgba(137,108,255,.05)}
-.rate-fields{display:grid;gap:10px}
-.rate-field{display:grid;gap:8px;padding:12px;border:1px solid var(--border);border-radius:12px;background:rgba(5,13,25,.22);transition:border-color var(--motion-fast),background var(--motion-fast)}
+.rate-fields{display:grid;gap:14px}
+.rate-field{display:grid;gap:11px;padding:16px;border:1px solid var(--border);border-radius:13px;background:rgba(5,13,25,.22);transition:border-color var(--motion-fast),background var(--motion-fast)}
 .transfer-rate-editor[data-mode="alt"] .rate-field{border-color:rgba(154,126,255,.23);background:rgba(91,69,164,.055)}
-.rate-field__head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.rate-field__head{display:flex;align-items:center;justify-content:space-between;gap:16px}
 .rate-field__head strong{font-size:var(--text-body)}
 .rate-field__head small{color:var(--text-muted);font-size:var(--text-caption);white-space:nowrap}
-.rate-field__controls{display:grid;grid-template-columns:minmax(120px,1fr) auto 34px;align-items:center;gap:8px}
-.rate-field__input{width:100%!important;height:34px!important;font-variant-numeric:tabular-nums}
+.rate-field__controls{display:grid;grid-template-columns:minmax(180px,1fr) auto 40px;align-items:center;gap:10px}
+.rate-field__input{width:100%!important;height:40px!important;font-variant-numeric:tabular-nums}
 .rate-field .transfer-unit-select{justify-self:start}
-.rate-field .transfer-unit-select .ui-select__trigger{height:34px!important;min-height:34px!important}
-.rate-scrubber{display:grid;place-items:center;width:34px;height:34px;padding:0;border:1px solid var(--border);border-radius:9px;background:rgba(255,255,255,.025);color:var(--text-muted);cursor:ew-resize;touch-action:none;user-select:none;font-weight:800;transition:border-color var(--motion-fast),background var(--motion-fast),color var(--motion-fast),transform var(--motion-fast)}
+.rate-field .transfer-unit-select .ui-select__trigger{height:40px!important;min-height:40px!important;padding-inline:12px!important}
+.rate-scrubber{display:grid;place-items:center;width:40px;height:40px;padding:0;border:1px solid var(--border);border-radius:10px;background:rgba(255,255,255,.025);color:var(--text-muted);cursor:ew-resize;touch-action:none;user-select:none;font-weight:800;transition:border-color var(--motion-fast),background var(--motion-fast),color var(--motion-fast),transform var(--motion-fast)}
 .rate-scrubber:hover,.rate-scrubber.is-scrubbing{border-color:rgba(56,214,255,.42);background:rgba(56,214,255,.08);color:var(--text-primary)}
 .transfer-rate-editor[data-mode="alt"] .rate-scrubber:hover,.transfer-rate-editor[data-mode="alt"] .rate-scrubber.is-scrubbing{border-color:rgba(171,145,255,.48);background:rgba(137,108,255,.13)}
 
@@ -106,13 +127,18 @@
   #settings-view #settings-content .settings-row--canonical.settings-control>.ui-select{justify-self:start!important}
 }
 
-/* ABOUT-002 */
+/* ABOUT-003 — metadata only: compact, same-line label/value facts; no preference controls. */
+.about-surface>.settings-row--canonical:not(.about-row):not(.about-fact),
+.about-surface>.settings-control:not(.about-row):not(.about-fact){display:none!important}
 .about-surface .about-facts-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border-bottom:1px solid var(--border)}
-.about-surface .about-facts-grid .about-fact{display:grid!important;grid-template-columns:minmax(88px,.72fr) minmax(0,1.28fr)!important;align-items:center!important;gap:10px!important;min-height:58px!important;padding:10px 12px!important;margin:0!important;border:0!important;border-bottom:1px solid color-mix(in srgb,var(--border) 78%,transparent)!important}
+.about-surface .about-facts-grid .about-fact{display:grid!important;grid-template-columns:minmax(96px,auto) minmax(0,1fr) auto!important;align-items:center!important;gap:12px!important;min-height:52px!important;padding:10px 14px!important;margin:0!important;border:0!important;border-bottom:1px solid color-mix(in srgb,var(--border) 78%,transparent)!important}
 .about-surface .about-facts-grid .about-fact:nth-child(odd){border-right:1px solid color-mix(in srgb,var(--border) 78%,transparent)!important}
 .about-surface .about-facts-grid .about-fact:nth-last-child(-n+2){border-bottom:0!important}
 .about-surface .about-facts-grid .about-fact>*{min-width:0}
-.about-surface .about-facts-grid .about-fact strong,.about-surface .about-facts-grid .about-fact>span:first-child{font-size:var(--text-label);font-weight:700;color:var(--text-secondary)}
+.about-surface .about-facts-grid .about-fact>.settings-row__copy{display:contents!important}
+.about-surface .about-facts-grid .about-fact>.settings-row__copy>strong{grid-column:1!important;margin:0!important;font-size:var(--text-label)!important;font-weight:720!important;color:var(--text-secondary)!important;text-align:left!important;white-space:nowrap}
+.about-surface .about-facts-grid .about-fact>.settings-row__copy>small{grid-column:2!important;margin:0!important;font-size:var(--text-body)!important;color:var(--text-primary)!important;text-align:left!important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.about-surface .about-facts-grid .about-fact>.about-link{grid-column:3!important;justify-self:end!important;align-self:center!important}
 .about-surface .about-facts-grid .about-fact code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:var(--text-meta)}
 .about-surface .about-attribution{min-height:54px!important}
 .about-surface .about-identity{padding-block:14px!important}
@@ -135,8 +161,12 @@
   .about-surface .about-facts-grid{grid-template-columns:minmax(0,1fr)!important;grid-auto-flow:row!important}
   .about-surface .about-facts-grid .about-fact{grid-column:1!important;width:100%!important;max-width:100%!important;justify-self:stretch!important;transform:none!important;border-right:0!important;border-bottom:1px solid var(--border)!important}
   .about-surface .about-facts-grid .about-fact:last-child{border-bottom:0!important}
-  .transfer-rate-editor{width:calc(100vw - 14px)!important}
-  .rate-field__controls{grid-template-columns:minmax(0,1fr) auto 34px}
+  .transfer-rate-editor{width:calc(100vw - 24px)!important;max-height:calc(100dvh - 24px)!important}
+  .transfer-rate-editor>.dialog__head{padding:18px 18px 14px!important}
+  .transfer-rate-editor>.dialog__body{padding:0 18px 16px!important}
+  .transfer-rate-editor>.dialog__actions{padding:0 18px 18px!important}
+  .rate-field{padding:14px!important}
+  .rate-field__controls{grid-template-columns:minmax(0,1fr) auto 40px}
 }
 
 @media(prefers-reduced-motion:reduce){
