@@ -52,7 +52,7 @@ dialog.dialog[data-adaptive-dialog="1"]>form{display:grid;grid-template-rows:aut
 .v037-mobile-settings-nav,.v037-mobile-system{display:none}
 
 /* Canonical Settings rows own placement on every viewport. Legacy card tracks must not leak into v0.3.7. */
-#settings-view #settings-content .settings-row--canonical{display:grid!important;grid-template-columns:minmax(220px,1fr) auto!important;grid-template-rows:auto!important;align-items:center!important;min-height:58px!important}
+#settings-view #settings-content .settings-row--canonical{display:grid!important;grid-template-columns:minmax(220px,1fr) auto!important;grid-template-rows:auto!important;align-items:center!important;min-height:58px!important;padding-block:8px!important}
 #settings-view #settings-content .settings-row--canonical>.settings-row__copy{grid-column:1!important;grid-row:1!important;min-width:0!important}
 #settings-view #settings-content .settings-row--canonical>.field-input,
 #settings-view #settings-content .settings-row--canonical>input:not(.switch-input),
