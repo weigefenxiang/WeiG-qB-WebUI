@@ -1,12 +1,12 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "supportedRange": {
     "minimum": "4.1.9.1",
     "stable": "5.2.3",
     "upstream": "master"
   },
-  "fastGate": ["4.1.9.1", "4.3.9", "4.6.7", "5.0.5", "5.2.3", "master", "6.0.0-synthetic"],
-  "releaseGate": ["4.1.9.1", "4.2.5", "4.3.9", "4.4.5", "4.5.5", "4.6.7", "5.0.5", "5.1.2", "5.2.0", "5.2.3", "master", "6.0.0-synthetic"],
+  "fastGate": ["4.1.9.1", "4.2.0", "4.3.3", "4.3.9", "4.4.0", "4.5.0", "4.6.0", "4.6.7", "5.0.0", "5.0.5", "5.1.0", "5.1.2", "5.2.0", "5.2.3", "master", "6.0.0-synthetic"],
+  "releaseGate": ["4.1.9.1", "4.2.0", "4.2.5", "4.3.0", "4.3.3", "4.3.9", "4.4.0", "4.4.5", "4.5.0", "4.5.5", "4.6.0", "4.6.7", "5.0.0", "5.0.5", "5.1.0", "5.1.2", "5.2.0", "5.2.3", "master", "6.0.0-synthetic"],
   "fixtures": [
     {
       "id": "qb-4.1.9.1",
@@ -14,6 +14,15 @@
       "webApiVersion": "2.2.1",
       "channel": "stable",
       "role": "legacy-floor",
+      "realRelease": true,
+      "capabilities": {"logs": true, "alternativeWebUI": true, "pauseResume": true, "startStop": false, "exactPrivateFlag": false, "structuredAdd": false}
+    },
+    {
+      "id": "qb-4.2.0",
+      "qbVersion": "4.2.0",
+      "webApiVersion": "2.3.0",
+      "channel": "stable",
+      "role": "4x-tags-boundary",
       "realRelease": true,
       "capabilities": {"logs": true, "alternativeWebUI": true, "pauseResume": true, "startStop": false, "exactPrivateFlag": false, "structuredAdd": false}
     },
@@ -27,11 +36,38 @@
       "capabilities": {"logs": true, "alternativeWebUI": true, "pauseResume": true, "startStop": false, "exactPrivateFlag": false, "structuredAdd": false}
     },
     {
+      "id": "qb-4.3.0",
+      "qbVersion": "4.3.0",
+      "webApiVersion": "2.6.0",
+      "channel": "stable",
+      "role": "4x-content-path-boundary",
+      "realRelease": true,
+      "capabilities": {"logs": true, "alternativeWebUI": true, "pauseResume": true, "startStop": false, "exactPrivateFlag": false, "structuredAdd": false}
+    },
+    {
+      "id": "qb-4.3.3",
+      "qbVersion": "4.3.3",
+      "webApiVersion": "2.7.0",
+      "channel": "stable",
+      "role": "4x-rename-folder-compat",
+      "realRelease": true,
+      "capabilities": {"logs": true, "alternativeWebUI": true, "pauseResume": true, "startStop": false, "exactPrivateFlag": false, "structuredAdd": false}
+    },
+    {
       "id": "qb-4.3.9",
       "qbVersion": "4.3.9",
       "webApiVersion": "2.8.2",
       "channel": "stable",
       "role": "mature-4x-a",
+      "realRelease": true,
+      "capabilities": {"logs": true, "alternativeWebUI": true, "pauseResume": true, "startStop": false, "exactPrivateFlag": false, "structuredAdd": false}
+    },
+    {
+      "id": "qb-4.4.0",
+      "qbVersion": "4.4.0",
+      "webApiVersion": "2.8.4",
+      "channel": "stable",
+      "role": "4x-late-api-boundary",
       "realRelease": true,
       "capabilities": {"logs": true, "alternativeWebUI": true, "pauseResume": true, "startStop": false, "exactPrivateFlag": false, "structuredAdd": false}
     },
@@ -45,11 +81,29 @@
       "capabilities": {"logs": true, "alternativeWebUI": true, "pauseResume": true, "startStop": false, "exactPrivateFlag": false, "structuredAdd": false}
     },
     {
+      "id": "qb-4.5.0",
+      "qbVersion": "4.5.0",
+      "webApiVersion": "2.8.18",
+      "channel": "stable",
+      "role": "4x-advanced-preferences-boundary",
+      "realRelease": true,
+      "capabilities": {"logs": true, "alternativeWebUI": true, "pauseResume": true, "startStop": false, "exactPrivateFlag": false, "structuredAdd": false}
+    },
+    {
       "id": "qb-4.5.5",
       "qbVersion": "4.5.5",
       "webApiVersion": "2.8.19",
       "channel": "stable",
       "role": "advanced-preferences-expansion",
+      "realRelease": true,
+      "capabilities": {"logs": true, "alternativeWebUI": true, "pauseResume": true, "startStop": false, "exactPrivateFlag": false, "structuredAdd": false}
+    },
+    {
+      "id": "qb-4.6.0",
+      "qbVersion": "4.6.0",
+      "webApiVersion": "2.9.2",
+      "channel": "stable",
+      "role": "late-4x-boundary",
       "realRelease": true,
       "capabilities": {"logs": true, "alternativeWebUI": true, "pauseResume": true, "startStop": false, "exactPrivateFlag": false, "structuredAdd": false}
     },
@@ -63,11 +117,29 @@
       "capabilities": {"logs": true, "alternativeWebUI": true, "pauseResume": true, "startStop": false, "exactPrivateFlag": false, "structuredAdd": false}
     },
     {
+      "id": "qb-5.0.0",
+      "qbVersion": "5.0.0",
+      "webApiVersion": "2.11.2",
+      "channel": "stable",
+      "role": "5x-major-boundary",
+      "realRelease": true,
+      "capabilities": {"logs": true, "alternativeWebUI": true, "pauseResume": false, "startStop": true, "exactPrivateFlag": true, "structuredAdd": false}
+    },
+    {
       "id": "qb-5.0.5",
       "qbVersion": "5.0.5",
       "webApiVersion": "2.11.2",
       "channel": "stable",
       "role": "major-transition",
+      "realRelease": true,
+      "capabilities": {"logs": true, "alternativeWebUI": true, "pauseResume": false, "startStop": true, "exactPrivateFlag": true, "structuredAdd": false}
+    },
+    {
+      "id": "qb-5.1.0",
+      "qbVersion": "5.1.0",
+      "webApiVersion": "2.11.4",
+      "channel": "stable",
+      "role": "5x-mature-boundary",
       "realRelease": true,
       "capabilities": {"logs": true, "alternativeWebUI": true, "pauseResume": false, "startStop": true, "exactPrivateFlag": true, "structuredAdd": false}
     },
