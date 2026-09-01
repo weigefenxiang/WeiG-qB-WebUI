@@ -76,6 +76,14 @@ dialog.dialog[data-adaptive-dialog="1"]>form{display:grid;grid-template-rows:aut
   .topbar{grid-row:1!important}
   .workspace{grid-row:2!important;min-height:0!important;height:auto!important;max-height:none!important;padding:0!important;overflow:hidden!important}
   .statusbar{display:none!important}
+
+  /* Command bar direct children share one fixed baseline; no visual second row at 320px. */
+  #mobile-command-bar{display:flex!important;align-items:center!important;flex-wrap:nowrap!important;white-space:nowrap!important}
+  #mobile-command-bar>.mobile-filter-control,
+  #mobile-command-bar>.mobile-command-count,
+  #mobile-command-bar>.toolbar{align-self:center!important;height:30px!important;min-height:30px!important;max-height:30px!important;margin:0!important;transform:none!important}
+  #mobile-command-bar>.toolbar{display:flex!important;align-items:center!important;flex-wrap:nowrap!important;overflow:hidden!important}
+
   .mobile-bottom-nav{
     grid-row:3!important;
     min-height:52px!important;
