@@ -77,7 +77,7 @@ try {
   if(!$web -or !(Test-Path $web)){ throw 'WebUI payload not found.' }
   $new="$Destination.new"; if(Test-Path $new){Remove-Item $new -Recurse -Force}; New-Item -ItemType Directory -Force -Path $new|Out-Null; Copy-Item (Join-Path $web '*') $new -Recurse -Force
   Inject-BuildSha $new $sourceSha
-  if(!(Test-Path (Join-Path $new 'public\login.html')) -or !(Test-Path (Join-Path $new 'private\index.html')) -or !(Test-Path (Join-Path $new 'VERSION')) -or !(Test-Path (Join-Path $new 'GIT_SHA'))){ throw 'Invalid WebUI package.' }
+  if(!(Test-Path (Join-Path $new 'public\index.html')) -or !(Test-Path (Join-Path $new 'public\login.html')) -or !(Test-Path (Join-Path $new 'private\index.html')) -or !(Test-Path (Join-Path $new 'VERSION')) -or !(Test-Path (Join-Path $new 'GIT_SHA'))){ throw 'Invalid WebUI package.' }
   $version=(Get-Content (Join-Path $new 'VERSION') -Raw).Trim()
   $meta=[ordered]@{
     version=$version
