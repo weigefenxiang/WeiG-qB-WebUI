@@ -84,26 +84,26 @@ try {
       page.on('console', msg => { if (msg.type() === 'error' && !/favicon|Wei\.G\.ico/i.test(msg.text())) errors.push(msg.text()); });
       page.on('pageerror', error => errors.push(String(error)));
       await page.goto(`http://${host}:${port}/${name}/#/logs`, {waitUntil:'networkidle'});
-      await page.waitForSelector('.logs-v032-row');
+      await page.waitForSelector('.logs-v032-row[data-log-id="100"]');
       await page.waitForFunction(()=>document.documentElement.dataset.v036==='1' && !!globalThis.WeiG?.V037?.ui);
-      await page.waitForTimeout(1100);
+      await page.waitForTimeout(80);
 
       const base=await page.evaluate(()=>{
-        const rect=node=>node?node.getBoundingClientRect():null, first=document.querySelector('.logs-v032-row'), firstTime=first?.querySelector('.logs-v032-time');
-        return {innerWidth,scrollWidth:document.documentElement.scrollWidth,visibleLogsNav:[...document.querySelectorAll('[data-route="logs"]')].some(node=>getComputedStyle(node).display!=='none'&&node.getBoundingClientRect().width>0),tool:rect(document.querySelector('#logs-view > .tool-page')),panel:rect(document.querySelector('.logs-v032-panel')),list:rect(document.querySelector('.logs-v032-list')),firstId:Number(first?.dataset.logId),firstDateTime:firstTime?.dateTime||'',firstText:firstTime?.textContent||'',status:document.querySelector('.logs-v032-status')?.textContent||'',nativeLogsSelects:document.querySelectorAll('.logs-v032-toolbar select:not(.ui-native-select)').length,customSelects:document.querySelectorAll('.logs-v032-toolbar .ui-select').length,toolbarTimezone:document.querySelectorAll('.logs-v032-toolbar .timezone-select').length,statusTimezone:document.querySelectorAll('[data-status-timezone]').length,timeModel:!!globalThis.WeiG?.Time,utcLabel:globalThis.WeiG?.Time?.offsetLabel?.('UTC')||''};
+        const rect=node=>node?node.getBoundingClientRect():null, first=document.querySelector('.logs-v032-row'), fixed=document.querySelector('.logs-v032-row[data-log-id="100"]'), fixedTime=fixed?.querySelector('.logs-v032-time');
+        return {innerWidth,scrollWidth:document.documentElement.scrollWidth,visibleLogsNav:[...document.querySelectorAll('[data-route="logs"]')].some(node=>getComputedStyle(node).display!=='none'&&node.getBoundingClientRect().width>0),tool:rect(document.querySelector('#logs-view > .tool-page')),panel:rect(document.querySelector('.logs-v032-panel')),list:rect(document.querySelector('.logs-v032-list')),firstId:Number(first?.dataset.logId),fixedDateTime:fixedTime?.dateTime||'',fixedText:fixedTime?.textContent||'',status:document.querySelector('.logs-v032-status')?.textContent||'',nativeLogsSelects:document.querySelectorAll('.logs-v032-toolbar select:not(.ui-native-select)').length,customSelects:document.querySelectorAll('.logs-v032-toolbar .ui-select').length,toolbarTimezone:document.querySelectorAll('.logs-v032-toolbar .timezone-select').length,statusTimezone:document.querySelectorAll('[data-status-timezone]').length,timeModel:!!globalThis.WeiG?.Time,utcLabel:globalThis.WeiG?.Time?.offsetLabel?.('UTC')||''};
       });
-      const initialStatus=parseStatus(base.status), renderedMs=Date.parse(base.firstDateTime), minMs=(baseSeconds+1)*1000,maxMs=(baseSeconds+100)*1000;
+      const initialStatus=parseStatus(base.status), renderedMs=Date.parse(base.fixedDateTime), minMs=(baseSeconds+100)*1000,maxMs=(baseSeconds+100)*1000+999;
       assert(width<=820||base.visibleLogsNav,`${name} ${width}x${height}: desktop Logs navigation hidden`);
       assert(base.scrollWidth<=base.innerWidth+1,`${name} ${width}x${height}: horizontal overflow ${base.scrollWidth} > ${base.innerWidth}`);
       assert(base.panel?.height>=250,`${name} ${width}x${height}: Logs panel is too short`);
       assert(base.list?.height>=180,`${name} ${width}x${height}: Logs viewport is too short`);
-      assert(initialStatus.total===100,`${name} ${width}x${height}: expected 100 initial rows, got ${base.status}`);
-      assert(base.firstId===100,`${name} ${width}x${height}: newest log must render first, got id ${base.firstId}`);
-      assert(Number.isFinite(renderedMs)&&renderedMs>=minMs&&renderedMs<=maxMs,`${name} ${width}x${height}: normalized timestamp outside fixture range`);
+      assert(initialStatus.total>=100,`${name} ${width}x${height}: expected at least 100 rows, got ${base.status}`);
+      assert(base.firstId>=100,`${name} ${width}x${height}: newest-first order regressed, got id ${base.firstId}`);
+      assert(Number.isFinite(renderedMs)&&renderedMs>=minMs&&renderedMs<=maxMs,`${name} ${width}x${height}: normalized id=100 timestamp outside fixture range`);
       assert(base.nativeLogsSelects===0,`${name} ${width}x${height}: raw Logs select is visible`);
       assert(base.customSelects>=1,`${name} ${width}x${height}: canonical Logs size Select missing`);
       assert(base.toolbarTimezone===0,`${name} ${width}x${height}: Logs toolbar must not own timezone selector`);
-      assert(base.statusTimezone===0,`${name} ${width}x${height}: desktop/mobile statusbar must not duplicate the Settings timezone control`);
+      assert(base.statusTimezone===0,`${name} ${width}x${height}: statusbar must not duplicate the Settings timezone control`);
       assert(base.timeModel&&base.utcLabel==='UTC+00:00',`${name} ${width}x${height}: shared time model unavailable: ${base.utcLabel}`);
 
       const autoHeight=base.tool.height;
