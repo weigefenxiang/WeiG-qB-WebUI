@@ -4,10 +4,10 @@
   var BRAND_ICON_URL='https://raw.githubusercontent.com/weigefenxiang/WeiG-OpenWrt-AutoBuild/main/site/wrt/Wei.G.ico';
 
   var FACETS=[
-    {id:'tracker-section',nav:'tracker-nav',label:'sidebar.trackers'},
-    {id:'savepath-section',nav:'savepath-nav',label:'sidebar.savePath'},
-    {id:'category-section',nav:'category-nav',label:'sidebar.categories'},
-    {id:'tag-section',nav:'tag-nav',label:'sidebar.tags'}
+    {id:'tracker-section',nav:'tracker-nav',label:'sidebar.trackers',attr:'tracker',shortKey:'v036.facet.tracker',shortFallback:'Tracker'},
+    {id:'savepath-section',nav:'savepath-nav',label:'sidebar.savePath',attr:'savepath',shortKey:'v036.facet.path',shortFallback:'Path'},
+    {id:'category-section',nav:'category-nav',label:'sidebar.categories',attr:'category',shortKey:'v036.facet.category',shortFallback:'Category'},
+    {id:'tag-section',nav:'tag-nav',label:'sidebar.tags',attr:'tag',shortKey:'v036.facet.tag',shortFallback:'Tag'}
   ];
 
   function installBrandStyles(){
@@ -114,11 +114,21 @@
     return String(active.textContent||'').replace(/\s·\s\d+$/,'').trim()||T('filter.all');
   }
 
-  function updateFacetTrigger(wrap,nav,labelKey){
+  function isMobile(){return !!(global.matchMedia&&global.matchMedia('(max-width: 820px)').matches);}
+  function shortFacetLabel(def){
+    var value=W.V036I18n&&W.V036I18n.t?W.V036I18n.t(def.shortKey):def.shortFallback;
+    return value&&value!==def.shortKey?value:def.shortFallback;
+  }
+  function facetValue(nav,def){
+    var active=nav&&nav.querySelector('.nav-item.is-active');
+    if(isMobile()&&active&&def.attr&&(active.dataset[def.attr]===undefined||active.dataset[def.attr]===''))return shortFacetLabel(def);
+    return activeLabel(nav);
+  }
+  function updateFacetTrigger(wrap,nav,def){
     var value=wrap.querySelector('.facet-trigger__value');
-    if(value)value.textContent=activeLabel(nav);
+    if(value)value.textContent=facetValue(nav,def);
     var label=wrap.querySelector('.facet-trigger__label');
-    if(label)label.textContent=T(labelKey);
+    if(label)label.textContent=T(def.label);
   }
 
   function addFacetSearch(panel,nav){
@@ -149,7 +159,7 @@
     trigger.className='facet-trigger';
     trigger.setAttribute('aria-expanded','false');
     var label=document.createElement('span');label.className='facet-trigger__label';label.textContent=T(def.label);
-    var value=document.createElement('span');value.className='facet-trigger__value';value.textContent=activeLabel(nav);
+    var value=document.createElement('span');value.className='facet-trigger__value';value.textContent=facetValue(nav,def);
     var chevron=document.createElement('span');chevron.className='facet-trigger__chevron';chevron.textContent='▾';
     trigger.append(label,value,chevron);
 
@@ -172,11 +182,11 @@
     panel.addEventListener('click',function(e){e.stopPropagation();});
     nav.addEventListener('click',function(e){
       if(!e.target.closest('.nav-item'))return;
-      setTimeout(function(){updateFacetTrigger(wrap,nav,def.label);panel.hidden=true;trigger.setAttribute('aria-expanded','false');},0);
+      setTimeout(function(){updateFacetTrigger(wrap,nav,def);panel.hidden=true;trigger.setAttribute('aria-expanded','false');},0);
     });
 
     var observer=new MutationObserver(function(){
-      updateFacetTrigger(wrap,nav,def.label);
+      updateFacetTrigger(wrap,nav,def);
       wrap.hidden=!!section.hidden;
     });
     observer.observe(nav,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});
@@ -285,7 +295,7 @@
     U.$$('.facet-filter').forEach(function(wrap){
       var def=FACETS.find(function(x){return x.id===wrap.dataset.facet;});
       if(!def)return;
-      updateFacetTrigger(wrap,U.$(def.nav),def.label);
+      updateFacetTrigger(wrap,U.$(def.nav),def);
       var search=wrap.querySelector('.facet-search');if(search){search.placeholder=T('nav.search')+'…';search.setAttribute('aria-label',T('nav.search'));}
     });
     syncBrandCopy();
@@ -303,7 +313,7 @@
     observeSettings();
     document.addEventListener('click',function(){closeAllFacets();});
     global.addEventListener('hashchange',function(){closeAllFacets();syncRouteFrame();setTimeout(syncSettingsPresentation,80);});
-    global.addEventListener('resize',function(){requestAnimationFrame(balanceSettingGroups);});
+    global.addEventListener('resize',function(){requestAnimationFrame(function(){balanceSettingGroups();syncLocale();});});
     global.addEventListener('weigg:languagechange',syncLocale);
     setTimeout(function(){syncLocale();syncSettingsPresentation();syncRouteFrame();},900);
   }
