@@ -61,6 +61,9 @@ dialog.dialog[data-adaptive-dialog="1"]>form{display:grid;grid-template-rows:aut
 #settings-view #settings-content .settings-row--canonical>.ui-select{grid-column:2!important;grid-row:1!important;align-self:center!important;justify-self:end!important}
 
 /* MOBILE-TORRENT-TRANSIENT-001 — before JS folds excess metrics into +N, never expose horizontal overflow. */
+html[data-v037="1"] .torrent-mobile-card--two-line{height:72px!important;max-height:72px!important}
+html[data-v037="1"][data-density="compact"] .torrent-mobile-card--two-line{height:66px!important;max-height:66px!important}
+html[data-v037="1"][data-density="comfortable"] .torrent-mobile-card--two-line{height:80px!important;max-height:80px!important}
 html[data-v037="1"] .torrent-mobile-card--two-line .mobile-card-meta--rail .mobile-metric{flex:0 1 auto!important;min-width:0!important;max-width:min(160px,100%)!important}
 
 /* Mobile ResponsiveShell 3.0 */
