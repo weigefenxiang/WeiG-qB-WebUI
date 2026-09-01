@@ -92,20 +92,21 @@ try{
     await page.waitForFunction(()=>document.querySelectorAll('#tracker-nav [data-tracker]').length>1&&document.querySelector('#torrent-count')?.textContent==='60',null,{timeout:3500});
     await page.waitForFunction(()=>{
       const meta=document.querySelector('.mobile-card-meta');if(!meta||!window.WeiG?.MobileAdaptive)return false;
-      WeiG.MobileAdaptive.fitMobileMeta(meta);return meta.scrollWidth<=meta.clientWidth+2;
+      if(!meta.classList.contains('mobile-card-meta--rail'))WeiG.MobileAdaptive.fitMobileMeta(meta);
+      return meta.scrollWidth<=meta.clientWidth+2;
     },null,{timeout:1800});
 
     const state=await page.evaluate(()=>{
-      const workspace=document.querySelector('.workspace'),panel=document.querySelector('.torrent-panel'),list=document.querySelector('#torrent-list'),meta=document.querySelector('.mobile-card-meta'),cells=[...meta.querySelectorAll('.cell')],storage=document.querySelector('#status-free-space strong'),tones=[...document.querySelectorAll('.torrent-mobile-card .status-pill')].map(n=>n.dataset.tone),rects=cells.map(n=>n.getBoundingClientRect());
+      const workspace=document.querySelector('.workspace'),panel=document.querySelector('.torrent-panel'),list=document.querySelector('#torrent-list'),meta=document.querySelector('.mobile-card-meta'),metrics=[...meta.querySelectorAll('.cell,.mobile-metric')].filter(n=>!n.hidden&&getComputedStyle(n).display!=='none'),storage=document.querySelector('#status-free-space strong'),tones=[...document.querySelectorAll('.torrent-mobile-card .status-pill')].map(n=>n.dataset.tone),rects=metrics.map(n=>n.getBoundingClientRect());
       const bar=document.querySelector('#mobile-command-bar'),barChildren=[...bar.children].filter(n=>getComputedStyle(n).display!=='none').map(n=>n.getBoundingClientRect());
       const action=document.querySelector('#mobile-command-bar .toolbar .btn'),count=document.querySelector('.mobile-command-count');
-      const stats=[...document.querySelectorAll('#list-view .stat-card')].filter(n=>getComputedStyle(n).display!=='none').map(card=>({label:parseFloat(getComputedStyle(card.querySelector('.text-label')).fontSize),value:parseFloat(getComputedStyle(card.querySelector('strong')).fontSize),meta:parseFloat(getComputedStyle(card.querySelector('small')).fontSize)}));
+      const stats=[...document.querySelectorAll('#list-view .stat-card')].filter(n=>getComputedStyle(n).display!=='none').map(card=>{const label=card.querySelector('.text-label'),value=card.querySelector('strong'),helper=card.querySelector('small');return label&&value&&helper?{label:parseFloat(getComputedStyle(label).fontSize),value:parseFloat(getComputedStyle(value).fontSize),meta:parseFloat(getComputedStyle(helper).fontSize)}:null;}).filter(Boolean);
       const facet=id=>document.querySelector(`.facet-filter[data-facet="${id}"] .facet-trigger__value`)?.textContent.trim();
       return {
         free:storage?.textContent,
         formatted:[WeiG.MobileAdaptive.formatFreeSpace(1.234*(1024**4)),WeiG.MobileAdaptive.formatFreeSpace(12.34*(1024**3)),WeiG.MobileAdaptive.formatFreeSpace(987.6*(1024**2)),WeiG.MobileAdaptive.formatFreeSpace(9.876*(1024**3))],
         workspace:{bottom:workspace.getBoundingClientRect().bottom,height:workspace.clientHeight,scrollHeight:workspace.scrollHeight},panel:{bottom:panel.getBoundingClientRect().bottom,height:panel.getBoundingClientRect().height},list:{height:list.getBoundingClientRect().height,scrollHeight:list.scrollHeight},
-        meta:{display:getComputedStyle(meta).display,clientWidth:meta.clientWidth,scrollWidth:meta.scrollWidth,tops:rects.map(r=>Math.round(r.top)),font:getComputedStyle(cells[0]).fontSize,gap:getComputedStyle(meta).gap,text:cells.map(n=>n.textContent)},tones,
+        meta:{display:getComputedStyle(meta).display,clientWidth:meta.clientWidth,scrollWidth:meta.scrollWidth,tops:rects.map(r=>Math.round(r.top)),font:metrics[0]?getComputedStyle(metrics[0]).fontSize:null,gap:getComputedStyle(meta).gap,text:metrics.map(n=>n.textContent)},tones,
         command:{clientWidth:bar.clientWidth,scrollWidth:bar.scrollWidth,tops:barChildren.map(r=>Math.round(r.top)),actionFont:action?parseFloat(getComputedStyle(action).fontSize):0,countFont:count?parseFloat(getComputedStyle(count).fontSize):0,text:bar.textContent.replace(/\s+/g,' ').trim()},
         stats,facets:{tracker:facet('tracker-section'),path:facet('savepath-section'),category:facet('category-section'),tag:facet('tag-section')},
         allTracker:document.querySelector('#tracker-nav [data-tracker=""]')?.textContent.trim(),allPath:document.querySelector('#savepath-nav [data-savepath=""]')?.textContent.trim(),allCategory:document.querySelector('#category-nav [data-category=""]')?.textContent.trim(),
@@ -126,6 +127,7 @@ try{
     assert(/^All Categories/.test(state.allCategory||''),`${name}/${viewport.label}: expanded Category source must still expose All Categories`);
     for(const metric of state.stats){assert(metric.value<=metric.label+0.1,`${name}/${viewport.label}: stat value ${metric.value}px exceeds label ${metric.label}px`);assert(metric.meta<=metric.value+0.1,`${name}/${viewport.label}: stat helper ${metric.meta}px exceeds value ${metric.value}px`);}
     assert(state.meta.display==='flex',`${name}/${viewport.label}: mobile Torrent meta is not one-line flex`);
+    assert(state.meta.tops.length>0,`${name}/${viewport.label}: mobile Torrent meta has no visible metrics`);
     assert(Math.max(...state.meta.tops)-Math.min(...state.meta.tops)<=3,`${name}/${viewport.label}: Torrent meta wrapped to multiple lines`);
     assert(state.meta.scrollWidth<=state.meta.clientWidth+2,`${name}/${viewport.label}: Torrent meta overflows horizontally ${state.meta.scrollWidth}>${state.meta.clientWidth}`);
     assert(state.list.height>=100,`${name}/${viewport.label}: adaptive Torrent list collapsed (${state.list.height}px)`);
@@ -186,5 +188,5 @@ try{
     assert(errors.length===0,`${name}/${viewport.label}: browser errors: ${errors.join(' | ')}`);
     await context.close();
   }
-  console.log('v0.3.6 Mobile Adaptive System 2.0 passed across Torrent, Settings, Search, RSS, Logs and Detail for qB 4.1.9.1 + 5.2.3 across 4 phone sizes.');
+  console.log('Mobile adaptive compatibility passed across Torrent, Settings, Search, RSS, Logs and Detail for qB 4.1.9.1 + 5.2.3 across 4 phone sizes.');
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}
