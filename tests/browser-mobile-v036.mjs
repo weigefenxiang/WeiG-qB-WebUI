@@ -72,7 +72,7 @@ const server=http.createServer(async(req,res)=>{try{
 await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(port,host,resolve);});
 
 async function assertSingleScrollOwner(page,name,viewport,route){
-  const state=await page.evaluate(route=>{const view=document.getElementById(route+'-view');return {owners:view?[...view.querySelectorAll('[data-primary-scroll="1"]')].map(n=>n.id):[],docH:document.documentElement.scrollHeight,innerH,viewBottom:view?.getBoundingClientRect().bottom,workspaceBottom:document.querySelector('.workspace')?.getBoundingClientRect().bottom};},route);
+  const state=await page.evaluate(route=>{const view=document.getElementById(route+'-view');return {owners:view?[...view.querySelectorAll('[data-primary-scroll="1"]')].map(n=>n.id):[],docH:document.documentElement.scrollHeight,innerH:innerHeight,viewBottom:view?.getBoundingClientRect().bottom,workspaceBottom:document.querySelector('.workspace')?.getBoundingClientRect().bottom};},route);
   assert(state.owners.length===1,`${name}/${viewport.label}/${route}: expected one primary scroll owner, got ${state.owners.join(',')}`);
   assert(state.docH<=state.innerH+1,`${name}/${viewport.label}/${route}: document gained an extra vertical page`);
   assert(Math.abs((state.viewBottom||0)-(state.workspaceBottom||0))<=3,`${name}/${viewport.label}/${route}: active route does not fill workspace`);
@@ -166,7 +166,7 @@ try{
     await page.locator('#mobile-bottom-nav [data-route="settings"]').click();await page.waitForFunction(()=>WeiG.Router.route().name==='settings');
     await page.waitForSelector('#settings-content .setting-card,#settings-content .settings-control');await page.waitForTimeout(100);
     await assertSingleScrollOwner(page,name,viewport,'settings');
-    const settings=await page.evaluate(()=>{const root=document.querySelector('#settings-content');root.scrollTop=root.scrollHeight;return {client:root.clientHeight,scrollHeight:root.scrollHeight,scrollTop:root.scrollTop,max:Math.max(0,root.scrollHeight-root.clientHeight),docH:document.documentElement.scrollHeight,innerH};});
+    const settings=await page.evaluate(()=>{const root=document.querySelector('#settings-content');root.scrollTop=root.scrollHeight;return {client:root.clientHeight,scrollHeight:root.scrollHeight,scrollTop:root.scrollTop,max:Math.max(0,root.scrollHeight-root.clientHeight),docH:document.documentElement.scrollHeight,innerH:innerHeight};});
     assert(settings.scrollHeight>settings.client,`${name}/${viewport.label}: Settings does not expose a scrollable content viewport`);
     assert(settings.scrollTop>=settings.max-3,`${name}/${viewport.label}: Settings cannot scroll to its final configuration`);
     assert(settings.docH<=settings.innerH+1,`${name}/${viewport.label}: Settings created document-level overflow`);
