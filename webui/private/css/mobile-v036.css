@@ -22,11 +22,13 @@ html[data-density=comfortable]{--mobile-torrent-row-h:126px}
 .status-pill[data-tone=checking]{color:#ffe09b;background:linear-gradient(180deg,rgba(255,198,95,.13),rgba(255,198,95,.06));border-color:rgba(255,198,95,.21)}
 
 @media(max-width:820px){
-  /* MOBILE-LAYOUT-001: the shell owns viewport subtraction; pages consume only their grid track. */
-  .app-shell{min-height:0}
-  .workspace{display:flex;flex-direction:column;min-height:0;height:auto;overflow:hidden;padding:2px 1px 0;overscroll-behavior:contain}
+  /* MOBILE-LAYOUT-001: the shell is the only viewport owner. Content scroll stays inside workspace/data surfaces. */
+  html{height:100svh;min-height:100svh;max-height:100svh;overflow:hidden}
+  body{height:100svh;min-height:0;max-height:100svh;overflow:hidden}
+  .app-shell{height:100svh;min-height:0;max-height:100svh;overflow:hidden}
+  .workspace{display:flex;flex-direction:column;min-height:0;max-height:100%;height:auto;overflow:hidden;padding:2px 1px 0;overscroll-behavior:contain}
   .view{min-height:0;height:auto}
-  .view.is-active{display:flex;flex:1 1 0;flex-direction:column;min-height:0;overflow:hidden}
+  .view.is-active{display:flex;flex:1 1 0;flex-direction:column;min-height:0;max-height:100%;overflow:hidden}
 
   #list-view>.workspace__header,#list-view>.stats-grid{flex:0 0 auto}
   #list-view>.workspace__header{padding:2px 1px 8px}
@@ -74,12 +76,12 @@ html[data-density=comfortable]{--mobile-torrent-row-h:126px}
   @container (max-width:350px){.mobile-card-meta{--mobile-meta-gap:3px}.mobile-card-meta .cell{letter-spacing:-.038em}}
   @container (max-width:320px){.mobile-card-meta{--mobile-meta-gap:2px}}
 
-  /* TOOL-PAGE-001: Search/RSS/Logs are single-viewport tools on phones. */
+  /* TOOL-PAGE-001: Search/RSS/Logs stay inside the one workspace track on phones. */
   #search-view,#rss-view,#logs-view{overflow:hidden}
   #search-view>.workspace__header,#rss-view>.workspace__header,#logs-view>.workspace__header{flex:0 0 auto;padding:2px 1px 8px}
   #search-view>.workspace__header .eyebrow,#rss-view>.workspace__header .eyebrow,#logs-view>.workspace__header .eyebrow{display:none}
   #search-view>.workspace__header h1,#rss-view>.workspace__header h1,#logs-view>.workspace__header h1{margin:2px 0}
-  #search-view>.tool-page,#rss-view>.tool-page,#logs-view>.tool-page{display:flex;flex:1 1 0;flex-direction:column;min-height:0!important;padding:10px;overflow:hidden}
+  #search-view>.tool-page,#rss-view>.tool-page,#logs-view>.tool-page{display:flex;flex:1 1 0;flex-direction:column;min-height:0!important;max-height:100%;padding:10px;overflow:hidden}
   #search-view .inline-form,#rss-view .inline-form{flex:0 0 auto;margin-bottom:8px;gap:6px}
   #search-view .large-tool-list,#rss-view .large-tool-list,#logs-view .large-tool-list{flex:1 1 0;min-height:0!important;max-height:none!important;overflow:auto;overscroll-behavior:contain}
 
