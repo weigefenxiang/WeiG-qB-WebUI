@@ -131,7 +131,12 @@ try{
         const groupRect=group?.getBoundingClientRect();
         const enabledRect=enabled?.getBoundingClientRect();
         const pathRect=path?.getBoundingClientRect();
-        const heights=cards.map(card=>card.getBoundingClientRect().height);
+        const metrics=cards.map(card=>{
+          const style=getComputedStyle(card),copy=card.querySelector('.settings-row__copy'),control=card.querySelector('.field-input,.switch-control,.ui-select');
+          const copyStyle=copy?getComputedStyle(copy):null,controlStyle=control?getComputedStyle(control):null;
+          return {key:card.dataset.settingKey||'',height:card.getBoundingClientRect().height,display:style.display,columns:style.gridTemplateColumns,padding:`${style.paddingTop}/${style.paddingBottom}`,gap:style.gap,copyHeight:copy?.getBoundingClientRect().height||0,copyDisplay:copyStyle?.display||'',controlHeight:control?.getBoundingClientRect().height||0,controlWidth:control?.getBoundingClientRect().width||0,controlDisplay:controlStyle?.display||''};
+        });
+        const heights=metrics.map(x=>x.height);
         return {
           cardCount:cards.length,
           semanticCanonical:cards.every(card=>card.classList.contains('setting-card')&&card.classList.contains('settings-row')),
@@ -148,6 +153,7 @@ try{
           pathRatio:groupRect&&pathRect?pathRect.width/groupRect.width:0,
           maxHeight:heights.length?Math.max(...heights):999,
           minHeight:heights.length?Math.min(...heights):0,
+          metrics,
           scrollWidth:document.documentElement.scrollWidth,
           innerWidth,
           settingsCss:[...document.styleSheets].some(s=>String(s.href||'').includes('settings-v034.css')),
@@ -165,8 +171,8 @@ try{
       assert(layout.shaValue===gitSha,`${name}/${viewport.label}: Git SHA not shown`);
       assert(layout.readonlyCount>=4,`${name}/${viewport.label}: installer metadata must use canonical readonly rows`);
       assert(layout.ratio>0.94&&layout.pathRatio>0.94,`${name}/${viewport.label}: Settings rows must span the coherent section (${layout.ratio}/${layout.pathRatio})`);
-      assert(layout.maxHeight<90,`${name}/${viewport.label}: Settings row is oversized (${layout.maxHeight}px)`);
-      assert(layout.minHeight>=44,`${name}/${viewport.label}: Settings row is too compressed (${layout.minHeight}px)`);
+      assert(layout.maxHeight<90,`${name}/${viewport.label}: Settings row is oversized (${layout.maxHeight}px) · ${JSON.stringify(layout.metrics)}`);
+      assert(layout.minHeight>=44,`${name}/${viewport.label}: Settings row is too compressed (${layout.minHeight}px) · ${JSON.stringify(layout.metrics)}`);
       assert(layout.scrollWidth<=layout.innerWidth+1,`${name}/${viewport.label}: settings horizontal overflow`);
       assert(!layout.settingsCss,`${name}/${viewport.label}: standalone settings-v034.css must not be loaded`);
       assert(errors.length===0,`${name}/${viewport.label}: browser errors: ${errors.join(' | ')}`);
