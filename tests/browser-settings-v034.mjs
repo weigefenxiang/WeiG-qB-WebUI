@@ -18,7 +18,7 @@ const viewports = [
   {width:1366,height:768,label:'desktop'},
   {width:1920,height:1080,label:'wide'},
 ];
-const hostPath = '/root/qbittorrent3/config/weigg-qb-webui';
+const hostPath = '/srv/qb-fixture/config/weigg-qb-webui';
 const qbPath = '/config/weigg-qb-webui';
 const gitSha = '1234567890abcdef1234567890abcdef12345678';
 function initialState(){return {
@@ -86,7 +86,7 @@ const server=http.createServer(async(req,res)=>{
     if(!match){res.writeHead(404);return res.end('not found');}
     const name=match[1],relative=match[2]||'';
     if(relative.startsWith('api/v2/'))return await handleApi(req,res,name,relative.slice(7));
-    if(relative==='weigg-install.json')return writeJson(res,{version:'0.3.6',gitSha,container:'qbittorrent3',qbPath,hostPath,installedAt:'2026-08-31T09:00:00Z',installer:'linux'});
+    if(relative==='weigg-install.json')return writeJson(res,{version:'0.3.6',gitSha,container:'fixture-qb',qbPath,hostPath,installedAt:'2026-08-31T09:00:00Z',installer:'fixture'});
     const requested=relative||'index.html';
     const file=path.resolve(webRoot,requested);
     if(!(file===webRoot||file.startsWith(webRoot+path.sep))){res.writeHead(403);return res.end('forbidden');}
