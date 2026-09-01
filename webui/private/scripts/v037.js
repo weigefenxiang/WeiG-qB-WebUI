@@ -38,17 +38,22 @@
     return Array.from(record.addedNodes||[]).some(relevant)||Array.from(record.removedNodes||[]).some(relevant);
   }
   function ownLegacyMobileFilter(){dedupeLegacyMobileFilter();if(legacySelectObserver||!document.documentElement)return;legacySelectObserver=new MutationObserver(function(records){if(records.some(relevantLegacyMutation))requestAnimationFrame(dedupeLegacyMobileFilter);});legacySelectObserver.observe(document.documentElement,{childList:true,subtree:true});}
+  function normalizeLegacyTransferDock(){
+    var dl=document.querySelector('[data-limit-kind="download"]'),up=document.querySelector('[data-limit-kind="upload"]');
+    if(dl){dl.classList.add('status-speed','status-speed--dl');}
+    if(up){up.classList.add('status-speed','status-speed--up');}
+  }
   function css(){stylesheet('css/v037.css','v037');stylesheet('css/ui-system-v037.css','ui-system-037');ownCssOrder();}
   function load(path,tag){return new Promise(function(resolve,reject){if(tag&&document.querySelector('script[data-weigg-layer="'+tag+'"]')){resolve();return;}var s=document.createElement('script');s.async=false;if(tag)s.dataset.weiggLayer=tag;s.src=url(path);s.onload=resolve;s.onerror=function(){reject(new Error('Unable to load '+path));};document.head.appendChild(s);});}
   function start(){
-    css();document.documentElement.dataset.v037='1';ownLegacyMobileFilter();
+    css();document.documentElement.dataset.v037='1';ownLegacyMobileFilter();normalizeLegacyTransferDock();
     load('scripts/i18n-v037.js','i18n-037')
       .then(function(){return load('scripts/settings-v037.js','settings-037');})
       .then(function(){return load('scripts/selection-v037.js','selection-037');})
       .then(function(){return load('scripts/layout-v037.js','layout-037');})
       .then(function(){return load('scripts/ui-system-v037.js','ui-system-037');})
       .then(function(){
-        var init=function(){ensureCssOrder();dedupeLegacyMobileFilter();if(W.V037Settings)W.V037Settings.init();if(W.V037Selection)W.V037Selection.init();if(W.V037Layout)W.V037Layout.init();if(W.V037UiSystem)W.V037UiSystem.init();dedupeLegacyMobileFilter();W.V037={version:VERSION,settings:W.V037Settings,selection:W.V037Selection,layout:W.V037Layout,ui:W.V037UiSystem};global.dispatchEvent(new CustomEvent('weigg:v037ready'));};
+        var init=function(){ensureCssOrder();dedupeLegacyMobileFilter();normalizeLegacyTransferDock();if(W.V037Settings)W.V037Settings.init();if(W.V037Selection)W.V037Selection.init();if(W.V037Layout)W.V037Layout.init();if(W.V037UiSystem)W.V037UiSystem.init();dedupeLegacyMobileFilter();normalizeLegacyTransferDock();setTimeout(normalizeLegacyTransferDock,300);setTimeout(normalizeLegacyTransferDock,600);W.V037={version:VERSION,settings:W.V037Settings,selection:W.V037Selection,layout:W.V037Layout,ui:W.V037UiSystem};global.dispatchEvent(new CustomEvent('weigg:v037ready'));};
         if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
       }).catch(function(error){W.__v037Loading=false;console.error('[WeiG v0.3.7]',error);});
   }
