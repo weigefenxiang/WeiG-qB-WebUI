@@ -37,6 +37,9 @@
 @keyframes filterSummaryBreathe{0%,100%{filter:brightness(.9);transform:scale(.92)}50%{filter:brightness(1.22);transform:scale(1.12)}}
 @keyframes connectionPulse{0%{opacity:.8;transform:translateY(-50%) scale(.5)}100%{opacity:0;transform:translateY(-50%) scale(1.65)}}
 
+/* Motion must not change canonical control geometry while acceptance/layout code samples it. */
+@keyframes surfaceEnterA{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+
 /* TOOLTIP-002 */
 .polish-tooltip{width:max-content;max-width:min(280px,calc(100vw - 16px));white-space:nowrap;transition:opacity var(--motion-fast),transform var(--motion-fast);transform:translateY(3px)}
 .polish-tooltip.is-visible{transform:none}
