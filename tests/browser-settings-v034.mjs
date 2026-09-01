@@ -76,6 +76,7 @@ async function handleApi(req, res, name, apiPath) {
     res.writeHead(200, {'cache-control':'no-store'}); return res.end('');
   }
   if (apiPath === 'transfer/info') return writeJson(res, {dl_info_speed:0,up_info_speed:0,connection_status:'connected',dht_nodes:0,total_peer_connections:0});
+  if (apiPath === 'transfer/speedLimitsMode') return writeText(res, '0');
   if (apiPath === 'torrents/info') return writeJson(res, []);
   if (apiPath === 'torrents/categories') return writeJson(res, {});
   if (apiPath === 'torrents/tags') return writeJson(res, []);
@@ -118,6 +119,7 @@ try{
       await page.goto(`http://${host}:${port}/${name}/#/settings`,{waitUntil:'networkidle'});
       await openSettingsTab(page,viewport,'webui');
       await page.waitForSelector('#settings-content [data-v035-alt="1"][data-setting-key="alternative_webui_enabled"]');
+      await page.waitForFunction(()=>[...document.querySelectorAll('#settings-content [data-v035-alt="1"]')].every(x=>x.classList.contains('settings-row--canonical')));
       const layout=await page.evaluate(()=>{
         const group=document.querySelector('#settings-content .settings-group');
         const cards=[...document.querySelectorAll('#settings-content [data-v035-alt="1"]')];
@@ -129,9 +131,12 @@ try{
         const groupRect=group?.getBoundingClientRect();
         const enabledRect=enabled?.getBoundingClientRect();
         const pathRect=path?.getBoundingClientRect();
+        const heights=cards.map(card=>card.getBoundingClientRect().height);
         return {
           cardCount:cards.length,
-          allCanonical:cards.every(card=>card.classList.contains('setting-card')&&card.classList.contains('settings-row')),
+          semanticCanonical:cards.every(card=>card.classList.contains('setting-card')&&card.classList.contains('settings-row')),
+          rowCanonical:cards.every(card=>card.classList.contains('settings-row--canonical')),
+          sectionCanonical:group?.classList.contains('settings-section--rows'),
           legacyVisual:document.querySelectorAll('[class*="alt-webui-v034__"]').length,
           enabledChecked:enabled?.querySelector('.switch-input')?.checked,
           pathValue:path?.querySelector('.field-input')?.value,
@@ -140,27 +145,30 @@ try{
           shaValue:sha?.querySelector('.field-input')?.value,
           readonlyCount:cards.filter(card=>card.dataset.settingReadonly==='true').length,
           ratio:groupRect&&enabledRect?enabledRect.width/groupRect.width:0,
-          heightDelta:enabledRect&&pathRect?Math.abs(enabledRect.height-pathRect.height):999,
+          pathRatio:groupRect&&pathRect?pathRect.width/groupRect.width:0,
+          maxHeight:heights.length?Math.max(...heights):999,
+          minHeight:heights.length?Math.min(...heights):0,
           scrollWidth:document.documentElement.scrollWidth,
           innerWidth,
           settingsCss:[...document.styleSheets].some(s=>String(s.href||'').includes('settings-v034.css')),
         };
       });
-      assert(layout.cardCount>=6,`${name}/${viewport.label}: expected Alternative WebUI + metadata canonical cards`);
-      assert(layout.allCanonical,`${name}/${viewport.label}: injected settings are not canonical setting-card/settings-row components`);
+      assert(layout.cardCount>=6,`${name}/${viewport.label}: expected Alternative WebUI + metadata canonical rows`);
+      assert(layout.semanticCanonical,`${name}/${viewport.label}: Alternative WebUI lost canonical setting semantics`);
+      assert(layout.rowCanonical,`${name}/${viewport.label}: Alternative WebUI rows are not normalized by Responsive UI System`);
+      assert(layout.sectionCanonical,`${name}/${viewport.label}: Settings group is not one canonical row-based section`);
       assert(layout.legacyVisual===0,`${name}/${viewport.label}: legacy Alternative WebUI visual classes still exist`);
       assert(layout.enabledChecked===true,`${name}/${viewport.label}: Alternative WebUI toggle not enabled`);
       assert(layout.pathValue===qbPath,`${name}/${viewport.label}: expected qB path ${qbPath}, got ${layout.pathValue}`);
       assert(layout.hostValue===hostPath,`${name}/${viewport.label}: host path metadata not shown`);
       assert(layout.versionValue==='0.3.6',`${name}/${viewport.label}: installed version not shown`);
       assert(layout.shaValue===gitSha,`${name}/${viewport.label}: Git SHA not shown`);
-      assert(layout.readonlyCount>=4,`${name}/${viewport.label}: installer metadata must use canonical readonly cards`);
-      assert(layout.heightDelta<=12,`${name}/${viewport.label}: Alternative toggle/path cards are not visually equal-height`);
+      assert(layout.readonlyCount>=4,`${name}/${viewport.label}: installer metadata must use canonical readonly rows`);
+      assert(layout.ratio>0.94&&layout.pathRatio>0.94,`${name}/${viewport.label}: Settings rows must span the coherent section (${layout.ratio}/${layout.pathRatio})`);
+      assert(layout.maxHeight<90,`${name}/${viewport.label}: Settings row is oversized (${layout.maxHeight}px)`);
+      assert(layout.minHeight>=44,`${name}/${viewport.label}: Settings row is too compressed (${layout.minHeight}px)`);
       assert(layout.scrollWidth<=layout.innerWidth+1,`${name}/${viewport.label}: settings horizontal overflow`);
       assert(!layout.settingsCss,`${name}/${viewport.label}: standalone settings-v034.css must not be loaded`);
-      if(viewport.width<600)assert(layout.ratio>0.88,`${name}/${viewport.label}: card should fill one-column mobile grid, ratio=${layout.ratio}`);
-      else if(viewport.width<1500)assert(layout.ratio>0.42&&layout.ratio<0.58,`${name}/${viewport.label}: card should match two-column Settings grid, ratio=${layout.ratio}`);
-      else assert(layout.ratio>0.27&&layout.ratio<0.39,`${name}/${viewport.label}: card should match three-card wide Settings grid, ratio=${layout.ratio}`);
       assert(errors.length===0,`${name}/${viewport.label}: browser errors: ${errors.join(' | ')}`);
       await page.close();
     }
@@ -204,7 +212,7 @@ try{
     assert(errors.length===0,`${name}: browser errors: ${errors.join(' | ')}`);
     await page.close();
   }
-  console.log('v0.3.6 canonical Alternative WebUI regression passed for qB 4.1.9.1, 4.6.7 and 5.2.0 across 3 viewports.');
+  console.log('v0.3.7 row-based Alternative WebUI regression passed for qB 4.1.9.1, 4.6.7 and 5.2.0 across 3 viewports.');
 }finally{
   await browser.close();
   await new Promise(resolve=>server.close(resolve));
