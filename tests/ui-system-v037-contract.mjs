@@ -4,6 +4,7 @@ function assert(ok,msg){if(!ok)throw new Error(msg);}
 const js=read('webui/private/scripts/ui-system-v037.js');
 const css=read('webui/private/css/ui-system-v037.css');
 const loader=read('webui/private/scripts/v037.js');
+const adaptive=read('webui/private/scripts/adaptive-v036.js');
 const core=read('webui/private/scripts/core.js');
 
 for(const token of ['TorrentFieldRegistryV037','tags','num_seeds','num_leechs','save_path','added_on','completion_on','priority'])assert(js.includes(token),`shared torrent field registry missing ${token}`);
@@ -19,6 +20,8 @@ assert(js.includes('is-user-spin')&&js.includes('is-user-flip')&&js.includes('Am
 
 assert(css.includes('.ui-select__chevron{display:none!important}'),'Select must not depend on a permanent chevron');
 assert(css.includes('width:max-content!important')&&css.includes('.ui-select__trigger'),'Select trigger must use intrinsic content width');
+assert(css.includes('[data-v036-timezone] .timezone-select .ui-select__value::before')&&css.includes('content:"✓"'),'Settings timezone must keep the selected marker inline with the current zone');
+assert(css.includes('.ui-select__option[aria-selected="true"]::before'),'selected Select options must expose one inline canonical marker');
 assert(css.includes('.settings-row--canonical')&&css.includes('min-height:58px!important'),'Settings must use compact canonical rows instead of large leaf cards');
 assert(!css.includes('min-height:96px!important'),'new UI system must not reintroduce oversized Settings cards');
 assert(css.includes('.about-surface')&&css.includes('.about-attribution'),'About must render as one coherent surface with upstream attribution');
@@ -27,5 +30,7 @@ assert(css.includes('.transfer-capsule[data-mode="alt"]'),'ALT transfer mode mus
 assert(css.includes('@media(prefers-reduced-motion:reduce)'),'all decorative motion must honor Reduced Motion');
 
 assert(loader.includes("css/ui-system-v037.css")&&loader.includes("scripts/ui-system-v037.js"),'v0.3.7 loader must load the shared UI system');
+assert(adaptive.includes('owner=v037||ui')&&adaptive.includes('head.insertBefore(link,owner)'),'legacy mobile CSS must yield final responsive authority to v0.3.7 layers');
+assert(adaptive.includes("filterControl.querySelector('.ui-select')")&&adaptive.includes("typeof select.setOptions!=='function'"),'mobile filter synchronization must target the actual Select instance');
 assert(core.includes("mobileFields:['status','progress','dl','up','eta','size']"),'legacy mobile field config must remain readable for migration');
 console.log('v0.3.7 shared responsive UI system static contract passed.');
