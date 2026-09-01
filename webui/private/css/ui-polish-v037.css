@@ -57,7 +57,7 @@
 .transfer-capsule--unified[data-mode="alt"]{border-color:var(--ui-alt-border)!important;background:linear-gradient(180deg,rgba(137,108,255,.18),rgba(137,108,255,.09))!important;box-shadow:inset 0 0 20px rgba(137,108,255,.07)!important}
 .transfer-capsule--unified[data-mode="alt"]:hover{border-color:rgba(171,145,255,.62)!important;background:linear-gradient(180deg,rgba(137,108,255,.23),rgba(137,108,255,.11))!important}
 
-.transfer-rate-editor{width:min(560px,calc(100vw - 20px))!important;transition:border-color var(--motion-normal),background var(--motion-normal),box-shadow var(--motion-normal)}
+.transfer-rate-editor{width:min(560px,calc(100vw - 20px))!important;transition:background var(--motion-normal),box-shadow var(--motion-normal)}
 .transfer-rate-editor[data-mode="alt"]{border-color:var(--ui-alt-border)!important;background:linear-gradient(180deg,rgba(34,29,65,.98),rgba(17,20,39,.98))!important;box-shadow:var(--shadow-lg),0 0 52px rgba(137,108,255,.10),inset 0 1px rgba(255,255,255,.06)!important}
 .transfer-editor-copy{margin:4px 0 0!important}
 .transfer-rate-editor .transfer-mode-switch{margin-bottom:14px}
