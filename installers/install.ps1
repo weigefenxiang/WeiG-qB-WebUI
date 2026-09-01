@@ -33,12 +33,6 @@ function Backup-Current {
   Set-Content -Encoding UTF8 -Path (Join-Path $State 'last-backup') -Value $b
   Write-Host "Backup: $b"
 }
-function Resolve-MainSha {
-  $commit=Invoke-RestMethod -UseBasicParsing "https://api.github.com/repos/$Repo/commits/main" -Headers @{Accept='application/vnd.github+json'}
-  $sha=[string]$commit.sha
-  if($sha -notmatch '^[0-9a-fA-F]{40}$'){throw 'Could not resolve the current main Git SHA.'}
-  return $sha
-}
 function Inject-BuildSha([string]$Root,[string]$Sha) {
   if($Sha -notmatch '^[0-9a-fA-F]{40}$'){throw 'Invalid Git SHA for asset versioning.'}
   $utf8=New-Object System.Text.UTF8Encoding($false)
@@ -58,22 +52,30 @@ if($Mode -eq 'Rollback'){
 Backup-Current
 $tmp=Join-Path ([IO.Path]::GetTempPath()) ("weigg-qb-"+[guid]::NewGuid().ToString('N')); New-Item -ItemType Directory -Force -Path $tmp|Out-Null
 try {
-  $releaseZip=Join-Path $tmp 'WeiG-qB-WebUI.zip'; $releaseOk=$false; $sourceSha=$null
-  try { Invoke-WebRequest -UseBasicParsing "https://github.com/$Repo/releases/latest/download/WeiG-qB-WebUI.zip" -OutFile $releaseZip; $releaseOk=$true } catch { $releaseOk=$false }
-  if($releaseOk){
-    try {
-      $sumFile=Join-Path $tmp 'SHA256SUMS'; Invoke-WebRequest -UseBasicParsing "https://github.com/$Repo/releases/latest/download/SHA256SUMS" -OutFile $sumFile
-      $expected=((Get-Content $sumFile | Select-Object -First 1) -split '\s+')[0].ToLowerInvariant(); $actual=(Get-FileHash $releaseZip -Algorithm SHA256).Hash.ToLowerInvariant(); if($expected -and $expected -ne $actual){throw 'SHA256 verification failed.'}
-    } catch { if($_.Exception.Message -eq 'SHA256 verification failed.'){throw} }
-    $root=Join-Path $tmp 'release'; Expand-Archive $releaseZip $root -Force; $web=Join-Path $root 'WeiG-qB-WebUI'
-    $shaFile=Join-Path $web 'GIT_SHA'; if(!(Test-Path $shaFile)){throw 'Latest Release does not contain GIT_SHA; refusing an unversioned asset deployment.'}
-    $sourceSha=(Get-Content $shaFile -Raw).Trim(); if($sourceSha -notmatch '^[0-9a-fA-F]{40}$'){throw 'Latest Release contains an invalid GIT_SHA.'}
-  } else {
-    $sourceSha=Resolve-MainSha
-    $zip=Join-Path $tmp 'source.zip'; Invoke-WebRequest -UseBasicParsing "https://github.com/$Repo/archive/refs/heads/main.zip" -OutFile $zip
-    $root=Join-Path $tmp 'src'; Expand-Archive $zip $root -Force
-    $web=(Get-ChildItem $root -Directory -Recurse | Where-Object {$_.Name -eq 'webui'} | Select-Object -First 1).FullName
+  $releaseZip=Join-Path $tmp 'WeiG-qB-WebUI.zip'
+  try {
+    Invoke-WebRequest -UseBasicParsing "https://github.com/$Repo/releases/latest/download/WeiG-qB-WebUI.zip" -OutFile $releaseZip
+  } catch {
+    throw 'No published stable GitHub Release is available. Stable installation is Release-only and will not fall back to main.'
   }
+
+  $sumFile=Join-Path $tmp 'SHA256SUMS'
+  try {
+    Invoke-WebRequest -UseBasicParsing "https://github.com/$Repo/releases/latest/download/SHA256SUMS" -OutFile $sumFile
+  } catch {
+    throw 'The latest Release is missing SHA256SUMS; refusing an unverified installation.'
+  }
+  $sumLine=Get-Content $sumFile | Where-Object { $_ -match '\s+\*?WeiG-qB-WebUI\.zip$' } | Select-Object -First 1
+  if(!$sumLine){throw 'SHA256SUMS does not contain WeiG-qB-WebUI.zip; refusing installation.'}
+  $expected=(($sumLine -split '\s+')[0]).ToLowerInvariant()
+  $actual=(Get-FileHash $releaseZip -Algorithm SHA256).Hash.ToLowerInvariant()
+  if($expected -notmatch '^[0-9a-f]{64}$' -or $expected -ne $actual){throw 'SHA256 verification failed.'}
+
+  Write-Host 'Source: latest GitHub Release (checksum verified)'
+  $root=Join-Path $tmp 'release'; Expand-Archive $releaseZip $root -Force; $web=Join-Path $root 'WeiG-qB-WebUI'
+  $shaFile=Join-Path $web 'GIT_SHA'; if(!(Test-Path $shaFile)){throw 'Latest Release does not contain GIT_SHA; refusing an unversioned asset deployment.'}
+  $sourceSha=(Get-Content $shaFile -Raw).Trim(); if($sourceSha -notmatch '^[0-9a-fA-F]{40}$'){throw 'Latest Release contains an invalid GIT_SHA.'}
+
   if(!$web -or !(Test-Path $web)){ throw 'WebUI payload not found.' }
   $new="$Destination.new"; if(Test-Path $new){Remove-Item $new -Recurse -Force}; New-Item -ItemType Directory -Force -Path $new|Out-Null; Copy-Item (Join-Path $web '*') $new -Recurse -Force
   Inject-BuildSha $new $sourceSha
