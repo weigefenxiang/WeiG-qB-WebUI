@@ -154,7 +154,19 @@ try{
     assert(Math.abs(focusAfter.scroll-focusBefore.scroll)<=4,`${name}/${viewport.label}: focus restore lost scroll ${focusBefore.scroll} -> ${focusAfter.scroll}`);
 
     await page.evaluate(()=>document.querySelector('#filter-nav [data-filter="private"]')?.click());
-    await page.waitForFunction(expected=>document.querySelector('#torrent-count')?.textContent===String(expected),variants[name].privateCount,{timeout:3000});
+    try{
+      await page.waitForFunction(expected=>document.querySelector('#torrent-count')?.textContent===String(expected),variants[name].privateCount,{timeout:3000});
+    }catch(error){
+      const diagnostic=await page.evaluate(()=>({
+        activeFilter:document.querySelector('#filter-nav [data-filter].is-active')?.dataset.filter||null,
+        count:document.querySelector('#torrent-count')?.textContent||null,
+        visible:[...document.querySelectorAll('.torrent-mobile-card')].slice(0,8).map(row=>({hash:row.dataset.hash||'',name:row.querySelector('.mobile-card-title')?.textContent||''})),
+        loading:!document.querySelector('#list-loading')?.classList.contains('is-hidden'),
+        catalog:document.querySelector('#catalog-state')?.textContent||'',
+        filterValue:document.querySelector('#mobile-command-bar .ui-select')?.getValue?.()||document.querySelector('#mobile-command-bar .ui-select__value')?.textContent||null
+      }));
+      throw new Error(`${name}/${viewport.label}: Private/PT transition timeout; expected=${variants[name].privateCount}; state=${JSON.stringify(diagnostic)}; cause=${error.message}`);
+    }
     const privateState=await page.evaluate(()=>({count:document.querySelector('#torrent-count')?.textContent,names:[...document.querySelectorAll('.torrent-mobile-card .mobile-card-title')].map(n=>n.textContent)}));
     assert(Number(privateState.count)===variants[name].privateCount,`${name}/${viewport.label}: Private/PT union count mismatch`);
     if(name==='qb5')assert(privateState.names.some(x=>x.includes('001'))&&privateState.names.some(x=>x.includes('002')),`${name}/${viewport.label}: exact private + PT tracker union is incomplete`);
