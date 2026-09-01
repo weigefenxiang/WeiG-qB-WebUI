@@ -12,7 +12,7 @@ Modern responsive Alternate WebUI for qBittorrent. Desktop and mobile share one 
 - [WeiG-qB-WebUI.zip](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/WeiG-qB-WebUI.zip)
 - [SHA256SUMS](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/SHA256SUMS)
 
-If no Release exists yet, there is no stable build; `dev` and `main` are development/pre-release sources.
+If no Release exists yet, there is no stable build; `dev` and `main` are development/pre-release sources. The stable installers fail closed and never substitute a branch archive for a missing Release.
 
 ### Linux / Docker / NAS
 
@@ -20,7 +20,7 @@ If no Release exists yet, there is no stable build; `dev` and `main` are develop
 curl -fsSL https://raw.githubusercontent.com/weigefenxiang/WeiG-qB-WebUI/main/installers/install.sh -o /tmp/weigg-qb-install.sh && sh /tmp/weigg-qb-install.sh --configure
 ```
 
-The bootstrap installer detects common qBittorrent Docker layouts, keeps a backup, installs the Release payload, writes the exact Git SHA, and prints the qB-visible WebUI path.
+The bootstrap installer detects common qBittorrent Docker layouts, keeps a backup, verifies the Release checksum and exact Git SHA, validates all Alternate WebUI entry points, and prints the qB-visible WebUI path.
 
 ### Windows PowerShell
 
@@ -30,7 +30,7 @@ Invoke-WebRequest https://raw.githubusercontent.com/weigefenxiang/WeiG-qB-WebUI/
 
 ### Manual install / other systems
 
-Download the latest `WeiG-qB-WebUI.zip`, verify it with `SHA256SUMS`, extract it to a persistent directory, then in qBittorrent enable **Use alternative Web UI** and set **Files location / Root Folder** to that directory as seen by the qBittorrent process.
+Download the latest `WeiG-qB-WebUI.zip`, verify it with `SHA256SUMS`, extract it to a persistent directory, then in qBittorrent enable **Use alternative WebUI** and set **Files location / Root Folder** to that directory as seen by the qBittorrent process.
 
 For Docker, the host path and the path visible inside the container are different. qBittorrent must use the container-visible path.
 
@@ -38,7 +38,9 @@ See [Installation & upgrade](docs/007.安装升级与手动部署.md) for Docker
 
 ## Compatibility
 
-Minimum compatibility target: **qBittorrent 4.1.9.1 / WebAPI 2.2.1**. Newer capabilities are enabled progressively through API/capability detection rather than major-version hard-coding.
+Minimum compatibility target: **qBittorrent 4.1.9.1 / WebAPI 2.2.1**. The release audit currently checks **all 55 official stable qBittorrent 4.x/5.x tags from 4.1.9.1 through 5.2.3**, plus current upstream WebAPI, and runs a 20-node representative interaction matrix on both Linux and Windows Chromium. New capabilities are enabled progressively through API/capability detection rather than major-version hard-coding.
+
+See [Compatibility](docs/002.兼容与实现状态.md) for the exact matrix, upstream-source audit and LIVE-gate policy.
 
 ## Documentation
 
