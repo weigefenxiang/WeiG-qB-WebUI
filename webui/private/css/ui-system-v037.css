@@ -20,6 +20,10 @@
 .ui-select__prefix{margin-right:6px}
 .ui-select__menu{inline-size:max(var(--select-trigger-width,0px),min(calc(var(--select-menu-ch,22)*1ch),min(360px,calc(100vw - 16px))))}
 .ui-native-select{position:absolute!important;inline-size:1px!important;block-size:1px!important;opacity:0!important;pointer-events:none!important}
+#settings-content [data-v036-timezone] .timezone-select .ui-select__value{display:inline-flex!important;align-items:center!important;white-space:nowrap!important}
+#settings-content [data-v036-timezone] .timezone-select .ui-select__value::before{content:"✓";flex:0 0 auto;margin-right:6px;color:var(--accent-cyan);font-weight:850}
+.ui-select__option[aria-selected="true"]{display:flex!important;align-items:center!important;gap:7px!important;white-space:nowrap!important}
+.ui-select__option[aria-selected="true"]::before{content:"✓";flex:0 0 auto;color:var(--accent-cyan);font-weight:850}
 
 /* SETTINGS-ROWS-001 — one section surface, row-based preferences. */
 #settings-content{align-content:start!important}
@@ -44,7 +48,7 @@
 .about-identity h2{margin:0;font-size:clamp(20px,2vw,28px)}
 .about-identity p{margin:4px 0 0;color:var(--text-muted);line-height:1.45}
 .about-brand-orb{display:grid;place-items:center;width:50px;height:50px;border:1px solid rgba(114,151,255,.42);border-radius:50%;background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.18),rgba(114,151,255,.15) 35%,rgba(18,34,63,.55) 72%);box-shadow:0 0 24px rgba(76,126,255,.14),inset 0 0 18px rgba(56,214,255,.08);font-weight:850;letter-spacing:-.04em}
-.about-attribution>span{display:flex;flex-direction:column;gap:3px;min-width:0}
+.about-attribution>span{display:flex!important;flex-direction:column!important;gap:3px;min-width:0}
 .about-attribution small{color:var(--text-muted);line-height:1.4}
 .about-row{grid-template-columns:minmax(180px,1fr) auto!important}
 .about-row .about-link,.about-attribution .about-link{width:34px!important;min-width:34px!important;height:32px!important;padding:0!important;display:grid!important;place-items:center!important}
