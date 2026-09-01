@@ -100,7 +100,7 @@
   var commandBar=null,commandCount=null,filterControl=null,filterNavObserver=null;
   function filterOptions(){var nav=document.getElementById('filter-nav');if(!nav)return[];return Array.from(nav.querySelectorAll('[data-filter]')).map(function(btn){return{value:btn.dataset.filter||'all',label:String(btn.textContent||'').replace(/\s·\s\d+$/,'').trim()||baseT('filter.all','All')};});}
   function currentFilter(){var active=document.querySelector('#filter-nav [data-filter].is-active');return active?active.dataset.filter||'all':'all';}
-  function syncFilterControl(){if(!filterControl)return;var opts=filterOptions(),value=currentFilter();filterControl.setOptions(opts);filterControl.setValue(value);}
+  function syncFilterControl(){if(!filterControl)return;var select=filterControl.querySelector('.ui-select');if(!select||typeof select.setOptions!=='function'||typeof select.setValue!=='function')return;var opts=filterOptions(),value=currentFilter();select.setOptions(opts);select.setValue(value);}
   function syncCommandLocale(){if(!commandCount)return;var count=document.getElementById('library-count-copy');commandCount.textContent=count?count.textContent:'—';syncFilterControl();}
   function installCompactCommandBar(){
     if(commandBar)return commandBar;var header=document.querySelector('#list-view>.workspace__header'),toolbar=header&&header.querySelector('.toolbar');if(!header||!toolbar)return null;
