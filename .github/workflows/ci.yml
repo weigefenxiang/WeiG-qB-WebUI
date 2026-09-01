@@ -74,6 +74,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Use Ubuntu archive mirror
+        shell: bash
+        run: |
+          set -euo pipefail
+          for source_file in /etc/apt/apt-mirrors.txt /etc/apt/sources.list /etc/apt/sources.list.d/ubuntu.sources; do
+            [ -f "$source_file" ] || continue
+            sudo sed -i -E 's#https?://([A-Za-z0-9.-]+\.)?archive\.ubuntu\.com/ubuntu/?#http://archive.ubuntu.com/ubuntu/#g' "$source_file"
+          done
       - name: Install Chromium test runtime
         run: |
           npm install --no-save playwright@1.55.0
@@ -91,6 +99,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Use Ubuntu archive mirror
+        shell: bash
+        run: |
+          set -euo pipefail
+          for source_file in /etc/apt/apt-mirrors.txt /etc/apt/sources.list /etc/apt/sources.list.d/ubuntu.sources; do
+            [ -f "$source_file" ] || continue
+            sudo sed -i -E 's#https?://([A-Za-z0-9.-]+\.)?archive\.ubuntu\.com/ubuntu/?#http://archive.ubuntu.com/ubuntu/#g' "$source_file"
+          done
       - name: Install Chromium test runtime
         run: |
           npm install --no-save playwright@1.55.0
