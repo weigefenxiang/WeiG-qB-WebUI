@@ -41,9 +41,12 @@
   function removeLegacyStatusTimezone(){Array.from(document.querySelectorAll('[data-status-timezone]')).forEach(function(node){node.remove();});}
   function ownLegacyStatusTimezone(){removeLegacyStatusTimezone();if(legacyTimezoneObserver||!document.documentElement)return;legacyTimezoneObserver=new MutationObserver(function(records){var found=false;records.forEach(function(record){Array.from(record.addedNodes||[]).forEach(function(node){if(found||!node||node.nodeType!==1)return;if((node.matches&&node.matches('[data-status-timezone]'))||(node.querySelector&&node.querySelector('[data-status-timezone]')))found=true;});});if(found)removeLegacyStatusTimezone();});legacyTimezoneObserver.observe(document.documentElement,{childList:true,subtree:true});}
   function normalizeLegacyTransferDock(){
-    var dl=document.querySelector('[data-limit-kind="download"]'),up=document.querySelector('[data-limit-kind="upload"]');
-    if(dl){dl.classList.add('status-speed','status-speed--dl');}
-    if(up){up.classList.add('status-speed','status-speed--up');}
+    var bar=document.querySelector('.statusbar'),dl=document.querySelector('[data-limit-kind="download"]'),up=document.querySelector('[data-limit-kind="upload"]'),connection=document.getElementById('status-connection');
+    if(dl)dl.classList.add('status-speed','status-speed--dl');
+    if(up)up.classList.add('status-speed','status-speed--up');
+    if(bar&&connection&&connection.parentNode!==bar)bar.appendChild(connection);
+    ['alt-speed-btn','transfer-graph-btn'].forEach(function(id){var node=document.getElementById(id);if(node)node.remove();});
+    var dock=document.querySelector('.transfer-dock');if(dock&&!dock.children.length)dock.remove();
   }
   function css(){stylesheet('css/v037.css','v037');stylesheet('css/ui-system-v037.css','ui-system-037');ownCssOrder();}
   function load(path,tag){return new Promise(function(resolve,reject){if(tag&&document.querySelector('script[data-weigg-layer="'+tag+'"]')){resolve();return;}var s=document.createElement('script');s.async=false;if(tag)s.dataset.weiggLayer=tag;s.src=url(path);s.onload=resolve;s.onerror=function(){reject(new Error('Unable to load '+path));};document.head.appendChild(s);});}
