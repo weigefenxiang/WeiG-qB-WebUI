@@ -8,6 +8,10 @@
   --action-control-h:44px;
 }
 
+/* A11Y-SKIP-001 — keep keyboard skip navigation without reserving document-flow height. */
+.skip-link{position:fixed;left:12px;top:-72px;z-index:20000;min-height:36px;padding:8px 12px;border:1px solid var(--ui-accent-border);border-radius:9px;background:var(--surface-floating);color:var(--text-primary);box-shadow:var(--shadow-md);text-decoration:none;transition:top var(--motion-fast) var(--ease)}
+.skip-link:focus,.skip-link:focus-visible{top:12px;outline:2px solid rgba(114,151,255,.72);outline-offset:2px}
+
 /* SHELL-EDGE-001 / REMAINING-WORKSPACE-002 */
 @media(min-width:821px){
   .app-shell{padding-bottom:var(--shell-edge-inset)!important}
