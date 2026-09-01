@@ -18,7 +18,7 @@ const viewports = [
   {width:1366,height:768,label:'desktop'},
   {width:1920,height:1080,label:'wide'},
 ];
-const hostPath = '/root/qbittorrent3/config/weigg-qb-webui';
+const hostPath = '/srv/qb-fixture/config/weigg-qb-webui';
 const qbPath = '/config/weigg-qb-webui';
 const gitSha = '1234567890abcdef1234567890abcdef12345678';
 function initialState(){return {
@@ -86,7 +86,7 @@ const server=http.createServer(async(req,res)=>{
     if(!match){res.writeHead(404);return res.end('not found');}
     const name=match[1],relative=match[2]||'';
     if(relative.startsWith('api/v2/'))return await handleApi(req,res,name,relative.slice(7));
-    if(relative==='weigg-install.json')return writeJson(res,{version:'0.3.5',gitSha,container:'qbittorrent3',qbPath,hostPath,installedAt:'2026-08-31T09:00:00Z',installer:'linux'});
+    if(relative==='weigg-install.json')return writeJson(res,{version:'0.3.6',gitSha,container:'fixture-qb',qbPath,hostPath,installedAt:'2026-08-31T09:00:00Z',installer:'fixture'});
     const requested=relative||'index.html';
     const file=path.resolve(webRoot,requested);
     if(!(file===webRoot||file.startsWith(webRoot+path.sep))){res.writeHead(403);return res.end('forbidden');}
@@ -141,7 +141,7 @@ try{
       assert(layout.enabledChecked===true,`${name}/${viewport.label}: Alternative WebUI toggle not enabled`);
       assert(layout.pathValue===qbPath,`${name}/${viewport.label}: expected qB path ${qbPath}, got ${layout.pathValue}`);
       assert(layout.hostValue===hostPath,`${name}/${viewport.label}: host path metadata not shown`);
-      assert(layout.versionValue==='0.3.5',`${name}/${viewport.label}: installed version not shown`);
+      assert(layout.versionValue==='0.3.6',`${name}/${viewport.label}: installed version not shown`);
       assert(layout.shaValue===gitSha,`${name}/${viewport.label}: Git SHA not shown`);
       assert(layout.readonlyCount>=4,`${name}/${viewport.label}: installer metadata must use canonical readonly cards`);
       assert(layout.heightDelta<=12,`${name}/${viewport.label}: Alternative toggle/path cards are not visually equal-height`);
@@ -193,7 +193,7 @@ try{
     assert(errors.length===0,`${name}: browser errors: ${errors.join(' | ')}`);
     await page.close();
   }
-  console.log('v0.3.5 canonical Alternative WebUI regression passed for qB 4.1.9.1, 4.6.7 and 5.2.0 across 3 viewports.');
+  console.log('v0.3.6 canonical Alternative WebUI regression passed for qB 4.1.9.1, 4.6.7 and 5.2.0 across 3 viewports.');
 }finally{
   await browser.close();
   await new Promise(resolve=>server.close(resolve));

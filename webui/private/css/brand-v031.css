@@ -1,8 +1,7 @@
-/* WeiG qB WebUI v0.3.1 — Brand Navigation Unified */
+/* WeiG qB WebUI v0.3.6 — Brand Navigation + AmbientMark host */
 
 /* The legacy back control remains as a compatibility hook for older runtime
- * code, but it is no longer part of the visible navigation. The brand is the
- * single, stable route back to the torrent home view. */
+ * code, but detail-local Back now owns contextual return navigation. */
 #back-btn{display:none!important}
 
 .topbar__start{min-width:178px;gap:4px}
@@ -34,7 +33,7 @@
   height:38px!important;
   flex:0 0 38px;
   padding:2px!important;
-  overflow:hidden;
+  overflow:visible!important;
   border-radius:50%!important;
   border:1px solid rgba(208,222,255,.38);
   background:conic-gradient(from 220deg,#38d6ff 0deg,#7297ff 92deg,#816fff 196deg,#5c7dff 278deg,#38d6ff 360deg)!important;

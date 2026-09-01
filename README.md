@@ -2,410 +2,157 @@
 
 A premium, modular and high-performance Alternate WebUI for qBittorrent.
 
-Current version: **0.3.5**  
-Compatibility floor: **qBittorrent 4.1.9**  
-Compatibility target: **qBittorrent 4.1.x → current 5.x**, using capability-based progressive enhancement.
+Current version: **0.3.6**  
+Compatibility floor: **qBittorrent 4.1.9.1 / WebAPI 2.2.1**  
+Compatibility strategy: **WebAPI/capability detection, not qB major-version hardcoding**.
 
-## v0.3.5 — Canonical Settings UI + Git SHA cache identity
+## v0.3.6 — Canonical UI, adaptive mobile, compatibility matrix
 
-v0.3.5 removes the standalone Alternative WebUI visual subsystem introduced in v0.3.4. Alternative WebUI controls and install metadata now reuse the same canonical `setting-card` / `settings-row` components as the rest of **Settings → Web UI**. There is no feature-local card grid or feature-local Settings CSS.
+v0.3.6 consolidates interaction, responsive layout and compatibility behavior into reusable primitives instead of feature-local patches.
 
-The UI primitive audit covers the existing runtime layers and establishes one owner per semantic surface:
+### Canonical UI primitives
 
-```text
-Settings        → SettingCard / settings-control
-Torrent data    → DataGrid / VirtualList
-Logs            → DataPage / DataPanel / VirtualList
-Dialogs         → dialog + surface--modal
-Status          → status-pill / status dock
-```
+- custom Select/Listbox progressively upgrades native selects;
+- Select/Dropdown/Popover surfaces use the body-level FloatingLayer portal with viewport flip/shift collision handling;
+- AmbientMark provides sparse random orbit/spark/tilt/shine/breathe brand motion and honors Reduced Motion;
+- Button, Chip, CheckControl, StatusPill, SettingCard and floating surfaces keep one visual implementation per semantic role.
 
-The v0.3.5 browser gate exercises qBittorrent **4.1.9.1 / 4.6.7 / 5.2.0** fixtures at **390×844 / 1366×768 / 1920×1080** and checks that Alternative WebUI controls use the same card geometry, responsive columns, title/description/control order and overflow rules as normal qB settings.
+### Global Display Time Zone
 
-v0.3.5 also replaces hand-maintained `?v=0.x.y` resource revisions with a deployment Git SHA contract:
+The status dock owns one browser-side display timezone. Offsets are calculated from the active IANA timezone, including half-hour, 45-minute and DST zones. The setting changes only presentation through `Intl.DateTimeFormat`; it does **not** modify qBittorrent, Docker or host time. Logs consume this global setting and do not create a second timezone selector.
 
-```text
-HTML                    → no-store / no-cache metadata
-HTML build identity     → <meta name="weigg-build-sha" ...>
-CSS / JS URL            → ?v=<40-character Git SHA>
-Lazy runtime CSS / JS   → same Git SHA through buildAssetUrl()
-Installed identity      → VERSION + GIT_SHA + weigg-install.json.gitSha
-```
+### Logs
 
-Linux and Windows installers resolve or read the exact source SHA, inject it into the deployed payload, and refuse release payloads that cannot provide a valid `GIT_SHA`. Release packaging stamps `${GITHUB_SHA}` before creating the archive. This means a browser may safely cache a SHA-addressed static asset while a new deployment automatically receives a different URL. Reverse proxies/CDNs must preserve qBittorrent's HTML no-store behavior; production header verification remains a deployment test, not something static HTML can force through an intermediary.
+Logs are newest-first, incrementally fetched with the current maximum `last_known_id`, bounded to the newest 5000 records and rendered with VirtualList. Follow Latest keeps the viewport at the top; when the user reads older rows, inserting new rows does not destroy that position.
 
-## v0.3.4 — Alternative WebUI Settings + Install Metadata
-
-v0.3.4 makes qBittorrent's own Alternative WebUI state visible and controllable from **Settings → Web UI** instead of silently omitting it.
-
-When qBittorrent actually returns the preferences, WeiG shows:
+### Torrent detail context navigation
 
 ```text
-Use Alternative WebUI
-qBittorrent WebUI path
-VPS / host path (when recorded by the installer)
-WeiG installed version
-container name (Docker installs)
-install/update timestamp
+Torrent list page + scroll position
+        ↓
+Torrent Detail
+        ↓ Back / Escape
+same list page + scroll position
 ```
 
-The compatibility rule is data-driven rather than major-version-driven: `alternative_webui_enabled` and `alternative_webui_path` are shown whenever they are present in `app/preferences`. This keeps the feature usable on the supported qBittorrent **4.1.9.1 / WebAPI 2.2.1** floor as well as **5.2.0 / WebAPI 2.15.1**.
+The Back control sits left of Overview. Browser Back, the detail Back button and Escape share the same navigation contract.
 
-Docker paths are deliberately separated:
+### Adaptive mobile layout
 
-```text
-VPS / host path
-/root/qbittorrent3/config/weigg-qb-webui
-        ↓ mounted as /config
-qBittorrent-visible path
-/config/weigg-qb-webui
-```
+Mobile pages consume the remaining application grid track instead of using `100vh - Npx` formulas. Torrent, Search, RSS and Logs adapt to short and tall phones without creating an extra document page or leaving a large unused gap above the status/navigation bars.
 
-Only the qBittorrent-visible path belongs in `alternative_webui_path`. The browser cannot infer the Docker host path from WebAPI, so Linux/Windows installers write authenticated deployment metadata to `private/weigg-install.json`.
+Torrent cards keep secondary metrics on one line whenever physically possible. The runtime first removes redundant spacing/decimal zeroes, then tightens gap/font metrics. State remains visually semantic through the shared StatusPill.
 
-Safety behavior:
+### Free disk telemetry
 
-- writing a known VPS host path into the Docker qB path field is blocked;
-- changing the Alternative WebUI path requires confirmation because a wrong path can make the UI unreachable;
-- disabling Alternative WebUI requires an explicit confirmation;
-- after a successful disable, WeiG redirects to `/` so qBittorrent's built-in WebUI can take over;
-- the two Alternative WebUI preferences are hidden from the generic Advanced list once the dedicated settings surface owns them.
+The global status dock may display qBittorrent `sync/maindata → server_state.free_space_on_disk`. Its precise meaning is **free space on the filesystem containing qBittorrent's default save path**. It must not be mislabeled as host root-disk space.
 
-## v0.3.3 — Cross-version Logs browser regression gate
+Formatting uses human-readable IEC units (`B / KiB / MiB / GiB / TiB`) with adaptive decimals. Telemetry refresh is low-frequency and incremental; a partial sync response that omits an unchanged value keeps the last known valid value.
 
-v0.3.3 strengthens the v0.3.2 Logs work with an actual Chromium/Playwright browser regression instead of relying only on API-contract fixtures and JavaScript syntax checks.
+### Advanced Settings units and enums
 
-The browser gate serves the real `webui/private` runtime against two deterministic qB WebAPI fixtures:
-
-```text
-qBittorrent 4.1.9.1 / WebAPI 2.2.1 → legacy millisecond log timestamps
-qBittorrent 5.2.0   / WebAPI 2.15.1 → modern second log timestamps
-```
-
-Primary viewport coverage:
-
-```text
-390 × 844   mobile
-1366 × 768  compact desktop
-1920 × 1080 desktop
-```
-
-The gate validates the user-visible Logs route through a real browser:
-
-- cross-version timestamp normalization reaches the same valid time range;
-- adaptive DataPanel has no horizontal overflow and keeps useful height;
-- **Auto / Compact / Max** sizing changes the real layout as intended;
-- local log search narrows results correctly;
-- severity filtering leaves only the selected semantic level;
-- `last_known_id` incremental polling appends new rows;
-- **Follow latest OFF** preserves a manually selected viewport while new rows arrive;
-- browser console/page errors are treated as failures.
-
-This is a browser fixture certification layer, not a claim that a remote production qB instance has been interactively tested. Real-server certification remains separate and must never be inferred from fixture PASS.
-
-## v0.3.2 — Cross-version Logs + Adaptive DataPanel
-
-v0.3.2 fixes a compatibility mistake in the Logs gate and promotes Logs from a fixed-height utility box to a first-class adaptive data page.
-
-- qBittorrent **4.1.9.1 / WebAPI 2.2.1** Logs are no longer hidden by the incorrect `WebAPI >= 2.3.0` gate.
-- `QBClient.logs()` / `peerLogs()` normalize legacy millisecond timestamps and modern second timestamps to one stable seconds contract.
-- Logs use an independent VirtualList with incremental `last_known_id` polling, local search, semantic level filters, Follow latest and a bounded 5000-row in-browser buffer.
-- The Logs DataPanel supports **Auto / Compact / Max** sizing. Auto consumes the remaining workspace instead of stopping at `max-height: 62vh`.
-- The design rules were reviewed against `VoltAgent/awesome-design-md` principles: reusable tokens/components, restrained depth, explicit interaction states and responsive data surfaces rather than feature-local visual systems.
-
-The compatibility model is now explicit:
-
-```text
-Native       qB exposes the capability directly
-Compatible   QBClient translates old/new API vocabulary or data format
-Enhanced     WeiG JS derives safe convenience behavior from existing data
-Unavailable  backend data/write capability does not exist; do not fabricate it
-```
-
-## v0.3.1 — Polling scroll stability hotfix
-
-Real qBittorrent 4.1.9 testing exposed one remaining VirtualList race: `app.js` clears the list container before constructing the next VirtualList. On some browsers the old scroll listener receives the transient programmatic `scrollTop = 0` caused by DOM teardown and overwrites the remembered user position immediately before the replacement list restores it.
-
-v0.3.1 hardens the VirtualList scroll handler so teardown-generated scroll events are ignored whenever the handler's own spacer is no longer connected to the active container. Normal user scroll events still update `__weiggVirtualScrollTop`.
-
-The visible `Refresh HH:MM:SS` readout has also been removed from the Transfer Dock. Polling continues normally; the timestamp was redundant operational noise and is not used as application state.
-
-Expected behavior:
-
-```text
-Automatic polling / manual Refresh → preserve current viewport
-Filter / facet / page / page-size / search context change → reset to top
-```
-
-## v0.3.0 — Stable Virtual UI + Transfer Control
-
-v0.3.0 focuses on interaction stability and daily-use completeness rather than adding a large number of disconnected buttons.
-
-### Scroll position is user state
-
-The Torrent VirtualList preserves the user's scroll position across automatic polling and rerenders.
-
-Deliberate context changes still reset the main list to the top:
-
-```text
-Filter / Tracker / Save Path / Category / Tag
-Page change
-Page-size change
-Torrent search change
-```
-
-Manual refresh and background polling preserve the current viewport.
-
-### Compact zero-result views
-
-All zero-result Torrent states share one compact empty layout. `Private / PT`, `Error`, `Downloading`, `Seeding`, `Paused`, Tracker/Category/Tag/Path filters and other empty views no longer reserve a full-height blank DataGrid.
-
-The Filter Shelf and global transfer/network status remain available while the empty table body and meaningless pager collapse.
-
-### Interactive Transfer Control Dock
-
-The desktop Status Dock is a centered operational control surface.
-
-```text
-↓ current download
-↑ current upload
-ALT speed mode
-connection state
-Torrent count
-Transfer / session
-```
-
-Click the download or upload speed to change the **global** rate limit. Cross-version endpoints are deliberately the long-lived qB transfer APIs:
-
-```text
-transfer/downloadLimit
-transfer/setDownloadLimit
-transfer/uploadLimit
-transfer/setUploadLimit
-transfer/speedLimitsMode
-transfer/toggleSpeedLimitsMode
-```
-
-This keeps global speed control available at the qBittorrent 4.1.9 compatibility floor as well as on modern 5.x.
-
-### Session statistics + Transfer Graph
-
-The Transfer surface reuses the normal transfer polling stream and keeps a bounded in-browser ring buffer instead of starting a second high-frequency poller.
-
-It exposes:
-
-- current download/upload history;
-- session downloaded/uploaded bytes;
-- global download/upload limits;
-- DHT nodes / peer connections;
-- free disk space when supplied through `sync/maindata`;
-- 1 / 5 / 15 minute graph windows.
-
-The graph uses a native Canvas and a maximum 900-point ring buffer. No chart framework or runtime CDN is required.
-
-### Multi-selection
-
-Existing `Ctrl/Cmd+A`, Escape and Delete behavior remains. v0.3 also adds Ctrl/Cmd-click and Shift-click selection behavior for currently rendered Torrent rows. Virtualized/off-screen selection is never implemented by mounting hidden rows.
+Advanced preferences have a source-verified display layer. Where qB WebAPI exposes bytes but the official qB UI presents a friendlier unit, WeiG performs an exact round trip. Verified special values such as `0 = System default`, `0 = Disabled` and `0 = Permanent lease` are explained. Verified enums use the canonical Select control rather than unexplained integer/string codes.
 
 ## Compatibility matrix
 
-Automated compatibility fixtures exercise three tiers:
+`tests/fixtures/qb-compat-matrix.json` is the canonical representative matrix:
 
-| Tier | Fixture | Expected behavior |
+| Role | qBittorrent | WebAPI |
 | --- | --- | --- |
-| Legacy floor | 4.1.9.1 / WebAPI 2.2.1 | resume/pause, global limits, alt-speed, Logs, Alternative WebUI prefs when returned, no Tags/private flag |
-| Mature 4.x | 4.6.x / WebAPI 2.8.3 | Tags/filter capabilities, Logs, Alternative WebUI prefs, still no exact private flag |
-| Modern target | 5.2.0 / WebAPI 2.15.1 | start/stop, Tags, private flag, Logs, Alternative WebUI prefs, modern capability foundations |
+| Legacy floor | 4.1.9.1 | 2.2.1 |
+| Early 4.x | 4.2.5 | 2.5.1 |
+| Mature 4.x A | 4.3.9 | 2.8.2 |
+| Mature 4.x B | 4.4.5 | 2.8.5 |
+| Advanced-preferences era | 4.5.5 | 2.8.19 |
+| Late 4.x | 4.6.7 | 2.9.3 |
+| 5.x transition | 5.0.5 | 2.11.2 |
+| Mature 5.x | 5.1.2 | 2.11.4 |
+| Live 5.2 target | 5.2.0 | 2.15.1 |
+| Current stable fixture | 5.2.3 | 2.15.1 |
+| Upstream/next | master | 2.16.2 |
+| Forward-major sentinel | 6.0.0-synthetic | 3.0.0-synthetic |
 
-Logs are native across the supported qB range; WeiG adds cross-version timestamp normalization plus search/filter/follow/adaptive-layout enhancements. Alternative WebUI settings are exposed from the real Preferences payload instead of guessed from qB major version. Static/browser fixtures are not substitutes for real-server certification. The release-blocking live targets remain qBittorrent **4.1.9.1** and **5.2.0**.
+The synthetic 6.x node exists only to detect accidental major-version rejection. It is **not** a claim that an unreleased qBittorrent 6.x is officially supported.
 
-## VueTorrent gap review
+Release-blocking live certification uses operator-provided qBittorrent instances. Repository source never embeds private/public deployment URLs, credentials, container names or machine-specific host paths. Fixture PASS never substitutes for real-server certification.
 
-VueTorrent is a useful functional reference, but its current project baseline targets qBittorrent 4.4+, while WeiG keeps a 4.1.9 floor. Features therefore pass through the WeiG Capability layer instead of being copied directly.
+## Cache and deployment identity
 
-v0.3 closes or prepares several useful gaps:
-
-- session statistics — implemented;
-- transfer graph — implemented;
-- global/alternative speed controls — implemented;
-- richer multi-selection — implemented for rendered rows;
-- Torrent Creator — QBClient capability/API foundation for supported modern qB versions;
-- Cookie Manager — QBClient capability/API foundation for WebAPI versions that expose cookies.
-
-Future candidates include richer RSS rules/articles, Search plugin management, full Torrent Creator/Cookie Manager product pages, configurable Dashboard fields, PWA installation and magnet-handler integration.
-
-## Nebula Spatial Console
-
-The visual system remains:
+HTML is a no-store bootstrap. CSS/JS asset identity is the exact deployed Git SHA:
 
 ```text
-Void → Base → Panel → Card → Raised → Floating
+HTML                 → no-store/no-cache bootstrap
+<meta build SHA>     → deployed commit
+CSS / JS URL         → ?v=<40-char Git SHA>
+VERSION              → product version
+GIT_SHA              → exact deployed source
+weigg-install.json   → deployment metadata
 ```
 
-Desktop Topbar owns application navigation. Sidebar owns low-cardinality Torrent state filters. Tracker / Save Path / Category / Tags use the searchable Filter Shelf. Connection details live in the Status Dock. Settings follow **Title → Description → Control** and default to a readable two-column desktop grid.
+Semver is not used as a static-resource cache key.
 
-Primary data-heavy pages should converge on the canonical DataPage/DataPanel pattern. Logs is the first v0.3.2 implementation: toolbar + table header + virtual viewport + compact empty/error/status surfaces, with the data area owning the remaining workspace height.
+## Docker path boundary
 
-## Languages
-
-English is the canonical source language. **English and Simplified Chinese are maintained product languages.**
+Host and qB-visible paths are distinct concepts:
 
 ```text
-Explicit user language
-→ Browser locale
-→ English fallback
+Host install directory: <host-qb-config>/weigg-qb-webui
+qB-visible directory:   <qB-config-mount>/weigg-qb-webui
 ```
 
-qBittorrent terminology prefers official qB WebUI translations when available. Feature code must not branch on language, and missing locale strings must never expose raw translation keys.
-
-## Core platform
-
-- qBittorrent **4.1.9 compatibility floor** through current 5.x via Capability detection.
-- `20 / 50 / 100 / 200` server page sizes using `limit` / `offset`.
-- Virtualized Torrent/Files/Peers/Trackers/Logs lists.
-- Data count is never treated as DOM count.
-- Desktop DataGrid with sorting, resizable/configurable columns and persisted widths/order.
-- Mobile Torrent cards, touch navigation and action surfaces.
-- Tracker display/filter normalization strips query/fragment credentials.
-- Private/PT uses exact private metadata when available and explicit Tracker-domain rules on old qB.
-- Torrent actions, detail Files/Trackers/Peers/HTTP Sources, metadata-driven Settings, Search/RSS/Logs capability gating.
-- Logs use a separate route-local VirtualList and incremental stream so they do not overwrite Torrent viewport state.
-- Alternative WebUI enabled/path preferences reuse canonical SettingCards when the backend returns them.
-- Installed payload contains `VERSION` and `GIT_SHA`; installer metadata exposes Git SHA, qB/container path and VPS/host path without pretending WebAPI knows Docker host mounts.
-- HTML is treated as a no-store bootstrap; local CSS/JS identity is the deployment Git SHA rather than the product version.
-- Back/Home/Reload recovery and Reduced Motion remain hard invariants.
-
-## Compatibility boundary
-
-Feature/UI code must not scatter qB version checks.
-
-```text
-qB API
-  ↓
-QBClient + Capability + normalization
-  ↓
-stable application semantics
-  ↓
-WeiG enhancement
-  ↓
-Feature / UI
-```
-
-Important bridges include:
-
-```text
-qB 4.x          qB 5.x
-resume/pause ↔ start/stop
-paused       ↔ stopped
-legacy log ms → normalized seconds ← modern log seconds
-```
-
-Historical API exceptions remain inside `qb-client.js`. Preference-owned features such as Alternative WebUI are gated by the actual Preferences keys returned by the server.
-
-## Performance model
-
-```text
-API/cache page
-      ↓
-VirtualList
-      ↓
-viewport + overscan DOM only
-```
-
-Whole-library Tracker/Path/PT catalogs are built in bounded data batches and never rendered as thousands of hidden rows. Transfer Graph samples are bounded separately and do not create Torrent DOM. Logs retain at most 5000 main-log rows in browser memory while only the viewport + overscan are mounted.
-
-## Tracker privacy
-
-```text
-https://tracker.example/announce?passkey=SECRET#fragment
-→
-https://tracker.example/announce
-```
-
-Raw Tracker values are retained only where a qB API operation genuinely requires them.
-
-## Linux installer
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/weigefenxiang/WeiG-qB-WebUI/main/installers/install.sh -o /tmp/weigg-qb-install.sh
-sh /tmp/weigg-qb-install.sh
-```
-
-Known Docker `/config` root:
-
-```sh
-sh /tmp/weigg-qb-install.sh \
-  --config-root=/host/path/to/qbittorrent/config \
-  --dir=/config/weigg-qb-webui
-```
-
-List candidates:
-
-```sh
-sh /tmp/weigg-qb-install.sh --list-containers
-```
-
-After v0.3.5 installation/update, deployment identity is directly available:
-
-```sh
-cat /host/path/to/qbittorrent/config/weigg-qb-webui/VERSION
-cat /host/path/to/qbittorrent/config/weigg-qb-webui/GIT_SHA
-cat /host/path/to/qbittorrent/config/weigg-qb-webui/private/weigg-install.json
-```
-
-Rollback:
-
-```sh
-sh /tmp/weigg-qb-install.sh --rollback
-```
-
-The installer refuses to guess when multiple qB containers are detected. Normal install/update does not modify WebUI credentials.
-
-## Windows installer
-
-```powershell
-.\install.ps1
-```
-
-Optional qB Alternate-WebUI configuration:
-
-```powershell
-.\install.ps1 -Configure
-```
-
-Rollback:
-
-```powershell
-.\install.ps1 -Mode Rollback
-```
+Only the qB-visible path belongs in qBittorrent's `alternative_webui_path`. Host paths are deployment metadata and must never be guessed by browser code or compiled into the project.
 
 ## Development and tests
 
-Runtime is plain HTML/CSS/JavaScript without a runtime application framework.
+Runtime is plain HTML/CSS/JavaScript. Run the static/contract suite with:
 
 ```sh
 npm test
 ```
 
-The static suite includes syntax/smoke checks, `tests/compat-v030.mjs` for 4.1.9.1 / mature 4.x / 5.2.0 API semantics, `tests/log-compat-v032.mjs` for Logs capability/timestamp/incremental behavior, `tests/settings-v034.mjs` for Alternative WebUI/settings/install-metadata contracts, and `tests/cache-contract-v035.mjs` for HTML no-store + Git SHA asset identity.
-
-CI additionally runs two headless Chromium gates:
+CI additionally runs:
 
 ```text
 tests/browser-logs-v033.mjs
 tests/browser-settings-v034.mjs
+tests/browser-mobile-v036.mjs
+tests/browser-ui-v036.mjs
 ```
 
-The v0.3.5 settings browser gate exercises the actual WebUI runtime with qB 4.1.9.1, qB 4.6.7 and qB 5.2.0 fixtures at three viewports. It verifies canonical SettingCard geometry, `/config/...` path writes, known host-path rejection, disable writes, Advanced duplicate suppression, install metadata including Git SHA, and browser console/page error cleanliness.
+The representative interaction browser gate uses **12 compatibility nodes × 3 viewports**. The dedicated mobile gate covers qB 4.1.9.1 and 5.2.3 at 320×568, 360×800, 390×844 and 430×932. Unit/display conversion is additionally locked by `tests/advanced-contract-v036.mjs`.
 
-Documentation authority:
+## Live v0.3.6 candidate deployment
 
-- `DESIGN.md` — visual, interaction, typography, navigation, i18n, empty-state, Transfer Dock, DataPanel and canonical UI primitive rules.
-- `docs/001.项目总方案.md` — product plan and engineering invariants.
-- `docs/002.兼容与实现状态.md` — compatibility matrix and current live/automated status.
-- `docs/003.项目架构.md` — repository tree, runtime layers and ownership boundaries.
-- `docs/004.UI与缓存契约.md` — UI primitive audit and HTML/Git-SHA cache contract.
+`tests/live-v036.sh` stages one or more **operator-supplied existing installation directories** from an exact Git SHA, with backups and rollback commands. It changes Alternate WebUI files only; **Docker/qBittorrent restart is not required**.
 
-## Certification status
+```sh
+sh tests/live-v036.sh \
+  --sha <40-char-sha> \
+  --target <installed-webui-dir> \
+  --target <another-installed-webui-dir>
+```
 
-`0.3.5` unifies Alternative WebUI with the canonical Settings component system and adds deterministic Git-SHA asset identity on top of the v0.3.4 compatibility behavior. Repository CI, API-contract fixtures and browser fixtures can certify deterministic code/UI behavior, but stable real-server certification still requires interactive regression on the release-blocking qBittorrent **4.1.9.1** and **5.2.0** instances. A browser fixture PASS must never be reported as a production/live PASS.
+No deployment URL or host path is built into the script. Existing `weigg-install.json` metadata is preserved and only its version/SHA/timestamp/installer identity is refreshed.
+
+## Documentation authority
+
+- `DESIGN.md` — canonical visual, interaction, mobile, status, timezone and primitive rules.
+- `docs/001.项目总方案.md` — product plan and non-negotiable engineering rules.
+- `docs/002.兼容与实现状态.md` — compatibility matrix, fixture/live boundaries and implementation status.
+- `docs/003.项目架构.md` — runtime ownership, directory structure and data boundaries.
+- `docs/004.UI与缓存契约.md` — UI primitive, FloatingLayer, mobile, storage, Advanced-unit and cache contracts.
+
+## Core invariants
+
+```text
+One semantic purpose → one canonical component
+Capability/field detection → not qB major checks
+Deployment endpoint/path → runtime/operator input, never repository constant
+Data count → never DOM count
+Polling → never destroys user navigation/scroll state
+Display timezone → never backend timezone
+Filesystem free space → never fabricated host telemetry
+HTML bootstrap → no-store
+Static asset identity → Git SHA
+Fixture PASS → never advertised as live certification
+```
