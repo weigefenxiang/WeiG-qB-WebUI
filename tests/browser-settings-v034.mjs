@@ -151,6 +151,10 @@ try{
           readonlyCount:cards.filter(card=>card.dataset.settingReadonly==='true').length,
           ratio:groupRect&&enabledRect?enabledRect.width/groupRect.width:0,
           pathRatio:groupRect&&pathRect?pathRect.width/groupRect.width:0,
+          enabledWidth:enabledRect?.width||0,
+          pathWidth:pathRect?.width||0,
+          enabledCenterDelta:groupRect&&enabledRect?Math.abs((enabledRect.left-groupRect.left)-(groupRect.right-enabledRect.right)):999,
+          pathCenterDelta:groupRect&&pathRect?Math.abs((pathRect.left-groupRect.left)-(groupRect.right-pathRect.right)):999,
           maxHeight:heights.length?Math.max(...heights):999,
           minHeight:heights.length?Math.min(...heights):0,
           metrics,
@@ -170,7 +174,12 @@ try{
       assert(layout.versionValue==='0.3.6',`${name}/${viewport.label}: installed version not shown`);
       assert(layout.shaValue===gitSha,`${name}/${viewport.label}: Git SHA not shown`);
       assert(layout.readonlyCount>=4,`${name}/${viewport.label}: installer metadata must use canonical readonly rows`);
-      assert(layout.ratio>0.94&&layout.pathRatio>0.94,`${name}/${viewport.label}: Settings rows must span the coherent section (${layout.ratio}/${layout.pathRatio})`);
+      if(viewport.width<=820){
+        assert(layout.ratio>0.94&&layout.pathRatio>0.94,`${name}/${viewport.label}: compact mobile Settings rows must span the coherent section (${layout.ratio}/${layout.pathRatio})`);
+      }else{
+        assert(layout.enabledWidth<=825&&layout.pathWidth<=825,`${name}/${viewport.label}: centered Settings Form Rail exceeded its compact width (${layout.enabledWidth}/${layout.pathWidth}px)`);
+        assert(layout.enabledCenterDelta<4&&layout.pathCenterDelta<4,`${name}/${viewport.label}: Settings Form Rail is not centered (${layout.enabledCenterDelta}/${layout.pathCenterDelta}px)`);
+      }
       assert(layout.maxHeight<90,`${name}/${viewport.label}: Settings row is oversized (${layout.maxHeight}px) · ${JSON.stringify(layout.metrics)}`);
       assert(layout.minHeight>=44,`${name}/${viewport.label}: Settings row is too compressed (${layout.minHeight}px) · ${JSON.stringify(layout.metrics)}`);
       assert(layout.scrollWidth<=layout.innerWidth+1,`${name}/${viewport.label}: settings horizontal overflow`);
