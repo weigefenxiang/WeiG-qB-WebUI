@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       candidate_sha:
-        description: Exact 40-character dev SHA that already passed full CI
+        description: Exact 40-character current dev SHA that passed dev validation
         required: true
         type: string
       live_gate:
@@ -28,7 +28,7 @@ jobs:
   promote:
     runs-on: ubuntu-latest
     steps:
-      - name: Verify exact validated candidate
+      - name: Verify exact validated dev state
         id: verify
         uses: actions/github-script@v7
         env:
@@ -49,7 +49,7 @@ jobs:
               return;
             }
             if (liveGate !== 'LIVE-PASS') {
-              core.setFailed('Real-server release gate is not confirmed. Type LIVE-PASS only after required live validation.');
+              core.setFailed('Real-server gate is not confirmed. Type LIVE-PASS only after required exact-SHA live validation.');
               return;
             }
             if (confirmation !== 'PROMOTE-VALIDATED-DEV') {
@@ -84,7 +84,7 @@ jobs:
             });
             const validated = runs.find(run => run.head_sha && run.head_sha.toLowerCase() === sha && run.conclusion === 'success');
             if (!validated) {
-              core.setFailed(`No successful full dev CI run exists for exact SHA ${sha}.`);
+              core.setFailed(`No successful dev CI run exists for exact SHA ${sha}.`);
               return;
             }
 
@@ -103,26 +103,12 @@ jobs:
               return;
             }
 
-            const artifactName = `release-candidate-${sha}`;
-            const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {
-              owner,
-              repo,
-              run_id: validated.id,
-              per_page: 100
-            });
-            const artifact = artifacts.find(item => item.name === artifactName && !item.expired);
-            if (!artifact) {
-              core.setFailed(`Validated dev CI run ${validated.id} does not contain reusable artifact ${artifactName}, or it has expired.`);
-              return;
-            }
-
-            core.info(`Validated by CI run #${validated.run_number}: ${validated.html_url}`);
+            core.info(`Validated by dev CI run #${validated.run_number}: ${validated.html_url}`);
             core.info(`Validated by upstream audit run #${upstreamValidated.run_number}: ${upstreamValidated.html_url}`);
-            core.info(`Reusable release artifact: ${artifact.name} (${artifact.id})`);
+            core.info('Full Linux/Windows browser matrices are intentionally deferred until main Release preparation.');
             core.setOutput('sha', sha);
             core.setOutput('ci_run', String(validated.id));
             core.setOutput('upstream_run', String(upstreamValidated.id));
-            core.setOutput('artifact_id', String(artifact.id));
 
       - name: Checkout main for authenticated fast-forward
         uses: actions/checkout@v4
@@ -142,8 +128,8 @@ jobs:
 
       - name: Promotion summary
         run: |
-          echo "main now points to the exact validated dev candidate: ${{ steps.verify.outputs.sha }}"
+          echo "main now points to the exact validated dev state: ${{ steps.verify.outputs.sha }}"
           echo "Reused successful dev CI run: ${{ steps.verify.outputs.ci_run }}"
           echo "Verified upstream compatibility audit: ${{ steps.verify.outputs.upstream_run }}"
-          echo "Reserved reusable release artifact: ${{ steps.verify.outputs.artifact_id }}"
-          echo "No merge commit and no duplicate full main CI run were created."
+          echo "Next: run CI manually from main with validation_mode=candidate before creating a stable tag."
+          echo "That main-only candidate run owns the full Linux/Windows browser matrices and reusable Release artifact."

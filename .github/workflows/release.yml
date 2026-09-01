@@ -17,7 +17,7 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - name: Resolve exact reusable dev artifact
+      - name: Resolve exact reusable main candidate artifact
         id: verify
         uses: actions/github-script@v7
         env:
@@ -42,14 +42,31 @@ jobs:
               owner,
               repo,
               workflow_id: 'ci.yml',
-              branch: 'dev',
-              event: 'push',
+              branch: 'main',
+              event: 'workflow_dispatch',
               status: 'success',
               per_page: 100
             });
-            const validated = runs.find(run => run.head_sha && run.head_sha.toLowerCase() === sha && run.conclusion === 'success');
-            if (!validated) {
-              core.setFailed(`No successful full dev CI run exists for exact release SHA ${sha}.`);
+            const exactRuns = runs.filter(run => run.head_sha && run.head_sha.toLowerCase() === sha && run.conclusion === 'success');
+            const artifactName = `release-candidate-${sha}`;
+            let validated = null;
+            let artifact = null;
+            for (const run of exactRuns) {
+              const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {
+                owner,
+                repo,
+                run_id: run.id,
+                per_page: 100
+              });
+              const candidate = artifacts.find(item => item.name === artifactName && !item.expired);
+              if (candidate) {
+                validated = run;
+                artifact = candidate;
+                break;
+              }
+            }
+            if (!validated || !artifact) {
+              core.setFailed(`No successful main Release-candidate CI run with reusable artifact ${artifactName} exists for exact SHA ${sha}.`);
               return;
             }
 
@@ -68,20 +85,7 @@ jobs:
               return;
             }
 
-            const artifactName = `release-candidate-${sha}`;
-            const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {
-              owner,
-              repo,
-              run_id: validated.id,
-              per_page: 100
-            });
-            const artifact = artifacts.find(item => item.name === artifactName && !item.expired);
-            if (!artifact) {
-              core.setFailed(`Reusable dev artifact ${artifactName} is missing or expired. Refusing to rebuild during release.`);
-              return;
-            }
-
-            core.info(`Reusing dev CI run #${validated.run_number}: ${validated.html_url}`);
+            core.info(`Reusing main Release-candidate CI run #${validated.run_number}: ${validated.html_url}`);
             core.info(`Verified upstream compatibility audit #${upstreamValidated.run_number}: ${upstreamValidated.html_url}`);
             core.info(`Reusing artifact ${artifact.name} (${artifact.id})`);
             core.setOutput('run_id', String(validated.id));
@@ -89,7 +93,7 @@ jobs:
             core.setOutput('artifact_name', artifactName);
             core.setOutput('artifact_id', String(artifact.id));
 
-      - name: Download validated dev release candidate
+      - name: Download validated main release candidate
         uses: actions/download-artifact@v4
         with:
           name: ${{ steps.verify.outputs.artifact_name }}

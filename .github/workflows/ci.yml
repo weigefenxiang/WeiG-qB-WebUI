@@ -14,7 +14,6 @@ on:
         options:
           - smoke
           - ui
-          - linux
           - candidate
 
 permissions:
@@ -66,7 +65,7 @@ jobs:
 
   ui_browser:
     name: Linux shared UI regression
-    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'ui') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[ui]')) }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'ui' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[ui]')) }}
     runs-on: ubuntu-latest
     needs: smoke
     steps:
@@ -89,11 +88,28 @@ jobs:
       - name: Shared responsive UI system regression
         run: node tests/browser-ui-system-v037.mjs
 
-  browser:
-    name: Linux browser matrix
-    if: ${{ (github.event_name == 'workflow_dispatch' && (inputs.validation_mode == 'linux' || inputs.validation_mode == 'candidate')) || (github.event_name == 'push' && (contains(github.event.head_commit.message, '[linux]') || contains(github.event.head_commit.message, '[candidate]'))) }}
+  release_guard:
+    name: Main release candidate guard
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' }}
     runs-on: ubuntu-latest
     needs: smoke
+    steps:
+      - name: Require main release preparation
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_REF" != 'refs/heads/main' ]; then
+            echo 'Full Linux/Windows browser matrices may run only from main while preparing a Release.' >&2
+            exit 1
+          fi
+
+  browser:
+    name: Linux browser matrix
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    needs:
+      - smoke
+      - release_guard
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -126,9 +142,11 @@ jobs:
 
   windows_browser:
     name: Windows browser matrix
-    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[candidate]')) }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' && github.ref == 'refs/heads/main' }}
     runs-on: windows-latest
-    needs: smoke
+    needs:
+      - smoke
+      - release_guard
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -157,10 +175,11 @@ jobs:
 
   release_candidate:
     name: release candidate
-    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[candidate]')) }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     needs:
       - smoke
+      - release_guard
       - browser
       - windows_browser
     steps:
