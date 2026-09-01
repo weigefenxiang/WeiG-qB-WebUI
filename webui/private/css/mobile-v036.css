@@ -11,12 +11,10 @@
 html[data-density=compact]{--mobile-torrent-row-h:102px}
 html[data-density=comfortable]{--mobile-torrent-row-h:126px}
 
-/* STORAGE-001: qB default-save filesystem free space in the global status dock. */
 .status-storage{display:inline-flex;align-items:center;gap:5px;min-width:0;color:var(--text-muted);white-space:nowrap;font-variant-numeric:tabular-nums}
 .status-storage strong{color:var(--text-secondary);font-weight:720}
 .status-storage__icon{color:var(--accent-cyan);font-size:.95em}
 
-/* STATUS-SEMANTIC-001: state is readable by text + tone; color never stands alone. */
 .status-pill{font-variant-numeric:tabular-nums;letter-spacing:-.012em;box-shadow:inset 0 1px rgba(255,255,255,.035)}
 .status-pill[data-tone=download]{color:#8ee8ff;background:linear-gradient(180deg,rgba(56,214,255,.13),rgba(56,214,255,.065));border-color:rgba(56,214,255,.24);box-shadow:inset 0 1px rgba(255,255,255,.045),0 0 16px rgba(56,214,255,.045)}
 .status-pill[data-tone=seed]{color:#7ee9b5;background:linear-gradient(180deg,rgba(57,217,138,.13),rgba(57,217,138,.06));border-color:rgba(57,217,138,.23);box-shadow:inset 0 1px rgba(255,255,255,.045),0 0 16px rgba(57,217,138,.04)}
@@ -27,29 +25,25 @@ html[data-density=comfortable]{--mobile-torrent-row-h:126px}
 .status-pill[data-tone=checking]{color:#ffe09b;background:linear-gradient(180deg,rgba(255,198,95,.13),rgba(255,198,95,.06));border-color:rgba(255,198,95,.21)}
 
 @media(max-width:820px){
-  /* MOBILE-LAYOUT-001: App Shell is the only viewport owner. */
   html{height:100svh;min-height:100svh;max-height:100svh;overflow:hidden}
   body{height:100svh;min-height:0;max-height:100svh;overflow:hidden}
   .app-shell{height:100svh;min-height:0;max-height:100svh;overflow:hidden;gap:5px;padding:6px}
   .workspace{display:flex;flex-direction:column;min-height:0;max-height:100%;height:auto;overflow:hidden;padding:0;overscroll-behavior:contain}
   .view{min-height:0;height:auto}
   .view.is-active{display:flex;flex:1 1 0;flex-direction:column;min-height:0;max-height:100%;overflow:hidden}
-
-  /* SCROLL-001: route chrome never competes with the route's declared primary scroll owner. */
   .view[data-page-layout]>.workspace__header,.view[data-page-layout]>.detail-hero,.view[data-page-layout]>.detail-tabs{flex:0 0 auto}
   [data-primary-scroll="1"]{min-height:0;overscroll-behavior:contain}
 
-  /* COMMAND-001: Torrent context + count + actions stay on one line. */
   #list-view>.workspace__header{display:block;flex:0 0 auto;padding:0 0 5px;min-width:0}
   #list-view>.workspace__header>div:first-child{display:none}
   .mobile-command-bar{display:flex;align-items:center;gap:4px;width:100%;min-width:0;max-width:100%;height:34px;overflow:hidden;white-space:nowrap}
-  .mobile-filter-control{display:flex;align-items:center;flex:0 1 auto;min-width:44px;max-width:86px}
+  .mobile-filter-control{display:flex;align-items:center;flex:0 1 auto;min-width:44px;max-width:86px;height:30px}
   .mobile-filter-control>.ui-native-select{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important}
   .mobile-filter-control>.ui-select{width:auto;min-width:44px;max-width:86px;flex:0 1 auto}
   .mobile-filter-control .ui-select__trigger{height:30px;min-height:30px;padding:0 6px;gap:3px;border-radius:8px;font-size:var(--mobile-command-size);font-weight:720}
   .mobile-filter-control .ui-select__value{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .mobile-command-count{flex:0 1 auto;min-width:0;max-width:88px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-muted);font-size:var(--mobile-command-count-size);font-weight:650;font-variant-numeric:tabular-nums;letter-spacing:-.025em}
-  #mobile-command-bar .toolbar{display:flex;flex:1 1 auto;justify-content:flex-end;min-width:0;gap:2px;padding:0;border:0;background:transparent;box-shadow:none;backdrop-filter:none;overflow:visible}
+  .mobile-command-count{display:flex;align-items:center;height:30px;flex:0 1 auto;min-width:0;max-width:88px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-muted);font-size:var(--mobile-command-count-size);font-weight:650;font-variant-numeric:tabular-nums;letter-spacing:-.025em}
+  #mobile-command-bar .toolbar{display:flex;align-items:center;height:30px;flex:1 1 auto;justify-content:flex-end;min-width:0;gap:2px;padding:0;border:0;background:transparent;box-shadow:none;backdrop-filter:none;overflow:visible}
   #mobile-command-bar .toolbar .btn{flex:0 1 auto;min-width:0;min-height:30px;height:30px;padding:0 5px;border-radius:8px;white-space:nowrap;overflow:hidden;font-size:var(--mobile-command-size);line-height:1;font-weight:690;letter-spacing:-.025em}
   .mobile-command-bar.is-tight{gap:2px}
   .mobile-command-bar.is-tight .mobile-command-count{max-width:72px}
@@ -61,7 +55,6 @@ html[data-density=comfortable]{--mobile-torrent-row-h:126px}
   .mobile-command-bar.is-ultra-tight .mobile-filter-control,.mobile-command-bar.is-ultra-tight .mobile-filter-control>.ui-select{max-width:58px}
   .mobile-command-bar.is-ultra-tight .mobile-filter-control .ui-select__trigger{padding-inline:4px;font-size:8px}
 
-  /* FACET-001: compact semantic facet shelf; all-state label stays short until expanded. */
   #filter-shelf{flex:0 0 auto;gap:4px;min-height:40px;margin:0 0 5px;padding:4px;overflow-x:auto;scrollbar-width:none}
   #filter-shelf::-webkit-scrollbar{display:none}
   #filter-shelf .facet-filter{flex:0 1 auto;min-width:0}
@@ -73,14 +66,12 @@ html[data-density=comfortable]{--mobile-torrent-row-h:126px}
   #filter-shelf .facet-popover{position:fixed;left:8px!important;right:8px;top:auto!important;bottom:calc(70px + env(safe-area-inset-bottom));width:auto;max-height:min(70vh,540px)}
   #filter-shelf .facet-popover .nav-list{max-height:52vh}
 
-  /* Mobile instrument hierarchy: title >= value > helper copy. */
   #list-view>.stats-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));flex:0 0 auto;gap:4px;margin:0 0 5px;overflow:visible}
   #list-view .stat-card{min-width:0;padding:6px 5px;border-radius:9px;overflow:hidden}
   #list-view .stat-card .text-label{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--mobile-stat-label-size);font-weight:720;line-height:1.15;letter-spacing:-.02em}
   #list-view .stat-card strong{display:block;margin:3px 0 2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--mobile-stat-value-size)!important;font-weight:700;line-height:1.1}
   #list-view .stat-card small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--mobile-stat-meta-size)!important;line-height:1.1;color:var(--text-muted)}
 
-  /* VIEWPORT-001: Torrent panel consumes every remaining pixel; focus mode hides non-data chrome. */
   #list-view>.torrent-panel{display:flex;flex:1 1 0;flex-direction:column;min-height:0;max-height:100%;overflow:hidden}
   #list-view .grid-toolbar,#list-view .pager{flex:0 0 auto}
   #torrent-list{flex:1 1 0;height:auto!important;min-height:0!important;max-height:none!important;overflow:auto;overscroll-behavior:contain}
@@ -97,7 +88,6 @@ html[data-density=comfortable]{--mobile-torrent-row-h:126px}
   #list-view .pager .btn{min-height:32px;padding-inline:7px;font-size:clamp(9px,2.55vw,11px)}
   #page-label{min-width:0;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:clamp(9px,2.55vw,11px)}
 
-  /* MOBILE-CARD-001: dense but legible; secondary metrics remain one line and auto-fit. */
   .torrent-mobile-card{height:calc(var(--mobile-torrent-row-h) - 6px)!important;padding:9px 10px;border-radius:12px;container-type:inline-size}
   .mobile-card-top{grid-template-columns:22px minmax(0,1fr) 34px;gap:6px}
   .mobile-card-title{font-size:clamp(13px,3.65vw,var(--text-item-primary));font-weight:680;letter-spacing:-.012em}
@@ -114,7 +104,6 @@ html[data-density=comfortable]{--mobile-torrent-row-h:126px}
   @container (max-width:350px){.mobile-card-meta{--mobile-meta-gap:3px}.mobile-card-meta .cell{letter-spacing:-.038em}}
   @container (max-width:320px){.mobile-card-meta{--mobile-meta-gap:2px}}
 
-  /* SCROLL-001 / TOOL-PAGE-001: exactly one primary scroll owner in each long mobile route. */
   #settings-view,#detail-view,#search-view,#rss-view,#logs-view{overflow:hidden}
   #settings-view>.workspace__header,#search-view>.workspace__header,#rss-view>.workspace__header,#logs-view>.workspace__header{flex:0 0 auto;padding:2px 1px 6px}
   #settings-view>.workspace__header .eyebrow,#search-view>.workspace__header .eyebrow,#rss-view>.workspace__header .eyebrow,#logs-view>.workspace__header .eyebrow{display:none}
@@ -138,7 +127,6 @@ html[data-density=comfortable]{--mobile-torrent-row-h:126px}
   #search-view .inline-form,#rss-view .inline-form{flex:0 0 auto;margin-bottom:6px;gap:4px}
   #search-view [data-primary-scroll="1"],#rss-view [data-primary-scroll="1"],#logs-view [data-primary-scroll="1"]{flex:1 1 0;min-height:0!important;max-height:none!important;overflow:auto!important}
 
-  /* Status dock keeps useful download-volume capacity visible on phones. */
   .statusbar{overflow:hidden;gap:6px;padding-inline:7px}
   .statusbar>.status-storage{display:inline-flex!important;margin-left:auto;flex:0 0 auto;font-size:clamp(9px,2.55vw,11px)}
   .status-storage__label{display:none}
