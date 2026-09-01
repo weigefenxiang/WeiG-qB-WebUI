@@ -1,0 +1,35 @@
+name: Upstream Compatibility Audit
+
+on:
+  push:
+    branches:
+      - dev
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: upstream-compat-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  all_qb_releases:
+    name: All official qB 4.x and 5.x stable tags
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout WeiG qB WebUI
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Checkout qBittorrent upstream with all release tags
+        uses: actions/checkout@v4
+        with:
+          repository: qbittorrent/qBittorrent
+          path: upstream-qb
+          fetch-depth: 0
+          filter: blob:none
+      - name: Audit every official stable qB 4.x and 5.x tag from 4.1.9.1
+        run: node tests/upstream-release-audit-v037.mjs upstream-qb
