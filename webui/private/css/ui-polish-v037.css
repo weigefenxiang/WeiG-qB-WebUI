@@ -74,7 +74,7 @@
 .transfer-capsule--unified[data-mode="alt"]{border-color:var(--ui-alt-border)!important;background:linear-gradient(180deg,rgba(137,108,255,.18),rgba(137,108,255,.09))!important;box-shadow:inset 0 0 20px rgba(137,108,255,.07)!important}
 .transfer-capsule--unified[data-mode="alt"]:hover{border-color:rgba(171,145,255,.62)!important;background:linear-gradient(180deg,rgba(137,108,255,.23),rgba(137,108,255,.11))!important}
 
-.transfer-rate-editor{width:min(var(--transfer-editor-w),calc(100vw - 48px))!important;max-height:calc(100dvh - 48px)!important;padding:0!important;overflow:auto!important;transition:background var(--motion-normal),box-shadow var(--motion-normal)}
+.transfer-rate-editor{width:min(var(--transfer-editor-w),calc(100vw - 48px))!important;max-width:min(var(--transfer-editor-w),calc(100vw - 48px))!important;max-height:calc(100dvh - 48px)!important;padding:0!important;overflow:auto!important;transition:background var(--motion-normal),box-shadow var(--motion-normal)}
 .transfer-rate-editor>.dialog__head{padding:22px 24px 16px!important}
 .transfer-rate-editor>.dialog__body{padding:0 24px 20px!important}
 .transfer-rate-editor>.dialog__actions{padding:0 24px 22px!important;gap:10px!important}
@@ -161,7 +161,7 @@
   .about-surface .about-facts-grid{grid-template-columns:minmax(0,1fr)!important;grid-auto-flow:row!important}
   #settings-view #settings-content .about-surface .about-facts-grid .about-fact{grid-column:1!important;width:100%!important;max-width:100%!important;justify-self:stretch!important;transform:none!important;border-right:0!important;border-bottom:1px solid var(--border)!important}
   .about-surface .about-facts-grid .about-fact:last-child{border-bottom:0!important}
-  .transfer-rate-editor{width:calc(100vw - 24px)!important;max-height:calc(100dvh - 24px)!important}
+  .transfer-rate-editor{width:calc(100vw - 24px)!important;max-width:calc(100vw - 24px)!important;max-height:calc(100dvh - 24px)!important}
   .transfer-rate-editor>.dialog__head{padding:18px 18px 14px!important}
   .transfer-rate-editor>.dialog__body{padding:0 18px 16px!important}
   .transfer-rate-editor>.dialog__actions{padding:0 18px 18px!important}
