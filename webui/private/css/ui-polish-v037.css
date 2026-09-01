@@ -12,7 +12,7 @@
 @media(min-width:821px){
   .app-shell{padding-bottom:var(--shell-edge-inset)!important}
   .workspace{min-height:0!important;overflow:hidden!important;padding-bottom:0!important}
-  #list-view.is-active{display:grid!important;grid-template-rows:auto auto minmax(0,1fr)!important;height:100%!important;min-height:0!important}
+  #list-view.is-active{display:grid!important;grid-template-rows:auto auto auto minmax(0,1fr)!important;height:100%!important;min-height:0!important}
   #list-view>.torrent-panel{display:grid!important;grid-template-rows:auto auto minmax(0,1fr) auto!important;min-height:0!important;height:auto!important;margin-bottom:0!important}
   #list-view #torrent-list{height:auto!important;min-height:0!important;max-height:none!important}
 }
@@ -31,7 +31,9 @@
 .connection-indicator[data-connection-state="limited"]::before{background:var(--warning);box-shadow:0 0 0 3px rgba(255,189,90,.08),0 0 12px rgba(255,189,90,.30)}
 .connection-indicator[data-connection-state="disconnected"]::before{background:var(--danger);box-shadow:0 0 0 3px rgba(255,102,122,.08),0 0 10px rgba(255,102,122,.22);animation:none}
 .connection-indicator.is-refresh-pulse::after{animation:connectionPulse .62s ease-out}
-@keyframes connectionBreathe{0%,100%{filter:brightness(.9);transform:translateY(-50%) scale(.92)}50%{filter:brightness(1.22);transform:translateY(-50%) scale(1.12)}}
+#filter-shelf .filter-shelf__summary{display:inline-flex;align-items:center;gap:7px}
+#filter-shelf .filter-shelf__summary::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--success);box-shadow:0 0 0 3px rgba(57,217,138,.07),0 0 11px rgba(57,217,138,.34);animation:connectionBreathe 2.8s ease-in-out infinite}
+@keyframes connectionBreathe{0%,100%{filter:brightness(.9);transform:scale(.92)}50%{filter:brightness(1.22);transform:scale(1.12)}}
 @keyframes connectionPulse{0%{opacity:.8;transform:translateY(-50%) scale(.5)}100%{opacity:0;transform:translateY(-50%) scale(1.65)}}
 
 /* TOOLTIP-002 */
@@ -144,6 +146,6 @@
 }
 
 @media(prefers-reduced-motion:reduce){
-  .connection-indicator::before,.connection-indicator::after{animation:none!important}
+  .connection-indicator::before,.connection-indicator::after,#filter-shelf .filter-shelf__summary::before{animation:none!important}
   .rate-scrubber,.action-sheet-polish .btn{transition:none!important}
 }
