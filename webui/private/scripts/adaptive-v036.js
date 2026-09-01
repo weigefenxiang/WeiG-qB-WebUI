@@ -6,8 +6,15 @@
   function baseT(key,fallback){var value=W.t?W.t(key):key;return value&&value!==key?value:fallback;}
 
   function ensureAdaptiveCssLast(){
-    var link=document.querySelector('link[href*="mobile-v036.css"]');
-    if(link&&link.parentNode===document.head&&link!==document.head.lastElementChild)document.head.appendChild(link);
+    var head=document.head,link=document.querySelector('link[href*="mobile-v036.css"]');
+    if(!link||link.parentNode!==head)return;
+    var v037=document.querySelector('link[data-weigg-layer="v037"]'),ui=document.querySelector('link[data-weigg-layer="ui-system-037"]'),owner=v037||ui;
+    if(owner&&owner.parentNode===head){
+      var children=Array.from(head.children),linkIndex=children.indexOf(link),ownerIndex=children.indexOf(owner);
+      if(linkIndex>ownerIndex)head.insertBefore(link,owner);
+      return;
+    }
+    if(link!==head.lastElementChild)head.appendChild(link);
   }
 
   /* SETTING-UNIT-002 — load the verified display-conversion layer after v036's base metadata wrapper. */
@@ -77,77 +84,38 @@
     s=s.replace(/(\d+[dhms])\s+(?=\d)/g,'$1');
     return s;
   }
-  function compactMetaCells(cells){
-    cells.forEach(function(cell){
-      if(cell.dataset.mobileMetricFull===undefined)cell.dataset.mobileMetricFull=cell.textContent||'';
-      var compact=compactMetricText(cell.dataset.mobileMetricFull);if(cell.textContent!==compact)cell.textContent=compact;
-      if(!cell.title)cell.title=cell.dataset.mobileMetricFull;
-    });
-  }
+  function compactMetaCells(cells){cells.forEach(function(cell){if(cell.dataset.mobileFullText===undefined)cell.dataset.mobileFullText=cell.textContent||'';var full=cell.dataset.mobileFullText,compact=compactMetricText(full);cell.textContent=compact;cell.title=full;});}
   function fitMobileMeta(meta){
-    if(!meta||!isMobile()||meta.clientWidth<=0)return;
-    var cells=Array.from(meta.querySelectorAll('.cell'));if(!cells.length)return;
-    compactMetaCells(cells);
-    meta.style.removeProperty('--mobile-meta-font');meta.style.removeProperty('--mobile-meta-gap');meta.classList.remove('is-ultra-tight');
-    var style=getComputedStyle(cells[0]),base=parseFloat(style.fontSize)||10,metaStyle=getComputedStyle(meta),gap=parseFloat(metaStyle.columnGap||metaStyle.gap)||3,available=meta.clientWidth;
-    if(meta.scrollWidth<=available+1)return;
-    var font=base,nextGap=Math.max(1,Math.min(gap,3));meta.style.setProperty('--mobile-meta-gap',nextGap+'px');
-    while(meta.scrollWidth>available+1&&font>7){font=Math.max(7,font-.5);meta.style.setProperty('--mobile-meta-font',font+'px');}
-    if(meta.scrollWidth>available+1){meta.classList.add('is-ultra-tight');meta.style.setProperty('--mobile-meta-gap','1px');}
-    if(meta.scrollWidth>available+1&&font>6.5){font=6.5;meta.style.setProperty('--mobile-meta-font',font+'px');}
+    if(!meta||!isMobile())return;var cells=Array.from(meta.querySelectorAll('.cell'));if(!cells.length)return;
+    compactMetaCells(cells);meta.classList.remove('is-tight','is-ultra-tight');meta.style.removeProperty('--mobile-meta-gap');meta.style.removeProperty('--mobile-meta-font');
+    if(meta.scrollWidth<=meta.clientWidth+1)return;
+    meta.classList.add('is-tight');meta.style.setProperty('--mobile-meta-gap','3px');meta.style.setProperty('--mobile-meta-font','9px');
+    if(meta.scrollWidth<=meta.clientWidth+1)return;
+    meta.classList.add('is-ultra-tight');meta.style.setProperty('--mobile-meta-gap','2px');meta.style.setProperty('--mobile-meta-font','8px');
   }
   function fitVisibleMobileMeta(root){Array.from((root||document).querySelectorAll('.mobile-card-meta')).forEach(fitMobileMeta);}
-  function observeTorrentMeta(){
-    var list=document.getElementById('torrent-list');if(!list||list.__weiggMetaFitObserved)return;list.__weiggMetaFitObserved=true;
-    var pending=false;new MutationObserver(function(){if(pending)return;pending=true;requestAnimationFrame(function(){pending=false;fitVisibleMobileMeta(list);});}).observe(list,{childList:true,subtree:true,characterData:true});
-    if(global.ResizeObserver){new ResizeObserver(function(){requestAnimationFrame(function(){fitVisibleMobileMeta(list);});}).observe(list);}
-    fitVisibleMobileMeta(list);
-  }
+  function observeTorrentMeta(){var list=document.getElementById('torrent-list');if(!list||list.__weiggMobileMetaObserver)return;var pending=false;list.__weiggMobileMetaObserver=new MutationObserver(function(){if(pending)return;pending=true;requestAnimationFrame(function(){pending=false;fitVisibleMobileMeta(list);});});list.__weiggMobileMetaObserver.observe(list,{childList:true,subtree:true,characterData:true});}
 
-  /* COMMAND-001 — one compact, non-wrapping command bar for phone-scale page actions. */
-  var commandBar=null,commandSelect=null,commandCustom=null,commandCount=null,toolbarAnchor=null;
-  var filterFallback={all:'All',downloading:'Downloading',seeding:'Seeding',completed:'Completed',paused:'Paused',active:'Active',stalled:'Stalled',errored:'Error',private:'Private / PT'};
-  function filterLabel(filter){var key=filter==='errored'?'filter.error':'filter.'+filter;return baseT(key,filterFallback[filter]||filter);}
-  function commandOptions(){return Array.from(document.querySelectorAll('#filter-nav [data-filter]')).filter(function(button){return !button.hidden;}).map(function(button){return {value:button.dataset.filter,label:filterLabel(button.dataset.filter)};});}
-  function ensureCommandSelectUpgrade(){
-    if(!commandSelect)return null;var next=commandSelect.nextElementSibling;if(next&&next.classList&&next.classList.contains('ui-select'))commandCustom=next;
-    if(!commandCustom&&C.__floatingSelectV036&&C.upgradeNativeSelect)commandCustom=C.upgradeNativeSelect(commandSelect);
-    return commandCustom;
-  }
-  function syncCommandFilter(){
-    if(!commandSelect)return;ensureCommandSelectUpgrade();var active=document.querySelector('#filter-nav [data-filter].is-active'),value=active?active.dataset.filter:'all';commandSelect.value=value;if(commandCustom)commandCustom.setValue(value);
-  }
-  function syncCommandCount(){
-    if(!commandCount)return;var source=document.getElementById('torrent-count'),count=source&&String(source.textContent||'').trim()||'…';commandCount.textContent=tr('v036.mobile.count',count+' Torrents',{count:count});
-  }
-  function syncCommandLocale(){
-    if(!commandSelect)return;var options=commandOptions();Array.from(commandSelect.options).forEach(function(option){var next=options.find(function(x){return x.value===option.value;});if(next)option.textContent=next.label;});ensureCommandSelectUpgrade();if(commandCustom)commandCustom.setOptions(options);syncCommandFilter();syncCommandCount();
-  }
-  function mountCommandBar(){
-    if(!commandBar)return;ensureCommandSelectUpgrade();var toolbar=document.querySelector('#list-view>.workspace__header .toolbar, #mobile-command-bar .toolbar');if(!toolbar)return;
-    if(isMobile()){if(toolbar.parentElement!==commandBar)commandBar.appendChild(toolbar);}else if(toolbarAnchor&&toolbarAnchor.parentNode){toolbarAnchor.parentNode.insertBefore(toolbar,toolbarAnchor.nextSibling);}
-    fitCommandBar();
-  }
-  function fitCommandBar(){
-    if(!commandBar||!isMobile()||commandBar.clientWidth<=0)return;commandBar.classList.remove('is-tight','is-ultra-tight');
-    if(commandBar.scrollWidth>commandBar.clientWidth+1)commandBar.classList.add('is-tight');
-    if(commandBar.scrollWidth>commandBar.clientWidth+1)commandBar.classList.add('is-ultra-tight');
-  }
+  /* MOBILE-COMMAND-001 — single adaptive command bar, shrink before wrapping. */
+  var commandBar=null,commandCount=null,filterControl=null,filterNavObserver=null;
+  function filterOptions(){var nav=document.getElementById('filter-nav');if(!nav)return[];return Array.from(nav.querySelectorAll('[data-filter]')).map(function(btn){return{value:btn.dataset.filter||'all',label:String(btn.textContent||'').replace(/\s·\s\d+$/,'').trim()||baseT('filter.all','All')};});}
+  function currentFilter(){var active=document.querySelector('#filter-nav [data-filter].is-active');return active?active.dataset.filter||'all':'all';}
+  function syncFilterControl(){if(!filterControl)return;var opts=filterOptions(),value=currentFilter();filterControl.setOptions(opts);filterControl.setValue(value);}
+  function syncCommandLocale(){if(!commandCount)return;var count=document.getElementById('library-count-copy');commandCount.textContent=count?count.textContent:'—';syncFilterControl();}
   function installCompactCommandBar(){
-    if(commandBar){mountCommandBar();return;}
-    var header=document.querySelector('#list-view>.workspace__header'),toolbar=header&&header.querySelector('.toolbar'),nav=document.getElementById('filter-nav');if(!header||!toolbar||!nav)return;
-    commandBar=document.createElement('div');commandBar.id='mobile-command-bar';commandBar.className='mobile-command-bar';commandBar.dataset.compactCommand='1';
-    var control=document.createElement('span');control.className='mobile-filter-control';
-    commandSelect=document.createElement('select');commandSelect.id='mobile-filter-select';commandSelect.setAttribute('aria-label',baseT('sidebar.torrents','Torrent filter'));
-    commandOptions().forEach(function(item){var option=document.createElement('option');option.value=item.value;option.textContent=item.label;commandSelect.appendChild(option);});
-    commandSelect.addEventListener('change',function(){var button=Array.from(nav.querySelectorAll('[data-filter]')).find(function(item){return item.dataset.filter===commandSelect.value;});if(button)button.click();});
-    control.appendChild(commandSelect);commandCount=document.createElement('span');commandCount.className='mobile-command-count';
-    commandBar.append(control,commandCount);header.appendChild(commandBar);
-    toolbarAnchor=document.createComment('weigg-mobile-toolbar-anchor');toolbar.parentNode.insertBefore(toolbarAnchor,toolbar);
-    var countSource=document.getElementById('torrent-count');if(countSource)new MutationObserver(function(){syncCommandCount();requestAnimationFrame(fitCommandBar);}).observe(countSource,{childList:true,characterData:true,subtree:true});
-    new MutationObserver(function(){syncCommandFilter();requestAnimationFrame(fitCommandBar);}).observe(nav,{subtree:true,attributes:true,attributeFilter:['class','hidden']});
-    syncCommandLocale();mountCommandBar();
+    if(commandBar)return commandBar;var header=document.querySelector('#list-view>.workspace__header'),toolbar=header&&header.querySelector('.toolbar');if(!header||!toolbar)return null;
+    commandBar=document.createElement('div');commandBar.id='mobile-command-bar';commandBar.className='mobile-command-bar mobile-only';
+    filterControl=document.createElement('div');filterControl.className='mobile-filter-control';
+    var select=document.createElement('select');select.className='ui-native-select';select.setAttribute('aria-label',tr('v036.mobile.filter','Torrent filter'));filterControl.appendChild(select);
+    if(C.selectControl)filterControl.appendChild(C.selectControl({select:select,options:filterOptions(),value:currentFilter(),ariaLabel:tr('v036.mobile.filter','Torrent filter'),onChange:function(value){var target=document.querySelector('#filter-nav [data-filter="'+value+'"]');if(target)target.click();}}));
+    commandCount=document.createElement('span');commandCount.className='mobile-command-count';var source=document.getElementById('library-count-copy');commandCount.textContent=source?source.textContent:'—';
+    commandBar.append(filterControl,commandCount,toolbar);header.prepend(commandBar);
+    var nav=document.getElementById('filter-nav');if(nav&&!filterNavObserver){filterNavObserver=new MutationObserver(function(){syncFilterControl();});filterNavObserver.observe(nav,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});}
+    var count=document.getElementById('library-count-copy');if(count&&!count.__weiggCommandObserver){count.__weiggCommandObserver=new MutationObserver(function(){commandCount.textContent=count.textContent||'—';fitCommandBar();});count.__weiggCommandObserver.observe(count,{childList:true,characterData:true,subtree:true});}
+    return commandBar;
   }
+  function mountCommandBar(){var header=document.querySelector('#list-view>.workspace__header'),toolbar=document.querySelector('#list-view>.workspace__header .toolbar'),bar=commandBar||installCompactCommandBar();if(!header||!toolbar||!bar)return;if(isMobile()){if(toolbar.parentElement!==bar)bar.appendChild(toolbar);bar.hidden=false;}else{if(toolbar.parentElement===bar)header.appendChild(toolbar);bar.hidden=true;}}
+  function fitCommandBar(){if(!commandBar||!isMobile())return;commandBar.classList.remove('is-tight','is-ultra-tight');if(commandBar.scrollWidth<=commandBar.clientWidth+1)return;commandBar.classList.add('is-tight');if(commandBar.scrollWidth<=commandBar.clientWidth+1)return;commandBar.classList.add('is-ultra-tight');}
 
   /* FACET-001 — collapsed mobile facets show the semantic name for the all-state. */
   var facetDefs={
