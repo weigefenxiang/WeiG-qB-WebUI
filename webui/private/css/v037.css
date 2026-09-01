@@ -60,6 +60,9 @@ dialog.dialog[data-adaptive-dialog="1"]>form{display:grid;grid-template-rows:aut
 #settings-view #settings-content .settings-row--canonical>.switch-control,
 #settings-view #settings-content .settings-row--canonical>.ui-select{grid-column:2!important;grid-row:1!important;align-self:center!important;justify-self:end!important}
 
+/* MOBILE-TORRENT-TRANSIENT-001 — before JS folds excess metrics into +N, never expose horizontal overflow. */
+html[data-v037="1"] .torrent-mobile-card--two-line .mobile-card-meta--rail .mobile-metric{flex:0 1 auto!important;min-width:0!important;max-width:min(160px,100%)!important}
+
 /* Mobile ResponsiveShell 3.0 */
 @media(max-width:820px){
   html,body{height:100svh;min-height:100svh;max-height:100svh}
