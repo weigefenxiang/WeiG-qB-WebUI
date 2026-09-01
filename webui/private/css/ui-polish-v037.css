@@ -132,8 +132,8 @@
   .app-shell{padding-bottom:max(8px,env(safe-area-inset-bottom))!important}
   .mobile-bottom-nav{margin-bottom:max(2px,env(safe-area-inset-bottom))!important}
   /* Mobile keeps the proven compact two-column setting contract; Form Rail is desktop-only. */
-  .about-surface .about-facts-grid{grid-template-columns:1fr}
-  .about-surface .about-facts-grid .about-fact{border-right:0!important;border-bottom:1px solid var(--border)!important}
+  .about-surface .about-facts-grid{grid-template-columns:minmax(0,1fr)!important;grid-auto-flow:row!important}
+  .about-surface .about-facts-grid .about-fact{grid-column:1!important;width:100%!important;max-width:100%!important;justify-self:stretch!important;transform:none!important;border-right:0!important;border-bottom:1px solid var(--border)!important}
   .about-surface .about-facts-grid .about-fact:last-child{border-bottom:0!important}
   .transfer-rate-editor{width:calc(100vw - 14px)!important}
   .rate-field__controls{grid-template-columns:minmax(0,1fr) auto 34px}
