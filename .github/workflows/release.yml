@@ -53,6 +53,21 @@ jobs:
               return;
             }
 
+            const upstreamRuns = await github.paginate(github.rest.actions.listWorkflowRuns, {
+              owner,
+              repo,
+              workflow_id: 'upstream-compat.yml',
+              branch: 'dev',
+              event: 'push',
+              status: 'success',
+              per_page: 100
+            });
+            const upstreamValidated = upstreamRuns.find(run => run.head_sha && run.head_sha.toLowerCase() === sha && run.conclusion === 'success');
+            if (!upstreamValidated) {
+              core.setFailed(`No successful upstream compatibility audit exists for exact release SHA ${sha}.`);
+              return;
+            }
+
             const artifactName = `release-candidate-${sha}`;
             const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {
               owner,
@@ -67,8 +82,10 @@ jobs:
             }
 
             core.info(`Reusing dev CI run #${validated.run_number}: ${validated.html_url}`);
+            core.info(`Verified upstream compatibility audit #${upstreamValidated.run_number}: ${upstreamValidated.html_url}`);
             core.info(`Reusing artifact ${artifact.name} (${artifact.id})`);
             core.setOutput('run_id', String(validated.id));
+            core.setOutput('upstream_run_id', String(upstreamValidated.id));
             core.setOutput('artifact_name', artifactName);
             core.setOutput('artifact_id', String(artifact.id));
 
