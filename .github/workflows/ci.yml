@@ -5,6 +5,16 @@ on:
     branches:
       - dev
   workflow_dispatch:
+    inputs:
+      validation_mode:
+        description: Validation depth
+        required: true
+        default: smoke
+        type: choice
+        options:
+          - smoke
+          - linux
+          - candidate
 
 permissions:
   contents: read
@@ -55,6 +65,7 @@ jobs:
 
   browser:
     name: Linux browser matrix
+    if: ${{ github.event_name == 'workflow_dispatch' && (inputs.validation_mode == 'linux' || inputs.validation_mode == 'candidate') }}
     runs-on: ubuntu-latest
     needs: smoke
     steps:
@@ -81,6 +92,7 @@ jobs:
 
   windows_browser:
     name: Windows browser matrix
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' }}
     runs-on: windows-latest
     needs: smoke
     steps:
@@ -111,6 +123,7 @@ jobs:
 
   release_candidate:
     name: release candidate
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' }}
     runs-on: ubuntu-latest
     needs:
       - smoke
