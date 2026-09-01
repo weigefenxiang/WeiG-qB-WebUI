@@ -40,8 +40,10 @@ for(const token of ['currentBuildToken','buildAssetUrl','weigg-build-sha','css(\
 
 assert(marker===PLACEHOLDER, 'Source GIT_SHA must remain a deploy-time placeholder');
 assert(metadata.includes(`"gitSha": "${PLACEHOLDER}"`), 'Source metadata must expose the deploy-time Git SHA');
-for(const token of ['SOURCE_SHA','resolve_main_sha','inject_build_sha','GIT_SHA','gitSha','__WEIGG_GIT_SHA__']) assert(linux.includes(token), `Linux Git-SHA installer token missing: ${token}`);
-for(const token of ['Resolve-MainSha','Inject-BuildSha','GIT_SHA','gitSha','__WEIGG_GIT_SHA__']) assert(windows.includes(token), `Windows Git-SHA installer token missing: ${token}`);
+for(const token of ['SOURCE_SHA','inject_build_sha','GIT_SHA','gitSha','__WEIGG_GIT_SHA__','releases/latest/download/WeiG-qB-WebUI.zip','releases/latest/download/SHA256SUMS']) assert(linux.includes(token), `Linux Release/Git-SHA installer token missing: ${token}`);
+for(const token of ['Inject-BuildSha','GIT_SHA','gitSha','__WEIGG_GIT_SHA__','releases/latest/download/WeiG-qB-WebUI.zip','releases/latest/download/SHA256SUMS']) assert(windows.includes(token), `Windows Release/Git-SHA installer token missing: ${token}`);
+assert(!linux.includes('archive/refs/heads/main.zip') && !linux.includes('resolve_main_sha'),'Linux stable installer must not use main as a payload source');
+assert(!windows.includes('archive/refs/heads/main.zip') && !windows.includes('Resolve-MainSha'),'Windows stable installer must not use main as a payload source');
 for(const token of ['GITHUB_SHA','__WEIGG_GIT_SHA__','GIT_SHA','CANDIDATE_SHA']) assert(ci.includes(token), `Dev candidate Git-SHA stamping token missing: ${token}`);
 for(const token of ['GITHUB_SHA','CANDIDATE_SHA','SHA256SUMS','unzip -p release/WeiG-qB-WebUI.zip WeiG-qB-WebUI/GIT_SHA']) assert(release.includes(token), `Release Git-SHA verification token missing: ${token}`);
 assert(!release.includes('__WEIGG_GIT_SHA__'),'Tag release must verify the prebuilt candidate instead of stamping source again');
@@ -53,4 +55,4 @@ assert(injectedA.includes(`css/app.css?v=${SHA_A}`), 'SHA A was not injected int
 assert(injectedB.includes(`scripts/app.js?v=${SHA_B}`), 'SHA B was not injected into asset URL');
 assert(!injectedA.includes(PLACEHOLDER) && !injectedB.includes(PLACEHOLDER), 'Deploy-time SHA replacement must remove placeholders');
 
-console.log('v0.3.5 HTML no-store + Git SHA asset cache contract passed.');
+console.log('v0.3.7 HTML no-store + Release-only Git SHA asset cache contract passed.');
