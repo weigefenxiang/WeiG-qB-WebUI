@@ -131,14 +131,14 @@
 .about-surface>.settings-row--canonical:not(.about-row):not(.about-fact),
 .about-surface>.settings-control:not(.about-row):not(.about-fact){display:none!important}
 .about-surface .about-facts-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border-bottom:1px solid var(--border)}
-.about-surface .about-facts-grid .about-fact{display:grid!important;grid-template-columns:minmax(96px,auto) minmax(0,1fr) auto!important;align-items:center!important;gap:12px!important;min-height:52px!important;padding:10px 14px!important;margin:0!important;border:0!important;border-bottom:1px solid color-mix(in srgb,var(--border) 78%,transparent)!important}
+#settings-view #settings-content .about-surface .about-facts-grid .about-fact{display:grid!important;grid-template-columns:minmax(96px,auto) minmax(0,1fr) auto!important;grid-template-rows:auto!important;align-items:center!important;gap:12px!important;min-height:52px!important;padding:10px 14px!important;margin:0!important;border:0!important;border-bottom:1px solid color-mix(in srgb,var(--border) 78%,transparent)!important}
 .about-surface .about-facts-grid .about-fact:nth-child(odd){border-right:1px solid color-mix(in srgb,var(--border) 78%,transparent)!important}
 .about-surface .about-facts-grid .about-fact:nth-last-child(-n+2){border-bottom:0!important}
 .about-surface .about-facts-grid .about-fact>*{min-width:0}
-#settings-content .about-surface .about-facts-grid .about-fact>.settings-row__copy{display:contents!important}
-#settings-content .about-surface .about-facts-grid .about-fact>.settings-row__copy>strong{display:block!important;grid-column:1!important;grid-row:1!important;margin:0!important;font-size:var(--text-label)!important;font-weight:720!important;line-height:1.25!important;color:var(--text-secondary)!important;text-align:left!important;white-space:nowrap}
-#settings-content .about-surface .about-facts-grid .about-fact>.settings-row__copy>small{display:block!important;grid-column:2!important;grid-row:1!important;margin:0!important;font-size:var(--text-body)!important;line-height:1.25!important;color:var(--text-primary)!important;text-align:left!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;-webkit-line-clamp:unset!important;-webkit-box-orient:initial!important}
-#settings-content .about-surface .about-facts-grid .about-fact>.about-link{grid-column:3!important;grid-row:1!important;justify-self:end!important;align-self:center!important}
+#settings-view #settings-content .about-surface .about-facts-grid .about-fact>.settings-row__copy{display:contents!important}
+#settings-view #settings-content .about-surface .about-facts-grid .about-fact>.settings-row__copy>strong{display:block!important;grid-column:1!important;grid-row:1!important;align-self:center!important;height:auto!important;min-height:0!important;max-height:none!important;padding:0!important;margin:0!important;font-size:var(--text-label)!important;font-weight:720!important;line-height:1.25!important;color:var(--text-secondary)!important;text-align:left!important;white-space:nowrap}
+#settings-view #settings-content .about-surface .about-facts-grid .about-fact>.settings-row__copy>small{display:block!important;grid-column:2!important;grid-row:1!important;align-self:center!important;height:auto!important;min-height:0!important;max-height:none!important;padding:0!important;margin:0!important;font-size:var(--text-body)!important;line-height:1.25!important;color:var(--text-primary)!important;text-align:left!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;-webkit-line-clamp:unset!important;-webkit-box-orient:initial!important}
+#settings-view #settings-content .about-surface .about-facts-grid .about-fact>.about-link{grid-column:3!important;grid-row:1!important;justify-self:end!important;align-self:center!important}
 .about-surface .about-facts-grid .about-fact code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:var(--text-meta)}
 .about-surface .about-attribution{min-height:54px!important}
 .about-surface .about-identity{padding-block:14px!important}
@@ -159,7 +159,7 @@
   .mobile-bottom-nav{margin-bottom:max(2px,env(safe-area-inset-bottom))!important}
   /* Mobile keeps the proven compact two-column setting contract; Form Rail is desktop-only. */
   .about-surface .about-facts-grid{grid-template-columns:minmax(0,1fr)!important;grid-auto-flow:row!important}
-  .about-surface .about-facts-grid .about-fact{grid-column:1!important;width:100%!important;max-width:100%!important;justify-self:stretch!important;transform:none!important;border-right:0!important;border-bottom:1px solid var(--border)!important}
+  #settings-view #settings-content .about-surface .about-facts-grid .about-fact{grid-column:1!important;width:100%!important;max-width:100%!important;justify-self:stretch!important;transform:none!important;border-right:0!important;border-bottom:1px solid var(--border)!important}
   .about-surface .about-facts-grid .about-fact:last-child{border-bottom:0!important}
   .transfer-rate-editor{width:calc(100vw - 24px)!important;max-height:calc(100dvh - 24px)!important}
   .transfer-rate-editor>.dialog__head{padding:18px 18px 14px!important}
