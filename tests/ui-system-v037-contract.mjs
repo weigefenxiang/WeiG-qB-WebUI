@@ -45,7 +45,12 @@ assert(polishJs.includes('TooltipController')===false,'polish may expose tooltip
 
 assert(polishCss.includes('--settings-rail-w:820px')&&polishCss.includes('--settings-rail-gap:32px'),'Settings Form Rail geometry must stay centralized in tokens');
 assert(polishCss.includes('grid-template-columns:minmax(240px,var(--settings-label-w)) minmax(260px,var(--settings-control-w))'),'desktop Settings labels and controls must form two centered left-aligned columns');
+assert(polishCss.includes('SETTINGS-VIEWPORT-001')&&polishCss.includes('#settings-view #settings-content')&&polishCss.includes('overflow-y:auto!important'),'every Settings tab must share one bounded scrolling content viewport');
+assert(polishCss.includes('STATUS-DOCK-003')&&polishCss.includes('grid-template-columns:minmax(0,1fr) auto auto auto minmax(0,1fr)'),'desktop Storage/Transfer/Connection status must be centered as one symmetric runtime cluster');
 assert(polishCss.includes('.about-facts-grid')&&polishCss.includes('repeat(2,minmax(0,1fr))'),'desktop About facts must use a compact two-column grid');
+assert(polishCss.includes('>.settings-row__copy{display:contents!important}')&&polishCss.includes('grid-column:1!important')&&polishCss.includes('grid-column:2!important'),'About fact labels and values must stay on the same row');
+assert(polishCss.includes('.about-surface>.settings-row--canonical:not(.about-row):not(.about-fact)'),'About must hide preference controls such as the language selector');
+assert(polishCss.includes('--transfer-editor-w:720px')&&polishCss.includes('padding:22px 24px 16px!important')&&polishCss.includes('padding:0 24px 20px!important'),'Transfer editor must use the generous canonical desktop width and breathing room');
 assert(polishCss.includes('.transfer-capsule--unified')&&polishCss.includes('.transfer-rate-editor[data-mode="alt"]'),'Transfer capsule and complete ALT editor must share semantic state styling');
 assert(polishCss.includes('.rate-scrubber')&&polishCss.includes('cursor:ew-resize'),'RateInput scrubber must clearly expose drag semantics');
 assert(polishCss.includes('.action-sheet-polish .btn[data-action-tone="verify"]:hover')&&polishCss.includes('.btn[data-action-tone="rate"]:hover'),'Torrent actions must use semantic hover tones');
