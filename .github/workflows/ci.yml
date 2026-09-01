@@ -68,3 +68,34 @@ jobs:
         run: node tests/browser-v037.mjs
       - name: Full representative v0.3.6 interaction regression
         run: node tests/browser-ui-v036.mjs
+
+  release_candidate:
+    name: release candidate
+    runs-on: ubuntu-latest
+    needs:
+      - smoke
+      - browser
+    steps:
+      - uses: actions/checkout@v4
+      - name: Package exact-SHA release candidate
+        run: |
+          set -euo pipefail
+          rm -rf release
+          mkdir -p release
+          cp -a webui release/WeiG-qB-WebUI
+          find release/WeiG-qB-WebUI -type f \( -name '*.html' -o -name '*.js' -o -name '*.css' -o -name '*.json' -o -name 'GIT_SHA' \) -exec sed -i "s/__WEIGG_GIT_SHA__/${GITHUB_SHA}/g" {} +
+          printf '%s\n' "${GITHUB_SHA}" > release/WeiG-qB-WebUI/GIT_SHA
+          cd release
+          zip -r WeiG-qB-WebUI.zip WeiG-qB-WebUI
+          sha256sum WeiG-qB-WebUI.zip > SHA256SUMS
+          printf '%s\n' "${GITHUB_SHA}" > CANDIDATE_SHA
+      - name: Upload reusable release candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-candidate-${{ github.sha }}
+          path: |
+            release/WeiG-qB-WebUI.zip
+            release/SHA256SUMS
+            release/CANDIDATE_SHA
+          if-no-files-found: error
+          retention-days: 90

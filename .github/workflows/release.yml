@@ -1,26 +1,96 @@
 name: Release
+
 on:
   push:
     tags:
       - 'v*'
+
 permissions:
+  actions: read
   contents: write
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
+
 jobs:
-  package:
+  publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Validate
-        run: npm test
-      - name: Package WebUI
+      - name: Resolve exact reusable dev artifact
+        id: verify
+        uses: actions/github-script@v7
+        env:
+          RELEASE_SHA: ${{ github.sha }}
+        with:
+          script: |
+            const sha = String(process.env.RELEASE_SHA || '').trim().toLowerCase();
+            if (!/^[0-9a-f]{40}$/.test(sha)) {
+              core.setFailed(`Release SHA is invalid: ${sha}`);
+              return;
+            }
+
+            const {owner, repo} = context.repo;
+            const main = await github.rest.repos.getBranch({owner, repo, branch: 'main'});
+            const mainSha = main.data.commit.sha.toLowerCase();
+            if (mainSha !== sha) {
+              core.setFailed(`Tag ${context.ref.replace('refs/tags/', '')} points to ${sha}, but current main is ${mainSha}. Refusing to publish a non-current stable commit.`);
+              return;
+            }
+
+            const runs = await github.paginate(github.rest.actions.listWorkflowRuns, {
+              owner,
+              repo,
+              workflow_id: 'ci.yml',
+              branch: 'dev',
+              event: 'push',
+              status: 'success',
+              per_page: 100
+            });
+            const validated = runs.find(run => run.head_sha && run.head_sha.toLowerCase() === sha && run.conclusion === 'success');
+            if (!validated) {
+              core.setFailed(`No successful full dev CI run exists for exact release SHA ${sha}.`);
+              return;
+            }
+
+            const artifactName = `release-candidate-${sha}`;
+            const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {
+              owner,
+              repo,
+              run_id: validated.id,
+              per_page: 100
+            });
+            const artifact = artifacts.find(item => item.name === artifactName && !item.expired);
+            if (!artifact) {
+              core.setFailed(`Reusable dev artifact ${artifactName} is missing or expired. Refusing to rebuild during release.`);
+              return;
+            }
+
+            core.info(`Reusing dev CI run #${validated.run_number}: ${validated.html_url}`);
+            core.info(`Reusing artifact ${artifact.name} (${artifact.id})`);
+            core.setOutput('run_id', String(validated.id));
+            core.setOutput('artifact_name', artifactName);
+            core.setOutput('artifact_id', String(artifact.id));
+
+      - name: Download validated dev release candidate
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ steps.verify.outputs.artifact_name }}
+          path: release
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.verify.outputs.run_id }}
+
+      - name: Verify candidate integrity and exact SHA
         run: |
-          mkdir -p release
-          cp -a webui release/WeiG-qB-WebUI
-          find release/WeiG-qB-WebUI -type f \( -name '*.html' -o -name '*.js' -o -name '*.css' -o -name '*.json' -o -name 'GIT_SHA' \) -exec sed -i "s/__WEIGG_GIT_SHA__/${GITHUB_SHA}/g" {} +
-          printf '%s\n' "${GITHUB_SHA}" > release/WeiG-qB-WebUI/GIT_SHA
-          cd release
-          zip -r WeiG-qB-WebUI.zip WeiG-qB-WebUI
-          sha256sum WeiG-qB-WebUI.zip > SHA256SUMS
+          set -euo pipefail
+          test -f release/WeiG-qB-WebUI.zip
+          test -f release/SHA256SUMS
+          test -f release/CANDIDATE_SHA
+          test "$(tr -d '\r\n' < release/CANDIDATE_SHA)" = "$GITHUB_SHA"
+          (cd release && sha256sum -c SHA256SUMS)
+          test "$(unzip -p release/WeiG-qB-WebUI.zip WeiG-qB-WebUI/GIT_SHA | tr -d '\r\n')" = "$GITHUB_SHA"
+
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}

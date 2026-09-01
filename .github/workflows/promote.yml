@@ -88,9 +88,24 @@ jobs:
               return;
             }
 
+            const artifactName = `release-candidate-${sha}`;
+            const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {
+              owner,
+              repo,
+              run_id: validated.id,
+              per_page: 100
+            });
+            const artifact = artifacts.find(item => item.name === artifactName && !item.expired);
+            if (!artifact) {
+              core.setFailed(`Validated dev CI run ${validated.id} does not contain reusable artifact ${artifactName}, or it has expired.`);
+              return;
+            }
+
             core.info(`Validated by CI run #${validated.run_number}: ${validated.html_url}`);
+            core.info(`Reusable release artifact: ${artifact.name} (${artifact.id})`);
             core.setOutput('sha', sha);
             core.setOutput('ci_run', String(validated.id));
+            core.setOutput('artifact_id', String(artifact.id));
 
       - name: Checkout main for authenticated fast-forward
         uses: actions/checkout@v4
@@ -112,4 +127,5 @@ jobs:
         run: |
           echo "main now points to the exact validated dev candidate: ${{ steps.verify.outputs.sha }}"
           echo "Reused successful dev CI run: ${{ steps.verify.outputs.ci_run }}"
+          echo "Reserved reusable release artifact: ${{ steps.verify.outputs.artifact_id }}"
           echo "No merge commit and no duplicate full main CI run were created."
