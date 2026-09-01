@@ -51,6 +51,15 @@ dialog.dialog[data-adaptive-dialog="1"]>form{display:grid;grid-template-rows:aut
 /* Drawer-only mobile Settings navigation. */
 .v037-mobile-settings-nav,.v037-mobile-system{display:none}
 
+/* Canonical Settings rows own placement on every viewport. Legacy card tracks must not leak into v0.3.7. */
+#settings-view #settings-content .settings-row--canonical{display:grid!important;grid-template-columns:minmax(220px,1fr) auto!important;grid-template-rows:auto!important;align-items:center!important;min-height:58px!important}
+#settings-view #settings-content .settings-row--canonical>.settings-row__copy{grid-column:1!important;grid-row:1!important;min-width:0!important}
+#settings-view #settings-content .settings-row--canonical>.field-input,
+#settings-view #settings-content .settings-row--canonical>input:not(.switch-input),
+#settings-view #settings-content .settings-row--canonical>select{grid-column:2!important;grid-row:1!important;align-self:center!important;justify-self:end!important;width:auto!important;min-width:0!important;min-height:var(--ui-control-h,34px)!important;height:var(--ui-control-h,34px)!important;max-height:var(--ui-control-h,34px)!important}
+#settings-view #settings-content .settings-row--canonical>.switch-control,
+#settings-view #settings-content .settings-row--canonical>.ui-select{grid-column:2!important;grid-row:1!important;align-self:center!important;justify-self:end!important}
+
 /* Mobile ResponsiveShell 3.0 */
 @media(max-width:820px){
   html,body{height:100svh;min-height:100svh;max-height:100svh}
@@ -118,15 +127,13 @@ dialog.dialog[data-adaptive-dialog="1"]>form{display:grid;grid-template-rows:aut
   #list-view .grid-toolbar label{flex:0 0 auto}
   #list-view .grid-toolbar .data-viewport-focus{flex:0 0 30px}
 
-  /* Canonical mobile Settings rows own their tracks and controls; legacy card rows must not create implicit rows. */
+  /* Canonical mobile Settings rows only tighten dimensions; placement is shared above. */
   #settings-view>.workspace__header{flex:0 0 auto}
   #settings-view .settings-header__actions{margin-top:4px}
-  #settings-view #settings-content .settings-row--canonical{grid-template-rows:auto!important;min-height:54px!important}
+  #settings-view #settings-content .settings-row--canonical{grid-template-columns:minmax(0,1fr) clamp(112px,40vw,156px)!important;min-height:54px!important}
   #settings-view #settings-content .settings-row--canonical>.field-input,
   #settings-view #settings-content .settings-row--canonical>input:not(.switch-input),
-  #settings-view #settings-content .settings-row--canonical>select{grid-column:2!important;grid-row:1!important;align-self:center!important;justify-self:end!important;width:100%!important;min-height:32px!important;height:32px!important;max-height:32px!important}
-  #settings-view #settings-content .settings-row--canonical>.switch-control,
-  #settings-view #settings-content .settings-row--canonical>.ui-select{grid-column:2!important;grid-row:1!important;align-self:center!important;justify-self:end!important}
+  #settings-view #settings-content .settings-row--canonical>select{width:100%!important;min-height:32px!important;height:32px!important;max-height:32px!important}
   .about-grid .about-kv{min-height:78px!important}
   .setting-help-popover{width:calc(100vw - 16px);max-height:min(58dvh,460px);overflow:auto}
   .setting-help-popover>div{grid-template-columns:72px minmax(0,1fr)}
