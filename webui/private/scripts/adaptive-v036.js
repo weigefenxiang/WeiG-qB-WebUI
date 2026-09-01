@@ -108,18 +108,23 @@
   var commandBar=null,commandSelect=null,commandCustom=null,commandCount=null,toolbarAnchor=null;
   var filterFallback={all:'All',downloading:'Downloading',seeding:'Seeding',completed:'Completed',paused:'Paused',active:'Active',stalled:'Stalled',errored:'Error',private:'Private / PT'};
   function filterLabel(filter){var key=filter==='errored'?'filter.error':'filter.'+filter;return baseT(key,filterFallback[filter]||filter);}
-  function commandOptions(){return Array.from(document.querySelectorAll('#filter-nav [data-filter]')).map(function(button){return {value:button.dataset.filter,label:filterLabel(button.dataset.filter)};});}
+  function commandOptions(){return Array.from(document.querySelectorAll('#filter-nav [data-filter]')).filter(function(button){return !button.hidden;}).map(function(button){return {value:button.dataset.filter,label:filterLabel(button.dataset.filter)};});}
+  function ensureCommandSelectUpgrade(){
+    if(!commandSelect)return null;var next=commandSelect.nextElementSibling;if(next&&next.classList&&next.classList.contains('ui-select'))commandCustom=next;
+    if(!commandCustom&&C.__floatingSelectV036&&C.upgradeNativeSelect)commandCustom=C.upgradeNativeSelect(commandSelect);
+    return commandCustom;
+  }
   function syncCommandFilter(){
-    if(!commandSelect)return;var active=document.querySelector('#filter-nav [data-filter].is-active'),value=active?active.dataset.filter:'all';commandSelect.value=value;if(commandCustom)commandCustom.setValue(value);
+    if(!commandSelect)return;ensureCommandSelectUpgrade();var active=document.querySelector('#filter-nav [data-filter].is-active'),value=active?active.dataset.filter:'all';commandSelect.value=value;if(commandCustom)commandCustom.setValue(value);
   }
   function syncCommandCount(){
     if(!commandCount)return;var source=document.getElementById('torrent-count'),count=source&&String(source.textContent||'').trim()||'…';commandCount.textContent=tr('v036.mobile.count',count+' Torrents',{count:count});
   }
   function syncCommandLocale(){
-    if(!commandSelect)return;var options=commandOptions();Array.from(commandSelect.options).forEach(function(option){var next=options.find(function(x){return x.value===option.value;});if(next)option.textContent=next.label;});if(commandCustom)commandCustom.setOptions(options);syncCommandFilter();syncCommandCount();
+    if(!commandSelect)return;var options=commandOptions();Array.from(commandSelect.options).forEach(function(option){var next=options.find(function(x){return x.value===option.value;});if(next)option.textContent=next.label;});ensureCommandSelectUpgrade();if(commandCustom)commandCustom.setOptions(options);syncCommandFilter();syncCommandCount();
   }
   function mountCommandBar(){
-    if(!commandBar)return;var toolbar=document.querySelector('#list-view>.workspace__header .toolbar, #mobile-command-bar .toolbar');if(!toolbar)return;
+    if(!commandBar)return;ensureCommandSelectUpgrade();var toolbar=document.querySelector('#list-view>.workspace__header .toolbar, #mobile-command-bar .toolbar');if(!toolbar)return;
     if(isMobile()){if(toolbar.parentElement!==commandBar)commandBar.appendChild(toolbar);}else if(toolbarAnchor&&toolbarAnchor.parentNode){toolbarAnchor.parentNode.insertBefore(toolbar,toolbarAnchor.nextSibling);}
     fitCommandBar();
   }
@@ -135,11 +140,10 @@
     var control=document.createElement('span');control.className='mobile-filter-control';
     commandSelect=document.createElement('select');commandSelect.id='mobile-filter-select';commandSelect.setAttribute('aria-label',baseT('sidebar.torrents','Torrent filter'));
     commandOptions().forEach(function(item){var option=document.createElement('option');option.value=item.value;option.textContent=item.label;commandSelect.appendChild(option);});
-    commandSelect.addEventListener('change',function(){var button=document.querySelector('#filter-nav [data-filter="'+CSS.escape(commandSelect.value)+'"]');if(button)button.click();});
+    commandSelect.addEventListener('change',function(){var button=Array.from(nav.querySelectorAll('[data-filter]')).find(function(item){return item.dataset.filter===commandSelect.value;});if(button)button.click();});
     control.appendChild(commandSelect);commandCount=document.createElement('span');commandCount.className='mobile-command-count';
     commandBar.append(control,commandCount);header.appendChild(commandBar);
     toolbarAnchor=document.createComment('weigg-mobile-toolbar-anchor');toolbar.parentNode.insertBefore(toolbarAnchor,toolbar);
-    commandCustom=C.upgradeNativeSelect?C.upgradeNativeSelect(commandSelect):null;
     var countSource=document.getElementById('torrent-count');if(countSource)new MutationObserver(function(){syncCommandCount();requestAnimationFrame(fitCommandBar);}).observe(countSource,{childList:true,characterData:true,subtree:true});
     new MutationObserver(function(){syncCommandFilter();requestAnimationFrame(fitCommandBar);}).observe(nav,{subtree:true,attributes:true,attributeFilter:['class','hidden']});
     syncCommandLocale();mountCommandBar();
@@ -176,7 +180,7 @@
   function registerDataViewport(options){
     options=options||{};var owner=typeof options.owner==='string'?document.querySelector(options.owner):options.owner,viewport=typeof options.viewport==='string'?document.querySelector(options.viewport):options.viewport,toolbar=typeof options.toolbar==='string'?document.querySelector(options.toolbar):options.toolbar;if(!owner||!viewport||!toolbar)return null;
     var existing=focusRegistry.find(function(item){return item.owner===owner&&item.viewport===viewport;});if(existing)return existing;
-    var button=document.createElement('button');button.type='button';button.className='btn btn--ghost data-viewport-focus';button.dataset.dataViewportFocus='1';button.textContent='⤢';button.setAttribute('aria-pressed','false');var entry={owner:owner,viewport:viewport,toolbar:toolbar,button:button,active:false,scrollTop:0};button.addEventListener('click',function(){setDataViewportFocus(entry,!entry.active);});toolbar.appendChild(button);focusRegistry.push(entry);setDataViewportFocus(entry,false);return entry;
+    var button=document.createElement('button');button.type='button';button.className='btn btn--ghost data-viewport-focus';button.dataset.dataViewportFocus='1';button.textContent='⤢';button.setAttribute('aria-pressed','false');var entry={owner:owner,viewport:viewport,toolbar:toolbar,button:button,active:null,scrollTop:0};button.addEventListener('click',function(){setDataViewportFocus(entry,!entry.active);});toolbar.appendChild(button);focusRegistry.push(entry);setDataViewportFocus(entry,false);return entry;
   }
   function installTorrentFocus(){registerDataViewport({owner:'#list-view',viewport:'#torrent-list',toolbar:'#list-view .grid-toolbar'});}
 
