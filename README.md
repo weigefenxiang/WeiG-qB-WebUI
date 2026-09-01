@@ -1,158 +1,91 @@
 # WeiG qB WebUI
 
-A premium, modular and high-performance Alternate WebUI for qBittorrent.
+A modern, responsive Alternate WebUI for qBittorrent, designed for desktop and mobile with one consistent component system.
 
-Current version: **0.3.6**  
-Compatibility floor: **qBittorrent 4.1.9.1 / WebAPI 2.2.1**  
-Compatibility strategy: **WebAPI/capability detection, not qB major-version hardcoding**.
+**Language:** English · [简体中文](translations/README.zh-CN.md)
 
-## v0.3.6 — Canonical UI, adaptive mobile, compatibility matrix
+- GitHub: https://github.com/weigefenxiang/WeiG-qB-WebUI
+- Blog: https://www.weigshare.com/
+- License: GNU GPL-3.0
 
-v0.3.6 consolidates interaction, responsive layout and compatibility behavior into reusable primitives instead of feature-local patches.
+## Highlights
 
-### Canonical UI primitives
+- Responsive Torrent, Search, RSS, Logs and Settings views
+- qBittorrent 4.1.9.1+ compatibility through WebAPI/capability detection
+- Mobile-friendly filters, long-press actions and adaptive navigation
+- Desktop right-click torrent actions
+- Multi-select for current page or all matching torrents
+- Source-verified setting units, conversions and special values
+- Official qBittorrent setting translations where verified, with WeiG help fallback
+- Dark/light appearance, display timezone and free-space telemetry
+- Exact Git-SHA cache identity and rollback-friendly deployment
 
-- custom Select/Listbox progressively upgrades native selects;
-- Select/Dropdown/Popover surfaces use the body-level FloatingLayer portal with viewport flip/shift collision handling;
-- AmbientMark provides sparse random orbit/spark/tilt/shine/breathe brand motion and honors Reduced Motion;
-- Button, Chip, CheckControl, StatusPill, SettingCard and floating surfaces keep one visual implementation per semantic role.
+## Install
 
-### Global Display Time Zone
-
-The status dock owns one browser-side display timezone. Offsets are calculated from the active IANA timezone, including half-hour, 45-minute and DST zones. The setting changes only presentation through `Intl.DateTimeFormat`; it does **not** modify qBittorrent, Docker or host time. Logs consume this global setting and do not create a second timezone selector.
-
-### Logs
-
-Logs are newest-first, incrementally fetched with the current maximum `last_known_id`, bounded to the newest 5000 records and rendered with VirtualList. Follow Latest keeps the viewport at the top; when the user reads older rows, inserting new rows does not destroy that position.
-
-### Torrent detail context navigation
-
-```text
-Torrent list page + scroll position
-        ↓
-Torrent Detail
-        ↓ Back / Escape
-same list page + scroll position
-```
-
-The Back control sits left of Overview. Browser Back, the detail Back button and Escape share the same navigation contract.
-
-### Adaptive mobile layout
-
-Mobile pages consume the remaining application grid track instead of using `100vh - Npx` formulas. Torrent, Search, RSS and Logs adapt to short and tall phones without creating an extra document page or leaving a large unused gap above the status/navigation bars.
-
-Torrent cards keep secondary metrics on one line whenever physically possible. The runtime first removes redundant spacing/decimal zeroes, then tightens gap/font metrics. State remains visually semantic through the shared StatusPill.
-
-### Free disk telemetry
-
-The global status dock may display qBittorrent `sync/maindata → server_state.free_space_on_disk`. Its precise meaning is **free space on the filesystem containing qBittorrent's default save path**. It must not be mislabeled as host root-disk space.
-
-Formatting uses human-readable IEC units (`B / KiB / MiB / GiB / TiB`) with adaptive decimals. Telemetry refresh is low-frequency and incremental; a partial sync response that omits an unchanged value keeps the last known valid value.
-
-### Advanced Settings units and enums
-
-Advanced preferences have a source-verified display layer. Where qB WebAPI exposes bytes but the official qB UI presents a friendlier unit, WeiG performs an exact round trip. Verified special values such as `0 = System default`, `0 = Disabled` and `0 = Permanent lease` are explained. Verified enums use the canonical Select control rather than unexplained integer/string codes.
-
-## Compatibility matrix
-
-`tests/fixtures/qb-compat-matrix.json` is the canonical representative matrix:
-
-| Role | qBittorrent | WebAPI |
-| --- | --- | --- |
-| Legacy floor | 4.1.9.1 | 2.2.1 |
-| Early 4.x | 4.2.5 | 2.5.1 |
-| Mature 4.x A | 4.3.9 | 2.8.2 |
-| Mature 4.x B | 4.4.5 | 2.8.5 |
-| Advanced-preferences era | 4.5.5 | 2.8.19 |
-| Late 4.x | 4.6.7 | 2.9.3 |
-| 5.x transition | 5.0.5 | 2.11.2 |
-| Mature 5.x | 5.1.2 | 2.11.4 |
-| Live 5.2 target | 5.2.0 | 2.15.1 |
-| Current stable fixture | 5.2.3 | 2.15.1 |
-| Upstream/next | master | 2.16.2 |
-| Forward-major sentinel | 6.0.0-synthetic | 3.0.0-synthetic |
-
-The synthetic 6.x node exists only to detect accidental major-version rejection. It is **not** a claim that an unreleased qBittorrent 6.x is officially supported.
-
-Release-blocking live certification uses operator-provided qBittorrent instances. Repository source never embeds private/public deployment URLs, credentials, container names or machine-specific host paths. Fixture PASS never substitutes for real-server certification.
-
-## Cache and deployment identity
-
-HTML is a no-store bootstrap. CSS/JS asset identity is the exact deployed Git SHA:
-
-```text
-HTML                 → no-store/no-cache bootstrap
-<meta build SHA>     → deployed commit
-CSS / JS URL         → ?v=<40-char Git SHA>
-VERSION              → product version
-GIT_SHA              → exact deployed source
-weigg-install.json   → deployment metadata
-```
-
-Semver is not used as a static-resource cache key.
-
-## Docker path boundary
-
-Host and qB-visible paths are distinct concepts:
-
-```text
-Host install directory: <host-qb-config>/weigg-qb-webui
-qB-visible directory:   <qB-config-mount>/weigg-qb-webui
-```
-
-Only the qB-visible path belongs in qBittorrent's `alternative_webui_path`. Host paths are deployment metadata and must never be guessed by browser code or compiled into the project.
-
-## Development and tests
-
-Runtime is plain HTML/CSS/JavaScript. Run the static/contract suite with:
+Linux / Docker host:
 
 ```sh
-npm test
+curl -fsSL https://raw.githubusercontent.com/weigefenxiang/WeiG-qB-WebUI/main/installers/install.sh -o /tmp/weigg-qb-webui-install.sh
+sh /tmp/weigg-qb-webui-install.sh
 ```
 
-CI additionally runs:
-
-```text
-tests/browser-logs-v033.mjs
-tests/browser-settings-v034.mjs
-tests/browser-mobile-v036.mjs
-tests/browser-ui-v036.mjs
-```
-
-The representative interaction browser gate uses **12 compatibility nodes × 3 viewports**. The dedicated mobile gate covers qB 4.1.9.1 and 5.2.3 at 320×568, 360×800, 390×844 and 430×932. Unit/display conversion is additionally locked by `tests/advanced-contract-v036.mjs`.
-
-## Live v0.3.6 candidate deployment
-
-`tests/live-v036.sh` stages one or more **operator-supplied existing installation directories** from an exact Git SHA, with backups and rollback commands. It changes Alternate WebUI files only; **Docker/qBittorrent restart is not required**.
+To let the installer update a detected qBittorrent configuration:
 
 ```sh
-sh tests/live-v036.sh \
-  --sha <40-char-sha> \
-  --target <installed-webui-dir> \
-  --target <another-installed-webui-dir>
+sh /tmp/weigg-qb-webui-install.sh --configure
 ```
 
-No deployment URL or host path is built into the script. Existing `weigg-install.json` metadata is preserved and only its version/SHA/timestamp/installer identity is refreshed.
+For Docker or a custom installation, inspect the available options first:
 
-## Documentation authority
+```sh
+sh /tmp/weigg-qb-webui-install.sh --help
+sh /tmp/weigg-qb-webui-install.sh --list-containers
+```
 
-- `DESIGN.md` — canonical visual, interaction, mobile, status, timezone and primitive rules.
-- `docs/001.项目总方案.md` — product plan and non-negotiable engineering rules.
-- `docs/002.兼容与实现状态.md` — compatibility matrix, fixture/live boundaries and implementation status.
-- `docs/003.项目架构.md` — runtime ownership, directory structure and data boundaries.
-- `docs/004.UI与缓存契约.md` — UI primitive, FloatingLayer, mobile, storage, Advanced-unit and cache contracts.
+Windows PowerShell:
 
-## Core invariants
+```powershell
+Invoke-WebRequest https://raw.githubusercontent.com/weigefenxiang/WeiG-qB-WebUI/main/installers/install.ps1 -OutFile $env:TEMP\weigg-qb-webui-install.ps1
+powershell -ExecutionPolicy Bypass -File $env:TEMP\weigg-qb-webui-install.ps1
+```
+
+## Configure qBittorrent
+
+Enable **Use alternative Web UI** in qBittorrent Web UI settings and set **Files location** to the path visible to the qBittorrent process.
+
+For Docker, the host installation directory and the path visible inside the container are different concepts. Use the qB-visible path in qBittorrent.
+
+## Update / rollback
+
+```sh
+sh /tmp/weigg-qb-webui-install.sh --update
+sh /tmp/weigg-qb-webui-install.sh --rollback
+```
+
+The installer keeps deployment metadata, the exact Git SHA and backups for rollback.
+
+## Compatibility
+
+Minimum target:
 
 ```text
-One semantic purpose → one canonical component
-Capability/field detection → not qB major checks
-Deployment endpoint/path → runtime/operator input, never repository constant
-Data count → never DOM count
-Polling → never destroys user navigation/scroll state
-Display timezone → never backend timezone
-Filesystem free space → never fabricated host telemetry
-HTML bootstrap → no-store
-Static asset identity → Git SHA
-Fixture PASS → never advertised as live certification
+qBittorrent 4.1.9.1
+WebAPI 2.2.1
 ```
+
+Compatibility is based on API fields and capabilities rather than qBittorrent major-version checks.
+
+## Documentation
+
+- [DESIGN.md](DESIGN.md) — visual and interaction system
+- [Project plan](docs/001.项目总方案.md)
+- [Compatibility and implementation status](docs/002.兼容与实现状态.md)
+- [Architecture](docs/003.项目架构.md)
+- [UI and cache contracts](docs/004.UI与缓存契约.md)
+- [v0.3.7 unified interaction/settings system](docs/005.v0.3.7统一交互与设置系统.md)
+
+## License
+
+Copyright © 2026 Wei.G / WeiG Share.
+
+WeiG qB WebUI is free software licensed under the [GNU General Public License v3.0](LICENSE).

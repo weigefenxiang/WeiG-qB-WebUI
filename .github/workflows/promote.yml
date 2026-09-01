@@ -1,0 +1,115 @@
+name: Promote validated dev to main
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: Exact 40-character dev SHA that already passed full CI
+        required: true
+        type: string
+      live_gate:
+        description: Type LIVE-PASS after required real qBittorrent validation
+        required: true
+        type: string
+      confirmation:
+        description: Type PROMOTE-VALIDATED-DEV to fast-forward main
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: promote-main
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify exact validated candidate
+        id: verify
+        uses: actions/github-script@v7
+        env:
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          LIVE_GATE: ${{ inputs.live_gate }}
+          PROMOTION_CONFIRMATION: ${{ inputs.confirmation }}
+        with:
+          script: |
+            const sha = String(process.env.CANDIDATE_SHA || '').trim().toLowerCase();
+            const liveGate = String(process.env.LIVE_GATE || '').trim();
+            const confirmation = String(process.env.PROMOTION_CONFIRMATION || '').trim();
+            if (context.ref !== 'refs/heads/dev') {
+              core.setFailed('Run this promotion workflow from the dev branch only.');
+              return;
+            }
+            if (!/^[0-9a-f]{40}$/.test(sha)) {
+              core.setFailed('candidate_sha must be exactly 40 hexadecimal characters.');
+              return;
+            }
+            if (liveGate !== 'LIVE-PASS') {
+              core.setFailed('Real-server release gate is not confirmed. Type LIVE-PASS only after required live validation.');
+              return;
+            }
+            if (confirmation !== 'PROMOTE-VALIDATED-DEV') {
+              core.setFailed('Promotion confirmation is missing.');
+              return;
+            }
+
+            const {owner, repo} = context.repo;
+            const dev = await github.rest.repos.getBranch({owner, repo, branch: 'dev'});
+            const main = await github.rest.repos.getBranch({owner, repo, branch: 'main'});
+            const devSha = dev.data.commit.sha.toLowerCase();
+            const mainSha = main.data.commit.sha.toLowerCase();
+            if (devSha !== sha) {
+              core.setFailed(`Candidate ${sha} is not the current dev HEAD ${devSha}.`);
+              return;
+            }
+
+            const compare = await github.rest.repos.compareCommits({owner, repo, base: mainSha, head: sha});
+            if (compare.data.behind_by !== 0 || !['ahead', 'identical'].includes(compare.data.status)) {
+              core.setFailed(`main cannot be fast-forwarded safely to ${sha}; status=${compare.data.status}, behind_by=${compare.data.behind_by}.`);
+              return;
+            }
+
+            const runs = await github.paginate(github.rest.actions.listWorkflowRuns, {
+              owner,
+              repo,
+              workflow_id: 'ci.yml',
+              branch: 'dev',
+              event: 'push',
+              status: 'success',
+              per_page: 100
+            });
+            const validated = runs.find(run => run.head_sha && run.head_sha.toLowerCase() === sha && run.conclusion === 'success');
+            if (!validated) {
+              core.setFailed(`No successful full dev CI run exists for exact SHA ${sha}.`);
+              return;
+            }
+
+            core.info(`Validated by CI run #${validated.run_number}: ${validated.html_url}`);
+            core.setOutput('sha', sha);
+            core.setOutput('ci_run', String(validated.id));
+
+      - name: Checkout main for authenticated fast-forward
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Fast-forward main to exact validated dev SHA
+        env:
+          CANDIDATE_SHA: ${{ steps.verify.outputs.sha }}
+        run: |
+          set -euo pipefail
+          git fetch origin main dev
+          test "$(git rev-parse origin/dev)" = "$CANDIDATE_SHA"
+          git merge-base --is-ancestor origin/main "$CANDIDATE_SHA"
+          git push origin "$CANDIDATE_SHA:refs/heads/main"
+
+      - name: Promotion summary
+        run: |
+          echo "main now points to the exact validated dev candidate: ${{ steps.verify.outputs.sha }}"
+          echo "Reused successful dev CI run: ${{ steps.verify.outputs.ci_run }}"
+          echo "No merge commit and no duplicate full main CI run were created."

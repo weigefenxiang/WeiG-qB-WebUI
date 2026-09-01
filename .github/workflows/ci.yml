@@ -1,7 +1,18 @@
 name: CI
+
 on:
   push:
-  pull_request:
+    branches:
+      - dev
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   smoke:
     runs-on: ubuntu-latest
@@ -20,6 +31,7 @@ jobs:
           node --check tests/browser-settings-v034.mjs
           node --check tests/browser-ui-v036.mjs
           node --check tests/browser-mobile-v036.mjs
+          node --check tests/browser-v037.mjs
           node --check tests/compat-matrix-v036.mjs
       - name: Linux installer syntax
         run: sh -n installers/install.sh
@@ -27,6 +39,7 @@ jobs:
         run: |
           bash -n tests/live-qb52.sh
           sh -n tests/live-v036.sh
+          sh -n tests/live-v037.sh
       - name: PowerShell installer syntax
         shell: pwsh
         run: |
@@ -51,5 +64,7 @@ jobs:
         run: node tests/browser-settings-v034.mjs
       - name: Mobile adaptive viewport and storage regression
         run: node tests/browser-mobile-v036.mjs
+      - name: Unified v0.3.7 interaction and settings regression
+        run: node tests/browser-v037.mjs
       - name: Full representative v0.3.6 interaction regression
         run: node tests/browser-ui-v036.mjs

@@ -20,24 +20,30 @@ function collect(entry){
 }
 for(const root of roots)collect(root);
 
-/* Keep maintainer deployment details out of the distributable/open-source tree.
- * Build the sentinels from neutral fragments so this contract does not itself
- * become the only file containing the forbidden deployment strings. */
-const maintainerDomain=['weig','share','.com'].join('');
+/* Public project branding and the canonical Blog URL are allowed in an
+ * open-source repository. Private/live qB deployment endpoints, credentials,
+ * container identities and machine-specific host paths are not. Keep the
+ * endpoint sentinels assembled from fragments so this contract does not
+ * itself become a source of deployable instance addresses. */
+const publicDomain=['weig','share','.com'].join('');
+const forbiddenHosts=[['q','b','.',publicDomain].join(''),['q','.',publicDomain].join('')];
 const maintainerRoot=['/root/','qbit','torrent'].join('');
 const violations=[];
 for(const file of files){
   const text=fs.readFileSync(file,'utf8');
-  if(text.includes(maintainerDomain))violations.push(`${file}: deployment domain`);
+  for(const host of forbiddenHosts)if(text.includes(host))violations.push(`${file}: deployment endpoint`);
   if(text.includes(maintainerRoot))violations.push(`${file}: machine-specific qB host path`);
 }
 assert(violations.length===0,`Open-source deployment boundary violated:\n${violations.join('\n')}`);
 
-const live=fs.readFileSync('tests/live-v036.sh','utf8');
-assert(live.includes('--target'),'live candidate deployment must require operator-supplied --target paths');
-assert(!live.includes('--only qb'),'live candidate deployment must not encode maintainer instance identities');
-assert(!live.includes(maintainerDomain),'live candidate deployment must not encode maintainer domains');
-assert(!live.includes(maintainerRoot),'live candidate deployment must not encode maintainer host paths');
-assert(live.includes('weigg-install.json'),'live candidate deployment should preserve existing deployment metadata rather than guessing it');
+for(const livePath of ['tests/live-v036.sh','tests/live-v037.sh']){
+  if(!fs.existsSync(livePath))continue;
+  const live=fs.readFileSync(livePath,'utf8');
+  assert(live.includes('--target'),`${livePath} must require operator-supplied --target paths`);
+  assert(!live.includes('--only qb'),`${livePath} must not encode maintainer instance identities`);
+  for(const host of forbiddenHosts)assert(!live.includes(host),`${livePath} must not encode maintainer deployment endpoints`);
+  assert(!live.includes(maintainerRoot),`${livePath} must not encode maintainer host paths`);
+  assert(live.includes('weigg-install.json'),`${livePath} should preserve existing deployment metadata rather than guessing it`);
+}
 
-console.log('v0.3.6 open-source deployment boundary contract passed.');
+console.log('Open-source deployment boundary contract passed: public branding allowed, private deployment data forbidden.');

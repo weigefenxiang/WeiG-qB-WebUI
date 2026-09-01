@@ -38,6 +38,17 @@ const state = Object.fromEntries(Object.keys(variants).map(name => [name, initia
 
 function reset(name){state[name]=initialState();}
 function assert(condition, message) { if (!condition) throw new Error(message); }
+async function openSettingsTab(page,viewport,tab){
+  if(viewport.width<=820){
+    await page.waitForFunction(()=>!!(window.WeiG&&WeiG.V037));
+    await page.locator('#menu-btn').click();
+    const item=page.locator(`.v037-mobile-settings-nav [data-mobile-settings-tab="${tab}"]`);
+    await item.waitFor({state:'visible'});
+    await item.click();
+    return;
+  }
+  await page.locator(`#settings-tabs [data-settings-tab="${tab}"]`).click();
+}
 function writeJson(res, value) {
   res.writeHead(200, {'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store'});
   res.end(JSON.stringify(value));
@@ -105,7 +116,7 @@ try{
       page.on('console',msg=>{if(msg.type()==='error')errors.push(msg.text());});
       page.on('pageerror',error=>errors.push(String(error)));
       await page.goto(`http://${host}:${port}/${name}/#/settings`,{waitUntil:'networkidle'});
-      await page.locator('#settings-tabs [data-settings-tab="webui"]').click();
+      await openSettingsTab(page,viewport,'webui');
       await page.waitForSelector('#settings-content [data-v035-alt="1"][data-setting-key="alternative_webui_enabled"]');
       const layout=await page.evaluate(()=>{
         const group=document.querySelector('#settings-content .settings-group');
