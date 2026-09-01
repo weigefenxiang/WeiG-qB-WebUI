@@ -13,19 +13,13 @@ v0.3.6 consolidates interaction, responsive layout and compatibility behavior in
 ### Canonical UI primitives
 
 - custom Select/Listbox progressively upgrades native selects;
-- all Select/Dropdown/Popover surfaces use the body-level FloatingLayer portal with viewport flip/shift collision handling;
+- Select/Dropdown/Popover surfaces use the body-level FloatingLayer portal with viewport flip/shift collision handling;
 - AmbientMark provides sparse random orbit/spark/tilt/shine/breathe brand motion and honors Reduced Motion;
 - Button, Chip, CheckControl, StatusPill, SettingCard and floating surfaces keep one visual implementation per semantic role.
 
 ### Global Display Time Zone
 
-The status dock owns one browser-side display timezone:
-
-```text
-✓ UTC+08:00 · Asia/Shanghai
-```
-
-Offsets are calculated from the active IANA timezone, including half-hour, 45-minute and DST zones. The setting changes only presentation through `Intl.DateTimeFormat`; it does **not** modify qBittorrent, Docker or VPS time. Logs consume this global setting and do not create a second timezone selector.
+The status dock owns one browser-side display timezone. Offsets are calculated from the active IANA timezone, including half-hour, 45-minute and DST zones. The setting changes only presentation through `Intl.DateTimeFormat`; it does **not** modify qBittorrent, Docker or host time. Logs consume this global setting and do not create a second timezone selector.
 
 ### Logs
 
@@ -45,50 +39,19 @@ The Back control sits left of Overview. Browser Back, the detail Back button and
 
 ### Adaptive mobile layout
 
-Mobile pages consume the remaining application grid track instead of using `100vh - Npx` formulas. Torrent, Search, RSS and Logs therefore adapt to short and tall phones without creating a second blank page or leaving a large unused gap above the status/navigation bars.
+Mobile pages consume the remaining application grid track instead of using `100vh - Npx` formulas. Torrent, Search, RSS and Logs adapt to short and tall phones without creating an extra document page or leaving a large unused gap above the status/navigation bars.
 
-Torrent cards keep secondary metrics on one line whenever physically possible:
-
-```text
-↓0B/s  ↑0B/s  ETA  29.8MiB
-```
-
-The runtime first removes redundant spacing/decimal zeroes, then tightens gap/font metrics. State remains visually semantic through the shared StatusPill: downloading is cyan/blue, seeding green, stalled download amber, stalled seeding purple, stopped gray, queued indigo, checking amber and errors retain the canonical danger tone.
+Torrent cards keep secondary metrics on one line whenever physically possible. The runtime first removes redundant spacing/decimal zeroes, then tightens gap/font metrics. State remains visually semantic through the shared StatusPill.
 
 ### Free disk telemetry
 
-The global status dock may show:
-
-```text
-◫ Free 1.23 TiB
-```
-
-The source is qBittorrent `sync/maindata → server_state.free_space_on_disk`. Its precise meaning is **free space on the filesystem containing qBittorrent's default save path**. In Docker this may correspond to a host bind-mounted download volume; it must not be mislabeled as VPS root-disk space.
+The global status dock may display qBittorrent `sync/maindata → server_state.free_space_on_disk`. Its precise meaning is **free space on the filesystem containing qBittorrent's default save path**. It must not be mislabeled as host root-disk space.
 
 Formatting uses human-readable IEC units (`B / KiB / MiB / GiB / TiB`) with adaptive decimals. Telemetry refresh is low-frequency and incremental; a partial sync response that omits an unchanged value keeps the last known valid value.
 
 ### Advanced Settings units and enums
 
-Advanced preferences now have a source-verified display layer. Examples include:
-
-```text
-Slow Torrent Inactive Timer (s)
-Slow Torrent Download Rate Threshold (KiB/s)
-Socket Receive Buffer Size (KiB)
-Torrent File Size Limit (MiB)
-Memory Working Set Limit (MiB)
-Hostname Cache TTL (s)
-Refresh Interval (ms)
-```
-
-Where qB WebAPI exposes bytes but the official qB desktop UI presents a friendlier unit, WeiG performs an exact round trip. Example:
-
-```text
-104857600 API bytes ⇄ 100 MiB display
-65536 API bytes    ⇄ 64 KiB display
-```
-
-Verified special values such as `0 = System default`, `0 = Disabled` and `0 = Permanent lease` are explained. Verified enums are rendered as readable canonical Select controls rather than exposing unexplained integer/string codes.
+Advanced preferences have a source-verified display layer. Where qB WebAPI exposes bytes but the official qB UI presents a friendlier unit, WeiG performs an exact round trip. Verified special values such as `0 = System default`, `0 = Disabled` and `0 = Permanent lease` are explained. Verified enums use the canonical Select control rather than unexplained integer/string codes.
 
 ## Compatibility matrix
 
@@ -111,7 +74,7 @@ Verified special values such as `0 = System default`, `0 = Disabled` and `0 = Pe
 
 The synthetic 6.x node exists only to detect accidental major-version rejection. It is **not** a claim that an unreleased qBittorrent 6.x is officially supported.
 
-The release-blocking live instances remain qBittorrent **4.1.9.1** and **5.2.x**. Fixture PASS never substitutes for real-server certification.
+Release-blocking live certification uses operator-provided qBittorrent instances. Repository source never embeds private/public deployment URLs, credentials, container names or machine-specific host paths. Fixture PASS never substitutes for real-server certification.
 
 ## Cache and deployment identity
 
@@ -123,27 +86,21 @@ HTML                 → no-store/no-cache bootstrap
 CSS / JS URL         → ?v=<40-char Git SHA>
 VERSION              → product version
 GIT_SHA              → exact deployed source
-weigg-install.json   → qB path / host path / container / SHA metadata
+weigg-install.json   → deployment metadata
 ```
 
 Semver is not used as a static-resource cache key.
 
 ## Docker path boundary
 
-A Docker qB process commonly sees:
+Host and qB-visible paths are distinct concepts:
 
 ```text
-/config/weigg-qb-webui
+Host install directory: <host-qb-config>/weigg-qb-webui
+qB-visible directory:   <qB-config-mount>/weigg-qb-webui
 ```
 
-while the VPS host may contain:
-
-```text
-/root/qbittorrent/config/weigg-qb-webui
-/root/qbittorrent3/config/weigg-qb-webui
-```
-
-Only the container-visible path belongs in qBittorrent's `alternative_webui_path`. Host paths are deployment metadata and must never be written into the qB preference.
+Only the qB-visible path belongs in qBittorrent's `alternative_webui_path`. Host paths are deployment metadata and must never be guessed by browser code or compiled into the project.
 
 ## Development and tests
 
@@ -162,28 +119,20 @@ tests/browser-mobile-v036.mjs
 tests/browser-ui-v036.mjs
 ```
 
-The representative interaction browser gate uses **12 compatibility nodes × 3 viewports**. The dedicated mobile gate covers qB 4.1.9.1 and 5.2.3 at 320×568, 360×800, 390×844 and 430×932, including one-line Torrent metadata, semantic status colors, one-screen Search/RSS layout and storage telemetry.
-
-Unit/display conversion is additionally locked by `tests/advanced-contract-v036.mjs`.
+The representative interaction browser gate uses **12 compatibility nodes × 3 viewports**. The dedicated mobile gate covers qB 4.1.9.1 and 5.2.3 at 320×568, 360×800, 390×844 and 430×932. Unit/display conversion is additionally locked by `tests/advanced-contract-v036.mjs`.
 
 ## Live v0.3.6 candidate deployment
 
-`tests/live-v036.sh` can atomically stage and switch both known test installations from an exact Git SHA, with backups and rollback commands. It changes Alternate WebUI files only; **Docker/qBittorrent restart is not required**.
-
-The final candidate SHA should always be supplied explicitly:
+`tests/live-v036.sh` stages one or more **operator-supplied existing installation directories** from an exact Git SHA, with backups and rollback commands. It changes Alternate WebUI files only; **Docker/qBittorrent restart is not required**.
 
 ```sh
-sh tests/live-v036.sh --sha <40-char-sha>
+sh tests/live-v036.sh \
+  --sha <40-char-sha> \
+  --target <installed-webui-dir> \
+  --target <another-installed-webui-dir>
 ```
 
-Targets:
-
-```text
-qB 4.1.9.1  /root/qbittorrent/config/weigg-qb-webui
-qB 5.2.x    /root/qbittorrent3/config/weigg-qb-webui
-```
-
-After deployment, perform one browser hard refresh and run the live checklist before merging `dev` into `main`.
+No deployment URL or host path is built into the script. Existing `weigg-install.json` metadata is preserved and only its version/SHA/timestamp/installer identity is refreshed.
 
 ## Documentation authority
 
@@ -198,10 +147,11 @@ After deployment, perform one browser hard refresh and run the live checklist be
 ```text
 One semantic purpose → one canonical component
 Capability/field detection → not qB major checks
+Deployment endpoint/path → runtime/operator input, never repository constant
 Data count → never DOM count
 Polling → never destroys user navigation/scroll state
 Display timezone → never backend timezone
-Filesystem free space → never fabricated VPS telemetry
+Filesystem free space → never fabricated host telemetry
 HTML bootstrap → no-store
 Static asset identity → Git SHA
 Fixture PASS → never advertised as live certification
