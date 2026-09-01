@@ -6,6 +6,7 @@ const login = read('webui/public/login.html');
 const components = read('webui/private/scripts/components.js');
 const linux = read('installers/install.sh');
 const windows = read('installers/install.ps1');
+const ci = read('.github/workflows/ci.yml');
 const release = read('.github/workflows/release.yml');
 const metadata = read('webui/private/weigg-install.json');
 const marker = read('webui/GIT_SHA').trim();
@@ -41,7 +42,9 @@ assert(marker===PLACEHOLDER, 'Source GIT_SHA must remain a deploy-time placehold
 assert(metadata.includes(`"gitSha": "${PLACEHOLDER}"`), 'Source metadata must expose the deploy-time Git SHA');
 for(const token of ['SOURCE_SHA','resolve_main_sha','inject_build_sha','GIT_SHA','gitSha','__WEIGG_GIT_SHA__']) assert(linux.includes(token), `Linux Git-SHA installer token missing: ${token}`);
 for(const token of ['Resolve-MainSha','Inject-BuildSha','GIT_SHA','gitSha','__WEIGG_GIT_SHA__']) assert(windows.includes(token), `Windows Git-SHA installer token missing: ${token}`);
-for(const token of ['GITHUB_SHA','__WEIGG_GIT_SHA__','GIT_SHA']) assert(release.includes(token), `Release Git-SHA stamping token missing: ${token}`);
+for(const token of ['GITHUB_SHA','__WEIGG_GIT_SHA__','GIT_SHA','CANDIDATE_SHA']) assert(ci.includes(token), `Dev candidate Git-SHA stamping token missing: ${token}`);
+for(const token of ['GITHUB_SHA','CANDIDATE_SHA','SHA256SUMS','unzip -p release/WeiG-qB-WebUI.zip WeiG-qB-WebUI/GIT_SHA']) assert(release.includes(token), `Release Git-SHA verification token missing: ${token}`);
+assert(!release.includes('__WEIGG_GIT_SHA__'),'Tag release must verify the prebuilt candidate instead of stamping source again');
 
 const injectedA=index.replaceAll(PLACEHOLDER,SHA_A);
 const injectedB=index.replaceAll(PLACEHOLDER,SHA_B);
