@@ -21,10 +21,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: WebUI smoke and JavaScript syntax
+      - name: WebUI smoke, compatibility contracts and JavaScript syntax
         run: npm test
       - name: Compatibility matrix contract
         run: node tests/compat-matrix-v036.mjs
+      - name: Release compatibility contract
+        run: node tests/release-compat-v037.mjs
+      - name: Windows and Linux platform contract
+        run: node tests/platform-contract-v037.mjs
       - name: Browser test syntax
         run: |
           node --check tests/browser-logs-v033.mjs
@@ -34,6 +38,8 @@ jobs:
           node --check tests/browser-v037.mjs
           node --check tests/browser-ui-system-v037.mjs
           node --check tests/compat-matrix-v036.mjs
+          node --check tests/release-compat-v037.mjs
+          node --check tests/platform-contract-v037.mjs
       - name: Linux installer syntax
         run: sh -n installers/install.sh
       - name: Live regression script syntax
@@ -48,6 +54,7 @@ jobs:
           Write-Host 'PowerShell installer syntax parsed.'
 
   browser:
+    name: Linux browser matrix
     runs-on: ubuntu-latest
     needs: smoke
     steps:
@@ -69,8 +76,38 @@ jobs:
         run: node tests/browser-v037.mjs
       - name: Shared responsive UI system regression
         run: node tests/browser-ui-system-v037.mjs
-      - name: Full representative v0.3.6 interaction regression
+      - name: Full representative qB 4.x and 5.x interaction regression
         run: node tests/browser-ui-v036.mjs
+
+  windows_browser:
+    name: Windows browser matrix
+    runs-on: windows-latest
+    needs: smoke
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Windows compatibility and installer contracts
+        shell: pwsh
+        run: |
+          npm test
+          $null = [scriptblock]::Create((Get-Content 'installers/install.ps1' -Raw))
+          Write-Host 'Windows compatibility contracts passed.'
+      - name: Install Chromium test runtime
+        shell: pwsh
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install chromium
+      - name: Representative qB 4.x and 5.x browser matrix on Windows
+        shell: pwsh
+        run: node tests/browser-ui-v036.mjs
+      - name: Unified v0.3.7 Windows regression
+        shell: pwsh
+        run: node tests/browser-v037.mjs
+      - name: Shared responsive UI Windows regression
+        shell: pwsh
+        run: node tests/browser-ui-system-v037.mjs
 
   release_candidate:
     name: release candidate
@@ -78,6 +115,7 @@ jobs:
     needs:
       - smoke
       - browser
+      - windows_browser
     steps:
       - uses: actions/checkout@v4
       - name: Package exact-SHA release candidate
