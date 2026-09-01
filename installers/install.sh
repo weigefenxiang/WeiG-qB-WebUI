@@ -69,16 +69,6 @@ valid_sha() {
   printf '%s' "$1" | grep -Eq '^[0-9a-fA-F]{40}$'
 }
 
-resolve_main_sha() {
-  api="https://api.github.com/repos/$REPO/commits/main"
-  if command -v curl >/dev/null 2>&1; then
-    body=$(curl -fsSL -H 'Accept: application/vnd.github+json' "$api" 2>/dev/null || true)
-  else
-    body=$(wget -qO- "$api" 2>/dev/null || true)
-  fi
-  printf '%s\n' "$body" | sed -n 's/^[[:space:]]*"sha":[[:space:]]*"\([0-9a-fA-F]\{40\}\)".*/\1/p' | head -n1
-}
-
 inject_build_sha() {
   valid_sha "$SOURCE_SHA" || { echo "Unable to resolve a valid 40-character Git SHA for this payload." >&2; exit 1; }
   find "$DEST.new" -type f \( -name '*.html' -o -name '*.js' -o -name '*.css' -o -name '*.json' -o -name 'GIT_SHA' \) -exec sed -i "s/__WEIGG_GIT_SHA__/$SOURCE_SHA/g" {} +
@@ -349,6 +339,7 @@ rollback() {
 [ "$MODE" = "rollback" ] && rollback
 
 command -v unzip >/dev/null 2>&1 || { echo "unzip is required." >&2; exit 1; }
+command -v sha256sum >/dev/null 2>&1 || { echo "sha256sum is required for stable Release verification." >&2; exit 1; }
 if ! command -v curl >/dev/null 2>&1 && ! command -v wget >/dev/null 2>&1; then
   echo "curl or wget is required." >&2
   exit 1
@@ -365,43 +356,34 @@ trap 'rm -rf "$TMP"' EXIT INT TERM
 PACKAGE="$TMP/WeiG-qB-WebUI.zip"
 RELEASE_URL="https://github.com/$REPO/releases/latest/download/WeiG-qB-WebUI.zip"
 SUM_URL="https://github.com/$REPO/releases/latest/download/SHA256SUMS"
-release_ok=0
 
 if command -v curl >/dev/null 2>&1; then
-  if curl -fsSL "$RELEASE_URL" -o "$PACKAGE" 2>/dev/null; then release_ok=1; fi
+  curl -fsSL "$RELEASE_URL" -o "$PACKAGE" 2>/dev/null || {
+    echo "No published stable GitHub Release is available. Stable installation is Release-only and will not fall back to main." >&2
+    exit 1
+  }
+  curl -fsSL "$SUM_URL" -o "$TMP/SHA256SUMS" 2>/dev/null || {
+    echo "The latest Release is missing SHA256SUMS; refusing an unverified installation." >&2
+    exit 1
+  }
 else
-  if wget -q "$RELEASE_URL" -O "$PACKAGE" 2>/dev/null; then release_ok=1; fi
+  wget -q "$RELEASE_URL" -O "$PACKAGE" 2>/dev/null || {
+    echo "No published stable GitHub Release is available. Stable installation is Release-only and will not fall back to main." >&2
+    exit 1
+  }
+  wget -q "$SUM_URL" -O "$TMP/SHA256SUMS" 2>/dev/null || {
+    echo "The latest Release is missing SHA256SUMS; refusing an unverified installation." >&2
+    exit 1
+  }
 fi
 
-if [ "$release_ok" -eq 1 ]; then
-  echo "Source: latest GitHub Release"
-  if command -v sha256sum >/dev/null 2>&1; then
-    if command -v curl >/dev/null 2>&1; then
-      curl -fsSL "$SUM_URL" -o "$TMP/SHA256SUMS" 2>/dev/null || true
-    else
-      wget -q "$SUM_URL" -O "$TMP/SHA256SUMS" 2>/dev/null || true
-    fi
-    if [ -s "$TMP/SHA256SUMS" ]; then
-      (cd "$TMP" && sha256sum -c SHA256SUMS)
-    fi
-  fi
-  unzip -q "$PACKAGE" -d "$TMP/release"
-  SRC="$TMP/release/WeiG-qB-WebUI"
-  SOURCE_SHA=$(cat "$SRC/GIT_SHA" 2>/dev/null | tr -d '\r\n' || true)
-  valid_sha "$SOURCE_SHA" || { echo "Latest Release does not contain a valid GIT_SHA; refusing an unversioned asset deployment." >&2; exit 1; }
-else
-  echo "No published Release found; using the current main branch."
-  SOURCE_SHA=$(resolve_main_sha)
-  valid_sha "$SOURCE_SHA" || { echo "Could not resolve the current main Git SHA." >&2; exit 1; }
-  ARCHIVE="$TMP/source.zip"
-  if command -v curl >/dev/null 2>&1; then
-    curl -fsSL "https://github.com/$REPO/archive/refs/heads/main.zip" -o "$ARCHIVE"
-  else
-    wget -q "https://github.com/$REPO/archive/refs/heads/main.zip" -O "$ARCHIVE"
-  fi
-  unzip -q "$ARCHIVE" -d "$TMP/source"
-  SRC=$(find "$TMP/source" -maxdepth 3 -type d -name webui | head -n1)
-fi
+[ -s "$TMP/SHA256SUMS" ] || { echo "SHA256SUMS is empty; refusing installation." >&2; exit 1; }
+(cd "$TMP" && sha256sum -c SHA256SUMS)
+echo "Source: latest GitHub Release (checksum verified)"
+unzip -q "$PACKAGE" -d "$TMP/release"
+SRC="$TMP/release/WeiG-qB-WebUI"
+SOURCE_SHA=$(cat "$SRC/GIT_SHA" 2>/dev/null | tr -d '\r\n' || true)
+valid_sha "$SOURCE_SHA" || { echo "Latest Release does not contain a valid GIT_SHA; refusing an unversioned asset deployment." >&2; exit 1; }
 
 [ -n "$SRC" ] && [ -d "$SRC" ] || { echo "WebUI payload not found." >&2; exit 1; }
 [ -f "$SRC/public/index.html" ] && [ -f "$SRC/public/login.html" ] && [ -f "$SRC/private/index.html" ] || { echo "Source package is not a valid qBittorrent Alternate WebUI." >&2; exit 1; }
