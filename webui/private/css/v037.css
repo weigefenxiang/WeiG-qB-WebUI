@@ -118,11 +118,15 @@ dialog.dialog[data-adaptive-dialog="1"]>form{display:grid;grid-template-rows:aut
   #list-view .grid-toolbar label{flex:0 0 auto}
   #list-view .grid-toolbar .data-viewport-focus{flex:0 0 30px}
 
-  /* Setting cards remain readable but no navigation panel consumes workspace height. */
+  /* Canonical mobile Settings rows own their tracks and controls; legacy card rows must not create implicit rows. */
   #settings-view>.workspace__header{flex:0 0 auto}
   #settings-view .settings-header__actions{margin-top:4px}
-  #settings-view .setting-card,#settings-view .settings-control{min-height:96px!important}
-  #settings-content .settings-row--canonical{grid-template-rows:auto!important}
+  #settings-view #settings-content .settings-row--canonical{grid-template-rows:auto!important;min-height:54px!important}
+  #settings-view #settings-content .settings-row--canonical>.field-input,
+  #settings-view #settings-content .settings-row--canonical>input:not(.switch-input),
+  #settings-view #settings-content .settings-row--canonical>select{grid-column:2!important;grid-row:1!important;align-self:center!important;justify-self:end!important;width:100%!important;min-height:32px!important;height:32px!important;max-height:32px!important}
+  #settings-view #settings-content .settings-row--canonical>.switch-control,
+  #settings-view #settings-content .settings-row--canonical>.ui-select{grid-column:2!important;grid-row:1!important;align-self:center!important;justify-self:end!important}
   .about-grid .about-kv{min-height:78px!important}
   .setting-help-popover{width:calc(100vw - 16px);max-height:min(58dvh,460px);overflow:auto}
   .setting-help-popover>div{grid-template-columns:72px minmax(0,1fr)}
