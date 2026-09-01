@@ -95,6 +95,7 @@
       img.addEventListener('error',function(){favicon.href=BRAND_ICON_URL;},{once:true});
       img.src=BRAND_ICON_URL;
       mark.appendChild(img);
+      if(W.AmbientMark&&W.AmbientMark.install)W.AmbientMark.install(mark);
     }
     syncBrandCopy();
   }
