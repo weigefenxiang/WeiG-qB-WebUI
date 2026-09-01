@@ -404,14 +404,14 @@ else
 fi
 
 [ -n "$SRC" ] && [ -d "$SRC" ] || { echo "WebUI payload not found." >&2; exit 1; }
-[ -f "$SRC/public/login.html" ] && [ -f "$SRC/private/index.html" ] || { echo "Source package is not a valid qBittorrent Alternate WebUI." >&2; exit 1; }
+[ -f "$SRC/public/index.html" ] && [ -f "$SRC/public/login.html" ] && [ -f "$SRC/private/index.html" ] || { echo "Source package is not a valid qBittorrent Alternate WebUI." >&2; exit 1; }
 
 rm -rf "$DEST.new"
 mkdir -p "$DEST.new"
 cp -a "$SRC"/. "$DEST.new"/
 inject_build_sha
 write_install_metadata
-[ -f "$DEST.new/public/login.html" ] && [ -f "$DEST.new/private/index.html" ] && [ -f "$DEST.new/VERSION" ] && [ -f "$DEST.new/GIT_SHA" ] && [ -f "$DEST.new/private/weigg-install.json" ] || { echo "Installed payload validation failed." >&2; rm -rf "$DEST.new"; exit 1; }
+[ -f "$DEST.new/public/index.html" ] && [ -f "$DEST.new/public/login.html" ] && [ -f "$DEST.new/private/index.html" ] && [ -f "$DEST.new/VERSION" ] && [ -f "$DEST.new/GIT_SHA" ] && [ -f "$DEST.new/private/weigg-install.json" ] || { echo "Installed payload validation failed." >&2; rm -rf "$DEST.new"; exit 1; }
 valid_sha "$(cat "$DEST.new/GIT_SHA" | tr -d '\r\n')" || { echo "Installed Git SHA validation failed." >&2; rm -rf "$DEST.new"; exit 1; }
 
 rm -rf "$DEST.old"
