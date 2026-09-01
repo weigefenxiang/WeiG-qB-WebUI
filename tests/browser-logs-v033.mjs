@@ -34,6 +34,7 @@ function handleApi(req, res, name, apiPath, url) {
   if (apiPath === 'app/version') return writeText(res, v.qb);
   if (apiPath === 'app/webapiVersion') return writeText(res, v.api);
   if (apiPath === 'transfer/info') return writeJson(res, {dl_info_speed:12345,up_info_speed:6789,dl_info_data:123456789,up_info_data:23456789,connection_status:'connected',dht_nodes:12});
+  if (apiPath === 'transfer/speedLimitsMode') return writeText(res, '0');
   if (apiPath === 'sync/maindata') return writeJson(res, {rid:1,full_update:true,torrents:{},categories:{},tags:[],server_state:{dl_info_speed:12345,up_info_speed:6789,dl_info_data:123456789,up_info_data:23456789,connection_status:'connected',dht_nodes:12,total_peer_connections:4,free_space_on_disk:987654321}});
   if (apiPath === 'torrents/info') return writeJson(res, []);
   if (apiPath === 'torrents/categories') return writeJson(res, {});
@@ -73,9 +74,6 @@ function parseStatus(text) { const match=String(text||'').match(/(\d+)\s*\/\s*(\
 async function choose(page,id,value){
   const root=page.locator(`#${id}`);await root.locator('.ui-select__trigger').click();await page.locator(`#weigg-floating-layer .ui-select__option[data-value="${value}"]`).click();
 }
-async function chooseGlobalTimezone(page,value){
-  const root=page.locator('.status-timezone');await root.locator('.ui-select__trigger').click();await page.locator(`#weigg-floating-layer .ui-select__option[data-value="${value}"]`).click();
-}
 
 const browser = await chromium.launch({headless: true});
 try {
@@ -87,12 +85,12 @@ try {
       page.on('pageerror', error => errors.push(String(error)));
       await page.goto(`http://${host}:${port}/${name}/#/logs`, {waitUntil:'networkidle'});
       await page.waitForSelector('.logs-v032-row');
-      await page.waitForFunction(()=>document.documentElement.dataset.v036==='1' && !!document.querySelector('[data-status-timezone]'));
-      await page.waitForTimeout(80);
+      await page.waitForFunction(()=>document.documentElement.dataset.v036==='1' && !!globalThis.WeiG?.V037?.ui);
+      await page.waitForTimeout(1100);
 
       const base=await page.evaluate(()=>{
         const rect=node=>node?node.getBoundingClientRect():null, first=document.querySelector('.logs-v032-row'), firstTime=first?.querySelector('.logs-v032-time');
-        return {innerWidth,scrollWidth:document.documentElement.scrollWidth,visibleLogsNav:[...document.querySelectorAll('[data-route="logs"]')].some(node=>getComputedStyle(node).display!=='none'&&node.getBoundingClientRect().width>0),tool:rect(document.querySelector('#logs-view > .tool-page')),panel:rect(document.querySelector('.logs-v032-panel')),list:rect(document.querySelector('.logs-v032-list')),firstId:Number(first?.dataset.logId),firstDateTime:firstTime?.dateTime||'',firstText:firstTime?.textContent||'',status:document.querySelector('.logs-v032-status')?.textContent||'',nativeLogsSelects:document.querySelectorAll('.logs-v032-toolbar select:not(.ui-native-select)').length,customSelects:document.querySelectorAll('.logs-v032-toolbar .ui-select').length,toolbarTimezone:document.querySelectorAll('.logs-v032-toolbar .timezone-select').length,globalTimezone:document.querySelectorAll('[data-status-timezone] .status-timezone').length,globalTimezoneText:document.querySelector('.status-timezone .ui-select__value')?.textContent||''};
+        return {innerWidth,scrollWidth:document.documentElement.scrollWidth,visibleLogsNav:[...document.querySelectorAll('[data-route="logs"]')].some(node=>getComputedStyle(node).display!=='none'&&node.getBoundingClientRect().width>0),tool:rect(document.querySelector('#logs-view > .tool-page')),panel:rect(document.querySelector('.logs-v032-panel')),list:rect(document.querySelector('.logs-v032-list')),firstId:Number(first?.dataset.logId),firstDateTime:firstTime?.dateTime||'',firstText:firstTime?.textContent||'',status:document.querySelector('.logs-v032-status')?.textContent||'',nativeLogsSelects:document.querySelectorAll('.logs-v032-toolbar select:not(.ui-native-select)').length,customSelects:document.querySelectorAll('.logs-v032-toolbar .ui-select').length,toolbarTimezone:document.querySelectorAll('.logs-v032-toolbar .timezone-select').length,statusTimezone:document.querySelectorAll('[data-status-timezone]').length,timeModel:!!globalThis.WeiG?.Time,utcLabel:globalThis.WeiG?.Time?.offsetLabel?.('UTC')||''};
       });
       const initialStatus=parseStatus(base.status), renderedMs=Date.parse(base.firstDateTime), minMs=(baseSeconds+1)*1000,maxMs=(baseSeconds+100)*1000;
       assert(width<=820||base.visibleLogsNav,`${name} ${width}x${height}: desktop Logs navigation hidden`);
@@ -105,8 +103,8 @@ try {
       assert(base.nativeLogsSelects===0,`${name} ${width}x${height}: raw Logs select is visible`);
       assert(base.customSelects>=1,`${name} ${width}x${height}: canonical Logs size Select missing`);
       assert(base.toolbarTimezone===0,`${name} ${width}x${height}: Logs toolbar must not own timezone selector`);
-      assert(base.globalTimezone===1,`${name} ${width}x${height}: global statusbar timezone missing`);
-      assert(/^UTC[+-]\d{2}:\d{2}\s*·/.test(base.globalTimezoneText),`${name} ${width}x${height}: global timezone lacks canonical UTC offset: ${base.globalTimezoneText}`);
+      assert(base.statusTimezone===0,`${name} ${width}x${height}: desktop/mobile statusbar must not duplicate the Settings timezone control`);
+      assert(base.timeModel&&base.utcLabel==='UTC+00:00',`${name} ${width}x${height}: shared time model unavailable: ${base.utcLabel}`);
 
       const autoHeight=base.tool.height;
       await choose(page,'logs-size-mode','compact');await page.waitForTimeout(180);
@@ -119,8 +117,7 @@ try {
 
       const row100=page.locator('.logs-v032-row[data-log-id="100"] .logs-v032-time');await row100.waitFor();
       const beforeZone={text:await row100.textContent(),iso:await row100.getAttribute('datetime')};
-      if(width>820) await chooseGlobalTimezone(page,'Asia/Shanghai');
-      else await page.evaluate(()=>WeiG.Time.setZone('Asia/Shanghai'));
+      await page.evaluate(()=>WeiG.Time.setZone('Asia/Shanghai'));
       await page.waitForTimeout(80);
       const row100After=page.locator('.logs-v032-row[data-log-id="100"] .logs-v032-time');
       const zoneState={zone:await page.evaluate(()=>WeiG.Time.getZone()),text:await row100After.textContent(),iso:await row100After.getAttribute('datetime'),offset:await page.evaluate(()=>WeiG.Time.offsetLabel('Asia/Shanghai'))};
@@ -151,5 +148,5 @@ try {
       assert(errors.length===0,`${name} ${width}x${height}: browser console errors: ${errors.join(' | ')}`);await context.close();
     }
   }
-  console.log(`v0.3.6 Logs/global-timezone browser regression passed for ${Object.keys(variants).length} qB variants × ${viewports.length} viewports.`);
+  console.log(`v0.3.7 Logs/shared-time-model browser regression passed for ${Object.keys(variants).length} qB variants × ${viewports.length} viewports.`);
 } finally { await browser.close(); await new Promise(resolve=>server.close(resolve)); }
