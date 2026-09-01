@@ -74,6 +74,7 @@
 @media(min-width:821px){
   #settings-view #settings-content .settings-section--rows>.settings-row--canonical{
     width:min(var(--settings-rail-w),calc(100% - 24px))!important;
+    box-sizing:border-box!important;
     margin-inline:auto!important;
     grid-template-columns:minmax(240px,var(--settings-label-w)) minmax(260px,var(--settings-control-w))!important;
     justify-content:center!important;
