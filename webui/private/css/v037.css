@@ -88,7 +88,6 @@ html[data-v037="1"] .torrent-mobile-card--two-line .mobile-card-meta--rail .mobi
     padding:6px!important;
     overflow:hidden
   }
-  @supports(height:100dvh){.app-shell{height:100dvh;max-height:100dvh}}
   .topbar{grid-row:1!important}
   .workspace{grid-row:2!important;min-height:0!important;height:auto!important;max-height:none!important;padding:0!important;overflow:hidden!important}
   .statusbar{display:none!important}
