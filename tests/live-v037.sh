@@ -51,7 +51,7 @@ curl -fL "https://github.com/${REPO}/archive/${SHA}.tar.gz" -o "$TMP/source.tar.
 mkdir -p "$TMP/source"
 tar -xzf "$TMP/source.tar.gz" -C "$TMP/source"
 SRC="$(find "$TMP/source" -mindepth 2 -maxdepth 3 -type d -name webui | head -n1)"
-[ -n "$SRC" ] && [ -f "$SRC/private/index.html" ] && [ -f "$SRC/public/login.html" ] || { echo "ERROR: downloaded archive does not contain webui payload" >&2; exit 1; }
+[ -n "$SRC" ] && [ -f "$SRC/private/index.html" ] && [ -f "$SRC/public/index.html" ] && [ -f "$SRC/public/login.html" ] || { echo "ERROR: downloaded archive does not contain a complete qBittorrent Alternate WebUI payload" >&2; exit 1; }
 [ "$(tr -d '\r\n ' < "$SRC/VERSION")" = "$VERSION" ] || { echo "ERROR: candidate VERSION is not $VERSION" >&2; exit 1; }
 
 update_metadata() {
@@ -83,6 +83,7 @@ prepare_target() {
   fi
   [ "$(tr -d '\r\n ' < "$new/VERSION")" = "$VERSION" ] || { rm -rf "$new"; echo "ERROR: staged VERSION invalid: $dest" >&2; return 1; }
   [ "$(tr -d '\r\n ' < "$new/GIT_SHA")" = "$SHA" ] || { rm -rf "$new"; echo "ERROR: staged SHA invalid: $dest" >&2; return 1; }
+  [ -f "$new/public/index.html" ] && [ -f "$new/public/login.html" ] && [ -f "$new/private/index.html" ] || { rm -rf "$new"; echo "ERROR: staged Alternate WebUI entry points are incomplete: $dest" >&2; return 1; }
   if grep -R '__WEIGG_GIT_SHA__' "$new/private" "$new/public" >/dev/null 2>&1; then
     rm -rf "$new"; echo "ERROR: unresolved Git SHA placeholder: $dest" >&2; return 1
   fi
