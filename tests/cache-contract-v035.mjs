@@ -46,8 +46,10 @@ for(const token of ['SOURCE_SHA','inject_build_sha','GIT_SHA','gitSha','__WEIGG_
 for(const token of ['Inject-BuildSha','GIT_SHA','gitSha','__WEIGG_GIT_SHA__','releases/latest/download/WeiG-qB-WebUI.zip','releases/latest/download/SHA256SUMS']) assert(windows.includes(token), `Windows Release/Git-SHA installer token missing: ${token}`);
 assert(!linux.includes('archive/refs/heads/main.zip') && !linux.includes('resolve_main_sha'),'Linux stable installer must not use main as a payload source');
 assert(!windows.includes('archive/refs/heads/main.zip') && !windows.includes('Resolve-MainSha'),'Windows stable installer must not use main as a payload source');
-for(const token of ['GITHUB_SHA','__WEIGG_GIT_SHA__','GIT_SHA','CANDIDATE_SHA']) assert(ci.includes(token), `Dev candidate Git-SHA stamping token missing: ${token}`);
-for(const token of ['qbittorrent/qBittorrent','fetch-depth: 0','upstream-release-audit-v037.mjs']) assert(upstream.includes(token), `Upstream audit workflow token missing: ${token}`);
+for(const token of ['GITHUB_SHA','__WEIGG_GIT_SHA__','GIT_SHA','CANDIDATE_SHA']) assert(ci.includes(token), `Release candidate Git-SHA stamping token missing: ${token}`);
+for(const token of ['qbittorrent/qBittorrent','release-4.1.9.1','release-5.2.0','--refs=release-4.1.9.1,release-5.2.0']) assert(upstream.includes(token), `Representative upstream audit workflow token missing: ${token}`);
+assert(!upstream.includes('fetch-depth: 0'),'Dev upstream audit must not fetch full qB history/tags');
+for(const token of ['release_compatibility:','fetch-depth: 0','node tests/upstream-release-audit-v037.mjs upstream-qb']) assert(ci.includes(token), `Main Release full upstream audit token missing: ${token}`);
 for(const [name,workflow] of [['promotion',promote],['release',release]]){
   for(const token of ['workflow_id: \'ci.yml\'','workflow_id: \'upstream-compat.yml\'','run.head_sha.toLowerCase() === sha','conclusion === \'success\'']){
     assert(workflow.includes(token), `${name} exact-SHA dual-gate token missing: ${token}`);
@@ -63,4 +65,4 @@ assert(injectedA.includes(`css/app.css?v=${SHA_A}`), 'SHA A was not injected int
 assert(injectedB.includes(`scripts/app.js?v=${SHA_B}`), 'SHA B was not injected into asset URL');
 assert(!injectedA.includes(PLACEHOLDER) && !injectedB.includes(PLACEHOLDER), 'Deploy-time SHA replacement must remove placeholders');
 
-console.log('v0.3.7 Release-only Git SHA + exact-SHA CI/upstream dual-gate contract passed.');
+console.log('v0.3.7 Release-only Git SHA + representative-dev/full-Release compatibility contract passed.');
