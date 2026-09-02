@@ -36,9 +36,18 @@
     finally{busy=false;}
   }
   async function verifyReentry(){
-    if(!guarded())return true;lock();var c=new W.QBClient();
-    try{var active=await c.probeSession();if(active){guardClear();unlock();return true;}location.replace('./');return false;}
-    catch(e){if(e&&e.status===403){location.replace('./');return false;}unlock();return true;}
+    if(!guarded())return true;
+    lock();
+    var c=new W.QBClient();
+    try{
+      var active=await c.probeSession();
+      if(active){guardClear();unlock();return true;}
+      location.replace('./');return false;
+    }catch(_e){
+      /* AUTH-BFCACHE-FAIL-CLOSED: a guarded private shell is never restored when
+       * server session state cannot be positively verified. */
+      location.replace('./');return false;
+    }
   }
   function onPageShow(e){if(e.persisted||guarded())verifyReentry();}
   W.SessionController={logout:logout,state:function(){return state;},guarded:guarded,clearGuard:guardClear,lock:lock,unlock:unlock,verifyReentry:verifyReentry};
