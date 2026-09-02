@@ -81,6 +81,7 @@ assert(transfer.includes('minuteBuckets')&&transfer.includes('BUCKET_MAX=720')&&
 assert(transfer.includes('RAW_MAX=900')&&(transfer.match(/setInterval\(/g)||[]).length===1,'Transfer must keep bounded raw history and one metadata interval');
 assert(transfer.includes('native:true')&&transfer.includes("value:'Auto'")&&transfer.includes("value:'GiB/s'")&&transfer.includes("input.step='any'"),'Transfer modal unit/window dropdown and precision contract missing');
 assert(transfer.includes('getAltSpeedLimits()')&&transfer.includes('setAltSpeedLimits(')&&!transfer.includes('prefs.alt_dl_limit'),'Transfer UI must consume normalized ALT rate APIs only');
+assert(transfer.includes('await loadLimits();if(!dialog.open)dialog.showModal()'),'Rate dialog must load authoritative limits before becoming interactive');
 assert(transfer.indexOf("'network'")<transfer.indexOf("'upload-limit'")&&transfer.indexOf("'upload-limit'")<transfer.indexOf("'download-limit'"),'Transfer stat order contract missing');
 assert(transfer.includes("fields.append(rateField('up'),rateField('down'))"),'Upload limit must precede download limit');
 assert(transferCss.includes('.ui-select__native')&&transferCss.includes('max-width:500px'),'Transfer native dropdown/compact geometry missing');
