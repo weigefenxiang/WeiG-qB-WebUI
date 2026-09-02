@@ -195,6 +195,30 @@
       row.dataset.settingSpan=classifySpan(row);
     });
   }
+  function consolidateWeiGGrid(root){
+    var primary=root.querySelector(':scope > .settings-section-panel[data-settings-owner="weigg"]');
+    var grid=primary&&primary.querySelector(':scope > .settings-grid-canonical');
+    if(!grid)return;
+    grid.dataset.settingsOwner='weigg';
+    Array.from(root.querySelectorAll('.setting-row-grid,.settings-control,.settings-row--canonical')).forEach(function(row){
+      var section=row.closest('.settings-section-panel');
+      if(section&&section.dataset.settingsOwner==='weigg-metrics')return;
+      if(section&&section.classList.contains('about-surface'))return;
+      if(row.closest('#settings-content')!==root)return;
+      row.classList.add('setting-row-grid');
+      row.dataset.settingSpan=classifySpan(row);
+      if(row.parentElement!==grid)grid.appendChild(row);
+    });
+    Array.from(root.querySelectorAll('.settings-grid-canonical')).forEach(function(extra){
+      if(extra===grid)return;
+      var section=extra.closest('.settings-section-panel');
+      if(section&&section.dataset.settingsOwner==='weigg-metrics')return;
+      Array.from(extra.children).forEach(function(child){
+        if(child.matches('.setting-row-grid,.settings-control,.settings-row--canonical'))grid.appendChild(child);
+      });
+      if(!extra.children.length)extra.remove();
+    });
+  }
   function normalizeSettings(){
     var root=document.getElementById('settings-content');
     if(!root)return;
@@ -205,6 +229,7 @@
       if(owner==='weigg'&&index>0)sectionOwner='weigg-metrics';
       normalizeSection(group,sectionOwner);
     });
+    if(owner==='weigg')consolidateWeiGGrid(root);
     normalizeAboutIdentity();
   }
   function queueNormalize(){
