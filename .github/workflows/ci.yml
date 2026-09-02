@@ -31,15 +31,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: WebUI smoke, compatibility contracts and JavaScript syntax
+      - name: WebUI smoke, daily qB baselines and JavaScript syntax
         run: npm test
-      - name: Compatibility matrix contract
-        run: node tests/compat-matrix-v036.mjs
-      - name: Release compatibility contract
-        run: node tests/release-compat-v037.mjs
       - name: Windows and Linux platform contract
         run: node tests/platform-contract-v037.mjs
-      - name: Browser test syntax
+      - name: Browser and Release test syntax
         run: |
           node --check tests/browser-logs-v033.mjs
           node --check tests/browser-settings-v034.mjs
@@ -49,6 +45,7 @@ jobs:
           node --check tests/browser-ui-system-v037.mjs
           node --check tests/compat-matrix-v036.mjs
           node --check tests/release-compat-v037.mjs
+          node --check tests/upstream-release-audit-v037.mjs
           node --check tests/platform-contract-v037.mjs
       - name: Linux installer syntax
         run: sh -n installers/install.sh
@@ -99,9 +96,34 @@ jobs:
         run: |
           set -euo pipefail
           if [ "$GITHUB_REF" != 'refs/heads/main' ]; then
-            echo 'Full Linux/Windows browser matrices may run only from main while preparing a Release.' >&2
+            echo 'Full qB version, Linux/Windows and viewport matrices may run only from main while preparing a Release.' >&2
             exit 1
           fi
+
+  release_compatibility:
+    name: Full qB Release compatibility audit
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    needs:
+      - smoke
+      - release_guard
+    steps:
+      - name: Checkout WeiG qB WebUI
+        uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Full fixture compatibility matrix
+        run: node tests/release-compat-v037.mjs
+      - name: Checkout qBittorrent upstream with all release tags
+        uses: actions/checkout@v4
+        with:
+          repository: qbittorrent/qBittorrent
+          path: upstream-qb
+          fetch-depth: 0
+          filter: blob:none
+      - name: Audit every official stable qB 4.x and 5.x tag from 4.1.9.1
+        run: node tests/upstream-release-audit-v037.mjs upstream-qb
 
   browser:
     name: Linux browser matrix
@@ -180,6 +202,7 @@ jobs:
     needs:
       - smoke
       - release_guard
+      - release_compatibility
       - browser
       - windows_browser
     steps:

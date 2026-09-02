@@ -14,8 +14,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  all_qb_releases:
-    name: All official qB 4.x and 5.x stable tags
+  representative_qb_baselines:
+    name: qB 4.1.9.1 + 5.2.0 compatibility
     runs-on: ubuntu-latest
     steps:
       - name: Checkout WeiG qB WebUI
@@ -24,12 +24,18 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Checkout qBittorrent upstream with all release tags
+      - name: Checkout qBittorrent upstream tip
         uses: actions/checkout@v4
         with:
           repository: qbittorrent/qBittorrent
           path: upstream-qb
-          fetch-depth: 0
-          filter: blob:none
-      - name: Audit every official stable qB 4.x and 5.x tag from 4.1.9.1
-        run: node tests/upstream-release-audit-v037.mjs upstream-qb
+          fetch-depth: 1
+      - name: Fetch representative qB release tags only
+        shell: bash
+        run: |
+          set -euo pipefail
+          git -C upstream-qb fetch --depth=1 origin \
+            refs/tags/release-4.1.9.1:refs/tags/release-4.1.9.1 \
+            refs/tags/release-5.2.0:refs/tags/release-5.2.0
+      - name: Audit legacy and modern baselines
+        run: node tests/upstream-release-audit-v037.mjs upstream-qb --refs=release-4.1.9.1,release-5.2.0

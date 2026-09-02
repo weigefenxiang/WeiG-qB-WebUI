@@ -8,7 +8,10 @@ import { fileURLToPath } from 'node:url';
 const here=path.dirname(fileURLToPath(import.meta.url));
 const projectRoot=path.resolve(here,'..');
 const qbRoot=path.resolve(process.argv[2]||process.env.QB_UPSTREAM_DIR||'');
-assert.ok(qbRoot && fs.existsSync(qbRoot),'Usage: node tests/upstream-release-audit-v037.mjs <qBittorrent-clone>');
+assert.ok(qbRoot && fs.existsSync(qbRoot),'Usage: node tests/upstream-release-audit-v037.mjs <qBittorrent-clone> [--refs=release-4.1.9.1,release-5.2.0]');
+const refsArg=process.argv.find(x=>x.startsWith('--refs='));
+const requestedRefs=refsArg?refsArg.slice('--refs='.length).split(',').map(x=>x.trim()).filter(Boolean):[];
+const fullAudit=requestedRefs.length===0;
 
 const clientSource=fs.readFileSync(path.join(projectRoot,'webui/private/scripts/qb-client.js'),'utf8');
 class TestFormData{constructor(){this.entries=[];}append(name,value,filename){this.entries.push({name,value,filename});}}
@@ -26,11 +29,20 @@ function show(ref,file){return git('show',`${ref}:${file}`);}
 function capture(client){const calls=[];client.request=async(path,options={})=>{calls.push({path,options});return null;};return calls;}
 async function detect(qbVersion,apiVersion){const c=new Client();c.request=async p=>{if(p==='app/version')return `v${qbVersion}`;if(p==='app/webapiVersion')return apiVersion;throw new Error(`Unexpected endpoint ${p}`);};await c.detect();return c;}
 
-const tags=git('tag','--list','release-*').split(/\r?\n/).filter(Boolean)
-  .filter(tag=>/^release-(?:4|5)\.\d+\.\d+(?:\.\d+)?$/.test(tag))
-  .filter(tag=>cmp(tag,'release-4.1.9.1')>=0)
-  .sort(cmp);
-assert.ok(tags.length>=30,`expected broad official 4.x/5.x tag coverage, got ${tags.length}`);
+let tags;
+if(fullAudit){
+  tags=git('tag','--list','release-*').split(/\r?\n/).filter(Boolean)
+    .filter(tag=>/^release-(?:4|5)\.\d+\.\d+(?:\.\d+)?$/.test(tag))
+    .filter(tag=>cmp(tag,'release-4.1.9.1')>=0)
+    .sort(cmp);
+  assert.ok(tags.length>=30,`expected broad official 4.x/5.x tag coverage, got ${tags.length}`);
+}else{
+  tags=Array.from(new Set(requestedRefs)).sort(cmp);
+  for(const tag of tags){
+    assert.match(tag,/^release-(?:4|5)\.\d+\.\d+(?:\.\d+)?$/,`invalid release ref ${tag}`);
+    git('rev-parse','--verify',`refs/tags/${tag}`);
+  }
+}
 
 const audited=[];
 for(const tag of tags){
@@ -77,9 +89,17 @@ for(const tag of tags){
   audited.push({qbVersion,apiVersion});
 }
 
+assert.ok(audited.length>0,'no qB release refs were audited');
+if(!fullAudit){
+  assert.deepEqual(audited.map(x=>x.qbVersion),['4.1.9.1','5.2.0'],'daily representative audit must stay pinned to qB 4.1.9.1 and 5.2.0');
+}
 const masterHeader=show('origin/master','src/webui/webapplication.h');
 const masterApi=parseApi(masterHeader,'origin/master');
-assert.ok(cmp(masterApi,audited.at(-1).apiVersion)>=0,`master WebAPI ${masterApi} must not predate latest stable ${audited.at(-1).apiVersion}`);
+assert.ok(cmp(masterApi,audited.at(-1).apiVersion)>=0,`master WebAPI ${masterApi} must not predate audited stable ${audited.at(-1).apiVersion}`);
 
 const byMajor=audited.reduce((m,x)=>{const k=parts(x.qbVersion)[0];m[k]=(m[k]||0)+1;return m;},{});
-console.log(`Upstream qB release audit passed: ${audited.length} official stable tags (${byMajor[4]||0} qB 4.x + ${byMajor[5]||0} qB 5.x), from ${audited[0].qbVersion}/WebAPI ${audited[0].apiVersion} through ${audited.at(-1).qbVersion}/WebAPI ${audited.at(-1).apiVersion}; master WebAPI ${masterApi}.`);
+if(fullAudit){
+  console.log(`Full upstream qB Release audit passed: ${audited.length} official stable tags (${byMajor[4]||0} qB 4.x + ${byMajor[5]||0} qB 5.x), from ${audited[0].qbVersion}/WebAPI ${audited[0].apiVersion} through ${audited.at(-1).qbVersion}/WebAPI ${audited.at(-1).apiVersion}; master WebAPI ${masterApi}.`);
+}else{
+  console.log(`Representative upstream audit passed: ${audited.map(x=>`${x.qbVersion}/WebAPI ${x.apiVersion}`).join(' + ')}; master WebAPI ${masterApi}.`);
+}
