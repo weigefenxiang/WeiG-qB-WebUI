@@ -156,6 +156,12 @@
       extra.remove();
     });
   }
+  function sectionRows(group,grid){
+    return Array.from(group.querySelectorAll('.settings-row--canonical,.settings-control')).filter(function(row){
+      if(row.closest('.settings-group')!==group)return false;
+      return !grid||row.parentElement!==grid;
+    });
+  }
 
   /* SETTINGS-DESIGN-001 — every editable Settings section consumes one responsive grid owner. */
   function normalizeSection(group,owner){
@@ -164,10 +170,10 @@
     group.dataset.settingsOwner=owner||group.dataset.settingsOwner||activeSettingsOwner();
     if(group.classList.contains('about-surface')){normalizeAboutIdentity();return;}
 
-    var directRows=Array.from(group.querySelectorAll(':scope > .settings-row--canonical,:scope > .settings-control'));
     var grids=Array.from(group.querySelectorAll(':scope > .settings-grid-canonical'));
     var grid=grids[0]||null;
-    if(!directRows.length&&!grid)return;
+    var rows=sectionRows(group,grid);
+    if(!rows.length&&!grid)return;
     if(!grid){
       grid=document.createElement('div');
       grid.className='settings-grid-canonical';
@@ -178,7 +184,7 @@
     }
     grid.dataset.settingsOwner=group.dataset.settingsOwner;
     mergeExtraGrids(group,grid);
-    directRows.forEach(function(row){
+    sectionRows(group,grid).forEach(function(row){
       row.classList.add('setting-row-grid');
       row.dataset.settingSpan=classifySpan(row);
       grid.appendChild(row);
