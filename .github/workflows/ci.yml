@@ -43,6 +43,7 @@ jobs:
           node --check tests/browser-mobile-v036.mjs
           node --check tests/browser-v037.mjs
           node --check tests/browser-ui-system-v037.mjs
+          node --check tests/browser-settings-layout-v037.mjs
           node --check tests/compat-matrix-v036.mjs
           node --check tests/release-compat-v037.mjs
           node --check tests/upstream-release-audit-v037.mjs
@@ -84,6 +85,8 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Shared responsive UI system regression
         run: node tests/browser-ui-system-v037.mjs
+      - name: Settings alignment and HeaderUtility regression
+        run: node tests/browser-settings-layout-v037.mjs
 
   release_guard:
     name: Main release candidate guard
@@ -159,6 +162,8 @@ jobs:
         run: node tests/browser-v037.mjs
       - name: Shared responsive UI system regression
         run: node tests/browser-ui-system-v037.mjs
+      - name: Settings alignment and HeaderUtility regression
+        run: node tests/browser-settings-layout-v037.mjs
       - name: Full representative qB 4.x and 5.x interaction regression
         run: node tests/browser-ui-v036.mjs
 
@@ -194,6 +199,9 @@ jobs:
       - name: Shared responsive UI Windows regression
         shell: pwsh
         run: node tests/browser-ui-system-v037.mjs
+      - name: Settings alignment and HeaderUtility Windows regression
+        shell: pwsh
+        run: node tests/browser-settings-layout-v037.mjs
 
   release_candidate:
     name: release candidate
