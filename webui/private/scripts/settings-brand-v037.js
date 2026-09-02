@@ -237,6 +237,11 @@
     normalizeQueued=true;
     requestAnimationFrame(function(){normalizeQueued=false;normalizeSettings();});
   }
+  function settleSettings(){
+    [0,60,320,980,1880].forEach(function(delay){
+      global.setTimeout(function(){observeSettings();normalizeSettings();},delay);
+    });
+  }
   function observeSettings(){
     var root=document.getElementById('settings-content');
     if(!root||settingsObserver)return;
@@ -248,11 +253,15 @@
     if(initialized)return;
     initialized=true;
     normalizeHeaderBrand();
-    normalizeSettings();
-    observeSettings();
-    global.addEventListener('weigg:languagechange',queueNormalize);
-    global.addEventListener('hashchange',function(){requestAnimationFrame(function(){normalizeHeaderBrand();queueNormalize();});});
-    global.setTimeout(function(){normalizeHeaderBrand();queueNormalize();},700);
+    settleSettings();
+    document.addEventListener('click',function(e){
+      if(!e.target||!e.target.closest)return;
+      if(e.target.closest('#settings-tabs [data-settings-tab],[data-mobile-settings-tab],[data-route="settings"]'))settleSettings();
+    },true);
+    global.addEventListener('weigg:languagechange',settleSettings);
+    global.addEventListener('weigg:timezonechange',settleSettings);
+    global.addEventListener('hashchange',function(){requestAnimationFrame(function(){normalizeHeaderBrand();settleSettings();});});
+    global.setTimeout(function(){normalizeHeaderBrand();settleSettings();},700);
   }
 
   W.SettingsDesignV037={
