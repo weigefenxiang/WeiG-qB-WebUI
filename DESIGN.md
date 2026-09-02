@@ -1,47 +1,55 @@
 # WeiG qB WebUI — Design System
 
-Version: **1.9**  
-Status: **v0.3.7 unified interaction + Settings mother template + ResponsiveShell 3.0**  
+Version: **2.0**  
+Status: **v0.3.7 Responsive UI System 3.3**  
 Theme: **Nebula Spatial Console**  
 Compatibility floor: **qBittorrent 4.1.9.1**
 
-> This file is the single visual and interaction authority. New UI extends these rules; it does not create a second local design system.
+> This file is the single visual and interaction authority. New UI extends these rules; it never creates a second local design system.
 
-The project may study system-thinking references such as `VoltAgent/awesome-design-md`: tokens, reusable components, explicit interaction states, responsive contracts and restrained hierarchy. References are principles, not screenshots to copy.
+WeiG qB WebUI follows the DESIGN.md method promoted by `VoltAgent/awesome-design-md`: document visual atmosphere, semantic color roles, typography, reusable component styling, layout/spacing, depth, Do/Don't guardrails and responsive behavior in one agent-readable authority. We study system thinking, not another product's exact appearance.
 
 ## 1. Non-negotiable rules
 
-1. One semantic purpose has one canonical component or controller.
-2. Feature code does not invent local Button/Select/Card/Chip/Badge/Modal/Popover/Settings layout systems.
-3. Capability detection, not qB major version, decides backend compatibility.
-4. Data count is not DOM count; large collections stay virtualized.
-5. Polling never destroys page, scroll, selection, detail-return or display-timezone state.
-6. Mobile is a touch-first adaptive layout, not a squeezed desktop.
-7. Primary data surfaces consume safe remaining workspace instead of arbitrary fixed height.
-8. Display timezone is browser presentation state, never qB/server time.
-9. Storage telemetry is the qB default-save filesystem value, never fabricated VPS telemetry.
-10. HTML is a no-store bootstrap; CSS/JS cache identity is the deployment Git SHA.
-11. Reduced Motion is mandatory.
-12. Setting units, conversions and special values require verified qBittorrent semantics; names are never used to guess units.
-13. Official qBittorrent translations and WeiG explanations have distinct provenance.
-14. Selection is model state, not mounted-DOM state.
-15. README is the concise user entry; engineering detail belongs in `docs/` and this design authority.
-16. Presentation owners may normalize DOM/layout, but must not duplicate qB WebAPI save/business logic.
+1. One semantic purpose has one canonical component/controller/layout owner.
+2. Feature code does not invent local Button/Select/Card/Chip/Badge/Modal/Popover/Settings-row systems.
+3. Settings layout is created correctly at render time; a MutationObserver may be a temporary migration bridge, never the permanent geometry engine.
+4. Every ordinary editable Setting is an `inline SettingRow`: copy left, control right.
+5. Desktop SettingsGrid defaults to two columns. A field name such as `path`, `url`, `host`, `username` or `password` is never sufficient reason to span both columns.
+6. Full-width Settings content is explicit schema semantics, not a heuristic. It is reserved for multiline/composite editors, lists, tables or similarly wide content.
+7. An odd final ordinary SettingRow stays in the left grid cell; it is not stretched or centered across the panel.
+8. Capability detection, not qB major version, decides backend compatibility.
+9. Presentation refactors do not duplicate `QBClient`, `setPreferences()`, preference keys, unit conversion or save behavior.
+10. Mobile is adaptive presentation, not a second business application.
+11. Data count is not DOM count; large collections remain virtualized.
+12. Polling never destroys page, scroll, selection, detail-return or display-timezone state.
+13. Display timezone is browser presentation state, never qB/server time.
+14. HTML is a no-store bootstrap; CSS/JS cache identity is the deployment Git SHA.
+15. Reduced Motion is mandatory.
+16. README is the user manual; architecture/test/release detail belongs in `docs/` and this authority.
 
-English is canonical source copy. The runtime may bundle verified/fallback UI dictionaries for `zh-CN`, `zh-TW`, `ja` and `ko`; the project README is maintained in English and Simplified Chinese.
-
-## 2. Spatial hierarchy and canonical owners
+## 2. Visual atmosphere
 
 ```text
-Void      page/deep-space background
+Void      deep-space page background
 Base      workspace
 Panel     Sidebar / DataGrid / Settings section
-Card      stats / information cards
-Raised    search / toolbar / active input / detail summary
-Floating  listbox / menu / popover / dialog
+Card      compact information/stat surface
+Raised    toolbar / active input / detail summary
+Floating  select / menu / popover / dialog
 ```
 
-Canonical primitives/controllers include:
+The interface is dark, precise and dense. Blue/cyan communicates ordinary WeiG interaction; purple is reserved for alternative-rate semantics and selected brand accents. Depth comes from restrained border contrast, surface luminance and small elevation, not permanent neon glow.
+
+Typography hierarchy remains:
+
+```text
+Page title > Section title > Setting title > value/control > description/helper
+```
+
+Setting title and description are always left aligned. Ordinary Settings content never uses centered copy.
+
+## 3. Canonical primitives and owners
 
 ```text
 Button / IconButton
@@ -51,266 +59,322 @@ Switch / CheckControl
 FilterChip
 Tooltip / SettingHelp
 Dialog / AdaptiveDialog
-Drawer / Action Sheet / ContextDrawer
+Drawer / ActionSheet / ContextDrawer
 Menu / Popover
 Badge / StatusPill
 Card / Panel
 Tabs
 DataGrid / Pagination / VirtualList
+FloatingLayer
 PreferenceSchemaV037
-SettingsPageShell / SettingsViewportLayout
-SettingsSectionPanel / SettingsGrid / SettingRow / FactRow
 ControlRegistry
+SettingsPageShell
+SettingsViewportLayout
+SettingsSectionPanel
+SettingsGrid
+SettingRow
+SettingControlSlot
+SettingBlock
+FactRow
+HeaderUtilityBar
+HeaderUtilityAction
 BrandMark / BrandCluster / BrandIdentity / AmbientMark
 Navigation.goHome
-FloatingLayer
 SelectionModelV037 / BulkActionDispatcher
 TorrentActionController
 DataGridLayoutController
 ResponsiveShell 3.0
-AboutPanel
 ```
 
-### PRIMITIVE-001 — no feature-local clone
+Feature CSS may own feature-specific layout and semantic states. It may not redefine canonical control colors, radii, focus rings, hover/active behavior or create a second Settings geometry system.
 
-Feature CSS may own layout, column geometry and feature-specific semantic states. It may not redefine canonical colors, radii, shadows, focus rings or interaction state for an existing primitive.
+## 4. SETTINGS-STRUCTURE-002 — one SettingRow DOM shape
 
-Required control states: Default, Hover, Focus-visible, Active/Selected and Disabled.
-
-## 3. FLOATING-001 — one FloatingLayer system
-
-Any surface that visually floats above normal content uses the canonical body-level portal:
+Every ordinary editable preference renders this semantic structure directly:
 
 ```text
-Trigger
-  ↓ getBoundingClientRect()
-#weigg-floating-layer
-  ↓ position: fixed
-Select / Dropdown / Menu / Popover / Tooltip / SettingHelp / Timezone picker
+SettingRow
+├─ SettingCopy
+│  ├─ SettingTitleLine
+│  │  ├─ Title
+│  │  └─ optional SettingHelp
+│  └─ Description
+└─ SettingControlSlot
+   └─ canonical control
 ```
 
-Collision policy is below → flip above → horizontal shift → viewport height cap → internal scroll. A floating surface must not depend on an ancestor `z-index` to escape clipping.
+Conceptual DOM:
 
-## 4. SELECT-001 — canonical Select/Listbox
-
-Visible Select UI uses `W.Components.selectControl()`. Native `<select>` may remain only as an invisible compatibility/data bridge.
-
-Keyboard/ARIA contract includes Arrow Up/Down, Home/End, Enter/Space, Escape, `aria-haspopup=listbox`, `role=listbox/option` and `aria-selected`.
-
-Short values remain content-fit. A select does not become 180–330px wide merely because another field in the same row is long.
-
-## 5. BRAND-001 / BRAND-002 — one reusable brand system
-
-Brand visual, motion, text and navigation are separate owners:
-
-```text
-BrandCluster
-├─ BrandMarkHome
-│  └─ BrandMark
-│     └─ AmbientMark
-└─ BrandNameHome
-   └─ WeiG qB
+```html
+<label class="setting-row" data-setting-key="...">
+  <span class="setting-row__copy">...</span>
+  <span class="setting-row__control">...</span>
+</label>
 ```
 
-Header icon and `WeiG qB` are distinct click targets; both call the canonical `Navigation.goHome()` path. They are not wrapped in one inseparable link.
+Legacy flat rows such as `strong + small + control` are migration input only. They must be adapted once into the canonical structure; CSS must not maintain a second geometry branch for them.
 
-`AmbientMark` remains the single motion controller for header and About. It owns hover/click/idle effects such as orbit, spark, tilt, shine, flip, spin and breathe. It must not run a permanent RAF loop, pauses while the document is hidden, and disables nonessential motion under Reduced Motion.
+## 5. SETTINGS-GRID-002 — two columns by default
 
-About uses the same mark asset and controller through `BrandIdentity`; it may use a larger identity-size token and an identity motion profile, but it must not draw or animate a second logo implementation.
-
-## 6. TIME-001 / TIME-002 — global Display Time Zone
-
-Visible date/time is rendered through `W.Time` / `Intl.DateTimeFormat`:
-
-```text
-qB timestamp
-→ normalized epoch
-→ chosen IANA timezone
-→ localized visible text
-```
-
-The sole configuration entry is `Settings → WeiG WebUI → Display Time Zone`. Logs and other pages consume the same state. Changing timezone changes visible text only; it never calls qB `setPreferences()` or changes daemon/host time.
-
-## 7. SHELL-001 / SCROLL-001 — ResponsiveShell 3.0
-
-Desktop retains Topbar + Sidebar + Workspace + StatusDock. Phones use one dynamic three-track shell:
-
-```text
-Topbar             auto
-Workspace          minmax(0, 1fr)
-Bottom navigation  auto + safe area
-```
-
-Phone layout uses `100dvh` where available with `100svh` fallback. Every active mobile route has one primary vertical scroll owner; feature pages must not reintroduce competing document/page/list scroll owners.
-
-Representative mobile geometry includes 320×568, 360×800, 390×844 and 430×932 plus representative desktop widths.
-
-## 8. MOBILE-NAV-001 / CONTEXT-DRAWER-001
-
-Bottom navigation is one horizontal icon+label line. Labels do not wrap and safe-area inset is respected.
-
-On phones, Settings categories move out of the Settings workspace into the hamburger `ContextDrawer`, after Torrent filters. Desktop keeps the category rail. `settings-content` remains the Settings primary scroll owner.
-
-## 9. SETTINGS-001 / SETTINGS-GRID-001 — Settings mother template
-
-All editable Settings tabs share one presentation hierarchy:
+All editable Settings tabs share:
 
 ```text
 SettingsPageShell
 └─ SettingsViewportLayout
    ├─ SettingsSidebar
-   └─ SettingsContentViewport      <- only Settings scroll owner
+   └─ SettingsContentViewport       <- only Settings scroll owner
       └─ SettingsSectionPanel
          ├─ SectionHeader
          └─ SettingsGrid
             ├─ SettingRow
-            └─ SettingRow
+            ├─ SettingRow
+            └─ ...
 ```
 
-`WeiG WebUI`, `Downloads`, `Connection`, `Speed`, `BitTorrent`, `Web UI` and `Advanced` consume this same shell/panel/grid geometry. Pages may provide different schema/data, not different layout systems.
-
-Current geometry contract:
+Applies to:
 
 ```text
-settings content max width  1240px
-wide viewport              two SettingsGrid columns
-viewport <= 1180px         one SettingsGrid column
-row minimum height         64px desktop / compact on mobile
-row structure              minmax(0,1fr) + auto control
+WeiG WebUI
+Downloads
+Connection
+Speed
+BitTorrent
+Web UI
+Advanced
+```
+
+Geometry:
+
+```text
+content max width          1240px
+viewport > 1180px          2 SettingsGrid columns
+viewport <= 1180px         1 SettingsGrid column
+ordinary row min-height    about 64px desktop
+row internal layout        minmax(0,1fr) auto
 copy                       left aligned
-control/value              aligned to the row cell right edge
+control slot               right aligned
 ```
 
-Ordinary rows use one grid cell. Semantically long fields such as path, URL, address, tracker, directory, username/password or wide textarea may use `data-setting-span="full"` and span both columns. Full-span is semantic, not a page-specific exception.
-
-The presentation layer must recognize canonical setting rows directly and must not depend on an unrelated observer first adding a special class. It also must not use repeating timeout-based DOM repair as a normal ownership mechanism.
-
-### 9.1 Settings data/business boundary
+Wide desktop example:
 
 ```text
-              Settings UI System
-                     │
-        ┌────────────┴────────────┐
-        │                         │
-WeiG preference state      qB preference state
-        │                         │
-WeiG adapter/model              QBClient
-                                  │
-                            qB WebAPI
+Auto Torrent management              [switch] | Create subfolder                    [switch]
+Preallocate disk space               [switch] | Default save path            [/downloads/]
+Auto relocate on path change         [switch] | Pause added torrents                 [switch]
+Incomplete Torrent path   [/downloads/incomplete] | Use incomplete path             [switch]
 ```
 
-`ControlRegistry` maps semantic field types to canonical Select/Switch/Input/read-only controls. qB Preferences continue to use existing `QBClient`, preference draft and save paths. The Settings mother template is presentation-only and must not create a second `QBClient` or duplicate `setPreferences()` ownership.
+The same geometry applies to Connection, Speed, BitTorrent, Web UI and Advanced. A setting does not become centered merely because its control is a Switch or because it was produced by a legacy helper.
 
-## 10. ABOUT-001 / ABOUT-002 — shared shell, read-only semantics
+## 6. SETTINGS-ALIGN-002 — one alignment contract
 
-About reuses `SettingsSectionPanel` and responsive grid spacing, but metadata is not an editable preference. Use `FactRow`, not `SettingRow`.
-
-Canonical composition:
+Inside every ordinary SettingRow:
 
 ```text
-AboutPanel / SettingsSectionPanel
-├─ BrandIdentity
-│  ├─ animated BrandMark
-│  └─ WeiG qB WebUI
-└─ Facts grid
-   ├─ Version
-   ├─ Git SHA
-   ├─ qBittorrent
-   ├─ WebAPI
-   ├─ GitHub
-   ├─ Blog
-   └─ GNU GPL-3.0
+left edge                                  right edge
+Title / description                 [control/value]
 ```
 
-Desktop uses compact two-column facts; mobile uses one column. Fact label and value/action stay on the same visual row. About must not contain Language, Theme or another editable preference control.
+Hard rules:
 
-Public project/brand links are metadata. Deployment-specific host paths, instance URLs, credentials and container names must never be hardcoded into the open-source tree.
+- title and description share one left axis;
+- control/value shares the row cell right axis;
+- Switch, number, port, Select and text input do not each invent a different alignment strategy;
+- description wraps only inside the copy column;
+- no `justify-content:center`, centered title or centered Switch in ordinary SettingRow;
+- controls use semantic width tiers rather than one forced width.
 
-## 11. STATUS-DOCK-001 / STATUS-DOCK-002
+Recommended semantic control sizing:
 
-Desktop StatusDock responsibilities:
+```text
+switch             intrinsic
+short number/port  compact
+select             content-fit with reasonable cap
+standard text      medium
+path/url text      medium/wide but still one grid cell by default
+```
+
+## 7. SETTINGS-SPAN-002 — explicit full width only
+
+Default:
+
+```text
+span = 1
+```
+
+Allowed explicit full width:
+
+```text
+multiline textarea
+tracker/source list editor
+large rule editor
+certificate/key text area
+multi-control composite editor
+embedded table/list/data surface
+```
+
+Forbidden heuristic:
+
+```text
+key contains path/url/domain/address/host/username/password
+→ full width
+```
+
+Those fields remain ordinary two-column cells unless the schema explicitly declares a genuinely wide editor.
+
+`PreferenceSchema` owns `span` / `layout` semantics. Page CSS and string matching do not.
+
+## 8. SETTINGS-OWNER-002 — remove competing FormRail geometry
+
+The historical centered 820px FormRail is not a current Settings layout authority. Once a tab is migrated to SettingsGrid, legacy FormRail variables/selectors may not affect its rows.
+
+There must be exactly one geometry path:
+
+```text
+SettingsGrid
+→ SettingRow
+→ SettingCopy + SettingControlSlot
+```
+
+Two simultaneous `!important` layout systems are forbidden.
+
+## 9. CONTROL-REGISTRY-002
+
+`ControlRegistry` maps verified semantics to shared controls:
+
+```text
+boolean     -> Switch
+number      -> NumberInput
+port        -> PortInput
+text        -> TextInput
+path        -> TextInput with path semantics
+select/enum -> canonical Select/Listbox
+rate        -> RateControl
+duration    -> DurationControl
+timezone    -> canonical TimeZone Select
+readonly    -> Fact/readonly control as appropriate
+```
+
+A verified enum should not remain an unexplained numeric code when a canonical Select can represent the official choices. Business/API ownership remains outside the registry.
+
+## 10. HEADER-UTILITY-001 — one icon-action template
+
+Desktop/tablet topbar actions become:
+
+```text
+[+ Add Torrent] [GitHub] [Blog] [Refresh] [Theme]
+```
+
+GitHub:
+
+```text
+https://github.com/weigefenxiang/WeiG-qB-WebUI
+```
+
+Blog:
+
+```text
+https://www.weigshare.com/
+```
+
+GitHub, Blog, Refresh and Theme all consume the same `HeaderUtilityAction` / existing `icon-btn` visual template:
+
+```text
+same hit area
+same radius
+same border/surface
+same hover
+same focus-visible ring
+same active feedback
+same Tooltip behavior
+```
+
+Do not create `.github-btn` or `.blog-btn` visual systems.
+
+External actions render as semantic anchors with `target="_blank"` and `rel="noopener noreferrer"`; runtime actions render as buttons. Both use the same presentation component. Icon-only controls require accessible labels/tooltips.
+
+On narrow phones, GitHub/Blog may move into ContextDrawer `Links` rather than compressing the topbar. Their semantic action remains the same owner.
+
+## 11. BRAND-001 — one reusable Brand system
+
+```text
+BrandCluster
+├─ BrandMarkHome
+│  └─ BrandMark + AmbientMark
+└─ BrandNameHome
+   └─ WeiG qB
+```
+
+Header mark and name are separate Home targets and share `Navigation.goHome()`. About uses the same BrandMark asset and `AmbientMark` controller through `BrandIdentity`, only with a larger identity-size profile.
+
+No duplicate SVG/logo animation implementation is allowed.
+
+## 12. FLOATING / SELECT / DIALOG
+
+Visible Select uses `W.Components.selectControl()`. Native select may remain only as a compatibility/data bridge.
+
+Floating surfaces use body-level `FloatingLayer` and follow below → flip above → shift → cap height → internal scroll collision policy.
+
+Dialogs use Header / Body / Actions. Only Body scrolls when necessary.
+
+## 13. Responsive and mobile
+
+Mobile remains one application with adaptive presentation. Every active long page has one primary scroll owner. `settings-content` owns Settings scrolling; mobile Settings category navigation belongs in ContextDrawer.
+
+SettingsGrid is one column on narrow layouts. The SettingRow internal contract remains copy left / control right unless the available width requires an explicitly defined compact stacking rule. No page-specific mobile Settings implementation is allowed.
+
+## 14. Status / Transfer / data systems
+
+Desktop StatusDock keeps:
 
 ```text
 left          center runtime cluster                      right
 Torrent N     Storage | TransferCapsule | Connection      reserved/status
 ```
 
-The runtime cluster is visually centered. Refresh-success noise (`Refreshed` / `已刷新`) is silent; one-time meaningful status or failures may use the reserved status area.
+Transfer download/upload is one capsule opening one shared TransferRateEditor. Alternative mode retints the complete editor.
 
-Storage uses `sync/maindata → server_state.free_space_on_disk`, meaning free space on the filesystem containing qBittorrent's default save path. Format uses readable IEC units.
+Torrent/Logs large collections remain virtualized. Selection is model state. DataGrid pointermove updates layout only and does not rebuild VirtualList.
 
-## 12. TRANSFER-001 / RATE-INPUT-001
+## 15. Systemic anti-patterns discovered in v0.3.7
 
-Download/upload status is one `TransferCapsule`. One click opens one shared `TransferRateEditor` for normal and alternative limits.
+These are now explicit regression risks:
 
-Desktop editor target width is 720px with viewport cap; mobile uses remaining width. Rate fields reuse one value/unit/scrubber system. ALT mode retints the complete editor rather than a tiny label only.
+1. **Dual row structures** — canonical `copy + control` rows mixed with flat legacy rows produce different alignment.
+2. **Dual layout owners** — old FormRail CSS and new SettingsGrid CSS both using high specificity/`!important` create non-deterministic geometry.
+3. **Name-based full-span guessing** — fields containing `host/path/url/user/password` unexpectedly become one-column rows.
+4. **Post-render DOM repair as architecture** — observer-driven moving/wrapping can race later injections and hide source ownership problems.
+5. **Tests that validate only column count** — a page may technically have two columns while labels are centered or full-span is overused.
+6. **Feature-local header actions** — adding one-off GitHub/Blog styles would duplicate the existing IconButton system.
 
-## 13. SETTING-UNIT-001 / PREFERENCE-SCHEMA-001
+Fix the owner, schema or primitive; do not add another CSS exception for the screenshot.
 
-`PreferenceSchemaV037` is the canonical semantic owner for ordinary qB Preferences; verified Advanced metadata follows the same rule. Units and conversions are applied only after qB source/API semantics are verified.
+## 16. Validation contract
 
-Examples include global/alternative rate limits, ports, ban duration, slow-torrent thresholds, socket buffers, torrent file size, disk queue size, memory limits, hostname cache TTL and resume-data interval. Special values such as `0` or `-1` display only the meaning verified for that exact field.
+Focused `[ui]` regression must validate both qB 4.1.9.1 and 5.2.0 in one Linux Chromium job and cover every Settings tab.
 
-## 14. I18N-SETTING-001 / SETTING-HELP-001
-
-Advanced translation data lives outside business logic with upstream provenance. Verified qB translations are distinct from WeiG explanations. `SettingHelp` uses the canonical FloatingLayer and remains short/operational.
-
-## 15. SELECTION-001 / BULK-001
-
-`SelectionModelV037` owns conceptual Torrent selection, not mounted DOM rows. It supports current-page and all-matching selection/inversion and bounded bulk dispatch through `BulkActionDispatcher`.
-
-## 16. TORRENT-ACTION-001 — one action controller
-
-Toolbar More, row/card More, desktop right-click and touch long-press all enter `TorrentActionController`. Long-press cancels on scrolling movement; interactive descendants do not start it.
-
-## 17. DATAGRID-001 — responsive column resizing
-
-Column drag is a layout operation:
+Required geometry assertions on wide desktop:
 
 ```text
-pointermove
-→ requestAnimationFrame
-→ DataGridLayoutController updates grid width state
+SettingsGrid reports two columns
+ordinary rows default span=1
+odd final ordinary row does not stretch full width
+SettingCopy left edge is aligned to the cell content edge
+SettingControlSlot right edge is aligned to the cell content edge
+no ordinary title is center-aligned
+no forbidden key-name heuristic produces full-span
+Downloads / Connection / Speed / BitTorrent / Web UI / Advanced share the same owners
+Advanced reaches the final row
 ```
 
-No VirtualList reconstruction, API request or storage write is allowed during pointermove. Persist once on pointerup.
-
-## 18. DIALOG-001 — AdaptiveDialog
-
-Dialogs use Header / scrollable Body / Actions. Header and actions remain stable; Body scrolls only when content exceeds the dynamic viewport. Desktop dialogs with enough space must not show needless internal scrollbars.
-
-## 19. Cache identity and COMPAT-001 / FUTURE-001 / FIXTURE-001
-
-HTML declares no-store/no-cache bootstrap metadata. Local CSS/JS direct and lazy assets use the deployment Git SHA through `buildAssetUrl()`.
-
-Compatibility is selected at WebAPI/endpoint/Preference/field/capability boundaries, not qB major version. Synthetic future-major fixtures are forward-compatibility sentinels only and never an official support claim.
-
-## 20. Validation policy
-
-Development and Release validation have different cost/coverage responsibilities:
+Header assertions:
 
 ```text
-dev normal push
-  → static/smoke/platform contracts
-  → representative qB 4.1.9.1 + 5.2.0 upstream compatibility audit
-
-dev [ui]
-  → the above
-  → one Linux Chromium focused shared-UI regression
-     using qB 4.1.9.1 + 5.2.0 fixtures
-
-main manual candidate
-  → full official stable-tag source/API audit
-  → full representative compatibility matrix
-  → Linux browser matrix
-  → Windows browser matrix
-  → exact-SHA release candidate artifact
+GitHub and Blog use the same icon-action geometry as Refresh/Theme
+external links have correct href/target/rel/accessible label
+Header Brand mark/name remain separate Home targets
 ```
 
-Full cross-platform matrices are not routine dev feedback. They are Release-candidate evidence.
+Normal dev validation stays cheap. Full qB stable-tag audit, Linux/Windows browser matrices and multi-viewport Release validation run only from `main` manual Release candidate preparation.
 
-## 21. Release UX gate
-
-A release candidate must preserve all canonical UI contracts, including Select/FloatingLayer, AmbientMark/Reduced Motion, ResponsiveShell 3.0, Settings mother template, About `FactRow` semantics, StatusDock centering, Transfer editor, selection/actions, DataGrid resize, AdaptiveDialog, compatibility matrices and absence of unexpected console/page errors.
-
-Real qB daemon validation remains required on the exact candidate SHA for the legacy 4.1.9.1 boundary and a modern 5.2.x target before promotion to `main`. Fixture PASS never implies production/live certification.
+Real exact-SHA validation on qB 4.1.9.1 and 5.2.x remains required before promotion. Fixture PASS never implies LIVE certification.
