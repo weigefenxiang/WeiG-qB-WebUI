@@ -32,6 +32,7 @@ assert(floating.includes('C.selectControl=function')&&floating.includes('opts.na
 const settings=text('webui/private/scripts/settings.js'),settingsCss=text('webui/private/css/settings.css');
 assert(settings.includes("className='setting-row'")&&settings.includes("className='settings-grid'")&&settings.includes('weigg:settings-render'),'Canonical Settings renderer/lifecycle missing');
 assert(settings.includes('C.selectControl(opts)')&&!settings.includes("createElement('select')"),'Settings must explicitly use canonical Select');
+assert(!settings.includes("global.addEventListener('hashchange'")&&!settings.includes('showSettingsView')&&!settings.includes('W.Router.route'),'Settings must not intercept or present application routes');
 assert(settingsCss.includes('grid-template-columns:repeat(2,minmax(0,1fr))'),'Settings two-column contract missing');
 
 const app=text('webui/private/scripts/app.js'),ux=text('webui/private/scripts/ux.js'),spatial=text('webui/private/scripts/spatial.js');
