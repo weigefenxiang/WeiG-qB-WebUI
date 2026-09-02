@@ -1,30 +1,57 @@
 (function(global){
   'use strict';
-  var W=global.WeiG,U=W&&W.util,T=W.t||function(k){return k;};
-  if(!W||!U||W.SpatialRuntime)return;
+  var W=global.WeiG,U=W&&W.util,C=W&&W.Components;
+  if(!W||!U||!C||W.SpatialRuntime)return;
 
-  var FACETS=[
-    {id:'tracker-section',nav:'tracker-nav',label:'sidebar.trackers',attr:'tracker',shortKey:'v036.facet.tracker',shortFallback:'Tracker'},
-    {id:'savepath-section',nav:'savepath-nav',label:'sidebar.savePath',attr:'savepath',shortKey:'v036.facet.path',shortFallback:'Path'},
-    {id:'category-section',nav:'category-nav',label:'sidebar.categories',attr:'category',shortKey:'v036.facet.category',shortFallback:'Category'},
-    {id:'tag-section',nav:'tag-nav',label:'sidebar.tags',attr:'tag',shortKey:'v036.facet.tag',shortFallback:'Tag'}
-  ];
-
-  function closeAllFacets(except){U.$$('.facet-filter').forEach(function(wrap){if(except&&wrap===except)return;var trigger=wrap.querySelector('.facet-trigger'),panel=wrap.querySelector('.facet-popover');if(trigger)trigger.setAttribute('aria-expanded','false');if(panel)panel.hidden=true;});}
-  function activeLabel(nav){var active=nav&&nav.querySelector('.nav-item.is-active');if(!active)return T('filter.all');return String(active.textContent||'').replace(/\s·\s\d+$/,'').trim()||T('filter.all');}
+  function zh(){return !!(W.I18n&&W.I18n.getLocale&&W.I18n.getLocale()==='zh-CN');}
+  function label(en,cn){return zh()?cn:en;}
   function isMobile(){return !!(global.matchMedia&&global.matchMedia('(max-width: 820px)').matches);}
-  function shortFacetLabel(def){var value=W.RuntimeI18n&&W.RuntimeI18n.t?W.RuntimeI18n.t(def.shortKey):def.shortFallback;return value&&value!==def.shortKey?value:def.shortFallback;}
-  function facetValue(nav,def){var active=nav&&nav.querySelector('.nav-item.is-active');if(isMobile()&&active&&def.attr&&(active.dataset[def.attr]===undefined||active.dataset[def.attr]===''))return shortFacetLabel(def);return activeLabel(nav);}
-  function updateFacetTrigger(wrap,nav,def){var value=wrap.querySelector('.facet-trigger__value');if(value)value.textContent=facetValue(nav,def);var label=wrap.querySelector('.facet-trigger__label');if(label)label.textContent=T(def.label);var section=U.$(def.id);wrap.hidden=!!(section&&section.hidden);}
-  function addFacetSearch(panel,nav){var input=document.createElement('input');input.type='search';input.className='facet-search';input.autocomplete='off';input.placeholder=T('nav.search')+'…';input.setAttribute('aria-label',T('nav.search'));input.addEventListener('input',function(){var q=input.value.trim().toLocaleLowerCase();Array.from(nav.querySelectorAll('.nav-item')).forEach(function(btn){btn.hidden=!!q&&String(btn.textContent||'').toLocaleLowerCase().indexOf(q)<0;});});panel.insertBefore(input,panel.firstChild);}
-  function createFacet(def,shelf){var section=U.$(def.id),nav=U.$(def.nav);if(!section||!nav)return null;var wrap=document.createElement('div');wrap.className='facet-filter';wrap.dataset.facet=def.id;var trigger=document.createElement('button');trigger.type='button';trigger.className='facet-trigger';trigger.setAttribute('aria-expanded','false');var label=document.createElement('span');label.className='facet-trigger__label';label.textContent=T(def.label);var value=document.createElement('span');value.className='facet-trigger__value';value.textContent=facetValue(nav,def);var chevron=document.createElement('span');chevron.className='facet-trigger__chevron';chevron.textContent='▾';trigger.append(label,value,chevron);var panel=document.createElement('div');panel.className='facet-popover surface surface--floating';panel.hidden=true;panel.appendChild(section);addFacetSearch(panel,nav);wrap.append(trigger,panel);shelf.appendChild(wrap);trigger.addEventListener('click',function(e){e.stopPropagation();var open=panel.hidden;closeAllFacets(wrap);panel.hidden=!open;trigger.setAttribute('aria-expanded',open?'true':'false');if(open){var search=panel.querySelector('.facet-search');if(search){search.value='';Array.from(nav.querySelectorAll('.nav-item')).forEach(function(b){b.hidden=false;});search.focus();}}});panel.addEventListener('click',function(e){e.stopPropagation();});nav.addEventListener('click',function(e){if(!e.target.closest('.nav-item'))return;updateFacetTrigger(wrap,nav,def);panel.hidden=true;trigger.setAttribute('aria-expanded','false');});updateFacetTrigger(wrap,nav,def);return wrap;}
-  function installFilterShelf(){var list=U.$('list-view');if(!list||U.$('filter-shelf'))return;var header=list.querySelector('.workspace__header');if(!header)return;var shelf=document.createElement('div');shelf.id='filter-shelf';shelf.className='filter-shelf';FACETS.forEach(function(def){createFacet(def,shelf);});var spacer=document.createElement('span');spacer.className='filter-shelf__spacer';var summary=document.createElement('span');summary.className='filter-shelf__summary';summary.textContent='qBittorrent';shelf.append(spacer,summary);header.insertAdjacentElement('afterend',shelf);}
-  function syncFacets(){FACETS.forEach(function(def){var wrap=document.querySelector('.facet-filter[data-facet="'+def.id+'"]'),nav=U.$(def.nav);if(wrap&&nav)updateFacetTrigger(wrap,nav,def);});}
 
-  function installConnectionDock(){if(document.querySelector('.connection-dock'))return;var meta=document.querySelector('.sidebar__meta'),statusbar=document.querySelector('.statusbar'),old=U.$('status-connection');if(!meta||!statusbar||!old)return;var dock=document.createElement('span');dock.className='connection-dock';var trigger=document.createElement('button');trigger.type='button';trigger.className='connection-dock__trigger';trigger.id='status-connection';trigger.textContent=String(old.textContent||'—').replace(/^●\s*/,'');trigger.setAttribute('aria-expanded','false');old.replaceWith(dock);dock.appendChild(trigger);var panel=document.createElement('div');panel.className='connection-dock__popover surface surface--floating';panel.hidden=true;panel.appendChild(meta);dock.appendChild(panel);trigger.addEventListener('click',function(e){e.stopPropagation();var open=panel.hidden;panel.hidden=!open;trigger.setAttribute('aria-expanded',open?'true':'false');closeAllFacets();});panel.addEventListener('click',function(e){e.stopPropagation();});document.addEventListener('click',function(){panel.hidden=true;trigger.setAttribute('aria-expanded','false');});}
-  function syncLocale(){syncFacets();U.$$('.facet-filter').forEach(function(wrap){var search=wrap.querySelector('.facet-search');if(search){search.placeholder=T('nav.search')+'…';search.setAttribute('aria-label',T('nav.search'));}});}
+  var capabilityDialog=null;
+  function ensureCapabilityDialog(){
+    if(capabilityDialog&&capabilityDialog.isConnected)return capabilityDialog;
+    var d=document.createElement('dialog');
+    d.id='capability-dialog';
+    d.className='dialog surface surface--modal capability-dialog';
+    d.innerHTML='<div class="dialog__head"><div><div class="eyebrow">QBITTORRENT</div><h2 class="capability-dialog__title"></h2></div><button type="button" class="icon-btn capability-dialog__close">×</button></div><div class="dialog__body capability-dialog__body"><p class="capability-dialog__requirement"></p><p class="text-description capability-dialog__current"></p><p class="text-description capability-dialog__advice"></p><p class="text-description capability-dialog__backup"></p></div><div class="dialog__actions"><button type="button" class="btn btn--primary capability-dialog__done"></button></div>';
+    d.querySelector('.capability-dialog__close').onclick=d.querySelector('.capability-dialog__done').onclick=function(){d.close();};
+    document.body.appendChild(d);capabilityDialog=d;return d;
+  }
+  function openCapability(opts){
+    opts=opts||{};var d=ensureCapabilityDialog();
+    d.querySelector('.capability-dialog__title').textContent=opts.title||label('Feature unavailable','功能不可用');
+    d.querySelector('.capability-dialog__requirement').textContent=opts.requirement||label('This feature is not supported by the current qBittorrent instance.','当前 qBittorrent 实例不支持此功能。');
+    d.querySelector('.capability-dialog__current').textContent=label('Current version: ','当前版本：')+(opts.currentVersion||'—');
+    d.querySelector('.capability-dialog__advice').textContent=opts.advice||label('If you need this feature, consider upgrading to a compatible qBittorrent version.','如需使用此功能，建议升级到支持该功能的 qBittorrent 版本。');
+    d.querySelector('.capability-dialog__backup').textContent=opts.backup||label('Before upgrading, back up your qBittorrent configuration, torrent tasks, and important data.','升级前请备份 qBittorrent 配置、Torrent 任务及重要数据。');
+    d.querySelector('.capability-dialog__done').textContent=label('OK','知道了');
+    if(!d.open)d.showModal();return d;
+  }
+  W.CapabilityDialog={open:openCapability,close:function(){if(capabilityDialog&&capabilityDialog.open)capabilityDialog.close();}};
 
-  function init(){if(document.documentElement.dataset.spatialReady==='1')return;document.documentElement.dataset.spatialReady='1';installFilterShelf();installConnectionDock();syncFacets();document.addEventListener('click',function(){closeAllFacets();});global.addEventListener('weigg:route-state',function(){closeAllFacets();});global.addEventListener('weigg:library-state',syncFacets);global.addEventListener('resize',function(){requestAnimationFrame(syncLocale);});global.addEventListener('weigg:languagechange',syncLocale);}
-  W.SpatialRuntime={init:init,installFilterShelf:installFilterShelf,installConnectionDock:installConnectionDock,syncFacets:syncFacets};
+  var defs=[
+    {kind:'tracker',className:'facet-select--tracker',aria:function(){return label('Tracker filter','Tracker 筛选');},set:function(v){return W.LibraryController&&W.LibraryController.setTracker(v);}},
+    {kind:'savePath',className:'facet-select--path',aria:function(){return label('Save path filter','保存路径筛选');},set:function(v){return W.LibraryController&&W.LibraryController.setSavePath(v);}},
+    {kind:'category',className:'facet-select--category',aria:function(){return label('Category filter','分类筛选');},set:function(v){return W.LibraryController&&W.LibraryController.setCategory(v);}},
+    {kind:'tag',className:'facet-select--tag',aria:function(){return label('Tag filter','标签筛选');},set:function(v){return W.LibraryController&&W.LibraryController.setTag(v);}}
+  ];
+  var controls={},host=null;
+  function fallbackOptions(kind){var key=kind==='tracker'?'tracker.all':kind==='savePath'?'path.all':kind==='category'?'category.all':'tag.all',fallback=kind==='tracker'?label('All Trackers','全部 Tracker'):kind==='savePath'?label('All Paths','全部路径'):kind==='category'?label('All Categories','全部分类'):label('All Tags','全部标签'),text=W.t?W.t(key):'';return[{value:'',label:text&&text!==key?text:fallback}];}
+  function currentValue(kind){var state=W.LibraryController&&W.LibraryController.state?W.LibraryController.state():null;if(!state)return'';return kind==='savePath'?state.savePath:String(state[kind]||'');}
+  function blocked(def){if(def.kind!=='tag')return false;var app=W.AppState;if(app&&app.client&&app.client.capabilities&&app.client.capabilities.tags)return false;if(W.LibraryController&&W.LibraryController.showCapability)W.LibraryController.showCapability('tags');return true;}
+  function createControl(def){
+    var wrap=document.createElement('div');wrap.className='facet-control '+def.className;wrap.dataset.facet=def.kind;
+    var control=C.selectControl({options:fallbackOptions(def.kind),value:'',searchable:true,searchThreshold:14,ariaLabel:def.aria(),className:'facet-select',onOpen:function(){return blocked(def)?false:true;},onChange:function(value){if(blocked(def))return;def.set(value);requestAnimationFrame(syncFacets);}});
+    wrap.appendChild(control);controls[def.kind]=control;return wrap;
+  }
+  function installFacetControls(){host=document.getElementById('facet-controls');if(!host)return null;if(!host.dataset.facetsReady){host.dataset.facetsReady='1';host.textContent='';defs.forEach(function(def){host.appendChild(createControl(def));});}mountForViewport();syncFacets();return host;}
+  function mountForViewport(){if(!host)host=document.getElementById('facet-controls');if(!host)return;var target=document.getElementById(isMobile()?'mobile-facet-slot':'sidebar-facet-slot');if(target&&host.parentElement!==target)target.appendChild(host);}
+  function syncFacets(){if(!host)installFacetControls();if(!host||!W.LibraryController)return;defs.forEach(function(def){var control=controls[def.kind];if(!control)return;var options=W.LibraryController.facetOptions?W.LibraryController.facetOptions(def.kind):fallbackOptions(def.kind);control.setOptions(options&&options.length?options:fallbackOptions(def.kind));control.setValue(currentValue(def.kind));var trigger=control.querySelector&&control.querySelector('.ui-select__trigger');if(trigger)trigger.setAttribute('aria-label',def.aria());});}
+  function sync(){mountForViewport();syncFacets();}
+  function init(){installFacetControls();}
+  W.SpatialRuntime={init:init,installFacetControls:installFacetControls,mountForViewport:mountForViewport,syncFacets:syncFacets};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+  global.addEventListener('weigg:library-state',function(){requestAnimationFrame(syncFacets);});
+  global.addEventListener('weigg:languagechange',function(){requestAnimationFrame(sync);});
+  global.addEventListener('resize',function(){requestAnimationFrame(sync);},{passive:true});
 })(window);

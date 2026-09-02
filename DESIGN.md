@@ -34,6 +34,11 @@ Compatibility floor: **qBittorrent 4.1.9.1**
 23. Dialog shells do not become scroll containers merely because the viewport is narrow; only content regions that actually overflow may scroll.
 24. Native Select presentation explicitly follows the resolved light/dark theme through canonical tokens and `color-scheme`.
 25. A retired canonical API or capability hook must be removed from every caller; an unreachable compatibility branch is still legacy runtime.
+26. Torrent facet state is semantic state; no hidden nav tree or visible DOM copy may act as its database.
+27. One telemetry field has one presentation input, and unchanged formatted telemetry must not cause a DOM write.
+28. Routine polling success is silent; durable status surfaces do not display heartbeat copy such as Refreshed/Connected when another surface already owns that state.
+29. Desktop/mobile variants may move one canonical component instance between declared slots; they may not clone a second business-control tree.
+30. The Torrent Topbar is single-row on desktop; search is the primary flexible item and shrinks before navigation/action controls wrap.
 
 ### COMPAT-DEGRADE-001 — honest capability degradation
 
@@ -73,6 +78,26 @@ Canonical native Select uses the resolved WeiG theme, not browser-default white 
 
 When a canonical capability is removed, every old call site, shim, false branch and no-op hook must also leave runtime. Code that “cannot currently execute” is not an archive. Git history is the only archive for retired ownership.
 
+### FACET-OWNER-001 — facet state and facet presentation are separate, singular owners
+
+Torrent facet business state belongs to `app.js / W.LibraryController`; visible facet composition belongs to `W.SpatialRuntime`; Select behavior belongs to `W.Components.selectControl()`; Select skin belongs to `css/ui.css`. The retired `filter-shelf`, feature-local facet popover/search implementation and hidden tracker/path/category/tag nav trees do not coexist with the canonical controls.
+
+### PRESENTATION-STATE-001 — DOM is not application state
+
+Adaptive/mobile presentation consumes semantic state/events or a semantic controller. It must not copy `page-title`, `library-count-copy`, hidden facet text or another presentation node as an authoritative source.
+
+### TELEMETRY-PAINT-001 — one input, idempotent paint
+
+DHT/Peers presentation consumes the `W.TransferRuntime` `sync/maindata` lifecycle. `getTransferInfo()` may own live speed/connection sampling but does not also paint DHT/Peers. If the formatted DHT/Peers value has not changed, the renderer performs no DOM mutation.
+
+### STATUS-NOISE-001 — routine success is silent
+
+Background refresh success does not occupy permanent UI with `Refreshed / 已刷新`, a refresh timestamp, or equivalent heartbeat text. Actionable errors remain visible and explicit operation success may use a bounded Toast.
+
+### STATUS-DEDUP-001 — durable state has one persistent surface
+
+Connection state belongs to the Network card. Statusbar does not duplicate `Connected / 已连接`. Persistent statusbar content is limited to Torrent count, storage, Transfer and a transient actionable message region.
+
 ## 2. Visual theme
 
 WeiG uses the **Nebula Spatial Console** design language: dark, precise, dense and restrained. It follows the design-system discipline promoted by `awesome-design-md`: explicit tokens, hierarchy, reusable components, documented responsive behavior, state contracts and known failure modes rather than screenshot-specific patches. The `awesome-design-md` Linear analysis is used as a discipline reference for layered dark surfaces, hairline boundaries, restrained accent use and reusable component tokens; WeiG keeps its own Nebula palette instead of copying another product's colors.
@@ -95,6 +120,9 @@ qB endpoint/capability/native units    W.QBClient
 Router URL/hash state                  W.Router
 Route Frame presentation               app.js / W.AppState
 Torrent query/catalog/page state       app.js / W.AppState
+Torrent facet state/facade             app.js / W.LibraryController
+Torrent facet presentation             W.SpatialRuntime
+Network card presentation              app.js
 Settings DOM/save                      W.SettingsRenderer / W.SettingsState
 Settings controls                      W.ControlRegistry + W.Components.selectControl
 Select behavior/presentation mode      W.Components.selectControl
@@ -109,10 +137,10 @@ Torrent field registry                 W.TorrentFieldRegistry
 Responsive presentation                W.MobileAdaptive
 Shared adaptive behavior               W.UiSystem
 DataGrid/dialog behavior               W.LayoutRuntime
-Facet/connection presentation          W.SpatialRuntime
 Visual polish                          W.PolishRuntime
 Runtime translation/context text       ux.js
 Brand/logo/favicon/motion              W.Brand + W.AmbientMark
+Header utilities/product presentation  header.js + source DOM
 Session/logout/BFCache                 W.SessionController / SessionGate
 Torrent progress motion                css/progress.css
 Non-Settings shell geometry            css/layout.css
@@ -154,6 +182,7 @@ presentation module starting QBClient/API polling
 setTimeout loops used as permanent ownership repair
 old + new runtime implementations loaded together
 dormant calls to retired canonical compatibility APIs
+hidden presentation DOM used as semantic state storage
 ```
 
 ## 5. Stable runtime filenames
@@ -204,11 +233,11 @@ Visible Selects are created explicitly with `W.Components.selectControl()` by th
 The same canonical Select owner has two explicit presentation modes:
 
 ```text
-floating mode   ordinary page/list/settings controls
+floating mode   ordinary page/list/settings/facet controls
 native mode     modal controls where the browser top layer must own the dropdown
 ```
 
-`native:true` is not a second component system; it is a presentation mode of the same `selectControl()` contract and exposes the same `getValue/setValue/setOptions/setDisabled/onChange` semantics.
+`native:true` is not a second component system; it is a presentation mode of the same `selectControl()` contract and exposes the same `getValue/setValue/setOptions/setDisabled/onChange` semantics. Capability-gated controls use the same component `onOpen` guard; a feature does not create a fake disabled dropdown or a second popup framework.
 
 The visual skin for **both** Select presentations lives in `css/ui.css`. Native mode consumes `--ui-control-surface`, `--ui-control-border`, `--ui-control-option-surface`, `--ui-native-scheme` and related semantic tokens. Feature styles may only set geometry such as `--ui-select-h` or `--ui-select-width`.
 
@@ -266,7 +295,7 @@ Logs             Logs active       Torrent Sidebar hidden
 Settings         Settings active   Torrent Sidebar hidden
 ```
 
-`ux.js` may synchronize translated route text/placeholders but never active navigation state. `spatial.js` owns facets/connection presentation but never route shell classes. Settings content must not intercept `hashchange` or block the canonical Route Frame event path.
+`ux.js` may synchronize translated route text/placeholders but never active navigation state. `spatial.js` owns facet presentation but never route shell classes or connection/footer presentation. Settings content must not intercept `hashchange` or block the canonical Route Frame event path.
 
 ## 9. Torrent selection
 
@@ -294,9 +323,9 @@ long press -> same ActionRegistry
 More -> same ActionRegistry
 ```
 
-Top More, context menu, long-press and mobile More render the same registry. Selection must not retain hooks to retired qB4 Private enrichment such as `resolveMany`; all-matching selection consumes the same already-available torrent semantics as the app.
+Top More, context menu, long-press and mobile More render the same registry. Selection-wide queries consume `W.LibraryController.state()` rather than retired tracker/path/category/tag presentation DOM. Selection must not retain hooks to retired qB4 Private enrichment such as `resolveMany`.
 
-## 10. Private / PT capability contract
+## 10. Private / PT and Tags capability contract
 
 Classification belongs to `W.TorrentSemantics`:
 
@@ -314,11 +343,15 @@ When qB returns authoritative `private` / equivalent metadata, it is used direct
 
 ### qBittorrent 4.x
 
-The `Private / PT` entry remains visible with a muted `5+` capability marker. Clicking it opens the neutral capability dialog; it does **not** change the active filter and does **not** issue tracker requests.
+The `Private / PT` entry remains visible with a muted `5+` capability marker. Clicking it opens the neutral shared capability dialog; it does **not** change the active filter and does **not** issue tracker requests.
 
 The legacy DHT/PeX/LSD tracker-message resolver, request queue and privacy cache are not part of runtime. Dormant callers of those removed APIs are also forbidden. qB4 Torrent Detail does not invent Private state when the WebAPI does not provide the authoritative metadata needed by this feature.
 
-The capability notice consumes the shared Dialog shell. Its short content must not show an outer or body scrollbar on ordinary desktop/mobile viewports; only genuinely overflowing dialog content may scroll internally.
+### Tags
+
+The Tags facet remains visible on unsupported instances. `QBClient.capabilities.tags` is authoritative and currently maps to **WebAPI 2.3.0+**. Opening Tags on an unsupported instance shows the same shared capability dialog and does not issue the unsupported Tags request or mutate tag filter state. It is not described as a qB 5-only feature.
+
+Capability notices consume the shared Dialog shell. Short content must not show an outer or body scrollbar on ordinary desktop/mobile viewports; only genuinely overflowing dialog content may scroll internally.
 
 Metadata pending on supported versions remains `UNKNOWN`, never falsely Public.
 
@@ -348,25 +381,45 @@ The error indicator may explain that total count is temporarily unavailable, whi
 
 The loading ring is CSS-only, small, and respects Reduced Motion.
 
-## 12. Desktop Torrent viewport geometry
+## 12. Torrent workspace geometry
 
-`css/layout.css` is the final non-Settings geometry owner. The desktop library fills the remaining workspace height:
+`css/layout.css` is the final non-Settings geometry owner. Desktop Topbar remains one line; navigation/actions are intrinsic and Search is the primary flex-shrinking region. The Torrent route intentionally has no duplicate Library/Page title block and no main-workspace filter shelf.
+
+Desktop Sidebar:
+
+```text
+Torrent state filters
+Private / PT [5+ when unsupported]
+canonical Tracker Select
+canonical Save Path Select
+canonical Category Select
+canonical Tags Select
+```
+
+The four Facets are the same `W.SpatialRuntime` instances used on mobile. Their external labels are omitted because the current Select values (`All Trackers`, `All Paths`, `All Categories`, `All Tags`) provide the semantic cue.
+
+Desktop workspace:
 
 ```text
 ListView (flex column)
-├─ Page header       intrinsic
-├─ Filter shelf      intrinsic
 ├─ Stats             intrinsic
 └─ TorrentPanel      flex:1
-   ├─ Toolbar        intrinsic
+   ├─ GridToolbar    intrinsic
+   │  ├─ page size / columns
+   │  ├─ Start / Pause / More / Delete
+   │  └─ Expand
    ├─ Column header  intrinsic
    ├─ TorrentList    flex:1; internal scroll
    └─ Pager          intrinsic
 ```
 
+Desktop action order is contractual: `Start -> Pause -> More -> Delete -> Expand`.
+
+Mobile owns no second business-control tree. `W.MobileAdaptive` moves the same Facet host and Selection toolbar between explicit desktop/mobile slots and adapts row height/density only.
+
 `app.css` must not retain fixed `62vh/660px` or mobile viewport-calculation heights for `torrent-list`. Adaptive geometry is not implemented as a later CSS override over an obsolete height owner.
 
-Route shell column/span geometry and statusbar named areas also belong to `css/layout.css`, not `spatial.css` or `polish.css`.
+Route shell column/span geometry and statusbar named areas belong to `css/layout.css`, not `spatial.css` or `polish.css`.
 
 ## 13. Transfer telemetry and chart history
 
@@ -377,7 +430,7 @@ existing getTransferInfo stream -> live speed samples
 one sync/maindata lifecycle      -> DHT / peers / free space
 ```
 
-No second speed polling loop is created.
+No second speed polling loop is created. The Network card consumes DHT/Peers only from the `weigg:maindata` lifecycle and uses idempotent text paint; unchanged snapshots do not flash or mutate the DOM. `loadTransfer()` may update Download/Upload speed and the card's connection state but must not become a second DHT/Peers writer.
 
 Realtime stats order:
 
@@ -430,10 +483,10 @@ The chart-window and rate-unit native Selects share one dark/light skin from `cs
 Desktop statusbar named areas:
 
 ```text
-"torrent storage transfer connection message"
+"torrent storage transfer message"
 ```
 
-Transfer/Storage/Connection have explicit areas. `polish.css` may change tone but never placement.
+Persistent information is limited to Torrent count, Free space and the Transfer capsule. The final message area is transient/actionable only. `Connected / 已连接`, `Refreshed / 已刷新` and refresh timestamps are not durable Footer owners. `polish.css` may change tone but never placement.
 
 ## 16. Progress and motion
 
@@ -471,6 +524,11 @@ The following are recurring architecture failures, not isolated screenshot bugs:
 11. Select behavior is canonical but native visual skin is owned by one feature stylesheet
 12. removed compatibility API survives as an unreachable caller/hook and can be revived later
 13. async dialog opens before authoritative data is loaded, exposing an invalid editable first frame
+14. a new UI wrapper is added while the old presentation owner remains underneath it
+15. a shared Select exists but one feature invents its own trigger/popover/search dropdown system
+16. one telemetry value is painted by two data streams, creating visible churn even when state is stable
+17. mobile presentation reads another UI node as its state database
+18. routine polling success or one durable state is duplicated across multiple fixed surfaces
 ```
 
 Fixed diagnosis order:
@@ -509,6 +567,10 @@ unbounded Transfer history
 feature-local .ui-select__native skin
 app.css generic dialog visual/overflow ownership
 capability dialog width !important override
+retired filter-shelf / facet popover / hidden facet nav source
+presentation DOM used as LibraryController state
+persistent Footer connection/refresh heartbeat owner
+second DHT/Peers presentation writer
 ```
 
 Browser fixture must execute and verify:
@@ -516,11 +578,18 @@ Browser fixture must execute and verify:
 ```text
 qB4 Private/PT -> 5+ capability dialog + 0 tracker requests
 qB4 compact capability dialog -> no outer/body scrollbar on desktop/mobile
+qB4 unsupported Tags -> visible control + shared WebAPI 2.3.0 capability dialog + no state mutation/request
 qB5 native Private filter/detail
+qB5 Tags -> actual canonical Select interaction
 progressive page label without ?
 first page before aggregate index completes
 RSS -> Settings atomic active state and sidebar removal
 desktop Torrent panel fills workspace
+Topbar remains one row and Search flex-shrinks before actions wrap
+Start/Pause/More/Delete remain immediately before Expand
+same Facet/action DOM moves to mobile without duplication
+unchanged DHT/Peers snapshot causes zero DOM mutation
+Footer has no persistent Refreshed/Connected copy
 real modal chart-window selection through 12h
 real rate-unit selection and numeric conversion
 dark native chart/rate Selects share one canonical theme
@@ -547,4 +616,4 @@ read DESIGN/docs contract
 → real exact-SHA LIVE
 ```
 
-A compatibility problem must not become a permanent compatibility layer.
+A compatibility problem must not become a permanent compatibility layer. Torrent workspace page-level detail is additionally specified in `docs/008.Torrent工作区与状态所有权.md`; it must remain consistent with this authority rather than override it.

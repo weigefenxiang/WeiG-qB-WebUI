@@ -5,6 +5,6 @@
   "license": "GPL-3.0",
   "type": "module",
   "scripts": {
-    "test": "node tests/runtime-contract.mjs && node tests/compat-matrix.mjs && node tests/semantics-contract.mjs && node tests/platform-contract-v037.mjs && node tests/syntax-contract.mjs && node --check tests/browser-runtime.mjs && node --check tests/browser-feature-parity.mjs && node --check tests/release-compat-v037.mjs && node --check tests/upstream-release-audit-v037.mjs"
+    "test": "node tests/runtime-contract.mjs && node tests/torrent-workspace-contract.mjs && node tests/compat-matrix.mjs && node tests/semantics-contract.mjs && node tests/platform-contract-v037.mjs && node tests/syntax-contract.mjs && node --check tests/browser-runtime.mjs && node --check tests/browser-feature-parity.mjs && node --check tests/browser-torrent-workspace.mjs && node --check tests/release-compat-v037.mjs && node --check tests/upstream-release-audit-v037.mjs"
   }
 }

@@ -7,35 +7,14 @@
     if(kind==='logout')return '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" d="M10 5H5.5v14H10M14 8l4 4-4 4M18 12H9"/></svg>';
     return '';
   }
-  function external(id,label,href,kind){
-    var a=document.createElement('a');a.id=id;a.className='icon-btn header-utility-action';a.href=href;a.target='_blank';a.rel='noopener noreferrer';a.title=label;a.setAttribute('aria-label',label);
-    var span=document.createElement('span');span.className='header-utility-icon';span.innerHTML=iconSvg(kind);a.appendChild(span);return a;
-  }
-  function runtime(id,label,kind,handler){
-    var b=document.createElement('button');b.id=id;b.type='button';b.className='icon-btn header-utility-action';b.title=label;b.setAttribute('aria-label',label);
-    var span=document.createElement('span');span.className='header-utility-icon';span.innerHTML=iconSvg(kind);b.appendChild(span);b.addEventListener('click',handler);return b;
-  }
-  function installDesktop(){
-    var actions=document.querySelector('.topbar__actions');if(!actions||document.getElementById('github-link'))return;
-    var refresh=document.getElementById('refresh-btn');
-    var github=external('github-link','GitHub','https://github.com/weigefenxiang/WeiG-qB-WebUI','github');
-    var blog=external('blog-link','WeiG Share Blog','https://www.weigshare.com/','blog');
-    var logout=runtime('logout-btn','Logout','logout',function(){if(W.SessionController)W.SessionController.logout(W.AppState&&W.AppState.client);});
-    if(refresh)actions.insertBefore(github,refresh);else actions.appendChild(github);
-    if(refresh)actions.insertBefore(blog,refresh);else actions.appendChild(blog);
-    actions.appendChild(logout);
-  }
-  function mobileLink(label,href,kind,handler){
-    var node=href?document.createElement('a'):document.createElement('button');if(!href)node.type='button';node.className='nav-item header-utility-link';if(href){node.href=href;node.target='_blank';node.rel='noopener noreferrer';}
-    var icon=document.createElement('span');icon.className='header-utility-icon';icon.innerHTML=iconSvg(kind);var text=document.createElement('span');text.textContent=label;node.append(icon,text);if(handler)node.addEventListener('click',handler);return node;
-  }
-  function installMobile(){
-    var sidebar=document.getElementById('sidebar');if(!sidebar||sidebar.querySelector('[data-header-links]'))return;
-    var section=document.createElement('div');section.className='sidebar__section';section.dataset.headerLinks='1';var title=document.createElement('div');title.className='eyebrow';title.textContent='LINKS';var nav=document.createElement('nav');nav.className='nav-list';
-    nav.append(mobileLink('GitHub','https://github.com/weigefenxiang/WeiG-qB-WebUI','github'),mobileLink('WeiG Share','https://www.weigshare.com/','blog'),mobileLink('Logout','', 'logout',function(){if(W.SessionController)W.SessionController.logout(W.AppState&&W.AppState.client);}));
-    section.append(title,nav);sidebar.appendChild(section);
-  }
-  function init(){setTimeout(function(){installDesktop();installMobile();},0);}
-  W.HeaderUtilities={installDesktop:installDesktop,installMobile:installMobile};
+  function external(id,label,href,kind){var a=document.createElement('a');a.id=id;a.className='icon-btn header-utility-action';a.href=href;a.target='_blank';a.rel='noopener noreferrer';a.title=label;a.setAttribute('aria-label',label);var span=document.createElement('span');span.className='header-utility-icon';span.innerHTML=iconSvg(kind);a.appendChild(span);return a;}
+  function runtime(id,label,kind,handler){var b=document.createElement('button');b.id=id;b.type='button';b.className='icon-btn header-utility-action';b.title=label;b.setAttribute('aria-label',label);var span=document.createElement('span');span.className='header-utility-icon';span.innerHTML=iconSvg(kind);b.appendChild(span);b.addEventListener('click',handler);return b;}
+  function installDesktop(){var actions=document.querySelector('.topbar__actions');if(!actions||document.getElementById('github-link'))return;var theme=document.getElementById('theme-btn');var github=external('github-link','GitHub','https://github.com/weigefenxiang/WeiG-qB-WebUI','github');var blog=external('blog-link','WeiG Share Blog','https://www.weigshare.com/','blog');var logout=runtime('logout-btn','Logout','logout',function(){if(W.SessionController)W.SessionController.logout(W.AppState&&W.AppState.client);});if(theme&&theme.nextSibling){actions.insertBefore(github,theme.nextSibling);actions.insertBefore(blog,theme.nextSibling);}else{actions.appendChild(github);actions.appendChild(blog);}actions.appendChild(logout);}
+  function mobileLink(label,href,kind,handler){var node=href?document.createElement('a'):document.createElement('button');if(!href)node.type='button';node.className='nav-item header-utility-link';if(href){node.href=href;node.target='_blank';node.rel='noopener noreferrer';}var icon=document.createElement('span');icon.className='header-utility-icon';icon.innerHTML=iconSvg(kind);var text=document.createElement('span');text.textContent=label;node.append(icon,text);if(handler)node.addEventListener('click',handler);return node;}
+  function installMobile(){var sidebar=document.getElementById('sidebar');if(!sidebar||sidebar.querySelector('[data-header-links]'))return;var section=document.createElement('div');section.className='sidebar__section';section.dataset.headerLinks='1';var title=document.createElement('div');title.className='eyebrow';title.textContent='LINKS';var nav=document.createElement('nav');nav.className='nav-list';nav.append(mobileLink('GitHub','https://github.com/weigefenxiang/WeiG-qB-WebUI','github'),mobileLink('WeiG Share','https://www.weigshare.com/','blog'),mobileLink('Logout','', 'logout',function(){if(W.SessionController)W.SessionController.logout(W.AppState&&W.AppState.client);}));section.append(title,nav);sidebar.appendChild(section);}
+  function syncText(){var labelNode=document.querySelector('#add-btn [data-header-add-short]');if(labelNode){var next=W.InterfaceText&&W.InterfaceText.t?W.InterfaceText.t('addShort'):'Add';labelNode.textContent=next;}var mark=document.getElementById('qb-product-mark');if(mark)mark.title='qBittorrent';}
+  function init(){setTimeout(function(){installDesktop();installMobile();syncText();},0);}
+  W.HeaderUtilities={installDesktop:installDesktop,installMobile:installMobile,syncText:syncText};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+  global.addEventListener('weigg:languagechange',syncText);
 })(window);
