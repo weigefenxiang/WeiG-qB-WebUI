@@ -1,7 +1,7 @@
 /* WeiG qB WebUI v0.3.7 — canonical Settings + Brand ownership layer */
 :root{
   --settings-content-max:1240px;
-  --settings-grid-breakpoint:980px;
+  --settings-grid-breakpoint:1180px;
   --settings-grid-gap-x:0px;
   --settings-grid-gap-y:0px;
   --setting-row-min-h:64px;
@@ -33,33 +33,39 @@
 .brand-name-home .brand__text{font-weight:790;letter-spacing:-.018em;text-shadow:0 3px 16px rgba(0,0,0,.22)}
 
 /* SETTINGS-DESIGN-001 — one Surface, one auto 1/2-column SettingsGrid, one SettingRow geometry. */
-#settings-view #settings-content{container-type:inline-size;container-name:settings-content}
+#settings-view #settings-content{width:100%;min-width:0}
 #settings-view #settings-content>.settings-section-panel{
   width:min(var(--settings-content-max),100%)!important;
   max-width:var(--settings-content-max)!important;
+  min-width:0!important;
   margin-inline:auto!important;
 }
 #settings-view #settings-content>.advanced-filter{width:min(470px,100%)!important;margin-inline:auto!important}
 .settings-section-panel>.settings-grid-canonical{
   display:grid!important;
+  width:100%!important;
+  min-width:0!important;
   grid-template-columns:repeat(2,minmax(0,1fr))!important;
   grid-auto-flow:row!important;
   gap:var(--settings-grid-gap-y) var(--settings-grid-gap-x)!important;
-  min-width:0!important;
 }
-#settings-view #settings-content .settings-grid-canonical>.settings-row--canonical{
+#settings-view #settings-content .settings-grid-canonical>.settings-row--canonical,
+#settings-view #settings-content .settings-grid-canonical>.settings-control{
   width:100%!important;
   max-width:none!important;
   box-sizing:border-box!important;
   margin:0!important;
+  display:grid!important;
   grid-template-columns:minmax(0,1fr) auto!important;
   justify-content:stretch!important;
+  align-items:center!important;
   column-gap:16px!important;
   min-height:var(--setting-row-min-h)!important;
   padding:var(--setting-row-pad-y) var(--setting-row-pad-x)!important;
 }
 #settings-view #settings-content .settings-grid-canonical>.settings-row--canonical>.settings-row__copy,
-#settings-view #settings-content .settings-grid-canonical>.settings-row--canonical>span:first-child{
+#settings-view #settings-content .settings-grid-canonical>.settings-row--canonical>span:first-child,
+#settings-view #settings-content .settings-grid-canonical>.settings-control>span:first-child{
   justify-self:stretch!important;
   text-align:left!important;
   align-items:start!important;
@@ -69,13 +75,18 @@
 #settings-view #settings-content .settings-grid-canonical>.settings-row--canonical>input:not(.switch-input),
 #settings-view #settings-content .settings-grid-canonical>.settings-row--canonical>select,
 #settings-view #settings-content .settings-grid-canonical>.settings-row--canonical>.switch-control,
-#settings-view #settings-content .settings-grid-canonical>.settings-row--canonical>.ui-select{
+#settings-view #settings-content .settings-grid-canonical>.settings-row--canonical>.ui-select,
+#settings-view #settings-content .settings-grid-canonical>.settings-control>.field-input,
+#settings-view #settings-content .settings-grid-canonical>.settings-control>input:not(.switch-input),
+#settings-view #settings-content .settings-grid-canonical>.settings-control>select,
+#settings-view #settings-content .settings-grid-canonical>.settings-control>.switch-control,
+#settings-view #settings-content .settings-grid-canonical>.settings-control>.ui-select{
   justify-self:end!important;
   text-align:left!important;
 }
 .settings-grid-canonical>.setting-row-grid[data-setting-span="full"]{grid-column:1/-1!important}
 #settings-view #settings-content .settings-grid-canonical>.setting-row-grid[data-setting-span="full"]>.field-input[data-control-size="wide"]{max-inline-size:min(560px,52vw)!important}
-.settings-section-panel--metrics{width:min(var(--settings-content-max),100%)!important}
+.settings-section-panel[data-settings-owner="weigg-metrics"]{width:min(var(--settings-content-max),100%)!important}
 
 /* BRAND-IDENTITY-001 — About uses the same BrandMark/AmbientMark and the same section shell. */
 .about-surface.settings-section-panel .about-identity.brand-identity{grid-template-columns:auto minmax(0,1fr)!important;gap:14px!important}
@@ -85,20 +96,18 @@
 .brand-identity__name-home{display:inline-flex;align-items:center;min-height:34px;margin:-4px 0 -3px -7px;padding:3px 7px;border-radius:9px;font-size:inherit;font-weight:inherit;letter-spacing:inherit;text-align:left}
 .brand-identity__name-home:hover{border-color:rgba(114,151,255,.16);background:rgba(114,151,255,.045);color:var(--text-primary)}
 
-@container settings-content (max-width:980px){
-  .settings-section-panel>.settings-grid-canonical{grid-template-columns:minmax(0,1fr)!important}
-  #settings-view #settings-content .settings-grid-canonical>.settings-row--canonical{border-right:0!important}
-}
+/* A viewport breakpoint is the canonical responsive owner here. Avoid inline-size containment on the
+   existing Settings scroll/grid shell because it can collapse intrinsic mobile width to zero. */
 @media(max-width:1180px){
-  @supports not (container-type:inline-size){
-    .settings-section-panel>.settings-grid-canonical{grid-template-columns:minmax(0,1fr)!important}
-    #settings-view #settings-content .settings-grid-canonical>.settings-row--canonical{border-right:0!important}
-  }
+  .settings-section-panel>.settings-grid-canonical{grid-template-columns:minmax(0,1fr)!important}
+  #settings-view #settings-content .settings-grid-canonical>.settings-row--canonical,
+  #settings-view #settings-content .settings-grid-canonical>.settings-control{border-right:0!important}
 }
 @media(max-width:820px){
   :root{--setting-row-min-h:58px;--setting-row-pad-x:12px;--setting-row-pad-y:9px;--brand-mark-compact:36px}
   .settings-section-panel>.settings-grid-canonical{grid-template-columns:minmax(0,1fr)!important}
-  #settings-view #settings-content .settings-grid-canonical>.settings-row--canonical{border-right:0!important}
+  #settings-view #settings-content .settings-grid-canonical>.settings-row--canonical,
+  #settings-view #settings-content .settings-grid-canonical>.settings-control{border-right:0!important}
   .brand-cluster{gap:0}
   .brand-name-home{padding-inline:4px 7px}
 }

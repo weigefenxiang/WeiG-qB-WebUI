@@ -3,7 +3,7 @@
   var W=global.WeiG,C=W&&W.Components,U=W&&W.util;
   if(!W||!C||!U||W.V037SettingsBrand)return;
 
-  var initialized=false,settingsObserver=null,brandReady=false,normalizeQueued=false;
+  var initialized=false,settingsObserver=null,normalizeQueued=false;
   var BRAND_MARK_SELECTOR='.brand__mark';
 
   function reducedMotion(){return !!(global.matchMedia&&global.matchMedia('(prefers-reduced-motion: reduce)').matches);}
@@ -83,7 +83,6 @@
 
     cluster.append(markHome,nameHome);
     current.replaceWith(cluster);
-    brandReady=true;
     return cluster;
   }
 
@@ -146,28 +145,47 @@
     readonly:function(key,title,description,value){return C.readonlySettingField(key,title,description,value);}
   };
 
+  function activeSettingsOwner(){
+    var active=document.querySelector('#settings-tabs [data-settings-tab].is-active');
+    return active&&active.dataset.settingsTab?active.dataset.settingsTab:'unknown';
+  }
+  function mergeExtraGrids(group,grid){
+    Array.from(group.querySelectorAll(':scope > .settings-grid-canonical')).forEach(function(extra){
+      if(extra===grid)return;
+      Array.from(extra.children).forEach(function(child){grid.appendChild(child);});
+      extra.remove();
+    });
+  }
+
   /* SETTINGS-DESIGN-001 — every editable Settings section consumes one responsive grid owner. */
-  function normalizeSection(group){
+  function normalizeSection(group,owner){
     if(!group)return;
     group.classList.add('settings-section-panel');
+    group.dataset.settingsOwner=owner||group.dataset.settingsOwner||activeSettingsOwner();
     if(group.classList.contains('about-surface')){normalizeAboutIdentity();return;}
-    var rows=Array.from(group.querySelectorAll(':scope > .settings-row--canonical,:scope > .settings-control'));
-    var grid=group.querySelector(':scope > .settings-grid-canonical');
-    if(!rows.length&&!grid)return;
+
+    var directRows=Array.from(group.querySelectorAll(':scope > .settings-row--canonical,:scope > .settings-control'));
+    var grids=Array.from(group.querySelectorAll(':scope > .settings-grid-canonical'));
+    var grid=grids[0]||null;
+    if(!directRows.length&&!grid)return;
     if(!grid){
       grid=document.createElement('div');
       grid.className='settings-grid-canonical';
       grid.dataset.settingsGrid='auto';
+      grid.dataset.settingsOwner=group.dataset.settingsOwner;
       var heading=group.querySelector(':scope > .section-heading');
       if(heading)heading.insertAdjacentElement('afterend',grid);else group.prepend(grid);
     }
-    rows.forEach(function(row){
+    grid.dataset.settingsOwner=group.dataset.settingsOwner;
+    mergeExtraGrids(group,grid);
+    directRows.forEach(function(row){
       row.classList.add('setting-row-grid');
       row.dataset.settingSpan=classifySpan(row);
       grid.appendChild(row);
     });
     Array.from(grid.children).forEach(function(row){
-      if(!row.classList.contains('setting-row-grid'))return;
+      if(!row.matches('.settings-row--canonical,.settings-control,.setting-row-grid'))return;
+      row.classList.add('setting-row-grid');
       row.dataset.settingSpan=classifySpan(row);
     });
   }
@@ -175,7 +193,12 @@
     var root=document.getElementById('settings-content');
     if(!root)return;
     root.classList.add('settings-content--canonical');
-    Array.from(root.querySelectorAll(':scope > .settings-group')).forEach(normalizeSection);
+    var owner=activeSettingsOwner();
+    Array.from(root.querySelectorAll(':scope > .settings-group')).forEach(function(group,index){
+      var sectionOwner=owner;
+      if(owner==='weigg'&&index>0)sectionOwner='weigg-metrics';
+      normalizeSection(group,sectionOwner);
+    });
     normalizeAboutIdentity();
   }
   function queueNormalize(){
@@ -205,7 +228,8 @@
     ControlRegistry:ControlRegistry,
     normalize:normalizeSettings,
     normalizeSection:normalizeSection,
-    classifySpan:classifySpan
+    classifySpan:classifySpan,
+    activeOwner:activeSettingsOwner
   };
   W.BrandSystemV037={
     BrandMark:installBrandMark,
