@@ -17,7 +17,8 @@ const spatialCss=read('webui/private/css/spatial.css');
 const headerCss=read('webui/private/css/header.css');
 const docs=read('docs/008.Torrent工作区与状态所有权.md');
 
-for(const token of ['filter-shelf','tracker-nav','savepath-nav','category-nav','tag-nav','page-title','library-count-copy','last-refresh','qb-product-mark','refresh-btn'])assert(!index.includes(token),`Retired Torrent DOM survived: ${token}`);
+for(const token of ['filter-shelf','tracker-nav','savepath-nav','category-nav','tag-nav','page-title','library-count-copy','last-refresh','qb-product-mark'])assert(!index.includes(token),`Retired Torrent DOM survived: ${token}`);
+assert(!index.includes('id="refresh-btn"'),'Retired topbar Refresh DOM survived');
 for(const token of ['facet-controls','sidebar-facet-slot','mobile-facet-slot','mobile-command-slot','torrent-selection-toolbar','torrent-action-slot','torrent-focus-slot','mobile-summary','status-connection','data-header-add-short'])assert(index.includes(token),`Canonical Torrent workspace slot missing: ${token}`);
 assert(index.indexOf('id="add-btn"')<index.indexOf('id="theme-btn"'),'Header Add must remain before Theme');
 assert(!index.includes('id="qb-product-mark"')&&!index.includes('id="refresh-btn"'),'Passive qB product marker and manual refresh must retire from Topbar');
@@ -30,7 +31,8 @@ assert(!spatialCss.includes('.ui-select__native'),'Spatial CSS must not restyle 
 assert(floating.includes("typeof opts.onOpen==='function'")&&floating.includes('opts.onOpen(value,w)===false'),'Canonical Select must expose reusable open guard for capability-gated controls');
 
 assert(app.includes('W.LibraryController=LibraryController')&&app.includes('facetOptions:facetOptions'),'Torrent facet state must expose semantic LibraryController facade');
-for(const token of ['last-refresh',"setStatus('已刷新')",'page-title','tracker-nav','savepath-nav','category-nav','tag-nav','refresh-btn','connectionLabel('])assert(!app.includes(token),`App retained retired presentation dependency ${token}`);
+for(const token of ['last-refresh',"setStatus('已刷新')",'page-title','tracker-nav','savepath-nav','category-nav','tag-nav','connectionLabel('])assert(!app.includes(token),`App retained retired presentation dependency ${token}`);
+assert(!app.includes("U.$('refresh-btn')"),'App retained retired topbar Refresh caller');
 assert(app.includes("global.addEventListener('weigg:maindata'")&&app.includes('paintNetworkMeta'),'DHT/Peers must paint from maindata lifecycle');
 const loadTransfer=app.slice(app.indexOf('async function loadTransfer'),app.indexOf('async function buildCatalog'));
 assert(!loadTransfer.includes('network-meta')&&!loadTransfer.includes('networkSnapshot')&&!loadTransfer.includes('connection-status'),'loadTransfer must emit connection semantics rather than own Network/Connection presentation');

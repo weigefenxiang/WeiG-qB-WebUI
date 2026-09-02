@@ -46,7 +46,8 @@ assert(app.includes("btn.classList.toggle('is-active'")&&app.includes("shell.cla
 assert(!ux.includes('bindRoutes')&&!ux.includes("classList.toggle('is-active'"),'UX must not own route navigation state');
 assert(!spatial.includes('syncRouteFrame')&&!spatial.includes("classList.toggle('is-tool-route'"),'Spatial runtime must not own route shell state');
 assert(app.includes("if(filter==='private'&&!app.client.capabilities.privateFlag)")&&app.includes("showCapability('private')"),'qB4 Private/PT must degrade to a shared capability notice');
-for(const token of ['ensurePrivacy(','resolveMany(','TorrentSemantics.resolve','legacyTrackerEvidence','tracker-nav','savepath-nav','category-nav','tag-nav','library-count-copy','last-refresh','status-connection','refresh-btn','connectionLabel('])assert(!app.includes(token),`App still contains retired owner/caller ${token}`);
+for(const token of ['ensurePrivacy(','resolveMany(','TorrentSemantics.resolve','legacyTrackerEvidence','tracker-nav','savepath-nav','category-nav','tag-nav','library-count-copy','last-refresh','status-connection','connectionLabel('])assert(!app.includes(token),`App still contains retired owner/caller ${token}`);
+assert(!app.includes("U.$('refresh-btn')"),'App still contains retired topbar Refresh caller');
 assert(app.includes('pageSize+1')&&app.includes('pager-index-spinner')&&!app.includes("pages=total==null?'?'"),'Progressive pagination must avoid ? and use bounded look-ahead');
 assert(app.includes('function totalMatching(){return app.catalogReady?app.catalog.filter(filterMatch).length:null;}'),'Catalog total count must filter without sorting the full catalog');
 assert(app.includes('total:totalMatching()')&&!app.includes('total:app.catalogReady?matchingCatalog().length:null'),'Library lifecycle count must not sort the full catalog');
