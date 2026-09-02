@@ -1,0 +1,108 @@
+/* WeiG qB WebUI v0.3.7 — canonical Settings + Brand ownership layer */
+:root{
+  --settings-content-max:1240px;
+  --settings-grid-breakpoint:980px;
+  --settings-grid-gap-x:0px;
+  --settings-grid-gap-y:0px;
+  --setting-row-min-h:64px;
+  --setting-row-pad-x:16px;
+  --setting-row-pad-y:11px;
+  --brand-mark-compact:38px;
+  --brand-mark-identity:50px;
+}
+
+/* BRAND-SYSTEM-001 — Header mark and product name are distinct home targets. */
+.brand-cluster{display:inline-flex;align-items:center;gap:2px;min-height:44px;min-width:0}
+.brand-mark-home,.brand-name-home,.brand-identity__mark-home,.brand-identity__name-home{
+  -webkit-tap-highlight-color:transparent;
+  border:1px solid transparent;
+  background:transparent;
+  color:inherit;
+  font:inherit;
+  cursor:pointer;
+  transition:transform var(--motion-fast) var(--ease),background var(--motion-fast),border-color var(--motion-fast),color var(--motion-fast),box-shadow var(--motion-fast),filter var(--motion-fast);
+}
+.brand-mark-home{display:grid;place-items:center;width:46px;height:44px;padding:3px 4px;border-radius:13px}
+.brand-name-home{display:inline-flex;align-items:center;min-height:40px;padding:4px 10px 4px 5px;border-radius:11px}
+.brand-mark-home:hover{border-color:rgba(125,160,255,.18);background:linear-gradient(180deg,rgba(99,139,255,.105),rgba(78,102,184,.045));box-shadow:0 9px 24px rgba(0,0,0,.14),0 0 20px rgba(92,133,255,.05)}
+.brand-name-home:hover{border-color:rgba(125,160,255,.13);background:rgba(114,151,255,.055);color:#f5f8ff}
+.brand-mark-home:active,.brand-name-home:active{transform:translateY(0) scale(.985)}
+.brand-mark-home:focus-visible,.brand-name-home:focus-visible,.brand-identity__mark-home:focus-visible,.brand-identity__name-home:focus-visible{outline:2px solid rgba(114,151,255,.78);outline-offset:2px}
+.brand-mark-home>.brand__mark{width:var(--brand-mark-compact)!important;height:var(--brand-mark-compact)!important;flex-basis:var(--brand-mark-compact)!important}
+.brand-mark-home:hover>.brand__mark{transform:translateY(-1px) rotate(-1deg);filter:saturate(1.08) brightness(1.06);box-shadow:0 0 0 1px rgba(121,164,255,.20),0 11px 28px rgba(31,63,157,.32),0 0 34px rgba(83,143,255,.34),inset 0 1px rgba(255,255,255,.62),inset 0 -2px rgba(4,9,18,.28)!important}
+.brand-name-home .brand__text{font-weight:790;letter-spacing:-.018em;text-shadow:0 3px 16px rgba(0,0,0,.22)}
+
+/* SETTINGS-DESIGN-001 — one Surface, one auto 1/2-column SettingsGrid, one SettingRow geometry. */
+#settings-view #settings-content{container-type:inline-size;container-name:settings-content}
+#settings-view #settings-content>.settings-section-panel{
+  width:min(var(--settings-content-max),100%)!important;
+  max-width:var(--settings-content-max)!important;
+  margin-inline:auto!important;
+}
+#settings-view #settings-content>.advanced-filter{width:min(470px,100%)!important;margin-inline:auto!important}
+.settings-section-panel>.settings-grid-canonical{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  grid-auto-flow:row!important;
+  gap:var(--settings-grid-gap-y) var(--settings-grid-gap-x)!important;
+  min-width:0!important;
+}
+#settings-view #settings-content .settings-grid-canonical>.settings-row--canonical{
+  width:100%!important;
+  max-width:none!important;
+  box-sizing:border-box!important;
+  margin:0!important;
+  grid-template-columns:minmax(0,1fr) auto!important;
+  justify-content:stretch!important;
+  column-gap:16px!important;
+  min-height:var(--setting-row-min-h)!important;
+  padding:var(--setting-row-pad-y) var(--setting-row-pad-x)!important;
+}
+#settings-view #settings-content .settings-grid-canonical>.settings-row--canonical>.settings-row__copy,
+#settings-view #settings-content .settings-grid-canonical>.settings-row--canonical>span:first-child{
+  justify-self:stretch!important;
+  text-align:left!important;
+  align-items:start!important;
+  min-width:0!important;
+}
+#settings-view #settings-content .settings-grid-canonical>.settings-row--canonical>.field-input,
+#settings-view #settings-content .settings-grid-canonical>.settings-row--canonical>input:not(.switch-input),
+#settings-view #settings-content .settings-grid-canonical>.settings-row--canonical>select,
+#settings-view #settings-content .settings-grid-canonical>.settings-row--canonical>.switch-control,
+#settings-view #settings-content .settings-grid-canonical>.settings-row--canonical>.ui-select{
+  justify-self:end!important;
+  text-align:left!important;
+}
+.settings-grid-canonical>.setting-row-grid[data-setting-span="full"]{grid-column:1/-1!important}
+#settings-view #settings-content .settings-grid-canonical>.setting-row-grid[data-setting-span="full"]>.field-input[data-control-size="wide"]{max-inline-size:min(560px,52vw)!important}
+.settings-section-panel--metrics{width:min(var(--settings-content-max),100%)!important}
+
+/* BRAND-IDENTITY-001 — About uses the same BrandMark/AmbientMark and the same section shell. */
+.about-surface.settings-section-panel .about-identity.brand-identity{grid-template-columns:auto minmax(0,1fr)!important;gap:14px!important}
+.brand-identity__mark-home{display:grid;place-items:center;width:58px;height:58px;padding:4px;border-radius:15px;align-self:center}
+.brand-identity__mark-home>.brand__mark{width:var(--brand-mark-identity)!important;height:var(--brand-mark-identity)!important;flex:0 0 var(--brand-mark-identity)!important}
+.brand-identity__mark-home:hover{border-color:rgba(114,151,255,.22);background:rgba(114,151,255,.055);box-shadow:0 0 28px rgba(76,126,255,.10)}
+.brand-identity__name-home{display:inline-flex;align-items:center;min-height:34px;margin:-4px 0 -3px -7px;padding:3px 7px;border-radius:9px;font-size:inherit;font-weight:inherit;letter-spacing:inherit;text-align:left}
+.brand-identity__name-home:hover{border-color:rgba(114,151,255,.16);background:rgba(114,151,255,.045);color:var(--text-primary)}
+
+@container settings-content (max-width:980px){
+  .settings-section-panel>.settings-grid-canonical{grid-template-columns:minmax(0,1fr)!important}
+  #settings-view #settings-content .settings-grid-canonical>.settings-row--canonical{border-right:0!important}
+}
+@media(max-width:1180px){
+  @supports not (container-type:inline-size){
+    .settings-section-panel>.settings-grid-canonical{grid-template-columns:minmax(0,1fr)!important}
+    #settings-view #settings-content .settings-grid-canonical>.settings-row--canonical{border-right:0!important}
+  }
+}
+@media(max-width:820px){
+  :root{--setting-row-min-h:58px;--setting-row-pad-x:12px;--setting-row-pad-y:9px;--brand-mark-compact:36px}
+  .settings-section-panel>.settings-grid-canonical{grid-template-columns:minmax(0,1fr)!important}
+  #settings-view #settings-content .settings-grid-canonical>.settings-row--canonical{border-right:0!important}
+  .brand-cluster{gap:0}
+  .brand-name-home{padding-inline:4px 7px}
+}
+@media(prefers-reduced-motion:reduce){
+  .brand-mark-home,.brand-name-home,.brand-identity__mark-home,.brand-identity__name-home,.brand-mark{transition:none!important}
+  .brand-mark-home:hover>.brand__mark{transform:none!important}
+}
