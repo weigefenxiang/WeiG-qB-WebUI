@@ -10,5 +10,5 @@
   };
   function locale(){return W.I18n&&W.I18n.getLocale?W.I18n.getLocale():'en';}
   function t(key,vars){var d=TEXT[locale()]||TEXT.en,s=d[key]||TEXT.en[key]||key;return String(s).replace(/\{([^}]+)\}/g,function(_,k){return vars&&vars[k]!==undefined?vars[k]:'{'+k+'}';});}
-  W.V037Text={t:t,locale:locale,dictionaries:TEXT};
+  W.InterfaceText={t:t,locale:locale,dictionaries:TEXT};
 })(window);

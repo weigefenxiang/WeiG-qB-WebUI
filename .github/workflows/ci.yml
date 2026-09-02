@@ -68,8 +68,10 @@ jobs:
         run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
-      - name: qB 4.1.9.1 and 5.2 semantic runtime regression
-        run: node tests/browser-runtime.mjs
+      - name: qB 4.1.9.1 and 5.2 semantic UI regressions
+        run: |
+          node tests/browser-runtime.mjs
+          node tests/browser-feature-parity.mjs
 
   release_guard:
     name: Main release candidate guard
@@ -135,7 +137,9 @@ jobs:
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
       - name: Semantic runtime browser matrix
-        run: node tests/browser-runtime.mjs
+        run: |
+          node tests/browser-runtime.mjs
+          node tests/browser-feature-parity.mjs
 
   windows_browser:
     name: Windows browser candidate
@@ -162,7 +166,9 @@ jobs:
           npx playwright install chromium
       - name: Semantic runtime browser matrix on Windows
         shell: pwsh
-        run: node tests/browser-runtime.mjs
+        run: |
+          node tests/browser-runtime.mjs
+          node tests/browser-feature-parity.mjs
 
   release_candidate:
     name: release candidate

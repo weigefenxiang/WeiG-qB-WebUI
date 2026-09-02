@@ -5,5 +5,4 @@
   function toDisplay(key,raw){var m=META[key],n=Number(raw);return m&&m.scale&&Number.isFinite(n)?n/m.scale:raw;}
   function toRaw(key,value){var m=META[key],n=Number(value);if(m&&m.scale&&Number.isFinite(n))return Math.round(n*m.scale);return U&&U.parseScalar?U.parseScalar(value):value;}
   W.AdvancedSettings={meta:META,toDisplay:toDisplay,toRaw:toRaw};
-  W.AdvancedSettingsV036=W.AdvancedSettings;
 })(window);

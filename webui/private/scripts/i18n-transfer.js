@@ -64,5 +64,5 @@
     var d=locale==='zh-CN'?ZH:EN;
     return d[key]!==undefined?d[key]:(EN[key]!==undefined?EN[key]:key);
   }
-  W.V030I18n={t:t,english:EN,zhCN:ZH};
+  W.TransferText={t:t,english:EN,zhCN:ZH};
 })(window);

@@ -16,7 +16,7 @@
     var app=W.AppState;if(!app)return;
     clearTimeout(app.pollTimer);clearTimeout(app.searchPoll);app.pollTimer=null;app.searchPoll=null;
     ['torrents','catalog'].forEach(function(k){if(Array.isArray(app[k]))app[k].length=0;});app.prefs=null;app.prefsDraft={};app.detailHash='';app.searchJob=null;
-    if(app.selected&&app.selected.clear)app.selected.clear();
+    if(app.selection&&app.selection.clear)app.selection.clear(true);
   }
   function explainBypass(){
     var msg=(W.I18n&&W.I18n.getLocale&&W.I18n.getLocale()==='zh-CN')

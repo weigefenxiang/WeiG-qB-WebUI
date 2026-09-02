@@ -1,1 +1,61 @@
-/* Canonical Transfer service has no independent surface. Transfer presentation is owned by ui.css + polish.css. */
+/* Canonical Transfer presentation. Business state and dialogs are owned by scripts/transfer.js. */
+.transfer-runtime-capsule{display:inline-flex;align-items:stretch;min-width:0;min-height:32px;border:1px solid rgba(56,214,255,.28);border-radius:10px;background:rgba(56,214,255,.055);overflow:hidden;box-shadow:inset 0 1px rgba(255,255,255,.035)}
+.transfer-runtime-capsule[data-mode="alt"]{border-color:var(--ui-alt-border);background:var(--ui-alt-surface)}
+.transfer-runtime-capsule button{border:0;background:transparent;color:inherit;font:inherit;cursor:pointer}
+.transfer-runtime-capsule__stats{display:inline-flex;align-items:center;gap:9px;min-width:0;padding:0 10px;transition:background var(--motion-fast),box-shadow var(--motion-fast)}
+.transfer-runtime-capsule__stats:hover,.transfer-runtime-capsule__stats:focus-visible{background:rgba(56,214,255,.09);box-shadow:inset 0 0 0 1px rgba(56,214,255,.12)}
+.transfer-runtime-capsule[data-mode="alt"] .transfer-runtime-capsule__stats:hover,.transfer-runtime-capsule[data-mode="alt"] .transfer-runtime-capsule__stats:focus-visible{background:rgba(137,108,255,.14)}
+.transfer-runtime-capsule .status-speed{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;pointer-events:none}
+.transfer-capsule__mode{display:inline-grid;place-items:center;min-height:20px;padding:0 6px;border:1px solid rgba(171,145,255,.44);border-radius:999px;background:rgba(137,108,255,.14);color:#c8b9ff;font-size:10px;font-weight:800;letter-spacing:.05em;pointer-events:none}
+.transfer-capsule__mode[hidden]{display:none}
+.transfer-runtime-capsule__limits{display:grid;place-items:center;width:34px;min-width:34px;border:0;border-left:1px solid rgba(255,255,255,.08);background:transparent;color:var(--text-muted);font-size:16px;transition:background var(--motion-fast),color var(--motion-fast)}
+.transfer-runtime-capsule__limits:hover,.transfer-runtime-capsule__limits:focus-visible{background:rgba(114,151,255,.11);color:var(--text-primary)}
+
+.transfer-panel-dialog,.transfer-limit-dialog{width:min(720px,calc(100vw - 64px));max-width:720px;max-height:min(86dvh,760px);padding:0;overflow:hidden;grid-template-rows:auto minmax(0,1fr) auto}
+.transfer-panel-dialog[open],.transfer-limit-dialog[open]{display:grid}
+.transfer-panel-dialog>.dialog__head,.transfer-limit-dialog>.dialog__head{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:16px;margin:0;padding:22px 24px 16px;min-width:0}
+.transfer-panel-dialog>.dialog__head>div,.transfer-limit-dialog>.dialog__head>div{min-width:0}
+.transfer-panel-dialog>.dialog__head h2,.transfer-limit-dialog>.dialog__head h2{margin:4px 0 0}
+.transfer-panel-dialog>.dialog__head p,.transfer-limit-dialog>.dialog__head p{margin:6px 0 0;max-width:580px}
+.transfer-panel-dialog>.dialog__body,.transfer-limit-dialog>.dialog__body{min-width:0;min-height:0;padding:0 24px 20px;overflow:visible}
+.transfer-limit-dialog>.dialog__actions{margin:0;padding:0 24px 22px;gap:10px}
+
+.transfer-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-bottom:14px}
+.transfer-stat{min-width:0;padding:12px 13px;border:1px solid var(--border);border-radius:11px;background:linear-gradient(180deg,rgba(23,33,54,.72),rgba(9,15,27,.74));box-shadow:inset 0 1px rgba(255,255,255,.045)}
+.transfer-stat small{display:block;margin-bottom:6px;color:var(--text-muted);font-size:var(--text-caption)}
+.transfer-stat strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--text-item-primary);font-variant-numeric:tabular-nums}
+.transfer-chart-shell{position:relative;min-width:0;padding:12px;border:1px solid var(--border);border-radius:14px;background:linear-gradient(180deg,rgba(11,19,34,.90),rgba(5,10,19,.94));box-shadow:inset 0 1px rgba(255,255,255,.045),inset 0 -24px 50px rgba(0,0,0,.10)}
+.transfer-chart-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 2px 10px;min-width:0}
+.transfer-chart-toolbar strong{min-width:0;font-size:var(--text-item-primary)}
+#transfer-chart{display:block;width:100%;height:260px;max-width:100%;border-radius:9px}
+.transfer-chart-legend{display:flex;justify-content:center;gap:18px;margin-top:8px;color:var(--text-muted);font-size:var(--text-caption)}
+.transfer-chart-legend span::before{content:"";display:inline-block;width:8px;height:8px;margin-right:6px;border-radius:999px;background:var(--accent-primary);box-shadow:0 0 10px rgba(114,151,255,.4)}
+.transfer-chart-legend span+span::before{background:var(--accent-cyan);box-shadow:0 0 10px rgba(56,214,255,.35)}
+
+.transfer-limit-dialog[data-mode="alt"]{border-color:var(--ui-alt-border);background:linear-gradient(180deg,rgba(34,29,65,.98),rgba(17,20,39,.98));box-shadow:var(--shadow-lg),0 0 52px rgba(137,108,255,.10),inset 0 1px rgba(255,255,255,.06)}
+.transfer-limit-dialog .transfer-mode-switch{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:0 0 16px;padding:4px;border:1px solid var(--border);border-radius:12px;background:rgba(5,13,25,.38)}
+.transfer-limit-dialog .transfer-mode-switch button{min-width:0;min-height:40px;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--text-muted);font:inherit;font-weight:760;cursor:pointer}
+.transfer-limit-dialog .transfer-mode-switch button.is-active[data-transfer-mode="normal"]{border-color:rgba(56,214,255,.30);background:rgba(56,214,255,.09);color:var(--text-primary)}
+.transfer-limit-dialog .transfer-mode-switch button.is-active[data-transfer-mode="alt"]{border-color:var(--ui-alt-border);background:var(--ui-alt-surface);color:#d3c8ff}
+.transfer-limit-dialog .transfer-rate-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:0;min-width:0}
+.transfer-rate-field{display:grid;gap:8px;min-width:0;padding:15px;border:1px solid var(--border);border-radius:13px;background:rgba(5,13,25,.22);color:var(--text-secondary)}
+.transfer-limit-dialog[data-mode="alt"] .transfer-rate-field{border-color:rgba(154,126,255,.23);background:rgba(91,69,164,.055)}
+.transfer-rate-field__label{min-width:0;font-size:var(--text-label);font-weight:700}
+.transfer-rate-field__input{display:block;width:100%;min-width:0;height:40px;box-sizing:border-box;font-variant-numeric:tabular-nums}
+.transfer-unit-row{display:flex;align-items:center;gap:12px;min-width:0;margin-top:14px;color:var(--text-secondary);font-size:var(--text-label)}
+.transfer-unit-row .ui-select{min-width:0}
+.transfer-limit-hint{margin:10px 0 0}
+
+@media(max-width:820px){
+  .transfer-runtime-capsule{min-height:30px}.transfer-runtime-capsule__stats{gap:6px;padding-inline:7px}.transfer-runtime-capsule__limits{width:30px;min-width:30px}
+  .transfer-panel-dialog,.transfer-limit-dialog{width:calc(100vw - 16px);max-width:none;max-height:calc(100dvh - 16px);margin:auto;border-radius:18px}
+  .transfer-panel-dialog>.dialog__head,.transfer-limit-dialog>.dialog__head{padding:18px 18px 14px}
+  .transfer-panel-dialog>.dialog__body,.transfer-limit-dialog>.dialog__body{padding:0 18px 16px;overflow-y:auto;overflow-x:hidden}
+  .transfer-limit-dialog>.dialog__actions{padding:0 18px 18px}
+  .transfer-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #transfer-chart{height:220px}
+  .transfer-limit-dialog .transfer-rate-grid{grid-template-columns:1fr}
+}
+@media(max-height:620px){.transfer-panel-dialog>.dialog__body,.transfer-limit-dialog>.dialog__body{overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain}}
+@media(prefers-reduced-motion:reduce){.transfer-runtime-capsule__stats,.transfer-runtime-capsule__limits{transition:none}}
+html[data-motion="reduced"] .transfer-runtime-capsule__stats,html[data-motion="reduced"] .transfer-runtime-capsule__limits{transition:none}

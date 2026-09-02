@@ -56,5 +56,5 @@
     var d=locale==='zh-CN'?ZH:EN;
     return d[key]!==undefined?d[key]:(EN[key]!==undefined?EN[key]:key);
   }
-  W.V034I18n={t:t,english:EN,zhCN:ZH};
+  W.AlternativeWebUIText={t:t,english:EN,zhCN:ZH};
 })(window);

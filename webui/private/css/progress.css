@@ -1,0 +1,12 @@
+/* Canonical torrent progress motion. Geometry and percentage remain driven only by qBittorrent data. */
+.progress-track{position:relative;height:10px;overflow:hidden;border:1px solid rgba(126,157,214,.20);border-radius:999px;background:linear-gradient(180deg,rgba(3,8,17,.82),rgba(20,32,52,.68));box-shadow:inset 0 2px 4px rgba(0,0,0,.54),inset 0 -1px rgba(255,255,255,.05),0 1px rgba(255,255,255,.03)}
+.progress-fill{position:relative;isolation:isolate;overflow:hidden;border-radius:inherit;background:linear-gradient(180deg,rgba(232,246,255,.48) 0%,rgba(160,206,255,.22) 18%,rgba(255,255,255,0) 43%,rgba(0,22,58,.28) 100%),linear-gradient(90deg,#6878ff 0%,#4e9cff 44%,#25d7ff 82%,#57f1ff 100%);box-shadow:inset 0 1px rgba(255,255,255,.42),inset 0 -2px rgba(3,43,86,.28),0 0 12px rgba(50,191,255,.25);transition:width 320ms var(--ease)}
+.progress-fill::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;opacity:.32;background:repeating-linear-gradient(115deg,transparent 0 8px,rgba(255,255,255,.19) 8px 10px,transparent 10px 18px);background-size:36px 100%;animation:weigg-progress-flow 1.25s linear infinite}
+.progress-fill::before{content:"";position:absolute;top:0;bottom:0;left:-38%;width:34%;z-index:2;pointer-events:none;background:linear-gradient(100deg,transparent,rgba(255,255,255,.42),rgba(175,236,255,.23),transparent);transform:skewX(-18deg);animation:weigg-progress-sweep 1.65s ease-in-out infinite}
+.progress-fill[style*="100%"]::after,.progress-fill[style*="100%"]::before{animation:none;opacity:0}
+.progress-number{font-weight:650;font-variant-numeric:tabular-nums}
+@keyframes weigg-progress-flow{to{background-position:36px 0}}
+@keyframes weigg-progress-sweep{0%,35%{left:-42%;opacity:0}48%{opacity:.72}72%,100%{left:118%;opacity:0}}
+@media(prefers-reduced-motion:reduce){.progress-fill{transition-duration:.001ms}.progress-fill::before,.progress-fill::after{animation:none;opacity:0}}
+html[data-motion="reduced"] .progress-fill{transition-duration:.001ms}
+html[data-motion="reduced"] .progress-fill::before,html[data-motion="reduced"] .progress-fill::after{animation:none;opacity:0}

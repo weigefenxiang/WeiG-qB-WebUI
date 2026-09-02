@@ -77,5 +77,5 @@
   };
   function interpolate(value,vars){return String(value).replace(/\{(\w+)\}/g,function(_m,key){return vars&&vars[key]!==undefined?String(vars[key]):'{'+key+'}';});}
   function t(key,vars){var locale=W.I18n&&W.I18n.getLocale?W.I18n.getLocale():'en',dict=locale==='zh-CN'?ZH:EN,value=dict[key]!==undefined?dict[key]:(EN[key]!==undefined?EN[key]:key);return interpolate(value,vars);}
-  W.V036I18n={t:t,english:EN,zhCN:ZH};
+  W.RuntimeI18n={t:t,english:EN,zhCN:ZH};
 })(window);

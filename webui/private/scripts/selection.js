@@ -1,79 +1,233 @@
 (function(global){
   'use strict';
-  var W=global.WeiG,C=W&&W.Components,U=W&&W.util;
-  if(!W||!C||!U||W.V037Selection)return;
-  var T=function(k,v){return W.V037Text?W.V037Text.t(k,v):k;},initialized=false;
+  var W=global.WeiG=global.WeiG||{},C=W.Components,U=W.util;
+  if(!C||!U||W.Selection)return;
+
+  var initialized=false,client=null,clientReadyPromise=null,selectionControl=null,selectionCount=null,rangeAnchor='';
   function isMobile(){return !!(global.matchMedia&&global.matchMedia('(max-width: 820px)').matches);}
+  function zh(){return !!(W.I18n&&W.I18n.getLocale&&W.I18n.getLocale()==='zh-CN');}
+  function label(en,cn){return zh()?cn:en;}
+  function notify(message,tone){if(W.toast)W.toast(message,tone);}
+  function getClient(){
+    if(!client)client=new W.QBClient();
+    if(!clientReadyPromise)clientReadyPromise=Promise.resolve(client.detect()).catch(function(){return null;});
+    return clientReadyPromise.then(function(){return client;});
+  }
 
-  var Selection={
-    selected:new Set(),busy:false,querySig:'',
-    count:function(){return this.selected.size;},has:function(hash){return this.selected.has(hash);},
-    clear:function(silent){this.selected.clear();this.apply();if(!silent)syncUi();},
-    selectOnly:function(hash){this.selected.clear();if(hash)this.selected.add(hash);this.apply();syncUi();},
-    toggle:function(hash,on){if(!hash)return;if(on)this.selected.add(hash);else this.selected.delete(hash);this.apply();syncUi();},
-    pageHashes:function(){var list=document.getElementById('torrent-list'),instance=list&&list.__weiggTorrentVirtual,items=instance&&Array.isArray(instance.items)?instance.items:null;if(items)return items.map(function(t){return t&&t.hash;}).filter(Boolean);return Array.from(document.querySelectorAll('#torrent-list [data-hash]')).map(function(row){return row.dataset.hash;}).filter(Boolean);},
-    selectPage:function(){var self=this;this.pageHashes().forEach(function(h){self.selected.add(h);});this.apply();syncUi();},
-    invertPage:function(){var self=this;this.pageHashes().forEach(function(h){self.selected.has(h)?self.selected.delete(h):self.selected.add(h);});this.apply();syncUi();},
-    apply:function(){var self=this;Array.from(document.querySelectorAll('#torrent-list [data-hash]')).forEach(function(row){var on=self.selected.has(row.dataset.hash),box=row.querySelector('.torrent-select');if(box)box.checked=on;row.classList.toggle('is-selected',on);});syncToolbar();}
-  };
-  W.SelectionModelV037=Selection;
-
-  function activeData(selector,attr){var el=document.querySelector(selector+' .is-active');return el&&el.dataset[attr]!==undefined?el.dataset[attr]:'';}
-  function currentQuery(){return {filter:activeData('#filter-nav','filter')||'all',tracker:activeData('#tracker-nav','tracker')||'',savePath:activeData('#savepath-nav','savepath')||'',category:activeData('#category-nav','category')||'',tag:activeData('#tag-nav','tag')||'',search:String((document.getElementById('search-input')||{}).value||'').trim().toLocaleLowerCase()};}
-  function querySignature(){var q=currentQuery();return [q.filter,q.tracker,q.savePath,q.category,q.tag,q.search].join('\u001f');}
+  function pageHashes(){
+    var list=document.getElementById('torrent-list'),instance=list&&list.__weiggTorrentVirtual,items=instance&&Array.isArray(instance.items)?instance.items:null;
+    if(items)return items.map(function(t){return t&&t.hash;}).filter(Boolean);
+    return Array.from(document.querySelectorAll('#torrent-list [data-hash]')).map(function(row){return row.dataset.hash;}).filter(Boolean);
+  }
+  function matchingCount(){
+    var text=String((document.getElementById('torrent-count')||{}).textContent||''),match=text.replace(/,/g,'').match(/\d+/),value=match?Number(match[0]):NaN;
+    return Number.isFinite(value)?value:'…';
+  }
+  function currentQuery(){
+    function activeData(selector,attr){var el=document.querySelector(selector+' .is-active');return el&&el.dataset[attr]!==undefined?el.dataset[attr]:'';}
+    return {
+      filter:activeData('#filter-nav','filter')||'all',
+      tracker:activeData('#tracker-nav','tracker')||'',
+      savePath:activeData('#savepath-nav','savepath')||'',
+      category:activeData('#category-nav','category')||'',
+      tag:activeData('#tag-nav','tag')||'',
+      search:String((document.getElementById('search-input')||{}).value||'').trim().toLocaleLowerCase()
+    };
+  }
   function matchesQuery(t,q){
-    var f=q.filter,state=String(t.state||'');
-    if(f==='downloading'&&!(/DL|downloading|metaDL|stalledDL|queuedDL|forcedDL/i.test(state)&&Number(t.progress)<1))return false;
-    if(f==='seeding'&&!(/UP|uploading|stalledUP|queuedUP|forcedUP/i.test(state)||Number(t.progress)>=1))return false;
-    if(f==='completed'&&Number(t.progress)<1)return false;if(f==='paused'&&!/paused|stopped/i.test(state))return false;if(f==='active'&&!((Number(t.dlspeed)||0)+(Number(t.upspeed)||0)>0))return false;if(f==='stalled'&&!/stalled/i.test(state))return false;if(f==='errored'&&!/error|missing/i.test(state))return false;
-    if(f==='private'&&!(W.TorrentSemantics&&W.TorrentSemantics.isPrivateOrPt&&W.TorrentSemantics.isPrivateOrPt(t,(W.Config.load().ptTrackers||[]))))return false;
-    if(q.category&&String(t.category||'')!==q.category)return false;if(q.tag){var tags=String(t.tags||'').split(',').map(function(x){return x.trim();});if(tags.indexOf(q.tag)<0)return false;}if(q.tracker&&U.normalizeTracker(t.tracker)!==q.tracker)return false;if(q.savePath&&String(t.save_path||'')!==q.savePath)return false;if(q.search&&String(t.name||'').toLocaleLowerCase().indexOf(q.search)<0)return false;return true;
+    var filter=q.filter,state=String(t.state||'');
+    if(filter==='downloading'&&!(/DL|downloading|metaDL|stalledDL|queuedDL|forcedDL/i.test(state)&&Number(t.progress)<1))return false;
+    if(filter==='seeding'&&!(/UP|uploading|stalledUP|queuedUP|forcedUP/i.test(state)||Number(t.progress)>=1))return false;
+    if(filter==='completed'&&Number(t.progress)<1)return false;
+    if(filter==='paused'&&!/paused|stopped/i.test(state))return false;
+    if(filter==='active'&&!((Number(t.dlspeed)||0)+(Number(t.upspeed)||0)>0))return false;
+    if(filter==='stalled'&&!/stalled/i.test(state))return false;
+    if(filter==='errored'&&!/error|missing/i.test(state))return false;
+    if(filter==='private'&&!(W.TorrentSemantics&&W.TorrentSemantics.isPrivateOrPt&&W.TorrentSemantics.isPrivateOrPt(t,(W.Config.load().ptTrackers||[]))))return false;
+    if(q.category&&String(t.category||'')!==q.category)return false;
+    if(q.tag&&String(t.tags||'').split(',').map(function(x){return x.trim();}).indexOf(q.tag)<0)return false;
+    if(q.tracker&&U.normalizeTracker(t.tracker)!==q.tracker)return false;
+    if(q.savePath&&String(t.save_path||'')!==q.savePath)return false;
+    if(q.search&&String(t.name||'').toLocaleLowerCase().indexOf(q.search)<0)return false;
+    return true;
   }
 
-  var bulkClient=null,bulkReady=null;
-  function clientReady(){if(!bulkClient)bulkClient=new W.QBClient();if(!bulkReady)bulkReady=Promise.resolve(bulkClient.detect()).catch(function(){return null;});return bulkReady.then(function(){return bulkClient;});}
-  async function allMatchingHashes(){Selection.busy=true;syncUi();try{var client=await clientReady(),all=[],offset=0,batch=200,q=currentQuery();while(true){var part=await client.getTorrents({sort:'added_on',reverse:'true',limit:batch,offset:offset});part=Array.isArray(part)?part:[];all=all.concat(part);if(part.length<batch)break;offset+=batch;if(offset>100000)break;}return all.filter(function(t){return matchesQuery(t,q);}).map(function(t){return t.hash;}).filter(Boolean);}finally{Selection.busy=false;syncUi();}}
-  async function selectAllMatching(){var hashes=await allMatchingHashes();Selection.selected=new Set(hashes);Selection.apply();syncUi();}
-  async function invertAllMatching(){var hashes=await allMatchingHashes(),next=new Set(Selection.selected);hashes.forEach(function(h){next.has(h)?next.delete(h):next.add(h);});Selection.selected=next;Selection.apply();syncUi();}
+  var selected=new Set();
+  var Selection={
+    selected:selected,
+    busy:false,
+    count:function(){return selected.size;},
+    has:function(hash){return selected.has(hash);},
+    hashes:function(){return Array.from(selected);},
+    hashString:function(){return Array.from(selected).join('|');},
+    clear:function(silent){selected.clear();rangeAnchor='';apply();if(!silent)syncUi();},
+    selectOnly:function(hash){selected.clear();if(hash)selected.add(hash);rangeAnchor=hash||'';apply();syncUi();},
+    toggle:function(hash,on){if(!hash)return;if(on===undefined)on=!selected.has(hash);if(on)selected.add(hash);else selected.delete(hash);rangeAnchor=hash;apply();syncUi();},
+    selectPage:function(){pageHashes().forEach(function(hash){selected.add(hash);});apply();syncUi();},
+    invertPage:function(){pageHashes().forEach(function(hash){selected.has(hash)?selected.delete(hash):selected.add(hash);});apply();syncUi();},
+    selectRange:function(hash){
+      var hashes=pageHashes(),to=hashes.indexOf(hash),from=hashes.indexOf(rangeAnchor);
+      if(to<0)return;
+      if(from<0){Selection.selectOnly(hash);return;}
+      var lo=Math.min(from,to),hi=Math.max(from,to);for(var i=lo;i<=hi;i++)selected.add(hashes[i]);rangeAnchor=hash;apply();syncUi();
+    },
+    apply:apply,
+    sync:syncUi,
+    selectAllMatching:selectAllMatching,
+    invertAllMatching:invertAllMatching,
+    dispatch:dispatch,
+    openActions:openActions,
+    openDelete:openDelete,
+    init:init
+  };
+  W.Selection=Selection;
 
-  var selectionSelect=null,selectionCustom=null,selectionCount=null;
-  function matchingCount(){var text=String((document.getElementById('torrent-count')||{}).textContent||''),m=text.replace(/,/g,'').match(/\d+/),n=m?Number(m[0]):NaN;return Number.isFinite(n)?n:'…';}
-  function options(){return [{value:'',label:T('select')},{value:'page',label:T('page')},{value:'invert-page',label:T('invertPage')},{value:'all',label:T('all',{n:matchingCount()})},{value:'invert-all',label:T('invertAll')},{value:'clear',label:T('clear')}];}
-  function syncToolbar(){var has=Selection.count()>0;['resume-btn','pause-btn','delete-btn','more-actions-btn'].forEach(function(id){var b=document.getElementById(id);if(b)b.disabled=!has;});}
-  function syncUi(){if(selectionCount)selectionCount.textContent=Selection.busy?T('loading'):T('selected',{n:Selection.count()});if(selectionCustom)selectionCustom.setOptions(options());syncToolbar();}
+  function apply(){
+    Array.from(document.querySelectorAll('#torrent-list [data-hash]')).forEach(function(row){
+      var on=selected.has(row.dataset.hash),box=row.querySelector('.torrent-select');if(box)box.checked=on;row.classList.toggle('is-selected',on);row.classList.toggle('selection-range-anchor',!!rangeAnchor&&row.dataset.hash===rangeAnchor);
+    });
+    syncToolbar();
+  }
+  function syncToolbar(){
+    var has=selected.size>0;['resume-btn','pause-btn','delete-btn','more-actions-btn'].forEach(function(id){var button=document.getElementById(id);if(button)button.disabled=!has;});
+  }
+  function selectionOptions(){return [
+    {value:'',label:label('Select','选择')},
+    {value:'page',label:label('Select page','选择当前页')},
+    {value:'invert-page',label:label('Invert page','反选当前页')},
+    {value:'all',label:label('Select all matching ({n})','选择全部匹配（{n}）').replace('{n}',matchingCount())},
+    {value:'invert-all',label:label('Invert all matching','反选全部匹配')},
+    {value:'clear',label:label('Clear selection','清除选择')}
+  ];}
+  function syncUi(){
+    if(selectionCount)selectionCount.textContent=Selection.busy?label('Loading…','加载中…'):label('{n} selected','已选择 {n}').replace('{n}',selected.size);
+    if(selectionControl&&selectionControl.setOptions){selectionControl.setOptions(selectionOptions());selectionControl.setValue('');}
+    syncToolbar();
+  }
   function installSelectionControl(){
-    if(document.getElementById('v037-selection-control'))return;var host=document.querySelector('#list-view .grid-toolbar>div:first-child');if(!host)return;
-    var wrap=document.createElement('span');wrap.id='v037-selection-control';wrap.className='selection-control';selectionSelect=document.createElement('select');selectionSelect.className='selection-action-select';selectionSelect.setAttribute('aria-label',T('select'));options().forEach(function(item){var o=document.createElement('option');o.value=item.value;o.textContent=item.label;selectionSelect.appendChild(o);});selectionCount=document.createElement('span');selectionCount.className='selection-count';wrap.append(selectionSelect,selectionCount);host.insertBefore(wrap,host.firstChild);
-    selectionSelect.onchange=async function(){var action=selectionSelect.value;selectionSelect.value='';if(selectionCustom)selectionCustom.setValue('');if(action==='page')Selection.selectPage();else if(action==='invert-page')Selection.invertPage();else if(action==='all')await selectAllMatching();else if(action==='invert-all')await invertAllMatching();else if(action==='clear')Selection.clear();};
-    selectionCustom=C.upgradeNativeSelect?C.upgradeNativeSelect(selectionSelect):null;syncUi();
-    var count=document.getElementById('torrent-count');if(count)new MutationObserver(function(){syncUi();}).observe(count,{childList:true,subtree:true,characterData:true});
+    if(document.getElementById('selection-control'))return;
+    var host=document.querySelector('#list-view .grid-toolbar>div:first-child');if(!host)return;
+    var wrap=document.createElement('span');wrap.id='selection-control';wrap.className='selection-control';
+    selectionControl=C.selectControl({id:'selection-action',value:'',options:selectionOptions(),ariaLabel:label('Selection actions','选择操作'),onChange:function(action){
+      if(action==='page')Selection.selectPage();
+      else if(action==='invert-page')Selection.invertPage();
+      else if(action==='all')selectAllMatching().catch(showError);
+      else if(action==='invert-all')invertAllMatching().catch(showError);
+      else if(action==='clear')Selection.clear();
+      if(selectionControl)selectionControl.setValue('');
+    }});
+    selectionCount=document.createElement('span');selectionCount.id='selection-count';selectionCount.className='selection-count';wrap.append(selectionControl,selectionCount);
+    host.insertBefore(wrap,host.firstChild);syncUi();
   }
 
-  function chunk(items,size){var out=[];for(var i=0;i<items.length;i+=size)out.push(items.slice(i,i+size));return out;}
-  async function dispatchBulk(kind,value){
-    var hashes=Array.from(Selection.selected);if(!hashes.length)return;var client=await clientReady(),parts=chunk(hashes,200);
-    for(var i=0;i<parts.length;i++){var joined=parts[i].join('|');if(kind==='resume')await client.resume(joined);else if(kind==='pause')await client.pause(joined);else if(kind==='force')await client.forceStart(joined,true);else if(kind==='recheck')await client.recheck(joined);else if(kind==='reannounce')await client.reannounce(joined);else if(kind==='sequential')await client.toggleSequential(joined);else if(kind==='firstlast')await client.toggleFirstLast(joined);else if(kind==='autotmm')await client.setAutoManagement(joined,true);else if(kind==='top')await client.topPriority(joined);else if(kind==='bottom')await client.bottomPriority(joined);else if(kind==='location')await client.setLocation(joined,value);else if(kind==='category')await client.setCategory(joined,value);else if(kind==='tags')await client.addTags(joined,value);else if(kind==='dllimit')await client.setDownloadLimit(joined,Math.max(0,Number(value)||0)*1024);else if(kind==='uplimit')await client.setUploadLimit(joined,Math.max(0,Number(value)||0)*1024);else if(kind==='delete')await client.delete(joined,!!value);}
-    W.toast(W.t&&W.t('torrent.commandSent')!=='torrent.commandSent'?W.t('torrent.commandSent'):'Command sent');if(kind==='delete')Selection.clear(true);setTimeout(function(){var r=document.getElementById('refresh-btn');if(r)r.click();Selection.apply();syncUi();},120);
+  async function allMatchingHashes(){
+    Selection.busy=true;syncUi();
+    try{
+      var qb=await getClient(),all=[],offset=0,batch=200,query=currentQuery();
+      while(true){var part=await qb.getTorrents({sort:'added_on',reverse:'true',limit:batch,offset:offset});part=Array.isArray(part)?part:[];all=all.concat(part);if(part.length<batch)break;offset+=batch;if(offset>100000)break;}
+      return all.filter(function(t){return matchesQuery(t,query);}).map(function(t){return t.hash;}).filter(Boolean);
+    }finally{Selection.busy=false;syncUi();}
+  }
+  async function selectAllMatching(){var hashes=await allMatchingHashes();selected.clear();hashes.forEach(function(hash){selected.add(hash);});apply();syncUi();}
+  async function invertAllMatching(){var hashes=await allMatchingHashes();hashes.forEach(function(hash){selected.has(hash)?selected.delete(hash):selected.add(hash);});apply();syncUi();}
+
+  function chunks(items,size){var out=[];for(var i=0;i<items.length;i+=size)out.push(items.slice(i,i+size));return out;}
+  async function dispatch(kind,value){
+    var hashes=Array.from(selected);if(!hashes.length)return;
+    if(kind==='details'){if(hashes.length===1&&W.Router)W.Router.detail(hashes[0],'overview');return;}
+    if(kind==='rename'&&hashes.length!==1)throw new Error(label('Rename supports one torrent at a time.','重命名一次只能操作一个种子。'));
+    var qb=await getClient(),groups=chunks(hashes,200);
+    for(var i=0;i<groups.length;i++){
+      var joined=groups[i].join('|');
+      if(kind==='resume')await qb.resume(joined);
+      else if(kind==='pause')await qb.pause(joined);
+      else if(kind==='force')await qb.forceStart(joined,true);
+      else if(kind==='recheck')await qb.recheck(joined);
+      else if(kind==='reannounce')await qb.reannounce(joined);
+      else if(kind==='sequential')await qb.toggleSequential(joined);
+      else if(kind==='firstlast')await qb.toggleFirstLast(joined);
+      else if(kind==='autotmm')await qb.setAutoManagement(joined,true);
+      else if(kind==='top')await qb.topPriority(joined);
+      else if(kind==='bottom')await qb.bottomPriority(joined);
+      else if(kind==='rename')await qb.renameTorrent(groups[i][0],value);
+      else if(kind==='location')await qb.setLocation(joined,value);
+      else if(kind==='category')await qb.setCategory(joined,value);
+      else if(kind==='tags')await qb.addTags(joined,value);
+      else if(kind==='dllimit')await qb.setDownloadLimit(joined,Math.max(0,Number(value)||0)*1024);
+      else if(kind==='uplimit')await qb.setUploadLimit(joined,Math.max(0,Number(value)||0)*1024);
+      else if(kind==='delete')await qb.delete(joined,!!value);
+    }
+    if(kind==='delete')Selection.clear(true);
+    notify(label('Command sent','命令已发送'));
+    if(typeof Selection.onCommandComplete==='function')await Selection.onCommandComplete(kind);
+    else{var refresh=document.getElementById('refresh-btn');if(refresh)setTimeout(function(){refresh.click();apply();syncUi();},120);}
+  }
+  function showError(error){notify((error&&error.message)||String(error),'danger');}
+
+  var ActionRegistry=[
+    {kind:'resume',en:'Start',cn:'开始'},
+    {kind:'pause',en:'Pause / stop',cn:'暂停 / 停止'},
+    {kind:'force',en:'Force start',cn:'强制开始'},
+    {kind:'recheck',en:'Recheck',cn:'重新校验'},
+    {kind:'reannounce',en:'Reannounce',cn:'重新汇报'},
+    {kind:'sequential',en:'Sequential download',cn:'顺序下载'},
+    {kind:'firstlast',en:'First / last piece priority',cn:'首尾块优先'},
+    {kind:'autotmm',en:'Automatic management',cn:'自动管理'},
+    {kind:'top',en:'Queue top',cn:'队列置顶'},
+    {kind:'bottom',en:'Queue bottom',cn:'队列置底'},
+    {kind:'rename',en:'Rename',cn:'重命名',prompt:true,single:true},
+    {kind:'location',en:'Location',cn:'移动位置',prompt:true},
+    {kind:'category',en:'Category',cn:'设置分类',prompt:true},
+    {kind:'tags',en:'Tags',cn:'添加 Tags',prompt:true,capability:'tags'},
+    {kind:'dllimit',en:'Download limit',cn:'下载限速',prompt:true,hint:'KiB/s'},
+    {kind:'uplimit',en:'Upload limit',cn:'上传限速',prompt:true,hint:'KiB/s'},
+    {kind:'details',en:'View details',cn:'查看详情',single:true}
+  ];
+  Selection.actions=ActionRegistry;
+
+  function promptValue(def){
+    var dialog=document.getElementById('prompt-dialog'),title=document.getElementById('prompt-title'),fieldLabel=document.getElementById('prompt-label'),input=document.getElementById('prompt-value'),confirm=document.getElementById('prompt-confirm');if(!dialog||!input||!confirm)return;
+    title.textContent=label(def.en,def.cn);fieldLabel.textContent=def.hint||label('Value','值');input.value='';
+    confirm.onclick=async function(){var value=input.value;dialog.close();try{await dispatch(def.kind,value);}catch(error){showError(error);}};
+    dialog.showModal();setTimeout(function(){input.focus();},20);
+  }
+  function openActions(){
+    if(!selected.size)return;var dialog=document.getElementById('actions-dialog'),grid=document.getElementById('actions-grid');if(!dialog||!grid)return;
+    grid.textContent='';ActionRegistry.forEach(function(def){
+      if(def.single&&selected.size!==1)return;if(def.capability&&client&&client.capabilities&&!client.capabilities[def.capability])return;
+      var button=document.createElement('button');button.type='button';button.className='btn btn--ghost';button.dataset.torrentAction=def.kind;button.textContent=label(def.en,def.cn);button.onclick=function(){dialog.close();if(def.prompt)promptValue(def);else dispatch(def.kind).catch(showError);};grid.appendChild(button);
+    });
+    var del=document.createElement('button');del.type='button';del.className='btn btn--danger-ghost';del.dataset.torrentAction='delete';del.textContent=label('Delete','删除');del.onclick=function(){dialog.close();openDelete();};grid.appendChild(del);dialog.showModal();
+  }
+  function openDelete(){
+    if(!selected.size)return;var dialog=document.getElementById('delete-dialog'),copy=document.getElementById('delete-copy'),files=document.getElementById('delete-files'),confirm=document.getElementById('delete-confirm');if(!dialog||!confirm)return;
+    if(copy)copy.textContent=label('Delete {n} selected torrent(s).','将删除 {n} 个选中的种子。').replace('{n}',selected.size);if(files)files.checked=false;
+    confirm.onclick=async function(){confirm.disabled=true;try{await dispatch('delete',!!(files&&files.checked));dialog.close();}catch(error){showError(error);}finally{confirm.disabled=false;}};dialog.showModal();
   }
 
-  var actionDialog=null,promptDialog=null;
-  function ensureActionDialog(){if(actionDialog)return actionDialog;actionDialog=document.createElement('dialog');actionDialog.id='v037-actions-dialog';actionDialog.className='dialog surface surface--modal';actionDialog.innerHTML='<div class="dialog__head"><div><div class="eyebrow">TORRENT ACTIONS</div><h2></h2></div><button class="icon-btn v037-close" type="button">×</button></div><div class="dialog__body"><div class="action-grid v037-action-grid"></div></div>';actionDialog.querySelector('.v037-close').onclick=function(){actionDialog.close();};document.body.appendChild(actionDialog);return actionDialog;}
-  function ensurePromptDialog(){if(promptDialog)return promptDialog;promptDialog=document.createElement('dialog');promptDialog.id='v037-prompt-dialog';promptDialog.className='dialog surface surface--modal';promptDialog.innerHTML='<div class="dialog__head"><div><div class="eyebrow">ACTION</div><h2></h2></div><button class="icon-btn v037-close" type="button">×</button></div><div class="dialog__body"><label class="field"><span></span><input class="field-input" type="text"></label></div><div class="dialog__actions"><button class="btn btn--ghost v037-cancel" type="button"></button><button class="btn btn--primary v037-confirm" type="button"></button></div>';promptDialog.querySelector('.v037-close').onclick=promptDialog.querySelector('.v037-cancel').onclick=function(){promptDialog.close();};document.body.appendChild(promptDialog);return promptDialog;}
-  function promptValue(title,label,cb){var d=ensurePromptDialog(),input=d.querySelector('input');d.querySelector('h2').textContent=title;d.querySelector('.field span').textContent=label||T('value');d.querySelector('.v037-cancel').textContent=T('cancel');d.querySelector('.v037-confirm').textContent=T('confirm');input.value='';d.querySelector('.v037-confirm').onclick=async function(){var v=input.value;d.close();try{await cb(v);}catch(e){W.toast((e&&e.message)||String(e),'danger');}};d.showModal();setTimeout(function(){input.focus();},20);}
-  function addAction(grid,label,kind,prompt){var b=document.createElement('button');b.type='button';b.className='btn btn--ghost';b.textContent=label;b.onclick=function(){actionDialog.close();if(prompt)promptValue(label,prompt,function(v){return dispatchBulk(kind,v);});else dispatchBulk(kind).catch(function(e){W.toast(e.message,'danger');});};grid.appendChild(b);}
-  function polishActionDialog(){if(W.V037Polish&&W.V037Polish.decorateActionSheet)W.V037Polish.decorateActionSheet();}
-  function openBulkActions(){if(!Selection.count())return;var d=ensureActionDialog(),grid=d.querySelector('.v037-action-grid');d.querySelector('h2').textContent=T('actions')+' · '+T('selected',{n:Selection.count()});grid.textContent='';addAction(grid,T('start'),'resume');addAction(grid,T('pause'),'pause');addAction(grid,T('force'),'force');addAction(grid,T('recheck'),'recheck');addAction(grid,T('reannounce'),'reannounce');addAction(grid,T('sequential'),'sequential');addAction(grid,T('firstlast'),'firstlast');addAction(grid,T('autotmm'),'autotmm');addAction(grid,T('top'),'top');addAction(grid,T('bottom'),'bottom');addAction(grid,T('location'),'location',T('value'));addAction(grid,T('category'),'category',T('value'));addAction(grid,T('tags'),'tags',T('value'));addAction(grid,T('downloadLimit'),'dllimit','KiB/s');addAction(grid,T('uploadLimit'),'uplimit','KiB/s');polishActionDialog();d.showModal();}
-  function openBulkDelete(){if(!Selection.count())return;var d=ensureActionDialog(),grid=d.querySelector('.v037-action-grid');d.querySelector('h2').textContent=T('delete')+' · '+T('selected',{n:Selection.count()});grid.textContent='';var label=document.createElement('label');label.className='check-row v037-delete-files';var ck=document.createElement('input');ck.type='checkbox';var span=document.createElement('span');span.textContent=T('deleteFiles');label.append(ck,span);grid.appendChild(label);var cancel=document.createElement('button');cancel.type='button';cancel.className='btn btn--ghost';cancel.textContent=T('cancel');cancel.onclick=function(){d.close();};var confirm=document.createElement('button');confirm.type='button';confirm.className='btn btn--danger';confirm.textContent=T('confirmDelete');confirm.onclick=function(){d.close();dispatchBulk('delete',ck.checked).catch(function(e){W.toast(e.message,'danger');});};grid.append(cancel,confirm);polishActionDialog();d.showModal();}
-
-  function installActionInterceptors(){
-    document.addEventListener('click',function(e){var button=e.target&&e.target.closest&&e.target.closest('button'),id=button&&button.id;if(id==='resume-btn'&&Selection.count()){e.preventDefault();e.stopImmediatePropagation();dispatchBulk('resume').catch(function(err){W.toast(err.message,'danger');});return;}if(id==='pause-btn'&&Selection.count()){e.preventDefault();e.stopImmediatePropagation();dispatchBulk('pause').catch(function(err){W.toast(err.message,'danger');});return;}if(id==='more-actions-btn'&&Selection.count()){e.preventDefault();e.stopImmediatePropagation();openBulkActions();return;}if(id==='delete-btn'&&Selection.count()){e.preventDefault();e.stopImmediatePropagation();openBulkDelete();return;}var more=e.target&&e.target.closest&&e.target.closest('.mobile-more');if(more){var row=more.closest('[data-hash]');if(row){e.preventDefault();e.stopImmediatePropagation();Selection.selectOnly(row.dataset.hash);openBulkActions();}}},true);
+  function installActionHandlers(){
+    document.addEventListener('click',function(e){
+      var button=e.target&&e.target.closest&&e.target.closest('button'),id=button&&button.id;
+      if(id==='resume-btn'&&selected.size){e.preventDefault();e.stopImmediatePropagation();dispatch('resume').catch(showError);return;}
+      if(id==='pause-btn'&&selected.size){e.preventDefault();e.stopImmediatePropagation();dispatch('pause').catch(showError);return;}
+      if(id==='more-actions-btn'&&selected.size){e.preventDefault();e.stopImmediatePropagation();openActions();return;}
+      if(id==='delete-btn'&&selected.size){e.preventDefault();e.stopImmediatePropagation();openDelete();return;}
+      var more=e.target&&e.target.closest&&e.target.closest('.mobile-more');if(more){var row=more.closest('[data-hash]');if(row){e.preventDefault();e.stopImmediatePropagation();Selection.selectOnly(row.dataset.hash);openActions();return;}}
+      var row=e.target&&e.target.closest&&e.target.closest('#torrent-list [data-hash]');if(!row||(!e.ctrlKey&&!e.metaKey&&!e.shiftKey)||e.target.closest('button,input,a,[role=button]'))return;
+      e.preventDefault();e.stopImmediatePropagation();if(e.shiftKey)Selection.selectRange(row.dataset.hash);else Selection.toggle(row.dataset.hash);rangeAnchor=row.dataset.hash;
+    },true);
     document.addEventListener('change',function(e){var box=e.target&&e.target.closest&&e.target.closest('.torrent-select');if(!box)return;var row=box.closest('[data-hash]');if(row)Selection.toggle(row.dataset.hash,box.checked);},true);
-    document.addEventListener('contextmenu',function(e){if(isMobile())return;var row=e.target&&e.target.closest&&e.target.closest('#torrent-list [data-hash]');if(!row)return;e.preventDefault();if(!Selection.has(row.dataset.hash))Selection.selectOnly(row.dataset.hash);openBulkActions();});
-    var longTimer=null,longRow=null,startX=0,startY=0;document.addEventListener('pointerdown',function(e){if(!isMobile()||e.pointerType==='mouse')return;var row=e.target&&e.target.closest&&e.target.closest('#torrent-list [data-hash]');if(!row||e.target.closest('button,input,a,[role=button]'))return;longRow=row;startX=e.clientX;startY=e.clientY;clearTimeout(longTimer);longTimer=setTimeout(function(){if(!longRow)return;Selection.selectOnly(longRow.dataset.hash);openBulkActions();longRow=null;},525);},{passive:true});document.addEventListener('pointermove',function(e){if(!longRow)return;if(Math.hypot(e.clientX-startX,e.clientY-startY)>10){clearTimeout(longTimer);longRow=null;}},{passive:true});document.addEventListener('pointerup',function(){clearTimeout(longTimer);longRow=null;},{passive:true});document.addEventListener('pointercancel',function(){clearTimeout(longTimer);longRow=null;},{passive:true});
-    document.addEventListener('keydown',function(e){var tag=e.target&&e.target.tagName&&e.target.tagName.toLowerCase();if(tag==='input'||tag==='textarea'||tag==='select'||e.target&&e.target.isContentEditable)return;if((e.ctrlKey||e.metaKey)&&String(e.key).toLowerCase()==='a'&&W.Router&&W.Router.route&&W.Router.route().name==='home'){e.preventDefault();Selection.selectPage();return;}if(e.key==='Escape'&&Selection.count()&&!document.querySelector('dialog[open]'))Selection.clear();},true);
+    document.addEventListener('contextmenu',function(e){if(isMobile())return;var row=e.target&&e.target.closest&&e.target.closest('#torrent-list [data-hash]');if(!row)return;e.preventDefault();if(!selected.has(row.dataset.hash))Selection.selectOnly(row.dataset.hash);openActions();});
+    var longTimer=null,longRow=null,startX=0,startY=0;
+    document.addEventListener('pointerdown',function(e){if(!isMobile()||e.pointerType==='mouse')return;var row=e.target&&e.target.closest&&e.target.closest('#torrent-list [data-hash]');if(!row||e.target.closest('button,input,a,[role=button]'))return;longRow=row;startX=e.clientX;startY=e.clientY;clearTimeout(longTimer);longTimer=setTimeout(function(){if(!longRow)return;Selection.selectOnly(longRow.dataset.hash);openActions();longRow=null;},525);},{passive:true});
+    document.addEventListener('pointermove',function(e){if(!longRow)return;if(Math.hypot(e.clientX-startX,e.clientY-startY)>10){clearTimeout(longTimer);longRow=null;}},{passive:true});
+    document.addEventListener('pointerup',function(){clearTimeout(longTimer);longRow=null;},{passive:true});document.addEventListener('pointercancel',function(){clearTimeout(longTimer);longRow=null;},{passive:true});
+    document.addEventListener('keydown',function(e){var tag=e.target&&e.target.tagName&&e.target.tagName.toLowerCase();if(tag==='input'||tag==='textarea'||tag==='select'||e.target&&e.target.isContentEditable)return;if((e.ctrlKey||e.metaKey)&&String(e.key).toLowerCase()==='a'&&W.Router&&W.Router.route&&W.Router.route().name==='home'){e.preventDefault();Selection.selectPage();return;}if(e.key==='Escape'&&selected.size&&!document.querySelector('dialog[open]'))Selection.clear();},true);
   }
-  function watchTorrentRows(){var list=document.getElementById('torrent-list');if(!list)return;var pending=false;new MutationObserver(function(){if(pending)return;pending=true;requestAnimationFrame(function(){pending=false;Selection.apply();syncUi();});}).observe(list,{childList:true,subtree:true});}
-  function watchQuery(){Selection.querySig=querySignature();function later(){setTimeout(function(){var next=querySignature();if(next!==Selection.querySig){Selection.querySig=next;if(Selection.count()){Selection.clear();W.toast(T('queryChanged'));}syncUi();}},0);}document.addEventListener('click',function(e){if(e.target&&e.target.closest&&e.target.closest('#filter-nav [data-filter],#tracker-nav [data-tracker],#savepath-nav [data-savepath],#category-nav [data-category],#tag-nav [data-tag]'))later();},true);var input=document.getElementById('search-input');if(input)input.addEventListener('input',U.debounce(later,220));}
-  function init(){if(initialized)return;initialized=true;installSelectionControl();installActionInterceptors();watchTorrentRows();watchQuery();Selection.apply();syncUi();global.addEventListener('weigg:languagechange',syncUi);}
-  W.V037Selection={init:init,model:Selection,selectAllMatching:selectAllMatching,invertAllMatching:invertAllMatching,dispatchBulk:dispatchBulk,openBulkActions:openBulkActions};
+
+  function init(){
+    if(initialized)return;initialized=true;installSelectionControl();installActionHandlers();apply();syncUi();
+    global.addEventListener('weigg:languagechange',syncUi);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })(window);
