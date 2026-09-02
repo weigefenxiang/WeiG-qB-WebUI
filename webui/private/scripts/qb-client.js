@@ -40,6 +40,8 @@
   Client.prototype.setGlobalUploadLimit=function(limit){return this.request('transfer/setUploadLimit',{method:'POST',form:{limit:Math.max(0,Math.round(Number(limit)||0))},type:'void'});};
   Client.prototype.getPreferences=function(){return this.request('app/preferences');};
   Client.prototype.setPreferences=function(prefs){return this.request('app/setPreferences',{method:'POST',form:{json:JSON.stringify(prefs||{})},type:'void'});};
+  Client.prototype.getAltSpeedLimits=async function(){var prefs=await this.getPreferences();return{down:Math.max(0,Math.round((Number(prefs&&prefs.alt_dl_limit)||0)*1024)),up:Math.max(0,Math.round((Number(prefs&&prefs.alt_up_limit)||0)*1024))};};
+  Client.prototype.setAltSpeedLimits=function(down,up){return this.setPreferences({alt_dl_limit:Math.max(0,Math.round((Number(down)||0)/1024)),alt_up_limit:Math.max(0,Math.round((Number(up)||0)/1024))});};
   Client.prototype.getBuildInfo=function(){return this.request('app/buildInfo');};
   Client.prototype.getCookies=function(){return this.request('app/cookies');};
   Client.prototype.setCookies=function(cookies){return this.request('app/setCookies',{method:'POST',json:Array.isArray(cookies)?cookies:[],type:'void'});};

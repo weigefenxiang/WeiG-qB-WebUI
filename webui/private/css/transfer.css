@@ -31,6 +31,8 @@
 .transfer-chart-shell{position:relative;min-width:0;padding:12px;border:1px solid var(--border);border-radius:14px;background:linear-gradient(180deg,rgba(11,19,34,.90),rgba(5,10,19,.94));box-shadow:inset 0 1px rgba(255,255,255,.045),inset 0 -24px 50px rgba(0,0,0,.10)}
 .transfer-chart-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 2px 10px;min-width:0}
 .transfer-chart-toolbar strong{min-width:0;font-size:var(--text-item-primary)}
+.transfer-chart-toolbar .ui-select--native{flex:0 0 auto;min-width:86px}
+.transfer-chart-toolbar .ui-select__native,.transfer-unit-select .ui-select__native{display:block;width:100%;height:34px;min-height:34px;padding:0 28px 0 10px;border:1px solid var(--ui-accent-border);border-radius:8px;background:linear-gradient(180deg,rgba(114,151,255,.11),rgba(114,151,255,.055));color:var(--text-primary);font:inherit;font-size:var(--text-label);font-weight:680;cursor:pointer}
 #transfer-chart{display:block;width:100%;height:260px;max-width:100%;border-radius:9px}
 .transfer-chart-legend{display:flex;justify-content:center;gap:18px;margin-top:8px;color:var(--text-muted);font-size:var(--text-caption)}
 .transfer-chart-legend span::before{content:"";display:inline-block;width:8px;height:8px;margin-right:6px;border-radius:999px;background:var(--accent-primary);box-shadow:0 0 10px rgba(114,151,255,.4)}
@@ -42,7 +44,7 @@
 .transfer-mode-switch button{min-width:72px;height:34px;min-height:34px;padding:0 12px;border:1px solid transparent;border-radius:7px;background:transparent;color:var(--text-muted);font:inherit;font-size:var(--text-label);font-weight:760;cursor:pointer}
 .transfer-mode-switch button.is-active[data-transfer-mode="normal"]{border-color:rgba(56,214,255,.30);background:rgba(56,214,255,.09);color:var(--text-primary)}
 .transfer-mode-switch button.is-active[data-transfer-mode="alt"]{border-color:var(--ui-alt-border);background:var(--ui-alt-surface);color:#d3c8ff}
-.transfer-unit-select{flex:0 0 auto;min-width:92px}
+.transfer-unit-select{flex:0 0 auto;min-width:116px}
 .transfer-unit-select .ui-select__trigger{min-height:34px;height:34px;padding-inline:10px;border-radius:8px}
 .transfer-rate-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0;min-width:0}
 .transfer-rate-field{display:grid;gap:6px;min-width:0;padding:10px 11px;border:1px solid var(--border);border-radius:10px;background:rgba(5,13,25,.20);color:var(--text-secondary)}
@@ -60,11 +62,11 @@
   .transfer-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
   #transfer-chart{height:220px}
   .transfer-limit-toolbar{align-items:stretch}
-  .transfer-mode-switch button,.transfer-unit-select .ui-select__trigger{min-height:44px;height:44px}
+  .transfer-mode-switch button,.transfer-unit-select .ui-select__trigger,.transfer-chart-toolbar .ui-select__native,.transfer-unit-select .ui-select__native{min-height:44px;height:44px}
   .transfer-rate-grid{grid-template-columns:1fr}
   .transfer-rate-field{padding:11px 12px}.transfer-rate-field__input{height:44px}
 }
-@media(max-width:430px){.transfer-limit-toolbar{flex-direction:column;align-items:flex-start}.transfer-unit-select{width:100%}.transfer-unit-select .ui-select__trigger{width:100%}}
+@media(max-width:430px){.transfer-limit-toolbar{flex-direction:column;align-items:flex-start}.transfer-unit-select{width:100%}.transfer-unit-select .ui-select__trigger,.transfer-unit-select .ui-select__native{width:100%}}
 @media(max-height:620px){.transfer-panel-dialog>.dialog__body,.transfer-limit-dialog>.dialog__body{overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain}}
 @media(prefers-reduced-motion:reduce){.transfer-runtime-capsule__stats,.transfer-runtime-capsule__limits{transition:none}}
 html[data-motion="reduced"] .transfer-runtime-capsule__stats,html[data-motion="reduced"] .transfer-runtime-capsule__limits{transition:none}
