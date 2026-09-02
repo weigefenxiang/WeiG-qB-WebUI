@@ -2,34 +2,37 @@
 
 Version: **2.0**  
 Status: **v0.3.7 Responsive UI System 3.3**  
+Target revision: **Clean Settings + Verified Session 3.4**  
 Theme: **Nebula Spatial Console**  
 Compatibility floor: **qBittorrent 4.1.9.1**
 
 > This file is the single visual and interaction authority. New UI extends these rules; it never creates a second local design system.
 
-WeiG qB WebUI follows the DESIGN.md method promoted by `VoltAgent/awesome-design-md`: document visual atmosphere, semantic color roles, typography, reusable component styling, layout/spacing, depth, Do/Don't guardrails and responsive behavior in one agent-readable authority. We study system thinking, not another product's exact appearance.
+WeiG qB WebUI follows the DESIGN.md method promoted by `VoltAgent/awesome-design-md`: Visual Theme & Atmosphere, semantic Color Palette & Roles, Typography Rules, Component Styling, Layout Principles, Depth & Elevation, Do/Don't guardrails, Responsive Behavior and an agent-executable implementation contract. The method is reused; another product's exact appearance is not copied.
 
 ## 1. Non-negotiable rules
 
 1. One semantic purpose has one canonical component/controller/layout owner.
 2. Feature code does not invent local Button/Select/Card/Chip/Badge/Modal/Popover/Settings-row systems.
-3. Settings layout is created correctly at render time; a MutationObserver may be a temporary migration bridge, never the permanent geometry engine.
-4. Every ordinary editable Setting is an `inline SettingRow`: copy left, control right.
-5. Desktop SettingsGrid defaults to two columns. A field name such as `path`, `url`, `host`, `username` or `password` is never sufficient reason to span both columns.
-6. Full-width Settings content is explicit schema semantics, not a heuristic. It is reserved for multiline/composite editors, lists, tables or similarly wide content.
-7. An odd final ordinary SettingRow stays in the left grid cell; it is not stretched or centered across the panel.
-8. Capability detection, not qB major version, decides backend compatibility.
-9. Presentation refactors do not duplicate qB preference keys, unit conversion or `setPreferences()` behavior.
-10. Runtime authentication actions use one `SessionController`; Header buttons do not scatter direct authentication requests.
-11. Mobile is adaptive presentation, not a second business application.
-12. Data count is not DOM count; large collections remain virtualized.
-13. Polling never destroys page, scroll, selection, detail-return or display-timezone state.
-14. Display timezone is browser presentation state, never qB/server time.
-15. HTML is a no-store bootstrap; CSS/JS cache identity is the deployment Git SHA.
-16. Reduced Motion is mandatory.
-17. README is the user manual; architecture/test/release detail belongs in `docs/` and this authority.
+3. **Settings has no legacy presentation compatibility layer after the 3.4 migration.** Source renderers must emit the final canonical DOM directly.
+4. Every ordinary editable Setting is one `SettingRow`: copy left, control right.
+5. Setting title and description are always horizontally left aligned. Vertical centering is allowed; horizontal centering is not.
+6. Desktop SettingsGrid defaults to two columns. Ordinary rows default to `span=1`.
+7. Full-width Settings content is explicit schema semantics only; key names such as `path`, `url`, `host`, `username`, `password` never decide layout.
+8. An odd final ordinary SettingRow stays in the left grid cell.
+9. Settings layout must not depend on CSS load order, specificity battles, `!important` overrides, MutationObserver repair or delayed `setTimeout` repair.
+10. qB WebAPI compatibility remains in `QBClient`; removing legacy Settings presentation compatibility does **not** remove qBittorrent 4.1.9.1 support.
+11. Authentication actions use one `SessionController`; UI controls never own raw auth requests.
+12. Logout is successful only after server-side invalidation is verified.
+13. Browser Back/BFCache must never reveal a previously authenticated private shell after logout.
+14. If qB authentication bypass creates a new session automatically, the UI must report that logout cannot remain effective under the current server policy; it must not fake success.
+15. Mobile is adaptive presentation, not a second business application.
+16. Data count is not DOM count; large collections remain virtualized.
+17. Display timezone is browser presentation state, never qB/server time.
+18. Reduced Motion is mandatory.
+19. README is the user manual; architecture/test/release detail belongs in `docs/` and this authority.
 
-## 2. Visual atmosphere
+## 2. Visual Theme & Atmosphere
 
 ```text
 Void      deep-space page background
@@ -40,17 +43,78 @@ Raised    toolbar / active input / detail summary
 Floating  select / menu / popover / dialog
 ```
 
-The interface is dark, precise and dense. Blue/cyan communicates ordinary WeiG interaction; purple is reserved for alternative-rate semantics and selected brand accents. Depth comes from restrained border contrast, surface luminance and small elevation, not permanent neon glow.
+The interface is dark, precise and dense. Blue/cyan communicates ordinary interaction; purple is reserved for alternative-rate semantics and selected brand accents. Depth comes from restrained border contrast, surface luminance and small elevation, not permanent neon glow.
 
-Typography hierarchy:
+## 3. Color Palette & Roles
+
+Color is semantic, never feature-local:
 
 ```text
-Page title > Section title > Setting title > value/control > description/helper
+--surface-void       page canvas
+--surface-base       workspace
+--surface-panel      Settings/DataGrid/sidebar
+--surface-raised     active controls / toolbar
+--surface-floating   menu/dialog/popover
+--text-primary       titles and primary values
+--text-secondary     normal copy
+--text-muted         descriptions / metadata
+--border             ordinary separators
+--accent-blue        primary WeiG interaction
+--accent-cyan        live/positive interactive detail
+--accent-purple      alternative-rate mode only
+--success / warning / danger  semantic state only
 ```
 
-Setting title and description are always left aligned. Ordinary Settings content never uses centered copy.
+A Settings page does not introduce its own palette. Header utilities, Settings controls and About reuse global semantic roles.
 
-## 3. Canonical primitives and owners
+## 4. Typography Rules
+
+```text
+Page title > Section title > Setting title > control/value > description/helper > metadata
+```
+
+Hard alignment rule:
+
+```text
+Section heading left axis
+        ↓
+SettingCopy left axis
+Title
+Description
+```
+
+No ordinary Settings title or description may use `text-align:center`, `justify-self:center`, `align-items:center` as a horizontal placement strategy, or a centered fixed-width rail.
+
+Recommended role tokens:
+
+```text
+page title           existing heading token
+section title        existing section heading token
+setting title        body/label strong, 650–750 weight
+description          muted body-small/description token
+control/value        body token, tabular numerics where useful
+code/path/SHA        mono token
+```
+
+## 5. Spacing, Radius and Depth
+
+Reuse existing global token scales before adding values. Settings 3.4 geometry target:
+
+```text
+content max width             1240px
+section horizontal inset      16px desktop / 12px compact
+row min height                about 64px desktop
+row vertical inset            about 10–12px
+outer grid columns            2 wide / 1 narrow
+column gap                    0 or one semantic divider
+row inner gap                 16px
+section radius                existing panel radius
+control height                canonical control height
+```
+
+Section header and SettingCopy must share the same left inset. SettingControlSlot must share the same right inset.
+
+## 6. Canonical primitives and owners
 
 ```text
 Button / IconButton
@@ -74,6 +138,7 @@ SettingsViewportLayout
 SettingsSectionPanel
 SettingsGrid
 SettingRow
+SettingCopy
 SettingControlSlot
 SettingBlock
 FactRow
@@ -81,6 +146,7 @@ AboutPanel
 HeaderUtilityBar
 HeaderUtilityAction
 SessionController
+SessionGate
 BrandMark / BrandCluster / BrandIdentity / AmbientMark
 Navigation.goHome
 SelectionModelV037 / BulkActionDispatcher
@@ -89,52 +155,55 @@ DataGridLayoutController
 ResponsiveShell 3.0
 ```
 
-Feature CSS may own feature-specific layout and semantic states. It may not redefine canonical control colors, radii, focus rings, hover/active behavior or create a second Settings geometry system.
+Exact filenames may map onto existing modules. New filenames are not a requirement. What is mandatory is one owner per semantic responsibility and deletion of obsolete owners after migration.
 
-## 4. SETTINGS-STRUCTURE-002 — one SettingRow DOM shape
+## 7. SETTINGS-STRUCTURE-002 — one final DOM shape
 
-Every ordinary editable preference renders this semantic structure:
+Every ordinary editable preference renders directly as:
 
 ```text
-SettingRow
-├─ SettingCopy
-│  ├─ SettingTitleLine
-│  │  ├─ Title
-│  │  └─ optional SettingHelp
-│  └─ Description
-└─ SettingControlSlot
-   └─ canonical control
+SettingsSectionPanel
+└─ SettingsGrid
+   └─ SettingRow
+      ├─ SettingCopy
+      │  ├─ SettingTitleLine
+      │  │  ├─ Title
+      │  │  └─ optional SettingHelp
+      │  └─ Description
+      └─ SettingControlSlot
+         └─ canonical control
 ```
 
-Conceptual DOM:
+Target conceptual DOM:
 
 ```html
-<label class="setting-row" data-setting-key="...">
-  <span class="settings-row__copy">...</span>
-  <span class="settings-row__control">...</span>
-</label>
+<section class="settings-section" data-settings-owner="downloads">
+  <header class="settings-section__header">...</header>
+  <div class="settings-grid">
+    <label class="setting-row" data-setting-key="save_path" data-setting-span="1">
+      <span class="setting-copy">...</span>
+      <span class="setting-control-slot">...</span>
+    </label>
+  </div>
+</section>
 ```
 
-Legacy flat rows such as `strong + small + control` are migration input only. They must be adapted once into the canonical structure; CSS must not maintain a second geometry branch for them.
-
-## 5. SETTINGS-GRID-002 — two columns by default
-
-All editable Settings tabs share:
+The following are migration-only names and must disappear from Settings presentation when 3.4 lands:
 
 ```text
-SettingsPageShell
-└─ SettingsViewportLayout
-   ├─ SettingsSidebar
-   └─ SettingsContentViewport       <- only Settings scroll owner
-      └─ SettingsSectionPanel
-         ├─ SectionHeader
-         └─ SettingsGrid
-            ├─ SettingRow
-            ├─ SettingRow
-            └─ ...
+.settings-control
+.settings-row--canonical
+.setting-row-grid
+.settings-section--rows
+.settings-grid-canonical
+SETTINGS-FORM-RAIL-*
 ```
 
-Applies to:
+No adapter keeps these shapes alive for Settings.
+
+## 8. SETTINGS-GRID-002 — deterministic outer grid
+
+Applies identically to:
 
 ```text
 WeiG WebUI
@@ -146,30 +215,21 @@ Web UI
 Advanced
 ```
 
-Geometry:
+Wide desktop:
 
 ```text
-content max width          1240px
-viewport > 1180px          2 SettingsGrid columns
-viewport <= 1180px         1 SettingsGrid column
-ordinary row min-height    about 64px desktop
-row internal layout        minmax(0,1fr) auto
-copy                       left aligned
-control slot               right aligned
+┌──────────────────────────────┬──────────────────────────────┐
+│ Title                  [ctl] │ Title                  [ctl] │
+│ Description                  │ Description                  │
+├──────────────────────────────┼──────────────────────────────┤
+│ Title                  [ctl] │ Title                  [ctl] │
+│ Description                  │ Description                  │
+└──────────────────────────────┴──────────────────────────────┘
 ```
 
-Wide desktop example:
+The left edge of every Title/Description is the cell inset, not a centered inner rail. The right edge of every control is the cell right inset.
 
-```text
-Auto Torrent management              [switch] | Create subfolder                    [switch]
-Preallocate disk space               [switch] | Default save path            [/downloads/]
-Auto relocate on path change         [switch] | Pause added torrents                 [switch]
-Incomplete Torrent path   [/downloads/incomplete] | Use incomplete path             [switch]
-```
-
-The same geometry applies to Connection, Speed, BitTorrent, Web UI and Advanced. A setting does not become centered merely because its control is a Switch or because it was produced by a legacy helper.
-
-## 6. SETTINGS-ALIGN-002 — one alignment contract
+## 9. SETTINGS-ALIGN-002 — one horizontal alignment contract
 
 Inside every ordinary SettingRow:
 
@@ -178,26 +238,27 @@ left edge                                  right edge
 Title / description                 [control/value]
 ```
 
-Hard rules:
-
-- title and description share one left axis;
-- control/value shares the row cell right axis;
-- Switch, number, port, Select and text input do not each invent a different alignment strategy;
-- description wraps only inside the copy column;
-- no `justify-content:center`, centered title or centered Switch in ordinary SettingRow;
-- controls use semantic width tiers rather than one forced width.
-
-Recommended sizing:
+Implementation contract:
 
 ```text
-switch             intrinsic
-short number/port  compact
-select             content-fit with reasonable cap
-standard text      medium
-path/url text      medium/wide but still one grid cell by default
+SettingRow             grid-template-columns: minmax(0,1fr) auto
+SettingCopy            justify-self:start; width:100%; text-align:left
+SettingCopy contents   text-align:left; justify-self:start
+SettingControlSlot     justify-self:end; align-items:center
 ```
 
-## 7. SETTINGS-SPAN-002 — explicit full width only
+Forbidden in ordinary Settings geometry:
+
+```text
+justify-content:center
+justify-self:center
+text-align:center
+fixed 820px FormRail
+per-tab alignment overrides
+control-specific placement hacks
+```
+
+## 10. SETTINGS-SPAN-002 — explicit full width only
 
 Default:
 
@@ -205,7 +266,7 @@ Default:
 span = 1
 ```
 
-Allowed explicit full width:
+Allowed explicit `span=full`:
 
 ```text
 multiline textarea
@@ -223,185 +284,222 @@ key contains path/url/domain/address/host/username/password
 → full width
 ```
 
-Those fields remain ordinary two-column cells unless the schema explicitly declares a genuinely wide editor. `PreferenceSchema` owns `span` / `layout` semantics. Page CSS and string matching do not.
+`PreferenceSchema` owns `span/layout`; CSS and string matching do not.
 
-## 8. SETTINGS-OWNER-002 — remove competing FormRail geometry
+## 11. SETTINGS-CLEAN-CUT-003 — delete the old Settings system
 
-The historical centered 820px FormRail is not a current Settings layout authority. Once a tab is migrated to SettingsGrid, legacy FormRail variables/selectors may not affect its rows.
-
-There must be exactly one geometry path:
+After direct source rendering is implemented, these behaviors are forbidden and removed rather than retained as compatibility:
 
 ```text
-SettingsGrid
-→ SettingRow
-→ SettingCopy + SettingControlSlot
+patchFactories() wrapping old factories
+normalizeSettings()/normalizeSection() as primary renderer
+consolidateWeiGGrid()
+Settings MutationObserver moving rows after render
+language card MutationObserver injection
+timezone card MutationObserver injection
+native-select upgrade as a requirement for Settings controls
+CSS-order observers whose purpose is to beat old Settings CSS
+legacy Settings timeout repair
 ```
 
-Two simultaneous `!important` layout systems are forbidden.
+Language and timezone become ordinary WeiG Settings schema items rendered in the same first pass as Theme, Font size, Density, Starfield, Motion, Page size and Refresh interval.
 
-## 9. CONTROL-REGISTRY-002
-
-`ControlRegistry` maps verified semantics to shared controls:
+## 12. CONTROL-REGISTRY-002
 
 ```text
-boolean     -> Switch
-number      -> NumberInput
-port        -> PortInput
-text        -> TextInput
-path        -> TextInput with path semantics
-select/enum -> canonical Select/Listbox
-rate        -> RateControl
-duration    -> DurationControl
-timezone    -> canonical TimeZone Select
-readonly    -> Fact/readonly control as appropriate
+boolean       -> Switch
+number        -> NumberInput
+port          -> PortInput
+select/enum   -> Select/Listbox
+text          -> TextInput
+path/url      -> TextInput semantic variant
+rate          -> RateControl
+duration      -> DurationControl
+timezone      -> TimeZoneControl
+readonly      -> Fact/readonly semantics
 ```
 
-A verified enum should not remain an unexplained numeric code when a canonical Select can represent the official choices. Business/API ownership remains outside the registry.
+A verified enum should never remain an unexplained numeric code when qB semantics are known. Business/API ownership remains outside ControlRegistry.
 
-## 10. HEADER-UTILITY-001 — one icon-action template
+## 13. HEADER-UTILITY-001
 
-Desktop/tablet topbar order:
+Desktop/tablet order:
 
 ```text
 [+ Add Torrent] [GitHub] [Blog] [Refresh] [Theme] [Logout]
 ```
 
-`Logout` is always the rightmost desktop utility.
+GitHub / Blog / Refresh / Theme / Logout use one `HeaderUtilityAction` presentation owner. External links are anchors; runtime actions are buttons; geometry, hover, focus-visible, active feedback, tooltip and accessible label are shared. Logout remains the rightmost desktop utility.
 
-External destinations:
+On narrow phones, GitHub / Blog / Logout move into ContextDrawer `Links`; the action registry is unchanged.
 
-```text
-GitHub  https://github.com/weigefenxiang/WeiG-qB-WebUI
-Blog    https://www.weigshare.com/
-```
+## 14. AUTH-SESSION-002 — verified logout, not navigation theater
 
-GitHub, Blog, Refresh, Theme and Logout all consume the same `HeaderUtilityAction` / existing `icon-btn` visual template:
-
-```text
-same hit area
-same radius
-same border/surface
-same hover
-same focus-visible ring
-same active feedback
-same Tooltip/title behavior
-```
-
-Do not create `.github-btn`, `.blog-btn` or `.logout-btn` visual systems.
-
-External actions render as semantic anchors with `target="_blank"` and `rel="noopener noreferrer"`; runtime actions render as buttons. Both use the same presentation component. Icon-only controls require accessible labels/tooltips.
-
-Authentication ownership:
+Canonical flow:
 
 ```text
 HeaderUtilityAction(Logout)
-→ SessionController.logout()
-→ QBClient request boundary
-→ auth/logout
-→ login.html
+        ↓
+SessionController.logout()
+        ↓
+QBClient.logout()
+        ↓
+POST api/v2/auth/logout
+        ↓
+QBClient.probeSession()
+        ↓
+403 / unauthenticated ?
+   yes → commit logout
+   no  → auth bypass / unexpected session still active
 ```
 
-403 means the session is already invalid and may return directly to login. Other errors must leave the current page usable and expose a concise error.
+A successful HTTP response from `auth/logout` alone is **not** the acceptance criterion.
 
-On narrow phones, GitHub / Blog / Logout move into ContextDrawer `Links` rather than compressing the topbar. Their action registry and SessionController remain the same owners.
+### 14.1 Logout commit
 
-## 11. BRAND-001 — one reusable Brand system
+Only after invalidation is verified:
 
 ```text
-BrandCluster
-├─ BrandMarkHome
-│  └─ BrandMark + AmbientMark
-└─ BrandNameHome
-   └─ WeiG qB
+stop polling / prevent new authenticated work
+clear volatile in-memory private data
+set sessionStorage logout guard
+lock/hide private shell before navigation
+location.replace(root public entry)
 ```
 
-Header mark and name are separate Home targets and share `Navigation.goHome()`. About uses the same BrandMark asset and `AmbientMark` controller through `BrandIdentity`, only with a larger identity-size profile. No duplicate SVG/logo animation implementation is allowed.
+Display preferences such as theme/language/timezone may remain; torrent/settings/session data does not.
 
-## 12. ABOUT-001 — shared shell, read-only semantics
+### 14.2 Back/BFCache protection
 
-`AboutPanel` reuses `SettingsSectionPanel` spacing and responsive behavior, while metadata uses `FactRow` rather than editable SettingRow.
+`SessionGate` owns private-shell re-entry:
 
 ```text
-AboutPanel
-├─ BrandIdentity
-│  ├─ BrandMark + AmbientMark
-│  └─ WeiG qB WebUI
-└─ Fact grid
-   ├─ Version
-   ├─ Git SHA
-   ├─ qBittorrent
-   ├─ WebAPI
-   ├─ GitHub
-   ├─ Blog
-   └─ License
+pageshow persisted OR logout guard present
+→ do not reveal stale private content
+→ reload/probe through server
+→ unauthenticated server returns public login entry
 ```
 
-Desktop facts are compact two-column; mobile facts are one-column; label/value remain on the same visual row. Language/Theme and other editable preferences never belong in About.
+Login success clears the logout guard.
 
-## 13. FLOATING / SELECT / DIALOG
+### 14.3 Authentication bypass
 
-Visible Select uses `W.Components.selectControl()`. Native select may remain only as a compatibility/data bridge. Floating surfaces use body-level `FloatingLayer` and follow below → flip above → shift → cap height → internal scroll collision policy. Dialogs use Header / Body / Actions; only Body scrolls when necessary.
+Upstream qB automatically starts a new session when authentication is not required for the current client (localhost bypass or subnet whitelist). In that state a durable logout is impossible from frontend JavaScript alone.
 
-## 14. Responsive and mobile
-
-Mobile remains one application with adaptive presentation. Every active long page has one primary scroll owner. `settings-content` owns Settings scrolling; mobile Settings category navigation belongs in ContextDrawer.
-
-SettingsGrid is one column on narrow layouts. The SettingRow internal contract remains copy left / control right unless the available width requires an explicitly defined compact stacking rule. No page-specific mobile Settings implementation is allowed.
-
-## 15. Status / Transfer / data systems
-
-Desktop StatusDock keeps:
+Therefore:
 
 ```text
-left          center runtime cluster                      right
-Torrent N     Storage | TransferCapsule | Connection      reserved/status
+logout POST succeeds
+protected probe still succeeds
+→ do not show “logged out”
+→ show blocking explanation that qB authentication bypass is active
+→ require server Web UI auth policy to be changed for a durable logout
 ```
 
-Transfer download/upload is one capsule opening one shared TransferRateEditor. Alternative mode retints the complete editor. Torrent/Logs large collections remain virtualized. Selection is model state. DataGrid pointermove updates layout only and does not rebuild VirtualList.
+This is a server-policy state, not a frontend redirect problem.
 
-## 16. Systemic anti-patterns discovered in v0.3.7
+## 15. BRAND-001 and ABOUT-001
 
-These are explicit regression risks:
+Header Brand mark and `WeiG qB` remain separate Home targets using `Navigation.goHome()`. About reuses the same BrandMark and AmbientMark through `BrandIdentity`; it uses `FactRow`, never editable SettingRow. No duplicate SVG/logo animation implementation is allowed.
 
-1. **Dual row structures** — canonical `copy + control` rows mixed with flat legacy rows produce different alignment.
-2. **Dual layout owners** — old FormRail CSS and new SettingsGrid CSS both using high specificity/`!important` create non-deterministic geometry.
-3. **Name-based full-span guessing** — fields containing `host/path/url/user/password` unexpectedly become one-column rows.
-4. **Post-render DOM repair as architecture** — observer-driven moving/wrapping can race later injections and hide source ownership problems.
-5. **Tests that validate only column count** — a page may technically have two columns while labels are centered or full-span is overused.
-6. **Feature-local header actions** — one-off GitHub/Blog/Logout styles duplicate the existing IconButton system.
-7. **Authentication logic in UI controls** — a Logout button must delegate to SessionController rather than scatter fetch/request behavior.
-
-Fix the owner, schema or primitive; do not add another CSS exception for the screenshot.
-
-## 17. Validation contract
-
-Focused `[ui]` regression validates both qB 4.1.9.1 and 5.2.0 in one Linux Chromium job and covers every Settings tab.
-
-Required wide-desktop Settings assertions:
+## 16. Responsive Behavior
 
 ```text
-SettingsGrid reports two columns
-ordinary rows default span=1
-odd final ordinary row does not stretch full width
-SettingCopy left edge is aligned to the cell content edge
-SettingControlSlot right edge is aligned to the cell content edge
-no ordinary title is center-aligned
-no forbidden key-name heuristic produces full-span
-Downloads / Connection / Speed / BitTorrent / Web UI / Advanced share the same owners
-Advanced reaches the final row
+> 1180px    two SettingsGrid columns
+821–1180px  one SettingsGrid column
+<= 820px    one column + compact spacing; copy remains left, control remains right when it fits
 ```
 
-Header assertions:
+Mobile does not get a separate Settings business renderer. If an individual semantic editor genuinely needs stacking, that is declared by the component/schema, not by page-specific CSS.
+
+## 17. Do / Don't guardrails
+
+Do:
 
 ```text
-GitHub / Blog / Refresh / Theme / Logout use the same icon-action geometry
-GitHub and Blog have correct href/target/rel/accessible label
-Logout is the rightmost desktop utility
-Logout delegates through SessionController/auth/logout
-mobile Links exposes GitHub / Blog / Logout without squeezing the topbar
-Header Brand mark/name remain separate Home targets
+render final DOM at source
+use one schema and one row factory
+use one Settings CSS geometry owner
+keep section header/copy/control axes measurable
+verify logout server state
+verify Back/BFCache behavior
+fix owner/schema/primitive first
 ```
 
-Normal dev validation stays cheap. Full qB stable-tag audit, Linux/Windows browser matrices and multi-viewport Release validation run only from `main` manual Release candidate preparation.
+Don't:
 
-Real exact-SHA validation on qB 4.1.9.1 and 5.2.x remains required before promotion. Fixture PASS never implies LIVE certification.
+```text
+keep old Settings DOM “just in case”
+patch screenshot symptoms with another selector
+center copy in an inner rail
+use MutationObserver as Settings renderer
+let old and new !important rules compete
+call navigation-to-login “logout” without server verification
+claim success while qB auth bypass immediately recreates a session
+```
+
+## 18. Systemic failure modes discovered in v0.3.7
+
+```text
+1. Same semantic Setting emitted in multiple DOM shapes.
+2. Old FormRail and new SettingsGrid both remain layout owners.
+3. Three CSS generations can target the same row with !important.
+4. Source renderers output legacy DOM and later observers repair it.
+5. Language and timezone are injected by historical observers instead of the Settings schema.
+6. Tests can pass because they see two outer columns while inner copy is still centered.
+7. A migration bridge becomes permanent architecture.
+8. Header/Session responsibilities were combined into the Settings/Brand migration module.
+9. Logout success was defined as “request resolved + redirect”, not “server session is gone”.
+10. Browser history/BFCache was not part of the logout acceptance contract.
+11. qB auth-bypass behavior was not distinguished from a valid logged-out state.
+```
+
+## 19. Validation contract
+
+Focused `[ui]` regression on dev must cover qB 4.1.9.1 + 5.2.0 in one Linux Chromium job.
+
+Settings assertions:
+
+```text
+all seven Settings tabs use the same source-rendered owners
+no legacy Settings class names exist in rendered editable rows
+no Settings MutationObserver is required for geometry
+wide two-column / narrow one-column
+ordinary span=1
+copy absolute left-axis alignment within tolerance
+control absolute right-axis alignment within tolerance
+no ordinary title/description computed text-align=center
+no forbidden key-name span heuristic
+Advanced final row reachable
+```
+
+Session assertions:
+
+```text
+logout endpoint called through QBClient/SessionController
+fixture session becomes invalid after logout
+protected probe returns unauthenticated
+private shell is locked before redirect
+Back/BFCache cannot restore private UI
+login clears logout guard
+auth-bypass fixture is reported as non-durable logout, never false success
+```
+
+Normal dev validation stays cheap. Full qB stable-tag audit, Linux/Windows browser matrices and multi-viewport Release validation run only from `main` manual Release candidate preparation. Real exact-SHA qB 4.1.9.1 + 5.2.x LIVE remains required before promotion.
+
+## 20. Agent implementation guide
+
+When changing Settings or auth, use this order:
+
+```text
+DESIGN contract
+→ canonical owner
+→ schema/state boundary
+→ source renderer/component
+→ delete obsolete owner
+→ CSS/layout
+→ focused regression
+→ exact-SHA LIVE
+```
+
+Never begin with a new screenshot-specific CSS rule.
