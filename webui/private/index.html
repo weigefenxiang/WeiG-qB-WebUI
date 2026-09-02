@@ -1,49 +1,44 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark" data-font-size="large" data-density="standard" data-starfield="subtle" data-motion="system">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="color-scheme" content="dark light" />
-  <meta name="theme-color" content="#070b14" />
-  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
-  <meta http-equiv="Pragma" content="no-cache" />
-  <meta http-equiv="Expires" content="0" />
-  <meta name="weigg-build-sha" content="__WEIGG_GIT_SHA__" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="#070b14">
+  <meta http-equiv="Cache-Control" content="no-store,no-cache,must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <meta name="weigg-build-sha" content="__WEIGG_GIT_SHA__">
   <title>WeiG qB WebUI</title>
-  <link rel="stylesheet" href="css/app.css?v=__WEIGG_GIT_SHA__" />
-  <link rel="stylesheet" href="css/v021.css?v=__WEIGG_GIT_SHA__" />
-  <link rel="stylesheet" href="css/logs-v032.css?v=__WEIGG_GIT_SHA__" />
-  <link rel="stylesheet" href="css/mobile-v036.css?v=__WEIGG_GIT_SHA__" />
+  <script>try{if(sessionStorage.getItem('weigg.logoutGuard'))document.documentElement.dataset.sessionLocked='1';}catch(_e){}</script>
+  <link rel="stylesheet" href="css/app.css?v=__WEIGG_GIT_SHA__">
+  <link rel="stylesheet" href="css/base.css?v=__WEIGG_GIT_SHA__">
+  <link rel="stylesheet" href="css/spatial.css?v=__WEIGG_GIT_SHA__">
+  <link rel="stylesheet" href="css/transfer.css?v=__WEIGG_GIT_SHA__">
+  <link rel="stylesheet" href="css/controls.css?v=__WEIGG_GIT_SHA__">
+  <link rel="stylesheet" href="css/layout.css?v=__WEIGG_GIT_SHA__">
+  <link rel="stylesheet" href="css/theme.css?v=__WEIGG_GIT_SHA__">
+  <link rel="stylesheet" href="css/ui.css?v=__WEIGG_GIT_SHA__" data-weigg-layer="ui-system-037">
+  <link rel="stylesheet" href="css/polish.css?v=__WEIGG_GIT_SHA__" data-weigg-layer="ui-polish-037">
+  <link rel="stylesheet" href="css/logs.css?v=__WEIGG_GIT_SHA__">
+  <link rel="stylesheet" href="css/brand.css?v=__WEIGG_GIT_SHA__" data-weigg-layer="brand-031">
+  <link rel="stylesheet" href="css/header.css?v=__WEIGG_GIT_SHA__">
+  <link rel="stylesheet" href="css/session.css?v=__WEIGG_GIT_SHA__">
+  <link rel="stylesheet" href="css/settings.css?v=__WEIGG_GIT_SHA__">
 </head>
 <body>
   <a class="skip-link" href="#torrent-list" data-i18n="app.skip">Skip to torrent list</a>
   <div class="starfield" aria-hidden="true"><span class="stars stars-a"></span><span class="stars stars-b"></span><span class="nebula nebula-a"></span><span class="nebula nebula-b"></span></div>
   <div id="app" class="app-shell">
     <header class="topbar surface surface--floating">
-      <div class="topbar__start">
-        <button id="menu-btn" class="icon-btn mobile-only" type="button" data-i18n-aria="app.menu" aria-label="Open navigation">☰</button>
-        <button id="back-btn" class="icon-btn is-hidden" type="button" data-i18n-aria="app.back" aria-label="Back">←</button>
-        <button id="brand-btn" class="brand" type="button" aria-label="WeiG qB"><span class="brand__mark">W</span><span class="brand__text">WeiG qB</span></button>
-      </div>
-      <nav id="app-nav" class="app-nav desktop-only" aria-label="Application">
-        <button class="app-nav__item is-active" data-route="" type="button" data-i18n="nav.torrents">Torrents</button>
-        <button class="app-nav__item" data-route="search" type="button" data-capability="search" data-i18n="nav.search">Search</button>
-        <button class="app-nav__item" data-route="rss" type="button" data-capability="rss" data-i18n="nav.rss">RSS</button>
-        <button class="app-nav__item" data-route="logs" type="button" data-capability="logs" data-i18n="nav.logs">Logs</button>
-        <button class="app-nav__item" data-route="settings" type="button" data-i18n="nav.settings">Settings</button>
-      </nav>
-      <div class="topbar__search"><label class="search-box" for="search-input"><span aria-hidden="true">⌕</span><input id="search-input" type="search" autocomplete="off" data-i18n-placeholder="search.torrents" placeholder="Search torrents…" /></label></div>
-      <div class="topbar__actions">
-        <button id="add-btn" class="btn btn--primary" type="button">＋ <span class="desktop-label" data-i18n="library.add">Add Torrent</span></button>
-        <button id="refresh-btn" class="icon-btn" type="button" data-i18n-aria="app.refresh" aria-label="Refresh">↻</button>
-        <button id="theme-btn" class="icon-btn" type="button" data-i18n-aria="app.theme" aria-label="Toggle theme">◐</button>
-      </div>
+      <div class="topbar__start"><button id="menu-btn" class="icon-btn mobile-only" type="button" data-i18n-aria="app.menu" aria-label="Open navigation">☰</button><button id="back-btn" class="icon-btn is-hidden" type="button" data-i18n-aria="app.back" aria-label="Back">←</button><button id="brand-btn" class="brand" type="button" aria-label="WeiG qB"><span class="brand__mark">W</span><span class="brand__text">WeiG qB</span></button></div>
+      <nav id="app-nav" class="app-nav desktop-only" aria-label="Application"><button class="app-nav__item is-active" data-route="" type="button" data-i18n="nav.torrents">Torrents</button><button class="app-nav__item" data-route="search" type="button" data-capability="search" data-i18n="nav.search">Search</button><button class="app-nav__item" data-route="rss" type="button" data-capability="rss" data-i18n="nav.rss">RSS</button><button class="app-nav__item" data-route="logs" type="button" data-capability="logs" data-i18n="nav.logs">Logs</button><button class="app-nav__item" data-route="settings" type="button" data-i18n="nav.settings">Settings</button></nav>
+      <div class="topbar__search"><label class="search-box" for="search-input"><span aria-hidden="true">⌕</span><input id="search-input" type="search" autocomplete="off" data-i18n-placeholder="search.torrents" placeholder="Search torrents…"></label></div>
+      <div class="topbar__actions"><button id="add-btn" class="btn btn--primary" type="button">＋ <span class="desktop-label" data-i18n="library.add">Add Torrent</span></button><button id="refresh-btn" class="icon-btn" type="button" data-i18n-aria="app.refresh" aria-label="Refresh">↻</button><button id="theme-btn" class="icon-btn" type="button" data-i18n-aria="app.theme" aria-label="Toggle theme">◐</button></div>
     </header>
 
     <aside id="sidebar" class="sidebar surface surface--panel" aria-label="Torrent filters">
-      <div class="sidebar__section"><div class="eyebrow" data-i18n="sidebar.torrents">TORRENTS</div><nav id="filter-nav" class="nav-list">
-        <button class="nav-item is-active" data-filter="all" type="button" data-i18n="filter.all">All</button><button class="nav-item" data-filter="downloading" type="button" data-i18n="filter.downloading">Downloading</button><button class="nav-item" data-filter="seeding" type="button" data-i18n="filter.seeding">Seeding</button><button class="nav-item" data-filter="completed" type="button" data-i18n="filter.completed">Completed</button><button class="nav-item" data-filter="paused" type="button" data-i18n="filter.paused">Paused</button><button class="nav-item" data-filter="active" type="button" data-i18n="filter.active">Active</button><button class="nav-item" data-filter="stalled" type="button" data-i18n="filter.stalled">Stalled</button><button class="nav-item" data-filter="errored" type="button" data-i18n="filter.error">Error</button><button class="nav-item" data-filter="private" type="button" data-i18n="filter.private">Private / PT</button>
-      </nav></div>
+      <div class="sidebar__section"><div class="eyebrow" data-i18n="sidebar.torrents">TORRENTS</div><nav id="filter-nav" class="nav-list"><button class="nav-item is-active" data-filter="all" type="button" data-i18n="filter.all">All</button><button class="nav-item" data-filter="downloading" type="button" data-i18n="filter.downloading">Downloading</button><button class="nav-item" data-filter="seeding" type="button" data-i18n="filter.seeding">Seeding</button><button class="nav-item" data-filter="completed" type="button" data-i18n="filter.completed">Completed</button><button class="nav-item" data-filter="paused" type="button" data-i18n="filter.paused">Paused</button><button class="nav-item" data-filter="active" type="button" data-i18n="filter.active">Active</button><button class="nav-item" data-filter="stalled" type="button" data-i18n="filter.stalled">Stalled</button><button class="nav-item" data-filter="errored" type="button" data-i18n="filter.error">Error</button><button class="nav-item" data-filter="private" type="button" data-i18n="filter.private">Private / PT</button></nav></div>
       <div id="tracker-section" class="sidebar__section"><div class="eyebrow" data-i18n="sidebar.trackers">TRACKERS</div><nav id="tracker-nav" class="nav-list compact-nav"><button class="nav-item is-active" data-tracker="" type="button" data-i18n="tracker.all">All Trackers</button><span class="sidebar-placeholder" data-i18n="tracker.indexing">Building Tracker index…</span></nav></div>
       <div id="savepath-section" class="sidebar__section"><div class="eyebrow" data-i18n="sidebar.savePath">SAVE PATH</div><nav id="savepath-nav" class="nav-list compact-nav"><button class="nav-item is-active" data-savepath="" type="button" data-i18n="path.all">All Paths</button></nav></div>
       <div id="category-section" class="sidebar__section"><div class="eyebrow" data-i18n="sidebar.categories">CATEGORIES</div><nav id="category-nav" class="nav-list compact-nav"><button class="nav-item is-active" data-category="" type="button" data-i18n="category.all">All Categories</button></nav></div>
@@ -61,7 +56,7 @@
 
       <section id="detail-view" class="view"><div class="detail-hero surface surface--raised"><div><div class="eyebrow" data-i18n="detail.eyebrow">TORRENT DETAIL</div><h1 id="detail-title">—</h1><div id="detail-state" class="status-pill">—</div></div><div class="detail-progress"><div class="progress-track"><div id="detail-progress-bar" class="progress-fill"></div></div><strong id="detail-progress-text">0%</strong></div></div><div class="detail-tabs" role="tablist"><button class="tab is-active" data-tab="overview" data-i18n="detail.overview">Overview</button><button class="tab" data-tab="files" data-i18n="detail.files">Files</button><button class="tab" data-tab="trackers" data-i18n="detail.trackers">Trackers</button><button class="tab" data-tab="peers" data-i18n="detail.peers">Peers</button><button class="tab" data-tab="webseeds" data-i18n="detail.webseeds">HTTP Sources</button></div><div id="detail-content" class="detail-content surface surface--panel"></div></section>
 
-      <section id="settings-view" class="view"><div class="workspace__header settings-header"><div><div class="eyebrow" data-i18n="settings.eyebrow">SETTINGS</div><h1 data-i18n="settings.title">Settings</h1><p class="text-description" data-i18n="settings.description">Interface preferences and qBittorrent settings supported by this instance.</p></div><div class="settings-header__actions"><label class="search-box settings-search-box"><span aria-hidden="true">⌕</span><input id="settings-search-input" type="search" autocomplete="off" data-i18n-placeholder="settings.search" placeholder="Search settings…"></label><button id="save-settings-btn" class="btn btn--primary" data-i18n="settings.save">Save qB Settings</button></div></div><div class="settings-layout"><nav id="settings-tabs" class="settings-tabs surface surface--panel"><div class="settings-nav-group"><div class="eyebrow">WEIG</div><button class="nav-item is-active" data-settings-tab="weigg" data-i18n="settings.weigg">WeiG WebUI</button></div><div class="settings-nav-group"><div class="eyebrow">QBITTORRENT</div><button class="nav-item" data-settings-tab="downloads" data-i18n="settings.downloads">Downloads</button><button class="nav-item" data-settings-tab="connection" data-i18n="settings.connection">Connection</button><button class="nav-item" data-settings-tab="speed" data-i18n="settings.speed">Speed</button><button class="nav-item" data-settings-tab="bittorrent" data-i18n="settings.bittorrent">BitTorrent</button><button class="nav-item" data-settings-tab="webui" data-i18n="settings.webui">Web UI</button><button class="nav-item" data-settings-tab="advanced" data-i18n="settings.advanced">Advanced</button></div></nav><div id="settings-content" class="settings-content surface surface--panel"></div></div></section>
+      <section id="settings-view" class="view"><div class="workspace__header settings-header"><div><div class="eyebrow" data-i18n="settings.eyebrow">SETTINGS</div><h1 data-i18n="settings.title">Settings</h1><p class="text-description" data-i18n="settings.description">Interface preferences and qBittorrent settings supported by this instance.</p></div><div class="settings-header__actions"><label class="search-box settings-search-box"><span aria-hidden="true">⌕</span><input id="settings-search-input" type="search" autocomplete="off" data-i18n-placeholder="settings.search" placeholder="Search settings…"></label><button id="save-settings-btn" class="btn btn--primary" data-i18n="settings.save">Save qB Settings</button></div></div><div class="settings-layout"><nav id="settings-tabs" class="settings-tabs surface surface--panel"><div class="settings-nav-group"><div class="eyebrow">WEIG</div><button class="nav-item is-active" data-settings-tab="weigg" data-i18n="settings.weigg">WeiG WebUI</button></div><div class="settings-nav-group"><div class="eyebrow">QBITTORRENT</div><button class="nav-item" data-settings-tab="downloads" data-i18n="settings.downloads">Downloads</button><button class="nav-item" data-settings-tab="connection" data-i18n="settings.connection">Connection</button><button class="nav-item" data-settings-tab="speed" data-i18n="settings.speed">Speed</button><button class="nav-item" data-settings-tab="bittorrent" data-i18n="settings.bittorrent">BitTorrent</button><button class="nav-item" data-settings-tab="webui" data-i18n="settings.webui">Web UI</button><button class="nav-item" data-settings-tab="advanced" data-i18n="settings.advanced">Advanced</button><button class="nav-item" data-settings-tab="about">About</button></div></nav><div id="settings-content" class="settings-content surface surface--panel"></div></div></section>
 
       <section id="search-view" class="view"><div class="workspace__header"><div><div class="eyebrow">SEARCH</div><h1 data-i18n="search.title">Search Engine</h1><p class="text-description" data-i18n="search.description">Search through qBittorrent Search API.</p></div></div><div class="tool-page surface surface--panel"><div class="inline-form"><input id="engine-query" class="field-input" data-i18n-placeholder="search.query" placeholder="Search query"><button id="engine-search-btn" class="btn btn--primary" data-i18n="search.start">Search</button><button id="engine-stop-btn" class="btn btn--ghost" data-i18n="search.stop">Stop</button></div><div id="search-results" class="large-tool-list"></div></div></section>
       <section id="rss-view" class="view"><div class="workspace__header"><div><div class="eyebrow">RSS</div><h1>RSS</h1><p class="text-description" data-i18n="rss.description">Feeds, articles and compatible RSS actions.</p></div></div><div class="tool-page surface surface--panel"><div class="inline-form"><input id="rss-url" class="field-input" data-i18n-placeholder="rss.feedUrl" placeholder="RSS Feed URL"><button id="rss-add-btn" class="btn btn--primary" data-i18n="rss.add">Add Feed</button><button id="rss-refresh-btn" class="btn btn--ghost" data-i18n="rss.refresh">Refresh</button></div><div id="rss-content" class="large-tool-list"></div></div></section>
@@ -69,7 +64,6 @@
     </main>
 
     <footer class="statusbar surface surface--floating"><span class="status-speed status-speed--dl">↓ <strong id="status-dl">0 B/s</strong></span><span class="status-speed status-speed--up">↑ <strong id="status-up">0 B/s</strong></span><span id="status-connection">● —</span><span id="status-torrents">Torrents —</span><span class="desktop-only"><span data-i18n="app.refresh">Refresh</span> <span id="last-refresh">—</span></span><span id="status-message"></span></footer>
-
     <nav id="mobile-bottom-nav" class="mobile-bottom-nav surface surface--floating mobile-only" aria-label="Primary navigation"><button data-route="" class="mobile-bottom-nav__item is-active" type="button"><span>◉</span><small data-i18n="nav.torrents">Torrents</small></button><button data-route="search" data-capability="search" class="mobile-bottom-nav__item" type="button"><span>⌕</span><small data-i18n="nav.search">Search</small></button><button data-route="rss" data-capability="rss" class="mobile-bottom-nav__item" type="button"><span>◌</span><small data-i18n="nav.rss">RSS</small></button><button data-route="settings" class="mobile-bottom-nav__item" type="button"><span>⚙</span><small data-i18n="nav.settings">Settings</small></button></nav>
   </div>
 
@@ -83,17 +77,32 @@
 
   <script src="scripts/i18n.js?v=__WEIGG_GIT_SHA__"></script>
   <script src="scripts/core.js?v=__WEIGG_GIT_SHA__"></script>
-  <script src="scripts/i18n-v036.js?v=__WEIGG_GIT_SHA__"></script>
-  <script src="scripts/semantics-v036.js?v=__WEIGG_GIT_SHA__"></script>
+  <script src="scripts/i18n-time.js?v=__WEIGG_GIT_SHA__"></script>
+  <script src="scripts/i18n-alternative-webui.js?v=__WEIGG_GIT_SHA__"></script>
+  <script src="scripts/i18n-interface.js?v=__WEIGG_GIT_SHA__"></script>
+  <script src="scripts/i18n-transfer.js?v=__WEIGG_GIT_SHA__"></script>
+  <script src="scripts/torrent-semantics.js?v=__WEIGG_GIT_SHA__"></script>
   <script src="scripts/settings-schema.js?v=__WEIGG_GIT_SHA__"></script>
   <script src="scripts/settings-translations.js?v=__WEIGG_GIT_SHA__"></script>
   <script src="scripts/qb-client.js?v=__WEIGG_GIT_SHA__"></script>
   <script src="scripts/components.js?v=__WEIGG_GIT_SHA__"></script>
-  <script src="scripts/i18n-v034.js?v=__WEIGG_GIT_SHA__"></script>
-  <script src="scripts/adaptive-v036.js?v=__WEIGG_GIT_SHA__"></script>
+  <script src="scripts/floating.js?v=__WEIGG_GIT_SHA__"></script>
+  <script src="scripts/time.js?v=__WEIGG_GIT_SHA__"></script>
+  <script src="scripts/advanced-settings.js?v=__WEIGG_GIT_SHA__"></script>
+  <script src="scripts/brand.js?v=__WEIGG_GIT_SHA__"></script>
+  <script src="scripts/session.js?v=__WEIGG_GIT_SHA__"></script>
+  <script src="scripts/settings.js?v=__WEIGG_GIT_SHA__"></script>
+  <script src="scripts/navigation.js?v=__WEIGG_GIT_SHA__"></script>
+  <script src="scripts/spatial.js?v=__WEIGG_GIT_SHA__"></script>
+  <script src="scripts/transfer.js?v=__WEIGG_GIT_SHA__"></script>
+  <script src="scripts/responsive.js?v=__WEIGG_GIT_SHA__"></script>
+  <script src="scripts/selection.js?v=__WEIGG_GIT_SHA__"></script>
+  <script src="scripts/layout.js?v=__WEIGG_GIT_SHA__"></script>
+  <script src="scripts/ui.js?v=__WEIGG_GIT_SHA__"></script>
+  <script src="scripts/polish.js?v=__WEIGG_GIT_SHA__"></script>
   <script src="scripts/app.js?v=__WEIGG_GIT_SHA__"></script>
-  <script src="scripts/settings-v034.js?v=__WEIGG_GIT_SHA__"></script>
-  <script src="scripts/ux-v021.js?v=__WEIGG_GIT_SHA__"></script>
-  <script src="scripts/logs-v032.js?v=__WEIGG_GIT_SHA__"></script>
+  <script src="scripts/ux.js?v=__WEIGG_GIT_SHA__"></script>
+  <script src="scripts/header.js?v=__WEIGG_GIT_SHA__"></script>
+  <script src="scripts/logs.js?v=__WEIGG_GIT_SHA__"></script>
 </body>
 </html>

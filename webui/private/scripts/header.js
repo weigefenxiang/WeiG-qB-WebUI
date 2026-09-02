@@ -1,0 +1,41 @@
+(function(global){
+  'use strict';
+  var W=global.WeiG=global.WeiG||{};
+  function iconSvg(kind){
+    if(kind==='github')return '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 .7a11.3 11.3 0 0 0-3.57 22c.57.1.78-.24.78-.55v-2.15c-3.18.69-3.85-1.35-3.85-1.35-.52-1.32-1.27-1.67-1.27-1.67-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.75 2.68 1.24 3.33.95.1-.74.4-1.24.73-1.52-2.54-.29-5.21-1.27-5.21-5.65 0-1.25.45-2.27 1.18-3.07-.12-.29-.51-1.45.11-3.02 0 0 .96-.31 3.13 1.17A10.9 10.9 0 0 1 12 6.94c.97 0 1.94.13 2.85.38 2.17-1.48 3.13-1.17 3.13-1.17.62 1.57.23 2.73.11 3.02.73.8 1.18 1.82 1.18 3.07 0 4.39-2.68 5.35-5.23 5.64.41.36.78 1.06.78 2.13v3.14c0 .31.21.66.79.55A11.3 11.3 0 0 0 12 .7Z"/></svg>';
+    if(kind==='blog')return '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" d="M4 5.5h16v13H4zM8 9h8M8 12h8M8 15h5"/><path fill="currentColor" d="M6.5 7.2h1.2v1.2H6.5z"/></svg>';
+    if(kind==='logout')return '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" d="M10 5H5.5v14H10M14 8l4 4-4 4M18 12H9"/></svg>';
+    return '';
+  }
+  function external(id,label,href,kind){
+    var a=document.createElement('a');a.id=id;a.className='icon-btn header-utility-action';a.href=href;a.target='_blank';a.rel='noopener noreferrer';a.title=label;a.setAttribute('aria-label',label);
+    var span=document.createElement('span');span.className='header-utility-icon';span.innerHTML=iconSvg(kind);a.appendChild(span);return a;
+  }
+  function runtime(id,label,kind,handler){
+    var b=document.createElement('button');b.id=id;b.type='button';b.className='icon-btn header-utility-action';b.title=label;b.setAttribute('aria-label',label);
+    var span=document.createElement('span');span.className='header-utility-icon';span.innerHTML=iconSvg(kind);b.appendChild(span);b.addEventListener('click',handler);return b;
+  }
+  function installDesktop(){
+    var actions=document.querySelector('.topbar__actions');if(!actions||document.getElementById('github-link'))return;
+    var refresh=document.getElementById('refresh-btn');
+    var github=external('github-link','GitHub','https://github.com/weigefenxiang/WeiG-qB-WebUI','github');
+    var blog=external('blog-link','WeiG Share Blog','https://www.weigshare.com/','blog');
+    var logout=runtime('logout-btn','Logout','logout',function(){if(W.SessionController)W.SessionController.logout(W.AppState&&W.AppState.client);});
+    if(refresh)actions.insertBefore(github,refresh);else actions.appendChild(github);
+    if(refresh)actions.insertBefore(blog,refresh);else actions.appendChild(blog);
+    actions.appendChild(logout);
+  }
+  function mobileLink(label,href,kind,handler){
+    var node=href?document.createElement('a'):document.createElement('button');if(!href)node.type='button';node.className='nav-item header-utility-link';if(href){node.href=href;node.target='_blank';node.rel='noopener noreferrer';}
+    var icon=document.createElement('span');icon.className='header-utility-icon';icon.innerHTML=iconSvg(kind);var text=document.createElement('span');text.textContent=label;node.append(icon,text);if(handler)node.addEventListener('click',handler);return node;
+  }
+  function installMobile(){
+    var sidebar=document.getElementById('sidebar');if(!sidebar||sidebar.querySelector('[data-header-links]'))return;
+    var section=document.createElement('div');section.className='sidebar__section';section.dataset.headerLinks='1';var title=document.createElement('div');title.className='eyebrow';title.textContent='LINKS';var nav=document.createElement('nav');nav.className='nav-list';
+    nav.append(mobileLink('GitHub','https://github.com/weigefenxiang/WeiG-qB-WebUI','github'),mobileLink('WeiG Share','https://www.weigshare.com/','blog'),mobileLink('Logout','', 'logout',function(){if(W.SessionController)W.SessionController.logout(W.AppState&&W.AppState.client);}));
+    section.append(title,nav);sidebar.appendChild(section);
+  }
+  function init(){setTimeout(function(){installDesktop();installMobile();},0);}
+  W.HeaderUtilities={installDesktop:installDesktop,installMobile:installMobile};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+})(window);

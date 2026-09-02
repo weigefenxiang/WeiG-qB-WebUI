@@ -31,23 +31,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: WebUI smoke, daily qB baselines and JavaScript syntax
+      - name: Semantic runtime, qB baselines and JavaScript syntax
         run: npm test
-      - name: Windows and Linux platform contract
-        run: node tests/platform-contract-v037.mjs
-      - name: Browser and Release test syntax
-        run: |
-          node --check tests/browser-logs-v033.mjs
-          node --check tests/browser-settings-v034.mjs
-          node --check tests/browser-ui-v036.mjs
-          node --check tests/browser-mobile-v036.mjs
-          node --check tests/browser-v037.mjs
-          node --check tests/browser-ui-system-v037.mjs
-          node --check tests/browser-settings-layout-v037.mjs
-          node --check tests/compat-matrix-v036.mjs
-          node --check tests/release-compat-v037.mjs
-          node --check tests/upstream-release-audit-v037.mjs
-          node --check tests/platform-contract-v037.mjs
       - name: Linux installer syntax
         run: sh -n installers/install.sh
       - name: Live regression script syntax
@@ -62,7 +47,7 @@ jobs:
           Write-Host 'PowerShell installer syntax parsed.'
 
   ui_browser:
-    name: Linux shared UI regression
+    name: Linux semantic UI regression
     if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'ui' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[ui]')) }}
     runs-on: ubuntu-latest
     needs: smoke
@@ -83,10 +68,8 @@ jobs:
         run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
-      - name: Shared responsive UI system regression
-        run: node tests/browser-ui-system-v037.mjs
-      - name: Settings alignment and HeaderUtility regression
-        run: node tests/browser-settings-layout-v037.mjs
+      - name: qB 4.1.9.1 and 5.2 semantic runtime regression
+        run: node tests/browser-runtime.mjs
 
   release_guard:
     name: Main release candidate guard
@@ -99,7 +82,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ "$GITHUB_REF" != 'refs/heads/main' ]; then
-            echo 'Full qB version, Linux/Windows and viewport matrices may run only from main while preparing a Release.' >&2
+            echo 'Full Linux/Windows and Release candidate validation may run only from main.' >&2
             exit 1
           fi
 
@@ -111,8 +94,7 @@ jobs:
       - smoke
       - release_guard
     steps:
-      - name: Checkout WeiG qB WebUI
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -129,7 +111,7 @@ jobs:
         run: node tests/upstream-release-audit-v037.mjs upstream-qb
 
   browser:
-    name: Linux browser matrix
+    name: Linux browser candidate
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     needs:
@@ -152,23 +134,11 @@ jobs:
         run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
-      - name: Cross-version Logs browser regression
-        run: node tests/browser-logs-v033.mjs
-      - name: Cross-version Alternative WebUI settings regression
-        run: node tests/browser-settings-v034.mjs
-      - name: Mobile adaptive viewport and storage regression
-        run: node tests/browser-mobile-v036.mjs
-      - name: Unified v0.3.7 interaction and settings regression
-        run: node tests/browser-v037.mjs
-      - name: Shared responsive UI system regression
-        run: node tests/browser-ui-system-v037.mjs
-      - name: Settings alignment and HeaderUtility regression
-        run: node tests/browser-settings-layout-v037.mjs
-      - name: Full representative qB 4.x and 5.x interaction regression
-        run: node tests/browser-ui-v036.mjs
+      - name: Semantic runtime browser matrix
+        run: node tests/browser-runtime.mjs
 
   windows_browser:
-    name: Windows browser matrix
+    name: Windows browser candidate
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' && github.ref == 'refs/heads/main' }}
     runs-on: windows-latest
     needs:
@@ -179,29 +149,20 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Windows compatibility and installer contracts
+      - name: Windows contracts and installer syntax
         shell: pwsh
         run: |
           npm test
           $null = [scriptblock]::Create((Get-Content 'installers/install.ps1' -Raw))
-          Write-Host 'Windows compatibility contracts passed.'
+          Write-Host 'Windows contracts passed.'
       - name: Install Chromium test runtime
         shell: pwsh
         run: |
           npm install --no-save playwright@1.55.0
           npx playwright install chromium
-      - name: Representative qB 4.x and 5.x browser matrix on Windows
+      - name: Semantic runtime browser matrix on Windows
         shell: pwsh
-        run: node tests/browser-ui-v036.mjs
-      - name: Unified v0.3.7 Windows regression
-        shell: pwsh
-        run: node tests/browser-v037.mjs
-      - name: Shared responsive UI Windows regression
-        shell: pwsh
-        run: node tests/browser-ui-system-v037.mjs
-      - name: Settings alignment and HeaderUtility Windows regression
-        shell: pwsh
-        run: node tests/browser-settings-layout-v037.mjs
+        run: node tests/browser-runtime.mjs
 
   release_candidate:
     name: release candidate

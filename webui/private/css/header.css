@@ -1,0 +1,5 @@
+.header-utility-action{flex:0 0 40px;text-decoration:none;color:inherit}
+.header-utility-icon{display:grid;place-items:center;width:19px;height:19px;line-height:1}
+.header-utility-icon svg{display:block;width:19px;height:19px;overflow:visible}
+.header-utility-link{display:grid!important;grid-template-columns:24px minmax(0,1fr)!important;align-items:center!important;gap:9px!important;text-decoration:none!important}
+.header-utility-link .header-utility-icon,.header-utility-link .header-utility-icon svg{width:18px;height:18px}
