@@ -120,7 +120,7 @@ unzip WeiG-qB-WebUI-dev.zip
 Docker 中“宿主机路径”和“容器内路径”不同。例如：
 
 ```text
-宿主机：    /root/qbittorrent/config/weigg-qb-webui
+宿主机：     /path/to/qbittorrent/config/weigg-qb-webui
 qBittorrent：/config/weigg-qb-webui
 ```
 

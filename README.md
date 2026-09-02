@@ -120,7 +120,7 @@ In qBittorrent open **Tools / Options (Preferences) → Web UI**, enable **Use a
 For Docker, the host path and the container-visible path are different. For example:
 
 ```text
-Host:       /root/qbittorrent/config/weigg-qb-webui
+Host:        /path/to/qbittorrent/config/weigg-qb-webui
 qBittorrent: /config/weigg-qb-webui
 ```
 
