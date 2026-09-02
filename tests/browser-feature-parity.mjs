@@ -63,9 +63,9 @@ try{
   {
     const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true,locale:'en-US'}),page=await context.newPage(),errors=[];
     page.on('pageerror',e=>errors.push(String(e)));page.on('console',m=>{if(m.type()==='error'&&!/favicon|Wei\.G\.ico/i.test(m.text()))errors.push(m.text());});
-    await page.goto(`http://${host}:${port}/modern/#/`,{waitUntil:'networkidle'});await page.waitForSelector('#torrent-list [data-hash]');
-    const row=page.locator('#torrent-list [data-hash]').first();const box=await row.boundingBox();assert(!!box,'mobile: first torrent row has no geometry');
-    await row.dispatchEvent('pointerdown',{pointerType:'touch',clientX:box.x+12,clientY:box.y+12,pointerId:7,isPrimary:true});await page.waitForTimeout(575);await page.waitForSelector('#actions-dialog[open]');
+    await page.goto(`http://${host}:${port}/modern/#/`,{waitUntil:'networkidle'});await page.waitForSelector('#torrent-list .torrent-mobile-card[data-hash]',{state:'visible'});
+    const row=page.locator('#torrent-list .torrent-mobile-card[data-hash]').first();
+    await row.dispatchEvent('pointerdown',{pointerType:'touch',clientX:12,clientY:12,pointerId:7,isPrimary:true});await page.waitForTimeout(575);await page.waitForSelector('#actions-dialog[open]');
     assert(await page.evaluate(()=>WeiG.Selection.count())===1,'mobile: long press did not select the pressed torrent');const actions=await page.locator('#actions-grid [data-torrent-action]').evaluateAll(nodes=>nodes.map(n=>n.dataset.torrentAction));assert(actions.includes('resume')&&actions.includes('delete'),'mobile: long press did not open the canonical ActionRegistry');await page.evaluate(()=>document.dispatchEvent(new PointerEvent('pointerup',{pointerType:'touch',pointerId:7,isPrimary:true})));
     assert(errors.length===0,`mobile: browser errors: ${errors.join(' | ')}`);await context.close();
   }
