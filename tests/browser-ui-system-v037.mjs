@@ -78,9 +78,12 @@ try{
     assert(mobile.rowHeight<=80&&mobile.cardHeight<=80,`mobile Torrent row must stay dense (${mobile.rowHeight}/${mobile.cardHeight})`);
     assert(mobile.controls&&mobile.toolbarOverflow<=2&&mobile.bottomGap>=1,`mobile shell/toolbar regression ${JSON.stringify(mobile)}`);
 
-    await page.locator('#mobile-bottom-nav [data-route="settings"]').click();await page.waitForFunction(()=>WeiG.Router.route().name==='settings');await page.waitForSelector('#settings-content .settings-row--canonical');
+    await page.locator('#mobile-bottom-nav [data-route="settings"]').click();
+    await page.waitForFunction(()=>WeiG.Router.route().name==='settings'&&document.querySelector('#settings-tabs [data-settings-tab="weigg"]')?.classList.contains('is-active'));
+    await page.waitForSelector('#settings-content [data-v036-timezone]');
+    await page.waitForFunction(()=>Array.from(document.querySelectorAll('#settings-content .setting-row-grid')).some(x=>x.offsetParent!==null));
     const mobileSettings=await page.evaluate(()=>{const visibleRow=Array.from(document.querySelectorAll('#settings-content .setting-row-grid')).find(x=>x.offsetParent!==null),grid=visibleRow?.closest('.settings-grid-canonical'),rows=Array.from(grid?.querySelectorAll(':scope>.setting-row-grid')||[]).filter(x=>x.offsetParent!==null),tz=document.querySelector('[data-v036-timezone]'),cols=grid?getComputedStyle(grid).gridTemplateColumns:'';return {rows:rows.length,cols,max:rows.length?Math.max(...rows.slice(0,8).map(x=>x.getBoundingClientRect().height)):999,timezone:!!tz};});
-    assert(mobileSettings.rows>=6&&mobileSettings.max<90&&mobileSettings.timezone,'mobile Settings mother template/timezone missing');
+    assert(mobileSettings.rows>=6&&mobileSettings.max<90&&mobileSettings.timezone,`mobile Settings mother template/timezone missing ${JSON.stringify(mobileSettings)}`);
     assert(!/\s/.test(mobileSettings.cols.trim())||mobileSettings.cols.split(/\s+/).length===1,`mobile SettingsGrid must collapse to one column (${mobileSettings.cols})`);
 
     await page.evaluate(()=>document.querySelector('#settings-tabs [data-settings-tab="about"]')?.click());await page.waitForSelector('.about-surface .brand-identity .brand-identity__mark-home .brand__mark.ambient-mark');await page.waitForFunction(()=>document.querySelectorAll('.about-facts-grid .about-fact').length>=4);
