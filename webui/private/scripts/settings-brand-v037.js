@@ -121,12 +121,23 @@
     }
   }
 
+  function rowTitle(row){
+    if(!row)return null;
+    var title=row.querySelector('.settings-row__copy strong');
+    if(title)return title;
+    var first=row.firstElementChild;
+    if(first&&first.tagName==='SPAN'){
+      title=first.querySelector('strong');
+      if(title)return title;
+    }
+    return Array.from(row.children).find(function(child){return child.tagName==='STRONG';})||null;
+  }
   function rowKey(row){
     if(!row)return'';
     if(row.dataset.settingKey)return row.dataset.settingKey;
     if(row.dataset.key)return row.dataset.key;
     if(row.dataset.v021Language)return'weigg_language';
-    var title=row.querySelector('.settings-row__copy strong,>span>strong,>strong');
+    var title=rowTitle(row);
     return String(title&&title.textContent||'').trim().toLocaleLowerCase();
   }
   function classifySpan(row){
@@ -157,10 +168,15 @@
     });
   }
   function sectionRows(group,grid){
-    return Array.from(group.querySelectorAll('.settings-row--canonical,.settings-control')).filter(function(row){
+    return Array.from(group.querySelectorAll('.settings-row,.settings-row--canonical,.settings-control')).filter(function(row){
       if(row.closest('.settings-group')!==group)return false;
       return !grid||row.parentElement!==grid;
     });
+  }
+  function decorateRow(row){
+    if(!row)return;
+    row.classList.add('settings-row--canonical','setting-row-grid');
+    row.dataset.settingSpan=classifySpan(row);
   }
 
   /* SETTINGS-DESIGN-001 — every editable Settings section consumes one responsive grid owner. */
@@ -184,15 +200,10 @@
     }
     grid.dataset.settingsOwner=group.dataset.settingsOwner;
     mergeExtraGrids(group,grid);
-    sectionRows(group,grid).forEach(function(row){
-      row.classList.add('setting-row-grid');
-      row.dataset.settingSpan=classifySpan(row);
-      grid.appendChild(row);
-    });
+    sectionRows(group,grid).forEach(function(row){decorateRow(row);grid.appendChild(row);});
     Array.from(grid.children).forEach(function(row){
-      if(!row.matches('.settings-row--canonical,.settings-control,.setting-row-grid'))return;
-      row.classList.add('setting-row-grid');
-      row.dataset.settingSpan=classifySpan(row);
+      if(!row.matches('.settings-row,.settings-row--canonical,.settings-control,.setting-row-grid'))return;
+      decorateRow(row);
     });
   }
   function consolidateWeiGGrid(root){
@@ -200,13 +211,12 @@
     var grid=primary&&primary.querySelector(':scope > .settings-grid-canonical');
     if(!grid)return;
     grid.dataset.settingsOwner='weigg';
-    Array.from(root.querySelectorAll('.setting-row-grid,.settings-control,.settings-row--canonical')).forEach(function(row){
+    Array.from(root.querySelectorAll('.settings-row,.setting-row-grid,.settings-control,.settings-row--canonical')).forEach(function(row){
       var section=row.closest('.settings-section-panel');
       if(section&&section.dataset.settingsOwner==='weigg-metrics')return;
       if(section&&section.classList.contains('about-surface'))return;
       if(row.closest('#settings-content')!==root)return;
-      row.classList.add('setting-row-grid');
-      row.dataset.settingSpan=classifySpan(row);
+      decorateRow(row);
       if(row.parentElement!==grid)grid.appendChild(row);
     });
     Array.from(root.querySelectorAll('.settings-grid-canonical')).forEach(function(extra){
@@ -214,7 +224,7 @@
       var section=extra.closest('.settings-section-panel');
       if(section&&section.dataset.settingsOwner==='weigg-metrics')return;
       Array.from(extra.children).forEach(function(child){
-        if(child.matches('.setting-row-grid,.settings-control,.settings-row--canonical'))grid.appendChild(child);
+        if(child.matches('.settings-row,.setting-row-grid,.settings-control,.settings-row--canonical')){decorateRow(child);grid.appendChild(child);}
       });
       if(!extra.children.length)extra.remove();
     });
@@ -237,11 +247,6 @@
     normalizeQueued=true;
     requestAnimationFrame(function(){normalizeQueued=false;normalizeSettings();});
   }
-  function settleSettings(){
-    [0,60,320,980,1880].forEach(function(delay){
-      global.setTimeout(function(){observeSettings();normalizeSettings();},delay);
-    });
-  }
   function observeSettings(){
     var root=document.getElementById('settings-content');
     if(!root||settingsObserver)return;
@@ -253,15 +258,12 @@
     if(initialized)return;
     initialized=true;
     normalizeHeaderBrand();
-    settleSettings();
-    document.addEventListener('click',function(e){
-      if(!e.target||!e.target.closest)return;
-      if(e.target.closest('#settings-tabs [data-settings-tab],[data-mobile-settings-tab],[data-route="settings"]'))settleSettings();
-    },true);
-    global.addEventListener('weigg:languagechange',settleSettings);
-    global.addEventListener('weigg:timezonechange',settleSettings);
-    global.addEventListener('hashchange',function(){requestAnimationFrame(function(){normalizeHeaderBrand();settleSettings();});});
-    global.setTimeout(function(){normalizeHeaderBrand();settleSettings();},700);
+    normalizeSettings();
+    observeSettings();
+    global.addEventListener('weigg:languagechange',queueNormalize);
+    global.addEventListener('weigg:timezonechange',queueNormalize);
+    global.addEventListener('hashchange',function(){requestAnimationFrame(function(){normalizeHeaderBrand();queueNormalize();});});
+    global.setTimeout(function(){normalizeHeaderBrand();queueNormalize();},700);
   }
 
   W.SettingsDesignV037={
