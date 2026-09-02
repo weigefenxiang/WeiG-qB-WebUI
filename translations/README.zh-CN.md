@@ -1,58 +1,161 @@
 # WeiG qB WebUI
 
-一套现代、响应式的 qBittorrent Alternate WebUI。桌面端与手机端共用同一套业务与交互模型，仅针对不同屏幕优化呈现方式。
+一套现代、响应式的 qBittorrent Alternate WebUI。
 
-**语言：** [English](../README.md) · 简体中文
+**语言**：[English](../README.md) · 简体中文
 
-## 安装
+## 安装频道
 
-**稳定版唯一以 GitHub Releases 为准。** 普通用户请始终从这里获取：
+- **Release** — 稳定版、默认频道、校验 SHA256，推荐普通用户使用。
+- **dev** — 当前开发分支，但安装器会先解析为一个确定的 Git commit。只有明确选择时才安装 dev；Release 缺失时绝不会自动回退到 dev。
 
-- [最新 Release](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest)
-- [WeiG-qB-WebUI.zip](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/WeiG-qB-WebUI.zip)
-- [SHA256SUMS](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/SHA256SUMS)
+## 一键安装
 
-如果还没有发布 Release，就代表当前没有稳定版；`dev` 和 `main` 只用于开发/预发布测试，不作为普通用户稳定下载入口。稳定安装器会 fail closed，不会在 Release 缺失时偷偷改用 branch archive。
+### Linux / Docker / NAS
 
-### Linux / Docker / NAS 一键安装
+Release（默认）：
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/weigefenxiang/WeiG-qB-WebUI/main/installers/install.sh -o /tmp/weigg-qb-install.sh && sh /tmp/weigg-qb-install.sh --configure
 ```
 
-安装器会识别常见 qBittorrent Docker 布局、自动备份、校验 Release checksum 与 exact Git SHA、检查完整 Alternate WebUI 入口，并输出 qBittorrent 实际应填写的 WebUI 路径。
+dev：
 
-### Windows PowerShell 一键安装
-
-```powershell
-Invoke-WebRequest https://raw.githubusercontent.com/weigefenxiang/WeiG-qB-WebUI/main/installers/install.ps1 -OutFile $env:TEMP\weigg-qb-install.ps1; powershell -ExecutionPolicy Bypass -File $env:TEMP\weigg-qb-install.ps1 -Configure
+```sh
+curl -fsSL https://raw.githubusercontent.com/weigefenxiang/WeiG-qB-WebUI/dev/installers/install.sh -o /tmp/weigg-qb-install.sh && sh /tmp/weigg-qb-install.sh --channel=dev --configure
 ```
 
-### 手动安装 / 其它系统
+安装器会自动选择系统已有的下载、ZIP 解压和 SHA256 工具，兼容常见的 `curl`、`wget`、BusyBox、Python 和 `bsdtar` 组合。Release 必须通过 `SHA256SUMS` 校验；dev 会记录实际安装的 exact Git SHA。
 
-下载最新 `WeiG-qB-WebUI.zip`，使用 `SHA256SUMS` 校验后解压到持久目录；然后在 qBittorrent 中启用 **Use alternative Web UI**，并把 **Files location / Root Folder** 设置为 qBittorrent 进程实际可见的目录。
+如果机器里有多个 qBittorrent Docker 容器，先列出：
 
-Docker 环境里“宿主机路径”和“容器内 qB 可见路径”不是一回事，qBittorrent 必须填写容器内路径。
+```sh
+sh /tmp/weigg-qb-install.sh --list-containers
+```
 
-Docker 多容器、自定义路径、更新、回滚、NAS 与完整手动部署说明见：[安装、升级与手动部署](../docs/007.安装升级与手动部署.md)。
+再明确指定，例如：
+
+```sh
+sh /tmp/weigg-qb-install.sh --container=qbittorrent --configure
+```
+
+### Windows PowerShell
+
+Release：
+
+```powershell
+Invoke-WebRequest https://raw.githubusercontent.com/weigefenxiang/WeiG-qB-WebUI/main/installers/install.ps1 -OutFile $env:TEMP\weigg-qb-install.ps1; powershell -ExecutionPolicy Bypass -File $env:TEMP\weigg-qb-install.ps1 -Channel Release -Configure
+```
+
+dev：
+
+```powershell
+Invoke-WebRequest https://raw.githubusercontent.com/weigefenxiang/WeiG-qB-WebUI/dev/installers/install.ps1 -OutFile $env:TEMP\weigg-qb-install.ps1; powershell -ExecutionPolicy Bypass -File $env:TEMP\weigg-qb-install.ps1 -Channel Dev -Configure
+```
+
+## 直接下载 Release
+
+任何时候都可以在浏览器打开 [GitHub Releases](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest) 手动下载。Release 包含 [WeiG-qB-WebUI.zip](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/WeiG-qB-WebUI.zip) 和 [SHA256SUMS](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/SHA256SUMS)。
+
+使用 `curl`：
+
+```sh
+curl -fL https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/WeiG-qB-WebUI.zip -o WeiG-qB-WebUI.zip
+curl -fL https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/SHA256SUMS -o SHA256SUMS
+sha256sum -c SHA256SUMS
+unzip WeiG-qB-WebUI.zip
+```
+
+使用 `wget`：
+
+```sh
+wget https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/WeiG-qB-WebUI.zip -O WeiG-qB-WebUI.zip
+wget https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/SHA256SUMS -O SHA256SUMS
+sha256sum -c SHA256SUMS
+unzip WeiG-qB-WebUI.zip
+```
+
+精简 NAS 系统通常还可以使用 BusyBox：
+
+```sh
+busybox wget -O WeiG-qB-WebUI.zip https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/WeiG-qB-WebUI.zip
+busybox wget -O SHA256SUMS https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/SHA256SUMS
+busybox sha256sum WeiG-qB-WebUI.zip
+busybox unzip WeiG-qB-WebUI.zip
+```
+
+如果系统没有 `curl`、`wget` 或 `unzip`，可以直接在电脑浏览器下载 ZIP，再上传/复制到 Linux 或 NAS。解压可使用系统已有的任意 ZIP 工具，例如 `unzip`、`busybox unzip`、`python3 -m zipfile -e WeiG-qB-WebUI.zip .` 或 `bsdtar -xf WeiG-qB-WebUI.zip`。
+
+Windows 手动下载与解压：
+
+```powershell
+Invoke-WebRequest https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/WeiG-qB-WebUI.zip -OutFile .\WeiG-qB-WebUI.zip
+Expand-Archive .\WeiG-qB-WebUI.zip .\WeiG-qB-WebUI -Force
+```
+
+## 手动下载 dev
+
+推荐使用安装器，因为安装器会先把 `dev` 解析成一个 exact Git SHA，再把这个 SHA 写入 WebUI 文件中。
+
+需要手动测试时，可以在 GitHub 选择 **Code → dev → Download ZIP**，也可以：
+
+```sh
+curl -fL https://github.com/weigefenxiang/WeiG-qB-WebUI/archive/refs/heads/dev.zip -o WeiG-qB-WebUI-dev.zip
+unzip WeiG-qB-WebUI-dev.zip
+```
+
+使用 `wget`：
+
+```sh
+wget https://github.com/weigefenxiang/WeiG-qB-WebUI/archive/refs/heads/dev.zip -O WeiG-qB-WebUI-dev.zip
+unzip WeiG-qB-WebUI-dev.zip
+```
+
+手动解压 dev 源码包后，真正的 Alternate WebUI 目录是 **`WeiG-qB-WebUI-dev/webui/`**，不要把整个仓库根目录填给 qBittorrent。
+
+## 启用 WeiG qB WebUI
+
+进入 qBittorrent **工具 / 选项（首选项）→ Web UI**，勾选 **Use alternative WebUI**，然后把 **Files location / Root Folder** 设置为 qBittorrent 进程实际能看到的 WebUI 目录。
+
+Docker 中“宿主机路径”和“容器内路径”不同。例如：
+
+```text
+宿主机：    /root/qbittorrent/config/weigg-qb-webui
+qBittorrent：/config/weigg-qb-webui
+```
+
+qBittorrent 必须填写容器内可见路径。
+
+## 更新
+
+重新运行安装器即可。Release 仍是默认频道；需要继续使用 dev 时，Linux 加 `--channel=dev`，Windows 使用 `-Channel Dev`。
+
+## 停用 / 回滚
+
+要立即恢复 qBittorrent 原生 WebUI，只需取消勾选 **Use alternative WebUI**。
+
+Linux 回滚：
+
+```sh
+sh /tmp/weigg-qb-install.sh --rollback
+```
+
+Windows 回滚：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File $env:TEMP\weigg-qb-install.ps1 -Mode Rollback
+```
 
 ## 兼容范围
 
-最低兼容目标：**qBittorrent 4.1.9.1 / WebAPI 2.2.1**。当前发布审计会检查从 4.1.9.1 到 5.2.3 的 **55 个官方正式 4.x/5.x release tags**，另外核对 current upstream WebAPI，并在 Linux 与 Windows Chromium 上运行 20 节点代表性交互矩阵。新版本能力按 WebAPI/capability 渐进启用，不按主版本写死。
+最低支持目标：**qBittorrent 4.1.9.1**。WeiG qB WebUI 通过 capability 兼容层支持 qBittorrent **4.x 和 5.x**。
 
-完整矩阵、官方源码审计与 LIVE gate 规则见：[兼容与实现状态](../docs/002.兼容与实现状态.md)。
+## 更多帮助
 
-## 文档
-
-- [安装、升级与手动部署](../docs/007.安装升级与手动部署.md)
-- [项目总方案](../docs/001.项目总方案.md)
-- [兼容与实现状态](../docs/002.兼容与实现状态.md)
-- [项目架构](../docs/003.项目架构.md)
-- [UI 与缓存契约](../docs/004.UI与缓存契约.md)
-- [响应式交互与设置系统](../docs/005.v0.3.7统一交互与设置系统.md)
-- [发布与晋级流程](../docs/006.发布与晋级流程.md)
-- [DESIGN.md](../DESIGN.md)
+自定义路径、Docker 多容器、NAS 部署、更新与回滚等完整说明见：[安装、升级与手动部署](../docs/007.安装升级与手动部署.md)。
 
 ## 许可证
 
-Copyright © 2026 Wei.G / WeiG Share。使用 [GNU GPL-3.0](../LICENSE) 开源。
+本项目使用 [GNU General Public License v3](../LICENSE)。
+
+Copyright © 2026 Wei.G / WeiG Share。

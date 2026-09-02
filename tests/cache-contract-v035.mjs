@@ -42,10 +42,26 @@ for(const token of ['currentBuildToken','buildAssetUrl','weigg-build-sha','css(\
 
 assert(marker===PLACEHOLDER, 'Source GIT_SHA must remain a deploy-time placeholder');
 assert(metadata.includes(`"gitSha": "${PLACEHOLDER}"`), 'Source metadata must expose the deploy-time Git SHA');
-for(const token of ['SOURCE_SHA','inject_build_sha','GIT_SHA','gitSha','__WEIGG_GIT_SHA__','releases/latest/download/WeiG-qB-WebUI.zip','releases/latest/download/SHA256SUMS']) assert(linux.includes(token), `Linux Release/Git-SHA installer token missing: ${token}`);
-for(const token of ['Inject-BuildSha','GIT_SHA','gitSha','__WEIGG_GIT_SHA__','releases/latest/download/WeiG-qB-WebUI.zip','releases/latest/download/SHA256SUMS']) assert(windows.includes(token), `Windows Release/Git-SHA installer token missing: ${token}`);
-assert(!linux.includes('archive/refs/heads/main.zip') && !linux.includes('resolve_main_sha'),'Linux stable installer must not use main as a payload source');
-assert(!windows.includes('archive/refs/heads/main.zip') && !windows.includes('Resolve-MainSha'),'Windows stable installer must not use main as a payload source');
+
+for(const token of [
+  'SOURCE_SHA','inject_build_sha','GIT_SHA','gitSha','__WEIGG_GIT_SHA__',
+  '--channel=release','--channel=dev','download_file','extract_zip','sha256_file','verify_release_checksum',
+  'releases/latest/download/WeiG-qB-WebUI.zip','releases/latest/download/SHA256SUMS',
+  'https://api.github.com/repos/$REPO/commits/dev','archive/$SOURCE_SHA.zip','"channel": "$meta_channel"'
+]) assert(linux.includes(token), `Linux Release/dev exact-SHA installer token missing: ${token}`);
+assert(linux.includes('busybox wget')&&linux.includes('python3 -m zipfile')&&linux.includes('openssl dgst -sha256'),'Linux installer must keep portable downloader/extractor/checksum fallbacks');
+
+for(const token of [
+  "ValidateSet('Release','Dev')",'Inject-BuildSha','GIT_SHA','gitSha','__WEIGG_GIT_SHA__',
+  'releases/latest/download/WeiG-qB-WebUI.zip','releases/latest/download/SHA256SUMS',
+  'https://api.github.com/repos/$Repo/commits/dev','archive/$sourceSha.zip','channel=$Channel.ToLowerInvariant()'
+]) assert(windows.includes(token), `Windows Release/dev exact-SHA installer token missing: ${token}`);
+
+assert(!linux.includes('archive/refs/heads/main.zip') && !linux.includes('resolve_main_sha'),'Linux Release channel must never use main as a payload source');
+assert(!windows.includes('archive/refs/heads/main.zip') && !windows.includes('Resolve-MainSha'),'Windows Release channel must never use main as a payload source');
+assert(/if \[ "\$CHANNEL" = "release" \]/.test(linux),'Linux Release/dev source selection must be explicit');
+assert(/if\(\$Channel -eq 'Release'\)/.test(windows),'Windows Release/dev source selection must be explicit');
+
 for(const token of ['GITHUB_SHA','__WEIGG_GIT_SHA__','GIT_SHA','CANDIDATE_SHA']) assert(ci.includes(token), `Release candidate Git-SHA stamping token missing: ${token}`);
 for(const token of ['qbittorrent/qBittorrent','release-4.1.9.1','release-5.2.0','--refs=release-4.1.9.1,release-5.2.0']) assert(upstream.includes(token), `Representative upstream audit workflow token missing: ${token}`);
 assert(!upstream.includes('fetch-depth: 0'),'Dev upstream audit must not fetch full qB history/tags');
@@ -65,4 +81,4 @@ assert(injectedA.includes(`css/app.css?v=${SHA_A}`), 'SHA A was not injected int
 assert(injectedB.includes(`scripts/app.js?v=${SHA_B}`), 'SHA B was not injected into asset URL');
 assert(!injectedA.includes(PLACEHOLDER) && !injectedB.includes(PLACEHOLDER), 'Deploy-time SHA replacement must remove placeholders');
 
-console.log('v0.3.7 Release-only Git SHA + representative-dev/full-Release compatibility contract passed.');
+console.log('v0.3.7 Release/dev exact-SHA installer + representative-dev/full-Release compatibility contract passed.');

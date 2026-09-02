@@ -8,6 +8,7 @@ REQUESTED_DEST="$DEST"
 QBT_ROOT_FOLDER="$DEST"
 DEST_EXPLICIT=0
 MODE="install"
+CHANNEL="${WEIGG_QB_CHANNEL:-release}"
 CONFIGURE=0
 DOCKER_CONTAINER=""
 DOCKER_CONFIG_ROOT=""
@@ -20,6 +21,7 @@ usage() {
 Usage: install.sh [options]
 
 Options:
+  --channel=release|dev     Install latest Release (default) or current dev exact SHA.
   --update                  Update the selected installation.
   --rollback                Roll back the last installation.
   --configure               Update the detected qBittorrent config.
@@ -34,6 +36,9 @@ EOF
 LIST_CONTAINERS=0
 for arg in "$@"; do
   case "$arg" in
+    --channel=release) CHANNEL="release" ;;
+    --channel=dev) CHANNEL="dev" ;;
+    --channel=*) echo "Unsupported channel: ${arg#--channel=}. Use release or dev." >&2; exit 2 ;;
     --update) MODE="update" ;;
     --rollback) MODE="rollback" ;;
     --configure) CONFIGURE=1 ;;
@@ -45,6 +50,7 @@ for arg in "$@"; do
     *) echo "Unknown option: $arg" >&2; usage >&2; exit 2 ;;
   esac
 done
+case "$CHANNEL" in release|dev) ;; *) echo "Unsupported channel: $CHANNEL. Use release or dev." >&2; exit 2 ;; esac
 
 STATE="${HOME}/.config/weigg-qb-webui"
 BACKUPS="$STATE/backups"
@@ -69,6 +75,96 @@ valid_sha() {
   printf '%s' "$1" | grep -Eq '^[0-9a-fA-F]{40}$'
 }
 
+has_busybox_applet() {
+  command -v busybox >/dev/null 2>&1 || return 1
+  busybox --list 2>/dev/null | grep -qx "$1"
+}
+
+download_file() {
+  url=$1
+  out=$2
+  if command -v curl >/dev/null 2>&1; then
+    curl -fL --retry 2 --connect-timeout 15 "$url" -o "$out"
+    return
+  fi
+  if command -v wget >/dev/null 2>&1; then
+    wget -q "$url" -O "$out"
+    return
+  fi
+  if has_busybox_applet wget; then
+    busybox wget -O "$out" "$url" >/dev/null
+    return
+  fi
+  if command -v python3 >/dev/null 2>&1; then
+    python3 - "$url" "$out" <<'PY'
+import shutil, sys, urllib.request
+req=urllib.request.Request(sys.argv[1], headers={'User-Agent':'WeiG-qB-WebUI-installer'})
+with urllib.request.urlopen(req, timeout=60) as src, open(sys.argv[2], 'wb') as dst:
+    shutil.copyfileobj(src, dst)
+PY
+    return
+  fi
+  echo "No supported downloader found. Install curl/wget, use BusyBox/Python, or download the package in a browser." >&2
+  return 127
+}
+
+extract_zip() {
+  archive=$1
+  target=$2
+  mkdir -p "$target"
+  if command -v unzip >/dev/null 2>&1; then
+    unzip -q "$archive" -d "$target"
+    return
+  fi
+  if has_busybox_applet unzip; then
+    busybox unzip "$archive" -d "$target" >/dev/null
+    return
+  fi
+  if command -v python3 >/dev/null 2>&1; then
+    python3 -m zipfile -e "$archive" "$target"
+    return
+  fi
+  if command -v bsdtar >/dev/null 2>&1; then
+    bsdtar -xf "$archive" -C "$target"
+    return
+  fi
+  echo "No supported ZIP extractor found. Install unzip, use BusyBox/Python/bsdtar, or extract the package manually." >&2
+  return 127
+}
+
+sha256_file() {
+  file=$1
+  if command -v sha256sum >/dev/null 2>&1; then sha256sum "$file" | awk '{print $1}'; return; fi
+  if has_busybox_applet sha256sum; then busybox sha256sum "$file" | awk '{print $1}'; return; fi
+  if command -v shasum >/dev/null 2>&1; then shasum -a 256 "$file" | awk '{print $1}'; return; fi
+  if command -v openssl >/dev/null 2>&1; then openssl dgst -sha256 "$file" | awk '{print $NF}'; return; fi
+  if command -v python3 >/dev/null 2>&1; then
+    python3 - "$file" <<'PY'
+import hashlib, sys
+h=hashlib.sha256()
+with open(sys.argv[1], 'rb') as f:
+    for chunk in iter(lambda: f.read(1024*1024), b''):
+        h.update(chunk)
+print(h.hexdigest())
+PY
+    return
+  fi
+  echo "No SHA256 implementation found; refusing an unverified Release installation." >&2
+  return 127
+}
+
+verify_release_checksum() {
+  sums=$1
+  package=$2
+  expected=$(awk '$2=="WeiG-qB-WebUI.zip" || $2=="*WeiG-qB-WebUI.zip" {print $1; exit}' "$sums")
+  printf '%s' "$expected" | grep -Eq '^[0-9a-fA-F]{64}$' || { echo "SHA256SUMS does not contain a valid WeiG-qB-WebUI.zip checksum." >&2; return 1; }
+  actual=$(sha256_file "$package") || return 1
+  expected=$(printf '%s' "$expected" | tr 'A-F' 'a-f')
+  actual=$(printf '%s' "$actual" | tr 'A-F' 'a-f')
+  [ "$expected" = "$actual" ] || { echo "SHA256 verification failed." >&2; return 1; }
+  echo "SHA256 verified: $actual"
+}
+
 inject_build_sha() {
   valid_sha "$SOURCE_SHA" || { echo "Unable to resolve a valid 40-character Git SHA for this payload." >&2; exit 1; }
   find "$DEST.new" -type f \( -name '*.html' -o -name '*.js' -o -name '*.css' -o -name '*.json' -o -name 'GIT_SHA' \) -exec sed -i "s/__WEIGG_GIT_SHA__/$SOURCE_SHA/g" {} +
@@ -80,6 +176,7 @@ write_install_metadata() {
   meta_version=$(cat "$DEST.new/VERSION" 2>/dev/null || printf 'unknown')
   meta_version=$(json_escape "$meta_version")
   meta_git_sha=$(json_escape "$SOURCE_SHA")
+  meta_channel=$(json_escape "$CHANNEL")
   meta_container=$(json_escape "$DOCKER_CONTAINER")
   meta_qb_path=$(json_escape "$QBT_ROOT_FOLDER")
   meta_host_path=$(json_escape "$DEST")
@@ -88,6 +185,7 @@ write_install_metadata() {
 {
   "version": "$meta_version",
   "gitSha": "$meta_git_sha",
+  "channel": "$meta_channel",
   "container": "$meta_container",
   "qbPath": "$meta_qb_path",
   "hostPath": "$meta_host_path",
@@ -338,13 +436,6 @@ rollback() {
 
 [ "$MODE" = "rollback" ] && rollback
 
-command -v unzip >/dev/null 2>&1 || { echo "unzip is required." >&2; exit 1; }
-command -v sha256sum >/dev/null 2>&1 || { echo "sha256sum is required for stable Release verification." >&2; exit 1; }
-if ! command -v curl >/dev/null 2>&1 && ! command -v wget >/dev/null 2>&1; then
-  echo "curl or wget is required." >&2
-  exit 1
-fi
-
 if [ "$DEST" != "$REQUESTED_DEST" ]; then
   echo "Host install path: $DEST"
   echo "qBittorrent Root Folder: $QBT_ROOT_FOLDER"
@@ -354,36 +445,38 @@ backup_now
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT INT TERM
 PACKAGE="$TMP/WeiG-qB-WebUI.zip"
-RELEASE_URL="https://github.com/$REPO/releases/latest/download/WeiG-qB-WebUI.zip"
-SUM_URL="https://github.com/$REPO/releases/latest/download/SHA256SUMS"
 
-if command -v curl >/dev/null 2>&1; then
-  curl -fsSL "$RELEASE_URL" -o "$PACKAGE" 2>/dev/null || {
-    echo "No published stable GitHub Release is available. Stable installation is Release-only and will not fall back to main." >&2
+if [ "$CHANNEL" = "release" ]; then
+  RELEASE_URL="https://github.com/$REPO/releases/latest/download/WeiG-qB-WebUI.zip"
+  SUM_URL="https://github.com/$REPO/releases/latest/download/SHA256SUMS"
+  download_file "$RELEASE_URL" "$PACKAGE" || {
+    echo "No published stable GitHub Release is available. Release installation will not fall back to a branch archive." >&2
     exit 1
   }
-  curl -fsSL "$SUM_URL" -o "$TMP/SHA256SUMS" 2>/dev/null || {
+  download_file "$SUM_URL" "$TMP/SHA256SUMS" || {
     echo "The latest Release is missing SHA256SUMS; refusing an unverified installation." >&2
     exit 1
   }
+  [ -s "$TMP/SHA256SUMS" ] || { echo "SHA256SUMS is empty; refusing installation." >&2; exit 1; }
+  verify_release_checksum "$TMP/SHA256SUMS" "$PACKAGE"
+  extract_zip "$PACKAGE" "$TMP/release"
+  SRC="$TMP/release/WeiG-qB-WebUI"
+  SOURCE_SHA=$(cat "$SRC/GIT_SHA" 2>/dev/null | tr -d '\r\n' || true)
+  valid_sha "$SOURCE_SHA" || { echo "Latest Release does not contain a valid GIT_SHA; refusing an unversioned asset deployment." >&2; exit 1; }
+  echo "Source: latest GitHub Release (checksum verified)"
 else
-  wget -q "$RELEASE_URL" -O "$PACKAGE" 2>/dev/null || {
-    echo "No published stable GitHub Release is available. Stable installation is Release-only and will not fall back to main." >&2
-    exit 1
-  }
-  wget -q "$SUM_URL" -O "$TMP/SHA256SUMS" 2>/dev/null || {
-    echo "The latest Release is missing SHA256SUMS; refusing an unverified installation." >&2
-    exit 1
-  }
+  DEV_META="$TMP/dev-commit.json"
+  download_file "https://api.github.com/repos/$REPO/commits/dev" "$DEV_META" || { echo "Unable to resolve the current dev commit." >&2; exit 1; }
+  SOURCE_SHA=$(sed -n 's/^[[:space:]]*"sha":[[:space:]]*"\([0-9a-fA-F]\{40\}\)".*/\1/p' "$DEV_META" | head -n1)
+  valid_sha "$SOURCE_SHA" || { echo "GitHub did not return a valid dev commit SHA." >&2; exit 1; }
+  DEV_URL="https://github.com/$REPO/archive/$SOURCE_SHA.zip"
+  download_file "$DEV_URL" "$PACKAGE" || { echo "Unable to download dev exact SHA $SOURCE_SHA." >&2; exit 1; }
+  extract_zip "$PACKAGE" "$TMP/dev"
+  entry=$(find "$TMP/dev" -type f -path '*/webui/public/index.html' -print 2>/dev/null | head -n1 || true)
+  [ -n "$entry" ] || { echo "dev source archive does not contain webui/public/index.html." >&2; exit 1; }
+  SRC=$(dirname "$(dirname "$entry")")
+  echo "Source: dev exact SHA $SOURCE_SHA (development channel; no Release checksum)"
 fi
-
-[ -s "$TMP/SHA256SUMS" ] || { echo "SHA256SUMS is empty; refusing installation." >&2; exit 1; }
-(cd "$TMP" && sha256sum -c SHA256SUMS)
-echo "Source: latest GitHub Release (checksum verified)"
-unzip -q "$PACKAGE" -d "$TMP/release"
-SRC="$TMP/release/WeiG-qB-WebUI"
-SOURCE_SHA=$(cat "$SRC/GIT_SHA" 2>/dev/null | tr -d '\r\n' || true)
-valid_sha "$SOURCE_SHA" || { echo "Latest Release does not contain a valid GIT_SHA; refusing an unversioned asset deployment." >&2; exit 1; }
 
 [ -n "$SRC" ] && [ -d "$SRC" ] || { echo "WebUI payload not found." >&2; exit 1; }
 [ -f "$SRC/public/index.html" ] && [ -f "$SRC/public/login.html" ] && [ -f "$SRC/private/index.html" ] || { echo "Source package is not a valid qBittorrent Alternate WebUI." >&2; exit 1; }
@@ -405,6 +498,7 @@ if ! mv "$DEST.new" "$DEST"; then
 fi
 rm -rf "$DEST.old"
 echo "Installed and verified: $DEST"
+echo "Channel: $CHANNEL"
 echo "Installed version: $(cat "$DEST/VERSION")"
 echo "Installed Git SHA: $(cat "$DEST/GIT_SHA")"
 echo "Install metadata: $DEST/private/weigg-install.json"
