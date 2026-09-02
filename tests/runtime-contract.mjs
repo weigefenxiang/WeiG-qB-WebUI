@@ -95,7 +95,7 @@ assert(!transferCss.includes('overflow-y:auto')&&!transferCss.includes('overflow
 assert(!ui.includes('C.selectControl=function')&&!ui.includes('setRowHeight('),'UiSystem must not redefine Select or adaptive row height');
 
 const browserParity=text('tests/browser-feature-parity.mjs');
-for(const token of ['compact capability dialog exposed scrollbar','dark theme did not resolve before native control check','colorScheme','shared native theme','selectOption'])assert(browserParity.includes(token),`Feature parity browser gate missing ${token}`);
+for(const token of ['compact capability dialog exposed scrollbar','dark theme did not resolve before native control check','colorScheme','unitNativeStyle.bg===chartNativeStyle.bg','selectOption'])assert(browserParity.includes(token),`Feature parity browser gate missing ${token}`);
 
 const logs=text('webui/private/scripts/logs.js'),polish=text('webui/private/scripts/polish.js'),polishCss=text('webui/private/css/polish.css');
 assert(logs.includes('W.Logs=')&&logs.includes('weigg:route-state'),'Logs owner/lifecycle missing');
