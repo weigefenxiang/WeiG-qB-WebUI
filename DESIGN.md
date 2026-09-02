@@ -1,38 +1,34 @@
 # WeiG qB WebUI — Design System
 
-Version: **2.0**  
-Status: **v0.3.7 Responsive UI System 3.3**  
-Target revision: **Clean Settings + Verified Session 3.4**  
+Version: **2.1**  
+Status: **v0.3.7 Semantic Ownership 3.6**  
 Theme: **Nebula Spatial Console**  
 Compatibility floor: **qBittorrent 4.1.9.1**
 
-> This file is the single visual and interaction authority. New UI extends these rules; it never creates a second local design system.
-
-WeiG qB WebUI follows the DESIGN.md method promoted by `VoltAgent/awesome-design-md`: Visual Theme & Atmosphere, semantic Color Palette & Roles, Typography Rules, Component Styling, Layout Principles, Depth & Elevation, Do/Don't guardrails, Responsive Behavior and an agent-executable implementation contract. The method is reused; another product's exact appearance is not copied.
+> This file is the single visual, interaction and first-party runtime ownership authority. New work extends these rules; it never creates a parallel owner or a post-render repair layer.
 
 ## 1. Non-negotiable rules
 
-1. One semantic purpose has one canonical component/controller/layout owner.
-2. Feature code does not invent local Button/Select/Card/Chip/Badge/Modal/Popover/Settings-row systems.
-3. **Active first-party runtime assets use stable semantic filenames, never release/version suffixes.** Product/cache identity lives in `VERSION`, exact Git SHA, tags and Releases, not filenames.
-4. Git history is the archive. After functionality is migrated, old `*-vNNN.*` / `vNNN.*` first-party runtime files are deleted; no alias, shim, duplicate loader entry or compatibility copy remains.
-5. **Settings has no legacy presentation compatibility layer after the 3.4 migration.** Source renderers emit the final canonical DOM directly.
-6. Every ordinary editable Setting is one `SettingRow`: copy left, control right.
-7. Setting title and description are always horizontally left aligned. Vertical centering is allowed; horizontal centering is not.
-8. Desktop SettingsGrid defaults to two columns. Ordinary rows default to `span=1`.
-9. Full-width Settings content is explicit schema semantics only; key names such as `path`, `url`, `host`, `username`, `password` never decide layout.
-10. An odd final ordinary SettingRow stays in the left grid cell.
-11. Settings layout must not depend on CSS load order, specificity battles, `!important` overrides, MutationObserver repair or delayed `setTimeout` repair.
-12. qB WebAPI compatibility remains in `QBClient`; removing legacy presentation code does **not** remove qBittorrent 4.1.9.1 support.
-13. Authentication actions use one `SessionController`; UI controls never own raw auth requests.
-14. Logout is successful only after server-side invalidation is verified.
-15. Browser Back/BFCache must never reveal a previously authenticated private shell after logout.
-16. If qB authentication bypass creates a new session automatically, the UI reports that durable logout is impossible under the current server policy; it never fakes success.
-17. Mobile is adaptive presentation, not a second business application.
-18. Data count is not DOM count; large collections remain virtualized.
-19. Display timezone is browser presentation state, never qB/server time.
-20. Reduced Motion is mandatory.
-21. README is the user manual; architecture/test/release detail belongs in `docs/` and this authority.
+1. One semantic purpose has one canonical component/controller/layout/data owner.
+2. Feature code does not invent local Button/Select/Card/Badge/Dialog/Popover/SettingRow systems.
+3. Active first-party runtime assets use stable semantic filenames, never release/version suffixes.
+4. Git history is the archive. Migrated `*-vNNN.*` / `vNNN.*` runtime code is deleted, not aliased.
+5. Source owners emit final DOM. First-party runtime must not use `MutationObserver` to reclaim, move, wrap, upgrade or repair UI.
+6. Presentation modules (`responsive`, `spatial`, `layout`, `polish`, `ux`) do not own qB clients, API polling or business state.
+7. Runtime coordination uses explicit semantic lifecycle events, not DOM observation.
+8. Settings has one source renderer and one geometry owner.
+9. Torrent selection has one `W.Selection` state owner and one `ActionRegistry`.
+10. Transfer speed samples and qB telemetry metadata have one `W.TransferRuntime` owner.
+11. Private/PT semantics have one `W.TorrentSemantics` owner; UI never re-derives privacy locally.
+12. qB WebAPI compatibility remains in `QBClient`; presentation cleanup never removes qB 4.1.9.1 support.
+13. Authentication actions use one `SessionController`; logout is accepted only after server-side invalidation is verified.
+14. Browser Back/BFCache must never reveal stale private UI after logout.
+15. Mobile is adaptive presentation, not a second business application.
+16. Data count is not DOM count; large collections remain virtualized.
+17. Interactive touch targets are at least 44×44 CSS px where touch is primary.
+18. Reduced Motion is mandatory.
+19. `VERSION` is product identity; exact Git SHA is code/cache identity; tag/Release is distribution identity.
+20. README is user-facing. Architecture, test and release contracts live here and in `docs/`.
 
 ## 2. Visual Theme & Atmosphere
 
@@ -45,528 +41,441 @@ Raised    toolbar / active input / detail summary
 Floating  select / menu / popover / dialog
 ```
 
-The interface is dark, precise and dense. Blue/cyan communicates ordinary interaction; purple is reserved for alternative-rate semantics and selected brand accents. Depth comes from restrained border contrast, surface luminance and small elevation, not permanent neon glow.
+The UI is dark, precise and dense. Blue/cyan communicates ordinary interaction; purple is reserved for alternative-rate semantics and selected brand accents. Depth comes from restrained surface/border contrast, not permanent glow.
 
-## 3. Color Palette & Roles
+## 3. Semantic colors and typography
 
-Color is semantic, never feature-local:
+Color is role-based:
 
 ```text
---surface-void       page canvas
---surface-base       workspace
---surface-panel      Settings/DataGrid/sidebar
---surface-raised     active controls / toolbar
---surface-floating   menu/dialog/popover
+--surface-*          hierarchy/elevation
 --text-primary       titles and primary values
 --text-secondary     normal copy
---text-muted         descriptions / metadata
---border             ordinary separators
---accent-blue        primary WeiG interaction
---accent-cyan        live/positive interactive detail
---accent-purple      alternative-rate mode only
---success / warning / danger  semantic state only
+--text-muted         descriptions and metadata
+--border             separators
+--accent-primary     primary interaction
+--accent-cyan        live/positive detail
+--accent-secondary   ALT/secondary emphasis
+--success/warning/danger semantic state only
 ```
 
-A Settings page does not introduce its own palette. Header utilities, Settings controls and About reuse global semantic roles.
-
-## 4. Typography Rules
+Typography hierarchy:
 
 ```text
-Page title > Section title > Setting title > control/value > description/helper > metadata
+Page title > Section title > item/setting title > value/control > description > metadata
 ```
 
-Hard alignment rule:
+Ordinary Settings copy is always horizontally left aligned. Controls align to the row’s right axis.
+
+## 4. Canonical owner map
 
 ```text
-Section heading left axis
-        ↓
-SettingCopy left axis
-Title
-Description
+qB endpoint compatibility          W.QBClient
+Application query/catalog state    W.AppState / app.js
+Settings DOM/save                  W.SettingsRenderer / W.SettingsState
+Settings controls                  W.ControlRegistry + W.Components.selectControl
+Torrent semantics                  W.TorrentSemantics
+Torrent selection                  W.Selection
+Torrent actions                    W.Selection.actions / ActionRegistry
+Transfer samples + telemetry       W.TransferRuntime
+Transfer dialogs/rate editor       W.Transfer
+Torrent field registry             W.TorrentFieldRegistry
+Responsive presentation            W.MobileAdaptive
+Shared UI behavior                 W.UiSystem
+DataGrid/dialog geometry           W.LayoutRuntime
+Facet/connection presentation      W.SpatialRuntime
+Visual polish                      W.PolishRuntime
+Runtime translation synchronization ux.js / semantic events
+Brand/logo/favicon/motion          W.Brand + W.AmbientMark
+Session/logout/BFCache             W.SessionController / SessionGate
+Torrent progress motion            css/progress.css
+Statusbar shell geometry           css/layout.css
 ```
 
-No ordinary Settings title or description may use `text-align:center`, `justify-self:center`, `align-items:center` as a horizontal placement strategy, or a centered fixed-width rail.
+Owner names are semantic. A release must not create `TransferV038`, `SelectionModelV038`, `SettingsGridV038` or equivalent parallel ownership.
 
-Recommended role tokens:
+## 5. Runtime lifecycle contract — explicit events, no observers
+
+Canonical publishers:
 
 ```text
-page title           existing heading token
-section title        existing section heading token
-setting title        body/label strong, 650–750 weight
-description          muted body-small/description token
-control/value        body token, tabular numerics where useful
-code/path/SHA        mono token
+app.js
+  weigg:library-state
+  weigg:status-state
+  weigg:route-state
+
+settings.js
+  weigg:settings-render
+
+transfer.js / W.TransferRuntime
+  weigg:transfer
+  weigg:maindata
+
+shared state
+  weigg:languagechange
+  weigg:configchange
 ```
 
-## 5. Spacing, Radius and Depth
+Consumers may recalculate their own presentation from these events. They may not watch arbitrary DOM mutations and infer ownership after the fact.
 
-Reuse existing global token scales before adding values. Settings 3.4 geometry target:
+Forbidden first-party runtime architecture:
 
 ```text
-content max width             1240px
-section horizontal inset      16px desktop / 12px compact
-row min height                about 64px desktop
-row vertical inset            about 10–12px
-outer grid columns            2 wide / 1 narrow
-column gap                    0 or one semantic divider
-row inner gap                 16px
-section radius                existing panel radius
-control height                canonical control height
+MutationObserver repair/reclaim
+CSS-order observer
+observer-based native Select upgrade
+observer that waits for DataGrid/Settings/Brand/Transfer DOM
+presentation module starting its own QBClient polling loop
+setTimeout loops used as permanent ownership repair
 ```
 
-Section header and SettingCopy share the same left inset. SettingControlSlot shares the same right inset.
+A bounded timeout for focus/animation/debounce is not an ownership mechanism and remains allowed where semantically necessary.
 
-## 6. Canonical primitives and owners
+## 6. Stable semantic runtime filenames
 
-```text
-Button / IconButton
-Input / Search
-Select / Listbox
-Switch / CheckControl
-FilterChip
-Tooltip / SettingHelp
-Dialog / AdaptiveDialog
-Drawer / ActionSheet / ContextDrawer
-Menu / Popover
-Badge / StatusPill
-Card / Panel
-Tabs
-DataGrid / Pagination / VirtualList
-FloatingLayer
-PreferenceSchema
-ControlRegistry
-SettingsPageShell
-SettingsViewportLayout
-SettingsSectionPanel
-SettingsGrid
-SettingRow
-SettingCopy
-SettingControlSlot
-SettingBlock
-FactRow
-AboutPanel
-HeaderUtilityBar
-HeaderUtilityAction
-SessionController
-SessionGate
-BrandMark / BrandCluster / BrandIdentity / AmbientMark
-Navigation.goHome
-SelectionModel / BulkActionDispatcher
-TorrentActionController
-DataGridLayoutController
-ResponsiveShell
-```
-
-Owner names are semantic, not release-labelled. A new release does not create `PreferenceSchemaV038`, `SettingsGridV038`, `SelectionModelV038` or equivalent parallel owners.
-
-## 7. ASSET-NAMING-001 — stable semantic runtime filenames
-
-Current first-party runtime code must be discoverable by responsibility, not by the release that introduced it.
-
-Canonical target examples:
+Current first-party runtime paths are named by responsibility:
 
 ```text
 webui/private/css/app.css
-webui/private/css/ui.css
 webui/private/css/layout.css
 webui/private/css/settings.css
+webui/private/css/transfer.css
+webui/private/css/progress.css
+webui/private/css/ui.css
+webui/private/css/polish.css
 webui/private/css/brand.css
-webui/private/css/logs.css
 
 webui/private/scripts/core.js
+webui/private/scripts/qb-client.js
 webui/private/scripts/components.js
-webui/private/scripts/i18n.js
-webui/private/scripts/ui.js
-webui/private/scripts/layout.js
+webui/private/scripts/floating.js
+webui/private/scripts/torrent-semantics.js
 webui/private/scripts/settings.js
-webui/private/scripts/brand.js
-webui/private/scripts/header.js
-webui/private/scripts/session.js
-webui/private/scripts/logs.js
+webui/private/scripts/selection.js
+webui/private/scripts/transfer.js
+webui/private/scripts/layout.js
+webui/private/scripts/responsive.js
+webui/private/scripts/spatial.js
+webui/private/scripts/ui.js
+webui/private/scripts/polish.js
 webui/private/scripts/app.js
-webui/private/scripts/bootstrap.js
 ```
 
-The exact semantic split follows ownership, but these rules are absolute:
+Absolute rules:
 
 ```text
-no first-party runtime filename ending -vNNN.css / -vNNN.js
-no generic vNNN.css / vNNN.js runtime layers
-no old-name alias or import-only shim after migration
-no loading both old and new files to preserve presentation compatibility
-no version number as CSS/JS ownership
+no active *-vNNN.css/js
+no active vNNN.css/js
+no old-name alias/shim after migration
+no old + new implementation loaded together
+no hidden dynamic loader for deleted assets
 ```
 
-Do **not** replace `settings-brand-v037.css` with a permanent mixed `settings-brand.css`. The mixed owner itself is the problem. Settings presentation belongs in `settings.css`; Brand presentation belongs in `brand.css`; Header/Session behavior belongs to their semantic JS owners.
+Cache identity is `stable semantic path + exact deployment Git SHA`.
 
-Cache identity remains:
+## 7. Canonical controls
+
+Visible custom Selects are created explicitly with `W.Components.selectControl()` by the source owner. Settings never falls back to a native Select and no runtime scans the DOM to upgrade old Selects.
+
+Control mapping:
 
 ```text
-stable semantic filename + exact deployment Git SHA
+boolean       -> Switch
+number/port   -> NumberInput
+select/enum   -> canonical Select/Listbox
+text/path/url -> TextInput semantic variant
+rate          -> Rate editor
+readonly      -> FactRow / readonly semantic component
 ```
 
-`VERSION` is product version. Git SHA is code/cache identity. Tag/Release is distribution identity. Git history stores previous implementations.
+A bootstrap/native element may exist only when deliberately required by the static document contract; it is never a second live UI owner and never depends on observer conversion.
 
-## 8. SETTINGS-STRUCTURE-002 — one final DOM shape
+## 8. Settings structure and geometry
 
-Every ordinary editable preference renders directly as:
+Every ordinary editable preference is emitted directly as:
 
 ```text
-SettingsSectionPanel
+SettingsSection
 └─ SettingsGrid
    └─ SettingRow
       ├─ SettingCopy
-      │  ├─ SettingTitleLine
-      │  │  ├─ Title
-      │  │  └─ optional SettingHelp
+      │  ├─ SettingTitle
       │  └─ Description
       └─ SettingControlSlot
          └─ canonical control
 ```
 
-Target conceptual DOM:
-
-```html
-<section class="settings-section" data-settings-owner="downloads">
-  <header class="settings-section__header">...</header>
-  <div class="settings-grid">
-    <label class="setting-row" data-setting-key="save_path" data-setting-span="1">
-      <span class="setting-copy">...</span>
-      <span class="setting-control-slot">...</span>
-    </label>
-  </div>
-</section>
-```
-
-The following are migration-only names and disappear from Settings presentation when 3.4 lands:
-
-```text
-.settings-control
-.settings-row--canonical
-.setting-row-grid
-.settings-section--rows
-.settings-grid-canonical
-SETTINGS-FORM-RAIL-*
-```
-
-No adapter keeps these shapes alive for Settings.
-
-## 9. SETTINGS-GRID-002 — deterministic outer grid
-
-Applies identically to:
-
-```text
-WeiG WebUI
-Downloads
-Connection
-Speed
-BitTorrent
-Web UI
-Advanced
-```
-
 Wide desktop:
 
 ```text
-┌──────────────────────────────┬──────────────────────────────┐
-│ Title                  [ctl] │ Title                  [ctl] │
-│ Description                  │ Description                  │
-├──────────────────────────────┼──────────────────────────────┤
-│ Title                  [ctl] │ Title                  [ctl] │
-│ Description                  │ Description                  │
-└──────────────────────────────┴──────────────────────────────┘
+SettingsGrid = repeat(2,minmax(0,1fr))
 ```
 
-The left edge of every Title/Description is the cell inset, not a centered inner rail. The right edge of every control is the cell right inset.
-
-## 10. SETTINGS-ALIGN-002 — one horizontal alignment contract
-
-Inside every ordinary SettingRow:
+Narrow/mobile:
 
 ```text
-left edge                                  right edge
-Title / description                 [control/value]
+SettingsGrid = one column
 ```
 
-Implementation contract:
-
-```text
-SettingRow             grid-template-columns: minmax(0,1fr) auto
-SettingCopy            justify-self:start; width:100%; text-align:left
-SettingCopy contents   text-align:left; justify-self:start
-SettingControlSlot     justify-self:end; align-items:center
-```
-
-Forbidden in ordinary Settings geometry:
-
-```text
-justify-content:center
-justify-self:center
-text-align:center
-fixed 820px FormRail
-per-tab alignment overrides
-control-specific placement hacks
-```
-
-## 11. SETTINGS-SPAN-002 — explicit full width only
-
-Default:
+Ordinary row contract:
 
 ```text
 span = 1
+SettingRow          grid-template-columns: minmax(0,1fr) auto
+SettingCopy         width:100%; justify-self:start; text-align:left
+SettingControlSlot  justify-self:end
 ```
 
-Allowed explicit `span=full`:
+`span=full` is explicit schema semantics only for multiline/composite/list/table/large editors. Key names (`path`, `url`, `host`, `username`, `password`) never decide layout.
+
+Forbidden Settings architecture:
 
 ```text
-multiline textarea
-tracker/source list editor
-large rule editor
-certificate/key text area
-multi-control composite editor
-embedded table/list/data surface
+legacy FormRail
+post-render row moving/wrapping
+MutationObserver injection
+Settings timeout repair
+native-select upgrade requirement
+CSS specificity/load-order arms race
 ```
 
-Forbidden heuristic:
+Language and timezone are normal WeiG Settings source items.
+
+## 9. Torrent selection interaction contract
+
+`W.Selection` owns the selected hash Set and all selection semantics.
+
+Desktop/list behavior:
 
 ```text
-key contains path/url/domain/address/host/username/password
-→ full width
+click row non-interactive area   select only that torrent
+Ctrl/Cmd + click                 toggle torrent
+Shift + click                    select range from anchor
+checkbox                         toggle torrent
+click torrent title/details      open detail; do not hijack selection
+right click                      select target when needed + open ActionRegistry
+Ctrl/Cmd+A                       select current page
+Escape                           clear selection when no dialog owns Escape
 ```
 
-`PreferenceSchema` owns `span/layout`; CSS and string matching do not.
-
-## 12. SETTINGS-CLEAN-CUT-003 — delete the old Settings system
-
-After direct source rendering is implemented, these behaviors are removed rather than retained as compatibility:
+Mobile:
 
 ```text
-patchFactories() wrapping old factories
-normalizeSettings()/normalizeSection() as primary renderer
-consolidateWeiGGrid()
-Settings MutationObserver moving rows after render
-language card MutationObserver injection
-timezone card MutationObserver injection
-native-select upgrade as a requirement for Settings controls
-CSS-order observers whose purpose is to beat old Settings CSS
-legacy Settings timeout repair
-version-layer loaders whose purpose is to stack new Settings CSS above old Settings CSS
+checkbox hit target >= 44×44
+normal card area participates in selection
+long press -> same ActionRegistry
+More -> same ActionRegistry
 ```
 
-Language and timezone become ordinary WeiG Settings schema items rendered in the same first pass as Theme, Font size, Density, Starfield, Motion, Page size and Refresh interval.
+Top More, right-click, long-press and mobile More must render the same registry. No entry owns a private action list.
 
-## 13. CONTROL-REGISTRY-002
+## 10. Private / PT semantics
+
+Classification belongs to `W.TorrentSemantics`:
 
 ```text
-boolean       -> Switch
-number        -> NumberInput
-port          -> PortInput
-select/enum   -> Select/Listbox
-text          -> TextInput
-path/url      -> TextInput semantic variant
-rate          -> RateControl
-duration      -> DurationControl
-timezone      -> TimeZoneControl
-readonly      -> Fact/readonly semantics
+PRIVATE_PT
+PRIVATE
+PT
+PUBLIC
+UNKNOWN
 ```
 
-A verified enum should never remain an unexplained numeric code when qB semantics are known. Business/API ownership remains outside ControlRegistry.
+### 10.1 qB 5.x / explicit metadata
 
-## 14. HEADER-UTILITY-001
+When qB returns `private` / equivalent authoritative metadata, that value wins.
 
-Desktop/tablet order:
+### 10.2 Metadata pending
+
+`has_metadata=false` or `metaDL`/equivalent is **UNKNOWN**, never Public. A magnet without metadata must not be falsely classified merely because discovery fields are unavailable.
+
+### 10.3 qB 4.1.9.1 fallback
+
+qB 4.1.9.1’s upstream WebAPI emits synthetic tracker rows for DHT, PeX and LSD. Its source assigns the same localized non-empty `msg` to all three only when `torrent->isPrivate()` is true; a Public torrent with globally disabled DHT/PeX/LSD has disabled status but empty messages.
+
+Therefore the fallback contract is:
+
+```text
+all [DHT]/[PeX]/[LSD] rows present
++ all msg non-empty
++ all msg exactly equal
+= Private
+
+all three msg empty
+= Public
+
+incomplete/mixed
+= Unknown
+```
+
+Never hardcode the English message text. Never infer Private from `status == disabled`.
+
+PT tracker-domain rules are supplemental PT classification only; they are not a replacement for qB Private metadata.
+
+## 11. Transfer telemetry ownership
+
+`W.TransferRuntime` owns both:
+
+```text
+getTransferInfo stream -> live DL/UL sample history
+sync/maindata metadata -> DHT nodes / peer connections / free space
+```
+
+Rules:
+
+- Existing application `getTransferInfo()` calls are wrapped once to capture samples; no second speed polling loop is created.
+- `W.TransferRuntime` owns one bounded maindata refresh lifecycle and publishes `weigg:maindata`.
+- `responsive.js`, `polish.js`, `spatial.js`, `layout.js` and `ux.js` must not create `QBClient` instances or API polling for presentation.
+- Consumers read `W.TransferRuntime.snapshot()` or semantic events.
+
+Realtime Transfer panel order:
+
+```text
+Session downloaded | Session uploaded | DHT / Peers
+Global upload limit | Global download limit | Free space
+Chart: 1 / 5 / 15 min
+```
+
+Rate editor:
+
+```text
+[NORMAL | ALT] [unit]
+Upload limit | Download limit
+0 = Unlimited
+```
+
+The rate editor is compact and separate from the larger statistics geometry. Ordinary desktop dialogs do not regain unnecessary outer scrollbars.
+
+## 12. Statusbar geometry
+
+`css/layout.css` is the shell geometry owner. Desktop statusbar uses named grid areas, not auto-placement or DOM insertion order:
+
+```text
+"torrent storage transfer connection message"
+```
+
+`Transfer`, `Storage` and `Connection` have explicit grid areas. `polish.css` may change tone/appearance but never shell placement.
+
+## 13. Progress and motion
+
+`css/progress.css` is the only torrent progress motion owner. It provides width transition, flow and sweep while incomplete. At 100% decorative motion stops.
+
+Both must disable motion:
+
+```text
+@media(prefers-reduced-motion:reduce)
+html[data-motion="reduced"]
+```
+
+## 14. Header, Brand and Session
+
+Desktop utility order:
 
 ```text
 [+ Add Torrent] [GitHub] [Blog] [Refresh] [Theme] [Logout]
 ```
 
-GitHub / Blog / Refresh / Theme / Logout use one `HeaderUtilityAction` presentation owner. External links are anchors; runtime actions are buttons; geometry, hover, focus-visible, active feedback, tooltip and accessible label are shared. Logout remains the rightmost desktop utility.
+Header Brand mark and name are separate Home targets using one navigation owner. About reuses `BrandIdentity`/`AmbientMark`.
 
-On narrow phones, GitHub / Blog / Logout move into ContextDrawer `Links`; the action registry is unchanged.
-
-## 15. AUTH-SESSION-002 — verified logout, not navigation theater
-
-Canonical flow:
+Verified logout flow:
 
 ```text
-HeaderUtilityAction(Logout)
-        ↓
 SessionController.logout()
-        ↓
-QBClient.logout()
-        ↓
-POST api/v2/auth/logout
-        ↓
-QBClient.probeSession()
-        ↓
-403 / unauthenticated ?
-   yes → commit logout
-   no  → auth bypass / unexpected session still active
+→ QBClient.logout()
+→ POST auth/logout
+→ QBClient.probeSession()
+→ invalid session required for success
 ```
 
-A successful HTTP response from `auth/logout` alone is **not** the acceptance criterion.
+If qB auth bypass immediately recreates a session, UI reports a server-policy auth-bypass state; it never reports false success. BFCache/pageshow re-entry is fail-closed.
 
-### 15.1 Logout commit
-
-Only after invalidation is verified:
+## 15. Responsive behavior
 
 ```text
-stop polling / prevent new authenticated work
-clear volatile in-memory private data
-set sessionStorage logout guard
-lock/hide private shell before navigation
-location.replace(root public entry)
+>1180px     Settings two columns
+821–1180px  Settings one column
+<=820px     adaptive single-column/mobile shell
 ```
 
-Display preferences such as theme/language/timezone may remain; torrent/settings/session data does not.
+Responsive code may reflow, hide, compact, fit and position presentation it owns. It may not fetch qB business data to make that presentation work.
 
-### 15.2 Back/BFCache protection
-
-`SessionGate` owns private-shell re-entry:
+## 16. Systemic failure modes and prohibited regressions
 
 ```text
-pageshow persisted OR logout guard present
-→ do not reveal stale private content
-→ reload/probe through server
-→ unauthenticated server returns public login entry
+second semantic owner
+version-suffixed runtime layer
+hidden old loader/alias
+MutationObserver repair/reclaim
+presentation-owned QBClient/timer
+second Selection Set
+entry-specific torrent action list
+second getTransferInfo polling loop
+Private inferred from disabled DHT status
+metadata-pending treated as Public
+hardcoded localized Private message
+statusbar auto-flow dependency
+whole-dialog desktop scrollbar for compact limit editor
+native Select DOM upgrade system
 ```
 
-Login success clears the logout guard.
-
-### 15.3 Authentication bypass
-
-Upstream qB automatically starts a new session when authentication is not required for the current client (localhost bypass or subnet whitelist). In that state a durable logout is impossible from frontend JavaScript alone.
-
-Therefore:
+Fix order is always:
 
 ```text
-logout POST succeeds
-protected probe still succeeds
-→ do not show “logged out”
-→ show blocking explanation that qB authentication bypass is active
-→ require server Web UI auth policy to be changed for a durable logout
-```
-
-This is a server-policy state, not a frontend redirect problem.
-
-## 16. BRAND-001 and ABOUT-001
-
-Header Brand mark and `WeiG qB` remain separate Home targets using `Navigation.goHome()`. About reuses the same BrandMark and AmbientMark through `BrandIdentity`; it uses `FactRow`, never editable SettingRow. No duplicate SVG/logo animation implementation is allowed.
-
-## 17. Responsive Behavior
-
-```text
-> 1180px    two SettingsGrid columns
-821–1180px  one SettingsGrid column
-<= 820px    one column + compact spacing; copy remains left, control remains right when it fits
-```
-
-Mobile does not get a separate Settings business renderer. If an individual semantic editor genuinely needs stacking, that is declared by the component/schema, not by page-specific CSS.
-
-## 18. Do / Don't guardrails
-
-Do:
-
-```text
-name runtime files by semantic responsibility
-render final DOM at source
-use one schema and one row factory
-use one Settings CSS geometry owner
-keep section header/copy/control axes measurable
-verify logout server state
-verify Back/BFCache behavior
-fix owner/schema/primitive first
-```
-
-Don't:
-
-```text
-create v038.css because v037.css already exists
-keep old versioned runtime files “just in case”
-keep old Settings DOM “just in case”
-patch screenshot symptoms with another selector
-center copy in an inner rail
-use MutationObserver as Settings renderer
-let old and new !important rules compete
-call navigation-to-login “logout” without server verification
-claim success while qB auth bypass immediately recreates a session
-```
-
-## 19. Systemic failure modes discovered in v0.3.7
-
-```text
-1. Same semantic Setting emitted in multiple DOM shapes.
-2. Old FormRail and new SettingsGrid both remain layout owners.
-3. Three CSS generations can target the same row with !important.
-4. Version-labelled runtime files encourage layering a new implementation instead of replacing the old owner.
-5. Source renderers output legacy DOM and later observers repair it.
-6. Language and timezone are injected by historical observers instead of the Settings schema.
-7. Tests can pass because they see two outer columns while inner copy is still centered.
-8. A migration bridge becomes permanent architecture.
-9. A mixed settings-brand module owns unrelated Settings/Brand/Header/Session responsibilities.
-10. Logout success was defined as “request resolved + redirect”, not “server session is gone”.
-11. Browser history/BFCache was not part of the logout acceptance contract.
-12. qB auth-bypass behavior was not distinguished from a valid logged-out state.
-```
-
-## 20. Validation contract
-
-Focused `[ui]` regression on dev covers qB 4.1.9.1 + 5.2.0 in one Linux Chromium job.
-
-Static asset assertions after 3.4 migration:
-
-```text
-no active first-party runtime *-vNNN.css / *-vNNN.js
-no active first-party runtime vNNN.css / vNNN.js
-no loader references old versioned assets
-no duplicate old/new semantic asset pair
-cache identity remains exact Git SHA
-```
-
-Settings assertions:
-
-```text
-all seven Settings tabs use the same source-rendered owners
-no legacy Settings class names exist in rendered editable rows
-no Settings MutationObserver is required for geometry
-wide two-column / narrow one-column
-ordinary span=1
-copy absolute left-axis alignment within tolerance
-control absolute right-axis alignment within tolerance
-no ordinary title/description computed text-align=center
-no forbidden key-name span heuristic
-Advanced final row reachable
-```
-
-Session assertions:
-
-```text
-logout endpoint called through QBClient/SessionController
-fixture session becomes invalid after logout
-protected probe returns unauthenticated
-private shell is locked before redirect
-Back/BFCache cannot restore private UI
-login clears logout guard
-auth-bypass fixture is reported as non-durable logout, never false success
-```
-
-Normal dev validation stays cheap. Full qB stable-tag audit, Linux/Windows browser matrices and multi-viewport Release validation run only from `main` manual Release candidate preparation. Real exact-SHA qB 4.1.9.1 + 5.2.x LIVE remains required before promotion.
-
-## 21. Agent implementation guide
-
-When changing runtime UI or auth, use this order:
-
-```text
-DESIGN contract
-→ canonical owner
-→ stable semantic filename
-→ schema/state boundary
+owner
+→ data/schema boundary
 → source renderer/component
-→ migrate unique behavior
-→ delete obsolete/versioned owner and file
-→ CSS/layout
-→ focused regression
-→ exact-SHA LIVE
+→ explicit lifecycle event
+→ layout
+→ delete obsolete ownership
+→ regression contract
 ```
 
-Never begin with a new screenshot-specific CSS rule, a new version-suffixed runtime layer, or an old-name compatibility shim.
+Never begin by layering screenshot-specific CSS over an unresolved ownership conflict.
+
+## 17. Validation contract
+
+Dev `[ui]` exact-HEAD validation covers qB 4.1.9.1 + 5.2.0 in one Linux Chromium job plus static/syntax gates.
+
+Static gates must reject:
+
+```text
+versioned runtime assets/loaders/owners
+first-party MutationObserver
+Settings native fallback/repair
+presentation QBClient/API polling
+second Selection/Transfer owner
+statusbar non-semantic geometry ownership
+hardcoded qB4 Private message
+```
+
+Browser fixture must cover deliberately adversarial cases:
+
+```text
+qB4 private without `private` field
+Public torrent while DHT/PeX/LSD globally disabled
+metadata-pending magnet
+transfer/info without peer count; maindata supplies it
+ordinary row click vs title/details
+Ctrl/Cmd + Shift + checkbox
+right-click / long-press / More same ActionRegistry
+44px touch selection target
+Transfer stat/order/unit/geometry
+Reduced Motion
+```
+
+Normal dev validation stays representative. Full stable-tag Linux/Windows/multi-viewport audit remains main Release-only. Real exact-SHA qB 4.1.9.1 + 5.2.x LIVE remains mandatory before promotion.
+
+## 18. Agent implementation guide
+
+```text
+read DESIGN/docs contract
+→ identify canonical owner
+→ verify qB upstream semantics when compatibility is ambiguous
+→ change code + tests + docs as one issue chain
+→ cumulative diff/ownership audit
+→ create one final exact dev HEAD
+→ run exact-HEAD CI
+→ real exact-SHA LIVE
+```
+
+Do not convert a compatibility problem into a permanent compatibility layer.
