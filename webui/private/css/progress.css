@@ -7,6 +7,6 @@
 .progress-number{font-weight:650;font-variant-numeric:tabular-nums}
 @keyframes weigg-progress-flow{to{background-position:36px 0}}
 @keyframes weigg-progress-sweep{0%,35%{left:-42%;opacity:0}48%{opacity:.72}72%,100%{left:118%;opacity:0}}
-@media(prefers-reduced-motion:reduce){.progress-fill{transition-duration:.001ms}.progress-fill::before,.progress-fill::after{animation:none;opacity:0}}
-html[data-motion="reduced"] .progress-fill{transition-duration:.001ms}
-html[data-motion="reduced"] .progress-fill::before,html[data-motion="reduced"] .progress-fill::after{animation:none;opacity:0}
+@media(prefers-reduced-motion:reduce){.progress-fill{transition-duration:.001ms!important}.progress-fill::before,.progress-fill::after{animation:none!important;opacity:0!important}}
+html[data-motion="reduced"] .progress-fill{transition-duration:.001ms!important}
+html[data-motion="reduced"] .progress-fill::before,html[data-motion="reduced"] .progress-fill::after{animation:none!important;opacity:0!important}
