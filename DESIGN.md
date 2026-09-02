@@ -1,6 +1,6 @@
 # WeiG qB WebUI — Design System
 
-Version: **2.2**  
+Version: **2.3**  
 Status: **v0.3.7 Semantic Ownership 3.7**  
 Theme: **Nebula Spatial Console**  
 Compatibility floor: **qBittorrent 4.1.9.1**
@@ -30,6 +30,10 @@ Compatibility floor: **qBittorrent 4.1.9.1**
 19. Reduced Motion is mandatory.
 20. `VERSION` is product identity; exact Git SHA is code/cache identity; tag/Release is distribution identity.
 21. README is user-facing. Architecture, test and release contracts live here and in `docs/`.
+22. Shared control/dialog skin belongs to `css/ui.css`; feature CSS may contribute geometry variables but must not duplicate primitive skin.
+23. Dialog shells do not become scroll containers merely because the viewport is narrow; only content regions that actually overflow may scroll.
+24. Native Select presentation explicitly follows the resolved light/dark theme through canonical tokens and `color-scheme`.
+25. A retired canonical API or capability hook must be removed from every caller; an unreachable compatibility branch is still legacy runtime.
 
 ### COMPAT-DEGRADE-001 — honest capability degradation
 
@@ -53,9 +57,25 @@ Long realtime charts use bounded retention and, when needed, multi-resolution ag
 
 Critical interaction tests must execute the actual user action and assert the resulting state/value/visible outcome. The existence of an option/menu element is not sufficient evidence that the interaction works.
 
+### CONTROL-SKIN-001 — one primitive skin owner
+
+Control behavior and control appearance are separate responsibilities but neither may have feature-local duplicates. `W.Components.selectControl()` owns Select behavior/presentation mode; `css/ui.css` owns the shared floating/native visual skin. A feature such as Transfer may provide width/height through semantic custom properties, but must not restyle `.ui-select__native` locally.
+
+### DIALOG-SCROLL-001 — shell is not the scroll owner
+
+`dialog.dialog` is a bounded top-layer shell. The outer dialog remains `overflow:hidden`. Short capability/confirm/prompt dialogs must not show a decorative outer scrollbar on desktop or mobile. When content genuinely exceeds the viewport, the canonical body/form/action-list region owns the internal scroll with bounded overscroll behavior.
+
+### NATIVE-THEME-001 — native controls follow resolved theme
+
+Canonical native Select uses the resolved WeiG theme, not browser-default white presentation. The live `<select>`, its text/border/surface and option surface consume shared semantic tokens, and `color-scheme` is explicitly `dark` or `light` according to `html[data-theme]`.
+
+### OWNER-RETIRE-001 — dormant compatibility code is still runtime
+
+When a canonical capability is removed, every old call site, shim, false branch and no-op hook must also leave runtime. Code that “cannot currently execute” is not an archive. Git history is the only archive for retired ownership.
+
 ## 2. Visual theme
 
-WeiG uses the **Nebula Spatial Console** design language: dark, precise, dense and restrained. It follows the design-system discipline promoted by `awesome-design-md`: explicit tokens, hierarchy, reusable components, documented responsive behavior, state contracts and known failure modes rather than screenshot-specific patches.
+WeiG uses the **Nebula Spatial Console** design language: dark, precise, dense and restrained. It follows the design-system discipline promoted by `awesome-design-md`: explicit tokens, hierarchy, reusable components, documented responsive behavior, state contracts and known failure modes rather than screenshot-specific patches. The `awesome-design-md` Linear analysis is used as a discipline reference for layered dark surfaces, hairline boundaries, restrained accent use and reusable component tokens; WeiG keeps its own Nebula palette instead of copying another product's colors.
 
 ```text
 Void      deep-space background
@@ -66,7 +86,7 @@ Raised    toolbar / active input / detail summary
 Floating  select / menu / popover / dialog
 ```
 
-Blue/cyan communicates ordinary interaction. Purple is reserved for ALT/secondary semantics and selected brand accents. Depth comes from surface/border contrast, not permanent glow.
+Blue/cyan communicates ordinary interaction. Purple is reserved for ALT/secondary semantics and selected brand accents. Depth comes from surface/border contrast, not permanent glow. Dark controls should read as members of the same surface ladder, never as isolated bright browser-default islands.
 
 ## 3. Canonical owner map
 
@@ -77,15 +97,18 @@ Route Frame presentation               app.js / W.AppState
 Torrent query/catalog/page state       app.js / W.AppState
 Settings DOM/save                      W.SettingsRenderer / W.SettingsState
 Settings controls                      W.ControlRegistry + W.Components.selectControl
+Select behavior/presentation mode      W.Components.selectControl
+Shared Select visual skin              css/ui.css
+Shared Dialog visual/scroll skin       css/ui.css
 Torrent semantics                      W.TorrentSemantics
 Torrent selection                      W.Selection
 Torrent actions                        W.Selection.actions / ActionRegistry
 Transfer samples + telemetry           W.TransferRuntime
-Transfer dialogs/rate editor           W.Transfer
+Transfer dialogs/rate editor behavior  W.Transfer
 Torrent field registry                 W.TorrentFieldRegistry
 Responsive presentation                W.MobileAdaptive
 Shared adaptive behavior               W.UiSystem
-DataGrid/dialog geometry               W.LayoutRuntime
+DataGrid/dialog behavior               W.LayoutRuntime
 Facet/connection presentation          W.SpatialRuntime
 Visual polish                          W.PolishRuntime
 Runtime translation/context text       ux.js
@@ -95,7 +118,7 @@ Torrent progress motion                css/progress.css
 Non-Settings shell geometry            css/layout.css
 ```
 
-Owner names are semantic. A release must not create `TransferV038`, `SelectionModelV038`, `SettingsGridV038`, feature-local dropdown systems or parallel route controllers.
+Owner names are semantic. A release must not create `TransferV038`, `SelectionModelV038`, `SettingsGridV038`, feature-local dropdown/dialog skin systems or parallel route controllers.
 
 ## 4. Explicit runtime lifecycle
 
@@ -130,6 +153,7 @@ hidden versioned script/link loader
 presentation module starting QBClient/API polling
 setTimeout loops used as permanent ownership repair
 old + new runtime implementations loaded together
+dormant calls to retired canonical compatibility APIs
 ```
 
 ## 5. Stable runtime filenames
@@ -173,7 +197,7 @@ no long-term CSS correction layer over an obsolete owner
 
 Cache identity is `stable semantic path + exact deployment Git SHA`.
 
-## 6. Canonical controls and modal dropdowns
+## 6. Canonical controls and dialogs
 
 Visible Selects are created explicitly with `W.Components.selectControl()` by the source owner. No runtime scans native `<select>` elements and upgrades them later.
 
@@ -186,7 +210,20 @@ native mode     modal controls where the browser top layer must own the dropdown
 
 `native:true` is not a second component system; it is a presentation mode of the same `selectControl()` contract and exposes the same `getValue/setValue/setOptions/setDisabled/onChange` semantics.
 
-Transfer chart-window and rate-unit controls use modal-safe native mode. Feature-local `TransferUnitDropdown`, dialog portal hacks or observer repairs are forbidden.
+The visual skin for **both** Select presentations lives in `css/ui.css`. Native mode consumes `--ui-control-surface`, `--ui-control-border`, `--ui-control-option-surface`, `--ui-native-scheme` and related semantic tokens. Feature styles may only set geometry such as `--ui-select-h` or `--ui-select-width`.
+
+Transfer chart-window and rate-unit controls use modal-safe native mode. Feature-local `TransferUnitDropdown`, local `.ui-select__native` skin, dialog portal hacks or observer repairs are forbidden.
+
+Dialogs use one canonical shell in `css/ui.css`:
+
+```text
+Dialog shell        bounded top layer, overflow hidden
+Dialog head         intrinsic
+Dialog body/form    internal scroll only on real overflow
+Dialog actions      intrinsic / bounded action-list scroll when required
+```
+
+Feature CSS supplies semantic geometry via `--dialog-width`, `--dialog-max-width`, `--dialog-max-height`, `--dialog-padding`; it does not restyle generic dialog overflow/skin. A compact capability dialog therefore does not gain an outer scrollbar simply because the viewport is mobile.
 
 ## 7. Settings structure
 
@@ -229,7 +266,7 @@ Logs             Logs active       Torrent Sidebar hidden
 Settings         Settings active   Torrent Sidebar hidden
 ```
 
-`ux.js` may synchronize translated route text/placeholders but never active navigation state. `spatial.js` owns facets/connection presentation but never route shell classes.
+`ux.js` may synchronize translated route text/placeholders but never active navigation state. `spatial.js` owns facets/connection presentation but never route shell classes. Settings content must not intercept `hashchange` or block the canonical Route Frame event path.
 
 ## 9. Torrent selection
 
@@ -257,7 +294,7 @@ long press -> same ActionRegistry
 More -> same ActionRegistry
 ```
 
-Top More, context menu, long-press and mobile More render the same registry.
+Top More, context menu, long-press and mobile More render the same registry. Selection must not retain hooks to retired qB4 Private enrichment such as `resolveMany`; all-matching selection consumes the same already-available torrent semantics as the app.
 
 ## 10. Private / PT capability contract
 
@@ -279,7 +316,9 @@ When qB returns authoritative `private` / equivalent metadata, it is used direct
 
 The `Private / PT` entry remains visible with a muted `5+` capability marker. Clicking it opens the neutral capability dialog; it does **not** change the active filter and does **not** issue tracker requests.
 
-The legacy DHT/PeX/LSD tracker-message resolver, request queue and privacy cache are not part of runtime. qB4 Torrent Detail does not invent Private state when the WebAPI does not provide the authoritative metadata needed by this feature.
+The legacy DHT/PeX/LSD tracker-message resolver, request queue and privacy cache are not part of runtime. Dormant callers of those removed APIs are also forbidden. qB4 Torrent Detail does not invent Private state when the WebAPI does not provide the authoritative metadata needed by this feature.
+
+The capability notice consumes the shared Dialog shell. Its short content must not show an outer or body scrollbar on ordinary desktop/mobile viewports; only genuinely overflowing dialog content may scroll internally.
 
 Metadata pending on supported versions remains `UNKNOWN`, never falsely Public.
 
@@ -382,7 +421,9 @@ MiB/s
 GiB/s
 ```
 
-Auto chooses a practical concrete unit on paint/open. Editing does not cause the unit to jump while the user types. Manual unit changes preserve the underlying canonical bytes/s value. Numeric display targets approximately three significant digits, and inputs allow enough precision to prevent a small B/s value from becoming zero when expressed in GiB/s.
+Auto chooses a practical concrete unit on paint/open. The rate dialog loads authoritative qB limits before it becomes interactive, so an early unit change cannot capture an empty field as zero. Editing does not cause the unit to jump while the user types. Manual unit changes preserve the underlying canonical bytes/s value. Numeric display targets approximately three significant digits, and inputs allow enough precision to prevent a small B/s value from becoming zero when expressed in GiB/s.
+
+The chart-window and rate-unit native Selects share one dark/light skin from `css/ui.css`. In dark mode neither the closed control nor its option surface is allowed to fall back to a bright browser-default theme.
 
 ## 15. Statusbar geometry
 
@@ -426,6 +467,10 @@ The following are recurring architecture failures, not isolated screenshot bugs:
 7. aggregate/index metadata treated as prerequisite for primary content
 8. qB endpoint/preference units leaked directly into presentation state
 9. second semantic owner hidden behind “compatibility” or “polish” code
+10. generic mobile dialog overflow owned by app.css while feature dialogs locally undo it
+11. Select behavior is canonical but native visual skin is owned by one feature stylesheet
+12. removed compatibility API survives as an unreachable caller/hook and can be revived later
+13. async dialog opens before authoritative data is loaded, exposing an invalid editable first frame
 ```
 
 Fixed diagnosis order:
@@ -436,9 +481,10 @@ owner
 → complexity/performance budget
 → data/schema normalization
 → source component
+→ shared primitive skin
 → explicit lifecycle
 → final geometry
-→ delete obsolete owner
+→ delete obsolete owner and dormant caller
 → static + real interaction regression
 ```
 
@@ -455,17 +501,21 @@ versioned runtime assets/loaders/owners
 first-party MutationObserver
 presentation QBClient/API polling
 second Selection/Transfer/Settings/Route owner
-legacy qB4 Private bulk resolver
+legacy qB4 Private bulk resolver or dormant caller
 fixed Torrent viewport owner in app.css
 route shell geometry in spatial.css
 un-normalized ALT rate handling in Transfer UI
 unbounded Transfer history
+feature-local .ui-select__native skin
+app.css generic dialog visual/overflow ownership
+capability dialog width !important override
 ```
 
 Browser fixture must execute and verify:
 
 ```text
 qB4 Private/PT -> 5+ capability dialog + 0 tracker requests
+qB4 compact capability dialog -> no outer/body scrollbar on desktop/mobile
 qB5 native Private filter/detail
 progressive page label without ?
 first page before aggregate index completes
@@ -473,6 +523,7 @@ RSS -> Settings atomic active state and sidebar removal
 desktop Torrent panel fills workspace
 real modal chart-window selection through 12h
 real rate-unit selection and numeric conversion
+dark native chart/rate Selects share one canonical theme
 ALT Apply emits qB-native KiB/s values
 Selection / ActionRegistry desktop and mobile behavior
 44px mobile touch target
