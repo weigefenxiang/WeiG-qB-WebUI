@@ -30,13 +30,14 @@ const prefs={
   hostname_cache_ttl:1200,torrent_content_remove_option:'Delete'
 };
 let altMode=false,globalDown=3145728,globalUp=1572864;
+let qbFixture={version:'4.1.9.1',webApi:'2.2.1'};
 function assert(ok,msg){if(!ok)throw new Error(msg);}
 function json(res,v){res.writeHead(200,{'content-type':'application/json; charset=utf-8','cache-control':'no-store'});res.end(JSON.stringify(v));}
 function text(res,v){res.writeHead(200,{'content-type':'text/plain; charset=utf-8','cache-control':'no-store'});res.end(String(v));}
 async function body(req){const chunks=[];for await(const c of req)chunks.push(c);return Buffer.concat(chunks).toString('utf8');}
 async function api(req,res,p,url){
-  if(p==='app/version')return text(res,'v5.2.3');
-  if(p==='app/webapiVersion')return text(res,'2.15.1');
+  if(p==='app/version')return text(res,`v${qbFixture.version}`);
+  if(p==='app/webapiVersion')return text(res,qbFixture.webApi);
   if(p==='app/buildInfo')return json(res,{});
   if(p==='app/preferences'&&req.method==='GET')return json(res,prefs);
   if(p==='app/setPreferences'&&req.method==='POST'){const raw=await body(req);const q=new URLSearchParams(raw);try{Object.assign(prefs,JSON.parse(q.get('json')||'{}'));}catch{}res.writeHead(200);return res.end('');}
@@ -67,9 +68,13 @@ const server=http.createServer(async(req,res)=>{try{const url=new URL(req.url,`h
 await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(port,host,resolve);});
 
 function collectErrors(page){const errors=[];page.on('pageerror',e=>errors.push(String(e)));page.on('console',m=>{if(m.type()==='error'&&!/favicon|Wei\.G\.ico/i.test(m.text()))errors.push(m.text());});return errors;}
+async function settingsSnapshot(page,owner){
+  return page.evaluate(owner=>{const root=document.getElementById('settings-content'),groups=Array.from(root?.querySelectorAll(':scope>.settings-group')||[]).map((g,index)=>({index,owner:g.dataset.settingsOwner||'',classes:g.className,visible:g.offsetParent!==null,direct:Array.from(g.children).map(x=>({tag:x.tagName,classes:x.className,owner:x.dataset?.settingsOwner||'',key:x.dataset?.settingKey||x.dataset?.key||'',tz:!!x.dataset?.v036Timezone,lang:!!x.dataset?.v021Language})),grids:Array.from(g.querySelectorAll(':scope>.settings-grid-canonical')).map(grid=>({owner:grid.dataset.settingsOwner||'',visible:grid.offsetParent!==null,rows:Array.from(grid.querySelectorAll(':scope>.setting-row-grid')).map(x=>({key:x.dataset.settingKey||x.dataset.key||'',visible:x.offsetParent!==null,tz:!!x.dataset.v036Timezone,lang:!!x.dataset.v021Language}))}))})),grid=root?.querySelector(`.settings-section-panel[data-settings-owner="${owner}"] > .settings-grid-canonical[data-settings-owner="${owner}"]`),rows=Array.from(grid?.querySelectorAll(':scope>.setting-row-grid')||[]).filter(x=>x.offsetParent!==null),tz=root?.querySelector('[data-v036-timezone]');return {requestedOwner:owner,active:document.querySelector('#settings-tabs [data-settings-tab].is-active')?.dataset.settingsTab||'',rootChildren:Array.from(root?.children||[]).map(x=>({tag:x.tagName,classes:x.className,owner:x.dataset?.settingsOwner||''})),groups,grid:!!grid,gridOwner:grid?.dataset.settingsOwner||'',gridVisible:!!grid&&grid.offsetParent!==null,rows:rows.length,timezone:!!tz,timezoneParent:tz?.parentElement?.className||'',timezoneGridOwner:tz?.closest('.settings-grid-canonical')?.dataset.settingsOwner||''};},owner);
+}
 const browser=await chromium.launch({headless:true});
 try{
   {
+    qbFixture={version:'4.1.9.1',webApi:'2.2.1'};
     const page=await browser.newPage({viewport:{width:390,height:844}}),errors=collectErrors(page);
     await page.goto(`http://${host}:${port}/#/`,{waitUntil:'networkidle'});
     await page.waitForFunction(()=>!!WeiG.V037?.ui&&!!WeiG.V037?.polish&&!!WeiG.V037?.settingsBrand&&document.querySelectorAll('.torrent-mobile-card--two-line').length>0,null,{timeout:8000});
@@ -80,9 +85,10 @@ try{
 
     await page.locator('#mobile-bottom-nav [data-route="settings"]').click();
     await page.waitForFunction(()=>WeiG.Router.route().name==='settings'&&document.querySelector('#settings-tabs [data-settings-tab="weigg"]')?.classList.contains('is-active'));
-    await page.waitForFunction(()=>{const grid=document.querySelector('#settings-content .settings-section-panel[data-settings-owner="weigg"] > .settings-grid-canonical[data-settings-owner="weigg"]'),rows=Array.from(grid?.querySelectorAll(':scope>.setting-row-grid')||[]).filter(x=>x.offsetParent!==null),tz=document.querySelector('#settings-content [data-v036-timezone]');return rows.length>=6&&!!tz&&tz.closest('.settings-grid-canonical')===grid;});
+    await page.waitForTimeout(2200);
+    const diagnostic=await settingsSnapshot(page,'weigg');
     const mobileSettings=await page.evaluate(()=>{const grid=document.querySelector('#settings-content .settings-section-panel[data-settings-owner="weigg"] > .settings-grid-canonical[data-settings-owner="weigg"]'),rows=Array.from(grid?.querySelectorAll(':scope>.setting-row-grid')||[]).filter(x=>x.offsetParent!==null),tz=document.querySelector('#settings-content [data-v036-timezone]'),cols=grid?getComputedStyle(grid).gridTemplateColumns:'';return {rows:rows.length,cols,max:rows.length?Math.max(...rows.slice(0,8).map(x=>x.getBoundingClientRect().height)):999,timezone:!!tz,timezoneOwner:!!tz&&tz.closest('.settings-grid-canonical')===grid};});
-    assert(mobileSettings.rows>=6&&mobileSettings.max<90&&mobileSettings.timezone&&mobileSettings.timezoneOwner,`mobile Settings mother template/timezone missing ${JSON.stringify(mobileSettings)}`);
+    assert(mobileSettings.rows>=6&&mobileSettings.max<90&&mobileSettings.timezone&&mobileSettings.timezoneOwner,`mobile Settings mother template/timezone missing ${JSON.stringify(mobileSettings)} diagnostic=${JSON.stringify(diagnostic)}`);
     assert(!/\s/.test(mobileSettings.cols.trim())||mobileSettings.cols.split(/\s+/).length===1,`mobile SettingsGrid must collapse to one column (${mobileSettings.cols})`);
 
     await page.evaluate(()=>document.querySelector('#settings-tabs [data-settings-tab="about"]')?.click());await page.waitForSelector('.about-surface .brand-identity .brand-identity__mark-home .brand__mark.ambient-mark');await page.waitForFunction(()=>document.querySelectorAll('.about-facts-grid .about-fact').length>=4);
@@ -93,6 +99,7 @@ try{
   }
 
   {
+    qbFixture={version:'5.2.0',webApi:'2.15.1'};
     const page=await browser.newPage({viewport:{width:1440,height:900}}),errors=collectErrors(page);
     await page.goto(`http://${host}:${port}/#/`,{waitUntil:'networkidle'});
     await page.waitForFunction(()=>!!WeiG.V037?.settingsBrand&&!!document.querySelector('#transfer-capsule')&&!!document.querySelector('#brand-btn.brand-cluster'),null,{timeout:8000});
@@ -113,9 +120,10 @@ try{
     await page.locator('[data-transfer-mode="alt"]').click();const altBorder=await page.locator('#v037-transfer-dialog').evaluate(el=>getComputedStyle(el).borderColor);assert(altBorder!==transfer.border,'ALT mode must retint complete Transfer editor');await page.locator('#v037-transfer-dialog').dispatchEvent('dblclick');await page.waitForFunction(()=>!document.querySelector('#v037-transfer-dialog').open);
 
     await page.locator('#app-nav [data-route="settings"]').click();await page.waitForFunction(()=>WeiG.Router.route().name==='settings');
-    await page.waitForFunction(()=>{const grid=document.querySelector('#settings-content .settings-section-panel[data-settings-owner="weigg"] > .settings-grid-canonical[data-settings-owner="weigg"]');return Array.from(grid?.querySelectorAll(':scope>.setting-row-grid')||[]).filter(x=>x.offsetParent!==null).length>=6;});
+    await page.waitForTimeout(2200);
+    const desktopDiagnostic=await settingsSnapshot(page,'weigg');
     const weigg=await page.evaluate(()=>{const grid=document.querySelector('#settings-content .settings-section-panel[data-settings-owner="weigg"] > .settings-grid-canonical[data-settings-owner="weigg"]'),rows=Array.from(grid?.querySelectorAll(':scope>.setting-row-grid')||[]).filter(x=>x.offsetParent!==null),rects=rows.slice(0,6).map(x=>x.getBoundingClientRect()),controls=rows.slice(0,6).map(row=>{const c=row.querySelector('.switch-control,.field-input,.ui-select,select'),r=row.getBoundingClientRect(),cr=c?.getBoundingClientRect();return cr?Math.abs(r.right-cr.right):999;});return {rows:rows.length,cols:grid?getComputedStyle(grid).gridTemplateColumns:'',tops:rects.map(r=>Math.round(r.top)),lefts:rects.map(r=>Math.round(r.left)),rightDelta:controls.length?Math.max(...controls):999};});
-    assert(weigg.rows>=6&&weigg.lefts.length>=4,'WeiG Settings mother template missing rows');
+    assert(weigg.rows>=6&&weigg.lefts.length>=4,`WeiG Settings mother template missing rows diagnostic=${JSON.stringify(desktopDiagnostic)}`);
     assert(new Set(weigg.lefts).size>=2&&weigg.tops[0]===weigg.tops[1],`wide WeiG Settings must use two-column row pairing (${JSON.stringify(weigg)})`);
     assert(weigg.rightDelta<20,`Setting controls must align to each cell's right edge (${weigg.rightDelta}px)`);
 
@@ -141,5 +149,5 @@ try{
 
     assert(errors.length===0,`desktop UI errors: ${errors.join(' | ')}`);await page.close();
   }
-  console.log('v0.3.7 shared responsive UI + Settings mother template + Brand identity browser regression passed.');
+  console.log('v0.3.7 shared responsive UI + Settings mother template + Brand identity browser regression passed for qB 4.1.9.1 and 5.2.0 baselines.');
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}
