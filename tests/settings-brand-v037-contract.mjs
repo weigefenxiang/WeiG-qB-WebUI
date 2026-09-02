@@ -8,7 +8,7 @@ const loader=read('webui/private/scripts/v037.js');
 const app=read('webui/private/scripts/app.js');
 const ambient=read('webui/private/scripts/v036.js');
 
-for(const token of ['BRAND-SYSTEM-001','BRAND-IDENTITY-001','SETTINGS-STRUCTURE-002','HEADER-UTILITY-001','W.Navigation.goHome','BrandMark','BrandCluster','BrandIdentity','ControlRegistry','settings-grid-canonical','settings-row__control','settingSpan','settingsOwner','activeSettingsOwner','mergeExtraGrids','decorateRow','patchFactories','SessionController','HeaderUtilityV037'])assert(js.includes(token),`Settings/Brand/Header canonical owner missing ${token}`);
+for(const token of ['BRAND-SYSTEM-001','SETTINGS-STRUCTURE-002','HEADER-UTILITY-001','W.Navigation.goHome','BrandMark','BrandCluster','BrandIdentity','normalizeAboutIdentity','cloneBrandMark','ControlRegistry','settings-grid-canonical','settings-row__control','settingSpan','settingsOwner','activeSettingsOwner','mergeExtraGrids','decorateRow','patchFactories','SessionController','HeaderUtilityV037'])assert(js.includes(token),`Settings/Brand/Header canonical owner missing ${token}`);
 assert(js.includes("W.AmbientMark&&W.AmbientMark.install")&&js.includes("W.AmbientMark&&W.AmbientMark.trigger"),'BrandMark must compose the existing AmbientMark controller instead of cloning animation logic');
 assert(js.includes("homeButton('brand-mark-home'")&&js.includes("homeButton('brand-name-home'"),'Header mark and WeiG qB text must be separate home targets');
 assert(js.includes("homeButton('brand-identity__mark-home'")&&js.includes("homeButton('brand-identity__name-home'"),'About BrandIdentity mark and name must reuse shared home-target semantics');
