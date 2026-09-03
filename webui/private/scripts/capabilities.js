@@ -6,7 +6,7 @@
   var data=null,client=null,loadTask=null,dialog=null;
   function zh(){return !!(W.I18n&&W.I18n.getLocale&&W.I18n.getLocale()==='zh-CN');}
   function local(value,fallback){if(value&&typeof value==='object')return zh()?(value.zh||value.en||fallback):(value.en||value.zh||fallback);return value||fallback||'';}
-  function parts(value){return String(value||'0').replace(/^v/i,'').split(/[.+-]/)[0].split('.').map(function(x){var n=parseInt(x,10);return Number.isFinite(n)?n:0;});}
+  function parts(value){return String(value||'0').replace(/^v/i,'').split(/[+-]/)[0].split('.').map(function(x){var n=parseInt(x,10);return Number.isFinite(n)?n:0;});}
   function compare(a,b){var x=parts(a),y=parts(b),n=Math.max(x.length,y.length);for(var i=0;i<n;i++){var av=x[i]||0,bv=y[i]||0;if(av>bv)return 1;if(av<bv)return-1;}return 0;}
   function matchRange(actual,range){range=range||{};if(range.eq!=null&&compare(actual,range.eq)!==0)return false;if(range.gt!=null&&compare(actual,range.gt)<=0)return false;if(range.gte!=null&&compare(actual,range.gte)<0)return false;if(range.lt!=null&&compare(actual,range.lt)>=0)return false;if(range.lte!=null&&compare(actual,range.lte)>0)return false;return true;}
   function matchRule(rule,env){rule=rule||{};env=env||{};if(Array.isArray(rule.all)&&!rule.all.every(function(x){return matchRule(x,env);} ))return false;if(Array.isArray(rule.any)&&!rule.any.some(function(x){return matchRule(x,env);} ))return false;if(rule.not&&matchRule(rule.not,env))return false;if(rule.qb&&!matchRange(env.qb,rule.qb))return false;if(rule.webApi&&!matchRange(env.webApi,rule.webApi))return false;return true;}
