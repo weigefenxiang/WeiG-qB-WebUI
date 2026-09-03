@@ -27,7 +27,7 @@
       "presentation": {"unsupported":"disable","badge":"auto"},
       "copy": {
         "title":{"en":"Private / PT","zh":"私有 / PT"},
-        "reason":{"en":"Reliable Private torrent metadata is available in qBittorrent 5.x and later.","zh":"可靠的 Private torrent 元数据需要 qBittorrent 5.x 或更高版本。"}
+        "reason":{"en":"This feature requires qBittorrent 5.0.0+ for reliable Private torrent metadata.","zh":"此功能需要 qBittorrent 5.0.0+，以可靠读取 Private torrent 元数据。"}
       }
     },
     "tags": {
