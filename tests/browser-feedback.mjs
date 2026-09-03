@@ -87,13 +87,13 @@ try{
   const processingRail=processing.locator('.feedback-toast__progress');
   assert(await processingRail.isVisible(),'indeterminate Add feedback must expose an activity rail');
   assert(await processingRail.getAttribute('data-mode')==='activity','processing rail must be activity mode, not fake lifetime progress');
-  assert(await processingRail.evaluate(n=>getComputedStyle(n,'::before').animationName)==='feedback-activity','processing rail is not visibly active');
+  await page.waitForFunction(id=>{const rail=document.querySelector(`.feedback-toast[data-feedback-id="${id}"] .feedback-toast__progress`);return !!(rail&&rail.dataset.mode==='activity'&&getComputedStyle(rail,'::before').animationName==='feedback-activity');},addId,{timeout:1500});
   await page.waitForFunction(id=>document.querySelector(`.feedback-toast[data-feedback-id="${id}"]`)?.dataset.kind==='success',addId);
   const added=page.locator(`.feedback-toast[data-feedback-id="${addId}"]`);
   assert((await added.textContent()).includes('Torrent added'),'Add success did not update the same feedback card');
   const addedRail=added.locator('.feedback-toast__progress');
   assert(await addedRail.getAttribute('data-mode')==='lifetime','completed Add feedback did not switch the same rail to lifetime mode');
-  assert(await addedRail.evaluate(n=>getComputedStyle(n,'::before').animationName)==='feedback-lifecycle','completed Add feedback lifetime rail is not synchronized to its finite duration');
+  await page.waitForFunction(id=>{const rail=document.querySelector(`.feedback-toast[data-feedback-id="${id}"] .feedback-toast__progress`);return !!(rail&&rail.dataset.mode==='lifetime'&&getComputedStyle(rail,'::before').animationName==='feedback-lifecycle');},addId,{timeout:1500});
 
   // Bounded stack, newest at the desktop bottom, no overlap.
   await page.evaluate(()=>{WeiG.Feedback.dismissAll();});
