@@ -21,7 +21,7 @@
     var msg=(W.I18n&&W.I18n.getLocale&&W.I18n.getLocale()==='zh-CN')
       ?'qBittorrent 当前允许此客户端免认证访问。Session 已结束，但服务器立即创建了新 Session，因此无法保持真正登出。请关闭本机免认证或移除当前地址的认证白名单后再试。'
       :'qBittorrent currently allows this client to bypass authentication. The session ended, but the server immediately created a new session, so a durable logout is impossible. Disable local-auth bypass or remove this client from the authentication subnet whitelist.';
-    if(W.toast)W.toast(msg,'danger');
+    if(W.toast)W.toast(msg,'error');
     var fatal=document.getElementById('fatal'),copy=document.getElementById('fatal-message');if(fatal&&copy){copy.textContent=msg;fatal.classList.remove('is-hidden');}
   }
   async function logout(client){
@@ -31,7 +31,7 @@
       var active=await probeSession(client);
       if(active){setState('auth-bypass');explainBypass();return false;}
       setState('logged-out');guardSet();clearPrivateState();lock();location.replace('./');return true;
-    }catch(e){setState('failed');if(W.toast)W.toast((e&&e.message)||String(e),'danger');return false;}
+    }catch(e){setState('failed');if(W.toast)W.toast((e&&e.message)||String(e),'error');return false;}
     finally{busy=false;}
   }
   async function verifyReentry(){

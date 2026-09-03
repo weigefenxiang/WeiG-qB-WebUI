@@ -6,6 +6,7 @@ import {fileURLToPath} from 'node:url';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const privateRoot=path.resolve(here,'../webui/private');
+const productVersion=(await fs.readFile(path.resolve(here,'../VERSION'),'utf8')).trim();
 const host='127.0.0.1',port=8772;
 const variants={legacy:{qb:'v4.1.9.1',api:'2.1.0'},modern:{qb:'v5.2.0',api:'2.11.4'}};
 const prefs={save_path:'/downloads',alt_dl_limit:256,alt_up_limit:128};
@@ -34,7 +35,7 @@ async function api(req,res,v,p,url){
   if(['torrents/files','torrents/webseeds','search/plugins','log/main','log/peers'].includes(p))return json(res,[]);if(p==='sync/torrentPeers')return json(res,{peers:{}});if(p==='rss/items')return json(res,{});
   if(req.method==='POST')return empty(res);return json(res,{});
 }
-const server=http.createServer(async(req,res)=>{try{const url=new URL(req.url,`http://${host}:${port}`),m=url.pathname.match(/^\/(legacy|modern)(?:\/(.*))?$/);if(!m){res.writeHead(404);return res.end('not found');}const v=variants[m[1]],rel=m[2]||'';if(rel.startsWith('api/v2/'))return await api(req,res,v,rel.slice(7),url);if(rel==='weigg-install.json')return json(res,{version:'0.3.7',gitSha:'fixture-sha',qbPath:'/config/weigg-qb-webui',hostPath:'/srv/qb/config/weigg-qb-webui'});const requested=rel||'index.html',file=path.resolve(privateRoot,requested);if(!(file===privateRoot||file.startsWith(privateRoot+path.sep))){res.writeHead(403);return res.end('forbidden');}const body=await fs.readFile(file);res.writeHead(200,{'content-type':mime[path.extname(file).toLowerCase()]||'application/octet-stream','cache-control':'no-store'});res.end(body);}catch(e){res.writeHead(e?.code==='ENOENT'?404:500,{'content-type':'text/plain; charset=utf-8'});res.end(String(e));}});
+const server=http.createServer(async(req,res)=>{try{const url=new URL(req.url,`http://${host}:${port}`),m=url.pathname.match(/^\/(legacy|modern)(?:\/(.*))?$/);if(!m){res.writeHead(404);return res.end('not found');}const v=variants[m[1]],rel=m[2]||'';if(rel.startsWith('api/v2/'))return await api(req,res,v,rel.slice(7),url);if(rel==='weigg-install.json')return json(res,{version:productVersion,gitSha:'fixture-sha',qbPath:'/config/weigg-qb-webui',hostPath:'/srv/qb/config/weigg-qb-webui'});const requested=rel||'index.html',file=path.resolve(privateRoot,requested);if(!(file===privateRoot||file.startsWith(privateRoot+path.sep))){res.writeHead(403);return res.end('forbidden');}const body=await fs.readFile(file);res.writeHead(200,{'content-type':mime[path.extname(file).toLowerCase()]||'application/octet-stream','cache-control':'no-store'});res.end(body);}catch(e){res.writeHead(e?.code==='ENOENT'?404:500,{'content-type':'text/plain; charset=utf-8'});res.end(String(e));}});
 await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(port,host,resolve);});
 const browser=await chromium.launch({headless:true});
 try{

@@ -11,14 +11,15 @@ const feedback=read('webui/private/scripts/feedback.js');
 const css=read('webui/private/css/feedback.css');
 const core=read('webui/private/scripts/core.js');
 const html=read('webui/private/index.html');
-const app=read('webui/private/scripts/app.js');
 const settings=read('webui/private/scripts/settings.js');
-const selection=read('webui/private/scripts/selection.js');
-const browserFeedback=read('tests/browser-feedback.mjs');
-const browserRuntime=read('tests/browser-runtime.mjs');
+const session=read('webui/private/scripts/session.js');
 const pkg=JSON.parse(read('package.json'));
 const version=read('VERSION').trim();
 const webVersion=read('webui/VERSION').trim();
+const scriptDir=path.join(root,'webui/private/scripts');
+const scriptSources=fs.readdirSync(scriptDir).filter(name=>name.endsWith('.js')).map(name=>[name,fs.readFileSync(path.join(scriptDir,name),'utf8')]);
+const browserDir=path.join(root,'tests');
+const browserSources=fs.readdirSync(browserDir).filter(name=>/^browser-.*\.mjs$/.test(name)).map(name=>[name,fs.readFileSync(path.join(browserDir,name),'utf8')]);
 
 assert(/^\d+\.\d+\.\d+$/.test(version)&&webVersion===version&&pkg.version===version,'product versions must stay synchronized semantic patch versions');
 assert(!/W\.toast\s*=\s*function/.test(core),'core.js legacy toast owner must be retired');
@@ -39,12 +40,15 @@ assert(/prefers-reduced-motion/.test(css)&&/data-motion=reduced/.test(css),'feed
 assert(!/\.toast-region\{/.test(read('webui/private/css/app.css'))&&!/\.toast\{/.test(read('webui/private/css/app.css')),'legacy toast CSS must leave app.css');
 assert((html.match(/css\/feedback\.css/g)||[]).length===1&&(html.match(/scripts\/feedback\.js/g)||[]).length===1,'feedback assets must load exactly once');
 assert(/id="toast-region" class="feedback-stack"/.test(html)&&/aria-relevant="additions text"/.test(html),'canonical live region contract is missing');
-assert(!/W\.toast\([^\n]*,'danger'/.test(app),'app.js must not use legacy danger feedback kind');
-assert(!/W\.toast\([^\n]*,'danger'/.test(settings),'settings.js must not use legacy danger feedback kind');
-assert(!/notify\([^\n]*,'danger'/.test(selection),'selection.js must not use legacy danger feedback kind');
 assert(!/fact\(text\('Version','版本'\),'0\.3\./.test(settings),'About must not hard-code product version');
-for(const [name,source] of [['browser-feedback',browserFeedback],['browser-runtime',browserRuntime]]){
+assert(/W\.toast\(msg,'error'\)/.test(session)&&/W\.toast\(\(e&&e\.message\)\|\|String\(e\),'error'\)/.test(session),'Session failures must use canonical error feedback semantics');
+for(const [name,source] of scriptSources){
+  assert(!/W\.toast\([^;\n]*,\s*['"]danger['"]/.test(source),`${name} must not use legacy danger W.toast kind`);
+  assert(!/\bnotify\([^;\n]*,\s*['"]danger['"]/.test(source),`${name} must not use legacy danger notify kind`);
+}
+for(const [name,source] of browserSources){
+  if(!source.includes('weigg-install.json'))continue;
   assert(source.includes("path.resolve(here,'../VERSION')"),`${name} fixture must derive product version from canonical VERSION`);
   assert(!/version\s*:\s*['"]\d+\.\d+\.\d+['"]/.test(source),`${name} fixture must not hard-code a product version`);
 }
-console.log('Floating feedback contract passed: single owner, canonical kinds, bounded stack, safe-area, right-slide exit, reduced motion, non-overlap insertion ownership, precise monkey-patch guard, canonical version authority.');
+console.log('Floating feedback contract passed: single owner, canonical kinds across first-party callers, bounded stack, safe-area, right-slide exit, reduced motion, non-overlap insertion ownership, precise monkey-patch guard, canonical version authority across browser fixtures.');
