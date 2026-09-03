@@ -207,13 +207,13 @@ try{
   const newer=mobile.cards.find(x=>x.text.includes('Newer')),older=mobile.cards.find(x=>x.text.includes('Older'));
   assert(newer&&older&&newer.top<older.top,'mobile newest feedback must appear nearest the top anchor');
 
-  // Light/Dark both resolve from the project theme tokens.
+  // Light/Dark both resolve from the project theme tokens through the rendered gradient surface.
   await page.evaluate(()=>{const c=WeiG.Config.load();c.theme='light';WeiG.Config.apply(c);});
-  const lightBg=await page.locator('.feedback-toast__surface').first().evaluate(n=>getComputedStyle(n).backgroundColor);
-  assert(lightBg&&lightBg!=='rgba(0, 0, 0, 0)','light feedback surface resolved transparent');
+  const lightSurface=await page.locator('.feedback-toast__surface').first().evaluate(n=>({image:getComputedStyle(n).backgroundImage,color:getComputedStyle(n).backgroundColor}));
+  assert(lightSurface.image&&lightSurface.image!=='none','light feedback surface lost its rendered gradient');
   await page.evaluate(()=>{const c=WeiG.Config.load();c.theme='dark';WeiG.Config.apply(c);});
-  const darkBg=await page.locator('.feedback-toast__surface').first().evaluate(n=>getComputedStyle(n).backgroundColor);
-  assert(darkBg&&darkBg!=='rgba(0, 0, 0, 0)'&&darkBg!==lightBg,'feedback surface did not adapt between Light and Dark');
+  const darkSurface=await page.locator('.feedback-toast__surface').first().evaluate(n=>({image:getComputedStyle(n).backgroundImage,color:getComputedStyle(n).backgroundColor}));
+  assert(darkSurface.image&&darkSurface.image!=='none'&&darkSurface.image!==lightSurface.image,`feedback gradient did not adapt between Light and Dark: ${JSON.stringify({light:lightSurface,dark:darkSurface})}`);
 
   // WeiG Reduced Motion disables movement/activity while preserving dismiss semantics.
   await page.evaluate(()=>{WeiG.Feedback.dismissAll();document.documentElement.dataset.motion='reduced';});
