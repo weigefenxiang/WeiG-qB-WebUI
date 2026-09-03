@@ -6,6 +6,7 @@ import {fileURLToPath} from 'node:url';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(here,'../webui/private');
+const productVersion=(await fs.readFile(path.resolve(here,'../VERSION'),'utf8')).trim();
 const host='127.0.0.1',port=8778;
 let prefs={
   save_path:'/downloads',listen_port:6881,upnp:false,max_connec:500,max_uploads:20,
@@ -58,7 +59,7 @@ const server=http.createServer(async(req,res)=>{
   try{
     const url=new URL(req.url,`http://${host}:${port}`),rel=url.pathname.replace(/^\/+/,'');
     if(rel.startsWith('api/v2/'))return await api(req,res,rel.slice(7),url);
-    if(rel==='weigg-install.json')return json(res,{version:'0.3.9',gitSha:'feedback-fixture',qbPath:'/config/weigg-qb-webui',hostPath:'/srv/qb/config/weigg-qb-webui'});
+    if(rel==='weigg-install.json')return json(res,{version:productVersion,gitSha:'feedback-fixture',qbPath:'/config/weigg-qb-webui',hostPath:'/srv/qb/config/weigg-qb-webui'});
     const requested=rel||'index.html',file=path.resolve(root,requested);
     if(!(file===root||file.startsWith(root+path.sep))){res.writeHead(403);return res.end('forbidden');}
     const data=await fs.readFile(file);
@@ -110,19 +111,25 @@ try{
   assert(await page.locator('.feedback-toast:not(.is-leaving)').count()===4,'fifth feedback did not retire the oldest card');
   assert(!(await page.locator('.feedback-toast').allTextContents()).some(t=>t.includes('One')),'oldest feedback was not retired first');
 
-  // Manual dismissal uses the canonical right-slide exit before removal.
-  const middle=page.locator('.feedback-toast:not(.is-leaving)').nth(1);
-  const follower=page.locator('.feedback-toast:not(.is-leaving)').nth(2);
-  const followerTopBefore=await follower.evaluate(n=>n.getBoundingClientRect().top);
-  const middleId=await middle.getAttribute('data-feedback-id');
+  // Manual dismissal slides right, preserves the bottom anchor and reflows older cards into the gap.
+  const stableBefore=await page.locator('.feedback-toast:not(.is-leaving)').evaluateAll(nodes=>nodes.map(n=>({id:n.dataset.feedbackId,top:n.getBoundingClientRect().top,bottom:n.getBoundingClientRect().bottom})));
+  const middle=page.locator(`.feedback-toast[data-feedback-id="${stableBefore[1].id}"]`);
+  const middleId=stableBefore[1].id;
+  const survivorIds=stableBefore.filter(x=>x.id!==middleId).map(x=>x.id);
+  const oldestId=stableBefore[0].id,oldestTopBefore=stableBefore[0].top,bottomBefore=stableBefore.at(-1).bottom;
   await middle.locator('.feedback-toast__dismiss').click();
   await page.waitForFunction(id=>document.querySelector(`.feedback-toast[data-feedback-id="${id}"]`)?.classList.contains('is-leaving'),middleId);
   await page.waitForTimeout(60);
   const matrix=await page.locator(`.feedback-toast[data-feedback-id="${middleId}"] .feedback-toast__surface`).evaluate(n=>getComputedStyle(n).transform);
   assert(matrix!=='none','manual dismissal did not enter the right-slide motion');
   await page.waitForFunction(id=>!document.querySelector(`.feedback-toast[data-feedback-id="${id}"]`),middleId);
-  const followerTopAfter=await page.locator('.feedback-toast:not(.is-leaving)').nth(1).evaluate(n=>n.getBoundingClientRect().top);
-  assert(followerTopAfter<followerTopBefore,'remaining feedback did not reflow upward after middle-card dismissal');
+  await page.waitForTimeout(220);
+  const stableAfter=await page.locator('.feedback-toast:not(.is-leaving)').evaluateAll(nodes=>nodes.map(n=>({id:n.dataset.feedbackId,top:n.getBoundingClientRect().top,bottom:n.getBoundingClientRect().bottom})));
+  assert(JSON.stringify(stableAfter.map(x=>x.id))===JSON.stringify(survivorIds),'middle-card dismissal recreated or reordered surviving feedback');
+  for(let i=1;i<stableAfter.length;i++)assert(stableAfter[i].top>=stableAfter[i-1].bottom+6,`feedback overlapped after middle-card dismissal: ${JSON.stringify(stableAfter)}`);
+  assert(Math.abs(stableAfter.at(-1).bottom-bottomBefore)<2,`desktop bottom anchor moved after middle-card dismissal: before=${bottomBefore}, after=${stableAfter.at(-1).bottom}`);
+  const oldestAfter=stableAfter.find(x=>x.id===oldestId);
+  assert(oldestAfter&&oldestAfter.top>oldestTopBefore+6,'older feedback above the removed middle card did not reflow downward into the gap');
 
   // Strict FIFO auto-dismiss: a later shorter duration waits for the earlier finite card to leave first.
   await page.evaluate(()=>WeiG.Feedback.dismissAll());await page.waitForTimeout(260);

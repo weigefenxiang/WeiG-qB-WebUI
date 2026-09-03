@@ -14,6 +14,8 @@ const html=read('webui/private/index.html');
 const app=read('webui/private/scripts/app.js');
 const settings=read('webui/private/scripts/settings.js');
 const selection=read('webui/private/scripts/selection.js');
+const browserFeedback=read('tests/browser-feedback.mjs');
+const browserRuntime=read('tests/browser-runtime.mjs');
 const pkg=JSON.parse(read('package.json'));
 const version=read('VERSION').trim();
 const webVersion=read('webui/VERSION').trim();
@@ -29,6 +31,7 @@ assert(/role',kind==='error'\?'alert':'status'/.test(feedback),'feedback roles m
 assert(/aria-atomic/.test(feedback),'feedback card must be aria-atomic');
 for(const forbidden of ['new W.QBClient','MutationObserver','fetch('])assert(!feedback.includes(forbidden),`feedback owner must not contain ${forbidden}`);
 assert(!/(?:W\.)?QBClient\.prototype|\.prototype\.(?:request|getTransferInfo)\s*=|global\.fetch\s*=|window\.fetch\s*=/.test(feedback),'feedback owner must not monkey-patch QBClient methods or fetch');
+assert(/animateStackInsertion/.test(feedback)&&/beforeTop=region\.getBoundingClientRect\(\)\.top/.test(feedback),'feedback insertion must preserve stack-owned non-overlapping geometry');
 assert(/color-mix/.test(css)&&/var\(--surface-floating\)/.test(css),'feedback skin must consume current surface tokens');
 assert(/env\(safe-area-inset-top\)/.test(css)&&/env\(safe-area-inset-left\)/.test(css)&&/env\(safe-area-inset-right\)/.test(css),'mobile feedback must respect safe areas');
 assert(/translate3d\(42px,0,0\)/.test(css),'canonical dismissal must slide to the right');
@@ -40,4 +43,8 @@ assert(!/W\.toast\([^\n]*,'danger'/.test(app),'app.js must not use legacy danger
 assert(!/W\.toast\([^\n]*,'danger'/.test(settings),'settings.js must not use legacy danger feedback kind');
 assert(!/notify\([^\n]*,'danger'/.test(selection),'selection.js must not use legacy danger feedback kind');
 assert(!/fact\(text\('Version','版本'\),'0\.3\./.test(settings),'About must not hard-code product version');
-console.log('Floating feedback contract passed: single owner, canonical kinds, bounded stack, safe-area, right-slide exit, reduced motion, precise monkey-patch guard, version authority.');
+for(const [name,source] of [['browser-feedback',browserFeedback],['browser-runtime',browserRuntime]]){
+  assert(source.includes("path.resolve(here,'../VERSION')"),`${name} fixture must derive product version from canonical VERSION`);
+  assert(!/version\s*:\s*['"]\d+\.\d+\.\d+['"]/.test(source),`${name} fixture must not hard-code a product version`);
+}
+console.log('Floating feedback contract passed: single owner, canonical kinds, bounded stack, safe-area, right-slide exit, reduced motion, non-overlap insertion ownership, precise monkey-patch guard, canonical version authority.');
