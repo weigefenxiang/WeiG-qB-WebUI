@@ -31,7 +31,7 @@ async function api(req,res,p,url){
   if(p==='app/setPreferences'&&req.method==='POST'){
     const raw=await body(req),params=new URLSearchParams(raw);
     try{prefs={...prefs,...JSON.parse(params.get('json')||'{}')};}catch{}
-    await new Promise(r=>setTimeout(r,70));
+    await new Promise(r=>setTimeout(r,700));
     return empty(res);
   }
   if(p==='app/buildInfo')return json(res,{});
@@ -45,11 +45,11 @@ async function api(req,res,p,url){
   }
   if(p==='torrents/categories')return json(res,{});
   if(p==='torrents/tags')return json(res,[]);
-  if(p==='torrents/add'&&req.method==='POST'){await body(req);await new Promise(r=>setTimeout(r,180));return text(res,'Ok.');}
+  if(p==='torrents/add'&&req.method==='POST'){await body(req);await new Promise(r=>setTimeout(r,700));return text(res,'Ok.');}
   if(p==='rss/items')return json(res,feeds);
   if(p==='rss/addFeed'&&req.method==='POST'){
     const raw=await body(req),params=new URLSearchParams(raw),feed=params.get('url')||'';
-    await new Promise(r=>setTimeout(r,90));feeds={Fixture:{url:feed,title:'Fixture'}};return empty(res);
+    await new Promise(r=>setTimeout(r,700));feeds={Fixture:{url:feed,title:'Fixture'}};return empty(res);
   }
   if(['search/plugins','log/main','log/peers'].includes(p))return json(res,[]);
   if(req.method==='POST')return empty(res);
