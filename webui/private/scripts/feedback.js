@@ -86,6 +86,42 @@
     mutator();
     playReflow(before);
   }
+  function matrixTranslateY(value){
+    if(!value||value==='none')return 0;
+    var m3=value.match(/^matrix3d\(([^)]+)\)$/);
+    if(m3){var p3=m3[1].split(',');return Number(p3[13])||0;}
+    var m2=value.match(/^matrix\(([^)]+)\)$/);
+    if(m2){var p2=m2[1].split(',');return Number(p2[5])||0;}
+    return 0;
+  }
+  function animateStackInsertion(region,beforeTop){
+    if(!region)return;
+    if(region.__feedbackShiftFrame){cancelAnimationFrame(region.__feedbackShiftFrame);region.__feedbackShiftFrame=null;}
+    if(region.__feedbackShiftTimer){clearTimeout(region.__feedbackShiftTimer);region.__feedbackShiftTimer=null;}
+    if(reducedMotion()){
+      region.style.transition='';
+      region.style.transform='';
+      return;
+    }
+    var afterTop=region.getBoundingClientRect().top;
+    var delta=beforeTop-afterTop;
+    var currentY=matrixTranslateY(getComputedStyle(region).transform);
+    var fromY=currentY+delta;
+    if(Math.abs(fromY)<.5)return;
+    region.style.transition='none';
+    region.style.transform='translate3d(0,'+fromY+'px,0)';
+    region.getBoundingClientRect();
+    region.__feedbackShiftFrame=requestAnimationFrame(function(){
+      region.__feedbackShiftFrame=null;
+      if(!region.isConnected)return;
+      region.style.transition='';
+      region.style.transform='translate3d(0,0,0)';
+      region.__feedbackShiftTimer=setTimeout(function(){
+        region.__feedbackShiftTimer=null;
+        if(region.isConnected)region.style.transform='';
+      },240);
+    });
+  }
   function clearTimer(record){
     if(record.timer){clearTimeout(record.timer);record.timer=null;}
   }
@@ -206,12 +242,12 @@
     outer.appendChild(surface);
     Object.assign(record,{node:outer,surface:surface,icon:icon,title:title,message:body,close:close,progress:progress});
     close.addEventListener('click',function(){dismiss(record,'manual');});
-    var before=snapshot();
+    var beforeTop=region.getBoundingClientRect().top;
     active.push(record);
     region.appendChild(outer);
     paint(record,message,kind,options);
     enforceLimit();
-    playReflow(before);
+    animateStackInsertion(region,beforeTop);
     requestAnimationFrame(function(){
       if(!outer.isConnected)return;
       outer.classList.remove('is-entering');
