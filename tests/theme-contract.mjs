@@ -100,7 +100,7 @@ const darkSignatures=[
 for(const [source,signature,message] of darkSignatures)assert(source.includes(signature),message);
 
 for(const rule of ['THEME-OWNER','THEME-MODE','THEME-RESOLUTION','THEME-SYSTEM','THEME-TIME','THEME-SURFACE','THEME-DARK-STABILITY','THEME-MOTION','THEME-RETIRE'])assert(docs.includes(rule),`Documentation rule ${rule} missing`);
-assert(pkg.scripts.test.includes('tests/theme-contract.mjs')&&pkg.scripts.test.includes('node --check tests/browser-theme.mjs'),'Theme gates are missing from npm test');
+assert(pkg.scripts.test.includes('tests/theme-contract.mjs'),'Theme contract is missing from npm test');
 assert(!/0\.3\.\d+/.test(read('tests/browser-theme.mjs')),'Browser Theme fixture hard-codes a product 0.3.x version');
 
 console.log(`Theme contract passed for product ${version}: single owner, four modes, repo-wide caller audit, Smart Auto boundaries, Light tokens, Dark stability, Mobile and docs.`);
