@@ -1,7 +1,7 @@
 # WeiG qB WebUI — Design System
 
-Version: **2.6**  
-Status: **v0.3.7 Semantic Ownership 3.7**  
+Version: **2.7**  
+Status: **Current Semantic Ownership**  
 Theme: **Nebula Spatial Console**  
 Compatibility floor: **qBittorrent 4.1.9.1**
 
@@ -130,6 +130,33 @@ Default unsupported policy is visible + `aria-disabled` + badge + Tooltip/Dialog
 ### CAPABILITY-EXCEPTION-001 — upstream quirks live in data
 Exceptional upstream boundaries use declarative `any / all / not / exact` rules in the Registry data. Feature code does not grow one-off version `if` branches.
 
+### FEEDBACK-OWNER — transient feedback has one Current Owner
+`W.Feedback` in `scripts/feedback.js` owns transient feedback template, queue, timing, update and dismissal. `W.toast(message, kind, options)` is the only public business entry. A second notifier, legacy Toast owner or feature-specific Toast system is prohibited.
+
+### FEEDBACK-TRUTH — presentation timers never fabricate business truth
+A timer controls only how long a completed notification remains visible. Processing uses `duration:0` and changes to success/warning/error only when the real Promise/business result resolves. No timer may fake success.
+
+### FEEDBACK-STACK — one bounded non-overlapping stack
+At most four feedback cards are visible. Finite auto-dismiss cards retire FIFO; a persistent processing card does not block later finite feedback. Capacity eviction retires the oldest card through the canonical leave lifecycle.
+
+### FEEDBACK-EXIT — leave motion precedes DOM removal
+Timeout, manual dismiss and capacity eviction enter one `leaving` state and move right before removal. Remaining cards reflow from their existing DOM nodes; abrupt same-frame deletion and recreation are prohibited.
+
+### FEEDBACK-ADAPTIVE — Desktop and Mobile share one queue/state
+Desktop anchors the stack above the Statusbar at bottom-right with newest nearest the bottom. Mobile anchors inside the top safe-area with newest nearest the top. Placement may adapt; queue, lifecycle and business state may not fork.
+
+### FEEDBACK-NOISE — routine background success stays silent
+Background polling and routine refresh success do not generate feedback. User-triggered actions and actionable failures may use the stack; recurring background failure paths must not spam it.
+
+### FEEDBACK-THEME — semantic state changes accent, not component identity
+`info/success/warning/error` consume global theme/state tokens. State does not create separate geometry, radius, typography, shadow or full-color card systems. Hard-coded white/black or copied Remote Gate palettes are prohibited.
+
+### FEEDBACK-A11Y — live semantics and dismiss control are mandatory
+The canonical region uses polite live updates and additions/text relevance. Ordinary cards are atomic `status`; errors are atomic `alert`; icons/progress are decorative; dismiss has a localized accessible name and Mobile target is at least 44px.
+
+### FEEDBACK-RETIRE — the replaced Toast implementation leaves in the same change
+The old `core.js` Toast owner, old `.toast-region/.toast` CSS, `danger` Toast caller assumptions and stale tests are deleted rather than wrapped or aliased.
+
 ## 3. Canonical owner map
 
 ```text
@@ -146,6 +173,8 @@ Select behavior                         W.Components.selectControl()
 Shared Select/Dialog primitive skin     css/ui.css
 Capability/help visual skin             css/polish.css
 Floating Select placement               scripts/floating.js
+Transient feedback queue/lifecycle      W.Feedback / scripts/feedback.js
+Transient feedback visual skin          css/feedback.css
 Torrent semantics                       W.TorrentSemantics
 Selection/actions                       W.Selection / ActionRegistry
 Transfer samples/metadata               W.TransferRuntime
@@ -256,7 +285,23 @@ Transfer raw samples max 900; minute buckets max 720; windows through `12 h`; no
 
 Progressive paging uses `pageSize+1`, renders current page immediately and resolves aggregate total separately.
 
-## 11. Systemic failure modes
+## 11. Floating Feedback Stack
+
+```text
+business Promise/result
+-> W.toast(message, kind, options)
+-> W.Feedback record
+-> one canonical feedback card
+-> optional same-record update(...)
+-> finite FIFO lifetime or persistent processing
+-> leaving state -> right exit -> DOM removal
+```
+
+Default completed lifetimes are `info 3800ms`, `success 3800ms`, `warning 4400ms`, `error 5200ms`. `duration:0` means persistent processing and has no fake lifecycle countdown. Desktop births from below and exits right; Mobile births from the top safe-area and exits right. Reduced Motion removes translation/scale spectacle without changing dismiss/timer semantics.
+
+The component adds zero qB requests, zero polling and zero `QBClient` instances. Add Torrent, Settings save/readback and RSS add/reload update the same card from real asynchronous state.
+
+## 12. Systemic failure modes
 
 ```text
 1. new UI wrapper while old owner remains
@@ -271,11 +316,14 @@ Progressive paging uses `pageSize+1`, renders current page immediately and resol
 10. WebAPI number shown without qB-facing explanation
 11. CSS correction layer added instead of changing canonical owner
 12. test checks DOM existence but not interaction/final state
+13. old Toast owner remains under a new visual wrapper or danger alias
+14. timer changes a processing card to success without a business result
+15. Desktop and Mobile create separate feedback queues
 ```
 
 Diagnosis order: Current Owner -> upstream capability -> performance -> canonical primitive -> state/render boundary -> responsive geometry -> retire old caller -> static contract -> real interaction regression.
 
-## 12. Validation contract
+## 13. Validation contract
 
 Representative browser validation covers qB 4.1.9.1 and 5.2.x in Dark/Light. It must execute and verify:
 
@@ -291,6 +339,11 @@ Desktop action rail remains at right edge at wide/medium/narrow desktop widths
 Display time-zone Select real wheel scroll + selection final state
 Search full/compact/icon presentation reuses one input/state
 Mobile reuses the same Search, capability and Settings owners
+Feedback four kinds + role semantics + long text wrapping
+Feedback max-four stack + strict finite FIFO + fifth-card oldest eviction
+Feedback manual/timeout right exit before removal + smooth reflow
+Feedback processing update reuses the same card for Add/Settings/RSS real Promise results
+Feedback Desktop/Light/Dark + Mobile top safe-area + both Reduced Motion authorities
 ```
 
 Real exact-SHA qB 4.1.9.1 + 5.2.x LIVE remains mandatory before promotion. `main` never moves without explicit maintainer authorization.

@@ -26,6 +26,7 @@
   <link rel="stylesheet" href="css/header.css?v=__WEIGG_GIT_SHA__">
   <link rel="stylesheet" href="css/session.css?v=__WEIGG_GIT_SHA__">
   <link rel="stylesheet" href="css/settings.css?v=__WEIGG_GIT_SHA__">
+  <link rel="stylesheet" href="css/feedback.css?v=__WEIGG_GIT_SHA__">
 </head>
 <body>
   <a class="skip-link" href="#torrent-list" data-i18n="app.skip">Skip to torrent list</a>
@@ -65,7 +66,7 @@
     <nav id="mobile-bottom-nav" class="mobile-bottom-nav surface surface--floating mobile-only" aria-label="Primary navigation"><button data-route="" class="mobile-bottom-nav__item is-active" type="button"><span>◉</span><small data-i18n="nav.torrents">Torrents</small></button><button data-route="search" data-capability="search" class="mobile-bottom-nav__item" type="button"><span>⌕</span><small data-i18n="nav.search">Search</small></button><button data-route="rss" data-capability="rss" class="mobile-bottom-nav__item" type="button"><span>◌</span><small data-i18n="nav.rss">RSS</small></button><button data-route="settings" class="mobile-bottom-nav__item" type="button"><span>⚙</span><small data-i18n="nav.settings">Settings</small></button></nav>
   </div>
 
-  <div id="toast-region" class="toast-region" aria-live="polite"></div>
+  <div id="toast-region" class="feedback-stack" aria-live="polite" aria-relevant="additions text"></div>
   <dialog id="add-dialog" class="dialog surface surface--modal"><form method="dialog"><div class="dialog__head"><div><div class="eyebrow" data-i18n="dialog.add.eyebrow">ADD TORRENT</div><h2 data-i18n="dialog.add.title">Add Torrent</h2></div><button class="icon-btn" value="cancel" data-i18n-aria="app.close" aria-label="Close">×</button></div><label class="field"><span data-i18n="dialog.add.urls">Magnet / URL</span><textarea id="torrent-urls" rows="5"></textarea></label><div class="or-divider"><span data-i18n="dialog.add.or">or</span></div><label class="file-drop" for="torrent-files"><input id="torrent-files" type="file" accept=".torrent,application/x-bittorrent" multiple><span data-i18n="dialog.add.files">Choose .torrent files</span><small data-i18n="dialog.add.multi">Multiple files allowed</small></label><label class="field"><span data-i18n="dialog.add.savePath">Save path (optional)</span><input id="save-path" type="text"></label><div class="dialog__actions"><button class="btn btn--ghost" value="cancel" data-i18n="app.cancel">Cancel</button><button id="add-submit" class="btn btn--primary" type="button" data-i18n="library.add">Add Torrent</button></div></form></dialog>
   <dialog id="delete-dialog" class="dialog surface surface--modal"><form method="dialog"><div class="dialog__head"><div><div class="eyebrow danger-text" data-i18n="dialog.delete.eyebrow">DANGER</div><h2 data-i18n="dialog.delete.title">Delete Torrent</h2></div><button class="icon-btn" value="cancel" data-i18n-aria="app.close" aria-label="Close">×</button></div><p id="delete-copy" class="text-description"></p><label class="check-row"><input id="delete-files" type="checkbox"><span data-i18n="torrent.deleteData">Also delete downloaded files</span></label><div class="dialog__actions"><button class="btn btn--ghost" value="cancel" data-i18n="app.cancel">Cancel</button><button id="delete-confirm" class="btn btn--danger" type="button" data-i18n="dialog.delete.confirm">Confirm Delete</button></div></form></dialog>
   <dialog id="actions-dialog" class="dialog surface surface--modal"><div class="dialog__head"><div><div class="eyebrow">TORRENT ACTIONS</div><h2 data-i18n="torrent.actions">Torrent Actions</h2></div><button id="actions-close" class="icon-btn">×</button></div><div id="actions-grid" class="action-grid"></div></dialog>
@@ -75,6 +76,7 @@
 
   <script src="scripts/i18n.js?v=__WEIGG_GIT_SHA__"></script>
   <script src="scripts/core.js?v=__WEIGG_GIT_SHA__"></script>
+  <script src="scripts/feedback.js?v=__WEIGG_GIT_SHA__"></script>
   <script src="scripts/i18n-time.js?v=__WEIGG_GIT_SHA__"></script>
   <script src="scripts/i18n-alternative-webui.js?v=__WEIGG_GIT_SHA__"></script>
   <script src="scripts/i18n-interface.js?v=__WEIGG_GIT_SHA__"></script>
