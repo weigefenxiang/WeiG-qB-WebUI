@@ -76,31 +76,11 @@ jobs:
           node tests/browser-torrent-workspace.mjs
           node tests/browser-adaptive-ui.mjs
 
-  release_guard:
-    name: Candidate qualification guard
-    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' && github.ref == 'refs/heads/main') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[candidate]')) }}
-    runs-on: ubuntu-latest
-    needs: smoke
-    steps:
-      - name: Require supported candidate source
-        shell: bash
-        run: |
-          set -euo pipefail
-          case "$GITHUB_REF" in
-            refs/heads/main|refs/heads/dev) ;;
-            *)
-              echo 'Full candidate qualification may run only from main or marked dev candidate commits.' >&2
-              exit 1
-              ;;
-          esac
-
   release_compatibility:
     name: Full qB Release compatibility audit
     if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' && github.ref == 'refs/heads/main') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[candidate]')) }}
     runs-on: ubuntu-latest
-    needs:
-      - smoke
-      - release_guard
+    needs: smoke
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -122,9 +102,7 @@ jobs:
     name: Linux browser candidate
     if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' && github.ref == 'refs/heads/main') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[candidate]')) }}
     runs-on: ubuntu-latest
-    needs:
-      - smoke
-      - release_guard
+    needs: smoke
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -155,9 +133,7 @@ jobs:
     name: Windows browser candidate
     if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' && github.ref == 'refs/heads/main') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[candidate]')) }}
     runs-on: windows-latest
-    needs:
-      - smoke
-      - release_guard
+    needs: smoke
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -190,7 +166,6 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - smoke
-      - release_guard
       - release_compatibility
       - browser
       - windows_browser

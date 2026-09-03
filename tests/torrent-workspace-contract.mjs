@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import vm from 'node:vm';
 import {fileURLToPath} from 'node:url';
 const here=path.dirname(fileURLToPath(import.meta.url)),root=path.resolve(here,'..');
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
@@ -18,6 +19,7 @@ const floating=read('webui/private/scripts/floating.js');
 const ui=read('webui/private/scripts/ui.js');
 const ux=read('webui/private/scripts/ux.js');
 const header=read('webui/private/scripts/header.js');
+const torrentSemantics=read('webui/private/scripts/torrent-semantics.js');
 const appCss=read('webui/private/css/app.css');
 const progressCss=read('webui/private/css/progress.css');
 const layoutCss=read('webui/private/css/layout.css');
@@ -33,6 +35,21 @@ assert((index.match(/id="search-input"/g)||[]).length===1,'Torrent Search must h
 assert((index.match(/connection-indicator__dot/g)||[]).length===1,'ConnectionIndicator must have exactly one explicit status dot');
 assert(index.indexOf('id="add-btn"')<index.indexOf('id="theme-btn"'),'Header Add must remain before Theme');
 assert(index.indexOf('id="resume-btn"')<index.indexOf('id="pause-btn"')&&index.indexOf('id="pause-btn"')<index.indexOf('id="more-actions-btn"')&&index.indexOf('id="more-actions-btn"')<index.indexOf('id="delete-btn"')&&index.indexOf('id="delete-btn"')<index.indexOf('id="torrent-focus-slot"'),'Desktop Torrent action order must be Start/Pause/More/Delete/Expand');
+
+// Private/PT semantics belong to the Torrent contract, not a second standalone gate.
+const semanticSandbox={URL};
+semanticSandbox.window={WeiG:{util:{normalizeTracker(raw){const value=String(raw||'').trim();if(!value)return'';try{const u=new URL(value);return `${u.protocol}//${u.hostname}${u.port?':'+u.port:''}${u.pathname||'/'}`;}catch{return value.split('?')[0].split('#')[0];}}}}};
+vm.runInNewContext(torrentSemantics,semanticSandbox,{filename:'torrent-semantics.js'});
+const TorrentSemantics=semanticSandbox.window.WeiG.TorrentSemantics;
+assert(TorrentSemantics&&typeof TorrentSemantics.isPrivateOrPt==='function','TorrentSemantics must expose isPrivateOrPt');
+assert(TorrentSemantics.isPrivate({private:true})===true&&TorrentSemantics.isPrivate({private:1})===true&&TorrentSemantics.isPrivate({private:'1'})===true,'Private truthy forms must resolve as exact private');
+assert(TorrentSemantics.isPrivate({private:0})===false,'private=0 must not be private');
+assert(TorrentSemantics.isPt({tracker:'https://tracker.pt.example/announce'},['pt.example'])===true,'PT tracker subdomain must match configured domain');
+assert(TorrentSemantics.isPt({tracker:'https://notpt.example/announce'},['pt.example'])===false,'Unrelated tracker must not match PT rule');
+assert(TorrentSemantics.isPrivateOrPt({private:1,tracker:'https://public.example/announce'},[])===true,'Private flag must match without PT rule');
+assert(TorrentSemantics.isPrivateOrPt({private:0,tracker:'https://tracker.pt.example/announce'},['pt.example'])===true,'PT tracker must match union semantics');
+assert(app.includes('W.TorrentSemantics.isPrivateOrPt(t,cfg.ptTrackers)'),'App Private/PT filter must consume canonical union semantics');
+assert(index.includes('scripts/torrent-semantics.js?v=__WEIGG_GIT_SHA__')&&index.indexOf('scripts/torrent-semantics.js')<index.indexOf('scripts/app.js'),'TorrentSemantics must be exact-SHA addressed and load before app.js');
 
 // Torrent progress is one presentation owner: real qB progress width + local semantic state projection, no extra requests.
 for(const token of ['progressStates','function progressVisual(','function paintProgress(','C.progressVisual=progressVisual','C.progressTrack=function'])assert(components.includes(token),`Canonical Torrent progress owner missing ${token}`);
@@ -99,4 +116,4 @@ assert(systemMotion>=0&&weiggMotion>systemMotion&&ruleHas(layoutCss,connectedDot
 assert(ruleHas(layoutCss,connectedDot,'animation:none',weiggMotion)&&ruleHas(layoutCss,firewalledDot,'animation:none',weiggMotion),'Connection motion must honor WeiG Reduced Motion');
 assert(!layoutCss.includes('#filter-shelf'),'Layout CSS must not retain retired filter shelf');
 for(const rule of ['FACET-OWNER-001','PRESENTATION-STATE-001','TELEMETRY-PAINT-001','STATUS-NOISE-001','STATUS-PLACEMENT-001','ADAPTIVE-STATUS-001','LIVE-INDICATOR-001','STATUS-SIGNAL-001','MOTION-STATUS-001','HEADER-UTILITY-001','HEADER-SEARCH-001','SELECT-SCROLL-001','RENDERED-SIGNAL-001','HEADER-END-ANCHOR-001','STATUS-EXPLAIN-001','CAPABILITY-OWNER-001','CAPABILITY-RANGE-001','CAPABILITY-BADGE-001','CAPABILITY-DIALOG-001','CAPABILITY-COST-001','CAPABILITY-VISIBLE-001','CAPABILITY-EXCEPTION-001','OWNER-RETIRE-001','TORRENT-PROGRESS-OWNER','TORRENT-PROGRESS-TRUTH','TORRENT-PROGRESS-STATE','TORRENT-PROGRESS-MOTION'])assert(docs.includes(rule),`Torrent workspace docs missing hard rule ${rule}`);
-console.log('Torrent workspace ownership contract passed: canonical capability ranges, truthful single-owner semantic Torrent progress with shared Mobile rail, one rendered Connection signal/help owner, end-anchored header, scroll-stable Select and shared mobile state.');
+console.log('Torrent workspace ownership contract passed: Private/PT semantics, canonical capability ranges, truthful single-owner Torrent progress with shared Mobile rail, one rendered Connection signal/help owner, end-anchored header, scroll-stable Select and shared mobile state.');

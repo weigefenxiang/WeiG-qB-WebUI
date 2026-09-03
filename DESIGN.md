@@ -1,6 +1,6 @@
 # WeiG qB WebUI — Design System
 
-Version: **2.8**  
+Version: **2.9**  
 Status: **Current Semantic Ownership**  
 Theme: **Nebula Spatial Console**  
 Compatibility floor: **qBittorrent 4.1.9.1**
@@ -402,9 +402,13 @@ Shared spatial surfaces live in `css/spatial.css`; shared controls/Dialog remain
 21. Smart Auto polls every minute instead of scheduling the next boundary
 22. Light fixes append a correction stylesheet or `!important` selector layer
 23. Light tokenization silently redesigns the accepted Dark baseline
+24. one feature semantic is asserted again in a global gate as implementation shape
+25. CI failure changes correct product behavior instead of checking runtime truth first
+26. tests/docs/workflow-only commit bumps product VERSION without changing webui/**
+27. same VERSION is treated as permission to reuse an older SHA validation
 ```
 
-Diagnosis order: Current Owner -> upstream capability -> performance -> canonical primitive -> state/render boundary -> responsive geometry -> retire old caller -> static contract -> real interaction regression.
+Diagnosis order: Current Owner -> upstream capability -> performance -> canonical primitive -> state/render boundary -> responsive geometry -> retire old caller -> semantic/static contract -> real interaction regression -> exact-SHA evidence.
 
 ## 14. Validation contract
 
@@ -439,3 +443,20 @@ Mobile Torrent progress -> same canonical state/width/rail, not a second owner
 ```
 
 Real exact-SHA qB 4.1.9.1 + 5.2.x LIVE remains mandatory before promotion. `main` never moves without explicit maintainer authorization.
+
+## 15. Gate ownership and product-version scope
+
+### GATE-OWNER-001 — one gate owns one validation responsibility
+Global `runtime-contract.mjs` protects only repository-wide runtime invariants. Theme, Feedback, Capability and Torrent semantics remain in their feature contracts; browser gates own real interaction/final rendered truth. A global gate must not duplicate feature implementation shape.
+
+### GATE-SEMANTIC-001 — semantic truth beats implementation shape
+A failing assertion is not proof that product behavior is wrong. Inspect runtime/computed/API/final state first. If product semantics are correct and a gate is stale or shape-locked, repair the gate rather than reverting correct product code.
+
+### GATE-SYNTAX-001 — syntax has one owner
+`syntax-contract.mjs` owns runtime/test JavaScript syntax validation. `package.json` does not maintain a second list of `node --check` callers.
+
+### VERSION-WEBUI-001 — product VERSION follows webui/** only
+A patch VERSION increment is required only when the formal change modifies product content under `webui/**` (apart from the version-file synchronization itself). Tests, workflows, docs, DESIGN, installer and gate-only changes keep the existing product VERSION. When `webui/**` changes, `VERSION`, `webui/VERSION` and `package.json.version` update together.
+
+### EXACT-SHA-EVIDENCE-001 — validation belongs to SHA, not VERSION
+The same product VERSION may appear on multiple dev commits when only repository infrastructure changes. Every new commit has a new exact SHA, and CI/LIVE/candidate/artifact evidence from an older SHA is not inherited even when VERSION is unchanged.
