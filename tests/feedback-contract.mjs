@@ -18,7 +18,7 @@ const pkg=JSON.parse(read('package.json'));
 const version=read('VERSION').trim();
 const webVersion=read('webui/VERSION').trim();
 
-assert(version==='0.3.9'&&webVersion===version&&pkg.version===version,'product versions must stay synchronized at 0.3.9');
+assert(/^\d+\.\d+\.\d+$/.test(version)&&webVersion===version&&pkg.version===version,'product versions must stay synchronized semantic patch versions');
 assert(!/W\.toast\s*=\s*function/.test(core),'core.js legacy toast owner must be retired');
 assert(/W\.Feedback\s*=/.test(feedback)&&/W\.toast\s*=\s*toast/.test(feedback),'feedback.js must be the canonical W.toast owner');
 assert(/MAX_VISIBLE\s*=\s*4/.test(feedback),'feedback stack must be bounded to four visible records');
