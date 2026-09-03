@@ -4,6 +4,7 @@ import {fileURLToPath} from 'node:url';
 const here=path.dirname(fileURLToPath(import.meta.url)),root=path.resolve(here,'..');
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const assert=(ok,msg)=>{if(!ok)throw new Error(msg);};
+function ruleHas(css,selector,declaration,start=0,end=css.length){let pos=css.indexOf(selector,start);while(pos>=0&&pos<end){const open=css.indexOf('{',pos),close=open>=0?css.indexOf('}',open):-1;if(open>=0&&open<end&&close>=0&&css.slice(open+1,close).includes(declaration))return true;pos=css.indexOf(selector,pos+1);}return false;}
 const index=read('webui/private/index.html');
 const app=read('webui/private/scripts/app.js');
 const spatial=read('webui/private/scripts/spatial.js');
@@ -75,7 +76,9 @@ assert(layoutCss.includes('.connection-indicator__dot{')&&layoutCss.includes('bo
 assert(!polishCss.includes('.connection-indicator::before')&&!polishCss.includes('.connection-indicator::after')&&!polishCss.includes('connectionPulse')&&!polishCss.includes('connectionDockBreathe'),'Polish CSS must not create a second rendered connection signal');
 assert(polishCss.includes('.capability-badge')&&polishCss.includes('.capability-dialog')&&polishCss.includes('.connection-dialog'),'Polish layer must skin canonical capability/connection explanation surfaces');
 assert(layoutCss.includes('#list-view>.stats-grid{display:none!important}')&&layoutCss.includes('@media(max-width:820px)')&&layoutCss.includes('#list-view>.stats-grid{display:grid'),'Desktop summary must retire while Mobile Summary remains adaptive');
-assert(layoutCss.includes('@media(prefers-reduced-motion:reduce)')&&layoutCss.includes('.connection-indicator[data-connection="connected"] .connection-indicator__dot{animation:none}'),'Online dot must honor Reduced Motion');
+const connectedDot='.connection-indicator[data-connection="connected"] .connection-indicator__dot',firewalledDot='.connection-indicator[data-connection="firewalled"] .connection-indicator__dot',systemMotion=layoutCss.indexOf('@media(prefers-reduced-motion:reduce)'),weiggMotion=layoutCss.indexOf('html[data-motion="reduced"]',systemMotion);
+assert(systemMotion>=0&&weiggMotion>systemMotion&&ruleHas(layoutCss,connectedDot,'animation:none',systemMotion,weiggMotion)&&ruleHas(layoutCss,firewalledDot,'animation:none',systemMotion,weiggMotion),'Connection motion must honor system Reduced Motion');
+assert(ruleHas(layoutCss,connectedDot,'animation:none',weiggMotion)&&ruleHas(layoutCss,firewalledDot,'animation:none',weiggMotion),'Connection motion must honor WeiG Reduced Motion');
 assert(!layoutCss.includes('#filter-shelf'),'Layout CSS must not retain retired filter shelf');
 for(const rule of ['FACET-OWNER-001','PRESENTATION-STATE-001','TELEMETRY-PAINT-001','STATUS-NOISE-001','STATUS-PLACEMENT-001','ADAPTIVE-STATUS-001','LIVE-INDICATOR-001','STATUS-SIGNAL-001','MOTION-STATUS-001','HEADER-UTILITY-001','HEADER-SEARCH-001','SELECT-SCROLL-001','RENDERED-SIGNAL-001','HEADER-END-ANCHOR-001','STATUS-EXPLAIN-001','CAPABILITY-OWNER-001','CAPABILITY-RANGE-001','CAPABILITY-BADGE-001','CAPABILITY-DIALOG-001','CAPABILITY-COST-001','CAPABILITY-VISIBLE-001','CAPABILITY-EXCEPTION-001','OWNER-RETIRE-001'])assert(docs.includes(rule),`Torrent workspace docs missing hard rule ${rule}`);
 console.log('Torrent workspace ownership contract passed: canonical capability ranges, one rendered Connection signal/help owner, end-anchored header, scroll-stable Select and shared mobile state.');
