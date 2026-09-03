@@ -72,6 +72,7 @@ jobs:
           node tests/browser-runtime.mjs
           node tests/browser-feature-parity.mjs
           node tests/browser-torrent-workspace.mjs
+          node tests/browser-adaptive-ui.mjs
 
   release_guard:
     name: Main release candidate guard
@@ -141,6 +142,7 @@ jobs:
           node tests/browser-runtime.mjs
           node tests/browser-feature-parity.mjs
           node tests/browser-torrent-workspace.mjs
+          node tests/browser-adaptive-ui.mjs
 
   windows_browser:
     name: Windows browser candidate
@@ -171,6 +173,7 @@ jobs:
           node tests/browser-runtime.mjs
           node tests/browser-feature-parity.mjs
           node tests/browser-torrent-workspace.mjs
+          node tests/browser-adaptive-ui.mjs
 
   release_candidate:
     name: release candidate
