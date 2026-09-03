@@ -46,6 +46,7 @@ assert(progressCss.includes('.progress-track[data-progress-active=true] .progres
 assert(progressCss.includes('@media(prefers-reduced-motion:reduce)')&&progressCss.includes('html[data-motion="reduced"]'),'Torrent progress must honor both Reduced Motion authorities');
 assert(progressCss.includes('.progress-track--mobile-edge'),'Canonical progress skin must own the Mobile edge rail');
 assert(!/\.progress-cell\{/.test(appCss)&&!/\.progress-track\{/.test(appCss)&&!/\.progress-fill\{/.test(appCss),'Legacy Torrent progress skin must leave app.css when progress.css is canonical');
+assert(!appCss.includes('.virtual-list .virtual-row>:nth-child(3){display:none}')&&appCss.includes('.virtual-list .virtual-row:not(.torrent-mobile-card)>:nth-child(3){display:none}'),'Mobile generic virtual-list column hiding must not suppress the canonical Torrent progress rail');
 
 assert(spatial.includes('C.selectControl(')&&spatial.includes("capability:'tags'")&&spatial.includes('capabilitiesReady'),'SpatialRuntime must compose canonical facets while delegating capability policy');
 assert(!spatial.includes('ensureCapabilityDialog')&&!spatial.includes('W.CapabilityDialog={'),'SpatialRuntime must not retain a second capability dialog owner');
