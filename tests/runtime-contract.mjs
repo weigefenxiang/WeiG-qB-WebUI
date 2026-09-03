@@ -90,7 +90,7 @@ assert(!polishCss.includes('.connection-indicator::before')&&!polishCss.includes
 assert(polishCss.includes('.capability-badge')&&polishCss.includes('.capability-dialog')&&polishCss.includes('.connection-dialog'),'Canonical capability/connection explanation skins missing');
 assert(headerCss.includes('.topbar__actions{')&&headerCss.includes('margin-left:auto')&&headerCss.includes('.topbar__search{flex:0 1 320px'),'Header end anchor/bounded Search contract missing');
 assert(sharedUiCss.includes('dialog.dialog{')&&sharedUiCss.includes('overflow:hidden'),'Shared Dialog primitive owner missing');
-assert(sharedUiCss.includes('html[data-theme=light]{--ui-native-scheme:light}')&&sharedUiCss.includes('--ui-native-scheme:dark'),'Native Select must resolve explicit Light/Dark schemes');
+assert(sharedUiCss.includes('--ui-native-scheme:dark')&&/html\[data-theme=light\]\{[^}]*--ui-native-scheme:light(?:;|})/.test(sharedUiCss),'Native Select must resolve explicit Light/Dark schemes');
 const transfer=text('webui/private/scripts/transfer.js');
 assert(transfer.includes('W.Transfer=')&&transfer.includes('W.TransferRuntime=')&&transfer.includes('transfer-stats-dialog'),'Canonical Transfer owner missing');
 assert(transfer.includes('BUCKET_MAX=720')&&transfer.includes("label:'12 h'")&&transfer.includes('RAW_MAX=900'),'Bounded 12-hour Transfer history contract missing');
