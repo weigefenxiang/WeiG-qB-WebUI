@@ -37,9 +37,8 @@ jobs:
         run: sh -n installers/install.sh
       - name: Live regression script syntax
         run: |
-          bash -n tests/live-qb52.sh
-          sh -n tests/live-v036.sh
-          sh -n tests/live-v037.sh
+          sh -n tests/live.sh
+          bash -n tests/live-api.sh
       - name: PowerShell installer syntax
         shell: pwsh
         run: |
@@ -102,7 +101,7 @@ jobs:
         with:
           node-version: 22
       - name: Full fixture compatibility matrix
-        run: node tests/release-compat-v037.mjs
+        run: node tests/release-compat.mjs
       - name: Checkout qBittorrent upstream with all release tags
         uses: actions/checkout@v4
         with:
@@ -111,7 +110,7 @@ jobs:
           fetch-depth: 0
           filter: blob:none
       - name: Audit every official stable qB 4.x and 5.x tag from 4.1.9.1
-        run: node tests/upstream-release-audit-v037.mjs upstream-qb
+        run: node tests/upstream-release-audit.mjs upstream-qb
 
   browser:
     name: Linux browser candidate

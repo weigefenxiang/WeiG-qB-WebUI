@@ -11,8 +11,8 @@ Compatibility floor: **qBittorrent 4.1.9.1**
 
 1. One semantic purpose has one canonical component/controller/layout/data owner.
 2. Feature code does not invent local Button/Select/Card/Badge/Dialog/Popover/SettingRow systems when a canonical primitive exists.
-3. Active first-party runtime assets use stable semantic filenames, never release/version suffixes.
-4. Git history is the archive. Migrated legacy runtime is deleted, not aliased.
+3. All first-party repository files use stable responsibility-based filenames, never WeiG release/version suffixes or qB-version filenames.
+4. Git history is the archive. Historical WeiG runtime, tests and deployment tools are deleted, not aliased or preserved for compatibility.
 5. Source owners emit final DOM. First-party runtime must not use `MutationObserver` to reclaim, move, wrap, upgrade or repair UI.
 6. Presentation modules (`responsive`, `spatial`, `layout`, `polish`, `ux`) do not own qB clients, API polling or business state.
 7. Runtime coordination uses explicit semantic lifecycle events, not DOM observation.
@@ -41,6 +41,7 @@ Compatibility floor: **qBittorrent 4.1.9.1**
 30. Torrent Topbar is single-row on desktop; Search is the primary flexible item and shrinks before navigation/action controls wrap.
 31. Persistent global state uses the lowest-cost persistent surface and must not displace primary data merely for duplicate visibility.
 32. Passive duplicate product identity and redundant manual refresh do not occupy permanent Topbar space.
+33. qBittorrent/WebAPI version facts that define current capability boundaries remain explicit; repository filename neutrality must never erase messages such as `qBittorrent 5.0.0+` or `WebAPI 2.3.0+`.
 
 ### COMPAT-DEGRADE-001 — honest capability degradation
 
@@ -77,6 +78,18 @@ Canonical native Select, options and optgroups explicitly consume resolved light
 ### OWNER-RETIRE-001 — dormant compatibility code is still runtime
 
 When a canonical owner replaces another implementation, old call sites, shims, false branches, CSS selectors and test expectations leave runtime in the same change. Git history is the archive.
+
+### CURRENT-ONLY-001 — dev contains only the current WeiG architecture
+
+Historical WeiG release runtime, tests, deployment scripts and compatibility aliases do not remain in the current tree. Historical recovery uses Git history, tags and Releases. Current qBittorrent/WebAPI compatibility behavior is not historical baggage and remains tested.
+
+### FILE-NAMING-001 — filenames describe responsibility, not versions
+
+First-party runtime, test, deployment and documentation filenames are semantic and stable. Names such as `live-v037.sh`, `browser-ui-v036.mjs`, `platform-contract-v037.mjs` and `live-qb52.sh` are prohibited. Product/qB/WebAPI versions belong in `VERSION`, exact-SHA evidence, capability text, fixtures and release metadata.
+
+### TEST-CURRENT-001 — tests validate the current product contract
+
+Tests do not preserve old WeiG release architecture. If a behavior remains a current requirement, it is asserted by a current canonical test; old release-specific test files are deleted rather than renamed or wrapped.
 
 ### FACET-OWNER-001 — facet state/presentation are singular
 
@@ -190,7 +203,7 @@ Forbidden first-party architecture: `MutationObserver` repair/reclaim, observer-
 
 ## 5. Stable runtime assets
 
-Active first-party filenames are responsibility-based (`app.js`, `layout.css`, `settings.js`, `transfer.js`, `responsive.js`, `spatial.js`, `ui.css`, etc.). No active `*-vNNN.css/js`, alias/shim after migration or CSS correction layer over obsolete owners. Cache identity = stable semantic path + exact deployment SHA.
+Active first-party filenames are responsibility-based (`app.js`, `layout.css`, `settings.js`, `transfer.js`, `responsive.js`, `spatial.js`, `ui.css`, etc.). Tests, deployment scripts and docs follow the same rule. No active `*-vNNN.css/js`, version-labelled test/deploy file, alias/shim after migration or CSS correction layer over obsolete owners. Cache identity = stable semantic path + exact deployment SHA.
 
 ## 6. Canonical controls/dialogs
 
@@ -331,6 +344,7 @@ Verified logout: `SessionController.logout -> auth/logout -> protected probe -> 
 18. durable state is repeated on multiple permanent surfaces
 19. desktop telemetry cards consume primary workspace height despite cheaper persistent status surface
 20. passive qB identity and manual Refresh consume permanent Header width without primary workflow value
+21. old WeiG release test/deploy file is kept "for reference" beside the canonical current file
 ```
 
 Diagnosis order: owner -> upstream/API evidence -> performance budget -> normalization -> source component -> shared primitive -> explicit lifecycle -> final geometry -> delete obsolete owner/caller -> static + real interaction regression.
@@ -339,7 +353,7 @@ Diagnosis order: owner -> upstream/API evidence -> performance budget -> normali
 
 Dev `[ui]` exact-HEAD validation uses qB 4.1.9.1 + 5.2.0 representative fixtures in Linux Chromium plus smoke/static/syntax and upstream representative audit.
 
-Static gates reject versioned runtime, first-party MutationObserver, presentation API polling, second Selection/Transfer/Settings/Route/Connection owner, legacy qB4 Private resolver/caller, fixed Torrent viewport owner, route geometry in Spatial, feature-local native Select skin, retired Facet DOM, presentation DOM as state, qB product marker/manual Refresh runtime, duplicate Connection polling and second DHT/Peers writer.
+Static gates reject version-labelled repository filenames, versioned runtime, first-party MutationObserver, presentation API polling, second Selection/Transfer/Settings/Route/Connection owner, legacy qB4 Private resolver/caller, fixed Torrent viewport owner, route geometry in Spatial, feature-local native Select skin, retired Facet DOM, presentation DOM as state, qB product marker/manual Refresh runtime, duplicate Connection polling and second DHT/Peers writer.
 
 Browser gates execute:
 

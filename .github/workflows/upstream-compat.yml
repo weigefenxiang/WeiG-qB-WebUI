@@ -38,4 +38,4 @@ jobs:
             refs/tags/release-4.1.9.1:refs/tags/release-4.1.9.1 \
             refs/tags/release-5.2.0:refs/tags/release-5.2.0
       - name: Audit legacy and modern baselines
-        run: node tests/upstream-release-audit-v037.mjs upstream-qb --refs=release-4.1.9.1,release-5.2.0
+        run: node tests/upstream-release-audit.mjs upstream-qb --refs=release-4.1.9.1,release-5.2.0

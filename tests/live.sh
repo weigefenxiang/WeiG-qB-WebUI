@@ -2,17 +2,17 @@
 set -eu
 
 REPO="weigefenxiang/WeiG-qB-WebUI"
-VERSION="0.3.7"
 SHA=""
 TARGETS=""
 
 usage() {
   cat <<'EOF'
 Usage:
-  sh tests/live-v037.sh --sha <40-char-git-sha> --target <installed-webui-dir> [--target <installed-webui-dir> ...]
+  sh tests/live.sh --sha <40-char-git-sha> --target <installed-webui-dir> [--target <installed-webui-dir> ...]
 
 Each --target must point to an existing WeiG Alternate WebUI installation directory.
-The script never contains deployment-specific qB URLs, host paths, credentials or container names.
+The script downloads and deploys exactly the requested Git SHA, reads the candidate VERSION from that SHA, and never encodes a WeiG release version in its own filename or deployment paths.
+It never contains deployment-specific qB URLs, host paths, credentials or container names.
 It replaces only Alternate WebUI files and does NOT restart Docker or qBittorrent.
 EOF
 }
@@ -51,8 +51,10 @@ curl -fL "https://github.com/${REPO}/archive/${SHA}.tar.gz" -o "$TMP/source.tar.
 mkdir -p "$TMP/source"
 tar -xzf "$TMP/source.tar.gz" -C "$TMP/source"
 SRC="$(find "$TMP/source" -mindepth 2 -maxdepth 3 -type d -name webui | head -n1)"
-[ -n "$SRC" ] && [ -f "$SRC/private/index.html" ] && [ -f "$SRC/public/index.html" ] && [ -f "$SRC/public/login.html" ] || { echo "ERROR: downloaded archive does not contain a complete qBittorrent Alternate WebUI payload" >&2; exit 1; }
-[ "$(tr -d '\r\n ' < "$SRC/VERSION")" = "$VERSION" ] || { echo "ERROR: candidate VERSION is not $VERSION" >&2; exit 1; }
+[ -n "$SRC" ] && [ -f "$SRC/private/index.html" ] && [ -f "$SRC/public/index.html" ] && [ -f "$SRC/public/login.html" ] && [ -f "$SRC/VERSION" ] || { echo "ERROR: downloaded archive does not contain a complete qBittorrent Alternate WebUI payload" >&2; exit 1; }
+VERSION="$(tr -d '\r\n ' < "$SRC/VERSION")"
+printf '%s' "$VERSION" | grep -Eq '^[0-9]+([.][0-9]+){2}([+-][0-9A-Za-z.-]+)?$' || { echo "ERROR: candidate VERSION is invalid: $VERSION" >&2; exit 1; }
+echo "VERSION: $VERSION"
 
 update_metadata() {
   file="$1"
@@ -61,7 +63,7 @@ update_metadata() {
     -e "s#(\"version\"[[:space:]]*:[[:space:]]*\")[^\"]*(\")#\1${VERSION}\2#" \
     -e "s#(\"gitSha\"[[:space:]]*:[[:space:]]*\")[^\"]*(\")#\1${SHA}\2#" \
     -e "s#(\"installedAt\"[[:space:]]*:[[:space:]]*\")[^\"]*(\")#\1${NOW}\2#" \
-    -e 's#("installer"[[:space:]]*:[[:space:]]*")[^"]*(")#\1live-v037-test\2#' \
+    -e 's#("installer"[[:space:]]*:[[:space:]]*")[^"]*(")#\1live-test\2#' \
     "$file"
 }
 
@@ -70,8 +72,8 @@ prepare_target() {
   [ -n "$dest" ] || return 0
   [ -d "$dest" ] || { echo "ERROR: install directory not found: $dest" >&2; return 1; }
   [ -f "$dest/private/index.html" ] || { echo "ERROR: not a WeiG WebUI install: $dest" >&2; return 1; }
-  new="${dest}.new-v037-$$"
-  backup="${dest}.before-v037-${STAMP}"
+  new="${dest}.new-live-$$"
+  backup="${dest}.before-live-${STAMP}"
   [ ! -e "$backup" ] || { echo "ERROR: backup already exists: $backup" >&2; return 1; }
   rm -rf "$new"
   cp -a "$SRC" "$new"
@@ -79,8 +81,8 @@ prepare_target() {
   printf '%s\n' "$SHA" > "$new/GIT_SHA"
   if [ -f "$dest/private/weigg-install.json" ]; then
     cp -f "$dest/private/weigg-install.json" "$new/private/weigg-install.json"
-    update_metadata "$new/private/weigg-install.json"
   fi
+  update_metadata "$new/private/weigg-install.json"
   [ "$(tr -d '\r\n ' < "$new/VERSION")" = "$VERSION" ] || { rm -rf "$new"; echo "ERROR: staged VERSION invalid: $dest" >&2; return 1; }
   [ "$(tr -d '\r\n ' < "$new/GIT_SHA")" = "$SHA" ] || { rm -rf "$new"; echo "ERROR: staged SHA invalid: $dest" >&2; return 1; }
   [ -f "$new/public/index.html" ] && [ -f "$new/public/login.html" ] && [ -f "$new/private/index.html" ] || { rm -rf "$new"; echo "ERROR: staged Alternate WebUI entry points are incomplete: $dest" >&2; return 1; }
@@ -121,7 +123,7 @@ while IFS='|' read -r dest new backup; do
 done < "$PREPARED_FILE"
 
 echo
-echo "========== v0.3.7 LIVE TEST READY =========="
+echo "========== LIVE TEST READY =========="
 while IFS='|' read -r dest backup; do
   [ -n "$dest" ] || continue
   echo "Target:  $dest"
@@ -137,4 +139,4 @@ while IFS='|' read -r dest backup; do
   [ -n "$dest" ] || continue
   printf "  rm -rf '%s' && mv '%s' '%s'\n" "$dest" "$backup" "$dest"
 done < "$SWITCHED_FILE"
-echo "============================================"
+echo "====================================="

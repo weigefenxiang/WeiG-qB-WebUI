@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 const here=path.dirname(fileURLToPath(import.meta.url));
 const projectRoot=path.resolve(here,'..');
 const qbRoot=path.resolve(process.argv[2]||process.env.QB_UPSTREAM_DIR||'');
-assert.ok(qbRoot && fs.existsSync(qbRoot),'Usage: node tests/upstream-release-audit-v037.mjs <qBittorrent-clone> [--refs=release-4.1.9.1,release-5.2.0]');
+assert.ok(qbRoot && fs.existsSync(qbRoot),'Usage: node tests/upstream-release-audit.mjs <qBittorrent-clone> [--refs=release-4.1.9.1,release-5.2.0]');
 const refsArg=process.argv.find(x=>x.startsWith('--refs='));
 const requestedRefs=refsArg?refsArg.slice('--refs='.length).split(',').map(x=>x.trim()).filter(Boolean):[];
 const fullAudit=requestedRefs.length===0;
