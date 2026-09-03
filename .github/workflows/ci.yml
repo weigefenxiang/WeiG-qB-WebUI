@@ -70,6 +70,7 @@ jobs:
       - name: qB 4.1.9.1 and 5.2 semantic UI regressions
         run: |
           node tests/browser-runtime.mjs
+          node tests/browser-theme.mjs
           node tests/browser-feedback.mjs
           node tests/browser-feature-parity.mjs
           node tests/browser-torrent-workspace.mjs
@@ -144,6 +145,7 @@ jobs:
       - name: Semantic runtime browser matrix
         run: |
           node tests/browser-runtime.mjs
+          node tests/browser-theme.mjs
           node tests/browser-feedback.mjs
           node tests/browser-feature-parity.mjs
           node tests/browser-torrent-workspace.mjs
@@ -176,6 +178,7 @@ jobs:
         shell: pwsh
         run: |
           node tests/browser-runtime.mjs
+          node tests/browser-theme.mjs
           node tests/browser-feedback.mjs
           node tests/browser-feature-parity.mjs
           node tests/browser-torrent-workspace.mjs

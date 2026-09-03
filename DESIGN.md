@@ -52,6 +52,33 @@ When a modal needs native reliability it still uses `W.Components.selectControl(
 ### NATIVE-THEME-001 — native controls follow resolved theme
 Canonical native Select/options consume resolved Light/Dark tokens and `color-scheme`.
 
+### THEME-OWNER — one Theme preference/resolution authority
+`W.Theme` in `scripts/theme.js` is the only owner of Theme mode validation, resolved Light/Dark, System media listener, Smart Auto boundary scheduling, theme-color metadata and Theme lifecycle. `W.Config` persists preference only; Header and Settings are presentation callers.
+
+### THEME-MODE — saved Theme mode has four canonical values
+Theme preference is exactly `system / time / light / dark`. Header `◐` and Settings both reuse `W.Components.selectControl()` and write through `W.Theme.setMode()`; a second enum, toggle state or viewport-specific Theme controller is prohibited.
+
+### THEME-RESOLUTION — preference is not the rendered theme
+`system` and `time` resolve inside `W.Theme`; DOM, CSS and native controls consume only `html[data-theme=light|dark]`. Presentation code must not infer saved Theme preference from visible DOM state.
+
+### THEME-SYSTEM — System mode is event-driven
+System mode owns one live `prefers-color-scheme` change listener. OS/browser Light↔Dark changes apply without reload and without API, polling or a second state store.
+
+### THEME-TIME — Smart Auto schedules boundaries, not polling
+Smart Auto uses browser/device local time: Dark from 20:00 through 07:59, Light from 08:00 through 19:59. Runtime keeps only the next 08:00/20:00 boundary timeout and recalibrates on visibility/pageshow; minute polling is prohibited.
+
+### THEME-SURFACE — Light is a semantic white/blue-violet system
+Light uses a white canvas and white/very-light-blue surfaces with cool hairlines and blue/violet brand elevation. `spatial.css` owns shared surface/elevation tokens; shared/feature owners consume semantic variables. `light-fix.css`, tail-end Light correction layers and Light-specific `!important` patching are prohibited.
+
+### THEME-DARK-STABILITY — Light work does not redesign Dark
+When the requested scope is Light, existing Dark palette, shadow, hover, elevation and semantic color intent remain the baseline. Shared formulas may be tokenized only if the default token reproduces the existing Dark result; Dark redesign requires explicit scope.
+
+### THEME-MOTION — Theme truth is independent of animation
+System `prefers-reduced-motion` and WeiG `data-motion="reduced"` may remove decorative transition/animation but must not alter saved mode, resolved Light/Dark, System change handling or Smart Auto boundary behavior.
+
+### THEME-RETIRE — replaced Theme owners leave together
+When `W.Theme` is canonical, old `core.js` Theme resolution, `app.js::toggleTheme()`, direct `#theme-btn.onclick`, duplicate Theme enums/state and Light CSS repair layers must leave in the same change; no compatibility shim or dual owner remains.
+
 ### OWNER-RETIRE-001 — replaced owners leave runtime
 When a canonical owner replaces another implementation, old callers, selectors, events, state, CSS signal and test expectations leave in the same change.
 
@@ -186,6 +213,7 @@ Torrent progress visual skin/motion     css/progress.css
 Facet semantic facade                   W.LibraryController
 Facet composition                       W.SpatialRuntime
 Settings DOM/save                       W.SettingsRenderer / W.SettingsState
+Theme preference/resolution             W.Theme / scripts/theme.js
 Display time-zone state                 W.Time
 Select behavior                         W.Components.selectControl()
 Shared Select/Dialog primitive skin     css/ui.css
@@ -242,6 +270,8 @@ narrow >820px      40px Search icon              actions anchored right
 focused icon mode  same Search expands ~280px    action rail remains the anchor
 mobile <=820px     existing mobile trigger        same #search-input/app.search
 ```
+
+Theme `◐` is an icon-only presentation of the same canonical Select. Desktop remains in the action rail; Mobile uses the same `#theme-control` and a minimum 44px touch target.
 
 Search is elastic content; the action rail is the stable right-edge anchor.
 
@@ -321,7 +351,32 @@ Default completed lifetimes are `info 3800ms`, `success 3800ms`, `warning 4400ms
 
 The component adds zero qB requests, zero polling and zero `QBClient` instances. Add Torrent, Settings save/readback and RSS add/reload update the same card from real asynchronous state.
 
-## 12. Systemic failure modes
+## 12. Theme resolution and Light surface system
+
+```text
+W.Config.theme preference
+-> W.Theme
+-> resolved light | dark
+-> html[data-theme]
+-> canonical semantic tokens
+-> Desktop/Mobile presentation
+```
+
+`system` follows the browser/OS live color-scheme signal. `time` uses the local browser/device clock and changes only at the next 08:00 or 20:00 boundary. Neither mode creates a qB request, polling loop, second timer owner or DOM-repair path.
+
+Light visual hierarchy is deliberately different in luminance but not architecture:
+
+```text
+canvas          white / near-white
+panel/card      white / very-light cool blue
+hairline        cool blue-gray
+focus/elevation blue with restrained violet atmosphere
+semantic state existing success/warning/danger/info tokens
+```
+
+Shared spatial surfaces live in `css/spatial.css`; shared controls/Dialog remain in their canonical owners; Settings/Transfer/Logs/layout keep only feature-specific semantic variables. Dark values are the existing baseline and must resolve to the same visual intent after tokenization.
+
+## 13. Systemic failure modes
 
 ```text
 1. new UI wrapper while old owner remains
@@ -343,11 +398,15 @@ The component adds zero qB requests, zero polling and zero `QBClient` instances.
 17. Torrent progress animation changes width instead of decorating the real filled region
 18. Mobile creates a second Torrent progress state map or requests qB data again
 19. completed/paused/error Torrent states continue active download-style motion
+20. Header and Settings each maintain their own Theme enum/state
+21. Smart Auto polls every minute instead of scheduling the next boundary
+22. Light fixes append a correction stylesheet or `!important` selector layer
+23. Light tokenization silently redesigns the accepted Dark baseline
 ```
 
 Diagnosis order: Current Owner -> upstream capability -> performance -> canonical primitive -> state/render boundary -> responsive geometry -> retire old caller -> static contract -> real interaction regression.
 
-## 13. Validation contract
+## 14. Validation contract
 
 Representative browser validation covers qB 4.1.9.1 and 5.2.x in Dark/Light. It must execute and verify:
 
@@ -362,7 +421,13 @@ Connection hover explanation and click troubleshooting dialog from existing stat
 Desktop action rail remains at right edge at wide/medium/narrow desktop widths
 Display time-zone Select real wheel scroll + selection final state
 Search full/compact/icon presentation reuses one input/state
-Mobile reuses the same Search, capability and Settings owners
+Theme Header/Settings real Select interaction -> one saved W.Theme mode
+Theme System mode -> live OS/browser Light/Dark change without reload
+Theme Smart Auto -> 07:59 Dark, 08:00 Light, 19:59 Light, 20:00 Dark
+Theme Light -> visible Topbar/Statusbar/Settings/Input/Select/Dialog/Transfer/Logs white-based surfaces
+Theme Mobile -> same canonical control/owner and >=44px touch target
+Theme Reduced Motion -> unchanged saved/resolved truth with decorative motion removed
+Mobile reuses the same Search, capability, Settings and Theme owners
 Feedback four kinds + role semantics + long text wrapping
 Feedback max-four stack + strict finite FIFO + fifth-card oldest eviction
 Feedback manual/timeout right exit before removal + smooth reflow

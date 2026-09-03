@@ -1,4 +1,6 @@
 /* Canonical Transfer presentation. Business state and dialogs are owned by scripts/transfer.js; shared Dialog/Select skin is owned by css/ui.css. */
+:root{--transfer-stat-surface:linear-gradient(180deg,rgba(23,33,54,.72),rgba(9,15,27,.74));--transfer-chart-surface:linear-gradient(180deg,rgba(11,19,34,.90),rgba(5,10,19,.94));--transfer-chart-inset:inset 0 1px rgba(255,255,255,.045),inset 0 -24px 50px rgba(0,0,0,.10);--transfer-mode-surface:rgba(5,13,25,.38);--transfer-rate-surface:rgba(5,13,25,.20);--transfer-alt-dialog:linear-gradient(180deg,rgba(34,29,65,.98),rgba(17,20,39,.98));--transfer-alt-field:rgba(91,69,164,.055);--transfer-divider:rgba(255,255,255,.08);--transfer-mode-label:#c8b9ff;--transfer-alt-label:#d3c8ff}
+html[data-theme=light]{--transfer-stat-surface:linear-gradient(180deg,#fff,#f7faff);--transfer-chart-surface:linear-gradient(180deg,#fff,#f5f9ff);--transfer-chart-inset:inset 0 1px rgba(255,255,255,.98),inset 0 -24px 50px rgba(91,120,183,.035);--transfer-mode-surface:rgba(82,113,180,.055);--transfer-rate-surface:rgba(77,108,177,.04);--transfer-alt-dialog:linear-gradient(180deg,#fff,#f8f6ff);--transfer-alt-field:rgba(123,89,220,.055);--transfer-divider:rgba(51,73,112,.10);--transfer-mode-label:var(--text-primary);--transfer-alt-label:var(--text-primary)}
 .transfer-runtime-capsule{display:inline-flex;align-items:stretch;min-width:0;min-height:32px;border:1px solid rgba(56,214,255,.28);border-radius:10px;background:rgba(56,214,255,.055);overflow:hidden;box-shadow:inset 0 1px rgba(255,255,255,.035)}
 .transfer-runtime-capsule[data-mode="alt"]{border-color:var(--ui-alt-border);background:var(--ui-alt-surface)}
 .transfer-runtime-capsule button{border:0;background:transparent;color:inherit;font:inherit;cursor:pointer}
@@ -6,9 +8,9 @@
 .transfer-runtime-capsule__stats:hover,.transfer-runtime-capsule__stats:focus-visible{background:rgba(56,214,255,.09);box-shadow:inset 0 0 0 1px rgba(56,214,255,.12)}
 .transfer-runtime-capsule[data-mode="alt"] .transfer-runtime-capsule__stats:hover,.transfer-runtime-capsule[data-mode="alt"] .transfer-runtime-capsule__stats:focus-visible{background:rgba(137,108,255,.14)}
 .transfer-runtime-capsule .status-speed{display:inline-flex;align-items:center;gap:4px;min-height:0;white-space:nowrap;pointer-events:none}
-.transfer-capsule__mode{display:inline-grid;place-items:center;min-height:20px;padding:0 6px;border:1px solid rgba(171,145,255,.44);border-radius:999px;background:rgba(137,108,255,.14);color:#c8b9ff;font-size:10px;font-weight:800;letter-spacing:.05em;pointer-events:none}
+.transfer-capsule__mode{display:inline-grid;place-items:center;min-height:20px;padding:0 6px;border:1px solid rgba(171,145,255,.44);border-radius:999px;background:rgba(137,108,255,.14);color:var(--transfer-mode-label);font-size:10px;font-weight:800;letter-spacing:.05em;pointer-events:none}
 .transfer-capsule__mode[hidden]{display:none}
-.transfer-runtime-capsule__limits{display:grid;place-items:center;width:34px;min-width:34px;border:0;border-left:1px solid rgba(255,255,255,.08);background:transparent;color:var(--text-muted);font-size:16px;transition:background var(--motion-fast),color var(--motion-fast)}
+.transfer-runtime-capsule__limits{display:grid;place-items:center;width:34px;min-width:34px;border:0;border-left:1px solid var(--transfer-divider);background:transparent;color:var(--text-muted);font-size:16px;transition:background var(--motion-fast),color var(--motion-fast)}
 .transfer-runtime-capsule__limits:hover,.transfer-runtime-capsule__limits:focus-visible{background:rgba(114,151,255,.11);color:var(--text-primary)}
 
 .transfer-panel-dialog{--dialog-width:720px;--dialog-max-width:720px;--dialog-max-height:min(86dvh,760px);--dialog-padding:0;grid-template-rows:auto minmax(0,1fr)}
@@ -25,10 +27,10 @@
 .transfer-limit-dialog>.dialog__actions{margin:0;padding:0 22px 20px;gap:8px}
 
 .transfer-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-bottom:14px}
-.transfer-stat{min-width:0;padding:12px 13px;border:1px solid var(--border);border-radius:11px;background:linear-gradient(180deg,rgba(23,33,54,.72),rgba(9,15,27,.74));box-shadow:inset 0 1px rgba(255,255,255,.045)}
+.transfer-stat{min-width:0;padding:12px 13px;border:1px solid var(--border);border-radius:11px;background:var(--transfer-stat-surface);box-shadow:inset 0 1px rgba(255,255,255,.045)}
 .transfer-stat small{display:block;margin-bottom:6px;color:var(--text-muted);font-size:var(--text-caption)}
 .transfer-stat strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--text-item-primary);font-variant-numeric:tabular-nums}
-.transfer-chart-shell{position:relative;min-width:0;padding:12px;border:1px solid var(--border);border-radius:14px;background:linear-gradient(180deg,rgba(11,19,34,.90),rgba(5,10,19,.94));box-shadow:inset 0 1px rgba(255,255,255,.045),inset 0 -24px 50px rgba(0,0,0,.10)}
+.transfer-chart-shell{position:relative;min-width:0;padding:12px;border:1px solid var(--border);border-radius:14px;background:var(--transfer-chart-surface);box-shadow:var(--transfer-chart-inset)}
 .transfer-chart-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 2px 10px;min-width:0}
 .transfer-chart-toolbar strong{min-width:0;font-size:var(--text-item-primary)}
 .transfer-chart-toolbar .ui-select--native{--ui-select-h:34px;flex:0 0 auto;min-width:86px}
@@ -37,16 +39,16 @@
 .transfer-chart-legend span::before{content:"";display:inline-block;width:8px;height:8px;margin-right:6px;border-radius:999px;background:var(--accent-primary);box-shadow:0 0 10px rgba(114,151,255,.4)}
 .transfer-chart-legend span+span::before{background:var(--accent-cyan);box-shadow:0 0 10px rgba(56,214,255,.35)}
 
-.transfer-limit-dialog[data-mode="alt"]{border-color:var(--ui-alt-border);background:linear-gradient(180deg,rgba(34,29,65,.98),rgba(17,20,39,.98));box-shadow:var(--shadow-lg),0 0 52px rgba(137,108,255,.10),inset 0 1px rgba(255,255,255,.06)}
+.transfer-limit-dialog[data-mode="alt"]{border-color:var(--ui-alt-border);background:var(--transfer-alt-dialog);box-shadow:var(--shadow-lg),0 0 52px rgba(137,108,255,.10),inset 0 1px rgba(255,255,255,.06)}
 .transfer-limit-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0;margin-bottom:12px}
-.transfer-mode-switch{display:inline-flex;align-items:center;gap:4px;padding:3px;border:1px solid var(--border);border-radius:10px;background:rgba(5,13,25,.38)}
+.transfer-mode-switch{display:inline-flex;align-items:center;gap:4px;padding:3px;border:1px solid var(--border);border-radius:10px;background:var(--transfer-mode-surface)}
 .transfer-mode-switch button{min-width:72px;height:34px;min-height:34px;padding:0 12px;border:1px solid transparent;border-radius:7px;background:transparent;color:var(--text-muted);font:inherit;font-size:var(--text-label);font-weight:760;cursor:pointer}
 .transfer-mode-switch button.is-active[data-transfer-mode="normal"]{border-color:rgba(56,214,255,.30);background:rgba(56,214,255,.09);color:var(--text-primary)}
-.transfer-mode-switch button.is-active[data-transfer-mode="alt"]{border-color:var(--ui-alt-border);background:var(--ui-alt-surface);color:#d3c8ff}
+.transfer-mode-switch button.is-active[data-transfer-mode="alt"]{border-color:var(--ui-alt-border);background:var(--ui-alt-surface);color:var(--transfer-alt-label)}
 .transfer-unit-select{--ui-select-h:34px;flex:0 0 auto;min-width:116px}
 .transfer-rate-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0;min-width:0}
-.transfer-rate-field{display:grid;gap:6px;min-width:0;padding:10px 11px;border:1px solid var(--border);border-radius:10px;background:rgba(5,13,25,.20);color:var(--text-secondary)}
-.transfer-limit-dialog[data-mode="alt"] .transfer-rate-field{border-color:rgba(154,126,255,.23);background:rgba(91,69,164,.055)}
+.transfer-rate-field{display:grid;gap:6px;min-width:0;padding:10px 11px;border:1px solid var(--border);border-radius:10px;background:var(--transfer-rate-surface);color:var(--text-secondary)}
+.transfer-limit-dialog[data-mode="alt"] .transfer-rate-field{border-color:rgba(154,126,255,.23);background:var(--transfer-alt-field)}
 .transfer-rate-field__label{min-width:0;font-size:var(--text-label);font-weight:700}
 .transfer-rate-field__input{display:block;width:100%;min-width:0;height:36px;box-sizing:border-box;font-variant-numeric:tabular-nums}
 .transfer-limit-hint{margin:9px 0 0}

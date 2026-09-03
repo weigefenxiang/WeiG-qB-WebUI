@@ -36,7 +36,7 @@
       <div class="topbar__start"><button id="menu-btn" class="icon-btn mobile-only" type="button" data-i18n-aria="app.menu" aria-label="Open navigation">☰</button><button id="back-btn" class="icon-btn is-hidden" type="button" data-i18n-aria="app.back" aria-label="Back">←</button><button id="brand-btn" class="brand" type="button" aria-label="WeiG qB"><span class="brand__mark">W</span><span class="brand__text">WeiG qB</span></button></div>
       <nav id="app-nav" class="app-nav desktop-only" aria-label="Application"><button class="app-nav__item is-active" data-route="" type="button" data-i18n="nav.torrents">Torrents</button><button class="app-nav__item" data-route="search" type="button" data-capability="search" data-i18n="nav.search">Search</button><button class="app-nav__item" data-route="rss" type="button" data-capability="rss" data-i18n="nav.rss">RSS</button><button class="app-nav__item" data-route="logs" type="button" data-capability="logs" data-i18n="nav.logs">Logs</button><button class="app-nav__item" data-route="settings" type="button" data-i18n="nav.settings">Settings</button></nav>
       <div class="topbar__search"><label class="search-box" for="search-input"><span aria-hidden="true">⌕</span><input id="search-input" type="search" autocomplete="off" data-i18n-placeholder="search.torrents" placeholder="Search torrents…"></label></div>
-      <div class="topbar__actions"><button id="add-btn" class="btn btn--primary" type="button">＋ <span class="desktop-label" data-header-add-short>Add</span></button><button id="theme-btn" class="icon-btn" type="button" data-i18n-aria="app.theme" aria-label="Toggle theme">◐</button></div>
+      <div class="topbar__actions"><button id="add-btn" class="btn btn--primary" type="button">＋ <span class="desktop-label" data-header-add-short>Add</span></button><span id="theme-btn" class="theme-control-host" aria-label="Theme mode"></span></div>
     </header>
 
     <aside id="sidebar" class="sidebar surface surface--panel" aria-label="Torrent filters">
@@ -88,6 +88,7 @@
   <script src="scripts/capabilities.js?v=__WEIGG_GIT_SHA__"></script>
   <script src="scripts/components.js?v=__WEIGG_GIT_SHA__"></script>
   <script src="scripts/floating.js?v=__WEIGG_GIT_SHA__"></script>
+  <script src="scripts/theme.js?v=__WEIGG_GIT_SHA__"></script>
   <script src="scripts/time.js?v=__WEIGG_GIT_SHA__"></script>
   <script src="scripts/advanced-settings.js?v=__WEIGG_GIT_SHA__"></script>
   <script src="scripts/brand.js?v=__WEIGG_GIT_SHA__"></script>
