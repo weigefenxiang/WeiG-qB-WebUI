@@ -20,6 +20,8 @@ const docs=read('docs/008.Torrent工作区与状态所有权.md');
 for(const token of ['filter-shelf','tracker-nav','savepath-nav','category-nav','tag-nav','page-title','library-count-copy','last-refresh','qb-product-mark'])assert(!index.includes(token),`Retired Torrent DOM survived: ${token}`);
 assert(!index.includes('id="refresh-btn"'),'Retired topbar Refresh DOM survived');
 for(const token of ['facet-controls','sidebar-facet-slot','mobile-facet-slot','mobile-command-slot','torrent-selection-toolbar','torrent-action-slot','torrent-focus-slot','mobile-summary','status-connection','data-header-add-short'])assert(index.includes(token),`Canonical Torrent workspace slot missing: ${token}`);
+assert((index.match(/id="search-input"/g)||[]).length===1,'Torrent Search must have exactly one canonical input DOM owner');
+assert((index.match(/connection-indicator__dot/g)||[]).length===1,'ConnectionIndicator must have exactly one explicit status dot');
 assert(index.indexOf('id="add-btn"')<index.indexOf('id="theme-btn"'),'Header Add must remain before Theme');
 assert(!index.includes('id="qb-product-mark"')&&!index.includes('id="refresh-btn"'),'Passive qB product marker and manual refresh must retire from Topbar');
 assert(index.indexOf('id="resume-btn"')<index.indexOf('id="pause-btn"')&&index.indexOf('id="pause-btn"')<index.indexOf('id="more-actions-btn"')&&index.indexOf('id="more-actions-btn"')<index.indexOf('id="delete-btn"')&&index.indexOf('id="delete-btn"')<index.indexOf('id="torrent-focus-slot"'),'Desktop Torrent action order must be Start/Pause/More/Delete/Expand');
@@ -29,6 +31,7 @@ for(const token of ['facet-trigger','facet-popover','facet-search','filter-shelf
 for(const token of ['filter-shelf','facet-trigger','facet-popover','facet-search','connection-dock'])assert(!spatialCss.includes(token),`Spatial CSS retained retired presentation owner ${token}`);
 assert(!spatialCss.includes('.ui-select__native'),'Spatial CSS must not restyle canonical native Select skin');
 assert(floating.includes("typeof opts.onOpen==='function'")&&floating.includes('opts.onOpen(value,w)===false'),'Canonical Select must expose reusable open guard for capability-gated controls');
+assert(floating.includes('function internalMenuScroll(')&&floating.includes('if(internalMenuScroll(e))return;place(active)'),'Canonical floating Select must keep internal option scrolling separate from external anchor repositioning');
 
 assert(app.includes('W.LibraryController=LibraryController')&&app.includes('facetOptions:facetOptions'),'Torrent facet state must expose semantic LibraryController facade');
 for(const token of ['last-refresh',"setStatus('已刷新')",'page-title','tracker-nav','savepath-nav','category-nav','tag-nav','connectionLabel('])assert(!app.includes(token),`App retained retired presentation dependency ${token}`);
@@ -47,14 +50,16 @@ assert(responsive.includes("global.addEventListener('weigg:status-state'")&&resp
 assert(responsive.includes("document.getElementById('torrent-action-slot')")&&responsive.includes("toolbar:'#torrent-focus-slot'"),'Responsive toolbar/focus must use explicit canonical slots');
 assert(selection.includes('W.LibraryController&&W.LibraryController.state')&&!/#[a-z]+-nav/.test(selection.slice(selection.indexOf('function currentQuery'),selection.indexOf('function matchesQuery'))),'Selection-wide query must consume semantic state, not retired facet DOM');
 for(const token of ['page-title','library-count-copy','tracker-nav','savepath-nav','category-nav','tag-nav'])assert(!ux.includes(token),`UX retained retired presentation dependency ${token}`);
-assert(header.includes("W.InterfaceText.t('addShort')")&&!header.includes('qb-product-mark')&&headerCss.includes('flex-wrap:nowrap')&&headerCss.includes('.topbar__search{flex:1 1'),'Header must own short Add copy and one-line flexible Search geometry without retired qB marker');
+assert(header.includes("W.InterfaceText.t('addShort')")&&!header.includes('qb-product-mark'),'Header JS must own utility text without qB marker or Search state');
+assert(headerCss.includes('flex-wrap:nowrap')&&headerCss.includes('.topbar__search{flex:0 1 320px')&&headerCss.includes('@media(max-width:960px) and (min-width:821px)')&&headerCss.includes('.topbar__search .search-box:focus-within'),'Header CSS must own bounded 320/240/icon responsive Search geometry');
 assert(!headerCss.includes('.qb-product-mark'),'Header CSS must not retain qB product marker skin');
 
 assert(layoutCss.includes('grid-template-areas:"torrent storage transfer connection message"'),'Statusbar must expose torrent/storage/transfer/connection/message geometry');
 assert(layoutCss.includes('.statusbar>#status-connection{grid-area:connection')&&layoutCss.includes('.connection-indicator[data-connection="connected"]'),'ConnectionIndicator must use canonical Statusbar geometry and semantic state skin');
+assert(layoutCss.includes('.connection-indicator__dot{')&&layoutCss.includes('box-shadow:none')&&!layoutCss.includes('0 0 12px var(--success)'),'ConnectionIndicator must render one explicit dot without a second distinguishable glow ring');
 assert(layoutCss.includes('#list-view>.stats-grid{display:none!important}')&&layoutCss.includes('@media(max-width:820px)')&&layoutCss.includes('#list-view>.stats-grid{display:grid'),'Desktop summary must retire while Mobile Summary remains adaptive');
-assert(layoutCss.includes('@media(prefers-reduced-motion:reduce)')&&layoutCss.includes('.connection-indicator[data-connection="connected"] .connection-indicator__dot{animation:none}'),'Online glow must honor Reduced Motion');
+assert(layoutCss.includes('@media(prefers-reduced-motion:reduce)')&&layoutCss.includes('.connection-indicator[data-connection="connected"] .connection-indicator__dot{animation:none}'),'Online dot must honor Reduced Motion');
 assert(!layoutCss.includes('#filter-shelf'),'Layout CSS must not retain retired filter shelf');
-for(const rule of ['FACET-OWNER-001','PRESENTATION-STATE-001','TELEMETRY-PAINT-001','STATUS-NOISE-001','STATUS-PLACEMENT-001','ADAPTIVE-STATUS-001','LIVE-INDICATOR-001','MOTION-STATUS-001','HEADER-UTILITY-001','OWNER-RETIRE-001'])assert(docs.includes(rule),`Torrent workspace docs missing hard rule ${rule}`);
+for(const rule of ['FACET-OWNER-001','PRESENTATION-STATE-001','TELEMETRY-PAINT-001','STATUS-NOISE-001','STATUS-PLACEMENT-001','ADAPTIVE-STATUS-001','LIVE-INDICATOR-001','STATUS-SIGNAL-001','MOTION-STATUS-001','HEADER-UTILITY-001','HEADER-SEARCH-001','SELECT-SCROLL-001','OWNER-RETIRE-001'])assert(docs.includes(rule),`Torrent workspace docs missing hard rule ${rule}`);
 for(const phrase of ['new UI wrapper','shared component','primary workspace height','manual refresh'])assert(docs.toLowerCase().includes(phrase.toLowerCase()),`Systemic failure summary missing: ${phrase}`);
-console.log('Torrent workspace ownership contract passed: data-first desktop, mobile summary, canonical facets, semantic connection indicator, silent polling and one-line header.');
+console.log('Torrent workspace ownership contract passed: data-first desktop, canonical facets, single-signal Connection, scroll-stable Select, adaptive single-owner Search, silent polling and one-line header.');
