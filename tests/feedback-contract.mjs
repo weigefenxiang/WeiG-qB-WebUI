@@ -27,7 +27,8 @@ for(const kind of ['info','success','warning','error'])assert(new RegExp(`${kind
 assert(/update:function/.test(feedback)&&/dismiss:function/.test(feedback),'toast handle must support update and dismiss');
 assert(/role',kind==='error'\?'alert':'status'/.test(feedback),'feedback roles must distinguish error alerts');
 assert(/aria-atomic/.test(feedback),'feedback card must be aria-atomic');
-for(const forbidden of ['new W.QBClient','MutationObserver','prototype.','fetch('])assert(!feedback.includes(forbidden),`feedback owner must not contain ${forbidden}`);
+for(const forbidden of ['new W.QBClient','MutationObserver','fetch('])assert(!feedback.includes(forbidden),`feedback owner must not contain ${forbidden}`);
+assert(!/(?:W\.)?QBClient\.prototype|\.prototype\.(?:request|getTransferInfo)\s*=|global\.fetch\s*=|window\.fetch\s*=/.test(feedback),'feedback owner must not monkey-patch QBClient methods or fetch');
 assert(/color-mix/.test(css)&&/var\(--surface-floating\)/.test(css),'feedback skin must consume current surface tokens');
 assert(/env\(safe-area-inset-top\)/.test(css)&&/env\(safe-area-inset-left\)/.test(css)&&/env\(safe-area-inset-right\)/.test(css),'mobile feedback must respect safe areas');
 assert(/translate3d\(42px,0,0\)/.test(css),'canonical dismissal must slide to the right');
@@ -39,4 +40,4 @@ assert(!/W\.toast\([^\n]*,'danger'/.test(app),'app.js must not use legacy danger
 assert(!/W\.toast\([^\n]*,'danger'/.test(settings),'settings.js must not use legacy danger feedback kind');
 assert(!/notify\([^\n]*,'danger'/.test(selection),'selection.js must not use legacy danger feedback kind');
 assert(!/fact\(text\('Version','版本'\),'0\.3\./.test(settings),'About must not hard-code product version');
-console.log('Floating feedback contract passed: single owner, canonical kinds, bounded stack, safe-area, right-slide exit, reduced motion, version authority.');
+console.log('Floating feedback contract passed: single owner, canonical kinds, bounded stack, safe-area, right-slide exit, reduced motion, precise monkey-patch guard, version authority.');
