@@ -29,7 +29,7 @@ await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(p
 
 async function choose(page,root,value){const trigger=page.locator(`${root} .ui-select__trigger`);await trigger.click();const option=page.locator(`#weigg-floating-layer .ui-select__option[data-value="${value}"]`);await option.waitFor();await option.click();}
 async function surface(page,selector){return page.locator(selector).first().evaluate(n=>{const s=getComputedStyle(n);return{image:s.backgroundImage,color:s.backgroundColor,text:s.color,display:s.display,opacity:s.opacity};});}
-function whiteBased(s){return /rgb\((?:255|25[0-4]),\s*(?:255|25[0-4]),\s*(?:255|25[0-4])\)/.test(s.image)||/rgba?\((?:255|25[0-4]),\s*(?:255|25[0-4]),\s*(?:255|25[0-4])/.test(s.color);}
+function whiteBased(s){return [...`${s.image} ${s.color}`.matchAll(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/g)].some(([,r,g,b])=>Number(r)>=250&&Number(g)>=250&&Number(b)>=250);}
 async function openSettings(page){await page.locator('#app-nav [data-route="settings"]').click();await page.waitForFunction(()=>document.getElementById('settings-view')?.classList.contains('is-active'));await page.waitForSelector('#settings-content[data-settings-renderer="canonical"]');}
 
 const browser=await chromium.launch({headless:true});
