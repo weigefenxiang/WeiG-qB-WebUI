@@ -7,6 +7,7 @@ const assert=(ok,msg)=>{if(!ok)throw new Error(msg);};
 function ruleHas(css,selector,declaration,start=0,end=css.length){let pos=css.indexOf(selector,start);while(pos>=0&&pos<end){const open=css.indexOf('{',pos),close=open>=0?css.indexOf('}',open):-1;if(open>=0&&open<end&&close>=0&&css.slice(open+1,close).includes(declaration))return true;pos=css.indexOf(selector,pos+1);}return false;}
 const index=read('webui/private/index.html');
 const app=read('webui/private/scripts/app.js');
+const components=read('webui/private/scripts/components.js');
 const spatial=read('webui/private/scripts/spatial.js');
 const capabilities=read('webui/private/scripts/capabilities.js');
 const capabilityData=JSON.parse(read('webui/private/data/capabilities.json'));
@@ -14,8 +15,11 @@ const responsive=read('webui/private/scripts/responsive.js');
 const polish=read('webui/private/scripts/polish.js');
 const selection=read('webui/private/scripts/selection.js');
 const floating=read('webui/private/scripts/floating.js');
+const ui=read('webui/private/scripts/ui.js');
 const ux=read('webui/private/scripts/ux.js');
 const header=read('webui/private/scripts/header.js');
+const appCss=read('webui/private/css/app.css');
+const progressCss=read('webui/private/css/progress.css');
 const layoutCss=read('webui/private/css/layout.css');
 const polishCss=read('webui/private/css/polish.css');
 const spatialCss=read('webui/private/css/spatial.css');
@@ -29,6 +33,19 @@ assert((index.match(/id="search-input"/g)||[]).length===1,'Torrent Search must h
 assert((index.match(/connection-indicator__dot/g)||[]).length===1,'ConnectionIndicator must have exactly one explicit status dot');
 assert(index.indexOf('id="add-btn"')<index.indexOf('id="theme-btn"'),'Header Add must remain before Theme');
 assert(index.indexOf('id="resume-btn"')<index.indexOf('id="pause-btn"')&&index.indexOf('id="pause-btn"')<index.indexOf('id="more-actions-btn"')&&index.indexOf('id="more-actions-btn"')<index.indexOf('id="delete-btn"')&&index.indexOf('id="delete-btn"')<index.indexOf('id="torrent-focus-slot"'),'Desktop Torrent action order must be Start/Pause/More/Delete/Expand');
+
+// Torrent progress is one presentation owner: real qB progress width + local semantic state projection, no extra requests.
+for(const token of ['progressStates','function progressVisual(','function paintProgress(','C.progressVisual=progressVisual','C.progressTrack=function'])assert(components.includes(token),`Canonical Torrent progress owner missing ${token}`);
+for(const state of ['download','seed','complete','paused','checking','queued','stalled','error','idle'])assert(progressCss.includes(`[data-progress-state=${state}]`)||state==='idle'&&progressCss.includes('[data-progress-state=idle]'),`Torrent progress skin missing semantic state ${state}`);
+assert(components.includes("downloading:['download',true]")&&components.includes("uploading:['seed',true]")&&components.includes("pausedDL:['paused',false]")&&components.includes("pausedUP:['complete',false]")&&components.includes("error:['error',false]")&&components.includes("checkingDL:['checking',true]"),'Torrent progress semantic projection is incomplete');
+assert(components.includes("fill.style.width=visual.percent+'%'"),'Torrent progress width must remain derived from real qB progress');
+assert(!components.includes('new W.QBClient')&&!components.includes('getTorrents('),'Torrent progress presentation must not create a second qB client/request path');
+assert(ui.includes('C.progressTrack(t)')&&ui.includes("progress.classList.add('progress-track--mobile-edge')"),'Mobile two-line cards must reuse the canonical Torrent progress track');
+assert(!ui.includes('progressVisual={')&&!ui.includes('data-progress-state=download'),'Mobile UI must not duplicate Torrent progress state policy');
+assert(progressCss.includes('.progress-track[data-progress-active=true] .progress-fill::after')&&progressCss.includes('.progress-track[data-progress-active=true] .progress-fill::before'),'Active Torrent progress must own one canonical motion layer');
+assert(progressCss.includes('@media(prefers-reduced-motion:reduce)')&&progressCss.includes('html[data-motion="reduced"]'),'Torrent progress must honor both Reduced Motion authorities');
+assert(progressCss.includes('.progress-track--mobile-edge'),'Canonical progress skin must own the Mobile edge rail');
+assert(!/\.progress-cell\{/.test(appCss)&&!/\.progress-track\{/.test(appCss)&&!/\.progress-fill\{/.test(appCss),'Legacy Torrent progress skin must leave app.css when progress.css is canonical');
 
 assert(spatial.includes('C.selectControl(')&&spatial.includes("capability:'tags'")&&spatial.includes('capabilitiesReady'),'SpatialRuntime must compose canonical facets while delegating capability policy');
 assert(!spatial.includes('ensureCapabilityDialog')&&!spatial.includes('W.CapabilityDialog={'),'SpatialRuntime must not retain a second capability dialog owner');
@@ -80,5 +97,5 @@ const connectedDot='.connection-indicator[data-connection="connected"] .connecti
 assert(systemMotion>=0&&weiggMotion>systemMotion&&ruleHas(layoutCss,connectedDot,'animation:none',systemMotion,weiggMotion)&&ruleHas(layoutCss,firewalledDot,'animation:none',systemMotion,weiggMotion),'Connection motion must honor system Reduced Motion');
 assert(ruleHas(layoutCss,connectedDot,'animation:none',weiggMotion)&&ruleHas(layoutCss,firewalledDot,'animation:none',weiggMotion),'Connection motion must honor WeiG Reduced Motion');
 assert(!layoutCss.includes('#filter-shelf'),'Layout CSS must not retain retired filter shelf');
-for(const rule of ['FACET-OWNER-001','PRESENTATION-STATE-001','TELEMETRY-PAINT-001','STATUS-NOISE-001','STATUS-PLACEMENT-001','ADAPTIVE-STATUS-001','LIVE-INDICATOR-001','STATUS-SIGNAL-001','MOTION-STATUS-001','HEADER-UTILITY-001','HEADER-SEARCH-001','SELECT-SCROLL-001','RENDERED-SIGNAL-001','HEADER-END-ANCHOR-001','STATUS-EXPLAIN-001','CAPABILITY-OWNER-001','CAPABILITY-RANGE-001','CAPABILITY-BADGE-001','CAPABILITY-DIALOG-001','CAPABILITY-COST-001','CAPABILITY-VISIBLE-001','CAPABILITY-EXCEPTION-001','OWNER-RETIRE-001'])assert(docs.includes(rule),`Torrent workspace docs missing hard rule ${rule}`);
-console.log('Torrent workspace ownership contract passed: canonical capability ranges, one rendered Connection signal/help owner, end-anchored header, scroll-stable Select and shared mobile state.');
+for(const rule of ['FACET-OWNER-001','PRESENTATION-STATE-001','TELEMETRY-PAINT-001','STATUS-NOISE-001','STATUS-PLACEMENT-001','ADAPTIVE-STATUS-001','LIVE-INDICATOR-001','STATUS-SIGNAL-001','MOTION-STATUS-001','HEADER-UTILITY-001','HEADER-SEARCH-001','SELECT-SCROLL-001','RENDERED-SIGNAL-001','HEADER-END-ANCHOR-001','STATUS-EXPLAIN-001','CAPABILITY-OWNER-001','CAPABILITY-RANGE-001','CAPABILITY-BADGE-001','CAPABILITY-DIALOG-001','CAPABILITY-COST-001','CAPABILITY-VISIBLE-001','CAPABILITY-EXCEPTION-001','OWNER-RETIRE-001','TORRENT-PROGRESS-OWNER','TORRENT-PROGRESS-TRUTH','TORRENT-PROGRESS-STATE','TORRENT-PROGRESS-MOTION'])assert(docs.includes(rule),`Torrent workspace docs missing hard rule ${rule}`);
+console.log('Torrent workspace ownership contract passed: canonical capability ranges, truthful single-owner semantic Torrent progress with shared Mobile rail, one rendered Connection signal/help owner, end-anchored header, scroll-stable Select and shared mobile state.');

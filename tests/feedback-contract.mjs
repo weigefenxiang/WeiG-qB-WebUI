@@ -33,7 +33,11 @@ assert(/aria-atomic/.test(feedback),'feedback card must be aria-atomic');
 for(const forbidden of ['new W.QBClient','MutationObserver','fetch('])assert(!feedback.includes(forbidden),`feedback owner must not contain ${forbidden}`);
 assert(!/(?:W\.)?QBClient\.prototype|\.prototype\.(?:request|getTransferInfo)\s*=|global\.fetch\s*=|window\.fetch\s*=/.test(feedback),'feedback owner must not monkey-patch QBClient methods or fetch');
 assert(/animateStackInsertion/.test(feedback)&&/beforeTop=region\.getBoundingClientRect\(\)\.top/.test(feedback),'feedback insertion must preserve stack-owned non-overlapping geometry');
+assert(/dataset\.mode='activity'/.test(feedback)&&/is-indeterminate/.test(feedback),'persistent processing must expose the canonical indeterminate activity rail');
+assert(/dataset\.mode='lifetime'/.test(feedback)&&/--feedback-duration/.test(feedback),'finite feedback must expose a real lifetime rail');
+assert(!/progress\.hidden\s*=/.test(feedback),'processing activity rail must not be hidden by legacy duration logic');
 assert(/color-mix/.test(css)&&/var\(--surface-floating\)/.test(css),'feedback skin must consume current surface tokens');
+assert(/feedback-activity/.test(css)&&/data-mode=activity/.test(css)&&/data-mode=lifetime/.test(css),'feedback skin must own both activity and lifetime rail modes');
 assert(/env\(safe-area-inset-top\)/.test(css)&&/env\(safe-area-inset-left\)/.test(css)&&/env\(safe-area-inset-right\)/.test(css),'mobile feedback must respect safe areas');
 assert(/translate3d\(42px,0,0\)/.test(css),'canonical dismissal must slide to the right');
 assert(/prefers-reduced-motion/.test(css)&&/data-motion=reduced/.test(css),'feedback must honor both reduced-motion authorities');
@@ -51,4 +55,4 @@ for(const [name,source] of browserSources){
   assert(source.includes("path.resolve(here,'../VERSION')"),`${name} fixture must derive product version from canonical VERSION`);
   assert(!/version\s*:\s*['"]\d+\.\d+\.\d+['"]/.test(source),`${name} fixture must not hard-code a product version`);
 }
-console.log('Floating feedback contract passed: single owner, canonical kinds across first-party callers, bounded stack, safe-area, right-slide exit, reduced motion, non-overlap insertion ownership, precise monkey-patch guard, canonical version authority across browser fixtures.');
+console.log('Floating feedback contract passed: single owner, canonical kinds, activity/lifetime rails, bounded stack, safe-area, right-slide exit, reduced motion, non-overlap insertion ownership, precise monkey-patch guard, and canonical version authority.');

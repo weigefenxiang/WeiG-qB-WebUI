@@ -77,17 +77,23 @@ try{
   await page.waitForSelector('#torrent-list [data-hash]');
   await page.waitForFunction(()=>window.WeiG?.Feedback&&typeof WeiG.toast==='function');
 
-  // Real Add Torrent lifecycle: one processing card updates in place after the real API resolves.
+  // Real Add Torrent lifecycle: one processing card uses an activity rail, then updates in place after the real API resolves.
   await page.locator('#add-btn').click();
   await page.locator('#torrent-urls').fill('magnet:?xt=urn:btih:'+'a'.repeat(40));
   await page.locator('#add-submit').click();
   const processing=page.locator('.feedback-toast[data-kind="info"]',{hasText:'Adding torrent'}).first();
   await processing.waitFor();
   const addId=await processing.getAttribute('data-feedback-id');
-  assert(await processing.locator('.feedback-toast__progress').isHidden(),'indeterminate Add feedback must not run a fake lifetime progress');
+  const processingRail=processing.locator('.feedback-toast__progress');
+  assert(await processingRail.isVisible(),'indeterminate Add feedback must expose an activity rail');
+  assert(await processingRail.getAttribute('data-mode')==='activity','processing rail must be activity mode, not fake lifetime progress');
+  assert(await processingRail.evaluate(n=>getComputedStyle(n,'::before').animationName)==='feedback-activity','processing rail is not visibly active');
   await page.waitForFunction(id=>document.querySelector(`.feedback-toast[data-feedback-id="${id}"]`)?.dataset.kind==='success',addId);
   const added=page.locator(`.feedback-toast[data-feedback-id="${addId}"]`);
   assert((await added.textContent()).includes('Torrent added'),'Add success did not update the same feedback card');
+  const addedRail=added.locator('.feedback-toast__progress');
+  assert(await addedRail.getAttribute('data-mode')==='lifetime','completed Add feedback did not switch the same rail to lifetime mode');
+  assert(await addedRail.evaluate(n=>getComputedStyle(n,'::before').animationName)==='feedback-lifecycle','completed Add feedback lifetime rail is not synchronized to its finite duration');
 
   // Bounded stack, newest at the desktop bottom, no overlap.
   await page.evaluate(()=>{WeiG.Feedback.dismissAll();});
@@ -168,8 +174,10 @@ try{
   const settingsProcessing=page.locator('.feedback-toast[data-kind="info"]',{hasText:'Saving settings'}).first();
   await settingsProcessing.waitFor();
   const settingsId=await settingsProcessing.getAttribute('data-feedback-id');
+  assert(await settingsProcessing.locator('.feedback-toast__progress').getAttribute('data-mode')==='activity','Settings processing must use activity rail');
   await page.waitForFunction(id=>document.querySelector(`.feedback-toast[data-feedback-id="${id}"]`)?.dataset.kind==='success',settingsId);
   assert((await page.locator(`.feedback-toast[data-feedback-id="${settingsId}"]`).textContent()).includes('Settings saved'),'Settings save did not update the same feedback record');
+  assert(await page.locator(`.feedback-toast[data-feedback-id="${settingsId}"] .feedback-toast__progress`).getAttribute('data-mode')==='lifetime','Settings completion did not switch activity rail to lifetime');
   assert(prefs.listen_port===6999,'Settings fixture did not receive the submitted preference');
 
   // Real RSS add + list readback produces success.
@@ -181,6 +189,7 @@ try{
   const rssProcessing=page.locator('.feedback-toast[data-kind="info"]',{hasText:'Adding RSS feed'}).first();
   await rssProcessing.waitFor();
   const rssId=await rssProcessing.getAttribute('data-feedback-id');
+  assert(await rssProcessing.locator('.feedback-toast__progress').getAttribute('data-mode')==='activity','RSS processing must use activity rail');
   await page.waitForFunction(id=>document.querySelector(`.feedback-toast[data-feedback-id="${id}"]`)?.dataset.kind==='success',rssId);
   assert((await page.locator(`.feedback-toast[data-feedback-id="${rssId}"]`).textContent()).includes('RSS added'),'RSS add did not update the same feedback record');
 
@@ -206,7 +215,7 @@ try{
   const darkBg=await page.locator('.feedback-toast__surface').first().evaluate(n=>getComputedStyle(n).backgroundColor);
   assert(darkBg&&darkBg!=='rgba(0, 0, 0, 0)'&&darkBg!==lightBg,'feedback surface did not adapt between Light and Dark');
 
-  // WeiG Reduced Motion disables movement while preserving dismiss semantics.
+  // WeiG Reduced Motion disables movement/activity while preserving dismiss semantics.
   await page.evaluate(()=>{WeiG.Feedback.dismissAll();document.documentElement.dataset.motion='reduced';});
   await page.waitForTimeout(30);
   const reducedId=await page.evaluate(()=>WeiG.toast('reduced','success',{title:'Reduced',duration:5000}).id);
@@ -214,8 +223,16 @@ try{
   await reduced.waitFor();
   const transition=await reduced.locator('.feedback-toast__surface').evaluate(n=>getComputedStyle(n).transitionDuration);
   assert(transition==='0s'||transition.split(',').every(x=>parseFloat(x)===0),`reduced motion retained surface transition: ${transition}`);
+  const reducedLifetime=await reduced.locator('.feedback-toast__progress').evaluate(n=>getComputedStyle(n,'::before').animationName);
+  assert(reducedLifetime==='none','WeiG Reduced Motion retained lifetime rail animation');
   await reduced.locator('.feedback-toast__dismiss').click();
   await page.waitForFunction(id=>!document.querySelector(`.feedback-toast[data-feedback-id="${id}"]`),reducedId,{timeout:300});
+  const reducedActivityId=await page.evaluate(()=>WeiG.toast('reduced processing','info',{title:'Reduced processing',duration:0}).id);
+  const reducedActivity=page.locator(`.feedback-toast[data-feedback-id="${reducedActivityId}"] .feedback-toast__progress`);
+  await reducedActivity.waitFor();
+  assert(await reducedActivity.getAttribute('data-mode')==='activity','Reduced Motion processing lost activity semantics');
+  assert(await reducedActivity.evaluate(n=>getComputedStyle(n,'::before').animationName)==='none','WeiG Reduced Motion retained activity rail movement');
+  await page.evaluate(()=>WeiG.Feedback.dismissAll());
 
   assert(errors.length===0,`feedback browser errors: ${errors.join(' | ')}`);
   await context.close();
@@ -229,11 +246,14 @@ try{
   const systemReduced=reducedPage.locator(`.feedback-toast[data-feedback-id="${systemReducedId}"] .feedback-toast__surface`);
   await systemReduced.waitFor();
   const systemTransition=await systemReduced.evaluate(n=>getComputedStyle(n).transitionDuration);
-  const systemProgress=await reducedPage.locator(`.feedback-toast[data-feedback-id="${systemReducedId}"] .feedback-toast__progress`).evaluate(n=>getComputedStyle(n).animationName);
+  const systemProgress=await reducedPage.locator(`.feedback-toast[data-feedback-id="${systemReducedId}"] .feedback-toast__progress`).evaluate(n=>getComputedStyle(n,'::before').animationName);
   assert(systemTransition==='0s'||systemTransition.split(',').every(x=>parseFloat(x)===0),`system reduced motion retained surface transition: ${systemTransition}`);
   assert(systemProgress==='none','system reduced motion retained lifecycle animation');
+  const systemActivityId=await reducedPage.evaluate(()=>WeiG.toast('system processing','info',{title:'System processing',duration:0}).id);
+  const systemActivity=await reducedPage.locator(`.feedback-toast[data-feedback-id="${systemActivityId}"] .feedback-toast__progress`).evaluate(n=>({mode:n.dataset.mode,animation:getComputedStyle(n,'::before').animationName}));
+  assert(systemActivity.mode==='activity'&&systemActivity.animation==='none','system Reduced Motion must keep static activity semantics without movement');
   await reducedContext.close();
-  console.log('Floating feedback browser regression passed: real Add/Settings/RSS same-record lifecycle, bounded non-overlapping FIFO stack/reflow, right-slide dismiss, Light/Dark, long-text mobile safe-area and both Reduced Motion authorities.');
+  console.log('Floating feedback browser regression passed: real Add/Settings/RSS same-record activity-to-lifetime lifecycle, bounded non-overlapping FIFO stack/reflow, right-slide dismiss, Light/Dark, long-text mobile safe-area and both Reduced Motion authorities.');
 }finally{
   await browser.close();
   await new Promise(r=>server.close(r));

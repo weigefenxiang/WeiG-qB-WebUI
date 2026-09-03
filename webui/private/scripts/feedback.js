@@ -128,13 +128,21 @@
   function restartProgress(record){
     var progress=record.progress;
     if(!progress)return;
-    progress.classList.remove('is-running');
-    progress.style.setProperty('--feedback-duration',(record.duration||0)+'ms');
-    progress.hidden=!record.duration;
-    if(!record.duration)return;
+    progress.classList.remove('is-running','is-indeterminate');
+    progress.style.removeProperty('--feedback-duration');
+    if(record.duration){
+      progress.dataset.mode='lifetime';
+      progress.style.setProperty('--feedback-duration',record.duration+'ms');
+      progress.getBoundingClientRect();
+      requestAnimationFrame(function(){
+        if(progress.isConnected)progress.classList.add('is-running');
+      });
+      return;
+    }
+    progress.dataset.mode='activity';
     progress.getBoundingClientRect();
     requestAnimationFrame(function(){
-      if(progress.isConnected)progress.classList.add('is-running');
+      if(progress.isConnected)progress.classList.add('is-indeterminate');
     });
   }
   function finiteQueue(){
@@ -201,7 +209,7 @@
     record.leaveReason=reason||'manual';
     record.node.dataset.state='leaving';
     record.node.classList.add('is-leaving');
-    record.progress.classList.remove('is-running');
+    record.progress.classList.remove('is-running','is-indeterminate');
     var delay=reducedMotion()?0:220;
     clearTimeout(record.leaveTimer);
     record.leaveTimer=setTimeout(function(){record.leaveTimer=null;removeRecord(record);},delay);

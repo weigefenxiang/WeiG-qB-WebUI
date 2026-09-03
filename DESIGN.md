@@ -1,6 +1,6 @@
 # WeiG qB WebUI — Design System
 
-Version: **2.7**  
+Version: **2.8**  
 Status: **Current Semantic Ownership**  
 Theme: **Nebula Spatial Console**  
 Compatibility floor: **qBittorrent 4.1.9.1**
@@ -136,6 +136,9 @@ Exceptional upstream boundaries use declarative `any / all / not / exact` rules 
 ### FEEDBACK-TRUTH — presentation timers never fabricate business truth
 A timer controls only how long a completed notification remains visible. Processing uses `duration:0` and changes to success/warning/error only when the real Promise/business result resolves. No timer may fake success.
 
+### FEEDBACK-ACTIVITY — processing activity is indeterminate, not fake progress
+A `duration:0` processing card shows one indeterminate activity rail on the same canonical Feedback card. The rail means only “work is still active”; it never implies a business percentage. When the real result resolves, the same rail changes to the finite lifetime presentation.
+
 ### FEEDBACK-STACK — one bounded non-overlapping stack
 At most four feedback cards are visible. Finite auto-dismiss cards retire FIFO; a persistent processing card does not block later finite feedback. Capacity eviction retires the oldest card through the canonical leave lifecycle.
 
@@ -157,6 +160,18 @@ The canonical region uses polite live updates and additions/text relevance. Ordi
 ### FEEDBACK-RETIRE — the replaced Toast implementation leaves in the same change
 The old `core.js` Toast owner, old `.toast-region/.toast` CSS, `danger` Toast caller assumptions and stale tests are deleted rather than wrapped or aliased.
 
+### TORRENT-PROGRESS-OWNER — one progress projection and DOM chain
+`W.Components.progressVisual()` projects the torrent object already being rendered into the canonical progress semantic; `W.Components.progressTrack()` owns the DOM. Desktop and Mobile reuse that chain. No feature-local progress policy, qB client or polling path is allowed.
+
+### TORRENT-PROGRESS-TRUTH — width is real qBittorrent progress
+The filled width comes only from real `torrent.progress`. Decorative flow/sheen may move inside the filled area but never animates width to simulate business completion.
+
+### TORRENT-PROGRESS-STATE — semantic state controls color/activity
+Downloading, seeding, complete, paused, checking, queued, stalled and error states map locally to semantic progress color/activity from the torrent object already available to the renderer. State projection introduces zero network work and never infers business state from DOM.
+
+### TORRENT-PROGRESS-MOTION — activity is selective and reducible
+Only genuinely active download/seed/checking states use subtle flow/sheen. Completed, paused, queued, stalled and error remain static. System Reduced Motion and WeiG Reduced Motion disable decorative movement while preserving truthful width and semantic color.
+
 ## 3. Canonical owner map
 
 ```text
@@ -165,6 +180,9 @@ qB/WebAPI user-facing capability policy W.CapabilityRegistry + data/capabilities
 Capability badge/disabled/dialog        W.CapabilityRegistry
 Router URL/hash                         W.Router
 Route Frame + Torrent query/page/search app.js / W.AppState
+Torrent progress semantic projection    W.Components.progressVisual
+Torrent progress DOM                    W.Components.progressTrack / progressCell
+Torrent progress visual skin/motion     css/progress.css
 Facet semantic facade                   W.LibraryController
 Facet composition                       W.SpatialRuntime
 Settings DOM/save                       W.SettingsRenderer / W.SettingsState
@@ -238,6 +256,8 @@ Statusbar Torrent count | Free space | Transfer | Connection | actionable messag
 
 Desktop four-card Stats remains retired; Mobile Summary uses the same state. Action order is `Start -> Pause -> More -> Delete -> Expand`. Manual Refresh remains retired.
 
+Torrent progress width is real qB `torrent.progress`. The same canonical rail projects state as download/seed/complete/paused/checking/queued/stalled/error/idle. Download/seed/checking may show subtle motion inside the filled area; static states do not. Mobile uses the same progress projection/track as a thinner bottom-edge rail when Progress is enabled.
+
 ## 7. qB capability contract
 
 - qB4 Private/PT remains visible with `5+`; click -> shared capability Dialog -> filter unchanged -> `0 legacy Private tracker scan`.
@@ -293,11 +313,11 @@ business Promise/result
 -> W.Feedback record
 -> one canonical feedback card
 -> optional same-record update(...)
--> finite FIFO lifetime or persistent processing
+-> duration:0 activity rail OR finite lifetime rail
 -> leaving state -> right exit -> DOM removal
 ```
 
-Default completed lifetimes are `info 3800ms`, `success 3800ms`, `warning 4400ms`, `error 5200ms`. `duration:0` means persistent processing and has no fake lifecycle countdown. Desktop births from below and exits right; Mobile births from the top safe-area and exits right. Reduced Motion removes translation/scale spectacle without changing dismiss/timer semantics.
+Default completed lifetimes are `info 3800ms`, `success 3800ms`, `warning 4400ms`, `error 5200ms`. `duration:0` means persistent processing and shows an indeterminate activity rail, never fake business progress. The real business result updates that same card/rail into success/warning/error and a finite lifetime rail. Desktop births from below and exits right; Mobile births from the top safe-area and exits right. Reduced Motion removes translation/scale/activity spectacle without changing dismiss/timer semantics.
 
 The component adds zero qB requests, zero polling and zero `QBClient` instances. Add Torrent, Settings save/readback and RSS add/reload update the same card from real asynchronous state.
 
@@ -319,6 +339,10 @@ The component adds zero qB requests, zero polling and zero `QBClient` instances.
 13. old Toast owner remains under a new visual wrapper or danger alias
 14. timer changes a processing card to success without a business result
 15. Desktop and Mobile create separate feedback queues
+16. duration:0 processing hides all activity feedback or displays a fake percent countdown
+17. Torrent progress animation changes width instead of decorating the real filled region
+18. Mobile creates a second Torrent progress state map or requests qB data again
+19. completed/paused/error Torrent states continue active download-style motion
 ```
 
 Diagnosis order: Current Owner -> upstream capability -> performance -> canonical primitive -> state/render boundary -> responsive geometry -> retire old caller -> static contract -> real interaction regression.
@@ -342,8 +366,11 @@ Mobile reuses the same Search, capability and Settings owners
 Feedback four kinds + role semantics + long text wrapping
 Feedback max-four stack + strict finite FIFO + fifth-card oldest eviction
 Feedback manual/timeout right exit before removal + smooth reflow
-Feedback processing update reuses the same card for Add/Settings/RSS real Promise results
+Feedback real Add/Settings/RSS processing activity rail -> same-card finite lifetime rail
 Feedback Desktop/Light/Dark + Mobile top safe-area + both Reduced Motion authorities
+Torrent download/seed/complete/paused/error/checking/queued/stalled -> truthful width + semantic color/activity
+Torrent active motion -> both Reduced Motion authorities static
+Mobile Torrent progress -> same canonical state/width/rail, not a second owner
 ```
 
 Real exact-SHA qB 4.1.9.1 + 5.2.x LIVE remains mandatory before promotion. `main` never moves without explicit maintainer authorization.
