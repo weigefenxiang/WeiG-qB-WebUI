@@ -1,0 +1,32 @@
+import fs from 'node:fs/promises';
+import vm from 'node:vm';
+
+const registry=JSON.parse(await fs.readFile(new URL('../webui/private/data/capabilities.json',import.meta.url),'utf8'));
+const source=await fs.readFile(new URL('../webui/private/scripts/capabilities.js',import.meta.url),'utf8');
+function assert(ok,msg){if(!ok)throw new Error(msg);}
+const document={addEventListener(){},querySelectorAll(){return[];},createElement(){return{children:[],classList:{contains(){return false;},toggle(){}},dataset:{},setAttribute(){},appendChild(){},querySelector(){return null;}};},body:{appendChild(){}}};
+const window={WeiG:{buildAssetUrl:x=>x,I18n:{getLocale:()=> 'en-US'}},addEventListener(){},requestAnimationFrame:fn=>fn()};
+const context={window,document,fetch:async()=>({ok:true,json:async()=>registry}),requestAnimationFrame:fn=>fn(),console};
+vm.runInNewContext(source,context,{filename:'capabilities.js'});
+const R=window.WeiG.CapabilityRegistry;
+await R.load();
+assert(R.compareVersions('4.9.3','5.0.0')<0,'semantic version comparator must treat arbitrary 4.x patch as below 5.0.0');
+assert(R.compareVersions('5.0.0','5.0.0')===0,'semantic version comparator equality failed');
+assert(R.compareVersions('5.0.1','5.0.0')>0,'semantic version comparator patch ordering failed');
+assert(R.matchRange('4.9.2',{lt:'5.0.0'}),'lt range must accept arbitrary 4.9.2');
+assert(R.matchRange('4.9.3',{gte:'4.2.0',lt:'5.0.0'}),'bounded 4.x range must accept arbitrary patch');
+assert(!R.matchRange('5.0.0',{lt:'5.0.0'}),'lt range must reject boundary');
+assert(R.matchRange('5.0.0',{gte:'5.0.0'}),'gte range must include boundary');
+assert(R.matchRule({any:[{qb:{eq:'4.3.3'}},{webApi:{gte:'2.8.0'}}]},{qb:'4.3.3',webApi:'2.7.0'}),'any/exception rule failed');
+await R.bind({qbVersion:'4.1.9.1',webApiVersion:'2.2.1'});
+assert(!R.supports('privateFilter'),'qB 4.1.9.1 must not expose exact Private filter');
+assert(R.badgeFor('privateFilter')==='5+','Private filter badge must be qB-facing 5+');
+assert(!R.supports('tags'),'WebAPI 2.2.1 must not expose Tags');
+assert(R.badgeFor('tags')==='4.2+','WebAPI 2.3.0 must map to qBittorrent 4.2+ for users');
+await R.bind({qbVersion:'4.9.3',webApiVersion:'2.9.3'});
+assert(!R.supports('privateFilter'),'arbitrary qB 4.9.3 must remain below the 5.0.0 Private boundary');
+assert(R.supports('tags'),'4.x instance with sufficient WebAPI must support Tags');
+await R.bind({qbVersion:'5.0.0',webApiVersion:'2.11.2'});
+assert(R.supports('privateFilter'),'qB 5.0.0 must satisfy Private filter boundary');
+assert(R.supports('tags'),'qB 5.0.0 baseline WebAPI must satisfy Tags');
+console.log('Capability registry contract passed: semantic ranges, arbitrary patch versions, qB-facing WebAPI mapping, and 5.0.0 boundary.');

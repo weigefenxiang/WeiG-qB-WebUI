@@ -3,7 +3,7 @@
   var W=global.WeiG,U=W&&W.util,C=W&&W.Components;
   if(!W||!U||!W.QBClient||!W.VirtualList||!C)return;
 
-  var state={client:null,items:[],lastId:-1,types:new Set([1,2,4,8]),query:'',follow:true,virtual:null,timer:null,loading:false,active:false,root:null,sizeMode:localStorage.getItem('weigg.logs.sizeMode')||'auto',programmaticScroll:false};
+  var state={items:[],lastId:-1,types:new Set([1,2,4,8]),query:'',follow:true,virtual:null,timer:null,loading:false,active:false,root:null,sizeMode:localStorage.getItem('weigg.logs.sizeMode')||'auto',programmaticScroll:false};
   var MAX_ITEMS=5000;
   function tr(key,vars,fallback){var I=W.RuntimeI18n;return I&&I.t?I.t(key,vars):(fallback||key);}
   function onLogsRoute(){return W.Router&&W.Router.route&&W.Router.route().name==='logs';}
@@ -52,10 +52,9 @@
   function scrollLatest(){var list=state.root&&state.root.querySelector('.logs-list');if(!list)return;state.programmaticScroll=true;requestAnimationFrame(function(){list.__weiggVirtualScrollTop=0;list.scrollTop=0;if(state.virtual&&state.virtual.render)state.virtual.render();requestAnimationFrame(function(){state.programmaticScroll=false;});});}
   function merge(items,replace){items=Array.isArray(items)?items:[];if(replace)state.items=[];var known=new Set(state.items.map(function(x){return itemId(x);})),added=0;items.forEach(function(x){var id=itemId(x);if(Number.isFinite(id)&&known.has(id))return;state.items.push(x);added++;if(Number.isFinite(id))known.add(id);});state.items.sort(function(a,b){var ai=itemId(a),bi=itemId(b);if(Number.isFinite(ai)&&Number.isFinite(bi))return bi-ai;return timestampMs(b)-timestampMs(a);});if(state.items.length>MAX_ITEMS)state.items=state.items.slice(0,MAX_ITEMS);var ids=state.items.map(itemId).filter(Number.isFinite);state.lastId=ids.length?Math.max.apply(Math,ids):-1;return added;}
 
-  async function ensureClient(){if(state.client)return state.client;state.client=new W.QBClient();await state.client.detect();return state.client;}
-  async function fetchInitial(){if(state.loading)return;state.loading=true;try{var client=await ensureClient();if(!client.capabilities.logs){showUnsupported();return;}var items=await client.logs(-1);merge(items,true);renderRows(false,0);if(state.follow)scrollLatest();}catch(e){showError(e);}finally{state.loading=false;schedulePoll();}}
-  async function fetchIncremental(){if(state.loading||!state.active||!onLogsRoute()){schedulePoll();return;}state.loading=true;try{var client=await ensureClient();var items=await client.logs(state.lastId);if(Array.isArray(items)&&items.length){var added=merge(items,false);renderRows(false,added);}}catch(_e){}finally{state.loading=false;schedulePoll();}}
-  function showUnsupported(){var root=U.$('logs-content');if(!root)return;root.innerHTML='<div class="logs-message-state">'+tr('v036.logs.unsupported',null,'This qBittorrent instance does not expose the log API.')+'</div>';}
+  async function ensureClient(){var app=W.AppState;if(app&&app.client)return app.client;throw new Error('qBittorrent client is not ready.');}
+  async function fetchInitial(){if(state.loading)return;if(W.CapabilityRegistry&&!W.CapabilityRegistry.supports('logs')){W.CapabilityRegistry.open('logs');return;}state.loading=true;try{var client=await ensureClient(),items=await client.logs(-1);merge(items,true);renderRows(false,0);if(state.follow)scrollLatest();}catch(e){showError(e);}finally{state.loading=false;schedulePoll();}}
+  async function fetchIncremental(){if(state.loading||!state.active||!onLogsRoute()){schedulePoll();return;}state.loading=true;try{var client=await ensureClient(),items=await client.logs(state.lastId);if(Array.isArray(items)&&items.length){var added=merge(items,false);renderRows(false,added);}}catch(_e){}finally{state.loading=false;schedulePoll();}}
   function showError(e){var root=U.$('logs-content');if(!root)return;root.innerHTML='<div class="logs-message-state">'+tr('v036.logs.failed',{error:String(e&&e.message||e)},'Failed to read logs: '+String(e&&e.message||e))+'</div>';}
   function syncTopSearch(){var input=U.$('search-input');if(input&&onLogsRoute()&&input.value!==state.query)input.value=state.query;}
   function setQuery(q){state.query=String(q||'');var input=U.$('logs-local-search');if(input&&input.value!==state.query)input.value=state.query;renderRows(true,0);}

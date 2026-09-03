@@ -3,28 +3,25 @@
   var W=global.WeiG=global.WeiG||{},C=W.Components,U=W.util;
   if(!W.QBClient||!C||!U||W.Transfer)return;
 
-  var last=null,samples=[],minuteBuckets=[],RAW_MAX=900,BUCKET_MAX=720,client=null,clientReady=null,statsDialog=null,limitDialog=null,chartWindow=60,rateUnitChoice=localStorage.getItem('weigg.transferUnit')||'Auto',displayRateUnit='MiB/s',limitMode='normal';
+  var last=null,samples=[],minuteBuckets=[],RAW_MAX=900,BUCKET_MAX=720,statsDialog=null,limitDialog=null,chartWindow=60,rateUnitChoice=localStorage.getItem('weigg.transferUnit')||'Auto',displayRateUnit='MiB/s',limitMode='normal';
   var snapshot={dhtNodes:null,peers:null,freeSpace:null},mainRid=0,metadataTimer=null,metadataPending=null;
   var UNITS={'KiB/s':1024,'MiB/s':1048576,'GiB/s':1073741824};
   var limits={normal:{down:0,up:0},alt:{down:0,up:0}};
-  var proto=W.QBClient.prototype,base=proto.getTransferInfo;
 
   function zh(){return !!(W.I18n&&W.I18n.getLocale&&W.I18n.getLocale()==='zh-CN');}
   function label(en,cn){return zh()?cn:en;}
-  function getClient(){if(!client)client=new W.QBClient();if(!clientReady)clientReady=Promise.resolve(client.detect()).catch(function(){return client;});return clientReady.then(function(){return client;});}
+  function getClient(){var app=W.AppState;if(app&&app.client)return Promise.resolve(app.client);return Promise.reject(new Error(label('qBittorrent client is not ready.','qBittorrent 客户端尚未就绪。')));}
   function peerValue(info){if(info&&info.total_peer_connections!=null)return Number(info.total_peer_connections);if(info&&info.total_peer_connections_count!=null)return Number(info.total_peer_connections_count);if(info&&info.peers!=null)return Number(info.peers);return null;}
   function mergeSnapshot(info){info=info||{};var dht=info.dht_nodes!=null?info.dht_nodes:info.dhtNodes,peers=peerValue(info),free=info.free_space_on_disk!=null?info.free_space_on_disk:info.freeSpace;if(dht!=null&&Number.isFinite(Number(dht)))snapshot.dhtNodes=Number(dht);if(peers!=null&&Number.isFinite(peers))snapshot.peers=peers;if(free!=null&&Number.isFinite(Number(free)))snapshot.freeSpace=Number(free);return snapshot;}
   function addMinuteSample(sample){var minute=Math.floor(sample.t/60000)*60000,b=minuteBuckets[minuteBuckets.length-1];if(!b||b.t!==minute){b={t:minute,dlSum:0,upSum:0,dlMax:0,upMax:0,count:0};minuteBuckets.push(b);if(minuteBuckets.length>BUCKET_MAX)minuteBuckets.splice(0,minuteBuckets.length-BUCKET_MAX);}b.dlSum+=sample.dl;b.upSum+=sample.up;b.dlMax=Math.max(b.dlMax,sample.dl);b.upMax=Math.max(b.upMax,sample.up);b.count++;}
-  function emit(info){last=info||{};mergeSnapshot(last);var sample={t:Date.now(),dl:Number(last.dl_info_speed)||0,up:Number(last.up_info_speed)||0};samples.push(sample);if(samples.length>RAW_MAX)samples.splice(0,samples.length-RAW_MAX);addMinuteSample(sample);try{global.dispatchEvent(new CustomEvent('weigg:transfer',{detail:{info:last,sample:sample,snapshot:Object.assign({},snapshot)}}));}catch(_e){}}
+  function ingest(info){last=info||{};mergeSnapshot(last);var sample={t:Date.now(),dl:Number(last.dl_info_speed)||0,up:Number(last.up_info_speed)||0};samples.push(sample);if(samples.length>RAW_MAX)samples.splice(0,samples.length-RAW_MAX);addMinuteSample(sample);try{global.dispatchEvent(new CustomEvent('weigg:transfer',{detail:{info:last,sample:sample,snapshot:Object.assign({},snapshot)}}));}catch(_e){}}
   function emitMainData(state){try{global.dispatchEvent(new CustomEvent('weigg:maindata',{detail:{serverState:state||{},rid:mainRid,snapshot:Object.assign({},snapshot)}}));}catch(_e){}}
-
-  if(base&&!proto.__weiggTransferRuntime){proto.__weiggTransferRuntime=true;proto.getTransferInfo=async function(){var info=await base.apply(this,arguments);emit(info);return info;};}
 
   async function refreshMetadata(){if(metadataPending)return metadataPending;metadataPending=getClient().then(function(qb){return qb.getMainData(mainRid);}).then(function(data){var next=Number(data&&data.rid);if(Number.isFinite(next)&&next>=0)mainRid=next;var state=data&&data.server_state||{};mergeSnapshot(state);emitMainData(state);return state;}).catch(function(){mainRid=0;return null;}).finally(function(){metadataPending=null;});return metadataPending;}
   function startMetadata(){clearInterval(metadataTimer);refreshMetadata();metadataTimer=setInterval(function(){if(!document.hidden)refreshMetadata();},30000);}
   function bucketSamples(){return minuteBuckets.map(function(b){return{t:b.t+30000,dl:b.count?b.dlSum/b.count:0,up:b.count?b.upSum/b.count:0,dlMax:b.dlMax,upMax:b.upMax,count:b.count};});}
 
-  W.TransferRuntime={last:function(){return last;},samples:function(){return samples.slice();},minuteBuckets:function(){return bucketSamples();},snapshot:function(){return Object.assign({},snapshot);},merge:mergeSnapshot,refreshMetadata:refreshMetadata};
+  W.TransferRuntime={last:function(){return last;},samples:function(){return samples.slice();},minuteBuckets:function(){return bucketSamples();},snapshot:function(){return Object.assign({},snapshot);},merge:mergeSnapshot,ingest:ingest,refreshMetadata:refreshMetadata};
 
   function unitFor(bytes){var n=Math.max(0,Number(bytes)||0);if(n<UNITS['MiB/s'])return'KiB/s';if(n<UNITS['GiB/s'])return'MiB/s';return'GiB/s';}
   function autoUnit(state){var max=Math.max(Number(state&&state.down)||0,Number(state&&state.up)||0);return max>0?unitFor(max):'MiB/s';}
