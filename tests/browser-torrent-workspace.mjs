@@ -21,7 +21,7 @@ const visualStates=[
 ];
 const torrents=Array.from({length:55},(_,i)=>{
   const v=visualStates[i]||{state:i%5===0?'uploading':'downloading',progress:i%5===0?1:.45,dlspeed:i%2?0:1200,upspeed:i%3?0:240};
-  return {hash:String(i+1).padStart(40,'0'),name:`Workspace Torrent ${i+1}`,size:1048576*(i+1),progress:v.progress,dlspeed:v.dlspeed,upspeed:v.upspeed,eta:3600,state:v.state,ratio:.2,tracker:i%2?'https://tracker.two.example/announce':'https://tracker.one.example/announce',category:i%2?'Movies':'',tags:i%3?'Fixture':'',added_on:1000+i,save_path:i%2?'/downloads/movies':'/downloads',private:i===0};
+  return {hash:String(i+1).padStart(40,'0'),name:`Workspace Torrent ${i+1}`,size:1048576*(i+1),progress:v.progress,dlspeed:v.dlspeed,upspeed:v.upspeed,eta:3600,state:v.state,ratio:.2,tracker:i%2?'https://tracker.two.example/announce':'https://tracker.one.example/announce',category:i%2?'Movies':'',tags:i%3?'Fixture':'',added_on:i<visualStates.length?10000-i:1000+i,save_path:i%2?'/downloads/movies':'/downloads',private:i===0};
 });
 const mime={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.ico':'image/x-icon'};
 const assert=(ok,msg)=>{if(!ok)throw new Error(msg);};
@@ -119,7 +119,9 @@ try{
     await page.locator('#menu-btn').click();await page.waitForFunction(()=>document.getElementById('sidebar')?.classList.contains('is-open'));
     const order=await page.evaluate(()=>{const filter=document.getElementById('filter-nav').getBoundingClientRect(),facets=document.getElementById('sidebar-facet-slot').getBoundingClientRect();return{filterBottom:filter.bottom,facetTop:facets.top,facets:document.querySelectorAll('#facet-controls .facet-control').length};});
     assert(order.facets===4&&order.facetTop>=order.filterBottom,`${name}: Drawer facets are not below Torrent state filters (${JSON.stringify(order)})`);
-    await page.locator('#drawer-scrim').click();
+    const scrim=page.locator('#drawer-scrim'),scrimBox=await scrim.boundingBox(),sidebarBox=await page.locator('#sidebar').boundingBox();
+    assert(scrimBox&&sidebarBox&&scrimBox.x+scrimBox.width-16>sidebarBox.x+sidebarBox.width,`${name}: Drawer has no visible scrim close target`);
+    await scrim.click({position:{x:Math.max(1,scrimBox.width-16),y:Math.max(1,Math.min(scrimBox.height-16,scrimBox.height/2))}});await page.waitForFunction(()=>!document.getElementById('sidebar')?.classList.contains('is-open'));
 
     // Compact toolbar retains a 44px interaction box while visible surface is inset by CSS.
     const toolbarGeometry=await page.evaluate(()=>{const selection=document.querySelector('#selection-control .ui-select__trigger'),pageSize=document.querySelector('#page-size-control .ui-select__trigger'),columns=document.querySelector('.mobile-columns-button'),sort=document.querySelector('.mobile-sort-control .ui-select__trigger');return [selection,pageSize,columns,sort].map(n=>n&&({h:n.getBoundingClientRect().height,display:getComputedStyle(n).display}));});
