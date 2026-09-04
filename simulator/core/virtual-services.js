@@ -82,8 +82,8 @@ export function searchStatus(world,id,now=Date.now()){
 
 export function searchResults(world,id,limit=50,offset=0,now=Date.now()){
   const job=searchJob(world,id);if(!job)return{status:'Stopped',total:0,results:[]};
-  const visible=visibleSearchCount(job,now),start=clampInt(offset,0,visible),take=clampInt(limit,1,500);
-  return{status:job.stopped||visible>=job.results.length?'Stopped':'Running',total:visible,results:job.results.slice(start,start+take)};
+  const visible=visibleSearchCount(job,now),start=clampInt(offset,0,visible),take=clampInt(limit,1,500),end=Math.min(visible,start+take);
+  return{status:job.stopped||visible>=job.results.length?'Stopped':'Running',total:visible,results:job.results.slice(start,end)};
 }
 
 export function searchStop(world,id){const job=searchJob(world,id);if(!job)return false;job.stopped=true;return true;}
