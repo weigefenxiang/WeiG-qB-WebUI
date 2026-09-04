@@ -48,7 +48,7 @@ async function assertNoSidebarTooltip(page,selector,label){
 }
 
 async function assertInline(page,selector,badgeCopy,label){
-  const g=await page.locator(selector).evaluate(n=>{const badge=n.querySelector(':scope > .capability-badge');if(!badge)return null;const text=Array.from(n.childNodes).find(x=>x.nodeType===Node.TEXT_NODE&&x.textContent.trim());if(!text)return null;const range=document.createRange();range.selectNodeContents(text);const tr=range.getBoundingClientRect(),br=badge.getBoundingClientRect(),style=getComputedStyle(n);return{gap:br.left-tr.right,badge:badge.textContent.trim(),cssGap:style.columnGap||style.gap};});
+  const g=await page.locator(selector).evaluate(n=>{const badge=n.querySelector(':scope > .capability-badge');if(!badge)return null;const walker=document.createTreeWalker(n,NodeFilter.SHOW_TEXT);let text=null,current;while((current=walker.nextNode())){if(!badge.contains(current)&&current.textContent.trim()){text=current;break;}}if(!text)return null;const range=document.createRange();range.selectNodeContents(text);const tr=range.getBoundingClientRect(),br=badge.getBoundingClientRect(),style=getComputedStyle(n);return{gap:br.left-tr.right,badge:badge.textContent.trim(),cssGap:style.columnGap||style.gap,text:text.textContent.trim()};});
   assert(g&&g.badge===badgeCopy&&g.gap>=10&&g.gap<=14,`${label}: inline capability gap must be standardized near 12px ${JSON.stringify(g)}`);
   await assertNoSidebarTooltip(page,selector,label);
 }
