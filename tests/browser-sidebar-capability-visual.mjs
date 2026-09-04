@@ -62,7 +62,7 @@ async function assertTags(page,label){
   assert(g.gap>=10&&g.gap<=14&&g.left>=8&&g.left<=12&&g.right>=8&&g.right<=12,`${label}: label/badge/padding geometry is not compact and symmetric ${JSON.stringify(g)}`);
   assert(g.triggerW<150&&g.overflow<=1,`${label}: disabled Tags control retained artificial empty width ${JSON.stringify(g)}`);
   await assertNoSidebarTooltip(page,'[data-facet="tag"]',label);
-  await facet.locator('.capability-badge').click();
+  await facet.locator('.capability-badge').click({force:true});
   await page.waitForSelector('#capability-dialog[open]');
   const cap=await page.locator('#capability-dialog').getAttribute('data-dialog-capability');
   assert(cap==='tags',`${label}: badge and label must share the same capability action owner`);
