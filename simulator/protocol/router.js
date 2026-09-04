@@ -3,6 +3,11 @@ import {
   peers,properties,removeTags,renameTorrent,setCategory,setForceStart,setPaused,setPreferences,
   setTorrentLimit,transferInfo,listTorrents
 } from '../core/engine.js';
+import {
+  addTrackers,applyRuntimePolicies,banPeers,editTracker,filterBannedPeers,movePriority,
+  reannounceTorrents,recheckTorrents,removeTrackers,setAutoManagement,setFilePriority,setLocation,
+  toggleFirstLast,toggleSequential
+} from '../core/torrent-actions.js';
 import {atLeast} from '../core/profiles.js';
 
 function json(value,status=200,headers={}){
@@ -60,6 +65,7 @@ export async function handleApi(world,request,url=new URL(request.url)){
   if(index<0)return notFound();
   const path=url.pathname.slice(index+marker.length).replace(/^\/+/, '');
   const method=request.method.toUpperCase();
+  applyRuntimePolicies(world,Date.now());
 
   if(path==='auth/login'&&method==='POST'){
     const form=await formObject(request);
@@ -114,11 +120,14 @@ export async function handleApi(world,request,url=new URL(request.url)){
   if(path==='transfer/setUploadLimit'&&method==='POST'){
     const f=await formObject(request);world.globalUploadLimit=Math.max(0,Math.round(Number(f.limit)||0));return empty();
   }
+  if(path==='transfer/banPeers'&&method==='POST'){
+    const f=await formObject(request);banPeers(world,f.peers);return empty();
+  }
 
   if(path==='sync/maindata'&&method==='GET')return json(mainData(world,url.searchParams.get('rid')||0));
   if(path==='sync/torrentPeers'&&method==='GET'){
     const hash=url.searchParams.get('hash')||'';
-    return json({rid:1,full_update:true,peers:peers(world,hash)});
+    return json({rid:1,full_update:true,peers:filterBannedPeers(world,peers(world,hash))});
   }
 
   if(path==='torrents/info'&&method==='GET')return json(listTorrents(world,Object.fromEntries(url.searchParams.entries())));
@@ -146,8 +155,35 @@ export async function handleApi(world,request,url=new URL(request.url)){
   if(path==='torrents/delete'&&method==='POST'){
     const f=await formObject(request);deleteTorrents(world,f.hashes);return empty();
   }
+  if(path==='torrents/recheck'&&method==='POST'){
+    const f=await formObject(request);recheckTorrents(world,f.hashes);return empty();
+  }
+  if(path==='torrents/reannounce'&&method==='POST'){
+    const f=await formObject(request);reannounceTorrents(world,f.hashes);return empty();
+  }
   if(path==='torrents/setForceStart'&&method==='POST'){
     const f=await formObject(request);setForceStart(world,f.hashes,String(f.value)==='true');return empty();
+  }
+  if(path==='torrents/setAutoManagement'&&method==='POST'){
+    const f=await formObject(request);setAutoManagement(world,f.hashes,String(f.enable)==='true');return empty();
+  }
+  if(path==='torrents/toggleSequentialDownload'&&method==='POST'){
+    const f=await formObject(request);toggleSequential(world,f.hashes);return empty();
+  }
+  if(path==='torrents/toggleFirstLastPiecePrio'&&method==='POST'){
+    const f=await formObject(request);toggleFirstLast(world,f.hashes);return empty();
+  }
+  if(path==='torrents/topPrio'&&method==='POST'){
+    const f=await formObject(request);movePriority(world,f.hashes,'top');return empty();
+  }
+  if(path==='torrents/bottomPrio'&&method==='POST'){
+    const f=await formObject(request);movePriority(world,f.hashes,'bottom');return empty();
+  }
+  if(path==='torrents/setLocation'&&method==='POST'){
+    const f=await formObject(request);setLocation(world,f.hashes,f.location);return empty();
+  }
+  if(path==='torrents/filePrio'&&method==='POST'){
+    const f=await formObject(request);return setFilePriority(world,f.hash,f.id,f.priority)?empty():notFound();
   }
   if(path==='torrents/setDownloadLimit'&&method==='POST'){
     const f=await formObject(request);setTorrentLimit(world,f.hashes,'download',f.limit);return empty();
@@ -169,6 +205,16 @@ export async function handleApi(world,request,url=new URL(request.url)){
   if(path==='torrents/rename'&&method==='POST'){
     const f=await formObject(request);return renameTorrent(world,String(f.hash||''),String(f.name||''))?empty():notFound();
   }
+  if(path==='torrents/addTrackers'&&method==='POST'){
+    const f=await formObject(request);return addTrackers(world,f.hash,f.urls)?empty():notFound();
+  }
+  if(path==='torrents/removeTrackers'&&method==='POST'){
+    const f=await formObject(request);return removeTrackers(world,f.hash,f.urls)?empty():notFound();
+  }
+  if(path==='torrents/editTracker'&&method==='POST'){
+    const f=await formObject(request),oldUrl=f.url??f.origUrl;
+    return editTracker(world,f.hash,oldUrl,f.newUrl)?empty():notFound();
+  }
   if(path==='torrents/add'&&method==='POST'){
     const f=await formObject(request);
     const urlText=Array.isArray(f.urls)?String(f.urls[0]):String(f.urls||'');
@@ -178,9 +224,6 @@ export async function handleApi(world,request,url=new URL(request.url)){
     if(atLeast(world.profile.webApiVersion,'2.14.0'))return json({success_count:1,pending_count:0,failure_count:0});
     return text('Ok.');
   }
-  if(['torrents/recheck','torrents/reannounce','torrents/setAutoManagement','torrents/toggleSequentialDownload',
-      'torrents/toggleFirstLastPiecePrio','torrents/topPrio','torrents/bottomPrio','torrents/setLocation',
-      'torrents/filePrio'].includes(path)&&method==='POST')return empty();
 
   if(path==='torrents/categories'&&method==='GET')return json(categoryObject(world));
   if(path==='torrents/createCategory'&&method==='POST'){

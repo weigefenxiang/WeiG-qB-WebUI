@@ -1,5 +1,6 @@
 import {createWorld} from './__simulator/core/engine.js';
 import {profileByVersion,BOOTSTRAP_RELEASES} from './__simulator/core/profiles.js';
+import {applyScenario} from './__simulator/core/scenarios.js';
 import {loadWorld,saveWorld,deleteWorld} from './__simulator/storage/indexeddb.js';
 import {handleApi} from './__simulator/protocol/router.js';
 
@@ -63,6 +64,7 @@ async function ensureWorld(event,url){
     const catalog=await loadCatalog();
     const profile=profileByVersion(catalog,cfg.qb);
     world=createWorld({profile,count:cfg.count,seed:cfg.seed,scenario:cfg.scenario});
+    applyScenario(world,cfg.scenario);
     world.lab={clean:cfg.clean};
     await saveWorld(id,world);
   }else if(cfg.clean!==undefined){

@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import {createWorld,transferInfo,setTorrentLimit,setPaused,authenticate,logout,setPreferences,addVirtualTorrent,deleteTorrents,mainData} from '../simulator/core/engine.js';
 import {handleApi} from '../simulator/protocol/router.js';
+import {
+  addTrackers,advanceActionStates,applyRuntimePolicies,banPeers,editTracker,filterBannedPeers,
+  reannounceTorrents,recheckTorrents,removeTrackers,setAutoManagement,setFilePriority,setLocation,
+  toggleFirstLast,toggleSequential
+} from '../simulator/core/torrent-actions.js';
+import {applyScenario} from '../simulator/core/scenarios.js';
 
 const MiB=1024*1024;
 function world(qb='5.2.3',api='2.15.1',count=500){
@@ -95,4 +101,75 @@ function formRequest(url,body){
   setPaused(w,target.hash,false,1700000001000);assert.notEqual(target.canonicalState,'DOWNLOAD_PAUSED');
 }
 
-console.log('Virtual qB simulator contract passed: deterministic world, arbitrary login/logout, limits, queueing, qB4/qB5 endpoint split, add/delete and state transitions.');
+{
+  const w=world();
+  applyScenario(w,'mixed',1700000000000);
+  const stalledDl=w.torrents.filter(t=>t.canonicalState==='DOWNLOAD_STALLED').length;
+  const stalledUp=w.torrents.filter(t=>t.canonicalState==='SEED_STALLED').length;
+  assert.ok(stalledDl>=1,'mixed scenario must preserve visible stalled downloads');
+  assert.ok(stalledUp>=1,'mixed scenario must preserve visible stalled uploads');
+  const q=world();applyScenario(q,'queue-stress',1700000000000);transferInfo(q,1700000001000);
+  assert.equal(q.preferences.max_active_downloads,2);assert.equal(q.preferences.max_active_uploads,3);assert.equal(q.preferences.max_active_torrents,5);
+  const poor=world();applyScenario(poor,'poor-network',1700000000000);
+  assert.ok(poor.environment.downCapacity<=22*MiB&&poor.environment.packetLoss>=.02,'poor-network scenario must constrain the environment');
+  const disk=world();applyScenario(disk,'disk-bottleneck',1700000000000);
+  assert.equal(disk.environment.diskWriteCapacity,18*MiB,'disk-bottleneck scenario must constrain disk writes');
+}
+
+{
+  const w=world();authenticate(w,'demo','demo');
+  const target=w.torrents.find(t=>!t.completed);assert.ok(target);
+  setAutoManagement(w,target.hash,true);assert.equal(target.autoManagement,true,'auto management must mutate torrent state');
+  const sequential=target.sequential;toggleSequential(w,target.hash);assert.equal(target.sequential,!sequential,'sequential action must mutate torrent state');
+  const firstLast=target.firstLastPriority;toggleFirstLast(w,target.hash);assert.equal(target.firstLastPriority,!firstLast,'first/last priority action must mutate torrent state');
+  assert.ok(setFilePriority(w,target.hash,'0',0),'file priority action must find the file');assert.equal(target.files[0].priority,0,'file priority must persist');
+  setLocation(w,target.hash,'/virtual/new',1700000000000);assert.equal(target.savePath,'/virtual/new');assert.equal(target.canonicalState,'MOVING');
+  advanceActionStates(w,1700000003000);assert.notEqual(target.canonicalState,'MOVING','move state must recover after virtual maintenance window');
+}
+
+{
+  const w=world();authenticate(w,'demo','demo');
+  const target=w.torrents.find(t=>!t.completed);assert.ok(target);
+  recheckTorrents(w,target.hash,1700000000000);assert.equal(target.canonicalState,'CHECKING','recheck must enter checking state');
+  advanceActionStates(w,1700000003000);assert.notEqual(target.canonicalState,'CHECKING','recheck must recover after its virtual window');
+  const tracker=target.trackers[0];tracker.status=4;tracker.msg='timeout';
+  reannounceTorrents(w,target.hash,1700000004000);assert.equal(tracker.status,2);assert.equal(tracker.msg,'','reannounce must refresh tracker state');
+}
+
+{
+  const w=world();authenticate(w,'demo','demo');
+  const target=w.torrents[0],original=target.trackers[0].url,newUrl='https://virtual-added.example/announce',edited='https://virtual-edited.example/announce';
+  assert.ok(addTrackers(w,target.hash,newUrl));assert.ok(target.trackers.some(x=>x.url===newUrl),'addTrackers must persist');
+  assert.ok(editTracker(w,target.hash,newUrl,edited));assert.ok(target.trackers.some(x=>x.url===edited),'editTracker must persist');
+  assert.ok(removeTrackers(w,target.hash,edited));assert.ok(!target.trackers.some(x=>x.url===edited),'removeTrackers must persist');
+  assert.ok(target.trackers.some(x=>x.url===original),'existing tracker must remain');
+}
+
+{
+  const w=world();authenticate(w,'demo','demo');
+  const map={'10.0.0.1:50000':{ip:'10.0.0.1',port:50000},'10.0.0.2:50001':{ip:'10.0.0.2',port:50001}};
+  banPeers(w,'10.0.0.1:50000');const filtered=filterBannedPeers(w,map);
+  assert.equal(Object.keys(filtered).length,1);assert.ok(!filtered['10.0.0.1:50000'],'banned peer must disappear from peer API projection');
+}
+
+{
+  const w=world();
+  w.environment.basePeerAvailability=.9;w.environment.peerAvailability=.9;
+  setPreferences(w,{dht:false,pex:false,lsd:false},1700000000000);
+  applyRuntimePolicies(w,1700000000000);
+  assert.ok(w.environment.peerAvailability<.5,'disabling discovery sources must reduce available virtual peers');
+  setPreferences(w,{scheduler_enabled:true,schedule_from_hour:8,schedule_to_hour:20},1700000000000);
+  applyRuntimePolicies(w,Date.UTC(2026,0,1,9,0));assert.equal(w.altSpeedMode,true,'scheduler window must enable alternate speed mode');
+  applyRuntimePolicies(w,Date.UTC(2026,0,1,21,0));assert.equal(w.altSpeedMode,false,'outside scheduler window must disable alternate speed mode');
+}
+
+{
+  const w=world();authenticate(w,'demo','demo');
+  const target=w.torrents.find(t=>!t.completed);assert.ok(target);
+  let r=await handleApi(w,formRequest('https://example.invalid/api/v2/torrents/toggleSequentialDownload',{hashes:target.hash}));assert.equal(r.status,200);
+  assert.equal(target.sequential,true,'router must execute sequential side effect');
+  r=await handleApi(w,formRequest('https://example.invalid/api/v2/torrents/addTrackers',{hash:target.hash,urls:'https://router.example/announce'}));assert.equal(r.status,200);
+  assert.ok(target.trackers.some(x=>x.url==='https://router.example/announce'),'router must execute tracker add side effect');
+}
+
+console.log('Virtual qB simulator contract passed: deterministic world, arbitrary login/logout, limits, queueing, scenarios, qB4/qB5 endpoint split, real torrent actions, trackers, peer bans and scheduled policy effects.');
