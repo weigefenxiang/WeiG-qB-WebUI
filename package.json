@@ -5,7 +5,8 @@
   "license": "GPL-3.0",
   "type": "module",
   "scripts": {
-    "test": "node tests/runtime-contract.mjs && node tests/theme-contract.mjs && node tests/feedback-contract.mjs && node tests/torrent-workspace-contract.mjs && node tests/capability-contract.mjs && node tests/compat-matrix.mjs && node tests/platform-contract.mjs && node tests/settings-contract.mjs && node tests/naming-contract.mjs && node tests/syntax-contract.mjs && node tests/ci-contract.mjs"
+    "test": "node tests/runtime-contract.mjs && node tests/theme-contract.mjs && node tests/feedback-contract.mjs && node tests/torrent-workspace-contract.mjs && node tests/capability-contract.mjs && node tests/compat-matrix.mjs && node tests/platform-contract.mjs && node tests/settings-contract.mjs && node tests/naming-contract.mjs && node tests/syntax-contract.mjs && node tests/ci-contract.mjs && node tests/simulator-contract.mjs",
+    "test:simulator": "node tests/simulator-contract.mjs"
   },
   "devDependencies": {
     "playwright": "1.62.1"

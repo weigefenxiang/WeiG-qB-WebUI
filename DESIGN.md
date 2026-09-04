@@ -354,3 +354,26 @@ Settings reuses existing `settings-section`, `settings-grid`, `setting-row`, `fi
 
 ### SETTINGS-GENERATION-AUDIT — current upstream generation
 Representative upstream compatibility resolves the latest official `release-5.*.0` generation dynamically while keeping qBittorrent 4.1.9.1 as the compatibility floor. When a prior `5.x.0` generation exists, the audit reports Preference and API action deltas between the prior and latest generation. Full stable-tag audit remains a separate coverage layer.
+
+## 14. Virtual qB Lab
+
+### SIMULATOR-BOUNDARY — simulate behind QBClient
+WeiG Virtual qB Lab is a non-product backend simulator. Formal `webui/**` remains unmodified and continues to use the canonical `W.QBClient`; the Lab intercepts qB WebAPI traffic through a Native Service Worker and never replaces or monkey-patches the product client.
+
+### SIMULATOR-OWNER — one virtual daemon state machine
+`QBSimulatorEngine` owns the canonical virtual qB world. `QBScheduler` owns activity/resource allocation, `QBPolicyEngine` owns limits/queue/ratio rules, `QBProtocolRouter` owns WebAPI routing, `QBVirtualDatabase` owns IndexedDB persistence, and Service Worker code is an adapter only. Separate Pages/browser/fixture simulator state machines are prohibited.
+
+### SIMULATOR-UPSTREAM — official stable facts, synthetic runtime data
+`QBStableReleaseCatalog` discovers numeric official qBittorrent stable tags from 4.1.0 onward and extracts WebAPI/version/API/preference facts from the corresponding upstream source. Alpha/beta/rc/master are excluded. Runtime Torrent/peer/network/disk data may be synthetic but must be seeded, deterministic and internally consistent.
+
+### SIMULATOR-AUTH — demo login follows real product flow
+Virtual qB accepts arbitrary credentials. Lab presentation may prefill `demo/demo` only in the generated Pages artifact; Clean Mode leaves the product login source untouched. Logout invalidates the virtual session so protected API calls return 403 and the existing `SessionController` completes the real logout verification flow.
+
+### SIMULATOR-POLICY — settings have observable effects
+A simulator setting marked modeled must affect virtual behavior. Global/per-torrent rate limits, active Torrent limits, connection/upload slot limits, queueing, Force Start, Ratio and seeding-time policies must constrain the same Scheduler snapshot consumed by Torrent rows, `transfer/info` and `sync/maindata`. Returning success without the corresponding semantic change is prohibited.
+
+### SIMULATOR-FUTURE — discover first, never guess UX semantics
+A future stable qB release may be auto-discovered for Virtual Lab metadata without a product VERSION bump or `webui/**` write. Unknown upstream preference keys may use the existing safe Settings fallback only when a safe value/type is available; weekly automation must not invent units, enums, ranges or interaction semantics. Formal Settings UX improvements remain product work owned by `W.SettingsSchema`.
+
+### SIMULATOR-WORKFLOW-GATE — Actions require separate approval
+Simulator core, protocol, storage, tests, launcher and local Pages artifact tooling may be developed on `dev`. Adding/enabling Pages deployment permissions, scheduled weekly refresh or a new workflow is a separate workflow boundary and requires explicit user confirmation before write. The detailed architecture and scope live in `docs/009.Virtual-qB-Lab.md`.
