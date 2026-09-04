@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   representative_qb_baselines:
-    name: qB 4.1.9.1 + 5.2.0 compatibility
+    name: qB minimum + latest 5.x.0 compatibility
     runs-on: ubuntu-latest
     steps:
       - name: Checkout WeiG qB WebUI
@@ -30,12 +30,43 @@ jobs:
           repository: qbittorrent/qBittorrent
           path: upstream-qb
           fetch-depth: 1
-      - name: Fetch representative qB release tags only
+      - name: Resolve latest qB 5.x.0 generations
+        id: generations
         shell: bash
         run: |
           set -euo pipefail
+          mapfile -t generations < <(
+            git -C upstream-qb ls-remote --refs --tags origin 'refs/tags/release-5.*.0' \
+              | awk '{sub("refs/tags/","",$2); print $2}' \
+              | sort -V
+          )
+          test "${#generations[@]}" -ge 1
+          latest="${generations[${#generations[@]}-1]}"
+          if [ "${#generations[@]}" -ge 2 ]; then
+            previous="${generations[${#generations[@]}-2]}"
+          else
+            previous="$latest"
+          fi
+          echo "latest=$latest" >> "$GITHUB_OUTPUT"
+          echo "previous=$previous" >> "$GITHUB_OUTPUT"
+          printf 'Latest qB generation: %s; previous: %s\n' "$latest" "$previous"
+      - name: Fetch representative qB releases
+        shell: bash
+        run: |
+          set -euo pipefail
+          min=release-4.1.9.1
+          previous='${{ steps.generations.outputs.previous }}'
+          latest='${{ steps.generations.outputs.latest }}'
           git -C upstream-qb fetch --depth=1 origin \
-            refs/tags/release-4.1.9.1:refs/tags/release-4.1.9.1 \
-            refs/tags/release-5.2.0:refs/tags/release-5.2.0
-      - name: Audit legacy and modern baselines
-        run: node tests/upstream-release-audit.mjs upstream-qb --refs=release-4.1.9.1,release-5.2.0
+            "refs/tags/$min:refs/tags/$min" \
+            "refs/tags/$previous:refs/tags/$previous" \
+            "refs/tags/$latest:refs/tags/$latest"
+      - name: Audit minimum and current qB generations
+        shell: bash
+        run: |
+          set -euo pipefail
+          min=release-4.1.9.1
+          previous='${{ steps.generations.outputs.previous }}'
+          latest='${{ steps.generations.outputs.latest }}'
+          refs="$min,$previous,$latest"
+          node tests/upstream-release-audit.mjs upstream-qb "--refs=$refs"

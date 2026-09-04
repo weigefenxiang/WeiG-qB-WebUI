@@ -337,3 +337,20 @@ Desktop one-row Header/end rail/DataGrid/Statusbar stability
 ```
 
 The design objective is reduced duplicate ownership and clearer information hierarchy, not fewer files or fewer gates for their own sake.
+
+## 13. Settings semantic runtime
+
+### SETTINGS-OWNER — one Preference semantic owner
+`W.SettingsSchema` owns qB preference surface, section, type, unit, enum, editability and future fallback. `W.QBClient` only transports `app/preferences` and `app/setPreferences`; `settings.js` is the presentation caller. `W.Transfer` remains the only owner of global and alternate upload/download rate limits.
+
+### SETTINGS-ROUTING — semantic routing before fallback
+Preference routing is exact schema → semantic family rule → Advanced / Upstream fallback. Per-version runtime copies, qB patch allowlists and versioned Settings implementations are prohibited. The Settings Speed tab is retired; bottom Transfer owns global/alternate limits while scheduler/uTP/TCP/LAN transfer policy remains available under Advanced.
+
+### SETTINGS-STRUCTURED — safe unknown values
+Unknown scalar preferences are rendered from their actual JSON scalar type. Unknown arrays/objects remain visible as read-only structured JSON until an authoritative upstream contract exists. `[object Object]` presentation and blind structured writeback are prohibited.
+
+### SETTINGS-VISUAL — reuse canonical primitives
+Settings reuses existing `settings-section`, `settings-grid`, `setting-row`, `field-input setting-input`, `switch-control` and `W.Components.selectControl()` primitives. Feature-local Settings CSS, a second Select/Input/Dialog skin, or Mobile-only business state is prohibited.
+
+### SETTINGS-GENERATION-AUDIT — current upstream generation
+Representative upstream compatibility resolves the latest official `release-5.*.0` generation dynamically while keeping qBittorrent 4.1.9.1 as the compatibility floor. When a prior `5.x.0` generation exists, the audit reports Preference and API action deltas between the prior and latest generation. Full stable-tag audit remains a separate coverage layer.
