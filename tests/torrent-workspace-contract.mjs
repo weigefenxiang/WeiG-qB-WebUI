@@ -74,7 +74,7 @@ assert(spatial.includes('C.selectControl(')&&spatial.includes("capability:'tags'
 assert(!spatial.includes('mountForViewport')&&!spatial.includes('mobile-facet-slot'),'Facet presentation must not relocate by viewport');
 assert(!spatial.includes('new W.QBClient')&&!spatial.includes('setInterval('),'SpatialRuntime must remain presentation-only');
 assert(!spatialCss.includes('mobile-facet-slot'),'Retired mobile Facet shelf CSS survived');
-assert(polishCss.includes('display:inline-flex!important')&&polishCss.includes('justify-content:flex-start!important')&&polishCss.includes('width:max-content!important')&&polishCss.includes('gap:7px!important'),'Capability badge/Tag Select must use one adjacent inline geometry instead of consuming the full row');
+assert(polishCss.includes('display:flex!important')&&polishCss.includes('justify-content:flex-start!important')&&polishCss.includes('width:100%!important')&&polishCss.includes('min-width:min(96px,calc(100% - 58px))!important')&&polishCss.includes('gap:7px!important'),'Capability Tag Select must reserve readable label width while keeping its badge adjacent');
 
 // LibraryController is the semantic source for count/sort/filter state.
 assert(app.includes('W.LibraryController=LibraryController')&&app.includes('total:totalMatching')&&app.includes('setSort:setSort'),'LibraryController must expose total and sort semantics');
@@ -111,14 +111,15 @@ assert(header.includes("scrim.addEventListener('click'")&&header.includes('setDr
 assert(!app.includes("U.$('menu-btn').onclick")&&!app.includes("U.$('drawer-scrim').onclick")&&!app.includes('function openDrawer('),'App must not override the HeaderUtilities Drawer owner');
 assert(app.includes('W.HeaderUtilities&&W.HeaderUtilities.setDrawer'),'App route/filter close caller must delegate to the HeaderUtilities Drawer owner');
 assert(!app.includes('installMobileSearchButton'),'App must not own a second Mobile Search trigger');
-assert(header.includes("valueNode.remove()")&&header.includes("chevron.remove()")&&header.includes('header-theme-trigger'),'Theme Header trigger must retain canonical Select behavior while removing visible value/chevron placeholder leaves');
+assert(header.includes("triggerMode:'prefix'")&&header.includes('header-theme-trigger')&&!header.includes('valueNode.remove()')&&!header.includes('chevron.remove()'),'Theme Header trigger must be created structurally as prefix-only canonical Select rather than repaired after creation');
 assert(headerCss.includes('.topbar.search-open .topbar__search')&&headerCss.includes('top:calc(100% + 6px)')&&headerCss.includes('overflow:visible!important'),'Mobile Search must anchor below Topbar without clipping header actions');
 assert(headerCss.includes('.header-theme-control .ui-select__trigger,.header-utility-action')&&headerCss.includes('place-items:center!important')&&headerCss.includes('box-sizing:border-box!important'),'Theme and utility controls must share one square visible geometry');
-assert(headerCss.includes('.header-theme-trigger>*:not(.ui-select__prefix)'),'Theme utility must not expose hidden placeholder-width children');
+assert(headerCss.includes('.header-theme-control .ui-select__prefix')&&headerCss.includes('width:20px!important')&&!headerCss.includes('.header-theme-trigger>*:not(.ui-select__prefix)'),'Theme icon must own a real optical box without hidden placeholder-child CSS');
 assert(headerCss.includes('flex-wrap:nowrap')&&headerCss.includes('margin-left:auto'),'Desktop header end rail baseline must remain protected');
 
 // Shared Select remains canonical.
 assert(floating.includes("typeof opts.onOpen==='function'")&&floating.includes('opts.onOpen(value,w)===false'),'Canonical Select must expose reusable open guard');
+assert(floating.includes("opts.triggerMode==='prefix'")&&floating.includes('uiSelectTrigger'),'Canonical Select must natively support prefix-only utility triggers');
 assert(floating.includes('function internalMenuScroll(')&&floating.includes('if(internalMenuScroll(e))return;place(active)'),'Select internal scroll must stay separate from anchor placement');
 
 // Durable connection marker remains one semantic signal and Reduced Motion compliant.
@@ -130,4 +131,4 @@ for(const rule of [
   'FACET-OWNER','PRESENTATION-STATE','TELEMETRY-PAINT','STATUS-NOISE','STATUS-DEDUP','STATUS-PLACEMENT','ADAPTIVE-STATUS','LIVE-INDICATOR','STATUS-SIGNAL','RENDERED-SIGNAL','MOTION-STATUS','STATUS-EXPLAIN','HEADER-SEARCH','HEADER-END-ANCHOR','CAPABILITY-OWNER','CAPABILITY-RANGE','OWNER-RETIRE','TORRENT-PROGRESS-OWNER','TORRENT-PROGRESS-TRUTH','TORRENT-PROGRESS-STATE','TORRENT-PROGRESS-MOTION','MOBILE-LIBRARY-IA','MOBILE-CONTROL-DENSITY','MOBILE-ACTION-PLACEMENT','MOBILE-CARD-COMPOSITION','SORT-OWNER','TORRENT-RENDERER-OWNER','TORRENT-FOCUS-RETIRE','MOBILE-PAGER-DENSITY'
 ])assert(docs.includes(rule),`Torrent workspace docs missing hard rule ${rule}`);
 
-console.log('Torrent workspace ownership contract passed: exactly four actions, one Drawer owner, identical Header utilities, unified three-row full-semver capabilities, adjacent facets, true second-row Mobile metrics, compact pager, canonical renderers/progress, retired focus mode, and protected Connection owners.');
+console.log('Torrent workspace ownership contract passed: exactly four actions, one Drawer owner, structural prefix-only Theme utilities, two-row full-semver capability dialogs, readable zh-CN Tags facets, true second-row Mobile metrics, compact pager, canonical renderers/progress, retired focus mode, and protected Connection owners.');

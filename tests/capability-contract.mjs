@@ -31,9 +31,9 @@ assert(!R.supports('tags'),'WebAPI 2.2.1 must not expose Tags');
 assert(R.badgeFor('tags')==='4.2.0+','WebAPI 2.3.0 must map to full qBittorrent 4.2.0+ display');
 assert(!R.supports('stalledFilter'),'WebAPI 2.2.1 must not expose Stalled filter');
 assert(R.badgeFor('stalledFilter')==='4.2.5+','Stalled badge must use full conservative qB-facing 4.2.5+ display');
-assert(JSON.stringify(R.ruleLines('privateFilter'))===JSON.stringify(['qBittorrent requirement: 5.0.0+','WebAPI requirement: 2.11.2+','Known qBittorrent equivalent: 5.0.0+']),'Private dialog must use the unified three-row requirement template');
-assert(JSON.stringify(R.ruleLines('tags'))===JSON.stringify(['qBittorrent requirement: 4.2.0+','WebAPI requirement: 2.3.0+','Known qBittorrent equivalent: 4.2.0+']),'Tags dialog must use the unified three-row requirement template');
-assert(JSON.stringify(R.ruleLines('stalledFilter'))===JSON.stringify(['qBittorrent requirement: 4.2.5+','WebAPI requirement: 2.4.1+','Known qBittorrent equivalent: 4.2.5+']),'Stalled dialog must use the unified three-row requirement template');
+assert(JSON.stringify(R.ruleLines('privateFilter'))===JSON.stringify(['qBittorrent requirement: 5.0.0+','WebAPI requirement: 2.11.2+']),'Private dialog must show only qBittorrent and WebAPI requirement rows');
+assert(JSON.stringify(R.ruleLines('tags'))===JSON.stringify(['qBittorrent requirement: 4.2.0+','WebAPI requirement: 2.3.0+']),'Tags dialog must show only qBittorrent and WebAPI requirement rows');
+assert(JSON.stringify(R.ruleLines('stalledFilter'))===JSON.stringify(['qBittorrent requirement: 4.2.5+','WebAPI requirement: 2.4.1+']),'Stalled dialog must show only qBittorrent and WebAPI requirement rows');
 await R.bind({qbVersion:'4.2.2',webApiVersion:'2.4.1'});
 assert(R.supports('tags')&&R.supports('stalledFilter'),'qB 4.2.2 / WebAPI 2.4.1 must support Tags and Stalled even though the qB-facing Stalled badge is conservatively 4.2.5+');
 await R.bind({qbVersion:'4.9.3',webApiVersion:'2.9.3'});
@@ -42,4 +42,4 @@ assert(R.supports('tags'),'4.x instance with sufficient WebAPI must support Tags
 await R.bind({qbVersion:'5.0.0',webApiVersion:'2.11.2'});
 assert(R.supports('privateFilter'),'qB 5.0.0 must satisfy Private filter boundary');
 assert(R.supports('tags'),'qB 5.0.0 baseline WebAPI must satisfy Tags');
-console.log('Capability registry contract passed: semantic support ranges, full X.X.X+ badges, one three-row requirement template, conservative qB-facing Stalled display, and preserved official WebAPI facts.');
+console.log('Capability registry contract passed: semantic support ranges, full X.X.X+ badges, two-row requirement dialogs, conservative qB-facing Stalled display, and preserved internal milestone facts.');
