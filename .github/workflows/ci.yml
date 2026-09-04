@@ -161,7 +161,9 @@ jobs:
           )
           $chrome = $candidates | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
           if (-not $chrome) { throw 'Hosted Google Chrome Stable is missing.' }
-          & $chrome --version
+          $chromeVersion = (Get-Item $chrome).VersionInfo.ProductVersion
+          if ([string]::IsNullOrWhiteSpace($chromeVersion)) { throw 'Hosted Google Chrome Stable version is unavailable.' }
+          Write-Host "Google Chrome $chromeVersion"
           node -p "require('playwright/package.json').version"
           Write-Host "Runner image: $env:ImageOS $env:ImageVersion"
           Write-Host "Git SHA: $env:GITHUB_SHA"

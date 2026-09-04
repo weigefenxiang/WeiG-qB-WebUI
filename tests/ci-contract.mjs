@@ -88,5 +88,6 @@ assert(ui.includes('runs-on: ubuntu-24.04')&&linux.includes('runs-on: ubuntu-24.
 assert(windows.includes('runs-on: windows-2025'),'Windows browser candidate must pin the Windows 2025 runner generation');
 assert(ui.includes('google-chrome --version')&&linux.includes('google-chrome --version'),'Linux browser gates must verify hosted Google Chrome Stable');
 assert(windows.includes('Hosted Google Chrome Stable is missing.'),'Windows browser candidate must fail closed when hosted Chrome is unavailable');
+assert(windows.includes('VersionInfo.ProductVersion')&&windows.includes('Google Chrome $chromeVersion'),'Windows browser candidate must log hosted Google Chrome version from file metadata');
 
 console.log(`CI browser-runtime contract passed for WeiG ${version}: Playwright 1.62.1 is repository-owned and all Linux/Windows browser gates use hosted Chrome without browser provisioning.`);
