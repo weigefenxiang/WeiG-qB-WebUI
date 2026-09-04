@@ -50,6 +50,7 @@ async function assertNoTooltip(page,selector,label){
   assert(visible===0&&!state.title&&!state.legacy&&state.descTitles===0&&state.descLegacy===0,`${label}: non-header surfaces must have zero hover tooltip owners ${JSON.stringify({state,visible})}`);
 }
 async function assertInline(page,selector,badgeCopy,label){
+  await page.waitForFunction(({selector,badgeCopy})=>document.querySelector(selector)?.querySelector(':scope > .capability-badge')?.textContent.trim()===badgeCopy,{selector,badgeCopy});
   const g=await page.locator(selector).evaluate(n=>{const badge=n.querySelector(':scope > .capability-badge');if(!badge)return null;const walker=document.createTreeWalker(n,NodeFilter.SHOW_TEXT);let text=null,current;while((current=walker.nextNode())){if(!badge.contains(current)&&current.textContent.trim()){text=current;break;}}if(!text)return null;const range=document.createRange();range.selectNodeContents(text);const tr=range.getBoundingClientRect(),br=badge.getBoundingClientRect();return{gap:br.left-tr.right,badge:badge.textContent.trim(),text:text.textContent.trim()};});
   assert(g&&g.badge===badgeCopy&&g.gap>=10&&g.gap<=14,`${label}: inline capability gap must be standardized near 12px ${JSON.stringify(g)}`);
   await assertNoTooltip(page,selector,label);
