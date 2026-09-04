@@ -134,9 +134,15 @@ try{
     await page.waitForFunction(()=>WeiG.LibraryController.state().sort==='size'&&WeiG.LibraryController.state().reverse===true);
     assert(await page.locator('#columns-dialog[open]').count()===0,`${name}: Mobile sort opened hidden Columns bridge`);
 
-    const card=page.locator('.torrent-mobile-card--two-line[data-hash]').first();await card.waitFor({state:'attached'});await card.scrollIntoViewIfNeeded();
-    const cardState=await card.evaluate(el=>({children:[...el.children].map(n=>n.className),top:[...el.querySelector('.mobile-card-top').children].map(n=>n.className),height:el.getBoundingClientRect().height,meta:el.querySelector('.mobile-card-meta--rail')?.textContent||'',hasProgress:!!el.querySelector('.progress-track--mobile-edge')}));
-    assert(cardState.top.length===3&&cardState.top[1].includes('torrent-title-line')&&cardState.top[2].includes('mobile-more'),`${name}: Mobile first line is not selection + title + More: ${JSON.stringify(cardState.top)}`);
+    await page.waitForFunction(()=>!!document.querySelector('.torrent-mobile-card--two-line[data-hash]'));
+    const cardState=await page.evaluate(()=>{
+      const el=document.querySelector('.torrent-mobile-card--two-line[data-hash]');
+      if(!el)return null;
+      el.scrollIntoView({block:'nearest'});
+      const top=el.querySelector('.mobile-card-top');
+      return {children:[...el.children].map(n=>n.className),top:top?[...top.children].map(n=>n.className):[],height:el.getBoundingClientRect().height,meta:el.querySelector('.mobile-card-meta--rail')?.textContent||'',hasProgress:!!el.querySelector('.progress-track--mobile-edge')};
+    });
+    assert(cardState&&cardState.top.length===3&&cardState.top[1].includes('torrent-title-line')&&cardState.top[2].includes('mobile-more'),`${name}: Mobile first line is not selection + title + More: ${JSON.stringify(cardState&&cardState.top)}`);
     assert(cardState.meta.includes('%')&&cardState.hasProgress&&cardState.height<100,`${name}: Mobile card is not compact two-line presentation: ${JSON.stringify(cardState)}`);
 
     // Search is anchored below the header; opening it must not move/clip header actions.

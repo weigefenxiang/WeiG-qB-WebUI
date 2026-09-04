@@ -89,5 +89,9 @@ assert(windows.includes('runs-on: windows-2025'),'Windows browser candidate must
 assert(ui.includes('google-chrome --version')&&linux.includes('google-chrome --version'),'Linux browser gates must verify hosted Google Chrome Stable');
 assert(windows.includes('Hosted Google Chrome Stable is missing.'),'Windows browser candidate must fail closed when hosted Chrome is unavailable');
 assert(windows.includes('VersionInfo.ProductVersion')&&windows.includes('Google Chrome $chromeVersion'),'Windows browser candidate must log hosted Google Chrome version from file metadata');
+const windowsNativeFailureChecks=(windows.match(/\$LASTEXITCODE\s+-ne\s+0/g)||[]).length;
+assert(windowsNativeFailureChecks>=3,'Windows browser candidate must fail fast after native Node/npm commands instead of inheriting the last command exit code');
+assert(windows.includes('$tests = @(')&&windows.includes('foreach ($test in $tests)')&&windows.includes('node $test'),'Windows browser candidate must run browser callers through one fail-fast loop');
+for(const name of browserTests)assert(windows.includes(`'tests/${name}'`),`Windows fail-fast browser list is missing ${name}`);
 
-console.log(`CI browser-runtime contract passed for WeiG ${version}: Playwright 1.62.1 is repository-owned and all Linux/Windows browser gates use hosted Chrome without browser provisioning.`);
+console.log(`CI browser-runtime contract passed for WeiG ${version}: Playwright 1.62.1 is repository-owned; Linux/Windows use hosted Chrome; Windows native browser commands are fail-fast.`);

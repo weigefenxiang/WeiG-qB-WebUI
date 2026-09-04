@@ -165,23 +165,31 @@ jobs:
           if ([string]::IsNullOrWhiteSpace($chromeVersion)) { throw 'Hosted Google Chrome Stable version is unavailable.' }
           Write-Host "Google Chrome $chromeVersion"
           node -p "require('playwright/package.json').version"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Write-Host "Runner image: $env:ImageOS $env:ImageVersion"
           Write-Host "Git SHA: $env:GITHUB_SHA"
       - name: Windows contracts and installer syntax
         shell: pwsh
         run: |
           npm test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $null = [scriptblock]::Create((Get-Content 'installers/install.ps1' -Raw))
           Write-Host 'Windows contracts passed.'
       - name: Representative qB4/qB5 semantic browser matrix on Windows
         shell: pwsh
         run: |
-          node tests/browser-runtime.mjs
-          node tests/browser-theme.mjs
-          node tests/browser-feedback.mjs
-          node tests/browser-feature-parity.mjs
-          node tests/browser-torrent-workspace.mjs
-          node tests/browser-adaptive-ui.mjs
+          $tests = @(
+            'tests/browser-runtime.mjs',
+            'tests/browser-theme.mjs',
+            'tests/browser-feedback.mjs',
+            'tests/browser-feature-parity.mjs',
+            'tests/browser-torrent-workspace.mjs',
+            'tests/browser-adaptive-ui.mjs'
+          )
+          foreach ($test in $tests) {
+            node $test
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
 
   release_candidate:
     name: release candidate
