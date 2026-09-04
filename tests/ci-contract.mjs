@@ -70,7 +70,8 @@ for(const rel of workflowFiles){
   assert(!/Use Ubuntu archive mirror|Install Chromium test runtime/i.test(source),`${rel} retains retired Chromium provisioning steps`);
 }
 const activeAuditFiles=[...workflowFiles,...filesUnder('tests',['.mjs','.sh']),...filesUnder('docs',['.md']),'DESIGN.md','package.json','package-lock.json'];
-for(const rel of activeAuditFiles)assert(!read(rel).includes('playwright@1.55.0'),`${rel} retains retired Playwright 1.55.0 ownership`);
+const retiredPlaywrightVersion=['playwright','@1.55.0'].join('');
+for(const rel of activeAuditFiles)assert(!read(rel).includes(retiredPlaywrightVersion),`${rel} retains retired Playwright 1.55.0 ownership`);
 
 const ci=read('.github/workflows/ci.yml');
 const ui=jobSection(ci,'ui_browser','release_compatibility');
