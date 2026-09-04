@@ -44,7 +44,7 @@ async function assertTheme(page,label,expectedSize){
   assert(Math.abs(g.svg.x-g.button.x)<=1&&Math.abs(g.svg.y-g.button.y)<=1,`${label}: Theme SVG is not centered ${JSON.stringify(g)}`);
 }
 async function assertNoTooltip(page,selector,label){
-  const node=page.locator(selector);await node.waitFor();await node.hover();await page.waitForTimeout(80);
+  const node=page.locator(selector).first();await node.waitFor();await node.hover();await page.waitForTimeout(80);
   const visible=await page.locator('#polish-tooltip.is-visible').count();
   const state=await node.evaluate(n=>({title:n.hasAttribute('title'),legacy:n.hasAttribute('data-tooltip'),descTitles:n.querySelectorAll('[title]').length,descLegacy:n.querySelectorAll('[data-tooltip]').length}));
   assert(visible===0&&!state.title&&!state.legacy&&state.descTitles===0&&state.descLegacy===0,`${label}: non-header surfaces must have zero hover tooltip owners ${JSON.stringify({state,visible})}`);
