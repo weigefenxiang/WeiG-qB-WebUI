@@ -71,8 +71,14 @@ try{
     const fill=await page.evaluate(()=>{const panel=document.querySelector('#list-view>.torrent-panel')?.getBoundingClientRect(),workspace=document.querySelector('.workspace')?.getBoundingClientRect();return panel&&workspace?{gap:workspace.bottom-panel.bottom,panelHeight:panel.height,summary:document.querySelector('.mobile-summary')}:null;});
     assert(fill&&fill.gap<=10&&fill.panelHeight>300&&!fill.summary,`${name}: desktop workspace geometry/summary regression ${JSON.stringify(fill)}`);
 
-    // Reduced Motion preserves final progress semantics while removing motion.
-    const moving=page.locator('#torrent-list [data-hash]').nth(1).locator('.progress-fill');const motion=await moving.evaluate(el=>getComputedStyle(el,'::after').animationName);assert(motion!=='none',`${name}: active progress motion missing`);await page.emulateMedia({reducedMotion:'reduce'});assert(await moving.evaluate(el=>getComputedStyle(el,'::after').animationName)==='none',`${name}: Reduced Motion failed`);
+    // Reduced Motion preserves truthful progress state while final presentation settles without decorative motion.
+    const movingRow=page.locator('#torrent-list [data-hash]').nth(1),movingHash=await movingRow.getAttribute('data-hash'),moving=movingRow.locator('.progress-fill');
+    const beforeMotion=await moving.evaluate(el=>{const pseudo=getComputedStyle(el,'::after'),track=el.closest('.progress-track');return{animation:pseudo.animationName,opacity:pseudo.opacity,width:el.style.width,state:track?.dataset.progressState,active:track?.dataset.progressActive};});
+    assert(beforeMotion.animation!=='none'&&beforeMotion.active==='true',`${name}: active progress motion missing ${JSON.stringify(beforeMotion)}`);
+    await page.emulateMedia({reducedMotion:'reduce'});
+    await page.waitForFunction(hash=>{const row=document.querySelector(`#torrent-list [data-hash="${hash}"]`),el=row&&row.querySelector('.progress-fill');if(!el||!matchMedia('(prefers-reduced-motion: reduce)').matches)return false;const pseudo=getComputedStyle(el,'::after');return pseudo.animationName==='none'&&Number(pseudo.opacity)===0;},movingHash);
+    const reducedMotion=await page.locator(`#torrent-list [data-hash="${movingHash}"] .progress-fill`).evaluate(el=>{const pseudo=getComputedStyle(el,'::after'),track=el.closest('.progress-track');return{animation:pseudo.animationName,opacity:pseudo.opacity,width:el.style.width,state:track?.dataset.progressState,active:track?.dataset.progressActive,media:matchMedia('(prefers-reduced-motion: reduce)').matches};});
+    assert(reducedMotion.media&&reducedMotion.animation==='none'&&Number(reducedMotion.opacity)===0&&reducedMotion.width===beforeMotion.width&&reducedMotion.state===beforeMotion.state&&reducedMotion.active===beforeMotion.active,`${name}: Reduced Motion final state failed ${JSON.stringify({beforeMotion,reducedMotion})}`);
     assert(errors.length===0,`${name}: browser errors: ${errors.join(' | ')}`);await context.close();
   }
 
@@ -91,5 +97,5 @@ try{
     assert(await page.locator('.mobile-summary,#mobile-command-slot,#mobile-facet-slot').count()===0,`${name} mobile: retired duplicate UI survived`);
     assert(errors.length===0,`${name} mobile errors: ${errors.join(' | ')}`);await context.close();
   }
-  console.log('Feature parity browser regression passed: progressive paging, qB4 capability degradation, qB5 native Private, atomic routing, full-height no-summary library, canonical Selection/ActionRegistry, Sidebar facets and Mobile touch behavior.');
+  console.log('Feature parity browser regression passed: progressive paging, qB4 capability degradation, qB5 native Private, atomic routing, full-height no-summary library, canonical Selection/ActionRegistry, Sidebar facets, Reduced Motion and Mobile touch behavior.');
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}
