@@ -1,0 +1,114 @@
+name: Virtual qB Pages
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - dev
+      - main
+    paths:
+      - 'webui/**'
+      - 'simulator/**'
+      - 'tools/qb-release-catalog.mjs'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/pages.yml'
+  schedule:
+    - cron: '17 4 * * 1'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: virtual-qb-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout WeiG source
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Checkout qBittorrent upstream
+        uses: actions/checkout@v6
+        with:
+          repository: qbittorrent/qBittorrent
+          path: .upstream/qBittorrent
+          fetch-depth: 0
+          fetch-tags: true
+          filter: blob:none
+          persist-credentials: false
+
+      - name: Install contract dependencies
+        run: npm ci
+
+      - name: Validate current simulator contracts
+        run: npm test
+
+      - name: Build exact dev/main Virtual qB site
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin \
+            +refs/heads/dev:refs/remotes/origin/dev \
+            +refs/heads/main:refs/remotes/origin/main
+
+          DEV_SHA="$(git rev-parse refs/remotes/origin/dev)"
+          MAIN_SHA="$(git rev-parse refs/remotes/origin/main)"
+          DEV_VERSION="$(git show refs/remotes/origin/dev:VERSION | tr -d '\r\n')"
+          MAIN_VERSION="$(git show refs/remotes/origin/main:VERSION | tr -d '\r\n')"
+
+          rm -rf "$RUNNER_TEMP/weig-dev-webui" "$RUNNER_TEMP/weig-main-webui" "$RUNNER_TEMP/virtual-qb-site"
+          mkdir -p "$RUNNER_TEMP/weig-dev-webui" "$RUNNER_TEMP/weig-main-webui"
+          git archive --format=tar refs/remotes/origin/dev:webui | tar -xf - -C "$RUNNER_TEMP/weig-dev-webui"
+          git archive --format=tar refs/remotes/origin/main:webui | tar -xf - -C "$RUNNER_TEMP/weig-main-webui"
+
+          node tools/qb-release-catalog.mjs "$GITHUB_WORKSPACE/.upstream/qBittorrent" \
+            --output="$RUNNER_TEMP/qb-releases.json"
+
+          node simulator/build/build-site.mjs \
+            --out="$RUNNER_TEMP/virtual-qb-site" \
+            --catalog="$RUNNER_TEMP/qb-releases.json" \
+            --simulator-sha="$GITHUB_SHA" \
+            --dev-webui="$RUNNER_TEMP/weig-dev-webui" \
+            --dev-sha="$DEV_SHA" \
+            --dev-version="$DEV_VERSION" \
+            --main-webui="$RUNNER_TEMP/weig-main-webui" \
+            --main-sha="$MAIN_SHA" \
+            --main-version="$MAIN_VERSION"
+
+          test -f "$RUNNER_TEMP/virtual-qb-site/lab/index.html"
+          test -f "$RUNNER_TEMP/virtual-qb-site/dev/app/service-worker.js"
+          test -f "$RUNNER_TEMP/virtual-qb-site/main/app/service-worker.js"
+          test -s "$RUNNER_TEMP/virtual-qb-site/metadata/qb-releases.json"
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: ${{ runner.temp }}/virtual-qb-site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy WeiG Virtual qB Lab
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -6,6 +6,9 @@ const here=path.dirname(fileURLToPath(import.meta.url));
 const projectRoot=path.resolve(here,'../..');
 function arg(name,fallback){const prefix=`--${name}=`;const hit=process.argv.find(x=>x.startsWith(prefix));return hit?hit.slice(prefix.length):fallback}
 const branch=arg('branch','dev');
+const exactSha=arg('exact-sha','unknown');
+const productVersion=arg('product-version','unknown');
+const simulatorSha=arg('simulator-sha','unknown');
 const webuiRoot=path.resolve(projectRoot,arg('webui-root','webui'));
 const out=path.resolve(projectRoot,arg('out',`dist/${branch}/app`));
 const catalogPath=path.resolve(projectRoot,arg('catalog','simulator/versions/catalog.bootstrap.json'));
@@ -22,6 +25,6 @@ await fs.copyFile(catalogPath,path.join(out,'__simulator/versions/catalog.genera
 
 const bootstrap=`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark light"><title>WeiG Virtual qB Lab</title><style>body{margin:0;min-height:100svh;display:grid;place-items:center;background:#05070d;color:#e8edf7;font:15px/1.5 system-ui,sans-serif}main{max-width:560px;padding:24px;text-align:center}small{display:block;color:#8d99b4;margin-top:8px}</style></head><body><main><strong>Starting WeiG Virtual qB Lab…</strong><small>Branch: ${branch}. Installing the local Virtual qB Service Worker.</small></main><script>(async()=>{if(!('serviceWorker'in navigator)){document.body.textContent='Service Worker is required.';return}await navigator.serviceWorker.register('./service-worker.js',{scope:'./',type:'module'});await navigator.serviceWorker.ready;if(!navigator.serviceWorker.controller)await new Promise(resolve=>navigator.serviceWorker.addEventListener('controllerchange',resolve,{once:true}));location.reload()})().catch(error=>{document.body.textContent='Virtual qB startup failed: '+error})</script></body></html>`;
 await fs.writeFile(path.join(out,'index.html'),bootstrap,'utf8');
-const meta={branch,builtAt:new Date().toISOString(),catalog:path.relative(projectRoot,catalogPath).replaceAll('\\','/'),productSource:'webui/** copied verbatim into __source',webuiModified:false};
+const meta={branch,exactSha,productVersion,simulatorSha,builtAt:new Date().toISOString(),catalog:path.relative(projectRoot,catalogPath).replaceAll('\\','/'),productSource:'webui/** copied verbatim into __source',webuiModified:false};
 await fs.writeFile(path.join(out,'virtual-qb-build.json'),JSON.stringify(meta,null,2)+'\n','utf8');
-console.log(`Built WeiG Virtual qB app: ${out}`);
+console.log(`Built WeiG Virtual qB app: ${branch}@${exactSha} -> ${out}`);
