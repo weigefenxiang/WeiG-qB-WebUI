@@ -25,7 +25,7 @@
     "privateFilter": {
       "rule": {"qb":{"gte":"5.0.0"}},
       "selectors": ["[data-filter=\"private\"]"],
-      "presentation": {"unsupported":"disable","badge":"auto","requirements":{"qb":"5.0.0","webApi":"2.11.2"}},
+      "presentation": {"unsupported":"disable","badge":"auto","requirements":{"qb":"5.0.0","webApi":"2.11.2","knownQb":"5.0.0"}},
       "copy": {
         "title":{"en":"Private / PT","zh":"私有 / PT"},
         "reason":{"en":"This feature requires qBittorrent 5.0.0+ for reliable Private torrent metadata.","zh":"此功能需要 qBittorrent 5.0.0+，以可靠读取 Private torrent 元数据。"}
@@ -34,7 +34,7 @@
     "tags": {
       "rule": {"webApi":{"gte":"2.3.0"}},
       "selectors": ["[data-facet=\"tag\"]"],
-      "presentation": {"unsupported":"disable","badge":"auto","requirements":{"qb":"4.2.0","webApi":"2.3.0"}},
+      "presentation": {"unsupported":"disable","badge":"auto","requirements":{"qb":"4.2.0","webApi":"2.3.0","knownQb":"4.2.0"}},
       "copy": {
         "title":{"en":"Tags","zh":"标签"},
         "reason":{"en":"Tags require qBittorrent WebAPI 2.3.0 or later.","zh":"标签功能需要 qBittorrent WebAPI 2.3.0 或更高版本。"}
@@ -61,8 +61,8 @@
     "stalledFilter": {
       "rule": {"webApi":{"gte":"2.4.1"}},
       "selectors": ["[data-filter=\"stalled\"]"],
-      "presentation": {"unsupported":"disable","badge":"auto","requirements":{"qb":"4.2.2","webApi":"2.4.1"}},
-      "copy": {"title":{"en":"Stalled filter","zh":"停滞筛选"},"reason":{"en":"The stalled filter requires qBittorrent WebAPI 2.4.1 or later.","zh":"停滞筛选需要 qBittorrent WebAPI 2.4.1 或更高版本。"}}
+      "presentation": {"unsupported":"disable","badge":"auto","requirements":{"qb":"4.2.5","webApi":"2.4.1","knownQb":"4.2.5"}},
+      "copy": {"title":{"en":"Stalled filter","zh":"停滞筛选"},"reason":{"en":"The stalled filter requires qBittorrent WebAPI 2.4.1 or later; qBittorrent 4.2.5+ is the conservative qB-facing compatibility milestone shown by WeiG.","zh":"停滞筛选需要 qBittorrent WebAPI 2.4.1 或更高版本；WeiG 以 qBittorrent 4.2.5+ 作为面向用户显示的保守兼容里程碑。"}}
     }
   }
 }
