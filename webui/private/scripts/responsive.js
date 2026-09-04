@@ -10,7 +10,7 @@
   function installPageContracts(){pageContracts.forEach(function(spec){var view=document.getElementById(spec[0]),owner=document.getElementById(spec[1]);if(!view||!owner)return;view.dataset.pageLayout=spec[2];owner.dataset.primaryScroll='1';});}
   function primaryScrollOwners(view){return view?Array.from(view.querySelectorAll('[data-primary-scroll="1"]')):[];}
 
-  function mobileRowHeight(){var density=document.documentElement.dataset.density||'standard';if(global.innerHeight<=680)return 82;if(density==='compact')return 76;if(density==='comfortable')return 92;return 84;}
+  function mobileRowHeight(){var density=document.documentElement.dataset.density||'standard';if(global.innerHeight<=680)return 84;if(density==='compact')return 84;if(density==='comfortable')return 92;return 84;}
   function desktopRowHeight(){var density=document.documentElement.dataset.density||'standard';return density==='compact'?48:density==='comfortable'?64:56;}
   function syncTorrentRowHeight(){var list=document.getElementById('torrent-list'),instance=list&&list.__weiggTorrentVirtual;if(!instance||!instance.setRowHeight)return;var next=isMobile()?mobileRowHeight():desktopRowHeight();if(instance.rowHeight!==next)instance.setRowHeight(next);}
 
@@ -20,6 +20,7 @@
   function fitVisibleMobileMeta(root){Array.from((root||document).querySelectorAll('.mobile-card-meta')).forEach(fitMobileMeta);}
 
   function mountSelectionToolbar(){var toolbar=document.getElementById('torrent-selection-toolbar'),desktopSlot=document.getElementById('torrent-action-slot'),mobileSlot=document.getElementById('mobile-pager-actions-slot');if(!toolbar||!desktopSlot||!mobileSlot)return;if(isMobile()){if(toolbar.parentElement!==mobileSlot)mobileSlot.appendChild(toolbar);}else if(toolbar.parentElement!==desktopSlot)desktopSlot.appendChild(toolbar);}
+  function syncPagerCopy(){if(!isMobile()||!W.LibraryController)return;var host=document.getElementById('page-label'),copy=host&&host.querySelector('.pager-index-copy');if(!copy)return;var state=W.LibraryController.state?W.LibraryController.state():null;if(!state)return;var page=Number(state.page||0)+1,size=Number(state.pageSize||50),total=W.LibraryController.total?W.LibraryController.total():null;if(total==null){copy.textContent=localized('Page '+page+'·'+size,'第'+page+'页·'+size);return;}var pages=Math.max(1,Math.ceil(Number(total||0)/size));copy.textContent=localized('Page '+page+'/'+pages+'·'+size,'第'+page+'/'+pages+'页·'+size);}
 
   var lastFree=null,lastConnection='unknown',connectionDialog=null;
   function trimFixed(value,decimals){return Number(value).toFixed(decimals).replace(/\.0+$/,'').replace(/(\.\d*?[1-9])0+$/,'$1');}
@@ -38,7 +39,7 @@
   function installConnectionTrigger(){var footer=document.getElementById('status-connection');if(!footer||footer.dataset.connectionTrigger==='1')return footer;footer.dataset.connectionTrigger='1';footer.setAttribute('role','button');footer.tabIndex=0;footer.addEventListener('click',openConnectionDialog);footer.addEventListener('keydown',function(event){if(event.key==='Enter'||event.key===' '){event.preventDefault();openConnectionDialog();}});return footer;}
   function paintConnection(status){lastConnection=normalizeConnection(status);var label=connectionLabel(lastConnection),footer=installConnectionTrigger(),footerLabel=document.getElementById('status-connection-label');if(footer){footer.dataset.connection=lastConnection;footer.dataset.tooltip=connectionReason(lastConnection);footer.setAttribute('aria-label',label+' — '+connectionReason(lastConnection));}if(footerLabel&&footerLabel.textContent!==label)footerLabel.textContent=label;}
 
-  function syncResponsiveSystem(){installPageContracts();mountSelectionToolbar();syncTorrentRowHeight();fitVisibleMobileMeta();}
+  function syncResponsiveSystem(){installPageContracts();mountSelectionToolbar();syncTorrentRowHeight();fitVisibleMobileMeta();syncPagerCopy();}
   function init(){syncResponsiveSystem();installStorageStatus();refreshStorage();installConnectionTrigger();paintConnection(lastConnection);}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
   document.addEventListener('visibilitychange',function(){if(!document.hidden){syncResponsiveSystem();refreshStorage();}});
@@ -46,7 +47,7 @@
   global.addEventListener('weigg:library-state',function(){requestAnimationFrame(syncResponsiveSystem);});
   global.addEventListener('weigg:status-state',function(event){paintConnection(event.detail&&event.detail.connection||'unknown');});
   global.addEventListener('weigg:maindata',function(event){var state=event.detail&&event.detail.serverState||{},free=state.free_space_on_disk;if(free!=null&&Number.isFinite(Number(free)))paintStorage(free);else refreshStorage();if(connectionDialog&&connectionDialog.open)requestAnimationFrame(openConnectionDialog);});
-  global.addEventListener('weigg:languagechange',function(){localizeStorage(document.getElementById('status-free-space'));paintConnection(lastConnection);if(connectionDialog&&connectionDialog.open)openConnectionDialog();});
+  global.addEventListener('weigg:languagechange',function(){localizeStorage(document.getElementById('status-free-space'));paintConnection(lastConnection);syncPagerCopy();if(connectionDialog&&connectionDialog.open)openConnectionDialog();});
 
-  W.MobileAdaptive={formatFreeSpace:formatFreeSpace,mobileRowHeight:mobileRowHeight,fitMobileMeta:fitMobileMeta,refreshStorage:refreshStorage,paintConnection:paintConnection,openConnectionDialog:openConnectionDialog,installPageContracts:installPageContracts,primaryScrollOwners:primaryScrollOwners,mountSelectionToolbar:mountSelectionToolbar};
+  W.MobileAdaptive={formatFreeSpace:formatFreeSpace,mobileRowHeight:mobileRowHeight,fitMobileMeta:fitMobileMeta,refreshStorage:refreshStorage,paintConnection:paintConnection,openConnectionDialog:openConnectionDialog,installPageContracts:installPageContracts,primaryScrollOwners:primaryScrollOwners,mountSelectionToolbar:mountSelectionToolbar,syncPagerCopy:syncPagerCopy};
 })(window);
