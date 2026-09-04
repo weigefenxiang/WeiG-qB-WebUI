@@ -33,35 +33,40 @@ const server=http.createServer(async(req,res)=>{try{const url=new URL(req.url,`h
 await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(port,host,resolve);});
 
 async function assertTheme(page,label,expectedSize){
-  const geometry=await page.evaluate(()=>{const host=document.getElementById('theme-btn'),control=document.getElementById('theme-control'),button=control?.querySelector('.ui-select__trigger'),svg=button?.querySelector('svg'),github=document.querySelector('#github-link svg');if(!host||!control||!button||!svg||!github)return null;const center=n=>{const r=n.getBoundingClientRect();return{x:r.left+r.width/2,y:r.top+r.height/2,w:r.width,h:r.height};};return{host:center(host),control:center(control),button:center(button),svg:center(svg),github:center(github),svgCount:button.querySelectorAll('svg').length,text:(button.textContent||'').trim(),title:button.getAttribute('title'),prefixClass:button.firstElementChild?.className||''};});
-  assert(geometry,`${label}: Theme geometry is unavailable`);
-  assert(geometry.svgCount===1&&geometry.text==='',`${label}: Theme trigger must be SVG-only, not a Unicode glyph/placeholder ${JSON.stringify(geometry)}`);
-  assert(geometry.title===null,`${label}: Theme trigger retained a native title tooltip ${JSON.stringify(geometry)}`);
-  assert(String(geometry.prefixClass).includes('header-utility-icon'),`${label}: Theme prefix does not reuse the utility icon primitive ${JSON.stringify(geometry)}`);
-  assert(Math.abs(geometry.button.w-expectedSize)<=1&&Math.abs(geometry.button.h-expectedSize)<=1,`${label}: Theme button size diverged ${JSON.stringify(geometry)}`);
-  assert(Math.abs(geometry.host.w-geometry.button.w)<=1&&Math.abs(geometry.control.w-geometry.button.w)<=1,`${label}: Theme host/control retained phantom width ${JSON.stringify(geometry)}`);
-  assert(Math.abs(geometry.svg.x-geometry.button.x)<=1&&Math.abs(geometry.svg.y-geometry.button.y)<=1,`${label}: Theme SVG is not optically centered ${JSON.stringify(geometry)}`);
-  await page.locator('#theme-control .ui-select__trigger').click();
-  await page.waitForSelector('#weigg-floating-layer .ui-select__menu');
-  const openCenter=await page.locator('#theme-control .ui-select__trigger').evaluate(button=>{const svg=button.querySelector('svg'),br=button.getBoundingClientRect(),sr=svg.getBoundingClientRect();return{dx:(sr.left+sr.width/2)-(br.left+br.width/2),dy:(sr.top+sr.height/2)-(br.top+br.height/2),w:br.width,h:br.height};});
-  assert(Math.abs(openCenter.dx)<=1&&Math.abs(openCenter.dy)<=1&&Math.abs(openCenter.w-expectedSize)<=1,`${label}: opening Theme changed icon/button geometry ${JSON.stringify(openCenter)}`);
-  await page.keyboard.press('Escape');
+  const g=await page.evaluate(()=>{const host=document.getElementById('theme-btn'),control=document.getElementById('theme-control'),button=control?.querySelector('.ui-select__trigger'),svg=button?.querySelector('svg');if(!host||!control||!button||!svg)return null;const c=n=>{const r=n.getBoundingClientRect();return{x:r.left+r.width/2,y:r.top+r.height/2,w:r.width,h:r.height};};return{host:c(host),control:c(control),button:c(button),svg:c(svg),svgCount:button.querySelectorAll('svg').length,text:(button.textContent||'').trim(),title:button.getAttribute('title')};});
+  assert(g&&g.svgCount===1&&g.text===''&&g.title===null,`${label}: Theme must remain SVG-only ${JSON.stringify(g)}`);
+  assert(Math.abs(g.button.w-expectedSize)<=1&&Math.abs(g.button.h-expectedSize)<=1,`${label}: Theme size diverged ${JSON.stringify(g)}`);
+  assert(Math.abs(g.host.w-g.button.w)<=1&&Math.abs(g.control.w-g.button.w)<=1,`${label}: Theme retained phantom width ${JSON.stringify(g)}`);
+  assert(Math.abs(g.svg.x-g.button.x)<=1&&Math.abs(g.svg.y-g.button.y)<=1,`${label}: Theme SVG is not centered ${JSON.stringify(g)}`);
 }
+
+async function assertNoSidebarTooltip(page,selector,label){
+  const node=page.locator(selector);await node.hover();await page.waitForTimeout(450);
+  const state=await node.evaluate(n=>({data:n.hasAttribute('data-tooltip'),title:n.hasAttribute('title'),descTitles:n.querySelectorAll('[title]').length}));
+  const visible=await page.locator('#polish-tooltip.is-visible').count();
+  assert(!state.data&&!state.title&&state.descTitles===0&&visible===0,`${label}: Sidebar must have zero tooltip owners ${JSON.stringify({state,visible})}`);
+}
+
+async function assertInline(page,selector,badgeCopy,label){
+  const g=await page.locator(selector).evaluate(n=>{const badge=n.querySelector(':scope > .capability-badge');if(!badge)return null;const text=Array.from(n.childNodes).find(x=>x.nodeType===Node.TEXT_NODE&&x.textContent.trim());if(!text)return null;const range=document.createRange();range.selectNodeContents(text);const tr=range.getBoundingClientRect(),br=badge.getBoundingClientRect(),style=getComputedStyle(n);return{gap:br.left-tr.right,badge:badge.textContent.trim(),cssGap:style.columnGap||style.gap};});
+  assert(g&&g.badge===badgeCopy&&g.gap>=10&&g.gap<=14,`${label}: inline capability gap must be standardized near 12px ${JSON.stringify(g)}`);
+  await assertNoSidebarTooltip(page,selector,label);
+}
+
 async function assertTags(page,label){
-  const facet=page.locator('[data-facet="tag"]');
-  await facet.waitFor();
+  const facet=page.locator('[data-facet="tag"]');await facet.waitFor();
   await page.waitForFunction(()=>document.querySelector('[data-facet="tag"] .ui-select__value')?.textContent==='全部标签');
-  const g=await facet.evaluate(n=>{const trigger=n.querySelector('.ui-select__trigger'),value=n.querySelector('.ui-select__value'),badge=n.querySelector('.capability-badge'),tr=trigger.getBoundingClientRect(),vr=value.getBoundingClientRect(),br=badge.getBoundingClientRect(),nr=n.getBoundingClientRect();return{text:value.textContent,client:value.clientWidth,scroll:value.scrollWidth,triggerW:tr.width,valueW:vr.width,gap:br.left-tr.right,badge:badge.textContent.trim(),wrapperW:nr.width,overflow:n.scrollWidth-n.clientWidth,titleCount:n.querySelectorAll('[title]').length,wrapperTitle:n.hasAttribute('title')};});
-  assert(g.text==='全部标签'&&g.client>=g.scroll-1,`${label}: 全部标签 is clipped/ellipsized ${JSON.stringify(g)}`);
-  assert(g.triggerW>=104&&g.gap>=4&&g.gap<=10&&g.badge==='4.2.0+'&&g.overflow<=1,`${label}: Tags trigger/badge geometry is wrong ${JSON.stringify(g)}`);
-  assert(g.titleCount===0&&!g.wrapperTitle,`${label}: native title tooltip survived inside capability control ${JSON.stringify(g)}`);
-  await facet.locator('.ui-select__trigger').hover();
-  await page.waitForSelector('#polish-tooltip.is-visible');
-  const tips=await page.locator('#polish-tooltip.is-visible').count();
-  const copy=(await page.locator('#polish-tooltip.is-visible').textContent())||'';
-  assert(tips===1&&copy.includes('标签')&&copy.includes('4.2.0+'),`${label}: expected exactly one custom capability tooltip ${JSON.stringify({tips,copy})}`);
-  await page.mouse.move(1,1);
-  await page.waitForFunction(()=>!document.getElementById('polish-tooltip')?.classList.contains('is-visible'));
+  const g=await facet.evaluate(n=>{const trigger=n.querySelector('.ui-select__trigger'),value=n.querySelector('.ui-select__value'),inside=trigger?.querySelector(':scope > .capability-badge'),outside=n.querySelector(':scope > .capability-badge');if(!trigger||!value||!inside)return null;const tr=trigger.getBoundingClientRect(),vr=value.getBoundingClientRect(),br=inside.getBoundingClientRect();return{text:value.textContent,client:value.clientWidth,scroll:value.scrollWidth,badge:inside.textContent.trim(),outside:!!outside,gap:br.left-vr.right,left:vr.left-tr.left,right:tr.right-br.right,triggerW:tr.width,overflow:n.scrollWidth-n.clientWidth,dataTooltip:n.hasAttribute('data-tooltip'),titles:n.querySelectorAll('[title]').length};});
+  assert(g&&g.text==='全部标签'&&g.client>=g.scroll-1,`${label}: 全部标签 is clipped ${JSON.stringify(g)}`);
+  assert(g.badge==='4.2.0+'&&!g.outside,`${label}: capability badge must live inside the canonical Select trigger ${JSON.stringify(g)}`);
+  assert(g.gap>=10&&g.gap<=14&&g.left>=8&&g.left<=12&&g.right>=8&&g.right<=12,`${label}: label/badge/padding geometry is not compact and symmetric ${JSON.stringify(g)}`);
+  assert(g.triggerW<150&&g.overflow<=1,`${label}: disabled Tags control retained artificial empty width ${JSON.stringify(g)}`);
+  await assertNoSidebarTooltip(page,'[data-facet="tag"]',label);
+  await facet.locator('.capability-badge').click();
+  await page.waitForSelector('#capability-dialog[open]');
+  const cap=await page.locator('#capability-dialog').getAttribute('data-dialog-capability');
+  assert(cap==='tags',`${label}: badge and label must share the same capability action owner`);
+  await page.locator('#capability-dialog .capability-dialog__done').click();
 }
 
 const browser=await launchBrowser();
@@ -76,22 +81,17 @@ try{
   await page.waitForFunction(()=>document.querySelector('[data-facet="tag"]')?.getAttribute('aria-disabled')==='true'&&window.WeiG?.CapabilityRegistry?.state('tags')?.badge==='4.2.0+');
 
   await assertTheme(page,'Desktop',40);
+  await assertInline(page,'[data-filter="stalled"]','4.2.5+','Desktop Stalled');
+  await assertInline(page,'[data-filter="private"]','5.0.0+','Desktop Private/PT');
   await assertTags(page,'Desktop zh-CN Sidebar');
-  const capabilityNativeTitles=await page.locator('[data-capability-id][aria-disabled="true"]').evaluateAll(nodes=>nodes.reduce((count,n)=>count+(n.hasAttribute('title')?1:0)+n.querySelectorAll('[title]').length,0));
-  assert(capabilityNativeTitles===0,`Desktop: disabled capabilities retained ${capabilityNativeTitles} native title tooltip owners`);
 
-  await page.setViewportSize({width:390,height:844});
-  await page.waitForTimeout(100);
+  await page.setViewportSize({width:390,height:844});await page.waitForTimeout(100);
   await assertTheme(page,'Mobile',44);
-  await page.locator('#menu-btn').click();
-  await page.waitForFunction(()=>document.getElementById('sidebar')?.classList.contains('is-open'));
+  await page.locator('#menu-btn').click();await page.waitForFunction(()=>document.getElementById('sidebar')?.classList.contains('is-open'));
+  await assertInline(page,'[data-filter="stalled"]','4.2.5+','Mobile Stalled');
+  await assertInline(page,'[data-filter="private"]','5.0.0+','Mobile Private/PT');
   await assertTags(page,'Mobile zh-CN Drawer');
-  await page.locator('#menu-btn').click();
-  await page.waitForFunction(()=>!document.getElementById('sidebar')?.classList.contains('is-open'));
+  await page.locator('#menu-btn').click();await page.waitForFunction(()=>!document.getElementById('sidebar')?.classList.contains('is-open'));
   assert(errors.length===0,`Browser errors: ${errors.join(' | ')}`);
-  console.log('Sidebar capability visual gate passed: Theme uses one centered SVG utility icon, Desktop/Mobile zh-CN 全部标签 is fully visible beside 4.2.0+, and capability hover has one custom tooltip with no native title owner.');
-}finally{
-  if(context)await context.close();
-  await browser.close();
-  await new Promise(resolve=>server.close(resolve));
-}
+  console.log('Sidebar capability visual gate passed: inline capability gaps are standardized, Tags badge is inside one compact Select shell, Desktop/Mobile zh-CN geometry is complete, and Sidebar capability hover has zero tooltip owners.');
+}finally{if(context)await context.close();await browser.close();await new Promise(resolve=>server.close(resolve));}
