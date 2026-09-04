@@ -78,6 +78,7 @@ jobs:
           node tests/browser-feature-parity.mjs
           node tests/browser-torrent-workspace.mjs
           node tests/browser-adaptive-ui.mjs
+          node tests/browser-sidebar-capability-visual.mjs
 
   release_compatibility:
     name: Full qB Release compatibility audit
@@ -134,6 +135,7 @@ jobs:
           node tests/browser-feature-parity.mjs
           node tests/browser-torrent-workspace.mjs
           node tests/browser-adaptive-ui.mjs
+          node tests/browser-sidebar-capability-visual.mjs
 
   windows_browser:
     name: Windows browser candidate
@@ -184,7 +186,8 @@ jobs:
             'tests/browser-feedback.mjs',
             'tests/browser-feature-parity.mjs',
             'tests/browser-torrent-workspace.mjs',
-            'tests/browser-adaptive-ui.mjs'
+            'tests/browser-adaptive-ui.mjs',
+            'tests/browser-sidebar-capability-visual.mjs'
           )
           foreach ($test in $tests) {
             node $test
