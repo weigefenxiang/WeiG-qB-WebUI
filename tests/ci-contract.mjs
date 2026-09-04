@@ -19,11 +19,12 @@ function filesUnder(rel,extensions){
   return out.sort();
 }
 function jobSection(ci,name,nextName){
-  const marker=`\n  ${name}:\n`,start=ci.indexOf(marker);
+  const normalized=ci.replace(/\r\n?/g,'\n');
+  const marker=`\n  ${name}:\n`,start=normalized.indexOf(marker);
   assert(start>=0,`Missing CI job ${name}`);
-  const end=nextName?ci.indexOf(`\n  ${nextName}:\n`,start+marker.length):ci.length;
+  const end=nextName?normalized.indexOf(`\n  ${nextName}:\n`,start+marker.length):normalized.length;
   assert(end>start,`Unable to bound CI job ${name}`);
-  return ci.slice(start,end);
+  return normalized.slice(start,end);
 }
 
 const version=read('VERSION').trim();
