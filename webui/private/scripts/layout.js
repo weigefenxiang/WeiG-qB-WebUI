@@ -1,19 +1,23 @@
 (function(global){
   'use strict';
-  var W=global.WeiG,U=W&&W.util;
-  if(!W||!U||W.LayoutRuntime)return;
-
-  var initialized=false,Grid={widths:{}},originalTemplate=W.DataGrid&&W.DataGrid.template;
-  function isMobile(){return !!(global.matchMedia&&global.matchMedia('(max-width: 820px)').matches);}
-  function gridColumnsFromDom(){return Array.from(document.querySelectorAll('#torrent-table-head .grid-head-cell')).map(function(cell){var key=cell.dataset.key,def=(W.DataGrid.defaults||[]).find(function(x){return x.key===key;})||{},width=Grid.widths[key]||Math.round(cell.getBoundingClientRect().width)||def.width||100;return{key:key,width:width,min:def.min||60};});}
-  function applyGridWidths(cols){if(!cols||!cols.length)return;cols.forEach(function(c){Grid.widths[c.key]=c.width;});var template=cols.map(function(c){return Math.max(c.min||60,Grid.widths[c.key]||c.width||100)+'px';}).join(' '),view=document.getElementById('list-view');if(view)view.style.setProperty('--weigg-grid-template',template);}
-  function installHandle(handle,index,cols,onDone){handle.addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();var startX=e.clientX,startW=Grid.widths[cols[index].key]||cols[index].width||100,pending=null,raf=0;handle.setPointerCapture(e.pointerId);function flush(){raf=0;if(pending==null)return;cols[index].width=Math.max(cols[index].min||60,startW+pending);Grid.widths[cols[index].key]=cols[index].width;applyGridWidths(cols);pending=null;}function move(ev){pending=ev.clientX-startX;if(!raf)raf=requestAnimationFrame(flush);}function up(ev){if(raf){cancelAnimationFrame(raf);flush();}try{handle.releasePointerCapture(ev.pointerId);}catch(_e){}handle.removeEventListener('pointermove',move);handle.removeEventListener('pointerup',up);handle.removeEventListener('pointercancel',up);if(onDone)onDone(cols);}handle.addEventListener('pointermove',move);handle.addEventListener('pointerup',up);handle.addEventListener('pointercancel',up);});}
-  function installGridResize(){var head=document.getElementById('torrent-table-head');if(!head||isMobile())return;var cols=gridColumnsFromDom();if(!cols.length)return;applyGridWidths(cols);Array.from(head.querySelectorAll('.col-resize')).forEach(function(old,index){if(old.dataset.weiggResize==='1')return;var clone=old.cloneNode(true);clone.dataset.weiggResize='1';old.replaceWith(clone);installHandle(clone,index,cols,function(next){var cfg=W.Config.load(),saveCols=next.map(function(c){var def=(W.DataGrid.defaults||[]).find(function(x){return x.key===c.key;})||{};return Object.assign({},def,c);});W.DataGrid.save(cfg,saveCols);head.style.gridTemplateColumns=W.DataGrid.template(saveCols);var list=document.getElementById('torrent-list'),instance=list&&list.__weiggTorrentVirtual;if(instance)instance.render();});});}
-  function overrideGrid(){if(!W.DataGrid||!originalTemplate)return;W.DataGrid.template=function(cols){var next=(cols||[]).map(function(c){var copy=Object.assign({},c);if(Grid.widths[c.key])copy.width=Grid.widths[c.key];return copy;});return originalTemplate.call(this,next);};W.DataGrid.addResizeHandles=function(head,cols,onChange){U.$$('.col-resize',head).forEach(function(x){x.remove();});applyGridWidths(cols);U.$$('.grid-head-cell',head).forEach(function(cell,index){var h=document.createElement('span');h.className='col-resize';h.dataset.weiggResize='1';h.setAttribute('aria-hidden','true');cell.appendChild(h);installHandle(h,index,cols,function(next){if(onChange)onChange(next,true);});});};}
-  function normalizeDialog(dialog){if(!dialog||dialog.dataset.adaptiveDialog==='1')return;dialog.dataset.adaptiveDialog='1';var root=dialog.querySelector(':scope > form')||dialog,head=root.querySelector(':scope > .dialog__head'),actions=root.querySelector(':scope > .dialog__actions'),body=root.querySelector(':scope > .dialog__body');if(!body){body=document.createElement('div');body.className='dialog__body';var nodes=Array.from(root.childNodes).filter(function(n){return n!==head&&n!==actions;});nodes.forEach(function(n){body.appendChild(n);});if(head)head.insertAdjacentElement('afterend',body);else root.insertBefore(body,actions||root.firstChild);}}
+  var W=global.WeiG=global.WeiG||{};
+  if(W.LayoutRuntime)return;
+  var initialized=false;
+  function normalizeDialog(dialog){
+    if(!dialog||dialog.dataset.adaptiveDialog==='1')return;
+    dialog.dataset.adaptiveDialog='1';
+    var root=dialog.querySelector(':scope > form')||dialog,
+        head=root.querySelector(':scope > .dialog__head'),
+        actions=root.querySelector(':scope > .dialog__actions'),
+        body=root.querySelector(':scope > .dialog__body');
+    if(body)return;
+    body=document.createElement('div');
+    body.className='dialog__body';
+    Array.from(root.childNodes).filter(function(node){return node!==head&&node!==actions;}).forEach(function(node){body.appendChild(node);});
+    if(head)head.insertAdjacentElement('afterend',body);else root.insertBefore(body,actions||root.firstChild);
+  }
   function normalizeDialogs(){Array.from(document.querySelectorAll('dialog.dialog')).forEach(normalizeDialog);}
-  function init(){if(initialized)return;initialized=true;overrideGrid();normalizeDialogs();installGridResize();global.addEventListener('resize',U.debounce(installGridResize,80));global.addEventListener('weigg:library-state',function(){requestAnimationFrame(installGridResize);});}
-
-  W.LayoutRuntime={init:init,installGridResize:installGridResize,normalizeDialogs:normalizeDialogs,widths:Grid.widths};
+  function init(){if(initialized)return;initialized=true;normalizeDialogs();}
+  W.LayoutRuntime={init:init,normalizeDialogs:normalizeDialogs};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })(window);
