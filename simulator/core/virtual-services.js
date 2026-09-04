@@ -1,6 +1,6 @@
 import {hash32} from './random.js';
 
-function clampInt(value,min,max){return Math.max(min,Math.min(max,Math.round(Number(value)||0));}
+function clampInt(value,min,max){return Math.max(min,Math.min(max,Math.round(Number(value)||0)));}
 function ensure(world,key,fallback){if(world[key]==null)world[key]=fallback;return world[key];}
 function slug(value){return String(value||'virtual').trim().replace(/[^a-z0-9]+/gi,'-').replace(/^-|-$/g,'').toLowerCase()||'virtual';}
 

@@ -17,6 +17,8 @@ function walk(dir,out=[]){
 
 const syntaxFiles=[
   ...walk(path.join(root,'webui/private/scripts')).filter(file=>file.endsWith('.js')),
+  ...walk(path.join(root,'simulator')).filter(file=>file.endsWith('.js')||file.endsWith('.mjs')),
+  ...walk(path.join(root,'tools')).filter(file=>file.endsWith('.js')||file.endsWith('.mjs')),
   ...walk(path.join(root,'tests')).filter(file=>file.endsWith('.mjs'))
 ].sort();
 for(const file of syntaxFiles){
@@ -27,4 +29,4 @@ for(const file of syntaxFiles){
   }
 }
 
-console.log(`Syntax contract passed for ${syntaxFiles.length} runtime/test JavaScript files.`);
+console.log(`Syntax contract passed for ${syntaxFiles.length} product/simulator/tool/test JavaScript files.`);
