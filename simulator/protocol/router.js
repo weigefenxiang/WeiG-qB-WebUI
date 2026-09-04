@@ -9,6 +9,10 @@ import {
   toggleFirstLast,toggleSequential
 } from '../core/torrent-actions.js';
 import {atLeast} from '../core/profiles.js';
+import {
+  creatorAddTask,creatorDeleteTask,creatorStatus,creatorTorrentFile,rssAddFeed,rssItems,rssRefreshItem,
+  rssRemoveItem,rssRules,searchResults,searchStart,searchStatus,searchStop
+} from '../core/virtual-services.js';
 
 function json(value,status=200,headers={}){
   return new Response(JSON.stringify(value),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store',...headers}});
@@ -254,20 +258,32 @@ export async function handleApi(world,request,url=new URL(request.url)){
   }
   if(path==='log/peers'&&method==='GET')return json([]);
 
-  if(path==='rss/items'&&method==='GET')return json({});
-  if(path==='rss/rules'&&method==='GET')return json({});
-  if(['rss/addFeed','rss/removeItem','rss/refreshItem'].includes(path)&&method==='POST')return empty();
+  if(path==='rss/items'&&method==='GET')return json(rssItems(world,url.searchParams.get('withData')!=='false'));
+  if(path==='rss/rules'&&method==='GET')return json(rssRules(world));
+  if(path==='rss/addFeed'&&method==='POST'){
+    const f=await formObject(request);rssAddFeed(world,f.url,f.path);return empty();
+  }
+  if(path==='rss/removeItem'&&method==='POST'){
+    const f=await formObject(request);return rssRemoveItem(world,f.path)?empty():notFound();
+  }
+  if(path==='rss/refreshItem'&&method==='POST'){
+    const f=await formObject(request);return rssRefreshItem(world,f.itemPath)?empty():notFound();
+  }
 
   if(path==='search/plugins'&&method==='GET')return json([{name:'Virtual Search',fullName:'WeiG Virtual Search',url:'https://example.invalid',enabled:true,supportedCategories:{all:'All'}}]);
-  if(path==='search/start'&&method==='POST')return json({id:1});
-  if(path.startsWith('search/status')&&method==='GET')return json([{id:1,status:'Stopped',total:0}]);
-  if(path.startsWith('search/results')&&method==='GET')return json({status:'Stopped',total:0,results:[]});
-  if(path==='search/stop'&&method==='POST')return empty();
+  if(path==='search/start'&&method==='POST'){const f=await formObject(request);return json(searchStart(world,f));}
+  if(path==='search/status'&&method==='GET')return json(searchStatus(world,url.searchParams.has('id')?url.searchParams.get('id'):null));
+  if(path==='search/results'&&method==='GET')return json(searchResults(world,url.searchParams.get('id'),url.searchParams.get('limit'),url.searchParams.get('offset')));
+  if(path==='search/stop'&&method==='POST'){const f=await formObject(request);return searchStop(world,f.id)?empty():notFound();}
 
-  if(path==='torrentcreator/addTask'&&method==='POST')return json({taskID:'virtual-task'});
-  if(path.startsWith('torrentcreator/status')&&method==='GET')return json({taskID:'virtual-task',status:'Finished',progress:1});
-  if(path==='torrentcreator/deleteTask'&&method==='POST')return empty();
-  if(path.startsWith('torrentcreator/torrentFile')&&method==='GET')return new Response(new Blob(['WeiG Virtual Torrent'],{type:'application/x-bittorrent'}),{status:200});
+  if(path==='torrentcreator/addTask'&&method==='POST'){const f=await formObject(request);return json(creatorAddTask(world,f));}
+  if(path==='torrentcreator/status'&&method==='GET')return json(creatorStatus(world,url.searchParams.get('taskID')||''));
+  if(path==='torrentcreator/deleteTask'&&method==='POST'){const f=await formObject(request);return creatorDeleteTask(world,String(f.taskID||''))?empty():notFound();}
+  if(path==='torrentcreator/torrentFile'&&method==='GET'){
+    const payload=creatorTorrentFile(world,url.searchParams.get('taskID')||'');
+    if(payload==null)return text('Torrent creator task is not finished.',409);
+    return new Response(new Blob([payload],{type:'application/x-bittorrent'}),{status:200,headers:{'cache-control':'no-store'}});
+  }
 
   return notImplemented(path);
 }

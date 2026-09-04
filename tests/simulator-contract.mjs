@@ -7,6 +7,10 @@ import {
   toggleFirstLast,toggleSequential
 } from '../simulator/core/torrent-actions.js';
 import {applyScenario} from '../simulator/core/scenarios.js';
+import {
+  creatorAddTask,creatorDeleteTask,creatorStatus,creatorTorrentFile,rssAddFeed,rssItems,rssRefreshItem,
+  rssRemoveItem,searchResults,searchStart,searchStatus,searchStop
+} from '../simulator/core/virtual-services.js';
 
 const MiB=1024*1024;
 function world(qb='5.2.3',api='2.15.1',count=500){
@@ -172,4 +176,39 @@ function formRequest(url,body){
   assert.ok(target.trackers.some(x=>x.url==='https://router.example/announce'),'router must execute tracker add side effect');
 }
 
-console.log('Virtual qB simulator contract passed: deterministic world, arbitrary login/logout, limits, queueing, scenarios, qB4/qB5 endpoint split, real torrent actions, trackers, peer bans and scheduled policy effects.');
+{
+  const w=world();authenticate(w,'demo','demo');
+  const feed=rssAddFeed(w,'https://feeds.example.invalid/releases.xml','',1700000000000);
+  let items=rssItems(w,true);assert.ok(items[feed.key],'RSS add must create a visible feed');
+  const firstBuild=items[feed.key].lastBuildDate;assert.ok(rssRefreshItem(w,feed.key,1700000005000));
+  items=rssItems(w,true);assert.ok(items[feed.key].lastBuildDate>firstBuild,'RSS refresh must update feed state');
+  assert.ok(rssRemoveItem(w,feed.key));assert.equal(Object.keys(rssItems(w,true)).length,0,'RSS remove must persist');
+}
+
+{
+  const w=world();authenticate(w,'demo','demo');
+  const started=searchStart(w,{pattern:'Ubuntu ISO'},1700000000000);assert.ok(started.id>0);
+  let status=searchStatus(w,started.id,1700000000500);assert.equal(status[0].status,'Running','search must have a running lifecycle');
+  const partial=searchResults(w,started.id,100,0,1700000000500);assert.ok(partial.results.length>=6,'running search must expose deterministic partial results');
+  const later=searchResults(w,started.id,100,0,1700000005000);assert.ok(later.results.length>partial.results.length,'search results must grow over virtual time');
+  assert.ok(searchStop(w,started.id));status=searchStatus(w,started.id,1700000005000);assert.equal(status[0].status,'Stopped');
+}
+
+{
+  const w=world();authenticate(w,'demo','demo');
+  const created=creatorAddTask(w,{sourcePath:'/virtual/source'},1700000000000);assert.ok(created.taskID);
+  let status=creatorStatus(w,created.taskID,1700000000500);assert.equal(status.status,'Running');assert.ok(status.progress>0&&status.progress<1);
+  status=creatorStatus(w,created.taskID,1700000003000);assert.equal(status.status,'Finished');assert.equal(status.progress,1);
+  assert.ok(creatorTorrentFile(w,created.taskID,1700000003000),'finished creator task must expose a virtual torrent file');
+  assert.ok(creatorDeleteTask(w,created.taskID));
+}
+
+{
+  const w=world();authenticate(w,'demo','demo');
+  let r=await handleApi(w,formRequest('https://example.invalid/api/v2/rss/addFeed',{url:'https://router-feed.example/rss',path:''}));assert.equal(r.status,200);
+  r=await handleApi(w,new Request('https://example.invalid/api/v2/rss/items?withData=true'));const feeds=await r.json();assert.ok(Object.keys(feeds).length===1,'router RSS surface must be stateful');
+  r=await handleApi(w,formRequest('https://example.invalid/api/v2/search/start',{pattern:'Fedora',plugins:'enabled',category:'all'}));const job=await r.json();assert.ok(job.id>0);
+  r=await handleApi(w,new Request(`https://example.invalid/api/v2/search/results?id=${job.id}&limit=20&offset=0`));const results=await r.json();assert.ok(results.results.length>0,'router search must return virtual results');
+}
+
+console.log('Virtual qB simulator contract passed: deterministic world, arbitrary login/logout, limits, queueing, scenarios, qB4/qB5 endpoint split, real torrent actions, trackers, peer bans, RSS/search/torrent-creator lifecycles and scheduled policy effects.');
