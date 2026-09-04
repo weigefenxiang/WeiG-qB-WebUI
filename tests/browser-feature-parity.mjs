@@ -1,4 +1,4 @@
-import {chromium} from 'playwright';
+import {launchBrowser} from './browser-driver.mjs';
 import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -35,7 +35,7 @@ async function api(req,res,v,p,url){
 const server=http.createServer(async(req,res)=>{try{const url=new URL(req.url,`http://${host}:${port}`),m=url.pathname.match(/^\/(legacy|modern)(?:\/(.*))?$/);if(!m){res.writeHead(404);return res.end('not found');}const v=variants[m[1]],rel=m[2]||'';if(rel.startsWith('api/v2/'))return await api(req,res,v,rel.slice(7),url);if(rel==='weigg-install.json')return json(res,{version:productVersion,gitSha:'fixture-sha',qbPath:'/config/weigg-qb-webui',hostPath:'/srv/qb/config/weigg-qb-webui'});const requested=rel||'index.html',file=path.resolve(privateRoot,requested);if(!(file===privateRoot||file.startsWith(privateRoot+path.sep))){res.writeHead(403);return res.end('forbidden');}const body=await fs.readFile(file);res.writeHead(200,{'content-type':mime[path.extname(file).toLowerCase()]||'application/octet-stream','cache-control':'no-store'});res.end(body);}catch(e){res.writeHead(e?.code==='ENOENT'?404:500,{'content-type':'text/plain; charset=utf-8'});res.end(String(e));}});
 await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(port,host,resolve);});
 
-const browser=await chromium.launch({headless:true});
+const browser=await launchBrowser();
 try{
   for(const name of ['legacy','modern']){
     const context=await browser.newContext({viewport:{width:1440,height:900},locale:'en-US'}),page=await context.newPage(),errors=[],trackerRequests=[];

@@ -48,25 +48,28 @@ jobs:
   ui_browser:
     name: Linux semantic UI regression
     if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'ui' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[ui]')) }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: smoke
+    env:
+      WEIGG_BROWSER_CHANNEL: chrome
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Use Ubuntu archive mirror
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install browser test dependency
+        run: npm ci --no-audit --no-fund --prefer-offline
+      - name: Verify hosted Chrome runtime
         shell: bash
         run: |
           set -euo pipefail
-          for source_file in /etc/apt/apt-mirrors.txt /etc/apt/sources.list /etc/apt/sources.list.d/ubuntu.sources; do
-            [ -f "$source_file" ] || continue
-            sudo sed -i -E 's#https?://([A-Za-z0-9.-]+\.)?archive\.ubuntu\.com/ubuntu/?#http://archive.ubuntu.com/ubuntu/#g' "$source_file"
-          done
-      - name: Install Chromium test runtime
-        run: |
-          npm install --no-save playwright@1.55.0
-          npx playwright install --with-deps chromium
+          command -v google-chrome >/dev/null || { echo 'Hosted Google Chrome Stable is missing.' >&2; exit 1; }
+          google-chrome --version
+          node -p "require('playwright/package.json').version"
+          printf 'Runner image: %s %s\n' "${ImageOS:-unknown}" "${ImageVersion:-unknown}"
+          printf 'Git SHA: %s\n' "$GITHUB_SHA"
       - name: qB 4.1.9.1 and 5.2 semantic UI regressions
         run: |
           node tests/browser-runtime.mjs
@@ -101,25 +104,28 @@ jobs:
   browser:
     name: Linux browser candidate
     if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' && github.ref == 'refs/heads/main') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[candidate]')) }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: smoke
+    env:
+      WEIGG_BROWSER_CHANNEL: chrome
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Use Ubuntu archive mirror
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install browser test dependency
+        run: npm ci --no-audit --no-fund --prefer-offline
+      - name: Verify hosted Chrome runtime
         shell: bash
         run: |
           set -euo pipefail
-          for source_file in /etc/apt/apt-mirrors.txt /etc/apt/sources.list /etc/apt/sources.list.d/ubuntu.sources; do
-            [ -f "$source_file" ] || continue
-            sudo sed -i -E 's#https?://([A-Za-z0-9.-]+\.)?archive\.ubuntu\.com/ubuntu/?#http://archive.ubuntu.com/ubuntu/#g' "$source_file"
-          done
-      - name: Install Chromium test runtime
-        run: |
-          npm install --no-save playwright@1.55.0
-          npx playwright install --with-deps chromium
+          command -v google-chrome >/dev/null || { echo 'Hosted Google Chrome Stable is missing.' >&2; exit 1; }
+          google-chrome --version
+          node -p "require('playwright/package.json').version"
+          printf 'Runner image: %s %s\n' "${ImageOS:-unknown}" "${ImageVersion:-unknown}"
+          printf 'Git SHA: %s\n' "$GITHUB_SHA"
       - name: Semantic runtime browser matrix
         run: |
           node tests/browser-runtime.mjs
@@ -132,24 +138,39 @@ jobs:
   windows_browser:
     name: Windows browser candidate
     if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' && github.ref == 'refs/heads/main') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[candidate]')) }}
-    runs-on: windows-latest
+    runs-on: windows-2025
     needs: smoke
+    env:
+      WEIGG_BROWSER_CHANNEL: chrome
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install browser test dependency
+        shell: pwsh
+        run: npm ci --no-audit --no-fund --prefer-offline
+      - name: Verify hosted Chrome runtime
+        shell: pwsh
+        run: |
+          $candidates = @(
+            "$env:ProgramFiles\Google\Chrome\Application\chrome.exe"
+            "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe"
+          )
+          $chrome = $candidates | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+          if (-not $chrome) { throw 'Hosted Google Chrome Stable is missing.' }
+          & $chrome --version
+          node -p "require('playwright/package.json').version"
+          Write-Host "Runner image: $env:ImageOS $env:ImageVersion"
+          Write-Host "Git SHA: $env:GITHUB_SHA"
       - name: Windows contracts and installer syntax
         shell: pwsh
         run: |
           npm test
           $null = [scriptblock]::Create((Get-Content 'installers/install.ps1' -Raw))
           Write-Host 'Windows contracts passed.'
-      - name: Install Chromium test runtime
-        shell: pwsh
-        run: |
-          npm install --no-save playwright@1.55.0
-          npx playwright install chromium
       - name: Semantic runtime browser matrix on Windows
         shell: pwsh
         run: |

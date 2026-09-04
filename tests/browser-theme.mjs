@@ -1,4 +1,4 @@
-import {chromium} from 'playwright';
+import {launchBrowser} from './browser-driver.mjs';
 import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -32,7 +32,7 @@ async function surface(page,selector){return page.locator(selector).first().eval
 function whiteBased(s){return [...`${s.image} ${s.color}`.matchAll(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/g)].some(([,r,g,b])=>Number(r)>=250&&Number(g)>=250&&Number(b)>=250);}
 async function openSettings(page){await page.locator('#app-nav [data-route="settings"]').click();await page.waitForFunction(()=>document.getElementById('settings-view')?.classList.contains('is-active'));await page.waitForSelector('#settings-content[data-settings-renderer="canonical"]');}
 
-const browser=await chromium.launch({headless:true});
+const browser=await launchBrowser();
 try{
   for(const name of ['legacy','modern']){
     const context=await browser.newContext({viewport:{width:1366,height:768},locale:'en-US',colorScheme:'dark'}),page=await context.newPage(),errors=[];

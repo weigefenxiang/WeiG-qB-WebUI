@@ -18,7 +18,7 @@ Compatibility floor: **qBittorrent 4.1.9.1**
 7. Current qBittorrent/WebAPI facts remain explicit, including `qBittorrent 5.0.0+` and `WebAPI 2.3.0+`.
 8. Mobile is adaptive presentation of the same application state, not a second app.
 9. Light/Dark and Reduced Motion are first-class acceptance dimensions.
-10. Exact Git SHA is code/cache/test identity; every formal `dev` tree change increments the synchronized patch `VERSION` once before the final commit.
+10. Exact Git SHA is code/cache/test identity. Product patch `VERSION` increments only when formal `webui/**` product content changes; non-product tree changes create a new SHA without changing product VERSION.
 
 ## 2. Shared component and state rules
 
@@ -268,14 +268,21 @@ Feature gates prefer runtime/API/computed/final-state truth. A stale gate bound 
 ### GATE-SYNTAX-001 — syntax has one owner
 `tests/syntax-contract.mjs` owns runtime/test JavaScript syntax validation.
 
-### VERSION-DEV-001 — every formal dev tree change increments patch VERSION
-Every formal `dev` tree change increments the patch VERSION once, including code, `webui/**`, tests, fixtures, workflows, docs, DESIGN, installer and gate/CI repairs. `VERSION`, `webui/VERSION` and `package.json.version` move together in the same final state. Browser fixtures read canonical VERSION and do not hard-code `0.3.x`.
+### VERSION-PRODUCT-001 — only webui product changes increment patch VERSION
+Only a formal change to product content under `webui/**` increments patch VERSION. When `webui/**` changes, `VERSION`, `webui/VERSION` and `package.json.version` move together in the same final state. Changes limited to tests, fixtures, workflows, docs, DESIGN, installers, CI/gates, package test scripts, test dependencies or lockfiles keep the current product VERSION. Browser fixtures read canonical VERSION and do not hard-code `0.3.x`.
 
 ### EXACT-SHA-EVIDENCE-001 — validation belongs to SHA
-Every new Git SHA invalidates older CI/LIVE/candidate/artifact evidence. VERSION does not authorize evidence reuse.
+Every new Git SHA invalidates older CI/LIVE/candidate/artifact evidence. VERSION does not authorize evidence reuse, including when a non-product change correctly keeps the same VERSION.
 
 ### SAFE-REF-001 — dev writes are race-safe
 Formal development uses `dev`; `main` is untouched without explicit authorization. Before write and before ref update, re-read current dev exact HEAD. Update only by safe fast-forward with `force:false`.
+
+### BROWSER-RUNTIME-001 — hosted Chrome is the only CI browser runtime
+`tests/browser-driver.mjs` is the only Playwright launch-policy owner. The six `browser-*.mjs` semantic gates are callers and may not import Playwright directly, select a channel, set an executable path or implement fallback policy. Playwright JS is exact-pinned by `package.json + package-lock.json`.
+
+Linux routine UI, Linux candidate and Windows candidate all use the Google Chrome Stable already supplied by their pinned GitHub-hosted runner generation. CI must not run `playwright install`, `playwright install-deps`, dynamic `npm install ... playwright`, manual Chromium downloads or browser-specific apt provisioning. Missing hosted Chrome fails closed; it never falls back to a Playwright-managed browser.
+
+Hosted Chrome itself may update between runs. Therefore browser evidence is traceable as `exact Git SHA + package-lock + runner image + exact logged Chrome version`; it is not a claim that the same SHA always replays against the same browser binary.
 
 ## 11. Do / Don't
 
@@ -286,7 +293,8 @@ Do:
 - keep one owner and retire replaced callers in the same change;
 - audit Desktop/Mobile + Light/Dark + Reduced Motion;
 - validate real interaction/final state;
-- use exact SHA tree/files for repo-wide ownership audits when search can be incomplete.
+- use exact SHA tree/files for repo-wide ownership audits when search can be incomplete;
+- keep Playwright dependency identity in `package-lock.json` and log hosted Chrome identity in every browser gate.
 
 Don't:
 
@@ -297,6 +305,7 @@ Don't:
 - implement Mobile Sort by clicking hidden Desktop UI;
 - restore summary cards or Mobile facet/command shelves;
 - hide stale code instead of deleting its owner/callers/tests;
+- dynamically install Playwright or provision Chromium inside CI browser jobs;
 - treat a red assertion as proof the product is wrong before inspecting runtime truth.
 
 ## 12. Current visual acceptance

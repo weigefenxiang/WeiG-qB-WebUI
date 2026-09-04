@@ -1,4 +1,4 @@
-import {chromium} from 'playwright';
+import {launchBrowser} from './browser-driver.mjs';
 import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -38,7 +38,7 @@ async function selectTab(page,tab,expectRows=true){await page.locator(`#settings
 async function twoColumns(page){return page.evaluate(()=>{const rows=[...document.querySelectorAll('#settings-content .setting-row:not([hidden])')].slice(0,4);if(rows.length<2)return false;const a=rows[0].getBoundingClientRect(),b=rows[1].getBoundingClientRect();return Math.abs(a.left-b.left)>40&&Math.abs(a.top-b.top)<8;});}
 async function alignment(page){return page.evaluate(()=>[...document.querySelectorAll('#settings-content .setting-row:not([hidden])')].slice(0,10).every(r=>{const box=r.getBoundingClientRect(),copyNode=r.querySelector('.setting-copy'),controlNode=r.querySelector('.setting-control-slot'),title=r.querySelector('.setting-title'),desc=r.querySelector('.setting-description');if(!copyNode||!controlNode||!title||!desc)return false;const copy=copyNode.getBoundingClientRect(),ctl=controlNode.getBoundingClientRect(),leftInset=copy.left-box.left,rightInset=box.right-ctl.right,aligns=[getComputedStyle(copyNode).textAlign,getComputedStyle(title).textAlign,getComputedStyle(desc).textAlign];return leftInset>=14&&leftInset<=18&&rightInset>=14&&rightInset<=18&&copy.left<ctl.left&&aligns.every(v=>v==='left'||v==='start');}));}
 async function noLegacySettings(page){return page.evaluate(()=>document.querySelectorAll('#settings-content .settings-control,#settings-content .settings-row--canonical,#settings-content .settings-group,#settings-content .setting-card,#settings-content .settings-grid-canonical').length===0);}
-const browser=await chromium.launch({headless:true});
+const browser=await launchBrowser();
 try{
   for(const name of ['legacy','modern']){
     variants[name].session=true;
