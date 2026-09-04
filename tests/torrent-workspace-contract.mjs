@@ -26,6 +26,7 @@ const progressCss=read('webui/private/css/progress.css');
 const layoutCss=read('webui/private/css/layout.css');
 const spatialCss=read('webui/private/css/spatial.css');
 const polishCss=read('webui/private/css/polish.css');
+const uiCss=read('webui/private/css/ui.css');
 const headerCss=read('webui/private/css/header.css');
 const docs=read('docs/008.Torrent工作区与状态所有权.md');
 
@@ -88,7 +89,7 @@ assert(!responsive.includes('W.VirtualList=function')&&!responsive.includes('C.s
 assert(!layout.includes('W.DataGrid.template=function')&&!layout.includes('W.DataGrid.addResizeHandles=function'),'LayoutRuntime must not monkey-patch canonical DataGrid');
 assert(progressCss.includes('.progress-track--mobile-edge')&&progressCss.includes('@media(prefers-reduced-motion:reduce)')&&progressCss.includes('html[data-motion="reduced"]'),'Canonical Torrent progress must provide Mobile rail and both Reduced Motion authorities');
 assert(progressCss.includes('--progress-flow-duration:2.6s')&&progressCss.includes('inset 0 -2px'),'Progress skin must retain slow motion plus cylindrical lower shading');
-assert(ui.includes('grid-row:2!important')&&ui.includes('.mobile-metric-more'),'Configured Mobile metrics and +N overflow summary must stay on the second row');
+assert(uiCss.includes('grid-row:2!important')&&uiCss.includes('.mobile-metric-more'),'Configured Mobile metrics and +N overflow summary must stay on the second row');
 
 // Adaptive placement moves existing controls only; telemetry summary/focus leaves are retired.
 assert(responsive.includes("document.getElementById('mobile-pager-actions-slot')")&&responsive.includes('mountSelectionToolbar'),'Mobile pager must host the same canonical Selection toolbar');
