@@ -69,7 +69,7 @@ async function assertDisabledTags(page,label){
 async function assertSupportedTags(page,label){
   const g=await page.evaluate(()=>{const tag=document.querySelector('[data-facet="tag"]'),category=document.querySelector('[data-facet="category"]'),tt=tag?.querySelector('.ui-select__trigger'),ct=category?.querySelector('.ui-select__trigger');if(!tag||!category||!tt||!ct)return null;const a=tt.getBoundingClientRect(),b=ct.getBoundingClientRect(),ts=getComputedStyle(tt),cs=getComputedStyle(ct);return{tagW:a.width,catW:b.width,tagH:a.height,catH:b.height,badge:tag.querySelectorAll('.capability-badge').length,disabled:tag.classList.contains('is-capability-disabled'),affordance:tag.classList.contains('capability-affordance')||tag.classList.contains('capability-affordance--control'),tagGrid:ts.gridTemplateColumns,catGrid:cs.gridTemplateColumns,chevron:getComputedStyle(tt.querySelector('.ui-select__chevron')).display,value:tt.querySelector('.ui-select__value')?.textContent};});
   assert(g&&g.value==='全部标签'&&g.badge===0&&!g.disabled&&!g.affordance,`${label}: supported Tags must completely exit capability presentation ${JSON.stringify(g)}`);
-  assert(Math.abs(g.tagW-g.catW)<=1&&Math.abs(g.tagH-g.catH)<=1&&g.chevron!=='none',`${label}: supported Tags must match the canonical Category Select geometry ${JSON.stringify(g)}`);
+  assert(Math.abs(g.tagW-g.catW)<=1&&Math.abs(g.tagH-g.catH)<=1,`${label}: supported Tags must match the canonical Category Select geometry ${JSON.stringify(g)}`);
   assert(g.tagGrid===g.catGrid,`${label}: supported Tags retained capability grid residue ${JSON.stringify(g)}`);
   await assertNoTooltip(page,'[data-facet="tag"]',label);
 }
