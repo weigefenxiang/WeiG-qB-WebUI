@@ -92,7 +92,9 @@ try{
     if(name==='legacy'){
       const privateNav=page.locator('#filter-nav [data-filter="private"]');await privateNav.dispatchEvent('click');await page.waitForSelector('#capability-dialog[open]');assert(await page.locator('#capability-dialog').getAttribute('data-dialog-capability')==='privateFilter','legacy mobile: Private did not use canonical capability dialog');await page.locator('#capability-dialog .capability-dialog__done').click();
     }
-    await page.locator('#drawer-scrim').click();
+    const scrim=page.locator('#drawer-scrim'),scrimBox=await scrim.boundingBox(),sidebarBox=await page.locator('#sidebar').boundingBox();
+    assert(scrimBox&&sidebarBox&&scrimBox.x+scrimBox.width-16>sidebarBox.x+sidebarBox.width,`${name} mobile: Drawer has no visible scrim close target`);
+    await scrim.click({position:{x:Math.max(1,scrimBox.width-16),y:Math.max(1,Math.min(scrimBox.height-16,scrimBox.height/2))}});await page.waitForFunction(()=>!document.getElementById('sidebar')?.classList.contains('is-open'));
     const card=page.locator('.torrent-mobile-card[data-hash]').first();await card.dispatchEvent('pointerdown',{pointerType:'touch',button:0,clientX:120,clientY:120});await page.waitForTimeout(560);await card.dispatchEvent('pointerup',{pointerType:'touch',button:0,clientX:120,clientY:120});await page.waitForSelector('#actions-dialog[open]');assert(await page.locator('#actions-grid [data-torrent-action]').count()>5,`${name} mobile: long press did not reuse ActionRegistry`);await page.locator('#actions-close').click();
     assert(await page.locator('.mobile-summary,#mobile-command-slot,#mobile-facet-slot').count()===0,`${name} mobile: retired duplicate UI survived`);
     assert(errors.length===0,`${name} mobile errors: ${errors.join(' | ')}`);await context.close();
