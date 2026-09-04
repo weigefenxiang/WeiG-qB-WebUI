@@ -7,6 +7,7 @@ const here=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(here,'..');
 const sh=fs.readFileSync(path.join(root,'installers/install.sh'),'utf8');
 const ps=fs.readFileSync(path.join(root,'installers/install.ps1'),'utf8');
+const live=fs.readFileSync(path.join(root,'tests/live.sh'),'utf8');
 const publicIndex=fs.readFileSync(path.join(root,'webui/public/index.html'),'utf8');
 const publicLogin=fs.readFileSync(path.join(root,'webui/public/login.html'),'utf8');
 const privateIndex=fs.readFileSync(path.join(root,'webui/private/index.html'),'utf8');
@@ -43,6 +44,11 @@ assert.match(ps,/archive\/\$sourceSha\.zip/,'Windows Dev channel must download a
 assert.doesNotMatch(ps,/archive\/refs\/heads\/main\.zip/,'Windows Release channel must fail closed instead of falling back to main');
 assert.doesNotMatch(ps,/Resolve-MainSha/,'Windows Release channel must not resolve main as a payload source');
 
+assert.match(live,/BACKUP_RETENTION=3/,'LIVE deploy must retain exactly three rollback backups');
+assert.match(live,/prune_target_backups/,'LIVE deploy must prune old sibling rollback backups');
+assert.match(live,/\.before-\*/,'LIVE deploy must include historical before-* backups in retention cleanup');
+assert.match(live,/\.ui-backup-\*/,'LIVE deploy must include historical ui-backup-* backups in retention cleanup');
+
 for(const [name,html] of [['public/index.html',publicIndex],['public/login.html',publicLogin]]){
   assert.match(html,/api\/v2\/auth\/login/,`${name} must use relative same-origin WebAPI login`);
   assert.match(html,/status===204/,`${name} must accept modern qB 5.x 204 login`);
@@ -52,4 +58,4 @@ for(const [name,html] of [['public/index.html',publicIndex],['public/login.html'
 }
 assert.match(privateIndex,/scripts\/qb-client\.js/,'private WebUI must load the shared API compatibility client');
 
-console.log('Platform contract passed: Windows/Linux installers support explicit Release/dev exact-SHA channels, Release remains checksum-verified and fail-closed, and Linux uses portable tool fallbacks.');
+console.log('Platform contract passed: Windows/Linux installers support explicit Release/dev exact-SHA channels, Release remains checksum-verified and fail-closed, Linux uses portable tool fallbacks, and LIVE rollback retention is capped at three backups.');

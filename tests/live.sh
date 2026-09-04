@@ -4,6 +4,7 @@ set -eu
 REPO="weigefenxiang/WeiG-qB-WebUI"
 SHA=""
 TARGETS=""
+BACKUP_RETENTION=3
 
 usage() {
   cat <<'EOF'
@@ -14,6 +15,7 @@ Each --target must point to an existing WeiG Alternate WebUI installation direct
 The script downloads and deploys exactly the requested Git SHA, reads the candidate VERSION from that SHA, and never encodes a WeiG release version in its own filename or deployment paths.
 It never contains deployment-specific qB URLs, host paths, credentials or container names.
 It replaces only Alternate WebUI files and does NOT restart Docker or qBittorrent.
+After a successful switch it keeps only the three newest sibling rollback backups, including historical before-* and ui-backup-* names.
 EOF
 }
 
@@ -65,6 +67,23 @@ update_metadata() {
     -e "s#(\"installedAt\"[[:space:]]*:[[:space:]]*\")[^\"]*(\")#\1${NOW}\2#" \
     -e 's#("installer"[[:space:]]*:[[:space:]]*")[^"]*(")#\1live-test\2#' \
     "$file"
+}
+
+prune_target_backups() {
+  dest="$1"
+  parent=$(dirname "$dest")
+  base=$(basename "$dest")
+  candidates=$(ls -1dt "$parent/$base".before-* "$parent/$base".ui-backup-* 2>/dev/null || true)
+  [ -n "$candidates" ] || return 0
+  first=$((BACKUP_RETENTION + 1))
+  old=$(printf '%s\n' "$candidates" | sed -n "${first},\$p")
+  [ -n "$old" ] || return 0
+  printf '%s\n' "$old" | while IFS= read -r path; do
+    [ -n "$path" ] || continue
+    [ -d "$path" ] || continue
+    rm -rf -- "$path"
+    echo "PRUNE: removed old backup $path"
+  done
 }
 
 prepare_target() {
@@ -122,6 +141,11 @@ while IFS='|' read -r dest new backup; do
   fi
 done < "$PREPARED_FILE"
 
+while IFS='|' read -r dest backup; do
+  [ -n "$dest" ] || continue
+  prune_target_backups "$dest"
+done < "$SWITCHED_FILE"
+
 echo
 echo "========== LIVE TEST READY =========="
 while IFS='|' read -r dest backup; do
@@ -131,6 +155,7 @@ while IFS='|' read -r dest backup; do
   echo "  SHA:     $(cat "$dest/GIT_SHA")"
   echo "  backup:  $backup"
 done < "$SWITCHED_FILE"
+echo "Backup retention: latest $BACKUP_RETENTION"
 echo "Docker/qB restart: NOT REQUIRED"
 echo "Browser: hard refresh once after deployment"
 echo
