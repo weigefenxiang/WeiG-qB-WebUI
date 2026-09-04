@@ -122,10 +122,11 @@ assert(floating.includes("typeof opts.onOpen==='function'")&&floating.includes('
 assert(floating.includes("opts.triggerMode==='prefix'")&&floating.includes('uiSelectTrigger'),'Canonical Select must natively support prefix-only utility triggers');
 assert(floating.includes('function internalMenuScroll(')&&floating.includes('if(internalMenuScroll(e))return;place(active)'),'Select internal scroll must stay separate from anchor placement');
 
-// Durable connection marker remains one semantic signal and Reduced Motion compliant.
+// Durable connection marker remains one semantic signal. Responsive owns connection semantics/dialog; Polish may only scrub hover presentation metadata after state events.
 assert(layoutCss.includes('grid-template-areas:"torrent storage transfer connection message"'),'Desktop Statusbar geometry must remain canonical');
 assert(layoutCss.includes('.connection-indicator[data-connection="connected"] .connection-indicator__dot')&&layoutCss.includes('box-shadow:none'),'Connection must render one canonical marker');
-assert(!polish.includes("weigg:status-state"),'PolishRuntime must not become a Connection owner');
+assert(responsive.includes('function paintConnection(')&&responsive.includes('function openConnectionDialog('),'Responsive runtime must retain the Connection semantic/dialog owner');
+assert(!polish.includes('function paintConnection(')&&!polish.includes('function openConnectionDialog(')&&!polish.includes('connectionReason('),'PolishRuntime must not become a Connection business owner');
 
 for(const rule of [
   'FACET-OWNER','PRESENTATION-STATE','TELEMETRY-PAINT','STATUS-NOISE','STATUS-DEDUP','STATUS-PLACEMENT','ADAPTIVE-STATUS','LIVE-INDICATOR','STATUS-SIGNAL','RENDERED-SIGNAL','MOTION-STATUS','STATUS-EXPLAIN','HEADER-SEARCH','HEADER-END-ANCHOR','CAPABILITY-OWNER','CAPABILITY-RANGE','OWNER-RETIRE','TORRENT-PROGRESS-OWNER','TORRENT-PROGRESS-TRUTH','TORRENT-PROGRESS-STATE','TORRENT-PROGRESS-MOTION','MOBILE-LIBRARY-IA','MOBILE-CONTROL-DENSITY','MOBILE-ACTION-PLACEMENT','MOBILE-CARD-COMPOSITION','SORT-OWNER','TORRENT-RENDERER-OWNER','TORRENT-FOCUS-RETIRE','MOBILE-PAGER-DENSITY'
