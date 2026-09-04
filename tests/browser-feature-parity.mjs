@@ -56,7 +56,7 @@ try{
     // Privacy model degrades honestly on qB4 and is native on qB5.
     const privateNav=page.locator('#filter-nav [data-filter="private"]');
     if(name==='legacy'){
-      assert(await privateNav.getAttribute('aria-disabled')==='true',`legacy: Private/PT must be disabled`);const before=trackerRequests.length;await privateNav.click({force:true});await page.waitForSelector('#capability-dialog[open]');const copy=await page.locator('#capability-dialog').textContent();assert(copy.includes('5.0.0')&&copy.includes('4.1.9.1'),`legacy: capability detail incomplete`);assert(trackerRequests.length===before,'legacy: unsupported Private started tracker fallback');await page.locator('#capability-dialog .capability-dialog__done').click();
+      assert(await privateNav.getAttribute('aria-disabled')==='true',`legacy: Private/PT must be disabled`);const before=trackerRequests.length;await privateNav.dispatchEvent('click');await page.waitForSelector('#capability-dialog[open]');const copy=await page.locator('#capability-dialog').textContent();assert(copy.includes('5.0.0')&&copy.includes('4.1.9.1'),`legacy: capability detail incomplete`);assert(trackerRequests.length===before,'legacy: unsupported Private started tracker fallback');await page.locator('#capability-dialog .capability-dialog__done').click();
     }else{
       assert(await privateNav.getAttribute('aria-disabled')==='false',`modern: Private/PT incorrectly disabled`);await privateNav.click();await page.waitForFunction(()=>WeiG.LibraryController.total()===1);const privateRow=page.locator(`#torrent-list [data-hash="${PRIVATE_HASH}"]`);assert(await privateRow.count()===1,'modern: native Private torrent missing');await page.locator('#filter-nav [data-filter="all"]').click();
     }
@@ -84,7 +84,7 @@ try{
     await page.locator('#menu-btn').click();await page.waitForFunction(()=>document.getElementById('sidebar')?.classList.contains('is-open'));
     assert(await page.locator('#sidebar-facet-slot>#facet-controls').count()===1,`${name} mobile: facets are not in Drawer Sidebar`);
     if(name==='legacy'){
-      const privateNav=page.locator('#filter-nav [data-filter="private"]');await privateNav.click({force:true});await page.waitForSelector('#capability-dialog[open]');assert(await page.locator('#capability-dialog').getAttribute('data-dialog-capability')==='privateFilter','legacy mobile: Private did not use canonical capability dialog');await page.locator('#capability-dialog .capability-dialog__done').click();
+      const privateNav=page.locator('#filter-nav [data-filter="private"]');await privateNav.dispatchEvent('click');await page.waitForSelector('#capability-dialog[open]');assert(await page.locator('#capability-dialog').getAttribute('data-dialog-capability')==='privateFilter','legacy mobile: Private did not use canonical capability dialog');await page.locator('#capability-dialog .capability-dialog__done').click();
     }
     await page.locator('#drawer-scrim').click();
     const card=page.locator('.torrent-mobile-card[data-hash]').first();await card.dispatchEvent('pointerdown',{pointerType:'touch',button:0,clientX:120,clientY:120});await page.waitForTimeout(560);await card.dispatchEvent('pointerup',{pointerType:'touch',button:0,clientX:120,clientY:120});await page.waitForSelector('#actions-dialog[open]');assert(await page.locator('#actions-grid [data-torrent-action]').count()>5,`${name} mobile: long press did not reuse ActionRegistry`);await page.locator('#actions-close').click();
