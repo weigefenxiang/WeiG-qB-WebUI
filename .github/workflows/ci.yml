@@ -70,7 +70,7 @@ jobs:
           node -p "require('playwright/package.json').version"
           printf 'Runner image: %s %s\n' "${ImageOS:-unknown}" "${ImageVersion:-unknown}"
           printf 'Git SHA: %s\n' "$GITHUB_SHA"
-      - name: qB 4.1.9.1 and 5.2 semantic UI regressions
+      - name: Representative qB4/qB5 semantic UI regressions
         run: |
           node tests/browser-runtime.mjs
           node tests/browser-theme.mjs
@@ -126,7 +126,7 @@ jobs:
           node -p "require('playwright/package.json').version"
           printf 'Runner image: %s %s\n' "${ImageOS:-unknown}" "${ImageVersion:-unknown}"
           printf 'Git SHA: %s\n' "$GITHUB_SHA"
-      - name: Semantic runtime browser matrix
+      - name: Representative qB4/qB5 semantic browser matrix
         run: |
           node tests/browser-runtime.mjs
           node tests/browser-theme.mjs
@@ -173,7 +173,7 @@ jobs:
           npm test
           $null = [scriptblock]::Create((Get-Content 'installers/install.ps1' -Raw))
           Write-Host 'Windows contracts passed.'
-      - name: Semantic runtime browser matrix on Windows
+      - name: Representative qB4/qB5 semantic browser matrix on Windows
         shell: pwsh
         run: |
           node tests/browser-runtime.mjs

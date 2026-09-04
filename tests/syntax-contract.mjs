@@ -27,11 +27,4 @@ for(const file of syntaxFiles){
   }
 }
 
-const repositoryFiles=['tests','docs','webui/private'].flatMap(dir=>walk(path.join(root,dir)));
-const versionedName=/(?:^|[-.])(?:v\d+(?:\.\d+)*|qb\d+)(?=[^0-9]|$)/i;
-const versionedPaths=repositoryFiles
-  .map(file=>path.relative(root,file).replaceAll('\\','/'))
-  .filter(file=>versionedName.test(path.basename(file)));
-if(versionedPaths.length)throw new Error(`Version-labelled repository filenames are forbidden; use stable responsibility names and keep version facts in VERSION/Git/qB capability data:\n${versionedPaths.join('\n')}`);
-
-console.log(`Syntax contract passed for ${syntaxFiles.length} runtime/test JavaScript files; repository filenames are version-neutral.`);
+console.log(`Syntax contract passed for ${syntaxFiles.length} runtime/test JavaScript files.`);

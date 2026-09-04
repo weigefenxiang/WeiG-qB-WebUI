@@ -1,6 +1,5 @@
 # WeiG qB WebUI — Design System
 
-Version: **3.0**  
 Status: **Current Semantic Ownership**  
 Theme: **Nebula Spatial Console**  
 Compatibility floor: **qBittorrent 4.1.9.1**
@@ -13,55 +12,59 @@ Compatibility floor: **qBittorrent 4.1.9.1**
 2. Canonical Button / Select / Dialog / Input / Card / Theme primitives are reused; feature-local copies are prohibited.
 3. Historical WeiG runtime/tests/deploy tools are not compatibility baggage in `dev`; Git history is the archive.
 4. First-party filenames describe stable responsibility, never WeiG release versions or qB versions.
-5. `MutationObserver`, monkey patch, post-render repair layers, duplicate polling and dual owners are prohibited.
-6. Presentation modules do not own qB clients, business state or polling.
-7. Current qBittorrent/WebAPI facts remain explicit, including `qBittorrent 5.0.0+` and `WebAPI 2.3.0+`.
-8. Mobile is adaptive presentation of the same application state, not a second app.
-9. Light/Dark and Reduced Motion are first-class acceptance dimensions.
-10. Exact Git SHA is code/cache/test identity. Product patch `VERSION` increments only when formal `webui/**` product content changes; non-product tree changes create a new SHA without changing product VERSION.
+5. Current semantic identifiers describe stable responsibility and never carry numeric revision suffixes such as `-001/-002`; Git history owns revisions.
+6. `MutationObserver`, monkey patch, post-render repair layers, duplicate polling and dual owners are prohibited.
+7. Presentation modules do not own qB clients, business state or polling.
+8. Current qBittorrent/WebAPI facts remain explicit, including `qBittorrent 5.0.0+` and `WebAPI 2.3.0+`.
+9. Mobile is adaptive presentation of the same application state, not a second app.
+10. Light/Dark and Reduced Motion are first-class acceptance dimensions.
+11. Exact Git SHA is code/cache/test identity. Product patch `VERSION` increments only when formal `webui/**` product content changes; non-product tree changes create a new SHA without changing product VERSION.
 
 ## 2. Shared component and state rules
 
-### OWNER-RETIRE-001 — replaced owners leave runtime
+### OWNER-RETIRE — replaced owners leave runtime
 When a canonical owner replaces another implementation, old callers, selectors, events, state, CSS signal and stale test expectations leave in the same change. Compatibility shims, runtime aliases and hidden bridge UIs are not retirement.
 
-### PRESENTATION-STATE-001 — DOM is not application state
+### PRESENTATION-STATE — DOM is not application state
 Presentation callers consume controllers/events/semantic state. Hidden labels, counters, table headers, dialogs or CSS classes are never read back as the database for another feature.
 
-### CONTROL-SKIN-001 — one Select/Dialog primitive system
+### CONTROL-SKIN — one Select/Dialog primitive system
 `W.Components.selectControl()` owns Select behavior/mode. Shared Select/Dialog skin belongs to `css/ui.css`; feature modules provide semantic content and bounded geometry only.
 
-### SELECT-SCROLL-001 — internal Select scrolling is not anchor scrolling
+### SELECT-SCROLL — internal Select scrolling is not anchor scrolling
 `.ui-select__options` owns its wheel/touch/scroll position. Internal menu scrolling never re-runs floating anchor placement or resets list position.
 
-### SELECT-TOPLAYER-001 — top-layer Select remains canonical
+### SELECT-TOPLAYER — top-layer Select remains canonical
 When a modal needs native reliability it still uses `W.Components.selectControl({native:true})`; no second Select system.
 
-### DIALOG-SCROLL-001 — shell is not the scroll owner
+### DIALOG-SCROLL — shell is not the scroll owner
 `dialog.dialog` stays bounded with `overflow:hidden`; only genuinely overflowing body/form/list regions scroll.
 
-### INTERACTION-TEST-001 — test action and final state
+### INTERACTION-TEST — test action and final state
 Critical browser tests perform the real user action and assert semantic transition plus final visible/computed state. Element existence or an implementation string alone is not PASS.
 
-### PROGRESSIVE-DATA-001 — aggregate work never blocks primary data
+### PROGRESSIVE-DATA — aggregate work never blocks primary data
 Current-page data renders first. Aggregate count/index/enrichment is background work with bounded loading/error state.
 
-### COMPAT-DEGRADE-001 — honest capability degradation
+### COMPAT-DEGRADE — honest capability degradation
 If older upstream lacks an authoritative/batch capability, prefer a visible capability notice over expensive emulation unless product approval explicitly requires a fallback.
 
-### PERF-COMPAT-001 — no collection N→N API fallback
+### PERF-COMPAT — no collection N→N API fallback
 List/filter/refresh compatibility must not default to `N items -> N requests`. Prefer capability degradation when authoritative/batch support is absent and emulation is expensive.
 
-### TIMESERIES-001 — bounded history
+### TIMESERIES — bounded history
 Realtime history is bounded; longer windows do not increase network polling or create unbounded samples.
 
-### CURRENT-ONLY-001 — dev contains only current WeiG architecture
+### CURRENT-ONLY — dev contains only current WeiG architecture
 Historical WeiG implementation/test/deploy compatibility is deleted rather than aliased. Current qB/WebAPI compatibility facts remain.
 
-### FILE-NAMING-001 — filenames describe responsibility
+### FILE-NAMING — filenames describe responsibility
 Active first-party runtime/tests/deploy files use stable responsibility names and do not encode WeiG release or qB release numbers.
 
-### TEST-CURRENT-001 — tests validate current contracts
+### SEMANTIC-NAMING — identifiers describe responsibility
+Current architecture rule names use stable semantic identifiers such as `COMPAT-DEGRADE`, `CAPABILITY-RANGE` and `BROWSER-RUNTIME`. Numeric revision suffixes such as `-001/-002/-003` are prohibited. Git history/tags/Releases are the revision archive. qBittorrent/WebAPI/Playwright versions remain legal where they are current upstream, protocol or dependency facts.
+
+### TEST-CURRENT — tests validate current contracts
 Historical release-specific test copies are not preserved. Current requirements live in current canonical tests.
 
 ## 3. Torrent workspace owner map
@@ -90,7 +93,7 @@ DataGrid sizing/resize                   W.DataGrid
 Dialog normalization                    W.LayoutRuntime
 ```
 
-### FACET-OWNER-001 — one facet chain
+### FACET-OWNER — one facet chain
 Facet state = `W.LibraryController`; composition = `W.SpatialRuntime`; control = canonical Select; skin = shared UI tokens. Desktop Sidebar and Mobile Drawer use the same `#facet-controls`, permanently below Torrent state filters. A Mobile horizontal facet shelf is prohibited.
 
 ### MOBILE-LIBRARY-IA — one library, adaptive placement
@@ -127,71 +130,73 @@ Only active download/seed/checking uses subtle flow/sheen. Completed/paused/queu
 
 ## 5. Header / Search
 
-### HEADER-UTILITY-001
+### HEADER-UTILITY
 Permanent Topbar space is for identity, navigation, primary Search and actionable global utilities. Passive qB product marks and redundant Refresh remain retired.
 
-### HEADER-SEARCH-001
+### HEADER-SEARCH
 Torrent Search has exactly one `#search-input` and one `app.search`. Wide/medium/narrow Desktop changes geometry only. Mobile `W.HeaderUtilities` reveals the same input as a layer anchored below Topbar; opening Search must not change Topbar height or push other header actions outside the viewport.
 
-### HEADER-END-ANCHOR-001
+### HEADER-END-ANCHOR
 Desktop Add / Theme / GitHub / WeiG Share / Logout forms one right-edge action rail. Search/navigation collapses before this rail loses its end anchor.
 
 ## 6. Telemetry / Connection
 
-### TELEMETRY-PAINT-001
+### TELEMETRY-PAINT
 One semantic telemetry source feeds presentation. Same formatted value produces no unnecessary DOM churn.
 
-### STATUS-NOISE-001
+### STATUS-NOISE
 Routine background polling success is silent.
 
-### STATUS-DEDUP-001
+### STATUS-DEDUP
 Durable connection/transfer facts are not repeated as primary-workspace summary cards. Desktop uses Statusbar; Mobile does not create a second Network Summary state owner.
 
-### STATUS-PLACEMENT-001
+### STATUS-PLACEMENT
 Persistent telemetry uses the cheapest existing surface and does not spend Torrent workspace height unnecessarily.
 
-### ADAPTIVE-STATUS-001
+### ADAPTIVE-STATUS
 Desktop/Mobile placement never creates another qB client, timer, state store or reconciliation path.
 
-### LIVE-INDICATOR-001
+### LIVE-INDICATOR
 Connection motion consumes existing `connection_status` only.
 
-### STATUS-SIGNAL-001
+### STATUS-SIGNAL
 One semantic Connection state has one visible marker. Expanding rings/pseudo dots/duplicate halos are prohibited.
 
-### RENDERED-SIGNAL-001
+### RENDERED-SIGNAL
 Acceptance is the final rendered result, not DOM node count alone.
 
-### MOTION-STATUS-001
+### MOTION-STATUS
 System and WeiG Reduced Motion disable marker animation while keeping the same semantic state.
 
-### STATUS-EXPLAIN-001
+### STATUS-EXPLAIN
 Connection Tooltip/Dialog consumes already available qB/WebAPI/DHT/Peers state from existing semantic owners. It performs no extra request, poll, port scan or capability probe.
 
 ## 7. Capability system
 
-### CAPABILITY-OWNER-001
+### CAPABILITY-OWNER
 All user-visible compatibility requirements, badges, disabled states and explanation copy are owned by `W.CapabilityRegistry + data/capabilities.json`.
 
-### CAPABILITY-RANGE-001
+### CAPABILITY-RANGE
 Support uses semantic `eq / gt / gte / lt / lte` and compound rules, not exact patch enumeration.
 
-### CAPABILITY-BADGE-001
+### CAPABILITY-BADGE
 Primary badges are qB-facing when a trustworthy qB milestone exists (`5+`, `4.2+`, bounded ranges).
 
-### CAPABILITY-DIALOG-001
+### CAPABILITY-DIALOG
 One canonical Capability Dialog explains unsupported features.
 
-### CAPABILITY-COST-001
+### CAPABILITY-COST
 Capability evaluation consumes already detected versions + local JSON, without per-feature requests/polling.
 
-### CAPABILITY-VISIBLE-001
+### CAPABILITY-VISIBLE
 Unsupported actionable features normally stay visible, `aria-disabled`, badged and explainable.
 
-### CAPABILITY-EXCEPTION-001
+### CAPABILITY-EXCEPTION
 Upstream quirks live in declarative rules, not one-off feature version branches.
 
 Known current facts include Private/PT exact metadata at qBittorrent 5.0.0+ and Tags at WebAPI 2.3.0+ (qB-facing 4.2+ where trustworthy).
+
+Current supported stable range is qBittorrent 4.1.9.1 -> 5.2.3: **55 official stable releases = 40 qB 4.x + 15 qB 5.x**. Linux/Windows Browser gates exercise representative qB4 floor + qB5 modern generations; `tests/upstream-release-audit.mjs` owns the complete stable-tag compatibility audit.
 
 ## 8. Theme
 
@@ -222,7 +227,7 @@ Theme state remains correct under System/WeiG Reduced Motion.
 ### THEME-RETIRE
 Old Theme resolution/toggle owners and Light repair layers leave when `W.Theme` is canonical.
 
-### NATIVE-THEME-001
+### NATIVE-THEME
 Canonical native controls follow resolved Light/Dark tokens and `color-scheme`.
 
 ## 9. Feedback
@@ -259,25 +264,28 @@ Legacy Toast owners/CSS/caller assumptions are deleted, not wrapped.
 
 ## 10. Release / gate discipline
 
-### GATE-OWNER-001 — one gate owns one validation responsibility
+### GATE-OWNER — one gate owns one validation responsibility
 Global runtime gates protect repository-wide invariants only. Feature semantics stay in feature contracts and browser gates own real interaction/final rendered truth.
 
-### GATE-SEMANTIC-001 — semantic truth before implementation shape
+### GATE-SEMANTIC — semantic truth before implementation shape
 Feature gates prefer runtime/API/computed/final-state truth. A stale gate bound to old DOM/CSS/package-script shape is repaired rather than forcing correct product behavior back to an old implementation.
 
-### GATE-SYNTAX-001 — syntax has one owner
-`tests/syntax-contract.mjs` owns runtime/test JavaScript syntax validation.
+### GATE-NAMING — naming has one owner
+`tests/naming-contract.mjs` owns stable first-party filename policy, revision-neutral semantic identifiers and the rule that `DESIGN.md` does not carry a parallel document revision number.
 
-### VERSION-PRODUCT-001 — only webui product changes increment patch VERSION
-Only a formal change to product content under `webui/**` increments patch VERSION. When `webui/**` changes, `VERSION`, `webui/VERSION` and `package.json.version` move together in the same final state. Changes limited to tests, fixtures, workflows, docs, DESIGN, installers, CI/gates, package test scripts, test dependencies or lockfiles keep the current product VERSION. Browser fixtures read canonical VERSION and do not hard-code `0.3.x`.
+### GATE-SYNTAX — syntax has one owner
+`tests/syntax-contract.mjs` owns runtime/test JavaScript syntax validation only.
 
-### EXACT-SHA-EVIDENCE-001 — validation belongs to SHA
+### VERSION-PRODUCT — only webui product changes increment patch VERSION
+Only a formal change to product content under `webui/**` increments patch VERSION. When `webui/**` changes, `VERSION`, `webui/VERSION` and `package.json.version` move together in the same final state. Changes limited to tests, fixtures, workflows, docs, DESIGN, installers, CI/gates, package test scripts, test dependencies or lockfiles keep the current product VERSION. Browser fixtures read canonical VERSION and do not hard-code product patch versions.
+
+### EXACT-SHA-EVIDENCE — validation belongs to SHA
 Every new Git SHA invalidates older CI/LIVE/candidate/artifact evidence. VERSION does not authorize evidence reuse, including when a non-product change correctly keeps the same VERSION.
 
-### SAFE-REF-001 — dev writes are race-safe
+### SAFE-REF — dev writes are race-safe
 Formal development uses `dev`; `main` is untouched without explicit authorization. Before write and before ref update, re-read current dev exact HEAD. Update only by safe fast-forward with `force:false`.
 
-### BROWSER-RUNTIME-001 — hosted Chrome is the only CI browser runtime
+### BROWSER-RUNTIME — hosted Chrome is the only CI browser runtime
 `tests/browser-driver.mjs` is the only Playwright launch-policy owner. The six `browser-*.mjs` semantic gates are callers and may not import Playwright directly, select a channel, set an executable path or implement fallback policy. Playwright JS is exact-pinned by `package.json + package-lock.json`.
 
 Linux routine UI, Linux candidate and Windows candidate all use the Google Chrome Stable already supplied by their pinned GitHub-hosted runner generation. CI must not run `playwright install`, `playwright install-deps`, dynamic `npm install ... playwright`, manual Chromium downloads or browser-specific apt provisioning. Missing hosted Chrome fails closed; it never falls back to a Playwright-managed browser.
@@ -294,11 +302,13 @@ Do:
 - audit Desktop/Mobile + Light/Dark + Reduced Motion;
 - validate real interaction/final state;
 - use exact SHA tree/files for repo-wide ownership audits when search can be incomplete;
-- keep Playwright dependency identity in `package-lock.json` and log hosted Chrome identity in every browser gate.
+- keep Playwright dependency identity in `package-lock.json` and log hosted Chrome identity in every browser gate;
+- use revision-neutral semantic identifiers and let Git history own revisions.
 
 Don't:
 
 - add `*-fix.css`, versioned runtime or tail patch layers;
+- add numbered semantic revisions such as `FOO-001` or `FOO-002`;
 - use MutationObserver repair, monkey patch, dual renderer or compatibility shim;
 - create a second QBClient/polling path;
 - read hidden DOM as business state;
