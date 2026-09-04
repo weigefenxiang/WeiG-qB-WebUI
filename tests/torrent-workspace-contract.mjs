@@ -25,6 +25,7 @@ const torrentSemantics=read('webui/private/scripts/torrent-semantics.js');
 const progressCss=read('webui/private/css/progress.css');
 const layoutCss=read('webui/private/css/layout.css');
 const spatialCss=read('webui/private/css/spatial.css');
+const polishCss=read('webui/private/css/polish.css');
 const headerCss=read('webui/private/css/header.css');
 const docs=read('docs/008.Torrent工作区与状态所有权.md');
 
@@ -69,7 +70,7 @@ assert(spatial.includes('C.selectControl(')&&spatial.includes("capability:'tags'
 assert(!spatial.includes('mountForViewport')&&!spatial.includes('mobile-facet-slot'),'Facet presentation must not relocate by viewport');
 assert(!spatial.includes('new W.QBClient')&&!spatial.includes('setInterval('),'SpatialRuntime must remain presentation-only');
 assert(!spatialCss.includes('mobile-facet-slot'),'Retired mobile Facet shelf CSS survived');
-assert(polish.includes('justify-content:flex-start')&&polish.includes('flex:0 1 auto'),'Capability badge must remain adjacent to its Facet control instead of consuming the full row');
+assert(polishCss.includes('justify-content:flex-start')&&polishCss.includes('flex:0 1 auto'),'Capability badge must remain adjacent to its Facet control instead of consuming the full row');
 
 // LibraryController is the semantic source for count/sort/filter state.
 assert(app.includes('W.LibraryController=LibraryController')&&app.includes('total:totalMatching')&&app.includes('setSort:setSort'),'LibraryController must expose total and sort semantics');
