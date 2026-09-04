@@ -28,14 +28,14 @@ const spatialCss=read('webui/private/css/spatial.css');
 const headerCss=read('webui/private/css/header.css');
 const docs=read('docs/008.Torrent工作区与状态所有权.md');
 
-// Workspace information architecture: one Sidebar facet owner, no summary/command/facet duplicates.
-for(const token of ['filter-shelf','tracker-nav','savepath-nav','category-nav','tag-nav','page-title','library-count-copy','last-refresh','qb-product-mark','mobile-command-slot','mobile-facet-slot','mobile-summary']){
+// Workspace information architecture: one Sidebar facet owner, no summary/command/facet duplicates or retired focus mode.
+for(const token of ['filter-shelf','tracker-nav','savepath-nav','category-nav','tag-nav','page-title','library-count-copy','last-refresh','qb-product-mark','mobile-command-slot','mobile-facet-slot','mobile-summary','torrent-focus-slot']){
   assert(!index.includes(token),`Retired Torrent workspace DOM survived: ${token}`);
 }
 for(const id of ['dl-speed','up-speed','connection-status','network-meta','torrent-count','page-range']){
   assert(!index.includes(`id="${id}"`),`Retired summary leaf survived: ${id}`);
 }
-for(const token of ['facet-controls','sidebar-facet-slot','torrent-selection-toolbar','torrent-action-slot','torrent-focus-slot','mobile-pager-actions-slot','status-connection','data-header-add-short']){
+for(const token of ['facet-controls','sidebar-facet-slot','torrent-selection-toolbar','torrent-action-slot','mobile-pager-actions-slot','status-connection','data-header-add-short']){
   assert(index.includes(token),`Canonical Torrent workspace node missing: ${token}`);
 }
 assert((index.match(/id="facet-controls"/g)||[]).length===1,'Facet controls must have one DOM owner');
@@ -57,16 +57,19 @@ assert(!TorrentSemantics.isPt({tracker:'https://notpt.example/announce'},['pt.ex
 assert(TorrentSemantics.isPrivateOrPt({private:1,tracker:'https://public.example/announce'},[]),'Private flag must match union semantics');
 assert(TorrentSemantics.isPrivateOrPt({private:0,tracker:'https://tracker.pt.example/announce'},['pt.example']),'PT tracker must match union semantics');
 
-// Capability policy is still local Registry data, never an adaptive request owner.
-assert(capabilityData.schemaVersion===1&&capabilityData.features.privateFilter&&capabilityData.features.tags,'Capability JSON must own Private/Tags policy');
+// Capability policy is local Registry data, never an adaptive request owner.
+assert(capabilityData.schemaVersion===1&&capabilityData.features.privateFilter&&capabilityData.features.tags&&capabilityData.features.stalledFilter,'Capability JSON must own Private/Tags/Stalled policy');
 assert(capabilityData.features.privateFilter.rule.qb.gte==='5.0.0','Private/PT qB5 boundary must remain declarative');
 assert(capabilityData.features.tags.rule.webApi.gte==='2.3.0','Tags WebAPI boundary must remain declarative');
+assert(capabilityData.features.stalledFilter.rule.webApi.gte==='2.4.1','Stalled WebAPI boundary must remain declarative');
+assert(capabilityData.webApiMilestones.some(x=>x.qb==='4.2.2'&&x.webApi==='2.4.1'),'Official qB 4.2.2 -> WebAPI 2.4.1 milestone must remain explicit');
 for(const token of ['matchRange','matchRule','badgeFor','CapabilityRegistry'])assert(capabilities.includes(token),`CapabilityRegistry missing ${token}`);
 assert(!capabilities.includes('new W.QBClient')&&!capabilities.includes('setInterval('),'CapabilityRegistry must not create a second client/poller');
 assert(spatial.includes('C.selectControl(')&&spatial.includes("capability:'tags'"),'SpatialRuntime must compose canonical Facet Selects');
 assert(!spatial.includes('mountForViewport')&&!spatial.includes('mobile-facet-slot'),'Facet presentation must not relocate by viewport');
 assert(!spatial.includes('new W.QBClient')&&!spatial.includes('setInterval('),'SpatialRuntime must remain presentation-only');
 assert(!spatialCss.includes('mobile-facet-slot'),'Retired mobile Facet shelf CSS survived');
+assert(polish.includes('justify-content:flex-start')&&polish.includes('flex:0 1 auto'),'Capability badge must remain adjacent to its Facet control instead of consuming the full row');
 
 // LibraryController is the semantic source for count/sort/filter state.
 assert(app.includes('W.LibraryController=LibraryController')&&app.includes('total:totalMatching')&&app.includes('setSort:setSort'),'LibraryController must expose total and sort semantics');
@@ -78,22 +81,30 @@ assert(!ui.includes('localStorage.getItem(\'weigg.mobileSort\')'),'Mobile Sort m
 for(const token of ['C.torrentRow=function','C.mobileTorrentCard=function','C.progressVisual=progressVisual','C.progressTrack=function'])assert(components.includes(token),`Components missing canonical renderer/progress owner ${token}`);
 assert(components.includes("progress.classList.add('progress-track--mobile-edge')"),'Mobile card must reuse canonical progress rail');
 assert(components.includes("top.append(selectionHit(t,selected),titleLine,more)")||components.includes('top.append(selectionHit(t,selected),titleLine,more);'),'Mobile first line must be selection + title + More only');
+assert(components.includes("percent>=100")&&components.includes("state:'complete'"),'Completed Torrent progress must normalize to the completed family before inactive state colors diverge');
 assert(!ui.includes('C.torrentRow=function')&&!ui.includes('C.mobileTorrentCard=function')&&!ui.includes('__weiggTwoLineMobile')&&!ui.includes('__weiggRegistryRow'),'UiSystem must not replace canonical Torrent renderers');
 assert(!responsive.includes('W.VirtualList=function')&&!responsive.includes('C.state=function'),'Responsive runtime must not replace VirtualList or semantic state projection');
 assert(!layout.includes('W.DataGrid.template=function')&&!layout.includes('W.DataGrid.addResizeHandles=function'),'LayoutRuntime must not monkey-patch canonical DataGrid');
 assert(progressCss.includes('.progress-track--mobile-edge')&&progressCss.includes('@media(prefers-reduced-motion:reduce)')&&progressCss.includes('html[data-motion="reduced"]'),'Canonical Torrent progress must provide Mobile rail and both Reduced Motion authorities');
+assert(progressCss.includes('--progress-flow-duration:2.6s')&&progressCss.includes('inset 0 -2px'),'Progress skin must retain slow motion plus cylindrical lower shading');
+assert(ui.includes('grid-row:2!important')&&ui.includes('.mobile-metric-more'),'Configured Mobile metrics and +N overflow summary must stay on the second row');
 
-// Adaptive placement moves existing controls only; telemetry summary leaves are retired.
+// Adaptive placement moves existing controls only; telemetry summary/focus leaves are retired.
 assert(responsive.includes("document.getElementById('mobile-pager-actions-slot')")&&responsive.includes('mountSelectionToolbar'),'Mobile pager must host the same canonical Selection toolbar');
 assert(!responsive.includes('mobile-command-bar')&&!responsive.includes('mobile-filter-control')&&!responsive.includes('mobile-facet-slot'),'Retired Mobile command/filter/facet presentation survived');
+for(const token of ['focusRegistry','setDataViewportFocus','registerDataViewport','installTorrentFocus','data-viewport-focus','is-data-focus'])assert(!responsive.includes(token),`Retired Torrent focus runtime survived: ${token}`);
+for(const token of ['data-viewport-focus','is-data-focus','torrent-focus-slot'])assert(!layoutCss.includes(token),`Retired Torrent focus CSS survived: ${token}`);
 assert(responsive.includes('W.TransferRuntime.snapshot()')&&!responsive.includes('network-meta'),'Connection help must consume TransferRuntime semantic snapshot after summary retirement');
 assert(!app.includes("paintText('dl-speed'")&&!app.includes("paintText('up-speed'")&&!app.includes("getElementById('network-meta')"),'App must not paint retired summary leaves');
 assert(!layoutCss.includes('mobile-summary')&&!layoutCss.includes('mobile-command-bar')&&!layoutCss.includes('mobile-facet-slot'),'Retired Mobile summary/command/facet layout CSS survived');
+assert(layoutCss.includes('grid-template-columns:auto minmax(0,1fr)')&&layoutCss.includes('max-width:94px'),'Mobile pager must be content-sized so action rail receives the remaining width');
 
-// Header owns Mobile Search presentation; app owns the one search semantic state.
+// Header owns Mobile Search/menu presentation; app owns the one search semantic state.
 assert(header.includes('mobile-search-btn')&&header.includes('setSearchOpen')&&header.includes("classList.toggle('search-open'"),'Header must own Mobile Search reveal presentation');
+assert(header.includes('installDrawerToggle')&&header.includes("sidebar.classList.contains('is-open')")&&header.includes("aria-expanded"),'Mobile Menu must toggle the existing Drawer and expose expanded state');
 assert(!app.includes('installMobileSearchButton'),'App must not own a second Mobile Search trigger');
 assert(headerCss.includes('.topbar.search-open .topbar__search')&&headerCss.includes('top:calc(100% + 6px)')&&headerCss.includes('overflow:visible!important'),'Mobile Search must anchor below Topbar without clipping header actions');
+assert(headerCss.includes('grid-template-columns:1fr!important')&&headerCss.includes('.header-theme-control .ui-select__trigger,.header-utility-action'),'Theme and utility controls must share one square geometry without Select placeholder space');
 assert(headerCss.includes('flex-wrap:nowrap')&&headerCss.includes('margin-left:auto'),'Desktop header end rail baseline must remain protected');
 
 // Shared Select remains canonical.
@@ -106,7 +117,7 @@ assert(layoutCss.includes('.connection-indicator[data-connection="connected"] .c
 assert(!polish.includes("weigg:status-state"),'PolishRuntime must not become a Connection owner');
 
 for(const rule of [
-  'FACET-OWNER','PRESENTATION-STATE','TELEMETRY-PAINT','STATUS-NOISE','STATUS-DEDUP','STATUS-PLACEMENT','ADAPTIVE-STATUS','LIVE-INDICATOR','STATUS-SIGNAL','RENDERED-SIGNAL','MOTION-STATUS','STATUS-EXPLAIN','HEADER-SEARCH','HEADER-END-ANCHOR','CAPABILITY-OWNER','CAPABILITY-RANGE','OWNER-RETIRE','TORRENT-PROGRESS-OWNER','TORRENT-PROGRESS-TRUTH','TORRENT-PROGRESS-STATE','TORRENT-PROGRESS-MOTION','MOBILE-LIBRARY-IA','MOBILE-CONTROL-DENSITY','MOBILE-ACTION-PLACEMENT','MOBILE-CARD-COMPOSITION','SORT-OWNER','TORRENT-RENDERER-OWNER'
+  'FACET-OWNER','PRESENTATION-STATE','TELEMETRY-PAINT','STATUS-NOISE','STATUS-DEDUP','STATUS-PLACEMENT','ADAPTIVE-STATUS','LIVE-INDICATOR','STATUS-SIGNAL','RENDERED-SIGNAL','MOTION-STATUS','STATUS-EXPLAIN','HEADER-SEARCH','HEADER-END-ANCHOR','CAPABILITY-OWNER','CAPABILITY-RANGE','OWNER-RETIRE','TORRENT-PROGRESS-OWNER','TORRENT-PROGRESS-TRUTH','TORRENT-PROGRESS-STATE','TORRENT-PROGRESS-MOTION','MOBILE-LIBRARY-IA','MOBILE-CONTROL-DENSITY','MOBILE-ACTION-PLACEMENT','MOBILE-CARD-COMPOSITION','SORT-OWNER','TORRENT-RENDERER-OWNER','TORRENT-FOCUS-RETIRE','MOBILE-PAGER-DENSITY'
 ])assert(docs.includes(rule),`Torrent workspace docs missing hard rule ${rule}`);
 
-console.log('Torrent workspace ownership contract passed: Sidebar facets, no summary leaves, semantic sort/count, canonical renderers/progress, pager actions, anchored Search, and protected Connection/Capability owners.');
+console.log('Torrent workspace ownership contract passed: Sidebar facets, retired focus mode, semantic sort/count, canonical renderers/progress, compact pager actions, anchored Search, toggled Drawer, and protected Connection/Capability owners.');

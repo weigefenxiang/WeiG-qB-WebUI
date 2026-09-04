@@ -23,10 +23,14 @@ assert(!R.supports('privateFilter'),'qB 4.1.9.1 must not expose exact Private fi
 assert(R.badgeFor('privateFilter')==='5+','Private filter badge must be qB-facing 5+');
 assert(!R.supports('tags'),'WebAPI 2.2.1 must not expose Tags');
 assert(R.badgeFor('tags')==='4.2+','WebAPI 2.3.0 must map to qBittorrent 4.2+ for users');
+assert(!R.supports('stalledFilter'),'WebAPI 2.2.1 must not expose Stalled filter');
+assert(R.badgeFor('stalledFilter')==='4.2.2+','WebAPI 2.4.1 must map to official qBittorrent 4.2.2+ milestone');
+await R.bind({qbVersion:'4.2.2',webApiVersion:'2.4.1'});
+assert(R.supports('tags')&&R.supports('stalledFilter'),'qB 4.2.2 / WebAPI 2.4.1 must support Tags and Stalled filter');
 await R.bind({qbVersion:'4.9.3',webApiVersion:'2.9.3'});
 assert(!R.supports('privateFilter'),'arbitrary qB 4.9.3 must remain below the 5.0.0 Private boundary');
 assert(R.supports('tags'),'4.x instance with sufficient WebAPI must support Tags');
 await R.bind({qbVersion:'5.0.0',webApiVersion:'2.11.2'});
 assert(R.supports('privateFilter'),'qB 5.0.0 must satisfy Private filter boundary');
 assert(R.supports('tags'),'qB 5.0.0 baseline WebAPI must satisfy Tags');
-console.log('Capability registry contract passed: semantic ranges, arbitrary patch versions, qB-facing WebAPI mapping, and 5.0.0 boundary.');
+console.log('Capability registry contract passed: semantic ranges, official qB-facing WebAPI milestones, and 5.0.0 Private boundary.');
