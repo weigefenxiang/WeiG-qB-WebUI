@@ -52,13 +52,18 @@ try{
     await page.locator('#theme-control .ui-select__trigger').click();await page.waitForSelector('#weigg-floating-layer .ui-select__menu');
     const menuLight=await surface(page,'#weigg-floating-layer .ui-select__menu');assert(whiteBased(menuLight),`${name}: Light Select menu remained Dark: ${JSON.stringify(menuLight)}`);await page.keyboard.press('Escape');
 
-    // Settings is a presentation caller of the same owner, not a second state machine.
+    // Settings is a draft presentation caller of the same owner; Theme changes only when shared Save commits the draft.
     await openSettings(page);
     const settingsSurface=await surface(page,'#settings-content'),sectionSurface=await surface(page,'#settings-content .settings-section'),searchSurface=await surface(page,'.settings-search-box');
     assert(whiteBased(settingsSurface)&&whiteBased(sectionSurface)&&whiteBased(searchSurface),`${name}: Light Settings surfaces are not white-based`);
     const themeRow=page.locator('[data-setting-key="weigg_theme"]');await themeRow.waitFor();await choose(page,'[data-setting-key="weigg_theme"]','time');
+    const beforeSave=await page.evaluate(()=>({draft:WeiG.SettingsState.weiggDraft.theme,state:WeiG.Theme.state(),saved:WeiG.Config.load().theme,header:document.getElementById('theme-control')?.getValue?.()}));
+    assert(beforeSave.draft==='time'&&beforeSave.state.mode==='light'&&beforeSave.saved==='light'&&beforeSave.header==='light',`${name}: Settings Theme draft changed canonical Theme before Save: ${JSON.stringify(beforeSave)}`);
+    assert((await page.locator('#save-settings-btn').textContent()).trim()==='Save',`${name}: shared Settings Save label is not compact`);
+    await page.locator('#save-settings-btn').click();
+    await page.waitForFunction(()=>WeiG.Theme.state().mode==='time'&&WeiG.Config.load().theme==='time'&&document.getElementById('theme-control')?.getValue?.()==='time');
     const sync=await page.evaluate(()=>({state:WeiG.Theme.state(),saved:WeiG.Config.load().theme,header:document.getElementById('theme-control')?.getValue?.(),expected:(new Date().getHours()>=20||new Date().getHours()<8)?'dark':'light'}));
-    assert(sync.state.mode==='time'&&sync.saved==='time'&&sync.header==='time'&&sync.state.resolved===sync.expected,`${name}: Settings/Header Smart Auto synchronization failed: ${JSON.stringify(sync)}`);
+    assert(sync.state.mode==='time'&&sync.saved==='time'&&sync.header==='time'&&sync.state.resolved===sync.expected,`${name}: Settings Save/Header Smart Auto synchronization failed: ${JSON.stringify(sync)}`);
     const boundaries=await page.evaluate(()=>({a:WeiG.Theme.resolveFor('time',new Date(2026,0,2,7,59)),b:WeiG.Theme.resolveFor('time',new Date(2026,0,2,8,0)),c:WeiG.Theme.resolveFor('time',new Date(2026,0,2,19,59)),d:WeiG.Theme.resolveFor('time',new Date(2026,0,2,20,0))}));
     assert(JSON.stringify(boundaries)===JSON.stringify({a:'dark',b:'light',c:'light',d:'dark'}),`${name}: Smart Auto boundary truth failed`);
 
@@ -88,5 +93,5 @@ try{
     await page.waitForSelector('#transfer-capsule');await page.locator('.transfer-runtime-capsule__stats').click();await page.waitForSelector('#transfer-stats-dialog[open]');const transferStat=await surface(page,'.transfer-stat'),chart=await surface(page,'.transfer-chart-shell');assert(whiteBased(transferStat)&&whiteBased(chart),`modern: Light Transfer surfaces remained Dark`);await page.locator('#transfer-stats-dialog .icon-btn').click().catch(()=>page.evaluate(()=>document.getElementById('transfer-stats-dialog')?.close()));
     await page.locator('#app-nav [data-route="logs"]').click();await page.waitForFunction(()=>document.getElementById('logs-view')?.classList.contains('is-active'));await page.waitForSelector('.logs-toolbar');const logsToolbar=await surface(page,'.logs-toolbar'),logsSearch=await surface(page,'.logs-search');assert(whiteBased(logsToolbar)&&whiteBased(logsSearch),`modern: Light Logs surfaces remained Dark`);await context.close();
   }
-  console.log('Theme browser regression passed: qB 4.1.9.1/5.2.0, four modes, live system, Smart Auto, Light surfaces, Mobile and Reduced Motion.');
+  console.log('Theme browser regression passed: qB 4.1.9.1/5.2.0, four modes, draft-based shared Save, live system, Smart Auto, Light surfaces, Mobile and Reduced Motion.');
 }finally{await browser.close();await new Promise(r=>server.close(r));}

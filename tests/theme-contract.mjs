@@ -47,7 +47,8 @@ assert(!/fetch\s*\(|new\s+W\.QBClient|MutationObserver|prototype\.|XMLHttpReques
 assert(/if\(W\.Theme&&W\.Theme\.applyConfig\)W\.Theme\.applyConfig\(cfg\)/.test(core),'Config does not delegate resolved theme to W.Theme');
 assert(!/prefers-color-scheme/.test(core),'Config still owns system theme resolution');
 assert(!/function\s+toggleTheme|theme-btn'\)\.onclick|theme-btn"\)\.onclick/.test(app),'Legacy app Theme owner/caller survived');
-assert(settings.includes("if(key==='theme'){W.Theme.setMode(value)")&&settings.includes('W.Theme.options()'),'Settings is not a W.Theme presentation caller');
+assert(settings.includes('W.Theme.options()')&&settings.includes('weiggDraft')&&settings.includes('W.Config.apply(nextConfig)'),'Settings is not a draft-based W.Theme presentation caller');
+assert(!settings.includes("if(key==='theme'){W.Theme.setMode(value)"),'Settings must not bypass shared Save with immediate Theme persistence');
 assert(header.includes("C.selectControl({id:'theme-control'")&&header.includes('W.Theme.setMode(value)'),'Header does not reuse canonical Select/W.Theme');
 assert(header.includes('.setOptions(')&&header.includes('.setValue('),'Header Theme presentation is not synchronized through canonical Select API');
 assert(!header.includes('toggleTheme'),'Header contains a second Theme policy');
