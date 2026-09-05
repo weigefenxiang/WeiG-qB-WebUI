@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {authenticate,createWorld,peers as legacyPeers} from '../simulator/core/engine.js';
+import {peerViewStats} from '../simulator/core/peer-view.js';
 import {runtimeIndexStats} from '../simulator/core/runtime-index.js';
 import {webseedList as legacyWebseedList} from '../simulator/core/virtual-services.js';
 import {handleApi} from '../simulator/protocol/router.js';
@@ -22,6 +23,9 @@ let stats=runtimeIndexStats(world);
 assert.equal(stats.indexedRows,5000,'first peer detail poll must build the shared 5000-row hash index once');
 const firstHits=stats.indexHits;
 assert.ok(firstHits>=1,'peer generation plus manual-peer merge must reuse the just-built index within the first poll');
+let peerStats=peerViewStats(world);
+assert.equal(peerStats.templateBuilds,1,'first peer poll must build one static metadata template set');
+assert.equal(peerStats.templateRows,40,'peer metadata cache must stay bounded to the qB response maximum of 40 generated peers');
 
 response=await handleApi(world,new Request(url));
 assert.equal(response.status,200);
@@ -30,6 +34,18 @@ assert.deepEqual(body.peers,legacyPeers(world,target.hash),'repeated peer polls 
 stats=runtimeIndexStats(world);
 assert.equal(stats.indexedRows,5000,'repeated peer detail polls must retain the same membership index');
 assert.ok(stats.indexHits>=firstHits+2,'second peer poll must use O(1) hash lookups for generated and manual peers instead of rescanning 5000 torrents');
+peerStats=peerViewStats(world);
+assert.equal(peerStats.templateBuilds,1,'repeated peer polls must not rerun deterministic client/country/progress generation');
+assert.ok(peerStats.templateHits>=1,'repeated peer polls must reuse cached static metadata');
+
+target.effectiveDownloadRate+=4096;
+target.effectiveUploadRate+=2048;
+response=await handleApi(world,new Request(url));
+body=await response.json();
+const legacyAfterRateChange=legacyPeers(world,target.hash);
+assert.deepEqual(body.peers,legacyAfterRateChange,'static peer metadata cache must still project current live transfer speeds');
+peerStats=peerViewStats(world);
+assert.equal(peerStats.templateBuilds,1,'rate changes must not invalidate static peer identity metadata');
 
 const missing=await handleApi(world,new Request('https://example.invalid/api/v2/sync/torrentPeers?hash=missing'));
 assert.equal(missing.status,404,'unknown torrent peer lookup must preserve Not Found behavior');
@@ -54,4 +70,4 @@ assert.match(auxiliaryRouter,/generatedPeers\(world,hash\)/,'live auxiliary sync
 assert.match(auxiliaryRouter,/indexedWebseedList\(world,url\.searchParams\.get\('hash'\)\|\|''\)/,'live WebSeed GET must use the indexed detail projection');
 assert.doesNotMatch(auxiliaryRouter,/import\s*\{\s*peers\s*\}\s*from\s*['"]\.\.\/core\/engine\.js['"]/,'live peer polling must not import the legacy linear-scan engine peer helper');
 
-console.log(`Virtual qB detail-view contract passed: 5000-Torrent peer/WebSeed GETs preserve legacy payloads while reusing one shared membership index (${stats.indexHits} index hits).`);
+console.log(`Virtual qB detail-view contract passed: 5000-Torrent peer/WebSeed GETs preserve legacy payloads, reuse one shared membership index (${stats.indexHits} index hits), and peer metadata builds once (${peerStats.templateHits} cache hits).`);
