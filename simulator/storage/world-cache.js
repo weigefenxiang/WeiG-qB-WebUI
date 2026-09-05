@@ -3,7 +3,7 @@ export function createWorldCache(options={}){
   const save=options.save;
   const remove=options.remove;
   const maxEntries=Math.max(1,Number(options.maxEntries)||6);
-  const readPersistMs=Math.max(250,Number(options.readPersistMs)||3000);
+  const readPersistMs=Math.max(250,Number(options.readPersistMs)||30000);
   const now=typeof options.now==='function'?options.now:Date.now;
   if(typeof load!=='function'||typeof save!=='function'||typeof remove!=='function')throw new TypeError('World cache requires load/save/remove functions.');
 
