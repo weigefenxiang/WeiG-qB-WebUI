@@ -11,6 +11,8 @@ const SHARE_ACTIONS=new Map([
   ['2','EnableSuperSeeding'],['enablesuperseeding','EnableSuperSeeding'],
   ['3','RemoveWithContent'],['removewithcontent','RemoveWithContent']
 ]);
+const sharePolicyCandidatesCache=new WeakMap();
+const sharePolicyDiagnostics=new WeakMap();
 
 function selected(world,hashes){
   const text=String(hashes||'');
@@ -72,6 +74,57 @@ function ensureShareDefaults(t){
   if(!Number.isFinite(Number(t.inactiveSeedingTimeLimit)))t.inactiveSeedingTimeLimit=-2;
   if(!t.shareLimitAction)t.shareLimitAction='Default';
   if(typeof t.superSeeding!=='boolean')t.superSeeding=false;
+}
+
+function sharePolicyStatsFor(world){
+  let stats=sharePolicyDiagnostics.get(world);
+  if(!stats){stats={candidateBuilds:0,candidateBuildRows:0,candidateCacheHits:0,torrentsVisited:0};sharePolicyDiagnostics.set(world,stats);}
+  return stats;
+}
+
+function sharePolicyPreferenceSignature(prefs={}){
+  return[
+    prefs.max_ratio_enabled?1:0,Number(prefs.max_ratio)||0,
+    prefs.max_seeding_time_enabled?1:0,Number(prefs.max_seeding_time)||0,
+    prefs.max_inactive_seeding_time_enabled?1:0,Number(prefs.max_inactive_seeding_time)||0
+  ].join('|');
+}
+
+function thresholdEnabled(raw,globalEnabled,globalLimit){
+  const value=Number(raw);
+  if(Number.isFinite(value)){
+    if(value===-1)return false;
+    if(value>=0)return true;
+  }
+  return !!globalEnabled&&Number(globalLimit)>0;
+}
+
+function hasSharePolicyThreshold(t,prefs){
+  return thresholdEnabled(t.ratioLimit,prefs?.max_ratio_enabled,prefs?.max_ratio)
+    ||thresholdEnabled(t.seedingTimeLimit,prefs?.max_seeding_time_enabled,prefs?.max_seeding_time)
+    ||thresholdEnabled(t.inactiveSeedingTimeLimit,prefs?.max_inactive_seeding_time_enabled,prefs?.max_inactive_seeding_time);
+}
+
+function sharePolicyCandidates(world){
+  const torrents=world.torrents||[],prefs=world.preferences||{},signature=sharePolicyPreferenceSignature(prefs);
+  const cached=sharePolicyCandidatesCache.get(world),stats=sharePolicyStatsFor(world);
+  if(cached&&cached.source===torrents&&cached.length===torrents.length&&cached.signature===signature){
+    stats.candidateCacheHits++;
+    return cached.candidates;
+  }
+  const candidates=[];
+  for(const t of torrents)if(!t.shareLimitTriggered&&hasSharePolicyThreshold(t,prefs))candidates.push(t);
+  sharePolicyCandidatesCache.set(world,{source:torrents,length:torrents.length,signature,candidates});
+  stats.candidateBuilds++;
+  stats.candidateBuildRows+=torrents.length;
+  return candidates;
+}
+
+function invalidateSharePolicyCandidates(world){sharePolicyCandidatesCache.delete(world);}
+
+export function shareLimitPolicyStats(world){
+  const stats=sharePolicyStatsFor(world),cached=sharePolicyCandidatesCache.get(world);
+  return{...stats,candidateCount:cached?.candidates?.length||0};
 }
 
 export function filesForTorrent(world,hash,indexes=null){
@@ -138,6 +191,7 @@ export function setShareLimits(world,hashes,options={}){
     t.shareLimitTriggered=false;
     changed.push(t.hash);
   }
+  if(changed.length)invalidateSharePolicyCandidates(world);
   recordTorrentChanges(world,changed,[]);return changed.length;
 }
 
@@ -182,8 +236,10 @@ export function enrichMainData(world,data){
 }
 
 export function applyShareLimitPolicies(world,now=Date.now()){
-  const prefs=world.preferences||{},changed=[],remove=[];
-  for(const t of world.torrents||[]){
+  const prefs=world.preferences||{},changed=[],remove=[],candidates=sharePolicyCandidates(world),stats=sharePolicyStatsFor(world);
+  let triggered=0;
+  stats.torrentsVisited+=candidates.length;
+  for(const t of candidates){
     if(!t.completed)continue;
     ensureShareDefaults(t);
     if(t.effectiveUploadRate>0)t.lastUploadActivity=now;
@@ -196,7 +252,7 @@ export function applyShareLimitPolicies(world,now=Date.now()){
     const inactiveMinutes=Math.max(0,(now-Number(t.lastUploadActivity||now))/60000);
     const inactiveReached=inactiveLimit>=0&&inactiveMinutes>=inactiveLimit;
     if(!ratioReached&&!seedReached&&!inactiveReached)continue;
-    t.shareLimitTriggered=true;
+    t.shareLimitTriggered=true;triggered++;
     const action=actionForTorrent(t,prefs);
     if(action==='Remove'||action==='RemoveWithContent')remove.push(t.hash);
     else if(action==='EnableSuperSeeding'){
@@ -210,5 +266,6 @@ export function applyShareLimitPolicies(world,now=Date.now()){
     const scheduled=schedule(world,now,0);
     recordTorrentChanges(world,[...changed,...scheduled.changed],[]);
   }
+  if(triggered)invalidateSharePolicyCandidates(world);
   return{changed:changed.length,removed:remove.length};
 }
