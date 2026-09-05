@@ -1,20 +1,29 @@
 import {capabilityAvailable,encodeState,recordTorrentChanges,schedule,torrentView} from './engine.js';
+import {clearRuntimeIndexes,runtimeIndexStats,torrentIndex,torrentsByHashes,transferAggregate} from './runtime-index.js';
 
 const SNAPSHOT_INTERVAL_MS=1000;
 const runtimeSnapshots=new WeakMap();
 
 function diagnostics(world){
   let stats=runtimeSnapshots.get(world);
-  if(!stats){stats={bucket:-1,advanceRuns:0,projectedRows:0,sortedRows:0};runtimeSnapshots.set(world,stats);}
+  if(!stats){
+    stats={bucket:-1,advanceRuns:0,projectedRows:0,sortedRows:0,indexBuilds:0,indexHits:0,hashSelections:0,aggregateRuns:0,aggregateHits:0};
+    runtimeSnapshots.set(world,stats);
+  }
   return stats;
 }
 
 export function runtimeSnapshotStats(world){
   const stats=diagnostics(world);
-  return{advanceRuns:stats.advanceRuns,projectedRows:stats.projectedRows,sortedRows:stats.sortedRows,bucket:stats.bucket};
+  return{
+    advanceRuns:stats.advanceRuns,projectedRows:stats.projectedRows,sortedRows:stats.sortedRows,bucket:stats.bucket,
+    indexBuilds:stats.indexBuilds,indexHits:stats.indexHits,hashSelections:stats.hashSelections,
+    aggregateRuns:stats.aggregateRuns,aggregateHits:stats.aggregateHits,
+    index:runtimeIndexStats(world)
+  };
 }
 
-export function clearRuntimeSnapshot(world){runtimeSnapshots.delete(world);}
+export function clearRuntimeSnapshot(world){runtimeSnapshots.delete(world);clearRuntimeIndexes(world);}
 
 export function advanceRuntimeSnapshot(world,now=Date.now()){
   const stats=diagnostics(world);
@@ -32,10 +41,10 @@ export function advanceRuntimeSnapshot(world,now=Date.now()){
 }
 
 function transferSnapshotRaw(world){
-  let dl=0,ul=0;
-  for(const t of world.torrents||[]){dl+=t.effectiveDownloadRate;ul+=t.effectiveUploadRate;}
+  const stats=diagnostics(world),aggregate=transferAggregate(world);
+  if(aggregate.rebuilt)stats.aggregateRuns++;else stats.aggregateHits++;
   return{
-    dl_info_speed:Math.floor(dl),up_info_speed:Math.floor(ul),
+    dl_info_speed:Math.floor(aggregate.downloadRate),up_info_speed:Math.floor(aggregate.uploadRate),
     dl_info_data:Math.floor(world.stats.alltime_dl),up_info_data:Math.floor(world.stats.alltime_ul),
     dl_rate_limit:world.globalDownloadLimit,up_rate_limit:world.globalUploadLimit,
     dht_nodes:world.preferences.dht?world.stats.dht_nodes:0,
@@ -63,6 +72,12 @@ function serverStateSnapshotRaw(world){
 
 function serializableClone(value){return JSON.parse(JSON.stringify(value));}
 
+function indexedWorld(world){
+  const stats=diagnostics(world),index=torrentIndex(world);
+  if(index.rebuilt)stats.indexBuilds++;else stats.indexHits++;
+  return index;
+}
+
 export function mainDataSnapshot(world,clientRid=0,now=Date.now()){
   advanceRuntimeSnapshot(world,now);
   const rid=Number(clientRid)||0;
@@ -81,7 +96,7 @@ export function mainDataSnapshot(world,clientRid=0,now=Date.now()){
   const removed=new Set(changes.flatMap(x=>x.removedHashes||[]));
   const categoryNames=new Set(changes.flatMap(x=>x.categoryNames||[]));
   const tagNames=new Set(changes.flatMap(x=>x.tagNames||[]));
-  const byHash=new Map((world.torrents||[]).map(t=>[t.hash,t]));
+  const byHash=indexedWorld(world).byHash;
   const torrents={};
   for(const hash of changed){const t=byHash.get(hash);if(t)torrents[hash]=torrentView(t,world.profile);}
   const categories={},categoriesRemoved=[];
@@ -123,13 +138,17 @@ function matchesFilter(t,filter,profile){
 export function listTorrentsSnapshot(world,query={},now=Date.now()){
   advanceRuntimeSnapshot(world,now);
   const profile=world.profile,stats=diagnostics(world);
-  let list=(world.torrents||[]).filter(t=>matchesFilter(t,query.filter,profile));
+  let list;
+  if(query.hashes){
+    const selected=torrentsByHashes(world,query.hashes);
+    if(selected.rebuilt)stats.indexBuilds++;else stats.indexHits++;
+    stats.hashSelections++;
+    list=selected.torrents;
+  }
+  else list=world.torrents||[];
+  list=list.filter(t=>matchesFilter(t,query.filter,profile));
   if(query.category&&query.category!=='all')list=list.filter(t=>t.category===query.category);
   if(query.tag&&query.tag!=='all')list=list.filter(t=>t.tags.includes(query.tag));
-  if(query.hashes){
-    const wanted=new Set(String(query.hashes).split('|'));
-    list=list.filter(t=>wanted.has(t.hash));
-  }
   const sort=query.sort;
   const offset=Math.max(0,Number(query.offset)||0),limit=Number(query.limit);
   if(sort){
