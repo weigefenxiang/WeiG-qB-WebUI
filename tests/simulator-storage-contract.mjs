@@ -61,11 +61,32 @@ const cache=createWorldCache({
   await demo.seed('demo',world,{persist:true});
   assert.equal(demoSaves,1,'initial world seed must persist once');
   world.value=2;demoClock=29999;await demo.touch('demo',world,{mutation:false});
-  assert.equal(demoSaves,1,'default demo checkpoint interval must avoid full-world writes during the first 30 seconds of GET polling');
+  assert.equal(demoSaves,1,'small-world default checkpoint interval must avoid writes during the first 30 seconds of GET polling');
   demoClock=31001;await demo.touch('demo',world,{mutation:false});
-  assert.equal(demoSaves,2,'default demo checkpoint must eventually persist read-driven progress after 30 seconds');
+  assert.equal(demoSaves,2,'small worlds must still checkpoint read-driven progress after 30 seconds');
   world.value=3;demoClock=31100;await demo.touch('demo',world,{mutation:true});
   assert.equal(demoSaves,3,'explicit simulator mutations must still persist immediately under the low-power policy');
 }
 
-console.log('Virtual qB world-cache contract passed: hot reads avoid repeated IndexedDB loads, GET checkpoints are throttled, low-power defaults defer read-only checkpoints for 30 seconds, mutations persist immediately, LRU eviction flushes dirty state and reset/flush remain durable.');
+{
+  let largeClock=1000,largeSaves=0;
+  const largePersisted=new Map();
+  const large=createWorldCache({
+    load:async id=>largePersisted.get(id)||null,
+    save:async(id,world)=>{largeSaves++;largePersisted.set(id,{value:world.value,count:world.torrents.length});},
+    remove:async id=>largePersisted.delete(id),
+    now:()=>largeClock
+  });
+  const world={value:1,torrents:new Array(5000).fill(null)};
+  await large.seed('large',world,{persist:true});
+  assert.equal(largeSaves,1,'large world seed must persist once');
+  world.value=2;largeClock=31001;await large.touch('large',world,{mutation:false});
+  assert.equal(largeSaves,1,'5000-Torrent read-only progress must not serialize the full world at the small-world 30-second checkpoint');
+  largeClock=61001;await large.touch('large',world,{mutation:false});
+  assert.equal(largeSaves,2,'5000-Torrent world must checkpoint read-driven progress after the 60-second large-world interval');
+  assert.equal(largePersisted.get('large').value,2);
+  world.value=3;largeClock=61100;await large.touch('large',world,{mutation:true});
+  assert.equal(largeSaves,3,'large-world POST/action mutations must remain immediately durable');
+}
+
+console.log('Virtual qB world-cache contract passed: hot reads avoid repeated IndexedDB loads, small worlds checkpoint at 30 seconds, 5000+ Torrent worlds defer read-only checkpoints to 60 seconds, mutations persist immediately, LRU eviction flushes dirty state and reset/flush remain durable.');

@@ -4,11 +4,18 @@ export function createWorldCache(options={}){
   const remove=options.remove;
   const maxEntries=Math.max(1,Number(options.maxEntries)||6);
   const readPersistMs=Math.max(250,Number(options.readPersistMs)||30000);
+  const largeWorldThreshold=Math.max(1,Number(options.largeWorldThreshold)||5000);
+  const largeReadPersistMs=Math.max(readPersistMs,Number(options.largeReadPersistMs)||60000);
   const now=typeof options.now==='function'?options.now:Date.now;
   if(typeof load!=='function'||typeof save!=='function'||typeof remove!=='function')throw new TypeError('World cache requires load/save/remove functions.');
 
   const entries=new Map();
   let loadCount=0,saveCount=0;
+
+  function persistIntervalFor(world){
+    const count=Array.isArray(world?.torrents)?world.torrents.length:0;
+    return count>=largeWorldThreshold?largeReadPersistMs:readPersistMs;
+  }
 
   async function writeEntry(id,entry){
     if(!entry)return;
@@ -57,7 +64,7 @@ export function createWorldCache(options={}){
     let entry=entries.get(key);
     if(!entry){entry={world,lastSavedAt:0,dirty:true};entries.set(key,entry);}else entry.world=world;
     promote(key,entry);entry.dirty=true;
-    const due=now()-Number(entry.lastSavedAt||0)>=readPersistMs;
+    const due=now()-Number(entry.lastSavedAt||0)>=persistIntervalFor(world);
     if(mutation||due)await writeEntry(key,entry);
     await evictIfNeeded();
   }
