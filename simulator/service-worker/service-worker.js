@@ -79,8 +79,17 @@ function upgradeNetworkEnvironment(world,id,fallbackSeed){
   if(!preserveNetwork){
     world.environment.downCapacity=generated.downCapacity;
     world.environment.upCapacity=generated.upCapacity;
+    world.environment.profile=generated.profile;
+    world.environment.latencyMs=generated.latencyMs;
+    world.environment.jitterMs=generated.jitterMs;
+    world.environment.packetLoss=generated.packetLoss;
+    world.environment.peerAvailability=generated.peerAvailability;
     delete world.environment.baseDownCapacity;
     delete world.environment.baseUpCapacity;
+    delete world.environment.baseLatencyMs;
+    delete world.environment.baseJitterMs;
+    delete world.environment.basePacketLoss;
+    delete world.environment.basePeerAvailability;
     delete world.environment.waveDownCapacity;
     delete world.environment.waveUpCapacity;
   }
@@ -164,7 +173,8 @@ async function handleAsset(event,url){
   if(path==='weigg-install.json'){
     return new Response(JSON.stringify({
       version:'virtual-lab',gitSha:'pages-artifact',qbPath:'/virtual',hostPath:'/virtual',simulator:true,
-      qbVersion:world.profile.qbVersion,webApiVersion:world.profile.webApiVersion
+      qbVersion:world.profile.qbVersion,webApiVersion:world.profile.webApiVersion,
+      networkPlan:world.environment?.networkPlan||null,networkSeed:world.networkSeed||null
     }),{headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});
   }
   return fetchSource(world.authenticated?'private':'public',path);
