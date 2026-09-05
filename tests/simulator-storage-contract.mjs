@@ -48,4 +48,24 @@ const cache=createWorldCache({
   await cache.flush('flush-me');assert.equal(persisted.get('flush-me').value,8,'explicit flush must checkpoint dirty state');
 }
 
-console.log('Virtual qB world-cache contract passed: hot reads avoid repeated IndexedDB loads, GET checkpoints are throttled, mutations persist immediately, LRU eviction flushes dirty state and reset/flush remain durable.');
+{
+  let demoClock=1000,demoSaves=0;
+  const demoPersisted=new Map();
+  const demo=createWorldCache({
+    load:async id=>demoPersisted.get(id)||null,
+    save:async(id,world)=>{demoSaves++;demoPersisted.set(id,structuredClone(world));},
+    remove:async id=>demoPersisted.delete(id),
+    now:()=>demoClock
+  });
+  const world={value:1};
+  await demo.seed('demo',world,{persist:true});
+  assert.equal(demoSaves,1,'initial world seed must persist once');
+  world.value=2;demoClock=29999;await demo.touch('demo',world,{mutation:false});
+  assert.equal(demoSaves,1,'default demo checkpoint interval must avoid full-world writes during the first 30 seconds of GET polling');
+  demoClock=31001;await demo.touch('demo',world,{mutation:false});
+  assert.equal(demoSaves,2,'default demo checkpoint must eventually persist read-driven progress after 30 seconds');
+  world.value=3;demoClock=31100;await demo.touch('demo',world,{mutation:true});
+  assert.equal(demoSaves,3,'explicit simulator mutations must still persist immediately under the low-power policy');
+}
+
+console.log('Virtual qB world-cache contract passed: hot reads avoid repeated IndexedDB loads, GET checkpoints are throttled, low-power defaults defer read-only checkpoints for 30 seconds, mutations persist immediately, LRU eviction flushes dirty state and reset/flush remain durable.');
