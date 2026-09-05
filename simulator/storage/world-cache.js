@@ -10,7 +10,7 @@ export function createWorldCache(options={}){
   const entries=new Map();
   let loadCount=0,saveCount=0;
 
-  async function persist(id,entry){
+  async function writeEntry(id,entry){
     if(!entry)return;
     await save(id,entry.world);
     entry.lastSavedAt=now();
@@ -22,7 +22,7 @@ export function createWorldCache(options={}){
     while(entries.size>maxEntries){
       const [id,entry]=entries.entries().next().value;
       entries.delete(id);
-      if(entry?.dirty)await persist(id,entry);
+      if(entry?.dirty)await writeEntry(id,entry);
     }
   }
 
@@ -47,7 +47,7 @@ export function createWorldCache(options={}){
   async function seed(id='default',world,{persist=true}={}){
     const key=String(id||'default'),entry={world,lastSavedAt:now(),dirty:!persist};
     entries.set(key,entry);promote(key,entry);
-    if(persist)await persist(key,entry);
+    if(persist)await writeEntry(key,entry);
     await evictIfNeeded();
     return world;
   }
@@ -58,7 +58,7 @@ export function createWorldCache(options={}){
     if(!entry){entry={world,lastSavedAt:0,dirty:true};entries.set(key,entry);}else entry.world=world;
     promote(key,entry);entry.dirty=true;
     const due=now()-Number(entry.lastSavedAt||0)>=readPersistMs;
-    if(mutation||due)await persist(key,entry);
+    if(mutation||due)await writeEntry(key,entry);
     await evictIfNeeded();
   }
 
@@ -71,10 +71,10 @@ export function createWorldCache(options={}){
   async function flush(id){
     if(id!==undefined&&id!==null){
       const key=String(id),entry=entries.get(key);
-      if(entry?.dirty)await persist(key,entry);
+      if(entry?.dirty)await writeEntry(key,entry);
       return;
     }
-    for(const [key,entry] of entries)if(entry.dirty)await persist(key,entry);
+    for(const [key,entry] of entries)if(entry.dirty)await writeEntry(key,entry);
   }
 
   function stats(){return{entries:entries.size,loads:loadCount,saves:saveCount,ids:[...entries.keys()]};}
