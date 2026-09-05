@@ -66,14 +66,24 @@ const BOOLEAN_SUFFIX = /(?:_enabled|_enable|_active|_available)$/i;
 const NUMBER_PATTERN = /(?:^|_)(?:port|limit|size|ttl|interval|threads?|count|duration|hour|min|quantity|length|threshold|factor|ratio|age|type|mode|watermark|backlog|speed|slots?|connections?|timeout)$/i;
 const NUMBER_SPECIAL = /^(?:disk_io_|disk_cache$|disk_queue_size$|checking_memory_use$|memory_working_set_limit$|file_pool_size$|scheduler_days$|auto_delete_mode$|encryption$|bittorrent_protocol$|refresh_interval$|peer_turnover(?:_|$)|request_queue_size$|max_concurrent_http_announces$)/i;
 
+function cloneValue(value) {
+  if (Array.isArray(value)) return value.map(cloneValue);
+  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, cloneValue(item)]));
+  return value;
+}
+
+export function hasKnownPreferenceDefault(key) {
+  return Object.prototype.hasOwnProperty.call(KNOWN_DEFAULTS, String(key || ''));
+}
+
+export function knownPreferenceDefault(key) {
+  const name = String(key || '');
+  return hasKnownPreferenceDefault(name) ? cloneValue(KNOWN_DEFAULTS[name]) : undefined;
+}
+
 export function inferPreferenceDefault(key) {
   const name = String(key || '');
-  if (Object.prototype.hasOwnProperty.call(KNOWN_DEFAULTS, name)) {
-    const value = KNOWN_DEFAULTS[name];
-    if (Array.isArray(value)) return value.slice();
-    if (value && typeof value === 'object') return { ...value };
-    return value;
-  }
+  if (hasKnownPreferenceDefault(name)) return knownPreferenceDefault(name);
   if (BOOLEAN_KEYS.has(name) || BOOLEAN_PREFIX.test(name) || BOOLEAN_SUFFIX.test(name)) return false;
   if (NUMBER_SPECIAL.test(name) || NUMBER_PATTERN.test(name)) return 0;
   return '';
@@ -86,7 +96,7 @@ export function buildPreferenceSurface(base = {}, keys = null) {
   for (const rawKey of wanted) {
     const key = String(rawKey);
     out[key] = Object.prototype.hasOwnProperty.call(source, key)
-      ? source[key]
+      ? cloneValue(source[key])
       : inferPreferenceDefault(key);
   }
   return out;

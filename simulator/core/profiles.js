@@ -10,6 +10,12 @@ export const BOOTSTRAP_RELEASES=[
   {qbVersion:'5.2.3',webApiVersion:'2.15.1',tag:'release-5.2.3',stable:true,officialWeiGSupport:true,protocolGeneration:'qb5'}
 ];
 
+function clonePlain(value){
+  if(Array.isArray(value))return value.map(item=>clonePlain(item));
+  if(value&&typeof value==='object')return Object.fromEntries(Object.entries(value).map(([key,item])=>[key,clonePlain(item)]));
+  return value;
+}
+
 export function versionParts(value){
   return String(value||'0').replace(/^v|^release-/,'').split('.').map(x=>Number.parseInt(x,10)||0);
 }
@@ -43,6 +49,13 @@ export function normalizeProfile(profile){
     officialWeiGSupport:profile?.officialWeiGSupport ?? compareVersions(qbVersion,'4.1.9.1')>=0,
     protocolGeneration:profile?.protocolGeneration||(major>=5?'qb5':'qb4'),
     preferenceKeys:Array.isArray(profile?.preferenceKeys)?[...profile.preferenceKeys]:null,
+    preferenceDescriptors:Array.isArray(profile?.preferenceDescriptors)
+      ?profile.preferenceDescriptors.map(entry=>clonePlain(entry))
+      :(profile?.preferenceDescriptors&&typeof profile.preferenceDescriptors==='object'?clonePlain(profile.preferenceDescriptors):null),
+    preferenceDefaults:profile?.preferenceDefaults&&typeof profile.preferenceDefaults==='object'
+      ?clonePlain(profile.preferenceDefaults):null,
+    preferenceInheritedDefaults:profile?.preferenceInheritedDefaults&&typeof profile.preferenceInheritedDefaults==='object'
+      ?clonePlain(profile.preferenceInheritedDefaults):null,
     apiActions:Array.isArray(profile?.apiActions)?[...profile.apiActions]:null,
     major
   };

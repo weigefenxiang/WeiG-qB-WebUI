@@ -30,10 +30,18 @@ const MiB = 1024 * 1024;
     'memory_working_set_limit',
     'file_pool_size',
     'scan_dirs',
-    'future_scalar'
+    'future_scalar',
+    'opaque_future'
   ];
   const world = createWorld({
-    profile: { qbVersion: '5.2.3', webApiVersion: '2.15.1', preferenceKeys },
+    profile: {
+      qbVersion: '5.2.3',
+      webApiVersion: '2.15.1',
+      preferenceKeys,
+      preferenceDescriptors: [
+        { key: 'future_scalar', type: 'string', coverage: 'STATEFUL', writable: true, default: '' }
+      ]
+    },
     count: 80,
     seed: 'preference-runtime-contract',
     now: 1700000000000
@@ -43,12 +51,17 @@ const MiB = 1024 * 1024;
   const initial = runtime.read();
 
   assert.deepEqual(Object.keys(initial), preferenceKeys, 'runtime surface must follow the exact upstream preference key list');
-  assert.equal(initial.disk_cache, -1, 'missing known numeric preferences must receive a safe simulated default');
+  assert.equal(initial.disk_cache, -1, 'missing known numeric preferences must receive a known simulated default');
   assert.equal(initial.disk_cache_ttl, 60);
   assert.equal(initial.disk_io_read_mode, 1);
   assert.equal(initial.enable_coalesce_read_write, false, 'missing known boolean preferences must keep boolean type');
   assert.deepEqual(initial.scan_dirs, {}, 'structured upstream preferences must retain a structured read-only fallback');
-  assert.equal(initial.future_scalar, '', 'unknown scalar preferences must remain visible instead of being dropped');
+  assert.equal(initial.future_scalar, '', 'typed future scalar preferences may use a profile-proven fallback');
+  assert.equal(initial.opaque_future, '', 'truly unknown preferences stay visible with a transport placeholder');
+
+  const coverage = runtime.coverage();
+  assert.equal(coverage.unknown, 1, 'only truly unresolved preference values should be UNKNOWN');
+  assert.deepEqual(coverage.unknownKeys, ['opaque_future']);
 
   const accepted = runtime.write({
     max_active_downloads: '2',
@@ -56,6 +69,7 @@ const MiB = 1024 * 1024;
     max_active_torrents: 4,
     dl_limit: 140 * MiB,
     future_scalar: 'visible',
+    opaque_future: 'must-not-stick',
     scan_dirs: { '/watch': 1 },
     not_in_upstream_surface: true
   }, 1700000001000);
@@ -63,13 +77,15 @@ const MiB = 1024 * 1024;
   assert.equal(accepted.max_active_downloads, 2, 'modeled numeric bindings must normalize values');
   assert.equal(world.preferences.max_active_downloads, 2, 'runtime writes must reach the canonical world preferences');
   assert.equal(world.globalDownloadLimit, 140 * MiB, 'dl_limit must keep the existing scheduler side effect');
-  assert.equal(world.preferences.future_scalar, 'visible', 'unknown scalar preferences must be stateful');
-  assert.ok(!Object.prototype.hasOwnProperty.call(accepted, 'scan_dirs'), 'unknown structured preferences must fail closed on write');
+  assert.equal(world.preferences.future_scalar, 'visible', 'typed STATEFUL future preferences may persist safely');
+  assert.ok(!Object.prototype.hasOwnProperty.call(accepted, 'opaque_future'), 'UNKNOWN preferences must fail closed on write');
+  assert.ok(!Object.prototype.hasOwnProperty.call(accepted, 'scan_dirs'), 'structured preferences must fail closed on write');
   assert.ok(!Object.prototype.hasOwnProperty.call(world.preferences, 'not_in_upstream_surface'), 'keys absent from the selected qB version must be ignored');
 
   const reread = createPreferenceRuntime(world).read();
-  assert.equal(reread.future_scalar, 'visible', 'stateful fallback values must survive runtime reconstruction');
+  assert.equal(reread.future_scalar, 'visible', 'stateful values must survive runtime reconstruction');
+  assert.equal(reread.opaque_future, '', 'UNKNOWN placeholder must remain non-stateful and deterministic');
   assert.deepEqual(reread.scan_dirs, {}, 'read-only structured fallback must remain stable');
 }
 
-console.log('Virtual qB preference runtime contract passed: exact upstream surface, safe fallback values, stateful unknown scalars, read-only structured values and canonical scheduler side effects.');
+console.log('Virtual qB preference runtime contract passed: exact upstream surface, descriptor-controlled writes, safe UNKNOWN fail-closed behavior and canonical scheduler side effects.');
