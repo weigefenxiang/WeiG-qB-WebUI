@@ -5,6 +5,9 @@ const MiB=1024*1024;
 function restoreInitialStates(world){
   for(const t of world.torrents){
     if(t.resumeState)t.canonicalState=t.resumeState;
+    t.checkingUntil=0;
+    t.movingUntil=0;
+    t.maintenanceResumeState='';
   }
 }
 
@@ -52,7 +55,8 @@ function clearRuntimeBaseline(world){
     'waveDownCapacity','waveUpCapacity'
   ])delete world.environment[key];
   delete world.runtimePolicyBucket;
-  delete world.actionStateScanBucket;
+  delete world.nextActionTransitionAt;
+  delete world.diskFullActive;
 }
 
 export function applyScenario(world,name='mixed',now=Date.now()){

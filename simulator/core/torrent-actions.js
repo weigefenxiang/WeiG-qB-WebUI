@@ -2,6 +2,17 @@ import {CANONICAL,normalizeQueuePositions,reconcileManagedPaths,recordTorrentCha
 import {deterministicUnit,hash32} from './random.js';
 
 const MiB=1024*1024;
+const runtimeDiagnostics=new WeakMap();
+
+function diagnosticsFor(world){
+  let stats=runtimeDiagnostics.get(world);
+  if(!stats){stats={actionStateScans:0,environmentHeavyScans:0,heavyTorrentsVisited:0};runtimeDiagnostics.set(world,stats);}
+  return stats;
+}
+
+export function simulatorRuntimePolicyStats(world){
+  return{...diagnosticsFor(world)};
+}
 
 function selected(world,hashes){
   const text=String(hashes||'');
@@ -30,22 +41,39 @@ function resumableState(t){
   return CANONICAL.DOWNLOAD_QUEUED;
 }
 
+function noteActionTransition(world,at){
+  const when=Math.max(0,Number(at)||0);
+  if(!when)return;
+  const current=Number(world.nextActionTransitionAt);
+  if(current===-1||!Number.isFinite(current)||current<=0||when<current)world.nextActionTransitionAt=when;
+}
+
 export function advanceActionStates(world,now=Date.now()){
+  const next=Number(world.nextActionTransitionAt);
+  if(next===-1)return[];
+  if(Number.isFinite(next)&&next>now)return[];
+  diagnosticsFor(world).actionStateScans++;
   const changed=[];
+  let nextAt=-1;
   for(const t of world.torrents){
-    if(t.checkingUntil&&now>=t.checkingUntil&&t.canonicalState===CANONICAL.CHECKING){
-      t.checkingUntil=0;
-      t.canonicalState=t.maintenanceResumeState||resumableState(t);
-      t.maintenanceResumeState='';
-      changed.push(t.hash);
+    if(t.checkingUntil&&t.canonicalState===CANONICAL.CHECKING){
+      if(now>=t.checkingUntil){
+        t.checkingUntil=0;
+        t.canonicalState=t.maintenanceResumeState||resumableState(t);
+        t.maintenanceResumeState='';
+        changed.push(t.hash);
+      }else nextAt=nextAt===-1?t.checkingUntil:Math.min(nextAt,t.checkingUntil);
     }
-    if(t.movingUntil&&now>=t.movingUntil&&t.canonicalState===CANONICAL.MOVING){
-      t.movingUntil=0;
-      t.canonicalState=t.maintenanceResumeState||resumableState(t);
-      t.maintenanceResumeState='';
-      changed.push(t.hash);
+    if(t.movingUntil&&t.canonicalState===CANONICAL.MOVING){
+      if(now>=t.movingUntil){
+        t.movingUntil=0;
+        t.canonicalState=t.maintenanceResumeState||resumableState(t);
+        t.maintenanceResumeState='';
+        changed.push(t.hash);
+      }else nextAt=nextAt===-1?t.movingUntil:Math.min(nextAt,t.movingUntil);
     }
   }
+  world.nextActionTransitionAt=nextAt;
   if(changed.length){
     const scheduled=schedule(world,now,0);
     recordTorrentChanges(world,[...changed,...scheduled.changed],[]);
@@ -144,12 +172,24 @@ function applyLightweightCapacityWave(world,now){
   return env;
 }
 
+function heavySample(world,bucket){
+  const torrents=world.torrents||[],length=torrents.length;
+  if(!length)return[];
+  const count=Math.min(length,Math.max(128,Math.min(512,Math.ceil(length*.05))));
+  const start=hash32(`${runtimeSeed(world)}:environment-sample:${bucket}`)%length;
+  const sample=new Array(count);
+  for(let i=0;i<count;i++)sample[i]=torrents[(start+i)%length];
+  return sample;
+}
+
 function applyEnvironmentWave(world,now){
   const env=applyLightweightCapacityWave(world,now);
   const bucket=Math.floor(now/15000);
   if(world.runtimePolicyBucket===bucket)return[];
   world.runtimePolicyBucket=bucket;
-  const seed=runtimeSeed(world);
+  const seed=runtimeSeed(world),stats=diagnosticsFor(world),sample=heavySample(world,bucket);
+  stats.environmentHeavyScans++;
+  stats.heavyTorrentsVisited+=sample.length;
   env.latencyMs=Math.max(0,Math.round(env.baseLatencyMs+deterministicUnit(seed,`latency:${bucket}`)*Math.max(2,env.baseJitterMs)));
   env.packetLoss=clamp(env.basePacketLoss*(.8+deterministicUnit(seed,`loss:${bucket}`)*.4),0,.35);
   env.trackerFailureRate=clamp(env.baseTrackerFailureRate+deterministicUnit(seed,`tracker-rate:${bucket}`)*.035,0,.95);
@@ -159,7 +199,7 @@ function applyEnvironmentWave(world,now){
 
   const changed=[];
   let peerEvents=0,trackerEvents=0;
-  for(const t of world.torrents||[]){
+  for(const t of sample){
     const swarmRoll=deterministicUnit(seed,`${t.hash}:swarm:${bucket}`);
     if(swarmRoll>.992){
       const direction=deterministicUnit(seed,`${t.hash}:swarm-direction:${bucket}`)>.5?1:-1;
@@ -193,27 +233,22 @@ function applyEnvironmentWave(world,now){
       victim.error='Virtual disk is full';
       victim.lastStateChange=Math.floor(now/1000);
       changed.push(victim.hash);
+      world.diskFullActive=true;
       appendLog(world,`Disk space exhausted: ${victim.name}`,4,now);
     }
-  }else if(env.freeSpace>256*MiB){
+  }else if(env.freeSpace>256*MiB&&world.diskFullActive){
     for(const t of world.torrents||[]){
       if(t.canonicalState===CANONICAL.ERROR&&t.error==='Virtual disk is full'){
         t.error='';t.canonicalState=t.completed?CANONICAL.SEED_QUEUED:CANONICAL.DOWNLOAD_QUEUED;changed.push(t.hash);
       }
     }
+    world.diskFullActive=false;
   }
   return Array.from(new Set(changed));
 }
 
-function advanceActionStatesThrottled(world,now){
-  const bucket=Math.floor(now/1000);
-  if(world.actionStateScanBucket===bucket)return[];
-  world.actionStateScanBucket=bucket;
-  return advanceActionStates(world,now);
-}
-
 export function applyRuntimePolicies(world,now=Date.now()){
-  advanceActionStatesThrottled(world,now);
+  advanceActionStates(world,now);
   const changed=applyEnvironmentWave(world,now);
   const env=ensureEnvironmentBaseline(world);
   const prefs=world.preferences||{};
@@ -244,6 +279,7 @@ export function recheckTorrents(world,hashes,now=Date.now()){
     t.maintenanceResumeState=t.canonicalState||resumableState(t);
     t.canonicalState=CANONICAL.CHECKING;
     t.checkingUntil=now+2500;
+    noteActionTransition(world,t.checkingUntil);
     t.lastStateChange=Math.floor(now/1000);
     changed.push(t.hash);
   }
@@ -328,6 +364,7 @@ export function setLocation(world,hashes,location,now=Date.now()){
     t.maintenanceResumeState=t.canonicalState||resumableState(t);
     t.canonicalState=CANONICAL.MOVING;
     t.movingUntil=now+1800;
+    noteActionTransition(world,t.movingUntil);
     t.lastStateChange=Math.floor(now/1000);
     changed.push(t.hash);
   }
