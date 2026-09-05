@@ -1,5 +1,6 @@
 import {recordTorrentChanges} from './engine.js';
 import {deterministicUnit,hash32} from './random.js';
+import {torrentIndex,torrentsByHashes} from './runtime-index.js';
 import {webseedList} from './virtual-services.js';
 
 const MiB=1024*1024;
@@ -8,10 +9,9 @@ const PIECE_SIZE=4*MiB;
 function selected(world,hashes){
   const text=String(hashes||'');
   if(text==='all')return world.torrents||[];
-  const wanted=new Set(text.split('|').filter(Boolean));
-  return (world.torrents||[]).filter(t=>wanted.has(t.hash));
+  return torrentsByHashes(world,text).torrents;
 }
-function torrent(world,hash){return (world.torrents||[]).find(t=>t.hash===String(hash||''))||null;}
+function torrent(world,hash){return torrentIndex(world).byHash.get(String(hash||''))||null;}
 function pieceCount(t){return Math.max(1,Math.ceil(Math.max(1,Number(t.size)||1)/PIECE_SIZE));}
 function splitPipe(value){return String(value||'').split('|').map(x=>x.trim()).filter(Boolean);}
 function splitTags(value){return Array.from(new Set(String(value||'').split(',').map(x=>x.trim()).filter(Boolean)));}

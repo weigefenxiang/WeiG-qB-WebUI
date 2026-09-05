@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {authenticate,createWorld} from '../simulator/core/engine.js';
+import {runtimeIndexStats} from '../simulator/core/runtime-index.js';
 import {handleApi} from '../simulator/protocol/router.js';
 
 function world(qb='5.2.3',api='2.16.2'){
@@ -53,4 +54,25 @@ function post(path,body){return new Request(`https://example.invalid/api/v2/${pa
   r=await handleApi(w,get(`torrents/webseeds?hash=${t.hash}`));seeds=await r.json();assert.ok(!seeds.some(x=>x.url===edited));assert.ok(seeds.length>=initial.length);
 }
 
-console.log('Virtual qB auxiliary contract passed: version-aware count, per-torrent limit maps, manual peers, save/download paths, export, piece availability, comments, tags and WebSeed mutations.');
+{
+  const w=createWorld({profile:{qbVersion:'5.2.3',webApiVersion:'2.16.2',stable:true},count:5000,seed:'auxiliary-index-contract',now:1700000000000});
+  authenticate(w,'demo','demo',1700000000000);
+  const a=w.torrents[17],b=w.torrents[2499],c=w.torrents[4988];
+  a.downloadLimit=123456;b.downloadLimit=234567;c.downloadLimit=345678;
+  let r=await handleApi(w,get(`torrents/downloadLimit?hashes=${a.hash}|${b.hash}|${c.hash}`));
+  assert.equal(r.status,200);
+  let limits=await r.json();
+  assert.equal(limits[a.hash],123456);assert.equal(limits[b.hash],234567);assert.equal(limits[c.hash],345678);
+  let stats=runtimeIndexStats(w);
+  assert.equal(stats.indexedRows,5000,'auxiliary hash lookup must build one shared 5000-row membership index');
+  const hitsBefore=stats.indexHits;
+  r=await handleApi(w,post('torrents/setComment',{hashes:`${a.hash}|${b.hash}|${c.hash}`,comment:'Indexed auxiliary note'}));assert.equal(r.status,200);
+  r=await handleApi(w,post('torrents/setTags',{hashes:`${a.hash}|${b.hash}|${c.hash}`,tags:'indexed,aux'}));assert.equal(r.status,200);
+  r=await handleApi(w,get(`torrents/pieceAvailability?hash=${c.hash}`));assert.equal(r.status,200);assert.ok(Array.isArray(await r.json()));
+  r=await handleApi(w,get(`torrents/export?hash=${b.hash}`));assert.equal(r.status,200);
+  stats=runtimeIndexStats(w);
+  assert.equal(stats.indexedRows,5000,'auxiliary reads and mutations must retain the same membership index while membership is unchanged');
+  assert.ok(stats.indexHits>=hitsBefore+4,'repeated auxiliary hash operations must hit the shared index instead of rescanning 5000 torrents');
+}
+
+console.log('Virtual qB auxiliary contract passed: version-aware count, per-torrent limit maps, manual peers, save/download paths, export, piece availability, comments, tags and WebSeed mutations reuse the shared runtime index.');
