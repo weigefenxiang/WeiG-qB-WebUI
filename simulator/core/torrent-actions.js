@@ -1,4 +1,4 @@
-import {CANONICAL,schedule} from './engine.js';
+import {CANONICAL,normalizeQueuePositions,reconcileManagedPaths,recordTorrentChanges,schedule} from './engine.js';
 import {deterministicUnit,hash32} from './random.js';
 
 const MiB=1024*1024;
@@ -8,15 +8,6 @@ function selected(world,hashes){
   if(text==='all')return world.torrents;
   const wanted=new Set(text.split('|').filter(Boolean));
   return world.torrents.filter(t=>wanted.has(t.hash));
-}
-
-function record(world,hashes=[]){
-  const changed=Array.from(new Set(hashes.filter(Boolean)));
-  if(!changed.length)return;
-  world.rid=(Number(world.rid)||0)+1;
-  world.journal=Array.isArray(world.journal)?world.journal:[];
-  world.journal.push({rid:world.rid,changedHashes:changed,removedHashes:[]});
-  if(world.journal.length>128)world.journal.splice(0,world.journal.length-128);
 }
 
 function appendLog(world,message,type=1,now=Date.now()){
@@ -55,7 +46,10 @@ export function advanceActionStates(world,now=Date.now()){
       changed.push(t.hash);
     }
   }
-  if(changed.length){schedule(world,now,0);record(world,changed);}
+  if(changed.length){
+    const scheduled=schedule(world,now,0);
+    recordTorrentChanges(world,[...changed,...scheduled.changed],[]);
+  }
   return changed;
 }
 
@@ -168,7 +162,10 @@ export function applyRuntimePolicies(world,now=Date.now()){
     const active=start===end?true:(start<end?minute>=start&&minute<end:minute>=start||minute<end);
     world.altSpeedMode=active;
   }
-  if(changed.length){schedule(world,now,0);record(world,changed);}
+  if(changed.length){
+    const scheduled=schedule(world,now,0);
+    recordTorrentChanges(world,[...changed,...scheduled.changed],[]);
+  }
   return changed;
 }
 
@@ -182,7 +179,7 @@ export function recheckTorrents(world,hashes,now=Date.now()){
     t.lastStateChange=Math.floor(now/1000);
     changed.push(t.hash);
   }
-  if(changed.length){record(world,changed);appendLog(world,`Rechecking ${changed.length} virtual torrent(s).`,1,now);}
+  if(changed.length){recordTorrentChanges(world,changed,[]);appendLog(world,`Rechecking ${changed.length} virtual torrent(s).`,1,now);}
   return changed.length;
 }
 
@@ -192,39 +189,64 @@ export function reannounceTorrents(world,hashes,now=Date.now()){
     for(const tracker of t.trackers||[]){tracker.status=2;tracker.msg='';tracker.last_announce=Math.floor(now/1000);}
     changed.push(t.hash);
   }
-  if(changed.length){record(world,changed);appendLog(world,`Reannounced ${changed.length} virtual torrent(s).`,1,now);}
+  if(changed.length){recordTorrentChanges(world,changed,[]);appendLog(world,`Reannounced ${changed.length} virtual torrent(s).`,1,now);}
   return changed.length;
 }
 
 export function setAutoManagement(world,hashes,value){
   const changed=[];
   for(const t of selected(world,hashes)){t.autoManagement=!!value;changed.push(t.hash);}
-  record(world,changed);return changed.length;
+  const managed=reconcileManagedPaths(world,hashes);
+  recordTorrentChanges(world,[...changed,...managed],[]);
+  return changed.length;
 }
 
 export function toggleSequential(world,hashes){
   const changed=[];
   for(const t of selected(world,hashes)){t.sequential=!t.sequential;changed.push(t.hash);}
-  record(world,changed);return changed.length;
+  recordTorrentChanges(world,changed,[]);return changed.length;
 }
 
 export function toggleFirstLast(world,hashes){
   const changed=[];
   for(const t of selected(world,hashes)){t.firstLastPriority=!t.firstLastPriority;changed.push(t.hash);}
-  record(world,changed);return changed.length;
+  recordTorrentChanges(world,changed,[]);return changed.length;
+}
+
+function queueOrder(world){
+  return [...world.torrents].sort((a,b)=>(Number(a.queuePosition)||Number.MAX_SAFE_INTEGER)-(Number(b.queuePosition)||Number.MAX_SAFE_INTEGER)||String(a.hash).localeCompare(String(b.hash)));
 }
 
 export function movePriority(world,hashes,where,now=Date.now()){
-  const targets=selected(world,hashes),changed=[];
-  if(!targets.length)return 0;
-  if(where==='top'){
-    let pos=Math.min(...world.torrents.map(t=>Number(t.queuePosition)||0),0)-targets.length;
-    for(const t of targets){t.queuePosition=pos++;t.priority=1;changed.push(t.hash);}
-  }else{
-    let pos=Math.max(...world.torrents.map(t=>Number(t.queuePosition)||0),0)+1;
-    for(const t of targets){t.queuePosition=pos++;t.priority=1;changed.push(t.hash);}
+  const targetSet=new Set(selected(world,hashes).map(t=>t.hash));
+  if(!targetSet.size)return 0;
+  let ordered=queueOrder(world);
+  const targets=ordered.filter(t=>targetSet.has(t.hash)),rest=ordered.filter(t=>!targetSet.has(t.hash));
+  if(where==='top')ordered=[...targets,...rest];
+  else if(where==='bottom')ordered=[...rest,...targets];
+  else if(where==='increase'){
+    for(let i=1;i<ordered.length;i++){
+      if(targetSet.has(ordered[i].hash)&&!targetSet.has(ordered[i-1].hash)){
+        [ordered[i-1],ordered[i]]=[ordered[i],ordered[i-1]];
+      }
+    }
+  }else if(where==='decrease'){
+    for(let i=ordered.length-2;i>=0;i--){
+      if(targetSet.has(ordered[i].hash)&&!targetSet.has(ordered[i+1].hash)){
+        [ordered[i],ordered[i+1]]=[ordered[i+1],ordered[i]];
+      }
+    }
   }
-  schedule(world,now,0);record(world,changed);return changed.length;
+  const changed=[];
+  for(let i=0;i<ordered.length;i++){
+    const position=i+1,t=ordered[i];
+    if(t.queuePosition!==position||t.priority!==position)changed.push(t.hash);
+    t.queuePosition=position;t.priority=position;
+  }
+  normalizeQueuePositions(world);
+  const scheduled=schedule(world,now,0);
+  recordTorrentChanges(world,[...changed,...scheduled.changed],[]);
+  return targetSet.size;
 }
 
 export function setLocation(world,hashes,location,now=Date.now()){
@@ -241,7 +263,7 @@ export function setLocation(world,hashes,location,now=Date.now()){
     t.lastStateChange=Math.floor(now/1000);
     changed.push(t.hash);
   }
-  if(changed.length){record(world,changed);appendLog(world,`Moved ${changed.length} virtual torrent(s) to ${path}.`,1,now);}
+  if(changed.length){recordTorrentChanges(world,changed,[]);appendLog(world,`Moved ${changed.length} virtual torrent(s) to ${path}.`,1,now);}
   return changed.length;
 }
 
@@ -254,7 +276,7 @@ export function setFilePriority(world,hash,ids,priority){
   for(const file of t.files||[]){
     if(!wanted.size||wanted.has(Number(file.index))){file.priority=value;changed=true;}
   }
-  if(changed)record(world,[t.hash]);
+  if(changed)recordTorrentChanges(world,[t.hash],[]);
   return changed;
 }
 
@@ -266,7 +288,7 @@ export function addTrackers(world,hash,urls){
   const t=world.torrents.find(x=>x.hash===String(hash||''));if(!t)return false;
   const existing=new Set((t.trackers||[]).map(x=>x.url));
   for(const url of parseTrackerUrls(urls))if(!existing.has(url)){t.trackers.push({url,status:0,tier:0,num_peers:0,num_seeds:0,num_leeches:0,num_downloaded:0,msg:'Not contacted yet'});existing.add(url);}
-  record(world,[t.hash]);return true;
+  recordTorrentChanges(world,[t.hash],[]);return true;
 }
 
 export function removeTrackers(world,hash,urls){
@@ -274,7 +296,7 @@ export function removeTrackers(world,hash,urls){
   const doomed=new Set(parseTrackerUrls(urls));
   t.trackers=(t.trackers||[]).filter(x=>!doomed.has(x.url));
   if(doomed.has(t.tracker))t.tracker=t.trackers[0]?.url||'';
-  record(world,[t.hash]);return true;
+  recordTorrentChanges(world,[t.hash],[]);return true;
 }
 
 export function editTracker(world,hash,oldUrl,newUrl){
@@ -282,7 +304,7 @@ export function editTracker(world,hash,oldUrl,newUrl){
   const tracker=(t.trackers||[]).find(x=>x.url===String(oldUrl||''));if(!tracker)return false;
   tracker.url=String(newUrl||'').trim();tracker.status=0;tracker.msg='Not contacted yet';
   if(t.tracker===oldUrl)t.tracker=tracker.url;
-  record(world,[t.hash]);return true;
+  recordTorrentChanges(world,[t.hash],[]);return true;
 }
 
 export function banPeers(world,peers){

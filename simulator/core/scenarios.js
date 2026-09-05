@@ -1,4 +1,4 @@
-import {CANONICAL,schedule} from './engine.js';
+import {CANONICAL,normalizeQueuePositions,schedule} from './engine.js';
 
 const MiB=1024*1024;
 
@@ -64,6 +64,7 @@ export function applyScenario(world,name='mixed',now=Date.now()){
   else if(scenario==='offline')Object.assign(world.environment,{online:false,downCapacity:0,upCapacity:0,peerAvailability:0});
   clearRuntimeBaseline(world);
   prioritizeCoverage(world);
+  normalizeQueuePositions(world);
   schedule(world,now,0);
   return world;
 }

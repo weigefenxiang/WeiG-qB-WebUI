@@ -165,7 +165,7 @@ function makeTorrent(seed,index,now){
     autoManagement:false,
     sequential:false,
     firstLastPriority:false,
-    priority:1,
+    priority:index+1,
     category,
     tags:Array.from(new Set(tags)),
     tracker:privateFlag?'https://pt.example/announce':pick(rng,TRACKERS),
@@ -194,6 +194,54 @@ function makeTorrent(seed,index,now){
 
 function serializableClone(value){
   return JSON.parse(JSON.stringify(value));
+}
+
+function cleanPath(path){
+  const value=String(path||'').trim();
+  if(!value)return'';
+  return value==='/'?'/':value.replace(/\/+$/,'');
+}
+
+function contentPathFor(savePath,name){
+  const base=cleanPath(savePath)||'/downloads';
+  const leaf=String(name||'torrent').replace(/[\\/]+/g,'_');
+  return base==='/'?`/${leaf}`:`${base}/${leaf}`;
+}
+
+export function normalizeQueuePositions(world){
+  const ordered=[...(world.torrents||[])].sort((a,b)=>{
+    const av=Number(a.queuePosition),bv=Number(b.queuePosition);
+    const ap=Number.isFinite(av)?av:Number.MAX_SAFE_INTEGER;
+    const bp=Number.isFinite(bv)?bv:Number.MAX_SAFE_INTEGER;
+    return ap-bp||String(a.hash).localeCompare(String(b.hash));
+  });
+  const changed=[];
+  for(let i=0;i<ordered.length;i++){
+    const position=i+1,t=ordered[i];
+    if(t.queuePosition!==position||t.priority!==position)changed.push(t.hash);
+    t.queuePosition=position;
+    t.priority=position;
+  }
+  return changed;
+}
+
+export function reconcileManagedPaths(world,hashes='all'){
+  const text=String(hashes??'all');
+  const wanted=text==='all'?null:new Set(text.split('|').filter(Boolean));
+  const changed=[];
+  for(const t of world.torrents||[]){
+    if(wanted&&!wanted.has(t.hash))continue;
+    if(!t.autoManagement)continue;
+    const category=world.categories?.[t.category];
+    const desired=cleanPath(category?.savePath)||cleanPath(world.preferences?.save_path)||'/downloads';
+    const content=contentPathFor(desired,t.name);
+    if(t.savePath!==desired||t.contentPath!==content){
+      t.savePath=desired;
+      t.contentPath=content;
+      changed.push(t.hash);
+    }
+  }
+  return changed;
 }
 
 export function createWorld(options={}){
@@ -397,26 +445,37 @@ export function schedule(world,now=Date.now(),elapsedSeconds=0){
   return{changed,totalDl,totalUl,dlBudget,ulBudget};
 }
 
-function recordJournal(world,hashes=[],removed=[]){
-  const unique=Array.from(new Set(hashes));
-  const rem=Array.from(new Set(removed));
-  if(!unique.length&&!rem.length)return;
-  world.rid++;
-  world.journal.push({rid:world.rid,changedHashes:unique,removedHashes:rem});
+export function recordTorrentChanges(world,hashes=[],removed=[],facets={}){
+  const unique=Array.from(new Set((hashes||[]).filter(Boolean)));
+  const rem=Array.from(new Set((removed||[]).filter(Boolean)));
+  const categoryNames=Array.from(new Set((facets.categories||[]).map(String).filter(Boolean)));
+  const tagNames=Array.from(new Set((facets.tags||[]).map(String).filter(Boolean)));
+  if(!unique.length&&!rem.length&&!categoryNames.length&&!tagNames.length)return;
+  world.rid=(Number(world.rid)||0)+1;
+  world.journal=Array.isArray(world.journal)?world.journal:[];
+  world.journal.push({rid:world.rid,changedHashes:unique,removedHashes:rem,categoryNames,tagNames});
   if(world.journal.length>128)world.journal.splice(0,world.journal.length-128);
 }
 
 export function advanceWorld(world,now=Date.now()){
+  const managedChanged=reconcileManagedPaths(world);
   const elapsed=Math.max(0,Math.min(3600,(now-world.lastTick)/1000));
-  if(elapsed<=0)return{changed:new Set(),totalDl:0,totalUl:0};
+  if(elapsed<=0){
+    if(managedChanged.length)recordTorrentChanges(world,managedChanged,[]);
+    return{changed:new Set(managedChanged),totalDl:0,totalUl:0};
+  }
   const result=schedule(world,now,elapsed);
   world.lastTick=now;
-  recordJournal(world,[...result.changed],[]);
-  return result;
+  const changed=new Set([...managedChanged,...result.changed]);
+  recordTorrentChanges(world,[...changed],[]);
+  return{...result,changed};
 }
 
 export function encodeState(t,profileInput){
   const profile=normalizeProfile(profileInput);
+  if(t.forceStart&&![CANONICAL.DOWNLOAD_PAUSED,CANONICAL.SEED_PAUSED,CANONICAL.CHECKING,CANONICAL.METADATA,CANONICAL.MOVING,CANONICAL.ERROR].includes(t.canonicalState)){
+    return t.completed?'forcedUP':'forcedDL';
+  }
   switch(t.canonicalState){
     case CANONICAL.DOWNLOAD_ACTIVE:return'downloading';
     case CANONICAL.DOWNLOAD_STALLED:return'stalledDL';
@@ -447,8 +506,8 @@ export function torrentView(t,profileInput){
     tracker:t.tracker,category:t.category,tags:t.tags.join(', '),added_on:t.addedOn,
     completion_on:t.completionOn,save_path:t.savePath,content_path:t.contentPath,
     num_seeds:t.seeders,num_leechs:t.leechers,num_complete:t.seeders,num_incomplete:t.leechers,
-    seen_complete:t.completionOn,force_start:t.forceStart,seq_dl:t.sequential,
-    f_l_piece_prio:t.firstLastPriority,priority:t.priority
+    seen_complete:t.completionOn,force_start:t.forceStart,auto_tmm:!!t.autoManagement,seq_dl:t.sequential,
+    f_l_piece_prio:t.firstLastPriority,priority:Math.max(1,Number(t.queuePosition)||1)
   };
   if(profile.major>=5)view.private=!!t.private;
   return view;
@@ -458,8 +517,8 @@ function matchesFilter(t,filter,profile){
   const state=encodeState(t,profile);
   switch(String(filter||'all')){
     case'all':return true;
-    case'downloading':return state==='downloading';
-    case'seeding':return state==='uploading'||state==='stalledUP';
+    case'downloading':return ['downloading','stalledDL','forcedDL','metaDL'].includes(state);
+    case'seeding':return ['uploading','stalledUP','forcedUP'].includes(state);
     case'completed':return t.completed;
     case'paused':case'stopped':return /paused|stopped/.test(state);
     case'active':return t.effectiveDownloadRate>0||t.effectiveUploadRate>0;
@@ -530,21 +589,38 @@ export function mainData(world,clientRid=0,now=Date.now()){
     return{
       ...common,full_update:true,
       torrents:Object.fromEntries(world.torrents.map(t=>[t.hash,torrentView(t,world.profile)])),
-      categories:serializableClone(world.categories),tags:[...world.tags]
+      categories:serializableClone(world.categories),
+      ...(capabilityAvailable(world,'tags')?{tags:[...world.tags]}:{})
     };
   }
   if(rid>=world.rid)return{...common,full_update:false};
   const changes=world.journal.filter(x=>x.rid>rid);
-  const changed=new Set(changes.flatMap(x=>x.changedHashes)),removed=new Set(changes.flatMap(x=>x.removedHashes));
+  const changed=new Set(changes.flatMap(x=>x.changedHashes||[]));
+  const removed=new Set(changes.flatMap(x=>x.removedHashes||[]));
+  const categoryNames=new Set(changes.flatMap(x=>x.categoryNames||[]));
+  const tagNames=new Set(changes.flatMap(x=>x.tagNames||[]));
   const torrents={};
   for(const hash of changed){
     const t=world.torrents.find(x=>x.hash===hash);
     if(t)torrents[hash]=torrentView(t,world.profile);
   }
+  const categories={},categoriesRemoved=[];
+  for(const name of categoryNames){
+    if(world.categories?.[name])categories[name]=serializableClone(world.categories[name]);
+    else categoriesRemoved.push(name);
+  }
+  const currentTags=new Set(world.tags||[]),tags=[],tagsRemoved=[];
+  for(const name of tagNames){
+    if(currentTags.has(name))tags.push(name);else tagsRemoved.push(name);
+  }
   return{
     ...common,full_update:false,
     ...(Object.keys(torrents).length?{torrents}:{}),
-    ...(removed.size?{torrents_removed:[...removed]}:{})
+    ...(removed.size?{torrents_removed:[...removed]}:{}),
+    ...(Object.keys(categories).length?{categories}:{}),
+    ...(categoriesRemoved.length?{categories_removed:categoriesRemoved}:{}),
+    ...(capabilityAvailable(world,'tags')&&tags.length?{tags}:{}),
+    ...(capabilityAvailable(world,'tags')&&tagsRemoved.length?{tags_removed:tagsRemoved}:{})
   };
 }
 
@@ -565,50 +641,126 @@ export function setPaused(world,hashes,paused,now=Date.now()){
     }
     t.lastStateChange=Math.floor(now/1000);changed.push(t.hash);
   }
-  schedule(world,now,0);recordJournal(world,changed,[]);
+  const scheduled=schedule(world,now,0);
+  recordTorrentChanges(world,[...changed,...scheduled.changed],[]);
   return changed.length;
 }
 
 export function setForceStart(world,hashes,value,now=Date.now()){
   const changed=[];
   for(const t of selected(world,hashes)){t.forceStart=!!value;changed.push(t.hash);}
-  schedule(world,now,0);recordJournal(world,changed,[]);
+  const scheduled=schedule(world,now,0);
+  recordTorrentChanges(world,[...changed,...scheduled.changed],[]);
+  return changed.length;
 }
 
 export function setTorrentLimit(world,hashes,kind,limit,now=Date.now()){
   const field=kind==='upload'?'uploadLimit':'downloadLimit',changed=[];
   for(const t of selected(world,hashes)){t[field]=Math.max(0,Math.round(Number(limit)||0));changed.push(t.hash);}
-  schedule(world,now,0);recordJournal(world,changed,[]);
+  const scheduled=schedule(world,now,0);
+  recordTorrentChanges(world,[...changed,...scheduled.changed],[]);
 }
 
 export function renameTorrent(world,hash,name){
   const t=world.torrents.find(x=>x.hash===hash);if(!t)return false;
-  t.name=String(name||t.name);recordJournal(world,[t.hash],[]);return true;
+  t.name=String(name||t.name);
+  const managed=reconcileManagedPaths(world,t.hash);
+  recordTorrentChanges(world,[t.hash,...managed],[]);return true;
 }
 
 export function setCategory(world,hashes,category){
   const changed=[];
   for(const t of selected(world,hashes)){t.category=String(category||'');changed.push(t.hash);}
-  recordJournal(world,changed,[]);
+  const managed=reconcileManagedPaths(world,hashes);
+  recordTorrentChanges(world,[...changed,...managed],[]);
+  return changed.length;
 }
 
 export function addTags(world,hashes,tags){
   const values=String(tags||'').split(',').map(x=>x.trim()).filter(Boolean),changed=[];
+  const before=new Set(world.tags||[]);
   for(const t of selected(world,hashes)){t.tags=Array.from(new Set([...t.tags,...values]));changed.push(t.hash);}
-  world.tags=Array.from(new Set([...world.tags,...values])).sort();recordJournal(world,changed,[]);
+  world.tags=Array.from(new Set([...(world.tags||[]),...values])).sort();
+  const added=world.tags.filter(x=>!before.has(x));
+  recordTorrentChanges(world,changed,[],{tags:added});
 }
 
 export function removeTags(world,hashes,tags){
   const values=new Set(String(tags||'').split(',').map(x=>x.trim()).filter(Boolean)),changed=[];
-  for(const t of selected(world,hashes)){t.tags=t.tags.filter(x=>!values.has(x));changed.push(t.hash);}
-  recordJournal(world,changed,[]);
+  for(const t of selected(world,hashes)){
+    const before=t.tags.length;
+    t.tags=t.tags.filter(x=>!values.has(x));
+    if(t.tags.length!==before)changed.push(t.hash);
+  }
+  recordTorrentChanges(world,changed,[]);
+}
+
+function parseNames(value){
+  if(Array.isArray(value))return value.map(String).map(x=>x.trim()).filter(Boolean);
+  return String(value||'').split(/[\n|,]+/).map(x=>x.trim()).filter(Boolean);
+}
+
+export function createCategory(world,name,savePath=''){
+  const key=String(name||'').trim();
+  if(!key)return false;
+  const next={name:key,savePath:String(savePath||'')};
+  const previous=world.categories?.[key];
+  world.categories=world.categories||{};
+  world.categories[key]=next;
+  const targets=(world.torrents||[]).filter(t=>t.autoManagement&&t.category===key).map(t=>t.hash);
+  const managed=targets.length?reconcileManagedPaths(world,targets.join('|')):[];
+  if(!previous||previous.name!==next.name||previous.savePath!==next.savePath||managed.length){
+    recordTorrentChanges(world,managed,[],{categories:[key]});
+  }
+  return true;
+}
+
+export function removeCategories(world,names){
+  const doomed=new Set(parseNames(names));
+  if(!doomed.size)return 0;
+  const removed=[];
+  for(const name of doomed){
+    if(world.categories?.[name]){delete world.categories[name];removed.push(name);}
+  }
+  const changed=[];
+  for(const t of world.torrents||[]){
+    if(doomed.has(t.category)){t.category='';changed.push(t.hash);}
+  }
+  const managed=reconcileManagedPaths(world,'all');
+  recordTorrentChanges(world,[...changed,...managed],[],{categories:removed});
+  return removed.length;
+}
+
+export function createTags(world,tags){
+  const values=parseNames(tags),before=new Set(world.tags||[]);
+  world.tags=Array.from(new Set([...(world.tags||[]),...values])).sort();
+  const added=world.tags.filter(x=>!before.has(x));
+  recordTorrentChanges(world,[],[],{tags:added});
+  return added.length;
+}
+
+export function deleteTags(world,tags){
+  const doomed=new Set(parseNames(tags));
+  if(!doomed.size)return 0;
+  const removed=(world.tags||[]).filter(x=>doomed.has(x));
+  world.tags=(world.tags||[]).filter(x=>!doomed.has(x));
+  const changed=[];
+  for(const t of world.torrents||[]){
+    const before=t.tags.length;
+    t.tags=t.tags.filter(x=>!doomed.has(x));
+    if(t.tags.length!==before)changed.push(t.hash);
+  }
+  recordTorrentChanges(world,changed,[],{tags:removed});
+  return removed.length;
 }
 
 export function deleteTorrents(world,hashes,now=Date.now()){
   const doomed=new Set(selected(world,hashes).map(t=>t.hash));
   world.torrents=world.torrents.filter(t=>!doomed.has(t.hash));
+  const reordered=normalizeQueuePositions(world);
+  const scheduled=schedule(world,now,0);
   if(doomed.size)appendLog(world,`Deleted ${doomed.size} virtual torrent(s).`,1,now);
-  recordJournal(world,[],[...doomed]);
+  recordTorrentChanges(world,[...reordered,...scheduled.changed],[...doomed]);
   return doomed.size;
 }
 
@@ -619,12 +771,17 @@ export function addVirtualTorrent(world,options={},now=Date.now()){
   t.name=String(options.name||options.url||'Added Virtual Torrent').slice(0,180);
   t.size=Math.max(1,Number(options.size)||int(createRng(t.hash),700,45000)*MiB);
   t.downloaded=0;t.uploaded=0;t.completed=false;t.canonicalState=world.preferences.start_paused_enabled?CANONICAL.DOWNLOAD_PAUSED:CANONICAL.DOWNLOAD_QUEUED;
-  t.queuePosition=world.torrents.length+1;
+  t.queuePosition=world.torrents.length+1;t.priority=t.queuePosition;
+  t.autoManagement=String(options.autoTMM??'').toLowerCase()==='true'||options.autoTMM===1;
   if(options.savepath)t.savePath=String(options.savepath);
   if(options.category)t.category=String(options.category);
   if(options.tags)t.tags=String(options.tags).split(',').map(x=>x.trim()).filter(Boolean);
-  world.torrents.push(t);world.tags=Array.from(new Set([...world.tags,...t.tags])).sort();
-  schedule(world,now,0);recordJournal(world,[t.hash],[]);
+  const beforeTags=new Set(world.tags||[]);
+  world.torrents.push(t);world.tags=Array.from(new Set([...(world.tags||[]),...t.tags])).sort();
+  const addedTags=world.tags.filter(x=>!beforeTags.has(x));
+  const managed=reconcileManagedPaths(world,t.hash);
+  const scheduled=schedule(world,now,0);
+  recordTorrentChanges(world,[t.hash,...managed,...scheduled.changed],[],{tags:addedTags});
   appendLog(world,`Torrent added: ${t.name}`,1,now);
   return t;
 }
@@ -634,7 +791,9 @@ export function setPreferences(world,patch,now=Date.now()){
   Object.assign(world.preferences,allowed);
   if(Object.prototype.hasOwnProperty.call(allowed,'dl_limit'))world.globalDownloadLimit=Math.max(0,Math.round(Number(allowed.dl_limit)||0));
   if(Object.prototype.hasOwnProperty.call(allowed,'up_limit'))world.globalUploadLimit=Math.max(0,Math.round(Number(allowed.up_limit)||0));
-  schedule(world,now,0);
+  const managed=Object.prototype.hasOwnProperty.call(allowed,'save_path')?reconcileManagedPaths(world):[];
+  const scheduled=schedule(world,now,0);
+  recordTorrentChanges(world,[...managed,...scheduled.changed],[]);
   appendLog(world,'Preferences updated.',1,now);
 }
 

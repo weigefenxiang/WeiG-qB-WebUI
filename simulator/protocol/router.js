@@ -1,7 +1,7 @@
 import {
-  addTags,addVirtualTorrent,authenticate,capabilityAvailable,deleteTorrents,logs,logout,mainData,
-  peers,properties,removeTags,renameTorrent,setCategory,setForceStart,setPaused,setPreferences,
-  setTorrentLimit,transferInfo,listTorrents
+  addTags,addVirtualTorrent,authenticate,capabilityAvailable,createCategory,createTags,deleteTags,
+  deleteTorrents,logs,logout,mainData,peers,properties,removeCategories,removeTags,renameTorrent,
+  setCategory,setForceStart,setPaused,setPreferences,setTorrentLimit,transferInfo,listTorrents
 } from '../core/engine.js';
 import {
   addTrackers,applyRuntimePolicies,banPeers,editTracker,filterBannedPeers,movePriority,peerLogItems,
@@ -185,6 +185,12 @@ export async function handleApi(world,request,url=new URL(request.url)){
   if(path==='torrents/topPrio'&&method==='POST'){
     const f=await formObject(request);movePriority(world,f.hashes,'top');return empty();
   }
+  if(path==='torrents/increasePrio'&&method==='POST'){
+    const f=await formObject(request);movePriority(world,f.hashes,'increase');return empty();
+  }
+  if(path==='torrents/decreasePrio'&&method==='POST'){
+    const f=await formObject(request);movePriority(world,f.hashes,'decrease');return empty();
+  }
   if(path==='torrents/bottomPrio'&&method==='POST'){
     const f=await formObject(request);movePriority(world,f.hashes,'bottom');return empty();
   }
@@ -230,7 +236,7 @@ export async function handleApi(world,request,url=new URL(request.url)){
     const urlText=Array.isArray(f.urls)?String(f.urls[0]):String(f.urls||'');
     const fileValue=Array.isArray(f.torrents)?f.torrents[0]:f.torrents;
     const name=fileValue?.name||urlText||'Added Virtual Torrent';
-    addVirtualTorrent(world,{name,url:urlText,savepath:f.savepath,category:f.category,tags:f.tags});
+    addVirtualTorrent(world,{name,url:urlText,savepath:f.savepath,category:f.category,tags:f.tags,autoTMM:f.autoTMM});
     if(apiAtLeast(world,'2.14.0'))return json({success_count:1,pending_count:0,failure_count:0});
     return text('Ok.');
   }
@@ -238,24 +244,27 @@ export async function handleApi(world,request,url=new URL(request.url)){
   if(path==='torrents/categories'&&method==='GET')return json(categoryObject(world));
   if(path==='torrents/createCategory'&&method==='POST'){
     const f=await formObject(request),name=String(f.category||'').trim();
-    if(name)world.categories[name]={name,savePath:String(f.savePath||'')};return empty();
+    return createCategory(world,name,f.savePath)?empty():text('Invalid category',400);
+  }
+  if(path==='torrents/editCategory'&&method==='POST'){
+    if(!apiAtLeast(world,'2.1.0'))return notFound();
+    const f=await formObject(request),name=String(f.category||'').trim();
+    if(!name||!world.categories?.[name])return notFound();
+    createCategory(world,name,f.savePath);return empty();
   }
   if(path==='torrents/removeCategories'&&method==='POST'){
-    const f=await formObject(request);
-    for(const name of String(f.categories||'').split('\n').flatMap(x=>x.split('|')).map(x=>x.trim()).filter(Boolean))delete world.categories[name];
-    return empty();
+    const f=await formObject(request);removeCategories(world,f.categories);return empty();
   }
   if(path==='torrents/tags'&&method==='GET'){
     if(!ensureCapability(world,'tags'))return notFound();return json(world.tags);
   }
   if(path==='torrents/createTags'&&method==='POST'){
     if(!ensureCapability(world,'tags'))return notFound();
-    const f=await formObject(request);world.tags=Array.from(new Set([...world.tags,...String(f.tags||'').split(',').map(x=>x.trim()).filter(Boolean)])).sort();return empty();
+    const f=await formObject(request);createTags(world,f.tags);return empty();
   }
   if(path==='torrents/deleteTags'&&method==='POST'){
     if(!ensureCapability(world,'tags'))return notFound();
-    const f=await formObject(request),doomed=new Set(String(f.tags||'').split(',').map(x=>x.trim()).filter(Boolean));
-    world.tags=world.tags.filter(x=>!doomed.has(x));for(const t of world.torrents)t.tags=t.tags.filter(x=>!doomed.has(x));return empty();
+    const f=await formObject(request);deleteTags(world,f.tags);return empty();
   }
 
   if(path==='log/main'&&method==='GET'){
