@@ -76,6 +76,7 @@ function ensureEnvironmentBaseline(world){
 
 function clamp(value,min,max){return Math.max(min,Math.min(max,value));}
 function smoothstep(value){const x=clamp(value,0,1);return x*x*(3-2*x);}
+function runtimeSeed(world){return String(world.networkSeed||world.seed||'virtual');}
 
 function interpolatedNoise(seed,key,now,periodMs){
   const bucket=Math.floor(now/periodMs),phase=(now-bucket*periodMs)/periodMs;
@@ -92,46 +93,63 @@ function configuredRateLimit(world,direction){
   return Math.max(0,direction==='down'?Number(world.globalDownloadLimit)||0:Number(world.globalUploadLimit)||0);
 }
 
-function limitJitterFactor(world,now,direction){
-  const seed=world.seed||'virtual';
-  const micro=(interpolatedNoise(seed,`limit-${direction}-micro`,now,1600)*2-1)*.01;
-  const drift=(interpolatedNoise(seed,`limit-${direction}-drift`,now,12000)*2-1)*.004;
+function limiterPacingFactor(world,now,direction){
+  const seed=runtimeSeed(world);
+  const microLoss=interpolatedNoise(seed,`limit-${direction}-micro`,now,1600)*.012;
+  const driftLoss=interpolatedNoise(seed,`limit-${direction}-drift`,now,12000)*.004;
   const eventPeriod=45000,eventBucket=Math.floor(now/eventPeriod),eventPhase=(now-eventBucket*eventPeriod)/eventPeriod;
   const eventRoll=deterministicUnit(seed,`limit-${direction}-event:${eventBucket}`);
   let dip=0;
   if(eventRoll<.15){
     const depth=.05+deterministicUnit(seed,`limit-${direction}-event-depth:${eventBucket}`)*.05;
-    const envelope=Math.sin(Math.PI*eventPhase)**2;
-    dip=depth*envelope;
+    dip=depth*Math.sin(Math.PI*eventPhase)**2;
   }
-  return clamp(1+micro+drift-dip,.88,1.015);
+  return clamp(1-microLoss-driftLoss-dip,.88,1);
 }
 
-function applyConfiguredLimitJitter(world,now){
+function applyConfiguredLimitPacing(world,now){
   const env=ensureEnvironmentBaseline(world);
   const physicalDown=Math.max(0,Number(env.waveDownCapacity??env.downCapacity??env.baseDownCapacity)||0);
   const physicalUp=Math.max(0,Number(env.waveUpCapacity??env.upCapacity??env.baseUpCapacity)||0);
   const downLimit=configuredRateLimit(world,'down'),upLimit=configuredRateLimit(world,'up');
-  env.downCapacity=downLimit>0?Math.min(physicalDown,Math.floor(downLimit*limitJitterFactor(world,now,'down'))):physicalDown;
-  env.upCapacity=upLimit>0?Math.min(physicalUp,Math.floor(upLimit*limitJitterFactor(world,now,'up'))):physicalUp;
+  env.downCapacity=downLimit>0?Math.min(physicalDown,Math.floor(downLimit*limiterPacingFactor(world,now,'down'))):physicalDown;
+  env.upCapacity=upLimit>0?Math.min(physicalUp,Math.floor(upLimit*limiterPacingFactor(world,now,'up'))):physicalUp;
+}
+
+function physicalLinkFactor(world,now,direction){
+  const seed=runtimeSeed(world);
+  const microLoss=interpolatedNoise(seed,`physical-${direction}-micro`,now,1800)*.012;
+  const driftLoss=interpolatedNoise(seed,`physical-${direction}-drift`,now,18000)*.015;
+  const eventPeriod=60000,eventBucket=Math.floor(now/eventPeriod),eventPhase=(now-eventBucket*eventPeriod)/eventPeriod;
+  const eventRoll=deterministicUnit(seed,`physical-${direction}-event:${eventBucket}`);
+  let dip=0;
+  if(eventRoll<.18){
+    const depth=.05+deterministicUnit(seed,`physical-${direction}-event-depth:${eventBucket}`)*.05;
+    dip=depth*Math.sin(Math.PI*eventPhase)**2;
+  }
+  return clamp(1-microLoss-driftLoss-dip,.88,1);
+}
+
+function applyLightweightCapacityWave(world,now){
+  const env=ensureEnvironmentBaseline(world);
+  env.waveDownCapacity=Math.max(0,Math.floor(env.baseDownCapacity*physicalLinkFactor(world,now,'down')));
+  env.waveUpCapacity=Math.max(0,Math.floor(env.baseUpCapacity*physicalLinkFactor(world,now,'up')));
+  env.downCapacity=env.waveDownCapacity;
+  env.upCapacity=env.waveUpCapacity;
+  const seed=runtimeSeed(world);
+  const diskWriteWave=.94+interpolatedNoise(seed,'disk-write-wave',now,8000)*.06;
+  const diskReadWave=.95+interpolatedNoise(seed,'disk-read-wave',now,9000)*.05;
+  env.diskWriteCapacity=Math.max(0,Math.floor(env.baseDiskWriteCapacity*diskWriteWave));
+  env.diskReadCapacity=Math.max(0,Math.floor(env.baseDiskReadCapacity*diskReadWave));
+  return env;
 }
 
 function applyEnvironmentWave(world,now){
-  const env=ensureEnvironmentBaseline(world);
+  const env=applyLightweightCapacityWave(world,now);
   const bucket=Math.floor(now/15000);
   if(world.runtimePolicyBucket===bucket)return[];
   world.runtimePolicyBucket=bucket;
-  const seed=world.seed||'virtual';
-  const networkWave=.72+deterministicUnit(seed,`network:${bucket}`)*.28;
-  const uploadWave=.76+deterministicUnit(seed,`upload:${bucket}`)*.24;
-  const diskWriteWave=.78+deterministicUnit(seed,`disk-write:${bucket}`)*.22;
-  const diskReadWave=.82+deterministicUnit(seed,`disk-read:${bucket}`)*.18;
-  env.waveDownCapacity=Math.max(0,Math.floor(env.baseDownCapacity*networkWave));
-  env.waveUpCapacity=Math.max(0,Math.floor(env.baseUpCapacity*uploadWave));
-  env.downCapacity=env.waveDownCapacity;
-  env.upCapacity=env.waveUpCapacity;
-  env.diskWriteCapacity=Math.max(0,Math.floor(env.baseDiskWriteCapacity*diskWriteWave));
-  env.diskReadCapacity=Math.max(0,Math.floor(env.baseDiskReadCapacity*diskReadWave));
+  const seed=runtimeSeed(world);
   env.latencyMs=Math.max(0,Math.round(env.baseLatencyMs+deterministicUnit(seed,`latency:${bucket}`)*Math.max(2,env.baseJitterMs)));
   env.packetLoss=clamp(env.basePacketLoss*(.8+deterministicUnit(seed,`loss:${bucket}`)*.4),0,.35);
   env.trackerFailureRate=clamp(env.baseTrackerFailureRate+deterministicUnit(seed,`tracker-rate:${bucket}`)*.035,0,.95);
@@ -187,8 +205,15 @@ function applyEnvironmentWave(world,now){
   return Array.from(new Set(changed));
 }
 
+function advanceActionStatesThrottled(world,now){
+  const bucket=Math.floor(now/1000);
+  if(world.actionStateScanBucket===bucket)return[];
+  world.actionStateScanBucket=bucket;
+  return advanceActionStates(world,now);
+}
+
 export function applyRuntimePolicies(world,now=Date.now()){
-  advanceActionStates(world,now);
+  advanceActionStatesThrottled(world,now);
   const changed=applyEnvironmentWave(world,now);
   const env=ensureEnvironmentBaseline(world);
   const prefs=world.preferences||{};
@@ -204,7 +229,7 @@ export function applyRuntimePolicies(world,now=Date.now()){
     const active=start===end?true:(start<end?minute>=start&&minute<end:minute>=start||minute<end);
     world.altSpeedMode=active;
   }
-  applyConfiguredLimitJitter(world,now);
+  applyConfiguredLimitPacing(world,now);
   if(changed.length){
     const scheduled=schedule(world,now,0);
     recordTorrentChanges(world,[...changed,...scheduled.changed],[]);

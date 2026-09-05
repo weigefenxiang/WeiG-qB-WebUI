@@ -46,8 +46,13 @@ function makeSeedHeavy(world){
 }
 
 function clearRuntimeBaseline(world){
-  for(const key of ['basePeerAvailability','baseDownCapacity','baseUpCapacity','baseDiskWriteCapacity','baseDiskReadCapacity','baseLatencyMs','baseJitterMs','basePacketLoss','baseTrackerFailureRate','baseFreeSpace'])delete world.environment[key];
+  for(const key of [
+    'basePeerAvailability','baseDownCapacity','baseUpCapacity','baseDiskWriteCapacity','baseDiskReadCapacity',
+    'baseLatencyMs','baseJitterMs','basePacketLoss','baseTrackerFailureRate','baseFreeSpace',
+    'waveDownCapacity','waveUpCapacity'
+  ])delete world.environment[key];
   delete world.runtimePolicyBucket;
+  delete world.actionStateScanBucket;
 }
 
 export function applyScenario(world,name='mixed',now=Date.now()){

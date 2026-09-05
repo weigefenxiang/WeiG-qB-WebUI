@@ -1,4 +1,5 @@
 import {createWorld} from './__simulator/core/engine.js';
+import {networkEnvironmentForSeed} from './__simulator/core/network-profile.js';
 import {profileByVersion,BOOTSTRAP_RELEASES} from './__simulator/core/profiles.js';
 import {reconcileWorldProfile} from './__simulator/core/world-profile.js';
 import {applyScenario} from './__simulator/core/scenarios.js';
@@ -65,6 +66,35 @@ async function sessionIdForEvent(event,url){
   return DEFAULT_SESSION;
 }
 
+function networkSeedFor(id,seed){return `${String(seed||'20260905')}:${String(id||DEFAULT_SESSION)}`;}
+
+function upgradeNetworkEnvironment(world,id,fallbackSeed){
+  if(world.environment?.networkPlan)return false;
+  const networkSeed=networkSeedFor(id,world.seed||fallbackSeed);
+  const generated=networkEnvironmentForSeed(networkSeed);
+  world.environment=world.environment||{};
+  world.environment.networkPlan=generated.networkPlan;
+  const preserveNetwork=['poor-network','offline'].includes(world.scenario);
+  const preserveDisk=['disk-bottleneck','low-space'].includes(world.scenario);
+  if(!preserveNetwork){
+    world.environment.downCapacity=generated.downCapacity;
+    world.environment.upCapacity=generated.upCapacity;
+    delete world.environment.baseDownCapacity;
+    delete world.environment.baseUpCapacity;
+    delete world.environment.waveDownCapacity;
+    delete world.environment.waveUpCapacity;
+  }
+  if(!preserveDisk){
+    world.environment.diskWriteCapacity=generated.diskWriteCapacity;
+    world.environment.diskReadCapacity=generated.diskReadCapacity;
+    delete world.environment.baseDiskWriteCapacity;
+    delete world.environment.baseDiskReadCapacity;
+  }
+  world.networkSeed=networkSeed;
+  delete world.runtimePolicyBucket;
+  return true;
+}
+
 async function ensureWorld(event,url){
   const cfg=configFromUrl(url),id=await sessionIdForEvent(event,url);
   if(cfg.reset)await worlds.reset(id);
@@ -72,7 +102,10 @@ async function ensureWorld(event,url){
   const catalog=await loadCatalog();
   if(!world){
     const profile=profileByVersion(catalog,cfg.qb);
-    world=createWorld({profile,count:cfg.count,seed:cfg.seed,scenario:cfg.scenario});
+    const networkSeed=networkSeedFor(id,cfg.seed);
+    const environment=networkEnvironmentForSeed(networkSeed);
+    world=createWorld({profile,count:cfg.count,seed:cfg.seed,scenario:cfg.scenario,environment});
+    world.networkSeed=networkSeed;
     applyScenario(world,cfg.scenario);
     world.lab={clean:cfg.clean};
     await worlds.seed(id,world,{persist:true});
@@ -81,6 +114,7 @@ async function ensureWorld(event,url){
     const requestedVersion=url.searchParams.has('qb')?cfg.qb:(world.profile?.qbVersion||cfg.qb);
     const migration=reconcileWorldProfile(world,catalog,requestedVersion);
     changed=changed||migration.changed;
+    changed=upgradeNetworkEnvironment(world,id,cfg.seed)||changed;
     world.lab=world.lab||{};
     if(url.searchParams.has('clean')&&world.lab.clean!==cfg.clean){world.lab.clean=cfg.clean;changed=true;}
     if(changed)await worlds.touch(id,world,{mutation:true});

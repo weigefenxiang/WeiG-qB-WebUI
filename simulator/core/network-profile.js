@@ -1,5 +1,7 @@
 import {deterministicUnit} from './random.js';
 
+const MiB=1024*1024;
+
 export const NETWORK_DOWN_TIERS_MBPS=Object.freeze([100,200,500,600,1000,1500,2000,3000,5000,10000]);
 
 const RESIDENTIAL_UPLOAD_MBPS=Object.freeze({
@@ -51,11 +53,24 @@ export function createNetworkPlan(seed='virtual'){
   };
 }
 
+function storageHeadroom(seed,downCapacity,upCapacity){
+  const writeFactor=1.12+deterministicUnit(seed,'network-plan:disk-write-headroom')*.28;
+  const readFactor=1.2+deterministicUnit(seed,'network-plan:disk-read-headroom')*.35;
+  return{
+    diskWriteCapacity:Math.max(220*MiB,Math.floor(downCapacity*writeFactor)),
+    diskReadCapacity:Math.max(300*MiB,Math.floor(upCapacity*readFactor))
+  };
+}
+
 export function networkEnvironmentForSeed(seed='virtual'){
-  const networkPlan=createNetworkPlan(seed);
+  const key=String(seed||'virtual');
+  const networkPlan=createNetworkPlan(key);
+  const downCapacity=Math.floor(mbpsToBytesPerSecond(networkPlan.provisionedDownMbps));
+  const upCapacity=Math.floor(mbpsToBytesPerSecond(networkPlan.provisionedUpMbps));
   return{
     networkPlan,
-    downCapacity:Math.floor(mbpsToBytesPerSecond(networkPlan.provisionedDownMbps)),
-    upCapacity:Math.floor(mbpsToBytesPerSecond(networkPlan.provisionedUpMbps))
+    downCapacity,
+    upCapacity,
+    ...storageHeadroom(key,downCapacity,upCapacity)
   };
 }
