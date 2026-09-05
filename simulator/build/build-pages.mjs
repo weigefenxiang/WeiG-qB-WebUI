@@ -19,7 +19,7 @@ await fs.rm(out,{recursive:true,force:true});await fs.mkdir(out,{recursive:true}
 const privateRoot=path.join(webuiRoot,'private'),publicRoot=path.join(webuiRoot,'public');
 if(!(await exists(privateRoot))||!(await exists(publicRoot)))throw new Error(`Missing webui roots under ${webuiRoot}`);
 await copyDir(privateRoot,path.join(out,'__source/private'));await copyDir(publicRoot,path.join(out,'__source/public'));
-for(const dir of ['core','protocol','storage','versions'])await copyDir(path.join(projectRoot,'simulator',dir),path.join(out,'__simulator',dir));
+for(const dir of ['core','preferences','protocol','storage','versions'])await copyDir(path.join(projectRoot,'simulator',dir),path.join(out,'__simulator',dir));
 await fs.copyFile(path.join(projectRoot,'simulator/service-worker/service-worker.js'),path.join(out,'service-worker.js'));
 await fs.copyFile(catalogPath,path.join(out,'__simulator/versions/catalog.generated.json'));
 

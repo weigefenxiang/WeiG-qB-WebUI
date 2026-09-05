@@ -19,6 +19,7 @@ import {
   rssRemoveItem,rssRemoveRule,rssRenameRule,rssRules,rssSetRule,searchResults,searchStart,searchStatus,
   searchStop,webseedList
 } from '../core/virtual-services.js';
+import {createPreferenceRuntime} from '../preferences/runtime.js';
 import {handleAuxiliaryApi} from './auxiliary-router.js';
 import {upstreamRouteAvailable} from './upstream-gates.js';
 
@@ -98,16 +99,12 @@ export async function handleApi(world,request,url=new URL(request.url)){
       zlib:'virtual',product:'WeiG Virtual qB Lab',source_tag:world.profile.tag,source_sha:world.profile.sourceSha||null
     });
   }
-  if(path==='app/preferences'&&method==='GET')return json(preferencesForProfile(world));
+  if(path==='app/preferences'&&method==='GET')return json(createPreferenceRuntime(world).read());
   if(path==='app/setPreferences'&&method==='POST'){
     const form=await formObject(request);
     let patch={};
     try{patch=JSON.parse(String(form.json||'{}'));}catch{return text('Invalid JSON',400);}
-    if(Array.isArray(world.profile.preferenceKeys)){
-      const allowed=new Set(world.profile.preferenceKeys);
-      patch=Object.fromEntries(Object.entries(patch).filter(([key])=>allowed.has(key)));
-    }
-    setPreferences(world,patch);
+    createPreferenceRuntime(world).write(patch,now);
     return empty();
   }
   if(path==='app/cookies'&&method==='GET'){
