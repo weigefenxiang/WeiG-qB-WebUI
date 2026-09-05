@@ -1,5 +1,6 @@
 import {atLeast} from '../core/profiles.js';
 import {generatedPeers} from '../core/peer-view.js';
+import {indexedWebseedList} from '../core/webseed-view.js';
 import {filterBannedPeers} from '../core/torrent-actions.js';
 import {addVirtualTorrentBatch} from '../core/torrent-add.js';
 import {parseSpeedLimitsMode,setVirtualSpeedLimitsMode} from '../core/transfer-controls.js';
@@ -147,6 +148,7 @@ export async function handleAuxiliaryApi(world,request,path,method,url){
     if(merged===null)return notFound();
     return json({rid:Number(world.peerRid)||1,full_update:true,peers:filterBannedPeers(world,merged)});
   }
+  if(path==='torrents/webseeds'&&method==='GET')return json(indexedWebseedList(world,url.searchParams.get('hash')||''));
 
   if(path==='rss/addFolder'&&method==='POST'){
     const f=await formObject(request);return rssAddFolder(world,f.path)?empty():conflict('RSS folder already exists or path is invalid');

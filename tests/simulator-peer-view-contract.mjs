@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {authenticate,createWorld,peers as legacyPeers} from '../simulator/core/engine.js';
 import {runtimeIndexStats} from '../simulator/core/runtime-index.js';
+import {webseedList as legacyWebseedList} from '../simulator/core/virtual-services.js';
 import {handleApi} from '../simulator/protocol/router.js';
 
 const baseNow=1700000000000;
@@ -33,8 +34,24 @@ assert.ok(stats.indexHits>=firstHits+2,'second peer poll must use O(1) hash look
 const missing=await handleApi(world,new Request('https://example.invalid/api/v2/sync/torrentPeers?hash=missing'));
 assert.equal(missing.status,404,'unknown torrent peer lookup must preserve Not Found behavior');
 
+const publicTorrent=world.torrents.find(t=>!t.private);
+const privateTorrent=world.torrents.find(t=>t.private);
+assert.ok(publicTorrent&&privateTorrent,'webseed fixture needs both public and private torrents');
+const hitsBeforeWebseed=runtimeIndexStats(world).indexHits;
+response=await handleApi(world,new Request(`https://example.invalid/api/v2/torrents/webseeds?hash=${publicTorrent.hash}`));
+assert.equal(response.status,200);
+const webseeds=await response.json();
+assert.deepEqual(webseeds,legacyWebseedList(world,publicTorrent.hash),'indexed WebSeed GET must preserve lazy-generated legacy payloads');
+response=await handleApi(world,new Request(`https://example.invalid/api/v2/torrents/webseeds?hash=${privateTorrent.hash}`));
+assert.equal(response.status,200);assert.deepEqual(await response.json(),[],'private torrents must continue exposing no WebSeeds');
+response=await handleApi(world,new Request('https://example.invalid/api/v2/torrents/webseeds?hash=missing'));
+assert.equal(response.status,200);assert.deepEqual(await response.json(),[],'missing WebSeed hash must preserve historical empty-array behavior');
+stats=runtimeIndexStats(world);
+assert.ok(stats.indexHits>=hitsBeforeWebseed+3,'WebSeed detail reads must use the existing membership index instead of linear torrent scans');
+
 const auxiliaryRouter=fs.readFileSync(new URL('../simulator/protocol/auxiliary-router.js',import.meta.url),'utf8');
 assert.match(auxiliaryRouter,/generatedPeers\(world,hash\)/,'live auxiliary sync/torrentPeers route must use the indexed peer projection');
+assert.match(auxiliaryRouter,/indexedWebseedList\(world,url\.searchParams\.get\('hash'\)\|\|''\)/,'live WebSeed GET must use the indexed detail projection');
 assert.doesNotMatch(auxiliaryRouter,/import\s*\{\s*peers\s*\}\s*from\s*['"]\.\.\/core\/engine\.js['"]/,'live peer polling must not import the legacy linear-scan engine peer helper');
 
-console.log(`Virtual qB peer-view contract passed: 5000-Torrent sync/torrentPeers preserves the legacy payload while reusing one shared membership index (${stats.indexHits} index hits).`);
+console.log(`Virtual qB detail-view contract passed: 5000-Torrent peer/WebSeed GETs preserve legacy payloads while reusing one shared membership index (${stats.indexHits} index hits).`);
