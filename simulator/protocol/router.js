@@ -116,6 +116,11 @@ function torrentInfoRows(world,url,now){
   delete query.offset;
   delete query.limit;
   const rows=enrichTorrentRowsIndexed(world,listTorrentsSnapshot(world,query,now));
+  if(query.sort&&rows.length&&!Object.prototype.hasOwnProperty.call(rows[0],query.sort)){
+    const error=new Error("'sort' parameter is invalid");
+    error.code='INVALID_TORRENT_SORT';
+    throw error;
+  }
   torrentInfoCaches.set(world,{key,rid:Number(world.rid||0),createdAt:now,rows,hits:0});
   return sliceTorrentRows(world,rows,params);
 }
@@ -209,7 +214,10 @@ export async function handleApi(world,request,url=new URL(request.url)){
     return json({rid:Number(world.peerRid)||1,full_update:true,peers:filterBannedPeers(world,peers(world,hash))});
   }
 
-  if(path==='torrents/info'&&method==='GET')return json(torrentInfoRows(world,url,now));
+  if(path==='torrents/info'&&method==='GET'){
+    try{return json(torrentInfoRows(world,url,now));}
+    catch(error){if(error?.code==='INVALID_TORRENT_SORT')return text(error.message,400);throw error;}
+  }
   if(path==='torrents/properties'&&method==='GET'){
     const value=propertiesForTorrent(world,url.searchParams.get('hash')||'',now);
     return value?json(value):notFound();

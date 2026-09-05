@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
-import {CANONICAL,createWorld} from '../simulator/core/engine.js';
+import {authenticate,CANONICAL,createWorld} from '../simulator/core/engine.js';
 import {listTorrentsSnapshot} from '../simulator/core/runtime-view.js';
+import {handleApi} from '../simulator/protocol/router.js';
 
 const now=1700000000000;
 function make(version,seed=`filters-${version}`){
@@ -75,4 +76,20 @@ function states(world,query){return listTorrentsSnapshot(world,query,now).map(ro
   assert.equal(states(qB5,{offset:999,limit:2}).length,0,'qB5 QList mid semantics keep an out-of-range positive offset empty');
 }
 
-console.log('Virtual qB torrent query contract passed: qB4 paused/resumed and qB5 stopped/running generations, checking/moving/error, empty facets, private filtering, and historical pagination windows follow upstream semantics.');
+{
+  for(const version of ['4.6.7','5.2.3']){
+    const world=make(version,`sort-${version}`);
+    authenticate(world,'demo','demo',now);
+    let response=await handleApi(world,new Request('https://example.invalid/api/v2/torrents/info?sort=name&limit=2'));
+    assert.equal(response.status,200,`${version} known serialized torrent sort key must remain valid`);
+    assert.equal((await response.json()).length,2);
+    response=await handleApi(world,new Request('https://example.invalid/api/v2/torrents/info?sort=definitely_not_a_qb_field'));
+    assert.equal(response.status,400,`${version} invalid non-empty torrents/info sort must match upstream BadParams behavior`);
+    assert.match(await response.text(),/sort.*invalid/i);
+    response=await handleApi(world,new Request('https://example.invalid/api/v2/torrents/info?category=__missing__&sort=definitely_not_a_qb_field'));
+    assert.equal(response.status,200,`${version} empty torrent result must return [] before upstream validates sort`);
+    assert.deepEqual(await response.json(),[]);
+  }
+}
+
+console.log('Virtual qB torrent query contract passed: qB4/qB5 filter generations, empty facets, private filtering, historical pagination, and invalid sort BadParams semantics follow upstream.');
