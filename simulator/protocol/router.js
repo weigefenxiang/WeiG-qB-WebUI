@@ -14,9 +14,11 @@ import {
 } from '../core/torrent-content.js';
 import {hasTorrentMetadata,propertiesForTorrent,torrentExists,trackersForTorrent} from '../core/torrent-metadata.js';
 import {atLeast} from '../core/profiles.js';
+import {torrentIndex} from '../core/runtime-index.js';
 import {
   clearRuntimeSnapshot,listTorrentsSnapshot,mainDataSnapshot,runtimeSnapshotStats,transferSnapshot
 } from '../core/runtime-view.js';
+import {sliceTorrentWindow} from '../core/torrent-query.js';
 import {
   creatorAddTask,creatorDeleteTask,creatorStatus,creatorTorrentFile,rssAddFeed,rssItems,rssRefreshItem,
   rssRemoveItem,rssRemoveRule,rssRenameRule,rssRules,rssSetRule,searchResults,searchStart,searchStatus,
@@ -89,15 +91,12 @@ function torrentInfoKey(params){
     .join('&');
 }
 
-function sliceTorrentRows(rows,params){
-  const offset=Math.max(0,Number(params.get('offset'))||0);
-  const limit=Number(params.get('limit'));
-  if(Number.isFinite(limit)&&limit>0)return rows.slice(offset,offset+limit);
-  return offset?rows.slice(offset):rows.slice();
+function sliceTorrentRows(world,rows,params){
+  return sliceTorrentWindow(rows,Object.fromEntries(params.entries()),world.profile);
 }
 
 function enrichTorrentRowsIndexed(world,rows){
-  const byHash=new Map((world.torrents||[]).map(t=>[t.hash,t]));
+  const byHash=torrentIndex(world).byHash;
   for(const row of rows){
     const torrent=byHash.get(row.hash);
     if(torrent)Object.assign(row,shareLimitProjection(world,torrent));
@@ -111,14 +110,14 @@ function torrentInfoRows(world,url,now){
   const cached=torrentInfoCaches.get(world);
   if(cached&&cached.key===key&&cached.rid===Number(world.rid||0)&&now-cached.createdAt<TORRENT_INFO_CACHE_TTL_MS){
     cached.hits++;
-    return sliceTorrentRows(cached.rows,params);
+    return sliceTorrentRows(world,cached.rows,params);
   }
   const query=Object.fromEntries(params.entries());
   delete query.offset;
   delete query.limit;
   const rows=enrichTorrentRowsIndexed(world,listTorrentsSnapshot(world,query,now));
   torrentInfoCaches.set(world,{key,rid:Number(world.rid||0),createdAt:now,rows,hits:0});
-  return sliceTorrentRows(rows,params);
+  return sliceTorrentRows(world,rows,params);
 }
 
 export function simulatorApiCacheStats(world){
