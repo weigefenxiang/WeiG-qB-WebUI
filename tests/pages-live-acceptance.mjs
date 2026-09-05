@@ -44,6 +44,28 @@ async function waitForPrivate(page,qbVersion){
   );
 }
 
+async function waitForCatalog(page,{count,timeout=30000}={}){
+  const started=Date.now();
+  await page.waitForFunction(
+    ()=>Boolean(window.WeiG?.AppState?.catalogReady||window.WeiG?.AppState?.catalogError),
+    null,
+    {timeout}
+  );
+  const state=await page.evaluate(()=>({
+    ready:Boolean(window.WeiG?.AppState?.catalogReady),
+    error:Boolean(window.WeiG?.AppState?.catalogError),
+    busy:Boolean(window.WeiG?.AppState?.catalogBusy),
+    count:Array.isArray(window.WeiG?.AppState?.catalog)?window.WeiG.AppState.catalog.length:-1,
+    pageLabel:String(document.querySelector('#page-label')?.textContent||'').trim()
+  }));
+  const elapsedMs=Date.now()-started;
+  assert.equal(state.error,false,`full-library catalog indexing failed after ${elapsedMs} ms`);
+  assert.equal(state.ready,true,`full-library catalog did not become ready after ${elapsedMs} ms`);
+  assert.equal(state.busy,false,'catalog must not remain busy after becoming ready');
+  if(Number.isFinite(count))assert.equal(state.count,count,`catalog must contain all ${count} torrents`);
+  return{...state,elapsedMs};
+}
+
 async function openVirtualSession(page,{branch,qb,count,scenario='mixed',seed='pages-live',clean=false}){
   const sim=`pages-live-${branch}-${qb}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   const url=new URL(`${branch}/app/`,base);
@@ -116,6 +138,10 @@ try{
     await openVirtualSession(page,{branch:'main',qb:'5.2.3',count:5000,scenario:'mixed',seed:'pages-live-5000'});
     await login(page,{expectPrefill:true});
     await waitForPrivate(page,'5.2.3');
+
+    const catalogState=await waitForCatalog(page,{count:5000,timeout:30000});
+    assert.match(catalogState.pageLabel,/第\s*1\s*\/\s*100\s*页\s*·\s*每页\s*50/,`5000-Torrent pager must settle after indexing; got ${catalogState.pageLabel}`);
+    console.log(`5000-Torrent full-library catalog ready in ${catalogState.elapsedMs} ms.`);
 
     const version=await api(page,'app/version');
     const webApi=await api(page,'app/webapiVersion');
@@ -200,4 +226,4 @@ try{
   await browser.close();
 }
 
-console.log(`Virtual qB Pages live acceptance passed for ${expectedSha}: exact deployed metadata, dev/main snapshots, qB5 5000-Torrent runtime, persistence/add/settings/limits/logout, Clean Mode, and qB4 endpoint semantics.`);
+console.log(`Virtual qB Pages live acceptance passed for ${expectedSha}: exact deployed metadata, dev/main snapshots, qB5 5000-Torrent runtime/catalog pagination, persistence/add/settings/limits/logout, Clean Mode, and qB4 endpoint semantics.`);
