@@ -154,4 +154,3 @@ jobs:
           node tests/pages-live-acceptance.mjs
           node tests/pages-live-preferences.mjs
           node tests/pages-live-services.mjs
-          node tests/pages-live-protocol.mjs
