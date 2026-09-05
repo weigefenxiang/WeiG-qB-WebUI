@@ -1,3 +1,5 @@
+const normalizedProfileCache=new WeakMap();
+
 export const BOOTSTRAP_RELEASES=[
   {qbVersion:'4.1.0',webApiVersion:'2.0.0',tag:'release-4.1.0',stable:true,officialWeiGSupport:false,protocolGeneration:'qb4'},
   {qbVersion:'4.1.1',webApiVersion:'2.0.1',tag:'release-4.1.1',stable:true,officialWeiGSupport:false,protocolGeneration:'qb4'},
@@ -26,9 +28,13 @@ export function atLeast(actual,minimum){
 }
 
 export function normalizeProfile(profile){
+  if(profile&&typeof profile==='object'){
+    const cached=normalizedProfileCache.get(profile);
+    if(cached)return cached;
+  }
   const qbVersion=String(profile?.qbVersion||'5.2.3').replace(/^v/,'');
   const major=versionParts(qbVersion)[0]||0;
-  return {
+  const normalized={
     qbVersion,
     webApiVersion:String(profile?.webApiVersion||'2.15.1'),
     tag:String(profile?.tag||`release-${qbVersion}`),
@@ -40,6 +46,9 @@ export function normalizeProfile(profile){
     apiActions:Array.isArray(profile?.apiActions)?[...profile.apiActions]:null,
     major
   };
+  if(profile&&typeof profile==='object')normalizedProfileCache.set(profile,normalized);
+  normalizedProfileCache.set(normalized,normalized);
+  return normalized;
 }
 
 export function profileByVersion(catalog,version){
