@@ -4,6 +4,7 @@ import {execFileSync} from 'node:child_process';
 import {extractPreferenceDescriptors,extractPreferenceKeys} from './qb-source-parsers.mjs';
 import {enrichPreferenceDescriptorsFromGetter} from './qb-preference-semantics.mjs';
 import {annotateCatalogEvolution,validateCatalogEvolution} from './qb-catalog-evolution.mjs';
+import {summarizeCatalogQuality,validateCatalogQuality} from './qb-catalog-quality.mjs';
 
 const qbRoot=path.resolve(process.argv[2]||process.env.QB_UPSTREAM_DIR||'');
 const outputArg=process.argv.find(x=>x.startsWith('--output='));
@@ -97,18 +98,10 @@ for(const tag of tags){
 
 annotateCatalogEvolution(catalog);
 validateCatalogEvolution(catalog);
+validateCatalogQuality(catalog);
 
 fs.mkdirSync(path.dirname(output),{recursive:true});
 fs.writeFileSync(output,JSON.stringify(catalog,null,2)+'\n','utf8');
-const totals=catalog.reduce((sum,item)=>{
-  const stats=item.preferenceDescriptorStats||{};
-  sum.preferences+=stats.total||0;
-  sum.readTyped+=stats.readTyped||0;
-  sum.writeTyped+=stats.writeTyped||0;
-  sum.exactAgreement+=stats.exactAgreement||0;
-  sum.mismatched+=stats.mismatched||0;
-  sum.safeFallback+=stats.safeFallback||0;
-  sum.semanticGetterEnriched+=stats.semanticGetterEnriched||0;
-  return sum;
-},{preferences:0,readTyped:0,writeTyped:0,exactAgreement:0,mismatched:0,safeFallback:0,semanticGetterEnriched:0});
-console.log(`Generated ${catalog.length} stable qB profiles: ${catalog[0].qbVersion} -> ${catalog.at(-1).qbVersion}; preference getter types ${totals.readTyped}/${totals.preferences} (${totals.semanticGetterEnriched} semantic enrichments), setter types ${totals.writeTyped}/${totals.preferences}, exact read/write agreement ${totals.exactAgreement}, conflicts ${totals.mismatched}, enum fallbacks ${totals.safeFallback}.`);
+const totals=summarizeCatalogQuality(catalog);
+const safeFallback=catalog.reduce((sum,item)=>sum+(Number(item.preferenceDescriptorStats?.safeFallback)||0),0);
+console.log(`Generated ${catalog.length} stable qB profiles: ${catalog[0].qbVersion} -> ${catalog.at(-1).qbVersion}; preference getter types ${totals.readTyped}/${totals.preferences} (${totals.semanticGetterEnriched} semantic enrichments), setter types ${totals.writeTyped}/${totals.preferences}, exact read/write agreement ${totals.exactAgreement}, conflicts ${totals.mismatched}, enum fallbacks ${safeFallback}.`);

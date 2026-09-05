@@ -66,11 +66,14 @@ const catalog=await fetchJson('metadata/qb-releases.json');
 const matrix=catalog.filter(item=>item?.stable!==false&&/^(?:4|5)\.\d+\.\d+(?:\.\d+)?$/.test(String(item?.qbVersion||'')));
 assert.ok(matrix.length>=30,`published stable qB 4.x/5.x matrix unexpectedly small: ${matrix.length}`);
 assert.equal(matrix[0].qbVersion,'4.1.0','Virtual qB stable preference matrix must start at qB 4.1.0');
-assert.equal(site?.preferenceCatalog?.schemaVersion,2,'site metadata must expose Preference Descriptor schema v2');
+assert.equal(site?.preferenceCatalog?.schemaVersion,3,'site metadata must expose Preference Descriptor quality schema v3');
 assert.equal(site?.preferenceCatalog?.profiles,matrix.length,'site metadata must publish the same stable preference profile count as qb-releases.json');
 assert.ok(Number(site?.preferenceCatalog?.readTyped)>0,'site metadata must expose source-derived getter/read type coverage');
 assert.ok(Number(site?.preferenceCatalog?.writeTyped)>0,'site metadata must expose source-derived setter/write type coverage');
 assert.ok(Number(site?.preferenceCatalog?.exactAgreement)>0,'site metadata must expose exact getter/setter type agreement coverage');
+assert.ok(Number(site?.preferenceCatalog?.semanticGetterEnriched)>0,'site metadata must expose semantic C++ getter enrichment coverage');
+assert.equal(Number(site?.preferenceCatalog?.readTyped)+Number(site?.preferenceCatalog?.unresolvedRead),Number(site?.preferenceCatalog?.preferences),'site read type coverage must partition all published Preferences');
+assert.equal(Number(site?.preferenceCatalog?.writeTyped)+Number(site?.preferenceCatalog?.unresolvedWrite),Number(site?.preferenceCatalog?.preferences),'site write type coverage must partition all published Preferences');
 
 for(let index=0;index<matrix.length;index++){
   const profile=matrix[index];
@@ -80,10 +83,13 @@ for(let index=0;index<matrix.length;index++){
   assert.equal(profile.preferenceDescriptors.length,profile.preferenceKeys.length,`${profile.qbVersion}: descriptor count must exactly match preference key surface`);
   assert.equal(profile.preferenceDescriptorStats?.total,profile.preferenceKeys.length,`${profile.qbVersion}: descriptor stats must match preference surface`);
   assert.equal(profile.preferenceDescriptorStats?.getterPresent,profile.preferenceKeys.length,`${profile.qbVersion}: every app/preferences key must carry getter provenance`);
+  assert.equal(profile.preferenceDescriptorStats?.readTyped+profile.preferenceDescriptorStats?.unresolvedRead,profile.preferenceKeys.length,`${profile.qbVersion}: read coverage stats must partition the preference surface`);
+  assert.equal(profile.preferenceDescriptorStats?.writeTyped+profile.preferenceDescriptorStats?.unresolvedWrite,profile.preferenceKeys.length,`${profile.qbVersion}: write coverage stats must partition the preference surface`);
+  assert.equal(profile.preferenceDescriptorStats?.semanticGetterEnriched,profile.preferenceDescriptors.filter(item=>item.semanticGetterEnriched===true).length,`${profile.qbVersion}: semantic getter coverage count is stale`);
   assert.equal(profile.releaseOrdinal,index,`${profile.qbVersion}: release ordinal must preserve catalog order`);
   assert.deepEqual(profile.preferenceChanges?.added,previous?difference(profile.preferenceKeys,previous.preferenceKeys):[...profile.preferenceKeys].sort(),`${profile.qbVersion}: published added preference diff is stale`);
   assert.deepEqual(profile.preferenceChanges?.removed,previous?difference(previous.preferenceKeys,profile.preferenceKeys):[],`${profile.qbVersion}: published removed preference diff is stale`);
-  for(const field of ['readTypeChanged','writeTypeChanged','agreementChanged','fallbackChanged']){
+  for(const field of ['readTypeChanged','writeTypeChanged','agreementChanged','fallbackChanged','getterKindChanged','setterKindChanged','semanticGetterChanged']){
     assert.ok(Array.isArray(profile.preferenceChanges?.[field]),`${profile.qbVersion}: published ${field} evolution metadata is missing`);
   }
   for(const descriptor of profile.preferenceDescriptors){
@@ -96,6 +102,12 @@ for(let index=0;index<matrix.length;index++){
     assert.ok(descriptor.schemaLastChangedInLabCatalog,`${profile.qbVersion}/${descriptor.key}: schema-change provenance missing`);
     assert.ok(descriptor.readTypeLastChangedInLabCatalog,`${profile.qbVersion}/${descriptor.key}: read-type evolution provenance missing`);
     assert.ok(descriptor.writeTypeLastChangedInLabCatalog,`${profile.qbVersion}/${descriptor.key}: write-type evolution provenance missing`);
+    if(descriptor.readType)assert.ok(descriptor.firstReadTypedInLabCatalog,`${profile.qbVersion}/${descriptor.key}: first typed getter version missing`);
+    if(descriptor.writeType)assert.ok(descriptor.firstWriteTypedInLabCatalog,`${profile.qbVersion}/${descriptor.key}: first typed setter version missing`);
+    if(descriptor.semanticGetterEnriched===true){
+      assert.ok(descriptor.readType,`${profile.qbVersion}/${descriptor.key}: semantic getter enrichment must resolve readType`);
+      assert.equal(descriptor.getterConfidence,'HIGH',`${profile.qbVersion}/${descriptor.key}: semantic getter enrichment must remain high confidence`);
+    }
     if(descriptor.writable){
       assert.ok(descriptor.writeType,`${profile.qbVersion}/${descriptor.key}: writable upstream descriptor must have a high-confidence writeType`);
       assert.ok(descriptor.firstWritableInLabCatalog,`${profile.qbVersion}/${descriptor.key}: writable descriptor first version missing`);
@@ -156,6 +168,7 @@ try{
 
   let audited=0;
   let readTypedAudited=0;
+  let semanticGetterAudited=0;
   let writeRoundTrips=0;
   for(const profile of matrix){
     const sim=`pref-matrix-${profile.qbVersion.replace(/\./g,'-')}-${Date.now()}-${audited}`;
@@ -176,6 +189,7 @@ try{
       if(descriptor.getterConfidence!=='HIGH'||!descriptor.readType)continue;
       assert.ok(valueMatchesType(response.json?.[descriptor.key],descriptor.readType),`${profile.qbVersion}/${descriptor.key}: deployed GET value type must match upstream getter-derived ${descriptor.readType}`);
       readTypedAudited++;
+      if(descriptor.semanticGetterEnriched===true)semanticGetterAudited++;
     }
     const dlDescriptor=profile.preferenceDescriptors.find(item=>item.key==='dl_limit'&&item.writable&&item.writeType==='number');
     if(dlDescriptor&&typeof response.json?.dl_limit==='number'){
@@ -192,6 +206,7 @@ try{
 
   assert.equal(audited,matrix.length,'every published qB 4.x/5.x stable release must be live-audited');
   assert.ok(readTypedAudited>30,'live getter-derived read type audit unexpectedly small');
+  assert.ok(semanticGetterAudited>0,'live semantic getter enrichment audit unexpectedly empty');
   assert.ok(writeRoundTrips>30,'live setter-derived write round-trip audit unexpectedly small');
   assert.deepEqual(pageErrors,[],`Preference surface session emitted page errors:\n${pageErrors.join('\n')}`);
   await context.close();
@@ -199,4 +214,4 @@ try{
   await browser.close();
 }
 
-console.log(`Virtual qB Pages preference acceptance passed for ${expectedSha}: exact Advanced rendering, ${matrix.length} official stable qB 4.x/5.x surfaces, getter-derived read types, setter-derived safe round-trips and schema-evolution metadata.`);
+console.log(`Virtual qB Pages preference acceptance passed for ${expectedSha}: exact Advanced rendering, ${matrix.length} official stable qB 4.x/5.x surfaces, structural + semantic getter read types, setter-derived safe round-trips and schema-evolution metadata.`);

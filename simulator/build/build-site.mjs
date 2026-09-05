@@ -50,14 +50,19 @@ const descriptorTotals=(Array.isArray(catalogData)?catalogData:[]).reduce((sum,i
   sum.exactAgreement+=Number(stats.exactAgreement)||0;
   sum.mismatched+=Number(stats.mismatched)||0;
   sum.safeFallback+=Number(stats.safeFallback)||0;
+  sum.semanticGetterEnriched+=Number(stats.semanticGetterEnriched)||0;
+  sum.unresolvedRead+=Number(stats.unresolvedRead)||0;
+  sum.unresolvedWrite+=Number(stats.unresolvedWrite)||0;
+  sum.structuredRead+=Number(stats.structuredRead)||0;
+  sum.structuredWrite+=Number(stats.structuredWrite)||0;
   sum.typed+=Number(stats.typed)||0;
   sum.highConfidence+=Number(stats.highConfidence)||0;
   sum.unresolved+=Number(stats.unresolved)||0;
   return sum;
-},{preferences:0,getterPresent:0,setterPresent:0,readTyped:0,writeTyped:0,exactAgreement:0,mismatched:0,safeFallback:0,typed:0,highConfidence:0,unresolved:0});
+},{preferences:0,getterPresent:0,setterPresent:0,readTyped:0,writeTyped:0,exactAgreement:0,mismatched:0,safeFallback:0,semanticGetterEnriched:0,unresolvedRead:0,unresolvedWrite:0,structuredRead:0,structuredWrite:0,typed:0,highConfidence:0,unresolved:0});
 const latestProfile=Array.isArray(catalogData)&&catalogData.length?catalogData.at(-1):null;
 const preferenceCatalog={
-  schemaVersion:2,
+  schemaVersion:3,
   profiles:Array.isArray(catalogData)?catalogData.length:0,
   ...descriptorTotals,
   latest:latestProfile?{
@@ -70,6 +75,11 @@ const preferenceCatalog={
     exactAgreement:latestProfile.preferenceDescriptorStats?.exactAgreement||0,
     mismatched:latestProfile.preferenceDescriptorStats?.mismatched||0,
     safeFallback:latestProfile.preferenceDescriptorStats?.safeFallback||0,
+    semanticGetterEnriched:latestProfile.preferenceDescriptorStats?.semanticGetterEnriched||0,
+    unresolvedRead:latestProfile.preferenceDescriptorStats?.unresolvedRead||0,
+    unresolvedWrite:latestProfile.preferenceDescriptorStats?.unresolvedWrite||0,
+    structuredRead:latestProfile.preferenceDescriptorStats?.structuredRead||0,
+    structuredWrite:latestProfile.preferenceDescriptorStats?.structuredWrite||0,
     typed:latestProfile.preferenceDescriptorStats?.typed||0,
     unresolved:latestProfile.preferenceDescriptorStats?.unresolved||0
   }:null

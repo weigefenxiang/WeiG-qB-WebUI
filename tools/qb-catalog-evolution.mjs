@@ -32,6 +32,8 @@ export function annotateCatalogEvolution(input = []) {
   const catalog = Array.isArray(input) ? input : [];
   const firstSeen = new Map();
   const firstWritable = new Map();
+  const firstReadTyped = new Map();
+  const firstWriteTyped = new Map();
   const lastSchemaChange = new Map();
   const lastReadTypeChange = new Map();
   const lastWriteTypeChange = new Map();
@@ -53,12 +55,17 @@ export function annotateCatalogEvolution(input = []) {
     const writableChanged = [];
     const agreementChanged = [];
     const fallbackChanged = [];
+    const getterKindChanged = [];
+    const setterKindChanged = [];
+    const semanticGetterChanged = [];
 
     for (const key of currentKeys) {
       if (!firstSeen.has(key)) firstSeen.set(key, version);
       const now = currentDescriptors.get(key);
       const before = previousDescriptors.get(key);
       if (now?.writable === true && !firstWritable.has(key)) firstWritable.set(key, version);
+      if (now?.readType && !firstReadTyped.has(key)) firstReadTyped.set(key, version);
+      if (now?.writeType && !firstWriteTyped.has(key)) firstWriteTyped.set(key, version);
       let schemaChanged = false;
       if (before) {
         if (pushChange(typeChanged,key,before,now,'type')) schemaChanged = true;
@@ -73,6 +80,9 @@ export function annotateCatalogEvolution(input = []) {
         if (pushChange(writableChanged,key,before,now,'writable')) schemaChanged = true;
         if (pushChange(agreementChanged,key,before,now,'typeAgreement')) schemaChanged = true;
         if (pushChange(fallbackChanged,key,before,now,'upstreamFallbackValue')) schemaChanged = true;
+        if (pushChange(getterKindChanged,key,before,now,'getterKind')) schemaChanged = true;
+        if (pushChange(setterKindChanged,key,before,now,'setterKind')) schemaChanged = true;
+        if (pushChange(semanticGetterChanged,key,before,now,'semanticGetterEnriched')) schemaChanged = true;
       }
       if (schemaChanged) lastSchemaChange.set(key, version);
       if (!lastSchemaChange.has(key)) lastSchemaChange.set(key, firstSeen.get(key));
@@ -89,7 +99,10 @@ export function annotateCatalogEvolution(input = []) {
       writeTypeChanged,
       writableChanged,
       agreementChanged,
-      fallbackChanged
+      fallbackChanged,
+      getterKindChanged,
+      setterKindChanged,
+      semanticGetterChanged
     };
     current.apiActionChanges = {
       added: previous ? difference(current.apiActions, previous.apiActions) : [...setOf(current.apiActions)].sort(),
@@ -101,6 +114,8 @@ export function annotateCatalogEvolution(input = []) {
         ...descriptor,
         firstSeenInLabCatalog: firstSeen.get(String(descriptor.key)) || version,
         firstWritableInLabCatalog: firstWritable.get(String(descriptor.key)) || null,
+        firstReadTypedInLabCatalog: firstReadTyped.get(String(descriptor.key)) || null,
+        firstWriteTypedInLabCatalog: firstWriteTyped.get(String(descriptor.key)) || null,
         schemaLastChangedInLabCatalog: lastSchemaChange.get(String(descriptor.key)) || firstSeen.get(String(descriptor.key)) || version,
         readTypeLastChangedInLabCatalog: lastReadTypeChange.get(String(descriptor.key)) || firstSeen.get(String(descriptor.key)) || version,
         writeTypeLastChangedInLabCatalog: lastWriteTypeChange.get(String(descriptor.key)) || firstSeen.get(String(descriptor.key)) || version
@@ -126,8 +141,10 @@ export function validateCatalogEvolution(catalog = []) {
       if (!descriptor.readTypeLastChangedInLabCatalog) throw new Error(`${profile.qbVersion}: missing readTypeLastChangedInLabCatalog for ${descriptor.key}`);
       if (!descriptor.writeTypeLastChangedInLabCatalog) throw new Error(`${profile.qbVersion}: missing writeTypeLastChangedInLabCatalog for ${descriptor.key}`);
       if (descriptor.writable === true && !descriptor.firstWritableInLabCatalog) throw new Error(`${profile.qbVersion}: writable descriptor lacks firstWritableInLabCatalog for ${descriptor.key}`);
+      if (descriptor.readType && !descriptor.firstReadTypedInLabCatalog) throw new Error(`${profile.qbVersion}: typed getter lacks firstReadTypedInLabCatalog for ${descriptor.key}`);
+      if (descriptor.writeType && !descriptor.firstWriteTypedInLabCatalog) throw new Error(`${profile.qbVersion}: typed setter lacks firstWriteTypedInLabCatalog for ${descriptor.key}`);
     }
-    for (const field of ['typeChanged','readTypeChanged','writeTypeChanged','writableChanged','agreementChanged','fallbackChanged']) {
+    for (const field of ['typeChanged','readTypeChanged','writeTypeChanged','writableChanged','agreementChanged','fallbackChanged','getterKindChanged','setterKindChanged','semanticGetterChanged']) {
       if (!Array.isArray(profile.preferenceChanges[field])) throw new Error(`${profile.qbVersion}: missing preferenceChanges.${field}`);
     }
     if (index > 0) {
