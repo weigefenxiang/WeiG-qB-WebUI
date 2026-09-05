@@ -19,7 +19,7 @@ jobs:
     steps:
       - name: Resolve exact reusable main candidate artifact
         id: verify
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           RELEASE_SHA: ${{ github.sha }}
         with:
@@ -94,7 +94,7 @@ jobs:
             core.setOutput('artifact_id', String(artifact.id));
 
       - name: Download validated main release candidate
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: ${{ steps.verify.outputs.artifact_name }}
           path: release
