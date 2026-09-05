@@ -40,7 +40,26 @@ for(const branch of branches){
   await fs.writeFile(path.join(out,'metadata',`${branch.name}.json`),JSON.stringify(meta,null,2)+'\n','utf8');
 }
 const catalogData=JSON.parse(await fs.readFile(catalog,'utf8'));
-const siteMeta={simulatorSha,builtAt:new Date().toISOString(),stableProfiles:Array.isArray(catalogData)?catalogData.length:0,branches:Object.fromEntries(branches.map(x=>[x.name,{exactSha:x.sha,productVersion:x.version}]))};
+const descriptorTotals=(Array.isArray(catalogData)?catalogData:[]).reduce((sum,item)=>{
+  const stats=item?.preferenceDescriptorStats||{};
+  sum.preferences+=Number(stats.total)||0;
+  sum.typed+=Number(stats.typed)||0;
+  sum.highConfidence+=Number(stats.highConfidence)||0;
+  sum.unresolved+=Number(stats.unresolved)||0;
+  return sum;
+},{preferences:0,typed:0,highConfidence:0,unresolved:0});
+const latestProfile=Array.isArray(catalogData)&&catalogData.length?catalogData.at(-1):null;
+const preferenceCatalog={
+  profiles:Array.isArray(catalogData)?catalogData.length:0,
+  ...descriptorTotals,
+  latest:latestProfile?{
+    qbVersion:latestProfile.qbVersion,
+    preferenceCount:latestProfile.preferenceDescriptorStats?.total||0,
+    typed:latestProfile.preferenceDescriptorStats?.typed||0,
+    unresolved:latestProfile.preferenceDescriptorStats?.unresolved||0
+  }:null
+};
+const siteMeta={simulatorSha,builtAt:new Date().toISOString(),stableProfiles:Array.isArray(catalogData)?catalogData.length:0,preferenceCatalog,branches:Object.fromEntries(branches.map(x=>[x.name,{exactSha:x.sha,productVersion:x.version}]))};
 await fs.writeFile(path.join(out,'metadata','site.json'),JSON.stringify(siteMeta,null,2)+'\n','utf8');
 await fs.writeFile(path.join(out,'.nojekyll'),'','utf8');
 await fs.writeFile(path.join(out,'index.html'),'<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="0;url=./lab/"><title>WeiG Virtual qB Lab</title></head><body><p><a href="./lab/">进入 WeiG Virtual qB Lab</a></p></body></html>','utf8');

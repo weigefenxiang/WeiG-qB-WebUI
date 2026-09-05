@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {extractPreferenceDescriptors,extractPreferenceKeys} from './qb-source-parsers.mjs';
+import {annotateCatalogEvolution,validateCatalogEvolution} from './qb-catalog-evolution.mjs';
 
 const qbRoot=path.resolve(process.argv[2]||process.env.QB_UPSTREAM_DIR||'');
 const outputArg=process.argv.find(x=>x.startsWith('--output='));
@@ -73,6 +74,9 @@ for(const tag of tags){
     apiActions:apiActions(tag)
   });
 }
+
+annotateCatalogEvolution(catalog);
+validateCatalogEvolution(catalog);
 
 fs.mkdirSync(path.dirname(output),{recursive:true});
 fs.writeFileSync(output,JSON.stringify(catalog,null,2)+'\n','utf8');
