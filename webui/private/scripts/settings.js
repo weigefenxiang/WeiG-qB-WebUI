@@ -4,6 +4,7 @@
   if(!C||!C.selectControl||!U||!S)return;
   function zh(){return !!(W.I18n&&W.I18n.getLocale&&W.I18n.getLocale()==='zh-CN');}
   function text(en,cn){return zh()?cn:en;}
+  function own(obj,key){return Object.prototype.hasOwnProperty.call(obj||{},key);}
   var TAB_TITLES={downloads:['Downloads','下载'],connection:['Connection','连接'],bittorrent:['BitTorrent','BitTorrent'],webui:['Web UI','Web UI'],advanced:['Advanced','全部高级设置']};
 
   function describe(key,value){
@@ -68,23 +69,24 @@
     return settingRow({key:key,title:info.title,description:info.description,span:info.span,control:control});
   }
   function customRow(key,title,description,control,span){return settingRow({key:key,title:title,description:description,control:control,span:span||'1'});}
+  function weiggValue(ctx,key,fallback){return own(ctx.weiggDraft,key)?ctx.weiggDraft[key]:fallback;}
 
-  function languageRow(){
-    var I=W.I18n,setting=I&&I.getSetting?I.getSetting():'auto',options=[{value:'auto',label:text('Automatic (browser)','自动（浏览器）')},{value:'en',label:'English'},{value:'zh-CN',label:'简体中文'},{value:'zh-TW',label:'繁體中文'},{value:'ja',label:'日本語'},{value:'ko',label:'한국어'}];
-    return customRow('weigg_language',text('Language','语言'),text('Follow the browser automatically; unsupported languages fall back to English.','自动跟随浏览器；不支持的语言自动回退英文。'),selectControl(setting,options,function(v){if(I&&I.setLocale)I.setLocale(v);else location.reload();},text('Language','语言')));
+  function languageRow(ctx){
+    var I=W.I18n,setting=weiggValue(ctx,'language',I&&I.getSetting?I.getSetting():'auto'),options=[{value:'auto',label:text('Automatic (browser)','自动（浏览器）')},{value:'en',label:'English'},{value:'zh-CN',label:'简体中文'},{value:'zh-TW',label:'繁體中文'},{value:'ja',label:'日本語'},{value:'ko',label:'한국어'}];
+    return customRow('weigg_language',text('Language','语言'),text('Follow the browser automatically; unsupported languages fall back to English.','自动跟随浏览器；不支持的语言自动回退英文。'),selectControl(setting,options,function(v){ctx.onWeiGChange('language',v);},text('Language','语言')));
   }
-  function configSelectRow(ctx,key,title,description,options){return customRow('weigg_'+key,title,description,selectControl(ctx.config[key],options,function(v){ctx.onConfigChange(key,v);},title));}
-  function timezoneRow(){
-    var options=(W.Time?W.Time.zones():[{value:'system',label:'System / Browser'}]).map(function(x){return{value:x.value,label:W.Time?W.Time.displayLabel(x.value):x.label};}),value=W.Time?W.Time.getZone():'system';
-    return customRow('weigg_timezone',text('Display time zone','显示时区'),text('Changes date/log display only; qBittorrent and server time are unchanged.','只改变日期/日志显示，不修改 qBittorrent 或服务器时间。'),selectControl(value,options,function(v){if(W.Time)W.Time.setZone(v);},text('Display time zone','显示时区'),{searchable:true,searchThreshold:12,width:330}));
+  function configSelectRow(ctx,key,title,description,options){var value=weiggValue(ctx,key,ctx.config[key]);return customRow('weigg_'+key,title,description,selectControl(value,options,function(v){ctx.onWeiGChange(key,v);},title));}
+  function timezoneRow(ctx){
+    var options=(W.Time?W.Time.zones():[{value:'system',label:'System / Browser'}]).map(function(x){return{value:x.value,label:W.Time?W.Time.displayLabel(x.value):x.label};}),value=weiggValue(ctx,'timezone',W.Time?W.Time.getZone():'system');
+    return customRow('weigg_timezone',text('Display time zone','显示时区'),text('Changes date/log display only; qBittorrent and server time are unchanged.','只改变日期/日志显示，不修改 qBittorrent 或服务器时间。'),selectControl(value,options,function(v){ctx.onWeiGChange('timezone',v);},text('Display time zone','显示时区'),{searchable:true,searchThreshold:12,width:330}));
   }
   function trackerRulesRow(ctx){
-    var input=inputControl('text',(ctx.config.ptTrackers||[]).join(', '),function(v){ctx.onConfigChange('ptTrackers',String(v).split(',').map(function(x){return x.trim();}).filter(Boolean));},text('PT Tracker rules','PT Tracker 规则'),{},true);input.dataset.controlKind='wide';
+    var value=weiggValue(ctx,'ptTrackers',ctx.config.ptTrackers||[]),input=inputControl('text',(value||[]).join(', '),function(v){ctx.onWeiGChange('ptTrackers',String(v).split(',').map(function(x){return x.trim();}).filter(Boolean));},text('PT Tracker rules','PT Tracker 规则'),{},true);input.dataset.controlKind='wide';
     return customRow('weigg_pt_trackers',text('PT Tracker rules','PT Tracker 规则'),text('Private metadata is resolved from qBittorrent; this optional list classifies PT by tracker domain, comma separated.','Private 状态由 qBittorrent 权威数据解析；这里仅按 Tracker 域名补充识别 PT，逗号分隔。'),input);
   }
   function renderWeiG(root,ctx){
     var s=section(text('Interface','界面'),text('Typography, density, pagination and visual behavior use one token system.','所有字体、密度、分页和视觉行为都由统一 Token 控制。'),'weigg');
-    var rows=[languageRow(),configSelectRow(ctx,'theme',text('Theme','主题'),text('Automatic follows the system; Smart auto uses local device time and switches Dark from 20:00 to 08:00.','自动模式跟随系统；智能自动使用设备当地时间，20:00–08:00 为深色。'),W.Theme.options()),configSelectRow(ctx,'fontSize',text('Font size','字体大小'),text('Global display preference.','统一全局设置'),[{value:'standard',label:text('Standard','标准')},{value:'large',label:text('Large (+2px)','大（+2px）')},{value:'xlarge',label:text('Extra large (+3px)','特大（+3px）')}]),configSelectRow(ctx,'density',text('Interface density','界面密度'),text('Global display preference.','统一全局设置'),[{value:'compact',label:text('Compact','紧凑')},{value:'standard',label:text('Standard','标准')},{value:'comfortable',label:text('Comfortable','宽松')}]),configSelectRow(ctx,'starfield',text('Starfield','星空'),text('Global display preference.','统一全局设置'),[{value:'off',label:text('Off','关闭')},{value:'subtle',label:text('Subtle','柔和')},{value:'full',label:text('Full','完整')}]),configSelectRow(ctx,'motion',text('Motion','动画'),text('Global display preference.','统一全局设置'),[{value:'system',label:text('Follow system','跟随系统')},{value:'reduced',label:text('Reduced','减少')},{value:'full',label:text('Full','完整')}]),configSelectRow(ctx,'pageSize',text('Torrents per page','每页 Torrent'),text('Global display preference.','统一全局设置'),[20,50,100,200].map(function(n){return{value:n,label:String(n)}})),configSelectRow(ctx,'refresh',text('Refresh interval','刷新频率'),text('Global display preference.','统一全局设置'),[1000,2000,5000,10000].map(function(n){return{value:n,label:(n/1000)+' '+text('s','秒')}})),trackerRulesRow(ctx),timezoneRow()];
+    var rows=[languageRow(ctx),configSelectRow(ctx,'theme',text('Theme','主题'),text('Automatic follows the system; Smart auto uses local device time and switches Dark from 20:00 to 08:00.','自动模式跟随系统；智能自动使用设备当地时间，20:00–08:00 为深色。'),W.Theme.options()),configSelectRow(ctx,'fontSize',text('Font size','字体大小'),text('Global display preference.','统一全局设置'),[{value:'standard',label:text('Standard','标准')},{value:'large',label:text('Large (+2px)','大（+2px）')},{value:'xlarge',label:text('Extra large (+3px)','特大（+3px）')}]),configSelectRow(ctx,'density',text('Interface density','界面密度'),text('Global display preference.','统一全局设置'),[{value:'compact',label:text('Compact','紧凑')},{value:'standard',label:text('Standard','标准')},{value:'comfortable',label:text('Comfortable','宽松')}]),configSelectRow(ctx,'starfield',text('Starfield','星空'),text('Global display preference.','统一全局设置'),[{value:'off',label:text('Off','关闭')},{value:'subtle',label:text('Subtle','柔和')},{value:'full',label:text('Full','完整')}]),configSelectRow(ctx,'motion',text('Motion','动画'),text('Global display preference.','统一全局设置'),[{value:'system',label:text('Follow system','跟随系统')},{value:'reduced',label:text('Reduced','减少')},{value:'full',label:text('Full','完整')}]),configSelectRow(ctx,'pageSize',text('Torrents per page','每页 Torrent'),text('Global display preference.','统一全局设置'),[20,50,100,200].map(function(n){return{value:n,label:String(n)}})),configSelectRow(ctx,'refresh',text('Refresh interval','刷新频率'),text('Global display preference.','统一全局设置'),[1000,2000,5000,10000].map(function(n){return{value:n,label:(n/1000)+' '+text('s','秒')}})),trackerRulesRow(ctx),timezoneRow(ctx)];
     rows.forEach(function(r){s.grid.appendChild(r);});root.appendChild(s);
     var d=section(text('Performance','性能'),text('Developer/diagnostic information lives here instead of the main screen.','开发/诊断信息从主界面移到这里。'),'weigg-metrics');d.grid.classList.add('diagnostic-grid');
     var facts=[[text('Catalog cache','全库缓存'),ctx.app.catalog.length],[text('Current page data','当前页数据'),ctx.app.torrents.length],[text('Current DOM','当前 DOM'),ctx.app.virtual&&ctx.app.virtual.el&&ctx.app.virtual.el.dataset.rendered||'—'],[text('API page size','API 每页'),ctx.app.pageSize],[text('Refresh interval','刷新间隔'),ctx.config.refresh+' ms'],[text('Tracker index','Tracker 索引'),ctx.app.catalogReady?text('Ready','完成'):text('Building','构建中')]];
@@ -119,7 +121,7 @@
     s.grid.append(fact(text('Version','版本'),controller.productVersion||'—'),fact('qBittorrent',(document.getElementById('qb-version')||{}).textContent||'—'),fact('Git SHA',sha),fact('WebAPI',(document.getElementById('api-version')||{}).textContent||'—'),fact('GitHub','weigefenxiang/WeiG-qB-WebUI','https://github.com/weigefenxiang/WeiG-qB-WebUI'),fact('Blog','WeiG Share','https://www.weigshare.com/'),fact(text('License','许可证'),'GNU GPL-3.0','https://github.com/weigefenxiang/WeiG-qB-WebUI/blob/main/LICENSE'));root.appendChild(s);
   }
   function render(ctx){
-    var root=ctx.root;root.textContent='';root.dataset.settingsRenderer='canonical';var save=document.getElementById('save-settings-btn');if(save)save.hidden=ctx.tab==='weigg'||ctx.tab==='about';
+    var root=ctx.root;root.textContent='';root.dataset.settingsRenderer='canonical';var save=document.getElementById('save-settings-btn');if(save)save.hidden=ctx.tab==='about';
     if(ctx.tab==='weigg')renderWeiG(root,ctx);else if(ctx.tab==='about')renderAbout(root,ctx);else renderQb(root,ctx);
   }
   async function installMeta(){try{var r=await fetch('weigg-install.json',{cache:'no-store'});if(!r.ok)return null;return await r.json();}catch(_e){return null;}}
@@ -136,22 +138,24 @@
     return true;
   }
 
-  var controller={prefs:null,draft:{},tab:'weigg',config:null,loading:false,productVersion:null,versionTask:null};
+  var controller={prefs:null,draft:{},weiggDraft:{},tab:'weigg',config:null,loading:false,productVersion:null,versionTask:null};
   function sharedClient(){var app=W.AppState;if(app&&app.client)return app.client;throw new Error(text('qBittorrent client is not ready.','qBittorrent 客户端尚未就绪。'));}
   function controllerApp(){var state=W.AppState||{};return{catalog:Array.isArray(state.catalog)?state.catalog:[],torrents:Array.isArray(state.torrents)?state.torrents:[],virtual:state.virtual||{el:document.getElementById('torrent-list')||{}},pageSize:Number(state.pageSize||(controller.config&&controller.config.pageSize)||50),catalogReady:!!state.catalogReady};}
-  function onConfigChange(key,value){
-    controller.config=controller.config||W.Config.load();if(key==='pageSize'||key==='refresh')value=Number(value);
-    if(key==='theme'){W.Theme.setMode(value);controller.config=W.Config.load();renderOwned();return;}
-    controller.config[key]=value;W.Config.save(controller.config);W.Config.apply(controller.config);if(W.LibraryController&&W.LibraryController.applyRuntimeConfig)W.LibraryController.applyRuntimeConfig(key,value);
-    if(key==='fontSize'||key==='density'||key==='starfield'||key==='motion')global.dispatchEvent(new CustomEvent('weigg:configchange',{detail:{key:key,value:value}}));renderOwned();
-  }
-  function ctx(){return{root:document.getElementById('settings-content'),tab:controller.tab,prefs:controller.prefs||{},draft:controller.draft,config:controller.config||W.Config.load(),app:controllerApp(),onDraft:function(key,value){controller.draft[key]=value;},onConfigChange:onConfigChange};}
+  function onWeiGChange(key,value){controller.config=controller.config||W.Config.load();if(key==='pageSize'||key==='refresh')value=Number(value);controller.weiggDraft[key]=value;renderOwned();}
+  function ctx(){return{root:document.getElementById('settings-content'),tab:controller.tab,prefs:controller.prefs||{},draft:controller.draft,weiggDraft:controller.weiggDraft,config:controller.config||W.Config.load(),app:controllerApp(),onDraft:function(key,value){controller.draft[key]=value;},onWeiGChange:onWeiGChange};}
   function activeTab(tab){Array.from(document.querySelectorAll('#settings-tabs [data-settings-tab]')).forEach(function(b){b.classList.toggle('is-active',b.dataset.settingsTab===tab);});}
   function renderOwned(){var root=document.getElementById('settings-content');if(!root)return;activeTab(controller.tab);render(ctx());global.dispatchEvent(new CustomEvent('weigg:settings-render',{detail:{tab:controller.tab}}));}
   async function ensureProductVersion(){if(controller.productVersion)return controller.productVersion;if(controller.versionTask)return controller.versionTask;controller.versionTask=(async function(){var meta=await installMeta();controller.productVersion=meta&&meta.version?String(meta.version):'—';return controller.productVersion;})().finally(function(){controller.versionTask=null;});return controller.versionTask;}
   async function ensurePrefs(){if(controller.prefs||controller.loading)return;controller.loading=true;try{controller.prefs=await sharedClient().getPreferences();}catch(e){if(W.toast)W.toast(text('Failed to read settings: ','读取设置失败：')+(e.message||e),'error',{title:text('Settings unavailable','设置读取失败')});}finally{controller.loading=false;}}
   async function openOwned(tab){controller.config=controller.config||W.Config.load();if(tab)controller.tab=tab;if(controller.tab==='about')await ensureProductVersion();else if(controller.tab!=='weigg')await ensurePrefs();renderOwned();}
-  async function saveOwned(){
+  function applyWeiGRuntime(pending,nextConfig){Object.keys(pending).forEach(function(key){var value=pending[key];if(key==='language'){if(W.I18n&&W.I18n.setLocale)W.I18n.setLocale(value);return;}if(key==='timezone'){if(W.Time&&W.Time.setZone)W.Time.setZone(value);return;}if(W.LibraryController&&W.LibraryController.applyRuntimeConfig)W.LibraryController.applyRuntimeConfig(key,value);try{global.dispatchEvent(new CustomEvent('weigg:configchange',{detail:{key:key,value:value}}));}catch(_e){}});W.Config.apply(nextConfig);}
+  async function saveWeiG(){
+    var keys=Object.keys(controller.weiggDraft);if(!keys.length){if(W.toast)W.toast(text('No WeiG settings to save.','没有需要保存的 WeiG 设置'),'info',{title:text('No changes','没有更改')});return;}
+    var pending=Object.assign({},controller.weiggDraft),next=Object.assign({},controller.config||W.Config.load());keys.forEach(function(key){if(key!=='language'&&key!=='timezone')next[key]=pending[key];});
+    try{W.Config.save(next);controller.config=next;controller.weiggDraft={};applyWeiGRuntime(pending,next);if(W.toast)W.toast(text('WeiG settings saved.','WeiG 设置已保存'),'success',{title:text('Settings saved','设置已保存')});renderOwned();}
+    catch(e){if(W.toast)W.toast(text('Save failed: ','保存失败：')+(e.message||e),'error',{title:text('Settings save failed','设置保存失败')});}
+  }
+  async function saveQb(){
     if(!Object.keys(controller.draft).length){if(W.toast)W.toast(text('No qB settings to save.','没有需要保存的 qB 设置'),'info',{title:text('No changes','没有更改')});return;}
     if(!(await validateBeforeSave(controller.draft,controller.prefs||{})))return;
     var pending=Object.assign({},controller.draft),notice=W.toast?W.toast(text('Writing qBittorrent preferences.','正在写入 qBittorrent 设置。'),'info',{title:text('Saving settings','正在保存设置'),duration:0}):null;
@@ -162,6 +166,7 @@
       renderOwned();
     }catch(e){if(notice)notice.update(text('Save failed: ','保存失败：')+(e.message||e),'error',{title:text('Settings save failed','设置保存失败')});else if(W.toast)W.toast(text('Save failed: ','保存失败：')+(e.message||e),'error');}
   }
+  async function saveOwned(){if(controller.tab==='about')return;if(controller.tab==='weigg')return saveWeiG();return saveQb();}
   function installController(){
     controller.config=W.Config.load();
     document.addEventListener('click',function(e){
