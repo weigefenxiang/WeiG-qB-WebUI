@@ -41,10 +41,17 @@ function aggregateSignature(world){
   return[
     Number(world?.lastTick)||0,
     Number(world?.rid)||0,
+    world?.altSpeedMode?1:0,
     Number(world?.globalDownloadLimit)||0,
     Number(world?.globalUploadLimit)||0,
+    Number(world?.preferences?.alt_dl_limit)||0,
+    Number(world?.preferences?.alt_up_limit)||0,
     world?.preferences?.dht===false?0:1,
     world?.environment?.online===false?0:1,
+    Number(world?.environment?.downCapacity)||0,
+    Number(world?.environment?.upCapacity)||0,
+    Number(world?.environment?.diskWriteCapacity)||0,
+    Number(world?.environment?.diskReadCapacity)||0,
     Number(world?.stats?.alltime_dl)||0,
     Number(world?.stats?.alltime_ul)||0,
     Number(world?.stats?.total_peer_connections)||0

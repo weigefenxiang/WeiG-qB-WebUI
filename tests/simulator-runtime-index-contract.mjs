@@ -6,6 +6,7 @@ import {runtimeIndexStats} from '../simulator/core/runtime-index.js';
 import {
   clearRuntimeSnapshot,listTorrentsSnapshot,mainDataSnapshot,runtimeSnapshotStats,transferSnapshot
 } from '../simulator/core/runtime-view.js';
+import {setVirtualSpeedLimitsMode} from '../simulator/core/transfer-controls.js';
 
 const baseNow=1700000000000;
 const profile={qbVersion:'5.2.3',webApiVersion:'2.15.1'};
@@ -20,6 +21,23 @@ function make(seed){return createWorld({profile,count:5000,seed,now:baseNow});}
   assert.equal(main.server_state.dl_info_speed,transfer.dl_info_speed);
   assert.equal(stats.aggregateRuns,1,'one coherent runtime snapshot must sum 5000 torrent rates only once');
   assert.ok(stats.aggregateHits>=1,'sync/maindata must reuse the transfer aggregate computed by transfer/info in the same snapshot');
+}
+
+{
+  const world=make('aggregate-speed-mode');
+  world.preferences.alt_dl_limit=32;
+  world.preferences.alt_up_limit=16;
+  const now=baseNow+1100;
+  const normal=transferSnapshot(world,now);
+  assert.ok(normal.dl_info_speed>32*1024,'fixture must exceed the tiny alternate download cap before switching modes');
+  const before=runtimeSnapshotStats(world);
+  assert.equal(before.aggregateRuns,1);
+  setVirtualSpeedLimitsMode(world,1,now+100);
+  const alternate=transferSnapshot(world,now+200);
+  const after=runtimeSnapshotStats(world);
+  assert.ok(alternate.dl_info_speed<=32*1024,'same-bucket alternate mode must never reuse the normal-mode transfer aggregate');
+  assert.ok(alternate.up_info_speed<=16*1024,'same-bucket alternate upload cap must invalidate the aggregate too');
+  assert.equal(after.aggregateRuns,2,'speed-limit mode change must rebuild the aggregate even when lastTick and rid stay otherwise reusable');
 }
 
 {
@@ -93,4 +111,4 @@ function make(seed){return createWorld({profile,count:5000,seed,now:baseNow});}
   assert.ok(stats.indexHits>=hitsBefore+6,'detail endpoints and multi-hash actions must reuse the existing index instead of rescanning 5000 torrents');
 }
 
-console.log('Virtual qB runtime index contract passed: 5000-row membership maps and transfer aggregates are reused across coherent reads, hash queries and detail endpoints select directly, and membership changes invalidate safely.');
+console.log('Virtual qB runtime index contract passed: 5000-row membership maps and transfer aggregates invalidate on live rate controls, hash queries and detail endpoints select directly, and membership changes invalidate safely.');
