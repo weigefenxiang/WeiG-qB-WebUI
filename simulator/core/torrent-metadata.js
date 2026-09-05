@@ -6,7 +6,6 @@ const PIECE_SIZE=4*MiB;
 
 function torrent(world,hash){return (world.torrents||[]).find(t=>t.hash===String(hash||''))||null;}
 function apiAtLeast(world,minimum){return atLeast(world.profile?.webApiVersion||'0',minimum);}
-function qbAtLeast(world,minimum){return atLeast(world.profile?.qbVersion||'0',minimum);}
 function progressOf(t){return t.size>0?Math.max(0,Math.min(1,Number(t.downloaded||0)/Number(t.size))):0;}
 function pieceCount(t){return Math.max(1,Math.ceil(Math.max(1,Number(t.size)||1)/PIECE_SIZE));}
 function limitValue(value){const n=Number(value)||0;return n>0?Math.round(n):-1;}
@@ -57,7 +56,7 @@ export function propertiesForTorrent(world,hash,now=Date.now()){
     completion_date:completion,
     creation_date:creation,
     save_path:String(t.savePath||''),
-    comment:'WeiG Virtual qB Lab'
+    comment:String(t.comment??'WeiG Virtual qB Lab')
   };
 
   if(world.profile?.major>=5){

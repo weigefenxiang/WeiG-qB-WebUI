@@ -19,6 +19,7 @@ import {
   rssRemoveItem,rssRemoveRule,rssRenameRule,rssRules,rssSetRule,searchResults,searchStart,searchStatus,
   searchStop,webseedList
 } from '../core/virtual-services.js';
+import {handleAuxiliaryApi} from './auxiliary-router.js';
 import {upstreamRouteAvailable} from './upstream-gates.js';
 
 function json(value,status=200,headers={}){
@@ -84,6 +85,9 @@ export async function handleApi(world,request,url=new URL(request.url)){
   }
 
   if(!world.authenticated)return empty(403);
+
+  const auxiliary=await handleAuxiliaryApi(world,request,path,method,url);
+  if(auxiliary)return auxiliary;
 
   if(path==='app/version'&&method==='GET')return text(`v${world.profile.qbVersion}`);
   if(path==='app/webapiVersion'&&method==='GET')return text(world.profile.webApiVersion);
