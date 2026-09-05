@@ -30,7 +30,7 @@ jobs:
     steps:
       - name: Verify exact validated dev state
         id: verify
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           CANDIDATE_SHA: ${{ inputs.candidate_sha }}
           LIVE_GATE: ${{ inputs.live_gate }}
@@ -111,7 +111,7 @@ jobs:
             core.setOutput('upstream_run', String(upstreamValidated.id));
 
       - name: Checkout main for authenticated fast-forward
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: main
           fetch-depth: 0
