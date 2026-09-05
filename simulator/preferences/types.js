@@ -16,9 +16,21 @@ export const PreferenceCoverage = Object.freeze({
 export const PreferenceProvenance = Object.freeze({
   WORLD: "WORLD",
   PROFILE: "PROFILE",
+  UPSTREAM_DEFAULT: "UPSTREAM_DEFAULT",
   KNOWN_DEFAULT: "KNOWN_DEFAULT",
   INHERITED: "INHERITED",
+  UPSTREAM_FALLBACK: "UPSTREAM_FALLBACK",
   SAFE_PLACEHOLDER: "SAFE_PLACEHOLDER"
+});
+
+export const PreferenceTypeAgreement = Object.freeze({
+  EXACT: "EXACT",
+  MISMATCH: "MISMATCH",
+  READ_ONLY: "READ_ONLY",
+  WRITE_UNRESOLVED: "WRITE_UNRESOLVED",
+  READ_UNRESOLVED: "READ_UNRESOLVED",
+  WRITE_ONLY: "WRITE_ONLY",
+  UNRESOLVED: "UNRESOLVED"
 });
 
 export function isPreferenceType(type) {
@@ -31,6 +43,10 @@ export function normalizePreferenceType(type) {
 
 export function normalizePreferenceCoverage(value, fallback = PreferenceCoverage.UNKNOWN) {
   return Object.values(PreferenceCoverage).includes(value) ? value : fallback;
+}
+
+export function normalizePreferenceTypeAgreement(value, fallback = PreferenceTypeAgreement.UNRESOLVED) {
+  return Object.values(PreferenceTypeAgreement).includes(value) ? value : fallback;
 }
 
 export function preferenceTypeOf(value) {

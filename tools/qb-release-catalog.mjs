@@ -28,22 +28,38 @@ function preferenceSurface(ref){
     if(!expected.has(descriptor.key))throw new Error(`${ref}: descriptor escaped Preferences surface: ${descriptor.key}`);
     if(seen.has(descriptor.key))throw new Error(`${ref}: duplicate descriptor: ${descriptor.key}`);
     seen.add(descriptor.key);
-    if(descriptor.writable&&!descriptor.type)throw new Error(`${ref}: writable descriptor lacks high-confidence type: ${descriptor.key}`);
+    if(descriptor.writable&&!descriptor.writeType)throw new Error(`${ref}: writable descriptor lacks high-confidence writeType: ${descriptor.key}`);
+    if(descriptor.typeAgreement==='MISMATCH'&&descriptor.writable)throw new Error(`${ref}: conflicting descriptor cannot remain writable: ${descriptor.key}`);
   }
-  const typed=preferenceDescriptors.filter(item=>item.type).length;
-  const setterPresent=preferenceDescriptors.filter(item=>item.setterPresent).length;
-  const highConfidence=preferenceDescriptors.filter(item=>item.sourceConfidence==='HIGH').length;
-  const structured=preferenceDescriptors.filter(item=>item.type==='array'||item.type==='object').length;
+  const getterPresent=preferenceDescriptors.filter(item=>item.getterPresent===true).length;
+  const setterPresent=preferenceDescriptors.filter(item=>item.setterPresent===true).length;
+  const readTyped=preferenceDescriptors.filter(item=>item.readType).length;
+  const writeTyped=preferenceDescriptors.filter(item=>item.writeType).length;
+  const exactAgreement=preferenceDescriptors.filter(item=>item.typeAgreement==='EXACT').length;
+  const mismatched=preferenceDescriptors.filter(item=>item.typeAgreement==='MISMATCH').length;
+  const safeFallback=preferenceDescriptors.filter(item=>item.upstreamFallbackValue!==null&&item.upstreamFallbackValue!==undefined).length;
+  const structuredRead=preferenceDescriptors.filter(item=>item.readType==='array'||item.readType==='object').length;
+  const structuredWrite=preferenceDescriptors.filter(item=>item.writeType==='array'||item.writeType==='object').length;
   return{
     preferenceKeys,
     preferenceDescriptors,
     preferenceDescriptorStats:{
       total:preferenceKeys.length,
+      getterPresent,
       setterPresent,
-      typed,
-      highConfidence,
-      unresolved:preferenceKeys.length-highConfidence,
-      structured
+      readTyped,
+      writeTyped,
+      exactAgreement,
+      mismatched,
+      safeFallback,
+      unresolvedRead:preferenceKeys.length-readTyped,
+      unresolvedWrite:preferenceKeys.length-writeTyped,
+      structuredRead,
+      structuredWrite,
+      typed:writeTyped,
+      highConfidence:writeTyped,
+      unresolved:preferenceKeys.length-writeTyped,
+      structured:structuredWrite
     }
   };
 }
@@ -81,9 +97,13 @@ validateCatalogEvolution(catalog);
 fs.mkdirSync(path.dirname(output),{recursive:true});
 fs.writeFileSync(output,JSON.stringify(catalog,null,2)+'\n','utf8');
 const totals=catalog.reduce((sum,item)=>{
-  sum.preferences+=item.preferenceDescriptorStats.total;
-  sum.typed+=item.preferenceDescriptorStats.typed;
-  sum.unresolved+=item.preferenceDescriptorStats.unresolved;
+  const stats=item.preferenceDescriptorStats||{};
+  sum.preferences+=stats.total||0;
+  sum.readTyped+=stats.readTyped||0;
+  sum.writeTyped+=stats.writeTyped||0;
+  sum.exactAgreement+=stats.exactAgreement||0;
+  sum.mismatched+=stats.mismatched||0;
+  sum.safeFallback+=stats.safeFallback||0;
   return sum;
-},{preferences:0,typed:0,unresolved:0});
-console.log(`Generated ${catalog.length} stable qB profiles: ${catalog[0].qbVersion} -> ${catalog.at(-1).qbVersion}; preference descriptors ${totals.typed}/${totals.preferences} high-confidence typed, ${totals.unresolved} unresolved/fail-closed.`);
+},{preferences:0,readTyped:0,writeTyped:0,exactAgreement:0,mismatched:0,safeFallback:0});
+console.log(`Generated ${catalog.length} stable qB profiles: ${catalog[0].qbVersion} -> ${catalog.at(-1).qbVersion}; preference getter types ${totals.readTyped}/${totals.preferences}, setter types ${totals.writeTyped}/${totals.preferences}, exact read/write agreement ${totals.exactAgreement}, conflicts ${totals.mismatched}, enum fallbacks ${totals.safeFallback}.`);

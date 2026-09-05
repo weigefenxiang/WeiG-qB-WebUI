@@ -3,8 +3,10 @@ import {
   PreferenceCoverage,
   PreferenceProvenance,
   PreferenceType,
+  PreferenceTypeAgreement,
   isPreferenceType,
   normalizePreferenceCoverage,
+  normalizePreferenceTypeAgreement,
   preferenceTypeOf
 } from './types.js';
 
@@ -65,9 +67,44 @@ function selectCandidate(candidates, declaredType) {
       rejected.push(candidate.provenance);
       continue;
     }
-    return {value: cloneValue(candidate.value), provenance: candidate.provenance, rejected};
+    return {
+      value: cloneValue(candidate.value),
+      provenance: candidate.provenance,
+      exactValue: candidate.exactValue !== false,
+      rejected
+    };
   }
-  return {value: preferencePlaceholder(declaredType || PreferenceType.STRING), provenance: PreferenceProvenance.SAFE_PLACEHOLDER, rejected};
+  return {
+    value: preferencePlaceholder(declaredType || PreferenceType.STRING),
+    provenance: PreferenceProvenance.SAFE_PLACEHOLDER,
+    exactValue: false,
+    rejected
+  };
+}
+
+function declaredTypes(declared = {}) {
+  const readType = isPreferenceType(declared.readType) ? declared.readType : null;
+  const writeType = isPreferenceType(declared.writeType) ? declared.writeType : null;
+  const legacyType = isPreferenceType(declared.type) ? declared.type : null;
+  const agreement = normalizePreferenceTypeAgreement(declared.typeAgreement,
+    readType && writeType
+      ? (readType === writeType ? PreferenceTypeAgreement.EXACT : PreferenceTypeAgreement.MISMATCH)
+      : PreferenceTypeAgreement.UNRESOLVED);
+  const valueType = readType || (agreement === PreferenceTypeAgreement.MISMATCH ? null : (legacyType || writeType));
+  return { readType, writeType, legacyType, agreement, valueType };
+}
+
+function safeFallbackCandidate(declared, expectedType) {
+  const present = hasOwn(declared, 'upstreamFallbackValue')
+    && declared.upstreamFallbackValue !== null
+    && declared.upstreamFallbackValue !== undefined;
+  return {
+    present,
+    value: declared.upstreamFallbackValue,
+    provenance: PreferenceProvenance.UPSTREAM_FALLBACK,
+    exactValue: false,
+    compatible: !present || !expectedType || preferenceValueMatchesType(declared.upstreamFallbackValue, expectedType)
+  };
 }
 
 export function buildPreferenceDescriptors(base = {}, keys = null, options = {}) {
@@ -85,19 +122,23 @@ export function buildPreferenceDescriptors(base = {}, keys = null, options = {})
 
   for (const key of wanted) {
     const declared = explicit.get(key) || {};
-    const declaredType = isPreferenceType(declared.type) ? declared.type : null;
+    const { readType, writeType, agreement, valueType } = declaredTypes(declared);
     const known = hasKnownPreferenceDefault(key) ? knownPreferenceDefault(key) : undefined;
+    const fallback = safeFallbackCandidate(declared, valueType);
     const selected = selectCandidate([
       {present: hasOwn(source, key), value: source[key], provenance: PreferenceProvenance.WORLD},
-      {present: hasOwn(declared, 'default'), value: declared.default, provenance: PreferenceProvenance.PROFILE},
+      {present: hasOwn(declared, 'default'), value: declared.default, provenance: PreferenceProvenance.UPSTREAM_DEFAULT},
       {present: hasOwn(profileDefaults, key), value: profileDefaults[key], provenance: PreferenceProvenance.PROFILE},
       {present: hasKnownPreferenceDefault(key), value: known, provenance: PreferenceProvenance.KNOWN_DEFAULT},
-      {present: hasOwn(inherited, key), value: inherited[key], provenance: PreferenceProvenance.INHERITED}
-    ], declaredType);
+      {present: hasOwn(inherited, key), value: inherited[key], provenance: PreferenceProvenance.INHERITED},
+      {present: fallback.present && fallback.compatible, value: fallback.value, provenance: fallback.provenance, exactValue: false}
+    ], valueType);
     const value = selected.value;
     const provenance = selected.provenance;
-    const type = declaredType || preferenceTypeOf(value);
+    const type = valueType || preferenceTypeOf(value);
     const structured = type === PreferenceType.ARRAY || type === PreferenceType.OBJECT;
+    const getterOnly = declared.getterPresent === true && declared.setterPresent === false;
+    const conflict = agreement === PreferenceTypeAgreement.MISMATCH;
     let coverage;
 
     if (Object.values(PreferenceCoverage).includes(declared.coverage)) {
@@ -106,10 +147,10 @@ export function buildPreferenceDescriptors(base = {}, keys = null, options = {})
     else if (modeled.has(key)) {
       coverage = PreferenceCoverage.MODELED;
     }
-    else if (provenance === PreferenceProvenance.SAFE_PLACEHOLDER) {
+    else if (conflict || provenance === PreferenceProvenance.SAFE_PLACEHOLDER) {
       coverage = PreferenceCoverage.UNKNOWN;
     }
-    else if (structured) {
+    else if (structured || getterOnly) {
       coverage = PreferenceCoverage.READ_ONLY;
     }
     else {
@@ -120,23 +161,38 @@ export function buildPreferenceDescriptors(base = {}, keys = null, options = {})
       ? declared.writable
       : (coverage === PreferenceCoverage.MODELED || coverage === PreferenceCoverage.STATEFUL);
 
-    if (structured || coverage === PreferenceCoverage.READ_ONLY || coverage === PreferenceCoverage.UNKNOWN) {
+    if (declared.setterPresent === false || !writeType || structured || conflict
+      || coverage === PreferenceCoverage.READ_ONLY || coverage === PreferenceCoverage.UNKNOWN) {
       writable = false;
     }
 
     out.push(Object.freeze({
       key,
       type,
+      readType,
+      writeType,
+      typeAgreement: agreement,
       coverage,
       writable,
       provenance,
-      exactValue: provenance !== PreferenceProvenance.SAFE_PLACEHOLDER,
-      valueTypeVerified: preferenceValueMatchesType(value, type),
+      exactValue: selected.exactValue,
+      valueTypeVerified: preferenceValueMatchesType(value, readType || type),
+      writeTypeCompatible: !writeType || preferenceValueMatchesType(value, writeType),
       rejectedValueSources: selected.rejected.slice(),
       schemaSource: declared.source || null,
       sourceConfidence: declared.sourceConfidence || null,
+      getterPresent: typeof declared.getterPresent === 'boolean' ? declared.getterPresent : null,
       setterPresent: typeof declared.setterPresent === 'boolean' ? declared.setterPresent : null,
+      getterKind: declared.getterKind || null,
+      setterKind: declared.setterKind || null,
+      getterSource: declared.getterSource || null,
+      setterSource: declared.setterSource || null,
+      getterConfidence: declared.getterConfidence || null,
+      setterConfidence: declared.setterConfidence || null,
       upstreamWritable: declared.setterPresent === true,
+      upstreamFallbackExpression: declared.upstreamFallbackExpression || null,
+      upstreamFallbackValue: hasOwn(declared, 'upstreamFallbackValue') ? cloneValue(declared.upstreamFallbackValue) : null,
+      upstreamFallbackConfidence: declared.upstreamFallbackConfidence || null,
       value: cloneValue(value)
     }));
   }
@@ -156,21 +212,31 @@ export function summarizePreferenceCoverage(descriptors = []) {
   const items = Array.isArray(descriptors) ? descriptors : [];
   const byCoverage = Object.fromEntries(Object.values(PreferenceCoverage).map((mode) => [mode, 0]));
   const byProvenance = Object.fromEntries(Object.values(PreferenceProvenance).map((source) => [source, 0]));
+  const byAgreement = Object.fromEntries(Object.values(PreferenceTypeAgreement).map((mode) => [mode, 0]));
   const unknownKeys = [];
   const readOnlyKeys = [];
   const repairedKeys = [];
+  const typeConflictKeys = [];
   let exactValueCount = 0;
+  let upstreamGetterCount = 0;
   let upstreamSetterCount = 0;
-  let highConfidenceSchemaCount = 0;
+  let highConfidenceReadCount = 0;
+  let highConfidenceWriteCount = 0;
+  let upstreamFallbackCount = 0;
 
   for (const item of items) {
     byCoverage[item.coverage] = (byCoverage[item.coverage] || 0) + 1;
     byProvenance[item.provenance] = (byProvenance[item.provenance] || 0) + 1;
+    byAgreement[item.typeAgreement] = (byAgreement[item.typeAgreement] || 0) + 1;
     if (item.coverage === PreferenceCoverage.UNKNOWN) unknownKeys.push(item.key);
     if (item.writable === false) readOnlyKeys.push(item.key);
     if (item.exactValue) exactValueCount++;
+    if (item.getterPresent === true) upstreamGetterCount++;
     if (item.setterPresent === true) upstreamSetterCount++;
-    if (item.sourceConfidence === 'HIGH') highConfidenceSchemaCount++;
+    if (item.getterConfidence === 'HIGH' && item.readType) highConfidenceReadCount++;
+    if (item.setterConfidence === 'HIGH' && item.writeType) highConfidenceWriteCount++;
+    if (item.provenance === PreferenceProvenance.UPSTREAM_FALLBACK) upstreamFallbackCount++;
+    if (item.typeAgreement === PreferenceTypeAgreement.MISMATCH) typeConflictKeys.push(item.key);
     if (Array.isArray(item.rejectedValueSources) && item.rejectedValueSources.length) repairedKeys.push(item.key);
   }
 
@@ -182,12 +248,19 @@ export function summarizePreferenceCoverage(descriptors = []) {
     unknown: byCoverage[PreferenceCoverage.UNKNOWN] || 0,
     exactValueCount,
     provisionalValueCount: items.length - exactValueCount,
+    upstreamGetterCount,
     upstreamSetterCount,
-    highConfidenceSchemaCount,
+    highConfidenceReadCount,
+    highConfidenceWriteCount,
+    exactTypeAgreementCount: byAgreement[PreferenceTypeAgreement.EXACT] || 0,
+    typeConflictCount: typeConflictKeys.length,
+    typeConflictKeys,
+    upstreamFallbackCount,
     repairedValueCount: repairedKeys.length,
     repairedKeys,
     byCoverage,
     byProvenance,
+    byAgreement,
     unknownKeys,
     readOnlyKeys
   };
