@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
+import {extractPreferenceKeys} from './qb-source-parsers.mjs';
 
 const qbRoot=path.resolve(process.argv[2]||process.env.QB_UPSTREAM_DIR||'');
 const outputArg=process.argv.find(x=>x.startsWith('--output='));
@@ -16,13 +17,9 @@ function cmp(a,b){const aa=parts(a),bb=parts(b),n=Math.max(aa.length,bb.length);
 function show(ref,file){return git('show',`${ref}:${file}`);}
 function parseApi(source,tag){const m=source.match(/API_VERSION\s*\{\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\}/);if(!m)throw new Error(`${tag}: cannot parse API_VERSION`);return`${m[1]}.${m[2]}.${m[3]}`;}
 function preferenceKeys(ref){
-  const source=show(ref,'src/webui/api/appcontroller.cpp');
-  const start=source.indexOf('void AppController::preferencesAction()');
-  const end=source.indexOf('void AppController::setPreferencesAction()',start);
-  if(start<0||end<=start)throw new Error(`${ref}: cannot isolate preferencesAction`);
-  const body=source.slice(start,end),keys=new Set();
-  for(const m of body.matchAll(/data\s*\[\s*(?:u)?["']([^"']+)["'](?:_s)?\s*\]/g))keys.add(m[1]);
-  return [...keys].sort();
+  const keys=extractPreferenceKeys(show(ref,'src/webui/api/appcontroller.cpp'),ref);
+  if(!keys.length)throw new Error(`${ref}: extracted zero Preferences from preferencesAction`);
+  return keys;
 }
 function apiActions(ref){
   const names=git('ls-tree','-r','--name-only',ref,'src/webui/api').split(/\r?\n/).filter(x=>x.endsWith('controller.h'));
