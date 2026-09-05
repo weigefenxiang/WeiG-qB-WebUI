@@ -25,10 +25,10 @@ assert.ok(stats.advanceRuns<=30,`250ms read pressure must not schedule more than
 assert.equal(stats.indexBuilds,1,'repeated hash and delta reads over an unchanged 5000-torrent membership must build one hash index');
 assert.ok(stats.indexHits>=100,`runtime index should absorb repeated hash lookups; got ${stats.indexHits}`);
 assert.equal(stats.index.indexedRows,5000,'runtime index must remain bounded to the current torrent membership');
-assert.ok(stats.aggregateRuns<=stats.advanceRuns+1,`transfer aggregate should run at most once per world snapshot; aggregate=${stats.aggregateRuns}, advance=${stats.advanceRuns}`);
-assert.ok(stats.aggregateHits>=100,`transfer/mainData paired reads should reuse aggregate totals; got ${stats.aggregateHits}`);
+assert.equal(stats.aggregateRuns,0,`scheduler-primed transfer totals must eliminate duplicate 5000-row aggregate scans; got ${stats.aggregateRuns}`);
+assert.ok(stats.aggregateHits>=100,`transfer/mainData paired reads should reuse scheduler-primed aggregate totals; got ${stats.aggregateHits}`);
 assert.equal(stats.hashSelections,120,'each targeted hash query must use direct membership selection');
 assert.ok(stats.projectedRows<=120*53+100,'soak should project requested rows rather than repeatedly serializing the full 5000-torrent library');
 assert.equal(stats.sortedRows,0,'unsorted soak traffic must never pay a full-library sort cost');
 
-console.log(`Virtual qB 5000-torrent logical soak passed: 120 read cycles over 30s used ${stats.advanceRuns} world advances, ${stats.aggregateRuns} aggregate scans, one membership index build and ${stats.indexHits} index hits.`);
+console.log(`Virtual qB 5000-torrent logical soak passed: 120 read cycles over 30s used ${stats.advanceRuns} world advances, zero duplicate aggregate scans, one membership index build and ${stats.indexHits} index hits.`);
