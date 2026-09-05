@@ -2,20 +2,14 @@ name: Virtual qB Pages
 
 on:
   workflow_dispatch:
-  push:
+  workflow_run:
+    workflows:
+      - Virtual qB Pages Source
+    types:
+      - completed
     branches:
       - dev
       - main
-    paths:
-      - 'webui/**'
-      - 'simulator/**'
-      - 'tools/qb-release-catalog.mjs'
-      - 'package.json'
-      - 'package-lock.json'
-      - '.github/workflows/pages.yml'
-      - 'tests/pages-live-acceptance.mjs'
-      - 'tests/browser-driver.mjs'
-      - 'tests/ci-contract.mjs'
   schedule:
     - cron: '17 4 * * 1'
 
@@ -28,13 +22,18 @@ concurrency:
   group: virtual-qb-pages
   cancel-in-progress: true
 
+env:
+  WEIGG_PAGES_SOURCE_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+
 jobs:
   build:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout WeiG source
         uses: actions/checkout@v6
         with:
+          ref: ${{ env.WEIGG_PAGES_SOURCE_SHA }}
           fetch-depth: 0
           persist-credentials: false
 
@@ -84,7 +83,7 @@ jobs:
           node simulator/build/build-site.mjs \
             --out="$RUNNER_TEMP/virtual-qb-site" \
             --catalog="$RUNNER_TEMP/qb-releases.json" \
-            --simulator-sha="$GITHUB_SHA" \
+            --simulator-sha="$WEIGG_PAGES_SOURCE_SHA" \
             --dev-webui="$RUNNER_TEMP/weig-dev-webui" \
             --dev-sha="$DEV_SHA" \
             --dev-version="$DEV_VERSION" \
@@ -124,12 +123,12 @@ jobs:
     env:
       WEIGG_BROWSER_CHANNEL: chrome
       WEIGG_PAGES_URL: ${{ needs.deploy.outputs.page_url }}
-      WEIGG_EXPECTED_SIMULATOR_SHA: ${{ github.sha }}
+      WEIGG_EXPECTED_SIMULATOR_SHA: ${{ env.WEIGG_PAGES_SOURCE_SHA }}
     steps:
       - name: Checkout exact WeiG source
         uses: actions/checkout@v6
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ env.WEIGG_PAGES_SOURCE_SHA }}
           fetch-depth: 1
           persist-credentials: false
 

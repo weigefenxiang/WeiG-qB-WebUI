@@ -102,15 +102,27 @@ assert(windows.includes('$tests = @(')&&windows.includes('foreach ($test in $tes
 for(const name of browserTests)assert(windows.includes(`'tests/${name}'`),`Windows fail-fast browser list is missing ${name}`);
 
 const pages=read('.github/workflows/pages.yml');
+const pagesBuild=jobSection(pages,'build','deploy');
 const pagesVerify=jobSection(pages,'verify');
+const pagesSource=read('.github/workflows/pages-source.yml');
+assert(pagesSource.includes('name: Virtual qB Pages Source'),'Pages source signal must have one stable workflow identity');
+assert(/push:\s*\n\s*branches:\s*\n\s*- dev\s*\n\s*- main/.test(pagesSource),'Pages source signal must watch both dev and main');
+assert(pagesSource.includes("- 'webui/**'")&&pagesSource.includes("- 'simulator/**'"),'Pages source signal must cover product and simulator inputs');
+assert(!/pages:\s*write/.test(pagesSource)&&!/id-token:\s*write/.test(pagesSource),'Pages source signal must not own deployment permissions');
+assert(pages.includes('workflow_run:')&&pages.includes('- Virtual qB Pages Source'),'Pages deployment must be relayed from the default-branch workflow via workflow_run');
+assert(!/\n  push:\n/.test(pages),'Pages deployment workflow must not deploy directly from dev/main push events');
+assert(pages.includes("WEIGG_PAGES_SOURCE_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}"),'Pages deployment must preserve the triggering source exact SHA');
+assert(pagesBuild.includes('ref: ${{ env.WEIGG_PAGES_SOURCE_SHA }}'),'Pages build must check out the exact source SHA while the deployment workflow remains default-branch owned');
+assert(pagesBuild.includes('--simulator-sha="$WEIGG_PAGES_SOURCE_SHA"'),'Pages artifact metadata must record the source exact SHA, not the relay workflow SHA');
 assert(pages.includes("page_url: ${{ steps.deployment.outputs.page_url }}"),'Pages deploy job must export the exact deployed page URL');
 assert(pagesVerify.includes('needs: deploy'),'Pages live verification must run only after deployment');
 assert(pagesVerify.includes('runs-on: ubuntu-24.04'),'Pages live verification must pin Ubuntu 24.04');
 assert(/WEIGG_BROWSER_CHANNEL:\s*chrome/.test(pagesVerify),'Pages live verification must explicitly select hosted Chrome');
 assert(pagesVerify.includes('WEIGG_PAGES_URL: ${{ needs.deploy.outputs.page_url }}'),'Pages live verification must consume the deploy action page URL');
-assert(pagesVerify.includes('WEIGG_EXPECTED_SIMULATOR_SHA: ${{ github.sha }}'),'Pages live verification must bind evidence to github.sha');
+assert(pagesVerify.includes('WEIGG_EXPECTED_SIMULATOR_SHA: ${{ env.WEIGG_PAGES_SOURCE_SHA }}'),'Pages live verification must bind evidence to the relayed source exact SHA');
+assert(pagesVerify.includes('ref: ${{ env.WEIGG_PAGES_SOURCE_SHA }}'),'Pages live verification must execute test code from the exact source SHA');
 assert(pagesVerify.includes('npm ci --no-audit --no-fund --prefer-offline'),'Pages live verification must install repository-locked dependencies with npm ci');
 assert(pagesVerify.includes("require('playwright/package.json').version")&&pagesVerify.includes('google-chrome --version'),'Pages live verification must log Playwright and hosted Chrome identity');
 assert(pagesVerify.includes('node tests/pages-live-acceptance.mjs'),'Pages live verification must execute the canonical deployed-runtime acceptance test');
 
-console.log(`CI browser-runtime contract passed for WeiG ${version}: Playwright 1.62.1 is repository-owned; Linux/Windows use hosted Chrome; Windows native browser commands are fail-fast; deployed Virtual qB Pages is exact-SHA verified after deployment.`);
+console.log(`CI browser-runtime contract passed for WeiG ${version}: Playwright 1.62.1 is repository-owned; Linux/Windows use hosted Chrome; Windows native browser commands are fail-fast; Virtual qB Pages uses a default-branch deployment relay and exact-source-SHA live verification.`);

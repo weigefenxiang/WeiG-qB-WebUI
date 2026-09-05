@@ -1,0 +1,28 @@
+name: Virtual qB Pages Source
+
+on:
+  push:
+    branches:
+      - dev
+      - main
+    paths:
+      - 'webui/**'
+      - 'simulator/**'
+      - 'tools/qb-release-catalog.mjs'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/pages.yml'
+      - '.github/workflows/pages-source.yml'
+      - 'tests/pages-live-acceptance.mjs'
+      - 'tests/browser-driver.mjs'
+      - 'tests/ci-contract.mjs'
+
+permissions:
+  contents: read
+
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish Pages source signal
+        run: echo "Virtual qB Pages source $GITHUB_REF_NAME@$GITHUB_SHA is ready for the default-branch deployment workflow."
