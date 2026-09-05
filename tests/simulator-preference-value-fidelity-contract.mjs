@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {createWorld} from '../simulator/core/engine.js';
 import {createPreferenceRuntime} from '../simulator/preferences/runtime.js';
 import {buildPreferenceDescriptors} from '../simulator/preferences/descriptors.js';
 import {reconcileWorldProfile} from '../simulator/core/world-profile.js';
@@ -113,10 +114,11 @@ const profile={
     preferenceKeys:['split'],
     preferenceDescriptors:[{key:'split',readType:null,writeType:'number',typeAgreement:'READ_UNRESOLVED',writable:true,getterPresent:true,setterPresent:true}],apiActions:[]
   };
-  const world={profile:splitProfile,preferences:{split:'opaque'},globalDownloadLimit:0,globalUploadLimit:0,torrents:[]};
+  const world=createWorld({profile:splitProfile,count:1,seed:'preference-read-write-split',now:1700000000000});
+  world.preferences.split='opaque';
   const runtime=createPreferenceRuntime(world);
   assert.equal(runtime.read().split,'opaque');
-  const accepted=runtime.write({split:'12'},1700000000000);
+  const accepted=runtime.write({split:'12'},1700000001000);
   assert.equal(accepted.split,12,'POST normalization must use writeType even when GET representation is unresolved');
   assert.equal(world.preferences.split,12);
 }

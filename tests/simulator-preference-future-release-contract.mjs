@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {createWorld} from '../simulator/core/engine.js';
 import {createPreferenceRuntime} from '../simulator/preferences/runtime.js';
 import {PreferenceCoverage,PreferenceProvenance} from '../simulator/preferences/types.js';
 
@@ -30,11 +31,12 @@ const profile={
   ],apiActions:[]
 };
 
-const world={
-  profile,
-  preferences:{future_read_only:true,future_conflict:8,future_opaque:'opaque-getter-value'},
-  globalDownloadLimit:0,globalUploadLimit:0,torrents:[]
-};
+const world=createWorld({profile,count:1,seed:'future-preference-schema',now:1700000000000});
+Object.assign(world.preferences,{
+  future_read_only:true,
+  future_conflict:8,
+  future_opaque:'opaque-getter-value'
+});
 const runtime=createPreferenceRuntime(world);
 const descriptors=new Map(runtime.descriptors().map(item=>[item.key,item]));
 const surface=runtime.read();
@@ -61,7 +63,7 @@ assert.equal(descriptors.get('future_conflict').writable,false,'read/write confl
 assert.equal(surface.future_opaque,'opaque-getter-value','unresolved future getter representation must survive even when writeType is known');
 assert.equal(descriptors.get('future_opaque').readType,null);
 assert.equal(descriptors.get('future_opaque').writeType,'number');
-const accepted=runtime.write({future_enum:'None',future_scalar:5,future_read_only:false,future_conflict:'9',future_opaque:'12'},1700000000000);
+const accepted=runtime.write({future_enum:'None',future_scalar:5,future_read_only:false,future_conflict:'9',future_opaque:'12'},1700000001000);
 assert.equal(accepted.future_enum,'None');
 assert.ok(!Object.prototype.hasOwnProperty.call(accepted,'future_scalar'),'placeholder-only future scalar must remain fail-closed');
 assert.ok(!Object.prototype.hasOwnProperty.call(accepted,'future_read_only'));
