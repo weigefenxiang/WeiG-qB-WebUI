@@ -30,20 +30,35 @@ async function waitForDeployedSha(){
   throw new Error(`Pages did not expose simulator SHA ${expectedSha}; last observation: ${last}`);
 }
 
-async function api(page,path){
-  return page.evaluate(async path=>{
-    const response=await fetch(`api/v2/${path}`,{cache:'no-store'});
+async function api(page,path,{method='GET',form}={}){
+  return page.evaluate(async({path,method,form})=>{
+    const init={method,cache:'no-store'};
+    if(form){
+      const body=new URLSearchParams();
+      for(const [key,value] of Object.entries(form))body.set(key,String(value));
+      init.headers={'content-type':'application/x-www-form-urlencoded'};
+      init.body=body.toString();
+    }
+    const response=await fetch(`api/v2/${path}`,init);
     const text=await response.text();
-    return{status:response.status,json:text?JSON.parse(text):null};
-  },path);
+    let json=null;
+    try{json=text?JSON.parse(text):null;}catch{}
+    return{status:response.status,text:text.trim(),json};
+  },{path,method,form});
 }
 
 await waitForDeployedSha();
 const catalog=await fetchJson('metadata/qb-releases.json');
-const profile=catalog.find(item=>item.qbVersion==='5.2.3');
-assert.ok(profile,'published upstream catalog must contain qB 5.2.3');
-assert.ok(Array.isArray(profile.preferenceKeys),'qB 5.2.3 profile must publish upstream preferenceKeys');
-assert.ok(profile.preferenceKeys.length>100,`qB 5.2.3 upstream preference surface unexpectedly small: ${profile.preferenceKeys.length}`);
+const matrix=catalog.filter(item=>item?.stable!==false&&/^(?:4|5)\.\d+\.\d+(?:\.\d+)?$/.test(String(item?.qbVersion||'')));
+assert.ok(matrix.length>=30,`published stable qB 4.x/5.x matrix unexpectedly small: ${matrix.length}`);
+assert.equal(matrix[0].qbVersion,'4.1.0','Virtual qB stable preference matrix must start at qB 4.1.0');
+for(const profile of matrix){
+  assert.ok(Array.isArray(profile.preferenceKeys)&&profile.preferenceKeys.length>0,`${profile.qbVersion}: upstream preferenceKeys must be published`);
+}
+
+const anchor=catalog.find(item=>item.qbVersion==='5.2.3')||matrix.filter(item=>String(item.qbVersion).startsWith('5.')).at(-1);
+assert.ok(anchor,'published upstream catalog must contain a qB 5.x anchor');
+assert.ok(anchor.preferenceKeys.length>100,`${anchor.qbVersion} upstream preference surface unexpectedly small: ${anchor.preferenceKeys.length}`);
 
 const browser=await launchBrowser();
 try{
@@ -55,43 +70,66 @@ try{
   const url=new URL('dev/app/',base);
   url.search=new URLSearchParams({
     sim:`pages-live-preferences-${Date.now()}`,
-    qb:'5.2.3',count:'96',scenario:'mixed',seed:'pages-live-preferences',clean:'0'
+    qb:anchor.qbVersion,count:'96',scenario:'mixed',seed:'pages-live-preferences',clean:'0'
   }).toString();
   await page.goto(url.toString(),{waitUntil:'domcontentloaded',timeout:60000});
   await page.waitForSelector('#login-form',{state:'visible',timeout:60000});
   await page.locator('#login-btn').click();
   await page.waitForSelector('#torrent-list',{state:'attached',timeout:60000});
-  await page.waitForFunction(()=>String(document.querySelector('#qb-version')?.textContent||'').includes('5.2.3'),null,{timeout:60000});
+  await page.waitForFunction(version=>String(document.querySelector('#qb-version')?.textContent||'').includes(version),anchor.qbVersion,{timeout:60000});
 
-  const response=await api(page,'app/preferences');
-  assert.equal(response.status,200,'Virtual qB app/preferences must be readable');
-  const actualKeys=Object.keys(response.json||{}).sort();
-  const upstreamKeys=[...profile.preferenceKeys].sort();
-  assert.deepEqual(actualKeys,upstreamKeys,'Virtual qB 5.2.3 app/preferences must exactly match the official upstream key surface');
+  const anchorResponse=await api(page,'app/preferences');
+  assert.equal(anchorResponse.status,200,'Virtual qB app/preferences must be readable');
+  assert.deepEqual(Object.keys(anchorResponse.json||{}).sort(),[...anchor.preferenceKeys].sort(),`Virtual qB ${anchor.qbVersion} app/preferences must exactly match the official upstream key surface`);
 
   const advancedExamples=[
     'limit_utp_rate','scheduler_enabled','schedule_from_hour','schedule_to_hour','scheduler_days',
     'checking_memory_use','disk_cache_ttl','disk_io_read_mode','disk_io_write_mode','enable_coalesce_read_write',
     'file_pool_size','memory_working_set_limit'
-  ];
+  ].filter(key=>anchor.preferenceKeys.includes(key));
   for(const key of advancedExamples){
-    assert.ok(Object.prototype.hasOwnProperty.call(response.json,key),`Virtual qB 5.2.3 must expose advanced preference ${key}`);
+    assert.ok(Object.prototype.hasOwnProperty.call(anchorResponse.json,key),`Virtual qB ${anchor.qbVersion} must expose advanced preference ${key}`);
   }
+
+  const expectedAdvancedKeys=await page.evaluate(prefs=>{
+    if(!window.WeiG?.SettingsSchema?.group)throw new Error('WeiG SettingsSchema is unavailable');
+    return window.WeiG.SettingsSchema.group('advanced',prefs).flatMap(group=>group.keys).sort();
+  },anchorResponse.json);
+  assert.ok(expectedAdvancedKeys.length>=20,`WeiG ${anchor.qbVersion} Advanced route unexpectedly small: ${expectedAdvancedKeys.length}`);
 
   await page.evaluate(async()=>{
     if(!window.WeiG?.SettingsRenderer?.open)throw new Error('WeiG SettingsRenderer is unavailable');
     await window.WeiG.SettingsRenderer.open('advanced');
   });
-  await page.waitForFunction(()=>document.querySelectorAll('#settings-content [data-setting-key]').length>=20,null,{timeout:30000});
-  const renderedKeys=await page.locator('#settings-content [data-setting-key]').evaluateAll(rows=>rows.map(row=>row.dataset.settingKey));
-  for(const key of advancedExamples){
-    assert.ok(renderedKeys.includes(key),`WeiG Advanced settings must render upstream preference ${key}`);
+  await page.waitForFunction(expected=>document.querySelectorAll('#settings-content [data-setting-key]').length>=expected,expectedAdvancedKeys.length,{timeout:30000});
+  const renderedKeys=(await page.locator('#settings-content [data-setting-key]').evaluateAll(rows=>rows.map(row=>row.dataset.settingKey))).sort();
+  assert.deepEqual(renderedKeys,expectedAdvancedKeys,`WeiG ${anchor.qbVersion} Advanced settings must render every preference routed to Advanced and no stale extras`);
+  for(const key of advancedExamples)assert.ok(renderedKeys.includes(key),`WeiG Advanced settings must render upstream preference ${key}`);
+
+  let audited=0;
+  for(const profile of matrix){
+    const sim=`pref-matrix-${profile.qbVersion.replace(/\./g,'-')}-${Date.now()}-${audited}`;
+    const query=`sim=${encodeURIComponent(sim)}&qb=${encodeURIComponent(profile.qbVersion)}`;
+    let response=await api(page,`auth/login?${query}`,{method:'POST',form:{username:'demo',password:'demo'}});
+    assert.equal(response.status,200,`${profile.qbVersion}: virtual daemon login must succeed`);
+    response=await api(page,`app/version?sim=${encodeURIComponent(sim)}`);
+    assert.equal(response.status,200,`${profile.qbVersion}: app/version must be readable`);
+    assert.equal(response.text,`v${profile.qbVersion}`,`${profile.qbVersion}: Service Worker must bind the exact requested qB release`);
+    response=await api(page,`app/preferences?sim=${encodeURIComponent(sim)}`);
+    assert.equal(response.status,200,`${profile.qbVersion}: app/preferences must be readable`);
+    assert.deepEqual(
+      Object.keys(response.json||{}).sort(),
+      [...profile.preferenceKeys].sort(),
+      `${profile.qbVersion}: deployed Virtual qB preference surface must exactly match official upstream`
+    );
+    audited++;
   }
-  assert.ok(renderedKeys.length>=20,`WeiG Advanced settings surface unexpectedly small: ${renderedKeys.length}`);
+
+  assert.equal(audited,matrix.length,'every published qB 4.x/5.x stable release must be live-audited');
   assert.deepEqual(pageErrors,[],`Preference surface session emitted page errors:\n${pageErrors.join('\n')}`);
   await context.close();
 }finally{
   await browser.close();
 }
 
-console.log(`Virtual qB Pages preference acceptance passed for ${expectedSha}: qB 5.2.3 app/preferences exactly matches the official upstream key surface and WeiG renders representative Advanced settings.`);
+console.log(`Virtual qB Pages preference acceptance passed for ${expectedSha}: exact Advanced rendering plus ${matrix.length} official stable qB 4.x/5.x preference surfaces from ${matrix[0].qbVersion} through ${matrix.at(-1).qbVersion}.`);
