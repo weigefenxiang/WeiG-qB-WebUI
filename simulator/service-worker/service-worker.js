@@ -1,5 +1,6 @@
 import {createWorld} from './__simulator/core/engine.js';
 import {profileByVersion,BOOTSTRAP_RELEASES} from './__simulator/core/profiles.js';
+import {reconcileWorldProfile} from './__simulator/core/world-profile.js';
 import {applyScenario} from './__simulator/core/scenarios.js';
 import {loadWorld,saveWorld,deleteWorld} from './__simulator/storage/indexeddb.js';
 import {createWorldCache} from './__simulator/storage/world-cache.js';
@@ -12,19 +13,24 @@ const DEFAULT_SESSION='default';
 const clientSessions=new Map();
 const worlds=createWorldCache({load:loadWorld,save:saveWorld,remove:deleteWorld,maxEntries:6,readPersistMs:3000});
 let queue=Promise.resolve();
+let catalogPromise=null;
 
 self.addEventListener('install',event=>event.waitUntil(self.skipWaiting()));
 self.addEventListener('activate',event=>event.waitUntil(self.clients.claim()));
 
 async function loadCatalog(){
-  try{
-    const response=await fetch(CATALOG_URL,{cache:'no-store'});
-    if(response.ok){
-      const data=await response.json();
-      if(Array.isArray(data)&&data.length)return data;
-    }
-  }catch(_e){}
-  return BOOTSTRAP_RELEASES;
+  if(catalogPromise)return catalogPromise;
+  catalogPromise=(async()=>{
+    try{
+      const response=await fetch(CATALOG_URL,{cache:'no-store'});
+      if(response.ok){
+        const data=await response.json();
+        if(Array.isArray(data)&&data.length)return data;
+      }
+    }catch(_e){}
+    return BOOTSTRAP_RELEASES;
+  })();
+  return catalogPromise;
 }
 
 function configFromUrl(url){
@@ -63,16 +69,21 @@ async function ensureWorld(event,url){
   const cfg=configFromUrl(url),id=await sessionIdForEvent(event,url);
   if(cfg.reset)await worlds.reset(id);
   let world=cfg.reset?null:await worlds.get(id);
+  const catalog=await loadCatalog();
   if(!world){
-    const catalog=await loadCatalog();
     const profile=profileByVersion(catalog,cfg.qb);
     world=createWorld({profile,count:cfg.count,seed:cfg.seed,scenario:cfg.scenario});
     applyScenario(world,cfg.scenario);
     world.lab={clean:cfg.clean};
     await worlds.seed(id,world,{persist:true});
-  }else if(cfg.clean!==undefined){
+  }else{
+    let changed=false;
+    const requestedVersion=url.searchParams.has('qb')?cfg.qb:(world.profile?.qbVersion||cfg.qb);
+    const migration=reconcileWorldProfile(world,catalog,requestedVersion);
+    changed=changed||migration.changed;
     world.lab=world.lab||{};
-    if(url.searchParams.has('clean')&&world.lab.clean!==cfg.clean){world.lab.clean=cfg.clean;await worlds.touch(id,world,{mutation:true});}
+    if(url.searchParams.has('clean')&&world.lab.clean!==cfg.clean){world.lab.clean=cfg.clean;changed=true;}
+    if(changed)await worlds.touch(id,world,{mutation:true});
   }
   return{id,world};
 }
@@ -126,12 +137,7 @@ async function handleAsset(event,url){
 }
 
 async function handleApiQueued(event,url){
-  const id=await sessionIdForEvent(event,url);
-  let world=await worlds.get(id);
-  if(!world){
-    const ensured=await ensureWorld(event,url);
-    world=ensured.world;
-  }
+  const {id,world}=await ensureWorld(event,url);
   const response=await handleApi(world,event.request,url);
   await worlds.touch(id,world,{mutation:event.request.method.toUpperCase()!=='GET'});
   return response;
