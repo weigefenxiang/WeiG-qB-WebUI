@@ -52,6 +52,8 @@ export function normalizeProfile(profile){
     preferenceDescriptors:Array.isArray(profile?.preferenceDescriptors)
       ?profile.preferenceDescriptors.map(entry=>clonePlain(entry))
       :(profile?.preferenceDescriptors&&typeof profile.preferenceDescriptors==='object'?clonePlain(profile.preferenceDescriptors):null),
+    preferenceDescriptorStats:profile?.preferenceDescriptorStats&&typeof profile.preferenceDescriptorStats==='object'
+      ?clonePlain(profile.preferenceDescriptorStats):null,
     preferenceDefaults:profile?.preferenceDefaults&&typeof profile.preferenceDefaults==='object'
       ?clonePlain(profile.preferenceDefaults):null,
     preferenceInheritedDefaults:profile?.preferenceInheritedDefaults&&typeof profile.preferenceInheritedDefaults==='object'

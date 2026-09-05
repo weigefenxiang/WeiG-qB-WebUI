@@ -7,6 +7,11 @@ function sameList(a,b){
   return true;
 }
 
+function samePlain(a,b){
+  if(a===b)return true;
+  return JSON.stringify(a??null)===JSON.stringify(b??null);
+}
+
 function sameProfile(a,b){
   if(!a||!b)return false;
   return String(a.qbVersion||'')===String(b.qbVersion||'')
@@ -17,6 +22,10 @@ function sameProfile(a,b){
     && (a.stable!==false)===(b.stable!==false)
     && (a.officialWeiGSupport!==false)===(b.officialWeiGSupport!==false)
     && sameList(a.preferenceKeys,b.preferenceKeys)
+    && samePlain(a.preferenceDescriptors,b.preferenceDescriptors)
+    && samePlain(a.preferenceDescriptorStats,b.preferenceDescriptorStats)
+    && samePlain(a.preferenceDefaults,b.preferenceDefaults)
+    && samePlain(a.preferenceInheritedDefaults,b.preferenceInheritedDefaults)
     && sameList(a.apiActions,b.apiActions);
 }
 

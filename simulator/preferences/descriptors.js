@@ -124,6 +124,10 @@ export function buildPreferenceDescriptors(base = {}, keys = null, options = {})
       writable,
       provenance,
       exactValue: provenance !== PreferenceProvenance.SAFE_PLACEHOLDER,
+      schemaSource: declared.source || null,
+      sourceConfidence: declared.sourceConfidence || null,
+      setterPresent: typeof declared.setterPresent === 'boolean' ? declared.setterPresent : null,
+      upstreamWritable: declared.setterPresent === true,
       value: cloneValue(value)
     }));
   }
@@ -146,6 +150,8 @@ export function summarizePreferenceCoverage(descriptors = []) {
   const unknownKeys = [];
   const readOnlyKeys = [];
   let exactValueCount = 0;
+  let upstreamSetterCount = 0;
+  let highConfidenceSchemaCount = 0;
 
   for (const item of items) {
     byCoverage[item.coverage] = (byCoverage[item.coverage] || 0) + 1;
@@ -153,6 +159,8 @@ export function summarizePreferenceCoverage(descriptors = []) {
     if (item.coverage === PreferenceCoverage.UNKNOWN) unknownKeys.push(item.key);
     if (item.writable === false) readOnlyKeys.push(item.key);
     if (item.exactValue) exactValueCount++;
+    if (item.setterPresent === true) upstreamSetterCount++;
+    if (item.sourceConfidence === 'HIGH') highConfidenceSchemaCount++;
   }
 
   return {
@@ -163,6 +171,8 @@ export function summarizePreferenceCoverage(descriptors = []) {
     unknown: byCoverage[PreferenceCoverage.UNKNOWN] || 0,
     exactValueCount,
     provisionalValueCount: items.length - exactValueCount,
+    upstreamSetterCount,
+    highConfidenceSchemaCount,
     byCoverage,
     byProvenance,
     unknownKeys,

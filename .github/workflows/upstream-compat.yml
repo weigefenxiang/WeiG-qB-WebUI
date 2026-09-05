@@ -61,6 +61,11 @@ jobs:
             "refs/tags/$min:refs/tags/$min" \
             "refs/tags/$previous:refs/tags/$previous" \
             "refs/tags/$latest:refs/tags/$latest"
+      - name: Generate source-derived preference descriptor catalog
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/qb-release-catalog.mjs upstream-qb --output=/tmp/qb-preference-descriptors.json
       - name: Audit minimum and current qB generations
         shell: bash
         run: |
