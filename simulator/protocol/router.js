@@ -9,8 +9,8 @@ import {
   toggleFirstLast,toggleSequential
 } from '../core/torrent-actions.js';
 import {
-  applyShareLimitPolicies,enrichMainData,enrichTorrentRows,filesForTorrent,pieceHashes,pieceStates,
-  renameFile,renameFolder,setShareLimits,setSuperSeeding
+  applyShareLimitPolicies,enrichMainData,filesForTorrent,pieceHashes,pieceStates,renameFile,renameFolder,
+  setShareLimits,setSuperSeeding,shareLimitProjection
 } from '../core/torrent-content.js';
 import {hasTorrentMetadata,propertiesForTorrent,torrentExists,trackersForTorrent} from '../core/torrent-metadata.js';
 import {atLeast} from '../core/profiles.js';
@@ -22,6 +22,13 @@ import {
 import {createPreferenceRuntime} from '../preferences/runtime.js';
 import {handleAuxiliaryApi} from './auxiliary-router.js';
 import {upstreamRouteAvailable} from './upstream-gates.js';
+
+const RUNTIME_POLICY_INTERVAL_MS=500;
+const SHARE_POLICY_INTERVAL_MS=1000;
+const TORRENT_INFO_CACHE_TTL_MS=1500;
+const SIMULATION_TIME_BUCKET_MS=250;
+const maintenanceClocks=new WeakMap();
+const torrentInfoCaches=new WeakMap();
 
 function json(value,status=200,headers={}){
   return new Response(JSON.stringify(value),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store',...headers}});
@@ -64,6 +71,74 @@ function categoryObject(world){
   return Object.fromEntries(Object.entries(world.categories).map(([key,value])=>[key,{name:value.name,savePath:value.savePath}]));
 }
 
+function applyMaintenance(world,now,method){
+  const force=method!=='GET';
+  const clock=maintenanceClocks.get(world)||{runtimeAt:0,shareAt:0};
+  if(force||now-clock.runtimeAt>=RUNTIME_POLICY_INTERVAL_MS){
+    applyRuntimePolicies(world,now);
+    clock.runtimeAt=now;
+  }
+  if(force||now-clock.shareAt>=SHARE_POLICY_INTERVAL_MS){
+    applyShareLimitPolicies(world,now);
+    clock.shareAt=now;
+  }
+  maintenanceClocks.set(world,clock);
+}
+
+function torrentInfoKey(params){
+  return [...params.entries()]
+    .filter(([key])=>key!=='offset'&&key!=='limit'&&key!=='now')
+    .sort(([a,av],[b,bv])=>a.localeCompare(b)||String(av).localeCompare(String(bv)))
+    .map(([key,value])=>`${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+    .join('&');
+}
+
+function sliceTorrentRows(rows,params){
+  const offset=Math.max(0,Number(params.get('offset'))||0);
+  const limit=Number(params.get('limit'));
+  if(Number.isFinite(limit)&&limit>0)return rows.slice(offset,offset+limit);
+  return offset?rows.slice(offset):rows.slice();
+}
+
+function enrichTorrentRowsIndexed(world,rows){
+  const byHash=new Map((world.torrents||[]).map(t=>[t.hash,t]));
+  for(const row of rows){
+    const torrent=byHash.get(row.hash);
+    if(torrent)Object.assign(row,shareLimitProjection(world,torrent));
+  }
+  return rows;
+}
+
+function torrentInfoRows(world,url,now){
+  const params=new URLSearchParams(url.search);
+  const key=torrentInfoKey(params);
+  const cached=torrentInfoCaches.get(world);
+  if(cached&&cached.key===key&&cached.rid===Number(world.rid||0)&&now-cached.createdAt<TORRENT_INFO_CACHE_TTL_MS){
+    cached.hits++;
+    return sliceTorrentRows(cached.rows,params);
+  }
+
+  const query=Object.fromEntries(params.entries());
+  delete query.offset;
+  delete query.limit;
+  const bucket=Math.floor(now/SIMULATION_TIME_BUCKET_MS)*SIMULATION_TIME_BUCKET_MS;
+  query.now=String(Math.max(Number(world.lastTick)||0,bucket));
+  const rows=enrichTorrentRowsIndexed(world,listTorrents(world,query));
+  torrentInfoCaches.set(world,{key,rid:Number(world.rid||0),createdAt:now,rows,hits:0});
+  return sliceTorrentRows(rows,params);
+}
+
+export function simulatorApiCacheStats(world){
+  const cached=torrentInfoCaches.get(world);
+  if(!cached)return{cached:false,rows:0,hits:0};
+  return{cached:true,rows:cached.rows.length,hits:cached.hits,ageMs:Math.max(0,Date.now()-cached.createdAt),rid:cached.rid,key:cached.key};
+}
+
+export function clearSimulatorApiCaches(world){
+  maintenanceClocks.delete(world);
+  torrentInfoCaches.delete(world);
+}
+
 export async function handleApi(world,request,url=new URL(request.url)){
   const marker='/api/v2/';
   const index=url.pathname.indexOf(marker);
@@ -72,8 +147,8 @@ export async function handleApi(world,request,url=new URL(request.url)){
   const method=request.method.toUpperCase();
   if(!upstreamRouteAvailable(world.profile,path))return notFound();
   const now=Date.now();
-  applyRuntimePolicies(world,now);
-  applyShareLimitPolicies(world,now);
+  if(method!=='GET')torrentInfoCaches.delete(world);
+  applyMaintenance(world,now,method);
 
   if(path==='auth/login'&&method==='POST'){
     const form=await formObject(request);
@@ -141,7 +216,7 @@ export async function handleApi(world,request,url=new URL(request.url)){
     return json({rid:Number(world.peerRid)||1,full_update:true,peers:filterBannedPeers(world,peers(world,hash))});
   }
 
-  if(path==='torrents/info'&&method==='GET')return json(enrichTorrentRows(world,listTorrents(world,Object.fromEntries(url.searchParams.entries()))));
+  if(path==='torrents/info'&&method==='GET')return json(torrentInfoRows(world,url,now));
   if(path==='torrents/properties'&&method==='GET'){
     const value=propertiesForTorrent(world,url.searchParams.get('hash')||'',now);
     return value?json(value):notFound();
