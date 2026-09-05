@@ -18,11 +18,26 @@ function make(seed='runtime-view'){return createWorld({profile,count:5000,seed,n
   const main=mainDataSnapshot(world,0,now+100);
   const rows=listTorrentsSnapshot(world,{sort:'added_on',reverse:'true',limit:50,offset:0},now+200);
   const stats=runtimeSnapshotStats(world);
+  assert.equal(stats.snapshotIntervalMs,2000,'5000-Torrent worlds must use the low-power two-second snapshot cadence');
   assert.equal(stats.advanceRuns,1,'transfer/info, sync/maindata and torrents/info within one two-second snapshot must share one world advance');
   assert.equal(rows.length,50);
   assert.equal(Object.keys(main.torrents).length,5000,'full sync snapshot must still expose the full virtual library');
   assert.equal(main.server_state.dl_info_speed,transfer.dl_info_speed,'mainData server_state and transfer/info must read the same world snapshot');
   assert.ok(stats.sortedRows>=5000,'sorted library request must project each candidate once');
+}
+
+{
+  const world=createWorld({profile,count:64,seed:'small-world-cadence',now:baseNow});
+  transferSnapshot(world,baseNow+1100);
+  let stats=runtimeSnapshotStats(world);
+  assert.equal(stats.snapshotIntervalMs,1000,'small worlds must retain the responsive one-second snapshot cadence');
+  assert.equal(stats.advanceRuns,1);
+  transferSnapshot(world,baseNow+1600);
+  stats=runtimeSnapshotStats(world);
+  assert.equal(stats.advanceRuns,1,'reads inside the same small-world one-second bucket must coalesce');
+  transferSnapshot(world,baseNow+2100);
+  stats=runtimeSnapshotStats(world);
+  assert.equal(stats.advanceRuns,2,'small worlds must advance again at the next one-second boundary');
 }
 
 {
@@ -87,4 +102,4 @@ function make(seed='runtime-view'){return createWorld({profile,count:5000,seed,n
   assert.doesNotMatch(router,/\btransferInfo\(world/,'router hot path must not fall back to legacy transferInfo world advancement');
 }
 
-console.log('Virtual qB runtime-view contract passed: hot reads share two-second advances, same-bucket rate-control changes reschedule without advancing time, pages project minimally, and qB API values remain equivalent.');
+console.log('Virtual qB runtime-view contract passed: large worlds use two-second advances, small worlds retain one-second cadence, same-bucket rate-control changes stay immediate, pages project minimally, and qB API values remain equivalent.');

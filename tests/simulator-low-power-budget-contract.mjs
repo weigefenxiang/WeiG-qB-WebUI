@@ -16,6 +16,7 @@ for(let step=1;step<=60;step++){
 
 const runtime=runtimeSnapshotStats(world);
 const share=shareLimitPolicyStats(world);
+assert.equal(runtime.snapshotIntervalMs,2000,'5000-Torrent low-power world must select the two-second snapshot interval');
 assert.ok(runtime.advanceRuns<=15,`30 seconds of 500ms read pressure must stay within the 2-second scheduler budget; got ${runtime.advanceRuns} full advances`);
 assert.equal(runtime.aggregateRuns,0,'scheduler-primed totals must keep duplicate aggregate scans at zero under low-power polling');
 assert.equal(share.candidateBuilds,1,'idle share-limit maintenance may discover the candidate set only once');
@@ -38,4 +39,4 @@ assert.equal(saves,2,'5000-Torrent read-only world must eventually checkpoint at
 largeWorld.value=3;clock=61100;await cache.touch('budget',largeWorld,{mutation:true});
 assert.equal(saves,3,'low-power persistence policy must never delay explicit mutations');
 
-console.log(`Virtual qB low-power budget passed: ${runtime.advanceRuns} full scheduler advances/30s, ${share.torrentsVisited} idle share-policy candidate visits, and one read-only large-world checkpoint/minute.`);
+console.log(`Virtual qB low-power budget passed: ${runtime.advanceRuns} full scheduler advances/30s at ${runtime.snapshotIntervalMs}ms cadence, ${share.torrentsVisited} idle share-policy candidate visits, and one read-only large-world checkpoint/minute.`);
