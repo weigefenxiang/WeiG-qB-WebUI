@@ -152,4 +152,5 @@ jobs:
       - name: Verify deployed Virtual qB Pages runtime
         run: |
           node tests/pages-live-acceptance.mjs
+          node tests/pages-live-preferences.mjs
           node tests/pages-live-services.mjs
