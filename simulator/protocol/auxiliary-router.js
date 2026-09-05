@@ -6,13 +6,18 @@ import {
   mergeManualPeers,parseMetadata,pieceAvailability,processInfo,removeWebSeeds,saveMetadata,setComment,
   setSSLParameters,setTags,setTorrentPath,storeClientData,torrentCount,torrentLimitMap
 } from '../core/torrent-auxiliary.js';
+import {
+  rssAddFeed,rssAddFolder,rssMarkAsRead,rssMatchingArticles,rssMoveItem,rssSetFeedRefreshInterval,rssSetFeedURL,
+  searchDelete,searchDownloadTorrent,searchEnablePlugins,searchInstallPlugins,searchPlugins,searchUninstallPlugins,
+  searchUpdatePlugins
+} from '../core/virtual-services.js';
 
 function json(value,status=200){return new Response(JSON.stringify(value),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});}
 function text(value,status=200,type='text/plain; charset=utf-8',headers={}){return new Response(String(value??''),{status,headers:{'content-type':type,'cache-control':'no-store',...headers}});}
 function empty(status=200){return new Response([204,205,304].includes(status)?null:'',{status,headers:{'cache-control':'no-store'}});}
 function notFound(){return text('Not Found',404);}
 function badRequest(message='Bad Request'){return text(message,400);}
-function conflict(){return text("Torrent's metadata has not yet downloaded",409);}
+function conflict(message="Torrent's metadata has not yet downloaded"){return text(message,409);}
 async function formObject(request){
   const out={},form=await request.formData();
   for(const [key,value] of form.entries()){
@@ -37,6 +42,8 @@ function bootstrapAllowed(world,path){
   if(['torrents/fetchMetadata','torrents/parseMetadata','torrents/saveMetadata'].includes(path))return qbAtLeast(world,'5.2.0')&&apiAtLeast(world,'2.11.9');
   if(path.startsWith('clientdata/'))return qbAtLeast(world,'5.2.0')&&apiAtLeast(world,'2.13.1');
   if(path==='app/processInfo')return qbAtLeast(world,'5.2.0')&&apiAtLeast(world,'2.15.1');
+  if(path.startsWith('rss/'))return apiAtLeast(world,'2.1.0');
+  if(path.startsWith('search/'))return apiAtLeast(world,'2.1.1');
   return true;
 }
 
@@ -82,6 +89,50 @@ export async function handleAuxiliaryApi(world,request,path,method,url){
     if(merged===null)return notFound();
     return json({rid:Number(world.peerRid)||1,full_update:true,peers:filterBannedPeers(world,merged)});
   }
+
+  if(path==='rss/addFolder'&&method==='POST'){
+    const f=await formObject(request);return rssAddFolder(world,f.path)?empty():conflict('RSS folder already exists or path is invalid');
+  }
+  if(path==='rss/addFeed'&&method==='POST'){
+    const f=await formObject(request);if(!String(f.url||'').trim())return badRequest('Missing RSS feed URL');
+    rssAddFeed(world,f.url,f.path??'',Date.now(),f.refreshInterval??0);return empty();
+  }
+  if(path==='rss/setFeedURL'&&method==='POST'){
+    const f=await formObject(request);return rssSetFeedURL(world,f.path,f.url)?empty():conflict("Feed doesn't exist or URL is invalid");
+  }
+  if(path==='rss/setFeedRefreshInterval'&&method==='POST'){
+    const f=await formObject(request),value=Number(f.refreshInterval);
+    if(!Number.isFinite(value)||value<0)return badRequest("Invalid 'refreshInterval' value");
+    return rssSetFeedRefreshInterval(world,f.path,value)?empty():conflict("Feed doesn't exist");
+  }
+  if(path==='rss/moveItem'&&method==='POST'){
+    const f=await formObject(request);return rssMoveItem(world,f.itemPath,f.destPath)?empty():conflict('RSS item cannot be moved');
+  }
+  if(path==='rss/markAsRead'&&method==='POST'){
+    const f=await formObject(request);rssMarkAsRead(world,f.itemPath,Object.prototype.hasOwnProperty.call(f,'articleId')?f.articleId:null);return empty();
+  }
+  if(path==='rss/matchingArticles'&&method==='GET'){
+    const value=rssMatchingArticles(world,url.searchParams.get('ruleName')||'');return json(value||{});
+  }
+
+  if(path==='search/plugins'&&method==='GET')return json(searchPlugins(world));
+  if(path==='search/delete'&&method==='POST'){
+    const f=await formObject(request);return searchDelete(world,f.id)?empty():notFound();
+  }
+  if(path==='search/downloadTorrent'&&method==='POST'){
+    const f=await formObject(request);if(!String(f.torrentUrl||'').trim()||!String(f.pluginName||'').trim())return badRequest('Missing search download parameter');
+    return searchDownloadTorrent(world,f.torrentUrl,f.pluginName)?empty():conflict('Unable to add search result');
+  }
+  if(path==='search/installPlugin'&&method==='POST'){
+    const f=await formObject(request);if(!String(f.sources||'').trim())return badRequest('Missing plugin source');searchInstallPlugins(world,f.sources);return empty();
+  }
+  if(path==='search/uninstallPlugin'&&method==='POST'){
+    const f=await formObject(request);if(!String(f.names||'').trim())return badRequest('Missing plugin name');searchUninstallPlugins(world,f.names);return empty();
+  }
+  if(path==='search/enablePlugin'&&method==='POST'){
+    const f=await formObject(request);if(!String(f.names||'').trim())return badRequest('Missing plugin name');searchEnablePlugins(world,f.names,f.enable);return empty();
+  }
+  if(path==='search/updatePlugins'&&method==='POST'){searchUpdatePlugins(world);return empty();}
 
   if(path==='torrents/count'&&method==='GET')return text(torrentCount(world));
   if(path==='torrents/pieceAvailability'&&method==='GET'){

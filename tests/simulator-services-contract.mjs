@@ -100,6 +100,42 @@ function getRequest(path){return new Request(`https://example.invalid/api/v2/${p
 }
 
 {
+  const w=world('5.2.3','2.15.1');
+  let response=await handleApi(w,formRequest('rss/addFolder',{path:'Linux'}));assert.equal(response.status,200);
+  response=await handleApi(w,formRequest('rss/addFeed',{url:'https://feed.example.invalid/releases.xml',path:'Linux/Releases',refreshInterval:'1800'}));assert.equal(response.status,200);
+  response=await handleApi(w,formRequest('rss/setFeedURL',{path:'Linux/Releases',url:'https://mirror.example.invalid/releases.xml'}));assert.equal(response.status,200);
+  response=await handleApi(w,formRequest('rss/setFeedRefreshInterval',{path:'Linux/Releases',refreshInterval:'900'}));assert.equal(response.status,200);
+  let items=await (await handleApi(w,getRequest('rss/items?withData=true'))).json();
+  assert.equal(items['Linux/Releases'].url,'https://mirror.example.invalid/releases.xml');assert.equal(items['Linux/Releases'].refreshInterval,900);
+  const articleId=items['Linux/Releases'].articles[0].id;
+  response=await handleApi(w,formRequest('rss/markAsRead',{itemPath:'Linux/Releases',articleId}));assert.equal(response.status,200);
+  items=await (await handleApi(w,getRequest('rss/items?withData=true'))).json();assert.equal(items['Linux/Releases'].articles[0].isRead,true);
+  response=await handleApi(w,formRequest('rss/addFolder',{path:'Archive'}));assert.equal(response.status,200);
+  response=await handleApi(w,formRequest('rss/moveItem',{itemPath:'Linux/Releases',destPath:'Archive'}));assert.equal(response.status,200);
+  items=await (await handleApi(w,getRequest('rss/items?withData=true'))).json();assert.ok(items['Archive/Releases']);
+  response=await handleApi(w,formRequest('rss/setRule',{ruleName:'Archive Rule',ruleDef:JSON.stringify({enabled:true,mustContain:'Virtual release',affectedFeeds:['Archive/Releases']})}));assert.equal(response.status,200);
+  response=await handleApi(w,getRequest(`rss/matchingArticles?ruleName=${encodeURIComponent('Archive Rule')}`));assert.equal(response.status,200);
+  const matches=await response.json();assert.ok(Object.values(matches).flat().some(title=>title.includes('Virtual release')),'matchingArticles must project current rule matches');
+
+  response=await handleApi(w,getRequest('search/plugins'));assert.equal(response.status,200);let plugins=await response.json();assert.ok(plugins.some(x=>x.name==='virtual'));
+  response=await handleApi(w,formRequest('search/installPlugin',{sources:'https://plugins.example.invalid/extra.py'}));assert.equal(response.status,200);
+  plugins=await (await handleApi(w,getRequest('search/plugins'))).json();assert.ok(plugins.some(x=>x.name==='extra'));
+  response=await handleApi(w,formRequest('search/enablePlugin',{names:'extra',enable:'false'}));assert.equal(response.status,200);
+  plugins=await (await handleApi(w,getRequest('search/plugins'))).json();assert.equal(plugins.find(x=>x.name==='extra').enabled,false);
+  const oldVersion=plugins.find(x=>x.name==='extra').version;
+  response=await handleApi(w,formRequest('search/updatePlugins',{}));assert.equal(response.status,200);
+  plugins=await (await handleApi(w,getRequest('search/plugins'))).json();assert.notEqual(plugins.find(x=>x.name==='extra').version,oldVersion);
+
+  response=await handleApi(w,formRequest('search/start',{pattern:'Virtual Linux',plugins:'virtual',category:'all'}));const job=await response.json();
+  const results=await (await handleApi(w,getRequest(`search/results?id=${job.id}&limit=5&offset=0`))).json();assert.ok(results.results[0].engineName);assert.ok(Number.isInteger(results.results[0].pubDate));
+  const countBefore=w.torrents.length;
+  response=await handleApi(w,formRequest('search/downloadTorrent',{torrentUrl:results.results[0].fileUrl,pluginName:'virtual'}));assert.equal(response.status,200);assert.equal(w.torrents.length,countBefore+1,'search download must add a real Virtual Torrent');
+  response=await handleApi(w,formRequest('search/delete',{id:String(job.id)}));assert.equal(response.status,200);assert.equal(w.searchJobs[job.id],undefined);
+  response=await handleApi(w,formRequest('search/uninstallPlugin',{names:'extra'}));assert.equal(response.status,200);
+  plugins=await (await handleApi(w,getRequest('search/plugins'))).json();assert.ok(!plugins.some(x=>x.name==='extra'));
+}
+
+{
   const w=world('5.9.9','2.99.0',{preferenceKeys:['max_active_downloads','future_setting']});
   w.preferences.future_setting=42;
   const response=await handleApi(w,getRequest('app/preferences'));
@@ -114,4 +150,4 @@ function getRequest(path){return new Request(`https://example.invalid/api/v2/${p
   assert.equal(response.status,404,'qB4 must not expose qB5 Torrent Creator even if other APIs are modern');
 }
 
-console.log('Virtual qB services contract passed: historical capability boundaries, web seeds, peer logs, stateful RSS rules with auto-add, Search, Torrent Creator, future preference manifests and fail-closed endpoints.');
+console.log('Virtual qB services contract passed: historical capability boundaries, WebSeeds, peer logs, full stateful RSS management, Search plugin/download management, Torrent Creator, future preference manifests and fail-closed endpoints.');
