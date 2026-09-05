@@ -9,9 +9,8 @@ function normalizeBoolean(value) {
   return { ok: false };
 }
 
-function normalizeForDescriptor(value, descriptor) {
-  if (!descriptor) return { ok: true, value };
-  switch (descriptor.type) {
+function normalizeForType(value, type) {
+  switch (type) {
     case PreferenceType.BOOLEAN:
       return normalizeBoolean(value);
     case PreferenceType.NUMBER: {
@@ -28,6 +27,12 @@ function normalizeForDescriptor(value, descriptor) {
     default:
       return { ok: true, value };
   }
+}
+
+function writeTypeForDescriptor(descriptor) {
+  if (!descriptor) return null;
+  if (Object.prototype.hasOwnProperty.call(descriptor, 'writeType')) return descriptor.writeType || null;
+  return descriptor.type || null;
 }
 
 export function createPreferenceService(initial = {}, options = {}) {
@@ -53,9 +58,16 @@ export function createPreferenceService(initial = {}, options = {}) {
       const fallback = resolvePreferenceFallback(current === undefined ? value : current);
       if ((declared && declared.writable === false) || (!declared && fallback.writable === false)) continue;
 
-      const normalized = normalizeForDescriptor(value, declared);
+      const writeType = declared ? writeTypeForDescriptor(declared) : fallback.type;
+      const normalized = normalizeForType(value, writeType);
       if (!normalized.ok) continue;
-      accepted[key] = transform(key, normalized.value, { current, store, descriptor: declared || fallback });
+      accepted[key] = transform(key, normalized.value, {
+        current,
+        store,
+        descriptor: declared || fallback,
+        readType: declared?.readType ?? declared?.type ?? fallback.type,
+        writeType
+      });
     }
 
     store.patch(accepted);

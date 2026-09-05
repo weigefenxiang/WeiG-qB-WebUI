@@ -1,11 +1,19 @@
 import {preferenceValueMatchesType} from './descriptors.js';
 import {isPreferenceType} from './types.js';
 
+function readTypeForDescriptor(item) {
+  if (!item || typeof item !== 'object') return null;
+  if (Object.prototype.hasOwnProperty.call(item, 'readType')) {
+    return isPreferenceType(item.readType) ? item.readType : null;
+  }
+  return isPreferenceType(item.type) ? item.type : null;
+}
+
 function descriptorMap(profile) {
   const descriptors = Array.isArray(profile?.preferenceDescriptors) ? profile.preferenceDescriptors : [];
   return new Map(descriptors
-    .filter((item) => item && item.key != null && isPreferenceType(item.type))
-    .map((item) => [String(item.key), item]));
+    .filter((item) => item && item.key != null && readTypeForDescriptor(item))
+    .map((item) => [String(item.key), {...item, runtimeReadType:readTypeForDescriptor(item)}]));
 }
 
 export function sanitizeWorldPreferenceValues(world, profile = world?.profile) {
@@ -19,7 +27,7 @@ export function sanitizeWorldPreferenceValues(world, profile = world?.profile) {
 
   for (const [key, descriptor] of descriptors) {
     if (!surface.has(key) || !Object.prototype.hasOwnProperty.call(preferences, key)) continue;
-    if (preferenceValueMatchesType(preferences[key], descriptor.type)) continue;
+    if (preferenceValueMatchesType(preferences[key], descriptor.runtimeReadType)) continue;
     delete preferences[key];
     sanitizedKeys.push(key);
     if (key === 'dl_limit') world.globalDownloadLimit = 0;

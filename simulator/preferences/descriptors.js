@@ -83,6 +83,8 @@ function selectCandidate(candidates, declaredType) {
 }
 
 function declaredTypes(declared = {}) {
+  const hasReadSchema = hasOwn(declared, 'readType');
+  const hasWriteSchema = hasOwn(declared, 'writeType');
   const readType = isPreferenceType(declared.readType) ? declared.readType : null;
   const writeType = isPreferenceType(declared.writeType) ? declared.writeType : null;
   const legacyType = isPreferenceType(declared.type) ? declared.type : null;
@@ -90,8 +92,12 @@ function declaredTypes(declared = {}) {
     readType && writeType
       ? (readType === writeType ? PreferenceTypeAgreement.EXACT : PreferenceTypeAgreement.MISMATCH)
       : PreferenceTypeAgreement.UNRESOLVED);
-  const valueType = readType || (agreement === PreferenceTypeAgreement.MISMATCH ? null : (legacyType || writeType));
-  return { readType, writeType, legacyType, agreement, valueType };
+  // Once a profile explicitly carries readType, only getter truth may validate GET/persisted values.
+  // writeType remains a POST contract and must never silently become read truth.
+  const valueType = hasReadSchema
+    ? readType
+    : (agreement === PreferenceTypeAgreement.MISMATCH ? null : (legacyType || (hasWriteSchema ? null : writeType)));
+  return { readType, writeType, legacyType, agreement, valueType, hasReadSchema, hasWriteSchema };
 }
 
 function safeFallbackCandidate(declared, expectedType) {
