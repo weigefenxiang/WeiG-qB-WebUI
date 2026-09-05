@@ -12,8 +12,8 @@ import {
 } from '../core/app-services.js';
 import {
   rssAddFeed,rssAddFolder,rssMarkAsRead,rssMatchingArticles,rssMoveItem,rssSetFeedRefreshInterval,rssSetFeedURL,
-  searchDelete,searchDownloadTorrent,searchEnablePlugins,searchInstallPlugins,searchPlugins,searchUninstallPlugins,
-  searchUpdatePlugins
+  searchDelete,searchDownloadTorrent,searchEnablePlugins,searchInstallPlugins,searchPlugins,searchResults,
+  searchStart,searchStatus,searchStop,searchUninstallPlugins,searchUpdatePlugins
 } from '../core/virtual-services.js';
 
 function json(value,status=200){return new Response(JSON.stringify(value),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});}
@@ -23,6 +23,7 @@ function notFound(){return text('Not Found',404);}
 function badRequest(message='Bad Request'){return text(message,400);}
 function conflict(message="Torrent's metadata has not yet downloaded"){return text(message,409);}
 function boolParam(value){return ['1','true','yes','on'].includes(String(value||'').toLowerCase());}
+function intParam(value){const n=Number.parseInt(String(value??''),10);return Number.isFinite(n)?n:0;}
 async function formObject(request){
   const out={},form=await request.formData();
   for(const [key,value] of form.entries()){
@@ -68,6 +69,19 @@ function normalizeParsedMetadataNames(items,parsed,arrayResponse){
     if(name&&metadata?.info)metadata.info.name=name;
   }
   return parsed;
+}
+
+function searchJobExists(world,id){return !!world.searchJobs?.[Number(id)];}
+function activeSearchCount(world){return searchStatus(world,null).filter(item=>item.status==='Running').length;}
+function searchResultResponse(world,id,limit,offset){
+  if(!searchJobExists(world,id))return notFound();
+  const probe=searchResults(world,id,500,0),total=Math.max(0,Number(probe.total)||0);
+  let normalizedOffset=intParam(offset),normalizedLimit=intParam(limit);
+  if(normalizedOffset>total)return conflict('Offset is out of range');
+  if(normalizedOffset<0)normalizedOffset=total+normalizedOffset;
+  if(normalizedOffset<0)return conflict('Offset is out of range');
+  if(normalizedLimit<=0)normalizedLimit=500;
+  return json(searchResults(world,id,normalizedLimit,normalizedOffset));
 }
 
 export async function handleAuxiliaryApi(world,request,path,method,url){
@@ -139,6 +153,25 @@ export async function handleAuxiliaryApi(world,request,path,method,url){
   }
 
   if(path==='search/plugins'&&method==='GET')return json(searchPlugins(world));
+  if(path==='search/start'&&method==='POST'){
+    const f=await formObject(request);
+    if(!['pattern','category','plugins'].every(key=>Object.prototype.hasOwnProperty.call(f,key)))return badRequest('Missing search parameter');
+    if(activeSearchCount(world)>=5)return conflict('Unable to create more than 5 concurrent searches.');
+    return json(searchStart(world,f));
+  }
+  if(path==='search/status'&&method==='GET'){
+    const id=intParam(url.searchParams.get('id'));
+    if(id!==0&&!searchJobExists(world,id))return notFound();
+    return json(searchStatus(world,id===0?null:id));
+  }
+  if(path==='search/results'&&method==='GET'){
+    if(!url.searchParams.has('id'))return badRequest('Missing search id');
+    return searchResultResponse(world,intParam(url.searchParams.get('id')),url.searchParams.get('limit'),url.searchParams.get('offset'));
+  }
+  if(path==='search/stop'&&method==='POST'){
+    const f=await formObject(request);if(!Object.prototype.hasOwnProperty.call(f,'id'))return badRequest('Missing search id');
+    return searchStop(world,f.id)?empty():notFound();
+  }
   if(path==='search/delete'&&method==='POST'){
     const f=await formObject(request);return searchDelete(world,f.id)?empty():notFound();
   }
