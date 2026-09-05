@@ -40,6 +40,21 @@ function bootstrapAllowed(world,path){
   return true;
 }
 
+function normalizeParsedMetadataNames(items,parsed,arrayResponse){
+  if(arrayResponse){
+    for(let i=0;i<parsed.length;i++){
+      const name=String(items[i]?.name||'').replace(/\.torrent$/i,'');
+      if(name&&parsed[i]?.info)parsed[i].info.name=name;
+    }
+    return parsed;
+  }
+  for(const [fileName,metadata] of Object.entries(parsed||{})){
+    const name=String(fileName||'').replace(/\.torrent$/i,'');
+    if(name&&metadata?.info)metadata.info.name=name;
+  }
+  return parsed;
+}
+
 export async function handleAuxiliaryApi(world,request,path,method,url){
   if(!bootstrapAllowed(world,path))return notFound();
 
@@ -94,7 +109,9 @@ export async function handleAuxiliaryApi(world,request,path,method,url){
   if(path==='torrents/parseMetadata'&&method==='POST'){
     const items=await formFiles(request);
     if(!items.length)return badRequest('Must specify torrent file(s)');
-    return json(parseMetadata(world,items,Date.now(),apiAtLeast(world,'2.13.0')));
+    const arrayResponse=apiAtLeast(world,'2.13.0');
+    const parsed=parseMetadata(world,items,Date.now(),arrayResponse);
+    return json(normalizeParsedMetadataNames(items,parsed,arrayResponse));
   }
   if(path==='torrents/saveMetadata'&&method==='GET'){
     const result=saveMetadata(world,url.searchParams.get('source')||'');
