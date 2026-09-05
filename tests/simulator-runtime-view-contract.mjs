@@ -13,12 +13,12 @@ function make(seed='runtime-view'){return createWorld({profile,count:5000,seed,n
 
 {
   const world=make('shared-snapshot');
-  const now=baseNow+1500;
+  const now=baseNow+2500;
   const transfer=transferSnapshot(world,now);
   const main=mainDataSnapshot(world,0,now+100);
   const rows=listTorrentsSnapshot(world,{sort:'added_on',reverse:'true',limit:50,offset:0},now+200);
   const stats=runtimeSnapshotStats(world);
-  assert.equal(stats.advanceRuns,1,'transfer/info, sync/maindata and torrents/info within one second must share one world advance');
+  assert.equal(stats.advanceRuns,1,'transfer/info, sync/maindata and torrents/info within one two-second snapshot must share one world advance');
   assert.equal(rows.length,50);
   assert.equal(Object.keys(main.torrents).length,5000,'full sync snapshot must still expose the full virtual library');
   assert.equal(main.server_state.dl_info_speed,transfer.dl_info_speed,'mainData server_state and transfer/info must read the same world snapshot');
@@ -27,7 +27,7 @@ function make(seed='runtime-view'){return createWorld({profile,count:5000,seed,n
 
 {
   const world=make('page-projection');
-  const now=baseNow+1000;
+  const now=baseNow+2000;
   const first=listTorrentsSnapshot(world,{limit:50,offset:0},now);
   const stats=runtimeSnapshotStats(world);
   assert.equal(first.length,50);
@@ -56,7 +56,7 @@ function make(seed='runtime-view'){return createWorld({profile,count:5000,seed,n
 
 {
   const legacy=make('semantic-equivalence'),modern=make('semantic-equivalence');
-  const now=baseNow+1000;
+  const now=baseNow+2000;
   const legacyRows=listTorrents(legacy,{sort:'added_on',reverse:'true',limit:200,offset:400,now});
   const snapshotRows=listTorrentsSnapshot(modern,{sort:'added_on',reverse:'true',limit:200,offset:400},now);
   assert.deepEqual(snapshotRows.map(row=>row.hash),legacyRows.map(row=>row.hash),'optimized sorting must preserve qB torrent ordering exactly');
@@ -65,13 +65,13 @@ function make(seed='runtime-view'){return createWorld({profile,count:5000,seed,n
 
 {
   const legacy=make('transfer-equivalence'),modern=make('transfer-equivalence');
-  const now=baseNow+1000;
+  const now=baseNow+2000;
   assert.deepEqual(transferSnapshot(modern,now),transferInfo(legacy,now),'snapshot transfer/info must preserve legacy API values');
 }
 
 {
   const legacy=make('main-equivalence'),modern=make('main-equivalence');
-  const now=baseNow+1000;
+  const now=baseNow+2000;
   const a=mainData(legacy,0,now),b=mainDataSnapshot(modern,0,now);
   assert.equal(b.full_update,a.full_update);
   assert.deepEqual(b.server_state,a.server_state,'snapshot mainData server_state must preserve legacy values');
@@ -87,4 +87,4 @@ function make(seed='runtime-view'){return createWorld({profile,count:5000,seed,n
   assert.doesNotMatch(router,/\btransferInfo\(world/,'router hot path must not fall back to legacy transferInfo world advancement');
 }
 
-console.log('Virtual qB runtime-view contract passed: hot reads share one-second advances, same-bucket rate-control changes reschedule without advancing time, pages project minimally, and qB API values remain equivalent.');
+console.log('Virtual qB runtime-view contract passed: hot reads share two-second advances, same-bucket rate-control changes reschedule without advancing time, pages project minimally, and qB API values remain equivalent.');

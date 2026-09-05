@@ -17,11 +17,11 @@ for(let step=1;step<=120;step++){
   const page=listTorrentsSnapshot(world,{limit:50,offset:(step%10)*50},now+30);
   assert.equal(selected.length,3);
   assert.equal(page.length,50);
-  assert.equal(main.server_state.dl_info_speed,transfer.dl_info_speed,'same 1-second bucket must preserve transfer/mainData snapshot coherence');
+  assert.equal(main.server_state.dl_info_speed,transfer.dl_info_speed,'same two-second bucket must preserve transfer/mainData snapshot coherence');
 }
 
 const stats=runtimeSnapshotStats(world);
-assert.ok(stats.advanceRuns<=30,`250ms read pressure must not schedule more than one world advance per second; got ${stats.advanceRuns}`);
+assert.ok(stats.advanceRuns<=15,`250ms read pressure must not schedule more than one world advance per two seconds; got ${stats.advanceRuns}`);
 assert.equal(stats.indexBuilds,1,'repeated hash and delta reads over an unchanged 5000-torrent membership must build one hash index');
 assert.ok(stats.indexHits>=100,`runtime index should absorb repeated hash lookups; got ${stats.indexHits}`);
 assert.equal(stats.index.indexedRows,5000,'runtime index must remain bounded to the current torrent membership');
@@ -31,4 +31,4 @@ assert.equal(stats.hashSelections,120,'each targeted hash query must use direct 
 assert.ok(stats.projectedRows<=120*53+100,'soak should project requested rows rather than repeatedly serializing the full 5000-torrent library');
 assert.equal(stats.sortedRows,0,'unsorted soak traffic must never pay a full-library sort cost');
 
-console.log(`Virtual qB 5000-torrent logical soak passed: 120 read cycles over 30s used ${stats.advanceRuns} world advances, zero duplicate aggregate scans, one membership index build and ${stats.indexHits} index hits.`);
+console.log(`Virtual qB 5000-torrent logical soak passed: 120 read cycles over 30s used ${stats.advanceRuns} world advances at two-second cadence, zero duplicate aggregate scans, one membership index build and ${stats.indexHits} index hits.`);

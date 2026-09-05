@@ -3,7 +3,7 @@ import {clearRuntimeIndexes,primeTransferAggregate,runtimeIndexStats,torrentInde
 import {expandTorrentInfoRows} from './torrent-info-options.js';
 import {filterTorrentCandidates,sliceTorrentWindow} from './torrent-query.js';
 
-const SNAPSHOT_INTERVAL_MS=1000;
+const SNAPSHOT_INTERVAL_MS=2000;
 const runtimeSnapshots=new WeakMap();
 
 function rateControlKey(world){
@@ -138,7 +138,7 @@ export function mainDataSnapshot(world,clientRid=0,now=Date.now()){
     ...common,full_update:false,
     ...(Object.keys(torrents).length?{torrents}:{}),
     ...(removed.size?{torrents_removed:[...removed]}:{}),
-    ...(Object.keys(categories).length?{categories}:{}),
+    ...(Object.keys(categories).length?{categories}:{}) ,
     ...(categoriesRemoved.length?{categories_removed:categoriesRemoved}:{}),
     ...(capabilityAvailable(world,'tags')&&tags.length?{tags}:{}),
     ...(capabilityAvailable(world,'tags')&&tagsRemoved.length?{tags_removed:tagsRemoved}:{})
