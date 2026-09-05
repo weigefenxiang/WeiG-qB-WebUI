@@ -22,7 +22,7 @@ function cleanPath(value){
 }
 function joinPath(base,leaf){const a=cleanPath(base),b=String(leaf||'').replace(/[\\/]+/g,'_');return a==='/'?`/${b}`:`${a||'/downloads'}/${b}`;}
 function sourceName(source){
-  if(source.kind==='file')return String(source.file?.name||'Uploaded Virtual Torrent').replace(/\.torrent$/i,'').slice(0,180)||'Uploaded Virtual Torrent';
+  if(source.kind==='file')return String(source.file?.name||'Uploaded Virtual Torrent').slice(0,180)||'Uploaded Virtual Torrent';
   const text=String(source.value||'').trim();
   try{
     const url=new URL(text);
