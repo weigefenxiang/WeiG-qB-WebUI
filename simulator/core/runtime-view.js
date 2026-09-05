@@ -1,5 +1,6 @@
-import {capabilityAvailable,encodeState,recordTorrentChanges,schedule,torrentView} from './engine.js';
+import {capabilityAvailable,recordTorrentChanges,schedule,torrentView} from './engine.js';
 import {clearRuntimeIndexes,runtimeIndexStats,torrentIndex,torrentsByHashes,transferAggregate} from './runtime-index.js';
+import {filterTorrentCandidates,sliceTorrentWindow} from './torrent-query.js';
 
 const SNAPSHOT_INTERVAL_MS=1000;
 const runtimeSnapshots=new WeakMap();
@@ -117,40 +118,19 @@ export function mainDataSnapshot(world,clientRid=0,now=Date.now()){
   };
 }
 
-function matchesFilter(t,filter,profile){
-  const state=encodeState(t,profile);
-  switch(String(filter||'all')){
-    case'all':return true;
-    case'downloading':return ['downloading','stalledDL','forcedDL','metaDL'].includes(state);
-    case'seeding':return ['uploading','stalledUP','forcedUP'].includes(state);
-    case'completed':return t.completed;
-    case'paused':case'stopped':return /paused|stopped/.test(state);
-    case'active':return t.effectiveDownloadRate>0||t.effectiveUploadRate>0;
-    case'inactive':return t.effectiveDownloadRate<=0&&t.effectiveUploadRate<=0;
-    case'stalled':return state==='stalledDL'||state==='stalledUP';
-    case'stalled_uploading':return state==='stalledUP';
-    case'stalled_downloading':return state==='stalledDL';
-    case'errored':return state==='error'||state==='missingFiles';
-    default:return true;
-  }
-}
-
 export function listTorrentsSnapshot(world,query={},now=Date.now()){
   advanceRuntimeSnapshot(world,now);
   const profile=world.profile,stats=diagnostics(world);
-  let list;
+  let candidates;
   if(query.hashes){
     const selected=torrentsByHashes(world,query.hashes);
     if(selected.rebuilt)stats.indexBuilds++;else stats.indexHits++;
     stats.hashSelections++;
-    list=selected.torrents;
+    candidates=selected.torrents;
   }
-  else list=world.torrents||[];
-  list=list.filter(t=>matchesFilter(t,query.filter,profile));
-  if(query.category&&query.category!=='all')list=list.filter(t=>t.category===query.category);
-  if(query.tag&&query.tag!=='all')list=list.filter(t=>t.tags.includes(query.tag));
+  else candidates=world.torrents||[];
+  const list=filterTorrentCandidates(world,candidates,query);
   const sort=query.sort;
-  const offset=Math.max(0,Number(query.offset)||0),limit=Number(query.limit);
   if(sort){
     const direction=String(query.reverse)==='true'?-1:1;
     const rows=list.map(t=>({torrent:t,view:torrentView(t,profile)}));
@@ -159,10 +139,9 @@ export function listTorrentsSnapshot(world,query={},now=Date.now()){
       const av=a.view[sort]??a.torrent[sort]??0,bv=b.view[sort]??b.torrent[sort]??0;
       return av<bv?-direction:av>bv?direction:0;
     });
-    const sliced=Number.isFinite(limit)&&limit>0?rows.slice(offset,offset+limit):(offset?rows.slice(offset):rows);
-    return sliced.map(item=>item.view);
+    return sliceTorrentWindow(rows,query,profile).map(item=>item.view);
   }
-  const sliced=Number.isFinite(limit)&&limit>0?list.slice(offset,offset+limit):(offset?list.slice(offset):list);
+  const sliced=sliceTorrentWindow(list,query,profile);
   stats.projectedRows+=sliced.length;
   return sliced.map(t=>torrentView(t,profile));
 }

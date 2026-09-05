@@ -1,0 +1,79 @@
+import {CANONICAL,encodeState} from './engine.js';
+
+function hasOwn(object,key){return !!object&&Object.prototype.hasOwnProperty.call(object,key);}
+
+function optionalBool(value){
+  if(value===true||value===1||value==='1'||String(value).toLowerCase()==='true')return true;
+  if(value===false||value===0||value==='0'||String(value).toLowerCase()==='false')return false;
+  return null;
+}
+
+function isStoppedCanonical(t){return t.canonicalState===CANONICAL.DOWNLOAD_PAUSED||t.canonicalState===CANONICAL.SEED_PAUSED;}
+
+export function torrentStatusMatches(t,filter,profile){
+  const major=Number(profile?.major)||Number(String(profile?.qbVersion||'0').split('.')[0])||0;
+  const name=String(filter||'all');
+  const state=encodeState(t,profile);
+  switch(name){
+    case'all':return true;
+    case'downloading':return ['downloading','stalledDL','forcedDL','metaDL'].includes(state);
+    case'seeding':return ['uploading','stalledUP','forcedUP'].includes(state);
+    case'completed':return !!t.completed;
+    case'paused':return major<5?isStoppedCanonical(t):true;
+    case'resumed':return major<5?!isStoppedCanonical(t):true;
+    case'stopped':return major>=5?isStoppedCanonical(t):true;
+    case'running':return major>=5?!isStoppedCanonical(t):true;
+    case'active':return Number(t.effectiveDownloadRate)>0||Number(t.effectiveUploadRate)>0;
+    case'inactive':return Number(t.effectiveDownloadRate)<=0&&Number(t.effectiveUploadRate)<=0;
+    case'stalled':return state==='stalledDL'||state==='stalledUP';
+    case'stalled_uploading':return state==='stalledUP';
+    case'stalled_downloading':return state==='stalledDL';
+    case'checking':return t.canonicalState===CANONICAL.CHECKING;
+    case'moving':return t.canonicalState===CANONICAL.MOVING;
+    case'errored':return t.canonicalState===CANONICAL.ERROR||state==='missingFiles';
+    default:return true;
+  }
+}
+
+export function filterTorrentCandidates(world,candidates,query={}){
+  const profile=world?.profile||{};
+  let list=(Array.isArray(candidates)?candidates:[]).filter(t=>torrentStatusMatches(t,query.filter,profile));
+  if(hasOwn(query,'category')&&query.category!=='all'){
+    const category=String(query.category??'');
+    list=list.filter(t=>category===''?String(t.category||'')==='':String(t.category||'')===category);
+  }
+  if(hasOwn(query,'tag')&&query.tag!=='all'){
+    const tag=String(query.tag??'');
+    list=list.filter(t=>tag===''?!(Array.isArray(t.tags)&&t.tags.length):(Array.isArray(t.tags)&&t.tags.includes(tag)));
+  }
+  const major=Number(profile.major)||Number(String(profile.qbVersion||'0').split('.')[0])||0;
+  if(major>=5&&hasOwn(query,'private')){
+    const privateFlag=optionalBool(query.private);
+    if(privateFlag!==null)list=list.filter(t=>!!t.private===privateFlag);
+  }
+  return list;
+}
+
+function intParam(value){
+  const number=Number.parseInt(String(value??''),10);
+  return Number.isFinite(number)?number:0;
+}
+
+export function normalizeTorrentWindow(size,query={},profile={}){
+  const total=Math.max(0,Number(size)||0);
+  let offset=intParam(query.offset);
+  let limit=intParam(query.limit);
+  const major=Number(profile.major)||Number(String(profile.qbVersion||'0').split('.')[0])||0;
+  if(offset<0)offset=total+offset;
+  if(major<5&&(offset>=total||offset<0))offset=0;
+  else if(offset<0)offset=0;
+  if(limit<=0)limit=-1;
+  return{offset,limit};
+}
+
+export function sliceTorrentWindow(items,query={},profile={}){
+  const list=Array.isArray(items)?items:[];
+  const {offset,limit}=normalizeTorrentWindow(list.length,query,profile);
+  if(limit>0||offset>0)return list.slice(offset,limit>0?offset+limit:undefined);
+  return list.slice();
+}
