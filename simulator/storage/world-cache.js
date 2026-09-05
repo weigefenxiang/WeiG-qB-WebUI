@@ -1,11 +1,13 @@
+import {DEFAULT_READ_PERSIST_MS,isLargeWorld,LARGE_READ_PERSIST_MS,LARGE_WORLD_THRESHOLD} from '../core/low-power-policy.js';
+
 export function createWorldCache(options={}){
   const load=options.load;
   const save=options.save;
   const remove=options.remove;
   const maxEntries=Math.max(1,Number(options.maxEntries)||6);
-  const readPersistMs=Math.max(250,Number(options.readPersistMs)||30000);
-  const largeWorldThreshold=Math.max(1,Number(options.largeWorldThreshold)||5000);
-  const largeReadPersistMs=Math.max(readPersistMs,Number(options.largeReadPersistMs)||60000);
+  const readPersistMs=Math.max(250,Number(options.readPersistMs)||DEFAULT_READ_PERSIST_MS);
+  const largeWorldThreshold=Math.max(1,Number(options.largeWorldThreshold)||LARGE_WORLD_THRESHOLD);
+  const largeReadPersistMs=Math.max(readPersistMs,Number(options.largeReadPersistMs)||LARGE_READ_PERSIST_MS);
   const now=typeof options.now==='function'?options.now:Date.now;
   if(typeof load!=='function'||typeof save!=='function'||typeof remove!=='function')throw new TypeError('World cache requires load/save/remove functions.');
 
@@ -13,8 +15,7 @@ export function createWorldCache(options={}){
   let loadCount=0,saveCount=0;
 
   function persistIntervalFor(world){
-    const count=Array.isArray(world?.torrents)?world.torrents.length:0;
-    return count>=largeWorldThreshold?largeReadPersistMs:readPersistMs;
+    return isLargeWorld(world,largeWorldThreshold)?largeReadPersistMs:readPersistMs;
   }
 
   async function writeEntry(id,entry){

@@ -1,17 +1,10 @@
 import {capabilityAvailable,recordTorrentChanges,schedule,torrentView} from './engine.js';
 import {clearRuntimeIndexes,primeTransferAggregate,runtimeIndexStats,torrentIndex,torrentsByHashes,transferAggregate} from './runtime-index.js';
+import {snapshotIntervalForWorld} from './low-power-policy.js';
 import {expandTorrentInfoRows} from './torrent-info-options.js';
 import {filterTorrentCandidates,sliceTorrentWindow} from './torrent-query.js';
 
-const DEFAULT_SNAPSHOT_INTERVAL_MS=1000;
-const LARGE_SNAPSHOT_INTERVAL_MS=2000;
-const LARGE_WORLD_THRESHOLD=5000;
 const runtimeSnapshots=new WeakMap();
-
-function snapshotIntervalFor(world){
-  const count=Array.isArray(world?.torrents)?world.torrents.length:0;
-  return count>=LARGE_WORLD_THRESHOLD?LARGE_SNAPSHOT_INTERVAL_MS:DEFAULT_SNAPSHOT_INTERVAL_MS;
-}
 
 function rateControlKey(world){
   return[
@@ -36,7 +29,7 @@ export function runtimeSnapshotStats(world){
   const stats=diagnostics(world);
   return{
     advanceRuns:stats.advanceRuns,controlReschedules:stats.controlReschedules,projectedRows:stats.projectedRows,sortedRows:stats.sortedRows,bucket:stats.bucket,
-    snapshotIntervalMs:snapshotIntervalFor(world),
+    snapshotIntervalMs:snapshotIntervalForWorld(world),
     indexBuilds:stats.indexBuilds,indexHits:stats.indexHits,hashSelections:stats.hashSelections,
     aggregateRuns:stats.aggregateRuns,aggregateHits:stats.aggregateHits,
     index:runtimeIndexStats(world)
@@ -55,7 +48,7 @@ export function advanceRuntimeSnapshot(world,now=Date.now()){
   const currentControlKey=rateControlKey(world);
   const controlsChanged=stats.controlKey!==null&&stats.controlKey!==currentControlKey;
   stats.controlKey=currentControlKey;
-  const interval=snapshotIntervalFor(world);
+  const interval=snapshotIntervalForWorld(world);
   const bucket=Math.floor(Math.max(lastTick,Number(now)||0)/interval)*interval;
   if(bucket<=lastTick||stats.bucket===bucket){
     if(!controlsChanged&&stats.bucket!==-1)return false;
