@@ -85,18 +85,19 @@ function selectCandidate(candidates, declaredType) {
 function declaredTypes(declared = {}) {
   const hasReadSchema = hasOwn(declared, 'readType');
   const hasWriteSchema = hasOwn(declared, 'writeType');
-  const readType = isPreferenceType(declared.readType) ? declared.readType : null;
-  const writeType = isPreferenceType(declared.writeType) ? declared.writeType : null;
+  const declaredReadType = isPreferenceType(declared.readType) ? declared.readType : null;
+  const declaredWriteType = isPreferenceType(declared.writeType) ? declared.writeType : null;
   const legacyType = isPreferenceType(declared.type) ? declared.type : null;
+  // Legacy/manual descriptors predate schema v2. Only those may use `type` as both sides.
+  const readType = hasReadSchema ? declaredReadType : legacyType;
+  const writeType = hasWriteSchema ? declaredWriteType : legacyType;
   const agreement = normalizePreferenceTypeAgreement(declared.typeAgreement,
     readType && writeType
       ? (readType === writeType ? PreferenceTypeAgreement.EXACT : PreferenceTypeAgreement.MISMATCH)
       : PreferenceTypeAgreement.UNRESOLVED);
   // Once a profile explicitly carries readType, only getter truth may validate GET/persisted values.
   // writeType remains a POST contract and must never silently become read truth.
-  const valueType = hasReadSchema
-    ? readType
-    : (agreement === PreferenceTypeAgreement.MISMATCH ? null : (legacyType || (hasWriteSchema ? null : writeType)));
+  const valueType = hasReadSchema ? declaredReadType : legacyType;
   return { readType, writeType, legacyType, agreement, valueType, hasReadSchema, hasWriteSchema };
 }
 
@@ -133,7 +134,8 @@ export function buildPreferenceDescriptors(base = {}, keys = null, options = {})
     const fallback = safeFallbackCandidate(declared, valueType);
     const selected = selectCandidate([
       {present: hasOwn(source, key), value: source[key], provenance: PreferenceProvenance.WORLD},
-      {present: hasOwn(declared, 'default'), value: declared.default, provenance: PreferenceProvenance.UPSTREAM_DEFAULT},
+      {present: hasOwn(declared, 'upstreamDefaultValue'), value: declared.upstreamDefaultValue, provenance: PreferenceProvenance.UPSTREAM_DEFAULT},
+      {present: hasOwn(declared, 'default'), value: declared.default, provenance: PreferenceProvenance.PROFILE},
       {present: hasOwn(profileDefaults, key), value: profileDefaults[key], provenance: PreferenceProvenance.PROFILE},
       {present: hasKnownPreferenceDefault(key), value: known, provenance: PreferenceProvenance.KNOWN_DEFAULT},
       {present: hasOwn(inherited, key), value: inherited[key], provenance: PreferenceProvenance.INHERITED},
@@ -258,6 +260,7 @@ export function summarizePreferenceCoverage(descriptors = []) {
     upstreamSetterCount,
     highConfidenceReadCount,
     highConfidenceWriteCount,
+    highConfidenceSchemaCount:highConfidenceWriteCount,
     exactTypeAgreementCount: byAgreement[PreferenceTypeAgreement.EXACT] || 0,
     typeConflictCount: typeConflictKeys.length,
     typeConflictKeys,
