@@ -9,7 +9,7 @@ import {
 
 function json(value,status=200){return new Response(JSON.stringify(value),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});}
 function text(value,status=200,type='text/plain; charset=utf-8',headers={}){return new Response(String(value??''),{status,headers:{'content-type':type,'cache-control':'no-store',...headers}});}
-function empty(status=200){return new Response('',{status,headers:{'cache-control':'no-store'}});}
+function empty(status=200){return new Response([204,205,304].includes(status)?null:'',{status,headers:{'cache-control':'no-store'}});}
 function notFound(){return text('Not Found',404);}
 function badRequest(message='Bad Request'){return text(message,400);}
 function conflict(){return text("Torrent's metadata has not yet downloaded",409);}
