@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {extractPreferenceDescriptors,extractPreferenceKeys} from './qb-source-parsers.mjs';
+import {enrichPreferenceDescriptorsFromGetter} from './qb-preference-semantics.mjs';
 import {annotateCatalogEvolution,validateCatalogEvolution} from './qb-catalog-evolution.mjs';
 
 const qbRoot=path.resolve(process.argv[2]||process.env.QB_UPSTREAM_DIR||'');
@@ -20,7 +21,8 @@ function parseApi(source,tag){const m=source.match(/API_VERSION\s*\{\s*(\d+)\s*,
 function preferenceSurface(ref){
   const source=show(ref,'src/webui/api/appcontroller.cpp');
   const preferenceKeys=extractPreferenceKeys(source,ref);
-  const preferenceDescriptors=extractPreferenceDescriptors(source,ref);
+  const structuralDescriptors=extractPreferenceDescriptors(source,ref);
+  const preferenceDescriptors=enrichPreferenceDescriptorsFromGetter(source,structuralDescriptors,ref);
   if(preferenceDescriptors.length!==preferenceKeys.length)throw new Error(`${ref}: descriptor/key count mismatch ${preferenceDescriptors.length}/${preferenceKeys.length}`);
   const expected=new Set(preferenceKeys);
   const seen=new Set();
@@ -38,6 +40,7 @@ function preferenceSurface(ref){
   const exactAgreement=preferenceDescriptors.filter(item=>item.typeAgreement==='EXACT').length;
   const mismatched=preferenceDescriptors.filter(item=>item.typeAgreement==='MISMATCH').length;
   const safeFallback=preferenceDescriptors.filter(item=>item.upstreamFallbackValue!==null&&item.upstreamFallbackValue!==undefined).length;
+  const semanticGetterEnriched=preferenceDescriptors.filter(item=>item.semanticGetterEnriched===true).length;
   const structuredRead=preferenceDescriptors.filter(item=>item.readType==='array'||item.readType==='object').length;
   const structuredWrite=preferenceDescriptors.filter(item=>item.writeType==='array'||item.writeType==='object').length;
   return{
@@ -52,6 +55,7 @@ function preferenceSurface(ref){
       exactAgreement,
       mismatched,
       safeFallback,
+      semanticGetterEnriched,
       unresolvedRead:preferenceKeys.length-readTyped,
       unresolvedWrite:preferenceKeys.length-writeTyped,
       structuredRead,
@@ -104,6 +108,7 @@ const totals=catalog.reduce((sum,item)=>{
   sum.exactAgreement+=stats.exactAgreement||0;
   sum.mismatched+=stats.mismatched||0;
   sum.safeFallback+=stats.safeFallback||0;
+  sum.semanticGetterEnriched+=stats.semanticGetterEnriched||0;
   return sum;
-},{preferences:0,readTyped:0,writeTyped:0,exactAgreement:0,mismatched:0,safeFallback:0});
-console.log(`Generated ${catalog.length} stable qB profiles: ${catalog[0].qbVersion} -> ${catalog.at(-1).qbVersion}; preference getter types ${totals.readTyped}/${totals.preferences}, setter types ${totals.writeTyped}/${totals.preferences}, exact read/write agreement ${totals.exactAgreement}, conflicts ${totals.mismatched}, enum fallbacks ${totals.safeFallback}.`);
+},{preferences:0,readTyped:0,writeTyped:0,exactAgreement:0,mismatched:0,safeFallback:0,semanticGetterEnriched:0});
+console.log(`Generated ${catalog.length} stable qB profiles: ${catalog[0].qbVersion} -> ${catalog.at(-1).qbVersion}; preference getter types ${totals.readTyped}/${totals.preferences} (${totals.semanticGetterEnriched} semantic enrichments), setter types ${totals.writeTyped}/${totals.preferences}, exact read/write agreement ${totals.exactAgreement}, conflicts ${totals.mismatched}, enum fallbacks ${totals.safeFallback}.`);
