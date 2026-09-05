@@ -27,8 +27,8 @@ jobs:
   smoke:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - name: Semantic runtime, qB baselines and JavaScript syntax
@@ -53,8 +53,8 @@ jobs:
     env:
       WEIGG_BROWSER_CHANNEL: chrome
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -86,14 +86,14 @@ jobs:
     runs-on: ubuntu-latest
     needs: smoke
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - name: Full fixture compatibility matrix
         run: node tests/release-compat.mjs
       - name: Checkout qBittorrent upstream with all release tags
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: qbittorrent/qBittorrent
           path: upstream-qb
@@ -110,8 +110,8 @@ jobs:
     env:
       WEIGG_BROWSER_CHANNEL: chrome
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -145,8 +145,8 @@ jobs:
     env:
       WEIGG_BROWSER_CHANNEL: chrome
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -204,7 +204,7 @@ jobs:
       - browser
       - windows_browser
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Package exact-SHA release candidate
         run: |
           set -euo pipefail
@@ -218,7 +218,7 @@ jobs:
           sha256sum WeiG-qB-WebUI.zip > SHA256SUMS
           printf '%s\n' "${GITHUB_SHA}" > CANDIDATE_SHA
       - name: Upload reusable release candidate
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-candidate-${{ github.sha }}
           path: |
