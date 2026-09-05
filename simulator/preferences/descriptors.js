@@ -88,15 +88,12 @@ function declaredTypes(declared = {}) {
   const declaredReadType = isPreferenceType(declared.readType) ? declared.readType : null;
   const declaredWriteType = isPreferenceType(declared.writeType) ? declared.writeType : null;
   const legacyType = isPreferenceType(declared.type) ? declared.type : null;
-  // Legacy/manual descriptors predate schema v2. Only those may use `type` as both sides.
   const readType = hasReadSchema ? declaredReadType : legacyType;
   const writeType = hasWriteSchema ? declaredWriteType : legacyType;
   const agreement = normalizePreferenceTypeAgreement(declared.typeAgreement,
     readType && writeType
       ? (readType === writeType ? PreferenceTypeAgreement.EXACT : PreferenceTypeAgreement.MISMATCH)
       : PreferenceTypeAgreement.UNRESOLVED);
-  // Once a profile explicitly carries readType, only getter truth may validate GET/persisted values.
-  // writeType remains a POST contract and must never silently become read truth.
   const valueType = hasReadSchema ? declaredReadType : legacyType;
   return { readType, writeType, legacyType, agreement, valueType, hasReadSchema, hasWriteSchema };
 }
@@ -167,11 +164,18 @@ export function buildPreferenceDescriptors(base = {}, keys = null, options = {})
       coverage = PreferenceCoverage.STATEFUL;
     }
 
+    const legacyStatefulWrite = !explicit.has(key)
+      && !hasExplicitWriteSchema
+      && !bindingOwnsWrite
+      && coverage === PreferenceCoverage.STATEFUL
+      && !structured;
+    const writeNormalizationType = writeType || (legacyStatefulWrite ? type : null);
+
     let writable = typeof declared.writable === 'boolean'
       ? declared.writable
       : (coverage === PreferenceCoverage.MODELED || coverage === PreferenceCoverage.STATEFUL);
 
-    if (declared.setterPresent === false || (!writeType && !bindingOwnsWrite) || structured || conflict
+    if (declared.setterPresent === false || (!writeType && !bindingOwnsWrite && !legacyStatefulWrite) || structured || conflict
       || coverage === PreferenceCoverage.READ_ONLY || coverage === PreferenceCoverage.UNKNOWN) {
       writable = false;
     }
@@ -187,8 +191,11 @@ export function buildPreferenceDescriptors(base = {}, keys = null, options = {})
       provenance,
       exactValue: selected.exactValue,
       valueTypeVerified: preferenceValueMatchesType(value, readType || type),
-      writeTypeCompatible: !writeType || preferenceValueMatchesType(value, writeType),
-      writeSchemaSource: writeType ? (declared.setterSource || 'DECLARED_TYPE') : (bindingOwnsWrite ? 'MODELED_BINDING' : null),
+      writeTypeCompatible: !writeNormalizationType || preferenceValueMatchesType(value, writeNormalizationType),
+      writeNormalizationType,
+      writeSchemaSource: writeType
+        ? (declared.setterSource || 'DECLARED_TYPE')
+        : (bindingOwnsWrite ? 'MODELED_BINDING' : (legacyStatefulWrite ? 'LEGACY_STATEFUL' : null)),
       rejectedValueSources: selected.rejected.slice(),
       schemaSource: declared.source || null,
       sourceConfidence: declared.sourceConfidence || null,

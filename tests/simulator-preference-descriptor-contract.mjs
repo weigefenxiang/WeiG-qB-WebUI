@@ -40,9 +40,12 @@ const byKey = new Map(runtime.descriptors().map((item) => [item.key, item]));
 
 assert.equal(byKey.get('dl_limit').coverage, PreferenceCoverage.MODELED, 'registered behavior bindings must be MODELED');
 assert.equal(byKey.get('dl_limit').provenance, PreferenceProvenance.WORLD, 'canonical world values must win descriptor precedence');
+assert.equal(byKey.get('dl_limit').writeSchemaSource, 'MODELED_BINDING', 'legacy profiles without upstream schema must keep modeled binding write ownership');
 assert.equal(byKey.get('disk_cache').provenance, PreferenceProvenance.KNOWN_DEFAULT, 'known defaults must carry explicit provenance');
 assert.equal(byKey.get('profile_number').provenance, PreferenceProvenance.PROFILE, 'profile-provided defaults must outrank inheritance');
 assert.equal(byKey.get('inherited_number').provenance, PreferenceProvenance.INHERITED, 'compatible prior defaults must be inherited with provenance');
+assert.equal(byKey.get('inherited_number').writeSchemaSource, 'LEGACY_STATEFUL', 'descriptor-less inherited scalars must retain legacy stateful write semantics');
+assert.equal(byKey.get('inherited_number').writeNormalizationType, 'number', 'legacy stateful writes must normalize to the trusted current scalar type');
 assert.equal(byKey.get('typed_future').coverage, PreferenceCoverage.STATEFUL);
 assert.equal(byKey.get('structured_future').coverage, PreferenceCoverage.READ_ONLY, 'structured values must remain read-only even when a profile accidentally marks writable');
 assert.equal(byKey.get('structured_future').writable, false);
@@ -65,7 +68,7 @@ const accepted = runtime.write({
 }, 1700000001000);
 
 assert.equal(accepted.profile_number, 9, 'descriptor number writes must preserve numeric type');
-assert.equal(accepted.inherited_number, 43, 'inherited scalar values remain safely stateful');
+assert.equal(accepted.inherited_number, 43, 'inherited scalar values remain safely stateful and type-normalized');
 assert.equal(accepted.typed_future, false, 'descriptor boolean writes must preserve boolean type');
 assert.ok(!Object.prototype.hasOwnProperty.call(accepted, 'structured_future'));
 assert.ok(!Object.prototype.hasOwnProperty.call(accepted, 'opaque_future'));
@@ -98,4 +101,4 @@ for (const qbVersion of ['4.1.0', '4.6.7', '5.0.0', '5.2.3']) {
   assert.equal(generationRuntime.coverage().unknown, 1, `${qbVersion}: unresolved keys must fail closed consistently across qB4/qB5`);
 }
 
-console.log('Virtual qB preference descriptor contract passed: coverage modes, provenance, inheritance, type-stable writes, structured fail-closed behavior and qB4/qB5 surface preservation.');
+console.log('Virtual qB preference descriptor contract passed: upstream schema v2, modeled bindings, legacy inherited scalars, coverage modes, provenance, type-stable writes, structured fail-closed behavior and qB4/qB5 surface preservation.');

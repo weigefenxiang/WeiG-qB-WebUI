@@ -31,6 +31,9 @@ function normalizeForType(value, type) {
 
 function writeTypeForDescriptor(descriptor) {
   if (!descriptor) return null;
+  if (Object.prototype.hasOwnProperty.call(descriptor, 'writeNormalizationType')) {
+    return descriptor.writeNormalizationType || null;
+  }
   if (Object.prototype.hasOwnProperty.call(descriptor, 'writeType')) return descriptor.writeType || null;
   return descriptor.type || null;
 }
