@@ -32,10 +32,12 @@ export function normalizeProfile(profile){
     qbVersion,
     webApiVersion:String(profile?.webApiVersion||'2.15.1'),
     tag:String(profile?.tag||`release-${qbVersion}`),
-    sourceSha:profile?.sourceSha||null,
+    sourceSha:profile?.sourceSha||profile?.tagSha||null,
     stable:profile?.stable!==false,
     officialWeiGSupport:profile?.officialWeiGSupport ?? compareVersions(qbVersion,'4.1.9.1')>=0,
     protocolGeneration:profile?.protocolGeneration||(major>=5?'qb5':'qb4'),
+    preferenceKeys:Array.isArray(profile?.preferenceKeys)?[...profile.preferenceKeys]:null,
+    apiActions:Array.isArray(profile?.apiActions)?[...profile.apiActions]:null,
     major
   };
 }

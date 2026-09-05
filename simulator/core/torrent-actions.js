@@ -1,4 +1,7 @@
 import {CANONICAL,schedule} from './engine.js';
+import {deterministicUnit,hash32} from './random.js';
+
+const MiB=1024*1024;
 
 function selected(world,hashes){
   const text=String(hashes||'');
@@ -21,6 +24,14 @@ function appendLog(world,message,type=1,now=Date.now()){
   const id=(world.logs.at(-1)?.id||0)+1;
   world.logs.push({id,message,type,timestamp:Math.floor(now/1000)});
   if(world.logs.length>1000)world.logs.splice(0,world.logs.length-1000);
+}
+
+function appendPeerLog(world,endpoint,reason,blocked=false,now=Date.now()){
+  world.peerLogs=Array.isArray(world.peerLogs)?world.peerLogs:[];
+  const [ip,portText]=String(endpoint||'0.0.0.0:0').split(':');
+  const id=(world.peerLogs.at(-1)?.id||0)+1;
+  world.peerLogs.push({id,ip,port:Number(portText)||0,blocked:!!blocked,reason:String(reason||''),timestamp:Math.floor(now/1000)});
+  if(world.peerLogs.length>500)world.peerLogs.splice(0,world.peerLogs.length-500);
 }
 
 function resumableState(t){
@@ -48,10 +59,102 @@ export function advanceActionStates(world,now=Date.now()){
   return changed;
 }
 
+function ensureEnvironmentBaseline(world){
+  const env=world.environment||{};
+  const pairs=[
+    ['basePeerAvailability','peerAvailability'],
+    ['baseDownCapacity','downCapacity'],
+    ['baseUpCapacity','upCapacity'],
+    ['baseDiskWriteCapacity','diskWriteCapacity'],
+    ['baseDiskReadCapacity','diskReadCapacity'],
+    ['baseLatencyMs','latencyMs'],
+    ['baseJitterMs','jitterMs'],
+    ['basePacketLoss','packetLoss'],
+    ['baseTrackerFailureRate','trackerFailureRate'],
+    ['baseFreeSpace','freeSpace']
+  ];
+  for(const [base,current] of pairs){
+    if(!Number.isFinite(env[base]))env[base]=Math.max(0,Number(env[current])||0);
+  }
+  world.environment=env;
+  return env;
+}
+
+function clamp(value,min,max){return Math.max(min,Math.min(max,value));}
+
+function applyEnvironmentWave(world,now){
+  const env=ensureEnvironmentBaseline(world);
+  const bucket=Math.floor(now/15000);
+  if(world.runtimePolicyBucket===bucket)return[];
+  world.runtimePolicyBucket=bucket;
+  const seed=world.seed||'virtual';
+  const networkWave=.72+deterministicUnit(seed,`network:${bucket}`)*.28;
+  const uploadWave=.76+deterministicUnit(seed,`upload:${bucket}`)*.24;
+  const diskWriteWave=.78+deterministicUnit(seed,`disk-write:${bucket}`)*.22;
+  const diskReadWave=.82+deterministicUnit(seed,`disk-read:${bucket}`)*.18;
+  env.downCapacity=Math.max(0,Math.floor(env.baseDownCapacity*networkWave));
+  env.upCapacity=Math.max(0,Math.floor(env.baseUpCapacity*uploadWave));
+  env.diskWriteCapacity=Math.max(0,Math.floor(env.baseDiskWriteCapacity*diskWriteWave));
+  env.diskReadCapacity=Math.max(0,Math.floor(env.baseDiskReadCapacity*diskReadWave));
+  env.latencyMs=Math.max(0,Math.round(env.baseLatencyMs+deterministicUnit(seed,`latency:${bucket}`)*Math.max(2,env.baseJitterMs)));
+  env.packetLoss=clamp(env.basePacketLoss*(.8+deterministicUnit(seed,`loss:${bucket}`)*.4),0,.35);
+  env.trackerFailureRate=clamp(env.baseTrackerFailureRate+deterministicUnit(seed,`tracker-rate:${bucket}`)*.035,0,.95);
+  env.freeSpace=Math.max(0,Math.floor(env.baseFreeSpace-Math.max(0,Number(world.stats?.alltime_dl)||0)));
+  if(world.preferences?.dht!==false)world.stats.dht_nodes=180+Math.floor(deterministicUnit(seed,`dht:${bucket}`)*360);
+  else world.stats.dht_nodes=0;
+
+  const changed=[];
+  let peerEvents=0,trackerEvents=0;
+  for(const t of world.torrents||[]){
+    const swarmRoll=deterministicUnit(seed,`${t.hash}:swarm:${bucket}`);
+    if(swarmRoll>.992){
+      const direction=deterministicUnit(seed,`${t.hash}:swarm-direction:${bucket}`)>.5?1:-1;
+      if(t.completed)t.leechers=Math.max(0,(Number(t.leechers)||0)+direction);
+      else t.seeders=Math.max(0,(Number(t.seeders)||0)+direction);
+      changed.push(t.hash);
+      if(peerEvents<4){
+        const endpoint=`10.${(hash32(t.hash)>>16)&255}.${(hash32(t.hash)>>8)&255}.${hash32(t.hash)&255}:${40000+(hash32(`${t.hash}:${bucket}`)%20000)}`;
+        appendPeerLog(world,endpoint,direction>0?'Virtual peer connected':'Virtual peer disconnected',false,now);
+        peerEvents++;
+      }
+    }
+    for(const tracker of t.trackers||[]){
+      const roll=deterministicUnit(seed,`${t.hash}:${tracker.url}:tracker:${bucket}`);
+      if(roll<env.trackerFailureRate*.08){
+        if(tracker.status!==4||tracker.msg!=='Virtual tracker timeout'){
+          tracker.status=4;tracker.msg='Virtual tracker timeout';trackerEvents++;changed.push(t.hash);
+        }
+      }else if(tracker.msg==='Virtual tracker timeout'){
+        tracker.status=2;tracker.msg='';tracker.last_announce=Math.floor(now/1000);trackerEvents++;changed.push(t.hash);
+      }
+    }
+  }
+  if(trackerEvents)appendLog(world,`${trackerEvents} virtual tracker state transition(s).`,2,now);
+
+  const lowDisk=env.freeSpace<=64*MiB;
+  if(lowDisk){
+    const victim=(world.torrents||[]).find(t=>!t.completed&&!t.forceStart&&![CANONICAL.ERROR,CANONICAL.DOWNLOAD_PAUSED,CANONICAL.CHECKING,CANONICAL.MOVING].includes(t.canonicalState));
+    if(victim){
+      victim.canonicalState=CANONICAL.ERROR;
+      victim.error='Virtual disk is full';
+      victim.lastStateChange=Math.floor(now/1000);
+      changed.push(victim.hash);
+      appendLog(world,`Disk space exhausted: ${victim.name}`,4,now);
+    }
+  }else if(env.freeSpace>256*MiB){
+    for(const t of world.torrents||[]){
+      if(t.canonicalState===CANONICAL.ERROR&&t.error==='Virtual disk is full'){
+        t.error='';t.canonicalState=t.completed?CANONICAL.SEED_QUEUED:CANONICAL.DOWNLOAD_QUEUED;changed.push(t.hash);
+      }
+    }
+  }
+  return Array.from(new Set(changed));
+}
+
 export function applyRuntimePolicies(world,now=Date.now()){
   advanceActionStates(world,now);
-  const env=world.environment||{};
-  if(!Number.isFinite(env.basePeerAvailability))env.basePeerAvailability=Math.max(0,Math.min(1,Number(env.peerAvailability)||0));
+  const changed=applyEnvironmentWave(world,now);
+  const env=ensureEnvironmentBaseline(world);
   const prefs=world.preferences||{};
   const sourceFactor=.45+(prefs.dht!==false?.2:0)+(prefs.pex!==false?.2:0)+(prefs.lsd!==false?.15:0);
   const lossFactor=Math.max(.2,1-Math.max(0,Number(env.packetLoss)||0)*8);
@@ -65,6 +168,8 @@ export function applyRuntimePolicies(world,now=Date.now()){
     const active=start===end?true:(start<end?minute>=start&&minute<end:minute>=start||minute<end);
     world.altSpeedMode=active;
   }
+  if(changed.length){schedule(world,now,0);record(world,changed);}
+  return changed;
 }
 
 export function recheckTorrents(world,hashes,now=Date.now()){
@@ -184,6 +289,7 @@ export function banPeers(world,peers){
   world.bannedPeers=Array.isArray(world.bannedPeers)?world.bannedPeers:[];
   const incoming=String(peers||'').split('|').map(x=>x.trim()).filter(Boolean);
   world.bannedPeers=Array.from(new Set([...world.bannedPeers,...incoming]));
+  for(const endpoint of incoming)appendPeerLog(world,endpoint,'Banned by Virtual qB user',true);
   if(incoming.length)appendLog(world,`Banned ${incoming.length} virtual peer(s).`);
   return incoming.length;
 }
@@ -195,4 +301,8 @@ export function filterBannedPeers(world,peerMap){
     if(!banned.has(key)&&!banned.has(endpoint))out[key]=value;
   }
   return out;
+}
+
+export function peerLogItems(world,lastId=-1){
+  return (world.peerLogs||[]).filter(item=>Number(item.id)>Number(lastId||-1));
 }

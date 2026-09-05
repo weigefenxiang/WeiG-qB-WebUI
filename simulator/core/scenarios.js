@@ -45,16 +45,24 @@ function makeSeedHeavy(world){
   Object.assign(world.preferences,{max_active_downloads:4,max_active_uploads:32,max_active_torrents:34});
 }
 
+function clearRuntimeBaseline(world){
+  for(const key of ['basePeerAvailability','baseDownCapacity','baseUpCapacity','baseDiskWriteCapacity','baseDiskReadCapacity','baseLatencyMs','baseJitterMs','basePacketLoss','baseTrackerFailureRate','baseFreeSpace'])delete world.environment[key];
+  delete world.runtimePolicyBucket;
+}
+
 export function applyScenario(world,name='mixed',now=Date.now()){
   const scenario=String(name||'mixed');
   world.scenario=scenario;
-  if(!Number.isFinite(world.environment.basePeerAvailability))world.environment.basePeerAvailability=world.environment.peerAvailability;
   restoreInitialStates(world);
   if(scenario==='download-heavy')makeDownloadHeavy(world);
   else if(scenario==='seed-heavy')makeSeedHeavy(world);
   else if(scenario==='queue-stress')Object.assign(world.preferences,{queueing_enabled:true,max_active_downloads:2,max_active_uploads:3,max_active_torrents:5});
-  else if(scenario==='poor-network')Object.assign(world.environment,{downCapacity:22*MiB,upCapacity:5*MiB,latencyMs:190,jitterMs:75,packetLoss:.025,trackerFailureRate:.16,peerAvailability:.55,basePeerAvailability:.55});
+  else if(scenario==='poor-network')Object.assign(world.environment,{downCapacity:22*MiB,upCapacity:5*MiB,latencyMs:190,jitterMs:75,packetLoss:.025,trackerFailureRate:.16,peerAvailability:.55});
   else if(scenario==='disk-bottleneck')Object.assign(world.environment,{diskWriteCapacity:18*MiB,diskReadCapacity:30*MiB});
+  else if(scenario==='low-space')Object.assign(world.environment,{freeSpace:96*MiB,diskWriteCapacity:32*MiB,diskReadCapacity:48*MiB});
+  else if(scenario==='tracker-failure')Object.assign(world.environment,{trackerFailureRate:.68,latencyMs:85,jitterMs:35});
+  else if(scenario==='offline')Object.assign(world.environment,{online:false,downCapacity:0,upCapacity:0,peerAvailability:0});
+  clearRuntimeBaseline(world);
   prioritizeCoverage(world);
   schedule(world,now,0);
   return world;
