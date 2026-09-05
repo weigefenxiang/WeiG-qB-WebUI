@@ -11,7 +11,7 @@ const SOURCE_PUBLIC='./__source/public/';
 const CATALOG_URL='./__simulator/versions/catalog.generated.json';
 const DEFAULT_SESSION='default';
 const clientSessions=new Map();
-const worlds=createWorldCache({load:loadWorld,save:saveWorld,remove:deleteWorld,maxEntries:6,readPersistMs:3000});
+const worlds=createWorldCache({load:loadWorld,save:saveWorld,remove:deleteWorld,maxEntries:6,readPersistMs:30000});
 let queue=Promise.resolve();
 let catalogPromise=null;
 
