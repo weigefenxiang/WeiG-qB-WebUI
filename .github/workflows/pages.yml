@@ -13,6 +13,9 @@ on:
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/pages.yml'
+      - 'tests/pages-live-acceptance.mjs'
+      - 'tests/browser-driver.mjs'
+      - 'tests/ci-contract.mjs'
   schedule:
     - cron: '17 4 * * 1'
 
@@ -108,7 +111,44 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Deploy WeiG Virtual qB Lab
         id: deployment
         uses: actions/deploy-pages@v4
+
+  verify:
+    needs: deploy
+    runs-on: ubuntu-24.04
+    env:
+      WEIGG_BROWSER_CHANNEL: chrome
+      WEIGG_PAGES_URL: ${{ needs.deploy.outputs.page_url }}
+      WEIGG_EXPECTED_SIMULATOR_SHA: ${{ github.sha }}
+    steps:
+      - name: Checkout exact WeiG source
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install repository-locked browser dependencies
+        run: npm ci --no-audit --no-fund --prefer-offline
+
+      - name: Log live browser identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          node -e "console.log('Playwright ' + require('playwright/package.json').version)"
+          google-chrome --version
+
+      - name: Verify deployed Virtual qB Pages runtime
+        run: node tests/pages-live-acceptance.mjs

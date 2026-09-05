@@ -60,6 +60,13 @@ for(const name of browserTests){
   assert(!/\bchromium\.launch\s*\(/.test(source),`${name} still owns chromium.launch policy`);
   assert(source.includes('launchBrowser('),`${name} does not launch through browser-driver`);
 }
+const pagesLive=read('tests/pages-live-acceptance.mjs');
+assert(pagesLive.includes("from './browser-driver.mjs'"),'pages-live-acceptance.mjs must consume the canonical browser-driver');
+assert(!/from\s*['"]playwright['"]/.test(pagesLive),'pages-live-acceptance.mjs must not import Playwright directly');
+assert(!/\bchromium\.launch\s*\(/.test(pagesLive),'pages-live-acceptance.mjs must not own chromium.launch policy');
+assert(pagesLive.includes('launchBrowser('),'pages-live-acceptance.mjs must launch through browser-driver');
+assert(pagesLive.includes('WEIGG_EXPECTED_SIMULATOR_SHA')&&pagesLive.includes('metadata/site.json'),'Pages live acceptance must bind deployed evidence to exact simulator SHA metadata');
+assert(pagesLive.includes("qb:'5.2.3',count:5000")&&pagesLive.includes("qb:'4.1.9.1'"),'Pages live acceptance must protect qB5 5000-Torrent and qB4 floor sessions');
 const directPlaywrightOwners=filesUnder('tests',['.mjs']).filter(rel=>/from\s*['"]playwright['"]/.test(read(rel)));
 assert(JSON.stringify(directPlaywrightOwners)===JSON.stringify(['tests/browser-driver.mjs']),`Playwright test ownership is duplicated: ${directPlaywrightOwners.join(', ')}`);
 
@@ -94,4 +101,16 @@ assert(windowsNativeFailureChecks>=3,'Windows browser candidate must fail fast a
 assert(windows.includes('$tests = @(')&&windows.includes('foreach ($test in $tests)')&&windows.includes('node $test'),'Windows browser candidate must run browser callers through one fail-fast loop');
 for(const name of browserTests)assert(windows.includes(`'tests/${name}'`),`Windows fail-fast browser list is missing ${name}`);
 
-console.log(`CI browser-runtime contract passed for WeiG ${version}: Playwright 1.62.1 is repository-owned; Linux/Windows use hosted Chrome; Windows native browser commands are fail-fast.`);
+const pages=read('.github/workflows/pages.yml');
+const pagesVerify=jobSection(pages,'verify');
+assert(pages.includes("page_url: ${{ steps.deployment.outputs.page_url }}"),'Pages deploy job must export the exact deployed page URL');
+assert(pagesVerify.includes('needs: deploy'),'Pages live verification must run only after deployment');
+assert(pagesVerify.includes('runs-on: ubuntu-24.04'),'Pages live verification must pin Ubuntu 24.04');
+assert(/WEIGG_BROWSER_CHANNEL:\s*chrome/.test(pagesVerify),'Pages live verification must explicitly select hosted Chrome');
+assert(pagesVerify.includes('WEIGG_PAGES_URL: ${{ needs.deploy.outputs.page_url }}'),'Pages live verification must consume the deploy action page URL');
+assert(pagesVerify.includes('WEIGG_EXPECTED_SIMULATOR_SHA: ${{ github.sha }}'),'Pages live verification must bind evidence to github.sha');
+assert(pagesVerify.includes('npm ci --no-audit --no-fund --prefer-offline'),'Pages live verification must install repository-locked dependencies with npm ci');
+assert(pagesVerify.includes("require('playwright/package.json').version")&&pagesVerify.includes('google-chrome --version'),'Pages live verification must log Playwright and hosted Chrome identity');
+assert(pagesVerify.includes('node tests/pages-live-acceptance.mjs'),'Pages live verification must execute the canonical deployed-runtime acceptance test');
+
+console.log(`CI browser-runtime contract passed for WeiG ${version}: Playwright 1.62.1 is repository-owned; Linux/Windows use hosted Chrome; Windows native browser commands are fail-fast; deployed Virtual qB Pages is exact-SHA verified after deployment.`);
