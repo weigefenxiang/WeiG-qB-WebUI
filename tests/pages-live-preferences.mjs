@@ -109,7 +109,7 @@ try{
   let audited=0;
   for(const profile of matrix){
     const sim=`pref-matrix-${profile.qbVersion.replace(/\./g,'-')}-${Date.now()}-${audited}`;
-    const query=`sim=${encodeURIComponent(sim)}&qb=${encodeURIComponent(profile.qbVersion)}`;
+    const query=`sim=${encodeURIComponent(sim)}&qb=${encodeURIComponent(profile.qbVersion)}&count=1&scenario=mixed&seed=pages-live-pref-matrix`;
     let response=await api(page,`auth/login?${query}`,{method:'POST',form:{username:'demo',password:'demo'}});
     assert.equal(response.status,200,`${profile.qbVersion}: virtual daemon login must succeed`);
     response=await api(page,`app/version?sim=${encodeURIComponent(sim)}`);
