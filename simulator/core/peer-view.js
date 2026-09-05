@@ -10,11 +10,8 @@ function diagnosticsFor(world){
   return stats;
 }
 
-function templatesFor(world,torrent){
-  const seed=String(world.seed||'');
-  const cached=peerTemplates.get(torrent),stats=diagnosticsFor(world);
-  if(cached&&cached.seed===seed){stats.templateHits++;return cached.rows;}
-  const rows=Array.from({length:40},(_,i)=>({
+function templateRow(world,torrent,i){
+  return{
     key:`10.0.${(i>>8)&255}.${(i%254)+1}:${50000+i}`,
     value:{
       client:pick(createRng(`${torrent.hash}:peer:${i}`),['qBittorrent 5.2.3','Transmission 4.0','libtorrent','Deluge 2.x']),
@@ -24,18 +21,27 @@ function templatesFor(world,torrent){
       flags_desc:'Interested; Unchoked',ip:`10.0.${(i>>8)&255}.${(i%254)+1}`,port:50000+i,
       relevance:.9,files:''
     }
-  }));
-  peerTemplates.set(torrent,{seed,rows});
-  stats.templateBuilds++;
-  stats.templateRows+=rows.length;
-  return rows;
+  };
+}
+
+function templatesFor(world,torrent,count){
+  const seed=String(world.seed||''),stats=diagnosticsFor(world);
+  let cached=peerTemplates.get(torrent);
+  if(!cached||cached.seed!==seed){
+    cached={seed,rows:[]};peerTemplates.set(torrent,cached);stats.templateBuilds++;
+  }else stats.templateHits++;
+  while(cached.rows.length<count){
+    cached.rows.push(templateRow(world,torrent,cached.rows.length));
+    stats.templateRows++;
+  }
+  return cached.rows;
 }
 
 export function generatedPeers(world,hash){
   const torrent=torrentIndex(world).byHash.get(String(hash||''));
   if(!torrent)return{};
   const count=Math.min(40,torrent.connectedPeers||Math.min(torrent.seeders+torrent.leechers,8)),out={};
-  const templates=templatesFor(world,torrent);
+  const templates=templatesFor(world,torrent,count);
   const dlSpeed=Math.floor(torrent.effectiveDownloadRate/Math.max(1,count));
   const upSpeed=Math.floor(torrent.effectiveUploadRate/Math.max(1,count));
   for(let i=0;i<count;i++){
