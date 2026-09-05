@@ -1,5 +1,6 @@
 import {capabilityAvailable,recordTorrentChanges,schedule,torrentView} from './engine.js';
 import {clearRuntimeIndexes,runtimeIndexStats,torrentIndex,torrentsByHashes,transferAggregate} from './runtime-index.js';
+import {expandTorrentInfoRows} from './torrent-info-options.js';
 import {filterTorrentCandidates,sliceTorrentWindow} from './torrent-query.js';
 
 const SNAPSHOT_INTERVAL_MS=1000;
@@ -139,9 +140,9 @@ export function listTorrentsSnapshot(world,query={},now=Date.now()){
       const av=a.view[sort]??a.torrent[sort]??0,bv=b.view[sort]??b.torrent[sort]??0;
       return av<bv?-direction:av>bv?direction:0;
     });
-    return sliceTorrentWindow(rows,query,profile).map(item=>item.view);
+    return expandTorrentInfoRows(world,sliceTorrentWindow(rows,query,profile).map(item=>item.view),query,now);
   }
   const sliced=sliceTorrentWindow(list,query,profile);
   stats.projectedRows+=sliced.length;
-  return sliced.map(t=>torrentView(t,profile));
+  return expandTorrentInfoRows(world,sliced.map(t=>torrentView(t,profile)),query,now);
 }
