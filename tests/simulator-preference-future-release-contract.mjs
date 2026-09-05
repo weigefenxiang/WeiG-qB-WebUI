@@ -40,12 +40,14 @@ Object.assign(world.preferences,{
 const runtime=createPreferenceRuntime(world);
 const descriptors=new Map(runtime.descriptors().map(item=>[item.key,item]));
 const surface=runtime.read();
+const initialReport=runtime.coverage();
 
 assert.equal(surface.future_enum,'None','a future enum with a source-backed setter fallback should get a non-fabricated provisional value');
 assert.equal(descriptors.get('future_enum').provenance,PreferenceProvenance.UPSTREAM_FALLBACK);
 assert.equal(descriptors.get('future_enum').exactValue,false,'setter fallback must never be promoted to an exact startup default');
 assert.equal(descriptors.get('future_enum').coverage,PreferenceCoverage.STATEFUL);
 assert.equal(descriptors.get('future_enum').writable,true);
+assert.ok(initialReport.upstreamFallbackCount>=1,'initial coverage must record source-backed provisional enum fallback usage');
 
 assert.equal(surface.future_scalar,0,'typed future scalar without source value must remain a typed placeholder');
 assert.equal(descriptors.get('future_scalar').provenance,PreferenceProvenance.SAFE_PLACEHOLDER);
@@ -70,12 +72,14 @@ assert.ok(!Object.prototype.hasOwnProperty.call(accepted,'future_read_only'));
 assert.ok(!Object.prototype.hasOwnProperty.call(accepted,'future_conflict'));
 assert.equal(accepted.future_opaque,12,'known future setter type may normalize POST independently of unresolved getter type');
 
+const postWriteDescriptors=new Map(runtime.descriptors().map(item=>[item.key,item]));
 const report=runtime.coverage();
-assert.ok(report.upstreamFallbackCount>=1);
+assert.equal(postWriteDescriptors.get('future_enum').provenance,PreferenceProvenance.WORLD,'after an accepted write the enum becomes current world state instead of remaining fallback provenance');
+assert.equal(report.upstreamFallbackCount,0,'accepted explicit writes must retire fallback provenance from the current runtime surface');
 assert.ok(report.typeConflictCount>=1);
 assert.ok(report.highConfidenceReadCount>=3);
 assert.ok(report.highConfidenceWriteCount>=3);
 assert.ok(report.byAgreement.EXACT>=2);
 assert.ok(report.byAgreement.MISMATCH>=1);
 
-console.log('Virtual qB future preference contract passed: future getter/setter schemas remain source-driven, fallbacks stay provisional, conflicts and placeholders fail closed, and unresolved GET types are never rewritten from POST truth.');
+console.log('Virtual qB future preference contract passed: future getter/setter schemas remain source-driven, fallbacks stay provisional until explicitly written, conflicts and placeholders fail closed, and unresolved GET types are never rewritten from POST truth.');
