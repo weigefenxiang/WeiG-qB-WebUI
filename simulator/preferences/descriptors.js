@@ -147,6 +147,8 @@ export function buildPreferenceDescriptors(base = {}, keys = null, options = {})
     const structured = type === PreferenceType.ARRAY || type === PreferenceType.OBJECT;
     const getterOnly = declared.getterPresent === true && declared.setterPresent === false;
     const conflict = agreement === PreferenceTypeAgreement.MISMATCH;
+    const hasExplicitWriteSchema = hasOwn(declared, 'writeType') || typeof declared.setterPresent === 'boolean';
+    const bindingOwnsWrite = modeled.has(key) && !hasExplicitWriteSchema;
     let coverage;
 
     if (Object.values(PreferenceCoverage).includes(declared.coverage)) {
@@ -169,7 +171,7 @@ export function buildPreferenceDescriptors(base = {}, keys = null, options = {})
       ? declared.writable
       : (coverage === PreferenceCoverage.MODELED || coverage === PreferenceCoverage.STATEFUL);
 
-    if (declared.setterPresent === false || !writeType || structured || conflict
+    if (declared.setterPresent === false || (!writeType && !bindingOwnsWrite) || structured || conflict
       || coverage === PreferenceCoverage.READ_ONLY || coverage === PreferenceCoverage.UNKNOWN) {
       writable = false;
     }
@@ -186,6 +188,7 @@ export function buildPreferenceDescriptors(base = {}, keys = null, options = {})
       exactValue: selected.exactValue,
       valueTypeVerified: preferenceValueMatchesType(value, readType || type),
       writeTypeCompatible: !writeType || preferenceValueMatchesType(value, writeType),
+      writeSchemaSource: writeType ? (declared.setterSource || 'DECLARED_TYPE') : (bindingOwnsWrite ? 'MODELED_BINDING' : null),
       rejectedValueSources: selected.rejected.slice(),
       schemaSource: declared.source || null,
       sourceConfidence: declared.sourceConfidence || null,
