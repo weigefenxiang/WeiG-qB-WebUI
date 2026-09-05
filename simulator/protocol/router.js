@@ -1,7 +1,7 @@
 import {
   addTags,addVirtualTorrent,authenticate,capabilityAvailable,createCategory,createTags,deleteTags,
-  deleteTorrents,logs,logout,mainData,peers,removeCategories,removeTags,renameTorrent,
-  setCategory,setForceStart,setPaused,setPreferences,setTorrentLimit,transferInfo,listTorrents
+  deleteTorrents,logs,logout,peers,removeCategories,removeTags,renameTorrent,
+  setCategory,setForceStart,setPaused,setTorrentLimit
 } from '../core/engine.js';
 import {
   addTrackers,applyRuntimePolicies,banPeers,editTracker,filterBannedPeers,movePriority,peerLogItems,
@@ -15,6 +15,9 @@ import {
 import {hasTorrentMetadata,propertiesForTorrent,torrentExists,trackersForTorrent} from '../core/torrent-metadata.js';
 import {atLeast} from '../core/profiles.js';
 import {
+  clearRuntimeSnapshot,listTorrentsSnapshot,mainDataSnapshot,runtimeSnapshotStats,transferSnapshot
+} from '../core/runtime-view.js';
+import {
   creatorAddTask,creatorDeleteTask,creatorStatus,creatorTorrentFile,rssAddFeed,rssItems,rssRefreshItem,
   rssRemoveItem,rssRemoveRule,rssRenameRule,rssRules,rssSetRule,searchResults,searchStart,searchStatus,
   searchStop,webseedList
@@ -26,7 +29,6 @@ import {upstreamRouteAvailable} from './upstream-gates.js';
 const RUNTIME_POLICY_INTERVAL_MS=500;
 const SHARE_POLICY_INTERVAL_MS=1000;
 const TORRENT_INFO_CACHE_TTL_MS=1500;
-const SIMULATION_TIME_BUCKET_MS=250;
 const maintenanceClocks=new WeakMap();
 const torrentInfoCaches=new WeakMap();
 
@@ -52,12 +54,6 @@ async function formObject(request){
     else out[key]=[out[key],value];
   }
   return out;
-}
-
-function preferencesForProfile(world){
-  const keys=Array.isArray(world.profile.preferenceKeys)?new Set(world.profile.preferenceKeys):null;
-  if(!keys)return{...world.preferences};
-  return Object.fromEntries(Object.entries(world.preferences).filter(([key])=>keys.has(key)));
 }
 
 function ensureCapability(world,name){return capabilityAvailable(world,name);}
@@ -117,26 +113,24 @@ function torrentInfoRows(world,url,now){
     cached.hits++;
     return sliceTorrentRows(cached.rows,params);
   }
-
   const query=Object.fromEntries(params.entries());
   delete query.offset;
   delete query.limit;
-  const bucket=Math.floor(now/SIMULATION_TIME_BUCKET_MS)*SIMULATION_TIME_BUCKET_MS;
-  query.now=String(Math.max(Number(world.lastTick)||0,bucket));
-  const rows=enrichTorrentRowsIndexed(world,listTorrents(world,query));
+  const rows=enrichTorrentRowsIndexed(world,listTorrentsSnapshot(world,query,now));
   torrentInfoCaches.set(world,{key,rid:Number(world.rid||0),createdAt:now,rows,hits:0});
   return sliceTorrentRows(rows,params);
 }
 
 export function simulatorApiCacheStats(world){
-  const cached=torrentInfoCaches.get(world);
-  if(!cached)return{cached:false,rows:0,hits:0};
-  return{cached:true,rows:cached.rows.length,hits:cached.hits,ageMs:Math.max(0,Date.now()-cached.createdAt),rid:cached.rid,key:cached.key};
+  const cached=torrentInfoCaches.get(world),snapshot=runtimeSnapshotStats(world);
+  if(!cached)return{cached:false,rows:0,hits:0,snapshot};
+  return{cached:true,rows:cached.rows.length,hits:cached.hits,ageMs:Math.max(0,Date.now()-cached.createdAt),rid:cached.rid,key:cached.key,snapshot};
 }
 
 export function clearSimulatorApiCaches(world){
   maintenanceClocks.delete(world);
   torrentInfoCaches.delete(world);
+  clearRuntimeSnapshot(world);
 }
 
 export async function handleApi(world,request,url=new URL(request.url)){
@@ -192,7 +186,7 @@ export async function handleApi(world,request,url=new URL(request.url)){
     return empty();
   }
 
-  if(path==='transfer/info'&&method==='GET')return json(transferInfo(world));
+  if(path==='transfer/info'&&method==='GET')return json(transferSnapshot(world,now));
   if(path==='transfer/speedLimitsMode'&&method==='GET')return text(world.altSpeedMode?'1':'0');
   if(path==='transfer/toggleSpeedLimitsMode'&&method==='POST'){
     world.altSpeedMode=!world.altSpeedMode;return empty();
@@ -210,7 +204,7 @@ export async function handleApi(world,request,url=new URL(request.url)){
     const f=await formObject(request);banPeers(world,f.peers);return empty();
   }
 
-  if(path==='sync/maindata'&&method==='GET')return json(enrichMainData(world,mainData(world,url.searchParams.get('rid')||0)));
+  if(path==='sync/maindata'&&method==='GET')return json(enrichMainData(world,mainDataSnapshot(world,url.searchParams.get('rid')||0,now)));
   if(path==='sync/torrentPeers'&&method==='GET'){
     const hash=url.searchParams.get('hash')||'';
     return json({rid:Number(world.peerRid)||1,full_update:true,peers:filterBannedPeers(world,peers(world,hash))});
