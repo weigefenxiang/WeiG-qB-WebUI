@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import {createWorld,deleteTorrents,renameTorrent} from '../simulator/core/engine.js';
+import {filesForTorrent,pieceHashes,pieceStates,setShareLimits,setSuperSeeding} from '../simulator/core/torrent-content.js';
+import {propertiesForTorrent,trackersForTorrent} from '../simulator/core/torrent-metadata.js';
+import {runtimeIndexStats} from '../simulator/core/runtime-index.js';
 import {
   clearRuntimeSnapshot,listTorrentsSnapshot,mainDataSnapshot,runtimeSnapshotStats,transferSnapshot
 } from '../simulator/core/runtime-view.js';
@@ -71,4 +74,23 @@ function make(seed){return createWorld({profile,count:5000,seed,now:baseNow});}
   assert.equal(stats.indexBuilds,1,'explicit runtime cache clear must drop membership and aggregate caches together');
 }
 
-console.log('Virtual qB runtime index contract passed: 5000-row membership maps and transfer aggregates are reused across coherent reads, hash queries select directly, and membership changes invalidate safely.');
+{
+  const world=make('detail-index');
+  const target=world.torrents.find(t=>t.has_metadata!==false)||world.torrents[0];
+  assert.ok(propertiesForTorrent(world,target.hash,baseNow+1000),'torrent properties must resolve from the shared hash index');
+  let stats=runtimeIndexStats(world);
+  assert.equal(stats.indexedRows,5000,'first detail lookup must build the shared 5000-row membership index exactly once');
+  const hitsBefore=stats.indexHits;
+  assert.ok(trackersForTorrent(world,target.hash,baseNow+1000));
+  assert.ok(Array.isArray(filesForTorrent(world,target.hash)));
+  assert.ok(Array.isArray(pieceStates(world,target.hash)));
+  assert.ok(Array.isArray(pieceHashes(world,target.hash)));
+  const selected=[world.torrents[120].hash,world.torrents[2300].hash,world.torrents[4700].hash].join('|');
+  assert.equal(setShareLimits(world,selected,{ratioLimit:2.5}),3);
+  assert.equal(setSuperSeeding(world,selected,true),3);
+  stats=runtimeIndexStats(world);
+  assert.equal(stats.indexedRows,5000,'detail and selected-action reads must keep one shared membership index');
+  assert.ok(stats.indexHits>=hitsBefore+6,'detail endpoints and multi-hash actions must reuse the existing index instead of rescanning 5000 torrents');
+}
+
+console.log('Virtual qB runtime index contract passed: 5000-row membership maps and transfer aggregates are reused across coherent reads, hash queries and detail endpoints select directly, and membership changes invalidate safely.');

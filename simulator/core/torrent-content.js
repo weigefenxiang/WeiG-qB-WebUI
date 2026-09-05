@@ -1,5 +1,6 @@
 import {CANONICAL,deleteTorrents,recordTorrentChanges,schedule} from './engine.js';
 import {deterministicUnit,hash32} from './random.js';
+import {torrentIndex,torrentsByHashes} from './runtime-index.js';
 
 const MiB=1024*1024;
 const PIECE_SIZE=4*MiB;
@@ -14,11 +15,10 @@ const SHARE_ACTIONS=new Map([
 function selected(world,hashes){
   const text=String(hashes||'');
   if(text==='all')return world.torrents||[];
-  const wanted=new Set(text.split('|').filter(Boolean));
-  return (world.torrents||[]).filter(t=>wanted.has(t.hash));
+  return torrentsByHashes(world,text).torrents;
 }
 
-function torrent(world,hash){return (world.torrents||[]).find(t=>t.hash===String(hash||''))||null;}
+function torrent(world,hash){return torrentIndex(world).byHash.get(String(hash||''))||null;}
 function progressOf(t){return t.size>0?Math.max(0,Math.min(1,Number(t.downloaded||0)/Number(t.size))):0;}
 function pieceCount(t){return Math.max(1,Math.ceil(Math.max(1,Number(t.size)||1)/PIECE_SIZE));}
 
@@ -168,8 +168,9 @@ export function shareLimitProjection(world,t){
 
 export function enrichTorrentRows(world,rows){
   const list=Array.isArray(rows)?rows:Object.values(rows||{});
+  const byHash=torrentIndex(world).byHash;
   for(const row of list){
-    const t=torrent(world,row.hash);if(!t)continue;
+    const t=byHash.get(String(row.hash||''));if(!t)continue;
     Object.assign(row,shareLimitProjection(world,t));
   }
   return rows;

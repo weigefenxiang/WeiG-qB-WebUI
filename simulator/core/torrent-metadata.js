@@ -1,10 +1,11 @@
 import {deterministicUnit} from './random.js';
 import {atLeast} from './profiles.js';
+import {torrentIndex} from './runtime-index.js';
 
 const MiB=1024*1024;
 const PIECE_SIZE=4*MiB;
 
-function torrent(world,hash){return (world.torrents||[]).find(t=>t.hash===String(hash||''))||null;}
+function torrent(world,hash){return torrentIndex(world).byHash.get(String(hash||''))||null;}
 function apiAtLeast(world,minimum){return atLeast(world.profile?.webApiVersion||'0',minimum);}
 function progressOf(t){return t.size>0?Math.max(0,Math.min(1,Number(t.downloaded||0)/Number(t.size))):0;}
 function pieceCount(t){return Math.max(1,Math.ceil(Math.max(1,Number(t.size)||1)/PIECE_SIZE));}
