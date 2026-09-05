@@ -6,10 +6,20 @@ import {filterTorrentCandidates,sliceTorrentWindow} from './torrent-query.js';
 const SNAPSHOT_INTERVAL_MS=1000;
 const runtimeSnapshots=new WeakMap();
 
+function rateControlKey(world){
+  return[
+    world.altSpeedMode?1:0,
+    Number(world.globalDownloadLimit)||0,
+    Number(world.globalUploadLimit)||0,
+    Number(world.preferences?.alt_dl_limit)||0,
+    Number(world.preferences?.alt_up_limit)||0
+  ].join('|');
+}
+
 function diagnostics(world){
   let stats=runtimeSnapshots.get(world);
   if(!stats){
-    stats={bucket:-1,advanceRuns:0,projectedRows:0,sortedRows:0,indexBuilds:0,indexHits:0,hashSelections:0,aggregateRuns:0,aggregateHits:0};
+    stats={bucket:-1,advanceRuns:0,controlReschedules:0,controlKey:null,projectedRows:0,sortedRows:0,indexBuilds:0,indexHits:0,hashSelections:0,aggregateRuns:0,aggregateHits:0};
     runtimeSnapshots.set(world,stats);
   }
   return stats;
@@ -18,7 +28,7 @@ function diagnostics(world){
 export function runtimeSnapshotStats(world){
   const stats=diagnostics(world);
   return{
-    advanceRuns:stats.advanceRuns,projectedRows:stats.projectedRows,sortedRows:stats.sortedRows,bucket:stats.bucket,
+    advanceRuns:stats.advanceRuns,controlReschedules:stats.controlReschedules,projectedRows:stats.projectedRows,sortedRows:stats.sortedRows,bucket:stats.bucket,
     indexBuilds:stats.indexBuilds,indexHits:stats.indexHits,hashSelections:stats.hashSelections,
     aggregateRuns:stats.aggregateRuns,aggregateHits:stats.aggregateHits,
     index:runtimeIndexStats(world)
@@ -30,8 +40,18 @@ export function clearRuntimeSnapshot(world){runtimeSnapshots.delete(world);clear
 export function advanceRuntimeSnapshot(world,now=Date.now()){
   const stats=diagnostics(world);
   const lastTick=Number(world.lastTick)||0;
+  const currentControlKey=rateControlKey(world);
+  const controlsChanged=stats.controlKey!==null&&stats.controlKey!==currentControlKey;
+  stats.controlKey=currentControlKey;
   const bucket=Math.floor(Math.max(lastTick,Number(now)||0)/SNAPSHOT_INTERVAL_MS)*SNAPSHOT_INTERVAL_MS;
-  if(bucket<=lastTick||stats.bucket===bucket)return false;
+  if(bucket<=lastTick||stats.bucket===bucket){
+    if(!controlsChanged&&stats.bucket!==-1)return false;
+    const result=schedule(world,Math.max(lastTick,Number(now)||lastTick),0);
+    recordTorrentChanges(world,[...result.changed],[]);
+    stats.bucket=bucket;
+    stats.controlReschedules++;
+    return true;
+  }
   const elapsed=Math.max(0,Math.min(3600,(bucket-lastTick)/1000));
   if(elapsed<=0){stats.bucket=bucket;return false;}
   const result=schedule(world,bucket,elapsed);

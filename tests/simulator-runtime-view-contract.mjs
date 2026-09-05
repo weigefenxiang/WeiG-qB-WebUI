@@ -36,6 +36,25 @@ function make(seed='runtime-view'){return createWorld({profile,count:5000,seed,n
 }
 
 {
+  const world=make('same-bucket-rate-controls');
+  world.preferences.alt_dl_limit=32;
+  world.preferences.alt_up_limit=16;
+  const normal=transferSnapshot(world,baseNow+100);
+  assert.ok(normal.dl_info_speed>32*1024,'same-bucket control fixture must begin above alternate cap');
+  world.altSpeedMode=true;
+  const alternate=transferSnapshot(world,baseNow+200);
+  assert.ok(alternate.dl_info_speed<=32*1024,'alternate mode changed inside one snapshot bucket must immediately reschedule torrent rates');
+  assert.ok(alternate.up_info_speed<=16*1024,'alternate upload mode must also apply inside the current bucket');
+  world.altSpeedMode=false;
+  world.globalDownloadLimit=48*1024;
+  const limited=transferSnapshot(world,baseNow+300);
+  assert.ok(limited.dl_info_speed<=48*1024,'normal global download limit changed inside one bucket must immediately reschedule rates');
+  const stats=runtimeSnapshotStats(world);
+  assert.equal(stats.advanceRuns,0,'same-bucket control changes must not advance simulation time');
+  assert.equal(stats.controlReschedules,3,'initial same-bucket read plus two control changes should require only three zero-elapsed schedules');
+}
+
+{
   const legacy=make('semantic-equivalence'),modern=make('semantic-equivalence');
   const now=baseNow+1000;
   const legacyRows=listTorrents(legacy,{sort:'added_on',reverse:'true',limit:200,offset:400,now});
@@ -68,4 +87,4 @@ function make(seed='runtime-view'){return createWorld({profile,count:5000,seed,n
   assert.doesNotMatch(router,/\btransferInfo\(world/,'router hot path must not fall back to legacy transferInfo world advancement');
 }
 
-console.log('Virtual qB runtime-view contract passed: hot read APIs share one 1-second world advance, unsorted pages project only requested rows, sorted views project once, and qB API semantics remain equivalent.');
+console.log('Virtual qB runtime-view contract passed: hot reads share one-second advances, same-bucket rate-control changes reschedule without advancing time, pages project minimally, and qB API values remain equivalent.');
