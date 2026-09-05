@@ -7,6 +7,10 @@ import {
   setSSLParameters,setTags,setTorrentPath,storeClientData,torrentCount,torrentLimitMap
 } from '../core/torrent-auxiliary.js';
 import {
+  defaultSavePath,deleteApiKey,directoryContent,networkInterfaceAddresses,networkInterfaces,requestShutdown,
+  rotateApiKey,sendTestEmail
+} from '../core/app-services.js';
+import {
   rssAddFeed,rssAddFolder,rssMarkAsRead,rssMatchingArticles,rssMoveItem,rssSetFeedRefreshInterval,rssSetFeedURL,
   searchDelete,searchDownloadTorrent,searchEnablePlugins,searchInstallPlugins,searchPlugins,searchUninstallPlugins,
   searchUpdatePlugins
@@ -18,6 +22,7 @@ function empty(status=200){return new Response([204,205,304].includes(status)?nu
 function notFound(){return text('Not Found',404);}
 function badRequest(message='Bad Request'){return text(message,400);}
 function conflict(message="Torrent's metadata has not yet downloaded"){return text(message,409);}
+function boolParam(value){return ['1','true','yes','on'].includes(String(value||'').toLowerCase());}
 async function formObject(request){
   const out={},form=await request.formData();
   for(const [key,value] of form.entries()){
@@ -35,13 +40,16 @@ function apiAtLeast(world,minimum){return atLeast(world.profile?.webApiVersion||
 function exactCatalog(world){return Array.isArray(world.profile?.apiActions);}
 function bootstrapAllowed(world,path){
   if(exactCatalog(world))return true;
+  if(path==='app/defaultSavePath'||path==='app/shutdown')return qbAtLeast(world,'4.1.0');
+  if(['app/sendTestEmail','app/getDirectoryContent','app/networkInterfaceList','app/networkInterfaceAddressList'].includes(path))return qbAtLeast(world,'5.0.0');
+  if(['app/rotateAPIKey','app/deleteAPIKey'].includes(path))return apiAtLeast(world,'2.14.1');
+  if(path==='app/processInfo')return qbAtLeast(world,'5.2.0')&&apiAtLeast(world,'2.15.1');
   if(path==='torrents/count')return qbAtLeast(world,'4.3.0');
   if(['torrents/setSavePath','torrents/setDownloadPath','torrents/export'].includes(path))return qbAtLeast(world,'4.6.0');
   if(['torrents/pieceAvailability','torrents/addWebSeeds','torrents/editWebSeed','torrents/removeWebSeeds','torrents/setComment','torrents/setTags'].includes(path))return Number(world.profile?.major)>=5;
   if(['torrents/SSLParameters','torrents/setSSLParameters'].includes(path))return qbAtLeast(world,'5.0.0');
   if(['torrents/fetchMetadata','torrents/parseMetadata','torrents/saveMetadata'].includes(path))return qbAtLeast(world,'5.2.0')&&apiAtLeast(world,'2.11.9');
   if(path.startsWith('clientdata/'))return qbAtLeast(world,'5.2.0')&&apiAtLeast(world,'2.13.1');
-  if(path==='app/processInfo')return qbAtLeast(world,'5.2.0')&&apiAtLeast(world,'2.15.1');
   if(path.startsWith('rss/'))return apiAtLeast(world,'2.1.0');
   if(path.startsWith('search/'))return apiAtLeast(world,'2.1.1');
   return true;
@@ -65,7 +73,22 @@ function normalizeParsedMetadataNames(items,parsed,arrayResponse){
 export async function handleAuxiliaryApi(world,request,path,method,url){
   if(!bootstrapAllowed(world,path))return notFound();
 
+  if(path==='app/defaultSavePath'&&method==='GET')return text(defaultSavePath(world));
   if(path==='app/processInfo'&&method==='GET')return json(processInfo(world));
+  if(path==='app/sendTestEmail'&&method==='POST'){sendTestEmail(world);return empty();}
+  if(path==='app/getDirectoryContent'&&method==='GET'){
+    if(!url.searchParams.has('dirPath'))return badRequest('Missing `dirPath`');
+    const result=directoryContent(world,url.searchParams.get('dirPath'),url.searchParams.get('mode')||'all',boolParam(url.searchParams.get('withMetadata')));
+    return result===null?badRequest('Invalid directory query'):json(result);
+  }
+  if(path==='app/rotateAPIKey'&&method==='POST')return json(rotateApiKey(world));
+  if(path==='app/deleteAPIKey'&&method==='POST'){deleteApiKey(world);return empty();}
+  if(path==='app/networkInterfaceList'&&method==='GET')return json(networkInterfaces());
+  if(path==='app/networkInterfaceAddressList'&&method==='GET'){
+    if(!url.searchParams.has('iface'))return badRequest('Missing `iface`');
+    return json(networkInterfaceAddresses(url.searchParams.get('iface')||''));
+  }
+  if(path==='app/shutdown'&&method==='POST'){requestShutdown(world);return empty();}
 
   if(path==='clientdata/load'&&method==='GET'){
     const raw=url.searchParams.get('keys');

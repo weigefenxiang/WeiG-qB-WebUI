@@ -13,6 +13,7 @@ function post(path,body){return new Request(`https://example.invalid/api/v2/${pa
   const w=world('5.1.2','2.11.8'),t=w.torrents[0];
   let r=await handleApi(w,get(`torrents/SSLParameters?hash=${t.hash}`));assert.equal(r.status,200,'qB 5.1 SSL parameters should remain available');
   r=await handleApi(w,post('torrents/fetchMetadata',{source:'magnet:?xt=urn:btih:abc&dn=TooEarly'}));assert.equal(r.status,404,'metadata preview endpoints must not leak into qB 5.1 bootstrap profiles');
+  r=await handleApi(w,post('app/rotateAPIKey',{}));assert.equal(r.status,404,'API-key rotation must not leak before WebAPI 2.14.1');
 }
 
 {
@@ -52,6 +53,20 @@ function post(path,body){return new Request(`https://example.invalid/api/v2/${pa
 
   r=await handleApi(w,get('app/processInfo'));assert.equal(r.status,200);const first=await r.json();
   r=await handleApi(w,get('app/processInfo'));const second=await r.json();assert.deepEqual(second,first);assert.ok(Number.isInteger(first.launch_time));
+
+  r=await handleApi(w,get('app/defaultSavePath'));assert.equal(r.status,200);assert.equal(await r.text(),w.preferences.save_path);
+  r=await handleApi(w,get(`app/getDirectoryContent?dirPath=${encodeURIComponent('/downloads')}&mode=dirs&withMetadata=true`));assert.equal(r.status,200);
+  const dirs=await r.json();assert.ok(dirs.length>0);assert.ok(dirs.every(item=>item.type==='dir'&&typeof item.name==='string'));
+  r=await handleApi(w,post('app/sendTestEmail',{}));assert.equal(r.status,200);assert.ok(w.lastTestEmailAt>0);assert.ok(w.logs.some(item=>item.message.includes('test email')));
+
+  r=await handleApi(w,post('app/rotateAPIKey',{}));assert.equal(r.status,200);const key1=(await r.json()).apiKey;assert.match(key1,/^[0-9a-f]{32}$/);
+  r=await handleApi(w,post('app/rotateAPIKey',{}));const key2=(await r.json()).apiKey;assert.notEqual(key2,key1,'API-key rotation must replace the current key');
+  r=await handleApi(w,post('app/deleteAPIKey',{}));assert.equal(r.status,200);assert.equal(w.webApiKey,'');
+
+  r=await handleApi(w,get('app/networkInterfaceList'));assert.equal(r.status,200);const ifaces=await r.json();assert.ok(ifaces.some(item=>item.value==='eth0'));
+  r=await handleApi(w,get('app/networkInterfaceAddressList?iface=eth0'));assert.equal(r.status,200);const addresses=await r.json();assert.ok(addresses.includes('192.0.2.10'));
+
+  r=await handleApi(w,post('app/shutdown',{}));assert.equal(r.status,200);assert.equal(w.shutdownRequested,true);assert.equal(w.environment.online,false,'virtual shutdown must stop virtual network activity without affecting the real browser');
 }
 
 {
@@ -61,4 +76,11 @@ function post(path,body){return new Request(`https://example.invalid/api/v2/${pa
   assert.equal(r.status,200);const parsed=await r.json();assert.equal(Array.isArray(parsed),false,'pre-2.13 parseMetadata should preserve keyed-object response shape');assert.ok(parsed['legacy.torrent']);
 }
 
-console.log('Virtual qB modern contract passed: SSL state, manual peer visibility, metadata fetch/parse/save lifecycle, clientdata persistence and process info.');
+{
+  const w=world('4.1.0','2.0.0');
+  let r=await handleApi(w,get('app/defaultSavePath'));assert.equal(r.status,200,'defaultSavePath must remain available on the original v2 WebAPI generation');
+  assert.equal(await r.text(),w.preferences.save_path);
+  r=await handleApi(w,get('app/processInfo'));assert.equal(r.status,404,'processInfo must not leak into qB4');
+}
+
+console.log('Virtual qB modern contract passed: SSL state, manual peer visibility, metadata fetch/parse/save, clientdata, process info, virtual filesystem, network interfaces, API keys, test email and shutdown semantics.');
