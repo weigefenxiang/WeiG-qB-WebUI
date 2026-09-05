@@ -1,6 +1,6 @@
 import {
   addTags,addVirtualTorrent,authenticate,capabilityAvailable,createCategory,createTags,deleteTags,
-  deleteTorrents,logs,logout,mainData,peers,properties,removeCategories,removeTags,renameTorrent,
+  deleteTorrents,logs,logout,mainData,peers,removeCategories,removeTags,renameTorrent,
   setCategory,setForceStart,setPaused,setPreferences,setTorrentLimit,transferInfo,listTorrents
 } from '../core/engine.js';
 import {
@@ -12,12 +12,14 @@ import {
   applyShareLimitPolicies,enrichMainData,enrichTorrentRows,filesForTorrent,pieceHashes,pieceStates,
   renameFile,renameFolder,setShareLimits,setSuperSeeding
 } from '../core/torrent-content.js';
+import {hasTorrentMetadata,propertiesForTorrent,torrentExists,trackersForTorrent} from '../core/torrent-metadata.js';
 import {atLeast} from '../core/profiles.js';
 import {
   creatorAddTask,creatorDeleteTask,creatorStatus,creatorTorrentFile,rssAddFeed,rssItems,rssRefreshItem,
   rssRemoveItem,rssRemoveRule,rssRenameRule,rssRules,rssSetRule,searchResults,searchStart,searchStatus,
   searchStop,webseedList
 } from '../core/virtual-services.js';
+import {upstreamRouteAvailable} from './upstream-gates.js';
 
 function json(value,status=200,headers={}){
   return new Response(JSON.stringify(value),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store',...headers}});
@@ -30,6 +32,7 @@ function empty(status=200,headers={}){
 }
 function notFound(){return text('Not Found',404);}
 function notImplemented(path){return text(`Simulator endpoint not implemented: ${path}`,501);}
+function metadataConflict(){return text("Torrent's metadata has not yet downloaded",409);}
 
 async function formObject(request){
   const out={};
@@ -55,11 +58,6 @@ function hasSearch(world){return apiAtLeast(world,'2.1.1');}
 function hasTorrentCreator(world){return world.profile.major>=5&&apiAtLeast(world,'2.11.0');}
 function hasRenameFolder(world){return apiAtLeast(world,'2.8.0')||String(world.profile.qbVersion).replace(/^v/i,'')==='4.3.3';}
 
-function trackerList(world,hash){
-  const t=world.torrents.find(x=>x.hash===hash);
-  return t?.trackers||[];
-}
-
 function categoryObject(world){
   return Object.fromEntries(Object.entries(world.categories).map(([key,value])=>[key,{name:value.name,savePath:value.savePath}]));
 }
@@ -70,6 +68,7 @@ export async function handleApi(world,request,url=new URL(request.url)){
   if(index<0)return notFound();
   const path=url.pathname.slice(index+marker.length).replace(/^\/+/, '');
   const method=request.method.toUpperCase();
+  if(!upstreamRouteAvailable(world.profile,path))return notFound();
   const now=Date.now();
   applyRuntimePolicies(world,now);
   applyShareLimitPolicies(world,now);
@@ -143,20 +142,28 @@ export async function handleApi(world,request,url=new URL(request.url)){
 
   if(path==='torrents/info'&&method==='GET')return json(enrichTorrentRows(world,listTorrents(world,Object.fromEntries(url.searchParams.entries()))));
   if(path==='torrents/properties'&&method==='GET'){
-    const value=properties(world,url.searchParams.get('hash')||'');
+    const value=propertiesForTorrent(world,url.searchParams.get('hash')||'',now);
     return value?json(value):notFound();
   }
   if(path==='torrents/files'&&method==='GET'){
-    const value=filesForTorrent(world,url.searchParams.get('hash')||'',url.searchParams.get('indexes'));
-    return value?json(value):notFound();
+    const hash=url.searchParams.get('hash')||'';
+    const metadata=hasTorrentMetadata(world,hash);if(metadata===null)return notFound();if(!metadata)return json([]);
+    const value=filesForTorrent(world,hash,url.searchParams.get('indexes'));
+    return value===null?notFound():json(value);
   }
   if(path==='torrents/pieceStates'&&method==='GET'){
-    const value=pieceStates(world,url.searchParams.get('hash')||'');return value?json(value):notFound();
+    const hash=url.searchParams.get('hash')||'';
+    const metadata=hasTorrentMetadata(world,hash);if(metadata===null)return notFound();if(!metadata)return json([]);
+    const value=pieceStates(world,hash);return value===null?notFound():json(value);
   }
   if(path==='torrents/pieceHashes'&&method==='GET'){
-    const value=pieceHashes(world,url.searchParams.get('hash')||'');return value?json(value):notFound();
+    const hash=url.searchParams.get('hash')||'';
+    const metadata=hasTorrentMetadata(world,hash);if(metadata===null)return notFound();if(!metadata)return json([]);
+    const value=pieceHashes(world,hash);return value===null?notFound():json(value);
   }
-  if(path==='torrents/trackers'&&method==='GET')return json(trackerList(world,url.searchParams.get('hash')||''));
+  if(path==='torrents/trackers'&&method==='GET'){
+    const value=trackersForTorrent(world,url.searchParams.get('hash')||'',now);return value===null?notFound():json(value);
+  }
   if(path==='torrents/webseeds'&&method==='GET')return json(webseedList(world,url.searchParams.get('hash')||''));
 
   const qb5=world.profile.major>=5;
@@ -215,15 +222,21 @@ export async function handleApi(world,request,url=new URL(request.url)){
     const f=await formObject(request);setLocation(world,f.hashes,f.location);return empty();
   }
   if(path==='torrents/filePrio'&&method==='POST'){
-    const f=await formObject(request);return setFilePriority(world,f.hash,f.id,f.priority)?empty():notFound();
+    const f=await formObject(request),hash=String(f.hash||'');
+    if(!torrentExists(world,hash))return notFound();if(hasTorrentMetadata(world,hash)===false)return metadataConflict();
+    return setFilePriority(world,hash,f.id,f.priority)?empty():notFound();
   }
   if(path==='torrents/renameFile'&&method==='POST'){
     if(!ensureCapability(world,'renameFile'))return notFound();
-    const f=await formObject(request);return renameFile(world,f.hash,f.oldPath,f.newPath)?empty():notFound();
+    const f=await formObject(request),hash=String(f.hash||'');
+    if(!torrentExists(world,hash))return notFound();if(hasTorrentMetadata(world,hash)===false)return metadataConflict();
+    return renameFile(world,hash,f.oldPath,f.newPath)?empty():notFound();
   }
   if(path==='torrents/renameFolder'&&method==='POST'){
     if(!hasRenameFolder(world))return notFound();
-    const f=await formObject(request);return renameFolder(world,f.hash,f.oldPath,f.newPath)?empty():notFound();
+    const f=await formObject(request),hash=String(f.hash||'');
+    if(!torrentExists(world,hash))return notFound();if(hasTorrentMetadata(world,hash)===false)return metadataConflict();
+    return renameFolder(world,hash,f.oldPath,f.newPath)?empty():notFound();
   }
   if(path==='torrents/setDownloadLimit'&&method==='POST'){
     const f=await formObject(request);setTorrentLimit(world,f.hashes,'download',f.limit);return empty();
