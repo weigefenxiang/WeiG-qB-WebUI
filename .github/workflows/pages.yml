@@ -150,4 +150,6 @@ jobs:
           google-chrome --version
 
       - name: Verify deployed Virtual qB Pages runtime
-        run: node tests/pages-live-acceptance.mjs
+        run: |
+          node tests/pages-live-acceptance.mjs
+          node tests/pages-live-services.mjs
