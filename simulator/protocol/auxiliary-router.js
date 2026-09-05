@@ -1,5 +1,5 @@
-import {peers} from '../core/engine.js';
 import {atLeast} from '../core/profiles.js';
+import {generatedPeers} from '../core/peer-view.js';
 import {filterBannedPeers} from '../core/torrent-actions.js';
 import {addVirtualTorrentBatch} from '../core/torrent-add.js';
 import {parseSpeedLimitsMode,setVirtualSpeedLimitsMode} from '../core/transfer-controls.js';
@@ -143,7 +143,7 @@ export async function handleAuxiliaryApi(world,request,path,method,url){
   }
 
   if(path==='sync/torrentPeers'&&method==='GET'){
-    const hash=url.searchParams.get('hash')||'',merged=mergeManualPeers(world,hash,peers(world,hash));
+    const hash=url.searchParams.get('hash')||'',merged=mergeManualPeers(world,hash,generatedPeers(world,hash));
     if(merged===null)return notFound();
     return json({rid:Number(world.peerRid)||1,full_update:true,peers:filterBannedPeers(world,merged)});
   }
