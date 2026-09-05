@@ -3,6 +3,7 @@ import {createWorld,deleteTorrents,renameTorrent} from '../simulator/core/engine
 import {filesForTorrent,pieceHashes,pieceStates,setShareLimits,setSuperSeeding} from '../simulator/core/torrent-content.js';
 import {propertiesForTorrent,trackersForTorrent} from '../simulator/core/torrent-metadata.js';
 import {runtimeIndexStats} from '../simulator/core/runtime-index.js';
+import {addTrackers,editTracker,reannounceTorrents,removeTrackers,setFilePriority,toggleSequential} from '../simulator/core/torrent-actions.js';
 import {
   clearRuntimeSnapshot,listTorrentsSnapshot,mainDataSnapshot,runtimeSnapshotStats,transferSnapshot
 } from '../simulator/core/runtime-view.js';
@@ -111,4 +112,24 @@ function make(seed){return createWorld({profile,count:5000,seed,now:baseNow});}
   assert.ok(stats.indexHits>=hitsBefore+6,'detail endpoints and multi-hash actions must reuse the existing index instead of rescanning 5000 torrents');
 }
 
-console.log('Virtual qB runtime index contract passed: 5000-row membership maps and transfer aggregates invalidate on live rate controls, hash queries and detail endpoints select directly, and membership changes invalidate safely.');
+{
+  const world=make('torrent-action-index');
+  const metadataTarget=world.torrents.find(t=>t.has_metadata!==false)||world.torrents[0];
+  const selected=[metadataTarget.hash,world.torrents[2500].hash,world.torrents[4999].hash].join('|');
+  assert.equal(reannounceTorrents(world,selected,baseNow+1000),3,'multi-hash action must still affect the selected torrents');
+  let stats=runtimeIndexStats(world);
+  assert.equal(stats.indexedRows,5000,'first action selection must build one shared membership index');
+  const hitsBefore=stats.indexHits;
+  assert.equal(toggleSequential(world,selected),3);
+  assert.equal(setFilePriority(world,metadataTarget.hash,'0',6),true);
+  const added='https://action-index.example/announce';
+  assert.equal(addTrackers(world,metadataTarget.hash,added),true);
+  const edited='https://action-index.example/edited';
+  assert.equal(editTracker(world,metadataTarget.hash,added,edited),true);
+  assert.equal(removeTrackers(world,metadataTarget.hash,edited),true);
+  stats=runtimeIndexStats(world);
+  assert.equal(stats.indexedRows,5000,'non-membership torrent actions must retain the same membership index');
+  assert.ok(stats.indexHits>=hitsBefore+5,'selected actions, file priority and tracker mutations must reuse the hash index instead of rescanning 5000 torrents');
+}
+
+console.log('Virtual qB runtime index contract passed: 5000-row membership maps and transfer aggregates invalidate on live rate controls, hash queries, details and torrent actions select directly, and membership changes invalidate safely.');

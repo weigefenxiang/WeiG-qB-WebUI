@@ -1,5 +1,6 @@
 import {CANONICAL,normalizeQueuePositions,reconcileManagedPaths,recordTorrentChanges,schedule} from './engine.js';
 import {deterministicUnit,hash32} from './random.js';
+import {torrentIndex,torrentsByHashes} from './runtime-index.js';
 
 const MiB=1024*1024;
 const runtimeDiagnostics=new WeakMap();
@@ -17,8 +18,7 @@ export function simulatorRuntimePolicyStats(world){
 function selected(world,hashes){
   const text=String(hashes||'');
   if(text==='all')return world.torrents;
-  const wanted=new Set(text.split('|').filter(Boolean));
-  return world.torrents.filter(t=>wanted.has(t.hash));
+  return torrentsByHashes(world,text).torrents;
 }
 
 function appendLog(world,message,type=1,now=Date.now()){
@@ -373,7 +373,7 @@ export function setLocation(world,hashes,location,now=Date.now()){
 }
 
 export function setFilePriority(world,hash,ids,priority){
-  const t=world.torrents.find(x=>x.hash===String(hash||''));
+  const t=torrentIndex(world).byHash.get(String(hash||''));
   if(!t)return false;
   const wanted=new Set(String(ids??'').split('|').flatMap(x=>x.split(',')).map(x=>Number(x)).filter(Number.isFinite));
   const value=Math.max(0,Math.round(Number(priority)||0));
@@ -390,14 +390,14 @@ function parseTrackerUrls(value){
 }
 
 export function addTrackers(world,hash,urls){
-  const t=world.torrents.find(x=>x.hash===String(hash||''));if(!t)return false;
+  const t=torrentIndex(world).byHash.get(String(hash||''));if(!t)return false;
   const existing=new Set((t.trackers||[]).map(x=>x.url));
   for(const url of parseTrackerUrls(urls))if(!existing.has(url)){t.trackers.push({url,status:0,tier:0,num_peers:0,num_seeds:0,num_leeches:0,num_downloaded:0,msg:'Not contacted yet'});existing.add(url);}
   recordTorrentChanges(world,[t.hash],[]);return true;
 }
 
 export function removeTrackers(world,hash,urls){
-  const t=world.torrents.find(x=>x.hash===String(hash||''));if(!t)return false;
+  const t=torrentIndex(world).byHash.get(String(hash||''));if(!t)return false;
   const doomed=new Set(parseTrackerUrls(urls));
   t.trackers=(t.trackers||[]).filter(x=>!doomed.has(x.url));
   if(doomed.has(t.tracker))t.tracker=t.trackers[0]?.url||'';
@@ -405,7 +405,7 @@ export function removeTrackers(world,hash,urls){
 }
 
 export function editTracker(world,hash,oldUrl,newUrl){
-  const t=world.torrents.find(x=>x.hash===String(hash||''));if(!t)return false;
+  const t=torrentIndex(world).byHash.get(String(hash||''));if(!t)return false;
   const tracker=(t.trackers||[]).find(x=>x.url===String(oldUrl||''));if(!tracker)return false;
   tracker.url=String(newUrl||'').trim();tracker.status=0;tracker.msg='Not contacted yet';
   if(t.tracker===oldUrl)t.tracker=tracker.url;
