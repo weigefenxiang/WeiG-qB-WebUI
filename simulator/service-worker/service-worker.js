@@ -2,6 +2,7 @@ import {createWorld} from './__simulator/core/engine.js';
 import {profileByVersion,BOOTSTRAP_RELEASES} from './__simulator/core/profiles.js';
 import {applyScenario} from './__simulator/core/scenarios.js';
 import {loadWorld,saveWorld,deleteWorld} from './__simulator/storage/indexeddb.js';
+import {createWorldCache} from './__simulator/storage/world-cache.js';
 import {handleApi} from './__simulator/protocol/router.js';
 
 const SOURCE_PRIVATE='./__source/private/';
@@ -9,6 +10,7 @@ const SOURCE_PUBLIC='./__source/public/';
 const CATALOG_URL='./__simulator/versions/catalog.generated.json';
 const DEFAULT_SESSION='default';
 const clientSessions=new Map();
+const worlds=createWorldCache({load:loadWorld,save:saveWorld,remove:deleteWorld,maxEntries:6,readPersistMs:3000});
 let queue=Promise.resolve();
 
 self.addEventListener('install',event=>event.waitUntil(self.skipWaiting()));
@@ -59,17 +61,18 @@ async function sessionIdForEvent(event,url){
 
 async function ensureWorld(event,url){
   const cfg=configFromUrl(url),id=await sessionIdForEvent(event,url);
-  let world=cfg.reset?null:await loadWorld(id);
+  if(cfg.reset)await worlds.reset(id);
+  let world=cfg.reset?null:await worlds.get(id);
   if(!world){
     const catalog=await loadCatalog();
     const profile=profileByVersion(catalog,cfg.qb);
     world=createWorld({profile,count:cfg.count,seed:cfg.seed,scenario:cfg.scenario});
     applyScenario(world,cfg.scenario);
     world.lab={clean:cfg.clean};
-    await saveWorld(id,world);
+    await worlds.seed(id,world,{persist:true});
   }else if(cfg.clean!==undefined){
     world.lab=world.lab||{};
-    if(url.searchParams.has('clean'))world.lab.clean=cfg.clean;
+    if(url.searchParams.has('clean')&&world.lab.clean!==cfg.clean){world.lab.clean=cfg.clean;await worlds.touch(id,world,{mutation:true});}
   }
   return{id,world};
 }
@@ -115,13 +118,8 @@ async function handleAsset(event,url){
   const path=relativePath(url);
   if(path==='weigg-install.json'){
     return new Response(JSON.stringify({
-      version:'virtual-lab',
-      gitSha:'pages-artifact',
-      qbPath:'/virtual',
-      hostPath:'/virtual',
-      simulator:true,
-      qbVersion:world.profile.qbVersion,
-      webApiVersion:world.profile.webApiVersion
+      version:'virtual-lab',gitSha:'pages-artifact',qbPath:'/virtual',hostPath:'/virtual',simulator:true,
+      qbVersion:world.profile.qbVersion,webApiVersion:world.profile.webApiVersion
     }),{headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});
   }
   return fetchSource(world.authenticated?'private':'public',path);
@@ -129,13 +127,13 @@ async function handleAsset(event,url){
 
 async function handleApiQueued(event,url){
   const id=await sessionIdForEvent(event,url);
-  let world=await loadWorld(id);
+  let world=await worlds.get(id);
   if(!world){
     const ensured=await ensureWorld(event,url);
     world=ensured.world;
   }
   const response=await handleApi(world,event.request,url);
-  await saveWorld(id,world);
+  await worlds.touch(id,world,{mutation:event.request.method.toUpperCase()!=='GET'});
   return response;
 }
 
@@ -144,10 +142,11 @@ self.addEventListener('message',event=>{
   if(data.type==='weigg-sim-reset'){
     event.waitUntil((async()=>{
       const id=String(data.id||DEFAULT_SESSION);
-      await deleteWorld(id);
+      await worlds.reset(id);
       event.source?.postMessage?.({type:'weigg-sim-reset-complete',id});
     })());
   }
+  if(data.type==='weigg-sim-flush')event.waitUntil(worlds.flush(data.id));
 });
 
 self.addEventListener('fetch',event=>{
