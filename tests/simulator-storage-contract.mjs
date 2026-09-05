@@ -26,14 +26,14 @@ const cache=createWorldCache({
   a.value=3;clock=4200;await cache.touch('alpha',a,{mutation:true});
   assert.equal(saves,2,'POST/action mutations must persist immediately');
   assert.equal(persisted.get('alpha').value,3);
-}
 
-{
+  a.value=4;clock=4300;await cache.touch('alpha',a,{mutation:false});
+  assert.equal(saves,2,'a fresh GET mutation should remain dirty until checkpoint/eviction');
   await cache.seed('beta',{value:10},{persist:false});
   await cache.seed('gamma',{value:20},{persist:false});
   assert.ok(cache.stats().entries<=2,'resident world cache must stay bounded');
-  assert.equal(persisted.get('alpha').value,3,'eviction must not lose the already-checkpointed session');
-  assert.ok([...persisted.keys()].some(id=>id==='beta'||id==='gamma'),'dirty LRU eviction must flush a virtual session before dropping it');
+  assert.equal(persisted.get('alpha').value,4,'dirty LRU eviction must checkpoint the evicted session before dropping it');
+  assert.equal(saves,3,'dirty LRU eviction must perform exactly one additional persistence write');
 }
 
 {
