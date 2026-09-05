@@ -75,6 +75,46 @@ function ensureEnvironmentBaseline(world){
 }
 
 function clamp(value,min,max){return Math.max(min,Math.min(max,value));}
+function smoothstep(value){const x=clamp(value,0,1);return x*x*(3-2*x);}
+
+function interpolatedNoise(seed,key,now,periodMs){
+  const bucket=Math.floor(now/periodMs),phase=(now-bucket*periodMs)/periodMs;
+  const a=deterministicUnit(seed,`${key}:${bucket}`),b=deterministicUnit(seed,`${key}:${bucket+1}`);
+  return a+(b-a)*smoothstep(phase);
+}
+
+function configuredRateLimit(world,direction){
+  const prefs=world.preferences||{};
+  if(world.altSpeedMode){
+    const kib=direction==='down'?Number(prefs.alt_dl_limit)||0:Number(prefs.alt_up_limit)||0;
+    return Math.max(0,kib*1024);
+  }
+  return Math.max(0,direction==='down'?Number(world.globalDownloadLimit)||0:Number(world.globalUploadLimit)||0);
+}
+
+function limitJitterFactor(world,now,direction){
+  const seed=world.seed||'virtual';
+  const micro=(interpolatedNoise(seed,`limit-${direction}-micro`,now,1600)*2-1)*.01;
+  const drift=(interpolatedNoise(seed,`limit-${direction}-drift`,now,12000)*2-1)*.004;
+  const eventPeriod=45000,eventBucket=Math.floor(now/eventPeriod),eventPhase=(now-eventBucket*eventPeriod)/eventPeriod;
+  const eventRoll=deterministicUnit(seed,`limit-${direction}-event:${eventBucket}`);
+  let dip=0;
+  if(eventRoll<.15){
+    const depth=.05+deterministicUnit(seed,`limit-${direction}-event-depth:${eventBucket}`)*.05;
+    const envelope=Math.sin(Math.PI*eventPhase)**2;
+    dip=depth*envelope;
+  }
+  return clamp(1+micro+drift-dip,.88,1.015);
+}
+
+function applyConfiguredLimitJitter(world,now){
+  const env=ensureEnvironmentBaseline(world);
+  const physicalDown=Math.max(0,Number(env.waveDownCapacity??env.downCapacity??env.baseDownCapacity)||0);
+  const physicalUp=Math.max(0,Number(env.waveUpCapacity??env.upCapacity??env.baseUpCapacity)||0);
+  const downLimit=configuredRateLimit(world,'down'),upLimit=configuredRateLimit(world,'up');
+  env.downCapacity=downLimit>0?Math.min(physicalDown,Math.floor(downLimit*limitJitterFactor(world,now,'down'))):physicalDown;
+  env.upCapacity=upLimit>0?Math.min(physicalUp,Math.floor(upLimit*limitJitterFactor(world,now,'up'))):physicalUp;
+}
 
 function applyEnvironmentWave(world,now){
   const env=ensureEnvironmentBaseline(world);
@@ -86,8 +126,10 @@ function applyEnvironmentWave(world,now){
   const uploadWave=.76+deterministicUnit(seed,`upload:${bucket}`)*.24;
   const diskWriteWave=.78+deterministicUnit(seed,`disk-write:${bucket}`)*.22;
   const diskReadWave=.82+deterministicUnit(seed,`disk-read:${bucket}`)*.18;
-  env.downCapacity=Math.max(0,Math.floor(env.baseDownCapacity*networkWave));
-  env.upCapacity=Math.max(0,Math.floor(env.baseUpCapacity*uploadWave));
+  env.waveDownCapacity=Math.max(0,Math.floor(env.baseDownCapacity*networkWave));
+  env.waveUpCapacity=Math.max(0,Math.floor(env.baseUpCapacity*uploadWave));
+  env.downCapacity=env.waveDownCapacity;
+  env.upCapacity=env.waveUpCapacity;
   env.diskWriteCapacity=Math.max(0,Math.floor(env.baseDiskWriteCapacity*diskWriteWave));
   env.diskReadCapacity=Math.max(0,Math.floor(env.baseDiskReadCapacity*diskReadWave));
   env.latencyMs=Math.max(0,Math.round(env.baseLatencyMs+deterministicUnit(seed,`latency:${bucket}`)*Math.max(2,env.baseJitterMs)));
@@ -162,6 +204,7 @@ export function applyRuntimePolicies(world,now=Date.now()){
     const active=start===end?true:(start<end?minute>=start&&minute<end:minute>=start||minute<end);
     world.altSpeedMode=active;
   }
+  applyConfiguredLimitJitter(world,now);
   if(changed.length){
     const scheduled=schedule(world,now,0);
     recordTorrentChanges(world,[...changed,...scheduled.changed],[]);
