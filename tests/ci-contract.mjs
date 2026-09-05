@@ -119,7 +119,7 @@ assert(pagesVerify.includes('needs: deploy'),'Pages live verification must run o
 assert(pagesVerify.includes('runs-on: ubuntu-24.04'),'Pages live verification must pin Ubuntu 24.04');
 assert(/WEIGG_BROWSER_CHANNEL:\s*chrome/.test(pagesVerify),'Pages live verification must explicitly select hosted Chrome');
 assert(pagesVerify.includes('WEIGG_PAGES_URL: ${{ needs.deploy.outputs.page_url }}'),'Pages live verification must consume the deploy action page URL');
-assert(pagesVerify.includes('WEIGG_EXPECTED_SIMULATOR_SHA: ${{ env.WEIGG_PAGES_SOURCE_SHA }}'),'Pages live verification must bind evidence to the relayed source exact SHA');
+assert(pagesVerify.includes("WEIGG_EXPECTED_SIMULATOR_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}"),'Pages live verification must bind evidence directly to the relayed source exact SHA');
 assert(pagesVerify.includes('ref: ${{ env.WEIGG_PAGES_SOURCE_SHA }}'),'Pages live verification must execute test code from the exact source SHA');
 assert(pagesVerify.includes('npm ci --no-audit --no-fund --prefer-offline'),'Pages live verification must install repository-locked dependencies with npm ci');
 assert(pagesVerify.includes("require('playwright/package.json').version")&&pagesVerify.includes('google-chrome --version'),'Pages live verification must log Playwright and hosted Chrome identity');

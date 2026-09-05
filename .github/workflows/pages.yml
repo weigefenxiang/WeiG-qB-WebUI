@@ -123,7 +123,7 @@ jobs:
     env:
       WEIGG_BROWSER_CHANNEL: chrome
       WEIGG_PAGES_URL: ${{ needs.deploy.outputs.page_url }}
-      WEIGG_EXPECTED_SIMULATOR_SHA: ${{ env.WEIGG_PAGES_SOURCE_SHA }}
+      WEIGG_EXPECTED_SIMULATOR_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
     steps:
       - name: Checkout exact WeiG source
         uses: actions/checkout@v6
