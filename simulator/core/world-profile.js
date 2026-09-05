@@ -1,4 +1,5 @@
 import {profileByVersion} from './profiles.js';
+import {sanitizeWorldPreferenceValues} from '../preferences/migration.js';
 
 function sameList(a,b){
   if(a===b)return true;
@@ -30,12 +31,17 @@ function sameProfile(a,b){
 }
 
 export function reconcileWorldProfile(world,catalog,requestedVersion=null){
-  if(!world||typeof world!=='object')return{changed:false,profile:null};
+  if(!world||typeof world!=='object')return{changed:false,profile:null,sanitizedPreferenceKeys:[]};
   const version=String(requestedVersion||world.profile?.qbVersion||'').replace(/^v/,'');
-  if(!version)return{changed:false,profile:world.profile||null};
+  if(!version)return{changed:false,profile:world.profile||null,sanitizedPreferenceKeys:[]};
   const next=profileByVersion(catalog,version);
-  if(!next||String(next.qbVersion)!==version)return{changed:false,profile:world.profile||null};
-  if(sameProfile(world.profile,next))return{changed:false,profile:world.profile};
-  world.profile=next;
-  return{changed:true,profile:next};
+  if(!next||String(next.qbVersion)!==version)return{changed:false,profile:world.profile||null,sanitizedPreferenceKeys:[]};
+  const profileChanged=!sameProfile(world.profile,next);
+  if(profileChanged)world.profile=next;
+  const sanitation=sanitizeWorldPreferenceValues(world,profileChanged?next:world.profile);
+  return{
+    changed:profileChanged||sanitation.changed,
+    profile:world.profile,
+    sanitizedPreferenceKeys:sanitation.sanitizedKeys
+  };
 }

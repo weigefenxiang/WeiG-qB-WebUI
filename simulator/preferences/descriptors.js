@@ -35,6 +35,18 @@ function descriptorMap(input) {
   return out;
 }
 
+export function preferenceValueMatchesType(value, type) {
+  if (!isPreferenceType(type)) return true;
+  switch (type) {
+    case PreferenceType.BOOLEAN: return typeof value === 'boolean';
+    case PreferenceType.NUMBER: return typeof value === 'number' && Number.isFinite(value);
+    case PreferenceType.STRING: return typeof value === 'string';
+    case PreferenceType.ARRAY: return Array.isArray(value);
+    case PreferenceType.OBJECT: return !!value && typeof value === 'object' && !Array.isArray(value);
+    default: return false;
+  }
+}
+
 export function preferencePlaceholder(type) {
   switch (type) {
     case PreferenceType.BOOLEAN: return false;
@@ -43,6 +55,19 @@ export function preferencePlaceholder(type) {
     case PreferenceType.OBJECT: return {};
     default: return '';
   }
+}
+
+function selectCandidate(candidates, declaredType) {
+  const rejected = [];
+  for (const candidate of candidates) {
+    if (!candidate.present) continue;
+    if (declaredType && !preferenceValueMatchesType(candidate.value, declaredType)) {
+      rejected.push(candidate.provenance);
+      continue;
+    }
+    return {value: cloneValue(candidate.value), provenance: candidate.provenance, rejected};
+  }
+  return {value: preferencePlaceholder(declaredType || PreferenceType.STRING), provenance: PreferenceProvenance.SAFE_PLACEHOLDER, rejected};
 }
 
 export function buildPreferenceDescriptors(base = {}, keys = null, options = {}) {
@@ -60,36 +85,18 @@ export function buildPreferenceDescriptors(base = {}, keys = null, options = {})
 
   for (const key of wanted) {
     const declared = explicit.get(key) || {};
-    let value;
-    let provenance;
-
-    if (hasOwn(source, key)) {
-      value = cloneValue(source[key]);
-      provenance = PreferenceProvenance.WORLD;
-    }
-    else if (hasOwn(declared, 'default')) {
-      value = cloneValue(declared.default);
-      provenance = PreferenceProvenance.PROFILE;
-    }
-    else if (hasOwn(profileDefaults, key)) {
-      value = cloneValue(profileDefaults[key]);
-      provenance = PreferenceProvenance.PROFILE;
-    }
-    else if (hasKnownPreferenceDefault(key)) {
-      value = knownPreferenceDefault(key);
-      provenance = PreferenceProvenance.KNOWN_DEFAULT;
-    }
-    else if (hasOwn(inherited, key)) {
-      value = cloneValue(inherited[key]);
-      provenance = PreferenceProvenance.INHERITED;
-    }
-    else {
-      const placeholderType = isPreferenceType(declared.type) ? declared.type : PreferenceType.STRING;
-      value = preferencePlaceholder(placeholderType);
-      provenance = PreferenceProvenance.SAFE_PLACEHOLDER;
-    }
-
-    const type = isPreferenceType(declared.type) ? declared.type : preferenceTypeOf(value);
+    const declaredType = isPreferenceType(declared.type) ? declared.type : null;
+    const known = hasKnownPreferenceDefault(key) ? knownPreferenceDefault(key) : undefined;
+    const selected = selectCandidate([
+      {present: hasOwn(source, key), value: source[key], provenance: PreferenceProvenance.WORLD},
+      {present: hasOwn(declared, 'default'), value: declared.default, provenance: PreferenceProvenance.PROFILE},
+      {present: hasOwn(profileDefaults, key), value: profileDefaults[key], provenance: PreferenceProvenance.PROFILE},
+      {present: hasKnownPreferenceDefault(key), value: known, provenance: PreferenceProvenance.KNOWN_DEFAULT},
+      {present: hasOwn(inherited, key), value: inherited[key], provenance: PreferenceProvenance.INHERITED}
+    ], declaredType);
+    const value = selected.value;
+    const provenance = selected.provenance;
+    const type = declaredType || preferenceTypeOf(value);
     const structured = type === PreferenceType.ARRAY || type === PreferenceType.OBJECT;
     let coverage;
 
@@ -124,6 +131,8 @@ export function buildPreferenceDescriptors(base = {}, keys = null, options = {})
       writable,
       provenance,
       exactValue: provenance !== PreferenceProvenance.SAFE_PLACEHOLDER,
+      valueTypeVerified: preferenceValueMatchesType(value, type),
+      rejectedValueSources: selected.rejected.slice(),
       schemaSource: declared.source || null,
       sourceConfidence: declared.sourceConfidence || null,
       setterPresent: typeof declared.setterPresent === 'boolean' ? declared.setterPresent : null,
@@ -149,6 +158,7 @@ export function summarizePreferenceCoverage(descriptors = []) {
   const byProvenance = Object.fromEntries(Object.values(PreferenceProvenance).map((source) => [source, 0]));
   const unknownKeys = [];
   const readOnlyKeys = [];
+  const repairedKeys = [];
   let exactValueCount = 0;
   let upstreamSetterCount = 0;
   let highConfidenceSchemaCount = 0;
@@ -161,6 +171,7 @@ export function summarizePreferenceCoverage(descriptors = []) {
     if (item.exactValue) exactValueCount++;
     if (item.setterPresent === true) upstreamSetterCount++;
     if (item.sourceConfidence === 'HIGH') highConfidenceSchemaCount++;
+    if (Array.isArray(item.rejectedValueSources) && item.rejectedValueSources.length) repairedKeys.push(item.key);
   }
 
   return {
@@ -173,6 +184,8 @@ export function summarizePreferenceCoverage(descriptors = []) {
     provisionalValueCount: items.length - exactValueCount,
     upstreamSetterCount,
     highConfidenceSchemaCount,
+    repairedValueCount: repairedKeys.length,
+    repairedKeys,
     byCoverage,
     byProvenance,
     unknownKeys,

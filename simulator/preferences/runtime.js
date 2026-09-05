@@ -6,6 +6,7 @@ import {
   materializePreferenceSurface,
   summarizePreferenceCoverage
 } from './descriptors.js';
+import { sanitizeWorldPreferenceValues } from './migration.js';
 import { setPreferences } from '../core/engine.js';
 
 function preferenceKeysForWorld(world) {
@@ -25,6 +26,7 @@ function descriptorOptions(world, options, registry) {
 }
 
 export function createPreferenceRuntime(world, options = {}) {
+  const sanitation = sanitizeWorldPreferenceValues(world, world?.profile);
   const keys = Array.isArray(options.allowedKeys)
     ? options.allowedKeys.map(String)
     : preferenceKeysForWorld(world);
@@ -74,7 +76,7 @@ export function createPreferenceRuntime(world, options = {}) {
     },
 
     coverage() {
-      return summarizePreferenceCoverage(descriptors);
+      return {...summarizePreferenceCoverage(descriptors), sanitizedWorldKeys:sanitation.sanitizedKeys.slice()};
     }
   };
 }
