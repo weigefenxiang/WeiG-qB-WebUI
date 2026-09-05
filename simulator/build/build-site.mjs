@@ -43,18 +43,33 @@ const catalogData=JSON.parse(await fs.readFile(catalog,'utf8'));
 const descriptorTotals=(Array.isArray(catalogData)?catalogData:[]).reduce((sum,item)=>{
   const stats=item?.preferenceDescriptorStats||{};
   sum.preferences+=Number(stats.total)||0;
+  sum.getterPresent+=Number(stats.getterPresent)||0;
+  sum.setterPresent+=Number(stats.setterPresent)||0;
+  sum.readTyped+=Number(stats.readTyped)||0;
+  sum.writeTyped+=Number(stats.writeTyped)||0;
+  sum.exactAgreement+=Number(stats.exactAgreement)||0;
+  sum.mismatched+=Number(stats.mismatched)||0;
+  sum.safeFallback+=Number(stats.safeFallback)||0;
   sum.typed+=Number(stats.typed)||0;
   sum.highConfidence+=Number(stats.highConfidence)||0;
   sum.unresolved+=Number(stats.unresolved)||0;
   return sum;
-},{preferences:0,typed:0,highConfidence:0,unresolved:0});
+},{preferences:0,getterPresent:0,setterPresent:0,readTyped:0,writeTyped:0,exactAgreement:0,mismatched:0,safeFallback:0,typed:0,highConfidence:0,unresolved:0});
 const latestProfile=Array.isArray(catalogData)&&catalogData.length?catalogData.at(-1):null;
 const preferenceCatalog={
+  schemaVersion:2,
   profiles:Array.isArray(catalogData)?catalogData.length:0,
   ...descriptorTotals,
   latest:latestProfile?{
     qbVersion:latestProfile.qbVersion,
     preferenceCount:latestProfile.preferenceDescriptorStats?.total||0,
+    getterPresent:latestProfile.preferenceDescriptorStats?.getterPresent||0,
+    setterPresent:latestProfile.preferenceDescriptorStats?.setterPresent||0,
+    readTyped:latestProfile.preferenceDescriptorStats?.readTyped||0,
+    writeTyped:latestProfile.preferenceDescriptorStats?.writeTyped||0,
+    exactAgreement:latestProfile.preferenceDescriptorStats?.exactAgreement||0,
+    mismatched:latestProfile.preferenceDescriptorStats?.mismatched||0,
+    safeFallback:latestProfile.preferenceDescriptorStats?.safeFallback||0,
     typed:latestProfile.preferenceDescriptorStats?.typed||0,
     unresolved:latestProfile.preferenceDescriptorStats?.unresolved||0
   }:null

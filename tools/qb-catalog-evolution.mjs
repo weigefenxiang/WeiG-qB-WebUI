@@ -18,10 +18,23 @@ function schemaValue(item, key) {
   return item[key] ?? null;
 }
 
+function changed(before, now, key) {
+  return schemaValue(before, key) !== schemaValue(now, key);
+}
+
+function pushChange(target, key, before, now, field) {
+  if (!changed(before, now, field)) return false;
+  target.push({key, from:schemaValue(before, field), to:schemaValue(now, field)});
+  return true;
+}
+
 export function annotateCatalogEvolution(input = []) {
   const catalog = Array.isArray(input) ? input : [];
   const firstSeen = new Map();
+  const firstWritable = new Map();
   const lastSchemaChange = new Map();
+  const lastReadTypeChange = new Map();
+  const lastWriteTypeChange = new Map();
 
   for (let index = 0; index < catalog.length; index++) {
     const current = catalog[index];
@@ -35,21 +48,36 @@ export function annotateCatalogEvolution(input = []) {
     const added = previous ? difference(currentKeys, previousKeys) : [...currentKeys].sort();
     const removed = previous ? difference(previousKeys, currentKeys) : [];
     const typeChanged = [];
+    const readTypeChanged = [];
+    const writeTypeChanged = [];
     const writableChanged = [];
+    const agreementChanged = [];
+    const fallbackChanged = [];
 
     for (const key of currentKeys) {
       if (!firstSeen.has(key)) firstSeen.set(key, version);
       const now = currentDescriptors.get(key);
       const before = previousDescriptors.get(key);
-      if (before && schemaValue(before, 'type') !== schemaValue(now, 'type')) {
-        typeChanged.push({key, from: schemaValue(before, 'type'), to: schemaValue(now, 'type')});
-        lastSchemaChange.set(key, version);
+      if (now?.writable === true && !firstWritable.has(key)) firstWritable.set(key, version);
+      let schemaChanged = false;
+      if (before) {
+        if (pushChange(typeChanged,key,before,now,'type')) schemaChanged = true;
+        if (pushChange(readTypeChanged,key,before,now,'readType')) {
+          schemaChanged = true;
+          lastReadTypeChange.set(key,version);
+        }
+        if (pushChange(writeTypeChanged,key,before,now,'writeType')) {
+          schemaChanged = true;
+          lastWriteTypeChange.set(key,version);
+        }
+        if (pushChange(writableChanged,key,before,now,'writable')) schemaChanged = true;
+        if (pushChange(agreementChanged,key,before,now,'typeAgreement')) schemaChanged = true;
+        if (pushChange(fallbackChanged,key,before,now,'upstreamFallbackValue')) schemaChanged = true;
       }
-      if (before && schemaValue(before, 'writable') !== schemaValue(now, 'writable')) {
-        writableChanged.push({key, from: schemaValue(before, 'writable'), to: schemaValue(now, 'writable')});
-        lastSchemaChange.set(key, version);
-      }
+      if (schemaChanged) lastSchemaChange.set(key, version);
       if (!lastSchemaChange.has(key)) lastSchemaChange.set(key, firstSeen.get(key));
+      if (!lastReadTypeChange.has(key)) lastReadTypeChange.set(key, firstSeen.get(key));
+      if (!lastWriteTypeChange.has(key)) lastWriteTypeChange.set(key, firstSeen.get(key));
     }
 
     current.releaseOrdinal = index;
@@ -57,7 +85,11 @@ export function annotateCatalogEvolution(input = []) {
       added,
       removed,
       typeChanged,
-      writableChanged
+      readTypeChanged,
+      writeTypeChanged,
+      writableChanged,
+      agreementChanged,
+      fallbackChanged
     };
     current.apiActionChanges = {
       added: previous ? difference(current.apiActions, previous.apiActions) : [...setOf(current.apiActions)].sort(),
@@ -68,7 +100,10 @@ export function annotateCatalogEvolution(input = []) {
       current.preferenceDescriptors = current.preferenceDescriptors.map((descriptor) => ({
         ...descriptor,
         firstSeenInLabCatalog: firstSeen.get(String(descriptor.key)) || version,
-        schemaLastChangedInLabCatalog: lastSchemaChange.get(String(descriptor.key)) || firstSeen.get(String(descriptor.key)) || version
+        firstWritableInLabCatalog: firstWritable.get(String(descriptor.key)) || null,
+        schemaLastChangedInLabCatalog: lastSchemaChange.get(String(descriptor.key)) || firstSeen.get(String(descriptor.key)) || version,
+        readTypeLastChangedInLabCatalog: lastReadTypeChange.get(String(descriptor.key)) || firstSeen.get(String(descriptor.key)) || version,
+        writeTypeLastChangedInLabCatalog: lastWriteTypeChange.get(String(descriptor.key)) || firstSeen.get(String(descriptor.key)) || version
       }));
     }
   }
@@ -88,6 +123,12 @@ export function validateCatalogEvolution(catalog = []) {
       if (!keys.has(String(descriptor.key))) throw new Error(`${profile.qbVersion}: descriptor escaped preference surface: ${descriptor.key}`);
       if (!descriptor.firstSeenInLabCatalog) throw new Error(`${profile.qbVersion}: missing firstSeenInLabCatalog for ${descriptor.key}`);
       if (!descriptor.schemaLastChangedInLabCatalog) throw new Error(`${profile.qbVersion}: missing schemaLastChangedInLabCatalog for ${descriptor.key}`);
+      if (!descriptor.readTypeLastChangedInLabCatalog) throw new Error(`${profile.qbVersion}: missing readTypeLastChangedInLabCatalog for ${descriptor.key}`);
+      if (!descriptor.writeTypeLastChangedInLabCatalog) throw new Error(`${profile.qbVersion}: missing writeTypeLastChangedInLabCatalog for ${descriptor.key}`);
+      if (descriptor.writable === true && !descriptor.firstWritableInLabCatalog) throw new Error(`${profile.qbVersion}: writable descriptor lacks firstWritableInLabCatalog for ${descriptor.key}`);
+    }
+    for (const field of ['typeChanged','readTypeChanged','writeTypeChanged','writableChanged','agreementChanged','fallbackChanged']) {
+      if (!Array.isArray(profile.preferenceChanges[field])) throw new Error(`${profile.qbVersion}: missing preferenceChanges.${field}`);
     }
     if (index > 0) {
       const previous = profiles[index - 1];
