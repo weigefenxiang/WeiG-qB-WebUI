@@ -1,6 +1,8 @@
 import {peers} from '../core/engine.js';
 import {atLeast} from '../core/profiles.js';
 import {filterBannedPeers} from '../core/torrent-actions.js';
+import {addVirtualTorrentBatch} from '../core/torrent-add.js';
+import {parseSpeedLimitsMode,setVirtualSpeedLimitsMode} from '../core/transfer-controls.js';
 import {
   addPeers,addWebSeeds,editWebSeed,exportTorrentPayload,fetchMetadata,getSSLParameters,loadClientData,
   mergeManualPeers,parseMetadata,pieceAvailability,processInfo,removeWebSeeds,saveMetadata,setComment,
@@ -45,6 +47,7 @@ function bootstrapAllowed(world,path){
   if(['app/sendTestEmail','app/getDirectoryContent','app/networkInterfaceList','app/networkInterfaceAddressList'].includes(path))return qbAtLeast(world,'5.0.0');
   if(['app/rotateAPIKey','app/deleteAPIKey'].includes(path))return apiAtLeast(world,'2.14.1');
   if(path==='app/processInfo')return qbAtLeast(world,'5.2.0')&&apiAtLeast(world,'2.15.1');
+  if(path==='transfer/setSpeedLimitsMode')return qbAtLeast(world,'5.0.0');
   if(path==='torrents/count')return qbAtLeast(world,'4.3.0');
   if(['torrents/setSavePath','torrents/setDownloadPath','torrents/export'].includes(path))return qbAtLeast(world,'4.6.0');
   if(['torrents/pieceAvailability','torrents/addWebSeeds','torrents/editWebSeed','torrents/removeWebSeeds','torrents/setComment','torrents/setTags'].includes(path))return Number(world.profile?.major)>=5;
@@ -86,6 +89,24 @@ function searchResultResponse(world,id,limit,offset){
 
 export async function handleAuxiliaryApi(world,request,path,method,url){
   if(!bootstrapAllowed(world,path))return notFound();
+
+  if(path==='transfer/setSpeedLimitsMode'&&method==='POST'){
+    const f=await formObject(request);
+    if(!Object.prototype.hasOwnProperty.call(f,'mode'))return badRequest("'mode': invalid argument");
+    const mode=parseSpeedLimitsMode(f.mode);
+    if(mode===null)return badRequest("'mode': invalid argument");
+    setVirtualSpeedLimitsMode(world,mode);return empty();
+  }
+  if(path==='torrents/add'&&method==='POST'){
+    const f=await formObject(request),result=addVirtualTorrentBatch(world,f,Date.now());
+    if(apiAtLeast(world,'2.14.0'))return json({
+      success_count:result.success_count,
+      failure_count:result.failure_count,
+      pending_count:result.pending_count,
+      added_torrent_ids:result.added_torrent_ids
+    });
+    return text('Ok.');
+  }
 
   if(path==='app/defaultSavePath'&&method==='GET')return text(defaultSavePath(world));
   if(path==='app/processInfo'&&method==='GET')return json(processInfo(world));
