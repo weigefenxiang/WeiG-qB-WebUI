@@ -1,5 +1,5 @@
 import {capabilityAvailable,recordTorrentChanges,schedule,torrentView} from './engine.js';
-import {clearRuntimeIndexes,runtimeIndexStats,torrentIndex,torrentsByHashes,transferAggregate} from './runtime-index.js';
+import {clearRuntimeIndexes,primeTransferAggregate,runtimeIndexStats,torrentIndex,torrentsByHashes,transferAggregate} from './runtime-index.js';
 import {expandTorrentInfoRows} from './torrent-info-options.js';
 import {filterTorrentCandidates,sliceTorrentWindow} from './torrent-query.js';
 
@@ -37,6 +37,10 @@ export function runtimeSnapshotStats(world){
 
 export function clearRuntimeSnapshot(world){runtimeSnapshots.delete(world);clearRuntimeIndexes(world);}
 
+function rememberScheduleAggregate(world,result){
+  primeTransferAggregate(world,result?.totalDl,result?.totalUl);
+}
+
 export function advanceRuntimeSnapshot(world,now=Date.now()){
   const stats=diagnostics(world);
   const lastTick=Number(world.lastTick)||0;
@@ -48,6 +52,7 @@ export function advanceRuntimeSnapshot(world,now=Date.now()){
     if(!controlsChanged&&stats.bucket!==-1)return false;
     const result=schedule(world,Math.max(lastTick,Number(now)||lastTick),0);
     recordTorrentChanges(world,[...result.changed],[]);
+    rememberScheduleAggregate(world,result);
     stats.bucket=bucket;
     stats.controlReschedules++;
     return true;
@@ -57,6 +62,7 @@ export function advanceRuntimeSnapshot(world,now=Date.now()){
   const result=schedule(world,bucket,elapsed);
   world.lastTick=bucket;
   recordTorrentChanges(world,[...result.changed],[]);
+  rememberScheduleAggregate(world,result);
   stats.bucket=bucket;
   stats.advanceRuns++;
   return true;

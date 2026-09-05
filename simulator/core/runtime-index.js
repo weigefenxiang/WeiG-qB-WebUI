@@ -75,6 +75,17 @@ export function transferAggregate(world){
   return{downloadRate,uploadRate,rebuilt:true,hits:0};
 }
 
+export function primeTransferAggregate(world,downloadRate,uploadRate){
+  const entry={
+    signature:aggregateSignature(world),
+    downloadRate:Math.max(0,Number(downloadRate)||0),
+    uploadRate:Math.max(0,Number(uploadRate)||0),
+    hits:0
+  };
+  transferAggregates.set(world,entry);
+  return{downloadRate:entry.downloadRate,uploadRate:entry.uploadRate};
+}
+
 export function runtimeIndexStats(world){
   const index=torrentIndexes.get(world),aggregate=transferAggregates.get(world);
   return{

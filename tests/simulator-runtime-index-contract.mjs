@@ -20,8 +20,8 @@ function make(seed){return createWorld({profile,count:5000,seed,now:baseNow});}
   const main=mainDataSnapshot(world,0,now+100);
   const stats=runtimeSnapshotStats(world);
   assert.equal(main.server_state.dl_info_speed,transfer.dl_info_speed);
-  assert.equal(stats.aggregateRuns,1,'one coherent runtime snapshot must sum 5000 torrent rates only once');
-  assert.ok(stats.aggregateHits>=1,'sync/maindata must reuse the transfer aggregate computed by transfer/info in the same snapshot');
+  assert.equal(stats.aggregateRuns,0,'snapshot scheduling already knows aggregate rates and must not rescan 5000 torrents');
+  assert.ok(stats.aggregateHits>=2,'transfer/info and sync/maindata must consume the scheduler-primed aggregate');
 }
 
 {
@@ -32,13 +32,15 @@ function make(seed){return createWorld({profile,count:5000,seed,now:baseNow});}
   const normal=transferSnapshot(world,now);
   assert.ok(normal.dl_info_speed>32*1024,'fixture must exceed the tiny alternate download cap before switching modes');
   const before=runtimeSnapshotStats(world);
-  assert.equal(before.aggregateRuns,1);
+  assert.equal(before.aggregateRuns,0,'initial snapshot aggregate must be primed by scheduling');
   setVirtualSpeedLimitsMode(world,1,now+100);
   const alternate=transferSnapshot(world,now+200);
   const after=runtimeSnapshotStats(world);
   assert.ok(alternate.dl_info_speed<=32*1024,'same-bucket alternate mode must never reuse the normal-mode transfer aggregate');
   assert.ok(alternate.up_info_speed<=16*1024,'same-bucket alternate upload cap must invalidate the aggregate too');
-  assert.equal(after.aggregateRuns,2,'speed-limit mode change must rebuild the aggregate even when lastTick and rid stay otherwise reusable');
+  assert.equal(after.controlReschedules,1,'same-bucket rate-control change must perform one zero-time reschedule');
+  assert.equal(after.aggregateRuns,0,'rate-control reschedule must prime the new aggregate instead of scanning the torrent library again');
+  assert.ok(after.aggregateHits>=2,'normal and alternate reads must both consume scheduler-primed aggregates');
 }
 
 {
@@ -132,4 +134,4 @@ function make(seed){return createWorld({profile,count:5000,seed,now:baseNow});}
   assert.ok(stats.indexHits>=hitsBefore+5,'selected actions, file priority and tracker mutations must reuse the hash index instead of rescanning 5000 torrents');
 }
 
-console.log('Virtual qB runtime index contract passed: 5000-row membership maps and transfer aggregates invalidate on live rate controls, hash queries, details and torrent actions select directly, and membership changes invalidate safely.');
+console.log('Virtual qB runtime index contract passed: scheduler-primed transfer aggregates avoid duplicate 5000-row scans; membership maps, hash queries, details and torrent actions reuse the shared index safely.');
