@@ -827,24 +827,6 @@ export function properties(world,hash){
   };
 }
 
-export function peers(world,hash,now=Date.now()){
-  const t=world.torrents.find(x=>x.hash===hash);if(!t)return{};
-  const count=Math.min(40,t.connectedPeers||Math.min(t.seeders+t.leechers,8)),out={};
-  for(let i=0;i<count;i++){
-    const key=`10.0.${(i>>8)&255}.${(i%254)+1}:${50000+i}`;
-    out[key]={
-      client:pick(createRng(`${t.hash}:peer:${i}`),['qBittorrent 5.2.3','Transmission 4.0','libtorrent','Deluge 2.x']),
-      country_code:pick(createRng(`${t.hash}:country:${i}`),['US','DE','NL','JP','SG','CA']),
-      country:'Virtual',dl_speed:Math.floor(t.effectiveDownloadRate/Math.max(1,count)),
-      up_speed:Math.floor(t.effectiveUploadRate/Math.max(1,count)),downloaded:0,uploaded:0,
-      progress:deterministicUnit(world.seed,`${t.hash}:peer-progress:${i}`),connection:'µTP',flags:'D U',
-      flags_desc:'Interested; Unchoked',ip:`10.0.${(i>>8)&255}.${(i%254)+1}`,port:50000+i,
-      relevance:.9,files:''
-    };
-  }
-  return out;
-}
-
 export function logs(world,lastId=-1){
   return world.logs.filter(x=>x.id>Number(lastId||-1));
 }
