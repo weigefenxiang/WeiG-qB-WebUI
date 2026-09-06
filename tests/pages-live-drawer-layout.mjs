@@ -65,25 +65,24 @@ try{
       sidebar:rect(sidebar),filters:rect(filters),telemetry:rect(telemetry),meta:rect(meta),chart:rect(chart),
       sidebarDisplay:ss.display,gridRows:ss.gridTemplateRows,filterOverflowY:fs.overflowY,
       filterClientHeight:filters.clientHeight,filterScrollHeight:filters.scrollHeight,
-      telemetryGridRow:ts.gridRowStart,metaGridRow:ms.gridRowStart,
+      telemetryGridRow:ts.gridRowStart,metaGridRow:ms.gridRowStart,metaDisplay:ms.display,
       hasTorrent:!!telemetry.querySelector('#status-torrents'),hasStorage:!!telemetry.querySelector('#status-free-space'),
       hasTransfer:!!telemetry.querySelector('#transfer-capsule'),hasConnection:!!telemetry.querySelector('#status-connection'),
       metaText:(meta.textContent||'').replace(/\s+/g,' ').trim()
     };
   });
 
-  assert.equal(drawer.sidebarDisplay,'grid',`Drawer must resolve to the three-zone grid: ${JSON.stringify(drawer)}`);
+  assert.equal(drawer.sidebarDisplay,'grid',`Drawer must resolve to the responsive grid: ${JSON.stringify(drawer)}`);
   assert.ok(drawer.filterOverflowY==='auto'||drawer.filterOverflowY==='scroll',`only filters/facets may scroll: ${JSON.stringify(drawer)}`);
   assert.ok(drawer.filters.top>=drawer.sidebar.top-1&&drawer.filters.bottom<=drawer.telemetry.top+1,`filter zone must end before fixed telemetry: ${JSON.stringify(drawer)}`);
   assert.ok(drawer.hasTorrent&&drawer.hasStorage&&drawer.hasTransfer&&drawer.hasConnection,`canonical status nodes must be mounted in Drawer telemetry: ${JSON.stringify(drawer)}`);
-  assert.ok(drawer.chart.height>=90,`5-minute transfer chart must be visibly rendered in Drawer: ${JSON.stringify(drawer)}`);
-  assert.ok(drawer.telemetry.top>=drawer.sidebar.top&&drawer.telemetry.bottom<=drawer.meta.top+1,`telemetry/chart must remain directly above version metadata: ${JSON.stringify(drawer)}`);
-  assert.ok(drawer.meta.bottom<=drawer.sidebar.bottom+1&&drawer.sidebar.bottom-drawer.meta.bottom<=12,`qBittorrent/WebAPI metadata must be pinned to the physical bottom of Drawer: ${JSON.stringify(drawer)}`);
-  assert.ok(/qBittorrent/.test(drawer.metaText)&&/WebAPI/.test(drawer.metaText),`Drawer bottom must expose qBittorrent/WebAPI metadata: ${drawer.metaText}`);
+  assert.ok(drawer.chart.height>=90,`transfer chart must be visibly rendered in Drawer: ${JSON.stringify(drawer)}`);
+  assert.ok(drawer.metaDisplay==='none'||(drawer.meta.width===0&&drawer.meta.height===0),`mobile Drawer must hide qBittorrent/WebAPI/version metadata: ${JSON.stringify(drawer)}`);
+  assert.ok(drawer.telemetry.top>=drawer.sidebar.top&&drawer.telemetry.bottom<=drawer.sidebar.bottom+1&&drawer.sidebar.bottom-drawer.telemetry.bottom<=12,`telemetry/chart must use the released Drawer bottom space: ${JSON.stringify(drawer)}`);
   assert.deepEqual(errors,[],`deployed Drawer layout produced browser errors: ${errors.join('\n')}`);
 
   await context.close();
-  console.log(`Virtual qB Pages Drawer layout acceptance passed for ${expectedSha}: filters are the only scroll owner, telemetry + 5-minute chart stay visible, and qBittorrent/WebAPI metadata is pinned to the Drawer bottom.`);
+  console.log(`Virtual qB Pages Drawer layout acceptance passed for ${expectedSha}: filters are the only scroll owner, telemetry + transfer chart stay visible, and mobile version metadata is hidden.`);
 } finally {
   await browser.close();
 }
