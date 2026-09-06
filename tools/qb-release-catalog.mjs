@@ -21,9 +21,10 @@ function show(ref,file){return git('show',`${ref}:${file}`);}
 function parseApi(source,tag){const m=source.match(/API_VERSION\s*\{\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\}/);if(!m)throw new Error(`${tag}: cannot parse API_VERSION`);return`${m[1]}.${m[2]}.${m[3]}`;}
 function preferenceSurface(ref){
   const source=show(ref,'src/webui/api/appcontroller.cpp');
+  const sessionHeaderSource=show(ref,'src/base/bittorrent/session.h');
   const preferenceKeys=extractPreferenceKeys(source,ref);
   const structuralDescriptors=extractPreferenceDescriptors(source,ref);
-  const preferenceDescriptors=enrichPreferenceDescriptorsFromGetter(source,structuralDescriptors,ref);
+  const preferenceDescriptors=enrichPreferenceDescriptorsFromGetter(source,structuralDescriptors,ref,{sessionHeaderSource});
   if(preferenceDescriptors.length!==preferenceKeys.length)throw new Error(`${ref}: descriptor/key count mismatch ${preferenceDescriptors.length}/${preferenceKeys.length}`);
   const expected=new Set(preferenceKeys);
   const seen=new Set();

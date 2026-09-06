@@ -68,6 +68,17 @@ function cppType(type) {
   return null;
 }
 
+function sessionGetterTypes(source) {
+  const out = new Map();
+  const text = String(source || '');
+  const declaration = /^\s*(?:virtual\s+)?(.+?)\s+([A-Za-z_]\w*)\s*\(\s*\)\s*(?:const\s*)?(?:noexcept\s*)?(?:=\s*0\s*)?;\s*$/gm;
+  for (const match of text.matchAll(declaration)) {
+    const type = cppType(match[1]);
+    if (type && !out.has(match[2])) out.set(match[2], type);
+  }
+  return out;
+}
+
 function localTypes(body) {
   const out = new Map();
   const re = /(?:^|[;{}]\s*)\s*(?:const\s+)?((?:QJsonObject|QJsonArray|QVariantMap|QVariantHash|QVariantList|QStringList|QString|QByteArray|QLatin1String|QStringView|bool|q?u?int(?:8|16|32|64)?|u?int(?:8|16|32|64)?_t|int|unsigned(?:\s+int)?|long(?:\s+long)?|unsigned\s+long(?:\s+long)?|float|double|qsizetype|size_t)(?:\s*<[^;={}]+>)?)\s*[&*]?\s*([A-Za-z_]\w*)\b/gm;
@@ -106,7 +117,7 @@ function stripOuterParens(value) {
   return result;
 }
 
-function inferGetter(expression, locals) {
+function inferGetter(expression, locals, declaredSessionGetters = new Map()) {
   const value = stripOuterParens(expression);
   if (!value) return {type: null, kind: 'UNRESOLVED'};
   if (/^(?:true|false)$/.test(value)) return {type: 'boolean', kind: 'BOOLEAN_LITERAL'};
@@ -123,6 +134,10 @@ function inferGetter(expression, locals) {
   if (/\.(?:hour|minute|second|msec|size|count|length|toSecsSinceEpoch|toMSecsSinceEpoch)\s*\(/.test(value)) return {type: 'number', kind: 'NUMBER_METHOD'};
   const identifier = value.match(/^([A-Za-z_]\w*)$/);
   if (identifier && locals.has(identifier[1])) return {type: locals.get(identifier[1]), kind: 'LOCAL_DECLARATION'};
+  const sessionCall = value.match(/^session\s*->\s*([A-Za-z_]\w*)\s*\(\s*\)$/);
+  if (sessionCall && declaredSessionGetters.has(sessionCall[1])) {
+    return {type: declaredSessionGetters.get(sessionCall[1]), kind: 'SESSION_DECLARATION'};
+  }
   return {type: null, kind: 'UNRESOLVED'};
 }
 
@@ -135,16 +150,17 @@ function typeAgreement(readType, writeType, getterPresent, setterPresent) {
   return 'UNRESOLVED';
 }
 
-export function extractSemanticGetterHints(source, label = 'source') {
+export function extractSemanticGetterHints(source, label = 'source', options = {}) {
   const body = isolatePreferencesAction(source, label);
   const locals = localTypes(body);
+  const declaredSessionGetters = sessionGetterTypes(options.sessionHeaderSource);
   const out = new Map();
   DATA_KEY_RE.lastIndex = 0;
   for (const match of body.matchAll(DATA_KEY_RE)) {
     const key = capturedKey(match, 1);
     if (!key) continue;
     const expression = readExpression(body, match.index + match[0].length);
-    const inferred = inferGetter(expression, locals);
+    const inferred = inferGetter(expression, locals, declaredSessionGetters);
     out.set(key, {
       key,
       readType: inferred.type,
@@ -155,8 +171,8 @@ export function extractSemanticGetterHints(source, label = 'source') {
   return out;
 }
 
-export function enrichPreferenceDescriptorsFromGetter(source, descriptors = [], label = 'source') {
-  const semantic = extractSemanticGetterHints(source, label);
+export function enrichPreferenceDescriptorsFromGetter(source, descriptors = [], label = 'source', options = {}) {
+  const semantic = extractSemanticGetterHints(source, label, options);
   return (Array.isArray(descriptors) ? descriptors : []).map((descriptor) => {
     const hint = semantic.get(String(descriptor.key));
     if (!hint || descriptor.readType || !hint.readType) return descriptor;
