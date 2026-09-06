@@ -1,7 +1,7 @@
 import {recordTorrentChanges} from './engine.js';
 import {deterministicUnit,hash32} from './random.js';
 import {torrentIndex,torrentsByHashes} from './runtime-index.js';
-import {webseedList} from './virtual-services.js';
+import {indexedWebseedList as webseedList} from './webseed-view.js';
 
 const MiB=1024*1024;
 const PIECE_SIZE=4*MiB;

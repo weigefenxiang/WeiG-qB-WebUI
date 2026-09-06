@@ -168,15 +168,6 @@ export function rssRefreshItem(world,itemPath,now=Date.now()){
   return true;
 }
 
-export function webseedList(world,hash){
-  const t=(world.torrents||[]).find(x=>x.hash===String(hash||''));if(!t||t.private)return[];
-  if(!Array.isArray(t.webseeds)){
-    const count=1+(hash32(t.hash)%2);
-    t.webseeds=Array.from({length:count},(_,i)=>({url:`https://cdn${i+1}.example.invalid/${t.hash.slice(0,12)}/${encodeURIComponent(t.name)}`}));
-  }
-  return t.webseeds;
-}
-
 function searchRows(pattern,id,count=60){
   const rows=[];
   for(let i=0;i<count;i++){
