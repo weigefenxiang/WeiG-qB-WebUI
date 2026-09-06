@@ -76,7 +76,7 @@ html[data-theme=light]{--transfer-stat-surface:linear-gradient(180deg,#fff,#f7fa
   .transfer-chart-toolbar .ui-select--native,.transfer-unit-select{--ui-select-h:44px}
   .transfer-rate-grid{grid-template-columns:1fr}
   .transfer-rate-field{padding:11px 12px}.transfer-rate-field__input{height:44px}
-  #sidebar{display:grid!important;grid-template-rows:minmax(0,1fr) auto auto!important;align-content:stretch!important;overflow:hidden!important;padding:12px 10px 8px!important}
+  #sidebar{display:grid!important;grid-template-rows:minmax(0,1fr) auto auto!important;grid-auto-rows:0!important;align-content:stretch!important;overflow:hidden!important;padding:12px 10px 8px!important}
   #sidebar>.sidebar__section:first-child{grid-row:1;min-height:0;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain;padding-right:4px;padding-bottom:8px}
   .mobile-drawer-telemetry{display:grid!important;grid-row:2!important;order:20;min-width:0;flex:0 0 auto;gap:8px;margin:0!important;padding:10px 2px 8px!important;border-top:1px solid var(--border);background:transparent}
   .sidebar__meta{grid-row:3!important;order:30;align-self:end;min-width:0;flex:0 0 auto;margin:0!important;padding:8px 0 0!important;border-top:1px solid var(--border)}
