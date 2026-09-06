@@ -56,16 +56,27 @@ assert(settings.includes('syncAdaptiveRows')&&settings.includes("row.classList.a
 assert(settingsCss.includes('.setting-row.is-stacked .setting-control-slot>.ui-select')&&settingsCss.includes('--ui-select-width:100%'),'Stacked mobile Select must use the available row width');
 assert(settings.includes('W.Time.displayLabel(x.value)'),'Timezone labels must continue using the existing time owner instead of rewritten presentation copy');
 
+// RSS keeps the canonical feed URL/search entry immediately before Add Feed, with Refresh after it.
+const rssForm=index.match(/<section id="rss-view"[\s\S]*?<div id="rss-content"/)?.[0]||'';
+assert(rssForm.indexOf('id="rss-url"')>=0&&rssForm.indexOf('id="rss-add-btn"')>rssForm.indexOf('id="rss-url"')&&rssForm.indexOf('id="rss-refresh-btn"')>rssForm.indexOf('id="rss-add-btn"'),'Mobile RSS controls must remain URL/search entry, Add Feed, Refresh in that order');
+
 // Logs reuse one filter/follow state while making the mobile toolbar compact and searchable on demand.
 assert(logs.includes("follow.dataset.shortLabel")&&logs.includes("'最新'")&&logs.includes("'Latest'"),'Mobile Follow latest must expose compact localized copy');
 assert(logs.includes("toolbar.classList.toggle('is-search-open')")&&logs.includes("searchToggle.textContent=open?'×':'⌕'"),'Narrow Logs Search must expand from one icon without duplicating query state');
 assert(logsCss.includes('.logs-search{grid-column:1;height:38px;min-height:38px')&&logsCss.includes('@media(max-width:520px)'),'Mobile Logs Search must use canonical one-line height and a narrow collapse breakpoint');
+assert(logsCss.includes('.logs-toolbar.is-search-open .logs-search{display:flex;grid-column:1/-1;grid-row:2}')&&logsCss.includes('.logs-toolbar.is-search-open .logs-filters{grid-column:2;grid-row:1}'),'Expanded narrow Logs Search must open below without moving the filter controls');
 assert(logsCss.includes('.logs-follow::after{content:attr(data-short-label)'),'Mobile follow copy must use the compact visible label');
 
-// Mobile Torrent progress is one canonical bar with the real percentage immediately to its right.
+// Mobile Torrent progress is one canonical bar below metadata with the real percentage immediately to its right.
 assert(components.includes("cluster.className='mobile-card-progress'")&&components.includes("number.textContent=built.visual.percent+'%'"),'Mobile Torrent card must compose progress bar and percentage together');
 assert(!components.includes('progress-track--mobile-edge')&&!progressCss.includes('progress-track--mobile-edge'),'Retired duplicate bottom-edge progress presentation must not return');
-assert(progressCss.includes('.mobile-card-progress{display:grid;grid-template-columns:minmax(44px,1fr) max-content'),'Mobile progress percentage must remain to the right of the canonical bar');
+assert(progressCss.includes('.mobile-card-meta--rail{display:grid!important;grid-template-columns:minmax(0,1fr)!important;grid-template-rows:auto auto!important'),'Mobile progress must occupy its own row below Torrent metadata');
+assert(progressCss.includes('.mobile-card-progress{width:100%;max-width:none;min-width:0;margin-left:0;grid-template-columns:minmax(0,1fr) max-content'),'Mobile progress percentage must remain to the right of the canonical full-width bar');
+
+// Mobile pager and actions remain one row, growing labels first and shrinking typography only on very narrow screens.
+assert(layout.includes('#list-view .pager{display:grid;grid-template-columns:minmax(132px,auto) minmax(0,1fr)'),'Mobile pager and selection actions must share one row');
+assert(layout.includes("#torrent-selection-toolbar .btn{flex:1 1 0;min-width:0")&&layout.includes('font-size:clamp(9px,2.7vw,12px)'),'Mobile selection actions must have distinct flexible hit regions with readable labels');
+assert(layout.includes('@media(max-width:350px)')&&layout.includes('font-size:8px'),'Only very narrow Android widths may reduce pager/action typography further');
 
 // Mobile Drawer reuses the real Desktop status nodes and the bounded TransferRuntime history.
 assert(responsive.includes("moveNode(torrents,primary)")&&responsive.includes("moveNode(storage,primary)")&&responsive.includes("moveNode(capsule,transfer)")&&responsive.includes("moveNode(connection,transfer)"),'Mobile Drawer must move, not copy, canonical Desktop status nodes');
@@ -74,5 +85,6 @@ assert(responsive.includes('W.Transfer.mountCompactChart')&&transfer.includes('f
 assert(transfer.includes('function drawRateChart(canvas,windowSeconds')&&transfer.includes('drawRateChart(canvas,300,180,100)'),'Full and compact transfer charts must share one renderer and bounded 5-minute data');
 assert(transfer.includes("limitButton.onclick=openLimits")&&transfer.includes("statsButton.onclick=openStats"),'Drawer transfer controls must keep existing stats/limit dialog actions');
 assert(transferCss.includes('.mobile-drawer-telemetry__row--primary')&&transferCss.includes('.mobile-drawer-telemetry__row--transfer')&&transferCss.includes('.transfer-mini-chart__canvas'),'Mobile Drawer must present the requested two status rows plus compact chart');
+assert(transferCss.includes('#sidebar{display:flex;flex-direction:column}')&&transferCss.includes('.mobile-drawer-telemetry{display:grid!important;order:20')&&transferCss.includes('.sidebar__meta{order:30'),'Mobile Drawer telemetry must precede qB/WebAPI version metadata, leaving version information at the bottom');
 
-console.log('Mobile density contract passed: compact detail hierarchy, adaptive Settings, compact Logs controls, canonical inline progress, and single-owner Drawer telemetry.');
+console.log('Mobile density contract passed: compact detail hierarchy, adaptive Settings, stable Logs filters, bottom progress, one-row pager actions, and single-owner Drawer telemetry with version metadata last.');
