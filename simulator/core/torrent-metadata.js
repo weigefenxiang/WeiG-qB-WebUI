@@ -6,12 +6,18 @@ const MiB=1024*1024;
 const PIECE_SIZE=4*MiB;
 
 function torrent(world,hash){return torrentIndex(world).byHash.get(String(hash||''))||null;}
-function qbAtLeast(world,minimum){return atLeast(world.profile?.qbVersion||'0',minimum);}
 function apiAtLeast(world,minimum){return atLeast(world.profile?.webApiVersion||'0',minimum);}
 function progressOf(t){return t.size>0?Math.max(0,Math.min(1,Number(t.downloaded||0)/Number(t.size))):0;}
 function pieceCount(t){return Math.max(1,Math.ceil(Math.max(1,Number(t.size)||1)/PIECE_SIZE));}
 function limitValue(value){const n=Number(value)||0;return n>0?Math.round(n):-1;}
 function validTime(value){const n=Number(value);return Number.isFinite(n)&&n>0?Math.floor(n):-1;}
+function distributedCopies(world,t){
+  const explicit=Number(t.availability);
+  if(Number.isFinite(explicit)&&explicit>=0)return explicit;
+  if(t.has_metadata===false)return 0;
+  const complete=Math.max(0,Math.floor(Number(t.seeders)||0));
+  return Number((complete+deterministicUnit(world.seed,`${t.hash}:availability`)).toFixed(3));
+}
 
 export function propertiesForTorrent(world,hash,now=Date.now()){
   const t=torrent(world,hash);if(!t)return null;
@@ -60,6 +66,8 @@ export function propertiesForTorrent(world,hash,now=Date.now()){
     save_path:String(t.savePath||''),
     comment:String(t.comment??'WeiG Virtual qB Lab')
   };
+
+  if(apiAtLeast(world,'2.15.1'))base.availability=distributedCopies(world,t);
 
   if(world.profile?.major>=5){
     const privateFlag=hasMetadata?!!t.private:null;
@@ -117,7 +125,7 @@ function modernTracker(world,t,tracker,index,now){
     num_leeches:Math.max(0,Math.floor(Number(tracker.num_leeches)||0)),
     num_downloaded:Math.max(0,Math.floor(Number(tracker.num_downloaded)||0))
   };
-  if(qbAtLeast(world,'5.2.0')&&apiAtLeast(world,'2.15.1')){
+  if(apiAtLeast(world,'2.13.0')){
     const next=Math.floor(now/1000)+600+Math.floor(deterministicUnit(world.seed,`${t.hash}:${out.url}:announce`)*900);
     const minimum=Math.floor(now/1000)+120;
     Object.assign(out,{

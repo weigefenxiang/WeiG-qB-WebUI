@@ -94,6 +94,15 @@ function make(seed='runtime-view'){return createWorld({profile,count:5000,seed,n
 }
 
 {
+  const oldWorld=createWorld({profile:{qbVersion:'5.1.4',webApiVersion:'2.11.4'},count:16,seed:'subcategories-old',now:baseNow});
+  const oldMain=mainDataSnapshot(oldWorld,0,baseNow+1000);
+  assert.equal(oldMain.server_state.use_subcategories,true,'sync/maindata must expose boolean use_subcategories before WebAPI 2.15.0');
+  const newWorld=createWorld({profile:{qbVersion:'5.2.0',webApiVersion:'2.15.0'},count:16,seed:'subcategories-new',now:baseNow});
+  const newMain=mainDataSnapshot(newWorld,0,baseNow+1000);
+  assert.ok(!('use_subcategories' in newMain.server_state),'sync/maindata must remove use_subcategories from WebAPI 2.15.0 onward');
+}
+
+{
   const router=fs.readFileSync(new URL('../simulator/protocol/router.js',import.meta.url),'utf8');
   assert.match(router,/transferSnapshot\(world,now\)/,'router transfer/info must use the shared snapshot path');
   assert.match(router,/mainDataSnapshot\(world,url\.searchParams\.get\('rid'\)\|\|0,now\)/,'router sync/maindata must use the shared snapshot path');
@@ -102,4 +111,4 @@ function make(seed='runtime-view'){return createWorld({profile,count:5000,seed,n
   assert.doesNotMatch(router,/\btransferInfo\(world/,'router hot path must not fall back to legacy transferInfo world advancement');
 }
 
-console.log('Virtual qB runtime-view contract passed: large worlds use two-second advances, small worlds retain one-second cadence, same-bucket rate-control changes stay immediate, pages project minimally, and qB API values remain equivalent.');
+console.log('Virtual qB runtime-view contract passed: shared snapshots preserve performance while sync/maindata keeps the WebAPI 2.15.0 use_subcategories boundary.');

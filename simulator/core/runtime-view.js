@@ -3,9 +3,11 @@ import {clearRuntimeIndexes,primeTransferAggregate,runtimeIndexStats,torrentInde
 import {snapshotIntervalForWorld} from './low-power-policy.js';
 import {expandTorrentInfoRows} from './torrent-info-options.js';
 import {filterTorrentCandidates,sliceTorrentWindow} from './torrent-query.js';
+import {atLeast} from './profiles.js';
 
 const runtimeSnapshots=new WeakMap();
 
+function apiAtLeast(world,minimum){return atLeast(world.profile?.webApiVersion||'0',minimum);}
 function rateControlKey(world){
   return[
     world.altSpeedMode?1:0,
@@ -90,7 +92,7 @@ export function transferSnapshot(world,now=Date.now()){
 
 function serverStateSnapshotRaw(world){
   const transfer=transferSnapshotRaw(world);
-  return{
+  const state={
     ...transfer,
     alltime_dl:Math.floor(world.stats.alltime_dl),
     alltime_ul:Math.floor(world.stats.alltime_ul),
@@ -98,6 +100,8 @@ function serverStateSnapshotRaw(world){
     use_alt_speed_limits:world.altSpeedMode,
     queueing:!!world.preferences.queueing_enabled
   };
+  if(!apiAtLeast(world,'2.15.0'))state.use_subcategories=true;
+  return state;
 }
 
 function serializableClone(value){return JSON.parse(JSON.stringify(value));}
