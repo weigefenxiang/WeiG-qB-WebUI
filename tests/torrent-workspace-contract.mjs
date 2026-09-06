@@ -104,7 +104,9 @@ assert(responsive.includes('W.TransferRuntime&&W.TransferRuntime.snapshot')&&!re
 assert(responsive.includes('moveNode(torrents,primary)')&&responsive.includes('moveNode(capsule,transfer)')&&!responsive.includes('cloneNode'),'Mobile Drawer telemetry must relocate canonical status nodes without cloning semantic state');
 assert(!app.includes("paintText('dl-speed'")&&!app.includes("paintText('up-speed'")&&!app.includes("getElementById('network-meta')"),'App must not paint retired summary leaves');
 assert(!layoutCss.includes('mobile-summary')&&!layoutCss.includes('mobile-command-bar')&&!layoutCss.includes('mobile-facet-slot'),'Retired Mobile summary/command/facet layout CSS survived');
-const mobilePagerKeepsActionWidth=/#list-view \.pager\{[^}]*grid-template-columns:(?:auto|minmax\(132px,auto\)) minmax\(0,1fr\)/.test(layoutCss)&&/#page-label\{[^}]*max-width:(?:78|82)px/.test(layoutCss);
+const mobilePagerGrid=layoutCss.match(/#list-view \.pager\{[^}]*grid-template-columns:minmax\((\d+)px,auto\) minmax\(0,1fr\)/);
+const mobilePagerLabel=layoutCss.match(/#page-label\{[^}]*max-width:(\d+)px/);
+const mobilePagerKeepsActionWidth=mobilePagerGrid&&mobilePagerLabel&&Number(mobilePagerGrid[1])<=128&&Number(mobilePagerLabel[1])<=76;
 assert(mobilePagerKeepsActionWidth,'Mobile pager must remain content-bounded so the action rail receives the remaining width');
 
 // Header owns Mobile Search/menu and utility presentation; app owns the one search semantic state.
