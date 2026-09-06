@@ -102,7 +102,7 @@ assert.ok(audited.length>0,'no qB release refs were audited');
 
 const fiveGeneration=audited.filter(x=>/^5\.\d+\.0$/.test(x.qbVersion)).sort((a,b)=>cmp(a.qbVersion,b.qbVersion));
 if(fiveGeneration.length){
-  const latest=fiveGeneration.at(-1),keys=preferenceKeys(latest.tag),allowed=new Set(['downloads','connection','bittorrent','webui','advanced','transfer']);
+  const latest=fiveGeneration.at(-1),keys=preferenceKeys(latest.tag),allowed=new Set(['downloads','connection','speed','bittorrent','webui','advanced']);
   const routes=keys.map(key=>[key,SettingsSchema.describe(key)]);
   for(const [key,info] of routes)assert.ok(allowed.has(info.surface)&&info.section,`${latest.qbVersion}: preference ${key} has no safe Settings route`);
   const upstream=routes.filter(([,info])=>info.surface==='advanced'&&info.section==='upstream').map(([key])=>key);
