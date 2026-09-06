@@ -50,13 +50,18 @@ function bootstrapAllowed(world,path){
   if(path==='app/processInfo')return qbAtLeast(world,'5.2.0')&&apiAtLeast(world,'2.15.1');
   if(path==='transfer/setSpeedLimitsMode')return qbAtLeast(world,'5.0.0');
   if(path==='torrents/count')return qbAtLeast(world,'4.3.0');
+  if(path==='torrents/addPeers')return qbAtLeast(world,'4.2.0')&&apiAtLeast(world,'2.3.0');
   if(['torrents/setSavePath','torrents/setDownloadPath'].includes(path))return qbAtLeast(world,'4.4.0');
   if(path==='torrents/export')return qbAtLeast(world,'4.5.0');
   if(['torrents/pieceAvailability','torrents/addWebSeeds','torrents/editWebSeed','torrents/removeWebSeeds','torrents/setComment','torrents/setTags'].includes(path))return Number(world.profile?.major)>=5;
   if(['torrents/SSLParameters','torrents/setSSLParameters'].includes(path))return qbAtLeast(world,'5.0.0');
   if(['torrents/fetchMetadata','torrents/parseMetadata','torrents/saveMetadata'].includes(path))return qbAtLeast(world,'5.2.0')&&apiAtLeast(world,'2.11.9');
   if(path.startsWith('clientdata/'))return qbAtLeast(world,'5.2.0')&&apiAtLeast(world,'2.13.1');
+  if(['rss/markAsRead','rss/matchingArticles'].includes(path))return qbAtLeast(world,'4.2.5')&&apiAtLeast(world,'2.5.1');
+  if(path==='rss/setFeedURL')return qbAtLeast(world,'4.6.0')&&apiAtLeast(world,'2.9.2');
+  if(path==='rss/setFeedRefreshInterval')return qbAtLeast(world,'5.2.0')&&apiAtLeast(world,'2.15.1');
   if(path.startsWith('rss/'))return apiAtLeast(world,'2.1.0');
+  if(path==='search/downloadTorrent')return qbAtLeast(world,'5.0.0')&&apiAtLeast(world,'2.11.2');
   if(path.startsWith('search/'))return apiAtLeast(world,'2.1.1');
   return true;
 }

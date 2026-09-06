@@ -44,6 +44,8 @@ function getRequest(path){return new Request(`https://example.invalid/api/v2/${p
   const key=Object.keys(items)[0];assert.ok(key);
   response=await handleApi(w,formRequest('rss/refreshItem',{itemPath:key}));
   assert.equal(response.status,200,'RSS refresh must exist at WebAPI 2.2.1');
+  response=await handleApi(w,formRequest('torrents/addPeers',{hashes:target.hash,peers:'203.0.113.41:51413'}));
+  assert.equal(response.status,404,'addPeers must remain unavailable through qB 4.1.9.1 / WebAPI 2.2.1');
 }
 
 {
@@ -57,6 +59,57 @@ function getRequest(path){return new Request(`https://example.invalid/api/v2/${p
   assert.ok(peerLogs.some(x=>x.blocked===true&&x.ip==='10.0.0.8'),'peer ban must leave an observable peer-log record');
   response=await handleApi(w,getRequest('torrents/tags'));
   assert.equal(response.status,200,'tags must be available at WebAPI 2.3.0');
+  const target=w.torrents[0];
+  response=await handleApi(w,formRequest('torrents/addPeers',{hashes:target.hash,peers:'203.0.113.42:51413'}));
+  assert.equal(response.status,200,'addPeers must become available at qB 4.2.0 / WebAPI 2.3.0');
+}
+
+{
+  const before=world('4.2.4','2.5.0');
+  let response=await handleApi(before,formRequest('rss/markAsRead',{itemPath:'missing'}));
+  assert.equal(response.status,404,'markAsRead must remain unavailable at qB 4.2.4 / WebAPI 2.5.0');
+  response=await handleApi(before,getRequest('rss/matchingArticles?ruleName=missing'));
+  assert.equal(response.status,404,'matchingArticles must remain unavailable at qB 4.2.4 / WebAPI 2.5.0');
+
+  const atBoundary=world('4.2.5','2.5.1');
+  response=await handleApi(atBoundary,formRequest('rss/markAsRead',{itemPath:'missing'}));
+  assert.equal(response.status,200,'markAsRead must become routable at qB 4.2.5 / WebAPI 2.5.1');
+  response=await handleApi(atBoundary,getRequest('rss/matchingArticles?ruleName=missing'));
+  assert.equal(response.status,200,'matchingArticles must become routable at qB 4.2.5 / WebAPI 2.5.1');
+}
+
+{
+  const before=world('4.5.5','2.8.19');
+  let response=await handleApi(before,formRequest('rss/setFeedURL',{path:'Boundary',url:'https://mirror.example.invalid/feed.xml'}));
+  assert.equal(response.status,404,'setFeedURL must remain unavailable at qB 4.5.5 / WebAPI 2.8.19');
+
+  const atBoundary=world('4.6.0','2.9.2');
+  response=await handleApi(atBoundary,formRequest('rss/addFeed',{url:'https://feed.example.invalid/boundary.xml',path:'Boundary'}));
+  assert.equal(response.status,200);
+  response=await handleApi(atBoundary,formRequest('rss/setFeedURL',{path:'Boundary',url:'https://mirror.example.invalid/boundary.xml'}));
+  assert.equal(response.status,200,'setFeedURL must become available at qB 4.6.0 / WebAPI 2.9.2');
+}
+
+{
+  const before=world('4.6.7','2.9.3');
+  let response=await handleApi(before,formRequest('search/downloadTorrent',{}));
+  assert.equal(response.status,404,'search/downloadTorrent must remain unavailable through qB 4.6.7 / WebAPI 2.9.3');
+
+  const atBoundary=world('5.0.0','2.11.2');
+  response=await handleApi(atBoundary,formRequest('search/downloadTorrent',{}));
+  assert.equal(response.status,400,'search/downloadTorrent must become routable at qB 5.0.0 / WebAPI 2.11.2');
+}
+
+{
+  const before=world('5.1.4','2.11.4');
+  let response=await handleApi(before,formRequest('rss/setFeedRefreshInterval',{path:'Boundary',refreshInterval:'60'}));
+  assert.equal(response.status,404,'setFeedRefreshInterval must remain unavailable through qB 5.1.4 / WebAPI 2.11.4');
+
+  const atBoundary=world('5.2.0','2.15.1');
+  response=await handleApi(atBoundary,formRequest('rss/addFeed',{url:'https://feed.example.invalid/refresh.xml',path:'Boundary'}));
+  assert.equal(response.status,200);
+  response=await handleApi(atBoundary,formRequest('rss/setFeedRefreshInterval',{path:'Boundary',refreshInterval:'60'}));
+  assert.equal(response.status,200,'setFeedRefreshInterval must become available at qB 5.2.0 / WebAPI 2.15.1');
 }
 
 {
@@ -150,4 +203,4 @@ function getRequest(path){return new Request(`https://example.invalid/api/v2/${p
   assert.equal(response.status,404,'qB4 must not expose qB5 Torrent Creator even if other APIs are modern');
 }
 
-console.log('Virtual qB services contract passed: historical capability boundaries, WebSeeds, peer logs, full stateful RSS management, Search plugin/download management, Torrent Creator, future preference manifests and fail-closed endpoints.');
+console.log('Virtual qB services contract passed: source-derived historical action boundaries, WebSeeds, peer logs, full stateful RSS management, Search plugin/download management, Torrent Creator, future preference manifests and fail-closed endpoints.');
