@@ -98,7 +98,8 @@
     if(!region)return;
     if(region.__feedbackShiftFrame){cancelAnimationFrame(region.__feedbackShiftFrame);region.__feedbackShiftFrame=null;}
     if(region.__feedbackShiftTimer){clearTimeout(region.__feedbackShiftTimer);region.__feedbackShiftTimer=null;}
-    if(reducedMotion()){
+    var style=getComputedStyle(region),fixedAnchor=style.position==='fixed'&&(style.bottom!=='auto'||style.top!=='auto');
+    if(reducedMotion()||fixedAnchor){
       region.style.transition='';
       region.style.transform='';
       return;
