@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   representative_qb_baselines:
-    name: qB minimum + latest 5.x.0 compatibility
+    name: qB 4.1.0 floor + latest 5.x.0 compatibility
     runs-on: ubuntu-latest
     steps:
       - name: Checkout WeiG qB WebUI
@@ -42,11 +42,7 @@ jobs:
           )
           test "${#generations[@]}" -ge 1
           latest="${generations[${#generations[@]}-1]}"
-          if [ "${#generations[@]}" -ge 2 ]; then
-            previous="${generations[${#generations[@]}-2]}"
-          else
-            previous="$latest"
-          fi
+          if [ "${#generations[@]}" -ge 2 ]; then previous="${generations[${#generations[@]}-2]}"; else previous="$latest"; fi
           echo "latest=$latest" >> "$GITHUB_OUTPUT"
           echo "previous=$previous" >> "$GITHUB_OUTPUT"
           printf 'Latest qB generation: %s; previous: %s\n' "$latest" "$previous"
@@ -54,23 +50,23 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          min=release-4.1.9.1
+          min=release-4.1.0
           previous='${{ steps.generations.outputs.previous }}'
           latest='${{ steps.generations.outputs.latest }}'
           git -C upstream-qb fetch --depth=1 origin \
             "refs/tags/$min:refs/tags/$min" \
             "refs/tags/$previous:refs/tags/$previous" \
             "refs/tags/$latest:refs/tags/$latest"
-      - name: Generate source-derived preference descriptor catalog
+      - name: Generate source-derived representative catalog
         shell: bash
         run: |
           set -euo pipefail
-          node tools/qb-release-catalog.mjs upstream-qb --output=/tmp/qb-preference-descriptors.json
+          node tools/qb-release-catalog.mjs upstream-qb --output=/tmp/qb-release-catalog.json
       - name: Audit minimum and current qB generations
         shell: bash
         run: |
           set -euo pipefail
-          min=release-4.1.9.1
+          min=release-4.1.0
           previous='${{ steps.generations.outputs.previous }}'
           latest='${{ steps.generations.outputs.latest }}'
           refs="$min,$previous,$latest"

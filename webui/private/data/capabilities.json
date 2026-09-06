@@ -1,68 +1,35 @@
 {
   "schemaVersion": 1,
   "webApiMilestones": [
-    {"qb":"4.1.9.1","webApi":"2.2.1"},
-    {"qb":"4.2.0","webApi":"2.3.0"},
-    {"qb":"4.2.2","webApi":"2.4.1"},
-    {"qb":"4.2.5","webApi":"2.5.1"},
-    {"qb":"4.3.0","webApi":"2.6.0"},
-    {"qb":"4.3.3","webApi":"2.7.0"},
-    {"qb":"4.3.9","webApi":"2.8.2"},
-    {"qb":"4.4.0","webApi":"2.8.4"},
-    {"qb":"4.4.5","webApi":"2.8.5"},
-    {"qb":"4.5.0","webApi":"2.8.18"},
-    {"qb":"4.5.5","webApi":"2.8.19"},
-    {"qb":"4.6.0","webApi":"2.9.2"},
-    {"qb":"4.6.7","webApi":"2.9.3"},
-    {"qb":"5.0.0","webApi":"2.11.2"},
-    {"qb":"5.0.5","webApi":"2.11.2"},
-    {"qb":"5.1.0","webApi":"2.11.4"},
-    {"qb":"5.1.2","webApi":"2.11.4"},
-    {"qb":"5.2.0","webApi":"2.15.1"},
-    {"qb":"5.2.3","webApi":"2.15.1"}
+    {"qb":"4.1.0","webApi":"2.0.0"},{"qb":"4.1.1","webApi":"2.0.1"},{"qb":"4.1.2","webApi":"2.0.2"},{"qb":"4.1.3","webApi":"2.1.0"},{"qb":"4.1.9.1","webApi":"2.2.1"},{"qb":"4.2.0","webApi":"2.3.0"},{"qb":"4.2.2","webApi":"2.4.1"},{"qb":"4.2.5","webApi":"2.5.1"},{"qb":"4.3.0","webApi":"2.6.0"},{"qb":"4.3.3","webApi":"2.7.0"},{"qb":"4.3.9","webApi":"2.8.2"},{"qb":"4.4.0","webApi":"2.8.4"},{"qb":"4.4.5","webApi":"2.8.5"},{"qb":"4.5.0","webApi":"2.8.18"},{"qb":"4.5.5","webApi":"2.8.19"},{"qb":"4.6.0","webApi":"2.9.2"},{"qb":"4.6.1","webApi":"2.9.3"},{"qb":"5.0.0","webApi":"2.11.2"},{"qb":"5.0.5","webApi":"2.11.2"},{"qb":"5.1.0","webApi":"2.11.4"},{"qb":"5.1.2","webApi":"2.11.4"},{"qb":"5.2.0","webApi":"2.15.1"},{"qb":"5.2.3","webApi":"2.15.1"}
   ],
   "features": {
-    "privateFilter": {
-      "rule": {"qb":{"gte":"5.0.0"}},
-      "selectors": ["[data-filter=\"private\"]"],
-      "presentation": {"unsupported":"disable","badge":"auto","requirements":{"qb":"5.0.0","webApi":"2.11.2","knownQb":"5.0.0"}},
-      "copy": {
-        "title":{"en":"Private / PT","zh":"私有 / PT"},
-        "reason":{"en":"This feature requires qBittorrent 5.0.0+ for reliable Private torrent metadata.","zh":"此功能需要 qBittorrent 5.0.0+，以可靠读取 Private torrent 元数据。"}
-      }
-    },
-    "tags": {
-      "rule": {"webApi":{"gte":"2.3.0"}},
-      "selectors": ["[data-facet=\"tag\"]"],
-      "presentation": {"unsupported":"disable","badge":"auto","requirements":{"qb":"4.2.0","webApi":"2.3.0","knownQb":"4.2.0"}},
-      "copy": {
-        "title":{"en":"Tags","zh":"标签"},
-        "reason":{"en":"Tags require qBittorrent WebAPI 2.3.0 or later.","zh":"标签功能需要 qBittorrent WebAPI 2.3.0 或更高版本。"}
-      }
-    },
-    "search": {
-      "rule": {"webApi":{"gte":"2.1.1"}},
-      "selectors": ["[data-capability=\"search\"]"],
-      "presentation": {"unsupported":"disable","badge":"auto"},
-      "copy": {"title":{"en":"Search","zh":"搜索"},"reason":{"en":"Search requires a compatible qBittorrent Search API.","zh":"搜索功能需要兼容的 qBittorrent Search API。"}}
-    },
-    "rss": {
-      "rule": {"webApi":{"gte":"2.1.0"}},
-      "selectors": ["[data-capability=\"rss\"]"],
-      "presentation": {"unsupported":"disable","badge":"auto"},
-      "copy": {"title":{"en":"RSS","zh":"RSS"},"reason":{"en":"RSS requires a compatible qBittorrent WebAPI.","zh":"RSS 需要兼容的 qBittorrent WebAPI。"}}
-    },
-    "logs": {
-      "rule": {"qb":{"gte":"4.1.0"}},
-      "selectors": ["[data-capability=\"logs\"]"],
-      "presentation": {"unsupported":"disable","badge":"auto"},
-      "copy": {"title":{"en":"Logs","zh":"日志"},"reason":{"en":"Logs require qBittorrent 4.1.0 or later.","zh":"日志功能需要 qBittorrent 4.1.0 或更高版本。"}}
-    },
-    "stalledFilter": {
-      "rule": {"webApi":{"gte":"2.4.1"}},
-      "selectors": ["[data-filter=\"stalled\"]"],
-      "presentation": {"unsupported":"disable","badge":"auto","requirements":{"qb":"4.2.5","webApi":"2.4.1","knownQb":"4.2.5"}},
-      "copy": {"title":{"en":"Stalled filter","zh":"停滞筛选"},"reason":{"en":"The stalled filter requires qBittorrent WebAPI 2.4.1 or later; qBittorrent 4.2.5+ is the conservative qB-facing compatibility milestone shown by WeiG.","zh":"停滞筛选需要 qBittorrent WebAPI 2.4.1 或更高版本；WeiG 以 qBittorrent 4.2.5+ 作为面向用户显示的保守兼容里程碑。"}}
-    }
+    "privateFilter":{"rule":{"qb":{"gte":"5.0.0"}},"upstream":{"torrentInfoParameter":"private"},"selectors":["[data-filter=\"private\"]"],"presentation":{"unsupported":"hide","badge":"auto","requirements":{"qb":"5.0.0","webApi":"2.11.2","knownQb":"5.0.0"}},"copy":{"title":{"en":"Private / PT","zh":"私有 / PT"},"reason":{"en":"Shown only when the selected qBittorrent release exposes authoritative Private filtering.","zh":"只有当前 qBittorrent 稳定版明确提供 Private 筛选时才显示此项。"}}},
+    "tags":{"rule":{"webApi":{"gte":"2.3.0"}},"upstream":{"action":"torrentscontroller.h:tagsAction"},"selectors":["[data-facet=\"tag\"]"],"presentation":{"unsupported":"hide","badge":"auto","requirements":{"qb":"4.2.0","webApi":"2.3.0","knownQb":"4.2.0"}},"copy":{"title":{"en":"Tags","zh":"标签"},"reason":{"en":"Shown only when the upstream WebAPI exposes Tags.","zh":"只有上游 WebAPI 明确提供 Tags 时才显示标签筛选。"}}},
+    "search":{"rule":{"webApi":{"gte":"2.1.1"}},"selectors":["[data-capability=\"search\"]"],"presentation":{"unsupported":"disable","badge":"auto"},"copy":{"title":{"en":"Search","zh":"搜索"},"reason":{"en":"Search requires a compatible qBittorrent Search API.","zh":"搜索功能需要兼容的 qBittorrent Search API。"}}},
+    "rss":{"rule":{"webApi":{"gte":"2.1.0"}},"selectors":["[data-capability=\"rss\"]"],"presentation":{"unsupported":"disable","badge":"auto"},"copy":{"title":{"en":"RSS","zh":"RSS"},"reason":{"en":"RSS requires a compatible qBittorrent WebAPI.","zh":"RSS 需要兼容的 qBittorrent WebAPI。"}}},
+    "logs":{"rule":{"qb":{"gte":"4.1.0"}},"selectors":["[data-capability=\"logs\"]"],"presentation":{"unsupported":"disable","badge":"auto"},"copy":{"title":{"en":"Logs","zh":"日志"},"reason":{"en":"Logs require qBittorrent 4.1.0 or later.","zh":"日志功能需要 qBittorrent 4.1.0 或更高版本。"}}},
+    "stalledFilter":{"rule":{"webApi":{"gte":"2.4.1"}},"upstream":{"torrentFilter":"stalled"},"selectors":["[data-filter=\"stalled\"]"],"presentation":{"unsupported":"hide","badge":"auto","requirements":{"webApi":"2.4.1"}},"copy":{"title":{"en":"Stalled filter","zh":"停滞筛选"},"reason":{"en":"Shown only when the upstream release exposes it.","zh":"只有上游稳定版明确提供停滞筛选时才显示。"}}},
+    "trackerEdit":{"rule":{"webApi":{"gte":"2.2.0"}},"upstream":{"action":"torrentscontroller.h:editTrackerAction"}},
+    "rssRefresh":{"rule":{"webApi":{"gte":"2.2.1"}}},
+    "peerBan":{"rule":{"webApi":{"gte":"2.3.0"}},"upstream":{"action":"transfercontroller.h:banPeersAction"}},
+    "buildInfo":{"rule":{"webApi":{"gte":"2.3.0"}},"upstream":{"action":"appcontroller.h:buildInfoAction"}},
+    "renameFile":{"rule":{"webApi":{"gte":"2.4.0"}},"upstream":{"action":"torrentscontroller.h:renameFileAction"}},
+    "contentPath":{"rule":{"webApi":{"gte":"2.6.1"}}},
+    "addTags":{"rule":{"webApi":{"gte":"2.6.2"}},"upstream":{"action":"torrentscontroller.h:addTagsAction"}},
+    "renameFolder":{"rule":{"any":[{"qb":{"eq":"4.3.3"}},{"webApi":{"gte":"2.8.0"}}]},"upstream":{"action":"torrentscontroller.h:renameFolderAction"}},
+    "fileIndexes":{"rule":{"webApi":{"gte":"2.8.2"}}},
+    "tagFilter":{"rule":{"webApi":{"gte":"2.8.3"}},"upstream":{"torrentInfoParameter":"tag"}},
+    "torrentCreator":{"rule":{"all":[{"qb":{"gte":"5.0.0"}},{"webApi":{"gte":"2.11.0"}}]}},
+    "cookies":{"rule":{"webApi":{"gte":"2.11.3"}},"upstream":{"action":"appcontroller.h:cookiesAction"}},
+    "trackerEditUrl":{"rule":{"webApi":{"gte":"2.13.0"}}},
+    "structuredTorrentAdd":{"rule":{"webApi":{"gte":"2.14.0"}}},
+    "webseeds":{"rule":{"qb":{"gte":"4.1.0"}},"upstream":{"action":"torrentscontroller.h:webseedsAction"}},
+    "categories":{"rule":{"qb":{"gte":"4.1.0"}},"upstream":{"action":"torrentscontroller.h:categoriesAction"}},
+    "preferences":{"rule":{"qb":{"gte":"4.1.0"}},"upstream":{"action":"appcontroller.h:preferencesAction"}},
+    "globalSpeedLimits":{"rule":{"qb":{"gte":"4.1.0"}}},
+    "altSpeedLimits":{"rule":{"qb":{"gte":"4.1.0"}}},
+    "mainData":{"rule":{"qb":{"gte":"4.1.0"}}},
+    "sessionStats":{"rule":{"qb":{"gte":"4.1.0"}}}
   }
 }

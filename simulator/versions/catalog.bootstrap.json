@@ -1,9 +1,10 @@
 [
-  {"qbVersion":"4.1.0","webApiVersion":"2.0.0","tag":"release-4.1.0","stable":true,"officialWeiGSupport":false,"protocolGeneration":"qb4"},
-  {"qbVersion":"4.1.1","webApiVersion":"2.0.1","tag":"release-4.1.1","stable":true,"officialWeiGSupport":false,"protocolGeneration":"qb4"},
-  {"qbVersion":"4.1.2","webApiVersion":"2.0.2","tag":"release-4.1.2","stable":true,"officialWeiGSupport":false,"protocolGeneration":"qb4"},
-  {"qbVersion":"4.1.3","webApiVersion":"2.1.0","tag":"release-4.1.3","stable":true,"officialWeiGSupport":false,"protocolGeneration":"qb4"},
+  {"qbVersion":"4.1.0","webApiVersion":"2.0.0","tag":"release-4.1.0","stable":true,"officialWeiGSupport":true,"protocolGeneration":"qb4"},
+  {"qbVersion":"4.1.1","webApiVersion":"2.0.1","tag":"release-4.1.1","stable":true,"officialWeiGSupport":true,"protocolGeneration":"qb4"},
+  {"qbVersion":"4.1.2","webApiVersion":"2.0.2","tag":"release-4.1.2","stable":true,"officialWeiGSupport":true,"protocolGeneration":"qb4"},
+  {"qbVersion":"4.1.3","webApiVersion":"2.1.0","tag":"release-4.1.3","stable":true,"officialWeiGSupport":true,"protocolGeneration":"qb4"},
   {"qbVersion":"4.1.9.1","webApiVersion":"2.2.1","tag":"release-4.1.9.1","stable":true,"officialWeiGSupport":true,"protocolGeneration":"qb4"},
   {"qbVersion":"4.2.0","webApiVersion":"2.3.0","tag":"release-4.2.0","stable":true,"officialWeiGSupport":true,"protocolGeneration":"qb4"},
+  {"qbVersion":"4.6.1","webApiVersion":"2.9.3","tag":"release-4.6.1","stable":true,"officialWeiGSupport":true,"protocolGeneration":"qb4"},
   {"qbVersion":"5.2.3","webApiVersion":"2.15.1","tag":"release-5.2.3","stable":true,"officialWeiGSupport":true,"protocolGeneration":"qb5"}
 ]

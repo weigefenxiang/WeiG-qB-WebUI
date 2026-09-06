@@ -1,7 +1,6 @@
 (function(global){
   'use strict';
   var W=global.WeiG=global.WeiG||{},U=W.util||{};
-
   function boolValue(value){if(value===true||value===1||value==='1')return true;if(value===false||value===0||value==='0')return false;return null;}
   function metadataUnavailable(torrent){var t=torrent||{},has=boolValue(t.has_metadata);if(has===false)return true;return /metaDL|forcedMetaDL/i.test(String(t.state||''));}
   function directPrivate(torrent){var t=torrent||{},keys=['private','is_private','isPrivate'];if(metadataUnavailable(t))return null;for(var i=0;i<keys.length;i++)if(Object.prototype.hasOwnProperty.call(t,keys[i])){var value=boolValue(t[keys[i]]);if(value!==null)return value;}return null;}
@@ -10,9 +9,10 @@
   function isPt(torrent,rules){var host=trackerHost((torrent||{}).tracker),list=normalizeRules(rules);if(!host||!list.length)return false;return list.some(function(rule){return host===rule||host.endsWith('.'+rule);});}
   function evidence(torrent){if(metadataUnavailable(torrent))return{known:false,private:false,source:'metadata-pending'};var direct=directPrivate(torrent);if(direct!==null)return{known:true,private:direct,source:'metadata'};return{known:false,private:false,source:'unsupported'};}
   function classify(torrent,rules){var e=evidence(torrent),pt=isPt(torrent,rules),kind=e.private?(pt?'PRIVATE_PT':'PRIVATE'):(pt?'PT':(e.known?'PUBLIC':'UNKNOWN'));return{kind:kind,private:e.private,privateKnown:e.known,pt:pt,source:e.source};}
-  function isPrivate(torrent){return evidence(torrent).private===true;}
-  function isPrivateKnown(torrent){return evidence(torrent).known===true;}
-  function isPrivateOrPt(torrent,rules){var c=classify(torrent,rules);return c.private||c.pt;}
-
-  W.TorrentSemantics={classify:classify,evidence:evidence,isPrivate:isPrivate,isPrivateKnown:isPrivateKnown,isPt:isPt,isPrivateOrPt:isPrivateOrPt,metadataUnavailable:metadataUnavailable,trackerHost:trackerHost,normalizeRules:normalizeRules};
+  function isPrivate(torrent){return evidence(torrent).private===true;}function isPrivateKnown(torrent){return evidence(torrent).known===true;}function isPrivateOrPt(torrent,rules){var c=classify(torrent,rules);return c.private||c.pt;}
+  function canonicalFilter(name){name=String(name||'all');if(name==='paused')return'stopped';if(name==='resumed')return'running';return name;}function stoppedState(state){return /^(?:paused|stopped)(?:DL|UP)?$/i.test(String(state||''));}
+  function matchesStatus(torrent,filter,rules){var t=torrent||{},f=canonicalFilter(filter),state=String(t.state||''),progress=Number(t.progress)||0,rate=(Number(t.dlspeed)||0)+(Number(t.upspeed)||0);if(f==='all')return true;if(f==='downloading')return /^(?:downloading|stalledDL|forcedDL|metaDL|forcedMetaDL|queuedDL)$/i.test(state)&&progress<1;if(f==='seeding')return /^(?:uploading|stalledUP|forcedUP|queuedUP)$/i.test(state);if(f==='completed')return progress>=1;if(f==='stopped')return stoppedState(state);if(f==='running')return !stoppedState(state);if(f==='active')return rate>0;if(f==='inactive')return rate<=0;if(f==='stalled')return /^(?:stalledDL|stalledUP|stalled_downloading|stalled_uploading)$/i.test(state);if(f==='stalled_uploading')return /^(?:stalledUP|stalled_uploading)$/i.test(state);if(f==='stalled_downloading')return /^(?:stalledDL|stalled_downloading)$/i.test(state);if(f==='checking')return /^checking/i.test(state);if(f==='moving')return /^moving$/i.test(state);if(f==='errored')return /^(?:error|missingFiles)$/i.test(state);if(f==='private')return isPrivateOrPt(t,rules);return false;}
+  function statusFilters(){var values=W.ReleaseProfile&&W.ReleaseProfile.torrentFilters?W.ReleaseProfile.torrentFilters():['all','downloading','seeding','completed','stopped','running','active','inactive','errored'];return Array.from(new Set((values||[]).map(canonicalFilter)));}
+  function isSupportedFilter(filter){var f=canonicalFilter(filter);if(f==='private')return !!(W.CapabilityRegistry&&W.CapabilityRegistry.supports&&W.CapabilityRegistry.supports('privateFilter'));return statusFilters().indexOf(f)>=0;}
+  W.TorrentSemantics={classify:classify,evidence:evidence,isPrivate:isPrivate,isPrivateKnown:isPrivateKnown,isPt:isPt,isPrivateOrPt:isPrivateOrPt,metadataUnavailable:metadataUnavailable,trackerHost:trackerHost,normalizeRules:normalizeRules,canonicalFilter:canonicalFilter,matchesStatus:matchesStatus,statusFilters:statusFilters,isSupportedFilter:isSupportedFilter};
 })(window);

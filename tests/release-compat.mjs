@@ -2,143 +2,33 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
-import { fileURLToPath } from 'node:url';
+import {fileURLToPath} from 'node:url';
 
-const here=path.dirname(fileURLToPath(import.meta.url));
-const root=path.resolve(here,'..');
-const matrix=JSON.parse(fs.readFileSync(path.join(here,'fixtures/qb-compat-matrix.json'),'utf8'));
-const source=fs.readFileSync(path.join(root,'webui/private/scripts/qb-client.js'),'utf8');
-
-class TestFormData {
-  constructor(){this.entries=[];}
-  append(name,value,filename){this.entries.push({name,value,filename});}
-}
-
-const sandbox={
-  console,
-  URLSearchParams,
-  FormData:TestFormData,
-  Blob,
-  fetch:async()=>{throw new Error('Unexpected fetch');},
-  window:{
-    WeiG:{
-      util:{
-        form(obj){
-          const p=new URLSearchParams();
-          for(const [k,v] of Object.entries(obj||{}))if(v!==undefined&&v!==null)p.append(k,String(v));
-          return p.toString();
-        }
-      },
-      I18n:{getLocale:()=> 'en'}
-    }
-  }
+const here=path.dirname(fileURLToPath(import.meta.url));const root=path.resolve(here,'..');const matrix=JSON.parse(fs.readFileSync(path.join(here,'fixtures/qb-compat-matrix.json'),'utf8'));const source=fs.readFileSync(path.join(root,'webui/private/scripts/qb-client.js'),'utf8');
+class TestFormData{constructor(){this.entries=[];}append(name,value,filename){this.entries.push({name,value,filename});}}
+let activeFixture=null;
+function versionAtLeast(actual,required){const a=String(actual).split('.').map(x=>Number.parseInt(x,10)||0),b=String(required).split('.').map(x=>Number.parseInt(x,10)||0),n=Math.max(a.length,b.length);for(let i=0;i<n;i++){if((a[i]||0)>(b[i]||0))return true;if((a[i]||0)<(b[i]||0))return false;}return true;}
+const releaseProfile={
+  upstreamTorrentFilter(value){const major=Number(String(activeFixture?.qbVersion||'0').split('.')[0])||0;if(value==='stopped')return major>=5?'stopped':'paused';if(value==='running')return major>=5?'running':'resumed';return value;},
+  resolveTorrentAction(kind){const major=Number(String(activeFixture?.qbVersion||'0').split('.')[0])||0;if(kind==='start')return major>=5?'start':'resume';if(kind==='stop')return major>=5?'stop':'pause';return null;},
+  isCertified(){return !!activeFixture?.realRelease;}
 };
-sandbox.window.window=sandbox.window;
-vm.runInNewContext(source,sandbox,{filename:'qb-client.js'});
-const Client=sandbox.window.WeiG.QBClient;
+const sandbox={console,URLSearchParams,FormData:TestFormData,Blob,fetch:async()=>{throw new Error('Unexpected fetch');},window:{WeiG:{ReleaseProfile:releaseProfile,util:{form(obj){const p=new URLSearchParams();for(const [k,v] of Object.entries(obj||{}))if(v!==undefined&&v!==null)p.append(k,String(v));return p.toString();}},I18n:{getLocale:()=> 'en'}}}};sandbox.window.window=sandbox.window;vm.runInNewContext(source,sandbox,{filename:'qb-client.js'});const Client=sandbox.window.WeiG.QBClient;
 
-async function detect(fixture){
-  const c=new Client();
-  c.request=async p=>{
-    if(p==='app/version')return fixture.qbVersion==='master'?'v5.3.0alpha1':fixture.qbVersion.includes('synthetic')?'v6.0.0':`v${fixture.qbVersion}`;
-    if(p==='app/webapiVersion')return fixture.webApiVersion.replace('-synthetic','');
-    throw new Error(`Unexpected detect endpoint ${p}`);
-  };
-  await c.detect();
-  return c;
-}
-
-function capture(client){
-  const calls=[];
-  client.request=async(path,options={})=>{calls.push({path,options});return null;};
-  return calls;
-}
-
-function extractLoginClassifier(file){
-  const text=fs.readFileSync(file,'utf8');
-  const match=text.match(/function classifyLogin\(x\)\{[\s\S]*?return'unexpected';\}/);
-  assert.ok(match,`${path.relative(root,file)} must expose the login response classifier`);
-  return vm.runInNewContext(`(${match[0]})`);
-}
-
-for(const rel of ['webui/public/index.html','webui/public/login.html','webui/private/index.html']){
-  const file=path.join(root,rel);
-  assert.ok(fs.statSync(file).isFile(),`required Alternate WebUI entry point missing: ${rel}`);
-}
-
-for(const rel of ['webui/public/index.html','webui/public/login.html']){
-  const classify=extractLoginClassifier(path.join(root,rel));
-  assert.equal(classify({status:200,ok:true,text:'Ok.'}),'ok',`${rel}: legacy 200/Ok login`);
-  assert.equal(classify({status:204,ok:true,text:''}),'ok',`${rel}: modern 204 login`);
-  assert.equal(classify({status:200,ok:true,text:'Fails.'}),'bad',`${rel}: legacy bad credentials`);
-  assert.equal(classify({status:401,ok:false,text:'Unauthorized'}),'bad',`${rel}: modern bad credentials`);
-  assert.equal(classify({status:403,ok:false,text:'Forbidden'}),'banned',`${rel}: temporary ban`);
-}
+async function detect(fixture){const c=new Client();c.request=async p=>{if(p==='app/version')return fixture.qbVersion==='master'?'v5.3.0alpha1':fixture.qbVersion.includes('synthetic')?'v6.0.0':`v${fixture.qbVersion}`;if(p==='app/webapiVersion')return fixture.webApiVersion.replace('-synthetic','');throw new Error(`Unexpected detect endpoint ${p}`);};await c.detect();return c;}
+function capture(client){const calls=[];client.request=async(path,options={})=>{calls.push({path,options});return null;};return calls;}
+function registryFor(fixture){const api=fixture.webApiVersion.replace('-synthetic','');return{supports(id){if(id==='logs')return fixture.capabilities?.logs!==false;if(id==='privateFilter')return fixture.capabilities?.exactPrivateFlag===true;if(id==='structuredTorrentAdd')return fixture.capabilities?.structuredAdd===true;if(id==='trackerEditUrl')return versionAtLeast(api,'2.13.0');if(id==='tags')return versionAtLeast(api,'2.3.0');if(id==='renameFolder')return fixture.qbVersion==='4.3.3'||versionAtLeast(api,'2.8.0');if(['webseeds','categories','preferences','globalSpeedLimits','altSpeedLimits','mainData','sessionStats'].includes(id))return true;return false;}};}
+function extractLoginClassifier(file){const text=fs.readFileSync(file,'utf8');const match=text.match(/function classifyLogin\(x\)\{[\s\S]*?return'unexpected';\}/);assert.ok(match,`${path.relative(root,file)} must expose login response classifier`);return vm.runInNewContext(`(${match[0]})`);}
+for(const rel of ['webui/public/index.html','webui/public/login.html','webui/private/index.html'])assert.ok(fs.statSync(path.join(root,rel)).isFile(),`required Alternate WebUI entry point missing: ${rel}`);
+for(const rel of ['webui/public/index.html','webui/public/login.html']){const classify=extractLoginClassifier(path.join(root,rel));assert.equal(classify({status:200,ok:true,text:'Ok.'}),'ok');assert.equal(classify({status:204,ok:true,text:''}),'ok');assert.equal(classify({status:200,ok:true,text:'Fails.'}),'bad');assert.equal(classify({status:401,ok:false,text:'Unauthorized'}),'bad');assert.equal(classify({status:403,ok:false,text:'Forbidden'}),'banned');}
 
 let realCount=0;
-for(const fixture of matrix.fixtures){
-  const c=await detect(fixture);
-  const api=fixture.webApiVersion.replace('-synthetic','');
-  const tag=`qB ${fixture.qbVersion} / WebAPI ${fixture.webApiVersion}`;
-  if(fixture.realRelease)realCount++;
-
-  if(/^4\./.test(fixture.qbVersion)){
-    assert.equal(c.major,4,`${tag}: major`);
-    assert.equal(c.capabilities.legacy4,true,`${tag}: legacy4`);
-    assert.equal(c.capabilities.modern5,false,`${tag}: modern5`);
-    assert.equal(c.capabilities.certified,true,`${tag}: certified`);
-  }
-  if(/^5\./.test(fixture.qbVersion)||fixture.qbVersion==='master'){
-    assert.equal(c.capabilities.modern5,true,`${tag}: modern5`);
-    assert.equal(c.capabilities.certified,true,`${tag}: certified`);
-  }
-  if(fixture.role==='forward-major-sentinel'){
-    assert.equal(c.major,6,`${tag}: forward-major detection`);
-    assert.equal(c.capabilities.certified,false,`${tag}: sentinel must not be certified`);
-  }
-
-  if(fixture.capabilities?.logs!==undefined)assert.equal(c.capabilities.logs,fixture.capabilities.logs,`${tag}: logs capability mismatch`);
-  if(fixture.capabilities?.exactPrivateFlag!==undefined)assert.equal(c.capabilities.privateFlag,fixture.capabilities.exactPrivateFlag,`${tag}: private capability mismatch`);
-  if(fixture.capabilities?.structuredAdd!==undefined)assert.equal(c.capabilities.structuredTorrentAdd,fixture.capabilities.structuredAdd,`${tag}: structured add mismatch`);
-  if(fixture.qbVersion==='4.3.3')assert.equal(c.capabilities.renameFolder,true,`${tag}: 4.3.3 renameFolder compatibility exception`);
-  if(fixture.qbVersion==='4.3.0')assert.equal(c.capabilities.renameFolder,false,`${tag}: pre-4.3.3 renameFolder must remain unavailable`);
-  if(fixture.qbVersion==='4.3.9')assert.equal(c.capabilities.renameFolder,true,`${tag}: WebAPI 2.8.x renameFolder`);
-
-  if(fixture.realRelease){
-    const actionCalls=capture(c);
-    await c.resume('abc');
-    await c.pause('abc');
-    if(c.major>=5){
-      assert.equal(actionCalls[0].path,'torrents/start',`${tag}: resume bridge`);
-      assert.equal(actionCalls[1].path,'torrents/stop',`${tag}: pause bridge`);
-    }else{
-      assert.equal(actionCalls[0].path,'torrents/resume',`${tag}: resume bridge`);
-      assert.equal(actionCalls[1].path,'torrents/pause',`${tag}: pause bridge`);
-    }
-
-    const filterCalls=capture(c);
-    await c.getTorrents({filter:c.major>=5?'paused':'stopped'});
-    assert.match(filterCalls[0].path,c.major>=5?/filter=stopped/:/filter=paused/,`${tag}: stopped/paused vocabulary bridge`);
-
-    const editCalls=capture(c);
-    await c.editTracker('hash','https://old.invalid/announce','https://new.invalid/announce');
-    const form=editCalls[0].options.form;
-    if(c.capabilities.trackerEditUrl){
-      assert.equal(form.url,'https://old.invalid/announce',`${tag}: modern editTracker parameter`);
-      assert.equal('origUrl' in form,false,`${tag}: legacy editTracker parameter leaked`);
-    }else{
-      assert.equal(form.origUrl,'https://old.invalid/announce',`${tag}: legacy editTracker parameter`);
-      assert.equal('url' in form,false,`${tag}: modern editTracker parameter leaked`);
-    }
-  }
-
-  const expectedTags=(()=>{
-    const [a,b,c0]=api.split('.').map(x=>Number.parseInt(x,10)||0);
-    return a>2||(a===2&&(b>3||(b===3&&c0>=0)));
-  })();
-  if(fixture.realRelease)assert.equal(c.capabilities.tags,expectedTags,`${tag}: tag capability threshold`);
+for(const fixture of matrix.fixtures){activeFixture=fixture;const c=await detect(fixture),tag=`qB ${fixture.qbVersion} / WebAPI ${fixture.webApiVersion}`;if(fixture.realRelease)realCount++;
+  if(/^4\./.test(fixture.qbVersion)){assert.equal(c.major,4,`${tag}: major`);assert.equal(c.capabilities.legacy4,true,`${tag}: legacy4`);assert.equal(c.capabilities.modern5,false,`${tag}: modern5`);}if(/^5\./.test(fixture.qbVersion)||fixture.qbVersion==='master')assert.equal(c.capabilities.modern5,true,`${tag}: modern5`);if(fixture.role==='forward-major-sentinel')assert.equal(c.major,6,`${tag}: future-major detection`);
+  assert.equal(c.capabilities.certified,false,`${tag}: QBClient.detect must never self-certify`);c.applyCapabilityRegistry(registryFor(fixture));assert.equal(c.capabilities.certified,fixture.realRelease===true,`${tag}: ReleaseProfile owns certification after registry bind`);
+  if(fixture.capabilities?.logs!==undefined)assert.equal(c.capabilities.logs,fixture.capabilities.logs,`${tag}: logs capability`);if(fixture.capabilities?.exactPrivateFlag!==undefined)assert.equal(c.capabilities.privateFlag,fixture.capabilities.exactPrivateFlag,`${tag}: private capability`);if(fixture.capabilities?.structuredAdd!==undefined)assert.equal(c.capabilities.structuredTorrentAdd,fixture.capabilities.structuredAdd,`${tag}: structured add capability`);
+  if(fixture.realRelease){const actionCalls=capture(c);await c.resume('abc');await c.pause('abc');assert.equal(actionCalls[0].path,c.major>=5?'torrents/start':'torrents/resume',`${tag}: exact start/resume dispatch`);assert.equal(actionCalls[1].path,c.major>=5?'torrents/stop':'torrents/pause',`${tag}: exact stop/pause dispatch`);const filterCalls=capture(c);await c.getTorrents({filter:'stopped'});assert.match(filterCalls[0].path,c.major>=5?/filter=stopped/:/filter=paused/,`${tag}: stopped/paused HTTP boundary`);const editCalls=capture(c);await c.editTracker('hash','https://old.invalid/announce','https://new.invalid/announce');const form=editCalls[0].options.form;if(c.capabilities.trackerEditUrl){assert.equal(form.url,'https://old.invalid/announce');assert.equal('origUrl' in form,false);}else{assert.equal(form.origUrl,'https://old.invalid/announce');assert.equal('url' in form,false);}}
 }
-
-assert.ok(realCount>=18,'release compatibility gate must cover at least 18 source-verified real qBittorrent releases');
-assert.ok(matrix.releaseGate.length>=20,'release gate must retain 18 real releases plus upstream/sentinel coverage');
-console.log(`Release compatibility gate passed: ${realCount} real qBittorrent releases + ${matrix.fixtures.length-realCount} upstream/sentinel nodes; legacy/modern auth, action, filter, tracker, capability and Alternate WebUI entry contracts verified.`);
+activeFixture=null;
+assert.equal(matrix.supportedRange.minimum,'4.1.0','fixture floor must be qB 4.1.0');assert.equal(matrix.fixtures.find(x=>x.qbVersion==='4.6.1')?.webApiVersion,'2.9.3','qB 4.6.1 WebAPI fact must remain 2.9.3');assert.ok(realCount>=20,'representative release gate must cover at least 20 real releases');assert.ok(matrix.releaseGate.length>=22,'release gate must retain broad real + upstream/sentinel coverage');
+console.log(`Release compatibility fixture gate passed: ${realCount} real qB releases from 4.1.0 plus upstream/sentinel nodes; auth, exact action/filter boundaries, registry certification and tracker parameter generations verified.`);

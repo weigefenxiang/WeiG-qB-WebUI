@@ -8,7 +8,7 @@ on:
     paths:
       - 'webui/**'
       - 'simulator/**'
-      - 'tools/qb-release-catalog.mjs'
+      - 'tools/qb-*.mjs'
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/pages.yml'

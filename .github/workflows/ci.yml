@@ -92,15 +92,25 @@ jobs:
           node-version: 22
       - name: Full fixture compatibility matrix
         run: node tests/release-compat.mjs
-      - name: Checkout qBittorrent upstream with all release tags
+      - name: Checkout qBittorrent upstream with all stable release tags
         uses: actions/checkout@v7
         with:
           repository: qbittorrent/qBittorrent
           path: upstream-qb
           fetch-depth: 0
+          fetch-tags: true
           filter: blob:none
-      - name: Audit every official stable qB 4.x and 5.x tag from 4.1.9.1
+      - name: Generate source-derived qB 4.1.0 to latest stable catalog
+        run: node tools/qb-release-catalog.mjs upstream-qb --output=qb-releases.json
+      - name: Audit every official stable qB release from 4.1.0
         run: node tests/upstream-release-audit.mjs upstream-qb
+      - name: Upload exact stable release catalog
+        uses: actions/upload-artifact@v7
+        with:
+          name: qb-release-catalog-${{ github.sha }}
+          path: qb-releases.json
+          if-no-files-found: error
+          retention-days: 1
 
   browser:
     name: Linux browser candidate
@@ -205,14 +215,23 @@ jobs:
       - windows_browser
     steps:
       - uses: actions/checkout@v7
+      - name: Download exact stable release catalog
+        uses: actions/download-artifact@v8
+        with:
+          name: qb-release-catalog-${{ github.sha }}
+          path: release-catalog
       - name: Package exact-SHA release candidate
         run: |
           set -euo pipefail
+          test -s release-catalog/qb-releases.json
+          mkdir -p webui/private/data
+          cp release-catalog/qb-releases.json webui/private/data/qb-releases.json
           rm -rf release
           mkdir -p release
           cp -a webui release/WeiG-qB-WebUI
           find release/WeiG-qB-WebUI -type f \( -name '*.html' -o -name '*.js' -o -name '*.css' -o -name '*.json' -o -name 'GIT_SHA' \) -exec sed -i "s/__WEIGG_GIT_SHA__/${GITHUB_SHA}/g" {} +
           printf '%s\n' "${GITHUB_SHA}" > release/WeiG-qB-WebUI/GIT_SHA
+          test -s release/WeiG-qB-WebUI/private/data/qb-releases.json
           cd release
           zip -r WeiG-qB-WebUI.zip WeiG-qB-WebUI
           sha256sum WeiG-qB-WebUI.zip > SHA256SUMS

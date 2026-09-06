@@ -95,6 +95,7 @@ jobs:
           test -f "$RUNNER_TEMP/virtual-qb-site/dev/app/service-worker.js"
           test -f "$RUNNER_TEMP/virtual-qb-site/main/app/service-worker.js"
           test -s "$RUNNER_TEMP/virtual-qb-site/metadata/qb-releases.json"
+          test -s "$RUNNER_TEMP/virtual-qb-site/dev/app/__source/private/data/qb-releases.json"
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v6
@@ -153,5 +154,6 @@ jobs:
         run: |
           node tests/pages-live-acceptance.mjs
           node tests/pages-live-preferences.mjs
+          node tests/pages-live-release-profile.mjs
           node tests/pages-live-services.mjs
           node tests/pages-live-mobile-layout.mjs

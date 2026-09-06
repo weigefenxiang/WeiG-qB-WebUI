@@ -2,7 +2,7 @@
 
 Status: **Current Semantic Ownership**  
 Theme: **Nebula Spatial Console**  
-Compatibility floor: **qBittorrent 4.1.9.1**
+Compatibility floor: **qBittorrent 4.1.0**
 
 > Current visual, interaction and first-party ownership authority. The engineering discipline follows `awesome-design-md`: explicit hierarchy, semantic tokens, reusable primitives, responsive behavior, interaction states, Do/Don't rules and documented failure modes instead of screenshot-specific patches.
 
@@ -15,7 +15,7 @@ Compatibility floor: **qBittorrent 4.1.9.1**
 5. Current semantic identifiers describe stable responsibility and never carry numeric revision suffixes such as `-001/-002`; Git history owns revisions.
 6. `MutationObserver`, monkey patch, post-render repair layers, duplicate polling and dual owners are prohibited.
 7. Presentation modules do not own qB clients, business state or polling.
-8. Current qBittorrent/WebAPI facts remain explicit, including `qBittorrent 5.0.0+` and `WebAPI 2.3.0+`.
+8. Current qBittorrent/WebAPI facts remain explicit, including source-derived release/action/filter/parameter facts and protocol milestones such as `qBittorrent 5.0.0+` / `WebAPI 2.3.0+` where those facts remain relevant.
 9. Mobile is adaptive presentation of the same application state, not a second app.
 10. Light/Dark and Reduced Motion are first-class acceptance dimensions.
 11. Exact Git SHA is code/cache/test identity. Product patch `VERSION` increments only when formal `webui/**` product content changes; non-product tree changes create a new SHA without changing product VERSION.
@@ -47,7 +47,7 @@ Critical browser tests perform the real user action and assert semantic transiti
 Current-page data renders first. Aggregate count/index/enrichment is background work with bounded loading/error state.
 
 ### COMPAT-DEGRADE — honest capability degradation
-If older upstream lacks an authoritative/batch capability, prefer a visible capability notice over expensive emulation unless product approval explicitly requires a fallback.
+If the exact upstream release surface does not expose an authoritative capability, the normal control is not rendered. Attempted routes/actions may use one canonical capability notice where needed; expensive emulation is prohibited unless product approval explicitly requires a fallback.
 
 ### PERF-COMPAT — no collection N→N API fallback
 List/filter/refresh compatibility must not default to `N items -> N requests`. Prefer capability degradation when authoritative/batch support is absent and emulation is expensive.
@@ -70,29 +70,32 @@ Historical release-specific test copies are not preserved. Current requirements 
 ## 3. Torrent workspace owner map
 
 ```text
-qB HTTP/endpoints/technical facts       W.QBClient
-qB/WebAPI user capability policy        W.CapabilityRegistry + data/capabilities.json
-Route / page / Torrent query / sort     app.js / W.AppState / W.LibraryController
-Torrent row/card DOM                    W.Components
-Torrent field registry/preferences      W.TorrentFieldRegistry
-Torrent progress semantic projection    W.Components.progressVisual
-Torrent progress DOM                    W.Components.progressTrack / progressCell
-Torrent progress skin/motion            css/progress.css
-Facet semantic state                    W.LibraryController
-Facet composition                       W.SpatialRuntime
-Facet DOM location                      Sidebar / #sidebar-facet-slot
-Selection/actions                       W.Selection / ActionRegistry
-Transfer samples/metadata               W.TransferRuntime
-Connection semantic publisher           app transfer cycle -> weigg:status-state
-Connection presentation/help            W.MobileAdaptive
-Connection marker geometry/motion       css/layout.css
+qB stable source/release facts           tools/qb-release-catalog.mjs -> W.ReleaseProfile
+qB HTTP/endpoints/transport              W.QBClient
+qB/WebAPI user capability policy         W.CapabilityRegistry + data/capabilities.json
+Torrent status/filter semantic truth     W.TorrentSemantics
+Torrent filter presentation              W.TorrentFilterView
+Route / page / Torrent query / sort      app.js / W.AppState / W.LibraryController
+Torrent row/card DOM                     W.Components
+Torrent field registry/preferences       W.TorrentFieldRegistry
+Torrent progress semantic projection     W.Components.progressVisual
+Torrent progress DOM                     W.Components.progressTrack / progressCell
+Torrent progress skin/motion             css/progress.css
+Facet semantic state                     W.LibraryController
+Facet composition                        W.SpatialRuntime
+Facet DOM location                       Sidebar / #sidebar-facet-slot
+Selection/actions                        W.Selection / ActionRegistry
+Transfer samples/metadata                W.TransferRuntime
+Connection semantic publisher            app transfer cycle -> weigg:status-state
+Connection presentation/help             W.MobileAdaptive
+Connection marker geometry/motion        css/layout.css
 Header Search dispatch/theme/utilities   W.HeaderUtilities
-RSS query/presentation                  W.RSS / ui.js
-Logs query/runtime                      W.Logs / logs.js
-Header geometry                         css/header.css
-Responsive placement                    W.MobileAdaptive
-DataGrid sizing/resize                   W.DataGrid
-Dialog normalization                    W.LayoutRuntime
+RSS query/presentation                   W.RSS / ui.js
+Logs query/runtime                       W.Logs / logs.js
+Header geometry                          css/header.css
+Responsive placement                     W.MobileAdaptive
+DataGrid sizing/resize                    W.DataGrid
+Dialog normalization                     W.LayoutRuntime
 ```
 
 ### FACET-OWNER — one facet chain
@@ -118,6 +121,9 @@ Canonical Mobile Torrent card first line is selection + title + More. Configured
 
 ### TORRENT-RENDERER-OWNER — Components owns renderer functions
 `W.Components.torrentRow()` and `W.Components.mobileTorrentCard()` are canonical definitions. `ui.js` may supply field registry/config UI but may not replace renderer functions after load. Responsive code may not replace `W.VirtualList` or `W.Components.state`; Layout code may not replace `W.DataGrid` methods.
+
+### TORRENT-FILTER-OWNER — one status semantic chain
+`W.ReleaseProfile` exposes which upstream filter names exist for the exact stable release; `W.TorrentSemantics` canonicalizes and evaluates those states; `W.TorrentFilterView` renders the controls; `app.js` and `selection.js` are callers. They may not duplicate state regex policy. Completion (`progress >= 1`) is not itself proof of seeding; seeding comes from upstream seeding/upload state.
 
 ## 4. Torrent progress
 
@@ -194,29 +200,32 @@ Connection Tooltip/Dialog consumes already available qB/WebAPI/DHT/Peers state f
 ## 7. Capability system
 
 ### CAPABILITY-OWNER
-All user-visible compatibility requirements, badges, disabled states and explanation copy are owned by `W.CapabilityRegistry + data/capabilities.json`.
+Exact supported-stable source facts are owned by the generated qB release catalog and `W.ReleaseProfile`; user-visible availability/presentation policy is owned by `W.CapabilityRegistry + data/capabilities.json`. `W.QBClient` consumes the result and does not recreate version policy.
+
+### CAPABILITY-SOURCE
+For source-bound features, exact release action/filter/parameter presence outranks heuristic version ranges. Version ranges remain declarative fallback/diagnostic facts where no exact source surface is available. Unknown capability identifiers fail closed.
 
 ### CAPABILITY-RANGE
-Support uses semantic `eq / gt / gte / lt / lte` and compound rules, not exact patch enumeration.
+Fallback/version-display logic uses semantic `eq / gt / gte / lt / lte` and compound rules, not exact patch enumeration in callers.
 
 ### CAPABILITY-BADGE
-Primary badges are qB-facing when a trustworthy qB milestone exists (`5+`, `4.2+`, bounded ranges).
+Badges are diagnostic/notice content only when a capability surface is intentionally shown. A trustworthy qB milestone may be displayed as a full semantic version; no qB-facing milestone is invented from a WebAPI fact.
 
 ### CAPABILITY-DIALOG
-One canonical Capability Dialog explains unsupported features.
+One canonical Capability Dialog explains an attempted unavailable route/action when a notice is appropriate.
 
 ### CAPABILITY-COST
-Capability evaluation consumes already detected versions + local JSON, without per-feature requests/polling.
+Capability evaluation consumes already detected versions + local generated catalog/JSON. It adds no per-feature request or polling.
 
-### CAPABILITY-VISIBLE
-Unsupported actionable features normally stay visible, `aria-disabled`, badged and explainable.
+### CAPABILITY-HIDE
+A control/facet/filter absent from the exact upstream release surface is absent from normal UI. Unsupported controls are not kept as disabled badge clutter. Desktop and Mobile consume the same capability state and the same control instance where the control exists.
 
 ### CAPABILITY-EXCEPTION
-Upstream quirks live in declarative rules, not one-off feature version branches.
+Upstream quirks live in declarative/source-derived facts, not one-off caller version branches.
 
-Known current facts include Private/PT exact metadata at qBittorrent 5.0.0+ and Tags at WebAPI 2.3.0+ (qB-facing 4.2+ where trustworthy).
+Known current facts include the `private` torrents/info surface in qB 5.x and Tags through the upstream Tags action; WebAPI milestone facts such as 2.3.0 remain recorded where useful, but exact supported-stable source provenance decides source-bound availability.
 
-Current supported stable range is qBittorrent 4.1.9.1 -> 5.2.3: **55 official stable releases = 40 qB 4.x + 15 qB 5.x**. Linux/Windows Browser gates exercise representative qB4 floor + qB5 modern generations; `tests/upstream-release-audit.mjs` owns the complete stable-tag compatibility audit.
+Current supported stable range is **qBittorrent 4.1.0 → latest official stable**. The catalog is regenerated from upstream source and every supported stable tag is audited; the count/latest version is intentionally not hard-coded in this document. Linux/Windows browser gates exercise representative floor/modern sessions while `tests/upstream-release-audit.mjs` owns complete stable-tag source compatibility.
 
 ## 8. Theme
 
@@ -297,7 +306,7 @@ Feature gates prefer runtime/API/computed/final-state truth. A stale gate bound 
 `tests/syntax-contract.mjs` owns runtime/test JavaScript syntax validation only.
 
 ### VERSION-PRODUCT — only webui product changes increment patch VERSION
-Only a formal change to product content under `webui/**` increments patch VERSION. When `webui/**` changes, `VERSION`, `webui/VERSION` and `package.json.version` move together in the same final state. Changes limited to tests, fixtures, workflows, docs, DESIGN, installers, CI/gates, package test scripts, test dependencies or lockfiles keep the current product VERSION. Browser fixtures read canonical VERSION and do not hard-code product patch versions.
+Only a formal change to product content under `webui/**` increments patch VERSION. When `webui/**` changes, `VERSION`, `webui/VERSION` and `package.json.version` move together in the same final state; `package-lock.json` root package version mirrors the same product version. Changes limited to tests, fixtures, workflows, docs, DESIGN, installers, CI/gates, package test scripts, test dependencies or lockfiles keep the current product VERSION. Browser fixtures read canonical VERSION and do not hard-code product patch versions.
 
 ### EXACT-SHA-EVIDENCE — validation belongs to SHA
 Every new Git SHA invalidates older CI/LIVE/candidate/artifact evidence. VERSION does not authorize evidence reuse, including when a non-product change correctly keeps the same VERSION.
@@ -306,11 +315,14 @@ Every new Git SHA invalidates older CI/LIVE/candidate/artifact evidence. VERSION
 Formal development uses `dev`; `main` is untouched without explicit authorization. Before write and before ref update, re-read current dev exact HEAD. Update only by safe fast-forward with `force:false`.
 
 ### BROWSER-RUNTIME — hosted Chrome is the only CI browser runtime
-`tests/browser-driver.mjs` is the only Playwright launch-policy owner. The seven current `browser-*.mjs` semantic gates are callers and may not import Playwright directly, select a channel, set an executable path or implement fallback policy. Playwright JS is exact-pinned by `package.json + package-lock.json`.
+`tests/browser-driver.mjs` is the only Playwright launch-policy owner. The current `browser-*.mjs` semantic gates are callers and may not import Playwright directly, select a channel, set an executable path or implement fallback policy. Playwright JS is exact-pinned by `package.json + package-lock.json`.
 
 Linux routine UI, Linux candidate and Windows candidate all use the Google Chrome Stable already supplied by their pinned GitHub-hosted runner generation. CI must not run `playwright install`, `playwright install-deps`, dynamic `npm install ... playwright`, manual Chromium downloads or browser-specific apt provisioning. Missing hosted Chrome fails closed; it never falls back to a Playwright-managed browser.
 
 Hosted Chrome itself may update between runs. Therefore browser evidence is traceable as `exact Git SHA + package-lock + runner image + exact logged Chrome version`; it is not a claim that the same SHA always replays against the same browser binary.
+
+### RELEASE-CATALOG-ARTIFACT — one audited source catalog ships everywhere
+Candidate CI generates the qB stable release catalog from the upstream source checkout used for the full stable audit, passes that exact catalog as a SHA-bound artifact to release packaging, and embeds it at `private/data/qb-releases.json`. Virtual qB Pages injects the same catalog shape into each built product source. Release ZIP and Pages must not diverge into exact-source versus heuristic compatibility modes.
 
 ## 11. Do / Don't
 
@@ -323,6 +335,7 @@ Do:
 - validate real interaction/final state;
 - use exact SHA tree/files for repo-wide ownership audits when search can be incomplete;
 - keep Playwright dependency identity in `package-lock.json` and log hosted Chrome identity in every browser gate;
+- regenerate/audit the supported stable qB source catalog instead of hard-coding release counts;
 - use revision-neutral semantic identifiers and let Git history own revisions.
 
 Don't:
@@ -334,6 +347,7 @@ Don't:
 - read hidden DOM as business state;
 - implement Mobile Sort by clicking hidden Desktop UI;
 - restore summary cards or Mobile facet/command shelves;
+- render controls the exact upstream source surface does not support merely to display an upgrade badge;
 - hide stale code instead of deleting its owner/callers/tests;
 - dynamically install Playwright or provision Chromium inside CI browser jobs;
 - treat a red assertion as proof the product is wrong before inspecting runtime truth.
@@ -346,7 +360,9 @@ The Torrent workspace acceptance matrix includes:
 Desktop / Mobile
 Dark / Light
 System Reduced Motion / WeiG Reduced Motion
-qB 4.1.9.1 / qB 5.2.x representative compatibility
+qB 4.1.0 floor / latest stable representative compatibility
+source-derived Torrent filter set; unsupported filters are absent
+source-derived Tags/Private capability visibility
 Sidebar facets below state filters
 no four-card summary on any viewport
 compact Mobile toolbar with canonical controls
@@ -366,13 +382,16 @@ The design objective is reduced duplicate ownership and clearer information hier
 ## 13. Settings semantic runtime
 
 ### SETTINGS-OWNER — one Preference semantic owner
-`W.SettingsSchema` owns qB preference surface, section, type, unit, enum, editability and future fallback. `W.QBClient` only transports `app/preferences` and `app/setPreferences`; `settings.js` is the presentation caller. `W.Transfer` owns bounded transfer telemetry and the quick global/alternate rate-limit dialog; it does not own whether those qB Preferences are present or classified in Settings.
+`W.SettingsSchema` owns qB preference surface, section, type, unit, enum, editability and future fallback. `W.ReleaseProfile` supplies the exact stable-release getter/setter descriptors; `W.QBClient` only transports `app/preferences` and `app/setPreferences`; `settings.js` is the presentation caller. `W.Transfer` owns bounded transfer telemetry and the quick global/alternate rate-limit dialog; it does not own whether those qB Preferences are present or classified in Settings.
 
 ### SETTINGS-ROUTING — semantic routing before fallback
 Preference routing is exact schema → semantic family rule → Advanced / Upstream fallback. Per-version runtime copies, qB patch allowlists and versioned Settings implementations are prohibited. The canonical Speed surface owns global/alternate speed Preferences plus scheduler/uTP/TCP/LAN rate-limit policy; Advanced must not duplicate those keys.
 
+### SETTINGS-WRITE-PROVENANCE — setter proof decides editability
+For an exact stable profile, a qB Preference is editable only when its source descriptor proves a setter is present, its write type is resolved, getter/setter types do not conflict, and the descriptor is writable. Getter-only, unresolved, missing-descriptor and type-conflict fields remain visible but read-only. Every control kind consumes this editability, and save-time payload filtering repeats the same canonical check as defense in depth.
+
 ### SETTINGS-STRUCTURED — safe unknown values
-Unknown scalar preferences are rendered from their actual JSON scalar type. Unknown arrays/objects remain visible as read-only structured JSON until an authoritative upstream contract exists. `[object Object]` presentation and blind structured writeback are prohibited.
+Unknown/scalar Preferences may be routed and rendered from their actual value/read type, but source-unproven scalars remain read-only. Arrays/objects remain visible as read-only structured JSON even when a raw setter exists, until a dedicated authoritative structured editor contract is implemented. `[object Object]` presentation and blind structured writeback are prohibited.
 
 ### SETTINGS-VISUAL — reuse canonical primitives
 Settings reuses existing `settings-section`, `settings-grid`, `setting-row`, `field-input setting-input`, `switch-control` and `W.Components.selectControl()` primitives. Feature-local Settings CSS, a second Select/Input/Dialog skin, or Mobile-only business state is prohibited.
@@ -380,8 +399,8 @@ Settings reuses existing `settings-section`, `settings-grid`, `setting-row`, `fi
 ### SETTINGS-MOBILE-FLOW — long copy stacks the same canonical control
 Mobile keeps short Settings rows side-by-side. When rendered description copy exceeds roughly two lines, the same control moves below the copy and may use the full row width. A closed Select remains one line with ellipsis; its menu exposes the complete option text. Time-zone labels remain owned by `W.Time.displayLabel()` and are not rewritten by responsive presentation.
 
-### SETTINGS-GENERATION-AUDIT — current upstream generation
-Representative upstream compatibility resolves the latest official `release-5.*.0` generation dynamically while keeping qBittorrent 4.1.9.1 as the compatibility floor. When a prior `5.x.0` generation exists, the audit reports Preference and API action deltas between the prior and latest generation. Full stable-tag audit remains a separate coverage layer.
+### SETTINGS-GENERATION-AUDIT — every supported stable release
+The generated stable catalog starts at qBittorrent 4.1.0 and discovers every numeric official stable tag through the latest release. Each profile derives Preferences getter/setter descriptors, API actions, Torrent filter names and `torrents/info` parameters from that release's source. `tests/upstream-release-audit.mjs` validates the full set; Pages Preferences verification exercises the published stable matrix rather than a hand-picked `5.x.0` generation list.
 
 ## 14. Virtual qB Lab
 
@@ -392,7 +411,7 @@ WeiG Virtual qB Lab is a non-product backend simulator. Formal `webui/**` remain
 `QBSimulatorEngine` owns the canonical virtual qB world. `QBScheduler` owns activity/resource allocation, `QBPolicyEngine` owns limits/queue/ratio rules, `QBProtocolRouter` owns WebAPI routing, `QBVirtualDatabase` owns IndexedDB persistence, and Service Worker code is an adapter only. Separate Pages/browser/fixture simulator state machines are prohibited.
 
 ### SIMULATOR-UPSTREAM — official stable facts, synthetic runtime data
-`QBStableReleaseCatalog` discovers numeric official qBittorrent stable tags from 4.1.0 onward and extracts WebAPI/version/API/preference facts from the corresponding upstream source. Alpha/beta/rc/master are excluded. Runtime Torrent/peer/network/disk data may be synthetic but must be seeded, deterministic and internally consistent.
+`QBStableReleaseCatalog` discovers numeric official qBittorrent stable tags from 4.1.0 onward and extracts WebAPI/version/API/preference/Torrent-surface facts from the corresponding upstream source. Alpha/beta/rc/master are excluded. Runtime Torrent/peer/network/disk data may be synthetic but must be seeded, deterministic and internally consistent.
 
 ### SIMULATOR-AUTH — demo login follows real product flow
 Virtual qB accepts arbitrary credentials. Lab presentation may prefill `demo/demo` only in the generated Pages artifact; Clean Mode leaves the product login source untouched. Logout invalidates the virtual session so protected API calls return 403 and the existing `SessionController` completes the real logout verification flow.
@@ -401,7 +420,7 @@ Virtual qB accepts arbitrary credentials. Lab presentation may prefill `demo/dem
 A simulator setting marked modeled must affect virtual behavior. Global/per-torrent rate limits, active Torrent limits, connection/upload slot limits, queueing, Force Start, Ratio and seeding-time policies must constrain the same Scheduler snapshot consumed by Torrent rows, `transfer/info` and `sync/maindata`. Returning success without the corresponding semantic change is prohibited.
 
 ### SIMULATOR-FUTURE — discover first, never guess UX semantics
-A future stable qB release may be auto-discovered for Virtual Lab metadata without a product VERSION bump or `webui/**` write. Unknown upstream preference keys may use the existing safe Settings fallback only when a safe value/type is available; weekly automation must not invent units, enums, ranges or interaction semantics. Formal Settings UX improvements remain product work owned by `W.SettingsSchema`.
+A future stable qB release may be auto-discovered for Virtual Lab metadata without a product VERSION bump or `webui/**` write. Unknown upstream preference keys remain visible through the safe Settings routing system, but writeback requires exact setter/type provenance and structured values remain read-only until their dedicated contract exists. Weekly automation must not invent units, enums, ranges or interaction semantics. Formal Settings UX improvements remain product work owned by `W.SettingsSchema`.
 
 ### SIMULATOR-WORKFLOW-GATE — Actions require separate approval
 Simulator core, protocol, storage, tests, launcher and local Pages artifact tooling may be developed on `dev`. Adding/enabling Pages deployment permissions, scheduled weekly refresh or a new workflow is a separate workflow boundary and requires explicit user confirmation before write. The detailed architecture and scope live in `docs/009.Virtual-qB-Lab.md`.
