@@ -111,6 +111,13 @@ function safeFallbackCandidate(declared, expectedType) {
   };
 }
 
+function hasSourceSchema(declared) {
+  return hasOwn(declared, 'readType')
+    || hasOwn(declared, 'writeType')
+    || typeof declared.getterPresent === 'boolean'
+    || typeof declared.setterPresent === 'boolean';
+}
+
 export function buildPreferenceDescriptors(base = {}, keys = null, options = {}) {
   const source = base && typeof base === 'object' ? base : {};
   const wanted = Array.isArray(keys) ? keys.map(String) : Object.keys(source);
@@ -127,6 +134,9 @@ export function buildPreferenceDescriptors(base = {}, keys = null, options = {})
   for (const key of wanted) {
     const declared = explicit.get(key) || {};
     const { readType, writeType, agreement, valueType } = declaredTypes(declared);
+    const sourceSchema = explicit.has(key) && hasSourceSchema(declared);
+    const unresolvedRead = sourceSchema && declared.getterPresent !== false && !readType;
+    const unresolvedWrite = sourceSchema && declared.setterPresent === true && !writeType;
     const known = hasKnownPreferenceDefault(key) ? knownPreferenceDefault(key) : undefined;
     const fallback = safeFallbackCandidate(declared, valueType);
     const selected = selectCandidate([
@@ -140,25 +150,26 @@ export function buildPreferenceDescriptors(base = {}, keys = null, options = {})
     ], valueType);
     const value = selected.value;
     const provenance = selected.provenance;
-    const type = valueType || preferenceTypeOf(value);
-    const structured = type === PreferenceType.ARRAY || type === PreferenceType.OBJECT;
-    const getterOnly = declared.getterPresent === true && declared.setterPresent === false;
+    const transportType = preferenceTypeOf(value);
+    const type = valueType || (sourceSchema ? null : transportType);
+    const structured = valueType === PreferenceType.ARRAY || valueType === PreferenceType.OBJECT;
+    const getterOnly = sourceSchema && declared.getterPresent === true && declared.setterPresent === false;
     const conflict = agreement === PreferenceTypeAgreement.MISMATCH;
     const hasExplicitWriteSchema = hasOwn(declared, 'writeType') || typeof declared.setterPresent === 'boolean';
     const bindingOwnsWrite = modeled.has(key) && !hasExplicitWriteSchema;
     let coverage;
 
-    if (Object.values(PreferenceCoverage).includes(declared.coverage)) {
+    if (conflict || unresolvedRead || provenance === PreferenceProvenance.SAFE_PLACEHOLDER) {
+      coverage = PreferenceCoverage.UNKNOWN;
+    }
+    else if (structured || getterOnly || unresolvedWrite) {
+      coverage = PreferenceCoverage.READ_ONLY;
+    }
+    else if (Object.values(PreferenceCoverage).includes(declared.coverage)) {
       coverage = normalizePreferenceCoverage(declared.coverage);
     }
     else if (modeled.has(key)) {
       coverage = PreferenceCoverage.MODELED;
-    }
-    else if (conflict || provenance === PreferenceProvenance.SAFE_PLACEHOLDER) {
-      coverage = PreferenceCoverage.UNKNOWN;
-    }
-    else if (structured || getterOnly) {
-      coverage = PreferenceCoverage.READ_ONLY;
     }
     else {
       coverage = PreferenceCoverage.STATEFUL;
@@ -169,13 +180,14 @@ export function buildPreferenceDescriptors(base = {}, keys = null, options = {})
       && !bindingOwnsWrite
       && coverage === PreferenceCoverage.STATEFUL
       && !structured;
-    const writeNormalizationType = writeType || (legacyStatefulWrite ? type : null);
+    const writeNormalizationType = writeType || (legacyStatefulWrite ? transportType : null);
 
     let writable = typeof declared.writable === 'boolean'
       ? declared.writable
       : (coverage === PreferenceCoverage.MODELED || coverage === PreferenceCoverage.STATEFUL);
 
-    if (declared.setterPresent === false || (!writeType && !bindingOwnsWrite && !legacyStatefulWrite) || structured || conflict
+    if (declared.setterPresent === false || unresolvedRead || unresolvedWrite
+      || (!writeType && !bindingOwnsWrite && !legacyStatefulWrite) || structured || conflict
       || coverage === PreferenceCoverage.READ_ONLY || coverage === PreferenceCoverage.UNKNOWN) {
       writable = false;
     }
@@ -208,6 +220,9 @@ export function buildPreferenceDescriptors(base = {}, keys = null, options = {})
       getterConfidence: declared.getterConfidence || null,
       setterConfidence: declared.setterConfidence || null,
       upstreamWritable: declared.setterPresent === true,
+      unresolvedRead,
+      unresolvedWrite,
+      transportType,
       upstreamFallbackExpression: declared.upstreamFallbackExpression || null,
       upstreamFallbackValue: hasOwn(declared, 'upstreamFallbackValue') ? cloneValue(declared.upstreamFallbackValue) : null,
       upstreamFallbackConfidence: declared.upstreamFallbackConfidence || null,
@@ -235,6 +250,8 @@ export function summarizePreferenceCoverage(descriptors = []) {
   const readOnlyKeys = [];
   const repairedKeys = [];
   const typeConflictKeys = [];
+  const unresolvedReadKeys = [];
+  const unresolvedWriteKeys = [];
   let exactValueCount = 0;
   let upstreamGetterCount = 0;
   let upstreamSetterCount = 0;
@@ -255,6 +272,8 @@ export function summarizePreferenceCoverage(descriptors = []) {
     if (item.setterConfidence === 'HIGH' && item.writeType) highConfidenceWriteCount++;
     if (item.provenance === PreferenceProvenance.UPSTREAM_FALLBACK) upstreamFallbackCount++;
     if (item.typeAgreement === PreferenceTypeAgreement.MISMATCH) typeConflictKeys.push(item.key);
+    if (item.unresolvedRead) unresolvedReadKeys.push(item.key);
+    if (item.unresolvedWrite) unresolvedWriteKeys.push(item.key);
     if (Array.isArray(item.rejectedValueSources) && item.rejectedValueSources.length) repairedKeys.push(item.key);
   }
 
@@ -274,6 +293,10 @@ export function summarizePreferenceCoverage(descriptors = []) {
     exactTypeAgreementCount: byAgreement[PreferenceTypeAgreement.EXACT] || 0,
     typeConflictCount: typeConflictKeys.length,
     typeConflictKeys,
+    unresolvedReadCount: unresolvedReadKeys.length,
+    unresolvedReadKeys,
+    unresolvedWriteCount: unresolvedWriteKeys.length,
+    unresolvedWriteKeys,
     upstreamFallbackCount,
     repairedValueCount: repairedKeys.length,
     repairedKeys,

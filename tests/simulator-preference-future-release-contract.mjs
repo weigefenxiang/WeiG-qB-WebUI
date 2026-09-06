@@ -65,12 +65,16 @@ assert.equal(descriptors.get('future_conflict').writable,false,'read/write confl
 assert.equal(surface.future_opaque,'opaque-getter-value','unresolved future getter representation must survive even when writeType is known');
 assert.equal(descriptors.get('future_opaque').readType,null);
 assert.equal(descriptors.get('future_opaque').writeType,'number');
+assert.equal(descriptors.get('future_opaque').coverage,PreferenceCoverage.UNKNOWN,'unresolved source getter types must be explicit UNKNOWN coverage');
+assert.equal(descriptors.get('future_opaque').writable,false,'setter truth cannot substitute for unresolved getter semantics');
+assert.ok(initialReport.unresolvedReadKeys.includes('future_opaque'));
 const accepted=runtime.write({future_enum:'None',future_scalar:5,future_read_only:false,future_conflict:'9',future_opaque:'12'},1700000001000);
 assert.equal(accepted.future_enum,'None');
 assert.ok(!Object.prototype.hasOwnProperty.call(accepted,'future_scalar'),'placeholder-only future scalar must remain fail-closed');
 assert.ok(!Object.prototype.hasOwnProperty.call(accepted,'future_read_only'));
 assert.ok(!Object.prototype.hasOwnProperty.call(accepted,'future_conflict'));
-assert.equal(accepted.future_opaque,12,'known future setter type may normalize POST independently of unresolved getter type');
+assert.ok(!Object.prototype.hasOwnProperty.call(accepted,'future_opaque'),'unresolved GET semantics must remain fail-closed even with a known setter conversion');
+assert.equal(world.preferences.future_opaque,'opaque-getter-value');
 
 const postWriteDescriptors=new Map(runtime.descriptors().map(item=>[item.key,item]));
 const report=runtime.coverage();
@@ -81,5 +85,6 @@ assert.ok(report.highConfidenceReadCount>=3);
 assert.ok(report.highConfidenceWriteCount>=3);
 assert.ok(report.byAgreement.EXACT>=2);
 assert.ok(report.byAgreement.MISMATCH>=1);
+assert.ok(report.unresolvedReadCount>=1);
 
-console.log('Virtual qB future preference contract passed: future getter/setter schemas remain source-driven, fallbacks stay provisional until explicitly written, conflicts and placeholders fail closed, and unresolved GET types are never rewritten from POST truth.');
+console.log('Virtual qB future preference contract passed: future getter/setter schemas remain source-driven, fallbacks stay provisional, conflicts/placeholders/unresolved GET surfaces fail closed, and POST truth never replaces unknown GET semantics.');

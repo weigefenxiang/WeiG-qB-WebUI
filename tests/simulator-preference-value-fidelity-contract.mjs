@@ -36,6 +36,10 @@ const profile={
   assert.deepEqual(surface.array_key,[]);
   assert.deepEqual(surface.object_key,{});
   assert.equal(surface.opaque_read_number_write,'opaque-current-value','writeType must never rewrite an unresolved getter representation');
+  const opaque=runtime.descriptors().find(item=>item.key==='opaque_read_number_write');
+  assert.equal(opaque.coverage,'UNKNOWN','source-backed getter surfaces with unresolved read type must fail closed even when setter type is known');
+  assert.equal(opaque.writable,false,'an unresolved GET representation must not become writable merely because POST conversion is known');
+  assert.equal(opaque.unresolvedRead,true);
   assert.equal(surface.enum_key,'Safe','source-backed enum fallback should beat a fabricated empty string');
   assert.equal(runtime.descriptors().find(item=>item.key==='enum_key').provenance,PreferenceProvenance.UPSTREAM_FALLBACK);
   assert.deepEqual(runtime.coverage().sanitizedWorldKeys,['array_key','bool_key','number_key','object_key','string_key']);
@@ -119,8 +123,8 @@ const profile={
   const runtime=createPreferenceRuntime(world);
   assert.equal(runtime.read().split,'opaque');
   const accepted=runtime.write({split:'12'},1700000001000);
-  assert.equal(accepted.split,12,'POST normalization must use writeType even when GET representation is unresolved');
-  assert.equal(world.preferences.split,12);
+  assert.ok(!Object.prototype.hasOwnProperty.call(accepted,'split'),'known POST type cannot authorize a write while the GET representation is unresolved');
+  assert.equal(world.preferences.split,'opaque','fail-closed unresolved GET fields must preserve current runtime state');
 }
 
-console.log('Virtual qB preference value fidelity contract passed: readType governs persisted/GET values, writeType independently governs POST normalization, enum fallbacks remain provisional, stale sessions repair safely and duplicated hard-limit state cannot remain stale.');
+console.log('Virtual qB preference value fidelity contract passed: readType governs persisted/GET values, writeType never substitutes for unresolved GET truth, enum fallbacks remain provisional, stale sessions repair safely and duplicated hard-limit state cannot remain stale.');
