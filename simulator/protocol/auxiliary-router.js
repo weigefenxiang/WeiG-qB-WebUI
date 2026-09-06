@@ -50,7 +50,8 @@ function bootstrapAllowed(world,path){
   if(path==='app/processInfo')return qbAtLeast(world,'5.2.0')&&apiAtLeast(world,'2.15.1');
   if(path==='transfer/setSpeedLimitsMode')return qbAtLeast(world,'5.0.0');
   if(path==='torrents/count')return qbAtLeast(world,'4.3.0');
-  if(['torrents/setSavePath','torrents/setDownloadPath','torrents/export'].includes(path))return qbAtLeast(world,'4.6.0');
+  if(['torrents/setSavePath','torrents/setDownloadPath'].includes(path))return qbAtLeast(world,'4.4.0');
+  if(path==='torrents/export')return qbAtLeast(world,'4.5.0');
   if(['torrents/pieceAvailability','torrents/addWebSeeds','torrents/editWebSeed','torrents/removeWebSeeds','torrents/setComment','torrents/setTags'].includes(path))return Number(world.profile?.major)>=5;
   if(['torrents/SSLParameters','torrents/setSSLParameters'].includes(path))return qbAtLeast(world,'5.0.0');
   if(['torrents/fetchMetadata','torrents/parseMetadata','torrents/saveMetadata'].includes(path))return qbAtLeast(world,'5.2.0')&&apiAtLeast(world,'2.11.9');

@@ -77,10 +77,37 @@ function post(path,body){return new Request(`https://example.invalid/api/v2/${pa
 }
 
 {
+  const w=world('4.3.9','2.8.2'),t=w.torrents[0];
+  let r=await handleApi(w,post('torrents/setSavePath',{id:t.hash,path:'/too-early-save'}));
+  assert.equal(r.status,404,'setSavePath must not leak before qB 4.4.0');
+  r=await handleApi(w,post('torrents/setDownloadPath',{id:t.hash,path:'/too-early-download'}));
+  assert.equal(r.status,404,'setDownloadPath must not leak before qB 4.4.0');
+  r=await handleApi(w,get(`torrents/export?hash=${t.hash}`));
+  assert.equal(r.status,404,'torrent export must not leak before qB 4.5.0');
+}
+
+{
+  const w=world('4.4.0','2.8.4'),t=w.torrents[0];
+  let r=await handleApi(w,post('torrents/setSavePath',{id:t.hash,path:'/qB44-save'}));
+  assert.equal(r.status,200,'setSavePath must be available from qB 4.4.0');
+  r=await handleApi(w,post('torrents/setDownloadPath',{id:t.hash,path:'/qB44-download'}));
+  assert.equal(r.status,200,'setDownloadPath must be available from qB 4.4.0');
+  r=await handleApi(w,get(`torrents/export?hash=${t.hash}`));
+  assert.equal(r.status,404,'torrent export must remain unavailable on qB 4.4.x');
+}
+
+{
+  const w=world('4.5.0','2.8.18'),t=w.torrents[0];
+  const r=await handleApi(w,get(`torrents/export?hash=${t.hash}`));
+  assert.equal(r.status,200,'torrent export must be available from qB 4.5.0');
+  assert.match(r.headers.get('content-type')||'',/application\/x-bittorrent/);
+}
+
+{
   const w=world('4.1.0','2.0.0');
   let r=await handleApi(w,get('app/defaultSavePath'));assert.equal(r.status,200,'defaultSavePath must remain available on the original v2 WebAPI generation');
   assert.equal(await r.text(),w.preferences.save_path);
   r=await handleApi(w,get('app/processInfo'));assert.equal(r.status,404,'processInfo must not leak into qB4');
 }
 
-console.log('Virtual qB modern contract passed: SSL state, manual peer visibility, metadata fetch/parse/save, clientdata, process info, virtual filesystem, network interfaces, API keys, test email and shutdown semantics.');
+console.log('Virtual qB modern contract passed: SSL state, manual peer visibility, metadata fetch/parse/save, clientdata, process info, virtual filesystem, network interfaces, API keys, test email, historical path/export boundaries and shutdown semantics.');
