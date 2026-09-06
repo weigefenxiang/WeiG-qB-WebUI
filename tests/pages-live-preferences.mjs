@@ -142,29 +142,48 @@ try{
   assert.equal(anchorResponse.status,200,'Virtual qB app/preferences must be readable');
   assert.deepEqual(Object.keys(anchorResponse.json||{}).sort(),[...anchor.preferenceKeys].sort(),`Virtual qB ${anchor.qbVersion} app/preferences must exactly match the official upstream key surface`);
 
-  const advancedExamples=[
-    'limit_utp_rate','scheduler_enabled','schedule_from_hour','schedule_to_hour','scheduler_days',
-    'checking_memory_use','disk_cache_ttl','disk_io_read_mode','disk_io_write_mode','enable_coalesce_read_write',
-    'file_pool_size','memory_working_set_limit'
-  ].filter(key=>anchor.preferenceKeys.includes(key));
-  for(const key of advancedExamples){
-    assert.ok(Object.prototype.hasOwnProperty.call(anchorResponse.json,key),`Virtual qB ${anchor.qbVersion} must expose advanced preference ${key}`);
+  const routeExamples={
+    speed:[
+      'limit_utp_rate','scheduler_enabled','schedule_from_hour','schedule_to_hour','scheduler_days'
+    ].filter(key=>anchor.preferenceKeys.includes(key)),
+    advanced:[
+      'checking_memory_use','disk_cache_ttl','disk_io_read_mode','disk_io_write_mode','enable_coalesce_read_write',
+      'file_pool_size','memory_working_set_limit'
+    ].filter(key=>anchor.preferenceKeys.includes(key))
+  };
+  for(const [surface,keys] of Object.entries(routeExamples)){
+    for(const key of keys){
+      assert.ok(Object.prototype.hasOwnProperty.call(anchorResponse.json,key),`Virtual qB ${anchor.qbVersion} must expose ${surface} preference ${key}`);
+    }
   }
 
-  const expectedAdvancedKeys=await page.evaluate(prefs=>{
+  const expectedRouteKeys=await page.evaluate(prefs=>{
     if(!window.WeiG?.SettingsSchema?.group)throw new Error('WeiG SettingsSchema is unavailable');
-    return window.WeiG.SettingsSchema.group('advanced',prefs).flatMap(group=>group.keys).sort();
+    return Object.fromEntries(['speed','advanced'].map(surface=>[
+      surface,
+      window.WeiG.SettingsSchema.group(surface,prefs).flatMap(group=>group.keys).sort()
+    ]));
   },anchorResponse.json);
-  assert.ok(expectedAdvancedKeys.length>=20,`WeiG ${anchor.qbVersion} Advanced route unexpectedly small: ${expectedAdvancedKeys.length}`);
+  assert.ok(expectedRouteKeys.advanced.length>=20,`WeiG ${anchor.qbVersion} Advanced route unexpectedly small: ${expectedRouteKeys.advanced.length}`);
 
-  await page.evaluate(async()=>{
-    if(!window.WeiG?.SettingsRenderer?.open)throw new Error('WeiG SettingsRenderer is unavailable');
-    await window.WeiG.SettingsRenderer.open('advanced');
-  });
-  await page.waitForFunction(expected=>document.querySelectorAll('#settings-content [data-setting-key]').length>=expected,expectedAdvancedKeys.length,{timeout:30000});
-  const renderedKeys=(await page.locator('#settings-content [data-setting-key]').evaluateAll(rows=>rows.map(row=>row.dataset.settingKey))).sort();
-  assert.deepEqual(renderedKeys,expectedAdvancedKeys,`WeiG ${anchor.qbVersion} Advanced settings must render every preference routed to Advanced and no stale extras`);
-  for(const key of advancedExamples)assert.ok(renderedKeys.includes(key),`WeiG Advanced settings must render upstream preference ${key}`);
+  async function assertSettingsSurface(surface,expectedKeys,examples){
+    await page.evaluate(async target=>{
+      if(!window.WeiG?.SettingsRenderer?.open)throw new Error('WeiG SettingsRenderer is unavailable');
+      await window.WeiG.SettingsRenderer.open(target);
+    },surface);
+    await page.waitForFunction(expected=>{
+      const actual=[...document.querySelectorAll('#settings-content [data-setting-key]')]
+        .map(row=>row.dataset.settingKey)
+        .sort();
+      return actual.length===expected.length&&actual.every((key,index)=>key===expected[index]);
+    },expectedKeys,{timeout:30000});
+    const renderedKeys=(await page.locator('#settings-content [data-setting-key]').evaluateAll(rows=>rows.map(row=>row.dataset.settingKey))).sort();
+    assert.deepEqual(renderedKeys,expectedKeys,`WeiG ${anchor.qbVersion} ${surface} settings must render every routed preference and no stale extras`);
+    for(const key of examples)assert.ok(renderedKeys.includes(key),`WeiG ${surface} settings must render upstream preference ${key}`);
+  }
+
+  await assertSettingsSurface('advanced',expectedRouteKeys.advanced,routeExamples.advanced);
+  await assertSettingsSurface('speed',expectedRouteKeys.speed,routeExamples.speed);
 
   let audited=0;
   let readTypedAudited=0;
@@ -214,4 +233,4 @@ try{
   await browser.close();
 }
 
-console.log(`Virtual qB Pages preference acceptance passed for ${expectedSha}: exact Advanced rendering, ${matrix.length} official stable qB 4.x/5.x surfaces, structural + semantic getter read types, setter-derived safe round-trips and schema-evolution metadata.`);
+console.log(`Virtual qB Pages preference acceptance passed for ${expectedSha}: exact Speed/Advanced rendering, ${matrix.length} official stable qB 4.x/5.x surfaces, structural + semantic getter read types, setter-derived safe round-trips and schema-evolution metadata.`);
