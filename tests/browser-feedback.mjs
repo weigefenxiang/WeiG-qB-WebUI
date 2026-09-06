@@ -180,10 +180,12 @@ try{
   assert(await page.locator(`.feedback-toast[data-feedback-id="${settingsId}"] .feedback-toast__progress`).getAttribute('data-mode')==='lifetime','Settings completion did not switch activity rail to lifetime');
   assert(prefs.listen_port===6999,'Settings fixture did not receive the submitted preference');
 
-  // Real RSS add + list readback produces success.
+  // Real RSS add + list readback produces success through the canonical Add Feed dialog.
   await page.evaluate(()=>WeiG.Feedback.dismissAll());await page.waitForTimeout(260);
   await page.locator('#app-nav [data-route="rss"]').click();
   await page.waitForFunction(()=>document.getElementById('rss-view')?.classList.contains('is-active'));
+  await page.locator('#rss-add-open-btn').click();
+  await page.waitForSelector('#rss-add-dialog[open]');
   await page.locator('#rss-url').fill('https://example.test/feed.xml');
   await page.locator('#rss-add-btn').click();
   const rssProcessing=page.locator('.feedback-toast[data-kind="info"]',{hasText:'Adding RSS feed'}).first();
