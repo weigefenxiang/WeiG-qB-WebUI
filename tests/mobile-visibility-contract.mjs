@@ -33,7 +33,7 @@ assert(uiJs.includes('function applyRSSSearch(input)')&&uiJs.includes("root.quer
 assert(logs.includes('@media(max-width:680px)')&&logs.includes('.logs-search-toggle{display:grid;grid-column:1;grid-row:1')&&logs.includes('.logs-toolbar.is-search-open .logs-search{display:flex;grid-column:1/-1;grid-row:2'),'phone log search must collapse to an icon and expand on the next row without moving filters');
 
 assert(responsive.includes('function ensureDrawerTelemetry()')&&responsive.includes("host.id='mobile-drawer-telemetry'"),'mobile Drawer telemetry must have one responsive presentation host');
-assert(transfer.includes('#sidebar{display:grid;grid-template-rows:minmax(0,1fr) auto auto')&&transfer.includes('#sidebar>.sidebar__section:first-child{min-height:0;overflow:auto'),'mobile Drawer must keep filters scrollable while telemetry and version metadata remain visible at the bottom');
-assert(transfer.includes('.sidebar__meta{grid-row:3;order:30'),'qBittorrent/WebAPI metadata must remain the final mobile Drawer row');
+assert(transfer.includes('#sidebar{display:grid!important;grid-template-rows:minmax(0,1fr) auto auto!important')&&transfer.includes('#sidebar>.sidebar__section:first-child{grid-row:1;min-height:0;overflow-y:auto!important')&&transfer.includes('.mobile-drawer-telemetry{display:grid!important;grid-row:2!important'),'mobile Drawer must keep only filters scrollable while fixed telemetry stays visible above versions');
+assert(transfer.includes('.sidebar__meta{grid-row:3!important;order:30;align-self:end'),'qBittorrent/WebAPI metadata must remain pinned to the final mobile Drawer row');
 
 console.log('Mobile visibility contract passed: stacked torrent progress, single-line pager/actions, RSS + Logs search, and pinned Drawer telemetry/version layout are owned by their canonical layers.');
