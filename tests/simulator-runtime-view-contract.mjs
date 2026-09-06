@@ -6,16 +6,18 @@ import {
 import {
   listTorrentsSnapshot,mainDataSnapshot,runtimeSnapshotStats,transferSnapshot
 } from '../simulator/core/runtime-view.js';
+import {resolveEndpointContract} from '../simulator/protocol/endpoint-contracts.js';
 
 const baseNow=1700000000000;
 const profile={qbVersion:'5.2.3',webApiVersion:'2.15.1'};
 function make(seed='runtime-view'){return createWorld({profile,count:5000,seed,now:baseNow});}
+function contract(world,path){return resolveEndpointContract(world.profile,path);}
 
 {
   const world=make('shared-snapshot');
   const now=baseNow+2500;
   const transfer=transferSnapshot(world,now);
-  const main=mainDataSnapshot(world,0,now+100);
+  const main=mainDataSnapshot(world,0,now+100,contract(world,'sync/maindata'));
   const rows=listTorrentsSnapshot(world,{sort:'added_on',reverse:'true',limit:50,offset:0},now+200);
   const stats=runtimeSnapshotStats(world);
   assert.equal(stats.snapshotIntervalMs,2000,'5000-Torrent worlds must use the low-power two-second snapshot cadence');
@@ -87,7 +89,7 @@ function make(seed='runtime-view'){return createWorld({profile,count:5000,seed,n
 {
   const legacy=make('main-equivalence'),modern=make('main-equivalence');
   const now=baseNow+2000;
-  const a=mainData(legacy,0,now),b=mainDataSnapshot(modern,0,now);
+  const a=mainData(legacy,0,now),b=mainDataSnapshot(modern,0,now,contract(modern,'sync/maindata'));
   assert.equal(b.full_update,a.full_update);
   assert.deepEqual(b.server_state,a.server_state,'snapshot mainData server_state must preserve legacy values');
   assert.deepEqual(Object.keys(b.torrents),Object.keys(a.torrents),'snapshot full sync must preserve torrent membership and order');
@@ -95,20 +97,20 @@ function make(seed='runtime-view'){return createWorld({profile,count:5000,seed,n
 
 {
   const oldWorld=createWorld({profile:{qbVersion:'5.1.4',webApiVersion:'2.11.4'},count:16,seed:'subcategories-old',now:baseNow});
-  const oldMain=mainDataSnapshot(oldWorld,0,baseNow+1000);
+  const oldMain=mainDataSnapshot(oldWorld,0,baseNow+1000,contract(oldWorld,'sync/maindata'));
   assert.equal(oldMain.server_state.use_subcategories,true,'sync/maindata must expose boolean use_subcategories before WebAPI 2.15.0');
   const newWorld=createWorld({profile:{qbVersion:'5.2.0',webApiVersion:'2.15.0'},count:16,seed:'subcategories-new',now:baseNow});
-  const newMain=mainDataSnapshot(newWorld,0,baseNow+1000);
+  const newMain=mainDataSnapshot(newWorld,0,baseNow+1000,contract(newWorld,'sync/maindata'));
   assert.ok(!('use_subcategories' in newMain.server_state),'sync/maindata must remove use_subcategories from WebAPI 2.15.0 onward');
 }
 
 {
   const router=fs.readFileSync(new URL('../simulator/protocol/router.js',import.meta.url),'utf8');
   assert.match(router,/transferSnapshot\(world,now\)/,'router transfer/info must use the shared snapshot path');
-  assert.match(router,/mainDataSnapshot\(world,url\.searchParams\.get\('rid'\)\|\|0,now\)/,'router sync/maindata must use the shared snapshot path');
-  assert.match(router,/listTorrentsSnapshot\(world,query,now\)/,'router torrents/info must use the shared optimized projection path');
+  assert.match(router,/mainDataSnapshot\(world,url\.searchParams\.get\('rid'\)\|\|0,now,contract\)/,'router sync/maindata must use the shared snapshot path with Endpoint Contract semantics');
+  assert.match(router,/listTorrentsSnapshot\(world,query,now,\{trackerContract\}\)/,'router torrents/info must use the shared optimized projection path with explicit tracker semantics');
   assert.doesNotMatch(router,/\bmainData\(world,/,'router hot path must not fall back to legacy mainData world advancement');
   assert.doesNotMatch(router,/\btransferInfo\(world/,'router hot path must not fall back to legacy transferInfo world advancement');
 }
 
-console.log('Virtual qB runtime-view contract passed: shared snapshots preserve performance while sync/maindata keeps the WebAPI 2.15.0 use_subcategories boundary.');
+console.log('Virtual qB runtime-view contract passed: shared snapshots preserve performance while Endpoint Contract owns the WebAPI 2.15.0 use_subcategories boundary.');

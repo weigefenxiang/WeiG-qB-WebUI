@@ -1,5 +1,5 @@
 import {
-  addTags,addVirtualTorrent,authenticate,capabilityAvailable,createCategory,createTags,deleteTags,
+  addTags,authenticate,capabilityAvailable,createCategory,createTags,deleteTags,
   deleteTorrents,logs,logout,removeCategories,removeTags,renameTorrent,
   setCategory,setForceStart,setPaused,setTorrentLimit
 } from '../core/engine.js';
@@ -26,6 +26,7 @@ import {
 } from '../core/virtual-services.js';
 import {createPreferenceRuntime} from '../preferences/runtime.js';
 import {handleAuxiliaryApi} from './auxiliary-router.js';
+import {resolveEndpointContract} from './endpoint-contracts.js';
 import {upstreamRouteAvailable} from './upstream-gates.js';
 
 const RUNTIME_POLICY_INTERVAL_MS=500;
@@ -70,12 +71,10 @@ function trackerUrlValid(value){
   if(!raw)return false;
   try{return !!new URL(raw).protocol;}catch{return false;}
 }
-function trackerEditResponse(world,form){
-  const modern=apiAtLeast(world,'2.13.0');
-  if(modern){
-    if(!owns(form,'hash')||!owns(form,'url'))return text('Bad Request',400);
-  }else if(!owns(form,'hash')||!owns(form,'origUrl')||!owns(form,'newUrl'))return text('Bad Request',400);
-
+function trackerEditResponse(world,form,contract){
+  const required=Array.isArray(contract?.requiredParameters)?contract.requiredParameters:[];
+  if(required.some(key=>!owns(form,key)))return text('Bad Request',400);
+  const modern=contract?.tierEdit===true;
   const hash=String(form.hash??''),torrent=torrentIndex(world).byHash.get(hash);
   if(!torrent)return notFound();
 
@@ -172,7 +171,8 @@ function torrentInfoRows(world,url,now){
   const query=Object.fromEntries(params.entries());
   delete query.offset;
   delete query.limit;
-  const rows=enrichTorrentRowsIndexed(world,listTorrentsSnapshot(world,query,now));
+  const trackerContract=resolveEndpointContract(world.profile,'torrents/trackers');
+  const rows=enrichTorrentRowsIndexed(world,listTorrentsSnapshot(world,query,now,{trackerContract}));
   if(query.sort&&rows.length&&!Object.prototype.hasOwnProperty.call(rows[0],query.sort)){
     const error=new Error("'sort' parameter is invalid");
     error.code='INVALID_TORRENT_SORT';
@@ -201,6 +201,8 @@ export async function handleApi(world,request,url=new URL(request.url)){
   const path=url.pathname.slice(index+marker.length).replace(/^\/+/, '');
   const method=request.method.toUpperCase();
   if(!upstreamRouteAvailable(world.profile,path))return notFound();
+  const contract=resolveEndpointContract(world.profile,path);
+  if(contract?.semanticRevision==='unclassified')return text(`Simulator semantic contract unclassified: ${path}`,501);
   const now=Date.now();
   if(method!=='GET')torrentInfoCaches.delete(world);
   applyMaintenance(world,now,method);
@@ -265,14 +267,18 @@ export async function handleApi(world,request,url=new URL(request.url)){
     const f=await formObject(request);banPeers(world,f.peers);return empty();
   }
 
-  if(path==='sync/maindata'&&method==='GET')return json(enrichMainData(world,mainDataSnapshot(world,url.searchParams.get('rid')||0,now)));
+  if(path==='sync/maindata'&&method==='GET')return json(enrichMainData(world,mainDataSnapshot(world,url.searchParams.get('rid')||0,now,contract)));
 
   if(path==='torrents/info'&&method==='GET'){
     try{return json(torrentInfoRows(world,url,now));}
-    catch(error){if(error?.code==='INVALID_TORRENT_SORT')return text(error.message,400);throw error;}
+    catch(error){
+      if(error?.code==='INVALID_TORRENT_SORT')return text(error.message,400);
+      if(error?.code==='UNCLASSIFIED_ENDPOINT_SEMANTICS')return text(error.message,501);
+      throw error;
+    }
   }
   if(path==='torrents/properties'&&method==='GET'){
-    const value=propertiesForTorrent(world,url.searchParams.get('hash')||'',now);
+    const value=propertiesForTorrent(world,url.searchParams.get('hash')||'',now,contract);
     return value?json(value):notFound();
   }
   if(path==='torrents/files'&&method==='GET'){
@@ -292,7 +298,7 @@ export async function handleApi(world,request,url=new URL(request.url)){
     const value=pieceHashes(world,hash);return value===null?notFound():json(value);
   }
   if(path==='torrents/trackers'&&method==='GET'){
-    const value=trackersForTorrent(world,url.searchParams.get('hash')||'',now);return value===null?notFound():json(value);
+    const value=trackersForTorrent(world,url.searchParams.get('hash')||'',now,contract);return value===null?notFound():json(value);
   }
 
   const qb5=world.profile.major>=5;
@@ -391,7 +397,7 @@ export async function handleApi(world,request,url=new URL(request.url)){
   if(path==='torrents/addTrackers'&&method==='POST'){
     const f=await formObject(request);
     if(!owns(f,'hash')||!owns(f,'urls'))return text('Bad Request',400);
-    if(apiAtLeast(world,'2.11.9')){
+    if(contract?.pipeSeparatedHashes){
       for(const hash of trackerBatchTargets(world,String(f.hash??'')))addTrackers(world,hash,f.urls);
       return empty();
     }
@@ -402,11 +408,11 @@ export async function handleApi(world,request,url=new URL(request.url)){
     const f=await formObject(request);
     if(!owns(f,'hash')||!owns(f,'urls'))return text('Bad Request',400);
     const hash=String(f.hash??'');
-    if(apiAtLeast(world,'2.11.9')){
-      for(const target of trackerBatchTargets(world,hash,true))removeTrackers(world,target,f.urls);
+    if(contract?.pipeSeparatedHashes){
+      for(const target of trackerBatchTargets(world,hash,contract.legacyStarSelector===true))removeTrackers(world,target,f.urls);
       return empty();
     }
-    if(hash==='*'){
+    if(contract?.legacyStarSelector===true&&hash==='*'){
       for(const torrent of world.torrents)removeTrackers(world,torrent.hash,f.urls);
       return empty();
     }
@@ -414,16 +420,7 @@ export async function handleApi(world,request,url=new URL(request.url)){
   }
   if(path==='torrents/editTracker'&&method==='POST'){
     if(!apiAtLeast(world,'2.2.0'))return notFound();
-    const f=await formObject(request);return trackerEditResponse(world,f);
-  }
-  if(path==='torrents/add'&&method==='POST'){
-    const f=await formObject(request);
-    const urlText=Array.isArray(f.urls)?String(f.urls[0]):String(f.urls||'');
-    const fileValue=Array.isArray(f.torrents)?f.torrents[0]:f.torrents;
-    const name=fileValue?.name||urlText||'Added Virtual Torrent';
-    addVirtualTorrent(world,{name,url:urlText,savepath:f.savepath,category:f.category,tags:f.tags,autoTMM:f.autoTMM});
-    if(apiAtLeast(world,'2.14.0'))return json({success_count:1,pending_count:0,failure_count:0});
-    return text('Ok.');
+    const f=await formObject(request);return trackerEditResponse(world,f,contract);
   }
 
   if(path==='torrents/categories'&&method==='GET'){
@@ -438,10 +435,10 @@ export async function handleApi(world,request,url=new URL(request.url)){
     if(!apiAtLeast(world,'2.1.0'))return notFound();
     const f=await formObject(request),name=String(f.category||'').trim();
     if(!owns(f,'category')||!owns(f,'savePath')||!name)return text('Bad Request',400);
-    const existing=world.categories?.[name],modern=apiAtLeast(world,'2.15.1');
-    if(!existing)return modern?notFound():text('Unable to edit category',409);
+    const existing=world.categories?.[name];
+    if(!existing)return contract?.missingResourceStatus===404?notFound():text('Unable to edit category',409);
     const savePath=String(f.savePath??'');
-    if(!modern&&String(existing.savePath??'')===savePath)return text('Unable to edit category',409);
+    if(contract?.noOp==='conflict'&&String(existing.savePath??'')===savePath)return text('Unable to edit category',409);
     createCategory(world,name,savePath);return empty();
   }
   if(path==='torrents/removeCategories'&&method==='POST'){

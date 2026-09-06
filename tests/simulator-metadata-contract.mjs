@@ -1,12 +1,14 @@
 import assert from 'node:assert/strict';
 import {CANONICAL,authenticate,createWorld} from '../simulator/core/engine.js';
 import {propertiesForTorrent,trackersForTorrent} from '../simulator/core/torrent-metadata.js';
+import {resolveEndpointContract} from '../simulator/protocol/endpoint-contracts.js';
 import {handleApi} from '../simulator/protocol/router.js';
 import {upstreamActionRef,upstreamRouteAvailable} from '../simulator/protocol/upstream-gates.js';
 
 function world(qb='5.2.3',api='2.15.1',extra={}){
   return createWorld({profile:{qbVersion:qb,webApiVersion:api,stable:true,...extra},count:32,seed:'metadata-contract',now:1700000000000});
 }
+function contract(w,path){return resolveEndpointContract(w.profile,path);}
 function formRequest(path,body){
   return new Request(`https://example.invalid/api/v2/${path}`,{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams(body)});
 }
@@ -43,7 +45,7 @@ function getRequest(path){return new Request(`https://example.invalid/api/v2/${p
 
 {
   const w=world();const t=w.torrents[0];t.has_metadata=false;t.private=true;
-  const p=propertiesForTorrent(w,t.hash,1700000005000);assert.ok(p);
+  const p=propertiesForTorrent(w,t.hash,1700000005000,contract(w,'torrents/properties'));assert.ok(p);
   assert.equal(p.hash,t.hash);assert.equal(p.name,t.name);assert.equal(p.has_metadata,false);
   assert.equal(p.private,null,'modern exact private field must be unknown without metadata');
   assert.equal(p.is_private,false,'deprecated private compatibility field must not invent private metadata');
@@ -53,25 +55,25 @@ function getRequest(path){return new Request(`https://example.invalid/api/v2/${p
 
 {
   const before=world('5.2.0','2.15.0'),beforeTorrent=before.torrents[0];
-  const oldProperties=propertiesForTorrent(before,beforeTorrent.hash,1700000005000);assert.ok(oldProperties);
+  const oldProperties=propertiesForTorrent(before,beforeTorrent.hash,1700000005000,contract(before,'torrents/properties'));assert.ok(oldProperties);
   assert.ok(!('availability' in oldProperties),'torrents/properties must not expose availability before WebAPI 2.15.1');
   const current=world('5.2.0','2.15.1'),currentTorrent=current.torrents[0];
-  const currentProperties=propertiesForTorrent(current,currentTorrent.hash,1700000005000);assert.ok(currentProperties);
+  const currentProperties=propertiesForTorrent(current,currentTorrent.hash,1700000005000,contract(current,'torrents/properties'));assert.ok(currentProperties);
   assert.ok(Number.isFinite(currentProperties.availability)&&currentProperties.availability>=0,'WebAPI 2.15.1 properties availability must be a non-negative distributed-copies number');
 }
 
 {
   const w=world('4.1.0','2.0.0');const t=w.torrents[0];
-  const p=propertiesForTorrent(w,t.hash,1700000005000);assert.ok(p);
+  const p=propertiesForTorrent(w,t.hash,1700000005000,contract(w,'torrents/properties'));assert.ok(p);
   assert.ok(!('hash' in p)&&!('private' in p)&&!('has_metadata' in p),'qB 4.1.0 properties must retain legacy field surface');
-  const trackers=trackersForTorrent(w,t.hash,1700000005000);assert.ok(trackers.length>=1);
+  const trackers=trackersForTorrent(w,t.hash,1700000005000,contract(w,'torrents/trackers'));assert.ok(trackers.length>=1);
   assert.equal(typeof trackers[0].status,'string','qB 4.1.0 tracker status must use legacy string form');
   assert.ok(!String(trackers[0].url).startsWith('** ['),'qB 4.1.0 must not receive later sticky pseudo-trackers');
 }
 
 {
   const w=world('5.1.4','2.11.4');const t=w.torrents[0];
-  const trackers=trackersForTorrent(w,t.hash,1700000005000);assert.ok(trackers.length>=4);
+  const trackers=trackersForTorrent(w,t.hash,1700000005000,contract(w,'torrents/trackers'));assert.ok(trackers.length>=4);
   assert.deepEqual(trackers.slice(0,3).map(x=>x.url),['** [DHT] **','** [PeX] **','** [LSD] **']);
   const real=trackers[3];assert.equal(typeof real.status,'number');
   for(const key of ['updating','next_announce','min_announce','endpoints'])assert.ok(!(key in real),`qB 5.1 tracker payload must not expose later field ${key}`);
@@ -79,13 +81,13 @@ function getRequest(path){return new Request(`https://example.invalid/api/v2/${p
 
 {
   const w=world('5.2.0','2.12.9');const t=w.torrents[0];
-  const real=trackersForTorrent(w,t.hash,1700000005000)[3];
+  const real=trackersForTorrent(w,t.hash,1700000005000,contract(w,'torrents/trackers'))[3];
   for(const key of ['updating','next_announce','min_announce','endpoints'])assert.ok(!(key in real),`tracker payload must not expose WebAPI 2.13.0 field ${key} on 2.12.9`);
 }
 
 {
   const w=world('5.2.0','2.13.0');const t=w.torrents[0];t.has_metadata=true;t.private=true;
-  const trackers=trackersForTorrent(w,t.hash,1700000005000);assert.ok(trackers.length>=4);
+  const trackers=trackersForTorrent(w,t.hash,1700000005000,contract(w,'torrents/trackers'));assert.ok(trackers.length>=4);
   assert.deepEqual(trackers.slice(0,3).map(x=>x.url),['** [DHT] **','** [PeX] **','** [LSD] **']);
   for(const item of trackers.slice(0,3)){
     assert.equal(item.status,0,'private torrent discovery pseudo-trackers must be disabled');
@@ -101,4 +103,4 @@ function getRequest(path){return new Request(`https://example.invalid/api/v2/${p
   r=await handleApi(w,getRequest('torrents/trackers?hash=0000000000000000000000000000000000000000'));assert.equal(r.status,404);
 }
 
-console.log('Virtual qB metadata contract passed: exact action gating, metadata-empty behavior, WebAPI 2.13.0 tracker projection and 2.15.1 availability boundaries.');
+console.log('Virtual qB metadata contract passed: exact action gating, explicit Endpoint Contract projection, metadata-empty behavior, WebAPI 2.13.0 tracker projection and 2.15.1 availability boundaries.');

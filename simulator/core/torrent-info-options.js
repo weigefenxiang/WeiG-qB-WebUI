@@ -15,17 +15,22 @@ export function torrentInfoOptionSupport(profile={}){
   };
 }
 
-export function expandTorrentInfoRows(world,rows,query={},now=Date.now()){
+export function expandTorrentInfoRows(world,rows,query={},now=Date.now(),semantic={}){
   const output=Array.isArray(rows)?rows:[];
   const support=torrentInfoOptionSupport(world?.profile||{});
   const wantTrackers=support.includeTrackers&&enabled(query.includeTrackers);
   const wantFiles=support.includeFiles&&enabled(query.includeFiles);
   if(!wantTrackers&&!wantFiles)return output;
+  if(wantTrackers&&semantic.trackerContract?.semanticRevision==='unclassified'){
+    const error=new Error('Simulator semantic contract unclassified: torrents/trackers');
+    error.code='UNCLASSIFIED_ENDPOINT_SEMANTICS';
+    throw error;
+  }
   for(const row of output){
     const hash=String(row?.hash||'');
     if(!hash)continue;
     if(wantTrackers){
-      const trackers=trackersForTorrent(world,hash,now);
+      const trackers=trackersForTorrent(world,hash,now,semantic.trackerContract);
       row.trackers=Array.isArray(trackers)?trackers:[];
     }
     if(wantFiles&&hasTorrentMetadata(world,hash)===true){

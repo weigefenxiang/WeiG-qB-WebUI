@@ -1,17 +1,19 @@
 import assert from 'node:assert/strict';
 import {createWorld} from '../simulator/core/engine.js';
 import {listTorrentsSnapshot,mainDataSnapshot,runtimeSnapshotStats,transferSnapshot} from '../simulator/core/runtime-view.js';
+import {resolveEndpointContract} from '../simulator/protocol/endpoint-contracts.js';
 
 const baseNow=1700000000000;
 const world=createWorld({profile:{qbVersion:'5.2.3',webApiVersion:'2.15.1'},count:5000,seed:'runtime-soak',now:baseNow});
-let main=mainDataSnapshot(world,0,baseNow);
+const mainContract=resolveEndpointContract(world.profile,'sync/maindata');
+let main=mainDataSnapshot(world,0,baseNow,mainContract);
 let rid=main.rid;
 const hashes=[world.torrents[5].hash,world.torrents[2500].hash,world.torrents[4995].hash].join('|');
 
 for(let step=1;step<=120;step++){
   const now=baseNow+step*250;
   const transfer=transferSnapshot(world,now);
-  main=mainDataSnapshot(world,rid,now+10);
+  main=mainDataSnapshot(world,rid,now+10,mainContract);
   rid=main.rid;
   const selected=listTorrentsSnapshot(world,{hashes,limit:3},now+20);
   const page=listTorrentsSnapshot(world,{limit:50,offset:(step%10)*50},now+30);

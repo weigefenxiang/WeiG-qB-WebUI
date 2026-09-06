@@ -3,11 +3,9 @@ import {clearRuntimeIndexes,primeTransferAggregate,runtimeIndexStats,torrentInde
 import {snapshotIntervalForWorld} from './low-power-policy.js';
 import {expandTorrentInfoRows} from './torrent-info-options.js';
 import {filterTorrentCandidates,sliceTorrentWindow} from './torrent-query.js';
-import {atLeast} from './profiles.js';
 
 const runtimeSnapshots=new WeakMap();
 
-function apiAtLeast(world,minimum){return atLeast(world.profile?.webApiVersion||'0',minimum);}
 function rateControlKey(world){
   return[
     world.altSpeedMode?1:0,
@@ -90,7 +88,7 @@ export function transferSnapshot(world,now=Date.now()){
   return transferSnapshotRaw(world);
 }
 
-function serverStateSnapshotRaw(world){
+function serverStateSnapshotRaw(world,contract){
   const transfer=transferSnapshotRaw(world);
   const state={
     ...transfer,
@@ -100,7 +98,7 @@ function serverStateSnapshotRaw(world){
     use_alt_speed_limits:world.altSpeedMode,
     queueing:!!world.preferences.queueing_enabled
   };
-  if(!apiAtLeast(world,'2.15.0'))state.use_subcategories=true;
+  if(contract?.useSubcategoriesField===true)state.use_subcategories=true;
   return state;
 }
 
@@ -112,10 +110,10 @@ function indexedWorld(world){
   return index;
 }
 
-export function mainDataSnapshot(world,clientRid=0,now=Date.now()){
+export function mainDataSnapshot(world,clientRid=0,now=Date.now(),contract=null){
   advanceRuntimeSnapshot(world,now);
   const rid=Number(clientRid)||0;
-  const common={rid:world.rid,server_state:serverStateSnapshotRaw(world)};
+  const common={rid:world.rid,server_state:serverStateSnapshotRaw(world,contract)};
   if(rid<=0||!world.journal.length||rid<world.journal[0].rid-1){
     return{
       ...common,full_update:true,
@@ -151,7 +149,7 @@ export function mainDataSnapshot(world,clientRid=0,now=Date.now()){
   };
 }
 
-export function listTorrentsSnapshot(world,query={},now=Date.now()){
+export function listTorrentsSnapshot(world,query={},now=Date.now(),semantic={}){
   advanceRuntimeSnapshot(world,now);
   const profile=world.profile,stats=diagnostics(world);
   let candidates;
@@ -172,9 +170,9 @@ export function listTorrentsSnapshot(world,query={},now=Date.now()){
       const av=a.view[sort]??a.torrent[sort]??0,bv=b.view[sort]??b.torrent[sort]??0;
       return av<bv?-direction:av>bv?direction:0;
     });
-    return expandTorrentInfoRows(world,sliceTorrentWindow(rows,query,profile).map(item=>item.view),query,now);
+    return expandTorrentInfoRows(world,sliceTorrentWindow(rows,query,profile).map(item=>item.view),query,now,semantic);
   }
   const sliced=sliceTorrentWindow(list,query,profile);
   stats.projectedRows+=sliced.length;
-  return expandTorrentInfoRows(world,sliced.map(t=>torrentView(t,profile)),query,now);
+  return expandTorrentInfoRows(world,sliced.map(t=>torrentView(t,profile)),query,now,semantic);
 }

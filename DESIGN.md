@@ -413,6 +413,13 @@ WeiG Virtual qB Lab is a non-product backend simulator. Formal `webui/**` remain
 ### SIMULATOR-UPSTREAM — official stable facts, synthetic runtime data
 `QBStableReleaseCatalog` discovers numeric official qBittorrent stable tags from 4.1.0 onward and extracts WebAPI/version/API/preference/Torrent-surface facts from the corresponding upstream source. Alpha/beta/rc/master are excluded. Runtime Torrent/peer/network/disk data may be synthetic but must be seeded, deterministic and internally consistent.
 
+### SIMULATOR-ENDPOINT-CONTRACT — one semantic evolution owner
+`simulator/protocol/endpoint-contracts.js` and `resolveEndpointContract(profile,path)` are the Current Owner for audited same-endpoint WebAPI semantic evolution. `QBProtocolRouter` owns execution only: it parses requests, invokes core and constructs Responses from resolved semantic facts. Core projection helpers receive required endpoint contracts explicitly and may not recreate migrated WebAPI revision policy.
+
+Structural endpoint existence remains owned by the upstream source/action catalog and `upstream-gates.js`; Preference semantics remain owned by the Preference pipeline; Torrent filter/info-parameter semantics remain owned by Torrent surface owners. Endpoint Contract must not absorb those orthogonal responsibilities.
+
+Unknown/unclassified endpoint semantic revision fails closed. Feature flags, new→old fallback, compatibility aliases and long-lived dual owners are prohibited. `tests/simulator-endpoint-ownership-contract.mjs` protects the first atomic cutover from regaining the migrated 2.11.9 / 2.13.0 / 2.15.0 / 2.15.1 caller branches.
+
 ### SIMULATOR-AUTH — demo login follows real product flow
 Virtual qB accepts arbitrary credentials. Lab presentation may prefill `demo/demo` only in the generated Pages artifact; Clean Mode leaves the product login source untouched. Logout invalidates the virtual session so protected API calls return 403 and the existing `SessionController` completes the real logout verification flow.
 

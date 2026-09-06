@@ -19,7 +19,7 @@ function distributedCopies(world,t){
   return Number((complete+deterministicUnit(world.seed,`${t.hash}:availability`)).toFixed(3));
 }
 
-export function propertiesForTorrent(world,hash,now=Date.now()){
+export function propertiesForTorrent(world,hash,now=Date.now(),contract=null){
   const t=torrent(world,hash);if(!t)return null;
   const progress=progressOf(t),pieces=pieceCount(t),active=Math.max(0,Math.floor(Number(t.activeTime)||0));
   const seeding=Math.max(0,Math.floor(Number(t.seedTime)||0)),dlDuration=Math.max(1,active-seeding),ulDuration=Math.max(1,active);
@@ -67,7 +67,7 @@ export function propertiesForTorrent(world,hash,now=Date.now()){
     comment:String(t.comment??'WeiG Virtual qB Lab')
   };
 
-  if(apiAtLeast(world,'2.15.1'))base.availability=distributedCopies(world,t);
+  if(contract?.availabilityField===true)base.availability=distributedCopies(world,t);
 
   if(world.profile?.major>=5){
     const privateFlag=hasMetadata?!!t.private:null;
@@ -113,7 +113,7 @@ function stickyTracker(world,t,label,enabled){
   };
 }
 
-function modernTracker(world,t,tracker,index,now){
+function modernTracker(world,t,tracker,index,now,contract){
   const status=Number(tracker.status)||0;
   const out={
     url:String(tracker.url||''),
@@ -125,7 +125,7 @@ function modernTracker(world,t,tracker,index,now){
     num_leeches:Math.max(0,Math.floor(Number(tracker.num_leeches)||0)),
     num_downloaded:Math.max(0,Math.floor(Number(tracker.num_downloaded)||0))
   };
-  if(apiAtLeast(world,'2.13.0')){
+  if(contract?.trackerTimingFields===true){
     const next=Math.floor(now/1000)+600+Math.floor(deterministicUnit(world.seed,`${t.hash}:${out.url}:announce`)*900);
     const minimum=Math.floor(now/1000)+120;
     Object.assign(out,{
@@ -142,7 +142,7 @@ function modernTracker(world,t,tracker,index,now){
   return out;
 }
 
-export function trackersForTorrent(world,hash,now=Date.now()){
+export function trackersForTorrent(world,hash,now=Date.now(),contract=null){
   const t=torrent(world,hash);if(!t)return null;
   const trackers=Array.isArray(t.trackers)?t.trackers:[];
   if(!apiAtLeast(world,'2.2.0')){
@@ -158,7 +158,7 @@ export function trackersForTorrent(world,hash,now=Date.now()){
     stickyTracker(world,t,'PeX',world.preferences?.pex!==false),
     stickyTracker(world,t,'LSD',world.preferences?.lsd!==false)
   ];
-  return [...sticky,...trackers.map((tracker,index)=>modernTracker(world,t,tracker,index,now))];
+  return [...sticky,...trackers.map((tracker,index)=>modernTracker(world,t,tracker,index,now,contract))];
 }
 
 export function hasTorrentMetadata(world,hash){
