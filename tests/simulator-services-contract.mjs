@@ -23,6 +23,16 @@ function getRequest(path){return new Request(`https://example.invalid/api/v2/${p
 }
 
 {
+  const before=world('4.1.1','2.0.1');
+  let response=await handleApi(before,formRequest('torrents/reannounce',{hashes:before.torrents[0].hash}));
+  assert.equal(response.status,404,'reannounce must remain unavailable through qB 4.1.1 / WebAPI 2.0.1');
+
+  const atBoundary=world('4.1.2','2.0.2');
+  response=await handleApi(atBoundary,formRequest('torrents/reannounce',{hashes:atBoundary.torrents[0].hash}));
+  assert.equal(response.status,200,'reannounce must become available at qB 4.1.2 / WebAPI 2.0.2');
+}
+
+{
   const w=world('4.1.3','2.1.0');
   let response=await handleApi(w,getRequest('rss/items?withData=true'));
   assert.equal(response.status,200,'RSS must exist at WebAPI 2.1.0');
@@ -30,6 +40,23 @@ function getRequest(path){return new Request(`https://example.invalid/api/v2/${p
   assert.equal(response.status,404,'Search must remain unavailable before WebAPI 2.1.1');
   response=await handleApi(w,formRequest('rss/refreshItem',{itemPath:'missing'}));
   assert.equal(response.status,404,'RSS refresh capability must remain unavailable before WebAPI 2.2.1');
+  response=await handleApi(w,getRequest('torrents/categories'));
+  assert.equal(response.status,404,'categories getter must remain unavailable through qB 4.1.3 / WebAPI 2.1.0');
+}
+
+{
+  const middle=world('4.1.4','2.1.1');
+  let response=await handleApi(middle,getRequest('torrents/categories'));
+  assert.equal(response.status,200,'categories getter must become available at qB 4.1.4 / WebAPI 2.1.1');
+  const middleTarget=middle.torrents[0],middleTracker=middleTarget.trackers[0].url;
+  response=await handleApi(middle,formRequest('torrents/removeTrackers',{hash:middleTarget.hash,urls:middleTracker}));
+  assert.equal(response.status,404,'removeTrackers must remain unavailable through qB 4.1.4 / WebAPI 2.1.1');
+
+  const atBoundary=world('4.1.5','2.2.0');
+  const target=atBoundary.torrents[0],tracker=target.trackers[0].url,beforeCount=target.trackers.length;
+  response=await handleApi(atBoundary,formRequest('torrents/removeTrackers',{hash:target.hash,urls:tracker}));
+  assert.equal(response.status,200,'removeTrackers must become available at qB 4.1.5 / WebAPI 2.2.0');
+  assert.equal(target.trackers.length,beforeCount-1,'removeTrackers must mutate persistent tracker state once available');
 }
 
 {

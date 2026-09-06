@@ -258,6 +258,7 @@ export async function handleApi(world,request,url=new URL(request.url)){
     const f=await formObject(request);recheckTorrents(world,f.hashes);return empty();
   }
   if(path==='torrents/reannounce'&&method==='POST'){
+    if(!apiAtLeast(world,'2.0.2'))return notFound();
     const f=await formObject(request);reannounceTorrents(world,f.hashes);return empty();
   }
   if(path==='torrents/setForceStart'&&method==='POST'){
@@ -334,6 +335,7 @@ export async function handleApi(world,request,url=new URL(request.url)){
     const f=await formObject(request);return addTrackers(world,f.hash,f.urls)?empty():notFound();
   }
   if(path==='torrents/removeTrackers'&&method==='POST'){
+    if(!apiAtLeast(world,'2.2.0'))return notFound();
     const f=await formObject(request);return removeTrackers(world,f.hash,f.urls)?empty():notFound();
   }
   if(path==='torrents/editTracker'&&method==='POST'){
@@ -351,7 +353,10 @@ export async function handleApi(world,request,url=new URL(request.url)){
     return text('Ok.');
   }
 
-  if(path==='torrents/categories'&&method==='GET')return json(categoryObject(world));
+  if(path==='torrents/categories'&&method==='GET'){
+    if(!apiAtLeast(world,'2.1.1'))return notFound();
+    return json(categoryObject(world));
+  }
   if(path==='torrents/createCategory'&&method==='POST'){
     const f=await formObject(request),name=String(f.category||'').trim();
     return createCategory(world,name,f.savePath)?empty():text('Invalid category',400);
