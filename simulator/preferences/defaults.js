@@ -55,17 +55,6 @@ const KNOWN_DEFAULTS = Object.freeze({
   file_log_age_type: 1
 });
 
-const BOOLEAN_KEYS = new Set([
-  'dht','pex','lsd','upnp','random_port','anonymous_mode','queueing_enabled','performance_warning',
-  'status_bar_external_ip','confirm_torrent_deletion','incomplete_files_ext','delete_torrent_content_files',
-  'ssrf_mitigation','mark_of_the_web','merge_trackers','limit_utp_rate','limit_tcp_overhead','limit_lan_peers'
-]);
-
-const BOOLEAN_PREFIX = /^(?:enable_|use_|ignore_|confirm_|resolve_|reannounce_|validate_|block_|bypass_|announce_to_all_)/i;
-const BOOLEAN_SUFFIX = /(?:_enabled|_enable|_active|_available)$/i;
-const NUMBER_PATTERN = /(?:^|_)(?:port|limit|size|ttl|interval|threads?|count|duration|hour|min|quantity|length|threshold|factor|ratio|age|type|mode|watermark|backlog|speed|slots?|connections?|timeout)$/i;
-const NUMBER_SPECIAL = /^(?:disk_io_|disk_cache$|disk_queue_size$|checking_memory_use$|memory_working_set_limit$|file_pool_size$|scheduler_days$|auto_delete_mode$|encryption$|bittorrent_protocol$|refresh_interval$|peer_turnover(?:_|$)|request_queue_size$|max_concurrent_http_announces$)/i;
-
 function cloneValue(value) {
   if (Array.isArray(value)) return value.map(cloneValue);
   if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, cloneValue(item)]));
@@ -81,12 +70,9 @@ export function knownPreferenceDefault(key) {
   return hasKnownPreferenceDefault(name) ? cloneValue(KNOWN_DEFAULTS[name]) : undefined;
 }
 
+// Compatibility entry point retained for callers, but unknown keys are deliberately not inferred from their names.
 export function inferPreferenceDefault(key) {
-  const name = String(key || '');
-  if (hasKnownPreferenceDefault(name)) return knownPreferenceDefault(name);
-  if (BOOLEAN_KEYS.has(name) || BOOLEAN_PREFIX.test(name) || BOOLEAN_SUFFIX.test(name)) return false;
-  if (NUMBER_SPECIAL.test(name) || NUMBER_PATTERN.test(name)) return 0;
-  return '';
+  return knownPreferenceDefault(key);
 }
 
 export function buildPreferenceSurface(base = {}, keys = null) {
@@ -95,9 +81,9 @@ export function buildPreferenceSurface(base = {}, keys = null) {
   const out = {};
   for (const rawKey of wanted) {
     const key = String(rawKey);
-    out[key] = Object.prototype.hasOwnProperty.call(source, key)
-      ? cloneValue(source[key])
-      : inferPreferenceDefault(key);
+    if (Object.prototype.hasOwnProperty.call(source, key)) out[key] = cloneValue(source[key]);
+    else if (hasKnownPreferenceDefault(key)) out[key] = knownPreferenceDefault(key);
+    else out[key] = undefined;
   }
   return out;
 }

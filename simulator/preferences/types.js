@@ -42,7 +42,7 @@ export function isPreferenceType(type) {
 }
 
 export function normalizePreferenceType(type) {
-  return isPreferenceType(type) ? type : PreferenceType.STRING;
+  return isPreferenceType(type) ? type : null;
 }
 
 export function normalizePreferenceCoverage(value, fallback = PreferenceCoverage.UNKNOWN) {
