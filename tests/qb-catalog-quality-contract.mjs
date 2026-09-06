@@ -38,8 +38,8 @@ function stats(items){
 const first=[descriptor('alpha'),descriptor('semantic_bool',{readType:'boolean',writeType:'boolean',semantic:true,getterKind:'BOOLEAN_EXPRESSION',setterKind:'BOOLEAN'})];
 const second=[descriptor('alpha',{readType:'string',writeType:'string',getterKind:'STRING_EXPRESSION',setterKind:'STRING'}),...first.slice(1),descriptor('read_only',{readType:'object',writeType:null,writable:false,getterKind:'OBJECT_EXPRESSION',setterKind:null})];
 const catalog=[
-  {qbVersion:'4.6.7',preferenceKeys:first.map(x=>x.key),preferenceDescriptors:first,preferenceDescriptorStats:stats(first),apiActions:['app:a']},
-  {qbVersion:'5.2.3',preferenceKeys:second.map(x=>x.key),preferenceDescriptors:second,preferenceDescriptorStats:stats(second),apiActions:['app:a','app:b']}
+  {qbVersion:'4.6.7',preferenceKeys:first.map(x=>x.key),preferenceDescriptors:first,preferenceDescriptorStats:stats(first),apiActions:['appcontroller.h:versionAction']},
+  {qbVersion:'5.2.3',preferenceKeys:second.map(x=>x.key),preferenceDescriptors:second,preferenceDescriptorStats:stats(second),apiActions:['appcontroller.h:versionAction','torrentscontroller.h:infoAction']}
 ];
 
 annotateCatalogEvolution(catalog);
@@ -47,6 +47,7 @@ assert.equal(validateCatalogEvolution(catalog),true);
 assert.equal(validateCatalogQuality(catalog),true);
 const summary=summarizeCatalogQuality(catalog);
 assert.equal(summary.profiles,2);
+assert.equal(summary.actions,3,'catalog quality totals must include exact upstream API actions');
 assert.equal(summary.semanticGetterEnriched,2,'semantic getter quality totals must include every profile occurrence');
 assert.equal(catalog[1].preferenceChanges.readTypeChanged.length,1);
 assert.equal(catalog[1].preferenceChanges.writeTypeChanged.length,1);
@@ -74,5 +75,25 @@ assert.equal(catalog[1].preferenceDescriptors.find(x=>x.key==='read_only').first
   broken[1].preferenceDescriptorStats=stats(broken[1].preferenceDescriptors);
   assert.throws(()=>validateCatalogQuality(broken),/getter\/setter conflict cannot be writable/,'type disagreement must remain fail-closed');
 }
+{
+  const broken=structuredClone(catalog);
+  broken[1].apiActions=null;
+  assert.throws(()=>validateCatalogQuality(broken),/apiActions must be an array/,'stable catalog must not publish a profile without exact API action provenance');
+}
+{
+  const broken=structuredClone(catalog);
+  broken[1].apiActions=[];
+  assert.throws(()=>validateCatalogQuality(broken),/empty apiActions surface/,'empty API action parsing must fail closed before Pages deployment');
+}
+{
+  const broken=structuredClone(catalog);
+  broken[1].apiActions.push(broken[1].apiActions[0]);
+  assert.throws(()=>validateCatalogQuality(broken),/duplicate apiActions/,'duplicate API action provenance must fail closed');
+}
+{
+  const broken=structuredClone(catalog);
+  broken[1].apiActions[0]='app:version';
+  assert.throws(()=>validateCatalogQuality(broken),/invalid apiAction/,'API action provenance must retain controller/action shape used by exact routing gates');
+}
 
-console.log('qB catalog quality contract passed: descriptor statistics are recomputed, semantic getter provenance and schema evolution are tracked, and writable/type conflicts fail closed.');
+console.log('qB catalog quality contract passed: API action provenance, descriptor statistics, semantic getter provenance and schema evolution are validated, and parser/type conflicts fail closed.');

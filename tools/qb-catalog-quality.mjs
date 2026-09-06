@@ -5,13 +5,21 @@ function assert(condition,message){if(!condition)throw new Error(message);}
 
 export function summarizeCatalogQuality(catalog=[]){
   const profiles=Array.isArray(catalog)?catalog:[];
-  const totals={profiles:profiles.length,preferences:0,readTyped:0,writeTyped:0,exactAgreement:0,mismatched:0,semanticGetterEnriched:0,structuredRead:0,structuredWrite:0,writable:0};
+  const totals={profiles:profiles.length,preferences:0,actions:0,readTyped:0,writeTyped:0,exactAgreement:0,mismatched:0,semanticGetterEnriched:0,structuredRead:0,structuredWrite:0,writable:0};
   const versions=new Set();
   for(const profile of profiles){
     const version=String(profile?.qbVersion||'');
     assert(version,`catalog profile missing qbVersion`);
     assert(!versions.has(version),`${version}: duplicate qB profile`);
     versions.add(version);
+    assert(Array.isArray(profile.apiActions),`${version}: apiActions must be an array`);
+    const actions=keys(profile.apiActions),actionSet=new Set(actions);
+    assert(actions.length>0,`${version}: empty apiActions surface`);
+    assert(actionSet.size===actions.length,`${version}: duplicate apiActions`);
+    for(const action of actions){
+      assert(/^[A-Za-z0-9_-]+controller\.h:[A-Za-z0-9_]+Action$/.test(action),`${version}: invalid apiAction ${action}`);
+    }
+    totals.actions+=actions.length;
     const surface=keys(profile.preferenceKeys),descriptors=Array.isArray(profile.preferenceDescriptors)?profile.preferenceDescriptors:[];
     const surfaceSet=new Set(surface),descriptorSet=new Set(descriptors.map(item=>String(item?.key||'')));
     assert(surfaceSet.size===surface.length,`${version}: duplicate preferenceKeys`);
