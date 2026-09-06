@@ -31,7 +31,8 @@ assert(layout.includes('#detail-view .detail-hero .eyebrow{display:none}')&&layo
 assert(layout.includes('[data-tab="webseeds"]::after{content:"HTTP"'),'Mobile Web Seeds tab must use the compact HTTP label');
 assert(layout.includes("font-size:calc(19px + var(--font-scale-offset))")&&layout.includes('#detail-title.is-expanded'),'Mobile Torrent title must be 2px smaller than prior narrow title and support explicit expansion');
 assert(responsive.includes("dataset.detailTitleAction='copy-expand'")&&responsive.includes("addEventListener('dblclick'")&&responsive.includes('navigator.clipboard')&&responsive.includes('W.toast'),'Torrent title must use canonical single-copy / double-expand interaction with Feedback');
-assert(!responsive.includes('data-tooltip')&&!responsive.includes("setAttribute('title'"),'Torrent title interaction must not create another Tooltip owner');
+const createsLegacyHoverMetadata=/\.dataset\.tooltip\s*=|setAttribute\(\s*['"]data-tooltip['"]|\.title\s*=|setAttribute\(\s*['"]title['"]/.test(responsive);
+assert(!createsLegacyHoverMetadata,'Responsive presentation must not create native title/data-tooltip hover metadata; cleanup via removeAttribute remains allowed');
 
 // Settings remove mobile-only chrome, keep Search+Save in one row, and share one Save owner.
 assert(settingsCss.includes('#settings-view>.settings-header>div:first-child{display:none}'),'Mobile Settings title/description block must be retired from presentation');
