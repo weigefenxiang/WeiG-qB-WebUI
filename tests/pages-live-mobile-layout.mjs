@@ -32,7 +32,7 @@ try{
   page.on('console',message=>{if(message.type()==='error'&&!/favicon|Wei\.G\.ico/i.test(message.text()))errors.push(message.text());});
 
   const url=new URL('dev/app/',base);
-  url.search=new URLSearchParams({sim:`pages-mobile-${Date.now()}`,qb:'5.2.3',count:'80',scenario:'mixed',seed:'mobile-layout-046'}).toString();
+  url.search=new URLSearchParams({sim:`pages-mobile-${Date.now()}`,qb:'5.2.3',count:'80',scenario:'mixed',seed:'mobile-layout-047'}).toString();
   await page.goto(url.toString(),{waitUntil:'domcontentloaded',timeout:60000});
   await page.waitForSelector('#login-form',{state:'visible',timeout:60000});
   await page.locator('#login-btn').click();
@@ -91,19 +91,23 @@ try{
   await page.waitForFunction(()=>document.getElementById('sidebar')?.classList.contains('is-open'));
   await page.waitForFunction(()=>document.querySelector('#mobile-drawer-telemetry #status-torrents')&&document.querySelector('#mobile-drawer-telemetry #transfer-capsule')&&document.querySelector('#mobile-drawer-transfer-chart .transfer-mini-chart'));
   const drawer=await page.evaluate(()=>{
-    const sidebar=document.getElementById('sidebar'),telemetry=document.getElementById('mobile-drawer-telemetry'),meta=sidebar.querySelector('.sidebar__meta'),chart=telemetry.querySelector('.transfer-mini-chart');
+    const sidebar=document.getElementById('sidebar'),filters=sidebar.querySelector(':scope > .sidebar__section:first-child'),telemetry=document.getElementById('mobile-drawer-telemetry'),meta=sidebar.querySelector('.sidebar__meta'),chart=telemetry.querySelector('.transfer-mini-chart');
     const rect=n=>{const r=n.getBoundingClientRect();return{top:r.top,bottom:r.bottom,left:r.left,right:r.right,width:r.width,height:r.height};};
-    return{sidebar:rect(sidebar),telemetry:rect(telemetry),meta:rect(meta),chart:rect(chart),hasTorrent:!!telemetry.querySelector('#status-torrents'),hasStorage:!!telemetry.querySelector('#status-free-space'),hasTransfer:!!telemetry.querySelector('#transfer-capsule'),hasConnection:!!telemetry.querySelector('#status-connection'),metaText:(meta.textContent||'').trim()};
+    const sidebarStyle=getComputedStyle(sidebar),filterStyle=getComputedStyle(filters),telemetryStyle=getComputedStyle(telemetry),metaStyle=getComputedStyle(meta);
+    return{sidebar:rect(sidebar),filters:rect(filters),telemetry:rect(telemetry),meta:rect(meta),chart:rect(chart),display:sidebarStyle.display,rows:sidebarStyle.gridTemplateRows,filterOverflow:filterStyle.overflowY,telemetryGridRow:telemetryStyle.gridRowStart,metaGridRow:metaStyle.gridRowStart,hasTorrent:!!telemetry.querySelector('#status-torrents'),hasStorage:!!telemetry.querySelector('#status-free-space'),hasTransfer:!!telemetry.querySelector('#transfer-capsule'),hasConnection:!!telemetry.querySelector('#status-connection'),metaText:(meta.textContent||'').trim()};
   });
   assert.ok(drawer.hasTorrent&&drawer.hasStorage&&drawer.hasTransfer&&drawer.hasConnection,`Drawer must contain the canonical status nodes: ${JSON.stringify(drawer)}`);
+  assert.equal(drawer.display,'grid',`Mobile Drawer must resolve to the three-zone grid: ${JSON.stringify(drawer)}`);
+  assert.ok(drawer.filterOverflow==='auto'||drawer.filterOverflow==='scroll',`Only the filter/facet zone must own Drawer scrolling: ${JSON.stringify(drawer)}`);
+  assert.ok(drawer.filters.top>=drawer.sidebar.top-1&&drawer.filters.bottom<=drawer.telemetry.top+1,`Filter/facet zone must end before fixed telemetry: ${JSON.stringify(drawer)}`);
   assert.ok(drawer.chart.height>=90,`Drawer realtime transfer chart must be visibly rendered: ${JSON.stringify(drawer)}`);
-  assert.ok(drawer.telemetry.top>=drawer.sidebar.top&&drawer.meta.bottom<=drawer.sidebar.bottom+1,`Drawer telemetry and version metadata must be visible without scrolling the whole drawer: ${JSON.stringify(drawer)}`);
-  assert.ok(drawer.meta.top>=drawer.telemetry.bottom-1,`qBittorrent/WebAPI metadata must be the final visible Drawer row: ${JSON.stringify(drawer)}`);
+  assert.ok(drawer.telemetry.top>=drawer.sidebar.top&&drawer.telemetry.bottom<=drawer.meta.top+1,`Drawer telemetry must occupy the fixed middle zone above versions: ${JSON.stringify(drawer)}`);
+  assert.ok(drawer.meta.bottom<=drawer.sidebar.bottom+1&&drawer.sidebar.bottom-drawer.meta.bottom<=12,`qBittorrent/WebAPI metadata must be pinned to the physical bottom of the Drawer: ${JSON.stringify(drawer)}`);
   assert.ok(/qBittorrent/.test(drawer.metaText)&&/WebAPI/.test(drawer.metaText),`Drawer bottom must expose qBittorrent and WebAPI versions: ${drawer.metaText}`);
 
   assert.deepEqual(errors,[],`deployed mobile layout produced browser errors: ${errors.join('\n')}`);
   await context.close();
-  console.log(`Virtual qB Pages mobile layout acceptance passed for ${expectedSha}: stacked progress, single-line pager/actions, RSS + Logs search, and visible Drawer telemetry with versions at the bottom.`);
+  console.log(`Virtual qB Pages mobile layout acceptance passed for ${expectedSha}: stacked progress, single-line pager/actions, RSS + Logs search, and a three-zone Drawer with fixed telemetry and versions pinned to the bottom.`);
 } finally {
   await browser.close();
 }
