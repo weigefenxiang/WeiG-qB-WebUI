@@ -1,10 +1,10 @@
 import {
   addTags,addVirtualTorrent,authenticate,capabilityAvailable,createCategory,createTags,deleteTags,
-  deleteTorrents,logs,logout,peers,removeCategories,removeTags,renameTorrent,
+  deleteTorrents,logs,logout,removeCategories,removeTags,renameTorrent,
   setCategory,setForceStart,setPaused,setTorrentLimit
 } from '../core/engine.js';
 import {
-  addTrackers,applyRuntimePolicies,banPeers,editTracker,filterBannedPeers,movePriority,peerLogItems,
+  addTrackers,applyRuntimePolicies,banPeers,editTracker,movePriority,peerLogItems,
   reannounceTorrents,recheckTorrents,removeTrackers,setAutoManagement,setFilePriority,setLocation,
   toggleFirstLast,toggleSequential
 } from '../core/torrent-actions.js';
@@ -22,7 +22,7 @@ import {sliceTorrentWindow} from '../core/torrent-query.js';
 import {
   creatorAddTask,creatorDeleteTask,creatorStatus,creatorTorrentFile,rssAddFeed,rssItems,rssRefreshItem,
   rssRemoveItem,rssRemoveRule,rssRenameRule,rssRules,rssSetRule,searchResults,searchStart,searchStatus,
-  searchStop,webseedList
+  searchStop
 } from '../core/virtual-services.js';
 import {createPreferenceRuntime} from '../preferences/runtime.js';
 import {handleAuxiliaryApi} from './auxiliary-router.js';
@@ -209,10 +209,6 @@ export async function handleApi(world,request,url=new URL(request.url)){
   }
 
   if(path==='sync/maindata'&&method==='GET')return json(enrichMainData(world,mainDataSnapshot(world,url.searchParams.get('rid')||0,now)));
-  if(path==='sync/torrentPeers'&&method==='GET'){
-    const hash=url.searchParams.get('hash')||'';
-    return json({rid:Number(world.peerRid)||1,full_update:true,peers:filterBannedPeers(world,peers(world,hash))});
-  }
 
   if(path==='torrents/info'&&method==='GET'){
     try{return json(torrentInfoRows(world,url,now));}
@@ -241,7 +237,6 @@ export async function handleApi(world,request,url=new URL(request.url)){
   if(path==='torrents/trackers'&&method==='GET'){
     const value=trackersForTorrent(world,url.searchParams.get('hash')||'',now);return value===null?notFound():json(value);
   }
-  if(path==='torrents/webseeds'&&method==='GET')return json(webseedList(world,url.searchParams.get('hash')||''));
 
   const qb5=world.profile.major>=5;
   if(path==='torrents/start'&&method==='POST'){

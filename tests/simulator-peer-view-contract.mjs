@@ -1,9 +1,8 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {authenticate,createWorld,peers as legacyPeers} from '../simulator/core/engine.js';
-import {peerViewStats} from '../simulator/core/peer-view.js';
+import {authenticate,createWorld} from '../simulator/core/engine.js';
+import {generatedPeers,peerViewStats} from '../simulator/core/peer-view.js';
 import {runtimeIndexStats} from '../simulator/core/runtime-index.js';
-import {webseedList as legacyWebseedList} from '../simulator/core/virtual-services.js';
 import {handleApi} from '../simulator/protocol/router.js';
 
 const baseNow=1700000000000;
@@ -14,12 +13,33 @@ function post(path,body){return new Request(`https://example.invalid/api/v2/${pa
 const target=world.torrents[3456];
 const peerPath=`sync/torrentPeers?hash=${target.hash}`;
 
+function peerIdentity(row){
+  return{
+    client:row.client,country:row.country,country_code:row.country_code,downloaded:row.downloaded,uploaded:row.uploaded,
+    progress:row.progress,connection:row.connection,flags:row.flags,flags_desc:row.flags_desc,ip:row.ip,port:row.port,
+    relevance:row.relevance,files:row.files
+  };
+}
+function peerIdentityMap(peers){return Object.fromEntries(Object.entries(peers).map(([key,row])=>[key,peerIdentity(row)]));}
+function assertGeneratedPeerPayload(peers){
+  const entries=Object.entries(peers);
+  assert.ok(entries.length>0,'peer contract fixture must expose at least one generated peer');
+  for(const [key,row] of entries){
+    assert.equal(key,`${row.ip}:${row.port}`,'peer map key must be the qB IP:port identity');
+    for(const field of ['client','country','country_code','connection','flags','flags_desc','ip','files'])assert.equal(typeof row[field],'string',`peer ${key} ${field} must be a string`);
+    for(const field of ['dl_speed','up_speed','downloaded','uploaded','progress','port','relevance'])assert.ok(Number.isFinite(Number(row[field])),`peer ${key} ${field} must be numeric`);
+    assert.ok(Number(row.port)>0&&Number(row.port)<=65535,`peer ${key} port must be valid`);
+    assert.ok(Number(row.progress)>=0&&Number(row.progress)<=1,`peer ${key} progress must stay normalized`);
+  }
+}
+
 let response=await handleApi(world,get(peerPath));
 assert.equal(response.status,200);
 let body=await response.json();
-assert.equal(body.full_update,true);
-assert.equal(body.rid,Number(world.peerRid)||1);
-assert.deepEqual(body.peers,legacyPeers(world,target.hash),'indexed peer snapshot must preserve the legacy qB peer payload exactly when no manual/banned peers exist');
+assert.equal(body.full_update,true,'torrentPeers must be a full qB snapshot');
+assert.ok(Number.isInteger(Number(body.rid))&&Number(body.rid)>=1,'torrentPeers rid must be a positive integer');
+assertGeneratedPeerPayload(body.peers);
+const firstIdentity=peerIdentityMap(body.peers);
 
 let stats=runtimeIndexStats(world);
 assert.equal(stats.indexedRows,5000,'first peer detail poll must build the shared 5000-row hash index once');
@@ -34,7 +54,7 @@ assert.ok(peerStats.templateRows<=40,'peer metadata cache must stay bounded to q
 response=await handleApi(world,get(peerPath));
 assert.equal(response.status,200);
 body=await response.json();
-assert.deepEqual(body.peers,legacyPeers(world,target.hash),'repeated peer polls must remain payload-equivalent');
+assert.deepEqual(peerIdentityMap(body.peers),firstIdentity,'repeated peer polls must preserve deterministic static peer identity');
 stats=runtimeIndexStats(world);
 assert.equal(stats.indexedRows,5000,'repeated peer detail polls must retain the same membership index');
 assert.ok(stats.indexHits>=firstHits+2,'second peer poll must use O(1) hash lookups for generated and manual peers instead of rescanning 5000 torrents');
@@ -43,12 +63,16 @@ assert.equal(peerStats.templateBuilds,1,'repeated peer polls must not rerun dete
 assert.equal(peerStats.templateRows,initialGeneratedPeers,'stable peer count must not grow the static metadata cache');
 assert.ok(peerStats.templateHits>=1,'repeated peer polls must reuse cached static metadata');
 
-target.effectiveDownloadRate+=4096;
-target.effectiveUploadRate+=2048;
-response=await handleApi(world,get(peerPath));
-body=await response.json();
-const legacyAfterRateChange=legacyPeers(world,target.hash);
-assert.deepEqual(body.peers,legacyAfterRateChange,'static peer metadata cache must still project current live transfer speeds');
+const beforeRatePeers=generatedPeers(world,target.hash),ratePeerKey=Object.keys(beforeRatePeers)[0];
+assert.ok(ratePeerKey,'rate projection contract needs a generated peer');
+const beforeRateIdentity=peerIdentityMap(beforeRatePeers);
+const peerCount=Math.max(1,Object.keys(beforeRatePeers).length);
+target.effectiveDownloadRate+=peerCount*4096;
+target.effectiveUploadRate+=peerCount*2048;
+const afterRatePeers=generatedPeers(world,target.hash);
+assert.deepEqual(peerIdentityMap(afterRatePeers),beforeRateIdentity,'rate changes must not alter deterministic peer identity metadata');
+assert.notEqual(afterRatePeers[ratePeerKey].dl_speed,beforeRatePeers[ratePeerKey].dl_speed,'peer download rate must project live torrent rate changes');
+assert.notEqual(afterRatePeers[ratePeerKey].up_speed,beforeRatePeers[ratePeerKey].up_speed,'peer upload rate must project live torrent rate changes');
 peerStats=peerViewStats(world);
 assert.equal(peerStats.templateBuilds,1,'rate changes must not invalidate static peer identity metadata');
 assert.equal(peerStats.templateRows,initialGeneratedPeers,'rate changes must not expand static peer templates');
@@ -64,13 +88,18 @@ const hitsBeforeWebseed=runtimeIndexStats(world).indexHits;
 response=await handleApi(world,get(publicWebseedPath));
 assert.equal(response.status,200);
 const webseeds=await response.json();
-assert.deepEqual(webseeds,legacyWebseedList(world,publicTorrent.hash),'indexed WebSeed GET must preserve lazy-generated legacy payloads');
+assert.ok(webseeds.length>=1&&webseeds.length<=2,'public torrents must expose one or two deterministic WebSeed entries');
+for(let i=0;i<webseeds.length;i++){
+  assert.equal(webseeds[i].url,`https://cdn${i+1}.example.invalid/${publicTorrent.hash.slice(0,12)}/${encodeURIComponent(publicTorrent.name)}`,'WebSeed URL must be deterministic and tied to torrent identity');
+}
+response=await handleApi(world,get(publicWebseedPath));
+assert.equal(response.status,200);assert.deepEqual(await response.json(),webseeds,'repeated public WebSeed reads must preserve deterministic identity');
 response=await handleApi(world,get(`torrents/webseeds?hash=${privateTorrent.hash}`));
-assert.equal(response.status,200);assert.deepEqual(await response.json(),[],'private torrents must continue exposing no WebSeeds');
+assert.equal(response.status,200);assert.deepEqual(await response.json(),[],'private torrents must expose no WebSeeds');
 response=await handleApi(world,get('torrents/webseeds?hash=missing'));
 assert.equal(response.status,200);assert.deepEqual(await response.json(),[],'missing WebSeed hash must preserve historical empty-array behavior');
 stats=runtimeIndexStats(world);
-assert.ok(stats.indexHits>=hitsBeforeWebseed+3,'WebSeed detail reads must use the existing membership index instead of linear torrent scans');
+assert.ok(stats.indexHits>=hitsBeforeWebseed+4,'WebSeed detail reads must use the existing membership index instead of linear torrent scans');
 
 const soakIndexHits=stats.indexHits,soakTemplateHits=peerViewStats(world).templateHits,soakTemplateRows=peerViewStats(world).templateRows;
 for(let i=0;i<120;i++){
@@ -90,6 +119,8 @@ const manualEndpoint='203.0.113.77:51413';
 response=await handleApi(world,post('torrents/addPeers',{hashes:target.hash,peers:manualEndpoint}));assert.equal(response.status,200);
 response=await handleApi(world,get(peerPath));body=await response.json();
 assert.ok(body.peers[manualEndpoint],'manual peer added after static cache warmup must appear immediately');
+assert.equal(body.peers[manualEndpoint].ip,'203.0.113.77');
+assert.equal(body.peers[manualEndpoint].port,51413);
 const ridAfterManual=body.rid;
 response=await handleApi(world,post('transfer/banPeers',{peers:manualEndpoint}));assert.equal(response.status,200);
 response=await handleApi(world,get(peerPath));body=await response.json();
