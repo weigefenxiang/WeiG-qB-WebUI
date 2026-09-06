@@ -63,7 +63,7 @@ assert(rssForm.indexOf('id="rss-url"')>=0&&rssForm.indexOf('id="rss-add-btn"')>r
 // Logs reuse one filter/follow state while making the mobile toolbar compact and searchable on demand.
 assert(logs.includes("follow.dataset.shortLabel")&&logs.includes("'最新'")&&logs.includes("'Latest'"),'Mobile Follow latest must expose compact localized copy');
 assert(logs.includes("toolbar.classList.toggle('is-search-open')")&&logs.includes("searchToggle.textContent=open?'×':'⌕'"),'Narrow Logs Search must expand from one icon without duplicating query state');
-assert(logsCss.includes('.logs-search{grid-column:1;height:38px;min-height:38px')&&logsCss.includes('@media(max-width:520px)'),'Mobile Logs Search must use canonical one-line height and a narrow collapse breakpoint');
+assert(logsCss.includes('.logs-search{grid-column:1;height:38px;min-height:38px')&&logsCss.includes('@media(max-width:680px)'),'Mobile Logs Search must use canonical one-line height and collapse to the icon across common Android phone widths');
 assert(logsCss.includes('.logs-toolbar.is-search-open .logs-search{display:flex;grid-column:1/-1;grid-row:2}')&&logsCss.includes('.logs-toolbar.is-search-open .logs-filters{grid-column:2;grid-row:1}'),'Expanded narrow Logs Search must open below without moving the filter controls');
 assert(logsCss.includes('.logs-follow::after{content:attr(data-short-label)'),'Mobile follow copy must use the compact visible label');
 
@@ -74,9 +74,11 @@ assert(progressCss.includes('.mobile-card-meta--rail{display:grid!important;grid
 assert(progressCss.includes('.mobile-card-progress{width:100%;max-width:none;min-width:0;margin-left:0;grid-template-columns:minmax(0,1fr) max-content'),'Mobile progress percentage must remain to the right of the canonical full-width bar');
 
 // Mobile pager and actions remain one row, growing labels first and shrinking typography only on very narrow screens.
-assert(layout.includes('#list-view .pager{display:grid;grid-template-columns:minmax(132px,auto) minmax(0,1fr)'),'Mobile pager and selection actions must share one row');
-assert(layout.includes("#torrent-selection-toolbar .btn{flex:1 1 0;min-width:0")&&layout.includes('font-size:clamp(9px,2.7vw,12px)'),'Mobile selection actions must have distinct flexible hit regions with readable labels');
-assert(layout.includes('@media(max-width:350px)')&&layout.includes('font-size:8px'),'Only very narrow Android widths may reduce pager/action typography further');
+const pagerColumns=layout.match(/#list-view \.pager\{[^}]*grid-template-columns:minmax\((\d+)px,auto\) minmax\(0,1fr\)/);
+const pagerLabel=layout.match(/#page-label\{[^}]*max-width:(\d+)px/);
+assert(pagerColumns&&pagerLabel&&Number(pagerColumns[1])<=128&&Number(pagerLabel[1])<=76,'Mobile pager and selection actions must share one content-bounded row that reserves room for all four actions');
+assert(layout.includes("#torrent-selection-toolbar .btn{flex:1 1 0;min-width:0")&&layout.includes('font-size:clamp(11px,2.95vw,13px)'),'Mobile selection actions must have distinct flexible hit regions with readable labels');
+assert(layout.includes('@media(max-width:350px)')&&layout.includes('grid-template-columns:minmax(112px,auto) minmax(0,1fr)')&&layout.includes('font-size:8.5px'),'Only very narrow Android widths may reduce pager/action typography further');
 
 // Mobile Drawer reuses the real Desktop status nodes and the bounded TransferRuntime history.
 assert(responsive.includes("moveNode(torrents,primary)")&&responsive.includes("moveNode(storage,primary)")&&responsive.includes("moveNode(capsule,transfer)")&&responsive.includes("moveNode(connection,transfer)"),'Mobile Drawer must move, not copy, canonical Desktop status nodes');
