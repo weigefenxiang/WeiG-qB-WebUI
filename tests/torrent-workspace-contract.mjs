@@ -104,7 +104,8 @@ assert(responsive.includes('W.TransferRuntime&&W.TransferRuntime.snapshot')&&!re
 assert(responsive.includes('moveNode(torrents,primary)')&&responsive.includes('moveNode(capsule,transfer)')&&!responsive.includes('cloneNode'),'Mobile Drawer telemetry must relocate canonical status nodes without cloning semantic state');
 assert(!app.includes("paintText('dl-speed'")&&!app.includes("paintText('up-speed'")&&!app.includes("getElementById('network-meta')"),'App must not paint retired summary leaves');
 assert(!layoutCss.includes('mobile-summary')&&!layoutCss.includes('mobile-command-bar')&&!layoutCss.includes('mobile-facet-slot'),'Retired Mobile summary/command/facet layout CSS survived');
-assert(layoutCss.includes('grid-template-columns:auto minmax(0,1fr)')&&layoutCss.includes('max-width:78px'),'Mobile pager must be content-sized so action rail receives the remaining width');
+const mobilePagerKeepsActionWidth=/#list-view \.pager\{[^}]*grid-template-columns:(?:auto|minmax\(132px,auto\)) minmax\(0,1fr\)/.test(layoutCss)&&/#page-label\{[^}]*max-width:(?:78|82)px/.test(layoutCss);
+assert(mobilePagerKeepsActionWidth,'Mobile pager must remain content-bounded so the action rail receives the remaining width');
 
 // Header owns Mobile Search/menu and utility presentation; app owns the one search semantic state.
 assert(header.includes('mobile-search-btn')&&header.includes('setSearchOpen')&&header.includes("classList.toggle('search-open'"),'Header must own Mobile Search reveal presentation');
