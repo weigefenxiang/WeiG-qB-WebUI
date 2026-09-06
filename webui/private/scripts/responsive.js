@@ -36,7 +36,7 @@
     var primary=document.createElement('div');primary.className='mobile-drawer-telemetry__row mobile-drawer-telemetry__row--primary';primary.dataset.drawerStatusRow='primary';
     var transfer=document.createElement('div');transfer.className='mobile-drawer-telemetry__row mobile-drawer-telemetry__row--transfer';transfer.dataset.drawerStatusRow='transfer';
     var chart=document.createElement('div');chart.id='mobile-drawer-transfer-chart';chart.className='mobile-drawer-transfer-chart';
-    host.append(primary,transfer,chart);sidebar.appendChild(host);return host;
+    host.append(chart,transfer,primary);sidebar.appendChild(host);return host;
   }
   function moveNode(node,target){if(node&&target&&node.parentElement!==target)target.appendChild(node);}
   function mountStatusTelemetry(){

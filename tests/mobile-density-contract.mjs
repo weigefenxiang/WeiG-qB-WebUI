@@ -9,6 +9,8 @@ const assert=(ok,msg)=>{if(!ok)throw new Error(msg);};
 
 const index=read('webui/private/index.html');
 const layout=read('webui/private/css/layout.css');
+const spatial=read('webui/private/css/spatial.css');
+const sharedUiCss=read('webui/private/css/ui.css');
 const settingsCss=read('webui/private/css/settings.css');
 const logsCss=read('webui/private/css/logs.css');
 const progressCss=read('webui/private/css/progress.css');
@@ -63,10 +65,13 @@ assert(ui.includes('W.RSS={setQuery:setRSSQuery')&&header.includes("if(route==='
 assert(ui.includes("rssOpenButton.id='rss-add-open-btn'")&&ui.includes("rssDialog.id='rss-add-dialog'")&&ui.includes('actions.append(rssOpenButton,refresh)'),'RSS Add Feed and Refresh must occupy the title header action rail');
 assert(layout.includes('.rss-header-actions')&&layout.includes('.rss-add-dialog'),'RSS responsive geometry must live in canonical layout CSS');
 
-// Logs remove their local Search chrome and consume the same Header Search input.
+// Logs remove local Search, keep one semantic row, and use the canonical Select without a second inset shell.
 assert(!logs.includes('logs-search-toggle')&&!logs.includes('logs-search-input')&&!logsCss.includes('.logs-search-toggle')&&!logsCss.includes('.logs-search{'),'Logs must not render a local Search icon or input');
 assert(logs.includes("W.Logs={setQuery:setQuery,query:function(){return state.query;}")&&header.includes("if(route==='logs')")&&header.includes('W.Logs.setQuery(input.value)'),'Logs query must be driven by Header Search');
 assert(logs.includes("C.selectControl({id:'logs-size-mode'")&&logsCss.includes('.logs-actions .logs-size-mode{--ui-select-width:max-content'),'Logs size mode must remain one canonical Select with feature geometry only');
+assert(logsCss.includes('.logs-filters>[data-log-type]')&&logsCss.includes('.logs-toolbar{display:flex;align-items:center')&&logsCss.includes('overflow-x:auto'),'Mobile log levels must be a segmented list on one horizontally scrollable toolbar row');
+assert(logsCss.includes('.logs-refresh::before{content:"↻"'),'Narrow Mobile Logs must collapse Refresh to its icon without creating a second action');
+assert(sharedUiCss.includes('#list-view .grid-toolbar .ui-select__trigger::before')&&!/(^|})\.grid-toolbar \.ui-select__trigger::before/.test(sharedUiCss),'Torrent-only inset Select skin must not leak into the Logs canonical Select');
 
 // Mobile Torrent progress remains one canonical bar below metadata with the real percentage immediately to its right.
 assert(components.includes("cluster.className='mobile-card-progress'")&&components.includes("number.textContent=built.visual.percent+'%'"),'Mobile Torrent card must compose progress bar and percentage together');
@@ -82,16 +87,18 @@ assert(layout.includes("#torrent-selection-toolbar .btn{flex:1 1 0;min-width:0")
 assert(layout.includes('#actions-dialog .action-grid{grid-template-columns:repeat(2,minmax(0,1fr))')&&layout.includes('font-size:clamp(12px,3.35vw,15px)'),'Mobile More Actions must be two columns with adaptive readable typography');
 assert(layout.includes('@media(max-width:350px)')&&layout.includes('grid-template-columns:minmax(112px,auto) minmax(0,1fr)')&&layout.includes('font-size:8.5px'),'Only very narrow Android widths may reduce pager/action typography further');
 
-// Mobile Drawer reuses real Desktop status nodes, hides version metadata, and adapts facet density by available height.
+// Mobile Drawer reuses real Desktop status nodes, uses two-column filters, and keeps chart -> transfer -> Torrent/storage order.
 assert(responsive.includes("moveNode(torrents,primary)")&&responsive.includes("moveNode(storage,primary)")&&responsive.includes("moveNode(capsule,transfer)")&&responsive.includes("moveNode(connection,transfer)"),'Mobile Drawer must move, not copy, canonical Desktop status nodes');
 assert(!responsive.includes('cloneNode'),'Mobile Drawer status adaptation must not clone semantic DOM owners');
+assert(responsive.includes('host.append(chart,transfer,primary)'),'Drawer telemetry DOM must follow the visual/accessibility order chart -> transfer -> Torrent/storage');
 assert(responsive.includes('W.Transfer.mountCompactChart')&&transfer.includes('function mountCompactChart(host)'),'Mobile Drawer must consume the canonical Transfer presentation');
 assert(transfer.includes('function drawRateChart(canvas,windowSeconds')&&transfer.includes('drawRateChart(canvas,chartWindow,180,100)'),'Full and compact transfer charts must share one renderer and selected window state');
 assert(transfer.includes("limitButton.onclick=openLimits")&&transfer.includes("statsButton.onclick=openStats"),'Drawer transfer controls must keep existing stats/limit dialog actions');
 assert(!transfer.includes('data-mini-rate')&&transfer.includes("windowText.dataset.miniWindow='1'"),'Drawer chart must remove duplicate speed text and retain only synchronized window metadata');
-assert(transferCss.includes('.mobile-drawer-telemetry__row--primary')&&transferCss.includes('.mobile-drawer-telemetry__row--transfer')&&transferCss.includes('.transfer-mini-chart__canvas'),'Mobile Drawer must present two compact status rows plus chart');
+assert(transferCss.includes('.mobile-drawer-telemetry__row--primary')&&transferCss.includes('.mobile-drawer-telemetry__row--transfer')&&transferCss.includes('.transfer-mini-chart__canvas'),'Mobile Drawer must present canonical status rows plus chart');
 assert(transferCss.includes('#sidebar{display:grid!important;grid-template-rows:minmax(0,1fr) auto!important')&&transferCss.includes('.sidebar__meta{display:none!important}'),'Mobile Drawer must retire qB/WebAPI/compat metadata from its visible layout');
-assert(transferCss.includes('@container mobile-drawer (max-height:650px)')&&transferCss.includes('.facet-controls{grid-template-columns:repeat(2,minmax(0,1fr))'),'Short Mobile Drawers must use two-column facets to preserve useful content');
-assert(transferCss.includes('font-size:clamp(8.5px,2.35vw,12px)')&&transferCss.includes('.transfer-runtime-capsule__limits{width:30px;min-width:30px;flex:0 0 30px}'),'Mobile speed text must yield before the rate-limit button is covered');
+assert(spatial.includes('#filter-nav{grid-template-columns:repeat(2,minmax(0,1fr))')&&spatial.includes('.facet-controls{grid-template-columns:repeat(2,minmax(0,1fr))'),'Android Drawer Torrent filters and all four facets must remain two-column');
+assert(!transferCss.includes('@container mobile-drawer (max-height:650px)'),'Facet responsive ownership must stay in Spatial CSS rather than Transfer CSS');
+assert(transferCss.includes('font-size:clamp(10px,3vw,13.5px)')&&transferCss.includes('.transfer-runtime-capsule__limits{width:30px;min-width:30px;flex:0 0 30px}'),'Mobile speeds must be larger while the rate-limit button keeps its reserved hit region');
 
-console.log('Mobile density contract passed: adaptive detail/settings, route-aware Header Search, two-column actions, compact RSS/Logs, and height-aware Drawer telemetry all reuse canonical owners.');
+console.log('Mobile density contract passed: adaptive detail/settings, segmented one-row Logs, two-column Drawer filters/facets, reordered telemetry, larger safe transfer text, and canonical responsive owners.');

@@ -222,8 +222,61 @@ try{
     assert.deepEqual(pageErrors,[],`qB4 Pages session emitted page errors:\n${pageErrors.join('\n')}`);
     await context.close();
   }
+
+  {
+    const context=await browser.newContext({viewport:{width:390,height:844},locale:'zh-CN'});
+    const page=await context.newPage();
+    const pageErrors=[];
+    page.on('pageerror',error=>pageErrors.push(error?.stack||error?.message||String(error)));
+    page.on('console',message=>{if(message.type()==='error'&&!/favicon|Wei\.G\.ico/i.test(message.text()))pageErrors.push(message.text());});
+
+    await openVirtualSession(page,{branch:'dev',qb:'5.2.3',count:80,scenario:'mixed',seed:'pages-live-android'});
+    await login(page,{expectPrefill:true});
+    await waitForPrivate(page,'5.2.3');
+    await page.waitForSelector('.torrent-mobile-card--two-line',{state:'visible',timeout:60000});
+
+    await page.locator('#menu-btn').click();
+    await page.waitForFunction(()=>document.getElementById('sidebar')?.classList.contains('is-open'));
+    await page.waitForFunction(()=>document.querySelector('#mobile-drawer-telemetry #status-torrents')&&document.querySelector('#mobile-drawer-telemetry #transfer-capsule')&&document.querySelector('#mobile-drawer-transfer-chart .transfer-mini-chart'));
+    const drawer=await page.evaluate(()=>{
+      const sidebar=document.getElementById('sidebar'),filterNav=document.getElementById('filter-nav'),facets=document.getElementById('facet-controls'),telemetry=document.getElementById('mobile-drawer-telemetry');
+      const chartHost=document.getElementById('mobile-drawer-transfer-chart'),chart=chartHost.querySelector('.transfer-mini-chart'),transfer=telemetry.querySelector('[data-drawer-status-row="transfer"]'),primary=telemetry.querySelector('[data-drawer-status-row="primary"]'),capsule=document.getElementById('transfer-capsule'),stats=capsule.querySelector('.transfer-runtime-capsule__stats'),limit=capsule.querySelector('.transfer-runtime-capsule__limits'),speeds=[...capsule.querySelectorAll('.status-speed strong')];
+      const rect=n=>{const r=n.getBoundingClientRect();return{top:r.top,bottom:r.bottom,left:r.left,right:r.right,width:r.width,height:r.height};};
+      const countCols=value=>String(value||'').trim().split(/\s+/).filter(Boolean).length;
+      return{
+        filterCols:countCols(getComputedStyle(filterNav).gridTemplateColumns),facetCols:countCols(getComputedStyle(facets).gridTemplateColumns),
+        order:[...telemetry.children].map(n=>n.id||n.dataset.drawerStatusRow||''),chart:rect(chart),chartHost:rect(chartHost),transfer:rect(transfer),primary:rect(primary),telemetry:rect(telemetry),capsule:rect(capsule),stats:rect(stats),limit:rect(limit),speedFonts:speeds.map(n=>parseFloat(getComputedStyle(n).fontSize)),speedRects:speeds.map(rect)
+      };
+    });
+    assert.equal(drawer.filterCols,2,`Android Torrent state filters must be two-column: ${JSON.stringify(drawer)}`);
+    assert.equal(drawer.facetCols,2,`Android Tracker/path/category/tag facets must be two-column: ${JSON.stringify(drawer)}`);
+    assert.deepEqual(drawer.order.slice(0,3),['mobile-drawer-transfer-chart','transfer','primary'],`Drawer bottom order must be chart -> speed/connection -> Torrent/storage: ${JSON.stringify(drawer.order)}`);
+    assert.ok(drawer.chartHost.bottom<=drawer.transfer.top+1&&drawer.transfer.bottom<=drawer.primary.top+1,`Drawer telemetry visual order must match DOM order: ${JSON.stringify(drawer)}`);
+    assert.ok(drawer.primary.bottom<=drawer.telemetry.bottom+1&&drawer.telemetry.bottom-drawer.primary.bottom<=12,`Torrent/storage row must be physically last in Drawer telemetry: ${JSON.stringify(drawer)}`);
+    assert.ok(drawer.speedFonts.length===2&&drawer.speedFonts.every(v=>v>=10),`Drawer transfer speed typography must be larger and readable: ${JSON.stringify(drawer.speedFonts)}`);
+    assert.ok(drawer.limit.left>=drawer.stats.right-1&&drawer.limit.right<=drawer.capsule.right+1,`rate-limit button must retain its reserved region without overlap: ${JSON.stringify(drawer)}`);
+
+    await page.locator('#drawer-scrim').click();
+    await page.locator('#mobile-bottom-nav [data-route="logs"]').click();
+    await page.waitForFunction(()=>document.getElementById('logs-view')?.classList.contains('is-active')&&document.querySelector('.logs-toolbar'));
+    const logsLayout=await page.evaluate(()=>{
+      const toolbar=document.querySelector('.logs-toolbar'),filters=document.querySelector('.logs-filters'),actions=document.querySelector('.logs-actions'),chips=[...document.querySelectorAll('.logs-filters>[data-log-type]')],follow=document.querySelector('.logs-follow'),select=document.querySelector('.logs-size-mode .ui-select__trigger'),refresh=document.querySelector('.logs-refresh');
+      const rect=n=>{const r=n.getBoundingClientRect();return{top:r.top,bottom:r.bottom,left:r.left,right:r.right,width:r.width,height:r.height};};
+      const ts=getComputedStyle(toolbar),ss=getComputedStyle(select),before=getComputedStyle(select,'::before'),rs=getComputedStyle(refresh),rb=getComputedStyle(refresh,'::before');
+      return{toolbar:rect(toolbar),filters:rect(filters),actions:rect(actions),chips:chips.map(rect),follow:rect(follow),select:rect(select),refresh:rect(refresh),overflowX:ts.overflowX,scrollOverflow:toolbar.scrollWidth-toolbar.clientWidth,selectBorder:ss.borderTopWidth,selectBefore:before.content,refreshFont:parseFloat(rs.fontSize),refreshBefore:rb.content};
+    });
+    assert.equal(logsLayout.chips.length,4,`Logs must expose four level list items: ${JSON.stringify(logsLayout)}`);
+    assert.ok(Math.max(...logsLayout.chips.map(x=>x.top))-Math.min(...logsLayout.chips.map(x=>x.top))<=2,`Normal/Info/Warning/Critical must stay on one segmented list row: ${JSON.stringify(logsLayout.chips)}`);
+    assert.ok(Math.abs(logsLayout.filters.top-logsLayout.actions.top)<=6,`Log level list, Latest, Auto and Refresh must stay on one physical toolbar row: ${JSON.stringify(logsLayout)}`);
+    assert.ok(logsLayout.overflowX==='auto'||logsLayout.overflowX==='scroll',`Narrow Logs toolbar must own horizontal overflow instead of wrapping: ${JSON.stringify(logsLayout)}`);
+    assert.ok(logsLayout.selectBorder!=='0px'&&(logsLayout.selectBefore==='none'||logsLayout.selectBefore==='normal'),`Logs Auto Select must have one canonical visible box and no inherited pseudo-shell: ${JSON.stringify(logsLayout)}`);
+    assert.ok(logsLayout.refreshFont===0&&/↻/.test(logsLayout.refreshBefore),`390px Logs Refresh must collapse to the icon-only presentation: ${JSON.stringify(logsLayout)}`);
+
+    assert.deepEqual(pageErrors,[],`Android Pages layout emitted browser errors:\n${pageErrors.join('\n')}`);
+    await context.close();
+  }
 }finally{
   await browser.close();
 }
 
-console.log(`Virtual qB Pages live acceptance passed for ${expectedSha}: exact deployed metadata, dev/main snapshots, qB5 5000-Torrent runtime/catalog pagination, persistence/add/settings/limits/logout, Clean Mode, and qB4 endpoint semantics.`);
+console.log(`Virtual qB Pages live acceptance passed for ${expectedSha}: exact deployed metadata, dev/main runtime semantics, qB4 compatibility, and Android Drawer/Logs responsive layout are live.`);
