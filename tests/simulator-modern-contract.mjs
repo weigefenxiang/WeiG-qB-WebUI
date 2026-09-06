@@ -17,6 +17,35 @@ function post(path,body){return new Request(`https://example.invalid/api/v2/${pa
 }
 
 {
+  const w=world('5.1.4','2.11.4'),t=w.torrents[0],original=t.trackers[0].url,replacement='https://tracker.example/legacy-edited';
+  let r=await handleApi(w,post('torrents/editTracker',{hash:t.hash,url:original,newUrl:replacement}));
+  assert.equal(r.status,400,'qB 5.1 editTracker must reject the qB 5.2 url parameter contract');
+  r=await handleApi(w,post('torrents/editTracker',{hash:t.hash,origUrl:original,newUrl:replacement}));
+  assert.equal(r.status,200,'qB 5.1 editTracker must preserve origUrl + newUrl semantics');
+  assert.ok(t.trackers.some(item=>item.url===replacement),'qB 5.1 editTracker must persist the replacement tracker URL');
+}
+
+{
+  const w=world('5.2.0','2.15.1'),t=w.torrents[0],original=t.trackers[0].url,replacement='https://tracker.example/modern-edited';
+  let r=await handleApi(w,post('torrents/editTracker',{hash:t.hash,origUrl:original,newUrl:replacement}));
+  assert.equal(r.status,400,'qB 5.2 editTracker must reject the legacy origUrl parameter contract');
+  r=await handleApi(w,post('torrents/editTracker',{hash:t.hash,url:original}));
+  assert.equal(r.status,400,'qB 5.2 editTracker must require newUrl or tier');
+  r=await handleApi(w,post('torrents/editTracker',{hash:t.hash,url:original,tier:'300'}));
+  assert.equal(r.status,400,'qB 5.2 editTracker must reject tiers outside 0..255');
+  r=await handleApi(w,post('torrents/editTracker',{hash:t.hash,url:'udp://missing.invalid:80/announce',tier:'2'}));
+  assert.equal(r.status,409,'qB 5.2 editTracker must report unknown trackers as conflict');
+  r=await handleApi(w,post('torrents/editTracker',{hash:t.hash,url:original,tier:'7'}));
+  assert.equal(r.status,200,'qB 5.2 editTracker must support tier-only updates');
+  assert.equal(t.trackers.find(item=>item.url===original)?.tier,7,'tier-only editTracker must persist the new tier');
+  r=await handleApi(w,post('torrents/editTracker',{hash:t.hash,url:original,newUrl:replacement,tier:'3'}));
+  assert.equal(r.status,200,'qB 5.2 editTracker must support combined URL and tier updates');
+  assert.equal(t.trackers.find(item=>item.url===replacement)?.tier,3,'combined editTracker must persist both URL and tier');
+  r=await handleApi(w,post('torrents/editTracker',{hash:'missing',url:replacement,tier:'2'}));
+  assert.equal(r.status,404,'qB 5.2 editTracker must preserve Not Found for missing torrents');
+}
+
+{
   const w=world(),t=w.torrents[0];
   let r=await handleApi(w,get(`torrents/SSLParameters?hash=${t.hash}`));assert.deepEqual(await r.json(),{ssl_certificate:'',ssl_private_key:'',ssl_dh_params:''});
   r=await handleApi(w,post('torrents/setSSLParameters',{
@@ -110,4 +139,4 @@ function post(path,body){return new Request(`https://example.invalid/api/v2/${pa
   r=await handleApi(w,get('app/processInfo'));assert.equal(r.status,404,'processInfo must not leak into qB4');
 }
 
-console.log('Virtual qB modern contract passed: SSL state, manual peer visibility, metadata fetch/parse/save, clientdata, process info, virtual filesystem, network interfaces, API keys, test email, historical path/export boundaries and shutdown semantics.');
+console.log('Virtual qB modern contract passed: SSL state, manual peer visibility, qB 5.1/5.2 editTracker semantics, metadata fetch/parse/save, clientdata, process info, virtual filesystem, network interfaces, API keys, test email, historical path/export boundaries and shutdown semantics.');

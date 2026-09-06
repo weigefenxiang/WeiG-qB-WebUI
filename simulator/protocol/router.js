@@ -64,6 +64,57 @@ function hasRss(world){return apiAtLeast(world,'2.1.0');}
 function hasSearch(world){return apiAtLeast(world,'2.1.1');}
 function hasTorrentCreator(world){return world.profile.major>=5&&apiAtLeast(world,'2.11.0');}
 function hasRenameFolder(world){return apiAtLeast(world,'2.8.0')||String(world.profile.qbVersion).replace(/^v/i,'')==='4.3.3';}
+function owns(object,key){return Object.prototype.hasOwnProperty.call(object,key);}
+function trackerUrlValid(value){
+  const raw=String(value??'').trim();
+  if(!raw)return false;
+  try{return !!new URL(raw).protocol;}catch{return false;}
+}
+function trackerEditResponse(world,form){
+  const modern=apiAtLeast(world,'2.13.0');
+  if(modern){
+    if(!owns(form,'hash')||!owns(form,'url'))return text('Bad Request',400);
+  }else if(!owns(form,'hash')||!owns(form,'origUrl')||!owns(form,'newUrl'))return text('Bad Request',400);
+
+  const hash=String(form.hash??''),torrent=torrentIndex(world).byHash.get(hash);
+  if(!torrent)return notFound();
+
+  if(modern){
+    const hasNewUrl=owns(form,'newUrl'),hasTier=owns(form,'tier');
+    if(!hasNewUrl&&!hasTier)return text('Must specify at least one of [newUrl, tier]',400);
+    const oldUrl=String(form.url??'');
+    let tier=null;
+    if(hasTier){
+      const rawTier=String(form.tier??'').trim();
+      if(!/^\d+$/.test(rawTier))return text('tier must be an integer',400);
+      tier=Number(rawTier);
+      if(tier<0||tier>255)return text('tier must be between 0 and 255',400);
+    }
+    const tracker=(torrent.trackers||[]).find(item=>item.url===oldUrl);
+    if(!tracker)return text('Tracker not found',409);
+    const newUrl=hasNewUrl?String(form.newUrl??''):oldUrl;
+    const urlChanged=hasNewUrl&&newUrl!==oldUrl;
+    if(urlChanged){
+      if(!trackerUrlValid(newUrl))return text('New tracker URL is invalid',400);
+      if((torrent.trackers||[]).some(item=>item!==tracker&&item.url===newUrl))return text('New tracker URL already exists',409);
+    }
+    const tierChanged=hasTier&&Number(tracker.tier)!==tier;
+    if(!urlChanged&&!tierChanged)return empty();
+    const targetUrl=urlChanged?newUrl:oldUrl;
+    if(!editTracker(world,hash,oldUrl,targetUrl))return text('Tracker not found',409);
+    const updated=(torrent.trackers||[]).find(item=>item.url===targetUrl);
+    if(updated&&hasTier)updated.tier=tier;
+    return empty();
+  }
+
+  const oldUrl=String(form.origUrl??''),newUrl=String(form.newUrl??'');
+  if(oldUrl===newUrl)return empty();
+  if(!trackerUrlValid(newUrl))return text('New tracker URL is invalid',400);
+  const tracker=(torrent.trackers||[]).find(item=>item.url===oldUrl);
+  if(!tracker)return text('Tracker not found',409);
+  if((torrent.trackers||[]).some(item=>item!==tracker&&item.url===newUrl))return text('New tracker URL already exists',409);
+  return editTracker(world,hash,oldUrl,newUrl)?empty():text('Tracker not found',409);
+}
 
 function categoryObject(world){
   return Object.fromEntries(Object.entries(world.categories).map(([key,value])=>[key,{name:value.name,savePath:value.savePath}]));
@@ -340,8 +391,7 @@ export async function handleApi(world,request,url=new URL(request.url)){
   }
   if(path==='torrents/editTracker'&&method==='POST'){
     if(!apiAtLeast(world,'2.2.0'))return notFound();
-    const f=await formObject(request),oldUrl=f.url??f.origUrl;
-    return editTracker(world,f.hash,oldUrl,f.newUrl)?empty():notFound();
+    const f=await formObject(request);return trackerEditResponse(world,f);
   }
   if(path==='torrents/add'&&method==='POST'){
     const f=await formObject(request);
