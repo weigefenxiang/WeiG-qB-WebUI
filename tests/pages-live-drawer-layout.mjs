@@ -29,7 +29,13 @@ try{
   const page=await context.newPage();
   const errors=[];
   page.on('pageerror',error=>errors.push(error?.stack||error?.message||String(error)));
-  page.on('console',message=>{if(message.type()==='error'&&!/favicon|Wei\.G\.ico/i.test(message.text()))errors.push(message.text());});
+  page.on('console',message=>{
+    if(message.type()!=='error')return;
+    const text=message.text();
+    const source=String(message.location()?.url||'');
+    if(/favicon(?:\.ico)?|Wei\.G\.ico/i.test(`${source} ${text}`))return;
+    errors.push(source?`${text} (${source})`:text);
+  });
 
   const url=new URL('dev/app/',base);
   url.search=new URLSearchParams({sim:`pages-drawer-${Date.now()}`,qb:'5.2.3',count:'80',scenario:'mixed',seed:'drawer-layout-047'}).toString();
