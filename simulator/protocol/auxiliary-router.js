@@ -49,11 +49,12 @@ function bootstrapAllowed(world,path){
   if(['app/rotateAPIKey','app/deleteAPIKey'].includes(path))return apiAtLeast(world,'2.14.1');
   if(path==='app/processInfo')return qbAtLeast(world,'5.2.0')&&apiAtLeast(world,'2.15.1');
   if(path==='transfer/setSpeedLimitsMode')return qbAtLeast(world,'5.0.0');
-  if(path==='torrents/count')return qbAtLeast(world,'4.3.0');
+  if(path==='torrents/count')return qbAtLeast(world,'4.6.1')&&apiAtLeast(world,'2.9.3');
   if(path==='torrents/addPeers')return qbAtLeast(world,'4.2.0')&&apiAtLeast(world,'2.3.0');
   if(['torrents/setSavePath','torrents/setDownloadPath'].includes(path))return qbAtLeast(world,'4.4.0');
   if(path==='torrents/export')return qbAtLeast(world,'4.5.0');
-  if(['torrents/pieceAvailability','torrents/addWebSeeds','torrents/editWebSeed','torrents/removeWebSeeds','torrents/setComment','torrents/setTags'].includes(path))return Number(world.profile?.major)>=5;
+  if(['torrents/addWebSeeds','torrents/editWebSeed','torrents/removeWebSeeds','torrents/setTags'].includes(path))return qbAtLeast(world,'5.1.0')&&apiAtLeast(world,'2.11.4');
+  if(['torrents/pieceAvailability','torrents/setComment'].includes(path))return qbAtLeast(world,'5.2.0')&&apiAtLeast(world,'2.15.1');
   if(['torrents/SSLParameters','torrents/setSSLParameters'].includes(path))return qbAtLeast(world,'5.0.0');
   if(['torrents/fetchMetadata','torrents/parseMetadata','torrents/saveMetadata'].includes(path))return qbAtLeast(world,'5.2.0')&&apiAtLeast(world,'2.11.9');
   if(path.startsWith('clientdata/'))return qbAtLeast(world,'5.2.0')&&apiAtLeast(world,'2.13.1');
