@@ -96,7 +96,7 @@ Dialog normalization                    W.LayoutRuntime
 ```
 
 ### FACET-OWNER — one facet chain
-Facet state = `W.LibraryController`; composition = `W.SpatialRuntime`; control = canonical Select; skin = shared UI tokens. Desktop Sidebar and Mobile Drawer use the same `#facet-controls`, permanently below Torrent state filters. A Mobile horizontal facet shelf is prohibited. When available Mobile Drawer height is short, the same facet controls may reflow from one column to two; semantic state and control instances do not change.
+Facet state = `W.LibraryController`; composition = `W.SpatialRuntime`; control = canonical Select; skin = shared UI tokens. Desktop Sidebar and Mobile Drawer use the same `#facet-controls`, permanently below Torrent state filters. A Mobile horizontal facet shelf is prohibited. On Mobile/Android, the same facet controls use a two-column responsive grid; semantic state and control instances do not change.
 
 ### MOBILE-LIBRARY-IA — one library, adaptive placement
 Mobile primary library order is: Topbar → compact toolbar → Torrent cards → Pager/action rail; filters/facets live in Drawer. Desktop and Mobile do not render Download/Upload/Network/Torrent summary cards.
@@ -148,7 +148,7 @@ Changing routes changes the Header Search placeholder/value to that route's sema
 RSS page chrome keeps Add Feed and Refresh in the page-title action rail. Feed URL is temporary input inside the canonical Dialog opened by Add Feed; it is not a permanent second Search-like field in the RSS content surface.
 
 ### LOGS-CONTROLS
-Logs page chrome contains filters, Follow, canonical size Select and Refresh only. Log query is driven exclusively by Header Search. Feature CSS may size the canonical Select but may not draw a second shell/border around it.
+Logs page chrome contains filters, Follow, canonical size Select and Refresh only. Log query is driven exclusively by Header Search. Feature CSS may size the canonical Select but may not draw a second shell/border around it. On Mobile, Normal/Info/Warning/Critical form one segmented level list and share one non-wrapping horizontal control rail with Follow, size Select and Refresh; narrow layouts collapse Refresh to its icon and then scroll the rail horizontally instead of creating a second row.
 
 ### HEADER-END-ANCHOR
 Desktop Add / Theme / GitHub / WeiG Share / Logout forms one right-edge action rail. Search/navigation collapses before this rail loses its end anchor.
@@ -171,7 +171,7 @@ Persistent telemetry uses the cheapest existing surface and does not spend Torre
 Desktop/Mobile placement never creates another qB client, timer, state store or reconciliation path.
 
 ### MOBILE-DRAWER-TELEMETRY — move canonical status nodes
-Mobile Drawer reuses the same `#status-torrents`, `#status-free-space`, `#transfer-capsule` and `#status-connection` DOM/semantic owners that Desktop places in the Statusbar. Mobile placement is two compact rows followed by transfer history; cloning, mirrored counters and duplicate event handlers are prohibited. qBittorrent/WebAPI/compatibility metadata remains available through Desktop/connection surfaces but does not consume Mobile Drawer height. Filters/facets receive the available height before telemetry, and short Drawers may reflow facets to two columns.
+Mobile Drawer reuses the same `#status-torrents`, `#status-free-space`, `#transfer-capsule` and `#status-connection` DOM/semantic owners that Desktop places in the Statusbar. Its visual/accessibility order is transfer history → transfer/connection → Torrent/storage, with Torrent/storage physically last; cloning, mirrored counters and duplicate event handlers are prohibited. qBittorrent/WebAPI/compatibility metadata remains available through Desktop/connection surfaces but does not consume Mobile Drawer height. Mobile/Android Torrent state filters and facets both use two-column responsive grids above telemetry, while that filter/facet region remains the Drawer scroll owner.
 
 ### TRANSFER-CHART-ADAPTIVE — one bounded history, window and renderer
 `W.TransferRuntime` is the only transfer sample/history source. `W.Transfer.drawRateChart()` renders both the full Transfer dialog and the compact Mobile Drawer chart. Both consume the same selected chart window (`1 min` through `12 h`); changing the full dialog window updates Drawer label/data immediately. The Drawer chart does not repeat download/upload speed text already present in the canonical transfer capsule. It adds no API request, timer, polling loop or second history store; tapping it opens the canonical Transfer statistics dialog.
@@ -355,10 +355,9 @@ Mobile More Actions keeps two columns with contained adaptive labels
 Mobile two-line card + canonical inline progress rail/percentage
 one route-aware Header Search for Torrents / RSS / Logs
 RSS title rail owns Add Feed + Refresh; Feed URL lives in Dialog
-Logs has no page-local Search and uses one canonical size Select
+Logs has no page-local Search; Mobile uses one segmented level list + Follow + canonical size Select + Refresh on one horizontal rail
 Mobile Search anchored below Topbar without clipping actions
-Mobile Drawer reuses Statusbar telemetry, hides version metadata, and uses the selected bounded transfer window
-short Mobile Drawer may reflow the same facets to two columns
+Mobile Drawer uses two-column Torrent state/facet grids and reuses Statusbar telemetry in chart → transfer/connection → Torrent/storage order while hiding version metadata
 Desktop one-row Header/end rail/DataGrid/Statusbar stability
 ```
 
