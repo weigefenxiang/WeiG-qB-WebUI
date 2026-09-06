@@ -115,6 +115,12 @@ function trackerEditResponse(world,form){
   if((torrent.trackers||[]).some(item=>item!==tracker&&item.url===newUrl))return text('New tracker URL already exists',409);
   return editTracker(world,hash,oldUrl,newUrl)?empty():text('Tracker not found',409);
 }
+function trackerBatchTargets(world,hash,starMeansAll=false){
+  const normalized=starMeansAll&&hash==='*'?'all':hash;
+  const ids=String(normalized??'').split('|').filter(Boolean);
+  if(ids.length===1&&ids[0]==='all')return world.torrents.map(item=>item.hash);
+  return ids;
+}
 
 function categoryObject(world){
   return Object.fromEntries(Object.entries(world.categories).map(([key,value])=>[key,{name:value.name,savePath:value.savePath}]));
@@ -383,11 +389,28 @@ export async function handleApi(world,request,url=new URL(request.url)){
     const f=await formObject(request);return renameTorrent(world,String(f.hash||''),String(f.name||''))?empty():notFound();
   }
   if(path==='torrents/addTrackers'&&method==='POST'){
-    const f=await formObject(request);return addTrackers(world,f.hash,f.urls)?empty():notFound();
+    const f=await formObject(request);
+    if(!owns(f,'hash')||!owns(f,'urls'))return text('Bad Request',400);
+    if(apiAtLeast(world,'2.15.1')){
+      for(const hash of trackerBatchTargets(world,String(f.hash??'')))addTrackers(world,hash,f.urls);
+      return empty();
+    }
+    return addTrackers(world,f.hash,f.urls)?empty():notFound();
   }
   if(path==='torrents/removeTrackers'&&method==='POST'){
     if(!apiAtLeast(world,'2.2.0'))return notFound();
-    const f=await formObject(request);return removeTrackers(world,f.hash,f.urls)?empty():notFound();
+    const f=await formObject(request);
+    if(!owns(f,'hash')||!owns(f,'urls'))return text('Bad Request',400);
+    const hash=String(f.hash??'');
+    if(apiAtLeast(world,'2.15.1')){
+      for(const target of trackerBatchTargets(world,hash,true))removeTrackers(world,target,f.urls);
+      return empty();
+    }
+    if(hash==='*'){
+      for(const torrent of world.torrents)removeTrackers(world,torrent.hash,f.urls);
+      return empty();
+    }
+    return removeTrackers(world,hash,f.urls)?empty():notFound();
   }
   if(path==='torrents/editTracker'&&method==='POST'){
     if(!apiAtLeast(world,'2.2.0'))return notFound();
