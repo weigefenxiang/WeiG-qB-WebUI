@@ -6,6 +6,7 @@ const MiB=1024*1024;
 const PIECE_SIZE=4*MiB;
 
 function torrent(world,hash){return torrentIndex(world).byHash.get(String(hash||''))||null;}
+function qbAtLeast(world,minimum){return atLeast(world.profile?.qbVersion||'0',minimum);}
 function apiAtLeast(world,minimum){return atLeast(world.profile?.webApiVersion||'0',minimum);}
 function progressOf(t){return t.size>0?Math.max(0,Math.min(1,Number(t.downloaded||0)/Number(t.size))):0;}
 function pieceCount(t){return Math.max(1,Math.ceil(Math.max(1,Number(t.size)||1)/PIECE_SIZE));}
@@ -116,7 +117,7 @@ function modernTracker(world,t,tracker,index,now){
     num_leeches:Math.max(0,Math.floor(Number(tracker.num_leeches)||0)),
     num_downloaded:Math.max(0,Math.floor(Number(tracker.num_downloaded)||0))
   };
-  if(world.profile?.major>=5){
+  if(qbAtLeast(world,'5.2.0')&&apiAtLeast(world,'2.15.1')){
     const next=Math.floor(now/1000)+600+Math.floor(deterministicUnit(world.seed,`${t.hash}:${out.url}:announce`)*900);
     const minimum=Math.floor(now/1000)+120;
     Object.assign(out,{

@@ -60,7 +60,15 @@ function getRequest(path){return new Request(`https://example.invalid/api/v2/${p
 }
 
 {
-  const w=world('5.2.3','2.15.1');const t=w.torrents[0];t.has_metadata=true;t.private=true;
+  const w=world('5.1.4','2.11.4');const t=w.torrents[0];
+  const trackers=trackersForTorrent(w,t.hash,1700000005000);assert.ok(trackers.length>=4);
+  assert.deepEqual(trackers.slice(0,3).map(x=>x.url),['** [DHT] **','** [PeX] **','** [LSD] **']);
+  const real=trackers[3];assert.equal(typeof real.status,'number');
+  for(const key of ['updating','next_announce','min_announce','endpoints'])assert.ok(!(key in real),`qB 5.1 tracker payload must not expose qB 5.2 field ${key}`);
+}
+
+{
+  const w=world('5.2.0','2.15.1');const t=w.torrents[0];t.has_metadata=true;t.private=true;
   const trackers=trackersForTorrent(w,t.hash,1700000005000);assert.ok(trackers.length>=4);
   assert.deepEqual(trackers.slice(0,3).map(x=>x.url),['** [DHT] **','** [PeX] **','** [LSD] **']);
   for(const item of trackers.slice(0,3)){
@@ -68,7 +76,7 @@ function getRequest(path){return new Request(`https://example.invalid/api/v2/${p
     assert.equal(item.msg,'This torrent is private');
   }
   const real=trackers[3];assert.equal(typeof real.status,'number');assert.ok(Array.isArray(real.endpoints));
-  assert.ok(Number.isFinite(real.next_announce)&&Number.isFinite(real.min_announce),'modern tracker projection must carry announce timing');
+  assert.ok(Number.isFinite(real.next_announce)&&Number.isFinite(real.min_announce),'qB 5.2 tracker projection must carry announce timing');
 }
 
 {
@@ -77,4 +85,4 @@ function getRequest(path){return new Request(`https://example.invalid/api/v2/${p
   r=await handleApi(w,getRequest('torrents/trackers?hash=0000000000000000000000000000000000000000'));assert.equal(r.status,404);
 }
 
-console.log('Virtual qB metadata contract passed: exact upstream action gating, metadata-empty arrays/conflicts, version-shaped properties and tracker projections.');
+console.log('Virtual qB metadata contract passed: exact upstream action gating, metadata-empty arrays/conflicts, version-shaped properties and qB 5.1/5.2 tracker projections.');
