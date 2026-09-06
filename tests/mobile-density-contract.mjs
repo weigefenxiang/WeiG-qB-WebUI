@@ -22,6 +22,7 @@ const settingsSchema=read('webui/private/scripts/settings-schema.js');
 const logs=read('webui/private/scripts/logs.js');
 const components=read('webui/private/scripts/components.js');
 const transfer=read('webui/private/scripts/transfer.js');
+const floating=read('webui/private/scripts/floating.js');
 const ui=read('webui/private/scripts/ui.js');
 const header=read('webui/private/scripts/header.js');
 const i18n=read('webui/private/scripts/i18n.js');
@@ -87,7 +88,7 @@ assert(layout.includes("#torrent-selection-toolbar .btn{flex:1 1 0;min-width:0")
 assert(layout.includes('#actions-dialog .action-grid{grid-template-columns:repeat(2,minmax(0,1fr))')&&layout.includes('font-size:clamp(12px,3.35vw,15px)'),'Mobile More Actions must be two columns with adaptive readable typography');
 assert(layout.includes('@media(max-width:350px)')&&layout.includes('grid-template-columns:minmax(112px,auto) minmax(0,1fr)')&&layout.includes('font-size:8.5px'),'Only very narrow Android widths may reduce pager/action typography further');
 
-// Mobile Drawer reuses real Desktop status nodes, uses two-column filters, and keeps chart -> transfer -> Torrent/storage order.
+// Mobile Drawer reuses real Desktop status nodes, uses two-column filters, readable facets, viewport-safe menus, and one 5-minute transfer default.
 assert(responsive.includes("moveNode(torrents,primary)")&&responsive.includes("moveNode(storage,primary)")&&responsive.includes("moveNode(capsule,transfer)")&&responsive.includes("moveNode(connection,transfer)"),'Mobile Drawer must move, not copy, canonical Desktop status nodes');
 assert(!responsive.includes('cloneNode'),'Mobile Drawer status adaptation must not clone semantic DOM owners');
 assert(responsive.includes('host.append(chart,transfer,primary)'),'Drawer telemetry DOM must follow the visual/accessibility order chart -> transfer -> Torrent/storage');
@@ -95,10 +96,13 @@ assert(responsive.includes('W.Transfer.mountCompactChart')&&transfer.includes('f
 assert(transfer.includes('function drawRateChart(canvas,windowSeconds')&&transfer.includes('drawRateChart(canvas,chartWindow,180,100)'),'Full and compact transfer charts must share one renderer and selected window state');
 assert(transfer.includes("limitButton.onclick=openLimits")&&transfer.includes("statsButton.onclick=openStats"),'Drawer transfer controls must keep existing stats/limit dialog actions');
 assert(!transfer.includes('data-mini-rate')&&transfer.includes("windowText.dataset.miniWindow='1'"),'Drawer chart must remove duplicate speed text and retain only synchronized window metadata');
+assert(transfer.includes('compactChart=null,chartWindow=300')&&transfer.includes('chartWindow=Number(value)||300'),'Drawer and full Transfer dialog must share a 5-minute default window');
 assert(transferCss.includes('.mobile-drawer-telemetry__row--primary')&&transferCss.includes('.mobile-drawer-telemetry__row--transfer')&&transferCss.includes('.transfer-mini-chart__canvas'),'Mobile Drawer must present canonical status rows plus chart');
 assert(transferCss.includes('#sidebar{display:grid!important;grid-template-rows:minmax(0,1fr) auto!important')&&transferCss.includes('.sidebar__meta{display:none!important}'),'Mobile Drawer must retire qB/WebAPI/compat metadata from its visible layout');
 assert(spatial.includes('#filter-nav{grid-template-columns:repeat(2,minmax(0,1fr))')&&spatial.includes('.facet-controls{grid-template-columns:repeat(2,minmax(0,1fr))'),'Android Drawer Torrent filters and all four facets must remain two-column');
+assert(spatial.includes('font-size:clamp(13px,3.8vw,15px)')&&spatial.includes('font-size:clamp(12px,3.3vw,14px)'),'Android Drawer state and facet labels must be at least two CSS pixels larger than the retired compact typography');
+assert(floating.includes("v.width<=820?.84:.68")&&floating.includes("scrollIntoView({block:'nearest'})"),'Canonical Select must use more Mobile visual viewport and keep the focused/selected option reachable');
 assert(!transferCss.includes('@container mobile-drawer (max-height:650px)'),'Facet responsive ownership must stay in Spatial CSS rather than Transfer CSS');
 assert(transferCss.includes('font-size:clamp(10px,3vw,13.5px)')&&transferCss.includes('.transfer-runtime-capsule__limits{width:30px;min-width:30px;flex:0 0 30px}'),'Mobile speeds must be larger while the rate-limit button keeps its reserved hit region');
 
-console.log('Mobile density contract passed: adaptive detail/settings, segmented one-row Logs, two-column Drawer filters/facets, reordered telemetry, larger safe transfer text, and canonical responsive owners.');
+console.log('Mobile density contract passed: readable two-column Drawer filters/facets, viewport-safe Select menus, 5-minute shared transfer default, segmented one-row Logs, and canonical responsive owners.');
