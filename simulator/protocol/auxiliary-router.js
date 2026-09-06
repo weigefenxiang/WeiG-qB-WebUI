@@ -45,10 +45,11 @@ function exactCatalog(world){return Array.isArray(world.profile?.apiActions);}
 function bootstrapAllowed(world,path){
   if(exactCatalog(world))return true;
   if(path==='app/defaultSavePath'||path==='app/shutdown')return qbAtLeast(world,'4.1.0');
-  if(['app/sendTestEmail','app/getDirectoryContent','app/networkInterfaceList','app/networkInterfaceAddressList'].includes(path))return qbAtLeast(world,'5.0.0');
+  if(['app/sendTestEmail','app/getDirectoryContent'].includes(path))return qbAtLeast(world,'5.0.0');
+  if(['app/networkInterfaceList','app/networkInterfaceAddressList'].includes(path))return qbAtLeast(world,'4.2.0')&&apiAtLeast(world,'2.3.0');
   if(['app/rotateAPIKey','app/deleteAPIKey'].includes(path))return apiAtLeast(world,'2.14.1');
   if(path==='app/processInfo')return qbAtLeast(world,'5.2.0')&&apiAtLeast(world,'2.15.1');
-  if(path==='transfer/setSpeedLimitsMode')return qbAtLeast(world,'5.0.0');
+  if(path==='transfer/setSpeedLimitsMode')return qbAtLeast(world,'4.5.0')&&apiAtLeast(world,'2.8.18');
   if(path==='torrents/count')return qbAtLeast(world,'4.6.1')&&apiAtLeast(world,'2.9.3');
   if(path==='torrents/addPeers')return qbAtLeast(world,'4.2.0')&&apiAtLeast(world,'2.3.0');
   if(['torrents/setSavePath','torrents/setDownloadPath'].includes(path))return qbAtLeast(world,'4.4.0');

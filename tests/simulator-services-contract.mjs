@@ -46,6 +46,10 @@ function getRequest(path){return new Request(`https://example.invalid/api/v2/${p
   assert.equal(response.status,200,'RSS refresh must exist at WebAPI 2.2.1');
   response=await handleApi(w,formRequest('torrents/addPeers',{hashes:target.hash,peers:'203.0.113.41:51413'}));
   assert.equal(response.status,404,'addPeers must remain unavailable through qB 4.1.9.1 / WebAPI 2.2.1');
+  response=await handleApi(w,getRequest('app/networkInterfaceList'));
+  assert.equal(response.status,404,'networkInterfaceList must remain unavailable through qB 4.1.9.1 / WebAPI 2.2.1');
+  response=await handleApi(w,getRequest('app/networkInterfaceAddressList?iface=lo'));
+  assert.equal(response.status,404,'networkInterfaceAddressList must remain unavailable through qB 4.1.9.1 / WebAPI 2.2.1');
 }
 
 {
@@ -62,6 +66,10 @@ function getRequest(path){return new Request(`https://example.invalid/api/v2/${p
   const target=w.torrents[0];
   response=await handleApi(w,formRequest('torrents/addPeers',{hashes:target.hash,peers:'203.0.113.42:51413'}));
   assert.equal(response.status,200,'addPeers must become available at qB 4.2.0 / WebAPI 2.3.0');
+  response=await handleApi(w,getRequest('app/networkInterfaceList'));
+  assert.equal(response.status,200,'networkInterfaceList must become available at qB 4.2.0 / WebAPI 2.3.0');
+  response=await handleApi(w,getRequest('app/networkInterfaceAddressList?iface=lo'));
+  assert.equal(response.status,200,'networkInterfaceAddressList must become available at qB 4.2.0 / WebAPI 2.3.0');
 }
 
 {
@@ -76,6 +84,16 @@ function getRequest(path){return new Request(`https://example.invalid/api/v2/${p
   assert.equal(response.status,200,'markAsRead must become routable at qB 4.2.5 / WebAPI 2.5.1');
   response=await handleApi(atBoundary,getRequest('rss/matchingArticles?ruleName=missing'));
   assert.equal(response.status,200,'matchingArticles must become routable at qB 4.2.5 / WebAPI 2.5.1');
+}
+
+{
+  const before=world('4.4.5','2.8.5');
+  let response=await handleApi(before,formRequest('transfer/setSpeedLimitsMode',{mode:'1'}));
+  assert.equal(response.status,404,'setSpeedLimitsMode must remain unavailable at qB 4.4.5 / WebAPI 2.8.5');
+
+  const atBoundary=world('4.5.0','2.8.18');
+  response=await handleApi(atBoundary,formRequest('transfer/setSpeedLimitsMode',{mode:'1'}));
+  assert.equal(response.status,200,'setSpeedLimitsMode must become available at qB 4.5.0 / WebAPI 2.8.18');
 }
 
 {
