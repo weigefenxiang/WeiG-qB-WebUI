@@ -69,7 +69,7 @@ assert(layout.includes('.rss-header-actions')&&layout.includes('.rss-add-dialog'
 assert(!logs.includes('logs-search-toggle')&&!logs.includes('logs-search-input')&&!logsCss.includes('.logs-search-toggle')&&!logsCss.includes('.logs-search{'),'Logs must not render a local Search icon or input');
 assert(logs.includes("W.Logs={setQuery:setQuery,query:function(){return state.query;}")&&header.includes("if(route==='logs')")&&header.includes('W.Logs.setQuery(input.value)'),'Logs query must be driven by Header Search');
 assert(logs.includes("C.selectControl({id:'logs-size-mode'")&&logsCss.includes('.logs-actions .logs-size-mode{--ui-select-width:max-content'),'Logs size mode must remain one canonical Select with feature geometry only');
-assert(logsCss.includes('.logs-filters>[data-log-type]')&&logsCss.includes('.logs-toolbar{display:flex;align-items:center')&&logsCss.includes('overflow-x:auto'),'Mobile log levels must be a segmented list on one horizontally scrollable toolbar row');
+assert(logsCss.includes('.logs-filters>[data-log-type]')&&logsCss.includes('.logs-toolbar{display:flex;flex-direction:row;flex-wrap:nowrap;justify-content:flex-start')&&logsCss.includes('.logs-toolbar>.logs-filters{')&&logsCss.includes('gap:0')&&logsCss.includes('overflow-x:auto'),'Mobile log levels must be a segmented list on one explicit non-wrapping horizontally scrollable toolbar row');
 assert(logsCss.includes('.logs-refresh::before{content:"↻"'),'Narrow Mobile Logs must collapse Refresh to its icon without creating a second action');
 assert(sharedUiCss.includes('#list-view .grid-toolbar .ui-select__trigger::before')&&!/(^|})\.grid-toolbar \.ui-select__trigger::before/.test(sharedUiCss),'Torrent-only inset Select skin must not leak into the Logs canonical Select');
 
