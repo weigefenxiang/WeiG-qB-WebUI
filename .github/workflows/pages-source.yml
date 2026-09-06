@@ -13,10 +13,7 @@ on:
       - 'package-lock.json'
       - '.github/workflows/pages.yml'
       - '.github/workflows/pages-source.yml'
-      - 'tests/pages-live-acceptance.mjs'
-      - 'tests/pages-live-services.mjs'
-      - 'tests/browser-driver.mjs'
-      - 'tests/ci-contract.mjs'
+      - 'tests/**'
 
 permissions:
   contents: read
