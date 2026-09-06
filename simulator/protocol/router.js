@@ -437,8 +437,12 @@ export async function handleApi(world,request,url=new URL(request.url)){
   if(path==='torrents/editCategory'&&method==='POST'){
     if(!apiAtLeast(world,'2.1.0'))return notFound();
     const f=await formObject(request),name=String(f.category||'').trim();
-    if(!name||!world.categories?.[name])return notFound();
-    createCategory(world,name,f.savePath);return empty();
+    if(!owns(f,'category')||!owns(f,'savePath')||!name)return text('Bad Request',400);
+    const existing=world.categories?.[name],modern=apiAtLeast(world,'2.15.1');
+    if(!existing)return modern?notFound():text('Unable to edit category',409);
+    const savePath=String(f.savePath??'');
+    if(!modern&&String(existing.savePath??'')===savePath)return text('Unable to edit category',409);
+    createCategory(world,name,savePath);return empty();
   }
   if(path==='torrents/removeCategories'&&method==='POST'){
     const f=await formObject(request);removeCategories(world,f.categories);return empty();

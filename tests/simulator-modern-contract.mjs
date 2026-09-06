@@ -77,6 +77,34 @@ function post(path,body){return new Request(`https://example.invalid/api/v2/${pa
 }
 
 {
+  const w=world('5.2.0','2.15.0'),name=Object.keys(w.categories)[0],existing=w.categories[name];
+  assert.ok(name&&existing,'legacy editCategory contract needs an existing category');
+  let r=await handleApi(w,post('torrents/editCategory',{category:'',savePath:'/invalid'}));
+  assert.equal(r.status,400,'editCategory must reject an empty category as Bad Request');
+  r=await handleApi(w,post('torrents/editCategory',{category:name}));
+  assert.equal(r.status,400,'editCategory must require savePath');
+  r=await handleApi(w,post('torrents/editCategory',{category:'missing-category',savePath:'/missing'}));
+  assert.equal(r.status,409,'pre-2.15.1 editCategory must preserve Conflict for a missing category');
+  r=await handleApi(w,post('torrents/editCategory',{category:name,savePath:existing.savePath}));
+  assert.equal(r.status,409,'pre-2.15.1 editCategory must preserve Conflict for unchanged settings');
+  r=await handleApi(w,post('torrents/editCategory',{category:name,savePath:'/legacy-category-edited'}));
+  assert.equal(r.status,200,'pre-2.15.1 editCategory must still apply a real save-path change');
+  assert.equal(w.categories[name].savePath,'/legacy-category-edited');
+}
+
+{
+  const w=world('5.2.0','2.15.1'),name=Object.keys(w.categories)[0],existing=w.categories[name];
+  assert.ok(name&&existing,'modern editCategory contract needs an existing category');
+  let r=await handleApi(w,post('torrents/editCategory',{category:'missing-category',savePath:'/missing'}));
+  assert.equal(r.status,404,'WebAPI 2.15.1 editCategory must return Not Found for a missing category');
+  r=await handleApi(w,post('torrents/editCategory',{category:name,savePath:existing.savePath}));
+  assert.equal(r.status,200,'WebAPI 2.15.1 editCategory must accept unchanged category settings');
+  r=await handleApi(w,post('torrents/editCategory',{category:name,savePath:'/modern-category-edited'}));
+  assert.equal(r.status,200,'WebAPI 2.15.1 editCategory must apply a real save-path change');
+  assert.equal(w.categories[name].savePath,'/modern-category-edited');
+}
+
+{
   const w=world(),t=w.torrents[0];
   let r=await handleApi(w,get(`torrents/SSLParameters?hash=${t.hash}`));assert.deepEqual(await r.json(),{ssl_certificate:'',ssl_private_key:'',ssl_dh_params:''});
   r=await handleApi(w,post('torrents/setSSLParameters',{
@@ -170,4 +198,4 @@ function post(path,body){return new Request(`https://example.invalid/api/v2/${pa
   r=await handleApi(w,get('app/processInfo'));assert.equal(r.status,404,'processInfo must not leak into qB4');
 }
 
-console.log('Virtual qB modern contract passed: SSL state, manual peer visibility, qB 5.1/5.2 tracker edit and collection semantics, metadata fetch/parse/save, clientdata, process info, virtual filesystem, network interfaces, API keys, test email, historical path/export boundaries and shutdown semantics.');
+console.log('Virtual qB modern contract passed: SSL state, manual peer visibility, qB 5.1/5.2 tracker edit and collection semantics, WebAPI 2.15.1 editCategory behavior, metadata fetch/parse/save, clientdata, process info, virtual filesystem, network interfaces, API keys, test email, historical path/export boundaries and shutdown semantics.');
