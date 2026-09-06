@@ -835,7 +835,7 @@ export function capabilityAvailable(world,name){
   const api=world.profile.webApiVersion,qb=world.profile.qbVersion;
   const table={
     tags:atLeast(api,'2.3.0'),renameFile:atLeast(api,'2.4.0'),stalledFilter:atLeast(api,'2.4.1'),
-    addTags:atLeast(api,'2.6.2'),fileIndexes:atLeast(api,'2.8.2'),tagFilter:atLeast(api,'2.8.3'),
+    addTags:atLeast(api,'2.3.0'),fileIndexes:atLeast(api,'2.8.2'),tagFilter:atLeast(api,'2.8.3'),
     cookies:atLeast(api,'2.11.3'),structuredTorrentAdd:atLeast(api,'2.14.0'),privateFlag:world.profile.major>=5,
     logs:atLeast(qb,'4.1.0')
   };

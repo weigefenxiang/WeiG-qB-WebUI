@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "webApiMilestones": [
-    {"qb":"4.1.0","webApi":"2.0.0"},{"qb":"4.1.1","webApi":"2.0.1"},{"qb":"4.1.2","webApi":"2.0.2"},{"qb":"4.1.3","webApi":"2.1.0"},{"qb":"4.1.9.1","webApi":"2.2.1"},{"qb":"4.2.0","webApi":"2.3.0"},{"qb":"4.2.2","webApi":"2.4.1"},{"qb":"4.2.5","webApi":"2.5.1"},{"qb":"4.3.0","webApi":"2.6.0"},{"qb":"4.3.3","webApi":"2.7.0"},{"qb":"4.3.9","webApi":"2.8.2"},{"qb":"4.4.0","webApi":"2.8.4"},{"qb":"4.4.5","webApi":"2.8.5"},{"qb":"4.5.0","webApi":"2.8.18"},{"qb":"4.5.5","webApi":"2.8.19"},{"qb":"4.6.0","webApi":"2.9.2"},{"qb":"4.6.1","webApi":"2.9.3"},{"qb":"5.0.0","webApi":"2.11.2"},{"qb":"5.0.5","webApi":"2.11.2"},{"qb":"5.1.0","webApi":"2.11.4"},{"qb":"5.1.2","webApi":"2.11.4"},{"qb":"5.2.0","webApi":"2.15.1"},{"qb":"5.2.3","webApi":"2.15.1"}
+    {"qb":"4.1.0","webApi":"2.0.0"},{"qb":"4.1.1","webApi":"2.0.1"},{"qb":"4.1.2","webApi":"2.0.2"},{"qb":"4.1.3","webApi":"2.1.0"},{"qb":"4.1.4","webApi":"2.1.1"},{"qb":"4.1.5","webApi":"2.2.0"},{"qb":"4.1.9.1","webApi":"2.2.1"},{"qb":"4.2.0","webApi":"2.3.0"},{"qb":"4.2.1","webApi":"2.4.0"},{"qb":"4.2.2","webApi":"2.4.1"},{"qb":"4.2.5","webApi":"2.5.1"},{"qb":"4.3.0","webApi":"2.6.0"},{"qb":"4.3.3","webApi":"2.7.0"},{"qb":"4.3.9","webApi":"2.8.2"},{"qb":"4.4.0","webApi":"2.8.4"},{"qb":"4.4.5","webApi":"2.8.5"},{"qb":"4.5.0","webApi":"2.8.18"},{"qb":"4.5.5","webApi":"2.8.19"},{"qb":"4.6.0","webApi":"2.9.2"},{"qb":"4.6.1","webApi":"2.9.3"},{"qb":"5.0.0","webApi":"2.11.2"},{"qb":"5.0.5","webApi":"2.11.2"},{"qb":"5.1.0","webApi":"2.11.4"},{"qb":"5.1.2","webApi":"2.11.4"},{"qb":"5.2.0","webApi":"2.15.1"},{"qb":"5.2.3","webApi":"2.15.1"}
   ],
   "features": {
     "privateFilter":{"rule":{"qb":{"gte":"5.0.0"}},"upstream":{"torrentInfoParameter":"private"},"selectors":["[data-filter=\"private\"]"],"presentation":{"unsupported":"hide","badge":"auto","requirements":{"qb":"5.0.0","webApi":"2.11.2","knownQb":"5.0.0"}},"copy":{"title":{"en":"Private / PT","zh":"私有 / PT"},"reason":{"en":"Shown only when the selected qBittorrent release exposes authoritative Private filtering.","zh":"只有当前 qBittorrent 稳定版明确提供 Private 筛选时才显示此项。"}}},
@@ -16,7 +16,7 @@
     "buildInfo":{"rule":{"webApi":{"gte":"2.3.0"}},"upstream":{"action":"appcontroller.h:buildInfoAction"}},
     "renameFile":{"rule":{"webApi":{"gte":"2.4.0"}},"upstream":{"action":"torrentscontroller.h:renameFileAction"}},
     "contentPath":{"rule":{"webApi":{"gte":"2.6.1"}}},
-    "addTags":{"rule":{"webApi":{"gte":"2.6.2"}},"upstream":{"action":"torrentscontroller.h:addTagsAction"}},
+    "addTags":{"rule":{"webApi":{"gte":"2.3.0"}},"upstream":{"action":"torrentscontroller.h:addTagsAction"}},
     "renameFolder":{"rule":{"any":[{"qb":{"eq":"4.3.3"}},{"webApi":{"gte":"2.8.0"}}]},"upstream":{"action":"torrentscontroller.h:renameFolderAction"}},
     "fileIndexes":{"rule":{"webApi":{"gte":"2.8.2"}}},
     "tagFilter":{"rule":{"webApi":{"gte":"2.8.3"}},"upstream":{"torrentInfoParameter":"tag"}},
@@ -25,7 +25,7 @@
     "trackerEditUrl":{"rule":{"webApi":{"gte":"2.13.0"}}},
     "structuredTorrentAdd":{"rule":{"webApi":{"gte":"2.14.0"}}},
     "webseeds":{"rule":{"qb":{"gte":"4.1.0"}},"upstream":{"action":"torrentscontroller.h:webseedsAction"}},
-    "categories":{"rule":{"qb":{"gte":"4.1.0"}},"upstream":{"action":"torrentscontroller.h:categoriesAction"}},
+    "categories":{"rule":{"all":[{"qb":{"gte":"4.1.4"}},{"webApi":{"gte":"2.1.1"}}]},"upstream":{"action":"torrentscontroller.h:categoriesAction"}},
     "preferences":{"rule":{"qb":{"gte":"4.1.0"}},"upstream":{"action":"appcontroller.h:preferencesAction"}},
     "globalSpeedLimits":{"rule":{"qb":{"gte":"4.1.0"}}},
     "altSpeedLimits":{"rule":{"qb":{"gte":"4.1.0"}}},
