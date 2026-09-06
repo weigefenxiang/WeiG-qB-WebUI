@@ -115,10 +115,11 @@ try{
     assert(await page.locator('#mobile-pager-actions-slot>#torrent-selection-toolbar').count()===1,`${name}: Mobile pager did not receive canonical action toolbar`);
     assert(await page.locator('.statusbar').evaluate(n=>getComputedStyle(n).display)==='none',`${name}: desktop Statusbar leaked into Mobile`);
 
-    // Sidebar/Drawer exposes state filters followed by all four facets.
+    // Sidebar/Drawer exposes state filters followed by all four facets and reused Desktop telemetry.
     await page.locator('#menu-btn').click();await page.waitForFunction(()=>document.getElementById('sidebar')?.classList.contains('is-open'));
-    const order=await page.evaluate(()=>{const filter=document.getElementById('filter-nav').getBoundingClientRect(),facets=document.getElementById('sidebar-facet-slot').getBoundingClientRect();return{filterBottom:filter.bottom,facetTop:facets.top,facets:document.querySelectorAll('#facet-controls .facet-control').length};});
+    const order=await page.evaluate(()=>{const filter=document.getElementById('filter-nav').getBoundingClientRect(),facets=document.getElementById('sidebar-facet-slot').getBoundingClientRect(),drawer=document.getElementById('mobile-drawer-telemetry');return{filterBottom:filter.bottom,facetTop:facets.top,facets:document.querySelectorAll('#facet-controls .facet-control').length,telemetry:!!drawer&&drawer.contains(document.getElementById('status-torrents'))&&drawer.contains(document.getElementById('transfer-capsule'))&&drawer.contains(document.getElementById('status-connection')),mini:!!drawer?.querySelector('.transfer-mini-chart')};});
     assert(order.facets===4&&order.facetTop>=order.filterBottom,`${name}: Drawer facets are not below Torrent state filters (${JSON.stringify(order)})`);
+    assert(order.telemetry&&order.mini,`${name}: Drawer did not reuse canonical Statusbar telemetry and compact Transfer chart (${JSON.stringify(order)})`);
     const scrim=page.locator('#drawer-scrim'),scrimBox=await scrim.boundingBox(),sidebarBox=await page.locator('#sidebar').boundingBox();
     assert(scrimBox&&sidebarBox&&scrimBox.x+scrimBox.width-16>sidebarBox.x+sidebarBox.width,`${name}: Drawer has no visible scrim close target`);
     await scrim.click({position:{x:Math.max(1,scrimBox.width-16),y:Math.max(1,Math.min(scrimBox.height-16,scrimBox.height/2))}});await page.waitForFunction(()=>!document.getElementById('sidebar')?.classList.contains('is-open'));
@@ -139,11 +140,11 @@ try{
       const el=document.querySelector('.torrent-mobile-card--two-line[data-hash]');
       if(!el)return null;
       el.scrollIntoView({block:'nearest'});
-      const top=el.querySelector('.mobile-card-top');
-      return {children:[...el.children].map(n=>n.className),top:top?[...top.children].map(n=>n.className):[],height:el.getBoundingClientRect().height,meta:el.querySelector('.mobile-card-meta--rail')?.textContent||'',hasProgress:!!el.querySelector('.progress-track--mobile-edge')};
+      const top=el.querySelector('.mobile-card-top'),progress=el.querySelector('.mobile-card-progress');
+      return {children:[...el.children].map(n=>n.className),top:top?[...top.children].map(n=>n.className):[],height:el.getBoundingClientRect().height,meta:el.querySelector('.mobile-card-meta--rail')?.textContent||'',hasProgress:!!progress?.querySelector('.progress-track'),percent:(progress?.querySelector('.mobile-card-progress__number')?.textContent||'').trim()};
     });
     assert(cardState&&cardState.top.length===3&&cardState.top[1].includes('torrent-title-line')&&cardState.top[2].includes('mobile-more'),`${name}: Mobile first line is not selection + title + More: ${JSON.stringify(cardState&&cardState.top)}`);
-    assert(cardState.meta.includes('%')&&cardState.hasProgress&&cardState.height<100,`${name}: Mobile card is not compact two-line presentation: ${JSON.stringify(cardState)}`);
+    assert(cardState.meta.includes('%')&&cardState.hasProgress&&cardState.percent.endsWith('%')&&cardState.height<100,`${name}: Mobile card is not compact inline-progress presentation: ${JSON.stringify(cardState)}`);
 
     // Search is anchored below the header; opening it must not move/clip header actions.
     const before=await page.evaluate(()=>{const top=document.querySelector('.topbar').getBoundingClientRect(),buttons=[...document.querySelectorAll('.topbar button,.topbar a')].filter(n=>getComputedStyle(n).display!=='none').map(n=>n.getBoundingClientRect());return{top,buttons:buttons.map(r=>({l:r.left,r:r.right,t:r.top,b:r.bottom}))};});
@@ -156,7 +157,7 @@ try{
     assert(errors.length===0,`${name}: browser errors: ${errors.join(' | ')}`);
     await context.close();
   }
-  console.log('Torrent workspace browser gate passed: permanent Sidebar facets, no summary leaves, semantic sort/count, compact Mobile toolbar/cards, pager actions, anchored Search, truthful progress, Connection help, Light/Dark-compatible canonical surfaces and Reduced Motion.');
+  console.log('Torrent workspace browser gate passed: permanent Sidebar facets, canonical Drawer telemetry, semantic sort/count, compact Mobile toolbar/cards, inline truthful progress, pager actions, anchored Search, Connection help and Reduced Motion.');
 }finally{
   await browser.close();
   await new Promise(r=>server.close(r));

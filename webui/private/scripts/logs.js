@@ -24,15 +24,16 @@
     root.textContent='';root.dataset.weiggLogsReady='1';
     var shell=document.createElement('div');shell.className='logs-shell';shell.dataset.weiggLogShell='1';
     var toolbar=document.createElement('div');toolbar.className='logs-toolbar grid-toolbar';
+    var searchToggle=makeButton('⌕','btn btn--ghost logs-search-toggle');searchToggle.setAttribute('aria-label',tr('search.logs',null,'Search logs'));
     var search=document.createElement('label');search.className='search-box logs-search';search.innerHTML='<span aria-hidden="true">⌕</span>';
     var input=document.createElement('input');input.id='logs-local-search';input.type='search';input.autocomplete='off';input.placeholder=W.t?W.t('search.logs'):'Search logs…';input.value=state.query;search.appendChild(input);
     var filters=document.createElement('div');filters.className='logs-filters';
     [1,2,4,8].forEach(function(type){var b=C.filterChip(typeLabel(type),state.types.has(type));b.dataset.logType=String(type);filters.appendChild(b);});
+    var follow=C.checkControl(tr('v036.logs.follow',null,'Follow latest'),state.follow,function(checked){state.follow=checked;if(state.follow)scrollLatest();});follow.dataset.logsFollow='1';follow.dataset.shortLabel=W.I18n&&W.I18n.getLocale&&W.I18n.getLocale()==='zh-CN'?'最新':'Latest';follow.classList.add('logs-follow');filters.appendChild(follow);
     var actions=document.createElement('div');actions.className='logs-actions';
-    var follow=C.checkControl(tr('v036.logs.follow',null,'Follow latest'),state.follow,function(checked){state.follow=checked;if(state.follow)scrollLatest();});follow.dataset.logsFollow='1';
     var size=C.selectControl({id:'logs-size-mode',value:state.sizeMode,options:[{value:'compact',label:tr('v036.logs.compact',null,'Compact')},{value:'auto',label:tr('v036.logs.auto',null,'Auto')},{value:'max',label:tr('v036.logs.max',null,'Max')}],ariaLabel:tr('v036.logs.auto',null,'Auto'),onChange:function(value){state.sizeMode=value;applySizeMode();setTimeout(function(){if(state.virtual&&state.virtual.render)state.virtual.render();},40);}});size.classList.add('logs-size-mode');
     var refresh=makeButton('↻ '+tr('v036.logs.refresh',null,'Refresh'),'btn btn--ghost logs-refresh');
-    actions.append(follow,size,refresh);toolbar.append(search,filters,actions);
+    actions.append(size,refresh);toolbar.append(searchToggle,search,filters,actions);
 
     var panel=document.createElement('section');panel.className='logs-panel surface surface--panel';
     var head=document.createElement('div');head.className='logs-head';head.innerHTML='<span>'+tr('v036.logs.log',null,'Log')+'</span><span>'+tr('v036.logs.time',null,'Time')+'</span><span>'+tr('v036.logs.level',null,'Level')+'</span>';
@@ -41,6 +42,7 @@
     var status=document.createElement('div');status.className='logs-status text-description';
     panel.append(head,list,empty,status);shell.append(toolbar,panel);root.appendChild(shell);state.root=root;
 
+    searchToggle.addEventListener('click',function(){var open=toolbar.classList.toggle('is-search-open');searchToggle.textContent=open?'×':'⌕';searchToggle.setAttribute('aria-expanded',open?'true':'false');if(open)requestAnimationFrame(function(){input.focus();});});
     input.addEventListener('input',function(){state.query=input.value;syncTopSearch();renderRows(true,0);});
     filters.addEventListener('click',function(e){var b=e.target.closest('[data-log-type]');if(!b)return;var type=Number(b.dataset.logType);if(state.types.has(type)){if(state.types.size>1)state.types.delete(type);}else state.types.add(type);b.classList.toggle('is-active',state.types.has(type));b.setAttribute('aria-pressed',state.types.has(type)?'true':'false');renderRows(true,0);});
     list.addEventListener('scroll',function(){if(state.programmaticScroll||!state.follow)return;if(list.scrollTop>40){state.follow=false;syncFollowControl();}},{passive:true});

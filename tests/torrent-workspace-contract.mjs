@@ -80,17 +80,18 @@ assert(polishCss.includes('display:flex!important')&&polishCss.includes('justify
 assert(app.includes('W.LibraryController=LibraryController')&&app.includes('total:totalMatching')&&app.includes('setSort:setSort'),'LibraryController must expose total and sort semantics');
 assert(selection.includes('W.LibraryController.total()')&&!selection.includes("getElementById('torrent-count')"),'Selection matching count must consume semantic total, not DOM text');
 assert(ui.includes('W.LibraryController.setSort')&&!ui.includes('mobile-sort-bridge')&&!ui.includes('ensureSortCell')&&!ui.includes('restoreTempColumn'),'Mobile Sort must call canonical sort state directly');
-assert(!ui.includes('localStorage.getItem(\'weigg.mobileSort\')'),'Mobile Sort must not keep a second sort state');
+assert(!ui.includes("localStorage.getItem('weigg.mobileSort')"),'Mobile Sort must not keep a second sort state');
 
 // Components own Torrent renderer/progress. Runtime replacement/patching is prohibited.
 for(const token of ['C.torrentRow=function','C.mobileTorrentCard=function','C.progressVisual=progressVisual','C.progressTrack=function'])assert(components.includes(token),`Components missing canonical renderer/progress owner ${token}`);
-assert(components.includes("progress.classList.add('progress-track--mobile-edge')"),'Mobile card must reuse canonical progress rail');
+assert(components.includes("cluster.className='mobile-card-progress'")&&components.includes("number.textContent=built.visual.percent+'%'"),'Mobile card must reuse canonical progress rail with truthful percentage immediately to its right');
+assert(!components.includes('progress-track--mobile-edge'),'Retired duplicate Mobile bottom-edge progress rail survived');
 assert(components.includes("top.append(selectionHit(t,selected),titleLine,more)")||components.includes('top.append(selectionHit(t,selected),titleLine,more);'),'Mobile first line must be selection + title + More only');
 assert(components.includes("percent>=100")&&components.includes("state:'complete'"),'Completed Torrent progress must normalize to the completed family before inactive state colors diverge');
 assert(!ui.includes('C.torrentRow=function')&&!ui.includes('C.mobileTorrentCard=function')&&!ui.includes('__weiggTwoLineMobile')&&!ui.includes('__weiggRegistryRow'),'UiSystem must not replace canonical Torrent renderers');
 assert(!responsive.includes('W.VirtualList=function')&&!responsive.includes('C.state=function'),'Responsive runtime must not replace VirtualList or semantic state projection');
 assert(!layout.includes('W.DataGrid.template=function')&&!layout.includes('W.DataGrid.addResizeHandles=function'),'LayoutRuntime must not monkey-patch canonical DataGrid');
-assert(progressCss.includes('.progress-track--mobile-edge')&&progressCss.includes('@media(prefers-reduced-motion:reduce)')&&progressCss.includes('html[data-motion="reduced"]'),'Canonical Torrent progress must provide Mobile rail and both Reduced Motion authorities');
+assert(progressCss.includes('.mobile-card-progress')&&!progressCss.includes('progress-track--mobile-edge')&&progressCss.includes('@media(prefers-reduced-motion:reduce)')&&progressCss.includes('html[data-motion="reduced"]'),'Canonical Torrent progress must provide inline Mobile rail/percentage and both Reduced Motion authorities');
 assert(progressCss.includes('--progress-flow-duration:2.6s')&&progressCss.includes('inset 0 -2px'),'Progress skin must retain slow motion plus cylindrical lower shading');
 assert(uiCss.includes('grid-template-columns:minmax(0,1fr)!important')&&uiCss.includes('grid-column:1!important')&&uiCss.includes('grid-row:2!important')&&uiCss.includes('.mobile-metric-more'),'Configured Mobile metrics and +N overflow summary must be geometrically locked to the second row');
 
@@ -99,7 +100,8 @@ assert(responsive.includes("document.getElementById('mobile-pager-actions-slot')
 assert(!responsive.includes('mobile-command-bar')&&!responsive.includes('mobile-filter-control')&&!responsive.includes('mobile-facet-slot'),'Retired Mobile command/filter/facet presentation survived');
 for(const token of ['focusRegistry','setDataViewportFocus','registerDataViewport','installTorrentFocus','data-viewport-focus','is-data-focus'])assert(!responsive.includes(token),`Retired Torrent focus runtime survived: ${token}`);
 for(const token of ['data-viewport-focus','is-data-focus','torrent-focus-slot'])assert(!layoutCss.includes(token),`Retired Torrent focus CSS survived: ${token}`);
-assert(responsive.includes('W.TransferRuntime.snapshot()')&&!responsive.includes('network-meta'),'Connection help must consume TransferRuntime semantic snapshot after summary retirement');
+assert(responsive.includes('W.TransferRuntime&&W.TransferRuntime.snapshot')&&!responsive.includes('network-meta'),'Connection help must consume TransferRuntime semantic snapshot after summary retirement');
+assert(responsive.includes('moveNode(torrents,primary)')&&responsive.includes('moveNode(capsule,transfer)')&&!responsive.includes('cloneNode'),'Mobile Drawer telemetry must relocate canonical status nodes without cloning semantic state');
 assert(!app.includes("paintText('dl-speed'")&&!app.includes("paintText('up-speed'")&&!app.includes("getElementById('network-meta')"),'App must not paint retired summary leaves');
 assert(!layoutCss.includes('mobile-summary')&&!layoutCss.includes('mobile-command-bar')&&!layoutCss.includes('mobile-facet-slot'),'Retired Mobile summary/command/facet layout CSS survived');
 assert(layoutCss.includes('grid-template-columns:auto minmax(0,1fr)')&&layoutCss.includes('max-width:78px'),'Mobile pager must be content-sized so action rail receives the remaining width');
@@ -132,4 +134,4 @@ for(const rule of [
   'FACET-OWNER','PRESENTATION-STATE','TELEMETRY-PAINT','STATUS-NOISE','STATUS-DEDUP','STATUS-PLACEMENT','ADAPTIVE-STATUS','LIVE-INDICATOR','STATUS-SIGNAL','RENDERED-SIGNAL','MOTION-STATUS','STATUS-EXPLAIN','HEADER-SEARCH','HEADER-END-ANCHOR','CAPABILITY-OWNER','CAPABILITY-RANGE','OWNER-RETIRE','TORRENT-PROGRESS-OWNER','TORRENT-PROGRESS-TRUTH','TORRENT-PROGRESS-STATE','TORRENT-PROGRESS-MOTION','MOBILE-LIBRARY-IA','MOBILE-CONTROL-DENSITY','MOBILE-ACTION-PLACEMENT','MOBILE-CARD-COMPOSITION','SORT-OWNER','TORRENT-RENDERER-OWNER','TORRENT-FOCUS-RETIRE','MOBILE-PAGER-DENSITY'
 ])assert(docs.includes(rule),`Torrent workspace docs missing hard rule ${rule}`);
 
-console.log('Torrent workspace ownership contract passed: exactly four actions, one Drawer owner, structural prefix-only Theme utilities, two-row full-semver capability dialogs, readable zh-CN Tags facets, true second-row Mobile metrics, compact pager, canonical renderers/progress, retired focus mode, and protected Connection owners.');
+console.log('Torrent workspace ownership contract passed: exactly four actions, one Drawer owner, canonical inline Mobile progress, compact pager, canonical renderers, retired focus mode, and protected Connection owners.');

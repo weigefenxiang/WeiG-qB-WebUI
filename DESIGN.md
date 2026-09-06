@@ -59,7 +59,7 @@ Realtime history is bounded; longer windows do not increase network polling or c
 Historical WeiG implementation/test/deploy compatibility is deleted rather than aliased. Current qB/WebAPI compatibility facts remain.
 
 ### FILE-NAMING — filenames describe responsibility
-Active first-party runtime/tests/deploy files use stable responsibility names and do not encode WeiG release or qB release numbers.
+Active first-party runtime/tests/deploy files use stable responsibility names and do not encode WeiG release or qB versions.
 
 ### SEMANTIC-NAMING — identifiers describe responsibility
 Current architecture rule names use stable semantic identifiers such as `COMPAT-DEGRADE`, `CAPABILITY-RANGE` and `BROWSER-RUNTIME`. Numeric revision suffixes such as `-001/-002/-003` are prohibited. Git history/tags/Releases are the revision archive. qBittorrent/WebAPI/Playwright versions remain legal where they are current upstream, protocol or dependency facts.
@@ -106,7 +106,7 @@ Mobile Select/Columns/Sort/page-size keep a usable interaction target while the 
 `#torrent-selection-toolbar` is one DOM/action owner. Desktop mounts it in `#torrent-action-slot`; Mobile mounts the same node in `#mobile-pager-actions-slot`. Duplicate buttons, enabled-state mirroring and duplicate handlers are prohibited.
 
 ### MOBILE-CARD-COMPOSITION — title first, metrics second
-Canonical Mobile Torrent card first line is selection + title + More. Configured metrics, including progress/rates/status, occupy the second line. The same canonical real progress rail may sit on the bottom edge.
+Canonical Mobile Torrent card first line is selection + title + More. Configured metrics occupy the second line. When progress is configured, the canonical real progress rail and truthful percentage form one inline cluster with the percentage immediately to the rail's right; a second bottom-edge progress rail is prohibited.
 
 ### SORT-OWNER — semantic sort is not a DOM bridge
 `app.sort + app.reverse`, exposed through `W.LibraryController`, is the only sort truth. Desktop table headers and Mobile Sort Select are callers. Hidden Columns dialogs, temporary columns, programmatic hidden-header clicks and `weigg.mobileSort` second state are prohibited.
@@ -155,6 +155,12 @@ Persistent telemetry uses the cheapest existing surface and does not spend Torre
 
 ### ADAPTIVE-STATUS
 Desktop/Mobile placement never creates another qB client, timer, state store or reconciliation path.
+
+### MOBILE-DRAWER-TELEMETRY — move canonical status nodes
+Mobile Drawer reuses the same `#status-torrents`, `#status-free-space`, `#transfer-capsule` and `#status-connection` DOM/semantic owners that Desktop places in the Statusbar. Mobile placement is two compact rows followed by transfer history; cloning, mirrored counters and duplicate event handlers are prohibited.
+
+### TRANSFER-CHART-ADAPTIVE — one bounded history and renderer
+`W.TransferRuntime` is the only transfer sample/history source. `W.Transfer.drawRateChart()` renders both the full Transfer dialog and the compact Mobile Drawer chart. The Drawer view adds no API request, timer, polling loop or second history store; tapping it opens the canonical Transfer statistics dialog.
 
 ### LIVE-INDICATOR
 Connection motion consumes existing `connection_status` only.
@@ -331,8 +337,9 @@ Sidebar facets below state filters
 no four-card summary on any viewport
 compact Mobile toolbar with canonical controls
 same Selection toolbar beside Mobile pager
-Mobile two-line card + real bottom progress rail
+Mobile two-line card + canonical inline progress rail/percentage
 Mobile Search anchored below Topbar without clipping actions
+Mobile Drawer reuses Statusbar telemetry + bounded realtime transfer chart
 Desktop one-row Header/end rail/DataGrid/Statusbar stability
 ```
 
@@ -341,16 +348,19 @@ The design objective is reduced duplicate ownership and clearer information hier
 ## 13. Settings semantic runtime
 
 ### SETTINGS-OWNER — one Preference semantic owner
-`W.SettingsSchema` owns qB preference surface, section, type, unit, enum, editability and future fallback. `W.QBClient` only transports `app/preferences` and `app/setPreferences`; `settings.js` is the presentation caller. `W.Transfer` remains the only owner of global and alternate upload/download rate limits.
+`W.SettingsSchema` owns qB preference surface, section, type, unit, enum, editability and future fallback. `W.QBClient` only transports `app/preferences` and `app/setPreferences`; `settings.js` is the presentation caller. `W.Transfer` owns bounded transfer telemetry and the quick global/alternate rate-limit dialog; it does not own whether those qB Preferences are present or classified in Settings.
 
 ### SETTINGS-ROUTING — semantic routing before fallback
-Preference routing is exact schema → semantic family rule → Advanced / Upstream fallback. Per-version runtime copies, qB patch allowlists and versioned Settings implementations are prohibited. The Settings Speed tab is retired; bottom Transfer owns global/alternate limits while scheduler/uTP/TCP/LAN transfer policy remains available under Advanced.
+Preference routing is exact schema → semantic family rule → Advanced / Upstream fallback. Per-version runtime copies, qB patch allowlists and versioned Settings implementations are prohibited. The canonical Speed surface owns global/alternate speed Preferences plus scheduler/uTP/TCP/LAN rate-limit policy; Advanced must not duplicate those keys.
 
 ### SETTINGS-STRUCTURED — safe unknown values
 Unknown scalar preferences are rendered from their actual JSON scalar type. Unknown arrays/objects remain visible as read-only structured JSON until an authoritative upstream contract exists. `[object Object]` presentation and blind structured writeback are prohibited.
 
 ### SETTINGS-VISUAL — reuse canonical primitives
 Settings reuses existing `settings-section`, `settings-grid`, `setting-row`, `field-input setting-input`, `switch-control` and `W.Components.selectControl()` primitives. Feature-local Settings CSS, a second Select/Input/Dialog skin, or Mobile-only business state is prohibited.
+
+### SETTINGS-MOBILE-FLOW — long copy stacks the same canonical control
+Mobile keeps short Settings rows side-by-side. When rendered description copy exceeds roughly two lines, the same control moves below the copy and may use the full row width. A closed Select remains one line with ellipsis; its menu exposes the complete option text. Time-zone labels remain owned by `W.Time.displayLabel()` and are not rewritten by responsive presentation.
 
 ### SETTINGS-GENERATION-AUDIT — current upstream generation
 Representative upstream compatibility resolves the latest official `release-5.*.0` generation dynamically while keeping qBittorrent 4.1.9.1 as the compatibility floor. When a prior `5.x.0` generation exists, the audit reports Preference and API action deltas between the prior and latest generation. Full stable-tag audit remains a separate coverage layer.

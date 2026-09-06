@@ -5,7 +5,7 @@
   function zh(){return !!(W.I18n&&W.I18n.getLocale&&W.I18n.getLocale()==='zh-CN');}
   function text(en,cn){return zh()?cn:en;}
   function own(obj,key){return Object.prototype.hasOwnProperty.call(obj||{},key);}
-  var TAB_TITLES={downloads:['Downloads','下载'],connection:['Connection','连接'],bittorrent:['BitTorrent','BitTorrent'],webui:['Web UI','Web UI'],advanced:['Advanced','全部高级设置']};
+  var TAB_TITLES={downloads:['Downloads','下载'],connection:['Connection','连接'],speed:['Speed','速度'],bittorrent:['BitTorrent','BitTorrent'],webui:['Web UI','Web UI'],advanced:['Advanced','全部高级设置']};
 
   function describe(key,value){
     var info=S.describeValue(key,value),meta=info.meta||{},title=String(info.title||key),description=String(info.description||'');
@@ -101,12 +101,12 @@
   function renderQb(root,ctx){
     var tab=ctx.tab,prefs=ctx.prefs||{},groups=S.group(tab,prefs);
     if(tab==='advanced')root.appendChild(filterControl(root));
-    var tt=TAB_TITLES[tab]||[tab,tab],subtitle=text('Only Preferences returned by this qBittorrent instance are shown.','只显示当前 qBittorrent 实际返回的 Preferences。');
+    var tt=TAB_TITLES[tab]||[tab,tab];
     if(!groups.length){
-      var empty=section(text(tt[0],tt[1]),subtitle,tab),p=document.createElement('p');p.className='settings-empty text-description';p.textContent=text('This qBittorrent version returned no settings in this group.','当前版本没有返回这一组设置。');empty.grid.appendChild(p);root.appendChild(empty);return;
+      var empty=section(text(tt[0],tt[1]),'',tab),p=document.createElement('p');p.className='settings-empty text-description';p.textContent=text('This qBittorrent version returned no settings in this group.','当前版本没有返回这一组设置。');empty.grid.appendChild(p);root.appendChild(empty);return;
     }
     groups.forEach(function(group){
-      var s=section(group.title,subtitle,tab+':'+group.id);
+      var s=section(group.title,'',tab+':'+group.id);
       group.keys.forEach(function(key){var value=ctx.draft[key]!==undefined?ctx.draft[key]:prefs[key];s.grid.appendChild(preferenceRow(key,value,ctx.onDraft));});
       root.appendChild(s);
     });
@@ -120,9 +120,14 @@
     var sha=(document.querySelector('meta[name="weigg-build-sha"]')||{}).content||'—';
     s.grid.append(fact(text('Version','版本'),controller.productVersion||'—'),fact('qBittorrent',(document.getElementById('qb-version')||{}).textContent||'—'),fact('Git SHA',sha),fact('WebAPI',(document.getElementById('api-version')||{}).textContent||'—'),fact('GitHub','weigefenxiang/WeiG-qB-WebUI','https://github.com/weigefenxiang/WeiG-qB-WebUI'),fact('Blog','WeiG Share','https://www.weigshare.com/'),fact(text('License','许可证'),'GNU GPL-3.0','https://github.com/weigefenxiang/WeiG-qB-WebUI/blob/main/LICENSE'));root.appendChild(s);
   }
+  function syncAdaptiveRows(root){
+    if(!root)return;var mobile=global.matchMedia&&global.matchMedia('(max-width: 820px)').matches;
+    Array.from(root.querySelectorAll('.setting-row')).forEach(function(row){row.classList.remove('is-stacked');if(!mobile)return;var desc=row.querySelector('.setting-description');if(!desc||!String(desc.textContent||'').trim())return;var style=global.getComputedStyle(desc),line=parseFloat(style.lineHeight)||18;if(desc.scrollHeight>line*2.15)row.classList.add('is-stacked');});
+  }
+  function scheduleAdaptiveRows(root){requestAnimationFrame(function(){syncAdaptiveRows(root);});}
   function render(ctx){
     var root=ctx.root;root.textContent='';root.dataset.settingsRenderer='canonical';var save=document.getElementById('save-settings-btn');if(save)save.hidden=ctx.tab==='about';
-    if(ctx.tab==='weigg')renderWeiG(root,ctx);else if(ctx.tab==='about')renderAbout(root,ctx);else renderQb(root,ctx);
+    if(ctx.tab==='weigg')renderWeiG(root,ctx);else if(ctx.tab==='about')renderAbout(root,ctx);else renderQb(root,ctx);scheduleAdaptiveRows(root);
   }
   async function installMeta(){try{var r=await fetch('weigg-install.json',{cache:'no-store'});if(!r.ok)return null;return await r.json();}catch(_e){return null;}}
   async function validateBeforeSave(draft,prefs){
@@ -141,10 +146,11 @@
   var controller={prefs:null,draft:{},weiggDraft:{},tab:'weigg',config:null,loading:false,productVersion:null,versionTask:null};
   function sharedClient(){var app=W.AppState;if(app&&app.client)return app.client;throw new Error(text('qBittorrent client is not ready.','qBittorrent 客户端尚未就绪。'));}
   function controllerApp(){var state=W.AppState||{};return{catalog:Array.isArray(state.catalog)?state.catalog:[],torrents:Array.isArray(state.torrents)?state.torrents:[],virtual:state.virtual||{el:document.getElementById('torrent-list')||{}},pageSize:Number(state.pageSize||(controller.config&&controller.config.pageSize)||50),catalogReady:!!state.catalogReady};}
+  function ensureSpeedTab(){var nav=document.getElementById('settings-tabs');if(!nav)return null;var existing=nav.querySelector('[data-settings-tab="speed"]');if(existing){existing.textContent=text('Speed','速度');return existing;}var connection=nav.querySelector('[data-settings-tab="connection"]'),button=document.createElement('button');button.type='button';button.className='nav-item';button.dataset.settingsTab='speed';button.textContent=text('Speed','速度');if(connection&&connection.parentElement)connection.insertAdjacentElement('afterend',button);return button;}
   function onWeiGChange(key,value){controller.config=controller.config||W.Config.load();if(key==='pageSize'||key==='refresh')value=Number(value);controller.weiggDraft[key]=value;renderOwned();}
   function ctx(){return{root:document.getElementById('settings-content'),tab:controller.tab,prefs:controller.prefs||{},draft:controller.draft,weiggDraft:controller.weiggDraft,config:controller.config||W.Config.load(),app:controllerApp(),onDraft:function(key,value){controller.draft[key]=value;},onWeiGChange:onWeiGChange};}
   function activeTab(tab){Array.from(document.querySelectorAll('#settings-tabs [data-settings-tab]')).forEach(function(b){b.classList.toggle('is-active',b.dataset.settingsTab===tab);});}
-  function renderOwned(){var root=document.getElementById('settings-content');if(!root)return;activeTab(controller.tab);render(ctx());global.dispatchEvent(new CustomEvent('weigg:settings-render',{detail:{tab:controller.tab}}));}
+  function renderOwned(){var root=document.getElementById('settings-content');if(!root)return;ensureSpeedTab();activeTab(controller.tab);render(ctx());global.dispatchEvent(new CustomEvent('weigg:settings-render',{detail:{tab:controller.tab}}));}
   async function ensureProductVersion(){if(controller.productVersion)return controller.productVersion;if(controller.versionTask)return controller.versionTask;controller.versionTask=(async function(){var meta=await installMeta();controller.productVersion=meta&&meta.version?String(meta.version):'—';return controller.productVersion;})().finally(function(){controller.versionTask=null;});return controller.versionTask;}
   async function ensurePrefs(){if(controller.prefs||controller.loading)return;controller.loading=true;try{controller.prefs=await sharedClient().getPreferences();}catch(e){if(W.toast)W.toast(text('Failed to read settings: ','读取设置失败：')+(e.message||e),'error',{title:text('Settings unavailable','设置读取失败')});}finally{controller.loading=false;}}
   async function openOwned(tab){controller.config=controller.config||W.Config.load();if(tab)controller.tab=tab;if(controller.tab==='about')await ensureProductVersion();else if(controller.tab!=='weigg')await ensurePrefs();renderOwned();}
@@ -168,16 +174,18 @@
   }
   async function saveOwned(){if(controller.tab==='about')return;if(controller.tab==='weigg')return saveWeiG();return saveQb();}
   function installController(){
-    controller.config=W.Config.load();
+    controller.config=W.Config.load();ensureSpeedTab();
     document.addEventListener('click',function(e){
       var tab=e.target&&e.target.closest&&e.target.closest('#settings-tabs [data-settings-tab]');
       if(tab){e.preventDefault();e.stopImmediatePropagation();controller.tab=tab.dataset.settingsTab||'weigg';openOwned(controller.tab);return;}
       var save=e.target&&e.target.closest&&e.target.closest('#save-settings-btn');if(save){e.preventDefault();e.stopImmediatePropagation();saveOwned();}
     },true);
+    global.addEventListener('resize',U.debounce(function(){var root=document.getElementById('settings-content');if(root)scheduleAdaptiveRows(root);},100),{passive:true});
+    global.addEventListener('weigg:languagechange',function(){ensureSpeedTab();var root=document.getElementById('settings-content');if(root&&W.Router&&W.Router.route&&W.Router.route().name==='settings')renderOwned();});
   }
 
   W.SettingsState=controller;
   W.ControlRegistry={switchControl:switchControl,selectControl:selectControl,inputControl:inputControl};
-  W.SettingsRenderer={render:render,validateBeforeSave:validateBeforeSave,groups:S.sectionOrder,preferenceRow:preferenceRow,settingRow:settingRow,open:openOwned,save:saveOwned};
+  W.SettingsRenderer={render:render,validateBeforeSave:validateBeforeSave,groups:S.sectionOrder,preferenceRow:preferenceRow,settingRow:settingRow,open:openOwned,save:saveOwned,syncAdaptiveRows:syncAdaptiveRows,ensureSpeedTab:ensureSpeedTab};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',installController,{once:true});else installController();
 })(window);

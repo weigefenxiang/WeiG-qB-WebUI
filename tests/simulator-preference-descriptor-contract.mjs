@@ -76,7 +76,7 @@ assert.ok(!Object.prototype.hasOwnProperty.call(accepted, 'opaque_future'));
 const report = runtime.coverage();
 assert.equal(report.total, profile.preferenceKeys.length);
 assert.equal(report.unknown, 1);
-assert.equal(report.provisionalValueCount, 1);
+assert.equal(report.provisionalValueCount, 2, 'curated defaults and unresolved placeholders are provisional rather than exact upstream defaults');
 assert.deepEqual(report.unknownKeys, ['opaque_future']);
 assert.ok(report.modeled >= 1, 'coverage report must expose behavior-modeled keys');
 assert.ok(report.stateful >= 3, 'coverage report must expose safe stateful keys');

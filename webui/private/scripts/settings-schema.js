@@ -2,20 +2,22 @@
   'use strict';
   var W=global.WeiG=global.WeiG||{};
 
-  var SURFACES=['downloads','connection','bittorrent','webui','advanced'];
+  var SURFACES=['downloads','connection','speed','bittorrent','webui','advanced'];
   var SECTION_ORDER={
     downloads:['adding','paths','management','files','automation'],
     connection:['listening','limits','proxy','i2p','ipfilter','network'],
+    speed:['global','schedule','behavior'],
     bittorrent:['privacy','queue','seeding','tracker','peer'],
     webui:['server','auth','security','reverseProxy','headers','alternative'],
-    advanced:['bandwidth','disk','libtorrent','rss','dyndns','mail','logging','system','security','upstream']
+    advanced:['disk','libtorrent','rss','dyndns','mail','logging','system','security','upstream']
   };
   var SECTION_TITLES={
     adding:['Adding torrents','添加 Torrent'],paths:['Paths and storage','路径与保存'],management:['Automatic management','自动管理'],files:['Files','文件规则'],automation:['Automation','自动任务'],
     listening:['Listening','监听'],limits:['Connection limits','连接限制'],proxy:['Proxy','代理'],i2p:['I2P','I2P'],ipfilter:['IP filtering','IP 过滤'],network:['Network','网络'],
+    global:['Global rate limits','全局速度限制'],schedule:['Alternative rate schedule','备用速度计划'],behavior:['Rate-limit behavior','速度限制行为'],
     privacy:['Protocol and privacy','协议与隐私'],queue:['Queue','队列'],seeding:['Seeding','做种'],tracker:['Tracker / Announce','Tracker / Announce'],peer:['Peer / Transport','Peer / 传输'],
     server:['Server','服务器'],auth:['Authentication','认证'],security:['Security','安全'],reverseProxy:['Reverse Proxy','Reverse Proxy'],headers:['HTTP Headers','HTTP Headers'],alternative:['Alternative WebUI','备用 WebUI'],
-    bandwidth:['Bandwidth / transfer policy','带宽与传输策略'],disk:['Disk / I/O','磁盘 / I/O'],libtorrent:['libtorrent','libtorrent'],rss:['RSS','RSS'],dyndns:['Dynamic DNS','动态 DNS'],mail:['Mail notification','邮件通知'],logging:['Logging','日志'],system:['System / behavior','系统 / 行为'],upstream:['Upstream settings','上游新增设置']
+    disk:['Disk / I/O','磁盘 / I/O'],libtorrent:['libtorrent','libtorrent'],rss:['RSS','RSS'],dyndns:['Dynamic DNS','动态 DNS'],mail:['Mail notification','邮件通知'],logging:['Logging','日志'],system:['System / behavior','系统 / 行为'],upstream:['Upstream settings','上游新增设置']
   };
 
   var META={
@@ -67,6 +69,10 @@
   add('connection','ipfilter','auto',['ip_filter_enabled','ip_filter_path','ip_filter_trackers','banned_IPs','banned_ips']);
   add('connection','network','auto',['connection_speed','socket_backlog_size','socket_receive_buffer_size','socket_send_buffer_size','outgoing_ports_min','outgoing_ports_max','upnp_lease_duration','peer_tos','hostname_cache_ttl','current_interface_address','current_interface_name','reannounce_when_address_changed']);
 
+  add('speed','global','number',['dl_limit','up_limit','alt_dl_limit','alt_up_limit']);
+  add('speed','schedule','auto',['scheduler_enabled','schedule_from_hour','schedule_from_min','schedule_to_hour','schedule_to_min','scheduler_days']);
+  add('speed','behavior','auto',['limit_utp_rate','limit_tcp_overhead','limit_lan_peers']);
+
   add('bittorrent','privacy','auto',['dht','pex','lsd','encryption','anonymous_mode','bittorrent_protocol']);
   add('bittorrent','queue','auto',['queueing_enabled','max_active_downloads','max_active_uploads','max_active_torrents','max_active_checking_torrents','dont_count_slow_torrents','slow_torrent_dl_rate_threshold','slow_torrent_ul_rate_threshold','slow_torrent_inactive_timer']);
   add('bittorrent','seeding','auto',['max_ratio','max_ratio_enabled','max_ratio_act','max_seeding_time','max_seeding_time_enabled','max_seeding_time_act','max_inactive_seeding_time','max_inactive_seeding_time_enabled']);
@@ -80,9 +86,6 @@
   add('webui','headers','auto',['web_ui_use_custom_http_headers_enabled','web_ui_custom_http_headers']);
   add('webui','alternative','auto',['alternative_webui_enabled','alternative_webui_path']);
 
-  add('transfer','global','number',['dl_limit','up_limit','alt_dl_limit','alt_up_limit']);
-
-  add('advanced','bandwidth','auto',['scheduler_enabled','schedule_from_hour','schedule_from_min','schedule_to_hour','schedule_to_min','scheduler_days','limit_utp_rate','limit_tcp_overhead','limit_lan_peers']);
   add('advanced','disk','auto',['disk_cache','disk_cache_ttl','disk_queue_size','disk_io_type','disk_io_read_mode','disk_io_write_mode','enable_coalesce_read_write','enable_os_cache','checking_memory_use','memory_working_set_limit','file_pool_size']);
   add('advanced','libtorrent','auto',['bdecode_depth_limit','bdecode_token_limit','async_io_threads','hashing_threads','enable_piece_extent_affinity','enable_upload_suggestions','send_buffer_watermark','send_buffer_low_watermark','send_buffer_watermark_factor','dht_bootstrap_nodes','save_resume_data_interval','save_statistics_interval','resume_data_storage_type','recheck_completed_torrents','refresh_interval']);
   add('advanced','rss','auto',['rss_auto_downloading_enabled','rss_download_repack_proper_episodes','rss_fetch_delay','rss_max_articles_per_feed','rss_processing_enabled','rss_refresh_interval','rss_smart_episode_filters']);
@@ -107,12 +110,13 @@
     {re:/^i2p_/i,surface:'connection',section:'i2p'},
     {re:/^(?:ip_filter_|banned_ip)/i,surface:'connection',section:'ipfilter'},
     {re:/^(?:socket_|outgoing_ports_|listen_|ssl_listen|upnp_|current_interface|connection_)/i,surface:'connection',section:'network'},
+    {re:/^(?:scheduler_|schedule_)/i,surface:'speed',section:'schedule'},
+    {re:/^(?:limit_utp|limit_tcp|limit_lan)/i,surface:'speed',section:'behavior'},
     {re:/^(?:add_trackers|announce_|tracker_|embedded_tracker|enable_embedded_tracker|stop_tracker|max_concurrent_http_announces|merge_trackers)/i,surface:'bittorrent',section:'tracker'},
     {re:/^(?:queueing_|max_active_|slow_torrent_|dont_count_slow)/i,surface:'bittorrent',section:'queue'},
     {re:/^(?:max_ratio|max_seeding|max_inactive_seeding)/i,surface:'bittorrent',section:'seeding'},
     {re:/^(?:dht$|pex$|lsd$|anonymous_mode|bittorrent_protocol)/i,surface:'bittorrent',section:'privacy'},
     {re:/^(?:peer_|upload_choking|upload_slots|utp_tcp|block_peers|resolve_peer|enable_multi_connections)/i,surface:'bittorrent',section:'peer'},
-    {re:/^(?:scheduler_|schedule_|limit_utp|limit_tcp|limit_lan)/i,surface:'advanced',section:'bandwidth'},
     {re:/^(?:disk_|file_pool|checking_memory|memory_working|enable_os_cache)/i,surface:'advanced',section:'disk'},
     {re:/^(?:rss_)/i,surface:'advanced',section:'rss'},
     {re:/^(?:dyndns_)/i,surface:'advanced',section:'dyndns'},

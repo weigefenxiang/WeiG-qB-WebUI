@@ -10,9 +10,16 @@ const assert=(ok,msg)=>{if(!ok)throw new Error(msg);};
 const index=read('webui/private/index.html');
 const layout=read('webui/private/css/layout.css');
 const settingsCss=read('webui/private/css/settings.css');
+const logsCss=read('webui/private/css/logs.css');
+const progressCss=read('webui/private/css/progress.css');
+const transferCss=read('webui/private/css/transfer.css');
 const navigation=read('webui/private/scripts/navigation.js');
 const responsive=read('webui/private/scripts/responsive.js');
 const settings=read('webui/private/scripts/settings.js');
+const settingsSchema=read('webui/private/scripts/settings-schema.js');
+const logs=read('webui/private/scripts/logs.js');
+const components=read('webui/private/scripts/components.js');
+const transfer=read('webui/private/scripts/transfer.js');
 const i18n=read('webui/private/scripts/i18n.js');
 
 // Mobile navigation follows Desktop information architecture without duplicating the canonical Header Search.
@@ -34,7 +41,7 @@ assert(responsive.includes("dataset.detailTitleAction='copy-expand'")&&responsiv
 const createsLegacyHoverMetadata=/\.dataset\.tooltip\s*=|setAttribute\(\s*['"]data-tooltip['"]|\.title\s*=|setAttribute\(\s*['"]title['"]/.test(responsive);
 assert(!createsLegacyHoverMetadata,'Responsive presentation must not create native title/data-tooltip hover metadata; cleanup via removeAttribute remains allowed');
 
-// Settings remove mobile-only chrome, keep Search+Save in one row, and share one Save owner.
+// Settings remove redundant chrome/copy, restore Speed semantics, and adapt long descriptions without a second control system.
 assert(settingsCss.includes('#settings-view>.settings-header>div:first-child{display:none}'),'Mobile Settings title/description block must be retired from presentation');
 assert(settingsCss.includes('grid-template-columns:minmax(0,1fr) auto')&&!settingsCss.includes('@media(max-width:560px){.settings-header__actions{grid-template-columns:1fr}'),'Mobile Search and Save must remain on the same row at narrow widths');
 assert(index.includes('id="save-settings-btn"')&&(index.match(/id="save-settings-btn"/g)||[]).length===1,'Settings must retain exactly one Save button');
@@ -42,5 +49,30 @@ assert(settings.includes("save.hidden=ctx.tab==='about'")&&settings.includes('we
 assert(settings.includes('await client.setPreferences(pending)')&&settings.includes('controller.prefs=await client.getPreferences()'),'qB Save must retain write plus verification readback');
 assert(i18n.includes("'settings.save':'Save'")&&i18n.includes("'settings.save':'保存'"),'Settings Save label must be compact in English and Simplified Chinese');
 assert(!index.includes('settings-add-torrent')&&!settings.includes('settings-add-torrent'),'Settings must not introduce a duplicate Add Torrent surface');
+assert(!settings.includes('Only Preferences returned by this qBittorrent instance are shown.')&&!settings.includes('只显示当前 qBittorrent 实际返回的 Preferences。'),'Repeated qB Preference subtitle must be removed completely');
+assert(settingsSchema.includes("'speed'")&&settingsSchema.includes("add('speed','global','number',['dl_limit','up_limit','alt_dl_limit','alt_up_limit'])"),'Speed must be a canonical SettingsSchema surface');
+assert(settings.includes('function ensureSpeedTab()')&&settings.includes("button.dataset.settingsTab='speed'"),'Settings owner must expose Speed without a parallel runtime owner');
+assert(settings.includes('syncAdaptiveRows')&&settings.includes("row.classList.add('is-stacked')")&&settingsCss.includes('.setting-row.is-stacked'),'Long mobile descriptions must stack the canonical control below the copy');
+assert(settingsCss.includes('.setting-row.is-stacked .setting-control-slot>.ui-select')&&settingsCss.includes('--ui-select-width:100%'),'Stacked mobile Select must use the available row width');
+assert(settings.includes('W.Time.displayLabel(x.value)'),'Timezone labels must continue using the existing time owner instead of rewritten presentation copy');
 
-console.log('Mobile density contract passed: compact detail hierarchy, canonical title interaction, Torrents/RSS/Logs/Settings navigation, and shared draft-based Settings Save.');
+// Logs reuse one filter/follow state while making the mobile toolbar compact and searchable on demand.
+assert(logs.includes("follow.dataset.shortLabel")&&logs.includes("'最新'")&&logs.includes("'Latest'"),'Mobile Follow latest must expose compact localized copy');
+assert(logs.includes("toolbar.classList.toggle('is-search-open')")&&logs.includes("searchToggle.textContent=open?'×':'⌕'"),'Narrow Logs Search must expand from one icon without duplicating query state');
+assert(logsCss.includes('.logs-search{grid-column:1;height:38px;min-height:38px')&&logsCss.includes('@media(max-width:520px)'),'Mobile Logs Search must use canonical one-line height and a narrow collapse breakpoint');
+assert(logsCss.includes('.logs-follow::after{content:attr(data-short-label)'),'Mobile follow copy must use the compact visible label');
+
+// Mobile Torrent progress is one canonical bar with the real percentage immediately to its right.
+assert(components.includes("cluster.className='mobile-card-progress'")&&components.includes("number.textContent=built.visual.percent+'%'"),'Mobile Torrent card must compose progress bar and percentage together');
+assert(!components.includes('progress-track--mobile-edge')&&!progressCss.includes('progress-track--mobile-edge'),'Retired duplicate bottom-edge progress presentation must not return');
+assert(progressCss.includes('.mobile-card-progress{display:grid;grid-template-columns:minmax(44px,1fr) max-content'),'Mobile progress percentage must remain to the right of the canonical bar');
+
+// Mobile Drawer reuses the real Desktop status nodes and the bounded TransferRuntime history.
+assert(responsive.includes("moveNode(torrents,primary)")&&responsive.includes("moveNode(storage,primary)")&&responsive.includes("moveNode(capsule,transfer)")&&responsive.includes("moveNode(connection,transfer)"),'Mobile Drawer must move, not copy, canonical Desktop status nodes');
+assert(!responsive.includes('cloneNode'),'Mobile Drawer status adaptation must not clone semantic DOM owners');
+assert(responsive.includes('W.Transfer.mountCompactChart')&&transfer.includes('function mountCompactChart(host)'),'Mobile Drawer must consume the canonical Transfer presentation');
+assert(transfer.includes('function drawRateChart(canvas,windowSeconds')&&transfer.includes('drawRateChart(canvas,300,180,100)'),'Full and compact transfer charts must share one renderer and bounded 5-minute data');
+assert(transfer.includes("limitButton.onclick=openLimits")&&transfer.includes("statsButton.onclick=openStats"),'Drawer transfer controls must keep existing stats/limit dialog actions');
+assert(transferCss.includes('.mobile-drawer-telemetry__row--primary')&&transferCss.includes('.mobile-drawer-telemetry__row--transfer')&&transferCss.includes('.transfer-mini-chart__canvas'),'Mobile Drawer must present the requested two status rows plus compact chart');
+
+console.log('Mobile density contract passed: compact detail hierarchy, adaptive Settings, compact Logs controls, canonical inline progress, and single-owner Drawer telemetry.');
