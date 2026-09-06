@@ -24,16 +24,13 @@
     root.textContent='';root.dataset.weiggLogsReady='1';
     var shell=document.createElement('div');shell.className='logs-shell';shell.dataset.weiggLogShell='1';
     var toolbar=document.createElement('div');toolbar.className='logs-toolbar grid-toolbar';
-    var searchToggle=makeButton('⌕','btn btn--ghost logs-search-toggle');searchToggle.setAttribute('aria-label',tr('search.logs',null,'Search logs'));
-    var search=document.createElement('label');search.className='search-box logs-search';search.innerHTML='<span aria-hidden="true">⌕</span>';
-    var input=document.createElement('input');input.id='logs-local-search';input.type='search';input.autocomplete='off';input.placeholder=W.t?W.t('search.logs'):'Search logs…';input.value=state.query;search.appendChild(input);
     var filters=document.createElement('div');filters.className='logs-filters';
     [1,2,4,8].forEach(function(type){var b=C.filterChip(typeLabel(type),state.types.has(type));b.dataset.logType=String(type);filters.appendChild(b);});
     var follow=C.checkControl(tr('v036.logs.follow',null,'Follow latest'),state.follow,function(checked){state.follow=checked;if(state.follow)scrollLatest();});follow.dataset.logsFollow='1';follow.dataset.shortLabel=W.I18n&&W.I18n.getLocale&&W.I18n.getLocale()==='zh-CN'?'最新':'Latest';follow.classList.add('logs-follow');filters.appendChild(follow);
     var actions=document.createElement('div');actions.className='logs-actions';
     var size=C.selectControl({id:'logs-size-mode',value:state.sizeMode,options:[{value:'compact',label:tr('v036.logs.compact',null,'Compact')},{value:'auto',label:tr('v036.logs.auto',null,'Auto')},{value:'max',label:tr('v036.logs.max',null,'Max')}],ariaLabel:tr('v036.logs.auto',null,'Auto'),onChange:function(value){state.sizeMode=value;applySizeMode();setTimeout(function(){if(state.virtual&&state.virtual.render)state.virtual.render();},40);}});size.classList.add('logs-size-mode');
     var refresh=makeButton('↻ '+tr('v036.logs.refresh',null,'Refresh'),'btn btn--ghost logs-refresh');
-    actions.append(size,refresh);toolbar.append(searchToggle,search,filters,actions);
+    actions.append(size,refresh);toolbar.append(filters,actions);
 
     var panel=document.createElement('section');panel.className='logs-panel surface surface--panel';
     var head=document.createElement('div');head.className='logs-head';head.innerHTML='<span>'+tr('v036.logs.log',null,'Log')+'</span><span>'+tr('v036.logs.time',null,'Time')+'</span><span>'+tr('v036.logs.level',null,'Level')+'</span>';
@@ -42,8 +39,6 @@
     var status=document.createElement('div');status.className='logs-status text-description';
     panel.append(head,list,empty,status);shell.append(toolbar,panel);root.appendChild(shell);state.root=root;
 
-    searchToggle.addEventListener('click',function(){var open=toolbar.classList.toggle('is-search-open');searchToggle.textContent=open?'×':'⌕';searchToggle.setAttribute('aria-expanded',open?'true':'false');if(open)requestAnimationFrame(function(){input.focus();});});
-    input.addEventListener('input',function(){state.query=input.value;syncTopSearch();renderRows(true,0);});
     filters.addEventListener('click',function(e){var b=e.target.closest('[data-log-type]');if(!b)return;var type=Number(b.dataset.logType);if(state.types.has(type)){if(state.types.size>1)state.types.delete(type);}else state.types.add(type);b.classList.toggle('is-active',state.types.has(type));b.setAttribute('aria-pressed',state.types.has(type)?'true':'false');renderRows(true,0);});
     list.addEventListener('scroll',function(){if(state.programmaticScroll||!state.follow)return;if(list.scrollTop>40){state.follow=false;syncFollowControl();}},{passive:true});
     refresh.addEventListener('click',function(){fetchInitial(true);});applySizeMode();
@@ -58,12 +53,11 @@
   async function fetchInitial(){if(state.loading)return;if(W.CapabilityRegistry&&!W.CapabilityRegistry.supports('logs')){W.CapabilityRegistry.open('logs');return;}state.loading=true;try{var client=await ensureClient(),items=await client.logs(-1);merge(items,true);renderRows(false,0);if(state.follow)scrollLatest();}catch(e){showError(e);}finally{state.loading=false;schedulePoll();}}
   async function fetchIncremental(){if(state.loading||!state.active||!onLogsRoute()){schedulePoll();return;}state.loading=true;try{var client=await ensureClient(),items=await client.logs(state.lastId);if(Array.isArray(items)&&items.length){var added=merge(items,false);renderRows(false,added);}}catch(_e){}finally{state.loading=false;schedulePoll();}}
   function showError(e){var root=U.$('logs-content');if(!root)return;root.innerHTML='<div class="logs-message-state">'+tr('v036.logs.failed',{error:String(e&&e.message||e)},'Failed to read logs: '+String(e&&e.message||e))+'</div>';}
-  function syncTopSearch(){var input=U.$('search-input');if(input&&onLogsRoute()&&input.value!==state.query)input.value=state.query;}
-  function setQuery(q){state.query=String(q||'');var input=U.$('logs-local-search');if(input&&input.value!==state.query)input.value=state.query;renderRows(true,0);}
+  function setQuery(q){state.query=String(q||'');if(state.active&&onLogsRoute())renderRows(true,0);}
 
   function activate(){if(!onLogsRoute()){state.active=false;stopPoll();return;}state.active=true;var root=U.$('logs-content');if(!root)return;if(!root.querySelector('[data-weigg-log-shell]')){state.virtual=null;buildShell(root);}fetchInitial();}
   function rebuildShell(){if(!onLogsRoute())return;var root=U.$('logs-content');if(!root)return;state.virtual=null;buildShell(root);renderRows(false,0);}
-  function init(){document.addEventListener('input',function(e){if(e.target&&e.target.id==='search-input'&&onLogsRoute())setQuery(e.target.value);},true);global.addEventListener('weigg:route-state',function(e){if(e.detail&&e.detail.name!=='logs'){state.active=false;stopPoll();}});document.addEventListener('visibilitychange',function(){if(state.active)schedulePoll();});global.addEventListener('weigg:languagechange',rebuildShell);global.addEventListener('weigg:timezonechange',function(){if(state.active)renderRows(false,0);});global.addEventListener('weigg:timeformatrefresh',function(){if(state.active)renderRows(false,0);});if(onLogsRoute())activate();}
-  W.Logs={setQuery:setQuery,refresh:fetchInitial,activate:activate};
+  function init(){global.addEventListener('weigg:route-state',function(e){if(e.detail&&e.detail.name!=='logs'){state.active=false;stopPoll();}});document.addEventListener('visibilitychange',function(){if(state.active)schedulePoll();});global.addEventListener('weigg:languagechange',rebuildShell);global.addEventListener('weigg:timezonechange',function(){if(state.active)renderRows(false,0);});global.addEventListener('weigg:timeformatrefresh',function(){if(state.active)renderRows(false,0);});if(onLogsRoute())activate();}
+  W.Logs={setQuery:setQuery,query:function(){return state.query;},refresh:fetchInitial,activate:activate};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })(window);

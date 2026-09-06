@@ -59,7 +59,7 @@ Realtime history is bounded; longer windows do not increase network polling or c
 Historical WeiG implementation/test/deploy compatibility is deleted rather than aliased. Current qB/WebAPI compatibility facts remain.
 
 ### FILE-NAMING — filenames describe responsibility
-Active first-party runtime/tests/deploy files use stable responsibility names and do not encode WeiG release or qB versions.
+Active first-party runtime/tests/deploy files use stable responsibility names and do not encode WeiG release versions or qB versions.
 
 ### SEMANTIC-NAMING — identifiers describe responsibility
 Current architecture rule names use stable semantic identifiers such as `COMPAT-DEGRADE`, `CAPABILITY-RANGE` and `BROWSER-RUNTIME`. Numeric revision suffixes such as `-001/-002/-003` are prohibited. Git history/tags/Releases are the revision archive. qBittorrent/WebAPI/Playwright versions remain legal where they are current upstream, protocol or dependency facts.
@@ -72,7 +72,7 @@ Historical release-specific test copies are not preserved. Current requirements 
 ```text
 qB HTTP/endpoints/technical facts       W.QBClient
 qB/WebAPI user capability policy        W.CapabilityRegistry + data/capabilities.json
-Route / query / page / search / sort    app.js / W.AppState / W.LibraryController
+Route / page / Torrent query / sort     app.js / W.AppState / W.LibraryController
 Torrent row/card DOM                    W.Components
 Torrent field registry/preferences      W.TorrentFieldRegistry
 Torrent progress semantic projection    W.Components.progressVisual
@@ -86,7 +86,9 @@ Transfer samples/metadata               W.TransferRuntime
 Connection semantic publisher           app transfer cycle -> weigg:status-state
 Connection presentation/help            W.MobileAdaptive
 Connection marker geometry/motion       css/layout.css
-Header Search/theme/utilities            W.HeaderUtilities
+Header Search dispatch/theme/utilities   W.HeaderUtilities
+RSS query/presentation                  W.RSS / ui.js
+Logs query/runtime                      W.Logs / logs.js
 Header geometry                         css/header.css
 Responsive placement                    W.MobileAdaptive
 DataGrid sizing/resize                   W.DataGrid
@@ -94,7 +96,7 @@ Dialog normalization                    W.LayoutRuntime
 ```
 
 ### FACET-OWNER — one facet chain
-Facet state = `W.LibraryController`; composition = `W.SpatialRuntime`; control = canonical Select; skin = shared UI tokens. Desktop Sidebar and Mobile Drawer use the same `#facet-controls`, permanently below Torrent state filters. A Mobile horizontal facet shelf is prohibited.
+Facet state = `W.LibraryController`; composition = `W.SpatialRuntime`; control = canonical Select; skin = shared UI tokens. Desktop Sidebar and Mobile Drawer use the same `#facet-controls`, permanently below Torrent state filters. A Mobile horizontal facet shelf is prohibited. When available Mobile Drawer height is short, the same facet controls may reflow from one column to two; semantic state and control instances do not change.
 
 ### MOBILE-LIBRARY-IA — one library, adaptive placement
 Mobile primary library order is: Topbar → compact toolbar → Torrent cards → Pager/action rail; filters/facets live in Drawer. Desktop and Mobile do not render Download/Upload/Network/Torrent summary cards.
@@ -104,6 +106,9 @@ Mobile Select/Columns/Sort/page-size keep a usable interaction target while the 
 
 ### MOBILE-ACTION-PLACEMENT — one Selection toolbar
 `#torrent-selection-toolbar` is one DOM/action owner. Desktop mounts it in `#torrent-action-slot`; Mobile mounts the same node in `#mobile-pager-actions-slot`. Duplicate buttons, enabled-state mirroring and duplicate handlers are prohibited.
+
+### MOBILE-ACTION-DIALOG — same actions, adaptive two-column layout
+`ActionRegistry` remains the only Torrent action owner. The More Actions dialog uses the same action nodes on Desktop and Mobile; Mobile keeps a two-column grid with readable adaptive text and usable hit targets. A Mobile-only one-column action implementation or duplicated action registry is prohibited.
 
 ### MOBILE-CARD-COMPOSITION — title first, metrics second
 Canonical Mobile Torrent card first line is selection + title + More. Configured metrics occupy the second line. When progress is configured, the canonical real progress rail and truthful percentage form one inline cluster with the percentage immediately to the rail's right; a second bottom-edge progress rail is prohibited.
@@ -134,7 +139,16 @@ Only active download/seed/checking uses subtle flow/sheen. Completed/paused/queu
 Permanent Topbar space is for identity, navigation, primary Search and actionable global utilities. Passive qB product marks and redundant Refresh remain retired.
 
 ### HEADER-SEARCH
-Torrent Search has exactly one `#search-input` and one `app.search`. Wide/medium/narrow Desktop changes geometry only. Mobile `W.HeaderUtilities` reveals the same input as a layer anchored below Topbar; opening Search must not change Topbar height or push other header actions outside the viewport.
+There is exactly one `#search-input`. `W.HeaderUtilities` owns route-aware presentation/dispatch, not a second query store: Home/Torrents delegates to the existing `app.search` / `W.LibraryController`; RSS delegates to `W.RSS.query`; Logs delegates to `W.Logs.query`. RSS and Logs do not render page-local Search icons or inputs. Wide/medium/narrow Desktop changes geometry only. Mobile reveals the same input as a layer anchored below Topbar; opening Search must not change Topbar height or push other header actions outside the viewport.
+
+### TOOL-SEARCH-STATE
+Changing routes changes the Header Search placeholder/value to that route's semantic query without copying state between tools. A query belongs to its route owner; Header only dispatches input and reflects that owner's current value.
+
+### RSS-ACTIONS
+RSS page chrome keeps Add Feed and Refresh in the page-title action rail. Feed URL is temporary input inside the canonical Dialog opened by Add Feed; it is not a permanent second Search-like field in the RSS content surface.
+
+### LOGS-CONTROLS
+Logs page chrome contains filters, Follow, canonical size Select and Refresh only. Log query is driven exclusively by Header Search. Feature CSS may size the canonical Select but may not draw a second shell/border around it.
 
 ### HEADER-END-ANCHOR
 Desktop Add / Theme / GitHub / WeiG Share / Logout forms one right-edge action rail. Search/navigation collapses before this rail loses its end anchor.
@@ -157,10 +171,10 @@ Persistent telemetry uses the cheapest existing surface and does not spend Torre
 Desktop/Mobile placement never creates another qB client, timer, state store or reconciliation path.
 
 ### MOBILE-DRAWER-TELEMETRY — move canonical status nodes
-Mobile Drawer reuses the same `#status-torrents`, `#status-free-space`, `#transfer-capsule` and `#status-connection` DOM/semantic owners that Desktop places in the Statusbar. Mobile placement is two compact rows followed by transfer history; cloning, mirrored counters and duplicate event handlers are prohibited.
+Mobile Drawer reuses the same `#status-torrents`, `#status-free-space`, `#transfer-capsule` and `#status-connection` DOM/semantic owners that Desktop places in the Statusbar. Mobile placement is two compact rows followed by transfer history; cloning, mirrored counters and duplicate event handlers are prohibited. qBittorrent/WebAPI/compatibility metadata remains available through Desktop/connection surfaces but does not consume Mobile Drawer height. Filters/facets receive the available height before telemetry, and short Drawers may reflow facets to two columns.
 
-### TRANSFER-CHART-ADAPTIVE — one bounded history and renderer
-`W.TransferRuntime` is the only transfer sample/history source. `W.Transfer.drawRateChart()` renders both the full Transfer dialog and the compact Mobile Drawer chart. The Drawer view adds no API request, timer, polling loop or second history store; tapping it opens the canonical Transfer statistics dialog.
+### TRANSFER-CHART-ADAPTIVE — one bounded history, window and renderer
+`W.TransferRuntime` is the only transfer sample/history source. `W.Transfer.drawRateChart()` renders both the full Transfer dialog and the compact Mobile Drawer chart. Both consume the same selected chart window (`1 min` through `12 h`); changing the full dialog window updates Drawer label/data immediately. The Drawer chart does not repeat download/upload speed text already present in the canonical transfer capsule. It adds no API request, timer, polling loop or second history store; tapping it opens the canonical Transfer statistics dialog.
 
 ### LIVE-INDICATOR
 Connection motion consumes existing `connection_status` only.
@@ -292,7 +306,7 @@ Every new Git SHA invalidates older CI/LIVE/candidate/artifact evidence. VERSION
 Formal development uses `dev`; `main` is untouched without explicit authorization. Before write and before ref update, re-read current dev exact HEAD. Update only by safe fast-forward with `force:false`.
 
 ### BROWSER-RUNTIME — hosted Chrome is the only CI browser runtime
-`tests/browser-driver.mjs` is the only Playwright launch-policy owner. The six `browser-*.mjs` semantic gates are callers and may not import Playwright directly, select a channel, set an executable path or implement fallback policy. Playwright JS is exact-pinned by `package.json + package-lock.json`.
+`tests/browser-driver.mjs` is the only Playwright launch-policy owner. The seven current `browser-*.mjs` semantic gates are callers and may not import Playwright directly, select a channel, set an executable path or implement fallback policy. Playwright JS is exact-pinned by `package.json + package-lock.json`.
 
 Linux routine UI, Linux candidate and Windows candidate all use the Google Chrome Stable already supplied by their pinned GitHub-hosted runner generation. CI must not run `playwright install`, `playwright install-deps`, dynamic `npm install ... playwright`, manual Chromium downloads or browser-specific apt provisioning. Missing hosted Chrome fails closed; it never falls back to a Playwright-managed browser.
 
@@ -337,9 +351,14 @@ Sidebar facets below state filters
 no four-card summary on any viewport
 compact Mobile toolbar with canonical controls
 same Selection toolbar beside Mobile pager
+Mobile More Actions keeps two columns with contained adaptive labels
 Mobile two-line card + canonical inline progress rail/percentage
+one route-aware Header Search for Torrents / RSS / Logs
+RSS title rail owns Add Feed + Refresh; Feed URL lives in Dialog
+Logs has no page-local Search and uses one canonical size Select
 Mobile Search anchored below Topbar without clipping actions
-Mobile Drawer reuses Statusbar telemetry + bounded realtime transfer chart
+Mobile Drawer reuses Statusbar telemetry, hides version metadata, and uses the selected bounded transfer window
+short Mobile Drawer may reflow the same facets to two columns
 Desktop one-row Header/end rail/DataGrid/Statusbar stability
 ```
 
