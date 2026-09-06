@@ -10,7 +10,7 @@
   function installPageContracts(){pageContracts.forEach(function(spec){var view=document.getElementById(spec[0]),owner=document.getElementById(spec[1]);if(!view||!owner)return;view.dataset.pageLayout=spec[2];owner.dataset.primaryScroll='1';});}
   function primaryScrollOwners(view){return view?Array.from(view.querySelectorAll('[data-primary-scroll="1"]')):[];}
 
-  function mobileRowHeight(){var density=document.documentElement.dataset.density||'standard';if(global.innerHeight<=680)return 84;if(density==='compact')return 84;if(density==='comfortable')return 92;return 84;}
+  function mobileRowHeight(){var density=document.documentElement.dataset.density||'standard';if(global.innerHeight<=680)return 94;if(density==='compact')return 94;if(density==='comfortable')return 104;return 98;}
   function desktopRowHeight(){var density=document.documentElement.dataset.density||'standard';return density==='compact'?48:density==='comfortable'?64:56;}
   function syncTorrentRowHeight(){var list=document.getElementById('torrent-list'),instance=list&&list.__weiggTorrentVirtual;if(!instance||!instance.setRowHeight)return;var next=isMobile()?mobileRowHeight():desktopRowHeight();if(instance.rowHeight!==next)instance.setRowHeight(next);}
 
