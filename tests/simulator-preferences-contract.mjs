@@ -16,10 +16,15 @@ const MiB = 1024 * 1024;
 {
   const preferenceKeys = [
     'queueing_enabled',
+    'scheduler_enabled',
+    'dht',
+    'pex',
     'max_active_downloads',
     'max_active_uploads',
     'max_active_torrents',
     'dl_limit',
+    'max_ratio',
+    'max_ratio_enabled',
     'disk_cache',
     'disk_cache_ttl',
     'disk_io_type',
@@ -59,15 +64,27 @@ const MiB = 1024 * 1024;
   assert.equal(initial.future_scalar, '', 'typed future scalar preferences may use a profile-proven fallback');
   assert.equal(initial.opaque_future, '', 'truly unknown preferences stay visible with a transport placeholder');
 
+  const descriptors = new Map(runtime.descriptors().map((item) => [item.key, item]));
+  assert.equal(descriptors.get('queueing_enabled').coverage,'MODELED','queueing controls the real virtual scheduler and may claim MODELED coverage');
+  assert.equal(descriptors.get('dht').coverage,'MODELED','DHT changes the transfer/server-state projection');
+  assert.equal(descriptors.get('max_ratio').coverage,'MODELED','share-ratio thresholds participate in scheduler policy');
+  assert.equal(descriptors.get('scheduler_enabled').coverage,'STATEFUL','scheduler_enabled is normalized state only until time-window behavior is implemented');
+  assert.equal(descriptors.get('pex').coverage,'STATEFUL','PeX must not be called behavior-modeled when no simulator side effect consumes it');
+
   const coverage = runtime.coverage();
   assert.equal(coverage.unknown, 1, 'only truly unresolved preference values should be UNKNOWN');
   assert.deepEqual(coverage.unknownKeys, ['opaque_future']);
+  assert.ok(coverage.bindings.modeled.includes('queueing_enabled'));
+  assert.ok(coverage.bindings.effects.queueing_enabled,'modeled bindings must identify the simulator side effect they own');
+  assert.ok(coverage.bindings.normalizationOnly.includes('scheduler_enabled'));
+  assert.ok(coverage.bindings.normalizationOnly.includes('pex'));
 
   const accepted = runtime.write({
     max_active_downloads: '2',
     max_active_uploads: 3,
     max_active_torrents: 4,
     dl_limit: 140 * MiB,
+    max_ratio:'2.5',
     future_scalar: 'visible',
     opaque_future: 'must-not-stick',
     scan_dirs: { '/watch': 1 },
@@ -77,6 +94,7 @@ const MiB = 1024 * 1024;
   assert.equal(accepted.max_active_downloads, 2, 'modeled numeric bindings must normalize values');
   assert.equal(world.preferences.max_active_downloads, 2, 'runtime writes must reach the canonical world preferences');
   assert.equal(world.globalDownloadLimit, 140 * MiB, 'dl_limit must keep the existing scheduler side effect');
+  assert.equal(accepted.max_ratio,2.5,'modeled ratio policy values must retain non-negative numeric semantics');
   assert.equal(world.preferences.future_scalar, 'visible', 'typed STATEFUL future preferences may persist safely');
   assert.ok(!Object.prototype.hasOwnProperty.call(accepted, 'opaque_future'), 'UNKNOWN preferences must fail closed on write');
   assert.ok(!Object.prototype.hasOwnProperty.call(accepted, 'scan_dirs'), 'structured preferences must fail closed on write');
@@ -88,4 +106,4 @@ const MiB = 1024 * 1024;
   assert.deepEqual(reread.scan_dirs, {}, 'read-only structured fallback must remain stable');
 }
 
-console.log('Virtual qB preference runtime contract passed: exact upstream surface, descriptor-controlled writes, safe UNKNOWN fail-closed behavior and canonical scheduler side effects.');
+console.log('Virtual qB preference runtime contract passed: exact upstream surface, source-safe writes, behavior-only MODELED bindings, explicit normalization-only state, UNKNOWN fail-closed behavior and canonical scheduler side effects.');

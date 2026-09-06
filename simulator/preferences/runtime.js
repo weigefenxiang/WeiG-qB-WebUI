@@ -18,7 +18,7 @@ function preferenceKeysForWorld(world) {
 
 function descriptorOptions(world, options, registry) {
   return {
-    modeledKeys: registry.keys(),
+    modeledKeys: registry.modeledKeys ? registry.modeledKeys() : registry.keys(),
     profileDescriptors: options.profileDescriptors ?? world?.profile?.preferenceDescriptors ?? null,
     profileDefaults: options.profileDefaults ?? world?.profile?.preferenceDefaults ?? null,
     inheritedPreferences: options.inheritedPreferences ?? world?.profile?.preferenceInheritedDefaults ?? null
@@ -46,6 +46,15 @@ export function createPreferenceRuntime(world, options = {}) {
     descriptors = buildPreferenceDescriptors(world?.preferences || {}, keys, descriptorConfig);
     service.replace(materializePreferenceSurface(descriptors));
     service.setDescriptors(descriptors);
+  }
+
+  function bindingCoverage() {
+    const entries = registry.entries ? registry.entries() : registry.keys().map((key) => ({key,modeled:true,effect:null}));
+    return {
+      modeled: entries.filter((entry) => entry.modeled).map((entry) => entry.key),
+      normalizationOnly: entries.filter((entry) => !entry.modeled).map((entry) => entry.key),
+      effects: Object.fromEntries(entries.filter((entry) => entry.effect).map((entry) => [entry.key, entry.effect]))
+    };
   }
 
   return {
@@ -76,7 +85,11 @@ export function createPreferenceRuntime(world, options = {}) {
     },
 
     coverage() {
-      return {...summarizePreferenceCoverage(descriptors), sanitizedWorldKeys:sanitation.sanitizedKeys.slice()};
+      return {
+        ...summarizePreferenceCoverage(descriptors),
+        sanitizedWorldKeys:sanitation.sanitizedKeys.slice(),
+        bindings:bindingCoverage()
+      };
     }
   };
 }
