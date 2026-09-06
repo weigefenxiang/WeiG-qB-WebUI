@@ -46,33 +46,33 @@ function post(path,body){return new Request(`https://example.invalid/api/v2/${pa
 }
 
 {
-  const w=world('5.1.4','2.11.4'),a=w.torrents[0],b=w.torrents[1],url='https://tracker.example/legacy-collection';
+  const w=world('5.2.0','2.11.8'),a=w.torrents[0],b=w.torrents[1],url='https://tracker.example/pre-batch-boundary';
   let r=await handleApi(w,post('torrents/addTrackers',{hash:`${a.hash}|${b.hash}`,urls:url}));
-  assert.equal(r.status,404,'qB 5.1 addTrackers must remain a single-hash endpoint');
+  assert.equal(r.status,404,'WebAPI 2.11.8 addTrackers must remain a single-hash endpoint');
   assert.equal(a.trackers.some(item=>item.url===url),false);assert.equal(b.trackers.some(item=>item.url===url),false);
   r=await handleApi(w,post('torrents/addTrackers',{hash:a.hash,urls:url}));assert.equal(r.status,200);
   r=await handleApi(w,post('torrents/addTrackers',{hash:b.hash,urls:url}));assert.equal(r.status,200);
   r=await handleApi(w,post('torrents/removeTrackers',{hash:`${a.hash}|${b.hash}`,urls:url}));
-  assert.equal(r.status,404,'qB 5.1 removeTrackers must reject multiple hashes');
+  assert.equal(r.status,404,'WebAPI 2.11.8 removeTrackers must reject multiple hashes');
   assert.ok(a.trackers.some(item=>item.url===url)&&b.trackers.some(item=>item.url===url));
   r=await handleApi(w,post('torrents/removeTrackers',{hash:'*',urls:url}));
-  assert.equal(r.status,200,'qB 5.1 removeTrackers must preserve the upstream * all-torrents selector');
+  assert.equal(r.status,200,'WebAPI 2.11.8 removeTrackers must preserve the legacy * all-torrents selector');
   assert.equal(a.trackers.some(item=>item.url===url),false);assert.equal(b.trackers.some(item=>item.url===url),false);
 }
 
 {
-  const w=world('5.2.0','2.15.1'),a=w.torrents[0],b=w.torrents[1],url='https://tracker.example/modern-collection';
+  const w=world('5.2.0','2.11.9'),a=w.torrents[0],b=w.torrents[1],url='https://tracker.example/batch-boundary';
   let r=await handleApi(w,post('torrents/addTrackers',{hash:`${a.hash}|${b.hash}`,urls:url}));
-  assert.equal(r.status,200,'qB 5.2 addTrackers must support multiple hashes');
+  assert.equal(r.status,200,'WebAPI 2.11.9 addTrackers must support multiple hashes');
   assert.ok(a.trackers.some(item=>item.url===url)&&b.trackers.some(item=>item.url===url));
   r=await handleApi(w,post('torrents/removeTrackers',{hash:`${a.hash}|missing|${b.hash}`,urls:url}));
-  assert.equal(r.status,200,'qB 5.2 removeTrackers must ignore missing members in a batch');
+  assert.equal(r.status,200,'WebAPI 2.11.9 removeTrackers must ignore missing members in a batch');
   assert.equal(a.trackers.some(item=>item.url===url),false);assert.equal(b.trackers.some(item=>item.url===url),false);
   r=await handleApi(w,post('torrents/addTrackers',{hash:'all',urls:url}));
-  assert.equal(r.status,200,'qB 5.2 addTrackers must support the upstream all selector');
+  assert.equal(r.status,200,'WebAPI 2.11.9 addTrackers must support the upstream all selector');
   assert.ok(w.torrents.every(item=>item.trackers.some(tracker=>tracker.url===url)));
   r=await handleApi(w,post('torrents/removeTrackers',{hash:'*',urls:url}));
-  assert.equal(r.status,200,'qB 5.2 removeTrackers must map * to the all selector');
+  assert.equal(r.status,200,'WebAPI 2.11.9 removeTrackers must map * to the all selector');
   assert.ok(w.torrents.every(item=>!item.trackers.some(tracker=>tracker.url===url)));
 }
 
@@ -198,4 +198,4 @@ function post(path,body){return new Request(`https://example.invalid/api/v2/${pa
   r=await handleApi(w,get('app/processInfo'));assert.equal(r.status,404,'processInfo must not leak into qB4');
 }
 
-console.log('Virtual qB modern contract passed: SSL state, manual peer visibility, qB 5.1/5.2 tracker edit and collection semantics, WebAPI 2.15.1 editCategory behavior, metadata fetch/parse/save, clientdata, process info, virtual filesystem, network interfaces, API keys, test email, historical path/export boundaries and shutdown semantics.');
+console.log('Virtual qB modern contract passed: SSL state, manual peer visibility, qB 5.1/5.2 tracker edit semantics, WebAPI 2.11.9 tracker collection boundary, WebAPI 2.15.1 editCategory behavior, metadata fetch/parse/save, clientdata, process info, virtual filesystem, network interfaces, API keys, test email, historical path/export boundaries and shutdown semantics.');

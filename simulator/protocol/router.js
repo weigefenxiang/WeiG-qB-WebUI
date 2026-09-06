@@ -391,7 +391,7 @@ export async function handleApi(world,request,url=new URL(request.url)){
   if(path==='torrents/addTrackers'&&method==='POST'){
     const f=await formObject(request);
     if(!owns(f,'hash')||!owns(f,'urls'))return text('Bad Request',400);
-    if(apiAtLeast(world,'2.15.1')){
+    if(apiAtLeast(world,'2.11.9')){
       for(const hash of trackerBatchTargets(world,String(f.hash??'')))addTrackers(world,hash,f.urls);
       return empty();
     }
@@ -402,7 +402,7 @@ export async function handleApi(world,request,url=new URL(request.url)){
     const f=await formObject(request);
     if(!owns(f,'hash')||!owns(f,'urls'))return text('Bad Request',400);
     const hash=String(f.hash??'');
-    if(apiAtLeast(world,'2.15.1')){
+    if(apiAtLeast(world,'2.11.9')){
       for(const target of trackerBatchTargets(world,hash,true))removeTrackers(world,target,f.urls);
       return empty();
     }
