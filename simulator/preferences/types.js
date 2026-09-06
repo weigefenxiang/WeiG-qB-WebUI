@@ -15,12 +15,16 @@ export const PreferenceCoverage = Object.freeze({
 
 export const PreferenceProvenance = Object.freeze({
   WORLD: "WORLD",
-  PROFILE: "PROFILE",
-  UPSTREAM_DEFAULT: "UPSTREAM_DEFAULT",
-  KNOWN_DEFAULT: "KNOWN_DEFAULT",
+  PROFILE_SOURCE_DEFAULT: "PROFILE_SOURCE_DEFAULT",
+  CURATED_DEFAULT: "KNOWN_DEFAULT",
   INHERITED: "INHERITED",
   UPSTREAM_FALLBACK: "UPSTREAM_FALLBACK",
-  SAFE_PLACEHOLDER: "SAFE_PLACEHOLDER"
+  UNKNOWN: "UNKNOWN",
+  // Compatibility aliases keep old callers readable without weakening the precise runtime categories.
+  PROFILE: "PROFILE_SOURCE_DEFAULT",
+  UPSTREAM_DEFAULT: "PROFILE_SOURCE_DEFAULT",
+  KNOWN_DEFAULT: "KNOWN_DEFAULT",
+  SAFE_PLACEHOLDER: "UNKNOWN"
 });
 
 export const PreferenceTypeAgreement = Object.freeze({

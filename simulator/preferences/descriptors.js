@@ -76,7 +76,7 @@ function selectCandidate(candidates, declaredType) {
   }
   return {
     value: preferencePlaceholder(declaredType || PreferenceType.STRING),
-    provenance: PreferenceProvenance.SAFE_PLACEHOLDER,
+    provenance: PreferenceProvenance.UNKNOWN,
     exactValue: false,
     rejected
   };
@@ -141,10 +141,10 @@ export function buildPreferenceDescriptors(base = {}, keys = null, options = {})
     const fallback = safeFallbackCandidate(declared, valueType);
     const selected = selectCandidate([
       {present: hasOwn(source, key), value: source[key], provenance: PreferenceProvenance.WORLD},
-      {present: hasOwn(declared, 'upstreamDefaultValue'), value: declared.upstreamDefaultValue, provenance: PreferenceProvenance.UPSTREAM_DEFAULT},
-      {present: hasOwn(declared, 'default'), value: declared.default, provenance: PreferenceProvenance.PROFILE},
-      {present: hasOwn(profileDefaults, key), value: profileDefaults[key], provenance: PreferenceProvenance.PROFILE},
-      {present: hasKnownPreferenceDefault(key), value: known, provenance: PreferenceProvenance.KNOWN_DEFAULT},
+      {present: hasOwn(declared, 'upstreamDefaultValue'), value: declared.upstreamDefaultValue, provenance: PreferenceProvenance.PROFILE_SOURCE_DEFAULT},
+      {present: hasOwn(declared, 'default'), value: declared.default, provenance: PreferenceProvenance.PROFILE_SOURCE_DEFAULT},
+      {present: hasOwn(profileDefaults, key), value: profileDefaults[key], provenance: PreferenceProvenance.PROFILE_SOURCE_DEFAULT},
+      {present: hasKnownPreferenceDefault(key), value: known, provenance: PreferenceProvenance.CURATED_DEFAULT, exactValue: false},
       {present: hasOwn(inherited, key), value: inherited[key], provenance: PreferenceProvenance.INHERITED},
       {present: fallback.present && fallback.compatible, value: fallback.value, provenance: fallback.provenance, exactValue: false}
     ], valueType);
@@ -159,7 +159,7 @@ export function buildPreferenceDescriptors(base = {}, keys = null, options = {})
     const bindingOwnsWrite = modeled.has(key) && !hasExplicitWriteSchema;
     let coverage;
 
-    if (conflict || unresolvedRead || provenance === PreferenceProvenance.SAFE_PLACEHOLDER) {
+    if (conflict || unresolvedRead || provenance === PreferenceProvenance.UNKNOWN) {
       coverage = PreferenceCoverage.UNKNOWN;
     }
     else if (structured || getterOnly || unresolvedWrite) {
