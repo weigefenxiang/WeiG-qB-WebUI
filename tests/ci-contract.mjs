@@ -34,9 +34,16 @@ assert(windows.includes('$tests = @(')&&windows.includes('foreach ($test in $tes
 for(const name of browserTests)assert(windows.includes(`'tests/${name}'`),`Windows browser list missing ${name}`);
 assert(releaseCompat.includes('from 4.1.0')&&releaseCompat.includes('qb-release-catalog.mjs upstream-qb --output=qb-releases.json'),'candidate compatibility job must generate the exact qB 4.1.0 -> latest stable catalog');
 assert(releaseCompat.includes('node tests/upstream-release-audit.mjs upstream-qb'),'candidate compatibility job must audit every supported stable tag');
+assert(releaseCompat.includes('node tests/full-stable-product-compat.mjs qb-releases.json'),'candidate compatibility job must execute formal product semantics for every generated stable profile');
+assert(releaseCompat.indexOf('qb-release-catalog.mjs upstream-qb --output=qb-releases.json')<releaseCompat.indexOf('full-stable-product-compat.mjs qb-releases.json'),'formal product matrix must consume the exact generated catalog');
 assert(releaseCompat.includes('name: qb-release-catalog-${{ github.sha }}'),'exact stable catalog must cross the job boundary as a SHA-named artifact');
 assert(candidate.includes('actions/download-artifact@v8')&&candidate.includes('qb-release-catalog-${{ github.sha }}'),'release candidate must reuse the exact audited catalog artifact');
 assert(candidate.includes('cp release-catalog/qb-releases.json webui/private/data/qb-releases.json')&&candidate.includes('test -s release/WeiG-qB-WebUI/private/data/qb-releases.json'),'release zip must embed the source-derived catalog consumed by W.ReleaseProfile');
+
+const fullProduct=read('tests/full-stable-product-compat.mjs');
+for(const owner of ['release-profile.js','settings-schema.js','capabilities.js','torrent-semantics.js','qb-client.js'])assert(fullProduct.includes(`'${owner}'`),`full stable product matrix must execute formal owner ${owner}`);
+assert(fullProduct.includes("catalog[0].qbVersion,'4.1.0'")&&fullProduct.includes('every generated stable profile must enter the formal product matrix'),'full stable product matrix must protect floor and complete catalog coverage');
+assert(!/major\s*>=\s*5\s*\?[^\n]*(?:start|stop|paused|stopped)/i.test(read('tests/release-compat.mjs')),'representative release gate must not use major>=5 as a product behavior oracle');
 
 const pages=read('.github/workflows/pages.yml'),pagesBuild=jobSection(pages,'build','deploy'),pagesVerify=jobSection(pages,'verify'),pagesSource=read('.github/workflows/pages-source.yml');
 assert(pagesSource.includes('name: Virtual qB Pages Source')&&/push:\s*\n\s*branches:\s*\n\s*- dev\s*\n\s*- main/.test(pagesSource),'Pages source relay must watch dev + main');
@@ -54,4 +61,4 @@ assert(profileLive.includes("catalog[0].qbVersion,'4.1.0'")||profileLive.include
 assert(profileLive.includes("item.qbVersion==='4.6.1'")&&profileLive.includes("webApiVersion==='2.9.3'"),'Pages release-profile gate must protect qB 4.6.1/WebAPI 2.9.3 fact');
 assert(profileLive.includes("['downloads','connection','speed','bittorrent','webui','advanced']"),'Pages release-profile gate must exercise all six qB Settings surfaces');
 
-console.log(`CI contract passed for WeiG ${version}: exact qB 4.1.0+ source catalog is audited once and embedded in release/Pages artifacts; hosted Chrome remains canonical; Pages live gates bind exact SHA and source-derived Settings/Torrent capability truth.`);
+console.log(`CI contract passed for WeiG ${version}: exact qB 4.1.0+ source catalog is audited once, executed through every formal product compatibility owner, and embedded in release/Pages artifacts; hosted Chrome remains canonical.`);
