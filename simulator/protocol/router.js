@@ -42,7 +42,7 @@ function text(value,status=200,headers={}){
   return new Response(String(value??''),{status,headers:{'content-type':'text/plain; charset=utf-8','cache-control':'no-store',...headers}});
 }
 function empty(status=200,headers={}){
-  return new Response('',{status,headers:{'cache-control':'no-store',...headers}});
+  return new Response([204,205,304].includes(status)?null:'',{status,headers:{'cache-control':'no-store',...headers}});
 }
 function notFound(){return text('Not Found',404);}
 function notImplemented(path){return text(`Simulator endpoint not implemented: ${path}`,501);}
@@ -98,21 +98,21 @@ function trackerEditResponse(world,form,contract){
       if((torrent.trackers||[]).some(item=>item!==tracker&&item.url===newUrl))return text('New tracker URL already exists',409);
     }
     const tierChanged=hasTier&&Number(tracker.tier)!==tier;
-    if(!urlChanged&&!tierChanged)return empty();
+    if(!urlChanged&&!tierChanged)return empty(contract?.successStatus??200);
     const targetUrl=urlChanged?newUrl:oldUrl;
     if(!editTracker(world,hash,oldUrl,targetUrl))return text('Tracker not found',409);
     const updated=(torrent.trackers||[]).find(item=>item.url===targetUrl);
     if(updated&&hasTier)updated.tier=tier;
-    return empty();
+    return empty(contract?.successStatus??200);
   }
 
   const oldUrl=String(form.origUrl??''),newUrl=String(form.newUrl??'');
-  if(oldUrl===newUrl)return empty();
+  if(oldUrl===newUrl)return empty(contract?.successStatus??200);
   if(!trackerUrlValid(newUrl))return text('New tracker URL is invalid',400);
   const tracker=(torrent.trackers||[]).find(item=>item.url===oldUrl);
   if(!tracker)return text('Tracker not found',409);
   if((torrent.trackers||[]).some(item=>item!==tracker&&item.url===newUrl))return text('New tracker URL already exists',409);
-  return editTracker(world,hash,oldUrl,newUrl)?empty():text('Tracker not found',409);
+  return editTracker(world,hash,oldUrl,newUrl)?empty(contract?.successStatus??200):text('Tracker not found',409);
 }
 function trackerBatchTargets(world,hash,starMeansAll=false){
   const normalized=starMeansAll&&hash==='*'?'all':hash;

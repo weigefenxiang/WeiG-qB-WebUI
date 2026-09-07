@@ -36,10 +36,10 @@ function post(path,body){return new Request(`https://example.invalid/api/v2/${pa
   r=await handleApi(w,post('torrents/editTracker',{hash:t.hash,url:'udp://missing.invalid:80/announce',tier:'2'}));
   assert.equal(r.status,409,'qB 5.2 editTracker must report unknown trackers as conflict');
   r=await handleApi(w,post('torrents/editTracker',{hash:t.hash,url:original,tier:'7'}));
-  assert.equal(r.status,200,'qB 5.2 editTracker must support tier-only updates');
+  assert.equal(r.status,204,'qB 5.2 editTracker must return No Content for successful tier-only updates');
   assert.equal(t.trackers.find(item=>item.url===original)?.tier,7,'tier-only editTracker must persist the new tier');
   r=await handleApi(w,post('torrents/editTracker',{hash:t.hash,url:original,newUrl:replacement,tier:'3'}));
-  assert.equal(r.status,200,'qB 5.2 editTracker must support combined URL and tier updates');
+  assert.equal(r.status,204,'qB 5.2 editTracker must return No Content for successful combined URL and tier updates');
   assert.equal(t.trackers.find(item=>item.url===replacement)?.tier,3,'combined editTracker must persist both URL and tier');
   r=await handleApi(w,post('torrents/editTracker',{hash:'missing',url:replacement,tier:'2'}));
   assert.equal(r.status,404,'qB 5.2 editTracker must preserve Not Found for missing torrents');

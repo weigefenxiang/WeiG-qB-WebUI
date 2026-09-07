@@ -49,13 +49,15 @@ function editTrackerContract(version){
     mutationParameters:['newUrl','tier'],
     mutationParameterRequirement:'at-least-one',
     trackerUrlParameter:'url',
-    tierEdit:true
+    tierEdit:true,
+    successStatus:204
   }:{
     requiredParameters:['hash','origUrl','newUrl'],
     mutationParameters:['newUrl'],
     mutationParameterRequirement:'required',
     trackerUrlParameter:'origUrl',
-    tierEdit:false
+    tierEdit:false,
+    successStatus:200
   };
 }
 

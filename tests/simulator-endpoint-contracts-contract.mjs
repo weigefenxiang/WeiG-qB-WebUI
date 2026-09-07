@@ -67,11 +67,13 @@ const profile=webApiVersion=>({webApiVersion});
   assert.deepEqual(legacy.requiredParameters,['hash','origUrl','newUrl']);
   assert.equal(legacy.trackerUrlParameter,'origUrl');
   assert.equal(legacy.tierEdit,false);
+  assert.equal(legacy.successStatus,200);
   assert.deepEqual(modern.requiredParameters,['hash','url']);
   assert.deepEqual(modern.mutationParameters,['newUrl','tier']);
   assert.equal(modern.mutationParameterRequirement,'at-least-one');
   assert.equal(modern.trackerUrlParameter,'url');
   assert.equal(modern.tierEdit,true);
+  assert.equal(modern.successStatus,204);
 }
 
 {
