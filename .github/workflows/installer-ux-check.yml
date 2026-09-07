@@ -52,7 +52,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Installer -help failed.' }
           if ($help -notmatch '-version VERSION') { throw 'Missing -version help.' }
           if ($help -notmatch '-configure') { throw 'Missing -configure help.' }
-          & powershell -NoProfile -ExecutionPolicy Bypass -File .\installers\install.ps1 -dev -version 0.3.60 *> $env:TEMP\weigg-conflict.txt
-          if ($LASTEXITCODE -eq 0) { throw 'Expected -dev + -version to fail.' }
-          $conflict = Get-Content $env:TEMP\weigg-conflict.txt -Raw
+          $stdout = Join-Path $env:TEMP 'weigg-conflict-out.txt'
+          $stderr = Join-Path $env:TEMP 'weigg-conflict-err.txt'
+          $p = Start-Process powershell -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-File','.\installers\install.ps1','-dev','-version','0.3.60') -Wait -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+          if ($p.ExitCode -eq 0) { throw 'Expected -dev + -version to fail.' }
+          $conflict = ((Get-Content $stdout -Raw -ErrorAction SilentlyContinue) + (Get-Content $stderr -Raw -ErrorAction SilentlyContinue))
           if ($conflict -notmatch '-version and -dev') { throw 'Expected version/dev conflict message.' }
