@@ -14,7 +14,7 @@
 
 **[🌐 線上預覽](https://weigefenxiang.github.io/WeiG-qB-WebUI/)** · **[⬇️ 下載最新正式版](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/WeiG-qB-WebUI.zip)**
 
-**語言**：[English](../README.md) · [簡中](README.zh-CN.md) · **繁中** · 日本語 · 한국어 · Deutsch · Français · Español · Português · Русский
+**語言**：[English](../README.md) · [簡中](README.zh-CN.md) · **繁中** · [日本語](README.ja.md) · [한국어](README.ko.md) · [Deutsch](README.de.md) · [Français](README.fr.md) · [Español](README.es.md) · [Português](README.pt.md) · [Русский](README.ru.md)
 
 ## 直接下載
 
@@ -356,7 +356,7 @@ powershell -ExecutionPolicy Bypass -File .\weigg-install.ps1 -rollback
 
 ## 更多說明
 
-Docker 多容器、NAS、自訂路徑、更新及進階部署說明請參閱中英雙語的：[安裝、升級與手動部署](../docs/007.安装升级与手动部署.md)。
+Docker 多容器、NAS、自訂路徑、更新及進階部署說明請參閱：[安裝、升級與手動部署](../docs/007.安装升级与手动部署.md)。
 
 ## 授權條款
 
