@@ -2,7 +2,7 @@ name: Future Stable Watch
 
 on:
   schedule:
-    - cron: '17 4 * * *'
+    - cron: '26 19 * * 5'
   workflow_dispatch:
   push:
     branches:
