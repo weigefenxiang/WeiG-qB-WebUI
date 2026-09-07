@@ -45,9 +45,9 @@
   Client.prototype.setPreferences=async function(prefs){requireSourceAction('appcontroller.h:setPreferencesAction','app/setPreferences');return this.request('app/setPreferences',{method:'POST',form:{json:JSON.stringify(prefs||{})},type:'void'});};
   Client.prototype.getAltSpeedLimits=async function(){var prefs=await this.getPreferences();return{down:Math.max(0,Math.round((Number(prefs&&prefs.alt_dl_limit)||0)*1024)),up:Math.max(0,Math.round((Number(prefs&&prefs.alt_up_limit)||0)*1024))};};
   Client.prototype.setAltSpeedLimits=function(down,up){return this.setPreferences({alt_dl_limit:Math.max(0,Math.round((Number(down)||0)/1024)),alt_up_limit:Math.max(0,Math.round((Number(up)||0)/1024))});};
-  Client.prototype.getBuildInfo=function(){return this.request('app/buildInfo');};
-  Client.prototype.getCookies=function(){return this.request('app/cookies');};
-  Client.prototype.setCookies=function(cookies){return this.request('app/setCookies',{method:'POST',json:Array.isArray(cookies)?cookies:[],type:'void'});};
+  Client.prototype.getBuildInfo=function(){requireSourceAction('appcontroller.h:buildInfoAction','app/buildInfo');return this.request('app/buildInfo');};
+  Client.prototype.getCookies=function(){requireSourceAction('appcontroller.h:cookiesAction','app/cookies');return this.request('app/cookies');};
+  Client.prototype.setCookies=function(cookies){requireSourceAction('appcontroller.h:setCookiesAction','app/setCookies');return this.request('app/setCookies',{method:'POST',form:{cookies:JSON.stringify(Array.isArray(cookies)?cookies:[])},type:'void'});};
   Client.prototype.torrentCreatorAdd=function(params){return this.request('torrentcreator/addTask',{method:'POST',form:params||{}});};
   Client.prototype.torrentCreatorStatus=function(taskID){return this.request('torrentcreator/status'+(taskID?'?taskID='+encodeURIComponent(taskID):''));};
   Client.prototype.torrentCreatorDelete=function(taskID){return this.request('torrentcreator/deleteTask',{method:'POST',form:{taskID:taskID},type:'void'});};
