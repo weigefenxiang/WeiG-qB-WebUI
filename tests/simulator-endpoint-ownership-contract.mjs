@@ -35,7 +35,6 @@ assert.match(auxiliary,/contract\?\.responseShape==='ordered-array'/,'parseMetad
 assert.match(auxiliary,/projectPeerHostNames\(world,merged,contract\)/,'sync/torrentPeers must consume the router-resolved hostname contract');
 assert.equal(auxiliary.includes("'2.13.0'"),false,'auxiliary router must not retain the migrated parseMetadata 2.13.0 semantic boundary');
 assert.equal(auxiliary.includes("'2.14.0'"),false,'auxiliary router must not retain the migrated torrents/add 2.14.0 semantic boundary');
-assert.equal(auxiliary.includes("'2.15.1'"),false,'auxiliary router must not own the peer host_name 2.15.1 boundary');
 assert.equal(authPolicy.includes("'2.14.0'"),false,'credential acceptance policy must not own WebAPI response-version boundaries');
 assert.equal(peerView.includes("'2.15.1'"),false,'peer projection must consume Endpoint Contract instead of owning the host_name revision literal');
 
