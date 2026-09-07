@@ -27,7 +27,7 @@ export async function summarizeProductProfile(profile,catalog,shared=null){
   await C.bind(client);
   if(R.current()?.qbVersion!==profile.qbVersion)throw new Error(`${profile.qbVersion}: ReleaseProfile exact bind failed during product diff.`);
   if(!F||!Array.isArray(F.fields))throw new Error(`${profile.qbVersion}: TorrentFieldRegistry is unavailable during product diff.`);
-  return{qbVersion:profile.qbVersion,webApiVersion:profile.webApiVersion,capabilities:rt.featureIds.filter(id=>C.supports(id)),filters:T.statusFilters().map(String).sort(),actions:ACTIONS.filter(action=>R.supportsTorrentAction(action)),fieldProvenance:F.fields.map(field=>`${field.key}=${F.provenance(field.key,profile).mode}`).sort(),writablePreferences:(profile.preferenceDescriptors||[]).filter(item=>item?.writable===true).map(item=>String(item.key)).sort()};
+  return{qbVersion:profile.qbVersion,webApiVersion:profile.webApiVersion,capabilities:rt.featureIds.filter(id=>C.supports(id)),filters:T.statusFilters().map(String).sort(),actions:ACTIONS.filter(action=>R.supportsTorrentAction(action)),fieldProvenance:Array.from(F.fields,field=>`${field.key}=${F.provenance(field.key,profile).mode}`).sort(),writablePreferences:(profile.preferenceDescriptors||[]).filter(item=>item?.writable===true).map(item=>String(item.key)).sort()};
 }
 export function renderProductDiff(rows){
   if(rows.length<2)return '# Product Capability Diff\n\nNo new official stable profiles to compare.\n';
