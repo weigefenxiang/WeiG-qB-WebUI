@@ -418,10 +418,15 @@ WeiG Virtual qB Lab is a non-product backend simulator. Formal `webui/**` remain
 
 Structural endpoint existence remains owned by the upstream source/action catalog and `upstream-gates.js`; Preference semantics remain owned by the Preference pipeline; Torrent filter/info-parameter semantics remain owned by Torrent surface owners. Endpoint Contract must not absorb those orthogonal responsibilities.
 
-Unknown/unclassified endpoint semantic revision fails closed. Feature flags, new→old fallback, compatibility aliases and long-lived dual owners are prohibited. `tests/simulator-endpoint-ownership-contract.mjs` protects the first atomic cutover from regaining the migrated 2.11.9 / 2.13.0 / 2.15.0 / 2.15.1 caller branches.
+Unknown/unclassified endpoint semantic revision fails closed. Feature flags, new→old fallback, compatibility aliases and long-lived dual owners are prohibited. `tests/simulator-endpoint-ownership-contract.mjs` protects migrated caller boundaries from regaining endpoint-version policy.
+
+### SIMULATOR-TRANSPORT-CONTRACT — HTTP/transport evolution has a separate owner
+`simulator/protocol/transport-contract.js` is the Current Owner for audited transport semantics that are not endpoint-domain behavior. It owns boundaries such as WebAPI 2.15.0 Basic Auth acceptance and qB 5.2.2 `X-Forwarded-Host` trust gating. Service Worker/transport adapters consume this contract; router/core must not duplicate transport-version policy.
+
+Endpoint Contract and Transport Contract are deliberately separate: endpoint request/response/mutation semantics stay in `endpoint-contracts.js`; HTTP authentication/header/proxy transport semantics stay in `transport-contract.js`; structural endpoint existence stays source-derived. Ledger entries may explicitly name the transport owner instead of being falsely attributed to Endpoint Contract.
 
 ### SIMULATOR-AUTH — demo login follows real product flow
-Virtual qB accepts arbitrary credentials. Lab presentation may prefill `demo/demo` only in the generated Pages artifact; Clean Mode leaves the product login source untouched. Logout invalidates the virtual session so protected API calls return 403 and the existing `SessionController` completes the real logout verification flow.
+Virtual qB accepts arbitrary credentials by default for Lab usability; tests may provide an explicit strict authentication policy when verifying credential failures. Lab presentation may prefill `demo/demo` only in the generated Pages artifact; Clean Mode leaves the product login source untouched. Logout invalidates the virtual session so protected API calls return 403 and the existing `SessionController` completes the real logout verification flow. WebAPI 2.14.0+ login status semantics and WebAPI 2.15.0+ Basic Auth transport semantics are validated independently by their canonical contracts.
 
 ### SIMULATOR-POLICY — settings have observable effects
 A simulator setting marked modeled must affect virtual behavior. Global/per-torrent rate limits, active Torrent limits, connection/upload slot limits, queueing, Force Start, Ratio and seeding-time policies must constrain the same Scheduler snapshot consumed by Torrent rows, `transfer/info` and `sync/maindata`. Returning success without the corresponding semantic change is prohibited.
