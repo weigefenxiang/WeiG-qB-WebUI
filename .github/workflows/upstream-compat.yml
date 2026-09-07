@@ -4,7 +4,13 @@ on:
   push:
     branches:
       - dev
-      - 'phase-c/**'
+    paths:
+      - '.github/workflows/upstream-compat.yml'
+      - 'tools/qb-*.mjs'
+      - 'tools/data/qb-webapi-evolution-ledger.json'
+      - 'tests/upstream-release-audit.mjs'
+      - 'webui/private/scripts/qb-client.js'
+      - 'webui/private/scripts/settings-schema.js'
   workflow_dispatch:
 
 permissions:
@@ -25,8 +31,6 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 22
-      - name: Run repository contracts
-        run: npm test
       - name: Checkout qBittorrent upstream with full stable history
         uses: actions/checkout@v7
         with:
