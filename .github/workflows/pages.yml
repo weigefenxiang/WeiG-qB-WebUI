@@ -14,6 +14,7 @@ on:
     - cron: '17 4 * * 1'
 
 permissions:
+  actions: read
   contents: read
   pages: write
   id-token: write
@@ -27,7 +28,7 @@ env:
 
 jobs:
   build:
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch != 'main') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout WeiG source
@@ -97,6 +98,15 @@ jobs:
           test -s "$RUNNER_TEMP/virtual-qb-site/metadata/qb-releases.json"
           test -s "$RUNNER_TEMP/virtual-qb-site/dev/app/__source/private/data/qb-releases.json"
 
+      - name: Publish exact reusable dev Pages site
+        if: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_branch == 'dev' }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: virtual-qb-pages-site-${{ env.WEIGG_PAGES_SOURCE_SHA }}
+          path: ${{ runner.temp }}/virtual-qb-site
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v6
 
@@ -157,3 +167,168 @@ jobs:
           node tests/pages-live-release-profile.mjs
           node tests/pages-live-services.mjs
           node tests/pages-live-mobile-layout.mjs
+
+  reuse_main:
+    if: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' }}
+    runs-on: ubuntu-latest
+    outputs:
+      source_run_id: ${{ steps.resolve.outputs.source_run_id }}
+    steps:
+      - name: Resolve exact successful dev Pages site
+        id: resolve
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXACT_SHA: ${{ env.WEIGG_PAGES_SOURCE_SHA }}
+        run: |
+          set -euo pipefail
+          test "$(git ls-remote "https://github.com/$GITHUB_REPOSITORY.git" refs/heads/main | awk '{print $1}')" = "$EXACT_SHA"
+          rm -rf reusable-site "$RUNNER_TEMP/pages-reuse"
+          mkdir -p "$RUNNER_TEMP/pages-reuse"
+
+          mapfile -t RUN_IDS < <(gh api \
+            "/repos/$GITHUB_REPOSITORY/actions/workflows/pages.yml/runs?status=success&per_page=30" \
+            --jq '.workflow_runs[].id')
+
+          for RUN_ID in "${RUN_IDS[@]}"; do
+            if gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/artifacts?per_page=100" \
+              --jq ".artifacts[] | select(.expired == false and .name == \"virtual-qb-pages-site-$EXACT_SHA\") | .id" | grep -q .; then
+              rm -rf reusable-site
+              gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" \
+                --name "virtual-qb-pages-site-$EXACT_SHA" --dir reusable-site
+              if node --input-type=module - "$EXACT_SHA" <<'NODE'
+          import fs from 'node:fs';
+          const sha=process.argv[2];
+          const site=JSON.parse(fs.readFileSync('reusable-site/metadata/site.json','utf8'));
+          const dev=JSON.parse(fs.readFileSync('reusable-site/dev/app/virtual-qb-build.json','utf8'));
+          if(site.simulatorSha!==sha||site.branches?.dev?.exactSha!==sha||dev.branch!=='dev'||dev.exactSha!==sha||dev.simulatorSha!==sha)process.exit(1);
+          NODE
+              then
+                echo "source_run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+                echo "Reusing exact dev Pages artifact from successful run $RUN_ID."
+                exit 0
+              fi
+            fi
+          done
+
+          for RUN_ID in "${RUN_IDS[@]}"; do
+            if ! gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/artifacts?per_page=100" \
+              --jq '.artifacts[] | select(.expired == false and .name == "github-pages") | .id' | grep -q .; then
+              continue
+            fi
+            TMP="$RUNNER_TEMP/pages-reuse/$RUN_ID"
+            rm -rf "$TMP"
+            mkdir -p "$TMP/download" "$TMP/site"
+            if ! gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" --name github-pages --dir "$TMP/download"; then
+              continue
+            fi
+            TAR_FILE="$(find "$TMP/download" -maxdepth 2 -type f -name '*.tar' | head -n 1 || true)"
+            test -n "$TAR_FILE" || continue
+            tar -xf "$TAR_FILE" -C "$TMP/site"
+            if ROOT="$TMP/site" node --input-type=module - "$EXACT_SHA" <<'NODE'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          const sha=process.argv[2],root=process.env.ROOT;
+          try{
+            const site=JSON.parse(fs.readFileSync(path.join(root,'metadata','site.json'),'utf8'));
+            const dev=JSON.parse(fs.readFileSync(path.join(root,'dev','app','virtual-qb-build.json'),'utf8'));
+            if(site.simulatorSha!==sha||site.branches?.dev?.exactSha!==sha||dev.branch!=='dev'||dev.exactSha!==sha||dev.simulatorSha!==sha)process.exit(1);
+          }catch{process.exit(1);}
+          NODE
+            then
+              rm -rf reusable-site
+              mv "$TMP/site" reusable-site
+              echo "source_run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+              echo "Reusing legacy exact dev github-pages artifact from successful run $RUN_ID."
+              exit 0
+            fi
+          done
+
+          echo "No successful exact dev Pages artifact exists for $EXACT_SHA." >&2
+          exit 1
+
+      - name: Promote exact dev snapshot to main alias
+        shell: bash
+        env:
+          EXACT_SHA: ${{ env.WEIGG_PAGES_SOURCE_SHA }}
+        run: |
+          set -euo pipefail
+          test -f reusable-site/metadata/site.json
+          test -f reusable-site/dev/app/virtual-qb-build.json
+          test -f reusable-site/dev/app/index.html
+
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import path from 'node:path';
+
+          const sha=process.env.EXACT_SHA;
+          const root=path.resolve('reusable-site');
+          const readJson=file=>JSON.parse(fs.readFileSync(file,'utf8'));
+          const writeJson=(file,value)=>fs.writeFileSync(file,JSON.stringify(value,null,2)+'\n','utf8');
+
+          const siteFile=path.join(root,'metadata','site.json');
+          const site=readJson(siteFile);
+          if(site.simulatorSha!==sha)throw new Error(`Reusable site simulatorSha ${site.simulatorSha} != ${sha}`);
+          if(site.branches?.dev?.exactSha!==sha)throw new Error(`Reusable site dev SHA ${site.branches?.dev?.exactSha} != ${sha}`);
+
+          const devBuildFile=path.join(root,'dev','app','virtual-qb-build.json');
+          const devBuild=readJson(devBuildFile);
+          if(devBuild.branch!=='dev'||devBuild.exactSha!==sha||devBuild.simulatorSha!==sha)throw new Error('Reusable dev app identity mismatch.');
+
+          const mainApp=path.join(root,'main','app');
+          fs.rmSync(mainApp,{recursive:true,force:true});
+          fs.cpSync(path.join(root,'dev','app'),mainApp,{recursive:true,force:true});
+
+          const mainIndex=path.join(mainApp,'index.html');
+          fs.writeFileSync(mainIndex,fs.readFileSync(mainIndex,'utf8').replace('Branch: dev.','Branch: main.'),'utf8');
+
+          const mainBuildFile=path.join(mainApp,'virtual-qb-build.json');
+          const mainBuild=readJson(mainBuildFile);
+          mainBuild.branch='main';
+          mainBuild.exactSha=sha;
+          mainBuild.productVersion=site.branches.dev.productVersion;
+          mainBuild.simulatorSha=sha;
+          writeJson(mainBuildFile,mainBuild);
+
+          const mainMeta=readJson(path.join(root,'metadata','dev.json'));
+          mainMeta.branch='main';
+          mainMeta.exactSha=sha;
+          mainMeta.productVersion=site.branches.dev.productVersion;
+          mainMeta.simulatorSha=sha;
+          mainMeta.webuiSource='refs/heads/main:webui/**';
+          writeJson(path.join(root,'metadata','main.json'),mainMeta);
+
+          site.branches.main={...site.branches.dev,exactSha:sha};
+          site.promotedMainAt=new Date().toISOString();
+          writeJson(siteFile,site);
+
+          const finalMain=readJson(mainBuildFile);
+          const finalSite=readJson(siteFile);
+          if(finalMain.branch!=='main'||finalMain.exactSha!==sha||finalMain.simulatorSha!==sha)throw new Error('Promoted main app identity check failed.');
+          if(finalSite.branches?.main?.exactSha!==sha||finalSite.branches?.dev?.exactSha!==sha)throw new Error('Promoted site branch identity check failed.');
+          NODE
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v6
+
+      - name: Upload promoted GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: reusable-site
+
+  promote_deploy:
+    needs: reuse_main
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy promoted exact dev snapshot as main
+        id: deployment
+        uses: actions/deploy-pages@v5
+
+      - name: Promotion summary
+        run: |
+          echo "main Pages reused exact dev validation for $WEIGG_PAGES_SOURCE_SHA"
+          echo "Reusable dev Pages run: ${{ needs.reuse_main.outputs.source_run_id }}"
+          echo "No qB checkout, npm test, site rebuild, or browser verify was rerun on main."
