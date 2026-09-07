@@ -1,7 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
-import {compareVersions,readLedger,summarizeLedger,validateLedger,validateModernChangelogCoverage} from './qb-webapi-evolution.mjs';
+import {compareVersions,readLedger,summarizeCatalogSurfaceEvolution,summarizeLedger,validateLedger,validateModernChangelogCoverage} from './qb-webapi-evolution.mjs';
+import {supportedStableReleaseTags} from './qb-release-tags.mjs';
 
 const qbRoot=path.resolve(process.argv[2]||process.env.QB_UPSTREAM_DIR||'');
 const catalogPath=path.resolve(process.argv[3]||process.env.QB_RELEASE_CATALOG||'');
@@ -17,6 +18,14 @@ function releaseSection(changelog,qbVersion){
 }
 const official=catalog.filter(item=>item?.stable===true&&item?.officialWeiGSupport!==false);
 if(!official.length)throw new Error('catalog has no supported stable profiles');
+const upstreamStableTags=supportedStableReleaseTags(git('tag','--list','release-*').split(/\r?\n/).filter(Boolean));
+const catalogTags=official.map(item=>String(item?.tag||`release-${item?.qbVersion||''}`));
+if(JSON.stringify(catalogTags)!==JSON.stringify(upstreamStableTags)){
+  const upstreamSet=new Set(upstreamStableTags),catalogSet=new Set(catalogTags);
+  const missing=upstreamStableTags.filter(tag=>!catalogSet.has(tag)),extra=catalogTags.filter(tag=>!upstreamSet.has(tag));
+  throw new Error(`stable catalog coverage drifted: missing=[${missing.join(', ')}] extra=[${extra.join(', ')}]`);
+}
+const surfaceSummary=summarizeCatalogSurfaceEvolution(official);
 if(String(official[0].qbVersion)!==ledger.scope.floorQb||String(official[0].webApiVersion)!==ledger.scope.floorApi)throw new Error(`support floor drifted: ${official[0].qbVersion}/${official[0].webApiVersion}`);
 let previous=null;const spine=new Set(ledger.spine);
 for(const profile of official){
@@ -48,4 +57,5 @@ for(const item of releaseEvidence){
   const section=releaseSection(changelog,item.q);if(!section)throw new Error(`cannot locate qB ${item.q} release section`);
   if(!section.includes(item.x))throw new Error(`qB ${item.q}/WebAPI ${item.v}: release evidence text not found: ${item.x}`);
 }
-console.log(`WebAPI evolution audit passed: ${official.length} supported stable profiles; ${summary.evidenceEntries} evidence entries / ${summary.changes} classified changes; SOURCE_DERIVED=${summary.classifications.SOURCE_DERIVED}, CONTRACT_COVERED=${summary.classifications.CONTRACT_COVERED}, MISSING=${summary.classifications.MISSING}, NOT_APPLICABLE=${summary.classifications.NOT_APPLICABLE}, UNCLASSIFIED=${summary.classifications.UNCLASSIFIED}; modern changelog PRs=${modern.pullRequests}; ceiling=${summary.ceiling}.`);
+const torrentFieldDelta=surfaceSummary.surfaces.torrentInfoFields;
+console.log(`WebAPI evolution audit passed: ${official.length} supported stable profiles; exact upstream stable-tag coverage ${upstreamStableTags[0]} -> ${upstreamStableTags.at(-1)}; source surface profiles=${surfaceSummary.profiles}, Torrent field deltas +${torrentFieldDelta.added}/-${torrentFieldDelta.removed}, action-parameter changes=${surfaceSummary.actionParameterChanges}; ${summary.evidenceEntries} evidence entries / ${summary.changes} classified changes; SOURCE_DERIVED=${summary.classifications.SOURCE_DERIVED}, CONTRACT_COVERED=${summary.classifications.CONTRACT_COVERED}, MISSING=${summary.classifications.MISSING}, NOT_APPLICABLE=${summary.classifications.NOT_APPLICABLE}, UNCLASSIFIED=${summary.classifications.UNCLASSIFIED}; modern changelog PRs=${modern.pullRequests}; ceiling=${summary.ceiling}.`);
