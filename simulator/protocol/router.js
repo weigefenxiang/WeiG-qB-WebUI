@@ -1,8 +1,9 @@
 import {
-  addTags,authenticate,capabilityAvailable,createCategory,createTags,deleteTags,
+  addTags,capabilityAvailable,createCategory,createTags,deleteTags,
   deleteTorrents,logs,logout,removeCategories,removeTags,renameTorrent,
   setCategory,setForceStart,setPaused,setTorrentLimit
 } from '../core/engine.js';
+import {tryAuthenticate} from '../core/auth-policy.js';
 import {
   addTrackers,applyRuntimePolicies,banPeers,editTracker,movePriority,peerLogItems,
   reannounceTorrents,recheckTorrents,removeTrackers,setAutoManagement,setFilePriority,setLocation,
@@ -26,7 +27,7 @@ import {
 } from '../core/virtual-services.js';
 import {createPreferenceRuntime} from '../preferences/runtime.js';
 import {handleAuxiliaryApi} from './auxiliary-router.js';
-import {resolveEndpointContract} from './endpoint-contracts.js';
+import {resolveEndpointContract,resolveMissingEndpointContract} from './endpoint-contracts.js';
 import {upstreamRouteAvailable} from './upstream-gates.js';
 
 const RUNTIME_POLICY_INTERVAL_MS=500;
@@ -200,7 +201,11 @@ export async function handleApi(world,request,url=new URL(request.url)){
   if(index<0)return notFound();
   const path=url.pathname.slice(index+marker.length).replace(/^\/+/, '');
   const method=request.method.toUpperCase();
-  if(!upstreamRouteAvailable(world.profile,path))return notFound();
+  if(!upstreamRouteAvailable(world.profile,path)){
+    const missingContract=resolveMissingEndpointContract(world.profile);
+    if(missingContract.semanticRevision==='unclassified')return text(`Simulator missing-endpoint contract unclassified: ${path}`,501);
+    return text(missingContract.body,missingContract.status);
+  }
   const contract=resolveEndpointContract(world.profile,path);
   if(contract?.semanticRevision==='unclassified')return text(`Simulator semantic contract unclassified: ${path}`,501);
   const now=Date.now();
@@ -209,8 +214,10 @@ export async function handleApi(world,request,url=new URL(request.url)){
 
   if(path==='auth/login'&&method==='POST'){
     const form=await formObject(request);
-    authenticate(world,String(form.username??''),String(form.password??''));
-    return text('Ok.');
+    const accepted=tryAuthenticate(world,String(form.username??''),String(form.password??''),now);
+    if(!accepted)return text(contract?.invalidCredentialsText??'Unauthorized',contract?.invalidCredentialsStatus??401);
+    if(contract?.successBody==='empty')return empty(contract?.successStatus??204);
+    return text(contract?.successText??'Ok.',contract?.successStatus??200);
   }
   if(path==='auth/logout'&&method==='POST'){
     logout(world);

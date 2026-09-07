@@ -27,10 +27,12 @@ const parseMetadataChanges=ledger.modern.find(entry=>entry[0]==='2.13.0'&&entry[
 assert.ok(parseMetadataChanges.some(change=>change[0]==='C'&&change[1].includes('object to ordered array')),'2.13.0 parseMetadata response shape must be Endpoint Contract covered');
 assert.equal(parseMetadataChanges.some(change=>change[0]==='M'),false,'closed parseMetadata response-shape boundary must leave the MISSING backlog');
 
-const addResultChanges=ledger.modern.find(entry=>entry[0]==='2.14.0'&&entry[1]===23202)?.[2]||[];
-assert.ok(addResultChanges.some(change=>change[0]==='C'&&change[1].includes('torrents/add structured result')),'2.14.0 torrents/add result/status semantics must be Endpoint Contract covered');
-assert.ok(addResultChanges.some(change=>change[0]==='M'&&change[1].includes('unknown endpoint')),'PR #23202 unknown-endpoint error semantics must remain explicit Phase D debt');
-assert.ok(addResultChanges.some(change=>change[0]==='M'&&change[1].includes('auth/login')),'PR #23202 auth/login 401 semantics must remain explicit Phase D debt');
+const pr23202Changes=ledger.modern.find(entry=>entry[0]==='2.14.0'&&entry[1]===23202)?.[2]||[];
+assert.equal(pr23202Changes.length,3,'PR #23202 must stay split into its three independently audited protocol changes');
+assert.ok(pr23202Changes.every(change=>change[0]==='C'),'all PR #23202 protocol changes must be Endpoint Contract covered');
+assert.ok(pr23202Changes.some(change=>change[1].includes('unknown endpoint')&&change[1].includes('Endpoint does not exist')),'2.14.0 missing-endpoint error body must be covered');
+assert.ok(pr23202Changes.some(change=>change[1].includes('auth/login success becomes 204')&&change[1].includes('401 Unauthorized')),'2.14.0 login success/failure status transition must be covered');
+assert.ok(pr23202Changes.some(change=>change[1].includes('torrents/add structured result')),'2.14.0 torrents/add result/status semantics must remain covered');
 
 assert.deepEqual([...new Set(changes.filter(change=>change.classification==='CONTRACT_COVERED').map(change=>change.owner))],['simulator/protocol/endpoint-contracts.js']);
 const fixture=`# WebAPI Changelog

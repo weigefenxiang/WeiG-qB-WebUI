@@ -34,13 +34,48 @@ function formRequest(url,body){
 }
 
 {
-  const w=world();authenticate(w,'demo','demo');
+  const w=world();
   let r=await handleApi(w,formRequest('https://example.invalid/api/v2/auth/login',{username:'x',password:'y'}));
-  assert.equal(r.status,200);assert.equal((await r.text()).trim(),'Ok.','router accepts arbitrary login');
+  assert.equal(r.status,204,'modern audited WebAPI login success must be No Content');assert.equal(await r.text(),'');
+  assert.equal(w.authenticated,true,'default Virtual Lab policy must keep arbitrary login accepted');
   r=await handleApi(w,formRequest('https://example.invalid/api/v2/auth/logout',{}));
   assert.equal(r.status,200);
   r=await handleApi(w,new Request('https://example.invalid/api/v2/app/preferences'));
   assert.equal(r.status,403,'protected API must fail after logout');
+}
+
+{
+  const legacy=world('5.1.4','2.11.4');
+  legacy.authenticationPolicy={acceptAny:false,username:'demo',password:'demo'};
+  let r=await handleApi(legacy,formRequest('https://example.invalid/api/v2/auth/login',{username:'wrong',password:'wrong'}));
+  assert.equal(r.status,200);assert.equal(await r.text(),'Fails.','pre-2.14 invalid credentials must preserve legacy text response');
+  assert.equal(legacy.authenticated,false);
+  r=await handleApi(legacy,formRequest('https://example.invalid/api/v2/auth/login',{username:'demo',password:'demo'}));
+  assert.equal(r.status,200);assert.equal(await r.text(),'Ok.','pre-2.14 successful login must preserve legacy text response');
+  assert.equal(legacy.authenticated,true);
+
+  const modern=world('5.2.3','2.15.1');
+  modern.authenticationPolicy={acceptAny:false,username:'demo',password:'demo'};
+  r=await handleApi(modern,formRequest('https://example.invalid/api/v2/auth/login',{username:'wrong',password:'wrong'}));
+  assert.equal(r.status,401);assert.equal(await r.text(),'Unauthorized','WebAPI 2.14+ invalid credentials must return HTTP 401 status text');
+  assert.equal(modern.authenticated,false);
+  r=await handleApi(modern,formRequest('https://example.invalid/api/v2/auth/login',{username:'demo',password:'demo'}));
+  assert.equal(r.status,204);assert.equal(await r.text(),'','WebAPI 2.14+ successful login must return No Content');
+  assert.equal(modern.authenticated,true);
+}
+
+{
+  const legacy=world('5.1.4','2.11.4');authenticate(legacy,'demo','demo');
+  legacy.profile.apiActions=['torrentscontroller.h:propertiesAction'];
+  let r=await handleApi(legacy,new Request('https://example.invalid/api/v2/app/definitelyMissing'));
+  assert.equal(r.status,404);assert.equal(await r.text(),'Not Found','pre-2.14 unknown endpoints must retain the generic 404 body');
+
+  const modern=world();authenticate(modern,'demo','demo');
+  modern.profile.apiActions=['torrentscontroller.h:propertiesAction'];
+  r=await handleApi(modern,new Request('https://example.invalid/api/v2/app/definitelyMissing'));
+  assert.equal(r.status,404);assert.equal(await r.text(),'Endpoint does not exist','WebAPI 2.14+ unknown endpoints must use the dedicated endpoint error body');
+  r=await handleApi(modern,new Request('https://example.invalid/api/v2/torrents/properties?hash=missing-resource'));
+  assert.equal(r.status,404);assert.equal(await r.text(),'Not Found','resource-level 404 responses must not be rewritten as missing-endpoint errors');
 }
 
 {
@@ -128,7 +163,7 @@ function formRequest(url,body){
   const firstLast=target.firstLastPriority;toggleFirstLast(w,target.hash);assert.equal(target.firstLastPriority,!firstLast,'first/last priority action must mutate torrent state');
   assert.ok(setFilePriority(w,target.hash,'0',0),'file priority action must find the file');assert.equal(target.files[0].priority,0,'file priority must persist');
   setLocation(w,target.hash,'/virtual/new',1700000000000);assert.equal(target.savePath,'/virtual/new');assert.equal(target.canonicalState,'MOVING');
-  advanceActionStates(w,1700000003000);assert.notEqual(target.canonicalState,'MOVING','move state must recover after virtual maintenance window');
+  advanceActionStates(w,1700000003000);assert.notEqual(target.canonicalState,'MOVING','move state must recover after its virtual maintenance window');
 }
 
 {
@@ -211,4 +246,4 @@ function formRequest(url,body){
   r=await handleApi(w,new Request(`https://example.invalid/api/v2/search/results?id=${job.id}&limit=20&offset=0`));const results=await r.json();assert.ok(results.results.length>0,'router search must return virtual results');
 }
 
-console.log('Virtual qB simulator contract passed: deterministic world, arbitrary login/logout, limits, queueing, scenarios, qB4/qB5 endpoint split, real torrent actions, trackers, peer bans, RSS/search/torrent-creator lifecycles and scheduled policy effects.');
+console.log('Virtual qB simulator contract passed: deterministic world, versioned login and missing-endpoint responses, arbitrary default login, strict credential test policy, limits, queueing, scenarios, qB4/qB5 endpoint split, real torrent actions, trackers, peer bans, RSS/search/torrent-creator lifecycles and scheduled policy effects.');

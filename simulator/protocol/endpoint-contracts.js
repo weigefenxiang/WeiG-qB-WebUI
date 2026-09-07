@@ -32,6 +32,24 @@ function trackerCollectionContract(version,path){
   };
 }
 
+function loginContract(version){
+  const modern=atLeast(version,'2.14.0');
+  return modern?{
+    successStatus:204,
+    successBody:'empty',
+    invalidCredentialsStatus:401,
+    invalidCredentialsBody:'status-text',
+    invalidCredentialsText:'Unauthorized'
+  }:{
+    successStatus:200,
+    successBody:'legacy-text',
+    successText:'Ok.',
+    invalidCredentialsStatus:200,
+    invalidCredentialsBody:'legacy-text',
+    invalidCredentialsText:'Fails.'
+  };
+}
+
 function addTorrentContract(version){
   const structured=atLeast(version,'2.14.0');
   return structured?{
@@ -95,6 +113,7 @@ function parseMetadataContract(version){
 }
 
 const RESOLVERS=new Map([
+  ['auth/login',version=>loginContract(version)],
   ['torrents/add',version=>addTorrentContract(version)],
   ['torrents/addTrackers',(version,path)=>trackerCollectionContract(version,path)],
   ['torrents/removeTrackers',(version,path)=>trackerCollectionContract(version,path)],
@@ -105,6 +124,20 @@ const RESOLVERS=new Map([
   ['torrents/editTracker',version=>editTrackerContract(version)],
   ['torrents/parseMetadata',version=>parseMetadataContract(version)]
 ]);
+
+export function resolveMissingEndpointContract(profile){
+  const revision=semanticRevision(profile);
+  if(!revision.classified)return Object.freeze({
+    webApiVersion:revision.webApiVersion,
+    semanticRevision:'unclassified'
+  });
+  return Object.freeze({
+    webApiVersion:revision.webApiVersion,
+    semanticRevision:'classified',
+    status:404,
+    body:atLeast(revision.webApiVersion,'2.14.0')?'Endpoint does not exist':'Not Found'
+  });
+}
 
 export function resolveEndpointContract(profile,path){
   const normalizedPath=normalizePath(path);

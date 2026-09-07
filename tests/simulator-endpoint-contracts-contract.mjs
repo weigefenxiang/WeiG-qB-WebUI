@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {resolveEndpointContract} from '../simulator/protocol/endpoint-contracts.js';
+import {resolveEndpointContract,resolveMissingEndpointContract} from '../simulator/protocol/endpoint-contracts.js';
 
 const profile=webApiVersion=>({webApiVersion});
 
@@ -55,6 +55,20 @@ const profile=webApiVersion=>({webApiVersion});
 }
 
 {
+  const legacy=resolveEndpointContract(profile('2.13.1'),'auth/login');
+  const modern=resolveEndpointContract(profile('2.14.0'),'auth/login');
+  assert.equal(legacy.successStatus,200);assert.equal(legacy.successBody,'legacy-text');assert.equal(legacy.successText,'Ok.');
+  assert.equal(legacy.invalidCredentialsStatus,200);assert.equal(legacy.invalidCredentialsText,'Fails.');
+  assert.equal(modern.successStatus,204);assert.equal(modern.successBody,'empty');
+  assert.equal(modern.invalidCredentialsStatus,401);assert.equal(modern.invalidCredentialsBody,'status-text');assert.equal(modern.invalidCredentialsText,'Unauthorized');
+
+  const legacyMissing=resolveMissingEndpointContract(profile('2.13.1'));
+  const modernMissing=resolveMissingEndpointContract(profile('2.14.0'));
+  assert.equal(legacyMissing.status,404);assert.equal(legacyMissing.body,'Not Found');
+  assert.equal(modernMissing.status,404);assert.equal(modernMissing.body,'Endpoint does not exist');
+}
+
+{
   const legacy=resolveEndpointContract(profile('2.13.1'),'torrents/add');
   const modern=resolveEndpointContract(profile('2.14.0'),'torrents/add');
   assert.equal(legacy.responseShape,'legacy-text');
@@ -107,9 +121,12 @@ const profile=webApiVersion=>({webApiVersion});
   assert.deepEqual(unknownParseMetadata,{path:'torrents/parseMetadata',webApiVersion:'2.15.2',semanticRevision:'unclassified'});
   const unknownAdd=resolveEndpointContract(profile('2.15.2'),'torrents/add');
   assert.deepEqual(unknownAdd,{path:'torrents/add',webApiVersion:'2.15.2',semanticRevision:'unclassified'});
+  const unknownLogin=resolveEndpointContract(profile('2.15.2'),'auth/login');
+  assert.deepEqual(unknownLogin,{path:'auth/login',webApiVersion:'2.15.2',semanticRevision:'unclassified'});
+  assert.deepEqual(resolveMissingEndpointContract(profile('2.15.2')),{webApiVersion:'2.15.2',semanticRevision:'unclassified'});
   const missing=resolveEndpointContract({},'torrents/properties');
   assert.equal(missing.semanticRevision,'unclassified');
   assert.equal(resolveEndpointContract(profile('2.15.1'),'torrents/reannounce'),null,'structural-only endpoints must not be copied into Endpoint Contract');
 }
 
-console.log('Virtual qB endpoint contracts passed: audited semantic revisions resolve through one interface, add result/status, tracker status/timing, parseMetadata response shape and sync/maindata response lifecycles stay canonical, structural truth stays out, and future unknown revisions fail closed.');
+console.log('Virtual qB endpoint contracts passed: audited semantic revisions resolve through one interface, login/missing-endpoint and add result/status boundaries, tracker status/timing, parseMetadata response shape and sync/maindata response lifecycles stay canonical, structural truth stays out, and future unknown revisions fail closed.');
