@@ -49,6 +49,16 @@ function sourcesFromForm(form){
   if(!out.length)out.push({kind:'placeholder',value:'virtual://added'});
   return out;
 }
+function sourceOutcome(source){
+  if(source.kind!=='url')return'success';
+  const value=String(source.value||'').trim();
+  if(/^magnet:\?/i.test(value))return'success';
+  try{
+    const url=new URL(value);
+    if(url.protocol==='http:'||url.protocol==='https:')return'pending';
+  }catch{}
+  return'failure';
+}
 function normalizeLayout(value){
   const text=String(value||'').trim().toLowerCase().replace(/[ _-]+/g,'');
   if(text==='nosubfolder')return'NoSubfolder';
@@ -96,6 +106,7 @@ function hasShareParams(form){
 
 export function addVirtualTorrentBatch(world,form={},now=Date.now()){
   const sources=sourcesFromForm(form),added=[];
+  let failureCount=0,pendingCount=0;
   const rename=String(form.rename||'').trim(),savepath=cleanPath(form.savepath)||cleanPath(world.preferences?.save_path)||'/downloads';
   const downloadPath=cleanPath(form.downloadPath),useDownloadPath=optionalBool(form.useDownloadPath)??!!downloadPath;
   const stopped=optionalBool(Object.prototype.hasOwnProperty.call(form,'stopped')?form.stopped:form.paused);
@@ -107,7 +118,10 @@ export function addVirtualTorrentBatch(world,form={},now=Date.now()){
   const ssl={certificate:String(form.ssl_certificate??''),privateKey:String(form.ssl_private_key??''),dhParams:String(form.ssl_dh_params??'')};
 
   for(let i=0;i<sources.length;i++){
-    const source=sources[i],sourceValue=source.kind==='url'?String(source.value):'',name=rename||sourceName(source);
+    const source=sources[i],outcome=sourceOutcome(source);
+    if(outcome==='pending'){pendingCount++;continue;}
+    if(outcome==='failure'){failureCount++;continue;}
+    const sourceValue=source.kind==='url'?String(source.value):'',name=rename||sourceName(source);
     const t=addVirtualTorrent(world,{name,url:sourceValue,savepath,category:form.category,tags:form.tags,autoTMM},now+i);
     t.addSourceKind=source.kind;
     t.addSource=source.kind==='file'?String(source.file?.name||''):sourceValue;
@@ -134,14 +148,14 @@ export function addVirtualTorrentBatch(world,form={},now=Date.now()){
   }
 
   const hashes=added.map(t=>t.hash),hashText=hashes.join('|');
-  if(hasShareParams(form))setShareLimits(world,hashText,form);
+  if(hasShareParams(form)&&hashText)setShareLimits(world,hashText,form);
   if(top&&hashText)movePriority(world,hashText,'top',now+sources.length);
   const scheduled=schedule(world,now+sources.length,0);
   recordTorrentChanges(world,[...hashes,...scheduled.changed],[]);
   return{
     success_count:added.length,
-    failure_count:0,
-    pending_count:0,
+    failure_count:failureCount,
+    pending_count:pendingCount,
     added_torrent_ids:hashes,
     torrents:added
   };

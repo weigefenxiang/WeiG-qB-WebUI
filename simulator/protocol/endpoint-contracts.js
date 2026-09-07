@@ -32,6 +32,21 @@ function trackerCollectionContract(version,path){
   };
 }
 
+function addTorrentContract(version){
+  const structured=atLeast(version,'2.14.0');
+  return structured?{
+    responseShape:'structured-result',
+    successStatus:200,
+    pendingStatus:202,
+    allFailedStatus:409
+  }:{
+    responseShape:'legacy-text',
+    successStatus:200,
+    successText:'Ok.',
+    failureText:'Fails.'
+  };
+}
+
 function editCategoryContract(version){
   const modern=atLeast(version,'2.15.1');
   return{
@@ -80,6 +95,7 @@ function parseMetadataContract(version){
 }
 
 const RESOLVERS=new Map([
+  ['torrents/add',version=>addTorrentContract(version)],
   ['torrents/addTrackers',(version,path)=>trackerCollectionContract(version,path)],
   ['torrents/removeTrackers',(version,path)=>trackerCollectionContract(version,path)],
   ['torrents/trackers',version=>trackersContract(version)],

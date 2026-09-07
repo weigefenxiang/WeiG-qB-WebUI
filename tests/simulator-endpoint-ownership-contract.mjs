@@ -22,16 +22,19 @@ assert.match(router,/contract\?\.pipeSeparatedHashes/,'tracker collection mutati
 assert.match(router,/contract\?\.missingResourceStatus===404/,'editCategory missing-resource behavior must consume contract status semantics');
 assert.match(router,/contract\?\.noOp==='conflict'/,'editCategory no-op behavior must consume contract semantics');
 assert.match(auxiliary,/handleAuxiliaryApi\(world,request,path,method,url,contract=null\)/,'auxiliary router must receive the router-resolved contract explicitly');
+assert.match(auxiliary,/contract\?\.responseShape==='structured-result'/,'torrents/add must consume Endpoint Contract response/status semantics');
 assert.match(auxiliary,/contract\?\.responseShape==='ordered-array'/,'parseMetadata must consume Endpoint Contract response-shape semantics');
 assert.equal(auxiliary.includes("'2.13.0'"),false,'auxiliary router must not retain the migrated parseMetadata 2.13.0 semantic boundary');
+assert.equal(auxiliary.includes("'2.14.0'"),false,'auxiliary router must not retain the migrated torrents/add 2.14.0 semantic boundary');
 
 for(const [label,source] of [['router',router],['metadata',metadata],['runtime-view',runtimeView]]){
-  for(const version of ['2.11.9','2.13.0','2.15.0','2.15.1']){
+  for(const version of ['2.11.9','2.13.0','2.14.0','2.15.0','2.15.1']){
     assert.equal(source.includes(`'${version}'`),false,`${label} must not retain migrated semantic boundary ${version}`);
   }
 }
 assert.match(endpointContracts,/'2\.11\.9'/,'Endpoint Contract must own tracker batch boundary');
 assert.match(endpointContracts,/'2\.13\.0'/,'Endpoint Contract must own tracker/editTracker/parseMetadata semantic boundary');
+assert.match(endpointContracts,/'2\.14\.0'/,'Endpoint Contract must own torrents/add result/status boundary');
 assert.match(endpointContracts,/'2\.15\.0'/,'Endpoint Contract must own sync/maindata use_subcategories boundary');
 assert.match(endpointContracts,/'2\.15\.1'/,'Endpoint Contract must own properties/editCategory semantic boundary');
 assert.doesNotMatch(router,/addVirtualTorrent\(/,'router must not retain the preempted second torrents/add runtime path');

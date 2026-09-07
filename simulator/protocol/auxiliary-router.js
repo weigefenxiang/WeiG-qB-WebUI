@@ -108,13 +108,18 @@ export async function handleAuxiliaryApi(world,request,path,method,url,contract=
   }
   if(path==='torrents/add'&&method==='POST'){
     const f=await formObject(request),result=addVirtualTorrentBatch(world,f,Date.now());
-    if(apiAtLeast(world,'2.14.0'))return json({
-      success_count:result.success_count,
-      failure_count:result.failure_count,
-      pending_count:result.pending_count,
-      added_torrent_ids:result.added_torrent_ids
-    });
-    return text('Ok.');
+    const accepted=result.success_count>0||result.pending_count>0;
+    if(contract?.responseShape==='structured-result'){
+      if(!accepted)return empty(contract?.allFailedStatus??409);
+      const status=result.pending_count>0?(contract?.pendingStatus??202):(contract?.successStatus??200);
+      return json({
+        success_count:result.success_count,
+        failure_count:result.failure_count,
+        pending_count:result.pending_count,
+        added_torrent_ids:result.added_torrent_ids
+      },status);
+    }
+    return text(accepted?(contract?.successText??'Ok.'):(contract?.failureText??'Fails.'),contract?.successStatus??200);
   }
 
   if(path==='app/defaultSavePath'&&method==='GET')return text(defaultSavePath(world));

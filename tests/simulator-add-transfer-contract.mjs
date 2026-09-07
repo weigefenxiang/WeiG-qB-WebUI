@@ -71,7 +71,7 @@ const anchor=modern.torrents[0];anchor.completed=false;anchor.downloaded=0;ancho
   const r=await handleApi(modern,postForm('torrents/add',form));
   assert.equal(r.status,200);
   const body=await r.json();
-  assert.equal(body.success_count,4,'two URLs plus two uploaded files must create four virtual torrents');
+  assert.equal(body.success_count,4,'two magnets plus two uploaded files must create four virtual torrents');
   assert.equal(body.failure_count,0);assert.equal(body.pending_count,0);
   assert.equal(body.added_torrent_ids.length,4,'structured add must return every added torrent id');
   assert.equal(modern.torrents.length,before+4);
@@ -96,6 +96,25 @@ const anchor=modern.torrents[0];anchor.completed=false;anchor.downloaded=0;ancho
   assert.equal(rows.length,4);assert.ok(rows.every(row=>row.ratio_limit===1.5&&row.share_limit_action==='Stop'));
   const props=await (await handleApi(modern,get(`torrents/properties?hash=${body.added_torrent_ids[0]}`))).json();
   assert.equal(props.download_path,'/virtual/incomplete','downloadPath must be observable through qB properties');
+}
+
+{
+  const w=makeWorld({qbVersion:'5.2.3',webApiVersion:'2.15.1',stable:true},'add-result-status'),before=w.torrents.length,form=new FormData();
+  form.append('urls','magnet:?xt=urn:btih:7777777777777777777777777777777777777777&dn=Immediate\nhttps://downloads.example.invalid/pending.torrent\nnot-a-valid-torrent-source');
+  const r=await handleApi(w,postForm('torrents/add',form));
+  assert.equal(r.status,202,'WebAPI 2.14+ add must return Accepted when any URL fetch remains pending');
+  const body=await r.json();
+  assert.deepEqual({success:body.success_count,pending:body.pending_count,failure:body.failure_count},{success:1,pending:1,failure:1});
+  assert.equal(body.added_torrent_ids.length,1,'only immediate successes belong in added_torrent_ids');
+  assert.equal(w.torrents.length,before+1,'pending and failed remote sources must not fabricate immediate torrents');
+}
+
+{
+  const w=makeWorld({qbVersion:'5.2.3',webApiVersion:'2.15.1',stable:true},'add-all-failed'),before=w.torrents.length,form=new FormData();
+  form.append('urls','not-a-valid-torrent-source');
+  const r=await handleApi(w,postForm('torrents/add',form));
+  assert.equal(r.status,409,'WebAPI 2.14+ add must return Conflict when every source fails');
+  assert.equal(w.torrents.length,before,'all-failed add must not create a virtual torrent');
 }
 
 {
@@ -135,6 +154,24 @@ const legacy=makeWorld({qbVersion:'4.6.7',webApiVersion:'2.8.4',stable:true},'le
   r=await handleApi(legacy,postForm('torrents/add',form));
   assert.equal(r.status,200);assert.equal(await r.text(),'Ok.','pre-structured WebAPI releases must retain the legacy plain-text add response');
   assert.equal(legacy.torrents.length,before+2,'legacy response shape must not reduce multi-source add behavior');
+
+  const failedBefore=legacy.torrents.length,failed=new FormData();failed.append('urls','not-a-valid-torrent-source');
+  r=await handleApi(legacy,postForm('torrents/add',failed));
+  assert.equal(r.status,200);assert.equal(await r.text(),'Fails.','pre-2.14 all-failed add must retain the legacy Fails. body instead of 409');
+  assert.equal(legacy.torrents.length,failedBefore);
+
+  const pendingBefore=legacy.torrents.length,pending=new FormData();pending.append('urls','https://downloads.example.invalid/legacy-pending.torrent');
+  r=await handleApi(legacy,postForm('torrents/add',pending));
+  assert.equal(r.status,200);assert.equal(await r.text(),'Ok.','pre-2.14 accepted remote fetch must retain the legacy Ok. body');
+  assert.equal(legacy.torrents.length,pendingBefore,'legacy Ok. may represent an accepted asynchronous fetch rather than an immediate torrent');
 }
 
-console.log('Virtual qB add/transfer contract passed: qB5 setSpeedLimitsMode, scheduler enforcement, multi-source add, AddTorrentParams execution, structured added_torrent_ids, stopped/check conditions and legacy response gating.');
+{
+  const future=makeWorld({qbVersion:'5.2.3',webApiVersion:'2.15.2',stable:true},'future-add-contract'),before=future.torrents.length,form=new FormData();
+  form.append('urls','magnet:?xt=urn:btih:8888888888888888888888888888888888888888&dn=Future');
+  const r=await handleApi(future,postForm('torrents/add',form));
+  assert.equal(r.status,501,'future unclassified add semantics must fail closed');
+  assert.equal(future.torrents.length,before,'fail-closed future add must not mutate runtime state');
+}
+
+console.log('Virtual qB add/transfer contract passed: qB5 setSpeedLimitsMode, scheduler enforcement, multi-source add, AddTorrentParams execution, WebAPI 2.14 structured 200/202/409 result semantics, stopped/check conditions, legacy Ok./Fails. response gating and future fail-closed ownership.');
