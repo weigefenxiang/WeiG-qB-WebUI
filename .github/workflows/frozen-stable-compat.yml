@@ -10,9 +10,11 @@ on:
       - 'tests/full-stable-detail-compat.mjs'
       - 'tests/full-stable-peer-compat.mjs'
       - 'tests/full-stable-taxonomy-compat.mjs'
+      - 'tests/full-stable-core-write-compat.mjs'
       - 'tests/detail-runtime-contract.mjs'
       - 'tests/qb-peer-provenance-contract.mjs'
       - 'tests/qb-taxonomy-provenance-contract.mjs'
+      - 'tests/qb-core-write-provenance-contract.mjs'
       - 'tests/compat-architecture-contract.mjs'
       - 'webui/private/data/capabilities.json'
       - 'webui/private/scripts/release-profile.js'
@@ -52,3 +54,5 @@ jobs:
         run: node tests/full-stable-peer-compat.mjs tests/fixtures/qb-release-catalog.lkg.json
       - name: Execute every frozen official stable through taxonomy action provenance
         run: node tests/full-stable-taxonomy-compat.mjs tests/fixtures/qb-release-catalog.lkg.json
+      - name: Execute every frozen official stable through core Torrent write provenance
+        run: node tests/full-stable-core-write-compat.mjs tests/fixtures/qb-release-catalog.lkg.json
