@@ -286,6 +286,9 @@ Invoke-WebRequest https://raw.githubusercontent.com/weigefenxiang/WeiG-qB-WebUI/
 
 ## 常用参数
 
+<details>
+<summary><b>参数说明 / 指定版本 / 自定义目录 / 回滚（点击展开）</b></summary>
+
 Linux 和 Windows 使用相同的参数名称，文档统一使用小写；PowerShell 参数本身不区分大小写。
 
 | 用途 | Linux / Docker / NAS | Windows PowerShell |
@@ -337,6 +340,8 @@ Windows：
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\weigg-install.ps1 -rollback
 ```
+
+</details>
 
 ## 更多帮助
 
