@@ -31,8 +31,29 @@ const baselineFilters=['all','downloading','seeding','completed','stopped','runn
 const coreActions=['start','stop','delete','force','recheck','sequential','firstlast','autotmm','top','bottom','rename','location','category','dllimit','uplimit','addTrackers'];
 const optionalActions=['reannounce','removeTrackers','editTracker','tags'];
 const settingsSurfaces=new Set(['downloads','connection','speed','bittorrent','webui','advanced']);
+const surfaceActions=new Map([
+  ['search','searchcontroller.h:pluginsAction'],
+  ['searchPlugins','searchcontroller.h:pluginsAction'],
+  ['searchStart','searchcontroller.h:startAction'],
+  ['searchStatus','searchcontroller.h:statusAction'],
+  ['searchResults','searchcontroller.h:resultsAction'],
+  ['searchStop','searchcontroller.h:stopAction'],
+  ['rss','rsscontroller.h:itemsAction'],
+  ['rssItems','rsscontroller.h:itemsAction'],
+  ['rssAddFeed','rsscontroller.h:addFeedAction'],
+  ['rssRemoveItem','rsscontroller.h:removeItemAction'],
+  ['rssRules','rsscontroller.h:rulesAction'],
+  ['rssSetRule','rsscontroller.h:setRuleAction'],
+  ['rssRenameRule','rsscontroller.h:renameRuleAction'],
+  ['rssRemoveRule','rsscontroller.h:removeRuleAction'],
+  ['rssRefresh','rsscontroller.h:refreshItemAction'],
+  ['logs','logcontroller.h:mainAction'],
+  ['logsMain','logcontroller.h:mainAction'],
+  ['logsPeers','logcontroller.h:peersAction'],
+  ['settingsRead','appcontroller.h:preferencesAction'],
+  ['settingsWrite','appcontroller.h:setPreferencesAction']
+]);
 const rows=[];
-let searchSeen=false,rssSeen=false;
 
 function actionFact(profile,kind){const desc=R.resolveTorrentActionDescriptor(kind);if(!desc)return null;assert.ok(desc.sourceAction,`${profile.qbVersion}: exact stable action ${kind} must retain sourceAction provenance`);assert.ok(profile.apiActions.includes(desc.sourceAction),`${profile.qbVersion}: ${kind} resolved to missing source action ${desc.sourceAction}`);const params=profile.apiActionParameters?.[desc.sourceAction];assert.ok(params,`${profile.qbVersion}: ${kind} lacks source-derived parameter descriptor`);assert.equal(desc.endpoint.length>0,true,`${profile.qbVersion}: ${kind} resolved empty endpoint`);return desc;}
 function capture(client){const calls=[];client.request=async(reqPath,options={})=>{calls.push({path:reqPath,options});return null;};return calls;}
@@ -59,6 +80,10 @@ for(const profile of catalog){
   assert.equal(C.supports('tags'),profile.apiActions.includes('torrentscontroller.h:tagsAction'),`${profile.qbVersion}: native Tags taxonomy must follow source action`);
   assert.ok(profile.torrentInfoFields.includes('tracker')&&profile.torrentInfoFields.includes('save_path'),`${profile.qbVersion}: Tracker/Path facets require bulk catalog fields`);
 
+  for(const [id,sourceAction] of surfaceActions){
+    assert.equal(C.supports(id),profile.apiActions.includes(sourceAction),`${profile.qbVersion}: ${id} must follow exact source action ${sourceAction}`);
+  }
+
   for(const field of currentColumnFields){
     assert.ok(profile.torrentInfoFields.includes(field),`${profile.qbVersion}: source fact for current product field missing: ${field}`);
     const fact=F.provenance(field,profile);
@@ -82,9 +107,9 @@ for(const profile of catalog){
   for(const descriptor of profile.preferenceDescriptors){const bound=S.descriptor(descriptor.key);assert.ok(bound&&bound.key===descriptor.key,`${profile.qbVersion}: SettingsSchema lost descriptor ${descriptor.key}`);const route=S.describe(descriptor.key);assert.ok(settingsSurfaces.has(route.surface)&&route.section,`${profile.qbVersion}: Preference ${descriptor.key} lacks safe Settings route`);if(descriptor.writable===true){writableSettings++;assert.equal(descriptor.setterPresent,true,`${profile.qbVersion}: writable ${descriptor.key} lacks setter`);assert.ok(descriptor.writeType,`${profile.qbVersion}: writable ${descriptor.key} lacks write type`);assert.notEqual(descriptor.typeAgreement,'MISMATCH',`${profile.qbVersion}: mismatched ${descriptor.key} must not remain writable`);}}
 
   const search=C.supports('search'),rss=C.supports('rss'),logs=C.supports('logs');
-  assert.equal(logs,true,`${profile.qbVersion}: Logs must remain available from formal 4.1.0 support floor`);
-  if(searchSeen)assert.equal(search,true,`${profile.qbVersion}: Search capability regressed after becoming available`);if(search)searchSeen=true;
-  if(rssSeen)assert.equal(rss,true,`${profile.qbVersion}: RSS capability regressed after becoming available`);if(rss)rssSeen=true;
+  assert.equal(search,profile.apiActions.includes('searchcontroller.h:pluginsAction'),`${profile.qbVersion}: Search top-level availability must be exact-source`);
+  assert.equal(rss,profile.apiActions.includes('rsscontroller.h:itemsAction'),`${profile.qbVersion}: RSS top-level availability must be exact-source`);
+  assert.equal(logs,profile.apiActions.includes('logcontroller.h:mainAction'),`${profile.qbVersion}: Logs top-level availability must be exact-source`);
 
   rows.push({qbVersion:profile.qbVersion,webApiVersion:profile.webApiVersion,nativeFilters,derivedFilters,categoryFacet:C.supports('categoryFacet'),tagFacet:C.supports('tagFacet'),nativeCategories:C.supports('categories'),nativeTags:C.supports('tags'),privateFilter:C.supports('privateFilter'),actions:[...coreActions,...optionalActions].filter(x=>R.supportsTorrentAction(x)).length,settings:profile.preferenceDescriptors.length,writableSettings,search,rss,logs});
 }
@@ -92,4 +117,4 @@ for(const profile of catalog){
 assert.equal(rows.length,catalog.length,'every generated stable profile must enter the formal product matrix');
 assert.equal(rows[0].qbVersion,'4.1.0','formal product matrix minimum drifted');
 const latest=rows.at(-1),derivedReleases=rows.filter(x=>x.derivedFilters>0).length,readOnlyTags=rows.filter(x=>x.tagFacet&&!x.nativeTags).length;
-console.log(`Full stable PRODUCT compatibility matrix passed: ${rows.length} official stable releases ${rows[0].qbVersion} -> ${latest.qbVersion}; all ${currentColumnFields.length} current Torrent fields resolve NATIVE through TorrentFieldRegistry; ${derivedReleases} releases use at least one reliable local filter derivation; ${readOnlyTags} releases expose Tags read/facet before native taxonomy; latest has ${latest.actions} resolved Torrent actions and ${latest.writableSettings}/${latest.settings} writable source-proven Preferences.`);
+console.log(`Full stable PRODUCT compatibility matrix passed: ${rows.length} official stable releases ${rows[0].qbVersion} -> ${latest.qbVersion}; all ${currentColumnFields.length} current Torrent fields resolve NATIVE through TorrentFieldRegistry; ${surfaceActions.size} Settings/Search/RSS/Logs action capabilities follow exact source provenance; ${derivedReleases} releases use at least one reliable local filter derivation; ${readOnlyTags} releases expose Tags read/facet before native taxonomy; latest has ${latest.actions} resolved Torrent actions and ${latest.writableSettings}/${latest.settings} writable source-proven Preferences.`);
