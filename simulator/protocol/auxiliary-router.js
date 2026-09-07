@@ -96,7 +96,7 @@ function searchResultResponse(world,id,limit,offset){
   return json(searchResults(world,id,normalizedLimit,normalizedOffset));
 }
 
-export async function handleAuxiliaryApi(world,request,path,method,url){
+export async function handleAuxiliaryApi(world,request,path,method,url,contract=null){
   if(!bootstrapAllowed(world,path))return notFound();
 
   if(path==='transfer/setSpeedLimitsMode'&&method==='POST'){
@@ -247,7 +247,7 @@ export async function handleAuxiliaryApi(world,request,path,method,url){
   if(path==='torrents/parseMetadata'&&method==='POST'){
     const items=await formFiles(request);
     if(!items.length)return badRequest('Must specify torrent file(s)');
-    const arrayResponse=apiAtLeast(world,'2.13.0');
+    const arrayResponse=contract?.responseShape==='ordered-array';
     const parsed=parseMetadata(world,items,Date.now(),arrayResponse);
     return json(normalizeParsedMetadataNames(items,parsed,arrayResponse));
   }

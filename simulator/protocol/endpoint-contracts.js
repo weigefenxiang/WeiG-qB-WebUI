@@ -75,6 +75,10 @@ function trackersContract(version){
   return{trackerTimingFields:modern,trackerExtendedStatuses:modern};
 }
 
+function parseMetadataContract(version){
+  return{responseShape:atLeast(version,'2.13.0')?'ordered-array':'filename-map'};
+}
+
 const RESOLVERS=new Map([
   ['torrents/addTrackers',(version,path)=>trackerCollectionContract(version,path)],
   ['torrents/removeTrackers',(version,path)=>trackerCollectionContract(version,path)],
@@ -82,7 +86,8 @@ const RESOLVERS=new Map([
   ['torrents/properties',version=>({availabilityField:atLeast(version,'2.15.1')})],
   ['sync/maindata',version=>mainDataContract(version)],
   ['torrents/editCategory',version=>editCategoryContract(version)],
-  ['torrents/editTracker',version=>editTrackerContract(version)]
+  ['torrents/editTracker',version=>editTrackerContract(version)],
+  ['torrents/parseMetadata',version=>parseMetadataContract(version)]
 ]);
 
 export function resolveEndpointContract(profile,path){

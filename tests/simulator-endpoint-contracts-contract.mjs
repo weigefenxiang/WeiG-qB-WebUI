@@ -55,6 +55,13 @@ const profile=webApiVersion=>({webApiVersion});
 }
 
 {
+  const legacy=resolveEndpointContract(profile('2.12.9'),'torrents/parseMetadata');
+  const modern=resolveEndpointContract(profile('2.13.0'),'torrents/parseMetadata');
+  assert.equal(legacy.responseShape,'filename-map','pre-2.13 parseMetadata must preserve the filename-keyed object response');
+  assert.equal(modern.responseShape,'ordered-array','WebAPI 2.13.0 parseMetadata must return request-order array results');
+}
+
+{
   const legacy=resolveEndpointContract(profile('2.15.0'),'torrents/editCategory');
   const modern=resolveEndpointContract(profile('2.15.1'),'torrents/editCategory');
   assert.deepEqual(legacy.requiredParameters,['category','savePath']);
@@ -83,9 +90,11 @@ const profile=webApiVersion=>({webApiVersion});
 {
   const unknown=resolveEndpointContract(profile('2.15.2'),'torrents/properties');
   assert.deepEqual(unknown,{path:'torrents/properties',webApiVersion:'2.15.2',semanticRevision:'unclassified'});
+  const unknownParseMetadata=resolveEndpointContract(profile('2.15.2'),'torrents/parseMetadata');
+  assert.deepEqual(unknownParseMetadata,{path:'torrents/parseMetadata',webApiVersion:'2.15.2',semanticRevision:'unclassified'});
   const missing=resolveEndpointContract({},'torrents/properties');
   assert.equal(missing.semanticRevision,'unclassified');
   assert.equal(resolveEndpointContract(profile('2.15.1'),'torrents/reannounce'),null,'structural-only endpoints must not be copied into Endpoint Contract');
 }
 
-console.log('Virtual qB endpoint contracts passed: audited semantic revisions resolve through one interface, tracker status/timing boundaries and sync/maindata response lifecycles stay canonical, structural truth stays out, and future unknown revisions fail closed.');
+console.log('Virtual qB endpoint contracts passed: audited semantic revisions resolve through one interface, tracker status/timing boundaries, parseMetadata response shape and sync/maindata response lifecycles stay canonical, structural truth stays out, and future unknown revisions fail closed.');

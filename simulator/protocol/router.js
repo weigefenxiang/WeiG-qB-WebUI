@@ -219,7 +219,7 @@ export async function handleApi(world,request,url=new URL(request.url)){
 
   if(!world.authenticated)return empty(403);
 
-  const auxiliary=await handleAuxiliaryApi(world,request,path,method,url);
+  const auxiliary=await handleAuxiliaryApi(world,request,path,method,url,contract);
   if(auxiliary)return auxiliary;
 
   if(path==='app/version'&&method==='GET')return text(`v${world.profile.qbVersion}`);

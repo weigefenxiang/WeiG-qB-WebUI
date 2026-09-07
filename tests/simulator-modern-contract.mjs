@@ -131,7 +131,8 @@ function post(path,body){return new Request(`https://example.invalid/api/v2/${pa
   const form=new FormData();
   form.append('torrents',new Blob(['virtual torrent one'],{type:'application/x-bittorrent'}),'one.torrent');
   form.append('torrents',new Blob(['virtual torrent two'],{type:'application/x-bittorrent'}),'two.torrent');
-  r=await handleApi(w,new Request('https://example.invalid/api/v2/torrents/parseMetadata',{method:'POST',body:form}));
+  const parseWorld=world('5.2.3','2.15.1');
+  r=await handleApi(parseWorld,new Request('https://example.invalid/api/v2/torrents/parseMetadata',{method:'POST',body:form}));
   assert.equal(r.status,200);const parsed=await r.json();assert.ok(Array.isArray(parsed));assert.equal(parsed.length,2);assert.equal(parsed[0].info.name,'one');
 
   r=await handleApi(w,post('clientdata/store',{data:JSON.stringify({theme:'dark',columns:['name','size'],nullable:'remove-me'})}));assert.equal(r.status,204);

@@ -22,6 +22,11 @@ const subcategoryChanges=ledger.revisions['2.9.2'].c.filter(change=>change[1].in
 assert.ok(subcategoryChanges.some(change=>change[0]==='S'&&change[1].includes('app/preferences')),'2.9.2 Preference surface must remain source-derived');
 assert.ok(subcategoryChanges.some(change=>change[0]==='C'&&change[1].includes('sync/maindata')),'2.9.2 sync/maindata lifecycle must be Endpoint Contract covered');
 assert.equal(subcategoryChanges.some(change=>change[0]==='M'),false,'closed Phase D subcategories lifecycle must leave the MISSING backlog');
+
+const parseMetadataChanges=ledger.modern.find(entry=>entry[0]==='2.13.0'&&entry[1]===23085)?.[2]||[];
+assert.ok(parseMetadataChanges.some(change=>change[0]==='C'&&change[1].includes('object to ordered array')),'2.13.0 parseMetadata response shape must be Endpoint Contract covered');
+assert.equal(parseMetadataChanges.some(change=>change[0]==='M'),false,'closed parseMetadata response-shape boundary must leave the MISSING backlog');
+
 assert.deepEqual([...new Set(changes.filter(change=>change.classification==='CONTRACT_COVERED').map(change=>change.owner))],['simulator/protocol/endpoint-contracts.js']);
 const fixture=`# WebAPI Changelog
 ## 2.15.1
