@@ -1,8 +1,52 @@
 # WeiG qB WebUI
 
-一套现代、响应式的 qBittorrent Alternate WebUI。
+一套现代、响应式的 qBittorrent Alternate WebUI，**支持电脑与手机自适应布局、暗夜模式**，在桌面端和移动端都能更方便地管理 qBittorrent。
 
 **语言**：[English](../README.md) · 简体中文
+
+## 直接下载
+
+下载最新正式版 **[WeiG-qB-WebUI.zip](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/WeiG-qB-WebUI.zip)**。
+
+解压后，**`WeiG-qB-WebUI` 文件夹就是 qBittorrent 要使用的 WebUI 目录**。
+
+<details>
+<summary><b>第一次安装？点击展开 1 分钟教程</b></summary>
+
+### 1. 解压
+
+下载并解压 `WeiG-qB-WebUI.zip`，得到：
+
+```text
+WeiG-qB-WebUI/
+├── public/
+├── private/
+├── VERSION
+└── GIT_SHA
+```
+
+整个 **`WeiG-qB-WebUI` 文件夹**就是 WebUI 根目录，不要只复制 `public` 或 `private`。
+
+### 2. 放到一个固定位置
+
+例如：
+
+```text
+Windows：D:\WeiG-qB-WebUI
+Linux：  /opt/WeiG-qB-WebUI
+```
+
+### 3. 在 qBittorrent 中启用
+
+打开：
+
+**工具 / 选项（首选项）→ Web UI → Use alternative WebUI**
+
+勾选后，把 **Files location / Root Folder** 设置为刚才的 `WeiG-qB-WebUI` 文件夹路径，保存并刷新 WebUI。
+
+> Docker 用户要填写 **qBittorrent 容器内可见路径**。例如宿主机目录是 `/path/to/qbittorrent/config/weigg-qb-webui`，如果映射到容器内 `/config/weigg-qb-webui`，那么 Root Folder 应填写 `/config/weigg-qb-webui`。
+
+</details>
 
 ## 一键安装
 
@@ -98,10 +142,6 @@ Docker 中要填写 **qBittorrent 容器内能看到的路径**，例如：
 宿主机：      /path/to/qbittorrent/config/weigg-qb-webui
 qBittorrent： /config/weigg-qb-webui
 ```
-
-## 直接下载
-
-也可以直接打开 [GitHub Releases](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest) 下载最新正式版 `WeiG-qB-WebUI.zip`。
 
 ## 兼容范围
 
