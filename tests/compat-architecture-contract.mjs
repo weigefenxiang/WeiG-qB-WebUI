@@ -30,6 +30,32 @@ function trackedScripts(){
 }
 function blobSource(sha){return git('cat-file','blob',sha);}
 function findings(source){const out=[];for(const [kind,re] of patterns){re.lastIndex=0;for(const match of source.matchAll(re))out.push({kind,text:match[0],index:match.index});}return out.sort((a,b)=>a.index-b.index);}
+function bodyEnd(text,open,label){
+  let depth=0,quote='',escape=false,lineComment=false,blockComment=false;
+  for(let i=open;i<text.length;i++){
+    const ch=text[i],next=text[i+1]||'';
+    if(lineComment){if(ch==='\n')lineComment=false;continue;}
+    if(blockComment){if(ch==='*'&&next==='/'){blockComment=false;i++;}continue;}
+    if(quote){if(escape){escape=false;continue;}if(ch==='\\'){escape=true;continue;}if(ch===quote)quote='';continue;}
+    if(ch==='/'&&next==='/'){lineComment=true;i++;continue;}
+    if(ch==='/'&&next==='*'){blockComment=true;i++;continue;}
+    if(ch==='"'||ch==="'"||ch==='`'){quote=ch;continue;}
+    if(ch==='{')depth++;
+    else if(ch==='}'&&--depth===0)return i;
+  }
+  throw new Error(`${label}: unterminated Client prototype function`);
+}
+function clientMethods(source){
+  const text=String(source||''),out=[];
+  const re=/\bClient\.prototype\.([A-Za-z_$][\w$]*)\s*=\s*(?:async\s+)?function\s*\([^)]*\)\s*\{/g;
+  let match;
+  while((match=re.exec(text))){
+    const open=text.indexOf('{',match.index+match[0].length-1),end=bodyEnd(text,open,match[1]);
+    out.push({name:match[1],body:text.slice(open+1,end)});
+    re.lastIndex=end+1;
+  }
+  return out;
+}
 const files=trackedScripts(),violations=[],legacySeen=[];
 for(const file of files){
   const source=blobSource(file.sha),hits=findings(source);
@@ -44,4 +70,29 @@ for(const file of files){
   violations.push(`${file.rel}: ${hits.map(hit=>`${hit.kind}=${JSON.stringify(hit.text)}`).join('; ')}`);
 }
 assert.equal(violations.length,0,`Scattered qB version-if detected outside centralized/frozen owners:\n${violations.join('\n')}`);
-console.log(`Compatibility architecture contract passed: scanned ${files.length} complete Git-indexed product script blobs; scattered qB version-if is blocked, centralized ReleaseProfile remains allowed, and ${legacySeen.length} legacy owner blob(s) are frozen for explicit migration/review.`);
+
+const sources=new Map(files.map(file=>[file.rel,blobSource(file.sha)]));
+const apiRootOwners=files.filter(file=>sources.get(file.rel).includes('api/v2/')).map(file=>file.rel);
+assert.deepEqual(apiRootOwners,['webui/private/scripts/qb-client.js'],'Direct qB WebAPI transport root must remain centralized in QBClient.');
+const qbSource=sources.get('webui/private/scripts/qb-client.js');
+assert.ok(qbSource,'QBClient source must be present in the tracked product script set.');
+assert.equal([...qbSource.matchAll(/\bfetch\s*\(\s*['"]api\/v2\//g)].length,1,'QBClient must retain exactly one raw api/v2 fetch transport root.');
+const methods=clientMethods(qbSource),postPattern=/\bmethod\s*:\s*['"]POST['"]/;
+const directPosts=methods.filter(method=>postPattern.test(method.body));
+const transportOwners=new Set(['_torrentAction','_guardedTorrentAction']);
+const safePostExceptions=new Set(['logout']);
+const unowned=[];
+for(const method of directPosts){
+  const postIndex=method.body.search(postPattern),guardIndex=method.body.indexOf('requireSourceAction(');
+  if(guardIndex>=0&&guardIndex<postIndex)continue;
+  if(transportOwners.has(method.name))continue;
+  if(safePostExceptions.has(method.name))continue;
+  unowned.push(method.name);
+}
+assert.deepEqual(unowned,[],`QBClient direct state-changing POST methods must source-guard before transport; unowned: ${unowned.join(', ')}`);
+for(const name of transportOwners)assert.ok(directPosts.some(method=>method.name===name),`Reviewed Torrent dispatch owner ${name} must remain present.`);
+const logout=directPosts.find(method=>method.name==='logout');
+assert.ok(logout,'Logout must remain an explicit safe unguarded POST exception so users can terminate a session even when ReleaseProfile is unavailable.');
+assert.match(logout.body,/this\.request\(\s*['"]auth\/logout['"]\s*,\s*\{\s*method\s*:\s*['"]POST['"]\s*,\s*type\s*:\s*['"]void['"]\s*\}\s*\)/,'Logout exception must remain narrowly scoped to POST auth/logout with a void response.');
+assert.doesNotMatch(logout.body,/\b(?:form|json|body)\s*:/,'Logout safe exception must not grow a request payload.');
+console.log(`Compatibility architecture contract passed: scanned ${files.length} complete Git-indexed product script blobs; scattered qB version-if is blocked, API transport remains centralized in QBClient, ${directPosts.length} direct POST method(s) have source ownership or reviewed transport/safety exceptions, and ${legacySeen.length} legacy owner blob(s) remain frozen for explicit migration/review.`);
