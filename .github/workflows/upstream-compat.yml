@@ -6,11 +6,20 @@ on:
       - dev
     paths:
       - '.github/workflows/upstream-compat.yml'
-      - 'tools/qb-*.mjs'
+      - 'tools/qb-release-catalog.mjs'
+      - 'tools/qb-release-tags.mjs'
+      - 'tools/qb-source-parsers.mjs'
+      - 'tools/qb-preference-semantics.mjs'
+      - 'tools/qb-torrent-surface-parsers.mjs'
+      - 'tools/qb-torrent-fields-parser.mjs'
+      - 'tools/qb-detail-surface-parsers.mjs'
+      - 'tools/qb-action-surface-parsers.mjs'
+      - 'tools/qb-catalog-evolution.mjs'
+      - 'tools/qb-catalog-quality.mjs'
+      - 'tools/qb-webapi-evolution.mjs'
+      - 'tools/qb-webapi-evolution-audit.mjs'
       - 'tools/data/qb-webapi-evolution-ledger.json'
       - 'tests/upstream-release-audit.mjs'
-      - 'webui/private/scripts/qb-client.js'
-      - 'webui/private/scripts/settings-schema.js'
   workflow_dispatch:
 
 permissions:

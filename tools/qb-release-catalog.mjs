@@ -6,7 +6,7 @@ import {extractTorrentFilters,extractTorrentInfoParameters} from './qb-torrent-s
 import {extractTorrentInfoFields,extractTorrentStates} from './qb-torrent-fields-parser.mjs';
 import {extractTorrentDetailSurfaces} from './qb-detail-surface-parsers.mjs';
 import {extractControllerActionParameters} from './qb-action-surface-parsers.mjs';
-import {supportedStableReleaseTags} from './qb-release-tags.mjs';
+import {compareQbVersions,isSupportedStableReleaseTag,supportedStableReleaseTags} from './qb-release-tags.mjs';
 import {enrichPreferenceDescriptorsFromGetter} from './qb-preference-semantics.mjs';
 import {annotateCatalogEvolution,validateCatalogEvolution} from './qb-catalog-evolution.mjs';
 import {summarizeCatalogQuality,validateCatalogQuality} from './qb-catalog-quality.mjs';
@@ -14,7 +14,11 @@ import {summarizeCatalogQuality,validateCatalogQuality} from './qb-catalog-quali
 const qbRoot=path.resolve(process.argv[2]||process.env.QB_UPSTREAM_DIR||'');
 const outputArg=process.argv.find(x=>x.startsWith('--output='));
 const output=path.resolve(outputArg?outputArg.slice('--output='.length):'simulator/versions/catalog.generated.json');
-if(!qbRoot||!fs.existsSync(qbRoot)){console.error('Usage: node tools/qb-release-catalog.mjs <qBittorrent-clone> [--output=path]');process.exit(2);}
+const baseArg=process.argv.find(x=>x.startsWith('--base-catalog='));
+const basePath=baseArg?path.resolve(baseArg.slice('--base-catalog='.length)):null;
+const refsArg=process.argv.find(x=>x.startsWith('--refs='));
+const requestedRefs=refsArg?refsArg.slice('--refs='.length).split(',').map(x=>x.trim()).filter(Boolean):[];
+if(!qbRoot||!fs.existsSync(qbRoot)){console.error('Usage: node tools/qb-release-catalog.mjs <qBittorrent-clone> [--output=path] [--base-catalog=path] [--refs=release-x.y.z,...]');process.exit(2);}
 function git(...args){return execFileSync('git',['-C',qbRoot,...args],{encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();}
 function parts(v){return String(v).replace(/^release-/,'').split('.').map(x=>Number.parseInt(x,10)||0);}
 function show(ref,file){return git('show',`${ref}:${file}`);}
@@ -85,9 +89,34 @@ function torrentSurface(ref){
   };
 }
 
-const tags=supportedStableReleaseTags(git('tag','--list','release-*').split(/\r?\n/).filter(Boolean));
-if(!tags.length)throw new Error('No stable qBittorrent release tags found from 4.1.0.');
-const catalog=[];
+function readBaseCatalog(){
+  if(!basePath)return[];
+  if(!fs.existsSync(basePath))throw new Error(`Frozen base catalog not found: ${basePath}`);
+  const value=JSON.parse(fs.readFileSync(basePath,'utf8'));
+  if(!Array.isArray(value)||!value.length)throw new Error('Frozen base catalog must be a non-empty array.');
+  return value;
+}
+function stableTags(){return supportedStableReleaseTags(git('tag','--list','release-*').split(/\r?\n/).filter(Boolean));}
+function assertFrozenPrefix(allTags,baseCatalog){
+  const baseTags=baseCatalog.map(item=>String(item?.tag||''));
+  if(baseTags[0]!=='release-4.1.0')throw new Error(`Frozen base catalog floor must be release-4.1.0, got ${baseTags[0]||'empty'}`);
+  if(baseTags.length>allTags.length)throw new Error(`Upstream stable tag set shrank below frozen LKG: ${allTags.length} < ${baseTags.length}`);
+  for(let i=0;i<baseTags.length;i++)if(baseTags[i]!==allTags[i])throw new Error(`Frozen stable history changed at ordinal ${i}: LKG ${baseTags[i]} vs upstream ${allTags[i]||'missing'}`);
+  return baseTags;
+}
+
+const allTags=stableTags();
+if(!allTags.length)throw new Error('No stable qBittorrent release tags found from 4.1.0.');
+const baseCatalog=readBaseCatalog();
+if(baseCatalog.length)assertFrozenPrefix(allTags,baseCatalog);
+let tags;
+if(requestedRefs.length){
+  tags=[...new Set(requestedRefs)].sort(compareQbVersions);
+  for(const tag of tags){if(!isSupportedStableReleaseTag(tag))throw new Error(`Invalid or unsupported stable ref: ${tag}`);git('rev-parse','--verify',`refs/tags/${tag}`);}
+  if(baseCatalog.length){const frozen=new Set(baseCatalog.map(item=>item.tag));for(const tag of tags)if(frozen.has(tag))throw new Error(`Incremental extraction must not re-parse frozen stable tag ${tag}`);}
+}else tags=baseCatalog.length?allTags.slice(baseCatalog.length):allTags;
+
+const catalog=baseCatalog.map(item=>structuredClone(item));
 for(const tag of tags){
   const qbVersion=tag.slice('release-'.length);
   const webApiVersion=parseApi(show(tag,'src/webui/webapplication.h'),tag);
@@ -103,10 +132,19 @@ for(const tag of tags){
     ...torrentSurface(tag)
   });
 }
-annotateCatalogEvolution(catalog);
-validateCatalogEvolution(catalog);
-validateCatalogQuality(catalog);
+if(!catalog.length)throw new Error('No catalog profiles were produced.');
+if(tags.length||!baseCatalog.length){
+  const frozenJson=baseCatalog.map(item=>JSON.stringify(item));
+  annotateCatalogEvolution(catalog);
+  validateCatalogEvolution(catalog);
+  validateCatalogQuality(catalog);
+  for(let i=0;i<frozenJson.length;i++)if(JSON.stringify(catalog[i])!==frozenJson[i])throw new Error(`Incremental annotation mutated frozen LKG profile ${baseCatalog[i].qbVersion}`);
+}else{
+  validateCatalogEvolution(catalog);
+  validateCatalogQuality(catalog);
+}
 fs.mkdirSync(path.dirname(output),{recursive:true});
 fs.writeFileSync(output,JSON.stringify(catalog,null,2)+'\n','utf8');
 const totals=summarizeCatalogQuality(catalog),safeFallback=catalog.reduce((sum,item)=>sum+(Number(item.preferenceDescriptorStats?.safeFallback)||0),0);
-console.log(`Generated ${catalog.length} stable qB profiles: ${catalog[0].qbVersion} -> ${catalog.at(-1).qbVersion}; API actions ${totals.actions} / params ${totals.actionParameters}; Torrent fields ${totals.torrentInfoFields}, states ${totals.torrentStates}, filters ${totals.torrentFilters}, properties ${totals.torrentPropertiesFields}, tracker fields ${totals.torrentTrackerFields}, file fields ${totals.torrentFileFields}; preference getter types ${totals.readTyped}/${totals.preferences} (${totals.semanticGetterEnriched} semantic enrichments), setter types ${totals.writeTyped}/${totals.preferences}, exact read/write agreement ${totals.exactAgreement}, conflicts ${totals.mismatched}, enum fallbacks ${safeFallback}.`);
+const admission=baseCatalog.length?`; preserved ${baseCatalog.length} frozen profiles and source-parsed ${tags.length} new stable tag${tags.length===1?'':'s'}`:'';
+console.log(`Generated ${catalog.length} stable qB profiles: ${catalog[0].qbVersion} -> ${catalog.at(-1).qbVersion}${admission}; API actions ${totals.actions} / params ${totals.actionParameters}; Torrent fields ${totals.torrentInfoFields}, states ${totals.torrentStates}, filters ${totals.torrentFilters}, properties ${totals.torrentPropertiesFields}, tracker fields ${totals.torrentTrackerFields}, file fields ${totals.torrentFileFields}; preference getter types ${totals.readTyped}/${totals.preferences} (${totals.semanticGetterEnriched} semantic enrichments), setter types ${totals.writeTyped}/${totals.preferences}, exact read/write agreement ${totals.exactAgreement}, conflicts ${totals.mismatched}, enum fallbacks ${safeFallback}.`);

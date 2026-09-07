@@ -1,0 +1,43 @@
+name: Frozen Stable Product Compatibility
+
+on:
+  push:
+    branches:
+      - dev
+    paths:
+      - '.github/workflows/frozen-stable-compat.yml'
+      - 'tools/qb-stable-admission.mjs'
+      - 'tools/data/qb-stable-lkg.json'
+      - 'tests/fixtures/qb-release-catalog.lkg.json'
+      - 'tests/full-stable-product-compat.mjs'
+      - 'tests/compat-architecture-contract.mjs'
+      - 'webui/private/data/capabilities.json'
+      - 'webui/private/scripts/release-profile.js'
+      - 'webui/private/scripts/capabilities.js'
+      - 'webui/private/scripts/torrent-semantics.js'
+      - 'webui/private/scripts/settings-schema.js'
+      - 'webui/private/scripts/qb-client.js'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frozen-stable-compat-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frozen_product_matrix:
+    name: Frozen LKG product compatibility regression
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Verify committed LKG identity
+        run: node tools/qb-stable-admission.mjs verify
+      - name: Block scattered qB version-if regressions
+        run: node tests/compat-architecture-contract.mjs
+      - name: Execute every frozen official stable through formal product owners
+        run: node tests/full-stable-product-compat.mjs tests/fixtures/qb-release-catalog.lkg.json
