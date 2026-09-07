@@ -14,7 +14,7 @@
 
 **[🌐 在线预览](https://weigefenxiang.github.io/WeiG-qB-WebUI/)** · **[⬇️ 下载最新正式版](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/WeiG-qB-WebUI.zip)**
 
-**语言**：[English](https://github.com/weigefenxiang/WeiG-qB-WebUI/blob/installer-ux-20260907/README.md) · 简体中文 · 日本語 · 한국어 · Deutsch · Français · Español · Português · Русский
+**语言**：[English](../README.md) · 简体中文 · 日本語 · 한국어 · Deutsch · Français · Español · Português · Русский
 
 ## 直接下载
 
@@ -54,21 +54,14 @@ Linux：  /opt/WeiG-qB-WebUI
 
 ### 3. 在 qBittorrent 中启用
 
-打开 qBittorrent 设置：
+打开 qBittorrent 桌面端：
 
-**工具 → 选项（部分系统叫“首选项”）→ Web UI**
+**工具 → 设置... → WebUI**
 
-找到 Alternate WebUI 相关选项。不同 qBittorrent 版本和中文翻译名称可能略有不同，常见名称包括：
+这是 qBittorrent 当前简体中文官方用语。然后：
 
-```text
-Use alternative WebUI
-使用备用 Web UI
-使用替代 Web UI
-备用 WebUI
-```
-
-1. **勾选这个选项**。
-2. 找到下面的 **Files location / Root Folder**。中文可能显示为“文件位置”“根目录”或类似名称。
+1. 勾选 **使用备选 WebUI**。
+2. 找到 **文件位置：**。
 3. 填入刚才保存的 `WeiG-qB-WebUI` 文件夹路径。
 
 Windows 示例：
@@ -83,7 +76,7 @@ D:\WeiG-qB-WebUI
 /opt/WeiG-qB-WebUI
 ```
 
-4. 点击 **应用 / Apply**，再点击 **确定 / OK**。
+4. 点击 **确定** 保存设置。
 5. 刷新 qBittorrent WebUI 页面。如果浏览器仍显示旧页面，可再按一次 `Ctrl + F5` 强制刷新。
 
 > **怎么判断路径填对了？** 你填写的目录里面应该能直接看到 `public`、`private`、`VERSION` 等文件/目录。如果还要再进入一层 `WeiG-qB-WebUI` 才能看到这些内容，说明路径多填或少填了一层。
@@ -158,7 +151,7 @@ volumes:
 宿主机：/root/qbittorrent/config/weigg-qb-webui
 ```
 
-那么 qBittorrent 设置里的 **Files location / Root Folder** 应填写：
+那么 qBittorrent 的 **文件位置：** 应填写：
 
 ```text
 /config/weigg-qb-webui
@@ -184,7 +177,7 @@ curl -fsSL https://raw.githubusercontent.com/weigefenxiang/WeiG-qB-WebUI/main/in
 sh weigg-install.sh --list-containers
 ```
 
-也可以先用 Docker 自己的命令看看所有正在运行的容器：
+也可以先用 Docker 自己的命令查看正在运行的容器：
 
 ```sh
 docker ps
@@ -281,9 +274,9 @@ qBittorrent Root Folder: /config/weigg-qb-webui
 含义是：
 
 - `Host install path`：文件真正保存到宿主机哪里；
-- `qBittorrent Root Folder`：**你在 qBittorrent 设置里应该填写的路径**。
+- `qBittorrent Root Folder`：**你在 qBittorrent 的“文件位置：”中应该填写的容器内路径**。
 
-如果用了 `--configure` 并成功找到 qBittorrent 配置，安装器会自动设置 Alternate WebUI；否则按照上面的“新手安装 → 在 qBittorrent 中启用”手动填写即可。
+如果用了 `--configure` 并成功找到 qBittorrent 配置，安装器会自动启用 **使用备选 WebUI** 并设置路径；否则按照上面的“新手安装 → 在 qBittorrent 中启用”手动填写即可。
 
 </details>
 
@@ -325,7 +318,7 @@ Linux 和 Windows 使用相同的参数名称，文档统一使用小写；Power
 说明：
 
 - `-o` 中的 `o` 表示 **output**，用于指定 WeiG qB WebUI 的安装目录。
-- `--configure / -configure` 会在安装后自动启用 qBittorrent 的 **Use alternative WebUI**，并设置 **WebUI Root Folder**；修改前会备份 qBittorrent 配置。
+- `--configure / -configure` 会在安装后自动启用 qBittorrent 的 **使用备选 WebUI / Use alternative WebUI**，并设置 **文件位置 / Files location**；修改前会备份 qBittorrent 配置。
 - `--rollback / -rollback` 会恢复上一次安装及对应的 qBittorrent 配置；默认会记住上一次安装目录。
 - `--version / -version` 安装指定 GitHub Release，例如 `0.3.60`；指定版本不存在时直接报错，**不会自动退回 latest 或 dev**。
 - `--dev / -dev` 只用于测试当前开发版 exact Git SHA，不能和 `--version / -version` 同时使用。
