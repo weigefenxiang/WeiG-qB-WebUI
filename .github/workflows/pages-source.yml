@@ -1,5 +1,6 @@
 name: Virtual qB Pages Source
 
+# Strict main promotion reuses only an exact-SHA validated dev Pages artifact; no legacy artifact fallback is allowed.
 on:
   push:
     branches:
