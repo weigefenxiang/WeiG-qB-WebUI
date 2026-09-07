@@ -66,7 +66,7 @@ for(const owner of ['release-profile.js','torrent-fields.js','settings-schema.js
 assert(fullProduct.includes("catalog[0].qbVersion,'4.1.0'")&&fullProduct.includes('every generated stable profile must enter the formal product matrix'),'full stable product matrix must protect floor and complete catalog coverage');
 assert(!/major\s*>=\s*5\s*\?[^\n]*(?:start|stop|paused|stopped)/i.test(read('tests/release-compat.mjs')),'representative release gate must not use major>=5 as a product behavior oracle');
 
-const pages=read('.github/workflows/pages.yml'),pagesBuild=jobSection(pages,'build','deploy'),pagesVerify=jobSection(pages,'verify'),pagesSource=read('.github/workflows/pages-source.yml');
+const pages=read('.github/workflows/pages.yml'),pagesBuild=jobSection(pages,'build','deploy'),pagesVerify=jobSection(pages,'verify','reuse_main'),pagesReuse=jobSection(pages,'reuse_main','promote_deploy'),pagesSource=read('.github/workflows/pages-source.yml');
 assert(pagesSource.includes('name: Virtual qB Pages Source')&&/push:\s*\n\s*branches:\s*\n\s*- dev\s*\n\s*- main/.test(pagesSource),'Pages source relay must watch dev + main');
 assert(pagesSource.includes("- 'webui/**'")&&pagesSource.includes("- 'simulator/**'")&&pagesSource.includes("- 'tools/qb-*.mjs'"),'Pages source relay must watch all product/simulator/qB catalog parser inputs');
 assert(!/pages:\s*write/.test(pagesSource)&&!/id-token:\s*write/.test(pagesSource),'Pages source signal must not own deployment permissions');
@@ -74,12 +74,16 @@ assert(pages.includes('workflow_run:')&&pages.includes('- Virtual qB Pages Sourc
 assert(pages.includes("WEIGG_PAGES_SOURCE_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}"),'Pages must preserve the source exact SHA');
 assert(pagesBuild.includes('ref: ${{ env.WEIGG_PAGES_SOURCE_SHA }}')&&pagesBuild.includes('--simulator-sha="$WEIGG_PAGES_SOURCE_SHA"'),'Pages build must bind source checkout and metadata to exact SHA');
 assert(pagesBuild.includes('tools/qb-release-catalog.mjs')&&pagesBuild.includes('test -s "$RUNNER_TEMP/virtual-qb-site/dev/app/__source/private/data/qb-releases.json"'),'Pages build must inject and verify the exact qB release catalog in product runtime data');
+assert(pagesBuild.includes('virtual-qb-pages-site-${{ env.WEIGG_PAGES_SOURCE_SHA }}'),'dev Pages build must publish an exact-SHA reusable site artifact');
 assert(pagesVerify.includes('runs-on: ubuntu-24.04')&&/WEIGG_BROWSER_CHANNEL:\s*chrome/.test(pagesVerify),'Pages live verification must use hosted Chrome on pinned Ubuntu');
 assert(pagesVerify.includes('WEIGG_PAGES_URL: ${{ needs.deploy.outputs.page_url }}')&&pagesVerify.includes('WEIGG_EXPECTED_SIMULATOR_SHA'),'Pages verify must bind browser evidence to deployed exact SHA');
 assert(pagesVerify.includes('node tests/pages-live-acceptance.mjs')&&pagesVerify.includes('node tests/pages-live-preferences.mjs')&&pagesVerify.includes('node tests/pages-live-release-profile.mjs'),'Pages verify must cover base acceptance, all stable Preferences, and exact release-profile capability/filter truth');
+assert(pagesReuse.includes("github.event.workflow_run.head_branch == 'main'")&&pagesReuse.includes('virtual-qb-pages-site-$EXACT_SHA'),'main Pages promotion must resolve only the exact validated dev reusable site');
+assert(!pagesReuse.includes('--name github-pages')&&!pagesReuse.includes('legacy exact dev github-pages'),'main Pages promotion must not fall back to legacy github-pages artifacts');
+assert(pagesReuse.includes('No successful exact reusable dev Pages artifact exists'),'main Pages promotion must fail closed when the exact validated dev artifact is unavailable');
 const profileLive=read('tests/pages-live-release-profile.mjs');
 assert(profileLive.includes("catalog[0].qbVersion,'4.1.0'")||profileLive.includes("catalog[0].qbVersion,'4.1.0'"),'Pages release-profile gate must protect formal qB 4.1.0 floor');
 assert(profileLive.includes("item.qbVersion==='4.6.1'")&&profileLive.includes("webApiVersion==='2.9.3'"),'Pages release-profile gate must protect qB 4.6.1/WebAPI 2.9.3 fact');
 assert(profileLive.includes("['downloads','connection','speed','bittorrent','webui','advanced']"),'Pages release-profile gate must exercise all six qB Settings surfaces');
 
-console.log(`CI contract passed for WeiG ${version}: exact qB 4.1.0+ source catalog is audited once on dev, executed through every formal product compatibility owner, embedded in the reusable candidate artifact, and that exact artifact is promoted/released without a main rebuild; hosted Chrome remains canonical.`);
+console.log(`CI contract passed for WeiG ${version}: exact qB 4.1.0+ source catalog is audited once on dev, executed through every formal product compatibility owner, embedded in the reusable candidate artifact, and that exact artifact is promoted/released without a main rebuild; Pages main promotion reuses only the exact validated dev site artifact; hosted Chrome remains canonical.`);
