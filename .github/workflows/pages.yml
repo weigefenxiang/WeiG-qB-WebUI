@@ -183,8 +183,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git ls-remote "https://github.com/$GITHUB_REPOSITORY.git" refs/heads/main | awk '{print $1}')" = "$EXACT_SHA"
-          rm -rf reusable-site "$RUNNER_TEMP/pages-reuse"
-          mkdir -p "$RUNNER_TEMP/pages-reuse"
+          rm -rf reusable-site
 
           mapfile -t RUN_IDS < <(gh api \
             "/repos/$GITHUB_REPOSITORY/actions/workflows/pages.yml/runs?status=success&per_page=30" \
@@ -211,40 +210,7 @@ jobs:
             fi
           done
 
-          for RUN_ID in "${RUN_IDS[@]}"; do
-            if ! gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/artifacts?per_page=100" \
-              --jq '.artifacts[] | select(.expired == false and .name == "github-pages") | .id' | grep -q .; then
-              continue
-            fi
-            TMP="$RUNNER_TEMP/pages-reuse/$RUN_ID"
-            rm -rf "$TMP"
-            mkdir -p "$TMP/download" "$TMP/site"
-            if ! gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" --name github-pages --dir "$TMP/download"; then
-              continue
-            fi
-            TAR_FILE="$(find "$TMP/download" -maxdepth 2 -type f -name '*.tar' | head -n 1 || true)"
-            test -n "$TAR_FILE" || continue
-            tar -xf "$TAR_FILE" -C "$TMP/site"
-            if ROOT="$TMP/site" node --input-type=module - "$EXACT_SHA" <<'NODE'
-          import fs from 'node:fs';
-          import path from 'node:path';
-          const sha=process.argv[2],root=process.env.ROOT;
-          try{
-            const site=JSON.parse(fs.readFileSync(path.join(root,'metadata','site.json'),'utf8'));
-            const dev=JSON.parse(fs.readFileSync(path.join(root,'dev','app','virtual-qb-build.json'),'utf8'));
-            if(site.simulatorSha!==sha||site.branches?.dev?.exactSha!==sha||dev.branch!=='dev'||dev.exactSha!==sha||dev.simulatorSha!==sha)process.exit(1);
-          }catch{process.exit(1);}
-          NODE
-            then
-              rm -rf reusable-site
-              mv "$TMP/site" reusable-site
-              echo "source_run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
-              echo "Reusing legacy exact dev github-pages artifact from successful run $RUN_ID."
-              exit 0
-            fi
-          done
-
-          echo "No successful exact dev Pages artifact exists for $EXACT_SHA." >&2
+          echo "No successful exact reusable dev Pages artifact exists for $EXACT_SHA." >&2
           exit 1
 
       - name: Promote exact dev snapshot to main alias
