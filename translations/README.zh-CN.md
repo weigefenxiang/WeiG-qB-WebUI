@@ -1,8 +1,8 @@
 # WeiG qB WebUI
 
-一套现代、响应式的 qBittorrent Alternate WebUI，**支持电脑与手机自适应布局、暗夜模式**，在桌面端和移动端都能更方便地管理 qBittorrent。
+一套现代、响应式的 qBittorrent Alternate WebUI，**支持电脑与手机自适应布局、暗夜模式**，无论桌面端还是手机端都能更方便地管理 qBittorrent。
 
-**语言**：[English](../README.md) · 简体中文
+**在线预览**：[https://weigefenxiang.github.io/WeiG-qB-WebUI/](https://weigefenxiang.github.io/WeiG-qB-WebUI/)  ·  **语言**：[English](../README.md) · 简体中文
 
 ## 直接下载
 
