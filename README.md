@@ -1,158 +1,362 @@
 # WeiG qB WebUI
 
-A modern responsive Alternate WebUI for qBittorrent.
+A modern, responsive qBittorrent Alternate WebUI optimized for desktop and mobile.
 
-**Language**: English · [简体中文](translations/README.zh-CN.md)
+**📱 Mobile-friendly · 🌙 Dark mode · ✅ Supports qBittorrent 4.1.x → 5.2.x**
 
-## Install channels
+<p>
+  <img src="https://img.shields.io/badge/-JavaScript-F7DF1E?logo=javascript&logoColor=black" alt="JavaScript">
+  <img src="https://img.shields.io/badge/-HTML5-E34F26?logo=html5&logoColor=white" alt="HTML5">
+  <img src="https://img.shields.io/badge/-CSS3-1572B6?logo=css3&logoColor=white" alt="CSS3">
+  <img src="https://img.shields.io/badge/-Node.js-339933?logo=nodedotjs&logoColor=white" alt="Node.js">
+  <img src="https://img.shields.io/badge/-Shell-8A2BE2?logo=gnubash&logoColor=white" alt="Shell">
+</p>
 
-- **Release** — stable, default, checksum-verified, recommended for normal use.
-- **dev** — current development branch resolved to an exact Git commit. Use it only when you explicitly want the latest development build. It is never used as an automatic fallback for a missing Release.
+**[🌐 Live Preview](https://weigefenxiang.github.io/WeiG-qB-WebUI/)** · **[⬇️ Download Latest Release](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/WeiG-qB-WebUI.zip)**
 
-## Quick Install
+**Language**: **English** · [简中](translations/README.zh-CN.md) · [繁中](translations/README.zh-TW.md) · [日本語](translations/README.ja.md) · [한국어](translations/README.ko.md) · [Deutsch](translations/README.de.md) · [Français](translations/README.fr.md) · [Español](translations/README.es.md) · [Português](translations/README.pt.md) · [Русский](translations/README.ru.md)
 
-### Linux / Docker / NAS
+## Direct Download
 
-Release (default):
+Download the latest stable **[WeiG-qB-WebUI.zip](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/WeiG-qB-WebUI.zip)**.
 
-```sh
-curl -fsSL https://raw.githubusercontent.com/weigefenxiang/WeiG-qB-WebUI/main/installers/install.sh -o /tmp/weigg-qb-install.sh && sh /tmp/weigg-qb-install.sh --configure
+After extraction, the **`WeiG-qB-WebUI` folder itself is the WebUI directory qBittorrent should use**.
+
+## New User Installation
+
+<details>
+<summary><b>First time installing? Expand this 1-minute guide</b></summary>
+
+### 1. Extract the ZIP
+
+Download and extract `WeiG-qB-WebUI.zip`. You should get:
+
+```text
+WeiG-qB-WebUI/
+├── public/
+├── private/
+├── VERSION
+└── GIT_SHA
 ```
 
-dev:
+The entire **`WeiG-qB-WebUI` folder** is the WebUI root. Do not copy only `public` or `private`.
 
-```sh
-curl -fsSL https://raw.githubusercontent.com/weigefenxiang/WeiG-qB-WebUI/dev/installers/install.sh -o /tmp/weigg-qb-install.sh && sh /tmp/weigg-qb-install.sh --channel=dev --configure
+### 2. Move it to a permanent location
+
+Put the whole `WeiG-qB-WebUI` folder somewhere you will not accidentally delete later, for example:
+
+```text
+Windows: D:\WeiG-qB-WebUI
+Linux:   /opt/WeiG-qB-WebUI
 ```
 
-The installer automatically chooses an available downloader, ZIP extractor and SHA256 tool. It supports common combinations including `curl`, `wget`, BusyBox, Python and `bsdtar`. Release installation always verifies `SHA256SUMS`; dev installation records the exact dev Git SHA.
+This is the directory you will enter in qBittorrent.
 
-For multiple qBittorrent Docker containers, list them first:
+### 3. Enable it in qBittorrent
 
-```sh
-sh /tmp/weigg-qb-install.sh --list-containers
+Open qBittorrent:
+
+**Tools → Options... → WebUI**
+
+These are the current qBittorrent English UI terms. Then:
+
+1. Enable **Use alternative WebUI**.
+2. Find **Files location:**.
+3. Enter the path to the `WeiG-qB-WebUI` folder.
+
+Windows example:
+
+```text
+D:\WeiG-qB-WebUI
 ```
 
-Then select one explicitly, for example:
+Regular Linux example:
+
+```text
+/opt/WeiG-qB-WebUI
+```
+
+4. Click **OK** to save.
+5. Refresh the qBittorrent WebUI page. If the old page is still cached, try `Ctrl + F5` once.
+
+> **How do I know the path is correct?** The directory you enter should directly contain `public`, `private`, `VERSION`, and the other WebUI files. If you need to enter another `WeiG-qB-WebUI` folder before seeing those files, your path is one level too high or too low.
+
+> **Docker users:** qBittorrent runs inside a container, so you usually cannot enter the host path directly. See the **Docker** guide below for the difference between host and container paths.
+
+</details>
+
+## One-click Install
+
+The one-click installer is downloaded from the stable `main` branch. **By default it installs the latest stable GitHub Release** and verifies `SHA256SUMS`. The installer script is kept in the current directory for later updates or rollback.
+
+### Linux / NAS
 
 ```sh
-sh /tmp/weigg-qb-install.sh --container=qbittorrent --configure
+curl -fsSL https://raw.githubusercontent.com/weigefenxiang/WeiG-qB-WebUI/main/installers/install.sh -o weigg-install.sh && sh weigg-install.sh --configure
 ```
+
+<details>
+<summary><b>Show script location and default WebUI install directory</b></summary>
+
+```text
+./weigg-install.sh
+```
+
+The WebUI itself is installed by default to:
+
+```text
+~/.local/share/weigg-qb-webui
+```
+
+For example, when running as `root`, this is usually:
+
+```text
+/root/.local/share/weigg-qb-webui
+```
+
+</details>
+
+### Docker
+
+<details>
+<summary><b>Docker one-click install / multiple containers / path guide (recommended for beginners)</b></summary>
+
+#### First understand “host” and “container”
+
+If qBittorrent is running in Docker on a VPS, Linux server, Synology, QNAP, or another NAS:
+
+- **Host**: the real Linux/NAS machine that runs Docker — the system you see after SSH login.
+- **Container**: the isolated environment Docker creates for qBittorrent. qBittorrent can directly see container paths, not arbitrary host paths.
+
+For example, your qBittorrent container may have this mapping:
+
+```text
+Host:      /root/qbittorrent/config
+   ↓ mapped to
+Container: /config
+```
+
+A typical Docker Compose entry looks like:
+
+```yaml
+volumes:
+  - /root/qbittorrent/config:/config
+```
+
+The left side of the colon, `/root/qbittorrent/config`, is the **host path**. The right side, `/config`, is the **container path**.
+
+If WeiG qB WebUI is physically installed at:
+
+```text
+Host: /root/qbittorrent/config/weigg-qb-webui
+```
+
+then qBittorrent **Files location:** should be:
+
+```text
+/config/weigg-qb-webui
+```
+
+**Do not enter `/root/qbittorrent/config/weigg-qb-webui` in qBittorrent**, because the container usually cannot see that host path directly.
+
+#### Case 1: only one running qBittorrent container
+
+Use the normal one-click command:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/weigefenxiang/WeiG-qB-WebUI/main/installers/install.sh -o weigg-install.sh && sh weigg-install.sh --configure
+```
+
+The installer will try to detect the running qBittorrent container, detect its `/config` mapping, install the WebUI in the corresponding host location, and configure qBittorrent automatically.
+
+#### Case 2: find the qBittorrent container name first
+
+If you are not sure what the container is called:
+
+```sh
+sh weigg-install.sh --list-containers
+```
+
+You can also use Docker directly:
+
+```sh
+docker ps
+```
+
+If the qBittorrent container is named:
+
+```text
+qbittorrent
+```
+
+select it explicitly:
+
+```sh
+sh weigg-install.sh --container=qbittorrent --configure
+```
+
+#### Case 3: multiple qBittorrent containers
+
+For example:
+
+```text
+qbittorrent
+qbittorrent-test
+```
+
+List them first:
+
+```sh
+sh weigg-install.sh --list-containers
+```
+
+Install for the main `qbittorrent` container:
+
+```sh
+sh weigg-install.sh --container=qbittorrent --configure
+```
+
+Install for the test container:
+
+```sh
+sh weigg-install.sh --container=qbittorrent-test --configure
+```
+
+The installer will not silently guess between multiple qBittorrent containers.
+
+#### Case 4: you already know the host directory mounted as `/config`
+
+For example:
+
+```text
+/root/qbittorrent/config
+```
+
+Specify it directly:
+
+```sh
+sh weigg-install.sh --config-root=/root/qbittorrent/config --configure
+```
+
+A Synology path might look like:
+
+```sh
+sh weigg-install.sh --config-root=/volume1/docker/qbittorrent --configure
+```
+
+Another NAS might use something like:
+
+```sh
+sh weigg-install.sh --config-root=/share/Container/qbittorrent --configure
+```
+
+These are examples only. **Replace them with the real host path that is mounted as qBittorrent `/config`.**
+
+#### Case 5: choose the WebUI install path
+
+After selecting a container, you can also choose the container-visible WebUI location:
+
+```sh
+sh weigg-install.sh --container=qbittorrent -o /config/weigg-qb-webui --configure
+```
+
+The installer converts the `/config/...` container path to the corresponding host install path.
+
+#### What should I see after installation?
+
+A successful install prints values similar to:
+
+```text
+Host install path: /root/qbittorrent/config/weigg-qb-webui
+qBittorrent Root Folder: /config/weigg-qb-webui
+```
+
+Meaning:
+
+- `Host install path`: where the files are physically stored on the host;
+- `qBittorrent Root Folder`: **the container path qBittorrent should use for Files location**.
+
+If `--configure` successfully finds the qBittorrent configuration, the installer enables **Use alternative WebUI** and sets the path automatically. Otherwise, follow the manual steps in **New User Installation → Enable it in qBittorrent** above.
+
+</details>
 
 ### Windows PowerShell
 
-Release:
-
 ```powershell
-Invoke-WebRequest https://raw.githubusercontent.com/weigefenxiang/WeiG-qB-WebUI/main/installers/install.ps1 -OutFile $env:TEMP\weigg-qb-install.ps1; powershell -ExecutionPolicy Bypass -File $env:TEMP\weigg-qb-install.ps1 -Channel Release -Configure
+Invoke-WebRequest https://raw.githubusercontent.com/weigefenxiang/WeiG-qB-WebUI/main/installers/install.ps1 -OutFile .\weigg-install.ps1; powershell -ExecutionPolicy Bypass -File .\weigg-install.ps1 -configure
 ```
 
-dev:
-
-```powershell
-Invoke-WebRequest https://raw.githubusercontent.com/weigefenxiang/WeiG-qB-WebUI/dev/installers/install.ps1 -OutFile $env:TEMP\weigg-qb-install.ps1; powershell -ExecutionPolicy Bypass -File $env:TEMP\weigg-qb-install.ps1 -Channel Dev -Configure
-```
-
-## Direct Release Download
-
-You can always download files in a browser from [GitHub Releases](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest). The two Release files are [WeiG-qB-WebUI.zip](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/WeiG-qB-WebUI.zip) and [SHA256SUMS](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/SHA256SUMS).
-
-With `curl`:
-
-```sh
-curl -fL https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/WeiG-qB-WebUI.zip -o WeiG-qB-WebUI.zip
-curl -fL https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/SHA256SUMS -o SHA256SUMS
-sha256sum -c SHA256SUMS
-unzip WeiG-qB-WebUI.zip
-```
-
-With `wget`:
-
-```sh
-wget https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/WeiG-qB-WebUI.zip -O WeiG-qB-WebUI.zip
-wget https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/SHA256SUMS -O SHA256SUMS
-sha256sum -c SHA256SUMS
-unzip WeiG-qB-WebUI.zip
-```
-
-On minimal NAS systems, BusyBox can often be used instead:
-
-```sh
-busybox wget -O WeiG-qB-WebUI.zip https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/WeiG-qB-WebUI.zip
-busybox wget -O SHA256SUMS https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/SHA256SUMS
-busybox sha256sum WeiG-qB-WebUI.zip
-busybox unzip WeiG-qB-WebUI.zip
-```
-
-If `curl`, `wget` or `unzip` is unavailable, download the ZIP in a browser and copy/upload it to the Linux/NAS host. For extraction, use any available ZIP tool such as `unzip`, `busybox unzip`, `python3 -m zipfile -e WeiG-qB-WebUI.zip .`, or `bsdtar -xf WeiG-qB-WebUI.zip`.
-
-Windows manual extraction:
-
-```powershell
-Invoke-WebRequest https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/WeiG-qB-WebUI.zip -OutFile .\WeiG-qB-WebUI.zip
-Expand-Archive .\WeiG-qB-WebUI.zip .\WeiG-qB-WebUI -Force
-```
-
-## Manual dev Download
-
-The installer is preferred because it resolves `dev` to one exact Git SHA and stamps that SHA into the WebUI files.
-
-For manual testing you may download the branch source from **Code → dev → Download ZIP**, or use:
-
-```sh
-curl -fL https://github.com/weigefenxiang/WeiG-qB-WebUI/archive/refs/heads/dev.zip -o WeiG-qB-WebUI-dev.zip
-unzip WeiG-qB-WebUI-dev.zip
-```
-
-With `wget`:
-
-```sh
-wget https://github.com/weigefenxiang/WeiG-qB-WebUI/archive/refs/heads/dev.zip -O WeiG-qB-WebUI-dev.zip
-unzip WeiG-qB-WebUI-dev.zip
-```
-
-For a manually extracted dev source archive, the Alternate WebUI directory is **`WeiG-qB-WebUI-dev/webui/`**. Do not point qBittorrent at the repository root.
-
-## Enable WeiG qB WebUI
-
-In qBittorrent open **Tools / Options (Preferences) → Web UI**, enable **Use alternative WebUI**, and set **Files location / Root Folder** to the extracted WebUI directory as seen by the qBittorrent process.
-
-For Docker, the host path and the container-visible path are different. For example:
+<details>
+<summary><b>Show install directory</b></summary>
 
 ```text
-Host:        /path/to/qbittorrent/config/weigg-qb-webui
-qBittorrent: /config/weigg-qb-webui
+C:\Users\<your-username>\AppData\Local\WeiG-qB-WebUI
 ```
 
-qBittorrent must use the container-visible path.
+</details>
 
-## Update
+## Common Options
 
-Run the installer again. Release remains the default channel; use `--channel=dev` on Linux or `-Channel Dev` on Windows to stay on dev.
+<details>
+<summary><b>Options / specific version / custom directory / rollback (expand)</b></summary>
 
-## Disable / Roll Back
+Linux and Windows use the same public option names where practical. Documentation uses lowercase; PowerShell parameter names are case-insensitive.
 
-To immediately return to qBittorrent's built-in WebUI, disable **Use alternative WebUI**.
+| Purpose | Linux / Docker / NAS | Windows PowerShell |
+|---|---|---|
+| Latest stable Release | Default, no option | Default, no option |
+| Specific Release | `--version 0.3.60` | `-version 0.3.60` |
+| Development build | `--dev` | `-dev` |
+| Custom install directory | `-o /path` or `--output /path` | `-o D:\path` or `-output D:\path` |
+| Configure qBittorrent automatically | `--configure` | `-configure` |
+| Roll back the previous install | `--rollback` | `-rollback` |
+| Full help | `--help` | `-help` |
+| Select Docker container | `--container=NAME` | — |
+| List Docker containers | `--list-containers` | — |
+| Specify host directory mounted as Docker `/config` | `--config-root=/path` | — |
 
-Linux rollback:
+Notes:
+
+- `-o` means **output** and selects the WeiG qB WebUI install directory.
+- `--configure / -configure` enables qBittorrent **Use alternative WebUI** and sets **Files location** after installation. The qBittorrent configuration is backed up first.
+- `--rollback / -rollback` restores the previous WebUI installation and matching qBittorrent configuration. The installer remembers the last install directory by default.
+- `--version / -version` installs an exact GitHub Release such as `0.3.60`. If the requested version does not exist, installation fails and **never falls back to latest or dev**.
+- `--dev / -dev` is for testing the current development branch at an exact Git SHA. It cannot be combined with `--version / -version`.
+- With multiple qBittorrent Docker containers, use `--list-containers`, then select one with `--container=NAME`. You can also use `--config-root=/path` if you already know the host qBittorrent configuration directory.
+
+### Specific version and install directory
+
+Linux:
 
 ```sh
-sh /tmp/weigg-qb-install.sh --rollback
+sh weigg-install.sh --version 0.3.60 -o /opt/weigg-qb-webui --configure
 ```
 
-Windows rollback:
+Windows:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File $env:TEMP\weigg-qb-install.ps1 -Mode Rollback
+powershell -ExecutionPolicy Bypass -File .\weigg-install.ps1 -version 0.3.60 -o D:\WeiG-qB-WebUI -configure
 ```
 
-## Compatibility
+### Rollback
 
-Minimum supported target: **qBittorrent 4.1.9.1**. WeiG qB WebUI supports qBittorrent **4.x and 5.x** with capability-based compatibility handling.
+Linux:
+
+```sh
+sh weigg-install.sh --rollback
+```
+
+Windows:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\weigg-install.ps1 -rollback
+```
+
+</details>
 
 ## More Help
 
-For custom paths, Docker multi-container setups, NAS deployment, updates and rollback, see [Installation & Upgrade](docs/007.安装升级与手动部署.md).
+For Docker multi-container setups, NAS deployment, custom paths, updates, and advanced installation details, see the detailed [Installation, Upgrade & Manual Deployment Guide](translations/deployment-guide/README.en.md).
 
 ## License
 

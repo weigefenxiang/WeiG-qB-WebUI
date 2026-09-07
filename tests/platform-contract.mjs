@@ -21,10 +21,18 @@ assert.match(sh,/\$DEST\.new\/public\/index\.html/,'Linux installer must validat
 assert.match(sh,/QBT_ROOT_FOLDER="\/config\/\$rel"/,'Linux Docker install must map host paths to qB-visible /config paths');
 assert.match(sh,/WebUI\\\\AlternativeUIEnabled=true/,'Linux installer must enable Alternative WebUI only when configured');
 assert.match(sh,/WebUI\\\\RootFolder=%s/,'Linux installer must persist qB-visible RootFolder');
-assert.match(sh,/--channel=release/,'Linux installer must expose explicit Release channel');
-assert.match(sh,/--channel=dev/,'Linux installer must expose explicit dev channel');
-assert.match(sh,/releases\/latest\/download\/WeiG-qB-WebUI\.zip/,'Linux default Release channel must consume the latest Release asset');
-assert.match(sh,/releases\/latest\/download\/SHA256SUMS/,'Linux Release channel must consume the published checksum');
+assert.match(sh,/--version VERSION/,'Linux installer must expose a specific Release version option');
+assert.match(sh,/--dev\s+Install the current dev exact Git SHA/,'Linux installer must expose the simplified dev option');
+assert.match(sh,/-o PATH, --output PATH/,'Linux installer must expose unified output-path options');
+assert.match(sh,/--configure\s+Enable qBittorrent Alternative WebUI and set Root Folder/,'Linux configure help must explain the qB config mutation');
+assert.match(sh,/--rollback\s+Restore the previous installation and qBittorrent config/,'Linux installer must expose rollback');
+assert.match(sh,/--version and --dev\/--channel=dev cannot be used together/,'Linux installer must reject version/dev ambiguity');
+assert.match(sh,/releases\/latest\/download/,'Linux default Release channel must consume latest Release assets');
+assert.match(sh,/releases\/download\/\$RELEASE_TAG/,'Linux installer must support exact tagged Release assets');
+assert.match(sh,/PACKAGE_VERSION/,'Linux exact Release install must verify package VERSION');
+assert.match(sh,/SHA256SUMS/,'Linux Release installs must remain checksum-verified');
+assert.match(sh,/--channel=release\|dev/,'Linux installer must keep the old channel syntax as a compatibility alias');
+assert.match(sh,/--dir=\/path/,'Linux installer must keep the old path syntax as a compatibility alias');
 assert.match(sh,/api\.github\.com\/repos\/\$REPO\/commits\/dev/,'Linux dev channel must resolve the current dev exact SHA');
 assert.match(sh,/archive\/\$SOURCE_SHA\.zip/,'Linux dev channel must download an exact-SHA source archive');
 for(const token of ['download_file','extract_zip','sha256_file','busybox wget','busybox unzip','python3 -m zipfile','openssl dgst -sha256'])assert.ok(sh.includes(token),`Linux portable installer fallback missing ${token}`);
@@ -36,11 +44,24 @@ assert.match(ps,/\$env:LOCALAPPDATA\\WeiG-qB-WebUI/,'Windows installer must use 
 assert.match(ps,/APPDATA 'qBittorrent\\qBittorrent\.ini'/,'Windows installer must search the canonical roaming qBittorrent config path');
 assert.match(ps,/WebUI\\AlternativeUIEnabled=true/,'Windows installer must persist Alternative WebUI enabled state');
 assert.match(ps,/WebUI\\RootFolder=/,'Windows installer must persist the native Windows RootFolder');
-assert.match(ps,/ValidateSet\('Release','Dev'\)/,'Windows installer must expose Release and Dev channels');
-assert.match(ps,/releases\/latest\/download\/WeiG-qB-WebUI\.zip/,'Windows default Release channel must consume the latest Release asset');
-assert.match(ps,/releases\/latest\/download\/SHA256SUMS/,'Windows Release channel must consume the published checksum');
+assert.match(ps,/Alias\('o','output'\)/,'Windows installer must expose the same short output option');
+assert.match(ps,/\[string\]\$Version=''/,'Windows installer must expose a specific Release version option');
+assert.match(ps,/\[switch\]\$Dev/,'Windows installer must expose the simplified dev option');
+assert.match(ps,/\[switch\]\$Configure/,'Windows installer must expose configure');
+assert.match(ps,/\[switch\]\$Rollback/,'Windows installer must expose rollback');
+assert.match(ps,/-version VERSION/,'Windows help must document lowercase version syntax');
+assert.match(ps,/-configure\s+Enable qBittorrent Alternative WebUI and set Root Folder/,'Windows help must document lowercase configure syntax');
+assert.match(ps,/-version and -dev\/-Channel Dev cannot be used together/,'Windows installer must reject version/dev ambiguity');
+assert.match(ps,/releases\/latest\/download/,'Windows default Release channel must consume latest Release assets');
+assert.match(ps,/releases\/download\/\$releaseTag/,'Windows installer must support exact tagged Release assets');
+assert.match(ps,/packageVersion/,'Windows exact Release install must verify package VERSION');
+assert.match(ps,/SHA256SUMS/,'Windows Release installs must remain checksum-verified');
+assert.match(ps,/ValidateSet\('Release','Dev'\)/,'Windows installer must retain legacy Release/Dev channel compatibility');
+assert.match(ps,/ValidateSet\('Install','Update','Rollback'\)/,'Windows installer must retain legacy mode compatibility');
 assert.match(ps,/api\.github\.com\/repos\/\$Repo\/commits\/dev/,'Windows Dev channel must resolve the current dev exact SHA');
 assert.match(ps,/archive\/\$sourceSha\.zip/,'Windows Dev channel must download an exact-SHA source archive');
+assert.match(ps,/function Restore-Last/,'Windows rollback must restore the remembered previous state');
+assert.match(ps,/last-dest/,'Windows rollback must remember the prior install destination');
 assert.doesNotMatch(ps,/archive\/refs\/heads\/main\.zip/,'Windows Release channel must fail closed instead of falling back to main');
 assert.doesNotMatch(ps,/Resolve-MainSha/,'Windows Release channel must not resolve main as a payload source');
 
@@ -58,4 +79,4 @@ for(const [name,html] of [['public/index.html',publicIndex],['public/login.html'
 }
 assert.match(privateIndex,/scripts\/qb-client\.js/,'private WebUI must load the shared API compatibility client');
 
-console.log('Platform contract passed: Windows/Linux installers support explicit Release/dev exact-SHA channels, Release remains checksum-verified and fail-closed, Linux uses portable tool fallbacks, and LIVE rollback retention is capped at three backups.');
+console.log('Platform contract passed: Windows/Linux installers share simplified version/dev/output/configure/rollback semantics, preserve legacy aliases, verify exact Release versions and checksums, retain portable Linux fallbacks, and keep LIVE rollback retention capped at three backups.');
