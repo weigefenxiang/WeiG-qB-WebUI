@@ -104,6 +104,9 @@ curl -fsSL https://raw.githubusercontent.com/weigefenxiang/WeiG-qB-WebUI/main/in
 
 安装脚本会保存在你执行命令时的当前目录：
 
+<details>
+<summary><b>查看脚本位置和 WebUI 默认安装目录</b></summary>
+
 ```text
 ./weigg-install.sh
 ```
@@ -119,6 +122,8 @@ WebUI 本体默认安装到：
 ```text
 /root/.local/share/weigg-qb-webui
 ```
+
+</details>
 
 ### Docker
 
