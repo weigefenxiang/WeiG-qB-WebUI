@@ -35,7 +35,7 @@ assert.equal(calls.at(-1).url,'api/v2/transfer/banPeers');
 assert.equal(new URLSearchParams(String(calls.at(-1).init.body||'')).get('peers'),'203.0.113.7:51413');
 
 responseBody={peers:{}};before=calls.length;items=await client.peers('empty');
-assert.deepEqual(items,[],'a real source-proven empty peers object must remain a real empty list');
+assert.equal(Array.isArray(items)&&items.length===0,true,'a real source-proven empty peers object must remain a real empty list');
 assert.equal(calls.length,before+1,'real empty peers still requires one successful HTTP response');
 
 responseBody={};before=calls.length;
