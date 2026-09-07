@@ -7,6 +7,7 @@ import {supportedStableReleaseTags} from './qb-release-tags.mjs';
 
 const SURFACES=['torrentFilters','torrentInfoParameters','torrentInfoFields','torrentStates','torrentPropertiesFields','torrentTrackerFields','torrentFileFields','torrentWebSeedFields'];
 const readJson=file=>JSON.parse(fs.readFileSync(file,'utf8'));
+const readTagsFile=file=>fs.readFileSync(file,'utf8').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
 const sha256File=file=>crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 const assert=(ok,msg)=>{if(!ok)throw new Error(msg);};
 const getArg=(name,args=process.argv.slice(2))=>{const item=args.find(x=>x.startsWith(`${name}=`));return item?item.slice(name.length+1):null;};
@@ -25,6 +26,14 @@ export function stableAdmissionDelta(frozenCatalog,upstreamTags){
   assert(upstream.length>=frozen.length,`Upstream stable set shrank below LKG: ${upstream.length} < ${frozen.length}.`);
   for(let i=0;i<frozen.length;i++)assert(upstream[i]===frozen[i],`Upstream stable history changed before LKG boundary at ordinal ${i}: ${frozen[i]} -> ${upstream[i]||'missing'}.`);
   return upstream.slice(frozen.length);
+}
+export function admissionProductCatalog(base,candidate){
+  const fresh=assertFrozenPrefix(base,candidate,'Admission candidate');
+  assert(fresh.length>0,'Admission product catalog requires at least one new stable profile.');
+  const selected=[base[0]];
+  if(base.length>1)selected.push(base.at(-1));
+  selected.push(...fresh);
+  return selected;
 }
 export function verifyLkg({catalog,manifest,catalogPath}){
   assert(Array.isArray(catalog)&&catalog.length>0,'LKG catalog must be a non-empty array.');
@@ -62,14 +71,17 @@ export function promotedManifest(oldManifest,base,candidate,{validationCommit=nu
   return{...oldManifest,latestAdmittedStable:candidate.at(-1).qbVersion,profileCount:candidate.length,catalogSha256:null,lastAdmission:{validationCommit,admittedAt,tags:fresh.map(x=>x.tag),sourceShas:Object.fromEntries(fresh.map(x=>[x.tag,x.sourceSha]))}};
 }
 function gitTags(qbRoot){return execFileSync('git',['-C',qbRoot,'tag','--list','release-*'],{encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim().split(/\r?\n/).filter(Boolean);}
+function discoveryResult(catalog,manifest,tags){const newTags=stableAdmissionDelta(catalog,tags);return{supportFloor:manifest.supportFloor,latestAdmittedStable:manifest.latestAdmittedStable,profileCount:manifest.profileCount,newTags,newVersions:newTags.map(x=>x.replace(/^release-/,'')),hasNew:newTags.length>0};}
 function main(){
   const args=process.argv.slice(2),command=args[0],catalogPath=path.resolve(getArg('--catalog',args)||'tests/fixtures/qb-release-catalog.lkg.json'),manifestPath=path.resolve(getArg('--manifest',args)||'tools/data/qb-stable-lkg.json');
   const catalog=readJson(catalogPath),manifest=readJson(manifestPath);verifyLkg({catalog,manifest,catalogPath});
   if(command==='verify'){console.log(`Frozen LKG verified: ${catalog.length} profiles ${catalog[0].qbVersion} -> ${catalog.at(-1).qbVersion}; sha256 ${manifest.catalogSha256}.`);return;}
-  if(command==='discover'){
-    const qbRoot=path.resolve(args[1]||'');assert(qbRoot&&fs.existsSync(qbRoot),'Usage: node tools/qb-stable-admission.mjs discover <qB-clone> [--catalog=...] [--manifest=...] [--output=...]');
-    const newTags=stableAdmissionDelta(catalog,gitTags(qbRoot)),result={supportFloor:manifest.supportFloor,latestAdmittedStable:manifest.latestAdmittedStable,profileCount:manifest.profileCount,newTags,newVersions:newTags.map(x=>x.replace(/^release-/,'')),hasNew:newTags.length>0};
-    const output=getArg('--output',args);if(output)writeJson(path.resolve(output),result);console.log(JSON.stringify(result));return;
+  if(command==='discover'||command==='discover-tags'){
+    const source=path.resolve(args[1]||'');assert(source&&fs.existsSync(source),command==='discover'?'Usage: node tools/qb-stable-admission.mjs discover <qB-clone> [--output=...]':'Usage: node tools/qb-stable-admission.mjs discover-tags <tag-file> [--output=...]');
+    const result=discoveryResult(catalog,manifest,command==='discover'?gitTags(source):readTagsFile(source)),output=getArg('--output',args);if(output)writeJson(path.resolve(output),result);console.log(JSON.stringify(result));return;
+  }
+  if(command==='product-catalog'){
+    const candidatePath=path.resolve(getArg('--candidate',args)||''),outputPath=path.resolve(getArg('--output',args)||'');assert(candidatePath&&fs.existsSync(candidatePath),'product-catalog requires --candidate=path');assert(outputPath,'product-catalog requires --output=path');const selected=admissionProductCatalog(catalog,readJson(candidatePath));writeJson(outputPath,selected);console.log(`Prepared focused admission product catalog: ${selected.map(x=>x.qbVersion).join(', ')}.`);return;
   }
   if(command==='report'){
     const candidatePath=path.resolve(getArg('--candidate',args)||'');assert(candidatePath&&fs.existsSync(candidatePath),'report requires --candidate=path');const candidate=readJson(candidatePath),text=renderAdmissionReport(catalog,candidate),output=getArg('--output',args);if(output){fs.mkdirSync(path.dirname(path.resolve(output)),{recursive:true});fs.writeFileSync(path.resolve(output),text,'utf8');}process.stdout.write(text);return;
@@ -77,6 +89,6 @@ function main(){
   if(command==='promote-manifest'){
     const candidatePath=path.resolve(getArg('--candidate',args)||''),outputPath=path.resolve(getArg('--output',args)||'');assert(candidatePath&&fs.existsSync(candidatePath),'promote-manifest requires --candidate=path');assert(outputPath,'promote-manifest requires --output=path');const candidate=readJson(candidatePath),next=promotedManifest(manifest,catalog,candidate,{validationCommit:process.env.WEIGG_VALIDATION_SHA||process.env.GITHUB_SHA||null,admittedAt:new Date().toISOString()});next.catalogSha256=sha256File(candidatePath);writeJson(outputPath,next);console.log(`Prepared LKG manifest for ${next.latestAdmittedStable}; ${next.profileCount} profiles; sha256 ${next.catalogSha256}.`);return;
   }
-  throw new Error('Usage: node tools/qb-stable-admission.mjs <verify|discover|report|promote-manifest> ...');
+  throw new Error('Usage: node tools/qb-stable-admission.mjs <verify|discover|discover-tags|product-catalog|report|promote-manifest> ...');
 }
 const isMain=process.argv[1]&&pathToFileURL(path.resolve(process.argv[1])).href===import.meta.url;if(isMain){try{main();}catch(error){console.error(error?.stack||error);process.exit(1);}}

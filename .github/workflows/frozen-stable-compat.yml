@@ -6,9 +6,6 @@ on:
       - dev
     paths:
       - '.github/workflows/frozen-stable-compat.yml'
-      - 'tools/qb-stable-admission.mjs'
-      - 'tools/data/qb-stable-lkg.json'
-      - 'tests/fixtures/qb-release-catalog.lkg.json'
       - 'tests/full-stable-product-compat.mjs'
       - 'tests/compat-architecture-contract.mjs'
       - 'webui/private/data/capabilities.json'

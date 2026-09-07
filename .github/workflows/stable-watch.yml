@@ -14,8 +14,6 @@ on:
       - 'tools/qb-release-catalog.mjs'
       - 'tools/qb-release-tags.mjs'
       - 'tools/qb-catalog-evolution.mjs'
-      - 'tools/data/qb-stable-lkg.json'
-      - 'tests/fixtures/qb-release-catalog.lkg.json'
       - 'tests/upstream-release-audit.mjs'
       - 'tests/full-stable-product-compat.mjs'
       - 'tests/compat-architecture-contract.mjs'
@@ -44,7 +42,31 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-      - name: Checkout qBittorrent upstream stable tags
+      - name: Verify frozen last-known-good catalog
+        run: node tools/qb-stable-admission.mjs verify
+      - name: Fetch official stable tag names only
+        shell: bash
+        run: |
+          set -euo pipefail
+          git ls-remote --refs --tags https://github.com/qbittorrent/qBittorrent.git 'refs/tags/release-*' \
+            | awk '{sub("refs/tags/", "", $2); print $2}' \
+            > "$RUNNER_TEMP/upstream-stable-tags.txt"
+      - name: Discover official stable tags after LKG
+        id: discover
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/qb-stable-admission.mjs discover-tags "$RUNNER_TEMP/upstream-stable-tags.txt" --output="$RUNNER_TEMP/stable-discovery.json"
+          HAS_NEW="$(node -e "const x=require(process.argv[1]);process.stdout.write(String(x.hasNew))" "$RUNNER_TEMP/stable-discovery.json")"
+          NEW_TAGS="$(node -e "const x=require(process.argv[1]);process.stdout.write(x.newTags.join(','))" "$RUNNER_TEMP/stable-discovery.json")"
+          NEW_VERSIONS="$(node -e "const x=require(process.argv[1]);process.stdout.write(x.newVersions.join(','))" "$RUNNER_TEMP/stable-discovery.json")"
+          if [ -n "$NEW_TAGS" ]; then AUDIT_REFS="release-4.1.0,$NEW_TAGS"; else AUDIT_REFS="release-4.1.0"; fi
+          printf 'has_new=%s\nnew_tags=%s\nnew_versions=%s\naudit_refs=%s\n' "$HAS_NEW" "$NEW_TAGS" "$NEW_VERSIONS" "$AUDIT_REFS" >> "$GITHUB_OUTPUT"
+      - name: No new official stable summary
+        if: ${{ steps.discover.outputs.has_new != 'true' }}
+        run: echo 'No new qBittorrent official stable tag after the frozen LKG; exiting immediately without upstream source checkout, historical product regression, source extraction, or repository write.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Checkout qBittorrent upstream source only after discovery
+        if: ${{ steps.discover.outputs.has_new == 'true' }}
         uses: actions/checkout@v7
         with:
           repository: qbittorrent/qBittorrent
@@ -52,33 +74,18 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
           filter: blob:none
-      - name: Verify frozen last-known-good catalog
-        run: node tools/qb-stable-admission.mjs verify
-      - name: Discover official stable tags after LKG
-        id: discover
-        shell: bash
-        run: |
-          set -euo pipefail
-          node tools/qb-stable-admission.mjs discover upstream-qb --output="$RUNNER_TEMP/stable-discovery.json"
-          HAS_NEW="$(node -e "const x=require(process.argv[1]);process.stdout.write(String(x.hasNew))" "$RUNNER_TEMP/stable-discovery.json")"
-          NEW_TAGS="$(node -e "const x=require(process.argv[1]);process.stdout.write(x.newTags.join(','))" "$RUNNER_TEMP/stable-discovery.json")"
-          NEW_VERSIONS="$(node -e "const x=require(process.argv[1]);process.stdout.write(x.newVersions.join(','))" "$RUNNER_TEMP/stable-discovery.json")"
-          if [ -n "$NEW_TAGS" ]; then AUDIT_REFS="release-4.1.0,$NEW_TAGS"; else AUDIT_REFS="release-4.1.0"; fi
-          printf 'has_new=%s\nnew_tags=%s\nnew_versions=%s\naudit_refs=%s\n' "$HAS_NEW" "$NEW_TAGS" "$NEW_VERSIONS" "$AUDIT_REFS" >> "$GITHUB_OUTPUT"
-      - name: Frozen-history product regression when there is no new stable
-        if: ${{ steps.discover.outputs.has_new != 'true' }}
-        run: |
-          node tests/compat-architecture-contract.mjs
-          node tests/full-stable-product-compat.mjs tests/fixtures/qb-release-catalog.lkg.json
       - name: Source-extract only new stable profiles onto frozen LKG
         if: ${{ steps.discover.outputs.has_new == 'true' }}
         run: node tools/qb-release-catalog.mjs upstream-qb --base-catalog=tests/fixtures/qb-release-catalog.lkg.json --output="$RUNNER_TEMP/qb-release-catalog.candidate.json"
       - name: Audit minimum floor plus newly discovered stable source refs
         if: ${{ steps.discover.outputs.has_new == 'true' }}
         run: node tests/upstream-release-audit.mjs upstream-qb --refs=${{ steps.discover.outputs.audit_refs }}
-      - name: Full PRODUCT compatibility matrix on frozen plus new profiles
+      - name: Build focused admission product catalog
         if: ${{ steps.discover.outputs.has_new == 'true' }}
-        run: node tests/full-stable-product-compat.mjs "$RUNNER_TEMP/qb-release-catalog.candidate.json"
+        run: node tools/qb-stable-admission.mjs product-catalog --candidate="$RUNNER_TEMP/qb-release-catalog.candidate.json" --output="$RUNNER_TEMP/qb-release-catalog.admission-product.json"
+      - name: Product compatibility gate for floor previous LKG and new profiles
+        if: ${{ steps.discover.outputs.has_new == 'true' }}
+        run: node tests/full-stable-product-compat.mjs "$RUNNER_TEMP/qb-release-catalog.admission-product.json"
       - name: Repository contracts and architecture guard before admission
         if: ${{ steps.discover.outputs.has_new == 'true' }}
         run: npm test
@@ -101,7 +108,9 @@ jobs:
         with:
           name: stable-admission-${{ steps.source.outputs.sha }}-${{ steps.discover.outputs.new_versions }}
           path: |
+            ${{ runner.temp }}/stable-discovery.json
             ${{ runner.temp }}/qb-release-catalog.candidate.json
+            ${{ runner.temp }}/qb-release-catalog.admission-product.json
             ${{ runner.temp }}/upstream-stable-diff.md
             ${{ runner.temp }}/product-capability-diff.md
             ${{ runner.temp }}/qb-stable-lkg.next.json
@@ -123,6 +132,12 @@ jobs:
           git diff --cached --quiet && { echo 'No LKG change to admit.'; exit 0; }
           git commit -m "Phase D: admit qB stable ${{ steps.discover.outputs.new_versions }}"
           git push origin HEAD:dev
-      - name: No new official stable summary
-        if: ${{ steps.discover.outputs.has_new != 'true' }}
-        run: echo 'No new qBittorrent official stable tag after the frozen LKG; no source history was re-parsed and no repository write was attempted.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Mark failed new stable as PENDING_REVIEW
+        if: ${{ failure() && steps.discover.outputs.has_new == 'true' }}
+        shell: bash
+        run: |
+          {
+            echo '## PENDING_REVIEW'
+            echo
+            echo 'A new official stable was discovered, but at least one source/parser/product/repository/admission gate failed. The candidate was not admitted and the Last Known Good catalog remains the release baseline.'
+          } >> "$GITHUB_STEP_SUMMARY"
