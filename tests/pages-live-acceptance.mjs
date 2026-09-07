@@ -256,7 +256,10 @@ try{
     assert.ok(drawer.speedFonts.length===2&&drawer.speedFonts.every(v=>v>=10),`Drawer transfer speed typography must be larger and readable: ${JSON.stringify(drawer.speedFonts)}`);
     assert.ok(drawer.limit.left>=drawer.stats.right-1&&drawer.limit.right<=drawer.capsule.right+1,`rate-limit button must retain its reserved region without overlap: ${JSON.stringify(drawer)}`);
 
-    await page.locator('#drawer-scrim').click();
+    const scrim=page.locator('#drawer-scrim'),scrimBox=await scrim.boundingBox(),sidebarBox=await page.locator('#sidebar').boundingBox();
+    assert.ok(scrimBox&&sidebarBox&&scrimBox.x+scrimBox.width-16>sidebarBox.x+sidebarBox.width,`Android Drawer must expose a visible scrim close target: ${JSON.stringify({scrimBox,sidebarBox})}`);
+    await scrim.click({position:{x:Math.max(1,scrimBox.width-16),y:Math.max(1,Math.min(scrimBox.height-16,scrimBox.height/2))}});
+    await page.waitForFunction(()=>!document.getElementById('sidebar')?.classList.contains('is-open'));
     await page.locator('#mobile-bottom-nav [data-route="logs"]').click();
     await page.waitForFunction(()=>document.getElementById('logs-view')?.classList.contains('is-active')&&document.querySelector('.logs-toolbar'));
     const logsLayout=await page.evaluate(()=>{
