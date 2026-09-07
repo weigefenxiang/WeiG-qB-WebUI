@@ -10,8 +10,8 @@
   var defs=[
     {kind:'tracker',className:'facet-select--tracker',aria:function(){return label('Tracker filter','Tracker 筛选');},set:function(v){return W.LibraryController&&W.LibraryController.setTracker(v);}},
     {kind:'savePath',className:'facet-select--path',aria:function(){return label('Save path filter','保存路径筛选');},set:function(v){return W.LibraryController&&W.LibraryController.setSavePath(v);}},
-    {kind:'category',className:'facet-select--category',aria:function(){return label('Category filter','分类筛选');},set:function(v){return W.LibraryController&&W.LibraryController.setCategory(v);}},
-    {kind:'tag',capability:'tags',className:'facet-select--tag',aria:function(){return label('Tag filter','标签筛选');},set:function(v){return W.LibraryController&&W.LibraryController.setTag(v);}}
+    {kind:'category',capability:'categoryFacet',className:'facet-select--category',aria:function(){return label('Category filter','分类筛选');},set:function(v){return W.LibraryController&&W.LibraryController.setCategory(v);}},
+    {kind:'tag',capability:'tagFacet',className:'facet-select--tag',aria:function(){return label('Tag filter','标签筛选');},set:function(v){return W.LibraryController&&W.LibraryController.setTag(v);}}
   ];
   var controls={},host=null;
   function fallbackOptions(kind){var key=kind==='tracker'?'tracker.all':kind==='savePath'?'path.all':kind==='category'?'category.all':'tag.all',fallback=kind==='tracker'?label('All Trackers','全部 Tracker'):kind==='savePath'?label('All Paths','全部路径'):kind==='category'?label('All Categories','全部分类'):label('All Tags','全部标签'),text=W.t?W.t(key):'';return[{value:'',label:text&&text!==key?text:fallback}];}
