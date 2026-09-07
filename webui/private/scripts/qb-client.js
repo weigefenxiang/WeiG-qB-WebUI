@@ -51,11 +51,12 @@
   Client.prototype.torrentCreatorDelete=function(taskID){return this.request('torrentcreator/deleteTask',{method:'POST',form:{taskID:taskID},type:'void'});};
   Client.prototype.torrentCreatorFile=function(taskID){return this.request('torrentcreator/torrentFile?taskID='+encodeURIComponent(taskID),{type:'blob'});};
   Client.prototype._torrentAction=function(hashes,kind){var R=W.ReleaseProfile,action=R&&R.resolveTorrentAction?R.resolveTorrentAction(kind):null;if(!action){if(!R||!R.resolveTorrentAction)action=kind==='start'?(this.major>=5?'start':'resume'):(this.major>=5?'stop':'pause');else return Promise.reject(new ApiError(localeText('This torrent action is not supported by the current qBittorrent release.','当前 qBittorrent 版本不支持此 Torrent 操作。'),400,'torrents/'+kind));}return this.request('torrents/'+action,{method:'POST',form:{hashes:hashes},type:'void'});};
+  Client.prototype._guardedTorrentAction=function(kind,fallbackEndpoint,form){var R=W.ReleaseProfile,desc=R&&R.resolveTorrentActionDescriptor?R.resolveTorrentActionDescriptor(kind):null;if(R&&R.resolveTorrentActionDescriptor&&!desc)return Promise.reject(new ApiError(localeText('This torrent action is not supported by the current qBittorrent release.','当前 qBittorrent 版本不支持此 Torrent 操作。'),400,'torrents/'+kind));return this.request('torrents/'+(desc&&desc.endpoint||fallbackEndpoint),{method:'POST',form:form||{},type:'void'});};
   Client.prototype.resume=function(hashes){return this._torrentAction(hashes,'start');};
   Client.prototype.pause=function(hashes){return this._torrentAction(hashes,'stop');};
   Client.prototype.delete=function(hashes,deleteFiles){return this.request('torrents/delete',{method:'POST',form:{hashes:hashes,deleteFiles:!!deleteFiles},type:'void'});};
   Client.prototype.recheck=function(hashes){return this.request('torrents/recheck',{method:'POST',form:{hashes:hashes},type:'void'});};
-  Client.prototype.reannounce=function(hashes){return this.request('torrents/reannounce',{method:'POST',form:{hashes:hashes},type:'void'});};
+  Client.prototype.reannounce=function(hashes){return this._guardedTorrentAction('reannounce','reannounce',{hashes:hashes});};
   Client.prototype.forceStart=function(hashes,value){return this.request('torrents/setForceStart',{method:'POST',form:{hashes:hashes,value:!!value},type:'void'});};
   Client.prototype.setAutoManagement=function(hashes,enable){return this.request('torrents/setAutoManagement',{method:'POST',form:{hashes:hashes,enable:!!enable},type:'void'});};
   Client.prototype.toggleSequential=function(hashes){return this.request('torrents/toggleSequentialDownload',{method:'POST',form:{hashes:hashes},type:'void'});};
@@ -75,7 +76,7 @@
   Client.prototype.setFilePriority=function(hash,ids,priority){return this.request('torrents/filePrio',{method:'POST',form:{hash:hash,id:ids,priority:priority},type:'void'});};
   Client.prototype.trackers=function(hash){return this.request('torrents/trackers?hash='+encodeURIComponent(hash));};
   Client.prototype.addTrackers=function(hash,urls){return this.request('torrents/addTrackers',{method:'POST',form:{hash:hash,urls:urls},type:'void'});};
-  Client.prototype.removeTrackers=function(hash,urls){return this.request('torrents/removeTrackers',{method:'POST',form:{hash:hash,urls:urls},type:'void'});};
+  Client.prototype.removeTrackers=function(hash,urls){return this._guardedTorrentAction('removeTrackers','removeTrackers',{hash:hash,urls:urls});};
   Client.prototype.editTracker=function(hash,origUrl,newUrl){var form={hash:hash,newUrl:newUrl};if(this.capabilities.trackerEditUrl===true||atLeast(this.webApiVersion,'2.13.0'))form.url=origUrl;else form.origUrl=origUrl;return this.request('torrents/editTracker',{method:'POST',form:form,type:'void'});};
   Client.prototype.webseeds=function(hash){return this.request('torrents/webseeds?hash='+encodeURIComponent(hash));};
   Client.prototype.peers=async function(hash){var data=await this.request('sync/torrentPeers?rid=0&hash='+encodeURIComponent(hash));var peers=data&&data.peers||{};return Object.keys(peers).map(function(k){var p=peers[k]||{};p.__key=k;return p;});};
