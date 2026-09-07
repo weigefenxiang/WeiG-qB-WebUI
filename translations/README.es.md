@@ -267,7 +267,7 @@ powershell -ExecutionPolicy Bypass -File .\weigg-install.ps1 -rollback
 
 ## Más ayuda
 
-Para Docker, NAS, rutas personalizadas, actualizaciones e instalación manual, consulta [Instalación, actualización y despliegue manual](../docs/007.安装升级与手动部署.md).
+Para Docker, NAS, rutas personalizadas, actualizaciones e instalación manual, consulta [Instalación, actualización y despliegue manual](deployment-guide/README.es.md).
 
 ## Licencia
 
