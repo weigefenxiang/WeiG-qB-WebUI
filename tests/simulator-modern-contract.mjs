@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {authenticate,createWorld} from '../simulator/core/engine.js';
 import {handleApi} from '../simulator/protocol/router.js';
 
-function world(qb='5.2.3',api='2.16.2'){
+function world(qb='5.2.3',api='2.15.1'){
   const w=createWorld({profile:{qbVersion:qb,webApiVersion:api,stable:true},count:24,seed:'modern-contract',now:1700000000000});
   authenticate(w,'demo','demo',1700000000000);return w;
 }
