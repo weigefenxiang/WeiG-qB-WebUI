@@ -39,6 +39,27 @@ assert(releaseCompat.indexOf('qb-release-catalog.mjs upstream-qb --output=qb-rel
 assert(releaseCompat.includes('name: qb-release-catalog-${{ github.sha }}'),'exact stable catalog must cross the job boundary as a SHA-named artifact');
 assert(candidate.includes('actions/download-artifact@v8')&&candidate.includes('qb-release-catalog-${{ github.sha }}'),'release candidate must reuse the exact audited catalog artifact');
 assert(candidate.includes('cp release-catalog/qb-releases.json webui/private/data/qb-releases.json')&&candidate.includes('test -s release/WeiG-qB-WebUI/private/data/qb-releases.json'),'release zip must embed the source-derived catalog consumed by W.ReleaseProfile');
+for(const [name,section] of [['release_compatibility',releaseCompat],['browser',linux],['windows_browser',windows],['release_candidate',candidate]]){
+  assert(section.includes("github.ref == 'refs/heads/dev'"),`${name} candidate gate must run on dev`);
+  assert(!section.includes("github.ref == 'refs/heads/main'"),`${name} must not require a second heavy main candidate`);
+}
+
+const promote=read('.github/workflows/promote.yml'),release=read('.github/workflows/release.yml');
+assert(!promote.includes('LIVE-PASS')&&!promote.includes('live_gate:'),'promotion must not require deferred Phase G LIVE-PASS for the current release checkpoint');
+assert(promote.includes("branch: 'dev'")&&promote.includes('release-candidate-${sha}'),'promotion must resolve the exact reusable dev candidate artifact');
+assert(promote.includes('actions/download-artifact@v8')&&promote.includes('sha256sum -c SHA256SUMS')&&promote.includes('WeiG-qB-WebUI/GIT_SHA'),'promotion must verify the exact candidate artifact before moving main');
+assert(promote.includes('git merge-base --is-ancestor origin/main "$CANDIDATE_SHA"')&&promote.includes('git push origin "$CANDIDATE_SHA:refs/heads/main"'),'promotion must remain safe fast-forward only');
+assert(!promote.includes('validation_mode=candidate')&&!promote.includes('main-only candidate'),'promotion must not instruct a redundant main candidate rebuild');
+
+assert(release.includes("branch: 'dev'")&&release.includes('release-candidate-${sha}'),'Release must reuse the exact dev candidate artifact');
+assert(!release.includes("branch: 'main'\n              event: 'workflow_dispatch'"),'Release must not depend on a second main candidate run');
+assert(release.includes('actions/download-artifact@v8')&&release.includes('run-id: ${{ steps.verify.outputs.run_id }}'),'Release must download the exact validated candidate run artifact');
+assert(release.includes('test "$GITHUB_REF_NAME" = "v$VERSION"'),'Release tag must equal repository VERSION');
+assert(release.includes('sha256sum -c SHA256SUMS')&&release.includes('WeiG-qB-WebUI/GIT_SHA')&&release.includes('WeiG-qB-WebUI/VERSION'),'Release must verify checksum, exact SHA and embedded VERSION');
+assert(release.includes('--verify-tag')&&release.includes('--latest')&&release.includes('--generate-notes'),'Release must verify the pushed tag, publish it as Latest and generate notes');
+assert(release.includes("Latest stable release of WeiG qB WebUI.")&&release.includes('--title "WeiG qB WebUI ${VERSION}"'),'Release presentation must lead with English stable-release text and a version title without the v-prefix');
+assert(!release.includes('qb-release-catalog.mjs')&&!release.includes('zip -r WeiG-qB-WebUI.zip'),'Release workflow must publish the validated artifact without rebuilding product/catalog');
+assert(!release.includes("workflow_id: 'upstream-compat.yml'"),'Release must rely on the full candidate all-stable source/product audit rather than require an unrelated exact-SHA parser workflow');
 
 const fullProduct=read('tests/full-stable-product-compat.mjs');
 for(const owner of ['release-profile.js','torrent-fields.js','settings-schema.js','capabilities.js','torrent-semantics.js','qb-client.js'])assert(fullProduct.includes(`'${owner}'`),`full stable product matrix must execute formal owner ${owner}`);
@@ -61,4 +82,4 @@ assert(profileLive.includes("catalog[0].qbVersion,'4.1.0'")||profileLive.include
 assert(profileLive.includes("item.qbVersion==='4.6.1'")&&profileLive.includes("webApiVersion==='2.9.3'"),'Pages release-profile gate must protect qB 4.6.1/WebAPI 2.9.3 fact');
 assert(profileLive.includes("['downloads','connection','speed','bittorrent','webui','advanced']"),'Pages release-profile gate must exercise all six qB Settings surfaces');
 
-console.log(`CI contract passed for WeiG ${version}: exact qB 4.1.0+ source catalog is audited once, executed through every formal product compatibility owner, and embedded in release/Pages artifacts; hosted Chrome remains canonical.`);
+console.log(`CI contract passed for WeiG ${version}: exact qB 4.1.0+ source catalog is audited once on dev, executed through every formal product compatibility owner, embedded in the reusable candidate artifact, and that exact artifact is promoted/released without a main rebuild; hosted Chrome remains canonical.`);

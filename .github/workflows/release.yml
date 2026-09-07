@@ -17,7 +17,7 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - name: Resolve exact reusable main candidate artifact
+      - name: Resolve exact reusable dev candidate artifact
         id: verify
         uses: actions/github-script@v9
         env:
@@ -42,8 +42,7 @@ jobs:
               owner,
               repo,
               workflow_id: 'ci.yml',
-              branch: 'main',
-              event: 'workflow_dispatch',
+              branch: 'dev',
               status: 'success',
               per_page: 100
             });
@@ -66,34 +65,23 @@ jobs:
               }
             }
             if (!validated || !artifact) {
-              core.setFailed(`No successful main Release-candidate CI run with reusable artifact ${artifactName} exists for exact SHA ${sha}.`);
+              core.setFailed(`No successful dev full-candidate artifact ${artifactName} exists for exact release SHA ${sha}.`);
               return;
             }
 
-            const upstreamRuns = await github.paginate(github.rest.actions.listWorkflowRuns, {
-              owner,
-              repo,
-              workflow_id: 'upstream-compat.yml',
-              branch: 'dev',
-              event: 'push',
-              status: 'success',
-              per_page: 100
-            });
-            const upstreamValidated = upstreamRuns.find(run => run.head_sha && run.head_sha.toLowerCase() === sha && run.conclusion === 'success');
-            if (!upstreamValidated) {
-              core.setFailed(`No successful upstream compatibility audit exists for exact release SHA ${sha}.`);
-              return;
-            }
-
-            core.info(`Reusing main Release-candidate CI run #${validated.run_number}: ${validated.html_url}`);
-            core.info(`Verified upstream compatibility audit #${upstreamValidated.run_number}: ${upstreamValidated.html_url}`);
-            core.info(`Reusing artifact ${artifact.name} (${artifact.id})`);
+            core.info(`Reusing dev candidate CI run #${validated.run_number}: ${validated.html_url}`);
+            core.info(`Reusing validated artifact ${artifact.name} (${artifact.id})`);
             core.setOutput('run_id', String(validated.id));
-            core.setOutput('upstream_run_id', String(upstreamValidated.id));
             core.setOutput('artifact_name', artifactName);
             core.setOutput('artifact_id', String(artifact.id));
 
-      - name: Download validated main release candidate
+      - name: Checkout exact release source for version identity only
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Download validated dev release candidate
         uses: actions/download-artifact@v8
         with:
           name: ${{ steps.verify.outputs.artifact_name }}
@@ -102,22 +90,30 @@ jobs:
           repository: ${{ github.repository }}
           run-id: ${{ steps.verify.outputs.run_id }}
 
-      - name: Verify candidate integrity and exact SHA
+      - name: Verify version, candidate integrity and exact SHA
         run: |
           set -euo pipefail
+          VERSION="$(tr -d '\r\n' < VERSION)"
+          test "$GITHUB_REF_NAME" = "v$VERSION"
           test -f release/WeiG-qB-WebUI.zip
           test -f release/SHA256SUMS
           test -f release/CANDIDATE_SHA
           test "$(tr -d '\r\n' < release/CANDIDATE_SHA)" = "$GITHUB_SHA"
           (cd release && sha256sum -c SHA256SUMS)
           test "$(unzip -p release/WeiG-qB-WebUI.zip WeiG-qB-WebUI/GIT_SHA | tr -d '\r\n')" = "$GITHUB_SHA"
+          test "$(unzip -p release/WeiG-qB-WebUI.zip WeiG-qB-WebUI/VERSION | tr -d '\r\n')" = "$VERSION"
 
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
+          VERSION="$(tr -d '\r\n' < VERSION)"
           gh release create "${GITHUB_REF_NAME}" \
             release/WeiG-qB-WebUI.zip \
             release/SHA256SUMS \
+            --verify-tag \
+            --latest \
             --generate-notes \
-            --title "WeiG qB WebUI ${GITHUB_REF_NAME}"
+            --notes $'Latest stable release of WeiG qB WebUI.\n\nVerified compatibility: qBittorrent 4.1.0–5.2.3.' \
+            --title "WeiG qB WebUI ${VERSION}"

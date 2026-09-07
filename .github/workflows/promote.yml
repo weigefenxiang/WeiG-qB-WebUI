@@ -4,11 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       candidate_sha:
-        description: Exact 40-character current dev SHA that passed dev validation
-        required: true
-        type: string
-      live_gate:
-        description: Type LIVE-PASS after required real qBittorrent validation
+        description: Exact 40-character current dev SHA with a successful full candidate artifact
         required: true
         type: string
       confirmation:
@@ -28,17 +24,15 @@ jobs:
   promote:
     runs-on: ubuntu-latest
     steps:
-      - name: Verify exact validated dev state
+      - name: Resolve exact validated dev candidate
         id: verify
         uses: actions/github-script@v9
         env:
           CANDIDATE_SHA: ${{ inputs.candidate_sha }}
-          LIVE_GATE: ${{ inputs.live_gate }}
           PROMOTION_CONFIRMATION: ${{ inputs.confirmation }}
         with:
           script: |
             const sha = String(process.env.CANDIDATE_SHA || '').trim().toLowerCase();
-            const liveGate = String(process.env.LIVE_GATE || '').trim();
             const confirmation = String(process.env.PROMOTION_CONFIRMATION || '').trim();
             if (context.ref !== 'refs/heads/dev') {
               core.setFailed('Run this promotion workflow from the dev branch only.');
@@ -46,10 +40,6 @@ jobs:
             }
             if (!/^[0-9a-f]{40}$/.test(sha)) {
               core.setFailed('candidate_sha must be exactly 40 hexadecimal characters.');
-              return;
-            }
-            if (liveGate !== 'LIVE-PASS') {
-              core.setFailed('Real-server gate is not confirmed. Type LIVE-PASS only after required exact-SHA live validation.');
               return;
             }
             if (confirmation !== 'PROMOTE-VALIDATED-DEV') {
@@ -78,37 +68,59 @@ jobs:
               repo,
               workflow_id: 'ci.yml',
               branch: 'dev',
-              event: 'push',
               status: 'success',
               per_page: 100
             });
-            const validated = runs.find(run => run.head_sha && run.head_sha.toLowerCase() === sha && run.conclusion === 'success');
-            if (!validated) {
-              core.setFailed(`No successful dev CI run exists for exact SHA ${sha}.`);
+            const exactRuns = runs.filter(run => run.head_sha && run.head_sha.toLowerCase() === sha && run.conclusion === 'success');
+            const artifactName = `release-candidate-${sha}`;
+            let validated = null;
+            let artifact = null;
+            for (const run of exactRuns) {
+              const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {
+                owner,
+                repo,
+                run_id: run.id,
+                per_page: 100
+              });
+              const candidate = artifacts.find(item => item.name === artifactName && !item.expired);
+              if (candidate) {
+                validated = run;
+                artifact = candidate;
+                break;
+              }
+            }
+            if (!validated || !artifact) {
+              core.setFailed(`No successful dev full-candidate artifact ${artifactName} exists for exact SHA ${sha}.`);
               return;
             }
 
-            const upstreamRuns = await github.paginate(github.rest.actions.listWorkflowRuns, {
-              owner,
-              repo,
-              workflow_id: 'upstream-compat.yml',
-              branch: 'dev',
-              event: 'push',
-              status: 'success',
-              per_page: 100
-            });
-            const upstreamValidated = upstreamRuns.find(run => run.head_sha && run.head_sha.toLowerCase() === sha && run.conclusion === 'success');
-            if (!upstreamValidated) {
-              core.setFailed(`No successful upstream compatibility audit exists for exact SHA ${sha}.`);
-              return;
-            }
-
-            core.info(`Validated by dev CI run #${validated.run_number}: ${validated.html_url}`);
-            core.info(`Validated by upstream audit run #${upstreamValidated.run_number}: ${upstreamValidated.html_url}`);
-            core.info('Full Linux/Windows browser matrices are intentionally deferred until main Release preparation.');
+            core.info(`Validated dev candidate CI run #${validated.run_number}: ${validated.html_url}`);
+            core.info(`Reusable artifact: ${artifact.name} (${artifact.id})`);
             core.setOutput('sha', sha);
-            core.setOutput('ci_run', String(validated.id));
-            core.setOutput('upstream_run', String(upstreamValidated.id));
+            core.setOutput('run_id', String(validated.id));
+            core.setOutput('artifact_name', artifactName);
+            core.setOutput('artifact_id', String(artifact.id));
+
+      - name: Download exact validated dev candidate
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ steps.verify.outputs.artifact_name }}
+          path: candidate
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.verify.outputs.run_id }}
+
+      - name: Verify reusable candidate integrity before promotion
+        env:
+          CANDIDATE_SHA: ${{ steps.verify.outputs.sha }}
+        run: |
+          set -euo pipefail
+          test -f candidate/WeiG-qB-WebUI.zip
+          test -f candidate/SHA256SUMS
+          test -f candidate/CANDIDATE_SHA
+          test "$(tr -d '\r\n' < candidate/CANDIDATE_SHA)" = "$CANDIDATE_SHA"
+          (cd candidate && sha256sum -c SHA256SUMS)
+          test "$(unzip -p candidate/WeiG-qB-WebUI.zip WeiG-qB-WebUI/GIT_SHA | tr -d '\r\n')" = "$CANDIDATE_SHA"
 
       - name: Checkout main for authenticated fast-forward
         uses: actions/checkout@v7
@@ -129,7 +141,6 @@ jobs:
       - name: Promotion summary
         run: |
           echo "main now points to the exact validated dev state: ${{ steps.verify.outputs.sha }}"
-          echo "Reused successful dev CI run: ${{ steps.verify.outputs.ci_run }}"
-          echo "Verified upstream compatibility audit: ${{ steps.verify.outputs.upstream_run }}"
-          echo "Next: run CI manually from main with validation_mode=candidate before creating a stable tag."
-          echo "That main-only candidate run owns the full Linux/Windows browser matrices and reusable Release artifact."
+          echo "Reused dev candidate CI run: ${{ steps.verify.outputs.run_id }}"
+          echo "Reused validated artifact: ${{ steps.verify.outputs.artifact_name }}"
+          echo "No main candidate rebuild is required; create the stable tag only after confirming main still equals this exact SHA."
