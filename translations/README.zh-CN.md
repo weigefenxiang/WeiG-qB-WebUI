@@ -290,31 +290,11 @@ qBittorrent Root Folder: /config/weigg-qb-webui
 Invoke-WebRequest https://raw.githubusercontent.com/weigefenxiang/WeiG-qB-WebUI/main/installers/install.ps1 -OutFile .\weigg-install.ps1; powershell -ExecutionPolicy Bypass -File .\weigg-install.ps1 -configure
 ```
 
-安装脚本会保存在你执行命令时的当前 PowerShell 目录：
-
-```text
-.\weigg-install.ps1
-```
-
-WebUI 本体默认安装到：
-
-```text
-%LOCALAPPDATA%\WeiG-qB-WebUI
-```
-
-`%LOCALAPPDATA%` **不是当前目录**，它通常代表：
-
-```text
-C:\Users\<你的用户名>\AppData\Local
-```
-
-所以 WebUI 实际通常会安装在：
+默认安装目录：
 
 ```text
 C:\Users\<你的用户名>\AppData\Local\WeiG-qB-WebUI
 ```
-
-如果希望安装到例如 D 盘，可在“常用参数”里查看 `-o` 自定义安装目录的用法。
 
 ## 常用参数
 
