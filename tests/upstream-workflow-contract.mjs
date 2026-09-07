@@ -34,7 +34,7 @@ assert(heavy.includes('tests/upstream-release-audit.mjs upstream-qb'),'heavy ups
 assert(heavy.includes('qb-webapi-evolution-audit.mjs upstream-qb'),'heavy upstream audit must verify WebAPI chronology/classification evidence');
 
 assert(/push:\s*\n\s*branches:\s*\n\s*- dev\s*\n\s*paths:/m.test(frozen),'frozen stable compatibility must be path-scoped on dev pushes');
-for(const owner of ['release-profile.js','capabilities.js','torrent-semantics.js','settings-schema.js','qb-client.js'])assert(frozen.includes(`'webui/private/scripts/${owner}'`),`frozen stable regression trigger missing product owner ${owner}`);
+for(const owner of ['release-profile.js','torrent-fields.js','capabilities.js','torrent-semantics.js','settings-schema.js','qb-client.js'])assert(frozen.includes(`'webui/private/scripts/${owner}'`),`frozen stable regression trigger missing product owner ${owner}`);
 for(const nonRuntime of ["'tools/data/qb-stable-lkg.json'","'tests/fixtures/qb-release-catalog.lkg.json'","'tools/qb-stable-admission.mjs'"])assert(!frozen.includes(`- ${nonRuntime}`),`historical product regression must not be triggered by LKG/admission-only input ${nonRuntime}`);
 assert(!frozen.includes('repository: qbittorrent/qBittorrent'),'frozen product regression must not checkout or re-parse upstream history');
 assert(frozen.includes('qb-stable-admission.mjs verify'),'frozen product regression must verify LKG identity');

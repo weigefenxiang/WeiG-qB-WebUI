@@ -10,6 +10,7 @@ on:
       - 'tests/compat-architecture-contract.mjs'
       - 'webui/private/data/capabilities.json'
       - 'webui/private/scripts/release-profile.js'
+      - 'webui/private/scripts/torrent-fields.js'
       - 'webui/private/scripts/capabilities.js'
       - 'webui/private/scripts/torrent-semantics.js'
       - 'webui/private/scripts/settings-schema.js'

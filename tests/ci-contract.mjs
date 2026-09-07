@@ -13,7 +13,7 @@ const version=read('VERSION').trim(),webVersion=read('webui/VERSION').trim(),pkg
 assert(version===webVersion&&version===pkg.version&&version===lock.version&&version===lock.packages?.['']?.version,`Version sources diverged: ${version} / ${webVersion} / ${pkg.version} / ${lock.version}`);
 assert(pkg.devDependencies?.playwright==='1.62.1','Playwright must be exact repository-owned dependency 1.62.1');
 assert(lock.lockfileVersion===3&&lock.packages?.['node_modules/playwright']?.version==='1.62.1'&&lock.packages?.['node_modules/playwright-core']?.version==='1.62.1','package-lock must pin Playwright 1.62.1 with lockfile v3');
-assert(pkg.scripts.test.includes('tests/qb-torrent-surface-parser-contract.mjs')&&pkg.scripts.test.includes('tests/release-profile-contract.mjs'),'npm test must cover source-derived Torrent surface and exact release-profile ownership');
+assert(pkg.scripts.test.includes('tests/qb-torrent-surface-parser-contract.mjs')&&pkg.scripts.test.includes('tests/release-profile-contract.mjs')&&pkg.scripts.test.includes('tests/torrent-field-provenance-contract.mjs'),'npm test must cover source-derived Torrent surface, exact release-profile ownership, and formal Torrent field provenance');
 
 const browserTests=['browser-runtime.mjs','browser-theme.mjs','browser-feedback.mjs','browser-feature-parity.mjs','browser-torrent-workspace.mjs','browser-adaptive-ui.mjs','browser-sidebar-capability-visual.mjs'];
 const driver=read('tests/browser-driver.mjs');
@@ -41,7 +41,7 @@ assert(candidate.includes('actions/download-artifact@v8')&&candidate.includes('q
 assert(candidate.includes('cp release-catalog/qb-releases.json webui/private/data/qb-releases.json')&&candidate.includes('test -s release/WeiG-qB-WebUI/private/data/qb-releases.json'),'release zip must embed the source-derived catalog consumed by W.ReleaseProfile');
 
 const fullProduct=read('tests/full-stable-product-compat.mjs');
-for(const owner of ['release-profile.js','settings-schema.js','capabilities.js','torrent-semantics.js','qb-client.js'])assert(fullProduct.includes(`'${owner}'`),`full stable product matrix must execute formal owner ${owner}`);
+for(const owner of ['release-profile.js','torrent-fields.js','settings-schema.js','capabilities.js','torrent-semantics.js','qb-client.js'])assert(fullProduct.includes(`'${owner}'`),`full stable product matrix must execute formal owner ${owner}`);
 assert(fullProduct.includes("catalog[0].qbVersion,'4.1.0'")&&fullProduct.includes('every generated stable profile must enter the formal product matrix'),'full stable product matrix must protect floor and complete catalog coverage');
 assert(!/major\s*>=\s*5\s*\?[^\n]*(?:start|stop|paused|stopped)/i.test(read('tests/release-compat.mjs')),'representative release gate must not use major>=5 as a product behavior oracle');
 

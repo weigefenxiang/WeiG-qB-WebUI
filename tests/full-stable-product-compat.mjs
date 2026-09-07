@@ -15,17 +15,18 @@ assert.equal(catalog[0].qbVersion,'4.1.0','formal product matrix floor must be q
 assert.ok(catalog.every(x=>x.stable===true&&x.officialWeiGSupport!==false),'formal product matrix accepts official supported stable profiles only');
 
 const sources={};
-for(const name of ['release-profile.js','settings-schema.js','capabilities.js','torrent-semantics.js','qb-client.js'])sources[name]=fs.readFileSync(path.join(root,'webui/private/scripts',name),'utf8');
+for(const name of ['release-profile.js','torrent-fields.js','settings-schema.js','capabilities.js','torrent-semantics.js','qb-client.js'])sources[name]=fs.readFileSync(path.join(root,'webui/private/scripts',name),'utf8');
 class TestFormData{constructor(){this.entries=[];}append(name,value,filename){this.entries.push({name,value,filename});}}
 const document={addEventListener(){},querySelectorAll(){return[];},createElement(){return{className:'',dataset:{},classList:{add(){},remove(){},toggle(){}},setAttribute(){},appendChild(){},querySelector(){return null;},querySelectorAll(){return[];},remove(){}};},body:{appendChild(){}}};
 const W={buildAssetUrl:x=>x,t:key=>key,util:{parseScalar:value=>value,normalizeTracker:value=>String(value||''),form(obj){const p=new URLSearchParams();for(const [k,v] of Object.entries(obj||{}))if(v!==undefined&&v!==null)p.append(k,String(v));return p.toString();}},I18n:{getLocale:()=> 'en-US'}};
 const window={WeiG:W,window:null,dispatchEvent(){},addEventListener(){},requestAnimationFrame:fn=>fn()};window.window=window;
 const context={window,document,console,URL,URLSearchParams,FormData:TestFormData,Blob,CustomEvent:class{},requestAnimationFrame:fn=>fn(),fetch:async url=>{const value=String(url);if(value.includes('qb-releases.json'))return{ok:true,status:200,json:async()=>catalog};if(value.includes('capabilities.json'))return{ok:true,status:200,json:async()=>capabilityData};throw new Error(`Unexpected fetch ${value}`);}};
-for(const name of ['release-profile.js','settings-schema.js','capabilities.js','torrent-semantics.js','qb-client.js'])vm.runInNewContext(sources[name],context,{filename:name});
-const R=W.ReleaseProfile,C=W.CapabilityRegistry,T=W.TorrentSemantics,S=W.SettingsSchema,Client=W.QBClient;
-assert.ok(R&&C&&T&&S&&Client,'formal product compatibility owners must load');
+for(const name of ['release-profile.js','torrent-fields.js','settings-schema.js','capabilities.js','torrent-semantics.js','qb-client.js'])vm.runInNewContext(sources[name],context,{filename:name});
+const R=W.ReleaseProfile,F=W.TorrentFieldRegistry,C=W.CapabilityRegistry,T=W.TorrentSemantics,S=W.SettingsSchema,Client=W.QBClient;
+assert.ok(R&&F&&C&&T&&S&&Client,'formal product compatibility owners must load');
 
 const currentColumnFields=['name','size','progress','dlspeed','upspeed','eta','state','ratio','tracker','category','tags','num_seeds','num_leechs','save_path','added_on','completion_on','priority'];
+assert.deepEqual(Array.from(F.fields,x=>x.key),currentColumnFields,'runtime TorrentFieldRegistry must own the exact current 17-field product surface');
 const baselineFilters=['all','downloading','seeding','completed','stopped','running','active','inactive','errored'];
 const coreActions=['start','stop','delete','force','recheck','sequential','firstlast','autotmm','top','bottom','rename','location','category','dllimit','uplimit','addTrackers'];
 const optionalActions=['reannounce','removeTrackers','editTracker','tags'];
@@ -58,7 +59,13 @@ for(const profile of catalog){
   assert.equal(C.supports('tags'),profile.apiActions.includes('torrentscontroller.h:tagsAction'),`${profile.qbVersion}: native Tags taxonomy must follow source action`);
   assert.ok(profile.torrentInfoFields.includes('tracker')&&profile.torrentInfoFields.includes('save_path'),`${profile.qbVersion}: Tracker/Path facets require bulk catalog fields`);
 
-  for(const field of currentColumnFields)assert.ok(profile.torrentInfoFields.includes(field),`${profile.qbVersion}: current product column field missing: ${field}`);
+  for(const field of currentColumnFields){
+    assert.ok(profile.torrentInfoFields.includes(field),`${profile.qbVersion}: source fact for current product field missing: ${field}`);
+    const fact=F.provenance(field,profile);
+    assert.equal(fact.mode,'NATIVE',`${profile.qbVersion}: runtime field ${field} must resolve NATIVE, got ${fact.mode}`);
+    assert.equal(fact.sourceField,field,`${profile.qbVersion}: runtime field ${field} source provenance drift`);
+    assert.equal(F.isAvailable(field,profile),true,`${profile.qbVersion}: runtime field ${field} must be effective`);
+  }
 
   for(const kind of coreActions)assert.ok(actionFact(profile,kind),`${profile.qbVersion}: core Torrent action ${kind} unavailable`);
   for(const kind of optionalActions)actionFact(profile,kind);
@@ -85,4 +92,4 @@ for(const profile of catalog){
 assert.equal(rows.length,catalog.length,'every generated stable profile must enter the formal product matrix');
 assert.equal(rows[0].qbVersion,'4.1.0','formal product matrix minimum drifted');
 const latest=rows.at(-1),derivedReleases=rows.filter(x=>x.derivedFilters>0).length,readOnlyTags=rows.filter(x=>x.tagFacet&&!x.nativeTags).length;
-console.log(`Full stable PRODUCT compatibility matrix passed: ${rows.length} official stable releases ${rows[0].qbVersion} -> ${latest.qbVersion}; ${derivedReleases} releases use at least one reliable local filter derivation; ${readOnlyTags} releases expose Tags read/facet before native taxonomy; latest has ${latest.actions} resolved Torrent actions and ${latest.writableSettings}/${latest.settings} writable source-proven Preferences.`);
+console.log(`Full stable PRODUCT compatibility matrix passed: ${rows.length} official stable releases ${rows[0].qbVersion} -> ${latest.qbVersion}; all ${currentColumnFields.length} current Torrent fields resolve NATIVE through TorrentFieldRegistry; ${derivedReleases} releases use at least one reliable local filter derivation; ${readOnlyTags} releases expose Tags read/facet before native taxonomy; latest has ${latest.actions} resolved Torrent actions and ${latest.writableSettings}/${latest.settings} writable source-proven Preferences.`);
