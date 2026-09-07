@@ -2,7 +2,7 @@
 
 A modern, responsive qBittorrent Alternate WebUI optimized for desktop and mobile.
 
-**📱 Mobile-friendly · 🖥️ Responsive desktop · 🌙 Dark mode · ✅ Supports qBittorrent 4.1.x → 5.2.x**
+**📱 Mobile-friendly · 🌙 Dark mode · ✅ Supports qBittorrent 4.1.x → 5.2.x**
 
 <p>
   <img src="https://img.shields.io/badge/-JavaScript-F7DF1E?logo=javascript&logoColor=black" alt="JavaScript">
