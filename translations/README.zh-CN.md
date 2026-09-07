@@ -14,7 +14,7 @@
 
 **[🌐 在线预览](https://weigefenxiang.github.io/WeiG-qB-WebUI/)** · **[⬇️ 下载最新正式版](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/WeiG-qB-WebUI.zip)**
 
-**语言**：[English](../README.md) · **简中** · [繁中](README.zh-TW.md) · 日本語 · 한국어 · Deutsch · Français · Español · Português · Русский
+**语言**：[English](../README.md) · **简中** · [繁中](README.zh-TW.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Deutsch](README.de.md) · [Français](README.fr.md) · [Español](README.es.md) · [Português](README.pt.md) · [Русский](README.ru.md)
 
 ## 直接下载
 
