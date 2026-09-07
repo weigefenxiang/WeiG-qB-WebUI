@@ -293,11 +293,14 @@ qBittorrent Root Folder: /config/weigg-qb-webui
 Invoke-WebRequest https://raw.githubusercontent.com/weigefenxiang/WeiG-qB-WebUI/main/installers/install.ps1 -OutFile .\weigg-install.ps1; powershell -ExecutionPolicy Bypass -File .\weigg-install.ps1 -configure
 ```
 
-默认安装目录：
+<details>
+<summary><b>查看安装目录</b></summary>
 
 ```text
 C:\Users\<你的用户名>\AppData\Local\WeiG-qB-WebUI
 ```
+
+</details>
 
 ## 常用参数
 
