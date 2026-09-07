@@ -98,7 +98,10 @@ function serverStateSnapshotRaw(world,contract){
     use_alt_speed_limits:world.altSpeedMode,
     queueing:!!world.preferences.queueing_enabled
   };
-  if(contract?.useSubcategoriesField===true)state.use_subcategories=true;
+  if(contract?.useSubcategoriesField===true){
+    const preference=String(contract.useSubcategoriesPreference||'');
+    state.use_subcategories=preference?Boolean(world.preferences?.[preference]):false;
+  }
   return state;
 }
 

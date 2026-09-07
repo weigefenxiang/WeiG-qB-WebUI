@@ -96,12 +96,28 @@ function contract(world,path){return resolveEndpointContract(world.profile,path)
 }
 
 {
-  const oldWorld=createWorld({profile:{qbVersion:'5.1.4',webApiVersion:'2.11.4'},count:16,seed:'subcategories-old',now:baseNow});
-  const oldMain=mainDataSnapshot(oldWorld,0,baseNow+1000,contract(oldWorld,'sync/maindata'));
-  assert.equal(oldMain.server_state.use_subcategories,true,'sync/maindata must expose boolean use_subcategories before WebAPI 2.15.0');
-  const newWorld=createWorld({profile:{qbVersion:'5.2.0',webApiVersion:'2.15.0'},count:16,seed:'subcategories-new',now:baseNow});
-  const newMain=mainDataSnapshot(newWorld,0,baseNow+1000,contract(newWorld,'sync/maindata'));
-  assert.ok(!('use_subcategories' in newMain.server_state),'sync/maindata must remove use_subcategories from WebAPI 2.15.0 onward');
+  const beforeWorld=createWorld({profile:{qbVersion:'4.5.5',webApiVersion:'2.8.19'},count:16,seed:'subcategories-before',now:baseNow});
+  beforeWorld.preferences.use_subcategories=true;
+  const beforeMain=mainDataSnapshot(beforeWorld,0,baseNow+1000,contract(beforeWorld,'sync/maindata'));
+  assert.ok(!('use_subcategories' in beforeMain.server_state),'sync/maindata must not expose use_subcategories before WebAPI 2.9.2 even if preference-like state is present');
+
+  const introducedWorld=createWorld({profile:{qbVersion:'4.6.0',webApiVersion:'2.9.2'},count:16,seed:'subcategories-introduced',now:baseNow});
+  introducedWorld.preferences.use_subcategories=false;
+  const disabledMain=mainDataSnapshot(introducedWorld,0,baseNow+1000,contract(introducedWorld,'sync/maindata'));
+  assert.equal(disabledMain.server_state.use_subcategories,false,'sync/maindata must expose the actual disabled subcategories preference from WebAPI 2.9.2');
+  introducedWorld.preferences.use_subcategories=true;
+  const enabledMain=mainDataSnapshot(introducedWorld,0,baseNow+2000,contract(introducedWorld,'sync/maindata'));
+  assert.equal(enabledMain.server_state.use_subcategories,true,'sync/maindata must mirror the enabled subcategories preference rather than hard-code true');
+
+  const retainedWorld=createWorld({profile:{qbVersion:'5.1.4',webApiVersion:'2.11.4'},count:16,seed:'subcategories-retained',now:baseNow});
+  retainedWorld.preferences.use_subcategories=true;
+  const retainedMain=mainDataSnapshot(retainedWorld,0,baseNow+1000,contract(retainedWorld,'sync/maindata'));
+  assert.equal(retainedMain.server_state.use_subcategories,true,'sync/maindata must retain preference-driven use_subcategories before WebAPI 2.15.0');
+
+  const removedWorld=createWorld({profile:{qbVersion:'5.2.0',webApiVersion:'2.15.0'},count:16,seed:'subcategories-removed',now:baseNow});
+  removedWorld.preferences.use_subcategories=true;
+  const removedMain=mainDataSnapshot(removedWorld,0,baseNow+1000,contract(removedWorld,'sync/maindata'));
+  assert.ok(!('use_subcategories' in removedMain.server_state),'sync/maindata must remove use_subcategories from WebAPI 2.15.0 onward');
 }
 
 {
@@ -113,4 +129,4 @@ function contract(world,path){return resolveEndpointContract(world.profile,path)
   assert.doesNotMatch(router,/\btransferInfo\(world/,'router hot path must not fall back to legacy transferInfo world advancement');
 }
 
-console.log('Virtual qB runtime-view contract passed: shared snapshots preserve performance while Endpoint Contract owns the WebAPI 2.15.0 use_subcategories boundary.');
+console.log('Virtual qB runtime-view contract passed: shared snapshots preserve performance while Endpoint Contract owns the complete WebAPI 2.9.2 introduction, preference-driven value, and 2.15.0 removal lifecycle for use_subcategories.');

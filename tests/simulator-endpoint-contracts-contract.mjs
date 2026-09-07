@@ -30,8 +30,15 @@ const profile=webApiVersion=>({webApiVersion});
   assert.equal(resolveEndpointContract(profile('2.13.0'),'torrents/trackers').trackerTimingFields,true);
   assert.equal(resolveEndpointContract(profile('2.15.0'),'torrents/properties').availabilityField,false);
   assert.equal(resolveEndpointContract(profile('2.15.1'),'torrents/properties').availabilityField,true);
-  assert.equal(resolveEndpointContract(profile('2.14.1'),'sync/maindata').useSubcategoriesField,true);
-  assert.equal(resolveEndpointContract(profile('2.15.0'),'sync/maindata').useSubcategoriesField,false);
+  const beforeSubcategories=resolveEndpointContract(profile('2.8.19'),'sync/maindata');
+  const introducedSubcategories=resolveEndpointContract(profile('2.9.2'),'sync/maindata');
+  const retainedSubcategories=resolveEndpointContract(profile('2.14.1'),'sync/maindata');
+  const removedSubcategories=resolveEndpointContract(profile('2.15.0'),'sync/maindata');
+  assert.equal(beforeSubcategories.useSubcategoriesField,false,'sync/maindata must not invent use_subcategories before WebAPI 2.9.2');
+  assert.equal(introducedSubcategories.useSubcategoriesField,true,'sync/maindata must introduce use_subcategories at WebAPI 2.9.2');
+  assert.equal(introducedSubcategories.useSubcategoriesPreference,'use_subcategories','Endpoint Contract must point projection at the canonical Preference key');
+  assert.equal(retainedSubcategories.useSubcategoriesField,true);
+  assert.equal(removedSubcategories.useSubcategoriesField,false,'sync/maindata must remove use_subcategories from WebAPI 2.15.0 onward');
 }
 
 {
@@ -66,4 +73,4 @@ const profile=webApiVersion=>({webApiVersion});
   assert.equal(resolveEndpointContract(profile('2.15.1'),'torrents/reannounce'),null,'structural-only endpoints must not be copied into Endpoint Contract');
 }
 
-console.log('Virtual qB endpoint contracts passed: audited semantic revisions resolve through one dormant interface, structural truth stays out, and future unknown revisions fail closed.');
+console.log('Virtual qB endpoint contracts passed: audited semantic revisions resolve through one interface, sync/maindata models the complete 2.9.2-to-2.15.0 subcategories lifecycle, structural truth stays out, and future unknown revisions fail closed.');

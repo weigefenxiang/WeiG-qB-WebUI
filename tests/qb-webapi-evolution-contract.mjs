@@ -10,7 +10,10 @@ assert.ok(summary.evidenceEntries>=60);assert.ok(summary.changes>=100);
 for(const classification of ['SOURCE_DERIVED','CONTRACT_COVERED','MISSING','NOT_APPLICABLE'])assert.ok(summary.classifications[classification]>0);
 for(const version of ['2.7.0','2.8.4','2.8.5','2.8.18','2.8.19','2.9.2','2.9.3','2.11.2','2.11.3','2.11.4','2.11.5','2.15.1'])assert.ok(ledger.spine.includes(version),`missing historical revision ${version}`);
 assert.equal(ledger.revisions['2.7.0'].q,'4.3.3');
-assert.ok(ledger.revisions['2.9.2'].c.some(change=>change[1].includes('subcategories')&&change[0]==='M'),'2.9.2 subcategories introduction must stay visible for Phase D');
+const subcategoryChanges=ledger.revisions['2.9.2'].c.filter(change=>change[1].includes('use_subcategories'));
+assert.ok(subcategoryChanges.some(change=>change[0]==='S'&&change[1].includes('app/preferences')),'2.9.2 Preference surface must remain source-derived');
+assert.ok(subcategoryChanges.some(change=>change[0]==='C'&&change[1].includes('sync/maindata')),'2.9.2 sync/maindata lifecycle must be Endpoint Contract covered');
+assert.equal(subcategoryChanges.some(change=>change[0]==='M'),false,'closed Phase D subcategories lifecycle must leave the MISSING backlog');
 assert.deepEqual([...new Set(changes.filter(change=>change.classification==='CONTRACT_COVERED').map(change=>change.owner))],['simulator/protocol/endpoint-contracts.js']);
 const fixture=`# WebAPI Changelog
 ## 2.15.1

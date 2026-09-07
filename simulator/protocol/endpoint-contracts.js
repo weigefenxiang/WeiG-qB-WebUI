@@ -64,7 +64,10 @@ const RESOLVERS=new Map([
   ['torrents/removeTrackers',(version,path)=>trackerCollectionContract(version,path)],
   ['torrents/trackers',version=>({trackerTimingFields:atLeast(version,'2.13.0')})],
   ['torrents/properties',version=>({availabilityField:atLeast(version,'2.15.1')})],
-  ['sync/maindata',version=>({useSubcategoriesField:!atLeast(version,'2.15.0')})],
+  ['sync/maindata',version=>({
+    useSubcategoriesField:atLeast(version,'2.9.2')&&!atLeast(version,'2.15.0'),
+    useSubcategoriesPreference:'use_subcategories'
+  })],
   ['torrents/editCategory',version=>editCategoryContract(version)],
   ['torrents/editTracker',version=>editTrackerContract(version)]
 ]);
