@@ -9,7 +9,7 @@
   <img src="https://img.shields.io/badge/-HTML5-E34F26?logo=html5&logoColor=white" alt="HTML5">
   <img src="https://img.shields.io/badge/-CSS3-1572B6?logo=css3&logoColor=white" alt="CSS3">
   <img src="https://img.shields.io/badge/-Node.js-339933?logo=nodedotjs&logoColor=white" alt="Node.js">
-  <img src="https://img.shields.io/badge/-Shell-4EAA25?logo=gnubash&logoColor=white" alt="Shell">
+  <img src="https://img.shields.io/badge/-Shell-8A2BE2?logo=gnubash&logoColor=white" alt="Shell">
 </p>
 
 **[🌐 在线预览](https://weigefenxiang.github.io/WeiG-qB-WebUI/)** · **[⬇️ 下载最新正式版](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/WeiG-qB-WebUI.zip)**
@@ -102,10 +102,22 @@ D:\WeiG-qB-WebUI
 curl -fsSL https://raw.githubusercontent.com/weigefenxiang/WeiG-qB-WebUI/main/installers/install.sh -o weigg-install.sh && sh weigg-install.sh --configure
 ```
 
-默认安装目录：
+安装脚本会保存在你执行命令时的当前目录：
+
+```text
+./weigg-install.sh
+```
+
+WebUI 本体默认安装到：
 
 ```text
 ~/.local/share/weigg-qb-webui
+```
+
+例如使用 `root` 用户运行时，通常就是：
+
+```text
+/root/.local/share/weigg-qb-webui
 ```
 
 ### Docker
@@ -278,11 +290,31 @@ qBittorrent Root Folder: /config/weigg-qb-webui
 Invoke-WebRequest https://raw.githubusercontent.com/weigefenxiang/WeiG-qB-WebUI/main/installers/install.ps1 -OutFile .\weigg-install.ps1; powershell -ExecutionPolicy Bypass -File .\weigg-install.ps1 -configure
 ```
 
-默认安装目录：
+安装脚本会保存在你执行命令时的当前 PowerShell 目录：
+
+```text
+.\weigg-install.ps1
+```
+
+WebUI 本体默认安装到：
 
 ```text
 %LOCALAPPDATA%\WeiG-qB-WebUI
 ```
+
+`%LOCALAPPDATA%` **不是当前目录**，它通常代表：
+
+```text
+C:\Users\<你的用户名>\AppData\Local
+```
+
+所以 WebUI 实际通常会安装在：
+
+```text
+C:\Users\<你的用户名>\AppData\Local\WeiG-qB-WebUI
+```
+
+如果希望安装到例如 D 盘，可在“常用参数”里查看 `-o` 自定义安装目录的用法。
 
 ## 常用参数
 
