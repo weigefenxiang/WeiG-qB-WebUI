@@ -14,7 +14,7 @@ A modern, responsive qBittorrent Alternate WebUI optimized for desktop and mobil
 
 **[🌐 Live Preview](https://weigefenxiang.github.io/WeiG-qB-WebUI/)** · **[⬇️ Download Latest Release](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/WeiG-qB-WebUI.zip)**
 
-**Language**: **English** · [简中](translations/README.zh-CN.md) · [繁中](translations/README.zh-TW.md) · 日本語 · 한국어 · Deutsch · Français · Español · Português · Русский
+**Language**: **English** · [简中](translations/README.zh-CN.md) · [繁中](translations/README.zh-TW.md) · [日本語](translations/README.ja.md) · [한국어](translations/README.ko.md) · [Deutsch](translations/README.de.md) · [Français](translations/README.fr.md) · [Español](translations/README.es.md) · [Português](translations/README.pt.md) · [Русский](translations/README.ru.md)
 
 ## Direct Download
 
@@ -356,7 +356,7 @@ powershell -ExecutionPolicy Bypass -File .\weigg-install.ps1 -rollback
 
 ## More Help
 
-For Docker multi-container setups, NAS deployment, custom paths, updates, and advanced installation details, see the bilingual [Installation, Upgrade & Manual Deployment Guide](docs/007.安装升级与手动部署.md).
+For Docker multi-container setups, NAS deployment, custom paths, updates, and advanced installation details, see the detailed [Installation, Upgrade & Manual Deployment Guide](docs/007.安装升级与手动部署.md).
 
 ## License
 
