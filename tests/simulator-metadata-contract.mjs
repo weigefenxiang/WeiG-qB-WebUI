@@ -81,19 +81,30 @@ function getRequest(path){return new Request(`https://example.invalid/api/v2/${p
 
 {
   const w=world('5.2.0','2.12.9');const t=w.torrents[0];
-  const real=trackersForTorrent(w,t.hash,1700000005000,contract(w,'torrents/trackers'))[3];
+  t.trackers[0].status=5;
+  let real=trackersForTorrent(w,t.hash,1700000005000,contract(w,'torrents/trackers'))[3];
+  assert.equal(real.status,4,'pre-2.13 WebAPI must collapse TrackerError=5 into NotWorking=4');
+  t.trackers[0].status=6;
+  real=trackersForTorrent(w,t.hash,1700000005000,contract(w,'torrents/trackers'))[3];
+  assert.equal(real.status,4,'pre-2.13 WebAPI must collapse Unreachable=6 into NotWorking=4');
   for(const key of ['updating','next_announce','min_announce','endpoints'])assert.ok(!(key in real),`tracker payload must not expose WebAPI 2.13.0 field ${key} on 2.12.9`);
 }
 
 {
   const w=world('5.2.0','2.13.0');const t=w.torrents[0];t.has_metadata=true;t.private=true;
-  const trackers=trackersForTorrent(w,t.hash,1700000005000,contract(w,'torrents/trackers'));assert.ok(trackers.length>=4);
+  t.trackers[0].status=5;
+  let trackers=trackersForTorrent(w,t.hash,1700000005000,contract(w,'torrents/trackers'));assert.ok(trackers.length>=4);
   assert.deepEqual(trackers.slice(0,3).map(x=>x.url),['** [DHT] **','** [PeX] **','** [LSD] **']);
   for(const item of trackers.slice(0,3)){
     assert.equal(item.status,0,'private torrent discovery pseudo-trackers must be disabled');
     assert.equal(item.msg,'This torrent is private');
   }
-  const real=trackers[3];assert.equal(typeof real.status,'number');assert.ok(Array.isArray(real.endpoints));
+  let real=trackers[3];assert.equal(real.status,5,'WebAPI 2.13.0 must preserve TrackerError=5');assert.ok(Array.isArray(real.endpoints));
+  assert.equal(real.endpoints[0].status,5,'endpoint projection must preserve TrackerError=5 too');
+  t.trackers[0].status=6;
+  trackers=trackersForTorrent(w,t.hash,1700000005000,contract(w,'torrents/trackers'));
+  real=trackers[3];assert.equal(real.status,6,'WebAPI 2.13.0 must preserve Unreachable=6');
+  assert.equal(real.endpoints[0].status,6,'endpoint projection must preserve Unreachable=6 too');
   assert.ok(Number.isFinite(real.next_announce)&&Number.isFinite(real.min_announce),'WebAPI 2.13.0 tracker projection must carry endpoint announce timing');
 }
 
@@ -103,4 +114,4 @@ function getRequest(path){return new Request(`https://example.invalid/api/v2/${p
   r=await handleApi(w,getRequest('torrents/trackers?hash=0000000000000000000000000000000000000000'));assert.equal(r.status,404);
 }
 
-console.log('Virtual qB metadata contract passed: exact action gating, explicit Endpoint Contract projection, metadata-empty behavior, WebAPI 2.13.0 tracker projection and 2.15.1 availability boundaries.');
+console.log('Virtual qB metadata contract passed: exact action gating, explicit Endpoint Contract projection, metadata-empty behavior, WebAPI 2.13.0 tracker timing/status projection and 2.15.1 availability boundaries.');

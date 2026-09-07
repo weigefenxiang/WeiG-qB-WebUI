@@ -113,8 +113,14 @@ function stickyTracker(world,t,label,enabled){
   };
 }
 
+function projectedTrackerStatus(value,contract){
+  const status=Number(value)||0;
+  if(contract?.trackerExtendedStatuses!==true&&(status===5||status===6))return 4;
+  return status;
+}
+
 function modernTracker(world,t,tracker,index,now,contract){
-  const status=Number(tracker.status)||0;
+  const status=projectedTrackerStatus(tracker.status,contract);
   const out={
     url:String(tracker.url||''),
     status,

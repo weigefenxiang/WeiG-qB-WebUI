@@ -70,10 +70,15 @@ function mainDataContract(version){
   };
 }
 
+function trackersContract(version){
+  const modern=atLeast(version,'2.13.0');
+  return{trackerTimingFields:modern,trackerExtendedStatuses:modern};
+}
+
 const RESOLVERS=new Map([
   ['torrents/addTrackers',(version,path)=>trackerCollectionContract(version,path)],
   ['torrents/removeTrackers',(version,path)=>trackerCollectionContract(version,path)],
-  ['torrents/trackers',version=>({trackerTimingFields:atLeast(version,'2.13.0')})],
+  ['torrents/trackers',version=>trackersContract(version)],
   ['torrents/properties',version=>({availabilityField:atLeast(version,'2.15.1')})],
   ['sync/maindata',version=>mainDataContract(version)],
   ['torrents/editCategory',version=>editCategoryContract(version)],

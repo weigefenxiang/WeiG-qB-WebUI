@@ -26,8 +26,12 @@ const profile=webApiVersion=>({webApiVersion});
 }
 
 {
-  assert.equal(resolveEndpointContract(profile('2.12.1'),'torrents/trackers').trackerTimingFields,false);
-  assert.equal(resolveEndpointContract(profile('2.13.0'),'torrents/trackers').trackerTimingFields,true);
+  const legacyTrackers=resolveEndpointContract(profile('2.12.9'),'torrents/trackers');
+  const modernTrackers=resolveEndpointContract(profile('2.13.0'),'torrents/trackers');
+  assert.equal(legacyTrackers.trackerTimingFields,false);
+  assert.equal(legacyTrackers.trackerExtendedStatuses,false,'pre-2.13 tracker errors must collapse into NotWorking');
+  assert.equal(modernTrackers.trackerTimingFields,true);
+  assert.equal(modernTrackers.trackerExtendedStatuses,true,'WebAPI 2.13.0 must expose TrackerError=5 and Unreachable=6');
   assert.equal(resolveEndpointContract(profile('2.15.0'),'torrents/properties').availabilityField,false);
   assert.equal(resolveEndpointContract(profile('2.15.1'),'torrents/properties').availabilityField,true);
 
@@ -84,4 +88,4 @@ const profile=webApiVersion=>({webApiVersion});
   assert.equal(resolveEndpointContract(profile('2.15.1'),'torrents/reannounce'),null,'structural-only endpoints must not be copied into Endpoint Contract');
 }
 
-console.log('Virtual qB endpoint contracts passed: audited semantic revisions resolve through one interface, sync/maindata models category/free-space/subcategories response lifecycles, structural truth stays out, and future unknown revisions fail closed.');
+console.log('Virtual qB endpoint contracts passed: audited semantic revisions resolve through one interface, tracker status/timing boundaries and sync/maindata response lifecycles stay canonical, structural truth stays out, and future unknown revisions fail closed.');
