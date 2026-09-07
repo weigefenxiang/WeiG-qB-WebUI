@@ -4,6 +4,7 @@
   if(W.TorrentFieldRegistry)return;
   var MODES={NATIVE:'NATIVE',NORMALIZED:'NORMALIZED',DERIVED:'DERIVED',READ_ONLY:'READ_ONLY',UNAVAILABLE:'UNAVAILABLE',UNKNOWN:'UNKNOWN'};
   var DEFAULT_MOBILE=['state','progress','size','dlspeed','upspeed','eta'];
+  var DEFAULT_DESKTOP=['name','size','progress','dlspeed','upspeed','eta','state'];
   function formatTime(value){var n=Number(value);if(!Number.isFinite(n)||n<=0)return'—';var ms=n<1e12?n*1000:n;try{return W.Time&&W.Time.format?W.Time.format(ms,{dateStyle:'short',timeStyle:'short'}):new Date(ms).toLocaleString();}catch(_e){return new Date(ms).toLocaleString();}}
   var FIELDS=[
     {key:'name',sort:'name',en:'Name',zh:'名称',short:'Name',width:420,min:220},
@@ -39,8 +40,18 @@
   function saveRawMobileFields(fields){var cfg=W.Config.load(),out=[];(fields||[]).forEach(function(k){var c=canonical(k);if(c&&c!=='name'&&out.indexOf(c)<0)out.push(c);});cfg.mobileFields=out;W.Config.save(cfg);return out;}
   function saveEffectiveMobileFields(fields,profile){var p=profile===undefined?currentProfile():profile,previous=savedMobileFields(),hidden=p?previous.filter(function(key){return !isAvailable(key,p);}):[],next=[];(fields||[]).concat(hidden).forEach(function(k){var c=canonical(k);if(c&&c!=='name'&&next.indexOf(c)<0)next.push(c);});return saveRawMobileFields(next);}
   function column(field){field=typeof field==='string'?FIELD_MAP[field]:field;if(!field)return null;return{key:field.key,label:label(field),width:field.width,min:field.min,sort:field.sort};}
+  function normalizeColumnPreferences(raw){var out=[],seen={};(raw||[]).forEach(function(item){item=typeof item==='string'?{key:item}:item||{};var c=canonical(item.key);if(!c||seen[c])return;seen[c]=true;var pref={key:c};if(Number.isFinite(Number(item.width)))pref.width=Number(item.width);out.push(pref);});return out;}
+  function defaultDesktopPreferences(){return DEFAULT_DESKTOP.map(function(key){return{key:key};});}
+  function savedDesktopColumns(cfg){cfg=cfg||{};var raw=Array.isArray(cfg.columns)&&cfg.columns.length?cfg.columns:defaultDesktopPreferences();return normalizeColumnPreferences(raw);}
+  function decorateColumnPreference(pref){var def=FIELD_MAP[pref&&pref.key],out=column(def);if(!out)return null;if(Number.isFinite(Number(pref.width)))out.width=Number(pref.width);return out;}
+  function effectiveDesktopColumns(cfg,profile){var p=profile===undefined?currentProfile():profile,saved=savedDesktopColumns(cfg),out=saved.filter(function(pref){return !p||isAvailable(pref.key,p);}).map(decorateColumnPreference).filter(Boolean);if(out.length||p)return out;return saved.map(decorateColumnPreference).filter(Boolean);}
+  function availableColumnDefinitions(profile){return effectiveFields(profile).map(column).filter(Boolean);}
+  function serializeColumns(cols){return normalizeColumnPreferences((cols||[]).map(function(c){return{key:c&&c.key,width:c&&c.width};}));}
+  function saveRawDesktopColumns(cfg,cols){cfg=cfg||{};cfg.columns=serializeColumns(cols);if(W.Config&&W.Config.save)W.Config.save(cfg);return cfg.columns;}
+  function saveEffectiveDesktopColumns(cfg,cols,profile){var p=profile===undefined?currentProfile():profile,previous=savedDesktopColumns(cfg),effective=serializeColumns(cols),queue=effective.slice(),next=[];previous.forEach(function(pref){if(p&&!isAvailable(pref.key,p)){next.push(pref);return;}if(queue.length)next.push(queue.shift());});next=next.concat(queue);saveRawDesktopColumns(cfg,next);return effectiveDesktopColumns(cfg,p);}
+  function resetDesktopColumns(cfg,profile){saveRawDesktopColumns(cfg,defaultDesktopPreferences());return effectiveDesktopColumns(cfg,profile);}
   function syncDataGrid(){if(!W.DataGrid)return[];W.DataGrid.defaults=FIELDS.map(column);return W.DataGrid.defaults;}
-  var api={modes:MODES,fields:FIELDS,get:function(key){return FIELD_MAP[String(key||'')]||null;},canonical:canonical,label:label,column:column,syncDataGrid:syncDataGrid,resolveProvenance:resolveProvenance,provenance:provenance,isAvailable:isAvailable,effectiveFields:effectiveFields,savedMobileFields:savedMobileFields,mobileFields:effectiveMobileFields,effectiveMobileFields:effectiveMobileFields,saveMobileFields:saveRawMobileFields,saveEffectiveMobileFields:saveEffectiveMobileFields};
+  var api={modes:MODES,fields:FIELDS,get:function(key){return FIELD_MAP[String(key||'')]||null;},canonical:canonical,label:label,column:column,syncDataGrid:syncDataGrid,resolveProvenance:resolveProvenance,provenance:provenance,isAvailable:isAvailable,effectiveFields:effectiveFields,savedMobileFields:savedMobileFields,mobileFields:effectiveMobileFields,effectiveMobileFields:effectiveMobileFields,saveMobileFields:saveRawMobileFields,saveEffectiveMobileFields:saveEffectiveMobileFields,savedDesktopColumns:savedDesktopColumns,effectiveDesktopColumns:effectiveDesktopColumns,availableColumnDefinitions:availableColumnDefinitions,saveRawDesktopColumns:saveRawDesktopColumns,saveEffectiveDesktopColumns:saveEffectiveDesktopColumns,resetDesktopColumns:resetDesktopColumns};
   W.TorrentFieldRegistry=api;
   syncDataGrid();
 })(window);
