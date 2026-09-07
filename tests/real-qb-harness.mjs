@@ -133,9 +133,9 @@ async function run(){
     }else{
       const set='appcontroller.h:setPreferencesAction';
       if(has(profile,set)&&preferences&&typeof preferences==='object'){
-        const d=(profile.preferenceDescriptors||[]).find(x=>x?.writable===true&&Object.hasOwn(preferences,x.key)&&['string','number','boolean'].includes(typeof preferences[x.key]));
+        const safeNoopKeys=['dl_limit','up_limit','alt_dl_limit','alt_up_limit','max_connec','max_uploads','queueing_enabled'];const d=safeNoopKeys.map(key=>(profile.preferenceDescriptors||[]).find(x=>x?.key===key&&x?.writable===true)).find(x=>x&&Object.hasOwn(preferences,x.key)&&['string','number','boolean'].includes(typeof preferences[x.key]));
         if(d){const ep=endpoint(set),r=await http('POST',ep,{form:{json:JSON.stringify({[d.key]:preferences[d.key]})}});ok(r,'settings no-op');await r.text();const rr=await http('GET',endpoint('appcontroller.h:preferencesAction'));ok(rr,'settings reread',[200]);const after=await json(rr);if(after[d.key]!==preferences[d.key])die(`No-op Preference changed: ${d.key}`);ev.push('PASS','settings-noop-write',{source_provenance:set,request:req('POST',ep,['json']),response:{status:r.status,body:'REDACTED'},cleanup_result:'no state delta'});}
-        else ev.push('SKIP','settings-noop-write',{reason:'no source-proven writable scalar Preference in response'});
+        else ev.push('SKIP','settings-noop-write',{reason:'no pre-approved source-proven writable no-op Preference in response'});
       }
       if(has(profile,'torrentscontroller.h:addAction')&&has(profile,'torrentscontroller.h:deleteAction')){
         testHash=crypto.randomBytes(20).toString('hex');const ep=endpoint('torrentscontroller.h:addAction');
