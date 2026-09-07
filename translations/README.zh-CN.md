@@ -2,7 +2,7 @@
 
 一套现代、响应式的 qBittorrent Alternate WebUI，专为桌面端和手机端优化。
 
-**📱 手机自适应 · 🖥️ 桌面响应式 · 🌙 暗夜模式 · ✅ 支持 qBittorrent 4.1.x → 5.2.x**
+**📱 手机自适应 · 🌙 暗夜模式 · ✅ 支持 qBittorrent 4.1.x → 5.2.x**
 
 <p>
   <img src="https://img.shields.io/badge/-JavaScript-F7DF1E?logo=javascript&logoColor=black" alt="JavaScript">
