@@ -1,11 +1,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(here,'..');
 const read=rel=>fs.readFileSync(path.join(root,rel),'utf8').replace(/\r\n?/g,'\n');
+const readGitBlob=rel=>execFileSync('git',['-C',root,'show',`HEAD:${rel}`],{stdio:['ignore','pipe','pipe']});
 const assert=(ok,msg)=>{if(!ok)throw new Error(msg);};
 const watch=read('.github/workflows/stable-watch.yml'),frozen=read('.github/workflows/frozen-stable-compat.yml'),pkg=JSON.parse(read('package.json')),manifest=JSON.parse(read('tools/data/qb-stable-lkg.json')),catalogPath=path.join(root,manifest.catalogPath);
 
@@ -37,8 +39,9 @@ assert(!frozen.includes("- 'tools/data/qb-stable-lkg.json'")&&!frozen.includes("
 
 assert(manifest.schemaVersion===1&&manifest.supportFloor==='4.1.0','LKG manifest schema/floor drifted');
 assert(fs.existsSync(catalogPath),'committed single-file LKG catalog is missing');
-const digest=crypto.createHash('sha256').update(fs.readFileSync(catalogPath)).digest('hex');assert(digest===manifest.catalogSha256,`committed LKG SHA-256 mismatch: ${digest} vs ${manifest.catalogSha256}`);
-const catalog=JSON.parse(fs.readFileSync(catalogPath,'utf8'));assert(catalog.length===manifest.profileCount&&catalog.at(-1)?.qbVersion===manifest.latestAdmittedStable,'LKG manifest does not describe committed catalog exactly');
+const catalogBlob=readGitBlob(manifest.catalogPath);
+const digest=crypto.createHash('sha256').update(catalogBlob).digest('hex');assert(digest===manifest.catalogSha256,`committed LKG SHA-256 mismatch: ${digest} vs ${manifest.catalogSha256}`);
+const catalog=JSON.parse(catalogBlob.toString('utf8'));assert(catalog.length===manifest.profileCount&&catalog.at(-1)?.qbVersion===manifest.latestAdmittedStable,'LKG manifest does not describe committed catalog exactly');
 
 for(const test of ['tests/compat-architecture-contract.mjs','tests/qb-stable-admission-contract.mjs','tests/qb-product-capability-diff-contract.mjs','tests/phase-d-automation-contract.mjs'])assert(pkg.scripts.test.includes(test),`npm test must include Phase D guard ${test}`);
 const catalogTool=read('tools/qb-release-catalog.mjs');assert(catalogTool.includes('--base-catalog=')&&catalogTool.includes('Incremental extraction must not re-parse frozen stable tag')&&catalogTool.includes('Incremental annotation mutated frozen LKG profile'),'catalog generator must protect source and byte-level frozen history during incremental admission');
