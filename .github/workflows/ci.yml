@@ -78,6 +78,7 @@ jobs:
           node tests/browser-feature-parity.mjs
           node tests/browser-torrent-workspace.mjs
           node tests/browser-adaptive-ui.mjs
+          node tests/browser-torrent-field-provenance.mjs
           node tests/browser-sidebar-capability-visual.mjs
 
   release_compatibility:
@@ -147,6 +148,7 @@ jobs:
           node tests/browser-feature-parity.mjs
           node tests/browser-torrent-workspace.mjs
           node tests/browser-adaptive-ui.mjs
+          node tests/browser-torrent-field-provenance.mjs
           node tests/browser-sidebar-capability-visual.mjs
 
   windows_browser:
@@ -199,6 +201,7 @@ jobs:
             'tests/browser-feature-parity.mjs',
             'tests/browser-torrent-workspace.mjs',
             'tests/browser-adaptive-ui.mjs',
+            'tests/browser-torrent-field-provenance.mjs',
             'tests/browser-sidebar-capability-visual.mjs'
           )
           foreach ($test in $tests) {
