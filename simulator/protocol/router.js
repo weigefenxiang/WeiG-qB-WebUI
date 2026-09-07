@@ -62,8 +62,8 @@ async function formObject(request){
 
 function ensureCapability(world,name){return capabilityAvailable(world,name);}
 function apiAtLeast(world,minimum){return atLeast(world.profile.webApiVersion,minimum);}
-function hasRss(world){return apiAtLeast(world,'2.1.0');}
-function hasSearch(world){return apiAtLeast(world,'2.1.1');}
+function hasRss(world){return Array.isArray(world.profile?.apiActions)?upstreamRouteAvailable(world.profile,'rss/items'):apiAtLeast(world,'2.1.0');}
+function hasSearch(world){return Array.isArray(world.profile?.apiActions)?upstreamRouteAvailable(world.profile,'search/plugins'):apiAtLeast(world,'2.1.1');}
 function hasTorrentCreator(world){return world.profile.major>=5&&apiAtLeast(world,'2.11.0');}
 function hasRenameFolder(world){return apiAtLeast(world,'2.8.0')||String(world.profile.qbVersion).replace(/^v/i,'')==='4.3.3';}
 function owns(object,key){return Object.prototype.hasOwnProperty.call(object,key);}

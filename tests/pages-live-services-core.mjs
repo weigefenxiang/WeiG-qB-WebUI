@@ -150,10 +150,13 @@ try{
   {
     const context=await browser.newContext({locale:'zh-CN'}),page=await context.newPage();
     await openSession(page,{branch:'dev',qb:'4.1.0',count:100,scenario:'mixed',seed:'services-qb410'});
-    for(const path of ['app/buildInfo','app/processInfo','rss/items?withData=true','search/plugins']){
+    for(const path of ['app/buildInfo','app/processInfo','search/plugins']){
       const response=await api(page,path);assert.equal(response.status,404,`${path} must be absent in deployed qB 4.1.0 profile`);
     }
-    let response=await api(page,'app/defaultSavePath');assert.equal(response.status,200,'original v2 generation must retain defaultSavePath');
+    let response=await api(page,'rss/items?withData=true');
+    assert.equal(response.status,200,'qB 4.1.0 RSS items must follow exact source action provenance, not a stale WebAPI >= 2.1.0 heuristic');
+    assert.ok(response.json&&typeof response.json==='object'&&!Array.isArray(response.json),'qB 4.1.0 RSS items must return the real virtual RSS object shape');
+    response=await api(page,'app/defaultSavePath');assert.equal(response.status,200,'original v2 generation must retain defaultSavePath');
     response=await api(page,'transfer/banPeers',{method:'POST',form:{peers:'10.0.0.1:50000'}});assert.equal(response.status,404,'qB 4.1.0 profile must not expose peer ban');
     await context.close();
   }
