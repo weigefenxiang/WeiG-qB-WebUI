@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {launchBrowser} from './browser-driver.mjs';
+import {atLeast} from '../simulator/core/profiles.js';
 
 const rawBase=(process.env.WEIGG_PAGES_URL||process.argv[2]||'').trim();
 const expectedSha=(process.env.WEIGG_EXPECTED_SIMULATOR_SHA||process.argv[3]||'').trim();
@@ -193,7 +194,8 @@ try{
     const sim=`pref-matrix-${profile.qbVersion.replace(/\./g,'-')}-${Date.now()}-${audited}`;
     const query=`sim=${encodeURIComponent(sim)}&qb=${encodeURIComponent(profile.qbVersion)}&count=1&scenario=mixed&seed=pages-live-pref-matrix`;
     let response=await api(page,`auth/login?${query}`,{method:'POST',form:{username:'demo',password:'demo'}});
-    assert.equal(response.status,200,`${profile.qbVersion}: virtual daemon login must succeed`);
+    const expectedLoginStatus=atLeast(profile.webApiVersion,'2.14.0')?204:200;
+    assert.equal(response.status,expectedLoginStatus,`${profile.qbVersion}: virtual daemon login must match WebAPI ${profile.webApiVersion} success status`);
     response=await api(page,`app/version?sim=${encodeURIComponent(sim)}`);
     assert.equal(response.status,200,`${profile.qbVersion}: app/version must be readable`);
     assert.equal(response.text,`v${profile.qbVersion}`,`${profile.qbVersion}: Service Worker must bind the exact requested qB release`);
