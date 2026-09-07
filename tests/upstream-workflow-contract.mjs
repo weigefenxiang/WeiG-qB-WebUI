@@ -11,6 +11,7 @@ const assert=(ok,msg)=>{if(!ok)throw new Error(msg);};
 const sourcePaths=[
   "'tools/qb-release-catalog.mjs'",
   "'tools/qb-release-tags.mjs'",
+  "'tools/qb-stable-admission.mjs'",
   "'tools/qb-source-parsers.mjs'",
   "'tools/qb-preference-semantics.mjs'",
   "'tools/qb-torrent-surface-parsers.mjs'",
@@ -24,8 +25,8 @@ const sourcePaths=[
   "'tests/upstream-release-audit.mjs'"
 ];
 assert(/push:\s*\n\s*branches:\s*\n\s*- dev\s*\n\s*paths:/m.test(heavy),'heavy upstream audit must be path-scoped on dev pushes');
-for(const entry of sourcePaths)assert(heavy.includes(`- ${entry}`),`heavy upstream audit trigger is missing source/evolution input ${entry}`);
-for(const forbidden of ["'docs/**'","'webui/private/scripts/qb-client.js'","'webui/private/scripts/settings-schema.js'","'tools/qb-stable-admission.mjs'","'tools/qb-product-capability-diff.mjs'"])assert(!heavy.includes(`- ${forbidden}`),`heavy upstream audit must not be triggered by non-source-history input ${forbidden}`);
+for(const entry of sourcePaths)assert(heavy.includes(`- ${entry}`),`heavy upstream audit trigger is missing source/discovery/evolution input ${entry}`);
+for(const forbidden of ["'docs/**'","'webui/private/scripts/qb-client.js'","'webui/private/scripts/settings-schema.js'","'tools/qb-product-capability-diff.mjs'"])assert(!heavy.includes(`- ${forbidden}`),`heavy upstream audit must not be triggered by non-source-history input ${forbidden}`);
 assert(!heavy.includes('run: npm test'),'upstream evolution audit must not duplicate repository npm test');
 assert(heavy.includes('workflow_dispatch:'),'heavy upstream audit must remain manually runnable');
 assert(heavy.includes('qb-release-catalog.mjs upstream-qb'),'heavy upstream audit must regenerate exact stable source facts');
@@ -34,10 +35,10 @@ assert(heavy.includes('qb-webapi-evolution-audit.mjs upstream-qb'),'heavy upstre
 
 assert(/push:\s*\n\s*branches:\s*\n\s*- dev\s*\n\s*paths:/m.test(frozen),'frozen stable compatibility must be path-scoped on dev pushes');
 for(const owner of ['release-profile.js','capabilities.js','torrent-semantics.js','settings-schema.js','qb-client.js'])assert(frozen.includes(`'webui/private/scripts/${owner}'`),`frozen stable regression trigger missing product owner ${owner}`);
-assert(frozen.includes("'tests/fixtures/qb-release-catalog.lkg.json'"),'frozen stable regression must be owned by committed LKG catalog');
+for(const nonRuntime of ["'tools/data/qb-stable-lkg.json'","'tests/fixtures/qb-release-catalog.lkg.json'","'tools/qb-stable-admission.mjs'"])assert(!frozen.includes(`- ${nonRuntime}`),`historical product regression must not be triggered by LKG/admission-only input ${nonRuntime}`);
 assert(!frozen.includes('repository: qbittorrent/qBittorrent'),'frozen product regression must not checkout or re-parse upstream history');
 assert(frozen.includes('qb-stable-admission.mjs verify'),'frozen product regression must verify LKG identity');
 assert(frozen.includes('compat-architecture-contract.mjs'),'frozen product regression must enforce architecture guard');
 assert(frozen.includes('full-stable-product-compat.mjs tests/fixtures/qb-release-catalog.lkg.json'),'frozen product regression must execute all LKG profiles through formal product owners');
 
-console.log('Upstream workflow contract passed: source-parser changes retain a manual/path-scoped full history audit, while generic product compatibility changes use the frozen LKG matrix without re-parsing old upstream releases.');
+console.log('Upstream workflow contract passed: parser/stable-discovery/evolution changes trigger the path-scoped full history audit, while historical product regression is reserved for canonical compatibility-owner or matrix changes and never re-parses old upstream releases.');

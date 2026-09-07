@@ -8,6 +8,7 @@ on:
       - '.github/workflows/upstream-compat.yml'
       - 'tools/qb-release-catalog.mjs'
       - 'tools/qb-release-tags.mjs'
+      - 'tools/qb-stable-admission.mjs'
       - 'tools/qb-source-parsers.mjs'
       - 'tools/qb-preference-semantics.mjs'
       - 'tools/qb-torrent-surface-parsers.mjs'
