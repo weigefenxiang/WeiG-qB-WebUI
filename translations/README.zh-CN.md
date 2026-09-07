@@ -14,7 +14,7 @@
 
 **[🌐 在线预览](https://weigefenxiang.github.io/WeiG-qB-WebUI/)** · **[⬇️ 下载最新正式版](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/WeiG-qB-WebUI.zip)**
 
-**语言**：[English](../README.md) · 简体中文 · 日本語 · 한국어 · Deutsch · Français · Español · Português · Русский
+**语言**：[English](../README.md) · **简中** · [繁中](README.zh-TW.md) · 日本語 · 한국어 · Deutsch · Français · Español · Português · Русский
 
 ## 直接下载
 
@@ -54,9 +54,9 @@ Linux：  /opt/WeiG-qB-WebUI
 
 ### 3. 在 qBittorrent 中启用
 
-打开 qBittorrent 桌面端：
+打开 qBittorrent：
 
-**工具 → 设置... → WebUI**
+**工具 → 选项... → WebUI**
 
 这是 qBittorrent 当前简体中文官方用语。然后：
 
