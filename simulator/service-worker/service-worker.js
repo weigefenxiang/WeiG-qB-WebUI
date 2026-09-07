@@ -6,6 +6,7 @@ import {applyScenario} from './__simulator/core/scenarios.js';
 import {loadWorld,saveWorld,deleteWorld} from './__simulator/storage/indexeddb.js';
 import {createWorldCache} from './__simulator/storage/world-cache.js';
 import {handleApi} from './__simulator/protocol/router.js';
+import {applyTransportPolicy} from './__simulator/protocol/transport-contract.js';
 
 const SOURCE_PRIVATE='./__source/private/';
 const SOURCE_PUBLIC='./__source/public/';
@@ -182,6 +183,10 @@ async function handleAsset(event,url){
 
 async function handleApiQueued(event,url){
   const {id,world}=await ensureWorld(event,url);
+  const transport=applyTransportPolicy(world,event.request);
+  if(transport.rejected){
+    return new Response(transport.body||'Unauthorized',{status:transport.status||401,headers:{'content-type':'text/plain; charset=utf-8','cache-control':'no-store'}});
+  }
   const response=await handleApi(world,event.request,url);
   await worlds.touch(id,world,{mutation:event.request.method.toUpperCase()!=='GET'});
   return response;

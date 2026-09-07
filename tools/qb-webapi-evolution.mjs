@@ -2,19 +2,23 @@ import fs from 'node:fs';
 
 export const CLASSIFICATIONS=Object.freeze(['SOURCE_DERIVED','CONTRACT_COVERED','NOT_APPLICABLE','MISSING','UNCLASSIFIED']);
 const OWNER_BY_CODE=Object.freeze({S:'tools/qb-release-catalog.mjs',C:'simulator/protocol/endpoint-contracts.js',M:null,N:null});
+const CONTRACT_OWNERS=Object.freeze(new Set(['simulator/protocol/endpoint-contracts.js','simulator/protocol/transport-contract.js']));
 function fail(message){throw new Error(message);}
 function parts(version){return String(version||'').split('.').map(value=>Number.parseInt(value,10)||0);}
 export function compareVersions(left,right){const a=parts(left),b=parts(right),n=Math.max(a.length,b.length);for(let i=0;i<n;i++){const d=(a[i]||0)-(b[i]||0);if(d)return Math.sign(d);}return 0;}
 export function readLedger(file){return JSON.parse(fs.readFileSync(file,'utf8'));}
 
+function pushChange(rows,version,change,extra={}){
+  rows.push({version,code:change[0],subject:change[1],ownerOverride:change[2]??null,...extra});
+}
 function allChanges(ledger){
   const rows=[];
   for(const [version,raw] of Object.entries(ledger.revisions||{})){
     const records=Array.isArray(raw)?raw:[raw];
-    for(const record of records)for(const change of record?.c||[])rows.push({version,code:change[0],subject:change[1],kind:'revision'});
+    for(const record of records)for(const change of record?.c||[])pushChange(rows,version,change,{kind:'revision'});
   }
-  for(const row of ledger.modern||[])for(const change of row[2]||[])rows.push({version:row[0],code:change[0],subject:change[1],kind:'modern',pullRequest:Number(row[1])});
-  for(const item of ledger.supplements||[])for(const change of item.c||[])rows.push({version:item.v,code:change[0],subject:change[1],kind:'stable-supplement',qbVersion:item.q});
+  for(const row of ledger.modern||[])for(const change of row[2]||[])pushChange(rows,row[0],change,{kind:'modern',pullRequest:Number(row[1])});
+  for(const item of ledger.supplements||[])for(const change of item.c||[])pushChange(rows,item.v,change,{kind:'stable-supplement',qbVersion:item.q});
   return rows;
 }
 export function validateLedger(ledger){
@@ -50,10 +54,14 @@ export function validateLedger(ledger){
     if(!Object.prototype.hasOwnProperty.call(codes,change.code))fail(`${change.version}: invalid classification code ${change.code}`);
     if(!change.subject)fail(`${change.version}: empty change subject`);
     if(change.code==='U')fail(`${change.version}: UNCLASSIFIED is forbidden`);
+    if(change.ownerOverride!==null){
+      if(change.code!=='C')fail(`${change.version}: only CONTRACT_COVERED changes may override owner`);
+      if(!CONTRACT_OWNERS.has(String(change.ownerOverride)))fail(`${change.version}: unsupported contract owner ${change.ownerOverride}`);
+    }
   }
   return true;
 }
-export function expandChanges(ledger){validateLedger(ledger);return allChanges(ledger).map(item=>({...item,classification:ledger.codes[item.code],owner:OWNER_BY_CODE[item.code]}));}
+export function expandChanges(ledger){validateLedger(ledger);return allChanges(ledger).map(item=>({...item,classification:ledger.codes[item.code],owner:item.ownerOverride??OWNER_BY_CODE[item.code]}));}
 export function summarizeLedger(ledger){
   const changes=expandChanges(ledger),classifications={SOURCE_DERIVED:0,CONTRACT_COVERED:0,NOT_APPLICABLE:0,MISSING:0,UNCLASSIFIED:0};
   for(const item of changes)classifications[item.classification]++;

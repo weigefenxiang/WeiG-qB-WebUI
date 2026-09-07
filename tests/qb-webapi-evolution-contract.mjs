@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {extractWebApiChangelogPulls,expandChanges,readLedger,summarizeLedger,validateLedger,validateModernChangelogCoverage} from '../tools/qb-webapi-evolution.mjs';
@@ -34,7 +35,19 @@ assert.ok(pr23202Changes.some(change=>change[1].includes('unknown endpoint')&&ch
 assert.ok(pr23202Changes.some(change=>change[1].includes('auth/login success becomes 204')&&change[1].includes('401 Unauthorized')),'2.14.0 login success/failure status transition must be covered');
 assert.ok(pr23202Changes.some(change=>change[1].includes('torrents/add structured result')),'2.14.0 torrents/add result/status semantics must remain covered');
 
-assert.deepEqual([...new Set(changes.filter(change=>change.classification==='CONTRACT_COVERED').map(change=>change.owner))],['simulator/protocol/endpoint-contracts.js']);
+const basicAuth=changes.find(change=>change.pullRequest===23564&&change.subject.includes('Basic-auth'));
+assert.equal(basicAuth?.classification,'CONTRACT_COVERED');assert.equal(basicAuth?.owner,'simulator/protocol/transport-contract.js');
+const peerHost=changes.find(change=>change.pullRequest===23708&&change.subject.includes('host_name'));
+assert.equal(peerHost?.classification,'CONTRACT_COVERED');assert.equal(peerHost?.owner,'simulator/protocol/endpoint-contracts.js');
+const xForwarded=changes.find(change=>change.qbVersion==='5.2.2'&&change.subject.includes('X-Forwarded-Host'));
+assert.equal(xForwarded?.classification,'CONTRACT_COVERED');assert.equal(xForwarded?.owner,'simulator/protocol/transport-contract.js');
+const resultLifetime=changes.find(change=>change.qbVersion==='5.2.1'&&change.subject.includes('APIController result-buffer'));
+assert.equal(resultLifetime?.classification,'NOT_APPLICABLE','qB C++ APIResult retention is an internal lifetime concern, not an observable Virtual qB response contract');
+const router=fs.readFileSync(path.join(root,'simulator/protocol/router.js'),'utf8');
+const auxiliary=fs.readFileSync(path.join(root,'simulator/protocol/auxiliary-router.js'),'utf8');
+assert.doesNotMatch(`${router}\n${auxiliary}`,/\bm_result\b|\bAPIResult\b/,'per-request JavaScript routers must not grow a persistent C++-style APIResult buffer');
+
+assert.deepEqual([...new Set(changes.filter(change=>change.classification==='CONTRACT_COVERED').map(change=>change.owner))].sort(),['simulator/protocol/endpoint-contracts.js','simulator/protocol/transport-contract.js']);
 const fixture=`# WebAPI Changelog
 ## 2.15.1
 * [#3](https://github.com/x/y/pull/3)

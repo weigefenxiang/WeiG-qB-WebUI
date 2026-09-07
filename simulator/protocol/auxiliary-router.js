@@ -1,5 +1,5 @@
 import {atLeast} from '../core/profiles.js';
-import {generatedPeers} from '../core/peer-view.js';
+import {generatedPeers,projectPeerHostNames} from '../core/peer-view.js';
 import {indexedWebseedList} from '../core/webseed-view.js';
 import {filterBannedPeers} from '../core/torrent-actions.js';
 import {addVirtualTorrentBatch} from '../core/torrent-add.js';
@@ -159,7 +159,8 @@ export async function handleAuxiliaryApi(world,request,path,method,url,contract=
   if(path==='sync/torrentPeers'&&method==='GET'){
     const hash=url.searchParams.get('hash')||'',merged=mergeManualPeers(world,hash,generatedPeers(world,hash));
     if(merged===null)return notFound();
-    return json({rid:Number(world.peerRid)||1,full_update:true,peers:filterBannedPeers(world,merged)});
+    const projected=projectPeerHostNames(world,merged,contract);
+    return json({rid:Number(world.peerRid)||1,full_update:true,peers:filterBannedPeers(world,projected)});
   }
   if(path==='torrents/webseeds'&&method==='GET')return json(indexedWebseedList(world,url.searchParams.get('hash')||''));
 

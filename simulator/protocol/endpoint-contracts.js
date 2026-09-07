@@ -112,6 +112,14 @@ function parseMetadataContract(version){
   return{responseShape:atLeast(version,'2.13.0')?'ordered-array':'filename-map'};
 }
 
+function torrentPeersContract(version){
+  return{
+    hostNameField:atLeast(version,'2.15.1'),
+    hostNamePreference:'resolve_peer_host_names',
+    hostNameNonI2POnly:true
+  };
+}
+
 const RESOLVERS=new Map([
   ['auth/login',version=>loginContract(version)],
   ['torrents/add',version=>addTorrentContract(version)],
@@ -120,6 +128,7 @@ const RESOLVERS=new Map([
   ['torrents/trackers',version=>trackersContract(version)],
   ['torrents/properties',version=>({availabilityField:atLeast(version,'2.15.1')})],
   ['sync/maindata',version=>mainDataContract(version)],
+  ['sync/torrentPeers',version=>torrentPeersContract(version)],
   ['torrents/editCategory',version=>editCategoryContract(version)],
   ['torrents/editTracker',version=>editTrackerContract(version)],
   ['torrents/parseMetadata',version=>parseMetadataContract(version)]

@@ -6,7 +6,7 @@ import {runtimeIndexStats} from '../simulator/core/runtime-index.js';
 import {handleApi} from '../simulator/protocol/router.js';
 
 const baseNow=1700000000000;
-const world=createWorld({profile:{qbVersion:'5.2.3',webApiVersion:'2.16.2',stable:true},count:5000,seed:'peer-view-contract',now:baseNow});
+const world=createWorld({profile:{qbVersion:'5.2.3',webApiVersion:'2.15.1',stable:true},count:5000,seed:'peer-view-contract',now:baseNow});
 authenticate(world,'demo','demo',baseNow);
 function get(path){return new Request(`https://example.invalid/api/v2/${path}`);}
 function post(path,body){return new Request(`https://example.invalid/api/v2/${path}`,{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams(body)});}

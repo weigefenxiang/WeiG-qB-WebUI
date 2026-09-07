@@ -37,6 +37,22 @@ function templatesFor(world,torrent,count){
   return cached.rows;
 }
 
+function virtualHostName(ip){
+  const label=String(ip||'peer').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')||'peer';
+  return `${label}.peer.virtual.invalid`;
+}
+
+export function projectPeerHostNames(world,peers,contract=null){
+  if(!contract?.hostNameField)return peers;
+  const enabled=world?.preferences?.[contract.hostNamePreference]===true,out={};
+  for(const [key,row] of Object.entries(peers||{})){
+    if(!row||typeof row!=='object'){out[key]=row;continue;}
+    if(contract.hostNameNonI2POnly&&Object.prototype.hasOwnProperty.call(row,'i2p_dest')){out[key]={...row};continue;}
+    out[key]={...row,host_name:enabled?virtualHostName(row.ip):''};
+  }
+  return out;
+}
+
 export function generatedPeers(world,hash){
   const torrent=torrentIndex(world).byHash.get(String(hash||''));
   if(!torrent)return{};

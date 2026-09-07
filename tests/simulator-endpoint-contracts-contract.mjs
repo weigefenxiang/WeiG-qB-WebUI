@@ -55,6 +55,15 @@ const profile=webApiVersion=>({webApiVersion});
 }
 
 {
+  const before=resolveEndpointContract(profile('2.15.0'),'sync/torrentPeers');
+  const after=resolveEndpointContract(profile('2.15.1'),'sync/torrentPeers');
+  assert.equal(before.hostNameField,false,'sync/torrentPeers must not invent host_name before WebAPI 2.15.1');
+  assert.equal(after.hostNameField,true,'sync/torrentPeers must expose host_name from WebAPI 2.15.1');
+  assert.equal(after.hostNamePreference,'resolve_peer_host_names');
+  assert.equal(after.hostNameNonI2POnly,true);
+}
+
+{
   const legacy=resolveEndpointContract(profile('2.13.1'),'auth/login');
   const modern=resolveEndpointContract(profile('2.14.0'),'auth/login');
   assert.equal(legacy.successStatus,200);assert.equal(legacy.successBody,'legacy-text');assert.equal(legacy.successText,'Ok.');
@@ -117,6 +126,8 @@ const profile=webApiVersion=>({webApiVersion});
 {
   const unknown=resolveEndpointContract(profile('2.15.2'),'torrents/properties');
   assert.deepEqual(unknown,{path:'torrents/properties',webApiVersion:'2.15.2',semanticRevision:'unclassified'});
+  const unknownPeers=resolveEndpointContract(profile('2.15.2'),'sync/torrentPeers');
+  assert.deepEqual(unknownPeers,{path:'sync/torrentPeers',webApiVersion:'2.15.2',semanticRevision:'unclassified'});
   const unknownParseMetadata=resolveEndpointContract(profile('2.15.2'),'torrents/parseMetadata');
   assert.deepEqual(unknownParseMetadata,{path:'torrents/parseMetadata',webApiVersion:'2.15.2',semanticRevision:'unclassified'});
   const unknownAdd=resolveEndpointContract(profile('2.15.2'),'torrents/add');
@@ -129,4 +140,4 @@ const profile=webApiVersion=>({webApiVersion});
   assert.equal(resolveEndpointContract(profile('2.15.1'),'torrents/reannounce'),null,'structural-only endpoints must not be copied into Endpoint Contract');
 }
 
-console.log('Virtual qB endpoint contracts passed: audited semantic revisions resolve through one interface, login/missing-endpoint and add result/status boundaries, tracker status/timing, parseMetadata response shape and sync/maindata response lifecycles stay canonical, structural truth stays out, and future unknown revisions fail closed.');
+console.log('Virtual qB endpoint contracts passed: audited semantic revisions resolve through one interface, login/missing-endpoint and add result/status boundaries, tracker status/timing, parseMetadata, peer hostname and sync/maindata response lifecycles stay canonical, structural truth stays out, and future unknown revisions fail closed.');
