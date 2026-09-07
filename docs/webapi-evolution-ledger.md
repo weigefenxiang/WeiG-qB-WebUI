@@ -1,67 +1,56 @@
 # qBittorrent WebAPI evolution ledger
 
-Phase C established the full supported WebAPI chronology and classification ledger before Phase D changed runtime behavior. Phase D now consumes that ledger deliberately, one evidence-backed batch at a time.
+Phase C established the supported WebAPI chronology/classification ledger. It remains an important **evidence index for product compatibility**, but from Phase E onward it is no longer the product roadmap by itself.
 
-The machine-readable source of truth is:
+Machine-readable source of truth:
 
 ```text
 tools/data/qb-webapi-evolution-ledger.json
 ```
 
-Audited support window:
+Current audited WebAPI v2 window:
 
 ```text
 qBittorrent 4.1.0 / WebAPI 2.0.0
 -> qBittorrent 5.2.3 / WebAPI 2.15.1
 ```
 
-The current stable matrix contains **65 official stable qBittorrent profiles**. Alpha/Beta/RC/master do not enter the formal stable matrix. Upstream master may expose newer WebAPI revisions, but those revisions do not automatically expand the audited semantic ceiling.
+Current source-derived matrix: **65 official stable profiles**. Alpha/Beta/RC/master do not enter the formal stable matrix.
 
-## 1. Terminal classifications
+## 1. Why the ledger exists
 
-Each observable change must end in one of four terminal classifications:
+The ledger answers:
 
-- `SOURCE_DERIVED`: the source-derived release catalog already owns the structural fact, such as endpoint, Preference, filter or parameter-surface evolution.
-- `CONTRACT_COVERED`: a canonical semantic owner models the observable boundary. By default this is Endpoint Contract; transport changes may explicitly name `simulator/protocol/transport-contract.js`.
-- `MISSING`: upstream evidence identifies observable behavior not yet modeled by the current simulator contract. These items are the active Phase D backlog.
-- `NOT_APPLICABLE`: chronology/evidence exists, but there is no equivalent WebUI-observable runtime responsibility in the simulator architecture.
+```text
+What changed in upstream WebAPI history?
+Where is the evidence?
+Which current owner models that change?
+Is the change still unmodeled?
+```
 
-`UNCLASSIFIED` is deliberately not a terminal ledger code. Validation fails if evidence cannot be mapped to one of the four outcomes.
+It does **not** directly answer:
 
-## 2. Completeness gates
+```text
+Is WeiG webui/** compatible with every qB4/qB5 feature?
+```
 
-Completeness is checked independently in several ways:
+That second question belongs to Phase E product compatibility audit.
 
-1. **Stable revision spine.** Every supported stable qB profile reports a WebAPI revision present in the ledger. A future stable revision above the audited ceiling fails closed.
-2. **Modern changelog coverage.** Every upstream `WebAPI_Changelog.md` PR from WebAPI 2.11.6 through 2.15.1 must have exactly one ledger entry; missing or invented PR evidence fails validation.
-3. **Evidence anchors.** Source-commit entries verify exact upstream commit/API_VERSION; release-changelog entries and same-version supplements verify evidence inside the matching qB release history.
-4. **Owner classification.** `CONTRACT_COVERED` must resolve to one canonical owner. Endpoint semantics default to `endpoint-contracts.js`; HTTP/transport semantics can explicitly override to `transport-contract.js`.
+## 2. Terminal classifications
 
-Stable releases can change observable WebAPI behavior without increasing `API_VERSION`. Those changes remain explicit `supplements`, not silent inheritance from the WebAPI number. Examples include qB 4.4.4 HTTP-method handling, qB 5.2.1 API result-buffer lifetime and qB 5.2.2 X-Forwarded-Host behavior.
+- `SOURCE_DERIVED`: source catalog owns the structural fact.
+- `CONTRACT_COVERED`: current simulator canonical contract models the audited observable boundary.
+- `MISSING`: evidence identifies behavior not yet modeled in simulator/evolution infrastructure.
+- `NOT_APPLICABLE`: no equivalent simulator runtime responsibility is justified.
 
-## 3. Phase C baseline — COMPLETE
+`UNCLASSIFIED` is forbidden and remains a hard failure.
 
-Phase C initial classification result:
+Important: `CONTRACT_COVERED` here usually means **simulator/evidence coverage**, not automatically “formal `webui/**` product compatibility complete”.
+
+## 3. Current statistics
 
 ```text
 65 supported official stable profiles
-77 evidence entries
-117 classified changes
-SOURCE_DERIVED = 37
-CONTRACT_COVERED = 6
-MISSING = 60
-NOT_APPLICABLE = 14
-UNCLASSIFIED = 0
-modern WebAPI changelog PRs = 26
-```
-
-Phase C was classification-first: `MISSING` was intentionally allowed; `UNCLASSIFIED` was not.
-
-## 4. Phase D current result — ACTIVE
-
-Current ledger after the completed Phase D batches:
-
-```text
 77 evidence entries
 120 classified changes
 SOURCE_DERIVED = 38
@@ -69,151 +58,158 @@ CONTRACT_COVERED = 17
 MISSING = 50
 NOT_APPLICABLE = 15
 UNCLASSIFIED = 0
+modern WebAPI changelog PRs = 26
 ```
 
-Phase D has therefore reduced the explicit backlog from **60 MISSING -> 50 MISSING** while preserving the chronology/evidence spine and `UNCLASSIFIED=0` hard gate.
-
-The increase from 117 to 120 classified changes reflects evidence being split into more precise observable subchanges where necessary; it is not a relaxation of the audit.
-
-## 5. Completed Phase D closures
-
-### 5.1 `sync/maindata.use_subcategories`
-
-Upstream qB 4.5.x has no field. qB 4.6.0 / WebAPI 2.9.2 introduces `app/preferences.use_subcategories` and projects the same session value into `sync/maindata`; WebAPI 2.15.0 removes the sync field because subcategories become unconditional.
-
-Ownership remains split correctly:
+Phase C initial baseline was:
 
 ```text
-Preference surface/value truth -> source-derived Preference pipeline
-sync response lifecycle          -> Endpoint Contract
+117 classified changes
+SOURCE_DERIVED = 37
+CONTRACT_COVERED = 6
+MISSING = 60
+NOT_APPLICABLE = 14
+UNCLASSIFIED = 0
 ```
 
-### 5.2 Early `sync/maindata` response evolution
+The increase to 120 reflects more precise splitting of observable subchanges.
 
-- WebAPI 2.1.0 changes `categories` from ordered names to a name-keyed details map.
-- WebAPI 2.1.1 introduces `server_state.free_space_on_disk`.
+## 4. Phase D completed historical closures
 
-Endpoint Contract now owns these boundaries and runtime projection consumes the contract instead of recreating version checks in core.
+Important completed simulator/evidence work includes:
 
-### 5.3 Tracker semantics — WebAPI 2.13.0
+- `sync/maindata.use_subcategories` lifecycle；
+- `sync/maindata.categories` 2.1.0 shape change；
+- `free_space_on_disk` 2.1.1；
+- trackers timing/status 5/6 2.13.0；
+- `editTracker` 2.13.0；
+- `parseMetadata` 2.13.0；
+- PR #23202: missing endpoint / login / `torrents/add` 2.14.0；
+- Basic Auth 2.15.0；
+- `sync/torrentPeers.host_name` 2.15.1；
+- qB 5.2.1 API result-buffer lifetime -> `NOT_APPLICABLE`；
+- qB 5.2.2 X-Forwarded-Host gate。
 
-Closed items include:
+These remain useful because they let Virtual qB reproduce historical upstream behavior accurately.
 
-- tracker timing/endpoints response boundary;
-- status values 5 and 6, with legacy projection back to status 4 before 2.13.0;
-- `editTracker` tier/url/success semantics, including success 204.
+## 5. Phase E changes how MISSING is prioritized
 
-### 5.4 `torrents/parseMetadata` — WebAPI 2.13.0
+Current `MISSING = 50` must not be consumed mechanically.
 
-Existing runtime behavior was migrated from auxiliary-owned `apiAtLeast('2.13.0')` logic into Endpoint Contract ownership:
+Before implementing a ledger item, first determine its relationship to formal `webui/**`:
 
 ```text
-legacy -> object
-2.13.0+ through audited ceiling -> request-order array
-future unclassified revision -> fail closed
+PRODUCT_BLOCKER
+  current WeiG feature breaks/fails on some real stable qB
+
+PRODUCT_NORMALIZATION
+  feature exists but request/response/state differs and product needs normalization
+
+PRODUCT_EMULATION
+  old qB lacks a direct modern API but WeiG can reliably implement equivalent behavior
+
+UNAVOIDABLE_PRODUCT_GAP
+  real qB lacks required data/ability and no reliable equivalent exists
+
+SIMULATOR_ONLY / UNUSED_BY_PRODUCT
+  WeiG webui/** does not currently consume the behavior
 ```
 
-### 5.5 PR #23202 — WebAPI 2.14.0
+Priority order follows product impact, not ledger order.
 
-The PR was split into independent observable subchanges instead of being marked covered as a single opaque item:
+## 6. Product-first use of evidence
 
-- unknown endpoint returns `Endpoint does not exist`;
-- `auth/login` success becomes 204 No Content and invalid credentials return 401 Unauthorized;
-- `torrents/add` returns structured result with 200/202/409 semantics.
-
-Legacy behavior remains explicit rather than overwritten by the modern projection.
-
-### 5.6 Basic Auth — WebAPI 2.15.0
-
-Basic Auth is an HTTP transport rule, not endpoint-domain semantics. It is therefore `CONTRACT_COVERED` with explicit owner:
+New workflow:
 
 ```text
-simulator/protocol/transport-contract.js
+ledger/upstream delta
+-> map to webui/** feature/caller
+-> inspect current product compatibility owner
+-> fix product normalization/emulation if needed
+-> add product direct tests
+-> use Virtual qB profile to validate UI flow
+-> add real-qB evidence where relevant
 ```
 
-The Service Worker/transport adapter consumes this rule. Router/core must not duplicate it.
+Only after product concerns are addressed should simulator-only fidelity be considered.
 
-### 5.7 `sync/torrentPeers.host_name` — WebAPI 2.15.1
+## 7. Owner map remains useful
 
-Endpoint Contract owns field presence. Peer projection owns deterministic value generation. The caller receives the contract explicitly and does not retain the revision boundary.
-
-### 5.8 qB 5.2.1 result-buffer lifetime — NOT_APPLICABLE
-
-Upstream fixed `APIController` result storage between calls. The Virtual qB simulator constructs a fresh JavaScript `Response` per request and has no persistent `m_result`-equivalent member. No runtime shim is justified, so the evidence is classified `NOT_APPLICABLE` rather than fabricating nonexistent state.
-
-### 5.9 qB 5.2.2 X-Forwarded-Host gate
-
-qB 5.2.2 keeps WebAPI 2.15.1 but changes transport behavior: `X-Forwarded-Host` is trusted only when reverse proxy support is enabled.
-
-This is a same-WebAPI-version supplement and is owned by Transport Contract with an exact qB patch boundary.
-
-## 6. Current owner map
+Historical evidence still maps to the correct evidence/simulator owner:
 
 ```text
 NEW/REMOVED endpoint -> apiActions/source catalog
 PREFERENCE          -> Preference source pipeline
 TORRENT_SURFACE     -> Torrent surface parser/catalog
 PARAM/RESPONSE/
-STATUS/MUTATION     -> Endpoint Contract
-TRANSPORT           -> Transport Contract
+STATUS/MUTATION     -> simulator Endpoint Contract when modeling history
+TRANSPORT           -> simulator Transport Contract when modeling history
 NOT_APPLICABLE      -> audited ledger only
 ```
 
-`CONTRACT_COVERED` does not mean “put all version logic in one file”. It means one canonical owner is explicitly named and tested.
-
-## 7. Phase D working rules
-
-Phase D consumes `MISSING` intentionally. It must not infer that behavior existed in every older version merely because a later removal/change boundary is already covered.
-
-Every batch follows:
+For the **formal product**, relevant differences must additionally map into canonical product owners such as:
 
 ```text
-upstream evidence
--> classify owner
--> model complete lifecycle
--> direct/runtime/ownership tests
--> ledger transition
--> candidate full upstream audit
--> SAFE-REF fast-forward
--> final exact-SHA CI / Upstream / Pages live
+W.QBClient
+W.ReleaseProfile
+W.CapabilityRegistry
+W.SettingsSchema
+W.TorrentSemantics
 ```
 
-Rules:
+Do not confuse simulator owner mapping with product owner mapping.
 
-- do not reintroduce scattered `apiAtLeast()` in router/core for migrated facts;
-- do not treat a higher unknown revision as inheriting the final audited behavior;
-- do not mark an entire PR covered when only one observable subchange is implemented;
-- do not fabricate simulator state to turn an internal upstream implementation fix into `CONTRACT_COVERED`;
-- stale tests using future WebAPI 2.16.x profiles are corrected back to the audited 2.15.1 ceiling unless the test is explicitly about future fail-close behavior.
+## 8. Product compatibility examples
 
-## 8. Remaining backlog
+### qB4/qB5 action names
 
-Current explicit backlog: **50 MISSING**.
-
-The next recommended cluster is Transport / HTTP history, because the Transport Contract owner now exists and can absorb the appropriate historical boundaries without polluting Endpoint Contract:
-
-- qB 4.4.4 wrong HTTP method -> 405;
-- qB 4.5.0 / WebAPI 2.8.18 status handling correction;
-- qB 4.6.0 configurable session cookie name;
-- qB 4.6.0 HTTP HEAD response behavior;
-- qB 5.0.x binary filename/MIME transport details;
-- qB 5.0.4 generic string parameters stop being trimmed.
-
-Each item must still be checked individually: if upstream evidence shows it is endpoint-specific or domain mutation behavior, it belongs to Endpoint Contract or another domain owner instead.
-
-After the transport cluster, the next likely grouping is Torrent/request/mutation semantics: historical add parameters, file priority multi-id/error semantics, rename/path changes, removeTracker no-reannounce, and other request/response fields still explicitly marked `MISSING`.
-
-## 9. Future revisions
-
-A new official stable release enters the source catalog automatically, but semantic certification does not.
+Upstream difference:
 
 ```text
-new stable tag
--> structural source profile
--> WebAPI revision/spine comparison
--> supplement/evolution audit
+qB4 resume/pause
+qB5 start/stop
 ```
 
-If the revision is above **2.15.1** or contains an unclassified semantic delta, the audit fails closed until evidence, classification and canonical ownership are added.
+Product resolution belongs in formal `webui/**` product compatibility logic, not just simulator history.
 
-The public contract interfaces intentionally hide the internal evidence store so audited tables can later evolve into generated semantic catalogs without changing callers.
+### Torrent filter names
+
+```text
+qB4 paused/resumed
+qB5 stopped/running
+```
+
+Product `W.TorrentSemantics + W.ReleaseProfile` should normalize the difference.
+
+### editTracker / torrents/add
+
+Simulator accurately reproducing legacy/modern response semantics is useful, but Phase E must also verify the actual product `W.QBClient` normalization used by real UI flows.
+
+## 9. qB4.0.x
+
+This ledger currently starts at qB 4.1.0 / WebAPI v2.
+
+The new product goal is qB4/qB5 stable compatibility. qB 4.0.x therefore remains a separate explicit gap rather than silently disappearing from project scope.
+
+If support is implemented, WebAPI v1 evidence should live in a separate legacy adapter/evidence path instead of corrupting the existing v2 chronology.
+
+## 10. Future revisions
+
+A new stable release follows:
+
+```text
+new official tag
+-> exact source profile
+-> product impact analysis
+-> WebAPI/supplement evidence
+-> product compatibility implementation if required
+-> simulator/evidence update if useful
+```
+
+Unknown future semantics must not be guessed. However, fail-close is a safety mechanism supporting product compatibility, not the product goal itself.
+
+## 11. Working rule
+
+The ledger remains authoritative for chronology/evidence, while [`010.真实qB产品兼容路线.md`](./010.真实qB产品兼容路线.md) is authoritative for **what the project works on next**.
+
+A lower `MISSING` count is not success unless the same work improves or proves `webui/**` compatibility on real qB stable releases.
