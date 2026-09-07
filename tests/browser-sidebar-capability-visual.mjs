@@ -13,8 +13,8 @@ const torrent={hash:'0000000000000000000000000000000000000001',name:'Sidebar cap
 function assert(ok,msg){if(!ok)throw new Error(msg);}
 function versions(){return fixtureMode==='q5'?{qb:'v5.2.0',api:'2.15.1'}:{qb:'v4.1.0',api:'2.0.0'};}
 function releaseCatalog(){
-  const q4={qbVersion:'4.1.0',webApiVersion:'2.0.0',officialWeiGSupport:true,apiActions:['appcontroller.h:preferencesAction','torrentscontroller.h:categoriesAction','torrentscontroller.h:resumeAction','torrentscontroller.h:pauseAction','torrentscontroller.h:webseedsAction'],torrentFilters:['all','downloading','seeding','completed','paused','resumed','active','inactive','errored'],torrentInfoParameters:['filter','category','sort','reverse','limit','offset','hashes'],preferenceDescriptors:[]};
-  const q5={qbVersion:'5.2.0',webApiVersion:'2.15.1',officialWeiGSupport:true,apiActions:['appcontroller.h:preferencesAction','torrentscontroller.h:categoriesAction','torrentscontroller.h:tagsAction','torrentscontroller.h:startAction','torrentscontroller.h:stopAction','torrentscontroller.h:webseedsAction'],torrentFilters:['all','downloading','seeding','completed','stopped','running','active','inactive','stalled','stalled_uploading','stalled_downloading','checking','moving','errored'],torrentInfoParameters:['filter','category','tag','sort','reverse','limit','offset','hashes','private'],preferenceDescriptors:[]};
+  const q4={qbVersion:'4.1.0',webApiVersion:'2.0.0',officialWeiGSupport:true,fallback:false,apiActions:['appcontroller.h:preferencesAction','torrentscontroller.h:resumeAction','torrentscontroller.h:pauseAction','torrentscontroller.h:webseedsAction'],torrentFilters:['all','downloading','seeding','completed','paused','resumed','active','inactive','errored'],torrentInfoParameters:['filter','category','sort','reverse','limit','offset'],torrentInfoFields:['hash','name','state','progress','dlspeed','upspeed','category','tags','tracker','save_path'],torrentStates:['error','missingFiles','uploading','pausedUP','queuedUP','stalledUP','checkingUP','forcedUP','allocating','downloading','metaDL','pausedDL','queuedDL','stalledDL','checkingDL','forcedDL','checkingResumeData'],preferenceDescriptors:[]};
+  const q5={qbVersion:'5.2.0',webApiVersion:'2.15.1',officialWeiGSupport:true,fallback:false,apiActions:['appcontroller.h:preferencesAction','torrentscontroller.h:categoriesAction','torrentscontroller.h:tagsAction','torrentscontroller.h:startAction','torrentscontroller.h:stopAction','torrentscontroller.h:webseedsAction'],torrentFilters:['all','downloading','seeding','completed','stopped','running','active','inactive','stalled','stalled_uploading','stalled_downloading','checking','moving','errored'],torrentInfoParameters:['filter','category','tag','sort','reverse','limit','offset','hashes','private'],torrentInfoFields:['hash','name','state','progress','dlspeed','upspeed','category','tags','tracker','save_path','private'],torrentStates:['error','missingFiles','uploading','stoppedUP','queuedUP','stalledUP','checkingUP','forcedUP','allocating','downloading','metaDL','stoppedDL','queuedDL','stalledDL','checkingDL','forcedDL','checkingResumeData','moving'],preferenceDescriptors:[]};
   return[q4,q5];
 }
 function json(res,value,status=200){res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store'});res.end(JSON.stringify(value));}
@@ -29,7 +29,7 @@ function api(req,res,p,url){
   if(p==='transfer/info')return json(res,{dl_info_speed:1024,up_info_speed:0,connection_status:'firewalled'});
   if(p==='transfer/speedLimitsMode'||p==='transfer/downloadLimit'||p==='transfer/uploadLimit')return text(res,'0');
   if(p==='sync/maindata')return json(res,{rid:1,full_update:true,torrents:{},categories:{},tags:['Fixture'],server_state:{connection_status:'firewalled',dht_nodes:8,total_peer_connections:2,free_space_on_disk:10737418240}});
-  if(p==='torrents/info'){const offset=Number(url.searchParams.get('offset')||0),limit=Number(url.searchParams.get('limit')||0),rows=[torrent];return json(res,limit?rows.slice(offset,offset+limit):rows.slice(offset));}
+  if(p==='torrents/info'){const offset=Number(url.searchParams.get('offset')||0),limit=Number(url.searchParams.get('limit')||0),row={...torrent};if(fixtureMode==='q4')delete row.private;const rows=[row];return json(res,limit?rows.slice(offset,offset+limit):rows.slice(offset));}
   if(p==='torrents/categories')return json(res,{});
   if(p==='torrents/tags')return json(res,['Fixture']);
   if(['search/plugins','log/main','log/peers','rss/items'].includes(p))return json(res,p==='rss/items'?{}:[]);
@@ -57,12 +57,13 @@ try{
   let page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(String(e)));page.on('console',m=>{if(m.type()==='error'&&!/favicon|Wei\.G\.ico/i.test(m.text()))errors.push(m.text());});
   await page.goto(`http://${host}:${port}/#/`,{waitUntil:'domcontentloaded'});await waitReady(page);
   assert(await page.evaluate(()=>window.WeiG.ReleaseProfile.current().qbVersion)==='4.1.0','qB4 browser fixture must bind exact 4.1.0 release profile');
-  assert(await page.evaluate(()=>window.WeiG.CapabilityRegistry.supports('tags'))===false,'qB4.1.0 must not expose Tags');
-  await assertHiddenCapability(page,'[data-facet="tag"]','qB4 Tags');await assertHiddenCapability(page,'[data-filter="stalled"]','qB4 Stalled');await assertHiddenCapability(page,'[data-filter="private"]','qB4 Private/PT');
+  assert(await page.evaluate(()=>window.WeiG.CapabilityRegistry.supports('tags'))===false,'qB4.1.0 must not claim the native Tags taxonomy API');
+  assert(await page.evaluate(()=>window.WeiG.CapabilityRegistry.supports('tagFacet'))===true,'qB4.1.0 source-proven torrent tags field must enable the read/filter Tags facet');
+  await assertSupportedTags(page,'Desktop qB4 Tags');await assertHiddenCapability(page,'[data-filter="private"]','qB4 Private/PT');
   const q4Filters=await page.locator('#filter-nav [data-filter]').evaluateAll(nodes=>nodes.map(n=>n.dataset.filter));
-  assert(q4Filters.includes('stopped')&&q4Filters.includes('running')&&!q4Filters.includes('stalled')&&!q4Filters.includes('private'),`qB4 filter view must expose only source-derived canonical filters ${JSON.stringify(q4Filters)}`);
+  assert(q4Filters.includes('stopped')&&q4Filters.includes('running')&&q4Filters.includes('stalled')&&!q4Filters.includes('private'),`qB4 filter view must expose native/derived canonical filters while keeping authoritative Private hidden ${JSON.stringify(q4Filters)}`);
   await assertOnlyHeaderHints(page,'Home qB4');
-  await page.setViewportSize({width:390,height:844});await page.locator('#menu-btn').click();await page.waitForFunction(()=>document.getElementById('sidebar')?.classList.contains('is-open'));await assertHiddenCapability(page,'[data-facet="tag"]','Mobile qB4 Tags');await assertHiddenCapability(page,'[data-filter="stalled"]','Mobile qB4 Stalled');await assertHiddenCapability(page,'[data-filter="private"]','Mobile qB4 Private/PT');
+  await page.setViewportSize({width:390,height:844});await page.locator('#menu-btn').click();await page.waitForFunction(()=>document.getElementById('sidebar')?.classList.contains('is-open'));await assertSupportedTags(page,'Mobile qB4 Tags');await assertHiddenCapability(page,'[data-filter="private"]','Mobile qB4 Private/PT');
   assert(errors.length===0,`qB4 browser errors: ${errors.join(' | ')}`);await context.close();context=null;
 
   fixtureMode='q5';
@@ -74,5 +75,5 @@ try{
   assert(q5Filters.includes('stalled')&&q5Filters.includes('private')&&q5Filters.includes('stopped')&&q5Filters.includes('running'),`qB5 filter view must expose supported source-derived filters ${JSON.stringify(q5Filters)}`);
   assert(await page.evaluate(()=>window.WeiG.CapabilityRegistry.supports('privateFilter'))===true,'qB5 exact profile must expose authoritative Private filter');await assertOnlyHeaderHints(page,'Home qB5');
   assert(errors.length===0,`qB5 browser errors: ${errors.join(' | ')}`);
-  console.log('Sidebar capability browser gate passed: qB 4.1.0 hides unsupported Tags/Stalled/Private, qB5 exposes source-derived capabilities with canonical geometry, and Desktop/Mobile consume one filter state.');
+  console.log('Sidebar capability browser gate passed: qB4.1 exposes source-derived Tags/Stalled read semantics without native Tags writes or authoritative Private, while qB5 exposes its native/source-proven capabilities with canonical geometry.');
 }finally{if(context)await context.close();await browser.close();await new Promise(resolve=>server.close(resolve));}
