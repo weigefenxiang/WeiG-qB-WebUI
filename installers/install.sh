@@ -9,48 +9,166 @@ QBT_ROOT_FOLDER="$DEST"
 DEST_EXPLICIT=0
 MODE="install"
 CHANNEL="${WEIGG_QB_CHANNEL:-release}"
+CHANNEL_EXPLICIT=""
+REQUEST_DEV=0
+RELEASE_VERSION=""
+RELEASE_TAG=""
 CONFIGURE=0
 DOCKER_CONTAINER=""
 DOCKER_CONFIG_ROOT=""
 CONTAINER_REQUESTED=""
 CONFIG_ROOT_REQUESTED=""
 SOURCE_SHA=""
+LIST_CONTAINERS=0
 
 usage() {
-  cat <<'EOF'
+  cat <<'EOF_USAGE'
 Usage: install.sh [options]
 
+Default: install the latest stable GitHub Release.
+
 Options:
-  --channel=release|dev     Install latest Release (default) or current dev exact SHA.
-  --update                  Update the selected installation.
-  --rollback                Roll back the last installation.
-  --configure               Update the detected qBittorrent config.
-  --dir=/path               WebUI path. For Docker, /config/... means container path.
-  --container=name_or_id    Select one qBittorrent Docker container explicitly.
-  --config-root=/host/path  Host path mounted as qBittorrent container /config.
+  --version VERSION         Install a specific Release, for example 0.3.60.
+  --dev                     Install the current dev exact Git SHA.
+  -o PATH, --output PATH    WebUI install path. Docker /config/... is supported.
+  --configure               Enable qBittorrent Alternative WebUI and set Root Folder.
+  --rollback                Restore the previous installation and qBittorrent config.
+  --update                  Reinstall/update the selected source (legacy-compatible).
+  --container NAME_OR_ID    Select one qBittorrent Docker container explicitly.
+  --config-root HOST_PATH   Host path mounted as qBittorrent container /config.
   --list-containers         List detected qBittorrent Docker containers and exit.
   -h, --help                Show this help.
-EOF
+
+Compatibility aliases kept for existing users:
+  --channel=release|dev     Old channel syntax.
+  --dir=/path               Old install-path syntax.
+
+Notes:
+  --dev and --version cannot be used together.
+  A requested Release version never falls back to latest or dev.
+EOF_USAGE
 }
 
-LIST_CONTAINERS=0
-for arg in "$@"; do
-  case "$arg" in
-    --channel=release) CHANNEL="release" ;;
-    --channel=dev) CHANNEL="dev" ;;
-    --channel=*) echo "Unsupported channel: ${arg#--channel=}. Use release or dev." >&2; exit 2 ;;
-    --update) MODE="update" ;;
-    --rollback) MODE="rollback" ;;
-    --configure) CONFIGURE=1 ;;
-    --dir=*) DEST=${arg#--dir=}; REQUESTED_DEST="$DEST"; QBT_ROOT_FOLDER="$DEST"; DEST_EXPLICIT=1 ;;
-    --container=*) CONTAINER_REQUESTED=${arg#--container=} ;;
-    --config-root=*) CONFIG_ROOT_REQUESTED=${arg#--config-root=} ;;
-    --list-containers) LIST_CONTAINERS=1 ;;
-    -h|--help) usage; exit 0 ;;
-    *) echo "Unknown option: $arg" >&2; usage >&2; exit 2 ;;
+need_value() {
+  option=$1
+  value=${2-}
+  [ -n "$value" ] || { echo "$option requires a value." >&2; exit 2; }
+}
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --dev)
+      REQUEST_DEV=1
+      ;;
+    --version)
+      [ "$#" -ge 2 ] || { echo "--version requires a value, for example --version 0.3.60." >&2; exit 2; }
+      shift
+      RELEASE_VERSION=$1
+      ;;
+    --version=*)
+      RELEASE_VERSION=${1#--version=}
+      need_value --version "$RELEASE_VERSION"
+      ;;
+    -o|--output)
+      [ "$#" -ge 2 ] || { echo "$1 requires a path." >&2; exit 2; }
+      shift
+      DEST=$1
+      REQUESTED_DEST="$DEST"
+      QBT_ROOT_FOLDER="$DEST"
+      DEST_EXPLICIT=1
+      ;;
+    --output=*)
+      DEST=${1#--output=}
+      need_value --output "$DEST"
+      REQUESTED_DEST="$DEST"
+      QBT_ROOT_FOLDER="$DEST"
+      DEST_EXPLICIT=1
+      ;;
+    --configure)
+      CONFIGURE=1
+      ;;
+    --rollback)
+      MODE="rollback"
+      ;;
+    --update)
+      MODE="update"
+      ;;
+    --container)
+      [ "$#" -ge 2 ] || { echo "--container requires a name or ID." >&2; exit 2; }
+      shift
+      CONTAINER_REQUESTED=$1
+      ;;
+    --container=*)
+      CONTAINER_REQUESTED=${1#--container=}
+      need_value --container "$CONTAINER_REQUESTED"
+      ;;
+    --config-root)
+      [ "$#" -ge 2 ] || { echo "--config-root requires a host path." >&2; exit 2; }
+      shift
+      CONFIG_ROOT_REQUESTED=$1
+      ;;
+    --config-root=*)
+      CONFIG_ROOT_REQUESTED=${1#--config-root=}
+      need_value --config-root "$CONFIG_ROOT_REQUESTED"
+      ;;
+    --list-containers)
+      LIST_CONTAINERS=1
+      ;;
+    --channel=release)
+      CHANNEL="release"
+      CHANNEL_EXPLICIT="release"
+      ;;
+    --channel=dev)
+      CHANNEL="dev"
+      CHANNEL_EXPLICIT="dev"
+      ;;
+    --channel=*)
+      echo "Unsupported channel: ${1#--channel=}. Use release or dev." >&2
+      exit 2
+      ;;
+    --dir=*)
+      DEST=${1#--dir=}
+      need_value --dir "$DEST"
+      REQUESTED_DEST="$DEST"
+      QBT_ROOT_FOLDER="$DEST"
+      DEST_EXPLICIT=1
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1" >&2
+      usage >&2
+      exit 2
+      ;;
   esac
+  shift
 done
-case "$CHANNEL" in release|dev) ;; *) echo "Unsupported channel: $CHANNEL. Use release or dev." >&2; exit 2 ;; esac
+
+case "$CHANNEL" in
+  release|dev) ;;
+  *) echo "Unsupported channel: $CHANNEL. Use release or dev." >&2; exit 2 ;;
+esac
+
+if [ "$REQUEST_DEV" -eq 1 ]; then
+  [ "$CHANNEL_EXPLICIT" != "release" ] || { echo "--dev conflicts with --channel=release." >&2; exit 2; }
+  CHANNEL="dev"
+fi
+
+if [ -n "$RELEASE_VERSION" ] && [ "$CHANNEL" = "dev" ]; then
+  echo "--version and --dev/--channel=dev cannot be used together." >&2
+  exit 2
+fi
+
+if [ -n "$RELEASE_VERSION" ]; then
+  case "$RELEASE_VERSION" in v*) RELEASE_VERSION=${RELEASE_VERSION#v} ;; esac
+  printf '%s' "$RELEASE_VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || {
+    echo "Invalid Release version: $RELEASE_VERSION. Expected a version such as 0.3.60." >&2
+    exit 2
+  }
+  RELEASE_TAG="v$RELEASE_VERSION"
+fi
 
 STATE="${HOME}/.config/weigg-qb-webui"
 BACKUPS="$STATE/backups"
@@ -181,7 +299,7 @@ write_install_metadata() {
   meta_qb_path=$(json_escape "$QBT_ROOT_FOLDER")
   meta_host_path=$(json_escape "$DEST")
   meta_installed_at=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
-  cat > "$DEST.new/private/weigg-install.json" <<EOF
+  cat > "$DEST.new/private/weigg-install.json" <<EOF_META
 {
   "version": "$meta_version",
   "gitSha": "$meta_git_sha",
@@ -192,7 +310,7 @@ write_install_metadata() {
   "installedAt": "$meta_installed_at",
   "installer": "linux"
 }
-EOF
+EOF_META
 }
 
 qb_container_lines() {
@@ -258,7 +376,7 @@ select_qb_docker() {
     if [ "$count" -gt 1 ]; then
       echo "Multiple qBittorrent Docker containers found; refusing to guess." >&2
       print_qb_containers >&2
-      echo "Re-run with --container=<name> or --config-root=<host /config path>." >&2
+      echo "Re-run with --container <name> or --config-root <host /config path>." >&2
       exit 3
     fi
     line=$(printf '%s\n' "$lines" | head -n1)
@@ -447,14 +565,26 @@ trap 'rm -rf "$TMP"' EXIT INT TERM
 PACKAGE="$TMP/WeiG-qB-WebUI.zip"
 
 if [ "$CHANNEL" = "release" ]; then
-  RELEASE_URL="https://github.com/$REPO/releases/latest/download/WeiG-qB-WebUI.zip"
-  SUM_URL="https://github.com/$REPO/releases/latest/download/SHA256SUMS"
+  if [ -n "$RELEASE_VERSION" ]; then
+    RELEASE_BASE="https://github.com/$REPO/releases/download/$RELEASE_TAG"
+    RELEASE_LABEL="Release $RELEASE_TAG"
+  else
+    RELEASE_BASE="https://github.com/$REPO/releases/latest/download"
+    RELEASE_LABEL="latest GitHub Release"
+  fi
+  RELEASE_URL="$RELEASE_BASE/WeiG-qB-WebUI.zip"
+  SUM_URL="$RELEASE_BASE/SHA256SUMS"
+
   download_file "$RELEASE_URL" "$PACKAGE" || {
-    echo "No published stable GitHub Release is available. Release installation will not fall back to a branch archive." >&2
+    if [ -n "$RELEASE_VERSION" ]; then
+      echo "Release $RELEASE_TAG was not found or WeiG-qB-WebUI.zip is unavailable. Refusing to fall back to latest or dev." >&2
+    else
+      echo "No published stable GitHub Release is available. Release installation will not fall back to a branch archive." >&2
+    fi
     exit 1
   }
   download_file "$SUM_URL" "$TMP/SHA256SUMS" || {
-    echo "The latest Release is missing SHA256SUMS; refusing an unverified installation." >&2
+    echo "$RELEASE_LABEL is missing SHA256SUMS; refusing an unverified installation." >&2
     exit 1
   }
   [ -s "$TMP/SHA256SUMS" ] || { echo "SHA256SUMS is empty; refusing installation." >&2; exit 1; }
@@ -462,8 +592,15 @@ if [ "$CHANNEL" = "release" ]; then
   extract_zip "$PACKAGE" "$TMP/release"
   SRC="$TMP/release/WeiG-qB-WebUI"
   SOURCE_SHA=$(cat "$SRC/GIT_SHA" 2>/dev/null | tr -d '\r\n' || true)
-  valid_sha "$SOURCE_SHA" || { echo "Latest Release does not contain a valid GIT_SHA; refusing an unversioned asset deployment." >&2; exit 1; }
-  echo "Source: latest GitHub Release (checksum verified)"
+  valid_sha "$SOURCE_SHA" || { echo "$RELEASE_LABEL does not contain a valid GIT_SHA; refusing an unversioned asset deployment." >&2; exit 1; }
+  if [ -n "$RELEASE_VERSION" ]; then
+    PACKAGE_VERSION=$(cat "$SRC/VERSION" 2>/dev/null | tr -d '\r\n' || true)
+    [ "$PACKAGE_VERSION" = "$RELEASE_VERSION" ] || {
+      echo "Requested $RELEASE_TAG but the package reports VERSION=$PACKAGE_VERSION; refusing mismatched Release content." >&2
+      exit 1
+    }
+  fi
+  echo "Source: $RELEASE_LABEL (checksum verified)"
 else
   DEV_META="$TMP/dev-commit.json"
   download_file "https://api.github.com/repos/$REPO/commits/dev" "$DEV_META" || { echo "Unable to resolve the current dev commit." >&2; exit 1; }
@@ -531,5 +668,4 @@ else
 fi
 
 echo "Rollback (last destination is remembered automatically):"
-echo "  curl -fsSL https://raw.githubusercontent.com/$REPO/main/installers/install.sh -o /tmp/weigg-qb-install.sh"
-echo "  sh /tmp/weigg-qb-install.sh --rollback"
+echo "  sh $0 --rollback"
