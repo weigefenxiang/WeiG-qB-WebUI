@@ -7,7 +7,7 @@ import {fileURLToPath} from 'node:url';
 const here=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(here,'..');
 const read=rel=>fs.readFileSync(path.join(root,rel),'utf8').replace(/\r\n?/g,'\n');
-const readGitBlob=rel=>execFileSync('git',['-C',root,'show',`HEAD:${rel}`],{stdio:['ignore','pipe','pipe']});
+const readGitBlob=rel=>execFileSync('git',['-C',root,'show',`HEAD:${rel}`],{stdio:['ignore','pipe','pipe'],maxBuffer:32*1024*1024});
 const assert=(ok,msg)=>{if(!ok)throw new Error(msg);};
 const watch=read('.github/workflows/stable-watch.yml'),frozen=read('.github/workflows/frozen-stable-compat.yml'),pkg=JSON.parse(read('package.json')),manifest=JSON.parse(read('tools/data/qb-stable-lkg.json')),catalogPath=path.join(root,manifest.catalogPath);
 
