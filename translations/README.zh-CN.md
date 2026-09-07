@@ -2,7 +2,7 @@
 
 一套现代、响应式的 qBittorrent Alternate WebUI，专为桌面端和手机端优化。
 
-**📱 手机自适应 · 🖥️ 桌面响应式 · 🌙 暗夜模式**
+**📱 手机自适应 · 🖥️ 桌面响应式 · 🌙 暗夜模式 · ✅ 支持 qBittorrent 4.1.x → 5.2.x**
 
 **[🌐 在线预览](https://weigefenxiang.github.io/WeiG-qB-WebUI/)** · **[⬇️ 下载最新正式版](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/WeiG-qB-WebUI.zip)** · [English](../README.md)
 
@@ -11,6 +11,8 @@
 下载最新正式版 **[WeiG-qB-WebUI.zip](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/WeiG-qB-WebUI.zip)**。
 
 解压后，**`WeiG-qB-WebUI` 文件夹就是 qBittorrent 要使用的 WebUI 目录**。
+
+## 新手安装
 
 <details>
 <summary><b>第一次安装？点击展开 1 分钟教程</b></summary>
@@ -54,7 +56,7 @@ Linux：  /opt/WeiG-qB-WebUI
 
 一键脚本来自稳定 `main` 分支，**默认安装最新正式 Release**，并校验 `SHA256SUMS`。安装脚本会保存在当前目录，方便以后更新或回滚。
 
-### Linux / Docker / NAS
+### Linux / NAS
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/weigefenxiang/WeiG-qB-WebUI/main/installers/install.sh -o weigg-install.sh && sh weigg-install.sh --configure
@@ -66,7 +68,33 @@ curl -fsSL https://raw.githubusercontent.com/weigefenxiang/WeiG-qB-WebUI/main/in
 ~/.local/share/weigg-qb-webui
 ```
 
-如果检测到 qBittorrent Docker 容器，会优先映射到该容器 `/config` 对应的宿主机目录，并提示 qBittorrent 应填写的容器内路径。
+### Docker
+
+如果只有一个正在运行的 qBittorrent 容器，可直接使用：
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/weigefenxiang/WeiG-qB-WebUI/main/installers/install.sh -o weigg-install.sh && sh weigg-install.sh --configure
+```
+
+安装器会自动识别容器的 `/config` 映射，并提示 qBittorrent 应填写的容器内 WebUI 路径。
+
+如果有多个 qBittorrent 容器，先查看：
+
+```sh
+sh weigg-install.sh --list-containers
+```
+
+再指定容器，例如容器名为 `qbittorrent`：
+
+```sh
+sh weigg-install.sh --container=qbittorrent --configure
+```
+
+也可以直接指定 qBittorrent `/config` 对应的宿主机目录：
+
+```sh
+sh weigg-install.sh --config-root=/path/to/qbittorrent/config --configure
+```
 
 ### Windows PowerShell
 
@@ -93,6 +121,9 @@ Linux 和 Windows 使用相同的参数名称，文档统一使用小写；Power
 | 自动配置 qBittorrent | `--configure` | `-configure` |
 | 回滚上一次安装 | `--rollback` | `-rollback` |
 | 查看完整帮助 | `--help` | `-help` |
+| 指定 Docker 容器 | `--container=NAME` | — |
+| 列出 Docker 容器 | `--list-containers` | — |
+| 指定 Docker `/config` 宿主机目录 | `--config-root=/path` | — |
 
 说明：
 
@@ -101,6 +132,7 @@ Linux 和 Windows 使用相同的参数名称，文档统一使用小写；Power
 - `--rollback / -rollback` 会恢复上一次安装及对应的 qBittorrent 配置；默认会记住上一次安装目录。
 - `--version / -version` 安装指定 GitHub Release，例如 `0.3.60`；指定版本不存在时直接报错，**不会自动退回 latest 或 dev**。
 - `--dev / -dev` 只用于测试当前开发版 exact Git SHA，不能和 `--version / -version` 同时使用。
+- Docker 有多个 qBittorrent 容器时，用 `--list-containers` 查看，再用 `--container=NAME` 明确指定；也可以用 `--config-root=/path` 直接指定宿主机上的 qBittorrent 配置目录。
 
 ### 指定版本和安装目录
 
@@ -129,25 +161,6 @@ Windows：
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\weigg-install.ps1 -rollback
 ```
-
-## 手动启用 Alternate WebUI
-
-如果没有使用 `configure` 参数，进入 qBittorrent：
-
-**工具 / 选项（首选项）→ Web UI → Use alternative WebUI**
-
-然后把 **Files location / Root Folder** 设置为安装器最后提示的 WebUI 路径。
-
-Docker 中要填写 **qBittorrent 容器内能看到的路径**，例如：
-
-```text
-宿主机：      /path/to/qbittorrent/config/weigg-qb-webui
-qBittorrent： /config/weigg-qb-webui
-```
-
-## 兼容范围
-
-已验证支持 qBittorrent **4.1.0 → 5.2.3**。同一份 WeiG qB WebUI 会根据当前 qBittorrent 版本自动适配该版本真实可用的功能。
 
 ## 更多帮助
 
