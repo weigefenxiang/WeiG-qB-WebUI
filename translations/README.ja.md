@@ -313,7 +313,7 @@ powershell -ExecutionPolicy Bypass -File .\weigg-install.ps1 -rollback
 
 ## 詳細ヘルプ
 
-Docker、NAS、カスタムパス、更新、手動展開については [インストール・更新・手動展開](../docs/007.安装升级与手动部署.md) を参照してください。
+Docker、NAS、カスタムパス、更新、手動展開については [インストール・更新・手動展開](deployment-guide/README.ja.md) を参照してください。
 
 ## ライセンス
 
