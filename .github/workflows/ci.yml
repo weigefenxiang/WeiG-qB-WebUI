@@ -90,7 +90,7 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-      - name: Full fixture compatibility matrix
+      - name: Representative fixture compatibility matrix
         run: node tests/release-compat.mjs
       - name: Checkout qBittorrent upstream with all stable release tags
         uses: actions/checkout@v7
@@ -104,6 +104,8 @@ jobs:
         run: node tools/qb-release-catalog.mjs upstream-qb --output=qb-releases.json
       - name: Audit every official stable qB release from 4.1.0
         run: node tests/upstream-release-audit.mjs upstream-qb
+      - name: Full stable PRODUCT compatibility matrix
+        run: node tests/full-stable-product-compat.mjs qb-releases.json
       - name: Upload exact stable release catalog
         uses: actions/upload-artifact@v7
         with:
