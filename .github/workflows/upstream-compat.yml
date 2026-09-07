@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - dev
+      - 'phase-c/**'
   workflow_dispatch:
 
 permissions:
@@ -14,8 +15,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  representative_qb_baselines:
-    name: qB 4.1.0 floor + latest 5.x.0 compatibility
+  full_qb_stable_history:
+    name: Full qB stable WebAPI evolution audit
     runs-on: ubuntu-latest
     steps:
       - name: Checkout WeiG qB WebUI
@@ -24,50 +25,19 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 22
-      - name: Checkout qBittorrent upstream tip
+      - name: Run repository contracts
+        run: npm test
+      - name: Checkout qBittorrent upstream with full stable history
         uses: actions/checkout@v7
         with:
           repository: qbittorrent/qBittorrent
           path: upstream-qb
-          fetch-depth: 1
-      - name: Resolve latest qB 5.x.0 generations
-        id: generations
-        shell: bash
-        run: |
-          set -euo pipefail
-          mapfile -t generations < <(
-            git -C upstream-qb ls-remote --refs --tags origin 'refs/tags/release-5.*.0' \
-              | awk '{sub("refs/tags/","",$2); print $2}' \
-              | sort -V
-          )
-          test "${#generations[@]}" -ge 1
-          latest="${generations[${#generations[@]}-1]}"
-          if [ "${#generations[@]}" -ge 2 ]; then previous="${generations[${#generations[@]}-2]}"; else previous="$latest"; fi
-          echo "latest=$latest" >> "$GITHUB_OUTPUT"
-          echo "previous=$previous" >> "$GITHUB_OUTPUT"
-          printf 'Latest qB generation: %s; previous: %s\n' "$latest" "$previous"
-      - name: Fetch representative qB releases
-        shell: bash
-        run: |
-          set -euo pipefail
-          min=release-4.1.0
-          previous='${{ steps.generations.outputs.previous }}'
-          latest='${{ steps.generations.outputs.latest }}'
-          git -C upstream-qb fetch --depth=1 origin \
-            "refs/tags/$min:refs/tags/$min" \
-            "refs/tags/$previous:refs/tags/$previous" \
-            "refs/tags/$latest:refs/tags/$latest"
-      - name: Generate source-derived representative catalog
-        shell: bash
-        run: |
-          set -euo pipefail
-          node tools/qb-release-catalog.mjs upstream-qb --output=/tmp/qb-release-catalog.json
-      - name: Audit minimum and current qB generations
-        shell: bash
-        run: |
-          set -euo pipefail
-          min=release-4.1.0
-          previous='${{ steps.generations.outputs.previous }}'
-          latest='${{ steps.generations.outputs.latest }}'
-          refs="$min,$previous,$latest"
-          node tests/upstream-release-audit.mjs upstream-qb "--refs=$refs"
+          fetch-depth: 0
+          fetch-tags: true
+          filter: blob:none
+      - name: Generate source-derived catalog for every supported stable release
+        run: node tools/qb-release-catalog.mjs upstream-qb --output=/tmp/qb-release-catalog.json
+      - name: Audit every official stable qB release from 4.1.0
+        run: node tests/upstream-release-audit.mjs upstream-qb
+      - name: Audit WebAPI evolution chronology and classification coverage
+        run: node tools/qb-webapi-evolution-audit.mjs upstream-qb /tmp/qb-release-catalog.json
