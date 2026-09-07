@@ -1,12 +1,10 @@
 import assert from 'node:assert/strict';
-import crypto from 'node:crypto';
-import fs from 'node:fs';
 import path from 'node:path';
+import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(here,'..');
-const scriptsRoot=path.join(root,'webui/private/scripts');
 const centralizedOwners=new Set(['webui/private/scripts/release-profile.js']);
 const frozenLegacyOwners=new Map([
   ['webui/private/scripts/qb-client.js','88ef6f49963172d5047216dcd6f06d2b4c30f837'],
@@ -18,10 +16,32 @@ const patterns=[
   ['qB version prefix branch',/(?:\b[A-Za-z_$][\w$]*\.)*qbVersion\.(?:startsWith|includes)\(\s*['"`]\d/g],
   ['qB version helper branch',/\b(?:atLeast|versionAtLeast)\s*\(\s*(?:\b[A-Za-z_$][\w$]*\.)*qbVersion\s*,/g]
 ];
-function walk(dir){const out=[];for(const entry of fs.readdirSync(dir,{withFileTypes:true})){const full=path.join(dir,entry.name);if(entry.isDirectory())out.push(...walk(full));else if(entry.isFile()&&entry.name.endsWith('.js'))out.push(full);}return out.sort();}
-function gitBlobSha(source){const body=Buffer.from(source,'utf8'),hash=crypto.createHash('sha1');hash.update(Buffer.from(`blob ${body.length}\0`,'utf8'));hash.update(body);return hash.digest('hex');}
+function git(...args){return execFileSync('git',['-C',root,...args],{encoding:'utf8',stdio:['ignore','pipe','pipe']});}
+function trackedScripts(){
+  const out=[];
+  for(const line of git('ls-files','-s','--','webui/private/scripts').split(/\r?\n/)){
+    if(!line.trim())continue;
+    const match=line.match(/^(\d+)\s+([0-9a-f]+)\s+\d+\t(.+)$/i);
+    assert.ok(match,`Unable to parse Git index entry: ${line}`);
+    const rel=match[3].replaceAll('\\','/');
+    if(rel.endsWith('.js'))out.push({rel,sha:match[2]});
+  }
+  return out.sort((a,b)=>a.rel.localeCompare(b.rel));
+}
+function blobSource(sha){return git('cat-file','blob',sha);}
 function findings(source){const out=[];for(const [kind,re] of patterns){re.lastIndex=0;for(const match of source.matchAll(re))out.push({kind,text:match[0],index:match.index});}return out.sort((a,b)=>a.index-b.index);}
-const files=walk(scriptsRoot),violations=[],legacySeen=[];
-for(const file of files){const rel=path.relative(root,file).replaceAll('\\','/'),source=fs.readFileSync(file,'utf8'),hits=findings(source);if(!hits.length)continue;if(centralizedOwners.has(rel))continue;const expected=frozenLegacyOwners.get(rel);if(expected){const actual=gitBlobSha(source);assert.equal(actual,expected,`${rel} contains legacy qB version branches and changed from frozen reviewed blob ${expected}; migrate/review those branches before updating the baseline.`);legacySeen.push(rel);continue;}violations.push(`${rel}: ${hits.map(hit=>`${hit.kind}=${JSON.stringify(hit.text)}`).join('; ')}`);}
+const files=trackedScripts(),violations=[],legacySeen=[];
+for(const file of files){
+  const source=blobSource(file.sha),hits=findings(source);
+  if(!hits.length)continue;
+  if(centralizedOwners.has(file.rel))continue;
+  const expected=frozenLegacyOwners.get(file.rel);
+  if(expected){
+    assert.equal(file.sha,expected,`${file.rel} contains legacy qB version branches and changed from frozen reviewed blob ${expected}; migrate/review those branches before updating the baseline.`);
+    legacySeen.push(file.rel);
+    continue;
+  }
+  violations.push(`${file.rel}: ${hits.map(hit=>`${hit.kind}=${JSON.stringify(hit.text)}`).join('; ')}`);
+}
 assert.equal(violations.length,0,`Scattered qB version-if detected outside centralized/frozen owners:\n${violations.join('\n')}`);
-console.log(`Compatibility architecture contract passed: scanned ${files.length} complete product script files; scattered qB version-if is blocked, centralized ReleaseProfile remains allowed, and ${legacySeen.length} legacy owner blob(s) are frozen for explicit migration/review.`);
+console.log(`Compatibility architecture contract passed: scanned ${files.length} complete Git-indexed product script blobs; scattered qB version-if is blocked, centralized ReleaseProfile remains allowed, and ${legacySeen.length} legacy owner blob(s) are frozen for explicit migration/review.`);

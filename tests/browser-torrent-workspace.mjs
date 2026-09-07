@@ -9,6 +9,9 @@ const root=path.resolve(here,'../webui/private');
 const productVersion=(await fs.readFile(path.resolve(here,'../VERSION'),'utf8')).trim();
 const host='127.0.0.1',port=8774;
 const variants={legacy:{qb:'v4.1.9.1',api:'2.1.0'},modern:{qb:'v5.2.0',api:'2.11.4'}};
+const frozenCatalog=JSON.parse(await fs.readFile(path.resolve(here,'fixtures/qb-release-catalog.lkg.json'),'utf8'));
+const profiles=['4.1.9.1','5.2.0'].map(qbVersion=>frozenCatalog.find(profile=>profile.qbVersion===qbVersion));
+if(profiles.some(profile=>!profile))throw new Error('Workspace browser fixture requires frozen qB 4.1.9.1 and 5.2.0 release profiles.');
 const visualStates=[
   {state:'downloading',progress:.45,dlspeed:1200,upspeed:0},
   {state:'uploading',progress:1,dlspeed:0,upspeed:240},
@@ -57,6 +60,7 @@ function api(req,res,v,p,url){
 const server=http.createServer(async(req,res)=>{try{
   const url=new URL(req.url,`http://${host}:${port}`),m=url.pathname.match(/^\/(legacy|modern)(?:\/(.*))?$/);if(!m){res.writeHead(404);return res.end('not found');}
   const v=variants[m[1]],rel=m[2]||'';if(rel.startsWith('api/v2/'))return api(req,res,v,rel.slice(7),url);
+  if(rel==='data/qb-releases.json')return json(res,profiles);
   if(rel==='weigg-install.json')return json(res,{version:productVersion,gitSha:'workspace-fixture',qbPath:'/config/weigg-qb-webui',hostPath:'/srv/qb/config/weigg-qb-webui'});
   const requested=rel||'index.html',file=path.resolve(root,requested);if(!(file===root||file.startsWith(root+path.sep))){res.writeHead(403);return res.end('forbidden');}
   const body=await fs.readFile(file);res.writeHead(200,{'content-type':mime[path.extname(file).toLowerCase()]||'application/octet-stream','cache-control':'no-store'});res.end(body);
