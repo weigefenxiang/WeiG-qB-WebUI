@@ -64,15 +64,25 @@ try{
   assert.ok(pager.overflow<=1,`single-line pager/action rail must not overflow: ${JSON.stringify(pager)}`);
 
   await page.locator('#mobile-bottom-nav [data-route="rss"]').click();
-  await page.waitForFunction(()=>document.getElementById('rss-view')?.classList.contains('is-active'));
+  await page.waitForFunction(()=>document.getElementById('rss-view')?.classList.contains('is-active')&&document.querySelector('#rss-view .rss-header-actions')&&document.getElementById('rss-add-open-btn')&&document.getElementById('rss-refresh-btn'));
   const rss=await page.evaluate(()=>{
-    const get=id=>document.getElementById(id),search=get('rss-search-input')?.closest('.rss-search-host'),add=get('rss-add-btn'),refresh=get('rss-refresh-btn'),url=get('rss-url');
+    const header=document.querySelector('#rss-view>.workspace__header'),actions=header?.querySelector('.rss-header-actions'),add=document.getElementById('rss-add-open-btn'),refresh=document.getElementById('rss-refresh-btn');
     const rect=n=>{const r=n.getBoundingClientRect();return{top:r.top,bottom:r.bottom,left:r.left,right:r.right,width:r.width,height:r.height,display:getComputedStyle(n).display};};
-    return{search:rect(search),add:rect(add),refresh:rect(refresh),url:rect(url)};
+    return{header:rect(header),actions:rect(actions),add:rect(add),refresh:rect(refresh),overflow:header.scrollWidth-header.clientWidth};
   });
-  assert.ok(rss.search.width>80&&rss.search.right<=rss.add.left+1,`RSS Search must be immediately left of Add Feed: ${JSON.stringify(rss)}`);
-  assert.ok(Math.abs(rss.search.top-rss.add.top)<=2&&Math.abs(rss.add.top-rss.refresh.top)<=2,`RSS Search/Add/Refresh must share the first mobile row: ${JSON.stringify(rss)}`);
-  assert.ok(rss.url.top>=Math.max(rss.search.bottom,rss.add.bottom,rss.refresh.bottom)+2,`RSS Feed URL must remain available on the next row: ${JSON.stringify(rss)}`);
+  assert.ok(Math.abs(rss.add.top-rss.refresh.top)<=2,`RSS Add Feed and Refresh must share the mobile header row: ${JSON.stringify(rss)}`);
+  assert.ok(rss.actions.right<=rss.header.right+1&&rss.actions.left>=rss.header.left-1,`RSS header actions must fit inside the mobile header: ${JSON.stringify(rss)}`);
+  assert.ok(rss.overflow<=1,`RSS mobile header must not overflow: ${JSON.stringify(rss)}`);
+  await page.locator('#rss-add-open-btn').click();
+  await page.waitForSelector('#rss-add-dialog[open] #rss-url',{state:'visible',timeout:30000});
+  const rssDialog=await page.evaluate(()=>{
+    const dialog=document.getElementById('rss-add-dialog'),url=document.getElementById('rss-url'),add=document.getElementById('rss-add-btn');
+    const rect=n=>{const r=n.getBoundingClientRect();return{top:r.top,bottom:r.bottom,left:r.left,right:r.right,width:r.width,height:r.height,display:getComputedStyle(n).display};};
+    return{dialog:rect(dialog),url:rect(url),add:rect(add)};
+  });
+  assert.ok(rssDialog.url.width>200&&rssDialog.url.left>=rssDialog.dialog.left&&rssDialog.url.right<=rssDialog.dialog.right+1,`RSS Feed URL must remain usable inside the mobile Add Feed dialog: ${JSON.stringify(rssDialog)}`);
+  assert.notEqual(rssDialog.add.display,'none','RSS Add action must remain visible in the Add Feed dialog');
+  await page.locator('#rss-add-dialog .rss-add-dialog__close').click();
 
   await page.locator('#mobile-bottom-nav [data-route="logs"]').click();
   await page.waitForFunction(()=>document.getElementById('logs-view')?.classList.contains('is-active')&&document.querySelector('.logs-toolbar'));
@@ -107,7 +117,7 @@ try{
 
   assert.deepEqual(errors,[],`deployed mobile layout produced browser errors: ${errors.join('\n')}`);
   await context.close();
-  console.log(`Virtual qB Pages mobile layout acceptance passed for ${expectedSha}: stacked progress, single-line pager/actions, RSS + Logs search, and a three-zone Drawer with fixed telemetry and versions pinned to the bottom.`);
+  console.log(`Virtual qB Pages mobile layout acceptance passed for ${expectedSha}: stacked progress, single-line pager/actions, RSS header actions + Add Feed dialog, Logs search, and a three-zone Drawer with fixed telemetry and versions pinned to the bottom.`);
 } finally {
   await browser.close();
 }
