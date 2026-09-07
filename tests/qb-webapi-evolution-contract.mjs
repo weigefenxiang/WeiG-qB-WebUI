@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {extractWebApiChangelogPulls,expandChanges,readLedger,summarizeLedger,validateLedger,validateModernChangelogCoverage} from '../tools/qb-webapi-evolution.mjs';
+import {extractWebApiChangelogPulls,expandChanges,readLedger,summarizeCatalogSurfaceEvolution,summarizeLedger,validateLedger,validateModernChangelogCoverage} from '../tools/qb-webapi-evolution.mjs';
 const here=path.dirname(fileURLToPath(import.meta.url)),root=path.resolve(here,'..'),ledger=readLedger(path.join(root,'tools/data/qb-webapi-evolution-ledger.json'));
 assert.equal(validateLedger(ledger),true);
 const summary=summarizeLedger(ledger),changes=expandChanges(ledger);
@@ -48,16 +48,7 @@ const auxiliary=fs.readFileSync(path.join(root,'simulator/protocol/auxiliary-rou
 assert.doesNotMatch(`${router}\n${auxiliary}`,/\bm_result\b|\bAPIResult\b/,'per-request JavaScript routers must not grow a persistent C++-style APIResult buffer');
 
 assert.deepEqual([...new Set(changes.filter(change=>change.classification==='CONTRACT_COVERED').map(change=>change.owner))].sort(),['simulator/protocol/endpoint-contracts.js','simulator/protocol/transport-contract.js']);
-const fixture=`# WebAPI Changelog
-## 2.15.1
-* [#3](https://github.com/x/y/pull/3)
-## 2.15.0
-* [#2](https://github.com/x/y/pull/2)
-## 2.11.6
-* [#1](https://github.com/x/y/pull/1)
-## 2.11.5
-* [#999](https://github.com/x/y/pull/999)
-`;
+const fixture=`# WebAPI Changelog\n## 2.15.1\n* [#3](https://github.com/x/y/pull/3)\n## 2.15.0\n* [#2](https://github.com/x/y/pull/2)\n## 2.11.6\n* [#1](https://github.com/x/y/pull/1)\n## 2.11.5\n* [#999](https://github.com/x/y/pull/999)\n`;
 assert.deepEqual(extractWebApiChangelogPulls(fixture),[{version:'2.15.1',pullRequest:3},{version:'2.15.0',pullRequest:2},{version:'2.11.6',pullRequest:1}]);
 const synthetic={schemaVersion:1,scope:{floorQb:'fixture',floorApi:'2.11.6',ceiling:'2.15.1'},codes:ledger.codes,spine:['2.11.6','2.15.0','2.15.1'],revisions:{
   '2.11.6':{t:'webapi_changelog',prs:[],c:[['N','fixture heading']]},
@@ -65,4 +56,12 @@ const synthetic={schemaVersion:1,scope:{floorQb:'fixture',floorApi:'2.11.6',ceil
   '2.15.1':{t:'webapi_changelog',prs:[],c:[['N','fixture heading']]}
 },modern:[['2.11.6',1,[['M','fixture']]],['2.15.0',2,[['M','fixture']]],['2.15.1',3,[['M','fixture']]]],supplements:[]};
 assert.deepEqual(validateModernChangelogCoverage(synthetic,fixture),{pullRequests:3,minVersion:'2.11.6',maxVersion:'2.15.1'});
-console.log(`qB WebAPI evolution contract passed: ${summary.evidenceEntries} evidence entries / ${summary.changes} classified changes, zero UNCLASSIFIED and fail-closed changelog coverage through ${summary.ceiling}.`);
+
+const surfaceNames=['torrentFilters','torrentInfoParameters','torrentInfoFields','torrentStates','torrentPropertiesFields','torrentTrackerFields','torrentFileFields','torrentWebSeedFields'];
+function surfaceChanges(added=[],removed=[]){return Object.fromEntries(surfaceNames.map(name=>[name,{added:[...added],removed:[...removed]}]));}
+const surfaceCatalog=[
+  {qbVersion:'4.1.0',surfaceChanges:surfaceChanges(['baseline']),apiActionParameterChanges:{changed:[]}},
+  {qbVersion:'5.2.3',surfaceChanges:surfaceChanges(['modern'],['legacy']),apiActionParameterChanges:{changed:[{action:'torrentscontroller.h:infoAction'}]}}
+];
+const surfaceSummary=summarizeCatalogSurfaceEvolution(surfaceCatalog);assert.equal(surfaceSummary.profiles,2);assert.equal(surfaceSummary.actionParameterChanges,1);for(const name of surfaceNames){assert.equal(surfaceSummary.surfaces[name].added,2);assert.equal(surfaceSummary.surfaces[name].removed,1);}const brokenSurface=structuredClone(surfaceCatalog);delete brokenSurface[1].surfaceChanges.torrentInfoFields;assert.throws(()=>summarizeCatalogSurfaceEvolution(brokenSurface),/missing surface evolution for torrentInfoFields/);
+console.log(`qB WebAPI evolution contract passed: ${summary.evidenceEntries} evidence entries / ${summary.changes} classified changes, zero UNCLASSIFIED and fail-closed source-surface evolution through ${summary.ceiling}.`);
