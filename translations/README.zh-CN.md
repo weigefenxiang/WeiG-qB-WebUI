@@ -102,8 +102,6 @@ D:\WeiG-qB-WebUI
 curl -fsSL https://raw.githubusercontent.com/weigefenxiang/WeiG-qB-WebUI/main/installers/install.sh -o weigg-install.sh && sh weigg-install.sh --configure
 ```
 
-安装脚本会保存在你执行命令时的当前目录：
-
 <details>
 <summary><b>查看脚本位置和 WebUI 默认安装目录</b></summary>
 
