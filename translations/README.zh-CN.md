@@ -4,7 +4,9 @@
 
 **📱 手机自适应 · 🖥️ 桌面响应式 · 🌙 暗夜模式 · ✅ 支持 qBittorrent 4.1.x → 5.2.x**
 
-**[🌐 在线预览](https://weigefenxiang.github.io/WeiG-qB-WebUI/)** · **[⬇️ 下载最新正式版](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/WeiG-qB-WebUI.zip)** · [English](../README.md)
+**[🌐 在线预览](https://weigefenxiang.github.io/WeiG-qB-WebUI/)** · **[⬇️ 下载最新正式版](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/WeiG-qB-WebUI.zip)**
+
+**语言**：[English](https://github.com/weigefenxiang/WeiG-qB-WebUI/blob/installer-ux-20260907/README.md) · [简体中文](https://github.com/weigefenxiang/WeiG-qB-WebUI/blob/main/translations/README.zh-CN.md) · 日本語 · 한국어 · Deutsch · Français · Español · Português · Русский
 
 ## 直接下载
 
@@ -70,6 +72,9 @@ curl -fsSL https://raw.githubusercontent.com/weigefenxiang/WeiG-qB-WebUI/main/in
 
 ### Docker
 
+<details>
+<summary><b>Docker 一键安装 / 多容器设置（点击展开）</b></summary>
+
 如果只有一个正在运行的 qBittorrent 容器，可直接使用：
 
 ```sh
@@ -95,6 +100,8 @@ sh weigg-install.sh --container=qbittorrent --configure
 ```sh
 sh weigg-install.sh --config-root=/path/to/qbittorrent/config --configure
 ```
+
+</details>
 
 ### Windows PowerShell
 
