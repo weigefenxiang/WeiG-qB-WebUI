@@ -59,15 +59,21 @@ function editTrackerContract(version){
   };
 }
 
+function mainDataContract(version){
+  return{
+    categoriesShape:atLeast(version,'2.1.0')?'details-map':'name-list',
+    freeSpaceOnDiskField:atLeast(version,'2.1.1'),
+    useSubcategoriesField:atLeast(version,'2.9.2')&&!atLeast(version,'2.15.0'),
+    useSubcategoriesPreference:'use_subcategories'
+  };
+}
+
 const RESOLVERS=new Map([
   ['torrents/addTrackers',(version,path)=>trackerCollectionContract(version,path)],
   ['torrents/removeTrackers',(version,path)=>trackerCollectionContract(version,path)],
   ['torrents/trackers',version=>({trackerTimingFields:atLeast(version,'2.13.0')})],
   ['torrents/properties',version=>({availabilityField:atLeast(version,'2.15.1')})],
-  ['sync/maindata',version=>({
-    useSubcategoriesField:atLeast(version,'2.9.2')&&!atLeast(version,'2.15.0'),
-    useSubcategoriesPreference:'use_subcategories'
-  })],
+  ['sync/maindata',version=>mainDataContract(version)],
   ['torrents/editCategory',version=>editCategoryContract(version)],
   ['torrents/editTracker',version=>editTrackerContract(version)]
 ]);

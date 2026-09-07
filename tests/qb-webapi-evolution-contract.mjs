@@ -10,6 +10,14 @@ assert.ok(summary.evidenceEntries>=60);assert.ok(summary.changes>=100);
 for(const classification of ['SOURCE_DERIVED','CONTRACT_COVERED','MISSING','NOT_APPLICABLE'])assert.ok(summary.classifications[classification]>0);
 for(const version of ['2.7.0','2.8.4','2.8.5','2.8.18','2.8.19','2.9.2','2.9.3','2.11.2','2.11.3','2.11.4','2.11.5','2.15.1'])assert.ok(ledger.spine.includes(version),`missing historical revision ${version}`);
 assert.equal(ledger.revisions['2.7.0'].q,'4.3.3');
+
+const categoryShapeChanges=ledger.revisions['2.1.0'].c.filter(change=>change[1].includes('sync/maindata categories'));
+assert.ok(categoryShapeChanges.some(change=>change[0]==='C'&&change[1].includes('array to object')),'2.1.0 sync/maindata category shape must be Endpoint Contract covered');
+assert.equal(categoryShapeChanges.some(change=>change[0]==='M'),false,'closed 2.1.0 category shape lifecycle must leave the MISSING backlog');
+const freeSpaceChanges=ledger.revisions['2.1.1'].c.filter(change=>change[1].includes('free_space_on_disk'));
+assert.ok(freeSpaceChanges.some(change=>change[0]==='C'),'2.1.1 free_space_on_disk introduction must be Endpoint Contract covered');
+assert.equal(freeSpaceChanges.some(change=>change[0]==='M'),false,'closed 2.1.1 free-space lifecycle must leave the MISSING backlog');
+
 const subcategoryChanges=ledger.revisions['2.9.2'].c.filter(change=>change[1].includes('use_subcategories'));
 assert.ok(subcategoryChanges.some(change=>change[0]==='S'&&change[1].includes('app/preferences')),'2.9.2 Preference surface must remain source-derived');
 assert.ok(subcategoryChanges.some(change=>change[0]==='C'&&change[1].includes('sync/maindata')),'2.9.2 sync/maindata lifecycle must be Endpoint Contract covered');

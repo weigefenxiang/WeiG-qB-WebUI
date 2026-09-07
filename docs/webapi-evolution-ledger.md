@@ -23,4 +23,8 @@ Stable releases can change observable WebAPI behavior without increasing `API_VE
 
 Phase D consumes the `MISSING` set intentionally. It must not infer that a behavior existed in every older version merely because a later removal/change boundary is already covered.
 
-The first Phase D closure is the `sync/maindata.server_state.use_subcategories` lifecycle discovered during Phase C. Upstream qB 4.5.x has no field; qB 4.6.0 / WebAPI 2.9.2 introduces `app/preferences.use_subcategories` and projects the same session value into `sync/maindata`; WebAPI 2.15.0 removes the sync field because subcategories become unconditional. The ledger therefore keeps the Preference surface with the source-derived owner and moves the sync response lifecycle to Endpoint Contract coverage. Remaining `MISSING` entries stay explicit until a later Phase D batch proves and models them.
+The first Phase D closure is the `sync/maindata.server_state.use_subcategories` lifecycle discovered during Phase C. Upstream qB 4.5.x has no field; qB 4.6.0 / WebAPI 2.9.2 introduces `app/preferences.use_subcategories` and projects the same session value into `sync/maindata`; WebAPI 2.15.0 removes the sync field because subcategories become unconditional. The ledger therefore keeps the Preference surface with the source-derived owner and moves the sync response lifecycle to Endpoint Contract coverage.
+
+The second Phase D closure continues the same `sync/maindata` response owner. qB 4.1.2 / WebAPI 2.0.2 returns `categories` as an ordered list of category names; qB 4.1.3 / WebAPI 2.1.0 changes it to a name-keyed details map, including incremental category updates. qB 4.1.4 / WebAPI 2.1.1 then introduces `server_state.free_space_on_disk`. Endpoint Contract now owns both boundaries and runtime projection consumes them without recreating version checks in core.
+
+Remaining `MISSING` entries stay explicit until a later Phase D batch proves and models them.

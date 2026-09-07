@@ -30,6 +30,15 @@ const profile=webApiVersion=>({webApiVersion});
   assert.equal(resolveEndpointContract(profile('2.13.0'),'torrents/trackers').trackerTimingFields,true);
   assert.equal(resolveEndpointContract(profile('2.15.0'),'torrents/properties').availabilityField,false);
   assert.equal(resolveEndpointContract(profile('2.15.1'),'torrents/properties').availabilityField,true);
+
+  const legacyMainData=resolveEndpointContract(profile('2.0.2'),'sync/maindata');
+  const categoryMapMainData=resolveEndpointContract(profile('2.1.0'),'sync/maindata');
+  const freeSpaceMainData=resolveEndpointContract(profile('2.1.1'),'sync/maindata');
+  assert.equal(legacyMainData.categoriesShape,'name-list','sync/maindata categories must be a name list before WebAPI 2.1.0');
+  assert.equal(categoryMapMainData.categoriesShape,'details-map','sync/maindata categories must become a details map at WebAPI 2.1.0');
+  assert.equal(categoryMapMainData.freeSpaceOnDiskField,false,'free_space_on_disk must not appear at WebAPI 2.1.0');
+  assert.equal(freeSpaceMainData.freeSpaceOnDiskField,true,'free_space_on_disk must appear at WebAPI 2.1.1');
+
   const beforeSubcategories=resolveEndpointContract(profile('2.8.19'),'sync/maindata');
   const introducedSubcategories=resolveEndpointContract(profile('2.9.2'),'sync/maindata');
   const retainedSubcategories=resolveEndpointContract(profile('2.14.1'),'sync/maindata');
@@ -73,4 +82,4 @@ const profile=webApiVersion=>({webApiVersion});
   assert.equal(resolveEndpointContract(profile('2.15.1'),'torrents/reannounce'),null,'structural-only endpoints must not be copied into Endpoint Contract');
 }
 
-console.log('Virtual qB endpoint contracts passed: audited semantic revisions resolve through one interface, sync/maindata models the complete 2.9.2-to-2.15.0 subcategories lifecycle, structural truth stays out, and future unknown revisions fail closed.');
+console.log('Virtual qB endpoint contracts passed: audited semantic revisions resolve through one interface, sync/maindata models category/free-space/subcategories response lifecycles, structural truth stays out, and future unknown revisions fail closed.');

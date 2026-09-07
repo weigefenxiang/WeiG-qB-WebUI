@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {
-  createWorld,listTorrents,mainData,transferInfo
+  createCategory,createWorld,listTorrents,mainData,removeCategories,transferInfo
 } from '../simulator/core/engine.js';
 import {
   listTorrentsSnapshot,mainDataSnapshot,runtimeSnapshotStats,transferSnapshot
@@ -96,6 +96,36 @@ function contract(world,path){return resolveEndpointContract(world.profile,path)
 }
 
 {
+  const listWorld=createWorld({profile:{qbVersion:'4.1.2',webApiVersion:'2.0.2'},count:16,seed:'categories-list',now:baseNow});
+  const listFull=mainDataSnapshot(listWorld,0,baseNow+1000,contract(listWorld,'sync/maindata'));
+  assert.ok(Array.isArray(listFull.categories),'sync/maindata categories must be an array before WebAPI 2.1.0');
+  assert.deepEqual(listFull.categories,Object.keys(listWorld.categories).sort((a,b)=>a.localeCompare(b)),'legacy category list must follow upstream ordered-map iteration');
+  assert.ok(!('free_space_on_disk' in listFull.server_state),'sync/maindata must not expose free_space_on_disk before WebAPI 2.1.1');
+  let rid=listWorld.rid;
+  createCategory(listWorld,'AAA','/downloads/aaa');
+  const listAdded=mainDataSnapshot(listWorld,rid,baseNow+1000,contract(listWorld,'sync/maindata'));
+  assert.deepEqual(listAdded.categories,['AAA'],'legacy incremental category additions must remain a name list');
+  rid=listWorld.rid;
+  removeCategories(listWorld,'AAA');
+  const listRemoved=mainDataSnapshot(listWorld,rid,baseNow+1000,contract(listWorld,'sync/maindata'));
+  assert.deepEqual(listRemoved.categories_removed,['AAA'],'legacy incremental category removals must use categories_removed names');
+
+  const mapWorld=createWorld({profile:{qbVersion:'4.1.3',webApiVersion:'2.1.0'},count:16,seed:'categories-map',now:baseNow});
+  const mapFull=mainDataSnapshot(mapWorld,0,baseNow+1000,contract(mapWorld,'sync/maindata'));
+  assert.equal(Array.isArray(mapFull.categories),false,'sync/maindata categories must become a details map at WebAPI 2.1.0');
+  assert.deepEqual(mapFull.categories.Linux,{name:'Linux',savePath:'/downloads/linux'});
+  assert.ok(!('free_space_on_disk' in mapFull.server_state),'WebAPI 2.1.0 must still omit free_space_on_disk');
+  rid=mapWorld.rid;
+  createCategory(mapWorld,'AAA','/downloads/aaa');
+  const mapAdded=mainDataSnapshot(mapWorld,rid,baseNow+1000,contract(mapWorld,'sync/maindata'));
+  assert.deepEqual(mapAdded.categories.AAA,{name:'AAA',savePath:'/downloads/aaa'},'modern incremental category additions must carry category details');
+
+  const freeSpaceWorld=createWorld({profile:{qbVersion:'4.1.4',webApiVersion:'2.1.1'},count:16,seed:'free-space-introduction',now:baseNow});
+  const freeSpaceMain=mainDataSnapshot(freeSpaceWorld,0,baseNow+1000,contract(freeSpaceWorld,'sync/maindata'));
+  assert.equal(freeSpaceMain.server_state.free_space_on_disk,Math.floor(freeSpaceWorld.environment.freeSpace),'sync/maindata must introduce free_space_on_disk at WebAPI 2.1.1');
+}
+
+{
   const beforeWorld=createWorld({profile:{qbVersion:'4.5.5',webApiVersion:'2.8.19'},count:16,seed:'subcategories-before',now:baseNow});
   beforeWorld.preferences.use_subcategories=true;
   const beforeMain=mainDataSnapshot(beforeWorld,0,baseNow+1000,contract(beforeWorld,'sync/maindata'));
@@ -129,4 +159,4 @@ function contract(world,path){return resolveEndpointContract(world.profile,path)
   assert.doesNotMatch(router,/\btransferInfo\(world/,'router hot path must not fall back to legacy transferInfo world advancement');
 }
 
-console.log('Virtual qB runtime-view contract passed: shared snapshots preserve performance while Endpoint Contract owns the complete WebAPI 2.9.2 introduction, preference-driven value, and 2.15.0 removal lifecycle for use_subcategories.');
+console.log('Virtual qB runtime-view contract passed: shared snapshots preserve performance while Endpoint Contract owns sync/maindata category shape, free-space introduction, and subcategories lifecycle semantics.');

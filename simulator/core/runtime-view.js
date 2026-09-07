@@ -94,10 +94,10 @@ function serverStateSnapshotRaw(world,contract){
     ...transfer,
     alltime_dl:Math.floor(world.stats.alltime_dl),
     alltime_ul:Math.floor(world.stats.alltime_ul),
-    free_space_on_disk:Math.floor(world.environment.freeSpace),
     use_alt_speed_limits:world.altSpeedMode,
     queueing:!!world.preferences.queueing_enabled
   };
+  if(contract?.freeSpaceOnDiskField===true)state.free_space_on_disk=Math.floor(world.environment.freeSpace);
   if(contract?.useSubcategoriesField===true){
     const preference=String(contract.useSubcategoriesPreference||'');
     state.use_subcategories=preference?Boolean(world.preferences?.[preference]):false;
@@ -106,6 +106,32 @@ function serverStateSnapshotRaw(world,contract){
 }
 
 function serializableClone(value){return JSON.parse(JSON.stringify(value));}
+
+function sortedCategoryNames(world){return Object.keys(world.categories||{}).sort((a,b)=>a.localeCompare(b));}
+
+function categoriesSnapshotRaw(world,contract){
+  if(contract?.categoriesShape==='name-list')return sortedCategoryNames(world);
+  return serializableClone(world.categories||{});
+}
+
+function categoryDelta(world,categoryNames,contract){
+  const ordered=[...categoryNames].sort((a,b)=>String(a).localeCompare(String(b)));
+  const removed=[];
+  if(contract?.categoriesShape==='name-list'){
+    const added=[];
+    for(const name of ordered){
+      if(world.categories?.[name])added.push(name);
+      else removed.push(name);
+    }
+    return{categories:added,categoriesRemoved:removed};
+  }
+  const categories={};
+  for(const name of ordered){
+    if(world.categories?.[name])categories[name]=serializableClone(world.categories[name]);
+    else removed.push(name);
+  }
+  return{categories,categoriesRemoved:removed};
+}
 
 function indexedWorld(world){
   const stats=diagnostics(world),index=torrentIndex(world);
@@ -121,7 +147,7 @@ export function mainDataSnapshot(world,clientRid=0,now=Date.now(),contract=null)
     return{
       ...common,full_update:true,
       torrents:Object.fromEntries((world.torrents||[]).map(t=>[t.hash,torrentView(t,world.profile)])),
-      categories:serializableClone(world.categories),
+      categories:categoriesSnapshotRaw(world,contract),
       ...(capabilityAvailable(world,'tags')?{tags:[...(world.tags||[])]}:{})
     };
   }
@@ -134,18 +160,15 @@ export function mainDataSnapshot(world,clientRid=0,now=Date.now(),contract=null)
   const byHash=indexedWorld(world).byHash;
   const torrents={};
   for(const hash of changed){const t=byHash.get(hash);if(t)torrents[hash]=torrentView(t,world.profile);}
-  const categories={},categoriesRemoved=[];
-  for(const name of categoryNames){
-    if(world.categories?.[name])categories[name]=serializableClone(world.categories[name]);
-    else categoriesRemoved.push(name);
-  }
+  const {categories,categoriesRemoved}=categoryDelta(world,categoryNames,contract);
   const currentTags=new Set(world.tags||[]),tags=[],tagsRemoved=[];
   for(const name of tagNames){if(currentTags.has(name))tags.push(name);else tagsRemoved.push(name);}
+  const hasCategories=Array.isArray(categories)?categories.length>0:Object.keys(categories).length>0;
   return{
     ...common,full_update:false,
     ...(Object.keys(torrents).length?{torrents}:{}),
     ...(removed.size?{torrents_removed:[...removed]}:{}),
-    ...(Object.keys(categories).length?{categories}:{}),
+    ...(hasCategories?{categories}:{}),
     ...(categoriesRemoved.length?{categories_removed:categoriesRemoved}:{}),
     ...(capabilityAvailable(world,'tags')&&tags.length?{tags}:{}),
     ...(capabilityAvailable(world,'tags')&&tagsRemoved.length?{tags_removed:tagsRemoved}:{})
