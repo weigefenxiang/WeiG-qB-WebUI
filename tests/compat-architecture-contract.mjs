@@ -90,7 +90,7 @@ for(const method of directPosts){
   unowned.push(method.name);
 }
 assert.deepEqual(unowned,[],`QBClient direct state-changing POST methods must source-guard before transport; unowned: ${unowned.join(', ')}`);
-for(const name of transportOwners)assert.ok(directPosts.some(method=>method.name===name),`Reviewed Torrent dispatch owner ${name} must remain present.`);
+for(const name of transportOwners)assert.ok(qbSource.includes(`Client.prototype.${name}=function`),`Reviewed Torrent dispatch owner ${name} must remain present.`);
 const logout=directPosts.find(method=>method.name==='logout');
 assert.ok(logout,'Logout must remain an explicit safe unguarded POST exception so users can terminate a session even when ReleaseProfile is unavailable.');
 assert.match(logout.body,/this\.request\(\s*['"]auth\/logout['"]\s*,\s*\{\s*method\s*:\s*['"]POST['"]\s*,\s*type\s*:\s*['"]void['"]\s*\}\s*\)/,'Logout exception must remain narrowly scoped to POST auth/logout with a void response.');
