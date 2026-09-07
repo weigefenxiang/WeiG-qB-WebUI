@@ -4,9 +4,17 @@
 
 **📱 手机自适应 · 🖥️ 桌面响应式 · 🌙 暗夜模式 · ✅ 支持 qBittorrent 4.1.x → 5.2.x**
 
+<p>
+  <img src="https://img.shields.io/badge/JavaScript-ES%20Modules-f7df1e?logo=javascript&logoColor=black" alt="JavaScript ES Modules">
+  <img src="https://img.shields.io/badge/HTML5-e34f26?logo=html5&logoColor=white" alt="HTML5">
+  <img src="https://img.shields.io/badge/CSS3-1572b6?logo=css3&logoColor=white" alt="CSS3">
+  <img src="https://img.shields.io/badge/Node.js-22-339933?logo=nodedotjs&logoColor=white" alt="Node.js 22">
+  <img src="https://img.shields.io/badge/Shell-POSIX%20sh-4eaa25?logo=gnubash&logoColor=white" alt="POSIX sh">
+</p>
+
 **[🌐 在线预览](https://weigefenxiang.github.io/WeiG-qB-WebUI/)** · **[⬇️ 下载最新正式版](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/WeiG-qB-WebUI.zip)**
 
-**语言**：[English](https://github.com/weigefenxiang/WeiG-qB-WebUI/blob/installer-ux-20260907/README.md) · [简体中文](https://github.com/weigefenxiang/WeiG-qB-WebUI/blob/main/translations/README.zh-CN.md) · 日本語 · 한국어 · Deutsch · Français · Español · Português · Русский
+**语言**：[English](https://github.com/weigefenxiang/WeiG-qB-WebUI/blob/installer-ux-20260907/README.md) · 简体中文 · 日本語 · 한국어 · Deutsch · Français · Español · Português · Русский
 
 ## 直接下载
 
@@ -35,22 +43,52 @@ WeiG-qB-WebUI/
 
 ### 2. 放到一个固定位置
 
-例如：
+把整个 `WeiG-qB-WebUI` 文件夹移动到一个以后不会随便删除的位置，例如：
 
 ```text
 Windows：D:\WeiG-qB-WebUI
 Linux：  /opt/WeiG-qB-WebUI
 ```
 
+后面 qBittorrent 要填写的就是这个目录。
+
 ### 3. 在 qBittorrent 中启用
 
-打开：
+打开 qBittorrent 设置：
 
-**工具 / 选项（首选项）→ Web UI → Use alternative WebUI**
+**工具 → 选项（部分系统叫“首选项”）→ Web UI**
 
-勾选后，把 **Files location / Root Folder** 设置为刚才的 `WeiG-qB-WebUI` 文件夹路径，保存并刷新 WebUI。
+找到 Alternate WebUI 相关选项。不同 qBittorrent 版本和中文翻译名称可能略有不同，常见名称包括：
 
-> Docker 用户要填写 **qBittorrent 容器内可见路径**。例如宿主机目录是 `/path/to/qbittorrent/config/weigg-qb-webui`，如果映射到容器内 `/config/weigg-qb-webui`，那么 Root Folder 应填写 `/config/weigg-qb-webui`。
+```text
+Use alternative WebUI
+使用备用 Web UI
+使用替代 Web UI
+备用 WebUI
+```
+
+1. **勾选这个选项**。
+2. 找到下面的 **Files location / Root Folder**。中文可能显示为“文件位置”“根目录”或类似名称。
+3. 填入刚才保存的 `WeiG-qB-WebUI` 文件夹路径。
+
+Windows 示例：
+
+```text
+D:\WeiG-qB-WebUI
+```
+
+普通 Linux 示例：
+
+```text
+/opt/WeiG-qB-WebUI
+```
+
+4. 点击 **应用 / Apply**，再点击 **确定 / OK**。
+5. 刷新 qBittorrent WebUI 页面。如果浏览器仍显示旧页面，可再按一次 `Ctrl + F5` 强制刷新。
+
+> **怎么判断路径填对了？** 你填写的目录里面应该能直接看到 `public`、`private`、`VERSION` 等文件/目录。如果还要再进入一层 `WeiG-qB-WebUI` 才能看到这些内容，说明路径多填或少填了一层。
+
+> **Docker 用户注意：** qBittorrent 运行在容器里面，因此这里通常不能填写宿主机上的真实路径。Docker 的“宿主机 / 容器”区别和正确路径写法见下面 **Docker** 折叠教程。
 
 </details>
 
@@ -73,33 +111,164 @@ curl -fsSL https://raw.githubusercontent.com/weigefenxiang/WeiG-qB-WebUI/main/in
 ### Docker
 
 <details>
-<summary><b>Docker 一键安装 / 多容器设置（点击展开）</b></summary>
+<summary><b>Docker 一键安装 / 多容器 / 路径说明（新手建议展开）</b></summary>
 
-如果只有一个正在运行的 qBittorrent 容器，可直接使用：
+#### 先理解“宿主机”和“容器”
+
+如果你是在 VPS、Linux 服务器、群晖、威联通等设备上运行 Docker：
+
+- **宿主机**：真正运行 Docker 的那台 Linux / NAS，也就是你 SSH 登录进去后看到的系统。
+- **容器**：Docker 给 qBittorrent 单独创建的运行环境。qBittorrent 只能直接看到容器里的路径。
+
+例如 Docker 创建 qBittorrent 时有这样的目录映射：
+
+```text
+宿主机：/root/qbittorrent/config
+   ↓ 映射到
+容器内：/config
+```
+
+Docker Compose 中常见写法类似：
+
+```yaml
+volumes:
+  - /root/qbittorrent/config:/config
+```
+
+冒号左边 `/root/qbittorrent/config` 是**宿主机路径**，右边 `/config` 是**容器内路径**。
+
+如果 WeiG qB WebUI 实际安装到了：
+
+```text
+宿主机：/root/qbittorrent/config/weigg-qb-webui
+```
+
+那么 qBittorrent 设置里的 **Files location / Root Folder** 应填写：
+
+```text
+/config/weigg-qb-webui
+```
+
+**不要填写 `/root/qbittorrent/config/weigg-qb-webui`**，因为 qBittorrent 容器通常看不到这个宿主机路径。
+
+#### 情况 1：只有一个 qBittorrent Docker 容器
+
+最简单，直接运行：
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/weigefenxiang/WeiG-qB-WebUI/main/installers/install.sh -o weigg-install.sh && sh weigg-install.sh --configure
 ```
 
-安装器会自动识别容器的 `/config` 映射，并提示 qBittorrent 应填写的容器内 WebUI 路径。
+安装器会尝试自动找到正在运行的 qBittorrent 容器、识别它的 `/config` 映射，把 WebUI 安装到合适的位置，并自动设置 qBittorrent。
 
-如果有多个 qBittorrent 容器，先查看：
+#### 情况 2：先看看机器上有哪些 qBittorrent 容器
+
+如果不确定容器叫什么：
 
 ```sh
 sh weigg-install.sh --list-containers
 ```
 
-再指定容器，例如容器名为 `qbittorrent`：
+也可以先用 Docker 自己的命令看看所有正在运行的容器：
+
+```sh
+docker ps
+```
+
+例如你看到 qBittorrent 容器名是：
+
+```text
+qbittorrent
+```
+
+就可以明确指定它：
 
 ```sh
 sh weigg-install.sh --container=qbittorrent --configure
 ```
 
-也可以直接指定 qBittorrent `/config` 对应的宿主机目录：
+#### 情况 3：机器上有多个 qBittorrent 容器
+
+例如同时有：
+
+```text
+qbittorrent
+qbittorrent-test
+```
+
+先运行：
 
 ```sh
-sh weigg-install.sh --config-root=/path/to/qbittorrent/config --configure
+sh weigg-install.sh --list-containers
 ```
+
+安装正式使用的 `qbittorrent`：
+
+```sh
+sh weigg-install.sh --container=qbittorrent --configure
+```
+
+安装测试容器 `qbittorrent-test`：
+
+```sh
+sh weigg-install.sh --container=qbittorrent-test --configure
+```
+
+安装器不会在多个 qBittorrent 容器之间随便猜一个。
+
+#### 情况 4：你知道 qBittorrent 的宿主机 `/config` 目录
+
+例如你的 Docker 配置目录是：
+
+```text
+/root/qbittorrent/config
+```
+
+可以直接指定：
+
+```sh
+sh weigg-install.sh --config-root=/root/qbittorrent/config --configure
+```
+
+群晖上可能类似：
+
+```sh
+sh weigg-install.sh --config-root=/volume1/docker/qbittorrent --configure
+```
+
+其他 NAS 可能类似：
+
+```sh
+sh weigg-install.sh --config-root=/share/Container/qbittorrent --configure
+```
+
+这些只是示例，**请换成你自己的真实 qBittorrent `/config` 宿主机目录**。
+
+#### 情况 5：指定 WebUI 安装目录
+
+已经指定容器时，也可以指定容器里希望使用的 WebUI 路径：
+
+```sh
+sh weigg-install.sh --container=qbittorrent -o /config/weigg-qb-webui --configure
+```
+
+安装器会根据 Docker `/config` 映射换算成宿主机上的实际安装目录。
+
+#### 安装后应该看到什么
+
+安装成功时脚本会输出类似：
+
+```text
+Host install path: /root/qbittorrent/config/weigg-qb-webui
+qBittorrent Root Folder: /config/weigg-qb-webui
+```
+
+含义是：
+
+- `Host install path`：文件真正保存到宿主机哪里；
+- `qBittorrent Root Folder`：**你在 qBittorrent 设置里应该填写的路径**。
+
+如果用了 `--configure` 并成功找到 qBittorrent 配置，安装器会自动设置 Alternate WebUI；否则按照上面的“新手安装 → 在 qBittorrent 中启用”手动填写即可。
 
 </details>
 
