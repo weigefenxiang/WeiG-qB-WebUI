@@ -42,6 +42,18 @@ client.qbVersion='6.0.0';client.webApiVersion='3.0.0';client.major=6;
 const PREF_READ='appcontroller.h:preferencesAction';
 const PREF_WRITE='appcontroller.h:setPreferencesAction';
 const EDIT='torrentscontroller.h:editTrackerAction';
+const SEARCH_PLUGINS='searchcontroller.h:pluginsAction';
+const SEARCH_START='searchcontroller.h:startAction';
+const SEARCH_STATUS='searchcontroller.h:statusAction';
+const SEARCH_RESULTS='searchcontroller.h:resultsAction';
+const SEARCH_STOP='searchcontroller.h:stopAction';
+const RSS_ITEMS='rsscontroller.h:itemsAction';
+const RSS_ADD_FEED='rsscontroller.h:addFeedAction';
+const RSS_REMOVE_ITEM='rsscontroller.h:removeItemAction';
+const RSS_REFRESH='rsscontroller.h:refreshItemAction';
+const RSS_RULES='rsscontroller.h:rulesAction';
+const LOG_MAIN='logcontroller.h:mainAction';
+const LOG_PEERS='logcontroller.h:peersAction';
 profile={
   qbVersion:'6.0.0',webApiVersion:'3.0.0',fallback:false,
   apiActions:[PREF_READ,PREF_WRITE,EDIT],
@@ -97,4 +109,54 @@ profile={
 await assert.rejects(client.editTracker('future','https://old.invalid/announce','https://new.invalid/announce'),/cannot prove URL editing/,'unknown future editTracker form must fail closed when newUrl is not source-proven');
 assert.equal(calls.length,before,'unknown future editTracker form must fail before HTTP');
 
-console.log(`QBClient provenance contract passed: ${calls.length} allowed HTTP calls; future-major source facts survive, while unproven Settings writes and editTracker forms make zero HTTP requests.`);
+profile={qbVersion:'6.0.0',webApiVersion:'3.0.0',fallback:false,apiActions:[SEARCH_PLUGINS],apiActionParameters:{}};
+before=calls.length;
+await client.searchPlugins();
+assert.equal(calls.length,before+1,'source-proven Search plugins read must issue exactly one HTTP request');
+assert.equal(calls.at(-1).url,'api/v2/search/plugins');
+before=calls.length;
+await assert.rejects(Promise.resolve().then(()=>client.searchStart('linux','enabled','all')),/source-proven/,'Search start must not inherit from top-level Search availability');
+assert.equal(calls.length,before,'missing Search start action must fail before HTTP');
+
+profile={qbVersion:'6.0.0',webApiVersion:'3.0.0',fallback:false,apiActions:[SEARCH_START,SEARCH_STATUS,SEARCH_RESULTS,SEARCH_STOP],apiActionParameters:{}};
+before=calls.length;
+await assert.rejects(Promise.resolve().then(()=>client.searchPlugins()),/source-proven/,'Search plugins must fail when its own source action is absent');
+assert.equal(calls.length,before,'missing Search plugins action must fail before HTTP');
+await client.searchStart('linux','enabled','all');
+await client.searchStatus(7);
+await client.searchResults(7,10,0);
+await client.searchStop(7);
+assert.equal(calls.length,before+4,'source-proven Search lifecycle actions must remain usable on future major profiles');
+
+profile={qbVersion:'6.0.0',webApiVersion:'3.0.0',fallback:false,apiActions:[RSS_ITEMS,RSS_RULES],apiActionParameters:{}};
+before=calls.length;
+await client.rssItems(true);
+await client.rssRules();
+assert.equal(calls.length,before+2,'source-proven RSS reads must issue their own requests');
+before=calls.length;
+for(const action of [
+  ()=>client.rssAddFeed('https://feed.invalid/rss',''),
+  ()=>client.rssRemoveItem('missing'),
+  ()=>client.rssRefreshItem('missing')
+]){
+  await assert.rejects(Promise.resolve().then(action),/source-proven/,'missing RSS child write action must fail closed');
+  assert.equal(calls.length,before,'missing RSS child write action must fail before HTTP');
+}
+profile={qbVersion:'6.0.0',webApiVersion:'3.0.0',fallback:false,apiActions:[RSS_ADD_FEED,RSS_REMOVE_ITEM,RSS_REFRESH],apiActionParameters:{}};
+await client.rssAddFeed('https://feed.invalid/rss','');
+await client.rssRemoveItem('missing');
+await client.rssRefreshItem('missing');
+assert.equal(calls.length,before+3,'source-proven RSS child writes must remain usable independently of rss/items');
+
+profile={qbVersion:'6.0.0',webApiVersion:'3.0.0',fallback:false,apiActions:[LOG_MAIN],apiActionParameters:{}};
+before=calls.length;
+await client.logs(-1);
+assert.equal(calls.length,before+1,'source-proven main log read must issue one HTTP request');
+before=calls.length;
+await assert.rejects(Promise.resolve().then(()=>client.peerLogs(-1)),/source-proven/,'peer logs must not inherit from log/main availability');
+assert.equal(calls.length,before,'missing peer log action must fail before HTTP');
+profile={qbVersion:'6.0.0',webApiVersion:'3.0.0',fallback:false,apiActions:[LOG_PEERS],apiActionParameters:{}};
+await client.peerLogs(-1);
+assert.equal(calls.length,before+1,'source-proven peer logs must remain independently usable');
+
+console.log(`QBClient provenance contract passed: ${calls.length} allowed HTTP calls; future-major exact source facts survive, while unproven Settings, Search, RSS, Logs and editTracker operations make zero HTTP requests.`);
