@@ -13,12 +13,14 @@ on:
       - 'tests/full-stable-core-write-compat.mjs'
       - 'tests/full-stable-app-aux-compat.mjs'
       - 'tests/full-stable-torrent-creator-compat.mjs'
+      - 'tests/full-stable-baseline-write-compat.mjs'
       - 'tests/detail-runtime-contract.mjs'
       - 'tests/qb-peer-provenance-contract.mjs'
       - 'tests/qb-taxonomy-provenance-contract.mjs'
       - 'tests/qb-core-write-provenance-contract.mjs'
       - 'tests/qb-app-aux-provenance-contract.mjs'
       - 'tests/qb-torrent-creator-provenance-contract.mjs'
+      - 'tests/qb-baseline-write-provenance-contract.mjs'
       - 'tests/compat-architecture-contract.mjs'
       - 'webui/private/data/capabilities.json'
       - 'webui/private/scripts/release-profile.js'
@@ -64,3 +66,5 @@ jobs:
         run: node tests/full-stable-app-aux-compat.mjs tests/fixtures/qb-release-catalog.lkg.json
       - name: Execute every frozen official stable through Torrent Creator provenance
         run: node tests/full-stable-torrent-creator-compat.mjs tests/fixtures/qb-release-catalog.lkg.json
+      - name: Execute every frozen official stable through baseline state write provenance
+        run: node tests/full-stable-baseline-write-compat.mjs tests/fixtures/qb-release-catalog.lkg.json

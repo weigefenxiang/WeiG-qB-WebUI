@@ -7,7 +7,7 @@ const here=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(here,'..');
 const centralizedOwners=new Set(['webui/private/scripts/release-profile.js']);
 const frozenLegacyOwners=new Map([
-  ['webui/private/scripts/qb-client.js','72e1fa51a12bee18bbd7f573cd8e57e9d582f6d2'],
+  ['webui/private/scripts/qb-client.js','e4b8f9a806beb6ed5b70540521f0ea3e1d4f5358'],
   ['webui/private/scripts/spatial.js','e489e6e463f1855a1e54a17e47bebde54a733d49']
 ]);
 const patterns=[
