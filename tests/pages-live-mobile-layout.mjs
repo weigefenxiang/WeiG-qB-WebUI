@@ -29,7 +29,13 @@ try{
   const page=await context.newPage();
   const errors=[];
   page.on('pageerror',error=>errors.push(error?.stack||error?.message||String(error)));
-  page.on('console',message=>{if(message.type()==='error'&&!/favicon|Wei\.G\.ico/i.test(message.text()))errors.push(message.text());});
+  page.on('console',message=>{
+    if(message.type()!=='error')return;
+    const text=message.text();
+    const source=String(message.location()?.url||'');
+    if(/favicon(?:\.ico)?|Wei\.G\.ico/i.test(`${source} ${text}`))return;
+    errors.push(source?`${text} (${source})`:text);
+  });
 
   const url=new URL('dev/app/',base);
   url.search=new URLSearchParams({sim:`pages-mobile-${Date.now()}`,qb:'5.2.3',count:'80',scenario:'mixed',seed:'mobile-layout-047'}).toString();
@@ -43,8 +49,9 @@ try{
 
   const card=await page.locator('.torrent-mobile-card--two-line').first().evaluate(node=>{
     const metrics=node.querySelector('.mobile-card-metrics'),progress=node.querySelector('.mobile-card-progress'),track=progress?.querySelector('.progress-track'),number=progress?.querySelector('.mobile-card-progress__number');
+    if(!metrics||!progress||!track||!number)throw new Error('mobile torrent card canonical progress nodes are missing');
     const rect=n=>{const r=n.getBoundingClientRect();return{top:r.top,bottom:r.bottom,left:r.left,right:r.right,width:r.width,height:r.height};};
-    return{metrics:rect(metrics),progress:rect(progress),track:rect(track),number:rect(number),tracks:node.querySelectorAll('.progress-track').length,numberText:(number?.textContent||'').trim(),overflow:node.scrollHeight-node.clientHeight};
+    return{metrics:rect(metrics),progress:rect(progress),track:rect(track),number:rect(number),tracks:node.querySelectorAll('.progress-track').length,numberText:(number.textContent||'').trim(),overflow:node.scrollHeight-node.clientHeight};
   });
   assert.equal(card.tracks,1,`mobile torrent card must render one canonical progress track: ${JSON.stringify(card)}`);
   assert.ok(card.progress.top>=card.metrics.bottom-1,`progress must be below metadata: ${JSON.stringify(card)}`);
@@ -52,7 +59,9 @@ try{
   assert.ok(card.overflow<=1,`stacked progress must fit the mobile torrent card height: ${JSON.stringify(card)}`);
 
   const pager=await page.locator('#list-view .pager').evaluate(node=>{
-    const nav=node.querySelector('.pager__nav'),actions=node.querySelector('#torrent-selection-toolbar'),buttons=[...actions.querySelectorAll('button')];
+    const nav=node.querySelector('.pager__nav'),actions=node.querySelector('#torrent-selection-toolbar');
+    if(!nav||!actions)throw new Error('mobile pager canonical navigation/action nodes are missing');
+    const buttons=[...actions.querySelectorAll('button')];
     const rect=n=>{const r=n.getBoundingClientRect();return{top:r.top,bottom:r.bottom,left:r.left,right:r.right,width:r.width,height:r.height};};
     const br=buttons.map(b=>({...rect(b),font:parseFloat(getComputedStyle(b).fontSize),text:(b.textContent||'').trim()}));
     return{pager:rect(node),nav:rect(nav),actions:rect(actions),buttons:br,overflow:node.scrollWidth-node.clientWidth};
@@ -67,16 +76,19 @@ try{
   await page.waitForFunction(()=>document.getElementById('rss-view')?.classList.contains('is-active')&&document.querySelector('#rss-view .rss-header-actions')&&document.getElementById('rss-add-open-btn')&&document.getElementById('rss-refresh-btn'));
   const rss=await page.evaluate(()=>{
     const header=document.querySelector('#rss-view>.workspace__header'),actions=header?.querySelector('.rss-header-actions'),add=document.getElementById('rss-add-open-btn'),refresh=document.getElementById('rss-refresh-btn');
+    if(!header||!actions||!add||!refresh)throw new Error('RSS mobile header controls are missing');
     const rect=n=>{const r=n.getBoundingClientRect();return{top:r.top,bottom:r.bottom,left:r.left,right:r.right,width:r.width,height:r.height,display:getComputedStyle(n).display};};
     return{header:rect(header),actions:rect(actions),add:rect(add),refresh:rect(refresh),overflow:header.scrollWidth-header.clientWidth};
   });
   assert.ok(Math.abs(rss.add.top-rss.refresh.top)<=2,`RSS Add Feed and Refresh must share the mobile header row: ${JSON.stringify(rss)}`);
   assert.ok(rss.actions.right<=rss.header.right+1&&rss.actions.left>=rss.header.left-1,`RSS header actions must fit inside the mobile header: ${JSON.stringify(rss)}`);
   assert.ok(rss.overflow<=1,`RSS mobile header must not overflow: ${JSON.stringify(rss)}`);
+
   await page.locator('#rss-add-open-btn').click();
   await page.waitForSelector('#rss-add-dialog[open] #rss-url',{state:'visible',timeout:30000});
   const rssDialog=await page.evaluate(()=>{
     const dialog=document.getElementById('rss-add-dialog'),url=document.getElementById('rss-url'),add=document.getElementById('rss-add-btn');
+    if(!dialog||!url||!add)throw new Error('RSS Add Feed dialog canonical controls are missing');
     const rect=n=>{const r=n.getBoundingClientRect();return{top:r.top,bottom:r.bottom,left:r.left,right:r.right,width:r.width,height:r.height,display:getComputedStyle(n).display};};
     return{dialog:rect(dialog),url:rect(url),add:rect(add)};
   });
@@ -85,39 +97,58 @@ try{
   await page.locator('#rss-add-dialog .rss-add-dialog__close').click();
 
   await page.locator('#mobile-bottom-nav [data-route="logs"]').click();
-  await page.waitForFunction(()=>document.getElementById('logs-view')?.classList.contains('is-active')&&document.querySelector('.logs-toolbar'));
-  const logsBefore=await page.evaluate(()=>{const toggle=document.querySelector('.logs-search-toggle'),search=document.querySelector('.logs-search'),filters=document.querySelector('.logs-filters'),rect=n=>{const r=n.getBoundingClientRect();return{top:r.top,bottom:r.bottom,left:r.left,right:r.right,width:r.width,height:r.height,display:getComputedStyle(n).display};};return{toggle:rect(toggle),search:rect(search),filters:rect(filters)};});
-  assert.notEqual(logsBefore.toggle.display,'none','phone Logs must show the search icon');
-  assert.equal(logsBefore.search.display,'none','phone Logs full search must start collapsed');
-  await page.locator('.logs-search-toggle').click();
-  await page.waitForFunction(()=>getComputedStyle(document.querySelector('.logs-search')).display!=='none');
-  const logsAfter=await page.evaluate(()=>{const search=document.querySelector('.logs-search'),filters=document.querySelector('.logs-filters'),rect=n=>{const r=n.getBoundingClientRect();return{top:r.top,bottom:r.bottom,left:r.left,right:r.right,width:r.width,height:r.height};};return{search:rect(search),filters:rect(filters)};});
-  assert.ok(logsAfter.search.top>=logsAfter.filters.bottom+2,`expanded Logs search must occupy the next row: ${JSON.stringify(logsAfter)}`);
-  assert.ok(Math.abs(logsAfter.filters.top-logsBefore.filters.top)<=2,`Logs filters must not move when search expands: ${JSON.stringify({before:logsBefore.filters,after:logsAfter.filters})}`);
+  await page.waitForFunction(()=>document.getElementById('logs-view')?.classList.contains('is-active')&&document.querySelector('.logs-toolbar')&&document.getElementById('mobile-search-btn')&&document.getElementById('search-input'));
+  const logs=await page.evaluate(()=>{
+    const toolbar=document.querySelector('.logs-toolbar'),filters=document.querySelector('.logs-filters'),actions=document.querySelector('.logs-actions'),searchButton=document.getElementById('mobile-search-btn'),searchInput=document.getElementById('search-input'),chips=filters?[...filters.querySelectorAll('[data-log-type]')]:[];
+    if(!toolbar||!filters||!actions||!searchButton||!searchInput)throw new Error('Logs canonical toolbar/Header Search controls are missing');
+    const rect=n=>{const r=n.getBoundingClientRect();return{top:r.top,bottom:r.bottom,left:r.left,right:r.right,width:r.width,height:r.height,display:getComputedStyle(n).display};};
+    return{toolbar:rect(toolbar),filters:rect(filters),actions:rect(actions),searchButton:rect(searchButton),chips:chips.length,sizeMode:!!document.getElementById('logs-size-mode'),refresh:!!document.querySelector('.logs-refresh'),searchOpen:document.querySelector('.topbar')?.classList.contains('search-open')||false,placeholder:searchInput.placeholder,overflow:toolbar.scrollWidth-toolbar.clientWidth};
+  });
+  assert.equal(logs.chips,4,`Logs toolbar must keep Normal/Info/Warning/Critical filters: ${JSON.stringify(logs)}`);
+  assert.ok(logs.sizeMode&&logs.refresh,`Logs toolbar must keep size mode and Refresh controls: ${JSON.stringify(logs)}`);
+  assert.notEqual(logs.searchButton.display,'none','phone Logs must expose the canonical Header Search button');
+  assert.equal(logs.searchOpen,false,'phone Logs Header Search must start collapsed');
+  assert.match(logs.placeholder,/日志|logs/i,`Logs Header Search must expose the route-specific placeholder: ${JSON.stringify(logs)}`);
+  assert.ok(logs.overflow<=1,`Logs mobile toolbar must not overflow: ${JSON.stringify(logs)}`);
+
+  await page.locator('#mobile-search-btn').click();
+  await page.waitForFunction(()=>document.querySelector('.topbar')?.classList.contains('search-open')&&getComputedStyle(document.getElementById('search-input')).display!=='none');
+  await page.locator('#search-input').fill('warning');
+  await page.waitForFunction(()=>window.WeiG?.Logs?.query?.()==='warning');
+  const logSearch=await page.evaluate(()=>({query:window.WeiG?.Logs?.query?.(),value:document.getElementById('search-input')?.value,open:document.querySelector('.topbar')?.classList.contains('search-open')||false}));
+  assert.equal(logSearch.query,'warning','Header Search input must route into W.Logs query state');
+  assert.equal(logSearch.value,'warning','Header Search input must preserve the typed Logs query');
+  assert.equal(logSearch.open,true,'Logs Header Search must be visibly open while querying');
+  await page.locator('#search-input').fill('');
+  await page.waitForFunction(()=>window.WeiG?.Logs?.query?.()==='');
 
   await page.locator('#mobile-bottom-nav [data-route=""]').click();
   await page.waitForFunction(()=>document.getElementById('list-view')?.classList.contains('is-active'));
   await page.locator('#menu-btn').click();
   await page.waitForFunction(()=>document.getElementById('sidebar')?.classList.contains('is-open'));
-  await page.waitForFunction(()=>document.querySelector('#mobile-drawer-telemetry #status-torrents')&&document.querySelector('#mobile-drawer-telemetry #transfer-capsule')&&document.querySelector('#mobile-drawer-transfer-chart .transfer-mini-chart'));
+  await page.waitForFunction(()=>{
+    const host=document.getElementById('mobile-drawer-telemetry');
+    return host&&host.querySelector('#status-torrents')&&host.querySelector('#status-free-space')&&host.querySelector('#transfer-capsule')&&host.querySelector('#status-connection')&&host.querySelector('.transfer-mini-chart');
+  });
+  await page.waitForTimeout(200);
   const drawer=await page.evaluate(()=>{
-    const sidebar=document.getElementById('sidebar'),filters=sidebar.querySelector(':scope > .sidebar__section:first-child'),telemetry=document.getElementById('mobile-drawer-telemetry'),meta=sidebar.querySelector('.sidebar__meta'),chart=telemetry.querySelector('.transfer-mini-chart');
+    const sidebar=document.getElementById('sidebar'),filters=sidebar?.querySelector(':scope > .sidebar__section:first-child'),telemetry=document.getElementById('mobile-drawer-telemetry'),meta=sidebar?.querySelector('.sidebar__meta'),chart=telemetry?.querySelector('.transfer-mini-chart');
+    if(!sidebar||!filters||!telemetry||!meta||!chart)throw new Error('mobile Drawer canonical zones are missing');
     const rect=n=>{const r=n.getBoundingClientRect();return{top:r.top,bottom:r.bottom,left:r.left,right:r.right,width:r.width,height:r.height};};
-    const sidebarStyle=getComputedStyle(sidebar),filterStyle=getComputedStyle(filters),telemetryStyle=getComputedStyle(telemetry),metaStyle=getComputedStyle(meta);
-    return{sidebar:rect(sidebar),filters:rect(filters),telemetry:rect(telemetry),meta:rect(meta),chart:rect(chart),display:sidebarStyle.display,rows:sidebarStyle.gridTemplateRows,filterOverflow:filterStyle.overflowY,telemetryGridRow:telemetryStyle.gridRowStart,metaGridRow:metaStyle.gridRowStart,hasTorrent:!!telemetry.querySelector('#status-torrents'),hasStorage:!!telemetry.querySelector('#status-free-space'),hasTransfer:!!telemetry.querySelector('#transfer-capsule'),hasConnection:!!telemetry.querySelector('#status-connection'),metaText:(meta.textContent||'').trim()};
+    const sidebarStyle=getComputedStyle(sidebar),filterStyle=getComputedStyle(filters),metaStyle=getComputedStyle(meta);
+    return{sidebar:rect(sidebar),filters:rect(filters),telemetry:rect(telemetry),meta:rect(meta),chart:rect(chart),display:sidebarStyle.display,filterOverflow:filterStyle.overflowY,metaDisplay:metaStyle.display,hasTorrent:!!telemetry.querySelector('#status-torrents'),hasStorage:!!telemetry.querySelector('#status-free-space'),hasTransfer:!!telemetry.querySelector('#transfer-capsule'),hasConnection:!!telemetry.querySelector('#status-connection')};
   });
   assert.ok(drawer.hasTorrent&&drawer.hasStorage&&drawer.hasTransfer&&drawer.hasConnection,`Drawer must contain the canonical status nodes: ${JSON.stringify(drawer)}`);
-  assert.equal(drawer.display,'grid',`Mobile Drawer must resolve to the three-zone grid: ${JSON.stringify(drawer)}`);
+  assert.equal(drawer.display,'grid',`Mobile Drawer must resolve to the responsive grid: ${JSON.stringify(drawer)}`);
   assert.ok(drawer.filterOverflow==='auto'||drawer.filterOverflow==='scroll',`Only the filter/facet zone must own Drawer scrolling: ${JSON.stringify(drawer)}`);
   assert.ok(drawer.filters.top>=drawer.sidebar.top-1&&drawer.filters.bottom<=drawer.telemetry.top+1,`Filter/facet zone must end before fixed telemetry: ${JSON.stringify(drawer)}`);
   assert.ok(drawer.chart.height>=90,`Drawer realtime transfer chart must be visibly rendered: ${JSON.stringify(drawer)}`);
-  assert.ok(drawer.telemetry.top>=drawer.sidebar.top&&drawer.telemetry.bottom<=drawer.meta.top+1,`Drawer telemetry must occupy the fixed middle zone above versions: ${JSON.stringify(drawer)}`);
-  assert.ok(drawer.meta.bottom<=drawer.sidebar.bottom+1&&drawer.sidebar.bottom-drawer.meta.bottom<=12,`qBittorrent/WebAPI metadata must be pinned to the physical bottom of the Drawer: ${JSON.stringify(drawer)}`);
-  assert.ok(/qBittorrent/.test(drawer.metaText)&&/WebAPI/.test(drawer.metaText),`Drawer bottom must expose qBittorrent and WebAPI versions: ${drawer.metaText}`);
+  assert.ok(drawer.metaDisplay==='none'||(drawer.meta.width===0&&drawer.meta.height===0),`mobile Drawer must hide qBittorrent/WebAPI/version metadata: ${JSON.stringify(drawer)}`);
+  assert.ok(drawer.telemetry.top>=drawer.sidebar.top&&drawer.telemetry.bottom<=drawer.sidebar.bottom+1&&drawer.sidebar.bottom-drawer.telemetry.bottom<=12,`Drawer telemetry/chart must use the released bottom space: ${JSON.stringify(drawer)}`);
 
   assert.deepEqual(errors,[],`deployed mobile layout produced browser errors: ${errors.join('\n')}`);
   await context.close();
-  console.log(`Virtual qB Pages mobile layout acceptance passed for ${expectedSha}: stacked progress, single-line pager/actions, RSS header actions + Add Feed dialog, Logs search, and a three-zone Drawer with fixed telemetry and versions pinned to the bottom.`);
+  console.log(`Virtual qB Pages mobile layout acceptance passed for ${expectedSha}: stacked progress, single-line pager/actions, RSS header actions + Add Feed dialog, Header-owned Logs search, and a Drawer with fixed telemetry plus hidden mobile version metadata.`);
 } finally {
   await browser.close();
 }
