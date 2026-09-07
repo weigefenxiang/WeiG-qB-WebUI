@@ -91,8 +91,6 @@ for(const method of directPosts){
 }
 assert.deepEqual(unowned,[],`QBClient direct state-changing POST methods must source-guard before transport; unowned: ${unowned.join(', ')}`);
 for(const name of transportOwners)assert.ok(qbSource.includes(`Client.prototype.${name}=function`),`Reviewed Torrent dispatch owner ${name} must remain present.`);
-const logout=directPosts.find(method=>method.name==='logout');
-assert.ok(logout,'Logout must remain an explicit safe unguarded POST exception so users can terminate a session even when ReleaseProfile is unavailable.');
-assert.match(logout.body,/this\.request\(\s*['"]auth\/logout['"]\s*,\s*\{\s*method\s*:\s*['"]POST['"]\s*,\s*type\s*:\s*['"]void['"]\s*\}\s*\)/,'Logout exception must remain narrowly scoped to POST auth/logout with a void response.');
-assert.doesNotMatch(logout.body,/\b(?:form|json|body)\s*:/,'Logout safe exception must not grow a request payload.');
+const logoutMatches=[...qbSource.matchAll(/Client\.prototype\.logout=function\(\)\{return this\.request\(['"]auth\/logout['"],\{method:['"]POST['"],type:['"]void['"]\}\);\};/g)];
+assert.equal(logoutMatches.length,1,'Logout must remain one narrowly scoped POST auth/logout void call with no payload so users can terminate a session even when ReleaseProfile is unavailable.');
 console.log(`Compatibility architecture contract passed: scanned ${files.length} complete Git-indexed product script blobs; scattered qB version-if is blocked, API transport remains centralized in QBClient, ${directPosts.length} direct POST method(s) have source ownership or reviewed transport/safety exceptions, and ${legacySeen.length} legacy owner blob(s) remain frozen for explicit migration/review.`);
