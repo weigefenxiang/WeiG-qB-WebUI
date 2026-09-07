@@ -8,7 +8,7 @@
   function major(value){return parts(value)[0]||0;}
   function unique(values){var out=[];(values||[]).forEach(function(value){value=String(value||'');if(value&&out.indexOf(value)<0)out.push(value);});return out;}
   function canonicalFilter(name){name=String(name||'all');if(name==='paused')return'stopped';if(name==='resumed')return'running';return name;}
-  function fallback(qb,webApi){var m=major(qb),filters=m>=5?['all','downloading','seeding','completed','stopped','running','active','inactive','errored']:['all','downloading','seeding','completed','paused','resumed','active','inactive','errored'];return{qbVersion:version(qb),webApiVersion:version(webApi),officialWeiGSupport:false,protocolGeneration:m>=5?'qb5':'qb4',apiActions:[],apiActionParameters:{},torrentFilters:filters,torrentInfoParameters:[],torrentInfoFields:[],torrentStates:[],preferenceDescriptors:[],fallback:true};}
+  function fallback(qb,webApi){var m=major(qb),filters=m>=5?['all','downloading','seeding','completed','stopped','running','active','inactive','errored']:['all','downloading','seeding','completed','paused','resumed','active','inactive','errored'];return{qbVersion:version(qb),webApiVersion:version(webApi),officialWeiGSupport:false,protocolGeneration:m>=5?'qb5':'qb4',apiActions:[],apiActionParameters:{},torrentFilters:filters,torrentInfoParameters:[],torrentInfoFields:[],torrentStates:[],torrentPropertiesFields:[],torrentTrackerFields:[],torrentFileFields:[],torrentWebSeedFields:[],preferenceDescriptors:[],fallback:true};}
   function load(){if(loadTask)return loadTask;loadTask=fetch(asset('data/qb-releases.json'),{credentials:'same-origin',cache:'no-store'}).then(function(res){if(!res.ok)throw new Error('Release profile catalog HTTP '+res.status);return res.json();}).then(function(value){catalog=Array.isArray(value)?value:[];return catalog;}).catch(function(){catalog=[];return catalog;});return loadTask;}
   function exact(qb){var target=version(qb);return (catalog||[]).find(function(item){return version(item&&item.qbVersion)===target;})||null;}
   async function bind(client){await load();var qb=client&&client.qbVersion||'0',api=client&&client.webApiVersion||'0';current=exact(qb)||fallback(qb,api);try{global.dispatchEvent(new CustomEvent('weigg:release-profile',{detail:{profile:current,certified:isCertified()}}));}catch(_e){}return current;}
@@ -23,6 +23,12 @@
   function torrentInfoFields(){return unique((current&&!current.fallback&&current.torrentInfoFields)||[]);}
   function hasTorrentInfoField(name){return torrentInfoFields().indexOf(String(name))>=0;}
   function torrentStates(){return unique((current&&!current.fallback&&current.torrentStates)||[]);}
+  function detailFields(surface){var map={properties:'torrentPropertiesFields',trackers:'torrentTrackerFields',files:'torrentFileFields',webseeds:'torrentWebSeedFields'},key=map[String(surface||'')];if(!key)return[];return unique((current&&!current.fallback&&current[key])||[]);}
+  function hasTorrentDetailField(surface,name){return detailFields(surface).indexOf(String(name))>=0;}
+  function torrentPropertiesFields(){return detailFields('properties');}
+  function torrentTrackerFields(){return detailFields('trackers');}
+  function torrentFileFields(){return detailFields('files');}
+  function torrentWebSeedFields(){return detailFields('webseeds');}
   function actionChoices(kind){var map={
     start:[['torrentscontroller.h:startAction','start'],['torrentscontroller.h:resumeAction','resume']],
     stop:[['torrentscontroller.h:stopAction','stop'],['torrentscontroller.h:pauseAction','pause']],
@@ -50,5 +56,5 @@
   function supportsTorrentAction(kind){return !!resolveTorrentActionDescriptor(kind);}
   function preferenceDescriptor(key){if(!current||current.fallback||!Array.isArray(current.preferenceDescriptors))return null;return current.preferenceDescriptors.find(function(item){return item&&item.key===key;})||null;}
   function isCertified(){return !!(current&&!current.fallback&&current.officialWeiGSupport!==false);}
-  W.ReleaseProfile={load:load,bind:bind,current:function(){return current;},catalog:function(){return catalog||[];},isCertified:isCertified,compareVersions:compare,canonicalTorrentFilter:canonicalFilter,torrentFilters:torrentFilters,upstreamTorrentFilter:upstreamTorrentFilter,supportsTorrentFilter:supportsTorrentFilter,hasAction:hasAction,actionParameters:actionParameters,actionDescriptor:actionDescriptor,hasInfoParameter:hasInfoParameter,torrentInfoFields:torrentInfoFields,hasTorrentInfoField:hasTorrentInfoField,torrentStates:torrentStates,resolveTorrentAction:resolveTorrentAction,resolveTorrentActionDescriptor:resolveTorrentActionDescriptor,supportsTorrentAction:supportsTorrentAction,preferenceDescriptor:preferenceDescriptor};
+  W.ReleaseProfile={load:load,bind:bind,current:function(){return current;},catalog:function(){return catalog||[];},isCertified:isCertified,compareVersions:compare,canonicalTorrentFilter:canonicalFilter,torrentFilters:torrentFilters,upstreamTorrentFilter:upstreamTorrentFilter,supportsTorrentFilter:supportsTorrentFilter,hasAction:hasAction,actionParameters:actionParameters,actionDescriptor:actionDescriptor,hasInfoParameter:hasInfoParameter,torrentInfoFields:torrentInfoFields,hasTorrentInfoField:hasTorrentInfoField,torrentStates:torrentStates,detailFields:detailFields,hasTorrentDetailField:hasTorrentDetailField,torrentPropertiesFields:torrentPropertiesFields,torrentTrackerFields:torrentTrackerFields,torrentFileFields:torrentFileFields,torrentWebSeedFields:torrentWebSeedFields,resolveTorrentAction:resolveTorrentAction,resolveTorrentActionDescriptor:resolveTorrentActionDescriptor,supportsTorrentAction:supportsTorrentAction,preferenceDescriptor:preferenceDescriptor};
 })(window);

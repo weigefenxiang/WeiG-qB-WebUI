@@ -4,8 +4,8 @@ import vm from 'node:vm';
 const source=await fs.readFile(new URL('../webui/private/scripts/release-profile.js',import.meta.url),'utf8');
 function assert(ok,msg){if(!ok)throw new Error(msg);}
 const catalog=[
-  {qbVersion:'4.1.0',webApiVersion:'2.0.0',officialWeiGSupport:true,apiActions:['torrentscontroller.h:resumeAction','torrentscontroller.h:pauseAction','torrentscontroller.h:recheckAction','torrentscontroller.h:addTrackersAction'],apiActionParameters:{'torrentscontroller.h:resumeAction':{parameters:['hashes'],required:['hashes'],optional:[]},'torrentscontroller.h:pauseAction':{parameters:['hashes'],required:['hashes'],optional:[]},'torrentscontroller.h:recheckAction':{parameters:['hashes'],required:['hashes'],optional:[]},'torrentscontroller.h:addTrackersAction':{parameters:['hash','urls'],required:['hash','urls'],optional:[]}},torrentFilters:['all','downloading','seeding','paused','resumed'],torrentInfoParameters:['filter','category'],torrentInfoFields:['hash','name','state','progress','dlspeed','upspeed','category','tags'],torrentStates:['downloading','stalledDL','uploading','stalledUP','pausedDL','pausedUP','checkingDL','checkingUP','error','missingFiles'],preferenceDescriptors:[{key:'save_path',writable:true,setterPresent:true,writeType:'string',typeAgreement:'EXACT'}]},
-  {qbVersion:'5.2.3',webApiVersion:'2.15.1',officialWeiGSupport:true,apiActions:['torrentscontroller.h:startAction','torrentscontroller.h:stopAction','torrentscontroller.h:tagsAction','torrentscontroller.h:reannounceAction','torrentscontroller.h:removeTrackersAction'],apiActionParameters:{'torrentscontroller.h:reannounceAction':{parameters:['hashes'],required:['hashes'],optional:[]},'torrentscontroller.h:removeTrackersAction':{parameters:['hash','urls'],required:['hash','urls'],optional:[]}},torrentFilters:['all','downloading','seeding','stopped','running','stalled'],torrentInfoParameters:['filter','tag'],torrentInfoFields:['hash','name','state','progress','dlspeed','upspeed','category','tags','private'],torrentStates:['downloading','stalledDL','uploading','stalledUP','stoppedDL','stoppedUP','checkingDL','checkingUP','moving','error','missingFiles'],preferenceDescriptors:[]}
+  {qbVersion:'4.1.0',webApiVersion:'2.0.0',officialWeiGSupport:true,apiActions:['torrentscontroller.h:resumeAction','torrentscontroller.h:pauseAction','torrentscontroller.h:recheckAction','torrentscontroller.h:addTrackersAction','torrentscontroller.h:propertiesAction','torrentscontroller.h:filesAction','torrentscontroller.h:trackersAction','torrentscontroller.h:webseedsAction'],apiActionParameters:{'torrentscontroller.h:resumeAction':{parameters:['hashes'],required:['hashes'],optional:[]},'torrentscontroller.h:pauseAction':{parameters:['hashes'],required:['hashes'],optional:[]},'torrentscontroller.h:recheckAction':{parameters:['hashes'],required:['hashes'],optional:[]},'torrentscontroller.h:addTrackersAction':{parameters:['hash','urls'],required:['hash','urls'],optional:[]}},torrentFilters:['all','downloading','seeding','paused','resumed'],torrentInfoParameters:['filter','category'],torrentInfoFields:['hash','name','state','progress','dlspeed','upspeed','category','tags'],torrentStates:['downloading','stalledDL','uploading','stalledUP','pausedDL','pausedUP','checkingDL','checkingUP','error','missingFiles'],torrentPropertiesFields:['save_path','total_size','share_ratio'],torrentTrackerFields:['url','status','num_peers'],torrentFileFields:['name','size','progress','priority'],torrentWebSeedFields:['url'],preferenceDescriptors:[{key:'save_path',writable:true,setterPresent:true,writeType:'string',typeAgreement:'EXACT'}]},
+  {qbVersion:'5.2.3',webApiVersion:'2.15.1',officialWeiGSupport:true,apiActions:['torrentscontroller.h:startAction','torrentscontroller.h:stopAction','torrentscontroller.h:tagsAction','torrentscontroller.h:reannounceAction','torrentscontroller.h:removeTrackersAction','torrentscontroller.h:propertiesAction','torrentscontroller.h:filesAction','torrentscontroller.h:trackersAction','torrentscontroller.h:webseedsAction'],apiActionParameters:{'torrentscontroller.h:reannounceAction':{parameters:['hashes'],required:['hashes'],optional:[]},'torrentscontroller.h:removeTrackersAction':{parameters:['hash','urls'],required:['hash','urls'],optional:[]}},torrentFilters:['all','downloading','seeding','stopped','running','stalled'],torrentInfoParameters:['filter','tag'],torrentInfoFields:['hash','name','state','progress','dlspeed','upspeed','category','tags','private'],torrentStates:['downloading','stalledDL','uploading','stalledUP','stoppedDL','stoppedUP','checkingDL','checkingUP','moving','error','missingFiles'],torrentPropertiesFields:['save_path','download_path','private','pieces_num','piece_size'],torrentTrackerFields:['url','status','num_seeds','tier'],torrentFileFields:['index','name','size','progress','priority'],torrentWebSeedFields:['url'],preferenceDescriptors:[]}
 ];
 let responseCatalog=catalog;
 const events=[];
@@ -14,6 +14,7 @@ const context={window,console,CustomEvent:class{constructor(type,init){this.type
 vm.runInNewContext(source,context,{filename:'release-profile.js'});
 const R=window.WeiG.ReleaseProfile;
 assert(R&&typeof R.bind==='function'&&typeof R.resolveTorrentActionDescriptor==='function','W.ReleaseProfile must be the exact source-fact runtime owner');
+assert(typeof R.detailFields==='function'&&typeof R.hasTorrentDetailField==='function','W.ReleaseProfile must expose exact Torrent detail response-field provenance');
 
 let client={qbVersion:'v4.1.0',major:4};
 await R.bind(client);
@@ -29,12 +30,18 @@ assert(R.hasTorrentInfoField('category')&&R.hasTorrentInfoField('tags')&&!R.hasT
 assert(R.torrentStates().includes('stalledDL')&&R.torrentStates().includes('checkingUP'),'exact Torrent states must be queryable');
 assert(R.preferenceDescriptor('save_path')?.writable===true,'exact preference descriptor lookup failed');
 assert(!R.hasInfoParameter('private'),'qB4 must not invent later torrents/info parameters');
+assert(R.hasTorrentDetailField('properties','save_path')&&!R.hasTorrentDetailField('properties','private'),'qB4 Properties fields must follow exact response surface');
+assert(R.hasTorrentDetailField('trackers','num_peers')&&!R.hasTorrentDetailField('trackers','num_seeds'),'qB4 Tracker fields must not inherit modern counters');
+assert(R.hasTorrentDetailField('files','priority')&&!R.hasTorrentDetailField('files','index'),'qB4 File fields must not invent later response indexes');
+assert(JSON.stringify(R.torrentWebSeedFields())===JSON.stringify(['url']),'qB4 WebSeed response surface must expose only source-proven url');
 
 client={qbVersion:'5.2.3',major:5};
 await R.bind(client);
 assert(R.resolveTorrentAction('start')==='start'&&R.resolveTorrentAction('stop')==='stop','qB5 start/stop must resolve exact modern action names');
 assert(R.resolveTorrentAction('reannounce')==='reannounce'&&R.resolveTorrentAction('removeTrackers')==='removeTrackers','qB5 exact actions must resolve when source proves them');
 assert(R.supportsTorrentFilter('stalled')&&R.hasTorrentInfoField('private')&&R.hasAction('torrentscontroller.h:tagsAction'),'qB5 source-derived filter/field/action facts must be queryable');
+assert(R.hasTorrentDetailField('properties','private')&&R.hasTorrentDetailField('properties','download_path'),'qB5 Properties additions must be exact-profile facts');
+assert(R.hasTorrentDetailField('trackers','num_seeds')&&R.hasTorrentDetailField('files','index'),'qB5 Tracker/File response additions must be exact-profile facts');
 
 client={qbVersion:'4.9.99',major:4};
 await R.bind(client);
@@ -43,6 +50,7 @@ assert(R.resolveTorrentAction('start')==='resume'&&R.upstreamTorrentFilter('stop
 assert(R.resolveTorrentAction('reannounce')===null&&!R.hasTorrentInfoField('tags'),'catalog miss must not invent later action/field provenance');
 assert(R.supportsTorrentFilter('stalled')===false,'catalog miss must not invent non-floor filters');
 assert(R.preferenceDescriptor('save_path')===null,'catalog miss must not invent preference setter provenance');
+assert(R.detailFields('properties').length===0&&R.detailFields('trackers').length===0&&R.detailFields('files').length===0&&R.detailFields('webseeds').length===0,'catalog miss must not invent Torrent detail response-field provenance');
 assert(events.some(event=>event.type==='weigg:release-profile'),'release profile binding must publish one semantic event');
 
-console.log('Release profile contract passed: exact stable facts own aliases/actions/action parameters/Torrent fields/states/preferences and unknown releases remain fail-closed.');
+console.log('Release profile contract passed: exact stable facts own aliases/actions/action parameters/Torrent fields/states/detail response fields/preferences and unknown releases remain fail-closed.');

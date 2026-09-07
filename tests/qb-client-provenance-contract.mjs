@@ -42,6 +42,10 @@ client.qbVersion='6.0.0';client.webApiVersion='3.0.0';client.major=6;
 const PREF_READ='appcontroller.h:preferencesAction';
 const PREF_WRITE='appcontroller.h:setPreferencesAction';
 const EDIT='torrentscontroller.h:editTrackerAction';
+const DETAIL_PROPERTIES='torrentscontroller.h:propertiesAction';
+const DETAIL_FILES='torrentscontroller.h:filesAction';
+const DETAIL_TRACKERS='torrentscontroller.h:trackersAction';
+const DETAIL_WEBSEEDS='torrentscontroller.h:webseedsAction';
 const SEARCH_PLUGINS='searchcontroller.h:pluginsAction';
 const SEARCH_START='searchcontroller.h:startAction';
 const SEARCH_STATUS='searchcontroller.h:statusAction';
@@ -159,4 +163,30 @@ profile={qbVersion:'6.0.0',webApiVersion:'3.0.0',fallback:false,apiActions:[LOG_
 await client.peerLogs(-1);
 assert.equal(calls.length,before+1,'source-proven peer logs must remain independently usable');
 
-console.log(`QBClient provenance contract passed: ${calls.length} allowed HTTP calls; future-major exact source facts survive, while unproven Settings, Search, RSS, Logs and editTracker operations make zero HTTP requests.`);
+profile={qbVersion:'6.0.0',webApiVersion:'3.0.0',fallback:false,apiActions:[DETAIL_PROPERTIES,DETAIL_FILES,DETAIL_TRACKERS,DETAIL_WEBSEEDS],apiActionParameters:{}};
+before=calls.length;
+await client.properties('abc');
+await client.files('abc');
+await client.trackers('abc');
+await client.webseeds('abc');
+assert.equal(calls.length,before+4,'source-proven Torrent detail reads must each issue exactly one HTTP request');
+assert.deepEqual(calls.slice(before).map(call=>call.url),['api/v2/torrents/properties?hash=abc','api/v2/torrents/files?hash=abc','api/v2/torrents/trackers?hash=abc','api/v2/torrents/webseeds?hash=abc'],'Torrent detail endpoints must preserve canonical request paths');
+
+profile={qbVersion:'6.0.0',webApiVersion:'3.0.0',fallback:false,apiActions:[DETAIL_PROPERTIES],apiActionParameters:{}};
+before=calls.length;
+await client.properties('abc');
+assert.equal(calls.length,before+1,'source-proven Properties must remain independently usable');
+before=calls.length;
+for(const action of [()=>client.files('abc'),()=>client.trackers('abc'),()=>client.webseeds('abc')]){
+  await assert.rejects(Promise.resolve().then(action),/source-proven/,'missing Torrent detail child action must fail closed');
+  assert.equal(calls.length,before,'missing Torrent detail child action must fail before HTTP');
+}
+
+profile={qbVersion:'6.9.0',webApiVersion:'99.0.0',fallback:true,apiActions:[DETAIL_PROPERTIES,DETAIL_FILES,DETAIL_TRACKERS,DETAIL_WEBSEEDS],apiActionParameters:{}};
+before=calls.length;
+for(const action of [()=>client.properties('abc'),()=>client.files('abc'),()=>client.trackers('abc'),()=>client.webseeds('abc')]){
+  await assert.rejects(Promise.resolve().then(action),/source-proven/,'fallback future-major detail reads must not trust guessed actions');
+  assert.equal(calls.length,before,'fallback future-major detail read must make zero HTTP requests');
+}
+
+console.log(`QBClient provenance contract passed: ${calls.length} allowed HTTP calls; future-major exact source facts survive, while unproven Settings, Search, RSS, Logs, Torrent Details and editTracker operations make zero HTTP requests.`);

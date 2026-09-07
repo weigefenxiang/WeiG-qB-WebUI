@@ -7,6 +7,8 @@ on:
     paths:
       - '.github/workflows/frozen-stable-compat.yml'
       - 'tests/full-stable-product-compat.mjs'
+      - 'tests/full-stable-detail-compat.mjs'
+      - 'tests/detail-runtime-contract.mjs'
       - 'tests/compat-architecture-contract.mjs'
       - 'webui/private/data/capabilities.json'
       - 'webui/private/scripts/release-profile.js'
@@ -15,6 +17,7 @@ on:
       - 'webui/private/scripts/torrent-semantics.js'
       - 'webui/private/scripts/settings-schema.js'
       - 'webui/private/scripts/qb-client.js'
+      - 'webui/private/scripts/app.js'
   workflow_dispatch:
 
 permissions:
@@ -39,3 +42,5 @@ jobs:
         run: node tests/compat-architecture-contract.mjs
       - name: Execute every frozen official stable through formal product owners
         run: node tests/full-stable-product-compat.mjs tests/fixtures/qb-release-catalog.lkg.json
+      - name: Execute every frozen official stable through Torrent detail provenance owners
+        run: node tests/full-stable-detail-compat.mjs tests/fixtures/qb-release-catalog.lkg.json
