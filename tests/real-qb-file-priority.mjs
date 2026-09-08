@@ -20,6 +20,11 @@ const actions={
   del:'torrentscontroller.h:deleteAction'
 };
 const actionNames=Object.values(actions);
+const trackerActions={
+  read:'torrentscontroller.h:trackersAction',
+  add:'torrentscontroller.h:addTrackersAction',
+  remove:'torrentscontroller.h:removeTrackersAction'
+};
 const endpoint=a=>`/api/v2/torrents/${a.split(':')[1].slice(0,-6)}`;
 
 function frozen(){
@@ -33,7 +38,7 @@ function frozen(){
 }
 
 class Evidence{
-  constructor(meta){this.data={schemaVersion:1,phase:'G',module:'file-priority-lifecycle',...meta,scenarios:[],summary:{PASS:0,FAIL:0,SKIP:0}};}
+  constructor(meta){this.data={schemaVersion:1,phase:'G',module:'file-priority-and-tracker-lifecycles',...meta,scenarios:[],summary:{PASS:0,FAIL:0,SKIP:0}};}
   push(result,id,extra={}){this.data.scenarios.push({id,result,...extra});this.data.summary[result]++;}
 }
 
@@ -60,7 +65,7 @@ async function main(){
   if(!binary)die('WEIG_QB_BINARY_IDENTITY is required.');
 
   const base=new URL(target.endsWith('/')?target:`${target}/`);
-  let sessionCookie='',sessionCookieName='',ev=null,qb='unknown',fixtureHash='',fixtureDeleted=false,priorityRestored=false;
+  let sessionCookie='',sessionCookieName='',ev=null,qb='unknown',fixtureHash='',fixtureDeleted=false,priorityRestored=false,activeScenario='file-priority-lifecycle';
   async function http(method,ep,{query,form,auth=true}={}){
     const url=new URL(ep.replace(/^\/+/,''),base);
     for(const [k,v] of Object.entries(query||{}))url.searchParams.set(k,String(v));
@@ -131,8 +136,18 @@ async function main(){
 
     const available=Array.isArray(profile.apiActions)?profile.apiActions:[];
     const missing=actionNames.filter(a=>!available.includes(a));
-    if(missing.length){ev.push('SKIP','file-priority-lifecycle',{reason:'source action unavailable',missing_source_actions:missing});writeEvidence();return;}
-    if(!allowWrites){ev.push('SKIP','file-priority-lifecycle',{reason:'writes disabled; use --allow-writes only on isolated test target',source_provenance:actionNames});writeEvidence();return;}
+    const trackerAddReadAvailable=[trackerActions.add,trackerActions.read].every(a=>available.includes(a));
+    const trackerRemoveAvailable=available.includes(trackerActions.remove);
+    if(missing.length){
+      ev.push('SKIP','file-priority-lifecycle',{reason:'source action unavailable',missing_source_actions:missing});
+      ev.push('SKIP','tracker-mutation-lifecycle',{reason:'shared isolated torrent fixture unavailable because File Priority core actions are missing'});
+      writeEvidence();return;
+    }
+    if(!allowWrites){
+      ev.push('SKIP','file-priority-lifecycle',{reason:'writes disabled; use --allow-writes only on isolated test target',source_provenance:actionNames});
+      ev.push('SKIP','tracker-mutation-lifecycle',{reason:'writes disabled; use --allow-writes only on isolated test target',source_provenance:[trackerActions.add,trackerActions.read,...(trackerRemoveAvailable?[trackerActions.remove]:[])]});
+      writeEvidence();return;
+    }
 
     const fixture=torrentFixture(`${weigSha}:${qb}:file-priority`);fixtureHash=fixture.hash;
     const addParamNames=profile.apiActionParameters?.[actions.add]?.parameters||[];
@@ -183,8 +198,52 @@ async function main(){
     }
     if(!priorityRestored)die('file priority restore was not observable on reread.');
 
+    let trackerResult=null;
+    activeScenario='tracker-mutation-lifecycle';
+    if(trackerAddReadAvailable){
+      const trackerUrl=`http://127.0.0.1:1/announce/${crypto.createHash('sha256').update(`${weigSha}:${qb}:tracker`).digest('hex').slice(0,12)}`;
+      const trackerAdd=await http('POST',endpoint(trackerActions.add),{form:{hash:fixtureHash,urls:trackerUrl}});
+      if(![200,204].includes(trackerAdd.status)){await trackerAdd.text();die(`tracker add: HTTP ${trackerAdd.status}`);}await trackerAdd.text();
+
+      const trackerRead=await http('GET',endpoint(trackerActions.read),{query:{hash:fixtureHash}});
+      if(trackerRead.status!==200){await trackerRead.text();die(`tracker read after add: HTTP ${trackerRead.status}`);}
+      const trackersBefore=await readJson(trackerRead);
+      if(!Array.isArray(trackersBefore)||!trackersBefore.some(x=>String(x?.url||'')===trackerUrl))die('Added test tracker not visible on reread.');
+
+      let removeStatus=null,rereadStatus=null;
+      const requestSequence=[
+        {method:'POST',endpoint:endpoint(trackerActions.add),paramNames:['hash','urls']},
+        {method:'GET',endpoint:endpoint(trackerActions.read),paramNames:['hash']}
+      ];
+      let cleanupResult='generated tracker removed with generated torrent';
+      if(trackerRemoveAvailable){
+        const trackerRemove=await http('POST',endpoint(trackerActions.remove),{form:{hash:fixtureHash,urls:trackerUrl}});
+        if(![200,204].includes(trackerRemove.status)){await trackerRemove.text();die(`tracker remove: HTTP ${trackerRemove.status}`);}await trackerRemove.text();removeStatus=trackerRemove.status;
+        const trackerReread=await http('GET',endpoint(trackerActions.read),{query:{hash:fixtureHash}});
+        if(trackerReread.status!==200){await trackerReread.text();die(`tracker reread after remove: HTTP ${trackerReread.status}`);}
+        const trackersAfter=await readJson(trackerReread);rereadStatus=trackerReread.status;
+        if(!Array.isArray(trackersAfter)||trackersAfter.some(x=>String(x?.url||'')===trackerUrl))die('Removed test tracker still visible on reread.');
+        requestSequence.push(
+          {method:'POST',endpoint:endpoint(trackerActions.remove),paramNames:['hash','urls']},
+          {method:'GET',endpoint:endpoint(trackerActions.read),paramNames:['hash']}
+        );
+        cleanupResult='generated tracker absent after remove; generated torrent deleted later';
+      }
+      trackerResult={
+        source_provenance:[trackerActions.add,trackerActions.read,...(trackerRemoveAvailable?[trackerActions.remove]:[])],
+        request_sequence:requestSequence,
+        response:{add_status:trackerAdd.status,read_status:trackerRead.status,remove_status:removeStatus,reread_status:rereadStatus},
+        cleanup_result:cleanupResult,
+        network_dependency:'loopback-only unreachable tracker URL'
+      };
+    }else{
+      ev.push('SKIP','tracker-mutation-lifecycle',{reason:'source-proven tracker add/read actions unavailable',source_provenance:[trackerActions.add,trackerActions.read]});
+    }
+
+    activeScenario='fixture-cleanup';
     const del=await http('POST',endpoint(actions.del),{form:{hashes:fixtureHash,deleteFiles:'false'}});
     if(![200,204].includes(del.status)){await del.text();die(`torrent fixture delete: HTTP ${del.status}`);}await del.text();fixtureDeleted=true;
+    if(trackerResult)ev.push('PASS','tracker-mutation-lifecycle',trackerResult);
 
     ev.push('PASS','file-priority-lifecycle',{
       source_provenance:actionNames,
@@ -204,7 +263,7 @@ async function main(){
     writeEvidence();
   }catch(e){
     await deleteFixture();
-    if(ev){ev.push('FAIL','file-priority-lifecycle',{reason:redact(e?.message||e),cleanup_result:{priority_restored:priorityRestored,torrent_deleted:fixtureDeleted}});writeEvidence();}
+    if(ev){ev.push('FAIL',activeScenario,{reason:redact(e?.message||e),cleanup_result:{priority_restored:priorityRestored,torrent_deleted:fixtureDeleted}});writeEvidence();}
     throw e;
   }finally{
     await deleteFixture();
