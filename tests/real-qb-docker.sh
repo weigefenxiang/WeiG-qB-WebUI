@@ -62,13 +62,13 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-# Historical qB releases are intentionally denied internet access. The WebUI is
-# published only on loopback so the host-side harness can reach it.
+# Historical qB releases are intentionally denied internet access. The host
+# reaches the container only through its private internal Docker bridge IP; no
+# qB WebUI port is published on a host interface.
 docker pull "$IMAGE" >/dev/null
 docker network create --internal "$NET" >/dev/null
 COMMON=(
   -d -t --name "$NAME" --network "$NET"
-  -p '127.0.0.1::8080'
   --tmpfs /config:rw,exec,nosuid,nodev,mode=1777
   --tmpfs /downloads:rw,nosuid,nodev,mode=1777
 )
@@ -82,9 +82,9 @@ else
   docker run "${COMMON[@]}" --tmpfs /torrents:rw,nosuid,nodev,mode=1777 "$IMAGE" >/dev/null
 fi
 
-PORT="$(docker port "$NAME" 8080/tcp | sed -n 's/.*://p' | head -n1)"
-[[ "$PORT" =~ ^[0-9]+$ ]] || { echo "Unable to resolve loopback WebUI port" >&2; exit 1; }
-TARGET="http://127.0.0.1:${PORT}/"
+CONTAINER_IP="$(docker inspect "$NAME" --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')"
+[[ "$CONTAINER_IP" =~ ^[0-9]+(\.[0-9]+){3}$ ]] || { echo "Unable to resolve private qB container IP" >&2; exit 1; }
+TARGET="http://${CONTAINER_IP}:8080/"
 
 # Wait for the WebUI listener. 403 is acceptable here because it proves the
 # authenticated API is reachable without bypassing auth.
@@ -123,7 +123,7 @@ WEIG_GIT_SHA="${GITHUB_SHA:-$(git rev-parse HEAD)}" \
 WEIG_QB_BINARY_IDENTITY="$BINARY_IDENTITY" \
 WEIG_QB_PLATFORM='GitHub Actions Ubuntu / isolated Docker network' \
 WEIG_QB_ARCH="$(uname -m)" \
-WEIG_QB_DEPLOYMENT_MODE='ephemeral real-qB Docker; outbound network denied; WebUI loopback-only' \
+WEIG_QB_DEPLOYMENT_MODE='ephemeral real-qB Docker; outbound network denied; host access via private internal bridge only' \
 WEIG_QB_INSTALL_MODE="$PACKAGE_ID" \
 WEIG_QB_REVERSE_PROXY='none' \
 node tests/real-qb-harness.mjs "${ARGS[@]}"
