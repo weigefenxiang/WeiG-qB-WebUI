@@ -26,11 +26,9 @@ if ((BROWSER_SMOKE)); then
   command -v google-chrome >/dev/null || { echo "Google Chrome Stable is required for --browser-smoke" >&2; exit 2; }
   STAGE="$(mktemp -d)"
   cp -a webui/. "$STAGE/"
-  cp tests/fixtures/qb-release-catalog.lkg.json "$STAGE/private/data/qb-releases.json"
-  cmp -s tests/fixtures/qb-release-catalog.lkg.json "$STAGE/private/data/qb-releases.json" || {
-    echo "Alternative WebUI staging catalog is not exact Frozen LKG" >&2
-    exit 1
-  }
+  node tools/qb-webui-catalog.mjs \
+    tests/fixtures/qb-release-catalog.lkg.json \
+    "$STAGE/private/data/qb-releases.json"
   if find "$STAGE" -type l -print -quit | grep -q .; then
     echo "Alternative WebUI staging contains a symlink; qB rejects symlinks" >&2
     exit 1

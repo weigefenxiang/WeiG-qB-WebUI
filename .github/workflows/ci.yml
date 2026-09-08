@@ -230,7 +230,7 @@ jobs:
           set -euo pipefail
           test -s release-catalog/qb-releases.json
           mkdir -p webui/private/data
-          cp release-catalog/qb-releases.json webui/private/data/qb-releases.json
+          node tools/qb-webui-catalog.mjs release-catalog/qb-releases.json webui/private/data/qb-releases.json
           rm -rf release
           mkdir -p release
           cp -a webui release/WeiG-qB-WebUI

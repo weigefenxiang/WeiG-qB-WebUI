@@ -38,7 +38,9 @@ assert(releaseCompat.includes('node tests/full-stable-product-compat.mjs qb-rele
 assert(releaseCompat.indexOf('qb-release-catalog.mjs upstream-qb --output=qb-releases.json')<releaseCompat.indexOf('full-stable-product-compat.mjs qb-releases.json'),'formal product matrix must consume the exact generated catalog');
 assert(releaseCompat.includes('name: qb-release-catalog-${{ github.sha }}'),'exact stable catalog must cross the job boundary as a SHA-named artifact');
 assert(candidate.includes('actions/download-artifact@v8')&&candidate.includes('qb-release-catalog-${{ github.sha }}'),'release candidate must reuse the exact audited catalog artifact');
-assert(candidate.includes('cp release-catalog/qb-releases.json webui/private/data/qb-releases.json')&&candidate.includes('test -s release/WeiG-qB-WebUI/private/data/qb-releases.json'),'release zip must embed the source-derived catalog consumed by W.ReleaseProfile');
+assert(candidate.includes('node tools/qb-webui-catalog.mjs release-catalog/qb-releases.json webui/private/data/qb-releases.json')&&candidate.includes('test -s release/WeiG-qB-WebUI/private/data/qb-releases.json'),'release zip must compact the exact source-derived catalog below qB static-file limits before embedding it for W.ReleaseProfile');
+const catalogPack=read('tools/qb-webui-catalog.mjs');
+assert(catalogPack.includes('10*1024*1024')&&catalogPack.includes('Packed qB release catalog')&&catalogPack.includes('JSON.stringify(catalog)'),'catalog packaging must preserve JSON semantics and fail closed at qB WebUI static-file limits');
 for(const [name,section] of [['release_compatibility',releaseCompat],['browser',linux],['windows_browser',windows],['release_candidate',candidate]]){
   assert(section.includes("github.ref == 'refs/heads/dev'"),`${name} candidate gate must run on dev`);
   assert(!section.includes("github.ref == 'refs/heads/main'"),`${name} must not require a second heavy main candidate`);
@@ -86,4 +88,4 @@ assert(profileLive.includes("catalog[0].qbVersion,'4.1.0'")||profileLive.include
 assert(profileLive.includes("item.qbVersion==='4.6.1'")&&profileLive.includes("webApiVersion==='2.9.3'"),'Pages release-profile gate must protect qB 4.6.1/WebAPI 2.9.3 fact');
 assert(profileLive.includes("['downloads','connection','speed','bittorrent','webui','advanced']"),'Pages release-profile gate must exercise all six qB Settings surfaces');
 
-console.log(`CI contract passed for WeiG ${version}: exact qB 4.1.0+ source catalog is audited once on dev, executed through every formal product compatibility owner, embedded in the reusable candidate artifact, and that exact artifact is promoted/released without a main rebuild; Pages main promotion reuses only the exact validated dev site artifact; hosted Chrome remains canonical.`);
+console.log(`CI contract passed for WeiG ${version}: exact qB 4.1.0+ source catalog is audited once on dev, executed through every formal product compatibility owner, compact-packed for qB WebUI static delivery, embedded in the reusable candidate artifact, and that exact artifact is promoted/released without a main rebuild; Pages main promotion reuses only the exact validated dev site artifact; hosted Chrome remains canonical.`);
