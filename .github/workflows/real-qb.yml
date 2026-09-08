@@ -6,6 +6,7 @@ on:
     paths:
       - 'tests/real-qb-harness.mjs'
       - 'tests/real-qb-docker.sh'
+      - 'tests/real-qb-search.mjs'
       - '.github/workflows/real-qb.yml'
   workflow_dispatch:
     inputs:
