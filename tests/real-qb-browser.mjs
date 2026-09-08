@@ -206,6 +206,11 @@ async function main(){
     await page.locator('#app-nav [data-route="settings"]').click();
     await page.waitForFunction(()=>location.hash.includes('settings'));
     await page.waitForSelector('#settings-content[data-settings-renderer="canonical"]',{timeout:10000});
+    const webUiTab=page.locator('#settings-tabs [data-settings-tab="webui"]');
+    assert(await webUiTab.count()===1,'Canonical Settings lost the Web UI tab.');
+    await webUiTab.click();
+    await page.waitForSelector('#settings-tabs [data-settings-tab="webui"].is-active',{timeout:10000});
+    await page.waitForSelector('[data-setting-key="alternative_webui_path"]',{timeout:10000});
     const altPathControl=page.locator('[data-setting-key="alternative_webui_path"]');
     assert(await altPathControl.count()===1,'Canonical Settings lost alternative_webui_path control on real qB.');
     const altValue=await altPathControl.locator('input,textarea').first().inputValue().catch(()=>null);
