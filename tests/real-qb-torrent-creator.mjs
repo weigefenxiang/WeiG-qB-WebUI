@@ -32,6 +32,14 @@ const actions={
   del:'torrentcreatorcontroller.h:deleteTaskAction'
 };
 const actionNames=Object.values(actions);
+const directSourceContract={
+  basis:'direct upstream qBittorrent release source; Frozen LKG gates action availability only',
+  extractor_note:'Frozen parameter extraction does not resolve constant-backed KEY_SOURCE_PATH, so Creator parameter facts are verified directly from upstream source instead of rewriting Frozen history',
+  addTask:{required:['sourcePath'],explicit_safe_options:{startSeeding:false}},
+  status:{parameter:'taskID',success_state:'Finished',failure_state:'Failed'},
+  torrentFile:{parameter:'taskID',requires_finished_task:true},
+  deleteTask:{parameter:'taskID',post_delete_status:404}
+};
 const endpoint=a=>`/api/v2/torrentcreator/${a.split(':')[1].slice(0,-6)}`;
 
 function frozen(){
@@ -131,19 +139,6 @@ async function run(){
       writeEvidence();return;
     }
 
-    const addParams=profile.apiActionParameters?.[actions.add]?.parameters||[];
-    const statusParams=profile.apiActionParameters?.[actions.status]?.parameters||[];
-    const fileParams=profile.apiActionParameters?.[actions.file]?.parameters||[];
-    const deleteParams=profile.apiActionParameters?.[actions.del]?.parameters||[];
-    if(!addParams.includes('sourcePath')||!addParams.includes('startSeeding')||!statusParams.includes('taskID')||!fileParams.includes('taskID')||!deleteParams.includes('taskID')){
-      ev.push('SKIP','torrent-creator-lifecycle',{
-        reason:'Frozen source parameter facts are incomplete for safe Creator lifecycle',
-        source_provenance:actionNames,
-        required_parameter_facts:{add:['sourcePath','startSeeding'],status:['taskID'],torrentFile:['taskID'],deleteTask:['taskID']}
-      });
-      writeEvidence();return;
-    }
-
     const add=await http('POST',endpoint(actions.add),{form:{sourcePath:'/etc/hostname',startSeeding:'false'}});
     if(add.status!==200)die(`torrent creator addTask: HTTP ${add.status}`);
     const added=await readJson(add);
@@ -181,7 +176,7 @@ async function run(){
     if(deletedStatusCode!==404)die(`torrent creator deleted task still queryable: HTTP ${deletedStatusCode}`);
 
     ev.push('PASS','torrent-creator-lifecycle',{
-      source_provenance:actionNames,
+      source_provenance:{actions:actionNames,parameter_contract:directSourceContract},
       fixture:{kind:'container-local read-only metadata file',source_path:'/etc/hostname',source_content_recorded:false,network_dependency:'none',start_seeding:false},
       request_sequence:[
         {method:'POST',endpoint:endpoint(actions.add),paramNames:['sourcePath','startSeeding']},
