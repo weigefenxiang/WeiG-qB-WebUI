@@ -10,6 +10,7 @@ const argv=new Set(process.argv.slice(2));
 const planOnly=argv.has('--plan');
 const allowWrites=argv.has('--allow-writes');
 const norm=v=>String(v||'').trim().replace(/^v/i,'').split(/[+-]/)[0];
+const sameNumericVersion=(a,b)=>{const aa=norm(a).split('.'),bb=norm(b).split('.');if(!aa.every(x=>/^\d+$/.test(x))||!bb.every(x=>/^\d+$/.test(x)))return norm(a)===norm(b);const n=Math.max(aa.length,bb.length);for(let i=0;i<n;i++)if(Number(aa[i]||0)!==Number(bb[i]||0))return false;return true;};
 const hash=b=>crypto.createHash('sha256').update(b).digest('hex');
 const redact=v=>String(v??'').replace(/https?:\/\/[^\s'"<>]+/gi,'[REDACTED_URL]');
 const die=m=>{throw new Error(redact(m));};
@@ -77,10 +78,10 @@ async function run(){
   if(!target||!user||!pass)die('WEIG_QB_URL, WEIG_QB_USER and WEIG_QB_PASS are required.');
   if(!/^[0-9a-f]{40}$/i.test(weigSha))die('WEIG_GIT_SHA/GITHUB_SHA must be an exact 40-char SHA.');
   if(!binary)die('WEIG_QB_BINARY_IDENTITY is required.');
-  const base=new URL(target.endsWith('/')?target:`${target}/`);let sid='',profile=null,testHash='';
+  const base=new URL(target.endsWith('/')?target:`${target}/`);let sessionCookie='',sessionCookieName='',profile=null,testHash='';
   async function http(method,ep,{query,form,multipart,auth=true}={}){
     const url=new URL(ep.replace(/^\/+/,''),base);for(const [k,v] of Object.entries(query||{}))url.searchParams.set(k,String(v));
-    const headers={Accept:'application/json, text/plain, */*'};if(auth&&sid)headers.Cookie=`SID=${sid}`;
+    const headers={Accept:'application/json, text/plain, */*'};if(auth&&sessionCookie)headers.Cookie=sessionCookie;
     let body;if(multipart){body=new FormData();for(const [k,v] of Object.entries(multipart))body.append(k,String(v));}
     else if(form){headers['Content-Type']='application/x-www-form-urlencoded; charset=UTF-8';body=new URLSearchParams(Object.entries(form).map(([k,v])=>[k,String(v)]));}
     return fetch(url,{method,headers,body,redirect:'manual'});
@@ -93,22 +94,22 @@ async function run(){
       try{const r=await http('POST',endpoint('torrentscontroller.h:deleteAction'),{form:{hashes:testHash,deleteFiles:'false'}});cleanup.push(`torrent-delete:${r.status}`);}catch(e){cleanup.push(`cleanup-error:${redact(e.message)}`);}
       testHash='';
     }
-    try{if(sid)await http('POST','/api/v2/auth/logout');}catch{}
+    try{if(sessionCookie)await http('POST','/api/v2/auth/logout');}catch{}
   }
 
   const login=await http('POST','/api/v2/auth/login',{form:{username:user,password:pass},auth:false});ok(login,'login');
   const cookies=typeof login.headers.getSetCookie==='function'?login.headers.getSetCookie():[login.headers.get('set-cookie')].filter(Boolean);
-  for(const raw of cookies){const m=String(raw).match(/(?:^|;\s*)SID=([^;]+)/);if(m){sid=m[1];break;}}
-  await login.text();if(!sid)die('Login returned no SID; formal session evidence cannot continue.');
+  for(const raw of cookies){const m=String(raw).match(/^\s*([^=;\s]+)=([^;]+)/);if(m){sessionCookieName=m[1];sessionCookie=`${m[1]}=${m[2]}`;break;}}
+  await login.text();if(!sessionCookie)die('Login returned no session cookie; formal session evidence cannot continue.');
 
   let ev,fatal=null;
   try{
     const vr=await http('GET','/api/v2/app/version');ok(vr,'app/version',[200]);const qb=norm(await vr.text());
     const ar=await http('GET','/api/v2/app/webapiVersion');ok(ar,'app/webapiVersion',[200]);const api=norm(await ar.text());
     profile=f.catalog.find(x=>norm(x.qbVersion)===qb);if(!profile)die(`qB ${qb} is outside Frozen LKG; fail closed.`);
-    if(norm(profile.webApiVersion)!==api)die(`WebAPI mismatch for qB ${qb}.`);
+    if(!sameNumericVersion(profile.webApiVersion,api))die(`WebAPI mismatch for qB ${qb}: expected ${norm(profile.webApiVersion)}, actual ${api}.`);
     ev=new Evidence({weig_sha:weigSha,webui_version:fs.readFileSync(path.join(root,'VERSION'),'utf8').trim(),test_time:new Date().toISOString(),qb_version:qb,webapi_version:api,qb_binary_or_source_identity:binary,platform:process.env.WEIG_QB_PLATFORM||`${os.platform()} ${os.release()}`,architecture:process.env.WEIG_QB_ARCH||os.arch(),deployment_mode:process.env.WEIG_QB_DEPLOYMENT_MODE||'unknown',install_mode:process.env.WEIG_QB_INSTALL_MODE||'unknown',reverse_proxy:process.env.WEIG_QB_REVERSE_PROXY||'unknown',https:base.protocol==='https:',base_path:base.pathname,target_host:'REDACTED',frozen_catalog_sha256:f.digest,writes_allowed:allowWrites});
-    ev.push('PASS','auth-session',{request:req('POST','/api/v2/auth/login',['username','password']),response:{status:login.status,body:'REDACTED'}});
+    ev.push('PASS','auth-session',{request:req('POST','/api/v2/auth/login',['username','password']),response:{status:login.status,body:'REDACTED',session_cookie_name:sessionCookieName}});
     ev.push('PASS','identity',{response:{qbVersion:qb,webApiVersion:api}});
     let preferences=null;
     async function read(id,action,query={}){
