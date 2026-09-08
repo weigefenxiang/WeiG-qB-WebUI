@@ -35,6 +35,7 @@ function endpoint(action){
 const first=(p,list)=>list.find(a=>has(p,a))||null;
 function scenarios(p){
   const out=[],add=(id,a,mode='read')=>{if(has(p,a))out.push({id,mode,sourceAction:a,endpoint:endpoint(a),parameters:params(p,a)});};
+  const lifecycle=(id,actions)=>{if(actions.every(a=>a&&has(p,a)))out.push({id,mode:'safe-write',sourceActions:actions,endpoints:actions.map(endpoint),parameters:Object.fromEntries(actions.map(a=>[a,params(p,a)]))});};
   for(const [id,a] of [
     ['torrent-list','torrentscontroller.h:infoAction'],['settings-read','appcontroller.h:preferencesAction'],
     ['transfer-info','transfercontroller.h:infoAction'],['logs-main','logcontroller.h:mainAction'],
@@ -50,7 +51,10 @@ function scenarios(p){
     for(const [id,a] of [['details-properties','torrentscontroller.h:propertiesAction'],['details-files','torrentscontroller.h:filesAction'],['details-trackers','torrentscontroller.h:trackersAction'],['details-webseeds','torrentscontroller.h:webseedsAction'],['details-peers','synccontroller.h:torrentPeersAction']])add(id,a);
     add('isolated-torrent-delete','torrentscontroller.h:deleteAction','cleanup');
   }
-  for(const [id,a] of [['category-create','torrentscontroller.h:createCategoryAction'],['tag-create','torrentscontroller.h:createTagsAction'],['rss-add-feed','rsscontroller.h:addFeedAction'],['torrent-creator-add','torrentcreatorcontroller.h:addTaskAction']])add(id,a,'fixture-write');
+  const categoryRead=first(p,['torrentscontroller.h:categoriesAction','synccontroller.h:maindataAction']);
+  lifecycle('category-lifecycle',['torrentscontroller.h:createCategoryAction',categoryRead,'torrentscontroller.h:removeCategoriesAction']);
+  lifecycle('tag-lifecycle',['torrentscontroller.h:createTagsAction','torrentscontroller.h:tagsAction','torrentscontroller.h:deleteTagsAction']);
+  for(const [id,a] of [['rss-add-feed','rsscontroller.h:addFeedAction'],['torrent-creator-add','torrentcreatorcontroller.h:addTaskAction']])add(id,a,'fixture-write');
   return out;
 }
 function plan(f){
@@ -78,7 +82,7 @@ async function run(){
   if(!target||!user||!pass)die('WEIG_QB_URL, WEIG_QB_USER and WEIG_QB_PASS are required.');
   if(!/^[0-9a-f]{40}$/i.test(weigSha))die('WEIG_GIT_SHA/GITHUB_SHA must be an exact 40-char SHA.');
   if(!binary)die('WEIG_QB_BINARY_IDENTITY is required.');
-  const base=new URL(target.endsWith('/')?target:`${target}/`);let sessionCookie='',sessionCookieName='',profile=null,testHash='';
+  const base=new URL(target.endsWith('/')?target:`${target}/`);let sessionCookie='',sessionCookieName='',profile=null,testHash='',testCategory='',testTag='';
   async function http(method,ep,{query,form,multipart,auth=true}={}){
     const url=new URL(ep.replace(/^\/+/,''),base);for(const [k,v] of Object.entries(query||{}))url.searchParams.set(k,String(v));
     const headers={Accept:'application/json, text/plain, */*'};if(auth&&sessionCookie)headers.Cookie=sessionCookie;
@@ -93,6 +97,14 @@ async function run(){
     if(testHash&&profile&&has(profile,'torrentscontroller.h:deleteAction')){
       try{const r=await http('POST',endpoint('torrentscontroller.h:deleteAction'),{form:{hashes:testHash,deleteFiles:'false'}});cleanup.push(`torrent-delete:${r.status}`);}catch(e){cleanup.push(`cleanup-error:${redact(e.message)}`);}
       testHash='';
+    }
+    if(testTag&&profile&&has(profile,'torrentscontroller.h:deleteTagsAction')){
+      try{const r=await http('POST',endpoint('torrentscontroller.h:deleteTagsAction'),{form:{tags:testTag}});cleanup.push(`tag-delete:${r.status}`);}catch(e){cleanup.push(`cleanup-error:${redact(e.message)}`);}
+      testTag='';
+    }
+    if(testCategory&&profile&&has(profile,'torrentscontroller.h:removeCategoriesAction')){
+      try{const r=await http('POST',endpoint('torrentscontroller.h:removeCategoriesAction'),{form:{categories:testCategory}});cleanup.push(`category-delete:${r.status}`);}catch(e){cleanup.push(`cleanup-error:${redact(e.message)}`);}
+      testCategory='';
     }
     try{if(sessionCookie)await http('POST','/api/v2/auth/logout');}catch{}
   }
@@ -120,6 +132,12 @@ async function run(){
       if(r.status!==200){ev.push('FAIL',id,{source_provenance:action,response:{status:r.status}});return null;}
       const v=await json(r);ev.push('PASS',id,{source_provenance:action,request:req('GET',ep,Object.keys(query)),response:{status:r.status,...shape(v)}});return v;
     }
+    async function categoryNames(action){
+      const ep=endpoint(action),query=action==='synccontroller.h:maindataAction'?{rid:0}:{};const r=await http('GET',ep,{query});ok(r,'category read',[200]);const v=await json(r);
+      if(action==='torrentscontroller.h:categoriesAction'&&v&&typeof v==='object'&&!Array.isArray(v))return {names:Object.keys(v),status:r.status,request:req('GET',ep)};
+      if(action==='synccontroller.h:maindataAction'&&Array.isArray(v?.categories))return {names:v.categories.map(String),status:r.status,request:req('GET',ep,['rid'])};
+      die(`Unexpected category read shape from ${action}`);
+    }
     await read('torrent-list','torrentscontroller.h:infoAction',{limit:1});
     preferences=await read('settings-read','appcontroller.h:preferencesAction');
     await read('transfer-info','transfercontroller.h:infoAction');
@@ -130,7 +148,7 @@ async function run(){
     await read('search-status','searchcontroller.h:statusAction');
 
     if(!allowWrites){
-      for(const s of scenarios(profile).filter(x=>x.mode!=='read'))ev.push('SKIP',s.id,{reason:'writes disabled; use --allow-writes only on isolated test target',source_provenance:s.sourceAction});
+      for(const s of scenarios(profile).filter(x=>x.mode!=='read'))ev.push('SKIP',s.id,{reason:'writes disabled; use --allow-writes only on isolated test target',source_provenance:s.sourceAction||s.sourceActions});
     }else{
       const set='appcontroller.h:setPreferencesAction';
       if(has(profile,set)&&preferences&&typeof preferences==='object'){
@@ -149,6 +167,27 @@ async function run(){
         for(const [id,a,q] of [['details-properties','torrentscontroller.h:propertiesAction',{hash:testHash}],['details-files','torrentscontroller.h:filesAction',{hash:testHash}],['details-trackers','torrentscontroller.h:trackersAction',{hash:testHash}],['details-webseeds','torrentscontroller.h:webseedsAction',{hash:testHash}],['details-peers','synccontroller.h:torrentPeersAction',{hash:testHash,rid:0}]])await read(id,a,q);
         const de=endpoint('torrentscontroller.h:deleteAction'),dr=await http('POST',de,{form:{hashes:testHash,deleteFiles:'false'}});ok(dr,'isolated torrent delete');await dr.text();ev.push('PASS','isolated-torrent-delete',{source_provenance:'torrentscontroller.h:deleteAction',request:req('POST',de,['hashes','deleteFiles']),response:{status:dr.status},cleanup_result:'test torrent deleted'});testHash='';
       }
+
+      const catCreate='torrentscontroller.h:createCategoryAction',catRead=first(profile,['torrentscontroller.h:categoriesAction','synccontroller.h:maindataAction']),catDelete='torrentscontroller.h:removeCategoriesAction';
+      if(catRead&&[catCreate,catRead,catDelete].every(a=>has(profile,a))){
+        testCategory=`WeiG-PhaseG-cat-${crypto.randomBytes(4).toString('hex')}`;
+        const cr=await http('POST',endpoint(catCreate),{form:{category:testCategory}});ok(cr,'category create');await cr.text();
+        const before=await categoryNames(catRead);if(!before.names.includes(testCategory))die('Created test category not visible.');
+        const dr=await http('POST',endpoint(catDelete),{form:{categories:testCategory}});ok(dr,'category delete');await dr.text();
+        const after=await categoryNames(catRead);if(after.names.includes(testCategory))die('Deleted test category still visible.');
+        ev.push('PASS','category-lifecycle',{source_provenance:[catCreate,catRead,catDelete],request:[req('POST',endpoint(catCreate),['category']),before.request,req('POST',endpoint(catDelete),['categories']),after.request],response:{create_status:cr.status,read_status:before.status,delete_status:dr.status,reread_status:after.status},cleanup_result:'generated test category absent after delete'});testCategory='';
+      }else ev.push('SKIP','category-lifecycle',{reason:'complete source-proven create/read/delete category lifecycle unavailable'});
+
+      const tagCreate='torrentscontroller.h:createTagsAction',tagRead='torrentscontroller.h:tagsAction',tagDelete='torrentscontroller.h:deleteTagsAction';
+      if([tagCreate,tagRead,tagDelete].every(a=>has(profile,a))){
+        testTag=`WeiG-PhaseG-tag-${crypto.randomBytes(4).toString('hex')}`;
+        const cr=await http('POST',endpoint(tagCreate),{form:{tags:testTag}});ok(cr,'tag create');await cr.text();
+        const rr=await http('GET',endpoint(tagRead));ok(rr,'tag read',[200]);const before=await json(rr);if(!Array.isArray(before)||!before.map(String).includes(testTag))die('Created test tag not visible.');
+        const dr=await http('POST',endpoint(tagDelete),{form:{tags:testTag}});ok(dr,'tag delete');await dr.text();
+        const ar=await http('GET',endpoint(tagRead));ok(ar,'tag reread',[200]);const after=await json(ar);if(!Array.isArray(after)||after.map(String).includes(testTag))die('Deleted test tag still visible.');
+        ev.push('PASS','tag-lifecycle',{source_provenance:[tagCreate,tagRead,tagDelete],request:[req('POST',endpoint(tagCreate),['tags']),req('GET',endpoint(tagRead)),req('POST',endpoint(tagDelete),['tags']),req('GET',endpoint(tagRead))],response:{create_status:cr.status,read_status:rr.status,delete_status:dr.status,reread_status:ar.status},cleanup_result:'generated test tag absent after delete'});testTag='';
+      }else ev.push('SKIP','tag-lifecycle',{reason:'complete source-proven create/read/delete tag lifecycle unavailable'});
+
       for(const s of scenarios(profile).filter(x=>x.mode==='fixture-write'))ev.push('SKIP',s.id,{reason:'requires dedicated server-side fixture; not faked',source_provenance:s.sourceAction});
     }
   }catch(e){fatal=e;if(ev)ev.push('FAIL','fatal',{error:redact(e.message)});}
