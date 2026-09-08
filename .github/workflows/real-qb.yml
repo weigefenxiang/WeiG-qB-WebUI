@@ -47,6 +47,7 @@ jobs:
       - name: Run isolated real qB semantic evidence
         env:
           QB_VERSION: ${{ matrix.qb }}
+          NODE_OPTIONS: --import=${{ github.workspace }}/tests/real-qb-torrent-creator.mjs
         run: |
           set -euo pipefail
           args=(--version "$QB_VERSION")
