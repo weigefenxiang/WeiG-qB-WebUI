@@ -116,14 +116,19 @@ BINARY_IDENTITY="${PACKAGE_ID}; image=${IMAGE}; imageId=${IMAGE_ID}; runtime=${R
 
 ARGS=()
 ((ALLOW_WRITES)) && ARGS+=(--allow-writes)
-WEIG_QB_URL="$TARGET" \
-WEIG_QB_USER="$USERNAME" \
-WEIG_QB_PASS="$PASSWORD" \
-WEIG_GIT_SHA="${GITHUB_SHA:-$(git rev-parse HEAD)}" \
-WEIG_QB_BINARY_IDENTITY="$BINARY_IDENTITY" \
-WEIG_QB_PLATFORM='GitHub Actions Ubuntu / isolated Docker network' \
-WEIG_QB_ARCH="$(uname -m)" \
-WEIG_QB_DEPLOYMENT_MODE='ephemeral real-qB Docker; outbound network denied; host access via private internal bridge only' \
-WEIG_QB_INSTALL_MODE="$PACKAGE_ID" \
-WEIG_QB_REVERSE_PROXY='none' \
-node tests/real-qb-harness.mjs "${ARGS[@]}"
+run_evidence() {
+  WEIG_QB_URL="$TARGET" \
+  WEIG_QB_USER="$USERNAME" \
+  WEIG_QB_PASS="$PASSWORD" \
+  WEIG_GIT_SHA="${GITHUB_SHA:-$(git rev-parse HEAD)}" \
+  WEIG_QB_BINARY_IDENTITY="$BINARY_IDENTITY" \
+  WEIG_QB_PLATFORM='GitHub Actions Ubuntu / isolated Docker network' \
+  WEIG_QB_ARCH="$(uname -m)" \
+  WEIG_QB_DEPLOYMENT_MODE='ephemeral real-qB Docker; outbound network denied; host access via private internal bridge only' \
+  WEIG_QB_INSTALL_MODE="$PACKAGE_ID" \
+  WEIG_QB_REVERSE_PROXY='none' \
+  "$@"
+}
+
+run_evidence node tests/real-qb-harness.mjs "${ARGS[@]}"
+run_evidence node tests/real-qb-search.mjs
