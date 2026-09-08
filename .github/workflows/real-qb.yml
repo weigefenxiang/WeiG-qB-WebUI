@@ -64,3 +64,44 @@ jobs:
           path: artifacts/real-qb/*.json
           if-no-files-found: warn
           retention-days: 30
+
+  latest-alt-webui-browser:
+    name: qB 5.2.3 Alternative WebUI Chrome
+    if: ${{ github.event_name == 'push' || inputs.mode == 'safe-write' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install browser test dependency
+        run: npm ci --no-audit --no-fund --prefer-offline
+
+      - name: Verify hosted Chrome runtime
+        run: |
+          set -euo pipefail
+          command -v google-chrome >/dev/null || { echo 'Hosted Google Chrome Stable is missing.' >&2; exit 1; }
+          google-chrome --version
+          node -p "require('playwright/package.json').version"
+          printf 'Git SHA: %s\n' "$GITHUB_SHA"
+
+      - name: Run real qB Alternative WebUI browser smoke
+        env:
+          NODE_OPTIONS: --import=${{ github.workspace }}/tests/real-qb-torrent-creator.mjs
+        run: bash tests/real-qb-docker.sh --version 5.2.3 --allow-writes --browser-smoke
+
+      - name: Upload exact-SHA Alternative WebUI browser evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: real-qb-alt-webui-5.2.3-${{ github.sha }}
+          path: artifacts/real-qb/*.json
+          if-no-files-found: error
+          retention-days: 30

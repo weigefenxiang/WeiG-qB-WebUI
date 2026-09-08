@@ -3,10 +3,12 @@ set -Eeuo pipefail
 
 VERSION=""
 ALLOW_WRITES=0
+BROWSER_SMOKE=0
 while (($#)); do
   case "$1" in
     --version) VERSION="${2:-}"; shift 2 ;;
     --allow-writes) ALLOW_WRITES=1; shift ;;
+    --browser-smoke) BROWSER_SMOKE=1; shift ;;
     *) echo "Unknown argument: $1" >&2; exit 2 ;;
   esac
 done
@@ -14,6 +16,41 @@ done
 command -v docker >/dev/null || { echo "docker is required" >&2; exit 2; }
 command -v node >/dev/null || { echo "node is required" >&2; exit 2; }
 command -v curl >/dev/null || { echo "curl is required" >&2; exit 2; }
+
+STAGE=''
+WEIG_SHA="${GITHUB_SHA:-$(git rev-parse HEAD)}"
+[[ "$WEIG_SHA" =~ ^[0-9a-fA-F]{40}$ ]] || { echo "Exact Git SHA is required" >&2; exit 2; }
+if ((BROWSER_SMOKE)); then
+  [[ "$VERSION" == "5.2.3" ]] || { echo "--browser-smoke currently admits only latest stable qB 5.2.3" >&2; exit 2; }
+  ((ALLOW_WRITES)) || { echo "--browser-smoke requires --allow-writes on the isolated target" >&2; exit 2; }
+  command -v google-chrome >/dev/null || { echo "Google Chrome Stable is required for --browser-smoke" >&2; exit 2; }
+  STAGE="$(mktemp -d)"
+  cp -a webui/. "$STAGE/"
+  if find "$STAGE" -type l -print -quit | grep -q .; then
+    echo "Alternative WebUI staging contains a symlink; qB rejects symlinks" >&2
+    exit 1
+  fi
+  find "$STAGE" -type f \( -name '*.html' -o -name '*.js' -o -name '*.css' -o -name '*.json' -o -name 'GIT_SHA' \) \
+    -exec sed -i "s/__WEIGG_GIT_SHA__/${WEIG_SHA}/g" {} +
+  printf '%s\n' "$WEIG_SHA" > "$STAGE/GIT_SHA"
+  cat > "$STAGE/private/weigg-install.json" <<EOF_META
+{
+  "version": "$(tr -d '\r\n' < "$STAGE/VERSION")",
+  "gitSha": "$WEIG_SHA",
+  "channel": "dev",
+  "container": "ephemeral-real-qB",
+  "qbPath": "/weig-webui",
+  "hostPath": "ephemeral-ci-staging",
+  "installedAt": "$(date -u '+%Y-%m-%dT%H:%M:%SZ')",
+  "installer": "phase-g-ci"
+}
+EOF_META
+  if grep -R -l --include='*.html' --include='*.js' --include='*.css' --include='*.json' --include='GIT_SHA' \
+      '__WEIGG_GIT_SHA__' "$STAGE" | grep -q .; then
+    echo "Alternative WebUI staging still contains an unresolved Git SHA placeholder" >&2
+    exit 1
+  fi
+fi
 
 case "$VERSION" in
   4.1.0)
@@ -59,6 +96,7 @@ cleanup() {
   set +e
   docker rm -f "$NAME" >/dev/null 2>&1 || true
   docker network rm "$NET" >/dev/null 2>&1 || true
+  [[ -z "${STAGE:-}" ]] || rm -rf "$STAGE"
 }
 trap cleanup EXIT INT TERM
 
@@ -72,6 +110,9 @@ COMMON=(
   --tmpfs /config:rw,exec,nosuid,nodev,mode=1777
   --tmpfs /downloads:rw,nosuid,nodev,mode=1777
 )
+if ((BROWSER_SMOKE)); then
+  COMMON+=(-v "$STAGE:/weig-webui:ro")
+fi
 if ((OFFICIAL_IMAGE)); then
   docker run "${COMMON[@]}" \
     -e QBT_LEGAL_NOTICE=confirm \
@@ -120,15 +161,19 @@ run_evidence() {
   WEIG_QB_URL="$TARGET" \
   WEIG_QB_USER="$USERNAME" \
   WEIG_QB_PASS="$PASSWORD" \
-  WEIG_GIT_SHA="${GITHUB_SHA:-$(git rev-parse HEAD)}" \
+  WEIG_GIT_SHA="$WEIG_SHA" \
   WEIG_QB_BINARY_IDENTITY="$BINARY_IDENTITY" \
   WEIG_QB_PLATFORM='GitHub Actions Ubuntu / isolated Docker network' \
   WEIG_QB_ARCH="$(uname -m)" \
   WEIG_QB_DEPLOYMENT_MODE='ephemeral real-qB Docker; outbound network denied; host access via private internal bridge only' \
   WEIG_QB_INSTALL_MODE="$PACKAGE_ID" \
   WEIG_QB_REVERSE_PROXY='none' \
+  WEIG_QB_ALT_WEBUI_PATH="${WEIG_QB_ALT_WEBUI_PATH:-}" \
   "$@"
 }
 
 run_evidence node tests/real-qb-harness.mjs "${ARGS[@]}"
 run_evidence node tests/real-qb-search.mjs
+if ((BROWSER_SMOKE)); then
+  WEIG_QB_ALT_WEBUI_PATH='/weig-webui' run_evidence node tests/real-qb-browser.mjs
+fi
