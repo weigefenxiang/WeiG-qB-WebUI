@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import {spawnSync} from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -212,4 +213,13 @@ async function run(){
   }
   if(fatal)throw fatal;if(ev?.data.summary.FAIL)process.exitCode=1;
 }
-run().catch(e=>{console.error(`FAIL: ${redact(e.message||e)}`);process.exitCode=1;});
+async function entry(){
+  await run();
+  if(planOnly)return;
+  const args=[path.join(root,'tests/real-qb-file-priority.mjs')];
+  if(allowWrites)args.push('--allow-writes');
+  const child=spawnSync(process.execPath,args,{stdio:'inherit',env:process.env});
+  if(child.error)throw child.error;
+  if(child.status!==0)process.exitCode=child.status??1;
+}
+entry().catch(e=>{console.error(`FAIL: ${redact(e.message||e)}`);process.exitCode=1;});
