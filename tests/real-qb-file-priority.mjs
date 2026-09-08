@@ -23,6 +23,7 @@ const actionNames=Object.values(actions);
 const trackerActions={
   read:'torrentscontroller.h:trackersAction',
   add:'torrentscontroller.h:addTrackersAction',
+  edit:'torrentscontroller.h:editTrackerAction',
   remove:'torrentscontroller.h:removeTrackersAction'
 };
 const endpoint=a=>`/api/v2/torrents/${a.split(':')[1].slice(0,-6)}`;
@@ -137,7 +138,9 @@ async function main(){
     const available=Array.isArray(profile.apiActions)?profile.apiActions:[];
     const missing=actionNames.filter(a=>!available.includes(a));
     const trackerAddReadAvailable=[trackerActions.add,trackerActions.read].every(a=>available.includes(a));
+    const trackerEditAvailable=available.includes(trackerActions.edit);
     const trackerRemoveAvailable=available.includes(trackerActions.remove);
+    const trackerSourceActions=[trackerActions.add,trackerActions.read,...(trackerEditAvailable?[trackerActions.edit]:[]),...(trackerRemoveAvailable?[trackerActions.remove]:[])];
     if(missing.length){
       ev.push('SKIP','file-priority-lifecycle',{reason:'source action unavailable',missing_source_actions:missing});
       ev.push('SKIP','tracker-mutation-lifecycle',{reason:'shared isolated torrent fixture unavailable because File Priority core actions are missing'});
@@ -145,7 +148,7 @@ async function main(){
     }
     if(!allowWrites){
       ev.push('SKIP','file-priority-lifecycle',{reason:'writes disabled; use --allow-writes only on isolated test target',source_provenance:actionNames});
-      ev.push('SKIP','tracker-mutation-lifecycle',{reason:'writes disabled; use --allow-writes only on isolated test target',source_provenance:[trackerActions.add,trackerActions.read,...(trackerRemoveAvailable?[trackerActions.remove]:[])]});
+      ev.push('SKIP','tracker-mutation-lifecycle',{reason:'writes disabled; use --allow-writes only on isolated test target',source_provenance:trackerSourceActions});
       writeEvidence();return;
     }
 
@@ -201,28 +204,49 @@ async function main(){
     let trackerResult=null;
     activeScenario='tracker-mutation-lifecycle';
     if(trackerAddReadAvailable){
-      const trackerUrl=`http://127.0.0.1:1/announce/${crypto.createHash('sha256').update(`${weigSha}:${qb}:tracker`).digest('hex').slice(0,12)}`;
-      const trackerAdd=await http('POST',endpoint(trackerActions.add),{form:{hash:fixtureHash,urls:trackerUrl}});
+      const trackerToken=crypto.createHash('sha256').update(`${weigSha}:${qb}:tracker`).digest('hex').slice(0,12);
+      const originalTrackerUrl=`http://127.0.0.1:1/announce/${trackerToken}`;
+      const editedTrackerUrl=`http://127.0.0.1:1/announce-edited/${trackerToken}`;
+      let currentTrackerUrl=originalTrackerUrl;
+      const trackerAdd=await http('POST',endpoint(trackerActions.add),{form:{hash:fixtureHash,urls:currentTrackerUrl}});
       if(![200,204].includes(trackerAdd.status)){await trackerAdd.text();die(`tracker add: HTTP ${trackerAdd.status}`);}await trackerAdd.text();
 
       const trackerRead=await http('GET',endpoint(trackerActions.read),{query:{hash:fixtureHash}});
       if(trackerRead.status!==200){await trackerRead.text();die(`tracker read after add: HTTP ${trackerRead.status}`);}
       const trackersBefore=await readJson(trackerRead);
-      if(!Array.isArray(trackersBefore)||!trackersBefore.some(x=>String(x?.url||'')===trackerUrl))die('Added test tracker not visible on reread.');
+      if(!Array.isArray(trackersBefore)||!trackersBefore.some(x=>String(x?.url||'')===currentTrackerUrl))die('Added test tracker not visible on reread.');
 
-      let removeStatus=null,rereadStatus=null;
+      let editStatus=null,editRereadStatus=null,removeStatus=null,rereadStatus=null;
       const requestSequence=[
         {method:'POST',endpoint:endpoint(trackerActions.add),paramNames:['hash','urls']},
         {method:'GET',endpoint:endpoint(trackerActions.read),paramNames:['hash']}
       ];
+      if(trackerEditAvailable){
+        const editParamNames=profile.apiActionParameters?.[trackerActions.edit]?.parameters||[];
+        let editForm;
+        if(editParamNames.includes('origUrl'))editForm={hash:fixtureHash,origUrl:currentTrackerUrl,newUrl:editedTrackerUrl};
+        else if(editParamNames.includes('url'))editForm={hash:fixtureHash,url:currentTrackerUrl,newUrl:editedTrackerUrl};
+        else die('editTracker action exists but its original URL parameter contract is unknown; fail closed.');
+        const trackerEdit=await http('POST',endpoint(trackerActions.edit),{form:editForm});
+        if(![200,204].includes(trackerEdit.status)){await trackerEdit.text();die(`tracker edit: HTTP ${trackerEdit.status}`);}await trackerEdit.text();editStatus=trackerEdit.status;
+        const trackerEditReread=await http('GET',endpoint(trackerActions.read),{query:{hash:fixtureHash}});
+        if(trackerEditReread.status!==200){await trackerEditReread.text();die(`tracker reread after edit: HTTP ${trackerEditReread.status}`);}
+        const trackersEdited=await readJson(trackerEditReread);editRereadStatus=trackerEditReread.status;
+        if(!Array.isArray(trackersEdited)||!trackersEdited.some(x=>String(x?.url||'')===editedTrackerUrl)||trackersEdited.some(x=>String(x?.url||'')===originalTrackerUrl))die('Edited tracker state not visible exactly on reread.');
+        requestSequence.push(
+          {method:'POST',endpoint:endpoint(trackerActions.edit),paramNames:Object.keys(editForm).sort()},
+          {method:'GET',endpoint:endpoint(trackerActions.read),paramNames:['hash']}
+        );
+        currentTrackerUrl=editedTrackerUrl;
+      }
       let cleanupResult='generated tracker removed with generated torrent';
       if(trackerRemoveAvailable){
-        const trackerRemove=await http('POST',endpoint(trackerActions.remove),{form:{hash:fixtureHash,urls:trackerUrl}});
+        const trackerRemove=await http('POST',endpoint(trackerActions.remove),{form:{hash:fixtureHash,urls:currentTrackerUrl}});
         if(![200,204].includes(trackerRemove.status)){await trackerRemove.text();die(`tracker remove: HTTP ${trackerRemove.status}`);}await trackerRemove.text();removeStatus=trackerRemove.status;
         const trackerReread=await http('GET',endpoint(trackerActions.read),{query:{hash:fixtureHash}});
         if(trackerReread.status!==200){await trackerReread.text();die(`tracker reread after remove: HTTP ${trackerReread.status}`);}
         const trackersAfter=await readJson(trackerReread);rereadStatus=trackerReread.status;
-        if(!Array.isArray(trackersAfter)||trackersAfter.some(x=>String(x?.url||'')===trackerUrl))die('Removed test tracker still visible on reread.');
+        if(!Array.isArray(trackersAfter)||trackersAfter.some(x=>String(x?.url||'')===currentTrackerUrl))die('Removed test tracker still visible on reread.');
         requestSequence.push(
           {method:'POST',endpoint:endpoint(trackerActions.remove),paramNames:['hash','urls']},
           {method:'GET',endpoint:endpoint(trackerActions.read),paramNames:['hash']}
@@ -230,9 +254,9 @@ async function main(){
         cleanupResult='generated tracker absent after remove; generated torrent deleted later';
       }
       trackerResult={
-        source_provenance:[trackerActions.add,trackerActions.read,...(trackerRemoveAvailable?[trackerActions.remove]:[])],
+        source_provenance:trackerSourceActions,
         request_sequence:requestSequence,
-        response:{add_status:trackerAdd.status,read_status:trackerRead.status,remove_status:removeStatus,reread_status:rereadStatus},
+        response:{add_status:trackerAdd.status,read_status:trackerRead.status,edit_supported:trackerEditAvailable,edit_status:editStatus,edit_reread_status:editRereadStatus,remove_status:removeStatus,reread_status:rereadStatus},
         cleanup_result:cleanupResult,
         network_dependency:'loopback-only unreachable tracker URL'
       };
