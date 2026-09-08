@@ -64,7 +64,7 @@ async function main(){
 
   try{
     const login=await http('POST','/api/v2/auth/login',{form:{username:user,password:pass},auth:false});
-    if(login.status!==200)die(`login: HTTP ${login.status}`);
+    if(![200,204].includes(login.status))die(`login: HTTP ${login.status}`);
     const cookies=typeof login.headers.getSetCookie==='function'?login.headers.getSetCookie():[login.headers.get('set-cookie')].filter(Boolean);
     for(const raw of cookies){const m=String(raw).match(/^\s*([^=;\s]+)=([^;]+)/);if(m){sessionCookieName=m[1];sessionCookie=`${m[1]}=${m[2]}`;break;}}
     await login.text();
