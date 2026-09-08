@@ -54,7 +54,8 @@ function scenarios(p){
   const categoryRead=first(p,['torrentscontroller.h:categoriesAction','synccontroller.h:maindataAction']);
   lifecycle('category-lifecycle',['torrentscontroller.h:createCategoryAction',categoryRead,'torrentscontroller.h:removeCategoriesAction']);
   lifecycle('tag-lifecycle',['torrentscontroller.h:createTagsAction','torrentscontroller.h:tagsAction','torrentscontroller.h:deleteTagsAction']);
-  for(const [id,a] of [['rss-add-feed','rsscontroller.h:addFeedAction'],['torrent-creator-add','torrentcreatorcontroller.h:addTaskAction']])add(id,a,'fixture-write');
+  lifecycle('rss-lifecycle',['rsscontroller.h:addFeedAction','rsscontroller.h:itemsAction','rsscontroller.h:removeItemAction']);
+  add('torrent-creator-add','torrentcreatorcontroller.h:addTaskAction','fixture-write');
   return out;
 }
 function plan(f){
@@ -82,7 +83,7 @@ async function run(){
   if(!target||!user||!pass)die('WEIG_QB_URL, WEIG_QB_USER and WEIG_QB_PASS are required.');
   if(!/^[0-9a-f]{40}$/i.test(weigSha))die('WEIG_GIT_SHA/GITHUB_SHA must be an exact 40-char SHA.');
   if(!binary)die('WEIG_QB_BINARY_IDENTITY is required.');
-  const base=new URL(target.endsWith('/')?target:`${target}/`);let sessionCookie='',sessionCookieName='',profile=null,testHash='',testCategory='',testTag='';
+  const base=new URL(target.endsWith('/')?target:`${target}/`);let sessionCookie='',sessionCookieName='',profile=null,testHash='',testCategory='',testTag='',testRssPath='';
   async function http(method,ep,{query,form,multipart,auth=true}={}){
     const url=new URL(ep.replace(/^\/+/,''),base);for(const [k,v] of Object.entries(query||{}))url.searchParams.set(k,String(v));
     const headers={Accept:'application/json, text/plain, */*'};if(auth&&sessionCookie)headers.Cookie=sessionCookie;
@@ -97,6 +98,10 @@ async function run(){
     if(testHash&&profile&&has(profile,'torrentscontroller.h:deleteAction')){
       try{const r=await http('POST',endpoint('torrentscontroller.h:deleteAction'),{form:{hashes:testHash,deleteFiles:'false'}});cleanup.push(`torrent-delete:${r.status}`);}catch(e){cleanup.push(`cleanup-error:${redact(e.message)}`);}
       testHash='';
+    }
+    if(testRssPath&&profile&&has(profile,'rsscontroller.h:removeItemAction')){
+      try{const r=await http('POST',endpoint('rsscontroller.h:removeItemAction'),{form:{path:testRssPath}});cleanup.push(`rss-delete:${r.status}`);}catch(e){cleanup.push(`cleanup-error:${redact(e.message)}`);}
+      testRssPath='';
     }
     if(testTag&&profile&&has(profile,'torrentscontroller.h:deleteTagsAction')){
       try{const r=await http('POST',endpoint('torrentscontroller.h:deleteTagsAction'),{form:{tags:testTag}});cleanup.push(`tag-delete:${r.status}`);}catch(e){cleanup.push(`cleanup-error:${redact(e.message)}`);}
@@ -187,6 +192,16 @@ async function run(){
         const ar=await http('GET',endpoint(tagRead));ok(ar,'tag reread',[200]);const after=await json(ar);if(!Array.isArray(after)||after.map(String).includes(testTag))die('Deleted test tag still visible.');
         ev.push('PASS','tag-lifecycle',{source_provenance:[tagCreate,tagRead,tagDelete],request:[req('POST',endpoint(tagCreate),['tags']),req('GET',endpoint(tagRead)),req('POST',endpoint(tagDelete),['tags']),req('GET',endpoint(tagRead))],response:{create_status:cr.status,read_status:rr.status,delete_status:dr.status,reread_status:ar.status},cleanup_result:'generated test tag absent after delete'});testTag='';
       }else ev.push('SKIP','tag-lifecycle',{reason:'complete source-proven create/read/delete tag lifecycle unavailable'});
+
+      const rssAdd='rsscontroller.h:addFeedAction',rssRead='rsscontroller.h:itemsAction',rssDelete='rsscontroller.h:removeItemAction';
+      if([rssAdd,rssRead,rssDelete].every(a=>has(profile,a))){
+        const token=crypto.randomBytes(4).toString('hex');testRssPath=`WeiG-PhaseG-rss-${token}`;const testRssUrl=`http://127.0.0.1:1/${token}.rss`;
+        const cr=await http('POST',endpoint(rssAdd),{form:{url:testRssUrl,path:testRssPath}});ok(cr,'rss add feed');await cr.text();
+        const rr=await http('GET',endpoint(rssRead),{query:{withData:'false'}});ok(rr,'rss items',[200]);const before=await json(rr);if(!before||typeof before!=='object'||Array.isArray(before)||!Object.hasOwn(before,testRssPath))die('Created test RSS feed not visible.');
+        const dr=await http('POST',endpoint(rssDelete),{form:{path:testRssPath}});ok(dr,'rss remove item');await dr.text();
+        const ar=await http('GET',endpoint(rssRead),{query:{withData:'false'}});ok(ar,'rss items reread',[200]);const after=await json(ar);if(!after||typeof after!=='object'||Array.isArray(after)||Object.hasOwn(after,testRssPath))die('Deleted test RSS feed still visible.');
+        ev.push('PASS','rss-lifecycle',{source_provenance:[rssAdd,rssRead,rssDelete],request:[req('POST',endpoint(rssAdd),['url','path']),req('GET',endpoint(rssRead),['withData']),req('POST',endpoint(rssDelete),['path']),req('GET',endpoint(rssRead),['withData'])],response:{create_status:cr.status,read_status:rr.status,delete_status:dr.status,reread_status:ar.status},cleanup_result:'generated test RSS feed absent after delete; feed URL loopback-only and unreachable'});testRssPath='';
+      }else ev.push('SKIP','rss-lifecycle',{reason:'complete source-proven add/read/remove RSS lifecycle unavailable'});
 
       for(const s of scenarios(profile).filter(x=>x.mode==='fixture-write'))ev.push('SKIP',s.id,{reason:'requires dedicated server-side fixture; not faked',source_provenance:s.sourceAction});
     }
