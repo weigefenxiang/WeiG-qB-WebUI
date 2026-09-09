@@ -129,12 +129,31 @@ run_qb_container() {
     "$IMAGE" >/dev/null
 }
 
-wait_for_qb_webui_marker() {
-  local marker=$1
-  local container_ip target body code
+container_target() {
+  local container_ip
   container_ip=$(docker inspect "$NAME" --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
   [[ "$container_ip" =~ ^[0-9]+(\.[0-9]+){3}$ ]] || { echo 'Unable to resolve private qB container IP' >&2; return 1; }
-  target="http://${container_ip}:8080/"
+  printf 'http://%s:8080/\n' "$container_ip"
+}
+
+current_qb_password() {
+  local password=''
+  for _ in $(seq 1 30); do
+    password=$(docker logs "$NAME" 2>&1 | sed -n 's/.*temporary password is provided for this session: \([^[:space:]]*\).*/\1/p' | tail -n1)
+    if [[ -n "$password" ]]; then
+      printf '%s\n' "$password"
+      return 0
+    fi
+    sleep 1
+  done
+  echo 'Temporary qB admin password was not emitted.' >&2
+  return 1
+}
+
+wait_for_qb_webui_marker() {
+  local marker=$1
+  local target body code
+  target=$(container_target)
   for _ in $(seq 1 60); do
     code=$($REAL_CURL --silent --output /dev/null --write-out '%{http_code}' --connect-timeout 1 --max-time 2 "$target" || true)
     if [[ "$code" == 200 ]]; then
@@ -149,12 +168,28 @@ wait_for_qb_webui_marker() {
   return 1
 }
 
+run_lifecycle_browser_smoke() {
+  local marker=$1 expected_sha=$2
+  local target password
+  target=$(container_target)
+  password=$(current_qb_password)
+  WEIG_QB_URL="$target" \
+  WEIG_QB_USER='admin' \
+  WEIG_QB_PASS="$password" \
+  WEIG_LIFECYCLE_MARKER="$marker" \
+  WEIG_LIFECYCLE_SHA="$expected_sha" \
+  WEIG_QB_EXPECTED_VERSION='5.2.3' \
+  WEIG_QB_ALT_WEBUI_PATH="$QB_ROOT" \
+    node "$ROOT/tests/installer-lifecycle-browser.mjs"
+}
+
 recreate_qb_and_assert_webui() {
-  local marker=$1
+  local marker=$1 expected_sha=$2
   docker rm -f "$NAME" >/dev/null 2>&1 || true
   PAUSED=0
   run_qb_container
   wait_for_qb_webui_marker "$marker"
+  run_lifecycle_browser_smoke "$marker" "$expected_sha"
   docker pause "$NAME" >/dev/null
   PAUSED=1
 }
@@ -222,7 +257,7 @@ cmp "$FIRST_BACKUP/qBittorrent.conf" "$TMP/original-qbittorrent.conf"
 test "$(cat "$FIRST_BACKUP/config-path")" = "$QBT_CONFIG"
 test "$(cat "$FIRST_BACKUP/dest-path")" = "$DEST"
 test "$(cat "$FIRST_BACKUP/qb-root-folder")" = "$QB_ROOT"
-recreate_qb_and_assert_webui release-one
+recreate_qb_and_assert_webui release-one "$SHA_ONE"
 
 sleep 1
 bash "$ROOT/installers/install.sh" --version "$VERSION_TWO" --configure --container "$NAME"
@@ -235,7 +270,7 @@ test "$(tr -d '\r\n' < "$SECOND_BACKUP/webui/GIT_SHA")" = "$SHA_ONE"
 test "$(tr -d '\r\n' < "$SECOND_BACKUP/webui/private/lifecycle-marker.txt")" = release-one
 grep -Fx 'WebUI\AlternativeUIEnabled=true' "$SECOND_BACKUP/qBittorrent.conf" >/dev/null
 grep -Fx "WebUI\\RootFolder=$QB_ROOT" "$SECOND_BACKUP/qBittorrent.conf" >/dev/null
-recreate_qb_and_assert_webui release-two
+recreate_qb_and_assert_webui release-two "$SHA_TWO"
 
 sed -i 's#^WebUI\\AlternativeUIEnabled=.*#WebUI\\AlternativeUIEnabled=false#' "$QBT_CONFIG"
 sed -i 's#^WebUI\\RootFolder=.*#WebUI\\RootFolder=/config/post-upgrade-mutated#' "$QBT_CONFIG"
@@ -243,7 +278,7 @@ sed -i 's#^WebUI\\RootFolder=.*#WebUI\\RootFolder=/config/post-upgrade-mutated#'
 bash "$ROOT/installers/install.sh" --rollback
 assert_install "$VERSION_ONE" "$SHA_ONE" release-one
 cmp "$QBT_CONFIG" "$SECOND_BACKUP/qBittorrent.conf"
-recreate_qb_and_assert_webui release-one
+recreate_qb_and_assert_webui release-one "$SHA_ONE"
 
 test "$(cat "$STATE/last-dest")" = "$DEST"
 test "$(cat "$STATE/last-qb-root-folder")" = "$QB_ROOT"
@@ -272,6 +307,11 @@ const evidence={
     publishedHostPorts:0,
     configPath:'REDACTED/qBittorrent/config/qBittorrent.conf'
   },
+  browser:{
+    channel:'Google Chrome Stable',
+    headless:true,
+    externalRequestsBlocked:true
+  },
   fixture:{
     versions:[process.env.VERSION_ONE,process.env.VERSION_TWO],
     sourceShas:[process.env.SHA_ONE,process.env.SHA_TWO]
@@ -286,12 +326,15 @@ const evidence={
     installMetadata:true,
     qbConfigWrite:true,
     initialRealWebuiServe:true,
+    initialBrowserSmoke:true,
     upgradeBackup:true,
     upgrade:true,
     upgradeRealWebuiServe:true,
+    upgradeBrowserSmoke:true,
     rollbackWebui:true,
     rollbackQbConfig:true,
-    rollbackRealWebuiServe:true
+    rollbackRealWebuiServe:true,
+    rollbackBrowserSmoke:true
   },
   rollbackState:{
     version:meta.version,
@@ -304,5 +347,5 @@ const evidence={
 fs.writeFileSync(path.join(root,'artifacts/install-lifecycle/docker.json'),JSON.stringify(evidence,null,2)+'\n');
 NODE
 
-printf 'Official qB Docker installer lifecycle passed: install %s -> upgrade %s -> rollback %s with real WebUI serving\n' \
+printf 'Official qB Docker installer lifecycle passed: install %s -> upgrade %s -> rollback %s with real WebUI serving and Chrome smoke\n' \
   "$VERSION_ONE" "$VERSION_TWO" "$VERSION_ONE"

@@ -44,8 +44,20 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install browser test dependency
+        run: npm ci --no-audit --no-fund --prefer-offline
+      - name: Verify hosted Chrome runtime
+        run: |
+          set -euo pipefail
+          command -v google-chrome >/dev/null || { echo 'Hosted Google Chrome Stable is missing.' >&2; exit 1; }
+          google-chrome --version
+          node -p "require('playwright/package.json').version"
       - name: Docker lifecycle syntax
-        run: bash -n tests/installer-docker-lifecycle.sh
+        run: |
+          bash -n tests/installer-docker-lifecycle.sh
+          node --check tests/installer-lifecycle-browser.mjs
       - name: Official qB Docker install upgrade rollback lifecycle
         shell: bash
         run: bash tests/installer-docker-lifecycle.sh
