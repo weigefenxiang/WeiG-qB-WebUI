@@ -1,6 +1,7 @@
 name: Virtual qB Pages Source
 
 # Strict main promotion reuses only an exact-SHA validated dev Pages artifact; no legacy artifact fallback is allowed.
+# Test-only changes are covered by their owning CI workflows and must not redeploy Pages.
 on:
   push:
     branches:
@@ -14,7 +15,6 @@ on:
       - 'package-lock.json'
       - '.github/workflows/pages.yml'
       - '.github/workflows/pages-source.yml'
-      - 'tests/**'
 
 permissions:
   contents: read

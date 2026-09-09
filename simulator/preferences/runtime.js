@@ -9,6 +9,8 @@ import {
 import { sanitizeWorldPreferenceValues } from './migration.js';
 import { setPreferences } from '../core/engine.js';
 
+const hasOwn=(object,key)=>Object.prototype.hasOwnProperty.call(object,key);
+
 function preferenceKeysForWorld(world) {
   if (Array.isArray(world?.profile?.preferenceKeys)) {
     return world.profile.preferenceKeys.map(String);
@@ -23,6 +25,16 @@ function descriptorOptions(world, options, registry) {
     profileDefaults: options.profileDefaults ?? world?.profile?.preferenceDefaults ?? null,
     inheritedPreferences: options.inheritedPreferences ?? world?.profile?.preferenceInheritedDefaults ?? null
   };
+}
+
+function authenticationPolicy(world){
+  world.authenticationPolicy=world.authenticationPolicy||{
+    acceptAny:false,
+    username:String(world?.preferences?.web_ui_username??'weigshare'),
+    password:'weigshare'
+  };
+  world.authenticationPolicy.acceptAny=false;
+  return world.authenticationPolicy;
 }
 
 export function createPreferenceRuntime(world, options = {}) {
@@ -63,11 +75,17 @@ export function createPreferenceRuntime(world, options = {}) {
     },
 
     write(patch = {}, now = Date.now()) {
-      const accepted = service.write(patch);
+      const requested=patch&&typeof patch==='object'?{...patch}:{};
+      const passwordRequested=hasOwn(requested,'web_ui_password');
+      const nextPassword=passwordRequested?String(requested.web_ui_password??''):'';
+      delete requested.web_ui_password;
+      const accepted = service.write(requested);
       if (Object.keys(accepted).length) {
         setPreferences(world, accepted, now);
+        if(hasOwn(accepted,'web_ui_username'))authenticationPolicy(world).username=String(accepted.web_ui_username??'');
         rebuild();
       }
+      if(passwordRequested&&nextPassword.length>=6)authenticationPolicy(world).password=nextPassword;
       return accepted;
     },
 

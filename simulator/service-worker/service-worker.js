@@ -12,6 +12,9 @@ const SOURCE_PRIVATE='./__source/private/';
 const SOURCE_PUBLIC='./__source/public/';
 const CATALOG_URL='./__simulator/versions/catalog.generated.json';
 const DEFAULT_SESSION='default';
+const LAB_USERNAME='weigshare';
+const LAB_PASSWORD='weigshare';
+const LAB_AUTH_POLICY_VERSION=1;
 const clientSessions=new Map();
 const worlds=createWorldCache({load:loadWorld,save:saveWorld,remove:deleteWorld,maxEntries:6,readPersistMs:30000});
 let queue=Promise.resolve();
@@ -105,6 +108,17 @@ function upgradeNetworkEnvironment(world,id,fallbackSeed){
   return true;
 }
 
+function ensureLabAuthPolicy(world){
+  if(Number(world.labAuthPolicyVersion)===LAB_AUTH_POLICY_VERSION)return false;
+  world.preferences=world.preferences||{};
+  world.preferences.web_ui_username=LAB_USERNAME;
+  world.authenticationPolicy={acceptAny:false,username:LAB_USERNAME,password:LAB_PASSWORD};
+  world.authenticated=false;
+  world.virtualSid=null;
+  world.labAuthPolicyVersion=LAB_AUTH_POLICY_VERSION;
+  return true;
+}
+
 async function ensureWorld(event,url){
   const cfg=configFromUrl(url),id=await sessionIdForEvent(event,url);
   if(cfg.reset)await worlds.reset(id);
@@ -118,6 +132,7 @@ async function ensureWorld(event,url){
     world.networkSeed=networkSeed;
     applyScenario(world,cfg.scenario);
     world.lab={clean:cfg.clean};
+    ensureLabAuthPolicy(world);
     await worlds.seed(id,world,{persist:true});
   }else{
     let changed=false;
@@ -125,6 +140,7 @@ async function ensureWorld(event,url){
     const migration=reconcileWorldProfile(world,catalog,requestedVersion);
     changed=changed||migration.changed;
     changed=upgradeNetworkEnvironment(world,id,cfg.seed)||changed;
+    changed=ensureLabAuthPolicy(world)||changed;
     world.lab=world.lab||{};
     if(url.searchParams.has('clean')&&world.lab.clean!==cfg.clean){world.lab.clean=cfg.clean;changed=true;}
     if(changed)await worlds.touch(id,world,{mutation:true});
@@ -140,14 +156,14 @@ function sourceUrl(kind,path='index.html'){
 async function fetchSource(kind,path,options={}){
   const response=await fetch(sourceUrl(kind,path),{cache:'no-store'});
   if(!response.ok)return response;
-  if(options.injectDemoCredentials&&path==='index.html'){
+  if(options.injectLabCredentials&&path==='index.html'){
     let html=await response.text();
     html=html.replace(
       /(<input\s+id="username"[^>]*)(\/>)/,
-      (m,a,b)=>a.includes(' value=')?m:`${a} value="demo"${b}`
+      (m,a,b)=>a.includes(' value=')?m:`${a} value="${LAB_USERNAME}"${b}`
     ).replace(
       /(<input\s+id="password"[^>]*)(\/>)/,
-      (m,a,b)=>a.includes(' value=')?m:`${a} value="demo"${b}`
+      (m,a,b)=>a.includes(' value=')?m:`${a} value="${LAB_PASSWORD}"${b}`
     );
     return new Response(html,{status:200,headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store'}});
   }
@@ -165,7 +181,7 @@ async function handleNavigation(event,url){
   const {id,world}=await ensureWorld(event,url);
   if(event.clientId)clientSessions.set(event.clientId,id);
   if(world.authenticated)return fetchSource('private','index.html');
-  return fetchSource('public','index.html',{injectDemoCredentials:!world.lab?.clean});
+  return fetchSource('public','index.html',{injectLabCredentials:!world.lab?.clean});
 }
 
 async function handleAsset(event,url){
