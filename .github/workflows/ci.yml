@@ -251,3 +251,47 @@ jobs:
             release/CANDIDATE_SHA
           if-no-files-found: error
           retention-days: 90
+
+  candidate_deployment:
+    name: release candidate deployment acceptance
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[candidate]')) }}
+    runs-on: ubuntu-24.04
+    needs: release_candidate
+    env:
+      WEIGG_BROWSER_CHANNEL: chrome
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install browser test dependency
+        run: npm ci --no-audit --no-fund --prefer-offline
+      - name: Verify hosted Chrome runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v google-chrome >/dev/null || { echo 'Hosted Google Chrome Stable is missing.' >&2; exit 1; }
+          google-chrome --version
+          node -p "require('playwright/package.json').version"
+          printf 'Git SHA: %s\n' "$GITHUB_SHA"
+      - name: Download exact-SHA release candidate
+        uses: actions/download-artifact@v8
+        with:
+          name: release-candidate-${{ github.sha }}
+          path: candidate-artifact
+      - name: Candidate deployment syntax
+        run: |
+          bash -n tests/candidate-deployment.sh
+          node --check tests/installer-lifecycle-browser.mjs
+      - name: Deploy exact candidate to official qB and Chrome
+        shell: bash
+        run: bash tests/candidate-deployment.sh candidate-artifact
+      - name: Upload exact-SHA candidate deployment evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: candidate-deployment-${{ github.sha }}
+          path: artifacts/candidate-deployment/candidate.json
+          if-no-files-found: error
+          retention-days: 90
