@@ -7,7 +7,7 @@ on:
     paths:
       - '.github/workflows/real-qb-full.yml'
       - 'tests/real-qb-full-*.mjs'
-      - 'tests/real-qb-docker.sh'
+      - 'tests/real-qb-full-runner.sh'
 
 permissions:
   contents: read
@@ -57,7 +57,7 @@ jobs:
           NODE_OPTIONS: --import=${{ github.workspace }}/tests/real-qb-torrent-creator.mjs
         run: |
           set -euo pipefail
-          bash tests/real-qb-docker.sh --version "$QB_VERSION" --allow-writes --full-matrix
+          bash tests/real-qb-full-runner.sh --version "$QB_VERSION" --allow-writes
       - name: Upload per-version exact-SHA evidence
         if: always()
         uses: actions/upload-artifact@v7
@@ -66,7 +66,7 @@ jobs:
           path: |
             artifacts/real-qb-full/*.json
             artifacts/real-qb/*-search.json
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 30
 
   aggregate:
