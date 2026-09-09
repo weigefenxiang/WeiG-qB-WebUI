@@ -206,4 +206,7 @@ const evidence={
 fs.writeFileSync(path.join(process.env.ROOT,'artifacts/candidate-deployment/candidate.json'),JSON.stringify(evidence,null,2)+'\n');
 NODE
 
-printf 'Release candidate deployment acceptance passed: version %s exact SHA %s on official qB 5.2.3 with Chrome smoke\n' "$VERSION" "$EXPECTED_SHA"
+bash -n "$ROOT/tests/promotion-release-rehearsal.sh"
+bash "$ROOT/tests/promotion-release-rehearsal.sh" "$CANDIDATE_DIR" "$ROOT/artifacts/candidate-deployment/candidate.json"
+
+printf 'Release candidate deployment acceptance passed: version %s exact SHA %s on official qB 5.2.3 with Chrome smoke and isolated promotion/release rehearsal\n' "$VERSION" "$EXPECTED_SHA"
