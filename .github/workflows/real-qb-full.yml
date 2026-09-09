@@ -7,7 +7,7 @@ on:
     paths:
       - '.github/workflows/real-qb-full.yml'
       - 'tests/real-qb-full-*.mjs'
-      - 'tests/real-qb-full-runner.sh'
+      - 'tests/real-qb-full-*.sh'
 
 permissions:
   contents: read
@@ -20,6 +20,7 @@ jobs:
   plan:
     name: Frozen LKG matrix plan
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     outputs:
       versions: ${{ steps.matrix.outputs.versions }}
     steps:
@@ -35,6 +36,15 @@ jobs:
           versions="$(node tests/real-qb-full-matrix.mjs --matrix)"
           test "$(node -e 'const v=JSON.parse(process.argv[1]); process.stdout.write(String(v.length))' "$versions")" = "65"
           printf 'versions=%s\n' "$versions" >> "$GITHUB_OUTPUT"
+      - name: Build paginated historical runtime index
+        run: node tests/real-qb-full-runtime-index.mjs artifacts/real-qb-full-index/linuxserver-tags.json
+      - name: Upload same-run historical runtime index
+        uses: actions/upload-artifact@v7
+        with:
+          name: gfm-runtime-index-${{ github.sha }}
+          path: artifacts/real-qb-full-index/linuxserver-tags.json
+          if-no-files-found: error
+          retention-days: 30
 
   real:
     name: qB ${{ matrix.qb }} full real API
@@ -50,14 +60,20 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 1
+      - name: Download same-run historical runtime index
+        uses: actions/download-artifact@v8
+        with:
+          name: gfm-runtime-index-${{ github.sha }}
+          path: runtime-index
       - name: Run isolated exact-version real qB evidence
         env:
           QB_VERSION: ${{ matrix.qb }}
           WEIG_REAL_QB_EVIDENCE_DIR: artifacts/real-qb-full
+          WEIG_GFM_RUNTIME_INDEX: runtime-index/linuxserver-tags.json
           NODE_OPTIONS: --import=${{ github.workspace }}/tests/real-qb-torrent-creator.mjs
         run: |
           set -euo pipefail
-          bash tests/real-qb-full-runner.sh --version "$QB_VERSION" --allow-writes
+          bash tests/real-qb-full-runner-v3.sh --version "$QB_VERSION" --allow-writes
       - name: Upload per-version exact-SHA evidence
         if: always()
         uses: actions/upload-artifact@v7
