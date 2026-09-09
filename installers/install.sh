@@ -651,7 +651,7 @@ if [ "$CONFIGURE" -eq 1 ]; then
   fi
   esc=$(printf '%s' "$QBT_ROOT_FOLDER" | sed 's/[&|]/\\&/g')
   if grep -q '^WebUI\\RootFolder=' "$cfg"; then
-    sed -i "s|^WebUI\\RootFolder=.*|WebUI\\RootFolder=$esc|" "$cfg"
+    sed -i "s|^WebUI\\\\RootFolder=.*|WebUI\\\\RootFolder=$esc|" "$cfg"
   else
     printf 'WebUI\\RootFolder=%s\n' "$QBT_ROOT_FOLDER" >> "$cfg"
   fi
