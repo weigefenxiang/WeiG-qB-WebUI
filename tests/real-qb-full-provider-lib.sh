@@ -54,10 +54,15 @@ wait_ready(){
 }
 
 runtime_version_with_auth(){
-  local pass="$1" jar="$TMP_ROOT/cookies-${RANDOM}.txt" body reported
-  body="$(curl --silent --show-error --connect-timeout 2 --max-time 5 --cookie-jar "$jar" \
-    --data-urlencode 'username=admin' --data-urlencode "password=${pass}" "${TARGET}api/v2/auth/login" || true)"
-  [[ "$body" == 'Ok.' ]] || { rm -f "$jar"; return 1; }
+  local pass="$1" jar="$TMP_ROOT/cookies-${RANDOM}.txt" login_code reported
+  login_code="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+    --connect-timeout 2 --max-time 5 --cookie-jar "$jar" \
+    --data-urlencode 'username=admin' --data-urlencode "password=${pass}" \
+    "${TARGET}api/v2/auth/login" || true)"
+  if [[ ! "$login_code" =~ ^(200|204)$ ]] || ! grep -Eq '(^|[[:space:]])QBT_SID_[^[:space:]]*[[:space:]]' "$jar" 2>/dev/null; then
+    rm -f "$jar"
+    return 1
+  fi
   reported="$(curl --silent --show-error --connect-timeout 2 --max-time 5 --cookie "$jar" "${TARGET}api/v2/app/version" || true)"
   rm -f "$jar"
   [[ -n "$reported" ]] || return 1
