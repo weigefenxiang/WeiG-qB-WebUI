@@ -24,9 +24,11 @@ assert(!runner.includes('justmiles/qbittorrent')&&!provider.includes('justmiles/
 assert(runner.includes('runtime_index_sha256')&&runner.includes('sha256sum "$INDEX_FILE"'),'Every runtime result must bind the same-run historical index by digest.');
 assert(provider.includes('if establish_identity; then identity_rc=0; else identity_rc=$?; fi'),'Identity probing must run in conditional context so expected auth retries cannot be stolen by ERR trap.');
 assert(provider.includes('for _ in $(seq 1 30)')&&provider.includes('temporary password is provided for this session'),'Modern qB temporary admin password must be polled like the certified representative runner.');
+assert(provider.includes('[[ -n "$temp" ]] && break')&&provider.includes('reported="$(runtime_version_with_auth \'adminadmin\')" || return 1')&&!provider.includes('if reported="$(runtime_version_with_auth \'adminadmin\')"'),'Temporary-password polling must not send repeated wrong legacy logins before the password appears.');
+assert(provider.includes('[[ "$reported" != "$VERSION" && "$reported" != "v$VERSION" ]]')&&provider.includes('RUNTIME_VERSION="$reported"')&&!provider.includes('grep -oE \'[0-9]+(\\.[0-9]+){2,3}\''),'Runtime identity must require an exact stable API version string and reject prerelease/suffix normalization.');
+assert(provider.includes('expected stable qB ${VERSION}')&&provider.includes('exact stable qB ${VERSION} identity established'),'Runtime evidence must distinguish exact stable identity from prerelease or mismatched candidates.');
 assert(runner.includes('docker network create --internal')&&!runner.includes('-p 8080:8080'),'G-FM real qB targets must remain private and must not publish WebUI ports.');
 assert(provider.includes("resolved=\"$(docker image inspect")&&provider.includes('!= *@sha256:*'),'Mutable provider tags must be locked to immutable RepoDigests before execution.');
-assert(provider.includes('[[ "$numeric" == "$VERSION" ]]'),'Resolved runtime must self-report the exact expected qB version.');
 assert(runner.includes("CLEANUP_RESULT='PASS'")&&runner.includes('isolated Docker cleanup failed'),'G-FM must fail closed when isolated cleanup fails.');
 assert(runner.includes('RUNTIME_ESTABLISHED')&&runner.includes('run_semantics'),'Semantic evidence may run only after exact runtime identity is established.');
 
@@ -41,4 +43,4 @@ assert(indexer.includes("discoveryRole:'candidate-tag-discovery-only; runtime tr
 assert(matrix.includes('manifest.catalogSha256')&&matrix.includes('manifest.profileCount')&&matrix.includes('duplicate qB versions'),'G-FM planner must verify Frozen identity, count and uniqueness.');
 assert(matrix.includes("runtime.cleanup_result!=='PASS'")&&matrix.includes('expected one core semantic evidence')&&matrix.includes('expected one Search evidence'),'G-FM aggregate must require cleanup plus core/search semantic evidence for every PASS runtime.');
 assert(matrix.includes('pass===f.manifest.profileCount')&&matrix.includes('blocked===0')&&matrix.includes('missing.length===0')&&matrix.includes('duplicates.length===0'),'G-FM aggregate must fail unless every Frozen profile passes with zero missing/duplicate/BLOCKED results.');
-console.log('Real-qB Full Frozen Matrix contract passed: source-backed historical candidate index, temp-password-safe exact identity, immutable images, complete evidence and strict 65/65 aggregate are enforced.');
+console.log('Real-qB Full Frozen Matrix contract passed: source-backed candidate index, ban-safe temp-password auth, exact stable identity, immutable images, complete evidence and strict 65/65 aggregate are enforced.');

@@ -1,4 +1,4 @@
-# Sourced by real-qb-full-runner-v3.sh. Uses the runner's exact-version globals.
+# Sourced by real-qb-full-runner.sh. Uses the runner's exact-version globals.
 resolve_ref(){
   local provider="$1" mode="$2" ref="$3" package="$4"
   [[ -n "${SEEN_REFS[$ref]:-}" ]] && return 1
@@ -65,17 +65,28 @@ runtime_version_with_auth(){
 }
 
 establish_identity(){
-  local reported='' temp='' numeric=''
+  local reported='' temp=''
+  # Certified representative behavior: poll logs first without sending any
+  # wrong-password login attempts. Modern qB may ban repeated failed logins.
   for _ in $(seq 1 30); do
     temp="$(docker logs "$NAME" 2>&1 | sed -n 's/.*temporary password is provided for this session: \([^[:space:]]*\).*/\1/p' | tail -n1)"
-    if [[ -n "$temp" ]] && reported="$(runtime_version_with_auth "$temp")"; then PASSWORD="$temp"; break; fi
-    if reported="$(runtime_version_with_auth 'adminadmin')"; then PASSWORD='adminadmin'; break; fi
+    [[ -n "$temp" ]] && break
     sleep 1
   done
-  [[ -n "$reported" ]] || return 1
-  numeric="$(printf '%s\n' "$reported" | grep -oE '[0-9]+(\.[0-9]+){2,3}' | head -n1 || true)"
-  RUNTIME_VERSION="$numeric"
-  [[ "$numeric" == "$VERSION" ]] || return 2
+  if [[ -n "$temp" ]]; then
+    reported="$(runtime_version_with_auth "$temp")" || return 1
+    PASSWORD="$temp"
+  else
+    reported="$(runtime_version_with_auth 'adminadmin')" || return 1
+    PASSWORD='adminadmin'
+  fi
+  reported="${reported//$'\r'/}"
+  reported="${reported//$'\n'/}"
+  RUNTIME_VERSION="$reported"
+  if [[ "$reported" != "$VERSION" && "$reported" != "v$VERSION" ]]; then
+    return 2
+  fi
+  RUNTIME_VERSION="$VERSION"
   local binary=''
   binary="$(docker exec "$NAME" sh -lc 'qbittorrent-nox --version 2>/dev/null || qbittorrent --version 2>/dev/null || /app/qbittorrent-nox --version 2>/dev/null || /usr/bin/qbittorrent-nox --version 2>/dev/null' | head -n1 | tr -d '\r' || true)"
   RUNTIME_IDENTITY="api=${reported}; binary=${binary:-unavailable}"
@@ -96,11 +107,11 @@ try_candidate(){
   if establish_identity; then identity_rc=0; else identity_rc=$?; fi
   if ((identity_rc!=0)); then
     if ((identity_rc==2)); then
-      record_attempt "$PROVIDER" "$SOURCE_REF" IDENTITY_MISMATCH "expected qB ${VERSION}, got ${RUNTIME_VERSION:-unknown}"
+      record_attempt "$PROVIDER" "$SOURCE_REF" IDENTITY_MISMATCH "expected stable qB ${VERSION}, got ${RUNTIME_VERSION:-unknown}"
     else
       record_attempt "$PROVIDER" "$SOURCE_REF" AUTH_OR_IDENTITY_FAILED 'could not authenticate and read exact runtime version'
     fi
     cleanup_container >/dev/null 2>&1 || true; return 1
   fi
-  record_attempt "$PROVIDER" "$SOURCE_REF" RUNTIME_ESTABLISHED "exact qB ${VERSION} identity established"
+  record_attempt "$PROVIDER" "$SOURCE_REF" RUNTIME_ESTABLISHED "exact stable qB ${VERSION} identity established"
 }
