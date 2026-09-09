@@ -36,7 +36,7 @@ jobs:
           versions="$(node tests/real-qb-full-matrix.mjs --matrix)"
           test "$(node -e 'const v=JSON.parse(process.argv[1]); process.stdout.write(String(v.length))' "$versions")" = "65"
           printf 'versions=%s\n' "$versions" >> "$GITHUB_OUTPUT"
-      - name: Build paginated historical runtime index
+      - name: Build source-backed historical runtime index
         run: node tests/real-qb-full-runtime-index.mjs artifacts/real-qb-full-index/linuxserver-tags.json
       - name: Upload same-run historical runtime index
         uses: actions/upload-artifact@v7
@@ -73,7 +73,7 @@ jobs:
           NODE_OPTIONS: --import=${{ github.workspace }}/tests/real-qb-torrent-creator.mjs
         run: |
           set -euo pipefail
-          bash tests/real-qb-full-runner-v3.sh --version "$QB_VERSION" --allow-writes
+          bash tests/real-qb-full-runner.sh --version "$QB_VERSION" --allow-writes
       - name: Upload per-version exact-SHA evidence
         if: always()
         uses: actions/upload-artifact@v7

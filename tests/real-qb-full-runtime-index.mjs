@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import crypto from 'node:crypto';
+import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -10,61 +11,71 @@ const catalog=JSON.parse(fs.readFileSync(manifest.catalogPath,'utf8'));
 const versions=[...new Set(catalog.map(x=>String(x.qbVersion||'').trim()))];
 if(versions.length!==manifest.profileCount) throw new Error(`Frozen profile count mismatch: ${versions.length} != ${manifest.profileCount}`);
 
-const escapeRe=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-const matchers=new Map(versions.map(version=>{
-  const esc=escapeRe(version);
-  return [version,new RegExp(`^(?:amd64-)?(?:version-)?${esc}(?=$|[_-]|\\d{8})`)];
-}));
-const matches=Object.fromEntries(versions.map(v=>[v,[]]));
-const seen=new Set();
-let url='https://hub.docker.com/v2/repositories/linuxserver/qbittorrent/tags?page_size=100';
-let pages=0;
-const pageDigests=[];
-while(url){
-  if(++pages>250) throw new Error('Docker Hub tag pagination exceeded 250 pages; refusing an incomplete runtime index.');
-  const parsed=new URL(url);
-  if(parsed.protocol!=='https:'||parsed.hostname!=='hub.docker.com'||!parsed.pathname.startsWith('/v2/repositories/linuxserver/qbittorrent/tags')){
-    throw new Error(`Unexpected Docker Hub pagination URL: ${url}`);
-  }
-  const response=await fetch(url,{headers:{Accept:'application/json','User-Agent':'WeiG-qB-WebUI-GFM/1'}});
-  if(!response.ok) throw new Error(`Docker Hub tag page ${pages}: HTTP ${response.status}`);
-  const text=await response.text();
-  pageDigests.push(crypto.createHash('sha256').update(text).digest('hex'));
-  const data=JSON.parse(text);
-  for(const row of Array.isArray(data.results)?data.results:[]){
-    const name=String(row?.name||'').trim();
-    if(!name||seen.has(name)) continue;
-    seen.add(name);
-    for(const [version,re] of matchers){
-      if(re.test(name)) matches[version].push(name);
-    }
-  }
-  url=data.next||null;
+const sourceRepository='https://github.com/linuxserver/docker-qbittorrent.git';
+let raw='';
+try{
+  raw=execFileSync('git',['ls-remote','--tags','--refs',sourceRepository],{
+    encoding:'utf8',
+    timeout:60000,
+    maxBuffer:20*1024*1024,
+    stdio:['ignore','pipe','pipe']
+  });
+}catch(error){
+  const stderr=String(error?.stderr||'').trim();
+  throw new Error(`LinuxServer source tag discovery failed${stderr?`: ${stderr}`:''}`);
 }
+const refs=raw.split(/\r?\n/).filter(Boolean).map((line,index)=>{
+  const match=line.match(/^([0-9a-f]{40})\t(refs\/tags\/.+)$/i);
+  if(!match) throw new Error(`Unexpected git ls-remote tag row ${index+1}.`);
+  return {sha:match[1].toLowerCase(),ref:match[2]};
+}).sort((a,b)=>a.ref.localeCompare(b.ref)||a.sha.localeCompare(b.sha));
+if(refs.length===0) throw new Error('LinuxServer source tag discovery returned no tags.');
+const normalized=refs.map(x=>`${x.sha}\t${x.ref}`).join('\n')+'\n';
+const sourceTagListSha256=crypto.createHash('sha256').update(normalized).digest('hex');
+
+const escapeRe=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+const matchers=new Map(versions.map(version=>[
+  version,
+  new RegExp(`^(?:amd64-)?(?:version-)?${escapeRe(version)}(?=$|[_-]|\\d{8})`)
+]));
+const matches=Object.fromEntries(versions.map(v=>[v,[]]));
+for(const {ref} of refs){
+  const name=ref.slice('refs/tags/'.length);
+  for(const [version,re] of matchers){
+    if(re.test(name)) matches[version].push(name);
+  }
+}
+const lsRevision=name=>{
+  const m=name.match(/-ls(\d+)$/i);
+  return m?Number(m[1]):-1;
+};
 const score=(version,name)=>{
-  if(name===version)return 0;
-  if(name===`version-${version}`)return 1;
-  if(name.startsWith(`${version}_`))return 2;
-  if(name.startsWith(`version-${version}_`))return 3;
-  if(name.startsWith(`amd64-${version}`))return 4;
-  return 5;
+  const bare=name.replace(/^amd64-/,'').replace(/^version-/,'');
+  if(bare===version)return 0;
+  if(bare.startsWith(`${version}-`))return 1;
+  if(bare.startsWith(`${version}_`))return 2;
+  if(new RegExp(`^${escapeRe(version)}\\d{8}`).test(bare))return 3;
+  return 4;
 };
 for(const version of versions){
-  matches[version]=[...new Set(matches[version])].sort((a,b)=>score(version,a)-score(version,b)||a.localeCompare(b)).slice(0,20);
+  matches[version]=[...new Set(matches[version])]
+    .sort((a,b)=>score(version,a)-score(version,b)||lsRevision(b)-lsRevision(a)||b.localeCompare(a))
+    .slice(0,20);
 }
 const result={
-  schemaVersion:1,
+  schemaVersion:2,
   phase:'G-FM',
   provider:'linuxserver/qbittorrent',
-  source:'https://hub.docker.com/v2/repositories/linuxserver/qbittorrent/tags',
-  generatedAt:new Date().toISOString(),
+  discoveryRole:'candidate-tag-discovery-only; runtime truth still requires immutable image digest and exact qB identity',
+  sourceRepository,
+  sourceRefPattern:'refs/tags/*',
+  sourceTagListSha256,
+  sourceTagCount:refs.length,
   frozenCatalogSha256:manifest.catalogSha256,
   frozenProfileCount:manifest.profileCount,
-  pagesFetched:pages,
-  uniqueTagsSeen:seen.size,
-  pageContentDigest:crypto.createHash('sha256').update(pageDigests.join('\n')).digest('hex'),
+  versionsWithHistoricalTags:Object.values(matches).filter(v=>v.length).length,
   tagsByVersion:matches
 };
 fs.mkdirSync(path.dirname(outPath),{recursive:true});
 fs.writeFileSync(outPath,`${JSON.stringify(result,null,2)}\n`);
-console.log(JSON.stringify({pages:pages,uniqueTags:seen.size,versionsWithHistoricalTags:Object.values(matches).filter(v=>v.length).length}));
+console.log(JSON.stringify({sourceTags:refs.length,sourceTagListSha256,versionsWithHistoricalTags:result.versionsWithHistoricalTags}));
