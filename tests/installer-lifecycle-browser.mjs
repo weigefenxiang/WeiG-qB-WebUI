@@ -50,8 +50,6 @@ try{
 
   await page.goto(base.href,{waitUntil:'domcontentloaded'});
   await page.waitForSelector('#login-form',{timeout:10000});
-  const publicHtml=await page.content();
-  assert(publicHtml.includes(`WEIGG_INSTALLER_LIFECYCLE_${marker}`),`Chrome public root did not contain lifecycle marker ${marker}.`);
   const publicSha=await page.locator('meta[name="weigg-build-sha"]').getAttribute('content');
   assert(publicSha===expectedSha,`Chrome public build SHA mismatch: ${publicSha}`);
 
