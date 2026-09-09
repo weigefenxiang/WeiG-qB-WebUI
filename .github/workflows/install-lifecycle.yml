@@ -35,6 +35,28 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+  docker:
+    name: Official qB Docker install upgrade rollback
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Docker lifecycle syntax
+        run: bash -n tests/installer-docker-lifecycle.sh
+      - name: Official qB Docker install upgrade rollback lifecycle
+        shell: bash
+        run: bash tests/installer-docker-lifecycle.sh
+      - name: Upload exact-SHA lifecycle evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: docker-installer-lifecycle-${{ github.sha }}
+          path: artifacts/install-lifecycle/docker.json
+          if-no-files-found: error
+          retention-days: 30
+
   windows:
     name: Windows install upgrade rollback
     runs-on: windows-2025
