@@ -24,7 +24,7 @@ jobs:
   promote:
     runs-on: ubuntu-latest
     steps:
-      - name: Resolve exact validated dev candidate
+      - name: Resolve exact validated dev candidate and deployment evidence
         id: verify
         uses: actions/github-script@v9
         env:
@@ -73,8 +73,10 @@ jobs:
             });
             const exactRuns = runs.filter(run => run.head_sha && run.head_sha.toLowerCase() === sha && run.conclusion === 'success');
             const artifactName = `release-candidate-${sha}`;
+            const evidenceName = `candidate-deployment-${sha}`;
             let validated = null;
-            let artifact = null;
+            let candidateArtifact = null;
+            let evidenceArtifact = null;
             for (const run of exactRuns) {
               const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {
                 owner,
@@ -83,23 +85,35 @@ jobs:
                 per_page: 100
               });
               const candidate = artifacts.find(item => item.name === artifactName && !item.expired);
-              if (candidate) {
+              const evidence = artifacts.find(item => item.name === evidenceName && !item.expired);
+              if (candidate && evidence) {
                 validated = run;
-                artifact = candidate;
+                candidateArtifact = candidate;
+                evidenceArtifact = evidence;
                 break;
               }
             }
-            if (!validated || !artifact) {
-              core.setFailed(`No successful dev full-candidate artifact ${artifactName} exists for exact SHA ${sha}.`);
+            if (!validated || !candidateArtifact || !evidenceArtifact) {
+              core.setFailed(`No successful dev CI run contains both ${artifactName} and ${evidenceName} for exact SHA ${sha}.`);
               return;
             }
 
             core.info(`Validated dev candidate CI run #${validated.run_number}: ${validated.html_url}`);
-            core.info(`Reusable artifact: ${artifact.name} (${artifact.id})`);
+            core.info(`Reusable artifact: ${candidateArtifact.name} (${candidateArtifact.id})`);
+            core.info(`Deployment evidence: ${evidenceArtifact.name} (${evidenceArtifact.id})`);
             core.setOutput('sha', sha);
+            core.setOutput('main_sha', mainSha);
             core.setOutput('run_id', String(validated.id));
             core.setOutput('artifact_name', artifactName);
-            core.setOutput('artifact_id', String(artifact.id));
+            core.setOutput('artifact_id', String(candidateArtifact.id));
+            core.setOutput('evidence_name', evidenceName);
+            core.setOutput('evidence_id', String(evidenceArtifact.id));
+
+      - name: Checkout exact candidate evidence policy
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.verify.outputs.sha }}
+          persist-credentials: false
 
       - name: Download exact validated dev candidate
         uses: actions/download-artifact@v8
@@ -110,17 +124,37 @@ jobs:
           repository: ${{ github.repository }}
           run-id: ${{ steps.verify.outputs.run_id }}
 
-      - name: Verify reusable candidate integrity before promotion
+      - name: Download exact candidate deployment evidence
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ steps.verify.outputs.evidence_name }}
+          path: evidence
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.verify.outputs.run_id }}
+
+      - name: Verify reusable candidate and rehearsal evidence before promotion
         env:
           CANDIDATE_SHA: ${{ steps.verify.outputs.sha }}
+          MAIN_BEFORE: ${{ steps.verify.outputs.main_sha }}
         run: |
           set -euo pipefail
+          VERSION="$(tr -d '\r\n' < VERSION)"
           test -f candidate/WeiG-qB-WebUI.zip
           test -f candidate/SHA256SUMS
           test -f candidate/CANDIDATE_SHA
+          test -f evidence/candidate.json
           test "$(tr -d '\r\n' < candidate/CANDIDATE_SHA)" = "$CANDIDATE_SHA"
           (cd candidate && sha256sum -c SHA256SUMS)
           test "$(unzip -p candidate/WeiG-qB-WebUI.zip WeiG-qB-WebUI/GIT_SHA | tr -d '\r\n')" = "$CANDIDATE_SHA"
+          test "$(unzip -p candidate/WeiG-qB-WebUI.zip WeiG-qB-WebUI/VERSION | tr -d '\r\n')" = "$VERSION"
+          node tests/release-candidate-evidence.mjs \
+            --mode=promotion \
+            --evidence=evidence/candidate.json \
+            --package=candidate/WeiG-qB-WebUI.zip \
+            --sha="$CANDIDATE_SHA" \
+            --version="$VERSION" \
+            --main-before="$MAIN_BEFORE"
 
       - name: Checkout main for authenticated fast-forward
         uses: actions/checkout@v7
@@ -143,4 +177,5 @@ jobs:
           echo "main now points to the exact validated dev state: ${{ steps.verify.outputs.sha }}"
           echo "Reused dev candidate CI run: ${{ steps.verify.outputs.run_id }}"
           echo "Reused validated artifact: ${{ steps.verify.outputs.artifact_name }}"
+          echo "Reused deployment/rehearsal evidence: ${{ steps.verify.outputs.evidence_name }}"
           echo "No main candidate rebuild is required; create the stable tag only after confirming main still equals this exact SHA."

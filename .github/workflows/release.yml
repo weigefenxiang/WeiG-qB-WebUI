@@ -17,7 +17,7 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - name: Resolve exact reusable dev candidate artifact
+      - name: Resolve exact reusable dev candidate and deployment evidence
         id: verify
         uses: actions/github-script@v9
         env:
@@ -48,8 +48,10 @@ jobs:
             });
             const exactRuns = runs.filter(run => run.head_sha && run.head_sha.toLowerCase() === sha && run.conclusion === 'success');
             const artifactName = `release-candidate-${sha}`;
+            const evidenceName = `candidate-deployment-${sha}`;
             let validated = null;
-            let artifact = null;
+            let candidateArtifact = null;
+            let evidenceArtifact = null;
             for (const run of exactRuns) {
               const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {
                 owner,
@@ -58,24 +60,29 @@ jobs:
                 per_page: 100
               });
               const candidate = artifacts.find(item => item.name === artifactName && !item.expired);
-              if (candidate) {
+              const evidence = artifacts.find(item => item.name === evidenceName && !item.expired);
+              if (candidate && evidence) {
                 validated = run;
-                artifact = candidate;
+                candidateArtifact = candidate;
+                evidenceArtifact = evidence;
                 break;
               }
             }
-            if (!validated || !artifact) {
-              core.setFailed(`No successful dev full-candidate artifact ${artifactName} exists for exact release SHA ${sha}.`);
+            if (!validated || !candidateArtifact || !evidenceArtifact) {
+              core.setFailed(`No successful dev CI run contains both ${artifactName} and ${evidenceName} for exact release SHA ${sha}.`);
               return;
             }
 
             core.info(`Reusing dev candidate CI run #${validated.run_number}: ${validated.html_url}`);
-            core.info(`Reusing validated artifact ${artifact.name} (${artifact.id})`);
+            core.info(`Reusing validated artifact ${candidateArtifact.name} (${candidateArtifact.id})`);
+            core.info(`Reusing deployment evidence ${evidenceArtifact.name} (${evidenceArtifact.id})`);
             core.setOutput('run_id', String(validated.id));
             core.setOutput('artifact_name', artifactName);
-            core.setOutput('artifact_id', String(artifact.id));
+            core.setOutput('artifact_id', String(candidateArtifact.id));
+            core.setOutput('evidence_name', evidenceName);
+            core.setOutput('evidence_id', String(evidenceArtifact.id));
 
-      - name: Checkout exact release source for version identity only
+      - name: Checkout exact release source for version and evidence policy
         uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
@@ -90,7 +97,16 @@ jobs:
           repository: ${{ github.repository }}
           run-id: ${{ steps.verify.outputs.run_id }}
 
-      - name: Verify version, candidate integrity and exact SHA
+      - name: Download exact candidate deployment evidence
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ steps.verify.outputs.evidence_name }}
+          path: evidence
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.verify.outputs.run_id }}
+
+      - name: Verify version, candidate integrity, exact SHA and rehearsal evidence
         run: |
           set -euo pipefail
           VERSION="$(tr -d '\r\n' < VERSION)"
@@ -98,10 +114,18 @@ jobs:
           test -f release/WeiG-qB-WebUI.zip
           test -f release/SHA256SUMS
           test -f release/CANDIDATE_SHA
+          test -f evidence/candidate.json
           test "$(tr -d '\r\n' < release/CANDIDATE_SHA)" = "$GITHUB_SHA"
           (cd release && sha256sum -c SHA256SUMS)
           test "$(unzip -p release/WeiG-qB-WebUI.zip WeiG-qB-WebUI/GIT_SHA | tr -d '\r\n')" = "$GITHUB_SHA"
           test "$(unzip -p release/WeiG-qB-WebUI.zip WeiG-qB-WebUI/VERSION | tr -d '\r\n')" = "$VERSION"
+          node tests/release-candidate-evidence.mjs \
+            --mode=release \
+            --evidence=evidence/candidate.json \
+            --package=release/WeiG-qB-WebUI.zip \
+            --sha="$GITHUB_SHA" \
+            --version="$VERSION" \
+            --tag="$GITHUB_REF_NAME"
 
       - name: Publish GitHub Release
         env:
