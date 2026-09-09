@@ -34,3 +34,28 @@ jobs:
           path: artifacts/install-lifecycle/linux.json
           if-no-files-found: error
           retention-days: 30
+
+  windows:
+    name: Windows install upgrade rollback
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Installer syntax
+        shell: pwsh
+        run: |
+          $null = [scriptblock]::Create((Get-Content 'installers/install.ps1' -Raw))
+          $null = [scriptblock]::Create((Get-Content 'tests/installer-lifecycle.ps1' -Raw))
+          Write-Host 'Windows installer lifecycle syntax parsed.'
+      - name: Isolated install upgrade rollback lifecycle
+        shell: pwsh
+        run: pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File tests/installer-lifecycle.ps1
+      - name: Upload exact-SHA lifecycle evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-installer-lifecycle-${{ github.sha }}
+          path: artifacts/install-lifecycle/windows.json
+          if-no-files-found: error
+          retention-days: 30
