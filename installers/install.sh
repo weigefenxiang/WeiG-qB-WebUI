@@ -449,6 +449,7 @@ fi
 find_config() {
   if [ -n "$DOCKER_CONFIG_ROOT" ]; then
     for f in \
+      "$DOCKER_CONFIG_ROOT/qBittorrent/config/qBittorrent.conf" \
       "$DOCKER_CONFIG_ROOT/qBittorrent/qBittorrent.conf" \
       "$DOCKER_CONFIG_ROOT/qBittorrent/qBittorrent.ini" \
       "$DOCKER_CONFIG_ROOT/qbittorrent/qBittorrent.conf" \
