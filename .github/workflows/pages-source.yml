@@ -1,7 +1,7 @@
 name: Virtual qB Pages Source
 
 # Strict main promotion reuses only an exact-SHA validated dev Pages artifact; no legacy artifact fallback is allowed.
-# Test-only changes are covered by their owning CI workflows and must not redeploy Pages.
+# Only Pages-owned tests redeploy; unrelated test suites are covered by their own workflows.
 on:
   push:
     branches:
@@ -13,6 +13,8 @@ on:
       - 'tools/qb-*.mjs'
       - 'package.json'
       - 'package-lock.json'
+      - 'tests/pages-*.mjs'
+      - 'tests/browser-driver.mjs'
       - '.github/workflows/pages.yml'
       - '.github/workflows/pages-source.yml'
 

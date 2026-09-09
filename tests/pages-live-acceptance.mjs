@@ -78,13 +78,13 @@ async function openVirtualSession(page,{branch,qb,count,scenario='mixed',seed='p
 async function login(page,{expectPrefill}){
   const username=page.locator('#username'),password=page.locator('#password');
   if(expectPrefill){
-    assert.equal(await username.inputValue(),'demo','Lab mode must prefill demo username');
-    assert.equal(await password.inputValue(),'demo','Lab mode must prefill demo password');
+    assert.equal(await username.inputValue(),'weigshare','Lab mode must prefill weigshare username');
+    assert.equal(await password.inputValue(),'weigshare','Lab mode must prefill weigshare password');
   }else{
     assert.equal(await username.inputValue(),'','Clean mode must not prefill username');
     assert.equal(await password.inputValue(),'','Clean mode must not prefill password');
-    await username.fill('demo');
-    await password.fill('demo');
+    await username.fill('weigshare');
+    await password.fill('weigshare');
   }
   await page.locator('#login-btn').click();
 }

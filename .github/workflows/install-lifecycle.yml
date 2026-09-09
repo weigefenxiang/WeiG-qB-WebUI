@@ -4,6 +4,19 @@ on:
   push:
     branches:
       - dev
+    paths:
+      - 'installers/**'
+      - 'webui/**'
+      - 'tools/qb-webui-catalog.mjs'
+      - 'tests/fixtures/qb-release-catalog.lkg.json'
+      - 'tests/installer-lifecycle.sh'
+      - 'tests/installer-lifecycle.ps1'
+      - 'tests/installer-docker-lifecycle.sh'
+      - 'tests/installer-lifecycle-browser.mjs'
+      - 'tests/browser-driver.mjs'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/install-lifecycle.yml'
   workflow_dispatch:
 
 permissions:
