@@ -1,0 +1,36 @@
+name: Installer Lifecycle
+
+on:
+  push:
+    branches:
+      - dev
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: installer-lifecycle-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    name: Linux install upgrade rollback
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Installer syntax
+        run: sh -n installers/install.sh
+      - name: Isolated install upgrade rollback lifecycle
+        shell: bash
+        run: bash tests/installer-lifecycle.sh
+      - name: Upload exact-SHA lifecycle evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: linux-installer-lifecycle-${{ github.sha }}
+          path: artifacts/install-lifecycle/linux.json
+          if-no-files-found: error
+          retention-days: 30
