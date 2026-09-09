@@ -69,18 +69,36 @@ runtime_version_with_auth(){
   printf '%s' "$reported"
 }
 
+version_at_least(){
+  local left="$1" right="$2" IFS='.' i l r
+  local -a la=($left) ra=($right)
+  for i in 0 1 2 3; do
+    l="${la[$i]:-0}"; r="${ra[$i]:-0}"
+    ((10#$l > 10#$r)) && return 0
+    ((10#$l < 10#$r)) && return 1
+  done
+  return 0
+}
+
 establish_identity(){
   local reported='' temp=''
-  # Certified representative behavior: poll logs first without sending any
-  # wrong-password login attempts. Modern qB may ban repeated failed logins.
-  for _ in $(seq 1 30); do
-    temp="$(docker logs "$NAME" 2>&1 | sed -n 's/.*temporary password is provided for this session: \([^[:space:]]*\).*/\1/p' | tail -n1)"
-    [[ -n "$temp" ]] && break
-    sleep 1
-  done
-  if [[ -n "$temp" ]]; then
-    reported="$(runtime_version_with_auth "$temp")" || return 1
-    PASSWORD="$temp"
+  # qB 4.6.1 introduced generated temporary WebUI credentials for an unset
+  # administrator password. Older stable releases retain legacy admin/adminadmin.
+  if version_at_least "$VERSION" '4.6.1'; then
+    # Certified representative behavior: poll logs first without sending any
+    # wrong-password login attempts. Modern qB may ban repeated failed logins.
+    for _ in $(seq 1 30); do
+      temp="$(docker logs "$NAME" 2>&1 | sed -n 's/.*temporary password is provided for this session: \([^[:space:]]*\).*/\1/p' | tail -n1)"
+      [[ -n "$temp" ]] && break
+      sleep 1
+    done
+    if [[ -n "$temp" ]]; then
+      reported="$(runtime_version_with_auth "$temp")" || return 1
+      PASSWORD="$temp"
+    else
+      reported="$(runtime_version_with_auth 'adminadmin')" || return 1
+      PASSWORD='adminadmin'
+    fi
   else
     reported="$(runtime_version_with_auth 'adminadmin')" || return 1
     PASSWORD='adminadmin'
