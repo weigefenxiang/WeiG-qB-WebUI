@@ -14,16 +14,18 @@ SHA_ONE=1111111111111111111111111111111111111111
 SHA_TWO=2222222222222222222222222222222222222222
 IMAGE='qbittorrentofficial/qbittorrent-nox@sha256:9ebb534fe30bab98622cb84a8c3acecfd88319b2d540f52ecdec7b9f866374d7'
 NAME="weigg-installer-qb-${GITHUB_RUN_ID:-$$}-${RANDOM}"
+NET="weigg-installer-net-${GITHUB_RUN_ID:-$$}-${RANDOM}"
 QBT_CONFIG="$CONFIG_ROOT/qBittorrent/config/qBittorrent.conf"
 DEST="$CONFIG_ROOT/weigg-qb-webui"
 QB_ROOT='/config/weigg-qb-webui'
 STATE="$HOME_DIR/.config/weigg-qb-webui"
 PAUSED=0
+REAL_CURL=$(command -v curl)
 
 cleanup() {
   set +e
-  if [[ "$PAUSED" == 1 ]]; then docker unpause "$NAME" >/dev/null 2>&1 || true; fi
   docker rm -f "$NAME" >/dev/null 2>&1 || true
+  docker network rm "$NET" >/dev/null 2>&1 || true
   chmod -R u+w "$TMP" 2>/dev/null || true
   rm -rf "$TMP"
 }
@@ -47,6 +49,8 @@ build_release() {
   printf '%s\n' "$version" > "$work/WeiG-qB-WebUI/VERSION"
   printf '%s\n' "$source_sha" > "$work/WeiG-qB-WebUI/GIT_SHA"
   printf '%s\n' "$marker" > "$work/WeiG-qB-WebUI/private/lifecycle-marker.txt"
+  printf '\n<!-- WEIGG_INSTALLER_LIFECYCLE_%s -->\n' "$marker" >> "$work/WeiG-qB-WebUI/public/index.html"
+  printf '\n<!-- WEIGG_INSTALLER_LIFECYCLE_%s -->\n' "$marker" >> "$work/WeiG-qB-WebUI/public/login.html"
   find "$work/WeiG-qB-WebUI" -type f \
     \( -name '*.html' -o -name '*.js' -o -name '*.css' -o -name '*.json' -o -name 'GIT_SHA' \) \
     -exec sed -i "s/__WEIGG_GIT_SHA__/$source_sha/g" {} +
@@ -111,20 +115,55 @@ export XDG_CONFIG_HOME="$HOME_DIR/.config"
 export WEIGG_INSTALLER_FIXTURE_ROOT="$FIXTURES"
 export PATH="$MOCK_BIN:$PATH"
 
+run_qb_container() {
+  docker run -d -t \
+    --name "$NAME" \
+    --network "$NET" \
+    -e QBT_LEGAL_NOTICE=confirm \
+    -e QBT_WEBUI_PORT=8080 \
+    -e QBT_TORRENTING_PORT=6881 \
+    -e PUID="$(id -u)" \
+    -e PGID="$(id -g)" \
+    -v "$CONFIG_ROOT:/config" \
+    -v "$DOWNLOADS:/downloads" \
+    "$IMAGE" >/dev/null
+}
+
+wait_for_qb_webui_marker() {
+  local marker=$1
+  local container_ip target body code
+  container_ip=$(docker inspect "$NAME" --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
+  [[ "$container_ip" =~ ^[0-9]+(\.[0-9]+){3}$ ]] || { echo 'Unable to resolve private qB container IP' >&2; return 1; }
+  target="http://${container_ip}:8080/"
+  for _ in $(seq 1 60); do
+    code=$($REAL_CURL --silent --output /dev/null --write-out '%{http_code}' --connect-timeout 1 --max-time 2 "$target" || true)
+    if [[ "$code" == 200 ]]; then
+      body=$($REAL_CURL --silent --show-error --connect-timeout 1 --max-time 3 "$target" || true)
+      if grep -Fq "WEIGG_INSTALLER_LIFECYCLE_${marker}" <<<"$body"; then
+        return 0
+      fi
+    fi
+    sleep 1
+  done
+  echo "Real qB WebUI did not serve expected lifecycle marker: $marker" >&2
+  return 1
+}
+
+recreate_qb_and_assert_webui() {
+  local marker=$1
+  docker rm -f "$NAME" >/dev/null 2>&1 || true
+  PAUSED=0
+  run_qb_container
+  wait_for_qb_webui_marker "$marker"
+  docker pause "$NAME" >/dev/null
+  PAUSED=1
+}
+
 # Use the exact official qB 5.2.3 image already admitted by the Phase G matrix.
-# No host port is published and the container has no network access.
+# The internal Docker bridge denies outbound internet, and no host port is published.
 docker pull "$IMAGE" >/dev/null
-docker run -d -t \
-  --name "$NAME" \
-  --network none \
-  -e QBT_LEGAL_NOTICE=confirm \
-  -e QBT_WEBUI_PORT=8080 \
-  -e QBT_TORRENTING_PORT=6881 \
-  -e PUID="$(id -u)" \
-  -e PGID="$(id -g)" \
-  -v "$CONFIG_ROOT:/config" \
-  -v "$DOWNLOADS:/downloads" \
-  "$IMAGE" >/dev/null
+docker network create --internal "$NET" >/dev/null
+run_qb_container
 
 for _ in $(seq 1 30); do
   [[ -f "$QBT_CONFIG" ]] && break
@@ -141,7 +180,7 @@ cp -a "$QBT_CONFIG" "$TMP/original-qbittorrent.conf"
 
 # Freeze qB after it has created its real profile. The installer can still
 # discover the running/paused container and inspect its bind mount, while the
-# config file cannot race with qB writes during the lifecycle assertions.
+# config file cannot race with qB writes during each lifecycle mutation.
 docker pause "$NAME" >/dev/null
 PAUSED=1
 
@@ -183,6 +222,7 @@ cmp "$FIRST_BACKUP/qBittorrent.conf" "$TMP/original-qbittorrent.conf"
 test "$(cat "$FIRST_BACKUP/config-path")" = "$QBT_CONFIG"
 test "$(cat "$FIRST_BACKUP/dest-path")" = "$DEST"
 test "$(cat "$FIRST_BACKUP/qb-root-folder")" = "$QB_ROOT"
+recreate_qb_and_assert_webui release-one
 
 sleep 1
 bash "$ROOT/installers/install.sh" --version "$VERSION_TWO" --configure --container "$NAME"
@@ -195,6 +235,7 @@ test "$(tr -d '\r\n' < "$SECOND_BACKUP/webui/GIT_SHA")" = "$SHA_ONE"
 test "$(tr -d '\r\n' < "$SECOND_BACKUP/webui/private/lifecycle-marker.txt")" = release-one
 grep -Fx 'WebUI\AlternativeUIEnabled=true' "$SECOND_BACKUP/qBittorrent.conf" >/dev/null
 grep -Fx "WebUI\\RootFolder=$QB_ROOT" "$SECOND_BACKUP/qBittorrent.conf" >/dev/null
+recreate_qb_and_assert_webui release-two
 
 sed -i 's#^WebUI\\AlternativeUIEnabled=.*#WebUI\\AlternativeUIEnabled=false#' "$QBT_CONFIG"
 sed -i 's#^WebUI\\RootFolder=.*#WebUI\\RootFolder=/config/post-upgrade-mutated#' "$QBT_CONFIG"
@@ -202,6 +243,7 @@ sed -i 's#^WebUI\\RootFolder=.*#WebUI\\RootFolder=/config/post-upgrade-mutated#'
 bash "$ROOT/installers/install.sh" --rollback
 assert_install "$VERSION_ONE" "$SHA_ONE" release-one
 cmp "$QBT_CONFIG" "$SECOND_BACKUP/qBittorrent.conf"
+recreate_qb_and_assert_webui release-one
 
 test "$(cat "$STATE/last-dest")" = "$DEST"
 test "$(cat "$STATE/last-qb-root-folder")" = "$QB_ROOT"
@@ -226,7 +268,7 @@ const evidence={
   qB:{
     image:process.env.IMAGE,
     runtimeVersion:process.env.RUNTIME_VERSION,
-    network:'none',
+    network:'isolated internal Docker bridge',
     publishedHostPorts:0,
     configPath:'REDACTED/qBittorrent/config/qBittorrent.conf'
   },
@@ -243,10 +285,13 @@ const evidence={
     packedCatalog:true,
     installMetadata:true,
     qbConfigWrite:true,
+    initialRealWebuiServe:true,
     upgradeBackup:true,
     upgrade:true,
+    upgradeRealWebuiServe:true,
     rollbackWebui:true,
-    rollbackQbConfig:true
+    rollbackQbConfig:true,
+    rollbackRealWebuiServe:true
   },
   rollbackState:{
     version:meta.version,
@@ -259,5 +304,5 @@ const evidence={
 fs.writeFileSync(path.join(root,'artifacts/install-lifecycle/docker.json'),JSON.stringify(evidence,null,2)+'\n');
 NODE
 
-printf 'Official qB Docker installer lifecycle passed: install %s -> upgrade %s -> rollback %s\n' \
+printf 'Official qB Docker installer lifecycle passed: install %s -> upgrade %s -> rollback %s with real WebUI serving\n' \
   "$VERSION_ONE" "$VERSION_TWO" "$VERSION_ONE"
