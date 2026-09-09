@@ -13,7 +13,7 @@ const pkg=JSON.parse(read('package.json'));
 for(const [name,source] of [['promotion',promote],['release',release]]){
   assert(source.includes('release-candidate-${sha}'),`${name} must resolve the exact candidate artifact`);
   assert(source.includes('candidate-deployment-${sha}'),`${name} must resolve same-run candidate deployment evidence`);
-  assert(source.includes('candidateArtifact && evidenceArtifact'),`${name} must require candidate + evidence from the same successful CI run`);
+  assert(source.includes('if (candidate && evidence)')&&source.includes('candidateArtifact = candidate')&&source.includes('evidenceArtifact = evidence')&&source.includes('!candidateArtifact || !evidenceArtifact'),`${name} must require candidate + evidence from the same successful CI run`);
   assert(source.includes('actions/download-artifact@v8')&&source.includes('evidence/candidate.json'),`${name} must download machine-readable candidate deployment evidence`);
   assert(source.includes('node tests/release-candidate-evidence.mjs'),`${name} must execute the repository-owned evidence verifier`);
 }
