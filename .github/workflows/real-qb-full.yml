@@ -1,0 +1,96 @@
+name: Real qB Full Frozen Matrix
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [dev]
+    paths:
+      - '.github/workflows/real-qb-full.yml'
+      - 'tests/real-qb-full-*.mjs'
+      - 'tests/real-qb-docker.sh'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: real-qb-full-${{ github.ref }}-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: Frozen LKG matrix plan
+    runs-on: ubuntu-24.04
+    outputs:
+      versions: ${{ steps.matrix.outputs.versions }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+      - name: Validate Full Frozen Matrix contract
+        run: node tests/real-qb-full-matrix-contract.mjs
+      - name: Resolve all Frozen stable versions
+        id: matrix
+        run: |
+          set -euo pipefail
+          versions="$(node tests/real-qb-full-matrix.mjs --matrix)"
+          test "$(node -e 'const v=JSON.parse(process.argv[1]); process.stdout.write(String(v.length))' "$versions")" = "65"
+          printf 'versions=%s\n' "$versions" >> "$GITHUB_OUTPUT"
+
+  real:
+    name: qB ${{ matrix.qb }} full real API
+    needs: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      max-parallel: 16
+      matrix:
+        qb: ${{ fromJson(needs.plan.outputs.versions) }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+      - name: Run isolated exact-version real qB evidence
+        env:
+          QB_VERSION: ${{ matrix.qb }}
+          WEIG_REAL_QB_EVIDENCE_DIR: artifacts/real-qb-full
+          NODE_OPTIONS: --import=${{ github.workspace }}/tests/real-qb-torrent-creator.mjs
+        run: |
+          set -euo pipefail
+          bash tests/real-qb-docker.sh --version "$QB_VERSION" --allow-writes --full-matrix
+      - name: Upload per-version exact-SHA evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: real-qb-full-${{ matrix.qb }}-${{ github.sha }}
+          path: |
+            artifacts/real-qb-full/*.json
+            artifacts/real-qb/*-search.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  aggregate:
+    name: Aggregate 65-version real qB evidence
+    needs: [plan, real]
+    if: ${{ always() && needs.plan.result == 'success' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+      - name: Download all per-version evidence
+        uses: actions/download-artifact@v8
+        with:
+          pattern: real-qb-full-*-${{ github.sha }}
+          path: full-evidence
+          merge-multiple: true
+      - name: Require complete 65/65 Frozen real-qB evidence
+        run: node tests/real-qb-full-matrix.mjs --aggregate full-evidence
+      - name: Upload exact-SHA aggregate evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: real-qb-full-aggregate-${{ github.sha }}
+          path: artifacts/real-qb-full-aggregate/${{ github.sha }}.json
+          if-no-files-found: error
+          retention-days: 90
