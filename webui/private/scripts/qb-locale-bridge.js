@@ -4,7 +4,7 @@
   function S(){return W.SettingsSchema||null;}
   function R(){return W.ReleaseProfile||null;}
   function normalizeCode(value){return String(value||'').trim();}
-  function normalizeTag(value){return normalizeCode(value).replace('@latin','-Latn').replace(/_/g,'-');}
+  function normalizeTag(value){return normalizeCode(value).replace(/@latin/i,'-Latn').replace(/_/g,'-');}
   function nativeLabel(value){var tag=normalizeTag(value);if(!tag)return'';try{var locale=new Intl.Locale(tag),display=new Intl.DisplayNames([locale.toString()],{type:'language'}),label=display.of(locale.toString());if(label)return label;}catch(_e){}return normalizeCode(value);}
   function normalizeOptions(values){var seen={},out=[];(values||[]).forEach(function(item){var value=normalizeCode(item&&typeof item==='object'?item.value:item);if(!value||seen[value])return;seen[value]=true;var label=item&&typeof item==='object'?String(item.label||'').trim():'';out.push({value:value,label:label||nativeLabel(value)});});return out;}
   function parseProbe(html){html=String(html||'');if(!html||html.indexOf('${LANGUAGE_OPTIONS}')>=0)return[];try{var doc=new DOMParser().parseFromString(html,'text/html'),select=doc.getElementById('weigg-qb-locale-options');if(!select)return[];return normalizeOptions(Array.from(select.options||[]).map(function(option){return{value:option.value,label:option.textContent||option.label||option.value};}));}catch(_e){return[];}}
