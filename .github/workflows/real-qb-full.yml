@@ -6,6 +6,9 @@ on:
     branches: [dev]
     paths:
       - '.github/workflows/real-qb-full.yml'
+      - '.github/workflows/pages.yml'
+      - '.github/workflows/pages-source.yml'
+      - '.github/workflows/promote.yml'
       - 'tests/real-qb-full-*.mjs'
       - 'tests/real-qb-full-*.sh'
       - 'tests/real-qb-harness.mjs'
