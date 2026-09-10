@@ -52,7 +52,10 @@ assert(settingsCss.includes('#settings-view>.settings-header>div:first-child{dis
 assert(settingsCss.includes('grid-template-columns:minmax(0,1fr) auto')&&!settingsCss.includes('@media(max-width:560px){.settings-header__actions{grid-template-columns:1fr}'),'Mobile Search and Save must remain on the same row at narrow widths');
 assert(index.includes('id="save-settings-btn"')&&(index.match(/id="save-settings-btn"/g)||[]).length===1,'Settings must retain exactly one Save button');
 assert(settings.includes("save.hidden=ctx.tab==='about'")&&settings.includes('weiggDraft')&&settings.includes('async function saveWeiG()')&&settings.includes("if(controller.tab==='weigg')return saveWeiG()"),'WeiG and qB Settings must share the canonical Save entry while keeping separate persistence targets');
-assert(settings.includes('await client.setPreferences(pending)')&&settings.includes('controller.prefs=await client.getPreferences()'),'qB Save must retain write plus verification readback');
+const qbWrite=settings.indexOf('await client.setPreferences(pending)');
+const qbVerifyRead=settings.indexOf('var verified=await client.getPreferences()',qbWrite);
+const qbPromote=settings.indexOf('controller.prefs=verified||{}',qbVerifyRead);
+assert(qbWrite>=0&&qbVerifyRead>qbWrite&&qbPromote>qbVerifyRead,'qB Save must retain write plus verification readback before promoting verified Preferences');
 assert(i18n.includes("'settings.save':'Save'")&&i18n.includes("'settings.save':'保存'"),'Settings Save label must be compact in English and Simplified Chinese');
 assert(!index.includes('settings-add-torrent')&&!settings.includes('settings-add-torrent'),'Settings must not introduce a duplicate Add Torrent surface');
 assert(settingsSchema.includes("'speed'")&&settingsSchema.includes("add('speed','global','number',['dl_limit','up_limit','alt_dl_limit','alt_up_limit'])"),'Speed must remain a canonical SettingsSchema surface');
