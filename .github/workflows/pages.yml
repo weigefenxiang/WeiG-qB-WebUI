@@ -10,7 +10,9 @@ permissions:
   id-token: write
 
 concurrency:
-  group: virtual-qb-pages
+  # Keep the new ref-bound deployment owner isolated from the legacy default-branch
+  # workflow-run owner until main is formally promoted to this choreography.
+  group: virtual-qb-pages-dispatch
   cancel-in-progress: true
 
 env:
@@ -126,6 +128,52 @@ jobs:
         uses: actions/upload-pages-artifact@v5
         with:
           path: ${{ runner.temp }}/virtual-qb-site
+
+      - name: Drain legacy default-branch Pages watcher
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          MAIN_PAGES="$(git show refs/remotes/origin/main:.github/workflows/pages.yml 2>/dev/null || true)"
+          if ! grep -Eq '^[[:space:]]{2}workflow[_]run:' <<<"$MAIN_PAGES"; then
+            echo "main no longer carries the legacy workflow-run Pages trigger; no drain is required."
+            exit 0
+          fi
+
+          CURRENT_CREATED="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" --jq '.created_at')"
+          LEGACY_ID=""
+          echo "Legacy default-branch Pages watcher detected; waiting for its post-dispatch run before deploying $WEIGG_PAGES_SOURCE_SHA."
+
+          for ATTEMPT in $(seq 1 24); do
+            LEGACY_ID="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs?event=workflow_run&per_page=30" \
+              --jq "[.workflow_runs[] | select(.path == \".github/workflows/pages.yml\" and .created_at >= \"$CURRENT_CREATED\")][0].id // empty")"
+            if [ -n "$LEGACY_ID" ]; then
+              echo "Legacy Pages run detected: $LEGACY_ID"
+              break
+            fi
+            echo "Waiting for legacy Pages run to appear ($ATTEMPT/24)..."
+            sleep 5
+          done
+
+          if [ -z "$LEGACY_ID" ]; then
+            echo "Legacy main Pages trigger exists, but no matching post-dispatch run appeared; refusing to race deployment." >&2
+            exit 1
+          fi
+
+          for ATTEMPT in $(seq 1 120); do
+            STATUS="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$LEGACY_ID" --jq '.status')"
+            CONCLUSION="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$LEGACY_ID" --jq '.conclusion // ""')"
+            if [ "$STATUS" = "completed" ]; then
+              echo "Legacy Pages run $LEGACY_ID drained with conclusion=${CONCLUSION:-unknown}; exact-ref deployment now owns the final write."
+              exit 0
+            fi
+            echo "Legacy Pages run $LEGACY_ID status=$STATUS ($ATTEMPT/120)..."
+            sleep 5
+          done
+
+          echo "Legacy Pages run $LEGACY_ID did not drain within 10 minutes; refusing to race deployment." >&2
+          exit 1
 
   deploy:
     if: ${{ github.ref_name == 'dev' }}
