@@ -18,12 +18,16 @@ function sha256Bytes(bytes){return crypto.createHash('sha256').update(bytes).dig
 
 export function extractLocaleOverlay(catalog,metadata={}){
   if(!Array.isArray(catalog)||!catalog.length)throw new Error('Source catalog must be a non-empty array.');
-  const profiles=catalog.map(profile=>{
+  const setIds=new Map(),localeSets={},profiles=[];
+  for(const profile of catalog){
     const qbVersion=profileKey(profile),sourceSha=String(profile?.sourceSha||'').trim(),locales=localeValues(profile?.webuiLocales);
     if(!qbVersion||!sourceSha)throw new Error('Every locale overlay profile requires qbVersion and sourceSha.');
     if(!locales.length)throw new Error(`${qbVersion}: source catalog has no WebUI locale facts.`);
-    return{qbVersion,sourceSha,source:String(profile?.webuiLocaleSource||'unresolved'),locales};
-  });
+    const key=JSON.stringify(locales);
+    let localeSet=setIds.get(key);
+    if(!localeSet){localeSet=`s${setIds.size+1}`;setIds.set(key,localeSet);localeSets[localeSet]=locales;}
+    profiles.push({qbVersion,sourceSha,source:String(profile?.webuiLocaleSource||'unresolved'),localeSet});
+  }
   return{
     schemaVersion:1,
     supportFloor:profileKey(catalog[0]),
@@ -31,13 +35,14 @@ export function extractLocaleOverlay(catalog,metadata={}){
     profileCount:profiles.length,
     ...(metadata.baseCatalogSha256?{baseCatalogSha256:String(metadata.baseCatalogSha256)}:{}),
     ...(metadata.sourceEvidence?{sourceEvidence:metadata.sourceEvidence}:{}),
+    localeSets,
     profiles
   };
 }
 
 export function applyLocaleOverlay(catalog,overlay,{catalogSha256=''}={}){
   if(!Array.isArray(catalog)||!catalog.length)throw new Error('Base catalog must be a non-empty array.');
-  if(!overlay||overlay.schemaVersion!==1||!Array.isArray(overlay.profiles))throw new Error('Locale overlay must use schemaVersion 1 with profiles.');
+  if(!overlay||overlay.schemaVersion!==1||!overlay.localeSets||typeof overlay.localeSets!=='object'||!Array.isArray(overlay.profiles))throw new Error('Locale overlay must use schemaVersion 1 with localeSets and profiles.');
   if(Number(overlay.profileCount)!==catalog.length||overlay.profiles.length!==catalog.length)throw new Error(`Locale overlay profile count mismatch: ${overlay.profiles.length}/${overlay.profileCount} != ${catalog.length}`);
   if(profileKey(catalog[0])!==String(overlay.supportFloor||''))throw new Error(`Locale overlay support floor mismatch: ${overlay.supportFloor} != ${profileKey(catalog[0])}`);
   if(profileKey(catalog.at(-1))!==String(overlay.latestAdmittedStable||''))throw new Error(`Locale overlay latest stable mismatch: ${overlay.latestAdmittedStable} != ${profileKey(catalog.at(-1))}`);
@@ -48,8 +53,8 @@ export function applyLocaleOverlay(catalog,overlay,{catalogSha256=''}={}){
     const qbVersion=profileKey(profile),fact=byVersion.get(qbVersion);
     if(!fact)throw new Error(`${qbVersion}: locale overlay profile missing.`);
     if(String(fact.sourceSha||'')!==String(profile.sourceSha||''))throw new Error(`${qbVersion}: locale overlay source SHA mismatch.`);
-    const webuiLocales=localeObjects(fact.locales);
-    if(!webuiLocales.length)throw new Error(`${qbVersion}: locale overlay has no WebUI locales.`);
+    const setName=String(fact.localeSet||''),webuiLocales=localeObjects(overlay.localeSets[setName]);
+    if(!setName||!webuiLocales.length)throw new Error(`${qbVersion}: locale overlay set ${setName||'missing'} is unresolved.`);
     return{...profile,webuiLocaleSource:String(fact.source||'unresolved'),webuiLocales};
   });
 }
@@ -65,7 +70,7 @@ if(isMain){
       const overlay=extractLocaleOverlay(readJson(input));
       fs.mkdirSync(path.dirname(output),{recursive:true});
       fs.writeFileSync(output,JSON.stringify(overlay,null,2)+'\n','utf8');
-      console.log(`Extracted ${overlay.profiles.length} exact qB locale profiles.`);
+      console.log(`Extracted ${overlay.profiles.length} exact qB locale profiles into ${Object.keys(overlay.localeSets).length} locale sets.`);
     }else if(mode==='apply'){
       const catalogPath=path.resolve(process.argv[3]||''),overlayPath=path.resolve(process.argv[4]||''),output=path.resolve(process.argv[5]||'');
       if(!catalogPath||!overlayPath||!output)throw new Error('Usage: node tools/qb-locale-overlay.mjs apply <catalog.json> <locale-overlay.json> <output.json>');
