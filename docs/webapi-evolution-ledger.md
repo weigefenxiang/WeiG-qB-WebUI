@@ -1,176 +1,125 @@
 # qBittorrent WebAPI evolution ledger
 
-Phase C established the supported WebAPI chronology/classification ledger. It remains an important **evidence index for product compatibility**, but from Phase E onward it is no longer the product roadmap by itself.
+本文件说明 WebAPI evolution ledger 的长期用途。它是**兼容 evidence index**，不是产品 roadmap，也不是 runtime compatibility owner。
 
-Machine-readable source of truth:
+Machine-readable source：
 
 ```text
 tools/data/qb-webapi-evolution-ledger.json
 ```
 
-Current audited WebAPI v2 window:
+当前 audited WebAPI v2 window：
 
 ```text
 qBittorrent 4.1.0 / WebAPI 2.0.0
 -> qBittorrent 5.2.3 / WebAPI 2.15.1
+65 admitted official stable profiles
 ```
 
-Current source-derived matrix: **65 official stable profiles**. Alpha/Beta/RC/master do not enter the formal stable matrix.
+Alpha/Beta/RC/master 不进入正式 Frozen stable matrix。
 
-## 1. Why the ledger exists
-
-The ledger answers:
+## 1. Ledger 回答什么
 
 ```text
-What changed in upstream WebAPI history?
-Where is the evidence?
-Which current owner models that change?
-Is the change still unmodeled?
+upstream WebAPI 历史发生了什么变化？
+证据在哪里？
+这个变化由哪个 source/simulator/product owner 消费？
+是否仍有未建模的 evidence gap？
 ```
 
-It does **not** directly answer:
+它不直接回答：
 
 ```text
-Is WeiG webui/** compatible with every qB4/qB5 feature?
+正式 webui/** 是否已经在所有 real qB stable 上正确工作？
 ```
 
-That second question belongs to Phase E product compatibility audit.
+后者必须由 formal product contracts + real-qB evidence 证明。
 
 ## 2. Terminal classifications
 
-- `SOURCE_DERIVED`: source catalog owns the structural fact.
-- `CONTRACT_COVERED`: current simulator canonical contract models the audited observable boundary.
-- `MISSING`: evidence identifies behavior not yet modeled in simulator/evolution infrastructure.
-- `NOT_APPLICABLE`: no equivalent simulator runtime responsibility is justified.
-
-`UNCLASSIFIED` is forbidden and remains a hard failure.
-
-Important: `CONTRACT_COVERED` here usually means **simulator/evidence coverage**, not automatically “formal `webui/**` product compatibility complete”.
-
-## 3. Current statistics
-
 ```text
-65 supported official stable profiles
-77 evidence entries
-120 classified changes
-SOURCE_DERIVED = 38
-CONTRACT_COVERED = 17
-MISSING = 50
-NOT_APPLICABLE = 15
-UNCLASSIFIED = 0
-modern WebAPI changelog PRs = 26
+SOURCE_DERIVED
+CONTRACT_COVERED
+MISSING
+NOT_APPLICABLE
 ```
 
-Phase C initial baseline was:
+`UNCLASSIFIED` 禁止作为终态。
 
-```text
-117 classified changes
-SOURCE_DERIVED = 37
-CONTRACT_COVERED = 6
-MISSING = 60
-NOT_APPLICABLE = 14
-UNCLASSIFIED = 0
-```
+含义：
 
-The increase to 120 reflects more precise splitting of observable subchanges.
+- `SOURCE_DERIVED`：结构事实已由 source catalog拥有；
+- `CONTRACT_COVERED`：当前 simulator/evidence contract 已建模该 observable boundary；
+- `MISSING`：已知 evolution evidence 尚未进入相应模拟/证据 owner；
+- `NOT_APPLICABLE`：没有合理 simulator/runtime responsibility。
 
-## 4. Phase D completed historical closures
+`CONTRACT_COVERED` 不自动等于正式产品 compatibility complete。
 
-Important completed simulator/evidence work includes:
+## 3. Product-first priority
 
-- `sync/maindata.use_subcategories` lifecycle；
-- `sync/maindata.categories` 2.1.0 shape change；
-- `free_space_on_disk` 2.1.1；
-- trackers timing/status 5/6 2.13.0；
-- `editTracker` 2.13.0；
-- `parseMetadata` 2.13.0；
-- PR #23202: missing endpoint / login / `torrents/add` 2.14.0；
-- Basic Auth 2.15.0；
-- `sync/torrentPeers.host_name` 2.15.1；
-- qB 5.2.1 API result-buffer lifetime -> `NOT_APPLICABLE`；
-- qB 5.2.2 X-Forwarded-Host gate。
-
-These remain useful because they let Virtual qB reproduce historical upstream behavior accurately.
-
-## 5. Phase E changes how MISSING is prioritized
-
-Current `MISSING = 50` must not be consumed mechanically.
-
-Before implementing a ledger item, first determine its relationship to formal `webui/**`:
+处理一个 ledger delta 前，先判断它与 `webui/**` 的关系：
 
 ```text
 PRODUCT_BLOCKER
-  current WeiG feature breaks/fails on some real stable qB
-
 PRODUCT_NORMALIZATION
-  feature exists but request/response/state differs and product needs normalization
-
 PRODUCT_EMULATION
-  old qB lacks a direct modern API but WeiG can reliably implement equivalent behavior
-
 UNAVOIDABLE_PRODUCT_GAP
-  real qB lacks required data/ability and no reliable equivalent exists
-
 SIMULATOR_ONLY / UNUSED_BY_PRODUCT
-  WeiG webui/** does not currently consume the behavior
 ```
 
-Priority order follows product impact, not ledger order.
+优先级按产品影响，不按 ledger 顺序或 `MISSING` 数量。
 
-## 6. Product-first use of evidence
-
-New workflow:
+正确流程：
 
 ```text
 ledger/upstream delta
--> map to webui/** feature/caller
--> inspect current product compatibility owner
+-> map to formal webui/** caller/owner
+-> confirm official source truth
 -> fix product normalization/emulation if needed
--> add product direct tests
--> use Virtual qB profile to validate UI flow
+-> add direct product contracts
+-> update Virtual qB contract/profile if useful
 -> add real-qB evidence where relevant
 ```
 
-Only after product concerns are addressed should simulator-only fidelity be considered.
+降低 `MISSING` 数量本身不是产品成功指标。
 
-## 7. Owner map remains useful
+## 4. Owner map
 
-Historical evidence still maps to the correct evidence/simulator owner:
+Evidence/simulator owner：
 
 ```text
-NEW/REMOVED endpoint -> apiActions/source catalog
+NEW/REMOVED endpoint -> source apiActions/catalog
 PREFERENCE          -> Preference source pipeline
 TORRENT_SURFACE     -> Torrent surface parser/catalog
 PARAM/RESPONSE/
-STATUS/MUTATION     -> simulator Endpoint Contract when modeling history
-TRANSPORT           -> simulator Transport Contract when modeling history
-NOT_APPLICABLE      -> audited ledger only
+STATUS/MUTATION     -> simulator Endpoint Contract
+TRANSPORT           -> simulator Transport Contract
+NOT_APPLICABLE      -> ledger only
 ```
 
-For the **formal product**, relevant differences must additionally map into canonical product owners such as:
+Formal product owner 另见：
 
 ```text
-W.QBClient
 W.ReleaseProfile
+W.QBClient
 W.CapabilityRegistry
 W.SettingsSchema
 W.TorrentSemantics
+W.TorrentFieldRegistry
 ```
 
-Do not confuse simulator owner mapping with product owner mapping.
+不要混淆 simulator owner 与 product owner。
 
-## 8. Product compatibility examples
+## 5. Compatibility examples
 
 ### qB4/qB5 action names
-
-Upstream difference:
 
 ```text
 qB4 resume/pause
 qB5 start/stop
 ```
 
-Product resolution belongs in formal `webui/**` product compatibility logic, not just simulator history.
+正式解决属于 product compatibility owner；simulator 只负责准确复现对应 upstream 行为。
 
 ### Torrent filter names
 
@@ -179,37 +128,55 @@ qB4 paused/resumed
 qB5 stopped/running
 ```
 
-Product `W.TorrentSemantics + W.ReleaseProfile` should normalize the difference.
+正式 normalize 属于 `W.ReleaseProfile + W.TorrentSemantics`。
 
-### editTracker / torrents/add
+### Historical response/parameter changes
 
-Simulator accurately reproducing legacy/modern response semantics is useful, but Phase E must also verify the actual product `W.QBClient` normalization used by real UI flows.
+例如 Category shape、`editTracker`、`torrents/add`、Basic Auth、peer `host_name` 等差异，可以由 ledger/source evidence 记录，并在 simulator Endpoint/Transport Contract 中复现；如果正式 UI 消费这些差异，还必须在 product owner 中证明正确处理。
 
-## 9. qB4.0.x
+## 6. Future stable
 
-This ledger currently starts at qB 4.1.0 / WebAPI v2.
-
-The new product goal is qB4/qB5 stable compatibility. qB 4.0.x therefore remains a separate explicit gap rather than silently disappearing from project scope.
-
-If support is implemented, WebAPI v1 evidence should live in a separate legacy adapter/evidence path instead of corrupting the existing v2 chronology.
-
-## 10. Future revisions
-
-A new stable release follows:
+新的 official stable：
 
 ```text
-new official tag
--> exact source profile
+discover exact tag/source identity
+-> generate source profile
+-> compare evolution facts
 -> product impact analysis
--> WebAPI/supplement evidence
--> product compatibility implementation if required
+-> compatibility implementation if required
 -> simulator/evidence update if useful
+-> admission review
 ```
 
-Unknown future semantics must not be guessed. However, fail-close is a safety mechanism supporting product compatibility, not the product goal itself.
+Unknown future semantics 不允许猜测。Fail-close 是安全机制，不是最终产品目标。
 
-## 11. Working rule
+## 7. 与现行 CI 的关系
 
-The ledger remains authoritative for chronology/evidence, while [`010.真实qB产品兼容路线.md`](./010.真实qB产品兼容路线.md) is authoritative for **what the project works on next**.
+仓库不再维护独立 `Upstream Compatibility Audit` workflow。
 
-A lower `MISSING` count is not success unless the same work improves or proves `webui/**` compatibility on real qB stable releases.
+发布级 source/product audit 由 `CI` 的 `candidate` 模式完成：
+
+```text
+generate exact stable source catalog
+-> audit every official stable >= 4.1.0
+-> full stable PRODUCT compatibility matrix
+```
+
+全版本真实 runtime 证明由 `Real qB Full Frozen Matrix` 手动执行。
+
+详细流程见 `docs/006.发布与晋级流程.md`。
+
+## 8. Working rule
+
+Ledger 是 chronology/evidence authority；`docs/010.真实qB产品兼容路线.md` 是正式兼容策略 authority。
+
+发生冲突时：
+
+```text
+official source/runtime truth
+-> admitted profile
+-> canonical product owner
+-> evidence tools/docs
+```
+
+不要为了保留旧 ledger/test expectation 修改正确产品语义。
