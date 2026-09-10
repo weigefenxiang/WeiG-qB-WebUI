@@ -76,7 +76,8 @@ for(const profile of catalog){
 
   assert.equal(C.supports('categoryFacet'),profile.torrentInfoFields.includes('category'),`${profile.qbVersion}: Category facet must follow read field facts`);
   assert.equal(C.supports('tagFacet'),profile.torrentInfoFields.includes('tags'),`${profile.qbVersion}: Tags facet must follow read field facts`);
-  assert.equal(C.supports('categories'),profile.apiActions.includes('torrentscontroller.h:categoriesAction'),`${profile.qbVersion}: native Categories taxonomy must follow source action`);
+  const categoriesExpected=profile.apiActions.includes('torrentscontroller.h:categoriesAction')||profile.apiActions.includes('synccontroller.h:maindataAction');
+  assert.equal(C.supports('categories'),categoriesExpected,`${profile.qbVersion}: Categories taxonomy must follow a source-proven read action`);
   assert.equal(C.supports('tags'),profile.apiActions.includes('torrentscontroller.h:tagsAction'),`${profile.qbVersion}: native Tags taxonomy must follow source action`);
   assert.ok(profile.torrentInfoFields.includes('tracker')&&profile.torrentInfoFields.includes('save_path'),`${profile.qbVersion}: Tracker/Path facets require bulk catalog fields`);
 
