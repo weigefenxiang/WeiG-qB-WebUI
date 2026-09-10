@@ -15,7 +15,7 @@ function unique(values) {
   return out;
 }
 function localeValues(profile) { return unique((Array.isArray(profile?.webuiLocales) ? profile.webuiLocales : []).map((item) => typeof item === 'string' ? item : item?.value)); }
-function languageBase(value) { return String(value || '').trim().replace('-', '_').split('_')[0].toLowerCase(); }
+function languageBase(value) { return String(value || '').trim().replace('-', '_').split('_')[0].split('@')[0].toLowerCase(); }
 function stableJson(value) { return JSON.stringify(value); }
 function contentHash(value) { return crypto.createHash('sha256').update(stableJson(value)).digest('hex'); }
 function englishSourceMessages(preferences) {
@@ -31,6 +31,59 @@ function englishSourceMessages(preferences) {
     }
   }
   return out;
+}
+
+function localeIdentity(value) {
+  const raw=String(value || '').trim();
+  const at=raw.indexOf('@');
+  const main=(at >= 0 ? raw.slice(0,at) : raw).replace(/-/g,'_');
+  const modifierRaw=at >= 0 ? raw.slice(at + 1).trim().toLowerCase() : '';
+  const modifier=modifierRaw === 'latin' ? 'latn' : modifierRaw;
+  const parts=main.split('_').filter(Boolean);
+  return {
+    language:String(parts.shift() || '').toLowerCase(),
+    region:parts.join('_').toLowerCase(),
+    modifier
+  };
+}
+
+function translationResource(pathname) {
+  const value=String(pathname || '').trim();
+  let match=value.match(/(?:^|\/)src\/webui\/www\/translations\/webui_(.+)\.ts$/);
+  if (match) return {path:value,locale:match[1],kind:'webui'};
+  match=value.match(/(?:^|\/)src\/lang\/qbittorrent_(.+)\.ts$/);
+  if (match) return {path:value,locale:match[1],kind:'app'};
+  return null;
+}
+
+function resourceMatchScore(requested,candidate) {
+  const want=localeIdentity(requested);
+  const got=localeIdentity(candidate);
+  if (!want.language || want.language !== got.language) return 0;
+  if (want.modifier || got.modifier) {
+    if (!want.modifier || !got.modifier || want.modifier !== got.modifier) return 0;
+  }
+  if (want.region === got.region) return 3;
+  if (want.region && !got.region) return 2;
+  return 0;
+}
+
+export function resolveQbTranslationResourcePath(locale, paths = []) {
+  const resources=(paths || []).map(translationResource).filter(Boolean);
+  for (const kind of ['webui','app']) {
+    const scored=resources
+      .filter((item)=>item.kind === kind)
+      .map((item)=>({...item,score:resourceMatchScore(locale,item.locale)}))
+      .filter((item)=>item.score > 0);
+    if (!scored.length) continue;
+    const best=Math.max(...scored.map((item)=>item.score));
+    const matches=scored.filter((item)=>item.score === best);
+    if (matches.length !== 1) {
+      throw new Error(`Ambiguous official qB translation source for ${locale}: ${matches.map((item)=>item.path).join(', ')}`);
+    }
+    return matches[0].path;
+  }
+  return null;
 }
 
 export function buildQbSettingsTranslationOverlay(catalog, readReleaseSources) {
@@ -107,9 +160,24 @@ export function applyQbSettingsTranslationOverlay(catalog, overlay) {
 function git(root,...args) { return execFileSync('git',['-C',root,...args],{encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim(); }
 function showMaybe(root,tag,file) { try { return git(root,'show',`${tag}:${file}`); } catch { return ''; } }
 function preferencesSource(root,tag) { return showMaybe(root,tag,'src/webui/www/private/views/preferences.html') || showMaybe(root,tag,'src/webui/www/private/preferences_content.html'); }
-function showTranslation(root,tag,locale) { return showMaybe(root,tag,`src/webui/www/translations/webui_${locale}.ts`); }
+function translationPaths(root,tag) {
+  let output='';
+  try { output=git(root,'ls-tree','-r','--name-only',tag,'src/webui/www/translations','src/lang'); }
+  catch { return []; }
+  return output.split(/\r?\n/).map((item)=>item.trim()).filter(Boolean);
+}
+function showTranslation(root,tag,locale,paths) {
+  const resourcePath=resolveQbTranslationResourcePath(locale,paths);
+  return resourcePath ? showMaybe(root,tag,resourcePath) : '';
+}
 export function buildQbSettingsTranslationOverlayFromClone(catalog,qbRoot) {
-  return buildQbSettingsTranslationOverlay(catalog,({tag})=>({preferencesSource:preferencesSource(qbRoot,tag),translationSource:(locale)=>showTranslation(qbRoot,tag,locale)}));
+  return buildQbSettingsTranslationOverlay(catalog,({tag})=>{
+    const paths=translationPaths(qbRoot,tag);
+    return {
+      preferencesSource:preferencesSource(qbRoot,tag),
+      translationSource:(locale)=>showTranslation(qbRoot,tag,locale,paths)
+    };
+  });
 }
 
 const isMain=process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));

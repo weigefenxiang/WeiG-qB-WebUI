@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {extractWebuiLocaleFacts,localeCodesFromPaths,parseExplicitLocaleOptions} from '../tools/qb-locale-source.mjs';
 import {extractQbPreferenceUiFacts,extractQbSettingsTranslationFacts,indexQbSettingsTranslationFacts,parseQtTsTranslationSource,translationSourcesForPreferenceUi} from '../tools/qb-settings-translation-source.mjs';
-import {applyQbSettingsTranslationOverlay,buildQbSettingsTranslationOverlay} from '../tools/qb-settings-translation-overlay.mjs';
+import {applyQbSettingsTranslationOverlay,buildQbSettingsTranslationOverlay,resolveQbTranslationResourcePath} from '../tools/qb-settings-translation-overlay.mjs';
 
 const oldHtml=`
 <select id="locale_select">
@@ -38,6 +38,28 @@ assert.deepEqual(extractWebuiLocaleFacts({preferencesSource:placeholder,paths}),
   webuiLocaleSource:'translation-resources'
 });
 assert.deepEqual(extractWebuiLocaleFacts({preferencesSource:'',paths:[]}),{webuiLocales:[],webuiLocaleSource:'unresolved'});
+
+const legacyTranslationPaths=[
+  'src/lang/qbittorrent_eo.ts',
+  'src/lang/qbittorrent_de.ts',
+  'src/lang/qbittorrent_ja.ts',
+  'src/lang/qbittorrent_ko.ts',
+  'src/lang/qbittorrent_zh.ts',
+  'src/lang/qbittorrent_zh_HK.ts',
+  'src/lang/qbittorrent_zh_TW.ts',
+  'src/lang/qbittorrent_sr.ts',
+  'src/lang/qbittorrent_uz@Latn.ts'
+];
+assert.equal(resolveQbTranslationResourcePath('eo_EO',legacyTranslationPaths),'src/lang/qbittorrent_eo.ts','historical region-bearing qB locale resolves to its exact-release official base-language TS resource');
+assert.equal(resolveQbTranslationResourcePath('de_DE',legacyTranslationPaths),'src/lang/qbittorrent_de.ts');
+assert.equal(resolveQbTranslationResourcePath('ja_JP',legacyTranslationPaths),'src/lang/qbittorrent_ja.ts');
+assert.equal(resolveQbTranslationResourcePath('ko_KR',legacyTranslationPaths),'src/lang/qbittorrent_ko.ts');
+assert.equal(resolveQbTranslationResourcePath('zh',legacyTranslationPaths),'src/lang/qbittorrent_zh.ts','an exact base locale must win over regional siblings');
+assert.equal(resolveQbTranslationResourcePath('zh_TW',legacyTranslationPaths),'src/lang/qbittorrent_zh_TW.ts');
+assert.equal(resolveQbTranslationResourcePath('uz@latin',legacyTranslationPaths),'src/lang/qbittorrent_uz@Latn.ts','Qt latin/Latn modifier spelling is the same script identity');
+assert.equal(resolveQbTranslationResourcePath('sr@latin',legacyTranslationPaths),null,'script-bearing locale must never fall back to a different-script base resource');
+assert.equal(resolveQbTranslationResourcePath('de_DE',['src/lang/qbittorrent_de.ts','src/webui/www/translations/webui_de.ts']),'src/webui/www/translations/webui_de.ts','WebUI-specific official TS wins when both exact-release resource families contain the locale');
+assert.throws(()=>resolveQbTranslationResourcePath('eo_EO',['src/lang/qbittorrent_eo_EO.ts','src/lang/qbittorrent_eo-EO.ts']),/Ambiguous official qB translation source/,'ambiguous source identities fail closed instead of guessing');
 
 const preferencesSource=`
 <label for="savepath_text">QBT_TR(Default Save Path:)QBT_TR[CONTEXT=OptionsDialog]</label>
