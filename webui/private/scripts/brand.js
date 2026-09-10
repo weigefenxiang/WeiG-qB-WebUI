@@ -1,7 +1,7 @@
 (function(global){
   'use strict';
   var W=global.WeiG=global.WeiG||{};
-  var ICON='https://raw.githubusercontent.com/weigefenxiang/WeiG-OpenWrt-AutoBuild/main/site/wrt/Wei.G.ico';
+  var ICON='assets/Wei.G.ico';
   var random=Math.random,timer=null,marks=new Set(),effects=['orbit','spark','tilt','shine','breathe','orbit-spark'];
   function reduced(){return !!(global.matchMedia&&global.matchMedia('(prefers-reduced-motion: reduce)').matches);}
   function layers(mark){if(!mark.querySelector('.ambient-mark__orbit')){var o=document.createElement('span');o.className='ambient-mark__orbit';o.setAttribute('aria-hidden','true');mark.prepend(o);}if(!mark.querySelector('.ambient-mark__shine')){var sh=document.createElement('span');sh.className='ambient-mark__shine';sh.setAttribute('aria-hidden','true');mark.appendChild(sh);}if(!mark.querySelector('.ambient-mark__sparks')){var ss=document.createElement('span');ss.className='ambient-mark__sparks';ss.setAttribute('aria-hidden','true');['#38d6ff','#7297ff','#816fff','#39d98a','#ffbd5a','#edf2ff'].forEach(function(c,i){var s=document.createElement('i');s.className='ambient-mark__spark';s.style.setProperty('--spark-color',c);s.style.setProperty('--spark-delay',(i*36)+'ms');ss.appendChild(s);});mark.appendChild(ss);}}
