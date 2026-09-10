@@ -13,7 +13,7 @@ function runNode(file,args){const result=spawnSync(process.execPath,[file,...arg
 
 const out=path.resolve(required('out'));
 const catalog=path.resolve(required('catalog'));
-const localeOverlayArg=arg('locale-overlay');
+const localeOverlayPath=path.resolve(arg('locale-overlay',path.join(projectRoot,'tools/data/qb-locale-lkg.json')));
 const simulatorSha=required('simulator-sha');
 const branches=[
   {name:'dev',webuiRoot:path.resolve(required('dev-webui')),sha:required('dev-sha'),version:required('dev-version')},
@@ -24,20 +24,15 @@ await fs.rm(out,{recursive:true,force:true});
 await fs.mkdir(path.join(out,'metadata'),{recursive:true});
 const catalogBytes=await fs.readFile(catalog);
 const baseCatalogSha256=crypto.createHash('sha256').update(catalogBytes).digest('hex');
-let catalogData=JSON.parse(catalogBytes.toString('utf8'));
-let localeCatalog=null;
-if(localeOverlayArg){
-  const localeOverlayPath=path.resolve(localeOverlayArg);
-  const overlay=JSON.parse(await fs.readFile(localeOverlayPath,'utf8'));
-  catalogData=applyLocaleOverlay(catalogData,overlay,{catalogSha256:baseCatalogSha256});
-  localeCatalog={
-    schemaVersion:overlay.schemaVersion,
-    profiles:overlay.profileCount,
-    localeSets:Object.keys(overlay.localeSets||{}).length,
-    baseCatalogSha256,
-    sourceEvidence:overlay.sourceEvidence||null
-  };
-}
+const overlay=JSON.parse(await fs.readFile(localeOverlayPath,'utf8'));
+const catalogData=applyLocaleOverlay(JSON.parse(catalogBytes.toString('utf8')),overlay,{catalogSha256:baseCatalogSha256});
+const localeCatalog={
+  schemaVersion:overlay.schemaVersion,
+  profiles:overlay.profileCount,
+  localeSets:Object.keys(overlay.localeSets||{}).length,
+  baseCatalogSha256,
+  sourceEvidence:overlay.sourceEvidence||null
+};
 const renderedCatalog=path.join(out,'metadata','qb-releases.json');
 await fs.writeFile(renderedCatalog,JSON.stringify(catalogData)+'\n','utf8');
 
@@ -107,4 +102,4 @@ const siteMeta={simulatorSha,builtAt:new Date().toISOString(),stableProfiles:Arr
 await fs.writeFile(path.join(out,'metadata','site.json'),JSON.stringify(siteMeta,null,2)+'\n','utf8');
 await fs.writeFile(path.join(out,'.nojekyll'),'','utf8');
 await fs.writeFile(path.join(out,'index.html'),'<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="0;url=./lab/"><title>WeiG Virtual qB Lab</title></head><body><p><a href="./lab/">进入 WeiG Virtual qB Lab</a></p></body></html>','utf8');
-console.log(`Assembled WeiG Virtual qB Pages artifact: ${out}${localeCatalog?` with ${localeCatalog.profiles} exact locale profiles / ${localeCatalog.localeSets} sets`:''}`);
+console.log(`Assembled WeiG Virtual qB Pages artifact: ${out} with ${localeCatalog.profiles} exact locale profiles / ${localeCatalog.localeSets} sets`);
