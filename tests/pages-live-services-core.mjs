@@ -26,8 +26,8 @@ async function openSession(page,{branch='main',qb='5.2.3',count=1000,scenario='m
   url.search=new URLSearchParams({sim:sim||`services-${crypto.randomUUID()}`,qb,count:String(count),scenario,seed,clean:'0'}).toString();
   await page.goto(url.toString(),{waitUntil:'domcontentloaded',timeout:60000});
   await page.waitForSelector('#login-form',{state:'visible',timeout:60000});
-  assert.equal(await page.locator('#username').inputValue(),'demo');
-  assert.equal(await page.locator('#password').inputValue(),'demo');
+  assert.equal(await page.locator('#username').inputValue(),'weigshare');
+  assert.equal(await page.locator('#password').inputValue(),'weigshare');
   await page.locator('#login-btn').click();
   await page.waitForSelector('#torrent-list',{state:'attached',timeout:60000});
   await page.waitForFunction(version=>String(document.querySelector('#qb-version')?.textContent||'').includes(version),qb,{timeout:60000});

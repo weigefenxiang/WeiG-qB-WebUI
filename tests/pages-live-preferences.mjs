@@ -193,7 +193,7 @@ try{
   for(const profile of matrix){
     const sim=`pref-matrix-${profile.qbVersion.replace(/\./g,'-')}-${Date.now()}-${audited}`;
     const query=`sim=${encodeURIComponent(sim)}&qb=${encodeURIComponent(profile.qbVersion)}&count=1&scenario=mixed&seed=pages-live-pref-matrix`;
-    let response=await api(page,`auth/login?${query}`,{method:'POST',form:{username:'demo',password:'demo'}});
+    let response=await api(page,`auth/login?${query}`,{method:'POST',form:{username:'weigshare',password:'weigshare'}});
     const expectedLoginStatus=atLeast(profile.webApiVersion,'2.14.0')?204:200;
     assert.equal(response.status,expectedLoginStatus,`${profile.qbVersion}: virtual daemon login must match WebAPI ${profile.webApiVersion} success status`);
     response=await api(page,`app/version?sim=${encodeURIComponent(sim)}`);
