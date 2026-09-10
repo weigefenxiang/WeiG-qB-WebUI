@@ -172,7 +172,7 @@ RUN git clone --depth 1 --branch "$LT_TAG" https://github.com/arvidn/libtorrent.
       && make -j2 \
       && make install; \
     else \
-      cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=17 -Ddeprecated-functions="$LT_DEPRECATED" \
+      cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=14 -Ddeprecated-functions="$LT_DEPRECATED" \
       && cmake --build build -j2 \
       && cmake --install build; \
     fi \
