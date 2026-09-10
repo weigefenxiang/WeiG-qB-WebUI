@@ -2,21 +2,6 @@ name: Real qB Full Frozen Matrix
 
 on:
   workflow_dispatch:
-  push:
-    branches: [dev]
-    paths:
-      - '.github/workflows/real-qb-full.yml'
-      - '.github/workflows/pages.yml'
-      - '.github/workflows/pages-source.yml'
-      - '.github/workflows/promote.yml'
-      - 'tests/real-qb-full-*.mjs'
-      - 'tests/real-qb-full-*.sh'
-      - 'tests/real-qb-harness.mjs'
-      - 'tests/real-qb-file-priority.mjs'
-      - 'tests/real-qb-torrent-creator.mjs'
-      - 'tests/real-qb-search.mjs'
-      - 'tests/fixtures/qb-release-catalog.lkg.json'
-      - 'tools/data/qb-stable-lkg.json'
 
 permissions:
   contents: read
