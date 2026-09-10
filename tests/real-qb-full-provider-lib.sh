@@ -1,6 +1,7 @@
 # Sourced by real-qb-full-runner.sh. Uses the runner's exact-version globals.
 readonly GFM_PRESET_PASSWORD='Wei.G'
 readonly GFM_CHANGED_PASSWORD='Wei.G1'
+readonly GFM_SOURCE_BASE_IMAGE='ubuntu:20.04@sha256:8feb4d8ca5354def3d8fce243717141ce31e2c428701f6682bd2fafe15388214'
 
 gfm_auth_lifecycle_version(){
   [[ "$VERSION" =~ ^5\.2\.[0-9]+$ ]]
@@ -66,6 +67,128 @@ resolve_ref(){
   PACKAGE_ID="$package; sourceTag=$ref"
 }
 
+# Centralized historical build-toolchain profile. Product/WebUI capability behavior
+# remains release-profile driven; this mapping only describes how to materialize an
+# otherwise unavailable exact historical qB runtime for the evidence harness.
+frozen_source_build_profile(){
+  case "$VERSION" in
+    4.1.*)
+      printf '%s\t%s\t%s\t%s\n' \
+        'libtorrent-1_1_14' \
+        '244f0f189ba8ab9801e7fcf553beebfb83d7c86b' \
+        'autotools' \
+        "$GFM_SOURCE_BASE_IMAGE"
+      ;;
+    4.2.*|4.3.*)
+      printf '%s\t%s\t%s\t%s\n' \
+        'v1.2.12' \
+        'e3f2b016dcd37a9a6e8a94006c7befcf2cb7bfac' \
+        'cmake' \
+        "$GFM_SOURCE_BASE_IMAGE"
+      ;;
+    *) return 1 ;;
+  esac
+}
+
+frozen_qb_source_identity(){
+  NODE_OPTIONS='' node --input-type=module - "$VERSION" <<'NODE'
+import fs from 'node:fs';
+const version=process.argv[2];
+const manifest=JSON.parse(fs.readFileSync('tools/data/qb-stable-lkg.json','utf8'));
+const catalog=JSON.parse(fs.readFileSync(manifest.catalogPath,'utf8'));
+const profile=catalog.find(item=>String(item?.qbVersion||'')===version);
+if(!profile)throw new Error(`Frozen catalog has no qB ${version} profile.`);
+const expectedTag=`release-${version}`;
+if(profile.tag!==expectedTag)throw new Error(`Frozen qB ${version} tag mismatch: ${profile.tag||'missing'}`);
+if(!/^[0-9a-f]{40}$/i.test(String(profile.sourceSha||'')))throw new Error(`Frozen qB ${version} sourceSha is invalid.`);
+process.stdout.write(`${profile.tag}\t${profile.sourceSha}\n`);
+NODE
+}
+
+prepare_frozen_source_runtime(){
+  local build_profile qb_identity lt_tag lt_sha lt_build base_image qb_tag qb_sha build_dir image_tag image_id
+  build_profile="$(frozen_source_build_profile)" || return 1
+  IFS=$'\t' read -r lt_tag lt_sha lt_build base_image <<<"$build_profile"
+  qb_identity="$(frozen_qb_source_identity)" || {
+    record_attempt frozen-official-source "qB ${VERSION}" REJECTED 'Frozen catalog source identity could not be resolved'
+    return 1
+  }
+  IFS=$'\t' read -r qb_tag qb_sha <<<"$qb_identity"
+
+  PROVIDER='frozen-official-source'
+  MODE='source'
+  SOURCE_REF="qbittorrent/${qb_tag}@${qb_sha}; libtorrent/${lt_tag}@${lt_sha}"
+  PACKAGE_ID="Frozen official source build qB ${VERSION}; qbSourceSha=${qb_sha}; libtorrentSha=${lt_sha}; base=${base_image}"
+  build_dir="$TMP_ROOT/source-build-${VERSION//./-}-${RANDOM}"
+  image_tag="weig-gfm-source:${VERSION}-${qb_sha:0:12}"
+  mkdir -p "$build_dir"
+
+  cat >"$build_dir/Dockerfile" <<'DOCKER'
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+ARG DEBIAN_FRONTEND=noninteractive
+ARG QB_TAG
+ARG QB_SOURCE_SHA
+ARG LT_TAG
+ARG LT_SOURCE_SHA
+ARG LT_BUILD
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates git build-essential pkg-config autoconf automake libtool cmake ninja-build \
+    libssl-dev zlib1g-dev \
+    libboost-dev libboost-system-dev libboost-chrono-dev libboost-random-dev \
+    qtbase5-dev qttools5-dev qttools5-dev-tools libqt5svg5-dev \
+    python3 curl \
+ && rm -rf /var/lib/apt/lists/*
+RUN git clone --depth 1 --branch "$LT_TAG" https://github.com/arvidn/libtorrent.git /src/libtorrent \
+ && cd /src/libtorrent \
+ && test "$(git rev-parse HEAD)" = "$LT_SOURCE_SHA" \
+ && if [ "$LT_BUILD" = autotools ]; then \
+      ./autotool.sh \
+      && ./configure --disable-debug --enable-encryption --disable-python-binding \
+      && make -j2 \
+      && make install; \
+    else \
+      cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=17 -Ddeprecated-functions=OFF \
+      && cmake --build build -j2 \
+      && cmake --install build; \
+    fi \
+ && ldconfig
+RUN git clone --depth 1 --branch "$QB_TAG" https://github.com/qbittorrent/qBittorrent.git /src/qbittorrent \
+ && cd /src/qbittorrent \
+ && test "$(git rev-parse HEAD)" = "$QB_SOURCE_SHA" \
+ && ./bootstrap.sh \
+ && ./configure --disable-gui --prefix=/opt/qb \
+ && make -j2 \
+ && make install \
+ && /opt/qb/bin/qbittorrent-nox --version
+ENV PATH="/opt/qb/bin:${PATH}"
+ENV LD_LIBRARY_PATH="/usr/local/lib"
+RUN mkdir -p /root/.config/qBittorrent \
+ && printf '[LegalNotice]\nAccepted=true\n' > /root/.config/qBittorrent/qBittorrent.conf
+ENTRYPOINT ["/opt/qb/bin/qbittorrent-nox"]
+DOCKER
+
+  if ! docker build --pull \
+      --build-arg "BASE_IMAGE=$base_image" \
+      --build-arg "QB_TAG=$qb_tag" \
+      --build-arg "QB_SOURCE_SHA=$qb_sha" \
+      --build-arg "LT_TAG=$lt_tag" \
+      --build-arg "LT_SOURCE_SHA=$lt_sha" \
+      --build-arg "LT_BUILD=$lt_build" \
+      -t "$image_tag" "$build_dir"; then
+    record_attempt "$PROVIDER" "$SOURCE_REF" BUILD_FAILED 'exact Frozen official-source runtime image could not be built'
+    return 1
+  fi
+
+  image_id="$(docker image inspect "$image_tag" --format '{{.Id}}' 2>/dev/null || true)"
+  if [[ "$image_id" != sha256:* ]]; then
+    record_attempt "$PROVIDER" "$SOURCE_REF" REJECTED 'source-built image had no immutable local image ID'
+    return 1
+  fi
+  IMAGE="$image_id"
+  record_attempt "$PROVIDER" "$SOURCE_REF" BUILD_ESTABLISHED "exact Frozen qB ${VERSION} source image built as ${image_id}"
+}
+
 start_runtime(){
   NAME="weig-gfm-${VERSION//./-}-${GITHUB_RUN_ID:-$$}-${RANDOM}"
   local common=(-d -t --name "$NAME" --network "$NET")
@@ -96,6 +219,9 @@ start_runtime(){
     wernight)
       docker run "${common[@]}" "${config_args[@]}" --tmpfs /torrents:rw,nosuid,nodev,mode=1777 \
         --tmpfs /downloads:rw,nosuid,nodev,mode=1777 "$IMAGE" >/dev/null ;;
+    source)
+      docker run "${common[@]}" --tmpfs /downloads:rw,nosuid,nodev,mode=1777 \
+        "$IMAGE" --webui-port=8080 >/dev/null ;;
     *) return 1 ;;
   esac
   CONTAINER_CREATED=1
@@ -208,4 +334,28 @@ try_candidate(){
     cleanup_container >/dev/null 2>&1 || true; return 1
   fi
   record_attempt "$PROVIDER" "$SOURCE_REF" RUNTIME_ESTABLISHED "exact stable qB ${VERSION} identity established"
+}
+
+try_frozen_source_candidate(){
+  local identity_rc=0 state=''
+  prepare_frozen_source_runtime || return 1
+  if ! start_runtime; then
+    record_attempt "$PROVIDER" "$SOURCE_REF" START_FAILED 'source-built exact historical qB docker run failed'
+    cleanup_container >/dev/null 2>&1 || true; return 1
+  fi
+  if ! wait_ready; then
+    state="$(docker inspect "$NAME" --format 'running={{.State.Running}} exit={{.State.ExitCode}}' 2>/dev/null || true)"
+    record_attempt "$PROVIDER" "$SOURCE_REF" NOT_READY "source-built WebUI/API did not become ready; ${state:-container state unavailable}"
+    cleanup_container >/dev/null 2>&1 || true; return 1
+  fi
+  if establish_identity; then identity_rc=0; else identity_rc=$?; fi
+  if ((identity_rc!=0)); then
+    if ((identity_rc==2)); then
+      record_attempt "$PROVIDER" "$SOURCE_REF" IDENTITY_MISMATCH "expected Frozen stable qB ${VERSION}, got ${RUNTIME_VERSION:-unknown}"
+    else
+      record_attempt "$PROVIDER" "$SOURCE_REF" AUTH_OR_IDENTITY_FAILED 'source-built runtime could not authenticate and prove exact qB identity'
+    fi
+    cleanup_container >/dev/null 2>&1 || true; return 1
+  fi
+  record_attempt "$PROVIDER" "$SOURCE_REF" RUNTIME_ESTABLISHED "exact Frozen source-built qB ${VERSION} identity established"
 }

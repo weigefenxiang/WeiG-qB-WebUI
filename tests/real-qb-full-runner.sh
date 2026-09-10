@@ -83,6 +83,9 @@ if (( ! RUNTIME_ESTABLISHED )); then for ref in "qbittorrentofficial/qbittorrent
 if (( ! RUNTIME_ESTABLISHED )); then for ref in "linuxserver/qbittorrent:${VERSION}" "linuxserver/qbittorrent:version-${VERSION}" "linuxserver/qbittorrent:amd64-${VERSION}" "linuxserver/qbittorrent:amd64-version-${VERSION}"; do if try_candidate linuxserver linuxserver "$ref" "LinuxServer historical qB ${VERSION} wrapper"; then RUNTIME_ESTABLISHED=1; break; fi; done; fi
 if (( ! RUNTIME_ESTABLISHED )); then if try_candidate crazymax crazymax "crazymax/qbittorrent:${VERSION}" "CrazyMax historical qB ${VERSION} wrapper"; then RUNTIME_ESTABLISHED=1; fi; fi
 if (( ! RUNTIME_ESTABLISHED )); then while IFS= read -r tag; do [[ -n "$tag" ]] || continue; if try_candidate linuxserver linuxserver "linuxserver/qbittorrent:${tag}" "LinuxServer historical qB ${VERSION} indexed tag"; then RUNTIME_ESTABLISHED=1; break; fi; done < <(historical_tags); fi
-if (( ! RUNTIME_ESTABLISHED )); then finalize BLOCKED 'No approved historical provider produced a reachable, authenticated exact-version qB runtime under its documented container contract.' 3; fi
+# Image providers remain preferred. Only versions with a declared historical
+# source-build profile can fall back to Frozen official source materialization.
+if (( ! RUNTIME_ESTABLISHED )); then if try_frozen_source_candidate; then RUNTIME_ESTABLISHED=1; fi; fi
+if (( ! RUNTIME_ESTABLISHED )); then finalize BLOCKED 'No approved historical provider or Frozen official-source profile produced a reachable, authenticated exact-version qB runtime.' 3; fi
 if ! run_semantics; then finalize FAIL 'Exact qB runtime was established, but the real semantic/API evidence harness failed.' 1; fi
 finalize PASS '' 0
