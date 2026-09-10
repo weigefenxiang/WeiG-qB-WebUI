@@ -1,0 +1,32 @@
+name: Real qB Source Build Probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [dev]
+    paths:
+      - '.github/workflows/real-qb-source-build-probe.yml'
+      - 'tests/real-qb-source-build-probe.sh'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: real-qb-source-build-probe-${{ github.ref }}-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    name: qB ${{ matrix.qb }} official-source runtime probe
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        qb: ['4.1.1', '4.3.4']
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+      - name: Build and verify exact historical qB runtime
+        run: bash tests/real-qb-source-build-probe.sh '${{ matrix.qb }}'
