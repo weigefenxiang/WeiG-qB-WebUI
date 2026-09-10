@@ -24,7 +24,7 @@ function api(req,res,p,url){
   const v=versions();
   if(p==='app/version')return text(res,v.qb);
   if(p==='app/webapiVersion')return text(res,v.api);
-  if(p==='app/preferences')return json(res,{save_path:'/downloads',alternative_webui_enabled:true,alternative_webui_path:'/config/weigg-qb-webui'});
+  if(p==='app/preferences')return json(res,{locale:'zh_CN',save_path:'/downloads',alternative_webui_enabled:true,alternative_webui_path:'/config/weigg-qb-webui'});
   if(p==='app/buildInfo')return json(res,{});
   if(p==='transfer/info')return json(res,{dl_info_speed:1024,up_info_speed:0,connection_status:'firewalled'});
   if(p==='transfer/speedLimitsMode'||p==='transfer/downloadLimit'||p==='transfer/uploadLimit')return text(res,'0');
