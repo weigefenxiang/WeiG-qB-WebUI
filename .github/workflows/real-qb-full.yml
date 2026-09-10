@@ -8,6 +8,12 @@ on:
       - '.github/workflows/real-qb-full.yml'
       - 'tests/real-qb-full-*.mjs'
       - 'tests/real-qb-full-*.sh'
+      - 'tests/real-qb-harness.mjs'
+      - 'tests/real-qb-file-priority.mjs'
+      - 'tests/real-qb-torrent-creator.mjs'
+      - 'tests/real-qb-search.mjs'
+      - 'tests/fixtures/qb-release-catalog.lkg.json'
+      - 'tools/data/qb-stable-lkg.json'
 
 permissions:
   contents: read
@@ -81,7 +87,7 @@ jobs:
           name: real-qb-full-${{ matrix.qb }}-${{ github.sha }}
           path: |
             artifacts/real-qb-full/*.json
-            artifacts/real-qb/*-search.json
+            artifacts/real-qb/*.json
           if-no-files-found: error
           retention-days: 30
 
