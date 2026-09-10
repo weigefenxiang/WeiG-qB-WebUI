@@ -41,7 +41,7 @@ assert.equal(i18n.includes('function setLocale('),false,'W.I18n must not expose 
 const projection=JSON.parse(read('webui/private/data/qb-settings-translations.json'));
 assert.deepEqual(projection,{schemaVersion:1,source:'qb-upstream-preferences-ui+webui-ts',profiles:[],sets:{}},'source-tree Settings translation projection must be schema-valid and fact-free');
 const packer=read('tools/qb-webui-catalog.mjs');
-assert.ok(packer.includes("path.join(path.dirname(target),'qb-settings-translations.json')")&&packer.includes('settingsTranslationData(catalog)'),'release packaging must overwrite the fact-free source placeholder from the canonical exact-release catalog');
+assert.ok(packer.includes('export function settingsTranslationData(catalog)')&&packer.includes("'qb-settings-translations.json'")&&packer.includes('fs.writeFileSync(settingsPath,settingsPacked)')&&packer.includes('JSON.stringify(settingsTranslationData(catalog))'),'release packaging must overwrite the fact-free source placeholder from the canonical exact-release catalog');
 
 const app=read('webui/private/scripts/app.js');
 assert.ok(app.includes('app.preferences=await app.client.getPreferences()'),'startup must read qB preferences into shared application state');
