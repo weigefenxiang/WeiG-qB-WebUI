@@ -141,7 +141,11 @@ async function run(){
     async function categoryNames(action){
       const ep=endpoint(action),query=action==='synccontroller.h:maindataAction'?{rid:0}:{};const r=await http('GET',ep,{query});ok(r,'category read',[200]);const v=await json(r);
       if(action==='torrentscontroller.h:categoriesAction'&&v&&typeof v==='object'&&!Array.isArray(v))return {names:Object.keys(v),status:r.status,request:req('GET',ep)};
-      if(action==='synccontroller.h:maindataAction'&&Array.isArray(v?.categories))return {names:v.categories.map(String),status:r.status,request:req('GET',ep,['rid'])};
+      if(action==='synccontroller.h:maindataAction'){
+        const categories=v?.categories;
+        if(Array.isArray(categories))return {names:categories.map(String),status:r.status,request:req('GET',ep,['rid'])};
+        if(categories&&typeof categories==='object'&&!Array.isArray(categories))return {names:Object.keys(categories),status:r.status,request:req('GET',ep,['rid'])};
+      }
       die(`Unexpected category read shape from ${action}`);
     }
     await read('torrent-list','torrentscontroller.h:infoAction',{limit:1});
