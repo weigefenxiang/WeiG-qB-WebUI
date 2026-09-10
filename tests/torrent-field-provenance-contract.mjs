@@ -49,5 +49,7 @@ assert.deepEqual(Array.from(F.effectiveDesktopColumns(saved,richer),x=>x.key),['
 assert.equal(F.fields.some(field=>'serverSort' in field||'sortable' in field),false,'field provenance must not invent server-side sort support');
 assert.ok(appSource.includes('R.effectiveDesktopColumns(cfg)'),'app runtime must derive active desktop columns from the field registry after release detection');
 assert.ok(appSource.includes('R.saveEffectiveDesktopColumns(cfg,cols)'),'desktop column edits/resizes must preserve hidden saved preferences through the field registry');
-assert.ok(appSource.includes('await W.CapabilityRegistry.bind(app.client);applyEffectiveColumns();'),'desktop effective columns must be rebound only after the exact ReleaseProfile is available');
+const releaseBind=appSource.indexOf('await W.CapabilityRegistry.bind(app.client)');
+const columnRebind=appSource.indexOf('applyEffectiveColumns();',releaseBind);
+assert.ok(releaseBind>=0&&columnRebind>releaseBind&&appSource.slice(0,releaseBind).indexOf('applyEffectiveColumns();')<0,'desktop effective columns must be rebound only after the exact ReleaseProfile is available');
 console.log('Torrent field provenance contract passed: one 17-field owner resolves provenance, preserves hidden mobile/desktop preferences, and does not infer server sort support from field presence.');
