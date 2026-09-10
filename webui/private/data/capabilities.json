@@ -49,7 +49,7 @@
     "trackerEditUrl":{"rule":{"webApi":{"gte":"2.13.0"}}},
     "structuredTorrentAdd":{"rule":{"webApi":{"gte":"2.14.0"}}},
     "webseeds":{"rule":{"qb":{"gte":"4.1.0"}},"upstream":{"action":"torrentscontroller.h:webseedsAction"}},
-    "categories":{"rule":{"all":[{"qb":{"gte":"4.1.4"}},{"webApi":{"gte":"2.1.1"}}]},"upstream":{"action":"torrentscontroller.h:categoriesAction"}},
+    "categories":{"rule":{"all":[{"qb":{"gte":"4.1.4"}},{"webApi":{"gte":"2.1.1"}}]},"upstream":{"anyActions":["torrentscontroller.h:categoriesAction","synccontroller.h:maindataAction"]}},
     "preferences":{"rule":{"qb":{"gte":"4.1.0"}},"upstream":{"action":"appcontroller.h:preferencesAction"}},
     "globalSpeedLimits":{"rule":{"qb":{"gte":"4.1.0"}}},
     "altSpeedLimits":{"rule":{"qb":{"gte":"4.1.0"}}},
