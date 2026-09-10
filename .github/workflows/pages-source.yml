@@ -14,6 +14,7 @@ on:
       - 'webui/**'
       - 'simulator/**'
       - 'tools/data/qb-stable-lkg.json'
+      - 'tools/qb-locale-source.mjs'
       - 'tests/fixtures/qb-release-catalog.lkg.json'
       - 'package.json'
       - 'package-lock.json'
