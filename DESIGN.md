@@ -436,3 +436,20 @@ A future stable qB release may be auto-discovered for Virtual Lab metadata witho
 
 ### SIMULATOR-WORKFLOW-GATE — Actions require separate approval
 Simulator core, protocol, storage, tests, launcher and local Pages artifact tooling may be developed on `dev`. Adding/enabling Pages deployment permissions, scheduled weekly refresh or a new workflow is a separate workflow boundary and requires explicit user confirmation before write. The detailed architecture and scope live in `docs/009.Virtual-qB-Lab.md`.
+
+## 15. Language / translation ownership
+
+### LANGUAGE-OWNER — qB locale is persisted truth
+`app/preferences.locale` is the only persisted language preference. `W.I18n` owns locale normalization, DOM application, first-party text lookup and qB locale option projection. WeiG does not keep a second local language setting. Both Language and Advanced Locale edit the same qB Preference draft and save transaction.
+
+### LANGUAGE-VERIFY — applied locale follows qB reread
+A language draft does not change rendered locale. Settings sends it through the canonical writable qB Preference transaction; only a successful `app/preferences` verification reread updates shared Preferences state and calls `W.I18n.applyLocale()`. A failed verification never promotes draft language to rendered truth.
+
+### QB-SETTINGS-COPY — exact source-derived official copy
+The candidate source pipeline derives qB Settings UI copy from the exact release's Preferences control relationships and `QBT_TR` source/context, then pairs those refs with the same release's official `webui_*.ts` resources. Exact-release English `QBT_TR` source text is authoritative when that release has no English TS file. Unproven preference/control relationships remain visible with generic/humanized fallback and are never presented as official qB translation.
+
+### LANGUAGE-CATALOG — one release truth, generated browser projection
+Settings translation facts are attached to the same exact-release source catalog owned by `W.ReleaseProfile`. `private/data/qb-settings-translations.json` is a packaging projection generated from that canonical catalog for browser cost only; it is not a second release/version authority.
+
+### LANGUAGE-RETIRE — no split runtime dictionaries
+`W.RuntimeI18n`, `W.InterfaceText`, `W.TransferText`, `W.AlternativeWebUIText`, `W.QBLocaleBridge`, `settings-translations.js` and feature/version-local i18n runtime modules are retired architecture. Logs, Header, Responsive and Settings are direct `W.I18n` callers; runtime aliases, dynamic bridge loaders and duplicate persisted locale state are prohibited.

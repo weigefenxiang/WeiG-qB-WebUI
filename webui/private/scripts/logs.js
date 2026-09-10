@@ -5,7 +5,7 @@
 
   var state={items:[],lastId:-1,types:new Set([1,2,4,8]),query:'',follow:true,virtual:null,timer:null,loading:false,active:false,root:null,sizeMode:localStorage.getItem('weigg.logs.sizeMode')||'auto',programmaticScroll:false,expandedId:null};
   var MAX_ITEMS=5000;
-  function tr(key,vars,fallback){var I=W.RuntimeI18n;return I&&I.t?I.t(key,vars):(fallback||key);}
+  function tr(key,vars,fallback){var I=W.I18n,value=I&&I.t?I.t(key,vars):key;return value===key?(fallback||key):value;}
   function onLogsRoute(){return W.Router&&W.Router.route&&W.Router.route().name==='logs';}
   function typeLabel(type){return type===1?tr('v036.logs.normal',null,'Normal'):type===2?tr('v036.logs.info',null,'Info'):type===4?tr('v036.logs.warning',null,'Warning'):type===8?tr('v036.logs.critical',null,'Critical'):tr('v036.logs.unknown',null,'Unknown');}
   function typeTone(type){return type===8?'danger':type===4?'warning':type===2?'info':'normal';}

@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
+import {applyQbSettingsTranslationOverlay,buildQbSettingsTranslationOverlayFromClone} from './qb-settings-translation-overlay.mjs';
 
 function unique(values){const out=[];for(const value of values||[]){const item=String(value||'').trim();if(item&&!out.includes(item))out.push(item);}return out;}
 function decodeHtml(value){return String(value||'').replace(/&quot;|&#34;/g,'"').replace(/&#39;|&apos;/g,"'").replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>');}
@@ -56,6 +57,12 @@ export function enrichCatalogWebuiLocales(catalog,qbRoot){
   });
 }
 
+export function enrichCatalogWebuiSourceFacts(catalog,qbRoot){
+  const localized=enrichCatalogWebuiLocales(catalog,qbRoot);
+  const settingsOverlay=buildQbSettingsTranslationOverlayFromClone(localized,qbRoot);
+  return applyQbSettingsTranslationOverlay(localized,settingsOverlay);
+}
+
 const isMain=process.argv[1]&&path.resolve(process.argv[1])===path.resolve(fileURLToPath(import.meta.url));
 if(isMain){
   try{
@@ -64,10 +71,12 @@ if(isMain){
     const output=path.resolve(process.argv[4]||process.argv[3]||'');
     if(!qbRoot||!fs.existsSync(qbRoot)||!input||!fs.existsSync(input))throw new Error('Usage: node tools/qb-locale-source.mjs <qBittorrent-clone> <catalog.json> [output.json]');
     const catalog=JSON.parse(fs.readFileSync(input,'utf8'));
-    const enriched=enrichCatalogWebuiLocales(catalog,qbRoot);
+    const enriched=enrichCatalogWebuiSourceFacts(catalog,qbRoot);
     fs.mkdirSync(path.dirname(output),{recursive:true});
     fs.writeFileSync(output,JSON.stringify(enriched,null,2)+'\n','utf8');
     const resolved=enriched.filter(item=>Array.isArray(item.webuiLocales)&&item.webuiLocales.length).length;
-    console.log(`Enriched WebUI locale facts for ${resolved}/${enriched.length} qB release profiles.`);
+    const mapped=enriched.reduce((sum,item)=>sum+(Number(item.settingsUiMappedPreferences)||0),0);
+    const total=enriched.reduce((sum,item)=>sum+(Number(item.settingsUiTotalPreferences)||0),0);
+    console.log(`Enriched WebUI locale facts for ${resolved}/${enriched.length} qB release profiles; source-proven Settings labels ${mapped}/${total}.`);
   }catch(error){console.error(error?.message||error);process.exitCode=1;}
 }
