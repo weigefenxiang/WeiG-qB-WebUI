@@ -33,15 +33,19 @@ assert.ok(index.indexOf('scripts/i18n.js')<index.indexOf('scripts/core.js'),'W.I
 for(const file of retiredFiles)assert.equal(index.includes(path.basename(file)),false,`private index still loads retired ${path.basename(file)}`);
 
 const i18n=read('webui/private/scripts/i18n.js');
-assert.ok(i18n.includes('function applyLocale(value)')&&i18n.includes('getQbLocale')&&i18n.includes('loadLocaleOptions')&&i18n.includes('qbSetting'),'W.I18n must own qB locale projection, option discovery and source-derived Settings copy');
+assert.ok(i18n.includes('function applyLocale(value)')&&i18n.includes('getQbLocale')&&i18n.includes('loadLocaleOptions')&&i18n.includes('qbSetting'),'W.I18n must own qB locale projection, option discovery and official Settings copy');
 assert.equal(i18n.includes('localStorage.getItem(\'weigg-language\')'),false,'W.I18n must not read a WeiG language preference');
 assert.equal(i18n.includes('localStorage.setItem(\'weigg-language\''),false,'W.I18n must not write a WeiG language preference');
 assert.equal(i18n.includes('function setLocale('),false,'W.I18n must not expose an independent persisted language setter');
+assert.equal(i18n.includes('data/qb-settings-translations.json'),false,'runtime must not download one all-release Settings translation payload');
+assert.ok(i18n.includes('current.settingsTranslationPath')&&i18n.includes("fetch(asset('data/'+current.settingsTranslationPath)"),'runtime must lazily fetch only the current exact-release Settings translation shard');
+assert.ok(i18n.includes('String(value.qbVersion)!==expectedVersion')&&i18n.includes('String(value.sourceSha)!==expectedSha'),'runtime must reject a Settings shard that is not bound to the current exact qB release');
+assert.ok(i18n.includes('current.fallback||!validSettingsPath(current.settingsTranslationPath)'),'fallback/unbound profiles must not request translation shards');
 
-const projection=JSON.parse(read('webui/private/data/qb-settings-translations.json'));
-assert.deepEqual(projection,{schemaVersion:1,source:'qb-upstream-preferences-ui+webui-ts',profiles:[],sets:{}},'source-tree Settings translation projection must be schema-valid and fact-free');
+assert.equal(exists('webui/private/data/qb-settings-translations.json'),false,'retired all-release translation sidecar must leave the source tree');
 const packer=read('tools/qb-webui-catalog.mjs');
-assert.ok(packer.includes('export function settingsTranslationData(catalog)')&&packer.includes("'qb-settings-translations.json'")&&packer.includes('fs.writeFileSync(settingsPath,settingsPacked)')&&packer.includes('JSON.stringify(settingsTranslationData(catalog))'),'release packaging must overwrite the fact-free source placeholder from the canonical exact-release catalog');
+assert.ok(packer.includes('runtimeCatalogData')&&packer.includes('settingsTranslationShard')&&packer.includes('qb-settings/'),'release packaging must keep translations out of the compatibility catalog and emit exact-release shards');
+assert.ok(packer.includes("delete runtime[key]")&&packer.includes("runtime.settingsTranslationPath=`qb-settings/${item.sourceSha}.json`"),'runtime catalog must contain only a bounded translation pointer, not translation payloads');
 
 const app=read('webui/private/scripts/app.js');
 assert.ok(app.includes('app.preferences=await app.client.getPreferences()'),'startup must read qB preferences into shared application state');
@@ -63,4 +67,4 @@ assert.ok(logs.includes('var I=W.I18n'),'Logs must call W.I18n directly');
 assert.ok(responsive.includes('W.I18n&&W.I18n.t'),'Responsive runtime must call W.I18n directly');
 assert.ok(header.includes("localized('Add','添加')"),'Header short copy must no longer depend on InterfaceText');
 
-console.log('I18n runtime owner contract passed: qB preferences.locale is the only language truth, W.I18n is the only text/locale owner, the source projection is fact-free, and retired bridges/dictionaries are absent.');
+console.log('I18n runtime owner contract passed: qB preferences.locale is the only language truth, W.I18n loads only the current exact official Settings shard, and retired bridges/all-release translation payloads are absent.');

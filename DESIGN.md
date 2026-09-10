@@ -321,8 +321,8 @@ Linux routine UI, Linux candidate and Windows candidate all use the Google Chrom
 
 Hosted Chrome itself may update between runs. Therefore browser evidence is traceable as `exact Git SHA + package-lock + runner image + exact logged Chrome version`; it is not a claim that the same SHA always replays against the same browser binary.
 
-### RELEASE-CATALOG-ARTIFACT — one audited source catalog ships everywhere
-Candidate CI generates the qB stable release catalog from the upstream source checkout used for the full stable audit, passes that exact catalog as a SHA-bound artifact to release packaging, and embeds it at `private/data/qb-releases.json`. Virtual qB Pages injects the same catalog shape into each built product source. Release ZIP and Pages must not diverge into exact-source versus heuristic compatibility modes.
+### RELEASE-CATALOG-ARTIFACT — audited evidence is projected for runtime
+Candidate CI generates one exact-source qB stable catalog from the same upstream checkout used by the full stable audit. That canonical SHA-bound artifact may contain build-time provenance needed to prove compatibility and official qB Settings copy, but browser packaging must project it into bounded runtime assets: `private/data/qb-releases.json` owns compatibility/release facts only, while official qB Settings translation payloads are separate exact-release assets. Runtime projection must preserve exact `qbVersion + sourceSha` identity and stay below qB Alternative WebUI's static-file limit. Virtual qB Pages must consume frozen projections with the same identities rather than re-parsing upstream history during deployment.
 
 ## 11. Do / Don't
 
@@ -445,11 +445,14 @@ Simulator core, protocol, storage, tests, launcher and local Pages artifact tool
 ### LANGUAGE-VERIFY — applied locale follows qB reread
 A language draft does not change rendered locale. Settings sends it through the canonical writable qB Preference transaction; only a successful `app/preferences` verification reread updates shared Preferences state and calls `W.I18n.applyLocale()`. A failed verification never promotes draft language to rendered truth.
 
-### QB-SETTINGS-COPY — exact source-derived official copy
-The candidate source pipeline derives qB Settings UI copy from the exact release's Preferences control relationships and `QBT_TR` source/context, then pairs those refs with the same release's official `webui_*.ts` resources. Exact-release English `QBT_TR` source text is authoritative when that release has no English TS file. Unproven preference/control relationships remain visible with generic/humanized fallback and are never presented as official qB translation.
+### QB-SETTINGS-COPY — official upstream wording, never WeiG retranslation
+For qB-owned Settings semantics, WeiG does not author translations. Candidate source tooling proves the exact release's Preferences control relationship and `QBT_TR` source/context, then mechanically reads that same release's official qB TS translation. Exact-release English `QBT_TR` source text is authoritative when that release has no English TS file. Unproven preference/control relationships remain visible with generic/humanized fallback and are never presented as official qB translation.
 
-### LANGUAGE-CATALOG — one release truth, generated browser projection
-Settings translation facts are attached to the same exact-release source catalog owned by `W.ReleaseProfile`. `private/data/qb-settings-translations.json` is a packaging projection generated from that canonical catalog for browser cost only; it is not a second release/version authority.
+### LANGUAGE-CATALOG — compatibility and translation payloads are separate
+`private/data/qb-releases.json` is the browser compatibility/release catalog and must not carry Settings translation bodies or all-release translation sets. Candidate packaging projects official qB Settings copy into bounded `private/data/qb-settings/<sourceSha>.json` assets and adds only an exact `settingsTranslationPath` pointer to the matching runtime release profile. `W.I18n` loads at most the current exact-release shard and rejects `qbVersion` or `sourceSha` mismatches. This projection is transport for upstream-owned wording, not a WeiG translation authority.
+
+### QBT-TR-PREFERENCE — prefer qB's native translator when exact official QM is available
+qBittorrent's WebApplication owns `QBT_TR(...)QBT_TR[CONTEXT=...]` replacement and loads WebUI translations from the active WebUI root. When WeiG can reliably provision the exact connected release's official `webui_<locale>.qm` under that Alternative WebUI root, qB's native QBT_TR path is preferred and duplicate browser-side qB translation projection should be retired. Until that exact QM provisioning exists, WeiG must not claim that WebAPI exposes the built-in translator; the mechanically generated exact-release TS shard is the bounded compatibility bridge.
 
 ### LANGUAGE-RETIRE — no split runtime dictionaries
 `W.RuntimeI18n`, `W.InterfaceText`, `W.TransferText`, `W.AlternativeWebUIText`, `W.QBLocaleBridge`, `settings-translations.js` and feature/version-local i18n runtime modules are retired architecture. Logs, Header, Responsive and Settings are direct `W.I18n` callers; runtime aliases, dynamic bridge loaders and duplicate persisted locale state are prohibited.

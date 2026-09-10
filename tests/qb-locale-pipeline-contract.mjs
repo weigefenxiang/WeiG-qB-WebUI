@@ -20,13 +20,15 @@ const enriched='node tools/qb-locale-source.mjs upstream-qb qb-releases.json';
 const audited='node tests/full-stable-product-compat.mjs qb-releases.json';
 assert.ok(ci.includes(generated)&&ci.includes(enriched)&&ci.includes(audited),'candidate pipeline must generate, source-enrich, and audit the exact catalog');
 assert.ok(ci.indexOf(generated)<ci.indexOf(enriched)&&ci.indexOf(enriched)<ci.indexOf(audited),'qB locale and Settings UI facts must be source-derived before the exact catalog crosses the candidate boundary');
-assert.ok(localeSource.includes('enrichCatalogWebuiSourceFacts')&&localeSource.includes('buildQbSettingsTranslationOverlayFromClone')&&localeSource.includes('applyQbSettingsTranslationOverlay'),'one candidate enrichment step must own exact qB locale plus Settings translation facts');
+assert.ok(localeSource.includes('enrichCatalogWebuiSourceFacts')&&localeSource.includes('buildQbSettingsTranslationOverlayFromClone')&&localeSource.includes('applyQbSettingsTranslationOverlay'),'candidate enrichment must derive exact qB locale plus official Settings translation evidence');
 assert.ok(settingsSource.includes('extractQbPreferenceUiFacts')&&settingsSource.includes('QBT_TR')&&settingsSource.includes('preferenceControlRelations'),'Settings copy must be tied to a source-proven qB preference control, not a hand-written preference dictionary');
 assert.ok(settingsOverlay.includes("src/webui/www/private/views/preferences.html")&&settingsOverlay.includes("src/webui/www/private/preferences_content.html")&&settingsOverlay.includes("'src/webui/www/translations'")&&settingsOverlay.includes("'src/lang'")&&settingsOverlay.includes('resolveQbTranslationResourcePath'),'Settings source extraction must cover modern and historical qB Preferences UI plus exact-release official translation resource families');
 assert.ok(!settingsOverlay.includes('webui_${locale}.ts'),'Settings translation lookup must resolve source-derived historical locale identity instead of reconstructing a translation filename from preferences.locale');
 assert.ok(probe.includes('${LANGUAGE_OPTIONS}')&&probe.includes('weigg-qb-locale-options'),'real qB runtime probe must delegate option enumeration to qB WebApplication');
-assert.ok(webuiCatalog.includes('qb-settings-translations.json')&&webuiCatalog.includes('settingsTranslationData'),'browser Settings translations must be a generated projection of the canonical exact-release catalog');
-assert.ok(runtimeI18n.includes("data/qb-settings-translations.json")&&runtimeI18n.includes('exactTranslationProfile')&&runtimeI18n.includes('current.fallback'),'runtime must consume only exact source-SHA-bound Settings translations and fail closed for compatibility fallback profiles');
+assert.ok(webuiCatalog.includes('runtimeCatalogData')&&webuiCatalog.includes('settingsTranslationShard')&&webuiCatalog.includes('settingsTranslationPath'),'release packaging must separate compatibility facts from official qB Settings translation payloads');
+assert.equal(webuiCatalog.includes('qb-settings-translations.json'),false,'one all-release Settings translation static file is prohibited');
+assert.ok(runtimeI18n.includes('current.settingsTranslationPath')&&runtimeI18n.includes("fetch(asset('data/'+current.settingsTranslationPath)"),'runtime must load only the current exact qB Settings translation shard');
+assert.ok(runtimeI18n.includes('current.fallback||!validSettingsPath(current.settingsTranslationPath)'),'runtime must fail closed without a bound exact translation shard');
 assert.ok(!pages.includes('Checkout qBittorrent locale source')&&!pages.includes('node tools/qb-locale-source.mjs'),'Pages must not re-parse upstream qB history on every Lab deployment');
 assert.ok(buildSite.includes("tools/data/qb-locale-lkg.json")&&buildSite.includes('applyLocaleOverlay')&&buildSite.includes('baseCatalogSha256'),'Virtual qB build must apply the source-SHA/base-catalog-bound frozen Locale overlay');
 assert.ok(relay.includes("- 'tools/data/qb-locale-lkg.json'")&&relay.includes("- 'tools/qb-locale-overlay.mjs'"),'Pages source relay must watch frozen Locale facts and their merge owner');
@@ -38,6 +40,6 @@ assert.equal(frozenLocale.baseCatalogSha256,'8b91742ac8eee276b7994c84445c6819134
 assert.equal(frozenLocale.profiles.length,65);
 assert.ok(Object.keys(frozenLocale.localeSets||{}).length>1,'frozen Locale facts must preserve historical option-set changes');
 assert.ok(frozenLocale.profiles.every(item=>/^[0-9a-f]{40}$/.test(item.sourceSha)&&frozenLocale.localeSets[item.localeSet]?.length),'every frozen Locale profile must bind to an exact qB source SHA and resolved locale set');
-assert.ok(schema.includes("description:known?'qBittorrent preference.'"),'SettingsSchema fallback copy remains generic; official copy belongs to source-derived I18n facts');
+assert.ok(schema.includes("description:known?'qBittorrent preference.'"),'SettingsSchema fallback copy remains generic; official copy belongs to upstream-derived I18n facts');
 
-console.log('qB locale pipeline contract passed: candidate source-enriches one exact catalog, runtime consumes its projection, and Pages keeps upstream parsing out of deployment.');
+console.log('qB locale pipeline contract passed: candidate derives official qB translation evidence, packaging keeps compatibility translation-free, and runtime loads only one exact-release Settings shard.');

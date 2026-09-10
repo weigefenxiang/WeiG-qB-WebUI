@@ -68,11 +68,23 @@
   function setLocaleOptions(items){localeOptions=normalizeOptions(items);if(qbLocale&&!localeOptions.some(function(item){return item.value===qbLocale;}))localeOptions.unshift({value:qbLocale,label:nativeLabel(qbLocale)||qbLocale});api.supported=localeOptions.map(function(item){return item.value;});return localeOptions;}
   function loadLocaleOptions(){if(localeTask)return localeTask;localeTask=fetch('views/preferences.html?weigg_locale_probe=1',{credentials:'same-origin',cache:'no-store'}).then(function(res){if(!res.ok)throw new Error('qB locale probe HTTP '+res.status);return res.text();}).then(function(html){var probed=parseLocaleOptions(html);return setLocaleOptions(probed.length?probed:profileLocaleOptions());}).catch(function(){return setLocaleOptions(profileLocaleOptions());});return localeTask;}
   function asset(path){return W.buildAssetUrl?W.buildAssetUrl(path):path;}
-  function loadSettingsData(){if(settingsTask)return settingsTask;settingsTask=fetch(asset('data/qb-settings-translations.json'),{credentials:'same-origin',cache:'no-store'}).then(function(res){if(!res.ok)throw new Error('qB Settings translations HTTP '+res.status);return res.json();}).then(function(value){settingsData=value&&value.schemaVersion===1?value:null;return settingsData;}).catch(function(){settingsData=null;return null;});return settingsTask;}
-  function exactTranslationProfile(){var R=W.ReleaseProfile,current=R&&R.current&&R.current();if(!settingsData||!current||current.fallback)return null;return (settingsData.profiles||[]).find(function(item){return String(item.qbVersion)===String(current.qbVersion)&&String(item.sourceSha)===String(current.sourceSha);})||null;}
-  function translationSet(profile){if(!profile)return null;var hash=profile.translations&&profile.translations[qbLocale];if(!hash){var target=normalize(qbLocale),key=Object.keys(profile.translations||{}).find(function(value){return normalize(value)===target;});if(key)hash=profile.translations[key];}return hash&&settingsData&&settingsData.sets&&settingsData.sets[hash]||null;}
-  function translateRef(ref,profile){if(!ref||!ref.source)return'';var set=translationSet(profile),messages=set&&Array.isArray(set.messages)?set.messages:[];var hit=messages.find(function(item){return item.context===ref.context&&item.source===ref.source;});var value=hit&&hit.translation;if(Array.isArray(value))value=value[0];return String(value||ref.source);}
-  function qbSetting(key){var profile=exactTranslationProfile(),entry=profile&&profile.preferences&&profile.preferences[key];if(!entry)return null;return{title:translateRef(entry.title,profile),description:entry.description?translateRef(entry.description,profile):'',source:'qb-upstream-preferences-ui+webui-ts',controlId:entry.controlId||null};}
+  function currentProfile(){var R=W.ReleaseProfile;return R&&R.current&&R.current()||null;}
+  function validSettingsPath(value){return /^qb-settings\/[0-9a-f]{40}\.json$/.test(String(value||''));}
+  function loadSettingsData(){
+    if(settingsTask)return settingsTask;
+    var current=currentProfile();
+    if(!current||current.fallback||!validSettingsPath(current.settingsTranslationPath))return Promise.resolve(null);
+    var expectedVersion=String(current.qbVersion||''),expectedSha=String(current.sourceSha||'');
+    settingsTask=fetch(asset('data/'+current.settingsTranslationPath),{credentials:'same-origin',cache:'no-store'}).then(function(res){if(!res.ok)throw new Error('qB Settings translations HTTP '+res.status);return res.json();}).then(function(value){
+      if(!value||value.schemaVersion!==1||String(value.qbVersion)!==expectedVersion||String(value.sourceSha)!==expectedSha)throw new Error('qB Settings translation shard identity mismatch');
+      settingsData=value;return settingsData;
+    }).catch(function(){settingsData=null;return null;});
+    return settingsTask;
+  }
+  function exactSettingsData(){var current=currentProfile();if(!settingsData||!current||current.fallback)return null;if(String(settingsData.qbVersion)!==String(current.qbVersion)||String(settingsData.sourceSha)!==String(current.sourceSha))return null;return settingsData;}
+  function translationSet(data){if(!data)return null;var hash=data.translations&&data.translations[qbLocale];if(!hash){var target=normalize(qbLocale),key=Object.keys(data.translations||{}).find(function(value){return normalize(value)===target;});if(key)hash=data.translations[key];}return hash&&data.sets&&data.sets[hash]||null;}
+  function translateRef(ref,data){if(!ref||!ref.source)return'';var set=translationSet(data),messages=set&&Array.isArray(set.messages)?set.messages:[];var hit=messages.find(function(item){return item.context===ref.context&&item.source===ref.source;});var value=hit&&hit.translation;if(Array.isArray(value))value=value[0];return String(value||ref.source);}
+  function qbSetting(key){var data=exactSettingsData(),entry=data&&data.preferences&&data.preferences[key];if(!entry)return null;return{title:translateRef(entry.title,data),description:entry.description?translateRef(entry.description,data):'',source:'qb-upstream-preferences-ui+webui-ts',controlId:entry.controlId||null};}
   function ready(){return Promise.all([loadLocaleOptions(),loadSettingsData()]).then(function(){return api;});}
   var api={t:t,pick:pick,apply:apply,applyLocale:applyLocale,getLocale:function(){return locale;},getQbLocale:function(){return qbLocale;},normalize:normalize,parseLocaleOptions:parseLocaleOptions,loadLocaleOptions:loadLocaleOptions,localeOptions:function(){return localeOptions.slice();},loadSettingsData:loadSettingsData,qbSetting:qbSetting,ready:ready,supported:[],english:EN};
   W.I18n=api;W.t=t;
