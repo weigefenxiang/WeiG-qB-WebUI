@@ -50,7 +50,7 @@ async function api(page,path,{method='GET',form,json}={}){
 async function openSession(page,{qb='5.2.3',clean=false,label='modern'}={}){
   const sim=`pages-live-auth-${label}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   const url=new URL('dev/app/',base);
-  url.search=new URLSearchParams({sim,qb,count:'24',scenario:'mixed',seed:`pages-live-auth-${label}`,clean:clean?'1':'0',reset:'1'}).toString();
+  url.search=new URLSearchParams({sim,qb,count:'24',scenario:'mixed',seed:`pages-live-auth-${label}`,clean:clean?'1':'0'}).toString();
   await page.goto(url.toString(),{waitUntil:'domcontentloaded',timeout:60000});
   await page.waitForSelector('#login-form',{state:'visible',timeout:60000});
   return sim;
