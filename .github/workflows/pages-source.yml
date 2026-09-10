@@ -1,10 +1,11 @@
 name: Virtual qB Pages Source
 
 # Strict main promotion reuses only an exact-SHA validated dev Pages artifact; no legacy artifact fallback is allowed.
-# Only Pages-owned inputs and the admitted Frozen LKG redeploy; unrelated tests and qB source-parser changes have their own owners.
-# A main-validation candidate intentionally changes this owner file so the exact dev SHA has a reusable Pages artifact before promotion.
-# Benchmark marker: exercise the default-branch Frozen LKG Pages build without changing product behavior.
+# Only Pages-owned inputs and the admitted Frozen LKG redeploy automatically; unrelated final-gate SHAs can be seeded explicitly.
+# Manual dispatch exists so the final validated dev SHA can always produce reusable Pages evidence before promotion.
+# Release-orchestration workflow changes are Pages-owned because exact-SHA promotion depends on their evidence chain.
 on:
+  workflow_dispatch:
   push:
     branches:
       - dev
@@ -20,6 +21,8 @@ on:
       - 'tests/browser-driver.mjs'
       - '.github/workflows/pages.yml'
       - '.github/workflows/pages-source.yml'
+      - '.github/workflows/promote.yml'
+      - '.github/workflows/real-qb-full.yml'
 
 permissions:
   contents: read
