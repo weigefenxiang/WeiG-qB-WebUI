@@ -1,4 +1,4 @@
-name: Virtual qB Pages Source
+name: Virtual qB Pages Source Dispatch
 
 # Source relay owns trigger choreography only. It never owns Pages deployment permissions.
 # Pages deployment is dispatched on the same dev/main ref so actions/deploy-pages receives that ref's real GITHUB_SHA.
