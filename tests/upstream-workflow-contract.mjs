@@ -5,40 +5,38 @@ import {fileURLToPath} from 'node:url';
 const here=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(here,'..');
 const read=rel=>fs.readFileSync(path.join(root,rel),'utf8').replace(/\r\n?/g,'\n');
-const heavy=read('.github/workflows/upstream-compat.yml'),frozen=read('.github/workflows/frozen-stable-compat.yml');
+const exists=rel=>fs.existsSync(path.join(root,rel));
 const assert=(ok,msg)=>{if(!ok)throw new Error(msg);};
 
-const sourcePaths=[
-  "'tools/qb-release-catalog.mjs'",
-  "'tools/qb-release-tags.mjs'",
-  "'tools/qb-stable-admission.mjs'",
-  "'tools/qb-source-parsers.mjs'",
-  "'tools/qb-preference-semantics.mjs'",
-  "'tools/qb-torrent-surface-parsers.mjs'",
-  "'tools/qb-torrent-fields-parser.mjs'",
-  "'tools/qb-detail-surface-parsers.mjs'",
-  "'tools/qb-action-surface-parsers.mjs'",
-  "'tools/qb-catalog-evolution.mjs'",
-  "'tools/qb-webapi-evolution.mjs'",
-  "'tools/qb-webapi-evolution-audit.mjs'",
-  "'tools/data/qb-webapi-evolution-ledger.json'",
-  "'tests/upstream-release-audit.mjs'"
-];
-assert(/push:\s*\n\s*branches:\s*\n\s*- dev\s*\n\s*paths:/m.test(heavy),'heavy upstream audit must be path-scoped on dev pushes');
-for(const entry of sourcePaths)assert(heavy.includes(`- ${entry}`),`heavy upstream audit trigger is missing source/discovery/evolution input ${entry}`);
-for(const forbidden of ["'docs/**'","'webui/private/scripts/qb-client.js'","'webui/private/scripts/settings-schema.js'","'tools/qb-product-capability-diff.mjs'"])assert(!heavy.includes(`- ${forbidden}`),`heavy upstream audit must not be triggered by non-source-history input ${forbidden}`);
-assert(!heavy.includes('run: npm test'),'upstream evolution audit must not duplicate repository npm test');
-assert(heavy.includes('workflow_dispatch:'),'heavy upstream audit must remain manually runnable');
-assert(heavy.includes('qb-release-catalog.mjs upstream-qb'),'heavy upstream audit must regenerate exact stable source facts');
-assert(heavy.includes('tests/upstream-release-audit.mjs upstream-qb'),'heavy upstream audit must verify all supported stable tags');
-assert(heavy.includes('qb-webapi-evolution-audit.mjs upstream-qb'),'heavy upstream audit must verify WebAPI chronology/classification evidence');
+for(const rel of [
+  '.github/workflows/upstream-compat.yml',
+  '.github/workflows/frozen-stable-compat.yml',
+  '.github/workflows/stable-watch.yml',
+  '.github/workflows/real-qb.yml',
+  '.github/workflows/real-qb-source-build-probe.yml'
+])assert(!exists(rel),`${rel} is obsolete and must stay retired`);
 
-assert(/push:\s*\n\s*branches:\s*\n\s*- dev\s*\n\s*paths:/m.test(frozen),'frozen stable compatibility must be path-scoped on dev pushes');
-for(const owner of ['release-profile.js','torrent-fields.js','capabilities.js','torrent-semantics.js','settings-schema.js','qb-client.js'])assert(frozen.includes(`'webui/private/scripts/${owner}'`),`frozen stable regression trigger missing product owner ${owner}`);
-for(const nonRuntime of ["'tools/data/qb-stable-lkg.json'","'tests/fixtures/qb-release-catalog.lkg.json'","'tools/qb-stable-admission.mjs'"])assert(!frozen.includes(`- ${nonRuntime}`),`historical product regression must not be triggered by LKG/admission-only input ${nonRuntime}`);
-assert(!frozen.includes('repository: qbittorrent/qBittorrent'),'frozen product regression must not checkout or re-parse upstream history');
-assert(frozen.includes('qb-stable-admission.mjs verify'),'frozen product regression must verify LKG identity');
-assert(frozen.includes('compat-architecture-contract.mjs'),'frozen product regression must enforce architecture guard');
-assert(frozen.includes('full-stable-product-compat.mjs tests/fixtures/qb-release-catalog.lkg.json'),'frozen product regression must execute all LKG profiles through formal product owners');
+const ci=read('.github/workflows/ci.yml');
+const gfm=read('.github/workflows/real-qb-full.yml');
+const promote=read('.github/workflows/promote.yml');
+const release=read('.github/workflows/release.yml');
 
-console.log('Upstream workflow contract passed: parser/stable-discovery/evolution changes trigger the path-scoped full history audit, while historical product regression is reserved for canonical compatibility-owner or matrix changes and never re-parses old upstream releases.');
+assert(ci.includes('qb-release-catalog.mjs upstream-qb --output=qb-releases.json'),'candidate CI must regenerate exact supported stable source facts');
+assert(ci.includes('tests/upstream-release-audit.mjs upstream-qb'),'candidate CI must audit every supported stable upstream release');
+assert(ci.includes('tests/full-stable-product-compat.mjs qb-releases.json'),'candidate CI must execute formal product compatibility across the generated stable catalog');
+assert(ci.includes('name: qb-release-catalog-${{ github.sha }}'),'candidate CI must publish an exact-SHA stable catalog artifact');
+
+assert(gfm.includes('workflow_dispatch:'),'full real qB matrix must remain manually runnable');
+assert(!/\n\s*push:\s*\n/.test(gfm),'full real qB matrix must not run on ordinary pushes');
+assert(/max-parallel:\s*16/.test(gfm),'full real qB matrix must keep max-parallel 16');
+assert(gfm.includes('Resolve all Frozen stable versions')&&gfm.includes('= "65"'),'G-FM plan must resolve exactly 65 frozen stable versions');
+assert(gfm.includes('Run isolated exact-version real qB evidence'),'G-FM must execute real exact-version qB evidence');
+assert(gfm.includes('Require complete 65/65 Frozen real-qB evidence'),'G-FM aggregate must require complete 65/65 evidence');
+assert(gfm.includes('real-qb-full-aggregate-${{ github.sha }}'),'G-FM must publish exact-SHA aggregate evidence');
+
+assert(promote.includes("workflow_id: 'real-qb-full.yml'")&&promote.includes("run.event === 'workflow_dispatch'"),'promotion must require the manually dispatched exact-SHA G-FM');
+assert(promote.includes('real-qb-full-aggregate-${sha}'),'promotion must require exact-SHA G-FM aggregate evidence');
+assert(!release.includes("workflow_id: 'upstream-compat.yml'"),'Release must not depend on the retired upstream compatibility workflow');
+assert(!release.includes("workflow_id: 'frozen-stable-compat.yml'"),'Release must not depend on the retired frozen compatibility workflow');
+
+console.log('Upstream validation workflow contract passed: obsolete split workflows stay retired; candidate CI owns source/product audit, manual 16-way G-FM owns all 65 exact real runtimes, and promotion requires exact-SHA aggregate evidence before main can move.');
