@@ -13,6 +13,7 @@ const login=read('webui/public/index.html');
 const loginAlias=read('webui/public/login.html');
 const logs=read('webui/private/scripts/logs.js');
 const css=read('webui/private/css/logs.css');
+const appCss=read('webui/private/css/app.css');
 const core=read('webui/private/scripts/core.js');
 const privateIcon=bytes('webui/private/assets/Wei.G.ico');
 const publicIcon=bytes('webui/public/assets/Wei.G.ico');
@@ -39,9 +40,18 @@ assert(logs.includes('variableHeight:true')&&logs.includes('itemKey:rowKey'),'Lo
 assert(core.includes('this.variableHeight=!!options.variableHeight')&&core.includes('W.VirtualList.prototype.resetHeights'),'VirtualList must own the reusable variable-height behavior');
 assert(css.includes('.logs-message{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis'),'Collapsed log messages must stay single-line with ellipsis');
 assert(css.includes('.logs-row.is-expanded .logs-message{white-space:pre-wrap;overflow:visible;text-overflow:clip'),'Expanded log rows must reveal wrapped full content');
-assert(css.includes('.logs-head,.logs-row{display:grid;grid-template-columns:'),'Desktop log header and rows must share one column geometry');
-assert(css.includes('.logs-head>span:nth-child(3){justify-self:center')&&css.includes('.logs-row .logs-level{justify-self:center'),'Desktop Level header and level pills must share the same center anchor');
-assert(css.includes('.logs-row .logs-level{grid-column:1;grid-row:2;justify-self:start')&&css.includes('.logs-time{grid-column:2;grid-row:2'),'Mobile metadata must place the colored log level before date/time');
-assert(css.includes('.logs-row .logs-level{justify-self:center;min-width:72px;text-align:center;color:var(--logs-tone)'),'Log level pills must explicitly own their canonical tone over generic status-pill styling');
 
-console.log('Logs UI contract passed: local brand asset, independent level filters, four semantic tones, aligned desktop level column, mobile level-before-time metadata, and variable-height click expansion.');
+assert(appCss.includes('.virtual-list__spacer{position:relative;width:100%;min-width:100%}.torrent-list>.virtual-list__spacer{width:max-content}'),'Generic VirtualList spacer must own available width while Torrent alone may widen horizontally');
+assert(appCss.includes('.status-pill{display:inline-flex;align-items:center;justify-content:center;width:max-content'),'Canonical status pills must center their content without log-specific fixed widths');
+assert(!/(^|})\.virtual-list \.virtual-row\{display:grid;grid-template-columns:/.test(appCss),'Generic VirtualList must not impose detail row columns on Logs');
+assert(appCss.includes('#detail-content .virtual-list .virtual-row{display:grid;grid-template-columns:'),'Detail virtual rows must retain their scoped desktop layout');
+assert(!appCss.includes('.virtual-list .virtual-row:not(.torrent-mobile-card)>:nth-child(3){display:none}'),'Mobile third-column hiding must not apply to every VirtualList row');
+assert(appCss.includes('#detail-content .virtual-list .virtual-row>:nth-child(3){display:none}'),'Mobile detail compaction must remain scoped to the detail surface');
+
+assert(css.includes('.logs-head,.logs-row{display:grid;grid-template-columns:'),'Desktop log header and rows must share one column geometry');
+assert(css.includes('.logs-head>span:nth-child(3){justify-self:center;text-align:center}')&&css.includes('.logs-row .logs-level{justify-self:center;text-align:center'),'Desktop Level header and level pills must share the same center anchor');
+assert(!css.includes('width:72px')&&!css.includes('min-width:72px')&&!css.includes('min-width:64px'),'Log level labels must use the canonical status-pill intrinsic width instead of fixed-width padding');
+assert(css.includes('.logs-row{min-height:72px;grid-template-columns:max-content minmax(0,1fr);grid-template-rows:auto auto;gap:5px 8px'),'Mobile log metadata must form one compact left-aligned level/time group');
+assert(css.includes('.logs-row .logs-level{grid-column:1;grid-row:2;justify-self:start}')&&css.includes('.logs-time{grid-column:2;grid-row:2;justify-self:start;align-self:center'),'Mobile metadata must place the visible colored level immediately before date/time');
+
+console.log('Logs UI contract passed: local brand asset, independent filters, canonical tones, intrinsic centered desktop level pills, scoped VirtualList layout ownership, left-aligned mobile level/time metadata, and click expansion.');
