@@ -68,20 +68,48 @@ function resourceMatchScore(requested,candidate) {
   return 0;
 }
 
-export function resolveQbTranslationResourcePath(locale, paths = []) {
+function translationSourceLanguage(source) {
+  const match=String(source || '').match(/<TS\b[^>]*\blanguage\s*=\s*["']([^"']+)["']/i);
+  return match ? String(match[1] || '').trim() : null;
+}
+
+function resolveDeclaredResourcePath(locale,family,readSource) {
+  if (typeof readSource !== 'function') return null;
+  const requestedLanguage=localeIdentity(locale).language;
+  if (!requestedLanguage) return null;
+  const scored=family
+    .filter((item)=>localeIdentity(item.locale).language === requestedLanguage)
+    .map((item)=>{
+      const declared=translationSourceLanguage(readSource(item.path));
+      return {...item,declared,score:declared ? resourceMatchScore(locale,declared) : 0};
+    })
+    .filter((item)=>item.score > 0);
+  if (!scored.length) return null;
+  const best=Math.max(...scored.map((item)=>item.score));
+  const matches=scored.filter((item)=>item.score === best);
+  if (matches.length !== 1) {
+    throw new Error(`Ambiguous official qB translation source declaration for ${locale}: ${matches.map((item)=>`${item.path} (${item.declared})`).join(', ')}`);
+  }
+  return matches[0].path;
+}
+
+export function resolveQbTranslationResourcePath(locale, paths = [], readSource = null) {
   const resources=(paths || []).map(translationResource).filter(Boolean);
   for (const kind of ['webui','app']) {
-    const scored=resources
-      .filter((item)=>item.kind === kind)
+    const family=resources.filter((item)=>item.kind === kind);
+    const scored=family
       .map((item)=>({...item,score:resourceMatchScore(locale,item.locale)}))
       .filter((item)=>item.score > 0);
-    if (!scored.length) continue;
-    const best=Math.max(...scored.map((item)=>item.score));
-    const matches=scored.filter((item)=>item.score === best);
-    if (matches.length !== 1) {
+    if (scored.length) {
+      const best=Math.max(...scored.map((item)=>item.score));
+      const matches=scored.filter((item)=>item.score === best);
+      if (matches.length === 1) return matches[0].path;
+      const declared=resolveDeclaredResourcePath(locale,family,readSource);
+      if (declared) return declared;
       throw new Error(`Ambiguous official qB translation source for ${locale}: ${matches.map((item)=>item.path).join(', ')}`);
     }
-    return matches[0].path;
+    const declared=resolveDeclaredResourcePath(locale,family,readSource);
+    if (declared) return declared;
   }
   return null;
 }
@@ -166,16 +194,20 @@ function translationPaths(root,tag) {
   catch { return []; }
   return output.split(/\r?\n/).map((item)=>item.trim()).filter(Boolean);
 }
-function showTranslation(root,tag,locale,paths) {
-  const resourcePath=resolveQbTranslationResourcePath(locale,paths);
-  return resourcePath ? showMaybe(root,tag,resourcePath) : '';
-}
 export function buildQbSettingsTranslationOverlayFromClone(catalog,qbRoot) {
   return buildQbSettingsTranslationOverlay(catalog,({tag})=>{
     const paths=translationPaths(qbRoot,tag);
+    const sourceCache=new Map();
+    const sourceOf=(resourcePath)=>{
+      if (!sourceCache.has(resourcePath)) sourceCache.set(resourcePath,showMaybe(qbRoot,tag,resourcePath));
+      return sourceCache.get(resourcePath);
+    };
     return {
       preferencesSource:preferencesSource(qbRoot,tag),
-      translationSource:(locale)=>showTranslation(qbRoot,tag,locale,paths)
+      translationSource:(locale)=>{
+        const resourcePath=resolveQbTranslationResourcePath(locale,paths,sourceOf);
+        return resourcePath ? sourceOf(resourcePath) : '';
+      }
     };
   });
 }

@@ -61,6 +61,37 @@ assert.equal(resolveQbTranslationResourcePath('sr@latin',legacyTranslationPaths)
 assert.equal(resolveQbTranslationResourcePath('de_DE',['src/lang/qbittorrent_de.ts','src/webui/www/translations/webui_de.ts']),'src/webui/www/translations/webui_de.ts','WebUI-specific official TS wins when both exact-release resource families contain the locale');
 assert.throws(()=>resolveQbTranslationResourcePath('eo_EO',['src/lang/qbittorrent_eo_EO.ts','src/lang/qbittorrent_eo-EO.ts']),/Ambiguous official qB translation source/,'ambiguous source identities fail closed instead of guessing');
 
+const transitionalZhPaths=[
+  'src/webui/www/translations/webui_zh_CN.ts',
+  'src/webui/www/translations/webui_zh_HK.ts',
+  'src/webui/www/translations/webui_zh_TW.ts'
+];
+const transitionalZhSources={
+  'src/webui/www/translations/webui_zh_CN.ts':'<TS version="2.1" language="zh"></TS>',
+  'src/webui/www/translations/webui_zh_HK.ts':'<TS version="2.1" language="zh_HK"></TS>',
+  'src/webui/www/translations/webui_zh_TW.ts':'<TS version="2.1" language="zh_TW"></TS>'
+};
+assert.equal(resolveQbTranslationResourcePath('zh',transitionalZhPaths),null,'filename identity alone must not guess that zh means zh_CN');
+assert.equal(
+  resolveQbTranslationResourcePath('zh',transitionalZhPaths,(resourcePath)=>transitionalZhSources[resourcePath] || ''),
+  'src/webui/www/translations/webui_zh_CN.ts',
+  'exact-release TS language declaration resolves qB 4.5-style preferences.locale/resource-name divergence'
+);
+assert.equal(
+  resolveQbTranslationResourcePath('sr@latin',['src/webui/www/translations/webui_sr.ts'],()=>'<TS version="2.1" language="sr"></TS>'),
+  null,
+  'TS declaration fallback must not erase script identity'
+);
+assert.throws(
+  ()=>resolveQbTranslationResourcePath(
+    'zh',
+    ['src/webui/www/translations/webui_zh_CN.ts','src/webui/www/translations/webui_zh_SG.ts'],
+    ()=>'<TS version="2.1" language="zh"></TS>'
+  ),
+  /Ambiguous official qB translation source declaration/,
+  'multiple exact TS language declarations fail closed instead of choosing a regional filename'
+);
+
 const preferencesSource=`
 <label for="savepath_text">QBT_TR(Default Save Path:)QBT_TR[CONTEXT=OptionsDialog]</label>
 <input type="text" id="savepath_text">
