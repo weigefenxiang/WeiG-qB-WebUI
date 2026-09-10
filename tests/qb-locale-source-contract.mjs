@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {extractWebuiLocaleFacts,localeCodesFromPaths,parseExplicitLocaleOptions} from '../tools/qb-locale-source.mjs';
+import {extractQbSettingsTranslationFacts,indexQbSettingsTranslationFacts,parseQtTsTranslationSource} from '../tools/qb-settings-translation-source.mjs';
 
 const oldHtml=`
 <select id="locale_select">
@@ -37,4 +38,35 @@ assert.deepEqual(extractWebuiLocaleFacts({preferencesSource:placeholder,paths}),
 });
 assert.deepEqual(extractWebuiLocaleFacts({preferencesSource:'',paths:[]}),{webuiLocales:[],webuiLocaleSource:'unresolved'});
 
-console.log('qB locale source contract passed: historical explicit options and modern translation resources stay exact-release source facts.');
+const qtTs=`<?xml version="1.0" encoding="utf-8"?>
+<TS version="2.1" language="de">
+<context>
+  <name>OptionsDialog</name>
+  <message><source>Options</source><translation>Optionen</translation></message>
+  <message><source>Save</source><translation>Speichern &amp; schließen</translation></message>
+  <message><source>Unfinished</source><translation type="unfinished"></translation></message>
+  <message><source>Old</source><translation type="vanished">Alt</translation></message>
+  <message numerus="yes"><source>%n minute(s)</source><translation><numerusform>%n Minute</numerusform><numerusform>%n Minuten</numerusform></translation></message>
+</context>
+<context>
+  <name>AboutDlg</name>
+  <message><source>About</source><translation>Über</translation></message>
+</context>
+</TS>`;
+const parsed=parseQtTsTranslationSource(qtTs,{contexts:['OptionsDialog']});
+assert.equal(parsed.language,'de');
+assert.deepEqual(parsed.messages,[
+  {context:'OptionsDialog',source:'Options',comment:null,translation:'Optionen',numerus:false},
+  {context:'OptionsDialog',source:'Save',comment:null,translation:'Speichern & schließen',numerus:false},
+  {context:'OptionsDialog',source:'%n minute(s)',comment:null,translation:['%n Minute','%n Minuten'],numerus:true}
+]);
+const facts=extractQbSettingsTranslationFacts({qbVersion:'5.2.3',sourceSha:'0b63c3d17373f6132ea211c9dcd4241284ccdfaf',locale:'de',translationSource:qtTs});
+assert.equal(facts.source,'qb-upstream-webui-ts');
+assert.equal(facts.qbVersion,'5.2.3');
+assert.equal(facts.sourceSha,'0b63c3d17373f6132ea211c9dcd4241284ccdfaf');
+assert.equal(facts.messages.length,3);
+const index=indexQbSettingsTranslationFacts(facts);
+assert.equal(index.get('OptionsDialog\u0000Options\u0000'),'Optionen');
+assert.throws(()=>extractQbSettingsTranslationFacts({qbVersion:'5.2.3',sourceSha:'abc',locale:'fr',translationSource:qtTs}),/locale mismatch/);
+
+console.log('qB locale source contract passed: exact-release locale sets and Settings translations remain upstream-derived facts.');
