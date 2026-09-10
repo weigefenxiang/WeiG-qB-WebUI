@@ -33,14 +33,15 @@ for(const file of walk(path.join(root,'webui')).filter(p=>/\.(?:html|js|css)$/i.
 
 assert(logs.includes('if(state.types.has(type))state.types.delete(type);else state.types.add(type);'),'Each log level must be independently toggleable');
 assert(!logs.includes('state.types.size>1'),'Logs must allow all four levels to be disabled');
-for(const tone of ['normal','info','warning','danger'])assert(logs.includes(`b.dataset.tone=typeTone(type)`)&&css.includes(`--logs-tone-${tone}`),`Missing canonical ${tone} log tone`);
+for(const tone of ['normal','info','warning','danger'])assert(logs.includes('b.dataset.tone=typeTone(type)')&&css.includes(`--logs-tone-${tone}`),`Missing canonical ${tone} log tone`);
 assert(logs.includes('expandedId:null')&&logs.includes("row.setAttribute('aria-expanded',expanded?'true':'false')"),'Log rows must expose one shared expand/collapse state');
 assert(logs.includes('variableHeight:true')&&logs.includes('itemKey:rowKey'),'Logs must reuse the canonical VirtualList in variable-height mode');
 assert(core.includes('this.variableHeight=!!options.variableHeight')&&core.includes('W.VirtualList.prototype.resetHeights'),'VirtualList must own the reusable variable-height behavior');
 assert(css.includes('.logs-message{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis'),'Collapsed log messages must stay single-line with ellipsis');
 assert(css.includes('.logs-row.is-expanded .logs-message{white-space:pre-wrap;overflow:visible;text-overflow:clip'),'Expanded log rows must reveal wrapped full content');
 assert(css.includes('.logs-head,.logs-row{display:grid;grid-template-columns:'),'Desktop log header and rows must share one column geometry');
-assert(css.includes('.logs-head>span:nth-child(3){justify-self:center')&&css.includes('.logs-level{justify-self:center'),'Desktop Level header and level pills must share the same center anchor');
-assert(css.includes('.logs-level{grid-column:1;grid-row:2;justify-self:start')&&css.includes('.logs-time{grid-column:2;grid-row:2'),'Mobile metadata must place the colored log level before date/time');
+assert(css.includes('.logs-head>span:nth-child(3){justify-self:center')&&css.includes('.logs-row .logs-level{justify-self:center'),'Desktop Level header and level pills must share the same center anchor');
+assert(css.includes('.logs-row .logs-level{grid-column:1;grid-row:2;justify-self:start')&&css.includes('.logs-time{grid-column:2;grid-row:2'),'Mobile metadata must place the colored log level before date/time');
+assert(css.includes('.logs-row .logs-level{justify-self:center;min-width:72px;text-align:center;color:var(--logs-tone)'),'Log level pills must explicitly own their canonical tone over generic status-pill styling');
 
 console.log('Logs UI contract passed: local brand asset, independent level filters, four semantic tones, aligned desktop level column, mobile level-before-time metadata, and variable-height click expansion.');
