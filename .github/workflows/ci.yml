@@ -103,6 +103,8 @@ jobs:
           filter: blob:none
       - name: Generate source-derived qB 4.1.0 to latest stable catalog
         run: node tools/qb-release-catalog.mjs upstream-qb --output=qb-releases.json
+      - name: Enrich exact qB WebUI locale source facts
+        run: node tools/qb-locale-source.mjs upstream-qb qb-releases.json
       - name: Audit every official stable qB release from 4.1.0
         run: node tests/upstream-release-audit.mjs upstream-qb
       - name: Full stable PRODUCT compatibility matrix
