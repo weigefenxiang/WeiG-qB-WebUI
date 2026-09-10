@@ -17,9 +17,13 @@ const WeiG={
 const window={WeiG};
 const context={window,URLSearchParams,FormData,Blob,Response,console,fetch:async(url,init={})=>{
   calls.push({url:String(url),init});
-  const path=String(url);
-  if(path==='api/v2/torrents/categories')return new Response(JSON.stringify({Movies:{name:'Movies',savePath:'/downloads/movies'}}),{status:200});
-  if(path==='api/v2/torrents/tags')return new Response(JSON.stringify(['linux','iso']),{status:200});
+  const requestPath=String(url);
+  if(requestPath==='api/v2/torrents/categories')return new Response(JSON.stringify({Movies:{name:'Movies',savePath:'/downloads/movies'}}),{status:200});
+  if(requestPath==='api/v2/sync/maindata?rid=0'){
+    const categories=profile?.qbVersion==='4.1.2'?['Movies','Linux']:{Movies:{name:'Movies',savePath:'/downloads/movies'},Linux:{name:'Linux',savePath:'/downloads/linux'}};
+    return new Response(JSON.stringify({rid:1,categories}),{status:200});
+  }
+  if(requestPath==='api/v2/torrents/tags')return new Response(JSON.stringify(['linux','iso']),{status:200});
   return new Response('',{status:200});
 }};
 vm.runInNewContext(source,context,{filename:'qb-client.js'});
@@ -37,6 +41,7 @@ const A={
   createTags:'torrentscontroller.h:createTagsAction',
   deleteTags:'torrentscontroller.h:deleteTagsAction'
 };
+const MAINDATA='synccontroller.h:maindataAction';
 const ALL=Object.values(A);
 const body=call=>new URLSearchParams(String(call?.init?.body||''));
 const operations={
@@ -83,13 +88,19 @@ for(const name of ['categories','tags','addTags','removeTags','createTags','dele
   const count=calls.length;await assert.rejects(Promise.resolve().then(operations[name]),/source-proven/);assert.equal(calls.length,count,`${name} must fail closed on qB 4.1.0-style source facts`);
 }
 
+profile={qbVersion:'4.1.2',webApiVersion:'2.0.2',fallback:false,apiActions:[MAINDATA,A.setCategory,A.createCategory,A.removeCategories],apiActionParameters:{}};
+before=calls.length;const legacyArray=await operations.categories();assert.equal(calls.length,before+1,'qB 4.1.2 source facts must read categories from sync/maindata');assert.equal(calls[before].url,'api/v2/sync/maindata?rid=0');assert.deepEqual(Object.keys(legacyArray).sort(),['Linux','Movies']);assert.equal(legacyArray.Movies.name,'Movies');assert.equal(legacyArray.Movies.savePath,'');
+
+profile={qbVersion:'4.1.3',webApiVersion:'2.1.0',fallback:false,apiActions:[MAINDATA,A.setCategory,A.createCategory,A.removeCategories],apiActionParameters:{}};
+before=calls.length;const legacyObject=await operations.categories();assert.equal(calls.length,before+1,'qB 4.1.3 source facts must read categories from sync/maindata');assert.equal(calls[before].url,'api/v2/sync/maindata?rid=0');assert.equal(legacyObject.Movies.name,'Movies');assert.equal(legacyObject.Movies.savePath,'/downloads/movies');
+
 profile={qbVersion:'4.1.4',webApiVersion:'2.1.1',fallback:false,apiActions:[A.categories,A.setCategory,A.createCategory,A.removeCategories],apiActionParameters:{}};
 before=calls.length;await operations.categories();assert.equal(calls.length,before+1,'qB 4.1.4-style source facts must enable categories read');
 before=calls.length;await assert.rejects(Promise.resolve().then(operations.tags),/source-proven/);assert.equal(calls.length,before,'Tags read must remain zero-HTTP before exact tagsAction');
 
-profile={qbVersion:'6.9.0',webApiVersion:'99.0.0',fallback:true,apiActions:ALL,apiActionParameters:{}};
+profile={qbVersion:'6.9.0',webApiVersion:'99.0.0',fallback:true,apiActions:[...ALL,MAINDATA],apiActionParameters:{}};
 before=calls.length;
 for(const operation of Object.values(operations))await assert.rejects(Promise.resolve().then(operation),/source-proven/,'future fallback must not guess taxonomy support');
 assert.equal(calls.length,before,'future fallback taxonomy operations must make zero HTTP requests');
 
-console.log(`QBClient taxonomy provenance passed: ${calls.length} allowed HTTP calls; category/tag reads and writes are independently source-guarded and fallback profiles fail closed.`);
+console.log(`QBClient taxonomy provenance passed: ${calls.length} allowed HTTP calls; direct and sync category reads normalize source-proven historical shapes, writes remain independently guarded, and fallback profiles fail closed.`);
