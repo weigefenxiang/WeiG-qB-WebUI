@@ -10,8 +10,6 @@ on:
     branches:
       - dev
       - main
-  schedule:
-    - cron: '17 4 * * 1'
 
 permissions:
   actions: read
@@ -44,23 +42,13 @@ jobs:
           node-version: '22'
           cache: npm
 
-      - name: Checkout qBittorrent upstream
-        uses: actions/checkout@v6
-        with:
-          repository: qbittorrent/qBittorrent
-          path: .upstream/qBittorrent
-          fetch-depth: 0
-          fetch-tags: true
-          filter: blob:none
-          persist-credentials: false
-
       - name: Install contract dependencies
         run: npm ci
 
       - name: Validate current simulator contracts
         run: npm test
 
-      - name: Build exact dev/main Virtual qB site
+      - name: Build exact dev/main Virtual qB site from Frozen LKG
         shell: bash
         run: |
           set -euo pipefail
@@ -78,8 +66,25 @@ jobs:
           git archive --format=tar refs/remotes/origin/dev:webui | tar -xf - -C "$RUNNER_TEMP/weig-dev-webui"
           git archive --format=tar refs/remotes/origin/main:webui | tar -xf - -C "$RUNNER_TEMP/weig-main-webui"
 
-          node tools/qb-release-catalog.mjs "$GITHUB_WORKSPACE/.upstream/qBittorrent" \
-            --output="$RUNNER_TEMP/qb-releases.json"
+          node --input-type=module <<'NODE'
+          import crypto from 'node:crypto';
+          import fs from 'node:fs';
+
+          const manifestPath='tools/data/qb-stable-lkg.json';
+          const manifest=JSON.parse(fs.readFileSync(manifestPath,'utf8'));
+          if(manifest.schemaVersion!==1)throw new Error(`Unsupported Frozen LKG schema ${manifest.schemaVersion}`);
+          if(manifest.catalogPath!=='tests/fixtures/qb-release-catalog.lkg.json')throw new Error(`Unexpected Frozen LKG catalog path ${manifest.catalogPath}`);
+          const bytes=fs.readFileSync(manifest.catalogPath);
+          const digest=crypto.createHash('sha256').update(bytes).digest('hex');
+          if(digest!==manifest.catalogSha256)throw new Error(`Frozen LKG SHA-256 mismatch: ${digest} != ${manifest.catalogSha256}`);
+          const catalog=JSON.parse(bytes.toString('utf8'));
+          if(catalog.length!==manifest.profileCount)throw new Error(`Frozen LKG profile count mismatch: ${catalog.length} != ${manifest.profileCount}`);
+          if(catalog[0]?.qbVersion!==manifest.supportFloor)throw new Error(`Frozen LKG floor mismatch: ${catalog[0]?.qbVersion} != ${manifest.supportFloor}`);
+          if(catalog.at(-1)?.qbVersion!==manifest.latestAdmittedStable)throw new Error(`Frozen LKG latest mismatch: ${catalog.at(-1)?.qbVersion} != ${manifest.latestAdmittedStable}`);
+          fs.writeFileSync(`${process.env.RUNNER_TEMP}/qb-releases.json`,bytes);
+          console.log(`Pages consumes hash-bound Frozen LKG: ${catalog.length} profiles ${catalog[0].qbVersion} -> ${catalog.at(-1).qbVersion}, sha256:${digest}`);
+          NODE
+          cmp tests/fixtures/qb-release-catalog.lkg.json "$RUNNER_TEMP/qb-releases.json"
 
           node simulator/build/build-site.mjs \
             --out="$RUNNER_TEMP/virtual-qb-site" \

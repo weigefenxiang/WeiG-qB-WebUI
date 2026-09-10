@@ -1,7 +1,7 @@
 name: Virtual qB Pages Source
 
 # Strict main promotion reuses only an exact-SHA validated dev Pages artifact; no legacy artifact fallback is allowed.
-# Only Pages-owned tests redeploy; unrelated test suites are covered by their own workflows.
+# Only Pages-owned inputs and the admitted Frozen LKG redeploy; unrelated tests and qB source-parser changes have their own owners.
 on:
   push:
     branches:
@@ -10,7 +10,8 @@ on:
     paths:
       - 'webui/**'
       - 'simulator/**'
-      - 'tools/qb-*.mjs'
+      - 'tools/data/qb-stable-lkg.json'
+      - 'tests/fixtures/qb-release-catalog.lkg.json'
       - 'package.json'
       - 'package-lock.json'
       - 'tests/pages-*.mjs'
