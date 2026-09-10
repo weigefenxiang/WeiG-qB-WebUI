@@ -2,6 +2,7 @@ name: Virtual qB Pages Source
 
 # Strict main promotion reuses only an exact-SHA validated dev Pages artifact; no legacy artifact fallback is allowed.
 # Only Pages-owned inputs and the admitted Frozen LKG redeploy; unrelated tests and qB source-parser changes have their own owners.
+# A main-validation candidate intentionally changes this owner file so the exact dev SHA has a reusable Pages artifact before promotion.
 on:
   push:
     branches:
