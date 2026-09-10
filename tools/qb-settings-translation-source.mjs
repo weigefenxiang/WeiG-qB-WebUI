@@ -15,23 +15,30 @@ function textOf(block, tag) {
   return match ? decodeXml(match[1]).trim() : '';
 }
 
-function translationOf(message) {
+function baseLanguage(value) {
+  return String(value || '').trim().replace('-', '_').split('_')[0].toLowerCase();
+}
+
+function translationOf(message, sourceText, sourceFallback) {
   const match = String(message || '').match(/<translation(?:\s+([^>]*))?>([\s\S]*?)<\/translation>|<translation(?:\s+([^>]*))?\s*\/>/i);
-  if (!match) return null;
+  if (!match) return sourceFallback && sourceText ? {value: sourceText, numerus: false} : null;
   const attrs = String(match[1] || match[3] || '');
   const type = (attrs.match(/\btype\s*=\s*["']([^"']+)["']/i) || [])[1] || '';
-  if (/^(?:unfinished|vanished|obsolete)$/i.test(type)) return null;
   const body = String(match[2] || '');
+  const unusable = /^(?:unfinished|vanished|obsolete)$/i.test(type);
+  if (unusable) return sourceFallback && sourceText ? {value: sourceText, numerus: false} : null;
   const numerus = [...body.matchAll(/<numerusform(?:\s[^>]*)?>([\s\S]*?)<\/numerusform>/gi)].map((item) => decodeXml(item[1]).trim()).filter(Boolean);
   if (numerus.length) return {value: numerus, numerus: true};
   const value = decodeXml(body).trim();
-  return value ? {value, numerus: false} : null;
+  if (value) return {value, numerus: false};
+  return sourceFallback && sourceText ? {value: sourceText, numerus: false} : null;
 }
 
 export function parseQtTsTranslationSource(source, options = {}) {
   const xml = String(source || '');
   const language = (xml.match(/<TS\b[^>]*\blanguage\s*=\s*["']([^"']+)["']/i) || [])[1] || null;
   const include = Array.isArray(options.contexts) && options.contexts.length ? new Set(options.contexts.map(String)) : null;
+  const sourceFallback = options.sourceFallback === true || (options.sourceFallback === 'english' && baseLanguage(language) === 'en');
   const messages = [];
   for (const contextMatch of xml.matchAll(/<context(?:\s[^>]*)?>([\s\S]*?)<\/context>/gi)) {
     const contextBody = contextMatch[1];
@@ -41,7 +48,7 @@ export function parseQtTsTranslationSource(source, options = {}) {
       const message = messageMatch[1];
       const sourceText = textOf(message, 'source');
       if (!sourceText) continue;
-      const translation = translationOf(message);
+      const translation = translationOf(message, sourceText, sourceFallback);
       if (!translation) continue;
       messages.push({
         context,
@@ -57,14 +64,15 @@ export function parseQtTsTranslationSource(source, options = {}) {
 
 export function extractQbSettingsTranslationFacts({qbVersion, sourceSha, locale, translationSource, contexts = ['OptionsDialog']} = {}) {
   if (!qbVersion || !sourceSha) throw new Error('qB Settings translation facts require exact qbVersion + sourceSha identity.');
-  const parsed = parseQtTsTranslationSource(translationSource, {contexts});
+  const parsed = parseQtTsTranslationSource(translationSource, {contexts, sourceFallback: 'english'});
   const resolvedLocale = String(locale || parsed.language || '').trim();
   if (!resolvedLocale) throw new Error('qB Settings translation facts require a locale.');
-  if (parsed.language && locale && parsed.language !== locale) throw new Error(`qB Settings translation locale mismatch: expected ${locale}, source says ${parsed.language}`);
+  if (parsed.language && locale && baseLanguage(parsed.language) !== baseLanguage(locale)) throw new Error(`qB Settings translation locale mismatch: expected ${locale}, source says ${parsed.language}`);
   return {
     qbVersion: String(qbVersion),
     sourceSha: String(sourceSha),
     locale: resolvedLocale,
+    sourceLanguage: parsed.language,
     source: 'qb-upstream-webui-ts',
     contexts: [...new Set(contexts.map(String))],
     messages: parsed.messages

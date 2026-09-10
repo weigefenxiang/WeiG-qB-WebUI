@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {extractWebuiLocaleFacts,localeCodesFromPaths,parseExplicitLocaleOptions} from '../tools/qb-locale-source.mjs';
 import {extractQbSettingsTranslationFacts,indexQbSettingsTranslationFacts,parseQtTsTranslationSource} from '../tools/qb-settings-translation-source.mjs';
+import {buildQbSettingsTranslationOverlay} from '../tools/qb-settings-translation-overlay.mjs';
 
 const oldHtml=`
 <select id="locale_select">
@@ -69,4 +70,27 @@ const index=indexQbSettingsTranslationFacts(facts);
 assert.equal(index.get('OptionsDialog\u0000Options\u0000'),'Optionen');
 assert.throws(()=>extractQbSettingsTranslationFacts({qbVersion:'5.2.3',sourceSha:'abc',locale:'fr',translationSource:qtTs}),/locale mismatch/);
 
-console.log('qB locale source contract passed: exact-release locale sets and Settings translations remain upstream-derived facts.');
+const enTs=`<TS version="2.1" language="en"><context><name>OptionsDialog</name><message><source>Options</source><translation type="unfinished" /></message><message><source>Save</source><translation type="unfinished" /></message></context></TS>`;
+const enFacts=extractQbSettingsTranslationFacts({qbVersion:'5.2.3',sourceSha:'sha-new',locale:'en',translationSource:enTs});
+assert.deepEqual(enFacts.messages.map(item=>item.translation),['Options','Save'],'English official source text is the translation fallback');
+const deOld=qtTs.replace('language="de"','language="de"');
+const catalog=[
+  {qbVersion:'4.1.0',sourceSha:'sha-old',tag:'release-4.1.0',webuiLocales:[{value:'en'},{value:'de_DE'}]},
+  {qbVersion:'5.2.3',sourceSha:'sha-new',tag:'release-5.2.3',webuiLocales:[{value:'en'},{value:'de'}]}
+];
+const sourceByLocale={en:enTs,de:qtTs,de_DE:deOld};
+const overlay=buildQbSettingsTranslationOverlay(catalog,({locale})=>sourceByLocale[locale]);
+assert.equal(overlay.schema,1);
+assert.equal(overlay.source,'qb-upstream-webui-ts');
+assert.equal(overlay.profiles.length,2);
+assert.equal(overlay.profiles[0].qbVersion,'4.1.0');
+assert.equal(overlay.profiles[0].sourceSha,'sha-old');
+assert.equal(overlay.profiles[1].sourceSha,'sha-new');
+assert.equal(Object.keys(overlay.profiles[0].translations).length,2);
+assert.equal(Object.keys(overlay.profiles[1].translations).length,2);
+assert.equal(overlay.profiles[0].translations.en,overlay.profiles[1].translations.en,'identical official source translations are deduplicated without losing exact profile binding');
+assert.equal(overlay.profiles[0].translations.de_DE,overlay.profiles[1].translations.de,'historical locale aliases may share identical source-derived payloads');
+assert.equal(Object.keys(overlay.sets).length,2);
+assert.throws(()=>buildQbSettingsTranslationOverlay([{qbVersion:'5.2.3',sourceSha:'sha',tag:'release-5.2.3',webuiLocales:[{value:'fr'}]}],()=>''),/missing official WebUI translation source/);
+
+console.log('qB locale source contract passed: exact-release locale sets and Settings translations remain upstream-derived, hash-bound facts.');
