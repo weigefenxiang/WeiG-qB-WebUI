@@ -73,17 +73,27 @@ resolve_ref(){
 frozen_source_build_profile(){
   case "$VERSION" in
     4.1.*)
-      printf '%s\t%s\t%s\t%s\n' \
+      printf '%s\t%s\t%s\t%s\t%s\n' \
         'libtorrent-1_1_14' \
         '244f0f189ba8ab9801e7fcf553beebfb83d7c86b' \
         'autotools' \
+        'n/a' \
         "$GFM_SOURCE_BASE_IMAGE"
       ;;
-    4.2.*|4.3.*)
-      printf '%s\t%s\t%s\t%s\n' \
+    4.2.*|4.3.0|4.3.0.1|4.3.1|4.3.2)
+      printf '%s\t%s\t%s\t%s\t%s\n' \
         'v1.2.12' \
         'e3f2b016dcd37a9a6e8a94006c7befcf2cb7bfac' \
         'cmake' \
+        'ON' \
+        "$GFM_SOURCE_BASE_IMAGE"
+      ;;
+    4.3.*)
+      printf '%s\t%s\t%s\t%s\t%s\n' \
+        'v1.2.12' \
+        'e3f2b016dcd37a9a6e8a94006c7befcf2cb7bfac' \
+        'cmake' \
+        'OFF' \
         "$GFM_SOURCE_BASE_IMAGE"
       ;;
     *) return 1 ;;
@@ -106,9 +116,9 @@ NODE
 }
 
 prepare_frozen_source_runtime(){
-  local build_profile qb_identity lt_tag lt_sha lt_build base_image qb_tag qb_sha build_dir image_tag image_id
+  local build_profile qb_identity lt_tag lt_sha lt_build lt_deprecated base_image qb_tag qb_sha build_dir image_tag image_id
   build_profile="$(frozen_source_build_profile)" || return 1
-  IFS=$'\t' read -r lt_tag lt_sha lt_build base_image <<<"$build_profile"
+  IFS=$'\t' read -r lt_tag lt_sha lt_build lt_deprecated base_image <<<"$build_profile"
   qb_identity="$(frozen_qb_source_identity)" || {
     record_attempt frozen-official-source "qB ${VERSION}" REJECTED 'Frozen catalog source identity could not be resolved'
     return 1
@@ -118,7 +128,7 @@ prepare_frozen_source_runtime(){
   PROVIDER='frozen-official-source'
   MODE='source'
   SOURCE_REF="qbittorrent/${qb_tag}@${qb_sha}; libtorrent/${lt_tag}@${lt_sha}"
-  PACKAGE_ID="Frozen official source build qB ${VERSION}; qbSourceSha=${qb_sha}; libtorrentSha=${lt_sha}; base=${base_image}"
+  PACKAGE_ID="Frozen official source build qB ${VERSION}; qbSourceSha=${qb_sha}; libtorrentSha=${lt_sha}; libtorrentDeprecated=${lt_deprecated}; base=${base_image}"
   build_dir="$TMP_ROOT/source-build-${VERSION//./-}-${RANDOM}"
   image_tag="weig-gfm-source:${VERSION}-${qb_sha:0:12}"
   mkdir -p "$build_dir"
@@ -132,6 +142,7 @@ ARG QB_SOURCE_SHA
 ARG LT_TAG
 ARG LT_SOURCE_SHA
 ARG LT_BUILD
+ARG LT_DEPRECATED
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates git build-essential pkg-config autoconf automake libtool cmake ninja-build \
     libssl-dev zlib1g-dev \
@@ -148,7 +159,7 @@ RUN git clone --depth 1 --branch "$LT_TAG" https://github.com/arvidn/libtorrent.
       && make -j2 \
       && make install; \
     else \
-      cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=17 -Ddeprecated-functions=OFF \
+      cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=17 -Ddeprecated-functions="$LT_DEPRECATED" \
       && cmake --build build -j2 \
       && cmake --install build; \
     fi \
@@ -175,6 +186,7 @@ DOCKER
       --build-arg "LT_TAG=$lt_tag" \
       --build-arg "LT_SOURCE_SHA=$lt_sha" \
       --build-arg "LT_BUILD=$lt_build" \
+      --build-arg "LT_DEPRECATED=$lt_deprecated" \
       -t "$image_tag" "$build_dir"; then
     record_attempt "$PROVIDER" "$SOURCE_REF" BUILD_FAILED 'exact Frozen official-source runtime image could not be built'
     return 1
