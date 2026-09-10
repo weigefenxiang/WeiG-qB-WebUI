@@ -40,7 +40,7 @@ const context={
 vm.runInNewContext(bridgeSource,context,{filename:'qb-locale-bridge.js'});
 const B=window.WeiG.QBLocaleBridge;
 assert.ok(B&&typeof B.refresh==='function'&&typeof B.qBForWeiG==='function','QBLocaleBridge must expose canonical locale helpers');
-assert.deepEqual(B.parseProbe('<select id="weigg-qb-locale-options">${LANGUAGE_OPTIONS}</select>'),[],'unexpanded qB placeholder must fail closed');
+assert.equal([...B.parseProbe('<select id="weigg-qb-locale-options">${LANGUAGE_OPTIONS}</select>')].length,0,'unexpanded qB placeholder must fail closed');
 
 currentProfile={webuiLocales:[
   {value:'en',label:'English'},
@@ -50,7 +50,7 @@ currentProfile={webuiLocales:[
   {value:'ko_KR',label:'한국어'}
 ]};
 await B.refresh();
-assert.deepEqual(schema.meta.locale.enum.map(item=>item.value),['en','zh','zh_TW','ja_JP','ko_KR'],'exact profile locale options must become SettingsSchema locale enum');
+assert.deepEqual([...schema.meta.locale.enum].map(item=>item.value),['en','zh','zh_TW','ja_JP','ko_KR'],'exact profile locale options must become SettingsSchema locale enum');
 assert.equal(B.qBForWeiG('zh-CN'),'zh','old qB Simplified Chinese alias must map from WeiG language without version branching');
 assert.equal(B.qBForWeiG('zh-TW'),'zh_TW');
 assert.equal(B.qBForWeiG('ja'),'ja_JP');
@@ -58,12 +58,12 @@ assert.equal(B.qBForWeiG('ko'),'ko_KR');
 
 const languageHandler=(listeners.get('weigg:languagechange')||[])[0];
 assert.ok(languageHandler,'WeiG language change must be linked to qB locale sync');
-await languageHandler({detail:{setting:'zh-CN'}});
+languageHandler({detail:{setting:'zh-CN'}});
 await new Promise(resolve=>setTimeout(resolve,0));
-assert.deepEqual(writes,[{locale:'zh'}],'WeiG language save must reuse qB setPreferences only for a source-writable locale');
+assert.equal(JSON.stringify(writes),JSON.stringify([{locale:'zh'}]),'WeiG language save must reuse qB setPreferences only for a source-writable locale');
 
 schema.isWritable=()=>false;
-await languageHandler({detail:{setting:'ja'}});
+languageHandler({detail:{setting:'ja'}});
 await new Promise(resolve=>setTimeout(resolve,0));
 assert.equal(writes.length,1,'locale sync must fail closed when exact setter provenance is not writable');
 
