@@ -36,16 +36,6 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Checkout qBittorrent locale source with stable tags
-        uses: actions/checkout@v7
-        with:
-          repository: qbittorrent/qBittorrent
-          path: upstream-qb
-          fetch-depth: 0
-          fetch-tags: true
-          filter: blob:none
-          persist-credentials: false
-
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
@@ -95,7 +85,6 @@ jobs:
           console.log(`Pages consumes hash-bound Frozen LKG: ${catalog.length} profiles ${catalog[0].qbVersion} -> ${catalog.at(-1).qbVersion}, sha256:${digest}`);
           NODE
           cmp tests/fixtures/qb-release-catalog.lkg.json "$RUNNER_TEMP/qb-releases.json"
-          node tools/qb-locale-source.mjs upstream-qb "$RUNNER_TEMP/qb-releases.json"
 
           node simulator/build/build-site.mjs \
             --out="$RUNNER_TEMP/virtual-qb-site" \
