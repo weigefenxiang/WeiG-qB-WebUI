@@ -9,9 +9,11 @@ const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const allowWrites=new Set(process.argv.slice(2)).has('--allow-writes');
 const norm=v=>String(v||'').trim().replace(/^v/i,'').split(/[+-]/)[0];
 const sameNumericVersion=(a,b)=>{const aa=norm(a).split('.'),bb=norm(b).split('.');if(!aa.every(x=>/^\d+$/.test(x))||!bb.every(x=>/^\d+$/.test(x)))return norm(a)===norm(b);const n=Math.max(aa.length,bb.length);for(let i=0;i<n;i++)if(Number(aa[i]||0)!==Number(bb[i]||0))return false;return true;};
+const writableFilePriorities=new Set([0,1,6,7]);
 const sha256=b=>crypto.createHash('sha256').update(b).digest('hex');
 const sha1=b=>crypto.createHash('sha1').update(b).digest();
 const redact=v=>String(v??'').replace(/https?:\/\/[^\s'"<>]+/gi,'[REDACTED_URL]');
+const safeBody=v=>redact(v).slice(0,512);
 const die=m=>{throw new Error(redact(m));};
 const actions={
   add:'torrentscontroller.h:addAction',
@@ -66,7 +68,7 @@ async function main(){
   if(!binary)die('WEIG_QB_BINARY_IDENTITY is required.');
 
   const base=new URL(target.endsWith('/')?target:`${target}/`);
-  let sessionCookie='',sessionCookieName='',ev=null,qb='unknown',fixtureHash='',fixtureDeleted=false,priorityRestored=false,activeScenario='file-priority-lifecycle';
+  let sessionCookie='',sessionCookieName='',ev=null,qb='unknown',fixtureHash='',fixtureDeleted=false,priorityFinalStateVerified=false,priorityTrace=null,activeScenario='file-priority-lifecycle';
   async function http(method,ep,{query,form,auth=true}={}){
     const url=new URL(ep.replace(/^\/+/,''),base);
     for(const [k,v] of Object.entries(query||{}))url.searchParams.set(k,String(v));
@@ -160,7 +162,7 @@ async function main(){
     else if(addParamNames.includes('paused'))addExtra.paused='true';
 
     const add=await uploadTorrent(fixture.bytes,`${fixture.name}.torrent`,addExtra);
-    if(![200,202,204].includes(add.status)){await add.text();die(`torrent fixture add: HTTP ${add.status}`);}
+    if(![200,202,204].includes(add.status)){const body=await add.text();die(`torrent fixture add: HTTP ${add.status}; body=${safeBody(body)}`);}
     await add.text();
 
     const filesEp=endpoint(actions.files);
@@ -176,30 +178,38 @@ async function main(){
     const fileId=Number.isInteger(first?.index)?first.index:0;
     const originalPriority=Number(first?.priority);
     if(!Number.isInteger(originalPriority))die('files response returned no integer priority.');
+    const originalPriorityWritable=writableFilePriorities.has(originalPriority);
     const changedPriority=(originalPriority===0)?1:0;
+    const restorePriority=originalPriorityWritable?originalPriority:1;
+    const restoreMode=originalPriorityWritable?'exact-original':'canonical-normal-before-delete';
+    priorityTrace={file_id:fileId,original_priority:originalPriority,original_priority_writable:originalPriorityWritable,changed_priority:changedPriority,restore_priority:restorePriority,restore_mode:restoreMode};
 
     const prioEp=endpoint(actions.filePrio);
     const change=await http('POST',prioEp,{form:{hash:fixtureHash,id:fileId,priority:changedPriority}});
-    if(![200,204].includes(change.status)){await change.text();die(`file priority change: HTTP ${change.status}`);}await change.text();
+    const changeBody=await change.text();
+    priorityTrace.change_response={status:change.status,body:safeBody(changeBody)};
+    if(![200,204].includes(change.status))die(`file priority change: HTTP ${change.status}; body=${safeBody(changeBody)}`);
 
     let changedSeen=false;
     for(let i=0;i<10;i++){
-      const r=await http('GET',filesEp,{query:{hash:fixtureHash}});if(r.status!==200){await r.text();die(`files reread after priority change: HTTP ${r.status}`);}
+      const r=await http('GET',filesEp,{query:{hash:fixtureHash}});if(r.status!==200){const body=await r.text();die(`files reread after priority change: HTTP ${r.status}; body=${safeBody(body)}`);}
       const value=await readJson(r);const row=Array.isArray(value)?value.find((x,j)=>(Number.isInteger(x?.index)?x.index:j)===fileId):null;
-      if(row&&Number(row.priority)===changedPriority){changedSeen=true;break;}
+      if(row&&Number(row.priority)===changedPriority){changedSeen=true;priorityTrace.changed_observed_priority=Number(row.priority);break;}
       await new Promise(resolve=>setTimeout(resolve,100));
     }
     if(!changedSeen)die('file priority change was not observable on reread.');
 
-    const restore=await http('POST',prioEp,{form:{hash:fixtureHash,id:fileId,priority:originalPriority}});
-    if(![200,204].includes(restore.status)){await restore.text();die(`file priority restore: HTTP ${restore.status}`);}await restore.text();
+    const restore=await http('POST',prioEp,{form:{hash:fixtureHash,id:fileId,priority:restorePriority}});
+    const restoreBody=await restore.text();
+    priorityTrace.restore_response={status:restore.status,body:safeBody(restoreBody)};
+    if(![200,204].includes(restore.status))die(`file priority restore: HTTP ${restore.status}; body=${safeBody(restoreBody)}`);
     for(let i=0;i<10;i++){
-      const r=await http('GET',filesEp,{query:{hash:fixtureHash}});if(r.status!==200){await r.text();die(`files reread after priority restore: HTTP ${r.status}`);}
+      const r=await http('GET',filesEp,{query:{hash:fixtureHash}});if(r.status!==200){const body=await r.text();die(`files reread after priority restore: HTTP ${r.status}; body=${safeBody(body)}`);}
       const value=await readJson(r);const row=Array.isArray(value)?value.find((x,j)=>(Number.isInteger(x?.index)?x.index:j)===fileId):null;
-      if(row&&Number(row.priority)===originalPriority){priorityRestored=true;break;}
+      if(row&&Number(row.priority)===restorePriority){priorityFinalStateVerified=true;priorityTrace.restore_observed_priority=Number(row.priority);break;}
       await new Promise(resolve=>setTimeout(resolve,100));
     }
-    if(!priorityRestored)die('file priority restore was not observable on reread.');
+    if(!priorityFinalStateVerified)die('file priority final state was not observable on reread.');
 
     let trackerResult=null;
     activeScenario='tracker-mutation-lifecycle';
@@ -281,13 +291,13 @@ async function main(){
         {method:'GET',endpoint:filesEp,paramNames:['hash']},
         {method:'POST',endpoint:endpoint(actions.del),paramNames:['deleteFiles','hashes']}
       ],
-      response:{add_status:add.status,files_status:filesStatus,change_status:change.status,restore_status:restore.status,delete_status:del.status,original_priority:originalPriority,changed_priority:changedPriority},
-      cleanup_result:'original priority restored and generated torrent deleted'
+      response:{add_status:add.status,files_status:filesStatus,change_status:change.status,restore_status:restore.status,delete_status:del.status,...priorityTrace},
+      cleanup_result:originalPriorityWritable?'original writable priority restored and generated torrent deleted':'non-writable historical readback priority normalized to canonical Normal and generated torrent deleted'
     });
     writeEvidence();
   }catch(e){
     await deleteFixture();
-    if(ev){ev.push('FAIL',activeScenario,{reason:redact(e?.message||e),cleanup_result:{priority_restored:priorityRestored,torrent_deleted:fixtureDeleted}});writeEvidence();}
+    if(ev){ev.push('FAIL',activeScenario,{reason:redact(e?.message||e),priority_trace:priorityTrace,cleanup_result:{priority_restored:priorityTrace?.original_priority_writable?priorityFinalStateVerified:null,priority_final_state_verified:priorityFinalStateVerified,priority_restore_mode:priorityTrace?.restore_mode||null,torrent_deleted:fixtureDeleted}});writeEvidence();}
     throw e;
   }finally{
     await deleteFixture();

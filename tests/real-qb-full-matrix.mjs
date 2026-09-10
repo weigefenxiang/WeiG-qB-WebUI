@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 const repoRoot=process.env.WEIG_REPO_ROOT?path.resolve(process.env.WEIG_REPO_ROOT):process.cwd();
 const norm=v=>String(v??'').trim().replace(/^v/i,'').split(/[+-]/)[0];
+const sameNumericVersion=(a,b)=>{const aa=norm(a).split('.'),bb=norm(b).split('.');if(!aa.every(x=>/^\d+$/.test(x))||!bb.every(x=>/^\d+$/.test(x)))return norm(a)===norm(b);const n=Math.max(aa.length,bb.length);for(let i=0;i<n;i++)if(Number(aa[i]||0)!==Number(bb[i]||0))return false;return true;};
 const sha256=b=>crypto.createHash('sha256').update(b).digest('hex');
 const fail=m=>{throw new Error(m);};
 
@@ -74,7 +75,7 @@ function aggregate(dir){
         const d=item.data;
         if(d.frozen_catalog_sha256!==f.digest)issues.push(`${label} Frozen catalog digest mismatch`);
         if(expectedSha&&String(d.weig_sha||'').toLowerCase()!==expectedSha)issues.push(`${label} WeiG SHA mismatch`);
-        if(norm(d.webapi_version)!==norm(profile.webApiVersion))issues.push(`${label} WebAPI identity mismatch`);
+        if(!sameNumericVersion(d.webapi_version,profile.webApiVersion))issues.push(`${label} WebAPI identity mismatch`);
         if(Number(d.summary?.FAIL||0)!==0)issues.push(`${label} semantic FAIL count is non-zero`);
       }
       if(issues.length)status='FAIL';
