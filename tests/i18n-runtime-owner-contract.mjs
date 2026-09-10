@@ -38,6 +38,11 @@ assert.equal(i18n.includes('localStorage.getItem(\'weigg-language\')'),false,'W.
 assert.equal(i18n.includes('localStorage.setItem(\'weigg-language\''),false,'W.I18n must not write a WeiG language preference');
 assert.equal(i18n.includes('function setLocale('),false,'W.I18n must not expose an independent persisted language setter');
 
+const projection=JSON.parse(read('webui/private/data/qb-settings-translations.json'));
+assert.deepEqual(projection,{schemaVersion:1,source:'qb-upstream-preferences-ui+webui-ts',profiles:[],sets:{}},'source-tree Settings translation projection must be schema-valid and fact-free');
+const packer=read('tools/qb-webui-catalog.mjs');
+assert.ok(packer.includes("path.join(path.dirname(target),'qb-settings-translations.json')")&&packer.includes('settingsTranslationData(catalog)'),'release packaging must overwrite the fact-free source placeholder from the canonical exact-release catalog');
+
 const app=read('webui/private/scripts/app.js');
 assert.ok(app.includes('app.preferences=await app.client.getPreferences()'),'startup must read qB preferences into shared application state');
 assert.ok(app.includes('W.SettingsState.prefs=app.preferences'),'Settings must reuse the startup preference snapshot');
@@ -58,4 +63,4 @@ assert.ok(logs.includes('var I=W.I18n'),'Logs must call W.I18n directly');
 assert.ok(responsive.includes('W.I18n&&W.I18n.t'),'Responsive runtime must call W.I18n directly');
 assert.ok(header.includes("localized('Add','添加')"),'Header short copy must no longer depend on InterfaceText');
 
-console.log('I18n runtime owner contract passed: qB preferences.locale is the only language truth, W.I18n is the only text/locale owner, and retired bridges/dictionaries are absent.');
+console.log('I18n runtime owner contract passed: qB preferences.locale is the only language truth, W.I18n is the only text/locale owner, the source projection is fact-free, and retired bridges/dictionaries are absent.');
