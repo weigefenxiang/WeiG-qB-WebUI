@@ -11,6 +11,7 @@ param(
 
 $ErrorActionPreference='Stop'
 $Repo='weigefenxiang/WeiG-qB-WebUI'
+$DevDistBase='https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev'
 
 function Show-Usage {
 @'
@@ -34,6 +35,7 @@ Compatibility parameters kept for existing users:
 Notes:
   -dev and -version cannot be used together.
   A requested Release version never falls back to latest or dev.
+  Dev installs use the exact-SHA materialized WebUI payload published by Virtual qB Pages.
   PowerShell parameter names are case-insensitive; documentation uses lowercase.
 '@ | Write-Host
 }
@@ -85,7 +87,7 @@ function Find-QBConfig {
   if($env:ProgramData){$candidates += (Join-Path $env:ProgramData 'qBittorrent\qBittorrent.ini')}
   foreach($p in $candidates){ if($p -and (Test-Path $p)){ return $p } }
   foreach($root in @($env:USERPROFILE,$PWD.Path)){
-    if(!$root -or !(Test-Path $root)){continue}
+    if(!$root-or!(Test-Path $root)){continue}
     $found=Get-ChildItem $root -Filter 'qBittorrent.ini' -File -Recurse -Depth 5 -ErrorAction SilentlyContinue | Select-Object -First 1
     if($found){return $found.FullName}
   }
@@ -161,6 +163,25 @@ function Inject-BuildSha([string]$Root,[string]$Sha) {
   [IO.File]::WriteAllText((Join-Path $Root 'GIT_SHA'),$Sha+"`n",$utf8)
 }
 
+function Verify-PackageChecksum([string]$Archive,[string]$SumFile) {
+  $sumLine=Get-Content $SumFile | Where-Object { $_ -match '\s+\*?WeiG-qB-WebUI\.zip$' } | Select-Object -First 1
+  if(!$sumLine){throw 'SHA256SUMS does not contain WeiG-qB-WebUI.zip; refusing installation.'}
+  $expected=(($sumLine -split '\s+')[0]).ToLowerInvariant()
+  $actual=(Get-FileHash $Archive -Algorithm SHA256).Hash.ToLowerInvariant()
+  if($expected -notmatch '^[0-9a-f]{64}$' -or $expected -ne $actual){throw 'SHA256 verification failed.'}
+}
+
+function Assert-MaterializedWebUI([string]$Root) {
+  $catalogFile=Join-Path $Root 'private\data\qb-releases.json'
+  $registryFile=Join-Path $Root 'private\data\qb-settings-native.txt'
+  $translations=Join-Path $Root 'translations'
+  if(!(Test-Path $catalogFile)){throw 'Materialized WebUI is missing qb-releases.json.'}
+  try{$catalog=Get-Content $catalogFile -Raw | ConvertFrom-Json}catch{throw 'Materialized WebUI release catalog is invalid JSON.'}
+  if(!$catalog -or @($catalog).Count -lt 1){throw 'Materialized WebUI release catalog is empty.'}
+  if(!(Test-Path $registryFile)){throw 'Materialized WebUI is missing the native Settings QBT_TR registry.'}
+  if(!(Test-Path $translations) -or !(Get-ChildItem $translations -Filter 'webui_*.qm' -File -ErrorAction SilentlyContinue | Select-Object -First 1)){throw 'Materialized WebUI is missing official qB WebUI translation QM assets.'}
+}
+
 if($Mode -eq 'Rollback'){
   Restore-Last
   exit 0
@@ -198,11 +219,7 @@ try {
     } catch {
       throw "$releaseLabel is missing SHA256SUMS; refusing an unverified installation."
     }
-    $sumLine=Get-Content $sumFile | Where-Object { $_ -match '\s+\*?WeiG-qB-WebUI\.zip$' } | Select-Object -First 1
-    if(!$sumLine){throw 'SHA256SUMS does not contain WeiG-qB-WebUI.zip; refusing installation.'}
-    $expected=(($sumLine -split '\s+')[0]).ToLowerInvariant()
-    $actual=(Get-FileHash $archive -Algorithm SHA256).Hash.ToLowerInvariant()
-    if($expected -notmatch '^[0-9a-f]{64}$' -or $expected -ne $actual){throw 'SHA256 verification failed.'}
+    Verify-PackageChecksum $archive $sumFile
 
     $root=Join-Path $tmp 'release'
     Expand-Archive $archive $root -Force
@@ -217,7 +234,8 @@ try {
         throw "Requested $releaseTag but the package reports VERSION=$packageVersion; refusing mismatched Release content."
       }
     }
-    Write-Host "Source: $releaseLabel (checksum verified)"
+    Assert-MaterializedWebUI $web
+    Write-Host "Source: $releaseLabel (checksum verified, materialized WebUI)"
   } else {
     try {
       $commit=Invoke-RestMethod -UseBasicParsing -Headers @{'User-Agent'='WeiG-qB-WebUI-installer'} "https://api.github.com/repos/$Repo/commits/dev"
@@ -226,17 +244,33 @@ try {
     }
     $sourceSha=[string]$commit.sha
     if($sourceSha -notmatch '^[0-9a-fA-F]{40}$'){throw 'GitHub did not return a valid dev commit SHA.'}
+
+    $publishedShaFile=Join-Path $tmp 'DEV_GIT_SHA'
     try {
-      Invoke-WebRequest -UseBasicParsing "https://github.com/$Repo/archive/$sourceSha.zip" -OutFile $archive
+      Invoke-WebRequest -UseBasicParsing "$DevDistBase/GIT_SHA" -OutFile $publishedShaFile
     } catch {
-      throw "Unable to download dev exact SHA $sourceSha."
+      throw 'The materialized dev WebUI payload is not published yet. Wait for Virtual qB Pages to finish and retry.'
     }
+    $publishedSha=(Get-Content $publishedShaFile -Raw).Trim()
+    if($publishedSha -ne $sourceSha){
+      throw "The materialized dev payload is still at $publishedSha while dev is $sourceSha. Wait for the exact-SHA Pages build and retry; refusing raw-source fallback."
+    }
+
+    $sumFile=Join-Path $tmp 'SHA256SUMS'
+    try {
+      Invoke-WebRequest -UseBasicParsing "$DevDistBase/WeiG-qB-WebUI.zip" -OutFile $archive
+      Invoke-WebRequest -UseBasicParsing "$DevDistBase/SHA256SUMS" -OutFile $sumFile
+    } catch {
+      throw "Unable to download the materialized dev payload for exact SHA $sourceSha."
+    }
+    Verify-PackageChecksum $archive $sumFile
     $root=Join-Path $tmp 'dev'
     Expand-Archive $archive $root -Force
-    $repoDir=Get-ChildItem $root -Directory | Select-Object -First 1
-    if(!$repoDir){throw 'dev source archive is empty.'}
-    $web=Join-Path $repoDir.FullName 'webui'
-    Write-Host "Source: dev exact SHA $sourceSha (development channel; no Release checksum)"
+    $web=Join-Path $root 'WeiG-qB-WebUI'
+    $packageSha=(Get-Content (Join-Path $web 'GIT_SHA') -Raw).Trim()
+    if($packageSha -ne $sourceSha){throw "Dev package Git SHA $packageSha does not match requested dev SHA $sourceSha."}
+    Assert-MaterializedWebUI $web
+    Write-Host "Source: dev exact SHA $sourceSha (materialized Pages payload; checksum verified)"
   }
 
   if(!$web -or !(Test-Path $web)){ throw 'WebUI payload not found.' }
@@ -247,6 +281,7 @@ try {
   New-Item -ItemType Directory -Force -Path $new | Out-Null
   Copy-Item (Join-Path $web '*') $new -Recurse -Force
   Inject-BuildSha $new $sourceSha
+  Assert-MaterializedWebUI $new
   if(!(Test-Path (Join-Path $new 'public\index.html')) -or !(Test-Path (Join-Path $new 'public\login.html')) -or !(Test-Path (Join-Path $new 'private\index.html')) -or !(Test-Path (Join-Path $new 'VERSION')) -or !(Test-Path (Join-Path $new 'GIT_SHA'))){ throw 'Invalid WebUI package.' }
 
   $version=(Get-Content (Join-Path $new 'VERSION') -Raw).Trim()
@@ -259,6 +294,7 @@ try {
     hostPath=$Destination
     installedAt=[DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')
     installer='windows'
+    materialized=$true
   }
   $meta | ConvertTo-Json | Set-Content -Path (Join-Path $new 'private\weigg-install.json') -Encoding UTF8
 
