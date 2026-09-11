@@ -1,23 +1,31 @@
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
+import path from 'node:path';
 import {applyLocaleOverlay} from '../tools/qb-locale-overlay.mjs';
 import {buildNativeSettingsBundle} from '../tools/qb-settings-native-bundle.mjs';
 import {runtimeCatalogData} from '../tools/qb-webui-catalog.mjs';
 
-const catalogPath=new URL('./fixtures/qb-release-catalog.lkg.json',import.meta.url);
-const overlayPath=new URL('../tools/data/qb-locale-lkg.json',import.meta.url);
+const generatedPath=process.argv[2]?path.resolve(process.argv[2]):null;
+const requireMapped=process.argv.includes('--require-mapped');
 const behaviorPath=new URL('../tools/data/qb-translator-behavior-lkg.json',import.meta.url);
-const baseBytes=fs.readFileSync(catalogPath);
-const base=JSON.parse(baseBytes.toString('utf8'));
-const overlay=JSON.parse(fs.readFileSync(overlayPath,'utf8'));
 const behavior=JSON.parse(fs.readFileSync(behaviorPath,'utf8'));
-const catalogSha256=crypto.createHash('sha256').update(baseBytes).digest('hex');
-const catalog=applyLocaleOverlay(base,overlay,{catalogSha256});
+let catalog;
+if(generatedPath){
+  catalog=JSON.parse(fs.readFileSync(generatedPath,'utf8'));
+}else{
+  const catalogPath=new URL('./fixtures/qb-release-catalog.lkg.json',import.meta.url);
+  const overlayPath=new URL('../tools/data/qb-locale-lkg.json',import.meta.url);
+  const baseBytes=fs.readFileSync(catalogPath);
+  const base=JSON.parse(baseBytes.toString('utf8'));
+  const overlay=JSON.parse(fs.readFileSync(overlayPath,'utf8'));
+  const catalogSha256=crypto.createHash('sha256').update(baseBytes).digest('hex');
+  catalog=applyLocaleOverlay(base,overlay,{catalogSha256});
+}
 const bundle=buildNativeSettingsBundle(catalog,behavior);
 const runtime=runtimeCatalogData(catalog,bundle);
 
-assert.equal(catalog.length,65,'Frozen stable locale matrix must cover all 65 admitted stable releases');
+assert.equal(catalog.length,65,'Stable locale matrix must cover all 65 admitted stable releases');
 assert.equal(bundle.profiles.length,catalog.length,'Every admitted stable must have translator behavior evidence');
 assert.equal(runtime.length,catalog.length,'Every admitted stable must enter the runtime catalog');
 
@@ -31,19 +39,15 @@ for(let index=0;index<catalog.length;index++){
   const native=[...new Set(route.nativeLocales||[])].sort();
   const bridge=[...new Set(route.bridgeLocales||[])].sort();
   const mapped=Number(route.mappedPreferences)||0;
-  const overlap=native.filter(locale=>bridge.includes(locale));
-  assert.deepEqual(overlap,[],`${source.qbVersion}: locale cannot be both native and bridge routed`);
+  assert.deepEqual(native.filter(locale=>bridge.includes(locale)),[],`${source.qbVersion}: locale cannot be both native and bridge routed`);
 
   if(mapped>0){
     mappedProfiles++;
     assert.deepEqual([...new Set([...native,...bridge])].sort(),expected,`${source.qbVersion}: every official WebUI locale with mapped qB Settings copy must resolve to native QBT_TR or exact official-TS bridge`);
     assert.deepEqual([...(packed.settingsNativeLocales||[])].sort(),native,`${source.qbVersion}: packed native locale routing drift`);
     assert.deepEqual([...(packed.settingsTranslationLocales||[])].sort(),bridge,`${source.qbVersion}: packed bridge locale routing drift`);
-    if(bridge.length){
-      assert.equal(packed.settingsTranslationPath,`qb-settings/${source.sourceSha}.json`,`${source.qbVersion}: mapped bridge route must retain an exact source-SHA shard`);
-    }else{
-      assert.equal(Object.hasOwn(packed,'settingsTranslationPath'),false,`${source.qbVersion}: fully native profile must not ship a browser translation shard pointer`);
-    }
+    if(bridge.length)assert.equal(packed.settingsTranslationPath,`qb-settings/${source.sourceSha}.json`,`${source.qbVersion}: mapped bridge route must retain an exact source-SHA shard`);
+    else assert.equal(Object.hasOwn(packed,'settingsTranslationPath'),false,`${source.qbVersion}: fully native profile must not ship a browser translation shard pointer`);
   }else{
     unmappedProfiles++;
     assert.deepEqual(native,[],`${source.qbVersion}: profile without mapped Settings source/context must not advertise native Settings translation`);
@@ -63,6 +67,8 @@ for(let index=0;index<catalog.length;index++){
 }
 
 assert.equal(disabledFamilyProfiles,11,'Known qB 4.5.0-4.6.4 Alternative WebUI translation gap must remain exactly source-derived');
-assert.ok(mappedProfiles>0,'Stable matrix must contain source-mapped qB Settings copy');
-assert.ok(nativeRoutes>0&&bridgeRoutes>0,'Mapped stable Settings matrix must exercise both native and compatibility translation routes');
-console.log(`Full stable locale routing contract passed: ${catalog.length} stable releases, ${mappedProfiles} with mapped qB Settings copy / ${unmappedProfiles} without source-mapped copy, ${nativeRoutes} native locale routes, ${bridgeRoutes} exact bridge routes, ${disabledFamilyProfiles} source-proven Alt-WebUI translation-gap releases.`);
+if(requireMapped){
+  assert.ok(mappedProfiles>0,'Source-enriched stable matrix must contain mapped qB Settings copy');
+  assert.ok(nativeRoutes>0&&bridgeRoutes>0,'Source-enriched stable Settings matrix must exercise native and compatibility translation routes');
+}
+console.log(`Full stable locale routing contract passed (${generatedPath?'source-enriched':'frozen-base'}): ${catalog.length} stable releases, ${mappedProfiles} mapped / ${unmappedProfiles} unmapped, ${nativeRoutes} native routes, ${bridgeRoutes} bridge routes, ${disabledFamilyProfiles} Alt-WebUI translation-gap releases.`);
