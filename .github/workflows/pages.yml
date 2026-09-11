@@ -10,10 +10,10 @@ permissions:
   id-token: write
 
 concurrency:
-  # Keep the new ref-bound deployment owner isolated from the legacy default-branch
-  # workflow-run owner until main is formally promoted to this choreography.
+  # One owner may publish at a time. Never cancel an in-flight deploy-pages call: cancellation
+  # cannot atomically revoke an external Pages write, so queued newer owners must publish after it.
   group: virtual-qb-pages-dispatch
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 env:
   # workflow_dispatch is deliberately run on dev/main itself. For this event GitHub sets
@@ -208,6 +208,21 @@ jobs:
     outputs:
       page_url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - name: Refuse stale dev Pages deployment
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXACT_SHA: ${{ env.WEIGG_PAGES_SOURCE_SHA }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "dev"
+          REMOTE_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/commits/dev" --jq '.sha')"
+          if [ "$REMOTE_SHA" != "$EXACT_SHA" ]; then
+            echo "Refusing stale dev Pages deployment: candidate=$EXACT_SHA current=$REMOTE_SHA" >&2
+            exit 1
+          fi
+          echo "Fresh dev Pages deployment owner confirmed: $EXACT_SHA"
+
       - name: Deploy exact dev Virtual qB Lab
         id: deployment
         uses: actions/deploy-pages@v5
@@ -378,6 +393,21 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - name: Refuse stale main Pages deployment
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXACT_SHA: ${{ env.WEIGG_PAGES_SOURCE_SHA }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "main"
+          REMOTE_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')"
+          if [ "$REMOTE_SHA" != "$EXACT_SHA" ]; then
+            echo "Refusing stale main Pages deployment: candidate=$EXACT_SHA current=$REMOTE_SHA" >&2
+            exit 1
+          fi
+          echo "Fresh main Pages deployment owner confirmed: $EXACT_SHA"
+
       - name: Deploy promoted exact dev snapshot as main
         id: deployment
         uses: actions/deploy-pages@v5
