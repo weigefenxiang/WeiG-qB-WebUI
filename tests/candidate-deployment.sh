@@ -140,15 +140,13 @@ run_qb() {
 }
 run_qb
 
-INITIAL_READY=0
+INITIAL_PASSWORD=''
 for _ in $(seq 1 60); do
-  if docker logs "$NAME" 2>&1 | grep -q 'temporary password is provided for this session:'; then
-    INITIAL_READY=1
-    break
-  fi
+  INITIAL_PASSWORD=$(docker logs "$NAME" 2>&1 | sed -n 's/.*temporary password is provided for this session: \([^[:space:]]*\).*/\1/p' | tail -n1)
+  [[ -n "$INITIAL_PASSWORD" ]] && break
   sleep 1
 done
-if (( ! INITIAL_READY )); then
+if [[ -z "$INITIAL_PASSWORD" ]]; then
   echo 'Official qB image did not finish WebUI initialization before safe configuration handoff.' >&2
   docker logs "$NAME" >&2 2>/dev/null || true
   exit 1
@@ -158,17 +156,54 @@ RUNTIME_VERSION=$(docker exec "$NAME" qbittorrent-nox --version 2>/dev/null | he
 [[ -n "$RUNTIME_VERSION" ]] || { echo 'Unable to read qB runtime version identity.' >&2; exit 1; }
 [[ "$RUNTIME_VERSION" == *"$EXPECTED_QB_VERSION"* ]] || { echo "Official qB image runtime mismatch: expected $EXPECTED_QB_VERSION, got $RUNTIME_VERSION" >&2; exit 1; }
 
-# qB may defer writing [Preferences] until a graceful exit. Never mutate a live
-# qB configuration in acceptance: stop it, require the flushed structure, then
+# A brand-new qB configuration may legitimately have no [Preferences] section,
+# even after the WebUI is ready. Seed one real, harmless Alternative WebUI path
+# through qB's own API while the feature remains disabled. qB therefore owns the
+# section and persistence semantics; the installer never invents a missing section.
+container_ip=$(docker inspect "$NAME" --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
+[[ "$container_ip" =~ ^[0-9]+(\.[0-9]+){3}$ ]] || { echo 'Unable to resolve private qB container IP for native preference seed.' >&2; exit 1; }
+NATIVE_TARGET="http://${container_ip}:8080"
+COOKIE="$TMP/qb-native.cookies"
+LOGIN_OK=0
+for _ in $(seq 1 30); do
+  LOGIN_CODE=$($REAL_CURL --silent --show-error -c "$COOKIE" -o "$TMP/qb-native-login.body" -w '%{http_code}' \
+    -X POST --data-urlencode 'username=admin' --data-urlencode "password=$INITIAL_PASSWORD" \
+    "$NATIVE_TARGET/api/v2/auth/login" || true)
+  if [[ "$LOGIN_CODE" == 200 || "$LOGIN_CODE" == 204 ]]; then LOGIN_OK=1; break; fi
+  sleep 1
+done
+((LOGIN_OK)) || { echo "Unable to authenticate to native qB Web API before preference seed (HTTP ${LOGIN_CODE:-000})." >&2; exit 1; }
+
+SET_CODE=$($REAL_CURL --silent --show-error -b "$COOKIE" -o "$TMP/qb-native-set.body" -w '%{http_code}' \
+  -X POST --data-urlencode 'json={"alternative_webui_enabled":false,"alternative_webui_path":"/config"}' \
+  "$NATIVE_TARGET/api/v2/app/setPreferences" || true)
+[[ "$SET_CODE" == 200 || "$SET_CODE" == 204 ]] || { echo "Native qB app/setPreferences seed failed (HTTP ${SET_CODE:-000})." >&2; exit 1; }
+$REAL_CURL --fail --silent --show-error -b "$COOKIE" "$NATIVE_TARGET/api/v2/app/preferences" > "$TMP/qb-native-preferences.json"
+node - "$TMP/qb-native-preferences.json" <<'NODE'
+const fs=require('node:fs');
+const prefs=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+if(prefs.alternative_webui_enabled!==false)throw new Error('Native qB preference seed unexpectedly enabled Alternative WebUI.');
+if(prefs.alternative_webui_path!=='/config')throw new Error(`Native qB preference seed path mismatch: ${prefs.alternative_webui_path}`);
+NODE
+
+# Never mutate a live qB configuration in acceptance. Stop it gracefully so the
+# API-owned preference is flushed, require the exact section/value on disk, then
 # configure through the explicit host /config root and restart the same container.
 docker stop --time 30 "$NAME" >/dev/null
 [[ "$(docker inspect -f '{{.State.Running}}' "$NAME")" == false ]] || { echo 'qBittorrent container did not stop before configuration mutation.' >&2; exit 1; }
 [[ -f "$QBT_CONFIG" ]] || { echo 'Official qB image did not flush its configuration on graceful stop.' >&2; exit 1; }
 awk '
-  BEGIN { count=0 }
-  { line=$0; sub(/\r$/, "", line); if (line=="[Preferences]") count++ }
-  END { exit !(count==1) }
-' "$QBT_CONFIG" || { echo 'Gracefully stopped qBittorrent config must contain exactly one [Preferences] section.' >&2; exit 1; }
+  BEGIN { section=""; preferences=0; root=0; wrong=0 }
+  {
+    line=$0; sub(/\r$/, "", line)
+    if (line ~ /^\[[^]]+\]$/) { section=line; if (line=="[Preferences]") preferences++; next }
+    if (line ~ /^WebUI\\RootFolder=/) {
+      root++
+      if (section!="[Preferences]" || line!="WebUI\\RootFolder=/config") wrong=1
+    }
+  }
+  END { exit !(preferences==1 && root==1 && !wrong) }
+' "$QBT_CONFIG" || { echo 'qB-owned seed did not flush one exact [Preferences] WebUI\\RootFolder=/config value.' >&2; exit 1; }
 
 bash "$ROOT/installers/install.sh" --version "$VERSION" --configure --config-root "$CONFIG_ROOT"
 [[ -f "$DEST/public/index.html" && -f "$DEST/private/index.html" ]] || { echo 'Candidate install payload is incomplete.' >&2; exit 1; }
