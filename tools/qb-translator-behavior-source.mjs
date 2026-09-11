@@ -119,7 +119,7 @@ export function buildTranslatorBehaviorEvidence(catalog,sourceLoader){
     const source=sourceLoader({qbVersion,tag,sourceSha,profile});
     const facts=extractTranslatorBehaviorFacts(source);
     const family=validateTranslatorBehaviorFacts(facts,`${qbVersion} (${sourceSha})`);
-    return{qbVersion,tag,sourceSha,family,...facts};
+    return{qbVersion,sourceSha,family,facts};
   });
 
   for(let i=1;i<profiles.length;i++){
@@ -128,13 +128,23 @@ export function buildTranslatorBehaviorEvidence(catalog,sourceLoader){
     }
   }
 
+  const families={};
+  for(const profile of profiles){
+    const existing=families[profile.family];
+    if(existing&&JSON.stringify(existing)!==JSON.stringify(profile.facts)){
+      throw new Error(`${profile.qbVersion}: source facts disagree inside translator family ${profile.family}`);
+    }
+    families[profile.family]??=profile.facts;
+  }
+
   return{
     schemaVersion:1,
     source:`qB-upstream-${WEBAPPLICATION_PATH}`,
     supportFloor:profiles[0].qbVersion,
     latestAdmittedStable:profiles.at(-1).qbVersion,
     profileCount:profiles.length,
-    profiles
+    families,
+    profiles:profiles.map(({facts,...profile})=>profile)
   };
 }
 
