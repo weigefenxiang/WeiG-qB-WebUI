@@ -76,9 +76,12 @@ runNode(path.join(projectRoot,'tools/build-webui-dist.mjs'),[
   `--version=${devBranch.version}`
 ]);
 
-const runtimeCatalogPath=path.join(out,'dev','app','__source','private','data','qb-releases.json');
+// Pages metadata is an audit/simulator surface and is not served by the real qB
+// Alternative WebUI server. Keep the full source-bound catalog here so live
+// acceptance can audit all 65 stable profiles. Only the WebUI runtime under
+// __source/private/data uses the tiny index + one exact profile shard.
 const renderedCatalog=path.join(out,'metadata','qb-releases.json');
-await fs.copyFile(runtimeCatalogPath,renderedCatalog);
+await fs.copyFile(sourceCatalog,renderedCatalog);
 await fs.rm(buildDir,{recursive:true,force:true});
 
 await fs.cp(path.join(projectRoot,'simulator/lab'),path.join(out,'lab'),{recursive:true,force:true});
