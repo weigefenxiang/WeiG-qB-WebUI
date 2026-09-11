@@ -50,12 +50,14 @@ export function buildNativeSettingsBundle(catalog,behaviorEvidence){
     const behavior=exactBehavior(behaviorEvidence,profile);
     if(!behavior)throw new Error(`${qbVersion}: translator behavior evidence does not match ${sourceSha}.`);
     const refs=refsForProfile(profile),nativeLocales=[],bridgeLocales=[];
-    for(const locale of localeValues(profile)){
-      let native=false;
-      if(refs.length&&behavior.altWebuiTranslation===true){
-        native=behavior.family==='qapp-native'||dedicatedLocaleCompatible(profile,locale,behavior,canonical.get(locale),allSets);
+    if(refs.length){
+      for(const locale of localeValues(profile)){
+        let native=false;
+        if(behavior.altWebuiTranslation===true){
+          native=behavior.family==='qapp-native'||dedicatedLocaleCompatible(profile,locale,behavior,canonical.get(locale),allSets);
+        }
+        (native?nativeLocales:bridgeLocales).push(locale);
       }
-      (native?nativeLocales:bridgeLocales).push(locale);
     }
     profiles.push({qbVersion,sourceSha,family:behavior.family,nativeLocales,bridgeLocales,mappedPreferences:Object.keys(profile?.settingsUi||{}).length});
   }
