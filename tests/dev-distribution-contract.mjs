@@ -5,8 +5,7 @@ const install=fs.readFileSync(new URL('../installers/install.ps1',import.meta.ur
 const buildSite=fs.readFileSync(new URL('../simulator/build/build-site.mjs',import.meta.url),'utf8');
 const distBuilder=fs.readFileSync(new URL('../tools/build-webui-dist.mjs',import.meta.url),'utf8');
 const pagesSource=fs.readFileSync(new URL('../.github/workflows/pages-source.yml',import.meta.url),'utf8');
-const readme=fs.readFileSync(new URL('../README.md',import.meta.url),'utf8');
-const readmeZh=fs.readFileSync(new URL('../translations/README.zh-CN.md',import.meta.url),'utf8');
+const windowsDevGuide=fs.readFileSync(new URL('../docs/008.Windows开发版安装.md',import.meta.url),'utf8');
 
 const devInstallerUrl='https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.ps1';
 
@@ -23,6 +22,6 @@ assert.ok(distBuilder.includes("path.join(outDir,'install.ps1')"),'Canonical dev
 assert.ok(distBuilder.includes("path.join(projectRoot,'installers/install.ps1')"),'Published dev Windows installer must come from the exact source tree being materialized');
 assert.match(pagesSource,/push:\s*\n\s*branches:\s*\n\s*- dev\s*\n\s*- main/,'Every dev/main push must materialize a new exact-SHA distribution');
 assert.doesNotMatch(pagesSource,/\n\s+paths:/,'Exact-SHA dev distribution relay must not use path filters that can leave the public payload behind dev HEAD');
-assert.ok(readme.includes(devInstallerUrl),'English development instructions must bootstrap Windows dev installs from the materialized dev distribution, not the stable main installer');
-assert.ok(readmeZh.includes(devInstallerUrl),'Chinese development instructions must bootstrap Windows dev installs from the materialized dev distribution, not the stable main installer');
+assert.ok(windowsDevGuide.includes(devInstallerUrl),'Windows dev guide must bootstrap from the materialized dev distribution, not the stable main installer');
+assert.match(windowsDevGuide,/install\.ps1[^\n]*-dev|weigg-install-dev\.ps1[^\n]*-dev/s,'Windows dev guide must actually execute the published installer in dev mode');
 console.log('Dev distribution contract passed: Windows dev installs and its bootstrap installer are published together at one exact SHA; raw-source fallback is forbidden and every dev/main head is materialized without path-filter gaps.');
