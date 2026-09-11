@@ -12,6 +12,11 @@ on:
     paths:
       - 'webui/**'
       - 'simulator/**'
+      - 'installers/**'
+      - 'tools/build-webui-dist.mjs'
+      - 'tools/qb-webui-catalog.mjs'
+      - 'tools/qb-settings-native-bundle.mjs'
+      - 'tools/data/qb-translator-behavior-lkg.json'
       - 'tools/data/qb-stable-lkg.json'
       - 'tools/data/qb-locale-lkg.json'
       - 'tools/qb-locale-overlay.mjs'
