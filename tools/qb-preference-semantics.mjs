@@ -68,7 +68,7 @@ function cppType(type) {
   return null;
 }
 
-function sessionGetterTypes(source) {
+function declaredGetterTypes(source) {
   const out = new Map();
   const text = String(source || '');
   const declaration = /^\s*(?:virtual\s+)?(.+?)\s+([A-Za-z_]\w*)\s*\(\s*\)\s*(?:const\s*)?(?:noexcept\s*)?(?:=\s*0\s*)?;\s*$/gm;
@@ -117,7 +117,7 @@ function stripOuterParens(value) {
   return result;
 }
 
-function inferGetter(expression, locals, declaredSessionGetters = new Map()) {
+function inferGetter(expression, locals, declaredSessionGetters = new Map(), declaredPreferenceGetters = new Map()) {
   const value = stripOuterParens(expression);
   if (!value) return {type: null, kind: 'UNRESOLVED'};
   if (/^(?:true|false)$/.test(value)) return {type: 'boolean', kind: 'BOOLEAN_LITERAL'};
@@ -138,6 +138,10 @@ function inferGetter(expression, locals, declaredSessionGetters = new Map()) {
   if (sessionCall && declaredSessionGetters.has(sessionCall[1])) {
     return {type: declaredSessionGetters.get(sessionCall[1]), kind: 'SESSION_DECLARATION'};
   }
+  const preferenceCall = value.match(/^pref\s*->\s*([A-Za-z_]\w*)\s*\(\s*\)$/);
+  if (preferenceCall && declaredPreferenceGetters.has(preferenceCall[1])) {
+    return {type: declaredPreferenceGetters.get(preferenceCall[1]), kind: 'PREFERENCES_DECLARATION'};
+  }
   return {type: null, kind: 'UNRESOLVED'};
 }
 
@@ -153,14 +157,15 @@ function typeAgreement(readType, writeType, getterPresent, setterPresent) {
 export function extractSemanticGetterHints(source, label = 'source', options = {}) {
   const body = isolatePreferencesAction(source, label);
   const locals = localTypes(body);
-  const declaredSessionGetters = sessionGetterTypes(options.sessionHeaderSource);
+  const declaredSessionGetters = declaredGetterTypes(options.sessionHeaderSource);
+  const declaredPreferenceGetters = declaredGetterTypes(options.preferencesHeaderSource);
   const out = new Map();
   DATA_KEY_RE.lastIndex = 0;
   for (const match of body.matchAll(DATA_KEY_RE)) {
     const key = capturedKey(match, 1);
     if (!key) continue;
     const expression = readExpression(body, match.index + match[0].length);
-    const inferred = inferGetter(expression, locals, declaredSessionGetters);
+    const inferred = inferGetter(expression, locals, declaredSessionGetters, declaredPreferenceGetters);
     out.set(key, {
       key,
       readType: inferred.type,
