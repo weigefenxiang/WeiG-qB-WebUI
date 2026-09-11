@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  actions: read
+  actions: write
   contents: read
   pages: write
   id-token: write
@@ -46,6 +46,19 @@ jobs:
       - name: Validate current simulator contracts
         run: npm test
 
+      - name: Resolve certified official qB Settings translation evidence
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          node tools/qb-settings-translation-artifact.mjs \
+            --repo="$GITHUB_REPOSITORY" \
+            --branch="$GITHUB_REF_NAME" \
+            --out="$RUNNER_TEMP/qb-settings-translation-lkg.json" \
+            --dispatch-if-missing
+          test -s "$RUNNER_TEMP/qb-settings-translation-lkg.json"
+
       - name: Build exact dev/main Virtual qB site from Frozen LKG
         shell: bash
         run: |
@@ -73,21 +86,23 @@ jobs:
           const manifest=JSON.parse(fs.readFileSync(manifestPath,'utf8'));
           if(manifest.schemaVersion!==1)throw new Error(`Unsupported Frozen LKG schema ${manifest.schemaVersion}`);
           if(manifest.catalogPath!=='tests/fixtures/qb-release-catalog.lkg.json')throw new Error(`Unexpected Frozen LKG catalog path ${manifest.catalogPath}`);
-          const bytes=fs.readFileSync(manifest.catalogPath);
+          const text=fs.readFileSync(manifest.catalogPath,'utf8').replace(/\r\n?/g,'\n');
+          const bytes=Buffer.from(text,'utf8');
           const digest=crypto.createHash('sha256').update(bytes).digest('hex');
           if(digest!==manifest.catalogSha256)throw new Error(`Frozen LKG SHA-256 mismatch: ${digest} != ${manifest.catalogSha256}`);
-          const catalog=JSON.parse(bytes.toString('utf8'));
+          const catalog=JSON.parse(text);
           if(catalog.length!==manifest.profileCount)throw new Error(`Frozen LKG profile count mismatch: ${catalog.length} != ${manifest.profileCount}`);
           if(catalog[0]?.qbVersion!==manifest.supportFloor)throw new Error(`Frozen LKG floor mismatch: ${catalog[0]?.qbVersion} != ${manifest.supportFloor}`);
           if(catalog.at(-1)?.qbVersion!==manifest.latestAdmittedStable)throw new Error(`Frozen LKG latest mismatch: ${catalog.at(-1)?.qbVersion} != ${manifest.latestAdmittedStable}`);
           fs.writeFileSync(`${process.env.RUNNER_TEMP}/qb-releases.json`,bytes);
-          console.log(`Pages consumes hash-bound Frozen LKG: ${catalog.length} profiles ${catalog[0].qbVersion} -> ${catalog.at(-1).qbVersion}, sha256:${digest}`);
+          console.log(`Pages consumes LF-canonical hash-bound Frozen LKG: ${catalog.length} profiles ${catalog[0].qbVersion} -> ${catalog.at(-1).qbVersion}, sha256:${digest}`);
           NODE
           cmp tests/fixtures/qb-release-catalog.lkg.json "$RUNNER_TEMP/qb-releases.json"
 
           node simulator/build/build-site.mjs \
             --out="$RUNNER_TEMP/virtual-qb-site" \
             --catalog="$RUNNER_TEMP/qb-releases.json" \
+            --settings-translation-lkg="$RUNNER_TEMP/qb-settings-translation-lkg.json" \
             --simulator-sha="$WEIGG_PAGES_SOURCE_SHA" \
             --dev-webui="$RUNNER_TEMP/weig-dev-webui" \
             --dev-sha="$DEV_SHA" \
@@ -101,6 +116,8 @@ jobs:
           test -f "$RUNNER_TEMP/virtual-qb-site/main/app/service-worker.js"
           test -s "$RUNNER_TEMP/virtual-qb-site/metadata/qb-releases.json"
           test -s "$RUNNER_TEMP/virtual-qb-site/dev/app/__source/private/data/qb-releases.json"
+          test -s "$RUNNER_TEMP/virtual-qb-site/dev/app/__source/private/data/qb-settings-native.txt"
+          find "$RUNNER_TEMP/virtual-qb-site/dev/app/__source/translations" -type f -name 'webui_*.qm' -print -quit | grep -q .
 
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
@@ -108,9 +125,12 @@ jobs:
           const site=JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/virtual-qb-site/metadata/site.json`,'utf8'));
           const dev=JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/virtual-qb-site/dev/app/virtual-qb-build.json`,'utf8'));
           const catalog=JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/virtual-qb-site/metadata/qb-releases.json`,'utf8'));
+          const dist=JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/virtual-qb-site/downloads/dev/manifest.json`,'utf8'));
           if(site.simulatorSha!==sha||site.branches?.dev?.exactSha!==sha||dev.branch!=='dev'||dev.exactSha!==sha||dev.simulatorSha!==sha)throw new Error('Exact dev Pages identity mismatch before artifact upload.');
           if(site.localeCatalog?.profiles!==65||!Array.isArray(catalog)||catalog.length!==65||catalog.some(profile=>!Array.isArray(profile.webuiLocales)||!profile.webuiLocales.length))throw new Error('Frozen Locale overlay was not applied to all 65 Pages profiles.');
-          console.log(`Exact Pages identity PASS: ${sha}; Locale profiles=${site.localeCatalog.profiles}, sets=${site.localeCatalog.localeSets}`);
+          if(site.settingsTranslationCatalog?.profiles!==65||site.settingsTranslationCatalog?.mappedPreferences<1||site.settingsTranslationCatalog?.translationRoutes<1||site.settingsTranslationCatalog?.translationSets<1)throw new Error('Certified qB Settings translation LKG was not applied to all stable profiles.');
+          if(!dist.nativeRegistry||Number(dist.qmAssets)<1)throw new Error('Materialized dev installer payload is missing official qB Settings translation assets.');
+          console.log(`Exact Pages identity PASS: ${sha}; Locale profiles=${site.localeCatalog.profiles}, Settings mappings=${site.settingsTranslationCatalog.mappedPreferences}, QM assets=${dist.qmAssets}`);
           NODE
 
       - name: Publish exact reusable dev Pages site
