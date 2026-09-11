@@ -58,11 +58,11 @@ assert.deepEqual(repaired.preferenceDescriptorStats,{readTyped:101,unresolvedRea
 assert.equal(unresolvedLocale.preferenceDescriptors[0].readType,null,'Locale semantic repair must not mutate Frozen LKG input');
 assert.throws(()=>repairLocalePreferenceSemantics({...unresolvedLocale,preferenceDescriptors:[{...unresolvedLocale.preferenceDescriptors[0],writeType:'number'}]}),/required source-proven getter\/setter string contract/);
 
-const frozenBytes=fs.readFileSync(new URL('./fixtures/qb-release-catalog.lkg.json',import.meta.url));
-const frozenCatalog=JSON.parse(frozenBytes.toString('utf8'));
+const frozenText=fs.readFileSync(new URL('./fixtures/qb-release-catalog.lkg.json',import.meta.url),'utf8').replace(/\r\n?/g,'\n');
+const frozenCatalog=JSON.parse(frozenText);
 const frozenLocaleOverlay=JSON.parse(fs.readFileSync(new URL('../tools/data/qb-locale-lkg.json',import.meta.url),'utf8'));
-const frozenSha256=crypto.createHash('sha256').update(frozenBytes).digest('hex');
-assert.equal(frozenSha256,frozenLocaleOverlay.baseCatalogSha256,'Locale LKG must stay bound to the exact Frozen preference catalog');
+const frozenSha256=crypto.createHash('sha256').update(Buffer.from(frozenText,'utf8')).digest('hex');
+assert.equal(frozenSha256,frozenLocaleOverlay.baseCatalogSha256,'Locale LKG must stay bound to the LF-canonical Frozen preference catalog');
 const frozenApplied=applyLocaleOverlay(frozenCatalog,frozenLocaleOverlay,{catalogSha256:frozenSha256});
 assert.equal(frozenApplied.length,65,'Locale semantic repair must cover every officially supported stable qB profile');
 assert.equal(validateCatalogEvolution(frozenApplied),true,'Locale overlay must leave the full catalog evolution metadata internally valid');
@@ -90,4 +90,4 @@ assert.deepEqual(accepted,{locale:'zh_CN'},'Virtual qB setPreferences must accep
 assert.equal(runtime.read().locale,'zh_CN','Virtual qB getPreferences must return the saved Locale');
 assert.equal(world.preferences.locale,'zh_CN','Virtual qB world state must persist the saved Locale');
 
-console.log('qB locale overlay contract passed: exact locale sets, Frozen LKG immutability, complete evolution provenance, all 65 writable Locale descriptors and real Virtual qB Locale write/read persistence are enforced.');
+console.log('qB locale overlay contract passed: exact locale sets, LF-canonical Frozen LKG identity, immutability, complete evolution provenance, all 65 writable Locale descriptors and real Virtual qB Locale write/read persistence are enforced.');
