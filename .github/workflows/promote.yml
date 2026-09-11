@@ -214,9 +214,14 @@ jobs:
           test -f candidate/WeiG-qB-WebUI.zip
           test -f candidate/SHA256SUMS
           test -f candidate/CANDIDATE_SHA
+          test -f candidate/weigg-install.sh
+          test -f candidate/weigg-install.ps1
           test -f evidence/candidate.json
           test "$(tr -d '\r\n' < candidate/CANDIDATE_SHA)" = "$CANDIDATE_SHA"
           (cd candidate && sha256sum -c SHA256SUMS)
+          cmp -s candidate/weigg-install.sh installers/install.sh
+          cmp -s candidate/weigg-install.ps1 installers/install.ps1
+          bash -n candidate/weigg-install.sh
           test "$(unzip -p candidate/WeiG-qB-WebUI.zip WeiG-qB-WebUI/GIT_SHA | tr -d '\r\n')" = "$CANDIDATE_SHA"
           test "$(unzip -p candidate/WeiG-qB-WebUI.zip WeiG-qB-WebUI/VERSION | tr -d '\r\n')" = "$VERSION"
           node tests/release-candidate-evidence.mjs \

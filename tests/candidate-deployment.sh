@@ -34,6 +34,8 @@ fi
 PACKAGE="$CANDIDATE_DIR/WeiG-qB-WebUI.zip"
 SUMS="$CANDIDATE_DIR/SHA256SUMS"
 CANDIDATE_SHA_FILE="$CANDIDATE_DIR/CANDIDATE_SHA"
+LINUX_INSTALLER="$CANDIDATE_DIR/weigg-install.sh"
+WINDOWS_INSTALLER="$CANDIDATE_DIR/weigg-install.ps1"
 IMAGE=${WEIG_QB_IMAGE:-'qbittorrentofficial/qbittorrent-nox@sha256:9ebb534fe30bab98622cb84a8c3acecfd88319b2d540f52ecdec7b9f866374d7'}
 EXPECTED_QB_VERSION=${WEIG_QB_EXPECTED_VERSION:-'5.2.3'}
 LOCALE_TARGET=${WEIG_QB_LOCALE_TARGET:-'zh_CN'}
@@ -47,14 +49,20 @@ EXPECTED_SHA=${GITHUB_SHA:-}
 command -v docker >/dev/null || { echo 'docker is required' >&2; exit 2; }
 command -v node >/dev/null || { echo 'node is required' >&2; exit 2; }
 command -v unzip >/dev/null || { echo 'unzip is required' >&2; exit 2; }
+command -v sha256sum >/dev/null || { echo 'sha256sum is required' >&2; exit 2; }
+command -v cmp >/dev/null || { echo 'cmp is required' >&2; exit 2; }
 command -v google-chrome >/dev/null || { echo 'Google Chrome Stable is required' >&2; exit 2; }
-[[ -s "$PACKAGE" && -s "$SUMS" && -s "$CANDIDATE_SHA_FILE" ]] || { echo 'Candidate artifact is incomplete.' >&2; exit 2; }
+[[ -s "$PACKAGE" && -s "$SUMS" && -s "$CANDIDATE_SHA_FILE" && -s "$LINUX_INSTALLER" && -s "$WINDOWS_INSTALLER" ]] || { echo 'Candidate artifact is incomplete.' >&2; exit 2; }
 
 CANDIDATE_SHA=$(tr -d '\r\n' < "$CANDIDATE_SHA_FILE")
 [[ "$CANDIDATE_SHA" =~ ^[0-9a-fA-F]{40}$ ]] || { echo 'CANDIDATE_SHA is not an exact Git SHA.' >&2; exit 1; }
 if [[ -z "$EXPECTED_SHA" ]]; then EXPECTED_SHA="$CANDIDATE_SHA"; fi
 [[ "$EXPECTED_SHA" =~ ^[0-9a-fA-F]{40}$ ]] || { echo 'GITHUB_SHA is not an exact Git SHA.' >&2; exit 1; }
 [[ "$CANDIDATE_SHA" == "$EXPECTED_SHA" ]] || { echo 'Candidate artifact SHA does not match workflow SHA.' >&2; exit 1; }
+(cd "$CANDIDATE_DIR" && sha256sum -c SHA256SUMS)
+cmp -s "$LINUX_INSTALLER" "$ROOT/installers/install.sh" || { echo 'Candidate Linux installer is not byte-identical to the exact-SHA source.' >&2; exit 1; }
+cmp -s "$WINDOWS_INSTALLER" "$ROOT/installers/install.ps1" || { echo 'Candidate Windows installer is not byte-identical to the exact-SHA source.' >&2; exit 1; }
+bash -n "$LINUX_INSTALLER"
 
 VERSION=$(unzip -p "$PACKAGE" WeiG-qB-WebUI/VERSION 2>/dev/null | tr -d '\r\n')
 [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Candidate VERSION is invalid.' >&2; exit 1; }
@@ -205,7 +213,7 @@ awk '
   END { exit !(preferences==1 && root==1 && !wrong) }
 ' "$QBT_CONFIG" || { echo 'qB-owned seed did not flush one exact [Preferences] WebUI\\RootFolder=/config value.' >&2; exit 1; }
 
-bash "$ROOT/installers/install.sh" --version "$VERSION" --configure --config-root "$CONFIG_ROOT"
+bash "$LINUX_INSTALLER" --version "$VERSION" --configure --config-root "$CONFIG_ROOT"
 [[ -f "$DEST/public/index.html" && -f "$DEST/private/index.html" ]] || { echo 'Candidate install payload is incomplete.' >&2; exit 1; }
 [[ "$(tr -d '\r\n' < "$DEST/VERSION")" == "$VERSION" ]] || { echo 'Installed VERSION mismatch.' >&2; exit 1; }
 [[ "$(tr -d '\r\n' < "$DEST/GIT_SHA")" == "$EXPECTED_SHA" ]] || { echo 'Installed GIT_SHA mismatch.' >&2; exit 1; }
@@ -308,6 +316,7 @@ const evidence={
     packageGitSha:true,
     packageSha256:true,
     installerReleasePath:true,
+    exactCandidateInstallers:true,
     officialDockerConfig:true,
     smallReleaseIndex:true,
     exactProfileShard:true,
@@ -328,6 +337,13 @@ NODE
 if [[ "$RUN_REHEARSAL" == 1 ]]; then
   bash -n "$ROOT/tests/promotion-release-rehearsal.sh"
   bash "$ROOT/tests/promotion-release-rehearsal.sh" "$CANDIDATE_DIR" "$EVIDENCE_PATH"
+  node "$ROOT/tests/release-candidate-evidence.mjs" \
+    --mode=release \
+    --evidence="$EVIDENCE_PATH" \
+    --package="$PACKAGE" \
+    --sha="$EXPECTED_SHA" \
+    --version="$VERSION" \
+    --tag="v$VERSION"
 fi
 
 printf 'Release candidate deployment acceptance passed: version %s exact SHA %s on official qB %s with real app/preferences + locale round trip%s\n' \

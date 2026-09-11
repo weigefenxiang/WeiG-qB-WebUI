@@ -114,9 +114,14 @@ jobs:
           test -f release/WeiG-qB-WebUI.zip
           test -f release/SHA256SUMS
           test -f release/CANDIDATE_SHA
+          test -f release/weigg-install.sh
+          test -f release/weigg-install.ps1
           test -f evidence/candidate.json
           test "$(tr -d '\r\n' < release/CANDIDATE_SHA)" = "$GITHUB_SHA"
           (cd release && sha256sum -c SHA256SUMS)
+          cmp -s release/weigg-install.sh installers/install.sh
+          cmp -s release/weigg-install.ps1 installers/install.ps1
+          bash -n release/weigg-install.sh
           test "$(unzip -p release/WeiG-qB-WebUI.zip WeiG-qB-WebUI/GIT_SHA | tr -d '\r\n')" = "$GITHUB_SHA"
           test "$(unzip -p release/WeiG-qB-WebUI.zip WeiG-qB-WebUI/VERSION | tr -d '\r\n')" = "$VERSION"
           node tests/release-candidate-evidence.mjs \
@@ -135,6 +140,8 @@ jobs:
           VERSION="$(tr -d '\r\n' < VERSION)"
           gh release create "${GITHUB_REF_NAME}" \
             release/WeiG-qB-WebUI.zip \
+            release/weigg-install.sh \
+            release/weigg-install.ps1 \
             release/SHA256SUMS \
             --verify-tag \
             --latest \

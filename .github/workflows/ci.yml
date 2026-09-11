@@ -421,9 +421,11 @@ jobs:
           find release/WeiG-qB-WebUI -type f \( -name '*.html' -o -name '*.js' -o -name '*.css' -o -name '*.json' -o -name 'GIT_SHA' \) -exec sed -i "s/__WEIGG_GIT_SHA__/${GITHUB_SHA}/g" {} +
           printf '%s\n' "${GITHUB_SHA}" > release/WeiG-qB-WebUI/GIT_SHA
           test -s release/WeiG-qB-WebUI/private/data/qb-releases.json
+          install -m 0755 installers/install.sh release/weigg-install.sh
+          cp installers/install.ps1 release/weigg-install.ps1
           cd release
           zip -r WeiG-qB-WebUI.zip WeiG-qB-WebUI
-          sha256sum WeiG-qB-WebUI.zip > SHA256SUMS
+          sha256sum WeiG-qB-WebUI.zip weigg-install.sh weigg-install.ps1 > SHA256SUMS
           printf '%s\n' "${GITHUB_SHA}" > CANDIDATE_SHA
       - name: Upload reusable release candidate
         uses: actions/upload-artifact@v7
@@ -433,6 +435,8 @@ jobs:
             release/WeiG-qB-WebUI.zip
             release/SHA256SUMS
             release/CANDIDATE_SHA
+            release/weigg-install.sh
+            release/weigg-install.ps1
           if-no-files-found: error
           retention-days: 90
 
@@ -468,6 +472,7 @@ jobs:
       - name: Candidate deployment syntax
         run: |
           bash -n tests/candidate-deployment.sh
+          bash -n candidate-artifact/weigg-install.sh
           node --check tests/installer-lifecycle-browser.mjs
       - name: Deploy exact candidate to official qB and Chrome
         shell: bash

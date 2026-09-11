@@ -39,16 +39,16 @@ assert(packageGitSha===sha,'candidate package GIT_SHA does not match exact SHA')
 assert(packageVersion===version,'candidate package VERSION does not match repository VERSION');
 
 const evidence=JSON.parse(fs.readFileSync(evidenceFile,'utf8'));
-assert(evidence.schemaVersion===1,'candidate deployment evidence schemaVersion must be 1');
+assert(evidence.schemaVersion===2,'candidate deployment evidence schemaVersion must be 2');
 assert(evidence.kind==='release-candidate-deployment-acceptance','candidate deployment evidence kind mismatch');
 assert(String(evidence.gitSha||'').toLowerCase()===sha,'candidate deployment evidence Git SHA mismatch');
 assert(evidence.candidate?.version===version,'candidate deployment evidence VERSION mismatch');
 assert(String(evidence.candidate?.packageSha256||'').toLowerCase()===packageSha256,'candidate deployment evidence package SHA256 mismatch');
 
 const deploymentChecks=[
-  'candidateSha','packageGitSha','packageSha256','installerReleasePath','officialDockerConfig',
-  'packedCatalog','installMetadata','qbConfigWrite','realWebuiServe','exactBuildSha',
-  'browserLogin','canonicalSettings','alternativeWebuiPath'
+  'candidateSha','packageGitSha','packageSha256','installerReleasePath','exactCandidateInstallers','officialDockerConfig',
+  'smallReleaseIndex','exactProfileShard','sourceProvenPreferences','installMetadata','qbConfigWrite','realWebuiServe','exactBuildSha',
+  'browserLogin','canonicalSettings','localeRoundTrip','alternativeWebuiPath'
 ];
 for(const key of deploymentChecks)assert(evidence.checks?.[key]===true,`candidate deployment check is not true: ${key}`);
 assert(evidence.browser?.externalRequestsBlocked===true,'candidate browser acceptance must block external requests');
@@ -74,7 +74,7 @@ if(mode==='promotion')assert(rehearsalMainBefore===expectedMainBefore,'promotion
 
 const rehearsalChecks=[
   'currentDevExactCandidate','mainFastForwardable','stableTagInitiallyAbsent','deploymentEvidenceIdentity',
-  'simulatedPromotionExactSha','simulatedReleaseTagExactSha','releaseArtifactByteIdentity',
+  'simulatedPromotionExactSha','simulatedReleaseTagExactSha','releaseArtifactByteIdentity','releaseInstallerByteIdentity',
   'simulatedRollbackRestoresMain','remoteRefsUntouched'
 ];
 for(const key of rehearsalChecks)assert(rehearsal.checks?.[key]===true,`promotion/release rehearsal check is not true: ${key}`);
