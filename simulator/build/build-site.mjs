@@ -4,12 +4,14 @@ import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {applyLocaleOverlay} from '../../tools/qb-locale-overlay.mjs';
+import {applyQbSettingsTranslationLkg} from '../../tools/qb-settings-translation-lkg.mjs';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const projectRoot=path.resolve(here,'../..');
 function arg(name,fallback=''){const prefix=`--${name}=`;const hit=process.argv.find(x=>x.startsWith(prefix));return hit?hit.slice(prefix.length):fallback}
 function required(name){const value=arg(name);if(!value)throw new Error(`Missing --${name}=...`);return value}
 function runNode(file,args){const result=spawnSync(process.execPath,[file,...args],{cwd:projectRoot,stdio:'inherit'});if(result.status!==0)throw new Error(`${path.basename(file)} failed with status ${result.status}`)}
+function digest(bytes){return crypto.createHash('sha256').update(bytes).digest('hex')}
 function branchAliasHtml(branch){
   const title=`WeiG qB WebUI — ${branch}`;
   return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${title}</title><script>(()=>{const target=new URL('./app/',window.location.href);target.search=window.location.search;target.hash=window.location.hash;window.location.replace(target.href)})();</script><noscript><meta http-equiv="refresh" content="0;url=./app/"></noscript></head><body><p><a href="./app/">进入 WeiG qB WebUI ${branch}</a></p></body></html>`;
@@ -18,6 +20,7 @@ function branchAliasHtml(branch){
 const out=path.resolve(required('out'));
 const catalog=path.resolve(required('catalog'));
 const localeOverlayPath=path.resolve(arg('locale-overlay',path.join(projectRoot,'tools/data/qb-locale-lkg.json')));
+const settingsLkgPath=path.resolve(required('settings-translation-lkg'));
 const simulatorSha=required('simulator-sha');
 const branches=[
   {name:'dev',webuiRoot:path.resolve(required('dev-webui')),sha:required('dev-sha'),version:required('dev-version')},
@@ -26,19 +29,29 @@ const branches=[
 
 await fs.rm(out,{recursive:true,force:true});
 await fs.mkdir(path.join(out,'metadata'),{recursive:true});
+const buildDir=path.join(out,'.build');
+await fs.mkdir(buildDir,{recursive:true});
 const catalogBytes=await fs.readFile(catalog);
-const baseCatalogSha256=crypto.createHash('sha256').update(catalogBytes).digest('hex');
+const canonicalCatalogBytes=Buffer.from(catalogBytes.toString('utf8').replace(/\r\n?/g,'\n'),'utf8');
+const baseCatalogSha256=digest(canonicalCatalogBytes);
+const baseCatalog=JSON.parse(canonicalCatalogBytes.toString('utf8'));
 const overlay=JSON.parse(await fs.readFile(localeOverlayPath,'utf8'));
-const catalogData=applyLocaleOverlay(JSON.parse(catalogBytes.toString('utf8')),overlay,{catalogSha256:baseCatalogSha256});
-const localeCatalog={
-  schemaVersion:overlay.schemaVersion,
-  profiles:overlay.profileCount,
-  localeSets:Object.keys(overlay.localeSets||{}).length,
+const localeData=applyLocaleOverlay(baseCatalog,overlay,{catalogSha256:baseCatalogSha256});
+const localeCatalog={schemaVersion:overlay.schemaVersion,profiles:overlay.profileCount,localeSets:Object.keys(overlay.localeSets||{}).length,baseCatalogSha256,sourceEvidence:overlay.sourceEvidence||null};
+
+const settingsLkg=JSON.parse(await fs.readFile(settingsLkgPath,'utf8'));
+const catalogData=applyQbSettingsTranslationLkg(localeData,settingsLkg,{catalogSha256:baseCatalogSha256});
+const settingsTranslationCatalog={
+  schemaVersion:settingsLkg.schemaVersion,
+  profiles:settingsLkg.profileCount,
+  mappedPreferences:(settingsLkg.profiles||[]).reduce((sum,item)=>sum+(Number(item.mappedPreferences)||0),0),
+  translationRoutes:(settingsLkg.profiles||[]).reduce((sum,item)=>sum+Object.keys(item.translations||{}).length,0),
+  translationSets:Object.keys(settingsLkg.sets||{}).length,
   baseCatalogSha256,
-  sourceEvidence:overlay.sourceEvidence||null
+  sourceEvidence:settingsLkg.sourceEvidence||null
 };
-const renderedCatalog=path.join(out,'metadata','qb-releases.json');
-await fs.writeFile(renderedCatalog,JSON.stringify(catalogData)+'\n','utf8');
+const sourceCatalog=path.join(buildDir,'qb-releases.source.json');
+await fs.writeFile(sourceCatalog,JSON.stringify(catalogData)+'\n','utf8');
 
 const buildPages=path.join(here,'build-pages.mjs');
 for(const branch of branches){
@@ -46,7 +59,7 @@ for(const branch of branches){
     `--branch=${branch.name}`,
     `--webui-root=${branch.webuiRoot}`,
     `--out=${path.join(out,branch.name,'app')}`,
-    `--catalog=${renderedCatalog}`,
+    `--catalog=${sourceCatalog}`,
     `--exact-sha=${branch.sha}`,
     `--product-version=${branch.version}`,
     `--simulator-sha=${simulatorSha}`
@@ -57,11 +70,16 @@ for(const branch of branches){
 const devBranch=branches.find(item=>item.name==='dev');
 runNode(path.join(projectRoot,'tools/build-webui-dist.mjs'),[
   `--webui-root=${devBranch.webuiRoot}`,
-  `--catalog=${renderedCatalog}`,
+  `--catalog=${sourceCatalog}`,
   `--out=${path.join(out,'downloads','dev')}`,
   `--sha=${devBranch.sha}`,
   `--version=${devBranch.version}`
 ]);
+
+const runtimeCatalogPath=path.join(out,'dev','app','__source','private','data','qb-releases.json');
+const renderedCatalog=path.join(out,'metadata','qb-releases.json');
+await fs.copyFile(runtimeCatalogPath,renderedCatalog);
+await fs.rm(buildDir,{recursive:true,force:true});
 
 await fs.cp(path.join(projectRoot,'simulator/lab'),path.join(out,'lab'),{recursive:true,force:true});
 for(const branch of branches){
@@ -70,50 +88,12 @@ for(const branch of branches){
 }
 const descriptorTotals=(Array.isArray(catalogData)?catalogData:[]).reduce((sum,item)=>{
   const stats=item?.preferenceDescriptorStats||{};
-  sum.preferences+=Number(stats.total)||0;
-  sum.getterPresent+=Number(stats.getterPresent)||0;
-  sum.setterPresent+=Number(stats.setterPresent)||0;
-  sum.readTyped+=Number(stats.readTyped)||0;
-  sum.writeTyped+=Number(stats.writeTyped)||0;
-  sum.exactAgreement+=Number(stats.exactAgreement)||0;
-  sum.mismatched+=Number(stats.mismatched)||0;
-  sum.safeFallback+=Number(stats.safeFallback)||0;
-  sum.semanticGetterEnriched+=Number(stats.semanticGetterEnriched)||0;
-  sum.unresolvedRead+=Number(stats.unresolvedRead)||0;
-  sum.unresolvedWrite+=Number(stats.unresolvedWrite)||0;
-  sum.structuredRead+=Number(stats.structuredRead)||0;
-  sum.structuredWrite+=Number(stats.structuredWrite)||0;
-  sum.typed+=Number(stats.typed)||0;
-  sum.highConfidence+=Number(stats.highConfidence)||0;
-  sum.unresolved+=Number(stats.unresolved)||0;
-  return sum;
+  sum.preferences+=Number(stats.total)||0;sum.getterPresent+=Number(stats.getterPresent)||0;sum.setterPresent+=Number(stats.setterPresent)||0;sum.readTyped+=Number(stats.readTyped)||0;sum.writeTyped+=Number(stats.writeTyped)||0;sum.exactAgreement+=Number(stats.exactAgreement)||0;sum.mismatched+=Number(stats.mismatched)||0;sum.safeFallback+=Number(stats.safeFallback)||0;sum.semanticGetterEnriched+=Number(stats.semanticGetterEnriched)||0;sum.unresolvedRead+=Number(stats.unresolvedRead)||0;sum.unresolvedWrite+=Number(stats.unresolvedWrite)||0;sum.structuredRead+=Number(stats.structuredRead)||0;sum.structuredWrite+=Number(stats.structuredWrite)||0;sum.typed+=Number(stats.typed)||0;sum.highConfidence+=Number(stats.highConfidence)||0;sum.unresolved+=Number(stats.unresolved)||0;return sum;
 },{preferences:0,getterPresent:0,setterPresent:0,readTyped:0,writeTyped:0,exactAgreement:0,mismatched:0,safeFallback:0,semanticGetterEnriched:0,unresolvedRead:0,unresolvedWrite:0,structuredRead:0,structuredWrite:0,typed:0,highConfidence:0,unresolved:0});
 const latestProfile=Array.isArray(catalogData)&&catalogData.length?catalogData.at(-1):null;
-const preferenceCatalog={
-  schemaVersion:3,
-  profiles:Array.isArray(catalogData)?catalogData.length:0,
-  ...descriptorTotals,
-  latest:latestProfile?{
-    qbVersion:latestProfile.qbVersion,
-    preferenceCount:latestProfile.preferenceDescriptorStats?.total||0,
-    getterPresent:latestProfile.preferenceDescriptorStats?.getterPresent||0,
-    setterPresent:latestProfile.preferenceDescriptorStats?.setterPresent||0,
-    readTyped:latestProfile.preferenceDescriptorStats?.readTyped||0,
-    writeTyped:latestProfile.preferenceDescriptorStats?.writeTyped||0,
-    exactAgreement:latestProfile.preferenceDescriptorStats?.exactAgreement||0,
-    mismatched:latestProfile.preferenceDescriptorStats?.mismatched||0,
-    safeFallback:latestProfile.preferenceDescriptorStats?.safeFallback||0,
-    semanticGetterEnriched:latestProfile.preferenceDescriptorStats?.semanticGetterEnriched||0,
-    unresolvedRead:latestProfile.preferenceDescriptorStats?.unresolvedRead||0,
-    unresolvedWrite:latestProfile.preferenceDescriptorStats?.unresolvedWrite||0,
-    structuredRead:latestProfile.preferenceDescriptorStats?.structuredRead||0,
-    structuredWrite:latestProfile.preferenceDescriptorStats?.structuredWrite||0,
-    typed:latestProfile.preferenceDescriptorStats?.typed||0,
-    unresolved:latestProfile.preferenceDescriptorStats?.unresolved||0
-  }:null
-};
-const siteMeta={simulatorSha,builtAt:new Date().toISOString(),stableProfiles:Array.isArray(catalogData)?catalogData.length:0,preferenceCatalog,localeCatalog,devDistribution:{path:'downloads/dev/WeiG-qB-WebUI.zip',gitSha:devBranch.sha,version:devBranch.version,materialized:true},branches:Object.fromEntries(branches.map(x=>[x.name,{exactSha:x.sha,productVersion:x.version}]))};
+const preferenceCatalog={schemaVersion:3,profiles:Array.isArray(catalogData)?catalogData.length:0,...descriptorTotals,latest:latestProfile?{qbVersion:latestProfile.qbVersion,preferenceCount:latestProfile.preferenceDescriptorStats?.total||0,getterPresent:latestProfile.preferenceDescriptorStats?.getterPresent||0,setterPresent:latestProfile.preferenceDescriptorStats?.setterPresent||0,readTyped:latestProfile.preferenceDescriptorStats?.readTyped||0,writeTyped:latestProfile.preferenceDescriptorStats?.writeTyped||0,exactAgreement:latestProfile.preferenceDescriptorStats?.exactAgreement||0,mismatched:latestProfile.preferenceDescriptorStats?.mismatched||0,safeFallback:latestProfile.preferenceDescriptorStats?.safeFallback||0,semanticGetterEnriched:latestProfile.preferenceDescriptorStats?.semanticGetterEnriched||0,unresolvedRead:latestProfile.preferenceDescriptorStats?.unresolvedRead||0,unresolvedWrite:latestProfile.preferenceDescriptorStats?.unresolvedWrite||0,structuredRead:latestProfile.preferenceDescriptorStats?.structuredRead||0,structuredWrite:latestProfile.preferenceDescriptorStats?.structuredWrite||0,typed:latestProfile.preferenceDescriptorStats?.typed||0,unresolved:latestProfile.preferenceDescriptorStats?.unresolved||0}:null};
+const siteMeta={simulatorSha,builtAt:new Date().toISOString(),stableProfiles:Array.isArray(catalogData)?catalogData.length:0,preferenceCatalog,localeCatalog,settingsTranslationCatalog,devDistribution:{path:'downloads/dev/WeiG-qB-WebUI.zip',gitSha:devBranch.sha,version:devBranch.version,materialized:true},branches:Object.fromEntries(branches.map(x=>[x.name,{exactSha:x.sha,productVersion:x.version}]))};
 await fs.writeFile(path.join(out,'metadata','site.json'),JSON.stringify(siteMeta,null,2)+'\n','utf8');
 await fs.writeFile(path.join(out,'.nojekyll'),'','utf8');
 await fs.writeFile(path.join(out,'index.html'),'<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="0;url=./lab/"><title>WeiG Virtual qB Lab</title></head><body><p><a href="./lab/">进入 WeiG Virtual qB Lab</a></p></body></html>','utf8');
-console.log(`Assembled WeiG Virtual qB Pages artifact: ${out} with ${localeCatalog.profiles} exact locale profiles / ${localeCatalog.localeSets} sets and materialized dev installer payload`);
+console.log(`Assembled WeiG Virtual qB Pages artifact: ${out} with ${localeCatalog.profiles} exact locale profiles / ${localeCatalog.localeSets} sets, ${settingsTranslationCatalog.mappedPreferences} official Settings mappings and materialized dev installer payload`);
