@@ -5,6 +5,8 @@ import {fileURLToPath} from 'node:url';
 import {buildNativeSettingsBundle,renderLocaleQm,renderLocaleTs,renderNativeSettingsRegistry} from './qb-settings-native-bundle.mjs';
 
 // qBittorrent WebApplication::sendFile limits Alternative WebUI static files to 10 MiB.
+// Keep individual runtime files well below that boundary: real qB serves these files,
+// while Pages tests otherwise hide the cost of one almost-10-MiB catalog request.
 export const QB_WEBUI_MAX_STATIC_FILE_BYTES=10*1024*1024;
 const PROJECT_MAX_SINGLE_FILE_BYTES=5*1024*1024;
 const SETTINGS_FIELDS=[
@@ -67,6 +69,20 @@ export function runtimeCatalogData(catalog,bundle){
     return runtime;
   });
 }
+export function runtimeCatalogIndexData(runtimeCatalog){
+  return (runtimeCatalog||[]).map(item=>{
+    const sourceSha=String(item&&item.sourceSha||'');
+    if(!/^[0-9a-f]{40}$/.test(sourceSha))throw new Error(`${item?.qbVersion||'unknown'}: runtime profile requires an exact source SHA.`);
+    return{
+      qbVersion:item.qbVersion,
+      webApiVersion:item.webApiVersion,
+      sourceSha,
+      stable:item.stable!==false,
+      officialWeiGSupport:item.officialWeiGSupport!==false,
+      profilePath:`qb-release-profiles/${sourceSha}.json`
+    };
+  });
+}
 export function packCatalog(input,output,options={}){
   if(!input||!output)throw new Error('Usage: node tools/qb-webui-catalog.mjs <input.json> <output.json> [--qm-source-dir=path] [--qm-output-dir=path] [--behavior=path]');
   const source=fs.readFileSync(input,'utf8');
@@ -75,11 +91,25 @@ export function packCatalog(input,output,options={}){
   const behavior=behaviorEvidence(options.behaviorEvidence);
   const bundle=buildNativeSettingsBundle(catalog,behavior);
   const runtimeCatalog=runtimeCatalogData(catalog,bundle);
-  const packed=`${JSON.stringify(runtimeCatalog)}\n`;
-  const bytes=assertStaticSize('Packed qB release catalog',packed);
+  const runtimeIndex=runtimeCatalogIndexData(runtimeCatalog);
+  const packed=`${JSON.stringify(runtimeIndex)}\n`;
+  const bytes=assertStaticSize('Packed qB release index',packed,PROJECT_MAX_SINGLE_FILE_BYTES);
   const outputPath=path.resolve(output),dataDir=path.dirname(outputPath);
   fs.mkdirSync(dataDir,{recursive:true});
   fs.writeFileSync(outputPath,packed);
+
+  const profileDir=path.join(dataDir,'qb-release-profiles');
+  fs.rmSync(profileDir,{recursive:true,force:true});
+  fs.mkdirSync(profileDir,{recursive:true});
+  let profileShardCount=0,maxProfileShardBytes=0,totalProfileShardBytes=0;
+  for(const profile of runtimeCatalog){
+    const profilePacked=`${JSON.stringify(profile)}\n`;
+    const profileBytes=assertStaticSize(`qB runtime profile ${profile.qbVersion}`,profilePacked,PROJECT_MAX_SINGLE_FILE_BYTES);
+    fs.writeFileSync(path.join(profileDir,`${profile.sourceSha}.json`),profilePacked);
+    profileShardCount+=1;
+    maxProfileShardBytes=Math.max(maxProfileShardBytes,profileBytes);
+    totalProfileShardBytes+=profileBytes;
+  }
 
   const registry=renderNativeSettingsRegistry(catalog);
   const registryBytes=assertStaticSize('Native qB Settings QBT_TR registry',registry,PROJECT_MAX_SINGLE_FILE_BYTES);
@@ -121,13 +151,14 @@ export function packCatalog(input,output,options={}){
   }
 
   const verified=JSON.parse(fs.readFileSync(outputPath,'utf8'));
-  if(JSON.stringify(verified)!==JSON.stringify(runtimeCatalog))throw new Error('Packed qB release catalog changed runtime JSON semantics.');
+  if(JSON.stringify(verified)!==JSON.stringify(runtimeIndex))throw new Error('Packed qB release index changed runtime JSON semantics.');
   const nativeLocaleRoutes=bundle.profiles.reduce((sum,item)=>sum+item.nativeLocales.length,0);
   const bridgeLocaleRoutes=bundle.profiles.reduce((sum,item)=>sum+item.bridgeLocales.length,0);
   return{
     profiles:runtimeCatalog.length,
     sourceBytes:Buffer.byteLength(source),
     packedBytes:bytes,
+    profileShardCount,maxProfileShardBytes,totalProfileShardBytes,
     nativeRegistryBytes:registryBytes,
     nativeLocaleRoutes,
     bridgeLocaleRoutes,
