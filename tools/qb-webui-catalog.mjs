@@ -93,7 +93,7 @@ export function packCatalog(input,output,options={}){
   const runtimeCatalog=runtimeCatalogData(catalog,bundle);
   const runtimeIndex=runtimeCatalogIndexData(runtimeCatalog);
   const packed=`${JSON.stringify(runtimeIndex)}\n`;
-  const bytes=assertStaticSize('Packed qB release index',packed,PROJECT_MAX_SINGLE_FILE_BYTES);
+  const bytes=assertStaticSize('Packed qB release catalog index',packed,PROJECT_MAX_SINGLE_FILE_BYTES);
   const outputPath=path.resolve(output),dataDir=path.dirname(outputPath);
   fs.mkdirSync(dataDir,{recursive:true});
   fs.writeFileSync(outputPath,packed);
