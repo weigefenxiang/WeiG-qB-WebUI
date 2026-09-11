@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {buildNativeSettingsBundle,renderNativeSettingsRegistry,renderLocaleTs} from '../tools/qb-settings-native-bundle.mjs';
+import {buildNativeSettingsBundle,renderNativeSettingsRegistry,renderLocaleQm,renderLocaleTs} from '../tools/qb-settings-native-bundle.mjs';
 
 const shaA='1111111111111111111111111111111111111111';
 const shaB='2222222222222222222222222222222222222222';
@@ -40,8 +40,20 @@ assert.equal((registry.match(/QBT_TR\(Language:\)QBT_TR\[CONTEXT=OptionsDialog\]
 assert.equal((registry.match(/@@WEIGG_PROFILE/g)||[]).length,4,'each exact release must bind its preference key to the shared source/context ref');
 assert.ok(registry.includes(shaD)&&registry.includes('locale_select'));
 
-const ts=renderLocaleTs('zh_CN',[{context:'OptionsDialog',source:'A & B',translation:'甲 < 乙'}]);
+const sample=[{context:'OptionsDialog',source:'A & B',translation:'甲 < 乙'}];
+const ts=renderLocaleTs('zh_CN',sample);
 assert.ok(ts.includes('<source>A &amp; B</source>')&&ts.includes('<translation>甲 &lt; 乙</translation>'),'generated minimal TS must remain valid XML');
+const qm=renderLocaleQm(sample);
+assert.equal(qm.subarray(0,16).toString('hex'),'3cb86418caef9c95cd211cbf60a1bddd','QM must use the Qt translator magic marker');
+assert.equal(qm[16],0x42,'QM must emit the Qt hash section first');
+assert.equal(qm.readUInt32BE(17),8,'one translation must emit one hash/offset pair');
+const messagesBlock=16+1+4+8;
+assert.equal(qm[messagesBlock],0x69,'QM must emit the Qt message section');
+const messageStart=messagesBlock+5;
+assert.equal(qm[messageStart],3,'Qt message record must begin with Tag_Translation');
+const translatedBytes=qm.readUInt32BE(messageStart+1),translated=Buffer.from(qm.subarray(messageStart+5,messageStart+5+translatedBytes));translated.swap16();
+assert.equal(translated.toString('utf16le'),'甲 < 乙','QM translation payload must be UTF-16BE as QDataStream QString expects');
+assert.ok(qm.includes(Buffer.from('A & B','utf8'))&&qm.includes(Buffer.from('OptionsDialog','utf8')),'QM SaveEverything record must carry source/context for exact QTranslator matching');
 
 assert.throws(()=>buildNativeSettingsBundle(catalog,{...behavior,profiles:behavior.profiles.slice(1)}),/does not match/,'missing source-bound behavior evidence must fail closed');
-console.log('Native qB Settings bundle contract passed: native routes are exact-source proven, conflicting locales fall back to bridge, QBT_TR refs dedupe, and QM TS stays official-source derived.');
+console.log('Native qB Settings bundle contract passed: source-bound routing, QBT_TR ref dedupe and Qt-compatible minimal QM structure are all enforced.');
