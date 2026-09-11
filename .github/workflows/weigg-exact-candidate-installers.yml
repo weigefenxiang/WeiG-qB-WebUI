@@ -1,0 +1,236 @@
+name: Apply exact-SHA candidate installer supply chain
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - '.github/workflows/weigg-exact-candidate-installers.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Verify exact staging parent and current dev
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin dev
+          test "$(git rev-parse origin/dev)" = "$GITHUB_SHA"
+          test "$(git rev-parse "$GITHUB_SHA^")" = '6458bed31fefb44c9ab0b7dca6dccb02b7a117ed'
+
+      - name: Patch exact-SHA candidate installer supply chain
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+
+          def once(path, old, new):
+              p=Path(path)
+              data=p.read_text(encoding='utf-8')
+              count=data.count(old)
+              if count != 1:
+                  raise SystemExit(f'{path}: expected exactly one replacement target, found {count}')
+              p.write_text(data.replace(old,new,1),encoding='utf-8')
+
+          once('.github/workflows/ci.yml', r'''          test -s release/WeiG-qB-WebUI/private/data/qb-releases.json
+          cd release
+          zip -r WeiG-qB-WebUI.zip WeiG-qB-WebUI
+          sha256sum WeiG-qB-WebUI.zip > SHA256SUMS
+          printf '%s\n' "${GITHUB_SHA}" > CANDIDATE_SHA
+''', r'''          test -s release/WeiG-qB-WebUI/private/data/qb-releases.json
+          install -m 0755 installers/install.sh release/weigg-install.sh
+          cp installers/install.ps1 release/weigg-install.ps1
+          cd release
+          zip -r WeiG-qB-WebUI.zip WeiG-qB-WebUI
+          sha256sum WeiG-qB-WebUI.zip weigg-install.sh weigg-install.ps1 > SHA256SUMS
+          printf '%s\n' "${GITHUB_SHA}" > CANDIDATE_SHA
+''')
+          once('.github/workflows/ci.yml', r'''            release/CANDIDATE_SHA
+          if-no-files-found: error
+''', r'''            release/CANDIDATE_SHA
+            release/weigg-install.sh
+            release/weigg-install.ps1
+          if-no-files-found: error
+''')
+          once('.github/workflows/ci.yml', r'''          bash -n tests/candidate-deployment.sh
+          node --check tests/installer-lifecycle-browser.mjs
+''', r'''          bash -n tests/candidate-deployment.sh
+          bash -n candidate-artifact/weigg-install.sh
+          node --check tests/installer-lifecycle-browser.mjs
+''')
+
+          once('tests/candidate-deployment.sh', r'''PACKAGE="$CANDIDATE_DIR/WeiG-qB-WebUI.zip"
+SUMS="$CANDIDATE_DIR/SHA256SUMS"
+CANDIDATE_SHA_FILE="$CANDIDATE_DIR/CANDIDATE_SHA"
+''', r'''PACKAGE="$CANDIDATE_DIR/WeiG-qB-WebUI.zip"
+SUMS="$CANDIDATE_DIR/SHA256SUMS"
+CANDIDATE_SHA_FILE="$CANDIDATE_DIR/CANDIDATE_SHA"
+LINUX_INSTALLER="$CANDIDATE_DIR/weigg-install.sh"
+WINDOWS_INSTALLER="$CANDIDATE_DIR/weigg-install.ps1"
+''')
+          once('tests/candidate-deployment.sh', r'''command -v unzip >/dev/null || { echo 'unzip is required' >&2; exit 2; }
+command -v google-chrome >/dev/null || { echo 'Google Chrome Stable is required' >&2; exit 2; }
+[[ -s "$PACKAGE" && -s "$SUMS" && -s "$CANDIDATE_SHA_FILE" ]] || { echo 'Candidate artifact is incomplete.' >&2; exit 2; }
+''', r'''command -v unzip >/dev/null || { echo 'unzip is required' >&2; exit 2; }
+command -v sha256sum >/dev/null || { echo 'sha256sum is required' >&2; exit 2; }
+command -v cmp >/dev/null || { echo 'cmp is required' >&2; exit 2; }
+command -v google-chrome >/dev/null || { echo 'Google Chrome Stable is required' >&2; exit 2; }
+[[ -s "$PACKAGE" && -s "$SUMS" && -s "$CANDIDATE_SHA_FILE" && -s "$LINUX_INSTALLER" && -s "$WINDOWS_INSTALLER" ]] || { echo 'Candidate artifact is incomplete.' >&2; exit 2; }
+''')
+          once('tests/candidate-deployment.sh', r'''[[ "$CANDIDATE_SHA" == "$EXPECTED_SHA" ]] || { echo 'Candidate artifact SHA does not match workflow SHA.' >&2; exit 1; }
+
+VERSION=$(unzip -p "$PACKAGE" WeiG-qB-WebUI/VERSION 2>/dev/null | tr -d '\r\n')
+''', r'''[[ "$CANDIDATE_SHA" == "$EXPECTED_SHA" ]] || { echo 'Candidate artifact SHA does not match workflow SHA.' >&2; exit 1; }
+(cd "$CANDIDATE_DIR" && sha256sum -c SHA256SUMS)
+cmp -s "$LINUX_INSTALLER" "$ROOT/installers/install.sh" || { echo 'Candidate Linux installer is not byte-identical to the exact-SHA source.' >&2; exit 1; }
+cmp -s "$WINDOWS_INSTALLER" "$ROOT/installers/install.ps1" || { echo 'Candidate Windows installer is not byte-identical to the exact-SHA source.' >&2; exit 1; }
+bash -n "$LINUX_INSTALLER"
+
+VERSION=$(unzip -p "$PACKAGE" WeiG-qB-WebUI/VERSION 2>/dev/null | tr -d '\r\n')
+''')
+          once('tests/candidate-deployment.sh', r'''bash "$ROOT/installers/install.sh" --version "$VERSION" --configure --config-root "$CONFIG_ROOT"
+''', r'''bash "$LINUX_INSTALLER" --version "$VERSION" --configure --config-root "$CONFIG_ROOT"
+''')
+          once('tests/candidate-deployment.sh', r'''    installerReleasePath:true,
+    officialDockerConfig:true,
+''', r'''    installerReleasePath:true,
+    exactCandidateInstallers:true,
+    officialDockerConfig:true,
+''')
+
+          once('tests/promotion-release-rehearsal.sh', r'''PACKAGE="$CANDIDATE_DIR/WeiG-qB-WebUI.zip"
+SUMS="$CANDIDATE_DIR/SHA256SUMS"
+CANDIDATE_SHA_FILE="$CANDIDATE_DIR/CANDIDATE_SHA"
+''', r'''PACKAGE="$CANDIDATE_DIR/WeiG-qB-WebUI.zip"
+SUMS="$CANDIDATE_DIR/SHA256SUMS"
+CANDIDATE_SHA_FILE="$CANDIDATE_DIR/CANDIDATE_SHA"
+LINUX_INSTALLER="$CANDIDATE_DIR/weigg-install.sh"
+WINDOWS_INSTALLER="$CANDIDATE_DIR/weigg-install.ps1"
+''')
+          once('tests/promotion-release-rehearsal.sh', r'''[[ -s "$PACKAGE" && -s "$SUMS" && -s "$CANDIDATE_SHA_FILE" && -s "$EVIDENCE_FILE" ]] || { echo 'Promotion rehearsal inputs are incomplete.' >&2; exit 2; }
+''', r'''[[ -s "$PACKAGE" && -s "$SUMS" && -s "$CANDIDATE_SHA_FILE" && -s "$LINUX_INSTALLER" && -s "$WINDOWS_INSTALLER" && -s "$EVIDENCE_FILE" ]] || { echo 'Promotion rehearsal inputs are incomplete.' >&2; exit 2; }
+''')
+          once('tests/promotion-release-rehearsal.sh', r'''[[ "$CANDIDATE_SHA" =~ ^[0-9a-f]{40}$ && "$EXPECTED_SHA" == "$CANDIDATE_SHA" ]] || { echo 'Promotion rehearsal exact SHA mismatch.' >&2; exit 1; }
+
+VERSION=$(unzip -p "$PACKAGE" WeiG-qB-WebUI/VERSION 2>/dev/null | tr -d '\r\n')
+''', r'''[[ "$CANDIDATE_SHA" =~ ^[0-9a-f]{40}$ && "$EXPECTED_SHA" == "$CANDIDATE_SHA" ]] || { echo 'Promotion rehearsal exact SHA mismatch.' >&2; exit 1; }
+(cd "$CANDIDATE_DIR" && sha256sum -c SHA256SUMS)
+cmp -s "$LINUX_INSTALLER" "$ROOT/installers/install.sh" || { echo 'Promotion rehearsal Linux installer does not match exact candidate source.' >&2; exit 1; }
+cmp -s "$WINDOWS_INSTALLER" "$ROOT/installers/install.ps1" || { echo 'Promotion rehearsal Windows installer does not match exact candidate source.' >&2; exit 1; }
+
+VERSION=$(unzip -p "$PACKAGE" WeiG-qB-WebUI/VERSION 2>/dev/null | tr -d '\r\n')
+''')
+          once('tests/promotion-release-rehearsal.sh', r'''if(!evidence.checks?.browserLogin||!evidence.checks?.canonicalSettings||!evidence.checks?.alternativeWebuiPath)throw new Error('deployment evidence browser acceptance is incomplete');
+''', r'''if(!evidence.checks?.browserLogin||!evidence.checks?.canonicalSettings||!evidence.checks?.alternativeWebuiPath||!evidence.checks?.exactCandidateInstallers)throw new Error('deployment evidence browser/installer acceptance is incomplete');
+''')
+          once('tests/promotion-release-rehearsal.sh', r'''cp "$CANDIDATE_SHA_FILE" "$PUBLISHED/CANDIDATE_SHA"
+cmp -s "$PACKAGE" "$PUBLISHED/WeiG-qB-WebUI.zip"
+cmp -s "$SUMS" "$PUBLISHED/SHA256SUMS"
+cmp -s "$CANDIDATE_SHA_FILE" "$PUBLISHED/CANDIDATE_SHA"
+''', r'''cp "$CANDIDATE_SHA_FILE" "$PUBLISHED/CANDIDATE_SHA"
+cp "$LINUX_INSTALLER" "$PUBLISHED/weigg-install.sh"
+cp "$WINDOWS_INSTALLER" "$PUBLISHED/weigg-install.ps1"
+cmp -s "$PACKAGE" "$PUBLISHED/WeiG-qB-WebUI.zip"
+cmp -s "$SUMS" "$PUBLISHED/SHA256SUMS"
+cmp -s "$CANDIDATE_SHA_FILE" "$PUBLISHED/CANDIDATE_SHA"
+cmp -s "$LINUX_INSTALLER" "$PUBLISHED/weigg-install.sh"
+cmp -s "$WINDOWS_INSTALLER" "$PUBLISHED/weigg-install.ps1"
+''')
+          once('tests/promotion-release-rehearsal.sh', r'''    releaseArtifactByteIdentity:true,
+    simulatedRollbackRestoresMain:true,
+''', r'''    releaseArtifactByteIdentity:true,
+    releaseInstallerByteIdentity:true,
+    simulatedRollbackRestoresMain:true,
+''')
+
+          once('tests/release-candidate-evidence.mjs', "assert(evidence.schemaVersion===1,'candidate deployment evidence schemaVersion must be 1');", "assert(evidence.schemaVersion===2,'candidate deployment evidence schemaVersion must be 2');")
+          once('tests/release-candidate-evidence.mjs', r'''const deploymentChecks=[
+  'candidateSha','packageGitSha','packageSha256','installerReleasePath','officialDockerConfig',
+  'packedCatalog','installMetadata','qbConfigWrite','realWebuiServe','exactBuildSha',
+  'browserLogin','canonicalSettings','alternativeWebuiPath'
+];
+''', r'''const deploymentChecks=[
+  'candidateSha','packageGitSha','packageSha256','installerReleasePath','exactCandidateInstallers','officialDockerConfig',
+  'smallReleaseIndex','exactProfileShard','sourceProvenPreferences','installMetadata','qbConfigWrite','realWebuiServe','exactBuildSha',
+  'browserLogin','canonicalSettings','localeRoundTrip','alternativeWebuiPath'
+];
+''')
+          once('tests/release-candidate-evidence.mjs', r'''  'simulatedPromotionExactSha','simulatedReleaseTagExactSha','releaseArtifactByteIdentity',
+  'simulatedRollbackRestoresMain','remoteRefsUntouched'
+''', r'''  'simulatedPromotionExactSha','simulatedReleaseTagExactSha','releaseArtifactByteIdentity','releaseInstallerByteIdentity',
+  'simulatedRollbackRestoresMain','remoteRefsUntouched'
+''')
+
+          once('.github/workflows/promote.yml', r'''          test -f candidate/CANDIDATE_SHA
+          test -f evidence/candidate.json
+          test "$(tr -d '\r\n' < candidate/CANDIDATE_SHA)" = "$CANDIDATE_SHA"
+          (cd candidate && sha256sum -c SHA256SUMS)
+''', r'''          test -f candidate/CANDIDATE_SHA
+          test -f candidate/weigg-install.sh
+          test -f candidate/weigg-install.ps1
+          test -f evidence/candidate.json
+          test "$(tr -d '\r\n' < candidate/CANDIDATE_SHA)" = "$CANDIDATE_SHA"
+          (cd candidate && sha256sum -c SHA256SUMS)
+          cmp -s candidate/weigg-install.sh installers/install.sh
+          cmp -s candidate/weigg-install.ps1 installers/install.ps1
+          bash -n candidate/weigg-install.sh
+''')
+
+          once('.github/workflows/release.yml', r'''          test -f release/CANDIDATE_SHA
+          test -f evidence/candidate.json
+          test "$(tr -d '\r\n' < release/CANDIDATE_SHA)" = "$GITHUB_SHA"
+          (cd release && sha256sum -c SHA256SUMS)
+''', r'''          test -f release/CANDIDATE_SHA
+          test -f release/weigg-install.sh
+          test -f release/weigg-install.ps1
+          test -f evidence/candidate.json
+          test "$(tr -d '\r\n' < release/CANDIDATE_SHA)" = "$GITHUB_SHA"
+          (cd release && sha256sum -c SHA256SUMS)
+          cmp -s release/weigg-install.sh installers/install.sh
+          cmp -s release/weigg-install.ps1 installers/install.ps1
+          bash -n release/weigg-install.sh
+''')
+          once('.github/workflows/release.yml', r'''            release/WeiG-qB-WebUI.zip \
+            release/SHA256SUMS \
+            --verify-tag \
+''', r'''            release/WeiG-qB-WebUI.zip \
+            release/weigg-install.sh \
+            release/weigg-install.ps1 \
+            release/SHA256SUMS \
+            --verify-tag \
+''')
+
+          Path('.github/workflows/weigg-exact-candidate-installers.yml').unlink()
+          PY
+
+          git diff --check
+          bash -n tests/candidate-deployment.sh
+          bash -n tests/promotion-release-rehearsal.sh
+          bash -n installers/install.sh
+          node --check tests/release-candidate-evidence.mjs
+          grep -Fq 'sha256sum WeiG-qB-WebUI.zip weigg-install.sh weigg-install.ps1 > SHA256SUMS' .github/workflows/ci.yml
+          grep -Fq 'bash "$LINUX_INSTALLER" --version "$VERSION" --configure' tests/candidate-deployment.sh
+          grep -Fq "schemaVersion===2" tests/release-candidate-evidence.mjs
+          grep -Fq 'release/weigg-install.ps1' .github/workflows/release.yml
+
+      - name: Commit exact patched supply chain
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin dev
+          test "$(git rev-parse origin/dev)" = "$GITHUB_SHA"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --check
+          git diff --cached --quiet && { echo 'No changes to commit.' >&2; exit 1; }
+          git commit -m 'ci: seal exact-SHA candidate installers'
+          git push origin HEAD:dev
