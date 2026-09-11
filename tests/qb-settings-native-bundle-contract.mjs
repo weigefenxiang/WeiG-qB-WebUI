@@ -15,12 +15,12 @@ const base=(qbVersion,sourceSha,zhHash)=>({qbVersion,sourceSha,webuiLocales:[{va
 const catalog=[base('4.1.3',shaA,'old'),base('4.1.4',shaB,'old'),base('4.5.0',shaC,'old'),base('5.2.3',shaD,'new')];
 catalog[0].settingsTranslationSets=sets;
 const behavior={schemaVersion:1,families:{
-  qapp:{altWebuiTranslation:true,missingTranslationFallback:'qt-application-translator'},
+  'qapp-native':{altWebuiTranslation:true,missingTranslationFallback:'qt-application-translator'},
   strict:{altWebuiTranslation:true,missingTranslationFallback:'none-explicit'},
   disabled:{altWebuiTranslation:false,missingTranslationFallback:'explicit-source'},
   dedicated:{altWebuiTranslation:true,missingTranslationFallback:'explicit-source'}
 },profiles:[
-  {qbVersion:'4.1.3',sourceSha:shaA,family:'qapp'},
+  {qbVersion:'4.1.3',sourceSha:shaA,family:'qapp-native'},
   {qbVersion:'4.1.4',sourceSha:shaB,family:'strict'},
   {qbVersion:'4.5.0',sourceSha:shaC,family:'disabled'},
   {qbVersion:'5.2.3',sourceSha:shaD,family:'dedicated'}
