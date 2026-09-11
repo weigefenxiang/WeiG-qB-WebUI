@@ -87,7 +87,7 @@ function Find-QBConfig {
   if($env:ProgramData){$candidates += (Join-Path $env:ProgramData 'qBittorrent\qBittorrent.ini')}
   foreach($p in $candidates){ if($p -and (Test-Path $p)){ return $p } }
   foreach($root in @($env:USERPROFILE,$PWD.Path)){
-    if(!$root-or!(Test-Path $root)){continue}
+    if(!$root -or !(Test-Path $root)){continue}
     $found=Get-ChildItem $root -Filter 'qBittorrent.ini' -File -Recurse -Depth 5 -ErrorAction SilentlyContinue | Select-Object -First 1
     if($found){return $found.FullName}
   }
