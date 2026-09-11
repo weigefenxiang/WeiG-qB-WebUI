@@ -57,18 +57,23 @@ export function buildWebuiDist({webuiRoot,catalogPath,outDir,sha,version}){
   fs.writeFileSync(path.join(outDir,'GIT_SHA'),`${sha}\n`,'utf8');
   fs.writeFileSync(path.join(outDir,'VERSION'),`${version}\n`,'utf8');
 
-  // Dev users must not bootstrap through the stable main installer while main is
-  // intentionally behind dev. Publish the exact dev Windows installer beside the
-  // exact-SHA materialized payload. The installer itself still resolves dev HEAD
-  // and refuses installation unless this Pages distribution has caught up to it.
+  // Dev users must not bootstrap through a stable branch installer while main is
+  // intentionally behind dev. Publish both exact dev installers beside the exact-SHA
+  // materialized payload. Each installer resolves dev HEAD and refuses installation
+  // unless this Pages distribution has caught up to it.
+  const linuxInstallerSource=path.join(projectRoot,'installers/install.sh');
+  const linuxInstallerTarget=path.join(outDir,'install.sh');
   const windowsInstallerSource=path.join(projectRoot,'installers/install.ps1');
   const windowsInstallerTarget=path.join(outDir,'install.ps1');
+  assert(fs.existsSync(linuxInstallerSource),'Canonical Linux installer is missing.');
   assert(fs.existsSync(windowsInstallerSource),'Canonical Windows installer is missing.');
+  fs.copyFileSync(linuxInstallerSource,linuxInstallerTarget);
+  fs.chmodSync(linuxInstallerTarget,0o755);
   fs.copyFileSync(windowsInstallerSource,windowsInstallerTarget);
 
-  fs.writeFileSync(path.join(outDir,'manifest.json'),JSON.stringify({schemaVersion:2,kind:'materialized-webui-dist',gitSha:sha,version,profiles:runtimeCatalog.length,qmAssets:qms.length,nativeRegistry:true,packedCatalogBytes:packed.packedBytes,windowsInstaller:'install.ps1'},null,2)+'\n','utf8');
+  fs.writeFileSync(path.join(outDir,'manifest.json'),JSON.stringify({schemaVersion:2,kind:'materialized-webui-dist',gitSha:sha,version,profiles:runtimeCatalog.length,qmAssets:qms.length,nativeRegistry:true,packedCatalogBytes:packed.packedBytes,linuxInstaller:'install.sh',windowsInstaller:'install.ps1'},null,2)+'\n','utf8');
   fs.rmSync(stage,{recursive:true,force:true});
-  return{zipPath,digest,profiles:runtimeCatalog.length,qmAssets:qms.length,windowsInstaller:windowsInstallerTarget};
+  return{zipPath,digest,profiles:runtimeCatalog.length,qmAssets:qms.length,linuxInstaller:linuxInstallerTarget,windowsInstaller:windowsInstallerTarget};
 }
 
 const isMain=process.argv[1]&&path.resolve(process.argv[1])===path.resolve(fileURLToPath(import.meta.url));
@@ -81,6 +86,6 @@ if(isMain){
       sha:required('sha'),
       version:required('version')
     });
-    console.log(`Built materialized WebUI distribution: ${result.profiles} profiles, ${result.qmAssets} QM assets, exact dev Windows installer, sha256 ${result.digest}`);
+    console.log(`Built materialized WebUI distribution: ${result.profiles} profiles, ${result.qmAssets} QM assets, exact dev Linux/Windows installers, sha256 ${result.digest}`);
   }catch(error){console.error(error?.stack||error);process.exit(1);}
 }

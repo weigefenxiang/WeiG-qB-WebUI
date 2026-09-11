@@ -34,7 +34,10 @@ assert.match(sh,/SHA256SUMS/,'Linux Release installs must remain checksum-verifi
 assert.match(sh,/--channel=release\|dev/,'Linux installer must keep the old channel syntax as a compatibility alias');
 assert.match(sh,/--dir=\/path/,'Linux installer must keep the old path syntax as a compatibility alias');
 assert.match(sh,/api\.github\.com\/repos\/\$REPO\/commits\/dev/,'Linux dev channel must resolve the current dev exact SHA');
-assert.match(sh,/archive\/\$SOURCE_SHA\.zip/,'Linux dev channel currently downloads an exact-SHA source archive');
+assert.match(sh,/DEV_DIST_BASE="https:\/\/weigefenxiang\.github\.io\/WeiG-qB-WebUI\/downloads\/dev"/,'Linux Dev channel must consume the canonical public materialized payload');
+assert.match(sh,/PUBLISHED_SHA.*SOURCE_SHA|SOURCE_SHA.*PUBLISHED_SHA/s,'Linux Dev channel must bind the public materialized payload to the current exact dev SHA');
+assert.match(sh,/assert_materialized_webui/,'Linux installer must validate materialized catalog and qB translation runtime assets');
+assert.doesNotMatch(sh,/archive\/\$SOURCE_SHA\.zip/,'Linux Dev channel must not fall back to a raw source archive');
 for(const token of ['download_file','extract_zip','sha256_file','busybox wget','busybox unzip','python3 -m zipfile','openssl dgst -sha256'])assert.ok(sh.includes(token),`Linux portable installer fallback missing ${token}`);
 assert.doesNotMatch(sh,/archive\/refs\/heads\/main\.zip/,'Linux Release channel must fail closed instead of falling back to main');
 assert.doesNotMatch(sh,/resolve_main_sha/,'Linux Release channel must not resolve main as a payload source');
@@ -94,4 +97,4 @@ for(const [name,html] of [['public/index.html',publicIndex],['public/login.html'
 }
 assert.match(privateIndex,/scripts\/qb-client\.js/,'private WebUI must load the shared API compatibility client');
 
-console.log('Platform contract passed: Windows Dev consumes an exact-SHA materialized qB-aware translation payload, Windows qB config mutation preserves original text encoding, Windows/Linux installers preserve simplified version/dev/output/configure/rollback semantics and legacy aliases, and LIVE rollback retention remains capped at three backups.');
+console.log('Platform contract passed: Linux/Windows Dev consume one exact-SHA materialized qB-aware translation payload with raw-source fallback forbidden, Windows qB config mutation preserves original text encoding, installers preserve simplified version/dev/output/configure/rollback semantics and legacy aliases, and LIVE rollback retention remains capped at three backups.');

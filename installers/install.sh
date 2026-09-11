@@ -2,6 +2,7 @@
 set -eu
 
 REPO="weigefenxiang/WeiG-qB-WebUI"
+DEV_DIST_BASE="https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev"
 DEFAULT_DEST="${HOME}/.local/share/weigg-qb-webui"
 DEST="${WEIGG_QB_WEBUI_DIR:-$DEFAULT_DEST}"
 REQUESTED_DEST="$DEST"
@@ -281,6 +282,18 @@ verify_release_checksum() {
   actual=$(printf '%s' "$actual" | tr 'A-F' 'a-f')
   [ "$expected" = "$actual" ] || { echo "SHA256 verification failed." >&2; return 1; }
   echo "SHA256 verified: $actual"
+}
+
+assert_materialized_webui() {
+  root=$1
+  catalog="$root/private/data/qb-releases.json"
+  registry="$root/private/data/qb-settings-native.txt"
+  translations="$root/translations"
+  [ -s "$catalog" ] || { echo "Materialized WebUI is missing qb-releases.json." >&2; return 1; }
+  grep -Eq '"qbVersion"[[:space:]]*:' "$catalog" || { echo "Materialized WebUI release catalog is empty or invalid." >&2; return 1; }
+  [ -s "$registry" ] || { echo "Materialized WebUI is missing the native Settings QBT_TR registry." >&2; return 1; }
+  [ -d "$translations" ] || { echo "Materialized WebUI is missing the translations directory." >&2; return 1; }
+  find "$translations" -maxdepth 1 -type f -name 'webui_*.qm' -print -quit | grep -q . || { echo "Materialized WebUI is missing official qB WebUI translation QM assets." >&2; return 1; }
 }
 
 inject_build_sha() {
@@ -721,13 +734,29 @@ else
   download_file "https://api.github.com/repos/$REPO/commits/dev" "$DEV_META" || { echo "Unable to resolve the current dev commit." >&2; exit 1; }
   SOURCE_SHA=$(sed -n 's/^[[:space:]]*"sha":[[:space:]]*"\([0-9a-fA-F]\{40\}\)".*/\1/p' "$DEV_META" | head -n1)
   valid_sha "$SOURCE_SHA" || { echo "GitHub did not return a valid dev commit SHA." >&2; exit 1; }
-  DEV_URL="https://github.com/$REPO/archive/$SOURCE_SHA.zip"
-  download_file "$DEV_URL" "$PACKAGE" || { echo "Unable to download dev exact SHA $SOURCE_SHA." >&2; exit 1; }
+
+  PUBLISHED_SHA_FILE="$TMP/DEV_GIT_SHA"
+  download_file "$DEV_DIST_BASE/GIT_SHA" "$PUBLISHED_SHA_FILE" || {
+    echo "The materialized dev WebUI payload is not published yet. Wait for Virtual qB Pages to finish and retry." >&2
+    exit 1
+  }
+  PUBLISHED_SHA=$(tr -d '\r\n' < "$PUBLISHED_SHA_FILE")
+  [ "$PUBLISHED_SHA" = "$SOURCE_SHA" ] || {
+    echo "The materialized dev payload is still at $PUBLISHED_SHA while dev is $SOURCE_SHA. Wait for the exact-SHA Pages build and retry; refusing raw-source fallback." >&2
+    exit 1
+  }
+
+  download_file "$DEV_DIST_BASE/WeiG-qB-WebUI.zip" "$PACKAGE" || { echo "Unable to download the materialized dev payload for exact SHA $SOURCE_SHA." >&2; exit 1; }
+  download_file "$DEV_DIST_BASE/SHA256SUMS" "$TMP/SHA256SUMS" || { echo "Materialized dev payload is missing SHA256SUMS; refusing installation." >&2; exit 1; }
+  [ -s "$TMP/SHA256SUMS" ] || { echo "Materialized dev SHA256SUMS is empty; refusing installation." >&2; exit 1; }
+  verify_release_checksum "$TMP/SHA256SUMS" "$PACKAGE"
   extract_zip "$PACKAGE" "$TMP/dev"
-  entry=$(find "$TMP/dev" -type f -path '*/webui/public/index.html' -print 2>/dev/null | head -n1 || true)
-  [ -n "$entry" ] || { echo "dev source archive does not contain webui/public/index.html." >&2; exit 1; }
-  SRC=$(dirname "$(dirname "$entry")")
-  echo "Source: dev exact SHA $SOURCE_SHA (development channel; no Release checksum)"
+  SRC="$TMP/dev/WeiG-qB-WebUI"
+  [ -d "$SRC" ] || { echo "Materialized dev payload does not contain WeiG-qB-WebUI." >&2; exit 1; }
+  PACKAGE_SHA=$(tr -d '\r\n' < "$SRC/GIT_SHA" 2>/dev/null || true)
+  [ "$PACKAGE_SHA" = "$SOURCE_SHA" ] || { echo "Dev package Git SHA $PACKAGE_SHA does not match requested dev SHA $SOURCE_SHA." >&2; exit 1; }
+  assert_materialized_webui "$SRC" || exit 1
+  echo "Source: dev exact SHA $SOURCE_SHA (materialized Pages payload; checksum verified)"
 fi
 
 [ -n "$SRC" ] && [ -d "$SRC" ] || { echo "WebUI payload not found." >&2; exit 1; }
