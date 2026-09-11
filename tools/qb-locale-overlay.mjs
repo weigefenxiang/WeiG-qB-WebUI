@@ -15,6 +15,56 @@ function localeValues(value){
 }
 function localeObjects(value){return localeValues(value).map(value=>({value,label:null}));}
 function sha256Bytes(bytes){return crypto.createHash('sha256').update(bytes).digest('hex');}
+function numeric(value){const n=Number(value);return Number.isFinite(n)?n:0;}
+
+// Frozen LKG profiles predate semantic parsing of Preferences::getLocale(). Their
+// setter side is already source-proven as QString, but the unresolved getter type
+// makes the simulator fail closed and reject locale writes. qBittorrent exposes
+// QString Preferences::getLocale() / setLocale(const QString&) across the supported
+// range, so repair only this exact preference when the frozen setter evidence agrees.
+export function repairLocalePreferenceSemantics(profile){
+  const descriptors=Array.isArray(profile?.preferenceDescriptors)?profile.preferenceDescriptors:null;
+  if(!descriptors)return profile;
+  const index=descriptors.findIndex(item=>item&&String(item.key)==='locale');
+  if(index<0)return profile;
+  const current=descriptors[index]||{};
+  if(current.getterPresent!==true||current.setterPresent!==true||current.writeType!=='string'){
+    throw new Error(`${profileKey(profile)||'unknown'}: locale preference lacks the required source-proven getter/setter string contract.`);
+  }
+  if(current.readType&&current.readType!=='string')throw new Error(`${profileKey(profile)||'unknown'}: locale getter type conflicts with qBittorrent Preferences::getLocale().`);
+  if(current.typeAgreement==='MISMATCH')throw new Error(`${profileKey(profile)||'unknown'}: locale descriptor has a read/write type conflict.`);
+  if(current.readType==='string'&&current.typeAgreement==='EXACT'&&current.writable===true)return profile;
+
+  const nextDescriptor={
+    ...current,
+    type:'string',
+    readType:'string',
+    writeType:'string',
+    getterKind:'PREFERENCES_DECLARATION',
+    getterSource:'UPSTREAM_GETTER',
+    getterConfidence:'HIGH',
+    typeAgreement:'EXACT',
+    writable:true,
+    source:'UPSTREAM_GETTER_SETTER',
+    sourceConfidence:'HIGH',
+    semanticGetterEnriched:true,
+    localeSemanticSource:'src/base/preferences.h:Preferences::getLocale'
+  };
+  const nextDescriptors=descriptors.slice();
+  nextDescriptors[index]=nextDescriptor;
+
+  let stats=profile?.preferenceDescriptorStats;
+  if(stats&&typeof stats==='object'){
+    stats={...stats};
+    if(!current.readType){
+      stats.readTyped=numeric(stats.readTyped)+1;
+      stats.unresolvedRead=Math.max(0,numeric(stats.unresolvedRead)-1);
+    }
+    if(current.typeAgreement!=='EXACT')stats.exactAgreement=numeric(stats.exactAgreement)+1;
+    if(current.semanticGetterEnriched!==true)stats.semanticGetterEnriched=numeric(stats.semanticGetterEnriched)+1;
+  }
+  return{...profile,preferenceDescriptors:nextDescriptors,...(stats?{preferenceDescriptorStats:stats}:{})};
+}
 
 export function extractLocaleOverlay(catalog,metadata={}){
   if(!Array.isArray(catalog)||!catalog.length)throw new Error('Source catalog must be a non-empty array.');
@@ -45,7 +95,7 @@ export function applyLocaleOverlay(catalog,overlay,{catalogSha256=''}={}){
   if(!overlay||overlay.schemaVersion!==1||!overlay.localeSets||typeof overlay.localeSets!=='object'||!Array.isArray(overlay.profiles))throw new Error('Locale overlay must use schemaVersion 1 with localeSets and profiles.');
   if(Number(overlay.profileCount)!==catalog.length||overlay.profiles.length!==catalog.length)throw new Error(`Locale overlay profile count mismatch: ${overlay.profiles.length}/${overlay.profileCount} != ${catalog.length}`);
   if(profileKey(catalog[0])!==String(overlay.supportFloor||''))throw new Error(`Locale overlay support floor mismatch: ${overlay.supportFloor} != ${profileKey(catalog[0])}`);
-  if(profileKey(catalog.at(-1))!==String(overlay.latestAdmittedStable||''))throw new Error(`Locale overlay latest stable mismatch: ${overlay.latestAdmittedStable} != ${profileKey(catalog.at(-1))}`);
+  if(profileKey(catalog.at(-1))!==String(overlay.latestAdmittedStable||''))throw new Error(`Locale overlay latest stable mismatch: ${overlay.latestAdmittedStable} != ${profileKey(catalog.at(-1])}`);
   if(catalogSha256&&String(overlay.baseCatalogSha256||'')!==catalogSha256)throw new Error(`Locale overlay base catalog SHA-256 mismatch: ${overlay.baseCatalogSha256||'missing'} != ${catalogSha256}`);
   const byVersion=new Map(overlay.profiles.map(profile=>[profileKey(profile),profile]));
   if(byVersion.size!==overlay.profiles.length)throw new Error('Locale overlay contains duplicate qB versions.');
@@ -55,7 +105,7 @@ export function applyLocaleOverlay(catalog,overlay,{catalogSha256=''}={}){
     if(String(fact.sourceSha||'')!==String(profile.sourceSha||''))throw new Error(`${qbVersion}: locale overlay source SHA mismatch.`);
     const setName=String(fact.localeSet||''),webuiLocales=localeObjects(overlay.localeSets[setName]);
     if(!setName||!webuiLocales.length)throw new Error(`${qbVersion}: locale overlay set ${setName||'missing'} is unresolved.`);
-    return{...profile,webuiLocaleSource:String(fact.source||'unresolved'),webuiLocales};
+    return repairLocalePreferenceSemantics({...profile,webuiLocaleSource:String(fact.source||'unresolved'),webuiLocales});
   });
 }
 
