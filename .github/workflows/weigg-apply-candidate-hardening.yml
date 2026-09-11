@@ -52,6 +52,14 @@ jobs:
           block = block.replace('$cfg', '$validate_cfg')
           sh = sh[:start] + block + sh[end:]
           sh_path.write_text(sh, encoding='utf-8')
+
+          platform_path = Path('tests/platform-contract.mjs')
+          platform = platform_path.read_text(encoding='utf-8')
+          old_platform = r"assert.match(sh,/WebUI\\\\RootFolder=%s/,'Linux installer must persist qB-visible RootFolder');"
+          new_platform = r"assert.match(sh,/WebUI\\\\RootFolder=/,'Linux installer must persist qB-visible RootFolder');"
+          if platform.count(old_platform) != 1:
+              raise SystemExit(f'expected one legacy Linux RootFolder source-shape assertion, found {platform.count(old_platform)}')
+          platform_path.write_text(platform.replace(old_platform, new_platform), encoding='utf-8')
           PY
           rm -f .weigg-apply/patch-candidate-hardening.py
           rm -f .github/workflows/weigg-fix-windows-fixture.yml
@@ -110,6 +118,14 @@ jobs:
           block = block.replace('$cfg', '$validate_cfg')
           sh = sh[:start] + block + sh[end:]
           sh_path.write_text(sh, encoding='utf-8')
+
+          platform_path = Path('tests/platform-contract.mjs')
+          platform = platform_path.read_text(encoding='utf-8')
+          old_platform = r"assert.match(sh,/WebUI\\\\RootFolder=%s/,'Linux installer must persist qB-visible RootFolder');"
+          new_platform = r"assert.match(sh,/WebUI\\\\RootFolder=/,'Linux installer must persist qB-visible RootFolder');"
+          if platform.count(old_platform) != 1:
+              raise SystemExit(f'expected one legacy Linux RootFolder source-shape assertion, found {platform.count(old_platform)}')
+          platform_path.write_text(platform.replace(old_platform, new_platform), encoding='utf-8')
           PY
           rm -f .weigg-apply/patch-candidate-hardening.py
           rm -f .github/workflows/weigg-fix-windows-fixture.yml
@@ -172,6 +188,14 @@ jobs:
           block = block.replace('$cfg', '$validate_cfg')
           sh = sh[:start] + block + sh[end:]
           sh_path.write_text(sh, encoding='utf-8')
+
+          platform_path = Path('tests/platform-contract.mjs')
+          platform = platform_path.read_text(encoding='utf-8')
+          old_platform = r"assert.match(sh,/WebUI\\\\RootFolder=%s/,'Linux installer must persist qB-visible RootFolder');"
+          new_platform = r"assert.match(sh,/WebUI\\\\RootFolder=/,'Linux installer must persist qB-visible RootFolder');"
+          if platform.count(old_platform) != 1:
+              raise SystemExit(f'expected one legacy Linux RootFolder source-shape assertion, found {platform.count(old_platform)}')
+          platform_path.write_text(platform.replace(old_platform, new_platform), encoding='utf-8')
           PY
           rm -f .weigg-apply/patch-candidate-hardening.py
           rm -f .github/workflows/weigg-fix-windows-fixture.yml
