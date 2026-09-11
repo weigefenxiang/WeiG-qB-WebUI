@@ -1,4 +1,4 @@
-name: Render exact-SHA candidate installer supply chain
+name: Assemble exact-SHA candidate installer supply chain
 
 on:
   push:
@@ -10,14 +10,16 @@ permissions:
   contents: write
 
 jobs:
-  render:
+  assemble:
     runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      - name: Verify staging contains no product changes
+      - name: Verify validated render staging
         shell: bash
         run: |
           set -euo pipefail
@@ -27,53 +29,50 @@ jobs:
           git diff --quiet 6458bed31fefb44c9ab0b7dca6dccb02b7a117ed "$GITHUB_SHA" -- . \
             ':(exclude).github/workflows/weigg-exact-candidate-installers.yml' \
             ':(exclude).weigg-apply/**'
-          test -s .weigg-apply/exact_candidate_patch.py
-
-      - name: Patch, validate, and render exact files
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 .weigg-apply/exact_candidate_patch.py
-          git diff --check
-          bash -n tests/candidate-deployment.sh
-          bash -n tests/promotion-release-rehearsal.sh
-          bash -n installers/install.sh
-          node --check tests/release-candidate-evidence.mjs
-          grep -Fq 'sha256sum WeiG-qB-WebUI.zip weigg-install.sh weigg-install.ps1 > SHA256SUMS' .github/workflows/ci.yml
-          grep -Fq 'bash "$LINUX_INSTALLER" --version "$VERSION" --configure' tests/candidate-deployment.sh
-          grep -Fq 'exactCandidateInstallers:true' tests/candidate-deployment.sh
-          grep -Fq 'releaseInstallerByteIdentity:true' tests/promotion-release-rehearsal.sh
-          grep -Fq "schemaVersion===2" tests/release-candidate-evidence.mjs
-          grep -Fq 'candidate/weigg-install.ps1' .github/workflows/promote.yml
-          grep -Fq 'release/weigg-install.ps1' .github/workflows/release.yml
-          rm -rf "$RUNNER_TEMP/weigg-rendered"
-          mkdir -p "$RUNNER_TEMP/weigg-rendered"
-          cp .github/workflows/ci.yml "$RUNNER_TEMP/weigg-rendered/ci.yml"
-          cp .github/workflows/promote.yml "$RUNNER_TEMP/weigg-rendered/promote.yml"
-          cp .github/workflows/release.yml "$RUNNER_TEMP/weigg-rendered/release.yml"
-          cp tests/candidate-deployment.sh "$RUNNER_TEMP/weigg-rendered/candidate-deployment.sh"
-          cp tests/promotion-release-rehearsal.sh "$RUNNER_TEMP/weigg-rendered/promotion-release-rehearsal.sh"
-          cp tests/release-candidate-evidence.mjs "$RUNNER_TEMP/weigg-rendered/release-candidate-evidence.mjs"
-          sha256sum "$RUNNER_TEMP"/weigg-rendered/*
-
-          git reset --hard "$GITHUB_SHA"
-          rm -rf .weigg-apply/rendered
-          mkdir -p .weigg-apply/rendered
-          for file in "$RUNNER_TEMP"/weigg-rendered/*; do
-            name=$(basename "$file")
-            base64 -w0 "$file" > ".weigg-apply/rendered/$name.b64"
-            sha256sum "$file" | awk '{print $1}' > ".weigg-apply/rendered/$name.sha256"
+          for name in ci.yml promote.yml release.yml candidate-deployment.sh promotion-release-rehearsal.sh release-candidate-evidence.mjs; do
+            test -s ".weigg-apply/rendered/$name.b64"
+            test -s ".weigg-apply/rendered/$name.sha256"
+            base64 -d ".weigg-apply/rendered/$name.b64" > "$RUNNER_TEMP/$name"
+            test "$(sha256sum "$RUNNER_TEMP/$name" | awk '{print $1}')" = "$(tr -d '\r\n' < ".weigg-apply/rendered/$name.sha256")"
           done
+          bash -n "$RUNNER_TEMP/candidate-deployment.sh"
+          bash -n "$RUNNER_TEMP/promotion-release-rehearsal.sh"
+          node --check "$RUNNER_TEMP/release-candidate-evidence.mjs"
 
-      - name: Push only validated render staging data
+      - name: Create unattached exact final Git commit
+        id: final
         shell: bash
         run: |
           set -euo pipefail
-          git fetch origin dev
-          test "$(git rev-parse origin/dev)" = "$GITHUB_SHA"
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add .weigg-apply/rendered
-          git diff --cached --quiet && { echo 'No rendered files to stage.' >&2; exit 1; }
-          git commit -m 'chore: stage validated supply-chain render'
-          git push origin HEAD:dev
+          entries='[]'
+          add_blob() {
+            local staged="$1" target="$2" mode blob payload
+            mode=$(git ls-files -s "$target" | awk '{print $1}')
+            test -n "$mode"
+            jq -n --arg content "$(cat ".weigg-apply/rendered/$staged.b64")" '{content:$content,encoding:"base64"}' > "$RUNNER_TEMP/blob.json"
+            blob=$(gh api --method POST "repos/$GITHUB_REPOSITORY/git/blobs" --input "$RUNNER_TEMP/blob.json" --jq .sha)
+            test "$blob" = "$(git hash-object "$RUNNER_TEMP/$staged")"
+            entries=$(jq -c --arg path "$target" --arg mode "$mode" --arg sha "$blob" '. + [{path:$path,mode:$mode,type:"blob",sha:$sha}]' <<<"$entries")
+          }
+          add_blob ci.yml .github/workflows/ci.yml
+          add_blob promote.yml .github/workflows/promote.yml
+          add_blob release.yml .github/workflows/release.yml
+          add_blob candidate-deployment.sh tests/candidate-deployment.sh
+          add_blob promotion-release-rehearsal.sh tests/promotion-release-rehearsal.sh
+          add_blob release-candidate-evidence.mjs tests/release-candidate-evidence.mjs
+
+          while IFS= read -r path; do
+            test -n "$path" || continue
+            mode=$(git ls-files -s "$path" | awk '{print $1}')
+            entries=$(jq -c --arg path "$path" --arg mode "$mode" '. + [{path:$path,mode:$mode,type:"blob",sha:null}]' <<<"$entries")
+          done < <(printf '%s\n' '.github/workflows/weigg-exact-candidate-installers.yml'; git ls-files .weigg-apply)
+
+          base_tree=$(git rev-parse "$GITHUB_SHA^{tree}")
+          jq -n --arg base "$base_tree" --argjson tree "$entries" '{base_tree:$base,tree:$tree}' > "$RUNNER_TEMP/tree.json"
+          tree_sha=$(gh api --method POST "repos/$GITHUB_REPOSITORY/git/trees" --input "$RUNNER_TEMP/tree.json" --jq .sha)
+          jq -n --arg message 'ci: seal exact-SHA candidate installers' --arg tree "$tree_sha" --arg parent "$GITHUB_SHA" '{message:$message,tree:$tree,parents:[$parent]}' > "$RUNNER_TEMP/commit.json"
+          final_sha=$(gh api --method POST "repos/$GITHUB_REPOSITORY/git/commits" --input "$RUNNER_TEMP/commit.json" --jq .sha)
+          test -n "$final_sha"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/commits/$final_sha" --jq .parents[0].sha)" = "$GITHUB_SHA"
+          printf 'FINAL_TREE_SHA=%s\n' "$tree_sha"
+          printf 'FINAL_COMMIT_SHA=%s\n' "$final_sha"
