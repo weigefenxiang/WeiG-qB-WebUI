@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {applyLocaleOverlay,extractLocaleOverlay} from '../tools/qb-locale-overlay.mjs';
+import {applyLocaleOverlay,extractLocaleOverlay,repairLocalePreferenceSemantics} from '../tools/qb-locale-overlay.mjs';
 
 const base=[
   {qbVersion:'4.1.0',sourceSha:'aaa',preferenceKeys:['locale']},
@@ -30,4 +30,27 @@ assert.throws(()=>applyLocaleOverlay(base,{...overlay,profileCount:2,profiles:ov
 assert.throws(()=>applyLocaleOverlay(base,overlay,{catalogSha256:'bad'}),/base catalog SHA-256 mismatch/);
 assert.throws(()=>applyLocaleOverlay(base,{...overlay,localeSets:{...overlay.localeSets,s2:[]}},{catalogSha256:'deadbeef'}),/locale overlay set s2 is unresolved/i);
 
-console.log('qB locale overlay contract passed: source-SHA/base-catalog binding, deduplicated exact locale sets and Frozen LKG immutability are enforced.');
+const unresolvedLocale={
+  qbVersion:'5.2.3',
+  preferenceDescriptors:[{
+    key:'locale',type:'string',readType:null,writeType:'string',getterPresent:true,setterPresent:true,
+    getterKind:'UNKNOWN',setterKind:'STRING',getterSource:'UPSTREAM_GETTER',setterSource:'UPSTREAM_SETTER',
+    getterConfidence:'UNRESOLVED',setterConfidence:'HIGH',typeAgreement:'READ_UNRESOLVED',writable:true,
+    source:'UPSTREAM_SETTER',sourceConfidence:'HIGH'
+  }],
+  preferenceDescriptorStats:{readTyped:100,unresolvedRead:20,exactAgreement:90,semanticGetterEnriched:4}
+};
+const repaired=repairLocalePreferenceSemantics(unresolvedLocale);
+const locale=repaired.preferenceDescriptors[0];
+assert.equal(locale.readType,'string','Preferences::getLocale() must restore exact string read semantics');
+assert.equal(locale.writeType,'string');
+assert.equal(locale.typeAgreement,'EXACT');
+assert.equal(locale.writable,true,'Locale must remain writable after source-backed read-type repair');
+assert.equal(locale.getterKind,'PREFERENCES_DECLARATION');
+assert.equal(locale.getterConfidence,'HIGH');
+assert.equal(locale.localeSemanticSource,'src/base/preferences.h:Preferences::getLocale');
+assert.deepEqual(repaired.preferenceDescriptorStats,{readTyped:101,unresolvedRead:19,exactAgreement:91,semanticGetterEnriched:5});
+assert.equal(unresolvedLocale.preferenceDescriptors[0].readType,null,'Locale semantic repair must not mutate Frozen LKG input');
+assert.throws(()=>repairLocalePreferenceSemantics({...unresolvedLocale,preferenceDescriptors:[{...unresolvedLocale.preferenceDescriptors[0],writeType:'number'}]}),/required source-proven getter\/setter string contract/);
+
+console.log('qB locale overlay contract passed: source-SHA/base-catalog binding, deduplicated exact locale sets, Frozen LKG immutability and source-backed writable locale semantics are enforced.');
