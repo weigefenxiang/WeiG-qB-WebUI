@@ -58,15 +58,43 @@ async function setVerifiedLocale(page,target){
   const current=await page.evaluate(()=>window.WeiG?.I18n?.getQbLocale?.()||'');
   if(current===target)return false;
   await openSettings(page);
+
+  const before=await page.evaluate(()=>{
+    const row=document.querySelector('[data-setting-key="weigg_language"]');
+    const control=row?.querySelector('.ui-select');
+    const trigger=row?.querySelector('.ui-select__trigger');
+    const draft=window.WeiG?.SettingsState?.draft||{};
+    const prefs=window.WeiG?.SettingsState?.prefs||{};
+    const value=Object.prototype.hasOwnProperty.call(draft,'locale')?draft.locale:prefs.locale;
+    return{
+      value:control?.getValue?.()||'',
+      disabled:!!trigger?.disabled,
+      writable:window.WeiG?.SettingsSchema?.isWritable?.('locale',value)===true
+    };
+  });
+  assert.equal(before.disabled,false,`${target}: Language UI control must be enabled`);
+  assert.equal(before.writable,true,`${target}: Locale must be writable through SettingsSchema before user interaction`);
+
+  const trigger=page.locator('[data-setting-key="weigg_language"] .ui-select__trigger');
+  await trigger.click();
+  const option=page.locator(`.ui-select__menu:not([hidden]) .ui-select__option[data-value="${target}"]`);
+  await option.waitFor({state:'visible',timeout:30000});
+  await option.click();
+
+  const drafted=await page.evaluate(()=>{
+    const row=document.querySelector('[data-setting-key="weigg_language"]');
+    const control=row?.querySelector('.ui-select');
+    return{value:control?.getValue?.()||'',draft:window.WeiG?.SettingsState?.draft?.locale||''};
+  });
+  assert.equal(drafted.value,target,`${target}: user-selected Language control value must update before save`);
+  assert.equal(drafted.draft,target,`${target}: user-selected Language control must update the qB locale draft`);
+
   const navigation=page.waitForNavigation({waitUntil:'domcontentloaded',timeout:30000});
-  await page.evaluate(locale=>{
-    if(!window.WeiG?.SettingsState?.draft)throw new Error('WeiG Settings draft is unavailable');
-    window.WeiG.SettingsState.draft.locale=locale;
-    void window.WeiG.SettingsRenderer.save();
-  },target);
+  await page.locator('#save-settings-btn').click();
   await navigation;
   await page.waitForSelector('#torrent-list',{state:'attached',timeout:60000});
-  await page.waitForFunction(locale=>window.WeiG?.I18n?.getQbLocale?.()===locale, target,{timeout:30000});
+  await page.waitForFunction(locale=>window.WeiG?.I18n?.getQbLocale?.()===locale,target,{timeout:30000});
+
   const persisted=await page.evaluate(async()=>{
     const response=await fetch('api/v2/app/preferences',{cache:'no-store'});
     const prefs=await response.json();
@@ -75,6 +103,16 @@ async function setVerifiedLocale(page,target){
   assert.equal(persisted.status,200,`${target} preferences reread must succeed after reload`);
   assert.equal(persisted.locale,target,`${target} must persist in qB preferences.locale`);
   assert.equal(persisted.qbLocale,target,`${target} must become the runtime qB locale after reload`);
+
+  await openSettings(page);
+  const reopened=await page.evaluate(()=>{
+    const row=document.querySelector('[data-setting-key="weigg_language"]');
+    const control=row?.querySelector('.ui-select');
+    const trigger=row?.querySelector('.ui-select__trigger');
+    return{value:control?.getValue?.()||'',disabled:!!trigger?.disabled};
+  });
+  assert.equal(reopened.disabled,false,`${target}: Language UI control must remain enabled after reload`);
+  assert.equal(reopened.value,target,`${target}: reopening Settings must show the persisted qB locale selection`);
   return true;
 }
 
@@ -95,7 +133,7 @@ async function verifyDevLocale(browserPage){
     const prefs=await response.json();
     return{status:response.status,locale:prefs.locale,qbLocale:window.WeiG?.I18n?.getQbLocale?.(),lang:document.documentElement.lang};
   });
-  assert.deepEqual(verified,{status:200,locale:'zh_CN',qbLocale:'zh_CN',lang:'zh-CN'},'English-to-Simplified-Chinese locale transition must persist through qB preferences, reload, and runtime projection');
+  assert.deepEqual(verified,{status:200,locale:'zh_CN',qbLocale:'zh_CN',lang:'zh-CN'},'English-to-Simplified-Chinese locale transition must persist through qB preferences, reload, runtime projection, and a reopened Settings control');
 }
 
 async function verifyBranchEntry(browser,{branch,entryPath,branchSha,label}){
@@ -188,7 +226,7 @@ try{
   await verifyBranchEntry(browser,{branch:'dev',entryPath:'dev/',branchSha:site.branches.dev.exactSha,label:'/dev/'});
   await verifyBranchEntry(browser,{branch:'main',entryPath:'main',branchSha:site.branches.main.exactSha,label:'/main'});
   await verifyLabEntry(browser,site);
-  console.log(`Virtual qB Pages entry acceptance passed for ${expectedSha}: /dev/, /main and /lab/ render cleanly, locale variants remain distinct and Simplified Chinese persists through verified reload, direct snapshot entries resolve correctly, routing semantics are preserved, and each entry resolves to its exact published snapshot.`);
+  console.log(`Virtual qB Pages entry acceptance passed for ${expectedSha}: /dev/, /main and /lab/ render cleanly, the real Language dropdown and Save button persist Simplified Chinese through reload and reopened Settings, locale variants remain distinct, direct snapshot entries resolve correctly, routing semantics are preserved, and each entry resolves to its exact published snapshot.`);
 }finally{
   await browser.close();
 }
