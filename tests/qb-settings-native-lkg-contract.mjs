@@ -25,9 +25,8 @@ for(const profile of bundle.profiles.filter(item=>item.family==='dedicated-alt-d
   assert.equal(profile.nativeLocales.length,0,`${profile.qbVersion}: Alternative WebUI translation hole must never route native`);
   assert.ok(profile.bridgeLocales.length>0,`${profile.qbVersion}: Alternative WebUI translation hole must retain exact official TS bridge`);
 }
-for(const version of ['4.1.0','4.1.3','4.1.4','4.1.5','4.6.5','5.0.0','5.2.3']){
-  const profile=bundle.profiles.find(item=>item.qbVersion===version);
-  assert.ok(profile&&profile.nativeLocales.length>0,`${version}: at least one source-proven native locale must remain available`);
+for(const profile of bundle.profiles.filter(item=>item.family!=='dedicated-alt-disabled'&&item.mappedPreferences>0)){
+  assert.ok(profile.nativeLocales.length>0,`${profile.qbVersion}: mapped qB-owned Settings copy must keep at least one source-proven native locale when upstream allows Alternative WebUI translation`);
 }
 assert.ok(Object.keys(bundle.localeMessages).length>0,'native bundle must produce official minimal QM locale sources');
 const registry=renderNativeSettingsRegistry(catalog);
