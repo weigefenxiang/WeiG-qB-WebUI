@@ -26,6 +26,16 @@ jobs:
           set -euo pipefail
           git show 680e28d3b8d34cc7634101c70890ae788fa19c9b:tools/qb-locale-source.mjs > tools/qb-locale-source.mjs
           python .weigg-apply/patch-candidate-hardening.py
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('tests/ci-contract.mjs')
+          text = path.read_text(encoding='utf-8')
+          old = "releaseBase.includes('from 4.1.0')"
+          new = "releaseBase.includes('4.1.0 to latest stable catalog')"
+          if text.count(old) != 1:
+              raise SystemExit(f'expected one qB base-catalog wording assertion, found {text.count(old)}')
+          path.write_text(text.replace(old, new), encoding='utf-8')
+          PY
           rm -f .weigg-apply/patch-candidate-hardening.py
           rm -f .github/workflows/weigg-fix-windows-fixture.yml
           rm -f .github/workflows/weigg-apply-candidate-hardening.yml
@@ -57,6 +67,16 @@ jobs:
           set -euo pipefail
           git show 680e28d3b8d34cc7634101c70890ae788fa19c9b:tools/qb-locale-source.mjs > tools/qb-locale-source.mjs
           python .weigg-apply/patch-candidate-hardening.py
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('tests/ci-contract.mjs')
+          text = path.read_text(encoding='utf-8')
+          old = "releaseBase.includes('from 4.1.0')"
+          new = "releaseBase.includes('4.1.0 to latest stable catalog')"
+          if text.count(old) != 1:
+              raise SystemExit(f'expected one qB base-catalog wording assertion, found {text.count(old)}')
+          path.write_text(text.replace(old, new), encoding='utf-8')
+          PY
           rm -f .weigg-apply/patch-candidate-hardening.py
           rm -f .github/workflows/weigg-fix-windows-fixture.yml
           rm -f .github/workflows/weigg-apply-candidate-hardening.yml
@@ -92,6 +112,16 @@ jobs:
           test "$(git rev-parse origin/dev)" = "$GITHUB_SHA"
           git show 680e28d3b8d34cc7634101c70890ae788fa19c9b:tools/qb-locale-source.mjs > tools/qb-locale-source.mjs
           python .weigg-apply/patch-candidate-hardening.py
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('tests/ci-contract.mjs')
+          text = path.read_text(encoding='utf-8')
+          old = "releaseBase.includes('from 4.1.0')"
+          new = "releaseBase.includes('4.1.0 to latest stable catalog')"
+          if text.count(old) != 1:
+              raise SystemExit(f'expected one qB base-catalog wording assertion, found {text.count(old)}')
+          path.write_text(text.replace(old, new), encoding='utf-8')
+          PY
           rm -f .weigg-apply/patch-candidate-hardening.py
           rm -f .github/workflows/weigg-fix-windows-fixture.yml
           rm -f .github/workflows/weigg-apply-candidate-hardening.yml
