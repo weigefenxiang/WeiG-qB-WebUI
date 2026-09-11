@@ -63,11 +63,12 @@ try{
   await page.waitForSelector('#torrent-list',{state:'attached',timeout:60000});
   await page.waitForFunction(()=>String(document.querySelector('#qb-version')?.textContent||'').includes('5.2.3'),null,{timeout:60000});
 
-  const build=await page.evaluate(async()=>{
-    const response=await fetch('virtual-qb-build.json',{cache:'no-store'});
-    if(!response.ok)throw new Error(`virtual-qb-build.json returned HTTP ${response.status}`);
-    return response.json();
-  });
+  const buildUrl=new URL('virtual-qb-build.json',landed);
+  buildUrl.search='';
+  buildUrl.hash='';
+  const buildResponse=await fetch(buildUrl,{headers:{'cache-control':'no-cache','pragma':'no-cache'}});
+  assert.equal(buildResponse.status,200,`/dev/ landed app build metadata must be published at ${buildUrl}`);
+  const build=await buildResponse.json();
   assert.equal(build.branch,'dev','/dev/ must resolve to the dev app snapshot');
   assert.equal(build.exactSha,expectedSha,'/dev/ must resolve to the exact deployed dev SHA');
   assert.equal(build.simulatorSha,expectedSha,'/dev/ must use the exact deployed simulator SHA');
