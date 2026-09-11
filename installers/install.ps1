@@ -2,6 +2,7 @@ param(
   [ValidateSet('Install','Update','Rollback')][string]$Mode='Install',
   [ValidateSet('Release','Dev')][string]$Channel='Release',
   [Alias('o','output')][string]$Destination="$env:LOCALAPPDATA\WeiG-qB-WebUI",
+  [string]$QBConfig='',
   [string]$Version='',
   [switch]$Dev,
   [switch]$Configure,
@@ -23,6 +24,7 @@ Options:
   -version VERSION          Install a specific Release, for example 0.3.60.
   -dev                      Install the current dev exact Git SHA.
   -o PATH, -output PATH     WebUI install path.
+  -qbconfig PATH            Exact qBittorrent config path for custom/portable profiles.
   -configure                Enable qBittorrent Alternative WebUI and set Root Folder.
   -rollback                 Restore the previous installation and qBittorrent config.
   -help                     Show this help.
@@ -36,6 +38,7 @@ Notes:
   -dev and -version cannot be used together.
   A requested Release version never falls back to latest or dev.
   Dev installs use the exact-SHA materialized WebUI payload published by Virtual qB Pages.
+  -configure refuses ambiguous config discovery; use -qbconfig for custom/portable profiles.
   PowerShell parameter names are case-insensitive; documentation uses lowercase.
 '@ | Write-Host
 }
@@ -75,7 +78,32 @@ if($Mode -eq 'Rollback' -and !$DestinationExplicit){
   }
 }
 
-function Find-QBConfig {
+function Resolve-UniqueQBConfig([object[]]$Candidates) {
+  $unique=@{}
+  foreach($candidate in @($Candidates)){
+    if(!$candidate){continue}
+    $path=[string]$candidate
+    if(!(Test-Path -LiteralPath $path -PathType Leaf)){continue}
+    try{$full=(Resolve-Path -LiteralPath $path -ErrorAction Stop).Path}catch{continue}
+    $key=$full.ToLowerInvariant()
+    if(!$unique.ContainsKey($key)){$unique[$key]=$full}
+  }
+  $paths=@($unique.Values | Sort-Object)
+  if($paths.Count -gt 1){
+    throw "Multiple qBittorrent config candidates were found; refusing to guess. Re-run with -qbconfig and one exact path. Candidates: $($paths -join '; ')"
+  }
+  if($paths.Count -eq 1){return $paths[0]}
+  return $null
+}
+
+function Find-QBConfig([string]$ExplicitPath='') {
+  if($ExplicitPath){
+    if(!(Test-Path -LiteralPath $ExplicitPath -PathType Leaf)){
+      throw "Explicit qBittorrent config does not exist: $ExplicitPath"
+    }
+    return (Resolve-Path -LiteralPath $ExplicitPath -ErrorAction Stop).Path
+  }
+
   $candidates=@(
     (Join-Path $env:APPDATA 'qBittorrent\qBittorrent.ini'),
     (Join-Path $env:APPDATA 'qBittorrent\qBittorrent.conf'),
@@ -85,13 +113,8 @@ function Find-QBConfig {
     (Join-Path $PWD 'qBittorrent.conf')
   )
   if($env:ProgramData){$candidates += (Join-Path $env:ProgramData 'qBittorrent\qBittorrent.ini')}
-  foreach($p in $candidates){ if($p -and (Test-Path $p)){ return $p } }
-  foreach($root in @($env:USERPROFILE,$PWD.Path)){
-    if(!$root -or !(Test-Path $root)){continue}
-    $found=Get-ChildItem $root -Filter 'qBittorrent.ini' -File -Recurse -Depth 5 -ErrorAction SilentlyContinue | Select-Object -First 1
-    if($found){return $found.FullName}
-  }
-  return $null
+  $resolved=Resolve-UniqueQBConfig $candidates
+  return $resolved
 }
 
 function Read-QBConfigText([string]$Path) {
@@ -144,15 +167,135 @@ function Write-QBConfigText([string]$Path,[string]$Text,$State) {
   [IO.File]::WriteAllBytes($Path,$output)
 }
 
-function Configure-QBWebUI([string]$Path,[string]$RootFolder) {
-  $backup="$Path.weigg.bak"
-  Copy-Item $Path $backup -Force
-  $state=Read-QBConfigText $Path
-  $text=$state.Text
-  $newline=if($text.Contains("`r`n")){"`r`n"}else{"`n"}
+function Compare-QBBytes([byte[]]$A,[byte[]]$B) {
+  if($null -eq $A -or $null -eq $B -or $A.Length -ne $B.Length){return $false}
+  for($i=0;$i -lt $A.Length;$i++){if($A[$i] -ne $B[$i]){return $false}}
+  return $true
+}
 
+function Test-QBittorrentRunning {
+  return [bool](Get-Process -Name 'qbittorrent' -ErrorAction SilentlyContinue | Select-Object -First 1)
+}
+
+function Get-QBPendingConfigPaths([string]$Path) {
+  $dir=Split-Path $Path -Parent
+  $name=[IO.Path]::GetFileNameWithoutExtension($Path)
+  $ext=[IO.Path]::GetExtension($Path)
+  $candidates=@(
+    (Join-Path $dir ($name+'_new'+$ext)),
+    (Join-Path $dir 'qBittorrent_new.ini')
+  )
+  $seen=@{}
+  foreach($candidate in $candidates){
+    $key=$candidate.ToLowerInvariant()
+    if(!$seen.ContainsKey($key)){
+      $seen[$key]=$true
+      $candidate
+    }
+  }
+}
+
+function Assert-QBConfigTextLooksSafe([string]$Path,$State,[long]$ByteLength) {
+  if($ByteLength -lt 16){throw "qBittorrent config is empty or obviously too small; refusing to rewrite: $Path"}
+  $text=[string]$State.Text
+  if([string]::IsNullOrWhiteSpace($text) -or $text.IndexOf([char]0) -ge 0){
+    throw "qBittorrent config is not safe INI text; refusing to rewrite: $Path"
+  }
+  if($text -notmatch '(?m)^\[[^\]\r\n]+\]\s*$' -or $text -notmatch '(?m)^[^#;\[\]\r\n][^=\r\n]*='){
+    throw "qBittorrent config does not look like a parseable INI document; refusing to rewrite: $Path"
+  }
+}
+
+function Assert-QBConfigMutationSafe([string]$Path) {
+  if(Test-QBittorrentRunning){
+    throw 'qBittorrent is running. Exit qBittorrent completely before using -configure.'
+  }
+  if(!(Test-Path -LiteralPath $Path -PathType Leaf)){
+    throw "qBittorrent config does not exist: $Path"
+  }
+  foreach($pending in @(Get-QBPendingConfigPaths $Path)){
+    if(Test-Path -LiteralPath $pending -PathType Leaf){
+      $pendingItem=Get-Item -LiteralPath $pending
+      if($pendingItem.Length -gt 0){
+        throw "qBittorrent recovery file is non-empty; refusing external config mutation: $pending"
+      }
+    }
+  }
+  $item=Get-Item -LiteralPath $Path
+  $state=Read-QBConfigText $Path
+  Assert-QBConfigTextLooksSafe $Path $state $item.Length
+  return $state
+}
+
+function Get-QBUnmanagedConfigText([string]$Text) {
+  return [regex]::Replace($Text,'(?m)^WebUI\\(?:AlternativeUIEnabled|RootFolder)=.*(?:\r?\n|$)','')
+}
+
+function Assert-QBWebUIMutation([string]$Original,[string]$Candidate,[string]$RootFolder,[string]$Newline) {
+  if(([regex]::Matches($Candidate,'(?m)^WebUI\\AlternativeUIEnabled=true\r?$')).Count -ne 1){
+    throw 'qBittorrent config candidate must contain exactly one enabled Alternative WebUI line.'
+  }
+  $escapedRoot=[regex]::Escape('WebUI\RootFolder='+$RootFolder)
+  if(([regex]::Matches($Candidate,'(?m)^'+$escapedRoot+'\r?$')).Count -ne 1){
+    throw 'qBittorrent config candidate must contain exactly one exact WebUI RootFolder line.'
+  }
+  if(([regex]::Matches($Candidate,'(?m)^WebUI\\AlternativeUIEnabled=')).Count -ne 1 -or ([regex]::Matches($Candidate,'(?m)^WebUI\\RootFolder=')).Count -ne 1){
+    throw 'qBittorrent config contains duplicate managed WebUI keys; refusing ambiguous mutation.'
+  }
+
+  $before=Get-QBUnmanagedConfigText $Original
+  $after=Get-QBUnmanagedConfigText $Candidate
+  if($after -ne $before -and $after -ne ($before+$Newline)){
+    throw 'qBittorrent config mutation changed unrelated content; refusing write.'
+  }
+}
+
+function Invoke-QBAtomicReplace([string]$Source,[string]$Destination,[string]$BackupPath) {
+  if(!(Test-Path -LiteralPath $Source -PathType Leaf)){throw "Atomic replace source is missing: $Source"}
+  if(!(Test-Path -LiteralPath $Destination -PathType Leaf)){throw "Atomic replace destination is missing: $Destination"}
+  if(Test-Path -LiteralPath $BackupPath){Remove-Item -LiteralPath $BackupPath -Force}
+  try {
+    [IO.File]::Replace($Source,$Destination,$BackupPath,$true)
+  } catch {
+    throw "Atomic qBittorrent config replace failed; refusing unsafe overwrite. $($_.Exception.Message)"
+  }
+}
+
+function Restore-QBConfigBackupAtomically([string]$Path,[string]$Backup) {
+  if(!(Test-Path -LiteralPath $Backup -PathType Leaf)){throw "qBittorrent safety backup is missing: $Backup"}
+  [byte[]]$expected=[IO.File]::ReadAllBytes($Backup)
+  $dir=Split-Path $Path -Parent
+  $restoreTemp=Join-Path $dir ('.weigg-qb-restore-'+[guid]::NewGuid().ToString('N')+'.tmp')
+  $replaceBackup="$Path.weigg.restore-replaced"
+  try {
+    [IO.File]::WriteAllBytes($restoreTemp,$expected)
+    if(Test-Path -LiteralPath $Path -PathType Leaf){
+      Invoke-QBAtomicReplace $restoreTemp $Path $replaceBackup
+    } else {
+      Move-Item -LiteralPath $restoreTemp -Destination $Path
+    }
+    if(!(Compare-QBBytes $expected ([IO.File]::ReadAllBytes($Path)))){
+      throw 'qBittorrent config restore verification failed.'
+    }
+  } finally {
+    if(Test-Path -LiteralPath $restoreTemp){Remove-Item -LiteralPath $restoreTemp -Force -ErrorAction SilentlyContinue}
+    if(Test-Path -LiteralPath $replaceBackup){Remove-Item -LiteralPath $replaceBackup -Force -ErrorAction SilentlyContinue}
+  }
+}
+
+function Configure-QBWebUI([string]$Path,[string]$RootFolder) {
+  $state=Assert-QBConfigMutationSafe $Path
+  [byte[]]$originalBytes=[IO.File]::ReadAllBytes($Path)
+  $originalText=$state.Text
+  $newline=if($originalText.Contains("`r`n")){"`r`n"}else{"`n"}
+
+  if(([regex]::Matches($originalText,'(?m)^WebUI\\AlternativeUIEnabled=')).Count -gt 1 -or ([regex]::Matches($originalText,'(?m)^WebUI\\RootFolder=')).Count -gt 1){
+    throw 'qBittorrent config contains duplicate managed WebUI keys; refusing ambiguous mutation.'
+  }
+
+  $text=$originalText
   if($text -match '(?m)^WebUI\\AlternativeUIEnabled='){
-    $text=[regex]::Replace($text,'(?m)^WebUI\\AlternativeUIEnabled=.*$','WebUI\AlternativeUIEnabled=true')
+    $text=[regex]::Replace($text,'(?m)^WebUI\\AlternativeUIEnabled=[^\r\n]*(\r?)$','WebUI\AlternativeUIEnabled=true$1')
   } else {
     if($text.Length -gt 0 -and !$text.EndsWith("`n") -and !$text.EndsWith("`r")){$text+=$newline}
     $text+='WebUI\AlternativeUIEnabled=true'+$newline
@@ -160,24 +303,70 @@ function Configure-QBWebUI([string]$Path,[string]$RootFolder) {
 
   $rootLine='WebUI\RootFolder='+$RootFolder
   if($text -match '(?m)^WebUI\\RootFolder='){
-    $text=[regex]::Replace($text,'(?m)^WebUI\\RootFolder=.*$',[System.Text.RegularExpressions.MatchEvaluator]{param($m)$rootLine})
+    $text=[regex]::Replace($text,'(?m)^WebUI\\RootFolder=[^\r\n]*(\r?)$',[System.Text.RegularExpressions.MatchEvaluator]{param($m)$rootLine+$m.Groups[1].Value})
   } else {
     if($text.Length -gt 0 -and !$text.EndsWith("`n") -and !$text.EndsWith("`r")){$text+=$newline}
     $text+=$rootLine+$newline
   }
+  Assert-QBWebUIMutation $originalText $text $RootFolder $newline
 
-  try {
-    Write-QBConfigText $Path $text $state
-    $verify=Read-QBConfigText $Path
-    if($verify.Text -ne $text){throw 'qBittorrent config verification failed after write.'}
-  } catch {
-    Copy-Item $backup $Path -Force
-    throw
+  $backup="$Path.weigg.bak"
+  [IO.File]::WriteAllBytes($backup,$originalBytes)
+  if(!(Compare-QBBytes $originalBytes ([IO.File]::ReadAllBytes($backup)))){
+    throw 'qBittorrent safety backup is not byte-identical; refusing mutation.'
   }
-  Write-Host "qBittorrent config encoding preserved: $($state.EncodingName)"
+
+  $dir=Split-Path $Path -Parent
+  $tempPath=Join-Path $dir ('.weigg-qb-config-'+[guid]::NewGuid().ToString('N')+'.tmp')
+  $replaceBackup="$Path.weigg.replace.bak"
+  [byte[]]$candidateBytes=$null
+  try {
+    Write-QBConfigText $tempPath $text $state
+    $tempItem=Get-Item -LiteralPath $tempPath
+    $verify=Read-QBConfigText $tempPath
+    Assert-QBConfigTextLooksSafe $tempPath $verify $tempItem.Length
+    if($verify.Text -ne $text){throw 'qBittorrent temp config verification failed.'}
+    if($verify.EncodingName -ne $state.EncodingName -or !(Compare-QBBytes ([byte[]]$verify.Preamble) ([byte[]]$state.Preamble))){
+      throw 'qBittorrent temp config did not preserve the original encoding.'
+    }
+    Assert-QBWebUIMutation $originalText $verify.Text $RootFolder $newline
+    [byte[]]$candidateBytes=[IO.File]::ReadAllBytes($tempPath)
+
+    $null=Assert-QBConfigMutationSafe $Path
+    if(!(Compare-QBBytes $originalBytes ([IO.File]::ReadAllBytes($Path)))){
+      throw 'qBittorrent config changed after preflight; refusing to overwrite a newer file.'
+    }
+
+    Invoke-QBAtomicReplace $tempPath $Path $replaceBackup
+
+    $final=Read-QBConfigText $Path
+    if($final.Text -ne $text -or !(Compare-QBBytes $candidateBytes ([IO.File]::ReadAllBytes($Path)))){
+      throw 'qBittorrent config verification failed after atomic replace.'
+    }
+    Assert-QBWebUIMutation $originalText $final.Text $RootFolder $newline
+    if(Test-Path -LiteralPath $replaceBackup){Remove-Item -LiteralPath $replaceBackup -Force}
+  } catch {
+    $failure=$_.Exception
+    $currentBytes=$null
+    if(Test-Path -LiteralPath $Path -PathType Leaf){$currentBytes=[IO.File]::ReadAllBytes($Path)}
+    if($candidateBytes -and $currentBytes -and (Compare-QBBytes $candidateBytes $currentBytes)){
+      try {
+        Restore-QBConfigBackupAtomically $Path $backup
+        if(Test-Path -LiteralPath $replaceBackup){Remove-Item -LiteralPath $replaceBackup -Force -ErrorAction SilentlyContinue}
+      } catch {
+        throw "qBittorrent config mutation failed and automatic rollback also failed. Original safety backup remains at $backup. Mutation error: $($failure.Message) Rollback error: $($_.Exception.Message)"
+      }
+    } elseif($currentBytes -and !(Compare-QBBytes $originalBytes $currentBytes)){
+      throw "qBittorrent config changed unexpectedly during mutation; refusing to overwrite it. Original safety backup remains at $backup. Mutation error: $($failure.Message)"
+    }
+    throw $failure
+  } finally {
+    if(Test-Path -LiteralPath $tempPath){Remove-Item -LiteralPath $tempPath -Force -ErrorAction SilentlyContinue}
+  }
+  Write-Host "qBittorrent config encoding preserved and atomically replaced: $($state.EncodingName)"
 }
 
-function Backup-Current {
+function Backup-Current([string]$ConfigPath='') {
   $stamp=Get-Date -Format 'yyyyMMdd-HHmmss'
   $b=Join-Path $Backups $stamp
   New-Item -ItemType Directory -Force -Path $b | Out-Null
@@ -187,10 +376,9 @@ function Backup-Current {
   } else {
     Set-Content -Encoding ASCII -Path (Join-Path $b 'had-webui') -Value '0'
   }
-  $cfg=Find-QBConfig
-  if($cfg){
-    Copy-Item $cfg (Join-Path $b 'qBittorrent.conf') -Force
-    Set-Content -Encoding UTF8 -Path (Join-Path $b 'config-path') -Value $cfg
+  if($ConfigPath){
+    Copy-Item -LiteralPath $ConfigPath (Join-Path $b 'qBittorrent.conf') -Force
+    Set-Content -Encoding UTF8 -Path (Join-Path $b 'config-path') -Value $ConfigPath
   }
   Set-Content -Encoding UTF8 -Path (Join-Path $b 'dest-path') -Value $Destination
   Set-Content -Encoding UTF8 -Path (Join-Path $State 'last-backup') -Value $b
@@ -210,6 +398,23 @@ function Restore-Last {
     if($savedDest){ $script:Destination=$savedDest }
   }
 
+  $old=Join-Path $b 'qBittorrent.conf'
+  $configMarker=Join-Path $b 'config-path'
+  $cfg=$null
+  if((Test-Path $old) -and (Test-Path $configMarker)){
+    $cfg=(Get-Content $configMarker -Raw).Trim()
+    if($cfg){
+      if(Test-QBittorrentRunning){throw 'qBittorrent is running. Exit qBittorrent completely before rollback restores its config.'}
+      foreach($pending in @(Get-QBPendingConfigPaths $cfg)){
+        if((Test-Path -LiteralPath $pending -PathType Leaf) -and (Get-Item -LiteralPath $pending).Length -gt 0){
+          throw "qBittorrent recovery file is non-empty; refusing rollback config mutation: $pending"
+        }
+      }
+      $backupState=Read-QBConfigText $old
+      Assert-QBConfigTextLooksSafe $old $backupState (Get-Item -LiteralPath $old).Length
+    }
+  }
+
   $hadWebUi=$false
   $hadMarker=Join-Path $b 'had-webui'
   if(Test-Path $hadMarker){ $hadWebUi=((Get-Content $hadMarker -Raw).Trim() -eq '1') }
@@ -224,15 +429,10 @@ function Restore-Last {
     Write-Host "Removed WeiG qB WebUI from: $Destination"
   }
 
-  $old=Join-Path $b 'qBittorrent.conf'
-  $configMarker=Join-Path $b 'config-path'
-  if((Test-Path $old) -and (Test-Path $configMarker)){
-    $cfg=(Get-Content $configMarker -Raw).Trim()
-    if($cfg){
-      New-Item -ItemType Directory -Force -Path (Split-Path $cfg -Parent) | Out-Null
-      Copy-Item $old $cfg -Force
-      Write-Host "Restored qBittorrent config: $cfg"
-    }
+  if($cfg){
+    New-Item -ItemType Directory -Force -Path (Split-Path $cfg -Parent) | Out-Null
+    Restore-QBConfigBackupAtomically $cfg $old
+    Write-Host "Restored qBittorrent config atomically: $cfg"
   }
 }
 
@@ -270,7 +470,14 @@ if($Mode -eq 'Rollback'){
   exit 0
 }
 
-Backup-Current
+$cfg=$null
+if($Configure){
+  $cfg=Find-QBConfig $QBConfig
+  if(!$cfg){throw 'No unambiguous qBittorrent config was found. Use -qbconfig with the exact config path for custom/portable profiles.'}
+  $null=Assert-QBConfigMutationSafe $cfg
+}
+
+Backup-Current $cfg
 $tmp=Join-Path ([IO.Path]::GetTempPath()) ("weigg-qb-"+[guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Force -Path $tmp | Out-Null
 try {
@@ -398,16 +605,13 @@ try {
   Write-Host "Installed Git SHA: $sourceSha"
   Write-Host "Install metadata: $(Join-Path $Destination 'private\weigg-install.json')"
 
-  $cfg=Find-QBConfig
   if($Configure){
-    if(!$cfg){ throw 'No qBittorrent config was found; WebUI files are installed but configuration was not changed.' }
     Configure-QBWebUI $cfg $Destination
     Write-Host "Configured: $cfg"
     Write-Host "qBittorrent Root Folder: $Destination"
   } else {
     Write-Host 'qBittorrent -> Tools -> Preferences -> Web UI -> Use alternative WebUI'
     Write-Host "WebUI Root Folder: $Destination"
-    if($cfg){Write-Host "Detected config: $cfg"}
   }
   Write-Host 'Rollback: powershell -ExecutionPolicy Bypass -File .\weigg-install.ps1 -rollback'
 } finally {
