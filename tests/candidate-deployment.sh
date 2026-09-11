@@ -4,6 +4,33 @@ set -Eeuo pipefail
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 CANDIDATE_DIR=${1:-candidate-artifact}
 CANDIDATE_DIR=$(cd "$CANDIDATE_DIR" && pwd)
+
+# The real qB Alternative WebUI server is the acceptance owner for runtime static-file
+# behavior. Run the exact same materialized candidate on the user-reported late-4.x
+# release and on the latest admitted 5.x release. Keep the existing 5.2.3 evidence as
+# the canonical promotion/release rehearsal input so downstream release contracts stay
+# byte- and schema-compatible.
+if [[ "${WEIG_CANDIDATE_MATRIX_CHILD:-0}" != 1 && -z "${WEIG_QB_IMAGE:-}" && -z "${WEIG_QB_EXPECTED_VERSION:-}" ]]; then
+  WEIG_CANDIDATE_MATRIX_CHILD=1 \
+  WEIG_QB_IMAGE='qbittorrentofficial/qbittorrent-nox@sha256:4f8059f1ec56f404fca04193b1134563e3aed3179428b1bc659cfe69bfedb951' \
+  WEIG_QB_EXPECTED_VERSION='4.6.7' \
+  WEIG_QB_LOCALE_TARGET='zh_CN' \
+  WEIG_CANDIDATE_EVIDENCE_BASENAME='candidate-qb-4.6.7.json' \
+  WEIG_CANDIDATE_RUN_REHEARSAL=0 \
+    bash "$ROOT/tests/candidate-deployment.sh" "$CANDIDATE_DIR"
+
+  WEIG_CANDIDATE_MATRIX_CHILD=1 \
+  WEIG_QB_IMAGE='qbittorrentofficial/qbittorrent-nox@sha256:9ebb534fe30bab98622cb84a8c3acecfd88319b2d540f52ecdec7b9f866374d7' \
+  WEIG_QB_EXPECTED_VERSION='5.2.3' \
+  WEIG_QB_LOCALE_TARGET='zh_CN' \
+  WEIG_CANDIDATE_EVIDENCE_BASENAME='candidate.json' \
+  WEIG_CANDIDATE_RUN_REHEARSAL=1 \
+    bash "$ROOT/tests/candidate-deployment.sh" "$CANDIDATE_DIR"
+
+  printf 'Release candidate real-qB matrix passed: qB 4.6.7 + 5.2.3 both completed app/preferences, locale write/read/reload and canonical Settings acceptance.\n'
+  exit 0
+fi
+
 PACKAGE="$CANDIDATE_DIR/WeiG-qB-WebUI.zip"
 SUMS="$CANDIDATE_DIR/SHA256SUMS"
 CANDIDATE_SHA_FILE="$CANDIDATE_DIR/CANDIDATE_SHA"
