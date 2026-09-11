@@ -47,11 +47,16 @@ async function readLandedBuild(landed){
 }
 
 async function openSettings(page){
-  await page.evaluate(async()=>{
+  await page.evaluate(()=>{
+    if(!window.WeiG?.Router?.go)throw new Error('WeiG Router is unavailable');
     if(!window.WeiG?.SettingsRenderer?.open)throw new Error('WeiG SettingsRenderer is unavailable');
+    window.WeiG.Router.go('settings');
+  });
+  await page.waitForFunction(()=>window.WeiG?.Router?.route?.().name==='settings',null,{timeout:30000});
+  await page.evaluate(async()=>{
     await window.WeiG.SettingsRenderer.open('weigg');
   });
-  await page.waitForSelector('[data-setting-key="weigg_language"]',{state:'attached',timeout:30000});
+  await page.waitForSelector('#settings-view.is-active [data-setting-key="weigg_language"] .ui-select__trigger',{state:'visible',timeout:30000});
 }
 
 async function setVerifiedLocale(page,target){
