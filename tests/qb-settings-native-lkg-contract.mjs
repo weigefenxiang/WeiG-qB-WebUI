@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {buildNativeSettingsBundle,renderNativeSettingsRegistry} from '../tools/qb-settings-native-bundle.mjs';
+
+const here=path.dirname(fileURLToPath(import.meta.url));
+const catalog=JSON.parse(fs.readFileSync(path.join(here,'fixtures/qb-release-catalog.lkg.json'),'utf8'));
+const behavior=JSON.parse(fs.readFileSync(path.join(here,'../tools/data/qb-translator-behavior-lkg.json'),'utf8'));
+const bundle=buildNativeSettingsBundle(catalog,behavior);
+assert.equal(bundle.profileCount,65,'native Settings routing must cover all 65 admitted stable releases');
+for(const [index,profile] of bundle.profiles.entries()){
+  const locales=(catalog[index].webuiLocales||[]).map(item=>typeof item==='string'?item:item.value).filter(Boolean);
+  const routed=[...profile.nativeLocales,...profile.bridgeLocales];
+  assert.equal(new Set(routed).size,routed.length,`${profile.qbVersion}: locale routing must not overlap`);
+  assert.deepEqual([...routed].sort(),[...new Set(locales)].sort(),`${profile.qbVersion}: every exact WebUI locale must route native or bridge`);
+}
+for(const profile of bundle.profiles.filter(item=>item.family==='dedicated-alt-disabled')){
+  assert.equal(profile.nativeLocales.length,0,`${profile.qbVersion}: Alternative WebUI translation hole must never route native`);
+  assert.ok(profile.bridgeLocales.length>0,`${profile.qbVersion}: Alternative WebUI translation hole must retain exact official TS bridge`);
+}
+for(const version of ['4.1.0','4.1.3','4.1.4','4.1.5','4.6.5','5.0.0','5.2.3']){
+  const profile=bundle.profiles.find(item=>item.qbVersion===version);
+  assert.ok(profile&&profile.nativeLocales.length>0,`${version}: at least one source-proven native locale must remain available`);
+}
+assert.ok(Object.keys(bundle.localeMessages).length>0,'native bundle must produce official minimal QM locale sources');
+const registry=renderNativeSettingsRegistry(catalog);
+assert.ok(Buffer.byteLength(registry)<5*1024*1024,'native QBT_TR registry must stay below the project 5 MiB per-file budget');
+const native=bundle.profiles.reduce((sum,item)=>sum+item.nativeLocales.length,0);
+const bridge=bundle.profiles.reduce((sum,item)=>sum+item.bridgeLocales.length,0);
+console.log(`Native Settings stable LKG audit passed: 65 releases, ${native} native locale routes, ${bridge} exact-TS bridge routes, ${Object.keys(bundle.localeMessages).length} minimal QM locale sources, registry ${Buffer.byteLength(registry)} bytes.`);
