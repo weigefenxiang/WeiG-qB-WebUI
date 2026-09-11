@@ -50,14 +50,17 @@ try{
   const input=path.join(temp,'input.json');
   const output=path.join(temp,'data','qb-releases.json');
   const qmSourceDir=path.join(temp,'qm-src');
+  const qmOutputDir=path.join(temp,'translations');
   fs.writeFileSync(input,JSON.stringify(catalog));
-  const result=packCatalog(input,output,{behaviorEvidence:behavior,qmSourceDir});
+  const result=packCatalog(input,output,{behaviorEvidence:behavior,qmSourceDir,qmOutputDir});
   assert.equal(result.profiles,2);
   assert.equal(result.settingsShardCount,1,'only the source-proven compatibility family should emit a browser translation shard');
   assert.equal(result.nativeLocaleRoutes,2);
   assert.equal(result.bridgeLocaleRoutes,2);
+  assert.equal(result.qmCount,1,'non-English canonical official copy must be packaged as a minimal QM');
   assert.ok(result.packedBytes<QB_WEBUI_MAX_STATIC_FILE_BYTES);
-  assert.ok(result.nativeRegistryBytes<QB_WEBUI_MAX_STATIC_FILE_BYTES);
+  assert.ok(result.nativeRegistryBytes<5*1024*1024);
+  assert.ok(result.maxQmBytes<5*1024*1024);
   const packed=JSON.parse(fs.readFileSync(output,'utf8'));
   assert.equal(packed[0].settingsTranslationPath,`qb-settings/${shaA}.json`);
   assert.equal(Object.hasOwn(packed[1],'settingsTranslationPath'),false);
@@ -66,6 +69,8 @@ try{
   assert.equal(shardA.sourceSha,shaA);
   assert.equal(fs.existsSync(path.join(temp,'data','qb-settings',`${shaB}.json`)),false);
   assert.ok(fs.readFileSync(path.join(qmSourceDir,'webui_zh_CN.ts'),'utf8').includes('<translation>语言：</translation>'));
+  const qm=fs.readFileSync(path.join(qmOutputDir,'webui_zh_CN.qm'));
+  assert.equal(qm.subarray(0,16).toString('hex'),'3cb86418caef9c95cd211cbf60a1bddd');
   assert.equal(fs.existsSync(path.join(temp,'data','qb-settings-translations.json')),false,'retired all-release translation sidecar must not be generated');
 } finally {
   fs.rmSync(temp,{recursive:true,force:true});
@@ -74,4 +79,4 @@ try{
 assert.throws(()=>settingsTranslationShard({...catalog[0],sourceSha:'not-a-sha'},{'set-en':setEn,'set-zh':setZh},['zh_CN']),/invalid exact source SHA/);
 assert.throws(()=>settingsTranslationShard({...catalog[0],settingsTranslations:{zh_CN:'missing'}},{'set-en':setEn},['zh_CN']),/missing Settings translation set/);
 
-console.log('qB WebUI catalog contract passed: native QBT_TR/QM is primary, runtime catalog carries no translation bodies, and only source-proven incompatible locales keep exact official TS shards.');
+console.log('qB WebUI catalog contract passed: native QBT_TR/minimal QM is primary, runtime catalog carries no translation bodies, and only source-proven incompatible locales keep exact official TS shards.');
