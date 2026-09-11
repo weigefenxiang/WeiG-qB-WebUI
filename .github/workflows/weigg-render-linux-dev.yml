@@ -1,0 +1,82 @@
+name: Render Linux Dev materialized fix
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - '.weigg-apply/linux-dev-materialized.py'
+      - '.github/workflows/weigg-render-linux-dev.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  render:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Verify staging boundary and render patch
+        shell: bash
+        env:
+          PRE_SHA: 1e10d814581ff437ea49099a7c66d4d303bcd5d2
+          PRE_TREE: 64d2bbab08de1bd05e4806ccbcf46e8383b8236b
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = "$PRE_SHA"
+          test "$(git rev-parse "$PRE_SHA^{tree}")" = "$PRE_TREE"
+          mapfile -t changed < <(git diff --name-only "$PRE_SHA" HEAD)
+          printf 'Staging changes:\n%s\n' "${changed[*]}"
+          test "${#changed[@]}" -eq 2
+          printf '%s\n' "${changed[@]}" | sort | diff -u <(printf '%s\n' '.github/workflows/weigg-render-linux-dev.yml' '.weigg-apply/linux-dev-materialized.py' | sort) -
+          python3 .weigg-apply/linux-dev-materialized.py
+          git diff --check
+          bash -n installers/install.sh
+          node --check tools/build-webui-dist.mjs
+          npm ci --no-audit --no-fund --prefer-offline
+          node tests/dev-distribution-contract.mjs
+          node tests/platform-contract.mjs
+          npm test
+      - name: Create clean unattached final commit
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRE_TREE: 64d2bbab08de1bd05e4806ccbcf46e8383b8236b
+        run: |
+          set -euo pipefail
+          create_blob() {
+            local file="$1"
+            local encoded payload
+            encoded="$(base64 -w0 "$file")"
+            payload="$(jq -n --arg content "$encoded" '{content:$content,encoding:"base64"}')"
+            gh api --method POST "/repos/$GITHUB_REPOSITORY/git/blobs" --input - --jq '.sha' <<<"$payload"
+          }
+          SH_BLOB="$(create_blob installers/install.sh)"
+          DIST_BLOB="$(create_blob tools/build-webui-dist.mjs)"
+          DEV_CONTRACT_BLOB="$(create_blob tests/dev-distribution-contract.mjs)"
+          PLATFORM_BLOB="$(create_blob tests/platform-contract.mjs)"
+          TREE_PAYLOAD="$(jq -n \
+            --arg base "$PRE_TREE" \
+            --arg sh "$SH_BLOB" \
+            --arg dist "$DIST_BLOB" \
+            --arg devc "$DEV_CONTRACT_BLOB" \
+            --arg platform "$PLATFORM_BLOB" \
+            '{base_tree:$base,tree:[
+              {path:"installers/install.sh",mode:"100755",type:"blob",sha:$sh},
+              {path:"tools/build-webui-dist.mjs",mode:"100644",type:"blob",sha:$dist},
+              {path:"tests/dev-distribution-contract.mjs",mode:"100644",type:"blob",sha:$devc},
+              {path:"tests/platform-contract.mjs",mode:"100644",type:"blob",sha:$platform}
+            ]}')"
+          FINAL_TREE="$(gh api --method POST "/repos/$GITHUB_REPOSITORY/git/trees" --input - --jq '.sha' <<<"$TREE_PAYLOAD")"
+          COMMIT_PAYLOAD="$(jq -n --arg message 'fix: materialize Linux dev distribution' --arg tree "$FINAL_TREE" --arg parent "$GITHUB_SHA" '{message:$message,tree:$tree,parents:[$parent]}')"
+          FINAL_COMMIT="$(gh api --method POST "/repos/$GITHUB_REPOSITORY/git/commits" --input - --jq '.sha' <<<"$COMMIT_PAYLOAD")"
+          echo "FINAL_TREE=$FINAL_TREE"
+          echo "FINAL_COMMIT=$FINAL_COMMIT"
+          echo "Parent staging SHA=$GITHUB_SHA"
+          echo 'Final commit is intentionally unattached; branch update is performed only after external tree/diff review.'
