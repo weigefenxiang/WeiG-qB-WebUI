@@ -5,14 +5,14 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
-const catalogBytes=fs.readFileSync(path.join(here,'fixtures/qb-release-catalog.lkg.json'));
+const catalogText=fs.readFileSync(path.join(here,'fixtures/qb-release-catalog.lkg.json'),'utf8').replace(/\r\n/g,'\n');
 const localeEvidence=JSON.parse(fs.readFileSync(path.join(here,'../tools/data/qb-locale-lkg.json'),'utf8'));
 const behaviorEvidence=JSON.parse(fs.readFileSync(path.join(here,'../tools/data/qb-translator-behavior-lkg.json'),'utf8'));
-const catalogSha256=crypto.createHash('sha256').update(catalogBytes).digest('hex');
+const catalogSha256=crypto.createHash('sha256').update(catalogText,'utf8').digest('hex');
 
 assert.equal(localeEvidence.schemaVersion,1);
 assert.equal(behaviorEvidence.schemaVersion,1);
-assert.equal(localeEvidence.baseCatalogSha256,catalogSha256,'frozen locale evidence must remain bound to the exact stable base catalog');
+assert.equal(localeEvidence.baseCatalogSha256,catalogSha256,'frozen locale evidence must remain bound to the LF-canonical stable base catalog on every platform');
 assert.equal(localeEvidence.profileCount,65,'locale evidence must cover all admitted stable releases');
 assert.equal(behaviorEvidence.profileCount,65,'translator behavior evidence must cover all admitted stable releases');
 assert.equal(localeEvidence.supportFloor,'4.1.0');
