@@ -2,10 +2,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {buildNativeSettingsBundle,renderLocaleTs,renderNativeSettingsRegistry} from './qb-settings-native-bundle.mjs';
+import {buildNativeSettingsBundle,renderLocaleQm,renderLocaleTs,renderNativeSettingsRegistry} from './qb-settings-native-bundle.mjs';
 
 // qBittorrent WebApplication::sendFile limits Alternative WebUI static files to 10 MiB.
 export const QB_WEBUI_MAX_STATIC_FILE_BYTES=10*1024*1024;
+const PROJECT_MAX_SINGLE_FILE_BYTES=5*1024*1024;
 const SETTINGS_FIELDS=[
   'settingsUiSource',
   'settingsUiMappedPreferences',
@@ -16,9 +17,9 @@ const SETTINGS_FIELDS=[
 ];
 const DEFAULT_BEHAVIOR_PATH=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'data/qb-translator-behavior-lkg.json');
 
-function assertStaticSize(name,content){
+function assertStaticSize(name,content,limit=QB_WEBUI_MAX_STATIC_FILE_BYTES){
   const bytes=Buffer.byteLength(content);
-  if(bytes>=QB_WEBUI_MAX_STATIC_FILE_BYTES)throw new Error(`${name} is ${bytes} bytes; qB WebUI static files must stay below ${QB_WEBUI_MAX_STATIC_FILE_BYTES} bytes.`);
+  if(bytes>=limit)throw new Error(`${name} is ${bytes} bytes; file budget is below ${limit} bytes.`);
   return bytes;
 }
 function collectSettingsSets(catalog){
@@ -67,7 +68,7 @@ export function runtimeCatalogData(catalog,bundle){
   });
 }
 export function packCatalog(input,output,options={}){
-  if(!input||!output)throw new Error('Usage: node tools/qb-webui-catalog.mjs <input.json> <output.json> [--qm-source-dir=path] [--behavior=path]');
+  if(!input||!output)throw new Error('Usage: node tools/qb-webui-catalog.mjs <input.json> <output.json> [--qm-source-dir=path] [--qm-output-dir=path] [--behavior=path]');
   const source=fs.readFileSync(input,'utf8');
   const catalog=JSON.parse(source);
   if(!Array.isArray(catalog)||catalog.length===0)throw new Error('qB release catalog must be a non-empty JSON array.');
@@ -81,7 +82,7 @@ export function packCatalog(input,output,options={}){
   fs.writeFileSync(outputPath,packed);
 
   const registry=renderNativeSettingsRegistry(catalog);
-  const registryBytes=assertStaticSize('Native qB Settings QBT_TR registry',registry);
+  const registryBytes=assertStaticSize('Native qB Settings QBT_TR registry',registry,PROJECT_MAX_SINGLE_FILE_BYTES);
   fs.writeFileSync(path.join(dataDir,'qb-settings-native.txt'),registry,'utf8');
 
   if(options.qmSourceDir){
@@ -89,6 +90,17 @@ export function packCatalog(input,output,options={}){
     fs.rmSync(qmSourceDir,{recursive:true,force:true});
     fs.mkdirSync(qmSourceDir,{recursive:true});
     for(const [locale,messages] of Object.entries(bundle.localeMessages))fs.writeFileSync(path.join(qmSourceDir,`webui_${locale}.ts`),renderLocaleTs(locale,messages),'utf8');
+  }
+
+  const qmOutputDir=path.resolve(options.qmOutputDir||path.join(dataDir,'..','..','translations'));
+  fs.rmSync(qmOutputDir,{recursive:true,force:true});
+  fs.mkdirSync(qmOutputDir,{recursive:true});
+  let qmCount=0,maxQmBytes=0,totalQmBytes=0;
+  for(const [locale,messages] of Object.entries(bundle.localeMessages)){
+    const qm=renderLocaleQm(messages);
+    const qmBytes=assertStaticSize(`Minimal official qB QM ${locale}`,qm,PROJECT_MAX_SINGLE_FILE_BYTES);
+    fs.writeFileSync(path.join(qmOutputDir,`webui_${locale}.qm`),qm);
+    qmCount+=1;maxQmBytes=Math.max(maxQmBytes,qmBytes);totalQmBytes+=qmBytes;
   }
 
   const settingsDir=path.join(dataDir,'qb-settings');
@@ -101,7 +113,7 @@ export function packCatalog(input,output,options={}){
     const shard=settingsTranslationShard(item,allSets,routing?.bridgeLocales||[]);
     if(!shard)continue;
     const shardPacked=`${JSON.stringify(shard)}\n`;
-    const shardBytes=assertStaticSize(`qB Settings compatibility shard ${item.qbVersion}`,shardPacked);
+    const shardBytes=assertStaticSize(`qB Settings compatibility shard ${item.qbVersion}`,shardPacked,PROJECT_MAX_SINGLE_FILE_BYTES);
     fs.writeFileSync(path.join(settingsDir,`${item.sourceSha}.json`),shardPacked);
     shardCount+=1;
     maxShardBytes=Math.max(maxShardBytes,shardBytes);
@@ -120,20 +132,23 @@ export function packCatalog(input,output,options={}){
     nativeLocaleRoutes,
     bridgeLocaleRoutes,
     qmLocaleSources:Object.keys(bundle.localeMessages).length,
+    qmCount,maxQmBytes,totalQmBytes,
     settingsShardCount:shardCount,
     maxSettingsShardBytes:maxShardBytes,
     totalSettingsShardBytes:totalShardBytes,
-    maxStaticBytes:QB_WEBUI_MAX_STATIC_FILE_BYTES
+    maxStaticBytes:QB_WEBUI_MAX_STATIC_FILE_BYTES,
+    projectMaxSingleFileBytes:PROJECT_MAX_SINGLE_FILE_BYTES
   };
 }
 
 const isMain=process.argv[1]&&path.resolve(process.argv[1])===path.resolve(fileURLToPath(import.meta.url));
 if(isMain){
   try{
-    const qmArg=process.argv.find(value=>value.startsWith('--qm-source-dir='));
+    const qmSourceArg=process.argv.find(value=>value.startsWith('--qm-source-dir='));
+    const qmOutputArg=process.argv.find(value=>value.startsWith('--qm-output-dir='));
     const behaviorArg=process.argv.find(value=>value.startsWith('--behavior='));
     const behavior=behaviorArg?JSON.parse(fs.readFileSync(path.resolve(behaviorArg.slice('--behavior='.length)),'utf8')):undefined;
-    const result=packCatalog(process.argv[2],process.argv[3],{qmSourceDir:qmArg?qmArg.slice('--qm-source-dir='.length):null,behaviorEvidence:behavior});
+    const result=packCatalog(process.argv[2],process.argv[3],{qmSourceDir:qmSourceArg?qmSourceArg.slice('--qm-source-dir='.length):null,qmOutputDir:qmOutputArg?qmOutputArg.slice('--qm-output-dir='.length):null,behaviorEvidence:behavior});
     console.log(JSON.stringify(result));
   }catch(error){
     console.error(error?.message||error);
