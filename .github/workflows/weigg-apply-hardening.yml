@@ -40,24 +40,20 @@ jobs:
           if ((Get-FileHash $installerPath -Algorithm SHA256).Hash.ToLowerInvariant() -ne '769ecace30402f913805f3beffa98ab11ba0ee0af129ea72adde70dee822b204') { throw 'Installer SHA256 mismatch.' }
           if ((Get-FileHash $testPath -Algorithm SHA256).Hash.ToLowerInvariant() -ne 'b313eb3d161860c0469427811da71fcd41e8ca982c6fc8b380b49a6a9dc6653b') { throw 'Windows safety test SHA256 mismatch.' }
 
-          $installerSource = [IO.File]::ReadAllText($installerPath)
-          $configureStart = $installerSource.IndexOf('function Configure-QBWebUI')
-          $configureEnd = $installerSource.IndexOf('function Backup-Current',$configureStart)
-          if ($configureStart -lt 0 -or $configureEnd -le $configureStart) { throw 'Unable to isolate Configure-QBWebUI.' }
-          Write-Host '--- BEGIN Configure-QBWebUI ---'
-          Write-Host $installerSource.Substring($configureStart,$configureEnd-$configureStart)
-          Write-Host '--- END Configure-QBWebUI ---'
-
+          # The original duplicate-key fixture appended directly to a here-string that has
+          # no terminal newline, so it did not create a second INI key. Fix only that fixture
+          # after validating the original byte-exact test payload.
           $testSource = [Text.Encoding]::UTF8.GetString([IO.File]::ReadAllBytes($testPath))
-          $needle = 'Configure must refuse duplicate managed keys.'
-          $duplicateAt = $testSource.IndexOf($needle)
-          if ($duplicateAt -lt 0) { throw 'Unable to locate duplicate-key regression.' }
-          $snippetStart = [Math]::Max(0,$duplicateAt-1200)
-          $snippetLength = [Math]::Min(2400,$testSource.Length-$snippetStart)
-          Write-Host '--- BEGIN duplicate-key regression ---'
-          Write-Host $testSource.Substring($snippetStart,$snippetLength)
-          Write-Host '--- END duplicate-key regression ---'
+          $oldFixture = '$duplicate=$original+"WebUI\AlternativeUIEnabled=false`r`n"'
+          $newFixture = '$duplicate=$original+"`r`nWebUI\AlternativeUIEnabled=false`r`n"'
+          $firstFixture = $testSource.IndexOf($oldFixture,[StringComparison]::Ordinal)
+          $lastFixture = $testSource.LastIndexOf($oldFixture,[StringComparison]::Ordinal)
+          if ($firstFixture -lt 0 -or $firstFixture -ne $lastFixture) { throw 'Duplicate-key fixture patch target must occur exactly once.' }
+          $testSource = $testSource.Replace($oldFixture,$newFixture)
+          [IO.File]::WriteAllText($testPath,$testSource,(New-Object System.Text.UTF8Encoding($false)))
 
+          # Windows PowerShell 5.1 needs an explicit UTF-8 BOM for source containing
+          # Chinese/Japanese literals. The test body above is deterministic and exact.
           [byte[]]$testBody = [IO.File]::ReadAllBytes($testPath)
           [byte[]]$testWithBom = New-Object byte[] ($testBody.Length + 3)
           $testWithBom[0] = 0xEF
