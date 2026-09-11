@@ -94,19 +94,20 @@ async function setVerifiedLocale(page,target){
   assert.equal(drafted.value,target,`${target}: user-selected Language control value must update before save`);
   assert.equal(drafted.draft,target,`${target}: user-selected Language control must update the qB locale draft`);
 
+  const writePromise=page.waitForResponse(response=>{
+    const request=response.request();
+    return request.method()==='POST'&&new URL(response.url()).pathname.endsWith('/api/v2/app/setPreferences');
+  },{timeout:30000});
+  const reloadPromise=page.waitForNavigation({waitUntil:'domcontentloaded',timeout:60000});
   await page.locator('#save-settings-btn').click();
-  await page.waitForFunction(locale=>window.WeiG?.SettingsState?.prefs?.locale===locale&&window.WeiG?.I18n?.getQbLocale?.()===locale,target,{timeout:30000});
 
-  const saved=await page.evaluate(async()=>{
-    const response=await fetch('api/v2/app/preferences',{cache:'no-store'});
-    const prefs=await response.json();
-    return{status:response.status,locale:prefs.locale,qbLocale:window.WeiG?.I18n?.getQbLocale?.(),lang:document.documentElement.lang};
-  });
-  assert.equal(saved.status,200,`${target} preferences reread must succeed immediately after save`);
-  assert.equal(saved.locale,target,`${target} must persist in qB preferences.locale immediately after save`);
-  assert.equal(saved.qbLocale,target,`${target} must become the runtime qB locale immediately after save`);
+  const writeResponse=await writePromise;
+  assert.ok(writeResponse.ok(),`${target}: app/setPreferences must return success, got HTTP ${writeResponse.status()}`);
+  const postData=new URLSearchParams(writeResponse.request().postData()||'');
+  const posted=JSON.parse(postData.get('json')||'{}');
+  assert.equal(posted.locale,target,`${target}: app/setPreferences POST must contain the selected locale`);
 
-  await page.reload({waitUntil:'domcontentloaded',timeout:60000});
+  await reloadPromise;
   await page.waitForSelector('#torrent-list',{state:'attached',timeout:60000});
   await page.waitForFunction(locale=>window.WeiG?.I18n?.getQbLocale?.()===locale,target,{timeout:30000});
 
@@ -115,9 +116,9 @@ async function setVerifiedLocale(page,target){
     const prefs=await response.json();
     return{status:response.status,locale:prefs.locale,qbLocale:window.WeiG?.I18n?.getQbLocale?.(),lang:document.documentElement.lang};
   });
-  assert.equal(persisted.status,200,`${target} preferences reread must succeed after explicit reload`);
-  assert.equal(persisted.locale,target,`${target} must persist in qB preferences.locale after explicit reload`);
-  assert.equal(persisted.qbLocale,target,`${target} must remain the runtime qB locale after explicit reload`);
+  assert.equal(persisted.status,200,`${target}: preferences reread must succeed after automatic locale reload`);
+  assert.equal(persisted.locale,target,`${target}: qB preferences.locale must persist after automatic locale reload`);
+  assert.equal(persisted.qbLocale,target,`${target}: runtime qB locale must match the persisted locale after reload`);
 
   await openSettings(page);
   const reopened=await page.evaluate(()=>{
@@ -128,6 +129,7 @@ async function setVerifiedLocale(page,target){
   });
   assert.equal(reopened.disabled,false,`${target}: Language UI control must remain enabled after reload`);
   assert.equal(reopened.value,target,`${target}: reopening Settings must show the persisted qB locale selection`);
+  console.log(`Locale UI transition ${current||'(unset)'} -> ${target} persisted through app/setPreferences and automatic reload.`);
   return true;
 }
 
@@ -148,7 +150,7 @@ async function verifyDevLocale(browserPage){
     const prefs=await response.json();
     return{status:response.status,locale:prefs.locale,qbLocale:window.WeiG?.I18n?.getQbLocale?.(),lang:document.documentElement.lang};
   });
-  assert.deepEqual(verified,{status:200,locale:'zh_CN',qbLocale:'zh_CN',lang:'zh-CN'},'English-to-Simplified-Chinese locale transition must persist through qB preferences, explicit reload, runtime projection, and a reopened Settings control');
+  assert.deepEqual(verified,{status:200,locale:'zh_CN',qbLocale:'zh_CN',lang:'zh-CN'},'English-to-Simplified-Chinese locale transition must persist through qB preferences, automatic reload, runtime projection, and a reopened Settings control');
 }
 
 async function verifyBranchEntry(browser,{branch,entryPath,branchSha,label}){
@@ -259,7 +261,7 @@ try{
   await verifyBranchEntry(browser,{branch:'dev',entryPath:'dev/',branchSha:site.branches.dev.exactSha,label:'/dev/'});
   await verifyBranchEntry(browser,{branch:'main',entryPath:'main',branchSha:site.branches.main.exactSha,label:'/main'});
   await verifyLabEntry(browser,site);
-  console.log(`Virtual qB Pages entry acceptance passed for ${expectedSha}: /dev/, /main and /lab/ render cleanly, the real Language dropdown and Save button persist Simplified Chinese through explicit reload and reopened Settings, locale variants remain distinct, the Lab branch selector routes dev and main through one launcher to their exact app snapshots, routing semantics are preserved, and each entry resolves to its exact published snapshot.`);
+  console.log(`Virtual qB Pages entry acceptance passed for ${expectedSha}: /dev/, /main and /lab/ render cleanly, the real Language dropdown and Save button persist Simplified Chinese through the actual setPreferences POST, automatic locale reload and reopened Settings, locale variants remain distinct, the Lab branch selector routes dev and main through one launcher to their exact app snapshots, routing semantics are preserved, and each entry resolves to its exact published snapshot.`);
 }finally{
   await browser.close();
 }
