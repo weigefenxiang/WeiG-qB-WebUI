@@ -95,7 +95,7 @@ export function applyLocaleOverlay(catalog,overlay,{catalogSha256=''}={}){
   if(!overlay||overlay.schemaVersion!==1||!overlay.localeSets||typeof overlay.localeSets!=='object'||!Array.isArray(overlay.profiles))throw new Error('Locale overlay must use schemaVersion 1 with localeSets and profiles.');
   if(Number(overlay.profileCount)!==catalog.length||overlay.profiles.length!==catalog.length)throw new Error(`Locale overlay profile count mismatch: ${overlay.profiles.length}/${overlay.profileCount} != ${catalog.length}`);
   if(profileKey(catalog[0])!==String(overlay.supportFloor||''))throw new Error(`Locale overlay support floor mismatch: ${overlay.supportFloor} != ${profileKey(catalog[0])}`);
-  if(profileKey(catalog.at(-1))!==String(overlay.latestAdmittedStable||''))throw new Error(`Locale overlay latest stable mismatch: ${overlay.latestAdmittedStable} != ${profileKey(catalog.at(-1])}`);
+  if(profileKey(catalog.at(-1))!==String(overlay.latestAdmittedStable||''))throw new Error(`Locale overlay latest stable mismatch: ${overlay.latestAdmittedStable} != ${profileKey(catalog.at(-1))}`);
   if(catalogSha256&&String(overlay.baseCatalogSha256||'')!==catalogSha256)throw new Error(`Locale overlay base catalog SHA-256 mismatch: ${overlay.baseCatalogSha256||'missing'} != ${catalogSha256}`);
   const byVersion=new Map(overlay.profiles.map(profile=>[profileKey(profile),profile]));
   if(byVersion.size!==overlay.profiles.length)throw new Error('Locale overlay contains duplicate qB versions.');
