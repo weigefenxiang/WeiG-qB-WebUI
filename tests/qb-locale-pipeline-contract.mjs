@@ -34,8 +34,9 @@ assert.ok(runtimeI18n.includes('if(!bridgeLocaleAllowed(current)||!validSettings
 assert.ok(runtimeI18n.includes('if(nativeLocaleAllowed(current))return loadNativeSettingsData().then(function(value){return value||loadSettingsData();});'),'runtime must prefer native QBT_TR/QM and only fall back to the exact bridge when native resolution fails');
 assert.ok(!pages.includes('Checkout qBittorrent locale source')&&!pages.includes('node tools/qb-locale-source.mjs'),'Pages must not re-parse upstream qB history on every Lab deployment');
 assert.ok(buildSite.includes("tools/data/qb-locale-lkg.json")&&buildSite.includes('applyLocaleOverlay')&&buildSite.includes('baseCatalogSha256'),'Virtual qB build must apply the source-SHA/base-catalog-bound frozen Locale overlay');
-assert.ok(relay.includes("- 'tools/data/qb-locale-lkg.json'")&&relay.includes("- 'tools/qb-locale-overlay.mjs'"),'Pages source relay must watch frozen Locale facts and their merge owner');
-assert.ok(!relay.includes("- 'tools/qb-locale-source.mjs'"),'candidate-only upstream source extraction must not redeploy unchanged frozen Pages data');
+assert.match(relay,/push:\s*\n\s*branches:\s*\n\s*- dev\s*\n\s*- main/,'Pages source relay must materialize every dev/main exact head so frozen locale assets can never lag the installer SHA');
+assert.doesNotMatch(relay,/\n\s+paths:/,'Exact-head Pages relay must not use path filters; locale/materialization changes and non-product commits alike must publish the current SHA');
+assert.ok(!relay.includes("- 'tools/qb-locale-source.mjs'"),'candidate-only upstream source extraction must not be coupled to Pages runtime build');
 assert.equal(frozenLocale.profileCount,65);
 assert.equal(frozenLocale.supportFloor,'4.1.0');
 assert.equal(frozenLocale.latestAdmittedStable,'5.2.3');
@@ -45,4 +46,4 @@ assert.ok(Object.keys(frozenLocale.localeSets||{}).length>1,'frozen Locale facts
 assert.ok(frozenLocale.profiles.every(item=>/^[0-9a-f]{40}$/.test(item.sourceSha)&&frozenLocale.localeSets[item.localeSet]?.length),'every frozen Locale profile must bind to an exact qB source SHA and resolved locale set');
 assert.ok(schema.includes("description:known?'qBittorrent preference.'"),'SettingsSchema fallback copy remains generic; official copy belongs to upstream-derived I18n facts');
 
-console.log('qB locale pipeline contract passed: candidate derives official qB translation evidence, packaging routes native QBT_TR/QM first, and only source-proven gaps retain exact-release compatibility shards.');
+console.log('qB locale pipeline contract passed: candidate derives official qB translation evidence, packaging routes native QBT_TR/QM first, every exact dev/main head is materialized, and only source-proven gaps retain exact-release compatibility shards.');
