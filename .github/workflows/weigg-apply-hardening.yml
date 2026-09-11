@@ -33,15 +33,31 @@ jobs:
             $encoded = (Get-ChildItem $Pattern | Sort-Object Name | ForEach-Object { [IO.File]::ReadAllText($_.FullName) }) -join ''
             [IO.File]::WriteAllBytes($Destination,[Convert]::FromBase64String($encoded))
           }
-          Decode-Chunks '.weigg-apply/install.b64.*' (Join-Path $PWD.Path 'installers\install.ps1')
-          Decode-Chunks '.weigg-apply/test.b64.*' (Join-Path $PWD.Path 'tests\windows-config-encoding.ps1')
-          if ((Get-FileHash 'installers\install.ps1' -Algorithm SHA256).Hash.ToLowerInvariant() -ne '769ecace30402f913805f3beffa98ab11ba0ee0af129ea72adde70dee822b204') { throw 'Installer SHA256 mismatch.' }
-          if ((Get-FileHash 'tests\windows-config-encoding.ps1' -Algorithm SHA256).Hash.ToLowerInvariant() -ne 'b313eb3d161860c0469427811da71fcd41e8ca982c6fc8b380b49a6a9dc6653b') { throw 'Windows safety test SHA256 mismatch.' }
+          $installerPath = Join-Path $PWD.Path 'installers\install.ps1'
+          $testPath = Join-Path $PWD.Path 'tests\windows-config-encoding.ps1'
+          Decode-Chunks '.weigg-apply/install.b64.*' $installerPath
+          Decode-Chunks '.weigg-apply/test.b64.*' $testPath
+          if ((Get-FileHash $installerPath -Algorithm SHA256).Hash.ToLowerInvariant() -ne '769ecace30402f913805f3beffa98ab11ba0ee0af129ea72adde70dee822b204') { throw 'Installer SHA256 mismatch.' }
+          if ((Get-FileHash $testPath -Algorithm SHA256).Hash.ToLowerInvariant() -ne 'b313eb3d161860c0469427811da71fcd41e8ca982c6fc8b380b49a6a9dc6653b') { throw 'Windows safety test SHA256 mismatch.' }
+
+          # Windows PowerShell 5.1 does not reliably parse UTF-8 no-BOM source containing
+          # Chinese/Japanese literals. The verified payload body is exact; prepend only
+          # the UTF-8 BOM so the committed regression executes with the intended Unicode.
+          [byte[]]$testBody = [IO.File]::ReadAllBytes($testPath)
+          [byte[]]$testWithBom = New-Object byte[] ($testBody.Length + 3)
+          $testWithBom[0] = 0xEF
+          $testWithBom[1] = 0xBB
+          $testWithBom[2] = 0xBF
+          [Array]::Copy($testBody,0,$testWithBom,3,$testBody.Length)
+          [IO.File]::WriteAllBytes($testPath,$testWithBom)
+          [byte[]]$verifyBom = [IO.File]::ReadAllBytes($testPath)
+          if ($verifyBom.Length -ne ($testBody.Length + 3) -or $verifyBom[0] -ne 0xEF -or $verifyBom[1] -ne 0xBB -or $verifyBom[2] -ne 0xBF) { throw 'Failed to materialize the PS5.1-safe UTF-8 BOM test source.' }
+
           Remove-Item '.weigg-apply' -Recurse -Force
           Remove-Item '.github\workflows\weigg-apply-hardening.yml' -Force
           git diff --check
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File 'tests\windows-config-encoding.ps1'
+          & "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File $testPath
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Commit exact verified payload
