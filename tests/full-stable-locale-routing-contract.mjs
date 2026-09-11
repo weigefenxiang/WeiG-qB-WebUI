@@ -16,10 +16,10 @@ if(generatedPath){
 }else{
   const catalogPath=new URL('./fixtures/qb-release-catalog.lkg.json',import.meta.url);
   const overlayPath=new URL('../tools/data/qb-locale-lkg.json',import.meta.url);
-  const baseBytes=fs.readFileSync(catalogPath);
-  const base=JSON.parse(baseBytes.toString('utf8'));
+  const baseText=fs.readFileSync(catalogPath,'utf8').replace(/\r\n?/g,'\n');
+  const base=JSON.parse(baseText);
   const overlay=JSON.parse(fs.readFileSync(overlayPath,'utf8'));
-  const catalogSha256=crypto.createHash('sha256').update(baseBytes).digest('hex');
+  const catalogSha256=crypto.createHash('sha256').update(Buffer.from(baseText,'utf8')).digest('hex');
   catalog=applyLocaleOverlay(base,overlay,{catalogSha256});
 }
 const bundle=buildNativeSettingsBundle(catalog,behavior);
