@@ -94,9 +94,19 @@ async function setVerifiedLocale(page,target){
   assert.equal(drafted.value,target,`${target}: user-selected Language control value must update before save`);
   assert.equal(drafted.draft,target,`${target}: user-selected Language control must update the qB locale draft`);
 
-  const navigation=page.waitForNavigation({waitUntil:'domcontentloaded',timeout:30000});
   await page.locator('#save-settings-btn').click();
-  await navigation;
+  await page.waitForFunction(locale=>window.WeiG?.SettingsState?.prefs?.locale===locale&&window.WeiG?.I18n?.getQbLocale?.()===locale,target,{timeout:30000});
+
+  const saved=await page.evaluate(async()=>{
+    const response=await fetch('api/v2/app/preferences',{cache:'no-store'});
+    const prefs=await response.json();
+    return{status:response.status,locale:prefs.locale,qbLocale:window.WeiG?.I18n?.getQbLocale?.(),lang:document.documentElement.lang};
+  });
+  assert.equal(saved.status,200,`${target} preferences reread must succeed immediately after save`);
+  assert.equal(saved.locale,target,`${target} must persist in qB preferences.locale immediately after save`);
+  assert.equal(saved.qbLocale,target,`${target} must become the runtime qB locale immediately after save`);
+
+  await page.reload({waitUntil:'domcontentloaded',timeout:60000});
   await page.waitForSelector('#torrent-list',{state:'attached',timeout:60000});
   await page.waitForFunction(locale=>window.WeiG?.I18n?.getQbLocale?.()===locale,target,{timeout:30000});
 
@@ -105,9 +115,9 @@ async function setVerifiedLocale(page,target){
     const prefs=await response.json();
     return{status:response.status,locale:prefs.locale,qbLocale:window.WeiG?.I18n?.getQbLocale?.(),lang:document.documentElement.lang};
   });
-  assert.equal(persisted.status,200,`${target} preferences reread must succeed after reload`);
-  assert.equal(persisted.locale,target,`${target} must persist in qB preferences.locale`);
-  assert.equal(persisted.qbLocale,target,`${target} must become the runtime qB locale after reload`);
+  assert.equal(persisted.status,200,`${target} preferences reread must succeed after explicit reload`);
+  assert.equal(persisted.locale,target,`${target} must persist in qB preferences.locale after explicit reload`);
+  assert.equal(persisted.qbLocale,target,`${target} must remain the runtime qB locale after explicit reload`);
 
   await openSettings(page);
   const reopened=await page.evaluate(()=>{
@@ -138,7 +148,7 @@ async function verifyDevLocale(browserPage){
     const prefs=await response.json();
     return{status:response.status,locale:prefs.locale,qbLocale:window.WeiG?.I18n?.getQbLocale?.(),lang:document.documentElement.lang};
   });
-  assert.deepEqual(verified,{status:200,locale:'zh_CN',qbLocale:'zh_CN',lang:'zh-CN'},'English-to-Simplified-Chinese locale transition must persist through qB preferences, reload, runtime projection, and a reopened Settings control');
+  assert.deepEqual(verified,{status:200,locale:'zh_CN',qbLocale:'zh_CN',lang:'zh-CN'},'English-to-Simplified-Chinese locale transition must persist through qB preferences, explicit reload, runtime projection, and a reopened Settings control');
 }
 
 async function verifyBranchEntry(browser,{branch,entryPath,branchSha,label}){
@@ -249,7 +259,7 @@ try{
   await verifyBranchEntry(browser,{branch:'dev',entryPath:'dev/',branchSha:site.branches.dev.exactSha,label:'/dev/'});
   await verifyBranchEntry(browser,{branch:'main',entryPath:'main',branchSha:site.branches.main.exactSha,label:'/main'});
   await verifyLabEntry(browser,site);
-  console.log(`Virtual qB Pages entry acceptance passed for ${expectedSha}: /dev/, /main and /lab/ render cleanly, the real Language dropdown and Save button persist Simplified Chinese through reload and reopened Settings, locale variants remain distinct, the Lab branch selector routes dev and main through one launcher to their exact app snapshots, routing semantics are preserved, and each entry resolves to its exact published snapshot.`);
+  console.log(`Virtual qB Pages entry acceptance passed for ${expectedSha}: /dev/, /main and /lab/ render cleanly, the real Language dropdown and Save button persist Simplified Chinese through explicit reload and reopened Settings, locale variants remain distinct, the Lab branch selector routes dev and main through one launcher to their exact app snapshots, routing semantics are preserved, and each entry resolves to its exact published snapshot.`);
 }finally{
   await browser.close();
 }
