@@ -94,6 +94,89 @@ function Find-QBConfig {
   return $null
 }
 
+function Read-QBConfigText([string]$Path) {
+  [byte[]]$bytes=[IO.File]::ReadAllBytes($Path)
+  $offset=0
+  [byte[]]$preamble=@()
+  $encoding=$null
+
+  if($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF){
+    $encoding=New-Object System.Text.UTF8Encoding($false,$true)
+    $preamble=[byte[]]@(0xEF,0xBB,0xBF)
+    $offset=3
+  } elseif($bytes.Length -ge 2 -and $bytes[0] -eq 0xFF -and $bytes[1] -eq 0xFE){
+    $encoding=New-Object System.Text.UnicodeEncoding($false,$false,$true)
+    $preamble=[byte[]]@(0xFF,0xFE)
+    $offset=2
+  } elseif($bytes.Length -ge 2 -and $bytes[0] -eq 0xFE -and $bytes[1] -eq 0xFF){
+    $encoding=New-Object System.Text.UnicodeEncoding($true,$false,$true)
+    $preamble=[byte[]]@(0xFE,0xFF)
+    $offset=2
+  } else {
+    $strictUtf8=New-Object System.Text.UTF8Encoding($false,$true)
+    try {
+      $null=$strictUtf8.GetString($bytes)
+      $encoding=$strictUtf8
+    } catch {
+      $encoding=[Text.Encoding]::Default
+    }
+  }
+
+  [byte[]]$payload=$bytes
+  if($offset -gt 0){
+    if($bytes.Length -gt $offset){$payload=[byte[]]$bytes[$offset..($bytes.Length-1)]}else{$payload=[byte[]]@()}
+  }
+  try{$text=$encoding.GetString($payload)}catch{throw "Unable to decode qBittorrent config without data loss: $Path"}
+  [byte[]]$roundTrip=$encoding.GetBytes($text)
+  if($roundTrip.Length -ne $payload.Length){throw "qBittorrent config encoding is not round-trip safe; refusing to rewrite: $Path"}
+  for($i=0;$i -lt $payload.Length;$i++){
+    if($roundTrip[$i] -ne $payload[$i]){throw "qBittorrent config encoding is not round-trip safe; refusing to rewrite: $Path"}
+  }
+  return [PSCustomObject]@{Text=$text;Encoding=$encoding;Preamble=$preamble;EncodingName=$encoding.WebName}
+}
+
+function Write-QBConfigText([string]$Path,[string]$Text,$State) {
+  [byte[]]$body=$State.Encoding.GetBytes($Text)
+  [byte[]]$prefix=$State.Preamble
+  [byte[]]$output=New-Object byte[] ($prefix.Length+$body.Length)
+  if($prefix.Length -gt 0){[Array]::Copy($prefix,0,$output,0,$prefix.Length)}
+  if($body.Length -gt 0){[Array]::Copy($body,0,$output,$prefix.Length,$body.Length)}
+  [IO.File]::WriteAllBytes($Path,$output)
+}
+
+function Configure-QBWebUI([string]$Path,[string]$RootFolder) {
+  $backup="$Path.weigg.bak"
+  Copy-Item $Path $backup -Force
+  $state=Read-QBConfigText $Path
+  $text=$state.Text
+  $newline=if($text.Contains("`r`n")){"`r`n"}else{"`n"}
+
+  if($text -match '(?m)^WebUI\\AlternativeUIEnabled='){
+    $text=[regex]::Replace($text,'(?m)^WebUI\\AlternativeUIEnabled=.*$','WebUI\AlternativeUIEnabled=true')
+  } else {
+    if($text.Length -gt 0 -and !$text.EndsWith("`n") -and !$text.EndsWith("`r")){$text+=$newline}
+    $text+='WebUI\AlternativeUIEnabled=true'+$newline
+  }
+
+  $rootLine='WebUI\RootFolder='+$RootFolder
+  if($text -match '(?m)^WebUI\\RootFolder='){
+    $text=[regex]::Replace($text,'(?m)^WebUI\\RootFolder=.*$',[System.Text.RegularExpressions.MatchEvaluator]{param($m)$rootLine})
+  } else {
+    if($text.Length -gt 0 -and !$text.EndsWith("`n") -and !$text.EndsWith("`r")){$text+=$newline}
+    $text+=$rootLine+$newline
+  }
+
+  try {
+    Write-QBConfigText $Path $text $state
+    $verify=Read-QBConfigText $Path
+    if($verify.Text -ne $text){throw 'qBittorrent config verification failed after write.'}
+  } catch {
+    Copy-Item $backup $Path -Force
+    throw
+  }
+  Write-Host "qBittorrent config encoding preserved: $($state.EncodingName)"
+}
+
 function Backup-Current {
   $stamp=Get-Date -Format 'yyyyMMdd-HHmmss'
   $b=Join-Path $Backups $stamp
@@ -318,12 +401,7 @@ try {
   $cfg=Find-QBConfig
   if($Configure){
     if(!$cfg){ throw 'No qBittorrent config was found; WebUI files are installed but configuration was not changed.' }
-    Copy-Item $cfg "$cfg.weigg.bak" -Force
-    $text=Get-Content $cfg -Raw
-    if($text -match '(?m)^WebUI\\AlternativeUIEnabled='){ $text=[regex]::Replace($text,'(?m)^WebUI\\AlternativeUIEnabled=.*$','WebUI\AlternativeUIEnabled=true') } else { $text += "`r`nWebUI\AlternativeUIEnabled=true`r`n" }
-    $rootLine='WebUI\RootFolder='+$Destination
-    if($text -match '(?m)^WebUI\\RootFolder='){ $text=[regex]::Replace($text,'(?m)^WebUI\\RootFolder=.*$',[System.Text.RegularExpressions.MatchEvaluator]{param($m)$rootLine}) } else { $text += $rootLine+"`r`n" }
-    Set-Content -Path $cfg -Value $text -Encoding UTF8
+    Configure-QBWebUI $cfg $Destination
     Write-Host "Configured: $cfg"
     Write-Host "qBittorrent Root Folder: $Destination"
   } else {
