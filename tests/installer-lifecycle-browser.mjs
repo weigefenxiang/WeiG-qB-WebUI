@@ -8,6 +8,7 @@ const marker=String(process.env.WEIG_LIFECYCLE_MARKER||'').trim();
 const expectedSha=String(process.env.WEIG_LIFECYCLE_SHA||'').trim();
 const expectedQb=String(process.env.WEIG_QB_EXPECTED_VERSION||'5.2.3').trim();
 const altPath=String(process.env.WEIG_QB_ALT_WEBUI_PATH||'').trim();
+const localeTarget=String(process.env.WEIG_QB_LOCALE_TARGET||'').trim();
 const norm=v=>String(v||'').trim().replace(/^v/i,'').split(/[+-]/)[0];
 const redact=v=>String(v??'')
   .replace(/https?:\/\/[^\s'"<>]+/gi,'[REDACTED_URL]')
@@ -80,9 +81,54 @@ try{
   const altValue=await altPathControl.locator('input,textarea').first().inputValue().catch(()=>null);
   assert(altValue===altPath,`Canonical Settings Alternative WebUI path mismatch: ${altValue}`);
 
+  let verifiedLocale=null;
+  let localizedSettingTitle=null;
+  if(localeTarget){
+    const writable=await page.evaluate(locale=>{
+      const W=window.WeiG,state=W&&W.SettingsState,schema=W&&W.SettingsSchema;
+      if(!state||!schema)return false;
+      const current=state.prefs&&state.prefs.locale;
+      if(!schema.isWritable||!schema.isWritable('locale',current))return false;
+      state.draft.locale=locale;
+      return true;
+    },localeTarget);
+    assert(writable,`qB ${expectedQb} locale preference is not writable in the exact source profile.`);
+
+    const navigation=page.waitForNavigation({waitUntil:'domcontentloaded',timeout:15000});
+    await page.locator('#save-settings-btn').click();
+    await navigation;
+    await page.waitForSelector('#app',{timeout:10000});
+    await page.waitForFunction(()=>document.querySelector('#qb-version')?.textContent?.trim()&&!['—','Detecting…'].includes(document.querySelector('#qb-version').textContent.trim()),null,{timeout:10000});
+
+    verifiedLocale=await page.evaluate(async()=>{
+      const response=await fetch('/api/v2/app/preferences',{credentials:'same-origin',cache:'no-store'});
+      if(!response.ok)throw new Error(`preferences HTTP ${response.status}`);
+      const prefs=await response.json();
+      return String(prefs&&prefs.locale||'');
+    });
+    assert(verifiedLocale===localeTarget,`qB locale round trip mismatch: expected ${localeTarget}, actual ${verifiedLocale}`);
+
+    await page.locator('#app-nav [data-route="settings"]').click();
+    await page.waitForFunction(()=>location.hash.includes('settings'));
+    await page.waitForSelector('#settings-content[data-settings-renderer="canonical"]',{timeout:10000});
+    const advancedTab=page.locator('#settings-tabs [data-settings-tab="advanced"]');
+    await advancedTab.click();
+    await page.waitForSelector('#settings-tabs [data-settings-tab="advanced"].is-active',{timeout:10000});
+    const localeRow=page.locator('[data-setting-key="locale"]');
+    await localeRow.waitFor({state:'attached',timeout:10000});
+    localizedSettingTitle=String(await localeRow.locator('.setting-title').textContent()||'').trim();
+    assert(/[\u3400-\u9fff]/.test(localizedSettingTitle),`qB-owned Locale title did not load official Chinese copy after reload: ${localizedSettingTitle}`);
+    const chineseTitleCount=await page.locator('#settings-content .setting-title').evaluateAll(nodes=>nodes.filter(node=>/[\u3400-\u9fff]/.test(String(node.textContent||''))).length);
+    assert(chineseTitleCount>=2,`qB-owned Settings translation surface remained effectively English after ${localeTarget}; localized titles=${chineseTitleCount}`);
+  }
+
   for(const required of ['/api/v2/app/version','/api/v2/app/webapiVersion','/api/v2/app/preferences']){
     const status=requestFacts.get(required)||0;
     assert(status>=200&&status<300,`Chrome did not complete required real qB API request ${required}.`);
+  }
+  if(localeTarget){
+    const setStatus=requestFacts.get('/api/v2/app/setPreferences')||0;
+    assert(setStatus>=200&&setStatus<300,'Chrome did not complete the real qB app/setPreferences locale write.');
   }
   assert(pageErrors.length===0,`Chrome page errors: ${pageErrors.join(' | ')}`);
 
@@ -94,6 +140,9 @@ try{
     webApiVersion:uiApi,
     canonicalSettings:true,
     alternativeWebuiPath:altValue,
+    localeTarget:localeTarget||null,
+    verifiedLocale,
+    localizedSettingTitle,
     externalRequestsBlocked:true
   }));
   await context.close();
