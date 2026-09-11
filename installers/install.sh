@@ -693,22 +693,51 @@ trap 'rm -rf "$TMP"' EXIT INT TERM
 PACKAGE="$TMP/WeiG-qB-WebUI.zip"
 
 if [ "$CHANNEL" = "release" ]; then
-  if [ -n "$RELEASE_VERSION" ]; then
-    RELEASE_BASE="https://github.com/$REPO/releases/download/$RELEASE_TAG"
-    RELEASE_LABEL="Release $RELEASE_TAG"
+  REQUESTED_RELEASE_VERSION="$RELEASE_VERSION"
+  REQUESTED_RELEASE_TAG="$RELEASE_TAG"
+  RELEASE_META="$TMP/release.json"
+  if [ -n "$REQUESTED_RELEASE_VERSION" ]; then
+    RELEASE_META_URL="https://api.github.com/repos/$REPO/releases/tags/$REQUESTED_RELEASE_TAG"
   else
-    RELEASE_BASE="https://github.com/$REPO/releases/latest/download"
-    RELEASE_LABEL="latest GitHub Release"
+    RELEASE_META_URL="https://api.github.com/repos/$REPO/releases/latest"
   fi
+
+  download_file "$RELEASE_META_URL" "$RELEASE_META" || {
+    if [ -n "$REQUESTED_RELEASE_VERSION" ]; then
+      echo "Release $REQUESTED_RELEASE_TAG was not found. Refusing to fall back to latest or dev." >&2
+    else
+      echo "No published stable GitHub Release is available. Release installation will not fall back to a branch archive." >&2
+    fi
+    exit 1
+  }
+  RESOLVED_RELEASE_TAG=$(sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$RELEASE_META" | head -n1)
+  printf '%s' "$RESOLVED_RELEASE_TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$' || {
+    echo "GitHub Release metadata returned an invalid tag: ${RESOLVED_RELEASE_TAG:-<empty>}." >&2
+    exit 1
+  }
+  if [ -n "$REQUESTED_RELEASE_TAG" ] && [ "$RESOLVED_RELEASE_TAG" != "$REQUESTED_RELEASE_TAG" ]; then
+    echo "Requested $REQUESTED_RELEASE_TAG but GitHub Release metadata resolved $RESOLVED_RELEASE_TAG; refusing mismatched Release identity." >&2
+    exit 1
+  fi
+  RESOLVED_RELEASE_VERSION=${RESOLVED_RELEASE_TAG#v}
+
+  RELEASE_COMMIT_META="$TMP/release-commit.json"
+  download_file "https://api.github.com/repos/$REPO/commits/$RESOLVED_RELEASE_TAG" "$RELEASE_COMMIT_META" || {
+    echo "Unable to resolve commit identity for Release $RESOLVED_RELEASE_TAG." >&2
+    exit 1
+  }
+  RELEASE_EXPECTED_SHA=$(sed -n 's/^[[:space:]]*"sha"[[:space:]]*:[[:space:]]*"\([0-9a-fA-F]\{40\}\)".*/\1/p' "$RELEASE_COMMIT_META" | head -n1 | tr 'A-F' 'a-f')
+  valid_sha "$RELEASE_EXPECTED_SHA" || { echo "Release $RESOLVED_RELEASE_TAG did not resolve to a valid commit SHA." >&2; exit 1; }
+
+  RELEASE_TAG="$RESOLVED_RELEASE_TAG"
+  RELEASE_VERSION="$RESOLVED_RELEASE_VERSION"
+  RELEASE_BASE="https://github.com/$REPO/releases/download/$RELEASE_TAG"
+  RELEASE_LABEL="Release $RELEASE_TAG"
   RELEASE_URL="$RELEASE_BASE/WeiG-qB-WebUI.zip"
   SUM_URL="$RELEASE_BASE/SHA256SUMS"
 
   download_file "$RELEASE_URL" "$PACKAGE" || {
-    if [ -n "$RELEASE_VERSION" ]; then
-      echo "Release $RELEASE_TAG was not found or WeiG-qB-WebUI.zip is unavailable. Refusing to fall back to latest or dev." >&2
-    else
-      echo "No published stable GitHub Release is available. Release installation will not fall back to a branch archive." >&2
-    fi
+    echo "$RELEASE_LABEL does not contain WeiG-qB-WebUI.zip. Refusing to fall back to another Release or branch." >&2
     exit 1
   }
   download_file "$SUM_URL" "$TMP/SHA256SUMS" || {
@@ -719,16 +748,18 @@ if [ "$CHANNEL" = "release" ]; then
   verify_release_checksum "$TMP/SHA256SUMS" "$PACKAGE"
   extract_zip "$PACKAGE" "$TMP/release"
   SRC="$TMP/release/WeiG-qB-WebUI"
-  SOURCE_SHA=$(cat "$SRC/GIT_SHA" 2>/dev/null | tr -d '\r\n' || true)
+  SOURCE_SHA=$(cat "$SRC/GIT_SHA" 2>/dev/null | tr -d '\r\n' | tr 'A-F' 'a-f' || true)
   valid_sha "$SOURCE_SHA" || { echo "$RELEASE_LABEL does not contain a valid GIT_SHA; refusing an unversioned asset deployment." >&2; exit 1; }
-  if [ -n "$RELEASE_VERSION" ]; then
-    PACKAGE_VERSION=$(cat "$SRC/VERSION" 2>/dev/null | tr -d '\r\n' || true)
-    [ "$PACKAGE_VERSION" = "$RELEASE_VERSION" ] || {
-      echo "Requested $RELEASE_TAG but the package reports VERSION=$PACKAGE_VERSION; refusing mismatched Release content." >&2
-      exit 1
-    }
-  fi
-  echo "Source: $RELEASE_LABEL (checksum verified)"
+  PACKAGE_VERSION=$(cat "$SRC/VERSION" 2>/dev/null | tr -d '\r\n' || true)
+  [ "$PACKAGE_VERSION" = "$RELEASE_VERSION" ] || {
+    echo "$RELEASE_LABEL maps to VERSION=$RELEASE_VERSION but the package reports VERSION=$PACKAGE_VERSION; refusing mismatched Release content." >&2
+    exit 1
+  }
+  [ "$SOURCE_SHA" = "$RELEASE_EXPECTED_SHA" ] || {
+    echo "$RELEASE_LABEL points to Git SHA $RELEASE_EXPECTED_SHA but the package reports GIT_SHA=$SOURCE_SHA; refusing mismatched Release content." >&2
+    exit 1
+  }
+  echo "Source: $RELEASE_LABEL at $RELEASE_EXPECTED_SHA (checksum and Release identity verified)"
 else
   DEV_META="$TMP/dev-commit.json"
   download_file "https://api.github.com/repos/$REPO/commits/dev" "$DEV_META" || { echo "Unable to resolve the current dev commit." >&2; exit 1; }

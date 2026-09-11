@@ -8,6 +8,7 @@ const root=path.resolve(here,'..');
 const sh=fs.readFileSync(path.join(root,'installers/install.sh'),'utf8');
 const ps=fs.readFileSync(path.join(root,'installers/install.ps1'),'utf8');
 const live=fs.readFileSync(path.join(root,'tests/live.sh'),'utf8');
+const candidateDeployment=fs.readFileSync(path.join(root,'tests/candidate-deployment.sh'),'utf8');
 const publicIndex=fs.readFileSync(path.join(root,'webui/public/index.html'),'utf8');
 const publicLogin=fs.readFileSync(path.join(root,'webui/public/login.html'),'utf8');
 const privateIndex=fs.readFileSync(path.join(root,'webui/private/index.html'),'utf8');
@@ -27,9 +28,12 @@ assert.match(sh,/-o PATH, --output PATH/,'Linux installer must expose unified ou
 assert.match(sh,/--configure\s+Enable qBittorrent Alternative WebUI and set Root Folder/,'Linux configure help must explain the qB config mutation');
 assert.match(sh,/--rollback\s+Restore the previous installation and qBittorrent config/,'Linux installer must expose rollback');
 assert.match(sh,/--version and --dev\/--channel=dev cannot be used together/,'Linux installer must reject version/dev ambiguity');
-assert.match(sh,/releases\/latest\/download/,'Linux default Release channel must consume latest Release assets');
-assert.match(sh,/releases\/download\/\$RELEASE_TAG/,'Linux installer must support exact tagged Release assets');
-assert.match(sh,/PACKAGE_VERSION/,'Linux exact Release install must verify package VERSION');
+assert.match(sh,/api\.github\.com\/repos\/\$REPO\/releases\/latest/,'Linux latest install must resolve one concrete GitHub Release tag before downloading assets');
+assert.match(sh,/api\.github\.com\/repos\/\$REPO\/releases\/tags\/\$REQUESTED_RELEASE_TAG/,'Linux exact version install must resolve Release metadata for the requested tag');
+assert.match(sh,/releases\/download\/\$RELEASE_TAG/,'Linux installer must pin asset downloads to the resolved exact Release tag');
+assert.match(sh,/api\.github\.com\/repos\/\$REPO\/commits\/\$RESOLVED_RELEASE_TAG/,'Linux Release install must resolve the tag to an exact commit SHA');
+assert.match(sh,/PACKAGE_VERSION.*RELEASE_VERSION|RELEASE_VERSION.*PACKAGE_VERSION/s,'Linux Release install must bind package VERSION to the resolved tag version');
+assert.match(sh,/SOURCE_SHA.*RELEASE_EXPECTED_SHA|RELEASE_EXPECTED_SHA.*SOURCE_SHA/s,'Linux Release install must bind package GIT_SHA to the resolved tag commit');
 assert.match(sh,/SHA256SUMS/,'Linux Release installs must remain checksum-verified');
 assert.match(sh,/--channel=release\|dev/,'Linux installer must keep the old channel syntax as a compatibility alias');
 assert.match(sh,/--dir=\/path/,'Linux installer must keep the old path syntax as a compatibility alias');
@@ -55,9 +59,12 @@ assert.match(ps,/\[switch\]\$Rollback/,'Windows installer must expose rollback')
 assert.match(ps,/-version VERSION/,'Windows help must document lowercase version syntax');
 assert.match(ps,/-configure\s+Enable qBittorrent Alternative WebUI and set Root Folder/,'Windows help must document lowercase configure syntax');
 assert.match(ps,/-version and -dev\/-Channel Dev cannot be used together/,'Windows installer must reject version/dev ambiguity');
-assert.match(ps,/releases\/latest\/download/,'Windows default Release channel must consume latest Release assets');
-assert.match(ps,/releases\/download\/\$releaseTag/,'Windows installer must support exact tagged Release assets');
-assert.match(ps,/packageVersion/,'Windows exact Release install must verify package VERSION');
+assert.match(ps,/api\.github\.com\/repos\/\$Repo\/releases\/latest/,'Windows latest install must resolve one concrete GitHub Release tag before downloading assets');
+assert.match(ps,/api\.github\.com\/repos\/\$Repo\/releases\/tags\/\$requestedReleaseTag/,'Windows exact version install must resolve Release metadata for the requested tag');
+assert.match(ps,/releases\/download\/\$releaseTag/,'Windows installer must pin asset downloads to the resolved exact Release tag');
+assert.match(ps,/api\.github\.com\/repos\/\$Repo\/commits\/\$resolvedReleaseTag/,'Windows Release install must resolve the tag to an exact commit SHA');
+assert.match(ps,/packageVersion.*releaseVersion|releaseVersion.*packageVersion/s,'Windows Release install must bind package VERSION to the resolved tag version');
+assert.match(ps,/sourceSha.*releaseExpectedSha|releaseExpectedSha.*sourceSha/s,'Windows Release install must bind package GIT_SHA to the resolved tag commit');
 assert.match(ps,/SHA256SUMS/,'Windows Release installs must remain checksum-verified');
 assert.match(ps,/ValidateSet\('Release','Dev'\)/,'Windows installer must retain legacy Release/Dev channel compatibility');
 assert.match(ps,/ValidateSet\('Install','Update','Rollback'\)/,'Windows installer must retain legacy mode compatibility');
@@ -73,6 +80,10 @@ assert.match(ps,/function Restore-Last/,'Windows rollback must restore the remem
 assert.match(ps,/last-dest/,'Windows rollback must remember the prior install destination');
 assert.doesNotMatch(ps,/archive\/refs\/heads\/main\.zip/,'Windows Release channel must fail closed instead of falling back to main');
 assert.doesNotMatch(ps,/Resolve-MainSha/,'Windows Release channel must not resolve main as a payload source');
+
+assert.match(candidateDeployment,/releases\/tags\/v"\$WEIG_CANDIDATE_VERSION"/,'Candidate deployment must mock the exact Release tag metadata used by the artifact installer');
+assert.match(candidateDeployment,/commits\/v"\$WEIG_CANDIDATE_VERSION"/,'Candidate deployment must mock the exact Release tag commit identity');
+assert.match(candidateDeployment,/WEIG_CANDIDATE_SHA="\$EXPECTED_SHA"/,'Candidate deployment must bind mocked Release commit identity to the candidate SHA');
 assert.match(ps,/function Read-QBConfigText/,'Windows configure path must own explicit qB config decoding instead of PowerShell defaults');
 assert.match(ps,/UTF8Encoding\(\$false,\$true\)/,'Windows qB config reader must validate BOM-less UTF-8 strictly');
 assert.match(ps,/\[Text\.Encoding\]::Default/,'Windows qB config reader may fall back to the native code page only when bytes are not valid UTF-8');
@@ -97,4 +108,4 @@ for(const [name,html] of [['public/index.html',publicIndex],['public/login.html'
 }
 assert.match(privateIndex,/scripts\/qb-client\.js/,'private WebUI must load the shared API compatibility client');
 
-console.log('Platform contract passed: Linux/Windows Dev consume one exact-SHA materialized qB-aware translation payload with raw-source fallback forbidden, Windows qB config mutation preserves original text encoding, installers preserve simplified version/dev/output/configure/rollback semantics and legacy aliases, and LIVE rollback retention remains capped at three backups.');
+console.log('Platform contract passed: Linux/Windows Release installs pin one concrete tag and require tag/VERSION/GIT_SHA identity; Dev consumes one exact-SHA materialized qB-aware payload with raw-source fallback forbidden; Windows qB config mutation preserves original text encoding; installer compatibility and LIVE rollback retention remain guarded.');

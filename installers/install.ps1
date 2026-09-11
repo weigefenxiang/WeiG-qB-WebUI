@@ -529,21 +529,43 @@ try {
   $web=$null
 
   if($Channel -eq 'Release'){
-    if($releaseVersion){
-      $releaseBase="https://github.com/$Repo/releases/download/$releaseTag"
-      $releaseLabel="Release $releaseTag"
-    } else {
-      $releaseBase="https://github.com/$Repo/releases/latest/download"
-      $releaseLabel='latest GitHub Release'
+    $requestedReleaseVersion=$releaseVersion
+    $requestedReleaseTag=$releaseTag
+    $apiHeaders=@{'User-Agent'='WeiG-qB-WebUI-installer'}
+    try {
+      if($requestedReleaseVersion){
+        $releaseMeta=Invoke-RestMethod -UseBasicParsing -Headers $apiHeaders "https://api.github.com/repos/$Repo/releases/tags/$requestedReleaseTag"
+      } else {
+        $releaseMeta=Invoke-RestMethod -UseBasicParsing -Headers $apiHeaders "https://api.github.com/repos/$Repo/releases/latest"
+      }
+    } catch {
+      if($requestedReleaseVersion){throw "Release $requestedReleaseTag was not found. Refusing to fall back to latest or dev."}
+      throw 'No published stable GitHub Release is available. Release installation will not fall back to a branch archive.'
     }
+
+    $resolvedReleaseTag=[string]$releaseMeta.tag_name
+    if($resolvedReleaseTag -notmatch '^v(\d+\.\d+\.\d+)$'){throw "GitHub Release metadata returned an invalid tag: $resolvedReleaseTag"}
+    $resolvedReleaseVersion=$Matches[1]
+    if($requestedReleaseTag -and $resolvedReleaseTag -ne $requestedReleaseTag){
+      throw "Requested $requestedReleaseTag but GitHub Release metadata resolved $resolvedReleaseTag; refusing mismatched Release identity."
+    }
+    try {
+      $releaseCommit=Invoke-RestMethod -UseBasicParsing -Headers $apiHeaders "https://api.github.com/repos/$Repo/commits/$resolvedReleaseTag"
+    } catch {
+      throw "Unable to resolve commit identity for Release $resolvedReleaseTag."
+    }
+    $releaseExpectedSha=([string]$releaseCommit.sha).ToLowerInvariant()
+    if($releaseExpectedSha -notmatch '^[0-9a-f]{40}$'){throw "Release $resolvedReleaseTag did not resolve to a valid commit SHA."}
+
+    $releaseTag=$resolvedReleaseTag
+    $releaseVersion=$resolvedReleaseVersion
+    $releaseBase="https://github.com/$Repo/releases/download/$releaseTag"
+    $releaseLabel="Release $releaseTag"
 
     try {
       Invoke-WebRequest -UseBasicParsing "$releaseBase/WeiG-qB-WebUI.zip" -OutFile $archive
     } catch {
-      if($releaseVersion){
-        throw "Release $releaseTag was not found or WeiG-qB-WebUI.zip is unavailable. Refusing to fall back to latest or dev."
-      }
-      throw 'No published stable GitHub Release is available. Release installation will not fall back to a branch archive.'
+      throw "$releaseLabel does not contain WeiG-qB-WebUI.zip. Refusing to fall back to another Release or branch."
     }
 
     $sumFile=Join-Path $tmp 'SHA256SUMS'
@@ -559,16 +581,19 @@ try {
     $web=Join-Path $root 'WeiG-qB-WebUI'
     $shaFile=Join-Path $web 'GIT_SHA'
     if(!(Test-Path $shaFile)){throw "$releaseLabel does not contain GIT_SHA; refusing an unversioned asset deployment."}
-    $sourceSha=(Get-Content $shaFile -Raw).Trim()
-    if($sourceSha -notmatch '^[0-9a-fA-F]{40}$'){throw "$releaseLabel contains an invalid GIT_SHA."}
-    if($releaseVersion){
-      $packageVersion=(Get-Content (Join-Path $web 'VERSION') -Raw).Trim()
-      if($packageVersion -ne $releaseVersion){
-        throw "Requested $releaseTag but the package reports VERSION=$packageVersion; refusing mismatched Release content."
-      }
+    $sourceSha=(Get-Content $shaFile -Raw).Trim().ToLowerInvariant()
+    if($sourceSha -notmatch '^[0-9a-f]{40}$'){throw "$releaseLabel contains an invalid GIT_SHA."}
+    $versionFile=Join-Path $web 'VERSION'
+    if(!(Test-Path $versionFile)){throw "$releaseLabel does not contain VERSION; refusing an unversioned asset deployment."}
+    $packageVersion=(Get-Content $versionFile -Raw).Trim()
+    if($packageVersion -ne $releaseVersion){
+      throw "$releaseLabel maps to VERSION=$releaseVersion but the package reports VERSION=$packageVersion; refusing mismatched Release content."
+    }
+    if($sourceSha -ne $releaseExpectedSha){
+      throw "$releaseLabel points to Git SHA $releaseExpectedSha but the package reports GIT_SHA=$sourceSha; refusing mismatched Release content."
     }
     Assert-MaterializedWebUI $web
-    Write-Host "Source: $releaseLabel (checksum verified, materialized WebUI)"
+    Write-Host "Source: $releaseLabel at $releaseExpectedSha (checksum and Release identity verified, materialized WebUI)"
   } else {
     try {
       $commit=Invoke-RestMethod -UseBasicParsing -Headers @{'User-Agent'='WeiG-qB-WebUI-installer'} "https://api.github.com/repos/$Repo/commits/dev"

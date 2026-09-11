@@ -108,6 +108,14 @@ while [[ $# -gt 0 ]]; do
 done
 [[ -n "$url" && -n "$out" ]] || { echo 'candidate mock curl: missing URL or output path' >&2; exit 2; }
 case "$url" in
+  */releases/tags/v"$WEIG_CANDIDATE_VERSION")
+    printf '{"tag_name":"v%s"}\n' "$WEIG_CANDIDATE_VERSION" > "$out"
+    exit 0
+    ;;
+  */commits/v"$WEIG_CANDIDATE_VERSION")
+    printf '{"sha":"%s"}\n' "$WEIG_CANDIDATE_SHA" > "$out"
+    exit 0
+    ;;
   */releases/download/v"$WEIG_CANDIDATE_VERSION"/WeiG-qB-WebUI.zip)
     src="$WEIG_CANDIDATE_PACKAGE"
     ;;
@@ -126,6 +134,7 @@ chmod +x "$MOCK_BIN/curl"
 export HOME="$HOME_DIR"
 export XDG_CONFIG_HOME="$HOME_DIR/.config"
 export WEIG_CANDIDATE_VERSION="$VERSION"
+export WEIG_CANDIDATE_SHA="$EXPECTED_SHA"
 export WEIG_CANDIDATE_PACKAGE="$PACKAGE"
 export WEIG_CANDIDATE_SUMS="$SUMS"
 export PATH="$MOCK_BIN:$PATH"
