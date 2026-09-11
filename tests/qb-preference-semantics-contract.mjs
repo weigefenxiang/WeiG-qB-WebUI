@@ -12,6 +12,7 @@ void AppController::preferencesAction()
     const bool localBool = true;
     const int localNumber = 3;
     const QString localString = u"x"_s;
+    data[u"locale"_s] = pref->getLocale();
     data[u"negated"_s] = !session->isAutoTMMDisabledByDefault();
     data[u"comparison"_s] = (session->port() == 0);
     data[u"logical"_s] = session->isFoo() && session->isBar();
@@ -30,6 +31,7 @@ void AppController::preferencesAction()
 
 void AppController::setPreferencesAction()
 {
+    if (hasKey(u"locale"_s)) pref->setLocale(it.value().toString());
     if (hasKey(u"negated"_s)) session->setA(it.value().toBool());
     if (hasKey(u"comparison"_s)) session->setB(it.value().toBool());
     if (hasKey(u"logical"_s)) session->setC(it.value().toBool());
@@ -56,7 +58,17 @@ public:
 };
 `;
 
+const preferencesHeader=`
+class Preferences final
+{
+public:
+    QString getLocale() const;
+    void setLocale(const QString &locale);
+};
+`;
+
 const hints=extractSemanticGetterHints(source,'semantic getter fixture');
+assert.equal(hints.get('locale').readType,null,'Preferences getter names alone must not be guessed without the version-matched header');
 assert.equal(hints.get('negated').readType,'boolean');
 assert.equal(hints.get('comparison').readType,'boolean');
 assert.equal(hints.get('logical').readType,'boolean');
@@ -71,19 +83,26 @@ assert.equal(hints.get('number_string').readType,'string');
 assert.equal(hints.get('max_active_downloads').readType,null,'session getter names alone must not be treated as type evidence');
 assert.equal(hints.get('opaque').readType,null,'method return types that are not syntactically provable must stay unresolved');
 
-const sourceBackedHints=extractSemanticGetterHints(source,'semantic getter fixture',{sessionHeaderSource:sessionHeader});
+const sourceBackedHints=extractSemanticGetterHints(source,'semantic getter fixture',{sessionHeaderSource:sessionHeader,preferencesHeaderSource:preferencesHeader});
+assert.equal(sourceBackedHints.get('locale').readType,'string','version-matched Preferences declaration must prove getLocale() JSON string semantics');
+assert.equal(sourceBackedHints.get('locale').getterKind,'PREFERENCES_DECLARATION');
 assert.equal(sourceBackedHints.get('max_active_downloads').readType,'number','version-matched Session declaration must prove maxActiveDownloads() JSON number semantics');
 assert.equal(sourceBackedHints.get('max_active_downloads').getterKind,'SESSION_DECLARATION');
 assert.equal(sourceBackedHints.get('opaque').readType,null,'unknown Session declaration return types must remain fail-closed');
 
 const structural=[
+  {key:'locale',type:'string',readType:null,writeType:'string',getterPresent:true,setterPresent:true,writable:true,typeAgreement:'READ_UNRESOLVED',getterKind:'UNKNOWN',getterConfidence:'UNRESOLVED'},
   {key:'negated',type:'boolean',readType:null,writeType:'boolean',getterPresent:true,setterPresent:true,writable:true,typeAgreement:'READ_UNRESOLVED',getterKind:'UNKNOWN',getterConfidence:'UNRESOLVED'},
   {key:'numeric_method',type:'number',readType:null,writeType:'number',getterPresent:true,setterPresent:true,writable:true,typeAgreement:'READ_UNRESOLVED',getterKind:'UNKNOWN',getterConfidence:'UNRESOLVED'},
   {key:'max_active_downloads',type:'number',readType:null,writeType:'number',getterPresent:true,setterPresent:true,writable:true,typeAgreement:'READ_UNRESOLVED',getterKind:'UNKNOWN',getterConfidence:'UNRESOLVED'},
   {key:'opaque',type:'number',readType:null,writeType:'number',getterPresent:true,setterPresent:true,writable:true,typeAgreement:'READ_UNRESOLVED',getterKind:'UNKNOWN',getterConfidence:'UNRESOLVED'},
   {key:'already_typed',type:'number',readType:'number',writeType:'number',getterPresent:true,setterPresent:true,writable:true,typeAgreement:'EXACT',getterKind:'NUMBER',getterConfidence:'HIGH'}
 ];
-const enriched=Object.fromEntries(enrichPreferenceDescriptorsFromGetter(source,structural,'semantic getter fixture',{sessionHeaderSource:sessionHeader}).map(item=>[item.key,item]));
+const enriched=Object.fromEntries(enrichPreferenceDescriptorsFromGetter(source,structural,'semantic getter fixture',{sessionHeaderSource:sessionHeader,preferencesHeaderSource:preferencesHeader}).map(item=>[item.key,item]));
+assert.equal(enriched.locale.readType,'string','source-backed Preferences getter type must resolve Locale');
+assert.equal(enriched.locale.typeAgreement,'EXACT');
+assert.equal(enriched.locale.writable,true,'source-backed exact Locale getter/setter agreement must keep Locale writable');
+assert.equal(enriched.locale.getterKind,'PREFERENCES_DECLARATION');
 assert.equal(enriched.negated.readType,'boolean');
 assert.equal(enriched.negated.typeAgreement,'EXACT');
 assert.equal(enriched.negated.getterKind,'BOOLEAN_EXPRESSION');
@@ -99,4 +118,4 @@ assert.equal(enriched.opaque.typeAgreement,'READ_UNRESOLVED');
 assert.equal(enriched.already_typed.semanticGetterEnriched,undefined,'structurally high-confidence getter truth must not be overwritten by enrichment');
 assert.equal(enriched.already_typed.getterKind,'NUMBER');
 
-console.log('qB semantic getter contract passed: operators, typed locals, JSON containers and version-matched Session declarations prove getter types, while opaque methods remain fail-closed.');
+console.log('qB semantic getter contract passed: operators, typed locals, JSON containers, Session declarations and Preferences declarations prove getter types while opaque methods remain fail-closed.');
