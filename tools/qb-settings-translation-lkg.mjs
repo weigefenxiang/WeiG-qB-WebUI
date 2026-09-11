@@ -7,13 +7,14 @@ import {fileURLToPath} from 'node:url';
 function assert(ok,message){if(!ok)throw new Error(message);}
 function canonicalLfBytes(file){return Buffer.from(fs.readFileSync(file,'utf8').replace(/\r\n?/g,'\n'),'utf8');}
 function clone(value){return JSON.parse(JSON.stringify(value));}
+function profileKey(profile){return String(profile?.qbVersion||'').trim();}
 
 export function buildQbSettingsTranslationLkg(enrichedCatalog,frozenCatalog,{baseCatalogSha256=null,sourceEvidence=null}={}){
   assert(Array.isArray(enrichedCatalog)&&enrichedCatalog.length,'Settings translation LKG requires a non-empty source-enriched catalog.');
   assert(Array.isArray(frozenCatalog)&&frozenCatalog.length,'Settings translation LKG requires the admitted Frozen catalog.');
   assert(enrichedCatalog.length===frozenCatalog.length,`Settings translation profile count drift: ${enrichedCatalog.length} != ${frozenCatalog.length}`);
 
-  const frozenByVersion=new Map(frozenCatalog.map((item)=>[String(item?.qbVersion||''),item]));
+  const frozenByVersion=new Map(frozenCatalog.map((item)=>[profileKey(item),item]));
   const sets={};
   const profiles=[];
   let mappedProfiles=0;
@@ -21,8 +22,7 @@ export function buildQbSettingsTranslationLkg(enrichedCatalog,frozenCatalog,{bas
   let translationRoutes=0;
 
   for(const source of enrichedCatalog){
-    const qbVersion=String(source?.qbVersion||'').trim();
-    const sourceSha=String(source?.sourceSha||'').trim();
+    const qbVersion=profileKey(source),sourceSha=String(source?.sourceSha||'').trim();
     assert(qbVersion&&sourceSha,'Every Settings translation profile must bind qbVersion + sourceSha.');
     const frozen=frozenByVersion.get(qbVersion);
     assert(frozen,`${qbVersion}: release is not present in the admitted Frozen catalog.`);
@@ -42,15 +42,7 @@ export function buildQbSettingsTranslationLkg(enrichedCatalog,frozenCatalog,{bas
       if(sets[hash])assert(JSON.stringify(sets[hash])===JSON.stringify(payload),`${qbVersion}: Settings translation set hash collision ${hash}.`);
       else sets[hash]=clone(payload);
     }
-    profiles.push({
-      qbVersion,
-      sourceSha,
-      source:String(source.settingsUiSource||''),
-      mappedPreferences:mapped,
-      totalPreferences:total,
-      preferences,
-      translations
-    });
+    profiles.push({qbVersion,sourceSha,source:String(source.settingsUiSource||''),mappedPreferences:mapped,totalPreferences:total,preferences,translations});
   }
 
   assert(profiles.length===frozenByVersion.size,'Settings translation LKG must cover every admitted stable exactly once.');
@@ -60,17 +52,51 @@ export function buildQbSettingsTranslationLkg(enrichedCatalog,frozenCatalog,{bas
   assert(mappedProfiles>0&&mappedPreferences>0,'Settings translation LKG must contain source-mapped qB Settings copy.');
   assert(translationRoutes>0&&Object.keys(sets).length>0,'Settings translation LKG must contain official locale translation evidence.');
 
-  return {
+  return{
     schemaVersion:1,
     source:'qb-upstream-preferences-ui+official-ts',
-    supportFloor:String(frozenCatalog[0]?.qbVersion||''),
-    latestAdmittedStable:String(frozenCatalog.at(-1)?.qbVersion||''),
+    supportFloor:profileKey(frozenCatalog[0]),
+    latestAdmittedStable:profileKey(frozenCatalog.at(-1)),
     profileCount:profiles.length,
     ...(baseCatalogSha256?{baseCatalogSha256}:{}),
     ...(sourceEvidence?{sourceEvidence}:{}),
     profiles,
     sets
   };
+}
+
+export function applyQbSettingsTranslationLkg(catalog,lkg,{catalogSha256=''}={}){
+  assert(Array.isArray(catalog)&&catalog.length,'Settings translation LKG requires a non-empty target catalog.');
+  assert(lkg&&lkg.schemaVersion===1&&Array.isArray(lkg.profiles)&&lkg.sets&&typeof lkg.sets==='object','Settings translation LKG must use schemaVersion 1 with profiles and sets.');
+  assert(Number(lkg.profileCount)===catalog.length&&lkg.profiles.length===catalog.length,`Settings translation LKG profile count mismatch: ${lkg.profiles.length}/${lkg.profileCount} != ${catalog.length}`);
+  assert(profileKey(catalog[0])===String(lkg.supportFloor||''),`Settings translation LKG support floor mismatch: ${lkg.supportFloor} != ${profileKey(catalog[0])}`);
+  assert(profileKey(catalog.at(-1))===String(lkg.latestAdmittedStable||''),`Settings translation LKG latest stable mismatch: ${lkg.latestAdmittedStable} != ${profileKey(catalog.at(-1))}`);
+  if(catalogSha256)assert(String(lkg.baseCatalogSha256||'')===catalogSha256,`Settings translation LKG base catalog SHA-256 mismatch: ${lkg.baseCatalogSha256||'missing'} != ${catalogSha256}`);
+
+  const byVersion=new Map(lkg.profiles.map(profile=>[profileKey(profile),profile]));
+  assert(byVersion.size===lkg.profiles.length,'Settings translation LKG contains duplicate qB versions.');
+  return catalog.map(profile=>{
+    const qbVersion=profileKey(profile),fact=byVersion.get(qbVersion);
+    assert(fact,`${qbVersion}: Settings translation LKG profile missing.`);
+    assert(String(fact.sourceSha||'')===String(profile.sourceSha||''),`${qbVersion}: Settings translation LKG source SHA mismatch.`);
+    const preferences=clone(fact.preferences||{}),translations=clone(fact.translations||{}),sets={};
+    const mapped=Number(fact.mappedPreferences)||0,total=Number(fact.totalPreferences)||0;
+    assert(mapped===Object.keys(preferences).length,`${qbVersion}: Settings translation LKG mapped preference count drift.`);
+    assert(mapped<=total,`${qbVersion}: Settings translation LKG mapped preferences exceed source surface.`);
+    for(const hash of new Set(Object.values(translations))){
+      assert(lkg.sets[hash],`${qbVersion}: Settings translation set ${hash} is missing from the LKG.`);
+      sets[hash]=clone(lkg.sets[hash]);
+    }
+    return{
+      ...profile,
+      settingsUiSource:String(fact.source||''),
+      settingsUiMappedPreferences:mapped,
+      settingsUiTotalPreferences:total,
+      settingsUi:preferences,
+      settingsTranslations:translations,
+      settingsTranslationSets:sets
+    };
+  });
 }
 
 const isMain=process.argv[1]&&path.resolve(process.argv[1])===path.resolve(fileURLToPath(import.meta.url));
