@@ -12,41 +12,48 @@ permissions:
 
 jobs:
   apply:
-    runs-on: ubuntu-latest
+    runs-on: windows-2025
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Verify source head
-        shell: bash
+        shell: powershell
         run: |
-          set -euo pipefail
+          $ErrorActionPreference = 'Stop'
           git fetch origin dev
-          test "$(git rev-parse origin/dev)" = "$GITHUB_SHA"
+          if ((git rev-parse origin/dev).Trim() -ne $env:GITHUB_SHA) { throw 'dev advanced before validation; refusing to apply.' }
 
-      - name: Reassemble and verify payload
-        shell: bash
+      - name: Reassemble and validate exact payload with Windows PowerShell 5.1
+        shell: powershell
         run: |
-          set -euo pipefail
-          cat .weigg-apply/install.b64.* | base64 -d > installers/install.ps1
-          cat .weigg-apply/test.b64.* | base64 -d > tests/windows-config-encoding.ps1
-          echo "769ecace30402f913805f3beffa98ab11ba0ee0af129ea72adde70dee822b204  installers/install.ps1" | sha256sum -c -
-          echo "b313eb3d161860c0469427811da71fcd41e8ca982c6fc8b380b49a6a9dc6653b  tests/windows-config-encoding.ps1" | sha256sum -c -
-          rm -rf .weigg-apply
-          rm .github/workflows/weigg-apply-hardening.yml
+          $ErrorActionPreference = 'Stop'
+          function Decode-Chunks([string]$Pattern,[string]$Destination) {
+            $encoded = (Get-ChildItem $Pattern | Sort-Object Name | ForEach-Object { [IO.File]::ReadAllText($_.FullName) }) -join ''
+            [IO.File]::WriteAllBytes($Destination,[Convert]::FromBase64String($encoded))
+          }
+          Decode-Chunks '.weigg-apply/install.b64.*' (Join-Path $PWD.Path 'installers\install.ps1')
+          Decode-Chunks '.weigg-apply/test.b64.*' (Join-Path $PWD.Path 'tests\windows-config-encoding.ps1')
+          if ((Get-FileHash 'installers\install.ps1' -Algorithm SHA256).Hash.ToLowerInvariant() -ne '769ecace30402f913805f3beffa98ab11ba0ee0af129ea72adde70dee822b204') { throw 'Installer SHA256 mismatch.' }
+          if ((Get-FileHash 'tests\windows-config-encoding.ps1' -Algorithm SHA256).Hash.ToLowerInvariant() -ne 'b313eb3d161860c0469427811da71fcd41e8ca982c6fc8b380b49a6a9dc6653b') { throw 'Windows safety test SHA256 mismatch.' }
+          Remove-Item '.weigg-apply' -Recurse -Force
+          Remove-Item '.github\workflows\weigg-apply-hardening.yml' -Force
           git diff --check
-          pwsh -NoProfile -File tests/windows-config-encoding.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File 'tests\windows-config-encoding.ps1'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Commit exact verified payload
-        shell: bash
+        shell: powershell
         run: |
-          set -euo pipefail
+          $ErrorActionPreference = 'Stop'
           git fetch origin dev
-          test "$(git rev-parse origin/dev)" = "$GITHUB_SHA"
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          if ((git rev-parse origin/dev).Trim() -ne $env:GITHUB_SHA) { throw 'dev advanced after validation; refusing to push.' }
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
-          git diff --cached --quiet && { echo "No changes to commit"; exit 1; }
-          git commit -m "fix: harden Windows qB config writes [candidate]"
+          git diff --cached --quiet
+          if ($LASTEXITCODE -eq 0) { throw 'No changes to commit.' }
+          git commit -m 'fix: harden Windows qB config writes [candidate]'
           git push origin HEAD:dev
