@@ -185,10 +185,17 @@ export function buildPreferenceDescriptors(base = {}, keys = null, options = {})
     let writable = typeof declared.writable === 'boolean'
       ? declared.writable
       : (coverage === PreferenceCoverage.MODELED || coverage === PreferenceCoverage.STATEFUL);
+    const verifiedUnknownWrite = coverage === PreferenceCoverage.UNKNOWN
+      && declared.writable === true
+      && declared.setterPresent === true
+      && declared.setterConfidence === 'HIGH'
+      && declared.sourceConfidence === 'HIGH'
+      && !!writeType;
 
     if (declared.setterPresent === false || unresolvedRead || unresolvedWrite
       || (!writeType && !bindingOwnsWrite && !legacyStatefulWrite) || structured || conflict
-      || coverage === PreferenceCoverage.READ_ONLY || coverage === PreferenceCoverage.UNKNOWN) {
+      || coverage === PreferenceCoverage.READ_ONLY
+      || (coverage === PreferenceCoverage.UNKNOWN && !verifiedUnknownWrite)) {
       writable = false;
     }
 
