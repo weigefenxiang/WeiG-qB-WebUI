@@ -40,6 +40,14 @@ jobs:
           if ((Get-FileHash $installerPath -Algorithm SHA256).Hash.ToLowerInvariant() -ne '769ecace30402f913805f3beffa98ab11ba0ee0af129ea72adde70dee822b204') { throw 'Installer SHA256 mismatch.' }
           if ((Get-FileHash $testPath -Algorithm SHA256).Hash.ToLowerInvariant() -ne 'b313eb3d161860c0469427811da71fcd41e8ca982c6fc8b380b49a6a9dc6653b') { throw 'Windows safety test SHA256 mismatch.' }
 
+          $installerSource = [IO.File]::ReadAllText($installerPath)
+          $functionStart = $installerSource.IndexOf('function Assert-QBWebUIMutation')
+          $functionEnd = $installerSource.IndexOf('function Invoke-QBAtomicReplace',$functionStart)
+          if ($functionStart -lt 0 -or $functionEnd -le $functionStart) { throw 'Unable to isolate Assert-QBWebUIMutation for diagnostic review.' }
+          Write-Host '--- BEGIN Assert-QBWebUIMutation ---'
+          Write-Host $installerSource.Substring($functionStart,$functionEnd-$functionStart)
+          Write-Host '--- END Assert-QBWebUIMutation ---'
+
           # Windows PowerShell 5.1 does not reliably parse UTF-8 no-BOM source containing
           # Chinese/Japanese literals. The verified payload body is exact; prepend only
           # the UTF-8 BOM so the committed regression executes with the intended Unicode.
