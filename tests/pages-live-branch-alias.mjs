@@ -7,6 +7,7 @@ assert.ok(rawBase,'WEIGG_PAGES_URL or argv[2] is required');
 assert.ok(expectedSha,'WEIGG_EXPECTED_SIMULATOR_SHA or argv[3] is required');
 const base=new URL(rawBase.endsWith('/')?rawBase:`${rawBase}/`);
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+const DOC_LOAD_KEY='__weigg_locale_doc_loads';
 
 async function waitForDeployedSite(){
   let last='not fetched';
@@ -94,11 +95,15 @@ async function setVerifiedLocale(page,target){
   assert.equal(drafted.value,target,`${target}: user-selected Language control value must update before save`);
   assert.equal(drafted.draft,target,`${target}: user-selected Language control must update the qB locale draft`);
 
+  const documentLoads=await page.evaluate(key=>Number(sessionStorage.getItem(key)||0),DOC_LOAD_KEY);
   const writePromise=page.waitForResponse(response=>{
     const request=response.request();
     return request.method()==='POST'&&new URL(response.url()).pathname.endsWith('/api/v2/app/setPreferences');
   },{timeout:30000});
-  const reloadPromise=page.waitForNavigation({waitUntil:'domcontentloaded',timeout:60000});
+  const verifyReadPromise=page.waitForResponse(response=>{
+    const request=response.request();
+    return request.method()==='GET'&&new URL(response.url()).pathname.endsWith('/api/v2/app/preferences');
+  },{timeout:30000});
   await page.locator('#save-settings-btn').click();
 
   const writeResponse=await writePromise;
@@ -107,7 +112,27 @@ async function setVerifiedLocale(page,target){
   const posted=JSON.parse(postData.get('json')||'{}');
   assert.equal(posted.locale,target,`${target}: app/setPreferences POST must contain the selected locale`);
 
-  await reloadPromise;
+  const verifyReadResponse=await verifyReadPromise;
+  assert.ok(verifyReadResponse.ok(),`${target}: verification GET app/preferences must succeed, got HTTP ${verifyReadResponse.status()}`);
+  const verifiedPrefs=await verifyReadResponse.json();
+  assert.equal(verifiedPrefs.locale,target,`${target}: verification GET app/preferences must return the locale written by the real Save transaction`);
+
+  try{
+    await page.waitForFunction(({key,before})=>Number(sessionStorage.getItem(key)||0)>before,{key:DOC_LOAD_KEY,before:documentLoads},{timeout:30000});
+  }catch(error){
+    const observed=await page.evaluate(async key=>{
+      const response=await fetch('api/v2/app/preferences',{cache:'no-store'});
+      const prefs=response.ok?await response.json():{};
+      return{
+        status:response.status,
+        locale:prefs.locale||'',
+        qbLocale:window.WeiG?.I18n?.getQbLocale?.()||'',
+        lang:document.documentElement.lang,
+        documentLoads:Number(sessionStorage.getItem(key)||0)
+      };
+    },DOC_LOAD_KEY).catch(()=>null);
+    throw new Error(`${target}: verified qB locale was saved, but automatic locale reload did not replace the document; observed=${JSON.stringify(observed)}; ${error?.message||error}`);
+  }
   await page.waitForSelector('#torrent-list',{state:'attached',timeout:60000});
   await page.waitForFunction(locale=>window.WeiG?.I18n?.getQbLocale?.()===locale,target,{timeout:30000});
 
@@ -129,7 +154,7 @@ async function setVerifiedLocale(page,target){
   });
   assert.equal(reopened.disabled,false,`${target}: Language UI control must remain enabled after reload`);
   assert.equal(reopened.value,target,`${target}: reopening Settings must show the persisted qB locale selection`);
-  console.log(`Locale UI transition ${current||'(unset)'} -> ${target} persisted through app/setPreferences and automatic reload.`);
+  console.log(`Locale UI transition ${current||'(unset)'} -> ${target} persisted through app/setPreferences, verified app/preferences reread and automatic document reload.`);
   return true;
 }
 
@@ -157,6 +182,11 @@ async function verifyBranchEntry(browser,{branch,entryPath,branchSha,label}){
   const context=await browser.newContext({viewport:{width:390,height:844},locale:'zh-CN'});
   try{
     const page=await context.newPage();
+    await page.addInitScript(()=>{
+      const key='__weigg_locale_doc_loads';
+      const next=(Number(sessionStorage.getItem(key))||0)+1;
+      sessionStorage.setItem(key,String(next));
+    });
     const errors=observeBrowserErrors(page);
     const params=new URLSearchParams({
       sim:`pages-${branch}-root-${Date.now()}`,
@@ -261,7 +291,7 @@ try{
   await verifyBranchEntry(browser,{branch:'dev',entryPath:'dev/',branchSha:site.branches.dev.exactSha,label:'/dev/'});
   await verifyBranchEntry(browser,{branch:'main',entryPath:'main',branchSha:site.branches.main.exactSha,label:'/main'});
   await verifyLabEntry(browser,site);
-  console.log(`Virtual qB Pages entry acceptance passed for ${expectedSha}: /dev/, /main and /lab/ render cleanly, the real Language dropdown and Save button persist Simplified Chinese through the actual setPreferences POST, automatic locale reload and reopened Settings, locale variants remain distinct, the Lab branch selector routes dev and main through one launcher to their exact app snapshots, routing semantics are preserved, and each entry resolves to its exact published snapshot.`);
+  console.log(`Virtual qB Pages entry acceptance passed for ${expectedSha}: /dev/, /main and /lab/ render cleanly, the real Language dropdown and Save button persist Simplified Chinese through the actual setPreferences POST, verified preferences reread, automatic document reload and reopened Settings, locale variants remain distinct, the Lab branch selector routes dev and main through one launcher to their exact app snapshots, routing semantics are preserved, and each entry resolves to its exact published snapshot.`);
 }finally{
   await browser.close();
 }
