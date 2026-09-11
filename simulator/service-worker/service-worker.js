@@ -7,10 +7,12 @@ import {loadWorld,saveWorld,deleteWorld} from './__simulator/storage/indexeddb.j
 import {createWorldCache} from './__simulator/storage/world-cache.js';
 import {handleApi} from './__simulator/protocol/router.js';
 import {applyTransportPolicy} from './__simulator/protocol/transport-contract.js';
+import {emulateQbtDocument} from './__simulator/qbt-tr-emulator.mjs';
 
 const SOURCE_PRIVATE='./__source/private/';
 const SOURCE_PUBLIC='./__source/public/';
 const CATALOG_URL='./__simulator/versions/catalog.generated.json';
+const TRANSLATOR_BEHAVIOR_URL='./__simulator/versions/qb-translator-behavior-lkg.json';
 const DEFAULT_SESSION='default';
 const LAB_USERNAME='weigshare';
 const LAB_PASSWORD='weigshare';
@@ -19,6 +21,7 @@ const clientSessions=new Map();
 const worlds=createWorldCache({load:loadWorld,save:saveWorld,remove:deleteWorld,maxEntries:6,readPersistMs:30000});
 let queue=Promise.resolve();
 let catalogPromise=null;
+let translatorBehaviorPromise=null;
 
 self.addEventListener('install',event=>event.waitUntil(self.skipWaiting()));
 self.addEventListener('activate',event=>event.waitUntil(self.clients.claim()));
@@ -36,6 +39,21 @@ async function loadCatalog(){
     return BOOTSTRAP_RELEASES;
   })();
   return catalogPromise;
+}
+
+async function loadTranslatorBehavior(){
+  if(translatorBehaviorPromise)return translatorBehaviorPromise;
+  translatorBehaviorPromise=(async()=>{
+    try{
+      const response=await fetch(TRANSLATOR_BEHAVIOR_URL,{cache:'no-store'});
+      if(response.ok){
+        const data=await response.json();
+        if(data?.schemaVersion===1)return data;
+      }
+    }catch(_e){}
+    return null;
+  })();
+  return translatorBehaviorPromise;
 }
 
 function configFromUrl(url){
@@ -153,8 +171,27 @@ function sourceUrl(kind,path='index.html'){
   return new URL((kind==='public'?SOURCE_PUBLIC:SOURCE_PRIVATE)+safe,self.registration.scope).toString();
 }
 
+function isQbtTextResponse(response,path){
+  const type=String(response.headers.get('content-type')||'').toLowerCase();
+  return type.startsWith('text/')||/javascript|json|xml/.test(type)||/\.(?:html?|js|mjs|css|txt|svg)$/i.test(path);
+}
+
+async function emulateSourceTranslation(response,world,path){
+  if(!world||!isQbtTextResponse(response,path))return response;
+  const text=await response.clone().text();
+  if(!text.includes('QBT_TR('))return response;
+  const [catalog,behaviorEvidence]=await Promise.all([loadCatalog(),loadTranslatorBehavior()]);
+  const result=emulateQbtDocument(text,{catalog,behaviorEvidence,qbVersion:world.profile?.qbVersion,locale:world.preferences?.locale||'en'});
+  const headers=new Headers();
+  const contentType=response.headers.get('content-type');
+  if(contentType)headers.set('content-type',contentType);
+  headers.set('cache-control','no-store');
+  headers.set('x-weigg-qbt-emulation',result.mode);
+  return new Response(result.text,{status:response.status,statusText:response.statusText,headers});
+}
+
 async function fetchSource(kind,path,options={}){
-  const response=await fetch(sourceUrl(kind,path),{cache:'no-store'});
+  let response=await fetch(sourceUrl(kind,path),{cache:'no-store'});
   if(!response.ok)return response;
   if(options.injectLabCredentials&&path==='index.html'){
     let html=await response.text();
@@ -165,9 +202,9 @@ async function fetchSource(kind,path,options={}){
       /(<input\s+id="password"[^>]*)(\/>)/,
       (m,a,b)=>a.includes(' value=')?m:`${a} value="${LAB_PASSWORD}"${b}`
     );
-    return new Response(html,{status:200,headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store'}});
+    response=new Response(html,{status:200,headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store'}});
   }
-  return response;
+  return options.world?emulateSourceTranslation(response,options.world,path):response;
 }
 
 function relativePath(url){
@@ -180,8 +217,8 @@ function relativePath(url){
 async function handleNavigation(event,url){
   const {id,world}=await ensureWorld(event,url);
   if(event.clientId)clientSessions.set(event.clientId,id);
-  if(world.authenticated)return fetchSource('private','index.html');
-  return fetchSource('public','index.html',{injectLabCredentials:!world.lab?.clean});
+  if(world.authenticated)return fetchSource('private','index.html',{world});
+  return fetchSource('public','index.html',{injectLabCredentials:!world.lab?.clean,world});
 }
 
 async function handleAsset(event,url){
@@ -194,7 +231,7 @@ async function handleAsset(event,url){
       networkPlan:world.environment?.networkPlan||null,networkSeed:world.networkSeed||null
     }),{headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});
   }
-  return fetchSource(world.authenticated?'private':'public',path);
+  return fetchSource(world.authenticated?'private':'public',path,{world});
 }
 
 async function handleApiQueued(event,url){
