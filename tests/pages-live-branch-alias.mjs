@@ -46,32 +46,56 @@ async function readLandedBuild(landed){
   return response.json();
 }
 
-async function verifyDevLocale(browserPage){
-  await browserPage.evaluate(async()=>{
+async function openSettings(page){
+  await page.evaluate(async()=>{
     if(!window.WeiG?.SettingsRenderer?.open)throw new Error('WeiG SettingsRenderer is unavailable');
     await window.WeiG.SettingsRenderer.open('weigg');
   });
-  await browserPage.waitForSelector('[data-setting-key="weigg_language"]',{state:'attached',timeout:30000});
+  await page.waitForSelector('[data-setting-key="weigg_language"]',{state:'attached',timeout:30000});
+}
+
+async function setVerifiedLocale(page,target){
+  const current=await page.evaluate(()=>window.WeiG?.I18n?.getQbLocale?.()||'');
+  if(current===target)return false;
+  await openSettings(page);
+  const navigation=page.waitForNavigation({waitUntil:'domcontentloaded',timeout:30000});
+  await page.evaluate(locale=>{
+    if(!window.WeiG?.SettingsState?.draft)throw new Error('WeiG Settings draft is unavailable');
+    window.WeiG.SettingsState.draft.locale=locale;
+    void window.WeiG.SettingsRenderer.save();
+  },target);
+  await navigation;
+  await page.waitForSelector('#torrent-list',{state:'attached',timeout:60000});
+  await page.waitForFunction(locale=>window.WeiG?.I18n?.getQbLocale?.()===locale, target,{timeout:30000});
+  const persisted=await page.evaluate(async()=>{
+    const response=await fetch('api/v2/app/preferences',{cache:'no-store'});
+    const prefs=await response.json();
+    return{status:response.status,locale:prefs.locale,qbLocale:window.WeiG?.I18n?.getQbLocale?.(),lang:document.documentElement.lang};
+  });
+  assert.equal(persisted.status,200,`${target} preferences reread must succeed after reload`);
+  assert.equal(persisted.locale,target,`${target} must persist in qB preferences.locale`);
+  assert.equal(persisted.qbLocale,target,`${target} must become the runtime qB locale after reload`);
+  return true;
+}
+
+async function verifyDevLocale(browserPage){
+  await openSettings(browserPage);
   const options=await browserPage.evaluate(()=>window.WeiG?.I18n?.localeOptions?.()||[]);
   const chinese=options.filter(item=>['zh_CN','zh_HK','zh_TW'].includes(String(item.value))).sort((a,b)=>String(a.value).localeCompare(String(b.value)));
   assert.deepEqual(chinese.map(item=>item.value),['zh_CN','zh_HK','zh_TW'],'modern qB locale evidence must expose the exact three Chinese locale codes');
   assert.equal(new Set(chinese.map(item=>item.label)).size,3,'zh_CN / zh_HK / zh_TW must have distinct visible labels');
   for(const item of chinese)assert.ok(String(item.label).includes(item.value),`${item.value} label must expose its exact qB locale code`);
 
-  const navigation=browserPage.waitForNavigation({waitUntil:'domcontentloaded',timeout:30000});
-  await browserPage.evaluate(()=>{
-    window.WeiG.SettingsState.draft.locale='zh_CN';
-    void window.WeiG.SettingsRenderer.save();
-  });
-  await navigation;
-  await browserPage.waitForSelector('#torrent-list',{state:'attached',timeout:60000});
+  const initial=await browserPage.evaluate(()=>window.WeiG?.I18n?.getQbLocale?.()||'');
+  if(initial==='zh_CN')await setVerifiedLocale(browserPage,'en');
+  await setVerifiedLocale(browserPage,'zh_CN');
   await browserPage.waitForFunction(()=>window.WeiG?.I18n?.getQbLocale?.()==='zh_CN'&&document.documentElement.lang==='zh-CN',null,{timeout:30000});
   const verified=await browserPage.evaluate(async()=>{
     const response=await fetch('api/v2/app/preferences',{cache:'no-store'});
     const prefs=await response.json();
     return{status:response.status,locale:prefs.locale,qbLocale:window.WeiG?.I18n?.getQbLocale?.(),lang:document.documentElement.lang};
   });
-  assert.deepEqual(verified,{status:200,locale:'zh_CN',qbLocale:'zh_CN',lang:'zh-CN'},'Chinese locale must persist through qB preferences, reload, and runtime projection');
+  assert.deepEqual(verified,{status:200,locale:'zh_CN',qbLocale:'zh_CN',lang:'zh-CN'},'English-to-Simplified-Chinese locale transition must persist through qB preferences, reload, and runtime projection');
 }
 
 async function verifyBranchEntry(browser,{branch,entryPath,branchSha,label}){
@@ -164,7 +188,7 @@ try{
   await verifyBranchEntry(browser,{branch:'dev',entryPath:'dev/',branchSha:site.branches.dev.exactSha,label:'/dev/'});
   await verifyBranchEntry(browser,{branch:'main',entryPath:'main',branchSha:site.branches.main.exactSha,label:'/main'});
   await verifyLabEntry(browser,site);
-  console.log(`Virtual qB Pages entry acceptance passed for ${expectedSha}: /dev/, /main and /lab/ render cleanly, locale variants remain distinct and persist through verified reload, direct snapshot entries resolve correctly, routing semantics are preserved, and each entry resolves to its exact published snapshot.`);
+  console.log(`Virtual qB Pages entry acceptance passed for ${expectedSha}: /dev/, /main and /lab/ render cleanly, locale variants remain distinct and Simplified Chinese persists through verified reload, direct snapshot entries resolve correctly, routing semantics are preserved, and each entry resolves to its exact published snapshot.`);
 }finally{
   await browser.close();
 }
