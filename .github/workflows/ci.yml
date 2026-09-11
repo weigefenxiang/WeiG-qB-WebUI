@@ -103,8 +103,19 @@ jobs:
           filter: blob:none
       - name: Generate source-derived qB 4.1.0 to latest stable catalog
         run: node tools/qb-release-catalog.mjs upstream-qb --output=qb-releases.json
-      - name: Enrich exact qB WebUI locale source facts
+      - name: Enrich exact qB WebUI locale and Settings translation source facts
         run: node tools/qb-locale-source.mjs upstream-qb qb-releases.json
+      - name: Freeze reusable official qB Settings translation LKG
+        run: |
+          set -euo pipefail
+          node tools/qb-settings-translation-lkg.mjs qb-releases.json tests/fixtures/qb-release-catalog.lkg.json qb-settings-translation-lkg.json
+          sha256sum qb-settings-translation-lkg.json > qb-settings-translation-lkg.SHA256
+          node tests/full-stable-locale-routing-contract.mjs qb-releases.json --require-mapped
+          rm -rf "$RUNNER_TEMP/qb-materialized"
+          mkdir -p "$RUNNER_TEMP/qb-materialized/private/data"
+          node tools/qb-webui-catalog.mjs qb-releases.json "$RUNNER_TEMP/qb-materialized/private/data/qb-releases.json"
+          test -s "$RUNNER_TEMP/qb-materialized/private/data/qb-settings-native.txt"
+          find "$RUNNER_TEMP/qb-materialized/translations" -type f -name 'webui_*.qm' -print -quit | grep -q .
       - name: Audit every official stable qB release from 4.1.0
         run: node tests/upstream-release-audit.mjs upstream-qb
       - name: Full stable PRODUCT compatibility matrix
@@ -116,6 +127,15 @@ jobs:
           path: qb-releases.json
           if-no-files-found: error
           retention-days: 1
+      - name: Upload certified qB Settings translation LKG
+        uses: actions/upload-artifact@v7
+        with:
+          name: qb-settings-translation-lkg-${{ github.sha }}
+          path: |
+            qb-settings-translation-lkg.json
+            qb-settings-translation-lkg.SHA256
+          if-no-files-found: error
+          retention-days: 90
 
   browser:
     name: Linux browser candidate
