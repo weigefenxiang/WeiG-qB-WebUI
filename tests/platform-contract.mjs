@@ -70,6 +70,15 @@ assert.match(ps,/function Restore-Last/,'Windows rollback must restore the remem
 assert.match(ps,/last-dest/,'Windows rollback must remember the prior install destination');
 assert.doesNotMatch(ps,/archive\/refs\/heads\/main\.zip/,'Windows Release channel must fail closed instead of falling back to main');
 assert.doesNotMatch(ps,/Resolve-MainSha/,'Windows Release channel must not resolve main as a payload source');
+assert.match(ps,/function Read-QBConfigText/,'Windows configure path must own explicit qB config decoding instead of PowerShell defaults');
+assert.match(ps,/UTF8Encoding\(\$false,\$true\)/,'Windows qB config reader must validate BOM-less UTF-8 strictly');
+assert.match(ps,/\[Text\.Encoding\]::Default/,'Windows qB config reader may fall back to the native code page only when bytes are not valid UTF-8');
+assert.match(ps,/function Write-QBConfigText/,'Windows qB config writer must preserve the detected source encoding');
+assert.match(ps,/WriteAllBytes/,'Windows qB config writer must operate on explicit encoded bytes');
+assert.match(ps,/function Configure-QBWebUI/,'Windows qB config mutation must pass through the encoding-preserving path');
+assert.match(ps,/qBittorrent config encoding preserved/,'Windows installer must report the preserved config encoding for diagnostics');
+assert.doesNotMatch(ps,/\$text=Get-Content \$cfg -Raw/,'Windows configure must never decode qBittorrent.ini through the locale-dependent PowerShell default');
+assert.doesNotMatch(ps,/Set-Content -Path \$cfg -Value \$text -Encoding UTF8/,'Windows configure must never transcode the entire qBittorrent config through Set-Content UTF8');
 
 assert.match(live,/BACKUP_RETENTION=3/,'LIVE deploy must retain exactly three rollback backups');
 assert.match(live,/prune_target_backups/,'LIVE deploy must prune old sibling rollback backups');
@@ -85,4 +94,4 @@ for(const [name,html] of [['public/index.html',publicIndex],['public/login.html'
 }
 assert.match(privateIndex,/scripts\/qb-client\.js/,'private WebUI must load the shared API compatibility client');
 
-console.log('Platform contract passed: Windows Dev consumes an exact-SHA materialized qB-aware translation payload, Windows/Linux installers preserve simplified version/dev/output/configure/rollback semantics and legacy aliases, and LIVE rollback retention remains capped at three backups.');
+console.log('Platform contract passed: Windows Dev consumes an exact-SHA materialized qB-aware translation payload, Windows qB config mutation preserves original text encoding, Windows/Linux installers preserve simplified version/dev/output/configure/rollback semantics and legacy aliases, and LIVE rollback retention remains capped at three backups.');
