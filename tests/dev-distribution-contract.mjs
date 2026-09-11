@@ -15,7 +15,6 @@ assert.ok(buildSite.includes("downloads','dev"),'Dev distribution must be part o
 assert.ok(distBuilder.includes("packCatalog(catalogPath,path.join(root,'private/data/qb-releases.json'))"),'Canonical distribution must materialize the runtime release catalog and translation routing assets');
 assert.ok(distBuilder.includes("qb-settings-native.txt"),'Canonical distribution must require the qB native Settings QBT_TR registry');
 assert.ok(distBuilder.includes("webui_.+\\.qm"),'Canonical distribution must require official qB WebUI QM assets');
-for(const trigger of ["'installers/**'","'tools/build-webui-dist.mjs'","'tools/qb-webui-catalog.mjs'","'tools/qb-settings-native-bundle.mjs'"]){
-  assert.ok(pagesSource.includes(trigger),`Pages source trigger must rebuild dev distribution when ${trigger} changes`);
-}
-console.log('Dev distribution contract passed: Windows dev installs exact-SHA materialized WebUI assets, raw-source fallback is forbidden, and Pages rebuilds for every distribution owner.');
+assert.match(pagesSource,/push:\s*\n\s*branches:\s*\n\s*- dev\s*\n\s*- main/,'Every dev/main push must materialize a new exact-SHA distribution');
+assert.doesNotMatch(pagesSource,/\n\s+paths:/,'Exact-SHA dev distribution relay must not use path filters that can leave the public payload behind dev HEAD');
+console.log('Dev distribution contract passed: Windows dev installs exact-SHA materialized WebUI assets, raw-source fallback is forbidden, and every dev/main head is materialized without path-filter gaps.');
