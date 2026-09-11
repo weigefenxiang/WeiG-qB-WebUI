@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import crypto from 'node:crypto';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {annotateCatalogEvolution} from './qb-catalog-evolution.mjs';
 
 function profileKey(profile){return String(profile?.qbVersion||'').trim();}
 function localeValues(value){
@@ -99,7 +100,7 @@ export function applyLocaleOverlay(catalog,overlay,{catalogSha256=''}={}){
   if(catalogSha256&&String(overlay.baseCatalogSha256||'')!==catalogSha256)throw new Error(`Locale overlay base catalog SHA-256 mismatch: ${overlay.baseCatalogSha256||'missing'} != ${catalogSha256}`);
   const byVersion=new Map(overlay.profiles.map(profile=>[profileKey(profile),profile]));
   if(byVersion.size!==overlay.profiles.length)throw new Error('Locale overlay contains duplicate qB versions.');
-  return catalog.map(profile=>{
+  const merged=catalog.map(profile=>{
     const qbVersion=profileKey(profile),fact=byVersion.get(qbVersion);
     if(!fact)throw new Error(`${qbVersion}: locale overlay profile missing.`);
     if(String(fact.sourceSha||'')!==String(profile.sourceSha||''))throw new Error(`${qbVersion}: locale overlay source SHA mismatch.`);
@@ -107,6 +108,10 @@ export function applyLocaleOverlay(catalog,overlay,{catalogSha256=''}={}){
     if(!setName||!webuiLocales.length)throw new Error(`${qbVersion}: locale overlay set ${setName||'missing'} is unresolved.`);
     return repairLocalePreferenceSemantics({...profile,webuiLocaleSource:String(fact.source||'unresolved'),webuiLocales});
   });
+  // Locale semantic repair changes read/write agreement. Recompute evolution metadata
+  // on the cloned merged catalog so firstReadTyped/schema-change provenance remains
+  // internally consistent without mutating the Frozen LKG input.
+  return annotateCatalogEvolution(merged);
 }
 
 function readJson(file){return JSON.parse(fs.readFileSync(file,'utf8'));}
