@@ -1,11 +1,17 @@
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {applyLocaleOverlay} from '../tools/qb-locale-overlay.mjs';
 import {buildNativeSettingsBundle,renderNativeSettingsRegistry} from '../tools/qb-settings-native-bundle.mjs';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
-const catalog=JSON.parse(fs.readFileSync(path.join(here,'fixtures/qb-release-catalog.lkg.json'),'utf8'));
+const catalogPath=path.join(here,'fixtures/qb-release-catalog.lkg.json');
+const catalogBytes=fs.readFileSync(catalogPath);
+const baseCatalog=JSON.parse(catalogBytes.toString('utf8'));
+const localeOverlay=JSON.parse(fs.readFileSync(path.join(here,'../tools/data/qb-locale-lkg.json'),'utf8'));
+const catalog=applyLocaleOverlay(baseCatalog,localeOverlay,{catalogSha256:crypto.createHash('sha256').update(catalogBytes).digest('hex')});
 const behavior=JSON.parse(fs.readFileSync(path.join(here,'../tools/data/qb-translator-behavior-lkg.json'),'utf8'));
 const bundle=buildNativeSettingsBundle(catalog,behavior);
 assert.equal(bundle.profileCount,65,'native Settings routing must cover all 65 admitted stable releases');
