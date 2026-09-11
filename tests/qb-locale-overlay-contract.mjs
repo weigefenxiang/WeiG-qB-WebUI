@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import {applyLocaleOverlay,extractLocaleOverlay,repairLocalePreferenceSemantics} from '../tools/qb-locale-overlay.mjs';
+import {validateCatalogEvolution} from '../tools/qb-catalog-evolution.mjs';
 import {createWorld} from '../simulator/core/engine.js';
 import {createPreferenceRuntime} from '../simulator/preferences/runtime.js';
 
@@ -64,6 +65,7 @@ const frozenSha256=crypto.createHash('sha256').update(frozenBytes).digest('hex')
 assert.equal(frozenSha256,frozenLocaleOverlay.baseCatalogSha256,'Locale LKG must stay bound to the exact Frozen preference catalog');
 const frozenApplied=applyLocaleOverlay(frozenCatalog,frozenLocaleOverlay,{catalogSha256:frozenSha256});
 assert.equal(frozenApplied.length,65,'Locale semantic repair must cover every officially supported stable qB profile');
+assert.equal(validateCatalogEvolution(frozenApplied),true,'Locale overlay must leave the full catalog evolution metadata internally valid');
 for(const profile of frozenApplied){
   const descriptor=profile.preferenceDescriptors?.find(item=>item?.key==='locale');
   assert.ok(descriptor,`${profile.qbVersion}: locale descriptor must exist`);
@@ -71,6 +73,10 @@ for(const profile of frozenApplied){
   assert.equal(descriptor.writeType,'string',`${profile.qbVersion}: locale setter must remain string`);
   assert.equal(descriptor.typeAgreement,'EXACT',`${profile.qbVersion}: locale read/write types must agree`);
   assert.equal(descriptor.writable,true,`${profile.qbVersion}: locale must be writable`);
+  assert.equal(descriptor.firstReadTypedInLabCatalog,'4.1.0',`${profile.qbVersion}: locale typed-read provenance must begin at the support floor`);
+  assert.equal(descriptor.firstWritableInLabCatalog,'4.1.0',`${profile.qbVersion}: locale writable provenance must begin at the support floor`);
+  assert.ok(descriptor.schemaLastChangedInLabCatalog,`${profile.qbVersion}: locale schema-change provenance must exist`);
+  assert.ok(descriptor.readTypeLastChangedInLabCatalog,`${profile.qbVersion}: locale read-type provenance must exist`);
 }
 const latest=frozenApplied.at(-1);
 assert.equal(latest.qbVersion,'5.2.3');
@@ -84,4 +90,4 @@ assert.deepEqual(accepted,{locale:'zh_CN'},'Virtual qB setPreferences must accep
 assert.equal(runtime.read().locale,'zh_CN','Virtual qB getPreferences must return the saved Locale');
 assert.equal(world.preferences.locale,'zh_CN','Virtual qB world state must persist the saved Locale');
 
-console.log('qB locale overlay contract passed: exact locale sets, Frozen LKG immutability, all 65 writable Locale descriptors and real Virtual qB Locale write/read persistence are enforced.');
+console.log('qB locale overlay contract passed: exact locale sets, Frozen LKG immutability, complete evolution provenance, all 65 writable Locale descriptors and real Virtual qB Locale write/read persistence are enforced.');
