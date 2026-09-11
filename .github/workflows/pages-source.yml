@@ -1,34 +1,15 @@
 name: Virtual qB Pages Source
 
 # Source relay owns trigger choreography only. It never owns Pages deployment permissions.
+# Every dev/main push is relayed because the public dev installer payload is exact-SHA bound:
+# even a test/docs-only commit advances dev HEAD and therefore requires a matching materialized payload.
 # Pages deployment is dispatched on the same dev/main ref so actions/deploy-pages receives that ref's real GITHUB_SHA.
-# This avoids workflow_run's default-branch GITHUB_SHA alias and keeps Pages build_version tied to the dispatched ref.
 on:
   workflow_dispatch:
   push:
     branches:
       - dev
       - main
-    paths:
-      - 'webui/**'
-      - 'simulator/**'
-      - 'installers/**'
-      - 'tools/build-webui-dist.mjs'
-      - 'tools/qb-webui-catalog.mjs'
-      - 'tools/qb-settings-native-bundle.mjs'
-      - 'tools/data/qb-translator-behavior-lkg.json'
-      - 'tools/data/qb-stable-lkg.json'
-      - 'tools/data/qb-locale-lkg.json'
-      - 'tools/qb-locale-overlay.mjs'
-      - 'tests/fixtures/qb-release-catalog.lkg.json'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'tests/pages-*.mjs'
-      - 'tests/browser-driver.mjs'
-      - '.github/workflows/pages.yml'
-      - '.github/workflows/pages-source.yml'
-      - '.github/workflows/promote.yml'
-      - '.github/workflows/real-qb-full.yml'
 
 permissions:
   actions: write
@@ -60,4 +41,4 @@ jobs:
             "/repos/$GITHUB_REPOSITORY/actions/workflows/pages.yml/dispatches" \
             -f ref="$BRANCH" >/dev/null
 
-          echo "Dispatched Virtual qB Pages on $BRANCH@$GITHUB_SHA. The deployment workflow now owns exact-SHA build/deploy/verify."
+          echo "Dispatched Virtual qB Pages on $BRANCH@$GITHUB_SHA. The deployment workflow now owns exact-SHA build/deploy/verify and the public materialized dev package."
