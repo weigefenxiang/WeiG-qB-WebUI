@@ -38,14 +38,18 @@ assert.equal(i18n.includes('localStorage.getItem(\'weigg-language\')'),false,'W.
 assert.equal(i18n.includes('localStorage.setItem(\'weigg-language\''),false,'W.I18n must not write a WeiG language preference');
 assert.equal(i18n.includes('function setLocale('),false,'W.I18n must not expose an independent persisted language setter');
 assert.equal(i18n.includes('data/qb-settings-translations.json'),false,'runtime must not download one all-release Settings translation payload');
-assert.ok(i18n.includes('current.settingsTranslationPath')&&i18n.includes("fetch(asset('data/'+current.settingsTranslationPath)"),'runtime must lazily fetch only the current exact-release Settings translation shard');
-assert.ok(i18n.includes('String(value.qbVersion)!==expectedVersion')&&i18n.includes('String(value.sourceSha)!==expectedSha'),'runtime must reject a Settings shard that is not bound to the current exact qB release');
-assert.ok(i18n.includes('current.fallback||!validSettingsPath(current.settingsTranslationPath)'),'fallback/unbound profiles must not request translation shards');
+assert.ok(i18n.includes("fetch(asset('data/qb-settings-native.txt')")&&i18n.includes('parseNativeSettingsRegistry'),'native-capable exact releases must consume the qB server-translated QBT_TR registry');
+assert.ok(i18n.includes('current.settingsNativeLocales')&&i18n.includes('current.settingsTranslationLocales'),'runtime translation routing must come from source-derived release capability facts');
+assert.ok(i18n.includes('current.settingsTranslationPath')&&i18n.includes("fetch(asset('data/'+current.settingsTranslationPath)"),'non-native exact release/locales must lazily fetch only their exact official compatibility shard');
+assert.ok(i18n.includes('String(value.qbVersion)!==expectedVersion')&&i18n.includes('String(value.sourceSha)!==expectedSha'),'runtime must reject a compatibility shard that is not bound to the current exact qB release');
+assert.ok(i18n.includes('nativeSettingsData.sourceSha')&&i18n.includes('String(current.sourceSha)'),'native QBT_TR copy must also be bound to the exact running source SHA');
+assert.ok(i18n.includes("source:'qb-native-QBT_TR+official-QM'")&&i18n.includes('qb-upstream-preferences-ui+webui-ts-compatibility-only'),'runtime must distinguish native official translation from the exact-TS compatibility path');
 
 assert.equal(exists('webui/private/data/qb-settings-translations.json'),false,'retired all-release translation sidecar must leave the source tree');
 const packer=read('tools/qb-webui-catalog.mjs');
-assert.ok(packer.includes('runtimeCatalogData')&&packer.includes('settingsTranslationShard')&&packer.includes('qb-settings/'),'release packaging must keep translations out of the compatibility catalog and emit exact-release shards');
-assert.ok(packer.includes("delete runtime[key]")&&packer.includes("runtime.settingsTranslationPath=`qb-settings/${item.sourceSha}.json`"),'runtime catalog must contain only a bounded translation pointer, not translation payloads');
+assert.ok(packer.includes('buildNativeSettingsBundle')&&packer.includes('qb-settings-native.txt'),'release packaging must build the native QBT_TR registry from exact upstream evidence');
+assert.ok(packer.includes('settingsTranslationShard')&&packer.includes('bridgeLocales'),'release packaging must keep the browser shard only for source-proven non-native locales');
+assert.ok(packer.includes("delete runtime[key]")&&packer.includes('settingsNativeLocales')&&packer.includes('settingsTranslationLocales'),'runtime catalog must carry routing facts, not translation bodies');
 
 const app=read('webui/private/scripts/app.js');
 assert.ok(app.includes('app.preferences=await app.client.getPreferences()'),'startup must read qB preferences into shared application state');
@@ -67,4 +71,4 @@ assert.ok(logs.includes('var I=W.I18n'),'Logs must call W.I18n directly');
 assert.ok(responsive.includes('W.I18n&&W.I18n.t'),'Responsive runtime must call W.I18n directly');
 assert.ok(header.includes("localized('Add','添加')"),'Header short copy must no longer depend on InterfaceText');
 
-console.log('I18n runtime owner contract passed: qB preferences.locale is the only language truth, W.I18n loads only the current exact official Settings shard, and retired bridges/all-release translation payloads are absent.');
+console.log('I18n runtime owner contract passed: qB preferences.locale remains the single language truth; native-capable releases use server-translated QBT_TR/official QM and only source-proven gaps keep exact official TS shards.');
