@@ -206,12 +206,14 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Write-Host "Runner image: $env:ImageOS $env:ImageVersion"
           Write-Host "Git SHA: $env:GITHUB_SHA"
-      - name: Windows contracts and installer syntax
+      - name: Windows contracts, qB config encoding and installer syntax
         shell: pwsh
         run: |
           npm test
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $null = [scriptblock]::Create((Get-Content 'installers/install.ps1' -Raw))
+          powershell -NoProfile -ExecutionPolicy Bypass -File tests/windows-config-encoding.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Write-Host 'Windows contracts passed.'
       - name: Representative qB4/qB5 semantic browser matrix on Windows
         shell: pwsh
