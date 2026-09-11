@@ -4,6 +4,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
+const QM_MAGIC=Buffer.from([0x3c,0xb8,0x64,0x18,0xca,0xef,0x9c,0x95,0xcd,0x21,0x1c,0xbf,0x60,0xa1,0xbd,0xdd]);
+const QM_HASHES=0x42,QM_MESSAGES=0x69;
+const TAG_END=1,TAG_TRANSLATION=3,TAG_SOURCE=6,TAG_CONTEXT=7,TAG_COMMENT=8;
 function unique(values){return [...new Set((values||[]).map(value=>String(value||'').trim()).filter(Boolean))];}
 function localeValues(profile){return unique((profile?.webuiLocales||[]).map(item=>typeof item==='string'?item:item?.value));}
 function refKey(context,source){return `${String(context||'')}\u0000${String(source||'')}`;}
@@ -21,6 +24,12 @@ function chooseCanonical(votes){const locales=new Map();for(const [locale,byRef]
 function expectedOutput(ref,exactMap){return exactMap.get(refKey(ref.context,ref.source))||ref.source;}
 function dedicatedLocaleCompatible(profile,locale,behavior,canonical,allSets){if(isPlainEnglish(locale))return true;const exact=messageMap(translationSet(profile,locale,allSets));const refs=refsForProfile(profile);if(!refs.length)return false;for(const ref of refs){const identity=refKey(ref.context,ref.source);const exactValue=expectedOutput(ref,exact);const canonicalValue=canonical?.get(identity)||ref.source;if(behavior.missingTranslationFallback==='none-explicit'&&!exact.has(identity))return false;if(canonicalValue!==exactValue)return false;}return true;}
 function xmlEscape(value){return String(value??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');}
+function u32(value){const out=Buffer.allocUnsafe(4);out.writeUInt32BE(value>>>0);return out;}
+function qByteArray(value){const data=Buffer.from(String(value??''),'utf8');return Buffer.concat([u32(data.length),data]);}
+function qString(value){const data=Buffer.from(String(value??''),'utf16le');data.swap16();return Buffer.concat([u32(data.length),data]);}
+function elfHash(value){const data=Buffer.isBuffer(value)?value:Buffer.from(String(value??''),'utf8');let h=0;for(const byte of data){h=((h<<4)+byte)>>>0;const g=h&0xf0000000;if(g)h=(h^(g>>>24))>>>0;h=(h&(~g))>>>0;}return h||1;}
+function qmBlock(tag,data){return Buffer.concat([Buffer.from([tag]),u32(data.length),data]);}
+function qmMessage(item){return Buffer.concat([Buffer.from([TAG_TRANSLATION]),qString(item.translation),Buffer.from([TAG_COMMENT]),qByteArray(''),Buffer.from([TAG_SOURCE]),qByteArray(item.source),Buffer.from([TAG_CONTEXT]),qByteArray(item.context),Buffer.from([TAG_END])]);}
 
 export function buildNativeSettingsBundle(catalog,behaviorEvidence){
   if(!Array.isArray(catalog)||!catalog.length)throw new Error('Native qB Settings bundle requires a non-empty enriched catalog.');
@@ -108,10 +117,21 @@ export function renderLocaleTs(locale,messages){
   return lines.join('\n');
 }
 
-export function writeNativeSettingsArtifacts(catalog,behaviorEvidence,{registryPath,qmSourceDir}={}){
+export function renderLocaleQm(messages){
+  const items=(messages||[]).filter(item=>item?.context&&item?.source&&item?.translation).map(item=>({context:String(item.context),source:String(item.source),translation:String(item.translation)}));
+  const messageParts=[],offsets=[];let offset=0;
+  for(const item of items){const record=qmMessage(item);messageParts.push(record);offsets.push({hash:elfHash(Buffer.from(item.source,'utf8')),offset});offset+=record.length;}
+  offsets.sort((a,b)=>a.hash-b.hash||a.offset-b.offset);
+  const hashData=Buffer.concat(offsets.flatMap(item=>[u32(item.hash),u32(item.offset)]));
+  const messageData=Buffer.concat(messageParts);
+  return Buffer.concat([QM_MAGIC,qmBlock(QM_HASHES,hashData),qmBlock(QM_MESSAGES,messageData)]);
+}
+
+export function writeNativeSettingsArtifacts(catalog,behaviorEvidence,{registryPath,qmSourceDir,qmOutputDir}={}){
   const bundle=buildNativeSettingsBundle(catalog,behaviorEvidence);
   if(registryPath){fs.mkdirSync(path.dirname(registryPath),{recursive:true});fs.writeFileSync(registryPath,renderNativeSettingsRegistry(catalog),'utf8');}
   if(qmSourceDir){fs.rmSync(qmSourceDir,{recursive:true,force:true});fs.mkdirSync(qmSourceDir,{recursive:true});for(const [locale,messages] of Object.entries(bundle.localeMessages))fs.writeFileSync(path.join(qmSourceDir,`webui_${locale}.ts`),renderLocaleTs(locale,messages),'utf8');}
+  if(qmOutputDir){fs.rmSync(qmOutputDir,{recursive:true,force:true});fs.mkdirSync(qmOutputDir,{recursive:true});for(const [locale,messages] of Object.entries(bundle.localeMessages))fs.writeFileSync(path.join(qmOutputDir,`webui_${locale}.qm`),renderLocaleQm(messages));}
   return bundle;
 }
 
@@ -122,10 +142,11 @@ if(isMain){
     const behaviorPath=path.resolve(process.argv[3]||'tools/data/qb-translator-behavior-lkg.json');
     const registryPath=path.resolve(process.argv[4]||'qb-settings-native.txt');
     const qmSourceDir=path.resolve(process.argv[5]||'qb-settings-qm-src');
-    if(!catalogPath||!fs.existsSync(catalogPath)||!fs.existsSync(behaviorPath))throw new Error('Usage: node tools/qb-settings-native-bundle.mjs <enriched-catalog.json> [behavior.json] [registry.txt] [qm-source-dir]');
+    const qmOutputDir=path.resolve(process.argv[6]||'qb-settings-qm');
+    if(!catalogPath||!fs.existsSync(catalogPath)||!fs.existsSync(behaviorPath))throw new Error('Usage: node tools/qb-settings-native-bundle.mjs <enriched-catalog.json> [behavior.json] [registry.txt] [qm-source-dir] [qm-output-dir]');
     const catalog=JSON.parse(fs.readFileSync(catalogPath,'utf8')),behavior=JSON.parse(fs.readFileSync(behaviorPath,'utf8'));
-    const bundle=writeNativeSettingsArtifacts(catalog,behavior,{registryPath,qmSourceDir});
+    const bundle=writeNativeSettingsArtifacts(catalog,behavior,{registryPath,qmSourceDir,qmOutputDir});
     const native=bundle.profiles.reduce((sum,item)=>sum+item.nativeLocales.length,0),bridge=bundle.profiles.reduce((sum,item)=>sum+item.bridgeLocales.length,0);
-    console.log(`Built qB Settings native bundle: ${bundle.profileCount} profiles, ${Object.keys(bundle.localeMessages).length} QM locale sources, native locale routes ${native}, bridge locale routes ${bridge}.`);
+    console.log(`Built qB Settings native bundle: ${bundle.profileCount} profiles, ${Object.keys(bundle.localeMessages).length} minimal official QM assets, native locale routes ${native}, bridge locale routes ${bridge}.`);
   }catch(error){console.error(error?.message||error);process.exitCode=1;}
 }
