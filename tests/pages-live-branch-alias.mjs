@@ -177,40 +177,58 @@ async function verifyBranchEntry(browser,{branch,entryPath,branchSha,label}){
   }
 }
 
+async function openLabLauncher(page,entry){
+  await page.goto(entry.toString(),{waitUntil:'domcontentloaded',timeout:60000});
+  await page.waitForSelector('#launch-form',{state:'visible',timeout:60000});
+  await page.waitForFunction(()=>document.querySelectorAll('#qb-version option').length>=65,null,{timeout:60000});
+}
+
 async function verifyLabEntry(browser,site){
   const context=await browser.newContext({viewport:{width:390,height:844},locale:'zh-CN'});
   try{
     const page=await context.newPage();
     const errors=observeBrowserErrors(page);
     const entry=new URL('lab/',base);
-    await page.goto(entry.toString(),{waitUntil:'domcontentloaded',timeout:60000});
-    await page.waitForSelector('#launch-form',{state:'visible',timeout:60000});
-    await page.waitForFunction(()=>document.querySelectorAll('#qb-version option').length>=65,null,{timeout:60000});
+    await openLabLauncher(page,entry);
 
     assert.equal(await page.locator('#branch').inputValue(),'dev','/lab/ must default to dev');
     assert.deepEqual(await page.locator('#branch option').allTextContents(),['dev','main'],'/lab/ must expose dev and main launch targets');
-    const directTargets=await page.evaluate(()=>Object.fromEntries(['open-dev','open-main'].map(id=>{const node=document.getElementById(id);return[id,node?new URL(node.getAttribute('href'),location.href).pathname:null];})));
-    assert.ok(directTargets['open-dev']?.endsWith('/WeiG-qB-WebUI/dev/'),'/lab/ must expose a direct dev snapshot entry');
-    assert.ok(directTargets['open-main']?.endsWith('/WeiG-qB-WebUI/main/'),'/lab/ must expose a direct main snapshot entry');
+    assert.equal(await page.locator('#open-dev,#open-main').count(),0,'/lab/ must not duplicate branch selection with direct dev/main snapshot buttons');
+    assert.equal(await page.locator('#launch-form button[type="submit"]').count(),1,'/lab/ must use one launch button for the selected branch');
     assert.equal(await page.locator('#qb-version option').count(),65,'/lab/ must expose all 65 frozen stable qB profiles');
     assert.ok((await page.locator('#catalog-status').textContent())?.includes('65 个 stable profiles'),'/lab/ must load the published release catalog instead of bootstrap fallback');
     const overflow=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,client:document.documentElement.clientWidth}));
     assert.ok(overflow.scroll<=overflow.client,`/lab/ must fit a 390px viewport: ${overflow.scroll}px > ${overflow.client}px`);
 
+    await page.locator('#qb-version').selectOption('5.2.3');
+    await page.locator('#torrent-count').fill('30');
+    await page.locator('#seed').fill('lab-dev-entry');
+    await page.locator('#launch-form button[type="submit"]').click();
+    await page.waitForURL(url=>url.pathname.endsWith('/dev/app/')&&url.searchParams.get('qb')==='5.2.3',{timeout:60000});
+    const devLanded=new URL(page.url());
+    assert.equal(devLanded.searchParams.get('count'),'30','/lab/ must preserve requested torrent count when launching dev');
+    assert.equal(devLanded.searchParams.get('seed'),'lab-dev-entry','/lab/ must preserve requested seed when launching dev');
+    await page.waitForSelector('#login-form',{state:'visible',timeout:60000});
+    const devBuild=await readLandedBuild(devLanded);
+    assert.equal(devBuild.branch,'dev','/lab/ dev selection must reach the dev snapshot');
+    assert.equal(devBuild.exactSha,site.branches?.dev?.exactSha,'/lab/ dev selection must reach the published exact dev SHA');
+    assert.equal(devBuild.simulatorSha,expectedSha,'/lab/ dev selection must keep the exact deployed simulator SHA');
+
+    await openLabLauncher(page,entry);
     await page.locator('#branch').selectOption('main');
     await page.locator('#qb-version').selectOption('5.2.3');
     await page.locator('#torrent-count').fill('40');
     await page.locator('#seed').fill('lab-main-entry');
     await page.locator('#launch-form button[type="submit"]').click();
     await page.waitForURL(url=>url.pathname.endsWith('/main/app/')&&url.searchParams.get('qb')==='5.2.3',{timeout:60000});
-    const landed=new URL(page.url());
-    assert.equal(landed.searchParams.get('count'),'40','/lab/ must preserve requested torrent count when launching main');
-    assert.equal(landed.searchParams.get('seed'),'lab-main-entry','/lab/ must preserve requested seed when launching main');
+    const mainLanded=new URL(page.url());
+    assert.equal(mainLanded.searchParams.get('count'),'40','/lab/ must preserve requested torrent count when launching main');
+    assert.equal(mainLanded.searchParams.get('seed'),'lab-main-entry','/lab/ must preserve requested seed when launching main');
     await page.waitForSelector('#login-form',{state:'visible',timeout:60000});
-    const build=await readLandedBuild(landed);
-    assert.equal(build.branch,'main','/lab/ main launch must reach the main snapshot');
-    assert.equal(build.exactSha,site.branches?.main?.exactSha,'/lab/ main launch must reach the published exact main SHA');
-    assert.equal(build.simulatorSha,expectedSha,'/lab/ main launch must keep the exact deployed simulator SHA');
+    const mainBuild=await readLandedBuild(mainLanded);
+    assert.equal(mainBuild.branch,'main','/lab/ main selection must reach the main snapshot');
+    assert.equal(mainBuild.exactSha,site.branches?.main?.exactSha,'/lab/ main selection must reach the published exact main SHA');
+    assert.equal(mainBuild.simulatorSha,expectedSha,'/lab/ main selection must keep the exact deployed simulator SHA');
     assert.deepEqual(errors,[],`/lab/ produced browser errors: ${errors.join('\n')}`);
   }finally{
     await context.close();
@@ -226,7 +244,7 @@ try{
   await verifyBranchEntry(browser,{branch:'dev',entryPath:'dev/',branchSha:site.branches.dev.exactSha,label:'/dev/'});
   await verifyBranchEntry(browser,{branch:'main',entryPath:'main',branchSha:site.branches.main.exactSha,label:'/main'});
   await verifyLabEntry(browser,site);
-  console.log(`Virtual qB Pages entry acceptance passed for ${expectedSha}: /dev/, /main and /lab/ render cleanly, the real Language dropdown and Save button persist Simplified Chinese through reload and reopened Settings, locale variants remain distinct, direct snapshot entries resolve correctly, routing semantics are preserved, and each entry resolves to its exact published snapshot.`);
+  console.log(`Virtual qB Pages entry acceptance passed for ${expectedSha}: /dev/, /main and /lab/ render cleanly, the real Language dropdown and Save button persist Simplified Chinese through reload and reopened Settings, locale variants remain distinct, the Lab branch selector routes dev and main through one launcher to their exact app snapshots, routing semantics are preserved, and each entry resolves to its exact published snapshot.`);
 }finally{
   await browser.close();
 }
