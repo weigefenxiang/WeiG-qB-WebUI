@@ -140,34 +140,37 @@ run_qb() {
 }
 run_qb
 
-CONFIG_READY=0
+INITIAL_READY=0
 for _ in $(seq 1 60); do
-  if [[ -f "$QBT_CONFIG" ]] && awk '
-    BEGIN { count=0 }
-    { line=$0; sub(/\r$/, "", line); if (line=="[Preferences]") count++ }
-    END { exit !(count==1) }
-  ' "$QBT_CONFIG"; then
-    CONFIG_READY=1
+  if docker logs "$NAME" 2>&1 | grep -q 'temporary password is provided for this session:'; then
+    INITIAL_READY=1
     break
   fi
   sleep 1
 done
-if (( ! CONFIG_READY )); then
-  echo 'Official qB image did not finish a structurally safe [Preferences] configuration.' >&2
+if (( ! INITIAL_READY )); then
+  echo 'Official qB image did not finish WebUI initialization before safe configuration handoff.' >&2
   docker logs "$NAME" >&2 2>/dev/null || true
   exit 1
 fi
+
 RUNTIME_VERSION=$(docker exec "$NAME" qbittorrent-nox --version 2>/dev/null | head -n1 | tr -d '\r' || true)
 [[ -n "$RUNTIME_VERSION" ]] || { echo 'Unable to read qB runtime version identity.' >&2; exit 1; }
 [[ "$RUNTIME_VERSION" == *"$EXPECTED_QB_VERSION"* ]] || { echo "Official qB image runtime mismatch: expected $EXPECTED_QB_VERSION, got $RUNTIME_VERSION" >&2; exit 1; }
-docker pause "$NAME" >/dev/null
+
+# qB may defer writing [Preferences] until a graceful exit. Never mutate a live
+# qB configuration in acceptance: stop it, require the flushed structure, then
+# configure through the explicit host /config root and restart the same container.
+docker stop --time 30 "$NAME" >/dev/null
+[[ "$(docker inspect -f '{{.State.Running}}' "$NAME")" == false ]] || { echo 'qBittorrent container did not stop before configuration mutation.' >&2; exit 1; }
+[[ -f "$QBT_CONFIG" ]] || { echo 'Official qB image did not flush its configuration on graceful stop.' >&2; exit 1; }
 awk '
   BEGIN { count=0 }
   { line=$0; sub(/\r$/, "", line); if (line=="[Preferences]") count++ }
   END { exit !(count==1) }
-' "$QBT_CONFIG" || { echo 'qBittorrent config lost its unique [Preferences] section before installer handoff.' >&2; exit 1; }
+' "$QBT_CONFIG" || { echo 'Gracefully stopped qBittorrent config must contain exactly one [Preferences] section.' >&2; exit 1; }
 
-bash "$ROOT/installers/install.sh" --version "$VERSION" --configure --container "$NAME"
+bash "$ROOT/installers/install.sh" --version "$VERSION" --configure --config-root "$CONFIG_ROOT"
 [[ -f "$DEST/public/index.html" && -f "$DEST/private/index.html" ]] || { echo 'Candidate install payload is incomplete.' >&2; exit 1; }
 [[ "$(tr -d '\r\n' < "$DEST/VERSION")" == "$VERSION" ]] || { echo 'Installed VERSION mismatch.' >&2; exit 1; }
 [[ "$(tr -d '\r\n' < "$DEST/GIT_SHA")" == "$EXPECTED_SHA" ]] || { echo 'Installed GIT_SHA mismatch.' >&2; exit 1; }
@@ -180,7 +183,7 @@ awk -v want="$QB_ROOT" '
   END { exit !(alt==1 && root==1) }
 ' "$QBT_CONFIG" || { echo 'Candidate installer did not write exact managed WebUI keys under [Preferences].' >&2; exit 1; }
 
-node - "$DEST" "$VERSION" "$EXPECTED_SHA" "$NAME" "$CONFIG_ROOT" "$QB_ROOT" "$EXPECTED_QB_VERSION" "$LOCALE_TARGET" <<'NODE'
+node - "$DEST" "$VERSION" "$EXPECTED_SHA" "" "$CONFIG_ROOT" "$QB_ROOT" "$EXPECTED_QB_VERSION" "$LOCALE_TARGET" <<'NODE'
 const fs=require('node:fs');
 const path=require('node:path');
 const [dest,version,sha,container,hostConfigRoot,qbRoot,expectedQb,localeTarget]=process.argv.slice(2);
@@ -215,8 +218,7 @@ if(localeTarget){
 }
 NODE
 
-docker rm -f "$NAME" >/dev/null
-run_qb
+docker start "$NAME" >/dev/null
 container_ip=$(docker inspect "$NAME" --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
 [[ "$container_ip" =~ ^[0-9]+(\.[0-9]+){3}$ ]] || { echo 'Unable to resolve private qB container IP.' >&2; exit 1; }
 TARGET="http://${container_ip}:8080/"
