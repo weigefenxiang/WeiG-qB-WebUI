@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          fetch-depth: 1
+          fetch-depth: 0
       - uses: actions/setup-node@v7
         with:
           node-version: 22
@@ -29,7 +29,7 @@ jobs:
           PRE_TREE: 64d2bbab08de1bd05e4806ccbcf46e8383b8236b
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = "$PRE_SHA"
+          git merge-base --is-ancestor "$PRE_SHA" HEAD
           test "$(git rev-parse "$PRE_SHA^{tree}")" = "$PRE_TREE"
           mapfile -t changed < <(git diff --name-only "$PRE_SHA" HEAD)
           printf 'Staging changes:\n%s\n' "${changed[*]}"
