@@ -140,15 +140,32 @@ run_qb() {
 }
 run_qb
 
-for _ in $(seq 1 30); do
-  [[ -f "$QBT_CONFIG" ]] && break
+CONFIG_READY=0
+for _ in $(seq 1 60); do
+  if [[ -f "$QBT_CONFIG" ]] && awk '
+    BEGIN { count=0 }
+    { line=$0; sub(/\r$/, "", line); if (line=="[Preferences]") count++ }
+    END { exit !(count==1) }
+  ' "$QBT_CONFIG"; then
+    CONFIG_READY=1
+    break
+  fi
   sleep 1
 done
-[[ -f "$QBT_CONFIG" ]] || { echo 'Official qB image did not create its configuration.' >&2; exit 1; }
+if (( ! CONFIG_READY )); then
+  echo 'Official qB image did not finish a structurally safe [Preferences] configuration.' >&2
+  docker logs "$NAME" >&2 2>/dev/null || true
+  exit 1
+fi
 RUNTIME_VERSION=$(docker exec "$NAME" qbittorrent-nox --version 2>/dev/null | head -n1 | tr -d '\r' || true)
 [[ -n "$RUNTIME_VERSION" ]] || { echo 'Unable to read qB runtime version identity.' >&2; exit 1; }
 [[ "$RUNTIME_VERSION" == *"$EXPECTED_QB_VERSION"* ]] || { echo "Official qB image runtime mismatch: expected $EXPECTED_QB_VERSION, got $RUNTIME_VERSION" >&2; exit 1; }
 docker pause "$NAME" >/dev/null
+awk '
+  BEGIN { count=0 }
+  { line=$0; sub(/\r$/, "", line); if (line=="[Preferences]") count++ }
+  END { exit !(count==1) }
+' "$QBT_CONFIG" || { echo 'qBittorrent config lost its unique [Preferences] section before installer handoff.' >&2; exit 1; }
 
 bash "$ROOT/installers/install.sh" --version "$VERSION" --configure --container "$NAME"
 [[ -f "$DEST/public/index.html" && -f "$DEST/private/index.html" ]] || { echo 'Candidate install payload is incomplete.' >&2; exit 1; }

@@ -34,7 +34,7 @@ assert(windows.includes('$tests = @(')&&windows.includes('foreach ($test in $tes
 for(const name of browserTests)assert(windows.includes(`'tests/${name}'`),`Windows browser list missing ${name}`);
 assert(releaseFixture.includes('node tests/release-compat.mjs'),'candidate compatibility graph must keep the representative fixture matrix');
 assert(releaseBase.includes('4.1.0 to latest stable catalog')&&releaseBase.includes('qb-release-catalog.mjs upstream-qb --output=qb-releases.json'),'candidate compatibility graph must generate the exact qB 4.1.0 -> latest stable base catalog');
-assert(/max-parallel:\s*8/.test(releaseEnrich)&&releaseEnrich.includes('shard: [0, 1, 2, 3, 4, 5, 6, 7]')&&releaseEnrich.includes('--shard-count=8'),'exact locale/source enrichment must fan out across 8 independent runners');
+assert(/max-parallel:\s*12/.test(releaseEnrich)&&releaseEnrich.includes('shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]')&&releaseEnrich.includes('--shard-count=12'),'exact locale/source enrichment must fan out across 12 independent runners');
 assert(releaseMerge.includes('qb-locale-source.mjs --merge')&&releaseMerge.includes('name: qb-release-catalog-${{ github.sha }}'),'parallel locale/source shards must merge back into one exact-SHA stable catalog artifact');
 assert(releaseAudit.includes('node tests/upstream-release-audit.mjs upstream-qb'),'candidate compatibility graph must audit every supported stable tag in parallel with locale enrichment');
 assert(releaseProduct.includes('node tests/full-stable-product-compat.mjs qb-releases.json'),'candidate compatibility graph must execute formal product semantics for every merged stable profile');

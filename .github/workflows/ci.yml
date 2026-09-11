@@ -132,9 +132,9 @@ jobs:
     needs: release_catalog_base
     strategy:
       fail-fast: false
-      max-parallel: 8
+      max-parallel: 12
       matrix:
-        shard: [0, 1, 2, 3, 4, 5, 6, 7]
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -154,7 +154,7 @@ jobs:
           name: qb-release-catalog-base-${{ github.sha }}
           path: base-catalog
       - name: Enrich exact qB WebUI locale and Settings source facts for shard
-        run: node tools/qb-locale-source.mjs upstream-qb base-catalog/qb-releases.json qb-releases-shard-${{ matrix.shard }}.json --shard-index=${{ matrix.shard }} --shard-count=8
+        run: node tools/qb-locale-source.mjs upstream-qb base-catalog/qb-releases.json qb-releases-shard-${{ matrix.shard }}.json --shard-index=${{ matrix.shard }} --shard-count=12
       - name: Upload enriched shard
         uses: actions/upload-artifact@v7
         with:
