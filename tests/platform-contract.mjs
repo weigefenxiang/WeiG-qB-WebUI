@@ -34,7 +34,7 @@ assert.match(sh,/SHA256SUMS/,'Linux Release installs must remain checksum-verifi
 assert.match(sh,/--channel=release\|dev/,'Linux installer must keep the old channel syntax as a compatibility alias');
 assert.match(sh,/--dir=\/path/,'Linux installer must keep the old path syntax as a compatibility alias');
 assert.match(sh,/api\.github\.com\/repos\/\$REPO\/commits\/dev/,'Linux dev channel must resolve the current dev exact SHA');
-assert.match(sh,/archive\/\$SOURCE_SHA\.zip/,'Linux dev channel must download an exact-SHA source archive');
+assert.match(sh,/archive\/\$SOURCE_SHA\.zip/,'Linux dev channel currently downloads an exact-SHA source archive');
 for(const token of ['download_file','extract_zip','sha256_file','busybox wget','busybox unzip','python3 -m zipfile','openssl dgst -sha256'])assert.ok(sh.includes(token),`Linux portable installer fallback missing ${token}`);
 assert.doesNotMatch(sh,/archive\/refs\/heads\/main\.zip/,'Linux Release channel must fail closed instead of falling back to main');
 assert.doesNotMatch(sh,/resolve_main_sha/,'Linux Release channel must not resolve main as a payload source');
@@ -59,7 +59,13 @@ assert.match(ps,/SHA256SUMS/,'Windows Release installs must remain checksum-veri
 assert.match(ps,/ValidateSet\('Release','Dev'\)/,'Windows installer must retain legacy Release/Dev channel compatibility');
 assert.match(ps,/ValidateSet\('Install','Update','Rollback'\)/,'Windows installer must retain legacy mode compatibility');
 assert.match(ps,/api\.github\.com\/repos\/\$Repo\/commits\/dev/,'Windows Dev channel must resolve the current dev exact SHA');
-assert.match(ps,/archive\/\$sourceSha\.zip/,'Windows Dev channel must download an exact-SHA source archive');
+assert.match(ps,/DevDistBase='https:\/\/weigefenxiang\.github\.io\/WeiG-qB-WebUI\/downloads\/dev'/,'Windows Dev channel must consume the canonical public materialized payload');
+assert.match(ps,/publishedSha -ne \$sourceSha/,'Windows Dev channel must bind the public materialized payload to the current exact dev SHA');
+assert.match(ps,/Verify-PackageChecksum \$archive \$sumFile/,'Windows Dev materialized payload must remain checksum-verified');
+assert.match(ps,/function Assert-MaterializedWebUI/,'Windows installer must validate materialized catalog and qB translation runtime assets');
+assert.match(ps,/qb-settings-native\.txt/,'Windows materialized payload must require the native qB Settings translation registry');
+assert.match(ps,/webui_\*\.qm/,'Windows materialized payload must require qB WebUI QM assets');
+assert.doesNotMatch(ps,/archive\/\$sourceSha\.zip/,'Windows Dev channel must not fall back to a raw source archive');
 assert.match(ps,/function Restore-Last/,'Windows rollback must restore the remembered previous state');
 assert.match(ps,/last-dest/,'Windows rollback must remember the prior install destination');
 assert.doesNotMatch(ps,/archive\/refs\/heads\/main\.zip/,'Windows Release channel must fail closed instead of falling back to main');
@@ -79,4 +85,4 @@ for(const [name,html] of [['public/index.html',publicIndex],['public/login.html'
 }
 assert.match(privateIndex,/scripts\/qb-client\.js/,'private WebUI must load the shared API compatibility client');
 
-console.log('Platform contract passed: Windows/Linux installers share simplified version/dev/output/configure/rollback semantics, preserve legacy aliases, verify exact Release versions and checksums, retain portable Linux fallbacks, and keep LIVE rollback retention capped at three backups.');
+console.log('Platform contract passed: Windows Dev consumes an exact-SHA materialized qB-aware translation payload, Windows/Linux installers preserve simplified version/dev/output/configure/rollback semantics and legacy aliases, and LIVE rollback retention remains capped at three backups.');
