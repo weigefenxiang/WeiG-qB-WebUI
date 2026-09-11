@@ -44,6 +44,9 @@ assert.ok(i18n.includes('current.settingsTranslationPath')&&i18n.includes("fetch
 assert.ok(i18n.includes('String(value.qbVersion)!==expectedVersion')&&i18n.includes('String(value.sourceSha)!==expectedSha'),'runtime must reject a compatibility shard that is not bound to the current exact qB release');
 assert.ok(i18n.includes('nativeSettingsData.sourceSha')&&i18n.includes('String(current.sourceSha)'),'native QBT_TR copy must also be bound to the exact running source SHA');
 assert.ok(i18n.includes("source:'qb-native-QBT_TR+official-QM'")&&i18n.includes('qb-upstream-preferences-ui+webui-ts-compatibility-only'),'runtime must distinguish native official translation from the exact-TS compatibility path');
+assert.ok(i18n.includes("type:'script'")&&i18n.includes('loc.maximize')&&i18n.includes("+' ('+raw+')'"),'locale labels must expose source-derived locale codes and script distinctions instead of collapsing zh_CN/zh_HK/zh_TW to the same language name');
+assert.ok(i18n.includes('counts[item.label]>1')&&i18n.includes('nativeLabel(item.value)'),'duplicate upstream locale labels must be disambiguated from their exact locale code');
+assert.ok(i18n.includes('localeApplied=false,reloadScheduled=false')&&i18n.includes('changed&&wasApplied&&!reloadScheduled')&&i18n.includes('global.location.reload()'),'a verified runtime locale change must reload once so qB-owned QBT_TR/server-rendered copy is fetched in the new locale');
 
 assert.equal(exists('webui/private/data/qb-settings-translations.json'),false,'retired all-release translation sidecar must leave the source tree');
 const packer=read('tools/qb-webui-catalog.mjs');
@@ -71,4 +74,4 @@ assert.ok(logs.includes('var I=W.I18n'),'Logs must call W.I18n directly');
 assert.ok(responsive.includes('W.I18n&&W.I18n.t'),'Responsive runtime must call W.I18n directly');
 assert.ok(header.includes("localized('Add','添加')"),'Header short copy must no longer depend on InterfaceText');
 
-console.log('I18n runtime owner contract passed: qB preferences.locale remains the single language truth; native-capable releases use server-translated QBT_TR/official QM and only source-proven gaps keep exact official TS shards.');
+console.log('I18n runtime owner contract passed: qB preferences.locale remains the single language truth; locale choices keep exact source codes visible, verified locale changes reload qB-owned translated resources, native-capable releases use server-translated QBT_TR/official QM and only source-proven gaps keep exact official TS shards.');

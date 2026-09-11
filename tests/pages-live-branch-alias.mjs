@@ -46,6 +46,34 @@ async function readLandedBuild(landed){
   return response.json();
 }
 
+async function verifyDevLocale(browserPage){
+  await browserPage.evaluate(async()=>{
+    if(!window.WeiG?.SettingsRenderer?.open)throw new Error('WeiG SettingsRenderer is unavailable');
+    await window.WeiG.SettingsRenderer.open('weigg');
+  });
+  await browserPage.waitForSelector('[data-setting-key="weigg_language"]',{state:'attached',timeout:30000});
+  const options=await browserPage.evaluate(()=>window.WeiG?.I18n?.localeOptions?.()||[]);
+  const chinese=options.filter(item=>['zh_CN','zh_HK','zh_TW'].includes(String(item.value))).sort((a,b)=>String(a.value).localeCompare(String(b.value)));
+  assert.deepEqual(chinese.map(item=>item.value),['zh_CN','zh_HK','zh_TW'],'modern qB locale evidence must expose the exact three Chinese locale codes');
+  assert.equal(new Set(chinese.map(item=>item.label)).size,3,'zh_CN / zh_HK / zh_TW must have distinct visible labels');
+  for(const item of chinese)assert.ok(String(item.label).includes(item.value),`${item.value} label must expose its exact qB locale code`);
+
+  const navigation=browserPage.waitForNavigation({waitUntil:'domcontentloaded',timeout:30000});
+  await browserPage.evaluate(()=>{
+    window.WeiG.SettingsState.draft.locale='zh_CN';
+    void window.WeiG.SettingsRenderer.save();
+  });
+  await navigation;
+  await browserPage.waitForSelector('#torrent-list',{state:'attached',timeout:60000});
+  await browserPage.waitForFunction(()=>window.WeiG?.I18n?.getQbLocale?.()==='zh_CN'&&document.documentElement.lang==='zh-CN',null,{timeout:30000});
+  const verified=await browserPage.evaluate(async()=>{
+    const response=await fetch('api/v2/app/preferences',{cache:'no-store'});
+    const prefs=await response.json();
+    return{status:response.status,locale:prefs.locale,qbLocale:window.WeiG?.I18n?.getQbLocale?.(),lang:document.documentElement.lang};
+  });
+  assert.deepEqual(verified,{status:200,locale:'zh_CN',qbLocale:'zh_CN',lang:'zh-CN'},'Chinese locale must persist through qB preferences, reload, and runtime projection');
+}
+
 async function verifyBranchEntry(browser,{branch,entryPath,branchSha,label}){
   const context=await browser.newContext({viewport:{width:390,height:844},locale:'zh-CN'});
   try{
@@ -75,7 +103,9 @@ async function verifyBranchEntry(browser,{branch,entryPath,branchSha,label}){
     await page.waitForSelector('#torrent-list',{state:'attached',timeout:60000});
     await page.waitForFunction(()=>String(document.querySelector('#qb-version')?.textContent||'').includes('5.2.3'),null,{timeout:60000});
 
-    const build=await readLandedBuild(landed);
+    if(branch==='dev')await verifyDevLocale(page);
+
+    const build=await readLandedBuild(new URL(page.url()));
     assert.equal(build.branch,branch,`${label} must resolve to the ${branch} app snapshot`);
     assert.equal(build.exactSha,branchSha,`${label} must resolve to the exact ${branch} source SHA`);
     assert.equal(build.simulatorSha,expectedSha,`${label} must use the exact deployed simulator SHA`);
@@ -97,6 +127,9 @@ async function verifyLabEntry(browser,site){
 
     assert.equal(await page.locator('#branch').inputValue(),'dev','/lab/ must default to dev');
     assert.deepEqual(await page.locator('#branch option').allTextContents(),['dev','main'],'/lab/ must expose dev and main launch targets');
+    const directTargets=await page.evaluate(()=>Object.fromEntries(['open-dev','open-main'].map(id=>{const node=document.getElementById(id);return[id,node?new URL(node.getAttribute('href'),location.href).pathname:null];})));
+    assert.ok(directTargets['open-dev']?.endsWith('/WeiG-qB-WebUI/dev/'),'/lab/ must expose a direct dev snapshot entry');
+    assert.ok(directTargets['open-main']?.endsWith('/WeiG-qB-WebUI/main/'),'/lab/ must expose a direct main snapshot entry');
     assert.equal(await page.locator('#qb-version option').count(),65,'/lab/ must expose all 65 frozen stable qB profiles');
     assert.ok((await page.locator('#catalog-status').textContent())?.includes('65 个 stable profiles'),'/lab/ must load the published release catalog instead of bootstrap fallback');
     const overflow=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,client:document.documentElement.clientWidth}));
@@ -131,7 +164,7 @@ try{
   await verifyBranchEntry(browser,{branch:'dev',entryPath:'dev/',branchSha:site.branches.dev.exactSha,label:'/dev/'});
   await verifyBranchEntry(browser,{branch:'main',entryPath:'main',branchSha:site.branches.main.exactSha,label:'/main'});
   await verifyLabEntry(browser,site);
-  console.log(`Virtual qB Pages entry acceptance passed for ${expectedSha}: /dev/, /main and /lab/ render cleanly, preserve routing semantics and resolve to their exact published snapshots.`);
+  console.log(`Virtual qB Pages entry acceptance passed for ${expectedSha}: /dev/, /main and /lab/ render cleanly, locale variants remain distinct and persist through verified reload, direct snapshot entries resolve correctly, routing semantics are preserved, and each entry resolves to its exact published snapshot.`);
 }finally{
   await browser.close();
 }
