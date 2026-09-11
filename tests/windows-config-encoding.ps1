@@ -18,7 +18,11 @@ $requiredFunctions=@(
   'Get-QBPendingConfigPaths',
   'Assert-QBConfigTextLooksSafe',
   'Assert-QBConfigMutationSafe',
+  'Get-QBPreferencesSectionInfo',
+  'Get-QBManagedWebUIKeyMatches',
+  'Assert-QBWebUISectionOwnership',
   'Get-QBUnmanagedConfigText',
+  'Set-QBWebUIConfigText',
   'Assert-QBWebUIMutation',
   'Invoke-QBAtomicReplace',
   'Restore-QBConfigBackupAtomically',
@@ -46,6 +50,10 @@ function Assert-Throws([scriptblock]$Script,[string]$Contains,[string]$Message){
     throw "$Message Expected error containing '$Contains', got '$actual'."
   }
 }
+function Convert-ToCRLF([string]$Text){
+  $normalized=($Text -replace "`r`n","`n") -replace "`r","`n"
+  return ($normalized -replace "`n","`r`n")
+}
 function Write-EncodedFile([string]$Path,[string]$Text,$Encoding,[byte[]]$Preamble){
   [byte[]]$body=$Encoding.GetBytes($Text)
   [byte[]]$bytes=New-Object byte[] ($Preamble.Length+$body.Length)
@@ -72,11 +80,12 @@ Session\TempPathEnabled=true
 Session\Tags=姫川ゆうな,羽田桃子,电影,moka酱,动漫,永野いち夏,小西まりえ
 SavePathHistory=E:\clash\u\moka酱;E:\影视;D:\下载\电影;E:\clash\u\小西まりえ
 
-[WebUI]
+[Preferences]
 Username=admin
 WebUI\AlternativeUIEnabled=false
 WebUI\RootFolder=D:\old\webui
-"@ -replace "`n","`r`n"
+"@
+  $original=Convert-ToCRLF $original
 
   $utf8NoBom=New-Object System.Text.UTF8Encoding($false,$true)
   $cfg=Join-Path $temp 'qBittorrent.ini'
@@ -96,6 +105,7 @@ WebUI\RootFolder=D:\old\webui
   Assert-True (-not $decoded.Contains('涓嬭浇')) 'Known UTF-8-as-GBK mojibake appeared in qB config.'
   Assert-True ($decoded.Contains('WebUI\AlternativeUIEnabled=true')) 'Alternative WebUI enable line was not written.'
   Assert-True ($decoded.Contains("WebUI\RootFolder=$rootFolder")) 'Alternative WebUI RootFolder was not written.'
+  Assert-QBWebUISectionOwnership $decoded $rootFolder
   Assert-True ((Get-QBUnmanagedConfigText $decoded) -eq (Get-QBUnmanagedConfigText $original)) 'Only the two managed WebUI lines may change when both already exist.'
 
   $backup="$cfg.weigg.bak"
@@ -171,6 +181,25 @@ WebUI\RootFolder=D:\old\webui
   [byte[]]$duplicateBefore=[IO.File]::ReadAllBytes($duplicateCfg)
   Assert-Throws { Configure-QBWebUI $duplicateCfg $rootFolder } 'duplicate managed WebUI keys' 'Configure must refuse duplicate managed keys.'
   Assert-True (Bytes-Equal $duplicateBefore ([IO.File]::ReadAllBytes($duplicateCfg))) 'Duplicate-key refusal must leave bytes untouched.'
+
+
+  # Managed WebUI keys in a non-Preferences section must fail closed.
+  $wrongSectionCfg=Join-Path $temp 'qBittorrent-wrong-section.ini'
+  $wrongSection=(Get-QBUnmanagedConfigText $original)+"`r`n[WebUI]`r`nWebUI\AlternativeUIEnabled=false`r`nWebUI\RootFolder=D:\old\webui`r`n"
+  Write-EncodedFile $wrongSectionCfg $wrongSection $utf8NoBom ([byte[]]@())
+  [byte[]]$wrongSectionBefore=[IO.File]::ReadAllBytes($wrongSectionCfg)
+  Assert-Throws { Configure-QBWebUI $wrongSectionCfg $rootFolder } 'must belong to the [Preferences] section' 'Configure must refuse managed WebUI keys outside [Preferences].'
+  Assert-True (Bytes-Equal $wrongSectionBefore ([IO.File]::ReadAllBytes($wrongSectionCfg))) 'Wrong-section refusal must leave bytes untouched.'
+  Assert-True (-not (Test-Path "$wrongSectionCfg.weigg.bak")) 'Wrong-section refusal must occur before creating a mutation backup.'
+
+  # Multiple [Preferences] sections are ambiguous and must fail closed.
+  $duplicateSectionCfg=Join-Path $temp 'qBittorrent-duplicate-section.ini'
+  $duplicateSection=$original+"`r`n[Preferences]`r`nConnection\PortRangeMin=6881`r`n"
+  Write-EncodedFile $duplicateSectionCfg $duplicateSection $utf8NoBom ([byte[]]@())
+  [byte[]]$duplicateSectionBefore=[IO.File]::ReadAllBytes($duplicateSectionCfg)
+  Assert-Throws { Configure-QBWebUI $duplicateSectionCfg $rootFolder } 'exactly one [Preferences] section' 'Configure must refuse duplicate [Preferences] sections.'
+  Assert-True (Bytes-Equal $duplicateSectionBefore ([IO.File]::ReadAllBytes($duplicateSectionCfg))) 'Duplicate-section refusal must leave bytes untouched.'
+  Assert-True (-not (Test-Path "$duplicateSectionCfg.weigg.bak")) 'Duplicate-section refusal must occur before creating a mutation backup.'
 
   # Multiple discovered configs must never choose the first one.
   $candidateA=Join-Path $temp 'candidate-a.ini'

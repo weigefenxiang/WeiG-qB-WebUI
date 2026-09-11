@@ -436,6 +436,120 @@ map_docker_destination() {
   esac
 }
 
+
+validate_qb_webui_config_file() {
+  validate_cfg=$1
+  validate_expected_root=${2-}
+  validate_require_values=${3:-0}
+  awk -v expected_root="$validate_expected_root" -v require_values="$validate_require_values" '
+    BEGIN { section=""; preferences=0; alt=0; root=0; wrong=0; alt_true=0; root_exact=0 }
+    {
+      line=$0
+      sub(/\r$/, "", line)
+      if (line ~ /^\[[^]]+\]$/) {
+        section=line
+        if (line == "[Preferences]") preferences++
+        next
+      }
+      if (line ~ /^WebUI\\AlternativeUIEnabled=/) {
+        alt++
+        if (section != "[Preferences]") wrong=1
+        if (line == "WebUI\\AlternativeUIEnabled=true") alt_true++
+      }
+      if (line ~ /^WebUI\\RootFolder=/) {
+        root++
+        if (section != "[Preferences]") wrong=1
+        if (line == "WebUI\\RootFolder=" expected_root) root_exact++
+      }
+    }
+    END {
+      if (preferences != 1) { print "qBittorrent config must contain exactly one [Preferences] section; found " preferences "." > "/dev/stderr"; exit 41 }
+      if (wrong) { print "qBittorrent managed WebUI keys must belong to the [Preferences] section." > "/dev/stderr"; exit 42 }
+      if (alt > 1 || root > 1) { print "qBittorrent config contains duplicate managed WebUI keys; refusing ambiguous mutation." > "/dev/stderr"; exit 43 }
+      if (require_values && (alt != 1 || root != 1 || alt_true != 1 || root_exact != 1)) { print "qBittorrent managed WebUI values failed exact post-write verification." > "/dev/stderr"; exit 44 }
+    }
+  ' "$validate_cfg"
+}
+
+configure_qb_webui_file() {
+  cfg=$1
+  qb_root=$2
+  [ -f "$cfg" ] || { echo "qBittorrent config does not exist: $cfg" >&2; return 1; }
+  validate_qb_webui_config_file "$cfg" "$qb_root" 0 || return 1
+
+  backup="$cfg.weigg.bak"
+  cp -a "$cfg" "$backup"
+  cmp -s "$cfg" "$backup" || { echo "qBittorrent safety backup is not byte-identical; refusing mutation." >&2; return 1; }
+
+  cfg_dir=$(dirname "$cfg")
+  tmp_cfg=$(mktemp "$cfg_dir/.weigg-qb-config.XXXXXX")
+  tmp_body="$tmp_cfg.body"
+  cleanup_qb_tmp() { rm -f "$tmp_cfg" "$tmp_body"; }
+  cp -p "$cfg" "$tmp_cfg" 2>/dev/null || cp "$cfg" "$tmp_cfg"
+
+  if ! awk -v root="$qb_root" '
+    BEGIN { in_preferences=0; alt=0; root_seen=0; saw_cr=0 }
+    function emit_missing(suffix) {
+      if (!alt) print "WebUI\\AlternativeUIEnabled=true" suffix
+      if (!root_seen) print "WebUI\\RootFolder=" root suffix
+    }
+    {
+      raw=$0
+      line=raw
+      had_cr=sub(/\r$/, "", line)
+      if (had_cr) saw_cr=1
+      if (line ~ /^\[[^]]+\]$/) {
+        if (in_preferences) { emit_missing(saw_cr ? "\r" : ""); in_preferences=0 }
+        if (line == "[Preferences]") in_preferences=1
+        print raw
+        next
+      }
+      if (in_preferences && line ~ /^WebUI\\AlternativeUIEnabled=/) {
+        print "WebUI\\AlternativeUIEnabled=true" (had_cr ? "\r" : "")
+        alt=1
+        next
+      }
+      if (in_preferences && line ~ /^WebUI\\RootFolder=/) {
+        print "WebUI\\RootFolder=" root (had_cr ? "\r" : "")
+        root_seen=1
+        next
+      }
+      print raw
+    }
+    END { if (in_preferences) emit_missing(saw_cr ? "\r" : "") }
+  ' "$cfg" > "$tmp_body"; then
+    cleanup_qb_tmp
+    return 1
+  fi
+  cat "$tmp_body" > "$tmp_cfg"
+  rm -f "$tmp_body"
+
+  if ! validate_qb_webui_config_file "$tmp_cfg" "$qb_root" 1; then
+    cleanup_qb_tmp
+    return 1
+  fi
+  if ! mv "$tmp_cfg" "$cfg"; then
+    cleanup_qb_tmp
+    cp -a "$backup" "$cfg"
+    echo "Failed to atomically replace qBittorrent config; original restored." >&2
+    return 1
+  fi
+  if ! validate_qb_webui_config_file "$cfg" "$qb_root" 1; then
+    cp -a "$backup" "$cfg"
+    echo "qBittorrent config post-write verification failed; original restored." >&2
+    return 1
+  fi
+}
+
+if [ "${WEIGG_QB_CONFIG_TEST_ONLY:-0}" = "1" ]; then
+  [ -n "${WEIGG_QB_CONFIG_TEST_PATH:-}" ] && [ -n "${WEIGG_QB_CONFIG_TEST_ROOT:-}" ] || {
+    echo "WEIGG_QB_CONFIG_TEST_PATH and WEIGG_QB_CONFIG_TEST_ROOT are required in config test mode." >&2
+    exit 2
+  }
+  configure_qb_webui_file "$WEIGG_QB_CONFIG_TEST_PATH" "$WEIGG_QB_CONFIG_TEST_ROOT"
+  exit $?
+fi
+
 if [ "$LIST_CONTAINERS" -eq 1 ]; then
   print_qb_containers
   exit 0
@@ -644,18 +758,7 @@ echo "Install metadata: $DEST/private/weigg-install.json"
 cfg=$(find_config || true)
 if [ "$CONFIGURE" -eq 1 ]; then
   [ -n "$cfg" ] || { echo "No safe qBittorrent config was found; WebUI files are installed but configuration was not changed." >&2; exit 2; }
-  cp -a "$cfg" "$cfg.weigg.bak"
-  if grep -q '^WebUI\\AlternativeUIEnabled=' "$cfg"; then
-    sed -i 's#^WebUI\\AlternativeUIEnabled=.*#WebUI\\AlternativeUIEnabled=true#' "$cfg"
-  else
-    printf '\nWebUI\\AlternativeUIEnabled=true\n' >> "$cfg"
-  fi
-  esc=$(printf '%s' "$QBT_ROOT_FOLDER" | sed 's/[&|]/\\&/g')
-  if grep -q '^WebUI\\RootFolder=' "$cfg"; then
-    sed -i "s|^WebUI\\\\RootFolder=.*|WebUI\\\\RootFolder=$esc|" "$cfg"
-  else
-    printf 'WebUI\\RootFolder=%s\n' "$QBT_ROOT_FOLDER" >> "$cfg"
-  fi
+  configure_qb_webui_file "$cfg" "$QBT_ROOT_FOLDER"
   echo "Configured: $cfg"
   echo "qBittorrent Root Folder: $QBT_ROOT_FOLDER"
 else

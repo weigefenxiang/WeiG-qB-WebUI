@@ -20,7 +20,7 @@ assert.match(sh,/\$SRC\/public\/index\.html/,'Linux installer must validate publ
 assert.match(sh,/\$DEST\.new\/public\/index\.html/,'Linux installer must validate staged public/index.html');
 assert.match(sh,/QBT_ROOT_FOLDER="\/config\/\$rel"/,'Linux Docker install must map host paths to qB-visible /config paths');
 assert.match(sh,/WebUI\\\\AlternativeUIEnabled=true/,'Linux installer must enable Alternative WebUI only when configured');
-assert.match(sh,/WebUI\\\\RootFolder=%s/,'Linux installer must persist qB-visible RootFolder');
+assert.match(sh,/WebUI\\\\RootFolder=/,'Linux installer must persist qB-visible RootFolder');
 assert.match(sh,/--version VERSION/,'Linux installer must expose a specific Release version option');
 assert.match(sh,/--dev\s+Install the current dev exact Git SHA/,'Linux installer must expose the simplified dev option');
 assert.match(sh,/-o PATH, --output PATH/,'Linux installer must expose unified output-path options');

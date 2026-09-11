@@ -227,29 +227,90 @@ function Assert-QBConfigMutationSafe([string]$Path) {
   return $state
 }
 
+function Get-QBPreferencesSectionInfo([string]$Text) {
+  $headers=[regex]::Matches($Text,'(?m)^\[([^\]\r\n]+)\]\r?$')
+  $preferences=@($headers | Where-Object { $_.Groups[1].Value -eq 'Preferences' })
+  if($preferences.Count -ne 1){
+    throw "qBittorrent config must contain exactly one [Preferences] section; found $($preferences.Count)."
+  }
+  $header=$preferences[0]
+  $end=$Text.Length
+  foreach($candidate in $headers){
+    if($candidate.Index -gt $header.Index){$end=$candidate.Index;break}
+  }
+  return [PSCustomObject]@{Start=$header.Index;End=$end;HeaderEnd=$header.Index+$header.Length}
+}
+
+function Get-QBManagedWebUIKeyMatches([string]$Text) {
+  return @([regex]::Matches($Text,'(?m)^WebUI\\(?:AlternativeUIEnabled|RootFolder)=[^\r\n]*\r?$'))
+}
+
+function Assert-QBWebUISectionOwnership([string]$Text,[string]$RootFolder) {
+  $section=Get-QBPreferencesSectionInfo $Text
+  $managed=@(Get-QBManagedWebUIKeyMatches $Text)
+  foreach($match in $managed){
+    if($match.Index -lt $section.Start -or $match.Index -ge $section.End){
+      throw 'qBittorrent managed WebUI keys must belong to the [Preferences] section.'
+    }
+  }
+  if(([regex]::Matches($Text,'(?m)^WebUI\\AlternativeUIEnabled=true\r?$')).Count -ne 1){
+    throw 'qBittorrent config candidate must contain exactly one enabled Alternative WebUI line.'
+  }
+  $escapedRoot=[regex]::Escape('WebUI\RootFolder='+$RootFolder)
+  if(([regex]::Matches($Text,'(?m)^'+$escapedRoot+'\r?$')).Count -ne 1){
+    throw 'qBittorrent config candidate must contain exactly one exact WebUI RootFolder line.'
+  }
+  if(([regex]::Matches($Text,'(?m)^WebUI\\AlternativeUIEnabled=')).Count -ne 1 -or ([regex]::Matches($Text,'(?m)^WebUI\\RootFolder=')).Count -ne 1){
+    throw 'qBittorrent config contains duplicate managed WebUI keys; refusing ambiguous mutation.'
+  }
+}
+
 function Get-QBUnmanagedConfigText([string]$Text) {
   return [regex]::Replace($Text,'(?m)^WebUI\\(?:AlternativeUIEnabled|RootFolder)=.*(?:\r?\n|$)','')
 }
 
-function Assert-QBWebUIMutation([string]$Original,[string]$Candidate,[string]$RootFolder,[string]$Newline) {
-  if(([regex]::Matches($Candidate,'(?m)^WebUI\\AlternativeUIEnabled=true\r?$')).Count -ne 1){
-    throw 'qBittorrent config candidate must contain exactly one enabled Alternative WebUI line.'
+function Set-QBWebUIConfigText([string]$Original,[string]$RootFolder,[string]$Newline) {
+  $section=Get-QBPreferencesSectionInfo $Original
+  $managed=@(Get-QBManagedWebUIKeyMatches $Original)
+  foreach($match in $managed){
+    if($match.Index -lt $section.Start -or $match.Index -ge $section.End){
+      throw 'qBittorrent managed WebUI keys must belong to the [Preferences] section.'
+    }
   }
-  $escapedRoot=[regex]::Escape('WebUI\RootFolder='+$RootFolder)
-  if(([regex]::Matches($Candidate,'(?m)^'+$escapedRoot+'\r?$')).Count -ne 1){
-    throw 'qBittorrent config candidate must contain exactly one exact WebUI RootFolder line.'
-  }
-  if(([regex]::Matches($Candidate,'(?m)^WebUI\\AlternativeUIEnabled=')).Count -ne 1 -or ([regex]::Matches($Candidate,'(?m)^WebUI\\RootFolder=')).Count -ne 1){
+
+  $preferencesText=$Original.Substring($section.Start,$section.End-$section.Start)
+  if(([regex]::Matches($preferencesText,'(?m)^WebUI\\AlternativeUIEnabled=')).Count -gt 1 -or ([regex]::Matches($preferencesText,'(?m)^WebUI\\RootFolder=')).Count -gt 1){
     throw 'qBittorrent config contains duplicate managed WebUI keys; refusing ambiguous mutation.'
   }
 
+  if($preferencesText -match '(?m)^WebUI\\AlternativeUIEnabled='){
+    $preferencesText=[regex]::Replace($preferencesText,'(?m)^WebUI\\AlternativeUIEnabled=[^\r\n]*(\r?)$','WebUI\AlternativeUIEnabled=true$1')
+  } else {
+    if($preferencesText.Length -gt 0 -and !$preferencesText.EndsWith("`n") -and !$preferencesText.EndsWith("`r")){$preferencesText+=$Newline}
+    $preferencesText+='WebUI\AlternativeUIEnabled=true'+$Newline
+  }
+
+  $rootLine='WebUI\RootFolder='+$RootFolder
+  if($preferencesText -match '(?m)^WebUI\\RootFolder='){
+    $preferencesText=[regex]::Replace($preferencesText,'(?m)^WebUI\\RootFolder=[^\r\n]*(\r?)$',[System.Text.RegularExpressions.MatchEvaluator]{param($m)$rootLine+$m.Groups[1].Value})
+  } else {
+    if($preferencesText.Length -gt 0 -and !$preferencesText.EndsWith("`n") -and !$preferencesText.EndsWith("`r")){$preferencesText+=$Newline}
+    $preferencesText+=$rootLine+$Newline
+  }
+
+  $candidate=$Original.Substring(0,$section.Start)+$preferencesText+$Original.Substring($section.End)
+  Assert-QBWebUISectionOwnership $candidate $RootFolder
+  return $candidate
+}
+
+function Assert-QBWebUIMutation([string]$Original,[string]$Candidate,[string]$RootFolder,[string]$Newline) {
+  Assert-QBWebUISectionOwnership $Candidate $RootFolder
   $before=Get-QBUnmanagedConfigText $Original
   $after=Get-QBUnmanagedConfigText $Candidate
   if($after -ne $before -and $after -ne ($before+$Newline)){
     throw 'qBittorrent config mutation changed unrelated content; refusing write.'
   }
 }
-
 function Invoke-QBAtomicReplace([string]$Source,[string]$Destination,[string]$BackupPath) {
   if(!(Test-Path -LiteralPath $Source -PathType Leaf)){throw "Atomic replace source is missing: $Source"}
   if(!(Test-Path -LiteralPath $Destination -PathType Leaf)){throw "Atomic replace destination is missing: $Destination"}
@@ -289,25 +350,7 @@ function Configure-QBWebUI([string]$Path,[string]$RootFolder) {
   $originalText=$state.Text
   $newline=if($originalText.Contains("`r`n")){"`r`n"}else{"`n"}
 
-  if(([regex]::Matches($originalText,'(?m)^WebUI\\AlternativeUIEnabled=')).Count -gt 1 -or ([regex]::Matches($originalText,'(?m)^WebUI\\RootFolder=')).Count -gt 1){
-    throw 'qBittorrent config contains duplicate managed WebUI keys; refusing ambiguous mutation.'
-  }
-
-  $text=$originalText
-  if($text -match '(?m)^WebUI\\AlternativeUIEnabled='){
-    $text=[regex]::Replace($text,'(?m)^WebUI\\AlternativeUIEnabled=[^\r\n]*(\r?)$','WebUI\AlternativeUIEnabled=true$1')
-  } else {
-    if($text.Length -gt 0 -and !$text.EndsWith("`n") -and !$text.EndsWith("`r")){$text+=$newline}
-    $text+='WebUI\AlternativeUIEnabled=true'+$newline
-  }
-
-  $rootLine='WebUI\RootFolder='+$RootFolder
-  if($text -match '(?m)^WebUI\\RootFolder='){
-    $text=[regex]::Replace($text,'(?m)^WebUI\\RootFolder=[^\r\n]*(\r?)$',[System.Text.RegularExpressions.MatchEvaluator]{param($m)$rootLine+$m.Groups[1].Value})
-  } else {
-    if($text.Length -gt 0 -and !$text.EndsWith("`n") -and !$text.EndsWith("`r")){$text+=$newline}
-    $text+=$rootLine+$newline
-  }
+  $text=Set-QBWebUIConfigText $originalText $RootFolder $newline
   Assert-QBWebUIMutation $originalText $text $RootFolder $newline
 
   $backup="$Path.weigg.bak"

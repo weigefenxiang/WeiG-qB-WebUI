@@ -33,8 +33,10 @@ jobs:
           node-version: 22
       - name: Semantic runtime, qB baselines and JavaScript syntax
         run: npm test
-      - name: Linux installer syntax
-        run: sh -n installers/install.sh
+      - name: Linux installer syntax and qB [Preferences] contract
+        run: |
+          sh -n installers/install.sh
+          bash tests/linux-config-section.sh
       - name: Live regression script syntax
         run: |
           sh -n tests/live.sh
@@ -81,8 +83,9 @@ jobs:
           node tests/browser-torrent-field-provenance.mjs
           node tests/browser-sidebar-capability-visual.mjs
 
-  release_compatibility:
-    name: Full qB Release compatibility audit
+
+  release_fixture:
+    name: qB representative fixture compatibility
     if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[candidate]')) }}
     runs-on: ubuntu-latest
     needs: smoke
@@ -93,6 +96,17 @@ jobs:
           node-version: 22
       - name: Representative fixture compatibility matrix
         run: node tests/release-compat.mjs
+
+  release_catalog_base:
+    name: qB exact stable source catalog
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[candidate]')) }}
+    runs-on: ubuntu-latest
+    needs: smoke
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
       - name: Checkout qBittorrent upstream with all stable release tags
         uses: actions/checkout@v7
         with:
@@ -103,11 +117,123 @@ jobs:
           filter: blob:none
       - name: Generate source-derived qB 4.1.0 to latest stable catalog
         run: node tools/qb-release-catalog.mjs upstream-qb --output=qb-releases.json
-      - name: Enrich exact qB WebUI locale and Settings translation source facts
-        run: node tools/qb-locale-source.mjs upstream-qb qb-releases.json
+      - name: Upload base stable catalog
+        uses: actions/upload-artifact@v7
+        with:
+          name: qb-release-catalog-base-${{ github.sha }}
+          path: qb-releases.json
+          if-no-files-found: error
+          retention-days: 1
+
+  release_locale_enrich:
+    name: qB locale/source enrich shard ${{ matrix.shard }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[candidate]')) }}
+    runs-on: ubuntu-latest
+    needs: release_catalog_base
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Checkout qBittorrent upstream with all stable release tags
+        uses: actions/checkout@v7
+        with:
+          repository: qbittorrent/qBittorrent
+          path: upstream-qb
+          fetch-depth: 0
+          fetch-tags: true
+          filter: blob:none
+      - name: Download base stable catalog
+        uses: actions/download-artifact@v8
+        with:
+          name: qb-release-catalog-base-${{ github.sha }}
+          path: base-catalog
+      - name: Enrich exact qB WebUI locale and Settings source facts for shard
+        run: node tools/qb-locale-source.mjs upstream-qb base-catalog/qb-releases.json qb-releases-shard-${{ matrix.shard }}.json --shard-index=${{ matrix.shard }} --shard-count=8
+      - name: Upload enriched shard
+        uses: actions/upload-artifact@v7
+        with:
+          name: qb-release-enriched-${{ github.sha }}-${{ matrix.shard }}
+          path: qb-releases-shard-${{ matrix.shard }}.json
+          if-no-files-found: error
+          retention-days: 1
+
+  release_catalog_merge:
+    name: Merge exact qB locale/source catalog
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[candidate]')) }}
+    runs-on: ubuntu-latest
+    needs: release_locale_enrich
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Download base stable catalog
+        uses: actions/download-artifact@v8
+        with:
+          name: qb-release-catalog-base-${{ github.sha }}
+          path: base-catalog
+      - name: Download all enriched qB shards
+        uses: actions/download-artifact@v8
+        with:
+          pattern: qb-release-enriched-${{ github.sha }}-*
+          path: enriched-shards
+          merge-multiple: true
+      - name: Merge enriched shards in canonical release order
+        run: node tools/qb-locale-source.mjs --merge base-catalog/qb-releases.json enriched-shards qb-releases.json
+      - name: Upload exact stable release catalog
+        uses: actions/upload-artifact@v7
+        with:
+          name: qb-release-catalog-${{ github.sha }}
+          path: qb-releases.json
+          if-no-files-found: error
+          retention-days: 1
+
+  release_upstream_audit:
+    name: qB all-stable upstream source audit
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[candidate]')) }}
+    runs-on: ubuntu-latest
+    needs: smoke
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Checkout qBittorrent upstream with all stable release tags
+        uses: actions/checkout@v7
+        with:
+          repository: qbittorrent/qBittorrent
+          path: upstream-qb
+          fetch-depth: 0
+          fetch-tags: true
+          filter: blob:none
+      - name: Audit every official stable qB release from 4.1.0
+        run: node tests/upstream-release-audit.mjs upstream-qb
+
+  release_lkg:
+    name: qB Settings translation LKG
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[candidate]')) }}
+    runs-on: ubuntu-latest
+    needs: release_catalog_merge
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Download exact stable release catalog
+        uses: actions/download-artifact@v8
+        with:
+          name: qb-release-catalog-${{ github.sha }}
+          path: release-catalog
       - name: Freeze reusable official qB Settings translation LKG
         run: |
           set -euo pipefail
+          cp release-catalog/qb-releases.json qb-releases.json
           node tools/qb-settings-translation-lkg.mjs qb-releases.json tests/fixtures/qb-release-catalog.lkg.json qb-settings-translation-lkg.json
           sha256sum qb-settings-translation-lkg.json > qb-settings-translation-lkg.SHA256
           node tests/full-stable-locale-routing-contract.mjs qb-releases.json --require-mapped
@@ -116,17 +242,6 @@ jobs:
           node tools/qb-webui-catalog.mjs qb-releases.json "$RUNNER_TEMP/qb-materialized/private/data/qb-releases.json"
           test -s "$RUNNER_TEMP/qb-materialized/private/data/qb-settings-native.txt"
           find "$RUNNER_TEMP/qb-materialized/translations" -type f -name 'webui_*.qm' -print -quit | grep -q .
-      - name: Audit every official stable qB release from 4.1.0
-        run: node tests/upstream-release-audit.mjs upstream-qb
-      - name: Full stable PRODUCT compatibility matrix
-        run: node tests/full-stable-product-compat.mjs qb-releases.json
-      - name: Upload exact stable release catalog
-        uses: actions/upload-artifact@v7
-        with:
-          name: qb-release-catalog-${{ github.sha }}
-          path: qb-releases.json
-          if-no-files-found: error
-          retention-days: 1
       - name: Upload certified qB Settings translation LKG
         uses: actions/upload-artifact@v7
         with:
@@ -136,6 +251,51 @@ jobs:
             qb-settings-translation-lkg.SHA256
           if-no-files-found: error
           retention-days: 90
+
+  release_product_matrix:
+    name: qB full stable PRODUCT compatibility
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[candidate]')) }}
+    runs-on: ubuntu-latest
+    needs: release_catalog_merge
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Download exact stable release catalog
+        uses: actions/download-artifact@v8
+        with:
+          name: qb-release-catalog-${{ github.sha }}
+          path: release-catalog
+      - name: Full stable PRODUCT compatibility matrix
+        run: |
+          cp release-catalog/qb-releases.json qb-releases.json
+          node tests/full-stable-product-compat.mjs qb-releases.json
+
+  release_compatibility:
+    name: Full qB Release compatibility audit
+    if: ${{ always() && ((github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[candidate]'))) }}
+    runs-on: ubuntu-latest
+    needs:
+      - release_fixture
+      - release_catalog_merge
+      - release_upstream_audit
+      - release_lkg
+      - release_product_matrix
+    steps:
+      - name: Require every parallel qB compatibility owner
+        env:
+          FIXTURE_RESULT: ${{ needs.release_fixture.result }}
+          CATALOG_RESULT: ${{ needs.release_catalog_merge.result }}
+          UPSTREAM_RESULT: ${{ needs.release_upstream_audit.result }}
+          LKG_RESULT: ${{ needs.release_lkg.result }}
+          PRODUCT_RESULT: ${{ needs.release_product_matrix.result }}
+        run: |
+          set -euo pipefail
+          for result in "$FIXTURE_RESULT" "$CATALOG_RESULT" "$UPSTREAM_RESULT" "$LKG_RESULT" "$PRODUCT_RESULT"; do
+            test "$result" = success
+          done
+          echo 'Full qB Release compatibility audit passed through parallel exact-SHA owners.'
 
   browser:
     name: Linux browser candidate

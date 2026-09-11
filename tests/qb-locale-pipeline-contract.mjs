@@ -16,10 +16,12 @@ const webuiCatalog=read('tools/qb-webui-catalog.mjs');
 const runtimeI18n=read('webui/private/scripts/i18n.js');
 
 const generated='node tools/qb-release-catalog.mjs upstream-qb --output=qb-releases.json';
-const enriched='node tools/qb-locale-source.mjs upstream-qb qb-releases.json';
+const enriched='node tools/qb-locale-source.mjs upstream-qb base-catalog/qb-releases.json';
+const merged='node tools/qb-locale-source.mjs --merge base-catalog/qb-releases.json enriched-shards qb-releases.json';
 const audited='node tests/full-stable-product-compat.mjs qb-releases.json';
-assert.ok(ci.includes(generated)&&ci.includes(enriched)&&ci.includes(audited),'candidate pipeline must generate, source-enrich, and audit the exact catalog');
-assert.ok(ci.indexOf(generated)<ci.indexOf(enriched)&&ci.indexOf(enriched)<ci.indexOf(audited),'qB locale and Settings UI facts must be source-derived before the exact catalog crosses the candidate boundary');
+assert.ok(ci.includes(generated)&&ci.includes(enriched)&&ci.includes('--shard-count=8')&&ci.includes(merged)&&ci.includes(audited),'candidate pipeline must generate, fan out source enrichment, merge, and audit the exact catalog');
+assert.ok(ci.includes('release_locale_enrich:')&&ci.includes('needs: release_catalog_base')&&ci.includes('release_catalog_merge:')&&ci.includes('needs: release_locale_enrich')&&ci.includes('release_product_matrix:')&&ci.includes('needs: release_catalog_merge'),'qB locale and Settings UI facts must flow through the base -> 8-way enrich -> merge -> product DAG');
+assert.ok(ci.includes('name: qb-release-catalog-${{ github.sha }}'),'merged qB locale/source catalog must cross job boundaries as an exact-SHA artifact');
 assert.ok(localeSource.includes('enrichCatalogWebuiSourceFacts')&&localeSource.includes('buildQbSettingsTranslationOverlayFromClone')&&localeSource.includes('applyQbSettingsTranslationOverlay'),'candidate enrichment must derive exact qB locale plus official Settings translation evidence');
 assert.ok(settingsSource.includes('extractQbPreferenceUiFacts')&&settingsSource.includes('QBT_TR')&&settingsSource.includes('preferenceControlRelations'),'Settings copy must be tied to a source-proven qB preference control, not a hand-written preference dictionary');
 assert.ok(settingsOverlay.includes("src/webui/www/private/views/preferences.html")&&settingsOverlay.includes("src/webui/www/private/preferences_content.html")&&settingsOverlay.includes("'src/webui/www/translations'")&&settingsOverlay.includes("'src/lang'")&&settingsOverlay.includes('resolveQbTranslationResourcePath'),'Settings source extraction must cover modern and historical qB Preferences UI plus exact-release official translation resource families');

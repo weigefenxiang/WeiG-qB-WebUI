@@ -156,6 +156,12 @@ bash "$ROOT/installers/install.sh" --version "$VERSION" --configure --container 
 [[ "$(tr -d '\r\n' < "$DEST/GIT_SHA")" == "$EXPECTED_SHA" ]] || { echo 'Installed GIT_SHA mismatch.' >&2; exit 1; }
 grep -Fx 'WebUI\AlternativeUIEnabled=true' "$QBT_CONFIG" >/dev/null
 grep -Fx "WebUI\\RootFolder=$QB_ROOT" "$QBT_CONFIG" >/dev/null
+awk -v want="$QB_ROOT" '
+  /^\[[^]]+\]$/ { section=$0 }
+  /^WebUI\\AlternativeUIEnabled=/ { if(section!="[Preferences]" || $0!="WebUI\\AlternativeUIEnabled=true") exit 1; alt++ }
+  /^WebUI\\RootFolder=/ { if(section!="[Preferences]" || $0!="WebUI\\RootFolder=" want) exit 1; root++ }
+  END { exit !(alt==1 && root==1) }
+' "$QBT_CONFIG" || { echo 'Candidate installer did not write exact managed WebUI keys under [Preferences].' >&2; exit 1; }
 
 node - "$DEST" "$VERSION" "$EXPECTED_SHA" "$NAME" "$CONFIG_ROOT" "$QB_ROOT" "$EXPECTED_QB_VERSION" "$LOCALE_TARGET" <<'NODE'
 const fs=require('node:fs');

@@ -1,12 +1,57 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
-import {execFileSync,spawn} from 'node:child_process';
+import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {applyQbSettingsTranslationOverlay,buildQbSettingsTranslationOverlayFromClone} from './qb-settings-translation-overlay.mjs';
 
 function unique(values){const out=[];for(const value of values||[]){const item=String(value||'').trim();if(item&&!out.includes(item))out.push(item);}return out;}
+
+export function selectCatalogShard(catalog,index,count){
+  if(!Array.isArray(catalog))throw new Error('qB release catalog must be an array.');
+  if(!Number.isInteger(index)||!Number.isInteger(count)||count<1||index<0||index>=count)throw new Error(`Invalid qB locale shard ${index}/${count}.`);
+  return catalog.filter((_,position)=>position%count===index);
+}
+
+function profileIdentity(profile){return `${String(profile?.qbVersion||'').trim()}\u0000${String(profile?.sourceSha||'').trim()}`;}
+function stablePayload(value){return JSON.stringify(value);}
+export function mergeEnrichedCatalogShards(baseCatalog,shards){
+  if(!Array.isArray(baseCatalog)||!baseCatalog.length)throw new Error('Base qB release catalog must be a non-empty array.');
+  if(!Array.isArray(shards)||!shards.length)throw new Error('At least one enriched qB locale shard is required.');
+  const byIdentity=new Map(),sets=new Map();
+  for(const shard of shards){
+    if(!Array.isArray(shard))throw new Error('Each enriched qB locale shard must be an array.');
+    for(const profile of shard){
+      const identity=profileIdentity(profile);
+      if(!identity||identity==='\u0000')throw new Error('Enriched qB locale shard contains an unbound profile.');
+      if(byIdentity.has(identity))throw new Error(`Duplicate enriched qB locale profile: ${identity.replace('\u0000',' ')}`);
+      byIdentity.set(identity,profile);
+      for(const [hash,payload] of Object.entries(profile?.settingsTranslationSets||{})){
+        if(sets.has(hash)&&stablePayload(sets.get(hash))!==stablePayload(payload))throw new Error(`Settings translation hash collision while merging shards: ${hash}`);
+        if(!sets.has(hash))sets.set(hash,payload);
+      }
+    }
+  }
+  const emitted=new Set();
+  const merged=baseCatalog.map((base)=>{
+    const identity=profileIdentity(base),source=byIdentity.get(identity);
+    if(!source)throw new Error(`Missing enriched qB locale profile: ${identity.replace('\u0000',' ')}`);
+    const next={...source};
+    delete next.settingsTranslationSets;
+    const localSets={};
+    for(const hash of Object.values(next.settingsTranslations||{})){
+      if(emitted.has(hash))continue;
+      if(!sets.has(hash))throw new Error(`${next.qbVersion}: missing merged Settings translation set ${hash}.`);
+      emitted.add(hash);
+      localSets[hash]=sets.get(hash);
+    }
+    if(Object.keys(localSets).length)next.settingsTranslationSets=localSets;
+    return next;
+  });
+  if(byIdentity.size!==merged.length)throw new Error(`Enriched shard profile count ${byIdentity.size} does not match base catalog ${merged.length}.`);
+  return merged;
+}
+
 function decodeHtml(value){return String(value||'').replace(/&quot;|&#34;/g,'"').replace(/&#39;|&apos;/g,"'").replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>');}
 function plainText(value){return decodeHtml(String(value||'').replace(/<[^>]*>/g,'').trim());}
 
@@ -64,99 +109,46 @@ export function enrichCatalogWebuiSourceFacts(catalog,qbRoot){
   return applyQbSettingsTranslationOverlay(localized,settingsOverlay);
 }
 
-function profileIdentity(profile){return `${String(profile?.qbVersion||'').trim()}\u0000${String(profile?.sourceSha||'').trim()}`;}
-function stableJson(value){return JSON.stringify(value);}
-
-export function mergeParallelWebuiSourceFacts(catalog,shards){
-  const profiles=new Map();
-  const sets=new Map();
-  for(const shard of shards){
-    if(!Array.isArray(shard))throw new Error('Parallel qB locale shard must be an array.');
-    for(const profile of shard){
-      const identity=profileIdentity(profile);
-      if(!identity||identity==='\u0000')throw new Error('Parallel qB locale shard profile is missing identity.');
-      if(profiles.has(identity))throw new Error(`Duplicate parallel qB locale profile: ${identity.replace('\u0000',' ')}`);
-      const copy={...profile};
-      const localSets=copy.settingsTranslationSets||{};
-      delete copy.settingsTranslationSets;
-      profiles.set(identity,copy);
-      for(const [hash,payload] of Object.entries(localSets)){
-        if(sets.has(hash)&&stableJson(sets.get(hash))!==stableJson(payload))throw new Error(`Settings translation hash collision across parallel shards: ${hash}`);
-        if(!sets.has(hash))sets.set(hash,payload);
-      }
-    }
-  }
-
-  const seenSets=new Set();
-  return catalog.map(original=>{
-    const identity=profileIdentity(original);
-    const profile=profiles.get(identity);
-    if(!profile)throw new Error(`${original?.qbVersion||'unknown'}: missing parallel qB locale profile.`);
-    const localSets={};
-    for(const hash of Object.values(profile.settingsTranslations||{})){
-      if(seenSets.has(hash))continue;
-      if(!sets.has(hash))throw new Error(`${profile.qbVersion}: parallel qB locale merge is missing Settings translation set ${hash}.`);
-      seenSets.add(hash);
-      localSets[hash]=sets.get(hash);
-    }
-    return{...profile,...(Object.keys(localSets).length?{settingsTranslationSets:localSets}:{})};
-  });
-}
-
-function runWorker(script,qbRoot,input,output){
-  return new Promise((resolve,reject)=>{
-    const child=spawn(process.execPath,[script,qbRoot,input,output,'--serial'],{
-      stdio:'inherit',
-      env:{...process.env,WEIGG_QB_LOCALE_WORKERS:'1'}
-    });
-    child.on('error',reject);
-    child.on('exit',(code,signal)=>code===0?resolve():reject(new Error(`qB locale worker failed (${signal||code}).`)));
-  });
-}
-
-async function enrichCatalogWebuiSourceFactsParallel(catalog,qbRoot,workers,script){
-  const count=Math.max(1,Math.min(workers,catalog.length));
-  if(count===1)return enrichCatalogWebuiSourceFacts(catalog,qbRoot);
-  const buckets=Array.from({length:count},()=>[]);
-  catalog.forEach((profile,index)=>buckets[index%count].push(profile));
-  const temp=fs.mkdtempSync(path.join(os.tmpdir(),'weigg-qb-locale-'));
-  try{
-    const tasks=buckets.map((profiles,index)=>{
-      const input=path.join(temp,`input-${index}.json`);
-      const output=path.join(temp,`output-${index}.json`);
-      fs.writeFileSync(input,JSON.stringify(profiles,null,2)+'\n','utf8');
-      return{output,promise:runWorker(script,qbRoot,input,output)};
-    });
-    await Promise.all(tasks.map(item=>item.promise));
-    const shards=tasks.map(item=>JSON.parse(fs.readFileSync(item.output,'utf8')));
-    return mergeParallelWebuiSourceFacts(catalog,shards);
-  }finally{
-    fs.rmSync(temp,{recursive:true,force:true});
-  }
-}
-
-const scriptPath=fileURLToPath(import.meta.url);
-const isMain=process.argv[1]&&path.resolve(process.argv[1])===path.resolve(scriptPath);
+const isMain=process.argv[1]&&path.resolve(process.argv[1])===path.resolve(fileURLToPath(import.meta.url));
 if(isMain){
   try{
-    const argv=process.argv.slice(2);
-    const serialIndex=argv.indexOf('--serial');
-    const serial=serialIndex>=0;
-    if(serial)argv.splice(serialIndex,1);
-    const qbRoot=path.resolve(argv[0]||process.env.QB_UPSTREAM_DIR||'');
-    const input=path.resolve(argv[1]||'');
-    const output=path.resolve(argv[2]||argv[1]||'');
-    if(!qbRoot||!fs.existsSync(qbRoot)||!input||!fs.existsSync(input))throw new Error('Usage: node tools/qb-locale-source.mjs <qBittorrent-clone> <catalog.json> [output.json] [--serial]');
-    const catalog=JSON.parse(fs.readFileSync(input,'utf8'));
-    const available=typeof os.availableParallelism==='function'?os.availableParallelism():os.cpus().length;
-    const requested=Number.parseInt(process.env.WEIGG_QB_LOCALE_WORKERS||'',10);
-    const workers=serial?1:Math.max(1,Math.min(Number.isFinite(requested)&&requested>0?requested:available,8,catalog.length));
-    const enriched=workers>1?await enrichCatalogWebuiSourceFactsParallel(catalog,qbRoot,workers,scriptPath):enrichCatalogWebuiSourceFacts(catalog,qbRoot);
-    fs.mkdirSync(path.dirname(output),{recursive:true});
-    fs.writeFileSync(output,JSON.stringify(enriched,null,2)+'\n','utf8');
-    const resolved=enriched.filter(item=>Array.isArray(item.webuiLocales)&&item.webuiLocales.length).length;
-    const mapped=enriched.reduce((sum,item)=>sum+(Number(item.settingsUiMappedPreferences)||0),0);
-    const total=enriched.reduce((sum,item)=>sum+(Number(item.settingsUiTotalPreferences)||0),0);
-    console.log(`Enriched WebUI locale facts for ${resolved}/${enriched.length} qB release profiles; source-proven Settings labels ${mapped}/${total}; workers=${workers}.`);
+    const args=process.argv.slice(2);
+    if(args[0]==='--merge'){
+      const basePath=path.resolve(args[1]||''),shardDir=path.resolve(args[2]||''),output=path.resolve(args[3]||'');
+      if(!basePath||!fs.existsSync(basePath)||!shardDir||!fs.existsSync(shardDir)||!output)throw new Error('Usage: node tools/qb-locale-source.mjs --merge <base-catalog.json> <shard-dir> <output.json>');
+      const baseCatalog=JSON.parse(fs.readFileSync(basePath,'utf8'));
+      const shardFiles=fs.readdirSync(shardDir).filter((name)=>/^qb-releases-shard-\d+\.json$/.test(name)).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+      if(!shardFiles.length)throw new Error('No qB locale shard files were found for merge.');
+      const shards=shardFiles.map((name)=>JSON.parse(fs.readFileSync(path.join(shardDir,name),'utf8')));
+      const merged=mergeEnrichedCatalogShards(baseCatalog,shards);
+      fs.mkdirSync(path.dirname(output),{recursive:true});
+      fs.writeFileSync(output,JSON.stringify(merged,null,2)+'\n','utf8');
+      console.log(`Merged ${shardFiles.length} qB locale/source shards into ${merged.length} exact release profiles.`);
+    }else{
+      const positional=args.filter((arg)=>!arg.startsWith('--shard-index=')&&!arg.startsWith('--shard-count='));
+      const qbRoot=path.resolve(positional[0]||process.env.QB_UPSTREAM_DIR||'');
+      const input=path.resolve(positional[1]||'');
+      const output=path.resolve(positional[2]||positional[1]||'');
+      if(!qbRoot||!fs.existsSync(qbRoot)||!input||!fs.existsSync(input))throw new Error('Usage: node tools/qb-locale-source.mjs <qBittorrent-clone> <catalog.json> [output.json] [--shard-index=N --shard-count=M]');
+      const shardIndexArg=args.find((arg)=>arg.startsWith('--shard-index='));
+      const shardCountArg=args.find((arg)=>arg.startsWith('--shard-count='));
+      if(Boolean(shardIndexArg)!==Boolean(shardCountArg))throw new Error('qB locale sharding requires both --shard-index and --shard-count.');
+      const fullCatalog=JSON.parse(fs.readFileSync(input,'utf8'));
+      let catalog=fullCatalog;
+      let shardLabel='full';
+      if(shardIndexArg){
+        const shardIndex=Number(shardIndexArg.split('=')[1]);
+        const shardCount=Number(shardCountArg.split('=')[1]);
+        catalog=selectCatalogShard(fullCatalog,shardIndex,shardCount);
+        shardLabel=`${shardIndex+1}/${shardCount}`;
+      }
+      const enriched=enrichCatalogWebuiSourceFacts(catalog,qbRoot);
+      fs.mkdirSync(path.dirname(output),{recursive:true});
+      fs.writeFileSync(output,JSON.stringify(enriched,null,2)+'\n','utf8');
+      const resolved=enriched.filter(item=>Array.isArray(item.webuiLocales)&&item.webuiLocales.length).length;
+      const mapped=enriched.reduce((sum,item)=>sum+(Number(item.settingsUiMappedPreferences)||0),0);
+      const total=enriched.reduce((sum,item)=>sum+(Number(item.settingsUiTotalPreferences)||0),0);
+      console.log(`Enriched qB locale/source shard ${shardLabel}: ${resolved}/${enriched.length} release profiles; source-proven Settings labels ${mapped}/${total}.`);
+    }
   }catch(error){console.error(error?.message||error);process.exitCode=1;}
 }

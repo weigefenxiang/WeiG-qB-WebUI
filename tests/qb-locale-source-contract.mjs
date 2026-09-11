@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {extractWebuiLocaleFacts,localeCodesFromPaths,parseExplicitLocaleOptions} from '../tools/qb-locale-source.mjs';
+import {extractWebuiLocaleFacts,localeCodesFromPaths,mergeEnrichedCatalogShards,parseExplicitLocaleOptions,selectCatalogShard} from '../tools/qb-locale-source.mjs';
 import {extractQbPreferenceUiFacts,extractQbSettingsTranslationFacts,indexQbSettingsTranslationFacts,parseQtTsTranslationSource,translationSourcesForPreferenceUi} from '../tools/qb-settings-translation-source.mjs';
 import {applyQbSettingsTranslationOverlay,buildQbSettingsTranslationOverlay,resolveQbTranslationResourcePath} from '../tools/qb-settings-translation-overlay.mjs';
 
@@ -164,5 +164,19 @@ assert.equal(enriched[0].settingsUiSource,'qb-upstream-preferences-ui');
 assert.equal(enriched[0].settingsUiMappedPreferences,2);
 assert.ok(enriched.some(item=>item.settingsTranslationSets&&Object.keys(item.settingsTranslationSets).length),'deduplicated translation sets must remain embedded in the canonical catalog');
 assert.throws(()=>buildQbSettingsTranslationOverlay([{qbVersion:'5.2.3',sourceSha:'sha',tag:'release-5.2.3',webuiLocales:[{value:'fr'}],preferenceDescriptors:[{key:'save_path'}]}],()=>({preferencesSource,translationSource:()=>''})),/missing official WebUI translation source/);
+
+
+const shard0Catalog=selectCatalogShard(catalog,0,2),shard1Catalog=selectCatalogShard(catalog,1,2);
+assert.deepEqual(shard0Catalog.map(item=>item.qbVersion),['4.1.0']);
+assert.deepEqual(shard1Catalog.map(item=>item.qbVersion),['5.2.3']);
+const enrichShard=(part)=>applyQbSettingsTranslationOverlay(part,buildQbSettingsTranslationOverlay(part,()=>({preferencesSource,translationSource:locale=>sourceByLocale[locale]})));
+const mergedShards=mergeEnrichedCatalogShards(catalog,[enrichShard(shard1Catalog),enrichShard(shard0Catalog)]);
+assert.deepEqual(mergedShards.map(item=>item.qbVersion),catalog.map(item=>item.qbVersion),'shard merge must restore canonical base-catalog release order');
+assert.equal(mergedShards.length,catalog.length,'shard merge must retain every exact stable profile');
+assert.ok(mergedShards.every(item=>item.settingsUiSource==='qb-upstream-preferences-ui'),'shard merge must preserve exact source-derived Settings ownership');
+const mergedSetHashes=new Set(mergedShards.flatMap(item=>Object.keys(item.settingsTranslationSets||{})));
+const referencedSetHashes=new Set(mergedShards.flatMap(item=>Object.values(item.settingsTranslations||{})));
+assert.deepEqual([...mergedSetHashes].sort(),[...referencedSetHashes].sort(),'shard merge must globally deduplicate but retain every referenced translation set payload');
+assert.throws(()=>mergeEnrichedCatalogShards(catalog,[enrichShard(shard0Catalog)]),/Missing enriched qB locale profile/,'incomplete shard sets fail closed');
 
 console.log('qB locale source contract passed: exact-release locale sets and Settings labels are derived from qB preference controls plus official TS translations, hash-bound to source SHA.');
