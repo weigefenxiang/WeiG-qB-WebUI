@@ -54,6 +54,15 @@ for(const branch of branches){
   await fs.writeFile(path.join(out,branch.name,'index.html'),branchAliasHtml(branch.name),'utf8');
 }
 
+const devBranch=branches.find(item=>item.name==='dev');
+runNode(path.join(projectRoot,'tools/build-webui-dist.mjs'),[
+  `--webui-root=${devBranch.webuiRoot}`,
+  `--catalog=${renderedCatalog}`,
+  `--out=${path.join(out,'downloads','dev')}`,
+  `--sha=${devBranch.sha}`,
+  `--version=${devBranch.version}`
+]);
+
 await fs.cp(path.join(projectRoot,'simulator/lab'),path.join(out,'lab'),{recursive:true,force:true});
 for(const branch of branches){
   const meta={branch:branch.name,exactSha:branch.sha,productVersion:branch.version,simulatorSha,webuiSource:`refs/heads/${branch.name}:webui/**`};
@@ -103,8 +112,8 @@ const preferenceCatalog={
     unresolved:latestProfile.preferenceDescriptorStats?.unresolved||0
   }:null
 };
-const siteMeta={simulatorSha,builtAt:new Date().toISOString(),stableProfiles:Array.isArray(catalogData)?catalogData.length:0,preferenceCatalog,localeCatalog,branches:Object.fromEntries(branches.map(x=>[x.name,{exactSha:x.sha,productVersion:x.version}]))};
+const siteMeta={simulatorSha,builtAt:new Date().toISOString(),stableProfiles:Array.isArray(catalogData)?catalogData.length:0,preferenceCatalog,localeCatalog,devDistribution:{path:'downloads/dev/WeiG-qB-WebUI.zip',gitSha:devBranch.sha,version:devBranch.version,materialized:true},branches:Object.fromEntries(branches.map(x=>[x.name,{exactSha:x.sha,productVersion:x.version}]))};
 await fs.writeFile(path.join(out,'metadata','site.json'),JSON.stringify(siteMeta,null,2)+'\n','utf8');
 await fs.writeFile(path.join(out,'.nojekyll'),'','utf8');
 await fs.writeFile(path.join(out,'index.html'),'<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="0;url=./lab/"><title>WeiG Virtual qB Lab</title></head><body><p><a href="./lab/">进入 WeiG Virtual qB Lab</a></p></body></html>','utf8');
-console.log(`Assembled WeiG Virtual qB Pages artifact: ${out} with ${localeCatalog.profiles} exact locale profiles / ${localeCatalog.localeSets} sets`);
+console.log(`Assembled WeiG Virtual qB Pages artifact: ${out} with ${localeCatalog.profiles} exact locale profiles / ${localeCatalog.localeSets} sets and materialized dev installer payload`);
