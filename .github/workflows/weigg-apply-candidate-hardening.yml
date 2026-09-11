@@ -1,4 +1,4 @@
-name: Apply candidate hardening and qB parallel CI
+name: Export verified candidate payload
 
 on:
   push:
@@ -7,21 +7,16 @@ on:
       - '.github/workflows/weigg-apply-candidate-hardening.yml'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  validate_linux:
+  export:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: package-lock.json
-      - name: Apply deterministic candidate patch
+      - name: Rebuild exact previously verified candidate
         run: |
           set -euo pipefail
           git show 680e28d3b8d34cc7634101c70890ae788fa19c9b:tools/qb-locale-source.mjs > tools/qb-locale-source.mjs
@@ -32,82 +27,29 @@ jobs:
           rm -f .github/workflows/weigg-fix-windows-fixture.yml
           rm -f .github/workflows/weigg-apply-candidate-hardening.yml
           git diff --check
-      - name: Validate Linux, Node and CI contracts
-        run: |
-          set -euo pipefail
-          npm ci --no-audit --no-fund --prefer-offline
-          node --check tools/qb-locale-source.mjs
-          node tests/qb-locale-source-contract.mjs
-          node tests/qb-locale-pipeline-contract.mjs
-          node tests/ci-contract.mjs
-          bash tests/linux-config-section.sh
-          npm test
-
-  validate_windows:
-    runs-on: windows-2025
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: package-lock.json
-      - name: Apply the same deterministic candidate patch
-        shell: bash
-        run: |
-          set -euo pipefail
-          git show 680e28d3b8d34cc7634101c70890ae788fa19c9b:tools/qb-locale-source.mjs > tools/qb-locale-source.mjs
-          python .weigg-apply/patch-candidate-hardening.py
-          python .weigg-apply/post-candidate-adapter.py
-          rm -f .weigg-apply/patch-candidate-hardening.py .weigg-apply/post-candidate-adapter.py
-          rmdir .weigg-apply 2>/dev/null || true
-          rm -f .github/workflows/weigg-fix-windows-fixture.yml
-          rm -f .github/workflows/weigg-apply-candidate-hardening.yml
-          git diff --check
-      - name: Validate Windows PowerShell 5.1 qB safety contract
-        shell: powershell
-        run: |
-          $ErrorActionPreference = 'Stop'
-          & "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File 'tests\windows-config-encoding.ps1'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Validate Node contracts on Windows
-        shell: powershell
-        run: |
-          $ErrorActionPreference = 'Stop'
-          npm.cmd ci --no-audit --no-fund --prefer-offline
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          node tests/qb-locale-source-contract.mjs
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          node tests/qb-locale-pipeline-contract.mjs
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          node tests/ci-contract.mjs
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-  commit:
-    runs-on: ubuntu-24.04
-    needs: [validate_linux, validate_windows]
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-      - name: Reapply exact validated patch and commit
-        run: |
-          set -euo pipefail
-          git fetch origin dev
-          test "$(git rev-parse origin/dev)" = "$GITHUB_SHA"
-          git show 680e28d3b8d34cc7634101c70890ae788fa19c9b:tools/qb-locale-source.mjs > tools/qb-locale-source.mjs
-          python .weigg-apply/patch-candidate-hardening.py
-          python .weigg-apply/post-candidate-adapter.py
-          rm -f .weigg-apply/patch-candidate-hardening.py .weigg-apply/post-candidate-adapter.py
-          rmdir .weigg-apply 2>/dev/null || true
-          rm -f .github/workflows/weigg-fix-windows-fixture.yml
-          rm -f .github/workflows/weigg-apply-candidate-hardening.yml
-          git diff --check
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
-          git diff --cached --quiet && { echo 'No changes to commit' >&2; exit 1; }
-          git commit -m 'fix: enforce qB config ownership and parallelize full audit [candidate]'
-          git push origin HEAD:dev
+          git diff --cached --name-status > candidate-status.txt
+          git diff --cached --name-only --diff-filter=D > candidate-delete.txt
+          git diff --cached --name-only --diff-filter=ACMRTUXB -z > /tmp/candidate-files.z
+          if [ -s /tmp/candidate-files.z ]; then
+            xargs -0 git ls-files -s -- < /tmp/candidate-files.z > candidate-index.txt
+            tar --null -T /tmp/candidate-files.z -czf candidate-files.tar.gz
+          else
+            : > candidate-index.txt
+            tar -czf candidate-files.tar.gz --files-from /dev/null
+          fi
+          git diff --cached --binary > candidate.patch
+          printf '%s\n' "$GITHUB_SHA" > candidate-parent.txt
+          cat candidate-status.txt
+      - uses: actions/upload-artifact@v7
+        with:
+          name: verified-candidate-${{ github.sha }}
+          path: |
+            candidate-files.tar.gz
+            candidate-delete.txt
+            candidate-index.txt
+            candidate-status.txt
+            candidate.patch
+            candidate-parent.txt
+          if-no-files-found: error
+          retention-days: 1
