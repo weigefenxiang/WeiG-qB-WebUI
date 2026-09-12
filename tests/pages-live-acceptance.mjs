@@ -47,7 +47,7 @@ async function waitForPrivate(page,qbVersion){
 async function waitForCatalog(page,{count,timeout=30000}={}){
   const started=Date.now();
   await page.waitForFunction(
-    ()=>Boolean(window.WeiG?.AppState?.catalogReady||window.WeiG?.AppState?.catalogError),
+    ()=>Boolean(window.WeiG?.AppState?.catalogError||(window.WeiG?.AppState?.catalogReady&&!window.WeiG?.AppState?.catalogBusy)),
     null,
     {timeout}
   );
