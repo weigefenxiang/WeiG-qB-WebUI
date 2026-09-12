@@ -1,4 +1,5 @@
 const KNOWN_DEFAULTS = Object.freeze({
+  locale: 'en',
   scan_dirs: {},
   disk_cache: -1,
   disk_cache_ttl: 60,
