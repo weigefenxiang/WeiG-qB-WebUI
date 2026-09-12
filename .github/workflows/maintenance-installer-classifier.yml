@@ -2,17 +2,14 @@ name: Maintenance Installer Classifier Repair
 
 on:
   push:
-    branches:
-      - dev
-    paths:
-      - .github/workflows/maintenance-installer-classifier.yml
+    branches: [dev]
 
 permissions:
   contents: write
 
 jobs:
   repair:
-    if: ${{ github.event.head_commit.message == 'chore: stage installer classifier repair' }}
+    if: ${{ contains(github.event.head_commit.message, '[installer-classifier-repair]') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout exact staging commit
@@ -20,96 +17,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Repair shared Pages payload classifier
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-
-          payload = 'webui/*|simulator/*|installers/*|VERSION|tools/data/qb-stable-lkg.json|tools/data/qb-locale-lkg.json|tests/fixtures/qb-release-catalog.lkg.json'
-
-          ps_path = Path('installers/install.ps1')
-          ps = ps_path.read_text(encoding='utf-8')
-          ps_pattern = re.compile(r"function Test-PagesIrrelevantPath\(\[string\]\$Path\) \{.*?\n\}\n\nfunction Test-DevPayloadCanRepresentHead", re.S)
-          ps_replacement = '''function Test-PagesIrrelevantPath([string]$Path) {
-            if([string]::IsNullOrWhiteSpace($Path)){return $false}
-            if($Path.StartsWith('webui/',[System.StringComparison]::Ordinal)){return $false}
-            if($Path.StartsWith('simulator/',[System.StringComparison]::Ordinal)){return $false}
-            if($Path.StartsWith('installers/',[System.StringComparison]::Ordinal)){return $false}
-            switch -CaseSensitive ($Path) {
-              'VERSION' { return $false }
-              'tools/data/qb-stable-lkg.json' { return $false }
-              'tools/data/qb-locale-lkg.json' { return $false }
-              'tests/fixtures/qb-release-catalog.lkg.json' { return $false }
-              default { return $true }
-            }
-          }
-
-          function Test-DevPayloadCanRepresentHead'''
-          ps_new, count = ps_pattern.subn(ps_replacement, ps, count=1)
-          if count != 1:
-              raise SystemExit(f'PowerShell classifier replacement count={count}')
-          ps_path.write_text(ps_new, encoding='utf-8', newline='\n')
-
-          sh_path = Path('installers/install.sh')
-          sh = sh_path.read_text(encoding='utf-8')
-          sh_pattern = re.compile(r"is_pages_irrelevant_path\(\) \{.*?\n\}\n\ndev_payload_can_represent_head\(\)", re.S)
-          sh_replacement = f'''is_pages_irrelevant_path() {{
-            case "$1" in
-              {payload}) return 1 ;;
-              *) return 0 ;;
-            esac
-          }}
-
-          dev_payload_can_represent_head()'''
-          sh_new, count = sh_pattern.subn(sh_replacement, sh, count=1)
-          if count != 1:
-              raise SystemExit(f'Linux classifier replacement count={count}')
-          sh_path.write_text(sh_new, encoding='utf-8', newline='\n')
-
-          pages_path = Path('.github/workflows/pages.yml')
-          pages = pages_path.read_text(encoding='utf-8')
-          old = '''            case "$path" in
-              docs/*|*.md|LICENSE|.github/workflows/ci.yml|.github/workflows/promote.yml|.github/workflows/real-qb-full.yml|.github/workflows/release.yml)
-                echo "Pages-irrelevant head advance: $path"
-                ;;
-              *)
-                echo "Pages-relevant head advance blocks stale deployment: $path" >&2
-                relevant=true
-                break
-                ;;
-            esac'''
-          new = f'''            case "$path" in
-              {payload})
-                echo "Pages-relevant head advance blocks stale deployment: $path" >&2
-                relevant=true
-                break
-                ;;
-              *)
-                echo "Pages-irrelevant head advance: $path"
-                ;;
-            esac'''
-          if pages.count(old) != 1:
-              raise SystemExit(f'Pages stale classifier replacement count={pages.count(old)}')
-          pages_path.write_text(pages.replace(old, new, 1), encoding='utf-8', newline='\n')
-
-          test_path = Path('tests/dev-distribution-contract.mjs')
-          test = test_path.read_text(encoding='utf-8')
-          anchor = "assert.equal(windowsInstall.includes('archive/$sourceSha.zip'),false,'Windows dev installer must not download the raw GitHub source archive');\n"
-          extra = """assert.ok(linuxInstall.includes('webui/*|simulator/*|installers/*|VERSION|tools/data/qb-stable-lkg.json|tools/data/qb-locale-lkg.json|tests/fixtures/qb-release-catalog.lkg.json'),'Linux installer must share the Pages public-payload allowlist');
-          assert.ok(windowsInstall.includes("if($Path.StartsWith('webui/'")&&windowsInstall.includes("'tests/fixtures/qb-release-catalog.lkg.json' { return $false }")&&windowsInstall.includes('default { return $true }'),'Windows installer must share the Pages public-payload allowlist and default non-payload paths to reusable');
-          """
-          if test.count(anchor) != 1:
-              raise SystemExit('Windows installer contract anchor missing')
-          test = test.replace(anchor, anchor + extra, 1)
-          anchor2 = "assert.match(pagesWorkflow,/Pages-relevant head advance blocks stale deployment/,'Dev Pages stale gate must fail closed when any runtime/unknown path advanced after the build SHA');\n"
-          extra2 = "assert.ok(pagesWorkflow.includes('webui/*|simulator/*|installers/*|VERSION|tools/data/qb-stable-lkg.json|tools/data/qb-locale-lkg.json|tests/fixtures/qb-release-catalog.lkg.json'),'Dev Pages stale gate must share the same public-payload allowlist as the source relay and installers');\n"
-          if test.count(anchor2) != 1:
-              raise SystemExit('Pages stale-gate contract anchor missing')
-          test_path.write_text(test.replace(anchor2, anchor2 + extra2, 1), encoding='utf-8', newline='\n')
-          PY
+      - name: Apply classifier repair
+        run: python3 tools/maintenance-installer-classifier.py
 
       - name: Validate repair
         shell: bash
@@ -120,13 +29,13 @@ jobs:
           node tests/dev-distribution-contract.mjs
           npm test
 
-      - name: Commit repair atomically on current dev head
+      - name: Commit repair on current dev head
         shell: bash
         run: |
           set -euo pipefail
           git fetch origin dev
           test "$(git rev-parse origin/dev)" = "$GITHUB_SHA"
-          git rm .github/workflows/maintenance-installer-classifier.yml
+          git rm .github/workflows/maintenance-installer-classifier.yml tools/maintenance-installer-classifier.py
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add installers/install.ps1 installers/install.sh .github/workflows/pages.yml tests/dev-distribution-contract.mjs
