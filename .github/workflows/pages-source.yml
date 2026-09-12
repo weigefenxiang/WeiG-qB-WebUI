@@ -56,7 +56,9 @@ jobs:
           fi
 
           relevant=false
-          while IFS= read -r path; do
+          # -z is required: repository docs use non-ASCII names and default git path quoting
+          # would turn e.g. docs/中文.md into a quoted octal escape that no longer matches docs/*.
+          while IFS= read -r -d '' path; do
             [ -n "$path" ] || continue
             case "$path" in
               docs/*|*.md|LICENSE|.github/workflows/ci.yml|.github/workflows/promote.yml|.github/workflows/real-qb-full.yml|.github/workflows/release.yml)
@@ -68,7 +70,7 @@ jobs:
                 break
                 ;;
             esac
-          done < <(git diff --name-only "$BEFORE" "$GITHUB_SHA")
+          done < <(git -c core.quotePath=false diff --name-only -z "$BEFORE" "$GITHUB_SHA")
 
           echo "relevant=$relevant" >> "$GITHUB_OUTPUT"
           if [ "$relevant" != "true" ]; then

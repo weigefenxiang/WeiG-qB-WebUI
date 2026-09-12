@@ -6,6 +6,7 @@ const windowsInstall=fs.readFileSync(new URL('../installers/install.ps1',import.
 const buildSite=fs.readFileSync(new URL('../simulator/build/build-site.mjs',import.meta.url),'utf8');
 const distBuilder=fs.readFileSync(new URL('../tools/build-webui-dist.mjs',import.meta.url),'utf8');
 const pagesSource=fs.readFileSync(new URL('../.github/workflows/pages-source.yml',import.meta.url),'utf8');
+const pagesWorkflow=fs.readFileSync(new URL('../.github/workflows/pages.yml',import.meta.url),'utf8');
 const windowsDevGuide=fs.readFileSync(new URL('../docs/008.Windows开发版安装.md',import.meta.url),'utf8');
 
 const devInstallerUrl='https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.ps1';
@@ -34,9 +35,17 @@ assert.ok(distBuilder.includes("path.join(projectRoot,'installers/install.ps1')"
 assert.match(pagesSource,/push:\s*\n\s*branches:\s*\n\s*- dev\s*\n\s*- main/,'Dev/main pushes must still reach the lightweight Pages source relay');
 assert.match(pagesSource,/Detect Pages-relevant source changes/,'Pages source relay must classify the pushed diff before dispatching the heavy Pages owner');
 assert.match(pagesSource,/docs\/\*\|\*\.md\|LICENSE/,'Docs, Markdown and LICENSE must be explicit Pages-irrelevant classes');
+assert.match(pagesSource,/read -r -d '' path/,'Pages source relay must consume NUL-delimited filenames so non-ASCII docs are never Git-quoted into false runtime changes');
+assert.match(pagesSource,/diff --name-only -z/,'Pages source relay must request raw NUL-delimited changed paths');
+assert.match(pagesSource,/core\.quotePath=false/,'Pages source relay must explicitly disable path quoting for diagnostic output');
 assert.match(pagesSource,/\*\)\s*\n\s*echo "Pages-relevant change:/,'Unknown paths must default to Pages-relevant instead of silently bypassing a deployment');
 assert.match(pagesSource,/if: \$\{\{ steps\.relevance\.outputs\.relevant == 'true' \}\}/,'Heavy Virtual qB Pages dispatch must be gated by the relevance classifier');
 assert.doesNotMatch(pagesSource,/paths-ignore:/,'The source relay must not rely on GitHub paths-ignore because the installer needs an auditable shared relevance policy');
+assert.match(pagesWorkflow,/compare\/\$EXACT_SHA\.\.\.\$REMOTE_SHA/,'Dev Pages stale gate must compare the workflow SHA with a newer dev HEAD');
+assert.match(pagesWorkflow,/Pages-irrelevant head advance/,'Dev Pages stale gate must explicitly permit only known Pages-irrelevant head advances');
+assert.match(pagesWorkflow,/Pages-relevant head advance blocks stale deployment/,'Dev Pages stale gate must fail closed when any runtime/unknown path advanced after the build SHA');
+assert.match(pagesWorkflow,/\.files\[\] \| \.filename, "\\u0000"/,'Dev Pages stale gate must parse GitHub compare filenames losslessly, including non-ASCII docs');
+assert.match(pagesWorkflow,/FILE_COUNT.*-ge 300/s,'Dev Pages stale gate must refuse a possibly truncated GitHub compare file list');
 assert.ok(windowsDevGuide.includes(devInstallerUrl),'Windows dev guide must bootstrap from the materialized dev distribution, not the stable main installer');
 assert.match(windowsDevGuide,/install\.ps1[^\n]*-dev|weigg-install-dev\.ps1[^\n]*-dev/s,'Windows dev guide must actually execute the published installer in dev mode');
-console.log('Dev distribution contract passed: heavy Virtual qB Pages runs only for Pages-relevant changes; docs-only heads may reuse the last verified materialized payload after compare validation; unknown/runtime changes fail closed; raw-source fallback remains forbidden.');
+console.log('Dev distribution contract passed: heavy Virtual qB Pages runs only for Pages-relevant changes; non-ASCII docs paths are classified losslessly; docs-only heads may reuse the last verified materialized payload and may not stale an in-flight runtime deployment; unknown/runtime changes fail closed; raw-source fallback remains forbidden.');

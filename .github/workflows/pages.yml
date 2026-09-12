@@ -172,11 +172,42 @@ jobs:
           set -euo pipefail
           test "$GITHUB_REF_NAME" = "dev"
           REMOTE_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/commits/dev" --jq '.sha')"
-          if [ "$REMOTE_SHA" != "$EXACT_SHA" ]; then
+          if [ "$REMOTE_SHA" = "$EXACT_SHA" ]; then
+            echo "Fresh dev Pages deployment owner confirmed: $EXACT_SHA"
+            exit 0
+          fi
+
+          # A docs/repository-only commit may legitimately advance dev while an already-running
+          # Pages build is queued. Allow that build to deploy only when every intervening path is
+          # explicitly Pages-irrelevant. Unknown/runtime paths remain fail closed.
+          COMPARE_JSON="$RUNNER_TEMP/pages-head-compare.json"
+          gh api "/repos/$GITHUB_REPOSITORY/compare/$EXACT_SHA...$REMOTE_SHA" > "$COMPARE_JSON"
+          STATUS="$(jq -r '.status // empty' "$COMPARE_JSON")"
+          FILE_COUNT="$(jq '.files | length' "$COMPARE_JSON")"
+          if [ "$STATUS" != "ahead" ] || [ "$FILE_COUNT" -lt 1 ] || [ "$FILE_COUNT" -ge 300 ]; then
+            echo "Refusing stale dev Pages deployment: candidate=$EXACT_SHA current=$REMOTE_SHA compare_status=$STATUS files=$FILE_COUNT" >&2
+            exit 1
+          fi
+
+          relevant=false
+          while IFS= read -r -d '' path; do
+            case "$path" in
+              docs/*|*.md|LICENSE|.github/workflows/ci.yml|.github/workflows/promote.yml|.github/workflows/real-qb-full.yml|.github/workflows/release.yml)
+                echo "Pages-irrelevant head advance: $path"
+                ;;
+              *)
+                echo "Pages-relevant head advance blocks stale deployment: $path" >&2
+                relevant=true
+                break
+                ;;
+            esac
+          done < <(jq -j '.files[] | .filename, "\u0000"' "$COMPARE_JSON")
+
+          if [ "$relevant" = "true" ]; then
             echo "Refusing stale dev Pages deployment: candidate=$EXACT_SHA current=$REMOTE_SHA" >&2
             exit 1
           fi
-          echo "Fresh dev Pages deployment owner confirmed: $EXACT_SHA"
+          echo "Current dev HEAD $REMOTE_SHA is newer only by Pages-irrelevant changes; deployment owner $EXACT_SHA remains valid."
 
       - name: Deploy exact dev Virtual qB Lab
         id: deployment
