@@ -27,6 +27,7 @@ jobs:
           git diff --check
           bash -n installers/install.sh
           node tests/dev-distribution-contract.mjs
+          node tests/platform-contract.mjs
           npm test
 
       - name: Commit repair on current dev head
@@ -38,7 +39,7 @@ jobs:
           git rm .github/workflows/maintenance-installer-classifier.yml tools/maintenance-installer-classifier.py
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add installers/install.ps1 installers/install.sh .github/workflows/pages.yml tests/dev-distribution-contract.mjs
+          git add installers/install.ps1 installers/install.sh .github/workflows/pages.yml tests/dev-distribution-contract.mjs tests/platform-contract.mjs
           git diff --cached --check
           git commit -m 'fix: align installer Pages payload classifier'
           git fetch origin dev
