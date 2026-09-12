@@ -13,7 +13,7 @@ const b=buildCapabilityPlan(root);
 assert.deepEqual(a,b,'capability family planner must be deterministic for the same Frozen inputs');
 assert.equal(a.schemaVersion,1);
 assert.equal(a.evidenceLevel,'frozen-source-structural');
-assert.equal(a.decisionMode,'gfm-execution-planning','capability planner must explicitly own G-FM Fast/Exhaustive execution planning once the workflow consumes its matrix');
+assert.equal(a.decisionMode,'gfm-execution-planning','capability planner must explicitly own G-FM Fast/Exhaustive execution planning');
 assert.equal(a.versions.length,65,'planner must cover all 65 Frozen stable qB releases');
 assert.equal(a.frozen.profileCount,65);
 assert.equal(a.versions[0].qbVersion,a.frozen.supportFloor);
@@ -51,7 +51,7 @@ for(const dimension of a.dimensions){
 
 const fast=matrixForMode(a,'fast');
 const exhaustive=matrixForMode(a,'exhaustive');
-assert.equal(fast.length,65,'fast matrix must retain all 65 exact real runtimes');
+assert.equal(fast.length,65,'fast matrix utility must retain all 65 exact real runtimes');
 assert.equal(exhaustive.length,65,'exhaustive matrix must retain all 65 exact real runtimes');
 assert.ok(exhaustive.every(row=>row.coreMode==='full'&&row.searchMode==='full'),'exhaustive matrix must remain full/full for every stable version');
 assert.equal(fast.filter(row=>row.coreMode==='full').length,a.summary.fast.coreFullCount);
@@ -132,9 +132,11 @@ assert.ok(fourPart.length>0,'Frozen catalog must retain fourth-component sentine
 for(const row of fourPart)assert.ok(row.sentinelReasons.includes('fourth-component-stable'));
 
 const workflow=fs.readFileSync(path.join(root,'.github/workflows/real-qb-full.yml'),'utf8');
-assert.ok(workflow.includes('node tests/real-qb-capability-plan.mjs --matrix "$mode"'),'G-FM workflow must consume the planner-owned Fast/Exhaustive matrix');
-assert.ok(workflow.includes('mode=fast')&&workflow.includes('mode=exhaustive'),'G-FM workflow must route dev push to Fast and manual dispatch to Exhaustive');
+assert.ok(workflow.includes('workflow_dispatch:'),'release-grade G-FM must remain explicitly dispatchable');
+assert.ok(!/\n\s*push:\s*\n/.test(workflow),'release-grade G-FM must never run on ordinary dev pushes');
+assert.ok(workflow.includes('node tests/real-qb-capability-plan.mjs --matrix "$mode"'),'G-FM workflow must consume the planner-owned matrix');
+assert.ok(workflow.includes('mode=exhaustive')&&!workflow.includes('mode=fast'),'release-grade G-FM workflow must be manual Exhaustive only; Fast remains an offline/test utility');
 
-const summaryMessage=`Real-qB capability execution planner contract passed: ${a.versions.length}/65 versions; families=${a.dimensions.map(d=>`${d}:${a.summary[d].familyCount}/${a.summary[d].representativeCount} reps`).join(', ')}; fast=core ${a.summary.fast.coreFullCount}/65, Search ${a.summary.fast.searchFullCount}/65, smoke-only ${a.summary.fast.smokeOnlyCount}/65; Fast/Exhaustive aggregate evidence remains structurally isolated.`;
+const summaryMessage=`Real-qB capability execution planner contract passed: ${a.versions.length}/65 versions; families=${a.dimensions.map(d=>`${d}:${a.summary[d].familyCount}/${a.summary[d].representativeCount} reps`).join(', ')}; Fast planning utility remains test-only; release-grade workflow is manual Exhaustive 65/65.`;
 console.log(summaryMessage);
 if(process.env.GITHUB_ACTIONS==='true')console.log(`::notice title=Real-qB capability planner::${summaryMessage}`);
