@@ -113,7 +113,7 @@ case "$url" in
     exit 0
     ;;
   */commits/v"$WEIG_CANDIDATE_VERSION")
-    printf '{"sha":"%s"}\n' "$WEIG_CANDIDATE_SHA" > "$out"
+    printf '{\n  "sha": "%s"\n}\n' "$WEIG_CANDIDATE_SHA" > "$out"
     exit 0
     ;;
   */releases/download/v"$WEIG_CANDIDATE_VERSION"/WeiG-qB-WebUI.zip)
