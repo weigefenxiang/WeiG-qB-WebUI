@@ -1,0 +1,66 @@
+name: Fix candidate API mock
+
+on:
+  push:
+    branches:
+      - dev
+    paths:
+      - .github/workflows/weigg-fix-candidate-mock.yml
+
+permissions:
+  contents: write
+
+jobs:
+  render:
+    runs-on: ubuntu-24.04
+    env:
+      PRE_SHA: b9d4340e15ed14d2705d964228c5142cf1da12fc
+      PRE_TREE: 8145c4798f7e536fc1d16d8f2fee872dd917fb8f
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Patch candidate GitHub commit API mock and validate
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor "$PRE_SHA" HEAD
+          test "$(git rev-parse "$PRE_SHA^{tree}")" = "$PRE_TREE"
+          mapfile -t changed < <(git diff --name-only "$PRE_SHA" HEAD)
+          test "${#changed[@]}" -eq 1
+          test "${changed[0]}" = '.github/workflows/weigg-fix-candidate-mock.yml'
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('tests/candidate-deployment.sh')
+          s=p.read_text()
+          old='    printf \'{"sha":"%s"}\\n\' "$WEIG_CANDIDATE_SHA" > "$out"'
+          new='    printf \'{\\n  "sha": "%s"\\n}\\n\' "$WEIG_CANDIDATE_SHA" > "$out"'
+          if s.count(old) != 1:
+              raise SystemExit(f'expected one commit mock anchor, found {s.count(old)}')
+          p.write_text(s.replace(old,new))
+          PY
+          git diff --check
+          bash -n tests/candidate-deployment.sh
+          npm ci --no-audit --no-fund --prefer-offline
+          node tests/platform-contract.mjs
+          npm test
+      - name: Create clean candidate fix commit
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          encoded="$(base64 -w0 tests/candidate-deployment.sh)"
+          payload="$(jq -n --arg content "$encoded" '{content:$content,encoding:"base64"}')"
+          BLOB="$(gh api --method POST "/repos/$GITHUB_REPOSITORY/git/blobs" --input - --jq '.sha' <<<"$payload")"
+          tree_payload="$(jq -n --arg base "$PRE_TREE" --arg blob "$BLOB" '{base_tree:$base,tree:[{path:"tests/candidate-deployment.sh",mode:"100755",type:"blob",sha:$blob}]}')"
+          TREE="$(gh api --method POST "/repos/$GITHUB_REPOSITORY/git/trees" --input - --jq '.sha' <<<"$tree_payload")"
+          commit_payload="$(jq -n --arg message 'test: emulate GitHub commit JSON in candidate acceptance [candidate]' --arg tree "$TREE" --arg parent "$GITHUB_SHA" '{message:$message,tree:$tree,parents:[$parent]}')"
+          COMMIT="$(gh api --method POST "/repos/$GITHUB_REPOSITORY/git/commits" --input - --jq '.sha' <<<"$commit_payload")"
+          echo "FINAL_TREE=$TREE"
+          echo "FINAL_COMMIT=$COMMIT"
