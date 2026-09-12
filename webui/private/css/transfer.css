@@ -34,11 +34,15 @@ html[data-theme=light]{--transfer-stat-surface:linear-gradient(180deg,#fff,#f7fa
 .transfer-chart-shell{position:relative;min-width:0;padding:12px;border:1px solid var(--border);border-radius:14px;background:var(--transfer-chart-surface);box-shadow:var(--transfer-chart-inset)}
 .transfer-chart-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 2px 10px;min-width:0}
 .transfer-chart-toolbar strong{min-width:0;font-size:var(--text-item-primary)}
-.transfer-chart-toolbar .ui-select--native{--ui-select-h:34px;flex:0 0 auto;min-width:86px}
+.transfer-chart-toolbar__controls{display:flex;align-items:center;justify-content:flex-end;gap:7px;min-width:0}
+.transfer-chart-toolbar__controls .ui-select--native{--ui-select-h:34px;flex:0 0 auto;min-width:78px}
+#transfer-chart-window{min-width:86px}
 #transfer-chart{display:block;width:100%;height:260px;max-width:100%;border-radius:9px}
-.transfer-chart-legend{display:flex;justify-content:center;gap:18px;margin-top:8px;color:var(--text-muted);font-size:var(--text-caption)}
-.transfer-chart-legend span:first-child{color:var(--accent-primary)}.transfer-chart-legend span+span{color:var(--accent-cyan)}
-.transfer-chart-legend span::before{content:"";display:inline-block;width:8px;height:8px;margin-right:6px;border-radius:999px;background:currentColor;box-shadow:0 0 10px currentColor}
+.transfer-chart-legend{display:flex;justify-content:center;gap:22px;margin-top:8px;color:var(--text-muted);font-size:var(--text-caption)}
+.transfer-chart-legend>span{display:inline-flex;align-items:center;gap:5px;min-width:0}
+.transfer-chart-legend>span[data-series="download"]{color:var(--accent-primary)}.transfer-chart-legend>span[data-series="upload"]{color:var(--accent-cyan)}
+.transfer-chart-legend>span::before{content:"";display:inline-block;width:8px;height:8px;margin-right:1px;border-radius:999px;background:currentColor;box-shadow:0 0 10px currentColor}
+.transfer-chart-legend [data-series-total]{color:currentColor;font-size:inherit;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
 
 .transfer-limit-dialog[data-mode="alt"]{border-color:var(--ui-alt-border);background:var(--transfer-alt-dialog);box-shadow:var(--shadow-lg),0 0 52px rgba(137,108,255,.10),inset 0 1px rgba(255,255,255,.06)}
 .transfer-limit-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0;margin-bottom:12px}
@@ -75,7 +79,7 @@ html[data-theme=light]{--transfer-stat-surface:linear-gradient(180deg,#fff,#f7fa
   #transfer-chart{height:220px}
   .transfer-limit-toolbar{align-items:stretch}
   .transfer-mode-switch button{min-height:44px;height:44px}
-  .transfer-chart-toolbar .ui-select--native,.transfer-unit-select{--ui-select-h:44px}
+  .transfer-chart-toolbar__controls .ui-select--native,.transfer-unit-select{--ui-select-h:44px}
   .transfer-rate-grid{grid-template-columns:1fr}
   .transfer-rate-field{padding:11px 12px}.transfer-rate-field__input{height:44px}
   #sidebar{display:grid!important;grid-template-rows:minmax(0,1fr) auto!important;grid-auto-rows:0!important;align-content:stretch!important;overflow:hidden!important;padding:12px 10px 8px!important;container-type:size;container-name:mobile-drawer}
@@ -87,6 +91,6 @@ html[data-theme=light]{--transfer-stat-surface:linear-gradient(180deg,#fff,#f7fa
   .mobile-drawer-telemetry__row--transfer{align-items:stretch}.mobile-drawer-telemetry__row--transfer>#transfer-capsule{flex:1 1 auto;min-width:0;max-width:calc(100% - 72px)}.mobile-drawer-telemetry__row--transfer>#status-connection{flex:0 0 auto;min-height:30px;padding:0 2px;font-size:clamp(10px,3vw,13.5px)}
   .mobile-drawer-transfer-chart{min-width:0}.transfer-mini-chart{padding:8px 9px;gap:5px}.transfer-mini-chart__canvas{height:96px}.transfer-mini-chart__head strong{font-size:clamp(11px,2.9vw,13px)}
 }
-@media(max-width:430px){.transfer-limit-toolbar{flex-direction:column;align-items:flex-start}.transfer-unit-select{--ui-select-width:100%;width:100%}.mobile-drawer-telemetry__row--transfer{gap:5px}.mobile-drawer-telemetry__row--transfer .transfer-runtime-capsule__stats{padding-inline:4px}.mobile-drawer-telemetry__row--transfer>#status-connection{gap:4px}.mobile-drawer-telemetry__row--transfer>#status-connection .connection-indicator__dot{width:6px;height:6px;flex-basis:6px}}
+@media(max-width:430px){.transfer-limit-toolbar{flex-direction:column;align-items:flex-start}.transfer-unit-select{--ui-select-width:100%;width:100%}.transfer-chart-toolbar{align-items:flex-start}.transfer-chart-toolbar__controls{flex-wrap:wrap;gap:5px}.transfer-chart-legend{gap:12px}.mobile-drawer-telemetry__row--transfer{gap:5px}.mobile-drawer-telemetry__row--transfer .transfer-runtime-capsule__stats{padding-inline:4px}.mobile-drawer-telemetry__row--transfer>#status-connection{gap:4px}.mobile-drawer-telemetry__row--transfer>#status-connection .connection-indicator__dot{width:6px;height:6px;flex-basis:6px}}
 @media(prefers-reduced-motion:reduce){.transfer-runtime-capsule__stats,.transfer-runtime-capsule__limits{transition:none}}
 html[data-motion="reduced"] .transfer-runtime-capsule__stats,html[data-motion="reduced"] .transfer-runtime-capsule__limits{transition:none}

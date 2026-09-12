@@ -9,6 +9,8 @@ const assert=(ok,msg)=>{if(!ok)throw new Error(msg);};
 
 const index=read('webui/private/index.html');
 const theme=read('webui/private/css/theme.css');
+const core=read('webui/private/scripts/core.js');
+const app=read('webui/private/scripts/app.js');
 const desktopNav=(index.match(/<nav id="app-nav"[\s\S]*?<\/nav>/)||[])[0]||'';
 const mobileNav=(index.match(/<nav id="mobile-bottom-nav"[\s\S]*?<\/nav>/)||[])[0]||'';
 
@@ -26,4 +28,8 @@ assert(theme.includes('::-webkit-scrollbar-thumb{background:var(--scrollbar-thum
 assert(theme.includes('::-webkit-scrollbar-button{display:none;width:0;height:0}'),'Legacy scrollbar arrow buttons must be removed');
 assert(/@media\(max-width:820px\)[\s\S]*::-webkit-scrollbar\{width:7px;height:7px\}/.test(theme),'Mobile scrollbar must use the slimmer presentation');
 
-console.log('Navigation/scrollbar contract passed: standalone Search nav retired and themed desktop/mobile scrollbars are canonical CSS.');
+assert(core.includes('__weiggVirtualScrollLeft')&&core.includes('this.el.scrollLeft')&&core.includes('Math.max(0,this.el.scrollWidth-this.el.clientWidth)'),'VirtualList must own and restore horizontal scroll state through row reconstruction');
+assert(!/function renderList\(\)\{var list=U\.\$\('torrent-list'\),items=app\.torrents;list\.textContent='';/.test(app),'App renderList must not clear the horizontal scroll owner before VirtualList can preserve scrollLeft');
+assert(core.includes("W.VirtualList.prototype.resetScroll=function(){this.el.__weiggVirtualScrollTop=0;this.el.scrollTop=0;this.render();}"),'Semantic filter/page reset remains vertical-only and must not reset user horizontal position');
+
+console.log('Navigation/scrollbar contract passed: standalone Search nav retired, themed scrollbars remain canonical, and VirtualList preserves horizontal scroll through ordinary refresh/re-render.');
