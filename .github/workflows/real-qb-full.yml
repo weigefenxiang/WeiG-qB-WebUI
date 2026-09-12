@@ -1,16 +1,13 @@
-name: Real qB Frozen Matrix
+name: Real qB Full Frozen Matrix
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - dev
 
 permissions:
   contents: read
 
 concurrency:
-  group: real-qb-frozen-${{ github.ref }}-${{ github.sha }}-${{ github.event_name }}
+  group: real-qb-full-${{ github.ref }}-${{ github.sha }}
   cancel-in-progress: false
 
 jobs:
@@ -29,23 +26,12 @@ jobs:
         run: test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
       - name: Validate Frozen Matrix contract
         run: node tests/real-qb-full-matrix-contract.mjs
-      - name: Resolve G-FM mode and all Frozen stable versions
+      - name: Resolve Exhaustive G-FM and all Frozen stable versions
         id: matrix
         run: |
           set -euo pipefail
-          case "$GITHUB_EVENT_NAME" in
-            push)
-              test "$GITHUB_REF" = 'refs/heads/dev'
-              mode=fast
-              ;;
-            workflow_dispatch)
-              mode=exhaustive
-              ;;
-            *)
-              echo "Unsupported G-FM event: $GITHUB_EVENT_NAME" >&2
-              exit 2
-              ;;
-          esac
+          test "$GITHUB_EVENT_NAME" = 'workflow_dispatch'
+          mode=exhaustive
           matrix="$(node tests/real-qb-capability-plan.mjs --matrix "$mode")"
           test "$(node -e 'const v=JSON.parse(process.argv[1]); process.stdout.write(String(v.length))' "$matrix")" = "65"
           printf 'mode=%s\n' "$mode" >> "$GITHUB_OUTPUT"
@@ -62,7 +48,7 @@ jobs:
           retention-days: 30
 
   real:
-    name: qB ${{ matrix.qb }} ${{ needs.plan.outputs.mode }} real API
+    name: qB ${{ matrix.qb }} exhaustive real API
     needs: plan
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -131,22 +117,10 @@ jobs:
           pattern: real-qb-full-*-${{ github.sha }}
           path: full-evidence
           merge-multiple: true
-      - name: Require Fast 65/65 runtime smoke plus family Full evidence
-        if: ${{ needs.plan.outputs.mode == 'fast' }}
-        run: node tests/real-qb-fast-aggregate.mjs --aggregate full-evidence
       - name: Require Exhaustive complete 65/65 Frozen real-qB evidence
-        if: ${{ needs.plan.outputs.mode == 'exhaustive' }}
         run: node tests/real-qb-full-matrix.mjs --aggregate full-evidence
-      - name: Upload exact-SHA Fast aggregate evidence
-        if: ${{ always() && needs.plan.outputs.mode == 'fast' }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: real-qb-fast-aggregate-${{ github.sha }}
-          path: artifacts/real-qb-fast-aggregate/${{ github.sha }}.json
-          if-no-files-found: error
-          retention-days: 30
       - name: Upload exact-SHA Exhaustive aggregate evidence
-        if: ${{ always() && needs.plan.outputs.mode == 'exhaustive' }}
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: real-qb-full-aggregate-${{ github.sha }}
