@@ -12,11 +12,15 @@ const devInstallerUrl='https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/d
 
 assert.ok(linuxInstall.includes('DEV_DIST_BASE="https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev"'),'Linux dev installer must consume the public exact-SHA materialized distribution');
 assert.ok(linuxInstall.includes('assert_materialized_webui'),'Linux installer must validate runtime catalog/native registry/QM assets before installation');
-assert.ok(linuxInstall.includes('refusing raw-source fallback'),'Linux dev installer must refuse stale materialized payloads instead of silently installing raw source');
+assert.ok(linuxInstall.includes('refusing raw-source fallback'),'Linux dev installer must refuse unpublished Pages-relevant changes instead of silently installing raw source');
+assert.ok(linuxInstall.includes('dev_payload_can_represent_head'),'Linux dev installer must compare a lagging materialized payload with current dev before reuse');
+assert.ok(linuxInstall.includes('is_pages_irrelevant_path'),'Linux dev installer must use an explicit Pages-irrelevant exception set');
 assert.equal(linuxInstall.includes('archive/$SOURCE_SHA.zip'),false,'Linux dev installer must not download the raw GitHub source archive');
 assert.ok(windowsInstall.includes("$DevDistBase='https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev'"),'Windows dev installer must consume the public exact-SHA materialized distribution');
 assert.ok(windowsInstall.includes('Assert-MaterializedWebUI'),'Windows installer must validate runtime catalog/native registry/QM assets before installation');
-assert.ok(windowsInstall.includes('refusing raw-source fallback'),'Windows dev installer must refuse stale materialized payloads instead of silently installing raw source');
+assert.ok(windowsInstall.includes('refusing raw-source fallback'),'Windows dev installer must refuse unpublished Pages-relevant changes instead of silently installing raw source');
+assert.ok(windowsInstall.includes('Test-DevPayloadCanRepresentHead'),'Windows dev installer must compare a lagging materialized payload with current dev before reuse');
+assert.ok(windowsInstall.includes('Test-PagesIrrelevantPath'),'Windows dev installer must use an explicit Pages-irrelevant exception set');
 assert.equal(windowsInstall.includes('archive/$sourceSha.zip'),false,'Windows dev installer must not download the raw GitHub source archive');
 assert.ok(buildSite.includes("tools/build-webui-dist.mjs"),'Virtual qB Pages build must publish the canonical dev distribution');
 assert.ok(buildSite.includes("downloads','dev"),'Dev distribution must be part of the deployed Pages site');
@@ -27,8 +31,12 @@ assert.ok(distBuilder.includes("path.join(outDir,'install.sh')"),'Canonical dev 
 assert.ok(distBuilder.includes("path.join(projectRoot,'installers/install.sh')"),'Published dev Linux installer must come from the exact source tree being materialized');
 assert.ok(distBuilder.includes("path.join(outDir,'install.ps1')"),'Canonical dev distribution must publish the exact dev Windows installer beside the payload');
 assert.ok(distBuilder.includes("path.join(projectRoot,'installers/install.ps1')"),'Published dev Windows installer must come from the exact source tree being materialized');
-assert.match(pagesSource,/push:\s*\n\s*branches:\s*\n\s*- dev\s*\n\s*- main/,'Every dev/main push must materialize a new exact-SHA distribution');
-assert.doesNotMatch(pagesSource,/\n\s+paths:/,'Exact-SHA dev distribution relay must not use path filters that can leave the public payload behind dev HEAD');
+assert.match(pagesSource,/push:\s*\n\s*branches:\s*\n\s*- dev\s*\n\s*- main/,'Dev/main pushes must still reach the lightweight Pages source relay');
+assert.match(pagesSource,/Detect Pages-relevant source changes/,'Pages source relay must classify the pushed diff before dispatching the heavy Pages owner');
+assert.match(pagesSource,/docs\/\*\|\*\.md\|LICENSE/,'Docs, Markdown and LICENSE must be explicit Pages-irrelevant classes');
+assert.match(pagesSource,/\*\)\s*\n\s*echo "Pages-relevant change:/,'Unknown paths must default to Pages-relevant instead of silently bypassing a deployment');
+assert.match(pagesSource,/if: \$\{\{ steps\.relevance\.outputs\.relevant == 'true' \}\}/,'Heavy Virtual qB Pages dispatch must be gated by the relevance classifier');
+assert.doesNotMatch(pagesSource,/paths-ignore:/,'The source relay must not rely on GitHub paths-ignore because the installer needs an auditable shared relevance policy');
 assert.ok(windowsDevGuide.includes(devInstallerUrl),'Windows dev guide must bootstrap from the materialized dev distribution, not the stable main installer');
 assert.match(windowsDevGuide,/install\.ps1[^\n]*-dev|weigg-install-dev\.ps1[^\n]*-dev/s,'Windows dev guide must actually execute the published installer in dev mode');
-console.log('Dev distribution contract passed: Linux/Windows dev installs and both bootstrap installers are published together at one exact SHA; raw-source fallback is forbidden and every dev/main head is materialized without path-filter gaps.');
+console.log('Dev distribution contract passed: heavy Virtual qB Pages runs only for Pages-relevant changes; docs-only heads may reuse the last verified materialized payload after compare validation; unknown/runtime changes fail closed; raw-source fallback remains forbidden.');
