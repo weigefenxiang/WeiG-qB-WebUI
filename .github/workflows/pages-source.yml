@@ -1,9 +1,9 @@
 name: Virtual qB Pages Source
 
 # Source relay owns trigger choreography only. It never owns Pages deployment permissions.
-# Every dev/main push is relayed because the public dev installer payload is exact-SHA bound:
-# even a test/docs-only commit advances dev HEAD and therefore requires a matching materialized payload.
-# Pages deployment is dispatched on the same dev/main ref so actions/deploy-pages receives that ref's real GITHUB_SHA.
+# Every dev/main push reaches this lightweight relay, but Virtual qB Pages is dispatched only
+# when a Pages/runtime input changed. Documentation and unrelated repository metadata must not
+# rebuild/redeploy the simulator or the materialized dev payload.
 on:
   workflow_dispatch:
   push:
@@ -19,7 +19,64 @@ jobs:
   source:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout source history
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Detect Pages-relevant source changes
+        id: relevance
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+            echo "Manual dispatch explicitly requests a Pages owner run."
+            exit 0
+          fi
+
+          BEFORE="$BEFORE_SHA"
+          case "$BEFORE" in
+            ''|0000000000000000000000000000000000000000)
+              echo "relevant=true" >> "$GITHUB_OUTPUT"
+              echo "Push has no usable before SHA; fail closed by requiring a Pages owner run."
+              exit 0
+              ;;
+          esac
+
+          if ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+            echo "Before SHA is unavailable locally; fail closed by requiring a Pages owner run."
+            exit 0
+          fi
+
+          relevant=false
+          while IFS= read -r path; do
+            [ -n "$path" ] || continue
+            case "$path" in
+              webui/*|simulator/*|installers/*|tools/*|tests/*|translations/*|VERSION|package.json|package-lock.json|.github/workflows/pages.yml|.github/workflows/pages-source.yml)
+                echo "Pages-relevant change: $path"
+                relevant=true
+                break
+                ;;
+              *)
+                echo "Pages-irrelevant change: $path"
+                ;;
+            esac
+          done < <(git diff --name-only "$BEFORE" "$GITHUB_SHA")
+
+          echo "relevant=$relevant" >> "$GITHUB_OUTPUT"
+          if [ "$relevant" != "true" ]; then
+            echo "No Pages/runtime inputs changed; Virtual qB Pages will not be dispatched."
+          fi
+
       - name: Dispatch exact-ref Pages owner
+        if: ${{ steps.relevance.outputs.relevant == 'true' }}
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -41,4 +98,4 @@ jobs:
             "/repos/$GITHUB_REPOSITORY/actions/workflows/pages.yml/dispatches" \
             -f ref="$BRANCH" >/dev/null
 
-          echo "Dispatched Virtual qB Pages on $BRANCH@$GITHUB_SHA. The deployment workflow now owns exact-SHA build/deploy/verify and the public materialized dev package."
+          echo "Dispatched Virtual qB Pages on $BRANCH@$GITHUB_SHA because a Pages/runtime input changed."
