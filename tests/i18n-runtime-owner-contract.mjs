@@ -59,7 +59,7 @@ assert.ok(packer.includes("delete runtime[key]")&&packer.includes('settingsNativ
 const app=read('webui/private/scripts/app.js');
 assert.ok(app.includes('app.preferences=await app.client.getPreferences()'),'startup must read qB preferences into shared application state');
 assert.ok(app.includes('W.SettingsState.prefs=app.preferences'),'Settings must reuse the startup preference snapshot');
-assert.ok(app.includes('W.I18n.applyLocale(app.preferences.locale)'),'initial startup locale must come from qB preferences.locale before any bounded Alternative WebUI handoff');
+assert.ok(app.includes('W.I18n.applyLocale(app.preferences.locale)'),'initial render must project the current canonical qB preferences.locale while browser bootstrap resolves asynchronously');
 
 const settings=read('webui/private/scripts/settings.js');
 assert.ok(settings.includes("own(ctx.draft,'locale')?ctx.draft.locale:ctx.prefs.locale"),'WeiG Language and Advanced Locale must share the same qB draft');
@@ -70,13 +70,21 @@ assert.equal((settings.match(/\.setPreferences\(pending\)/g)||[]).length,1,'one 
 assert.ok(settings.includes('var verified=await client.getPreferences()')&&settings.includes('W.I18n.applyLocale(controller.prefs.locale)'),'locale must switch only after qB verification reread succeeds');
 
 const session=read('webui/private/scripts/session.js');
-assert.ok(session.includes("HANDOFF_KEY='weigg.localeHandoff.v1'")&&session.includes('previousLocale')&&session.includes('explicitOverride'),'Alternative WebUI locale handoff may persist bounded transition metadata only');
+assert.ok(session.includes("LEGACY_HANDOFF_KEY='weigg.localeHandoff.v1'")&&session.includes("BOOTSTRAP_KEY='weigg.localeBootstrap.v2'"),'Session must explicitly retire reversible locale handoff metadata and own one-way browser bootstrap completion metadata');
 assert.ok(session.includes('W.I18n.matchBrowserLocale')&&session.includes('W.I18n.sameQbLocale')&&session.includes('W.I18n.hasExactLocale'),'Session must consume W.I18n locale matching rather than define a second normalization owner');
 assert.equal(session.includes('new Intl.Locale'),false,'Session must not duplicate W.I18n locale normalization');
 assert.equal(session.includes('Intl.getCanonicalLocales'),false,'Session must not duplicate canonical locale conversion');
-assert.equal(session.includes('QBClient.prototype.setPreferences'),false,'locale handoff must not monkey-patch the qB transport owner');
-assert.ok(session.includes("own(draft,'alternative_webui_enabled')")&&session.includes('draft.locale=record.previousLocale'),'returning to native WebUI must inject the pre-handoff locale into the existing canonical Settings draft');
-assert.ok(session.includes('W.SettingsSchema.isWritable')&&session.includes("W.SettingsSchema.isWritable('locale',value)"),'automatic locale writes/restores must keep source-proven Settings write provenance');
+assert.equal(session.includes('QBClient.prototype.setPreferences'),false,'locale bootstrap must not monkey-patch the qB transport owner');
+assert.ok(session.includes('await client.setPreferences({locale:target})')&&session.includes('var verified=await client.getPreferences()'),'browser locale bootstrap must persist through the canonical qB preference transport and verify by reread');
+assert.ok(session.includes("reason:'already-initialized'")&&session.includes('initialized:true'),'browser locale bootstrap must run once per browser storage lifecycle instead of overriding later user/native qB locale choices');
+assert.ok(session.includes('W.SettingsSchema.isWritable')&&session.includes("W.SettingsSchema.isWritable('locale',value)"),'automatic locale bootstrap writes must keep source-proven Settings write provenance');
+assert.equal(session.includes('previousLocale'),false,'Session must never retain a previous locale for restoration');
+assert.equal(session.includes('rollbackLocale'),false,'Session must never roll a browser-selected qB locale back to the pre-WeiG locale');
+assert.equal(session.includes('draft.locale=record.previousLocale'),false,'returning to native WebUI must never inject a previous locale into Settings');
+assert.equal(session.includes('onSettingsSaveCapture'),false,'Session must not intercept Settings saves to restore language state');
+
+const defaults=read('simulator/preferences/defaults.js');
+assert.ok(defaults.includes("locale: 'en'"),'Virtual qB preference materialization must expose a canonical non-empty locale so browser bootstrap can run against Virtual qB');
 
 const logs=read('webui/private/scripts/logs.js');
 const responsive=read('webui/private/scripts/responsive.js');
@@ -85,4 +93,4 @@ assert.ok(logs.includes('var I=W.I18n'),'Logs must call W.I18n directly');
 assert.ok(responsive.includes('W.I18n&&W.I18n.t'),'Responsive runtime must call W.I18n directly');
 assert.ok(header.includes("localized('Add','添加')"),'Header short copy must no longer depend on InterfaceText');
 
-console.log('I18n runtime owner contract passed: qB preferences.locale remains the single language truth; W.I18n owns locale normalization/matching; bounded Alternative WebUI handoff is reversible transition metadata; verified locale changes reload qB-owned translated resources; native-capable releases use server-translated QBT_TR/official QM and only source-proven gaps keep exact official TS shards.');
+console.log('I18n runtime owner contract passed: qB preferences.locale remains the single language truth; W.I18n owns locale normalization/matching; browser locale is a one-time bootstrap source that persists directly into qB and is never restored on native return; Virtual qB exposes a canonical locale default; verified locale changes reload qB-owned translated resources; native-capable releases use server-translated QBT_TR/official QM and only source-proven gaps keep exact official TS shards.');
