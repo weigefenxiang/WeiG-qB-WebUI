@@ -52,6 +52,9 @@ assert.ok(i18n.includes('counts[item.label]>1')&&i18n.includes('nativeLabel(item
 assert.ok(i18n.includes('localeApplied=false,reloadScheduled=false')&&i18n.includes('changed&&wasApplied&&!reloadScheduled')&&i18n.includes('global.location.reload()'),'verified manual runtime locale changes must retain the one-reload rule for qB-owned translated resources');
 assert.ok(i18n.includes('@@WEIGG_UI')&&i18n.includes('function qbOwnedText()')&&i18n.includes('function qbText(key,fallback)')&&i18n.includes('function loadQbOwnedText()'),'W.I18n must canonically parse, resolve and expose qB-owned shared UI copy from the same exact native/bridge routing');
 assert.ok(i18n.includes('loadQbOwnedText:loadQbOwnedText')&&i18n.includes('qbText:qbText'),'qB-owned shared UI API must be exported directly by canonical W.I18n');
+for(const stale of ["'filter.all':","'filter.downloading':","'filter.seeding':","'filter.completed':","'filter.paused':","'filter.active':","'filter.stalled':","'filter.error':","'filter.private':","'settings.downloads':","'settings.connection':","'settings.speed':","'settings.bittorrent':","'settings.webui':","'settings.advanced':"]){
+  assert.equal(i18n.includes(stale),false,`generic W.I18n dictionaries must not retain qB-owned hand copy ${stale}`);
+}
 
 const filterView=read('webui/private/scripts/torrent-filter-view.js');
 assert.ok(filterView.includes('I&&I.qbText?I.qbText(')&&filterView.includes('I.loadQbOwnedText'),'Torrent filter presentation must consume canonical W.I18n qB-owned copy');
@@ -111,4 +114,4 @@ assert.ok(logs.includes('var I=W.I18n'),'Logs must call W.I18n directly');
 assert.ok(responsive.includes('W.I18n&&W.I18n.t'),'Responsive runtime must call W.I18n directly');
 assert.ok(header.includes("localized('Add','添加')"),'Header short copy must no longer depend on InterfaceText');
 
-console.log('I18n runtime owner contract passed: qB preferences.locale remains the single language truth; W.I18n owns locale normalization/matching plus exact Settings and qB-owned shared UI copy; Torrent filter, Settings tabs and Transfer rate modes are presentation callers only; native-capable releases use server-translated QBT_TR/official QM and only source-proven gaps keep exact official TS shards.');
+console.log('I18n runtime owner contract passed: qB preferences.locale remains the single language truth; W.I18n owns locale normalization/matching plus exact Settings and qB-owned shared UI copy; generic dictionaries retain no qB-owned filter/tab translation copies; presentation callers consume canonical native/bridge text.');
