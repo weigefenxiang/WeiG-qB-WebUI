@@ -22,6 +22,16 @@ const SAFE_READ_ACTIONS={
   'searchcontroller.h:statusAction':'/api/v2/search/status'
 };
 
+export function canonicalWebApiVersion(value){
+  const raw=norm(value);
+  const parts=raw.split('.');
+  if(parts.length>=2&&parts.every(part=>/^\d+$/.test(part))){
+    while(parts.length>2&&parts.at(-1)==='0')parts.pop();
+    return parts.join('.');
+  }
+  return raw;
+}
+
 export function buildCapabilityWitnessSpec(profile){
   if(!profile||!profile.qbVersion)fail('Capability witness requires one Frozen qB profile.');
   const readablePreferences=(profile.preferenceDescriptors||[])
@@ -33,7 +43,7 @@ export function buildCapabilityWitnessSpec(profile){
     .sort();
   return {
     qbVersion:String(profile.qbVersion),
-    webApiVersion:norm(profile.webApiVersion),
+    webApiVersion:canonicalWebApiVersion(profile.webApiVersion),
     readablePreferences,
     safeReadActions
   };
@@ -109,8 +119,9 @@ export async function runCapabilitySmoke({root=repoRoot,env=process.env}={}){
     out.runtime_version=runtimeVersion;
     const apiResponse=await http('GET','/api/v2/app/webapiVersion');
     if(apiResponse.status!==200)fail(`Capability smoke app/webapiVersion HTTP ${apiResponse.status}.`);
-    const webApiVersion=norm(await apiResponse.text());
-    out.webapi_version=webApiVersion;
+    const webApiRaw=norm(await apiResponse.text());
+    out.webapi_version=webApiRaw;
+    const webApiVersion=canonicalWebApiVersion(webApiRaw);
 
     const preferencesResponse=await http('GET','/api/v2/app/preferences');
     if(preferencesResponse.status!==200)fail(`Capability smoke app/preferences HTTP ${preferencesResponse.status}.`);

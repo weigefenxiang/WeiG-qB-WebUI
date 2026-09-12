@@ -7,16 +7,22 @@ import {fileURLToPath} from 'node:url';
 import {buildCapabilityPlan,matrixForMode} from './real-qb-capability-plan.mjs';
 import {aggregateFast} from './real-qb-fast-aggregate.mjs';
 import {bindRuntimeEvidence} from './real-qb-gfm-bind-runtime.mjs';
-import {buildCapabilityWitnessSpec,fingerprintCapabilityWitness} from './real-qb-capability-smoke.mjs';
+import {buildCapabilityWitnessSpec,canonicalWebApiVersion,fingerprintCapabilityWitness} from './real-qb-capability-smoke.mjs';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(here,'..');
+assert.equal(canonicalWebApiVersion('2.0.0'),'2.0','WebAPI trailing zero representation must not create a false capability mismatch');
+assert.equal(canonicalWebApiVersion('2.1.0'),'2.1','WebAPI trailing zero representation must be canonicalized');
+assert.equal(canonicalWebApiVersion('2.0.1'),'2.0.1','WebAPI non-zero components must remain capability-significant');
+assert.notEqual(canonicalWebApiVersion('2.0.1'),canonicalWebApiVersion('2.0.0'),'genuinely different WebAPI versions must remain distinct');
 const plan=buildCapabilityPlan(root);
 const matrix=matrixForMode(plan,'fast');
 const matrixByVersion=new Map(matrix.map(row=>[row.qb,row]));
 const manifest=JSON.parse(fs.readFileSync(path.join(root,'tools/data/qb-stable-lkg.json'),'utf8'));
 const catalog=JSON.parse(fs.readFileSync(path.join(root,manifest.catalogPath),'utf8'));
 const profileByVersion=new Map(catalog.map(profile=>[String(profile.qbVersion),profile]));
+const profile410=profileByVersion.get('4.1.0');
+assert.equal(buildCapabilityWitnessSpec(profile410).webApiVersion,'2.0','qB 4.1.0 Frozen WebAPI 2.0.0 must canonicalize to the runtime 2.0 representation');
 const preload=fs.readFileSync(path.join(root,'tests/real-qb-gfm-mode-preload.mjs'),'utf8');
 assert.ok(preload.includes("target==='real-qb-harness.mjs'")&&preload.includes('runCapabilitySmoke')&&preload.includes("if(coreMode==='smoke')process.exit(0)"),'Fast G-FM preload must execute real capability smoke before skipping the expensive core semantic harness');
 assert.ok(preload.includes("target==='real-qb-search.mjs'&&searchMode==='skip'")&&preload.includes("import './real-qb-torrent-creator.mjs'"),'Fast G-FM preload must skip Search only for skip assignments while preserving the existing Torrent Creator preload');
@@ -146,4 +152,4 @@ try{
   fs.rmSync(temp,{recursive:true,force:true});
 }
 
-console.log(`Fast G-FM aggregate contract passed: 65/65 real runtime capability witnesses, ${plan.summary.fast.coreFullCount} core Full reps, ${plan.summary.fast.searchFullCount} Search Full reps, exact Frozen family binding, mode preload and runtime binder fail closed.`);
+console.log(`Fast G-FM aggregate contract passed: 65/65 real runtime capability witnesses, ${plan.summary.fast.coreFullCount} core Full reps, ${plan.summary.fast.searchFullCount} Search Full reps, exact Frozen family binding, WebAPI version representations canonicalized, mode preload and runtime binder fail closed.`);
