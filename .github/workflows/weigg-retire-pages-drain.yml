@@ -1,0 +1,91 @@
+name: Retire legacy Pages drain
+
+on:
+  push:
+    branches:
+      - dev
+    paths:
+      - .github/workflows/weigg-retire-pages-drain.yml
+
+permissions:
+  contents: write
+
+jobs:
+  render:
+    runs-on: ubuntu-24.04
+    env:
+      PRE_SHA: ce8675d9fc9ed73f12025897ca6dc91418011b06
+      PRE_TREE: 1ce8cb9a6b0db5674102d7387a060f68e518eca0
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Remove retired drain and validate contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor "$PRE_SHA" HEAD
+          test "$(git rev-parse "$PRE_SHA^{tree}")" = "$PRE_TREE"
+          mapfile -t changed < <(git diff --name-only "$PRE_SHA" HEAD)
+          test "${#changed[@]}" -eq 1
+          test "${changed[0]}" = '.github/workflows/weigg-retire-pages-drain.yml'
+          python3 - <<'PY'
+          from pathlib import Path
+
+          pages=Path('.github/workflows/pages.yml')
+          s=pages.read_text()
+          start='      - name: Drain legacy default-branch Pages watcher\n'
+          end='\n  deploy:\n'
+          if s.count(start)!=1 or s.count(end)!=1:
+              raise SystemExit('unexpected Pages drain/deploy anchors')
+          i=s.index(start)
+          j=s.index(end,i)
+          s=s[:i]+s[j:]
+          if 'Drain legacy default-branch Pages watcher' in s or 'event=workflow_run' in s:
+              raise SystemExit('legacy Pages drain residue remains')
+          pages.write_text(s)
+
+          contract=Path('tests/ci-contract.mjs')
+          c=contract.read_text()
+          old="assert(pagesBuild.includes('Drain legacy default-branch Pages watcher')&&pagesBuild.includes('workflow[_]run')&&pagesBuild.includes('event=workflow_run')&&pagesBuild.includes('refusing to race deployment'),'while main still carries the legacy watcher, the ref-bound dev deployment must drain that post-dispatch run and fail closed rather than race it');"
+          new="assert(!pagesBuild.includes('Drain legacy default-branch Pages watcher')&&!pagesBuild.includes('event=workflow_run'),'retired legacy Pages watcher drain must stay removed after default-branch trigger migration');"
+          if c.count(old)!=1:
+              raise SystemExit(f'expected one legacy drain contract, found {c.count(old)}')
+          c=c.replace(old,new)
+          old_summary='drains the legacy default-branch watcher during branch migration, main promotion reuses only the validated dev site artifact'
+          new_summary='keeps the retired legacy default-branch watcher drain absent, main promotion reuses only the validated dev site artifact'
+          if c.count(old_summary)!=1:
+              raise SystemExit(f'expected one CI summary phrase, found {c.count(old_summary)}')
+          c=c.replace(old_summary,new_summary)
+          contract.write_text(c)
+          PY
+          git diff --check
+          grep -q 'retired legacy Pages watcher drain must stay removed' tests/ci-contract.mjs
+          ! grep -q 'Drain legacy default-branch Pages watcher' .github/workflows/pages.yml
+          npm ci --no-audit --no-fund --prefer-offline
+          npm test
+      - name: Create clean final candidate commit
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          create_blob() {
+            local file="$1" encoded payload
+            encoded="$(base64 -w0 "$file")"
+            payload="$(jq -n --arg content "$encoded" '{content:$content,encoding:"base64"}')"
+            gh api --method POST "/repos/$GITHUB_REPOSITORY/git/blobs" --input - --jq '.sha' <<<"$payload"
+          }
+          PAGES_BLOB="$(create_blob .github/workflows/pages.yml)"
+          CONTRACT_BLOB="$(create_blob tests/ci-contract.mjs)"
+          tree_payload="$(jq -n --arg base "$PRE_TREE" --arg pages "$PAGES_BLOB" --arg contract "$CONTRACT_BLOB" '{base_tree:$base,tree:[{path:".github/workflows/pages.yml",mode:"100644",type:"blob",sha:$pages},{path:"tests/ci-contract.mjs",mode:"100644",type:"blob",sha:$contract}]}')"
+          TREE="$(gh api --method POST "/repos/$GITHUB_REPOSITORY/git/trees" --input - --jq '.sha' <<<"$tree_payload")"
+          commit_payload="$(jq -n --arg message 'ci: retire legacy Pages watcher drain [candidate]' --arg tree "$TREE" --arg parent "$GITHUB_SHA" '{message:$message,tree:$tree,parents:[$parent]}')"
+          COMMIT="$(gh api --method POST "/repos/$GITHUB_REPOSITORY/git/commits" --input - --jq '.sha' <<<"$commit_payload")"
+          echo "FINAL_TREE=$TREE"
+          echo "FINAL_COMMIT=$COMMIT"
