@@ -45,10 +45,10 @@ for(const required of [
   "!Array.isArray(locale.failures)||locale.failures.length!==0"
 ])assert(compatVerifier.includes(required),`release compatibility verifier is missing fail-closed rule: ${required}`);
 
-assert(full.includes('workflow_dispatch:')&&/\n\s*push:\s*\n\s*branches:\s*\[dev\]/.test(full),'Full Frozen Matrix must expose dev-push Fast and manual Exhaustive routes');
-assert(full.includes('mode=fast')&&full.includes('mode=exhaustive'),'Full Frozen Matrix must route dev push to Fast and manual dispatch to Exhaustive');
-assert(full.includes('real-qb-fast-aggregate-${{ github.sha }}')&&full.includes('real-qb-full-aggregate-${{ github.sha }}'),'Fast and Exhaustive G-FM artifacts must remain structurally distinct');
-assert(localeWorkflow.includes('workflow_dispatch:'),'Locale Matrix must remain manually runnable for an exact final candidate');
+assert(full.includes('workflow_dispatch:')&&!/\n\s*push:\s*/.test(full),'Full Frozen Matrix must be final-candidate manual-only');
+assert(full.includes('mode=exhaustive')&&!full.includes('mode=fast'),'Full Frozen Matrix workflow must route only to Exhaustive release-grade evidence');
+assert(!full.includes('real-qb-fast-aggregate-${{ github.sha }}')&&full.includes('real-qb-full-aggregate-${{ github.sha }}'),'Only Exhaustive aggregate evidence belongs to the final-candidate workflow');
+assert(localeWorkflow.includes('workflow_dispatch:')&&!/\n\s*push:\s*/.test(localeWorkflow),'Locale Matrix must remain manually runnable and must not create ordinary dev-push runs');
 assert(pkg.scripts.test.includes('tests/release-evidence-contract.mjs'),'npm test must protect promotion/release evidence ownership');
 
-console.log('Release evidence contract passed: dev-push Fast G-FM remains non-promotion evidence; promote/release require same-run candidate rehearsal evidence plus manual exact-SHA Exhaustive G-FM 65/65 and current-stable Locale 61/61 aggregates, all revalidated fail-closed before promotion or publication.');
+console.log('Release evidence contract passed: ordinary dev pushes do not start release-grade compatibility matrices; promote/release require same-run candidate rehearsal evidence plus manual exact-SHA Exhaustive G-FM 65/65 and current-stable Locale 61/61 aggregates, all revalidated fail-closed before promotion or publication.');
