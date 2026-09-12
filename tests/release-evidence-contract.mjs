@@ -23,6 +23,7 @@ for(const [name,source] of [['promotion',promote],['release',release]]){
   assert(source.includes('path: gfm')&&source.includes('path: locale'),`${name} must download both G-FM and Locale aggregate evidence`);
   assert(source.includes('node tests/release-compat-evidence.mjs'),`${name} must execute the central release compatibility evidence verifier`);
   assert(source.includes('node tests/release-candidate-evidence.mjs'),`${name} must execute the repository-owned candidate evidence verifier`);
+  assert(!source.includes('real-qb-fast-aggregate-${sha}'),`${name} must never accept Fast G-FM aggregate evidence`);
 }
 assert(promote.includes('--mode=promotion')&&promote.includes('--main-before="$MAIN_BEFORE"'),'promotion must bind rehearsal evidence to the current pre-promotion main SHA');
 assert(promote.includes("core.setOutput('main_sha', mainSha)"),'promotion resolver must export the exact current main SHA used for rehearsal freshness');
@@ -44,8 +45,10 @@ for(const required of [
   "!Array.isArray(locale.failures)||locale.failures.length!==0"
 ])assert(compatVerifier.includes(required),`release compatibility verifier is missing fail-closed rule: ${required}`);
 
-assert(full.includes('workflow_dispatch:')&&!/\n\s*push:\s*\n/.test(full),'Full Frozen Matrix must remain manual-only final/release validation');
+assert(full.includes('workflow_dispatch:')&&/\n\s*push:\s*\n\s*branches:\s*\[dev\]/.test(full),'Full Frozen Matrix must expose dev-push Fast and manual Exhaustive routes');
+assert(full.includes('mode=fast')&&full.includes('mode=exhaustive'),'Full Frozen Matrix must route dev push to Fast and manual dispatch to Exhaustive');
+assert(full.includes('real-qb-fast-aggregate-${{ github.sha }}')&&full.includes('real-qb-full-aggregate-${{ github.sha }}'),'Fast and Exhaustive G-FM artifacts must remain structurally distinct');
 assert(localeWorkflow.includes('workflow_dispatch:'),'Locale Matrix must remain manually runnable for an exact final candidate');
 assert(pkg.scripts.test.includes('tests/release-evidence-contract.mjs'),'npm test must protect promotion/release evidence ownership');
 
-console.log('Release evidence contract passed: promote/release require same-run candidate rehearsal evidence plus manual exact-SHA G-FM 65/65 and current-stable Locale 61/61 aggregates; all compatibility evidence is revalidated fail-closed before promotion or publication.');
+console.log('Release evidence contract passed: dev-push Fast G-FM remains non-promotion evidence; promote/release require same-run candidate rehearsal evidence plus manual exact-SHA Exhaustive G-FM 65/65 and current-stable Locale 61/61 aggregates, all revalidated fail-closed before promotion or publication.');
