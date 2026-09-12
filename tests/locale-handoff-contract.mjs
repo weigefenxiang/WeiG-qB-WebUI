@@ -61,6 +61,7 @@ async function makeRuntime(browserLanguages,prefs={locale:'ja',alternative_webui
   const localStorage=options.localStorage||new Storage(),sessionStorage=new Storage(),events={};
   const client=options.client||new FakeClient(prefs);
   const initialPrefs=await client.getPreferences();
+  let reloadCount=0;
   const document={
     readyState:'loading',
     documentElement:{dataset:{},lang:'en'},
@@ -68,7 +69,7 @@ async function makeRuntime(browserLanguages,prefs={locale:'ja',alternative_webui
     querySelectorAll(){return [];},
     addEventListener(type,fn,capture){events[`document:${type}:${capture===true?'capture':'bubble'}`]=fn;}
   };
-  const location={reload(){},replace(){}};
+  const location={reload(){reloadCount++;},replace(){}};
   const window={
     WeiG:{},
     navigator:{languages:[...browserLanguages],language:browserLanguages[0]||''},
@@ -87,13 +88,9 @@ async function makeRuntime(browserLanguages,prefs={locale:'ja',alternative_webui
   const settingsState={prefs:appState.preferences,draft:{}};
   Object.assign(window.WeiG,{QBClient:FakeClient,SettingsSchema:{isWritable:(key)=>key==='locale'},SettingsState:settingsState,AppState:appState});
   vm.runInNewContext(sessionSource,context,{filename:'session.js'});
-  return{window,document,events,client,localStorage,appState,settingsState};
+  return{window,document,events,client,localStorage,appState,settingsState,get reloadCount(){return reloadCount;}};
 }
-async function bootstrap(runtime){
-  const fn=runtime.events['document:DOMContentLoaded:bubble'];
-  assert.equal(typeof fn,'function','session owner must register bounded browser-locale bootstrap at DOMContentLoaded');
-  fn();await delay(15);
-}
+async function bootstrap(runtime){return runtime.window.WeiG.SessionController.bootstrapBrowserLocale(runtime.client,runtime.appState.preferences);}
 function browserForm(locale){return String(locale).replace(/@(?:latin|latn)$/i,'-Latn').replace(/_/g,'-');}
 function bootstrapRecord(storage){const raw=storage.getItem(BOOTSTRAP_KEY);return raw?JSON.parse(raw):null;}
 
@@ -172,14 +169,34 @@ for(const locale of stableLocales){
   assert.equal(preferenceRuntime.read().locale,'zh_CN','Virtual qB locale write must survive reread through the real preference runtime');
   assert.equal(world.preferences.locale,'zh_CN','Virtual qB world state must persist the canonical locale after bootstrap');
 }
+{
+  const runtime=await makeRuntime(['zh-CN'],{locale:'en',alternative_webui_enabled:true});
+  const ready=runtime.window.WeiG.I18n.ready();
+  await delay(20);
+  assert.equal(runtime.client.prefs.locale,'zh_CN','app-owned W.I18n.ready gate must persist the browser locale before app readiness continues');
+  assert.equal(runtime.reloadCount,1,'verified first-time locale bootstrap must initiate exactly one immediate navigation reload');
+  const state=await Promise.race([ready.then(()=> 'resolved'),delay(5).then(()=> 'pending')]);
+  assert.equal(state,'pending','app-owned W.I18n.ready gate must not resolve the stale-language startup after scheduling reload');
+  const pending=bootstrapRecord(runtime.localStorage);
+  assert.equal(pending.initialized,true,'verified locale must be marked initialized before reload');
+}
+{
+  const storage=new Storage({[BOOTSTRAP_KEY]:JSON.stringify({schemaVersion:2,initialized:false,reason:'write-pending',selectedLocale:'zh_CN',observedLocale:'en',completedAt:null})});
+  const runtime=await makeRuntime(['zh-CN'],{locale:'en',alternative_webui_enabled:true},{localStorage:storage});await bootstrap(runtime);
+  assert.equal(runtime.client.prefs.locale,'zh_CN','an interrupted uninitialized write-pending record must retry on the next load');
+  assert.equal(bootstrapRecord(storage).initialized,true,'successful retry must replace pending state with completed bootstrap metadata');
+}
 
 assert.ok(sessionSource.includes("BOOTSTRAP_KEY='weigg.localeBootstrap.v2'")&&sessionSource.includes("LEGACY_HANDOFF_KEY='weigg.localeHandoff.v1'"),'Session must use one-way locale bootstrap metadata and explicitly retire the old reversible handoff key');
 assert.ok(sessionSource.includes('W.I18n.matchBrowserLocale')&&sessionSource.includes('W.I18n.sameQbLocale')&&sessionSource.includes('W.I18n.hasExactLocale'),'Session lifecycle must consume the canonical W.I18n locale matcher instead of duplicating normalization');
 assert.ok(sessionSource.includes('await client.setPreferences({locale:target})')&&sessionSource.includes('var verified=await client.getPreferences()'),'browser locale initialization must write qB preferences.locale and verify by reread');
+assert.ok(sessionSource.includes("bootstrapRecord('write-pending',target,current,false)"),'write-pending metadata must remain retryable and must not be marked initialized before verification');
+assert.ok(sessionSource.includes('function installLocaleReadyBootstrap()')&&sessionSource.includes('var original=I.ready')&&sessionSource.includes('return new Promise(function(){})'),'Session must gate the existing app W.I18n.ready startup path until locale bootstrap is verified or a required reload owns continuation');
+assert.ok(!sessionSource.includes('waitForLocaleBootstrap'),'locale bootstrap must not depend on a finite polling race after DOMContentLoaded');
 assert.ok(!sessionSource.includes('previousLocale')&&!sessionSource.includes('rollbackLocale')&&!sessionSource.includes('draft.locale=record.previousLocale'),'Session must never retain or restore a pre-WeiG locale');
 assert.ok(!sessionSource.includes('new Intl.Locale')&&!sessionSource.includes('Intl.getCanonicalLocales'),'Session must not become a second locale normalization owner');
 assert.ok(!sessionSource.includes('QBClient.prototype.setPreferences')&&!sessionSource.includes('proto.setPreferences'),'bootstrap must not monkey-patch the qB client owner');
 assert.ok(!sessionSource.includes('weigg-language'),'bootstrap metadata must never recreate an independent persisted language truth');
 assert.ok(!sessionSource.includes('W.LocaleHandoff='),'locale bootstrap stays a private Session lifecycle detail instead of becoming a second public language owner');
 
-console.log('Locale bootstrap contract passed: W.I18n owns exact browser/qB matching; all 61 current-stable locales can become canonical persisted qB preferences; native return never restores a previous locale; explicit qB locale changes win; legacy handoff metadata is retired; Virtual qB defaults to en and persists browser-selected locale through its real preference runtime.');
+console.log('Locale bootstrap contract passed: W.I18n owns exact browser/qB matching; all 61 current-stable locales can become canonical persisted qB preferences; app readiness is deterministically gated through W.I18n.ready; interrupted pending writes retry; native return never restores a previous locale; explicit qB locale changes win; legacy handoff metadata is retired; Virtual qB defaults to en and persists browser-selected locale through its real preference runtime.');
