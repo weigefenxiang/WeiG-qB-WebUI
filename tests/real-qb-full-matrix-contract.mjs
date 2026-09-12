@@ -8,7 +8,7 @@ const indexer=read('tests/real-qb-full-runtime-index.mjs');
 const matrix=read('tests/real-qb-full-matrix.mjs');
 
 assert(workflow.includes('workflow_dispatch:'),'G-FM must remain explicitly dispatchable.');
-assert(workflow.includes("branches: [dev]")&&workflow.includes("'tests/real-qb-full-*.mjs'")&&workflow.includes("'tests/real-qb-full-*.sh'"),'G-FM implementation changes must self-trigger on dev.');
+assert(!/\n\s*push:\s*\n/.test(workflow),'G-FM must remain manual-only; ordinary dev pushes must not start the 65-runtime matrix.');
 assert(workflow.includes('versions: ${{ steps.matrix.outputs.versions }}')&&workflow.includes('node tests/real-qb-full-matrix.mjs --matrix'),'G-FM must derive its matrix from Frozen LKG.');
 assert(workflow.includes('Build source-backed historical runtime index')&&workflow.includes('gfm-runtime-index-${{ github.sha }}')&&workflow.includes('WEIG_GFM_RUNTIME_INDEX: runtime-index/linuxserver-tags.json'),'All matrix jobs must consume the same-run exact-SHA historical runtime index.');
 assert(workflow.includes('fail-fast: false')&&workflow.includes('max-parallel: 16'),'G-FM must use independent jobs with fail-fast false and max-parallel 16.');
@@ -45,4 +45,4 @@ assert(indexer.includes("discoveryRole:'candidate-tag-discovery-only; runtime tr
 assert(matrix.includes('manifest.catalogSha256')&&matrix.includes('manifest.profileCount')&&matrix.includes('duplicate qB versions'),'G-FM planner must verify Frozen identity, count and uniqueness.');
 assert(matrix.includes("runtime.cleanup_result!=='PASS'")&&matrix.includes('expected one core semantic evidence')&&matrix.includes('expected one Search evidence'),'G-FM aggregate must require cleanup plus core/search semantic evidence for every PASS runtime.');
 assert(matrix.includes('pass===f.manifest.profileCount')&&matrix.includes('blocked===0')&&matrix.includes('missing.length===0')&&matrix.includes('duplicates.length===0'),'G-FM aggregate must fail unless every Frozen profile passes with zero missing/duplicate/BLOCKED results.');
-console.log('Real-qB Full Frozen Matrix contract passed: source-backed candidate index, 200/204 session-cookie auth, ban-safe temp-password polling, exact stable identity, immutable images, complete evidence and strict 65/65 aggregate are enforced.');
+console.log('Real-qB Full Frozen Matrix contract passed: manual-only dispatch, source-backed candidate index, 200/204 session-cookie auth, ban-safe temp-password polling, exact stable identity, immutable images, complete evidence and strict 65/65 aggregate are enforced.');
