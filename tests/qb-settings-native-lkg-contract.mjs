@@ -54,4 +54,11 @@ for(const version of ['4.4.5','4.6.5','5.0.0','5.2.3']){
 }
 assert.ok(nativeCapableLocaleRoutes>0&&mandatoryBridgeLocaleRoutes>0,'stable evidence must retain both native-capable and mandatory-bridge routes');
 
-console.log(`Native Settings stable routing evidence passed: 65 releases, ${nativeCapableLocaleRoutes} native-capable locale routes, ${mandatoryBridgeLocaleRoutes} mandatory exact-TS bridge routes, 11 Alternative WebUI gap releases.`);
+const artifactResolver=fs.readFileSync(path.join(here,'../tools/qb-settings-translation-artifact.mjs'),'utf8');
+assert.ok(artifactResolver.includes('const ARTIFACT_PAGE_SIZE=100;')&&artifactResolver.includes('const ARTIFACT_MAX_PAGES=10;'),'Settings translation resolver must deep-scan enough artifact pages that large locale matrices cannot hide reusable LKG evidence');
+assert.ok(artifactResolver.includes('&page=${page}')&&artifactResolver.includes('listArtifacts({maxPages:ARTIFACT_MAX_PAGES})'),'Settings translation resolver must paginate the initial reusable-evidence scan instead of trusting only the newest 100 artifacts');
+assert.ok(artifactResolver.includes('const POLL_INTERVAL_MS=10000;')&&!artifactResolver.includes('sleep(30000)'),'Settings translation resolver must react to fresh evidence without a fixed 30-second polling penalty');
+assert.ok((artifactResolver.match(/await tryBootstrapCatalog\(artifacts\)/g)||[]).length>=2,'Settings translation resolver must accept a newly merged source catalog while waiting instead of blocking on the later LKG upload job');
+assert.ok(artifactResolver.includes('incompatibleArtifactIds')&&artifactResolver.includes('listArtifacts({maxPages:1})'),'Fast polling must stay API-bounded and avoid repeatedly downloading known-incompatible artifacts');
+
+console.log(`Native Settings stable routing evidence passed: 65 releases, ${nativeCapableLocaleRoutes} native-capable locale routes, ${mandatoryBridgeLocaleRoutes} mandatory exact-TS bridge routes, 11 Alternative WebUI gap releases; resolver uses deep initial artifact reuse plus fast one-page post-dispatch polling.`);

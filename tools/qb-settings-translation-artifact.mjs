@@ -9,6 +9,11 @@ import {applyQbSettingsTranslationLkg,buildQbSettingsTranslationLkg} from './qb-
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const projectRoot=path.resolve(here,'..');
+const ARTIFACT_PAGE_SIZE=100;
+const ARTIFACT_MAX_PAGES=10;
+const POLL_INTERVAL_MS=10000;
+const POLL_ATTEMPTS=210;
+const incompatibleArtifactIds=new Set();
 function arg(name,fallback=''){const prefix=`--${name}=`;const hit=process.argv.find(value=>value.startsWith(prefix));return hit?hit.slice(prefix.length):fallback;}
 function required(name){const value=arg(name);if(!value)throw new Error(`Missing --${name}=...`);return value;}
 function sleep(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
@@ -37,9 +42,15 @@ async function api(url,options={}){
   const type=response.headers.get('content-type')||'';
   return type.includes('json')?response.json():Buffer.from(await response.arrayBuffer());
 }
-async function listArtifacts(){
-  const data=await api(`/repos/${repository}/actions/artifacts?per_page=100`);
-  return (data.artifacts||[]).filter(item=>!item.expired).sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)));
+async function listArtifacts({maxPages=1}={}){
+  const artifacts=[];
+  for(let page=1;page<=maxPages;page++){
+    const data=await api(`/repos/${repository}/actions/artifacts?per_page=${ARTIFACT_PAGE_SIZE}&page=${page}`);
+    const batch=Array.isArray(data?.artifacts)?data.artifacts:[];
+    artifacts.push(...batch.filter(item=>!item.expired));
+    if(batch.length<ARTIFACT_PAGE_SIZE)break;
+  }
+  return artifacts.sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)));
 }
 async function downloadArtifact(artifact){
   const response=await fetch(artifact.archive_download_url,{headers:{Accept:'application/vnd.github+json',Authorization:`Bearer ${token}`},redirect:'follow'});
@@ -70,23 +81,26 @@ function saveLkg(lkg,source){
   return true;
 }
 async function tryCertifiedArtifact(artifacts){
-  for(const artifact of artifacts.filter(item=>String(item.name).startsWith('qb-settings-translation-lkg-'))){
+  for(const artifact of artifacts.filter(item=>String(item.name).startsWith('qb-settings-translation-lkg-')&&!incompatibleArtifactIds.has(item.id))){
     try{
       const dir=await downloadArtifact(artifact);
       const file=path.join(dir,'qb-settings-translation-lkg.json');
-      if(!fs.existsSync(file))continue;
+      if(!fs.existsSync(file)){incompatibleArtifactIds.add(artifact.id);continue;}
       const lkg=JSON.parse(fs.readFileSync(file,'utf8'));
       if(saveLkg(lkg,`artifact ${artifact.id}/${artifact.name}`))return artifact;
-    }catch(error){console.warn(`Skipping incompatible Settings LKG artifact ${artifact.id}: ${error.message}`);}
+    }catch(error){
+      incompatibleArtifactIds.add(artifact.id);
+      console.warn(`Skipping incompatible Settings LKG artifact ${artifact.id}: ${error.message}`);
+    }
   }
   return null;
 }
 async function tryBootstrapCatalog(artifacts){
-  for(const artifact of artifacts.filter(item=>String(item.name).startsWith('qb-release-catalog-'))){
+  for(const artifact of artifacts.filter(item=>String(item.name).startsWith('qb-release-catalog-')&&!incompatibleArtifactIds.has(item.id))){
     try{
       const dir=await downloadArtifact(artifact);
       const file=path.join(dir,'qb-releases.json');
-      if(!fs.existsSync(file))continue;
+      if(!fs.existsSync(file)){incompatibleArtifactIds.add(artifact.id);continue;}
       const enriched=JSON.parse(fs.readFileSync(file,'utf8'));
       const lkg=buildQbSettingsTranslationLkg(enriched,frozen,{
         baseCatalogSha256:stable.catalogSha256,
@@ -94,7 +108,10 @@ async function tryBootstrapCatalog(artifacts){
       });
       saveLkg(lkg,`source-enriched bootstrap artifact ${artifact.id}/${artifact.name}`);
       return artifact;
-    }catch(error){console.warn(`Skipping incompatible source catalog artifact ${artifact.id}: ${error.message}`);}
+    }catch(error){
+      incompatibleArtifactIds.add(artifact.id);
+      console.warn(`Skipping incompatible source catalog artifact ${artifact.id}: ${error.message}`);
+    }
   }
   return null;
 }
@@ -103,7 +120,8 @@ async function dispatchCandidate(){
   console.log(`Dispatched CI candidate on ${branch} to refresh certified qB Settings translation evidence.`);
 }
 
-let artifacts=await listArtifacts();
+console.log(`Scanning up to ${ARTIFACT_MAX_PAGES*ARTIFACT_PAGE_SIZE} recent artifacts for reusable qB Settings translation evidence.`);
+let artifacts=await listArtifacts({maxPages:ARTIFACT_MAX_PAGES});
 if(await tryCertifiedArtifact(artifacts))process.exit(0);
 const bootstrap=await tryBootstrapCatalog(artifacts);
 if(bootstrap){
@@ -112,11 +130,11 @@ if(bootstrap){
 }
 if(!dispatchIfMissing)throw new Error('No compatible certified Settings LKG or source-enriched bootstrap artifact is available.');
 await dispatchCandidate();
-for(let attempt=1;attempt<=70;attempt++){
-  await sleep(30000);
-  artifacts=await listArtifacts();
-  const resolved=await tryCertifiedArtifact(artifacts);
-  if(resolved)process.exit(0);
-  console.log(`Waiting for certified qB Settings translation LKG artifact (${attempt}/70)...`);
+for(let attempt=1;attempt<=POLL_ATTEMPTS;attempt++){
+  await sleep(POLL_INTERVAL_MS);
+  artifacts=await listArtifacts({maxPages:1});
+  if(await tryCertifiedArtifact(artifacts))process.exit(0);
+  if(await tryBootstrapCatalog(artifacts))process.exit(0);
+  console.log(`Waiting for certified qB Settings translation evidence (${attempt}/${POLL_ATTEMPTS})...`);
 }
-throw new Error('Timed out waiting for a compatible certified qB Settings translation LKG artifact.');
+throw new Error('Timed out waiting for compatible certified qB Settings translation evidence.');
