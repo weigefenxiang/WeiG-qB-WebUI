@@ -104,6 +104,17 @@
       return{changed:false,verified:false,reason:'write-failed',error:error,prefs:after||null};
     }
   }
+  function waitForLocaleNavigation(){
+    return new Promise(function(resolve){
+      var settled=false,timer=null;
+      function finish(){if(settled)return;settled=true;if(timer)clearTimeout(timer);resolve();}
+      try{global.addEventListener('pagehide',finish,{once:true});}catch(_e){}
+      /* A navigation should destroy this document quickly. The timeout is a
+       * fail-open guard against a browser/WebView refusing reload: verified qB
+       * locale remains authoritative and the app must never freeze forever. */
+      timer=setTimeout(finish,1500);
+    });
+  }
   function installLocaleReadyBootstrap(){
     var I=W.I18n;if(!I||typeof I.ready!=='function'||I.__weiggBrowserBootstrapWrapped)return false;
     var original=I.ready;
@@ -115,11 +126,10 @@
         var result=await bootstrapBrowserLocale(app.client,app.preferences);
         if(result&&result.prefs)app.preferences=result.prefs;
         if(result&&result.reloadRequired===true){
-          global.location.reload();
-          /* Navigation is now the continuation. Keep app.init() behind this
-           * gate so it cannot expose a stale-language ready shell before the
-           * reload destroys this document. */
-          return new Promise(function(){});
+          var navigation=waitForLocaleNavigation();
+          if(result.prefs&&result.prefs.locale!=null&&I.applyLocale)I.applyLocale(result.prefs.locale);
+          else global.location.reload();
+          await navigation;
         }
         return value;
       });
