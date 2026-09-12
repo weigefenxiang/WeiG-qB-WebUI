@@ -9,8 +9,9 @@ import {fileURLToPath} from 'node:url';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const manifest=JSON.parse(fs.readFileSync(path.join(root,'tools/data/qb-stable-lkg.json'),'utf8'));
-const catalogBytes=fs.readFileSync(path.join(root,manifest.catalogPath));
-const catalog=JSON.parse(catalogBytes.toString('utf8'));
+const catalogText=fs.readFileSync(path.join(root,manifest.catalogPath),'utf8').replace(/\r\n?/g,'\n');
+const catalogBytes=Buffer.from(catalogText,'utf8');
+const catalog=JSON.parse(catalogText);
 const frozenDigest=crypto.createHash('sha256').update(catalogBytes).digest('hex');
 const localeLkg=JSON.parse(fs.readFileSync(path.join(root,'tools/data/qb-locale-lkg.json'),'utf8'));
 const latestLocaleProfile=localeLkg.profiles.find(row=>row.qbVersion===localeLkg.latestAdmittedStable);
@@ -21,7 +22,7 @@ const digest='a'.repeat(64);
 
 assert.equal(catalog.length,65,'synthetic release evidence contract expects the current 65-version Frozen catalog');
 assert.equal(localeCount,61,'synthetic release evidence contract expects the current 61-locale latest stable surface');
-assert.equal(frozenDigest,manifest.catalogSha256,'Frozen catalog digest must match its manifest before synthesizing evidence');
+assert.equal(frozenDigest,manifest.catalogSha256,'LF-canonical Frozen catalog digest must match its manifest before synthesizing evidence');
 
 const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'weigg-release-compat-'));
 const gfmPath=path.join(tmp,'gfm.json');
