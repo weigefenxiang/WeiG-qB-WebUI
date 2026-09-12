@@ -41,7 +41,12 @@ const server=http.createServer(async(req,res)=>{try{const url=new URL(req.url,`h
 await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(port,host,resolve);});
 
 async function waitReady(page){await page.waitForSelector('#logout-btn');await page.waitForFunction(()=>window.WeiG?.ReleaseProfile?.current()?.qbVersion&&window.WeiG?.CapabilityRegistry?.state('tags')?.feature&&window.WeiG?.AppState?.client?.qbVersion&&window.WeiG.AppState.client.qbVersion!=='0.0.0');await page.waitForTimeout(100);}
-async function assertHiddenCapability(page,selector,label){const count=await page.locator(selector).count();if(count===0)return;const hidden=await page.locator(selector).first().evaluate(n=>n.hidden||getComputedStyle(n).display==='none');assert(hidden,`${label}: unsupported capability must be absent/hidden, not disabled and badged`);}
+async function assertPrivateTrackerOwnership(page,supported,label){
+  const options=await page.evaluate(()=>window.WeiG.LibraryController.facetOptions('tracker'));
+  const privateOptions=options.filter(x=>x.value==='__weigg_private__');
+  if(supported)assert(options[0]?.value===''&&privateOptions.length===1&&options[1]?.value==='__weigg_private__'&&options[1]?.label==='Private / PT',`${label}: Private / PT must be the first special Tracker option ${JSON.stringify(options)}`);
+  else assert(privateOptions.length===0,`${label}: source-unproven Private / PT must be absent from Tracker facet ${JSON.stringify(options)}`);
+}
 async function assertSupportedTags(page,label){
   const g=await page.evaluate(()=>{const tag=document.querySelector('[data-facet="tag"]'),category=document.querySelector('[data-facet="category"]'),tt=tag?.querySelector('.ui-select__trigger'),ct=category?.querySelector('.ui-select__trigger');if(!tag||!category||!tt||!ct)return null;const a=tt.getBoundingClientRect(),b=ct.getBoundingClientRect(),ts=getComputedStyle(tt),cs=getComputedStyle(ct);return{tagW:a.width,catW:b.width,tagH:a.height,catH:b.height,badge:tag.querySelectorAll('.capability-badge').length,hidden:tag.hidden,disabled:tt.disabled||tag.getAttribute('aria-disabled')==='true',affordance:tag.classList.contains('capability-affordance')||tag.classList.contains('capability-affordance--control'),tagGrid:ts.gridTemplateColumns,catGrid:cs.gridTemplateColumns,value:tt.querySelector('.ui-select__value')?.textContent};});
   assert(g&&g.value==='全部标签'&&!g.hidden&&g.badge===0&&!g.disabled&&!g.affordance,`${label}: supported Tags must use the plain canonical Select ${JSON.stringify(g)}`);
@@ -59,21 +64,21 @@ try{
   assert(await page.evaluate(()=>window.WeiG.ReleaseProfile.current().qbVersion)==='4.1.0','qB4 browser fixture must bind exact 4.1.0 release profile');
   assert(await page.evaluate(()=>window.WeiG.CapabilityRegistry.supports('tags'))===false,'qB4.1.0 must not claim the native Tags taxonomy API');
   assert(await page.evaluate(()=>window.WeiG.CapabilityRegistry.supports('tagFacet'))===true,'qB4.1.0 source-proven torrent tags field must enable the read/filter Tags facet');
-  await assertSupportedTags(page,'Desktop qB4 Tags');await assertHiddenCapability(page,'[data-filter="private"]','qB4 Private/PT');
+  await assertSupportedTags(page,'Desktop qB4 Tags');await assertPrivateTrackerOwnership(page,false,'Desktop qB4 Private/PT');
   const q4Filters=await page.locator('#filter-nav [data-filter]').evaluateAll(nodes=>nodes.map(n=>n.dataset.filter));
-  assert(q4Filters.includes('stopped')&&q4Filters.includes('running')&&q4Filters.includes('stalled')&&!q4Filters.includes('private'),`qB4 filter view must expose native/derived canonical filters while keeping authoritative Private hidden ${JSON.stringify(q4Filters)}`);
+  assert(q4Filters.includes('stopped')&&q4Filters.includes('running')&&q4Filters.includes('stalled')&&!q4Filters.includes('private'),`qB4 filter view must expose native/derived canonical filters while keeping Private / PT out of status filters ${JSON.stringify(q4Filters)}`);
   await assertOnlyHeaderHints(page,'Home qB4');
-  await page.setViewportSize({width:390,height:844});await page.locator('#menu-btn').click();await page.waitForFunction(()=>document.getElementById('sidebar')?.classList.contains('is-open'));await assertSupportedTags(page,'Mobile qB4 Tags');await assertHiddenCapability(page,'[data-filter="private"]','Mobile qB4 Private/PT');
+  await page.setViewportSize({width:390,height:844});await page.locator('#menu-btn').click();await page.waitForFunction(()=>document.getElementById('sidebar')?.classList.contains('is-open'));await assertSupportedTags(page,'Mobile qB4 Tags');await assertPrivateTrackerOwnership(page,false,'Mobile qB4 Private/PT');
   assert(errors.length===0,`qB4 browser errors: ${errors.join(' | ')}`);await context.close();context=null;
 
   fixtureMode='q5';
   context=await browser.newContext({viewport:{width:1366,height:768},locale:'zh-CN'});page=await context.newPage();errors=[];page.on('pageerror',e=>errors.push(String(e)));page.on('console',m=>{if(m.type()==='error'&&!/favicon|Wei\.G\.ico/i.test(m.text()))errors.push(m.text());});
   await page.goto(`http://${host}:${port}/#/`,{waitUntil:'domcontentloaded'});await waitReady(page);
   await page.waitForFunction(()=>window.WeiG?.CapabilityRegistry?.supports('tags')===true&&document.querySelector('[data-facet="tag"]')?.hidden===false);
-  await assertSupportedTags(page,'Desktop qB5 Tags');
+  await assertSupportedTags(page,'Desktop qB5 Tags');await assertPrivateTrackerOwnership(page,true,'Desktop qB5 Private/PT');
   const q5Filters=await page.locator('#filter-nav [data-filter]').evaluateAll(nodes=>nodes.map(n=>n.dataset.filter));
-  assert(q5Filters.includes('stalled')&&q5Filters.includes('private')&&q5Filters.includes('stopped')&&q5Filters.includes('running'),`qB5 filter view must expose supported source-derived filters ${JSON.stringify(q5Filters)}`);
-  assert(await page.evaluate(()=>window.WeiG.CapabilityRegistry.supports('privateFilter'))===true,'qB5 exact profile must expose authoritative Private filter');await assertOnlyHeaderHints(page,'Home qB5');
+  assert(q5Filters.includes('stalled')&&!q5Filters.includes('private')&&q5Filters.includes('stopped')&&q5Filters.includes('running'),`qB5 status filter view must expose supported source-derived statuses while keeping Private / PT in Tracker ${JSON.stringify(q5Filters)}`);
+  assert(await page.evaluate(()=>window.WeiG.CapabilityRegistry.supports('privateFilter'))===true,'qB5 exact profile must expose authoritative Private metadata for the Tracker facet');await assertOnlyHeaderHints(page,'Home qB5');
   assert(errors.length===0,`qB5 browser errors: ${errors.join(' | ')}`);
-  console.log('Sidebar capability browser gate passed: qB4.1 exposes source-derived Tags/Stalled read semantics without native Tags writes or authoritative Private, while qB5 exposes its native/source-proven capabilities with canonical geometry.');
+  console.log('Sidebar capability browser gate passed: qB4.1 exposes source-derived Tags/Stalled read semantics without authoritative Private, while qB5 keeps status filters independent and exposes Private / PT as the first special Tracker option.');
 }finally{if(context)await context.close();await browser.close();await new Promise(resolve=>server.close(resolve));}
