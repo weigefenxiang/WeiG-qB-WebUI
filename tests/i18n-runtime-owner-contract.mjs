@@ -50,6 +50,12 @@ assert.ok(i18n.includes("source:'qb-native-QBT_TR+official-QM'")&&i18n.includes(
 assert.ok(i18n.includes("type:'script'")&&i18n.includes('loc.maximize')&&i18n.includes("+' ('+raw+')'"),'locale labels must expose source-derived locale codes and script distinctions instead of collapsing zh_CN/zh_HK/zh_TW to the same language name');
 assert.ok(i18n.includes('counts[item.label]>1')&&i18n.includes('nativeLabel(item.value)'),'duplicate upstream locale labels must be disambiguated from their exact locale code');
 assert.ok(i18n.includes('localeApplied=false,reloadScheduled=false')&&i18n.includes('changed&&wasApplied&&!reloadScheduled')&&i18n.includes('global.location.reload()'),'verified manual runtime locale changes must retain the one-reload rule for qB-owned translated resources');
+assert.ok(i18n.includes('@@WEIGG_UI')&&i18n.includes('function qbOwnedText()')&&i18n.includes('function qbText(key,fallback)')&&i18n.includes('function loadQbOwnedText()'),'W.I18n must canonically parse, resolve and expose qB-owned shared UI copy from the same exact native/bridge routing');
+assert.ok(i18n.includes('loadQbOwnedText:loadQbOwnedText')&&i18n.includes('qbText:qbText'),'qB-owned shared UI API must be exported directly by canonical W.I18n');
+
+const filterView=read('webui/private/scripts/torrent-filter-view.js');
+assert.ok(filterView.includes('I&&I.qbText?I.qbText(')&&filterView.includes('I.loadQbOwnedText'),'Torrent filter presentation must consume canonical W.I18n qB-owned copy');
+for(const stale of ['I.qbText=','I.loadQbOwnedText=','parseNativeUi','translationSet','relabelSettingsTabs','relabelTransferModes','weigg:qb-owned-text-ready'])assert.equal(filterView.includes(stale),false,`Torrent filter presentation must not retain qB-owned runtime owner/repair symbol ${stale}`);
 
 assert.equal(exists('webui/private/data/qb-settings-translations.json'),false,'retired all-release translation sidecar must leave the source tree');
 const packer=read('tools/qb-webui-catalog.mjs');
@@ -70,6 +76,12 @@ assert.equal(settings.includes("onWeiGChange('language'"),false,'Language must n
 assert.equal(settings.includes('W.I18n.setLocale'),false,'Settings must not switch an independent language owner');
 assert.equal((settings.match(/\.setPreferences\(pending\)/g)||[]).length,1,'one canonical Settings save path must issue exactly one qB setPreferences call');
 assert.ok(settings.includes('var verified=await client.getPreferences()')&&settings.includes('W.I18n.applyLocale(controller.prefs.locale)'),'locale must switch only after qB verification reread succeeds');
+assert.ok(settings.includes('QB_TAB_FALLBACKS')&&settings.includes("'settings.tab.'+tab")&&settings.includes('W.I18n.qbText'),'Settings tabs must consume canonical qB-owned copy at render time');
+assert.equal(settings.includes('TAB_TITLES'),false,'Settings must not retain a bilingual qB-owned tab wording table');
+
+const transfer=read('webui/private/scripts/transfer.js');
+assert.ok(transfer.includes('transfer.rate.global')&&transfer.includes('transfer.rate.alternative')&&transfer.includes('W.I18n.qbText'),'Transfer rate-mode buttons must consume canonical qB-owned copy when created');
+assert.equal(transfer.includes("[['normal','NORMAL'],['alt','ALT']]"),false,'Transfer must not seed qB-owned rate mode buttons with NORMAL/ALT for later repair');
 
 const session=read('webui/private/scripts/session.js');
 assert.ok(session.includes("LEGACY_HANDOFF_KEY='weigg.localeHandoff.v1'")&&session.includes("BOOTSTRAP_KEY='weigg.localeBootstrap.v2'"),'Session must explicitly retire reversible locale handoff metadata and own one-way browser bootstrap completion metadata');
@@ -99,4 +111,4 @@ assert.ok(logs.includes('var I=W.I18n'),'Logs must call W.I18n directly');
 assert.ok(responsive.includes('W.I18n&&W.I18n.t'),'Responsive runtime must call W.I18n directly');
 assert.ok(header.includes("localized('Add','添加')"),'Header short copy must no longer depend on InterfaceText');
 
-console.log('I18n runtime owner contract passed: qB preferences.locale remains the single language truth; W.I18n owns locale normalization/matching; Session wraps app-owned I18n readiness for deterministic one-time browser bootstrap with a bounded navigation handoff; verified browser selection persists directly into qB and native return never restores an old locale; interrupted writes retry; Virtual qB exposes a canonical locale default; native-capable releases use server-translated QBT_TR/official QM and only source-proven gaps keep exact official TS shards.');
+console.log('I18n runtime owner contract passed: qB preferences.locale remains the single language truth; W.I18n owns locale normalization/matching plus exact Settings and qB-owned shared UI copy; Torrent filter, Settings tabs and Transfer rate modes are presentation callers only; native-capable releases use server-translated QBT_TR/official QM and only source-proven gaps keep exact official TS shards.');

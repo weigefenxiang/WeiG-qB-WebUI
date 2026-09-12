@@ -113,7 +113,7 @@
   function validSettingsPath(value){return /^qb-settings\/[0-9a-f]{40}\.json$/.test(String(value||''));}
   function decodeField(value){try{return decodeURIComponent(String(value||''));}catch(_e){return String(value||'');}}
   function parseNativeSettingsRegistry(text,expectedSha){
-    var source=String(text||''),refs={},preferences={},match;
+    var source=String(text||''),refs={},preferences={},ui={},match;
     var refRe=/@@WEIGG_TEXT\t([0-9a-f]{24})\r?\n([\s\S]*?)\r?\n@@WEIGG_END/g;
     while((match=refRe.exec(source))){var value=String(match[2]||'').trim();if(value&&value.indexOf('QBT_TR(')<0)refs[match[1]]=value;}
     var profileRe=/^@@WEIGG_PROFILE\t([0-9a-f]{40})\t([^\t]*)\t([^\t]*)\t([0-9a-f]{24})\t([0-9a-f]{24}|-)\s*$/gm;
@@ -124,7 +124,9 @@
       var description=match[5]!=='-'?refs[match[5]]||'':'';
       preferences[decodeField(match[2])]={title:title,description:description,controlId:decodeField(match[3])||null};
     }
-    return{schemaVersion:1,source:'qb-native-QBT_TR+official-QM',sourceSha:expectedSha,locale:qbLocale,preferences:preferences};
+    var uiRe=/^@@WEIGG_UI\t([0-9a-f]{40})\t([^\t]*)\t([0-9a-f]{24})\s*$/gm;
+    while((match=uiRe.exec(source))){if(match[1]!==expectedSha)continue;var textValue=refs[match[3]];if(textValue)ui[decodeField(match[2])]=textValue;}
+    return{schemaVersion:2,source:'qb-native-QBT_TR+official-QM',sourceSha:expectedSha,locale:qbLocale,preferences:preferences,ui:ui};
   }
   function loadNativeSettingsData(){
     var current=currentProfile();
@@ -162,8 +164,11 @@
     if(!entry)return null;
     return{title:translateRef(entry.title,data),description:entry.description?translateRef(entry.description,data):'',source:'qb-upstream-preferences-ui+webui-ts-compatibility-only',controlId:entry.controlId||null};
   }
+  function qbOwnedText(){var native=exactNativeSettingsData();if(native&&native.ui)return Object.assign({},native.ui);var data=exactSettingsData(),values={};Object.keys(data&&data.ui||{}).forEach(function(key){values[key]=translateRef(data.ui[key],data);});return values;}
+  function qbText(key,fallback){var values=qbOwnedText();return String(values[key]||fallback||key);}
   function loadQbSettingsCopy(){var current=currentProfile();if(nativeLocaleAllowed(current))return loadNativeSettingsData().then(function(value){return value||loadSettingsData();});return loadSettingsData();}
+  function loadQbOwnedText(){return loadQbSettingsCopy().then(function(){return qbOwnedText();});}
   function ready(){return Promise.all([loadLocaleOptions(),loadQbSettingsCopy()]).then(function(){return api;});}
-  var api={t:t,pick:pick,apply:apply,applyLocale:applyLocale,getLocale:function(){return locale;},getQbLocale:function(){return qbLocale;},normalize:normalize,canonicalQbTag:canonicalQbTag,sameQbLocale:sameQbLocale,hasExactLocale:hasExactLocale,matchBrowserLocale:matchBrowserLocale,parseLocaleOptions:parseLocaleOptions,parseNativeSettingsRegistry:parseNativeSettingsRegistry,loadLocaleOptions:loadLocaleOptions,localeOptions:function(){return localeOptions.slice();},loadSettingsData:loadSettingsData,loadNativeSettingsData:loadNativeSettingsData,qbSetting:qbSetting,ready:ready,supported:[],english:EN};
+  var api={t:t,pick:pick,apply:apply,applyLocale:applyLocale,getLocale:function(){return locale;},getQbLocale:function(){return qbLocale;},normalize:normalize,canonicalQbTag:canonicalQbTag,sameQbLocale:sameQbLocale,hasExactLocale:hasExactLocale,matchBrowserLocale:matchBrowserLocale,parseLocaleOptions:parseLocaleOptions,parseNativeSettingsRegistry:parseNativeSettingsRegistry,loadLocaleOptions:loadLocaleOptions,localeOptions:function(){return localeOptions.slice();},loadSettingsData:loadSettingsData,loadNativeSettingsData:loadNativeSettingsData,loadQbOwnedText:loadQbOwnedText,qbSetting:qbSetting,qbText:qbText,ready:ready,supported:[],english:EN};
   W.I18n=api;W.t=t;
 })(window);
