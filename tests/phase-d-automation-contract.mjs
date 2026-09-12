@@ -29,14 +29,14 @@ const promote=read('.github/workflows/promote.yml');
 const compatVerifier=read('tests/release-compat-evidence.mjs');
 
 assert(gfm.includes('workflow_dispatch:'),'real qB Full Frozen Matrix must remain manually runnable for release-grade Exhaustive evidence');
-assert(/\n\s*push:\s*\n\s*branches:\s*\[dev\]/.test(gfm),'real qB G-FM Fast must run automatically on dev pushes');
-assert(gfm.includes('mode=fast')&&gfm.includes('mode=exhaustive')&&gfm.includes('node tests/real-qb-capability-plan.mjs --matrix "$mode"'),'G-FM workflow must route dev push to Fast and manual dispatch to Exhaustive through the Frozen planner');
-assert(/max-parallel:\s*16/.test(gfm),'real qB Full Frozen Matrix must keep the 16-way concurrency cap');
-assert(gfm.includes('real-qb-fast-aggregate-${{ github.sha }}'),'Fast G-FM must publish exact-SHA non-promotion aggregate evidence');
+assert(!/\n\s*push:\s*/.test(gfm),'ordinary dev pushes must not fan out to the 65-version real qB matrix');
+assert(gfm.includes('mode=exhaustive')&&gfm.includes('node tests/real-qb-capability-plan.mjs --matrix "$mode"'),'G-FM final-candidate workflow must route only to Exhaustive through the Frozen planner');
+assert(/max-parallel:\s*16/.test(gfm),'real qB Full Frozen Matrix must keep the 16-way concurrency cap for the intentional final run');
+assert(!gfm.includes('real-qb-fast-aggregate-${{ github.sha }}'),'ordinary Fast evidence must stay outside the final-only workflow');
 assert(gfm.includes('real-qb-full-aggregate-${{ github.sha }}'),'Exhaustive G-FM must publish exact-SHA release-grade aggregate evidence');
 assert(promote.includes("resolveManualAggregate('real-qb-full.yml', gfmArtifactName")&&promote.includes('workflow_id: workflowId'),'promotion must require the real qB Full Frozen Matrix through the shared manual evidence resolver');
 assert(promote.includes("run.event === 'workflow_dispatch'"),'promotion must require a manually dispatched Exhaustive matrix run');
-assert(promote.includes('real-qb-full-aggregate-${sha}'),'promotion must resolve exact-SHA Exhaustive G-FM aggregate evidence, never Fast evidence');
+assert(promote.includes('real-qb-full-aggregate-${sha}'),'promotion must resolve exact-SHA Exhaustive G-FM aggregate evidence');
 assert(!promote.includes('real-qb-fast-aggregate-${sha}'),'promotion must not accept Fast G-FM aggregate evidence');
 assert(promote.includes('node tests/release-compat-evidence.mjs'),'promotion must revalidate release-grade G-FM evidence before main moves');
 assert(compatVerifier.includes('gfm.expected_stable_count!==65||gfm.executed_runtime_count!==65'),'central compatibility verifier must require an exact 65-version Exhaustive matrix');
@@ -57,4 +57,4 @@ assert(catalogTool.includes('--base-catalog=')&&catalogTool.includes('Incrementa
 const productDiff=read('tools/qb-product-capability-diff.mjs');
 for(const owner of ['release-profile.js','capabilities.js','torrent-semantics.js'])assert(productDiff.includes(`'${owner}'`),`product capability diff must execute formal owner ${owner}`);
 
-console.log(`Compatibility governance contract passed: retired legacy workflows stay removed; frozen LKG ${catalog.length} profiles ${catalog[0].qbVersion} -> ${catalog.at(-1).qbVersion} remains hash-bound; dev pushes run all-65-runtime Fast G-FM while manual Exhaustive remains the only promotion-grade G-FM evidence.`);
+console.log(`Compatibility governance contract passed: retired legacy workflows stay removed; frozen LKG ${catalog.length} profiles ${catalog[0].qbVersion} -> ${catalog.at(-1)?.qbVersion} remains hash-bound; ordinary dev pushes stay lightweight while manual exact-SHA Exhaustive remains the promotion-grade G-FM evidence.`);
