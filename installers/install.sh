@@ -194,6 +194,45 @@ valid_sha() {
   printf '%s' "$1" | grep -Eq '^[0-9a-fA-F]{40}$'
 }
 
+is_pages_irrelevant_path() {
+  case "$1" in
+    docs/*|*.md|LICENSE|.github/workflows/ci.yml|.github/workflows/promote.yml|.github/workflows/real-qb-full.yml|.github/workflows/release.yml) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+dev_payload_can_represent_head() {
+  published_sha=$1
+  dev_head_sha=$2
+  compare_file=$3
+
+  [ "$published_sha" = "$dev_head_sha" ] && return 0
+  valid_sha "$published_sha" && valid_sha "$dev_head_sha" || return 1
+
+  download_file "https://api.github.com/repos/$REPO/compare/$published_sha...$dev_head_sha" "$compare_file" || return 1
+  grep -Eq '^[[:space:]]*"status":[[:space:]]*"ahead"' "$compare_file" || return 1
+
+  changed_paths=$(sed -n 's/^[[:space:]]*"filename":[[:space:]]*"\([^"]*\)".*/\1/p' "$compare_file")
+  [ -n "$changed_paths" ] || return 1
+  changed_count=$(printf '%s\n' "$changed_paths" | grep -c . || true)
+  [ "$changed_count" -lt 300 ] || {
+    echo "GitHub compare returned 300 changed files; refusing to assume the file list is complete." >&2
+    return 1
+  }
+
+  while IFS= read -r changed_path; do
+    [ -n "$changed_path" ] || continue
+    if ! is_pages_irrelevant_path "$changed_path"; then
+      echo "Pages-relevant change exists after published dev payload: $changed_path" >&2
+      return 1
+    fi
+  done <<EOF_CHANGED_PATHS
+$changed_paths
+EOF_CHANGED_PATHS
+
+  return 0
+}
+
 has_busybox_applet() {
   command -v busybox >/dev/null 2>&1 || return 1
   busybox --list 2>/dev/null | grep -qx "$1"
@@ -448,7 +487,6 @@ map_docker_destination() {
       ;;
   esac
 }
-
 
 validate_qb_webui_config_file() {
   validate_cfg=$1
@@ -763,8 +801,8 @@ if [ "$CHANNEL" = "release" ]; then
 else
   DEV_META="$TMP/dev-commit.json"
   download_file "https://api.github.com/repos/$REPO/commits/dev" "$DEV_META" || { echo "Unable to resolve the current dev commit." >&2; exit 1; }
-  SOURCE_SHA=$(sed -n 's/^[[:space:]]*"sha":[[:space:]]*"\([0-9a-fA-F]\{40\}\)".*/\1/p' "$DEV_META" | head -n1)
-  valid_sha "$SOURCE_SHA" || { echo "GitHub did not return a valid dev commit SHA." >&2; exit 1; }
+  DEV_HEAD_SHA=$(sed -n 's/^[[:space:]]*"sha":[[:space:]]*"\([0-9a-fA-F]\{40\}\)".*/\1/p' "$DEV_META" | head -n1)
+  valid_sha "$DEV_HEAD_SHA" || { echo "GitHub did not return a valid dev commit SHA." >&2; exit 1; }
 
   PUBLISHED_SHA_FILE="$TMP/DEV_GIT_SHA"
   download_file "$DEV_DIST_BASE/GIT_SHA" "$PUBLISHED_SHA_FILE" || {
@@ -772,10 +810,17 @@ else
     exit 1
   }
   PUBLISHED_SHA=$(tr -d '\r\n' < "$PUBLISHED_SHA_FILE")
-  [ "$PUBLISHED_SHA" = "$SOURCE_SHA" ] || {
-    echo "The materialized dev payload is still at $PUBLISHED_SHA while dev is $SOURCE_SHA. Wait for the exact-SHA Pages build and retry; refusing raw-source fallback." >&2
-    exit 1
-  }
+  valid_sha "$PUBLISHED_SHA" || { echo "The materialized dev payload does not publish a valid GIT_SHA." >&2; exit 1; }
+
+  SOURCE_SHA="$PUBLISHED_SHA"
+  if [ "$PUBLISHED_SHA" != "$DEV_HEAD_SHA" ]; then
+    if dev_payload_can_represent_head "$PUBLISHED_SHA" "$DEV_HEAD_SHA" "$TMP/dev-compare.json"; then
+      echo "Current dev HEAD $DEV_HEAD_SHA differs from materialized SHA $PUBLISHED_SHA only by Pages-irrelevant changes; reusing the verified payload."
+    else
+      echo "The materialized dev payload is still at $PUBLISHED_SHA while dev is $DEV_HEAD_SHA, and at least one Pages-relevant change is not published. Wait for the exact Pages build and retry; refusing raw-source fallback." >&2
+      exit 1
+    fi
+  fi
 
   download_file "$DEV_DIST_BASE/WeiG-qB-WebUI.zip" "$PACKAGE" || { echo "Unable to download the materialized dev payload for exact SHA $SOURCE_SHA." >&2; exit 1; }
   download_file "$DEV_DIST_BASE/SHA256SUMS" "$TMP/SHA256SUMS" || { echo "Materialized dev payload is missing SHA256SUMS; refusing installation." >&2; exit 1; }
@@ -785,9 +830,13 @@ else
   SRC="$TMP/dev/WeiG-qB-WebUI"
   [ -d "$SRC" ] || { echo "Materialized dev payload does not contain WeiG-qB-WebUI." >&2; exit 1; }
   PACKAGE_SHA=$(tr -d '\r\n' < "$SRC/GIT_SHA" 2>/dev/null || true)
-  [ "$PACKAGE_SHA" = "$SOURCE_SHA" ] || { echo "Dev package Git SHA $PACKAGE_SHA does not match requested dev SHA $SOURCE_SHA." >&2; exit 1; }
+  [ "$PACKAGE_SHA" = "$SOURCE_SHA" ] || { echo "Dev package Git SHA $PACKAGE_SHA does not match materialized dev SHA $SOURCE_SHA." >&2; exit 1; }
   assert_materialized_webui "$SRC" || exit 1
-  echo "Source: dev exact SHA $SOURCE_SHA (materialized Pages payload; checksum verified)"
+  if [ "$SOURCE_SHA" = "$DEV_HEAD_SHA" ]; then
+    echo "Source: dev exact SHA $SOURCE_SHA (materialized Pages payload; checksum verified)"
+  else
+    echo "Source: dev materialized SHA $SOURCE_SHA for current HEAD $DEV_HEAD_SHA (only Pages-irrelevant changes are newer; checksum verified)"
+  fi
 fi
 
 [ -n "$SRC" ] && [ -d "$SRC" ] || { echo "WebUI payload not found." >&2; exit 1; }
