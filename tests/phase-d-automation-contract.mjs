@@ -26,6 +26,7 @@ const manifest=JSON.parse(read('tools/data/qb-stable-lkg.json'));
 const catalogPath=path.join(root,manifest.catalogPath);
 const gfm=read('.github/workflows/real-qb-full.yml');
 const promote=read('.github/workflows/promote.yml');
+const compatVerifier=read('tests/release-compat-evidence.mjs');
 
 assert(gfm.includes('workflow_dispatch:'),'real qB Full Frozen Matrix must remain manually runnable for release-grade Exhaustive evidence');
 assert(!/\n\s*push:\s*\n/.test(gfm),'real qB Full Frozen Matrix must not run on ordinary dev pushes');
@@ -33,13 +34,14 @@ assert(gfm.includes('mode=exhaustive')&&!gfm.includes('mode=fast')&&gfm.includes
 assert(/max-parallel:\s*16/.test(gfm),'real qB Full Frozen Matrix must keep the 16-way concurrency cap');
 assert(!gfm.includes('real-qb-fast-aggregate-${{ github.sha }}'),'release-grade G-FM workflow must not publish Fast aggregate evidence');
 assert(gfm.includes('real-qb-full-aggregate-${{ github.sha }}'),'Exhaustive G-FM must publish exact-SHA release-grade aggregate evidence');
-assert(promote.includes("workflow_id: 'real-qb-full.yml'"),'promotion must require the real qB Full Frozen Matrix workflow');
+assert(promote.includes("resolveManualAggregate('real-qb-full.yml', gfmArtifactName")&&promote.includes('workflow_id: workflowId'),'promotion must require the real qB Full Frozen Matrix through the shared manual evidence resolver');
 assert(promote.includes("run.event === 'workflow_dispatch'"),'promotion must require a manually dispatched Exhaustive matrix run');
 assert(promote.includes('real-qb-full-aggregate-${sha}'),'promotion must resolve exact-SHA Exhaustive G-FM aggregate evidence, never Fast evidence');
 assert(!promote.includes('real-qb-fast-aggregate-${sha}'),'promotion must not accept Fast G-FM aggregate evidence');
-assert(promote.includes('expected_stable_count !== 65')&&promote.includes('executed_runtime_count !== 65'),'promotion must require an exact 65-version Exhaustive matrix');
-assert(promote.includes('evidence.PASS !== 65')&&promote.includes('evidence.FAIL !== 0')&&promote.includes('evidence.BLOCKED !== 0'),'promotion must fail closed unless Exhaustive G-FM is 65/65 PASS');
-assert(promote.includes('result.qb_version !== result.runtime_version'),'promotion must reject inexact qB runtime identity');
+assert(promote.includes('node tests/release-compat-evidence.mjs'),'promotion must revalidate release-grade G-FM evidence before main moves');
+assert(compatVerifier.includes('gfm.expected_stable_count!==65||gfm.executed_runtime_count!==65'),'central compatibility verifier must require an exact 65-version Exhaustive matrix');
+assert(compatVerifier.includes('gfm.PASS!==65||gfm.FAIL!==0||gfm.BLOCKED!==0'),'central compatibility verifier must fail closed unless Exhaustive G-FM is 65/65 PASS');
+assert(compatVerifier.includes("qb!==String(result.runtime_version||'')"),'central compatibility verifier must reject inexact qB runtime identity');
 
 assert(manifest.schemaVersion===1&&manifest.supportFloor==='4.1.0','LKG manifest schema/floor drifted');
 assert(fs.existsSync(catalogPath),'committed single-file LKG catalog is missing');
@@ -55,4 +57,4 @@ assert(catalogTool.includes('--base-catalog=')&&catalogTool.includes('Incrementa
 const productDiff=read('tools/qb-product-capability-diff.mjs');
 for(const owner of ['release-profile.js','capabilities.js','torrent-semantics.js'])assert(productDiff.includes(`'${owner}'`),`product capability diff must execute formal owner ${owner}`);
 
-console.log(`Compatibility governance contract passed: retired legacy workflows stay removed; frozen LKG ${catalog.length} profiles ${catalog[0].qbVersion} -> ${catalog.at(-1).qbVersion} remains hash-bound; heavyweight Full Frozen Matrix is manual-only final/release validation and promotion requires manually dispatched exact-SHA Exhaustive 65/65 G-FM.`);
+console.log(`Compatibility governance contract passed: retired legacy workflows stay removed; frozen LKG ${catalog.length} profiles ${catalog[0].qbVersion} -> ${catalog.at(-1).qbVersion} remains hash-bound; heavyweight Full Frozen Matrix is manual-only final/release validation and promotion requires centrally revalidated exact-SHA Exhaustive 65/65 G-FM.`);

@@ -20,6 +20,7 @@ const ci=read('.github/workflows/ci.yml');
 const gfm=read('.github/workflows/real-qb-full.yml');
 const promote=read('.github/workflows/promote.yml');
 const release=read('.github/workflows/release.yml');
+const compatVerifier=read('tests/release-compat-evidence.mjs');
 
 assert(ci.includes('qb-release-catalog.mjs upstream-qb --output=qb-releases.json'),'candidate CI must regenerate exact supported stable source facts');
 assert(ci.includes('tests/upstream-release-audit.mjs upstream-qb'),'candidate CI must audit every supported stable upstream release');
@@ -35,10 +36,12 @@ assert(gfm.includes('Run isolated exact-version real qB evidence'),'G-FM must ex
 assert(!gfm.includes('real-qb-fast-aggregate-${{ github.sha }}'),'release-grade G-FM must not publish Fast aggregate evidence');
 assert(gfm.includes('Require Exhaustive complete 65/65 Frozen real-qB evidence')&&gfm.includes('real-qb-full-aggregate-${{ github.sha }}'),'manual Exhaustive G-FM must preserve strict 65/65 aggregate evidence');
 
-assert(promote.includes("workflow_id: 'real-qb-full.yml'")&&promote.includes("run.event === 'workflow_dispatch'"),'promotion must require the manually dispatched exact-SHA Exhaustive G-FM');
-assert(promote.includes('real-qb-full-aggregate-${sha}'),'promotion must require exact-SHA Exhaustive G-FM aggregate evidence');
+assert(promote.includes("resolveManualAggregate('real-qb-full.yml', gfmArtifactName")&&promote.includes('workflow_id: workflowId')&&promote.includes("run.event === 'workflow_dispatch'"),'promotion must require the manually dispatched exact-SHA Exhaustive G-FM through the shared resolver');
+assert(promote.includes('real-qb-full-aggregate-${sha}')&&promote.includes('node tests/release-compat-evidence.mjs'),'promotion must require and centrally revalidate exact-SHA Exhaustive G-FM aggregate evidence');
 assert(!promote.includes('real-qb-fast-aggregate-${sha}'),'promotion must never substitute Fast G-FM evidence for Exhaustive evidence');
+assert(compatVerifier.includes('gfm.expected_stable_count!==65||gfm.executed_runtime_count!==65')&&compatVerifier.includes('gfm.PASS!==65||gfm.FAIL!==0||gfm.BLOCKED!==0'),'central release compatibility verifier must enforce Exhaustive 65/65 G-FM');
 assert(!release.includes("workflow_id: 'upstream-compat.yml'"),'Release must not depend on the retired upstream compatibility workflow');
 assert(!release.includes("workflow_id: 'frozen-stable-compat.yml'"),'Release must not depend on the retired frozen compatibility workflow');
+assert(release.includes("resolveManualAggregate('real-qb-full.yml', gfmArtifactName")&&release.includes('node tests/release-compat-evidence.mjs'),'Release must independently resolve and revalidate exact-SHA manual Full Frozen Matrix evidence');
 
-console.log('Upstream validation workflow contract passed: obsolete split workflows stay retired; candidate CI owns source/product audit; the 16-way Full Frozen Matrix is manual-only final/release validation; promotion accepts only exact-SHA Exhaustive aggregate evidence.');
+console.log('Upstream validation workflow contract passed: obsolete split workflows stay retired; candidate CI owns source/product audit; the 16-way Full Frozen Matrix is manual-only final/release validation; promotion/release accept only centrally revalidated exact-SHA manual Exhaustive aggregate evidence.');
