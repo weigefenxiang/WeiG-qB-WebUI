@@ -23,6 +23,8 @@ assert.ok(windowsInstall.includes('refusing raw-source fallback'),'Windows dev i
 assert.ok(windowsInstall.includes('Test-DevPayloadCanRepresentHead'),'Windows dev installer must compare a lagging materialized payload with current dev before reuse');
 assert.ok(windowsInstall.includes('Test-PagesIrrelevantPath'),'Windows dev installer must use an explicit Pages-irrelevant exception set');
 assert.equal(windowsInstall.includes('archive/$sourceSha.zip'),false,'Windows dev installer must not download the raw GitHub source archive');
+assert.ok(linuxInstall.includes('webui/*|simulator/*|installers/*|VERSION|tools/data/qb-stable-lkg.json|tools/data/qb-locale-lkg.json|tests/fixtures/qb-release-catalog.lkg.json'),'Linux installer must share the Pages public-payload allowlist');
+assert.ok(windowsInstall.includes("if($Path.StartsWith('webui/'")&&windowsInstall.includes("'tests/fixtures/qb-release-catalog.lkg.json' { return $false }")&&windowsInstall.includes('default { return $true }'),'Windows installer must share the Pages public-payload allowlist and default non-payload paths to reusable');
 assert.ok(buildSite.includes("tools/build-webui-dist.mjs"),'Virtual qB Pages build must publish the canonical dev distribution');
 assert.ok(buildSite.includes("downloads','dev"),'Dev distribution must be part of the deployed Pages site');
 assert.ok(distBuilder.includes("packCatalog(catalogPath,path.join(root,'private/data/qb-releases.json'))"),'Canonical distribution must materialize the runtime release catalog and translation routing assets');
@@ -47,6 +49,7 @@ assert.match(pagesSource,/--shard-count=16/,'Demand-driven Settings evidence may
 assert.match(pagesWorkflow,/compare\/\$EXACT_SHA\.\.\.\$REMOTE_SHA/,'Dev Pages stale gate must compare the workflow SHA with a newer dev HEAD');
 assert.match(pagesWorkflow,/Pages-irrelevant head advance/,'Dev Pages stale gate must explicitly permit known Pages-irrelevant head advances');
 assert.match(pagesWorkflow,/Pages-relevant head advance blocks stale deployment/,'Dev Pages stale gate must fail closed when any runtime/unknown path advanced after the build SHA');
+assert.ok(pagesWorkflow.includes('webui/*|simulator/*|installers/*|VERSION|tools/data/qb-stable-lkg.json|tools/data/qb-locale-lkg.json|tests/fixtures/qb-release-catalog.lkg.json'),'Dev Pages stale gate must share the same public-payload allowlist as the source relay and installers');
 assert.match(pagesWorkflow,/\.files\[\] \| \.filename, "\\u0000"/,'Dev Pages stale gate must parse GitHub compare filenames losslessly, including non-ASCII docs');
 assert.match(pagesWorkflow,/FILE_COUNT.*-ge 300/s,'Dev Pages stale gate must refuse a possibly truncated GitHub compare file list');
 assert.ok(windowsDevGuide.includes(devInstallerUrl),'Windows dev guide must bootstrap from the materialized dev distribution, not the stable main installer');

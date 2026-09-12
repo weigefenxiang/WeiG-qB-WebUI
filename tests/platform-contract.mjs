@@ -39,10 +39,10 @@ assert.match(sh,/--channel=release\|dev/,'Linux installer must keep the old chan
 assert.match(sh,/--dir=\/path/,'Linux installer must keep the old path syntax as a compatibility alias');
 assert.match(sh,/api\.github\.com\/repos\/\$REPO\/commits\/dev/,'Linux dev channel must resolve the current dev exact SHA');
 assert.match(sh,/DEV_DIST_BASE="https:\/\/weigefenxiang\.github\.io\/WeiG-qB-WebUI\/downloads\/dev"/,'Linux Dev channel must consume the canonical public materialized payload');
-assert.match(sh,/dev_payload_can_represent_head/,'Linux Dev channel must explicitly verify whether a materialized payload may represent a newer docs-only dev HEAD');
+assert.match(sh,/dev_payload_can_represent_head/,'Linux Dev channel must explicitly verify whether a materialized payload may represent a newer non-payload dev HEAD');
 assert.match(sh,/compare\/\$published_sha\.\.\.\$dev_head_sha/,'Linux Dev payload reuse must compare the published payload SHA with the current dev HEAD');
-assert.match(sh,/docs\/\*\|\*\.md/,'Linux Dev payload reuse must recognize the explicit documentation-only exception set');
-assert.match(sh,/Pages-relevant change exists after published dev payload/,'Linux Dev payload reuse must fail closed when any non-exempt path changed');
+assert.match(sh,/webui\/\*\|simulator\/\*\|installers\/\*\|VERSION\|tools\/data\/qb-stable-lkg\.json\|tools\/data\/qb-locale-lkg\.json\|tests\/fixtures\/qb-release-catalog\.lkg\.json/,'Linux Dev payload reuse must share the Pages public-payload allowlist');
+assert.match(sh,/Pages-relevant change exists after published dev payload/,'Linux Dev payload reuse must fail closed when any public payload path changed');
 assert.match(sh,/PACKAGE_SHA.*SOURCE_SHA|SOURCE_SHA.*PACKAGE_SHA/s,'Linux Dev package identity must remain bound to the published materialized SHA');
 assert.match(sh,/assert_materialized_webui/,'Linux installer must validate materialized catalog and qB translation runtime assets');
 assert.doesNotMatch(sh,/archive\/\$SOURCE_SHA\.zip/,'Linux Dev channel must not fall back to a raw source archive');
@@ -74,10 +74,10 @@ assert.match(ps,/ValidateSet\('Release','Dev'\)/,'Windows installer must retain 
 assert.match(ps,/ValidateSet\('Install','Update','Rollback'\)/,'Windows installer must retain legacy mode compatibility');
 assert.match(ps,/api\.github\.com\/repos\/\$Repo\/commits\/dev/,'Windows Dev channel must resolve the current dev exact SHA');
 assert.match(ps,/DevDistBase='https:\/\/weigefenxiang\.github\.io\/WeiG-qB-WebUI\/downloads\/dev'/,'Windows Dev channel must consume the canonical public materialized payload');
-assert.match(ps,/function Test-DevPayloadCanRepresentHead/,'Windows Dev channel must verify whether a materialized payload may represent a newer docs-only dev HEAD');
+assert.match(ps,/function Test-DevPayloadCanRepresentHead/,'Windows Dev channel must verify whether a materialized payload may represent a newer non-payload dev HEAD');
 assert.match(ps,/compare\/\$PublishedSha\.\.\.\$DevHeadSha/,'Windows Dev payload reuse must compare the published payload SHA with the current dev HEAD');
-assert.match(ps,/EndsWith\('\.md'/,'Windows Dev payload reuse must recognize Markdown as an explicit Pages-irrelevant path class');
-assert.match(ps,/Pages-relevant change exists after published dev payload/,'Windows Dev payload reuse must fail closed when any non-exempt path changed');
+assert.ok(ps.includes("if($Path.StartsWith('webui/'")&&ps.includes("'tests/fixtures/qb-release-catalog.lkg.json' { return $false }")&&ps.includes('default { return $true }'),'Windows Dev payload reuse must share the Pages public-payload allowlist');
+assert.match(ps,/Pages-relevant change exists after published dev payload/,'Windows Dev payload reuse must fail closed when any public payload path changed');
 assert.match(ps,/packageSha.*sourceSha|sourceSha.*packageSha/s,'Windows Dev package identity must remain bound to the published materialized SHA');
 assert.match(ps,/Verify-PackageChecksum \$archive \$sumFile/,'Windows Dev materialized payload must remain checksum-verified');
 assert.match(ps,/function Assert-MaterializedWebUI/,'Windows installer must validate materialized catalog and qB translation runtime assets');

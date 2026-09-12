@@ -45,15 +45,15 @@ Notes:
 
 function Test-PagesIrrelevantPath([string]$Path) {
   if([string]::IsNullOrWhiteSpace($Path)){return $false}
-  if($Path.StartsWith('docs/',[System.StringComparison]::Ordinal)){return $true}
-  if($Path.EndsWith('.md',[System.StringComparison]::OrdinalIgnoreCase)){return $true}
+  if($Path.StartsWith('webui/',[System.StringComparison]::Ordinal)){return $false}
+  if($Path.StartsWith('simulator/',[System.StringComparison]::Ordinal)){return $false}
+  if($Path.StartsWith('installers/',[System.StringComparison]::Ordinal)){return $false}
   switch -CaseSensitive ($Path) {
-    'LICENSE' { return $true }
-    '.github/workflows/ci.yml' { return $true }
-    '.github/workflows/promote.yml' { return $true }
-    '.github/workflows/real-qb-full.yml' { return $true }
-    '.github/workflows/release.yml' { return $true }
-    default { return $false }
+    'VERSION' { return $false }
+    'tools/data/qb-stable-lkg.json' { return $false }
+    'tools/data/qb-locale-lkg.json' { return $false }
+    'tests/fixtures/qb-release-catalog.lkg.json' { return $false }
+    default { return $true }
   }
 }
 

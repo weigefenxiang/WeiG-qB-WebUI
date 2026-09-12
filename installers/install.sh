@@ -196,8 +196,8 @@ valid_sha() {
 
 is_pages_irrelevant_path() {
   case "$1" in
-    docs/*|*.md|LICENSE|.github/workflows/ci.yml|.github/workflows/promote.yml|.github/workflows/real-qb-full.yml|.github/workflows/release.yml) return 0 ;;
-    *) return 1 ;;
+    webui/*|simulator/*|installers/*|VERSION|tools/data/qb-stable-lkg.json|tools/data/qb-locale-lkg.json|tests/fixtures/qb-release-catalog.lkg.json) return 1 ;;
+    *) return 0 ;;
   esac
 }
 
