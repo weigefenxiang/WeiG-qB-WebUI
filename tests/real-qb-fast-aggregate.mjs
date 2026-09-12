@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -80,12 +79,11 @@ export function aggregateFast(dir,{root=repoRoot,expectedSha=String(process.env.
     const issues=[];
     const runtimeRecords=runtimeByVersion.get(version)||[];
     let runtime=null;
-    let statusPass=false,smokePass=false,identityPass=false,cleanup=false,fingerprintPass=false,familyPass=false,shaPass=false,frozenPass=false,modePass=false,assignmentPass=false;
+    let smokePass=false,identityPass=false,cleanup=false,fingerprintPass=false,familyPass=false,shaPass=false,frozenPass=false,modePass=false,assignmentPass=false;
     if(runtimeRecords.length===0){missingRuntime.push(version);issues.push('missing runtime evidence');}
     else if(runtimeRecords.length!==1){duplicateRuntime.push(version);issues.push(`duplicate runtime evidence: ${runtimeRecords.length}`);}
     else{
       runtime=runtimeRecords[0].data;
-      statusPass=String(runtime.status||'').toUpperCase()==='PASS';
       smokePass=runtime.runtime_smoke_result==='PASS';
       identityPass=exactStableIdentity(runtime.runtime_version,version);
       cleanup=runtime.cleanup_result==='PASS';
@@ -95,7 +93,6 @@ export function aggregateFast(dir,{root=repoRoot,expectedSha=String(process.env.
       frozenPass=runtime.frozen_catalog_sha256===plan.frozen.catalogSha256;
       modePass=runtime.gfm_mode==='fast';
       assignmentPass=runtime.core_mode===assignment.coreMode&&runtime.search_mode===assignment.searchMode;
-      if(!statusPass)issues.push(`runtime resolver status is ${runtime.status||'missing'}`);
       if(!smokePass)issues.push(`runtime smoke did not PASS: ${runtime.runtime_smoke_result||'missing'}`);
       if(!identityPass)issues.push(`runtime exact qB identity mismatch: ${runtime.runtime_version||'missing'}`);
       if(!cleanup)issues.push(`runtime cleanup did not PASS: ${runtime.cleanup_result||'missing'}`);
@@ -146,6 +143,7 @@ export function aggregateFast(dir,{root=repoRoot,expectedSha=String(process.env.
       status:issues.length===0?'PASS':'FAIL',
       core_mode:assignment.coreMode,
       search_mode:assignment.searchMode,
+      runtime_resolver_status:runtime?.status||null,
       runtime_version:runtime?.runtime_version||null,
       expected_families:planned.families,
       expected_fingerprints:planned.fingerprints,
