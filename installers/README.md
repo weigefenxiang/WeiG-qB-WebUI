@@ -13,3 +13,5 @@ A newer `dev` commit may safely reuse an older materialized payload only when ev
 - `tests/fixtures/qb-release-catalog.lkg.json`
 
 Workflow, test, documentation, and other repository-only changes do not by themselves require rebuilding the materialized WebUI payload. Unknown/empty compare state remains fail-closed.
+
+A normal dev refresh that only installs files (`-dev -o ...` / `--dev --output ...`) does not rewrite qBittorrent configuration and does not require stopping qBittorrent. Configuration mutation remains explicit behind `-configure` / `--configure`.
