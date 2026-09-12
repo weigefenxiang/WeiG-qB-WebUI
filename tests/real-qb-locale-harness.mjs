@@ -53,7 +53,7 @@ const evidencePath=path.join(evidenceDir,`${sha}-${safeVersion}-${safeLocale}.js
 let original=null,restored=false,status='FAIL',reason=null,options=[];
 try{
   const login=await request('POST','/api/v2/auth/login',{form:{username:user,password:pass},auth:false});
-  requireStatus(login,'auth/login',[200]);
+  requireStatus(login,'auth/login',[200,204]);
   const setCookies=typeof login.headers.getSetCookie==='function'?login.headers.getSetCookie():[login.headers.get('set-cookie')].filter(Boolean);
   for(const raw of setCookies){const m=String(raw).match(/^\s*([^=;\s]+)=([^;]+)/);if(m){cookie=`${m[1]}=${m[2]}`;break;}}
   await login.text();

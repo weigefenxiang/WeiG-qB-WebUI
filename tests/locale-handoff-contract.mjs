@@ -28,6 +28,7 @@ assert.ok(runnerSource.includes('WEIG_QB_RUNTIME_PRELOADED')&&runnerSource.inclu
 assert.ok(runnerSource.includes('IMAGE_PIN=')&&runnerSource.includes('sha256:9ebb534fe30bab98622cb84a8c3acecfd88319b2d540f52ecdec7b9f866374d7'),'direct runner fallback must retain the immutable current-stable qB image pin');
 assert.ok(runnerSource.includes("TARGET=\"http://${ip}:8080\"")&&!runnerSource.includes('-p 127.0.0.1::8080'),'locale runner must use the isolated Docker bridge like the established real-qB harness instead of host ephemeral-port publication');
 assert.ok(runnerSource.includes('[[ "$code" =~ ^(200|403)$ ]]'),'authenticated qB readiness must accept 403 exactly like the established real-qB harness');
+assert.ok(harnessSource.includes("requireStatus(login,'auth/login',[200,204])"),'real qB login evidence must accept the native 200/204 success variants while still requiring a session cookie');
 assert.ok(harnessSource.includes('version!==expectedVersion')&&harnessSource.includes('Expected exact qB ${expectedVersion}, got ${version}.'),'403 readiness must never replace authenticated exact-version verification');
 const HANDOFF_KEY='weigg.localeHandoff.v1';
 
@@ -149,4 +150,4 @@ assert.ok(!sessionSource.includes('QBClient.prototype.setPreferences')&&!session
 assert.ok(!sessionSource.includes('weigg-language'),'handoff metadata must never recreate an independent persisted language truth');
 assert.ok(!sessionSource.includes('W.LocaleHandoff='),'handoff stays a private Session lifecycle detail instead of becoming a second public language owner');
 
-console.log('Locale handoff contract passed: W.I18n owns exact locale matching, all 61 current-stable locales roundtrip, native return restores atomically, explicit user locale wins, and real-qB locale evidence uses one exact pre-materialized runtime with authenticated readiness.');
+console.log('Locale handoff contract passed: W.I18n owns exact locale matching, all 61 current-stable locales roundtrip, native return restores atomically, explicit user locale wins, and real-qB locale evidence uses one exact pre-materialized runtime with authenticated readiness/login semantics.');
