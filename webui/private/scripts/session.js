@@ -48,100 +48,75 @@
     }
   }
   function onPageShow(e){if(e.persisted||guarded())verifyReentry();}
-  W.SessionController={logout:logout,state:function(){return state;},guarded:guarded,clearGuard:guardClear,lock:lock,unlock:unlock,verifyReentry:verifyReentry};
-  W.SessionGate={verifyReentry:verifyReentry,lock:lock,unlock:unlock,guarded:guarded};
 
-  /* Locale handoff is transition metadata only. qBittorrent preferences.locale
-   * remains the only persisted/current language truth, and W.I18n remains the
-   * locale normalization/matching owner. */
-  var HANDOFF_KEY='weigg.localeHandoff.v1',pendingSave=null;
-  function own(obj,key){return Object.prototype.hasOwnProperty.call(obj||{},key);}
+  /* Browser locale bootstrap is initialization only. qBittorrent
+   * preferences.locale is the single persisted/current language truth.
+   * Once a browser-derived locale has been verified in qB, returning to the
+   * native WebUI must never restore a pre-WeiG locale. */
+  var LEGACY_HANDOFF_KEY='weigg.localeHandoff.v1',BOOTSTRAP_KEY='weigg.localeBootstrap.v2';
   function cleanLocale(value){return String(value==null?'':value).trim();}
-  function readHandoff(){
-    try{var value=JSON.parse(localStorage.getItem(HANDOFF_KEY)||'null');return value&&value.schemaVersion===1&&value.active===true?value:null;}catch(_e){return null;}
+  function clearLegacyHandoff(){try{localStorage.removeItem(LEGACY_HANDOFF_KEY);}catch(_e){}}
+  function readBootstrap(){
+    try{var value=JSON.parse(localStorage.getItem(BOOTSTRAP_KEY)||'null');return value&&value.schemaVersion===2&&value.initialized===true?value:null;}catch(_e){return null;}
   }
-  function saveHandoff(value){try{localStorage.setItem(HANDOFF_KEY,JSON.stringify(value));return true;}catch(_e){return false;}}
-  function clearHandoff(){try{localStorage.removeItem(HANDOFF_KEY);}catch(_e){}}
+  function saveBootstrap(value){try{localStorage.setItem(BOOTSTRAP_KEY,JSON.stringify(value));return true;}catch(_e){return false;}}
   function i18nReady(){return !!(W.I18n&&W.I18n.localeOptions&&W.I18n.matchBrowserLocale&&W.I18n.sameQbLocale&&W.I18n.hasExactLocale);}
   function sameLocale(a,b){return !!(W.I18n&&W.I18n.sameQbLocale&&W.I18n.sameQbLocale(a,b));}
   function localeWritable(value){return !!(W.SettingsSchema&&W.SettingsSchema.isWritable&&W.SettingsSchema.isWritable('locale',value));}
   function currentLocaleOptions(){return W.I18n&&W.I18n.localeOptions?W.I18n.localeOptions():[];}
-  function supportedLocale(value){return !!(W.I18n&&W.I18n.hasExactLocale&&W.I18n.hasExactLocale(value,currentLocaleOptions()));}
   function browserLanguages(){var nav=global.navigator||{},values=Array.isArray(nav.languages)?nav.languages.slice():[];if(nav.language&&values.indexOf(nav.language)<0)values.push(nav.language);return values.filter(Boolean);}
   function syncPreferences(prefs){if(!prefs||typeof prefs!=='object')return;if(W.AppState)W.AppState.preferences=prefs;if(W.SettingsState)W.SettingsState.prefs=prefs;}
-  async function rollbackLocale(client,previous){
-    try{await client.setPreferences({locale:previous});var verified=await client.getPreferences();syncPreferences(verified);if(verified&&W.I18n&&W.I18n.applyLocale)W.I18n.applyLocale(verified.locale);return !!(verified&&sameLocale(verified.locale,previous));}catch(_e){return false;}
-  }
-  async function bootstrapLocaleHandoff(client,prefs){
+  function bootstrapRecord(reason,target,observed){return{schemaVersion:2,initialized:true,reason:String(reason||''),selectedLocale:cleanLocale(target)||null,observedLocale:cleanLocale(observed)||null,completedAt:Date.now()};}
+  async function bootstrapBrowserLocale(client,prefs){
+    clearLegacyHandoff();
     client=client||sharedClient();prefs=prefs||(W.AppState&&W.AppState.preferences)||await client.getPreferences();
-    if(!prefs||prefs.alternative_webui_enabled!==true){clearHandoff();return{changed:false,reason:'not-alternative-webui'};}
+    if(!prefs||prefs.alternative_webui_enabled!==true)return{changed:false,reason:'not-alternative-webui'};
     if(!i18nReady())return{changed:false,reason:'locale-owner-not-ready'};
-    var existing=readHandoff();
-    if(existing){
-      if(existing.closing===true){existing.closing=false;saveHandoff(existing);}
-      if(existing.explicitOverride!==true&&cleanLocale(prefs.locale)&&existing.autoLocale&&!sameLocale(prefs.locale,existing.autoLocale)&&!sameLocale(prefs.locale,existing.previousLocale)){
-        existing.explicitOverride=true;existing.autoLocale=null;saveHandoff(existing);
-      }
-      return{changed:false,reason:'already-initialized',record:existing};
-    }
-    var previous=cleanLocale(prefs.locale);if(!previous)return{changed:false,reason:'no-current-locale'};
+    var existing=readBootstrap();if(existing)return{changed:false,reason:'already-initialized',record:existing};
+    var current=cleanLocale(prefs.locale);if(!current)return{changed:false,reason:'no-current-locale'};
     var target=W.I18n.matchBrowserLocale(browserLanguages(),currentLocaleOptions());
-    var record={schemaVersion:1,active:true,previousLocale:previous,autoLocale:target||null,explicitOverride:false,closing:false};
-    if(!saveHandoff(record))return{changed:false,reason:'handoff-storage-unavailable'};
-    if(!target)return{changed:false,reason:'no-browser-match',record:record};
-    if(sameLocale(target,previous))return{changed:false,reason:'already-matched',record:record};
-    if(!localeWritable(target)){clearHandoff();return{changed:false,reason:'locale-not-writable'};}
+    if(!target){var noMatch=bootstrapRecord('no-browser-match',null,current);if(!saveBootstrap(noMatch))return{changed:false,reason:'bootstrap-storage-unavailable'};return{changed:false,reason:'no-browser-match',record:noMatch};}
+    if(sameLocale(target,current)){var matched=bootstrapRecord('already-matched',target,current);if(!saveBootstrap(matched))return{changed:false,reason:'bootstrap-storage-unavailable'};return{changed:false,reason:'already-matched',record:matched};}
+    if(!localeWritable(target)){var blocked=bootstrapRecord('locale-not-writable',target,current);if(!saveBootstrap(blocked))return{changed:false,reason:'bootstrap-storage-unavailable'};return{changed:false,reason:'locale-not-writable',record:blocked};}
+    if(!saveBootstrap(bootstrapRecord('write-pending',target,current)))return{changed:false,reason:'bootstrap-storage-unavailable'};
     try{
       await client.setPreferences({locale:target});
       var verified=await client.getPreferences();
+      if(verified)syncPreferences(verified);
       if(verified&&sameLocale(verified.locale,target)){
-        syncPreferences(verified);if(W.I18n&&W.I18n.applyLocale)W.I18n.applyLocale(verified.locale);
+        var record=bootstrapRecord('browser-locale-verified',target,verified.locale);saveBootstrap(record);
+        if(W.I18n&&W.I18n.applyLocale)W.I18n.applyLocale(verified.locale);
         return{changed:true,verified:true,record:record,prefs:verified};
       }
-      await rollbackLocale(client,previous);clearHandoff();
-      return{changed:true,verified:false,reason:'verification-mismatch'};
+      var observed=verified&&cleanLocale(verified.locale)||current;
+      saveBootstrap(bootstrapRecord('verification-mismatch',target,observed));
+      if(verified&&W.I18n&&W.I18n.applyLocale&&verified.locale!=null)W.I18n.applyLocale(verified.locale);
+      return{changed:true,verified:false,reason:'verification-mismatch',prefs:verified||null};
     }catch(error){
       var after=null;try{after=await client.getPreferences();}catch(_read){}
-      if(after&&sameLocale(after.locale,target))await rollbackLocale(client,previous);
-      clearHandoff();
-      try{console.warn('[WeiG] browser locale handoff failed safely',error);}catch(_e){}
-      return{changed:false,verified:false,reason:'write-failed',error:error};
+      if(after){syncPreferences(after);if(after.locale!=null&&W.I18n&&W.I18n.applyLocale)W.I18n.applyLocale(after.locale);}
+      if(after&&sameLocale(after.locale,target)){
+        var recovered=bootstrapRecord('browser-locale-verified-after-error',target,after.locale);saveBootstrap(recovered);
+        return{changed:true,verified:true,record:recovered,prefs:after,recovered:true};
+      }
+      saveBootstrap(bootstrapRecord('write-failed',target,after&&after.locale||current));
+      try{console.warn('[WeiG] browser locale bootstrap failed safely',error);}catch(_e){}
+      return{changed:false,verified:false,reason:'write-failed',error:error,prefs:after||null};
     }
   }
-  function prepareSettingsSave(draft){
-    draft=draft||{};var record=readHandoff();pendingSave=null;if(!record)return{draft:draft,record:null};
-    var explicitLocale=own(draft,'locale'),disabling=own(draft,'alternative_webui_enabled')&&draft.alternative_webui_enabled===false,injectedRestore=false;
-    if(disabling&&!explicitLocale&&record.explicitOverride!==true&&cleanLocale(record.previousLocale)&&supportedLocale(record.previousLocale)&&localeWritable(record.previousLocale)){
-      draft.locale=record.previousLocale;injectedRestore=true;
-    }
-    if(disabling){record.closing=true;saveHandoff(record);}
-    pendingSave={explicitLocale:explicitLocale?cleanLocale(draft.locale):null,disabling:disabling,injectedRestore:injectedRestore,startedAt:Date.now()};
-    return{draft:draft,record:record,explicitLocale:explicitLocale,disabling:disabling,injectedRestore:injectedRestore};
-  }
-  function reconcileSettingsSave(){
-    if(!pendingSave)return false;
-    var prefs=W.AppState&&W.AppState.preferences,record=readHandoff();
-    if(!record){pendingSave=null;return true;}
-    if(pendingSave.disabling&&prefs&&prefs.alternative_webui_enabled===false){clearHandoff();pendingSave=null;return true;}
-    if(pendingSave.explicitLocale&&prefs&&sameLocale(prefs.locale,pendingSave.explicitLocale)){
-      record.explicitOverride=true;record.autoLocale=null;record.closing=false;saveHandoff(record);pendingSave=null;return true;
-    }
-    if(Date.now()-pendingSave.startedAt>5000){if(record.closing===true){record.closing=false;saveHandoff(record);}pendingSave=null;return false;}
-    return false;
-  }
-  function pollSettingsSave(){if(!pendingSave)return;if(reconcileSettingsSave())return;setTimeout(pollSettingsSave,50);}
-  function onSettingsSaveCapture(event){var save=event.target&&event.target.closest&&event.target.closest('#save-settings-btn');if(!save)return;var controller=W.SettingsState;if(!controller||!controller.draft)return;prepareSettingsSave(controller.draft);if(pendingSave)setTimeout(pollSettingsSave,0);}
   async function waitForLocaleBootstrap(){
     for(var i=0;i<120;i++){
       var app=W.AppState;
-      if(app&&app.client&&app.preferences&&i18nReady()&&currentLocaleOptions().length&&W.SettingsSchema){await bootstrapLocaleHandoff(app.client,app.preferences);return;}
+      if(app&&app.client&&app.preferences&&i18nReady()&&currentLocaleOptions().length&&W.SettingsSchema){await bootstrapBrowserLocale(app.client,app.preferences);return;}
       await new Promise(function(resolve){setTimeout(resolve,25);});
     }
   }
-  document.addEventListener('click',onSettingsSaveCapture,true);
-  global.addEventListener('weigg:languagechange',reconcileSettingsSave);
+
+  W.SessionController={logout:logout,state:function(){return state;},guarded:guarded,clearGuard:guardClear,lock:lock,unlock:unlock,verifyReentry:verifyReentry,bootstrapBrowserLocale:bootstrapBrowserLocale,readLocaleBootstrap:readBootstrap};
+  W.SessionGate={verifyReentry:verifyReentry,lock:lock,unlock:unlock,guarded:guarded};
   global.addEventListener('pageshow',onPageShow);
   if(guarded()){lock();setTimeout(verifyReentry,0);}
+  clearLegacyHandoff();
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){waitForLocaleBootstrap().catch(function(){});},{once:true});
   else waitForLocaleBootstrap().catch(function(){});
 })(window);
