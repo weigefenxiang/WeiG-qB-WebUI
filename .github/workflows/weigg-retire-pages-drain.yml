@@ -8,7 +8,7 @@ on:
       - .github/workflows/weigg-retire-pages-drain.yml
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   render:
@@ -69,12 +69,20 @@ jobs:
           ! grep -q 'Drain legacy default-branch Pages watcher' .github/workflows/pages.yml
           npm ci --no-audit --no-fund --prefer-offline
           npm test
-      - name: Upload validated patched files
-        uses: actions/upload-artifact@v7
-        with:
-          name: retired-pages-drain-clean-files-${{ github.sha }}
-          path: |
-            .github/workflows/pages.yml
-            tests/ci-contract.mjs
-          if-no-files-found: error
-          retention-days: 1
+      - name: Commit clean tree and fast-forward dev
+        shell: bash
+        run: |
+          set -euo pipefail
+          REMOTE_SHA="$(git ls-remote origin refs/heads/dev | awk '{print $1}')"
+          test "$REMOTE_SHA" = "$GITHUB_SHA" || { echo "dev moved: current=$REMOTE_SHA renderer=$GITHUB_SHA" >&2; exit 1; }
+          git rm .github/workflows/weigg-retire-pages-drain.yml
+          mapfile -t paths < <(git status --porcelain | sed 's/^...//' | sort)
+          test "${#paths[@]}" -eq 3
+          printf '%s\n' "${paths[@]}" | diff -u <(printf '%s\n' '.github/workflows/pages.yml' '.github/workflows/weigg-retire-pages-drain.yml' 'tests/ci-contract.mjs' | sort) -
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .github/workflows/pages.yml tests/ci-contract.mjs
+          git commit -m 'ci: retire legacy Pages watcher drain [candidate]'
+          FINAL_SHA="$(git rev-parse HEAD)"
+          git push origin HEAD:refs/heads/dev
+          echo "FINAL_COMMIT=$FINAL_SHA"
