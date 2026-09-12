@@ -8,7 +8,7 @@ on:
       - .github/workflows/weigg-retire-pages-drain.yml
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   render:
@@ -69,23 +69,12 @@ jobs:
           ! grep -q 'Drain legacy default-branch Pages watcher' .github/workflows/pages.yml
           npm ci --no-audit --no-fund --prefer-offline
           npm test
-      - name: Create clean final candidate commit
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          create_blob() {
-            local file="$1" encoded payload
-            encoded="$(base64 -w0 "$file")"
-            payload="$(jq -n --arg content "$encoded" '{content:$content,encoding:"base64"}')"
-            gh api --method POST "/repos/$GITHUB_REPOSITORY/git/blobs" --input - --jq '.sha' <<<"$payload"
-          }
-          PAGES_BLOB="$(create_blob .github/workflows/pages.yml)"
-          CONTRACT_BLOB="$(create_blob tests/ci-contract.mjs)"
-          tree_payload="$(jq -n --arg base "$PRE_TREE" --arg pages "$PAGES_BLOB" --arg contract "$CONTRACT_BLOB" '{base_tree:$base,tree:[{path:".github/workflows/pages.yml",mode:"100644",type:"blob",sha:$pages},{path:"tests/ci-contract.mjs",mode:"100644",type:"blob",sha:$contract}]}')"
-          TREE="$(gh api --method POST "/repos/$GITHUB_REPOSITORY/git/trees" --input - --jq '.sha' <<<"$tree_payload")"
-          commit_payload="$(jq -n --arg message 'ci: retire legacy Pages watcher drain [candidate]' --arg tree "$TREE" --arg parent "$GITHUB_SHA" '{message:$message,tree:$tree,parents:[$parent]}')"
-          COMMIT="$(gh api --method POST "/repos/$GITHUB_REPOSITORY/git/commits" --input - --jq '.sha' <<<"$commit_payload")"
-          echo "FINAL_TREE=$TREE"
-          echo "FINAL_COMMIT=$COMMIT"
+      - name: Upload validated patched files
+        uses: actions/upload-artifact@v7
+        with:
+          name: retired-pages-drain-clean-files-${{ github.sha }}
+          path: |
+            .github/workflows/pages.yml
+            tests/ci-contract.mjs
+          if-no-files-found: error
+          retention-days: 1
