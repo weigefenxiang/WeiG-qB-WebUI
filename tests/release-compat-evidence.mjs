@@ -24,7 +24,8 @@ if(!args.gfm||!fs.existsSync(gfmFile))fail(`Missing G-FM aggregate evidence: ${a
 if(!args.locale||!fs.existsSync(localeFile))fail(`Missing Locale aggregate evidence: ${args.locale||'(unset)'}`);
 
 const frozenManifest=readJson(path.join(root,'tools/data/qb-stable-lkg.json'));
-const frozenBytes=fs.readFileSync(path.join(root,frozenManifest.catalogPath));
+const frozenText=fs.readFileSync(path.join(root,frozenManifest.catalogPath),'utf8').replace(/\r\n?/g,'\n');
+const frozenBytes=Buffer.from(frozenText,'utf8');
 const frozenDigest=sha256(frozenBytes);
 if(frozenDigest!==frozenManifest.catalogSha256)fail('Committed Frozen LKG digest does not match its manifest.');
 if(frozenManifest.profileCount!==65)fail(`Release-grade G-FM requires 65 Frozen profiles, got ${frozenManifest.profileCount}.`);
@@ -56,7 +57,7 @@ for(const result of gfm.results){
   if(qb!==String(result.runtime_version||''))fail(`G-FM qB ${qb} runtime identity is not exact.`);
   if(!String(result.resolved_image||'').match(/@sha256:[0-9a-f]{64}$/))fail(`G-FM qB ${qb} runtime image is not immutable digest-pinned.`);
 }
-const frozenCatalog=JSON.parse(frozenBytes);
+const frozenCatalog=JSON.parse(frozenText);
 const expectedVersions=frozenCatalog.map(item=>String(item.qbVersion));
 if(expectedVersions.some(qb=>!seen.has(qb)))fail('G-FM results do not cover every Frozen qB version exactly once.');
 
