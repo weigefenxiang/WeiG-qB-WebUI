@@ -17,9 +17,9 @@ for(const [name,source] of [['promotion',promote],['release',release]]){
   assert(source.includes('release-candidate-${sha}'),`${name} must resolve the exact candidate artifact`);
   assert(source.includes('candidate-deployment-${sha}'),`${name} must resolve same-run candidate deployment evidence`);
   assert(source.includes('if (candidate && evidence)')&&source.includes('candidateArtifact = candidate')&&source.includes('evidenceArtifact = evidence')&&source.includes('!candidateArtifact || !evidenceArtifact'),`${name} must require candidate + evidence from the same successful CI run`);
-  assert(source.includes("workflow_id: 'real-qb-full.yml'")&&source.includes('real-qb-full-aggregate-${sha}'),`${name} must resolve exact-SHA Full Frozen Matrix evidence`);
-  assert(source.includes("workflow_id: 'real-qb-locale.yml'")&&source.includes('real-qb-current-locale-aggregate-${sha}'),`${name} must resolve exact-SHA current-stable Locale evidence`);
-  assert(source.includes("run.event === 'workflow_dispatch'"),`${name} must accept release-grade compatibility evidence only from manual matrix runs`);
+  assert(source.includes("resolveManualAggregate('real-qb-full.yml', gfmArtifactName")&&source.includes('real-qb-full-aggregate-${sha}'),`${name} must resolve exact-SHA Full Frozen Matrix evidence`);
+  assert(source.includes("resolveManualAggregate('real-qb-locale.yml', localeArtifactName")&&source.includes('real-qb-current-locale-aggregate-${sha}'),`${name} must resolve exact-SHA current-stable Locale evidence`);
+  assert(source.includes('workflow_id: workflowId')&&source.includes("run.event === 'workflow_dispatch'"),`${name} compatibility resolver must query the requested workflow and admit manual runs only`);
   assert(source.includes('path: gfm')&&source.includes('path: locale'),`${name} must download both G-FM and Locale aggregate evidence`);
   assert(source.includes('node tests/release-compat-evidence.mjs'),`${name} must execute the central release compatibility evidence verifier`);
   assert(source.includes('node tests/release-candidate-evidence.mjs'),`${name} must execute the repository-owned candidate evidence verifier`);
