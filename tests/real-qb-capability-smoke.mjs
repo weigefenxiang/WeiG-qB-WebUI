@@ -11,7 +11,7 @@ const canonical=value=>Array.isArray(value)?value.map(canonical):(value&&typeof 
 const stableJson=value=>JSON.stringify(canonical(value));
 const sha256=value=>crypto.createHash('sha256').update(value).digest('hex');
 const fail=message=>{throw new Error(message);};
-const SAFE_READ_ACTIONS={
+export const SAFE_READ_ACTIONS={
   'appcontroller.h:preferencesAction':'/api/v2/app/preferences',
   'torrentscontroller.h:infoAction':'/api/v2/torrents/info',
   'transfercontroller.h:infoAction':'/api/v2/transfer/info',
@@ -60,7 +60,7 @@ function frozen(root){
   return {manifest,catalog,digest};
 }
 
-export async function runCapabilitySmoke({root=repoRoot,env=process.env}={}){
+export async function runCapabilitySmoke({root=repoRoot,env=process.env,fetchImpl=globalThis.fetch}={}){
   const expectedVersion=String(env.QB_VERSION||'').trim();
   const target=String(env.WEIG_QB_URL||'').trim();
   const user=String(env.WEIG_QB_USER||'').trim();
@@ -70,6 +70,7 @@ export async function runCapabilitySmoke({root=repoRoot,env=process.env}={}){
   if(!/^\d+(?:\.\d+){2,3}$/.test(expectedVersion))fail('Capability smoke requires exact QB_VERSION.');
   if(!target||!user||!pass)fail('Capability smoke requires WEIG_QB_URL/USER/PASS.');
   if(!/^[0-9a-f]{40}$/.test(weigSha))fail('Capability smoke requires exact WeiG SHA.');
+  if(typeof fetchImpl!=='function')fail('Capability smoke requires a fetch implementation.');
   const f=frozen(root);
   const profile=f.catalog.find(row=>String(row.qbVersion)===expectedVersion);
   if(!profile)fail(`qB ${expectedVersion} is outside Frozen LKG.`);
@@ -102,7 +103,7 @@ export async function runCapabilitySmoke({root=repoRoot,env=process.env}={}){
     if(auth&&cookie)headers.Cookie=cookie;
     let body;
     if(form){headers['Content-Type']='application/x-www-form-urlencoded; charset=UTF-8';body=new URLSearchParams(Object.entries(form));}
-    return fetch(url,{method,headers,body,redirect:'manual'});
+    return fetchImpl(url,{method,headers,body,redirect:'manual'});
   }
   const save=()=>fs.writeFileSync(file,`${JSON.stringify(out,null,2)}\n`);
   try{

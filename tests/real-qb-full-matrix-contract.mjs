@@ -1,3 +1,5 @@
+import './real-qb-capability-smoke-contract.mjs';
+import './real-qb-fast-aggregate-contract.mjs';
 import fs from 'node:fs';
 const read=p=>fs.readFileSync(p,'utf8');
 const assert=(ok,msg)=>{if(!ok)throw new Error(msg);};
@@ -53,7 +55,7 @@ assert(indexer.includes("sourceRepository='https://github.com/linuxserver/docker
 assert(indexer.includes("sourceRefPattern:'refs/tags/*'")&&indexer.includes('sourceTagListSha256'),'Historical candidate discovery must bind the exact source tag listing used for candidate discovery.');
 assert(!indexer.includes('hub.docker.com/v2/repositories'),'Historical tag discovery must not depend on Docker Hub anonymous deep-pagination REST.');
 assert(indexer.includes('frozenCatalogSha256:manifest.catalogSha256')&&indexer.includes('frozenProfileCount:manifest.profileCount'),'Historical runtime index must bind Frozen catalog identity.');
-assert(indexer.includes('(?=$|[_-]|\\\\d{8})'),'Historical tag matching must preserve exact-version boundaries while admitting legacy timestamp suffixes.');
+assert(indexer.includes('(?=$|[_-]|\\d{8})'),'Historical tag matching must preserve exact-version boundaries while admitting legacy timestamp suffixes.');
 assert(indexer.includes("discoveryRole:'candidate-tag-discovery-only; runtime truth still requires immutable image digest and exact qB identity'"),'Source tags must be explicitly scoped to candidate discovery rather than compatibility truth.');
 
 assert(matrix.includes('manifest.catalogSha256')&&matrix.includes('manifest.profileCount')&&matrix.includes('duplicate qB versions'),'Exhaustive G-FM aggregate must verify Frozen identity, count and uniqueness.');

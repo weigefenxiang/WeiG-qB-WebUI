@@ -66,4 +66,5 @@ if(invoked){
   fs.writeFileSync(tmp,`${JSON.stringify(bound,null,2)}\n`);
   fs.renameSync(tmp,file);
   console.log(`Bound G-FM ${a.mode} runtime evidence for qB ${a.version}: smoke=${bound.runtime_smoke_result}, capability=${String(bound.actual_capability_fingerprint||'').slice(0,12)}, core=${bound.core_mode}, search=${bound.search_mode}`);
+  if(bound.runtime_smoke_result!=='PASS')process.exitCode=1;
 }
