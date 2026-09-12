@@ -51,7 +51,7 @@ for(const dimension of a.dimensions){
 
 const fast=matrixForMode(a,'fast');
 const exhaustive=matrixForMode(a,'exhaustive');
-assert.equal(fast.length,65,'fast matrix utility must retain all 65 exact real runtimes');
+assert.equal(fast.length,65,'fast planner utility must retain all 65 exact real runtimes when explicitly exercised');
 assert.equal(exhaustive.length,65,'exhaustive matrix must retain all 65 exact real runtimes');
 assert.ok(exhaustive.every(row=>row.coreMode==='full'&&row.searchMode==='full'),'exhaustive matrix must remain full/full for every stable version');
 assert.equal(fast.filter(row=>row.coreMode==='full').length,a.summary.fast.coreFullCount);
@@ -103,7 +103,7 @@ for(const dimension of fastFamilyDimensions){
   const block=fastAggregateSchema.familyEvidence.byDimension[dimension];
   assert.equal(block.evidenceKind,dimension==='search'?'search-semantic-full':'core-semantic-full');
   assert.equal(block.expectedFamilyCount,a.families[dimension].length,`${dimension} fast aggregate family count drifted`);
-  assert.equal(block.expectedRepresentativeCount,a.summary[dimension].representativeCount,`${dimension} fast aggregate representative count drifted`);
+  assert.equal(block.expectedRepresentativeCount,a.summary[dimension].representativeCount,`${dimension} fast aggregate family count drifted`);
   assert.equal(block.families.length,a.families[dimension].length);
   const expectedFamilies=new Map(a.families[dimension].map(family=>[family.id,family]));
   for(const family of block.families){
@@ -133,11 +133,11 @@ for(const row of fourPart)assert.ok(row.sentinelReasons.includes('fourth-compone
 
 const workflow=fs.readFileSync(path.join(root,'.github/workflows/real-qb-full.yml'),'utf8');
 assert.ok(workflow.includes('workflow_dispatch:'),'release-grade G-FM must remain explicitly dispatchable');
-assert.ok(/\n\s*push:\s*\n\s*branches:\s*\[dev\]/.test(workflow),'G-FM Fast must run automatically on dev pushes');
+assert.ok(!/\n\s*push:\s*/.test(workflow),'ordinary dev pushes must not invoke the 65-runtime G-FM workflow');
 assert.ok(workflow.includes('node tests/real-qb-capability-plan.mjs --matrix "$mode"'),'G-FM workflow must consume the planner-owned matrix');
-assert.ok(workflow.includes('mode=fast')&&workflow.includes('mode=exhaustive'),'G-FM workflow must route dev push to Fast and manual dispatch to Exhaustive');
-assert.ok(workflow.includes('real-qb-fast-aggregate-${{ github.sha }}')&&workflow.includes('real-qb-full-aggregate-${{ github.sha }}'),'Fast and Exhaustive aggregate artifact identities must remain distinct');
+assert.ok(workflow.includes('mode=exhaustive')&&!workflow.includes('mode=fast'),'G-FM workflow must route only the intentional final candidate to Exhaustive');
+assert.ok(!workflow.includes('real-qb-fast-aggregate-${{ github.sha }}')&&workflow.includes('real-qb-full-aggregate-${{ github.sha }}'),'Only Exhaustive aggregate artifact identity belongs to the final-candidate workflow');
 
-const summaryMessage=`Real-qB capability execution planner contract passed: ${a.versions.length}/65 versions; families=${a.dimensions.map(d=>`${d}:${a.summary[d].familyCount}/${a.summary[d].representativeCount} reps`).join(', ')}; dev pushes run Fast 65/65 runtime witness coverage and manual dispatch remains Exhaustive 65/65 Full.`;
+const summaryMessage=`Real-qB capability execution planner contract passed: ${a.versions.length}/65 versions; families=${a.dimensions.map(d=>`${d}:${a.summary[d].familyCount}/${a.summary[d].representativeCount} reps`).join(', ')}; Fast remains an offline/planner utility while ordinary dev pushes stay lightweight and manual dispatch remains Exhaustive 65/65 Full.`;
 console.log(summaryMessage);
 if(process.env.GITHUB_ACTIONS==='true')console.log(`::notice title=Real-qB capability planner::${summaryMessage}`);
