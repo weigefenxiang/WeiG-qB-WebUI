@@ -83,7 +83,7 @@ assert(/actions:\s*write/.test(pagesSource)&&/contents:\s*read/.test(pagesSource
 assert(!/pages:\s*write/.test(pagesSource)&&!/id-token:\s*write/.test(pagesSource),'Pages source relay must not own deployment permissions');
 assert(pagesSource.includes('/actions/workflows/pages.yml/dispatches')&&pagesSource.includes('-f ref="$BRANCH"'),'Pages source relay must dispatch Virtual qB Pages on the same dev/main ref');
 assert(pagesSource.includes('REMOTE_SHA=')&&pagesSource.includes('is stale; current head is'),'Pages source relay must suppress stale branch signals before dispatch');
-assert(pagesSource.includes('startsWith("verify ")')&&pagesSource.includes('VERIFY_ACTIVE'),'Pages source stale-run recovery must recognize active matrix verify jobs after deployment');
+assert(pagesSource.includes('startswith("verify ")')&&pagesSource.includes('VERIFY_ACTIVE'),'Pages source stale-run recovery must recognize active matrix verify jobs after deployment');
 assert(pages.includes('workflow_dispatch:')&&!pages.includes('workflow_run:')&&!/\n  push:\n/.test(pages),'Pages deployment must be ref-bound workflow_dispatch only; workflow_run would alias GITHUB_SHA to the default branch');
 assert(!/\n  schedule:\n/.test(pages),'Pages deployment must not rebuild unchanged content on a weekly schedule; Stable Watch owns upstream change discovery');
 assert(pages.includes('group: virtual-qb-pages-dispatch')&&pages.includes('cancel-in-progress: false')&&!pages.includes('cancel-in-progress: true'),'ref-bound Pages publish owners must queue rather than cancel in-flight deploy-pages writes');
