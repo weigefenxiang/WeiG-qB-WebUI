@@ -171,11 +171,12 @@ for(const locale of stableLocales){
 }
 {
   const runtime=await makeRuntime(['zh-CN'],{locale:'en',alternative_webui_enabled:true});
+  runtime.window.WeiG.I18n.applyLocale(runtime.appState.preferences.locale);
   const started=Date.now();
   const ready=runtime.window.WeiG.I18n.ready();
   await delay(20);
   assert.equal(runtime.client.prefs.locale,'zh_CN','app-owned W.I18n.ready gate must persist the browser locale before app readiness continues');
-  assert.equal(runtime.reloadCount,1,'verified first-time locale bootstrap must initiate exactly one immediate navigation reload');
+  assert.equal(runtime.reloadCount,1,'verified first-time locale bootstrap must initiate exactly one canonical I18n navigation reload');
   const state=await Promise.race([ready.then(()=> 'resolved'),delay(5).then(()=> 'pending')]);
   assert.equal(state,'pending','app-owned W.I18n.ready gate must not expose stale-language readiness before navigation starts');
   const pending=bootstrapRecord(runtime.localStorage);
