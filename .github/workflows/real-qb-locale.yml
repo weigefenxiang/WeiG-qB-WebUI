@@ -1,9 +1,6 @@
 name: Real qB Current Stable Locale Matrix
 
 on:
-  push:
-    branches:
-      - dev
   workflow_dispatch:
 
 permissions:
@@ -16,7 +13,6 @@ concurrency:
 jobs:
   plan:
     name: Resolve current stable qB locales
-    if: ${{ github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[locale-matrix]') }}
     runs-on: ubuntu-24.04
     outputs:
       qb_version: ${{ steps.matrix.outputs.qb_version }}
@@ -26,7 +22,11 @@ jobs:
         with:
           fetch-depth: 1
       - name: Verify exact workflow SHA checkout
-        run: test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+        run: |
+          set -euo pipefail
+          test "$GITHUB_EVENT_NAME" = 'workflow_dispatch'
+          test "$GITHUB_REF" = 'refs/heads/dev'
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
       - name: Resolve Frozen current-stable locale matrix
         id: matrix
         shell: bash
