@@ -47,9 +47,51 @@ jobs:
           printf 'qb_version=%s\n' "$qb_version" >> "$GITHUB_OUTPUT"
           printf 'locales=%s\n' "$locales" >> "$GITHUB_OUTPUT"
 
+  runtime_image:
+    name: Materialize exact current-stable qB runtime
+    needs: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Pull exact immutable qB runtime once
+        shell: bash
+        env:
+          QB_VERSION: ${{ needs.plan.outputs.qb_version }}
+        run: |
+          set -euo pipefail
+          case "$QB_VERSION" in
+            5.2.3)
+              tag='qbittorrentofficial/qbittorrent-nox:5.2.3-1'
+              pin='qbittorrentofficial/qbittorrent-nox@sha256:9ebb534fe30bab98622cb84a8c3acecfd88319b2d540f52ecdec7b9f866374d7'
+              ;;
+            *) echo "No immutable current-stable qB provider pin is admitted for $QB_VERSION." >&2; exit 3 ;;
+          esac
+          mkdir -p runtime-image
+          pulled=0
+          for attempt in 1 2 3; do
+            if docker pull "$pin"; then pulled=1; break; fi
+            [[ "$attempt" == 3 ]] || sleep $((attempt*5))
+          done
+          [[ "$pulled" == 1 ]] || { echo "Unable to pull exact qB runtime $pin after 3 attempts." >&2; exit 1; }
+          resolved="$(docker image inspect "$pin" --format '{{index .RepoDigests 0}}' 2>/dev/null || true)"
+          [[ "$resolved" == *@sha256:* ]] || { echo 'Pinned qB image has no immutable RepoDigest.' >&2; exit 1; }
+          docker tag "$pin" "$tag"
+          printf '%s\n' "$QB_VERSION" > runtime-image/qb-version.txt
+          printf '%s\n' "$pin" > runtime-image/qb-image-pin.txt
+          docker save "$tag" | gzip -1 > runtime-image/qb-current-stable.tar.gz
+          test -s runtime-image/qb-current-stable.tar.gz
+      - name: Upload exact qB runtime image once
+        uses: actions/upload-artifact@v7
+        with:
+          name: qb-current-stable-runtime-${{ github.sha }}
+          path: runtime-image/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+
   real:
     name: qB ${{ needs.plan.outputs.qb_version }} locale ${{ matrix.locale }}
-    needs: plan
+    needs: [plan, runtime_image]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     strategy:
@@ -70,10 +112,26 @@ jobs:
         run: |
           bash -n tests/real-qb-locale-runner.sh
           node --check tests/real-qb-locale-harness.mjs
+      - name: Download exact pre-materialized qB runtime
+        uses: actions/download-artifact@v8
+        with:
+          name: qb-current-stable-runtime-${{ github.sha }}
+          path: runtime-image
+      - name: Load exact qB runtime without repeated Docker Hub pulls
+        shell: bash
+        env:
+          QB_VERSION: ${{ needs.plan.outputs.qb_version }}
+        run: |
+          set -euo pipefail
+          test "$(cat runtime-image/qb-version.txt)" = "$QB_VERSION"
+          test "$(cat runtime-image/qb-image-pin.txt)" = 'qbittorrentofficial/qbittorrent-nox@sha256:9ebb534fe30bab98622cb84a8c3acecfd88319b2d540f52ecdec7b9f866374d7'
+          gzip -dc runtime-image/qb-current-stable.tar.gz | docker load
+          docker image inspect "qbittorrentofficial/qbittorrent-nox:${QB_VERSION}-1" >/dev/null
       - name: Run exact current-stable qB locale write/read/restore evidence
         env:
           WEIG_QB_LOCALE: ${{ matrix.locale }}
           WEIG_QB_EXPECTED_VERSION: ${{ needs.plan.outputs.qb_version }}
+          WEIG_QB_RUNTIME_PRELOADED: '1'
           WEIG_QB_LOCALE_EVIDENCE_DIR: artifacts/real-qb-locale
         run: bash tests/real-qb-locale-runner.sh "$WEIG_QB_LOCALE"
       - name: Upload per-locale exact-SHA evidence

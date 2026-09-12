@@ -5,6 +5,7 @@ import vm from 'node:vm';
 const read=relative=>fs.readFileSync(new URL(`../${relative}`,import.meta.url),'utf8');
 const i18nSource=read('webui/private/scripts/i18n.js');
 const sessionSource=read('webui/private/scripts/session.js');
+const runnerSource=read('tests/real-qb-locale-runner.sh');
 const lkg=JSON.parse(read('tools/data/qb-locale-lkg.json'));
 const workflow=read('.github/workflows/real-qb-locale.yml');
 assert.equal(lkg.supportFloor,'4.1.0');
@@ -19,6 +20,12 @@ assert.match(workflow,/max-parallel:\s*16/,'focused current-stable locale eviden
 assert.ok(workflow.includes('tools/data/qb-locale-lkg.json')&&workflow.includes('locales.length!==61'),'locale workflow must derive its current stable locale set from Frozen LKG, not capabilities milestones');
 assert.ok(workflow.includes('tests/real-qb-locale-runner.sh')&&workflow.includes('tests/real-qb-locale-aggregate.mjs'),'locale workflow must use stable responsibility filenames');
 assert.ok(workflow.includes("contains(github.event.head_commit.message, '[locale-matrix]')")&&workflow.includes('workflow_dispatch:'),'heavy locale matrix must be explicit/marker-triggered instead of running on every dev push');
+assert.ok(workflow.includes('runtime_image:')&&workflow.includes('docker save')&&workflow.includes('qb-current-stable-runtime-${{ github.sha }}'),'current-stable qB runtime must be materialized once per exact SHA instead of pulled independently by every locale job');
+assert.ok(workflow.includes('actions/download-artifact@v8')&&workflow.includes("WEIG_QB_RUNTIME_PRELOADED: '1'"),'locale matrix jobs must reuse the exact pre-materialized runtime artifact');
+assert.equal(workflow.includes('real-qb-current-locale-runtime-${{ github.sha }}'),false,'runtime artifact must not share the per-locale evidence prefix consumed by the aggregate glob');
+assert.ok(runnerSource.includes('WEIG_QB_RUNTIME_PRELOADED')&&runnerSource.includes('docker image inspect "$IMAGE_TAG"'),'locale runner must support fail-closed preloaded runtime reuse');
+assert.ok(runnerSource.includes('IMAGE_PIN=')&&runnerSource.includes('sha256:9ebb534fe30bab98622cb84a8c3acecfd88319b2d540f52ecdec7b9f866374d7'),'direct runner fallback must retain the immutable current-stable qB image pin');
+assert.ok(runnerSource.includes("TARGET=\"http://${ip}:8080\"")&&!runnerSource.includes('-p 127.0.0.1::8080'),'locale runner must use the isolated Docker bridge like the established real-qB harness instead of host ephemeral-port publication');
 const HANDOFF_KEY='weigg.localeHandoff.v1';
 
 class Storage{
@@ -139,4 +146,4 @@ assert.ok(!sessionSource.includes('QBClient.prototype.setPreferences')&&!session
 assert.ok(!sessionSource.includes('weigg-language'),'handoff metadata must never recreate an independent persisted language truth');
 assert.ok(!sessionSource.includes('W.LocaleHandoff='),'handoff stays a private Session lifecycle detail instead of becoming a second public language owner');
 
-console.log('Locale handoff contract passed: W.I18n owns exact locale matching, all 61 current-stable locales roundtrip, native return restores atomically, and explicit user locale wins before reload.');
+console.log('Locale handoff contract passed: W.I18n owns exact locale matching, all 61 current-stable locales roundtrip, native return restores atomically, explicit user locale wins, and real-qB locale jobs reuse one exact pre-materialized runtime.');
