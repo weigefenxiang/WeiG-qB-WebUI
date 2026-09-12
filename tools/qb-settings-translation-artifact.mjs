@@ -115,9 +115,9 @@ async function tryBootstrapCatalog(artifacts){
   }
   return null;
 }
-async function dispatchCandidate(){
-  await api(`/repos/${repository}/actions/workflows/ci.yml/dispatches`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ref:branch,inputs:{validation_mode:'candidate'}})});
-  console.log(`Dispatched CI candidate on ${branch} to refresh certified qB Settings translation evidence.`);
+async function dispatchSettingsEvidence(){
+  await api(`/repos/${repository}/actions/workflows/ci.yml/dispatches`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ref:branch,inputs:{validation_mode:'settings-evidence'}})});
+  console.log(`Dispatched CI settings-evidence on ${branch}: only the source catalog -> 12-run locale/source fan-out -> merge -> Settings LKG chain will run.`);
 }
 
 console.log(`Scanning up to ${ARTIFACT_MAX_PAGES*ARTIFACT_PAGE_SIZE} recent artifacts for reusable qB Settings translation evidence.`);
@@ -125,11 +125,11 @@ let artifacts=await listArtifacts({maxPages:ARTIFACT_MAX_PAGES});
 if(await tryCertifiedArtifact(artifacts))process.exit(0);
 const bootstrap=await tryBootstrapCatalog(artifacts);
 if(bootstrap){
-  if(dispatchIfMissing)await dispatchCandidate();
+  if(dispatchIfMissing)await dispatchSettingsEvidence();
   process.exit(0);
 }
 if(!dispatchIfMissing)throw new Error('No compatible certified Settings LKG or source-enriched bootstrap artifact is available.');
-await dispatchCandidate();
+await dispatchSettingsEvidence();
 for(let attempt=1;attempt<=POLL_ATTEMPTS;attempt++){
   await sleep(POLL_INTERVAL_MS);
   artifacts=await listArtifacts({maxPages:1});

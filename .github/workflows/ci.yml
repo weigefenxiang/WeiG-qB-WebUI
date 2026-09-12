@@ -15,12 +15,13 @@ on:
           - smoke
           - ui
           - candidate
+          - settings-evidence
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'settings-evidence' && 'settings-evidence' || 'default' }}
   cancel-in-progress: true
 
 jobs:
@@ -174,7 +175,7 @@ jobs:
 
   release_catalog_base:
     name: qB exact stable source catalog
-    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[candidate]')) }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && (inputs.validation_mode == 'candidate' || inputs.validation_mode == 'settings-evidence') && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[candidate]')) }}
     runs-on: ubuntu-latest
     needs: smoke
     steps:
@@ -202,7 +203,7 @@ jobs:
 
   release_locale_enrich:
     name: qB locale/source enrich shard ${{ matrix.shard }}
-    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[candidate]')) }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && (inputs.validation_mode == 'candidate' || inputs.validation_mode == 'settings-evidence') && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[candidate]')) }}
     runs-on: ubuntu-latest
     needs: release_catalog_base
     strategy:
@@ -240,7 +241,7 @@ jobs:
 
   release_catalog_merge:
     name: Merge exact qB locale/source catalog
-    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[candidate]')) }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && (inputs.validation_mode == 'candidate' || inputs.validation_mode == 'settings-evidence') && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[candidate]')) }}
     runs-on: ubuntu-latest
     needs: release_locale_enrich
     steps:
@@ -292,7 +293,7 @@ jobs:
 
   release_lkg:
     name: qB Settings translation LKG
-    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[candidate]')) }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && (inputs.validation_mode == 'candidate' || inputs.validation_mode == 'settings-evidence') && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[candidate]')) }}
     runs-on: ubuntu-latest
     needs: release_catalog_merge
     steps:
