@@ -77,4 +77,6 @@ for(const row of fourPart)assert.ok(row.sentinelReasons.includes('fourth-compone
 const workflow=fs.readFileSync(path.join(root,'.github/workflows/real-qb-full.yml'),'utf8');
 assert.ok(!workflow.includes('real-qb-capability-plan.mjs'),'phase-1 read-only planner must not silently change G-FM execution/aggregate decisions');
 
-console.log(`Real-qB capability planner contract passed: ${a.versions.length}/65 versions are deterministically partitioned without changing G-FM decisions; families=${a.dimensions.map(d=>`${d}:${a.summary[d].familyCount}/${a.summary[d].representativeCount} reps`).join(', ')}; fast=core ${a.summary.fast.coreFullCount}/65, Search ${a.summary.fast.searchFullCount}/65, smoke-only ${a.summary.fast.smokeOnlyCount}/65.`);
+const summaryMessage=`Real-qB capability planner contract passed: ${a.versions.length}/65 versions are deterministically partitioned without changing G-FM decisions; families=${a.dimensions.map(d=>`${d}:${a.summary[d].familyCount}/${a.summary[d].representativeCount} reps`).join(', ')}; fast=core ${a.summary.fast.coreFullCount}/65, Search ${a.summary.fast.searchFullCount}/65, smoke-only ${a.summary.fast.smokeOnlyCount}/65.`;
+console.log(summaryMessage);
+if(process.env.GITHUB_ACTIONS==='true')console.log(`::notice title=Real-qB capability planner::${summaryMessage}`);
