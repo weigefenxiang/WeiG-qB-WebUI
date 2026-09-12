@@ -60,9 +60,10 @@ export function aggregateSchemaForMode(plan,mode){
       evidenceClass:'gfm-fast',
       versionEvidence:{
         expectedCount:plan.frozen.profileCount,
-        requireRuntimeStatus:'PASS',
+        requireRuntimeSmokeResult:'PASS',
         requireExactQbIdentity:true,
         requireCleanupResult:'PASS',
+        requireRuntimeCapabilityWitnessFingerprint:true,
         requireFingerprintMatch:true,
         fingerprintDimensions:[...plan.dimensions],
         versions:plan.versions.map(row=>versionExpectation(plan,row,{fingerprints:true}))

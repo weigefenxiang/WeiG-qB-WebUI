@@ -4,6 +4,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {buildCapabilityPlan,matrixForMode} from './real-qb-capability-plan.mjs';
 import {aggregateSchemaForMode} from './real-qb-gfm-aggregate-schema.mjs';
+import {buildCapabilityWitnessSpec,fingerprintCapabilityWitness} from './real-qb-capability-smoke.mjs';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const repoRoot=path.resolve(here,'..');
@@ -69,17 +70,18 @@ export function aggregateFast(dir,{root=repoRoot,expectedSha=String(process.env.
   const unexpectedCore=[...coreByVersion.keys()].filter(version=>version&&!expectedVersions.has(version));
   const unexpectedSearch=[...searchByVersion.keys()].filter(version=>version&&!expectedVersions.has(version));
   const missingRuntime=[],duplicateRuntime=[],results=[];
-  let realSmokePass=0,exactIdentityPass=0,fingerprintBindingPass=0,cleanupPass=0,coreFullPass=0,searchFullPass=0;
+  let realSmokePass=0,exactIdentityPass=0,capabilityWitnessPass=0,fingerprintBindingPass=0,cleanupPass=0,coreFullPass=0,searchFullPass=0;
 
   for(const version of plan.versions.map(row=>row.qbVersion)){
     const planned=planByVersion.get(version);
     const assignment=matrixByVersion.get(version);
     const profile=profileByVersion.get(version);
     if(!planned||!assignment||!profile)fail(`Fast G-FM planner lost qB ${version}.`);
+    const expectedCapabilityFingerprint=fingerprintCapabilityWitness(buildCapabilityWitnessSpec(profile));
     const issues=[];
     const runtimeRecords=runtimeByVersion.get(version)||[];
     let runtime=null;
-    let smokePass=false,identityPass=false,cleanup=false,fingerprintPass=false,familyPass=false,shaPass=false,frozenPass=false,modePass=false,assignmentPass=false;
+    let smokePass=false,identityPass=false,capabilityPass=false,cleanup=false,fingerprintPass=false,familyPass=false,shaPass=false,frozenPass=false,modePass=false,assignmentPass=false;
     if(runtimeRecords.length===0){missingRuntime.push(version);issues.push('missing runtime evidence');}
     else if(runtimeRecords.length!==1){duplicateRuntime.push(version);issues.push(`duplicate runtime evidence: ${runtimeRecords.length}`);}
     else{
@@ -87,6 +89,7 @@ export function aggregateFast(dir,{root=repoRoot,expectedSha=String(process.env.
       smokePass=runtime.runtime_smoke_result==='PASS';
       identityPass=exactStableIdentity(runtime.runtime_version,version);
       cleanup=runtime.cleanup_result==='PASS';
+      capabilityPass=runtime.capability_smoke_status==='PASS'&&/^[0-9a-f]{64}$/.test(String(runtime.actual_capability_fingerprint||''))&&runtime.expected_capability_fingerprint===expectedCapabilityFingerprint&&runtime.actual_capability_fingerprint===expectedCapabilityFingerprint;
       fingerprintPass=stableJson(runtime.expected_capability_fingerprints)===stableJson(planned.fingerprints);
       familyPass=stableJson(runtime.expected_capability_families)===stableJson(planned.families);
       shaPass=!expectedSha||String(runtime.weig_sha||'').toLowerCase()===expectedSha;
@@ -95,6 +98,7 @@ export function aggregateFast(dir,{root=repoRoot,expectedSha=String(process.env.
       assignmentPass=runtime.core_mode===assignment.coreMode&&runtime.search_mode===assignment.searchMode;
       if(!smokePass)issues.push(`runtime smoke did not PASS: ${runtime.runtime_smoke_result||'missing'}`);
       if(!identityPass)issues.push(`runtime exact qB identity mismatch: ${runtime.runtime_version||'missing'}`);
+      if(!capabilityPass)issues.push('runtime capability witness fingerprint does not match the Frozen expected safe-read surface');
       if(!cleanup)issues.push(`runtime cleanup did not PASS: ${runtime.cleanup_result||'missing'}`);
       if(!fingerprintPass)issues.push('runtime expected capability fingerprints do not match the current Frozen planner');
       if(!familyPass)issues.push('runtime expected capability families do not match the current Frozen planner');
@@ -104,9 +108,10 @@ export function aggregateFast(dir,{root=repoRoot,expectedSha=String(process.env.
       if(!assignmentPass)issues.push(`runtime semantic assignment mismatch: expected core=${assignment.coreMode}, search=${assignment.searchMode}`);
     }
     if(identityPass)exactIdentityPass++;
+    if(capabilityPass)capabilityWitnessPass++;
     if(cleanup)cleanupPass++;
     if(fingerprintPass&&familyPass)fingerprintBindingPass++;
-    if(smokePass&&identityPass&&cleanup&&fingerprintPass&&familyPass&&shaPass&&frozenPass&&modePass&&assignmentPass)realSmokePass++;
+    if(smokePass&&identityPass&&capabilityPass&&cleanup&&fingerprintPass&&familyPass&&shaPass&&frozenPass&&modePass&&assignmentPass)realSmokePass++;
 
     const coreRecords=coreByVersion.get(version)||[];
     let coreSemanticPass=assignment.coreMode!=='full';
@@ -145,10 +150,13 @@ export function aggregateFast(dir,{root=repoRoot,expectedSha=String(process.env.
       search_mode:assignment.searchMode,
       runtime_resolver_status:runtime?.status||null,
       runtime_version:runtime?.runtime_version||null,
+      expected_runtime_capability_fingerprint:expectedCapabilityFingerprint,
+      actual_runtime_capability_fingerprint:runtime?.actual_capability_fingerprint||null,
       expected_families:planned.families,
       expected_fingerprints:planned.fingerprints,
-      runtime_smoke_pass:smokePass&&identityPass&&cleanup&&fingerprintPass&&familyPass&&shaPass&&frozenPass&&modePass&&assignmentPass,
+      runtime_smoke_pass:smokePass&&identityPass&&capabilityPass&&cleanup&&fingerprintPass&&familyPass&&shaPass&&frozenPass&&modePass&&assignmentPass,
       exact_identity_pass:identityPass,
+      capability_witness_pass:capabilityPass,
       fingerprint_binding_pass:fingerprintPass&&familyPass,
       cleanup_pass:cleanup,
       core_semantic_pass:coreSemanticPass,
@@ -183,7 +191,7 @@ export function aggregateFast(dir,{root=repoRoot,expectedSha=String(process.env.
 
   const pass=results.filter(row=>row.status==='PASS').length;
   const failCount=results.length-pass;
-  const status=pass===plan.frozen.profileCount&&failCount===0&&realSmokePass===plan.frozen.profileCount&&coreFullPass===plan.summary.fast.coreFullCount&&searchFullPass===plan.summary.fast.searchFullCount&&allFamiliesPass&&missingRuntime.length===0&&duplicateRuntime.length===0&&unexpectedRuntime.length===0&&unexpectedCore.length===0&&unexpectedSearch.length===0?'PASS':'FAIL';
+  const status=pass===plan.frozen.profileCount&&failCount===0&&realSmokePass===plan.frozen.profileCount&&capabilityWitnessPass===plan.frozen.profileCount&&coreFullPass===plan.summary.fast.coreFullCount&&searchFullPass===plan.summary.fast.searchFullCount&&allFamiliesPass&&missingRuntime.length===0&&duplicateRuntime.length===0&&unexpectedRuntime.length===0&&unexpectedCore.length===0&&unexpectedSearch.length===0?'PASS':'FAIL';
   const out={
     schemaVersion:2,
     phase:'G-FM',
@@ -199,6 +207,7 @@ export function aggregateFast(dir,{root=repoRoot,expectedSha=String(process.env.
       executedRuntimeEvidence:runtimeDocs.length,
       realSmokePass,
       exactIdentityPass,
+      capabilityWitnessPass,
       fingerprintBindingPass,
       cleanupPass,
       PASS:pass,

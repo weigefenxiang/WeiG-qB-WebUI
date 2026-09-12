@@ -82,9 +82,10 @@ assert.notEqual(fastAggregateSchema.evidenceClass,exhaustiveAggregateSchema.evid
 assert.equal(fastAggregateSchema.frozenCatalogSha256,a.frozen.catalogSha256);
 assert.equal(exhaustiveAggregateSchema.frozenCatalogSha256,a.frozen.catalogSha256);
 assert.equal(fastAggregateSchema.versionEvidence.expectedCount,65);
-assert.equal(fastAggregateSchema.versionEvidence.requireRuntimeStatus,'PASS');
+assert.equal(fastAggregateSchema.versionEvidence.requireRuntimeSmokeResult,'PASS');
 assert.equal(fastAggregateSchema.versionEvidence.requireExactQbIdentity,true);
 assert.equal(fastAggregateSchema.versionEvidence.requireCleanupResult,'PASS');
+assert.equal(fastAggregateSchema.versionEvidence.requireRuntimeCapabilityWitnessFingerprint,true);
 assert.equal(fastAggregateSchema.versionEvidence.requireFingerprintMatch,true);
 assert.deepEqual(fastAggregateSchema.versionEvidence.fingerprintDimensions,a.dimensions);
 assert.equal(fastAggregateSchema.versionEvidence.versions.length,65);
@@ -116,6 +117,7 @@ for(const dimension of fastFamilyDimensions){
 }
 assert.equal(exhaustiveAggregateSchema.familyEvidence,null,'exhaustive aggregate must remain per-version full evidence rather than family substitution');
 assert.equal(exhaustiveAggregateSchema.versionEvidence.expectedCount,65);
+assert.equal(exhaustiveAggregateSchema.versionEvidence.requireRuntimeStatus,'PASS');
 assert.equal(exhaustiveAggregateSchema.versionEvidence.requireCoreSemanticStatus,'PASS');
 assert.equal(exhaustiveAggregateSchema.versionEvidence.requireSearchSemanticStatus,'PASS');
 assert.equal(exhaustiveAggregateSchema.versionEvidence.versions.length,65);
