@@ -127,7 +127,7 @@ jobs:
             fi
           done
 
-      - name: Warm Settings evidence in 16 parallel runners
+      - name: Warm Settings evidence in 16 runners x 4 workers
         if: ${{ steps.relevance.outputs.relevant == 'true' && github.ref_name == 'dev' }}
         shell: bash
         env:
@@ -140,7 +140,7 @@ jobs:
             exit 0
           fi
           gh workflow run pages-source.yml --ref dev -f mode=settings-evidence
-          echo "Dispatched 16-way Settings source+locale evidence warmup for dev@$GITHUB_SHA."
+          echo "Dispatched Settings evidence warmup for dev@$GITHUB_SHA: up to 16 runners, each with 4 independent source+locale workers (64 subshards total)."
 
       - name: Dispatch exact-ref Pages owner
         if: ${{ steps.relevance.outputs.relevant == 'true' }}
@@ -168,14 +168,14 @@ jobs:
           echo "Dispatched Virtual qB Pages on $BRANCH@$GITHUB_SHA because a Pages/runtime input changed."
 
   settings_evidence_shard:
-    name: Settings source shard ${{ matrix.shard }}
+    name: Settings source runner ${{ matrix.runner }}
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'settings-evidence' && github.ref == 'refs/heads/dev' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       max-parallel: 16
       matrix:
-        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+        runner: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -189,31 +189,47 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
           filter: blob:none
-      - name: Extract and enrich exact source shard
+      - name: Extract and enrich four exact source subshards concurrently
         shell: bash
         run: |
           set -euo pipefail
-          node tools/qb-release-catalog-shard.mjs upstream-qb \
-            --shard-index=${{ matrix.shard }} \
-            --shard-count=16 \
-            --output=qb-releases-shard-${{ matrix.shard }}.raw.json \
-            --manifest=qb-releases-shard-${{ matrix.shard }}.meta.json
-          node tools/qb-locale-source.mjs upstream-qb \
-            qb-releases-shard-${{ matrix.shard }}.raw.json \
-            qb-releases-shard-${{ matrix.shard }}.json
-          rm qb-releases-shard-${{ matrix.shard }}.raw.json
-      - name: Upload exact source shard
+          pids=()
+          for lane in 0 1 2 3; do
+            subshard=$(( ${{ matrix.runner }} + lane * 16 ))
+            (
+              set -euo pipefail
+              node tools/qb-release-catalog-shard.mjs upstream-qb \
+                --shard-index="$subshard" \
+                --shard-count=64 \
+                --output="qb-releases-shard-${subshard}.raw.json" \
+                --manifest="qb-releases-shard-${subshard}.meta.json"
+              node tools/qb-locale-source.mjs upstream-qb \
+                "qb-releases-shard-${subshard}.raw.json" \
+                "qb-releases-shard-${subshard}.json"
+              rm "qb-releases-shard-${subshard}.raw.json"
+            ) &
+            pids+=("$!")
+          done
+
+          failed=0
+          for pid in "${pids[@]}"; do
+            if ! wait "$pid"; then
+              failed=1
+            fi
+          done
+          test "$failed" -eq 0
+      - name: Upload exact source subshards
         uses: actions/upload-artifact@v7
         with:
-          name: qb-settings-source-shard-${{ github.sha }}-${{ matrix.shard }}
+          name: qb-settings-source-runner-${{ github.sha }}-${{ matrix.runner }}
           path: |
-            qb-releases-shard-${{ matrix.shard }}.json
-            qb-releases-shard-${{ matrix.shard }}.meta.json
+            qb-releases-shard-*.json
+            qb-releases-shard-*.meta.json
           if-no-files-found: error
           retention-days: 1
 
   settings_evidence_merge:
-    name: Merge 16 Settings source shards
+    name: Merge 64 Settings source subshards
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'settings-evidence' && github.ref == 'refs/heads/dev' }}
     runs-on: ubuntu-latest
     needs: settings_evidence_shard
@@ -222,10 +238,10 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-      - name: Download all exact source shards
+      - name: Download all exact source subshards
         uses: actions/download-artifact@v8
         with:
-          pattern: qb-settings-source-shard-${{ github.sha }}-*
+          pattern: qb-settings-source-runner-${{ github.sha }}-*
           path: settings-shards
           merge-multiple: true
       - name: Merge exact source-derived catalog
