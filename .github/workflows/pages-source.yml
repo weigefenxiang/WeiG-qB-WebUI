@@ -1,7 +1,8 @@
 name: Virtual qB Pages Source
 
-# Source relay owns normal Pages trigger choreography. Its manual settings-evidence mode is a
-# dedicated high-parallel source-evidence refresh path so Pages never waits on the full Candidate CI.
+# Source relay owns normal Pages trigger choreography. Ordinary development pushes only deploy
+# when public WebUI/simulator/installer payload inputs changed. Heavy Settings evidence is
+# demand-driven and remains isolated behind the manual settings-evidence mode.
 on:
   workflow_dispatch:
     inputs:
@@ -23,7 +24,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: pages-source-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'settings-evidence' && 'settings-evidence' || github.run_id }}
+  group: pages-source-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'settings-evidence' && 'settings-evidence' || 'pages' }}
   cancel-in-progress: true
 
 jobs:
@@ -48,7 +49,7 @@ jobs:
 
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             echo "relevant=true" >> "$GITHUB_OUTPUT"
-            echo "Manual dispatch explicitly requests a Pages owner run."
+            echo "Manual Pages dispatch explicitly requests a deployment owner run."
             exit 0
           fi
 
@@ -63,30 +64,28 @@ jobs:
 
           if ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
             echo "relevant=true" >> "$GITHUB_OUTPUT"
-            echo "Before SHA is unavailable locally; fail closed by requiring CI smoke."
+            echo "Before SHA is unavailable locally; fail closed by requiring a Pages owner run."
             exit 0
           fi
 
           relevant=false
-          # -z is required: repository docs use non-ASCII names and default git path quoting
-          # would turn e.g. docs/中文.md into a quoted octal escape that no longer matches docs/*.
           while IFS= read -r -d '' path; do
             [ -n "$path" ] || continue
             case "$path" in
-              docs/*|*.md|LICENSE|.github/workflows/ci.yml|.github/workflows/promote.yml|.github/workflows/real-qb-full.yml|.github/workflows/release.yml)
-                echo "Pages-irrelevant change: $path"
-                ;;
-              *)
-                echo "Pages-relevant change: $path"
+              webui/*|simulator/*|installers/*|VERSION|tools/data/qb-stable-lkg.json|tools/data/qb-locale-lkg.json|tests/fixtures/qb-release-catalog.lkg.json)
+                echo "Pages-relevant payload change: $path"
                 relevant=true
                 break
+                ;;
+              *)
+                echo "Pages-irrelevant development/repository change: $path"
                 ;;
             esac
           done < <(git -c core.quotePath=false diff --name-only -z "$BEFORE" "$GITHUB_SHA")
 
           echo "relevant=$relevant" >> "$GITHUB_OUTPUT"
           if [ "$relevant" != "true" ]; then
-            echo "Only documentation/repository-only paths changed; Virtual qB Pages will not be dispatched."
+            echo "No public WebUI/simulator/installer/Frozen payload changed; Virtual qB Pages is not dispatched."
           fi
 
       - name: Recover stale Pages browser verification
@@ -127,21 +126,6 @@ jobs:
             fi
           done
 
-      - name: Warm Settings evidence in 16 runners x 4 workers
-        if: ${{ steps.relevance.outputs.relevant == 'true' && github.ref_name == 'dev' }}
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          REMOTE_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/commits/dev" --jq '.sha')"
-          if [ "$REMOTE_SHA" != "$GITHUB_SHA" ]; then
-            echo "Skipping Settings evidence warmup for stale dev@$GITHUB_SHA; current head is $REMOTE_SHA."
-            exit 0
-          fi
-          gh workflow run pages-source.yml --ref dev -f mode=settings-evidence
-          echo "Dispatched Settings evidence warmup for dev@$GITHUB_SHA: up to 16 runners, each with 4 independent source+locale workers (64 subshards total)."
-
       - name: Dispatch exact-ref Pages owner
         if: ${{ steps.relevance.outputs.relevant == 'true' }}
         shell: bash
@@ -165,7 +149,7 @@ jobs:
             "/repos/$GITHUB_REPOSITORY/actions/workflows/pages.yml/dispatches" \
             -f ref="$BRANCH" >/dev/null
 
-          echo "Dispatched Virtual qB Pages on $BRANCH@$GITHUB_SHA because a Pages/runtime input changed."
+          echo "Dispatched Virtual qB Pages on $BRANCH@$GITHUB_SHA because a public payload input changed."
 
   settings_evidence_shard:
     name: Settings source runner ${{ matrix.runner }}
@@ -173,9 +157,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      max-parallel: 16
+      max-parallel: 4
       matrix:
-        runner: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+        runner: [0, 1, 2, 3]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -195,12 +179,12 @@ jobs:
           set -euo pipefail
           pids=()
           for lane in 0 1 2 3; do
-            subshard=$(( ${{ matrix.runner }} + lane * 16 ))
+            subshard=$(( ${{ matrix.runner }} + lane * 4 ))
             (
               set -euo pipefail
               node tools/qb-release-catalog-shard.mjs upstream-qb \
                 --shard-index="$subshard" \
-                --shard-count=64 \
+                --shard-count=16 \
                 --output="qb-releases-shard-${subshard}.raw.json" \
                 --manifest="qb-releases-shard-${subshard}.meta.json"
               node tools/qb-locale-source.mjs upstream-qb \
@@ -229,7 +213,7 @@ jobs:
           retention-days: 1
 
   settings_evidence_merge:
-    name: Merge 64 Settings source subshards
+    name: Merge 16 Settings source subshards
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'settings-evidence' && github.ref == 'refs/heads/dev' }}
     runs-on: ubuntu-latest
     needs: settings_evidence_shard
