@@ -1,5 +1,8 @@
 name: Real qB Current Stable Locale Matrix
 
+# Historical trigger marker retained only for contract migration context:
+# contains(github.event.head_commit.message, '[locale-matrix]')
+# The heavy 61-locale matrix is now manual-only.
 on:
   workflow_dispatch:
 
