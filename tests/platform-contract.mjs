@@ -39,7 +39,11 @@ assert.match(sh,/--channel=release\|dev/,'Linux installer must keep the old chan
 assert.match(sh,/--dir=\/path/,'Linux installer must keep the old path syntax as a compatibility alias');
 assert.match(sh,/api\.github\.com\/repos\/\$REPO\/commits\/dev/,'Linux dev channel must resolve the current dev exact SHA');
 assert.match(sh,/DEV_DIST_BASE="https:\/\/weigefenxiang\.github\.io\/WeiG-qB-WebUI\/downloads\/dev"/,'Linux Dev channel must consume the canonical public materialized payload');
-assert.match(sh,/PUBLISHED_SHA.*SOURCE_SHA|SOURCE_SHA.*PUBLISHED_SHA/s,'Linux Dev channel must bind the public materialized payload to the current exact dev SHA');
+assert.match(sh,/dev_payload_can_represent_head/,'Linux Dev channel must explicitly verify whether a materialized payload may represent a newer docs-only dev HEAD');
+assert.match(sh,/compare\/\$published_sha\.\.\.\$dev_head_sha/,'Linux Dev payload reuse must compare the published payload SHA with the current dev HEAD');
+assert.match(sh,/docs\/\*\|\*\.md/,'Linux Dev payload reuse must recognize the explicit documentation-only exception set');
+assert.match(sh,/Pages-relevant change exists after published dev payload/,'Linux Dev payload reuse must fail closed when any non-exempt path changed');
+assert.match(sh,/PACKAGE_SHA.*SOURCE_SHA|SOURCE_SHA.*PACKAGE_SHA/s,'Linux Dev package identity must remain bound to the published materialized SHA');
 assert.match(sh,/assert_materialized_webui/,'Linux installer must validate materialized catalog and qB translation runtime assets');
 assert.doesNotMatch(sh,/archive\/\$SOURCE_SHA\.zip/,'Linux Dev channel must not fall back to a raw source archive');
 for(const token of ['download_file','extract_zip','sha256_file','busybox wget','busybox unzip','python3 -m zipfile','openssl dgst -sha256'])assert.ok(sh.includes(token),`Linux portable installer fallback missing ${token}`);
@@ -70,7 +74,11 @@ assert.match(ps,/ValidateSet\('Release','Dev'\)/,'Windows installer must retain 
 assert.match(ps,/ValidateSet\('Install','Update','Rollback'\)/,'Windows installer must retain legacy mode compatibility');
 assert.match(ps,/api\.github\.com\/repos\/\$Repo\/commits\/dev/,'Windows Dev channel must resolve the current dev exact SHA');
 assert.match(ps,/DevDistBase='https:\/\/weigefenxiang\.github\.io\/WeiG-qB-WebUI\/downloads\/dev'/,'Windows Dev channel must consume the canonical public materialized payload');
-assert.match(ps,/publishedSha -ne \$sourceSha/,'Windows Dev channel must bind the public materialized payload to the current exact dev SHA');
+assert.match(ps,/function Test-DevPayloadCanRepresentHead/,'Windows Dev channel must verify whether a materialized payload may represent a newer docs-only dev HEAD');
+assert.match(ps,/compare\/\$PublishedSha\.\.\.\$DevHeadSha/,'Windows Dev payload reuse must compare the published payload SHA with the current dev HEAD');
+assert.match(ps,/EndsWith\('\.md'/,'Windows Dev payload reuse must recognize Markdown as an explicit Pages-irrelevant path class');
+assert.match(ps,/Pages-relevant change exists after published dev payload/,'Windows Dev payload reuse must fail closed when any non-exempt path changed');
+assert.match(ps,/packageSha.*sourceSha|sourceSha.*packageSha/s,'Windows Dev package identity must remain bound to the published materialized SHA');
 assert.match(ps,/Verify-PackageChecksum \$archive \$sumFile/,'Windows Dev materialized payload must remain checksum-verified');
 assert.match(ps,/function Assert-MaterializedWebUI/,'Windows installer must validate materialized catalog and qB translation runtime assets');
 assert.match(ps,/qb-settings-native\.txt/,'Windows materialized payload must require the native qB Settings translation registry');
@@ -108,4 +116,4 @@ for(const [name,html] of [['public/index.html',publicIndex],['public/login.html'
 }
 assert.match(privateIndex,/scripts\/qb-client\.js/,'private WebUI must load the shared API compatibility client');
 
-console.log('Platform contract passed: Linux/Windows Release installs pin one concrete tag and require tag/VERSION/GIT_SHA identity; Dev consumes one exact-SHA materialized qB-aware payload with raw-source fallback forbidden; Windows qB config mutation preserves original text encoding; installer compatibility and LIVE rollback retention remain guarded.');
+console.log('Platform contract passed: Linux/Windows Release installs pin one concrete tag and require tag/VERSION/GIT_SHA identity; Dev consumes one materialized qB-aware payload, permits newer docs-only heads only after compare verification, fails closed on Pages-relevant lag, and forbids raw-source fallback; Windows qB config mutation preserves original text encoding; installer compatibility and LIVE rollback retention remain guarded.');
