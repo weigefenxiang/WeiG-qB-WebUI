@@ -1,0 +1,2 @@
+# Frozen source evidence has a byte-level SHA-256 identity and must checkout identically on every OS.
+tests/fixtures/qb-release-catalog.lkg.json text eol=lf
