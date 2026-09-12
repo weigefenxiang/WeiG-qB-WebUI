@@ -1,3 +1,4 @@
+import './real-qb-fast-aggregate-contract.mjs';
 import './real-qb-capability-plan-contract.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
