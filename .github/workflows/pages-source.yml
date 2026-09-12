@@ -1,11 +1,18 @@
 name: Virtual qB Pages Source
 
-# Source relay owns trigger choreography only. It never owns Pages deployment permissions.
-# Every dev/main push reaches this lightweight relay and is classified from the full checked-out
-# history. Everything unknown defaults to Pages-relevant so runtime/build changes cannot silently
-# bypass deployment because of GitHub native path-filter diff limits.
+# Source relay owns normal Pages trigger choreography. Its manual settings-evidence mode is a
+# dedicated high-parallel source-evidence refresh path so Pages never waits on the full Candidate CI.
 on:
   workflow_dispatch:
+    inputs:
+      mode:
+        description: Relay mode
+        required: false
+        default: pages
+        type: choice
+        options:
+          - pages
+          - settings-evidence
   push:
     branches:
       - dev
@@ -15,8 +22,13 @@ permissions:
   actions: write
   contents: read
 
+concurrency:
+  group: pages-source-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'settings-evidence' && 'settings-evidence' || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   source:
+    if: ${{ github.event_name == 'push' || inputs.mode != 'settings-evidence' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source history
@@ -139,3 +151,112 @@ jobs:
             -f ref="$BRANCH" >/dev/null
 
           echo "Dispatched Virtual qB Pages on $BRANCH@$GITHUB_SHA because a Pages/runtime input changed."
+
+  settings_evidence_shard:
+    name: Settings source shard ${{ matrix.shard }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'settings-evidence' && github.ref == 'refs/heads/dev' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 16
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Checkout qBittorrent upstream with all stable release tags
+        uses: actions/checkout@v7
+        with:
+          repository: qbittorrent/qBittorrent
+          path: upstream-qb
+          fetch-depth: 0
+          fetch-tags: true
+          filter: blob:none
+      - name: Extract and enrich exact source shard
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/qb-release-catalog-shard.mjs upstream-qb \
+            --shard-index=${{ matrix.shard }} \
+            --shard-count=16 \
+            --output=qb-releases-shard-${{ matrix.shard }}.raw.json \
+            --manifest=qb-releases-shard-${{ matrix.shard }}.meta.json
+          node tools/qb-locale-source.mjs upstream-qb \
+            qb-releases-shard-${{ matrix.shard }}.raw.json \
+            qb-releases-shard-${{ matrix.shard }}.json
+          rm qb-releases-shard-${{ matrix.shard }}.raw.json
+      - name: Upload exact source shard
+        uses: actions/upload-artifact@v7
+        with:
+          name: qb-settings-source-shard-${{ github.sha }}-${{ matrix.shard }}
+          path: |
+            qb-releases-shard-${{ matrix.shard }}.json
+            qb-releases-shard-${{ matrix.shard }}.meta.json
+          if-no-files-found: error
+          retention-days: 1
+
+  settings_evidence_merge:
+    name: Merge 16 Settings source shards
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'settings-evidence' && github.ref == 'refs/heads/dev' }}
+    runs-on: ubuntu-latest
+    needs: settings_evidence_shard
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Download all exact source shards
+        uses: actions/download-artifact@v8
+        with:
+          pattern: qb-settings-source-shard-${{ github.sha }}-*
+          path: settings-shards
+          merge-multiple: true
+      - name: Merge exact source-derived catalog
+        run: node tools/qb-release-catalog-shard-merge.mjs settings-shards qb-releases.json
+      - name: Upload source-enriched bootstrap catalog
+        uses: actions/upload-artifact@v7
+        with:
+          name: qb-release-catalog-${{ github.sha }}
+          path: qb-releases.json
+          if-no-files-found: error
+          retention-days: 1
+
+  settings_evidence_lkg:
+    name: Freeze certified Settings translation LKG
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'settings-evidence' && github.ref == 'refs/heads/dev' }}
+    runs-on: ubuntu-latest
+    needs: settings_evidence_merge
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Download exact merged catalog
+        uses: actions/download-artifact@v8
+        with:
+          name: qb-release-catalog-${{ github.sha }}
+          path: release-catalog
+      - name: Freeze and validate reusable Settings evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp release-catalog/qb-releases.json qb-releases.json
+          node tools/qb-settings-translation-lkg.mjs qb-releases.json tests/fixtures/qb-release-catalog.lkg.json qb-settings-translation-lkg.json
+          sha256sum qb-settings-translation-lkg.json > qb-settings-translation-lkg.SHA256
+          node tests/full-stable-locale-routing-contract.mjs qb-releases.json --require-mapped
+          rm -rf "$RUNNER_TEMP/qb-materialized"
+          mkdir -p "$RUNNER_TEMP/qb-materialized/private/data"
+          node tools/qb-webui-catalog.mjs qb-releases.json "$RUNNER_TEMP/qb-materialized/private/data/qb-releases.json"
+          test -s "$RUNNER_TEMP/qb-materialized/private/data/qb-settings-native.txt"
+          find "$RUNNER_TEMP/qb-materialized/translations" -type f -name 'webui_*.qm' -print -quit | grep -q .
+      - name: Upload certified qB Settings translation LKG
+        uses: actions/upload-artifact@v7
+        with:
+          name: qb-settings-translation-lkg-${{ github.sha }}
+          path: |
+            qb-settings-translation-lkg.json
+            qb-settings-translation-lkg.SHA256
+          if-no-files-found: error
+          retention-days: 90
