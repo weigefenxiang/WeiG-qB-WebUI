@@ -20,6 +20,7 @@ export function buildQbSettingsTranslationLkg(enrichedCatalog,frozenCatalog,{bas
   let mappedProfiles=0;
   let mappedPreferences=0;
   let translationRoutes=0;
+  let ownedUiBindings=0;
 
   for(const source of enrichedCatalog){
     const qbVersion=profileKey(source),sourceSha=String(source?.sourceSha||'').trim();
@@ -29,20 +30,23 @@ export function buildQbSettingsTranslationLkg(enrichedCatalog,frozenCatalog,{bas
     assert(String(frozen.sourceSha||'')===sourceSha,`${qbVersion}: Settings translation evidence source SHA drift.`);
 
     const preferences=clone(source.settingsUi||{});
+    const ui=clone(source.qbOwnedUi||{});
     const translations=clone(source.settingsTranslations||{});
     const mapped=Number(source.settingsUiMappedPreferences)||0;
     const total=Number(source.settingsUiTotalPreferences)||0;
     assert(mapped===Object.keys(preferences).length,`${qbVersion}: mapped Settings preference count drift.`);
     assert(mapped<=total,`${qbVersion}: mapped Settings preference count exceeds source preference surface.`);
+    assert(Object.keys(ui).length>0,`${qbVersion}: source-derived qB-owned UI copy is missing.`);
     if(mapped>0)mappedProfiles+=1;
     mappedPreferences+=mapped;
+    ownedUiBindings+=Object.keys(ui).length;
     translationRoutes+=Object.keys(translations).length;
 
     for(const [hash,payload] of Object.entries(source.settingsTranslationSets||{})){
       if(sets[hash])assert(JSON.stringify(sets[hash])===JSON.stringify(payload),`${qbVersion}: Settings translation set hash collision ${hash}.`);
       else sets[hash]=clone(payload);
     }
-    profiles.push({qbVersion,sourceSha,source:String(source.settingsUiSource||''),mappedPreferences:mapped,totalPreferences:total,preferences,translations});
+    profiles.push({qbVersion,sourceSha,source:String(source.settingsUiSource||''),ownedUiSource:String(source.qbOwnedUiSource||''),mappedPreferences:mapped,totalPreferences:total,preferences,ui,translations});
   }
 
   assert(profiles.length===frozenByVersion.size,'Settings translation LKG must cover every admitted stable exactly once.');
@@ -50,14 +54,16 @@ export function buildQbSettingsTranslationLkg(enrichedCatalog,frozenCatalog,{bas
     for(const hash of Object.values(profile.translations||{}))assert(sets[hash],`${profile.qbVersion}: referenced Settings translation set ${hash} is missing.`);
   }
   assert(mappedProfiles>0&&mappedPreferences>0,'Settings translation LKG must contain source-mapped qB Settings copy.');
+  assert(ownedUiBindings>0,'Settings translation LKG must contain source-derived qB-owned UI copy.');
   assert(translationRoutes>0&&Object.keys(sets).length>0,'Settings translation LKG must contain official locale translation evidence.');
 
   return{
     schemaVersion:1,
-    source:'qb-upstream-preferences-ui+official-ts',
+    source:'qb-upstream-preferences-ui+owned-ui+official-ts',
     supportFloor:profileKey(frozenCatalog[0]),
     latestAdmittedStable:profileKey(frozenCatalog.at(-1)),
     profileCount:profiles.length,
+    ownedUiBindings,
     ...(baseCatalogSha256?{baseCatalogSha256}:{}),
     ...(sourceEvidence?{sourceEvidence}:{}),
     profiles,
@@ -69,6 +75,7 @@ export function applyQbSettingsTranslationLkg(catalog,lkg,{catalogSha256=''}={})
   assert(Array.isArray(catalog)&&catalog.length,'Settings translation LKG requires a non-empty target catalog.');
   assert(lkg&&lkg.schemaVersion===1&&Array.isArray(lkg.profiles)&&lkg.sets&&typeof lkg.sets==='object','Settings translation LKG must use schemaVersion 1 with profiles and sets.');
   assert(Number(lkg.profileCount)===catalog.length&&lkg.profiles.length===catalog.length,`Settings translation LKG profile count mismatch: ${lkg.profiles.length}/${lkg.profileCount} != ${catalog.length}`);
+  assert(Number(lkg.ownedUiBindings)>0,'Settings translation LKG is stale: source-derived qB-owned UI bindings are missing.');
   assert(profileKey(catalog[0])===String(lkg.supportFloor||''),`Settings translation LKG support floor mismatch: ${lkg.supportFloor} != ${profileKey(catalog[0])}`);
   assert(profileKey(catalog.at(-1))===String(lkg.latestAdmittedStable||''),`Settings translation LKG latest stable mismatch: ${lkg.latestAdmittedStable} != ${profileKey(catalog.at(-1))}`);
   if(catalogSha256)assert(String(lkg.baseCatalogSha256||'')===catalogSha256,`Settings translation LKG base catalog SHA-256 mismatch: ${lkg.baseCatalogSha256||'missing'} != ${catalogSha256}`);
@@ -79,10 +86,11 @@ export function applyQbSettingsTranslationLkg(catalog,lkg,{catalogSha256=''}={})
     const qbVersion=profileKey(profile),fact=byVersion.get(qbVersion);
     assert(fact,`${qbVersion}: Settings translation LKG profile missing.`);
     assert(String(fact.sourceSha||'')===String(profile.sourceSha||''),`${qbVersion}: Settings translation LKG source SHA mismatch.`);
-    const preferences=clone(fact.preferences||{}),translations=clone(fact.translations||{}),sets={};
+    const preferences=clone(fact.preferences||{}),ui=clone(fact.ui||{}),translations=clone(fact.translations||{}),sets={};
     const mapped=Number(fact.mappedPreferences)||0,total=Number(fact.totalPreferences)||0;
     assert(mapped===Object.keys(preferences).length,`${qbVersion}: Settings translation LKG mapped preference count drift.`);
     assert(mapped<=total,`${qbVersion}: Settings translation LKG mapped preferences exceed source surface.`);
+    assert(Object.keys(ui).length>0,`${qbVersion}: Settings translation LKG qB-owned UI bindings are missing.`);
     for(const hash of new Set(Object.values(translations))){
       assert(lkg.sets[hash],`${qbVersion}: Settings translation set ${hash} is missing from the LKG.`);
       sets[hash]=clone(lkg.sets[hash]);
@@ -93,6 +101,8 @@ export function applyQbSettingsTranslationLkg(catalog,lkg,{catalogSha256=''}={})
       settingsUiMappedPreferences:mapped,
       settingsUiTotalPreferences:total,
       settingsUi:preferences,
+      qbOwnedUiSource:String(fact.ownedUiSource||''),
+      qbOwnedUi:ui,
       settingsTranslations:translations,
       settingsTranslationSets:sets
     };
@@ -118,6 +128,6 @@ if(isMain){
     fs.writeFileSync(outputPath,JSON.stringify(lkg)+'\n','utf8');
     const mapped=lkg.profiles.reduce((sum,item)=>sum+item.mappedPreferences,0);
     const routes=lkg.profiles.reduce((sum,item)=>sum+Object.keys(item.translations||{}).length,0);
-    console.log(`Frozen qB Settings translation evidence: ${lkg.profileCount} releases, ${mapped} mapped preferences, ${routes} locale routes, ${Object.keys(lkg.sets).length} deduplicated translation sets.`);
+    console.log(`Frozen qB Settings translation evidence: ${lkg.profileCount} releases, ${mapped} mapped preferences, ${lkg.ownedUiBindings} qB-owned UI bindings, ${routes} locale routes, ${Object.keys(lkg.sets).length} deduplicated translation sets.`);
   }catch(error){console.error(error?.message||error);process.exitCode=1;}
 }

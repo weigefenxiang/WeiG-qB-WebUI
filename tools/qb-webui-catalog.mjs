@@ -14,6 +14,8 @@ const SETTINGS_FIELDS=[
   'settingsUiMappedPreferences',
   'settingsUiTotalPreferences',
   'settingsUi',
+  'qbOwnedUiSource',
+  'qbOwnedUi',
   'settingsTranslations',
   'settingsTranslationSets'
 ];
@@ -36,7 +38,8 @@ export function settingsTranslationShard(item,allSets,locales=null){
   const allowed=locales?new Set(locales.map(String)):null;
   const translations=Object.fromEntries(Object.entries(item.settingsTranslations||{}).filter(([locale])=>!allowed||allowed.has(locale)));
   const preferences=item.settingsUi||{};
-  if(!Object.keys(translations).length||!Object.keys(preferences).length)return null;
+  const ui=item.qbOwnedUi||{};
+  if(!Object.keys(translations).length||(!Object.keys(preferences).length&&!Object.keys(ui).length))return null;
   if(!/^[0-9a-f]{40}$/.test(String(item.sourceSha)))throw new Error(`${item.qbVersion}: invalid exact source SHA for Settings translation shard.`);
   const sets={};
   for(const hash of new Set(Object.values(translations))){
@@ -45,10 +48,11 @@ export function settingsTranslationShard(item,allSets,locales=null){
   }
   return{
     schemaVersion:2,
-    source:'qb-upstream-preferences-ui+webui-ts-compatibility-only',
+    source:'qb-upstream-preferences-ui+owned-ui+webui-ts-compatibility-only',
     qbVersion:item.qbVersion,
     sourceSha:item.sourceSha,
     preferences,
+    ui,
     translations,
     sets
   };
@@ -154,6 +158,7 @@ export function packCatalog(input,output,options={}){
   if(JSON.stringify(verified)!==JSON.stringify(runtimeIndex))throw new Error('Packed qB release index changed runtime JSON semantics.');
   const nativeLocaleRoutes=bundle.profiles.reduce((sum,item)=>sum+item.nativeLocales.length,0);
   const bridgeLocaleRoutes=bundle.profiles.reduce((sum,item)=>sum+item.bridgeLocales.length,0);
+  const ownedUiBindings=bundle.profiles.reduce((sum,item)=>sum+(Number(item.mappedUi)||0),0);
   return{
     profiles:runtimeCatalog.length,
     sourceBytes:Buffer.byteLength(source),
@@ -162,6 +167,7 @@ export function packCatalog(input,output,options={}){
     nativeRegistryBytes:registryBytes,
     nativeLocaleRoutes,
     bridgeLocaleRoutes,
+    ownedUiBindings,
     qmLocaleSources:Object.keys(bundle.localeMessages).length,
     qmCount,maxQmBytes,totalQmBytes,
     settingsShardCount:shardCount,

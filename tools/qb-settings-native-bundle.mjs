@@ -17,7 +17,7 @@ function decodeTranslation(value){if(Array.isArray(value))return null;const text
 function collectSets(catalog){const out={};for(const profile of catalog||[])Object.assign(out,profile?.settingsTranslationSets||{});return out;}
 function exactBehavior(evidence,profile){const hit=(evidence?.profiles||[]).find(item=>String(item?.qbVersion||'')===String(profile?.qbVersion||''));if(!hit||String(hit.sourceSha||'')!==String(profile?.sourceSha||''))return null;const family=evidence?.families?.[hit.family];return family?{family:hit.family,...family}:null;}
 function messageMap(set){const out=new Map();for(const item of set?.messages||[]){if(!item?.context||!item?.source)continue;const value=decodeTranslation(item.translation);if(value!==null)out.set(refKey(item.context,item.source),value);}return out;}
-function refsForProfile(profile){const out=[];const seen=new Set();for(const entry of Object.values(profile?.settingsUi||{})){for(const role of ['title','description']){const ref=entry?.[role];if(!ref?.source||!ref?.context)continue;const identity=refKey(ref.context,ref.source);if(!seen.has(identity)){seen.add(identity);out.push({context:String(ref.context),source:String(ref.source)});}}}return out;}
+function refsForProfile(profile){const out=[];const seen=new Set();const add=(ref)=>{if(!ref?.source||!ref?.context)return;const identity=refKey(ref.context,ref.source);if(!seen.has(identity)){seen.add(identity);out.push({context:String(ref.context),source:String(ref.source)});}};for(const entry of Object.values(profile?.settingsUi||{}))for(const role of ['title','description'])add(entry?.[role]);for(const ref of Object.values(profile?.qbOwnedUi||{}))add(ref);return out;}
 function translationSet(profile,locale,allSets){const hash=profile?.settingsTranslations?.[locale];return hash?allSets[hash]||null:null;}
 function addVote(votes,locale,identity,value,profileIndex){if(!value)return;let byRef=votes.get(locale);if(!byRef){byRef=new Map();votes.set(locale,byRef);}let byValue=byRef.get(identity);if(!byValue){byValue=new Map();byRef.set(identity,byValue);}const item=byValue.get(value)||{count:0,lastProfileIndex:-1};item.count+=1;item.lastProfileIndex=Math.max(item.lastProfileIndex,profileIndex);byValue.set(value,item);}
 function chooseCanonical(votes){const locales=new Map();for(const [locale,byRef] of votes){const chosen=new Map();for(const [identity,byValue] of byRef){const ranked=[...byValue.entries()].sort((a,b)=>b[1].count-a[1].count||b[1].lastProfileIndex-a[1].lastProfileIndex||a[0].localeCompare(b[0]));chosen.set(identity,ranked[0][0]);}locales.set(locale,chosen);}return locales;}
@@ -59,7 +59,7 @@ export function buildNativeSettingsBundle(catalog,behaviorEvidence){
         (native?nativeLocales:bridgeLocales).push(locale);
       }
     }
-    profiles.push({qbVersion,sourceSha,family:behavior.family,nativeLocales,bridgeLocales,mappedPreferences:Object.keys(profile?.settingsUi||{}).length});
+    profiles.push({qbVersion,sourceSha,family:behavior.family,nativeLocales,bridgeLocales,mappedPreferences:Object.keys(profile?.settingsUi||{}).length,mappedUi:Object.keys(profile?.qbOwnedUi||{}).length});
   }
   const localeMessages={};
   for(const [locale,byRef] of canonical){
@@ -79,25 +79,22 @@ export function buildNativeSettingsBundle(catalog,behaviorEvidence){
 
 export function renderNativeSettingsRegistry(catalog){
   if(!Array.isArray(catalog))throw new Error('Native Settings registry requires a catalog array.');
-  const refs=new Map(),profileLines=[];
+  const refs=new Map(),profileLines=[],uiLines=[];
+  const remember=(ref)=>{if(!ref?.source||!ref?.context)return null;const id=refId(ref.context,ref.source),identity=refKey(ref.context,ref.source),previous=refs.get(id);if(previous&&previous.identity!==identity)throw new Error(`Native Settings ref hash collision ${id}.`);refs.set(id,{id,identity,context:String(ref.context),source:String(ref.source)});return id;};
   for(const profile of catalog){
     const sourceSha=String(profile?.sourceSha||'');
     if(!/^[0-9a-f]{40}$/.test(sourceSha))continue;
     for(const [key,entry] of Object.entries(profile?.settingsUi||{})){
       const ids={};
-      for(const role of ['title','description']){
-        const ref=entry?.[role];
-        if(!ref?.source||!ref?.context)continue;
-        const id=refId(ref.context,ref.source),identity=refKey(ref.context,ref.source);
-        const previous=refs.get(id);
-        if(previous&&previous.identity!==identity)throw new Error(`Native Settings ref hash collision ${id}.`);
-        refs.set(id,{id,identity,context:String(ref.context),source:String(ref.source)});ids[role]=id;
-      }
+      for(const role of ['title','description']){const id=remember(entry?.[role]);if(id)ids[role]=id;}
       if(!ids.title)continue;
       profileLines.push(`@@WEIGG_PROFILE\t${sourceSha}\t${encodeField(key)}\t${encodeField(entry?.controlId||'')}\t${ids.title}\t${ids.description||'-'}`);
     }
+    for(const [key,ref] of Object.entries(profile?.qbOwnedUi||{})){
+      const id=remember(ref);if(id)uiLines.push(`@@WEIGG_UI\t${sourceSha}\t${encodeField(key)}\t${id}`);
+    }
   }
-  const lines=['# WeiG qB Settings native QBT_TR registry v1',...profileLines.sort()];
+  const lines=['# WeiG qB Settings native QBT_TR registry v2',...profileLines.sort(),...uiLines.sort()];
   for(const item of [...refs.values()].sort((a,b)=>a.id.localeCompare(b.id))){
     lines.push(`@@WEIGG_TEXT\t${item.id}`);
     lines.push(`QBT_TR(${item.source})QBT_TR[CONTEXT=${item.context}]`);
@@ -148,7 +145,7 @@ if(isMain){
     if(!catalogPath||!fs.existsSync(catalogPath)||!fs.existsSync(behaviorPath))throw new Error('Usage: node tools/qb-settings-native-bundle.mjs <enriched-catalog.json> [behavior.json] [registry.txt] [qm-source-dir] [qm-output-dir]');
     const catalog=JSON.parse(fs.readFileSync(catalogPath,'utf8')),behavior=JSON.parse(fs.readFileSync(behaviorPath,'utf8'));
     const bundle=writeNativeSettingsArtifacts(catalog,behavior,{registryPath,qmSourceDir,qmOutputDir});
-    const native=bundle.profiles.reduce((sum,item)=>sum+item.nativeLocales.length,0),bridge=bundle.profiles.reduce((sum,item)=>sum+item.bridgeLocales.length,0);
-    console.log(`Built qB Settings native bundle: ${bundle.profileCount} profiles, ${Object.keys(bundle.localeMessages).length} minimal official QM assets, native locale routes ${native}, bridge locale routes ${bridge}.`);
+    const native=bundle.profiles.reduce((sum,item)=>sum+item.nativeLocales.length,0),bridge=bundle.profiles.reduce((sum,item)=>sum+item.bridgeLocales.length,0),ui=bundle.profiles.reduce((sum,item)=>sum+item.mappedUi,0);
+    console.log(`Built qB Settings native bundle: ${bundle.profileCount} profiles, ${ui} qB-owned UI bindings, ${Object.keys(bundle.localeMessages).length} minimal official QM assets, native locale routes ${native}, bridge locale routes ${bridge}.`);
   }catch(error){console.error(error?.message||error);process.exitCode=1;}
 }

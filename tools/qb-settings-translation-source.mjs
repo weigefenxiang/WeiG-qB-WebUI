@@ -73,13 +73,31 @@ function qbtTr(text) {
   return {source: decodeHtml(match[1]), context: String(match[2] || '').trim()};
 }
 
-function labelsByControlId(markup) {
-  const out = new Map();
+function labelRefs(markup) {
+  const byControl = new Map();
+  const byLabelId = new Map();
   for (const match of String(markup || '').matchAll(/<label\b([^>]*)>([\s\S]*?)<\/label>/gi)) {
     const attrs = match[1] || '';
-    const id = (attrs.match(/\bfor\s*=\s*["']([^"']+)["']/i) || [])[1];
+    const controlId = (attrs.match(/\bfor\s*=\s*["']([^"']+)["']/i) || [])[1];
+    const labelId = (attrs.match(/\bid\s*=\s*["']([^"']+)["']/i) || [])[1];
     const translated = qbtTr(match[2]);
-    if (id && translated && translated.source) out.set(id, translated);
+    if (!translated || !translated.source) continue;
+    if (controlId) byControl.set(controlId, translated);
+    if (labelId) byLabelId.set(labelId, translated);
+  }
+  return {byControl, byLabelId};
+}
+
+function labelsByControlId(markup) {
+  const labels = labelRefs(markup);
+  const out = new Map(labels.byControl);
+  for (const match of String(markup || '').matchAll(/<(?:input|select|textarea)\b([^>]*)>/gi)) {
+    const attrs = match[1] || '';
+    const id = (attrs.match(/\bid\s*=\s*["']([^"']+)["']/i) || [])[1];
+    const labelledBy = (attrs.match(/\baria-labelledby\s*=\s*["']([^"']+)["']/i) || [])[1];
+    if (!id || !labelledBy || out.has(id)) continue;
+    const ref = String(labelledBy).split(/\s+/).map((labelId) => labels.byLabelId.get(labelId)).find(Boolean);
+    if (ref) out.set(id, ref);
   }
   return out;
 }

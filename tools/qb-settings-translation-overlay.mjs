@@ -5,6 +5,7 @@ import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {extractQbPreferenceUiFacts,extractQbSettingsTranslationFacts,translationSourcesForPreferenceUi} from './qb-settings-translation-source.mjs';
+import {extractQbOwnedUiFacts,translationContextsForQbOwnedUi,translationSourcesForQbOwnedUi} from './qb-owned-ui-source.mjs';
 
 function unique(values) {
   const out=[];
@@ -18,17 +19,18 @@ function localeValues(profile) { return unique((Array.isArray(profile?.webuiLoca
 function languageBase(value) { return String(value || '').trim().replace('-', '_').split('_')[0].split('@')[0].toLowerCase(); }
 function stableJson(value) { return JSON.stringify(value); }
 function contentHash(value) { return crypto.createHash('sha256').update(stableJson(value)).digest('hex'); }
-function englishSourceMessages(preferences) {
+function refsFromPreferences(preferences) {
+  return Object.values(preferences||{}).flatMap((item)=>[item?.title,item?.description]).filter((ref)=>ref?.source&&ref?.context);
+}
+function refsFromOwnedUi(ui) { return Object.values(ui||{}).filter((ref)=>ref?.source&&ref?.context); }
+function englishSourceMessages(preferences,ui) {
   const out=[];
   const seen=new Set();
-  for (const item of Object.values(preferences || {})) {
-    for (const ref of [item?.title,item?.description]) {
-      if (!ref?.source || !ref?.context) continue;
-      const identity=`${ref.context}\u0000${ref.source}`;
-      if (seen.has(identity)) continue;
-      seen.add(identity);
-      out.push({context:ref.context,source:ref.source,comment:null,translation:ref.source,numerus:false});
-    }
+  for (const ref of [...refsFromPreferences(preferences),...refsFromOwnedUi(ui)]) {
+    const identity=`${ref.context}\u0000${ref.source}`;
+    if (seen.has(identity)) continue;
+    seen.add(identity);
+    out.push({context:ref.context,source:ref.source,comment:null,translation:ref.source,numerus:false});
   }
   return out;
 }
@@ -131,16 +133,25 @@ export function buildQbSettingsTranslationOverlay(catalog, readReleaseSources) {
     const releaseSources=readReleaseSources({profile,qbVersion,sourceSha,tag}) || {};
     const preferenceKeys=(profile.preferenceDescriptors || []).map((item) => item?.key).filter(Boolean);
     const preferences=extractQbPreferenceUiFacts(releaseSources.preferencesSource || '', preferenceKeys);
-    const sourceStrings=translationSourcesForPreferenceUi(preferences);
-    const contexts=unique(Object.values(preferences).flatMap((item) => [item?.title?.context,item?.description?.context]).filter(Boolean));
+    const ui=extractQbOwnedUiFacts({
+      preferencesSource:releaseSources.preferencesSource || '',
+      toolbarSource:releaseSources.toolbarSource || '',
+      filtersSource:releaseSources.filtersSource || ''
+    });
+    const sourceStrings=unique([...translationSourcesForPreferenceUi(preferences),...translationSourcesForQbOwnedUi(ui)]);
+    const contexts=unique([
+      ...Object.values(preferences).flatMap((item) => [item?.title?.context,item?.description?.context]).filter(Boolean),
+      ...translationContextsForQbOwnedUi(ui)
+    ]);
     const locales=localeValues(profile);
     if (!locales.length) throw new Error(`${qbVersion}: exact WebUI locale facts are unresolved.`);
+    if (!Object.keys(ui).length) throw new Error(`${qbVersion}: source-derived qB-owned UI copy is unresolved.`);
     const translations={};
     for (const locale of locales) {
       const source=typeof releaseSources.translationSource === 'function' ? releaseSources.translationSource(locale) : '';
       let payload;
       if (!source && languageBase(locale) === 'en') {
-        payload={messages:englishSourceMessages(preferences)};
+        payload={messages:englishSourceMessages(preferences,ui)};
       }
       else {
         if (!source) throw new Error(`${qbVersion}: missing official WebUI translation source for ${locale}.`);
@@ -152,9 +163,9 @@ export function buildQbSettingsTranslationOverlay(catalog, readReleaseSources) {
       else if (stableJson(sets[hash]) !== stableJson(payload)) throw new Error(`Settings translation hash collision: ${hash}`);
       translations[locale]=hash;
     }
-    profiles.push({qbVersion,sourceSha,source:'qb-upstream-preferences-ui',mappedPreferences:Object.keys(preferences).length,totalPreferences:preferenceKeys.length,preferences,translations});
+    profiles.push({qbVersion,sourceSha,source:'qb-upstream-preferences-ui',ownedUiSource:'qb-upstream-webui-source-context',mappedPreferences:Object.keys(preferences).length,totalPreferences:preferenceKeys.length,preferences,ui,translations});
   }
-  return {schemaVersion:1,source:'qb-upstream-preferences-ui+webui-ts',profiles,sets};
+  return {schemaVersion:1,source:'qb-upstream-preferences-ui+owned-ui+webui-ts',profiles,sets};
 }
 
 export function applyQbSettingsTranslationOverlay(catalog, overlay) {
@@ -179,6 +190,8 @@ export function applyQbSettingsTranslationOverlay(catalog, overlay) {
       settingsUiMappedPreferences:item.mappedPreferences,
       settingsUiTotalPreferences:item.totalPreferences,
       settingsUi:item.preferences,
+      qbOwnedUiSource:item.ownedUiSource,
+      qbOwnedUi:item.ui,
       settingsTranslations:item.translations,
       ...(Object.keys(localSets).length ? {settingsTranslationSets:localSets} : {})
     };
@@ -187,7 +200,9 @@ export function applyQbSettingsTranslationOverlay(catalog, overlay) {
 
 function git(root,...args) { return execFileSync('git',['-C',root,...args],{encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim(); }
 function showMaybe(root,tag,file) { try { return git(root,'show',`${tag}:${file}`); } catch { return ''; } }
-function preferencesSource(root,tag) { return showMaybe(root,tag,'src/webui/www/private/views/preferences.html') || showMaybe(root,tag,'src/webui/www/private/preferences_content.html'); }
+function preferencesSource(root,tag) { return showMaybe(root,tag,'src/webui/www/private/views/preferences.html') || showMaybe(root,tag,'src/webui/www/private/preferences_content.html') || showMaybe(root,tag,'src/webui/www/private/preferences.html'); }
+function toolbarSource(root,tag) { return showMaybe(root,tag,'src/webui/www/private/views/preferencesToolbar.html') || showMaybe(root,tag,'src/webui/www/private/preferences.html'); }
+function filtersSource(root,tag) { return showMaybe(root,tag,'src/webui/www/private/views/filters.html') || showMaybe(root,tag,'src/webui/www/private/filters.html'); }
 function translationPaths(root,tag) {
   let output='';
   try { output=git(root,'ls-tree','-r','--name-only',tag,'src/webui/www/translations','src/lang'); }
@@ -204,6 +219,8 @@ export function buildQbSettingsTranslationOverlayFromClone(catalog,qbRoot) {
     };
     return {
       preferencesSource:preferencesSource(qbRoot,tag),
+      toolbarSource:toolbarSource(qbRoot,tag),
+      filtersSource:filtersSource(qbRoot,tag),
       translationSource:(locale)=>{
         const resourcePath=resolveQbTranslationResourcePath(locale,paths,sourceOf);
         return resourcePath ? sourceOf(resourcePath) : '';
@@ -223,7 +240,7 @@ if (isMain) {
     const overlay=buildQbSettingsTranslationOverlayFromClone(catalog,qbRoot);
     fs.mkdirSync(path.dirname(outputPath),{recursive:true});
     fs.writeFileSync(outputPath,JSON.stringify(overlay,null,2)+'\n','utf8');
-    const mapped=overlay.profiles.reduce((sum,item)=>sum+item.mappedPreferences,0),total=overlay.profiles.reduce((sum,item)=>sum+item.totalPreferences,0);
-    console.log(`Generated exact qB Settings translation overlay for ${overlay.profiles.length} releases; source-proven preference labels ${mapped}/${total}; deduplicated translation sets ${Object.keys(overlay.sets).length}.`);
+    const mapped=overlay.profiles.reduce((sum,item)=>sum+item.mappedPreferences,0),total=overlay.profiles.reduce((sum,item)=>sum+item.totalPreferences,0),ui=overlay.profiles.reduce((sum,item)=>sum+Object.keys(item.ui||{}).length,0);
+    console.log(`Generated exact qB Settings translation overlay for ${overlay.profiles.length} releases; source-proven preference labels ${mapped}/${total}; qB-owned UI refs ${ui}; deduplicated translation sets ${Object.keys(overlay.sets).length}.`);
   } catch (error) { console.error(error?.message || error); process.exitCode=1; }
 }

@@ -18,24 +18,26 @@ export function extractQbtRefs(source,file=''){
 
 export function collectSourceProvenQbRefs(catalog){
   const index=new Map();
+  const remember=(profile,ref,{preferenceKey=null,uiKey=null,role=null}={})=>{
+    if(!ref?.source||!ref?.context)return;
+    const version=String(profile?.qbVersion||''),sourceSha=String(profile?.sourceSha||''),key=refKey(ref.context,ref.source);
+    let item=index.get(key);
+    if(!item){item={source:ref.source,context:ref.context,preferenceKeys:new Set(),uiKeys:new Set(),versions:new Set(),sourceShas:new Set(),roles:new Set()};index.set(key,item);}
+    if(preferenceKey)item.preferenceKeys.add(preferenceKey);
+    if(uiKey)item.uiKeys.add(uiKey);
+    item.versions.add(version);if(sourceSha)item.sourceShas.add(sourceSha);if(role)item.roles.add(role);
+  };
   for(const profile of Array.isArray(catalog)?catalog:[]){
-    const version=String(profile?.qbVersion||'');
-    const sourceSha=String(profile?.sourceSha||'');
     for(const [preferenceKey,entry] of Object.entries(profile?.settingsUi||{})){
-      for(const role of ['title','description']){
-        const ref=entry?.[role];
-        if(!ref?.source||!ref?.context)continue;
-        const key=refKey(ref.context,ref.source);
-        let item=index.get(key);
-        if(!item){item={source:ref.source,context:ref.context,preferenceKeys:new Set(),versions:new Set(),sourceShas:new Set(),roles:new Set()};index.set(key,item);}
-        item.preferenceKeys.add(preferenceKey);item.versions.add(version);if(sourceSha)item.sourceShas.add(sourceSha);item.roles.add(role);
-      }
+      for(const role of ['title','description'])remember(profile,entry?.[role],{preferenceKey,role});
     }
+    for(const [uiKey,ref] of Object.entries(profile?.qbOwnedUi||{}))remember(profile,ref,{uiKey,role:'ui'});
   }
   return [...index.values()].map(item=>({
     source:item.source,
     context:item.context,
     preferenceKeys:uniqueSorted(item.preferenceKeys),
+    uiKeys:uniqueSorted(item.uiKeys),
     roles:uniqueSorted(item.roles),
     versions:uniqueSorted(item.versions),
     sourceShas:uniqueSorted(item.sourceShas)
@@ -50,7 +52,7 @@ export function extractWeiGI18nKeys(source,file=''){
   return keys;
 }
 
-export function hasQbSettingBridgeConsumer(source){return /\bW\.I18n\.qbSetting\s*\(/.test(String(source||''));}
+export function hasQbSettingBridgeConsumer(source){return /\bW\.I18n\.(?:qbSetting|qbText)\s*\(/.test(String(source||''));}
 
 export function buildQbOwnedStringInventory(files,catalog){
   const entries=Array.isArray(files)?files:[];
@@ -67,12 +69,12 @@ export function buildQbOwnedStringInventory(files,catalog){
   const qbOwnedMarkers=[],uncertain=[];
   for(const marker of markers){
     const proof=provenIndex.get(refKey(marker.context,marker.source));
-    if(proof)qbOwnedMarkers.push({...marker,preferenceKeys:proof.preferenceKeys});
+    if(proof)qbOwnedMarkers.push({...marker,preferenceKeys:proof.preferenceKeys,uiKeys:proof.uiKeys});
     else uncertain.push(marker);
   }
   return{
     schemaVersion:1,
-    source:'formal-webui+source-derived-qb-settings-ui',
+    source:'formal-webui+source-derived-qb-settings-and-ui',
     classification:{
       A_qbOwnedSourceRefs:proven,
       B_weiGNamespaceKeys:uniqueSorted(weiGKeys.map(item=>item.key)),
@@ -113,10 +115,10 @@ if(isMain){
     if(!fs.existsSync(webuiRoot))throw new Error(`WebUI root not found: ${webuiRoot}`);
     if(!fs.existsSync(catalogPath))throw new Error(`qB source-derived catalog not found: ${catalogPath}`);
     const inventory=buildQbOwnedStringInventory(walk(webuiRoot),JSON.parse(fs.readFileSync(catalogPath,'utf8')));
-    if(!inventory.stats.provenQbRefs)throw new Error('No source-proven qB Settings refs found; catalog is not translation-enriched.');
+    if(!inventory.stats.provenQbRefs)throw new Error('No source-proven qB Settings/UI refs found; catalog is not translation-enriched.');
     const rendered=JSON.stringify(inventory,null,2)+'\n';
     if(outputArg){fs.mkdirSync(path.dirname(outputArg),{recursive:true});fs.writeFileSync(outputArg,rendered,'utf8');}
     else process.stdout.write(rendered);
-    console.error(`qB-owned inventory: ${inventory.stats.provenQbRefs} proven source/context refs; ${inventory.stats.formalQbtMarkers} formal QBT_TR markers (${inventory.stats.uncertainQbtMarkers} uncertain); ${inventory.stats.bridgeConsumers} qbSetting bridge consumer file(s).`);
+    console.error(`qB-owned inventory: ${inventory.stats.provenQbRefs} proven source/context refs; ${inventory.stats.formalQbtMarkers} formal QBT_TR markers (${inventory.stats.uncertainQbtMarkers} uncertain); ${inventory.stats.bridgeConsumers} qB copy bridge consumer file(s).`);
   }catch(error){console.error(error?.message||error);process.exitCode=1;}
 }
