@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {buildCapabilityPlan,matrixForMode} from './real-qb-capability-plan.mjs';
+import {aggregateSchemaForMode} from './real-qb-gfm-aggregate-schema.mjs';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(here,'..');
@@ -66,6 +67,60 @@ for(const family of a.families.search)for(const representative of family.represe
   assert.equal(fastByVersion.get(representative.qbVersion)?.searchMode,'full',`Search representative ${representative.qbVersion} must receive full Search lifecycle`);
 }
 
+const planBeforeAggregateSchema=structuredClone(a);
+const fastAggregateSchema=aggregateSchemaForMode(a,'fast');
+const exhaustiveAggregateSchema=aggregateSchemaForMode(a,'exhaustive');
+assert.deepEqual(a,planBeforeAggregateSchema,'aggregate schema derivation must not mutate the capability plan');
+assert.equal(fastAggregateSchema.schemaVersion,2);
+assert.equal(fastAggregateSchema.phase,'G-FM');
+assert.equal(fastAggregateSchema.module,'aggregate');
+assert.equal(fastAggregateSchema.mode,'fast');
+assert.equal(fastAggregateSchema.evidenceClass,'gfm-fast');
+assert.equal(exhaustiveAggregateSchema.mode,'exhaustive');
+assert.equal(exhaustiveAggregateSchema.evidenceClass,'gfm-exhaustive');
+assert.notEqual(fastAggregateSchema.evidenceClass,exhaustiveAggregateSchema.evidenceClass,'fast evidence must be structurally distinct from exhaustive evidence');
+assert.equal(fastAggregateSchema.frozenCatalogSha256,a.frozen.catalogSha256);
+assert.equal(exhaustiveAggregateSchema.frozenCatalogSha256,a.frozen.catalogSha256);
+assert.equal(fastAggregateSchema.versionEvidence.expectedCount,65);
+assert.equal(fastAggregateSchema.versionEvidence.requireRuntimeStatus,'PASS');
+assert.equal(fastAggregateSchema.versionEvidence.requireExactQbIdentity,true);
+assert.equal(fastAggregateSchema.versionEvidence.requireCleanupResult,'PASS');
+assert.equal(fastAggregateSchema.versionEvidence.requireFingerprintMatch,true);
+assert.deepEqual(fastAggregateSchema.versionEvidence.fingerprintDimensions,a.dimensions);
+assert.equal(fastAggregateSchema.versionEvidence.versions.length,65);
+const fastVersionExpectations=new Map(fastAggregateSchema.versionEvidence.versions.map(row=>[row.qbVersion,row]));
+for(const row of a.versions){
+  const expected=fastVersionExpectations.get(row.qbVersion);
+  assert.ok(expected,`fast aggregate schema is missing qB ${row.qbVersion}`);
+  assert.deepEqual(expected.expectedFamilies,row.families,`fast aggregate family identity drifted for qB ${row.qbVersion}`);
+  assert.deepEqual(expected.expectedFingerprints,row.fingerprints,`fast aggregate fingerprint drifted for qB ${row.qbVersion}`);
+}
+const fastFamilyDimensions=[...a.fast.coreDimensions,'search'];
+assert.deepEqual(fastAggregateSchema.familyEvidence.dimensions,fastFamilyDimensions);
+assert.equal(fastAggregateSchema.familyEvidence.byDimension.locale,undefined,'Locale has its own real compatibility matrix and must not be silently claimed as a G-FM family-full semantic owner');
+for(const dimension of fastFamilyDimensions){
+  const block=fastAggregateSchema.familyEvidence.byDimension[dimension];
+  assert.equal(block.evidenceKind,dimension==='search'?'search-semantic-full':'core-semantic-full');
+  assert.equal(block.expectedFamilyCount,a.families[dimension].length,`${dimension} fast aggregate family count drifted`);
+  assert.equal(block.expectedRepresentativeCount,a.summary[dimension].representativeCount,`${dimension} fast aggregate representative count drifted`);
+  assert.equal(block.families.length,a.families[dimension].length);
+  const expectedFamilies=new Map(a.families[dimension].map(family=>[family.id,family]));
+  for(const family of block.families){
+    const planned=expectedFamilies.get(family.familyId);
+    assert.ok(planned,`fast aggregate schema references unknown ${dimension} family ${family.familyId}`);
+    assert.equal(family.fingerprint,planned.fingerprint);
+    assert.deepEqual(family.coveredVersions,planned.members);
+    assert.deepEqual(family.representatives.map(row=>row.qbVersion),planned.representatives.map(row=>row.qbVersion));
+    assert.ok(family.representatives.every(row=>row.requiredStatus==='PASS'),`${family.familyId} representatives must require PASS full evidence`);
+  }
+}
+assert.equal(exhaustiveAggregateSchema.familyEvidence,null,'exhaustive aggregate must remain per-version full evidence rather than family substitution');
+assert.equal(exhaustiveAggregateSchema.versionEvidence.expectedCount,65);
+assert.equal(exhaustiveAggregateSchema.versionEvidence.requireCoreSemanticStatus,'PASS');
+assert.equal(exhaustiveAggregateSchema.versionEvidence.requireSearchSemanticStatus,'PASS');
+assert.equal(exhaustiveAggregateSchema.versionEvidence.versions.length,65);
+assert.throws(()=>aggregateSchemaForMode(a,'unknown'),/Unknown G-FM aggregate mode/,'unknown aggregate modes must fail closed');
+
 const localeLkg=JSON.parse(fs.readFileSync(path.join(root,'tools/data/qb-locale-lkg.json'),'utf8'));
 const distinctLocaleSets=new Set(Object.values(localeLkg.localeSets).map(values=>JSON.stringify([...new Set(values.map(String))].sort())));
 assert.equal(a.families.locale.length,distinctLocaleSets.size,'locale families must be derived from exact Frozen locale inventories');
@@ -75,8 +130,8 @@ assert.ok(fourPart.length>0,'Frozen catalog must retain fourth-component sentine
 for(const row of fourPart)assert.ok(row.sentinelReasons.includes('fourth-component-stable'));
 
 const workflow=fs.readFileSync(path.join(root,'.github/workflows/real-qb-full.yml'),'utf8');
-assert.ok(!workflow.includes('real-qb-capability-plan.mjs'),'phase-1 read-only planner must not silently change G-FM execution/aggregate decisions');
+assert.ok(!workflow.includes('real-qb-capability-plan.mjs'),'schema/planner phase must not silently change G-FM execution/aggregate decisions');
 
-const summaryMessage=`Real-qB capability planner contract passed: ${a.versions.length}/65 versions are deterministically partitioned without changing G-FM decisions; families=${a.dimensions.map(d=>`${d}:${a.summary[d].familyCount}/${a.summary[d].representativeCount} reps`).join(', ')}; fast=core ${a.summary.fast.coreFullCount}/65, Search ${a.summary.fast.searchFullCount}/65, smoke-only ${a.summary.fast.smokeOnlyCount}/65.`;
+const summaryMessage=`Real-qB capability planner contract passed: ${a.versions.length}/65 versions are deterministically partitioned without changing G-FM decisions; families=${a.dimensions.map(d=>`${d}:${a.summary[d].familyCount}/${a.summary[d].representativeCount} reps`).join(', ')}; fast=core ${a.summary.fast.coreFullCount}/65, Search ${a.summary.fast.searchFullCount}/65, smoke-only ${a.summary.fast.smokeOnlyCount}/65; aggregate schemas=fast/exhaustive isolated.`;
 console.log(summaryMessage);
 if(process.env.GITHUB_ACTIONS==='true')console.log(`::notice title=Real-qB capability planner::${summaryMessage}`);
