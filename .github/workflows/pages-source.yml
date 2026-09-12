@@ -1,15 +1,19 @@
 name: Virtual qB Pages Source
 
 # Source relay owns trigger choreography only. It never owns Pages deployment permissions.
-# Every dev/main push reaches this lightweight relay, but Virtual qB Pages is skipped for a
-# deliberately small set of documentation/repository-only paths. Everything unknown defaults
-# to Pages-relevant so a new runtime/build input cannot silently bypass deployment.
+# Pure documentation pushes are filtered before runner allocation. Every other dev/main push
+# reaches this lightweight relay and is classified again; everything unknown defaults to
+# Pages-relevant so a new runtime/build input cannot silently bypass deployment.
 on:
   workflow_dispatch:
   push:
     branches:
       - dev
       - main
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+      - 'LICENSE'
 
 permissions:
   actions: write
