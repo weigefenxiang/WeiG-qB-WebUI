@@ -56,6 +56,7 @@ async function waitForCatalog(page,{count,timeout=30000}={}){
     error:Boolean(window.WeiG?.AppState?.catalogError),
     busy:Boolean(window.WeiG?.AppState?.catalogBusy),
     count:Array.isArray(window.WeiG?.AppState?.catalog)?window.WeiG.AppState.catalog.length:-1,
+    locale:String(window.WeiG?.I18n?.getLocale?.()||''),
     pageLabel:String(document.querySelector('#page-label')?.textContent||'').trim()
   }));
   const elapsedMs=Date.now()-started;
@@ -140,7 +141,8 @@ try{
     await waitForPrivate(page,'5.2.3');
 
     const catalogState=await waitForCatalog(page,{count:5000,timeout:30000});
-    assert.match(catalogState.pageLabel,/第\s*1\s*\/\s*100\s*页\s*·\s*每页\s*50/,`5000-Torrent pager must settle after indexing; got ${catalogState.pageLabel}`);
+    const pagerPattern=catalogState.locale==='zh-CN'?/第\s*1\s*\/\s*100\s*页\s*·\s*每页\s*50/:/Page\s*1\s*\/\s*100\s*·\s*50\s*per page/i;
+    assert.match(catalogState.pageLabel,pagerPattern,`5000-Torrent pager must match applied qB locale ${catalogState.locale||'(unknown)'} after indexing; got ${catalogState.pageLabel}`);
     console.log(`5000-Torrent full-library catalog ready in ${catalogState.elapsedMs} ms.`);
 
     const version=await api(page,'app/version');
