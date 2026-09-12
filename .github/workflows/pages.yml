@@ -184,14 +184,15 @@ jobs:
 
           relevant=false
           while IFS= read -r -d '' path; do
+            [ -n "$path" ] || continue
             case "$path" in
-              docs/*|*.md|LICENSE|.github/workflows/ci.yml|.github/workflows/promote.yml|.github/workflows/real-qb-full.yml|.github/workflows/release.yml)
-                echo "Pages-irrelevant head advance: $path"
-                ;;
-              *)
-                echo "Pages-relevant head advance blocks stale deployment: $path" >&2
+              webui/*|simulator/*|installers/*|VERSION|tools/data/qb-stable-lkg.json|tools/data/qb-locale-lkg.json|tests/fixtures/qb-release-catalog.lkg.json)
+                echo "Pages-relevant public payload head advance blocks stale deployment: $path" >&2
                 relevant=true
                 break
+                ;;
+              *)
+                echo "Pages-irrelevant development/repository head advance: $path"
                 ;;
             esac
           done < <(jq -j '.files[] | .filename, "\u0000"' "$COMPARE_JSON")
@@ -200,7 +201,7 @@ jobs:
             echo "Refusing stale dev Pages deployment: candidate=$EXACT_SHA current=$REMOTE_SHA" >&2
             exit 1
           fi
-          echo "Current dev HEAD $REMOTE_SHA is newer only by Pages-irrelevant changes; deployment owner $EXACT_SHA remains valid."
+          echo "Current dev HEAD $REMOTE_SHA is newer only by non-payload changes; deployment owner $EXACT_SHA remains valid."
 
       - name: Deploy exact dev Virtual qB Lab
         id: deployment
