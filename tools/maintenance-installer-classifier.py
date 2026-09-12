@@ -92,3 +92,21 @@ extra2 = "assert.ok(pagesWorkflow.includes('webui/*|simulator/*|installers/*|VER
 if test.count(anchor2) != 1:
     raise SystemExit('Pages stale-gate contract anchor missing')
 test_path.write_text(test.replace(anchor2, anchor2 + extra2, 1), encoding='utf-8', newline='\n')
+
+platform_path = Path('tests/platform-contract.mjs')
+platform = platform_path.read_text(encoding='utf-8')
+linux_old = "assert.match(sh,/docs\\/\\*\\|\\*\\.md/,'Linux Dev payload reuse must recognize the explicit documentation-only exception set');"
+linux_new = "assert.match(sh,/webui\\/\\*\\|simulator\\/\\*\\|installers\\/\\*\\|VERSION\\|tools\\/data\\/qb-stable-lkg\\.json\\|tools\\/data\\/qb-locale-lkg\\.json\\|tests\\/fixtures\\/qb-release-catalog\\.lkg\\.json/,'Linux Dev payload reuse must share the Pages public-payload allowlist');"
+if platform.count(linux_old) != 1:
+    raise SystemExit(f'Linux platform contract replacement count={platform.count(linux_old)}')
+platform = platform.replace(linux_old, linux_new, 1)
+windows_old = "assert.match(ps,/EndsWith\\('\\.md'/,'Windows Dev payload reuse must recognize Markdown as an explicit Pages-irrelevant path class');"
+windows_new = "assert.ok(ps.includes(\"if($Path.StartsWith('webui/'\")&&ps.includes(\"'tests/fixtures/qb-release-catalog.lkg.json' { return $false }\")&&ps.includes('default { return $true }'),'Windows Dev payload reuse must share the Pages public-payload allowlist');"
+if platform.count(windows_old) != 1:
+    raise SystemExit(f'Windows platform contract replacement count={platform.count(windows_old)}')
+platform = platform.replace(windows_old, windows_new, 1)
+platform = platform.replace("Linux Dev channel must explicitly verify whether a materialized payload may represent a newer docs-only dev HEAD", "Linux Dev channel must explicitly verify whether a materialized payload may represent a newer non-payload dev HEAD")
+platform = platform.replace("Windows Dev channel must verify whether a materialized payload may represent a newer docs-only dev HEAD", "Windows Dev channel must verify whether a materialized payload may represent a newer non-payload dev HEAD")
+platform = platform.replace("Linux Dev payload reuse must fail closed when any non-exempt path changed", "Linux Dev payload reuse must fail closed when any public payload path changed")
+platform = platform.replace("Windows Dev payload reuse must fail closed when any non-exempt path changed", "Windows Dev payload reuse must fail closed when any public payload path changed")
+platform_path.write_text(platform, encoding='utf-8', newline='\n')
