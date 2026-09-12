@@ -1,0 +1,117 @@
+name: Real qB Current Stable Locale Matrix
+
+on:
+  push:
+    branches:
+      - dev
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: real-qb-current-locale-${{ github.ref }}-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: Resolve current stable qB locales
+    if: ${{ github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[locale-matrix]') }}
+    runs-on: ubuntu-24.04
+    outputs:
+      qb_version: ${{ steps.matrix.outputs.qb_version }}
+      locales: ${{ steps.matrix.outputs.locales }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+      - name: Verify exact workflow SHA checkout
+        run: test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+      - name: Resolve Frozen current-stable locale matrix
+        id: matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          result="$(node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const lkg=JSON.parse(fs.readFileSync('tools/data/qb-locale-lkg.json','utf8'));
+          if(lkg.supportFloor!=='4.1.0'||lkg.profileCount!==65||lkg.latestAdmittedStable!=='5.2.3')throw new Error('Frozen stable identity drift.');
+          const profile=lkg.profiles.find(item=>item.qbVersion===lkg.latestAdmittedStable);
+          const locales=lkg.localeSets[profile?.localeSet]||[];
+          if(locales.length!==61)throw new Error(`Expected 61 qB 5.2.3 locales, got ${locales.length}.`);
+          process.stdout.write(`${lkg.latestAdmittedStable}\t${JSON.stringify(locales)}`);
+          NODE
+          )"
+          qb_version="${result%%$'\t'*}"
+          locales="${result#*$'\t'}"
+          printf 'qb_version=%s\n' "$qb_version" >> "$GITHUB_OUTPUT"
+          printf 'locales=%s\n' "$locales" >> "$GITHUB_OUTPUT"
+
+  real:
+    name: qB ${{ needs.plan.outputs.qb_version }} locale ${{ matrix.locale }}
+    needs: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      max-parallel: 16
+      matrix:
+        locale: ${{ fromJson(needs.plan.outputs.locales) }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Verify exact workflow SHA checkout
+        run: test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+      - name: Validate locale runner syntax
+        run: |
+          bash -n tests/real-qb-locale-runner.sh
+          node --check tests/real-qb-locale-harness.mjs
+      - name: Run exact current-stable qB locale write/read/restore evidence
+        env:
+          WEIG_QB_LOCALE: ${{ matrix.locale }}
+          WEIG_QB_EXPECTED_VERSION: ${{ needs.plan.outputs.qb_version }}
+          WEIG_QB_LOCALE_EVIDENCE_DIR: artifacts/real-qb-locale
+        run: bash tests/real-qb-locale-runner.sh "$WEIG_QB_LOCALE"
+      - name: Upload per-locale exact-SHA evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: real-qb-current-locale-${{ strategy.job-index }}-${{ github.sha }}
+          path: artifacts/real-qb-locale/*.json
+          if-no-files-found: error
+          retention-days: 30
+
+  aggregate:
+    name: Aggregate current-stable real qB locale evidence
+    needs: [plan, real]
+    if: ${{ always() && needs.plan.result == 'success' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Verify exact workflow SHA checkout
+        run: test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+      - name: Download all per-locale evidence
+        uses: actions/download-artifact@v8
+        with:
+          pattern: real-qb-current-locale-*-${{ github.sha }}
+          path: full-evidence
+          merge-multiple: true
+      - name: Require complete current-stable real qB locale evidence
+        run: node tests/real-qb-locale-aggregate.mjs full-evidence
+      - name: Upload aggregate exact-SHA evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: real-qb-current-locale-aggregate-${{ github.sha }}
+          path: artifacts/real-qb-locale-aggregate/${{ github.sha }}.json
+          if-no-files-found: error
+          retention-days: 90
