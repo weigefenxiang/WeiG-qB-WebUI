@@ -11,17 +11,18 @@ const matrix=read('tests/real-qb-full-matrix.mjs');
 const binder=read('tests/real-qb-gfm-bind-runtime.mjs');
 const preload=read('tests/real-qb-gfm-mode-preload.mjs');
 
-assert(workflow.startsWith('name: Real qB Full Frozen Matrix\n'),'G-FM workflow name must identify the release-grade Full Frozen Matrix.');
+assert(workflow.startsWith('name: Real qB Full Frozen Matrix\n'),'G-FM workflow name must identify the Full Frozen Matrix owner.');
 assert(workflow.includes('workflow_dispatch:'),'G-FM must remain explicitly dispatchable for release-grade Exhaustive evidence.');
-assert(!/\n\s*push:\s*\n/.test(workflow),'G-FM must not run on ordinary pushes; reserve it for final validation or release preparation.');
+assert(/\n\s*push:\s*\n\s*branches:\s*\[dev\]/.test(workflow),'G-FM Fast must run automatically on dev pushes.');
 assert(workflow.includes('candidate_sha:')&&workflow.includes('Final dev exact SHA (40 hex)'),'G-FM manual dispatch must require the operator to name the final dev exact SHA.');
 assert(workflow.includes('confirmation:')&&workflow.includes('RUN-FULL-FROZEN-65'),'G-FM manual dispatch must require an explicit high-cost confirmation token.');
-assert(workflow.includes("test \"$GITHUB_REF\" = 'refs/heads/dev'")&&workflow.includes('[[ "$CANDIDATE_SHA" =~ ^[0-9a-fA-F]{40}$ ]]')&&workflow.includes('test "${CANDIDATE_SHA,,}" = "${GITHUB_SHA,,}"'),'G-FM must fail before matrix expansion unless a valid candidate SHA exactly matches the dispatched dev SHA.');
-assert(workflow.includes("test \"$FULL_MATRIX_CONFIRMATION\" = 'RUN-FULL-FROZEN-65'"),'G-FM must fail before matrix expansion unless the explicit cost confirmation is exact.');
-assert(workflow.indexOf('Verify exact final-dev dispatch intent')<workflow.indexOf('Resolve Exhaustive G-FM and all Frozen stable versions'),'Final-dev/cost intent guard must run before the 65-version matrix is resolved.');
-assert(workflow.includes('mode: ${{ steps.matrix.outputs.mode }}')&&workflow.includes('matrix: ${{ steps.matrix.outputs.matrix }}'),'G-FM plan must export explicit mode and dynamic matrix.');
-assert(workflow.includes("test \"$GITHUB_EVENT_NAME\" = 'workflow_dispatch'")&&workflow.includes('mode=exhaustive')&&!workflow.includes('mode=fast'),'G-FM must be manual-only Exhaustive; no automatic Fast route is allowed.');
-assert(workflow.includes('node tests/real-qb-capability-plan.mjs --matrix "$mode"')&&workflow.includes('= "65"'),'G-FM must derive all 65 exact runtimes from the Frozen capability planner.');
+assert(workflow.includes("test \"$GITHUB_REF\" = 'refs/heads/dev'")&&workflow.includes('[[ "$CANDIDATE_SHA" =~ ^[0-9a-fA-F]{40}$ ]]')&&workflow.includes('test "${CANDIDATE_SHA,,}" = "${GITHUB_SHA,,}"'),'G-FM must stay on dev and manual Exhaustive dispatch must bind the exact candidate SHA.');
+assert(workflow.includes("test \"$FULL_MATRIX_CONFIRMATION\" = 'RUN-FULL-FROZEN-65'"),'Manual Exhaustive G-FM must require the explicit cost confirmation.');
+assert(workflow.indexOf('Verify G-FM execution intent')<workflow.indexOf('Resolve G-FM mode and all Frozen stable versions'),'Execution-intent guard must run before the 65-version matrix is resolved.');
+assert(workflow.includes('mode: ${{ steps.matrix.outputs.mode }}')&&workflow.includes('matrix: ${{ steps.matrix.outputs.matrix }}')&&workflow.includes('evidence_prefix: ${{ steps.matrix.outputs.evidence_prefix }}'),'G-FM plan must export explicit mode, dynamic matrix and evidence class prefix.');
+assert(workflow.includes('push)')&&workflow.includes('mode=fast')&&workflow.includes('evidence_prefix=real-qb-fast'),'dev push must select Fast G-FM evidence.');
+assert(workflow.includes('workflow_dispatch)')&&workflow.includes('mode=exhaustive')&&workflow.includes('evidence_prefix=real-qb-full'),'manual dispatch must select Exhaustive G-FM evidence.');
+assert(workflow.includes('node tests/real-qb-capability-plan.mjs --matrix "$mode"')&&workflow.includes('= "65"'),'Both Fast and Exhaustive G-FM must derive all 65 exact runtimes from the Frozen capability planner.');
 assert(workflow.includes('Build source-backed historical runtime index')&&workflow.includes('gfm-runtime-index-${{ github.sha }}')&&workflow.includes('WEIG_GFM_RUNTIME_INDEX: runtime-index/linuxserver-tags.json'),'All matrix jobs must consume the same-run exact-SHA historical runtime index.');
 assert(workflow.includes('fail-fast: false')&&workflow.includes('max-parallel: 16'),'G-FM must use independent jobs with fail-fast false and max-parallel 16.');
 assert(workflow.includes('include: ${{ fromJson(needs.plan.outputs.matrix) }}'),'G-FM matrix must consume qB/core/search assignments from the capability planner.');
@@ -29,10 +30,12 @@ assert(workflow.includes('WEIG_GFM_CORE_MODE: ${{ matrix.coreMode }}')&&workflow
 assert(workflow.includes('real-qb-full-runner.sh --version "$QB_VERSION" --allow-writes'),'G-FM must execute the stable-responsibility isolated exact-version runtime runner.');
 assert(!workflow.includes('real-qb-full-runner-v'),'G-FM workflow must not use revision-labelled first-party runner filenames.');
 assert(workflow.includes('real-qb-gfm-mode-preload.mjs')&&preload.includes('runCapabilitySmoke'),'Every real runtime must execute the capability witness before semantics.');
-assert(workflow.includes('real-qb-gfm-bind-runtime.mjs')&&workflow.includes('--smoke-file "$smoke_file"')&&binder.includes('actual_capability_fingerprint'),'Every successful runtime must bind actual capability witness evidence to family assignments.');
-assert(workflow.includes('if: always()')&&workflow.includes('real-qb-full-${{ matrix.qb }}-${{ github.sha }}')&&workflow.includes('if-no-files-found: error'),'Every version must upload exact-SHA evidence and missing evidence must fail closed.');
-assert(!workflow.includes('real-qb-fast-aggregate.mjs')&&!workflow.includes('real-qb-fast-aggregate-${{ github.sha }}'),'Release-grade G-FM workflow must not publish Fast aggregate evidence.');
+assert(workflow.includes('runner_rc=0')&&workflow.includes('binder_rc=0')&&workflow.includes('(( binder_rc == 0 )) || exit "$binder_rc"')&&workflow.includes('(( runner_rc == 0 )) || exit "$runner_rc"'),'G-FM must preserve runtime/smoke evidence through binder finalization and then fail closed.');
+assert(workflow.includes('real-qb-gfm-bind-runtime.mjs')&&workflow.includes('--smoke-file "$smoke_file"')&&binder.includes('actual_capability_fingerprint'),'Every runtime must bind actual capability witness evidence to family assignments.');
+assert(workflow.includes('if: always()')&&workflow.includes('name: ${{ needs.plan.outputs.evidence_prefix }}-${{ matrix.qb }}-${{ github.sha }}')&&workflow.includes('if-no-files-found: error'),'Every version must upload mode-distinct exact-SHA evidence and missing evidence must fail closed.');
+assert(workflow.includes('node tests/real-qb-fast-aggregate.mjs --aggregate full-evidence')&&workflow.includes('real-qb-fast-aggregate-${{ github.sha }}'),'Fast dev-push G-FM must publish a structurally distinct exact-SHA Fast aggregate.');
 assert(workflow.includes('node tests/real-qb-full-matrix.mjs --aggregate full-evidence')&&workflow.includes('real-qb-full-aggregate-${{ github.sha }}'),'Manual Exhaustive runs must preserve the strict release-grade aggregate artifact.');
+assert(workflow.includes("needs.plan.outputs.mode == 'fast'")&&workflow.includes("needs.plan.outputs.mode == 'exhaustive'"),'Aggregate validation/upload must be explicitly mode-gated.');
 
 for(const status of ['BLOCKED','FAIL','PASS'])assert(runner.includes(`finalize ${status}`),`Runtime runner missing ${status} finalization.`);
 for(const name of ['qbittorrentofficial/qbittorrent-nox','linuxserver/qbittorrent','crazymax/qbittorrent','wernight/qbittorrent@sha256:'])assert(runner.includes(name),`G-FM resolver missing approved provider ${name}`);
@@ -61,4 +64,4 @@ assert(indexer.includes("discoveryRole:'candidate-tag-discovery-only; runtime tr
 assert(matrix.includes('manifest.catalogSha256')&&matrix.includes('manifest.profileCount')&&matrix.includes('duplicate qB versions'),'Exhaustive G-FM aggregate must verify Frozen identity, count and uniqueness.');
 assert(matrix.includes("runtime.cleanup_result!=='PASS'")&&matrix.includes('expected one core semantic evidence')&&matrix.includes('expected one Search evidence'),'Exhaustive G-FM aggregate must require cleanup plus core/search semantic evidence for every PASS runtime.');
 assert(matrix.includes('pass===f.manifest.profileCount')&&matrix.includes('blocked===0')&&matrix.includes('missing.length===0')&&matrix.includes('duplicates.length===0'),'Exhaustive G-FM must fail unless every Frozen profile passes with zero missing/duplicate/BLOCKED results.');
-console.log('Real-qB Full Frozen Matrix contract passed: final-dev SHA + explicit RUN-FULL-FROZEN-65 confirmation is required before manual Exhaustive 65-runtime release validation can expand; ordinary dev pushes never run it.');
+console.log('Real-qB Full Frozen Matrix contract passed: dev push runs Fast across all 65 real runtimes with runtime capability witnesses and representative semantics; manual exact-SHA RUN-FULL-FROZEN-65 remains Exhaustive 65/65 Full with a promotion-distinct aggregate.');

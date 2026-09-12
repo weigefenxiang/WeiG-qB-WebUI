@@ -133,10 +133,11 @@ for(const row of fourPart)assert.ok(row.sentinelReasons.includes('fourth-compone
 
 const workflow=fs.readFileSync(path.join(root,'.github/workflows/real-qb-full.yml'),'utf8');
 assert.ok(workflow.includes('workflow_dispatch:'),'release-grade G-FM must remain explicitly dispatchable');
-assert.ok(!/\n\s*push:\s*\n/.test(workflow),'release-grade G-FM must never run on ordinary dev pushes');
+assert.ok(/\n\s*push:\s*\n\s*branches:\s*\[dev\]/.test(workflow),'G-FM Fast must run automatically on dev pushes');
 assert.ok(workflow.includes('node tests/real-qb-capability-plan.mjs --matrix "$mode"'),'G-FM workflow must consume the planner-owned matrix');
-assert.ok(workflow.includes('mode=exhaustive')&&!workflow.includes('mode=fast'),'release-grade G-FM workflow must be manual Exhaustive only; Fast remains an offline/test utility');
+assert.ok(workflow.includes('mode=fast')&&workflow.includes('mode=exhaustive'),'G-FM workflow must route dev push to Fast and manual dispatch to Exhaustive');
+assert.ok(workflow.includes('real-qb-fast-aggregate-${{ github.sha }}')&&workflow.includes('real-qb-full-aggregate-${{ github.sha }}'),'Fast and Exhaustive aggregate artifact identities must remain distinct');
 
-const summaryMessage=`Real-qB capability execution planner contract passed: ${a.versions.length}/65 versions; families=${a.dimensions.map(d=>`${d}:${a.summary[d].familyCount}/${a.summary[d].representativeCount} reps`).join(', ')}; Fast planning utility remains test-only; release-grade workflow is manual Exhaustive 65/65.`;
+const summaryMessage=`Real-qB capability execution planner contract passed: ${a.versions.length}/65 versions; families=${a.dimensions.map(d=>`${d}:${a.summary[d].familyCount}/${a.summary[d].representativeCount} reps`).join(', ')}; dev pushes run Fast 65/65 runtime witness coverage and manual dispatch remains Exhaustive 65/65 Full.`;
 console.log(summaryMessage);
 if(process.env.GITHUB_ACTIONS==='true')console.log(`::notice title=Real-qB capability planner::${summaryMessage}`);

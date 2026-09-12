@@ -29,10 +29,10 @@ const promote=read('.github/workflows/promote.yml');
 const compatVerifier=read('tests/release-compat-evidence.mjs');
 
 assert(gfm.includes('workflow_dispatch:'),'real qB Full Frozen Matrix must remain manually runnable for release-grade Exhaustive evidence');
-assert(!/\n\s*push:\s*\n/.test(gfm),'real qB Full Frozen Matrix must not run on ordinary dev pushes');
-assert(gfm.includes('mode=exhaustive')&&!gfm.includes('mode=fast')&&gfm.includes('node tests/real-qb-capability-plan.mjs --matrix "$mode"'),'release-grade G-FM workflow must be manual Exhaustive-only while consuming the Frozen planner');
+assert(/\n\s*push:\s*\n\s*branches:\s*\[dev\]/.test(gfm),'real qB G-FM Fast must run automatically on dev pushes');
+assert(gfm.includes('mode=fast')&&gfm.includes('mode=exhaustive')&&gfm.includes('node tests/real-qb-capability-plan.mjs --matrix "$mode"'),'G-FM workflow must route dev push to Fast and manual dispatch to Exhaustive through the Frozen planner');
 assert(/max-parallel:\s*16/.test(gfm),'real qB Full Frozen Matrix must keep the 16-way concurrency cap');
-assert(!gfm.includes('real-qb-fast-aggregate-${{ github.sha }}'),'release-grade G-FM workflow must not publish Fast aggregate evidence');
+assert(gfm.includes('real-qb-fast-aggregate-${{ github.sha }}'),'Fast G-FM must publish exact-SHA non-promotion aggregate evidence');
 assert(gfm.includes('real-qb-full-aggregate-${{ github.sha }}'),'Exhaustive G-FM must publish exact-SHA release-grade aggregate evidence');
 assert(promote.includes("resolveManualAggregate('real-qb-full.yml', gfmArtifactName")&&promote.includes('workflow_id: workflowId'),'promotion must require the real qB Full Frozen Matrix through the shared manual evidence resolver');
 assert(promote.includes("run.event === 'workflow_dispatch'"),'promotion must require a manually dispatched Exhaustive matrix run');
@@ -57,4 +57,4 @@ assert(catalogTool.includes('--base-catalog=')&&catalogTool.includes('Incrementa
 const productDiff=read('tools/qb-product-capability-diff.mjs');
 for(const owner of ['release-profile.js','capabilities.js','torrent-semantics.js'])assert(productDiff.includes(`'${owner}'`),`product capability diff must execute formal owner ${owner}`);
 
-console.log(`Compatibility governance contract passed: retired legacy workflows stay removed; frozen LKG ${catalog.length} profiles ${catalog[0].qbVersion} -> ${catalog.at(-1).qbVersion} remains hash-bound; heavyweight Full Frozen Matrix is manual-only final/release validation and promotion requires centrally revalidated exact-SHA Exhaustive 65/65 G-FM.`);
+console.log(`Compatibility governance contract passed: retired legacy workflows stay removed; frozen LKG ${catalog.length} profiles ${catalog[0].qbVersion} -> ${catalog.at(-1).qbVersion} remains hash-bound; dev pushes run all-65-runtime Fast G-FM while manual Exhaustive remains the only promotion-grade G-FM evidence.`);
