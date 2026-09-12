@@ -43,6 +43,46 @@ Notes:
 '@ | Write-Host
 }
 
+function Test-PagesIrrelevantPath([string]$Path) {
+  if([string]::IsNullOrWhiteSpace($Path)){return $false}
+  if($Path.StartsWith('docs/',[System.StringComparison]::Ordinal)){return $true}
+  if($Path.EndsWith('.md',[System.StringComparison]::OrdinalIgnoreCase)){return $true}
+  switch -CaseSensitive ($Path) {
+    'LICENSE' { return $true }
+    '.github/workflows/ci.yml' { return $true }
+    '.github/workflows/promote.yml' { return $true }
+    '.github/workflows/real-qb-full.yml' { return $true }
+    '.github/workflows/release.yml' { return $true }
+    default { return $false }
+  }
+}
+
+function Test-DevPayloadCanRepresentHead([string]$PublishedSha,[string]$DevHeadSha) {
+  if($PublishedSha -eq $DevHeadSha){return $true}
+  if($PublishedSha -notmatch '^[0-9a-fA-F]{40}$' -or $DevHeadSha -notmatch '^[0-9a-fA-F]{40}$'){return $false}
+  try {
+    $compare=Invoke-RestMethod -UseBasicParsing -Headers @{'User-Agent'='WeiG-qB-WebUI-installer'} "https://api.github.com/repos/$Repo/compare/$PublishedSha...$DevHeadSha"
+  } catch {
+    Write-Warning "Unable to verify whether unpublished dev changes are Pages-irrelevant: $($_.Exception.Message)"
+    return $false
+  }
+  if(([string]$compare.status) -ne 'ahead'){return $false}
+  $files=@($compare.files)
+  if($files.Count -lt 1){return $false}
+  if($files.Count -ge 300){
+    Write-Warning 'GitHub compare returned 300 changed files; refusing to assume the file list is complete.'
+    return $false
+  }
+  foreach($file in $files){
+    $changedPath=[string]$file.filename
+    if(!(Test-PagesIrrelevantPath $changedPath)){
+      Write-Warning "Pages-relevant change exists after published dev payload: $changedPath"
+      return $false
+    }
+  }
+  return $true
+}
+
 if($Help){ Show-Usage; exit 0 }
 
 $DestinationExplicit=$PSBoundParameters.ContainsKey('Destination')
@@ -600,8 +640,8 @@ try {
     } catch {
       throw 'Unable to resolve the current dev commit.'
     }
-    $sourceSha=[string]$commit.sha
-    if($sourceSha -notmatch '^[0-9a-fA-F]{40}$'){throw 'GitHub did not return a valid dev commit SHA.'}
+    $devHeadSha=([string]$commit.sha).ToLowerInvariant()
+    if($devHeadSha -notmatch '^[0-9a-f]{40}$'){throw 'GitHub did not return a valid dev commit SHA.'}
 
     $publishedShaFile=Join-Path $tmp 'DEV_GIT_SHA'
     try {
@@ -609,9 +649,16 @@ try {
     } catch {
       throw 'The materialized dev WebUI payload is not published yet. Wait for Virtual qB Pages to finish and retry.'
     }
-    $publishedSha=(Get-Content $publishedShaFile -Raw).Trim()
-    if($publishedSha -ne $sourceSha){
-      throw "The materialized dev payload is still at $publishedSha while dev is $sourceSha. Wait for the exact-SHA Pages build and retry; refusing raw-source fallback."
+    $publishedSha=(Get-Content $publishedShaFile -Raw).Trim().ToLowerInvariant()
+    if($publishedSha -notmatch '^[0-9a-f]{40}$'){throw 'The materialized dev payload does not publish a valid GIT_SHA.'}
+
+    $sourceSha=$publishedSha
+    if($publishedSha -ne $devHeadSha){
+      if(Test-DevPayloadCanRepresentHead $publishedSha $devHeadSha){
+        Write-Host "Current dev HEAD $devHeadSha differs from materialized SHA $publishedSha only by Pages-irrelevant changes; reusing the verified payload."
+      } else {
+        throw "The materialized dev payload is still at $publishedSha while dev is $devHeadSha, and at least one Pages-relevant change is not published. Wait for the exact Pages build and retry; refusing raw-source fallback."
+      }
     }
 
     $sumFile=Join-Path $tmp 'SHA256SUMS'
@@ -625,10 +672,14 @@ try {
     $root=Join-Path $tmp 'dev'
     Expand-Archive $archive $root -Force
     $web=Join-Path $root 'WeiG-qB-WebUI'
-    $packageSha=(Get-Content (Join-Path $web 'GIT_SHA') -Raw).Trim()
-    if($packageSha -ne $sourceSha){throw "Dev package Git SHA $packageSha does not match requested dev SHA $sourceSha."}
+    $packageSha=(Get-Content (Join-Path $web 'GIT_SHA') -Raw).Trim().ToLowerInvariant()
+    if($packageSha -ne $sourceSha){throw "Dev package Git SHA $packageSha does not match materialized dev SHA $sourceSha."}
     Assert-MaterializedWebUI $web
-    Write-Host "Source: dev exact SHA $sourceSha (materialized Pages payload; checksum verified)"
+    if($sourceSha -eq $devHeadSha){
+      Write-Host "Source: dev exact SHA $sourceSha (materialized Pages payload; checksum verified)"
+    } else {
+      Write-Host "Source: dev materialized SHA $sourceSha for current HEAD $devHeadSha (only Pages-irrelevant changes are newer; checksum verified)"
+    }
   }
 
   if(!$web -or !(Test-Path $web)){ throw 'WebUI payload not found.' }
