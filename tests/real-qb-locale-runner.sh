@@ -73,19 +73,26 @@ docker run -d --name "$NAME" --network "$NET" \
   -e QBT_LEGAL_NOTICE=confirm -e QBT_WEBUI_PORT=8080 -e QBT_TORRENTING_PORT=6881 \
   "$IMAGE" >/dev/null
 
-TARGET=''; actual=''
+TARGET=''; ready=0
 for _ in $(seq 1 120); do
   ip="$(docker inspect "$NAME" --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' 2>/dev/null || true)"
   if [[ "$ip" =~ ^[0-9]+(\.[0-9]+){3}$ ]]; then
     TARGET="http://${ip}:8080"
-    actual="$(curl -fsS --max-time 2 "${TARGET}/api/v2/app/version" 2>/dev/null || true)"
-    if [[ "${actual#v}" == "$VERSION" ]]; then break; fi
+    code="$(curl --silent --output /dev/null --write-out '%{http_code}' --connect-timeout 1 --max-time 2 "${TARGET}/api/v2/app/version" || true)"
+    if [[ "$code" =~ ^(200|403)$ ]]; then ready=1; break; fi
   fi
   if [[ "$(docker inspect "$NAME" --format '{{.State.Running}}' 2>/dev/null || true)" != true ]]; then break; fi
   sleep 1
 done
-[[ -n "$TARGET" && "${actual#v}" == "$VERSION" ]] || { docker logs "$NAME" >&2 || true; echo "Exact qB $VERSION did not become ready: $actual" >&2; exit 1; }
+if [[ "$ready" != 1 ]]; then
+  docker logs "$NAME" >&2 || true
+  echo "qB $VERSION WebUI did not become reachable on the isolated bridge." >&2
+  exit 1
+fi
 
+# A 403 readiness response is expected when WebUI authentication is enabled.
+# The authenticated harness below is the exact-version authority and fails closed
+# unless /api/v2/app/version reports WEIG_QB_EXPECTED_VERSION after login.
 WEIG_QB_URL="$TARGET" \
 WEIG_QB_USER=admin \
 WEIG_QB_PASS="$PASSWORD" \

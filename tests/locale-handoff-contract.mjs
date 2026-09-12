@@ -6,6 +6,7 @@ const read=relative=>fs.readFileSync(new URL(`../${relative}`,import.meta.url),'
 const i18nSource=read('webui/private/scripts/i18n.js');
 const sessionSource=read('webui/private/scripts/session.js');
 const runnerSource=read('tests/real-qb-locale-runner.sh');
+const harnessSource=read('tests/real-qb-locale-harness.mjs');
 const lkg=JSON.parse(read('tools/data/qb-locale-lkg.json'));
 const workflow=read('.github/workflows/real-qb-locale.yml');
 assert.equal(lkg.supportFloor,'4.1.0');
@@ -26,6 +27,8 @@ assert.equal(workflow.includes('real-qb-current-locale-runtime-${{ github.sha }}
 assert.ok(runnerSource.includes('WEIG_QB_RUNTIME_PRELOADED')&&runnerSource.includes('docker image inspect "$IMAGE_TAG"'),'locale runner must support fail-closed preloaded runtime reuse');
 assert.ok(runnerSource.includes('IMAGE_PIN=')&&runnerSource.includes('sha256:9ebb534fe30bab98622cb84a8c3acecfd88319b2d540f52ecdec7b9f866374d7'),'direct runner fallback must retain the immutable current-stable qB image pin');
 assert.ok(runnerSource.includes("TARGET=\"http://${ip}:8080\"")&&!runnerSource.includes('-p 127.0.0.1::8080'),'locale runner must use the isolated Docker bridge like the established real-qB harness instead of host ephemeral-port publication');
+assert.ok(runnerSource.includes('[[ "$code" =~ ^(200|403)$ ]]'),'authenticated qB readiness must accept 403 exactly like the established real-qB harness');
+assert.ok(harnessSource.includes('version!==expectedVersion')&&harnessSource.includes('Expected exact qB ${expectedVersion}, got ${version}.'),'403 readiness must never replace authenticated exact-version verification');
 const HANDOFF_KEY='weigg.localeHandoff.v1';
 
 class Storage{
@@ -146,4 +149,4 @@ assert.ok(!sessionSource.includes('QBClient.prototype.setPreferences')&&!session
 assert.ok(!sessionSource.includes('weigg-language'),'handoff metadata must never recreate an independent persisted language truth');
 assert.ok(!sessionSource.includes('W.LocaleHandoff='),'handoff stays a private Session lifecycle detail instead of becoming a second public language owner');
 
-console.log('Locale handoff contract passed: W.I18n owns exact locale matching, all 61 current-stable locales roundtrip, native return restores atomically, explicit user locale wins, and real-qB locale jobs reuse one exact pre-materialized runtime.');
+console.log('Locale handoff contract passed: W.I18n owns exact locale matching, all 61 current-stable locales roundtrip, native return restores atomically, explicit user locale wins, and real-qB locale evidence uses one exact pre-materialized runtime with authenticated readiness.');
