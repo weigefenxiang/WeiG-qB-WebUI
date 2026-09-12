@@ -149,14 +149,10 @@ jobs:
         with:
           path: ${{ runner.temp }}/virtual-qb-site
 
-
   deploy:
     if: ${{ github.ref_name == 'dev' }}
     needs: build
     runs-on: ubuntu-latest
-    # The repository's protected stable Pages environment is reserved for main promotion.
-    # Dev exact-SHA browser evidence uses a separate environment while still deploying through
-    # the official Pages OIDC flow; actions/deploy-pages explicitly permits another environment name.
     environment:
       name: github-pages-dev
       url: ${{ steps.deployment.outputs.page_url }}
@@ -177,9 +173,6 @@ jobs:
             exit 0
           fi
 
-          # A docs/repository-only commit may legitimately advance dev while an already-running
-          # Pages build is queued. Allow that build to deploy only when every intervening path is
-          # explicitly Pages-irrelevant. Unknown/runtime paths remain fail closed.
           COMPARE_JSON="$RUNNER_TEMP/pages-head-compare.json"
           gh api "/repos/$GITHUB_REPOSITORY/compare/$EXACT_SHA...$REMOTE_SHA" > "$COMPARE_JSON"
           STATUS="$(jq -r '.status // empty' "$COMPARE_JSON")"
@@ -214,13 +207,42 @@ jobs:
         uses: actions/deploy-pages@v5
 
   verify:
+    name: verify ${{ matrix.name }}
     if: ${{ github.ref_name == 'dev' }}
     needs: deploy
     runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    strategy:
+      fail-fast: false
+      max-parallel: 16
+      matrix:
+        include:
+          - {name: core, script: tests/pages-live-acceptance.mjs, pref_mode: none, pref_index: '0', pref_total: '1'}
+          - {name: locale-bootstrap, script: tests/pages-live-locale-bootstrap.mjs, pref_mode: none, pref_index: '0', pref_total: '1'}
+          - {name: release-profile, script: tests/pages-live-release-profile.mjs, pref_mode: none, pref_index: '0', pref_total: '1'}
+          - {name: services, script: tests/pages-live-services.mjs, pref_mode: none, pref_index: '0', pref_total: '1'}
+          - {name: mobile-layout, script: tests/pages-live-mobile-layout.mjs, pref_mode: none, pref_index: '0', pref_total: '1'}
+          - {name: preferences-anchor, script: tests/pages-live-preferences.mjs, pref_mode: anchor, pref_index: '0', pref_total: '10'}
+          - {name: preferences-0, script: tests/pages-live-preferences.mjs, pref_mode: shard, pref_index: '0', pref_total: '10'}
+          - {name: preferences-1, script: tests/pages-live-preferences.mjs, pref_mode: shard, pref_index: '1', pref_total: '10'}
+          - {name: preferences-2, script: tests/pages-live-preferences.mjs, pref_mode: shard, pref_index: '2', pref_total: '10'}
+          - {name: preferences-3, script: tests/pages-live-preferences.mjs, pref_mode: shard, pref_index: '3', pref_total: '10'}
+          - {name: preferences-4, script: tests/pages-live-preferences.mjs, pref_mode: shard, pref_index: '4', pref_total: '10'}
+          - {name: preferences-5, script: tests/pages-live-preferences.mjs, pref_mode: shard, pref_index: '5', pref_total: '10'}
+          - {name: preferences-6, script: tests/pages-live-preferences.mjs, pref_mode: shard, pref_index: '6', pref_total: '10'}
+          - {name: preferences-7, script: tests/pages-live-preferences.mjs, pref_mode: shard, pref_index: '7', pref_total: '10'}
+          - {name: preferences-8, script: tests/pages-live-preferences.mjs, pref_mode: shard, pref_index: '8', pref_total: '10'}
+          - {name: preferences-9, script: tests/pages-live-preferences.mjs, pref_mode: shard, pref_index: '9', pref_total: '10'}
     env:
       WEIGG_BROWSER_CHANNEL: chrome
+      WEIGG_BROWSER_FETCH_TIMEOUT_MS: '15000'
+      WEIGG_PAGES_PROFILE_TIMEOUT_MS: '45000'
       WEIGG_PAGES_URL: ${{ needs.deploy.outputs.page_url }}
       WEIGG_EXPECTED_SIMULATOR_SHA: ${{ github.sha }}
+      WEIGG_VERIFY_SCRIPT: ${{ matrix.script }}
+      WEIGG_PAGES_PREF_MODE: ${{ matrix.pref_mode }}
+      WEIGG_PAGES_PREF_SHARD_INDEX: ${{ matrix.pref_index }}
+      WEIGG_PAGES_PREF_SHARD_TOTAL: ${{ matrix.pref_total }}
     steps:
       - name: Checkout exact WeiG source
         uses: actions/checkout@v6
@@ -247,14 +269,13 @@ jobs:
           node -e "console.log('Playwright ' + require('playwright/package.json').version)"
           google-chrome --version
           echo "Pages build/deployment version: $GITHUB_SHA"
+          echo "Verify shard: ${{ matrix.name }} -> $WEIGG_VERIFY_SCRIPT"
 
-      - name: Verify deployed Virtual qB Pages runtime
+      - name: Verify deployed Virtual qB Pages runtime (${{ matrix.name }})
+        shell: bash
         run: |
-          node tests/pages-live-acceptance.mjs
-          node tests/pages-live-preferences.mjs
-          node tests/pages-live-release-profile.mjs
-          node tests/pages-live-services.mjs
-          node tests/pages-live-mobile-layout.mjs
+          set -euo pipefail
+          timeout --signal=TERM --kill-after=10s 7m node "$WEIGG_VERIFY_SCRIPT"
 
   reuse_main:
     if: ${{ github.ref_name == 'main' }}

@@ -105,10 +105,10 @@ jobs:
             JOBS_JSON="$RUNNER_TEMP/pages-jobs-$RUN_ID.json"
             gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/jobs?per_page=100" > "$JOBS_JSON"
             DEPLOY_OK="$(jq '[.jobs[] | select(.name == "deploy" and .status == "completed" and .conclusion == "success")] | length' "$JOBS_JSON")"
-            VERIFY_ACTIVE="$(jq '[.jobs[] | select(.name == "verify" and .status == "in_progress")] | length' "$JOBS_JSON")"
+            VERIFY_ACTIVE="$(jq '[.jobs[] | select((.name == "verify" or (.name | startswith("verify "))) and .status == "in_progress")] | length' "$JOBS_JSON")"
 
-            if [ "$DEPLOY_OK" -eq 1 ] && [ "$VERIFY_ACTIVE" -eq 1 ]; then
-              echo "Canceling stale Pages run $RUN_ID ($RUN_SHA): deploy already succeeded, verify has remained active for ${AGE_SECONDS}s."
+            if [ "$DEPLOY_OK" -eq 1 ] && [ "$VERIFY_ACTIVE" -ge 1 ]; then
+              echo "Canceling stale Pages run $RUN_ID ($RUN_SHA): deploy already succeeded, $VERIFY_ACTIVE verify job(s) have remained active for ${AGE_SECONDS}s."
               gh api --method POST "/repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/cancel" >/dev/null
             else
               echo "Preserving Pages run $RUN_ID ($RUN_SHA): it is not a post-deploy stale verify (deploy_ok=$DEPLOY_OK verify_active=$VERIFY_ACTIVE)."
