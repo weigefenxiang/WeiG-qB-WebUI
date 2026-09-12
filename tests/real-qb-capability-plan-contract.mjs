@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {buildCapabilityPlan} from './real-qb-capability-plan.mjs';
+import {buildCapabilityPlan,matrixForMode} from './real-qb-capability-plan.mjs';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(here,'..');
@@ -48,6 +48,24 @@ for(const dimension of a.dimensions){
   }
 }
 
+const fast=matrixForMode(a,'fast');
+const exhaustive=matrixForMode(a,'exhaustive');
+assert.equal(fast.length,65,'fast matrix must retain all 65 exact real runtimes');
+assert.equal(exhaustive.length,65,'exhaustive matrix must retain all 65 exact real runtimes');
+assert.ok(exhaustive.every(row=>row.coreMode==='full'&&row.searchMode==='full'),'exhaustive matrix must remain full/full for every stable version');
+assert.equal(fast.filter(row=>row.coreMode==='full').length,a.summary.fast.coreFullCount);
+assert.equal(fast.filter(row=>row.searchMode==='full').length,a.summary.fast.searchFullCount);
+assert.equal(fast.filter(row=>row.coreMode==='smoke'&&row.searchMode==='skip').length,a.summary.fast.smokeOnlyCount);
+const fastByVersion=new Map(fast.map(row=>[row.qb,row]));
+for(const dimension of a.fast.coreDimensions){
+  for(const family of a.families[dimension])for(const representative of family.representatives){
+    assert.equal(fastByVersion.get(representative.qbVersion)?.coreMode,'full',`${dimension} representative ${representative.qbVersion} must receive full core semantics`);
+  }
+}
+for(const family of a.families.search)for(const representative of family.representatives){
+  assert.equal(fastByVersion.get(representative.qbVersion)?.searchMode,'full',`Search representative ${representative.qbVersion} must receive full Search lifecycle`);
+}
+
 const localeLkg=JSON.parse(fs.readFileSync(path.join(root,'tools/data/qb-locale-lkg.json'),'utf8'));
 const distinctLocaleSets=new Set(Object.values(localeLkg.localeSets).map(values=>JSON.stringify([...new Set(values.map(String))].sort())));
 assert.equal(a.families.locale.length,distinctLocaleSets.size,'locale families must be derived from exact Frozen locale inventories');
@@ -59,4 +77,4 @@ for(const row of fourPart)assert.ok(row.sentinelReasons.includes('fourth-compone
 const workflow=fs.readFileSync(path.join(root,'.github/workflows/real-qb-full.yml'),'utf8');
 assert.ok(!workflow.includes('real-qb-capability-plan.mjs'),'phase-1 read-only planner must not silently change G-FM execution/aggregate decisions');
 
-console.log(`Real-qB capability planner contract passed: ${a.versions.length}/65 versions are deterministically partitioned without changing G-FM decisions; families=${a.dimensions.map(d=>`${d}:${a.summary[d].familyCount}/${a.summary[d].representativeCount} reps`).join(', ')}.`);
+console.log(`Real-qB capability planner contract passed: ${a.versions.length}/65 versions are deterministically partitioned without changing G-FM decisions; families=${a.dimensions.map(d=>`${d}:${a.summary[d].familyCount}/${a.summary[d].representativeCount} reps`).join(', ')}; fast=core ${a.summary.fast.coreFullCount}/65, Search ${a.summary.fast.searchFullCount}/65, smoke-only ${a.summary.fast.smokeOnlyCount}/65.`);

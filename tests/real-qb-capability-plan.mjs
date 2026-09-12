@@ -180,6 +180,15 @@ export function buildCapabilityPlan(root=repoRoot){
     families:Object.fromEntries(DIMENSIONS.map(d=>[d,familyIds[d].get(row.fingerprints[d])])),
     fingerprints:row.fingerprints
   }));
+  const representativeSet=dimension=>new Set(families[dimension].flatMap(f=>f.representatives.map(r=>r.qbVersion)));
+  const coreDimensions=['api','settings','auth','altWebui'];
+  const coreFull=new Set(coreDimensions.flatMap(d=>[...representativeSet(d)]));
+  const searchFull=representativeSet('search');
+  const fastMatrix=versions.map(row=>({
+    qb:row.qbVersion,
+    coreMode:coreFull.has(row.qbVersion)?'full':'smoke',
+    searchMode:searchFull.has(row.qbVersion)?'full':'skip'
+  }));
   return {
     schemaVersion:1,
     evidenceLevel:'frozen-source-structural',
@@ -194,18 +203,38 @@ export function buildCapabilityPlan(root=repoRoot){
     dimensions:DIMENSIONS,
     versions,
     families,
-    summary:Object.fromEntries(DIMENSIONS.map(d=>[d,{
-      familyCount:families[d].length,
-      representativeCount:new Set(families[d].flatMap(f=>f.representatives.map(r=>r.qbVersion))).size
-    }]))
+    fast:{
+      coreDimensions,
+      matrix:fastMatrix
+    },
+    summary:{
+      ...Object.fromEntries(DIMENSIONS.map(d=>[d,{
+        familyCount:families[d].length,
+        representativeCount:new Set(families[d].flatMap(f=>f.representatives.map(r=>r.qbVersion))).size
+      }])),
+      fast:{
+        coreFullCount:fastMatrix.filter(row=>row.coreMode==='full').length,
+        searchFullCount:fastMatrix.filter(row=>row.searchMode==='full').length,
+        smokeOnlyCount:fastMatrix.filter(row=>row.coreMode==='smoke'&&row.searchMode==='skip').length
+      }
+    }
   };
+}
+
+export function matrixForMode(plan,mode){
+  if(mode==='fast')return plan.fast.matrix;
+  if(mode==='exhaustive')return plan.versions.map(row=>({qb:row.qbVersion,coreMode:'full',searchMode:'full'}));
+  fail(`Unknown G-FM planning mode: ${mode}`);
 }
 
 const invoked=process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url);
 if(invoked){
   const plan=buildCapabilityPlan();
-  const json=JSON.stringify(plan,null,2);
-  if(process.argv.includes('--summary')){
+  const matrixArg=process.argv.indexOf('--matrix');
+  if(matrixArg!==-1){
+    const mode=process.argv[matrixArg+1];
+    process.stdout.write(`${JSON.stringify(matrixForMode(plan,mode))}\n`);
+  }else if(process.argv.includes('--summary')){
     console.log(JSON.stringify({
       schemaVersion:plan.schemaVersion,
       evidenceLevel:plan.evidenceLevel,
@@ -214,6 +243,6 @@ if(invoked){
       summary:plan.summary
     },null,2));
   }else{
-    process.stdout.write(`${json}\n`);
+    process.stdout.write(`${JSON.stringify(plan,null,2)}\n`);
   }
 }
