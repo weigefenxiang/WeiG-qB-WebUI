@@ -12,7 +12,7 @@ const projectRoot=path.resolve(here,'..');
 const ARTIFACT_PAGE_SIZE=100;
 const ARTIFACT_MAX_PAGES=10;
 const POLL_INTERVAL_MS=10000;
-const POLL_ATTEMPTS=210;
+const POLL_ATTEMPTS=90;
 const incompatibleArtifactIds=new Set();
 function arg(name,fallback=''){const prefix=`--${name}=`;const hit=process.argv.find(value=>value.startsWith(prefix));return hit?hit.slice(prefix.length):fallback;}
 function required(name){const value=arg(name);if(!value)throw new Error(`Missing --${name}=...`);return value;}
@@ -115,19 +115,26 @@ async function tryBootstrapCatalog(artifacts){
   }
   return null;
 }
+async function activeSettingsEvidenceRun(){
+  const data=await api(`/repos/${repository}/actions/workflows/pages-source.yml/runs?branch=${encodeURIComponent(branch)}&event=workflow_dispatch&per_page=20`);
+  const active=new Set(['queued','in_progress','waiting','pending','requested']);
+  return (Array.isArray(data?.workflow_runs)?data.workflow_runs:[]).find(run=>active.has(String(run?.status||'')))||null;
+}
 async function dispatchSettingsEvidence(){
+  const active=await activeSettingsEvidenceRun();
+  if(active){
+    console.log(`Reusing active Settings evidence refresh run ${active.id} (${active.status}) on ${branch}; no duplicate dispatch.`);
+    return false;
+  }
   await api(`/repos/${repository}/actions/workflows/pages-source.yml/dispatches`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ref:branch,inputs:{mode:'settings-evidence'}})});
-  console.log(`Dispatched 16-way Settings evidence refresh on ${branch}: each runner source-parses and locale-enriches its own stable-release shard, then one merge publishes the reusable bootstrap catalog.`);
+  console.log(`Dispatched demand-driven Settings evidence refresh on ${branch}: 4 runners x 4 local workers (16 source/locale subshards total).`);
+  return true;
 }
 
 console.log(`Scanning up to ${ARTIFACT_MAX_PAGES*ARTIFACT_PAGE_SIZE} recent artifacts for reusable qB Settings translation evidence.`);
 let artifacts=await listArtifacts({maxPages:ARTIFACT_MAX_PAGES});
 if(await tryCertifiedArtifact(artifacts))process.exit(0);
-const bootstrap=await tryBootstrapCatalog(artifacts);
-if(bootstrap){
-  if(dispatchIfMissing)await dispatchSettingsEvidence();
-  process.exit(0);
-}
+if(await tryBootstrapCatalog(artifacts))process.exit(0);
 if(!dispatchIfMissing)throw new Error('No compatible certified Settings LKG or source-enriched bootstrap artifact is available.');
 await dispatchSettingsEvidence();
 for(let attempt=1;attempt<=POLL_ATTEMPTS;attempt++){
