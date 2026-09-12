@@ -88,7 +88,7 @@
         return{changed:true,verified:true,reloadRequired:true,record:record,prefs:verified};
       }
       var observed=verified&&cleanLocale(verified.locale)||current;
-      saveBootstrap(bootstrapRecord('verification-mismatch',target,observed,true));
+      saveBootstrap(bootstrapRecord('verification-mismatch',target,observed,false));
       if(verified&&W.I18n&&W.I18n.applyLocale&&verified.locale!=null)W.I18n.applyLocale(verified.locale);
       return{changed:true,verified:false,reason:'verification-mismatch',prefs:verified||null};
     }catch(error){
@@ -98,7 +98,7 @@
         var recovered=bootstrapRecord('browser-locale-verified-after-error',target,after.locale,true);saveBootstrap(recovered);
         return{changed:true,verified:true,reloadRequired:true,record:recovered,prefs:after,recovered:true};
       }
-      saveBootstrap(bootstrapRecord('write-failed',target,after&&after.locale||current,true));
+      saveBootstrap(bootstrapRecord('write-failed',target,after&&after.locale||current,false));
       if(after&&after.locale!=null&&W.I18n&&W.I18n.applyLocale)W.I18n.applyLocale(after.locale);
       try{console.warn('[WeiG] browser locale bootstrap failed safely',error);}catch(_e){}
       return{changed:false,verified:false,reason:'write-failed',error:error,prefs:after||null};
