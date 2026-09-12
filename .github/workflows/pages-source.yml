@@ -1,19 +1,15 @@
 name: Virtual qB Pages Source
 
 # Source relay owns trigger choreography only. It never owns Pages deployment permissions.
-# Pure documentation pushes are filtered before runner allocation. Every other dev/main push
-# reaches this lightweight relay and is classified again; everything unknown defaults to
-# Pages-relevant so a new runtime/build input cannot silently bypass deployment.
+# Every dev/main push reaches this lightweight relay and is classified from the full checked-out
+# history. Everything unknown defaults to Pages-relevant so runtime/build changes cannot silently
+# bypass deployment because of GitHub native path-filter diff limits.
 on:
   workflow_dispatch:
   push:
     branches:
       - dev
       - main
-    paths-ignore:
-      - 'docs/**'
-      - '**/*.md'
-      - 'LICENSE'
 
 permissions:
   actions: write

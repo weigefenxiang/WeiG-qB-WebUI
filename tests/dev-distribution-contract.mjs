@@ -32,11 +32,10 @@ assert.ok(distBuilder.includes("path.join(outDir,'install.sh')"),'Canonical dev 
 assert.ok(distBuilder.includes("path.join(projectRoot,'installers/install.sh')"),'Published dev Linux installer must come from the exact source tree being materialized');
 assert.ok(distBuilder.includes("path.join(outDir,'install.ps1')"),'Canonical dev distribution must publish the exact dev Windows installer beside the payload');
 assert.ok(distBuilder.includes("path.join(projectRoot,'installers/install.ps1')"),'Published dev Windows installer must come from the exact source tree being materialized');
-assert.match(pagesSource,/push:\s*\n\s*branches:\s*\n\s*- dev\s*\n\s*- main/,'Dev/main runtime pushes must still reach the Pages source relay');
-assert.match(pagesSource,/paths-ignore:/,'Pure documentation pushes must be filtered before allocating a Pages source runner');
-assert.ok(pagesSource.includes("- 'docs/**'")&&pagesSource.includes("- '**/*.md'")&&pagesSource.includes("- 'LICENSE'"),'Pages source trigger must ignore only the native docs/Markdown/LICENSE classes before runner allocation');
-assert.match(pagesSource,/Detect Pages-relevant source changes/,'Pages source relay must classify every non-filtered pushed diff before dispatching the heavy Pages owner');
-assert.match(pagesSource,/docs\/\*\|\*\.md\|LICENSE/,'Docs, Markdown and LICENSE must remain explicit Pages-irrelevant classes for mixed pushes and installer parity');
+assert.match(pagesSource,/push:\s*\n\s*branches:\s*\n\s*- dev\s*\n\s*- main/,'Every dev/main push must reach the lightweight Pages source relay');
+assert.doesNotMatch(pagesSource,/paths-ignore:/,'Pages source must not use native path filters because GitHub can truncate very large changed-file lists before filter evaluation');
+assert.match(pagesSource,/Detect Pages-relevant source changes/,'Pages source relay must classify each pushed diff before dispatching the heavy Pages owner');
+assert.match(pagesSource,/docs\/\*\|\*\.md\|LICENSE/,'Docs, Markdown and LICENSE must remain explicit Pages-irrelevant classes inside the checked-out-history classifier');
 assert.match(pagesSource,/read -r -d '' path/,'Pages source relay must consume NUL-delimited filenames so non-ASCII docs are never Git-quoted into false runtime changes');
 assert.match(pagesSource,/diff --name-only -z/,'Pages source relay must request raw NUL-delimited changed paths');
 assert.match(pagesSource,/core\.quotePath=false/,'Pages source relay must explicitly disable path quoting for diagnostic output');
@@ -49,4 +48,4 @@ assert.match(pagesWorkflow,/\.files\[\] \| \.filename, "\\u0000"/,'Dev Pages sta
 assert.match(pagesWorkflow,/FILE_COUNT.*-ge 300/s,'Dev Pages stale gate must refuse a possibly truncated GitHub compare file list');
 assert.ok(windowsDevGuide.includes(devInstallerUrl),'Windows dev guide must bootstrap from the materialized dev distribution, not the stable main installer');
 assert.match(windowsDevGuide,/install\.ps1[^\n]*-dev|weigg-install-dev\.ps1[^\n]*-dev/s,'Windows dev guide must actually execute the published installer in dev mode');
-console.log('Dev distribution contract passed: pure docs pushes allocate no Pages source runner; mixed/non-doc pushes are classified fail-closed; non-ASCII docs paths are lossless; docs-only heads may reuse the last verified materialized payload and may not stale an in-flight runtime deployment; unknown/runtime changes fail closed; raw-source fallback remains forbidden.');
+console.log('Dev distribution contract passed: every dev/main push is classified from full checked-out history; non-ASCII docs paths are lossless; docs-only heads may reuse the last verified materialized payload and may not stale an in-flight runtime deployment; unknown/runtime changes fail closed; raw-source fallback remains forbidden.');

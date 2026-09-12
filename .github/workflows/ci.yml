@@ -4,10 +4,6 @@ on:
   push:
     branches:
       - dev
-    paths-ignore:
-      - 'docs/**'
-      - '**/*.md'
-      - 'LICENSE'
   workflow_dispatch:
     inputs:
       validation_mode:
@@ -28,7 +24,72 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  classify:
+    name: Classify CI push
+    if: ${{ github.event_name == 'push' }}
+    runs-on: ubuntu-latest
+    outputs:
+      relevant: ${{ steps.relevance.outputs.relevant }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Detect CI-relevant source changes
+        id: relevance
+        shell: bash
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          HEAD_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          set -euo pipefail
+
+          case "$HEAD_MESSAGE" in
+            *'[ui]'*|*'[candidate]'*)
+              echo "relevant=true" >> "$GITHUB_OUTPUT"
+              echo "Commit message explicitly requests an extended CI gate."
+              exit 0
+              ;;
+          esac
+
+          BEFORE="$BEFORE_SHA"
+          case "$BEFORE" in
+            ''|0000000000000000000000000000000000000000)
+              echo "relevant=true" >> "$GITHUB_OUTPUT"
+              echo "Push has no usable before SHA; fail closed by requiring CI smoke."
+              exit 0
+              ;;
+          esac
+
+          if ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+            echo "Before SHA is unavailable locally; fail closed by requiring CI smoke."
+            exit 0
+          fi
+
+          relevant=false
+          while IFS= read -r -d '' path; do
+            [ -n "$path" ] || continue
+            case "$path" in
+              docs/*|*.md|LICENSE)
+                echo "CI-irrelevant documentation change: $path"
+                ;;
+              *)
+                echo "CI-relevant change: $path"
+                relevant=true
+                break
+                ;;
+            esac
+          done < <(git -c core.quotePath=false diff --name-only -z "$BEFORE" "$GITHUB_SHA")
+
+          echo "relevant=$relevant" >> "$GITHUB_OUTPUT"
+          if [ "$relevant" != "true" ]; then
+            echo "Only documentation paths changed; heavy CI smoke is skipped."
+          fi
+
   smoke:
+    needs: classify
+    if: ${{ always() && (github.event_name == 'workflow_dispatch' || needs.classify.outputs.relevant == 'true') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
