@@ -1,6 +1,13 @@
 name: Real qB Full Frozen Matrix
 
 on:
+  push:
+    branches: [dev]
+    paths:
+      - '.github/workflows/real-qb-full.yml'
+      - 'tests/real-qb-full-*.mjs'
+      - 'tests/real-qb-full-*.sh'
+      - 'tools/data/qb-locale-lkg.json'
   workflow_dispatch:
 
 permissions:
