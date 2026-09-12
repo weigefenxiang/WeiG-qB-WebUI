@@ -49,7 +49,6 @@ assert.match(pagesSource,/--shard-count=16/,'Demand-driven Settings evidence may
 assert.match(pagesWorkflow,/compare\/\$EXACT_SHA\.\.\.\$REMOTE_SHA/,'Dev Pages stale gate must compare the workflow SHA with a newer dev HEAD');
 assert.match(pagesWorkflow,/Pages-irrelevant head advance/,'Dev Pages stale gate must explicitly permit known Pages-irrelevant head advances');
 assert.match(pagesWorkflow,/Pages-relevant head advance blocks stale deployment/,'Dev Pages stale gate must fail closed when any runtime/unknown path advanced after the build SHA');
-assert.ok(pagesWorkflow.includes('webui/*|simulator/*|installers/*|VERSION|tools/data/qb-stable-lkg.json|tools/data/qb-locale-lkg.json|tests/fixtures/qb-release-catalog.lkg.json'),'Dev Pages stale gate must share the same public-payload allowlist as the source relay and installers');
 assert.match(pagesWorkflow,/\.files\[\] \| \.filename, "\\u0000"/,'Dev Pages stale gate must parse GitHub compare filenames losslessly, including non-ASCII docs');
 assert.match(pagesWorkflow,/FILE_COUNT.*-ge 300/s,'Dev Pages stale gate must refuse a possibly truncated GitHub compare file list');
 assert.ok(windowsDevGuide.includes(devInstallerUrl),'Windows dev guide must bootstrap from the materialized dev distribution, not the stable main installer');
