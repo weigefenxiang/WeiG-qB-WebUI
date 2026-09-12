@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       candidate_sha:
-        description: Exact 40-character current dev SHA with successful candidate and full real matrix evidence
+        description: Exact 40-character current dev SHA with successful candidate, Full Frozen Matrix and Locale evidence
         required: true
         type: string
       confirmation:
@@ -64,26 +64,15 @@ jobs:
             }
 
             const candidateRuns = await github.paginate(github.rest.actions.listWorkflowRuns, {
-              owner,
-              repo,
-              workflow_id: 'ci.yml',
-              branch: 'dev',
-              status: 'success',
-              per_page: 100
+              owner, repo, workflow_id: 'ci.yml', branch: 'dev', status: 'success', per_page: 100
             });
-            const exactCandidateRuns = candidateRuns.filter(run => run.head_sha && run.head_sha.toLowerCase() === sha && run.conclusion === 'success');
             const artifactName = `release-candidate-${sha}`;
             const evidenceName = `candidate-deployment-${sha}`;
             let validated = null;
             let candidateArtifact = null;
             let evidenceArtifact = null;
-            for (const run of exactCandidateRuns) {
-              const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {
-                owner,
-                repo,
-                run_id: run.id,
-                per_page: 100
-              });
+            for (const run of candidateRuns.filter(run => run.head_sha && run.head_sha.toLowerCase() === sha && run.conclusion === 'success')) {
+              const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {owner, repo, run_id: run.id, per_page: 100});
               const candidate = artifacts.find(item => item.name === artifactName && !item.expired);
               const evidence = artifacts.find(item => item.name === evidenceName && !item.expired);
               if (candidate && evidence) {
@@ -98,51 +87,40 @@ jobs:
               return;
             }
 
-            const gfmRuns = await github.paginate(github.rest.actions.listWorkflowRuns, {
-              owner,
-              repo,
-              workflow_id: 'real-qb-full.yml',
-              branch: 'dev',
-              status: 'success',
-              per_page: 100
-            });
-            const gfmArtifactName = `real-qb-full-aggregate-${sha}`;
-            let gfmRun = null;
-            let gfmArtifact = null;
-            for (const run of gfmRuns.filter(run => run.head_sha && run.head_sha.toLowerCase() === sha && run.conclusion === 'success' && run.event === 'workflow_dispatch')) {
-              const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {
-                owner,
-                repo,
-                run_id: run.id,
-                per_page: 100
+            async function resolveManualAggregate(workflowId, artifactName, label) {
+              const runs = await github.paginate(github.rest.actions.listWorkflowRuns, {
+                owner, repo, workflow_id: workflowId, branch: 'dev', status: 'success', per_page: 100
               });
-              const aggregate = artifacts.find(item => item.name === gfmArtifactName && !item.expired);
-              if (aggregate) {
-                gfmRun = run;
-                gfmArtifact = aggregate;
-                break;
+              for (const run of runs.filter(run => run.head_sha && run.head_sha.toLowerCase() === sha && run.conclusion === 'success' && run.event === 'workflow_dispatch')) {
+                const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {owner, repo, run_id: run.id, per_page: 100});
+                const artifact = artifacts.find(item => item.name === artifactName && !item.expired);
+                if (artifact) return {run, artifact};
               }
+              core.setFailed(`No successful manually dispatched ${label} run contains ${artifactName} for exact SHA ${sha}. Run ${label} on the final dev candidate before promotion.`);
+              return null;
             }
-            if (!gfmRun || !gfmArtifact) {
-              core.setFailed(`No successful manually dispatched Full Frozen Matrix run contains ${gfmArtifactName} for exact SHA ${sha}. Run Real qB Full Frozen Matrix on dev before promotion.`);
-              return;
-            }
+
+            const gfmArtifactName = `real-qb-full-aggregate-${sha}`;
+            const localeArtifactName = `real-qb-current-locale-aggregate-${sha}`;
+            const gfm = await resolveManualAggregate('real-qb-full.yml', gfmArtifactName, 'Real qB Full Frozen Matrix');
+            if (!gfm) return;
+            const locale = await resolveManualAggregate('real-qb-locale.yml', localeArtifactName, 'Real qB Current Stable Locale Matrix');
+            if (!locale) return;
 
             core.info(`Validated dev candidate CI run #${validated.run_number}: ${validated.html_url}`);
             core.info(`Reusable artifact: ${candidateArtifact.name} (${candidateArtifact.id})`);
             core.info(`Deployment evidence: ${evidenceArtifact.name} (${evidenceArtifact.id})`);
-            core.info(`Validated 65-version G-FM run #${gfmRun.run_number}: ${gfmRun.html_url}`);
-            core.info(`G-FM aggregate: ${gfmArtifact.name} (${gfmArtifact.id})`);
+            core.info(`Validated Full Frozen Matrix run #${gfm.run.run_number}: ${gfm.run.html_url}`);
+            core.info(`Validated Locale Matrix run #${locale.run.run_number}: ${locale.run.html_url}`);
             core.setOutput('sha', sha);
             core.setOutput('main_sha', mainSha);
             core.setOutput('run_id', String(validated.id));
             core.setOutput('artifact_name', artifactName);
-            core.setOutput('artifact_id', String(candidateArtifact.id));
             core.setOutput('evidence_name', evidenceName);
-            core.setOutput('evidence_id', String(evidenceArtifact.id));
-            core.setOutput('gfm_run_id', String(gfmRun.id));
+            core.setOutput('gfm_run_id', String(gfm.run.id));
             core.setOutput('gfm_artifact_name', gfmArtifactName);
-            core.setOutput('gfm_artifact_id', String(gfmArtifact.id));
+            core.setOutput('locale_run_id', String(locale.run.id));
+            core.setOutput('locale_artifact_name', localeArtifactName);
 
       - name: Checkout exact candidate evidence policy
         uses: actions/checkout@v7
@@ -177,32 +155,26 @@ jobs:
           repository: ${{ github.repository }}
           run-id: ${{ steps.verify.outputs.gfm_run_id }}
 
-      - name: Verify exact 65/65 G-FM evidence
+      - name: Download exact current-stable Locale aggregate
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ steps.verify.outputs.locale_artifact_name }}
+          path: locale
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.verify.outputs.locale_run_id }}
+
+      - name: Verify release-grade compatibility evidence
         env:
           CANDIDATE_SHA: ${{ steps.verify.outputs.sha }}
         run: |
           set -euo pipefail
           VERSION="$(tr -d '\r\n' < VERSION)"
-          GFM_FILE="gfm/${CANDIDATE_SHA}.json"
-          test -s "$GFM_FILE"
-          node --input-type=module - "$GFM_FILE" "$CANDIDATE_SHA" "$VERSION" <<'NODE'
-          import fs from 'node:fs';
-          const [file, sha, version] = process.argv.slice(2);
-          const evidence = JSON.parse(fs.readFileSync(file, 'utf8'));
-          const fail = message => { throw new Error(message); };
-          if (evidence.schemaVersion !== 1) fail('G-FM schemaVersion must be 1');
-          if (evidence.phase !== 'G-FM' || evidence.module !== 'aggregate' || evidence.status !== 'PASS') fail('G-FM aggregate status mismatch');
-          if (String(evidence.weig_sha || '').toLowerCase() !== sha) fail('G-FM exact SHA mismatch');
-          if (evidence.webui_version !== version) fail('G-FM VERSION mismatch');
-          if (evidence.expected_stable_count !== 65 || evidence.executed_runtime_count !== 65) fail('G-FM did not execute exact 65-version matrix');
-          if (evidence.PASS !== 65 || evidence.FAIL !== 0 || evidence.BLOCKED !== 0) fail('G-FM aggregate is not 65/65 PASS');
-          for (const key of ['missing_versions', 'duplicate_versions', 'unexpected_runtime_versions']) {
-            if (!Array.isArray(evidence[key]) || evidence[key].length !== 0) fail(`G-FM ${key} is not empty`);
-          }
-          if (!Array.isArray(evidence.results) || evidence.results.length !== 65) fail('G-FM results length mismatch');
-          if (evidence.results.some(result => result.status !== 'PASS' || result.qb_version !== result.runtime_version)) fail('G-FM contains a non-PASS or inexact runtime');
-          console.log(`G-FM gate PASS: 65/65 exact runtimes for ${sha}`);
-          NODE
+          node tests/release-compat-evidence.mjs \
+            --gfm="gfm/${CANDIDATE_SHA}.json" \
+            --locale="locale/${CANDIDATE_SHA}.json" \
+            --sha="$CANDIDATE_SHA" \
+            --version="$VERSION"
 
       - name: Verify reusable candidate and rehearsal evidence before promotion
         env:
@@ -254,6 +226,8 @@ jobs:
           echo "Reused dev candidate CI run: ${{ steps.verify.outputs.run_id }}"
           echo "Reused validated artifact: ${{ steps.verify.outputs.artifact_name }}"
           echo "Reused deployment/rehearsal evidence: ${{ steps.verify.outputs.evidence_name }}"
-          echo "Reused 65-version G-FM run: ${{ steps.verify.outputs.gfm_run_id }}"
+          echo "Reused manual Full Frozen Matrix run: ${{ steps.verify.outputs.gfm_run_id }}"
           echo "Reused G-FM aggregate: ${{ steps.verify.outputs.gfm_artifact_name }}"
+          echo "Reused manual Locale Matrix run: ${{ steps.verify.outputs.locale_run_id }}"
+          echo "Reused Locale aggregate: ${{ steps.verify.outputs.locale_artifact_name }}"
           echo "No main candidate rebuild is required; create the stable tag only after confirming main still equals this exact SHA."

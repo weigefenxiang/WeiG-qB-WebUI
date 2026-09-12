@@ -17,7 +17,7 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - name: Resolve exact reusable dev candidate and deployment evidence
+      - name: Resolve exact reusable dev candidate and release-grade evidence
         id: verify
         uses: actions/github-script@v9
         env:
@@ -39,26 +39,15 @@ jobs:
             }
 
             const runs = await github.paginate(github.rest.actions.listWorkflowRuns, {
-              owner,
-              repo,
-              workflow_id: 'ci.yml',
-              branch: 'dev',
-              status: 'success',
-              per_page: 100
+              owner, repo, workflow_id: 'ci.yml', branch: 'dev', status: 'success', per_page: 100
             });
-            const exactRuns = runs.filter(run => run.head_sha && run.head_sha.toLowerCase() === sha && run.conclusion === 'success');
             const artifactName = `release-candidate-${sha}`;
             const evidenceName = `candidate-deployment-${sha}`;
             let validated = null;
             let candidateArtifact = null;
             let evidenceArtifact = null;
-            for (const run of exactRuns) {
-              const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {
-                owner,
-                repo,
-                run_id: run.id,
-                per_page: 100
-              });
+            for (const run of runs.filter(run => run.head_sha && run.head_sha.toLowerCase() === sha && run.conclusion === 'success')) {
+              const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {owner, repo, run_id: run.id, per_page: 100});
               const candidate = artifacts.find(item => item.name === artifactName && !item.expired);
               const evidence = artifacts.find(item => item.name === evidenceName && !item.expired);
               if (candidate && evidence) {
@@ -73,14 +62,38 @@ jobs:
               return;
             }
 
+            async function resolveManualAggregate(workflowId, aggregateName, label) {
+              const matrixRuns = await github.paginate(github.rest.actions.listWorkflowRuns, {
+                owner, repo, workflow_id: workflowId, branch: 'dev', status: 'success', per_page: 100
+              });
+              for (const run of matrixRuns.filter(run => run.head_sha && run.head_sha.toLowerCase() === sha && run.conclusion === 'success' && run.event === 'workflow_dispatch')) {
+                const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {owner, repo, run_id: run.id, per_page: 100});
+                const artifact = artifacts.find(item => item.name === aggregateName && !item.expired);
+                if (artifact) return {run, artifact};
+              }
+              core.setFailed(`No successful manually dispatched ${label} run contains ${aggregateName} for exact release SHA ${sha}.`);
+              return null;
+            }
+
+            const gfmArtifactName = `real-qb-full-aggregate-${sha}`;
+            const localeArtifactName = `real-qb-current-locale-aggregate-${sha}`;
+            const gfm = await resolveManualAggregate('real-qb-full.yml', gfmArtifactName, 'Real qB Full Frozen Matrix');
+            if (!gfm) return;
+            const locale = await resolveManualAggregate('real-qb-locale.yml', localeArtifactName, 'Real qB Current Stable Locale Matrix');
+            if (!locale) return;
+
             core.info(`Reusing dev candidate CI run #${validated.run_number}: ${validated.html_url}`);
             core.info(`Reusing validated artifact ${candidateArtifact.name} (${candidateArtifact.id})`);
             core.info(`Reusing deployment evidence ${evidenceArtifact.name} (${evidenceArtifact.id})`);
+            core.info(`Reusing Full Frozen Matrix run #${gfm.run.run_number}: ${gfm.run.html_url}`);
+            core.info(`Reusing Locale Matrix run #${locale.run.run_number}: ${locale.run.html_url}`);
             core.setOutput('run_id', String(validated.id));
             core.setOutput('artifact_name', artifactName);
-            core.setOutput('artifact_id', String(candidateArtifact.id));
             core.setOutput('evidence_name', evidenceName);
-            core.setOutput('evidence_id', String(evidenceArtifact.id));
+            core.setOutput('gfm_run_id', String(gfm.run.id));
+            core.setOutput('gfm_artifact_name', gfmArtifactName);
+            core.setOutput('locale_run_id', String(locale.run.id));
+            core.setOutput('locale_artifact_name', localeArtifactName);
 
       - name: Checkout exact release source for version and evidence policy
         uses: actions/checkout@v7
@@ -106,7 +119,25 @@ jobs:
           repository: ${{ github.repository }}
           run-id: ${{ steps.verify.outputs.run_id }}
 
-      - name: Verify version, candidate integrity, exact SHA and rehearsal evidence
+      - name: Download exact 65-version G-FM aggregate
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ steps.verify.outputs.gfm_artifact_name }}
+          path: gfm
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.verify.outputs.gfm_run_id }}
+
+      - name: Download exact current-stable Locale aggregate
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ steps.verify.outputs.locale_artifact_name }}
+          path: locale
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.verify.outputs.locale_run_id }}
+
+      - name: Verify version, candidate integrity and all release-grade evidence
         run: |
           set -euo pipefail
           VERSION="$(tr -d '\r\n' < VERSION)"
@@ -124,6 +155,11 @@ jobs:
           bash -n release/weigg-install.sh
           test "$(unzip -p release/WeiG-qB-WebUI.zip WeiG-qB-WebUI/GIT_SHA | tr -d '\r\n')" = "$GITHUB_SHA"
           test "$(unzip -p release/WeiG-qB-WebUI.zip WeiG-qB-WebUI/VERSION | tr -d '\r\n')" = "$VERSION"
+          node tests/release-compat-evidence.mjs \
+            --gfm="gfm/${GITHUB_SHA}.json" \
+            --locale="locale/${GITHUB_SHA}.json" \
+            --sha="$GITHUB_SHA" \
+            --version="$VERSION"
           node tests/release-candidate-evidence.mjs \
             --mode=release \
             --evidence=evidence/candidate.json \
@@ -146,5 +182,5 @@ jobs:
             --verify-tag \
             --latest \
             --generate-notes \
-            --notes $'Latest stable release of WeiG qB WebUI.\n\nVerified compatibility: qBittorrent 4.1.0–5.2.3.' \
+            --notes $'Latest stable release of WeiG qB WebUI.\n\nVerified compatibility: qBittorrent 4.1.0–5.2.3, release-grade Full Frozen Matrix 65/65 and current-stable Locale Matrix 61/61.' \
             --title "WeiG qB WebUI ${VERSION}"
