@@ -145,7 +145,8 @@ export function buildQbSettingsTranslationOverlay(catalog, readReleaseSources) {
     ]);
     const locales=localeValues(profile);
     if (!locales.length) throw new Error(`${qbVersion}: exact WebUI locale facts are unresolved.`);
-    if (!Object.keys(ui).length) throw new Error(`${qbVersion}: source-derived qB-owned UI copy is unresolved.`);
+    const ownsFullUiSource=Object.hasOwn(releaseSources,'toolbarSource')||Object.hasOwn(releaseSources,'filtersSource');
+    if (ownsFullUiSource&&!Object.keys(ui).length) throw new Error(`${qbVersion}: source-derived qB-owned UI copy is unresolved.`);
     const translations={};
     for (const locale of locales) {
       const source=typeof releaseSources.translationSource === 'function' ? releaseSources.translationSource(locale) : '';
@@ -165,7 +166,7 @@ export function buildQbSettingsTranslationOverlay(catalog, readReleaseSources) {
     }
     profiles.push({qbVersion,sourceSha,source:'qb-upstream-preferences-ui',ownedUiSource:'qb-upstream-webui-source-context',mappedPreferences:Object.keys(preferences).length,totalPreferences:preferenceKeys.length,preferences,ui,translations});
   }
-  return {schemaVersion:1,source:'qb-upstream-preferences-ui+owned-ui+webui-ts',profiles,sets};
+  return {schemaVersion:1,source:'qb-upstream-preferences-ui+webui-ts',profiles,sets};
 }
 
 export function applyQbSettingsTranslationOverlay(catalog, overlay) {
