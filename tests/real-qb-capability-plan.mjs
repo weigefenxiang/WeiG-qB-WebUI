@@ -192,7 +192,7 @@ export function buildCapabilityPlan(root=repoRoot){
   return {
     schemaVersion:1,
     evidenceLevel:'frozen-source-structural',
-    decisionMode:'analysis-only',
+    decisionMode:'gfm-execution-planning',
     frozen:{
       supportFloor:manifest.supportFloor,
       latestAdmittedStable:manifest.latestAdmittedStable,

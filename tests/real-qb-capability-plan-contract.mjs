@@ -13,7 +13,7 @@ const b=buildCapabilityPlan(root);
 assert.deepEqual(a,b,'capability family planner must be deterministic for the same Frozen inputs');
 assert.equal(a.schemaVersion,1);
 assert.equal(a.evidenceLevel,'frozen-source-structural');
-assert.equal(a.decisionMode,'analysis-only','phase-1 planner must not claim runtime-equivalence authority');
+assert.equal(a.decisionMode,'gfm-execution-planning','capability planner must explicitly own G-FM Fast/Exhaustive execution planning once the workflow consumes its matrix');
 assert.equal(a.versions.length,65,'planner must cover all 65 Frozen stable qB releases');
 assert.equal(a.frozen.profileCount,65);
 assert.equal(a.versions[0].qbVersion,a.frozen.supportFloor);
@@ -132,8 +132,9 @@ assert.ok(fourPart.length>0,'Frozen catalog must retain fourth-component sentine
 for(const row of fourPart)assert.ok(row.sentinelReasons.includes('fourth-component-stable'));
 
 const workflow=fs.readFileSync(path.join(root,'.github/workflows/real-qb-full.yml'),'utf8');
-assert.ok(!workflow.includes('real-qb-capability-plan.mjs'),'schema/planner phase must not silently change G-FM execution/aggregate decisions');
+assert.ok(workflow.includes('node tests/real-qb-capability-plan.mjs --matrix "$mode"'),'G-FM workflow must consume the planner-owned Fast/Exhaustive matrix');
+assert.ok(workflow.includes('mode=fast')&&workflow.includes('mode=exhaustive'),'G-FM workflow must route dev push to Fast and manual dispatch to Exhaustive');
 
-const summaryMessage=`Real-qB capability planner contract passed: ${a.versions.length}/65 versions are deterministically partitioned without changing G-FM decisions; families=${a.dimensions.map(d=>`${d}:${a.summary[d].familyCount}/${a.summary[d].representativeCount} reps`).join(', ')}; fast=core ${a.summary.fast.coreFullCount}/65, Search ${a.summary.fast.searchFullCount}/65, smoke-only ${a.summary.fast.smokeOnlyCount}/65; aggregate schemas=fast/exhaustive isolated.`;
+const summaryMessage=`Real-qB capability execution planner contract passed: ${a.versions.length}/65 versions; families=${a.dimensions.map(d=>`${d}:${a.summary[d].familyCount}/${a.summary[d].representativeCount} reps`).join(', ')}; fast=core ${a.summary.fast.coreFullCount}/65, Search ${a.summary.fast.searchFullCount}/65, smoke-only ${a.summary.fast.smokeOnlyCount}/65; Fast/Exhaustive aggregate evidence remains structurally isolated.`;
 console.log(summaryMessage);
 if(process.env.GITHUB_ACTIONS==='true')console.log(`::notice title=Real-qB capability planner::${summaryMessage}`);

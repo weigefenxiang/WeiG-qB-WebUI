@@ -1,13 +1,16 @@
-name: Real qB Full Frozen Matrix
+name: Real qB Frozen Matrix
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - dev
 
 permissions:
   contents: read
 
 concurrency:
-  group: real-qb-full-${{ github.ref }}-${{ github.sha }}
+  group: real-qb-frozen-${{ github.ref }}-${{ github.sha }}-${{ github.event_name }}
   cancel-in-progress: false
 
 jobs:
@@ -16,22 +19,38 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     outputs:
-      versions: ${{ steps.matrix.outputs.versions }}
+      mode: ${{ steps.matrix.outputs.mode }}
+      matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 1
       - name: Verify exact workflow SHA checkout
         run: test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-      - name: Validate Full Frozen Matrix contract
+      - name: Validate Frozen Matrix contract
         run: node tests/real-qb-full-matrix-contract.mjs
-      - name: Resolve all Frozen stable versions
+      - name: Resolve G-FM mode and all Frozen stable versions
         id: matrix
         run: |
           set -euo pipefail
-          versions="$(node tests/real-qb-full-matrix.mjs --matrix)"
-          test "$(node -e 'const v=JSON.parse(process.argv[1]); process.stdout.write(String(v.length))' "$versions")" = "65"
-          printf 'versions=%s\n' "$versions" >> "$GITHUB_OUTPUT"
+          case "$GITHUB_EVENT_NAME" in
+            push)
+              test "$GITHUB_REF" = 'refs/heads/dev'
+              mode=fast
+              ;;
+            workflow_dispatch)
+              mode=exhaustive
+              ;;
+            *)
+              echo "Unsupported G-FM event: $GITHUB_EVENT_NAME" >&2
+              exit 2
+              ;;
+          esac
+          matrix="$(node tests/real-qb-capability-plan.mjs --matrix "$mode")"
+          test "$(node -e 'const v=JSON.parse(process.argv[1]); process.stdout.write(String(v.length))' "$matrix")" = "65"
+          printf 'mode=%s\n' "$mode" >> "$GITHUB_OUTPUT"
+          printf 'matrix=%s\n' "$matrix" >> "$GITHUB_OUTPUT"
+          echo "G-FM mode=$mode with 65 exact Frozen runtimes"
       - name: Build source-backed historical runtime index
         run: node tests/real-qb-full-runtime-index.mjs artifacts/real-qb-full-index/linuxserver-tags.json
       - name: Upload same-run historical runtime index
@@ -43,7 +62,7 @@ jobs:
           retention-days: 30
 
   real:
-    name: qB ${{ matrix.qb }} full real API
+    name: qB ${{ matrix.qb }} ${{ needs.plan.outputs.mode }} real API
     needs: plan
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -51,7 +70,7 @@ jobs:
       fail-fast: false
       max-parallel: 16
       matrix:
-        qb: ${{ fromJson(needs.plan.outputs.versions) }}
+        include: ${{ fromJson(needs.plan.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -66,12 +85,24 @@ jobs:
       - name: Run isolated exact-version real qB evidence
         env:
           QB_VERSION: ${{ matrix.qb }}
+          WEIG_GFM_MODE: ${{ needs.plan.outputs.mode }}
+          WEIG_GFM_CORE_MODE: ${{ matrix.coreMode }}
+          WEIG_GFM_SEARCH_MODE: ${{ matrix.searchMode }}
           WEIG_REAL_QB_EVIDENCE_DIR: artifacts/real-qb-full
           WEIG_GFM_RUNTIME_INDEX: runtime-index/linuxserver-tags.json
-          NODE_OPTIONS: --import=${{ github.workspace }}/tests/real-qb-torrent-creator.mjs
+          NODE_OPTIONS: --import=${{ github.workspace }}/tests/real-qb-gfm-mode-preload.mjs
         run: |
           set -euo pipefail
           bash tests/real-qb-full-runner.sh --version "$QB_VERSION" --allow-writes
+          runtime_file="artifacts/real-qb-full/${GITHUB_SHA}-${QB_VERSION}-runtime.json"
+          smoke_file="artifacts/real-qb-full/${GITHUB_SHA}-${QB_VERSION}-capability-smoke.json"
+          NODE_OPTIONS='' node tests/real-qb-gfm-bind-runtime.mjs \
+            --file "$runtime_file" \
+            --smoke-file "$smoke_file" \
+            --mode "$WEIG_GFM_MODE" \
+            --version "$QB_VERSION" \
+            --core-mode "$WEIG_GFM_CORE_MODE" \
+            --search-mode "$WEIG_GFM_SEARCH_MODE"
       - name: Upload per-version exact-SHA evidence
         if: always()
         uses: actions/upload-artifact@v7
@@ -100,10 +131,22 @@ jobs:
           pattern: real-qb-full-*-${{ github.sha }}
           path: full-evidence
           merge-multiple: true
-      - name: Require complete 65/65 Frozen real-qB evidence
+      - name: Require Fast 65/65 runtime smoke plus family Full evidence
+        if: ${{ needs.plan.outputs.mode == 'fast' }}
+        run: node tests/real-qb-fast-aggregate.mjs --aggregate full-evidence
+      - name: Require Exhaustive complete 65/65 Frozen real-qB evidence
+        if: ${{ needs.plan.outputs.mode == 'exhaustive' }}
         run: node tests/real-qb-full-matrix.mjs --aggregate full-evidence
-      - name: Upload exact-SHA aggregate evidence
-        if: always()
+      - name: Upload exact-SHA Fast aggregate evidence
+        if: ${{ always() && needs.plan.outputs.mode == 'fast' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: real-qb-fast-aggregate-${{ github.sha }}
+          path: artifacts/real-qb-fast-aggregate/${{ github.sha }}.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload exact-SHA Exhaustive aggregate evidence
+        if: ${{ always() && needs.plan.outputs.mode == 'exhaustive' }}
         uses: actions/upload-artifact@v7
         with:
           name: real-qb-full-aggregate-${{ github.sha }}

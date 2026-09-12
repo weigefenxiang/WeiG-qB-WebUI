@@ -27,15 +27,18 @@ const catalogPath=path.join(root,manifest.catalogPath);
 const gfm=read('.github/workflows/real-qb-full.yml');
 const promote=read('.github/workflows/promote.yml');
 
-assert(gfm.includes('workflow_dispatch:'),'full real matrix must remain manually runnable');
-assert(!/\n\s*push:\s*\n/.test(gfm),'full real matrix must not run automatically on ordinary pushes');
-assert(/max-parallel:\s*16/.test(gfm),'full real matrix must keep the 16-way concurrency cap');
-assert(gfm.includes('real-qb-full-aggregate-${{ github.sha }}'),'full real matrix must publish exact-SHA aggregate evidence');
-assert(promote.includes("workflow_id: 'real-qb-full.yml'"),'promotion must require the full real matrix workflow');
-assert(promote.includes("run.event === 'workflow_dispatch'"),'promotion must require a manually dispatched full real matrix run');
-assert(promote.includes('real-qb-full-aggregate-${sha}'),'promotion must resolve exact-SHA G-FM aggregate evidence');
-assert(promote.includes('expected_stable_count !== 65')&&promote.includes('executed_runtime_count !== 65'),'promotion must require an exact 65-version matrix');
-assert(promote.includes('evidence.PASS !== 65')&&promote.includes('evidence.FAIL !== 0')&&promote.includes('evidence.BLOCKED !== 0'),'promotion must fail closed unless G-FM is 65/65 PASS');
+assert(gfm.includes('workflow_dispatch:'),'real qB Frozen Matrix must remain manually runnable for Exhaustive evidence');
+assert(/\n\s*push:\s*\n\s*branches:\s*\n\s*- dev\s*\n/.test(gfm),'real qB Frozen Matrix must run Fast mode automatically on dev pushes');
+assert(gfm.includes('mode=fast')&&gfm.includes('mode=exhaustive')&&gfm.includes('node tests/real-qb-capability-plan.mjs --matrix "$mode"'),'one G-FM workflow must route dev push to Fast and manual dispatch to Exhaustive from the same Frozen planner');
+assert(/max-parallel:\s*16/.test(gfm),'real qB Frozen Matrix must keep the 16-way concurrency cap');
+assert(gfm.includes('real-qb-fast-aggregate-${{ github.sha }}'),'Fast G-FM must publish exact-SHA non-release aggregate evidence');
+assert(gfm.includes('real-qb-full-aggregate-${{ github.sha }}'),'Exhaustive G-FM must publish exact-SHA release-grade aggregate evidence');
+assert(promote.includes("workflow_id: 'real-qb-full.yml'"),'promotion must require the real qB Frozen Matrix workflow');
+assert(promote.includes("run.event === 'workflow_dispatch'"),'promotion must require a manually dispatched Exhaustive matrix run');
+assert(promote.includes('real-qb-full-aggregate-${sha}'),'promotion must resolve exact-SHA Exhaustive G-FM aggregate evidence, never Fast evidence');
+assert(!promote.includes('real-qb-fast-aggregate-${sha}'),'promotion must not accept Fast G-FM aggregate evidence');
+assert(promote.includes('expected_stable_count !== 65')&&promote.includes('executed_runtime_count !== 65'),'promotion must require an exact 65-version Exhaustive matrix');
+assert(promote.includes('evidence.PASS !== 65')&&promote.includes('evidence.FAIL !== 0')&&promote.includes('evidence.BLOCKED !== 0'),'promotion must fail closed unless Exhaustive G-FM is 65/65 PASS');
 assert(promote.includes('result.qb_version !== result.runtime_version'),'promotion must reject inexact qB runtime identity');
 
 assert(manifest.schemaVersion===1&&manifest.supportFloor==='4.1.0','LKG manifest schema/floor drifted');
@@ -52,4 +55,4 @@ assert(catalogTool.includes('--base-catalog=')&&catalogTool.includes('Incrementa
 const productDiff=read('tools/qb-product-capability-diff.mjs');
 for(const owner of ['release-profile.js','capabilities.js','torrent-semantics.js'])assert(productDiff.includes(`'${owner}'`),`product capability diff must execute formal owner ${owner}`);
 
-console.log(`Compatibility governance contract passed: retired legacy workflows stay removed; frozen LKG ${catalog.length} profiles ${catalog[0].qbVersion} -> ${catalog.at(-1).qbVersion} remains hash-bound; release promotion requires a manually dispatched exact-SHA 65/65 G-FM with 16-way matrix concurrency.`);
+console.log(`Compatibility governance contract passed: retired legacy workflows stay removed; frozen LKG ${catalog.length} profiles ${catalog[0].qbVersion} -> ${catalog.at(-1).qbVersion} remains hash-bound; dev pushes get Fast 65-runtime evidence while release promotion still requires manually dispatched exact-SHA Exhaustive 65/65 G-FM.`);

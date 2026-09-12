@@ -26,17 +26,19 @@ assert(ci.includes('tests/upstream-release-audit.mjs upstream-qb'),'candidate CI
 assert(ci.includes('tests/full-stable-product-compat.mjs qb-releases.json'),'candidate CI must execute formal product compatibility across the generated stable catalog');
 assert(ci.includes('name: qb-release-catalog-${{ github.sha }}'),'candidate CI must publish an exact-SHA stable catalog artifact');
 
-assert(gfm.includes('workflow_dispatch:'),'full real qB matrix must remain manually runnable');
-assert(!/\n\s*push:\s*\n/.test(gfm),'full real qB matrix must not run on ordinary pushes');
-assert(/max-parallel:\s*16/.test(gfm),'full real qB matrix must keep max-parallel 16');
-assert(gfm.includes('Resolve all Frozen stable versions')&&gfm.includes('= "65"'),'G-FM plan must resolve exactly 65 frozen stable versions');
+assert(gfm.includes('workflow_dispatch:'),'real qB Frozen Matrix must remain manually runnable for Exhaustive evidence');
+assert(/\n\s*push:\s*\n\s*branches:\s*\n\s*- dev\s*\n/.test(gfm),'real qB Frozen Matrix must automatically run Fast mode on dev pushes');
+assert(/max-parallel:\s*16/.test(gfm),'real qB Frozen Matrix must keep max-parallel 16');
+assert(gfm.includes('Resolve G-FM mode and all Frozen stable versions')&&gfm.includes('= "65"'),'G-FM plan must resolve exactly 65 Frozen stable runtimes in both modes');
+assert(gfm.includes('mode=fast')&&gfm.includes('mode=exhaustive')&&gfm.includes('real-qb-capability-plan.mjs --matrix "$mode"'),'G-FM must use one planner-owned Fast/Exhaustive execution path');
 assert(gfm.includes('Run isolated exact-version real qB evidence'),'G-FM must execute real exact-version qB evidence');
-assert(gfm.includes('Require complete 65/65 Frozen real-qB evidence'),'G-FM aggregate must require complete 65/65 evidence');
-assert(gfm.includes('real-qb-full-aggregate-${{ github.sha }}'),'G-FM must publish exact-SHA aggregate evidence');
+assert(gfm.includes('Require Fast 65/65 runtime smoke plus family Full evidence')&&gfm.includes('real-qb-fast-aggregate-${{ github.sha }}'),'dev push Fast G-FM must require 65 real runtime smoke witnesses plus family Full evidence');
+assert(gfm.includes('Require Exhaustive complete 65/65 Frozen real-qB evidence')&&gfm.includes('real-qb-full-aggregate-${{ github.sha }}'),'manual Exhaustive G-FM must preserve strict 65/65 aggregate evidence');
 
-assert(promote.includes("workflow_id: 'real-qb-full.yml'")&&promote.includes("run.event === 'workflow_dispatch'"),'promotion must require the manually dispatched exact-SHA G-FM');
-assert(promote.includes('real-qb-full-aggregate-${sha}'),'promotion must require exact-SHA G-FM aggregate evidence');
+assert(promote.includes("workflow_id: 'real-qb-full.yml'")&&promote.includes("run.event === 'workflow_dispatch'"),'promotion must require the manually dispatched exact-SHA Exhaustive G-FM');
+assert(promote.includes('real-qb-full-aggregate-${sha}'),'promotion must require exact-SHA Exhaustive G-FM aggregate evidence');
+assert(!promote.includes('real-qb-fast-aggregate-${sha}'),'promotion must never substitute Fast G-FM evidence for Exhaustive evidence');
 assert(!release.includes("workflow_id: 'upstream-compat.yml'"),'Release must not depend on the retired upstream compatibility workflow');
 assert(!release.includes("workflow_id: 'frozen-stable-compat.yml'"),'Release must not depend on the retired frozen compatibility workflow');
 
-console.log('Upstream validation workflow contract passed: obsolete split workflows stay retired; candidate CI owns source/product audit, manual 16-way G-FM owns all 65 exact real runtimes, and promotion requires exact-SHA aggregate evidence before main can move.');
+console.log('Upstream validation workflow contract passed: obsolete split workflows stay retired; candidate CI owns source/product audit; one 16-way G-FM runs Fast on dev pushes and Exhaustive on manual dispatch; promotion accepts only exact-SHA Exhaustive aggregate evidence.');
