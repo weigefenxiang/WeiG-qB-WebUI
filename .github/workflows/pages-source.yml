@@ -1,9 +1,9 @@
 name: Virtual qB Pages Source
 
 # Source relay owns trigger choreography only. It never owns Pages deployment permissions.
-# Every dev/main push reaches this lightweight relay, but Virtual qB Pages is dispatched only
-# when a Pages/runtime input changed. Documentation and unrelated repository metadata must not
-# rebuild/redeploy the simulator or the materialized dev payload.
+# Every dev/main push reaches this lightweight relay, but Virtual qB Pages is skipped for a
+# deliberately small set of documentation/repository-only paths. Everything unknown defaults
+# to Pages-relevant so a new runtime/build input cannot silently bypass deployment.
 on:
   workflow_dispatch:
   push:
@@ -59,20 +59,20 @@ jobs:
           while IFS= read -r path; do
             [ -n "$path" ] || continue
             case "$path" in
-              webui/*|simulator/*|installers/*|tools/*|tests/*|translations/*|VERSION|package.json|package-lock.json|.github/workflows/pages.yml|.github/workflows/pages-source.yml)
+              docs/*|*.md|LICENSE|.github/workflows/ci.yml|.github/workflows/promote.yml|.github/workflows/real-qb-full.yml|.github/workflows/release.yml)
+                echo "Pages-irrelevant change: $path"
+                ;;
+              *)
                 echo "Pages-relevant change: $path"
                 relevant=true
                 break
-                ;;
-              *)
-                echo "Pages-irrelevant change: $path"
                 ;;
             esac
           done < <(git diff --name-only "$BEFORE" "$GITHUB_SHA")
 
           echo "relevant=$relevant" >> "$GITHUB_OUTPUT"
           if [ "$relevant" != "true" ]; then
-            echo "No Pages/runtime inputs changed; Virtual qB Pages will not be dispatched."
+            echo "Only documentation/repository-only paths changed; Virtual qB Pages will not be dispatched."
           fi
 
       - name: Dispatch exact-ref Pages owner
