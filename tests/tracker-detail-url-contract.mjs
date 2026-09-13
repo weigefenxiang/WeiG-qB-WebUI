@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const source=fs.readFileSync(new URL('../webui/private/scripts/app.js',import.meta.url),'utf8');
+const start=source.indexOf('async function renderTrackers');
+const end=source.indexOf('async function renderPeers',start);
+assert.ok(start>=0&&end>start,'renderTrackers owner must exist');
+const tracker=source.slice(start,end);
+assert.ok(tracker.includes("url.textContent=trackerUrl||'Tracker'")&&tracker.includes("url.title=trackerUrl||''"),'Tracker details must render the exact qB URL instead of a normalized/redacted presentation');
+assert.ok(tracker.includes("promptAction('编辑 Tracker','新 URL',trackerUrl"),'Tracker edit must seed the exact qB URL');
+assert.ok(!tracker.includes('U.normalizeTracker(trackerUrl)'),'Tracker detail display/edit must not pass the URL through the old normalization rule');
+assert.ok(tracker.includes('variableHeight:true')&&tracker.includes("overflowWrap='anywhere'"),'long exact Tracker URLs must remain fully viewable without fixed-height overlap');
+console.log('Tracker detail URL contract passed: exact qB Tracker URLs are shown and edited without display normalization, with variable-height wrapping for long URLs.');

@@ -104,6 +104,23 @@
       return{changed:false,verified:false,reason:'write-failed',error:error,prefs:after||null};
     }
   }
+  function planNativeWebUiReturn(prefs,pending){
+    prefs=prefs||{};pending=pending||{};
+    if(prefs.alternative_webui_enabled!==true||!Object.prototype.hasOwnProperty.call(pending,'alternative_webui_enabled')||pending.alternative_webui_enabled!==false)return null;
+    if(!i18nReady())throw new Error('qBittorrent locale owner is not ready for native WebUI return.');
+    var target=cleanLocale(Object.prototype.hasOwnProperty.call(pending,'locale')?pending.locale:prefs.locale);
+    if(!target||!W.I18n.hasExactLocale(target)||!localeWritable(target))throw new Error('The selected qBittorrent locale is not source-proven writable.');
+    var temporary='';
+    currentLocaleOptions().some(function(option){var value=cleanLocale(option&&option.value!==undefined?option.value:option);if(!value||sameLocale(value,target)||!W.I18n.hasExactLocale(value)||!localeWritable(value))return false;temporary=value;return true;});
+    if(!temporary)throw new Error('No alternate qBittorrent locale is available to refresh the native WebUI translator safely.');
+    return{targetLocale:target,temporaryLocale:temporary};
+  }
+  async function writeLocaleVerified(client,locale,stage){
+    client=sharedClient(client);await client.setPreferences({locale:locale});var verified=await client.getPreferences();if(!verified||!sameLocale(verified.locale,locale))throw new Error('qBittorrent locale verification failed during '+stage+'.');syncPreferences(verified);return verified;
+  }
+  function prepareNativeWebUiReturn(client,plan){if(!plan)return Promise.resolve(null);return writeLocaleVerified(client,plan.temporaryLocale,'native WebUI preparation');}
+  function completeNativeWebUiReturn(client,plan){if(!plan)return Promise.resolve(null);return writeLocaleVerified(client,plan.targetLocale,'native WebUI completion');}
+
   function waitForLocaleNavigation(){
     return new Promise(function(resolve){
       var settled=false,timer=null;
@@ -138,7 +155,7 @@
     return true;
   }
 
-  W.SessionController={logout:logout,state:function(){return state;},guarded:guarded,clearGuard:guardClear,lock:lock,unlock:unlock,verifyReentry:verifyReentry,bootstrapBrowserLocale:bootstrapBrowserLocale,readLocaleBootstrap:readBootstrap};
+  W.SessionController={logout:logout,state:function(){return state;},guarded:guarded,clearGuard:guardClear,lock:lock,unlock:unlock,verifyReentry:verifyReentry,bootstrapBrowserLocale:bootstrapBrowserLocale,readLocaleBootstrap:readBootstrap,planNativeWebUiReturn:planNativeWebUiReturn,prepareNativeWebUiReturn:prepareNativeWebUiReturn,completeNativeWebUiReturn:completeNativeWebUiReturn};
   W.SessionGate={verifyReentry:verifyReentry,lock:lock,unlock:unlock,guarded:guarded};
   global.addEventListener('pageshow',onPageShow);
   if(guarded()){lock();setTimeout(verifyReentry,0);}
