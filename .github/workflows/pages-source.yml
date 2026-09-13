@@ -89,9 +89,58 @@ jobs:
             esac
           done < <(git -c core.quotePath=false diff --name-only -z "$BEFORE" "$GITHUB_SHA")
 
+          # A docs-only follow-up can arrive after an earlier Pages-relevant build failed. In that
+          # case BEFORE..HEAD is irrelevant even though the public materialized dev payload is still
+          # behind an unpublished product/materialization change. Reconcile the live payload identity
+          # against the whole published-payload..current-dev range before deciding to skip Pages.
+          if [ "$relevant" != "true" ] && [ "$GITHUB_REF_NAME" = "dev" ]; then
+            PAGES_DEV_SHA_URL="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/downloads/dev/GIT_SHA?relay=$GITHUB_RUN_ID-$GITHUB_SHA"
+            PUBLISHED_SHA=""
+            if ! PUBLISHED_SHA="$(curl -fsSL --retry 2 --connect-timeout 10 --max-time 20 -H 'Cache-Control: no-cache' "$PAGES_DEV_SHA_URL" | tr -d '\r\n')"; then
+              echo "Unable to read published dev Pages payload SHA; fail closed by requiring a Pages owner run."
+              relevant=true
+            elif [[ ! "$PUBLISHED_SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
+              echo "Published dev Pages payload SHA is invalid: $PUBLISHED_SHA; fail closed by requiring a Pages owner run."
+              relevant=true
+            else
+              PUBLISHED_SHA="${PUBLISHED_SHA,,}"
+              if [ "$PUBLISHED_SHA" = "$GITHUB_SHA" ]; then
+                echo "Published dev Pages payload already matches current dev: $GITHUB_SHA"
+              elif ! git cat-file -e "$PUBLISHED_SHA^{commit}" 2>/dev/null; then
+                echo "Published dev Pages SHA $PUBLISHED_SHA is unavailable in source history; fail closed by requiring a Pages owner run."
+                relevant=true
+              elif ! git merge-base --is-ancestor "$PUBLISHED_SHA" "$GITHUB_SHA"; then
+                echo "Published dev Pages SHA is not an ancestor of current dev; fail closed by requiring a Pages owner run."
+                relevant=true
+              else
+                while IFS= read -r -d '' path; do
+                  [ -n "$path" ] || continue
+                  case "$path" in
+                    tests/pages-live-*.mjs)
+                      echo "Published dev Pages payload is stale across Pages-relevant change: $path"
+                      relevant=true
+                      break
+                      ;;
+                    .github/workflows/pages-source.yml|.github/workflows/pages.yml|webui/*|simulator/*|installers/*|VERSION|tools/build-webui-dist.mjs|tools/qb-settings-*.mjs|tools/qb-locale-*.mjs|tools/qb-native-qm-recovery.mjs|tools/qb-owned-ui-source.mjs|tools/qb-preference-semantics.mjs|tools/qb-qm-provisioning-source.mjs|tools/qb-release-catalog*.mjs|tools/qb-source-parsers.mjs|tools/qb-torrent-fields-parser.mjs|tools/qb-translator-behavior-source.mjs|tools/qb-cpp-literals.mjs|tools/qb-webui-catalog.mjs|tools/data/qb-stable-lkg.json|tools/data/qb-locale-lkg.json|tools/data/qb-translator-behavior-lkg.json|tests/fixtures/qb-release-catalog.lkg.json)
+                      echo "Published dev Pages payload is stale across Pages-relevant change: $path"
+                      relevant=true
+                      break
+                      ;;
+                    *)
+                      echo "Published-to-current Pages-irrelevant change: $path"
+                      ;;
+                  esac
+                done < <(git -c core.quotePath=false diff --name-only -z "$PUBLISHED_SHA" "$GITHUB_SHA")
+                if [ "$relevant" != "true" ]; then
+                  echo "Published dev payload $PUBLISHED_SHA can represent current dev $GITHUB_SHA because only Pages-irrelevant changes are newer."
+                fi
+              fi
+            fi
+          fi
+
           echo "relevant=$relevant" >> "$GITHUB_OUTPUT"
           if [ "$relevant" != "true" ]; then
-            echo "No public payload, materialization input, or live verifier changed; Virtual qB Pages is not dispatched."
+            echo "No public payload, materialization input, live verifier, or unpublished Pages-relevant dev change requires deployment."
           fi
 
       - name: Recover stale Pages browser verification
@@ -155,7 +204,7 @@ jobs:
             "/repos/$GITHUB_REPOSITORY/actions/workflows/pages.yml/dispatches" \
             -f ref="$BRANCH" >/dev/null
 
-          echo "Dispatched Virtual qB Pages on $BRANCH@$GITHUB_SHA because a public payload, materialization input, or live verifier changed."
+          echo "Dispatched Virtual qB Pages on $BRANCH@$GITHUB_SHA because a public payload, materialization input, live verifier, or unpublished relevant dev change requires deployment."
 
   settings_evidence_shard:
     name: Settings source runner ${{ matrix.runner }}
