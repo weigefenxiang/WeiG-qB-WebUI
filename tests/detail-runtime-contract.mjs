@@ -80,10 +80,17 @@ assert.match(ui,/W\.SharedColumns\.commit\(ctx\.tableId,ctx\.source,ctx\.resolve
 assert.match(ui,/W\.SharedColumnSettings=\{open:openSharedColumnDialog\}/,'one shared column settings dialog must serve detail tables');
 assert.match(ui,/function syncDetailTabLabels\(\).*W\.QbUiEvidence\.detailTab\(key\)/s,'detail tab names must update from the current qB release official translation evidence');
 assert.doesNotMatch(ui,/MutationObserver/,'shared table runtime must not chase DOM changes with MutationObserver');
+assert.match(ui,/function detailValueSource\(column\).*keys\.indexOf\(key\)>=0\?'response':'derived'/s,'detail runtime must explicitly distinguish direct response columns from source-derived UI columns');
+assert.match(ui,/function propertyValue\(surface,item,column\).*if\(valueSource==='derived'\)return derivedDetailValue\(surface,item,column\);.*if\(keys\.indexOf\(key\)<0\|\|!owns\(item,key\)\)return\{key:key,value:null\};/s,'response columns must read only their source-proven key while derived columns use the bounded resolver');
+assert.doesNotMatch(ui,/function propertyValue\([^}]*keys\.push\(column\.key\)/s,'detail runtime must never append an unproven column key back into response candidates');
+assert.match(ui,/surface==='files'&&key==='checked'.*keys\[0\]==='priority'.*priority!==0/s,'Content checked state must be derived only from the source-proven priority dependency');
+assert.match(ui,/surface==='files'&&key==='remaining'.*keys\.indexOf\('size'\)>=0.*keys\.indexOf\('progress'\)>=0.*priorityValue===0\?0:Math\.max\(0,size\*\(1-ratio\)\)/s,'Content remaining must follow qB source semantics: ignored=>0, otherwise size x unfinished progress');
+assert.match(ui,/return\{key:key,value:null,derived:true\};/,'unknown derived columns must fail closed instead of displaying an arbitrary dependency field');
+assert.match(ui,/column\.key==='checked'&&found\.format==='checkbox'.*checkbox\.style\.pointerEvents='none'/s,'source-derived checked state must render as a non-writing checkbox instead of raw priority text');
 
 assert.match(tableCss,/#detail-view\.is-active\{display:flex;flex:1 1 0;flex-direction:column;min-height:0;height:100%;max-height:100%;overflow:hidden\}/,'detail workspace must be a full-height flex owner rather than a fixed pixel panel');
 assert.match(tableCss,/#detail-content\{display:flex;flex:1 1 0;flex-direction:column;min-height:0!important;height:auto!important;max-height:none!important;overflow:auto/,'Tabs-to-Statusbar detail content must consume all remaining workspace height');
 assert.match(tableCss,/\.general-detail__grid\{display:grid;grid-template-columns:repeat\(auto-fit,minmax\(250px,1fr\)\)/,'General source groups must use responsive layout without fixed panel dimensions');
 assert.doesNotMatch(tableCss,/#detail-content[^}]*height:\s*(?:480|500)px/,'detail workspace must not regress to fixed 480/500px heights');
 
-console.log('Torrent detail runtime contract passed: canonical Overview owns the only Properties request, exact per-version qB source/translation evidence drives General plus shared detail tables, and no monkey-patch/post-render/MutationObserver repair path remains.');
+console.log('Torrent detail runtime contract passed: canonical Overview owns the only Properties request, exact per-version qB source/translation evidence drives General plus shared detail tables, source-derived Content columns fail closed, and no monkey-patch/post-render/MutationObserver repair path remains.');
