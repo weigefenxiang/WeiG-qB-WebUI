@@ -125,6 +125,11 @@ Canonical Mobile Torrent card first line is selection + title + More. Configured
 ### TORRENT-FILTER-OWNER — one status semantic chain
 `W.ReleaseProfile` exposes which upstream filter names exist for the exact stable release; `W.TorrentSemantics` canonicalizes and evaluates those states; `W.TorrentFilterView` renders the controls; `app.js` and `selection.js` are callers. They may not duplicate state regex policy. Completion (`progress >= 1`) is not itself proof of seeding; seeding comes from upstream seeding/upload state.
 
+### TORRENT-COLUMN-LAYOUT — exact qB schema, WeiG user overrides
+For a certified exact release, `W.ReleaseProfile.torrentTableColumns` owns native desktop column keys, source order, default visibility, default width and `dataProperties`. `W.TorrentFieldRegistry` projects that schema into effective WeiG columns and owns persisted user visibility/order/width overrides plus non-destructive migration. New exact-source columns merge into source-relative positions; temporarily absent/stale preferences are preserved rather than redefined. FALLBACK/UNKNOWN profiles do not claim native column parity.
+
+`app.js -> openColumns()` owns Columns interaction (checkbox, ↑/↓, Desktop drag and Android 360 ms long-press drag); `W.DataGrid` continues to own sizing/resize only. Long-press activation must preserve ordinary vertical touch scrolling until the gesture is intentionally captured. Field presence alone never proves server sort support; only an already-proven canonical sort semantic may be reused directly or through exact `dataProperties`. MutationObserver/post-render repair and a second column-layout owner are prohibited.
+
 ## 4. Torrent progress
 
 ### TORRENT-PROGRESS-OWNER
@@ -180,7 +185,9 @@ Desktop/Mobile placement never creates another qB client, timer, state store or 
 Mobile Drawer reuses the same `#status-torrents`, `#status-free-space`, `#transfer-capsule` and `#status-connection` DOM/semantic owners that Desktop places in the Statusbar. Its visual/accessibility order is transfer history → transfer/connection → Torrent/storage, with Torrent/storage physically last; cloning, mirrored counters and duplicate event handlers are prohibited. qBittorrent/WebAPI/compatibility metadata remains available through Desktop/connection surfaces but does not consume Mobile Drawer height. Mobile/Android Torrent state filters and facets both use two-column responsive grids above telemetry, while that filter/facet region remains the Drawer scroll owner.
 
 ### TRANSFER-CHART-ADAPTIVE — one bounded history, window and renderer
-`W.TransferRuntime` is the only transfer sample/history source. `W.Transfer.drawRateChart()` renders both the full Transfer dialog and the compact Mobile Drawer chart. Both consume the same selected chart window (`1 min` through `12 h`); changing the full dialog window updates Drawer label/data immediately. The Drawer chart does not repeat download/upload speed text already present in the canonical transfer capsule. It adds no API request, timer, polling loop or second history store; tapping it opens the canonical Transfer statistics dialog.
+`W.TransferRuntime` is the only transfer sample/history source. `W.Transfer.drawRateChart()` renders both the full Transfer dialog and the compact Mobile Drawer chart. Both consume the same selected chart window (`1 min` through `12 h`); changing the full dialog window updates Drawer label/data immediately. The canonical transfer capsule shows cumulative session Download/Upload totals only; realtime rates live in the canonical Transfer statistics dialog. The compact Drawer chart reuses the same bounded realtime history and may display the same cumulative session totals in its legend; it adds no API request, timer, polling loop or second history store. Tapping it opens the canonical Transfer statistics dialog.
+
+The Transfer statistics dialog keeps one semantic Download/Upload pair across viewports. Wide layout is `download realtime | download total | upload total | upload realtime`; narrow/Mobile layout is two columns with cumulative totals on the first row and realtime rates on the second row. The existing app transfer cycle remains the `transfer/info` poll publisher; presentation must not asynchronously overwrite or post-render repair those values.
 
 ### LIVE-INDICATOR
 Connection motion consumes existing `connection_status` only.
@@ -363,6 +370,8 @@ System Reduced Motion / WeiG Reduced Motion
 qB 4.1.0 floor / latest stable representative compatibility
 source-derived Torrent filter set; unsupported filters are absent
 source-derived Tags/Private capability visibility
+exact-source Desktop columns/defaults with persistent visibility/order/width overrides
+Desktop drag + Android long-press column reorder through the canonical Columns owner
 Sidebar facets below state filters
 no four-card summary on any viewport
 compact Mobile toolbar with canonical controls
@@ -374,6 +383,8 @@ RSS title rail owns Add Feed + Refresh; Feed URL lives in Dialog
 Logs has no page-local Search; Mobile uses one segmented level list + Follow + canonical size Select + Refresh on one horizontal rail
 Mobile Search anchored below Topbar without clipping actions
 Mobile Drawer uses two-column Torrent state/facet grids and reuses Statusbar telemetry in chart → transfer/connection → Torrent/storage order while hiding version metadata
+Transfer capsule shows session Download/Upload totals only; realtime rates remain in the canonical Transfer dialog
+Transfer dialog keeps wide four-slot and narrow two-column/two-row Download/Upload semantics
 Desktop one-row Header/end rail/DataGrid/Statusbar stability
 ```
 
