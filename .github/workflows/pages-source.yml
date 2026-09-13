@@ -1,8 +1,8 @@
 name: Virtual qB Pages Source
 
 # Source relay owns normal Pages trigger choreography. Ordinary development pushes only deploy
-# when public WebUI/simulator/installer payload inputs changed. Heavy Settings evidence is
-# demand-driven and remains isolated behind the manual settings-evidence mode.
+# when public WebUI/simulator/installer payload or Pages materialization inputs changed. Heavy
+# Settings evidence is demand-driven and remains isolated behind the manual settings-evidence mode.
 on:
   workflow_dispatch:
     inputs:
@@ -72,8 +72,8 @@ jobs:
           while IFS= read -r -d '' path; do
             [ -n "$path" ] || continue
             case "$path" in
-              webui/*|simulator/*|installers/*|VERSION|tools/data/qb-stable-lkg.json|tools/data/qb-locale-lkg.json|tests/fixtures/qb-release-catalog.lkg.json)
-                echo "Pages-relevant payload change: $path"
+              .github/workflows/pages-source.yml|.github/workflows/pages.yml|webui/*|simulator/*|installers/*|VERSION|tools/build-webui-dist.mjs|tools/qb-settings-*.mjs|tools/qb-locale-*.mjs|tools/qb-native-qm-recovery.mjs|tools/qb-owned-ui-source.mjs|tools/qb-preference-semantics.mjs|tools/qb-qm-provisioning-source.mjs|tools/qb-release-catalog*.mjs|tools/qb-source-parsers.mjs|tools/qb-torrent-fields-parser.mjs|tools/qb-translator-behavior-source.mjs|tools/qb-cpp-literals.mjs|tools/qb-webui-catalog.mjs|tools/data/qb-stable-lkg.json|tools/data/qb-locale-lkg.json|tools/data/qb-translator-behavior-lkg.json|tests/fixtures/qb-release-catalog.lkg.json)
+                echo "Pages-relevant payload/materialization change: $path"
                 relevant=true
                 break
                 ;;
@@ -85,7 +85,7 @@ jobs:
 
           echo "relevant=$relevant" >> "$GITHUB_OUTPUT"
           if [ "$relevant" != "true" ]; then
-            echo "No public WebUI/simulator/installer/Frozen payload changed; Virtual qB Pages is not dispatched."
+            echo "No public payload or Pages materialization input changed; Virtual qB Pages is not dispatched."
           fi
 
       - name: Recover stale Pages browser verification
@@ -149,7 +149,7 @@ jobs:
             "/repos/$GITHUB_REPOSITORY/actions/workflows/pages.yml/dispatches" \
             -f ref="$BRANCH" >/dev/null
 
-          echo "Dispatched Virtual qB Pages on $BRANCH@$GITHUB_SHA because a public payload input changed."
+          echo "Dispatched Virtual qB Pages on $BRANCH@$GITHUB_SHA because a public payload or materialization input changed."
 
   settings_evidence_shard:
     name: Settings source runner ${{ matrix.runner }}

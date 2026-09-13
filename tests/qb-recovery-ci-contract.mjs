@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import './qb-settings-overlay-columns-contract.mjs';
+import './pages-relevance-contract.mjs';
 
 const ci=fs.readFileSync(new URL('../.github/workflows/ci.yml',import.meta.url),'utf8').replace(/\r\n?/g,'\n');
 function job(name,next){
