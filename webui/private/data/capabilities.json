@@ -11,14 +11,14 @@
 
     "search":{"rule":{"webApi":{"gte":"2.1.1"}},"upstream":{"action":"searchcontroller.h:pluginsAction"},"selectors":["[data-capability=\"search\"]"],"presentation":{"unsupported":"disable","badge":"auto"},"copy":{"title":{"en":"Search","zh":"搜索"},"reason":{"en":"Certified releases use exact Search source actions; the WebAPI milestone is fallback-only.","zh":"认证 release 以 Search 源码 action 为准；WebAPI 版本门槛仅用于非认证回退。"}}},
     "searchPlugins":{"rule":{"webApi":{"gte":"2.1.1"}},"upstream":{"action":"searchcontroller.h:pluginsAction"}},
-    "searchStart":{"rule":{"webApi":{"gte":"2.1.1"}},"sourceRequired":true,"writeRequired":true,"upstream":{"action":"searchcontroller.h:startAction"}},
+    "searchStart":{"rule":{"webApi":{"gte":"2.1.1"}},"sourceRequired":true,"writeRequired":true,"upstream":{"action":"searchcontroller.h:startAction"},"selectors":["#engine-search-btn"]},
     "searchStatus":{"rule":{"webApi":{"gte":"2.1.1"}},"upstream":{"action":"searchcontroller.h:statusAction"}},
     "searchResults":{"rule":{"webApi":{"gte":"2.1.1"}},"upstream":{"action":"searchcontroller.h:resultsAction"}},
-    "searchStop":{"rule":{"webApi":{"gte":"2.1.1"}},"sourceRequired":true,"writeRequired":true,"upstream":{"action":"searchcontroller.h:stopAction"}},
+    "searchStop":{"rule":{"webApi":{"gte":"2.1.1"}},"sourceRequired":true,"writeRequired":true,"upstream":{"action":"searchcontroller.h:stopAction"},"selectors":["#engine-stop-btn"]},
 
     "rss":{"rule":{"webApi":{"gte":"2.1.0"}},"upstream":{"action":"rsscontroller.h:itemsAction"},"selectors":["[data-capability=\"rss\"]"],"presentation":{"unsupported":"disable","badge":"auto"},"copy":{"title":{"en":"RSS","zh":"RSS"},"reason":{"en":"RSS availability follows the exact qBittorrent RSS source action when a certified release profile is available; the WebAPI milestone is fallback-only.","zh":"存在认证 release profile 时，RSS 可用性以 qBittorrent RSS 源码 action 为准；WebAPI 版本门槛仅用于非认证回退。"}}},
     "rssItems":{"rule":{"qb":{"gte":"4.1.0"}},"upstream":{"action":"rsscontroller.h:itemsAction"}},
-    "rssAddFeed":{"rule":{"qb":{"gte":"4.1.0"}},"sourceRequired":true,"writeRequired":true,"upstream":{"action":"rsscontroller.h:addFeedAction"}},
+    "rssAddFeed":{"rule":{"qb":{"gte":"4.1.0"}},"sourceRequired":true,"writeRequired":true,"upstream":{"action":"rsscontroller.h:addFeedAction"},"selectors":["#rss-add-btn"]},
     "rssRemoveItem":{"rule":{"qb":{"gte":"4.1.0"}},"sourceRequired":true,"writeRequired":true,"upstream":{"action":"rsscontroller.h:removeItemAction"}},
     "rssRules":{"rule":{"qb":{"gte":"4.1.0"}},"upstream":{"action":"rsscontroller.h:rulesAction"}},
     "rssSetRule":{"rule":{"qb":{"gte":"4.1.0"}},"sourceRequired":true,"writeRequired":true,"upstream":{"action":"rsscontroller.h:setRuleAction"}},
