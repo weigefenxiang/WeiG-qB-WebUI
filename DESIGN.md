@@ -182,12 +182,14 @@ Persistent telemetry uses the cheapest existing surface and does not spend Torre
 Desktop/Mobile placement never creates another qB client, timer, state store or reconciliation path.
 
 ### MOBILE-DRAWER-TELEMETRY — move canonical status nodes
-Mobile Drawer reuses the same `#status-torrents`, `#status-free-space`, `#transfer-capsule` and `#status-connection` DOM/semantic owners that Desktop places in the Statusbar. Its visual/accessibility order is transfer history → transfer/connection → Torrent/storage, with Torrent/storage physically last; cloning, mirrored counters and duplicate event handlers are prohibited. qBittorrent/WebAPI/compatibility metadata remains available through Desktop/connection surfaces but does not consume Mobile Drawer height. Mobile/Android Torrent state filters and facets both use two-column responsive grids above telemetry, while that filter/facet region remains the Drawer scroll owner.
+Mobile Drawer reuses the same `#status-torrents`, `#status-free-space`, `#transfer-capsule` and `#status-connection` DOM/semantic owners that Desktop places in the Statusbar. Its visual/accessibility order is transfer history → transfer/connection → Torrent/storage, with Torrent/storage physically last； cloning, mirrored counters and duplicate event handlers are prohibited. qBittorrent/WebAPI/compatibility metadata remains available through Desktop/connection surfaces but does not consume Mobile Drawer height. Mobile/Android Torrent state filters and facets both use two-column responsive grids above telemetry, while that filter/facet region remains the Drawer scroll owner.
 
 ### TRANSFER-CHART-ADAPTIVE — one bounded history, window and renderer
-`W.TransferRuntime` is the only transfer sample/history source. `W.Transfer.drawRateChart()` renders both the full Transfer dialog and the compact Mobile Drawer chart. Both consume the same selected chart window (`1 min` through `12 h`); changing the full dialog window updates Drawer label/data immediately. The canonical transfer capsule shows cumulative session Download/Upload totals only; realtime rates live in the canonical Transfer statistics dialog. The compact Drawer chart reuses the same bounded realtime history and may display the same cumulative session totals in its legend; it adds no API request, timer, polling loop or second history store. Tapping it opens the canonical Transfer statistics dialog.
+`W.TransferRuntime` is the only transfer sample/history source. `W.Transfer.drawRateChart()` renders both the full Transfer dialog and the compact Mobile Drawer chart. Both consume the same selected chart window (`1 min` through `12 h`); changing the full dialog window updates Drawer label/data immediately. The canonical transfer capsule shows cumulative session Download/Upload totals only. The compact Drawer chart reuses the same bounded realtime history and its legend remains totals-only; it adds no API request, timer, polling loop, realtime-text mirror or second history store. Tapping it opens the canonical Transfer statistics dialog.
 
-The Transfer statistics dialog keeps one semantic Download/Upload pair across viewports. Wide layout is `download realtime | download total | upload total | upload realtime`; narrow/Mobile layout is two columns with cumulative totals on the first row and realtime rates on the second row. The existing app transfer cycle remains the `transfer/info` poll publisher; presentation must not asynchronously overwrite or post-render repair those values.
+The Transfer statistics dialog has no duplicate top Download/Upload summary strip. Its chart-bottom legend is the one semantic Download/Upload pair across all viewports: left side `↓ realtime download | Download session total`, right side `Upload session total | ↑ realtime upload`. Narrow/Mobile presentation may wrap or compress those same nodes, but must not recreate the retired 2x2 summary owner. The existing app transfer cycle remains the `transfer/info` poll publisher; presentation must not asynchronously overwrite or post-render repair those values.
+
+Transfer smoothing is display-only over the existing bounded history. The default is `10 s`; choices are `Raw / 3 / 5 / 10 / 15 / 20 / 30 s`. Long windows continue consuming bounded minute buckets, so changing smoothing adds no polling and no unbounded sample retention.
 
 ### LIVE-INDICATOR
 Connection motion consumes existing `connection_status` only.
@@ -383,8 +385,9 @@ RSS title rail owns Add Feed + Refresh; Feed URL lives in Dialog
 Logs has no page-local Search; Mobile uses one segmented level list + Follow + canonical size Select + Refresh on one horizontal rail
 Mobile Search anchored below Topbar without clipping actions
 Mobile Drawer uses two-column Torrent state/facet grids and reuses Statusbar telemetry in chart → transfer/connection → Torrent/storage order while hiding version metadata
-Transfer capsule shows session Download/Upload totals only; realtime rates remain in the canonical Transfer dialog
-Transfer dialog keeps wide four-slot and narrow two-column/two-row Download/Upload semantics
+Transfer capsule and compact Drawer legend show session Download/Upload totals only
+Transfer dialog has no duplicate top summary strip; chart-bottom legend is ↓ realtime + Download total | Upload total + ↑ realtime on all viewports
+Transfer display averaging defaults to 10s with Raw/3/5/10/15/20/30s options and no extra polling/history owner
 Desktop one-row Header/end rail/DataGrid/Statusbar stability
 ```
 
@@ -455,6 +458,9 @@ Simulator core, protocol, storage, tests, launcher and local Pages artifact tool
 
 ### LANGUAGE-VERIFY — applied locale follows qB reread
 A language draft does not change rendered locale. Settings sends it through the canonical writable qB Preference transaction; only a successful `app/preferences` verification reread updates shared Preferences state and calls `W.I18n.applyLocale()`. A failed verification never promotes draft language to rendered truth.
+
+### LANGUAGE-NATIVE-RETURN — root switch preserves one persisted owner
+When the same verified Settings transaction disables `alternative_webui_enabled`, `W.SessionController` may plan a temporary locale different from the final target, write/verify that temporary locale while the Alternative WebUI root is still active, switch the qB WebUI root, then write/verify the requested final locale after the built-in WebUI root becomes active. This is a bounded translator/root handoff, not a second language preference: final truth remains only `app/preferences.locale`; there is no `previousLocale` store, exit restore loop or parallel WeiG language state. If the user explicitly selected a locale in the same save, that locale remains the final target.
 
 ### QB-SETTINGS-COPY — official upstream wording, never WeiG retranslation
 For qB-owned Settings semantics, WeiG does not author translations. Candidate source tooling proves the exact release's Preferences control relationship and `QBT_TR` source/context, then mechanically reads that same release's official qB TS translation. Exact-release English `QBT_TR` source text is authoritative when that release has no English TS file. Unproven preference/control relationships remain visible with generic/humanized fallback and are never presented as official qB translation.
