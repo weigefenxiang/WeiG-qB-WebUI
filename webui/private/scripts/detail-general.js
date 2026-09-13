@@ -2,7 +2,7 @@
   'use strict';
   var W=global.WeiG=global.WeiG||{},U=W.util,C=W.Components;
   if(W.GeneralDetailRuntime)return;
-  var installed=false,lastSnapshot=null,renderToken=0;
+  var installed=false,lastSnapshot=null,renderToken=0,installAttempts=0;
 
   function localized(en,cn){return W.I18n&&W.I18n.pick?W.I18n.pick(en,cn):en;}
   function uiEvidence(){var E=W.QbUiEvidence,ui=E&&E.detailUi&&E.detailUi();return ui&&Array.isArray(ui.propertyLayout)&&ui.propertyLayout.length?ui:null;}
@@ -47,7 +47,7 @@
   }
   function schedule(snapshot){
     var token=++renderToken,attempts=0;
-    function tryRender(){if(token!==renderToken||!currentRoute(snapshot.hash))return;var root=document.getElementById('detail-content');if(!root)return;if(root.querySelector('.kv-grid')||root.querySelector('.general-detail')){render(snapshot);return;}if(root.querySelector('.loading-state')&&attempts++<240){global.requestAnimationFrame(tryRender);return;}if(attempts++<240){global.requestAnimationFrame(tryRender);}}
+    function tryRender(){if(token!==renderToken||!currentRoute(snapshot.hash))return;var root=document.getElementById('detail-content');if(!root)return;if(root.querySelector('.kv-grid')||root.querySelector('.general-detail')){render(snapshot);return;}if(attempts++<240)global.requestAnimationFrame(tryRender);}
     global.requestAnimationFrame(tryRender);
   }
   function capture(hash,data){if(!data||typeof data!=='object'||Array.isArray(data)||!uiEvidence())return;lastSnapshot={hash:String(hash||''),data:data};schedule(lastSnapshot);}
@@ -57,7 +57,7 @@
     function wrapped(hash){return Promise.resolve(original.apply(this,arguments)).then(function(data){capture(hash,data);return data;});}
     wrapped.__weiggGeneralEvidenceWrapper=true;wrapped.__weiggOriginal=original;client.properties=wrapped;installed=true;return true;
   }
-  function retryInstall(){if(install())return;global.setTimeout(retryInstall,0);}
+  function retryInstall(){if(install())return;if(++installAttempts<80)global.setTimeout(retryInstall,50);}
   function rerenderLanguage(){if(lastSnapshot&&currentRoute(lastSnapshot.hash))render(lastSnapshot);}
 
   W.GeneralDetailRuntime={install:install,render:render,capture:capture,last:function(){return lastSnapshot;}};
