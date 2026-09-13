@@ -48,6 +48,59 @@ jobs:
         run: |
           set -euo pipefail
 
+          pages_materialization_relevant_path() {
+            case "$1" in
+              .github/workflows/pages-source.yml|.github/workflows/pages.yml|webui/*|simulator/*|installers/*|VERSION|tools/build-webui-dist.mjs|tools/qb-settings-*.mjs|tools/qb-locale-*.mjs|tools/qb-native-qm-recovery.mjs|tools/qb-owned-ui-source.mjs|tools/qb-preference-semantics.mjs|tools/qb-qm-provisioning-source.mjs|tools/qb-release-catalog*.mjs|tools/qb-source-parsers.mjs|tools/qb-torrent-fields-parser.mjs|tools/qb-translator-behavior-source.mjs|tools/qb-cpp-literals.mjs|tools/qb-webui-catalog.mjs|tools/data/qb-stable-lkg.json|tools/data/qb-locale-lkg.json|tools/data/qb-translator-behavior-lkg.json|tests/fixtures/qb-release-catalog.lkg.json)
+                return 0
+                ;;
+              *)
+                return 1
+                ;;
+            esac
+          }
+
+          scan_pages_relevant_range() {
+            local from_sha="$1"
+            local to_sha="$2"
+            local label="$3"
+            local include_live="$4"
+            local path=""
+
+            while IFS= read -r -d '' path; do
+              [ -n "$path" ] || continue
+
+              if [ "$include_live" = "true" ]; then
+                case "$path" in
+                  tests/pages-live-*.mjs)
+                    if [ "$label" = "published dev payload" ]; then
+                      echo "Published dev Pages payload is stale across Pages-relevant change: $path"
+                    else
+                      echo "Pages-relevant live verification change: $path"
+                    fi
+                    return 0
+                    ;;
+                esac
+              fi
+
+              if pages_materialization_relevant_path "$path"; then
+                if [ "$label" = "published dev payload" ]; then
+                  echo "Published dev Pages payload is stale across Pages-relevant change: $path"
+                else
+                  echo "Pages-relevant payload/materialization change: $path"
+                fi
+                return 0
+              fi
+
+              if [ "$label" = "published dev payload" ]; then
+                echo "Published-to-current Pages-irrelevant change: $path"
+              else
+                echo "Pages-irrelevant development/repository change: $path"
+              fi
+            done < <(git -c core.quotePath=false diff --name-only -z "$from_sha" "$to_sha")
+
+            return 1
+          }
+
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             echo "relevant=true" >> "$GITHUB_OUTPUT"
             echo "Manual Pages dispatch explicitly requests a deployment owner run."
@@ -70,24 +123,9 @@ jobs:
           fi
 
           relevant=false
-          while IFS= read -r -d '' path; do
-            [ -n "$path" ] || continue
-            case "$path" in
-              tests/pages-live-*.mjs)
-                echo "Pages-relevant live verification change: $path"
-                relevant=true
-                break
-                ;;
-              .github/workflows/pages-source.yml|.github/workflows/pages.yml|webui/*|simulator/*|installers/*|VERSION|tools/build-webui-dist.mjs|tools/qb-settings-*.mjs|tools/qb-locale-*.mjs|tools/qb-native-qm-recovery.mjs|tools/qb-owned-ui-source.mjs|tools/qb-preference-semantics.mjs|tools/qb-qm-provisioning-source.mjs|tools/qb-release-catalog*.mjs|tools/qb-source-parsers.mjs|tools/qb-torrent-fields-parser.mjs|tools/qb-translator-behavior-source.mjs|tools/qb-cpp-literals.mjs|tools/qb-webui-catalog.mjs|tools/data/qb-stable-lkg.json|tools/data/qb-locale-lkg.json|tools/data/qb-translator-behavior-lkg.json|tests/fixtures/qb-release-catalog.lkg.json)
-                echo "Pages-relevant payload/materialization change: $path"
-                relevant=true
-                break
-                ;;
-              *)
-                echo "Pages-irrelevant development/repository change: $path"
-                ;;
-            esac
-          done < <(git -c core.quotePath=false diff --name-only -z "$BEFORE" "$GITHUB_SHA")
+          if scan_pages_relevant_range "$BEFORE" "$GITHUB_SHA" "current push" true; then
+            relevant=true
+          fi
 
           # A docs-only follow-up can arrive after an earlier Pages-relevant build failed. In that
           # case BEFORE..HEAD is irrelevant even though the public materialized dev payload is still
@@ -112,28 +150,10 @@ jobs:
               elif ! git merge-base --is-ancestor "$PUBLISHED_SHA" "$GITHUB_SHA"; then
                 echo "Published dev Pages SHA is not an ancestor of current dev; fail closed by requiring a Pages owner run."
                 relevant=true
+              elif scan_pages_relevant_range "$PUBLISHED_SHA" "$GITHUB_SHA" "published dev payload" true; then
+                relevant=true
               else
-                while IFS= read -r -d '' path; do
-                  [ -n "$path" ] || continue
-                  case "$path" in
-                    tests/pages-live-*.mjs)
-                      echo "Published dev Pages payload is stale across Pages-relevant change: $path"
-                      relevant=true
-                      break
-                      ;;
-                    .github/workflows/pages-source.yml|.github/workflows/pages.yml|webui/*|simulator/*|installers/*|VERSION|tools/build-webui-dist.mjs|tools/qb-settings-*.mjs|tools/qb-locale-*.mjs|tools/qb-native-qm-recovery.mjs|tools/qb-owned-ui-source.mjs|tools/qb-preference-semantics.mjs|tools/qb-qm-provisioning-source.mjs|tools/qb-release-catalog*.mjs|tools/qb-source-parsers.mjs|tools/qb-torrent-fields-parser.mjs|tools/qb-translator-behavior-source.mjs|tools/qb-cpp-literals.mjs|tools/qb-webui-catalog.mjs|tools/data/qb-stable-lkg.json|tools/data/qb-locale-lkg.json|tools/data/qb-translator-behavior-lkg.json|tests/fixtures/qb-release-catalog.lkg.json)
-                      echo "Published dev Pages payload is stale across Pages-relevant change: $path"
-                      relevant=true
-                      break
-                      ;;
-                    *)
-                      echo "Published-to-current Pages-irrelevant change: $path"
-                      ;;
-                  esac
-                done < <(git -c core.quotePath=false diff --name-only -z "$PUBLISHED_SHA" "$GITHUB_SHA")
-                if [ "$relevant" != "true" ]; then
-                  echo "Published dev payload $PUBLISHED_SHA can represent current dev $GITHUB_SHA because only Pages-irrelevant changes are newer."
-                fi
+                echo "Published dev payload $PUBLISHED_SHA can represent current dev $GITHUB_SHA because only Pages-irrelevant changes are newer."
               fi
             fi
           fi
