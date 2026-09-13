@@ -7,6 +7,7 @@ import {fileURLToPath} from 'node:url';
 import {extractQbPreferenceUiFacts,extractQbSettingsTranslationFacts,translationSourcesForPreferenceUi} from './qb-settings-translation-source.mjs';
 import {extractQbOwnedUiFacts,translationContextsForQbOwnedUi,translationSourcesForQbOwnedUi} from './qb-owned-ui-source.mjs';
 import {buildQbNativeQmRecoveryEvidence} from './qb-native-qm-recovery.mjs';
+import {extractTorrentTableColumns} from './qb-torrent-fields-parser.mjs';
 
 function unique(values) {
   const out=[];
@@ -142,6 +143,10 @@ export function buildQbSettingsTranslationOverlay(catalog, readReleaseSources, o
       filtersSource:releaseSources.filtersSource || '',
       dynamicTableSource:releaseSources.dynamicTableSource || ''
     });
+    const ownsDynamicTableSource=Object.hasOwn(releaseSources,'dynamicTableSource');
+    const torrentTableColumns=ownsDynamicTableSource
+      ? extractTorrentTableColumns(releaseSources.dynamicTableSource || '',`${qbVersion} dynamicTable owned UI`)
+      : null;
     const sourceStrings=unique([...translationSourcesForPreferenceUi(preferences),...translationSourcesForQbOwnedUi(ui)]);
     const contexts=unique([
       ...Object.values(preferences).flatMap((item) => [item?.title?.context,item?.description?.context]).filter(Boolean),
@@ -169,7 +174,7 @@ export function buildQbSettingsTranslationOverlay(catalog, readReleaseSources, o
       else if (stableJson(sets[hash]) !== stableJson(payload)) throw new Error(`Settings translation hash collision: ${hash}`);
       translations[locale]=hash;
     }
-    profiles.push({qbVersion,sourceSha,source:'qb-upstream-preferences-ui',ownedUiSource:'qb-upstream-webui-source-context',mappedPreferences:Object.keys(preferences).length,totalPreferences:preferenceKeys.length,preferences,ui,translations});
+    profiles.push({qbVersion,sourceSha,source:'qb-upstream-preferences-ui',ownedUiSource:'qb-upstream-webui-source-context',mappedPreferences:Object.keys(preferences).length,totalPreferences:preferenceKeys.length,preferences,ui,translations,...(torrentTableColumns?{torrentTableColumns}:{})});
   }
   const recoveryEvidence=recoveryEnabled?buildQbNativeQmRecoveryEvidence(recoveryEntries):null;
   return {schemaVersion:1,source:'qb-upstream-preferences-ui+webui-ts',profiles,sets,recoveryEvidence};
@@ -200,6 +205,7 @@ export function applyQbSettingsTranslationOverlay(catalog, overlay) {
       qbOwnedUiSource:item.ownedUiSource,
       qbOwnedUi:item.ui,
       settingsTranslations:item.translations,
+      ...(Array.isArray(item.torrentTableColumns)?{torrentTableColumns:item.torrentTableColumns}:{}),
       ...(Object.keys(localSets).length ? {settingsTranslationSets:localSets} : {})
     };
   });
