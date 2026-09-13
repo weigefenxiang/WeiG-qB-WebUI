@@ -47,6 +47,35 @@ function validateDetailUi(value,qbVersion){
   const propertyLabels={};
   for(const [key,ref] of Object.entries(value.propertyLabels||{}))propertyLabels[key]=validateRef(ref,`${qbVersion} detail property ${key}`);
   assert(Object.keys(propertyLabels).length>0,`${qbVersion}: source-derived Torrent detail property labels are missing.`);
+  const propertyLayout=[];
+  const seenGroups=new Set(),seenFields=new Set();
+  assert(Array.isArray(value.propertyLayout)&&value.propertyLayout.length>0,`${qbVersion}: source-derived Torrent General property layout is missing.`);
+  for(const group of value.propertyLayout){
+    const key=String(group?.key||'').trim();
+    assert(key&&!seenGroups.has(key),`${qbVersion}: invalid or duplicate Torrent General group ${key||'(empty)'}.`);seenGroups.add(key);
+    const fields=Array.isArray(group?.fields)?group.fields:[];
+    assert(fields.length>0,`${qbVersion} detail group ${key}: property layout is empty.`);
+    let translation=null;
+    if(key!=='root'){
+      translation=validateRef(group.translation,`${qbVersion} detail group ${key}`);
+      const canonical=propertyGroups[key];
+      assert(canonical&&canonical.source===translation.source&&canonical.context===translation.context,`${qbVersion} detail group ${key}: property layout translation disagrees with propertyGroups.`);
+    }
+    const normalizedFields=fields.map(field=>{
+      const id=String(field?.id||'').trim(),valueSource=String(field?.valueSource||'').trim(),dataProperties=Array.isArray(field?.dataProperties)?field.dataProperties.map(String):null;
+      assert(id&&Object.hasOwn(propertyLabels,id),`${qbVersion} detail group ${key}: General field ${id||'(empty)'} escaped source labels.`);
+      assert(!seenFields.has(id),`${qbVersion}: duplicate Torrent General field ownership ${id}.`);seenFields.add(id);
+      assert(valueSource==='properties'||valueSource==='torrentHash',`${qbVersion} detail property ${id}: invalid valueSource ${valueSource||'(empty)'}.`);
+      assert(dataProperties!==null,`${qbVersion} detail property ${id}: dataProperties are missing.`);
+      assert(new Set(dataProperties).size===dataProperties.length,`${qbVersion} detail property ${id}: duplicate dataProperties.`);
+      if(valueSource==='properties')assert(dataProperties.length>0,`${qbVersion} detail property ${id}: Properties binding is missing.`);
+      else assert(dataProperties.length===0,`${qbVersion} detail property ${id}: torrentHash binding must not claim Properties fields.`);
+      return{id,valueSource,dataProperties};
+    });
+    propertyLayout.push({key,...(translation?{translation}:{}),fields:normalizedFields});
+  }
+  const labelIds=Object.keys(propertyLabels).sort(),layoutIds=[...seenFields].sort();
+  assert(JSON.stringify(labelIds)===JSON.stringify(layoutIds),`${qbVersion}: Torrent General property layout/label coverage mismatch.`);
   const tables={};
   for(const surface of ['files','trackers','peers','webseeds']){
     const columns=value.tables?.[surface];
@@ -59,12 +88,14 @@ function validateDetailUi(value,qbVersion){
       assert(typeof column.caption==='string',`${qbVersion} detail ${surface} ${key}: caption is invalid.`);
       assert(Array.isArray(column.dataProperties)&&column.dataProperties.length>0,`${qbVersion} detail ${surface} ${key}: dataProperties are missing.`);
       if(column.translation)validateRef(column.translation,`${qbVersion} detail ${surface} ${key}`);
+      if(column.defaultWidth!==undefined)assert(Number.isFinite(Number(column.defaultWidth))&&Number(column.defaultWidth)>0,`${qbVersion} detail ${surface} ${key}: native defaultWidth is invalid.`);
+      if(column.defaultVisible!==undefined)assert(typeof column.defaultVisible==='boolean',`${qbVersion} detail ${surface} ${key}: native defaultVisible is invalid.`);
       return clone(column);
     });
   }
-  return{tabs,propertyGroups,propertyLabels,tables};
+  return{tabs,propertyGroups,propertyLabels,propertyLayout,tables};
 }
-function detailUiBindingCount(detailUi){return Object.keys(detailUi.tabs||{}).length+Object.keys(detailUi.propertyGroups||{}).length+Object.keys(detailUi.propertyLabels||{}).length+Object.values(detailUi.tables||{}).reduce((sum,columns)=>sum+(columns?.length||0),0);}
+function detailUiBindingCount(detailUi){return Object.keys(detailUi.tabs||{}).length+Object.keys(detailUi.propertyGroups||{}).length+Object.keys(detailUi.propertyLabels||{}).length+(detailUi.propertyLayout||[]).reduce((sum,group)=>sum+(group?.fields?.length||0),0)+Object.values(detailUi.tables||{}).reduce((sum,columns)=>sum+(columns?.length||0),0);}
 function freezeRecovery(enrichedCatalog,recoveryEvidence){
   assert(recoveryEvidence,'Settings/source LKG v2 requires deterministic full official-TS recovery evidence.');
   const union=materializeQbNativeQmRecoveryUnion(recoveryEvidence);
