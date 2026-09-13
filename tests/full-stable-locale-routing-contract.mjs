@@ -4,15 +4,21 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {applyLocaleOverlay} from '../tools/qb-locale-overlay.mjs';
 import {buildNativeSettingsBundle} from '../tools/qb-settings-native-bundle.mjs';
+import {materializeQbNativeQmRecoveryUnion} from '../tools/qb-native-qm-recovery.mjs';
 import {runtimeCatalogData} from '../tools/qb-webui-catalog.mjs';
 
 const generatedPath=process.argv[2]?path.resolve(process.argv[2]):null;
 const requireMapped=process.argv.includes('--require-mapped');
+const recoveryArg=process.argv.find(value=>value.startsWith('--recovery='));
 const behaviorPath=new URL('../tools/data/qb-translator-behavior-lkg.json',import.meta.url);
 const behavior=JSON.parse(fs.readFileSync(behaviorPath,'utf8'));
 let catalog;
+let recoveryUnion={schemaVersion:1,source:'qb-official-ts-deterministic-recovery-union',locales:{}};
 if(generatedPath){
   catalog=JSON.parse(fs.readFileSync(generatedPath,'utf8'));
+  const recoveryPath=recoveryArg?path.resolve(recoveryArg.slice('--recovery='.length)):generatedPath.replace(/\.json$/i,'.recovery.json');
+  assert.ok(fs.existsSync(recoveryPath),`Source-enriched stable locale routing requires deterministic recovery evidence: ${recoveryPath}`);
+  recoveryUnion=materializeQbNativeQmRecoveryUnion(JSON.parse(fs.readFileSync(recoveryPath,'utf8')));
 }else{
   const catalogPath=new URL('./fixtures/qb-release-catalog.lkg.json',import.meta.url);
   const overlayPath=new URL('../tools/data/qb-locale-lkg.json',import.meta.url);
@@ -22,7 +28,7 @@ if(generatedPath){
   const catalogSha256=crypto.createHash('sha256').update(Buffer.from(baseText,'utf8')).digest('hex');
   catalog=applyLocaleOverlay(base,overlay,{catalogSha256});
 }
-const bundle=buildNativeSettingsBundle(catalog,behavior);
+const bundle=buildNativeSettingsBundle(catalog,behavior,{recoveryUnion});
 const runtime=runtimeCatalogData(catalog,bundle);
 
 assert.equal(catalog.length,65,'Stable locale matrix must cover all 65 admitted stable releases');
