@@ -5,7 +5,7 @@ import {execFileSync} from 'node:child_process';
 import {extractPreferenceDescriptors,extractPreferenceKeys} from './qb-source-parsers.mjs';
 import {extractTorrentFilters,extractTorrentInfoParameters} from './qb-torrent-surface-parsers.mjs';
 import {extractTorrentInfoFields,extractTorrentStates,extractTorrentTableColumns} from './qb-torrent-fields-parser.mjs';
-import {extractTorrentDetailSurfaces} from './qb-detail-surface-parsers.mjs';
+import {extractTorrentDetailSurfaces,extractTorrentDetailUi} from './qb-detail-surface-parsers.mjs';
 import {extractControllerActionParameters} from './qb-action-surface-parsers.mjs';
 import {supportedStableReleaseTags} from './qb-release-tags.mjs';
 import {enrichPreferenceDescriptorsFromGetter} from './qb-preference-semantics.mjs';
@@ -33,6 +33,8 @@ if(shardCount<1||shardIndex<0||shardIndex>=shardCount)throw new Error(`Invalid c
 function git(...args){return execFileSync('git',['-C',qbRoot,...args],{encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();}
 function parts(v){return String(v).replace(/^release-/,'').split('.').map(x=>Number.parseInt(x,10)||0);}
 function show(ref,file){return git('show',`${ref}:${file}`);}
+function showMaybe(ref,file){try{return show(ref,file);}catch{return '';}}
+function firstSource(ref,files){for(const file of files){const source=showMaybe(ref,file);if(source)return source;}return '';}
 function parseApi(source,tag){const m=source.match(/API_VERSION\s*\{\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\}/);if(!m)throw new Error(`${tag}: cannot parse API_VERSION`);return`${m[1]}.${m[2]}.${m[3]}`;}
 
 function preferenceSurface(ref){
@@ -95,12 +97,24 @@ function torrentSurface(ref){
   const dynamicTableSource=show(ref,'src/webui/www/private/scripts/dynamicTable.js');
   const torrentTableColumns=extractTorrentTableColumns(dynamicTableSource,ref);
   if(!torrentTableColumns.length)throw new Error(`${ref}: native Torrent table column surface is unresolved`);
+  const propertiesToolbarSource=firstSource(ref,['src/webui/www/private/views/propertiesToolbar.html','src/webui/www/private/properties.html']);
+  const propertiesContentSource=firstSource(ref,['src/webui/www/private/views/properties.html','src/webui/www/private/properties_content.html']);
+  if(!propertiesToolbarSource||!propertiesContentSource)throw new Error(`${ref}: Torrent detail source markup is unresolved`);
+  const torrentDetailUi=extractTorrentDetailUi({
+    toolbarSource:propertiesToolbarSource,
+    contentSource:propertiesContentSource,
+    dynamicTableSource,
+    legacyFilesSource:showMaybe(ref,'src/webui/www/private/scripts/prop-files.js'),
+    legacyTrackersSource:showMaybe(ref,'src/webui/www/private/scripts/prop-trackers.js'),
+    legacyWebseedsSource:showMaybe(ref,'src/webui/www/private/scripts/prop-webseeds.js')
+  },ref);
   return{
     torrentFilters:extractTorrentFilters({torrentFilterSource,torrentsControllerSource},ref),
     torrentInfoParameters:extractTorrentInfoParameters(torrentsControllerSource,ref),
     torrentInfoFields:extractTorrentInfoFields({headerSource:serializerHeaderSource,serializerSource},ref),
     torrentStates:extractTorrentStates(serializerSource,ref),
     torrentTableColumns,
+    torrentDetailUi,
     ...extractTorrentDetailSurfaces(torrentsControllerSource,ref)
   };
 }

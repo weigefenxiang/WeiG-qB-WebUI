@@ -1,5 +1,47 @@
 import {QT_STRING_SUFFIX_SOURCE} from './qb-cpp-literals.mjs';
+import {extractDynamicTableColumns} from './qb-torrent-fields-parser.mjs';
+
 function unique(values){return [...new Set(values.filter(Boolean))];}
+function escapeRe(value){return String(value||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
+function decodeHtml(value){return String(value||'').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,'$1').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&#(\d+);/g,(_m,n)=>String.fromCodePoint(Number(n))).replace(/&#x([0-9a-f]+);/gi,(_m,n)=>String.fromCodePoint(Number.parseInt(n,16))).replace(/&amp;/g,'&').replace(/<[^>]*>/g,'').replace(/\s+/g,' ').trim();}
+function qbtRef(value){const match=String(value||'').match(/QBT_TR\(([\s\S]*?)\)QBT_TR\[CONTEXT=([^\]]+)\]/i);if(!match)return null;const source=decodeHtml(match[1]),context=String(match[2]||'').trim();return source&&context?{source,context}:null;}
 function keyConstants(source){const out=[],re=new RegExp(`(?:inline\\s+)?const\\s+(?:char|QString)\\s+(KEY_(?:PROP|TRACKER|FILE|WEBSEED)_[A-Z0-9_]+)(?:\\s*\\[\\s*\\])?\\s*=\\s*(?:u)?"([^"]+)"${QT_STRING_SUFFIX_SOURCE}\\s*;`,'g');for(const match of String(source||'').matchAll(re))out.push({name:match[1],value:match[2]});return out;}
-function usedFields(source,prefix,context){const text=String(source||''),items=keyConstants(text).filter(item=>item.name.startsWith(prefix));const fields=unique(items.filter(item=>{const escaped=item.name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');return (text.match(new RegExp(`\\b${escaped}\\b`,'g'))||[]).length>1;}).map(item=>item.value)).sort();if(!fields.length)throw new Error(`${context}: empty ${prefix} response field surface`);return fields;}
+function usedFields(source,prefix,context){const text=String(source||''),items=keyConstants(text).filter(item=>item.name.startsWith(prefix));const fields=unique(items.filter(item=>{const escaped=escapeRe(item.name);return (text.match(new RegExp(`\\b${escaped}\\b`,'g'))||[]).length>1;}).map(item=>item.value)).sort();if(!fields.length)throw new Error(`${context}: empty ${prefix} response field surface`);return fields;}
 export function extractTorrentDetailSurfaces(source,context='qB source'){return{torrentPropertiesFields:usedFields(source,'KEY_PROP_',context),torrentTrackerFields:usedFields(source,'KEY_TRACKER_',context),torrentFileFields:usedFields(source,'KEY_FILE_',context),torrentWebSeedFields:usedFields(source,'KEY_WEBSEED_',context)};}
+
+function liRef(markup,id){const escaped=escapeRe(id),match=String(markup||'').match(new RegExp(`<li\\b[^>]*\\bid=["']${escaped}["'][^>]*>([\\s\\S]*?)<\\/li>`,'i'));return match?qbtRef(match[1]):null;}
+function extractDetailTabs(toolbarSource,context){const tabs={},ids={overview:'PropGeneralLink',trackers:'PropTrackersLink',peers:'PropPeersLink',webseeds:'PropWebSeedsLink',files:'PropFilesLink'};for(const [key,id] of Object.entries(ids)){const ref=liRef(toolbarSource,id);if(!ref)throw new Error(`${context}: missing source-proven detail tab ${key}`);tabs[key]=ref;}return tabs;}
+function addLabel(out,id,ref){id=String(id||'').trim();if(id&&ref&&!out[id])out[id]=ref;}
+function extractPropertyLabels(contentSource,context){const text=String(contentSource||''),out={};
+  for(const match of text.matchAll(/<td\b[^>]*class=["'][^"']*\bgeneralLabel\b[^"']*["'][^>]*>([\s\S]*?)<\/td>\s*<td\b[^>]*\bid=["']([^"']+)["'][^>]*>/gi))addLabel(out,match[2],qbtRef(match[1]));
+  for(const match of text.matchAll(/<span\b[^>]*class=["'][^"']*\bpropBarLabel\b[^"']*["'][^>]*>([\s\S]*?)<\/span>\s*<span\b[^>]*\bid=["']([^"']+)["'][^>]*>/gi))addLabel(out,match[2],qbtRef(match[1]));
+  if(!Object.keys(out).length)throw new Error(`${context}: source-proven Properties labels are unresolved`);
+  return out;
+}
+function extractPropertyGroups(contentSource){const out={};for(const match of String(contentSource||'').matchAll(/<legend\b[^>]*>[\s\S]*?QBT_TR\(([\s\S]*?)\)QBT_TR\[CONTEXT=([^\]]+)\][\s\S]*?<\/legend>/gi)){const ref={source:decodeHtml(match[1]),context:String(match[2]||'').trim()},key=ref.source.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');if(key&&!out[key])out[key]=ref;}return out;}
+function section(markup,id){const text=String(markup||''),re=new RegExp(`<div\\b[^>]*\\bid=["']${escapeRe(id)}["'][^>]*>`,'i'),match=re.exec(text);if(!match)return'';const start=match.index+match[0].length,tail=text.slice(start),next=tail.search(/<div\b[^>]*\bid=["']prop_[^"']+["'][^>]*>/i);return next>=0?tail.slice(0,next):tail;}
+function headerRefs(markup){const out=[];for(const match of String(markup||'').matchAll(/<th\b[^>]*>([\s\S]*?)<\/th>/gi)){const ref=qbtRef(match[1]);out.push(ref||null);}return out;}
+function rowAssignments(script,objectName){const text=String(script||''),out=new Map(),objectRe=escapeRe(objectName);for(const match of text.matchAll(/row\s*\[\s*(\d+)\s*\]\s*=\s*([^;]+);/g)){const index=Number(match[1]),fields=unique([...String(match[2]||'').matchAll(new RegExp(`\\b${objectRe}\\.([A-Za-z0-9_]+)`,'g'))].map(item=>item[1]));if(fields.length)out.set(index,fields);}return out;}
+function inferredKey(ref,fields,index){if(!ref&&fields.length===1&&fields[0]==='priority')return'checked';if(fields.length===1)return fields[0];const source=String(ref?.source||'').trim().toLowerCase();if(source.includes('remaining'))return'remaining';if(source.includes('priority'))return'priority';if(source.includes('progress'))return'progress';return fields[0]||`column_${index}`;}
+function legacyStaticColumns(contentSource,sectionId,scriptSource,objectName,context){const refs=headerRefs(section(contentSource,sectionId)),assignments=rowAssignments(scriptSource,objectName);if(!refs.length||!assignments.size)throw new Error(`${context}: legacy ${sectionId} table source is unresolved`);return refs.map((ref,index)=>{const dataProperties=assignments.get(index)||[];if(!dataProperties.length)throw new Error(`${context}: legacy ${sectionId} column ${index} has no source-proven row relation`);const key=inferredKey(ref,dataProperties,index);return{key,caption:ref?.source||'',...(ref?{translation:ref}:{}),dataProperties};});}
+function normalizedDynamicColumns(source,className,context){return extractDynamicTableColumns(source,className,context).map(column=>({key:column.key,caption:column.caption,...(column.translation?{translation:column.translation}:{}),dataProperties:[...column.dataProperties]}));}
+function maybeDynamic(source,className,context){try{return normalizedDynamicColumns(source,className,context);}catch(error){if(/unable to locate/.test(String(error?.message||'')))return null;throw error;}}
+function requireColumns(columns,label,context){if(!Array.isArray(columns)||!columns.length)throw new Error(`${context}: ${label} detail columns are unresolved`);const seen=new Set();for(const column of columns){if(!column?.key||seen.has(column.key)||!Array.isArray(column.dataProperties)||!column.dataProperties.length)throw new Error(`${context}: invalid ${label} detail column source facts`);seen.add(column.key);}return columns;}
+
+export function extractTorrentDetailUi({toolbarSource='',contentSource='',dynamicTableSource='',legacyFilesSource='',legacyTrackersSource='',legacyWebseedsSource=''}={},context='qB source'){
+  const tabs=extractDetailTabs(toolbarSource,context),propertyLabels=extractPropertyLabels(contentSource,context),propertyGroups=extractPropertyGroups(contentSource);
+  const dynamic=String(dynamicTableSource||'');
+  const files=maybeDynamic(dynamic,'TorrentFilesTable',context)||legacyStaticColumns(contentSource,'prop_files',legacyFilesSource,'file',context);
+  const trackers=maybeDynamic(dynamic,'TorrentTrackersTable',context)||legacyStaticColumns(contentSource,'prop_trackers',legacyTrackersSource,'tracker',context);
+  const peers=maybeDynamic(dynamic,'TorrentPeersTable',context);
+  const webseeds=maybeDynamic(dynamic,'TorrentWebseedsTable',context)||legacyStaticColumns(contentSource,'prop_webseeds',legacyWebseedsSource,'webseed',context);
+  return{tabs,propertyGroups,propertyLabels,tables:{files:requireColumns(files,'Files',context),trackers:requireColumns(trackers,'Trackers',context),peers:requireColumns(peers,'Peers',context),webseeds:requireColumns(webseeds,'Web Seeds',context)}};
+}
+
+export function torrentDetailTranslationRefs(detailUi){const out={};function add(key,ref){if(ref?.source&&ref?.context)out[key]={source:String(ref.source),context:String(ref.context)};}
+  for(const [key,ref] of Object.entries(detailUi?.tabs||{}))add(`detail.tab.${key}`,ref);
+  for(const [key,ref] of Object.entries(detailUi?.propertyGroups||{}))add(`detail.group.${key}`,ref);
+  for(const [key,ref] of Object.entries(detailUi?.propertyLabels||{}))add(`detail.property.${key}`,ref);
+  for(const [surface,columns] of Object.entries(detailUi?.tables||{}))for(const column of columns||[])add(`detail.${surface}.${column.key}`,column.translation);
+  return out;
+}
