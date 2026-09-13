@@ -33,6 +33,8 @@
 
     "settingsRead":{"rule":{"qb":{"gte":"4.1.0"}},"upstream":{"action":"appcontroller.h:preferencesAction"}},
     "settingsWrite":{"rule":{"qb":{"gte":"4.1.0"}},"sourceRequired":true,"writeRequired":true,"upstream":{"action":"appcontroller.h:setPreferencesAction"}},
+    "globalSpeedLimitWrite":{"rule":{"qb":{"gte":"4.1.0"}},"sourceRequired":true,"writeRequired":true,"upstream":{"allActions":["transfercontroller.h:setDownloadLimitAction","transfercontroller.h:setUploadLimitAction","transfercontroller.h:toggleSpeedLimitsModeAction"]}},
+    "altSpeedLimitWrite":{"rule":{"qb":{"gte":"4.1.0"}},"sourceRequired":true,"writeRequired":true,"upstream":{"allActions":["appcontroller.h:setPreferencesAction","transfercontroller.h:toggleSpeedLimitsModeAction"]}},
 
     "stalledFilter":{"rule":{"webApi":{"gte":"2.4.1"}},"upstream":{"torrentFilter":"stalled"},"copy":{"title":{"en":"Native stalled filter","zh":"原生停滞筛选"},"reason":{"en":"Describes only the native upstream filter. Product visibility is owned by TorrentSemantics and may use reliable local derivation.","zh":"这里只描述上游原生筛选；产品是否显示由 TorrentSemantics 决定，并可使用可靠的本地推导。"}}},
     "trackerEdit":{"rule":{"webApi":{"gte":"2.2.0"}},"writeRequired":true,"upstream":{"action":"torrentscontroller.h:editTrackerAction"}},
