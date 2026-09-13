@@ -71,11 +71,12 @@ const detailUi=()=>({
   tabs:{overview:ref('General','PropTabBar'),trackers:ref('Trackers','PropTabBar'),peers:ref('Peers','PropTabBar'),webseeds:ref('HTTP Sources','PropTabBar'),files:ref('Content','PropTabBar')},
   propertyGroups:{transfer:ref('Transfer','PropertiesWidget')},
   propertyLabels:{eta:ref('ETA:','PropertiesWidget')},
+  propertyLayout:[{key:'transfer',translation:ref('Transfer','PropertiesWidget'),fields:[{id:'eta',valueSource:'properties',dataProperties:['eta']}]}],
   tables:{
-    files:[{key:'name',caption:'Name',translation:ref('Name','TrackerListWidget'),dataProperties:['name']}],
-    trackers:[{key:'url',caption:'URL',translation:ref('URL','TrackerListWidget'),dataProperties:['url']}],
-    peers:[{key:'ip',caption:'IP',translation:ref('IP','PeerListWidget'),dataProperties:['ip']}],
-    webseeds:[{key:'url',caption:'URL',translation:ref('URL','HttpServer'),dataProperties:['url']}]
+    files:[{key:'name',caption:'Name',defaultWidth:300,defaultVisible:true,translation:ref('Name','TrackerListWidget'),dataProperties:['name']}],
+    trackers:[{key:'url',caption:'URL',defaultWidth:250,defaultVisible:true,translation:ref('URL','TrackerListWidget'),dataProperties:['url']}],
+    peers:[{key:'ip',caption:'IP',defaultWidth:100,defaultVisible:true,translation:ref('IP','PeerListWidget'),dataProperties:['ip']}],
+    webseeds:[{key:'url',caption:'URL',defaultWidth:500,defaultVisible:true,translation:ref('URL','HttpServer'),dataProperties:['url']}]
   }
 });
 const sourceProfile=(qbVersion,sourceSha,sets)=>({qbVersion,sourceSha,webuiLocales:[{value:'en'},{value:'de'}],settingsUiSource:'qb-upstream-preferences-ui',settingsUiMappedPreferences:1,settingsUiTotalPreferences:1,settingsUi:{locale:{controlId:'locale_select',title:{source:'Language:',context:'OptionsDialog'}}},qbOwnedUiSource:'qb-upstream-webui-source-context',qbOwnedUi:{'column.name':{source:'Name',context:'TransferListModel'}},settingsTranslations:{en:hEn,de:hDe},settingsTranslationSets:sets,torrentTableColumns:[nativeColumn('name','Name'),nativeColumn('size','Size',false)],torrentDetailUi:detailUi()});
@@ -85,20 +86,27 @@ const recoveryEvidence={schemaVersion:1,source:'qb-official-ts-full-recovery-vot
 const lkg=buildQbSettingsTranslationLkg(enriched,frozen,{baseCatalogSha256:'f'.repeat(64),recoveryEvidence});
 assert.equal(lkg.schemaVersion,2,'Settings/source LKG must stay on schema v2 while freezing additive source facts');
 assert.equal(lkg.torrentColumnBindings,4,'LKG v2 must freeze every exact source-derived native Torrent column');
-assert.equal(lkg.detailUiBindings,22,'LKG v2 must freeze every exact source-derived Torrent detail UI binding');
+assert.equal(lkg.detailUiBindings,24,'LKG v2 must freeze every exact source-derived Torrent detail UI binding including General layout bindings');
 assert.equal(lkg.recovery.routeCount,2,'LKG v2 must freeze exact release/locale recovery provenance');
 assert.equal(lkg.recovery.localeCount,1);
 assert.deepEqual(lkg.profiles[0].recoveryLocales,['de']);
 assert.deepEqual(lkg.profiles[1].torrentTableColumns.map(item=>item.key),['name','size']);
 assert.equal(lkg.profiles[1].torrentDetailUi.tabs.webseeds.source,'HTTP Sources');
+assert.deepEqual(lkg.profiles[1].torrentDetailUi.propertyLayout[0].fields,[{id:'eta',valueSource:'properties',dataProperties:['eta']}],'LKG must preserve source-proven General group/order/API bindings');
+assert.equal(lkg.profiles[1].torrentDetailUi.tables.files[0].defaultWidth,300,'LKG must preserve native detail column defaults when source provides them');
 const materialized=applyQbSettingsTranslationLkg(frozen,lkg,{catalogSha256:'f'.repeat(64)});
 assert.deepEqual(materialized[0].torrentTableColumns.map(item=>item.key),['name','size'],'Frozen materialization must restore exact native columns before runtime packaging');
 assert.equal(materialized[0].torrentDetailUi.tables.trackers[0].key,'url','Frozen materialization must restore exact Torrent detail UI facts before runtime packaging');
+assert.deepEqual(materialized[0].torrentDetailUi.propertyLayout[0].fields,[{id:'eta',valueSource:'properties',dataProperties:['eta']}],'Frozen materialization must restore exact General layout facts before runtime packaging');
 assert.throws(()=>applyQbSettingsTranslationLkg(frozen,{...lkg,schemaVersion:1}),/schemaVersion 2/,'stale v1 Settings LKG must fail closed');
 const missingColumns=structuredClone(enriched);delete missingColumns[0].torrentTableColumns;
 assert.throws(()=>buildQbSettingsTranslationLkg(missingColumns,frozen,{recoveryEvidence}),/native Torrent columns are missing/,'ephemeral source columns may not disappear before the LKG boundary');
 const missingDetailUi=structuredClone(enriched);delete missingDetailUi[0].torrentDetailUi;
 assert.throws(()=>buildQbSettingsTranslationLkg(missingDetailUi,frozen,{recoveryEvidence}),/Torrent detail UI is missing/,'ephemeral Torrent detail source facts may not disappear before the LKG boundary');
+const missingPropertyLayout=structuredClone(enriched);delete missingPropertyLayout[0].torrentDetailUi.propertyLayout;
+assert.throws(()=>buildQbSettingsTranslationLkg(missingPropertyLayout,frozen,{recoveryEvidence}),/General property layout is missing/,'stale detail UI evidence without source-proven General structure may not cross the LKG boundary');
+const duplicatePropertyLayout=structuredClone(enriched);duplicatePropertyLayout[0].torrentDetailUi.propertyLayout[0].fields.push(structuredClone(duplicatePropertyLayout[0].torrentDetailUi.propertyLayout[0].fields[0]));
+assert.throws(()=>buildQbSettingsTranslationLkg(duplicatePropertyLayout,frozen,{recoveryEvidence}),/duplicate Torrent General field ownership/,'General field ownership drift must fail closed');
 assert.throws(()=>buildQbSettingsTranslationLkg(enriched,frozen,{}),/requires deterministic full official-TS recovery evidence/,'LKG v2 cannot certify narrow Settings copy without full native recovery evidence');
 const badSet=structuredClone(lkg);badSet.sets[hDe].messages[0].translation='Tampered';
 assert.throws(()=>applyQbSettingsTranslationLkg(frozen,badSet),/payload hash mismatch/,'narrow official-TS sets stay hash-bound after freezing');
@@ -113,4 +121,4 @@ assert.throws(()=>buildQbSettingsTranslationLkg(duplicateColumns,frozen,{recover
 const duplicateDetailColumns=structuredClone(enriched);duplicateDetailColumns[0].torrentDetailUi.tables.peers.push(structuredClone(duplicateDetailColumns[0].torrentDetailUi.tables.peers[0]));
 assert.throws(()=>buildQbSettingsTranslationLkg(duplicateDetailColumns,frozen,{recoveryEvidence}),/duplicate column key/,'Torrent detail column key drift must fail closed');
 
-console.log(`Native Settings stable routing evidence passed: 65 releases, ${nativeCapableLocaleRoutes} native-capable locale routes, ${mandatoryBridgeLocaleRoutes} mandatory exact-TS bridge routes, 11 Alternative WebUI gap releases; Settings/source LKG v2 freezes exact native columns, Torrent detail UI facts and deterministic full-TS recovery while resolver reuse remains bounded.`);
+console.log(`Native Settings stable routing evidence passed: 65 releases, ${nativeCapableLocaleRoutes} native-capable locale routes, ${mandatoryBridgeLocaleRoutes} mandatory exact-TS bridge routes, 11 Alternative WebUI gap releases; Settings/source LKG v2 freezes exact native columns, source-proven General layout, Torrent detail UI facts and deterministic full-TS recovery while resolver reuse remains bounded.`);
