@@ -55,7 +55,7 @@ assert.match(layout,/function exactProfile\(\)\{var R=W\.ReleaseProfile;if\(!R\|
 assert.match(layout,/var profile=R\.current\(\);return profile&&!profile\.fallback\?profile:null;/,'fallback profiles must never masquerade as exact native detail UI evidence');
 assert.match(layout,/function exactDetailUi\(\)\{var profile=exactProfile\(\),ui=profile&&profile\.torrentDetailUi;/,'runtime detail UI must consume the source-generated per-release torrentDetailUi catalog fact');
 assert.match(layout,/W\.I18n\.qbText\(String\(key\|\|''\),source\|\|String\(key\|\|''\)\)/,'detail labels must flow through the existing official qB translation resolver');
-assert.match(layout,/function detailTranslationKey\(surface,key\)\{return'detail\.'\+String\(surface\|\|''\)\+'\.'\+String\(key\|\|''\);\}/,'detail table columns must use the source-generated translation keyspace');
+assert.match(layout,/function detailTranslationKey\(surface,key\)\{return'detail\.'\+String\(surface\|\|''\)+'\.'\+String\(key\|\|''\);\}/,'detail table columns must use the source-generated translation keyspace');
 assert.match(layout,/W\.SharedColumns=\{resolve:resolveColumns,commit:commitColumns,reset:resetColumns,read:tableState/,'all detail tables must share one user-override column state owner');
 assert.match(layout,/function renderGeneral\(root,data,hash\).*Array\.isArray\(layout\).*return false;/s,'General helper must fail closed unless the exact source profile contains a non-empty propertyLayout');
 assert.match(layout,/field&&field\.valueSource==='torrentHash'/,'legacy Torrent Hash rows must consume their source-proven current-torrent-hash binding');
@@ -84,7 +84,7 @@ assert.match(ui,/function detailValueSource\(column\).*keys\.indexOf\(key\)>=0\?
 assert.match(ui,/function propertyValue\(surface,item,column\).*if\(valueSource==='derived'\)return derivedDetailValue\(surface,item,column\);.*if\(keys\.indexOf\(key\)<0\|\|!owns\(item,key\)\)return\{key:key,value:null\};/s,'response columns must read only their source-proven key while derived columns use the bounded resolver');
 assert.doesNotMatch(ui,/function propertyValue\([^}]*keys\.push\(column\.key\)/s,'detail runtime must never append an unproven column key back into response candidates');
 assert.match(ui,/surface==='files'&&key==='checked'.*keys\[0\]==='priority'.*priority!==0/s,'Content checked state must be derived only from the source-proven priority dependency');
-assert.match(ui,/surface==='files'&&key==='remaining'.*keys\.indexOf\('size'\)>=0.*keys\.indexOf\('progress'\)>=0.*priorityValue===0\?0:Math\.max\(0,size\*\(1-ratio\)\)/s,'Content remaining must follow qB source semantics: ignored=>0, otherwise size x unfinished progress');
+assert.match(ui,/surface==='files'&&key==='remaining'.*keys\.indexOf\('size'\)>=0.*keys\.indexOf\('progress'\)>=0.*\(priorityValue===0\)\?0:Math\.max\(0,size\*\(1-ratio\)\)/s,'Content remaining must follow qB source semantics: ignored=>0, otherwise size x unfinished progress');
 assert.match(ui,/return\{key:key,value:null,derived:true\};/,'unknown derived columns must fail closed instead of displaying an arbitrary dependency field');
 assert.match(ui,/column\.key==='checked'&&found\.format==='checkbox'.*checkbox\.style\.pointerEvents='none'/s,'source-derived checked state must render as a non-writing checkbox instead of raw priority text');
 
