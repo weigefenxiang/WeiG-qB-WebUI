@@ -54,6 +54,7 @@
     if(script){try{var parsed=new URL(script.src,global.location&&global.location.href||undefined),version=parsed.searchParams.get('v');if(version)suffix='?v='+encodeURIComponent(version);}catch(_e){}}
     return suffix;
   }
+  function ensureGeneralDetailRuntime(){if(document.getElementById('weigg-general-detail-runtime'))return;var script=document.createElement('script');script.id='weigg-general-detail-runtime';script.async=false;script.src='scripts/detail-general.js'+layoutAssetSuffix();document.head.appendChild(script);}
   function ensureSidebarStyles(){
     var suffix=layoutAssetSuffix();
     if(!document.getElementById('weigg-sidebar-layout-css')){var link=document.createElement('link');link.id='weigg-sidebar-layout-css';link.rel='stylesheet';link.href='css/sidebar.css'+suffix;document.head.appendChild(link);}
@@ -104,7 +105,7 @@
     paintSidebarRates();
   }
   function scheduleSidebarSync(){if(resizeFrame)return;resizeFrame=requestAnimationFrame(function(){resizeFrame=0;syncSidebar();});}
-  function init(){if(initialized)return;initialized=true;sidebarCollapsed=readSidebarPreference();ensureSidebarStyles();normalizeDialogs();syncSidebar();}
+  function init(){if(initialized)return;initialized=true;sidebarCollapsed=readSidebarPreference();ensureSidebarStyles();ensureGeneralDetailRuntime();normalizeDialogs();syncSidebar();}
   W.LayoutRuntime={init:init,normalizeDialogs:normalizeDialogs,syncSidebar:syncSidebar,setSidebarCollapsed:setSidebarCollapsed,sidebarCollapsed:function(){return sidebarCollapsed;}};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
   global.addEventListener('resize',scheduleSidebarSync,{passive:true});
