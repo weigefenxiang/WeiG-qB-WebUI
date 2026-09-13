@@ -6,6 +6,7 @@ import {applyLocaleOverlay} from '../tools/qb-locale-overlay.mjs';
 import {buildNativeSettingsBundle} from '../tools/qb-settings-native-bundle.mjs';
 import {materializeQbNativeQmRecoveryUnion} from '../tools/qb-native-qm-recovery.mjs';
 import {runtimeCatalogData} from '../tools/qb-webui-catalog.mjs';
+import './qb-recovery-ci-contract.mjs';
 
 const generatedPath=process.argv[2]?path.resolve(process.argv[2]):null;
 const requireMapped=process.argv.includes('--require-mapped');
