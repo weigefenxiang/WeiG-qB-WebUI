@@ -21,11 +21,15 @@
     if(head)head.insertAdjacentElement('afterend',body);else root.insertBefore(body,actions||root.firstChild);
   }
   function normalizeDialogs(){Array.from(document.querySelectorAll('dialog.dialog')).forEach(normalizeDialog);}
-  function ensureSidebarStyles(){
-    if(document.getElementById('weigg-sidebar-layout-css'))return;
-    var link=document.createElement('link'),script=Array.from(document.scripts).find(function(node){return /(?:^|\/)layout\.js(?:\?|$)/.test(node.src||'');}),suffix='';
+  function layoutAssetSuffix(){
+    var script=Array.from(document.scripts).find(function(node){return /(?:^|\/)layout\.js(?:\?|$)/.test(node.src||'');}),suffix='';
     if(script){try{var parsed=new URL(script.src,global.location&&global.location.href||undefined),version=parsed.searchParams.get('v');if(version)suffix='?v='+encodeURIComponent(version);}catch(_e){}}
-    link.id='weigg-sidebar-layout-css';link.rel='stylesheet';link.href='css/sidebar.css'+suffix;document.head.appendChild(link);
+    return suffix;
+  }
+  function ensureSidebarStyles(){
+    var suffix=layoutAssetSuffix();
+    if(!document.getElementById('weigg-sidebar-layout-css')){var link=document.createElement('link');link.id='weigg-sidebar-layout-css';link.rel='stylesheet';link.href='css/sidebar.css'+suffix;document.head.appendChild(link);}
+    if(!document.getElementById('weigg-table-layout-css')){var table=document.createElement('link');table.id='weigg-table-layout-css';table.rel='stylesheet';table.href='css/table.css'+suffix;document.head.appendChild(table);}
   }
   function readSidebarPreference(){try{return localStorage.getItem(SIDEBAR_KEY)==='1';}catch(_e){return false;}}
   function writeSidebarPreference(value){try{localStorage.setItem(SIDEBAR_KEY,value?'1':'0');}catch(_e){}}
