@@ -2,9 +2,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import vm from 'node:vm';
 
-const [source,capabilitySource,registry]=await Promise.all([
+const [source,capabilitySource,floatingSource,registry]=await Promise.all([
   fs.readFile(new URL('../webui/private/scripts/qb-client.js',import.meta.url),'utf8'),
   fs.readFile(new URL('../webui/private/scripts/capabilities.js',import.meta.url),'utf8'),
+  fs.readFile(new URL('../webui/private/scripts/floating.js',import.meta.url),'utf8'),
   fs.readFile(new URL('../webui/private/data/capabilities.json',import.meta.url),'utf8').then(JSON.parse)
 ]);
 let profile=null;
@@ -32,8 +33,9 @@ assert.equal(priorityFeature.sourceRequired,true,'File Priority UI must fail clo
 assert.equal(priorityFeature.writeRequired,true,'File Priority UI must require current-release write provenance');
 assert.equal(priorityFeature.upstream.action,FILE_PRIO,'File Priority UI and transport must share filePrioAction ownership');
 assert.deepEqual(priorityFeature.selectors,['.ui-select__trigger[aria-label$=" priority"]'],'dynamic file-priority select triggers must be registry-owned');
-assert.match(capabilitySource,/MutationObserver/,'CapabilityRegistry must watch for dynamically mounted capability controls');
-assert.match(capabilitySource,/containsCapabilitySelector/,'dynamic capability observation must filter added subtrees before scheduling a sync');
+assert.doesNotMatch(capabilitySource,/MutationObserver/,'CapabilityRegistry must not use observer-driven runtime repair');
+assert.match(capabilitySource,/function decorateMatching\(/,'CapabilityRegistry must expose explicit dynamic-component decoration');
+assert.match(floatingSource,/CapabilityRegistry&&W\.CapabilityRegistry\.decorateMatching/,'selectControl must explicitly register newly created controls with CapabilityRegistry');
 assert.match(capabilitySource,/addEventListener\('keydown',interceptKey,true\)/,'disabled dynamic controls must block keyboard activation in capture phase');
 assert.match(capabilitySource,/\['Enter',' ','ArrowDown','ArrowUp'\]/,'custom select activation keys must be fail-closed when capability is unavailable');
 
