@@ -94,7 +94,7 @@ RSS query/presentation                   W.RSS / ui.js
 Logs query/runtime                       W.Logs / logs.js
 Header geometry                          css/header.css
 Responsive placement                     W.MobileAdaptive
-DataGrid sizing/resize                    W.DataGrid
+DataGrid sizing/resize/header gesture     W.DataGrid
 Dialog normalization                     W.LayoutRuntime
 ```
 
@@ -128,7 +128,9 @@ Canonical Mobile Torrent card first line is selection + title + More. Configured
 ### TORRENT-COLUMN-LAYOUT — exact qB schema, WeiG user overrides
 For a certified exact release, `W.ReleaseProfile.torrentTableColumns` owns native desktop column keys, source order, default visibility, default width and `dataProperties`. `W.TorrentFieldRegistry` projects that schema into effective WeiG columns and owns persisted user visibility/order/width overrides plus non-destructive migration. New exact-source columns merge into source-relative positions; temporarily absent/stale preferences are preserved rather than redefined. FALLBACK/UNKNOWN profiles do not claim native column parity.
 
-`app.js -> openColumns()` owns Columns interaction (checkbox, ↑/↓, Desktop drag and Android 360 ms long-press drag); `W.DataGrid` continues to own sizing/resize only. Long-press activation must preserve ordinary vertical touch scrolling until the gesture is intentionally captured. Field presence alone never proves server sort support; only an already-proven canonical sort semantic may be reused directly or through exact `dataProperties`. MutationObserver/post-render repair and a second column-layout owner are prohibited.
+`app.js -> openColumns()` owns Columns-dialog interaction (checkbox, ↑/↓, Desktop dialog drag and Android 360 ms long-press drag). `W.DataGrid` owns live table sizing plus the Desktop header geometry gestures: resize handles change width; dragging the header body after the movement threshold directly reorders the same `app.columns`; a true drag suppresses the subsequent sort click while an ordinary click keeps the existing server-sort path. Both entry points persist through `W.TorrentFieldRegistry.saveEffectiveDesktopColumns()` and therefore do not create a second column-order state. Long-press activation must preserve ordinary vertical touch scrolling until the gesture is intentionally captured.
+
+The user-resize floor is `24 px` for every exact-native column while exact qB `defaultWidth` remains the initial/default width. During resize, pointermove paints the current header and mounted Torrent rows directly; it must not rebuild the VirtualList or persist on every frame. Pointerup performs the single canonical save/reconciliation. Field presence alone never proves server sort support; only an already-proven canonical sort semantic may be reused directly or through exact `dataProperties`. MutationObserver/post-render repair and a second column-layout owner are prohibited.
 
 ## 4. Torrent progress
 
@@ -185,11 +187,11 @@ Desktop/Mobile placement never creates another qB client, timer, state store or 
 Mobile Drawer reuses the same `#status-torrents`, `#status-free-space`, `#transfer-capsule` and `#status-connection` DOM/semantic owners that Desktop places in the Statusbar. Its visual/accessibility order is transfer history → transfer/connection → Torrent/storage, with Torrent/storage physically last； cloning, mirrored counters and duplicate event handlers are prohibited. qBittorrent/WebAPI/compatibility metadata remains available through Desktop/connection surfaces but does not consume Mobile Drawer height. Mobile/Android Torrent state filters and facets both use two-column responsive grids above telemetry, while that filter/facet region remains the Drawer scroll owner.
 
 ### TRANSFER-CHART-ADAPTIVE — one bounded history, window and renderer
-`W.TransferRuntime` is the only transfer sample/history source. `W.Transfer.drawRateChart()` renders both the full Transfer dialog and the compact Mobile Drawer chart. Both consume the same selected chart window (`1 min` through `12 h`); changing the full dialog window updates Drawer label/data immediately. The canonical transfer capsule shows cumulative session Download/Upload totals only. The compact Drawer chart reuses the same bounded realtime history and its legend remains totals-only; it adds no API request, timer, polling loop, realtime-text mirror or second history store. Tapping it opens the canonical Transfer statistics dialog.
+`W.TransferRuntime` is the only canonical transfer sample/history source. `W.Transfer.drawRateChart()` renders both the full Transfer dialog and the compact Mobile Drawer chart. Both consume the same selected chart window (`1 min` through `12 h`); changing the full dialog window updates Drawer label/data immediately. The canonical compact transfer capsule is arrow-only realtime telemetry — `↓ <dl_info_speed>` and `↑ <up_info_speed>` — with no Download/Upload copy. The compact Drawer chart reuses the same bounded realtime history while its dot legend remains session-total presentation from `dl_info_data / up_info_data`; neither surface adds an API request, timer, polling loop or second history owner. Tapping the chart opens the canonical Transfer statistics dialog.
 
-The Transfer statistics dialog has no duplicate top Download/Upload summary strip. Its chart-bottom legend is the one semantic Download/Upload pair across all viewports: left side `↓ realtime download | Download session total`, right side `Upload session total | ↑ realtime upload`. Narrow/Mobile presentation may wrap or compress those same nodes, but must not recreate the retired 2x2 summary owner. The existing app transfer cycle remains the `transfer/info` poll publisher; presentation must not asynchronously overwrite or post-render repair those values.
+The Transfer statistics dialog has no duplicate top Download/Upload summary strip. Its chart-bottom legend is the one full semantic Download/Upload pair across all viewports: left side `↓ realtime download | Download session total`, right side `Upload session total | ↑ realtime upload`. Narrow/Mobile presentation may wrap or compress those same nodes, but must not recreate the retired 2x2 summary owner. The existing app transfer cycle remains the `transfer/info` poll publisher; presentation must not asynchronously overwrite or post-render repair those values.
 
-Transfer smoothing is display-only over the existing bounded history. The default is `10 s`; choices are `Raw / 3 / 5 / 10 / 15 / 20 / 30 s`. Long windows continue consuming bounded minute buckets, so changing smoothing adds no polling and no unbounded sample retention.
+Transfer smoothing is display-only over the existing bounded history. The default is `10 s`; choices are `Raw / 3 / 5 / 10 / 15 / 20 / 30 s`. For short windows, the currently selected smoothing period owns one bounded derived display cache aligned to absolute-time buckets: only the active bucket accepts new samples, a completed bucket is frozen, and redraws do not re-bucket the already-completed visible history against a moving cutoff. Changing the smoothing value may rebuild this display cache once from canonical bounded raw samples, then incremental ingestion resumes. Long windows continue consuming bounded minute buckets. This derived cache is not a second business-history owner and adds no polling, timer or unbounded raw retention.
 
 ### LIVE-INDICATOR
 Connection motion consumes existing `connection_status` only.
@@ -373,7 +375,9 @@ qB 4.1.0 floor / latest stable representative compatibility
 source-derived Torrent filter set; unsupported filters are absent
 source-derived Tags/Private capability visibility
 exact-source Desktop columns/defaults with persistent visibility/order/width overrides
-Desktop drag + Android long-press column reorder through the canonical Columns owner
+24px user resize floor while exact qB defaultWidth remains the initial/default width
+Columns-dialog drag + Android long-press reorder and direct Desktop header drag share the canonical column override
+live resize paints mounted rows without per-frame VirtualList rebuild/persistence; ordinary header click still sorts
 Sidebar facets below state filters
 no four-card summary on any viewport
 compact Mobile toolbar with canonical controls
@@ -385,9 +389,9 @@ RSS title rail owns Add Feed + Refresh; Feed URL lives in Dialog
 Logs has no page-local Search; Mobile uses one segmented level list + Follow + canonical size Select + Refresh on one horizontal rail
 Mobile Search anchored below Topbar without clipping actions
 Mobile Drawer uses two-column Torrent state/facet grids and reuses Statusbar telemetry in chart → transfer/connection → Torrent/storage order while hiding version metadata
-Transfer capsule and compact Drawer legend show session Download/Upload totals only
+Transfer compact capsule shows arrow-only realtime rates; compact Drawer chart dot legend keeps session Download/Upload totals
 Transfer dialog has no duplicate top summary strip; chart-bottom legend is ↓ realtime + Download total | Upload total + ↑ realtime on all viewports
-Transfer display averaging defaults to 10s with Raw/3/5/10/15/20/30s options and no extra polling/history owner
+Transfer display averaging defaults to 10s with Raw/3/5/10/15/20/30s options; completed short-window absolute-time buckets freeze instead of being re-bucketed on every redraw
 Desktop one-row Header/end rail/DataGrid/Statusbar stability
 ```
 
