@@ -8,9 +8,11 @@ const matcher='.github/workflows/pages-source.yml|.github/workflows/pages.yml|we
 
 assert.ok(source.includes(matcher),'Pages source relay must treat payload/materialization tooling as Pages-relevant');
 assert.ok(pages.includes(matcher),'Pages stale-deploy guard must use the same payload/materialization relevance boundary');
-assert.equal(source.split(matcher).length-1,1,'Pages source relay must own one canonical relevance matcher');
-assert.equal(pages.split(matcher).length-1,1,'Pages stale-deploy guard must own one canonical relevance matcher');
+assert.equal(source.split(matcher).length-1,1,'Pages source relay must own one canonical materialization matcher');
+assert.equal(pages.split(matcher).length-1,1,'Pages stale-deploy guard must own one canonical materialization matcher');
 for(const required of ['.github/workflows/pages-source.yml','.github/workflows/pages.yml','tools/qb-settings-*.mjs','tools/qb-native-qm-recovery.mjs','tools/qb-torrent-fields-parser.mjs','tools/qb-webui-catalog.mjs'])assert.ok(matcher.includes(required),`Pages relevance boundary missing ${required}`);
-assert.ok(!matcher.includes('docs/*')&&!matcher.includes('tests/*|'),'Pages relevance must not redeploy for generic docs/tests-only changes');
+assert.ok(source.includes('tests/pages-live-*.mjs'),'Pages source relay must rerun deployed-site acceptance when a live Pages verifier changes');
+assert.ok(!matcher.includes('docs/*')&&!matcher.includes('tests/*|'),'Pages materialization relevance must not redeploy for generic docs/tests-only changes');
+assert.ok(!pages.includes('tests/pages-live-*.mjs'),'Pages stale-deploy payload guard must not treat verifier-only edits as deployed-content changes');
 
-console.log('Pages relevance contract passed: source relay and stale-deploy guard share the same build-affecting payload/materialization boundary.');
+console.log('Pages relevance contract passed: source relay and stale-deploy guard share the build-affecting materialization boundary, while live verifier edits explicitly rerun Pages acceptance.');
