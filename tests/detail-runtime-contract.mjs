@@ -55,7 +55,7 @@ assert.match(layout,/function exactProfile\(\)\{var R=W\.ReleaseProfile;if\(!R\|
 assert.match(layout,/var profile=R\.current\(\);return profile&&!profile\.fallback\?profile:null;/,'fallback profiles must never masquerade as exact native detail UI evidence');
 assert.match(layout,/function exactDetailUi\(\)\{var profile=exactProfile\(\),ui=profile&&profile\.torrentDetailUi;/,'runtime detail UI must consume the source-generated per-release torrentDetailUi catalog fact');
 assert.match(layout,/W\.I18n\.qbText\(String\(key\|\|''\),source\|\|String\(key\|\|''\)\)/,'detail labels must flow through the existing official qB translation resolver');
-assert.match(layout,/function detailTranslationKey\(surface,key\)\{return'detail\.'\+String\(surface\|\|''\)+'\.'\+String\(key\|\|''\);\}/,'detail table columns must use the source-generated translation keyspace');
+assert.ok(layout.includes("function detailTranslationKey(surface,key){return'detail.'+String(surface||'')+'.'+String(key||'');}"),'detail table columns must use the source-generated translation keyspace');
 assert.match(layout,/W\.SharedColumns=\{resolve:resolveColumns,commit:commitColumns,reset:resetColumns,read:tableState/,'all detail tables must share one user-override column state owner');
 assert.match(layout,/function renderGeneral\(root,data,hash\).*Array\.isArray\(layout\).*return false;/s,'General helper must fail closed unless the exact source profile contains a non-empty propertyLayout');
 assert.match(layout,/field&&field\.valueSource==='torrentHash'/,'legacy Torrent Hash rows must consume their source-proven current-torrent-hash binding');
