@@ -1,71 +1,38 @@
 #!/usr/bin/env node
+import {extractTorrentTableColumns} from './qb-torrent-fields-parser.mjs';
 
-function decodeHtml(value){
-  return String(value||'')
-    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,'$1')
-    .replace(/&lt;/g,'<')
-    .replace(/&gt;/g,'>')
-    .replace(/&quot;/g,'"')
-    .replace(/&apos;/g,"'")
-    .replace(/&#(\d+);/g,(_m,n)=>String.fromCodePoint(Number(n)))
-    .replace(/&#x([0-9a-f]+);/gi,(_m,n)=>String.fromCodePoint(Number.parseInt(n,16)))
-    .replace(/&amp;/g,'&')
-    .replace(/<[^>]*>/g,'')
-    .replace(/\s+/g,' ')
-    .trim();
-}
-
-function qbtTr(value){
-  const match=String(value||'').match(/QBT_TR\(([\s\S]*?)\)QBT_TR\[CONTEXT=([^\]]+)\]/i);
-  if(!match)return null;
-  const source=decodeHtml(match[1]),context=String(match[2]||'').trim();
-  return source&&context?{source,context}:null;
-}
-
+function decodeHtml(value){return String(value||'').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,'$1').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&#(\d+);/g,(_m,n)=>String.fromCodePoint(Number(n))).replace(/&#x([0-9a-f]+);/gi,(_m,n)=>String.fromCodePoint(Number.parseInt(n,16))).replace(/&amp;/g,'&').replace(/<[^>]*>/g,'').replace(/\s+/g,' ').trim();}
+function qbtTr(value){const match=String(value||'').match(/QBT_TR\(([\s\S]*?)\)QBT_TR\[CONTEXT=([^\]]+)\]/i);if(!match)return null;const source=decodeHtml(match[1]),context=String(match[2]||'').trim();return source&&context?{source,context}:null;}
 function add(out,key,ref){if(key&&ref&&ref.source&&ref.context)out[key]={source:String(ref.source),context:String(ref.context)};}
-
-function itemRef(markup,id){
-  const escaped=String(id).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-  const hit=String(markup||'').match(new RegExp(`<li\\b[^>]*\\bid=["']${escaped}["'][^>]*>([\\s\\S]*?)<\\/li>`,'i'));
-  return hit?qbtTr(hit[1]):null;
+function itemRef(markup,id){const escaped=String(id).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');const hit=String(markup||'').match(new RegExp(`<li\\b[^>]*\\bid=["']${escaped}["'][^>]*>([\\s\\S]*?)<\\/li>`,'i'));return hit?qbtTr(hit[1]):null;}
+function exactRef(markup,source,context='OptionsDialog'){const escaped=String(source).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),escapedContext=String(context).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');const match=String(markup||'').match(new RegExp(`QBT_TR\\(${escaped}\\)QBT_TR\\[CONTEXT=${escapedContext}\\]`));return match?{source,context}:null;}
+function torrentStatusRefs(source){
+  const text=String(source||''),start=Math.max(text.indexOf("this.columns['status'].updateTd"),text.indexOf('this.columns["status"].updateTd'));
+  const endCandidates=start>=0?[text.indexOf('// priority',start+1),text.indexOf('this.columns["priority"].updateTd',start+1),text.indexOf("this.columns['priority'].updateTd",start+1)].filter(index=>index>start):[];
+  const block=start>=0?text.slice(start,endCandidates.length?Math.min(...endCandidates):undefined):text,out={};
+  const group=/((?:\s*case\s+["'][^"']+["']\s*:\s*)+)\s*status\s*=\s*["']QBT_TR\(([\s\S]*?)\)QBT_TR\[CONTEXT=([^\]]+)\]["']\s*;/g;
+  for(const match of block.matchAll(group)){
+    const ref={source:decodeHtml(match[2]),context:String(match[3]||'').trim()};
+    for(const state of match[1].matchAll(/case\s+["']([^"']+)["']/g))if(state[1]&&!out[state[1]])out[state[1]]=ref;
+  }
+  return out;
 }
 
-function exactRef(markup,source,context='OptionsDialog'){
-  const escaped=String(source).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-  const escapedContext=String(context).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-  const match=String(markup||'').match(new RegExp(`QBT_TR\\(${escaped}\\)QBT_TR\\[CONTEXT=${escapedContext}\\]`));
-  return match?{source,context}:null;
-}
-
-export function extractQbOwnedUiFacts({preferencesSource='',toolbarSource='',filtersSource=''}={}){
-  const out={};
-  const toolbar=toolbarSource||preferencesSource;
-  const tabs={
-    'settings.tab.downloads':'PrefDownloadsLink',
-    'settings.tab.connection':'PrefConnectionLink',
-    'settings.tab.speed':'PrefSpeedLink',
-    'settings.tab.bittorrent':'PrefBittorrentLink',
-    'settings.tab.webui':'PrefWebUILink',
-    'settings.tab.advanced':'PrefAdvancedLink'
-  };
+export function extractQbOwnedUiFacts({preferencesSource='',toolbarSource='',filtersSource='',dynamicTableSource=''}={}){
+  const out={},toolbar=toolbarSource||preferencesSource;
+  const tabs={'settings.tab.downloads':'PrefDownloadsLink','settings.tab.connection':'PrefConnectionLink','settings.tab.speed':'PrefSpeedLink','settings.tab.bittorrent':'PrefBittorrentLink','settings.tab.webui':'PrefWebUILink','settings.tab.advanced':'PrefAdvancedLink'};
   for(const [key,id] of Object.entries(tabs))add(out,key,itemRef(toolbar,id));
-
   add(out,'transfer.rate.global',exactRef(preferencesSource,'Global Rate Limits'));
   add(out,'transfer.rate.alternative',exactRef(preferencesSource,'Alternative Rate Limits'));
-
   const filters=['all','downloading','seeding','completed','resumed','paused','running','stopped','active','inactive','stalled','stalled_uploading','stalled_downloading','checking','moving','errored'];
   for(const name of filters)add(out,`filter.${name}`,itemRef(filtersSource,`${name}_filter`));
+  if(dynamicTableSource){
+    for(const column of extractTorrentTableColumns(dynamicTableSource,'qB dynamicTable owned UI'))if(column.translation)add(out,`column.${column.key}`,column.translation);
+    const states=torrentStatusRefs(dynamicTableSource);
+    for(const [state,ref] of Object.entries(states))add(out,`state.${state}`,ref);
+    if(!out['filter.moving']&&states.moving)add(out,'filter.moving',states.moving);
+  }
   return out;
 }
-
-export function translationSourcesForQbOwnedUi(ui){
-  const out=[];
-  for(const ref of Object.values(ui||{}))if(ref?.source&&!out.includes(ref.source))out.push(ref.source);
-  return out;
-}
-
-export function translationContextsForQbOwnedUi(ui){
-  const out=[];
-  for(const ref of Object.values(ui||{}))if(ref?.context&&!out.includes(ref.context))out.push(ref.context);
-  return out;
-}
+export function translationSourcesForQbOwnedUi(ui){const out=[];for(const ref of Object.values(ui||{}))if(ref?.source&&!out.includes(ref.source))out.push(ref.source);return out;}
+export function translationContextsForQbOwnedUi(ui){const out=[];for(const ref of Object.values(ui||{}))if(ref?.context&&!out.includes(ref.context))out.push(ref.context);return out;}

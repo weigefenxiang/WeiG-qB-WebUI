@@ -4,7 +4,7 @@ import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {extractPreferenceDescriptors,extractPreferenceKeys} from './qb-source-parsers.mjs';
 import {extractTorrentFilters,extractTorrentInfoParameters} from './qb-torrent-surface-parsers.mjs';
-import {extractTorrentInfoFields,extractTorrentStates} from './qb-torrent-fields-parser.mjs';
+import {extractTorrentInfoFields,extractTorrentStates,extractTorrentTableColumns} from './qb-torrent-fields-parser.mjs';
 import {extractTorrentDetailSurfaces} from './qb-detail-surface-parsers.mjs';
 import {extractControllerActionParameters} from './qb-action-surface-parsers.mjs';
 import {supportedStableReleaseTags} from './qb-release-tags.mjs';
@@ -92,11 +92,15 @@ function torrentSurface(ref){
   const torrentFilterSource=show(ref,'src/base/torrentfilter.cpp');
   const serializerSource=show(ref,'src/webui/api/serialize/serialize_torrent.cpp');
   const serializerHeaderSource=show(ref,'src/webui/api/serialize/serialize_torrent.h');
+  const dynamicTableSource=show(ref,'src/webui/www/private/scripts/dynamicTable.js');
+  const torrentTableColumns=extractTorrentTableColumns(dynamicTableSource,ref);
+  if(!torrentTableColumns.length)throw new Error(`${ref}: native Torrent table column surface is unresolved`);
   return{
     torrentFilters:extractTorrentFilters({torrentFilterSource,torrentsControllerSource},ref),
     torrentInfoParameters:extractTorrentInfoParameters(torrentsControllerSource,ref),
     torrentInfoFields:extractTorrentInfoFields({headerSource:serializerHeaderSource,serializerSource},ref),
     torrentStates:extractTorrentStates(serializerSource,ref),
+    torrentTableColumns,
     ...extractTorrentDetailSurfaces(torrentsControllerSource,ref)
   };
 }

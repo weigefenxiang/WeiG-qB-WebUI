@@ -55,13 +55,7 @@ export function parseQtTsTranslationSource(source, options = {}) {
       if (!sourceText || (includeSources && !includeSources.has(sourceText))) continue;
       const translation = translationOf(message, sourceText, sourceFallback);
       if (!translation) continue;
-      messages.push({
-        context,
-        source: sourceText,
-        comment: textOf(message, 'comment') || null,
-        translation: translation.value,
-        numerus: translation.numerus
-      });
+      messages.push({context, source: sourceText, comment: textOf(message, 'comment') || null, translation: translation.value, numerus: translation.numerus});
     }
   }
   return {language, messages};
@@ -73,9 +67,17 @@ function qbtTr(text) {
   return {source: decodeHtml(match[1]), context: String(match[2] || '').trim()};
 }
 
+function qbtRefs(text) {
+  const out = [];
+  for (const match of String(text || '').matchAll(/QBT_TR\(([\s\S]*?)\)QBT_TR\[CONTEXT=([^\]]+)\]/gi)) {
+    const source = decodeHtml(match[1]), context = String(match[2] || '').trim();
+    if (source && context) out.push({source, context});
+  }
+  return out;
+}
+
 function labelRefs(markup) {
-  const byControl = new Map();
-  const byLabelId = new Map();
+  const byControl = new Map(), byLabelId = new Map();
   for (const match of String(markup || '').matchAll(/<label\b([^>]*)>([\s\S]*?)<\/label>/gi)) {
     const attrs = match[1] || '';
     const controlId = (attrs.match(/\bfor\s*=\s*["']([^"']+)["']/i) || [])[1];
@@ -88,6 +90,15 @@ function labelRefs(markup) {
   return {byControl, byLabelId};
 }
 
+function controlIds(markup) {
+  const out = [];
+  for (const match of String(markup || '').matchAll(/<(?:input|select|textarea)\b([^>]*)>/gi)) {
+    const id = (String(match[1] || '').match(/\bid\s*=\s*["']([^"']+)["']/i) || [])[1];
+    if (id && !out.includes(id)) out.push(id);
+  }
+  return out;
+}
+
 function labelsByControlId(markup) {
   const labels = labelRefs(markup);
   const out = new Map(labels.byControl);
@@ -98,6 +109,18 @@ function labelsByControlId(markup) {
     if (!id || !labelledBy || out.has(id)) continue;
     const ref = String(labelledBy).split(/\s+/).map((labelId) => labels.byLabelId.get(labelId)).find(Boolean);
     if (ref) out.set(id, ref);
+  }
+  return out;
+}
+
+function rowLabelsByControlId(markup) {
+  const out = new Map();
+  for (const match of String(markup || '').matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)) {
+    const row = match[1] || '';
+    const refs = qbtRefs(row), uniqueRefs = [];
+    for (const ref of refs) if (!uniqueRefs.some((item) => item.source === ref.source && item.context === ref.context)) uniqueRefs.push(ref);
+    if (uniqueRefs.length !== 1) continue;
+    for (const id of controlIds(row)) if (!out.has(id)) out.set(id, uniqueRefs[0]);
   }
   return out;
 }
@@ -115,8 +138,7 @@ function directDescriptionsByControlId(markup) {
 }
 
 function addRelation(relations, key, id, evidence) {
-  key = String(key || '').trim();
-  id = String(id || '').trim();
+  key = String(key || '').trim(); id = String(id || '').trim();
   if (!key || !id) return;
   const list = relations.get(key) || [];
   if (!list.some((item) => item.id === id)) list.push({id, evidence});
@@ -124,10 +146,9 @@ function addRelation(relations, key, id, evidence) {
 }
 
 function preferenceControlRelations(source) {
-  const text = String(source || '');
-  const relations = new Map();
+  const text = String(source || ''), relations = new Map();
   for (const match of text.matchAll(/document\.getElementById\(\s*["']([^"']+)["']\s*\)[^;\n]*?=\s*pref\.([A-Za-z0-9_]+)/g)) addRelation(relations, match[2], match[1], 'modern-read');
-  for (const match of text.matchAll(/\$\(\s*["']([^"']+)["']\s*\)\.setProperty\([^;\n]*?pref\.([A-Za-z0-9_]+)/g)) addRelation(relations, match[2], match[1], 'legacy-read');
+  for (const match of text.matchAll(/\$\(\s*["']([^"']+)["']\s*\)\.(?:setProperty|set)\([^;\n]*?pref\.([A-Za-z0-9_]+)/g)) addRelation(relations, match[2], match[1], 'legacy-read');
   for (const match of text.matchAll(/settings\.set\(\s*["']([^"']+)["']\s*,[^;\n]*?\$\(\s*["']([^"']+)["']\s*\)/g)) addRelation(relations, match[1], match[2], 'legacy-write');
   for (const match of text.matchAll(/(?:^|[,{;]\s*)([A-Za-z0-9_]+)\s*:\s*document\.getElementById\(\s*["']([^"']+)["']\s*\)/gm)) addRelation(relations, match[1], match[2], 'modern-write');
   for (const match of text.matchAll(/(?:settings|preferences)\.([A-Za-z0-9_]+)\s*=\s*document\.getElementById\(\s*["']([^"']+)["']\s*\)/g)) addRelation(relations, match[1], match[2], 'modern-write');
@@ -144,9 +165,11 @@ function preferenceControlRelations(source) {
   return relations;
 }
 
+
 export function extractQbPreferenceUiFacts(preferencesSource, preferenceKeys = []) {
   const markup = String(preferencesSource || '');
   const labels = labelsByControlId(markup);
+  const rowLabels = rowLabelsByControlId(markup);
   const descriptions = directDescriptionsByControlId(markup);
   const relations = preferenceControlRelations(markup);
   const wanted = new Set((Array.isArray(preferenceKeys) ? preferenceKeys : []).map(String));
@@ -154,27 +177,23 @@ export function extractQbPreferenceUiFacts(preferencesSource, preferenceKeys = [
   const preferences = {};
   for (const key of keys) {
     const candidates = relations.get(key) || [];
-    const selected = candidates.find((item) => labels.has(item.id));
-    if (!selected) continue;
-    const title = labels.get(selected.id);
+    let selected = candidates.find((item) => labels.has(item.id));
+    let title = selected ? labels.get(selected.id) : null;
+    let evidence = selected?.evidence || '';
+    if (!title) {
+      selected = candidates.find((item) => rowLabels.has(item.id));
+      if (selected) { title = rowLabels.get(selected.id); evidence = `${selected.evidence}+source-row`; }
+    }
+    if (!selected || !title) continue;
     const description = descriptions.get(selected.id) || null;
-    preferences[key] = {
-      controlId: selected.id,
-      evidence: selected.evidence,
-      title,
-      ...(description ? {description} : {})
-    };
+    preferences[key] = {controlId: selected.id, evidence, title, ...(description ? {description} : {})};
   }
   return preferences;
 }
 
 export function translationSourcesForPreferenceUi(preferences) {
   const out=[];
-  for (const item of Object.values(preferences || {})) {
-    for (const ref of [item?.title,item?.description]) {
-      if (ref?.source && !out.includes(ref.source)) out.push(ref.source);
-    }
-  }
+  for (const item of Object.values(preferences || {})) for (const ref of [item?.title,item?.description]) if (ref?.source && !out.includes(ref.source)) out.push(ref.source);
   return out;
 }
 
@@ -184,15 +203,7 @@ export function extractQbSettingsTranslationFacts({qbVersion, sourceSha, locale,
   const resolvedLocale = String(locale || parsed.language || '').trim();
   if (!resolvedLocale) throw new Error('qB Settings translation facts require a locale.');
   if (parsed.language && locale && baseLanguage(parsed.language) !== baseLanguage(locale)) throw new Error(`qB Settings translation locale mismatch: expected ${locale}, source says ${parsed.language}`);
-  return {
-    qbVersion: String(qbVersion),
-    sourceSha: String(sourceSha),
-    locale: resolvedLocale,
-    sourceLanguage: parsed.language,
-    source: 'qb-upstream-webui-ts',
-    contexts: [...new Set(contexts.map(String))],
-    messages: parsed.messages
-  };
+  return {qbVersion:String(qbVersion),sourceSha:String(sourceSha),locale:resolvedLocale,sourceLanguage:parsed.language,source:'qb-upstream-webui-ts',contexts:[...new Set(contexts.map(String))],messages:parsed.messages};
 }
 
 export function indexQbSettingsTranslationFacts(facts) {

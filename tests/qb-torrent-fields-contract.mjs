@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {extractKeyConstants,extractTorrentInfoFields,extractTorrentStates} from '../tools/qb-torrent-fields-parser.mjs';
+import {extractKeyConstants,extractTorrentInfoFields,extractTorrentStates,extractTorrentTableColumns} from '../tools/qb-torrent-fields-parser.mjs';
 const q4Header=`const char KEY_TORRENT_NAME[] = "name"; const char KEY_TORRENT_STATE[] = "state"; const char KEY_TORRENT_CATEGORY[] = "category"; const char KEY_TORRENT_TAGS[] = "tags"; const char KEY_TORRENT_UNUSED[] = "unused";`;
 const q4Source=`QString torrentStateToString(const State s){switch(s){case A:return QLatin1String("pausedDL");case B:return QLatin1String("stalledUP");default:return QLatin1String("unknown");}} QVariantMap serialize(const Torrent &torrent){QVariantMap ret;ret[KEY_TORRENT_NAME]=torrent.name();ret[KEY_TORRENT_STATE]=torrent.state();ret[KEY_TORRENT_CATEGORY]=torrent.category();ret[KEY_TORRENT_TAGS]=torrent.tags();return ret;}`;
 assert.deepEqual([...extractKeyConstants(q4Header,'KEY_TORRENT_').values()],['name','state','category','tags','unused']);assert.deepEqual(extractTorrentInfoFields({headerSource:q4Header,serializerSource:q4Source},'qB4 synthetic'),['category','name','state','tags']);assert.deepEqual(extractTorrentStates(q4Source,'qB4 synthetic'),['pausedDL','stalledUP','unknown']);
@@ -9,4 +9,18 @@ assert.deepEqual(extractTorrentInfoFields({headerSource:q45Header,serializerSour
 const q5Header=`inline const QString KEY_TORRENT_ID = u"hash"_s; inline const QString KEY_TORRENT_NAME = u"name"_s; inline const QString KEY_TORRENT_PRIVATE = u"private"_s; inline const QString KEY_TORRENT_DOWNLOAD_PATH = u"download_path"_s;`;
 const q5Source=`QString torrentStateToString(const State s){if(s==A)return u"stoppedDL"_s;if(s==B)return u"moving"_s;return u"unknown"_s;} QVariantMap serialize(const Torrent &torrent){return {{KEY_TORRENT_ID,1},{KEY_TORRENT_NAME,2},{KEY_TORRENT_PRIVATE,3},{KEY_TORRENT_DOWNLOAD_PATH,4}};}`;
 assert.deepEqual(extractTorrentInfoFields({headerSource:q5Header,serializerSource:q5Source},'qB5 synthetic'),['download_path','hash','name','private']);assert.deepEqual(extractTorrentStates(q5Source,'qB5 synthetic'),['stoppedDL','moving','unknown']);assert.throws(()=>extractTorrentInfoFields({headerSource:'',serializerSource:q5Source},'broken'),/unable to extract Torrent field key constants/);assert.throws(()=>extractTorrentStates('QVariantMap serialize(){return {};}', 'broken'),/missing expected function/);
-console.log('qB Torrent field contract passed: legacy char, Qt _qs and modern _s serializer syntax is source-derived and fail-closed.');
+
+const q4Table=`const TorrentsTable = new Class({Extends: DynamicTable,initColumns:function(){this.newColumn('priority','','#',30,true);this.newColumn('state_icon','cursor: default','',22,true);this.newColumn('name','','QBT_TR(Name)QBT_TR[CONTEXT=TransferListModel]',200,true);this.newColumn('status','','QBT_TR(Status)QBT_TR[CONTEXT=TransferListModel]',100,true);this.columns['state_icon'].dataProperties[0]='state';this.columns['name'].dataProperties.push('state');}}); const TorrentPeersTable = new Class({});`;
+const q4Columns=extractTorrentTableColumns(q4Table,'qB4 table synthetic');
+assert.deepEqual(q4Columns.map(x=>x.key),['priority','state_icon','name','status']);
+assert.deepEqual(q4Columns[0],{key:'priority',caption:'#',defaultWidth:30,defaultVisible:true,dataProperties:['priority']});
+assert.deepEqual(q4Columns[1].dataProperties,['state']);
+assert.deepEqual(q4Columns[2].translation,{source:'Name',context:'TransferListModel'});
+assert.deepEqual(q4Columns[2].dataProperties,['name','state']);
+
+const q5Table=`class TorrentsTable extends DynamicTable {initColumns(){this.newColumn("priority", "", "#", 30, true);this.newColumn("infohash_v1", "", "QBT_TR(Info Hash v1)QBT_TR[CONTEXT=TransferListModel]", 200, false);this.newColumn("infohash_v2", "", "QBT_TR(Info Hash v2)QBT_TR[CONTEXT=TransferListModel]", 200, false);this.newColumn("state_icon", "", "QBT_TR(Status Icon)QBT_TR[CONTEXT=TransferListModel]", 22, false);this.columns["state_icon"].dataProperties[0]="state";}} class TorrentPeersTable extends DynamicTable {}`;
+const q5Columns=extractTorrentTableColumns(q5Table,'qB5 table synthetic');
+assert.deepEqual(q5Columns.map(x=>x.key),['priority','infohash_v1','infohash_v2','state_icon']);
+assert.equal(q5Columns[1].defaultVisible,false);assert.equal(q5Columns[1].defaultWidth,200);assert.deepEqual(q5Columns[1].translation,{source:'Info Hash v1',context:'TransferListModel'});assert.deepEqual(q5Columns[3].dataProperties,['state']);
+assert.throws(()=>extractTorrentTableColumns('class OtherTable {}','broken columns'),/unable to locate TorrentsTable/);
+console.log('qB Torrent field contract passed: serializer fields/states plus qB4/qB5 native TorrentsTable columns are source-derived and fail-closed.');
