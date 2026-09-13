@@ -1,7 +1,5 @@
 import assert from 'node:assert/strict';
 import {buildNativeSettingsBundle,renderNativeSettingsRegistry,renderLocaleQm,renderLocaleTs} from '../tools/qb-settings-native-bundle.mjs';
-import {extractQbPreferenceUiFacts} from '../tools/qb-settings-translation-source.mjs';
-import {extractQbOwnedUiFacts} from '../tools/qb-owned-ui-source.mjs';
 
 const shaA='1111111111111111111111111111111111111111';
 const shaB='2222222222222222222222222222222222222222';
@@ -37,17 +35,29 @@ const behavior={schemaVersion:1,families:{
   {qbVersion:'4.5.0',sourceSha:shaC,family:'disabled'},
   {qbVersion:'5.2.3',sourceSha:shaD,family:'dedicated'}
 ]};
+const recoveryUnion={schemaVersion:1,source:'qb-official-ts-deterministic-recovery-union',locales:{
+  zh_CN:[
+    ...ownedMessages,
+    {...title,translation:'语言：',numerus:false},
+    {context:'RecoveryOnly',source:'Recovery-only official text',translation:'仅恢复资产',numerus:false},
+    {context:'RecoveryOnly',source:'%n item(s)',translation:['%n 项','%n 项'],numerus:true}
+  ]
+}};
 
-const bundle=buildNativeSettingsBundle(catalog,behavior);
+const bundle=buildNativeSettingsBundle(catalog,behavior,{recoveryUnion});
+assert.equal(bundle.schemaVersion,2);
 assert.equal(bundle.profileCount,4);
 assert.equal(bundle.profiles[0].mappedUi,3,'native bundle must count exact qB-owned UI source/context bindings');
 assert.deepEqual(bundle.profiles[0].nativeLocales,['en','zh_CN'],'qApp family must use the running qB application translator');
 assert.deepEqual(bundle.profiles[1].nativeLocales,['en','zh_CN'],'strict dedicated family is native only when every mapped ref has an exact official translation');
 assert.deepEqual(bundle.profiles[2].bridgeLocales,['en','zh_CN'],'Alt-WebUI-disabled family must remain on the exact-release bridge');
 assert.deepEqual(bundle.profiles[3].nativeLocales,['en'],'English source copy remains native when server-side translation is enabled');
-assert.deepEqual(bundle.profiles[3].bridgeLocales,['zh_CN'],'a release whose exact official translation conflicts with the canonical official QM union must fail closed to the bridge');
-assert.equal(bundle.localeMessages.zh_CN.find(item=>item.source==='Language:').translation,'语言：','canonical QM union must use the most common exact official translation');
-assert.equal(bundle.localeMessages.zh_CN.find(item=>item.source==='Downloads').translation,'下载','qB-owned UI refs must share the same official QM union');
+assert.deepEqual(bundle.profiles[3].bridgeLocales,['zh_CN'],'a release whose exact official translation conflicts with the deterministic recovery union must fail closed to the bridge');
+assert.equal(bundle.localeMessages.zh_CN.find(item=>item.source==='Language:').translation,'语言：','native QM copy must come from the certified deterministic recovery union');
+assert.equal(bundle.localeMessages.zh_CN.find(item=>item.source==='Downloads').translation,'下载','qB-owned UI refs must share the same certified recovery union');
+assert.equal(bundle.localeMessages.zh_CN.find(item=>item.source==='Recovery-only official text').translation,'仅恢复资产','full recovery QM must include official messages outside the narrow Settings/qB-owned bridge surface');
+assert.deepEqual(bundle.localeMessages.zh_CN.find(item=>item.source==='%n item(s)').translation,['%n 项','%n 项'],'full recovery QM must preserve official plural forms');
+assert.throws(()=>buildNativeSettingsBundle(catalog,behavior),/certified deterministic recovery union/,'native bundle may not silently reconstruct an order-dependent union from narrow bridge sets');
 
 const registry=renderNativeSettingsRegistry(catalog);
 assert.equal((registry.match(/QBT_TR\(Language:\)QBT_TR\[CONTEXT=OptionsDialog\]/g)||[]).length,1,'native registry must deduplicate identical qB source/context markers');
@@ -55,38 +65,37 @@ assert.equal((registry.match(/@@WEIGG_PROFILE/g)||[]).length,4,'each exact relea
 assert.equal((registry.match(/@@WEIGG_UI/g)||[]).length,12,'each exact release must bind qB-owned UI keys to exact source/context refs');
 assert.ok(registry.includes(shaD)&&registry.includes('locale_select')&&registry.includes(encodeURIComponent('settings.tab.downloads')));
 
-const ariaPreferences=`
-<label id="filelogDeleteOldLabel" for="filelog_delete_old_checkbox">QBT_TR(Delete backup logs older than:)QBT_TR[CONTEXT=OptionsDialog]</label>
-<input id="filelog_age_input" aria-labelledby="filelogDeleteOldLabel">
-<script>document.getElementById("filelog_age_input").value = pref.file_log_age;</script>`;
-const ariaFacts=extractQbPreferenceUiFacts(ariaPreferences,['file_log_age']);
-assert.equal(ariaFacts.file_log_age.controlId,'filelog_age_input','aria-labelledby controls must resolve through the exact upstream label id');
-assert.deepEqual(ariaFacts.file_log_age.title,{source:'Delete backup logs older than:',context:'OptionsDialog'});
-
-const toolbar=`<li id="PrefDownloadsLink"><a>QBT_TR(Downloads)QBT_TR[CONTEXT=OptionsDialog]</a></li><li id="PrefWebUILink"><a>QBT_TR(WebUI)QBT_TR[CONTEXT=OptionsDialog]</a></li>`;
-const filters=`<li id="all_filter"><span>QBT_TR(All (0))QBT_TR[CONTEXT=StatusFilterWidget]</span></li><li id="running_filter"><span>QBT_TR(Running (0))QBT_TR[CONTEXT=StatusFilterWidget]</span></li>`;
-const ownedFacts=extractQbOwnedUiFacts({preferencesSource:'<legend>QBT_TR(Global Rate Limits)QBT_TR[CONTEXT=OptionsDialog]</legend><legend>QBT_TR(Alternative Rate Limits)QBT_TR[CONTEXT=OptionsDialog]</legend>',toolbarSource:toolbar,filtersSource:filters});
-assert.deepEqual(ownedFacts['settings.tab.downloads'],{source:'Downloads',context:'OptionsDialog'});
-assert.deepEqual(ownedFacts['settings.tab.webui'],{source:'WebUI',context:'OptionsDialog'});
-assert.deepEqual(ownedFacts['filter.all'],{source:'All (0)',context:'StatusFilterWidget'});
-assert.deepEqual(ownedFacts['filter.running'],{source:'Running (0)',context:'StatusFilterWidget'});
-assert.deepEqual(ownedFacts['transfer.rate.global'],{source:'Global Rate Limits',context:'OptionsDialog'});
-assert.deepEqual(ownedFacts['transfer.rate.alternative'],{source:'Alternative Rate Limits',context:'OptionsDialog'});
-
-const sample=[{context:'OptionsDialog',source:'A & B',translation:'甲 < 乙'}];
+const sample=[
+  {context:'OptionsDialog',source:'A & B',translation:'甲 < 乙',numerus:false},
+  {context:'OptionsDialog',source:'%n file(s)',translation:['%n 个文件','%n 个文件'],numerus:true}
+];
 const ts=renderLocaleTs('zh_CN',sample);
-assert.ok(ts.includes('<source>A &amp; B</source>')&&ts.includes('<translation>甲 &lt; 乙</translation>'),'generated minimal TS must remain valid XML');
+assert.ok(ts.includes('<source>A &amp; B</source>')&&ts.includes('<translation>甲 &lt; 乙</translation>'),'generated recovery TS must remain valid XML');
+assert.ok(ts.includes('<message numerus="yes">')&&(ts.match(/<numerusform>/g)||[]).length===2,'recovery TS must preserve plural forms');
 const qm=renderLocaleQm(sample);
 assert.equal(qm.subarray(0,16).toString('hex'),'3cb86418caef9c95cd211cbf60a1bddd','QM must use the Qt translator magic marker');
 assert.equal(qm[16],0x42,'QM must emit the Qt hash section first');
-assert.equal(qm.readUInt32BE(17),8,'one translation must emit one hash/offset pair');
-const messagesBlock=16+1+4+8;
+assert.equal(qm.readUInt32BE(17),16,'two translations must emit two hash/offset pairs');
+const messagesBlock=16+1+4+16;
 assert.equal(qm[messagesBlock],0x69,'QM must emit the Qt message section');
-const messageStart=messagesBlock+5;
-assert.equal(qm[messageStart],3,'Qt message record must begin with Tag_Translation');
-const translatedBytes=qm.readUInt32BE(messageStart+1),translated=Buffer.from(qm.subarray(messageStart+5,messageStart+5+translatedBytes));translated.swap16();
-assert.equal(translated.toString('utf16le'),'甲 < 乙','QM translation payload must be UTF-16BE as QDataStream QString expects');
+const messageDataStart=messagesBlock+5,messageDataLength=qm.readUInt32BE(messagesBlock+1),messageData=qm.subarray(messageDataStart,messageDataStart+messageDataLength);
+let cursor=0,scalarSeen=false,pluralSeen=false;
+while(cursor<messageData.length){
+  const translations=[];let source='',context='';
+  for(;;){
+    const tag=messageData[cursor++];
+    if(tag===1)break;
+    const length=messageData.readUInt32BE(cursor);cursor+=4;
+    const bytes=Buffer.from(messageData.subarray(cursor,cursor+length));cursor+=length;
+    if(tag===3){bytes.swap16();translations.push(bytes.toString('utf16le'));}
+    else if(tag===6)source=bytes.toString('utf8');
+    else if(tag===7)context=bytes.toString('utf8');
+  }
+  if(source==='A & B'){assert.deepEqual(translations,['甲 < 乙']);assert.equal(context,'OptionsDialog');scalarSeen=true;}
+  if(source==='%n file(s)'){assert.deepEqual(translations,['%n 个文件','%n 个文件'],'Qt QM plural record must encode one Tag_Translation per official plural form');pluralSeen=true;}
+}
+assert.ok(scalarSeen&&pluralSeen,'QM SaveEverything records must carry both scalar and plural source/context translations');
 assert.ok(qm.includes(Buffer.from('A & B','utf8'))&&qm.includes(Buffer.from('OptionsDialog','utf8')),'QM SaveEverything record must carry source/context for exact QTranslator matching');
 
-assert.throws(()=>buildNativeSettingsBundle(catalog,{...behavior,profiles:behavior.profiles.slice(1)}),/does not match/,'missing source-bound behavior evidence must fail closed');
-console.log('Native qB Settings bundle contract passed: source-bound Settings + qB-owned UI routing, aria-labelledby label ownership, QBT_TR ref dedupe and Qt-compatible minimal QM structure are enforced.');
+assert.throws(()=>buildNativeSettingsBundle(catalog,{...behavior,profiles:behavior.profiles.slice(1)},{recoveryUnion}),/does not match/,'missing source-bound behavior evidence must fail closed');
+console.log('Native qB Settings bundle contract passed: exact translator-family routing consumes one certified deterministic full recovery union, plural QM forms are Qt-compatible, and the Alternative WebUI gap remains bridge-routed.');

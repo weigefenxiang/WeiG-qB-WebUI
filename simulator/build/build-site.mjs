@@ -21,6 +21,7 @@ const out=path.resolve(required('out'));
 const catalog=path.resolve(required('catalog'));
 const localeOverlayPath=path.resolve(arg('locale-overlay',path.join(projectRoot,'tools/data/qb-locale-lkg.json')));
 const settingsLkgPath=path.resolve(required('settings-translation-lkg'));
+process.env.WEIGG_SETTINGS_LKG_PATH=settingsLkgPath;
 const simulatorSha=required('simulator-sha');
 const branches=[
   {name:'dev',webuiRoot:path.resolve(required('dev-webui')),sha:required('dev-sha'),version:required('dev-version')},
@@ -47,6 +48,9 @@ const settingsTranslationCatalog={
   mappedPreferences:(settingsLkg.profiles||[]).reduce((sum,item)=>sum+(Number(item.mappedPreferences)||0),0),
   translationRoutes:(settingsLkg.profiles||[]).reduce((sum,item)=>sum+Object.keys(item.translations||{}).length,0),
   translationSets:Object.keys(settingsLkg.sets||{}).length,
+  nativeTorrentColumns:Number(settingsLkg.torrentColumnBindings)||0,
+  recoveryRoutes:Number(settingsLkg.recovery?.routeCount)||0,
+  recoveryLocales:Number(settingsLkg.recovery?.localeCount)||0,
   baseCatalogSha256,
   sourceEvidence:settingsLkg.sourceEvidence||null
 };
@@ -99,4 +103,4 @@ const siteMeta={simulatorSha,builtAt:new Date().toISOString(),stableProfiles:Arr
 await fs.writeFile(path.join(out,'metadata','site.json'),JSON.stringify(siteMeta,null,2)+'\n','utf8');
 await fs.writeFile(path.join(out,'.nojekyll'),'','utf8');
 await fs.writeFile(path.join(out,'index.html'),'<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="0;url=./lab/"><title>WeiG Virtual qB Lab</title></head><body><p><a href="./lab/">进入 WeiG Virtual qB Lab</a></p></body></html>','utf8');
-console.log(`Assembled WeiG Virtual qB Pages artifact: ${out} with ${localeCatalog.profiles} exact locale profiles / ${localeCatalog.localeSets} sets, ${settingsTranslationCatalog.mappedPreferences} official Settings mappings and materialized dev installer payload`);
+console.log(`Assembled WeiG Virtual qB Pages artifact: ${out} with ${localeCatalog.profiles} exact locale profiles / ${localeCatalog.localeSets} sets, ${settingsTranslationCatalog.mappedPreferences} official Settings mappings, ${settingsTranslationCatalog.nativeTorrentColumns} native Torrent columns and ${settingsTranslationCatalog.recoveryLocales} recovery QM locales`);
