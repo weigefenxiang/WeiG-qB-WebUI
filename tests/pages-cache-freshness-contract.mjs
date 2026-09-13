@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -10,6 +11,7 @@ const root=path.resolve(here,'..');
 const temp=fs.mkdtempSync(path.join(os.tmpdir(),'weigg-pages-freshness-'));
 const out=path.join(temp,'app');
 const catalog=path.join(temp,'catalog.json');
+const settingsLkg=path.join(temp,'settings-lkg.json');
 const exactSha='0123456789abcdef0123456789abcdef01234567';
 const profileSha='0b63c3d17373f6132ea211c9dcd4241284ccdfaf';
 const version=fs.readFileSync(path.join(root,'VERSION'),'utf8').trim();
@@ -22,7 +24,16 @@ const sourceCatalog=[{
   officialWeiGSupport:true,
   protocolGeneration:'qb5'
 }];
+const recoveryUnion={schemaVersion:1,source:'qb-official-ts-deterministic-recovery-union',locales:{}};
+const recoveryUnionSha256=crypto.createHash('sha256').update(JSON.stringify(recoveryUnion),'utf8').digest('hex');
+const focusedSettingsLkg={
+  schemaVersion:2,
+  profileCount:1,
+  profiles:[{qbVersion:'5.2.3',sourceSha:profileSha,torrentTableColumns:[]}],
+  recovery:{union:recoveryUnion,unionSha256:recoveryUnionSha256}
+};
 fs.writeFileSync(catalog,JSON.stringify(sourceCatalog,null,2)+'\n','utf8');
+fs.writeFileSync(settingsLkg,JSON.stringify(focusedSettingsLkg,null,2)+'\n','utf8');
 
 const result=spawnSync(process.execPath,[
   path.join(root,'simulator/build/build-pages.mjs'),
@@ -33,7 +44,7 @@ const result=spawnSync(process.execPath,[
   `--exact-sha=${exactSha}`,
   `--product-version=${version}`,
   `--simulator-sha=${exactSha}`
-],{cwd:root,encoding:'utf8'});
+],{cwd:root,encoding:'utf8',env:{...process.env,WEIGG_SETTINGS_LKG_PATH:settingsLkg}});
 
 try{
   if(result.status!==0)throw new Error(`build-pages.mjs failed:\n${result.stdout}\n${result.stderr}`);
