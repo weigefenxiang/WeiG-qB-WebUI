@@ -24,11 +24,11 @@ vm.runInNewContext(source,context,{filename:'release-profile.js'});
 const R=window.WeiG.ReleaseProfile;
 assert(R&&typeof R.bind==='function'&&typeof R.resolveTorrentActionDescriptor==='function','W.ReleaseProfile must be the exact source-fact runtime owner');
 assert(typeof R.detailFields==='function'&&typeof R.hasTorrentDetailField==='function','W.ReleaseProfile must expose exact Torrent detail response-field provenance');
-assert(typeof R.resolutionInfo==='function','W.ReleaseProfile must expose profile resolution provenance');
+assert(typeof R.resolutionInfo==='function'&&typeof R.hasWriteProvenance==='function','W.ReleaseProfile must expose profile resolution and write provenance');
 
 let client={qbVersion:'v4.1.0',webApiVersion:'2.0.0',major:4};
 await R.bind(client);
-assert(R.isCertified(),'qB 4.1.0 exact catalog entry must be certified');
+assert(R.isCertified()&&R.hasWriteProvenance(),'qB 4.1.0 exact catalog entry must be certified for writes');
 assert(R.current().qbVersion==='4.1.0','exact qB version must bind its exact stable profile');
 assert(R.resolutionInfo().mode==='EXACT'&&R.resolutionInfo().resolvedFrom==='4.1.0','exact qB profile must report exact resolution provenance');
 assert(R.hasAction('appcontroller.h:preferencesAction')&&R.hasAction('appcontroller.h:setPreferencesAction'),'exact app preferences actions must survive the sharded runtime profile');
@@ -50,6 +50,7 @@ assert(requests.includes('data/qb-releases.json')&&requests.includes(`data/qb-re
 
 client={qbVersion:'5.2.3',webApiVersion:'2.15.1',major:5};
 await R.bind(client);
+assert(R.hasWriteProvenance(),'exact qB5 profile must retain write provenance');
 assert(R.resolveTorrentAction('start')==='start'&&R.resolveTorrentAction('stop')==='stop','qB5 start/stop must resolve exact modern action names');
 assert(R.resolveTorrentAction('reannounce')==='reannounce'&&R.resolveTorrentAction('removeTrackers')==='removeTrackers','qB5 exact actions must resolve when source proves them');
 assert(R.supportsTorrentFilter('stalled')&&R.hasTorrentInfoField('private')&&R.hasAction('torrentscontroller.h:tagsAction'),'qB5 source-derived filter/field/action facts must be queryable');
@@ -59,29 +60,32 @@ assert(R.hasTorrentDetailField('trackers','num_seeds')&&R.hasTorrentDetailField(
 
 client={qbVersion:'5.2.3-r1',webApiVersion:'2.15.1',major:5};
 await R.bind(client);
-assert(R.isCertified()&&R.current().qbVersion==='5.2.3','packaging suffix must resolve to the exact canonical stable profile');
+assert(R.isCertified()&&R.hasWriteProvenance()&&R.current().qbVersion==='5.2.3','packaging suffix must resolve to the exact canonical stable profile with write provenance');
 assert(R.resolutionInfo().mode==='EQUIVALENT'&&R.resolutionInfo().detectedQbVersion==='5.2.3-r1','canonical packaging suffix must retain equivalent resolution provenance');
 
 client={qbVersion:'5.2.3.1',webApiVersion:'2.15.1',major:5};
 await R.bind(client);
-assert(!R.isCertified()&&R.current().qbVersion==='5.2.3','unknown fourth-component patch must inherit the nearest certified lower profile in the same major.minor series');
+assert(!R.isCertified()&&!R.hasWriteProvenance()&&R.current().qbVersion==='5.2.3','unknown fourth-component patch may inherit read facts but must not gain write provenance');
 assert(R.resolutionInfo().mode==='INHERITED'&&R.resolutionInfo().resolvedFrom==='5.2.3','fourth-component inheritance must expose its source profile');
 assert(R.current().sourceSha===profiles[1].sourceSha&&R.current().settingsNativeLocales.includes('zh_CN'),'inherited profile must retain source-bound translation routing assets');
-assert(R.hasAction('torrentscontroller.h:tagsAction')&&R.hasTorrentInfoField('private'),'inherited patch must retain already-proven capabilities without inventing new ones');
+assert(R.hasAction('torrentscontroller.h:tagsAction')&&R.hasTorrentInfoField('private'),'inherited patch must retain already-proven read/source facts without inventing new ones');
+assert(!R.supportsTorrentAction('start')&&R.resolveTorrentAction('start')===null,'inherited patch must not advertise or resolve mutating Torrent actions');
 
 client={qbVersion:'5.2.4',webApiVersion:'2.15.1',major:5};
 await R.bind(client);
 assert(R.current().qbVersion==='5.2.3'&&R.resolutionInfo().mode==='INHERITED','future qB patch must provisionally inherit the nearest certified lower patch in the same series');
-assert(R.resolveTorrentAction('start')==='start'&&R.hasAction('torrentscontroller.h:tagsAction'),'future patch inheritance must keep proven qB5 actions usable');
+assert(R.hasAction('torrentscontroller.h:tagsAction')&&R.hasTorrentInfoField('private'),'future patch inheritance may keep proven read/source facts');
+assert(!R.hasWriteProvenance()&&!R.supportsTorrentAction('start'),'future patch inheritance must keep product write actions unavailable until admission');
 
 client={qbVersion:'5.2.4',webApiVersion:'2.14.0',major:5};
 await R.bind(client);
 assert(R.current().fallback===true&&R.resolutionInfo().mode==='FALLBACK','future patch with an older WebAPI than its candidate base must not inherit incompatible source facts');
+assert(!R.hasWriteProvenance(),'fallback must never carry write provenance');
 
 client={qbVersion:'4.9.99',webApiVersion:'2.9.3',major:4};
 await R.bind(client);
-assert(!R.isCertified(),'unknown qB stable/version must not be falsely certified');
-assert(R.resolveTorrentAction('start')==='resume'&&R.upstreamTorrentFilter('stopped')==='paused','catalog miss may use conservative qB4 protocol-generation fallback');
+assert(!R.isCertified()&&!R.hasWriteProvenance(),'unknown qB stable/version must not be falsely certified for writes');
+assert(R.resolveTorrentAction('start')===null&&R.upstreamTorrentFilter('stopped')==='paused','catalog miss may retain conservative qB4 read/filter normalization but must not guess a write endpoint');
 assert(R.resolveTorrentAction('reannounce')===null&&!R.hasTorrentInfoField('tags'),'catalog miss must not invent later action/field provenance');
 assert(R.supportsTorrentFilter('stalled')===false,'catalog miss must not invent non-floor filters');
 assert(R.preferenceDescriptor('save_path')===null,'catalog miss must not invent preference setter provenance');
@@ -90,4 +94,4 @@ assert(events.some(event=>event.type==='weigg:release-profile'),'release profile
 assert(requests.filter(url=>url==='data/qb-releases.json').length===1,'release index must be fetched once per page session');
 assert(requests.filter(url=>url.includes('qb-release-profiles/')).length===2,'only the two actually used exact profile shards should be fetched and cached');
 
-console.log('Release profile contract passed: a tiny release index resolves one exact/inherited source-bound shard, app/preferences remains source-proven, future same-series patches inherit safely, and unknown series stay fail-closed.');
+console.log('Release profile contract passed: exact/equivalent releases own writes; inherited profiles retain proven read facts but no mutating Torrent actions; fallback remains write-closed.');
