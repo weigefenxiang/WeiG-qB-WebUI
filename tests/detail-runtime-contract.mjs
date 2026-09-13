@@ -10,6 +10,7 @@ const client=fs.readFileSync(path.join(root,'webui/private/scripts/qb-client.js'
 const releaseProfile=fs.readFileSync(path.join(root,'webui/private/scripts/release-profile.js'),'utf8');
 const layout=fs.readFileSync(path.join(root,'webui/private/scripts/layout.js'),'utf8');
 const ui=fs.readFileSync(path.join(root,'webui/private/scripts/ui.js'),'utf8');
+const general=fs.readFileSync(path.join(root,'webui/private/scripts/detail-general.js'),'utf8');
 const tableCss=fs.readFileSync(path.join(root,'webui/private/css/table.css'),'utf8');
 
 const details=[
@@ -53,6 +54,7 @@ assert.match(layout,/function exactDetailUi\(\)\{var profile=exactProfile\(\),ui
 assert.match(layout,/W\.I18n\.qbText\(String\(key\|\|''\),source\|\|String\(key\|\|''\)\)/,'detail labels must flow through the existing official qB translation resolver');
 assert.match(layout,/function detailTranslationKey\(surface,key\)\{return'detail\.'\+String\(surface\|\|''\)\+'\.'\+String\(key\|\|''\);\}/,'detail table columns must use the source-generated translation keyspace');
 assert.match(layout,/W\.SharedColumns=\{resolve:resolveColumns,commit:commitColumns,reset:resetColumns,read:tableState/,'all detail tables must share one user-override column state owner');
+assert.match(layout,/script\.src='scripts\/detail-general\.js'\+layoutAssetSuffix\(\)/,'General source-driven runtime must be versioned and loaded by the canonical layout runtime');
 assert.doesNotMatch(layout,/MutationObserver/,'detail schema/column state must not rely on MutationObserver repair');
 
 assert.match(ui,/function installSharedColumnInteraction\(\)/,'one shared pointer interaction engine must own table resize/reorder');
@@ -69,8 +71,22 @@ assert.match(ui,/W\.SharedColumnSettings=\{open:openSharedColumnDialog\}/,'one s
 assert.match(ui,/function syncDetailTabLabels\(\).*W\.QbUiEvidence\.detailTab\(key\)/s,'detail tab names must update from the current qB release official translation evidence');
 assert.doesNotMatch(ui,/MutationObserver/,'shared table runtime must not chase DOM changes with MutationObserver');
 
+assert.match(general,/ui&&Array\.isArray\(ui\.propertyLayout\)&&ui\.propertyLayout\.length\?ui:null/,'General runtime must fail closed when the exact profile has no source-derived propertyLayout');
+assert.match(general,/r\.name==='torrent'&&app\.detailTab==='overview'.*app\.detailHash/s,'General replacement must be guarded by the active Torrent/General route and exact hash');
+assert.match(general,/Promise\.resolve\(original\.apply\(this,arguments\)\)\.then\(function\(data\)\{capture\(hash,data\);return data;\}\)/,'General runtime must reuse the existing Properties response instead of issuing another HTTP request');
+assert.match(general,/client\.properties=wrapped/,'General runtime must intercept only the existing client Properties call');
+assert.doesNotMatch(general,/client\.properties\s*\(/,'General runtime must not make a second Properties API call');
+assert.match(general,/field&&field\.valueSource==='torrentHash'/,'legacy Torrent Hash rows must consume their source-proven current-torrent-hash binding');
+assert.match(general,/Array\.isArray\(field&&field\.dataProperties\)/,'General values must come from parser-derived Properties field bindings');
+assert.match(general,/E&&E\.detailPropertyLabel&&E\.detailPropertyLabel\(id\)/,'General field labels must use official per-release translation evidence');
+assert.match(general,/E&&E\.detailGroupLabel&&E\.detailGroupLabel\(key\)/,'General group labels must use official per-release translation evidence');
+assert.match(general,/root\.querySelector\('\.kv-grid'\)\|\|root\.querySelector\('\.general-detail'\)/,'General source replacement must wait for the canonical Overview render instead of racing its async flow');
+assert.match(general,/global\.addEventListener\('weigg:languagechange',rerenderLanguage\)/,'General source-driven labels must rerender immediately after locale changes without refetching');
+assert.doesNotMatch(general,/MutationObserver/,'General structure must not be implemented as a DOM repair observer');
+
 assert.match(tableCss,/#detail-view\.is-active\{display:flex;flex:1 1 0;flex-direction:column;min-height:0;height:100%;max-height:100%;overflow:hidden\}/,'detail workspace must be a full-height flex owner rather than a fixed pixel panel');
 assert.match(tableCss,/#detail-content\{display:flex;flex:1 1 0;flex-direction:column;min-height:0!important;height:auto!important;max-height:none!important;overflow:auto/,'Tabs-to-Statusbar detail content must consume all remaining workspace height');
+assert.match(tableCss,/\.general-detail__grid\{display:grid;grid-template-columns:repeat\(auto-fit,minmax\(250px,1fr\)\)/,'General source groups must use responsive layout without fixed panel dimensions');
 assert.doesNotMatch(tableCss,/#detail-content[^}]*height:\s*(?:480|500)px/,'detail workspace must not regress to fixed 480/500px heights');
 
-console.log('Torrent detail runtime contract passed: source-proven transport/fields remain fail-closed, exact per-version qB UI/translation evidence drives shared detail tables, and one pointer/column toolkit owns desktop+touch interactions without fixed-height or MutationObserver repair.');
+console.log('Torrent detail runtime contract passed: source-proven transport/fields remain fail-closed, exact per-version qB UI/translation evidence drives General plus shared detail tables, and one pointer/column toolkit owns desktop+touch interactions without fixed-height or MutationObserver repair.');
