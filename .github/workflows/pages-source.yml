@@ -3,6 +3,7 @@ name: Virtual qB Pages Source
 # Source relay owns normal Pages trigger choreography. Ordinary development pushes only deploy
 # when public WebUI/simulator/installer payload or Pages materialization inputs changed. Heavy
 # Settings evidence is demand-driven and remains isolated behind the manual settings-evidence mode.
+# Keep this relevance boundary symmetric with pages.yml; repository contracts lock the pair.
 on:
   workflow_dispatch:
     inputs:

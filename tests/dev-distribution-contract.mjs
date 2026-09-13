@@ -10,21 +10,22 @@ const pagesWorkflow=fs.readFileSync(new URL('../.github/workflows/pages.yml',imp
 const windowsDevGuide=fs.readFileSync(new URL('../docs/008.Windows开发版安装.md',import.meta.url),'utf8');
 
 const devInstallerUrl='https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.ps1';
+const pagesMaterializationMatcher='.github/workflows/pages-source.yml|.github/workflows/pages.yml|webui/*|simulator/*|installers/*|VERSION|tools/build-webui-dist.mjs|tools/qb-settings-*.mjs|tools/qb-locale-*.mjs|tools/qb-native-qm-recovery.mjs|tools/qb-owned-ui-source.mjs|tools/qb-preference-semantics.mjs|tools/qb-qm-provisioning-source.mjs|tools/qb-release-catalog*.mjs|tools/qb-source-parsers.mjs|tools/qb-torrent-fields-parser.mjs|tools/qb-translator-behavior-source.mjs|tools/qb-cpp-literals.mjs|tools/qb-webui-catalog.mjs|tools/data/qb-stable-lkg.json|tools/data/qb-locale-lkg.json|tools/data/qb-translator-behavior-lkg.json|tests/fixtures/qb-release-catalog.lkg.json)';
 
 assert.ok(linuxInstall.includes('DEV_DIST_BASE="https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev"'),'Linux dev installer must consume the public exact-SHA materialized distribution');
 assert.ok(linuxInstall.includes('assert_materialized_webui'),'Linux installer must validate runtime catalog/native registry/QM assets before installation');
 assert.ok(linuxInstall.includes('refusing raw-source fallback'),'Linux dev installer must refuse unpublished Pages-relevant changes instead of silently installing raw source');
 assert.ok(linuxInstall.includes('dev_payload_can_represent_head'),'Linux dev installer must compare a lagging materialized payload with current dev before reuse');
-assert.ok(linuxInstall.includes('is_pages_irrelevant_path'),'Linux dev installer must classify reuse from the same positive public-payload allowlist');
+assert.ok(linuxInstall.includes('is_pages_irrelevant_path'),'Linux dev installer must classify reuse from the positive public-payload allowlist');
 assert.equal(linuxInstall.includes('archive/$SOURCE_SHA.zip'),false,'Linux dev installer must not download the raw GitHub source archive');
 assert.ok(windowsInstall.includes("$DevDistBase='https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev'"),'Windows dev installer must consume the public exact-SHA materialized distribution');
 assert.ok(windowsInstall.includes('Assert-MaterializedWebUI'),'Windows installer must validate runtime catalog/native registry/QM assets before installation');
 assert.ok(windowsInstall.includes('refusing raw-source fallback'),'Windows dev installer must refuse unpublished Pages-relevant changes instead of silently installing raw source');
 assert.ok(windowsInstall.includes('Test-DevPayloadCanRepresentHead'),'Windows dev installer must compare a lagging materialized payload with current dev before reuse');
-assert.ok(windowsInstall.includes('Test-PagesIrrelevantPath'),'Windows dev installer must classify reuse from the same positive public-payload allowlist');
+assert.ok(windowsInstall.includes('Test-PagesIrrelevantPath'),'Windows dev installer must classify reuse from the positive public-payload allowlist');
 assert.equal(windowsInstall.includes('archive/$sourceSha.zip'),false,'Windows dev installer must not download the raw GitHub source archive');
-assert.ok(linuxInstall.includes('webui/*|simulator/*|installers/*|VERSION|tools/data/qb-stable-lkg.json|tools/data/qb-locale-lkg.json|tests/fixtures/qb-release-catalog.lkg.json'),'Linux installer must share the Pages public-payload allowlist');
-assert.ok(windowsInstall.includes("if($Path.StartsWith('webui/'")&&windowsInstall.includes("'tests/fixtures/qb-release-catalog.lkg.json' { return $false }")&&windowsInstall.includes('default { return $true }'),'Windows installer must share the Pages public-payload allowlist and default non-payload paths to reusable');
+assert.ok(linuxInstall.includes('webui/*|simulator/*|installers/*|VERSION|tools/data/qb-stable-lkg.json|tools/data/qb-locale-lkg.json|tests/fixtures/qb-release-catalog.lkg.json'),'Linux installer must retain the direct public-payload allowlist');
+assert.ok(windowsInstall.includes("if($Path.StartsWith('webui/'")&&windowsInstall.includes("'tests/fixtures/qb-release-catalog.lkg.json' { return $false }")&&windowsInstall.includes('default { return $true }'),'Windows installer must retain the direct public-payload allowlist and default non-payload paths to reusable');
 assert.ok(buildSite.includes("tools/build-webui-dist.mjs"),'Virtual qB Pages build must publish the canonical dev distribution');
 assert.ok(buildSite.includes("downloads','dev"),'Dev distribution must be part of the deployed Pages site');
 assert.ok(distBuilder.includes("packCatalog(catalogPath,path.join(root,'private/data/qb-releases.json'))"),'Canonical distribution must materialize the runtime release catalog and translation routing assets');
@@ -37,7 +38,8 @@ assert.ok(distBuilder.includes("path.join(projectRoot,'installers/install.ps1')"
 assert.match(pagesSource,/push:\s*\n\s*branches:\s*\n\s*- dev\s*\n\s*- main/,'Every dev/main push must reach the lightweight Pages source relay');
 assert.doesNotMatch(pagesSource,/paths-ignore:/,'Pages source must not use native path filters because GitHub can truncate very large changed-file lists before filter evaluation');
 assert.match(pagesSource,/Detect Pages-relevant source changes/,'Pages source relay must classify each pushed diff before dispatching the heavy Pages owner');
-assert.match(pagesSource,/webui\/\*\|simulator\/\*\|installers\/\*\|VERSION\|tools\/data\/qb-stable-lkg\.json\|tools\/data\/qb-locale-lkg\.json\|tests\/fixtures\/qb-release-catalog\.lkg\.json/,'Pages source must use an explicit public-payload allowlist instead of treating tests/workflows as deployment inputs');
+assert.ok(pagesSource.includes(pagesMaterializationMatcher),'Pages source must use an explicit public-payload plus build-materialization allowlist instead of treating all tests/tools/workflows as deployment inputs');
+assert.ok(pagesMaterializationMatcher.includes('webui/*|simulator/*|installers/*|VERSION'),'Pages materialization boundary must remain a strict superset of the direct public payload');
 assert.match(pagesSource,/Pages-irrelevant development\/repository change:/,'Non-payload development paths must remain lightweight and must not dispatch a Pages build');
 assert.match(pagesSource,/read -r -d '' path/,'Pages source relay must consume NUL-delimited filenames so non-ASCII paths are never Git-quoted into false runtime changes');
 assert.match(pagesSource,/diff --name-only -z/,'Pages source relay must request raw NUL-delimited changed paths');
@@ -47,13 +49,13 @@ assert.doesNotMatch(pagesSource,/Warm Settings evidence/,'Ordinary dev/main push
 assert.match(pagesSource,/max-parallel:\s*4/,'Demand-driven Settings evidence must cap GitHub runner fanout at four workers');
 assert.match(pagesSource,/--shard-count=16/,'Demand-driven Settings evidence may use bounded in-run concurrency without creating dozens of queued Actions jobs');
 assert.match(pagesWorkflow,/compare\/\$EXACT_SHA\.\.\.\$REMOTE_SHA/,'Dev Pages stale gate must compare the workflow SHA with a newer dev HEAD');
-assert.match(pagesWorkflow,/webui\/\*\|simulator\/\*\|installers\/\*\|VERSION\|tools\/data\/qb-stable-lkg\.json\|tools\/data\/qb-locale-lkg\.json\|tests\/fixtures\/qb-release-catalog\.lkg\.json/,'Dev Pages stale gate must share the same positive public-payload allowlist as Pages source and installers');
-assert.match(pagesWorkflow,/Pages-irrelevant development\/repository head advance:/,'Dev Pages stale gate must permit newer HEAD only when every intervening path is outside the public payload allowlist');
-assert.match(pagesWorkflow,/Pages-relevant public payload head advance blocks stale deployment:/,'Dev Pages stale gate must fail closed when an intervening public payload path changed');
+assert.ok(pagesWorkflow.includes(pagesMaterializationMatcher),'Dev Pages stale gate must share the same positive payload/materialization allowlist as the source relay');
+assert.match(pagesWorkflow,/Pages-irrelevant development\/repository head advance:/,'Dev Pages stale gate must permit newer HEAD only when every intervening path is outside the payload/materialization allowlist');
+assert.match(pagesWorkflow,/Pages-relevant public payload\/materialization head advance blocks stale deployment:/,'Dev Pages stale gate must fail closed when an intervening public payload or materialization input changed');
 assert.doesNotMatch(pagesWorkflow,/docs\/\*\|\*\.md\|LICENSE\|\.github\/workflows\/ci\.yml/,'Dev Pages stale gate must not maintain a separate explicit Pages-irrelevant exception list');
 assert.match(pagesWorkflow,/\.files\[\] \| \.filename, "\\u0000"/,'Dev Pages stale gate must parse GitHub compare filenames losslessly, including non-ASCII docs');
 assert.match(pagesWorkflow,/FILE_COUNT.*-lt 1.*FILE_COUNT.*-ge 300/s,'Dev Pages stale gate must fail closed on empty or possibly truncated GitHub compare file lists');
 assert.match(pagesWorkflow,/STATUS.*!= "ahead"/s,'Dev Pages stale gate must fail closed when GitHub compare does not prove the current HEAD is ahead');
 assert.ok(windowsDevGuide.includes(devInstallerUrl),'Windows dev guide must bootstrap from the materialized dev distribution, not the stable main installer');
 assert.match(windowsDevGuide,/install\.ps1[^\n]*-dev|weigg-install-dev\.ps1[^\n]*-dev/s,'Windows dev guide must actually execute the published installer in dev mode');
-console.log('Dev distribution contract passed: source relay, stale deploy gate and installers share one positive public-payload allowlist; only public WebUI/simulator/installer/Frozen payload inputs require new Pages materialization; raw-source fallback remains forbidden.');
+console.log('Dev distribution contract passed: Pages source/stale gates extend the direct public-payload boundary with build-affecting materialization tooling, installers consume exact-SHA materialized payloads, and raw-source fallback remains forbidden.');
