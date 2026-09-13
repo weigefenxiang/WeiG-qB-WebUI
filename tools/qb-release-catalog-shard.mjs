@@ -99,10 +99,12 @@ function torrentSurface(ref){
   if(!torrentTableColumns.length)throw new Error(`${ref}: native Torrent table column surface is unresolved`);
   const propertiesToolbarSource=firstSource(ref,['src/webui/www/private/views/propertiesToolbar.html','src/webui/www/private/properties.html']);
   const propertiesContentSource=firstSource(ref,['src/webui/www/private/views/properties.html','src/webui/www/private/properties_content.html']);
-  if(!propertiesToolbarSource||!propertiesContentSource)throw new Error(`${ref}: Torrent detail source markup is unresolved`);
+  const propertiesGeneralSource=showMaybe(ref,'src/webui/www/private/scripts/prop-general.js');
+  if(!propertiesToolbarSource||!propertiesContentSource||!propertiesGeneralSource)throw new Error(`${ref}: Torrent detail source markup/script is unresolved`);
   const torrentDetailUi=extractTorrentDetailUi({
     toolbarSource:propertiesToolbarSource,
     contentSource:propertiesContentSource,
+    generalSource:propertiesGeneralSource,
     dynamicTableSource,
     legacyFilesSource:showMaybe(ref,'src/webui/www/private/scripts/prop-files.js'),
     legacyTrackersSource:showMaybe(ref,'src/webui/www/private/scripts/prop-trackers.js'),
