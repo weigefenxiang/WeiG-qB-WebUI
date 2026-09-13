@@ -40,6 +40,7 @@
     "peerBan":{"rule":{"webApi":{"gte":"2.3.0"}},"writeRequired":true,"upstream":{"action":"transfercontroller.h:banPeersAction"}},
     "buildInfo":{"rule":{"webApi":{"gte":"2.3.0"}},"upstream":{"action":"appcontroller.h:buildInfoAction"}},
     "renameFile":{"rule":{"webApi":{"gte":"2.4.0"}},"writeRequired":true,"upstream":{"action":"torrentscontroller.h:renameFileAction"}},
+    "filePriorityWrite":{"rule":{"qb":{"gte":"4.1.0"}},"sourceRequired":true,"writeRequired":true,"upstream":{"action":"torrentscontroller.h:filePrioAction"},"selectors":[".ui-select__trigger[aria-label$=\" priority\"]"]},
     "contentPath":{"rule":{"webApi":{"gte":"2.6.1"}},"sourceRequired":true,"upstream":{"torrentInfoField":"content_path"}},
     "addTags":{"rule":{"webApi":{"gte":"2.3.0"}},"writeRequired":true,"upstream":{"action":"torrentscontroller.h:addTagsAction"}},
     "renameFolder":{"rule":{"any":[{"qb":{"eq":"4.3.3"}},{"webApi":{"gte":"2.8.0"}}]},"writeRequired":true,"upstream":{"action":"torrentscontroller.h:renameFolderAction"}},
