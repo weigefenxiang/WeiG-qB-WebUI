@@ -31,12 +31,14 @@ function sha256Json(value){return crypto.createHash('sha256').update(stableJson(
 function settingsLkgEvidence(input,catalog){
   const lkg=typeof input==='string'?JSON.parse(fs.readFileSync(path.resolve(input),'utf8')):input;
   if(!lkg||lkg.schemaVersion!==2||!Array.isArray(lkg.profiles)||Number(lkg.profileCount)!==catalog.length)throw new Error('qB WebUI catalog packer requires certified Settings/source LKG v2 for the exact catalog.');
+  if(Number(lkg.detailUiBindings)<=0)throw new Error('qB WebUI catalog packer requires certified Torrent detail UI source facts.');
   const byVersion=new Map(lkg.profiles.map(item=>[String(item?.qbVersion||''),item]));
   if(byVersion.size!==lkg.profiles.length)throw new Error('Settings/source LKG contains duplicate qB versions.');
   for(const profile of catalog){
     const fact=byVersion.get(String(profile?.qbVersion||''));
     if(!fact||String(fact.sourceSha||'')!==String(profile?.sourceSha||''))throw new Error(`${profile?.qbVersion||'unknown'}: Settings/source LKG does not match exact catalog source SHA.`);
     if(stableJson(fact.torrentTableColumns||[])!==stableJson(profile?.torrentTableColumns||[]))throw new Error(`${profile.qbVersion}: Settings/source LKG native Torrent columns do not match the materialized catalog.`);
+    if(stableJson(fact.torrentDetailUi||{})!==stableJson(profile?.torrentDetailUi||{}))throw new Error(`${profile.qbVersion}: Settings/source LKG Torrent detail UI does not match the materialized catalog.`);
   }
   const recovery=lkg.recovery,union=recovery?.union;
   if(!recovery||!union||union.schemaVersion!==1||union.source!=='qb-official-ts-deterministic-recovery-union'||!union.locales||typeof union.locales!=='object')throw new Error('Settings/source LKG deterministic recovery union is missing.');

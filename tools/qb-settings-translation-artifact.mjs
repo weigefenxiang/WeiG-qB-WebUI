@@ -72,15 +72,16 @@ function validateLkg(lkg,label){
   const mapped=(lkg.profiles||[]).reduce((sum,item)=>sum+(Number(item.mappedPreferences)||0),0);
   const routes=(lkg.profiles||[]).reduce((sum,item)=>sum+Object.keys(item.translations||{}).length,0);
   const columns=(lkg.profiles||[]).reduce((sum,item)=>sum+(Array.isArray(item.torrentTableColumns)?item.torrentTableColumns.length:0),0);
+  const detailUiBindings=Number(lkg?.detailUiBindings)||0;
   const recoveryRoutes=Number(lkg?.recovery?.routeCount)||0,recoveryLocales=Number(lkg?.recovery?.localeCount)||0;
-  if(!mapped||!routes||!Object.keys(lkg.sets||{}).length||!columns||!recoveryRoutes||!recoveryLocales)throw new Error(`${label}: Settings/source v2 evidence is incomplete.`);
-  return{mapped,routes,sets:Object.keys(lkg.sets||{}).length,columns,recoveryRoutes,recoveryLocales};
+  if(!mapped||!routes||!Object.keys(lkg.sets||{}).length||!columns||!detailUiBindings||!recoveryRoutes||!recoveryLocales)throw new Error(`${label}: Settings/source v2 evidence is incomplete.`);
+  return{mapped,routes,sets:Object.keys(lkg.sets||{}).length,columns,detailUiBindings,recoveryRoutes,recoveryLocales};
 }
 function saveLkg(lkg,source){
   const stats=validateLkg(lkg,source);
   fs.mkdirSync(path.dirname(output),{recursive:true});
   fs.writeFileSync(output,JSON.stringify(lkg)+'\n','utf8');
-  console.log(`Resolved certified qB Settings/source v2 evidence from ${source}: ${lkg.profileCount} releases, ${stats.mapped} mappings, ${stats.columns} native columns, ${stats.routes} narrow locale routes, ${stats.sets} translation sets, ${stats.recoveryRoutes} recovery routes / ${stats.recoveryLocales} locales -> ${output}`);
+  console.log(`Resolved certified qB Settings/source v2 evidence from ${source}: ${lkg.profileCount} releases, ${stats.mapped} mappings, ${stats.columns} native columns, ${stats.detailUiBindings} detail UI bindings, ${stats.routes} narrow locale routes, ${stats.sets} translation sets, ${stats.recoveryRoutes} recovery routes / ${stats.recoveryLocales} locales -> ${output}`);
   return true;
 }
 async function tryCertifiedArtifact(artifacts){

@@ -11,15 +11,17 @@ const shaB='2222222222222222222222222222222222222222';
 const setEn={messages:[{context:'OptionsDialog',source:'Language:',translation:'Language:'}]};
 const setZh={messages:[{context:'OptionsDialog',source:'Language:',translation:'语言：'}]};
 const columns=[{key:'name',caption:'Name',defaultWidth:200,defaultVisible:true,translation:{source:'Name',context:'TransferListModel'},dataProperties:['name']}];
+const ref=(source,context)=>({source,context});
+const detailUi={tabs:{overview:ref('General','PropTabBar'),trackers:ref('Trackers','PropTabBar'),peers:ref('Peers','PropTabBar'),webseeds:ref('HTTP Sources','PropTabBar'),files:ref('Content','PropTabBar')},propertyGroups:{},propertyLabels:{eta:ref('ETA:','PropertiesWidget')},tables:{files:[{key:'name',caption:'Name',translation:ref('Name','TrackerListWidget'),dataProperties:['name']}],trackers:[{key:'url',caption:'URL',translation:ref('URL','TrackerListWidget'),dataProperties:['url']}],peers:[{key:'ip',caption:'IP',translation:ref('IP','PeerListWidget'),dataProperties:['ip']}],webseeds:[{key:'url',caption:'URL',translation:ref('URL','HttpServer'),dataProperties:['url']}]}};
 const catalog=[
   {
-    qbVersion:'4.5.0',webApiVersion:'2.8.19',sourceSha:shaA,stable:true,officialWeiGSupport:true,webuiLocales:[{value:'en'},{value:'zh_CN'}],preferenceDescriptors:[{key:'locale'}],torrentTableColumns:columns,
+    qbVersion:'4.5.0',webApiVersion:'2.8.19',sourceSha:shaA,stable:true,officialWeiGSupport:true,webuiLocales:[{value:'en'},{value:'zh_CN'}],preferenceDescriptors:[{key:'locale'}],torrentTableColumns:columns,torrentDetailUi:detailUi,
     settingsUiSource:'qb-upstream-preferences-ui',settingsUiMappedPreferences:1,settingsUiTotalPreferences:1,
     settingsUi:{locale:{controlId:'locale_select',title:{context:'OptionsDialog',source:'Language:'}}},
     settingsTranslations:{en:'set-en',zh_CN:'set-zh'},settingsTranslationSets:{'set-en':setEn,'set-zh':setZh}
   },
   {
-    qbVersion:'5.2.3',webApiVersion:'2.15.1',sourceSha:shaB,stable:true,officialWeiGSupport:true,webuiLocales:[{value:'en'},{value:'zh_CN'}],preferenceDescriptors:[{key:'locale'}],torrentTableColumns:columns,
+    qbVersion:'5.2.3',webApiVersion:'2.15.1',sourceSha:shaB,stable:true,officialWeiGSupport:true,webuiLocales:[{value:'en'},{value:'zh_CN'}],preferenceDescriptors:[{key:'locale'}],torrentTableColumns:columns,torrentDetailUi:detailUi,
     settingsUiSource:'qb-upstream-preferences-ui',settingsUiMappedPreferences:1,settingsUiTotalPreferences:1,
     settingsUi:{locale:{controlId:'locale_select',title:{context:'OptionsDialog',source:'Language:'}}},
     settingsTranslations:{en:'set-en',zh_CN:'set-zh'},settingsTranslationSets:{}
@@ -38,14 +40,14 @@ const recoveryUnion={schemaVersion:1,source:'qb-official-ts-deterministic-recove
   {context:'RecoveryOnly',source:'%n item(s)',translation:['%n 项','%n 项'],numerus:true}
 ]}};
 const unionSha256=crypto.createHash('sha256').update(JSON.stringify(recoveryUnion),'utf8').digest('hex');
-const settingsLkg={schemaVersion:2,profileCount:2,profiles:[
-  {qbVersion:'4.5.0',sourceSha:shaA,torrentTableColumns:columns},
-  {qbVersion:'5.2.3',sourceSha:shaB,torrentTableColumns:columns}
+const settingsLkg={schemaVersion:2,profileCount:2,detailUiBindings:20,profiles:[
+  {qbVersion:'4.5.0',sourceSha:shaA,torrentTableColumns:columns,torrentDetailUi:detailUi},
+  {qbVersion:'5.2.3',sourceSha:shaB,torrentTableColumns:columns,torrentDetailUi:detailUi}
 ],recovery:{union:recoveryUnion,unionSha256}};
 const bundle=buildNativeSettingsBundle(catalog,behavior,{recoveryUnion});
 const runtime=runtimeCatalogData(catalog,bundle);
 assert.equal(runtime.length,2);
-for(const profile of runtime){for(const key of ['settingsUiSource','settingsUiMappedPreferences','settingsUiTotalPreferences','settingsUi','settingsTranslations','settingsTranslationSets'])assert.equal(Object.hasOwn(profile,key),false,`runtime catalog must not ship ${key}`);assert.deepEqual(profile.torrentTableColumns,columns,'exact native Torrent columns must survive packaging into the runtime profile');}
+for(const profile of runtime){for(const key of ['settingsUiSource','settingsUiMappedPreferences','settingsUiTotalPreferences','settingsUi','settingsTranslations','settingsTranslationSets'])assert.equal(Object.hasOwn(profile,key),false,`runtime catalog must not ship ${key}`);assert.deepEqual(profile.torrentTableColumns,columns,'exact native Torrent columns must survive packaging into the runtime profile');assert.deepEqual(profile.torrentDetailUi,detailUi,'exact Torrent detail UI facts must survive packaging into the runtime profile');}
 assert.deepEqual(runtime[0].settingsTranslationLocales,['en','zh_CN']);
 assert.equal(runtime[0].settingsTranslationPath,`qb-settings/${shaA}.json`,'Alt-WebUI translation hole must keep the exact official TS bridge');
 assert.deepEqual(runtime[1].settingsNativeLocales,['en','zh_CN']);
@@ -90,6 +92,7 @@ try{
   const profileB=JSON.parse(fs.readFileSync(path.join(temp,'data','qb-release-profiles',`${shaB}.json`),'utf8'));
   assert.equal(profileA.settingsTranslationPath,`qb-settings/${shaA}.json`);
   assert.deepEqual(profileA.torrentTableColumns,columns);
+  assert.deepEqual(profileA.torrentDetailUi,detailUi,'runtime exact profile shard must retain source-bound Torrent detail UI facts');
   assert.equal(Object.hasOwn(profileB,'settingsTranslationPath'),false);
   assert.equal(JSON.stringify(profileA).includes('仅恢复资产'),false,'full recovery union is build-only and must not enter runtime profile shards');
   assert.ok(fs.readFileSync(path.join(temp,'data','qb-settings-native.txt'),'utf8').includes('QBT_TR(Language:)QBT_TR[CONTEXT=OptionsDialog]'));
@@ -116,5 +119,8 @@ try{const input=path.join(tempMissing,'input.json');fs.writeFileSync(input,JSON.
 const drifted=structuredClone(settingsLkg);drifted.profiles[1].sourceSha='3'.repeat(40);
 const tempDrift=fs.mkdtempSync(path.join(os.tmpdir(),'weigg-qb-catalog-drift-'));
 try{const input=path.join(tempDrift,'input.json');fs.writeFileSync(input,JSON.stringify(catalog));assert.throws(()=>packCatalog(input,path.join(tempDrift,'out.json'),{behaviorEvidence:behavior,settingsLkg:drifted}),/does not match exact catalog source SHA/);}finally{fs.rmSync(tempDrift,{recursive:true,force:true});}
+const detailDrifted=structuredClone(settingsLkg);detailDrifted.profiles[1].torrentDetailUi.tables.peers[0].key='host';
+const tempDetailDrift=fs.mkdtempSync(path.join(os.tmpdir(),'weigg-qb-catalog-detail-drift-'));
+try{const input=path.join(tempDetailDrift,'input.json');fs.writeFileSync(input,JSON.stringify(catalog));assert.throws(()=>packCatalog(input,path.join(tempDetailDrift,'out.json'),{behaviorEvidence:behavior,settingsLkg:detailDrifted}),/Torrent detail UI does not match/);}finally{fs.rmSync(tempDetailDrift,{recursive:true,force:true});}
 
-console.log('qB WebUI catalog contract passed: exact native columns survive profile packaging, deterministic full recovery copy is QM-only, and only source-proven incompatible locales keep narrow exact official-TS browser shards.');
+console.log('qB WebUI catalog contract passed: exact native columns and Torrent detail UI facts survive profile packaging, deterministic full recovery copy is QM-only, and only source-proven incompatible locales keep narrow exact official-TS browser shards.');
