@@ -25,7 +25,7 @@ const branch=arg('branch',process.env.GITHUB_REF_NAME||'dev');
 const output=path.resolve(required('out'));
 const dispatchIfMissing=process.argv.includes('--dispatch-if-missing');
 const token=process.env.GH_TOKEN||process.env.GITHUB_TOKEN||'';
-if(!repository||!token)throw new Error('qB Settings translation artifact resolver requires repository identity and GH_TOKEN.');
+if(!repository||!token)throw new Error('qB Settings/source artifact resolver requires repository identity and GH_TOKEN.');
 
 const stablePath=path.join(projectRoot,'tools/data/qb-stable-lkg.json');
 const stable=JSON.parse(fs.readFileSync(stablePath,'utf8'));
@@ -64,20 +64,23 @@ async function downloadArtifact(artifact){
   return dir;
 }
 function validateLkg(lkg,label){
+  if(lkg?.schemaVersion!==2)throw new Error(`${label}: Settings/source LKG schema is not v2.`);
   if(lkg?.baseCatalogSha256!==stable.catalogSha256)throw new Error(`${label}: base catalog SHA mismatch.`);
   if(Number(lkg?.profileCount)!==stable.profileCount)throw new Error(`${label}: profile count mismatch.`);
   if(lkg?.supportFloor!==stable.supportFloor||lkg?.latestAdmittedStable!==stable.latestAdmittedStable)throw new Error(`${label}: stable range mismatch.`);
   applyQbSettingsTranslationLkg(frozen,lkg,{catalogSha256:stable.catalogSha256});
   const mapped=(lkg.profiles||[]).reduce((sum,item)=>sum+(Number(item.mappedPreferences)||0),0);
   const routes=(lkg.profiles||[]).reduce((sum,item)=>sum+Object.keys(item.translations||{}).length,0);
-  if(!mapped||!routes||!Object.keys(lkg.sets||{}).length)throw new Error(`${label}: Settings translation evidence is empty.`);
-  return{mapped,routes,sets:Object.keys(lkg.sets||{}).length};
+  const columns=(lkg.profiles||[]).reduce((sum,item)=>sum+(Array.isArray(item.torrentTableColumns)?item.torrentTableColumns.length:0),0);
+  const recoveryRoutes=Number(lkg?.recovery?.routeCount)||0,recoveryLocales=Number(lkg?.recovery?.localeCount)||0;
+  if(!mapped||!routes||!Object.keys(lkg.sets||{}).length||!columns||!recoveryRoutes||!recoveryLocales)throw new Error(`${label}: Settings/source v2 evidence is incomplete.`);
+  return{mapped,routes,sets:Object.keys(lkg.sets||{}).length,columns,recoveryRoutes,recoveryLocales};
 }
 function saveLkg(lkg,source){
   const stats=validateLkg(lkg,source);
   fs.mkdirSync(path.dirname(output),{recursive:true});
   fs.writeFileSync(output,JSON.stringify(lkg)+'\n','utf8');
-  console.log(`Resolved certified qB Settings translation evidence from ${source}: ${lkg.profileCount} releases, ${stats.mapped} mappings, ${stats.routes} locale routes, ${stats.sets} translation sets -> ${output}`);
+  console.log(`Resolved certified qB Settings/source v2 evidence from ${source}: ${lkg.profileCount} releases, ${stats.mapped} mappings, ${stats.columns} native columns, ${stats.routes} narrow locale routes, ${stats.sets} translation sets, ${stats.recoveryRoutes} recovery routes / ${stats.recoveryLocales} locales -> ${output}`);
   return true;
 }
 async function tryCertifiedArtifact(artifacts){
@@ -90,7 +93,7 @@ async function tryCertifiedArtifact(artifacts){
       if(saveLkg(lkg,`artifact ${artifact.id}/${artifact.name}`))return artifact;
     }catch(error){
       incompatibleArtifactIds.add(artifact.id);
-      console.warn(`Skipping incompatible Settings LKG artifact ${artifact.id}: ${error.message}`);
+      console.warn(`Skipping incompatible Settings/source LKG artifact ${artifact.id}: ${error.message}`);
     }
   }
   return null;
@@ -99,12 +102,14 @@ async function tryBootstrapCatalog(artifacts){
   for(const artifact of artifacts.filter(item=>String(item.name).startsWith('qb-release-catalog-')&&!incompatibleArtifactIds.has(item.id))){
     try{
       const dir=await downloadArtifact(artifact);
-      const file=path.join(dir,'qb-releases.json');
-      if(!fs.existsSync(file)){incompatibleArtifactIds.add(artifact.id);continue;}
+      const file=path.join(dir,'qb-releases.json'),recoveryFile=path.join(dir,'qb-releases.recovery.json');
+      if(!fs.existsSync(file)||!fs.existsSync(recoveryFile)){incompatibleArtifactIds.add(artifact.id);continue;}
       const enriched=JSON.parse(fs.readFileSync(file,'utf8'));
+      const recoveryEvidence=JSON.parse(fs.readFileSync(recoveryFile,'utf8'));
       const lkg=buildQbSettingsTranslationLkg(enriched,frozen,{
         baseCatalogSha256:stable.catalogSha256,
-        sourceEvidence:{bootstrapArtifactId:artifact.id,bootstrapArtifactName:artifact.name,bootstrapCreatedAt:artifact.created_at}
+        sourceEvidence:{bootstrapArtifactId:artifact.id,bootstrapArtifactName:artifact.name,bootstrapCreatedAt:artifact.created_at},
+        recoveryEvidence
       });
       saveLkg(lkg,`source-enriched bootstrap artifact ${artifact.id}/${artifact.name}`);
       return artifact;
@@ -122,26 +127,23 @@ async function activeSettingsEvidenceRun(){
 }
 async function dispatchSettingsEvidence(){
   const active=await activeSettingsEvidenceRun();
-  if(active){
-    console.log(`Reusing active Settings evidence refresh run ${active.id} (${active.status}) on ${branch}; no duplicate dispatch.`);
-    return false;
-  }
+  if(active){console.log(`Reusing active Settings evidence refresh run ${active.id} (${active.status}) on ${branch}; no duplicate dispatch.`);return false;}
   await api(`/repos/${repository}/actions/workflows/pages-source.yml/dispatches`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ref:branch,inputs:{mode:'settings-evidence'}})});
-  console.log(`Dispatched demand-driven Settings evidence refresh on ${branch}: 4 runners x 4 local workers (16 source/locale subshards total).`);
+  console.log(`Dispatched demand-driven Settings/source v2 evidence refresh on ${branch}: 4 runners x 4 local workers (16 source/locale subshards total).`);
   return true;
 }
 
-console.log(`Scanning up to ${ARTIFACT_MAX_PAGES*ARTIFACT_PAGE_SIZE} recent artifacts for reusable qB Settings translation evidence.`);
+console.log(`Scanning up to ${ARTIFACT_MAX_PAGES*ARTIFACT_PAGE_SIZE} recent artifacts for reusable qB Settings/source v2 evidence.`);
 let artifacts=await listArtifacts({maxPages:ARTIFACT_MAX_PAGES});
 if(await tryCertifiedArtifact(artifacts))process.exit(0);
 if(await tryBootstrapCatalog(artifacts))process.exit(0);
-if(!dispatchIfMissing)throw new Error('No compatible certified Settings LKG or source-enriched bootstrap artifact is available.');
+if(!dispatchIfMissing)throw new Error('No compatible certified Settings/source v2 LKG or source-enriched bootstrap artifact is available.');
 await dispatchSettingsEvidence();
 for(let attempt=1;attempt<=POLL_ATTEMPTS;attempt++){
   await sleep(POLL_INTERVAL_MS);
   artifacts=await listArtifacts({maxPages:1});
   if(await tryCertifiedArtifact(artifacts))process.exit(0);
   if(await tryBootstrapCatalog(artifacts))process.exit(0);
-  console.log(`Waiting for certified qB Settings translation evidence (${attempt}/${POLL_ATTEMPTS})...`);
+  console.log(`Waiting for certified qB Settings/source v2 evidence (${attempt}/${POLL_ATTEMPTS})...`);
 }
-throw new Error('Timed out waiting for compatible certified qB Settings translation evidence.');
+throw new Error('Timed out waiting for compatible certified qB Settings/source v2 evidence.');

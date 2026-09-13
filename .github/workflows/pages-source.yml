@@ -228,18 +228,24 @@ jobs:
           pattern: qb-settings-source-runner-${{ github.sha }}-*
           path: settings-shards
           merge-multiple: true
-      - name: Merge exact source-derived catalog
-        run: node tools/qb-release-catalog-shard-merge.mjs settings-shards qb-releases.json
+      - name: Merge exact source-derived catalog and recovery evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/qb-release-catalog-shard-merge.mjs settings-shards qb-releases.json
+          test -s qb-releases.recovery.json
       - name: Upload source-enriched bootstrap catalog
         uses: actions/upload-artifact@v7
         with:
           name: qb-release-catalog-${{ github.sha }}
-          path: qb-releases.json
+          path: |
+            qb-releases.json
+            qb-releases.recovery.json
           if-no-files-found: error
           retention-days: 1
 
   settings_evidence_lkg:
-    name: Freeze certified Settings translation LKG
+    name: Freeze certified Settings/source LKG v2
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'settings-evidence' && github.ref == 'refs/heads/dev' }}
     runs-on: ubuntu-latest
     needs: settings_evidence_merge
@@ -253,12 +259,13 @@ jobs:
         with:
           name: qb-release-catalog-${{ github.sha }}
           path: release-catalog
-      - name: Freeze and validate reusable Settings evidence
+      - name: Freeze and validate reusable Settings/source evidence
         shell: bash
         run: |
           set -euo pipefail
           cp release-catalog/qb-releases.json qb-releases.json
-          node tools/qb-settings-translation-lkg.mjs qb-releases.json tests/fixtures/qb-release-catalog.lkg.json qb-settings-translation-lkg.json
+          cp release-catalog/qb-releases.recovery.json qb-releases.recovery.json
+          node tools/qb-settings-translation-lkg.mjs qb-releases.json tests/fixtures/qb-release-catalog.lkg.json qb-settings-translation-lkg.json qb-releases.recovery.json
           sha256sum qb-settings-translation-lkg.json > qb-settings-translation-lkg.SHA256
           node tests/full-stable-locale-routing-contract.mjs qb-releases.json --require-mapped
           rm -rf "$RUNNER_TEMP/qb-materialized"
