@@ -6,6 +6,7 @@ import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {extractQbPreferenceUiFacts,extractQbSettingsTranslationFacts,translationSourcesForPreferenceUi} from './qb-settings-translation-source.mjs';
 import {extractQbOwnedUiFacts,translationContextsForQbOwnedUi,translationSourcesForQbOwnedUi} from './qb-owned-ui-source.mjs';
+import {buildQbNativeQmRecoveryEvidence} from './qb-native-qm-recovery.mjs';
 
 function unique(values) {
   const out=[];
@@ -116,12 +117,14 @@ export function resolveQbTranslationResourcePath(locale, paths = [], readSource 
   return null;
 }
 
-export function buildQbSettingsTranslationOverlay(catalog, readReleaseSources) {
+export function buildQbSettingsTranslationOverlay(catalog, readReleaseSources, options = {}) {
   if (!Array.isArray(catalog) || !catalog.length) throw new Error('qB Settings translation overlay requires a non-empty exact-release catalog.');
   if (typeof readReleaseSources !== 'function') throw new Error('qB Settings translation overlay requires an exact-release source loader.');
   const profiles=[];
   const sets={};
   const seen=new Set();
+  const recoveryEntries=[];
+  const recoveryEnabled=options.recoveryEvidence === true;
   for (const profile of catalog) {
     const qbVersion=String(profile?.qbVersion || '').trim();
     const sourceSha=String(profile?.sourceSha || '').trim();
@@ -136,7 +139,8 @@ export function buildQbSettingsTranslationOverlay(catalog, readReleaseSources) {
     const ui=extractQbOwnedUiFacts({
       preferencesSource:releaseSources.preferencesSource || '',
       toolbarSource:releaseSources.toolbarSource || '',
-      filtersSource:releaseSources.filtersSource || ''
+      filtersSource:releaseSources.filtersSource || '',
+      dynamicTableSource:releaseSources.dynamicTableSource || ''
     });
     const sourceStrings=unique([...translationSourcesForPreferenceUi(preferences),...translationSourcesForQbOwnedUi(ui)]);
     const contexts=unique([
@@ -145,7 +149,7 @@ export function buildQbSettingsTranslationOverlay(catalog, readReleaseSources) {
     ]);
     const locales=localeValues(profile);
     if (!locales.length) throw new Error(`${qbVersion}: exact WebUI locale facts are unresolved.`);
-    const ownsFullUiSource=Object.hasOwn(releaseSources,'toolbarSource')||Object.hasOwn(releaseSources,'filtersSource');
+    const ownsFullUiSource=Object.hasOwn(releaseSources,'toolbarSource')||Object.hasOwn(releaseSources,'filtersSource')||Object.hasOwn(releaseSources,'dynamicTableSource');
     if (ownsFullUiSource&&!Object.keys(ui).length) throw new Error(`${qbVersion}: source-derived qB-owned UI copy is unresolved.`);
     const translations={};
     for (const locale of locales) {
@@ -156,6 +160,7 @@ export function buildQbSettingsTranslationOverlay(catalog, readReleaseSources) {
       }
       else {
         if (!source) throw new Error(`${qbVersion}: missing official WebUI translation source for ${locale}.`);
+        if (recoveryEnabled) recoveryEntries.push({qbVersion,sourceSha,locale,translationSource:source});
         const facts=extractQbSettingsTranslationFacts({qbVersion,sourceSha,locale,translationSource:source,contexts,sources:sourceStrings});
         payload={messages:facts.messages};
       }
@@ -166,7 +171,8 @@ export function buildQbSettingsTranslationOverlay(catalog, readReleaseSources) {
     }
     profiles.push({qbVersion,sourceSha,source:'qb-upstream-preferences-ui',ownedUiSource:'qb-upstream-webui-source-context',mappedPreferences:Object.keys(preferences).length,totalPreferences:preferenceKeys.length,preferences,ui,translations});
   }
-  return {schemaVersion:1,source:'qb-upstream-preferences-ui+webui-ts',profiles,sets};
+  const recoveryEvidence=recoveryEnabled?buildQbNativeQmRecoveryEvidence(recoveryEntries):null;
+  return {schemaVersion:1,source:'qb-upstream-preferences-ui+webui-ts',profiles,sets,recoveryEvidence};
 }
 
 export function applyQbSettingsTranslationOverlay(catalog, overlay) {
@@ -204,6 +210,7 @@ function showMaybe(root,tag,file) { try { return git(root,'show',`${tag}:${file}
 function preferencesSource(root,tag) { return showMaybe(root,tag,'src/webui/www/private/views/preferences.html') || showMaybe(root,tag,'src/webui/www/private/preferences_content.html') || showMaybe(root,tag,'src/webui/www/private/preferences.html'); }
 function toolbarSource(root,tag) { return showMaybe(root,tag,'src/webui/www/private/views/preferencesToolbar.html') || showMaybe(root,tag,'src/webui/www/private/preferences.html'); }
 function filtersSource(root,tag) { return showMaybe(root,tag,'src/webui/www/private/views/filters.html') || showMaybe(root,tag,'src/webui/www/private/filters.html'); }
+function dynamicTableSource(root,tag) { return showMaybe(root,tag,'src/webui/www/private/scripts/dynamicTable.js'); }
 function translationPaths(root,tag) {
   let output='';
   try { output=git(root,'ls-tree','-r','--name-only',tag,'src/webui/www/translations','src/lang'); }
@@ -222,12 +229,13 @@ export function buildQbSettingsTranslationOverlayFromClone(catalog,qbRoot) {
       preferencesSource:preferencesSource(qbRoot,tag),
       toolbarSource:toolbarSource(qbRoot,tag),
       filtersSource:filtersSource(qbRoot,tag),
+      dynamicTableSource:dynamicTableSource(qbRoot,tag),
       translationSource:(locale)=>{
         const resourcePath=resolveQbTranslationResourcePath(locale,paths,sourceOf);
         return resourcePath ? sourceOf(resourcePath) : '';
       }
     };
-  });
+  },{recoveryEvidence:true});
 }
 
 const isMain=process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
@@ -242,6 +250,6 @@ if (isMain) {
     fs.mkdirSync(path.dirname(outputPath),{recursive:true});
     fs.writeFileSync(outputPath,JSON.stringify(overlay,null,2)+'\n','utf8');
     const mapped=overlay.profiles.reduce((sum,item)=>sum+item.mappedPreferences,0),total=overlay.profiles.reduce((sum,item)=>sum+item.totalPreferences,0),ui=overlay.profiles.reduce((sum,item)=>sum+Object.keys(item.ui||{}).length,0);
-    console.log(`Generated exact qB Settings translation overlay for ${overlay.profiles.length} releases; source-proven preference labels ${mapped}/${total}; qB-owned UI refs ${ui}; deduplicated translation sets ${Object.keys(overlay.sets).length}.`);
+    console.log(`Generated exact qB Settings translation overlay for ${overlay.profiles.length} releases; source-proven preference labels ${mapped}/${total}; qB-owned UI refs ${ui}; deduplicated translation sets ${Object.keys(overlay.sets).length}; recovery TS routes ${overlay.recoveryEvidence?.releases?.length||0}.`);
   } catch (error) { console.error(error?.message || error); process.exitCode=1; }
 }

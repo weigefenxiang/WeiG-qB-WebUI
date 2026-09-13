@@ -4,6 +4,7 @@ import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {applyQbSettingsTranslationOverlay,buildQbSettingsTranslationOverlayFromClone} from './qb-settings-translation-overlay.mjs';
+import {mergeQbNativeQmRecoveryEvidence} from './qb-native-qm-recovery.mjs';
 
 function unique(values){const out=[];for(const value of values||[]){const item=String(value||'').trim();if(item&&!out.includes(item))out.push(item);}return out;}
 
@@ -51,6 +52,12 @@ export function mergeEnrichedCatalogShards(baseCatalog,shards){
   if(byIdentity.size!==merged.length)throw new Error(`Enriched shard profile count ${byIdentity.size} does not match base catalog ${merged.length}.`);
   return merged;
 }
+
+export function mergeEnrichedRecoveryShards(shards){
+  if(!Array.isArray(shards)||!shards.length)throw new Error('At least one qB recovery evidence shard is required.');
+  return mergeQbNativeQmRecoveryEvidence(shards);
+}
+function recoveryOutputPath(output){return /\.json$/i.test(output)?output.replace(/\.json$/i,'.recovery.json'):`${output}.recovery.json`;}
 
 function decodeHtml(value){return String(value||'').replace(/&quot;|&#34;/g,'"').replace(/&#39;|&apos;/g,"'").replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>');}
 function plainText(value){return decodeHtml(String(value||'').replace(/<[^>]*>/g,'').trim());}
@@ -103,10 +110,13 @@ export function enrichCatalogWebuiLocales(catalog,qbRoot){
   });
 }
 
-export function enrichCatalogWebuiSourceFacts(catalog,qbRoot){
+export function enrichCatalogWebuiSourceEvidence(catalog,qbRoot){
   const localized=enrichCatalogWebuiLocales(catalog,qbRoot);
   const settingsOverlay=buildQbSettingsTranslationOverlayFromClone(localized,qbRoot);
-  return applyQbSettingsTranslationOverlay(localized,settingsOverlay);
+  return {catalog:applyQbSettingsTranslationOverlay(localized,settingsOverlay),recoveryEvidence:settingsOverlay.recoveryEvidence};
+}
+export function enrichCatalogWebuiSourceFacts(catalog,qbRoot){
+  return enrichCatalogWebuiSourceEvidence(catalog,qbRoot).catalog;
 }
 
 const isMain=process.argv[1]&&path.resolve(process.argv[1])===path.resolve(fileURLToPath(import.meta.url));
@@ -120,10 +130,17 @@ if(isMain){
       const shardFiles=fs.readdirSync(shardDir).filter((name)=>/^qb-releases-shard-\d+\.json$/.test(name)).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
       if(!shardFiles.length)throw new Error('No qB locale shard files were found for merge.');
       const shards=shardFiles.map((name)=>JSON.parse(fs.readFileSync(path.join(shardDir,name),'utf8')));
+      const recoveryShards=shardFiles.map((name)=>{
+        const recoveryName=name.replace(/\.json$/i,'.recovery.json'),recoveryPath=path.join(shardDir,recoveryName);
+        if(!fs.existsSync(recoveryPath))throw new Error(`Missing qB recovery evidence shard: ${recoveryName}.`);
+        return JSON.parse(fs.readFileSync(recoveryPath,'utf8'));
+      });
       const merged=mergeEnrichedCatalogShards(baseCatalog,shards);
+      const recoveryEvidence=mergeEnrichedRecoveryShards(recoveryShards);
       fs.mkdirSync(path.dirname(output),{recursive:true});
       fs.writeFileSync(output,JSON.stringify(merged,null,2)+'\n','utf8');
-      console.log(`Merged ${shardFiles.length} qB locale/source shards into ${merged.length} exact release profiles.`);
+      fs.writeFileSync(recoveryOutputPath(output),JSON.stringify(recoveryEvidence,null,2)+'\n','utf8');
+      console.log(`Merged ${shardFiles.length} qB locale/source shards into ${merged.length} exact release profiles with ${recoveryEvidence.releases.length} full-TS recovery routes.`);
     }else{
       const positional=args.filter((arg)=>!arg.startsWith('--shard-index=')&&!arg.startsWith('--shard-count='));
       const qbRoot=path.resolve(positional[0]||process.env.QB_UPSTREAM_DIR||'');
@@ -142,13 +159,14 @@ if(isMain){
         catalog=selectCatalogShard(fullCatalog,shardIndex,shardCount);
         shardLabel=`${shardIndex+1}/${shardCount}`;
       }
-      const enriched=enrichCatalogWebuiSourceFacts(catalog,qbRoot);
+      const enrichedResult=enrichCatalogWebuiSourceEvidence(catalog,qbRoot),enriched=enrichedResult.catalog,recoveryEvidence=enrichedResult.recoveryEvidence;
       fs.mkdirSync(path.dirname(output),{recursive:true});
       fs.writeFileSync(output,JSON.stringify(enriched,null,2)+'\n','utf8');
+      fs.writeFileSync(recoveryOutputPath(output),JSON.stringify(recoveryEvidence,null,2)+'\n','utf8');
       const resolved=enriched.filter(item=>Array.isArray(item.webuiLocales)&&item.webuiLocales.length).length;
       const mapped=enriched.reduce((sum,item)=>sum+(Number(item.settingsUiMappedPreferences)||0),0);
       const total=enriched.reduce((sum,item)=>sum+(Number(item.settingsUiTotalPreferences)||0),0);
-      console.log(`Enriched qB locale/source shard ${shardLabel}: ${resolved}/${enriched.length} release profiles; source-proven Settings labels ${mapped}/${total}.`);
+      console.log(`Enriched qB locale/source shard ${shardLabel}: ${resolved}/${enriched.length} release profiles; source-proven Settings labels ${mapped}/${total}; full-TS recovery routes ${recoveryEvidence.releases.length}.`);
     }
   }catch(error){console.error(error?.message||error);process.exitCode=1;}
 }

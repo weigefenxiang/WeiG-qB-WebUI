@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import {buildQmProvisioningPlan} from '../tools/qb-qm-provisioning-source.mjs';
+import {buildQbSettingsTranslationOverlay} from '../tools/qb-settings-translation-overlay.mjs';
+import {mergeEnrichedRecoveryShards} from '../tools/qb-locale-source.mjs';
 import {buildQbNativeQmRecoveryEvidence,compareQbStableVersions,materializeQbNativeQmRecoveryUnion,mergeQbNativeQmRecoveryEvidence} from '../tools/qb-native-qm-recovery.mjs';
 const behavior={schemaVersion:1,families:{
   'qapp-native':{altWebuiTranslation:true,translatorResource:'application-installed-translator',missingTranslationFallback:'qt-application-translator'},
@@ -50,6 +52,7 @@ const recoverySources=[
   ['5.1.0',sha(4),ts('zh_CN',context('Ctx',scalar('Winner','新译')+scalar('NewestTie','乙')+plural('%n file(s)','%n 份文件','%n 份文件')))]
 ].map(([qbVersion,sourceSha,translationSource])=>buildQbNativeQmRecoveryEvidence([{qbVersion,sourceSha,locale:'zh_CN',translationSource}]));
 const recoveryMerged=mergeQbNativeQmRecoveryEvidence([recoverySources[3],recoverySources[1],recoverySources[0],recoverySources[2]]);
+assert.deepEqual(mergeEnrichedRecoveryShards([recoverySources[3],recoverySources[1],recoverySources[0],recoverySources[2]]),recoveryMerged,'locale/source recovery shard owner must delegate to the canonical deterministic recovery merger');
 const recoveryReversed=mergeQbNativeQmRecoveryEvidence([recoverySources[2],recoverySources[0],recoverySources[1],recoverySources[3]]);
 assert.deepEqual(recoveryMerged,recoveryReversed,'parallel recovery evidence merge must not depend on shard completion/input order');
 const recoveryUnion=materializeQbNativeQmRecoveryUnion(recoveryMerged);
@@ -60,6 +63,13 @@ assert.deepEqual(recoveryMessages.get('%n file(s)'),{context:'Ctx',source:'%n fi
 assert.ok(!recoveryMessages.has('Ignored unfinished')&&!recoveryMessages.has('Ignored vanished'),'unfinished/vanished official TS messages must not enter recovery evidence');
 const lexical=buildQbNativeQmRecoveryEvidence([{qbVersion:'5.2.3',sourceSha:sha('d'),locale:'de',translationSource:ts('de',context('Ctx',scalar('Same source','Zed')+scalar('Same source','Alpha')))}]);
 assert.equal(materializeQbNativeQmRecoveryUnion(lexical).locales.de[0].translation,'Alpha','when count and newest exact release tie, lexical translation order must be deterministic');
+
+const dynamicTable=`class TorrentsTable extends DynamicTable {initColumns(){this.newColumn("name", "", "QBT_TR(Name)QBT_TR[CONTEXT=TransferListModel]", 200, true);}} class TorrentPeersTable extends DynamicTable {}`;
+const columnOverlay=buildQbSettingsTranslationOverlay([{qbVersion:'5.2.3',sourceSha:'f'.repeat(40),tag:'release-5.2.3',webuiLocales:[{value:'zh_CN'}],preferenceDescriptors:[]}],()=>({preferencesSource:'',toolbarSource:'',filtersSource:'',dynamicTableSource:dynamicTable,translationSource:()=>ts('zh_CN',context('TransferListModel',scalar('Name','名称')))}));
+assert.deepEqual(columnOverlay.profiles[0].ui['column.name'],{source:'Name',context:'TransferListModel'},'Settings/qB-owned source overlay must pass exact dynamicTable.js into the canonical qB-owned UI source owner');
+const columnSet=columnOverlay.sets[columnOverlay.profiles[0].translations.zh_CN];
+assert.equal(columnSet.messages.find(item=>item.source==='Name')?.translation,'名称','source-proven native Torrent column refs must join the same narrow exact official-TS bridge set');
+
 const oldMajority=buildQbNativeQmRecoveryEvidence([
   {qbVersion:'4.1.0',sourceSha:sha('a'),locale:'de_DE',translationSource:ts('de_DE',context('Ctx',scalar('Mode','Alt')))},
   {qbVersion:'4.1.1',sourceSha:sha('b'),locale:'de_DE',translationSource:ts('de_DE',context('Ctx',scalar('Mode','Alt')))},
