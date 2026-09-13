@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import vm from 'node:vm';
 
 const source=await fs.readFile(new URL('../webui/private/scripts/qb-client.js',import.meta.url),'utf8');
+const registry=JSON.parse(await fs.readFile(new URL('../webui/private/data/capabilities.json',import.meta.url),'utf8'));
 let profile=null;
 function descriptor(action){
   if(!profile||profile.fallback===true||!Array.isArray(profile.apiActions)||!profile.apiActions.includes(action))return null;
@@ -21,6 +22,11 @@ const SET_DL='transfercontroller.h:setDownloadLimitAction';
 const SET_UL='transfercontroller.h:setUploadLimitAction';
 const ADD='torrentscontroller.h:addAction';
 const ALL=[TOGGLE,SET_DL,SET_UL,ADD];
+const addFeature=registry.features.torrentAdd;
+assert.equal(addFeature.sourceRequired,true,'Torrent Add UI capability must fail closed without source provenance');
+assert.equal(addFeature.writeRequired,true,'Torrent Add UI capability must require current-release write provenance');
+assert.equal(addFeature.upstream.action,ADD,'Torrent Add UI capability must bind the exact addAction source owner');
+assert.deepEqual(addFeature.selectors,['#add-btn','#empty-add-btn','#add-submit'],'all visible Torrent Add entry points must share one source-proven write capability');
 const operations={
   toggle:()=>client.toggleAltSpeedMode(),
   download:()=>client.setGlobalDownloadLimit(1234.6),
@@ -46,4 +52,4 @@ profile={qbVersion:'6.9.0',webApiVersion:'99.0.0',fallback:true,resolutionMode:'
 before=calls.length;
 for(const [name,operation] of Object.entries(operations))await assert.rejects(Promise.resolve().then(operation),/source-proven/,`future fallback must not guess ${name} write support`);
 assert.equal(calls.length,before,'future fallback baseline state writes must make zero HTTP requests');
-console.log('QBClient baseline state write provenance passed: exact/equivalent releases may dispatch source-proven state writes, while inherited/fallback future releases make zero write HTTP requests.');
+console.log('QBClient baseline state write provenance passed: Torrent Add UI entry points and transport share exact addAction ownership; exact/equivalent releases may dispatch source-proven state writes, while inherited/fallback future releases make zero write HTTP requests.');
