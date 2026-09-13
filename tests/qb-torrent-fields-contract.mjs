@@ -17,6 +17,8 @@ assert.deepEqual(q4Columns[0],{key:'priority',caption:'#',defaultWidth:30,defaul
 assert.deepEqual(q4Columns[1].dataProperties,['state']);
 assert.deepEqual(q4Columns[2].translation,{source:'Name',context:'TransferListModel'});
 assert.deepEqual(q4Columns[2].dataProperties,['name','state']);
+const legacyCommentTable=`var TorrentsTable = new Class({Extends: DynamicTable,initColumns:function(){this.newColumn('name','','QBT_TR(Name)QBT_TR[CONTEXT=TorrentModel]',200,true);},formatRatio:function(){var ratio=1; //Don't round up\nreturn ratio; /* preserve a ' quote and { brace } inside comments */}}); var TorrentPeersTable = new Class({});`;
+assert.deepEqual(extractTorrentTableColumns(legacyCommentTable,'qB4 comment scanner synthetic').map(x=>x.key),['name'],'legacy MooTools TorrentsTable scanning must ignore quotes/braces inside line and block comments');
 
 const q5Table=`class TorrentsTable extends DynamicTable {initColumns(){this.newColumn("priority", "", "#", 30, true);this.newColumn("infohash_v1", "", "QBT_TR(Info Hash v1)QBT_TR[CONTEXT=TransferListModel]", 200, false);this.newColumn("infohash_v2", "", "QBT_TR(Info Hash v2)QBT_TR[CONTEXT=TransferListModel]", 200, false);this.newColumn("state_icon", "", "QBT_TR(Status Icon)QBT_TR[CONTEXT=TransferListModel]", 22, false);this.columns["state_icon"].dataProperties[0]="state";}} class TorrentPeersTable extends DynamicTable {}`;
 const q5Columns=extractTorrentTableColumns(q5Table,'qB5 table synthetic');
