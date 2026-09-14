@@ -41,11 +41,11 @@
   }
   function sourceGeneralFieldValue(field,data,hash){
     if(field&&field.valueSource==='torrentHash')return String(hash||'—');
-    var R=W.ReleaseProfile,keys=Array.isArray(field&&field.dataProperties)?field.dataProperties.map(String):[];
-    if(!keys.length||!R||typeof R.hasTorrentDetailField!=='function'||keys.some(function(key){return!R.hasTorrentDetailField('properties',key);}))return null;
-    if(field.id==='private'&&keys.indexOf('has_metadata')>=0&&keys.indexOf('private')>=0){if(!data.has_metadata)return label('N/A','不适用');return generalYesNo(!!data.private);}
-    if(field.id==='pieces'&&keys.indexOf('pieces_num')>=0){var pieces=data.pieces_num,pieceSize=keys.indexOf('piece_size')>=0?data.piece_size:null;return pieces==null?'—':String(pieces)+(pieceSize==null?'':' × '+(U&&U.formatBytes?U.formatBytes(pieceSize):String(pieceSize)));}
-    var values=[];keys.forEach(function(key){if(own(data,key)){var text=generalScalar(key,data[key]);if(text!=='—'||values.length===0)values.push(text);}});return values.length?values.join(' · '):'—';
+    var keys=Array.isArray(field&&field.dataProperties)?field.dataProperties.map(String):[];
+    if(!keys.length)return null;
+    if(field.id==='private'&&keys.indexOf('has_metadata')>=0&&keys.indexOf('private')>=0){if(!own(data,'has_metadata')||!own(data,'private'))return'—';if(!data.has_metadata)return label('N/A','不适用');return generalYesNo(!!data.private);}
+    if(field.id==='pieces'&&keys.indexOf('pieces_num')>=0){if(!own(data,'pieces_num'))return'—';var pieces=data.pieces_num,pieceSize=keys.indexOf('piece_size')>=0&&own(data,'piece_size')?data.piece_size:null;return pieces==null?'—':String(pieces)+(pieceSize==null?'':' × '+(U&&U.formatBytes?U.formatBytes(pieceSize):String(pieceSize)));}
+    var values=[];keys.forEach(function(key){var text=own(data,key)?generalScalar(key,data[key]):'—';if(text!=='—'||values.length===0)values.push(text);});return values.length?values.join(' · '):'—';
   }
   function renderGeneral(root,data,hash){
     var ui=exactDetailUi(),layout=ui&&ui.propertyLayout;if(!root||!data||typeof data!=='object'||Array.isArray(data)||!Array.isArray(layout)||!layout.length)return false;
