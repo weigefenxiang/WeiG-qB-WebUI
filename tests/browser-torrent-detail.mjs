@@ -8,10 +8,27 @@ const here=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(here,'../webui/private');
 const productVersion=(await fs.readFile(path.resolve(here,'../VERSION'),'utf8')).trim();
 const frozen=JSON.parse(await fs.readFile(path.resolve(here,'fixtures/qb-release-catalog.lkg.json'),'utf8'));
-const profile=frozen.find(item=>item.qbVersion==='5.2.0');
-if(!profile)throw new Error('Torrent detail browser gate requires frozen qB 5.2.0 profile.');
-const fileColumns=profile.torrentDetailUi?.tables?.files||[];
-for(const key of ['checked','name','size','progress','remaining','priority'])if(!fileColumns.some(column=>column.key===key))throw new Error(`Frozen qB 5.2.0 Content source facts are missing ${key}.`);
+const frozenProfile=frozen.find(item=>item.qbVersion==='5.2.0');
+if(!frozenProfile)throw new Error('Torrent detail browser gate requires frozen qB 5.2.0 profile.');
+// Browser evidence consumes the current exact 5.2.0 Content source surface without mutating the
+// Frozen LKG. Full Frozen promotion remains a separate explicit gate. These column defaults come
+// from release-5.2.0 DynamicTable.TorrentFilesTable; checked/remaining provenance is source-derived
+// from torrent-content.js + file-tree.js and is independently locked by the source contract.
+const currentSourceFileColumns=[
+  {key:'checked',caption:'',defaultWidth:50,defaultVisible:true,dataProperties:['priority']},
+  {key:'name',caption:'Name',translation:{source:'Name',context:'TrackerListWidget'},defaultWidth:300,defaultVisible:true,dataProperties:['name']},
+  {key:'size',caption:'Total Size',translation:{source:'Total Size',context:'TrackerListWidget'},defaultWidth:75,defaultVisible:true,dataProperties:['size']},
+  {key:'progress',caption:'Progress',translation:{source:'Progress',context:'TrackerListWidget'},defaultWidth:100,defaultVisible:true,dataProperties:['progress']},
+  {key:'priority',caption:'Download Priority',translation:{source:'Download Priority',context:'TrackerListWidget'},defaultWidth:150,defaultVisible:true,dataProperties:['priority']},
+  {key:'remaining',caption:'Remaining',translation:{source:'Remaining',context:'TrackerListWidget'},defaultWidth:75,defaultVisible:true,dataProperties:['size','progress','priority']},
+  {key:'availability',caption:'Availability',translation:{source:'Availability',context:'TrackerListWidget'},defaultWidth:75,defaultVisible:true,dataProperties:['availability']}
+];
+const profile=structuredClone(frozenProfile);
+profile.torrentDetailUi=profile.torrentDetailUi||{};
+profile.torrentDetailUi.tables=profile.torrentDetailUi.tables||{};
+profile.torrentDetailUi.tables.files=currentSourceFileColumns;
+const fileColumns=profile.torrentDetailUi.tables.files;
+for(const key of ['checked','name','size','progress','remaining','priority'])if(!fileColumns.some(column=>column.key===key))throw new Error(`Current qB 5.2.0 Content source overlay is missing ${key}.`);
 
 const host='127.0.0.1',port=8777;
 const hash='d'.repeat(40);

@@ -6,6 +6,7 @@ import {extractPreferenceDescriptors,extractPreferenceKeys} from './qb-source-pa
 import {extractTorrentFilters,extractTorrentInfoParameters} from './qb-torrent-surface-parsers.mjs';
 import {extractTorrentInfoFields,extractTorrentStates,extractTorrentTableColumns} from './qb-torrent-fields-parser.mjs';
 import {extractTorrentDetailSurfaces,extractTorrentDetailUi} from './qb-detail-surface-parsers.mjs';
+import {enrichTorrentFileColumnProvenance} from './qb-release-catalog-detail-provenance.mjs';
 import {extractControllerActionParameters} from './qb-action-surface-parsers.mjs';
 import {supportedStableReleaseTags} from './qb-release-tags.mjs';
 import {enrichPreferenceDescriptorsFromGetter} from './qb-preference-semantics.mjs';
@@ -101,15 +102,19 @@ function torrentSurface(ref){
   const propertiesContentSource=firstSource(ref,['src/webui/www/private/views/properties.html','src/webui/www/private/properties_content.html']);
   const propertiesGeneralSource=showMaybe(ref,'src/webui/www/private/scripts/prop-general.js');
   if(!propertiesToolbarSource||!propertiesContentSource||!propertiesGeneralSource)throw new Error(`${ref}: Torrent detail source markup/script is unresolved`);
+  const propFilesSource=showMaybe(ref,'src/webui/www/private/scripts/prop-files.js');
+  const fileProjectionSource=[propFilesSource,showMaybe(ref,'src/webui/www/private/scripts/torrent-content.js'),showMaybe(ref,'src/webui/www/private/scripts/file-tree.js')].filter(Boolean).join('\n');
+  const detailSurfaces=extractTorrentDetailSurfaces(torrentsControllerSource,ref,serializerHeaderSource);
   const torrentDetailUi=extractTorrentDetailUi({
     toolbarSource:propertiesToolbarSource,
     contentSource:propertiesContentSource,
     generalSource:propertiesGeneralSource,
     dynamicTableSource,
-    legacyFilesSource:showMaybe(ref,'src/webui/www/private/scripts/prop-files.js'),
+    legacyFilesSource:propFilesSource,
     legacyTrackersSource:showMaybe(ref,'src/webui/www/private/scripts/prop-trackers.js'),
     legacyWebseedsSource:showMaybe(ref,'src/webui/www/private/scripts/prop-webseeds.js')
   },ref);
+  torrentDetailUi.tables.files=enrichTorrentFileColumnProvenance(torrentDetailUi.tables.files,fileProjectionSource,detailSurfaces.torrentFileFields,ref);
   return{
     torrentFilters:extractTorrentFilters({torrentFilterSource,torrentsControllerSource},ref),
     torrentInfoParameters:extractTorrentInfoParameters(torrentsControllerSource,ref),
@@ -117,7 +122,7 @@ function torrentSurface(ref){
     torrentStates:extractTorrentStates(serializerSource,ref),
     torrentTableColumns,
     torrentDetailUi,
-    ...extractTorrentDetailSurfaces(torrentsControllerSource,ref,serializerHeaderSource)
+    ...detailSurfaces
   };
 }
 
