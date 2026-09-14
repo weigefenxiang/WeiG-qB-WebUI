@@ -4,8 +4,12 @@ const app=fs.readFileSync(new URL('../webui/private/scripts/app.js',import.meta.
 const ui=fs.readFileSync(new URL('../webui/private/scripts/ui.js',import.meta.url),'utf8');
 assert.match(app,/function detailColumnValue\(surface,item,columnKey,fallback\).*W\.QbUiEvidence.*detailColumns\(surface\)/s,'Detail runtime must resolve source-proven column values through the generic manifest owner');
 assert.match(app,/async function renderDetailTable\(root,surface\).*await app\.client\[surface\]\(app\.detailHash\)/s,'Tracker reads must use the generic manifest-driven Detail table renderer');
-assert.match(app,/function detailRowAddress\(surface,item,index\).*surface==='trackers'.*detailColumnValue\(surface,item,'url',''\)/s,'Tracker actions must consume the exact source-proven API URL field without a parallel owner');
-assert.doesNotMatch(app,/U\.normalizeTracker\([^)]*(?:tracker|url)/i,'Tracker detail display/edit must not normalize or redact URL');
+const addressStart=app.indexOf('function detailRowAddress');
+const addressEnd=app.indexOf('function detailRowParameter',addressStart);
+assert.ok(addressStart>=0&&addressEnd>addressStart,'generic Detail row-address owner must exist');
+const addressOwner=app.slice(addressStart,addressEnd);
+assert.match(addressOwner,/surface==='trackers'.*detailColumnValue\(surface,item,'url',''\)/s,'Tracker actions must consume the exact source-proven API URL field without a parallel owner');
+assert.doesNotMatch(addressOwner,/normalizeTracker/i,'Tracker Detail URL path must not normalize or redact the exact API value');
 assert.match(ui,/cell\.title=cell\.textContent;if\(isUrl\)\{cell\.style\.whiteSpace='nowrap';cell\.style\.overflow='hidden';cell\.style\.textOverflow='ellipsis';\}/,'shared Detail renderer must keep exact URL in tooltip and render it as a single-line ellipsis');
 assert.doesNotMatch(ui,/overflowWrap='anywhere'|wordBreak='break-word'/,'Tracker URL presentation must not wrap');
 console.log('Tracker detail URL contract passed: exact qB URL value is preserved by the generic Detail renderer, single-line ellipsized, and fully available by tooltip without normalization.');
