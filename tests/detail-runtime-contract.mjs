@@ -27,7 +27,10 @@ assert.doesNotMatch(index,/data-tab="(?:overview|files|trackers|peers|webseeds)"
 assert.match(app,/function detailUi\(\)\{var R=W\.ReleaseProfile;return R&&typeof R\.torrentDetailUi==='function'\?R\.torrentDetailUi\(\):null;\}/,'app must consume the canonical ReleaseProfile Detail manifest owner');
 assert.match(app,/function detailTabKeys\(\).*Array\.isArray\(ui&&ui\.tabOrder\)\?ui\.tabOrder:Object\.keys\(tabs\)/s,'Detail tab order must come from the source-generated manifest');
 assert.match(app,/function defaultDetailTab\(\)\{var keys=detailTabKeys\(\);return keys\.length\?keys\[0\]:'';\}/,'default Detail tab must be source order item zero');
+assert.match(app,/function detailTableSurface\(tab\).*ui&&ui\.tables.*Array\.isArray\(tables\[key\]\).*tables\[key\]\.length/s,'table surfaces must be admitted only from source-generated Detail tables');
 assert.doesNotMatch(app,/\bdetailActions\s*=|DetailTabsV2/,'app must not retain a parallel fixed tab/action truth');
+assert.match(app,/async function loadDetailTab\(tab\).*surface=detailTableSurface\(tab\).*if\(tab==='overview'\)await renderOverview\(root\);else if\(surface\)await renderDetailTable\(root,surface\)/s,'Detail dispatch must be manifest-driven with only General as its distinct source-layout surface');
+assert.doesNotMatch(app,/else if\(tab==='(?:files|trackers|peers|webseeds)'\)/,'Detail dispatch must not enumerate table surfaces by hand');
 assert.match(app,/async function renderOverview\(root\)\{var p=await app\.client\.properties\(app\.detailHash\);.*W\.QbUiEvidence\.renderGeneral\(root,p,app\.detailHash\).*throw new Error/s,'Overview must pass one Properties response to source-driven General and fail closed if unresolved');
 assert.equal((app.match(/app\.client\.properties\(app\.detailHash\)/g)||[]).length,1,'Overview must issue exactly one Properties request');
 assert.doesNotMatch(app,/保存路径|总大小|已下载|已上传|连接数|privacyType|discoveryType|sourceDetailObject/,'app must not retain a hand-written General fallback');
@@ -37,23 +40,33 @@ assert.match(layout,/keys\.some\(function\(key\)\{return!R\.hasTorrentDetailFiel
 assert.match(layout,/title\.textContent=detailGroupLabel\(key\)/,'General group labels must use qB translation evidence');
 assert.match(layout,/name\.textContent=detailPropertyLabel\(row\.id\)/,'General field labels must use qB translation evidence');
 assert.equal(fs.existsSync(retiredGeneralRuntime),false,'retired detail-general.js must remain deleted');
+
 assert.match(app,/function detailControl\(name\).*ui&&ui\.controls/s,'Detail controls must come from the source-generated manifest');
-assert.match(app,/async function renderFiles\(root\).*detailControl\('filePriority'\).*sourceOptions=.*control&&control\.options/s,'File priority choices must come from exact source options');
+assert.match(app,/function detailFilePriorityCell\(surface\).*detailControl\('filePriority'\).*sourceOptions=.*control&&control\.options/s,'File priority choices must come from exact source options');
 assert.match(app,/writeActionSupported\('torrentscontroller\.h:filePrioAction'\)/,'File priority writes must require current source/write provenance');
 assert.match(app,/app\.client\.setFilePriority\(app\.detailHash,fileId,value\)/,'File priority writes must use QBClient');
 assert.doesNotMatch(app,/\[\s*\{value:'0'.*value:'1'.*value:'6'.*value:'7'/s,'runtime must not hard-code modern file priority choices');
+
 assert.match(app,/function detailMenu\(surface\).*ui&&ui\.contextMenus/s,'Detail row actions must consume source-generated contextMenus');
 assert.match(app,/function detailMenuLabel\(surface,item\).*detail\.menu\./s,'Detail menu copy must use generated qB translation refs');
 assert.match(app,/function detailMenuAvailable\(item,selectionCount,rowValue\).*minSelection.*maxSelection.*excludedPrefixes/s,'Detail menu row availability must consume source-generated rules');
-assert.match(app,/trackerMenu\.map\(function\(item\).*writeActionSupported\(item\.sourceAction\).*detailMenuAvailable\(item,1,trackerUrl\)/s,'Tracker row actions must be generated in source order and source/write gated');
-assert.match(app,/item\.endpoint==='torrents\/editTracker'.*app\.client\.editTracker\(app\.detailHash,trackerUrl,v\)/s,'Tracker Edit must call QBClient directly from the source item');
-assert.match(app,/item\.endpoint==='torrents\/removeTrackers'.*app\.client\.removeTrackers\(app\.detailHash,trackerUrl\)/s,'Tracker Remove must call QBClient directly from the source item');
-assert.match(app,/detailContextItems:trackerContext/,'Tracker permanent actions must be presented through shared row context menu');
-assert.match(app,/peerMenu\.map\(function\(item\).*item\.endpoint!=='transfer\/banPeers'.*writeActionSupported\(item\.sourceAction\).*detailMenuAvailable\(item,1,address\)/s,'Peer Ban must be selected from source-generated context menu facts');
-assert.match(app,/app\.client\.banPeers\(address\)/,'Peer Ban must use QBClient');
-assert.match(app,/detailContextItems:peerContext/,'Peer permanent actions must use shared row context menu');
+assert.match(app,/function detailActionDescriptor\(item\).*R\.actionDescriptor\(action\).*endpoint\.split\('\/'\)\.pop\(\)!==expected/s,'generic Detail actions must resolve through ReleaseProfile action provenance and agree with the source menu endpoint');
+assert.match(app,/async function detailActionForm\(surface,item,index,menuItem,desc\).*desc\.parameters.*desc\.required.*desc\.optional.*desc\.parameterOptions/s,'generic Detail actions must consume generated parameter, required/optional and option facts');
+assert.match(app,/name==='hash'\|\|name==='hashes'.*app\.detailHash/s,'generic Detail actions must bind torrent identity without endpoint-specific branches');
+assert.match(app,/surface==='trackers'.*name==='url'\|\|name==='origUrl'\|\|name==='urls'/s,'generic Detail actions must bind exact Tracker row URL by source parameter name');
+assert.match(app,/surface==='peers'&&name==='peers'.*detailRowAddress/s,'generic Detail actions must bind Peer address through one row-context resolver');
+assert.match(app,/\^new\[A-Z_\]\/\.test\(name\).*promptNames\.push\(name\)/s,'source actions exposing a new-value parameter must be prompted generically instead of endpoint branching');
+assert.match(app,/Object\.prototype\.hasOwnProperty\.call\(options,name\).*promptNames\.push\(name\)/s,'source-proven parameter options must enter the generic prompt path');
+assert.match(app,/async function executeDetailAction\(surface,item,index,menuItem\).*detailActionDescriptor\(menuItem\).*app\.client\.request\(String\(menuItem\.endpoint\),\{method:'POST',form:form,type:'void'\}\)/s,'generic Detail action execution must use the exact generated endpoint through QBClient transport');
+assert.match(app,/function detailActionItems\(surface,item,index,selectionCount\).*detailMenu\(surface\)\.map.*detailMenuAvailable.*executeDetailAction/s,'toolbar and row actions must come from the same generated menu/action path');
+assert.match(app,/toolbarActions=detailActionItems\(surface,null,-1,0\)/,'zero-selection source actions must be generated into the first-row toolbar');
+assert.match(app,/detailContextItems:function\(item,_surface,index\)\{return detailActionItems\(surface,item,index,1\);\}/,'row context actions must use the same generic source menu executor');
+assert.doesNotMatch(app,/item\.endpoint==='torrents\/(?:editTracker|removeTrackers)'|item\.endpoint!=='transfer\/banPeers'/,'runtime must not branch on known Tracker/Peer endpoint names');
 assert.doesNotMatch(app,/Edit tracker URL\.\.\.|Remove tracker|Ban peer permanently|startsWith\('\*\* \['\)|startsWith\('endpoint\|'\)/,'runtime must not duplicate qB menu strings or static-row prefix rules');
 assert.doesNotMatch(app,/speed\.style\.cursor='pointer'|textContent='×'/,'Peer runtime must not expose inline permanent-action affordances');
+
+assert.match(app,/async function renderDetailTable\(root,surface\).*typeof app\.client\[surface\]!=='function'.*await app\.client\[surface\]\(app\.detailHash\)/s,'table reads must dispatch from the manifest surface to the existing QBClient owner and fail closed if no reader exists');
+assert.doesNotMatch(app,/async function render(?:Files|Trackers|Peers|Webseeds)\(/,'app must not retain per-surface Detail table renderer owners');
 assert.match(ui,/if\(isUrl\)\{cell\.style\.whiteSpace='nowrap';cell\.style\.overflow='hidden';cell\.style\.textOverflow='ellipsis';\}/,'URL cells must be single-line ellipsis');
 assert.match(ui,/cell\.title=cell\.textContent/,'Detail cells must retain exact visible value in tooltip');
 assert.doesNotMatch(ui,/overflowWrap='anywhere'|wordBreak='break-word'/,'Tracker URL cells must not wrap');
@@ -70,4 +83,4 @@ assert.match(ui,/W\.SharedColumns\.commit\(ctx\.tableId,ctx\.source,ctx\.resolve
 assert.match(tableCss,/\.shared-table__viewport[^}]*overflow:auto/,'Detail table viewport must own native horizontal scrolling');
 assert.doesNotMatch(ui,/legacyRow|querySelector\([^)]*(?:edit|remove|ban)[^)]*\).*\.click\(/i,'Detail context menu must not synthesize legacy rows/buttons and click them');
 assert.doesNotMatch(layout,/MutationObserver/,'Detail schema state must not rely on MutationObserver repair');
-console.log('Torrent Detail runtime contract passed: all seven source-driven Detail closures use one exact ReleaseProfile/QbUiEvidence/SharedColumns/QBClient chain with fail-closed writes.');
+console.log('Torrent Detail runtime contract passed: source-generated tabs/tables/actions now converge on one generic ReleaseProfile/QbUiEvidence/SharedColumns/QBClient runtime with fail-closed parameter binding.');
