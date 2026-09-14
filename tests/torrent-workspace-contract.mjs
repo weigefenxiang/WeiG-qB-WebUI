@@ -40,6 +40,7 @@ assert(appCss.includes('.torrent-list{overflow:auto;position:relative}'),'#torre
 assert(tableCss.includes('#torrent-list>.torrent-table-head{position:sticky;top:0;')&&tableCss.includes('width:max-content;min-width:100%'),'sticky header must participate in the same horizontally scrollable content width');
 assert(tableCss.includes('#torrent-list>.virtual-list__spacer{position:relative;width:max-content;min-width:100%}'),'virtual rows must share the same native horizontal content extent as the header');
 assert(!tableCss.includes('translateX(')&&!tableCss.includes('margin-left:calc(-1 *'),'table CSS must not repair header/body horizontal synchronization with presentation offsets');
+assert(tableCss.includes('.shared-table__head .col-resize{right:0}'),'Detail resize hitbox must stay fully inside overflow-clipped header cells on desktop and coarse pointers');
 
 // Resize/reorder hot path: pointermove only updates the CSS grid projection. VirtualList rebuild
 // and persistence happen at the bounded interaction commit, never on each pointer frame.
