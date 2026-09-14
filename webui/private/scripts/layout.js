@@ -12,7 +12,7 @@
   function cloneColumn(column){var out=Object.assign({},column||{});if(Array.isArray(out.dataProperties))out.dataProperties=out.dataProperties.slice();if(out.translation&&typeof out.translation==='object')out.translation=Object.assign({},out.translation);return out;}
   function officialText(key,ref,fallback){var source=String(ref&&ref.source||fallback||key||'').trim();if(W.I18n&&typeof W.I18n.qbText==='function')return W.I18n.qbText(String(key||''),source||String(key||''));return source||String(key||'');}
   function exactProfile(){var R=W.ReleaseProfile;if(!R||typeof R.current!=='function'||typeof R.isCertified!=='function'||!R.isCertified())return null;var profile=R.current();return profile&&!profile.fallback?profile:null;}
-  function exactDetailUi(){var profile=exactProfile(),ui=profile&&profile.torrentDetailUi;return ui&&typeof ui==='object'&&!Array.isArray(ui)?ui:null;}
+  function exactDetailUi(){var R=W.ReleaseProfile,ui=R&&typeof R.torrentDetailUi==='function'?R.torrentDetailUi():null;return ui&&typeof ui==='object'&&!Array.isArray(ui)?ui:null;}
   function detailTranslationKey(surface,key){return'detail.'+String(surface||'')+'.'+String(key||'');}
   function detailColumns(surface){var ui=exactDetailUi(),tables=ui&&ui.tables,raw=tables&&tables[String(surface||'')];if(!Array.isArray(raw))return[];return raw.map(function(column){var out=cloneColumn(column),fallback=String(out.caption||out.key||'');out.label=officialText(detailTranslationKey(surface,out.key),out.translation,fallback);return out;});}
   function detailTab(key){var ui=exactDetailUi(),ref=ui&&ui.tabs&&ui.tabs[String(key||'')];return officialText('detail.tab.'+String(key||''),ref,ref&&ref.source||String(key||''));}
