@@ -68,6 +68,8 @@ assert.doesNotMatch(layout,/MutationObserver/,'detail schema/column state must n
 assert.equal(fs.existsSync(retiredGeneralRuntime),false,'retired detail-general.js must be deleted after canonical Overview cutover');
 
 assert.match(ui,/function installSharedColumnInteraction\(\)/,'one shared pointer interaction engine must own table resize/reorder');
+assert.match(ui,/global\.addEventListener\('pointermove',move,true\).*global\.addEventListener\('pointerup',up,true\).*global\.addEventListener\('pointercancel',up,true\)/s,'shared resize drag must keep a window-level pointer lifecycle after the cursor leaves the narrow handle');
+assert.match(ui,/global\.removeEventListener\('pointermove',move,true\).*global\.removeEventListener\('pointerup',up,true\).*global\.removeEventListener\('pointercancel',up,true\)/s,'shared resize drag must release its global pointer lifecycle exactly at completion');
 assert.match(ui,/W\.DataGrid\.addResizeHandles=function\(head,columns,onChange,options\)\{return attach\(head,columns,onChange,options\);\}/,'the main Torrent table must delegate to the same shared interaction engine used by detail tables');
 assert.match(ui,/e\.pointerType==='touch'.*longPress=setTimeout/s,'shared column reorder must include touch long-press support');
 assert.match(ui,/if\(!drag\.armed\)\{if\(distance>8\)\{clearTimeout\(longPress\);drag=null;\}return;\}/,'ordinary touch scrolling must cancel reorder before long-press capture');
