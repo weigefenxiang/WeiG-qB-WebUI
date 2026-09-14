@@ -449,6 +449,18 @@ function Configure-QBWebUI([string]$Path,[string]$RootFolder) {
   Write-Host "qBittorrent config encoding preserved and atomically replaced: $($state.EncodingName)"
 }
 
+function Prune-Backups([int]$Keep=3) {
+  if($Keep -lt 1){throw 'Backup retention must keep at least one backup.'}
+  $owned=@(Get-ChildItem -LiteralPath $Backups -Directory -ErrorAction SilentlyContinue | Where-Object {
+    $_.Name -match '^\d{8}-\d{6}$' -and
+    (Test-Path -LiteralPath (Join-Path $_.FullName 'had-webui') -PathType Leaf) -and
+    (Test-Path -LiteralPath (Join-Path $_.FullName 'dest-path') -PathType Leaf)
+  } | Sort-Object Name -Descending)
+  foreach($item in @($owned | Select-Object -Skip $Keep)){
+    Remove-Item -LiteralPath $item.FullName -Recurse -Force
+  }
+}
+
 function Backup-Current([string]$ConfigPath='') {
   $stamp=Get-Date -Format 'yyyyMMdd-HHmmss'
   $b=Join-Path $Backups $stamp
@@ -466,6 +478,7 @@ function Backup-Current([string]$ConfigPath='') {
   Set-Content -Encoding UTF8 -Path (Join-Path $b 'dest-path') -Value $Destination
   Set-Content -Encoding UTF8 -Path (Join-Path $State 'last-backup') -Value $b
   Set-Content -Encoding UTF8 -Path (Join-Path $State 'last-dest') -Value $Destination
+  Prune-Backups 3
   Write-Host "Backup: $b"
 }
 
