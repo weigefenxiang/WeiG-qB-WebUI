@@ -129,7 +129,7 @@ jobs:
           if(site.simulatorSha!==sha||site.branches?.dev?.exactSha!==sha||dev.branch!=='dev'||dev.exactSha!==sha||dev.simulatorSha!==sha)throw new Error('Exact dev Pages identity mismatch before artifact upload.');
           if(site.localeCatalog?.profiles!==65||!Array.isArray(catalog)||catalog.length!==65||catalog.some(profile=>!Array.isArray(profile.webuiLocales)||!profile.webuiLocales.length))throw new Error('Frozen Locale overlay was not applied to all 65 Pages profiles.');
           if(site.settingsTranslationCatalog?.profiles!==65||site.settingsTranslationCatalog?.mappedPreferences<1||site.settingsTranslationCatalog?.translationRoutes<1||site.settingsTranslationCatalog?.translationSets<1)throw new Error('Certified qB Settings translation LKG was not applied to all stable profiles.');
-          if(!dist.nativeRegistry||Number(dist.qmAssets)<1)throw new Error('Materialized dev installer payload is missing official qB Settings translation assets.');
+          if(dist.ownedCopyRegistry!=='private/data/qb-settings-native.txt'||dist.legacySettingsAssets!==false||Number(dist.qmAssets)<1||!Number.isFinite(Number(dist.ownedCopyBytes))||Number(dist.ownedCopyBytes)<=0||Number(dist.ownedCopyBytes)>=5*1024*1024)throw new Error('Materialized dev installer payload is missing compact qB Settings translation assets or exceeds the project single-file target.');
           console.log(`Exact Pages identity PASS: ${sha}; Locale profiles=${site.localeCatalog.profiles}, Settings mappings=${site.settingsTranslationCatalog.mappedPreferences}, QM assets=${dist.qmAssets}`);
           NODE
 
