@@ -42,61 +42,21 @@
   var JA={'nav.torrents':'Torrent','nav.search':'検索','nav.logs':'ログ','nav.settings':'設定','library.all':'すべてのTorrent','library.add':'Torrentを追加','settings.title':'設定','settings.save':'保存','settings.language':'言語','search.torrents':'Torrentを検索…','search.settings':'設定を検索…'};
   var KO={'nav.torrents':'토렌트','nav.search':'검색','nav.logs':'로그','nav.settings':'설정','library.all':'모든 토렌트','library.add':'토렌트 추가','settings.title':'설정','settings.save':'저장','settings.language':'언어','search.torrents':'토렌트 검색…','search.settings':'설정 검색…'};
   var dicts={'en':EN,'zh-CN':Object.assign({},EN,ZH),'zh-TW':Object.assign({},EN,ZHT),'ja':Object.assign({},EN,JA),'ko':Object.assign({},EN,KO)};
-  var qbLocale='en',locale='en',localeOptions=[],localeTask=null,settingsData=null,settingsTask=null,nativeSettingsData=null,nativeSettingsTask=null,nativeSettingsLocale=null,localeApplied=false,reloadScheduled=false;
-  function canonicalQbTag(value){
-    var raw=String(value||'').trim().replace(/@(?:latin|latn)$/i,'-Latn').replace(/_/g,'-');
-    if(!raw)return'';
-    try{if(Intl.getCanonicalLocales)raw=Intl.getCanonicalLocales(raw)[0]||raw;}catch(_e){}
-    return raw;
-  }
-  function qbLocaleParts(value){
-    var tag=canonicalQbTag(value);if(!tag)return null;
-    try{var loc=new Intl.Locale(tag),max=loc.maximize?loc.maximize():loc;return{tag:tag,language:String(loc.language||'').toLowerCase(),script:String(loc.script||max.script||''),region:String(loc.region||max.region||'').toUpperCase(),explicitScript:!!loc.script,explicitRegion:!!loc.region};}catch(_e){}
-    var bits=tag.split('-');return{tag:tag,language:String(bits[0]||'').toLowerCase(),script:'',region:'',explicitScript:false,explicitRegion:false};
-  }
+  var qbLocale='en',locale='en',localeOptions=[],localeTask=null,qbCopyData=null,qbCopyTask=null,qbCopyLocale=null,localeApplied=false,reloadScheduled=false;
+  function canonicalQbTag(value){var raw=String(value||'').trim().replace(/@(?:latin|latn)$/i,'-Latn').replace(/_/g,'-');if(!raw)return'';try{if(Intl.getCanonicalLocales)raw=Intl.getCanonicalLocales(raw)[0]||raw;}catch(_e){}return raw;}
+  function qbLocaleParts(value){var tag=canonicalQbTag(value);if(!tag)return null;try{var loc=new Intl.Locale(tag),max=loc.maximize?loc.maximize():loc;return{tag:tag,language:String(loc.language||'').toLowerCase(),script:String(loc.script||max.script||''),region:String(loc.region||max.region||'').toUpperCase(),explicitScript:!!loc.script,explicitRegion:!!loc.region};}catch(_e){}var bits=tag.split('-');return{tag:tag,language:String(bits[0]||'').toLowerCase(),script:'',region:'',explicitScript:false,explicitRegion:false};}
   function localeOptionValues(items){var out=[],seen={};(items||[]).forEach(function(item){var value=String(typeof item==='string'?item:item&&item.value||'').trim();if(value&&!seen[value]){seen[value]=true;out.push(value);}});return out;}
   function exactLocaleOption(value,items){var target=canonicalQbTag(value).toLowerCase();if(!target)return null;var values=localeOptionValues(items);for(var i=0;i<values.length;i++)if(canonicalQbTag(values[i]).toLowerCase()===target)return values[i];return null;}
   function sameQbLocale(a,b){var x=canonicalQbTag(a),y=canonicalQbTag(b);return !!x&&!!y&&x.toLowerCase()===y.toLowerCase();}
   function hasExactLocale(value,items){return exactLocaleOption(value,items||localeOptions)!==null;}
-  function matchBrowserLocale(languages,items){
-    var values=localeOptionValues(items||localeOptions);if(!values.length)return null;
-    var parsed=values.map(function(value){return{value:value,parts:qbLocaleParts(value)};}).filter(function(x){return x.parts&&x.parts.language;});
-    var wanted=Array.isArray(languages)?languages:[languages];
-    for(var i=0;i<wanted.length;i++){
-      var bp=qbLocaleParts(wanted[i]);if(!bp||!bp.language)continue;
-      var exact=exactLocaleOption(bp.tag,values);if(exact)return exact;
-      var same=parsed.filter(function(x){return x.parts.language===bp.language;});if(!same.length)continue;
-      if(bp.language==='zh'){
-        var targets=[];
-        if(bp.script==='Hans'||bp.region==='CN'||bp.region==='SG')targets=['zh-CN','zh'];
-        else if(bp.region==='HK'||bp.region==='MO')targets=['zh-HK','zh-TW','zh'];
-        else if(bp.script==='Hant'||bp.region==='TW')targets=['zh-TW','zh'];
-        for(var z=0;z<targets.length;z++){var zh=exactLocaleOption(targets[z],values);if(zh)return zh;}
-      }
-      var generic=same.find(function(x){return !x.parts.explicitRegion&&!x.parts.explicitScript&&canonicalQbTag(x.value).indexOf('-')<0;});
-      if(generic)return generic.value;
-      if(bp.explicitScript){var scriptHits=same.filter(function(x){return x.parts.script===bp.script;});if(scriptHits.length===1)return scriptHits[0].value;}
-      if(bp.explicitRegion){var regionHits=same.filter(function(x){return x.parts.region===bp.region;});if(regionHits.length===1)return regionHits[0].value;}
-      if(same.length===1)return same[0].value;
-    }
-    return null;
-  }
-  function normalize(tag){
-    var raw=canonicalQbTag(tag||'en')||'en';
-    var lower=raw.toLowerCase();
-    if(lower==='zh'||lower==='zh-cn'||lower==='zh-sg'||lower.indexOf('zh-hans')===0)return'zh-CN';
-    if(lower==='zh-tw'||lower==='zh-hk'||lower==='zh-mo'||lower.indexOf('zh-hant')===0)return'zh-TW';
-    if(lower.indexOf('ja')===0)return'ja';
-    if(lower.indexOf('ko')===0)return'ko';
-    if(lower.indexOf('en')===0)return'en';
-    return raw||'en';
-  }
+  function matchBrowserLocale(languages,items){var values=localeOptionValues(items||localeOptions);if(!values.length)return null;var parsed=values.map(function(value){return{value:value,parts:qbLocaleParts(value)};}).filter(function(x){return x.parts&&x.parts.language;});var wanted=Array.isArray(languages)?languages:[languages];for(var i=0;i<wanted.length;i++){var bp=qbLocaleParts(wanted[i]);if(!bp||!bp.language)continue;var exact=exactLocaleOption(bp.tag,values);if(exact)return exact;var same=parsed.filter(function(x){return x.parts.language===bp.language;});if(!same.length)continue;if(bp.language==='zh'){var targets=[];if(bp.script==='Hans'||bp.region==='CN'||bp.region==='SG')targets=['zh-CN','zh'];else if(bp.region==='HK'||bp.region==='MO')targets=['zh-HK','zh-TW','zh'];else if(bp.script==='Hant'||bp.region==='TW')targets=['zh-TW','zh'];for(var z=0;z<targets.length;z++){var zh=exactLocaleOption(targets[z],values);if(zh)return zh;}}var generic=same.find(function(x){return !x.parts.explicitRegion&&!x.parts.explicitScript&&canonicalQbTag(x.value).indexOf('-')<0;});if(generic)return generic.value;if(bp.explicitScript){var scriptHits=same.filter(function(x){return x.parts.script===bp.script;});if(scriptHits.length===1)return scriptHits[0].value;}if(bp.explicitRegion){var regionHits=same.filter(function(x){return x.parts.region===bp.region;});if(regionHits.length===1)return regionHits[0].value;}if(same.length===1)return same[0].value;}return null;}
+  function normalize(tag){var raw=canonicalQbTag(tag||'en')||'en',lower=raw.toLowerCase();if(lower==='zh'||lower==='zh-cn'||lower==='zh-sg'||lower.indexOf('zh-hans')===0)return'zh-CN';if(lower==='zh-tw'||lower==='zh-hk'||lower==='zh-mo'||lower.indexOf('zh-hant')===0)return'zh-TW';if(lower.indexOf('ja')===0)return'ja';if(lower.indexOf('ko')===0)return'ko';if(lower.indexOf('en')===0)return'en';return raw||'en';}
   function format(value,vars){return String(value).replace(/\{([^}]+)\}/g,function(_,key){return vars&&vars[key]!==undefined?vars[key]:'{'+key+'}';});}
   function t(key,vars){var d=dicts[locale]||EN;return format(d[key]!==undefined?d[key]:(EN[key]!==undefined?EN[key]:key),vars);}
   function pick(en,cn){return locale==='zh-CN'?cn:en;}
   function apply(root){root=root||document;document.documentElement.lang=locale;Array.prototype.forEach.call(root.querySelectorAll('[data-i18n]'),function(el){el.textContent=t(el.dataset.i18n);});Array.prototype.forEach.call(root.querySelectorAll('[data-i18n-placeholder]'),function(el){el.setAttribute('placeholder',t(el.dataset.i18nPlaceholder));});Array.prototype.forEach.call(root.querySelectorAll('[data-i18n-aria]'),function(el){el.setAttribute('aria-label',t(el.dataset.i18nAria));});Array.prototype.forEach.call(root.querySelectorAll('[data-i18n-title]'),function(el){el.setAttribute('title',t(el.dataset.i18nTitle));});}
-  function resetSettingsCopy(){settingsData=null;settingsTask=null;nativeSettingsData=null;nativeSettingsTask=null;nativeSettingsLocale=null;}
-  function applyLocale(value){var raw=String(value||'en').trim()||'en',next=normalize(raw),wasApplied=localeApplied,changed=raw!==qbLocale||next!==locale;qbLocale=raw;locale=next;localeApplied=true;if(changed)resetSettingsCopy();apply(document);if(changed)global.dispatchEvent(new CustomEvent('weigg:languagechange',{detail:{locale:locale,qbLocale:qbLocale}}));if(changed&&wasApplied&&!reloadScheduled){reloadScheduled=true;setTimeout(function(){global.location.reload();},0);}return locale;}
+  function resetQbCopy(){qbCopyData=null;qbCopyTask=null;qbCopyLocale=null;}
+  function applyLocale(value){var raw=String(value||'en').trim()||'en',next=normalize(raw),wasApplied=localeApplied,changed=raw!==qbLocale||next!==locale;qbLocale=raw;locale=next;localeApplied=true;if(changed)resetQbCopy();apply(document);if(changed)global.dispatchEvent(new CustomEvent('weigg:languagechange',{detail:{locale:locale,qbLocale:qbLocale}}));if(changed&&wasApplied&&!reloadScheduled){reloadScheduled=true;setTimeout(function(){global.location.reload();},0);}return locale;}
   function nativeLabel(code){var raw=String(code||'').trim(),tag=canonicalQbTag(raw);try{var loc=new Intl.Locale(tag),language=loc.language,display=new Intl.DisplayNames([tag],{type:'language'}),name=display.of(language);if(!name)return raw;if(language==='zh'){var expanded=loc.maximize?loc.maximize():loc,script=expanded.script?new Intl.DisplayNames([tag],{type:'script'}).of(expanded.script):'';return name+(script?' · '+script:'')+' ('+raw+')';}return name+' ('+raw+')';}catch(_e){}return raw;}
   function normalizeOptions(items){var out=[],seen={},counts={};(items||[]).forEach(function(item){var value=String(item&&item.value||'').trim();if(!value||seen[value])return;seen[value]=true;var label=String(item&&item.label||nativeLabel(value)||value).trim();out.push({value:value,label:label});counts[label]=(counts[label]||0)+1;});out.forEach(function(item){if(counts[item.label]>1)item.label=nativeLabel(item.value)||item.value;});return out;}
   function parseLocaleOptions(html){var source=String(html||''),select=source.match(/<select\b[^>]*\bid=["']weigg-qb-locale-options["'][^>]*>([\s\S]*?)<\/select>/i);if(!select||select[1].indexOf('${LANGUAGE_OPTIONS}')>=0)return[];var out=[];for(var match of select[1].matchAll(/<option\b[^>]*\bvalue=["']([^"']+)["'][^>]*>([\s\S]*?)<\/option>/gi)){var label=String(match[2]||'').replace(/<[^>]*>/g,'').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').trim();out.push({value:match[1],label:label});}return normalizeOptions(out);}
@@ -105,68 +65,44 @@
   function loadLocaleOptions(){if(localeTask)return localeTask;localeTask=fetch('views/preferences.html?weigg_locale_probe=1',{credentials:'same-origin',cache:'no-store'}).then(function(res){if(!res.ok)throw new Error('qB locale probe HTTP '+res.status);return res.text();}).then(function(html){var probed=parseLocaleOptions(html);return setLocaleOptions(probed.length?probed:profileLocaleOptions());}).catch(function(){return setLocaleOptions(profileLocaleOptions());});return localeTask;}
   function asset(path){return W.buildAssetUrl?W.buildAssetUrl(path):path;}
   function currentProfile(){var R=W.ReleaseProfile;return R&&R.current&&R.current()||null;}
-  function localeIn(list){var wanted=normalize(qbLocale);return Array.isArray(list)&&list.some(function(value){return String(value)===qbLocale||normalize(value)===wanted;});}
-  function nativeLocaleAllowed(current){return !!(current&&!current.fallback&&localeIn(current.settingsNativeLocales));}
-  function bridgeLocaleAllowed(current){return !!(current&&!current.fallback&&localeIn(current.settingsTranslationLocales));}
-  function validSettingsPath(value){return /^qb-settings\/[0-9a-f]{40}\.json$/.test(String(value||''));}
   function decodeField(value){try{return decodeURIComponent(String(value||''));}catch(_e){return String(value||'');}}
-  function parseNativeSettingsRegistry(text,expectedSha){
-    var source=String(text||''),refs={},preferences={},ui={},match;
-    var refRe=/@@WEIGG_TEXT\t([0-9a-f]{24})\r?\n([\s\S]*?)\r?\n@@WEIGG_END/g;
-    while((match=refRe.exec(source))){var value=String(match[2]||'').trim();if(value&&value.indexOf('QBT_TR(')<0)refs[match[1]]=value;}
-    var profileRe=/^@@WEIGG_PROFILE\t([0-9a-f]{40})\t([^\t]*)\t([^\t]*)\t([0-9a-f]{24})\t([0-9a-f]{24}|-)\s*$/gm;
-    while((match=profileRe.exec(source))){
-      if(match[1]!==expectedSha)continue;
-      var title=refs[match[4]];
-      if(!title)continue;
-      var description=match[5]!=='-'?refs[match[5]]||'':'';
-      preferences[decodeField(match[2])]={title:title,description:description,controlId:decodeField(match[3])||null};
-    }
-    var uiRe=/^@@WEIGG_UI\t([0-9a-f]{40})\t([^\t]*)\t([0-9a-f]{24})\s*$/gm;
-    while((match=uiRe.exec(source))){if(match[1]!==expectedSha)continue;var textValue=refs[match[3]];if(textValue)ui[decodeField(match[2])]=textValue;}
-    return{schemaVersion:2,source:'qb-native-QBT_TR+official-QM',sourceSha:expectedSha,locale:qbLocale,preferences:preferences,ui:ui};
+  function routeLocale(list){if(!Array.isArray(list))return null;for(var i=0;i<list.length;i++)if(sameQbLocale(list[i],qbLocale))return list[i];var wanted=normalize(qbLocale);for(var j=0;j<list.length;j++)if(normalize(list[j])===wanted)return list[j];return null;}
+  function parseOwnedCopyRegistry(text,expectedSha,expectedVersion){
+    var source=String(text||''),refs={},bindings={},sets={},bridges={},profile=null,match;
+    var refRe=/^@@REF\t([0-9a-f]{24})\t([^\t\r\n]*)\t([^\t\r\n]*)\r?\n([\s\S]*?)\r?\n@@END\s*$/gm;
+    while((match=refRe.exec(source))){var raw=String(match[4]||'').trim();refs[match[1]]={context:decodeField(match[2]),source:decodeField(match[3]),text:raw&&raw.indexOf('QBT_TR(')<0?raw:null};}
+    var profileRe=/^@@PROFILE\t([0-9a-f]{40})\t([^\t\r\n]*)\t([^\t\r\n]*)\t(b[0-9a-f]{20})\t([^\t\r\n]*)\t([^\t\r\n]*)\s*$/gm;
+    while((match=profileRe.exec(source))){if(match[1]!==expectedSha)continue;var version=decodeField(match[2]);if(String(version)!==String(expectedVersion))continue;profile={sourceSha:match[1],qbVersion:version,family:decodeField(match[3]),bindingId:match[4],nativeLocales:decodeField(match[5]).split(',').filter(Boolean),bridgeLocales:decodeField(match[6]).split(',').filter(Boolean)};break;}
+    if(!profile)return null;
+    var prefRe=/^@@PREF\t(b[0-9a-f]{20})\t([^\t\r\n]*)\t([^\t\r\n]*)\t([0-9a-f]{24})\t([0-9a-f]{24}|-)\s*$/gm;
+    while((match=prefRe.exec(source))){var bind=bindings[match[1]]||(bindings[match[1]]={preferences:{},ui:{}});bind.preferences[decodeField(match[2])]={controlId:decodeField(match[3])||null,title:match[4],description:match[5]==='-'?null:match[5]};}
+    var uiRe=/^@@UI\t(b[0-9a-f]{20})\t([^\t\r\n]*)\t([0-9a-f]{24})\s*$/gm;
+    while((match=uiRe.exec(source))){var uiBind=bindings[match[1]]||(bindings[match[1]]={preferences:{},ui:{}});uiBind.ui[decodeField(match[2])]=match[3];}
+    var setRe=/^@@SET\t(t[0-9a-f]{20})\t([0-9a-f]{24})\t([^\t\r\n]*)\s*$/gm;
+    while((match=setRe.exec(source))){var set=sets[match[1]]||(sets[match[1]]={});set[match[2]]=decodeField(match[3]);}
+    var bridgeRe=/^@@BRIDGE\t([0-9a-f]{40})\t([^\t\r\n]*)\t(t[0-9a-f]{20}|-)\s*$/gm;
+    while((match=bridgeRe.exec(source))){if(match[1]===expectedSha)bridges[decodeField(match[2])]=match[3]==='-'?null:match[3];}
+    var binding=bindings[profile.bindingId];if(!binding)return null;
+    var nativeLocale=routeLocale(profile.nativeLocales),bridgeLocale=nativeLocale?null:routeLocale(profile.bridgeLocales),mode=nativeLocale?'native':(bridgeLocale?'bridge':null);if(!mode)return null;
+    var bridgeSet=mode==='bridge'&&bridges[bridgeLocale]?sets[bridges[bridgeLocale]]||{}:{};
+    function resolve(id){var ref=refs[id];if(!ref)return null;if(mode==='bridge')return String(bridgeSet[id]!==undefined?bridgeSet[id]:ref.source);return ref.text===null?null:String(ref.text);}
+    var preferences={},ui={},unresolved=false;
+    Object.keys(binding.preferences).forEach(function(key){var entry=binding.preferences[key],title=resolve(entry.title),description=entry.description?resolve(entry.description):'';if(title===null||description===null){unresolved=true;return;}preferences[key]={title:title,description:description||'',controlId:entry.controlId||null};});
+    Object.keys(binding.ui).forEach(function(key){var value=resolve(binding.ui[key]);if(value===null){unresolved=true;return;}ui[key]=value;});
+    if(mode==='native'&&unresolved)return null;
+    return{schemaVersion:1,source:mode==='native'?'qb-native-QBT_TR+minimal-official-QM':'qb-exact-official-TS-compact-bridge',sourceSha:expectedSha,qbVersion:expectedVersion,locale:qbLocale,mode:mode,preferences:preferences,ui:ui};
   }
-  function loadNativeSettingsData(){
-    var current=currentProfile();
-    if(!nativeLocaleAllowed(current))return Promise.resolve(null);
-    var expectedSha=String(current.sourceSha||'');
-    if(nativeSettingsData&&nativeSettingsData.sourceSha===expectedSha&&nativeSettingsLocale===qbLocale)return Promise.resolve(nativeSettingsData);
-    if(nativeSettingsTask)return nativeSettingsTask;
-    nativeSettingsLocale=qbLocale;
-    nativeSettingsTask=fetch(asset('data/qb-settings-native.txt'),{credentials:'same-origin',cache:'no-store'}).then(function(res){if(!res.ok)throw new Error('qB native Settings copy HTTP '+res.status);return res.text();}).then(function(text){
-      var value=parseNativeSettingsRegistry(text,expectedSha);
-      if(!Object.keys(value.preferences).length)throw new Error('qB native Settings copy is unresolved for '+expectedSha);
-      nativeSettingsData=value;return value;
-    }).catch(function(){nativeSettingsData=null;return null;}).finally(function(){nativeSettingsTask=null;});
-    return nativeSettingsTask;
+  function loadQbOwnedCopy(){
+    var current=currentProfile();if(!current||current.fallback)return Promise.resolve(null);var expectedSha=String(current.sourceSha||''),expectedVersion=String(current.qbVersion||'');if(!/^[0-9a-f]{40}$/.test(expectedSha)||!expectedVersion)return Promise.resolve(null);
+    if(qbCopyData&&qbCopyData.sourceSha===expectedSha&&qbCopyData.qbVersion===expectedVersion&&qbCopyLocale===qbLocale)return Promise.resolve(qbCopyData);if(qbCopyTask)return qbCopyTask;qbCopyLocale=qbLocale;
+    qbCopyTask=fetch(asset('data/qb-settings-native.txt'),{credentials:'same-origin',cache:'no-store'}).then(function(res){if(!res.ok)throw new Error('qB-owned copy registry HTTP '+res.status);return res.text();}).then(function(text){var value=parseOwnedCopyRegistry(text,expectedSha,expectedVersion);if(!value)throw new Error('qB-owned copy registry is unresolved for '+expectedVersion+'@'+expectedSha);qbCopyData=value;return value;}).catch(function(){qbCopyData=null;return null;}).finally(function(){qbCopyTask=null;});return qbCopyTask;
   }
-  function loadSettingsData(){
-    if(settingsTask)return settingsTask;
-    var current=currentProfile();
-    if(!bridgeLocaleAllowed(current)||!validSettingsPath(current.settingsTranslationPath))return Promise.resolve(null);
-    var expectedVersion=String(current.qbVersion||''),expectedSha=String(current.sourceSha||'');
-    settingsTask=fetch(asset('data/'+current.settingsTranslationPath),{credentials:'same-origin',cache:'no-store'}).then(function(res){if(!res.ok)throw new Error('qB Settings translations HTTP '+res.status);return res.json();}).then(function(value){
-      if(!value||(value.schemaVersion!==1&&value.schemaVersion!==2)||String(value.qbVersion)!==expectedVersion||String(value.sourceSha)!==expectedSha)throw new Error('qB Settings translation shard identity mismatch');
-      settingsData=value;return settingsData;
-    }).catch(function(){settingsData=null;return null;}).finally(function(){settingsTask=null;});
-    return settingsTask;
-  }
-  function exactNativeSettingsData(){var current=currentProfile();if(!nativeSettingsData||!current||current.fallback||nativeSettingsLocale!==qbLocale)return null;if(String(nativeSettingsData.sourceSha)!==String(current.sourceSha))return null;return nativeSettingsData;}
-  function exactSettingsData(){var current=currentProfile();if(!settingsData||!current||current.fallback)return null;if(String(settingsData.qbVersion)!==String(current.qbVersion)||String(settingsData.sourceSha)!==String(current.sourceSha))return null;return settingsData;}
-  function translationSet(data){if(!data)return null;var hash=data.translations&&data.translations[qbLocale];if(!hash){var target=normalize(qbLocale),key=Object.keys(data.translations||{}).find(function(value){return normalize(value)===target;});if(key)hash=data.translations[key];}return hash&&data.sets&&data.sets[hash]||null;}
-  function translateRef(ref,data){if(!ref||!ref.source)return'';var set=translationSet(data),messages=set&&Array.isArray(set.messages)?set.messages:[];var hit=messages.find(function(item){return item.context===ref.context&&item.source===ref.source;});var value=hit&&hit.translation;if(Array.isArray(value))value=value[0];return String(value||ref.source);}
-  function qbSetting(key){
-    var native=exactNativeSettingsData(),nativeEntry=native&&native.preferences&&native.preferences[key];
-    if(nativeEntry)return{title:nativeEntry.title,description:nativeEntry.description||'',source:native.source,controlId:nativeEntry.controlId||null};
-    var data=exactSettingsData(),entry=data&&data.preferences&&data.preferences[key];
-    if(!entry)return null;
-    return{title:translateRef(entry.title,data),description:entry.description?translateRef(entry.description,data):'',source:'qb-upstream-preferences-ui+webui-ts-compatibility-only',controlId:entry.controlId||null};
-  }
-  function qbOwnedText(){var native=exactNativeSettingsData();if(native&&native.ui)return Object.assign({},native.ui);var data=exactSettingsData(),values={};Object.keys(data&&data.ui||{}).forEach(function(key){values[key]=translateRef(data.ui[key],data);});return values;}
+  function exactQbCopy(){var current=currentProfile();if(!qbCopyData||!current||current.fallback||qbCopyLocale!==qbLocale)return null;if(String(qbCopyData.qbVersion)!==String(current.qbVersion)||String(qbCopyData.sourceSha)!==String(current.sourceSha))return null;return qbCopyData;}
+  function qbSetting(key){var data=exactQbCopy(),entry=data&&data.preferences&&data.preferences[key];if(!entry)return null;return{title:entry.title,description:entry.description||'',source:data.source,controlId:entry.controlId||null};}
+  function qbOwnedText(){var data=exactQbCopy();return data&&data.ui?Object.assign({},data.ui):{};}
   function qbText(key,fallback){var values=qbOwnedText();return String(values[key]||fallback||key);}
-  function loadQbSettingsCopy(){var current=currentProfile();if(nativeLocaleAllowed(current))return loadNativeSettingsData().then(function(value){return value||loadSettingsData();});return loadSettingsData();}
-  function loadQbOwnedText(){return loadQbSettingsCopy().then(function(){return qbOwnedText();});}
-  function ready(){return Promise.all([loadLocaleOptions(),loadQbSettingsCopy()]).then(function(){return api;});}
-  var api={t:t,pick:pick,apply:apply,applyLocale:applyLocale,getLocale:function(){return locale;},getQbLocale:function(){return qbLocale;},normalize:normalize,canonicalQbTag:canonicalQbTag,sameQbLocale:sameQbLocale,hasExactLocale:hasExactLocale,matchBrowserLocale:matchBrowserLocale,parseLocaleOptions:parseLocaleOptions,parseNativeSettingsRegistry:parseNativeSettingsRegistry,loadLocaleOptions:loadLocaleOptions,localeOptions:function(){return localeOptions.slice();},loadSettingsData:loadSettingsData,loadNativeSettingsData:loadNativeSettingsData,loadQbOwnedText:loadQbOwnedText,qbSetting:qbSetting,qbText:qbText,ready:ready,supported:[],english:EN};
+  function loadQbOwnedText(){return loadQbOwnedCopy().then(function(){return qbOwnedText();});}
+  function ready(){return Promise.all([loadLocaleOptions(),loadQbOwnedCopy()]).then(function(){return api;});}
+  var api={t:t,pick:pick,apply:apply,applyLocale:applyLocale,getLocale:function(){return locale;},getQbLocale:function(){return qbLocale;},normalize:normalize,canonicalQbTag:canonicalQbTag,sameQbLocale:sameQbLocale,hasExactLocale:hasExactLocale,matchBrowserLocale:matchBrowserLocale,parseLocaleOptions:parseLocaleOptions,parseOwnedCopyRegistry:parseOwnedCopyRegistry,loadLocaleOptions:loadLocaleOptions,localeOptions:function(){return localeOptions.slice();},loadQbOwnedCopy:loadQbOwnedCopy,loadQbOwnedText:loadQbOwnedText,qbSetting:qbSetting,qbText:qbText,ready:ready,supported:[],english:EN};
   W.I18n=api;W.t=t;
 })(window);

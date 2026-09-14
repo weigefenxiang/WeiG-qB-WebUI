@@ -11,6 +11,7 @@ function unique(values){return [...new Set((values||[]).map(value=>String(value|
 function localeValues(profile){return unique((profile?.webuiLocales||[]).map(item=>typeof item==='string'?item:item?.value));}
 function refKey(context,source){return `${String(context||'')}\u0000${String(source||'')}`;}
 function refId(context,source){return crypto.createHash('sha256').update(refKey(context,source)).digest('hex').slice(0,24);}
+function contentId(prefix,value){return `${prefix}${crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex').slice(0,20)}`;}
 function isPlainEnglish(locale){return String(locale||'').trim().replace('-','_').toLowerCase()==='en';}
 function encodeField(value){return encodeURIComponent(String(value??''));}
 function qbtTranslation(value){if(Array.isArray(value))return value.length?String(value[0]):null;const text=String(value??'');return text||null;}
@@ -20,9 +21,9 @@ function messageMap(set){const out=new Map();for(const item of set?.messages||[]
 function refsForProfile(profile){const out=[];const seen=new Set();const add=(ref)=>{if(!ref?.source||!ref?.context)return;const identity=refKey(ref.context,ref.source);if(!seen.has(identity)){seen.add(identity);out.push({context:String(ref.context),source:String(ref.source)});}};for(const entry of Object.values(profile?.settingsUi||{}))for(const role of ['title','description'])add(entry?.[role]);for(const ref of Object.values(profile?.qbOwnedUi||{}))add(ref);return out;}
 function translationSet(profile,locale,allSets){const hash=profile?.settingsTranslations?.[locale];return hash?allSets[hash]||null:null;}
 function assertRecoveryUnion(union){
-  if(!union||union.schemaVersion!==1||union.source!=='qb-official-ts-deterministic-recovery-union'||!union.locales||typeof union.locales!=='object')throw new Error('Native qB Settings bundle requires the certified deterministic recovery union.');
+  if(!union||union.schemaVersion!==1||union.source!=='qb-official-ts-deterministic-recovery-union'||!union.locales||typeof union.locales!=='object')throw new Error('qB runtime copy bundle requires the certified deterministic recovery union.');
   for(const [locale,messages] of Object.entries(union.locales)){
-    if(!locale||!Array.isArray(messages))throw new Error('Native qB recovery union contains an invalid locale payload.');
+    if(!locale||!Array.isArray(messages))throw new Error('qB recovery union contains an invalid locale payload.');
     const seen=new Set();
     for(const item of messages){
       if(!item?.context||!item?.source)throw new Error(`${locale}: recovery union message requires context + source.`);
@@ -33,9 +34,32 @@ function assertRecoveryUnion(union){
   }
   return union;
 }
-function recoveryLocaleMap(union,locale){return messageMap({messages:union?.locales?.[locale]||[]});}
+function recoveryLocaleMap(union,locale){return new Map((union?.locales?.[locale]||[]).map(item=>[refKey(item.context,item.source),item]));}
 function expectedOutput(ref,exactMap){return exactMap.get(refKey(ref.context,ref.source))||ref.source;}
-function dedicatedLocaleCompatible(profile,locale,behavior,recoveryMap,allSets){if(isPlainEnglish(locale))return true;const exact=messageMap(translationSet(profile,locale,allSets));const refs=refsForProfile(profile);if(!refs.length)return false;for(const ref of refs){const identity=refKey(ref.context,ref.source);const exactValue=expectedOutput(ref,exact);const recoveryValue=recoveryMap.get(identity)||ref.source;if(behavior.missingTranslationFallback==='none-explicit'&&!exact.has(identity))return false;if(recoveryValue!==exactValue)return false;}return true;}
+function dedicatedLocaleCompatible(profile,locale,behavior,recoveryMap,allSets){if(isPlainEnglish(locale))return true;const exact=messageMap(translationSet(profile,locale,allSets));const refs=refsForProfile(profile);if(!refs.length)return false;for(const ref of refs){const identity=refKey(ref.context,ref.source);const exactValue=expectedOutput(ref,exact);const recoveryItem=recoveryMap.get(identity);const recoveryValue=recoveryItem?qbtTranslation(recoveryItem.translation):ref.source;if(behavior.missingTranslationFallback==='none-explicit'&&!exact.has(identity))return false;if(recoveryValue!==exactValue)return false;}return true;}
+function canonicalBinding(profile,rememberRef){
+  const preferences={};
+  for(const key of Object.keys(profile?.settingsUi||{}).sort()){
+    const entry=profile.settingsUi[key]||{},title=rememberRef(entry.title),description=rememberRef(entry.description);
+    if(!title)continue;
+    preferences[key]={title,description:description||null,controlId:String(entry.controlId||'')||null};
+  }
+  const ui={};
+  for(const key of Object.keys(profile?.qbOwnedUi||{}).sort()){
+    const id=rememberRef(profile.qbOwnedUi[key]);if(id)ui[key]=id;
+  }
+  return{preferences,ui};
+}
+function canonicalBridgeSet(profile,locale,allSets,rememberRef){
+  const exact=messageMap(translationSet(profile,locale,allSets)),out={};
+  for(const ref of refsForProfile(profile)){
+    const id=rememberRef(ref),value=exact.get(refKey(ref.context,ref.source));
+    if(id&&value!==undefined&&String(value)!==String(ref.source))out[id]=String(value);
+  }
+  return out;
+}
+function stableObject(value){if(Array.isArray(value))return value.map(stableObject);if(value&&typeof value==='object'){const out={};for(const key of Object.keys(value).sort())out[key]=stableObject(value[key]);return out;}return value;}
+function sameLocale(a,b){const clean=value=>String(value||'').trim().replace(/_/g,'-').toLowerCase();return clean(a)===clean(b);}
 function xmlEscape(value){return String(value??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');}
 function u32(value){const out=Buffer.allocUnsafe(4);out.writeUInt32BE(value>>>0);return out;}
 function qByteArray(value){const data=Buffer.from(String(value??''),'utf8');return Buffer.concat([u32(data.length),data]);}
@@ -46,58 +70,66 @@ function translationForms(item){if(Array.isArray(item?.translation))return item.
 function qmMessage(item){const forms=translationForms(item);return Buffer.concat([...forms.flatMap(value=>[Buffer.from([TAG_TRANSLATION]),qString(value)]),Buffer.from([TAG_COMMENT]),qByteArray(''),Buffer.from([TAG_SOURCE]),qByteArray(item.source),Buffer.from([TAG_CONTEXT]),qByteArray(item.context),Buffer.from([TAG_END])]);}
 
 export function buildNativeSettingsBundle(catalog,behaviorEvidence,{recoveryUnion}={}){
-  if(!Array.isArray(catalog)||!catalog.length)throw new Error('Native qB Settings bundle requires a non-empty enriched catalog.');
-  if(!behaviorEvidence||behaviorEvidence.schemaVersion!==1)throw new Error('Native qB Settings bundle requires translator behavior evidence schemaVersion 1.');
-  const union=assertRecoveryUnion(recoveryUnion);
-  const allSets=collectSets(catalog);
-  const profiles=[];
+  if(!Array.isArray(catalog)||!catalog.length)throw new Error('qB runtime copy bundle requires a non-empty enriched catalog.');
+  if(!behaviorEvidence||behaviorEvidence.schemaVersion!==1)throw new Error('qB runtime copy bundle requires translator behavior evidence schemaVersion 1.');
+  const union=assertRecoveryUnion(recoveryUnion),allSets=collectSets(catalog),refs=new Map(),bindings={},bridgeSets={},profiles=[];
+  const rememberRef=(ref)=>{if(!ref?.source||!ref?.context)return null;const id=refId(ref.context,ref.source),identity=refKey(ref.context,ref.source),previous=refs.get(id);if(previous&&previous.identity!==identity)throw new Error(`qB-owned ref hash collision ${id}.`);if(!previous)refs.set(id,{id,identity,context:String(ref.context),source:String(ref.source)});return id;};
+  const requiredQmRefs=new Map();
   for(const profile of catalog){
     const qbVersion=String(profile?.qbVersion||'').trim(),sourceSha=String(profile?.sourceSha||'').trim();
-    if(!qbVersion||!/^[0-9a-f]{40}$/.test(sourceSha))throw new Error('Each native Settings profile requires exact qbVersion + sourceSha.');
-    const behavior=exactBehavior(behaviorEvidence,profile);
-    if(!behavior)throw new Error(`${qbVersion}: translator behavior evidence does not match ${sourceSha}.`);
-    const refs=refsForProfile(profile),nativeLocales=[],bridgeLocales=[];
-    if(refs.length){
+    if(!qbVersion||!/^[0-9a-f]{40}$/.test(sourceSha))throw new Error('Each qB runtime copy profile requires exact qbVersion + sourceSha.');
+    const behavior=exactBehavior(behaviorEvidence,profile);if(!behavior)throw new Error(`${qbVersion}: translator behavior evidence does not match ${sourceSha}.`);
+    const binding=canonicalBinding(profile,rememberRef),bindingId=contentId('b',stableObject(binding));if(!bindings[bindingId])bindings[bindingId]=binding;
+    const profileRefs=refsForProfile(profile),nativeLocales=[],bridgeLocales=[],bridges={};
+    if(profileRefs.length){
       for(const locale of localeValues(profile)){
         let native=false;
-        if(behavior.altWebuiTranslation===true){
-          native=behavior.family==='qapp-native'||dedicatedLocaleCompatible(profile,locale,behavior,recoveryLocaleMap(union,locale),allSets);
+        if(behavior.altWebuiTranslation===true)native=behavior.family==='qapp-native'||dedicatedLocaleCompatible(profile,locale,behavior,recoveryLocaleMap(union,locale),allSets);
+        if(native){
+          nativeLocales.push(locale);
+          const activeRoot=behavior.translatorResource&&String(behavior.translatorResource).includes('active-webui-root');
+          if(activeRoot&&!isPlainEnglish(locale)){
+            const set=requiredQmRefs.get(locale)||new Set();for(const ref of profileRefs)set.add(refKey(ref.context,ref.source));requiredQmRefs.set(locale,set);
+          }
+        }else{
+          bridgeLocales.push(locale);
+          const bridge=canonicalBridgeSet(profile,locale,allSets,rememberRef),normalized=stableObject(bridge),setId=contentId('t',normalized);
+          if(Object.keys(bridge).length){if(!bridgeSets[setId])bridgeSets[setId]=normalized;bridges[locale]=setId;}else bridges[locale]=null;
         }
-        (native?nativeLocales:bridgeLocales).push(locale);
       }
     }
-    profiles.push({qbVersion,sourceSha,family:behavior.family,nativeLocales,bridgeLocales,mappedPreferences:Object.keys(profile?.settingsUi||{}).length,mappedUi:Object.keys(profile?.qbOwnedUi||{}).length});
+    profiles.push({qbVersion,sourceSha,family:behavior.family,bindingId,nativeLocales,bridgeLocales,bridges,mappedPreferences:Object.keys(binding.preferences).length,mappedUi:Object.keys(binding.ui).length});
   }
   const localeMessages={};
-  for(const [locale,messages] of Object.entries(union.locales)){
-    if(isPlainEnglish(locale)||!messages.length)continue;
-    localeMessages[locale]=messages.map(item=>({context:String(item.context),source:String(item.source),translation:Array.isArray(item.translation)?item.translation.map(String):String(item.translation),numerus:item.numerus===true}));
+  for(const [locale,required] of requiredQmRefs){
+    const unionMap=recoveryLocaleMap(union,locale),messages=[];
+    for(const identity of [...required].sort()){
+      const item=unionMap.get(identity);if(!item)continue;
+      messages.push({context:String(item.context),source:String(item.source),translation:Array.isArray(item.translation)?item.translation.map(String):String(item.translation),numerus:item.numerus===true});
+    }
+    if(messages.length)localeMessages[locale]=messages;
   }
-  return{schemaVersion:2,source:'qB-official-source-context+deterministic-full-recovery-union',profileCount:profiles.length,profiles,localeMessages};
+  return{schemaVersion:3,source:'qB-source-context-runtime-copy-ir+minimal-official-qm',profileCount:profiles.length,profiles,refs:Object.fromEntries([...refs.values()].sort((a,b)=>a.id.localeCompare(b.id)).map(item=>[item.id,{context:item.context,source:item.source}])),bindings:stableObject(bindings),bridgeSets:stableObject(bridgeSets),localeMessages};
 }
 
-export function renderNativeSettingsRegistry(catalog){
-  if(!Array.isArray(catalog))throw new Error('Native Settings registry requires a catalog array.');
-  const refs=new Map(),profileLines=[],uiLines=[];
-  const remember=(ref)=>{if(!ref?.source||!ref?.context)return null;const id=refId(ref.context,ref.source),identity=refKey(ref.context,ref.source),previous=refs.get(id);if(previous&&previous.identity!==identity)throw new Error(`Native Settings ref hash collision ${id}.`);refs.set(id,{id,identity,context:String(ref.context),source:String(ref.source)});return id;};
-  for(const profile of catalog){
-    const sourceSha=String(profile?.sourceSha||'');
-    if(!/^[0-9a-f]{40}$/.test(sourceSha))continue;
-    for(const [key,entry] of Object.entries(profile?.settingsUi||{})){
-      const ids={};
-      for(const role of ['title','description']){const id=remember(entry?.[role]);if(id)ids[role]=id;}
-      if(!ids.title)continue;
-      profileLines.push(`@@WEIGG_PROFILE\t${sourceSha}\t${encodeField(key)}\t${encodeField(entry?.controlId||'')}\t${ids.title}\t${ids.description||'-'}`);
-    }
-    for(const [key,ref] of Object.entries(profile?.qbOwnedUi||{})){
-      const id=remember(ref);if(id)uiLines.push(`@@WEIGG_UI\t${sourceSha}\t${encodeField(key)}\t${id}`);
-    }
+export function renderOwnedCopyRegistry(bundle){
+  if(!bundle||bundle.schemaVersion!==3)throw new Error('Owned copy registry requires runtime copy bundle schemaVersion 3.');
+  const lines=['# WeiG qB-owned copy runtime IR v1'];
+  for(const profile of [...bundle.profiles].sort((a,b)=>a.sourceSha.localeCompare(b.sourceSha))){
+    lines.push(`@@PROFILE\t${profile.sourceSha}\t${encodeField(profile.qbVersion)}\t${encodeField(profile.family)}\t${profile.bindingId}\t${encodeField(profile.nativeLocales.join(','))}\t${encodeField(profile.bridgeLocales.join(','))}`);
+    for(const locale of Object.keys(profile.bridges||{}).sort())lines.push(`@@BRIDGE\t${profile.sourceSha}\t${encodeField(locale)}\t${profile.bridges[locale]||'-'}`);
   }
-  const lines=['# WeiG qB Settings native QBT_TR registry v2',...profileLines.sort(),...uiLines.sort()];
-  for(const item of [...refs.values()].sort((a,b)=>a.id.localeCompare(b.id))){
-    lines.push(`@@WEIGG_TEXT\t${item.id}`);
-    lines.push(`QBT_TR(${item.source})QBT_TR[CONTEXT=${item.context}]`);
-    lines.push('@@WEIGG_END');
+  for(const bindingId of Object.keys(bundle.bindings||{}).sort()){
+    const binding=bundle.bindings[bindingId];
+    for(const key of Object.keys(binding.preferences||{}).sort()){
+      const entry=binding.preferences[key];
+      lines.push(`@@PREF\t${bindingId}\t${encodeField(key)}\t${encodeField(entry.controlId||'')}\t${entry.title}\t${entry.description||'-'}`);
+    }
+    for(const key of Object.keys(binding.ui||{}).sort())lines.push(`@@UI\t${bindingId}\t${encodeField(key)}\t${binding.ui[key]}`);
+  }
+  for(const setId of Object.keys(bundle.bridgeSets||{}).sort())for(const ref of Object.keys(bundle.bridgeSets[setId]).sort())lines.push(`@@SET\t${setId}\t${ref}\t${encodeField(bundle.bridgeSets[setId][ref])}`);
+  for(const id of Object.keys(bundle.refs||{}).sort()){
+    const item=bundle.refs[id];lines.push(`@@REF\t${id}\t${encodeField(item.context)}\t${encodeField(item.source)}`);lines.push(`QBT_TR(${item.source})QBT_TR[CONTEXT=${item.context}]`);lines.push('@@END');
   }
   return `${lines.join('\n')}\n`;
 }
@@ -108,30 +140,22 @@ export function renderLocaleTs(locale,messages){
   const lines=['<?xml version="1.0" encoding="utf-8"?>','<!DOCTYPE TS>',`<TS version="2.1" language="${xmlEscape(locale)}">`];
   for(const context of [...byContext.keys()].sort()){
     lines.push('<context>',`<name>${xmlEscape(context)}</name>`);
-    for(const item of byContext.get(context).sort((a,b)=>a.source.localeCompare(b.source))){
-      const forms=translationForms(item);
-      if(item.numerus===true||forms.length>1)lines.push('<message numerus="yes">',`<source>${xmlEscape(item.source)}</source>`,'<translation>',...forms.map(value=>`<numerusform>${xmlEscape(value)}</numerusform>`),'</translation>','</message>');
-      else lines.push('<message>',`<source>${xmlEscape(item.source)}</source>`,`<translation>${xmlEscape(forms[0])}</translation>`,'</message>');
-    }
+    for(const item of byContext.get(context).sort((a,b)=>a.source.localeCompare(b.source))){const forms=translationForms(item);if(item.numerus===true||forms.length>1)lines.push('<message numerus="yes">',`<source>${xmlEscape(item.source)}</source>`,'<translation>',...forms.map(value=>`<numerusform>${xmlEscape(value)}</numerusform>`),'</translation>','</message>');else lines.push('<message>',`<source>${xmlEscape(item.source)}</source>`,`<translation>${xmlEscape(forms[0])}</translation>`,'</message>');}
     lines.push('</context>');
   }
-  lines.push('</TS>','');
-  return lines.join('\n');
+  lines.push('</TS>','');return lines.join('\n');
 }
 
 export function renderLocaleQm(messages){
   const items=(messages||[]).filter(item=>item?.context&&item?.source&&translationForms(item).length).map(item=>({context:String(item.context),source:String(item.source),translation:Array.isArray(item.translation)?item.translation.map(String):String(item.translation),numerus:item.numerus===true}));
   const messageParts=[],offsets=[];let offset=0;
   for(const item of items){const record=qmMessage(item);messageParts.push(record);offsets.push({hash:elfHash(Buffer.from(item.source,'utf8')),offset});offset+=record.length;}
-  offsets.sort((a,b)=>a.hash-b.hash||a.offset-b.offset);
-  const hashData=Buffer.concat(offsets.flatMap(item=>[u32(item.hash),u32(item.offset)]));
-  const messageData=Buffer.concat(messageParts);
-  return Buffer.concat([QM_MAGIC,qmBlock(QM_HASHES,hashData),qmBlock(QM_MESSAGES,messageData)]);
+  offsets.sort((a,b)=>a.hash-b.hash||a.offset-b.offset);const hashData=Buffer.concat(offsets.flatMap(item=>[u32(item.hash),u32(item.offset)])),messageData=Buffer.concat(messageParts);return Buffer.concat([QM_MAGIC,qmBlock(QM_HASHES,hashData),qmBlock(QM_MESSAGES,messageData)]);
 }
 
 export function writeNativeSettingsArtifacts(catalog,behaviorEvidence,{registryPath,qmSourceDir,qmOutputDir,recoveryUnion}={}){
   const bundle=buildNativeSettingsBundle(catalog,behaviorEvidence,{recoveryUnion});
-  if(registryPath){fs.mkdirSync(path.dirname(registryPath),{recursive:true});fs.writeFileSync(registryPath,renderNativeSettingsRegistry(catalog),'utf8');}
+  if(registryPath){fs.mkdirSync(path.dirname(registryPath),{recursive:true});fs.writeFileSync(registryPath,renderOwnedCopyRegistry(bundle),'utf8');}
   if(qmSourceDir){fs.rmSync(qmSourceDir,{recursive:true,force:true});fs.mkdirSync(qmSourceDir,{recursive:true});for(const [locale,messages] of Object.entries(bundle.localeMessages))fs.writeFileSync(path.join(qmSourceDir,`webui_${locale}.ts`),renderLocaleTs(locale,messages),'utf8');}
   if(qmOutputDir){fs.rmSync(qmOutputDir,{recursive:true,force:true});fs.mkdirSync(qmOutputDir,{recursive:true});for(const [locale,messages] of Object.entries(bundle.localeMessages))fs.writeFileSync(path.join(qmOutputDir,`webui_${locale}.qm`),renderLocaleQm(messages));}
   return bundle;
@@ -140,17 +164,10 @@ export function writeNativeSettingsArtifacts(catalog,behaviorEvidence,{registryP
 const isMain=process.argv[1]&&path.resolve(process.argv[1])===path.resolve(fileURLToPath(import.meta.url));
 if(isMain){
   try{
-    const catalogPath=path.resolve(process.argv[2]||'');
-    const behaviorPath=path.resolve(process.argv[3]||'tools/data/qb-translator-behavior-lkg.json');
-    const registryPath=path.resolve(process.argv[4]||'qb-settings-native.txt');
-    const qmSourceDir=path.resolve(process.argv[5]||'qb-settings-qm-src');
-    const qmOutputDir=path.resolve(process.argv[6]||'qb-settings-qm');
-    const settingsLkgArg=process.argv.find(value=>value.startsWith('--settings-lkg='));
-    const settingsLkgPath=settingsLkgArg?path.resolve(settingsLkgArg.slice('--settings-lkg='.length)):'';
+    const catalogPath=path.resolve(process.argv[2]||''),behaviorPath=path.resolve(process.argv[3]||'tools/data/qb-translator-behavior-lkg.json'),registryPath=path.resolve(process.argv[4]||'qb-settings-native.txt'),qmSourceDir=path.resolve(process.argv[5]||'qb-settings-qm-src'),qmOutputDir=path.resolve(process.argv[6]||'qb-settings-qm'),settingsLkgArg=process.argv.find(value=>value.startsWith('--settings-lkg=')),settingsLkgPath=settingsLkgArg?path.resolve(settingsLkgArg.slice('--settings-lkg='.length)):'';
     if(!catalogPath||!fs.existsSync(catalogPath)||!fs.existsSync(behaviorPath)||!settingsLkgPath||!fs.existsSync(settingsLkgPath))throw new Error('Usage: node tools/qb-settings-native-bundle.mjs <enriched-catalog.json> [behavior.json] [registry.txt] [qm-source-dir] [qm-output-dir] --settings-lkg=path');
-    const catalog=JSON.parse(fs.readFileSync(catalogPath,'utf8')),behavior=JSON.parse(fs.readFileSync(behaviorPath,'utf8')),settingsLkg=JSON.parse(fs.readFileSync(settingsLkgPath,'utf8'));
-    const bundle=writeNativeSettingsArtifacts(catalog,behavior,{registryPath,qmSourceDir,qmOutputDir,recoveryUnion:settingsLkg?.recovery?.union});
+    const catalog=JSON.parse(fs.readFileSync(catalogPath,'utf8')),behavior=JSON.parse(fs.readFileSync(behaviorPath,'utf8')),settingsLkg=JSON.parse(fs.readFileSync(settingsLkgPath,'utf8')),bundle=writeNativeSettingsArtifacts(catalog,behavior,{registryPath,qmSourceDir,qmOutputDir,recoveryUnion:settingsLkg?.recovery?.union});
     const native=bundle.profiles.reduce((sum,item)=>sum+item.nativeLocales.length,0),bridge=bundle.profiles.reduce((sum,item)=>sum+item.bridgeLocales.length,0),ui=bundle.profiles.reduce((sum,item)=>sum+item.mappedUi,0);
-    console.log(`Built qB Settings native bundle: ${bundle.profileCount} profiles, ${ui} qB-owned UI bindings, ${Object.keys(bundle.localeMessages).length} full recovery QM assets, native locale routes ${native}, bridge locale routes ${bridge}.`);
+    console.log(`Built qB runtime copy bundle: ${bundle.profileCount} profiles, ${ui} qB-owned UI bindings, ${Object.keys(bundle.bindings).length} deduplicated binding sets, ${Object.keys(bundle.bridgeSets).length} compact bridge sets, ${Object.keys(bundle.localeMessages).length} minimal QM assets, native locale routes ${native}, bridge locale routes ${bridge}.`);
   }catch(error){console.error(error?.message||error);process.exitCode=1;}
 }
