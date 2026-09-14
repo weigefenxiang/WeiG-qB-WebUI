@@ -32,7 +32,7 @@ assert(index.indexOf('scripts/torrent-semantics.js')<index.indexOf('scripts/app.
 // #torrent-list scroller as the virtual spacer so browser scrollLeft moves both directly.
 assert(core.includes("this.staticHead=options.staticHead||((this.el.id==='torrent-list')?document.getElementById('torrent-table-head'):null)"),'Torrent VirtualList must resolve the canonical header as its static head');
 assert(core.includes("if(this.staticHead){this.staticHead.classList.add('virtual-list__sticky-head');this.el.appendChild(this.staticHead);}"),'Torrent header must be a real child of the native VirtualList scroll owner');
-assert(core.includes("var top=self.el.scrollTop,left=self.el.scrollLeft,vertical=Math.abs(top-self._lastScrollTop)>.5;"),'VirtualList scroll owner must distinguish vertical movement from pure horizontal movement');
+assert(core.includes("var top=self.el.scrollTop,left=self.el.scrollLeft,vertical=Math.abs(top-self._lastScrollTop)>.5,horizontal=Math.abs(left-self._lastScrollLeft)>.5;"),'VirtualList scroll owner must distinguish vertical movement from pure horizontal movement');
 assert(core.includes("if(!vertical||self._rendering||self.el.__weiggVirtualScrollFrame)return;"),'pure horizontal scroll must not schedule a VirtualList render');
 assert(core.includes("self.el.__weiggVirtualScrollTop=top;self.el.__weiggVirtualScrollLeft=left;"),'native scroll coordinates must be recorded without a second synchronization state');
 assert(!/scrollLeft[^;\n]*(?:transform|translate)|(?:transform|translate)[^;\n]*scrollLeft/.test(core),'header/rows must not be synchronized by scrollLeft transforms');
