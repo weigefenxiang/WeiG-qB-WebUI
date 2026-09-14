@@ -1,0 +1,34 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+
+const here=path.dirname(fileURLToPath(import.meta.url));
+const root=path.resolve(here,'..');
+const read=rel=>fs.readFileSync(path.join(root,rel),'utf8');
+const schema=read('webui/private/scripts/settings-schema.js');
+const settings=read('webui/private/scripts/settings.js');
+const layout=read('webui/private/scripts/layout.js');
+const ui=read('webui/private/scripts/ui.js');
+const tableCss=read('webui/private/css/table.css');
+const ownedUi=read('tools/qb-owned-ui-source.mjs');
+
+assert.match(schema,/SURFACES=\['behavior','downloads','connection','speed','bittorrent','rss','webui','advanced'\]/,'Settings must expose the native qB top-level surface order.');
+assert.match(schema,/add\('behavior','localization','auto',\['locale'\]\)/,'Locale must live under native Behavior.');
+assert.match(schema,/add\('behavior','logging','auto',\['performance_warning','file_log_enabled'/,'Behavior must own performance/file logging preferences.');
+assert.match(schema,/add\('rss','rss','auto',\['rss_auto_downloading_enabled'/,'RSS preferences must live under native RSS.');
+assert.match(settings,/QB_TAB_ORDER=\['behavior','downloads','connection','speed','bittorrent','rss','webui','advanced'\]/,'Settings navigation must project the native qB tab order.');
+assert.match(settings,/function ensureQbTabs\(\)/,'Settings must reconcile all native qB tabs, not only Speed.');
+assert.match(settings,/function ensureSpeedTab\(\)\{return ensureQbTabs\(\);\}/,'Legacy internal Speed helper must delegate to the canonical tab reconciler.');
+assert.doesNotMatch(layout,/keys\.some\(function\(key\)\{return!R\.hasTorrentDetailField\('properties',key\);\}\)/,'General must not reject a source-generated property layout through a second release-field gate.');
+assert.match(layout,/keys\.forEach\(function\(key\)\{var text=own\(data,key\)\?generalScalar\(key,data\[key\]\):'—'/,'General must render optional source-bound response fields as unavailable instead of failing the whole layout.');
+assert.match(ui,/country-flags@9d204d7d0775cc45e700e70cd82403e3ef2638ac\/css\/flags\.css/,'Peer flags must use one immutable, pinned flag sprite stylesheet.');
+assert.match(ui,/icon\.className='flag '\+iso\+' peer-country-flag'/,'Peer country cells must render a real sprite flag element.');
+assert.match(ui,/fallback\.className='peer-country-code'/,'Peer country cells must retain a deterministic ISO-code fallback when the sprite cannot load.');
+assert.match(ui,/root\.insertBefore\(note,toolbar\)/,'Detail explanatory copy must stay outside and before the shared toolbar.');
+assert.match(tableCss,/\.shared-table__columns-button\{margin-left:0\}/,'Column settings must not be pushed to the far right.');
+assert.match(tableCss,/#detail-content\{[^}]*overflow:hidden/,'Detail content must not compete with the shared table viewport for scrolling.');
+assert.match(tableCss,/\.peer-country-flag\{display:none;width:16px;height:11px/,'Local table CSS must own flag dimensions and loading fallback behavior.');
+assert.match(ownedUi,/'settings\.tab\.behavior':'PrefBehaviorLink'/,'Source extraction must include native Behavior tab copy.');
+assert.match(ownedUi,/'settings\.tab\.rss':'PrefRSSLink'/,'Source extraction must include native RSS tab copy.');
+console.log('Current plan contract passed: native Settings topology, General source-layout admission, single-owner Detail table layout, and real Peer flag rendering are locked.');
