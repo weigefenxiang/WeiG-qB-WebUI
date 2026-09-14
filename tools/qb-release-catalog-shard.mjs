@@ -6,6 +6,7 @@ import {extractPreferenceDescriptors,extractPreferenceKeys} from './qb-source-pa
 import {extractTorrentFilters,extractTorrentInfoParameters} from './qb-torrent-surface-parsers.mjs';
 import {extractTorrentInfoFields,extractTorrentStates,extractTorrentTableColumns} from './qb-torrent-fields-parser.mjs';
 import {extractTorrentDetailSurfaces,extractTorrentDetailUi} from './qb-detail-surface-parsers.mjs';
+import {extractFilePriorityControl} from './qb-detail-control-parsers.mjs';
 import {enrichTorrentFileColumnProvenance} from './qb-release-catalog-detail-provenance.mjs';
 import {extractControllerActionParameters} from './qb-action-surface-parsers.mjs';
 import {supportedStableReleaseTags} from './qb-release-tags.mjs';
@@ -103,7 +104,9 @@ function torrentSurface(ref){
   const propertiesGeneralSource=showMaybe(ref,'src/webui/www/private/scripts/prop-general.js');
   if(!propertiesToolbarSource||!propertiesContentSource||!propertiesGeneralSource)throw new Error(`${ref}: Torrent detail source markup/script is unresolved`);
   const propFilesSource=showMaybe(ref,'src/webui/www/private/scripts/prop-files.js');
-  const fileProjectionSource=[propFilesSource,showMaybe(ref,'src/webui/www/private/scripts/torrent-content.js'),showMaybe(ref,'src/webui/www/private/scripts/file-tree.js')].filter(Boolean).join('\n');
+  const torrentContentSource=showMaybe(ref,'src/webui/www/private/scripts/torrent-content.js');
+  const fileTreeSource=showMaybe(ref,'src/webui/www/private/scripts/file-tree.js');
+  const fileProjectionSource=[propFilesSource,torrentContentSource,fileTreeSource].filter(Boolean).join('\n');
   const detailSurfaces=extractTorrentDetailSurfaces(torrentsControllerSource,ref,serializerHeaderSource);
   const torrentDetailUi=extractTorrentDetailUi({
     toolbarSource:propertiesToolbarSource,
@@ -115,6 +118,8 @@ function torrentSurface(ref){
     legacyWebseedsSource:showMaybe(ref,'src/webui/www/private/scripts/prop-webseeds.js')
   },ref);
   torrentDetailUi.tables.files=enrichTorrentFileColumnProvenance(torrentDetailUi.tables.files,fileProjectionSource,detailSurfaces.torrentFileFields,ref);
+  const filePriorityControl=extractFilePriorityControl({filesSource:torrentContentSource||propFilesSource,fileTreeSource},ref);
+  if(filePriorityControl)torrentDetailUi.controls={...(torrentDetailUi.controls||{}),filePriority:filePriorityControl};
   return{
     torrentFilters:extractTorrentFilters({torrentFilterSource,torrentsControllerSource},ref),
     torrentInfoParameters:extractTorrentInfoParameters(torrentsControllerSource,ref),
