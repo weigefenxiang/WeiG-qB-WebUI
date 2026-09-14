@@ -84,7 +84,8 @@ assert(capabilities.includes('torrentInfoField')&&capabilities.includes('sourceR
 
 assert(selection.includes('supportsTorrentAction')&&selection.includes("capability:'addTags'")&&selection.includes('if(!actionSupported(def.kind))return'),'action menu must gate source-absent actions before rendering');
 assert(client.includes("_guardedTorrentAction('reannounce'")&&client.includes("_guardedTorrentAction('removeTrackers'"),'QBClient must fail closed even if a UI caller bypasses presentation gates');
-assert(app.includes("capabilitySupported('trackerRemove',false)")&&app.includes("capabilitySupported('trackerEdit',app.client.capabilities.trackerEdit)"),'Tracker detail controls must be source-gated before click');
+assert(app.includes("function writeActionSupported(action){var R=W.ReleaseProfile;return !!(R&&R.hasWriteProvenance&&R.hasWriteProvenance()&&R.hasAction&&R.hasAction(action));}")&&app.includes("torrentActionSupported('editTracker')")&&app.includes("torrentActionSupported('removeTrackers')"),'Tracker detail mutations must be source/write-provenance gated before context items are rendered');
+assert(app.includes('detailContextItems:trackerContext')&&ui.includes("function detailContextItems(surface,item,ctx){if(!ctx||typeof ctx.contextItems!=='function')return[];"),'Tracker detail action availability must be decided by app provenance and rendered only through the shared context-menu presentation owner');
 
 for(const rule of ['TORRENT-FILTER-OWNER'])assert(docs.includes(rule));
 assert(docs.includes('Tracker facet')&&docs.includes("W.CapabilityRegistry.supports('privateFilter')")&&docs.includes('LibraryController.matchesTorrent'),'Torrent ownership doc must preserve capability-gated Private/PT facet and selection parity');
