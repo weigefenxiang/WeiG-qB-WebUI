@@ -2,12 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {extractPreferenceDescriptors,extractPreferenceKeys} from './qb-source-parsers.mjs';
-import {extractTorrentFilters,extractTorrentInfoParameters} from './qb-torrent-surface-parsers.mjs';
-import {extractTorrentInfoFields,extractTorrentStates,extractTorrentTableColumns} from './qb-torrent-fields-parser.mjs';
-import {extractTorrentDetailSurfaces,extractTorrentDetailUi} from './qb-detail-surface-parsers.mjs';
-import {extractDetailContextMenus,extractFilePriorityControl} from './qb-detail-control-parsers.mjs';
-import {enrichTorrentFileColumnProvenance} from './qb-release-catalog-detail-provenance.mjs';
 import {extractControllerActionParameters} from './qb-action-surface-parsers.mjs';
+import {extractQbReleaseTorrentSurface} from './qb-release-torrent-surface.mjs';
 import {compareQbVersions,isSupportedStableReleaseTag,supportedStableReleaseTags} from './qb-release-tags.mjs';
 import {enrichPreferenceDescriptorsFromGetter} from './qb-preference-semantics.mjs';
 import {annotateCatalogEvolution,validateCatalogEvolution} from './qb-catalog-evolution.mjs';
@@ -81,40 +77,13 @@ function apiActionSurface(ref,actions){
 }
 
 function torrentSurface(ref,actions){
-  const torrentsControllerSource=show(ref,'src/webui/api/torrentscontroller.cpp');
-  const torrentFilterSource=show(ref,'src/base/torrentfilter.cpp');
-  const serializerSource=show(ref,'src/webui/api/serialize/serialize_torrent.cpp');
-  const serializerHeaderSource=show(ref,'src/webui/api/serialize/serialize_torrent.h');
-  const dynamicTableSource=show(ref,'src/webui/www/private/scripts/dynamicTable.js');
-  const torrentTableColumns=extractTorrentTableColumns(dynamicTableSource,ref);
-  if(!torrentTableColumns.length)throw new Error(`${ref}: native Torrent table column surface is unresolved`);
-  const propertiesToolbarSource=firstSource(ref,['src/webui/www/private/views/propertiesToolbar.html','src/webui/www/private/properties.html']);
-  const propertiesContentSource=firstSource(ref,['src/webui/www/private/views/properties.html','src/webui/www/private/properties_content.html']);
-  const propertiesGeneralSource=showMaybe(ref,'src/webui/www/private/scripts/prop-general.js');
-  if(!propertiesToolbarSource||!propertiesContentSource||!propertiesGeneralSource)throw new Error(`${ref}: Torrent detail source markup/script is unresolved`);
-  const propFilesSource=showMaybe(ref,'src/webui/www/private/scripts/prop-files.js');
-  const torrentContentSource=showMaybe(ref,'src/webui/www/private/scripts/torrent-content.js');
-  const fileTreeSource=showMaybe(ref,'src/webui/www/private/scripts/file-tree.js');
-  const trackerSource=showMaybe(ref,'src/webui/www/private/scripts/prop-trackers.js');
-  const peerSource=showMaybe(ref,'src/webui/www/private/scripts/prop-peers.js');
-  const menuSource=showMaybe(ref,'src/webui/www/private/index.html');
-  const fileProjectionSource=[propFilesSource,torrentContentSource,fileTreeSource].filter(Boolean).join('\n');
-  const detailSurfaces=extractTorrentDetailSurfaces(torrentsControllerSource,ref,serializerHeaderSource);
-  const torrentDetailUi=extractTorrentDetailUi({toolbarSource:propertiesToolbarSource,contentSource:propertiesContentSource,generalSource:propertiesGeneralSource,dynamicTableSource,legacyFilesSource:propFilesSource,legacyTrackersSource:trackerSource,legacyWebseedsSource:showMaybe(ref,'src/webui/www/private/scripts/prop-webseeds.js')},ref);
-  torrentDetailUi.tables.files=enrichTorrentFileColumnProvenance(torrentDetailUi.tables.files,fileProjectionSource,detailSurfaces.torrentFileFields,ref);
-  const filePriorityControl=extractFilePriorityControl({filesSource:torrentContentSource||propFilesSource,fileTreeSource},ref);
-  if(filePriorityControl)torrentDetailUi.controls={...(torrentDetailUi.controls||{}),filePriority:filePriorityControl};
-  const contextMenus=extractDetailContextMenus({menuSource,trackerSource,peerSource,dialogSources:{'addtrackers.html':showMaybe(ref,'src/webui/www/private/addtrackers.html'),'edittracker.html':showMaybe(ref,'src/webui/www/private/edittracker.html'),'addpeers.html':showMaybe(ref,'src/webui/www/private/addpeers.html')},apiActions:actions},ref);
-  if(Object.keys(contextMenus).length)torrentDetailUi.contextMenus=contextMenus;
-  return{
-    torrentFilters:extractTorrentFilters({torrentFilterSource,torrentsControllerSource},ref),
-    torrentInfoParameters:extractTorrentInfoParameters(torrentsControllerSource,ref),
-    torrentInfoFields:extractTorrentInfoFields({headerSource:serializerHeaderSource,serializerSource},ref),
-    torrentStates:extractTorrentStates(serializerSource,ref),
-    torrentTableColumns,
-    torrentDetailUi,
-    ...detailSurfaces
-  };
+  return extractQbReleaseTorrentSurface({
+    ref,
+    apiActions:actions,
+    readSource:file=>show(ref,file),
+    readOptionalSource:file=>showMaybe(ref,file),
+    readFirstSource:files=>firstSource(ref,files)
+  });
 }
 
 function readBaseCatalog(){
