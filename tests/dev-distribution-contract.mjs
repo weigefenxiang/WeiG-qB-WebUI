@@ -40,6 +40,7 @@ assert.doesNotMatch(pagesSource,/paths-ignore:/,'Pages source must not use nativ
 assert.match(pagesSource,/Detect Pages-relevant source changes/,'Pages source relay must classify each pushed diff before dispatching the heavy Pages owner');
 assert.ok(pagesSource.includes(pagesMaterializationMatcher),'Pages source must use an explicit public-payload plus build-materialization allowlist instead of treating all tests/tools/workflows as deployment inputs');
 assert.ok(pagesMaterializationMatcher.includes('webui/*|simulator/*|installers/*|VERSION'),'Pages materialization boundary must remain a strict superset of the direct public payload');
+assert.ok(pagesMaterializationMatcher.includes('tools/qb-detail-surface-parsers.mjs'),'Torrent detail source parser must remain a Pages materialization input');
 assert.match(pagesSource,/Pages-irrelevant development\/repository change:/,'Non-payload development paths must remain lightweight and must not dispatch a Pages build');
 assert.match(pagesSource,/read -r -d '' path/,'Pages source relay must consume NUL-delimited filenames so non-ASCII paths are never Git-quoted into false runtime changes');
 assert.match(pagesSource,/diff --name-only -z/,'Pages source relay must request raw NUL-delimited changed paths');
