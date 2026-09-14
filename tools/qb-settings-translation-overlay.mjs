@@ -9,6 +9,7 @@ import {extractQbOwnedUiFacts,translationContextsForQbOwnedUi,translationSources
 import {buildQbNativeQmRecoveryEvidence} from './qb-native-qm-recovery.mjs';
 import {extractTorrentTableColumns} from './qb-torrent-fields-parser.mjs';
 import {torrentDetailTranslationRefs} from './qb-detail-surface-parsers.mjs';
+import {detailControlTranslationRefs} from './qb-detail-control-parsers.mjs';
 
 function unique(values) {
   const out=[];
@@ -144,7 +145,7 @@ export function buildQbSettingsTranslationOverlay(catalog, readReleaseSources, o
       filtersSource:releaseSources.filtersSource || '',
       dynamicTableSource:releaseSources.dynamicTableSource || ''
     });
-    Object.assign(ui,torrentDetailTranslationRefs(profile.torrentDetailUi));
+    Object.assign(ui,torrentDetailTranslationRefs(profile.torrentDetailUi),detailControlTranslationRefs(profile.torrentDetailUi));
     const ownsDynamicTableSource=Object.hasOwn(releaseSources,'dynamicTableSource');
     const torrentTableColumns=ownsDynamicTableSource
       ? extractTorrentTableColumns(releaseSources.dynamicTableSource || '',`${qbVersion} dynamicTable owned UI`)
