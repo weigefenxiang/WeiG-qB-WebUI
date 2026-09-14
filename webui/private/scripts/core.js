@@ -31,14 +31,16 @@
     var remembered=Number(this.el.__weiggVirtualScrollTop)||0,rememberedLeft=Number(this.el.__weiggVirtualScrollLeft)||0;
     if(this.el.__weiggVirtualScrollHandler)this.el.removeEventListener('scroll',this.el.__weiggVirtualScrollHandler);
     cancelFrame(this.el.__weiggVirtualScrollFrame);this.el.__weiggVirtualScrollFrame=0;
+    if(this.el.__weiggVirtualHorizontalIdleTimer)global.clearTimeout(this.el.__weiggVirtualHorizontalIdleTimer);this.el.__weiggVirtualHorizontalIdleTimer=0;
     this.staticHead=options.staticHead||((this.el.id==='torrent-list')?document.getElementById('torrent-table-head'):null);
     this.el.textContent='';
     if(this.staticHead){this.staticHead.classList.add('virtual-list__sticky-head');this.el.appendChild(this.staticHead);}
-    this.el.appendChild(this.spacer);this.el.__weiggVirtualScrollTop=remembered;this.el.__weiggVirtualScrollLeft=rememberedLeft;this._rendering=false;this._lastRange='';this._lastScrollTop=remembered;this._lastScrollLeft=rememberedLeft;
+    this.el.appendChild(this.spacer);this.el.__weiggVirtualScrollTop=remembered;this.el.__weiggVirtualScrollLeft=rememberedLeft;this._rendering=false;this._lastRange='';this._lastScrollTop=remembered;this._lastScrollLeft=rememberedLeft;this._deferHorizontalUpdates=this.el.id==='torrent-list';this._horizontalScrolling=false;this._hasPendingItems=false;this._pendingItems=null;this._pendingPreserve=undefined;
     var self=this;
     this.el.__weiggVirtualScrollHandler=function(){
       if(!self.spacer.isConnected||self.spacer.parentNode!==self.el)return;
-      var top=self.el.scrollTop,left=self.el.scrollLeft,vertical=Math.abs(top-self._lastScrollTop)>.5;
+      var top=self.el.scrollTop,left=self.el.scrollLeft,vertical=Math.abs(top-self._lastScrollTop)>.5,horizontal=Math.abs(left-self._lastScrollLeft)>.5;
+      if(horizontal&&self._deferHorizontalUpdates){self._horizontalScrolling=true;if(self.el.__weiggVirtualHorizontalIdleTimer)global.clearTimeout(self.el.__weiggVirtualHorizontalIdleTimer);self.el.__weiggVirtualHorizontalIdleTimer=global.setTimeout(function(){self.el.__weiggVirtualHorizontalIdleTimer=0;if(!self.spacer.isConnected||self.spacer.parentNode!==self.el)return;self._horizontalScrolling=false;self._flushPendingItems();},140);}
       self.el.__weiggVirtualScrollTop=top;self.el.__weiggVirtualScrollLeft=left;self._lastScrollTop=top;self._lastScrollLeft=left;
       if(!vertical||self._rendering||self.el.__weiggVirtualScrollFrame)return;
       self.el.__weiggVirtualScrollFrame=frame(function(){self.el.__weiggVirtualScrollFrame=0;if(!self.spacer.isConnected||self.spacer.parentNode!==self.el)return;self.render(false);});
@@ -55,7 +57,9 @@
   W.VirtualList.prototype.resetHeights=function(){if(!this.variableHeight)return;this.heightMap.clear();this._rebuildOffsets();this._lastRange='';this.render(true);};
   W.VirtualList.prototype.setRowHeight=function(h){this.rowHeight=h||this.rowHeight;if(this.variableHeight)this.heightMap.clear();this._rebuildOffsets();this._lastRange='';this.render(true);};
   W.VirtualList.prototype.resetScroll=function(){this.el.__weiggVirtualScrollTop=0;this._lastScrollTop=0;this.el.scrollTop=0;this._lastRange='';this.render(true);};
-  W.VirtualList.prototype.setItems=function(items,preserve){this.items=items||[];if(this.variableHeight&&this.heightMap.size){var live=new Set();for(var i=0;i<this.items.length;i++)live.add(this._key(this.items[i],i));Array.from(this.heightMap.keys()).forEach(function(key){if(!live.has(key))this.heightMap.delete(key);},this);}this._rebuildOffsets();var keep=preserve!==false,clientH=this.el.clientHeight||0,saved=keep?(Number(this.el.__weiggVirtualScrollTop)||0):0,max=Math.max(0,this._totalHeight()+this._headerHeight()-clientH);saved=Math.min(saved,max);this.el.__weiggVirtualScrollTop=saved;this._lastScrollTop=saved;if(clientH>0)this.el.scrollTop=saved;this._lastRange='';this.render(true);};
+  W.VirtualList.prototype._applyItems=function(items,preserve){this.items=items||[];if(this.variableHeight&&this.heightMap.size){var live=new Set();for(var i=0;i<this.items.length;i++)live.add(this._key(this.items[i],i));Array.from(this.heightMap.keys()).forEach(function(key){if(!live.has(key))this.heightMap.delete(key);},this);}this._rebuildOffsets();var keep=preserve!==false,clientH=this.el.clientHeight||0,saved=keep?(Number(this.el.__weiggVirtualScrollTop)||0):0,max=Math.max(0,this._totalHeight()+this._headerHeight()-clientH);saved=Math.min(saved,max);this.el.__weiggVirtualScrollTop=saved;this._lastScrollTop=saved;if(clientH>0)this.el.scrollTop=saved;this._lastRange='';this.render(true);};
+  W.VirtualList.prototype._flushPendingItems=function(){if(!this._hasPendingItems)return;var items=this._pendingItems,preserve=this._pendingPreserve;this._hasPendingItems=false;this._pendingItems=null;this._pendingPreserve=undefined;this._applyItems(items,preserve);};
+  W.VirtualList.prototype.setItems=function(items,preserve){if(this._deferHorizontalUpdates&&this._horizontalScrolling){this._pendingItems=items||[];this._pendingPreserve=preserve;this._hasPendingItems=true;return;}this._applyItems(items,preserve);};
   W.VirtualList.prototype.render=function(force){
     if(W.DataGrid&&W.DataGrid._suppressVirtualRender)return;
     var range=this._range();if(force===undefined)force=true;if(!force&&range.key===this._lastRange)return;this._rendering=true;this._lastRange=range.key;this.spacer.textContent='';var rendered=[],dirty=false,templateRoot=this.el.closest&&this.el.closest('.torrent-panel');
