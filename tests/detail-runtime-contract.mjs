@@ -78,6 +78,7 @@ assert.match(ui,/next\.staticHead=head;next\.renderRow=function\(item,index\)\{r
 assert.match(ui,/W\.DataGrid\.addResizeHandles\(ctx\.head,ctx\.visible,function\(visible,_save,reason\)/,'detail resize/reorder must reuse the shared interaction engine');
 assert.match(ui,/W\.SharedColumns\.commit\(ctx\.tableId,ctx\.source,ctx\.resolved\)/,'detail column persistence must commit only through the shared user-override store');
 assert.match(ui,/W\.SharedColumnSettings=\{open:openSharedColumnDialog\}/,'one shared column settings dialog must serve detail tables');
+assert.match(ui,/ctx\.apply=function\(rebuild\)\{applyDetailColumns\(ctx,rebuild\);\};/,'detail column settings must live-apply through the canonical table renderer');
 assert.match(ui,/function syncDetailTabLabels\(\).*W\.QbUiEvidence\.detailTab\(key\)/s,'detail tab names must update from the current qB release official translation evidence');
 assert.doesNotMatch(ui,/MutationObserver/,'shared table runtime must not chase DOM changes with MutationObserver');
 assert.match(ui,/function detailValueSource\(column\).*keys\.indexOf\(key\)>=0\?'response':'derived'/s,'detail runtime must explicitly distinguish direct response columns from source-derived UI columns');
