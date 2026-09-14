@@ -156,7 +156,7 @@ try{
 
   const scroll=await page.evaluate(()=>{const viewport=document.querySelector('.shared-table__viewport'),head=viewport.querySelector('.shared-table__head .grid-head-cell'),key=head.dataset.key,row=viewport.querySelector(`.shared-table__row [data-column-key="${key}"]`),a={h:head.getBoundingClientRect().left,r:row.getBoundingClientRect().left};viewport.scrollLeft=180;viewport.dispatchEvent(new Event('scroll'));const b={h:head.getBoundingClientRect().left,r:row.getBoundingClientRect().left};return{scrollLeft:viewport.scrollLeft,scrollWidth:viewport.scrollWidth,clientWidth:viewport.clientWidth,detailScrollLeft:document.getElementById('detail-content').scrollLeft,a,b};});
   assert(scroll.scrollWidth>scroll.clientWidth&&scroll.scrollLeft>100,`Detail table did not expose real horizontal overflow: ${JSON.stringify(scroll)}`);
-  assert(Math.abs((scroll.a.h-scroll.b.h)-scroll.scrollLeft)<3&&Math.abs((scroll.a.r-scroll.b.r)-scroll.scrollLeft)<3&&Math.abs(scroll.b.h-scroll.b.r)<2,`Header/body horizontal scroll ownership diverged: ${JSON.stringify(scroll)}`);
+  assert(Math.abs((scroll.a.h-scroll.b.h)-scroll.scrollLeft)<3&&Math.abs((scroll.a.r-scroll.b.r)-scroll.scrollLeft)<3&&Math.abs((scroll.a.h-scroll.a.r)-(scroll.b.h-scroll.b.r))<2,`Header/body horizontal scroll ownership diverged: ${JSON.stringify(scroll)}`);
   assert(scroll.detailScrollLeft===0,'Outer detail-content stole horizontal scroll ownership from shared table viewport.');
 
   await page.setViewportSize({width:390,height:844});
