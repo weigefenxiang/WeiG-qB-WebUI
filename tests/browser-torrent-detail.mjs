@@ -10,10 +10,19 @@ const productVersion=(await fs.readFile(path.resolve(here,'../VERSION'),'utf8'))
 const frozen=JSON.parse(await fs.readFile(path.resolve(here,'fixtures/qb-release-catalog.lkg.json'),'utf8'));
 const frozenProfile=frozen.find(item=>item.qbVersion==='5.2.0');
 if(!frozenProfile)throw new Error('Torrent detail browser gate requires frozen qB 5.2.0 profile.');
-// Browser evidence consumes the current exact 5.2.0 Content source surface without mutating the
-// Frozen LKG. Full Frozen promotion remains a separate explicit gate. These column defaults come
-// from release-5.2.0 DynamicTable.TorrentFilesTable; checked/remaining provenance is source-derived
-// from torrent-content.js + file-tree.js and is independently locked by the source contract.
+// Browser evidence consumes the current exact 5.2.0 Detail source surface without mutating the
+// Frozen LKG. Full Frozen promotion remains a separate explicit gate. Tabs come from
+// release-5.2.0 propertiesToolbar.html; Content column defaults come from
+// DynamicTable.TorrentFilesTable. checked/remaining provenance is source-derived from
+// torrent-content.js + file-tree.js and is independently locked by the source contract.
+const currentSourceTabs={
+  overview:{source:'General',context:'PropTabBar'},
+  trackers:{source:'Trackers',context:'PropTabBar'},
+  peers:{source:'Peers',context:'PropTabBar'},
+  webseeds:{source:'HTTP Sources',context:'PropTabBar'},
+  files:{source:'Content',context:'PropTabBar'}
+};
+const currentSourceTabOrder=['overview','trackers','peers','webseeds','files'];
 const currentSourceFileColumns=[
   {key:'checked',caption:'',defaultWidth:50,defaultVisible:true,dataProperties:['priority']},
   {key:'name',caption:'Name',translation:{source:'Name',context:'TrackerListWidget'},defaultWidth:300,defaultVisible:true,dataProperties:['name']},
@@ -25,6 +34,8 @@ const currentSourceFileColumns=[
 ];
 const profile=structuredClone(frozenProfile);
 profile.torrentDetailUi=profile.torrentDetailUi||{};
+profile.torrentDetailUi.tabs=currentSourceTabs;
+profile.torrentDetailUi.tabOrder=currentSourceTabOrder;
 profile.torrentDetailUi.tables=profile.torrentDetailUi.tables||{};
 profile.torrentDetailUi.tables.files=currentSourceFileColumns;
 const fileColumns=profile.torrentDetailUi.tables.files;

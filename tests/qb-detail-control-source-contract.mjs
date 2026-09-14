@@ -23,13 +23,14 @@ assert.deepEqual(contextMenus.peers.map(item=>item.id),['addPeer','copyPeer','ba
 assert.equal(contextMenus.peers[2].sourceAction,'transfercontroller.h:banPeersAction');
 assert.equal(contextMenus.peers[2].availability.minSelection,1);
 assert.equal(contextMenus.peers[0].sourceAction,undefined);
-const legacyTrackers=`var menu={actions:{AddTracker:function(element,ref){addTrackerFN();},EditTracker:function(element,ref){editTrackerFN(element);},RemoveTracker:function(element,ref){removeTrackerFN(element);}}};var addTrackerFN=function(){new MochaUI.Window({contentURL:'addtrackers.html?hash='+current_hash});};var editTrackerFN=function(){new MochaUI.Window({contentURL:'edittracker.html?hash='+current_hash});};var removeTrackerFN=function(){var request=new Request({url:'api/v2/torrents/removeTrackers',method:'post'});request.send();};`;
+const legacyTrackers=`var menu={actions:{AddTracker:function(element,ref){addTrackerFN();},EditTracker:function(element,ref){editTrackerFN(element);},RemoveTracker:function(element,ref){removeTrackerFN(element);}}};var loadTrackersData=function(){var refresh=new Request.JSON({url:'api/v2/torrents/trackers?hash='+current_hash,method:'get'});refresh.send();};var updateTrackersData=function(){loadTrackersData();};var addTrackerFN=function(){new MochaUI.Window({contentURL:'addtrackers.html?hash='+current_hash,onCloseComplete:function(){updateTrackersData();}});};var editTrackerFN=function(){new MochaUI.Window({contentURL:'edittracker.html?hash='+current_hash});};var removeTrackerFN=function(){var request=new Request({url:'api/v2/torrents/removeTrackers',method:'post'});request.send();};`;
 const legacyMenus=extractDetailContextMenus({menuSource:menu,trackerSource:legacyTrackers,dialogSources:dialogs,apiActions:actions},'legacy Detail menu synthetic');
 assert.equal(legacyMenus.trackers[0].sourceAction,'torrentscontroller.h:addTrackersAction');
+assert.equal(legacyMenus.trackers[0].endpoint,'torrents/addTrackers','AddTracker must resolve the dialog POST, not the post-close trackers refresh GET');
 assert.equal(legacyMenus.trackers[1].sourceAction,'torrentscontroller.h:editTrackerAction');
 assert.equal(legacyMenus.trackers[2].sourceAction,'torrentscontroller.h:removeTrackersAction');
 const refs=detailControlTranslationRefs({controls:{filePriority:extractFilePriorityControl({filesSource:modern,fileTreeSource:fileTree},'refs')},contextMenus});
 assert.deepEqual(refs['detail.menu.trackers.EditTracker'],{source:'Edit tracker URL...',context:'TrackerListWidget'});
 assert.deepEqual(refs['detail.menu.peers.banPeer'],{source:'Ban peer permanently',context:'PeerListWidget'});
 assert.deepEqual(refs['detail.control.filePriority.6'],{source:'High',context:'PropListDelegate'});
-console.log('qB Detail control source contract passed: priority choices and Tracker/Peer menu order, labels, WebAPI actions, legacy/modern handler syntax, selection/static-row availability, and translation refs are source-derived and fail closed when unresolved.');
+console.log('qB Detail control source contract passed: priority choices and Tracker/Peer menu order, labels, WebAPI actions, legacy/modern handler syntax, write-vs-refresh endpoint provenance, selection/static-row availability, and translation refs are source-derived and fail closed when unresolved.');
