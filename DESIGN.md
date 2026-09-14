@@ -78,6 +78,9 @@ Torrent filter presentation              W.TorrentFilterView
 Route / page / Torrent query / sort      app.js / W.AppState / W.LibraryController
 Torrent row/card DOM                     W.Components
 Torrent field registry/preferences       W.TorrentFieldRegistry
+Torrent detail source schema             W.ReleaseProfile.torrentDetailUi
+Torrent detail column overrides          W.SharedColumns
+Torrent detail header gestures           W.ColumnInteraction
 Torrent progress semantic projection     W.Components.progressVisual
 Torrent progress DOM                     W.Components.progressTrack / progressCell
 Torrent progress skin/motion             css/progress.css
@@ -131,6 +134,17 @@ For a certified exact release, `W.ReleaseProfile.torrentTableColumns` owns nativ
 `app.js -> openColumns()` owns Columns-dialog interaction (checkbox, ↑/↓, Desktop dialog drag and Android 360 ms long-press drag). `W.DataGrid` owns live table sizing plus the Desktop header geometry gestures: resize handles change width; dragging the header body after the movement threshold directly reorders the same `app.columns`; a true drag suppresses the subsequent sort click while an ordinary click keeps the existing server-sort path. Both entry points persist through `W.TorrentFieldRegistry.saveEffectiveDesktopColumns()` and therefore do not create a second column-order state. Long-press activation must preserve ordinary vertical touch scrolling until the gesture is intentionally captured.
 
 The user-resize floor is `24 px` for every exact-native column while exact qB `defaultWidth` remains the initial/default width. During resize, pointermove paints the current header and mounted Torrent rows directly; it must not rebuild the VirtualList or persist on every frame. Pointerup performs the single canonical save/reconciliation. Field presence alone never proves server sort support; only an already-proven canonical sort semantic may be reused directly or through exact `dataProperties`. MutationObserver/post-render repair and a second column-layout owner are prohibited.
+
+### TORRENT-DETAIL-COLUMNS — exact detail schema, shared user overrides
+For a certified exact release, `W.ReleaseProfile.torrentDetailUi.tables` owns the exact source-derived Files / Trackers / Peers / Web Seeds column schema, default order, default visibility/default width where upstream exposes them, translation source/context and `dataProperties`/source relation. UI row keys are not automatically API fields; every response/derived relation must remain source-proven and unknown shapes fail closed.
+
+The runtime projection (`W.QbUiEvidence.detailColumns(surface)` or its canonical equivalent) feeds the shared detail table. `W.SharedColumns` owns only user visibility/order/width overrides for that projected schema; it does not become a second source-schema owner. `W.ColumnInteraction` owns the shared detail header pointer/touch lifecycle only; it does not own another column state.
+
+Detail Columns changes live-apply through the same canonical state: checkbox change commits once through `W.SharedColumns` and invokes the detail `ctx.apply(true)` path. A state write followed by MutationObserver/post-render repair is prohibited.
+
+Detail resize uses a dedicated hitbox fully inside the current header cell's hittable area. Pointermove performs live width/grid-template paint only; pointerup performs the persistence/reconciliation. Header-body drag performs reorder. Ordinary mobile vertical touch remains scrollable and must not reorder; only the intentional long-press gesture may capture touch for reorder, and the final order persists through `W.SharedColumns`.
+
+The shared table viewport owns horizontal scrolling. Header and row cells may have a stable pre-existing layout offset, but both must move by the same `scrollLeft`; outer `#detail-content` must not become a competing horizontal scroll owner.
 
 ## 4. Torrent progress
 
@@ -378,6 +392,11 @@ exact-source Desktop columns/defaults with persistent visibility/order/width ove
 24px user resize floor while exact qB defaultWidth remains the initial/default width
 Columns-dialog drag + Android long-press reorder and direct Desktop header drag share the canonical column override
 live resize paints mounted rows without per-frame VirtualList rebuild/persistence; ordinary header click still sorts
+Torrent Detail user-path opening reaches source-derived tabs/tables without a second detail schema owner
+Torrent Detail Content fills the Tabs -> Statusbar workspace and its shared viewport owns horizontal scrolling
+Torrent Detail Content checked/remaining are source-derived, not same-name guessed response fields
+Torrent Detail Columns dialog live-applies through W.SharedColumns; desktop resize/reorder persist canonically
+Torrent Detail ordinary mobile touch scroll never reorders; intentional long-press reorder persists canonically
 Sidebar facets below state filters
 no four-card summary on any viewport
 compact Mobile toolbar with canonical controls
