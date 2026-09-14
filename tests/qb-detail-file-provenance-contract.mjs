@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {enrichTorrentFileColumnProvenance} from '../tools/qb-detail-file-provenance.mjs';
+import {enrichTorrentFileColumnProvenance} from '../tools/qb-release-catalog-detail-provenance.mjs';
 
 const columns=['checked','name','size','progress','priority','remaining','availability'].map(key=>({key,dataProperties:[key]}));
 const apiFields=['index','name','size','progress','priority','is_seed','piece_range','availability'];
