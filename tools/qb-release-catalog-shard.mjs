@@ -117,7 +117,7 @@ function torrentSurface(ref){
     torrentStates:extractTorrentStates(serializerSource,ref),
     torrentTableColumns,
     torrentDetailUi,
-    ...extractTorrentDetailSurfaces(torrentsControllerSource,ref)
+    ...extractTorrentDetailSurfaces(torrentsControllerSource,ref,serializerHeaderSource)
   };
 }
 
