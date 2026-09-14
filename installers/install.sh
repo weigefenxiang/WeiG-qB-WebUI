@@ -659,6 +659,21 @@ find_config() {
   return 1
 }
 
+prune_backups() {
+  keep=${1:-3}
+  [ "$keep" -ge 1 ] || { echo "Backup retention must keep at least one backup." >&2; return 1; }
+  find "$BACKUPS" -mindepth 1 -maxdepth 1 -type d -print 2>/dev/null | sort -r | while IFS= read -r backup; do
+    name=${backup##*/}
+    printf '%s\n' "$name" | grep -Eq '^[0-9]{8}-[0-9]{6}$' || continue
+    [ -f "$backup/had-webui" ] && [ -f "$backup/dest-path" ] || continue
+    count=${count:-0}
+    count=$((count+1))
+    if [ "$count" -gt "$keep" ]; then
+      rm -rf -- "$backup"
+    fi
+  done
+}
+
 backup_now() {
   stamp=$(date '+%Y%m%d-%H%M%S')
   b="$BACKUPS/$stamp"
@@ -682,6 +697,7 @@ backup_now() {
   printf '%s\n' "$b" > "$STATE/last-backup"
   printf '%s\n' "$DEST" > "$STATE/last-dest"
   printf '%s\n' "$QBT_ROOT_FOLDER" > "$STATE/last-qb-root-folder"
+  prune_backups 3
   echo "Backup: $b"
 }
 
