@@ -43,8 +43,8 @@ assert(!tableCss.includes('translateX(')&&!tableCss.includes('margin-left:calc(-
 
 // Resize/reorder hot path: pointermove only updates the CSS grid projection. VirtualList rebuild
 // and persistence happen at the bounded interaction commit, never on each pointer frame.
-assert(ui.includes("function move(ev){var active=columns.find(function(column){return column.key===key;});if(!active)return;active.width=Math.max(active.min||24,startW+(ev.clientX-startX));setTemplate();}function up(ev)"),'column resize pointermove must only project the new CSS grid template');
-assert(ui.includes("notify('resize');}handle.addEventListener('pointermove',move);"),'column resize must notify/persist only after pointerup/pointercancel commit');
+assert(ui.includes("function move(ev){if(ev.pointerId!==pointerId)return;var active=columns.find(function(column){return column.key===key;});if(!active)return;active.width=Math.max(active.min||24,startW+(ev.clientX-startX));setTemplate();}function up(ev){if(ev.pointerId!==pointerId)return;"),'column resize pointermove must only guard the active pointer and project the new CSS grid template');
+assert(ui.includes("notify('resize');}global.addEventListener('pointermove',move,true);"),'column resize must notify/persist only after pointerup/pointercancel commit while drag tracking lives outside the narrow handle');
 assert(!ui.includes('localStorage'),'shared pointer interaction engine must not write localStorage directly in its hot path');
 assert(app.includes("if(app.virtual)app.virtual.render();if(save)saveEffectiveColumns(cols);"),'main table may rebuild/persist once after a committed column interaction, not during pointermove');
 
