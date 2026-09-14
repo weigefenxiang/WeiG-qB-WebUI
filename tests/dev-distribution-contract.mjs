@@ -7,7 +7,7 @@ const buildSite=fs.readFileSync(new URL('../simulator/build/build-site.mjs',impo
 const distBuilder=fs.readFileSync(new URL('../tools/build-webui-dist.mjs',import.meta.url),'utf8');
 const pagesSource=fs.readFileSync(new URL('../.github/workflows/pages-source.yml',import.meta.url),'utf8');
 const pagesWorkflow=fs.readFileSync(new URL('../.github/workflows/pages.yml',import.meta.url),'utf8');
-const windowsDevGuide=fs.readFileSync(new URL('../docs/008.Windows开发版安装.md',import.meta.url),'utf8');
+const installGuide=fs.readFileSync(new URL('../docs/007.安装升级与手动部署.md',import.meta.url),'utf8');
 
 const devInstallerUrl='https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.ps1';
 const pagesMaterializationMatcher='.github/workflows/pages-source.yml|.github/workflows/pages.yml|webui/*|simulator/*|installers/*|VERSION|tools/build-webui-dist.mjs|tools/qb-settings-*.mjs|tools/qb-locale-*.mjs|tools/qb-native-qm-recovery.mjs|tools/qb-owned-ui-source.mjs|tools/qb-preference-semantics.mjs|tools/qb-qm-provisioning-source.mjs|tools/qb-release-catalog*.mjs|tools/qb-source-parsers.mjs|tools/qb-detail-surface-parsers.mjs|tools/qb-torrent-fields-parser.mjs|tools/qb-translator-behavior-source.mjs|tools/qb-cpp-literals.mjs|tools/qb-webui-catalog.mjs|tools/data/qb-stable-lkg.json|tools/data/qb-locale-lkg.json|tools/data/qb-translator-behavior-lkg.json|tests/fixtures/qb-release-catalog.lkg.json)';
@@ -57,6 +57,6 @@ assert.doesNotMatch(pagesWorkflow,/docs\/\*\|\*\.md\|LICENSE\|\.github\/workflow
 assert.match(pagesWorkflow,/\.files\[\] \| \.filename, "\\u0000"/,'Dev Pages stale gate must parse GitHub compare filenames losslessly, including non-ASCII docs');
 assert.match(pagesWorkflow,/FILE_COUNT.*-lt 1.*FILE_COUNT.*-ge 300/s,'Dev Pages stale gate must fail closed on empty or possibly truncated GitHub compare file lists');
 assert.match(pagesWorkflow,/STATUS.*!= "ahead"/s,'Dev Pages stale gate must fail closed when GitHub compare does not prove the current HEAD is ahead');
-assert.ok(windowsDevGuide.includes(devInstallerUrl),'Windows dev guide must bootstrap from the materialized dev distribution, not the stable main installer');
-assert.match(windowsDevGuide,/install\.ps1[^\n]*-dev|weigg-install-dev\.ps1[^\n]*-dev/s,'Windows dev guide must actually execute the published installer in dev mode');
+assert.ok(installGuide.includes(devInstallerUrl),'Installation authority must bootstrap Windows dev from the materialized dev distribution, not the stable main installer');
+assert.match(installGuide,/install\.ps1[^\n]*-dev|weigg-install-dev\.ps1[^\n]*-dev/s,'Installation authority must actually execute the published installer in dev mode');
 console.log('Dev distribution contract passed: Pages source/stale gates extend the direct public-payload boundary with build-affecting materialization tooling, installers consume exact-SHA materialized payloads, and raw-source fallback remains forbidden.');
