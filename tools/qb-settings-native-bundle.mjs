@@ -112,9 +112,19 @@ export function buildNativeSettingsBundle(catalog,behaviorEvidence,{recoveryUnio
   return{schemaVersion:3,source:'qB-source-context-runtime-copy-ir+minimal-official-qm',profileCount:profiles.length,profiles,refs:Object.fromEntries([...refs.values()].sort((a,b)=>a.id.localeCompare(b.id)).map(item=>[item.id,{context:item.context,source:item.source}])),bindings:stableObject(bindings),bridgeSets:stableObject(bridgeSets),localeMessages};
 }
 
+function compactBridgeTables(bridgeSets){
+  const pairKeys=new Set();
+  for(const setId of Object.keys(bridgeSets||{}).sort())for(const ref of Object.keys(bridgeSets[setId]||{}).sort())pairKeys.add(JSON.stringify([ref,String(bridgeSets[setId][ref])]));
+  const values={},tokens=new Map(),ordered=[...pairKeys].sort();
+  ordered.forEach((key,index)=>{const [ref,value]=JSON.parse(key),token=index.toString(36);tokens.set(key,token);values[token]={ref,value};});
+  const sets={};
+  for(const setId of Object.keys(bridgeSets||{}).sort())sets[setId]=Object.keys(bridgeSets[setId]||{}).sort().map(ref=>tokens.get(JSON.stringify([ref,String(bridgeSets[setId][ref])])));
+  return{values,sets};
+}
+
 export function renderOwnedCopyRegistry(bundle){
   if(!bundle||bundle.schemaVersion!==3)throw new Error('Owned copy registry requires runtime copy bundle schemaVersion 3.');
-  const lines=['# WeiG qB-owned copy runtime IR v1'];
+  const compact=compactBridgeTables(bundle.bridgeSets),lines=['# WeiG qB-owned copy runtime IR v2'];
   for(const profile of [...bundle.profiles].sort((a,b)=>a.sourceSha.localeCompare(b.sourceSha))){
     lines.push(`@@PROFILE\t${profile.sourceSha}\t${encodeField(profile.qbVersion)}\t${encodeField(profile.family)}\t${profile.bindingId}\t${encodeField(profile.nativeLocales.join(','))}\t${encodeField(profile.bridgeLocales.join(','))}`);
     for(const locale of Object.keys(profile.bridges||{}).sort())lines.push(`@@BRIDGE\t${profile.sourceSha}\t${encodeField(locale)}\t${profile.bridges[locale]||'-'}`);
@@ -127,7 +137,8 @@ export function renderOwnedCopyRegistry(bundle){
     }
     for(const key of Object.keys(binding.ui||{}).sort())lines.push(`@@UI\t${bindingId}\t${encodeField(key)}\t${binding.ui[key]}`);
   }
-  for(const setId of Object.keys(bundle.bridgeSets||{}).sort())for(const ref of Object.keys(bundle.bridgeSets[setId]).sort())lines.push(`@@SET\t${setId}\t${ref}\t${encodeField(bundle.bridgeSets[setId][ref])}`);
+  for(const token of Object.keys(compact.values).sort((a,b)=>parseInt(a,36)-parseInt(b,36))){const item=compact.values[token];lines.push(`@@VAL\t${token}\t${item.ref}\t${encodeField(item.value)}`);}
+  for(const setId of Object.keys(compact.sets).sort())lines.push(`@@SET\t${setId}\t${compact.sets[setId].join(',')}`);
   for(const id of Object.keys(bundle.refs||{}).sort()){
     const item=bundle.refs[id];lines.push(`@@REF\t${id}\t${encodeField(item.context)}\t${encodeField(item.source)}`);lines.push(`QBT_TR(${item.source})QBT_TR[CONTEXT=${item.context}]`);lines.push('@@END');
   }

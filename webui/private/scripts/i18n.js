@@ -68,7 +68,7 @@
   function decodeField(value){try{return decodeURIComponent(String(value||''));}catch(_e){return String(value||'');}}
   function routeLocale(list){if(!Array.isArray(list))return null;for(var i=0;i<list.length;i++)if(sameQbLocale(list[i],qbLocale))return list[i];var wanted=normalize(qbLocale);for(var j=0;j<list.length;j++)if(normalize(list[j])===wanted)return list[j];return null;}
   function parseOwnedCopyRegistry(text,expectedSha,expectedVersion){
-    var source=String(text||''),refs={},bindings={},sets={},bridges={},profile=null,match;
+    var source=String(text||''),refs={},bindings={},values={},sets={},bridges={},profile=null,match;
     var refRe=/^@@REF\t([0-9a-f]{24})\t([^\t\r\n]*)\t([^\t\r\n]*)\r?\n([\s\S]*?)\r?\n@@END\s*$/gm;
     while((match=refRe.exec(source))){var raw=String(match[4]||'').trim();refs[match[1]]={context:decodeField(match[2]),source:decodeField(match[3]),text:raw&&raw.indexOf('QBT_TR(')<0?raw:null};}
     var profileRe=/^@@PROFILE\t([0-9a-f]{40})\t([^\t\r\n]*)\t([^\t\r\n]*)\t(b[0-9a-f]{20})\t([^\t\r\n]*)\t([^\t\r\n]*)\s*$/gm;
@@ -78,19 +78,21 @@
     while((match=prefRe.exec(source))){var bind=bindings[match[1]]||(bindings[match[1]]={preferences:{},ui:{}});bind.preferences[decodeField(match[2])]={controlId:decodeField(match[3])||null,title:match[4],description:match[5]==='-'?null:match[5]};}
     var uiRe=/^@@UI\t(b[0-9a-f]{20})\t([^\t\r\n]*)\t([0-9a-f]{24})\s*$/gm;
     while((match=uiRe.exec(source))){var uiBind=bindings[match[1]]||(bindings[match[1]]={preferences:{},ui:{}});uiBind.ui[decodeField(match[2])]=match[3];}
-    var setRe=/^@@SET\t(t[0-9a-f]{20})\t([0-9a-f]{24})\t([^\t\r\n]*)\s*$/gm;
-    while((match=setRe.exec(source))){var set=sets[match[1]]||(sets[match[1]]={});set[match[2]]=decodeField(match[3]);}
+    var valueRe=/^@@VAL\t([0-9a-z]+)\t([0-9a-f]{24})\t([^\t\r\n]*)\s*$/gm;
+    while((match=valueRe.exec(source)))values[match[1]]={ref:match[2],value:decodeField(match[3])};
+    var setRe=/^@@SET\t(t[0-9a-f]{20})\t([0-9a-z,]*)\s*$/gm;
+    while((match=setRe.exec(source)))sets[match[1]]=match[2]?match[2].split(','):[];
     var bridgeRe=/^@@BRIDGE\t([0-9a-f]{40})\t([^\t\r\n]*)\t(t[0-9a-f]{20}|-)\s*$/gm;
     while((match=bridgeRe.exec(source))){if(match[1]===expectedSha)bridges[decodeField(match[2])]=match[3]==='-'?null:match[3];}
     var binding=bindings[profile.bindingId];if(!binding)return null;
     var nativeLocale=routeLocale(profile.nativeLocales),bridgeLocale=nativeLocale?null:routeLocale(profile.bridgeLocales),mode=nativeLocale?'native':(bridgeLocale?'bridge':null);if(!mode)return null;
-    var bridgeSet=mode==='bridge'&&bridges[bridgeLocale]?sets[bridges[bridgeLocale]]||{}:{};
+    var bridgeSet={};if(mode==='bridge'&&bridges[bridgeLocale]){var tokens=sets[bridges[bridgeLocale]];if(!tokens)return null;for(var i=0;i<tokens.length;i++){var item=values[tokens[i]];if(!item)return null;bridgeSet[item.ref]=item.value;}}
     function resolve(id){var ref=refs[id];if(!ref)return null;if(mode==='bridge')return String(bridgeSet[id]!==undefined?bridgeSet[id]:ref.source);return ref.text===null?null:String(ref.text);}
     var preferences={},ui={},unresolved=false;
     Object.keys(binding.preferences).forEach(function(key){var entry=binding.preferences[key],title=resolve(entry.title),description=entry.description?resolve(entry.description):'';if(title===null||description===null){unresolved=true;return;}preferences[key]={title:title,description:description||'',controlId:entry.controlId||null};});
     Object.keys(binding.ui).forEach(function(key){var value=resolve(binding.ui[key]);if(value===null){unresolved=true;return;}ui[key]=value;});
     if(mode==='native'&&unresolved)return null;
-    return{schemaVersion:1,source:mode==='native'?'qb-native-QBT_TR+minimal-official-QM':'qb-exact-official-TS-compact-bridge',sourceSha:expectedSha,qbVersion:expectedVersion,locale:qbLocale,mode:mode,preferences:preferences,ui:ui};
+    return{schemaVersion:2,source:mode==='native'?'qb-native-QBT_TR+minimal-official-QM':'qb-exact-official-TS-compact-bridge',sourceSha:expectedSha,qbVersion:expectedVersion,locale:qbLocale,mode:mode,preferences:preferences,ui:ui};
   }
   function loadQbOwnedCopy(){
     var current=currentProfile();if(!current||current.fallback)return Promise.resolve(null);var expectedSha=String(current.sourceSha||''),expectedVersion=String(current.qbVersion||'');if(!/^[0-9a-f]{40}$/.test(expectedSha)||!expectedVersion)return Promise.resolve(null);
