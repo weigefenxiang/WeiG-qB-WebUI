@@ -181,3 +181,5 @@ try{
   await browser.close();
   await new Promise(resolve=>server.close(resolve));
 }
+
+await import('./browser-torrent-detail.mjs');
