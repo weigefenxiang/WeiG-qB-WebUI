@@ -31,7 +31,7 @@ for(const owner of ['torrentPropertiesFields','torrentTrackerFields','torrentFil
   assert.match(releaseProfile,new RegExp(`function ${owner}\\(\\)`),`${owner} must remain a ReleaseProfile runtime owner`);
 }
 assert.match(releaseProfile,/function hasTorrentDetailField\(surface,name\)/,'ReleaseProfile must own per-field Detail provenance');
-assert.match(releaseProfile,/function torrentDetailUi\(\)\{if\(!current\|\|current\.fallback\|\|!isCertified\(\)\)return null;/,'ReleaseProfile must expose Detail UI facts only for exact/equivalent certified profiles');
+assert.match(releaseProfile,/function torrentDetailUi\(\)\{if\(!isCertified\(\)\|\|!current\|\|current\.fallback\)return null;/,'ReleaseProfile must expose Detail UI facts only for exact/equivalent certified profiles');
 assert.match(releaseProfile,/torrentPropertiesFields:\[\],torrentTrackerFields:\[\],torrentFileFields:\[\],torrentWebSeedFields:\[\]/,'unknown/fallback releases must expose no guessed Detail response fields');
 
 assert.match(index,/<div id="detail-tabs" class="detail-tabs" role="tablist"><\/div>/,'HTML must contain only an empty Detail tab host');
