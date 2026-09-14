@@ -79,6 +79,8 @@ Route / page / Torrent query / sort      app.js / W.AppState / W.LibraryControll
 Torrent row/card DOM                     W.Components
 Torrent field registry/preferences       W.TorrentFieldRegistry
 Torrent detail source schema             W.ReleaseProfile.torrentDetailUi
+Torrent detail source projection         W.QbUiEvidence
+Torrent detail generic runtime           app.js descriptor consumer
 Torrent detail column overrides          W.SharedColumns
 Torrent detail header gestures           W.ColumnInteraction
 Torrent progress semantic projection     W.Components.progressVisual
@@ -135,16 +137,44 @@ For a certified exact release, `W.ReleaseProfile.torrentTableColumns` owns nativ
 
 The user-resize floor is `24 px` for every exact-native column while exact qB `defaultWidth` remains the initial/default width. During resize, pointermove paints the current header and mounted Torrent rows directly; it must not rebuild the VirtualList or persist on every frame. Pointerup performs the single canonical save/reconciliation. Field presence alone never proves server sort support; only an already-proven canonical sort semantic may be reused directly or through exact `dataProperties`. MutationObserver/post-render repair and a second column-layout owner are prohibited.
 
+### TORRENT-DETAIL-SURFACE — exact source manifest drives tabs, General and tables
+For a certified exact release, `W.ReleaseProfile.torrentDetailUi` owns exact source-derived tab order/existence, qB translation source/context, General property groups/fields/bindings, Files / Trackers / Peers / Web Seeds table schemas, file-priority controls and Tracker/Peer context-menu facts. Fallback/UNKNOWN profiles do not claim exact Detail parity.
+
+The DOM contains only an empty Detail tab host; runtime iterates the certified manifest. General/Properties is the one distinct source-layout surface and consumes one `torrents/properties` response through `W.QbUiEvidence`/canonical source projection. Table tabs resolve from `torrentDetailUi.tables` and use one generic table renderer. Fixed five-tab assumptions, a hand-written General field fallback, `detailActions`, and per-surface Files/Trackers/Peers/Web Seeds renderer owners are prohibited.
+
+qB-owned Detail tab/group/field/column/control/menu copy follows the canonical `W.I18n` qB-owned source/context path. Hand-written Chinese/English Detail label tables are prohibited.
+
 ### TORRENT-DETAIL-COLUMNS — exact detail schema, shared user overrides
 For a certified exact release, `W.ReleaseProfile.torrentDetailUi.tables` owns the exact source-derived Files / Trackers / Peers / Web Seeds column schema, default order, default visibility/default width where upstream exposes them, translation source/context and `dataProperties`/source relation. UI row keys are not automatically API fields; every response/derived relation must remain source-proven and unknown shapes fail closed.
 
 The runtime projection (`W.QbUiEvidence.detailColumns(surface)` or its canonical equivalent) feeds the shared detail table. `W.SharedColumns` owns only user visibility/order/width overrides for that projected schema; it does not become a second source-schema owner. `W.ColumnInteraction` owns the shared detail header pointer/touch lifecycle only; it does not own another column state.
 
-Detail Columns changes live-apply through the same canonical state: checkbox change commits once through `W.SharedColumns` and invokes the detail `ctx.apply(true)` path. A state write followed by MutationObserver/post-render repair is prohibited.
+Detail Columns changes live-apply through the same canonical state: checkbox change commits once through `W.SharedColumns` and invokes the detail `ctx.apply(true)` path. Columns joins the surface's existing first toolbar row instead of occupying a separate rail; zero-selection source actions may share that same responsive toolbar. A state write followed by MutationObserver/post-render repair is prohibited.
 
 Detail resize uses a dedicated hitbox fully inside the current header cell's hittable area. Pointermove performs live width/grid-template paint only; pointerup performs the persistence/reconciliation. Header-body drag performs reorder. Ordinary mobile vertical touch remains scrollable and must not reorder; only the intentional long-press gesture may capture touch for reorder, and the final order persists through `W.SharedColumns`.
 
-The shared table viewport owns horizontal scrolling. Header and row cells may have a stable pre-existing layout offset, but both must move by the same `scrollLeft`; outer `#detail-content` must not become a competing horizontal scroll owner.
+Header and body consume the same resolved column definition/grid template/order/width/alignment. The shared table viewport is the single horizontal-scroll owner; outer `#detail-content`, transform synchronization, MutationObserver repair and a second scroll owner are prohibited.
+
+### TORRENT-DETAIL-ACTIONS — source menu facts, generic parameter binding, one transport
+Tracker/Peer row actions and zero-selection toolbar actions consume source-generated `torrentDetailUi.contextMenus`. Menu order, qB-owned labels, selection/static-row availability, source action and expected endpoint come from exact qB source facts.
+
+The execution chain is:
+
+```text
+context menu item
+-> source availability
+-> W.ReleaseProfile.actionDescriptor(sourceAction)
+-> endpoint agreement
+-> required/optional parameter contract + source-proven options
+-> generic context parameter binding
+-> W.QBClient.request(exact endpoint)
+```
+
+Runtime may bind only data available from canonical context, such as torrent hash, Tracker exact URL, Peer address and source-proven option/new-value parameters. Missing required bindings, unresolved source action or endpoint disagreement fail closed before HTTP. Endpoint-name branches such as dedicated `editTracker/removeTrackers/banPeers` runtime logic are prohibited.
+
+Tracker Detail business truth is the exact `torrents/trackers.url`; the Detail row-address/action path never normalizes or redacts it. Presentation may render it as a single-line ellipsis and expose the complete exact value through title/tooltip. This rule does not prohibit the main Torrent Tracker facet from using its own legitimate normalization semantics.
+
+Peer country presentation consumes exact `country_code` through the shared ISO alpha-2 flag renderer (`U.countryFlag` or canonical equivalent). Detail UI does not own a country-name map. Permanent inline Tracker Edit/Delete and Peer `×` mutation affordances are prohibited; supported mutations belong to the source-driven context-menu path.
 
 ## 4. Torrent progress
 
@@ -392,10 +422,15 @@ exact-source Desktop columns/defaults with persistent visibility/order/width ove
 24px user resize floor while exact qB defaultWidth remains the initial/default width
 Columns-dialog drag + Android long-press reorder and direct Desktop header drag share the canonical column override
 live resize paints mounted rows without per-frame VirtualList rebuild/persistence; ordinary header click still sorts
-Torrent Detail user-path opening reaches source-derived tabs/tables without a second detail schema owner
-Torrent Detail Content fills the Tabs -> Statusbar workspace and its shared viewport owns horizontal scrolling
+Torrent Detail tabs are generated from exact source order/existence and qB-owned copy, with no fixed five-tab owner
+Torrent Detail General uses one Properties response + source-generated propertyLayout/dataProperties and no hand-written fallback
+Torrent Detail Files/Trackers/Peers/Web Seeds use one generic table renderer driven by exact source tables
+Torrent Detail Tracker URL stays exact, single-line ellipsized with full title/tooltip, and is never normalized by the Detail path
+Torrent Detail Peer country flag reuses shared country_code/ISO renderer; no local country map
+Torrent Detail row actions come from source-generated context menus and generic action/parameter binding; no permanent Tracker Edit/Delete or Peer × cell action
+Torrent Detail Columns joins the first toolbar rail and shares W.SharedColumns/W.ColumnInteraction
+Torrent Detail header/body consume the same column definition/grid template and one shared horizontal viewport
 Torrent Detail Content checked/remaining are source-derived, not same-name guessed response fields
-Torrent Detail Columns dialog live-applies through W.SharedColumns; desktop resize/reorder persist canonically
 Torrent Detail ordinary mobile touch scroll never reorders; intentional long-press reorder persists canonically
 Sidebar facets below state filters
 no four-card summary on any viewport
