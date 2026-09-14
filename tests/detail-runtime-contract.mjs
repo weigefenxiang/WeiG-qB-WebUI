@@ -36,7 +36,8 @@ assert.equal((app.match(/app\.client\.properties\(app\.detailHash\)/g)||[]).leng
 assert.doesNotMatch(app,/保存路径|总大小|已下载|已上传|连接数|privacyType|discoveryType|sourceDetailObject/,'app must not retain a hand-written General fallback');
 assert.match(layout,/function renderGeneral\(root,data,hash\).*Array\.isArray\(layout\).*return false;/s,'General must fail closed without source-generated propertyLayout');
 assert.match(layout,/Array\.isArray\(field&&field\.dataProperties\)/,'General values must come from parser-derived bindings');
-assert.match(layout,/keys\.some\(function\(key\)\{return!R\.hasTorrentDetailField\('properties',key\);\}\)/,'General property bindings must remain exact-response gated');
+assert.doesNotMatch(layout,/keys\.some\(function\(key\)\{return!R\.hasTorrentDetailField\('properties',key\);\}\)/,'General source layout must not be rejected by a second per-field provenance gate');
+assert.match(layout,/own\(data,key\)\?generalScalar\(key,data\[key\]\):'—'/,'General optional response fields must fail soft inside a source-proven layout');
 assert.match(layout,/title\.textContent=detailGroupLabel\(key\)/,'General group labels must use qB translation evidence');
 assert.match(layout,/name\.textContent=detailPropertyLabel\(row\.id\)/,'General field labels must use qB translation evidence');
 assert.equal(fs.existsSync(retiredGeneralRuntime),false,'retired detail-general.js must remain deleted');
