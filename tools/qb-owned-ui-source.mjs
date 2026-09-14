@@ -20,7 +20,7 @@ function torrentStatusRefs(source){
 
 export function extractQbOwnedUiFacts({preferencesSource='',toolbarSource='',filtersSource='',dynamicTableSource=''}={}){
   const out={},toolbar=toolbarSource||preferencesSource;
-  const tabs={'settings.tab.downloads':'PrefDownloadsLink','settings.tab.connection':'PrefConnectionLink','settings.tab.speed':'PrefSpeedLink','settings.tab.bittorrent':'PrefBittorrentLink','settings.tab.webui':'PrefWebUILink','settings.tab.advanced':'PrefAdvancedLink'};
+  const tabs={'settings.tab.behavior':'PrefBehaviorLink','settings.tab.downloads':'PrefDownloadsLink','settings.tab.connection':'PrefConnectionLink','settings.tab.speed':'PrefSpeedLink','settings.tab.bittorrent':'PrefBittorrentLink','settings.tab.rss':'PrefRSSLink','settings.tab.webui':'PrefWebUILink','settings.tab.advanced':'PrefAdvancedLink'};
   for(const [key,id] of Object.entries(tabs))add(out,key,itemRef(toolbar,id));
   add(out,'transfer.rate.global',exactRef(preferencesSource,'Global Rate Limits'));
   add(out,'transfer.rate.alternative',exactRef(preferencesSource,'Alternative Rate Limits'));
