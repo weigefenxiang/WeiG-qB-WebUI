@@ -135,13 +135,14 @@ try{
   const beforeBox=await nameHead.boundingBox(),handle=await resize.boundingBox();
   assert(beforeBox&&handle,'Detail Name resize handle is missing.');
   const persistedBefore=await page.evaluate(()=>JSON.stringify(window.WeiG.SharedColumns.read('torrent-detail-files')));
-  await page.mouse.move(handle.x+handle.width/2,handle.y+handle.height/2);await page.mouse.down();await page.mouse.move(handle.x+handle.width/2+360,handle.y+handle.height/2,{steps:8});
+  const resizeDelta=await page.evaluate(()=>{const viewport=document.querySelector('.shared-table__viewport'),widths=[...document.querySelectorAll('.shared-table__head .grid-head-cell')].reduce((sum,node)=>sum+node.getBoundingClientRect().width,0);return Math.max(360,Math.ceil(viewport.clientWidth-widths+180));});
+  await page.mouse.move(handle.x+handle.width/2,handle.y+handle.height/2);await page.mouse.down();await page.mouse.move(handle.x+handle.width/2+resizeDelta,handle.y+handle.height/2,{steps:8});
   const duringBox=await nameHead.boundingBox(),persistedDuring=await page.evaluate(()=>JSON.stringify(window.WeiG.SharedColumns.read('torrent-detail-files')));
-  assert(duringBox.width>beforeBox.width+250,`Resize pointermove did not paint live geometry: ${beforeBox.width} -> ${duringBox.width}`);
+  assert(duringBox.width>beforeBox.width+resizeDelta-40,`Resize pointermove did not paint live geometry: ${beforeBox.width} -> ${duringBox.width}, delta=${resizeDelta}`);
   assert(persistedDuring===persistedBefore,'Resize pointermove persisted state before pointerup.');
   await page.mouse.up();
   const persistedAfter=await page.evaluate(()=>window.WeiG.SharedColumns.read('torrent-detail-files'));
-  assert(Number(persistedAfter.widths?.name)>beforeBox.width+250,`Resize pointerup did not commit canonical width: ${JSON.stringify(persistedAfter)}`);
+  assert(Number(persistedAfter.widths?.name)>beforeBox.width+resizeDelta-40,`Resize pointerup did not commit canonical width: ${JSON.stringify({persistedAfter,resizeDelta})}`);
 
   const orderBefore=await page.evaluate(()=>[...document.querySelectorAll('.shared-table__head .grid-head-cell')].map(node=>node.dataset.key));
   const sizeHead=page.locator('.shared-table__head .grid-head-cell[data-key="size"]'),sizeBox=await sizeHead.boundingBox(),nameBox=await nameHead.boundingBox();
