@@ -45,7 +45,7 @@ const read=name=>fs.readFileSync(path.join(docsDir,name),'utf8');
 const handoff=read('014.AI协作与分支纪律.md');
 assert.match(handoff,/single current handoff authority/i,'014 must remain the single current handoff authority');
 assert.ok(handoff.includes('一键复制给下一位 AI'),'014 must keep one copyable next-AI handoff block');
-assert.ok(handoff.includes('Torrent Detail 原版语义收口'),'014 must preserve the current unfinished Torrent Detail convergence scope until it is actually completed');
+assert.ok(handoff.includes('## 4. 当前未完成事项判定'),'014 must preserve one explicit current-scope/TODO authority section without hard-coding an obsolete plan name');
 assert.ok(handoff.includes('完成阅读和fresh-read后'),'copyable handoff must require docs reading + fresh repository truth before development');
 
 const project=read('001.项目总方案.md');
