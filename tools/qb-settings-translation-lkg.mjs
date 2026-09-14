@@ -38,10 +38,77 @@ function validateColumns(columns,qbVersion){
   return out;
 }
 function validateRef(ref,label){assert(ref&&String(ref.source||'').trim()&&String(ref.context||'').trim(),`${label}: translation ref is invalid.`);return clone(ref);}
-function validateDetailUi(value,qbVersion){
+function validateDetailControls(value,qbVersion){
+  if(value===undefined)return null;
+  assert(value&&typeof value==='object'&&!Array.isArray(value),`${qbVersion}: Torrent detail controls are invalid.`);
+  const controls={};
+  for(const [name,control] of Object.entries(value)){
+    const key=String(name||'').trim();
+    assert(key&&control&&typeof control==='object'&&!Array.isArray(control),`${qbVersion}: invalid Torrent detail control ${key||'(empty)'}.`);
+    const valueType=String(control.valueType||'').trim(),sourceKind=String(control.sourceKind||'').trim(),options=Array.isArray(control.options)?control.options:null;
+    assert(valueType,`${qbVersion} detail control ${key}: valueType is missing.`);
+    assert(sourceKind,`${qbVersion} detail control ${key}: sourceKind is missing.`);
+    assert(options&&options.length>0,`${qbVersion} detail control ${key}: options are missing.`);
+    const seen=new Set(),normalized=[];
+    for(const option of options){
+      const optionValue=String(option?.value??'').trim();
+      assert(optionValue,`${qbVersion} detail control ${key}: option value is empty.`);
+      assert(!seen.has(optionValue),`${qbVersion} detail control ${key}: duplicate option value ${optionValue}.`);seen.add(optionValue);
+      normalized.push({value:optionValue,translation:validateRef(option?.translation,`${qbVersion} detail control ${key} option ${optionValue}`)});
+    }
+    controls[key]={valueType,options:normalized,sourceKind};
+  }
+  assert(Object.keys(controls).length>0,`${qbVersion}: Torrent detail controls are empty.`);
+  return controls;
+}
+function validateDetailContextMenus(value,qbVersion){
+  if(value===undefined)return null;
+  assert(value&&typeof value==='object'&&!Array.isArray(value),`${qbVersion}: Torrent detail context menus are invalid.`);
+  const menus={};
+  for(const [surface,items] of Object.entries(value)){
+    const name=String(surface||'').trim();
+    assert(name&&Array.isArray(items)&&items.length>0,`${qbVersion}: invalid Torrent detail context menu ${name||'(empty)'}.`);
+    const seen=new Set();
+    menus[name]=items.map(item=>{
+      const allowed=new Set(['id','translation','endpoint','sourceAction','availability']);
+      for(const key of Object.keys(item||{}))assert(allowed.has(key),`${qbVersion} detail ${name}: unsupported context-menu fact ${key}.`);
+      const id=String(item?.id||'').trim();
+      assert(id&&!seen.has(id),`${qbVersion} detail ${name}: invalid or duplicate context-menu action ${id||'(empty)'}.`);seen.add(id);
+      const translation=validateRef(item.translation,`${qbVersion} detail ${name} action ${id}`);
+      const endpoint=item.endpoint===undefined?null:String(item.endpoint||'').trim(),sourceAction=item.sourceAction===undefined?null:String(item.sourceAction||'').trim();
+      if(item.endpoint!==undefined)assert(endpoint,`${qbVersion} detail ${name} action ${id}: endpoint is empty.`);
+      if(item.sourceAction!==undefined)assert(sourceAction,`${qbVersion} detail ${name} action ${id}: sourceAction is empty.`);
+      let availability=null;
+      if(item.availability!==undefined){
+        assert(item.availability&&typeof item.availability==='object'&&!Array.isArray(item.availability),`${qbVersion} detail ${name} action ${id}: availability is invalid.`);
+        const allowedAvailability=new Set(['minSelection','maxSelection','excludedPrefixes']);
+        for(const key of Object.keys(item.availability))assert(allowedAvailability.has(key),`${qbVersion} detail ${name} action ${id}: unsupported availability fact ${key}.`);
+        availability={};
+        if(item.availability.minSelection!==undefined){const n=Number(item.availability.minSelection);assert(Number.isInteger(n)&&n>=0,`${qbVersion} detail ${name} action ${id}: minSelection is invalid.`);availability.minSelection=n;}
+        if(item.availability.maxSelection!==undefined){const n=Number(item.availability.maxSelection);assert(Number.isInteger(n)&&n>=0,`${qbVersion} detail ${name} action ${id}: maxSelection is invalid.`);availability.maxSelection=n;}
+        if(availability.minSelection!==undefined&&availability.maxSelection!==undefined)assert(availability.maxSelection>=availability.minSelection,`${qbVersion} detail ${name} action ${id}: selection range is invalid.`);
+        if(item.availability.excludedPrefixes!==undefined){
+          assert(Array.isArray(item.availability.excludedPrefixes),`${qbVersion} detail ${name} action ${id}: excludedPrefixes is invalid.`);
+          const prefixes=item.availability.excludedPrefixes.map(value=>String(value||''));
+          assert(prefixes.every(Boolean)&&new Set(prefixes).size===prefixes.length,`${qbVersion} detail ${name} action ${id}: excludedPrefixes contains empty or duplicate values.`);
+          availability.excludedPrefixes=prefixes;
+        }
+        assert(Object.keys(availability).length>0,`${qbVersion} detail ${name} action ${id}: availability is empty.`);
+      }
+      return{id,translation,...(endpoint?{endpoint}:{}),...(sourceAction?{sourceAction}:{}),...(availability?{availability}:{})};
+    });
+  }
+  assert(Object.keys(menus).length>0,`${qbVersion}: Torrent detail context menus are empty.`);
+  return menus;
+}
+export function validateDetailUi(value,qbVersion){
   assert(value&&typeof value==='object'&&!Array.isArray(value),`${qbVersion}: source-derived Torrent detail UI is missing.`);
   const tabs={};
   for(const key of ['overview','trackers','peers','webseeds','files'])tabs[key]=validateRef(value.tabs?.[key],`${qbVersion} detail tab ${key}`);
+  assert(Array.isArray(value.tabOrder)&&value.tabOrder.length===Object.keys(tabs).length,`${qbVersion}: source-derived Torrent detail tab order is missing or incomplete.`);
+  const tabOrder=value.tabOrder.map(item=>String(item||'').trim());
+  assert(tabOrder.every(Boolean)&&new Set(tabOrder).size===tabOrder.length,`${qbVersion}: Torrent detail tab order contains empty or duplicate keys.`);
+  assert(tabOrder.every(key=>Object.hasOwn(tabs,key))&&Object.keys(tabs).every(key=>tabOrder.includes(key)),`${qbVersion}: Torrent detail tab order/tab coverage mismatch.`);
   const propertyGroups={};
   for(const [key,ref] of Object.entries(value.propertyGroups||{}))propertyGroups[key]=validateRef(ref,`${qbVersion} detail group ${key}`);
   const propertyLabels={};
@@ -93,9 +160,10 @@ function validateDetailUi(value,qbVersion){
       return clone(column);
     });
   }
-  return{tabs,propertyGroups,propertyLabels,propertyLayout,tables};
+  const controls=validateDetailControls(value.controls,qbVersion),contextMenus=validateDetailContextMenus(value.contextMenus,qbVersion);
+  return{tabs,tabOrder,propertyGroups,propertyLabels,propertyLayout,tables,...(controls?{controls}:{}),...(contextMenus?{contextMenus}:{})};
 }
-function detailUiBindingCount(detailUi){return Object.keys(detailUi.tabs||{}).length+Object.keys(detailUi.propertyGroups||{}).length+Object.keys(detailUi.propertyLabels||{}).length+(detailUi.propertyLayout||[]).reduce((sum,group)=>sum+(group?.fields?.length||0),0)+Object.values(detailUi.tables||{}).reduce((sum,columns)=>sum+(columns?.length||0),0);}
+export function detailUiBindingCount(detailUi){return Object.keys(detailUi.tabs||{}).length+Object.keys(detailUi.propertyGroups||{}).length+Object.keys(detailUi.propertyLabels||{}).length+(detailUi.propertyLayout||[]).reduce((sum,group)=>sum+(group?.fields?.length||0),0)+Object.values(detailUi.tables||{}).reduce((sum,columns)=>sum+(columns?.length||0),0)+Object.values(detailUi.controls||{}).reduce((sum,control)=>sum+(control?.options?.length||0),0)+Object.values(detailUi.contextMenus||{}).reduce((sum,items)=>sum+(items?.length||0),0);}
 function freezeRecovery(enrichedCatalog,recoveryEvidence){
   assert(recoveryEvidence,'Settings/source LKG v2 requires deterministic full official-TS recovery evidence.');
   const union=materializeQbNativeQmRecoveryUnion(recoveryEvidence);

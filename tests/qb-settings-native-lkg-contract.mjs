@@ -69,6 +69,7 @@ const nativeColumn=(key,source,visible=true)=>({key,caption:source,defaultWidth:
 const ref=(source,context)=>({source,context});
 const detailUi=()=>({
   tabs:{overview:ref('General','PropTabBar'),trackers:ref('Trackers','PropTabBar'),peers:ref('Peers','PropTabBar'),webseeds:ref('HTTP Sources','PropTabBar'),files:ref('Content','PropTabBar')},
+  tabOrder:['overview','trackers','peers','webseeds','files'],
   propertyGroups:{transfer:ref('Transfer','PropertiesWidget')},
   propertyLabels:{eta:ref('ETA:','PropertiesWidget')},
   propertyLayout:[{key:'transfer',translation:ref('Transfer','PropertiesWidget'),fields:[{id:'eta',valueSource:'properties',dataProperties:['eta']}]}],
@@ -92,10 +93,12 @@ assert.equal(lkg.recovery.localeCount,1);
 assert.deepEqual(lkg.profiles[0].recoveryLocales,['de']);
 assert.deepEqual(lkg.profiles[1].torrentTableColumns.map(item=>item.key),['name','size']);
 assert.equal(lkg.profiles[1].torrentDetailUi.tabs.webseeds.source,'HTTP Sources');
+assert.deepEqual(lkg.profiles[1].torrentDetailUi.tabOrder,['overview','trackers','peers','webseeds','files'],'LKG must preserve the source-proven Detail tab order');
 assert.deepEqual(lkg.profiles[1].torrentDetailUi.propertyLayout[0].fields,[{id:'eta',valueSource:'properties',dataProperties:['eta']}],'LKG must preserve source-proven General group/order/API bindings');
 assert.equal(lkg.profiles[1].torrentDetailUi.tables.files[0].defaultWidth,300,'LKG must preserve native detail column defaults when source provides them');
 const materialized=applyQbSettingsTranslationLkg(frozen,lkg,{catalogSha256:'f'.repeat(64)});
 assert.deepEqual(materialized[0].torrentTableColumns.map(item=>item.key),['name','size'],'Frozen materialization must restore exact native columns before runtime packaging');
+assert.deepEqual(materialized[0].torrentDetailUi.tabOrder,['overview','trackers','peers','webseeds','files'],'Frozen materialization must restore exact source Detail tab order');
 assert.equal(materialized[0].torrentDetailUi.tables.trackers[0].key,'url','Frozen materialization must restore exact Torrent detail UI facts before runtime packaging');
 assert.deepEqual(materialized[0].torrentDetailUi.propertyLayout[0].fields,[{id:'eta',valueSource:'properties',dataProperties:['eta']}],'Frozen materialization must restore exact General layout facts before runtime packaging');
 assert.throws(()=>applyQbSettingsTranslationLkg(frozen,{...lkg,schemaVersion:1}),/schemaVersion 2/,'stale v1 Settings LKG must fail closed');
@@ -103,6 +106,8 @@ const missingColumns=structuredClone(enriched);delete missingColumns[0].torrentT
 assert.throws(()=>buildQbSettingsTranslationLkg(missingColumns,frozen,{recoveryEvidence}),/native Torrent columns are missing/,'ephemeral source columns may not disappear before the LKG boundary');
 const missingDetailUi=structuredClone(enriched);delete missingDetailUi[0].torrentDetailUi;
 assert.throws(()=>buildQbSettingsTranslationLkg(missingDetailUi,frozen,{recoveryEvidence}),/Torrent detail UI is missing/,'ephemeral Torrent detail source facts may not disappear before the LKG boundary');
+const missingTabOrder=structuredClone(enriched);delete missingTabOrder[0].torrentDetailUi.tabOrder;
+assert.throws(()=>buildQbSettingsTranslationLkg(missingTabOrder,frozen,{recoveryEvidence}),/tab order is missing or incomplete/,'source-proven Detail tab order may not disappear before the LKG boundary');
 const missingPropertyLayout=structuredClone(enriched);delete missingPropertyLayout[0].torrentDetailUi.propertyLayout;
 assert.throws(()=>buildQbSettingsTranslationLkg(missingPropertyLayout,frozen,{recoveryEvidence}),/General property layout is missing/,'stale detail UI evidence without source-proven General structure may not cross the LKG boundary');
 const duplicatePropertyLayout=structuredClone(enriched);duplicatePropertyLayout[0].torrentDetailUi.propertyLayout[0].fields.push(structuredClone(duplicatePropertyLayout[0].torrentDetailUi.propertyLayout[0].fields[0]));
