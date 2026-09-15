@@ -14,6 +14,7 @@ const loginAlias=read('webui/public/login.html');
 const logs=read('webui/private/scripts/logs.js');
 const css=read('webui/private/css/logs.css');
 const appCss=read('webui/private/css/app.css');
+const tableCss=read('webui/private/css/table.css');
 const core=read('webui/private/scripts/core.js');
 const privateIcon=bytes('webui/private/assets/Wei.G.ico');
 const publicIcon=bytes('webui/public/assets/Wei.G.ico');
@@ -44,9 +45,10 @@ assert(css.includes('.logs-row.is-expanded .logs-message{white-space:pre-wrap;ov
 assert(appCss.includes('.virtual-list__spacer{position:relative;width:100%;min-width:100%}.torrent-list>.virtual-list__spacer{width:max-content}'),'Generic VirtualList spacer must own available width while Torrent alone may widen horizontally');
 assert(appCss.includes('.status-pill{display:inline-flex;align-items:center;justify-content:center;width:max-content'),'Canonical status pills must center their content without log-specific fixed widths');
 assert(!/(^|})\.virtual-list \.virtual-row\{display:grid;grid-template-columns:/.test(appCss),'Generic VirtualList must not impose detail row columns on Logs');
-assert(appCss.includes('#detail-content .virtual-list .virtual-row{display:grid;grid-template-columns:'),'Detail virtual rows must retain their scoped desktop layout');
+assert(!appCss.includes('#detail-content .virtual-list .virtual-row{display:grid;grid-template-columns:'),'Legacy Detail virtual-row columns must stay retired so Shared Detail is the only detail table geometry owner');
+assert(tableCss.includes('.shared-table__head,.shared-table__row{display:grid;align-items:center;min-width:max-content;grid-template-columns:var(--weigg-detail-grid-template)}'),'Shared Detail header and rows must retain one canonical column geometry outside generic VirtualList CSS');
 assert(!appCss.includes('.virtual-list .virtual-row:not(.torrent-mobile-card)>:nth-child(3){display:none}'),'Mobile third-column hiding must not apply to every VirtualList row');
-assert(appCss.includes('#detail-content .virtual-list .virtual-row>:nth-child(3){display:none}'),'Mobile detail compaction must remain scoped to the detail surface');
+assert(!appCss.includes('#detail-content .virtual-list .virtual-row>:nth-child(3){display:none}'),'Legacy mobile Detail third-column hiding must stay retired with the old virtual-row layout owner');
 
 assert(css.includes('.logs-head,.logs-row{display:grid;grid-template-columns:'),'Desktop log header and rows must share one column geometry');
 assert(css.includes('.logs-head>span:nth-child(3){justify-self:center;text-align:center}')&&css.includes('.logs-row .logs-level{justify-self:center;text-align:center'),'Desktop Level header and level pills must share the same center anchor');
@@ -54,4 +56,4 @@ assert(!css.includes('width:72px')&&!css.includes('min-width:72px')&&!css.includ
 assert(css.includes('.logs-row{min-height:72px;grid-template-columns:max-content minmax(0,1fr);grid-template-rows:auto auto;gap:5px 8px'),'Mobile log metadata must form one compact left-aligned level/time group');
 assert(css.includes('.logs-row .logs-level{grid-column:1;grid-row:2;justify-self:start}')&&css.includes('.logs-time{grid-column:2;grid-row:2;justify-self:start;align-self:center'),'Mobile metadata must place the visible colored level immediately before date/time');
 
-console.log('Logs UI contract passed: local brand asset, independent filters, canonical tones, intrinsic centered desktop level pills, scoped VirtualList layout ownership, left-aligned mobile level/time metadata, and click expansion.');
+console.log('Logs UI contract passed: local brand asset, independent filters, canonical tones, intrinsic centered desktop level pills, generic VirtualList isolation, Shared Detail table ownership, left-aligned mobile level/time metadata, and click expansion.');
