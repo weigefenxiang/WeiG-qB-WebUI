@@ -1,0 +1,3 @@
+# Materialization target for the compact qB-owned Settings/UI copy registry.
+# Raw source intentionally contains no release-owned copy; packCatalog() replaces
+# this file with exact source-SHA-bound data for end-user distributions.
