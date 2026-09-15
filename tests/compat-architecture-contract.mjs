@@ -5,7 +5,9 @@ import {fileURLToPath} from 'node:url';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(here,'..');
-const centralizedOwners=new Set(['webui/private/scripts/release-profile.js','webui/private/scripts/capabilities.js']);
+assert.equal(execFileSync('git',['-C',root,'ls-files','--','webui/private/scripts/release-profile.js'],{encoding:'utf8'}).trim(),'','retired ReleaseProfile runtime owner must stay deleted');
+assert.equal(execFileSync('git',['-C',root,'ls-files','--','webui/private/data/qb-releases.json'],{encoding:'utf8'}).trim(),'','retired qB release runtime index must stay deleted');
+const centralizedOwners=new Set(['webui/private/scripts/capabilities.js','webui/private/scripts/torrent-semantics.js','webui/private/scripts/torrent-fields.js','webui/private/scripts/settings-schema.js']);
 const frozenLegacyOwners=new Map([
   ['webui/private/scripts/spatial.js','e489e6e463f1855a1e54a17e47bebde54a733d49']
 ]);

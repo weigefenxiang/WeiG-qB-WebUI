@@ -551,13 +551,14 @@ function Verify-PackageChecksum([string]$Archive,[string]$SumFile) {
 }
 
 function Assert-MaterializedWebUI([string]$Root) {
-  $catalogFile=Join-Path $Root 'private\data\qb-releases.json'
   $registryFile=Join-Path $Root 'private\data\qb-settings-native.txt'
   $translations=Join-Path $Root 'translations'
-  if(!(Test-Path $catalogFile)){throw 'Materialized WebUI is missing qb-releases.json.'}
-  try{$catalog=Get-Content $catalogFile -Raw | ConvertFrom-Json}catch{throw 'Materialized WebUI release catalog is invalid JSON.'}
-  if(!$catalog -or @($catalog).Count -lt 1){throw 'Materialized WebUI release catalog is empty.'}
+  foreach($contract in @('capabilities.json','torrent-compat.json','detail-compat.json','settings-compat.json','source-actions.json')){
+    if(!(Test-Path (Join-Path $Root ("private\data\"+$contract)))){throw "Materialized WebUI is missing compact runtime contract $contract."}
+  }
+  foreach($legacy in @('private\scripts\release-profile.js','private\data\qb-releases.json','private\data\qb-release-profiles')){if(Test-Path (Join-Path $Root $legacy)){throw "Materialized WebUI retained retired runtime path $legacy."}}
   if(!(Test-Path $registryFile)){throw 'Materialized WebUI is missing the native Settings QBT_TR registry.'}
+  if((Get-Content $registryFile -Raw) -notmatch '(?m)^@@(P|SET|VAL|REF|META|S)(\s|$)'){throw 'Materialized WebUI qB-owned copy registry is a placeholder or malformed.'}
   if(!(Test-Path $translations) -or !(Get-ChildItem $translations -Filter 'webui_*.qm' -File -ErrorAction SilentlyContinue | Select-Object -First 1)){throw 'Materialized WebUI is missing official qB WebUI translation QM assets.'}
 }
 

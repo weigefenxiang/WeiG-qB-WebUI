@@ -1,77 +1,9 @@
 import assert from 'node:assert/strict';
-import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-
-const here=path.dirname(fileURLToPath(import.meta.url));
-const root=path.resolve(here,'..');
-const temp=fs.mkdtempSync(path.join(os.tmpdir(),'weigg-pages-freshness-'));
-const out=path.join(temp,'app');
-const catalog=path.join(temp,'catalog.json');
-const settingsLkg=path.join(temp,'settings-lkg.json');
-const exactSha='0123456789abcdef0123456789abcdef01234567';
-const profileSha='0b63c3d17373f6132ea211c9dcd4241284ccdfaf';
-const version=fs.readFileSync(path.join(root,'VERSION'),'utf8').trim();
-const sourceCatalog=[{
-  qbVersion:'5.2.3',
-  webApiVersion:'2.15.1',
-  tag:'release-5.2.3',
-  sourceSha:profileSha,
-  stable:true,
-  officialWeiGSupport:true,
-  protocolGeneration:'qb5'
-}];
-const recoveryUnion={schemaVersion:1,source:'qb-official-ts-deterministic-recovery-union',locales:{}};
-const recoveryUnionSha256=crypto.createHash('sha256').update(JSON.stringify(recoveryUnion),'utf8').digest('hex');
-const focusedSettingsLkg={
-  schemaVersion:2,
-  profileCount:1,
-  profiles:[{qbVersion:'5.2.3',sourceSha:profileSha,torrentTableColumns:[]}],
-  recovery:{union:recoveryUnion,unionSha256:recoveryUnionSha256}
-};
-fs.writeFileSync(catalog,JSON.stringify(sourceCatalog,null,2)+'\n','utf8');
-fs.writeFileSync(settingsLkg,JSON.stringify(focusedSettingsLkg,null,2)+'\n','utf8');
-
-const result=spawnSync(process.execPath,[
-  path.join(root,'simulator/build/build-pages.mjs'),
-  '--branch=dev',
-  `--webui-root=${path.join(root,'webui')}`,
-  `--out=${out}`,
-  `--catalog=${catalog}`,
-  `--exact-sha=${exactSha}`,
-  `--product-version=${version}`,
-  `--simulator-sha=${exactSha}`
-],{cwd:root,encoding:'utf8',env:{...process.env,WEIGG_SETTINGS_LKG_PATH:settingsLkg}});
-
-try{
-  if(result.status!==0)throw new Error(`build-pages.mjs failed:\n${result.stdout}\n${result.stderr}`);
-  const privateIndex=fs.readFileSync(path.join(out,'__source/private/index.html'),'utf8');
-  const publicIndex=fs.readFileSync(path.join(out,'__source/public/index.html'),'utf8');
-  const worker=fs.readFileSync(path.join(out,'service-worker.js'),'utf8');
-  const meta=JSON.parse(fs.readFileSync(path.join(out,'virtual-qb-build.json'),'utf8'));
-  const runtimeIndexPath=path.join(out,'__source/private/data/qb-releases.json');
-  const runtimeIndex=JSON.parse(fs.readFileSync(runtimeIndexPath,'utf8'));
-  const runtimeProfile=JSON.parse(fs.readFileSync(path.join(out,'__source/private/data/qb-release-profiles',`${profileSha}.json`),'utf8'));
-  const generatedCatalog=JSON.parse(fs.readFileSync(path.join(out,'__simulator/versions/catalog.generated.json'),'utf8'));
-  if(privateIndex.includes('__WEIGG_GIT_SHA__'))throw new Error('Virtual Pages private index still exposes the non-versioned Git SHA placeholder');
-  if(!privateIndex.includes(`?v=${exactSha}`))throw new Error('Virtual Pages private assets are not keyed by the exact source SHA');
-  if(!privateIndex.includes('data-weigg-virtual-sw-refresh')||!publicIndex.includes('data-weigg-virtual-sw-refresh'))throw new Error('Virtual Pages documents must actively refresh an existing Service Worker registration');
-  if(!worker.includes(`const WEIGG_BUILD_SHA="${exactSha}";`))throw new Error('Virtual Pages Service Worker bytes must carry the exact source SHA');
-  if(!worker.includes("target.searchParams.set('v',WEIGG_BUILD_SHA)"))throw new Error('Virtual Pages Service Worker must cache-bust internal __source fetches with the exact source SHA');
-
-  assert.equal(runtimeIndex.length,1,'Virtual Pages runtime release index must retain the supplied profile count');
-  assert.deepEqual(runtimeIndex[0],{
-    qbVersion:'5.2.3',webApiVersion:'2.15.1',sourceSha:profileSha,stable:true,officialWeiGSupport:true,
-    profilePath:`qb-release-profiles/${profileSha}.json`
-  },'Virtual Pages runtime release index must remain a tiny source-bound locator');
-  assert.ok(fs.statSync(runtimeIndexPath).size<64*1024,'Virtual Pages release index must stay comfortably below real qB static-file limits');
-  assert.deepEqual(runtimeProfile,sourceCatalog[0],'Virtual Pages exact profile shard must preserve the full source-bound compatibility semantics');
-  assert.deepEqual(generatedCatalog,sourceCatalog,'Virtual Pages simulator must retain the exact supplied source-bound catalog');
-  if(meta.exactSha!==exactSha||meta.pagesAdapted!==true)throw new Error('Virtual Pages build metadata must record exact-SHA cache freshness adaptation');
-  console.log('Virtual qB Pages cache freshness contract passed: exact-SHA assets, tiny release index + exact profile shard semantics, versioned Service Worker fetches and controlled-client refresh are build-owned.');
-}finally{
-  fs.rmSync(temp,{recursive:true,force:true});
-}
+const here=path.dirname(fileURLToPath(import.meta.url)),root=path.resolve(here,'..'),temp=fs.mkdtempSync(path.join(os.tmpdir(),'weigg-pages-freshness-')),out=path.join(temp,'app'),catalog=path.join(temp,'catalog.json'),exactSha='0123456789abcdef0123456789abcdef01234567',profileSha='0b63c3d17373f6132ea211c9dcd4241284ccdfaf',version=fs.readFileSync(path.join(root,'VERSION'),'utf8').trim();const sourceCatalog=[{qbVersion:'5.2.3',webApiVersion:'2.15.1',tag:'release-5.2.3',sourceSha:profileSha,stable:true,officialWeiGSupport:true,protocolGeneration:'qb5'}];fs.writeFileSync(catalog,JSON.stringify(sourceCatalog,null,2)+'\n','utf8');
+const result=spawnSync(process.execPath,[path.join(root,'simulator/build/build-pages.mjs'),'--branch=dev',`--webui-root=${path.join(root,'webui')}`,`--out=${out}`,`--catalog=${catalog}`,`--exact-sha=${exactSha}`,`--product-version=${version}`,`--simulator-sha=${exactSha}`],{cwd:root,encoding:'utf8'});
+try{if(result.status!==0)throw new Error(`build-pages.mjs failed:\n${result.stdout}\n${result.stderr}`);const privateIndex=fs.readFileSync(path.join(out,'__source/private/index.html'),'utf8'),publicIndex=fs.readFileSync(path.join(out,'__source/public/index.html'),'utf8'),worker=fs.readFileSync(path.join(out,'service-worker.js'),'utf8'),meta=JSON.parse(fs.readFileSync(path.join(out,'virtual-qb-build.json'),'utf8')),generatedCatalog=JSON.parse(fs.readFileSync(path.join(out,'__simulator/versions/catalog.generated.json'),'utf8')),registry=fs.readFileSync(path.join(out,'__source/private/data/qb-settings-native.txt'),'utf8');if(privateIndex.includes('__WEIGG_GIT_SHA__'))throw new Error('Virtual Pages private index still exposes the non-versioned Git SHA placeholder');if(!privateIndex.includes(`?v=${exactSha}`))throw new Error('Virtual Pages private assets are not keyed by the exact source SHA');if(!privateIndex.includes('data-weigg-virtual-sw-refresh')||!publicIndex.includes('data-weigg-virtual-sw-refresh'))throw new Error('Virtual Pages documents must actively refresh an existing Service Worker registration');if(!worker.includes(`const WEIGG_BUILD_SHA="${exactSha}";`)||!worker.includes("target.searchParams.set('v',WEIGG_BUILD_SHA)"))throw new Error('Virtual Pages Service Worker must cache-bust internal __source fetches with exact SHA');assert.equal(fs.existsSync(path.join(out,'__source/private/data/qb-releases.json')),false,'dev Pages must not recreate retired release index');assert.equal(fs.existsSync(path.join(out,'__source/private/data/qb-release-profiles')),false,'dev Pages must not recreate retired profile shards');assert.equal(fs.existsSync(path.join(out,'__source/private/scripts/release-profile.js')),false,'dev Pages must not recreate retired runtime owner');assert.match(registry,/(^|\n)@@(?:P|SET|VAL|REF|META|S)\b/,'dev Pages must copy the checked-in compact qB-owned registry');assert.ok(fs.readdirSync(path.join(out,'__source/translations')).some(name=>/^webui_.+\.qm$/i.test(name)),'dev Pages must copy checked-in minimal qB QMs');assert.deepEqual(generatedCatalog,sourceCatalog,'simulator must still retain the exact supplied source-bound catalog as offline evidence');assert.equal(meta.exactSha,exactSha);assert.equal(meta.pagesAdapted,true);assert.match(meta.productSource,/self-contained compact runtime/);console.log('Virtual qB Pages cache freshness contract passed: exact-SHA cache adaptation wraps self-contained dev runtime, while the full qB catalog remains simulator-only evidence and no release-profile runtime is regenerated.');}finally{fs.rmSync(temp,{recursive:true,force:true});}

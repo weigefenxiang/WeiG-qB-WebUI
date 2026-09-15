@@ -325,12 +325,14 @@ verify_release_checksum() {
 
 assert_materialized_webui() {
   root=$1
-  catalog="$root/private/data/qb-releases.json"
   registry="$root/private/data/qb-settings-native.txt"
   translations="$root/translations"
-  [ -s "$catalog" ] || { echo "Materialized WebUI is missing qb-releases.json." >&2; return 1; }
-  grep -Eq '"qbVersion"[[:space:]]*:' "$catalog" || { echo "Materialized WebUI release catalog is empty or invalid." >&2; return 1; }
+  for contract in capabilities.json torrent-compat.json detail-compat.json settings-compat.json source-actions.json; do
+    [ -s "$root/private/data/$contract" ] || { echo "Materialized WebUI is missing compact runtime contract $contract." >&2; return 1; }
+  done
+  [ ! -e "$root/private/scripts/release-profile.js" ] && [ ! -e "$root/private/data/qb-releases.json" ] && [ ! -e "$root/private/data/qb-release-profiles" ] || { echo "Materialized WebUI retained retired release-profile runtime assets." >&2; return 1; }
   [ -s "$registry" ] || { echo "Materialized WebUI is missing the native Settings QBT_TR registry." >&2; return 1; }
+  grep -Eq '^@@(P|SET|VAL|REF|META|S)([[:space:]]|$)' "$registry" || { echo "Materialized WebUI qB-owned copy registry is a placeholder or malformed." >&2; return 1; }
   [ -d "$translations" ] || { echo "Materialized WebUI is missing the translations directory." >&2; return 1; }
   find "$translations" -maxdepth 1 -type f -name 'webui_*.qm' -print -quit | grep -q . || { echo "Materialized WebUI is missing official qB WebUI translation QM assets." >&2; return 1; }
 }

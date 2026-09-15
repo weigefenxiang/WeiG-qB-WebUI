@@ -74,7 +74,6 @@ for(const branch of branches){
 const devBranch=branches.find(item=>item.name==='dev');
 runNode(path.join(projectRoot,'tools/build-webui-dist.mjs'),[
   `--webui-root=${devBranch.webuiRoot}`,
-  `--catalog=${sourceCatalog}`,
   `--out=${path.join(out,'downloads','dev')}`,
   `--sha=${devBranch.sha}`,
   `--version=${devBranch.version}`
@@ -82,8 +81,8 @@ runNode(path.join(projectRoot,'tools/build-webui-dist.mjs'),[
 
 // Pages metadata is an audit/simulator surface and is not served by the real qB
 // Alternative WebUI server. Keep the full source-bound catalog here so live
-// acceptance can audit all 65 stable profiles. Only the WebUI runtime under
-// __source/private/data uses the tiny index + one exact profile shard.
+// acceptance can audit all 65 stable profiles. Dev WebUI runtime is self-contained
+// and consumes only checked-in compact contracts/copy assets; the full catalog stays simulator-only.
 const renderedCatalog=path.join(out,'metadata','qb-releases.json');
 await fs.copyFile(sourceCatalog,renderedCatalog);
 await fs.rm(buildDir,{recursive:true,force:true});
