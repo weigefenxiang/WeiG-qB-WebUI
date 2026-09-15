@@ -23,7 +23,7 @@ function runtime(catalog){
 }
 export async function summarizeProductProfile(profile,catalog,shared=null){
   const rt=shared||runtime(catalog),R=rt.W.ReleaseProfile,C=rt.W.CapabilityRegistry,T=rt.W.TorrentSemantics,F=rt.W.TorrentFieldRegistry;
-  const client={qbVersion:profile.qbVersion,webApiVersion:profile.webApiVersion,applyCapabilityRegistry(){return this;}};
+  const client={qbVersion:profile.qbVersion,webApiVersion:profile.webApiVersion,capabilities:{}};
   await C.bind(client);
   if(R.current()?.qbVersion!==profile.qbVersion)throw new Error(`${profile.qbVersion}: ReleaseProfile exact bind failed during product diff.`);
   if(!F||!Array.isArray(F.fields))throw new Error(`${profile.qbVersion}: TorrentFieldRegistry is unavailable during product diff.`);

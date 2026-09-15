@@ -19,7 +19,6 @@ const context={window,URLSearchParams,FormData,Blob,Response,console,fetch:async
 vm.runInNewContext(source,context,{filename:'qb-client.js'});
 const client=new window.WeiG.QBClient();
 client.qbVersion='6.0.0';client.webApiVersion='3.0.0';client.major=6;
-client.capabilities.peerBan=true;
 
 const PEERS='synccontroller.h:torrentPeersAction';
 const BAN='transfercontroller.h:banPeersAction';
@@ -58,11 +57,4 @@ await assert.rejects(Promise.resolve().then(()=>client.peers('future')),/source-
 await assert.rejects(Promise.resolve().then(()=>client.banPeers('203.0.113.7:51413')),/source-proven/,'future fallback must not guess banPeers support');
 assert.equal(calls.length,before,'future fallback Peers operations must make zero HTTP requests');
 
-profile={qbVersion:'5.2.3',webApiVersion:'2.15.1',fallback:false,apiActions:[PEERS,BAN],apiActionParameters:{}};
-client.capabilities.peerBan=true;
-client.applyCapabilityRegistry({supports:id=>id==='peerBan'?false:true});
-assert.equal(client.capabilities.peerBan,false,'exact CapabilityRegistry result must override legacy WebAPI peerBan guess');
-client.applyCapabilityRegistry({supports:id=>id==='peerBan'});
-assert.equal(client.capabilities.peerBan,true,'source-proven peerBan capability must remain enabled');
-
-console.log(`QBClient Peer provenance passed: ${calls.length} allowed HTTP calls; torrentPeers/banPeers are independently source-guarded, exact capability truth overrides version guessing, and unsupported/empty/malformed states stay distinct.`);
+console.log(`QBClient Peer provenance passed: ${calls.length} allowed HTTP calls; torrentPeers/banPeers are independently source-guarded, unsupported/empty/malformed states stay distinct, and capability cache ownership lives outside QBClient.`);
