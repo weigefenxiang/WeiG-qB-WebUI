@@ -8,7 +8,7 @@
 .col-resize{touch-action:none}
 @media(pointer:coarse){.col-resize{right:-10px;width:20px}.col-resize:after{left:9px}.grid-head-cell{min-height:44px}}
 
-.detail-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,34%);grid-template-areas:"eyebrow state" "title progress";align-items:center;column-gap:20px;row-gap:9px}
+.detail-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,34%) auto;grid-template-areas:"eyebrow . ." "title progress state";align-items:center;column-gap:16px;row-gap:9px}
 .detail-identity{display:contents}
 .detail-identity>.eyebrow{grid-area:eyebrow;align-self:center}
 .detail-identity>h1{grid-area:title;min-width:0;margin:0}

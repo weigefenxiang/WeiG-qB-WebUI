@@ -15,6 +15,7 @@ const layout=read('webui/private/scripts/layout.js');
 const ui=read('webui/private/scripts/ui.js');
 const selection=read('webui/private/scripts/selection.js');
 const releaseProfile=read('webui/private/scripts/release-profile.js');
+const appCss=read('webui/private/css/app.css');
 const tableCss=read('webui/private/css/table.css');
 const sidebarCss=read('webui/private/css/sidebar.css');
 const ownedUi=read('tools/qb-owned-ui-source.mjs');
@@ -36,6 +37,7 @@ assert.match(layout,/id==='comment'/,'General comment URLs must be handled by th
 assert.match(layout,/general-detail__link/,'General http(s) comment URLs must render with the canonical link presentation.');
 assert.match(ui,/icon\.className='flag '\+iso\+' peer-country-flag'/,'Peer country cells must render a graphical flag host.');
 assert.match(ui,/fallback\.className='peer-country-code'/,'Peer country cells must retain a deterministic ISO-code fallback when local qB artwork is unavailable.');
+assert.doesNotMatch(ui,/cdn\.jsdelivr\.net|COUNTRY_FLAGS_CSS|ensureCountryFlagStyles/,'Runtime Peer flags must not inject or depend on a third-party CDN.');
 assert.match(ui,/ctx\.contextItems\(item,surface,index,selectionCount\)/,'Detail context actions must receive shared row or blank-area selection context.');
 assert.match(ui,/detailContextItems\(ctx\.surface,null,ctx,-1,0\)/,'Detail blank-area right click must expose exact zero-selection source actions.');
 assert.match(ui,/toolbar\.appendChild\(note\)/,'Detail explanatory copy must join the shared toolbar after source actions and Columns.');
@@ -49,11 +51,16 @@ assert.match(ui,/priority:folderPriority\(child\)/,'Folder priority must aggrega
 assert.match(ui,/state\.anchors\.set\(path,anchor\)/,'Collapsing a Files folder must remember the current browse anchor.');
 assert.match(ui,/fileTreeScrollToKey\(ctx,saved\.key,saved\.offset\)/,'Re-expanding a Files folder must restore the remembered child anchor when it still exists.');
 assert.match(ui,/shared-table__sticky-folder/,'Files must expose one sticky parent row inside the existing shared viewport.');
+assert.match(ui,/attachDetailContextMenu\(row,ctx\.surface,item,sourceIndex,ctx\);return row;/,'Files folders and files must share the canonical Detail context-menu owner.');
+assert.doesNotMatch(ui,/if\(!folder\)attachDetailContextMenu/,'Files folders must not be excluded from source-proven context actions.');
 assert.doesNotMatch(ui,/MutationObserver/,'Files hierarchy must not introduce a post-render observer owner.');
 assert.match(app,/function detailLocalAction\(surface,item\).*id\.indexOf\('copy'\)===0/s,'Source-proven Tracker and Peer copy actions must use the local Detail executor.');
 assert.match(app,/navigator\.clipboard\.writeText\(String\(rowValue\)\)/,'Local Detail copy actions must use the browser clipboard rather than inventing a WebAPI write.');
-assert.match(app,/torrentscontroller\.h:renameFileAction/,'Content row context actions must derive Rename from exact release write provenance.');
-assert.match(app,/parameterBindings:\{oldPath:'name'\}/,'Content Rename must bind the exact source-proven file path.');
+assert.match(app,/torrentscontroller\.h:renameFileAction/,'Content file context actions must derive Rename from exact release write provenance.');
+assert.match(app,/torrentscontroller\.h:renameFolderAction/,'Content folder context actions must derive Rename from exact release write provenance.');
+assert.match(app,/fileKinds:\['file'\]/,'Content file-only actions must be scoped to real file rows.');
+assert.match(app,/fileKinds:\['folder'\]/,'Content folder Rename must be scoped to synthetic folder rows only.');
+assert.match(app,/parameterBindings:\{oldPath:'name'\}/,'Content Rename must bind the exact source-proven qB path.');
 assert.match(app,/detailControl\('filePriority'\)/,'Content priority context actions must reuse source-derived priority options.');
 assert.match(app,/toolbar\.className='inline-form shared-table__toolbar'/,'Detail source actions must construct the canonical shared toolbar before the table adapter adds Columns and note copy.');
 assert.match(selection,/superseeding:'superseeding'/,'Torrent actions must map Super Seeding through ReleaseProfile source provenance.');
@@ -65,6 +72,11 @@ assert.match(selection,/_guardedTorrentAction\('increase','increasePrio'/,'Queue
 assert.match(selection,/_guardedTorrentAction\('decrease','decreasePrio'/,'Queue-down writes must pass through QBClient guarded torrent transport.');
 assert.match(selection,/torrents\/export\?hash=/,'Torrent export must use the real qB WebAPI export endpoint.');
 assert.match(selection,/kind:'copyname'.*kind:'copyhash'.*kind:'copymagnet'.*kind:'export'/s,'Torrent More/right-click must keep copy and export actions in the one shared ActionRegistry.');
+assert.match(selection,/qb\.categories\(\)/,'Torrent Category submenu must query the current qB category WebAPI instead of duplicating a local list.');
+assert.match(selection,/qb\.tags\(\)/,'Torrent Tags submenu must query the current qB tag WebAPI instead of duplicating a local list.');
+assert.match(selection,/group-category.*group-tags.*group-queue.*group-copy/s,'Torrent More/right-click must project native-like Category, Tags, Queue, and Copy submenus through one owner.');
+assert.match(selection,/torrentscontroller\.h:removeTagsAction/,'Tag toggling must be gated by exact source-proven removeTags support.');
+assert.match(selection,/qb\.removeTags\(joined,tag\)/,'Checked Tags submenu entries must use the real qB removeTags WebAPI when source-proven.');
 assert.doesNotMatch(selection,/open containing|openContaining|open file/i,'WebUI must not fake desktop-only open-file/open-containing-folder actions without a source-proven WebAPI endpoint.');
 assert.match(releaseProfile,/superseeding:\[\['torrentscontroller\.h:setSuperSeedingAction','setSuperSeeding'\]\]/,'ReleaseProfile must resolve Super Seeding from exact source actions.');
 assert.match(releaseProfile,/increase:\[\['torrentscontroller\.h:increasePrioAction','increasePrio'\]\]/,'ReleaseProfile must resolve queue-up from exact source actions.');
@@ -72,8 +84,9 @@ assert.match(releaseProfile,/decrease:\[\['torrentscontroller\.h:decreasePrioAct
 assert.match(tableCss,/@import url\('\.\/qb-peer-flags\.css'\)/,'Detail tables must consume the locally materialized qB peer flag stylesheet.');
 assert.match(tableCss,/\.shared-table__columns-button\{margin-left:0\}/,'Column settings must not be pushed to the far right.');
 assert.match(tableCss,/\.shared-table__head\{[^}]*background:var\(--bg-surface\)/,'Shared Detail headers must use an opaque semantic surface so scrolling rows cannot bleed through them.');
-assert.match(tableCss,/\.detail-hero\{[^}]*grid-template-areas:"eyebrow state" "title progress"/,'Torrent Detail desktop hero must use the approved two-line identity/progress composition.');
+assert.match(tableCss,/\.detail-hero\{[^}]*grid-template-columns:minmax\(0,1fr\) minmax\(260px,34%\) auto;[^}]*grid-template-areas:"eyebrow \. \." "title progress state"/,'Torrent Detail desktop hero must vertically align Progress and state on one right-side row.');
 assert.match(tableCss,/\.shared-table__head>\.grid-head-cell,\.shared-table__row>\[data-column-key\]\{[^}]*text-align:left/,'Shared Detail tables must use one left-aligned projection owner.');
+assert.doesNotMatch(appCss,/#detail-content \.virtual-list \.virtual-row/,'Legacy Detail virtual-row grid rules must be retired so Shared Detail owns header/body alignment.');
 assert.match(tableCss,/\.shared-table__sticky-folder\{[^}]*position:sticky[^}]*height:44px/,'Files sticky parent row must occupy a deterministic zero-net-flow overlay height.');
 assert.match(tableCss,/\.general-detail__grid\{[^}]*grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/,'General desktop layout must preserve native-like three-pair source order rather than auto-fit cards.');
 assert.match(tableCss,/#detail-content\{[^}]*overflow:hidden/,'Detail content must not compete with the shared table viewport for scrolling.');
@@ -103,10 +116,10 @@ try{
   const result=materializeQbPeerFlags(privateRoot,{sourceRoot});
   assert.equal(result.materialized,true,'Fixture WebUI with Peers runtime must materialize local qB flags.');
   assert.ok(result.flagCount>=200,'Materializer must carry a complete ISO flag surface, not a hand-picked country list.');
-  assert.match(fs.readFileSync(path.join(privateRoot,'index.html'),'utf8'),/data-country-flags="failed"/,'Materialized WebUI must fail closed before legacy external flag loading can run.');
+  assert.match(fs.readFileSync(path.join(privateRoot,'index.html'),'utf8'),/data-country-flags="failed"/,'Materialized WebUI must fail closed to the ISO-code fallback until local qB flag CSS is loaded.');
   const flagCss=fs.readFileSync(path.join(privateRoot,'css/qb-peer-flags.css'),'utf8');
   assert.match(flagCss,/\.peer-country-flag\.flag\.us\{[^}]*images\/flags\/us\.svg/,'Generated flag CSS must bind the official local US SVG.');
   assert.ok(fs.existsSync(path.join(privateRoot,'images/flags/cn.svg')),'Materialized WebUI must contain copied qB-owned SVG artwork.');
 }finally{fs.rmSync(temp,{recursive:true,force:true});}
 
-console.log('Current plan contract passed: approved Detail hero/General/Files/sidebar/action changes remain inside canonical owners and source-proven qB capabilities.');
+console.log('Current plan contract passed: Detail tables, Files context actions, native-like torrent action submenus, hero alignment, and local-only peer flags remain inside canonical owners and source-proven qB capabilities.');
