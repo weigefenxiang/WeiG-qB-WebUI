@@ -1,0 +1,12 @@
+tionFrame:fn=>fn(),console,CustomEvent:class{}};
+vm.runInNewContext(capabilitySource,context,{filename:'capabilities.js'});
+const R=window.WeiG.CapabilityRegistry;await R.load();
+async function bind(qbVersion,webApiVersion){await R.bind({qbVersion,webApiVersion,capabilities:{certified:false}});}
+const apiFor=qb=>registry.releases.find(x=>x.qbVersion===qb)?.webApiVersion||'9.9.9';
+await bind('4.1.2',apiFor('4.1.2'));
+assert.equal(R.supports('globalSpeedLimitWrite'),true,'normal Apply must be enabled when every exact source action is present');
+assert.equal(R.supports('altSpeedLimitWrite'),true,'alternative Apply must be enabled when every exact source action is present');
+await bind('4.1.0',apiFor('4.1.0'));
+assert.equal(R.supports('globalSpeedLimitWrite'),false,'normal Apply must fail closed when upload setter provenance is absent');
+assert.equal(R.supports('altSpeedLimitWrite'),true,'missing normal-only setter must not disable proven alternative writes');
+await bind('4.1.1',apiFor('4.

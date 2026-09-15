@@ -41,6 +41,7 @@ jobs:
           echo '5409f0001ac78752a228d6827811074d309eaf119dc8de35157774536f5965fb  /tmp/weigg-0.3.98.tar.xz' | sha256sum -c -
           tar -tJf "$payload" >/dev/null
           tar -xJf "$payload" -C "$GITHUB_WORKSPACE"
+          cat .bootstrap/0.3.98/transfer-test-{00..06} > tests/transfer-write-capability-contract.mjs
       - name: Verify version ownership
         shell: bash
         run: |
@@ -74,6 +75,7 @@ jobs:
           git add -- \
             VERSION webui/VERSION package.json package-lock.json \
             tests/capability-contract.mjs tests/settings-contract.mjs tests/torrent-workspace-contract.mjs \
+            tests/transfer-write-capability-contract.mjs \
             webui/private/data/capabilities.json \
             webui/private/data/torrent-compat.json \
             webui/private/data/detail-compat.json \

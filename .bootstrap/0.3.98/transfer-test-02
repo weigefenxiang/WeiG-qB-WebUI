@@ -1,0 +1,11 @@
+ormal\/alternative write capability explicitly');
+assert.match(transferSource,/W\.CapabilityRegistry\.decorate\(apply,limitWriteCapability\(\)\)/,'Transfer must decorate the dynamic Apply button at render time');
+assert.match(transferSource,/if\(W\.CapabilityRegistry&&!W\.CapabilityRegistry\.supports\(capability\)\)/,'applyLimits must preflight the active composite capability before any write');
+assert.match(transferSource,/applyButton\.id='transfer-limit-apply'/,'Transfer Apply must expose one stable runtime control owner');
+
+const syntheticActions=structuredClone(sourceActions);
+const firstDescriptor=action=>structuredClone(sourceActions.sourceActions[action].find(x=>x&&x.value)?.value);
+syntheticActions.sourceActions[SET_DL]=[{from:'4.1.0',value:firstDescriptor(SET_DL)}];
+syntheticActions.sourceActions[TOGGLE]=[{from:'4.1.0',value:firstDescriptor(TOGGLE)}];
+syntheticActions.sourceActions[SET_UL]=[{from:'4.1.0',value:null},{from:'4.1.1',value:firstDescriptor(SET_UL)}];
+syntheticActio
