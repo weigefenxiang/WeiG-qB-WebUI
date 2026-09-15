@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {buildNativeSettingsBundle,renderLocaleQm,renderLocaleTs,renderOwnedCopyRegistry} from './qb-settings-native-bundle.mjs';
-import {materializeQbPeerFlags} from './qb-peer-flags.mjs';
+import {materializeQbPeerFlags} from './qb-release-catalog-peer-flags.mjs';
 
 export const QB_WEBUI_MAX_STATIC_FILE_BYTES=10*1024*1024;
 const PROJECT_MAX_SINGLE_FILE_BYTES=5*1024*1024;
