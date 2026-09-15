@@ -1,0 +1,185 @@
+name: Compact runtime retirement
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - '.github/workflows/compact-runtime-retirement.yml'
+      - '.bootstrap/0.3.99/**'
+
+permissions:
+  contents: write
+  actions: write
+
+env:
+  EXPECTED_PARENT: ${{ github.sha }}
+
+jobs:
+  retire:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Verify exact dev owner
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/dev'
+          test "$(git rev-parse HEAD)" = "$EXPECTED_PARENT"
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund --prefer-offline
+      - name: Resolve certified Settings translation evidence
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          node tools/qb-settings-translation-artifact.mjs \
+            --repo="$GITHUB_REPOSITORY" \
+            --branch=dev \
+            --out="$RUNNER_TEMP/qb-settings-translation-lkg.json" \
+            --dispatch-if-missing
+          test -s "$RUNNER_TEMP/qb-settings-translation-lkg.json"
+      - name: Freeze canonical qB-owned copy assets into raw WebUI
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+          DEV_VERSION="$(cat VERSION | tr -d '\r\n')"
+          MAIN_SHA="$(git rev-parse refs/remotes/origin/main)"
+          MAIN_VERSION="$(git show refs/remotes/origin/main:VERSION | tr -d '\r\n')"
+          rm -rf "$RUNNER_TEMP/pre-retirement" "$RUNNER_TEMP/dev-webui" "$RUNNER_TEMP/main-webui"
+          mkdir -p "$RUNNER_TEMP/dev-webui" "$RUNNER_TEMP/main-webui"
+          git archive --format=tar HEAD:webui | tar -xf - -C "$RUNNER_TEMP/dev-webui"
+          git archive --format=tar refs/remotes/origin/main:webui | tar -xf - -C "$RUNNER_TEMP/main-webui"
+          node simulator/build/build-site.mjs \
+            --out="$RUNNER_TEMP/pre-retirement" \
+            --catalog=tests/fixtures/qb-release-catalog.lkg.json \
+            --settings-translation-lkg="$RUNNER_TEMP/qb-settings-translation-lkg.json" \
+            --simulator-sha="$EXPECTED_PARENT" \
+            --dev-webui="$RUNNER_TEMP/dev-webui" \
+            --dev-sha="$EXPECTED_PARENT" \
+            --dev-version="$DEV_VERSION" \
+            --main-webui="$RUNNER_TEMP/main-webui" \
+            --main-sha="$MAIN_SHA" \
+            --main-version="$MAIN_VERSION"
+          test -s "$RUNNER_TEMP/pre-retirement/dev/app/__source/private/data/qb-settings-native.txt"
+          find "$RUNNER_TEMP/pre-retirement/dev/app/__source/translations" -maxdepth 1 -type f -name 'webui_*.qm' -print -quit | grep -q .
+          cp "$RUNNER_TEMP/pre-retirement/dev/app/__source/private/data/qb-settings-native.txt" webui/private/data/qb-settings-native.txt
+          rm -rf webui/translations
+          cp -a "$RUNNER_TEMP/pre-retirement/dev/app/__source/translations" webui/translations
+      - name: Apply 0.3.99 runtime retirement
+        run: python3 .bootstrap/0.3.99/migrate_phase_b.py
+      - name: Enforce retired runtime boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e webui/private/scripts/release-profile.js
+          test ! -e webui/private/data/qb-releases.json
+          test ! -e webui/private/data/qb-release-profiles
+          if git grep -n -E 'ReleaseProfile|release-profile\.js|qb-releases\.json|qb-release-profiles' -- webui; then
+            echo 'Formal webui still contains retired release-profile runtime references.' >&2
+            exit 1
+          fi
+          grep -Eq '^@@(P|SET|VAL|REF|META|S)([[:space:]]|$)' webui/private/data/qb-settings-native.txt
+          find webui/translations -maxdepth 1 -type f -name 'webui_*.qm' -print -quit | grep -q .
+          test "$(cat VERSION)" = '0.3.99'
+          test "$(cat webui/VERSION)" = '0.3.99'
+      - name: Validate syntax and repository contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          node --check tools/build-webui-dist.mjs
+          node --check simulator/build/build-pages.mjs
+          node --check simulator/build/build-site.mjs
+          npm test
+          node tests/release-compat.mjs
+      - name: Validate frozen 65-profile product owners
+        shell: bash
+        run: |
+          set -euo pipefail
+          CATALOG=tests/fixtures/qb-release-catalog.lkg.json
+          node tests/full-stable-product-compat.mjs "$CATALOG"
+          node tests/full-stable-core-write-compat.mjs "$CATALOG"
+          node tests/full-stable-app-aux-compat.mjs "$CATALOG"
+          node tests/full-stable-baseline-write-compat.mjs "$CATALOG"
+          node tests/full-stable-detail-compat.mjs "$CATALOG"
+          node tests/full-stable-torrent-creator-compat.mjs "$CATALOG"
+      - name: Validate self-contained dist and dev/main Pages split
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION_NOW="$(cat VERSION | tr -d '\r\n')"
+          rm -rf "$RUNNER_TEMP/self-dist" "$RUNNER_TEMP/post-site" "$RUNNER_TEMP/post-dev-webui" "$RUNNER_TEMP/post-main-webui"
+          node tools/build-webui-dist.mjs \
+            --webui-root=webui \
+            --out="$RUNNER_TEMP/self-dist" \
+            --sha="$EXPECTED_PARENT" \
+            --version="$VERSION_NOW"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const m=JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/self-dist/manifest.json`,'utf8'));
+          if(m.runtimeCompatibility!=='compact-contracts-only'||m.legacyReleaseRuntime!==false||Number(m.qmAssets)<1)throw new Error('Self-contained dist manifest did not retire legacy runtime.');
+          NODE
+          mkdir -p "$RUNNER_TEMP/post-dev-webui" "$RUNNER_TEMP/post-main-webui"
+          cp -a webui/. "$RUNNER_TEMP/post-dev-webui/"
+          MAIN_SHA="$(git rev-parse refs/remotes/origin/main)"
+          MAIN_VERSION="$(git show refs/remotes/origin/main:VERSION | tr -d '\r\n')"
+          git archive --format=tar refs/remotes/origin/main:webui | tar -xf - -C "$RUNNER_TEMP/post-main-webui"
+          node simulator/build/build-site.mjs \
+            --out="$RUNNER_TEMP/post-site" \
+            --catalog=tests/fixtures/qb-release-catalog.lkg.json \
+            --settings-translation-lkg="$RUNNER_TEMP/qb-settings-translation-lkg.json" \
+            --simulator-sha="$EXPECTED_PARENT" \
+            --dev-webui="$RUNNER_TEMP/post-dev-webui" \
+            --dev-sha="$EXPECTED_PARENT" \
+            --dev-version="$VERSION_NOW" \
+            --main-webui="$RUNNER_TEMP/post-main-webui" \
+            --main-sha="$MAIN_SHA" \
+            --main-version="$MAIN_VERSION"
+          test ! -e "$RUNNER_TEMP/post-site/dev/app/__source/private/data/qb-releases.json"
+          test ! -e "$RUNNER_TEMP/post-site/dev/app/__source/private/data/qb-release-profiles"
+          test ! -e "$RUNNER_TEMP/post-site/dev/app/__source/private/scripts/release-profile.js"
+          test -s "$RUNNER_TEMP/post-site/dev/app/__source/private/data/qb-settings-native.txt"
+          find "$RUNNER_TEMP/post-site/dev/app/__source/translations" -type f -name 'webui_*.qm' -print -quit | grep -q .
+          test -s "$RUNNER_TEMP/post-site/main/app/__source/private/data/qb-releases.json"
+          test -d "$RUNNER_TEMP/post-site/main/app/__source/private/data/qb-release-profiles"
+          test -f "$RUNNER_TEMP/post-site/downloads/dev/WeiG-qB-WebUI.zip"
+      - name: Validate Chrome product evidence
+        shell: bash
+        env:
+          WEIGG_BROWSER_CHANNEL: chrome
+        run: |
+          set -euo pipefail
+          command -v google-chrome
+          node tests/browser-feature-parity.mjs
+          node tests/browser-adaptive-ui.mjs
+          node tests/browser-sidebar-capability-visual.mjs
+          node tests/browser-torrent-field-provenance.mjs
+      - name: Commit only after every retirement gate passes
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add -A
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            echo 'Runtime retirement produced no formal changes.' >&2
+            exit 1
+          fi
+          REMOTE_SHA="$(git ls-remote origin refs/heads/dev | awk '{print $1}')"
+          if [ "$REMOTE_SHA" != "$EXPECTED_PARENT" ]; then
+            echo "Refusing stale write: expected dev=$EXPECTED_PARENT actual=$REMOTE_SHA" >&2
+            exit 1
+          fi
+          git config user.name 'weigefenxiang'
+          git config user.email '119787190+weigefenxiang@users.noreply.github.com'
+          git commit -m 'refactor: retire release profile runtime'
+          git push origin HEAD:dev
+          echo "Committed validated 0.3.99 runtime retirement $(git rev-parse HEAD)"
