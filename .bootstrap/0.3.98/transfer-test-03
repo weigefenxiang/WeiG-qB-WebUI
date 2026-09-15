@@ -1,5 +1,0 @@
-ns.sourceActions[SET_PREFS]=[{from:'4.1.0',value:firstDescriptor(SET_PREFS)},{from:'4.1.1',value:null},{from:'4.1.2',value:firstDescriptor(SET_PREFS)}];
-const document={addEventListener(){},querySelectorAll(){return[];},createElement(){return{children:[],classList:{contains(){return false;},toggle(){},remove(){}},dataset:{},setAttribute(){},appendChild(){},querySelector(){return null;},querySelectorAll(){return[];}};},body:{appendChild(){}}};
-const window={WeiG:{buildAssetUrl:x=>x,I18n:{getLocale:()=> 'en-US'}},addEventListener(){},dispatchEvent(){},requestAnimationFrame:fn=>fn()};
-const byUrl=url=>{url=String(url);if(url.includes('torrent-compat.json'))return torrentCompat;if(url.includes('detail-compat.json'))return detailCompat;if(url.includes('source-actions.json'))return syntheticActions;if(url.includes('capabilities.json'))return registry;throw new Error(`Unexpected fetch ${url}`);};
-const context={window,document,fetch:async url=>({ok:true,json:async()=>byUrl(url)}),requestAnima
