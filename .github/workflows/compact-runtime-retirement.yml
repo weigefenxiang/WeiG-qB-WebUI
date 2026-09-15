@@ -99,7 +99,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git diff --check
+          git add -A
+          git diff --cached --check
           node --check tools/build-webui-dist.mjs
           node --check simulator/build/build-pages.mjs
           node --check simulator/build/build-site.mjs
