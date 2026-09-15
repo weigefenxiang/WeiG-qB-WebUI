@@ -14,10 +14,11 @@ concurrency:
 
 jobs:
   apply:
-    if: "${{ github.event.head_commit.message == 'chore: bootstrap 0.3.100 exact payload' }}"
+    if: "${{ github.event.head_commit.message == 'chore: refresh 0.3.100 bootstrap authority' }}"
     runs-on: ubuntu-24.04
     env:
-      EXPECTED_PARENT: ae78382c2f19ae99269b6c2464f14b99eddb2ff9
+      EXPECTED_PARENT: ac1f968c4ba9125b0061d68fe0344b5a867cf2ee
+      BASE_PRODUCT_SHA: ae78382c2f19ae99269b6c2464f14b99eddb2ff9
       PAYLOAD_SHA256: 0d7f49f6a1863ada4f0bfb585d476ca1912ad32d54b687f90836faa74a064c9d
     steps:
       - uses: actions/checkout@v7
@@ -55,7 +56,7 @@ jobs:
           bash tests/linux-config-section.sh
           sh -n tests/live.sh
           bash -n tests/live-api.sh
-          git diff --check "$EXPECTED_PARENT" --
+          git diff --check "$BASE_PRODUCT_SHA" --
 
       - name: Finalize exact dev product commit
         shell: bash
@@ -66,6 +67,7 @@ jobs:
           cat > /tmp/expected-files <<'EOF'
           .github/workflows/dev-bootstrap-0.3.100.yml
           VERSION
+          docs/014.AI协作与分支纪律.md
           package-lock.json
           package.json
           tests/capability-contract.mjs
@@ -87,7 +89,7 @@ jobs:
           webui/private/scripts/ui.js
           EOF
           LC_ALL=C sort -o /tmp/expected-files /tmp/expected-files
-          git diff --name-only "$EXPECTED_PARENT" -- | LC_ALL=C sort > /tmp/actual-files
+          git diff --name-only "$BASE_PRODUCT_SHA" -- | LC_ALL=C sort > /tmp/actual-files
           diff -u /tmp/expected-files /tmp/actual-files
 
           test "$(cat VERSION)" = "0.3.100"
