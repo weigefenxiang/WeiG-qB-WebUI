@@ -1,0 +1,106 @@
+name: Dev bootstrap 0.3.100
+
+on:
+  push:
+    branches:
+      - dev
+
+permissions:
+  contents: write
+
+concurrency:
+  group: dev-bootstrap-0.3.100
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: "${{ github.event.head_commit.message == 'chore: bootstrap 0.3.100 exact payload' }}"
+    runs-on: ubuntu-24.04
+    env:
+      EXPECTED_PARENT: ae78382c2f19ae99269b6c2464f14b99eddb2ff9
+      PAYLOAD_SHA256: 0d7f49f6a1863ada4f0bfb585d476ca1912ad32d54b687f90836faa74a064c9d
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Verify exact bootstrap source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/dev"
+          test "$(git rev-parse "$GITHUB_SHA^")" = "$EXPECTED_PARENT"
+
+      - name: Reassemble and verify exact payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(find .weigg-bootstrap/0.3.100 -maxdepth 1 -type f -name 'part-*' | wc -l)" -eq 16
+          cat .weigg-bootstrap/0.3.100/part-* > /tmp/plan-first-batch.tar.xz
+          printf '%s  %s\n' "$PAYLOAD_SHA256" /tmp/plan-first-batch.tar.xz | sha256sum -c -
+          tar -xJf /tmp/plan-first-batch.tar.xz -C .
+
+      - name: Validate product and contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check webui/private/scripts/core.js
+          node --check webui/private/scripts/capabilities.js
+          node --check webui/private/scripts/settings-schema.js
+          node --check webui/private/scripts/settings.js
+          node --check webui/private/scripts/ui.js
+          node --check webui/private/scripts/app.js
+          npm test
+          sh -n installers/install.sh
+          bash tests/linux-config-section.sh
+          sh -n tests/live.sh
+          bash -n tests/live-api.sh
+          git diff --check "$EXPECTED_PARENT" --
+
+      - name: Finalize exact dev product commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .weigg-bootstrap
+
+          cat > /tmp/expected-files <<'EOF'
+          .github/workflows/dev-bootstrap-0.3.100.yml
+          VERSION
+          package-lock.json
+          package.json
+          tests/capability-contract.mjs
+          tests/current-plan-contract.mjs
+          tests/detail-runtime-contract.mjs
+          tests/release-profile-contract.mjs
+          tests/settings-contract.mjs
+          tests/virtual-list-horizontal-scroll-contract.mjs
+          webui/VERSION
+          webui/private/css/settings.css
+          webui/private/css/table.css
+          webui/private/data/capabilities.json
+          webui/private/data/settings-compat.json
+          webui/private/scripts/app.js
+          webui/private/scripts/capabilities.js
+          webui/private/scripts/core.js
+          webui/private/scripts/settings-schema.js
+          webui/private/scripts/settings.js
+          webui/private/scripts/ui.js
+          EOF
+          LC_ALL=C sort -o /tmp/expected-files /tmp/expected-files
+          git diff --name-only "$EXPECTED_PARENT" -- | LC_ALL=C sort > /tmp/actual-files
+          diff -u /tmp/expected-files /tmp/actual-files
+
+          test "$(cat VERSION)" = "0.3.100"
+          test "$(cat webui/VERSION)" = "0.3.100"
+          test "$(node -p "require('./package.json').version")" = "0.3.100"
+          test "$(node -p "require('./package-lock.json').version")" = "0.3.100"
+          test "$(node -p "require('./package-lock.json').packages[''].version")" = "0.3.100"
+
+          git fetch origin dev
+          test "$(git rev-parse origin/dev)" = "$GITHUB_SHA"
+
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m "fix: stabilize runtime interactions and settings [ui]"
+          git push origin HEAD:dev
