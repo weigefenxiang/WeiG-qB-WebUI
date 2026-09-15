@@ -175,6 +175,7 @@ jobs:
           set -euo pipefail
           git add -u
           git add -- webui/translations
+          git restore --staged .github/workflows/pages.yml
           git diff --cached --check
           if git diff --cached --quiet; then
             echo 'Runtime retirement produced no formal changes.' >&2
