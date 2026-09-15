@@ -47,8 +47,9 @@ assert(app.includes('localStatusFilter')&&app.includes('needsCatalogFiltering')&
 assert(!/filter==='seeding'[^\n]*progress/.test(app)&&!/filter==='seeding'[^\n]*progress/.test(selection));
 assert(spatial.includes("kind:'category',capability:'categoryFacet'")&&spatial.includes("kind:'tag',capability:'tagFacet'"));
 assert(!spatial.includes("kind:'tag',capability:'tags'"));
+assert(!semantics.includes('ReleaseProfile'),'TorrentSemantics must not bypass CapabilityRegistry for release/source compatibility facts');
 const profile={fallback:false,torrentFilters:['all','downloading','seeding','completed','paused','resumed','active','inactive','errored'],torrentInfoFields:['hash','name','state','progress','dlspeed','upspeed','category','tags'],torrentStates:['downloading','stalledDL','uploading','stalledUP','pausedDL','pausedUP','checkingDL','checkingUP','error','missingFiles']};
-const sandbox={URL,window:{WeiG:{util:{normalizeTracker(raw){const value=String(raw||'').trim();if(!value)return'';try{const u=new URL(value);return`${u.protocol}//${u.hostname}${u.port?':'+u.port:''}${u.pathname||'/'}`;}catch{return value;}}},ReleaseProfile:{current:()=>profile,torrentFilters:()=>profile.torrentFilters,supportsTorrentFilter:name=>profile.torrentFilters.includes(name)||(name==='stopped'&&profile.torrentFilters.includes('paused'))||(name==='running'&&profile.torrentFilters.includes('resumed')),hasTorrentInfoField:name=>profile.torrentInfoFields.includes(name),torrentStates:()=>profile.torrentStates}}}};
+const sandbox={URL,window:{WeiG:{util:{normalizeTracker(raw){const value=String(raw||'').trim();if(!value)return'';try{const u=new URL(value);return`${u.protocol}//${u.hostname}${u.port?':'+u.port:''}${u.pathname||'/'}`;}catch{return value;}}},CapabilityRegistry:{hasExactSourceFacts:()=>profile.fallback!==true,torrentFilters:()=>profile.torrentFilters,supportsTorrentFilter:name=>profile.torrentFilters.includes(name)||(name==='stopped'&&profile.torrentFilters.includes('paused'))||(name==='running'&&profile.torrentFilters.includes('resumed')),hasTorrentInfoField:name=>profile.torrentInfoFields.includes(name),torrentStates:()=>profile.torrentStates,supports:()=>false}}}};
 sandbox.window.window=sandbox.window;
 vm.runInNewContext(semantics,sandbox,{filename:'torrent-semantics.js'});
 const T=sandbox.window.WeiG.TorrentSemantics;
@@ -68,7 +69,7 @@ assert(data.features.tagFacet.upstream.torrentInfoField==='tags');
 assert(data.features.tags.upstream.action==='torrentscontroller.h:tagsAction');
 assert(data.features.addTags.upstream.action==='torrentscontroller.h:addTagsAction');
 assert(data.features.trackerRemove.upstream.action==='torrentscontroller.h:removeTrackersAction');
-assert(capabilities.includes('torrentInfoField')&&capabilities.includes('sourceRequired===true'));
+assert(capabilities.includes('hasExactSourceFacts')&&capabilities.includes('supportsTorrentFilter')&&capabilities.includes('hasTorrentInfoField')&&capabilities.includes('torrentStates'));
 assert(selection.includes('supportsTorrentAction')&&selection.includes("capability:'addTags'")&&selection.includes('if(!actionSupported(def.kind))return'));
 assert(client.includes("_guardedTorrentAction('reannounce'")&&client.includes("_guardedTorrentAction('removeTrackers'"));
 assert(app.includes("function writeActionSupported(action){var R=W.ReleaseProfile;return !!(action&&R&&R.hasWriteProvenance&&R.hasWriteProvenance()&&R.hasAction&&R.hasAction(action));}"));
@@ -76,4 +77,4 @@ assert(app.includes("function detailMenu(surface){var ui=detailUi(),menus=ui&&ui
 assert(app.includes("detailContextItems:function(item,_surface,index,selectionCount)")&&app.includes("return detailActionItems(surface,item,index,count);")&&ui.includes("function detailContextItems(surface,item,ctx,index,selectionCount){if(!ctx||typeof ctx.contextItems!=='function')return[];"));
 for(const rule of ['TORRENT-FILTER-OWNER'])assert(docs.includes(rule));
 assert(docs.includes('Tracker facet')&&docs.includes("W.CapabilityRegistry.supports('privateFilter')")&&docs.includes('LibraryController.matchesTorrent'));
-console.log('Torrent workspace semantic ownership contract passed: one native horizontal scroll owner keeps header/rows attached without horizontal VirtualList renders, resize persistence stays off the pointer hot path, status filters remain source-backed, Private / PT is capability-gated in the Tracker facet, and page/selection matching share one canonical owner.');
+console.log('Torrent workspace semantic ownership contract passed: TorrentSemantics consumes compatibility facts through CapabilityRegistry, one native horizontal scroll owner keeps header/rows attached, status filters remain source-backed, Private / PT is capability-gated in the Tracker facet, and page/selection matching share one canonical owner.');

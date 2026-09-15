@@ -28,15 +28,15 @@
     moving:{fields:['state'],states:['moving']},
     errored:{fields:['state'],states:['error','missingFiles']}
   };
-  function sourceProfile(){return W.ReleaseProfile&&W.ReleaseProfile.current?W.ReleaseProfile.current():null;}
-  function exactSource(){var p=sourceProfile();return !!(p&&p.fallback!==true);}
-  function hasFields(fields){var R=W.ReleaseProfile;if(!R||!R.hasTorrentInfoField)return false;return (fields||[]).every(function(name){return R.hasTorrentInfoField(name);});}
-  function sourceStates(){var R=W.ReleaseProfile;return R&&R.torrentStates?R.torrentStates():[];}
+  function registry(){return W.CapabilityRegistry||null;}
+  function exactSource(){var C=registry();return !!(C&&C.hasExactSourceFacts&&C.hasExactSourceFacts());}
+  function hasFields(fields){var C=registry();if(!C||!C.hasTorrentInfoField)return false;return (fields||[]).every(function(name){return C.hasTorrentInfoField(name);});}
+  function sourceStates(){var C=registry();return C&&C.torrentStates?C.torrentStates():[];}
   function stateEvidence(req){if(!req)return false;if(!req.states&&!req.statePattern)return true;var states=sourceStates();if(!states.length)return false;if(req.states&&req.states.some(function(name){return states.indexOf(name)>=0;}))return true;if(req.statePattern&&states.some(function(name){return req.statePattern.test(String(name));}))return true;return false;}
   function canDeriveFilter(filter){var f=canonicalFilter(filter),req=derivedRequirements[f];if(f==='all')return true;if(!req||!exactSource()||!hasFields(req.fields))return false;return stateEvidence(req);}
-  function filterMode(filter){var f=canonicalFilter(filter),R=W.ReleaseProfile;if(f==='private')return W.CapabilityRegistry&&W.CapabilityRegistry.supports&&W.CapabilityRegistry.supports('privateFilter')?'local':'unavailable';if(R&&R.supportsTorrentFilter&&R.supportsTorrentFilter(f))return'native';if(canDeriveFilter(f))return'local';return'unavailable';}
+  function filterMode(filter){var f=canonicalFilter(filter),C=registry();if(f==='private')return C&&C.supports&&C.supports('privateFilter')?'local':'unavailable';if(C&&C.supportsTorrentFilter&&C.supportsTorrentFilter(f))return'native';if(canDeriveFilter(f))return'local';return'unavailable';}
   function localFilterRequired(filter){return filterMode(filter)==='local';}
-  function statusFilters(){var R=W.ReleaseProfile,native=R&&R.torrentFilters?R.torrentFilters():['all','downloading','seeding','completed','stopped','running','active','inactive','errored'],out=(native||[]).map(canonicalFilter);derivedOrder.forEach(function(name){if(canDeriveFilter(name))out.push(name);});return Array.from(new Set(out));}
-  function isSupportedFilter(filter){var f=canonicalFilter(filter);if(f==='private')return !!(W.CapabilityRegistry&&W.CapabilityRegistry.supports&&W.CapabilityRegistry.supports('privateFilter'));return filterMode(f)!=='unavailable';}
+  function statusFilters(){var C=registry(),native=C&&C.torrentFilters?C.torrentFilters():['all','downloading','seeding','completed','stopped','running','active','inactive','errored'],out=(native||[]).map(canonicalFilter);derivedOrder.forEach(function(name){if(canDeriveFilter(name))out.push(name);});return Array.from(new Set(out));}
+  function isSupportedFilter(filter){var f=canonicalFilter(filter),C=registry();if(f==='private')return !!(C&&C.supports&&C.supports('privateFilter'));return filterMode(f)!=='unavailable';}
   W.TorrentSemantics={classify:classify,evidence:evidence,isPrivate:isPrivate,isPrivateKnown:isPrivateKnown,isPt:isPt,isPrivateOrPt:isPrivateOrPt,metadataUnavailable:metadataUnavailable,trackerHost:trackerHost,normalizeRules:normalizeRules,canonicalFilter:canonicalFilter,matchesStatus:matchesStatus,statusFilters:statusFilters,isSupportedFilter:isSupportedFilter,canDeriveFilter:canDeriveFilter,filterMode:filterMode,localFilterRequired:localFilterRequired};
 })(window);
