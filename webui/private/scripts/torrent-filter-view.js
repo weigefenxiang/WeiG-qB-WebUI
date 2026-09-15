@@ -3,7 +3,7 @@
   var W=global.WeiG=global.WeiG||{},I=W.I18n||null;
   var fallbacks={all:'All',downloading:'Downloading',seeding:'Seeding',completed:'Completed',resumed:'Resumed',paused:'Paused',running:'Running',stopped:'Stopped',active:'Active',inactive:'Inactive',stalled:'Stalled',stalled_uploading:'Stalled Uploading',stalled_downloading:'Stalled Downloading',checking:'Checking',moving:'Moving',errored:'Errored'};
   function qbText(key,fallback){return I&&I.qbText?I.qbText(key,fallback):String(fallback||key);}
-  function sourceFilterName(name){var R=W.ReleaseProfile;return R&&R.upstreamTorrentFilter?R.upstreamTorrentFilter(name)||name:name;}
+  function sourceFilterName(name){var R=W.CapabilityRegistry;return R&&R.upstreamTorrentFilter?R.upstreamTorrentFilter(name)||name:name;}
   function stripZeroCount(value){return String(value||'').replace(/\s*[\(（]\s*0\s*[\)）]\s*$/,'').trim();}
   function label(name){var source=sourceFilterName(name),fallback=fallbacks[source]||fallbacks[name]||name;return stripZeroCount(qbText('filter.'+source,fallback));}
   function desired(){var out=W.TorrentSemantics&&W.TorrentSemantics.statusFilters?W.TorrentSemantics.statusFilters():['all','downloading','seeding','completed','stopped','running','active','inactive','errored'];return Array.from(new Set(out));}
