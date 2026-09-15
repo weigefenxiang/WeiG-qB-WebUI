@@ -9,10 +9,12 @@ function descriptor(action){
   const item=profile.apiActionParameters?.[action]||{};
   return{sourceAction:action,endpoint:(action.split(':')[1]||'').replace(/Action$/,''),parameters:item.parameters||[],required:item.required||[],optional:item.optional||[]};
 }
+const certified=()=>!!(profile&&profile.fallback!==true);
 const WeiG={
   util:{form:obj=>new URLSearchParams(Object.entries(obj||{}).map(([key,value])=>[key,String(value)])).toString()},
   I18n:{getLocale:()=> 'en-US'},
-  ReleaseProfile:{current:()=>profile,actionDescriptor:descriptor,hasAction:action=>!!descriptor(action),isCertified:()=>!!(profile&&profile.fallback!==true)}
+  ReleaseProfile:{current:()=>profile,actionDescriptor:descriptor,hasAction:action=>!!descriptor(action),isCertified:certified},
+  CapabilityRegistry:{isCertified:certified,sourceActionDescriptor:action=>{if(!profile)return undefined;if(profile.fallback===true)return null;return descriptor(action);}}
 };
 const window={WeiG};
 const context={window,URLSearchParams,FormData,Blob,Response,console,fetch:async(url,init={})=>{calls.push({url:String(url),init});return new Response(JSON.stringify(responseBody),{status:200});}};
@@ -57,4 +59,4 @@ await assert.rejects(Promise.resolve().then(()=>client.peers('future')),/source-
 await assert.rejects(Promise.resolve().then(()=>client.banPeers('203.0.113.7:51413')),/source-proven/,'future fallback must not guess banPeers support');
 assert.equal(calls.length,before,'future fallback Peers operations must make zero HTTP requests');
 
-console.log(`QBClient Peer provenance passed: ${calls.length} allowed HTTP calls; torrentPeers/banPeers are independently source-guarded, unsupported/empty/malformed states stay distinct, and capability cache ownership lives outside QBClient.`);
+console.log(`QBClient Peer provenance passed: ${calls.length} allowed HTTP calls; torrentPeers/banPeers are independently source-guarded through CapabilityRegistry, unsupported/empty/malformed states stay distinct.`);

@@ -15,10 +15,12 @@ function descriptor(action){
   const item=profile.apiActionParameters?.[action]||{};
   return{sourceAction:action,endpoint:(action.split(':')[1]||'').replace(/Action$/,''),parameters:item.parameters||[],required:item.required||[],optional:item.optional||[]};
 }
+const certified=()=>!!(profile&&profile.fallback!==true&&['EXACT','EQUIVALENT'].includes(profile.resolutionMode||'EXACT'));
 const WeiG={
   util:{form:obj=>new URLSearchParams(Object.entries(obj||{}).map(([key,value])=>[key,String(value)])).toString()},
   I18n:{getLocale:()=> 'en-US'},
-  ReleaseProfile:{current:()=>profile,actionDescriptor:descriptor,hasAction:action=>!!descriptor(action),isCertified:()=>!!(profile&&profile.fallback!==true&&['EXACT','EQUIVALENT'].includes(profile.resolutionMode||'EXACT'))}
+  ReleaseProfile:{current:()=>profile,actionDescriptor:descriptor,hasAction:action=>!!descriptor(action),isCertified:certified},
+  CapabilityRegistry:{isCertified:certified,sourceActionDescriptor:action=>{if(!profile)return undefined;if(profile.fallback===true)return null;return descriptor(action);}}
 };
 const window={WeiG};
 const context={window,URLSearchParams,FormData,Blob,console,fetch:async(url,init={})=>{calls.push({url:String(url),init});return new Response('',{status:200});},Response};
@@ -72,4 +74,4 @@ for(const action of [()=>client.setFilePriority('abc',3,7),()=>client.addTracker
   assert.equal(calls.length,before,'future fallback detail write must make zero HTTP requests');
 }
 
-console.log(`QBClient Torrent detail write provenance passed: File Priority dynamic UI and transport share exact filePrioAction ownership; ${calls.length} allowed HTTP calls; inherited/fallback or source-absent writes make zero HTTP requests.`);
+console.log(`QBClient Torrent detail write provenance passed: File Priority dynamic UI and transport share exact filePrioAction ownership through CapabilityRegistry; ${calls.length} allowed HTTP calls; inherited/fallback or source-absent writes make zero HTTP requests.`);

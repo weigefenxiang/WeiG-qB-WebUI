@@ -28,30 +28,19 @@ function resolve(kind){
   if(!profile.apiActions.includes(spec[0]))return null;
   const desc=descriptor(spec[0]);return desc?{...desc,kind,endpoint:spec[1]}:null;
 }
+const certified=()=>!!(profile&&profile.fallback!==true);
 const WeiG={
   util:{form:obj=>new URLSearchParams(Object.entries(obj||{}).map(([key,value])=>[key,String(value)])).toString()},
   I18n:{getLocale:()=> 'en-US'},
-  ReleaseProfile:{current:()=>profile,actionDescriptor:descriptor,hasAction:action=>!!descriptor(action),resolveTorrentActionDescriptor:resolve,resolveTorrentAction:kind=>resolve(kind)?.endpoint||null,isCertified:()=>!!(profile&&profile.fallback!==true)}
+  ReleaseProfile:{current:()=>profile,actionDescriptor:descriptor,hasAction:action=>!!descriptor(action),resolveTorrentActionDescriptor:resolve,resolveTorrentAction:kind=>resolve(kind)?.endpoint||null,isCertified:certified},
+  CapabilityRegistry:{isCertified:certified,resolveTorrentActionDescriptor:kind=>{if(!profile)return undefined;return resolve(kind);}}
 };
 const window={WeiG};
 const context={window,URLSearchParams,FormData,Blob,Response,console,fetch:async(url,init={})=>{calls.push({url:String(url),init});return new Response('',{status:200});}};
 vm.runInNewContext(source,context,{filename:'qb-client.js'});
 const client=new window.WeiG.QBClient();
 client.qbVersion='6.0.0';client.webApiVersion='3.0.0';client.major=6;
-const operations={
-  delete:()=>client.delete('hash-a',true),
-  recheck:()=>client.recheck('hash-a'),
-  force:()=>client.forceStart('hash-a',true),
-  autotmm:()=>client.setAutoManagement('hash-a',true),
-  sequential:()=>client.toggleSequential('hash-a'),
-  firstlast:()=>client.toggleFirstLast('hash-a'),
-  top:()=>client.topPriority('hash-a'),
-  bottom:()=>client.bottomPriority('hash-a'),
-  location:()=>client.setLocation('hash-a','/downloads/new'),
-  rename:()=>client.renameTorrent('hash-a','Renamed'),
-  dllimit:()=>client.setDownloadLimit('hash-a',1024),
-  uplimit:()=>client.setUploadLimit('hash-a',2048)
-};
+const operations={delete:()=>client.delete('hash-a',true),recheck:()=>client.recheck('hash-a'),force:()=>client.forceStart('hash-a',true),autotmm:()=>client.setAutoManagement('hash-a',true),sequential:()=>client.toggleSequential('hash-a'),firstlast:()=>client.toggleFirstLast('hash-a'),top:()=>client.topPriority('hash-a'),bottom:()=>client.bottomPriority('hash-a'),location:()=>client.setLocation('hash-a','/downloads/new'),rename:()=>client.renameTorrent('hash-a','Renamed'),dllimit:()=>client.setDownloadLimit('hash-a',1024),uplimit:()=>client.setUploadLimit('hash-a',2048)};
 const allActions=Object.values(ACTIONS).map(x=>x[0]);
 profile={qbVersion:'6.0.0',webApiVersion:'3.0.0',fallback:false,apiActions:allActions,apiActionParameters:{}};
 let before=calls.length;
@@ -76,4 +65,4 @@ profile={qbVersion:'6.9.0',webApiVersion:'99.0.0',fallback:true,apiActions:allAc
 before=calls.length;
 for(const [kind,operation] of Object.entries(operations))await assert.rejects(Promise.resolve().then(operation),/not supported/,`future fallback must not guess ${kind} support`);
 assert.equal(calls.length,before,'future fallback core writes must make zero HTTP requests');
-console.log(`QBClient core write provenance passed: ${calls.length} allowed HTTP calls; 12 core Torrent writes use independent source-owned actions and fallback profiles fail closed before HTTP.`);
+console.log(`QBClient core write provenance passed: ${calls.length} allowed HTTP calls; 12 core Torrent writes resolve through CapabilityRegistry and fallback profiles fail closed before HTTP.`);

@@ -9,10 +9,12 @@ function descriptor(action){
   const item=profile.apiActionParameters?.[action]||{};
   return{sourceAction:action,endpoint:(action.split(':')[1]||'').replace(/Action$/,''),parameters:item.parameters||[],required:item.required||[],optional:item.optional||[]};
 }
+const certified=()=>!!(profile&&profile.fallback!==true);
 const WeiG={
   util:{form:obj=>new URLSearchParams(Object.entries(obj||{}).map(([key,value])=>[key,String(value)])).toString()},
   I18n:{getLocale:()=> 'en-US'},
-  ReleaseProfile:{current:()=>profile,actionDescriptor:descriptor,hasAction:action=>!!descriptor(action),isCertified:()=>!!(profile&&profile.fallback!==true)}
+  ReleaseProfile:{current:()=>profile,actionDescriptor:descriptor,hasAction:action=>!!descriptor(action),isCertified:certified},
+  CapabilityRegistry:{isCertified:certified,sourceActionDescriptor:action=>{if(!profile)return undefined;if(profile.fallback===true)return null;return descriptor(action);}}
 };
 const window={WeiG};
 const context={window,URLSearchParams,FormData,Blob,Response,console,fetch:async(url,init={})=>{
@@ -72,4 +74,4 @@ await client.setCookies({not:'an array'});
 assert.equal(calls.length,before+1);
 const normalized=new URLSearchParams(String(calls.at(-1).init.body||''));
 assert.deepEqual(JSON.parse(normalized.get('cookies')),[],'setCookies must preserve current non-array normalization as an empty cookie list');
-console.log(`QBClient App auxiliary provenance passed: ${calls.length} allowed HTTP calls; buildInfo/cookies/setCookies are independently source-guarded and setCookies uses canonical cookies=<JSON> form encoding.`);
+console.log(`QBClient App auxiliary provenance passed: ${calls.length} allowed HTTP calls; buildInfo/cookies/setCookies are independently source-guarded through CapabilityRegistry and setCookies uses canonical cookies=<JSON> form encoding.`);
