@@ -75,7 +75,11 @@ jobs:
           rm -rf webui/translations
           cp -a "$RUNNER_TEMP/pre-retirement/dev/app/__source/translations" webui/translations
       - name: Apply 0.3.99 runtime retirement
-        run: python3 .bootstrap/0.3.99/migrate_phase_b.py
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 .bootstrap/0.3.99/migrate_phase_b_bootstrap_fix1.py
+          python3 .bootstrap/0.3.99/migrate_phase_b.py
       - name: Enforce retired runtime boundary
         shell: bash
         run: |
