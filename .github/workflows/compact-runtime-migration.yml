@@ -39,6 +39,7 @@ jobs:
           python3 .bootstrap/0.3.99/migrate_phase_a_fix1.py
           python3 .bootstrap/0.3.99/migrate_phase_a_fix2.py
           python3 .bootstrap/0.3.99/migrate_phase_a_fix3.py
+          python3 .bootstrap/0.3.99/migrate_phase_a_fix4.py
       - name: Validate syntax and repository contracts
         shell: bash
         run: |
