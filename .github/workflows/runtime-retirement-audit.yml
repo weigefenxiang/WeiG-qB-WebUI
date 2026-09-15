@@ -1,0 +1,28 @@
+name: Runtime retirement audit
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - '.github/workflows/runtime-retirement-audit.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Audit legacy runtime references
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '=== ReleaseProfile / release-profile.js references outside docs ==='
+          git grep -n -E 'ReleaseProfile|release-profile\.js' -- ':!docs/**' ':!translations/**' || true
+          echo '=== qb-releases/profile-shard references outside docs ==='
+          git grep -n -E 'qb-releases\.json|qb-release-profiles' -- ':!docs/**' ':!translations/**' || true
+          echo '=== Browser entry script list ==='
+          grep -oE 'scripts/[A-Za-z0-9._-]+\.js' webui/private/index.html || true
