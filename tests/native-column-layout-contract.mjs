@@ -26,7 +26,7 @@ const W={
   Config:{load:()=>structuredClone(saved),save:value=>{saved=structuredClone(value);}},
   Components:{state:code=>[`STATE:${code}`,'']},
   I18n:{getLocale:()=> 'zh-CN'},
-  ReleaseProfile:{current:()=>profile},
+  CapabilityRegistry:{torrentFieldFacts:()=>profile},
   DataGrid:{defaults:[]}
 };
 const window={WeiG:W};window.window=window;
