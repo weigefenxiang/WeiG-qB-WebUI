@@ -1,61 +1,43 @@
 name: Bootstrap 0.3.98 Compact Runtime
-
 on:
   push:
-    branches:
-      - dev
-    paths:
-      - '.bootstrap/0.3.98/**'
-      - '.github/workflows/bootstrap-0.3.98.yml'
-
+    branches: [dev]
+    paths: ['.bootstrap/0.3.98/**', '.github/workflows/bootstrap-0.3.98.yml']
 permissions:
   contents: write
-
 concurrency:
   group: bootstrap-0.3.98-dev
   cancel-in-progress: false
-
 jobs:
   apply:
     if: "${{ github.event.head_commit.message == 'chore: stage 0.3.98 compact runtime bootstrap' }}"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
+        with: {fetch-depth: 0}
       - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-      - name: Reassemble byte-verified product payload
-        shell: bash
+        with: {node-version: 22}
+      - name: Reassemble payload
         run: |
           set -euo pipefail
           payload=/tmp/weigg-0.3.98.tar.xz
-          cat \
-            .bootstrap/0.3.98/part-00 \
-            .bootstrap/0.3.98/part-01 \
-            .bootstrap/0.3.98/part-02 \
-            .bootstrap/0.3.98/chunk-{00..15} \
-            .bootstrap/0.3.98/tail-{00..06} > "$payload"
+          cat .bootstrap/0.3.98/part-00 .bootstrap/0.3.98/part-01 .bootstrap/0.3.98/part-02 .bootstrap/0.3.98/chunk-{00..15} .bootstrap/0.3.98/tail-{00..06} > "$payload"
           test "$(wc -c < "$payload")" -eq 50308
           echo '5409f0001ac78752a228d6827811074d309eaf119dc8de35157774536f5965fb  /tmp/weigg-0.3.98.tar.xz' | sha256sum -c -
           tar -tJf "$payload" >/dev/null
           tar -xJf "$payload" -C "$GITHUB_WORKSPACE"
           cat .bootstrap/0.3.98/transfer-test-{00..06} > tests/transfer-write-capability-contract.mjs
-      - name: Verify version ownership
-        shell: bash
+          tool=/tmp/qb-product-capability-diff.mjs.xz
+          cat .bootstrap/0.3.98/tool-{00..02} > "$tool"
+          echo '6ac4e34a1f04ee5b72524ffe3a8faa0292f3e395e30bf726e3f0c399ffccc91b  /tmp/qb-product-capability-diff.mjs.xz' | sha256sum -c -
+          xz -dc "$tool" > tools/qb-product-capability-diff.mjs
+      - name: Verify version
         run: |
           set -euo pipefail
-          test "$(cat VERSION)" = '0.3.98'
-          test "$(cat webui/VERSION)" = '0.3.98'
-          node - <<'NODE'
-          const fs=require('fs');
-          const p=JSON.parse(fs.readFileSync('package.json','utf8'));
-          const l=JSON.parse(fs.readFileSync('package-lock.json','utf8'));
-          if(p.version!=='0.3.98'||l.version!=='0.3.98'||l.packages?.['']?.version!=='0.3.98') process.exit(1);
-          NODE
-      - name: Full repository validation before product commit
-        shell: bash
+          test "$(cat VERSION)" = 0.3.98
+          test "$(cat webui/VERSION)" = 0.3.98
+          node -e "const f=require('fs'),p=JSON.parse(f.readFileSync('package.json')),l=JSON.parse(f.readFileSync('package-lock.json'));if(p.version!=='0.3.98'||l.version!=='0.3.98'||l.packages?.['']?.version!=='0.3.98')process.exit(1)"
+      - name: Validate
         run: |
           set -euo pipefail
           npm test
@@ -64,8 +46,7 @@ jobs:
           sh -n tests/live.sh
           bash -n tests/live-api.sh
           git diff --check
-      - name: Commit only validated 0.3.98 product changes
-        shell: bash
+      - name: Commit validated product
         run: |
           set -euo pipefail
           git fetch origin dev
@@ -75,18 +56,12 @@ jobs:
           git add -- \
             VERSION webui/VERSION package.json package-lock.json \
             tests/capability-contract.mjs tests/settings-contract.mjs tests/torrent-workspace-contract.mjs \
-            tests/transfer-write-capability-contract.mjs \
-            webui/private/data/capabilities.json \
-            webui/private/data/torrent-compat.json \
-            webui/private/data/detail-compat.json \
-            webui/private/data/source-actions.json \
-            webui/private/data/settings-compat.json \
-            webui/private/scripts/capabilities.js \
-            webui/private/scripts/settings-schema.js \
-            webui/private/scripts/selection.js \
-            webui/private/scripts/torrent-filter-view.js \
-            webui/private/scripts/ui.js \
-            webui/private/index.html
+            tests/transfer-write-capability-contract.mjs tools/qb-product-capability-diff.mjs \
+            webui/private/data/capabilities.json webui/private/data/torrent-compat.json \
+            webui/private/data/detail-compat.json webui/private/data/source-actions.json \
+            webui/private/data/settings-compat.json webui/private/scripts/capabilities.js \
+            webui/private/scripts/settings-schema.js webui/private/scripts/selection.js \
+            webui/private/scripts/torrent-filter-view.js webui/private/scripts/ui.js webui/private/index.html
           git diff --cached --check
           test -n "$(git diff --cached --name-only)"
           git commit -m 'refactor: bind runtime to compact qB contracts'
