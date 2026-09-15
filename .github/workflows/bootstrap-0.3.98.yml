@@ -31,6 +31,7 @@ jobs:
           cat .bootstrap/0.3.98/tool-{00..02} > "$tool"
           echo '6ac4e34a1f04ee5b72524ffe3a8faa0292f3e395e30bf726e3f0c399ffccc91b  /tmp/qb-product-capability-diff.mjs.xz' | sha256sum -c -
           xz -dc "$tool" > tools/qb-product-capability-diff.mjs
+          git apply .bootstrap/0.3.98/phase-d.patch
       - name: Verify version
         run: |
           set -euo pipefail
@@ -56,7 +57,7 @@ jobs:
           git add -- \
             VERSION webui/VERSION package.json package-lock.json \
             tests/capability-contract.mjs tests/settings-contract.mjs tests/torrent-workspace-contract.mjs \
-            tests/transfer-write-capability-contract.mjs tools/qb-product-capability-diff.mjs \
+            tests/transfer-write-capability-contract.mjs tests/phase-d-automation-contract.mjs tools/qb-product-capability-diff.mjs \
             webui/private/data/capabilities.json webui/private/data/torrent-compat.json \
             webui/private/data/detail-compat.json webui/private/data/source-actions.json \
             webui/private/data/settings-compat.json webui/private/scripts/capabilities.js \
