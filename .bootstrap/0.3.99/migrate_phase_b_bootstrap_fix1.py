@@ -18,5 +18,24 @@ if start<0 or end<0:
     raise SystemExit(f'phase-b architecture guard block not found: start={start}, end={end}')
 replacement="""replace_once('tests/compat-architecture-contract.mjs',\"const root=path.resolve(here,'..');\",\"const root=path.resolve(here,'..');\\nassert.equal(execFileSync('git',['-C',root,'ls-files','--','webui/private/scripts/release-profile.js'],{encoding:'utf8'}).trim(),'','retired ReleaseProfile runtime owner must stay deleted');\\nassert.equal(execFileSync('git',['-C',root,'ls-files','--','webui/private/data/qb-releases.json'],{encoding:'utf8'}).trim(),'','retired qB release runtime index must stay deleted');\")"""
 text=text[:start]+replacement+text[end:]
+
+old_ws="`--out=${path.join(out,'downloads','dev')}`, \""
+new_ws="`--out=${path.join(out,'downloads','dev')}`,\""
+count=text.count(old_ws)
+if count!=1:
+    raise SystemExit(f'phase-b build-site whitespace patch expected 1 match, found {count}')
+text=text.replace(old_ws,new_ws,1)
+
+marker="print('Phase B runtime retirement transform applied.')"
+count=text.count(marker)
+if count!=1:
+    raise SystemExit(f'phase-b gitattributes insertion expected 1 marker, found {count}')
+attrs_code="""attrs=read('.gitattributes')
+registry_attr='webui/private/data/qb-settings-native.txt -whitespace'
+if registry_attr not in attrs:
+    write('.gitattributes',attrs.rstrip('\\n')+'\\n# qb-settings-native @@PROFILE keeps a semantic final empty TSV field; preserve its trailing tab.\\n'+registry_attr+'\\n')
+
+"""
+text=text.replace(marker,attrs_code+marker,1)
 p.write_text(text,encoding='utf-8')
-print('Corrected Phase B architecture migration to a stable Git-index absence guard.')
+print('Corrected Phase B architecture guard, build-site whitespace, and semantic TSV whitespace policy.')
