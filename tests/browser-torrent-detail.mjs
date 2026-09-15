@@ -124,8 +124,10 @@ try{
   assert(geometry.statusTop>=geometry.contentBottom&&geometry.statusTop-geometry.contentBottom<24,`Detail Content does not fill to Statusbar: ${JSON.stringify(geometry)}`);
   assert(geometry.contentHeight>250&&geometry.viewportBottom<=geometry.contentBottom+1&&Number(geometry.flexGrow)>0&&geometry.minHeight==='0px',`Detail flex ownership is not active: ${JSON.stringify(geometry)}`);
 
-  const derived=await page.evaluate(()=>{const rows=[...document.querySelectorAll('.shared-table__row')].slice(0,2),fmt=window.WeiG.util.formatBytes;return{rows:rows.map(row=>({checked:row.querySelector('[data-column-key="checked"] input[type="checkbox"]')?.checked,remaining:row.querySelector('[data-column-key="remaining"]')?.textContent?.trim()})),expectedIgnored:fmt(0),expectedNormal:fmt(1048576*(1-.25))};});
-  assert(derived.rows.length===2,'Content browser gate did not render the first two file rows.');
+  const hierarchy=await page.evaluate(()=>({firstKind:document.querySelector('.shared-table__row')?.dataset.fileKind||'',folderCount:document.querySelectorAll('.shared-table__row[data-file-kind="folder"]').length,fileCount:document.querySelectorAll('.shared-table__row[data-file-kind="file"]').length}));
+  assert(hierarchy.firstKind==='folder'&&hierarchy.folderCount>=1&&hierarchy.fileCount>=2,`Content hierarchy did not preserve the synthetic folder row above source file rows: ${JSON.stringify(hierarchy)}`);
+  const derived=await page.evaluate(()=>{const rows=[...document.querySelectorAll('.shared-table__row[data-file-kind="file"]')].slice(0,2),fmt=window.WeiG.util.formatBytes;return{rows:rows.map(row=>({checked:row.querySelector('[data-column-key="checked"] input[type="checkbox"]')?.checked,remaining:row.querySelector('[data-column-key="remaining"]')?.textContent?.trim()})),expectedIgnored:fmt(0),expectedNormal:fmt(1048576*(1-.25))};});
+  assert(derived.rows.length===2,'Content browser gate did not render the first two source file rows beneath the hierarchy.');
   assert(derived.rows[0].checked===false&&derived.rows[1].checked===true,`Source-driven checked state is wrong: ${JSON.stringify(derived.rows)}`);
   assert(derived.rows[0].remaining===derived.expectedIgnored,`Ignored-file remaining must be zero: ${JSON.stringify(derived)}`);
   assert(derived.rows[1].remaining===derived.expectedNormal,`Source-driven remaining formula is wrong: ${JSON.stringify(derived)}`);
@@ -190,7 +192,7 @@ try{
   assert(JSON.stringify(longAfter.saved)===JSON.stringify(longAfter.order),`Mobile long-press reorder did not persist through canonical owner: ${JSON.stringify(longAfter)}`);
   assert(errors.length===0,`Torrent detail browser errors: ${errors.join(' | ')}`);
   await context.close();
-  console.log('Torrent detail browser gate passed: user-path detail opening, full-height Content workspace, shared horizontal scroll, source-derived checked/remaining, DOM column settings, pointer resize/reorder, touch-scroll cancellation and long-press reorder are proven in hosted Chrome.');
+  console.log('Torrent detail browser gate passed: user-path detail opening, full-height Content workspace, source hierarchy plus file-derived checked/remaining, shared horizontal scroll, DOM column settings, pointer resize/reorder, touch-scroll cancellation and long-press reorder are proven in hosted Chrome.');
 }finally{
   await browser.close();
   await new Promise(resolve=>server.close(resolve));
