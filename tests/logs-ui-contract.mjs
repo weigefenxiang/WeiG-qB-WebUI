@@ -49,6 +49,7 @@ assert(!appCss.includes('#detail-content .virtual-list .virtual-row{display:grid
 assert(tableCss.includes('.shared-table__head,.shared-table__row{display:grid;align-items:center;min-width:max-content;grid-template-columns:var(--weigg-detail-grid-template)}'),'Shared Detail header and rows must retain one canonical column geometry outside generic VirtualList CSS');
 assert(!appCss.includes('.virtual-list .virtual-row:not(.torrent-mobile-card)>:nth-child(3){display:none}'),'Mobile third-column hiding must not apply to every VirtualList row');
 assert(!appCss.includes('#detail-content .virtual-list .virtual-row>:nth-child(3){display:none}'),'Legacy mobile Detail third-column hiding must stay retired with the old virtual-row layout owner');
+assert(!tableCss.includes('.shared-table__row>:nth-child(3){display:none}'),'Shared Detail mobile layout must not discard source columns by positional nth-child rules');
 
 assert(css.includes('.logs-head,.logs-row{display:grid;grid-template-columns:'),'Desktop log header and rows must share one column geometry');
 assert(css.includes('.logs-head>span:nth-child(3){justify-self:center;text-align:center}')&&css.includes('.logs-row .logs-level{justify-self:center;text-align:center'),'Desktop Level header and level pills must share the same center anchor');
