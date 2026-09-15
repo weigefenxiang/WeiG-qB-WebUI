@@ -1,0 +1,93 @@
+name: Bootstrap 0.3.98 Compact Runtime
+
+on:
+  push:
+    branches:
+      - dev
+    paths:
+      - '.bootstrap/0.3.98/**'
+      - '.github/workflows/bootstrap-0.3.98.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bootstrap-0.3.98-dev
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: "${{ github.event.head_commit.message == 'chore: stage 0.3.98 compact runtime bootstrap' }}"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Reassemble byte-verified product payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          payload=/tmp/weigg-0.3.98.tar.xz
+          cat \
+            .bootstrap/0.3.98/part-00 \
+            .bootstrap/0.3.98/part-01 \
+            .bootstrap/0.3.98/part-02 \
+            .bootstrap/0.3.98/chunk-{00..15} \
+            .bootstrap/0.3.98/tail-{00..06} > "$payload"
+          test "$(wc -c < "$payload")" -eq 50308
+          echo '5409f0001ac78752a228d6827811074d309eaf119dc8de35157774536f5965fb  /tmp/weigg-0.3.98.tar.xz' | sha256sum -c -
+          tar -tJf "$payload" >/dev/null
+          tar -xJf "$payload" -C "$GITHUB_WORKSPACE"
+      - name: Verify version ownership
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(cat VERSION)" = '0.3.98'
+          test "$(cat webui/VERSION)" = '0.3.98'
+          node - <<'NODE'
+          const fs=require('fs');
+          const p=JSON.parse(fs.readFileSync('package.json','utf8'));
+          const l=JSON.parse(fs.readFileSync('package-lock.json','utf8'));
+          if(p.version!=='0.3.98'||l.version!=='0.3.98'||l.packages?.['']?.version!=='0.3.98') process.exit(1);
+          NODE
+      - name: Full repository validation before product commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm test
+          sh -n installers/install.sh
+          bash tests/linux-config-section.sh
+          sh -n tests/live.sh
+          bash -n tests/live-api.sh
+          git diff --check
+      - name: Commit only validated 0.3.98 product changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin dev
+          test "$(git rev-parse origin/dev)" = "$GITHUB_SHA"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- \
+            VERSION webui/VERSION package.json package-lock.json \
+            tests/capability-contract.mjs tests/settings-contract.mjs tests/torrent-workspace-contract.mjs \
+            webui/private/data/capabilities.json \
+            webui/private/data/torrent-compat.json \
+            webui/private/data/detail-compat.json \
+            webui/private/data/source-actions.json \
+            webui/private/data/settings-compat.json \
+            webui/private/scripts/capabilities.js \
+            webui/private/scripts/settings-schema.js \
+            webui/private/scripts/selection.js \
+            webui/private/scripts/torrent-filter-view.js \
+            webui/private/scripts/ui.js \
+            webui/private/index.html
+          git diff --cached --check
+          test -n "$(git diff --cached --name-only)"
+          git commit -m 'refactor: bind runtime to compact qB contracts'
+          git fetch origin dev
+          test "$(git rev-parse origin/dev)" = "$GITHUB_SHA"
+          git push origin HEAD:dev
