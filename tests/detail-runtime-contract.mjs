@@ -49,8 +49,8 @@ assert.match(app,/app\.client\.setFilePriority\(app\.detailHash,fileId,value\)/,
 assert.doesNotMatch(app,/\[\s*\{value:'0'.*value:'1'.*value:'6'.*value:'7'/s,'runtime must not hard-code modern file priority choices');
 
 assert.match(app,/function detailMenu\(surface\).*ui&&ui\.contextMenus/s,'Detail row actions must consume source-generated contextMenus');
-assert.match(app,/function detailMenuLabel\(surface,item\).*detail\.menu\./s,'Detail menu copy must use generated qB translation refs');
-assert.match(app,/function detailMenuAvailable\(item,selectionCount,rowValue\).*minSelection.*maxSelection.*excludedPrefixes/s,'Detail menu row availability must consume source-generated rules');
+assert.match(app,/function detailMenuLabel\(surface,item\).*detail\.menu\./s,'Detail menu copy must use generated qB translation refs when the source supplies them');
+assert.match(app,/function detailMenuAvailable\(item,selectionCount,rowValue,rowItem\).*minSelection.*maxSelection.*excludedPrefixes/s,'Detail menu row availability must consume source-generated rules');
 assert.match(app,/function detailActionDescriptor\(item\).*R\.actionDescriptor\(action\).*endpoint\.split\('\/'\)\.pop\(\)!==expected/s,'generic Detail actions must resolve through ReleaseProfile action provenance and agree with the source menu endpoint');
 assert.match(app,/async function detailActionForm\(surface,item,index,menuItem,desc\).*desc\.parameters.*desc\.required.*desc\.optional.*desc\.parameterOptions/s,'generic Detail actions must consume generated parameter, required/optional and option facts');
 assert.match(app,/name==='hash'\|\|name==='hashes'.*app\.detailHash/s,'generic Detail actions must bind torrent identity without endpoint-specific branches');
@@ -60,8 +60,13 @@ assert.match(app,/\^new\[A-Z_\]\/\.test\(name\).*promptNames\.push\(name\)/s,'so
 assert.match(app,/Object\.prototype\.hasOwnProperty\.call\(options,name\).*promptNames\.push\(name\)/s,'source-proven parameter options must enter the generic prompt path');
 assert.match(app,/async function executeDetailAction\(surface,item,index,menuItem\).*detailActionDescriptor\(menuItem\).*app\.client\.request\(String\(menuItem\.endpoint\),\{method:'POST',form:form,type:'void'\}\)/s,'generic Detail action execution must use the exact generated endpoint through QBClient transport');
 assert.match(app,/function detailActionItems\(surface,item,index,selectionCount\).*detailMenu\(surface\)\.map.*detailMenuAvailable.*executeDetailAction/s,'toolbar and row actions must come from the same generated menu/action path');
+assert.match(app,/function detailLocalAction\(surface,item\).*surface==='trackers'\|\|surface==='peers'.*id\.indexOf\('copy'\)===0/s,'endpoint-free source-proven Tracker/Peer copy items must use the local action executor');
+assert.match(app,/navigator\.clipboard\.writeText\(String\(rowValue\)\)/,'local Detail copy actions must use the browser clipboard and no fake WebAPI endpoint');
+assert.match(app,/torrentscontroller\.h:renameFileAction/,'Content Rename must be gated by exact release action provenance');
+assert.match(app,/parameterPrompts:\{newPath:\{mode:'basename-preserve-parent',from:'oldPath'\}\}/,'Content Rename must preserve the source file parent path while prompting for the basename');
 assert.match(app,/toolbarActions=detailActionItems\(surface,null,-1,0\)/,'zero-selection source actions must be generated into the first-row toolbar');
-assert.match(app,/detailContextItems:function\(item,_surface,index\)\{return detailActionItems\(surface,item,index,1\);\}/,'row context actions must use the same generic source menu executor');
+assert.match(app,/detailContextItems:function\(item,_surface,index,selectionCount\).*detailActionItems\(surface,item,index,count\)/s,'row and blank-area context actions must use the same generic source menu executor with explicit selection context');
+assert.match(ui,/detailContextItems\(ctx\.surface,null,ctx,-1,0\)/,'the shared Detail viewport must expose zero-selection actions when right-clicking blank space');
 assert.doesNotMatch(app,/item\.endpoint==='torrents\/(?:editTracker|removeTrackers)'|item\.endpoint!=='transfer\/banPeers'/,'runtime must not branch on known Tracker/Peer endpoint names');
 assert.doesNotMatch(app,/Edit tracker URL\.\.\.|Remove tracker|Ban peer permanently|startsWith\('\*\* \['\)|startsWith\('endpoint\|'\)/,'runtime must not duplicate qB menu strings or static-row prefix rules');
 assert.doesNotMatch(app,/speed\.style\.cursor='pointer'|textContent='×'/,'Peer runtime must not expose inline permanent-action affordances');
@@ -79,9 +84,11 @@ assert.match(ui,/W\.QbUiEvidence&&W\.QbUiEvidence\.detailColumns\?W\.QbUiEvidenc
 assert.match(ui,/W\.SharedColumns\.resolve\(tableId,source\)/,'Detail layout must merge source schema with user overrides');
 assert.match(ui,/next\.staticHead=head;next\.renderRow=function\(item,index\)\{return detailRow\(item,index,ctx\);\};/,'Detail header and body must share one VirtualList scroll container');
 assert.match(ui,/toolbar=root\.querySelector\(':scope > \.inline-form'\)\|\|root\.querySelector\(':scope > \.shared-table__toolbar'\)/,'Columns must join the first toolbar row when one exists');
+assert.match(ui,/toolbar\.appendChild\(note\)/,'the item-count note must join the same toolbar after Columns instead of becoming a separate row');
 assert.match(ui,/W\.DataGrid\.addResizeHandles\(ctx\.head,ctx\.visible/,'Detail resize/reorder must reuse shared interaction engine');
 assert.match(ui,/W\.SharedColumns\.commit\(ctx\.tableId,ctx\.source,ctx\.resolved\)/,'Detail column persistence must commit through SharedColumns');
 assert.match(tableCss,/\.shared-table__viewport[^}]*overflow:auto/,'Detail table viewport must own native horizontal scrolling');
+assert.match(tableCss,/\.shared-table__head\{[^}]*background:var\(--bg-surface\)/,'Detail sticky headers must be opaque so body rows cannot visually overlap header labels');
 assert.doesNotMatch(ui,/legacyRow|querySelector\([^)]*(?:edit|remove|ban)[^)]*\).*\.click\(/i,'Detail context menu must not synthesize legacy rows/buttons and click them');
 assert.doesNotMatch(layout,/MutationObserver/,'Detail schema state must not rely on MutationObserver repair');
-console.log('Torrent Detail runtime contract passed: source-generated tabs/tables/actions now converge on one generic ReleaseProfile/QbUiEvidence/SharedColumns/QBClient runtime with fail-closed parameter binding.');
+console.log('Torrent Detail runtime contract passed: source-generated tabs/tables/actions converge on one ReleaseProfile/QbUiEvidence/SharedColumns/QBClient runtime, including blank-area context actions, local source copy semantics, and fail-closed Content writes.');

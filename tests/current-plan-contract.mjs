@@ -10,6 +10,7 @@ const root=path.resolve(here,'..');
 const read=rel=>fs.readFileSync(path.join(root,rel),'utf8');
 const schema=read('webui/private/scripts/settings-schema.js');
 const settings=read('webui/private/scripts/settings.js');
+const app=read('webui/private/scripts/app.js');
 const layout=read('webui/private/scripts/layout.js');
 const ui=read('webui/private/scripts/ui.js');
 const tableCss=read('webui/private/css/table.css');
@@ -27,9 +28,21 @@ assert.doesNotMatch(layout,/keys\.some\(function\(key\)\{return!R\.hasTorrentDet
 assert.match(layout,/keys\.forEach\(function\(key\)\{var text=own\(data,key\)\?generalScalar\(key,data\[key\]\):'—'/,'General must render optional source-bound response fields as unavailable instead of failing the whole layout.');
 assert.match(ui,/icon\.className='flag '\+iso\+' peer-country-flag'/,'Peer country cells must render a graphical flag host.');
 assert.match(ui,/fallback\.className='peer-country-code'/,'Peer country cells must retain a deterministic ISO-code fallback when local qB artwork is unavailable.');
-assert.match(ui,/root\.insertBefore\(note,toolbar\)/,'Detail explanatory copy must stay outside and before the shared toolbar.');
+assert.match(ui,/ctx\.contextItems\(item,surface,index,selectionCount\)/,'Detail context actions must receive shared row or blank-area selection context.');
+assert.match(ui,/detailContextItems\(ctx\.surface,null,ctx,-1,0\)/,'Detail blank-area right click must expose exact zero-selection source actions.');
+assert.match(ui,/toolbar\.appendChild\(note\)/,'Detail explanatory copy must join the shared toolbar after source actions and Columns.');
+assert.doesNotMatch(ui,/root\.insertBefore\(note,toolbar\)/,'Detail explanatory copy must not occupy a separate row before the toolbar.');
+assert.match(app,/function detailLocalAction\(surface,item\).*id\.indexOf\('copy'\)===0/s,'Source-proven Tracker and Peer copy actions must use the local Detail executor.');
+assert.match(app,/navigator\.clipboard\.writeText\(String\(rowValue\)\)/,'Local Detail copy actions must use the browser clipboard rather than inventing a WebAPI write.');
+assert.match(app,/torrentscontroller\.h:renameFileAction/,'Content row context actions must derive Rename from exact release write provenance.');
+assert.match(app,/parameterBindings:\{oldPath:'name'\}/,'Content Rename must bind the exact source-proven file path.');
+assert.match(app,/detailControl\('filePriority'\)/,'Content priority context actions must reuse source-derived priority options.');
+assert.match(app,/toolbar\.className='inline-form shared-table__toolbar'/,'Detail source actions must construct the canonical shared toolbar before the table adapter adds Columns and note copy.');
 assert.match(tableCss,/@import url\('\.\/qb-peer-flags\.css'\)/,'Detail tables must consume the locally materialized qB peer flag stylesheet.');
 assert.match(tableCss,/\.shared-table__columns-button\{margin-left:0\}/,'Column settings must not be pushed to the far right.');
+assert.match(tableCss,/\.shared-table__head\{[^}]*background:var\(--bg-surface\)/,'Shared Detail headers must use an opaque semantic surface so scrolling rows cannot bleed through them.');
+assert.match(tableCss,/\.detail-identity\{[^}]*grid-template-areas:"eyebrow state" "title title"/,'Torrent Detail status must share the identity header row with the Detail eyebrow.');
+assert.match(tableCss,/\.general-detail__grid\{[^}]*grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/,'General desktop layout must preserve native-like three-pair source order rather than auto-fit cards.');
 assert.match(tableCss,/#detail-content\{[^}]*overflow:hidden/,'Detail content must not compete with the shared table viewport for scrolling.');
 assert.match(tableCss,/#detail-content>\.general-detail\{[^}]*overflow:auto/,'General must own its vertical scroll instead of being clipped by detail-content.');
 assert.match(tableCss,/\.peer-country-flag\{display:none;width:16px;height:11px/,'Local table CSS must own flag dimensions and loading fallback behavior.');
@@ -59,4 +72,4 @@ try{
   assert.ok(fs.existsSync(path.join(privateRoot,'images/flags/cn.svg')),'Materialized WebUI must contain copied qB-owned SVG artwork.');
 }finally{fs.rmSync(temp,{recursive:true,force:true});}
 
-console.log('Current plan contract passed: native Settings topology, General source-layout admission/scroll ownership, shared Detail layout, and source-pinned local qB Peer flags are locked.');
+console.log('Current plan contract passed: native Settings topology, source-driven Torrent Detail toolbar/context behavior, native-like General layout, shared Detail scrolling, and source-pinned local qB Peer flags are locked.');
