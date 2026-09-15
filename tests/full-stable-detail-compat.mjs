@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {createCompactRuntime} from '../tools/qb-compact-runtime.mjs';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(here,'..');
@@ -12,13 +13,9 @@ const catalog=JSON.parse(fs.readFileSync(catalogPath,'utf8'));
 assert.ok(Array.isArray(catalog)&&catalog.length>0,'frozen detail matrix requires a non-empty release catalog');
 assert.equal(catalog[0].qbVersion,'4.1.0','frozen detail matrix floor must remain qB 4.1.0');
 
-const source=fs.readFileSync(path.join(root,'webui/private/scripts/release-profile.js'),'utf8');
-const W={buildAssetUrl:x=>x};
-const window={WeiG:W,dispatchEvent(){}};window.window=window;
-const context={window,console,CustomEvent:class{},fetch:async()=>({ok:true,status:200,json:async()=>catalog})};
-vm.runInNewContext(source,context,{filename:'release-profile.js'});
-const R=W.ReleaseProfile;
-assert.ok(R&&typeof R.detailFields==='function'&&typeof R.hasTorrentDetailField==='function','ReleaseProfile detail provenance owner must load');
+const {W}=createCompactRuntime(catalog,{owners:['capabilities.js']});
+const R=W.CapabilityRegistry;
+assert.ok(R&&typeof R.hasTorrentDetailField==='function','CapabilityRegistry detail provenance owner must load');
 
 const surfaces={
   properties:{profileKey:'torrentPropertiesFields',action:'torrentscontroller.h:propertiesAction'},
@@ -29,15 +26,15 @@ const surfaces={
 let supportedEndpoints=0,totalFields=0;
 for(const profile of catalog){
   await R.bind({qbVersion:profile.qbVersion,webApiVersion:profile.webApiVersion});
-  assert.equal(R.current()?.qbVersion,profile.qbVersion,`${profile.qbVersion}: exact detail profile bind failed`);
-  assert.equal(R.current()?.sourceSha,profile.sourceSha,`${profile.qbVersion}: detail profile source SHA drift`);
+  assert.equal(R.releaseIdentity()?.qbVersion,profile.qbVersion,`${profile.qbVersion}: exact detail profile bind failed`);
+  assert.equal(R.releaseIdentity()?.sourceSha,profile.sourceSha,`${profile.qbVersion}: detail profile source SHA drift`);
   assert.equal(R.isCertified(),true,`${profile.qbVersion}: frozen official stable must remain certified`);
   for(const [surface,{profileKey,action}] of Object.entries(surfaces)){
     const expected=Array.isArray(profile[profileKey])?profile[profileKey]:[];
-    const runtime=Array.from(R.detailFields(surface));
-    assert.deepEqual(runtime,expected,`${profile.qbVersion}: ${surface} response fields diverged from source-derived catalog`);
+    const runtime=expected.filter(field=>R.hasTorrentDetailField(surface,field));
+    assert.deepEqual(runtime,expected,`${profile.qbVersion}: ${surface} response fields diverged from source-derived compact contract`);
     assert.equal(new Set(runtime).size,runtime.length,`${profile.qbVersion}: ${surface} response field surface contains duplicates`);
-    for(const field of runtime)assert.equal(R.hasTorrentDetailField(surface,field),true,`${profile.qbVersion}: ${surface}.${field} must be queryable through runtime owner`);
+    assert.equal(R.hasTorrentDetailField(surface,'__weigg_missing_field__'),false,`${profile.qbVersion}: ${surface} must fail closed for an unknown field`);
     const actionExpected=Array.isArray(profile.apiActions)&&profile.apiActions.includes(action);
     assert.equal(R.hasAction(action),actionExpected,`${profile.qbVersion}: ${surface} endpoint availability must follow exact source action ${action}`);
     if(actionExpected)supportedEndpoints++;

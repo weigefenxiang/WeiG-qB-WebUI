@@ -21,12 +21,13 @@ const fullAudit=requestedRefs.length===0;
 const clientSource=fs.readFileSync(path.join(projectRoot,'webui/private/scripts/qb-client.js'),'utf8');
 class TestFormData{constructor(){this.entries=[];}append(name,value,filename){this.entries.push({name,value,filename});}}
 let activeTruth=null;
-const releaseProfile={
+const capabilityRegistry={
   upstreamTorrentFilter(value){const name=String(value||'all'),filters=activeTruth?.filters||[];if(filters.includes(name))return name;if(name==='stopped'&&filters.includes('paused'))return'paused';if(name==='running'&&filters.includes('resumed'))return'resumed';return null;},
   resolveTorrentAction(kind){const actions=activeTruth?.actions||new Set();const choices=kind==='start'?[['torrentscontroller.h:startAction','start'],['torrentscontroller.h:resumeAction','resume']]:[['torrentscontroller.h:stopAction','stop'],['torrentscontroller.h:pauseAction','pause']];for(const [fact,action] of choices)if(actions.has(fact))return action;return null;},
+  resolveTorrentActionDescriptor(kind){const endpoint=this.resolveTorrentAction(kind);return endpoint?{sourceAction:`source:${endpoint}`,endpoint,parameters:['hashes'],required:['hashes'],optional:[]}:null;},
   isCertified(){return !!activeTruth;}
 };
-const sandbox={console,URLSearchParams,FormData:TestFormData,Blob,fetch:async()=>{throw new Error('Unexpected fetch');},window:{WeiG:{ReleaseProfile:releaseProfile,util:{form(obj){const p=new URLSearchParams();for(const [k,v] of Object.entries(obj||{}))if(v!==undefined&&v!==null)p.append(k,String(v));return p.toString();}},I18n:{getLocale:()=> 'en'}}}};
+const sandbox={console,URLSearchParams,FormData:TestFormData,Blob,fetch:async()=>{throw new Error('Unexpected fetch');},window:{WeiG:{CapabilityRegistry:capabilityRegistry,util:{form(obj){const p=new URLSearchParams();for(const [k,v] of Object.entries(obj||{}))if(v!==undefined&&v!==null)p.append(k,String(v));return p.toString();}},I18n:{getLocale:()=> 'en'}}}};
 sandbox.window.window=sandbox.window;
 vm.runInNewContext(clientSource,sandbox,{filename:'qb-client.js'});
 const Client=sandbox.window.WeiG.QBClient;
@@ -52,7 +53,7 @@ for(const tag of tags){
   const qbVersion=tag.slice('release-'.length),apiVersion=parseApi(show(tag,'src/webui/webapplication.h'),tag),actions=apiActions(tag),surface=torrentSurface(tag),prefs=extractPreferenceKeys(show(tag,'src/webui/api/appcontroller.cpp'),tag),label=`${qbVersion} / WebAPI ${apiVersion}`;
   assert.ok(actions.size>0,`${label}: empty WebAPI action surface`);assert.ok(surface.filters.includes('all'),`${label}: Torrent filter surface lacks all`);assert.ok(surface.infoParameters.includes('filter'),`${label}: torrents/info lacks filter`);assert.ok(surface.infoFields.length>0,`${label}: empty torrents/info response field surface`);assert.ok(surface.states.length>0,`${label}: empty Torrent state surface`);assert.ok(surface.torrentPropertiesFields.length>0,`${label}: empty properties field surface`);assert.ok(surface.torrentTrackerFields.length>0,`${label}: empty tracker field surface`);assert.ok(surface.torrentFileFields.length>0,`${label}: empty file field surface`);
   activeTruth={actions,filters:surface.filters,infoParameters:surface.infoParameters};
-  const c=await detect(qbVersion,apiVersion);assert.equal(c.major,parts(qbVersion)[0],`${label}: major detection`);assert.equal(c.capabilities.certified,false,`${label}: certification belongs to ReleaseProfile/CapabilityRegistry, not QBClient detect`);
+  const c=await detect(qbVersion,apiVersion);assert.equal(c.major,parts(qbVersion)[0],`${label}: major detection`);assert.equal(c.capabilities.certified,false,`${label}: certification belongs to CapabilityRegistry, not QBClient detect`);
   const start=sourceAction(actions,'torrentscontroller.h:startAction','torrentscontroller.h:resumeAction'),stop=sourceAction(actions,'torrentscontroller.h:stopAction','torrentscontroller.h:pauseAction');
   if(start&&stop){const actionCalls=capture(c);await c.resume('abc');await c.pause('abc');assert.equal(actionCalls[0].path,`torrents/${start}`,`${label}: source-derived start action`);assert.equal(actionCalls[1].path,`torrents/${stop}`,`${label}: source-derived stop action`);}
   const stopped=surface.filters.includes('stopped')?'stopped':surface.filters.includes('paused')?'paused':null;if(stopped){const filterCalls=capture(c);await c.getTorrents({filter:'stopped'});assert.match(filterCalls[0].path,new RegExp(`filter=${stopped}`),`${label}: source-derived stopped alias`);}

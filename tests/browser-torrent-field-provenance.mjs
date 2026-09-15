@@ -3,6 +3,7 @@ import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {compileCompactRuntime} from '../tools/qb-compact-runtime.mjs';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(here,'../webui/private');
@@ -35,6 +36,7 @@ const profiles=[
   {...commonProfile,qbVersion:'6.0.0',torrentInfoFields:['hash',...productFields.filter(key=>key!=='ratio')]},
   {...commonProfile,qbVersion:'6.0.1',torrentInfoFields:['hash',...productFields]}
 ];
+const compact=compileCompactRuntime(profiles);const compactByName=new Map([['capabilities.json',compact.capabilityData],['torrent-compat.json',compact.torrentData],['detail-compat.json',compact.detailData],['source-actions.json',compact.actionData],['settings-compat.json',compact.settingsData]]);
 const torrent={
   hash:'f'.repeat(40),
   name:'Field provenance fixture',
@@ -93,7 +95,7 @@ const server=http.createServer(async(req,res)=>{
     if(!match){res.writeHead(404);return res.end('not found');}
     const v=variants[match[1]],rel=match[2]||'';
     if(rel.startsWith('api/v2/'))return api(req,res,v,rel.slice(7),url);
-    if(rel==='data/qb-releases.json')return json(res,profiles);
+    if(rel.startsWith('data/')){const name=rel.slice('data/'.length),payload=compactByName.get(name);if(payload)return json(res,payload);}
     if(rel==='weigg-install.json')return json(res,{version:productVersion,gitSha:'field-provenance-browser-fixture',qbPath:'/config/weigg-qb-webui'});
     const file=path.resolve(root,rel||'index.html');
     if(!(file===root||file.startsWith(root+path.sep))){res.writeHead(403);return res.end('forbidden');}
@@ -123,7 +125,7 @@ try{
 
   await page.goto(`http://${host}:${port}/limited/#/`,{waitUntil:'domcontentloaded'});
   await page.waitForSelector('#torrent-list [data-hash]');
-  await page.waitForFunction(()=>window.WeiG?.ReleaseProfile?.current?.()?.qbVersion==='6.0.0'&&window.WeiG?.AppState?.columns);
+  await page.waitForFunction(()=>window.WeiG?.CapabilityRegistry?.releaseIdentity?.()?.qbVersion==='6.0.0'&&window.WeiG?.AppState?.columns);
   const limited=await page.evaluate(()=>({
     provenance:WeiG.TorrentFieldRegistry.provenance('ratio').mode,
     head:[...document.querySelectorAll('#torrent-table-head .grid-head-cell')].map(node=>node.dataset.key),
@@ -152,7 +154,7 @@ try{
   await page.setViewportSize({width:1366,height:768});
   await page.goto(`http://${host}:${port}/restored/#/`,{waitUntil:'domcontentloaded'});
   await page.waitForSelector('#torrent-list [data-hash]');
-  await page.waitForFunction(()=>window.WeiG?.ReleaseProfile?.current?.()?.qbVersion==='6.0.1'&&window.WeiG?.AppState?.columns?.some?.(column=>column.key==='ratio'));
+  await page.waitForFunction(()=>window.WeiG?.CapabilityRegistry?.releaseIdentity?.()?.qbVersion==='6.0.1'&&window.WeiG?.AppState?.columns?.some?.(column=>column.key==='ratio'));
   const restored=await page.evaluate(()=>({
     provenance:WeiG.TorrentFieldRegistry.provenance('ratio').mode,
     head:[...document.querySelectorAll('#torrent-table-head .grid-head-cell')].map(node=>node.dataset.key),

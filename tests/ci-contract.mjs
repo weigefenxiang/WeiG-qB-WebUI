@@ -71,7 +71,7 @@ assert(!release.includes('qb-release-catalog.mjs')&&!release.includes('zip -r We
 assert(!release.includes("workflow_id: 'upstream-compat.yml'"),'Release must rely on the full candidate all-stable source/product audit rather than require an unrelated exact-SHA parser workflow');
 
 const fullProduct=read('tests/full-stable-product-compat.mjs');
-for(const owner of ['release-profile.js','torrent-fields.js','settings-schema.js','capabilities.js','torrent-semantics.js','qb-client.js'])assert(fullProduct.includes(`'${owner}'`),`full stable product matrix must execute formal owner ${owner}`);
+for(const owner of ['torrent-fields.js','settings-schema.js','capabilities.js','torrent-semantics.js','qb-client.js'])assert(fullProduct.includes(`'${owner}'`),`full stable product matrix must execute formal owner ${owner}`);
 assert(fullProduct.includes("catalog[0].qbVersion,'4.1.0'")&&fullProduct.includes('every generated stable profile must enter the formal product matrix'),'full stable product matrix must protect floor and complete catalog coverage');
 assert(!/major\s*>=\s*5\s*\?[^\n]*(?:start|stop|paused|stopped)/i.test(read('tests/release-compat.mjs')),'representative release gate must not use major>=5 as a product behavior oracle');
 

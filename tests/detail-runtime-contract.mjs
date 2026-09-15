@@ -8,7 +8,7 @@ const root=path.resolve(here,'..');
 const read=rel=>fs.readFileSync(path.join(root,rel),'utf8');
 const app=read('webui/private/scripts/app.js');
 const client=read('webui/private/scripts/qb-client.js');
-const releaseProfile=read('webui/private/scripts/release-profile.js');
+const capabilities=read('webui/private/scripts/capabilities.js');
 const layout=read('webui/private/scripts/layout.js');
 const ui=read('webui/private/scripts/ui.js');
 const core=read('webui/private/scripts/core.js');
@@ -18,10 +18,10 @@ const retiredGeneralRuntime=path.join(root,'webui/private/scripts/detail-general
 
 const details=[['properties','propertiesAction','torrents/properties'],['files','filesAction','torrents/files'],['trackers','trackersAction','torrents/trackers'],['webseeds','webseedsAction','torrents/webseeds']];
 for(const [method,action,pathName] of details){const pattern=new RegExp(`Client\\.prototype\\.${method}=function\\(hash\\)\\{requireSourceAction\\('torrentscontroller\\.h:${action}','${pathName.replace('/','\\/')}'\\);return this\\.request`);assert.match(client,pattern,`${method} must reject before HTTP unless its own source action is present`);}
-for(const owner of ['torrentPropertiesFields','torrentTrackerFields','torrentFileFields','torrentWebSeedFields'])assert.match(releaseProfile,new RegExp(`function ${owner}\\(\\)`),`${owner} must remain a ReleaseProfile runtime owner`);
-assert.match(releaseProfile,/function hasTorrentDetailField\(surface,name\)/,'ReleaseProfile must own per-field Detail provenance');
-assert.match(releaseProfile,/function torrentDetailUi\(\)\{if\(!isCertified\(\)\|\|!current\|\|current\.fallback\)return null;/,'ReleaseProfile must expose Detail UI only for exact/equivalent certified profiles');
-assert.match(releaseProfile,/torrentPropertiesFields:\[\],torrentTrackerFields:\[\],torrentFileFields:\[\],torrentWebSeedFields:\[\],torrentDetailUi:null/,'fallback releases must expose no guessed Detail facts');
+assert.match(capabilities,/function detailFields\(surface\)/,'CapabilityRegistry must own per-surface Detail response-field provenance');
+assert.match(capabilities,/function hasTorrentDetailField\(surface,name\)/,'CapabilityRegistry must own per-field Detail provenance');
+assert.match(capabilities,/function torrentDetailUi\(\)\{if\(!isCertified\(\)\)return null;/,'CapabilityRegistry must expose Detail UI only for exact/equivalent certified releases');
+assert.match(capabilities,/function sourceFact\(name\)\{if\(!current\|\|current\.fallback\|\|!data\|\|!data\.sourceFacts\)return null;/,'fallback releases must expose no guessed compact source facts');
 assert.match(index,/<div id="detail-tabs" class="detail-tabs" role="tablist"><\/div>/,'HTML must contain only an empty Detail tab host');
 assert.doesNotMatch(index,/data-tab="(?:overview|files|trackers|peers|webseeds)"/,'HTML must not hard-code Torrent Detail tabs');
 assert.match(app,/function detailUi\(\)\{var R=W\.CapabilityRegistry;return R&&typeof R\.torrentDetailUi==='function'\?R\.torrentDetailUi\(\):null;\}/,'app must consume the canonical CapabilityRegistry Detail manifest projection');

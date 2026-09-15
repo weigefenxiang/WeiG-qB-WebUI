@@ -3,34 +3,26 @@ import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 import {fileURLToPath} from 'node:url';
+import {createCompactRuntime} from '../tools/qb-compact-runtime.mjs';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(here,'..');
 const catalogPath=path.resolve(process.argv[2]||'');
 assert.ok(catalogPath&&fs.existsSync(catalogPath),'Usage: node tests/full-stable-product-compat.mjs <qb-releases.json>');
 const catalog=JSON.parse(fs.readFileSync(catalogPath,'utf8'));
-const capabilityData=JSON.parse(fs.readFileSync(path.join(root,'webui/private/data/capabilities.json'),'utf8'));
 assert.ok(Array.isArray(catalog)&&catalog.length>0,'full-stable product matrix requires a non-empty generated release catalog');
 assert.equal(catalog[0].qbVersion,'4.1.0','formal product matrix floor must be qB 4.1.0');
 assert.ok(catalog.every(x=>x.stable===true&&x.officialWeiGSupport!==false),'formal product matrix accepts official supported stable profiles only');
-
-const sources={};
-for(const name of ['release-profile.js','torrent-fields.js','settings-schema.js','capabilities.js','torrent-semantics.js','qb-client.js'])sources[name]=fs.readFileSync(path.join(root,'webui/private/scripts',name),'utf8');
-class TestFormData{constructor(){this.entries=[];}append(name,value,filename){this.entries.push({name,value,filename});}}
-const document={addEventListener(){},querySelectorAll(){return[];},createElement(){return{className:'',dataset:{},classList:{add(){},remove(){},toggle(){}},setAttribute(){},appendChild(){},querySelector(){return null;},querySelectorAll(){return[];},remove(){}};},body:{appendChild(){}}};
-const W={buildAssetUrl:x=>x,t:key=>key,util:{parseScalar:value=>value,normalizeTracker:value=>String(value||''),form(obj){const p=new URLSearchParams();for(const [k,v] of Object.entries(obj||{}))if(v!==undefined&&v!==null)p.append(k,String(v));return p.toString();}},I18n:{getLocale:()=> 'en-US'}};
-const window={WeiG:W,window:null,dispatchEvent(){},addEventListener(){},requestAnimationFrame:fn=>fn()};window.window=window;
-const context={window,document,console,URL,URLSearchParams,FormData:TestFormData,Blob,CustomEvent:class{},requestAnimationFrame:fn=>fn(),fetch:async url=>{const value=String(url);if(value.includes('qb-releases.json'))return{ok:true,status:200,json:async()=>catalog};if(value.includes('capabilities.json'))return{ok:true,status:200,json:async()=>capabilityData};throw new Error(`Unexpected fetch ${value}`);}};
-for(const name of ['release-profile.js','torrent-fields.js','settings-schema.js','capabilities.js','torrent-semantics.js','qb-client.js'])vm.runInNewContext(sources[name],context,{filename:name});
-const R=W.ReleaseProfile,F=W.TorrentFieldRegistry,C=W.CapabilityRegistry,T=W.TorrentSemantics,S=W.SettingsSchema,Client=W.QBClient;
-assert.ok(R&&F&&C&&T&&S&&Client,'formal product compatibility owners must load');
+const {W}=createCompactRuntime(catalog,{owners:['settings-schema.js','capabilities.js','torrent-fields.js','torrent-semantics.js','qb-client.js']});
+const F=W.TorrentFieldRegistry,C=W.CapabilityRegistry,T=W.TorrentSemantics,S=W.SettingsSchema,Client=W.QBClient;
+assert.ok(F&&C&&T&&S&&Client,'formal compact product compatibility owners must load');
 
 const currentColumnFields=['name','size','progress','dlspeed','upspeed','eta','state','ratio','tracker','category','tags','num_seeds','num_leechs','save_path','added_on','completion_on','priority'];
 assert.deepEqual(Array.from(F.fields,x=>x.key),currentColumnFields,'runtime TorrentFieldRegistry must own the exact current 17-field product surface');
 const baselineFilters=['all','downloading','seeding','completed','stopped','running','active','inactive','errored'];
 const coreActions=['start','stop','delete','force','recheck','sequential','firstlast','autotmm','top','bottom','rename','location','category','dllimit','uplimit','addTrackers'];
 const optionalActions=['reannounce','removeTrackers','editTracker','tags'];
-const settingsSurfaces=new Set(['downloads','connection','speed','bittorrent','webui','advanced']);
+const expectedSettingsSurfaces=['behavior','downloads','connection','speed','bittorrent','rss','webui','advanced'];const settingsSurfaces=new Set(Array.from(S.surfaces||[]));assert.deepEqual(Array.from(settingsSurfaces),expectedSettingsSurfaces,'formal product matrix must execute the exact eight qB SettingsSchema surfaces');
 const surfaceActions=new Map([
   ['search','searchcontroller.h:pluginsAction'],
   ['searchPlugins','searchcontroller.h:pluginsAction'],
@@ -55,16 +47,17 @@ const surfaceActions=new Map([
 ]);
 const rows=[];
 
-function actionFact(profile,kind){const desc=R.resolveTorrentActionDescriptor(kind);if(!desc)return null;assert.ok(desc.sourceAction,`${profile.qbVersion}: exact stable action ${kind} must retain sourceAction provenance`);assert.ok(profile.apiActions.includes(desc.sourceAction),`${profile.qbVersion}: ${kind} resolved to missing source action ${desc.sourceAction}`);const params=profile.apiActionParameters?.[desc.sourceAction];assert.ok(params,`${profile.qbVersion}: ${kind} lacks source-derived parameter descriptor`);assert.equal(desc.endpoint.length>0,true,`${profile.qbVersion}: ${kind} resolved empty endpoint`);return desc;}
+function actionFact(profile,kind){const desc=C.resolveTorrentActionDescriptor(kind);if(!desc)return null;assert.ok(desc.sourceAction,`${profile.qbVersion}: exact stable action ${kind} must retain sourceAction provenance`);assert.ok(profile.apiActions.includes(desc.sourceAction),`${profile.qbVersion}: ${kind} resolved to missing source action ${desc.sourceAction}`);const params=profile.apiActionParameters?.[desc.sourceAction];assert.ok(params,`${profile.qbVersion}: ${kind} lacks source-derived parameter descriptor`);assert.equal(desc.endpoint.length>0,true,`${profile.qbVersion}: ${kind} resolved empty endpoint`);return desc;}
 function capture(client){const calls=[];client.request=async(reqPath,options={})=>{calls.push({path:reqPath,options});return null;};return calls;}
 async function expectRejectedWithoutHttp(client,method,args,label){const calls=capture(client);let rejected=false;try{await client[method](...args);}catch{rejected=true;}assert.equal(rejected,true,`${label}: unsupported action must reject before HTTP`);assert.equal(calls.length,0,`${label}: unsupported action must not emit HTTP`);}
 
 for(const profile of catalog){
   const client=new Client();client.qbVersion=profile.qbVersion;client.webApiVersion=profile.webApiVersion;
   await C.bind(client);
-  assert.equal(R.current()?.qbVersion,profile.qbVersion,`${profile.qbVersion}: ReleaseProfile exact bind`);
-  assert.equal(R.current()?.sourceSha,profile.sourceSha,`${profile.qbVersion}: ReleaseProfile source SHA drift`);
-  assert.equal(R.isCertified(),true,`${profile.qbVersion}: official stable profile must certify`);
+  const release=C.releaseIdentity();
+  assert.equal(release?.qbVersion,profile.qbVersion,`${profile.qbVersion}: CapabilityRegistry exact bind`);
+  assert.equal(release?.sourceSha,profile.sourceSha,`${profile.qbVersion}: CapabilityRegistry source SHA drift`);
+  assert.equal(C.isCertified(),true,`${profile.qbVersion}: official stable profile must certify`);
 
   const productFilters=T.statusFilters();
   for(const required of baselineFilters)assert.ok(productFilters.includes(required),`${profile.qbVersion}: baseline product filter ${required} unavailable`);
@@ -97,12 +90,12 @@ for(const profile of catalog){
   for(const kind of optionalActions)actionFact(profile,kind);
 
   let calls=capture(client);await client.resume('abc');await client.pause('abc');
-  assert.equal(calls[0]?.path,`torrents/${R.resolveTorrentAction('start')}`,`${profile.qbVersion}: QBClient start dispatch diverged from ReleaseProfile`);
-  assert.equal(calls[1]?.path,`torrents/${R.resolveTorrentAction('stop')}`,`${profile.qbVersion}: QBClient stop dispatch diverged from ReleaseProfile`);
-  if(R.supportsTorrentAction('reannounce')){calls=capture(client);await client.reannounce('abc');assert.equal(calls[0]?.path,'torrents/reannounce',`${profile.qbVersion}: Reannounce source action resolved wrong endpoint`);}else await expectRejectedWithoutHttp(client,'reannounce',['abc'],`${profile.qbVersion} Reannounce`);
-  if(R.supportsTorrentAction('removeTrackers')){calls=capture(client);await client.removeTrackers('abc','https://tracker.invalid/announce');assert.equal(calls[0]?.path,'torrents/removeTrackers',`${profile.qbVersion}: Remove Tracker source action resolved wrong endpoint`);}else await expectRejectedWithoutHttp(client,'removeTrackers',['abc','https://tracker.invalid/announce'],`${profile.qbVersion} Remove Tracker`);
+  assert.equal(calls[0]?.path,`torrents/${C.resolveTorrentActionDescriptor('start').endpoint}`,`${profile.qbVersion}: QBClient start dispatch diverged from CapabilityRegistry`);
+  assert.equal(calls[1]?.path,`torrents/${C.resolveTorrentActionDescriptor('stop').endpoint}`,`${profile.qbVersion}: QBClient stop dispatch diverged from CapabilityRegistry`);
+  if(C.supportsTorrentAction('reannounce')){calls=capture(client);await client.reannounce('abc');assert.equal(calls[0]?.path,'torrents/reannounce',`${profile.qbVersion}: Reannounce source action resolved wrong endpoint`);}else await expectRejectedWithoutHttp(client,'reannounce',['abc'],`${profile.qbVersion} Reannounce`);
+  if(C.supportsTorrentAction('removeTrackers')){calls=capture(client);await client.removeTrackers('abc','https://tracker.invalid/announce');assert.equal(calls[0]?.path,'torrents/removeTrackers',`${profile.qbVersion}: Remove Tracker source action resolved wrong endpoint`);}else await expectRejectedWithoutHttp(client,'removeTrackers',['abc','https://tracker.invalid/announce'],`${profile.qbVersion} Remove Tracker`);
 
-  S.bindProfile(R.current());
+  await S.bindRelease(C.releaseIdentity());
   assert.equal(profile.preferenceDescriptors.length,profile.preferenceKeys.length,`${profile.qbVersion}: Preference descriptor/key count mismatch`);
   let writableSettings=0;
   for(const descriptor of profile.preferenceDescriptors){const bound=S.descriptor(descriptor.key);assert.ok(bound&&bound.key===descriptor.key,`${profile.qbVersion}: SettingsSchema lost descriptor ${descriptor.key}`);const route=S.describe(descriptor.key);assert.ok(settingsSurfaces.has(route.surface)&&route.section,`${profile.qbVersion}: Preference ${descriptor.key} lacks safe Settings route`);if(descriptor.writable===true){writableSettings++;assert.equal(descriptor.setterPresent,true,`${profile.qbVersion}: writable ${descriptor.key} lacks setter`);assert.ok(descriptor.writeType,`${profile.qbVersion}: writable ${descriptor.key} lacks write type`);assert.notEqual(descriptor.typeAgreement,'MISMATCH',`${profile.qbVersion}: mismatched ${descriptor.key} must not remain writable`);}}
@@ -112,7 +105,7 @@ for(const profile of catalog){
   assert.equal(rss,profile.apiActions.includes('rsscontroller.h:itemsAction'),`${profile.qbVersion}: RSS top-level availability must be exact-source`);
   assert.equal(logs,profile.apiActions.includes('logcontroller.h:mainAction'),`${profile.qbVersion}: Logs top-level availability must be exact-source`);
 
-  rows.push({qbVersion:profile.qbVersion,webApiVersion:profile.webApiVersion,nativeFilters,derivedFilters,categoryFacet:C.supports('categoryFacet'),tagFacet:C.supports('tagFacet'),nativeCategories:C.supports('categories'),nativeTags:C.supports('tags'),privateFilter:C.supports('privateFilter'),actions:[...coreActions,...optionalActions].filter(x=>R.supportsTorrentAction(x)).length,settings:profile.preferenceDescriptors.length,writableSettings,search,rss,logs});
+  rows.push({qbVersion:profile.qbVersion,webApiVersion:profile.webApiVersion,nativeFilters,derivedFilters,categoryFacet:C.supports('categoryFacet'),tagFacet:C.supports('tagFacet'),nativeCategories:C.supports('categories'),nativeTags:C.supports('tags'),privateFilter:C.supports('privateFilter'),actions:[...coreActions,...optionalActions].filter(x=>C.supportsTorrentAction(x)).length,settings:profile.preferenceDescriptors.length,writableSettings,search,rss,logs});
 }
 
 assert.equal(rows.length,catalog.length,'every generated stable profile must enter the formal product matrix');

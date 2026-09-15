@@ -32,7 +32,6 @@ const certified=()=>!!(profile&&profile.fallback!==true);
 const WeiG={
   util:{form:obj=>new URLSearchParams(Object.entries(obj||{}).map(([key,value])=>[key,String(value)])).toString()},
   I18n:{getLocale:()=> 'en-US'},
-  ReleaseProfile:{current:()=>profile,actionDescriptor:descriptor,hasAction:action=>!!descriptor(action),resolveTorrentActionDescriptor:resolve,resolveTorrentAction:kind=>resolve(kind)?.endpoint||null,isCertified:certified},
   CapabilityRegistry:{isCertified:certified,resolveTorrentActionDescriptor:kind=>{if(!profile)return undefined;return resolve(kind);}}
 };
 const window={WeiG};

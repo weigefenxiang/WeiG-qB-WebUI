@@ -1,104 +1,92 @@
-import fs from 'node:fs/promises';
-import vm from 'node:vm';
+import assert from 'node:assert/strict';
+import {createCompactRuntime} from '../tools/qb-compact-runtime.mjs';
 
-const source=await fs.readFile(new URL('../webui/private/scripts/release-profile.js',import.meta.url),'utf8');
-function assert(ok,msg){if(!ok)throw new Error(msg);}
 const sha4='1111111111111111111111111111111111111111';
 const sha5='0b63c3d17373f6132ea211c9dcd4241284ccdfaf';
 const profiles=[
-  {qbVersion:'4.1.0',webApiVersion:'2.0.0',sourceSha:sha4,officialWeiGSupport:true,apiActions:['appcontroller.h:preferencesAction','appcontroller.h:setPreferencesAction','torrentscontroller.h:resumeAction','torrentscontroller.h:pauseAction','torrentscontroller.h:recheckAction','torrentscontroller.h:addTrackersAction','torrentscontroller.h:propertiesAction','torrentscontroller.h:filesAction','torrentscontroller.h:trackersAction','torrentscontroller.h:webseedsAction'],apiActionParameters:{'torrentscontroller.h:resumeAction':{parameters:['hashes'],required:['hashes'],optional:[]},'torrentscontroller.h:pauseAction':{parameters:['hashes'],required:['hashes'],optional:[]},'torrentscontroller.h:recheckAction':{parameters:['hashes'],required:['hashes'],optional:[]},'torrentscontroller.h:addTrackersAction':{parameters:['hash','urls'],required:['hash','urls'],optional:[]}},torrentFilters:['all','downloading','seeding','paused','resumed'],torrentInfoParameters:['filter','category'],torrentInfoFields:['hash','name','state','progress','dlspeed','upspeed','category','tags'],torrentStates:['downloading','stalledDL','uploading','stalledUP','pausedDL','pausedUP','checkingDL','checkingUP','error','missingFiles'],torrentPropertiesFields:['save_path','total_size','share_ratio'],torrentTrackerFields:['url','status','num_peers'],torrentFileFields:['name','size','progress','priority'],torrentWebSeedFields:['url'],preferenceDescriptors:[{key:'save_path',getterPresent:true,setterPresent:true,readType:'string',writeType:'string',typeAgreement:'EXACT',writable:true}]},
-  {qbVersion:'5.2.3',webApiVersion:'2.15.1',sourceSha:sha5,officialWeiGSupport:true,settingsNativeLocales:['zh_CN'],apiActions:['appcontroller.h:preferencesAction','appcontroller.h:setPreferencesAction','torrentscontroller.h:startAction','torrentscontroller.h:stopAction','torrentscontroller.h:tagsAction','torrentscontroller.h:reannounceAction','torrentscontroller.h:removeTrackersAction','torrentscontroller.h:propertiesAction','torrentscontroller.h:filesAction','torrentscontroller.h:trackersAction','torrentscontroller.h:webseedsAction'],apiActionParameters:{'torrentscontroller.h:reannounceAction':{parameters:['hashes'],required:['hashes'],optional:[]},'torrentscontroller.h:removeTrackersAction':{parameters:['hash','urls'],required:['hash','urls'],optional:[]}},torrentFilters:['all','downloading','seeding','stopped','running','stalled'],torrentInfoParameters:['filter','tag'],torrentInfoFields:['hash','name','state','progress','dlspeed','upspeed','category','tags','private'],torrentStates:['downloading','stalledDL','uploading','stalledUP','stoppedDL','stoppedUP','checkingDL','checkingUP','moving','error','missingFiles'],torrentPropertiesFields:['save_path','download_path','private','pieces_num','piece_size'],torrentTrackerFields:['url','status','num_seeds','tier'],torrentFileFields:['index','name','size','progress','priority'],torrentWebSeedFields:['url'],preferenceDescriptors:[{key:'save_path',getterPresent:true,setterPresent:true,readType:'string',writeType:'string',typeAgreement:'EXACT',writable:true}]}
+  {qbVersion:'4.1.0',webApiVersion:'2.0.0',sourceSha:sha4,stable:true,officialWeiGSupport:true,apiActions:['appcontroller.h:preferencesAction','appcontroller.h:setPreferencesAction','torrentscontroller.h:resumeAction','torrentscontroller.h:pauseAction','torrentscontroller.h:recheckAction','torrentscontroller.h:addTrackersAction','torrentscontroller.h:propertiesAction','torrentscontroller.h:filesAction','torrentscontroller.h:trackersAction','torrentscontroller.h:webseedsAction'],apiActionParameters:{'torrentscontroller.h:resumeAction':{parameters:['hashes'],required:['hashes'],optional:[]},'torrentscontroller.h:pauseAction':{parameters:['hashes'],required:['hashes'],optional:[]},'torrentscontroller.h:recheckAction':{parameters:['hashes'],required:['hashes'],optional:[]},'torrentscontroller.h:addTrackersAction':{parameters:['hash','urls'],required:['hash','urls'],optional:[]}},torrentFilters:['all','downloading','seeding','paused','resumed'],torrentInfoParameters:['filter','category'],torrentInfoFields:['hash','name','state','progress','dlspeed','upspeed','category','tags'],torrentStates:['downloading','stalledDL','uploading','stalledUP','pausedDL','pausedUP','checkingDL','checkingUP','error','missingFiles'],torrentPropertiesFields:['save_path','total_size','share_ratio'],torrentTrackerFields:['url','status','num_peers'],torrentFileFields:['name','size','progress','priority'],torrentWebSeedFields:['url'],preferenceDescriptors:[{key:'save_path',getterPresent:true,setterPresent:true,readType:'string',writeType:'string',typeAgreement:'EXACT',writable:true}]},
+  {qbVersion:'5.2.3',webApiVersion:'2.15.1',sourceSha:sha5,stable:true,officialWeiGSupport:true,apiActions:['appcontroller.h:preferencesAction','appcontroller.h:setPreferencesAction','torrentscontroller.h:startAction','torrentscontroller.h:stopAction','torrentscontroller.h:tagsAction','torrentscontroller.h:reannounceAction','torrentscontroller.h:removeTrackersAction','torrentscontroller.h:propertiesAction','torrentscontroller.h:filesAction','torrentscontroller.h:trackersAction','torrentscontroller.h:webseedsAction'],apiActionParameters:{'torrentscontroller.h:startAction':{parameters:['hashes'],required:['hashes'],optional:[]},'torrentscontroller.h:stopAction':{parameters:['hashes'],required:['hashes'],optional:[]},'torrentscontroller.h:reannounceAction':{parameters:['hashes'],required:['hashes'],optional:[]},'torrentscontroller.h:removeTrackersAction':{parameters:['hash','urls'],required:['hash','urls'],optional:[]}},torrentFilters:['all','downloading','seeding','stopped','running','stalled'],torrentInfoParameters:['filter','tag'],torrentInfoFields:['hash','name','state','progress','dlspeed','upspeed','category','tags','private'],torrentStates:['downloading','stalledDL','uploading','stalledUP','stoppedDL','stoppedUP','checkingDL','checkingUP','moving','error','missingFiles'],torrentPropertiesFields:['save_path','download_path','private','pieces_num','piece_size'],torrentTrackerFields:['url','status','num_seeds','tier'],torrentFileFields:['index','name','size','progress','priority'],torrentWebSeedFields:['url'],preferenceDescriptors:[{key:'save_path',getterPresent:true,setterPresent:true,readType:'string',writeType:'string',typeAgreement:'EXACT',writable:true}]}
 ];
-const index=profiles.map(profile=>({qbVersion:profile.qbVersion,webApiVersion:profile.webApiVersion,sourceSha:profile.sourceSha,officialWeiGSupport:true,profilePath:`qb-release-profiles/${profile.sourceSha}.json`}));
-const bySha=Object.fromEntries(profiles.map(profile=>[profile.sourceSha,profile]));
-const events=[],requests=[];
-const window={WeiG:{buildAssetUrl:x=>x},console,dispatchEvent:event=>events.push(event)};window.window=window;
-const context={window,console,CustomEvent:class{constructor(type,init){this.type=type;this.detail=init?.detail;}},fetch:async url=>{
-  requests.push(String(url));
-  if(String(url)==='data/qb-releases.json')return{ok:true,status:200,json:async()=>index};
-  const match=String(url).match(/qb-release-profiles\/([0-9a-f]{40})\.json$/);
-  if(match&&bySha[match[1]])return{ok:true,status:200,json:async()=>bySha[match[1]]};
-  return{ok:false,status:404,json:async()=>null};
-}};
-vm.runInNewContext(source,context,{filename:'release-profile.js'});
-const R=window.WeiG.ReleaseProfile;
-assert(R&&typeof R.bind==='function'&&typeof R.resolveTorrentActionDescriptor==='function','W.ReleaseProfile must be the exact source-fact runtime owner');
-assert(typeof R.detailFields==='function'&&typeof R.hasTorrentDetailField==='function','W.ReleaseProfile must expose exact Torrent detail response-field provenance');
-assert(typeof R.resolutionInfo==='function'&&typeof R.hasWriteProvenance==='function','W.ReleaseProfile must expose profile resolution and write provenance');
+const rt=createCompactRuntime(profiles,{owners:['settings-schema.js','capabilities.js']});
+const C=rt.W.CapabilityRegistry,S=rt.W.SettingsSchema;
+assert.ok(C&&typeof C.bind==='function'&&typeof C.resolveTorrentActionDescriptor==='function','CapabilityRegistry must own compact release/source compatibility facts');
+assert.equal(rt.requests.length,0,'compact contracts must load lazily');
 
-let client={qbVersion:'v4.1.0',webApiVersion:'2.0.0',major:4};
-await R.bind(client);
-assert(R.isCertified()&&R.hasWriteProvenance(),'qB 4.1.0 exact catalog entry must be certified for writes');
-assert(R.current().qbVersion==='4.1.0','exact qB version must bind its exact stable profile');
-assert(R.resolutionInfo().mode==='EXACT'&&R.resolutionInfo().resolvedFrom==='4.1.0','exact qB profile must report exact resolution provenance');
-assert(R.hasAction('appcontroller.h:preferencesAction')&&R.hasAction('appcontroller.h:setPreferencesAction'),'exact app preferences actions must survive the sharded runtime profile');
-assert(JSON.stringify(R.torrentFilters())===JSON.stringify(['all','downloading','seeding','stopped','running']),'qB4 paused/resumed aliases must canonicalize exactly once for UI consumers');
-assert(R.upstreamTorrentFilter('stopped')==='paused'&&R.upstreamTorrentFilter('running')==='resumed','canonical qB4 filters must map back to exact upstream names at the HTTP boundary');
-assert(R.resolveTorrentAction('start')==='resume'&&R.resolveTorrentAction('stop')==='pause','qB4 start/stop intents must resolve from exact action provenance');
-assert(R.resolveTorrentAction('reannounce')===null&&!R.supportsTorrentAction('removeTrackers'),'qB4 must fail closed for actions absent from exact upstream source');
-const recheck=R.resolveTorrentActionDescriptor('recheck');
-assert(recheck?.sourceAction==='torrentscontroller.h:recheckAction'&&recheck.endpoint==='recheck'&&recheck.required.includes('hashes'),'action descriptor must preserve exact source and required parameter facts');
-assert(R.hasTorrentInfoField('category')&&R.hasTorrentInfoField('tags')&&!R.hasTorrentInfoField('private'),'qB4 field facts must expose category/tags without inventing private');
-assert(R.torrentStates().includes('stalledDL')&&R.torrentStates().includes('checkingUP'),'exact Torrent states must be queryable');
-assert(R.preferenceDescriptor('save_path')?.writable===true,'exact preference descriptor lookup failed');
-assert(!R.hasInfoParameter('private'),'qB4 must not invent later torrents/info parameters');
-assert(R.hasTorrentDetailField('properties','save_path')&&!R.hasTorrentDetailField('properties','private'),'qB4 Properties fields must follow exact response surface');
-assert(R.hasTorrentDetailField('trackers','num_peers')&&!R.hasTorrentDetailField('trackers','num_seeds'),'qB4 Tracker fields must not inherit modern counters');
-assert(R.hasTorrentDetailField('files','priority')&&!R.hasTorrentDetailField('files','index'),'qB4 File fields must not invent later response indexes');
-assert(JSON.stringify(R.torrentWebSeedFields())===JSON.stringify(['url']),'qB4 WebSeed response surface must expose only source-proven url');
-assert(requests.includes('data/qb-releases.json')&&requests.includes(`data/qb-release-profiles/${sha4}.json`),'runtime must fetch the tiny index and only the active exact profile shard');
+let client={qbVersion:'v4.1.0',webApiVersion:'2.0.0',capabilities:{}};
+await C.bind(client);
+let release=C.releaseIdentity();
+assert(C.isCertified()&&C.hasWriteProvenance(),'qB 4.1.0 exact compact release must be certified for writes');
+assert.equal(release.qbVersion,'4.1.0');
+assert.equal(release.resolutionMode,'EXACT');
+assert.equal(release.resolvedFrom,'4.1.0');
+assert(C.hasAction('appcontroller.h:preferencesAction')&&C.hasAction('appcontroller.h:setPreferencesAction'));
+assert.deepEqual(Array.from(C.torrentFilters()),['all','downloading','seeding','stopped','running']);
+assert.equal(C.upstreamTorrentFilter('stopped'),'paused');
+assert.equal(C.upstreamTorrentFilter('running'),'resumed');
+assert.equal(C.resolveTorrentActionDescriptor('start')?.endpoint,'resume');
+assert.equal(C.resolveTorrentActionDescriptor('stop')?.endpoint,'pause');
+assert.equal(C.resolveTorrentActionDescriptor('reannounce'),null);
+assert.equal(C.supportsTorrentAction('removeTrackers'),false);
+assert(C.hasTorrentInfoField('category')&&C.hasTorrentInfoField('tags')&&!C.hasTorrentInfoField('private'));
+assert(C.torrentStates().includes('stalledDL')&&C.torrentStates().includes('checkingUP'));
+assert(C.hasTorrentDetailField('properties','save_path')&&!C.hasTorrentDetailField('properties','private'));
+assert(C.hasTorrentDetailField('trackers','num_peers')&&!C.hasTorrentDetailField('trackers','num_seeds'));
+assert(C.hasTorrentDetailField('files','priority')&&!C.hasTorrentDetailField('files','index'));
+assert.equal(S.descriptor('save_path')?.writable,true);
 
-client={qbVersion:'5.2.3',webApiVersion:'2.15.1',major:5};
-await R.bind(client);
-assert(R.hasWriteProvenance(),'exact qB5 profile must retain write provenance');
-assert(R.resolveTorrentAction('start')==='start'&&R.resolveTorrentAction('stop')==='stop','qB5 start/stop must resolve exact modern action names');
-assert(R.resolveTorrentAction('reannounce')==='reannounce'&&R.resolveTorrentAction('removeTrackers')==='removeTrackers','qB5 exact actions must resolve when source proves them');
-assert(R.supportsTorrentFilter('stalled')&&R.hasTorrentInfoField('private')&&R.hasAction('torrentscontroller.h:tagsAction'),'qB5 source-derived filter/field/action facts must be queryable');
-assert(R.hasAction('appcontroller.h:preferencesAction'),'qB5 app/preferences must remain source-proven after shard loading');
-assert(R.preferenceDescriptor('save_path')?.setterPresent===true&&R.preferenceDescriptor('save_path')?.writable===true&&R.preferenceDescriptor('save_path')?.writeType==='string','exact qB5 preference setter provenance must remain writable');
-assert(R.hasTorrentDetailField('properties','private')&&R.hasTorrentDetailField('properties','download_path'),'qB5 Properties additions must be exact-profile facts');
-assert(R.hasTorrentDetailField('trackers','num_seeds')&&R.hasTorrentDetailField('files','index'),'qB5 Tracker/File response additions must be exact-profile facts');
+client={qbVersion:'5.2.3',webApiVersion:'2.15.1',capabilities:{}};
+await C.bind(client);release=C.releaseIdentity();
+assert(C.isCertified()&&release.qbVersion==='5.2.3'&&release.sourceSha===sha5);
+assert.equal(C.resolveTorrentActionDescriptor('start')?.endpoint,'start');
+assert.equal(C.resolveTorrentActionDescriptor('stop')?.endpoint,'stop');
+assert.equal(C.resolveTorrentActionDescriptor('reannounce')?.endpoint,'reannounce');
+assert.equal(C.resolveTorrentActionDescriptor('removeTrackers')?.endpoint,'removeTrackers');
+assert(C.supportsTorrentFilter('stalled')&&C.hasTorrentInfoField('private')&&C.hasAction('torrentscontroller.h:tagsAction'));
+assert(C.hasTorrentDetailField('properties','private')&&C.hasTorrentDetailField('properties','download_path'));
+assert(C.hasTorrentDetailField('trackers','num_seeds')&&C.hasTorrentDetailField('files','index'));
 
-client={qbVersion:'5.2.3-r1',webApiVersion:'2.15.1',major:5};
-await R.bind(client);
-assert(R.isCertified()&&R.hasWriteProvenance()&&R.current().qbVersion==='5.2.3','packaging suffix must resolve to the exact canonical stable profile with write provenance');
-assert(R.resolutionInfo().mode==='EQUIVALENT'&&R.resolutionInfo().detectedQbVersion==='5.2.3-r1','canonical packaging suffix must retain equivalent resolution provenance');
-assert(R.preferenceDescriptor('save_path')?.writable===true&&R.preferenceDescriptor('save_path')?.setterPresent===true,'equivalent release must preserve exact preference setter provenance');
+client={qbVersion:'5.2.3-r1',webApiVersion:'2.15.1',capabilities:{}};
+await C.bind(client);release=C.releaseIdentity();
+assert(C.isCertified()&&C.hasWriteProvenance()&&release.qbVersion==='5.2.3');
+assert.equal(release.resolutionMode,'EQUIVALENT');
+assert.equal(release.detectedQbVersion,'5.2.3-r1');
 
-client={qbVersion:'5.2.3.1',webApiVersion:'2.15.1',major:5};
-await R.bind(client);
-assert(!R.isCertified()&&!R.hasWriteProvenance()&&R.current().qbVersion==='5.2.3','unknown fourth-component patch may inherit read facts but must not gain write provenance');
-assert(R.resolutionInfo().mode==='INHERITED'&&R.resolutionInfo().resolvedFrom==='5.2.3','fourth-component inheritance must expose its source profile');
-assert(R.current().sourceSha===profiles[1].sourceSha&&R.current().settingsNativeLocales.includes('zh_CN'),'inherited profile must retain source-bound translation routing assets');
-assert(R.hasAction('torrentscontroller.h:tagsAction')&&R.hasTorrentInfoField('private'),'inherited patch must retain already-proven read/source facts without inventing new ones');
-assert(!R.supportsTorrentAction('start')&&R.resolveTorrentAction('start')===null,'inherited patch must not advertise or resolve mutating Torrent actions');
-const inheritedPreference=R.preferenceDescriptor('save_path');
-assert(inheritedPreference&&inheritedPreference.getterPresent===true,'inherited patch must retain readable preference provenance');
-assert(inheritedPreference.setterPresent===false&&inheritedPreference.writable===false&&inheritedPreference.writeType===null&&inheritedPreference.typeAgreement==='READ_ONLY','inherited patch must downgrade preference setter provenance to read-only');
-assert(profiles[1].preferenceDescriptors[0].setterPresent===true&&profiles[1].preferenceDescriptors[0].writable===true,'inherited resolution must not mutate the cached exact source profile');
+client={qbVersion:'5.2.3.1',webApiVersion:'2.15.1',capabilities:{}};
+await C.bind(client);release=C.releaseIdentity();
+assert(!C.isCertified()&&!C.hasWriteProvenance()&&release.qbVersion==='5.2.3');
+assert.equal(release.resolutionMode,'INHERITED');
+assert.equal(release.resolvedFrom,'5.2.3');
+assert(C.hasAction('torrentscontroller.h:tagsAction')&&C.hasTorrentInfoField('private'));
+assert(!C.supportsTorrentAction('start'));
+assert.equal(S.descriptor('save_path')?.writable,false);
 
-client={qbVersion:'5.2.4',webApiVersion:'2.15.1',major:5};
-await R.bind(client);
-assert(R.current().qbVersion==='5.2.3'&&R.resolutionInfo().mode==='INHERITED','future qB patch must provisionally inherit the nearest certified lower patch in the same series');
-assert(R.hasAction('torrentscontroller.h:tagsAction')&&R.hasTorrentInfoField('private'),'future patch inheritance may keep proven read/source facts');
-assert(!R.hasWriteProvenance()&&!R.supportsTorrentAction('start'),'future patch inheritance must keep product write actions unavailable until admission');
-assert(R.preferenceDescriptor('save_path')?.writable===false,'future patch inheritance must keep qB preference controls read-only until admission');
+client={qbVersion:'5.2.4',webApiVersion:'2.15.1',capabilities:{}};
+await C.bind(client);release=C.releaseIdentity();
+assert.equal(release.qbVersion,'5.2.3');
+assert.equal(release.resolutionMode,'INHERITED');
+assert(!C.hasWriteProvenance()&&!C.supportsTorrentAction('start'));
 
-client={qbVersion:'5.2.4',webApiVersion:'2.14.0',major:5};
-await R.bind(client);
-assert(R.current().fallback===true&&R.resolutionInfo().mode==='FALLBACK','future patch with an older WebAPI than its candidate base must not inherit incompatible source facts');
-assert(!R.hasWriteProvenance(),'fallback must never carry write provenance');
+client={qbVersion:'5.2.4',webApiVersion:'2.14.0',capabilities:{}};
+await C.bind(client);release=C.releaseIdentity();
+assert.equal(release.fallback,true);
+assert.equal(release.resolutionMode,'FALLBACK');
+assert(!C.hasWriteProvenance());
 
-client={qbVersion:'4.9.99',webApiVersion:'2.9.3',major:4};
-await R.bind(client);
-assert(!R.isCertified()&&!R.hasWriteProvenance(),'unknown qB stable/version must not be falsely certified for writes');
-assert(R.resolveTorrentAction('start')===null&&R.upstreamTorrentFilter('stopped')==='paused','catalog miss may retain conservative qB4 read/filter normalization but must not guess a write endpoint');
-assert(R.resolveTorrentAction('reannounce')===null&&!R.hasTorrentInfoField('tags'),'catalog miss must not invent later action/field provenance');
-assert(R.supportsTorrentFilter('stalled')===false,'catalog miss must not invent non-floor filters');
-assert(R.preferenceDescriptor('save_path')===null,'catalog miss must not invent preference setter provenance');
-assert(R.detailFields('properties').length===0&&R.detailFields('trackers').length===0&&R.detailFields('files').length===0&&R.detailFields('webseeds').length===0,'catalog miss must not invent Torrent detail response-field provenance');
-assert(events.some(event=>event.type==='weigg:release-profile'),'release profile binding must publish one semantic event');
-assert(requests.filter(url=>url==='data/qb-releases.json').length===1,'release index must be fetched once per page session');
-assert(requests.filter(url=>url.includes('qb-release-profiles/')).length===2,'only the two actually used exact profile shards should be fetched and cached');
+client={qbVersion:'4.9.99',webApiVersion:'2.9.3',capabilities:{}};
+await C.bind(client);release=C.releaseIdentity();
+assert.equal(release.fallback,true);
+assert(!C.isCertified()&&!C.hasWriteProvenance());
+assert.equal(C.resolveTorrentActionDescriptor('start'),null);
+assert.equal(C.upstreamTorrentFilter('stopped'),null);
+assert.equal(C.hasTorrentInfoField('tags'),false);
+assert.equal(C.supportsTorrentFilter('stalled'),false);
+assert.equal(S.descriptor('save_path'),null);
 
-console.log('Release profile contract passed: exact/equivalent releases own writes; inherited profiles retain proven read facts while Torrent and preference writes are downgraded to read-only; fallback remains write-closed.');
+assert.equal(rt.requests.filter(url=>url.includes('capabilities.json')).length,1);
+assert.equal(rt.requests.filter(url=>url.includes('torrent-compat.json')).length,1);
+assert.equal(rt.requests.filter(url=>url.includes('detail-compat.json')).length,1);
+assert.equal(rt.requests.filter(url=>url.includes('source-actions.json')).length,1);
+assert.equal(rt.requests.filter(url=>url.includes('settings-compat.json')).length,1);
+assert.equal(rt.requests.some(url=>url.includes('qb-releases.json')||url.includes('qb-release-profiles/')),false,'browser compatibility resolution must not fetch retired release catalogs or profile shards');
+
+console.log('Capability release-resolution contract passed: exact/equivalent releases own writes, inherited releases retain proven read facts while writes close, fallback is source-empty, and runtime loads compact contracts only.');

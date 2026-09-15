@@ -29,8 +29,7 @@ const capabilityRegistry={
 const WeiG={
   util:{form:obj=>new URLSearchParams(Object.entries(obj||{}).map(([key,value])=>[key,String(value)])).toString()},
   I18n:{getLocale:()=> 'en-US'},
-  ReleaseProfile:releaseProfile,
-  CapabilityRegistry:capabilityRegistry
+    CapabilityRegistry:capabilityRegistry
 };
 const window={WeiG};
 const fetchMock=async(url,init={})=>{

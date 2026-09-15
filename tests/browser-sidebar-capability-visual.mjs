@@ -40,7 +40,7 @@ const mime={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8',
 const server=http.createServer(async(req,res)=>{try{const url=new URL(req.url,`http://${host}:${port}`),rel=url.pathname.replace(/^\//,'');if(rel.startsWith('api/v2/'))return api(req,res,rel.slice(7),url);if(rel==='data/qb-releases.json')return json(res,releaseCatalog());if(rel==='weigg-install.json')return json(res,{version:productVersion,gitSha:'sidebar-capability-visual',qbPath:'/config/weigg-qb-webui',hostPath:'/srv/qb/config/weigg-qb-webui'});const requested=rel||'index.html',file=path.resolve(root,requested);if(!(file===root||file.startsWith(root+path.sep))){res.writeHead(403);return res.end('forbidden');}const body=await fs.readFile(file);res.writeHead(200,{'content-type':mime[path.extname(file).toLowerCase()]||'application/octet-stream','cache-control':'no-store'});res.end(body);}catch(error){res.writeHead(error?.code==='ENOENT'?404:500,{'content-type':'text/plain; charset=utf-8'});res.end(String(error));}});
 await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(port,host,resolve);});
 
-async function waitReady(page){await page.waitForSelector('#logout-btn');await page.waitForFunction(()=>window.WeiG?.ReleaseProfile?.current()?.qbVersion&&window.WeiG?.CapabilityRegistry?.state('tags')?.feature&&window.WeiG?.AppState?.client?.qbVersion&&window.WeiG.AppState.client.qbVersion!=='0.0.0');await page.waitForTimeout(100);}
+async function waitReady(page){await page.waitForSelector('#logout-btn');await page.waitForFunction(()=>window.WeiG?.CapabilityRegistry?.releaseIdentity()?.qbVersion&&window.WeiG?.CapabilityRegistry?.state('tags')?.feature&&window.WeiG?.AppState?.client?.qbVersion&&window.WeiG.AppState.client.qbVersion!=='0.0.0');await page.waitForTimeout(100);}
 async function assertPrivateTrackerOwnership(page,supported,label){
   const options=await page.evaluate(()=>window.WeiG.LibraryController.facetOptions('tracker'));
   const privateOptions=options.filter(x=>x.value==='__weigg_private__');
@@ -61,7 +61,7 @@ try{
   context=await browser.newContext({viewport:{width:1366,height:768},locale:'zh-CN'});
   let page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(String(e)));page.on('console',m=>{if(m.type()==='error'&&!/favicon|Wei\.G\.ico/i.test(m.text()))errors.push(m.text());});
   await page.goto(`http://${host}:${port}/#/`,{waitUntil:'domcontentloaded'});await waitReady(page);
-  assert(await page.evaluate(()=>window.WeiG.ReleaseProfile.current().qbVersion)==='4.1.0','qB4 browser fixture must bind exact 4.1.0 release profile');
+  assert(await page.evaluate(()=>window.WeiG.CapabilityRegistry.releaseIdentity().qbVersion)==='4.1.0','qB4 browser fixture must bind exact 4.1.0 release profile');
   assert(await page.evaluate(()=>window.WeiG.CapabilityRegistry.supports('tags'))===false,'qB4.1.0 must not claim the native Tags taxonomy API');
   assert(await page.evaluate(()=>window.WeiG.CapabilityRegistry.supports('tagFacet'))===true,'qB4.1.0 source-proven torrent tags field must enable the read/filter Tags facet');
   await assertSupportedTags(page,'Desktop qB4 Tags');await assertPrivateTrackerOwnership(page,false,'Desktop qB4 Private/PT');

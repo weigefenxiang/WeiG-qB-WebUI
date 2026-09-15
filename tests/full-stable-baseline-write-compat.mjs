@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 import {fileURLToPath} from 'node:url';
+import {createCompactRuntime} from '../tools/qb-compact-runtime.mjs';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(here,'..');
@@ -11,13 +12,8 @@ assert.ok(catalogPath&&fs.existsSync(catalogPath),'Usage: node tests/full-stable
 const catalog=JSON.parse(fs.readFileSync(catalogPath,'utf8'));
 assert.ok(Array.isArray(catalog)&&catalog.length>0,'frozen baseline write matrix requires a non-empty release catalog');
 assert.equal(catalog[0].qbVersion,'4.1.0','frozen baseline write matrix floor must remain qB 4.1.0');
-const releaseSource=fs.readFileSync(path.join(root,'webui/private/scripts/release-profile.js'),'utf8');
-const clientSource=fs.readFileSync(path.join(root,'webui/private/scripts/qb-client.js'),'utf8');
-const W={buildAssetUrl:x=>x,util:{form(obj){const p=new URLSearchParams();for(const [k,v] of Object.entries(obj||{}))if(v!==undefined&&v!==null)p.append(k,String(v));return p.toString();}},I18n:{getLocale:()=> 'en-US'}};
-const window={WeiG:W,window:null,dispatchEvent(){}};window.window=window;
-const context={window,console,URLSearchParams,FormData,Blob,CustomEvent:class{},fetch:async url=>{if(String(url).includes('qb-releases.json'))return{ok:true,status:200,json:async()=>catalog};throw new Error(`Unexpected fetch ${url}`);}};
-vm.runInNewContext(releaseSource,context,{filename:'release-profile.js'});vm.runInNewContext(clientSource,context,{filename:'qb-client.js'});
-const R=W.ReleaseProfile,Client=W.QBClient;
+const {W}=createCompactRuntime(catalog,{owners:['capabilities.js','qb-client.js']});
+const R=W.CapabilityRegistry,Client=W.QBClient;
 const TOGGLE='transfercontroller.h:toggleSpeedLimitsModeAction',SET_DL='transfercontroller.h:setDownloadLimitAction',SET_UL='transfercontroller.h:setUploadLimitAction',ADD='torrentscontroller.h:addAction',ALL=[TOGGLE,SET_DL,SET_UL,ADD];
 let dispatchChecks=0;
 for(const profile of catalog){
