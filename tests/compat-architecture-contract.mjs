@@ -7,7 +7,6 @@ const here=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(here,'..');
 const centralizedOwners=new Set(['webui/private/scripts/release-profile.js','webui/private/scripts/capabilities.js']);
 const frozenLegacyOwners=new Map([
-  ['webui/private/scripts/qb-client.js','43d616e5be4788c0744a12562a901aa07c5e6c84'],
   ['webui/private/scripts/spatial.js','e489e6e463f1855a1e54a17e47bebde54a733d49']
 ]);
 const patterns=[
@@ -84,11 +83,15 @@ assert.equal(qbSource.includes('Client.prototype.applyCapabilityRegistry'),false
 assert.equal(qbSource.includes('function atLeast('),false,'QBClient must not retain WebAPI milestone comparison logic after capability ownership moves to CapabilityRegistry.');
 assert.equal(qbSource.includes('W.versionAtLeast'),false,'QBClient must not export the retired version capability helper.');
 assert.ok(qbSource.includes("this.capabilities={certified:false}"),'QBClient detect must keep only the pre-bind certification sentinel, not feature/version capability truth.');
+assert.equal(qbSource.includes('Client.prototype._torrentAction'),false,'Retired major-version start/resume dispatcher must be deleted rather than kept as a fallback.');
+assert.equal(qbSource.includes('fallbackEndpoint'),false,'QBClient must not retain fixed endpoint fallbacks for source-sensitive Torrent writes.');
+assert.ok(qbSource.includes("typeof R.resolveTorrentActionDescriptor!=='function'")&&qbSource.includes("Promise.reject(contractUnavailable('torrents/'+kind))"),'Torrent write dispatch must fail closed when the compatibility contract owner is unavailable.');
+assert.ok(qbSource.includes("typeof R.upstreamTorrentFilter!=='function'")&&qbSource.includes("Promise.reject(contractUnavailable('torrents/info'))"),'Torrent filter mapping must fail closed when the compatibility contract owner is unavailable.');
 assert.ok(capabilitySource.includes('Object.keys(data.features).forEach(function(id){caps[id]=supports(id);})'),'CapabilityRegistry must materialize the complete client capability cache from the canonical feature registry.');
 assert.ok(capabilitySource.includes('caps.privateFlag=!!caps.privateFilter'),'CapabilityRegistry must own the legacy privateFlag projection while clients migrate to canonical feature IDs.');
 const methods=clientMethods(qbSource),postPattern=/\bmethod\s*:\s*['"]POST['"]/;
 const directPosts=methods.filter(method=>postPattern.test(method.body));
-const transportOwners=new Set(['_torrentAction','_guardedTorrentAction']);
+const transportOwners=new Set(['_guardedTorrentAction']);
 const safePostExceptions=new Set(['logout']);
 const unowned=[];
 for(const method of directPosts){
@@ -102,4 +105,4 @@ assert.deepEqual(unowned,[],`QBClient direct state-changing POST methods must so
 for(const name of transportOwners)assert.ok(qbSource.includes(`Client.prototype.${name}=function`),`Reviewed Torrent dispatch owner ${name} must remain present.`);
 const logoutMatches=[...qbSource.matchAll(/Client\.prototype\.logout=function\(\)\{return this\.request\(['"]auth\/logout['"],\{method:['"]POST['"],type:['"]void['"]\}\);\};/g)];
 assert.equal(logoutMatches.length,1,'Logout must remain one narrowly scoped POST auth/logout void call with no payload so users can terminate a session even when ReleaseProfile is unavailable.');
-console.log(`Compatibility architecture contract passed: scanned ${files.length} complete Git-indexed product script blobs; CapabilityRegistry owns feature/version capability materialization, API transport remains centralized in QBClient, non-auth POST writes require exact/equivalent certification, ${directPosts.length} direct POST method(s) have source ownership or reviewed transport/safety exceptions, and ${legacySeen.length} remaining legacy owner blob(s) stay frozen for explicit migration/review.`);
+console.log(`Compatibility architecture contract passed: scanned ${files.length} complete Git-indexed product script blobs; CapabilityRegistry owns feature/version capability materialization, QBClient has no qB major/version fallback branches, API transport remains centralized, non-auth POST writes remain source-owned, ${directPosts.length} direct POST method(s) have reviewed ownership, and ${legacySeen.length} remaining legacy owner blob(s) stay frozen for explicit migration/review.`);
