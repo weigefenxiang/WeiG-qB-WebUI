@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {materializeQbPeerFlags,QB_PEER_FLAGS_SOURCE} from '../tools/qb-peer-flags.mjs';
+import {materializeQbPeerFlags,QB_PEER_FLAGS_SOURCE} from '../tools/qb-release-catalog-peer-flags.mjs';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(here,'..');
