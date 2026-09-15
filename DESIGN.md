@@ -270,7 +270,7 @@ Badges are diagnostic/notice content only when a capability surface is intention
 One canonical Capability Dialog explains an attempted unavailable route/action when a notice is appropriate.
 
 ### CAPABILITY-COST
-Capability evaluation consumes already detected versions + local generated catalog/JSON. It adds no per-feature request or polling.
+Capability evaluation consumes already detected qB/WebAPI identity plus checked-in compact contracts. It adds no browser release-catalog fetch, per-feature request or polling.
 
 ### CAPABILITY-HIDE
 A control/facet/filter absent from the exact upstream release surface is absent from normal UI. Unsupported controls are not kept as disabled badge clutter. Desktop and Mobile consume the same capability state and the same control instance where the control exists.
@@ -376,8 +376,8 @@ Linux routine UI, Linux candidate and Windows candidate all use the Google Chrom
 
 Hosted Chrome itself may update between runs. Therefore browser evidence is traceable as `exact Git SHA + package-lock + runner image + exact logged Chrome version`; it is not a claim that the same SHA always replays against the same browser binary.
 
-### RELEASE-CATALOG-ARTIFACT — audited evidence is projected for runtime
-Candidate CI generates one exact-source qB stable catalog from the same upstream checkout used by the full stable audit. That canonical SHA-bound artifact may contain build-time provenance needed to prove compatibility and official qB Settings copy, but browser packaging must project it into bounded runtime assets: `private/data/qb-releases.json` owns compatibility/release facts only, while official qB Settings translation payloads are separate exact-release assets. Runtime projection must preserve exact `qbVersion + sourceSha` identity and stay below qB Alternative WebUI's static-file limit. Virtual qB Pages must consume frozen projections with the same identities rather than re-parsing upstream history during deployment.
+### RELEASE-CATALOG-ARTIFACT — audited source evidence stays offline; candidate uses self-contained runtime bytes
+Candidate CI generates/audits one exact-source qB stable catalog and related source/LKG evidence for compatibility validation. Those catalogs remain tools/CI/simulator evidence and are not re-embedded as a browser `private/data/qb-releases.json` runtime. Formal candidate packaging runs `tools/build-webui-dist.mjs` over the checked-in self-contained `webui/**`, preserves exact `GIT_SHA`/VERSION/checksum identity, requires compact contracts + `qb-settings-native.txt` + referenced official QMs, and rejects `release-profile.js`, browser `qb-releases.json` and `qb-release-profiles/`. Virtual qB Pages may consume frozen source evidence for simulation/validation, but its formal dev `__source` payload must retain the same compact-only runtime boundary.
 
 ## 11. Do / Don't
 
@@ -523,11 +523,11 @@ When the same verified Settings transaction disables `alternative_webui_enabled`
 ### QB-SETTINGS-COPY — official upstream wording, never WeiG retranslation
 For qB-owned Settings semantics, WeiG does not author translations. Candidate source tooling proves the exact release's Preferences control relationship and `QBT_TR` source/context, then mechanically reads that same release's official qB TS translation. Exact-release English `QBT_TR` source text is authoritative when that release has no English TS file. Unproven preference/control relationships remain visible with generic/humanized fallback and are never presented as official qB translation.
 
-### LANGUAGE-CATALOG — compatibility and translation payloads are separate
-`private/data/qb-releases.json` is the browser compatibility/release catalog and must not carry Settings translation bodies or all-release translation sets. Candidate packaging projects official qB Settings copy into bounded `private/data/qb-settings/<sourceSha>.json` assets and adds only an exact `settingsTranslationPath` pointer to the matching runtime release profile. `W.I18n` loads at most the current exact-release shard and rejects `qbVersion` or `sourceSha` mismatches. This projection is transport for upstream-owned wording, not a WeiG translation authority.
+### LANGUAGE-CATALOG — source evidence compiles to compact qB-owned copy assets
+The full release catalog, exact source profiles and translation LKG remain offline tools/CI/simulator evidence. Formal `webui/**` contains no browser `qb-releases.json`, no `qb-release-profiles/` and no per-source `qb-settings/<sourceSha>.json` runtime shards. Source-proven qB-owned copy is compiled into bounded `private/data/qb-settings-native.txt` plus the minimal referenced official `translations/webui_*.qm`; `W.I18n` consumes only those compact assets and rejects unproven copy/routes rather than loading historical release shards.
 
-### QBT-TR-PREFERENCE — prefer qB's native translator when exact official QM is available
-qBittorrent's WebApplication owns `QBT_TR(...)QBT_TR[CONTEXT=...]` replacement and loads WebUI translations from the active WebUI root. When WeiG can reliably provision the exact connected release's official `webui_<locale>.qm` under that Alternative WebUI root, qB's native QBT_TR path is preferred and duplicate browser-side qB translation projection should be retired. Until that exact QM provisioning exists, WeiG must not claim that WebAPI exposes the built-in translator; the mechanically generated exact-release TS shard is the bounded compatibility bridge.
+### QBT-TR-PREFERENCE — prefer qB's native translator and keep only source-proven compact gap handling
+qBittorrent's WebApplication owns `QBT_TR(...)QBT_TR[CONTEXT=...]` replacement and loads WebUI translations from the active WebUI root. WeiG provisions the minimal official QMs required by the admitted translator behavior and prefers that native path. For exact source-proven Alternative WebUI translation hard gaps, the compact qB-owned copy registry may carry the bounded official-TS bridge facts needed by `W.I18n`; this exception must remain source-bound and must never recreate per-release browser profile/translation shards or a second translation database.
 
 ### LANGUAGE-RETIRE — no split runtime dictionaries
 `W.RuntimeI18n`, `W.InterfaceText`, `W.TransferText`, `W.AlternativeWebUIText`, `W.QBLocaleBridge`, `settings-translations.js` and feature/version-local i18n runtime modules are retired architecture. Logs, Header, Responsive and Settings are direct `W.I18n` callers; runtime aliases, dynamic bridge loaders and duplicate persisted locale state are prohibited.

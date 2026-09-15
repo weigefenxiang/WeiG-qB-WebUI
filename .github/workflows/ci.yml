@@ -489,35 +489,36 @@ jobs:
       - windows_browser
     steps:
       - uses: actions/checkout@v7
-      - name: Download exact stable release catalog
-        uses: actions/download-artifact@v8
+      - uses: actions/setup-node@v7
         with:
-          name: qb-release-catalog-${{ github.sha }}
-          path: release-catalog
-      - name: Download certified Settings/source LKG v2
-        uses: actions/download-artifact@v8
-        with:
-          name: qb-settings-translation-lkg-${{ github.sha }}
-          path: settings-lkg
-      - name: Package exact-SHA release candidate
+          node-version: 22
+      - name: Package exact-SHA self-contained release candidate
+        shell: bash
         run: |
           set -euo pipefail
-          test -s release-catalog/qb-releases.json
-          test -s settings-lkg/qb-settings-translation-lkg.json
-          mkdir -p webui/private/data
-          node tools/qb-webui-catalog.mjs release-catalog/qb-releases.json webui/private/data/qb-releases.json --settings-lkg=settings-lkg/qb-settings-translation-lkg.json
-          rm -rf release
+          VERSION="$(tr -d '\r\n' < VERSION)"
+          rm -rf "$RUNNER_TEMP/candidate-dist" release
+          node tools/build-webui-dist.mjs \
+            --webui-root=webui \
+            --out="$RUNNER_TEMP/candidate-dist" \
+            --sha="$GITHUB_SHA" \
+            --version="$VERSION"
           mkdir -p release
-          cp -a webui release/WeiG-qB-WebUI
-          find release/WeiG-qB-WebUI -type f \( -name '*.html' -o -name '*.js' -o -name '*.css' -o -name '*.json' -o -name 'GIT_SHA' \) -exec sed -i "s/__WEIGG_GIT_SHA__/${GITHUB_SHA}/g" {} +
-          printf '%s\n' "${GITHUB_SHA}" > release/WeiG-qB-WebUI/GIT_SHA
-          test -s release/WeiG-qB-WebUI/private/data/qb-releases.json
-          install -m 0755 installers/install.sh release/weigg-install.sh
-          cp installers/install.ps1 release/weigg-install.ps1
-          cd release
-          zip -r WeiG-qB-WebUI.zip WeiG-qB-WebUI
-          sha256sum WeiG-qB-WebUI.zip weigg-install.sh weigg-install.ps1 > SHA256SUMS
-          printf '%s\n' "${GITHUB_SHA}" > CANDIDATE_SHA
+          cp "$RUNNER_TEMP/candidate-dist/WeiG-qB-WebUI.zip" release/WeiG-qB-WebUI.zip
+          cp "$RUNNER_TEMP/candidate-dist/install.sh" release/weigg-install.sh
+          cp "$RUNNER_TEMP/candidate-dist/install.ps1" release/weigg-install.ps1
+          chmod 0755 release/weigg-install.sh
+          (cd release && sha256sum WeiG-qB-WebUI.zip weigg-install.sh weigg-install.ps1 > SHA256SUMS)
+          printf '%s\n' "$GITHUB_SHA" > release/CANDIDATE_SHA
+          test "$(unzip -p release/WeiG-qB-WebUI.zip WeiG-qB-WebUI/GIT_SHA | tr -d '\r\n')" = "$GITHUB_SHA"
+          test "$(unzip -p release/WeiG-qB-WebUI.zip WeiG-qB-WebUI/VERSION | tr -d '\r\n')" = "$VERSION"
+          unzip -t release/WeiG-qB-WebUI.zip 'WeiG-qB-WebUI/private/data/qb-settings-native.txt' >/dev/null
+          unzip -t release/WeiG-qB-WebUI.zip 'WeiG-qB-WebUI/translations/webui_*.qm' >/dev/null
+          if unzip -Z1 release/WeiG-qB-WebUI.zip | grep -E '^WeiG-qB-WebUI/private/(scripts/release-profile\.js|data/qb-releases\.json|data/qb-release-profiles/)' > "$RUNNER_TEMP/retired-runtime-paths.txt"; then
+            cat "$RUNNER_TEMP/retired-runtime-paths.txt" >&2
+            echo 'Retired release-profile runtime reappeared in candidate package.' >&2
+            exit 1
+          fi
       - name: Upload reusable release candidate
         uses: actions/upload-artifact@v7
         with:
