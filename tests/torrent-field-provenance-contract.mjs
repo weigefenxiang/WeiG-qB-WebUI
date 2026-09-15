@@ -9,18 +9,20 @@ const root=path.resolve(here,'..');
 const source=fs.readFileSync(path.join(root,'webui/private/scripts/torrent-fields.js'),'utf8');
 const appSource=fs.readFileSync(path.join(root,'webui/private/scripts/app.js'),'utf8');
 let saved={mobileFields:['status','progress','dl','up','future_metric'],columns:[{key:'name',width:500},{key:'ratio',width:130},{key:'future_metric',width:90},{key:'size',width:120}]};
+let runtimeFacts=null;
 const W={
   util:{formatBytes:v=>String(v),percent:v=>Number(v)*100,formatSpeed:v=>String(v),formatEta:v=>String(v),formatRatio:v=>String(v),trackerLabel:v=>String(v)},
   Config:{load:()=>JSON.parse(JSON.stringify(saved)),save:value=>{saved=JSON.parse(JSON.stringify(value));}},
   Components:{state:code=>[String(code),'']},
   I18n:{getLocale:()=> 'en-US'},
-  ReleaseProfile:{current:()=>null},
+  CapabilityRegistry:{torrentFieldFacts:()=>runtimeFacts},
   DataGrid:{defaults:[]}
 };
 const window={WeiG:W};window.window=window;
 vm.runInNewContext(source,{window,console,Date,Number},{filename:'torrent-fields.js'});
 const F=W.TorrentFieldRegistry;
 assert.ok(F,'TorrentFieldRegistry must load');
+assert.equal(source.includes('ReleaseProfile'),false,'TorrentFieldRegistry must consume release/source field facts only through CapabilityRegistry');
 const expected=['name','size','progress','dlspeed','upspeed','eta','state','ratio','tracker','category','tags','num_seeds','num_leechs','save_path','added_on','completion_on','priority'];
 assert.deepEqual(Array.from(F.fields,x=>x.key),expected,'Phase E must formalize exactly the current 17 product fields');
 assert.equal(new Set(F.fields.map(x=>x.key)).size,17,'field keys must remain unique');
@@ -36,6 +38,8 @@ assert.equal(F.resolveProvenance({key:'name'},{fallback:false,officialWeiGSuppor
 assert.equal(F.provenance('not-a-field',certified).mode,'UNKNOWN');
 assert.deepEqual(Array.from(F.mobileFields()),['state','progress','dlspeed','upspeed'],'legacy WeiG preference aliases must canonicalize without becoming source aliases');
 const profile={fallback:false,officialWeiGSupport:true,torrentInfoFields:['name','state','progress','dlspeed','size','added_on']};
+runtimeFacts=profile;
+assert.deepEqual(Array.from(F.effectiveMobileFields()),['state','progress','dlspeed'],'default runtime field facts must come from CapabilityRegistry');
 assert.deepEqual(Array.from(F.effectiveMobileFields(profile)),['state','progress','dlspeed'],'effective fields must hide source-unavailable saved metrics');
 F.saveEffectiveMobileFields(['progress','state'],profile);
 assert.deepEqual(saved.mobileFields,['progress','state','upspeed'],'temporarily unavailable saved fields must survive effective mobile preference edits');
@@ -51,5 +55,5 @@ assert.ok(appSource.includes('R.effectiveDesktopColumns(cfg)'),'app runtime must
 assert.ok(appSource.includes('R.saveEffectiveDesktopColumns(cfg,cols)'),'desktop column edits/resizes must preserve hidden saved preferences through the field registry');
 const releaseBind=appSource.indexOf('await W.CapabilityRegistry.bind(app.client)');
 const columnRebind=appSource.indexOf('applyEffectiveColumns();',releaseBind);
-assert.ok(releaseBind>=0&&columnRebind>releaseBind&&appSource.slice(0,releaseBind).indexOf('applyEffectiveColumns();')<0,'desktop effective columns must be rebound only after the exact ReleaseProfile is available');
-console.log('Torrent field provenance contract passed: one 17-field owner resolves provenance, preserves hidden mobile/desktop preferences, and does not infer server sort support from field presence.');
+assert.ok(releaseBind>=0&&columnRebind>releaseBind&&appSource.slice(0,releaseBind).indexOf('applyEffectiveColumns();')<0,'desktop effective columns must be rebound only after CapabilityRegistry has bound exact compatibility facts');
+console.log('Torrent field provenance contract passed: one 17-field owner consumes runtime field facts through CapabilityRegistry, preserves hidden mobile/desktop preferences, and does not infer server sort support from field presence.');
