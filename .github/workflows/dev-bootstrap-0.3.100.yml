@@ -14,10 +14,10 @@ concurrency:
 
 jobs:
   apply:
-    if: "${{ github.event.head_commit.message == 'chore: refresh 0.3.100 bootstrap authority' }}"
+    if: "${{ github.event.head_commit.message == 'chore: finalize 0.3.100 bootstrap' }}"
     runs-on: ubuntu-24.04
     env:
-      EXPECTED_PARENT: ac1f968c4ba9125b0061d68fe0344b5a867cf2ee
+      EXPECTED_PARENT: 095c8525c17610401455679a7de7ed04826e3c86
       BASE_PRODUCT_SHA: ae78382c2f19ae99269b6c2464f14b99eddb2ff9
       PAYLOAD_SHA256: 0d7f49f6a1863ada4f0bfb585d476ca1912ad32d54b687f90836faa74a064c9d
     steps:
@@ -32,7 +32,7 @@ jobs:
           test "$GITHUB_REF" = "refs/heads/dev"
           test "$(git rev-parse "$GITHUB_SHA^")" = "$EXPECTED_PARENT"
 
-      - name: Reassemble and verify exact payload
+      - name: Reassemble exact final tree
         shell: bash
         run: |
           set -euo pipefail
@@ -40,8 +40,10 @@ jobs:
           cat .weigg-bootstrap/0.3.100/part-* > /tmp/plan-first-batch.tar.xz
           printf '%s  %s\n' "$PAYLOAD_SHA256" /tmp/plan-first-batch.tar.xz | sha256sum -c -
           tar -xJf /tmp/plan-first-batch.tar.xz -C .
+          rm -rf .weigg-bootstrap
+          rm -f .github/workflows/dev-bootstrap-0.3.100.yml
 
-      - name: Validate product and contracts
+      - name: Validate final product and contracts
         shell: bash
         run: |
           set -euo pipefail
@@ -62,10 +64,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf .weigg-bootstrap
-
           cat > /tmp/expected-files <<'EOF'
-          .github/workflows/dev-bootstrap-0.3.100.yml
           VERSION
           docs/014.AI协作与分支纪律.md
           package-lock.json
