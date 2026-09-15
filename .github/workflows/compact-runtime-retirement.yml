@@ -99,7 +99,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git add -A
+          git add -u
+          git add -- webui/translations
           git diff --cached --check
           node --check tools/build-webui-dist.mjs
           node --check simulator/build/build-pages.mjs
@@ -172,7 +173,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git add -A
+          git add -u
+          git add -- webui/translations
           git diff --cached --check
           if git diff --cached --quiet; then
             echo 'Runtime retirement produced no formal changes.' >&2
