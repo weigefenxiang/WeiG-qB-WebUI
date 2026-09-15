@@ -70,7 +70,7 @@ Historical release-specific test copies are not preserved. Current requirements 
 ## 3. Torrent workspace owner map
 
 ```text
-qB stable source/release facts           tools/qb-release-catalog.mjs -> W.ReleaseProfile
+qB stable source/release evidence        tools/qb-release-catalog.mjs / CI (offline)
 qB HTTP/endpoints/transport              W.QBClient
 qB/WebAPI user capability policy         W.CapabilityRegistry + data/capabilities.json
 Torrent status/filter semantic truth     W.TorrentSemantics
@@ -78,7 +78,7 @@ Torrent filter presentation              W.TorrentFilterView
 Route / page / Torrent query / sort      app.js / W.AppState / W.LibraryController
 Torrent row/card DOM                     W.Components
 Torrent field registry/preferences       W.TorrentFieldRegistry
-Torrent detail source schema             W.ReleaseProfile.torrentDetailUi
+Torrent detail source schema             W.CapabilityRegistry.torrentDetailUi()
 Torrent detail source projection         W.QbUiEvidence
 Torrent detail generic runtime           app.js descriptor consumer
 Torrent detail column overrides          W.SharedColumns
@@ -128,24 +128,24 @@ Canonical Mobile Torrent card first line is selection + title + More. Configured
 `W.Components.torrentRow()` and `W.Components.mobileTorrentCard()` are canonical definitions. `ui.js` may supply field registry/config UI but may not replace renderer functions after load. Responsive code may not replace `W.VirtualList` or `W.Components.state`; Layout code may not replace `W.DataGrid` methods.
 
 ### TORRENT-FILTER-OWNER — one status semantic chain
-`W.ReleaseProfile` exposes which upstream filter names exist for the exact stable release; `W.TorrentSemantics` canonicalizes and evaluates those states; `W.TorrentFilterView` renders the controls; `app.js` and `selection.js` are callers. They may not duplicate state regex policy. Completion (`progress >= 1`) is not itself proof of seeding; seeding comes from upstream seeding/upload state.
+`W.CapabilityRegistry` exposes which upstream filter names exist for the exact stable release; `W.TorrentSemantics` canonicalizes and evaluates those states; `W.TorrentFilterView` renders the controls; `app.js` and `selection.js` are callers. They may not duplicate state regex policy. Completion (`progress >= 1`) is not itself proof of seeding; seeding comes from upstream seeding/upload state.
 
 ### TORRENT-COLUMN-LAYOUT — exact qB schema, WeiG user overrides
-For a certified exact release, `W.ReleaseProfile.torrentTableColumns` owns native desktop column keys, source order, default visibility, default width and `dataProperties`. `W.TorrentFieldRegistry` projects that schema into effective WeiG columns and owns persisted user visibility/order/width overrides plus non-destructive migration. New exact-source columns merge into source-relative positions; temporarily absent/stale preferences are preserved rather than redefined. FALLBACK/UNKNOWN profiles do not claim native column parity.
+For a certified exact release, `W.CapabilityRegistry.torrentFieldFacts().torrentTableColumns` owns native desktop column keys, source order, default visibility, default width and `dataProperties`. `W.TorrentFieldRegistry` projects that schema into effective WeiG columns and owns persisted user visibility/order/width overrides plus non-destructive migration. New exact-source columns merge into source-relative positions; temporarily absent/stale preferences are preserved rather than redefined. FALLBACK/UNKNOWN profiles do not claim native column parity.
 
 `app.js -> openColumns()` owns Columns-dialog interaction (checkbox, ↑/↓, Desktop dialog drag and Android 360 ms long-press drag). `W.DataGrid` owns live table sizing plus the Desktop header geometry gestures: resize handles change width; dragging the header body after the movement threshold directly reorders the same `app.columns`; a true drag suppresses the subsequent sort click while an ordinary click keeps the existing server-sort path. Both entry points persist through `W.TorrentFieldRegistry.saveEffectiveDesktopColumns()` and therefore do not create a second column-order state. Long-press activation must preserve ordinary vertical touch scrolling until the gesture is intentionally captured.
 
 The user-resize floor is `24 px` for every exact-native column while exact qB `defaultWidth` remains the initial/default width. During resize, pointermove paints the current header and mounted Torrent rows directly; it must not rebuild the VirtualList or persist on every frame. Pointerup performs the single canonical save/reconciliation. Field presence alone never proves server sort support; only an already-proven canonical sort semantic may be reused directly or through exact `dataProperties`. MutationObserver/post-render repair and a second column-layout owner are prohibited.
 
 ### TORRENT-DETAIL-SURFACE — exact source manifest drives tabs, General and tables
-For a certified exact release, `W.ReleaseProfile.torrentDetailUi` owns exact source-derived tab order/existence, qB translation source/context, General property groups/fields/bindings, Files / Trackers / Peers / Web Seeds table schemas, file-priority controls and Tracker/Peer context-menu facts. Fallback/UNKNOWN profiles do not claim exact Detail parity.
+For a certified exact release, `W.CapabilityRegistry.torrentDetailUi()` owns exact source-derived tab order/existence, qB translation source/context, General property groups/fields/bindings, Files / Trackers / Peers / Web Seeds table schemas, file-priority controls and Tracker/Peer context-menu facts. Fallback/UNKNOWN profiles do not claim exact Detail parity.
 
 The DOM contains only an empty Detail tab host; runtime iterates the certified manifest. General/Properties is the one distinct source-layout surface and consumes one `torrents/properties` response through `W.QbUiEvidence`/canonical source projection. Table tabs resolve from `torrentDetailUi.tables` and use one generic table renderer. Fixed five-tab assumptions, a hand-written General field fallback, `detailActions`, and per-surface Files/Trackers/Peers/Web Seeds renderer owners are prohibited.
 
 qB-owned Detail tab/group/field/column/control/menu copy follows the canonical `W.I18n` qB-owned source/context path. Hand-written Chinese/English Detail label tables are prohibited.
 
 ### TORRENT-DETAIL-COLUMNS — exact detail schema, shared user overrides
-For a certified exact release, `W.ReleaseProfile.torrentDetailUi.tables` owns the exact source-derived Files / Trackers / Peers / Web Seeds column schema, default order, default visibility/default width where upstream exposes them, translation source/context and `dataProperties`/source relation. UI row keys are not automatically API fields; every response/derived relation must remain source-proven and unknown shapes fail closed.
+For a certified exact release, `W.CapabilityRegistry.torrentDetailUi().tables` owns the exact source-derived Files / Trackers / Peers / Web Seeds column schema, default order, default visibility/default width where upstream exposes them, translation source/context and `dataProperties`/source relation. UI row keys are not automatically API fields; every response/derived relation must remain source-proven and unknown shapes fail closed.
 
 The runtime projection (`W.QbUiEvidence.detailColumns(surface)` or its canonical equivalent) feeds the shared detail table. `W.SharedColumns` owns only user visibility/order/width overrides for that projected schema; it does not become a second source-schema owner. `W.ColumnInteraction` owns the shared detail header pointer/touch lifecycle only; it does not own another column state.
 
@@ -163,7 +163,7 @@ The execution chain is:
 ```text
 context menu item
 -> source availability
--> W.ReleaseProfile.actionDescriptor(sourceAction)
+-> W.CapabilityRegistry.actionDescriptor(sourceAction)
 -> endpoint agreement
 -> required/optional parameter contract + source-proven options
 -> generic context parameter binding
@@ -255,7 +255,7 @@ Connection Tooltip/Dialog consumes already available qB/WebAPI/DHT/Peers state f
 ## 7. Capability system
 
 ### CAPABILITY-OWNER
-Exact supported-stable source facts are owned by the generated qB release catalog and `W.ReleaseProfile`; user-visible availability/presentation policy is owned by `W.CapabilityRegistry + data/capabilities.json`. `W.QBClient` consumes the result and does not recreate version policy.
+Exact supported-stable runtime facts are owned by `W.CapabilityRegistry` consuming checked-in compact contracts; the generated qB release catalog is offline tools/CI evidence only. User-visible availability/presentation policy remains owned by `W.CapabilityRegistry`. `W.QBClient` consumes the result and does not recreate version policy.
 
 ### CAPABILITY-SOURCE
 For source-bound features, exact release action/filter/parameter presence outranks heuristic version ranges. Version ranges remain declarative fallback/diagnostic facts where no exact source surface is available. Unknown capability identifiers fail closed.
@@ -454,7 +454,7 @@ The design objective is reduced duplicate ownership and clearer information hier
 ## 13. Settings semantic runtime
 
 ### SETTINGS-OWNER — one Preference semantic owner
-`W.SettingsSchema` owns qB preference surface, section, type, unit, enum, editability and future fallback. `W.ReleaseProfile` supplies the exact stable-release getter/setter descriptors; `W.QBClient` only transports `app/preferences` and `app/setPreferences`; `settings.js` is the presentation caller. `W.Transfer` owns bounded transfer telemetry and the quick global/alternate rate-limit dialog; it does not own whether those qB Preferences are present or classified in Settings.
+`W.SettingsSchema + data/settings-compat.json` own qB preference surface, section, type, unit, enum, editability and exact stable-release getter/setter descriptors. `W.CapabilityRegistry` supplies the certified release identity/write-provenance gate; `W.QBClient` only transports `app/preferences` and `app/setPreferences`; `settings.js` is the presentation caller. `W.Transfer` owns bounded transfer telemetry and the quick global/alternate rate-limit dialog; it does not own whether those qB Preferences are present or classified in Settings.
 
 ### SETTINGS-ROUTING — semantic routing before fallback
 Preference routing is exact schema → semantic family rule → Advanced / Upstream fallback. Per-version runtime copies, qB patch allowlists and versioned Settings implementations are prohibited. The canonical Speed surface owns global/alternate speed Preferences plus scheduler/uTP/TCP/LAN rate-limit policy; Advanced must not duplicate those keys.
