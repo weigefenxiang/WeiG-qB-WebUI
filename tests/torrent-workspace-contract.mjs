@@ -73,7 +73,7 @@ assert(selection.includes('supportsTorrentAction')&&selection.includes("capabili
 assert(client.includes("_guardedTorrentAction('reannounce'")&&client.includes("_guardedTorrentAction('removeTrackers'"));
 assert(app.includes("function writeActionSupported(action){var R=W.ReleaseProfile;return !!(action&&R&&R.hasWriteProvenance&&R.hasWriteProvenance()&&R.hasAction&&R.hasAction(action));}"));
 assert(app.includes("function detailMenu(surface){var ui=detailUi(),menus=ui&&ui.contextMenus")&&app.includes("function detailActionDescriptor(item)")&&app.includes("writeActionSupported(action)"));
-assert(app.includes("detailContextItems:function(item,_surface,index){return detailActionItems(surface,item,index,1);}")&&ui.includes("function detailContextItems(surface,item,ctx){if(!ctx||typeof ctx.contextItems!=='function')return[];"));
+assert(app.includes("detailContextItems:function(item,_surface,index,selectionCount)")&&app.includes("return detailActionItems(surface,item,index,count);")&&ui.includes("function detailContextItems(surface,item,ctx,index,selectionCount){if(!ctx||typeof ctx.contextItems!=='function')return[];"));
 for(const rule of ['TORRENT-FILTER-OWNER'])assert(docs.includes(rule));
 assert(docs.includes('Tracker facet')&&docs.includes("W.CapabilityRegistry.supports('privateFilter')")&&docs.includes('LibraryController.matchesTorrent'));
 console.log('Torrent workspace semantic ownership contract passed: one native horizontal scroll owner keeps header/rows attached without horizontal VirtualList renders, resize persistence stays off the pointer hot path, status filters remain source-backed, Private / PT is capability-gated in the Tracker facet, and page/selection matching share one canonical owner.');
