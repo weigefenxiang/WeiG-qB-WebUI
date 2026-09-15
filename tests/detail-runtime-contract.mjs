@@ -24,7 +24,8 @@ assert.match(releaseProfile,/function torrentDetailUi\(\)\{if\(!isCertified\(\)\
 assert.match(releaseProfile,/torrentPropertiesFields:\[\],torrentTrackerFields:\[\],torrentFileFields:\[\],torrentWebSeedFields:\[\],torrentDetailUi:null/,'fallback releases must expose no guessed Detail facts');
 assert.match(index,/<div id="detail-tabs" class="detail-tabs" role="tablist"><\/div>/,'HTML must contain only an empty Detail tab host');
 assert.doesNotMatch(index,/data-tab="(?:overview|files|trackers|peers|webseeds)"/,'HTML must not hard-code Torrent Detail tabs');
-assert.match(app,/function detailUi\(\)\{var R=W\.ReleaseProfile;return R&&typeof R\.torrentDetailUi==='function'\?R\.torrentDetailUi\(\):null;\}/,'app must consume the canonical ReleaseProfile Detail manifest owner');
+assert.match(app,/function detailUi\(\)\{var R=W\.CapabilityRegistry;return R&&typeof R\.torrentDetailUi==='function'\?R\.torrentDetailUi\(\):null;\}/,'app must consume the canonical CapabilityRegistry Detail manifest projection');
+assert.doesNotMatch(app,/W\.ReleaseProfile/,'app must not bypass CapabilityRegistry for release/source compatibility facts');
 assert.match(app,/function detailTabKeys\(\).*Array\.isArray\(ui&&ui\.tabOrder\)\?ui\.tabOrder:Object\.keys\(tabs\)/s,'Detail tab order must come from the source-generated manifest');
 assert.match(app,/function defaultDetailTab\(\)\{var keys=detailTabKeys\(\);return keys\.length\?keys\[0\]:'';\}/,'default Detail tab must be source order item zero');
 assert.match(app,/function detailTableSurface\(tab\).*ui&&ui\.tables.*Array\.isArray\(tables\[key\]\).*tables\[key\]\.length/s,'table surfaces must be admitted only from source-generated Detail tables');
@@ -51,7 +52,7 @@ assert.doesNotMatch(app,/\[\s*\{value:'0'.*value:'1'.*value:'6'.*value:'7'/s,'ru
 assert.match(app,/function detailMenu\(surface\).*ui&&ui\.contextMenus/s,'Detail row actions must consume source-generated contextMenus');
 assert.match(app,/function detailMenuLabel\(surface,item\).*detail\.menu\./s,'Detail menu copy must use generated qB translation refs when the source supplies them');
 assert.match(app,/function detailMenuAvailable\(item,selectionCount,rowValue,rowItem\).*minSelection.*maxSelection.*excludedPrefixes/s,'Detail menu row availability must consume source-generated rules');
-assert.match(app,/function detailActionDescriptor\(item\).*R\.actionDescriptor\(action\).*endpoint\.split\('\/'\)\.pop\(\)!==expected/s,'generic Detail actions must resolve through ReleaseProfile action provenance and agree with the source menu endpoint');
+assert.match(app,/function detailActionDescriptor\(item\).*R\.actionDescriptor\(action\).*endpoint\.split\('\/'\)\.pop\(\)!==expected/s,'generic Detail actions must resolve through CapabilityRegistry action provenance and agree with the source menu endpoint');
 assert.match(app,/async function detailActionForm\(surface,item,index,menuItem,desc\).*desc\.parameters.*desc\.required.*desc\.optional.*desc\.parameterOptions/s,'generic Detail actions must consume generated parameter, required/optional and option facts');
 assert.match(app,/name==='hash'\|\|name==='hashes'.*app\.detailHash/s,'generic Detail actions must bind torrent identity without endpoint-specific branches');
 assert.match(app,/surface==='trackers'.*name==='url'\|\|name==='origUrl'\|\|name==='urls'/s,'generic Detail actions must bind exact Tracker row URL by source parameter name');
@@ -91,4 +92,4 @@ assert.match(tableCss,/\.shared-table__viewport[^}]*overflow:auto/,'Detail table
 assert.match(tableCss,/\.shared-table__head\{[^}]*background:var\(--bg-surface\)/,'Detail sticky headers must be opaque so body rows cannot visually overlap header labels');
 assert.doesNotMatch(ui,/legacyRow|querySelector\([^)]*(?:edit|remove|ban)[^)]*\).*\.click\(/i,'Detail context menu must not synthesize legacy rows/buttons and click them');
 assert.doesNotMatch(layout,/MutationObserver/,'Detail schema state must not rely on MutationObserver repair');
-console.log('Torrent Detail runtime contract passed: source-generated tabs/tables/actions converge on one ReleaseProfile/QbUiEvidence/SharedColumns/QBClient runtime, including blank-area context actions, local source copy semantics, and fail-closed Content writes.');
+console.log('Torrent Detail runtime contract passed: source-generated tabs/tables/actions converge on one CapabilityRegistry/QbUiEvidence/SharedColumns/QBClient runtime, including blank-area context actions, local source copy semantics, and fail-closed Content writes.');
