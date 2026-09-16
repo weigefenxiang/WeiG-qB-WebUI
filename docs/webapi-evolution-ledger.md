@@ -21,19 +21,13 @@ Alpha/Beta/RC/master 不进入正式 Frozen stable matrix。
 ## 1. Ledger 回答什么
 
 ```text
-upstream WebAPI 历史发生了什么变化？
+upstream WebAPI/source UI 历史发生了什么变化？
 证据在哪里？
 这个变化由哪个 source/simulator/product owner 消费？
 是否仍有未建模的 evidence gap？
 ```
 
-它不直接回答：
-
-```text
-正式 webui/** 是否已经在所有 real qB stable 上正确工作？
-```
-
-后者必须由 formal product contracts + real-qB evidence 证明。
+它不直接回答“正式 `webui/**` 是否已经在所有 real qB stable 上正确工作”。后者必须由 formal product contracts + browser/real-qB evidence证明。
 
 ## 2. Terminal classifications
 
@@ -46,18 +40,16 @@ NOT_APPLICABLE
 
 `UNCLASSIFIED` 禁止作为终态。
 
-含义：
-
-- `SOURCE_DERIVED`：结构事实已由 source catalog 拥有；
-- `CONTRACT_COVERED`：当前 simulator/evidence contract 已建模该 observable boundary；
-- `MISSING`：已知 evolution evidence 尚未进入相应模拟/证据 owner；
+- `SOURCE_DERIVED`：结构事实已由 source catalog/compact-source pipeline拥有；
+- `CONTRACT_COVERED`：当前 simulator/evidence contract已建模该 observable boundary；
+- `MISSING`：已知 evolution evidence尚未进入相应模拟/证据 owner；
 - `NOT_APPLICABLE`：没有合理 simulator/runtime responsibility。
 
-`CONTRACT_COVERED` 不自动等于正式产品 compatibility complete。
+`SOURCE_DERIVED` 或 `CONTRACT_COVERED` 都不自动等于正式产品 compatibility complete。
 
 ## 3. Product-first priority
 
-处理一个 ledger delta 前，先判断它与 `webui/**` 的关系：
+处理一个 ledger delta前，先判断它与 `webui/**` 的关系：
 
 ```text
 PRODUCT_BLOCKER
@@ -67,51 +59,53 @@ UNAVOIDABLE_PRODUCT_GAP
 SIMULATOR_ONLY / UNUSED_BY_PRODUCT
 ```
 
-优先级按产品影响，不按 ledger 顺序或 `MISSING` 数量。
-
-正确流程：
-
-```text
-ledger/upstream delta
--> map to formal webui/** caller/owner
--> confirm official source truth
--> fix product normalization/emulation if needed
--> add direct product contracts
--> update Virtual qB contract/profile if useful
--> add real-qB evidence where relevant
-```
+正确流程：ledger/upstream delta -> map to formal owner -> confirm official source truth -> fix product normalization/emulation if needed -> direct product contracts -> update Virtual qB if useful -> real-qB evidence where relevant。
 
 降低 `MISSING` 数量本身不是产品成功指标。
 
-## 4. Owner map
-
-Evidence/simulator owner：
+## 4. Source/evidence owner map
 
 ```text
-NEW/REMOVED endpoint -> source apiActions/catalog
-PREFERENCE          -> Preference source pipeline
-TORRENT_SURFACE     -> Torrent surface parser/catalog
-PARAM/RESPONSE/
-STATUS/MUTATION     -> simulator Endpoint Contract
-TRANSPORT           -> simulator Transport Contract
-NOT_APPLICABLE      -> ledger only
+NEW/REMOVED endpoint         -> source apiActions/catalog
+ACTION PARAMETER             -> apiActionParameters / source-actions.json
+PREFERENCE API descriptor    -> Preference source pipeline
+PREFERENCES native surface   -> qb-preferences-surface-source + qb-preferences-compact
+RSS native surface           -> qb-rss-surface-source + qb-rss-compact
+TORRENT surface/filter       -> Torrent source parser/catalog
+DETAIL native UI             -> torrentDetailUi/detail source pipeline
+qB-owned source/context copy -> qB UI/source inventory + translation source pipeline
+PARAM/RESPONSE/STATUS        -> simulator Endpoint Contract where product/evidence consumes it
+TRANSPORT                    -> simulator Transport Contract
+NOT_APPLICABLE               -> ledger only
 ```
 
-Formal product owner 另见：
+Formal product owner另见：
 
 ```text
 W.QBClient              # transport + detected identity
 W.CapabilityRegistry    # runtime compatibility/current release/source facts
-W.SettingsSchema        # Settings Preference semantics/write proof
+W.SettingsSchema        # current Settings runtime; A target consumes source-native compact facts
 W.TorrentSemantics      # Torrent status/filter canonical semantics
 W.TorrentFieldRegistry  # Torrent field/column projection + user overrides
+RSSRules                # current canonical RSS rule UI consumer of rss-compat
+W.QbUiEvidence          # Detail source projection
 ```
 
-旧 browser runtime `W.ReleaseProfile` owner 已退休；ledger/source catalog 可以保留离线 release/source evidence，但不得要求正式 `webui/**` 恢复 release-profile runtime、`qb-releases.json` 或 per-release profile shards。
+旧 browser runtime `W.ReleaseProfile` owner已退休；ledger/source catalog可以保留离线 release/source evidence，但不得要求正式 `webui/**` 恢复 release-profile runtime、`qb-releases.json` 或 per-release profile shards。
 
-不要混淆 simulator owner、离线 source evidence 与 formal product owner。
+## 5. Ledger != completeness proof
 
-## 5. Compatibility examples
+Ledger记录“已知 evolution事实”，但不能单独证明 upstream没有未知/新语法被 extractor漏掉。A–F source-driven domain的 completion还需要独立 inventory/census：
+
+```text
+upstream inventory = mapped + explicit reviewed exclusions
+unaccounted = 0
+duplicates = 0
+```
+
+例如 Preferences extractor可以成功输出60%+映射并通过 bounded regression gate，但这不等于剩余 upstream controls已被逐项解释。Census看到而semantic extractor未映射的新 item必须触发 review/fail closed，而不是继续标记 ledger healthy。
+
+## 6. Compatibility examples
 
 ### qB4/qB5 action names
 
@@ -120,7 +114,7 @@ qB4 resume/pause
 qB5 start/stop
 ```
 
-正式解决属于 `W.CapabilityRegistry` 提供的 source-proven action facts + canonical product action owner；simulator 只负责准确复现对应 upstream 行为。
+正式解决属于 `W.CapabilityRegistry` source-proven action facts + canonical product action owner；simulator只准确复现对应 upstream行为。
 
 ### Torrent filter names
 
@@ -129,56 +123,48 @@ qB4 paused/resumed
 qB5 stopped/running
 ```
 
-正式 normalize 属于 `W.CapabilityRegistry + W.TorrentSemantics`；不得恢复已退休 release-profile owner，也不得把版本分支散落到 UI caller。
+正式 normalize属于 `W.CapabilityRegistry + W.TorrentSemantics`；不得恢复已退休 release-profile owner，也不得把版本分支散落到 UI caller。
 
-### Historical response/parameter changes
+### Native UI surface changes
 
-例如 Category shape、`editTracker`、`torrents/add`、Basic Auth、peer `host_name` 等差异，可以由 ledger/source evidence 记录，并在 simulator Endpoint/Transport Contract 中复现；如果正式 UI 消费这些差异，还必须在当前 canonical product owner 中证明正确处理。
+Preferences/RSS/Sidebar/Detail的 tab、control、field、copy、order变化属于 source UI事实；应进入对应 source inventory/compact domain，而不是被 WebAPI ledger中的 version if/else取代。WebAPI值与source UI semantic是两层 evidence，不能互相推导不存在的事实。
 
-## 6. Future stable
+## 7. Future stable
 
 新的 official stable：
 
 ```text
 discover exact tag/source identity
--> generate source facts/profile evidence
--> compare evolution facts
+-> verify Frozen prefix
+-> run independent inventory + semantic extraction
+-> compare evolution/source facts
 -> product impact analysis
+-> review unaccounted items
 -> compatibility implementation if required
--> regenerate/audit compact runtime contracts
+-> regenerate common-identity compact contracts
 -> simulator/evidence update if useful
 -> admission review
 ```
 
-Unknown future semantics 不允许猜测。Fail-close 是安全机制，不是最终产品目标。
+Unknown future semantics不允许猜测。Fail-close是安全机制，不是最终产品目标。
 
-## 7. 与现行 CI 的关系
+## 8. 与现行 CI 的关系
 
-仓库不再维护独立 `Upstream Compatibility Audit` workflow。
+发布级 source/product audit由现行 CI/candidate流程承担；本轮 A–F 另外使用 `native-surfaces` source-admission lane做 focused/all-admitted source extraction evidence。当前用户禁止创建/使用 `[candidate]`，因此该 source lane不能被解释为 Candidate授权。
 
-发布级 source/product audit 由现行 CI/candidate 流程承担：
+全版本真实 runtime证明由 `Real qB Full Frozen Matrix` 手动执行，并只应在 A–F全部完成且 final dev SHA冻结后按 `docs/011`启动。
 
-```text
-generate exact stable source catalog
--> audit every official stable >= 4.1.0
--> full stable PRODUCT compatibility matrix
-```
+## 9. Working rule
 
-全版本真实 runtime 证明由 `Real qB Full Frozen Matrix` 手动执行。
-
-Candidate / release-grade 流程只有用户明确授权后才进入；ledger 本身不能成为自动创建 `[candidate]` 或启动 heavy matrix 的理由。详细流程见 `docs/006.发布与晋级流程.md`。
-
-## 8. Working rule
-
-Ledger 是 chronology/evidence authority；`docs/010.真实qB产品兼容路线.md` 是正式兼容策略 authority。
+Ledger是 chronology/evidence authority；`docs/010.真实qB产品兼容路线.md` 是正式兼容策略 authority；`docs/014` 是当前 mutable TODO/handoff authority。
 
 发生冲突时：
 
 ```text
 official source/runtime truth
--> admitted source evidence
+-> admitted source evidence + independent inventory
 -> canonical product owner
 -> evidence tools/docs
 ```
 
-不要为了保留旧 ledger/test expectation 修改正确产品语义，也不要把离线 release/profile evidence重新升级成 browser runtime owner。
+不要为了保留旧 ledger/test expectation修改正确产品语义，也不要把离线 release/profile evidence重新升级成 browser runtime owner。
