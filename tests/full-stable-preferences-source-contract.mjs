@@ -2,12 +2,13 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {compileQbPreferencesCompact,expandQbPreferencesCompact} from '../tools/qb-preferences-compact.mjs';
+import {assertCatalogIdentity,catalogIdentity} from '../tools/qb-catalog-identity.mjs';
 
 const sourcePath=path.resolve(process.argv[2]||'qb-preferences-source-catalog.json');
 const catalogPath=path.resolve(process.argv[3]||'qb-releases.json');
 assert.ok(fs.existsSync(sourcePath),`missing Preferences source catalog: ${sourcePath}`);
 assert.ok(fs.existsSync(catalogPath),`missing exact qB release catalog: ${catalogPath}`);
-const source=JSON.parse(fs.readFileSync(sourcePath,'utf8')),catalog=JSON.parse(fs.readFileSync(catalogPath,'utf8'));
+const source=JSON.parse(fs.readFileSync(sourcePath,'utf8')),catalog=JSON.parse(fs.readFileSync(catalogPath,'utf8')),expectedIdentity=catalogIdentity(catalog);
 assert.equal(source.schemaVersion,1);
 assert.equal(source.source,'qb-upstream-preferences-native-surface');
 assert.ok(Array.isArray(source.profiles)&&source.profiles.length>0);
@@ -34,8 +35,9 @@ for(let i=0;i<catalog.length;i++){
     for(const key of tab.preferences||[]){const item=manifest.preferences[key];assert.ok(item,`${base.qbVersion}: tab ${tab.id} references missing ${key}`);assert.ok(allowed.has(key),`${base.qbVersion}: native manifest escaped app/preferences: ${key}`);assert.equal(item.tab,tab.id);assert.ok(item.order>previous,`${base.qbVersion}: ${tab.id} preference order is not source monotonic`);previous=item.order;assert.ok(item.title?.source&&item.title?.context,`${base.qbVersion}: ${key} lacks source/context title identity`);assert.ok(item.control?.id&&item.control?.semantic,`${base.qbVersion}: ${key} lacks native control semantics`);assert.ok(item.descriptor&&Object.prototype.hasOwnProperty.call(item.descriptor,'writable'),`${base.qbVersion}: ${key} lacks API read/write provenance`);if(item.control.semantic==='select')for(const option of item.control.options||[])assert.ok(option.label&&(option.label.source||Object.prototype.hasOwnProperty.call(option.label,'literal')),`${base.qbVersion}: ${key} select option lacks source identity`);}
   }
 }
-const compact=compileQbPreferencesCompact(source),packed=JSON.stringify(compact),bytes=Buffer.byteLength(packed);
+const compact=compileQbPreferencesCompact(source,catalog),packed=JSON.stringify(compact),bytes=Buffer.byteLength(packed);
 assert.equal(compact.schemaVersion,2,'compact Preferences IR must use the keyed source-native schema');
+assertCatalogIdentity(compact.catalogIdentity,expectedIdentity,'Preferences compact Frozen catalog identity');
 assert.equal(compact.releases.length,catalog.length,'compact Preferences release identity must remain exact');
 assert.ok(compact.tabs.length>0&&compact.tabs.length<=catalog.length,'compact Preferences tab change-point count is invalid');
 assert.ok(bytes<512*1024,`compact Preferences runtime IR is ${bytes} bytes; whole-manifest duplication or another size regression reappeared`);
@@ -50,4 +52,4 @@ for(const profile of source.profiles){
     assert.equal(actual.tab,item.tab,`${profile.qbVersion}: ${key} tab drift`);assert.equal(actual.sectionId,item.sectionId,`${profile.qbVersion}: ${key} section drift`);assert.equal(actual.order,item.order,`${profile.qbVersion}: ${key} order drift`);assert.equal(actual.control.id,item.control.id,`${profile.qbVersion}: ${key} control id drift`);assert.equal(actual.control.semantic,item.control.semantic,`${profile.qbVersion}: ${key} control semantic drift`);assert.deepEqual(actual.control.attributes,item.control.attributes||{},`${profile.qbVersion}: ${key} control attributes drift`);assert.equal(actual.title?.source,item.title?.source,`${profile.qbVersion}: ${key} source title drift`);assert.equal(actual.title?.context,item.title?.context,`${profile.qbVersion}: ${key} source title context drift`);assert.deepEqual(actual.descriptor,item.descriptor,`${profile.qbVersion}: ${key} API descriptor drift`);
   }
 }
-console.log(`Full stable qB Preferences source contract passed: ${catalog.length} exact releases, ${(minimumRatio*100).toFixed(1)}% minimum native mapping, ${bytes} byte keyed compact IR, and lossless tab/section/control/API provenance.`);
+console.log(`Full stable qB Preferences source contract passed: ${catalog.length} exact releases, Frozen catalog ${expectedIdentity.releaseSetSha256.slice(0,12)}, ${(minimumRatio*100).toFixed(1)}% minimum native mapping, ${bytes} byte keyed compact IR, and lossless tab/section/control/API provenance.`);

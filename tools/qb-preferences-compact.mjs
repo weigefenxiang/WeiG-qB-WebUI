@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {admittedCatalogRows,catalogIdentity} from './qb-catalog-identity.mjs';
 
 const DESCRIPTOR_FIELDS=['getterPresent','setterPresent','readType','writeType','typeAgreement','writable'];
 const CONTROL_FIELDS=['tab','sectionId','order','titleRef','descriptionRef','controlId','semantic','attributes','options','unitRef','staticDisabled','gates'];
@@ -9,17 +10,26 @@ const CONTROL_FIELDS=['tab','sectionId','order','titleRef','descriptionRef','con
 function stable(value){if(Array.isArray(value))return value.map(stable);if(value&&typeof value==='object'){const out={};for(const key of Object.keys(value).sort())out[key]=stable(value[key]);return out;}return value;}
 function same(a,b){return JSON.stringify(stable(a))===JSON.stringify(stable(b));}
 function timeline(rows){const out=[];let previous,seen=false;for(const row of rows){const value=row.value;if(!seen||!same(previous,value)){out.push({from:String(row.from),value});previous=value;seen=true;}}return out;}
-function exactIdentity(profile){const qbVersion=String(profile?.qbVersion||''),sourceSha=String(profile?.sourceSha||'');if(!qbVersion||!/^[0-9a-f]{40}$/i.test(sourceSha))throw new Error('Preferences compact profile requires exact qbVersion + sourceSha.');return{qbVersion,sourceSha};}
+function exactIdentity(profile){const qbVersion=String(profile?.qbVersion||''),sourceSha=String(profile?.sourceSha||'');if(!qbVersion||!/^[0-9a-f]{40}$/i.test(sourceSha))throw new Error('Preferences compact profile requires exact qbVersion + sourceSha.');return{qbVersion,sourceSha:sourceSha.toLowerCase()};}
 function sourceRefTable(){const refs=[],ids=new Map();const remember=(ref)=>{if(!ref?.source||!ref?.context)return-1;const key=`${ref.context}\u0000${ref.source}`;if(!ids.has(key)){ids.set(key,refs.length);refs.push([String(ref.context),String(ref.source)]);}return ids.get(key);};return{refs,remember};}
 function literalOrRef(label,remember){if(label?.source&&label?.context)return['r',remember(label)];if(label&&Object.prototype.hasOwnProperty.call(label,'literal'))return['l',label.literal];return['l',String(label??'')];}
 function compactControl(item,remember){if(!item)return null;const control=item.control||{},options=Array.isArray(control.options)&&control.options.length?control.options.map(option=>[option?.value??'',literalOrRef(option?.label,remember)]):0,gates=Array.isArray(item.dependencies?.gates)&&item.dependencies.gates.length?item.dependencies.gates.map(gate=>[String(gate?.controlId||''),String(gate?.preferenceKey||'')]):0;return[String(item.tab||''),String(item.sectionId||''),Number(item.order)||0,remember(item.title),remember(item.description),String(control.id||''),String(control.semantic||''),control.attributes&&Object.keys(control.attributes).length?stable(control.attributes):0,options,remember(control.unit),control.staticDisabled===true?1:0,gates];}
 function compactDescriptor(item){const descriptor=item?.descriptor;if(!descriptor)return null;return DESCRIPTOR_FIELDS.map(field=>Object.prototype.hasOwnProperty.call(descriptor,field)?descriptor[field]:null);}
 function compactTabs(manifest,remember){return(Array.isArray(manifest?.tabs)?manifest.tabs:[]).map(tab=>[String(tab?.id||''),String(tab?.nativeId||''),remember(tab?.title)]);}
 function compactSections(manifest,tabId,remember){const tab=(Array.isArray(manifest?.tabs)?manifest.tabs:[]).find(item=>String(item?.id||'')===String(tabId));if(!tab)return null;return(Array.isArray(tab.sections)?tab.sections:[]).map(section=>[String(section?.id||''),remember(section?.title)]);}
+function exactCatalogIdentity(identities,canonicalCatalog){
+  const rows=admittedCatalogRows(canonicalCatalog);
+  if(rows.length!==identities.length)throw new Error(`Preferences compact canonical release-set length mismatch: ${identities.length} != ${rows.length}.`);
+  for(let i=0;i<rows.length;i++){
+    const actual=identities[i],expected=rows[i];
+    if(actual.qbVersion!==expected.qbVersion||actual.sourceSha!==expected.sourceSha)throw new Error(`Preferences compact canonical release-set mismatch at ${actual.qbVersion||i}: ${actual.qbVersion}/${actual.sourceSha} != ${expected.qbVersion}/${expected.sourceSha}.`);
+  }
+  return catalogIdentity(canonicalCatalog);
+}
 
-export function compileQbPreferencesCompact(sourceCatalog){
+export function compileQbPreferencesCompact(sourceCatalog,canonicalCatalog=null){
   if(!sourceCatalog||sourceCatalog.schemaVersion!==1||!Array.isArray(sourceCatalog.profiles)||!sourceCatalog.profiles.length)throw new Error('Preferences compact compiler requires source catalog schemaVersion 1.');
-  const profiles=sourceCatalog.profiles,identities=profiles.map(exactIdentity),{refs,remember}=sourceRefTable(),tabIds=new Set(),preferenceKeys=new Set();
+  const profiles=sourceCatalog.profiles,identities=profiles.map(exactIdentity),identity=exactCatalogIdentity(identities,canonicalCatalog||profiles),{refs,remember}=sourceRefTable(),tabIds=new Set(),preferenceKeys=new Set();
   for(const profile of profiles){for(const tab of profile?.manifest?.tabs||[])if(tab?.id)tabIds.add(String(tab.id));for(const key of Object.keys(profile?.manifest?.preferences||{}))preferenceKeys.add(String(key));}
   const tabs=timeline(profiles.map(profile=>({from:profile.qbVersion,value:compactTabs(profile.manifest,remember)}))),sections={},preferences={},descriptors={};
   for(const tabId of [...tabIds].sort())sections[tabId]=timeline(profiles.map(profile=>({from:profile.qbVersion,value:compactSections(profile.manifest,tabId,remember)})));
@@ -27,7 +37,7 @@ export function compileQbPreferencesCompact(sourceCatalog){
     preferences[key]=timeline(profiles.map(profile=>({from:profile.qbVersion,value:compactControl(profile?.manifest?.preferences?.[key],remember)})));
     descriptors[key]=timeline(profiles.map(profile=>({from:profile.qbVersion,value:compactDescriptor(profile?.manifest?.preferences?.[key])})));
   }
-  return{schemaVersion:2,source:'qb-upstream-preferences-native-surface-compact',format:{release:['qbVersion','sourceSha'],ref:['context','source'],tab:['id','nativeId','titleRef'],section:['id','titleRef'],preference:CONTROL_FIELDS,descriptor:DESCRIPTOR_FIELDS,option:['value',['kind','refOrLiteral']],gate:['controlId','preferenceKey']},releases:identities.map(item=>[item.qbVersion,item.sourceSha]),refs,tabs,sections,preferences,descriptors};
+  return{schemaVersion:2,source:'qb-upstream-preferences-native-surface-compact',catalogIdentity:identity,format:{release:['qbVersion','sourceSha'],ref:['context','source'],tab:['id','nativeId','titleRef'],section:['id','titleRef'],preference:CONTROL_FIELDS,descriptor:DESCRIPTOR_FIELDS,option:['value',['kind','refOrLiteral']],gate:['controlId','preferenceKey']},releases:identities.map(item=>[item.qbVersion,item.sourceSha]),refs,tabs,sections,preferences,descriptors};
 }
 
 export function expandQbPreferencesCompact(compact,qbVersion){
@@ -48,4 +58,4 @@ export function expandQbPreferencesCompact(compact,qbVersion){
 }
 
 const isMain=process.argv[1]&&path.resolve(process.argv[1])===path.resolve(fileURLToPath(import.meta.url));
-if(isMain){try{const input=path.resolve(process.argv[2]||''),output=path.resolve(process.argv[3]||'');if(!input||!fs.existsSync(input)||!output)throw new Error('Usage: node tools/qb-preferences-compact.mjs <source-catalog.json> <output.json>');const source=JSON.parse(fs.readFileSync(input,'utf8')),result=compileQbPreferencesCompact(source);fs.mkdirSync(path.dirname(output),{recursive:true});fs.writeFileSync(output,JSON.stringify(result)+'\n','utf8');console.log(`Compiled Preferences compact IR: ${result.releases.length} exact releases, ${result.tabs.length} tab change points, ${Object.keys(result.preferences).length} source-mapped preference identities, ${Buffer.byteLength(JSON.stringify(result))} bytes.`);}catch(error){console.error(error?.message||error);process.exitCode=1;}}
+if(isMain){try{const input=path.resolve(process.argv[2]||''),output=path.resolve(process.argv[3]||'');if(!input||!fs.existsSync(input)||!output)throw new Error('Usage: node tools/qb-preferences-compact.mjs <source-catalog.json> <output.json> [canonical-catalog.json]');const source=JSON.parse(fs.readFileSync(input,'utf8')),defaultCatalog=path.resolve(path.dirname(input),'qb-releases.json'),catalogPath=process.argv[4]?path.resolve(process.argv[4]):defaultCatalog,canonical=fs.existsSync(catalogPath)?JSON.parse(fs.readFileSync(catalogPath,'utf8')):source.profiles,result=compileQbPreferencesCompact(source,canonical);fs.mkdirSync(path.dirname(output),{recursive:true});fs.writeFileSync(output,JSON.stringify(result)+'\n','utf8');console.log(`Compiled Preferences compact IR: ${result.releases.length} exact releases, catalog ${result.catalogIdentity.releaseSetSha256.slice(0,12)}, ${result.tabs.length} tab change points, ${Object.keys(result.preferences).length} source-mapped preference identities, ${Buffer.byteLength(JSON.stringify(result))} bytes.`);}catch(error){console.error(error?.message||error);process.exitCode=1;}}
