@@ -1,15 +1,27 @@
 function decodeHtml(value){return String(value||'').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,'$1').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&#(\d+);/g,(_m,n)=>String.fromCodePoint(Number(n))).replace(/&#x([0-9a-f]+);/gi,(_m,n)=>String.fromCodePoint(Number.parseInt(n,16))).replace(/&amp;/g,'&').replace(/<[^>]*>/g,'').replace(/\s+/g,' ').trim();}
 function qbtTr(value){const match=String(value||'').match(/QBT_TR\(([\s\S]*?)\)QBT_TR\[CONTEXT=([^\]]+)\]/i);if(!match)return null;const source=decodeHtml(match[1]),context=String(match[2]||'').trim();return source&&context?{source,context}:null;}
-function escapeRe(value){return String(value||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
 function prefRefs(statement,wanted){const out=[];for(const match of String(statement||'').matchAll(/\bpref\s*\.\s*([A-Za-z_$][\w$]*)/g)){const key=String(match[1]||'');if((!wanted.size||wanted.has(key))&&!out.includes(key))out.push(key);}return out;}
-function controlTitle(markup,id){
-  const escaped=escapeRe(id),text=String(markup||'');
-  const direct=text.match(new RegExp(`<label\\b([^>]*)\\bfor\\s*=\\s*["']${escaped}["'][^>]*>([\\s\\S]*?)<\\/label>`,'i'));
-  if(direct){const ref=qbtTr(direct[2]);if(ref)return ref;}
-  const labelled=text.match(new RegExp(`<(?:input|select|textarea|table)\\b[^>]*\\bid\\s*=\\s*["']${escaped}["'][^>]*\\baria-labelledby\\s*=\\s*["']([^"']+)["'][^>]*>`,'i'));
-  if(labelled){for(const labelId of String(labelled[1]||'').split(/\s+/)){const label=text.match(new RegExp(`<label\\b[^>]*\\bid\\s*=\\s*["']${escapeRe(labelId)}["'][^>]*>([\\s\\S]*?)<\\/label>`,'i'));const ref=label?qbtTr(label[1]):null;if(ref)return ref;const legend=text.match(new RegExp(`<legend\\b[^>]*\\bid\\s*=\\s*["']${escapeRe(labelId)}["'][^>]*>([\\s\\S]*?)<\\/legend>`,'i'));const legendRef=legend?qbtTr(legend[1]):null;if(legendRef)return legendRef;}}
-  const adjacent=text.match(new RegExp(`<label\\b[^>]*>([\\s\\S]*?)<\\/label>\\s*<(?:input|select|textarea|table)\\b[^>]*\\bid\\s*=\\s*["']${escaped}["']`,'i'));
-  return adjacent?qbtTr(adjacent[1]):null;
+function controlTitles(markup){
+  const text=String(markup||''),out=new Map(),labelsById=new Map(),legendsById=new Map();
+  for(const match of text.matchAll(/<label\b([^>]*)>([\s\S]*?)<\/label>/gi)){
+    const attrs=match[1]||'',ref=qbtTr(match[2]);if(!ref)continue;
+    const controlId=(attrs.match(/\bfor\s*=\s*["']([^"']+)["']/i)||[])[1],labelId=(attrs.match(/\bid\s*=\s*["']([^"']+)["']/i)||[])[1];
+    if(controlId&&!out.has(controlId))out.set(controlId,ref);
+    if(labelId&&!labelsById.has(labelId))labelsById.set(labelId,ref);
+  }
+  for(const match of text.matchAll(/<legend\b([^>]*)>([\s\S]*?)<\/legend>/gi)){
+    const id=((match[1]||'').match(/\bid\s*=\s*["']([^"']+)["']/i)||[])[1],ref=qbtTr(match[2]);
+    if(id&&ref&&!legendsById.has(id))legendsById.set(id,ref);
+  }
+  for(const match of text.matchAll(/<(?:input|select|textarea|table)\b([^>]*)>/gi)){
+    const attrs=match[1]||'',pair=attrs.match(/\bid\s*=\s*["']([^"']+)["'][^>]*\baria-labelledby\s*=\s*["']([^"']+)["']/i),id=pair?.[1];
+    if(!id||out.has(id))continue;
+    for(const labelId of String(pair[2]||'').split(/\s+/)){const ref=labelsById.get(labelId)||legendsById.get(labelId);if(ref){out.set(id,ref);break;}}
+  }
+  for(const match of text.matchAll(/<label\b[^>]*>([\s\S]*?)<\/label>\s*<(?:input|select|textarea|table)\b([^>]*)>/gi)){
+    const id=((match[2]||'').match(/\bid\s*=\s*["']([^"']+)["']/i)||[])[1];if(!id||out.has(id))continue;const ref=qbtTr(match[1]);if(ref)out.set(id,ref);
+  }
+  return out;
 }
 function balancedBody(text,start){
   const open=String(text).indexOf('{',start);if(open<0)return'';let depth=0,quote='',lineComment=false,blockComment=false,escape=false;
@@ -27,8 +39,8 @@ function balancedBody(text,start){
 function controlIds(statement){const out=[];for(const match of String(statement||'').matchAll(/document\.getElementById\(\s*["']([^"']+)["']\s*\)|\$\(\s*["']([^"']+)["']\s*\)/g)){const id=match[1]||match[2];if(id&&!out.includes(id))out.push(id);}return out;}
 
 export function extractQbPreferencesCompositeUiFacts(source,preferenceKeys=[]){
-  const text=String(source||''),wanted=new Set((preferenceKeys||[]).map(String)),out={};
-  const add=(key,id,evidence)=>{key=String(key||'');id=String(id||'');if(!key||!id||out[key]||(wanted.size&&!wanted.has(key)))return;const title=controlTitle(text,id);if(title)out[key]={controlId:id,evidence,title};};
+  const text=String(source||''),wanted=new Set((preferenceKeys||[]).map(String)),out={},titles=controlTitles(text);
+  const add=(key,id,evidence)=>{key=String(key||'');id=String(id||'');if(!key||!id||out[key]||(wanted.size&&!wanted.has(key)))return;const title=titles.get(id);if(title)out[key]={controlId:id,evidence,title};};
   const statementPatterns=[
     {re:/document\.getElementById\(\s*["']([^"']+)["']\s*\)[^;\n]*?=[^;\n]*;?/g,family:'semantic-modern-statement'},
     {re:/\$\(\s*["']([^"']+)["']\s*\)[^;\n]*?=[^;\n]*;?/g,family:'semantic-legacy-statement'},
