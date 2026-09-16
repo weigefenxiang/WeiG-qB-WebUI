@@ -45,10 +45,10 @@ const read=name=>fs.readFileSync(path.join(docsDir,name),'utf8');
 const handoff=read('014.AI协作与分支纪律.md');
 assert.match(handoff,/single current handoff authority/i,'014 must remain the single current handoff authority');
 assert.ok(handoff.includes('一键复制给下一位 AI'),'014 must keep one copyable next-AI handoff block');
-assert.ok(handoff.includes('## 4. 当前未完成事项判定'),'014 must preserve one explicit current-scope/TODO authority section without hard-coding an obsolete plan name');
-assert.match(handoff,/完成[^\n。]*阅读[^\n。]*fresh-read[^\n。]*后/,'copyable handoff must require docs reading + fresh repository truth before development without pinning one obsolete sentence');
+assert.match(handoff,/## \d+\. 当前最大 blocker[^\n]*[\s\S]*## \d+\. 其它未完成项/,'014 must preserve explicit current-blocker and unfinished-scope authority without hard-coding an obsolete plan name');
+assert.match(handoff,/按顺序完整阅读[：:][\s\S]*读完后 fresh-read dev\/main exact HEAD/,'copyable handoff must require docs reading + fresh repository truth before development without pinning one obsolete sentence');
 assert.ok(handoff.includes('SKIPPED != PASS'),'014 must keep skipped evidence distinct from exact-head PASS');
-assert.match(handoff,/ordinary CI[\s\S]*Pages materialization\/build\/deploy\/live/,'014 current-scope state must remain bound to ordinary CI plus exact-SHA Pages materialization/build/deploy/live evidence');
+assert.match(handoff,/final ordinary CI\/browser\/Pages/,'014 copyable handoff must retain final ordinary CI/browser/Pages evidence closure');
 
 const project=read('001.项目总方案.md');
 const current=read('002.兼容与实现状态.md');
