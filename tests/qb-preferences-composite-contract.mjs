@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {extractQbPreferencesNativeSurface} from '../tools/qb-preferences-surface-source.mjs';
 import {extractQbPreferencesInventory,auditQbPreferencesInventory} from '../tools/qb-preferences-inventory.mjs';
 import {reviewedQbPreferencesExclusions} from '../tools/qb-preferences-reviewed-exclusions.mjs';
+import {extractQbPreferenceValueProjection} from '../tools/qb-preferences-value-projection.mjs';
 import {assertCompleteSourceCensus} from '../tools/qb-source-census.mjs';
 
 const toolbar='<li id="PrefNetworkLink">QBT_TR(Network)QBT_TR[CONTEXT=OptionsDialog]</li>';
@@ -53,4 +54,50 @@ const writableDescriptors=descriptors.map(item=>item.key==='current_interface_na
 const noExclusion=reviewedQbPreferencesExclusions({source,preferenceDescriptors:writableDescriptors,inventory,manifest});
 assert.equal(noExclusion.preferences.length,0,'reviewed helper exclusion must fail closed if upstream ever makes the field writable');
 
-console.log('qB Preferences composite contract passed: sibling-label controls and switch mappings are independently accounted, while getter-only helper metadata uses a source-guarded reviewed exclusion.');
+const scaled=`
+<input id="rate" type="number">
+<script>
+  document.getElementById("rate").value = (Number(pref.rate_limit) / 1024);
+  const rateLimit = Number(document.getElementById("rate").value) * 1024;
+  settings["rate_limit"] = rateLimit;
+</script>`;
+assert.deepEqual(extractQbPreferenceValueProjection(scaled,'rate_limit','rate'),{kind:'scale',scale:1024,safeWrite:true},'inverse source read/write scale must compile into a safe scale projection');
+
+const mib=`
+<input id="size" type="text">
+<script>
+  document.getElementById("size").value = (pref.size_limit / 1024 / 1024);
+  settings["size_limit"] = (document.getElementById("size").value * 1024 * 1024);
+</script>`;
+assert.deepEqual(extractQbPreferenceValueProjection(mib,'size_limit','size'),{kind:'scale',scale:1048576,safeWrite:true},'chained source scale must preserve the exact raw/UI unit ratio');
+
+const mapped=`
+<select id="proxy"></select>
+<script>
+  switch (pref.proxy_type.toInt()) {
+    case 5:
+      $('proxy').setProperty('value', 'socks4');
+      break;
+    case 2:
+    case 4:
+      $('proxy').setProperty('value', 'socks5');
+      break;
+    case 1:
+    case 3:
+      $('proxy').setProperty('value', 'http');
+      break;
+    default:
+      $('proxy').setProperty('value', 'none');
+  }
+</script>`;
+assert.deepEqual(extractQbPreferenceValueProjection(mapped,'proxy_type','proxy'),{kind:'switch-map',values:[['5','socks4'],['2','socks5'],['4','socks5'],['1','http'],['3','http']],defaultValue:'none',safeWrite:false},'source switch map may drive display but must stay non-writable when an independent inverse cannot be proven');
+
+const mismatch=`
+<input id="value" type="number">
+<script>
+  document.getElementById("value").value = pref.example / 1024;
+  settings["example"] = document.getElementById("value").value * 1000;
+</script>`;
+assert.deepEqual(extractQbPreferenceValueProjection(mismatch,'example','value'),{kind:'unproven',safeWrite:false,readFactor:1/1024,writeFactor:1000},'mismatched source transforms must fail closed instead of inventing a reversible projection');
+
+console.log('qB Preferences composite/value contract passed: sibling labels and switch bindings are censused independently, helper metadata is reviewed explicitly, inverse source scales are writable, and unproven transforms fail closed.');
