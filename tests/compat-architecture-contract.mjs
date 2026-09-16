@@ -8,9 +8,7 @@ const root=path.resolve(here,'..');
 assert.equal(execFileSync('git',['-C',root,'ls-files','--','webui/private/scripts/release-profile.js'],{encoding:'utf8'}).trim(),'','retired ReleaseProfile runtime owner must stay deleted');
 assert.equal(execFileSync('git',['-C',root,'ls-files','--','webui/private/data/qb-releases.json'],{encoding:'utf8'}).trim(),'','retired qB release runtime index must stay deleted');
 const centralizedOwners=new Set(['webui/private/scripts/capabilities.js','webui/private/scripts/torrent-semantics.js','webui/private/scripts/torrent-fields.js','webui/private/scripts/settings-schema.js']);
-const frozenLegacyOwners=new Map([
-  ['webui/private/scripts/spatial.js','e489e6e463f1855a1e54a17e47bebde54a733d49']
-]);
+const frozenLegacyOwners=new Map([]);
 const patterns=[
   ['qB major comparison',/\b(?:this\.|self\.)?major\s*(?:===|!==|==|!=|>=|<=|>|<)\s*\d+/g],
   ['qB version comparison',/(?:\b[A-Za-z_$][\w$]*\.)*qbVersion(?:\.replace\([^;\n]*?\))?\s*(?:===|!==|==|!=|>=|<=|>|<)\s*['"`]\d/g],
