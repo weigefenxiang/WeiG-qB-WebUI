@@ -59,7 +59,7 @@ assert(qbWrite>=0&&qbVerifyRead>qbWrite&&qbPromote>qbVerifyRead,'qB Save must re
 assert(i18n.includes("'settings.save':'Save'")&&i18n.includes("'settings.save':'保存'"),'Settings Save label must be compact in English and Simplified Chinese');
 assert(!index.includes('settings-add-torrent')&&!settings.includes('settings-add-torrent'),'Settings must not introduce a duplicate Add Torrent surface');
 assert(settingsSchema.includes("'speed'")&&settingsSchema.includes("add('speed','global','number',['dl_limit','up_limit','alt_dl_limit','alt_up_limit'])"),'Speed must remain a canonical SettingsSchema surface');
-assert(settings.includes("QB_TAB_ORDER=['behavior','downloads','connection','speed','bittorrent','rss','webui','advanced']")&&settings.includes('function ensureQbTabs()')&&settings.includes('function ensureSpeedTab(){return ensureQbTabs();}'),'Settings owner must expose Speed through the canonical native qB tab reconciler without a parallel runtime owner');
+assert(settingsSchema.includes('function nativeSurfaces()')&&settings.includes('function syncQbTabs()')&&settings.includes('S.nativeSurfaces&&S.nativeSurfaces()')&&!settings.includes('QB_TAB_ORDER')&&!settings.includes('function ensureQbTabs()'),'Settings owner must project native qB tabs from SettingsSchema source truth without restoring the retired fixed-tab reconciler');
 assert(settings.includes('syncAdaptiveRows')&&settings.includes("row.classList.add('is-stacked')")&&settingsCss.includes('.setting-row.is-stacked'),'Long mobile descriptions must stack the canonical control below the copy');
 assert(settings.includes('W.Time.displayLabel(x.value)'),'Timezone labels must continue using the existing time owner');
 
