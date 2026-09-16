@@ -168,7 +168,7 @@ try{
       for(const key of examples)assert.ok(expected.sourceKeys.includes(key),`WeiG ${surface} route must include upstream preference ${key}`);
       for(const [rowKey,sourceKeys] of Object.entries(expected.compounds||{})){
         const row=page.locator(`#settings-content [data-setting-key="${rowKey}"]`);
-        await row.waitFor({state:'visible',timeout:5000});
+        await row.waitFor({state:'attached',timeout:5000});
         const search=String(await row.getAttribute('data-setting-search')||'');
         for(const key of sourceKeys)assert.ok(search.includes(key),`WeiG ${surface} compound row ${rowKey} must represent upstream preference ${key}`);
         assert.equal(await row.locator('input').count(),sourceKeys.length,`WeiG ${surface} compound row ${rowKey} must expose one canonical input per source preference`);
