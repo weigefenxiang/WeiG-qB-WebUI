@@ -145,6 +145,12 @@ function addRelation(relations, key, id, evidence) {
   relations.set(key, list);
 }
 
+function dotPreferenceRefs(value) {
+  const out=[];
+  for(const match of String(value||'').matchAll(/\bpref\.([A-Za-z0-9_]+)/g)) if(!out.includes(match[1])) out.push(match[1]);
+  return out;
+}
+
 function preferenceControlRelations(source) {
   const text = String(source || ''), relations = new Map();
   // Read bindings. qB has used both document.getElementById() and its $() helper,
@@ -152,6 +158,20 @@ function preferenceControlRelations(source) {
   for (const match of text.matchAll(/document\.getElementById\(\s*["']([^"']+)["']\s*\)[^;\n]*?=\s*[^;\n]*?\bpref\.([A-Za-z0-9_]+)/g)) addRelation(relations, match[2], match[1], 'modern-read');
   for (const match of text.matchAll(/\$\(\s*["']([^"']+)["']\s*\)[^;\n]*?=\s*[^;\n]*?\bpref\.([A-Za-z0-9_]+)/g)) addRelation(relations, match[2], match[1], 'legacy-property-read');
   for (const match of text.matchAll(/\$\(\s*["']([^"']+)["']\s*\)\.(?:setProperty|set)\([^;\n]*?pref\.([A-Za-z0-9_]+)/g)) addRelation(relations, match[2], match[1], 'legacy-read');
+
+  // Some native assignments intentionally reference more than one preference
+  // (for example an enabled gate plus its value in one ternary). The historical
+  // single-capture patterns above preserve candidate order; this second pass
+  // admits every dot-syntax preference identity proven by the same assignment.
+  for (const match of text.matchAll(/document\.getElementById\(\s*["']([^"']+)["']\s*\)[^;\n]*?=[^;\n]*;?/g)) {
+    for (const key of dotPreferenceRefs(match[0])) addRelation(relations, key, match[1], 'modern-read-statement');
+  }
+  for (const match of text.matchAll(/\$\(\s*["']([^"']+)["']\s*\)[^;\n]*?=[^;\n]*;?/g)) {
+    for (const key of dotPreferenceRefs(match[0])) addRelation(relations, key, match[1], 'legacy-property-read-statement');
+  }
+  for (const match of text.matchAll(/\$\(\s*["']([^"']+)["']\s*\)\.(?:setProperty|set)\([^;\n]*\)\s*;?/g)) {
+    for (const key of dotPreferenceRefs(match[0])) addRelation(relations, key, match[1], 'legacy-read-statement');
+  }
 
   // Direct write bindings across the historical settings.set(), object-literal,
   // property and qB 5.1 settings["key"] assignment families.
@@ -186,7 +206,6 @@ function preferenceControlRelations(source) {
   if (/updateWebuiLocaleSelect\(\s*pref\.locale\s*\)/.test(text)) addRelation(relations,'locale','locale_select','locale-source-call');
   return relations;
 }
-
 
 export function extractQbPreferenceUiFacts(preferencesSource, preferenceKeys = []) {
   const markup = String(preferencesSource || '');
