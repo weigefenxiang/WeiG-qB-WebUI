@@ -11,6 +11,8 @@ const source=`
   <select id="protocol_select"><option value="0">QBT_TR(Both)QBT_TR[CONTEXT=OptionsDialog]</option></select>
   <label for="proxy_select">QBT_TR(Type:)QBT_TR[CONTEXT=OptionsDialog]</label>
   <select id="proxy_select"><option value="none">QBT_TR((None))QBT_TR[CONTEXT=OptionsDialog]</option></select>
+  <label for="network_interface_select">QBT_TR(Network interface:)QBT_TR[CONTEXT=OptionsDialog]</label>
+  <select id="network_interface_select"><option value="any">QBT_TR(Any interface)QBT_TR[CONTEXT=OptionsDialog]</option></select>
 </div>
 <script>
   $('protocol_select').setProperty('value', pref.protocol);
@@ -18,6 +20,7 @@ const source=`
     case 1: $('proxy_select').setProperty('value', 'http'); break;
     default: $('proxy_select').setProperty('value', 'none');
   }
+  $('network_interface_select').setProperty('value', pref.network_interface);
   updateNetworkInterfaces(pref.network_interface, pref.current_interface_name);
 </script>`;
 const descriptors=[
@@ -31,11 +34,13 @@ assert.equal(manifest.preferences.protocol.control.id,'protocol_select','adjacen
 assert.equal(manifest.preferences.protocol.title.source,'Enabled protocol:','adjacent source copy must label the native control');
 assert.equal(manifest.preferences.proxy_type.control.id,'proxy_select','switch(pref.*) composite reads must resolve their unique native control');
 assert.equal(manifest.preferences.proxy_type.title.source,'Type:','switch-mapped control title must stay source-owned');
+assert.equal(manifest.preferences.network_interface.control.id,'network_interface_select','the actual network-interface preference must remain independently source-mapped');
 assert.ok(!manifest.preferences.current_interface_name,'helper metadata must not be fabricated as an independent native preference control');
 
 const inventory=extractQbPreferencesInventory({preferencesSource:source,preferenceDescriptors:descriptors});
 assert.ok(inventory.bindings.some(item=>item.key==='protocol_select'&&item.preferenceKeys.includes('protocol')),'independent census must see the direct protocol binding');
 assert.ok(inventory.bindings.some(item=>item.key==='proxy_select'&&item.preferenceKeys.includes('proxy_type')),'independent census must separately see the switch composite binding');
+assert.ok(inventory.bindings.some(item=>item.key==='network_interface_select'&&item.preferenceKeys.includes('network_interface')),'fixture must model the real independently-owned network-interface preference alongside its display metadata');
 const exclusions=reviewedQbPreferencesExclusions({source,preferenceDescriptors:descriptors,inventory,manifest});
 assert.deepEqual(exclusions.preferences.map(item=>item.key),['current_interface_name'],'getter-only helper metadata must require an explicit reviewed exclusion');
 assert.match(exclusions.preferences[0].reason,/getter-only/,'reviewed exclusion must carry a concrete audit reason');
