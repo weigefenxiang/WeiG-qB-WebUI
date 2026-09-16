@@ -1,4 +1,5 @@
 import {accountSourceInventory} from './qb-source-census.mjs';
+import {inventoryCompositeSwitchBindings} from './qb-preferences-inventory-composite.mjs';
 
 function attrText(value,name){
   const escaped=String(name).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
@@ -110,8 +111,8 @@ function sourceBindings(source,descriptorKeys){
     ];
     for(const item of patterns)for(const match of text.matchAll(item.re))rows.push({key:match[1],preferenceKeys:[key],syntax:[item.family],position:match.index??0});
   }
-  const writes=writeFacts(text,descriptorKeys);
-  return{bindings:mergeBindings([...rows,...writes.bindings]),writeRefs:writes.refs};
+  const composite=inventoryCompositeSwitchBindings(text,descriptorKeys),writes=writeFacts(text,descriptorKeys);
+  return{bindings:mergeBindings([...rows,...composite,...writes.bindings]),writeRefs:writes.refs};
 }
 
 export function extractQbPreferencesInventory({preferencesSource='',preferenceDescriptors=[]}={}){

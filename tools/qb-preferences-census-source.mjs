@@ -5,6 +5,7 @@ import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {admittedCatalogRows,catalogIdentity} from './qb-catalog-identity.mjs';
 import {extractQbPreferencesInventory,auditQbPreferencesInventory} from './qb-preferences-inventory.mjs';
+import {reviewedQbPreferencesExclusions} from './qb-preferences-reviewed-exclusions.mjs';
 
 function git(root,...args){return execFileSync('git',['-C',root,...args],{encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();}
 function showMaybe(root,tag,file){try{return git(root,'show',`${tag}:${file}`);}catch{return'';}}
@@ -38,7 +39,8 @@ export function buildQbPreferencesCensus(catalog,sourceCatalog,qbRoot){
     const raw=preferencesSource(qbRoot,tag);
     if(!raw)throw new Error(`${row.qbVersion}: independent Preferences census cannot read native source.`);
     const inventory=extractQbPreferencesInventory({preferencesSource:raw.source,preferenceDescriptors:base.preferenceDescriptors||[]});
-    const census=auditQbPreferencesInventory({inventory,manifest:semantic.manifest});
+    const exclusions=reviewedQbPreferencesExclusions({source:raw.source,preferenceDescriptors:base.preferenceDescriptors||[],inventory,manifest:semantic.manifest});
+    const census=auditQbPreferencesInventory({inventory,manifest:semantic.manifest,exclusions});
     profiles.push({
       qbVersion:row.qbVersion,
       sourceSha:row.sourceSha,
@@ -52,6 +54,7 @@ export function buildQbPreferencesCensus(catalog,sourceCatalog,qbRoot){
         descriptorCount:inventory.descriptorCount,
         referencedDescriptorCount:inventory.referencedDescriptorCount
       },
+      reviewedExclusions:exclusions,
       census
     });
   }
