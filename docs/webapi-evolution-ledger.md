@@ -48,7 +48,7 @@ NOT_APPLICABLE
 
 含义：
 
-- `SOURCE_DERIVED`：结构事实已由 source catalog拥有；
+- `SOURCE_DERIVED`：结构事实已由 source catalog 拥有；
 - `CONTRACT_COVERED`：当前 simulator/evidence contract 已建模该 observable boundary；
 - `MISSING`：已知 evolution evidence 尚未进入相应模拟/证据 owner；
 - `NOT_APPLICABLE`：没有合理 simulator/runtime responsibility。
@@ -100,15 +100,16 @@ NOT_APPLICABLE      -> ledger only
 Formal product owner 另见：
 
 ```text
-W.ReleaseProfile
-W.QBClient
-W.CapabilityRegistry
-W.SettingsSchema
-W.TorrentSemantics
-W.TorrentFieldRegistry
+W.QBClient              # transport + detected identity
+W.CapabilityRegistry    # runtime compatibility/current release/source facts
+W.SettingsSchema        # Settings Preference semantics/write proof
+W.TorrentSemantics      # Torrent status/filter canonical semantics
+W.TorrentFieldRegistry  # Torrent field/column projection + user overrides
 ```
 
-不要混淆 simulator owner 与 product owner。
+旧 browser runtime `W.ReleaseProfile` owner 已退休；ledger/source catalog 可以保留离线 release/source evidence，但不得要求正式 `webui/**` 恢复 release-profile runtime、`qb-releases.json` 或 per-release profile shards。
+
+不要混淆 simulator owner、离线 source evidence 与 formal product owner。
 
 ## 5. Compatibility examples
 
@@ -119,7 +120,7 @@ qB4 resume/pause
 qB5 start/stop
 ```
 
-正式解决属于 product compatibility owner；simulator 只负责准确复现对应 upstream 行为。
+正式解决属于 `W.CapabilityRegistry` 提供的 source-proven action facts + canonical product action owner；simulator 只负责准确复现对应 upstream 行为。
 
 ### Torrent filter names
 
@@ -128,11 +129,11 @@ qB4 paused/resumed
 qB5 stopped/running
 ```
 
-正式 normalize 属于 `W.ReleaseProfile + W.TorrentSemantics`。
+正式 normalize 属于 `W.CapabilityRegistry + W.TorrentSemantics`；不得恢复已退休 release-profile owner，也不得把版本分支散落到 UI caller。
 
 ### Historical response/parameter changes
 
-例如 Category shape、`editTracker`、`torrents/add`、Basic Auth、peer `host_name` 等差异，可以由 ledger/source evidence 记录，并在 simulator Endpoint/Transport Contract 中复现；如果正式 UI 消费这些差异，还必须在 product owner 中证明正确处理。
+例如 Category shape、`editTracker`、`torrents/add`、Basic Auth、peer `host_name` 等差异，可以由 ledger/source evidence 记录，并在 simulator Endpoint/Transport Contract 中复现；如果正式 UI 消费这些差异，还必须在当前 canonical product owner 中证明正确处理。
 
 ## 6. Future stable
 
@@ -140,10 +141,11 @@ qB5 stopped/running
 
 ```text
 discover exact tag/source identity
--> generate source profile
+-> generate source facts/profile evidence
 -> compare evolution facts
 -> product impact analysis
 -> compatibility implementation if required
+-> regenerate/audit compact runtime contracts
 -> simulator/evidence update if useful
 -> admission review
 ```
@@ -154,7 +156,7 @@ Unknown future semantics 不允许猜测。Fail-close 是安全机制，不是�
 
 仓库不再维护独立 `Upstream Compatibility Audit` workflow。
 
-发布级 source/product audit 由 `CI` 的 `candidate` 模式完成：
+发布级 source/product audit 由现行 CI/candidate 流程承担：
 
 ```text
 generate exact stable source catalog
@@ -164,7 +166,7 @@ generate exact stable source catalog
 
 全版本真实 runtime 证明由 `Real qB Full Frozen Matrix` 手动执行。
 
-详细流程见 `docs/006.发布与晋级流程.md`。
+Candidate / release-grade 流程只有用户明确授权后才进入；ledger 本身不能成为自动创建 `[candidate]` 或启动 heavy matrix 的理由。详细流程见 `docs/006.发布与晋级流程.md`。
 
 ## 8. Working rule
 
@@ -174,9 +176,9 @@ Ledger 是 chronology/evidence authority；`docs/010.真实qB产品兼容路线.
 
 ```text
 official source/runtime truth
--> admitted profile
+-> admitted source evidence
 -> canonical product owner
 -> evidence tools/docs
 ```
 
-不要为了保留旧 ledger/test expectation 修改正确产品语义。
+不要为了保留旧 ledger/test expectation 修改正确产品语义，也不要把离线 release/profile evidence重新升级成 browser runtime owner。
