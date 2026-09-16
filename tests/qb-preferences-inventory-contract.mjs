@@ -67,6 +67,16 @@ assert.deepEqual(missed.preferences.unaccounted,['future_unmapped'],'a newly ref
 assert.deepEqual(missed.bindings.unaccounted,['future_unmapped'],'a newly introduced source-bound control must remain unaccounted until semantic extraction admits it');
 assert.throws(()=>assertCompleteSourceCensus(missed.preferences,'Preferences preference inventory'),/unaccounted=future_unmapped/,'future source controls must fail closed instead of silently lowering a mapping ratio');
 
+const writeOnlySource=source.replace('document.getElementById("future_limit").value = pref.future_limit;','').replace('</script>','  settings["future_limit"] = Number(document.getElementById("future_limit").value);\n</script>');
+const writeOnlyInventory=extractQbPreferencesInventory({preferencesSource:writeOnlySource,preferenceDescriptors:descriptors});
+assert.ok(writeOnlyInventory.preferenceRefs.some(item=>item.key==='future_limit'&&item.syntax==='write:indexed-settings'),'write-side settings identity must enter the independent preference census even without a pref read');
+assert.ok(writeOnlyInventory.bindings.some(item=>item.key==='future_limit'&&item.preferenceKeys.includes('future_limit')),'write-only native controls must enter the hard binding census');
+const writeOnlyManifest=extractQbPreferencesNativeSurface({preferencesSource:writeOnlySource,toolbarSource:toolbar,preferenceDescriptors:descriptors});
+assert.equal(writeOnlyManifest.preferences.future_limit.control.id,'future_limit','semantic extractor must retain a write-only source owner');
+const writeOnlyAudit=auditQbPreferencesInventory({inventory:writeOnlyInventory,manifest:writeOnlyManifest});
+assertCompleteSourceCensus(writeOnlyAudit.preferences,'Preferences write-only preference inventory');
+assertCompleteSourceCensus(writeOnlyAudit.bindings,'Preferences write-only binding inventory');
+
 const helperSource=source.replace('<script>','<input id="helper_only" type="text">\n<script>');
 const helperInventory=extractQbPreferencesInventory({preferencesSource:helperSource,preferenceDescriptors:descriptors});
 assert.ok(helperInventory.controls.some(item=>item.key==='helper_only'),'raw diagnostics must still see helper/client-only controls');
@@ -75,4 +85,4 @@ const helperAudit=auditQbPreferencesInventory({inventory:helperInventory,manifes
 assertCompleteSourceCensus(helperAudit.bindings,'Preferences helper-safe binding inventory');
 assert.ok(helperAudit.rawControls.unmappedControls.includes('helper_only'),'helper/client-only controls stay visible as diagnostics without masquerading as app/preferences omissions');
 
-console.log('qB Preferences independent inventory contract passed: native tabs, app/preferences identities and source-proven controls are censused independently; helper controls stay diagnostic-only, multi-reference assignments remain mapped, and new syntax/additions fail closed.');
+console.log('qB Preferences independent inventory contract passed: native tabs, read/write app/preferences identities and source-proven controls are censused independently; helper controls stay diagnostic-only, multi-reference and write-only bindings remain mapped, and new syntax/additions fail closed.');

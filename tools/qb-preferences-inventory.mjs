@@ -8,12 +8,24 @@ function attrText(value,name){
 function tabSlug(value){return String(value||'').replace(/Tab$/i,'').replace(/[^A-Za-z0-9]+/g,'').toLowerCase();}
 function uniqueByFirstPosition(rows,key='key'){
   const seen=new Set(),out=[];
-  for(const row of rows.sort((a,b)=>a.position-b.position)){
+  for(const row of [...rows].sort((a,b)=>a.position-b.position)){
     const value=String(row?.[key]||'').trim();
     if(!value||seen.has(value))continue;
     seen.add(value);out.push(row);
   }
   return out;
+}
+function mergeBindings(rows){
+  const byControl=new Map();
+  for(const row of [...rows].sort((a,b)=>a.position-b.position)){
+    const key=String(row?.key||'').trim();if(!key)continue;
+    const current=byControl.get(key)||{key,preferenceKeys:[],syntax:[],position:row.position??0};
+    current.position=Math.min(current.position,row.position??current.position);
+    for(const value of row.preferenceKeys||[])if(!current.preferenceKeys.includes(value))current.preferenceKeys.push(value);
+    for(const value of row.syntax||[])if(!current.syntax.includes(value))current.syntax.push(value);
+    byControl.set(key,current);
+  }
+  return [...byControl.values()].sort((a,b)=>a.position-b.position);
 }
 function preferenceRefs(value,descriptorKeys){
   const out=[];
@@ -21,6 +33,35 @@ function preferenceRefs(value,descriptorKeys){
   for(const match of String(value||'').matchAll(/\bpref\s*\.\s*([A-Za-z_$][\w$]*)/g))add(match[1],'dot',match.index??0);
   for(const match of String(value||'').matchAll(/\bpref\s*\[\s*(['"])(.*?)\1\s*\]/g))add(match[2],'bracket',match.index??0);
   return out;
+}
+function writeFacts(source,descriptorKeys){
+  const text=String(source||''),bindings=[],refs=[];
+  const acceptKey=(key)=>{key=String(key||'').trim();return key&&(!descriptorKeys.size||descriptorKeys.has(key))?key:'';};
+  const controlIds=(statement)=>{
+    const out=[];
+    for(const match of String(statement||'').matchAll(/document\.getElementById\(\s*["']([^"']+)["']\s*\)/g))if(!out.includes(match[1]))out.push(match[1]);
+    for(const match of String(statement||'').matchAll(/\$\(\s*["']([^"']+)["']\s*\)/g))if(!out.includes(match[1]))out.push(match[1]);
+    return out;
+  };
+  const add=(key,statement,position,family)=>{
+    key=acceptKey(key);if(!key)return;
+    const ids=controlIds(statement);if(!ids.length)return;
+    refs.push({key,syntax:`write:${family}`,position:position??0});
+    for(const id of ids)bindings.push({key:id,preferenceKeys:[key],syntax:[`write:${family}`],position:position??0});
+  };
+  for(const match of text.matchAll(/settings\.set\(\s*["']([^"']+)["']\s*,[^;\n]*?\)\s*;?/g))add(match[1],match[0],match.index,'settings-set');
+  for(const match of text.matchAll(/settings\[\s*["']([^"']+)["']\s*\]\s*=\s*[^;\n]*;?/g))add(match[1],match[0],match.index,'indexed-settings');
+  for(const match of text.matchAll(/(?:settings|preferences)\.([A-Za-z0-9_]+)\s*=\s*[^;\n]*;?/g))add(match[1],match[0],match.index,'property-settings');
+  for(const match of text.matchAll(/(?:^|[,{;]\s*)([A-Za-z0-9_]+)\s*:\s*[^,;\n]*(?:document\.getElementById|\$)\([^,;\n]*[,;]?/gm))add(match[1],match[0],match.index,'object-entry');
+
+  const controlVars=new Map();
+  for(const match of text.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*[^;\n]*?(?:document\.getElementById\(\s*["']([^"']+)["']\s*\)|\$\(\s*["']([^"']+)["']\s*\))[^;\n]*;?/g))controlVars.set(match[1],match[2]||match[3]);
+  for(const match of text.matchAll(/settings\[\s*["']([^"']+)["']\s*\]\s*=\s*([A-Za-z_$][\w$]*)\s*;/g)){
+    const key=acceptKey(match[1]),id=controlVars.get(match[2]);if(!key||!id)continue;
+    refs.push({key,syntax:'write:indexed-variable',position:match.index??0});
+    bindings.push({key:id,preferenceKeys:[key],syntax:['write:indexed-variable'],position:match.index??0});
+  }
+  return{refs:uniqueByFirstPosition(refs),bindings:mergeBindings(bindings)};
 }
 function sourceBindings(source,descriptorKeys){
   const text=String(source||''),rows=[];
@@ -32,7 +73,8 @@ function sourceBindings(source,descriptorKeys){
   for(const match of text.matchAll(/document\.getElementById\(\s*["']([^"']+)["']\s*\)[^;\n]*?=[^;\n]*;?/g))addStatement(match[1],match[0],match.index,'modern-assignment');
   for(const match of text.matchAll(/\$\(\s*["']([^"']+)["']\s*\)[^;\n]*?=[^;\n]*;?/g))addStatement(match[1],match[0],match.index,'legacy-assignment');
   for(const match of text.matchAll(/\$\(\s*["']([^"']+)["']\s*\)\.(?:setProperty|set)\([^;\n]*\)\s*;?/g))addStatement(match[1],match[0],match.index,'legacy-set');
-  return uniqueByFirstPosition(rows);
+  const writes=writeFacts(text,descriptorKeys);
+  return{bindings:mergeBindings([...rows,...writes.bindings]),writeRefs:writes.refs};
 }
 
 export function extractQbPreferencesInventory({preferencesSource='',preferenceDescriptors=[]}={}){
@@ -49,12 +91,12 @@ export function extractQbPreferencesInventory({preferencesSource='',preferenceDe
     const id=String(attrText(match[2]||'','id')||'').trim();
     if(id)controls.push({key:id,tag:String(match[1]||'').toLowerCase(),position:match.index??0});
   }
-  const refs=preferenceRefs(source,descriptorKeys);
+  const readRefs=preferenceRefs(source,descriptorKeys),bindingFacts=sourceBindings(source,descriptorKeys),refs=uniqueByFirstPosition([...readRefs,...bindingFacts.writeRefs]);
   return{
     tabs:uniqueByFirstPosition(tabs),
     controls:uniqueByFirstPosition(controls),
-    preferenceRefs:uniqueByFirstPosition(refs),
-    bindings:sourceBindings(source,descriptorKeys),
+    preferenceRefs:refs,
+    bindings:bindingFacts.bindings,
     descriptorCount:descriptorKeys.size,
     referencedDescriptorCount:new Set(refs.map(item=>item.key)).size
   };
