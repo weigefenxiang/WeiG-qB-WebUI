@@ -406,7 +406,6 @@ jobs:
           command -v google-chrome >/dev/null || { echo 'Hosted Google Chrome Stable is missing.' >&2; exit 1; }
           google-chrome --version
           node -p "require('playwright/package.json').version"
-          printf 'Runner image: %s %s\n' "${ImageOS:-unknown}" "${ImageVersion:-unknown}"
           printf 'Git SHA: %s\n' "$GITHUB_SHA"
       - name: Representative qB4/qB5 semantic browser matrix
         run: |
@@ -597,7 +596,6 @@ jobs:
           path: upstream-qb
           fetch-depth: 0
           fetch-tags: true
-          filter: blob:none
           persist-credentials: false
       - name: Build exact admitted source catalog
         run: node tools/qb-release-catalog.mjs upstream-qb --output=qb-releases.json
