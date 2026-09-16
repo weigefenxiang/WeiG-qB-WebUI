@@ -5,32 +5,48 @@ const own=(value,key)=>!!value&&Object.prototype.hasOwnProperty.call(value,key);
 
 function decode(value){return String(value||'').replace(/&quot;|&#34;/g,'"').replace(/&#39;|&apos;/g,"'").replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>');}
 function text(value){return decode(String(value||'').replace(/<[^>]*>/g,'').trim());}
+function escapeRegExp(value){return String(value||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
 function qbtRef(fragment){
   const match=String(fragment||'').match(/QBT_TR\(([\s\S]*?)\)QBT_TR(?:\[CONTEXT=([^\]]+)\])?/);
   if(!match)return null;
   return{source:text(match[1]),context:String(match[2]||DEFAULT_CONTEXT).trim()||DEFAULT_CONTEXT};
 }
-function elementIndex(source,id){const re=new RegExp(`<[^>]+\\bid=["']${id}["'][^>]*>`,'i'),match=re.exec(source);return match?match.index:-1;}
+function elementIndex(source,id){const re=new RegExp(`<[^>]+\\bid=["']${escapeRegExp(id)}["'][^>]*>`,'i'),match=re.exec(source);return match?match.index:-1;}
 function labelRef(source,id,index){
-  const direct=new RegExp(`<label\\b[^>]*\\bfor=["']${id}["'][^>]*>([\\s\\S]*?)<\\/label>`,'i').exec(source);
+  const direct=new RegExp(`<label\\b[^>]*\\bfor=["']${escapeRegExp(id)}["'][^>]*>([\\s\\S]*?)<\\/label>`,'i').exec(source);
   if(direct)return qbtRef(direct[1]);
   const before=String(source||'').slice(Math.max(0,index-700),index);
   const labels=[...before.matchAll(/<label\b[^>]*>([\s\S]*?)<\/label>/gi)];
   return labels.length?qbtRef(labels.at(-1)[1]):null;
 }
-function selectOptions(source,id){
-  const match=new RegExp(`<select\\b[^>]*\\bid=["']${id}["'][^>]*>([\\s\\S]*?)<\\/select>`,'i').exec(source);
+function pathNeedle(path){return path?.[0]==='torrentParams'?`rulesList[rule].torrentParams.${path[1]}`:`rulesList[rule].${path?.[1]||''}`;}
+function parseLiteral(raw){
+  const value=String(raw||'').trim();
+  if(value==='null')return{found:true,value:null};
+  if(value==='true')return{found:true,value:true};
+  if(value==='false')return{found:true,value:false};
+  const quoted=value.match(/^(["'])([\s\S]*)\1$/);if(quoted)return{found:true,value:quoted[2].replace(/\\([\\"'])/g,'$1')};
+  return{found:false,value:undefined};
+}
+function optionWriteValue(source,path,value){
+  const target=escapeRegExp(pathNeedle(path));
+  const option=escapeRegExp(value);
+  const match=new RegExp(`case\\s+["']${option}["']\\s*:[\\s\\S]{0,500}?${target}\\s*=\\s*(null|true|false|["'][^"']*["'])\\s*;`,'i').exec(String(source||''));
+  return match?parseLiteral(match[1]):{found:false,value:undefined};
+}
+function selectOptions(source,id,path){
+  const match=new RegExp(`<select\\b[^>]*\\bid=["']${escapeRegExp(id)}["'][^>]*>([\\s\\S]*?)<\\/select>`,'i').exec(source);
   if(!match)return[];
-  return[...match[1].matchAll(/<option\b[^>]*\bvalue=["']([^"']*)["'][^>]*>([\s\S]*?)<\/option>/gi)].map(item=>({value:String(item[1]),translation:qbtRef(item[2])}));
+  return[...match[1].matchAll(/<option\b[^>]*\bvalue=["']([^"']*)["'][^>]*>([\s\S]*?)<\/option>/gi)].map(item=>{
+    const option={value:String(item[1]),translation:qbtRef(item[2])},write=optionWriteValue(source,path,option.value);
+    if(write.found)option.writeValue=write.value;
+    return option;
+  });
 }
 function sourcePath(source,candidates){
-  for(const item of candidates){
-    const needle=item.path[0]==='torrentParams'?`rulesList[rule].torrentParams.${item.path[1]}`:`rulesList[rule].${item.path[1]}`;
-    if(String(source||'').includes(needle))return item.path.slice();
-  }
+  for(const item of candidates){const needle=pathNeedle(item.path);if(String(source||'').includes(needle))return item.path.slice();}
   return null;
 }
-function pathExists(source,path){if(!path)return false;const needle=path[0]==='torrentParams'?`rulesList[rule].torrentParams.${path[1]}`:`rulesList[rule].${path[1]}`;return String(source||'').includes(needle);}
 
 const CONTROL_DEFS=[
   {id:'useRegEx',key:'useRegex',kind:'checkbox',paths:[{path:['rule','useRegex']}]},
@@ -59,11 +75,11 @@ export function extractRssDownloaderSurface(source=''){
     const index=elementIndex(source,def.id);if(index<0)continue;
     const path=sourcePath(source,def.paths);if(!path)continue;
     const field={key:def.key,controlId:def.id,kind:def.kind,path,translation:labelRef(source,def.id,index)};
-    if(def.kind==='number'){const tag=new RegExp(`<input\\b[^>]*\\bid=["']${def.id}["'][^>]*>`,'i').exec(source)?.[0]||'';const min=/\bmin=["']([^"']+)["']/i.exec(tag);if(min)field.min=Number(min[1]);}
-    if(def.kind==='triState'||def.kind==='select')field.options=selectOptions(source,def.id);
+    if(def.kind==='number'){const tag=new RegExp(`<input\\b[^>]*\\bid=["']${escapeRegExp(def.id)}["'][^>]*>`,'i').exec(source)?.[0]||'';const min=/\bmin=["']([^"']+)["']/i.exec(tag);if(min)field.min=Number(min[1]);}
+    if(def.kind==='triState'||def.kind==='select')field.options=selectOptions(source,def.id,path);
     fields.push({index,...field});
   }
-  const feedsIndex=source.indexOf('rssDownloaderFeeds');
+  const feedsIndex=elementIndex(source,'rssDownloaderFeeds');
   if(feedsIndex>=0&&/rulesList\[rule\]\.affectedFeeds\s*=/.test(source)){
     const legend=surfaceRef(source,/<fieldset\b[^>]*\bid=["']rssDownloaderFeeds["'][^>]*>[\s\S]*?<legend>([\s\S]*?)<\/legend>/i);
     fields.push({index:feedsIndex,key:'affectedFeeds',controlId:'rssDownloaderFeeds',kind:'feeds',path:['rule','affectedFeeds'],translation:legend});
@@ -91,6 +107,13 @@ export function rssSurfaceTranslationRefs(surface){
 
 export function assertRssSurfaceBindings(surface,label='RSS surface'){
   if(!surface?.available)return surface;
-  const keys=new Set();for(const field of surface.fields||[]){if(!field.key||!Array.isArray(field.path)||field.path.length!==2)throw new Error(`${label}: invalid RSS field binding`);const id=`${field.key}\u0000${field.controlId}`;if(keys.has(id))throw new Error(`${label}: duplicate RSS field ${id}`);keys.add(id);if((field.kind==='triState'||field.kind==='select')&&(!Array.isArray(field.options)||!field.options.length))throw new Error(`${label}: ${field.controlId} options are unresolved`);}
+  const keys=new Set();for(const field of surface.fields||[]){
+    if(!field.key||!Array.isArray(field.path)||field.path.length!==2)throw new Error(`${label}: invalid RSS field binding`);
+    const id=`${field.key}\u0000${field.controlId}`;if(keys.has(id))throw new Error(`${label}: duplicate RSS field ${id}`);keys.add(id);
+    if(field.kind==='triState'||field.kind==='select'){
+      if(!Array.isArray(field.options)||!field.options.length)throw new Error(`${label}: ${field.controlId} options are unresolved`);
+      for(const option of field.options)if(!own(option,'writeValue'))throw new Error(`${label}: ${field.controlId} option ${option.value} write value is not source-proven`);
+    }
+  }
   return surface;
 }
