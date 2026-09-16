@@ -141,8 +141,9 @@ try{
       advanced:['checking_memory_use','disk_cache_ttl','disk_io_read_mode','disk_io_write_mode','enable_coalesce_read_write','file_pool_size','memory_working_set_limit'].filter(key=>anchor.preferenceKeys.includes(key))
     };
     for(const [surface,keys] of Object.entries(routeExamples))for(const key of keys)assert.ok(Object.prototype.hasOwnProperty.call(anchorResponse.json,key),`Virtual qB ${anchor.qbVersion} must expose ${surface} preference ${key}`);
-    const expectedSurfaces=await page.evaluate(prefs=>{
+    const expectedSurfaces=await page.evaluate(async prefs=>{
       const schema=window.WeiG.SettingsSchema;
+      if(schema.loadCompatibility)await schema.loadCompatibility();
       function project(surface){
         const sourceKeys=schema.group(surface,prefs).flatMap(group=>group.keys).sort();
         const rows=new Set(sourceKeys),compounds={};
