@@ -8,6 +8,10 @@ import {extractQbPreferenceUiFacts} from './qb-settings-translation-source.mjs';
 import {extractQbPreferencesCompositeUiFacts} from './qb-preferences-semantic-composite.mjs';
 import {extractQbPreferenceValueProjection} from './qb-preferences-value-projection.mjs';
 
+const PREFERENCES_SOURCE_PATHS=['src/webui/www/private/views/preferences.html','src/webui/www/private/preferences_content.html','src/webui/www/private/preferences.html'];
+const TOOLBAR_SOURCE_PATHS=['src/webui/www/private/views/preferencesToolbar.html','src/webui/www/private/preferences.html'];
+const SOURCE_BLOB_PATHS=[...new Set([...PREFERENCES_SOURCE_PATHS,...TOOLBAR_SOURCE_PATHS])];
+
 function decodeHtml(value){return String(value||'').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,'$1').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&#(\d+);/g,(_m,n)=>String.fromCodePoint(Number(n))).replace(/&#x([0-9a-f]+);/gi,(_m,n)=>String.fromCodePoint(Number.parseInt(n,16))).replace(/&amp;/g,'&').replace(/<[^>]*>/g,'').replace(/\s+/g,' ').trim();}
 function qbtTr(value){const match=String(value||'').match(/QBT_TR\(([\s\S]*?)\)QBT_TR\[CONTEXT=([^\]]+)\]/i);if(!match)return null;const source=decodeHtml(match[1]),context=String(match[2]||'').trim();return source&&context?{source,context}:null;}
 function attrText(value,name){const escaped=String(name).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');const match=String(value||'').match(new RegExp(`(?:^|\\s)${escaped}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`,'i'));return match?String(match[1]??match[2]??match[3]??''):null;}
@@ -52,10 +56,26 @@ export function extractQbPreferencesNativeSurface({preferencesSource='',toolbarS
 
 function git(root,...args){return execFileSync('git',['-C',root,...args],{encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();}
 function showMaybe(root,tag,file){try{return git(root,'show',`${tag}:${file}`);}catch{return'';}}
-function preferencesSource(root,tag){return showMaybe(root,tag,'src/webui/www/private/views/preferences.html')||showMaybe(root,tag,'src/webui/www/private/preferences_content.html')||showMaybe(root,tag,'src/webui/www/private/preferences.html');}
-function toolbarSource(root,tag){return showMaybe(root,tag,'src/webui/www/private/views/preferencesToolbar.html')||showMaybe(root,tag,'src/webui/www/private/preferences.html');}
+function preferencesSource(root,tag){for(const file of PREFERENCES_SOURCE_PATHS){const source=showMaybe(root,tag,file);if(source)return source;}return'';}
+function toolbarSource(root,tag){for(const file of TOOLBAR_SOURCE_PATHS){const source=showMaybe(root,tag,file);if(source)return source;}return'';}
+function isPartialClone(root){try{return git(root,'config','--get','remote.origin.promisor')==='true';}catch{return false;}}
+function sourceBlobOid(root,tag,file){try{const oid=git(root,'rev-parse','--verify',`${tag}:${file}`);return /^[0-9a-f]{40}$/i.test(oid)?oid:'';}catch{return'';}}
+function prefetchSourceBlobs(root,catalog){
+  if(!isPartialClone(root))return;
+  const objectIds=new Set();
+  for(const profile of catalog||[]){const tag=String(profile?.tag||`release-${profile?.qbVersion||''}`).trim();if(!tag)continue;for(const file of SOURCE_BLOB_PATHS){const oid=sourceBlobOid(root,tag,file);if(oid)objectIds.add(oid);}}
+  if(!objectIds.size)return;
+  const ids=[...objectIds];
+  try{
+    git(root,'fetch','--quiet','--no-tags','--no-write-fetch-head','origin',...ids);
+    console.log(`Hydrated ${ids.length} qB Preferences source blobs in one partial-clone fetch.`);
+  }catch(error){
+    console.warn(`Batch blob hydration was unavailable; refetching bounded source blobs for stable tags (${error?.message||error}).`);
+    git(root,'fetch','--quiet','--no-tags','--no-write-fetch-head','--refetch','--filter=blob:limit=2097152','origin','+refs/tags/*:refs/tags/*');
+  }
+}
 
-export function buildQbPreferencesSourceCatalog(catalog,qbRoot){if(!Array.isArray(catalog)||!catalog.length)throw new Error('qB Preferences native surface extraction requires a non-empty exact release catalog.');const profiles=[];for(const profile of catalog){const qbVersion=String(profile?.qbVersion||'').trim(),sourceSha=String(profile?.sourceSha||'').trim(),tag=String(profile?.tag||`release-${qbVersion}`).trim();if(!qbVersion||!/^[0-9a-f]{40}$/i.test(sourceSha)||!tag)throw new Error('Each qB Preferences profile requires exact qbVersion + sourceSha + tag.');const source=preferencesSource(qbRoot,tag);if(!source)throw new Error(`${qbVersion}: qB Preferences source is unavailable.`);const manifest=extractQbPreferencesNativeSurface({preferencesSource:source,toolbarSource:toolbarSource(qbRoot,tag),preferenceDescriptors:profile.preferenceDescriptors||[]});if(!manifest.tabs.length)throw new Error(`${qbVersion}: qB Preferences native tabs are unresolved.`);profiles.push({qbVersion,sourceSha,tag,manifest});}return{schemaVersion:1,source:'qb-upstream-preferences-native-surface',profiles};}
+export function buildQbPreferencesSourceCatalog(catalog,qbRoot){if(!Array.isArray(catalog)||!catalog.length)throw new Error('qB Preferences native surface extraction requires a non-empty exact release catalog.');prefetchSourceBlobs(qbRoot,catalog);const profiles=[];for(const profile of catalog){const qbVersion=String(profile?.qbVersion||'').trim(),sourceSha=String(profile?.sourceSha||'').trim(),tag=String(profile?.tag||`release-${qbVersion}`).trim();if(!qbVersion||!/^[0-9a-f]{40}$/i.test(sourceSha)||!tag)throw new Error('Each qB Preferences profile requires exact qbVersion + sourceSha + tag.');const source=preferencesSource(qbRoot,tag);if(!source)throw new Error(`${qbVersion}: qB Preferences source is unavailable.`);const manifest=extractQbPreferencesNativeSurface({preferencesSource:source,toolbarSource:toolbarSource(qbRoot,tag),preferenceDescriptors:profile.preferenceDescriptors||[]});if(!manifest.tabs.length)throw new Error(`${qbVersion}: qB Preferences native tabs are unresolved.`);profiles.push({qbVersion,sourceSha,tag,manifest});}return{schemaVersion:1,source:'qb-upstream-preferences-native-surface',profiles};}
 
 const isMain=process.argv[1]&&path.resolve(process.argv[1])===path.resolve(fileURLToPath(import.meta.url));
 if(isMain){try{const qbRoot=path.resolve(process.argv[2]||process.env.QB_UPSTREAM_DIR||''),catalogPath=path.resolve(process.argv[3]||''),outputPath=path.resolve(process.argv[4]||'');if(!qbRoot||!fs.existsSync(qbRoot)||!catalogPath||!fs.existsSync(catalogPath)||!outputPath)throw new Error('Usage: node tools/qb-preferences-surface-source.mjs <qBittorrent-clone> <catalog.json> <output.json>');const catalog=JSON.parse(fs.readFileSync(catalogPath,'utf8')),result=buildQbPreferencesSourceCatalog(catalog,qbRoot);fs.mkdirSync(path.dirname(outputPath),{recursive:true});fs.writeFileSync(outputPath,JSON.stringify(result,null,2)+'\n','utf8');const mapped=result.profiles.reduce((sum,item)=>sum+item.manifest.mappedPreferences,0),total=result.profiles.reduce((sum,item)=>sum+item.manifest.totalPreferences,0),tabs=result.profiles.reduce((sum,item)=>sum+item.manifest.tabs.length,0);console.log(`Generated exact qB Preferences native surface for ${result.profiles.length} releases; tabs ${tabs}; source-mapped preferences ${mapped}/${total}.`);}catch(error){console.error(error?.message||error);process.exitCode=1;}}
