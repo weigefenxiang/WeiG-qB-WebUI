@@ -3,16 +3,47 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {compileQbPreferencesCompact,expandQbPreferencesCompact} from '../tools/qb-preferences-compact.mjs';
 import {assertCatalogIdentity,catalogIdentity} from '../tools/qb-catalog-identity.mjs';
+import {buildQbPreferencesCensus} from '../tools/qb-preferences-census-source.mjs';
 
 const sourcePath=path.resolve(process.argv[2]||'qb-preferences-source-catalog.json');
 const catalogPath=path.resolve(process.argv[3]||'qb-releases.json');
+const qbRoot=path.resolve(process.argv[4]||process.env.QB_UPSTREAM_DIR||'upstream-qb');
 assert.ok(fs.existsSync(sourcePath),`missing Preferences source catalog: ${sourcePath}`);
 assert.ok(fs.existsSync(catalogPath),`missing exact qB release catalog: ${catalogPath}`);
+assert.ok(fs.existsSync(qbRoot),`missing exact qB upstream checkout for independent Preferences census: ${qbRoot}`);
 const source=JSON.parse(fs.readFileSync(sourcePath,'utf8')),catalog=JSON.parse(fs.readFileSync(catalogPath,'utf8')),expectedIdentity=catalogIdentity(catalog);
 assert.equal(source.schemaVersion,1);
 assert.equal(source.source,'qb-upstream-preferences-native-surface');
 assert.ok(Array.isArray(source.profiles)&&source.profiles.length>0);
 assert.equal(source.profiles.length,catalog.length,'Preferences source admission must cover every admitted stable qB release');
+
+const census=buildQbPreferencesCensus(catalog,source,qbRoot);
+assert.equal(census.schemaVersion,1,'Preferences independent census schema drift');
+assert.equal(census.source,'qb-upstream-preferences-independent-census','Preferences independent census source identity drift');
+assertCatalogIdentity(census.catalogIdentity,expectedIdentity,'Preferences independent census Frozen catalog identity');
+assert.equal(census.profiles.length,source.profiles.length,'Preferences census/source release-set size drift');
+fs.writeFileSync(path.resolve(process.env.QB_PREFERENCES_CENSUS_OUTPUT||'qb-preferences-census.json'),JSON.stringify(census,null,2)+'\n','utf8');
+function censusProblem(result){
+  if(result?.complete)return'';
+  const parts=[];
+  if(result?.unaccounted?.length)parts.push(`unaccounted=${result.unaccounted.join(',')}`);
+  if(result?.overlap?.length)parts.push(`mapped/excluded overlap=${result.overlap.join(',')}`);
+  if(result?.escaped?.length)parts.push(`escaped=${result.escaped.join(',')}`);
+  for(const kind of ['inventory','mapped','excluded'])if(result?.duplicates?.[kind]?.length)parts.push(`duplicate ${kind}=${result.duplicates[kind].join(',')}`);
+  return parts.join('; ')||'unknown accounting failure';
+}
+const censusFailures=[];
+for(let i=0;i<census.profiles.length;i++){
+  const profile=census.profiles[i],semantic=source.profiles[i];
+  assert.equal(profile.qbVersion,semantic.qbVersion,`${semantic.qbVersion}: independent census release order drift`);
+  assert.equal(profile.sourceSha,semantic.sourceSha,`${semantic.qbVersion}: independent census source SHA drift`);
+  for(const domain of ['tabs','preferences','bindings']){
+    const result=profile.census?.[domain];
+    if(!result?.complete)censusFailures.push(`${profile.qbVersion} ${domain}: ${censusProblem(result)}`);
+  }
+}
+assert.equal(censusFailures.length,0,`Preferences independent source census is incomplete across the Frozen release set:\n${censusFailures.join('\n')}`);
+
 let previousRatio=null,minimumRatio=1;
 for(let i=0;i<catalog.length;i++){
   const base=catalog[i],profile=source.profiles[i];
@@ -52,4 +83,4 @@ for(const profile of source.profiles){
     assert.equal(actual.tab,item.tab,`${profile.qbVersion}: ${key} tab drift`);assert.equal(actual.sectionId,item.sectionId,`${profile.qbVersion}: ${key} section drift`);assert.equal(actual.order,item.order,`${profile.qbVersion}: ${key} order drift`);assert.equal(actual.control.id,item.control.id,`${profile.qbVersion}: ${key} control id drift`);assert.equal(actual.control.semantic,item.control.semantic,`${profile.qbVersion}: ${key} control semantic drift`);assert.deepEqual(actual.control.attributes,item.control.attributes||{},`${profile.qbVersion}: ${key} control attributes drift`);assert.equal(actual.title?.source,item.title?.source,`${profile.qbVersion}: ${key} source title drift`);assert.equal(actual.title?.context,item.title?.context,`${profile.qbVersion}: ${key} source title context drift`);assert.deepEqual(actual.descriptor,item.descriptor,`${profile.qbVersion}: ${key} API descriptor drift`);
   }
 }
-console.log(`Full stable qB Preferences source contract passed: ${catalog.length} exact releases, Frozen catalog ${expectedIdentity.releaseSetSha256.slice(0,12)}, ${(minimumRatio*100).toFixed(1)}% minimum native mapping, ${bytes} byte keyed compact IR, and lossless tab/section/control/API provenance.`);
+console.log(`Full stable qB Preferences source contract passed: ${catalog.length} exact releases, independent census complete, Frozen catalog ${expectedIdentity.releaseSetSha256.slice(0,12)}, ${(minimumRatio*100).toFixed(1)}% minimum native mapping, ${bytes} byte keyed compact IR, and lossless tab/section/control/API provenance.`);
