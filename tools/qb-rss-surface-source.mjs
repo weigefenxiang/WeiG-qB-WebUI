@@ -29,10 +29,17 @@ function parseLiteral(raw){
   return{found:false,value:undefined};
 }
 function optionWriteValue(source,path,value){
-  const target=escapeRegExp(pathNeedle(path));
-  const option=escapeRegExp(value);
-  const match=new RegExp(`case\\s+["']${option}["']\\s*:[\\s\\S]{0,500}?${target}\\s*=\\s*(null|true|false|["'][^"']*["'])\\s*;`,'i').exec(String(source||''));
-  return match?parseLiteral(match[1]):{found:false,value:undefined};
+  source=String(source||'');
+  const assignment=new RegExp(`${escapeRegExp(pathNeedle(path))}\\s*=\\s*(null|true|false|["'][^"']*["'])\\s*;`,'i');
+  const cases=[...source.matchAll(/\bcase\s+(["'])([^"']*)\1\s*:/gi)];
+  for(let i=0;i<cases.length;i++){
+    const item=cases[i];if(String(item[2])!==String(value))continue;
+    const start=(item.index||0)+item[0].length,next=cases[i+1]?.index??source.length;
+    const breakIndex=source.indexOf('break;',start),boundedBreak=breakIndex>=0&&breakIndex<next?breakIndex+6:next;
+    const end=Math.min(boundedBreak,start+1200),match=assignment.exec(source.slice(start,end));
+    if(match)return parseLiteral(match[1]);
+  }
+  return{found:false,value:undefined};
 }
 function selectOptions(source,id,path){
   const match=new RegExp(`<select\\b[^>]*\\bid=["']${escapeRegExp(id)}["'][^>]*>([\\s\\S]*?)<\\/select>`,'i').exec(source);
