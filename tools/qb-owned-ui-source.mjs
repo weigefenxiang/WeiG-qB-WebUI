@@ -24,6 +24,10 @@ export function extractQbOwnedUiFacts({preferencesSource='',toolbarSource='',fil
   for(const [key,id] of Object.entries(tabs))add(out,key,itemRef(toolbar,id));
   add(out,'transfer.rate.global',exactRef(preferencesSource,'Global Rate Limits'));
   add(out,'transfer.rate.alternative',exactRef(preferencesSource,'Alternative Rate Limits'));
+  add(out,'sidebar.status',exactRef(filtersSource,'Status','TransferListFiltersWidget'));
+  add(out,'sidebar.categories',exactRef(filtersSource,'Categories','TransferListFiltersWidget'));
+  add(out,'sidebar.tags',exactRef(filtersSource,'Tags','TransferListFiltersWidget'));
+  add(out,'sidebar.trackers',exactRef(filtersSource,'Trackers','TransferListFiltersWidget'));
   const filters=['all','downloading','seeding','completed','resumed','paused','running','stopped','active','inactive','stalled','stalled_uploading','stalled_downloading','checking','moving','errored'];
   for(const name of filters)add(out,`filter.${name}`,itemRef(filtersSource,`${name}_filter`));
   if(dynamicTableSource){
