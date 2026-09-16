@@ -12,6 +12,8 @@ assert.equal(source.schemaVersion,1);
 assert.equal(source.source,'qb-upstream-preferences-native-surface');
 assert.ok(Array.isArray(source.profiles)&&source.profiles.length>0);
 assert.equal(source.profiles.length,catalog.length,'Preferences source admission must cover every admitted stable qB release');
+
+let previousCoverage=null,minCoverage={ratio:Infinity,qbVersion:''};
 for(let i=0;i<catalog.length;i++){
   const base=catalog[i],profile=source.profiles[i];
   assert.equal(profile.qbVersion,base.qbVersion,`${base.qbVersion}: release order drift`);
@@ -20,13 +22,31 @@ for(let i=0;i<catalog.length;i++){
   const manifest=profile.manifest||{};
   assert.ok(Array.isArray(manifest.tabs)&&manifest.tabs.length>0,`${base.qbVersion}: native Settings tabs unresolved`);
   assert.ok(manifest.preferences&&typeof manifest.preferences==='object',`${base.qbVersion}: native preference map unresolved`);
-  assert.ok(Number(manifest.mappedPreferences)>0,`${base.qbVersion}: no source-mapped native preferences`);
-  assert.equal(Number(manifest.totalPreferences),Array.isArray(base.preferenceDescriptors)?base.preferenceDescriptors.length:0,`${base.qbVersion}: preference surface size drift`);
+  const mapped=Number(manifest.mappedPreferences),total=Number(manifest.totalPreferences);
+  assert.ok(Number.isFinite(mapped)&&mapped>0,`${base.qbVersion}: no source-mapped native preferences`);
+  assert.equal(total,Array.isArray(base.preferenceDescriptors)?base.preferenceDescriptors.length:0,`${base.qbVersion}: preference surface size drift`);
+  assert.ok(total>0,`${base.qbVersion}: exact app/preferences surface is empty`);
+  const coverage=mapped/total;
+  assert.ok(coverage>=0.60,`${base.qbVersion}: native preference source coverage collapsed to ${(coverage*100).toFixed(1)}% (${mapped}/${total}); source syntax must be admitted before runtime projection`);
+  if(previousCoverage!==null)assert.ok(coverage>=previousCoverage-0.20,`${base.qbVersion}: native preference source coverage dropped catastrophically from ${(previousCoverage*100).toFixed(1)}% to ${(coverage*100).toFixed(1)}%; review the new upstream source syntax instead of silently admitting it`);
+  previousCoverage=coverage;
+  if(coverage<minCoverage.ratio)minCoverage={ratio:coverage,qbVersion:String(base.qbVersion)};
+
   const allowed=new Set((base.preferenceDescriptors||[]).map(item=>String(item?.key||'')));
   for(const tab of manifest.tabs){
     assert.equal(typeof tab.id,'string');assert.ok(tab.id);assert.ok(Number.isInteger(tab.order));
     let previous=-1;
-    for(const key of tab.preferences||[]){const item=manifest.preferences[key];assert.ok(item,`${base.qbVersion}: tab ${tab.id} references missing ${key}`);assert.ok(allowed.has(key),`${base.qbVersion}: native manifest escaped app/preferences: ${key}`);assert.equal(item.tab,tab.id);assert.ok(item.order>previous,`${base.qbVersion}: ${tab.id} preference order is not source monotonic`);previous=item.order;assert.ok(item.title?.source&&item.title?.context,`${base.qbVersion}: ${key} lacks source/context title identity`);assert.ok(item.control?.id&&item.control?.semantic,`${base.qbVersion}: ${key} lacks native control semantics`);assert.ok(item.descriptor&&Object.prototype.hasOwnProperty.call(item.descriptor,'writable'),`${base.qbVersion}: ${key} lacks API read/write provenance`);if(item.control.semantic==='select')for(const option of item.control.options||[])assert.ok(option.label&&(option.label.source||Object.prototype.hasOwnProperty.call(option.label,'literal')),`${base.qbVersion}: ${key} select option lacks source identity`);}
+    for(const key of tab.preferences||[]){
+      const item=manifest.preferences[key];
+      assert.ok(item,`${base.qbVersion}: tab ${tab.id} references missing ${key}`);
+      assert.ok(allowed.has(key),`${base.qbVersion}: native manifest escaped app/preferences: ${key}`);
+      assert.equal(item.tab,tab.id);
+      assert.ok(item.order>previous,`${base.qbVersion}: ${tab.id} preference order is not source monotonic`);previous=item.order;
+      assert.ok(item.title?.source&&item.title?.context,`${base.qbVersion}: ${key} lacks source/context title identity`);
+      assert.ok(item.control?.id&&item.control?.semantic,`${base.qbVersion}: ${key} lacks native control semantics`);
+      assert.ok(item.descriptor&&Object.prototype.hasOwnProperty.call(item.descriptor,'writable'),`${base.qbVersion}: ${key} lacks API read/write provenance`);
+      if(item.control.semantic==='select')for(const option of item.control.options||[])assert.ok(option.label&&(option.label.source||Object.prototype.hasOwnProperty.call(option.label,'literal')),`${base.qbVersion}: ${key} select option lacks source identity`);
+    }
   }
 }
 const compact=compileQbPreferencesCompact(source);
@@ -34,4 +54,4 @@ assert.equal(compact.releases.length,catalog.length,'compact Preferences release
 assert.ok(compact.nativeUi.length>0&&compact.nativeUi.length<=catalog.length,'compact Preferences change-point count is invalid');
 assert.equal(compact.releases.at(-1).qbVersion,catalog.at(-1).qbVersion);
 assert.equal(compact.releases.at(-1).sourceSha,catalog.at(-1).sourceSha);
-console.log(`Full stable qB Preferences source contract passed: ${catalog.length} exact releases, ${compact.nativeUi.length} compact UI change points, source-native tab/section/control ordering and API provenance verified.`);
+console.log(`Full stable qB Preferences source contract passed: ${catalog.length} exact releases, ${compact.nativeUi.length} compact UI change points; minimum source coverage ${(minCoverage.ratio*100).toFixed(1)}% at qB ${minCoverage.qbVersion}; native tab/section/control ordering and API provenance verified.`);

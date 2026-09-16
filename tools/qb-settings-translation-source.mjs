@@ -147,13 +147,26 @@ function addRelation(relations, key, id, evidence) {
 
 function preferenceControlRelations(source) {
   const text = String(source || ''), relations = new Map();
-  for (const match of text.matchAll(/document\.getElementById\(\s*["']([^"']+)["']\s*\)[^;\n]*?=\s*pref\.([A-Za-z0-9_]+)/g)) addRelation(relations, match[2], match[1], 'modern-read');
+  // Read bindings. qB has used both document.getElementById() and its $() helper,
+  // with direct properties, wrapper conversions and older set()/setProperty() calls.
+  for (const match of text.matchAll(/document\.getElementById\(\s*["']([^"']+)["']\s*\)[^;\n]*?=\s*[^;\n]*?\bpref\.([A-Za-z0-9_]+)/g)) addRelation(relations, match[2], match[1], 'modern-read');
+  for (const match of text.matchAll(/\$\(\s*["']([^"']+)["']\s*\)[^;\n]*?=\s*[^;\n]*?\bpref\.([A-Za-z0-9_]+)/g)) addRelation(relations, match[2], match[1], 'legacy-property-read');
   for (const match of text.matchAll(/\$\(\s*["']([^"']+)["']\s*\)\.(?:setProperty|set)\([^;\n]*?pref\.([A-Za-z0-9_]+)/g)) addRelation(relations, match[2], match[1], 'legacy-read');
+
+  // Direct write bindings across the historical settings.set(), object-literal,
+  // property and qB 5.1 settings["key"] assignment families.
   for (const match of text.matchAll(/settings\.set\(\s*["']([^"']+)["']\s*,[^;\n]*?\$\(\s*["']([^"']+)["']\s*\)/g)) addRelation(relations, match[1], match[2], 'legacy-write');
+  for (const match of text.matchAll(/settings\[\s*["']([^"']+)["']\s*\]\s*=\s*[^;\n]*?\$\(\s*["']([^"']+)["']\s*\)/g)) addRelation(relations, match[1], match[2], 'indexed-write');
+  for (const match of text.matchAll(/settings\[\s*["']([^"']+)["']\s*\]\s*=\s*[^;\n]*?document\.getElementById\(\s*["']([^"']+)["']\s*\)/g)) addRelation(relations, match[1], match[2], 'indexed-modern-write');
   for (const match of text.matchAll(/(?:^|[,{;]\s*)([A-Za-z0-9_]+)\s*:\s*document\.getElementById\(\s*["']([^"']+)["']\s*\)/gm)) addRelation(relations, match[1], match[2], 'modern-write');
+  for (const match of text.matchAll(/(?:^|[,{;]\s*)([A-Za-z0-9_]+)\s*:\s*[^,;\n]*?\$\(\s*["']([^"']+)["']\s*\)/gm)) addRelation(relations, match[1], match[2], 'object-helper-write');
   for (const match of text.matchAll(/(?:settings|preferences)\.([A-Za-z0-9_]+)\s*=\s*document\.getElementById\(\s*["']([^"']+)["']\s*\)/g)) addRelation(relations, match[1], match[2], 'modern-write');
+
+  // Resolve local variables in both directions. This covers source such as
+  // const max_connec = Number(pref.max_connec) and qB 5.1's
+  // const listen_port = Number($("port_value").value); settings["listen_port"] = listen_port.
   const keyVars = new Map();
-  for (const match of text.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*pref\.([A-Za-z0-9_]+)/g)) keyVars.set(match[1], match[2]);
+  for (const match of text.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*[^;\n]*?\bpref\.([A-Za-z0-9_]+)/g)) keyVars.set(match[1], match[2]);
   for (const [name,key] of keyVars) {
     const escaped=name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
     const idRe=new RegExp(`document\\.getElementById\\(\\s*["']([^"']+)["']\\s*\\)[^;\\n]*?\\b${escaped}\\b`,'g');
@@ -161,6 +174,15 @@ function preferenceControlRelations(source) {
     const oldRe=new RegExp(`\\$\\(\\s*["']([^"']+)["']\\s*\\)[^;\\n]*?\\b${escaped}\\b`,'g');
     for (const match of text.matchAll(oldRe)) addRelation(relations,key,match[1],'legacy-read-variable');
   }
+
+  const controlVars = new Map();
+  for (const match of text.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*[^;\n]*?\$\(\s*["']([^"']+)["']\s*\)/g)) controlVars.set(match[1],match[2]);
+  for (const match of text.matchAll(/(?:^|[;{}\n]\s*)([A-Za-z_$][\w$]*)\s*=\s*[^;\n]*?\$\(\s*["']([^"']+)["']\s*\)/gm)) if(!controlVars.has(match[1])) controlVars.set(match[1],match[2]);
+  for (const match of text.matchAll(/settings\[\s*["']([^"']+)["']\s*\]\s*=\s*([A-Za-z_$][\w$]*)\s*;/g)) {
+    const id=controlVars.get(match[2]);
+    if(id)addRelation(relations,match[1],id,'indexed-variable-write');
+  }
+
   if (/updateWebuiLocaleSelect\(\s*pref\.locale\s*\)/.test(text)) addRelation(relations,'locale','locale_select','locale-source-call');
   return relations;
 }

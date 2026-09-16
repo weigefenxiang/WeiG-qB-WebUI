@@ -61,6 +61,39 @@ assert.equal(manifest.preferences.future_limit.dependencies.gates[0].handlers.on
 assert.deepEqual(manifest.tabs[1].preferences,['future_gate','future_limit'],'native preference order must follow upstream source order');
 assert.equal(manifest.tabs[1].sections[0].title.source,'Future mode');
 
+const qB51Toolbar='<li id="PrefConnectionLink">QBT_TR(Connection)QBT_TR[CONTEXT=OptionsDialog]</li>';
+const qB51Preferences=`
+<div id="ConnectionTab" class="PrefTab">
+  <fieldset class="settings">
+    <legend>QBT_TR(Connection Limits)QBT_TR[CONTEXT=OptionsDialog]</legend>
+    <label for="proxyPort">QBT_TR(Port:)QBT_TR[CONTEXT=OptionsDialog]</label>
+    <input id="proxyPort" type="text">
+    <label for="listenPort">QBT_TR(Port used for incoming connections:)QBT_TR[CONTEXT=OptionsDialog]</label>
+    <input id="listenPort" type="text">
+    <label for="writeOnly">QBT_TR(Write-only source binding:)QBT_TR[CONTEXT=OptionsDialog]</label>
+    <input id="writeOnly" type="text">
+  </fieldset>
+</div>
+<script>
+  $("proxyPort").value = Number(pref.proxy_port);
+  const listenPort = Number($("listenPort").value);
+  settings["listen_port"] = listenPort;
+  settings["write_only"] = Number($("writeOnly").value);
+</script>`;
+const qB51Descriptors=[
+  {key:'proxy_port',getterPresent:true,setterPresent:true,readType:'number',writeType:'number',typeAgreement:'EXACT',writable:true},
+  {key:'listen_port',getterPresent:true,setterPresent:true,readType:'number',writeType:'number',typeAgreement:'EXACT',writable:true},
+  {key:'write_only',getterPresent:true,setterPresent:true,readType:'number',writeType:'number',typeAgreement:'EXACT',writable:true}
+];
+const qB51=extractQbPreferencesNativeSurface({preferencesSource:qB51Preferences,toolbarSource:qB51Toolbar,preferenceDescriptors:qB51Descriptors});
+assert.equal(qB51.mappedPreferences,3,'qB 5.1 $() property reads and settings["key"] writes must remain source-mappable');
+assert.equal(qB51.preferences.proxy_port.control.id,'proxyPort');
+assert.match(qB51.preferences.proxy_port.title.source,/Port/);
+assert.equal(qB51.preferences.listen_port.control.id,'listenPort');
+assert.equal(qB51.preferences.listen_port.title.source,'Port used for incoming connections:');
+assert.equal(qB51.preferences.write_only.control.id,'writeOnly');
+assert.equal(qB51.preferences.write_only.title.source,'Write-only source binding:');
+
 const sourceCatalog={schemaVersion:1,profiles:[
   {qbVersion:'5.2.3',sourceSha:'1111111111111111111111111111111111111111',manifest},
   {qbVersion:'5.2.4',sourceSha:'2222222222222222222222222222222222222222',manifest}
@@ -72,4 +105,4 @@ const changed=structuredClone(manifest);changed.preferences.future_limit.control
 const compactChanged=compileQbPreferencesCompact({schemaVersion:1,profiles:[sourceCatalog.profiles[0],{qbVersion:'5.2.4',sourceSha:'2222222222222222222222222222222222222222',manifest:changed}]});
 assert.equal(compactChanged.nativeUi.length,2,'source UI changes must create an explicit compact change point');
 
-console.log('qB Preferences native source contract passed: tabs auto-admit, source order/sections/controls/options/units/dependency evidence are preserved, and exact-release compacting is lossless.');
+console.log('qB Preferences native source contract passed: tabs auto-admit, qB 5.1 helper/indexed bindings remain source-mappable, source order/sections/controls/options/units/dependency evidence are preserved, and exact-release compacting is lossless.');
