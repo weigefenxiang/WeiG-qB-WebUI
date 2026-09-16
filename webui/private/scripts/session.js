@@ -63,6 +63,7 @@
   function i18nReady(){return !!(W.I18n&&W.I18n.localeOptions&&W.I18n.matchBrowserLocale&&W.I18n.sameQbLocale&&W.I18n.hasExactLocale);}
   function sameLocale(a,b){return !!(W.I18n&&W.I18n.sameQbLocale&&W.I18n.sameQbLocale(a,b));}
   function localeWritable(value){return !!(W.SettingsSchema&&W.SettingsSchema.isWritable&&W.SettingsSchema.isWritable('locale',value));}
+  async function ensureLocaleWriteProof(){if(W.SettingsSchema&&W.SettingsSchema.loadCompatibility)await W.SettingsSchema.loadCompatibility();}
   function currentLocaleOptions(){return W.I18n&&W.I18n.localeOptions?W.I18n.localeOptions():[];}
   function browserLanguages(){var nav=global.navigator||{},values=Array.isArray(nav.languages)?nav.languages.slice():[];if(nav.language&&values.indexOf(nav.language)<0)values.push(nav.language);return values.filter(Boolean);}
   function syncPreferences(prefs){if(!prefs||typeof prefs!=='object')return;if(W.AppState)W.AppState.preferences=prefs;if(W.SettingsState)W.SettingsState.prefs=prefs;}
@@ -77,6 +78,7 @@
     var target=W.I18n.matchBrowserLocale(browserLanguages(),currentLocaleOptions());
     if(!target){var noMatch=bootstrapRecord('no-browser-match',null,current,true);if(!saveBootstrap(noMatch))return{changed:false,reason:'bootstrap-storage-unavailable'};return{changed:false,reason:'no-browser-match',record:noMatch};}
     if(sameLocale(target,current)){var matched=bootstrapRecord('already-matched',target,current,true);if(!saveBootstrap(matched))return{changed:false,reason:'bootstrap-storage-unavailable'};return{changed:false,reason:'already-matched',record:matched};}
+    await ensureLocaleWriteProof();
     if(!localeWritable(target)){var blocked=bootstrapRecord('locale-not-writable',target,current,true);if(!saveBootstrap(blocked))return{changed:false,reason:'bootstrap-storage-unavailable'};return{changed:false,reason:'locale-not-writable',record:blocked};}
     if(!saveBootstrap(bootstrapRecord('write-pending',target,current,false)))return{changed:false,reason:'bootstrap-storage-unavailable'};
     try{
