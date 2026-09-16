@@ -35,7 +35,10 @@ const preferences=`
 <script>
   document.getElementById("locale_select").value = pref.locale;
   document.getElementById("future_gate").checked = pref.future_gate;
-  document.getElementById("future_limit").value = pref.future_limit;
+  document.getElementById("future_limit").value = pref.future_limit / 1024;
+  settings["locale"] = document.getElementById("locale_select").value;
+  settings["future_gate"] = document.getElementById("future_gate").checked;
+  settings["future_limit"] = Number(document.getElementById("future_limit").value) * 1024;
 </script>`;
 const descriptors=[
   {key:'locale',getterPresent:true,setterPresent:true,readType:'string',writeType:'string',typeAgreement:'EXACT',writable:true},
@@ -51,12 +54,15 @@ assert.equal(manifest.preferences.locale.sectionOrder,0);
 assert.equal(manifest.preferences.locale.control.semantic,'select');
 assert.deepEqual(manifest.preferences.locale.control.options.map(item=>item.value),['en','fr']);
 assert.equal(manifest.preferences.locale.control.options[1].label.source,'French');
+assert.deepEqual(manifest.preferences.locale.projection,{kind:'identity',safeWrite:true},'identity source read/write must remain explicitly proven');
 assert.equal(manifest.preferences.future_gate.control.semantic,'checkbox');
+assert.deepEqual(manifest.preferences.future_gate.projection,{kind:'identity',safeWrite:true},'checkbox identity projection must prove checked-value writes without a manual exception');
 assert.equal(manifest.preferences.future_limit.tab,'futurenetwork');
 assert.equal(manifest.preferences.future_limit.control.semantic,'number');
 assert.equal(manifest.preferences.future_limit.control.attributes.max,'9000');
 assert.deepEqual(manifest.preferences.future_limit.control.unit,{source:'KiB',context:'OptionsDialog'});
 assert.equal(manifest.preferences.future_limit.descriptor.writeType,'number');
+assert.deepEqual(manifest.preferences.future_limit.projection,{kind:'scale',scale:1024,safeWrite:true},'source-derived raw/UI unit conversion must stay attached to the preference fact');
 assert.equal(manifest.preferences.future_limit.dependencies.gates[0].preferenceKey,'future_gate');
 assert.equal(manifest.preferences.future_limit.dependencies.gates[0].handlers.onclick,'updateFutureGate();');
 assert.deepEqual(manifest.tabs[1].preferences,['future_gate','future_limit'],'native preference order must follow upstream source order');
@@ -72,6 +78,7 @@ assert.equal(compact.releases.length,2,'compact contract must retain exact relea
 assert.equal(compact.tabs.length,1,'unchanged native tabs must deduplicate to one change point');
 assert.equal(Object.keys(compact.preferences).length,3,'compact contract must be keyed by source-mapped preference identity instead of repeating whole manifests');
 assert.ok(Array.isArray(compact.refs)&&compact.refs.some(ref=>ref[1]==='Future limit:'),'source/context identities must be interned once');
+assert.equal(compact.format.preference.at(-1),'projection','compact format must make source value projection an explicit keyed preference fact');
 const expanded=expandQbPreferencesCompact(compact,'5.2.3');
 assert.deepEqual(expanded.tabs.map(tab=>tab.id),['behavior','futurenetwork']);
 assert.equal(expanded.preferences.future_limit.tab,'futurenetwork');
@@ -79,6 +86,7 @@ assert.equal(expanded.preferences.future_limit.control.semantic,'number');
 assert.equal(expanded.preferences.future_limit.control.attributes.max,'9000');
 assert.deepEqual(expanded.preferences.future_limit.control.unit,{context:'OptionsDialog',source:'KiB'});
 assert.equal(expanded.preferences.future_limit.descriptor.writeType,'number');
+assert.deepEqual(expanded.preferences.future_limit.projection,{kind:'scale',safeWrite:true,scale:1024},'compact expansion must preserve exact source value projection');
 assert.equal(expanded.preferences.future_limit.dependencies.gates[0].preferenceKey,'future_gate');
 assert.deepEqual(expanded.tabs[1].preferences,['future_gate','future_limit']);
 const changed=structuredClone(manifest);changed.preferences.future_limit.control.attributes.max='10000';
@@ -91,4 +99,4 @@ assert.deepEqual(runtimeCompact.settingsData.nativeTabs[0].value,['behavior','fu
 assert.equal(runtimeCompact.catalogIdentity.releaseCount,1,'compact runtime must carry a common Frozen catalog identity foundation');
 assert.deepEqual(runtimeCompact.capabilityData.catalogIdentity,runtimeCompact.settingsData.catalogIdentity,'compact domains compiled from one catalog must carry identical catalog identity');
 
-console.log('qB Preferences native source contract passed: tabs auto-admit through extraction and compact runtime, source order/sections/controls/options/units/dependencies are preserved, and keyed compact IR expands losslessly without whole-manifest duplication.');
+console.log('qB Preferences native source contract passed: tabs auto-admit through extraction and compact runtime; source order/sections/controls/options/units/dependencies/value projections are preserved by the keyed compact IR.');

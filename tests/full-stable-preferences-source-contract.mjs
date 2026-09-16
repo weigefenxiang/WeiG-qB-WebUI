@@ -44,7 +44,7 @@ for(let i=0;i<census.profiles.length;i++){
 }
 assert.equal(censusFailures.length,0,`Preferences independent source census is incomplete across the Frozen release set:\n${censusFailures.join('\n')}`);
 
-let previousRatio=null,minimumRatio=1;
+let previousRatio=null,minimumRatio=1,scaleProjectionCount=0,switchProjectionCount=0,unprovenProjectionCount=0;
 for(let i=0;i<catalog.length;i++){
   const base=catalog[i],profile=source.profiles[i];
   assert.equal(profile.qbVersion,base.qbVersion,`${base.qbVersion}: release order drift`);
@@ -63,14 +63,22 @@ for(let i=0;i<catalog.length;i++){
   for(const tab of manifest.tabs){
     assert.equal(typeof tab.id,'string');assert.ok(tab.id);assert.ok(Number.isInteger(tab.order));
     let previous=-1;
-    for(const key of tab.preferences||[]){const item=manifest.preferences[key];assert.ok(item,`${base.qbVersion}: tab ${tab.id} references missing ${key}`);assert.ok(allowed.has(key),`${base.qbVersion}: native manifest escaped app/preferences: ${key}`);assert.equal(item.tab,tab.id);assert.ok(item.order>previous,`${base.qbVersion}: ${tab.id} preference order is not source monotonic`);previous=item.order;assert.ok(item.title?.source&&item.title?.context,`${base.qbVersion}: ${key} lacks source/context title identity`);assert.ok(item.control?.id&&item.control?.semantic,`${base.qbVersion}: ${key} lacks native control semantics`);assert.ok(item.descriptor&&Object.prototype.hasOwnProperty.call(item.descriptor,'writable'),`${base.qbVersion}: ${key} lacks API read/write provenance`);if(item.control.semantic==='select')for(const option of item.control.options||[])assert.ok(option.label&&(option.label.source||Object.prototype.hasOwnProperty.call(option.label,'literal')),`${base.qbVersion}: ${key} select option lacks source identity`);}
+    for(const key of tab.preferences||[]){const item=manifest.preferences[key];assert.ok(item,`${base.qbVersion}: tab ${tab.id} references missing ${key}`);assert.ok(allowed.has(key),`${base.qbVersion}: native manifest escaped app/preferences: ${key}`);assert.equal(item.tab,tab.id);assert.ok(item.order>previous,`${base.qbVersion}: ${tab.id} preference order is not source monotonic`);previous=item.order;assert.ok(item.title?.source&&item.title?.context,`${base.qbVersion}: ${key} lacks source/context title identity`);assert.ok(item.control?.id&&item.control?.semantic,`${base.qbVersion}: ${key} lacks native control semantics`);assert.ok(item.descriptor&&Object.prototype.hasOwnProperty.call(item.descriptor,'writable'),`${base.qbVersion}: ${key} lacks API read/write provenance`);assert.ok(item.projection&&typeof item.projection==='object'&&typeof item.projection.safeWrite==='boolean',`${base.qbVersion}: ${key} lacks source value-projection accounting`);if(item.projection.kind==='scale')scaleProjectionCount+=1;else if(item.projection.kind==='switch-map')switchProjectionCount+=1;else if(item.projection.kind==='unproven')unprovenProjectionCount+=1;if(item.control.semantic==='select')for(const option of item.control.options||[])assert.ok(option.label&&(option.label.source||Object.prototype.hasOwnProperty.call(option.label,'literal')),`${base.qbVersion}: ${key} select option lacks source identity`);}
   }
 }
+assert.ok(scaleProjectionCount>0,'Frozen Preferences source must prove at least one native raw/UI numeric scale instead of relying on manual runtime metadata');
+assert.ok(switchProjectionCount>0,'Frozen Preferences source must retain at least one historical switch-map composite projection');
+const latestManifest=source.profiles.at(-1).manifest;
+assert.deepEqual(latestManifest.preferences.dl_limit?.projection,{kind:'scale',scale:1024,safeWrite:true},'latest native download limit must source-prove bytes/s ↔ KiB/s projection');
+assert.deepEqual(latestManifest.preferences.torrent_file_size_limit?.projection,{kind:'scale',scale:1048576,safeWrite:true},'latest native torrent size limit must source-prove bytes ↔ MiB projection');
+assert.equal(source.profiles[0].manifest.preferences.proxy_type?.projection?.kind,'switch-map','oldest admitted proxy type must retain its source composite read map');
+assert.equal(source.profiles[0].manifest.preferences.proxy_type?.projection?.safeWrite,false,'historical proxy composite write must remain fail-closed until an inverse is source-proven');
 const compact=compileQbPreferencesCompact(source,catalog),packed=JSON.stringify(compact),bytes=Buffer.byteLength(packed);
 assert.equal(compact.schemaVersion,2,'compact Preferences IR must use the keyed source-native schema');
 assertCatalogIdentity(compact.catalogIdentity,expectedIdentity,'Preferences compact Frozen catalog identity');
 assert.equal(compact.releases.length,catalog.length,'compact Preferences release identity must remain exact');
 assert.ok(compact.tabs.length>0&&compact.tabs.length<=catalog.length,'compact Preferences tab change-point count is invalid');
+assert.equal(compact.format.preference.at(-1),'projection','compact Preferences format must expose value projection as a first-class source fact');
 assert.ok(bytes<512*1024,`compact Preferences runtime IR is ${bytes} bytes; whole-manifest duplication or another size regression reappeared`);
 assert.equal(compact.releases.at(-1)[0],catalog.at(-1).qbVersion);
 assert.equal(compact.releases.at(-1)[1],catalog.at(-1).sourceSha);
@@ -80,7 +88,7 @@ for(const profile of source.profiles){
   assert.equal(Object.keys(expanded.preferences).length,Object.keys(manifest.preferences).length,`${profile.qbVersion}: compact mapped Preference count is not lossless`);
   for(const [key,item] of Object.entries(manifest.preferences)){
     const actual=expanded.preferences[key];assert.ok(actual,`${profile.qbVersion}: compact IR lost ${key}`);
-    assert.equal(actual.tab,item.tab,`${profile.qbVersion}: ${key} tab drift`);assert.equal(actual.sectionId,item.sectionId,`${profile.qbVersion}: ${key} section drift`);assert.equal(actual.order,item.order,`${profile.qbVersion}: ${key} order drift`);assert.equal(actual.control.id,item.control.id,`${profile.qbVersion}: ${key} control id drift`);assert.equal(actual.control.semantic,item.control.semantic,`${profile.qbVersion}: ${key} control semantic drift`);assert.deepEqual(actual.control.attributes,item.control.attributes||{},`${profile.qbVersion}: ${key} control attributes drift`);assert.equal(actual.title?.source,item.title?.source,`${profile.qbVersion}: ${key} source title drift`);assert.equal(actual.title?.context,item.title?.context,`${profile.qbVersion}: ${key} source title context drift`);assert.deepEqual(actual.descriptor,item.descriptor,`${profile.qbVersion}: ${key} API descriptor drift`);
+    assert.equal(actual.tab,item.tab,`${profile.qbVersion}: ${key} tab drift`);assert.equal(actual.sectionId,item.sectionId,`${profile.qbVersion}: ${key} section drift`);assert.equal(actual.order,item.order,`${profile.qbVersion}: ${key} order drift`);assert.equal(actual.control.id,item.control.id,`${profile.qbVersion}: ${key} control id drift`);assert.equal(actual.control.semantic,item.control.semantic,`${profile.qbVersion}: ${key} control semantic drift`);assert.deepEqual(actual.control.attributes,item.control.attributes||{},`${profile.qbVersion}: ${key} control attributes drift`);assert.equal(actual.title?.source,item.title?.source,`${profile.qbVersion}: ${key} source title drift`);assert.equal(actual.title?.context,item.title?.context,`${profile.qbVersion}: ${key} source title context drift`);assert.deepEqual(actual.descriptor,item.descriptor,`${profile.qbVersion}: ${key} API descriptor drift`);assert.deepEqual(actual.projection,item.projection,`${profile.qbVersion}: ${key} source value projection drift`);
   }
 }
-console.log(`Full stable qB Preferences source contract passed: ${catalog.length} exact releases, independent census complete, Frozen catalog ${expectedIdentity.releaseSetSha256.slice(0,12)}, ${(minimumRatio*100).toFixed(1)}% minimum native mapping, ${bytes} byte keyed compact IR, and lossless tab/section/control/API provenance.`);
+console.log(`Full stable qB Preferences source contract passed: ${catalog.length} exact releases, independent census complete, Frozen catalog ${expectedIdentity.releaseSetSha256.slice(0,12)}, ${(minimumRatio*100).toFixed(1)}% minimum native mapping, ${scaleProjectionCount} scale / ${switchProjectionCount} switch / ${unprovenProjectionCount} unproven value projections, ${bytes} byte keyed compact IR, and lossless tab/section/control/API/value provenance.`);

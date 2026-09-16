@@ -31,7 +31,7 @@ function writeExpression(text,key){
   let best=null,bestPos=-1;for(const re of patterns){let match;while((match=re.exec(text)))if((match.index??0)>=bestPos){best=match[1];bestPos=match.index??0;}}
   return best;
 }
-function controlTokenPattern(id){return `(?:Number\\(\\s*)?(?:${modernControlPattern(id,'value')}|${legacyControlPattern(id,'value')})(?:\\s*\\))?(?:\\s*\\.\\s*toInt\\s*\\(\\s*\\))?`;}
+function controlTokenPattern(id){return `(?:Number\\(\\s*)?(?:${modernControlPattern(id,'(?:value|checked)')}|${legacyControlPattern(id,'(?:value|checked)')})(?:\\s*\\))?(?:\\s*\\.\\s*toInt\\s*\\(\\s*\\))?`;}
 function balancedBody(text,start){const open=String(text).indexOf('{',start);if(open<0)return'';let depth=0,quote='',escape=false;for(let i=open;i<text.length;i++){const ch=text[i];if(quote){if(escape){escape=false;continue;}if(ch==='\\'){escape=true;continue;}if(ch===quote)quote='';continue;}if(ch==='"'||ch==="'"||ch==='`'){quote=ch;continue;}if(ch==='{')depth++;else if(ch==='}'){depth--;if(depth===0)return text.slice(open+1,i);}}return'';}
 function assignedLiteral(segment,id){const escaped=escapeRe(id),patterns=[
   new RegExp(`${modernControlPattern(id,'value')}\\s*=\\s*["']([^"']*)["']`),
