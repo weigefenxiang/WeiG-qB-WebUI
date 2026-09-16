@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import {compileQbPreferencesCompact} from '../tools/qb-preferences-compact.mjs';
+import {compileQbPreferencesCompact,expandQbPreferencesCompact} from '../tools/qb-preferences-compact.mjs';
 
 const sourcePath=path.resolve(process.argv[2]||'qb-preferences-source-catalog.json');
 const catalogPath=path.resolve(process.argv[3]||'qb-releases.json');
@@ -12,8 +12,7 @@ assert.equal(source.schemaVersion,1);
 assert.equal(source.source,'qb-upstream-preferences-native-surface');
 assert.ok(Array.isArray(source.profiles)&&source.profiles.length>0);
 assert.equal(source.profiles.length,catalog.length,'Preferences source admission must cover every admitted stable qB release');
-
-let previousCoverage=null,minCoverage={ratio:Infinity,qbVersion:''};
+let previousRatio=null,minimumRatio=1;
 for(let i=0;i<catalog.length;i++){
   const base=catalog[i],profile=source.profiles[i];
   assert.equal(profile.qbVersion,base.qbVersion,`${base.qbVersion}: release order drift`);
@@ -22,36 +21,33 @@ for(let i=0;i<catalog.length;i++){
   const manifest=profile.manifest||{};
   assert.ok(Array.isArray(manifest.tabs)&&manifest.tabs.length>0,`${base.qbVersion}: native Settings tabs unresolved`);
   assert.ok(manifest.preferences&&typeof manifest.preferences==='object',`${base.qbVersion}: native preference map unresolved`);
-  const mapped=Number(manifest.mappedPreferences),total=Number(manifest.totalPreferences);
-  assert.ok(Number.isFinite(mapped)&&mapped>0,`${base.qbVersion}: no source-mapped native preferences`);
-  assert.equal(total,Array.isArray(base.preferenceDescriptors)?base.preferenceDescriptors.length:0,`${base.qbVersion}: preference surface size drift`);
-  assert.ok(total>0,`${base.qbVersion}: exact app/preferences surface is empty`);
-  const coverage=mapped/total;
-  assert.ok(coverage>=0.60,`${base.qbVersion}: native preference source coverage collapsed to ${(coverage*100).toFixed(1)}% (${mapped}/${total}); source syntax must be admitted before runtime projection`);
-  if(previousCoverage!==null)assert.ok(coverage>=previousCoverage-0.20,`${base.qbVersion}: native preference source coverage dropped catastrophically from ${(previousCoverage*100).toFixed(1)}% to ${(coverage*100).toFixed(1)}%; review the new upstream source syntax instead of silently admitting it`);
-  previousCoverage=coverage;
-  if(coverage<minCoverage.ratio)minCoverage={ratio:coverage,qbVersion:String(base.qbVersion)};
-
+  assert.ok(Number(manifest.mappedPreferences)>0,`${base.qbVersion}: no source-mapped native preferences`);
+  assert.equal(Number(manifest.totalPreferences),Array.isArray(base.preferenceDescriptors)?base.preferenceDescriptors.length:0,`${base.qbVersion}: preference surface size drift`);
+  const total=Number(manifest.totalPreferences)||0,mapped=Number(manifest.mappedPreferences)||0,ratio=total?mapped/total:0;
+  assert.ok(ratio>=0.60,`${base.qbVersion}: native Preferences source mapping collapsed to ${mapped}/${total} (${(ratio*100).toFixed(1)}%); source syntax must be admitted before runtime use`);
+  if(previousRatio!==null)assert.ok(previousRatio-ratio<=0.20,`${base.qbVersion}: native Preferences mapping dropped ${(100*(previousRatio-ratio)).toFixed(1)} percentage points from the previous stable release`);
+  previousRatio=ratio;minimumRatio=Math.min(minimumRatio,ratio);
   const allowed=new Set((base.preferenceDescriptors||[]).map(item=>String(item?.key||'')));
   for(const tab of manifest.tabs){
     assert.equal(typeof tab.id,'string');assert.ok(tab.id);assert.ok(Number.isInteger(tab.order));
     let previous=-1;
-    for(const key of tab.preferences||[]){
-      const item=manifest.preferences[key];
-      assert.ok(item,`${base.qbVersion}: tab ${tab.id} references missing ${key}`);
-      assert.ok(allowed.has(key),`${base.qbVersion}: native manifest escaped app/preferences: ${key}`);
-      assert.equal(item.tab,tab.id);
-      assert.ok(item.order>previous,`${base.qbVersion}: ${tab.id} preference order is not source monotonic`);previous=item.order;
-      assert.ok(item.title?.source&&item.title?.context,`${base.qbVersion}: ${key} lacks source/context title identity`);
-      assert.ok(item.control?.id&&item.control?.semantic,`${base.qbVersion}: ${key} lacks native control semantics`);
-      assert.ok(item.descriptor&&Object.prototype.hasOwnProperty.call(item.descriptor,'writable'),`${base.qbVersion}: ${key} lacks API read/write provenance`);
-      if(item.control.semantic==='select')for(const option of item.control.options||[])assert.ok(option.label&&(option.label.source||Object.prototype.hasOwnProperty.call(option.label,'literal')),`${base.qbVersion}: ${key} select option lacks source identity`);
-    }
+    for(const key of tab.preferences||[]){const item=manifest.preferences[key];assert.ok(item,`${base.qbVersion}: tab ${tab.id} references missing ${key}`);assert.ok(allowed.has(key),`${base.qbVersion}: native manifest escaped app/preferences: ${key}`);assert.equal(item.tab,tab.id);assert.ok(item.order>previous,`${base.qbVersion}: ${tab.id} preference order is not source monotonic`);previous=item.order;assert.ok(item.title?.source&&item.title?.context,`${base.qbVersion}: ${key} lacks source/context title identity`);assert.ok(item.control?.id&&item.control?.semantic,`${base.qbVersion}: ${key} lacks native control semantics`);assert.ok(item.descriptor&&Object.prototype.hasOwnProperty.call(item.descriptor,'writable'),`${base.qbVersion}: ${key} lacks API read/write provenance`);if(item.control.semantic==='select')for(const option of item.control.options||[])assert.ok(option.label&&(option.label.source||Object.prototype.hasOwnProperty.call(option.label,'literal')),`${base.qbVersion}: ${key} select option lacks source identity`);}
   }
 }
-const compact=compileQbPreferencesCompact(source);
+const compact=compileQbPreferencesCompact(source),packed=JSON.stringify(compact),bytes=Buffer.byteLength(packed);
+assert.equal(compact.schemaVersion,2,'compact Preferences IR must use the keyed source-native schema');
 assert.equal(compact.releases.length,catalog.length,'compact Preferences release identity must remain exact');
-assert.ok(compact.nativeUi.length>0&&compact.nativeUi.length<=catalog.length,'compact Preferences change-point count is invalid');
-assert.equal(compact.releases.at(-1).qbVersion,catalog.at(-1).qbVersion);
-assert.equal(compact.releases.at(-1).sourceSha,catalog.at(-1).sourceSha);
-console.log(`Full stable qB Preferences source contract passed: ${catalog.length} exact releases, ${compact.nativeUi.length} compact UI change points; minimum source coverage ${(minCoverage.ratio*100).toFixed(1)}% at qB ${minCoverage.qbVersion}; native tab/section/control ordering and API provenance verified.`);
+assert.ok(compact.tabs.length>0&&compact.tabs.length<=catalog.length,'compact Preferences tab change-point count is invalid');
+assert.ok(bytes<512*1024,`compact Preferences runtime IR is ${bytes} bytes; whole-manifest duplication or another size regression reappeared`);
+assert.equal(compact.releases.at(-1)[0],catalog.at(-1).qbVersion);
+assert.equal(compact.releases.at(-1)[1],catalog.at(-1).sourceSha);
+for(const profile of source.profiles){
+  const expanded=expandQbPreferencesCompact(compact,profile.qbVersion),manifest=profile.manifest;
+  assert.deepEqual(expanded.tabs.map(tab=>tab.id),manifest.tabs.map(tab=>tab.id),`${profile.qbVersion}: compact native tab order is not lossless`);
+  assert.equal(Object.keys(expanded.preferences).length,Object.keys(manifest.preferences).length,`${profile.qbVersion}: compact mapped Preference count is not lossless`);
+  for(const [key,item] of Object.entries(manifest.preferences)){
+    const actual=expanded.preferences[key];assert.ok(actual,`${profile.qbVersion}: compact IR lost ${key}`);
+    assert.equal(actual.tab,item.tab,`${profile.qbVersion}: ${key} tab drift`);assert.equal(actual.sectionId,item.sectionId,`${profile.qbVersion}: ${key} section drift`);assert.equal(actual.order,item.order,`${profile.qbVersion}: ${key} order drift`);assert.equal(actual.control.id,item.control.id,`${profile.qbVersion}: ${key} control id drift`);assert.equal(actual.control.semantic,item.control.semantic,`${profile.qbVersion}: ${key} control semantic drift`);assert.deepEqual(actual.control.attributes,item.control.attributes||{},`${profile.qbVersion}: ${key} control attributes drift`);assert.equal(actual.title?.source,item.title?.source,`${profile.qbVersion}: ${key} source title drift`);assert.equal(actual.title?.context,item.title?.context,`${profile.qbVersion}: ${key} source title context drift`);assert.deepEqual(actual.descriptor,item.descriptor,`${profile.qbVersion}: ${key} API descriptor drift`);
+  }
+}
+console.log(`Full stable qB Preferences source contract passed: ${catalog.length} exact releases, ${(minimumRatio*100).toFixed(1)}% minimum native mapping, ${bytes} byte keyed compact IR, and lossless tab/section/control/API provenance.`);
