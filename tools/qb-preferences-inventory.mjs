@@ -34,6 +34,22 @@ function preferenceRefs(value,descriptorKeys){
   for(const match of String(value||'').matchAll(/\bpref\s*\[\s*(['"])(.*?)\1\s*\]/g))add(match[2],'bracket',match.index??0);
   return out;
 }
+function helperStaticControlId(text,name){
+  const escaped=String(name||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const patterns=[
+    new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*(?:function\\s*\\([^)]*\\)|\\([^)]*\\)\\s*=>)\\s*\\{`),
+    new RegExp(`(?:^|[;{}\\n]\\s*)${escaped}\\s*=\\s*function\\s*\\([^)]*\\)\\s*\\{`,'m'),
+    new RegExp(`\\bfunction\\s+${escaped}\\s*\\([^)]*\\)\\s*\\{`)
+  ];
+  let start=-1;
+  for(const re of patterns){const match=re.exec(text);if(match){start=match.index;break;}}
+  if(start<0)return'';
+  const body=String(text).slice(start,start+7000),hits=[];
+  for(const match of body.matchAll(/document\.getElementById\(\s*["']([^"']+)["']\s*\)/g))hits.push({id:match[1],position:match.index??0});
+  for(const match of body.matchAll(/\$\(\s*["']([^"']+)["']\s*\)/g))hits.push({id:match[1],position:match.index??0});
+  hits.sort((a,b)=>a.position-b.position);
+  return hits[0]?.id||'';
+}
 function writeFacts(source,descriptorKeys){
   const text=String(source||''),bindings=[],refs=[];
   const acceptKey=(key)=>{key=String(key||'').trim();return key&&(!descriptorKeys.size||descriptorKeys.has(key))?key:'';};
@@ -49,10 +65,18 @@ function writeFacts(source,descriptorKeys){
     refs.push({key,syntax:`write:${family}`,position:position??0});
     for(const id of ids)bindings.push({key:id,preferenceKeys:[key],syntax:[`write:${family}`],position:position??0});
   };
+  const addHelper=(key,helper,position,family)=>{
+    key=acceptKey(key);if(!key)return;
+    const id=helperStaticControlId(text,helper);if(!id)return;
+    refs.push({key,syntax:`write:${family}`,position:position??0});
+    bindings.push({key:id,preferenceKeys:[key],syntax:[`write:${family}`],position:position??0});
+  };
   for(const match of text.matchAll(/settings\.set\(\s*["']([^"']+)["']\s*,[^;\n]*?\)\s*;?/g))add(match[1],match[0],match.index,'settings-set');
   for(const match of text.matchAll(/settings\[\s*["']([^"']+)["']\s*\]\s*=\s*[^;\n]*;?/g))add(match[1],match[0],match.index,'indexed-settings');
   for(const match of text.matchAll(/(?:settings|preferences)\.([A-Za-z0-9_]+)\s*=\s*[^;\n]*;?/g))add(match[1],match[0],match.index,'property-settings');
   for(const match of text.matchAll(/(?:^|[,{;]\s*)([A-Za-z0-9_]+)\s*:\s*[^,;\n]*(?:document\.getElementById|\$)\([^,;\n]*[,;]?/gm))add(match[1],match[0],match.index,'object-entry');
+  for(const match of text.matchAll(/settings\.set\(\s*["']([^"']+)["']\s*,\s*([A-Za-z_$][\w$]*)\s*\(\s*\)\s*\)/g))addHelper(match[1],match[2],match.index,'settings-helper');
+  for(const match of text.matchAll(/settings\[\s*["']([^"']+)["']\s*\]\s*=\s*([A-Za-z_$][\w$]*)\s*\(\s*\)\s*;/g))addHelper(match[1],match[2],match.index,'indexed-helper');
 
   const controlVars=new Map();
   for(const match of text.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*[^;\n]*?(?:document\.getElementById\(\s*["']([^"']+)["']\s*\)|\$\(\s*["']([^"']+)["']\s*\))[^;\n]*;?/g))controlVars.set(match[1],match[2]||match[3]);
@@ -100,7 +124,7 @@ export function extractQbPreferencesInventory({preferencesSource='',preferenceDe
     if(key)tabs.push({key,nativeId,position:match.index??0});
   }
   const controls=[];
-  for(const match of source.matchAll(/<(input|select|textarea)\b([^>]*)>/gi)){
+  for(const match of source.matchAll(/<(input|select|textarea|table)\b([^>]*)>/gi)){
     const id=String(attrText(match[2]||'','id')||'').trim();
     if(id)controls.push({key:id,tag:String(match[1]||'').toLowerCase(),position:match.index??0});
   }

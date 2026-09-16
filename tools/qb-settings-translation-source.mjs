@@ -92,7 +92,7 @@ function labelRefs(markup) {
 
 function controlIds(markup) {
   const out = [];
-  for (const match of String(markup || '').matchAll(/<(?:input|select|textarea)\b([^>]*)>/gi)) {
+  for (const match of String(markup || '').matchAll(/<(?:input|select|textarea|table)\b([^>]*)>/gi)) {
     const id = (String(match[1] || '').match(/\bid\s*=\s*["']([^"']+)["']/i) || [])[1];
     if (id && !out.includes(id)) out.push(id);
   }
@@ -102,7 +102,7 @@ function controlIds(markup) {
 function labelsByControlId(markup) {
   const labels = labelRefs(markup);
   const out = new Map(labels.byControl);
-  for (const match of String(markup || '').matchAll(/<(?:input|select|textarea)\b([^>]*)>/gi)) {
+  for (const match of String(markup || '').matchAll(/<(?:input|select|textarea|table)\b([^>]*)>/gi)) {
     const attrs = match[1] || '';
     const id = (attrs.match(/\bid\s*=\s*["']([^"']+)["']/i) || [])[1];
     const labelledBy = (attrs.match(/\baria-labelledby\s*=\s*["']([^"']+)["']/i) || [])[1];
@@ -136,7 +136,7 @@ function rowLabelsByControlId(markup) {
 
 function fieldsetLabelsByControlId(markup){
   const out=new Map(),stack=[];
-  const token=/<fieldset\b[^>]*>|<\/fieldset>|<legend\b[^>]*>[\s\S]*?<\/legend>|<(?:input|select|textarea)\b[^>]*>/gi;
+  const token=/<fieldset\b[^>]*>|<\/fieldset>|<legend\b[^>]*>[\s\S]*?<\/legend>|<(?:input|select|textarea|table)\b[^>]*>/gi;
   for(const match of String(markup||'').matchAll(token)){
     const raw=match[0];
     if(/^<fieldset\b/i.test(raw)){stack.push({legend:null});continue;}
@@ -154,7 +154,7 @@ function fieldsetLabelsByControlId(markup){
 
 function directDescriptionsByControlId(markup) {
   const out = new Map();
-  for (const match of String(markup || '').matchAll(/<(?:input|select|textarea)\b([^>]*)>/gi)) {
+  for (const match of String(markup || '').matchAll(/<(?:input|select|textarea|table)\b([^>]*)>/gi)) {
     const attrs = match[1] || '';
     const id = (attrs.match(/\bid\s*=\s*["']([^"']+)["']/i) || [])[1];
     const title = (attrs.match(/\btitle\s*=\s*["']([\s\S]*?)["']/i) || [])[1];
@@ -177,6 +177,21 @@ function dotPreferenceRefs(value) {
   for(const match of String(value||'').matchAll(/\bpref\.([A-Za-z0-9_]+)/g)) if(!out.includes(match[1])) out.push(match[1]);
   return out;
 }
+function helperStaticControlId(text,name){
+  const escaped=String(name||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const patterns=[
+    new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*(?:function\\s*\\([^)]*\\)|\\([^)]*\\)\\s*=>)\\s*\\{`),
+    new RegExp(`(?:^|[;{}\\n]\\s*)${escaped}\\s*=\\s*function\\s*\\([^)]*\\)\\s*\\{`,'m'),
+    new RegExp(`\\bfunction\\s+${escaped}\\s*\\([^)]*\\)\\s*\\{`)
+  ];
+  let index=-1;
+  for(const re of patterns){const match=re.exec(text);if(match){index=match.index;break;}}
+  if(index<0)return'';
+  const body=String(text).slice(index,index+7000);
+  const modern=/document\.getElementById\(\s*["']([^"']+)["']\s*\)/.exec(body),legacy=/\$\(\s*["']([^"']+)["']\s*\)/.exec(body);
+  if(modern&&legacy)return modern.index<legacy.index?modern[1]:legacy[1];
+  return modern?.[1]||legacy?.[1]||'';
+}
 
 function preferenceControlRelations(source) {
   const text = String(source || ''), relations = new Map();
@@ -193,6 +208,12 @@ function preferenceControlRelations(source) {
   for (const match of text.matchAll(/(?:^|[,{;]\s*)([A-Za-z0-9_]+)\s*:\s*document\.getElementById\(\s*["']([^"']+)["']\s*\)/gm)) addRelation(relations, match[1], match[2], 'modern-write');
   for (const match of text.matchAll(/(?:^|[,{;]\s*)([A-Za-z0-9_]+)\s*:\s*[^,;\n]*?\$\(\s*["']([^"']+)["']\s*\)/gm)) addRelation(relations, match[1], match[2], 'object-helper-write');
   for (const match of text.matchAll(/(?:settings|preferences)\.([A-Za-z0-9_]+)\s*=\s*document\.getElementById\(\s*["']([^"']+)["']\s*\)/g)) addRelation(relations, match[1], match[2], 'modern-write');
+  for(const match of text.matchAll(/settings\.set\(\s*["']([^"']+)["']\s*,\s*([A-Za-z_$][\w$]*)\s*\(\s*\)\s*\)/g)){
+    const id=helperStaticControlId(text,match[2]);if(id)addRelation(relations,match[1],id,'legacy-helper-write');
+  }
+  for(const match of text.matchAll(/settings\[\s*["']([^"']+)["']\s*\]\s*=\s*([A-Za-z_$][\w$]*)\s*\(\s*\)\s*;/g)){
+    const id=helperStaticControlId(text,match[2]);if(id)addRelation(relations,match[1],id,'indexed-helper-write');
+  }
 
   const keyVars = new Map();
   for (const match of text.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*[^;\n]*?\bpref\.([A-Za-z0-9_]+)/g)) keyVars.set(match[1], match[2]);

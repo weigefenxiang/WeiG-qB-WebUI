@@ -112,4 +112,29 @@ const legacyAudit=auditQbPreferencesInventory({inventory:legacyInventory,manifes
 assertCompleteSourceCensus(legacyAudit.preferences,'Preferences legacy composite preference inventory');
 assertCompleteSourceCensus(legacyAudit.bindings,'Preferences legacy composite binding inventory');
 
-console.log('qB Preferences independent inventory contract passed: native tabs, read/write app/preferences identities and source-proven controls are censused independently; helper controls stay diagnostic-only, multi-reference/write-only/local-variable bindings remain mapped, and row/fieldset source copy fallback preserves source ownership.');
+const structuredSource=`
+<div id="FutureNetworkTab" class="PrefTab">
+  <fieldset><legend>QBT_TR(Watched folders)QBT_TR[CONTEXT=OptionsDialog]</legend>
+    <table id="watched_table"><tbody></tbody></table>
+  </fieldset>
+</div>
+<script>
+  const collectFolders = () => {
+    const rows = document.getElementById("watched_table").getChildren("tbody")[0];
+    return {};
+  };
+  settings["folders"] = collectFolders();
+</script>`;
+const structuredDescriptors=[{key:'folders',getterPresent:true,setterPresent:true,readType:'object',writeType:'object',typeAgreement:'EXACT',writable:true}];
+const structuredManifest=extractQbPreferencesNativeSurface({preferencesSource:structuredSource,toolbarSource:toolbar,preferenceDescriptors:structuredDescriptors});
+assert.equal(structuredManifest.preferences.folders.control.id,'watched_table','helper-backed structured preference must resolve to its static native table owner');
+assert.equal(structuredManifest.preferences.folders.control.semantic,'structured','native table owner must remain structured instead of degrading to a text control');
+assert.equal(structuredManifest.preferences.folders.title.source,'Watched folders','structured control copy must come from the exact native fieldset legend');
+const structuredInventory=extractQbPreferencesInventory({preferencesSource:structuredSource,preferenceDescriptors:structuredDescriptors});
+assert.ok(structuredInventory.preferenceRefs.some(item=>item.key==='folders'&&item.syntax==='write:indexed-helper'),'independent census must account a helper-backed write identity');
+assert.ok(structuredInventory.bindings.some(item=>item.key==='watched_table'&&item.preferenceKeys.includes('folders')),'independent census must resolve helper-backed native table ownership without calling the semantic parser');
+const structuredAudit=auditQbPreferencesInventory({inventory:structuredInventory,manifest:structuredManifest});
+assertCompleteSourceCensus(structuredAudit.preferences,'Preferences structured helper preference inventory');
+assertCompleteSourceCensus(structuredAudit.bindings,'Preferences structured helper binding inventory');
+
+console.log('qB Preferences independent inventory contract passed: native tabs, read/write app/preferences identities and source-proven controls are censused independently; helper controls stay diagnostic-only, multi-reference/write-only/local-variable/helper-backed structured bindings remain mapped, and row/fieldset source copy fallback preserves source ownership.');
