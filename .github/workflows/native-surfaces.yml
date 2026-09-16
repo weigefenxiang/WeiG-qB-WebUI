@@ -1,0 +1,60 @@
+name: Native Surface Source
+
+on:
+  push:
+    branches:
+      - dev
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-surface-source-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rss_source:
+    name: Exact qB RSS native surface source
+    if: ${{ github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[native-surfaces]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Checkout qBittorrent upstream with stable tags
+        uses: actions/checkout@v7
+        with:
+          repository: qbittorrent/qBittorrent
+          path: upstream-qb
+          fetch-depth: 0
+          fetch-tags: true
+          filter: blob:none
+          persist-credentials: false
+      - name: Build exact admitted source catalog
+        run: node tools/qb-release-catalog.mjs upstream-qb --output=qb-releases.json
+      - name: Extract exact RSS native surface facts
+        run: node tools/qb-rss-source-overlay.mjs upstream-qb qb-releases.json qb-rss-source-catalog.json
+      - name: Compile RSS compact contract
+        run: node tools/qb-rss-compact.mjs qb-rss-source-catalog.json rss-compat.json
+      - name: Verify every admitted stable RSS source profile
+        run: node tests/full-stable-rss-source-contract.mjs qb-rss-source-catalog.json
+      - name: Emit compact contract for checked-in source review
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '---BEGIN RSS COMPAT JSON---'
+          cat rss-compat.json
+          echo '---END RSS COMPAT JSON---'
+      - name: Upload exact RSS source artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: rss-native-source-${{ github.sha }}
+          path: |
+            qb-rss-source-catalog.json
+            rss-compat.json
+          if-no-files-found: error
+          retention-days: 7
