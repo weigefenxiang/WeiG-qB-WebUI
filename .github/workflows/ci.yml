@@ -16,12 +16,13 @@ on:
           - ui
           - candidate
           - settings-evidence
+          - native-surfaces
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'settings-evidence' && 'settings-evidence' || 'default' }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}-${{ (github.event_name == 'workflow_dispatch' && (inputs.validation_mode == 'settings-evidence' || inputs.validation_mode == 'native-surfaces') && inputs.validation_mode) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[native-surfaces]') && 'native-surfaces') || 'default' }}
   cancel-in-progress: true
 
 jobs:
@@ -56,7 +57,7 @@ jobs:
           fi
 
           case "$HEAD_MESSAGE" in
-            *'[ui]'*|*'[candidate]'*)
+            *'[ui]'*|*'[candidate]'*|*'[native-surfaces]'*)
               echo "relevant=true" >> "$GITHUB_OUTPUT"
               echo "Commit message explicitly requests an extended CI gate."
               exit 0
@@ -576,3 +577,42 @@ jobs:
           path: artifacts/candidate-deployment/candidate.json
           if-no-files-found: error
           retention-days: 90
+
+  native_surface_source:
+    name: qB native surface source admission
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'native-surfaces' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[native-surfaces]')) }}
+    runs-on: ubuntu-latest
+    needs: smoke
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Checkout qBittorrent upstream with stable tags
+        uses: actions/checkout@v7
+        with:
+          repository: qbittorrent/qBittorrent
+          path: upstream-qb
+          fetch-depth: 0
+          fetch-tags: true
+          filter: blob:none
+          persist-credentials: false
+      - name: Build exact admitted source catalog
+        run: node tools/qb-release-catalog.mjs upstream-qb --output=qb-releases.json
+      - name: Extract exact RSS native surface facts
+        run: node tools/qb-rss-source-overlay.mjs upstream-qb qb-releases.json qb-rss-source-catalog.json
+      - name: Compile RSS compact contract
+        run: node tools/qb-rss-compact.mjs qb-rss-source-catalog.json rss-compat.json
+      - name: Verify every admitted stable RSS source profile
+        run: node tests/full-stable-rss-source-contract.mjs qb-rss-source-catalog.json
+      - name: Upload exact RSS source artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: rss-native-source-${{ github.sha }}
+          path: |
+            qb-rss-source-catalog.json
+            rss-compat.json
+          if-no-files-found: error
+          retention-days: 7
