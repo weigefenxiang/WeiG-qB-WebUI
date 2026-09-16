@@ -607,12 +607,20 @@ jobs:
         run: node tools/qb-rss-compact.mjs qb-rss-source-catalog.json rss-compat.json
       - name: Verify every admitted stable RSS source profile
         run: node tests/full-stable-rss-source-contract.mjs qb-rss-source-catalog.json
-      - name: Upload exact RSS source artifacts
+      - name: Extract exact Preferences native surface facts
+        run: node tools/qb-preferences-surface-source.mjs upstream-qb qb-releases.json qb-preferences-source-catalog.json
+      - name: Compile Preferences compact contract
+        run: node tools/qb-preferences-compact.mjs qb-preferences-source-catalog.json settings-native-compat.json
+      - name: Verify every admitted stable Preferences source profile
+        run: node tests/full-stable-preferences-source-contract.mjs qb-preferences-source-catalog.json qb-releases.json
+      - name: Upload exact native surface source artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: rss-native-source-${{ github.sha }}
+          name: native-surface-source-${{ github.sha }}
           path: |
             qb-rss-source-catalog.json
             rss-compat.json
+            qb-preferences-source-catalog.json
+            settings-native-compat.json
           if-no-files-found: error
           retention-days: 7
