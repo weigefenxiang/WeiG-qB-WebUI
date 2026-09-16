@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {settingsTabRefs} from '../tools/qb-owned-ui-source.mjs';
+import {compileCompactRuntime} from '../tools/qb-compact-runtime.mjs';
 import {extractQbPreferencesNativeSurface} from '../tools/qb-preferences-surface-source.mjs';
 import {compileQbPreferencesCompact,expandQbPreferencesCompact} from '../tools/qb-preferences-compact.mjs';
 
@@ -85,4 +86,9 @@ const compactChanged=compileQbPreferencesCompact({schemaVersion:1,profiles:[sour
 assert.equal(compactChanged.preferences.future_limit.length,2,'one preference change must create one keyed change point instead of duplicating every other native setting');
 assert.equal(compactChanged.preferences.locale.length,1,'unrelated native preferences must remain deduplicated');
 
-console.log('qB Preferences native source contract passed: tabs auto-admit, source order/sections/controls/options/units/dependencies are preserved, and keyed compact IR expands losslessly without whole-manifest duplication.');
+const runtimeCompact=compileCompactRuntime([{qbVersion:'5.2.3',webApiVersion:'2.15.1',sourceSha:'1111111111111111111111111111111111111111',stable:true,officialWeiGSupport:true,qbOwnedUi:{'settings.tab.behavior':{source:'Behavior',context:'OptionsDialog'},'settings.tab.futurenetwork':{source:'Future Network',context:'OptionsDialog'}},apiActions:[],preferenceDescriptors:[]}]);
+assert.deepEqual(runtimeCompact.settingsData.nativeTabs[0].value,['behavior','futurenetwork'],'compact runtime must preserve every source-admitted native Settings tab instead of filtering through a fixed known-tab allowlist');
+assert.equal(runtimeCompact.catalogIdentity.releaseCount,1,'compact runtime must carry a common Frozen catalog identity foundation');
+assert.deepEqual(runtimeCompact.capabilityData.catalogIdentity,runtimeCompact.settingsData.catalogIdentity,'compact domains compiled from one catalog must carry identical catalog identity');
+
+console.log('qB Preferences native source contract passed: tabs auto-admit through extraction and compact runtime, source order/sections/controls/options/units/dependencies are preserved, and keyed compact IR expands losslessly without whole-manifest duplication.');

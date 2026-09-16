@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 import {fileURLToPath} from 'node:url';
+import {catalogIdentity} from './qb-catalog-identity.mjs';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(here,'..');
@@ -13,15 +14,17 @@ function releaseRows(catalog){return catalog.map(profile=>({qbVersion:String(pro
 function factTimeline(catalog,key){return catalog.map(profile=>({from:String(profile.qbVersion||''),value:clone(Object.prototype.hasOwnProperty.call(profile,key)?profile[key]:null)}));}
 function actionValue(profile,action){if(!Array.isArray(profile.apiActions)||!profile.apiActions.includes(action))return null;const raw=profile.apiActionParameters&&profile.apiActionParameters[action]||{};return{parameters:Array.isArray(raw.parameters)?raw.parameters.map(String):[],required:Array.isArray(raw.required)?raw.required.map(String):[],optional:Array.isArray(raw.optional)?raw.optional.map(String):[],parameterOptions:raw.parameterOptions&&typeof raw.parameterOptions==='object'?clone(raw.parameterOptions):{}};}
 function descriptorValue(profile,key,fields){const item=(profile.preferenceDescriptors||[]).find(entry=>String(entry?.key||'')===key);if(!item)return null;const value={};for(const field of fields)value[field]=Object.prototype.hasOwnProperty.call(item,field)?clone(item[field]):null;return value;}
-function nativeSettingsTabs(profile){const prefix='settings.tab.',allowed=new Set(['behavior','downloads','connection','speed','bittorrent','rss','webui','advanced']),out=[];for(const key of Object.keys(profile?.qbOwnedUi||{})){if(!key.startsWith(prefix))continue;const tab=key.slice(prefix.length);if(allowed.has(tab)&&!out.includes(tab))out.push(tab);}return out;}
+function nativeSettingsTabs(profile){const prefix='settings.tab.',out=[];for(const key of Object.keys(profile?.qbOwnedUi||{})){if(!key.startsWith(prefix))continue;const tab=key.slice(prefix.length).trim();if(tab&&!out.includes(tab))out.push(tab);}return out;}
 
 export function compileCompactRuntime(catalog){
   if(!Array.isArray(catalog)||!catalog.length)throw new Error('Compact runtime compiler requires a non-empty source catalog.');
+  const identity=catalogIdentity(catalog);
   const capabilityData=readJson(path.join(root,'webui/private/data/capabilities.json'));
   const torrentData=readJson(path.join(root,'webui/private/data/torrent-compat.json'));
   const detailData=readJson(path.join(root,'webui/private/data/detail-compat.json'));
   const actionData=readJson(path.join(root,'webui/private/data/source-actions.json'));
   const settingsData=readJson(path.join(root,'webui/private/data/settings-compat.json'));
+  for(const data of [capabilityData,torrentData,detailData,actionData,settingsData])data.catalogIdentity=clone(identity);
   capabilityData.releases=releaseRows(catalog);
   torrentData.sourceFacts={};for(const key of TORRENT_FACTS)torrentData.sourceFacts[key]=factTimeline(catalog,key);
   detailData.sourceFacts={torrentDetailUi:factTimeline(catalog,'torrentDetailUi')};
@@ -30,7 +33,7 @@ export function compileCompactRuntime(catalog){
   const prefNames=new Set(Object.keys(settingsData.preferences||{}));for(const profile of catalog)for(const item of profile.preferenceDescriptors||[])if(item?.key)prefNames.add(String(item.key));
   settingsData.preferences={};for(const key of prefNames)settingsData.preferences[key]=catalog.map(profile=>({from:String(profile.qbVersion||''),value:descriptorValue(profile,key,settingsData.fields||[])}));
   settingsData.nativeTabs=catalog.map(profile=>({from:String(profile.qbVersion||''),value:nativeSettingsTabs(profile)}));
-  return{capabilityData,torrentData,detailData,actionData,settingsData};
+  return{catalogIdentity:identity,capabilityData,torrentData,detailData,actionData,settingsData};
 }
 
 function defaultDocument(){return{addEventListener(){},querySelectorAll(){return[];},createElement(){return{className:'',dataset:{},classList:{add(){},remove(){},toggle(){}},setAttribute(){},appendChild(){},querySelector(){return null;},querySelectorAll(){return[];},remove(){}};},body:{appendChild(){}}};}
