@@ -70,10 +70,13 @@ NEW/REMOVED endpoint         -> source apiActions/catalog
 ACTION PARAMETER             -> apiActionParameters / source-actions.json
 PREFERENCE API descriptor    -> Preference source pipeline
 PREFERENCES native surface   -> qb-preferences-surface-source + qb-preferences-compact
+PREFERENCES inventory        -> qb-preferences-inventory + qb-preferences-census-source
+PREFERENCE value projection  -> qb-preferences-value-projection
 RSS native surface           -> qb-rss-surface-source + qb-rss-compact
 TORRENT surface/filter       -> Torrent source parser/catalog
 DETAIL native UI             -> torrentDetailUi/detail source pipeline
 qB-owned source/context copy -> qB UI/source inventory + translation source pipeline
+CATALOG identity             -> qb-catalog-identity + domain compilers
 PARAM/RESPONSE/STATUS        -> simulator Endpoint Contract where product/evidence consumes it
 TRANSPORT                    -> simulator Transport Contract
 NOT_APPLICABLE               -> ledger only
@@ -103,9 +106,26 @@ unaccounted = 0
 duplicates = 0
 ```
 
-例如 Preferences extractor可以成功输出60%+映射并通过 bounded regression gate，但这不等于剩余 upstream controls已被逐项解释。Census看到而semantic extractor未映射的新 item必须触发 review/fail closed，而不是继续标记 ledger healthy。
+Preferences现在已经建立独立 census：raw source中的 native tabs、read/write app/preferences identities与 source-proven controls由独立 inventory路径发现，再与 semantic manifest accounting；full-stable contract要求全部 admitted release的 `tabs / preferences / bindings` census complete，并在 unaccounted/overlap/escaped/duplicate时失败。
 
-## 6. Compatibility examples
+因此 Preferences 的 60%+ mapping ratio现在只用于监测 semantic parser是否发生大幅退化，**不再承担 completeness proof**。A仍未完成的原因是 source-native IR尚未原子替换 formal `W.SettingsSchema -> Renderer` 手工 runtime truth，而不是因为 Preferences census缺失。其它 B/C/D/E/F domain仍需要各自的独立 census/coverage closure。
+
+## 6. Preferences value projection 是独立 evidence 维度
+
+Preference getter/setter/type相同，不代表 native UI与 API raw value可以直接互拷。当前 source pipeline会另外记录 source-derived value projection：
+
+```text
+identity
+scale
+switch-map
+unproven
+```
+
+并携带 `safeWrite`。例如 source可证明 bytes/s <-> KiB/s或 bytes <-> MiB的 scale；历史 composite只有 read-side switch map、没有可信 inverse时必须 `safeWrite:false`。
+
+这类 projection属于 source UI semantics，不应降级成手工 `META.scale`、版本 if/else或仅由 WebAPI ledger推断。正式 A runtime完成后，Settings危险写回必须同时满足 API descriptor provenance与 source projection write safety。
+
+## 7. Compatibility examples
 
 ### qB4/qB5 action names
 
@@ -125,11 +145,21 @@ qB5 stopped/running
 
 正式 normalize属于 `W.CapabilityRegistry + W.TorrentSemantics`；不得恢复已退休 release-profile owner，也不得把版本分支散落到 UI caller。
 
+### Native Settings tabs
+
+固定 native Settings tab allowlist已经从 compact tooling退休；tab presence/order来自 exact `qbOwnedUi` 的 `settings.tab.*` facts。Future第九个 tab应通过 source inventory/admission进入，而不是更新一个八项白名单。
+
 ### Native UI surface changes
 
 Preferences/RSS/Sidebar/Detail的 tab、control、field、copy、order变化属于 source UI事实；应进入对应 source inventory/compact domain，而不是被 WebAPI ledger中的 version if/else取代。WebAPI值与source UI semantic是两层 evidence，不能互相推导不存在的事实。
 
-## 7. Future stable
+## 8. Common catalog identity
+
+当前 tooling已经存在 common Frozen catalog identity，并已用于 capabilities/torrent/detail/actions/settings compact outputs以及 Preferences keyed native IR。它的目的是让后续 integrated F closure可以证明所有 runtime domain来自同一 admitted release/source set。
+
+这项 foundation尚未完全闭环：RSS仍需纳入同一 compiler/identity链，formal runtime/distribution也仍需对全部 domain执行 mixed/stale identity拒绝。Ledger不得把“helper已经存在”误记成“F integrated closure已完成”。
+
+## 9. Future stable
 
 新的 official stable：
 
@@ -137,7 +167,7 @@ Preferences/RSS/Sidebar/Detail的 tab、control、field、copy、order变化属�
 discover exact tag/source identity
 -> verify Frozen prefix
 -> run independent inventory + semantic extraction
--> compare evolution/source facts
+-> compare evolution/source/value-projection facts
 -> product impact analysis
 -> review unaccounted items
 -> compatibility implementation if required
@@ -148,13 +178,15 @@ discover exact tag/source identity
 
 Unknown future semantics不允许猜测。Fail-close是安全机制，不是最终产品目标。
 
-## 8. 与现行 CI 的关系
+## 10. 与现行 CI 的关系
 
-发布级 source/product audit由现行 CI/candidate流程承担；本轮 A–F 另外使用 `native-surfaces` source-admission lane做 focused/all-admitted source extraction evidence。当前用户禁止创建/使用 `[candidate]`，因此该 source lane不能被解释为 Candidate授权。
+发布级 source/product audit由现行 CI/candidate流程承担；本轮 A–F另外使用 `native-surfaces` source-admission lane做 focused/all-admitted source extraction evidence。当前用户禁止创建/使用 `[candidate]`，因此该 source lane不能被解释为 Candidate授权。
+
+Source extractor自身也受性能约束。可预索引的 exact release source应一次建立索引后bounded查询；禁止让每个 Preference/field重新扫描整份 source形成明显 O(N×source)回归，并靠延长 CI timeout掩盖。
 
 全版本真实 runtime证明由 `Real qB Full Frozen Matrix` 手动执行，并只应在 A–F全部完成且 final dev SHA冻结后按 `docs/011`启动。
 
-## 9. Working rule
+## 11. Working rule
 
 Ledger是 chronology/evidence authority；`docs/010.真实qB产品兼容路线.md` 是正式兼容策略 authority；`docs/014` 是当前 mutable TODO/handoff authority。
 
