@@ -73,6 +73,19 @@ function sourceBindings(source,descriptorKeys){
   for(const match of text.matchAll(/document\.getElementById\(\s*["']([^"']+)["']\s*\)[^;\n]*?=[^;\n]*;?/g))addStatement(match[1],match[0],match.index,'modern-assignment');
   for(const match of text.matchAll(/\$\(\s*["']([^"']+)["']\s*\)[^;\n]*?=[^;\n]*;?/g))addStatement(match[1],match[0],match.index,'legacy-assignment');
   for(const match of text.matchAll(/\$\(\s*["']([^"']+)["']\s*\)\.(?:setProperty|set)\([^;\n]*\)\s*;?/g))addStatement(match[1],match[0],match.index,'legacy-set');
+
+  const keyVars=new Map();
+  for(const match of text.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*[^;\n]*?\bpref\s*\.\s*([A-Za-z_$][\w$]*)/g)){
+    const key=String(match[2]||'');if(!descriptorKeys.size||descriptorKeys.has(key))keyVars.set(match[1],key);
+  }
+  for(const [name,key] of keyVars){
+    const escaped=name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    const patterns=[
+      {re:new RegExp(`document\\.getElementById\\(\\s*["']([^"']+)["']\\s*\\)[^;\\n]*?\\b${escaped}\\b[^;\\n]*;?`,'g'),family:'modern-variable'},
+      {re:new RegExp(`\\$\\(\\s*["']([^"']+)["']\\s*\\)[^;\\n]*?\\b${escaped}\\b[^;\\n]*;?`,'g'),family:'legacy-variable'}
+    ];
+    for(const item of patterns)for(const match of text.matchAll(item.re))rows.push({key:match[1],preferenceKeys:[key],syntax:[item.family],position:match.index??0});
+  }
   const writes=writeFacts(text,descriptorKeys);
   return{bindings:mergeBindings([...rows,...writes.bindings]),writeRefs:writes.refs};
 }
@@ -106,13 +119,13 @@ export function auditQbPreferencesInventory({inventory,manifest,exclusions={}}={
   if(!inventory||!manifest)throw new Error('Preferences inventory audit requires independent inventory + semantic manifest.');
   const mappedTabs=(manifest.tabs||[]).map(item=>({key:String(item?.id||'')}));
   const mappedPreferences=Object.keys(manifest.preferences||{}).map(key=>({key}));
-  const mappedControls=Object.values(manifest.preferences||{}).map(item=>({key:String(item?.control?.id||'')})).filter(item=>item.key);
-  const mappedControlIds=new Set(mappedControls.map(item=>item.key));
+  const mappedControlIds=[...new Set(Object.values(manifest.preferences||{}).map(item=>String(item?.control?.id||'')).filter(Boolean))];
+  const mappedControls=mappedControlIds.map(key=>({key}));
   const rawControls=(inventory.controls||[]).map(item=>String(item?.key||'')).filter(Boolean);
   return{
     tabs:accountSourceInventory({inventory:inventory.tabs||[],mapped:mappedTabs,excluded:exclusions.tabs||[]}),
     preferences:accountSourceInventory({inventory:inventory.preferenceRefs||[],mapped:mappedPreferences,excluded:exclusions.preferences||[]}),
     bindings:accountSourceInventory({inventory:inventory.bindings||[],mapped:mappedControls,excluded:exclusions.bindings||[]}),
-    rawControls:{inventoryCount:rawControls.length,mappedControlCount:mappedControlIds.size,unmappedControls:rawControls.filter(id=>!mappedControlIds.has(id))}
+    rawControls:{inventoryCount:rawControls.length,mappedControlCount:mappedControlIds.length,unmappedControls:rawControls.filter(id=>!mappedControlIds.includes(id))}
   };
 }

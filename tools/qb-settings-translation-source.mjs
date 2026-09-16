@@ -117,10 +117,37 @@ function rowLabelsByControlId(markup) {
   const out = new Map();
   for (const match of String(markup || '').matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)) {
     const row = match[1] || '';
-    const refs = qbtRefs(row), uniqueRefs = [];
-    for (const ref of refs) if (!uniqueRefs.some((item) => item.source === ref.source && item.context === ref.context)) uniqueRefs.push(ref);
-    if (uniqueRefs.length !== 1) continue;
-    for (const id of controlIds(row)) if (!out.has(id)) out.set(id, uniqueRefs[0]);
+    const labelRefsInRow=[];
+    for(const label of row.matchAll(/<label\b[^>]*>([\s\S]*?)<\/label>/gi)){
+      const ref=qbtTr(label[1]);
+      if(ref&&!labelRefsInRow.some(item=>item.source===ref.source&&item.context===ref.context))labelRefsInRow.push(ref);
+    }
+    let selected=labelRefsInRow.length===1?labelRefsInRow[0]:null;
+    if(!selected){
+      const refs=qbtRefs(row),uniqueRefs=[];
+      for(const ref of refs)if(!uniqueRefs.some(item=>item.source===ref.source&&item.context===ref.context))uniqueRefs.push(ref);
+      if(uniqueRefs.length===1)selected=uniqueRefs[0];
+    }
+    if(!selected)continue;
+    for (const id of controlIds(row)) if (!out.has(id)) out.set(id, selected);
+  }
+  return out;
+}
+
+function fieldsetLabelsByControlId(markup){
+  const out=new Map(),stack=[];
+  const token=/<fieldset\b[^>]*>|<\/fieldset>|<legend\b[^>]*>[\s\S]*?<\/legend>|<(?:input|select|textarea)\b[^>]*>/gi;
+  for(const match of String(markup||'').matchAll(token)){
+    const raw=match[0];
+    if(/^<fieldset\b/i.test(raw)){stack.push({legend:null});continue;}
+    if(/^<\/fieldset/i.test(raw)){stack.pop();continue;}
+    if(/^<legend\b/i.test(raw)){
+      if(stack.length){const ref=qbtTr(raw);if(ref)stack[stack.length-1].legend=ref;}
+      continue;
+    }
+    const id=(raw.match(/\bid\s*=\s*["']([^"']+)["']/i)||[])[1];
+    if(!id||out.has(id))continue;
+    for(let i=stack.length-1;i>=0;i--)if(stack[i].legend){out.set(id,stack[i].legend);break;}
   }
   return out;
 }
@@ -153,28 +180,13 @@ function dotPreferenceRefs(value) {
 
 function preferenceControlRelations(source) {
   const text = String(source || ''), relations = new Map();
-  // Read bindings. qB has used both document.getElementById() and its $() helper,
-  // with direct properties, wrapper conversions and older set()/setProperty() calls.
   for (const match of text.matchAll(/document\.getElementById\(\s*["']([^"']+)["']\s*\)[^;\n]*?=\s*[^;\n]*?\bpref\.([A-Za-z0-9_]+)/g)) addRelation(relations, match[2], match[1], 'modern-read');
   for (const match of text.matchAll(/\$\(\s*["']([^"']+)["']\s*\)[^;\n]*?=\s*[^;\n]*?\bpref\.([A-Za-z0-9_]+)/g)) addRelation(relations, match[2], match[1], 'legacy-property-read');
   for (const match of text.matchAll(/\$\(\s*["']([^"']+)["']\s*\)\.(?:setProperty|set)\([^;\n]*?pref\.([A-Za-z0-9_]+)/g)) addRelation(relations, match[2], match[1], 'legacy-read');
+  for (const match of text.matchAll(/document\.getElementById\(\s*["']([^"']+)["']\s*\)[^;\n]*?=[^;\n]*;?/g)) for (const key of dotPreferenceRefs(match[0])) addRelation(relations, key, match[1], 'modern-read-statement');
+  for (const match of text.matchAll(/\$\(\s*["']([^"']+)["']\s*\)[^;\n]*?=[^;\n]*;?/g)) for (const key of dotPreferenceRefs(match[0])) addRelation(relations, key, match[1], 'legacy-property-read-statement');
+  for (const match of text.matchAll(/\$\(\s*["']([^"']+)["']\s*\)\.(?:setProperty|set)\([^;\n]*\)\s*;?/g)) for (const key of dotPreferenceRefs(match[0])) addRelation(relations, key, match[1], 'legacy-read-statement');
 
-  // Some native assignments intentionally reference more than one preference
-  // (for example an enabled gate plus its value in one ternary). The historical
-  // single-capture patterns above preserve candidate order; this second pass
-  // admits every dot-syntax preference identity proven by the same assignment.
-  for (const match of text.matchAll(/document\.getElementById\(\s*["']([^"']+)["']\s*\)[^;\n]*?=[^;\n]*;?/g)) {
-    for (const key of dotPreferenceRefs(match[0])) addRelation(relations, key, match[1], 'modern-read-statement');
-  }
-  for (const match of text.matchAll(/\$\(\s*["']([^"']+)["']\s*\)[^;\n]*?=[^;\n]*;?/g)) {
-    for (const key of dotPreferenceRefs(match[0])) addRelation(relations, key, match[1], 'legacy-property-read-statement');
-  }
-  for (const match of text.matchAll(/\$\(\s*["']([^"']+)["']\s*\)\.(?:setProperty|set)\([^;\n]*\)\s*;?/g)) {
-    for (const key of dotPreferenceRefs(match[0])) addRelation(relations, key, match[1], 'legacy-read-statement');
-  }
-
-  // Direct write bindings across the historical settings.set(), object-literal,
-  // property and qB 5.1 settings["key"] assignment families.
   for (const match of text.matchAll(/settings\.set\(\s*["']([^"']+)["']\s*,[^;\n]*?\$\(\s*["']([^"']+)["']\s*\)/g)) addRelation(relations, match[1], match[2], 'legacy-write');
   for (const match of text.matchAll(/settings\[\s*["']([^"']+)["']\s*\]\s*=\s*[^;\n]*?\$\(\s*["']([^"']+)["']\s*\)/g)) addRelation(relations, match[1], match[2], 'indexed-write');
   for (const match of text.matchAll(/settings\[\s*["']([^"']+)["']\s*\]\s*=\s*[^;\n]*?document\.getElementById\(\s*["']([^"']+)["']\s*\)/g)) addRelation(relations, match[1], match[2], 'indexed-modern-write');
@@ -182,9 +194,6 @@ function preferenceControlRelations(source) {
   for (const match of text.matchAll(/(?:^|[,{;]\s*)([A-Za-z0-9_]+)\s*:\s*[^,;\n]*?\$\(\s*["']([^"']+)["']\s*\)/gm)) addRelation(relations, match[1], match[2], 'object-helper-write');
   for (const match of text.matchAll(/(?:settings|preferences)\.([A-Za-z0-9_]+)\s*=\s*document\.getElementById\(\s*["']([^"']+)["']\s*\)/g)) addRelation(relations, match[1], match[2], 'modern-write');
 
-  // Resolve local variables in both directions. This covers source such as
-  // const max_connec = Number(pref.max_connec) and qB 5.1's
-  // const listen_port = Number($("port_value").value); settings["listen_port"] = listen_port.
   const keyVars = new Map();
   for (const match of text.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*[^;\n]*?\bpref\.([A-Za-z0-9_]+)/g)) keyVars.set(match[1], match[2]);
   for (const [name,key] of keyVars) {
@@ -211,6 +220,7 @@ export function extractQbPreferenceUiFacts(preferencesSource, preferenceKeys = [
   const markup = String(preferencesSource || '');
   const labels = labelsByControlId(markup);
   const rowLabels = rowLabelsByControlId(markup);
+  const fieldsetLabels=fieldsetLabelsByControlId(markup);
   const descriptions = directDescriptionsByControlId(markup);
   const relations = preferenceControlRelations(markup);
   const wanted = new Set((Array.isArray(preferenceKeys) ? preferenceKeys : []).map(String));
@@ -224,6 +234,10 @@ export function extractQbPreferenceUiFacts(preferencesSource, preferenceKeys = [
     if (!title) {
       selected = candidates.find((item) => rowLabels.has(item.id));
       if (selected) { title = rowLabels.get(selected.id); evidence = `${selected.evidence}+source-row`; }
+    }
+    if(!title){
+      selected=candidates.find(item=>fieldsetLabels.has(item.id));
+      if(selected){title=fieldsetLabels.get(selected.id);evidence=`${selected.evidence}+source-fieldset`;}
     }
     if (!selected || !title) continue;
     const description = descriptions.get(selected.id) || null;

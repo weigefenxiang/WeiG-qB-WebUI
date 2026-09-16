@@ -85,4 +85,31 @@ const helperAudit=auditQbPreferencesInventory({inventory:helperInventory,manifes
 assertCompleteSourceCensus(helperAudit.bindings,'Preferences helper-safe binding inventory');
 assert.ok(helperAudit.rawControls.unmappedControls.includes('helper_only'),'helper/client-only controls stay visible as diagnostics without masquerading as app/preferences omissions');
 
-console.log('qB Preferences independent inventory contract passed: native tabs, read/write app/preferences identities and source-proven controls are censused independently; helper controls stay diagnostic-only, multi-reference and write-only bindings remain mapped, and new syntax/additions fail closed.');
+const legacyComposite=`
+<div id="FutureNetworkTab" class="PrefTab">
+  <fieldset><legend>QBT_TR(Transfer limits)QBT_TR[CONTEXT=OptionsDialog]</legend>
+    <table><tr><td><input id="rate_gate" type="checkbox"><label for="rate_gate">QBT_TR(Upload:)QBT_TR[CONTEXT=OptionsDialog]</label></td><td><input id="rate_value" type="text"> QBT_TR(KiB/s)QBT_TR[CONTEXT=OptionsDialog]</td></tr></table>
+    <textarea id="notes_value"></textarea>
+  </fieldset>
+</div>
+<script>
+  var rate = pref.rate_limit.toInt() / 1024;
+  $('rate_value').setProperty('value', rate);
+  $('notes_value').setProperty('value', pref.notes);
+</script>`;
+const legacyDescriptors=[
+  {key:'rate_limit',getterPresent:true,setterPresent:true,readType:'number',writeType:'number',typeAgreement:'EXACT',writable:true},
+  {key:'notes',getterPresent:true,setterPresent:true,readType:'string',writeType:'string',typeAgreement:'EXACT',writable:true}
+];
+const legacyManifest=extractQbPreferencesNativeSurface({preferencesSource:legacyComposite,toolbarSource:toolbar,preferenceDescriptors:legacyDescriptors});
+assert.equal(legacyManifest.preferences.rate_limit.control.id,'rate_value','legacy pref -> local variable -> value control must remain semantic source evidence');
+assert.equal(legacyManifest.preferences.rate_limit.title.source,'Upload:','row label must beat an unrelated translated unit when labeling a composite value control');
+assert.equal(legacyManifest.preferences.notes.control.id,'notes_value','direct binding without label[for] must survive through its native fieldset legend');
+assert.equal(legacyManifest.preferences.notes.title.source,'Transfer limits','fieldset legend fallback must remain exact qB-owned source copy');
+const legacyInventory=extractQbPreferencesInventory({preferencesSource:legacyComposite,preferenceDescriptors:legacyDescriptors});
+assert.ok(legacyInventory.bindings.some(item=>item.key==='rate_value'&&item.preferenceKeys.includes('rate_limit')),'independent inventory must follow pref -> local variable -> native control without calling the semantic parser');
+const legacyAudit=auditQbPreferencesInventory({inventory:legacyInventory,manifest:legacyManifest});
+assertCompleteSourceCensus(legacyAudit.preferences,'Preferences legacy composite preference inventory');
+assertCompleteSourceCensus(legacyAudit.bindings,'Preferences legacy composite binding inventory');
+
+console.log('qB Preferences independent inventory contract passed: native tabs, read/write app/preferences identities and source-proven controls are censused independently; helper controls stay diagnostic-only, multi-reference/write-only/local-variable bindings remain mapped, and row/fieldset source copy fallback preserves source ownership.');
