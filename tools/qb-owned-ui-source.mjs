@@ -6,6 +6,18 @@ function qbtTr(value){const match=String(value||'').match(/QBT_TR\(([\s\S]*?)\)Q
 function add(out,key,ref){if(key&&ref&&ref.source&&ref.context)out[key]={source:String(ref.source),context:String(ref.context)};}
 function itemRef(markup,id){const escaped=String(id).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');const hit=String(markup||'').match(new RegExp(`<li\\b[^>]*\\bid=["']${escaped}["'][^>]*>([\\s\\S]*?)<\\/li>`,'i'));return hit?qbtTr(hit[1]):null;}
 function exactRef(markup,source,context='OptionsDialog'){const escaped=String(source).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),escapedContext=String(context).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');const match=String(markup||'').match(new RegExp(`QBT_TR\\(${escaped}\\)QBT_TR\\[CONTEXT=${escapedContext}\\]`));return match?{source,context}:null;}
+const SETTINGS_TAB_IDS={PrefBehaviorLink:'behavior',PrefDownloadsLink:'downloads',PrefConnectionLink:'connection',PrefSpeedLink:'speed',PrefBittorrentLink:'bittorrent',PrefRSSLink:'rss',PrefWebUILink:'webui',PrefAdvancedLink:'advanced'};
+export function settingsTabRefs(markup){
+  const out=[],seen=new Set();
+  for(const match of String(markup||'').matchAll(/<li\b([^>]*)>([\s\S]*?)<\/li>/gi)){
+    const id=(String(match[1]||'').match(/\bid\s*=\s*["']([^"']+)["']/i)||[])[1],tab=SETTINGS_TAB_IDS[id];
+    if(!tab||seen.has(tab))continue;
+    const ref=qbtTr(match[2]);
+    if(!ref||!ref.source||!ref.context)continue;
+    seen.add(tab);out.push({tab,key:`settings.tab.${tab}`,id,ref});
+  }
+  return out;
+}
 function torrentStatusRefs(source){
   const text=String(source||''),start=Math.max(text.indexOf("this.columns['status'].updateTd"),text.indexOf('this.columns["status"].updateTd'));
   const endCandidates=start>=0?[text.indexOf('// priority',start+1),text.indexOf('this.columns["priority"].updateTd',start+1),text.indexOf("this.columns['priority'].updateTd",start+1)].filter(index=>index>start):[];
@@ -20,8 +32,7 @@ function torrentStatusRefs(source){
 
 export function extractQbOwnedUiFacts({preferencesSource='',toolbarSource='',filtersSource='',dynamicTableSource=''}={}){
   const out={},toolbar=toolbarSource||preferencesSource;
-  const tabs={'settings.tab.behavior':'PrefBehaviorLink','settings.tab.downloads':'PrefDownloadsLink','settings.tab.connection':'PrefConnectionLink','settings.tab.speed':'PrefSpeedLink','settings.tab.bittorrent':'PrefBittorrentLink','settings.tab.rss':'PrefRSSLink','settings.tab.webui':'PrefWebUILink','settings.tab.advanced':'PrefAdvancedLink'};
-  for(const [key,id] of Object.entries(tabs))add(out,key,itemRef(toolbar,id));
+  for(const item of settingsTabRefs(toolbar))add(out,item.key,item.ref);
   add(out,'transfer.rate.global',exactRef(preferencesSource,'Global Rate Limits'));
   add(out,'transfer.rate.alternative',exactRef(preferencesSource,'Alternative Rate Limits'));
   add(out,'sidebar.status',exactRef(filtersSource,'Status','TransferListFiltersWidget'));

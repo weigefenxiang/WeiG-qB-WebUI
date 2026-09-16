@@ -22,6 +22,7 @@
   function versionParts(value){return String(value||'0').replace(/^v/i,'').split(/[+-]/)[0].split('.').map(function(x){var n=parseInt(x,10);return Number.isFinite(n)?n:0;});}
   function compareVersion(a,b){var x=versionParts(a),y=versionParts(b),n=Math.max(x.length,y.length);for(var i=0;i<n;i++){var av=x[i]||0,bv=y[i]||0;if(av>bv)return 1;if(av<bv)return-1;}return 0;}
   function changeValue(changes){if(!boundVersion||!Array.isArray(changes))return null;var value=null;for(var i=0;i<changes.length;i++){if(compareVersion(changes[i].from,boundVersion)<=0)value=changes[i].value;else break;}return value;}
+  function nativeSurfaces(){var exact=compat&&Array.isArray(compat.nativeTabs)?changeValue(compat.nativeTabs):null;if(Array.isArray(exact))return exact.filter(function(tab){return SURFACES.indexOf(String(tab))>=0;});var I=W.I18n;if(!I||typeof I.qbText!=='function')return[];return SURFACES.filter(function(tab){var marker='__weigg_missing_tab_'+tab;return I.qbText('settings.tab.'+tab,marker)!==marker;});}
   function descriptor(key){if(!compat||!compat.preferences)return null;var raw=changeValue(compat.preferences[String(key||'')]);if(!raw)return null;var d=Object.assign({key:String(key||'')},raw);if(!boundWritable){d.setterPresent=false;d.writable=false;d.writeType=null;d.typeAgreement=d.getterPresent===false?'UNKNOWN':'READ_ONLY';}return d;}
   function layout(name){if(!compat||!compat.uiLayouts)return null;var value=changeValue(compat.uiLayouts[String(name||'')]);return value&&typeof value==='object'?JSON.parse(JSON.stringify(value)):null;}
   function writableDescriptor(key){var d=descriptor(key);return !!(boundWritable&&d&&d.setterPresent===true&&d.writeType&&d.typeAgreement!=='MISMATCH'&&d.writable===true);}
@@ -36,6 +37,6 @@
   function bindRelease(release){boundVersion=release&&!release.fallback?String(release.qbVersion||''):'';boundWritable=!!(release&&release.certified===true);return api;}
   function isWritable(key,value){return describeValue(key,value).editable===true;}
   function writableDraft(draft){var out={};Object.keys(draft||{}).forEach(function(key){if(isWritable(key,draft[key]))out[key]=draft[key];});return out;}
-  var api={schema:schema,meta:META,surfaces:SURFACES,sectionOrder:SECTION_ORDER,describe:describe,describeValue:describeValue,toDisplay:toDisplay,toRaw:toRaw,group:group,keysFor:keysFor,sectionTitle:sectionTitle,humanize:humanize,bindRelease:bindRelease,loadCompatibility:loadCompatibility,descriptor:descriptor,layout:layout,isWritable:isWritable,writableDraft:writableDraft};
+  var api={schema:schema,meta:META,surfaces:SURFACES,nativeSurfaces:nativeSurfaces,sectionOrder:SECTION_ORDER,describe:describe,describeValue:describeValue,toDisplay:toDisplay,toRaw:toRaw,group:group,keysFor:keysFor,sectionTitle:sectionTitle,humanize:humanize,bindRelease:bindRelease,loadCompatibility:loadCompatibility,descriptor:descriptor,layout:layout,isWritable:isWritable,writableDraft:writableDraft};
   W.SettingsSchema=api;
 })(window);
