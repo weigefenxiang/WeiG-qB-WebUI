@@ -1,0 +1,53 @@
+name: qB Preferences Native Source
+
+on:
+  push:
+    branches:
+      - dev
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: preferences-native-source-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source:
+    name: qB Preferences native source admission
+    if: ${{ github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[native-surfaces]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Checkout qBittorrent upstream with stable tags
+        uses: actions/checkout@v7
+        with:
+          repository: qbittorrent/qBittorrent
+          path: upstream-qb
+          fetch-depth: 0
+          fetch-tags: true
+          filter: blob:none
+          persist-credentials: false
+      - name: Build exact admitted source catalog
+        run: node tools/qb-release-catalog.mjs upstream-qb --output=qb-releases.json
+      - name: Extract exact Preferences native surface facts
+        run: node tools/qb-preferences-surface-source.mjs upstream-qb qb-releases.json qb-preferences-source-catalog.json
+      - name: Compile compact Preferences native contract
+        run: node tools/qb-preferences-compact.mjs qb-preferences-source-catalog.json settings-native-compat.json
+      - name: Verify every admitted stable Preferences source profile
+        run: node tests/full-stable-preferences-source-contract.mjs qb-preferences-source-catalog.json qb-releases.json
+      - name: Upload exact Preferences source artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: preferences-native-source-${{ github.sha }}
+          path: |
+            qb-preferences-source-catalog.json
+            settings-native-compat.json
+          if-no-files-found: error
+          retention-days: 7

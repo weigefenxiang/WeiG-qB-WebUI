@@ -6,11 +6,11 @@ function qbtTr(value){const match=String(value||'').match(/QBT_TR\(([\s\S]*?)\)Q
 function add(out,key,ref){if(key&&ref&&ref.source&&ref.context)out[key]={source:String(ref.source),context:String(ref.context)};}
 function itemRef(markup,id){const escaped=String(id).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');const hit=String(markup||'').match(new RegExp(`<li\\b[^>]*\\bid=["']${escaped}["'][^>]*>([\\s\\S]*?)<\\/li>`,'i'));return hit?qbtTr(hit[1]):null;}
 function exactRef(markup,source,context='OptionsDialog'){const escaped=String(source).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),escapedContext=String(context).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');const match=String(markup||'').match(new RegExp(`QBT_TR\\(${escaped}\\)QBT_TR\\[CONTEXT=${escapedContext}\\]`));return match?{source,context}:null;}
-const SETTINGS_TAB_IDS={PrefBehaviorLink:'behavior',PrefDownloadsLink:'downloads',PrefConnectionLink:'connection',PrefSpeedLink:'speed',PrefBittorrentLink:'bittorrent',PrefRSSLink:'rss',PrefWebUILink:'webui',PrefAdvancedLink:'advanced'};
+function settingsTabIdentity(linkId){const match=String(linkId||'').match(/^Pref(.+?)Link$/i);if(!match)return null;const tab=String(match[1]||'').replace(/[^A-Za-z0-9]+/g,'').toLowerCase();return tab||null;}
 export function settingsTabRefs(markup){
   const out=[],seen=new Set();
   for(const match of String(markup||'').matchAll(/<li\b([^>]*)>([\s\S]*?)<\/li>/gi)){
-    const id=(String(match[1]||'').match(/\bid\s*=\s*["']([^"']+)["']/i)||[])[1],tab=SETTINGS_TAB_IDS[id];
+    const id=(String(match[1]||'').match(/\bid\s*=\s*["']([^"']+)["']/i)||[])[1],tab=settingsTabIdentity(id);
     if(!tab||seen.has(tab))continue;
     const ref=qbtTr(match[2]);
     if(!ref||!ref.source||!ref.context)continue;
