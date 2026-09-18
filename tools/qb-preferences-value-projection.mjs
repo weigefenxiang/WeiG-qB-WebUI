@@ -60,6 +60,7 @@ export function createQbPreferenceValueProjector(source){
     if(readFactor===1&&writeFactor===1)return{kind:'identity',safeWrite:true};
     if(readFactor!==null&&writeFactor!==null&&readFactor>0&&writeFactor>0){const product=readFactor*writeFactor;if(Math.abs(product-1)<1e-12){const scale=writeFactor;if(Number.isFinite(scale)&&scale>0)return scale===1?{kind:'identity',safeWrite:true}:{kind:'scale',scale,safeWrite:true};}}
     if(readFactor!==null)return{kind:'unproven',safeWrite:false,readFactor,...(writeFactor!==null?{writeFactor}:{})};
+    if(writeFactor!==null)return{kind:'unproven',safeWrite:false,writeFactor};
     return{kind:'unproven',safeWrite:false};
   };
 }
