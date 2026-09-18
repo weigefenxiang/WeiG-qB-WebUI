@@ -150,9 +150,9 @@ try{
     assert.ok(expectedSurfaces.advanced.sourceKeys.length>=20,`WeiG ${anchor.qbVersion} Advanced route unexpectedly small: ${expectedSurfaces.advanced.sourceKeys.length}`);
     async function assertSettingsSurface(surface,expected,examples){
       await page.evaluate(async target=>window.WeiG.SettingsRenderer.open(target),surface);
-      const renderedKeys=(await page.locator('#settings-content [data-preference-key]').evaluateAll(nodes=>[...new Set(nodes.map(node=>node.dataset.preferenceKey).filter(Boolean))].sort()));
+      const renderedKeys=await page.locator('#settings-content').evaluate(root=>{const keys=new Set();root.querySelectorAll('[data-preference-key]').forEach(node=>{const key=String(node.dataset.preferenceKey||'').trim();if(key)keys.add(key);});root.querySelectorAll('[data-setting-key]').forEach(node=>{String(node.dataset.settingKey||'').split(',').map(key=>key.trim()).filter(Boolean).forEach(key=>keys.add(key));});return[...keys].sort();});
       assert.deepEqual(renderedKeys,expected.controlKeys,`WeiG ${anchor.qbVersion} ${surface} settings must render every exact source-native preference control with no stale extras`);
-      for(const key of examples){assert.ok(expected.sourceKeys.includes(key),`WeiG ${surface} route must include upstream preference ${key}`);const control=page.locator(`#settings-content [data-preference-key="${key}"]`);await control.waitFor({state:'attached',timeout:5000});}
+      for(const key of examples){assert.ok(expected.sourceKeys.includes(key),`WeiG ${surface} route must include upstream preference ${key}`);assert.ok(renderedKeys.includes(key),`WeiG ${surface} route must render upstream preference ${key}`);}
     }
     await assertSettingsSurface('advanced',expectedSurfaces.advanced,routeExamples.advanced);
     await assertSettingsSurface('speed',expectedSurfaces.speed,routeExamples.speed);
