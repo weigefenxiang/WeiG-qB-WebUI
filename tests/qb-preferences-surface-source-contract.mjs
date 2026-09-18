@@ -3,6 +3,7 @@ import {settingsTabRefs} from '../tools/qb-owned-ui-source.mjs';
 import {compileCompactRuntime} from '../tools/qb-compact-runtime.mjs';
 import {extractQbPreferencesNativeSurface} from '../tools/qb-preferences-surface-source.mjs';
 import {compileQbPreferencesCompact,expandQbPreferencesCompact} from '../tools/qb-preferences-compact.mjs';
+import {extractQbPreferenceValueProjection} from '../tools/qb-preferences-value-projection.mjs';
 
 const toolbar=`
 <menu>
@@ -67,6 +68,17 @@ assert.equal(manifest.preferences.future_limit.dependencies.gates[0].preferenceK
 assert.equal(manifest.preferences.future_limit.dependencies.gates[0].handlers.onclick,'updateFutureGate();');
 assert.deepEqual(manifest.tabs[1].preferences,['future_gate','future_limit'],'native preference order must follow upstream source order');
 assert.equal(manifest.tabs[1].sections[0].title.source,'Future mode');
+
+const legacyAltLimitSource=`
+$('alt_dl_limit_value').setProperty('value', (pref.alt_dl_limit.toInt() / 1024));
+const alt_dl_limit = $('alt_dl_limit_value').getProperty('value').toInt() * 1024;
+settings.set('alt_dl_limit', alt_dl_limit);
+`;
+assert.deepEqual(
+  extractQbPreferenceValueProjection(legacyAltLimitSource,'alt_dl_limit','alt_dl_limit_value'),
+  {kind:'scale',scale:1024,safeWrite:true},
+  'legacy qB 4.x variable-backed rate-limit projection must resolve linearly without catastrophic regex backtracking'
+);
 
 const sourceCatalog={schemaVersion:1,profiles:[
   {qbVersion:'5.2.3',sourceSha:'1111111111111111111111111111111111111111',manifest},

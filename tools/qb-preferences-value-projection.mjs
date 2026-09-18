@@ -1,23 +1,34 @@
 function escapeRe(value){return String(value||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
 function stripOuterParens(value){let text=String(value||'').trim();for(;;){if(!(text.startsWith('(')&&text.endsWith(')')))return text;let depth=0,ok=true;for(let i=0;i<text.length;i++){if(text[i]==='(')depth++;else if(text[i]===')'){depth--;if(depth===0&&i<text.length-1){ok=false;break;}}}if(!ok||depth!==0)return text;text=text.slice(1,-1).trim();}}
-function numericFactor(expression,tokenPattern,token='X'){
-  let text=String(expression||'').trim();
-  text=text.replace(new RegExp(`Number\\(\\s*${tokenPattern}\\s*\\)`,'g'),token)
-    .replace(new RegExp(`${tokenPattern}\\s*\\.\\s*toInt\\s*\\(\\s*\\)`,'g'),token)
-    .replace(new RegExp(tokenPattern,'g'),token);
-  text=stripOuterParens(text).replace(/\s+/g,'');
-  while(/^\(.+\)$/.test(text))text=stripOuterParens(text).replace(/\s+/g,'');
-  if(!text.startsWith(token))return null;
-  const rest=text.slice(token.length);if(!rest)return 1;
+function factorRest(value){
+  const text=String(value||'').replace(/\s+/g,'');if(!text)return 1;
   let factor=1,pos=0;const re=/([*/])(-?\d+(?:\.\d+)?)/g;let match;
-  while((match=re.exec(rest))){if(match.index!==pos)return null;const n=Number(match[2]);if(!Number.isFinite(n)||n===0)return null;factor=match[1]==='*'?factor*n:factor/n;pos=re.lastIndex;}
-  return pos===rest.length&&Number.isFinite(factor)?factor:null;
+  while((match=re.exec(text))){if(match.index!==pos)return null;const n=Number(match[2]);if(!Number.isFinite(n)||n===0)return null;factor=match[1]==='*'?factor*n:factor/n;pos=re.lastIndex;}
+  return pos===text.length&&Number.isFinite(factor)?factor:null;
 }
-function prefPattern(key){return `\\bpref\\s*\\.\\s*${escapeRe(key)}\\b`;}
+function anchoredFactor(expression,tokenRegexes){
+  const text=stripOuterParens(String(expression||'').trim());
+  for(const re of tokenRegexes){const match=re.exec(text);if(match)return factorRest(text.slice(match[0].length));}
+  return null;
+}
+function preferenceNumericFactor(expression,key){
+  const escaped=escapeRe(key);
+  return anchoredFactor(expression,[
+    new RegExp(`^Number\\(\\s*pref\\s*\\.\\s*${escaped}\\s*\\)`),
+    new RegExp(`^pref\\s*\\.\\s*${escaped}\\s*\\.\\s*toInt\\s*\\(\\s*\\)`),
+    new RegExp(`^pref\\s*\\.\\s*${escaped}\\b`)
+  ]);
+}
 function modernControlPattern(id,property='value'){return `document\\.getElementById\\(\\s*["']${escapeRe(id)}["']\\s*\\)\\s*\\.\\s*${property}`;}
 function legacyControlPattern(id,property='value'){return `\\$\\(\\s*["']${escapeRe(id)}["']\\s*\\)\\s*\\.\\s*getProperty\\(\\s*["']${property}["']\\s*\\)`;}
-function controlTokenPattern(id){return `(?:Number\\(\\s*)?(?:${modernControlPattern(id,'(?:value|checked)')}|${legacyControlPattern(id,'(?:value|checked)')})(?:\\s*\\))?(?:\\s*\\.\\s*toInt\\s*\\(\\s*\\))?`;}
-function resolveExpression(expression,tokenPattern,token,declarations){const direct=numericFactor(expression,tokenPattern,token);if(direct!==null)return direct;const name=String(expression||'').trim();if(!/^[A-Za-z_$][\w$]*$/.test(name))return null;const declared=declarations.get(name);return declared===undefined?null:numericFactor(declared,tokenPattern,token);}
+function controlNumericFactor(expression,id){
+  const modern=modernControlPattern(id,'(?:value|checked)'),legacy=legacyControlPattern(id,'(?:value|checked)');
+  return anchoredFactor(expression,[
+    new RegExp(`^Number\\(\\s*(?:${modern}|${legacy})(?:\\s*\\.\\s*toInt\\s*\\(\\s*\\))?\\s*\\)`),
+    new RegExp(`^(?:${modern}|${legacy})(?:\\s*\\.\\s*toInt\\s*\\(\\s*\\))?`)
+  ]);
+}
+function resolveExpression(expression,factor,declarations){const direct=factor(expression);if(direct!==null)return direct;const name=String(expression||'').trim();if(!/^[A-Za-z_$][\w$]*$/.test(name))return null;const declared=declarations.get(name);return declared===undefined?null:factor(declared);}
 function balancedBody(text,start){const open=String(text).indexOf('{',start);if(open<0)return'';let depth=0,quote='',escape=false;for(let i=open;i<text.length;i++){const ch=text[i];if(quote){if(escape){escape=false;continue;}if(ch==='\\'){escape=true;continue;}if(ch===quote)quote='';continue;}if(ch==='"'||ch==="'"||ch==='`'){quote=ch;continue;}if(ch==='{')depth++;else if(ch==='}'){depth--;if(depth===0)return text.slice(open+1,i);}}return'';}
 function assignedLiteral(segment,id){const escaped=escapeRe(id),patterns=[
   new RegExp(`${modernControlPattern(id,'value')}\\s*=\\s*["']([^"']*)["']`),
@@ -43,9 +54,9 @@ export function createQbPreferenceValueProjector(source){
   const switchRe=/\bswitch\s*\(\s*(?:Number\s*\(\s*)?pref\s*\.\s*([A-Za-z_$][\w$]*)(?:\s*\))?(?:\s*\.\s*toInt\s*\(\s*\))?\s*\)/g;
   while((match=switchRe.exec(text))){const body=balancedBody(text,match.index??0);if(body)switches.set(match[1],body);}
   return function project(key,controlId){
-    const pref=prefPattern(key),switchMap=switchProjection(switches.get(String(key)),controlId);if(switchMap)return switchMap;
+    const switchMap=switchProjection(switches.get(String(key)),controlId);if(switchMap)return switchMap;
     const read=reads.get(String(controlId)),write=writes.get(String(key));
-    const readFactor=read===undefined?null:resolveExpression(read,pref,'RAW',declarations),controlPattern=controlTokenPattern(controlId),writeFactor=write===undefined?null:resolveExpression(write,controlPattern,'UI',declarations);
+    const readFactor=read===undefined?null:resolveExpression(read,value=>preferenceNumericFactor(value,key),declarations),writeFactor=write===undefined?null:resolveExpression(write,value=>controlNumericFactor(value,controlId),declarations);
     if(readFactor===1&&writeFactor===1)return{kind:'identity',safeWrite:true};
     if(readFactor!==null&&writeFactor!==null&&readFactor>0&&writeFactor>0){const product=readFactor*writeFactor;if(Math.abs(product-1)<1e-12){const scale=writeFactor;if(Number.isFinite(scale)&&scale>0)return scale===1?{kind:'identity',safeWrite:true}:{kind:'scale',scale,safeWrite:true};}}
     if(readFactor!==null)return{kind:'unproven',safeWrite:false,readFactor,...(writeFactor!==null?{writeFactor}:{})};
