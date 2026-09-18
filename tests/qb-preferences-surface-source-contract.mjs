@@ -58,10 +58,10 @@ assert.deepEqual(manifest.preferences.locale.control.options.map(item=>item.valu
 assert.equal(manifest.preferences.locale.control.options[1].label.source,'French');
 assert.deepEqual(manifest.preferences.locale.projection,{kind:'identity',safeWrite:true},'identity source read/write must remain explicitly proven');
 const localeReadNormalized=preferences.replace('document.getElementById("locale_select").value = pref.locale;','document.getElementById("locale_select").value = normalizeLocale(pref.locale);');
-const localeWriteManifest=extractQbPreferencesNativeSurface({preferencesSource:localeReadNormalized,toolbarSource,preferenceDescriptors:descriptors});
+const localeWriteManifest=extractQbPreferencesNativeSurface({preferencesSource:localeReadNormalized,toolbarSource:toolbar,preferenceDescriptors:descriptors});
 assert.deepEqual(localeWriteManifest.preferences.locale.projection,{kind:'unproven',safeWrite:true,writeFactor:1,writeIdentity:true},'EXACT writable string controls with a source-direct setter must keep safe writes when only the native read normalization is unresolved');
 const numericReadUnknown=preferences.replace('document.getElementById("future_limit").value = pref.future_limit / 1024;','document.getElementById("future_limit").value = formatLimit(pref.future_limit);').replace('settings["future_limit"] = Number(document.getElementById("future_limit").value) * 1024;','settings["future_limit"] = Number(document.getElementById("future_limit").value);');
-const numericUnknownManifest=extractQbPreferencesNativeSurface({preferencesSource:numericReadUnknown,toolbarSource,preferenceDescriptors:descriptors});
+const numericUnknownManifest=extractQbPreferencesNativeSurface({preferencesSource:numericReadUnknown,toolbarSource:toolbar,preferenceDescriptors:descriptors});
 assert.equal(numericUnknownManifest.preferences.future_limit.projection.safeWrite,false,'numeric direct setters must remain fail-closed when the source read projection is not proven');
 assert.equal(manifest.preferences.future_gate.control.semantic,'checkbox');
 assert.deepEqual(manifest.preferences.future_gate.projection,{kind:'identity',safeWrite:true},'checkbox identity projection must prove checked-value writes without a manual exception');
