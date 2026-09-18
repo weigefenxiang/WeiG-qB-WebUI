@@ -40,16 +40,18 @@ export function readSettingsRuntime(){
   return{manifest,settingsData,raw,compressed};
 }
 
-export function compileCompactRuntime(catalog){
+export function compileCompactRuntime(catalog,{includeSettings=true}={}){
   if(!Array.isArray(catalog)||!catalog.length)throw new Error('Compact runtime compiler requires a non-empty source catalog.');
-  const identity=catalogIdentity(catalog),settingsRuntime=readSettingsRuntime(),settingsManifest=settingsRuntime.manifest,settingsData=settingsRuntime.settingsData;
+  const identity=catalogIdentity(catalog),settingsRuntime=includeSettings?readSettingsRuntime():null,settingsManifest=settingsRuntime?.manifest||null,settingsData=settingsRuntime?.settingsData||null;
   const capabilityData=readJson(path.join(root,'webui/private/data/capabilities.json'));
   const torrentData=readJson(path.join(root,'webui/private/data/torrent-compat.json'));
   const detailData=readJson(path.join(root,'webui/private/data/detail-compat.json'));
   const actionData=readJson(path.join(root,'webui/private/data/source-actions.json'));
   for(const data of [capabilityData,torrentData,detailData,actionData])data.catalogIdentity=clone(identity);
-  if(identityKey(settingsManifest.catalogIdentity)!==identityKey(identity)||identityKey(settingsData.catalogIdentity)!==identityKey(identity))throw new Error('Settings runtime does not match the target Frozen catalog identity.');
-  exactSettingsReleaseSet(settingsData,catalog);
+  if(includeSettings){
+    if(identityKey(settingsManifest.catalogIdentity)!==identityKey(identity)||identityKey(settingsData.catalogIdentity)!==identityKey(identity))throw new Error('Settings runtime does not match the target Frozen catalog identity.');
+    exactSettingsReleaseSet(settingsData,catalog);
+  }
   capabilityData.releases=releaseRows(catalog);
   torrentData.sourceFacts={};for(const key of TORRENT_FACTS)torrentData.sourceFacts[key]=factTimeline(catalog,key);
   detailData.sourceFacts={torrentDetailUi:factTimeline(catalog,'torrentDetailUi')};
@@ -62,11 +64,11 @@ function defaultDocument(){return{addEventListener(){},querySelectorAll(){return
 function TestFormData(){this.entries=[];}TestFormData.prototype.append=function(name,value,filename){this.entries.push({name,value,filename});};TestFormData.prototype.get=function(name){const hit=this.entries.find(item=>item.name===name);return hit?hit.value:null;};
 
 export function createCompactRuntime(catalog,{owners=['capabilities.js','torrent-semantics.js','torrent-fields.js'],W:providedW=null,document:providedDocument=null}={}){
-  const compact=compileCompactRuntime(catalog),requests=[];
+  const includeSettings=owners.includes('settings-schema.js'),compact=compileCompactRuntime(catalog,{includeSettings}),requests=[];
   const W=providedW||{buildAssetUrl:x=>x,t:key=>key,util:{parseScalar:value=>value,normalizeTracker:value=>String(value||''),form(obj){const p=new URLSearchParams();for(const [k,v] of Object.entries(obj||{}))if(v!==undefined&&v!==null)p.append(k,String(v));return p.toString();}},I18n:{getLocale:()=> 'en-US'}};
   if(!W.buildAssetUrl)W.buildAssetUrl=x=>x;if(!W.t)W.t=key=>key;if(!W.util)W.util={};if(!W.util.parseScalar)W.util.parseScalar=value=>value;if(!W.util.normalizeTracker)W.util.normalizeTracker=value=>String(value||'');if(!W.util.form)W.util.form=obj=>{const p=new URLSearchParams();for(const [k,v] of Object.entries(obj||{}))if(v!==undefined&&v!==null)p.append(k,String(v));return p.toString();};if(!W.I18n)W.I18n={getLocale:()=> 'en-US'};
   const window={WeiG:W,window:null,dispatchEvent(){},addEventListener(){},requestAnimationFrame:fn=>fn(),atob:value=>Buffer.from(String(value),'base64').toString('binary')};window.window=window;
-  const document=providedDocument||defaultDocument(),responses=new Map([['capabilities.json',compact.capabilityData],['torrent-compat.json',compact.torrentData],['detail-compat.json',compact.detailData],['source-actions.json',compact.actionData],['settings-compat.json',compact.settingsManifest]]);
+  const document=providedDocument||defaultDocument(),responseEntries=[['capabilities.json',compact.capabilityData],['torrent-compat.json',compact.torrentData],['detail-compat.json',compact.detailData],['source-actions.json',compact.actionData]];if(compact.settingsManifest)responseEntries.push(['settings-compat.json',compact.settingsManifest]);const responses=new Map(responseEntries);
   const fetch=async url=>{const value=String(url);requests.push(value);for(const [name,data] of responses)if(value.includes(name))return{ok:true,status:200,json:async()=>clone(data),text:async()=>JSON.stringify(data)};throw new Error(`Unexpected compact-runtime fetch ${value}`);};
   const context={window,document,console,URL,URLSearchParams,FormData:globalThis.FormData||TestFormData,Blob:globalThis.Blob,TextDecoder:globalThis.TextDecoder,CustomEvent:class{},requestAnimationFrame:fn=>fn(),fetch};
   for(const name of owners){const owner=fs.readFileSync(path.join(root,'webui/private/scripts',name),'utf8');vm.runInNewContext(owner,context,{filename:name});}
