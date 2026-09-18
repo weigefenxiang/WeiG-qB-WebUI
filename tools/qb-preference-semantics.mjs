@@ -64,7 +64,7 @@ function cppType(type) {
   if (/^(?:QString|QByteArray|QLatin1String|QStringView)$/.test(value)) return 'string';
   if (/^(?:QJsonArray|QVariantList|QStringList|QList<.*>)$/.test(value)) return 'array';
   if (/^(?:QJsonObject|QVariantMap|QVariantHash|QHash<.*>|QMap<.*>)$/.test(value)) return 'object';
-  if (/^(?:(?:u?int(?:8|16|32|64)?_t)|q?u?int(?:8|16|32|64)?|int|unsigned|unsigned int|long|unsigned long|long long|unsigned long long|float|double|qsizetype|size_t)$/.test(value)) return 'number';
+  if (/^(?:(?:u?int(?:8|16|32|64)?_t)|q?u?int(?:8|16|32|64)?|ushort|short|int|unsigned|unsigned int|long|unsigned long|long long|unsigned long long|float|double|qsizetype|size_t)$/.test(value)) return 'number';
   return null;
 }
 
@@ -85,6 +85,52 @@ function localTypes(body) {
   for (const match of body.matchAll(re)) {
     const type = cppType(match[1]);
     if (type) out.set(match[2], type);
+  }
+  return out;
+}
+
+function declaredLocalTypes(body) {
+  const out = new Map();
+  const re = /(?:^|[;{}]\s*)\s*(?:const\s+)?([A-Za-z_]\w*(?:::[A-Za-z_]\w*)*(?:\s*<[^;={}]+>)?)\s*[&*]?\s*([A-Za-z_]\w*)\s*(?==|;|\{|\()/gm;
+  for (const match of body.matchAll(re)) out.set(match[2], compact(match[1]));
+  return out;
+}
+
+function matchingBrace(text, openIndex) {
+  let depth = 0;
+  let quote = '';
+  for (let i = openIndex; i < text.length; i++) {
+    const ch = text[i];
+    if (quote) {
+      if (ch === quote && text[i - 1] !== '\\') quote = '';
+      continue;
+    }
+    if (ch === '"' || ch === "'") { quote = ch; continue; }
+    if (ch === '{') depth++;
+    else if (ch === '}') {
+      depth--;
+      if (depth === 0) return i;
+    }
+  }
+  return -1;
+}
+
+function declaredMemberTypes(sources = []) {
+  const out = new Map();
+  for (const source of Array.isArray(sources) ? sources : [sources]) {
+    const text = String(source || '');
+    const typeStart = /\b(?:struct|class)\s+([A-Za-z_]\w*)[^;{]*\{/g;
+    for (const match of text.matchAll(typeStart)) {
+      const openIndex = match.index + match[0].lastIndexOf('{');
+      const closeIndex = matchingBrace(text, openIndex);
+      if (closeIndex < 0) continue;
+      const body = text.slice(openIndex + 1, closeIndex);
+      const member = /^\s*(?:const\s+)?([A-Za-z_]\w*(?:::[A-Za-z_]\w*)*(?:\s*<[^;={}]+>)?)\s*[&*]?\s*([A-Za-z_]\w*)\s*(?:=[^;]*)?;\s*$/gm;
+      for (const field of body.matchAll(member)) {
+        const type = cppType(field[1]);
+        if (type) out.set(`${match[1]}.${field[2]}`, type);
+      }
+    }
   }
   return out;
 }
@@ -117,7 +163,7 @@ function stripOuterParens(value) {
   return result;
 }
 
-function inferGetter(expression, locals, declaredSessionGetters = new Map(), declaredPreferenceGetters = new Map()) {
+function inferGetter(expression, locals, declaredSessionGetters = new Map(), declaredPreferenceGetters = new Map(), declaredLocals = new Map(), declaredMembers = new Map()) {
   const value = stripOuterParens(expression);
   if (!value) return {type: null, kind: 'UNRESOLVED'};
   if (/^(?:true|false)$/.test(value)) return {type: 'boolean', kind: 'BOOLEAN_LITERAL'};
@@ -142,6 +188,12 @@ function inferGetter(expression, locals, declaredSessionGetters = new Map(), dec
   if (preferenceCall && declaredPreferenceGetters.has(preferenceCall[1])) {
     return {type: declaredPreferenceGetters.get(preferenceCall[1]), kind: 'PREFERENCES_DECLARATION'};
   }
+  const memberAccess = value.match(/^([A-Za-z_]\w*)\s*(?:\.|->)\s*([A-Za-z_]\w*)$/);
+  if (memberAccess && declaredLocals.has(memberAccess[1])) {
+    const declaredType = String(declaredLocals.get(memberAccess[1]) || '').split('::').at(-1);
+    const memberType = declaredMembers.get(`${declaredType}.${memberAccess[2]}`);
+    if (memberType) return {type: memberType, kind: 'MEMBER_DECLARATION'};
+  }
   return {type: null, kind: 'UNRESOLVED'};
 }
 
@@ -159,13 +211,15 @@ export function extractSemanticGetterHints(source, label = 'source', options = {
   const locals = localTypes(body);
   const declaredSessionGetters = declaredGetterTypes(options.sessionHeaderSource);
   const declaredPreferenceGetters = declaredGetterTypes(options.preferencesHeaderSource);
+  const declaredLocals = declaredLocalTypes(body);
+  const declaredMembers = declaredMemberTypes(options.memberHeaderSources || []);
   const out = new Map();
   DATA_KEY_RE.lastIndex = 0;
   for (const match of body.matchAll(DATA_KEY_RE)) {
     const key = capturedKey(match, 1);
     if (!key) continue;
     const expression = readExpression(body, match.index + match[0].length);
-    const inferred = inferGetter(expression, locals, declaredSessionGetters, declaredPreferenceGetters);
+    const inferred = inferGetter(expression, locals, declaredSessionGetters, declaredPreferenceGetters, declaredLocals, declaredMembers);
     out.set(key, {
       key,
       readType: inferred.type,

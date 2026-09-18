@@ -12,6 +12,10 @@ void AppController::preferencesAction()
     const bool localBool = true;
     const int localNumber = 3;
     const QString localString = u"x"_s;
+    Net::ProxyConfiguration proxyConf = proxyManager->proxyConfiguration();
+    data[u"member_bool"_s] = proxyConf.authEnabled;
+    data[u"member_string"_s] = proxyConf.username;
+    data[u"member_number"_s] = proxyConf.port;
     data[u"locale"_s] = pref->getLocale();
     data[u"negated"_s] = !session->isAutoTMMDisabledByDefault();
     data[u"comparison"_s] = (session->port() == 0);
@@ -31,6 +35,9 @@ void AppController::preferencesAction()
 
 void AppController::setPreferencesAction()
 {
+    if (hasKey(u"member_bool"_s)) proxyConf.authEnabled = it.value().toBool();
+    if (hasKey(u"member_string"_s)) proxyConf.username = it.value().toString();
+    if (hasKey(u"member_number"_s)) proxyConf.port = it.value().toUInt();
     if (hasKey(u"locale"_s)) pref->setLocale(it.value().toString());
     if (hasKey(u"negated"_s)) session->setA(it.value().toBool());
     if (hasKey(u"comparison"_s)) session->setB(it.value().toBool());
@@ -67,7 +74,20 @@ public:
 };
 `;
 
+const memberHeader=`
+namespace Net
+{
+    struct ProxyConfiguration
+    {
+        QString username;
+        ushort port = 8080;
+        bool authEnabled = false;
+    };
+}
+`;
+
 const hints=extractSemanticGetterHints(source,'semantic getter fixture');
+assert.equal(hints.get('member_bool').readType,null,'member access must not be guessed without a version-matched declaration');
 assert.equal(hints.get('locale').readType,null,'Preferences getter names alone must not be guessed without the version-matched header');
 assert.equal(hints.get('negated').readType,'boolean');
 assert.equal(hints.get('comparison').readType,'boolean');
@@ -83,7 +103,11 @@ assert.equal(hints.get('number_string').readType,'string');
 assert.equal(hints.get('max_active_downloads').readType,null,'session getter names alone must not be treated as type evidence');
 assert.equal(hints.get('opaque').readType,null,'method return types that are not syntactically provable must stay unresolved');
 
-const sourceBackedHints=extractSemanticGetterHints(source,'semantic getter fixture',{sessionHeaderSource:sessionHeader,preferencesHeaderSource:preferencesHeader});
+const sourceBackedHints=extractSemanticGetterHints(source,'semantic getter fixture',{sessionHeaderSource:sessionHeader,preferencesHeaderSource:preferencesHeader,memberHeaderSources:[memberHeader]});
+assert.equal(sourceBackedHints.get('member_bool').readType,'boolean','version-matched member declaration must prove bool member JSON semantics');
+assert.equal(sourceBackedHints.get('member_bool').getterKind,'MEMBER_DECLARATION');
+assert.equal(sourceBackedHints.get('member_string').readType,'string');
+assert.equal(sourceBackedHints.get('member_number').readType,'number');
 assert.equal(sourceBackedHints.get('locale').readType,'string','version-matched Preferences declaration must prove getLocale() JSON string semantics');
 assert.equal(sourceBackedHints.get('locale').getterKind,'PREFERENCES_DECLARATION');
 assert.equal(sourceBackedHints.get('max_active_downloads').readType,'number','version-matched Session declaration must prove maxActiveDownloads() JSON number semantics');
@@ -91,6 +115,7 @@ assert.equal(sourceBackedHints.get('max_active_downloads').getterKind,'SESSION_D
 assert.equal(sourceBackedHints.get('opaque').readType,null,'unknown Session declaration return types must remain fail-closed');
 
 const structural=[
+  {key:'member_bool',type:'boolean',readType:null,writeType:'boolean',getterPresent:true,setterPresent:true,writable:true,typeAgreement:'READ_UNRESOLVED',getterKind:'UNKNOWN',getterConfidence:'UNRESOLVED'},
   {key:'locale',type:'string',readType:null,writeType:'string',getterPresent:true,setterPresent:true,writable:true,typeAgreement:'READ_UNRESOLVED',getterKind:'UNKNOWN',getterConfidence:'UNRESOLVED'},
   {key:'negated',type:'boolean',readType:null,writeType:'boolean',getterPresent:true,setterPresent:true,writable:true,typeAgreement:'READ_UNRESOLVED',getterKind:'UNKNOWN',getterConfidence:'UNRESOLVED'},
   {key:'numeric_method',type:'number',readType:null,writeType:'number',getterPresent:true,setterPresent:true,writable:true,typeAgreement:'READ_UNRESOLVED',getterKind:'UNKNOWN',getterConfidence:'UNRESOLVED'},
@@ -98,7 +123,11 @@ const structural=[
   {key:'opaque',type:'number',readType:null,writeType:'number',getterPresent:true,setterPresent:true,writable:true,typeAgreement:'READ_UNRESOLVED',getterKind:'UNKNOWN',getterConfidence:'UNRESOLVED'},
   {key:'already_typed',type:'number',readType:'number',writeType:'number',getterPresent:true,setterPresent:true,writable:true,typeAgreement:'EXACT',getterKind:'NUMBER',getterConfidence:'HIGH'}
 ];
-const enriched=Object.fromEntries(enrichPreferenceDescriptorsFromGetter(source,structural,'semantic getter fixture',{sessionHeaderSource:sessionHeader,preferencesHeaderSource:preferencesHeader}).map(item=>[item.key,item]));
+const enriched=Object.fromEntries(enrichPreferenceDescriptorsFromGetter(source,structural,'semantic getter fixture',{sessionHeaderSource:sessionHeader,preferencesHeaderSource:preferencesHeader,memberHeaderSources:[memberHeader]}).map(item=>[item.key,item]));
+assert.equal(enriched.member_bool.readType,'boolean','source-backed typed member must resolve getter type');
+assert.equal(enriched.member_bool.typeAgreement,'EXACT');
+assert.equal(enriched.member_bool.writable,true);
+assert.equal(enriched.member_bool.getterKind,'MEMBER_DECLARATION');
 assert.equal(enriched.locale.readType,'string','source-backed Preferences getter type must resolve Locale');
 assert.equal(enriched.locale.typeAgreement,'EXACT');
 assert.equal(enriched.locale.writable,true,'source-backed exact Locale getter/setter agreement must keep Locale writable');
@@ -118,4 +147,4 @@ assert.equal(enriched.opaque.typeAgreement,'READ_UNRESOLVED');
 assert.equal(enriched.already_typed.semanticGetterEnriched,undefined,'structurally high-confidence getter truth must not be overwritten by enrichment');
 assert.equal(enriched.already_typed.getterKind,'NUMBER');
 
-console.log('qB semantic getter contract passed: operators, typed locals, JSON containers, Session declarations and Preferences declarations prove getter types while opaque methods remain fail-closed.');
+console.log('qB semantic getter contract passed: operators, typed locals, version-matched struct members, Session declarations and Preferences declarations prove getter types while opaque methods remain fail-closed.');
