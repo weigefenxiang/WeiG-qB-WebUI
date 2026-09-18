@@ -53,6 +53,12 @@ for(let i=0;i<catalog.length;i++){
   const manifest=profile.manifest||{};
   assert.ok(Array.isArray(manifest.tabs)&&manifest.tabs.length>0,`${base.qbVersion}: native Settings tabs unresolved`);
   assert.ok(manifest.preferences&&typeof manifest.preferences==='object',`${base.qbVersion}: native preference map unresolved`);
+  assert.equal(manifest.controlGraph?.schemaVersion,1,base.qbVersion+': structural Control Graph missing');
+  assert.equal(manifest.structuralCensus?.complete,true,base.qbVersion+': structural source census incomplete');
+  assert.equal(manifest.structuralCensus.sourceControls,manifest.structuralCensus.representedControls,base.qbVersion+': source control coverage drift');
+  assert.equal(manifest.structuralCensus.sourceHelpers,manifest.structuralCensus.representedHelpers,base.qbVersion+': source helper coverage drift');
+  assert.equal(manifest.structuralCensus.sourceAdornments,manifest.structuralCensus.representedAdornments,base.qbVersion+': source adornment coverage drift');
+  assert.equal(manifest.structuralCensus.behaviorControls,manifest.structuralCensus.representedBehaviorControls,base.qbVersion+': source behavior coverage drift');
   assert.ok(Number(manifest.mappedPreferences)>0,`${base.qbVersion}: no source-mapped native preferences`);
   assert.equal(Number(manifest.totalPreferences),Array.isArray(base.preferenceDescriptors)?base.preferenceDescriptors.length:0,`${base.qbVersion}: preference surface size drift`);
   const total=Number(manifest.totalPreferences)||0,mapped=Number(manifest.mappedPreferences)||0,ratio=total?mapped/total:0;
@@ -69,6 +75,24 @@ for(let i=0;i<catalog.length;i++){
 assert.ok(scaleProjectionCount>0,'Frozen Preferences source must prove at least one native raw/UI numeric scale instead of relying on manual runtime metadata');
 assert.ok(switchProjectionCount>0,'Frozen Preferences source must retain at least one historical switch-map composite projection');
 const latestManifest=source.profiles.at(-1).manifest;
+const latestRows=Object.values(latestManifest.controlGraph.tabs||{}).flatMap(tab=>tab.rows||[]);
+const latestRowFor=key=>latestRows.find(row=>(row.items||[]).some(item=>item.preferenceKey===key));
+const latestItemFor=key=>latestRows.flatMap(row=>row.items||[]).find(item=>item.preferenceKey===key);
+const listeningRow=latestRowFor('listen_port');
+assert.equal(listeningRow?.template,'control-helper','latest Listening Port must preserve the source helper sibling');
+assert.deepEqual(listeningRow?.items?.find(item=>item.kind==='helper')?.action,{kind:'source-helper',name:'generateRandomPort'},'latest Random helper must retain source helper identity');
+assert.equal(latestRowFor('max_connec')?.template,'gated-sentinel','latest connection limit must preserve the checkbox/sentinel row shape');
+const scheduleRow=latestRowFor('schedule_from_hour');
+assert.equal(scheduleRow?.template,'inline-multi-control','latest scheduler range must stay one source row');
+assert.deepEqual((scheduleRow?.items||[]).filter(item=>item.preferenceKey).map(item=>item.preferenceKey),['schedule_from_hour','schedule_from_min','schedule_to_hour','schedule_to_min'],'latest scheduler range controls must preserve source order');
+assert.deepEqual((scheduleRow?.items||[]).filter(item=>item.preferenceKey).map(item=>item.suffix?.literal||null),[':',null,':',null],'latest scheduler range punctuation must remain source-owned');
+assert.deepEqual(latestItemFor('proxy_ip')?.condition,{kind:'notEquals',key:'proxy_type',value:'None'},'latest proxy host gate must be source-derived');
+assert.deepEqual(latestItemFor('proxy_auth_enabled')?.condition,{kind:'allOf',items:[{kind:'notEquals',key:'proxy_type',value:'None'},{kind:'notEquals',key:'proxy_type',value:'SOCKS4'}]},'latest proxy authentication gate must preserve compound source behavior');
+assert.deepEqual(latestManifest.preferences.send_buffer_watermark?.control?.unit,{source:'KiB',context:'OptionsDialog'},'latest send buffer watermark must retain KiB adornment');
+assert.deepEqual(latestManifest.preferences.send_buffer_watermark_factor?.control?.unit,{literal:'%'},'latest send buffer watermark factor must retain percent adornment');
+assert.deepEqual(latestManifest.preferences.checking_memory_use?.control?.unit,{source:'MiB',context:'OptionsDialog'},'latest checking-memory control must retain MiB adornment');
+assert.deepEqual(latestManifest.preferences.refresh_interval?.control?.unit,{source:'ms',context:'OptionsDialog'},'latest refresh interval must retain the native millisecond adornment');
+
 assert.deepEqual(latestManifest.preferences.dl_limit?.projection,{kind:'scale',scale:1024,safeWrite:true},'latest native download limit must source-prove bytes/s ↔ KiB/s projection');
 assert.deepEqual(latestManifest.preferences.torrent_file_size_limit?.projection,{kind:'scale',scale:1048576,safeWrite:true},'latest native torrent size limit must source-prove bytes ↔ MiB projection');
 assert.equal(source.profiles[0].manifest.preferences.proxy_type?.projection?.kind,'switch-map','oldest admitted proxy type must retain its source composite read map');
@@ -91,4 +115,4 @@ for(const profile of source.profiles){
     assert.equal(actual.tab,item.tab,`${profile.qbVersion}: ${key} tab drift`);assert.equal(actual.sectionId,item.sectionId,`${profile.qbVersion}: ${key} section drift`);assert.equal(actual.order,item.order,`${profile.qbVersion}: ${key} order drift`);assert.equal(actual.control.id,item.control.id,`${profile.qbVersion}: ${key} control id drift`);assert.equal(actual.control.semantic,item.control.semantic,`${profile.qbVersion}: ${key} control semantic drift`);assert.deepEqual(actual.control.attributes,item.control.attributes||{},`${profile.qbVersion}: ${key} control attributes drift`);assert.equal(actual.title?.source,item.title?.source,`${profile.qbVersion}: ${key} source title drift`);assert.equal(actual.title?.context,item.title?.context,`${profile.qbVersion}: ${key} source title context drift`);assert.deepEqual(actual.descriptor,item.descriptor,`${profile.qbVersion}: ${key} API descriptor drift`);assert.deepEqual(actual.projection,item.projection,`${profile.qbVersion}: ${key} source value projection drift`);
   }
 }
-console.log(`Full stable qB Preferences source contract passed: ${catalog.length} exact releases, independent census complete, Frozen catalog ${expectedIdentity.releaseSetSha256.slice(0,12)}, ${(minimumRatio*100).toFixed(1)}% minimum native mapping, ${scaleProjectionCount} scale / ${switchProjectionCount} switch / ${unprovenProjectionCount} unproven value projections, ${bytes} byte keyed compact IR, and lossless tab/section/control/API/value provenance.`);
+console.log(`Full stable qB Preferences source contract passed: ${catalog.length} exact releases, structural control/helper/adornment/behavior census complete, Frozen catalog ${expectedIdentity.releaseSetSha256.slice(0,12)}, ${(minimumRatio*100).toFixed(1)}% minimum native mapping, ${scaleProjectionCount} scale / ${switchProjectionCount} switch / ${unprovenProjectionCount} unproven value projections, ${bytes} byte keyed compact IR, and lossless tab/section/control/API/value provenance.`);

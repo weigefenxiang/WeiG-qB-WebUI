@@ -38,6 +38,147 @@ function balancedBody(text,start){
 }
 function controlIds(statement){const out=[];for(const match of String(statement||'').matchAll(/document\.getElementById\(\s*["']([^"']+)["']\s*\)|\$\(\s*["']([^"']+)["']\s*\)/g)){const id=match[1]||match[2];if(id&&!out.includes(id))out.push(id);}return out;}
 
+
+function stripOuterParens(value){
+  let text=String(value||'').trim(),changed=true;
+  while(changed&&text.startsWith('(')&&text.endsWith(')')){
+    changed=false;let depth=0,quote='',escape=false,balanced=true;
+    for(let i=0;i<text.length;i++){
+      const ch=text[i];
+      if(quote){if(escape){escape=false;continue;}if(ch==='\\'){escape=true;continue;}if(ch===quote)quote='';continue;}
+      if(ch==='"'||ch==="'"){quote=ch;continue;}
+      if(ch==='(')depth++;else if(ch===')'){depth--;if(depth===0&&i<text.length-1){balanced=false;break;}}
+    }
+    if(balanced&&depth===0){text=text.slice(1,-1).trim();changed=true;}
+  }
+  return text;
+}
+function splitTopLevel(value,operator){
+  const text=String(value||''),out=[];let depth=0,quote='',escape=false,start=0;
+  for(let i=0;i<text.length;i++){
+    const ch=text[i];
+    if(quote){if(escape){escape=false;continue;}if(ch==='\\'){escape=true;continue;}if(ch===quote)quote='';continue;}
+    if(ch==='"'||ch==="'"){quote=ch;continue;}
+    if(ch==='(')depth++;else if(ch===')')depth=Math.max(0,depth-1);
+    if(depth===0&&text.startsWith(operator,i)){out.push(text.slice(start,i));start=i+operator.length;i+=operator.length-1;}
+  }
+  if(out.length)out.push(text.slice(start));
+  return out;
+}
+function rawAll(kind,items){
+  const flat=[];for(const item of items||[]){if(!item)return null;if(item.kind===kind)flat.push(...item.items);else flat.push(item);}
+  if(!flat.length)return null;if(flat.length===1)return flat[0];return{kind,items:flat};
+}
+function negateRaw(item){
+  if(!item)return null;
+  if(item.kind==='true')return{kind:'false'};if(item.kind==='false')return{kind:'true'};
+  if(item.kind==='controlTruthy')return{kind:'controlFalsy',controlId:item.controlId};
+  if(item.kind==='controlFalsy')return{kind:'controlTruthy',controlId:item.controlId};
+  if(item.kind==='controlEquals')return{kind:'controlNotEquals',controlId:item.controlId,value:item.value};
+  if(item.kind==='controlNotEquals')return{kind:'controlEquals',controlId:item.controlId,value:item.value};
+  if(item.kind==='controlEnabled')return{kind:'controlDisabled',controlId:item.controlId};
+  if(item.kind==='controlDisabled')return{kind:'controlEnabled',controlId:item.controlId};
+  if(item.kind==='allOf')return rawAll('anyOf',item.items.map(negateRaw));
+  if(item.kind==='anyOf')return rawAll('allOf',item.items.map(negateRaw));
+  return null;
+}
+function sourceControlAccess(value){
+  const text=stripOuterParens(value);
+  let match=text.match(/^document\.getElementById\(\s*["']([^"']+)["']\s*\)\.(checked|value|disabled)$/);
+  if(match)return{controlId:match[1],property:match[2]};
+  match=text.match(/^\$\(\s*["']([^"']+)["']\s*\)\.(?:getProperty|get)\(\s*["'](checked|value|disabled)["']\s*\)$/);
+  return match?{controlId:match[1],property:match[2]}:null;
+}
+function literalValue(value){
+  const text=String(value||'').trim();
+  if(/^["'][\s\S]*["']$/.test(text))return text.slice(1,-1);
+  if(text==='true')return true;if(text==='false')return false;if(text==='null')return null;
+  if(/^-?\d+(?:\.\d+)?$/.test(text))return Number(text);
+  return undefined;
+}
+function parseRawPredicate(value,env){
+  let text=stripOuterParens(value);if(!text)return null;
+  const ors=splitTopLevel(text,'||');if(ors.length>1)return rawAll('anyOf',ors.map(part=>parseRawPredicate(part,env)));
+  const ands=splitTopLevel(text,'&&');if(ands.length>1)return rawAll('allOf',ands.map(part=>parseRawPredicate(part,env)));
+  if(text.startsWith('!')&&!text.startsWith('!='))return negateRaw(parseRawPredicate(text.slice(1),env));
+  if(env.has(text))return env.get(text);
+  const comparison=text.match(/^([\s\S]+?)\s*(===|!==|==|!=)\s*([\s\S]+)$/);
+  if(comparison){
+    const leftText=stripOuterParens(comparison[1]),rightText=stripOuterParens(comparison[3]),op=comparison[2];
+    const left=env.get(leftText)||(()=>{const access=sourceControlAccess(leftText);return access&&access.property==='value'?{kind:'controlValue',controlId:access.controlId}:null;})();
+    const right=literalValue(rightText);
+    if(left?.kind==='controlValue'&&right!==undefined)return{kind:(op==='==='||op==='==')?'controlEquals':'controlNotEquals',controlId:left.controlId,value:right};
+  }
+  const access=sourceControlAccess(text);
+  if(access){
+    if(access.property==='checked')return{kind:'controlTruthy',controlId:access.controlId};
+    if(access.property==='value')return{kind:'controlValue',controlId:access.controlId};
+    if(access.property==='disabled')return{kind:'controlDisabled',controlId:access.controlId};
+  }
+  if(text==='true')return{kind:'true'};if(text==='false')return{kind:'false'};
+  return null;
+}
+function resolvePreferencePredicate(item,controlToPreference,enabledByControl,seen=new Set()){
+  if(!item)return null;
+  if(item.kind==='true'||item.kind==='false')return item;
+  if(item.kind==='controlValue')return null;
+  if(item.kind==='controlEnabled'||item.kind==='controlDisabled'){
+    const id=String(item.controlId||'');if(!id||seen.has(id))return null;const raw=enabledByControl.get(id);if(!raw)return null;
+    const next=new Set(seen);next.add(id);const resolved=resolvePreferencePredicate(raw,controlToPreference,enabledByControl,next);
+    return item.kind==='controlEnabled'?resolved:negatePreferencePredicate(resolved);
+  }
+  if(['controlTruthy','controlFalsy','controlEquals','controlNotEquals'].includes(item.kind)){
+    const key=controlToPreference[String(item.controlId||'')];if(!key)return null;
+    if(item.kind==='controlTruthy')return{kind:'truthy',key};
+    if(item.kind==='controlFalsy')return{kind:'falsy',key};
+    if(item.kind==='controlEquals')return{kind:'equals',key,value:item.value};
+    return{kind:'notEquals',key,value:item.value};
+  }
+  if(item.kind==='allOf'||item.kind==='anyOf'){
+    const values=item.items.map(child=>resolvePreferencePredicate(child,controlToPreference,enabledByControl,seen));if(values.some(value=>!value))return null;
+    return rawAll(item.kind,values);
+  }
+  return null;
+}
+function negatePreferencePredicate(item){
+  if(!item)return null;
+  if(item.kind==='true')return{kind:'false'};if(item.kind==='false')return{kind:'true'};
+  if(item.kind==='truthy')return{kind:'falsy',key:item.key};if(item.kind==='falsy')return{kind:'truthy',key:item.key};
+  if(item.kind==='equals')return{kind:'notEquals',key:item.key,value:item.value};if(item.kind==='notEquals')return{kind:'equals',key:item.key,value:item.value};
+  if(item.kind==='allOf')return rawAll('anyOf',item.items.map(negatePreferencePredicate));
+  if(item.kind==='anyOf')return rawAll('allOf',item.items.map(negatePreferencePredicate));
+  return null;
+}
+
+export function extractQbPreferencesBehaviorPredicates(source,controlToPreference={}){
+  const text=String(source||''),enabledByControl=new Map(),assignments=[],functions=[];
+  for(const match of text.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:\(\s*\)\s*=>|function\s*\(\s*\))\s*\{/g)){
+    const body=balancedBody(text,match.index??0);if(body)functions.push({name:String(match[1]),body,start:match.index??0});
+  }
+  functions.sort((a,b)=>a.start-b.start);
+  for(const fn of functions){
+    const env=new Map();
+    for(const match of fn.body.matchAll(/\bconst\s+([A-Za-z_$][\w$]*)\s*=\s*([^;]+);/g)){
+      const parsed=parseRawPredicate(match[2],env);if(parsed)env.set(String(match[1]),parsed);
+    }
+    const modern=[...fn.body.matchAll(/document\.getElementById\(\s*["']([^"']+)["']\s*\)\.disabled\s*=\s*([^;]+);/g)].map(match=>({target:match[1],expr:match[2],evidence:'property'}));
+    const legacy=[...fn.body.matchAll(/\$\(\s*["']([^"']+)["']\s*\)\.(?:setProperty|set)\(\s*["']disabled["']\s*,\s*([^;\)]+(?:\)[^;\)]*)?)\s*\)\s*;?/g)].map(match=>({target:match[1],expr:match[2],evidence:'setter'}));
+    for(const row of [...modern,...legacy]){
+      const disabled=parseRawPredicate(row.expr,env),enabled=negateRaw(disabled),target=String(row.target||'');
+      if(enabled)enabledByControl.set(target,enabled);
+      assignments.push({controlId:target,functionName:fn.name,evidence:row.evidence,resolved:!!enabled});
+    }
+  }
+  const predicates={},unresolved=[];
+  for(const row of assignments){
+    if(Object.prototype.hasOwnProperty.call(predicates,row.controlId))continue;
+    const raw=enabledByControl.get(row.controlId),resolved=resolvePreferencePredicate(raw,controlToPreference,enabledByControl);
+    if(resolved)predicates[row.controlId]=resolved;
+    else{predicates[row.controlId]={kind:'unknown'};unresolved.push({controlId:row.controlId,functionName:row.functionName});}
+  }
+  return{predicates,assignments,unresolved};
+}
+
 export function extractQbPreferencesCompositeUiFacts(source,preferenceKeys=[]){
   const text=String(source||''),wanted=new Set((preferenceKeys||[]).map(String)),out={},titles=controlTitles(text);
   const add=(key,id,evidence)=>{key=String(key||'');id=String(id||'');if(!key||!id||out[key]||(wanted.size&&!wanted.has(key)))return;const title=titles.get(id);if(title)out[key]={controlId:id,evidence,title};};

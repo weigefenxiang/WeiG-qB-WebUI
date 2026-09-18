@@ -5,7 +5,7 @@ import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {settingsTabRefs} from './qb-owned-ui-source.mjs';
 import {extractQbPreferenceUiFacts} from './qb-settings-translation-source.mjs';
-import {extractQbPreferencesCompositeUiFacts} from './qb-preferences-semantic-composite.mjs';
+import {extractQbPreferencesBehaviorPredicates,extractQbPreferencesCompositeUiFacts} from './qb-preferences-semantic-composite.mjs';
 import {extractQbPreferenceValueProjection} from './qb-preferences-value-projection.mjs';
 import {assertCatalogIdentity,catalogIdentity} from './qb-catalog-identity.mjs';
 
@@ -25,7 +25,7 @@ function rangeIndex(ranges){const out=new Map();for(const item of ranges||[]){co
 function controlIndex(markup,caches){const text=String(markup||''),out=new Map(),re=/<(input|select|textarea|table)\b([^>]*)>/gi;let match;while((match=re.exec(text))){const tag=String(match[1]||'').toLowerCase(),attrs=match[2]||'',id=attrText(attrs,'id');if(!id||out.has(id))continue;const type=tag==='input'?String(attrText(attrs,'type')||'text').toLowerCase():tag,semantic=tag==='table'?'structured':tag==='select'?'select':tag==='textarea'?'textarea':type==='checkbox'?'checkbox':type==='radio'?'radio':type==='number'?'number':type==='password'?'password':'text';let range=null;if(tag==='select')range=caches.selectsById.get(id)||null;else if(tag==='textarea')range=caches.textareasById.get(id)||null;else if(tag==='table')range=caches.tablesById.get(id)||null;const handlers={};for(const name of ['onclick','onchange','oninput']){const value=attrText(attrs,name);if(value)handlers[name]=value;}const attributes={};for(const name of ['min','max','step','maxlength','pattern','placeholder']){const value=attrText(attrs,name);if(value!==null)attributes[name]=value;}const classes=String(attrText(attrs,'class')||'').split(/\s+/).filter(Boolean);out.set(id,{id,tag,type,semantic,start:match.index??0,openEnd:re.lastIndex,range,handlers,attributes,classes,staticDisabled:hasAttr(attrs,'disabled')});}return out;}
 function findControl(_markup,id,caches){return caches.controls.get(String(id||''))||null;}
 function selectOptions(markup,control){if(!control||control.tag!=='select'||!control.range)return[];const body=String(markup||'').slice(control.range.openEnd,control.range.endStart),out=[];for(const match of body.matchAll(/<option\b([^>]*)>([\s\S]*?)<\/option>/gi)){const value=attrText(match[1],'value'),ref=qbtTr(match[2]),literal=ref?null:decodeHtml(match[2]);out.push({value:value===null?decodeHtml(match[2]):value,label:ref||{literal}});}return out;}
-function immediateUnit(markup,control,descriptor,projection){const numericControl=control?.semantic==='number',sourceNumeric=descriptor?.readType==='number'&&descriptor?.writeType==='number'&&projection?.kind==='scale';if(!control||(!numericControl&&!sourceNumeric))return null;let tail=String(markup||'').slice(control.openEnd,control.openEnd+180),stop=tail.search(/<(?:input|select|textarea|label|div|tr|fieldset)\b|<\/(?:td|div|span|fieldset)>/i);if(stop>=0)tail=tail.slice(0,stop);const ref=qbtTr(tail);if(ref)return ref;const literal=decodeHtml(tail).replace(/^[:\s]+|[:\s]+$/g,'');return literal?{literal}:null;}
+function immediateUnit(markup,control,_descriptor,_projection){if(!control||control.semantic==='select')return null;let tail=String(markup||'').slice(control.openEnd,control.openEnd+180),stop=tail.search(/<(?:input|select|textarea|button|label|div|tr|fieldset)\b|<\/(?:td|div|span|fieldset)>/i);if(stop>=0)tail=tail.slice(0,stop);const ref=qbtTr(tail);if(ref)return ref;const literal=decodeHtml(tail).replace(/&nbsp;/gi,' ').replace(/^[:\s\u00a0]+|[:\s\u00a0]+$/g,'');return literal&&literal.length<=48&&!/[.!?。！？]$/.test(literal)?{literal}:null;}
 function descriptorSubset(descriptor){if(!descriptor)return null;const out={};for(const key of ['getterPresent','setterPresent','readType','writeType','typeAgreement','writable'])out[key]=Object.prototype.hasOwnProperty.call(descriptor,key)?descriptor[key]:null;return out;}
 function safeStringWriteProjection(projection,descriptor,control){
   if(!projection||projection.safeWrite===true)return projection;
@@ -34,6 +34,87 @@ function safeStringWriteProjection(projection,descriptor,control){
   return direct&&exactString&&['text','select','password','textarea'].includes(semantic)?{...projection,safeWrite:true,writeIdentity:true}:projection;
 }
 function sourceTabs(preferencesSource,toolbarSource){const divs=elementRanges(preferencesSource,'div').filter(item=>/\bPrefTab\b/.test(String(attrText(item.attrs,'class')||''))),bySlug=new Map(divs.map(item=>[tabSlug(attrText(item.attrs,'id')),item])),toolbar=settingsTabRefs(toolbarSource||preferencesSource),out=[];for(const item of toolbar){const range=bySlug.get(item.tab)||null;if(range)out.push({id:item.tab,nativeId:attrText(range.attrs,'id')||null,title:item.ref,range});}if(out.length)return out;for(const range of divs){const id=tabSlug(attrText(range.attrs,'id'));if(id)out.push({id,nativeId:attrText(range.attrs,'id')||null,title:null,range});}return out;}
+
+function qbtOrLiteral(value){const ref=qbtTr(value);if(ref)return ref;const literal=decodeHtml(value);return literal?{literal}:null;}
+function buttonRanges(markup){
+  const text=String(markup||''),out=[];for(const match of text.matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/gi)){
+    const attrs=match[1]||'',start=match.index??0,end=start+match[0].length,onclick=attrText(attrs,'onclick')||'',id=attrText(attrs,'id')||('button@'+start);
+    out.push({id,start,end,attrs,onclick,label:qbtOrLiteral(match[2])});
+  }
+  return out;
+}
+function escapeRegex(value){return String(value||'').replace(/[-/\\^$*+?.()|[\]{}]/g,match=>'\\'+match);}
+function labelRefForControl(markup,id){
+  const escaped=escapeRegex(id);
+  let match=String(markup||'').match(new RegExp("<label\\b[^>]*\\bfor\\s*=\\s*([\\\"'])"+escaped+"\\1[^>]*>([\\s\\S]*?)<\\/label>",'i'));
+  if(match)return qbtOrLiteral(match[2]);
+  const control=String(markup||'').match(new RegExp("<(?:input|select|textarea|table)\\b[^>]*\\bid\\s*=\\s*([\\\"'])"+escaped+"\\1[^>]*>",'i'));
+  const labelled=control&&attrText(control[0],'aria-labelledby');
+  if(labelled){for(const labelId of String(labelled).split(/\s+/)){const lid=escapeRegex(labelId);match=String(markup||'').match(new RegExp("<label\\b[^>]*\\bid\\s*=\\s*([\\\"'])"+lid+"\\1[^>]*>([\\s\\S]*?)<\\/label>",'i'));if(match)return qbtOrLiteral(match[2]);}}
+  return null;
+}
+function sourceHelperAction(handler){
+  const value=String(handler||'').trim(),match=value.match(/^(?:qBittorrent\.Preferences\.)?([A-Za-z_$][\w$]*)\(\s*\)\s*;?$/);
+  return match?{kind:'source-helper',name:match[1]}:{kind:'unknown'};
+}
+function gatePredicate(preference){
+  const gates=preference?.dependencies?.gates||[],items=gates.map(gate=>gate?.preferenceKey?{kind:'truthy',key:String(gate.preferenceKey)}:null).filter(Boolean);
+  if(!items.length)return null;return items.length===1?items[0]:{kind:'allOf',items};
+}
+function inside(range,pos){return !!range&&pos>=range.openEnd&&pos<range.endStart;}
+function nearestContaining(ranges,pos){return(ranges||[]).filter(range=>inside(range,pos)).sort((a,b)=>(a.end-a.start)-(b.end-b.start))[0]||null;}
+
+function immediateSuffix(markup,control,rowEnd){
+  if(!control||!Number.isFinite(rowEnd))return null;
+  let tail=String(markup||'').slice(control.openEnd,Math.min(rowEnd,control.openEnd+64)),stop=tail.indexOf('<');
+  if(stop>=0)tail=tail.slice(0,stop);
+  const literal=decodeHtml(tail).replace(/&nbsp;/gi,' ').trim();
+  return literal&&literal.length<=12&&/^[:;,/|·–—-]+$/.test(literal)?{literal}:null;
+}
+function graphControl(control,preferencesByControl,behavior,markup,role,rowEnd){
+  const key=preferencesByControl.get(control.id)||null,preference=key&&preferencesByControl.preferences?.[key]||null;
+  const condition=behavior.predicates?.[control.id]||gatePredicate(preference),adornment=(preference&&preference.control&&preference.control.unit)||immediateUnit(markup,control,null,null);
+  return{id:control.id,preferenceKey:key,role:role||(key?'preference':'auxiliary'),semantic:control.semantic,staticDisabled:control.staticDisabled===true,label:(preference&&preference.title)||labelRefForControl(markup,control.id),adornment:adornment||null,suffix:immediateSuffix(markup,control,rowEnd),condition:condition||null};
+}
+function buildControlGraph(markup,tabs,fieldsets,caches,preferences){
+  const preferenceById=new Map(),preferenceObject={};
+  for(const [key,item] of Object.entries(preferences||{})){const id=String(item?.control?.id||'');if(id&&!preferenceById.has(id))preferenceById.set(id,key);preferenceObject[key]=item;}
+  preferenceById.preferences=preferenceObject;
+  const controlToPreference=Object.fromEntries([...preferenceById.entries()]),behavior=extractQbPreferencesBehaviorPredicates(markup,controlToPreference),buttons=buttonRanges(markup),legends=elementRanges(markup,'legend'),formRows=(caches.divs||[]).filter(row=>String(attrText(row.attrs,'class')||'').split(/\s+/).includes('formRow')),tableRows=caches.trs||[],allRows=[...formRows,...tableRows].sort((a,b)=>a.start-b.start||a.end-b.end),graphTabs={},representedControls=new Set(),representedHelpers=new Set(),sourceControls=new Set(),sourceHelpers=new Set();
+  for(const tab of tabs){
+    const tabFields=fieldsets.filter(item=>inside(tab.range,item.start)).sort((a,b)=>a.start-b.start),fieldIds=new Map(tabFields.map((item,index)=>[item,tab.id+':fieldset:'+index]));
+    const graphFields=tabFields.map((item,index)=>{
+      const parent=nearestContaining(tabFields.filter(candidate=>candidate!==item),item.start),legend=legends.find(value=>value.start>=item.openEnd&&value.end<=item.endStart),legendControls=[];
+      if(legend){for(const control of caches.controls.values())if(inside(legend,control.start)){representedControls.add(control.id);legendControls.push(graphControl(control,preferenceById,behavior,markup,'gate',legend.endStart));}}
+      return{id:tab.id+':fieldset:'+index,parentId:parent?fieldIds.get(parent):null,title:directLegend(markup,item),template:legendControls.length?'nested-gated-fieldset':'fieldset',legendControls};
+    });
+    const rows=[],assignedControls=new Set(),assignedButtons=new Set(),tabRows=allRows.filter(row=>inside(tab.range,row.start));
+    for(const row of tabRows){
+      const controls=[...caches.controls.values()].filter(control=>inside(row,control.start)),rowButtons=buttons.filter(button=>inside(row,button.start));
+      if(!controls.length&&!rowButtons.length)continue;
+      const parent=nearestContaining(tabFields,row.start),items=[];
+      for(const control of controls){assignedControls.add(control.id);representedControls.add(control.id);sourceControls.add(control.id);items.push({kind:'control',...graphControl(control,preferenceById,behavior,markup,null,row.endStart)});}
+      for(const button of rowButtons){assignedButtons.add(button.id);representedHelpers.add(button.id);sourceHelpers.add(button.id);items.push({kind:'helper',id:button.id,role:'helper',label:button.label,action:sourceHelperAction(button.onclick)});}
+      const mapped=items.filter(item=>item.kind==='control'&&item.preferenceKey).length,auxCheckbox=items.some(item=>item.kind==='control'&&!item.preferenceKey&&item.semantic==='checkbox'),hasHelper=items.some(item=>item.kind==='helper');
+      const template=hasHelper?(mapped>1?'inline-multi-helper':'control-helper'):(auxCheckbox&&mapped?'gated-sentinel':mapped>1?'inline-multi-control':'single-row');
+      rows.push({id:tab.id+':row:'+rows.length,parentFieldsetId:parent?fieldIds.get(parent):null,order:rows.length,template,items});
+    }
+    for(const control of caches.controls.values()){
+      if(!inside(tab.range,control.start))continue;
+      sourceControls.add(control.id);if(assignedControls.has(control.id))continue;representedControls.add(control.id);const parent=nearestContaining(tabFields,control.start);
+      rows.push({id:tab.id+':row:'+rows.length,parentFieldsetId:parent?fieldIds.get(parent):null,order:rows.length,template:'single-row',items:[{kind:'control',...graphControl(control,preferenceById,behavior,markup,null,null)}]});
+    }
+    for(const button of buttons){
+      if(!inside(tab.range,button.start))continue;
+      sourceHelpers.add(button.id);if(assignedButtons.has(button.id))continue;representedHelpers.add(button.id);const parent=nearestContaining(tabFields,button.start);
+      rows.push({id:tab.id+':row:'+rows.length,parentFieldsetId:parent?fieldIds.get(parent):null,order:rows.length,template:'helper-only',items:[{kind:'helper',id:button.id,role:'helper',label:button.label,action:sourceHelperAction(button.onclick)}]});
+    }
+    graphTabs[tab.id]={id:tab.id,fieldsets:graphFields,rows};
+  }
+  const mappedControls=new Set([...preferenceById.keys()]),unknownBehaviors=Object.entries(behavior.predicates||{}).filter(([,predicate])=>predicate?.kind==='unknown').map(([controlId])=>controlId),behaviorControls=new Set((behavior.assignments||[]).map(item=>String(item.controlId||'')).filter(Boolean)),sourceAdornmentControls=new Set([...caches.controls.values()].filter(control=>tabs.some(tab=>inside(tab.range,control.start))&&immediateUnit(markup,control,null,null)).map(control=>control.id)),graphItems=Object.values(graphTabs).flatMap(tab=>tab.rows.flatMap(row=>row.items).concat(tab.fieldsets.flatMap(field=>field.legendControls||[]))),representedAdornmentControls=new Set(graphItems.filter(item=>item.kind==='control'&&item.adornment).map(item=>item.id)),representedBehaviorControls=new Set([...behaviorControls].filter(id=>representedControls.has(id)||representedHelpers.has(id))),complete=sourceControls.size===representedControls.size&&sourceHelpers.size===representedHelpers.size&&sourceAdornmentControls.size===representedAdornmentControls.size&&behaviorControls.size===representedBehaviorControls.size;
+  return{schemaVersion:1,tabs:graphTabs,census:{sourceControls:sourceControls.size,representedControls:representedControls.size,sourceHelpers:sourceHelpers.size,representedHelpers:representedHelpers.size,sourceAdornments:sourceAdornmentControls.size,representedAdornments:representedAdornmentControls.size,behaviorControls:behaviorControls.size,representedBehaviorControls:representedBehaviorControls.size,mappedPreferenceControls:mappedControls.size,behaviorAssignments:behavior.assignments.length,unknownBehaviors,complete}};
+}
+
 
 function timedTrace(trace,label,fn){const start=Date.now();trace?.(`${label} START`);const value=fn();trace?.(`${label} DONE ${Date.now()-start}ms`);return value;}
 
@@ -45,7 +126,7 @@ export function extractQbPreferencesNativeSurface({preferencesSource='',toolbarS
   for(const [key,fact] of Object.entries(supplement))if(!ui[key])ui[key]=fact;
   const uiByControl=new Map(Object.entries(ui).map(([key,item])=>[String(item?.controlId||''),key]).filter(([id])=>id));
   const indexes=timedTrace(trace,'structural-indexes',()=>{
-    const tabs=sourceTabs(preferencesSource,toolbarSource),fieldsets=elementRanges(preferencesSource,'fieldset'),selects=elementRanges(preferencesSource,'select'),textareas=elementRanges(preferencesSource,'textarea'),tables=elementRanges(preferencesSource,'table'),caches={selects,textareas,tables,selectsById:rangeIndex(selects),textareasById:rangeIndex(textareas),tablesById:rangeIndex(tables)};
+    const tabs=sourceTabs(preferencesSource,toolbarSource),fieldsets=elementRanges(preferencesSource,'fieldset'),selects=elementRanges(preferencesSource,'select'),textareas=elementRanges(preferencesSource,'textarea'),tables=elementRanges(preferencesSource,'table'),divs=elementRanges(preferencesSource,'div'),trs=elementRanges(preferencesSource,'tr'),caches={selects,textareas,tables,divs,trs,selectsById:rangeIndex(selects),textareasById:rangeIndex(textareas),tablesById:rangeIndex(tables)};
     caches.controls=controlIndex(preferencesSource,caches);
     return{tabs,fieldsets,caches};
   });
@@ -73,7 +154,7 @@ export function extractQbPreferencesNativeSurface({preferencesSource='',toolbarS
     tabRows.push({id:tab.id,nativeId:tab.nativeId,title:tab.title||null,order:tabOrder,sections,preferences:rows.map(row=>row.key)});
     trace?.(`tab:${tab.id} DONE ${Date.now()-tabStarted}ms rows=${rows.length}`);
   });
-  return{tabs:tabRows,preferences,mappedPreferences:Object.keys(preferences).length,totalPreferences:keys.length};
+  const controlGraph=timedTrace(trace,'control-graph',()=>buildControlGraph(preferencesSource,tabs,fieldsets,caches,preferences));return{tabs:tabRows,preferences,controlGraph,structuralCensus:controlGraph.census,mappedPreferences:Object.keys(preferences).length,totalPreferences:keys.length};
 }
 
 function git(root,...args){return execFileSync('git',['-C',root,...args],{encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();}
