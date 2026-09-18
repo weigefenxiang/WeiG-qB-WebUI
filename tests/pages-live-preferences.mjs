@@ -144,44 +144,19 @@ try{
     const expectedSurfaces=await page.evaluate(async prefs=>{
       const schema=window.WeiG.SettingsSchema;
       if(schema.loadCompatibility)await schema.loadCompatibility();
-      function project(surface){
-        const sourceKeys=schema.group(surface,prefs).flatMap(group=>group.keys).sort();
-        const rows=new Set(sourceKeys),compounds={};
-        if(surface==='speed'){
-          const layout=schema.layout&&schema.layout('speed.scheduleRange');
-          const keys=layout&&Array.isArray(layout.keys)?layout.keys.map(String):[];
-          if(keys.length&&keys.every(key=>rows.has(key))){
-            keys.forEach(key=>rows.delete(key));
-            rows.add('schedule_range');
-            compounds.schedule_range=keys;
-          }
-        }
-        return{sourceKeys,rowKeys:[...rows].sort(),compounds};
-      }
+      function project(surface){const sourceKeys=schema.group(surface,prefs).flatMap(group=>group.keys).sort();return{sourceKeys,rowKeys:[...sourceKeys]};}
       return Object.fromEntries(['speed','advanced'].map(surface=>[surface,project(surface)]));
     },anchorResponse.json);
     assert.ok(expectedSurfaces.advanced.sourceKeys.length>=20,`WeiG ${anchor.qbVersion} Advanced route unexpectedly small: ${expectedSurfaces.advanced.sourceKeys.length}`);
     async function assertSettingsSurface(surface,expected,examples){
       await page.evaluate(async target=>window.WeiG.SettingsRenderer.open(target),surface);
       const renderedKeys=(await page.locator('#settings-content [data-setting-key]').evaluateAll(rows=>rows.map(row=>row.dataset.settingKey))).sort();
-      assert.deepEqual(renderedKeys,expected.rowKeys,`WeiG ${anchor.qbVersion} ${surface} settings must render the canonical row projection with no stale extras`);
-      for(const key of examples)assert.ok(expected.sourceKeys.includes(key),`WeiG ${surface} route must include upstream preference ${key}`);
-      for(const [rowKey,sourceKeys] of Object.entries(expected.compounds||{})){
-        const row=page.locator(`#settings-content [data-setting-key="${rowKey}"]`);
-        await row.waitFor({state:'attached',timeout:5000});
-        const search=String(await row.getAttribute('data-setting-search')||'');
-        for(const key of sourceKeys)assert.ok(search.includes(key),`WeiG ${surface} compound row ${rowKey} must represent upstream preference ${key}`);
-        assert.equal(await row.locator('input').count(),sourceKeys.length,`WeiG ${surface} compound row ${rowKey} must expose one canonical input per source preference`);
-      }
-      for(const key of examples){
-        const direct=expected.rowKeys.includes(key);
-        const compound=Object.values(expected.compounds||{}).some(keys=>keys.includes(key));
-        assert.ok(direct||compound,`WeiG ${surface} settings must represent upstream preference ${key}`);
-      }
+      assert.deepEqual(renderedKeys,expected.rowKeys,`WeiG ${anchor.qbVersion} ${surface} settings must render the exact source-native row projection with no stale extras`);
+      for(const key of examples){assert.ok(expected.sourceKeys.includes(key),`WeiG ${surface} route must include upstream preference ${key}`);const row=page.locator(`#settings-content [data-setting-key="${key}"]`);await row.waitFor({state:'attached',timeout:5000});}
     }
     await assertSettingsSurface('advanced',expectedSurfaces.advanced,routeExamples.advanced);
     await assertSettingsSurface('speed',expectedSurfaces.speed,routeExamples.speed);
-    console.log(`Preference anchor PASS: qB ${anchor.qbVersion} exact preference surface + Speed/Advanced canonical rendering.`);
+    console.log(`Preference anchor PASS: qB ${anchor.qbVersion} exact preference surface + Speed/Advanced source-native rendering.`);
   }
 
   if(mode==='all'||mode==='shard'){

@@ -88,11 +88,12 @@
     var nativeLocale=routeLocale(profile.nativeLocales),bridgeLocale=nativeLocale?null:routeLocale(profile.bridgeLocales),mode=nativeLocale?'native':(bridgeLocale?'bridge':null);if(!mode)return null;
     var bridgeSet={};if(mode==='bridge'&&bridges[bridgeLocale]){var tokens=sets[bridges[bridgeLocale]];if(!tokens)return null;for(var i=0;i<tokens.length;i++){var item=values[tokens[i]];if(!item)return null;bridgeSet[item.ref]=item.value;}}
     function resolve(id){var ref=refs[id];if(!ref)return null;if(mode==='bridge')return String(bridgeSet[id]!==undefined?bridgeSet[id]:ref.source);return ref.text===null?null:String(ref.text);}
-    var preferences={},ui={},unresolved=false;
+    var preferences={},ui={},resolvedRefs={},unresolved=false;
+    Object.keys(refs).forEach(function(id){var value=resolve(id);if(value!==null)resolvedRefs[refs[id].context+'\u0000'+refs[id].source]=value;});
     Object.keys(binding.preferences).forEach(function(key){var entry=binding.preferences[key],title=resolve(entry.title),description=entry.description?resolve(entry.description):'';if(title===null||description===null){unresolved=true;return;}preferences[key]={title:title,description:description||'',controlId:entry.controlId||null};});
     Object.keys(binding.ui).forEach(function(key){var value=resolve(binding.ui[key]);if(value===null){unresolved=true;return;}ui[key]=value;});
     if(mode==='native'&&unresolved)return null;
-    return{schemaVersion:2,source:mode==='native'?'qb-native-QBT_TR+minimal-official-QM':'qb-exact-official-TS-compact-bridge',sourceSha:expectedSha,qbVersion:expectedVersion,locale:qbLocale,mode:mode,preferences:preferences,ui:ui};
+    return{schemaVersion:2,source:mode==='native'?'qb-native-QBT_TR+minimal-official-QM':'qb-exact-official-TS-compact-bridge',sourceSha:expectedSha,qbVersion:expectedVersion,locale:qbLocale,mode:mode,preferences:preferences,ui:ui,resolvedRefs:resolvedRefs};
   }
   function loadQbOwnedCopy(){
     var current=currentProfile();if(!current||current.fallback)return Promise.resolve(null);var expectedSha=String(current.sourceSha||''),expectedVersion=String(current.qbVersion||'');if(!/^[0-9a-f]{40}$/.test(expectedSha)||!expectedVersion)return Promise.resolve(null);
@@ -102,9 +103,10 @@
   function exactQbCopy(){var current=currentProfile();if(!qbCopyData||!current||current.fallback||qbCopyLocale!==qbLocale)return null;if(String(qbCopyData.qbVersion)!==String(current.qbVersion)||String(qbCopyData.sourceSha)!==String(current.sourceSha))return null;return qbCopyData;}
   function qbSetting(key){var data=exactQbCopy(),entry=data&&data.preferences&&data.preferences[key];if(!entry)return null;return{title:entry.title,description:entry.description||'',source:data.source,controlId:entry.controlId||null};}
   function qbOwnedText(){var data=exactQbCopy();return data&&data.ui?Object.assign({},data.ui):{};}
+  function qbSourceText(ref,fallback){var data=exactQbCopy(),context=ref&&String(ref.context||''),source=ref&&String(ref.source||'');if(!context||!source)return String(fallback||source||'');var value=data&&data.resolvedRefs&&data.resolvedRefs[context+'\u0000'+source];return String(value!==undefined?value:(fallback||source));}
   function qbText(key,fallback){var values=qbOwnedText();return String(values[key]||fallback||key);}
   function loadQbOwnedText(){return loadQbOwnedCopy().then(function(){return qbOwnedText();});}
   function ready(){return Promise.all([loadLocaleOptions(),loadQbOwnedCopy()]).then(function(){return api;});}
-  var api={t:t,pick:pick,apply:apply,applyLocale:applyLocale,getLocale:function(){return locale;},getQbLocale:function(){return qbLocale;},normalize:normalize,canonicalQbTag:canonicalQbTag,sameQbLocale:sameQbLocale,hasExactLocale:hasExactLocale,matchBrowserLocale:matchBrowserLocale,parseLocaleOptions:parseLocaleOptions,parseOwnedCopyRegistry:parseOwnedCopyRegistry,loadLocaleOptions:loadLocaleOptions,localeOptions:function(){return localeOptions.slice();},loadQbOwnedCopy:loadQbOwnedCopy,loadQbOwnedText:loadQbOwnedText,qbSetting:qbSetting,qbText:qbText,ready:ready,supported:[],english:EN};
+  var api={t:t,pick:pick,apply:apply,applyLocale:applyLocale,getLocale:function(){return locale;},getQbLocale:function(){return qbLocale;},normalize:normalize,canonicalQbTag:canonicalQbTag,sameQbLocale:sameQbLocale,hasExactLocale:hasExactLocale,matchBrowserLocale:matchBrowserLocale,parseLocaleOptions:parseLocaleOptions,parseOwnedCopyRegistry:parseOwnedCopyRegistry,loadLocaleOptions:loadLocaleOptions,localeOptions:function(){return localeOptions.slice();},loadQbOwnedCopy:loadQbOwnedCopy,loadQbOwnedText:loadQbOwnedText,qbSetting:qbSetting,qbSourceText:qbSourceText,qbText:qbText,ready:ready,supported:[],english:EN};
   W.I18n=api;W.t=t;
 })(window);

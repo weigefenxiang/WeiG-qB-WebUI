@@ -62,7 +62,7 @@
   function saveBootstrap(value){try{localStorage.setItem(BOOTSTRAP_KEY,JSON.stringify(value));return true;}catch(_e){return false;}}
   function i18nReady(){return !!(W.I18n&&W.I18n.localeOptions&&W.I18n.matchBrowserLocale&&W.I18n.sameQbLocale&&W.I18n.hasExactLocale);}
   function sameLocale(a,b){return !!(W.I18n&&W.I18n.sameQbLocale&&W.I18n.sameQbLocale(a,b));}
-  function localeWritable(value){return !!(W.SettingsSchema&&W.SettingsSchema.isWritable&&W.SettingsSchema.isWritable('locale',value));}
+  function localeWritable(value,prefs,state){return !!(W.SettingsSchema&&W.SettingsSchema.isWritable&&W.SettingsSchema.isWritable('locale',value,prefs||{},state||prefs||{}));}
   async function ensureLocaleWriteProof(){if(W.SettingsSchema&&W.SettingsSchema.loadCompatibility)await W.SettingsSchema.loadCompatibility();}
   function currentLocaleOptions(){return W.I18n&&W.I18n.localeOptions?W.I18n.localeOptions():[];}
   function browserLanguages(){var nav=global.navigator||{},values=Array.isArray(nav.languages)?nav.languages.slice():[];if(nav.language&&values.indexOf(nav.language)<0)values.push(nav.language);return values.filter(Boolean);}
@@ -79,7 +79,7 @@
     if(!target){var noMatch=bootstrapRecord('no-browser-match',null,current,true);if(!saveBootstrap(noMatch))return{changed:false,reason:'bootstrap-storage-unavailable'};return{changed:false,reason:'no-browser-match',record:noMatch};}
     if(sameLocale(target,current)){var matched=bootstrapRecord('already-matched',target,current,true);if(!saveBootstrap(matched))return{changed:false,reason:'bootstrap-storage-unavailable'};return{changed:false,reason:'already-matched',record:matched};}
     await ensureLocaleWriteProof();
-    if(!localeWritable(target)){var blocked=bootstrapRecord('locale-not-writable',target,current,true);if(!saveBootstrap(blocked))return{changed:false,reason:'bootstrap-storage-unavailable'};return{changed:false,reason:'locale-not-writable',record:blocked};}
+    if(!localeWritable(target,prefs,Object.assign({},prefs,{locale:target}))){var blocked=bootstrapRecord('locale-not-writable',target,current,true);if(!saveBootstrap(blocked))return{changed:false,reason:'bootstrap-storage-unavailable'};return{changed:false,reason:'locale-not-writable',record:blocked};}
     if(!saveBootstrap(bootstrapRecord('write-pending',target,current,false)))return{changed:false,reason:'bootstrap-storage-unavailable'};
     try{
       await client.setPreferences({locale:target});
@@ -111,14 +111,14 @@
     if(prefs.alternative_webui_enabled!==true||!Object.prototype.hasOwnProperty.call(pending,'alternative_webui_enabled')||pending.alternative_webui_enabled!==false)return null;
     if(!i18nReady())throw new Error('qBittorrent locale owner is not ready for native WebUI return.');
     var target=cleanLocale(Object.prototype.hasOwnProperty.call(pending,'locale')?pending.locale:prefs.locale);
-    if(!target||!W.I18n.hasExactLocale(target)||!localeWritable(target))throw new Error('The selected qBittorrent locale is not source-proven writable.');
+    if(!target||!W.I18n.hasExactLocale(target)||!localeWritable(target,prefs,Object.assign({},prefs,pending,{locale:target})))throw new Error('The selected qBittorrent locale is not source-proven writable.');
     var temporary='';
-    currentLocaleOptions().some(function(option){var value=cleanLocale(option&&option.value!==undefined?option.value:option);if(!value||sameLocale(value,target)||!W.I18n.hasExactLocale(value)||!localeWritable(value))return false;temporary=value;return true;});
+    currentLocaleOptions().some(function(option){var value=cleanLocale(option&&option.value!==undefined?option.value:option);if(!value||sameLocale(value,target)||!W.I18n.hasExactLocale(value)||!localeWritable(value,prefs,Object.assign({},prefs,pending,{locale:value})))return false;temporary=value;return true;});
     if(!temporary)throw new Error('No alternate qBittorrent locale is available to refresh the native WebUI translator safely.');
     return{targetLocale:target,temporaryLocale:temporary};
   }
   async function writeLocaleVerified(client,locale,stage){
-    client=sharedClient(client);await client.setPreferences({locale:locale});var verified=await client.getPreferences();if(!verified||!sameLocale(verified.locale,locale))throw new Error('qBittorrent locale verification failed during '+stage+'.');syncPreferences(verified);return verified;
+    client=sharedClient(client);var current=W.AppState&&W.AppState.preferences||W.SettingsState&&W.SettingsState.prefs||{};if(!localeWritable(locale,current,Object.assign({},current,{locale:locale})))throw new Error('The qBittorrent locale write is no longer source-proven safe during '+stage+'.');await client.setPreferences({locale:locale});var verified=await client.getPreferences();if(!verified||!sameLocale(verified.locale,locale))throw new Error('qBittorrent locale verification failed during '+stage+'.');syncPreferences(verified);return verified;
   }
   function prepareNativeWebUiReturn(client,plan){if(!plan)return Promise.resolve(null);return writeLocaleVerified(client,plan.temporaryLocale,'native WebUI preparation');}
   function completeNativeWebUiReturn(client,plan){if(!plan)return Promise.resolve(null);return writeLocaleVerified(client,plan.targetLocale,'native WebUI completion');}

@@ -453,17 +453,23 @@ The design objective is reduced duplicate ownership and clearer information hier
 
 ## 13. Settings semantic runtime
 
-### SETTINGS-OWNER — one Preference semantic owner
-`W.SettingsSchema + data/settings-compat.json` own qB preference surface, section, type, unit, enum, editability and exact stable-release getter/setter descriptors. `W.CapabilityRegistry` supplies the certified release identity/write-provenance gate; `W.QBClient` only transports `app/preferences` and `app/setPreferences`; `settings.js` is the presentation caller. `W.Transfer` owns bounded transfer telemetry and the quick global/alternate rate-limit dialog; it does not own whether those qB Preferences are present or classified in Settings.
+### SETTINGS-OWNER — one exact-source Preference semantic owner
+`W.SettingsSchema + data/settings-compat.json` are the only formal qB Options/Preferences semantic owner. `settings-compat.json` is a bounded transport envelope for the exact source-native Preferences compact IR and carries the Frozen catalog identity plus decompressed payload SHA-256; `W.CapabilityRegistry` lazy-loads, verifies and expands it only when Settings is needed. `W.QBClient` owns transport only, and `settings.js` is a generic presentation caller. Manual qB surface/section/family/meta allowlists and version-specific Settings layouts are prohibited.
 
-### SETTINGS-ROUTING — semantic routing before fallback
-Preference routing is exact schema → semantic family rule → Advanced / Upstream fallback. Per-version runtime copies, qB patch allowlists and versioned Settings implementations are prohibited. The canonical Speed surface owns global/alternate speed Preferences plus scheduler/uTP/TCP/LAN rate-limit policy; Advanced must not duplicate those keys.
+### SETTINGS-PROJECTION — source order intersected with runtime truth
+The visible qB Options projection is `exact source native tabs / sections / controls / order ∩ current GET app/preferences`. Tabs, sections, controls, attributes, options, units, dependencies and raw/UI projections come from the exact admitted `qbVersion + sourceSha` manifest. Preferences not present in the current daemon response are not rendered. Source-native controls may safely fall back to individual canonical rows when no independently proven compound composition exists; presentation must not recreate upstream semantics.
 
-### SETTINGS-WRITE-PROVENANCE — setter proof decides editability
-For an exact stable profile, a qB Preference is editable only when its source descriptor proves a setter is present, its write type is resolved, getter/setter types do not conflict, and the descriptor is writable. Getter-only, unresolved, missing-descriptor and type-conflict fields remain visible but read-only. Every control kind consumes this editability, and save-time payload filtering repeats the same canonical check as defense in depth.
+### SETTINGS-WRITE-PROVENANCE — every write fails closed
+A Preference may enter `app/setPreferences` only when all of these are true at the moment of the write: certified exact/equivalent release identity; source-proven `setPreferences` action; current `app/preferences` contains the key; exact descriptor proves setter/writable/type agreement; source `projection.safeWrite === true`; dependency gates are satisfied; and the outgoing raw value matches the proven write type. Save-time `writableDraft()` repeats the same gate as defense in depth. Historical switch-map/read-only or otherwise unproven inverses never invent a write.
 
-### SETTINGS-STRUCTURED — safe unknown values
-Unknown/scalar Preferences may be routed and rendered from their actual value/read type, but source-unproven scalars remain read-only. Arrays/objects remain visible as read-only structured JSON even when a raw setter exists, until a dedicated authoritative structured editor contract is implemented. `[object Object]` presentation and blind structured writeback are prohibited.
+### SETTINGS-VALUE-PROJECTION — upstream raw/UI conversion only
+`identity`, source-proven `scale`, source-proven read-only `switch-map`, and `unproven` projections are consumed directly from exact source evidence. The narrowly admitted direct-string exception remains limited to exact writable string descriptor + native text/select/password/textarea + source direct identity setter (`writeIdentity:true`). Numeric, structured and composite values do not inherit that exception.
+
+### SETTINGS-COPY — existing exact qB copy owner
+Preference copy and other available source refs reuse `W.I18n`'s existing exact-release qB-owned copy registry. A source ref that is not yet covered by the copy registry falls back only to its upstream English source; Settings must not create a second qB translation database. Broader qB-owned copy coverage remains the separate C-phase responsibility.
+
+### SETTINGS-STRUCTURED — visible, never blindly writable
+Arrays/objects remain visible as read-only structured JSON unless an authoritative source-native editor/write projection is independently proven. `[object Object]` presentation and blind structured writeback are prohibited.
 
 ### SETTINGS-VISUAL — reuse canonical primitives
 Settings reuses existing `settings-section`, `settings-grid`, `setting-row`, `field-input setting-input`, `switch-control` and `W.Components.selectControl()` primitives. Feature-local Settings CSS, a second Select/Input/Dialog skin, or Mobile-only business state is prohibited.
@@ -472,7 +478,7 @@ Settings reuses existing `settings-section`, `settings-grid`, `setting-row`, `fi
 Mobile keeps short Settings rows side-by-side. When rendered description copy exceeds roughly two lines, the same control moves below the copy and may use the full row width. A closed Select remains one line with ellipsis; its menu exposes the complete option text. Time-zone labels remain owned by `W.Time.displayLabel()` and are not rewritten by responsive presentation.
 
 ### SETTINGS-GENERATION-AUDIT — every supported stable release
-The generated stable catalog starts at qBittorrent 4.1.0 and discovers every numeric official stable tag through the latest release. Each profile derives Preferences getter/setter descriptors, API actions, Torrent filter names and `torrents/info` parameters from that release's source. `tests/upstream-release-audit.mjs` validates the full set; Pages Preferences verification exercises the published stable matrix rather than a hand-picked `5.x.0` generation list.
+The admitted stable catalog starts at qBittorrent 4.1.0 and includes every numeric official stable through the latest admitted release. Source-native Preferences generation/census remains an offline source/admission concern; formal browser runtime consumes only the bounded verified transport envelope. Runtime envelope identity is the decompressed exact source IR SHA plus Frozen catalog identity, not the compression implementation's incidental byte stream.
 
 ## 14. Virtual qB Lab
 
