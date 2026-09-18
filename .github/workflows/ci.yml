@@ -22,7 +22,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}-${{ (github.event_name == 'workflow_dispatch' && (inputs.validation_mode == 'settings-evidence' || inputs.validation_mode == 'native-surfaces') && inputs.validation_mode) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[native-surfaces]') && 'native-surfaces') || 'default' }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}-${{ (github.event_name == 'workflow_dispatch' && (inputs.validation_mode == 'settings-evidence' || inputs.validation_mode == 'native-surfaces') && inputs.validation_mode) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[native-surfaces-profile]') && 'native-surfaces-profile') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[native-surfaces]') && 'native-surfaces') || 'default' }}
   cancel-in-progress: true
 
 jobs:
@@ -57,7 +57,7 @@ jobs:
           fi
 
           case "$HEAD_MESSAGE" in
-            *'[ui]'*|*'[candidate]'*|*'[native-surfaces]'*)
+            *'[ui]'*|*'[candidate]'*|*'[native-surfaces]'*|*'[native-surfaces-profile]'*)
               echo "relevant=true" >> "$GITHUB_OUTPUT"
               echo "Commit message explicitly requests an extended CI gate."
               exit 0
@@ -576,6 +576,47 @@ jobs:
           path: artifacts/candidate-deployment/candidate.json
           if-no-files-found: error
           retention-days: 90
+
+  native_surface_profile:
+    name: qB Preferences source focused profile
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[native-surfaces-profile]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: smoke
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Checkout qBittorrent upstream with stable tags
+        uses: actions/checkout@v7
+        with:
+          repository: qbittorrent/qBittorrent
+          path: upstream-qb
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+      - name: Build exact admitted source catalog
+        run: node tools/qb-release-catalog.mjs upstream-qb --output=qb-releases.json
+      - name: Select focused Preferences change points
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          const catalog=JSON.parse(fs.readFileSync('qb-releases.json','utf8'));
+          const wanted=new Set(['4.1.0','4.6.7','5.2.3']);
+          const selected=catalog.filter(profile=>wanted.has(String(profile.qbVersion)));
+          if(selected.length!==wanted.size)throw new Error(`focused Preferences profile expected ${wanted.size} releases, got ${selected.length}`);
+          fs.writeFileSync('qb-preferences-profile.json',JSON.stringify(selected,null,2)+'\n');
+          console.log('Focused Preferences releases:',selected.map(profile=>profile.qbVersion).join(', '));
+          NODE
+      - name: Profile exact Preferences native surface facts
+        shell: bash
+        env:
+          QB_PREFERENCES_TRACE: '1'
+        run: timeout --signal=TERM 300s node tools/qb-preferences-surface-source.mjs upstream-qb qb-preferences-profile.json qb-preferences-profile-output.json
 
   native_surface_source:
     name: qB native surface source admission
