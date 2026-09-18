@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {settingsTabRefs} from '../tools/qb-owned-ui-source.mjs';
-import {compileCompactRuntime} from '../tools/qb-compact-runtime.mjs';
+import {readSettingsRuntime} from '../tools/qb-compact-runtime.mjs';
 import {extractQbPreferencesNativeSurface,mergeQbPreferencesSourceCatalogShards,selectQbPreferencesCatalogShard} from '../tools/qb-preferences-surface-source.mjs';
 import {compileQbPreferencesCompact,expandQbPreferencesCompact} from '../tools/qb-preferences-compact.mjs';
 import {extractQbPreferenceValueProjection} from '../tools/qb-preferences-value-projection.mjs';
@@ -123,9 +123,11 @@ const compactChanged=compileQbPreferencesCompact({schemaVersion:1,profiles:[sour
 assert.equal(compactChanged.preferences.future_limit.length,2,'one preference change must create one keyed change point instead of duplicating every other native setting');
 assert.equal(compactChanged.preferences.locale.length,1,'unrelated native preferences must remain deduplicated');
 
-const runtimeCompact=compileCompactRuntime([{qbVersion:'5.2.3',webApiVersion:'2.15.1',sourceSha:'1111111111111111111111111111111111111111',stable:true,officialWeiGSupport:true,qbOwnedUi:{'settings.tab.behavior':{source:'Behavior',context:'OptionsDialog'},'settings.tab.futurenetwork':{source:'Future Network',context:'OptionsDialog'}},apiActions:[],preferenceDescriptors:[]}]);
-assert.deepEqual(runtimeCompact.settingsData.nativeTabs[0].value,['behavior','futurenetwork'],'compact runtime must preserve every source-admitted native Settings tab instead of filtering through a fixed known-tab allowlist');
-assert.equal(runtimeCompact.catalogIdentity.releaseCount,1,'compact runtime must carry a common Frozen catalog identity foundation');
-assert.deepEqual(runtimeCompact.capabilityData.catalogIdentity,runtimeCompact.settingsData.catalogIdentity,'compact domains compiled from one catalog must carry identical catalog identity');
+const runtimeSettings=readSettingsRuntime();
+assert.equal(runtimeSettings.settingsData.schemaVersion,2,'formal Settings runtime must consume the source-native compact schema');
+assert.equal(runtimeSettings.settingsData.source,'qb-upstream-preferences-native-surface-compact','formal Settings runtime must not rebuild a legacy descriptor/nativeTabs shape');
+assert.equal(runtimeSettings.settingsData.catalogIdentity.releaseCount,65,'formal Settings runtime must remain bound to the admitted Frozen release set');
+assert.equal(runtimeSettings.manifest.payload.sha256,'2784279c685ffc3df3cd4bb5bcdcb3838e50940ccdc2cb83d32e7a3cf04b326f','formal Settings runtime must consume the accepted exact source-native IR');
+assert.equal(Object.prototype.hasOwnProperty.call(runtimeSettings.settingsData,'nativeTabs'),false,'legacy runtime-generated nativeTabs truth must stay retired');
 
-console.log('qB Preferences native source contract passed: tabs auto-admit through extraction and compact runtime; source order/sections/controls/options/units/dependencies/value projections are preserved by the keyed compact IR.');
+console.log('qB Preferences native source contract passed: future tabs auto-admit through source extraction/compact IR; formal browser runtime consumes the accepted source-native envelope without rebuilding a second Settings truth.');
