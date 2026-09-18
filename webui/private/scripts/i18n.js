@@ -103,7 +103,7 @@
   function exactQbCopy(){var current=currentProfile();if(!qbCopyData||!current||current.fallback||qbCopyLocale!==qbLocale)return null;if(String(qbCopyData.qbVersion)!==String(current.qbVersion)||String(qbCopyData.sourceSha)!==String(current.sourceSha))return null;return qbCopyData;}
   function qbSetting(key){var data=exactQbCopy(),entry=data&&data.preferences&&data.preferences[key];if(!entry)return null;return{title:entry.title,description:entry.description||'',source:data.source,controlId:entry.controlId||null};}
   function qbOwnedText(){var data=exactQbCopy();return data&&data.ui?Object.assign({},data.ui):{};}
-  function qbSourceText(ref,fallback){var data=exactQbCopy(),context=ref&&String(ref.context||''),source=ref&&String(ref.source||'');if(!context||!source)return String(fallback||source||'');var value=data&&data.resolvedRefs&&data.resolvedRefs[context+'\u0000'+source];return String(value!==undefined?value:(fallback||source));}
+  function qbSourceText(ref,fallback){var data=exactQbCopy(),context=ref&&String(ref.context||''),source=ref&&String(ref.source||'');if(!context||!source)return String(fallback||source||'');var value=data&&data.resolvedRefs?data.resolvedRefs[context+'\u0000'+source]:undefined;return String(value!==undefined&&value!==null?value:(fallback||source));}
   function qbText(key,fallback){var values=qbOwnedText();return String(values[key]||fallback||key);}
   function loadQbOwnedText(){return loadQbOwnedCopy().then(function(){return qbOwnedText();});}
   function ready(){return Promise.all([loadLocaleOptions(),loadQbOwnedCopy()]).then(function(){return api;});}
