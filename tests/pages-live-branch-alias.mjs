@@ -53,7 +53,7 @@ async function setVerifiedLocale(page,target){
   await openSettings(page);
   const before=await page.evaluate(()=>{
     const row=document.querySelector('[data-setting-key="weigg_language"]'),control=row?.querySelector('.ui-select'),trigger=row?.querySelector('.ui-select__trigger'),draft=window.WeiG?.SettingsState?.draft||{},prefs=window.WeiG?.SettingsState?.prefs||{},value=Object.prototype.hasOwnProperty.call(draft,'locale')?draft.locale:prefs.locale;
-    return{value:control?.getValue?.()||'',disabled:!!trigger?.disabled,writable:window.WeiG?.SettingsSchema?.isWritable?.('locale',value)===true};
+    return{value:control?.getValue?.()||'',disabled:!!trigger?.disabled,writable:window.WeiG?.SettingsSchema?.isWritable?.('locale',value,prefs,{...prefs,...draft})===true};
   });
   assert.equal(before.disabled,false,`${target}: Language UI control must be enabled`);
   assert.equal(before.writable,true,`${target}: Locale must be writable through SettingsSchema before user interaction`);
