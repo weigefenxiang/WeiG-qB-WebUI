@@ -16,12 +16,14 @@ const session=read('webui/private/scripts/session.js');
 const pkg=JSON.parse(read('package.json'));
 const version=read('VERSION').trim();
 const webVersion=read('webui/VERSION').trim();
+const lock=JSON.parse(read('package-lock.json'));
+const productIdentity=JSON.parse(read('webui/private/product-identity.json'));
 const scriptDir=path.join(root,'webui/private/scripts');
 const scriptSources=fs.readdirSync(scriptDir).filter(name=>name.endsWith('.js')).map(name=>[name,fs.readFileSync(path.join(scriptDir,name),'utf8')]);
 const browserDir=path.join(root,'tests');
 const browserSources=fs.readdirSync(browserDir).filter(name=>/^browser-.*\.mjs$/.test(name)).map(name=>[name,fs.readFileSync(path.join(browserDir,name),'utf8')]);
 
-assert(/^\d+\.\d+\.\d+$/.test(version)&&webVersion===version&&pkg.version===version,'product versions must stay synchronized semantic patch versions');
+assert(/^\d+\.\d+\.\d+$/.test(version)&&webVersion===version&&pkg.version===version&&lock.version===version&&lock.packages?.['']?.version===version,'product versions must stay synchronized semantic patch versions');assert(productIdentity?.schemaVersion===1&&productIdentity?.source==='canonical-version'&&productIdentity?.version===version,'generated source-direct Product Identity must match canonical VERSION');
 assert(!/W\.toast\s*=\s*function/.test(core),'core.js legacy toast owner must be retired');
 assert(/W\.Feedback\s*=/.test(feedback)&&/W\.toast\s*=\s*toast/.test(feedback),'feedback.js must be the canonical W.toast owner');
 assert(/MAX_VISIBLE\s*=\s*4/.test(feedback),'feedback stack must be bounded to four visible records');
@@ -44,7 +46,7 @@ assert(/prefers-reduced-motion/.test(css)&&/data-motion=reduced/.test(css),'feed
 assert(!/\.toast-region\{/.test(read('webui/private/css/app.css'))&&!/\.toast\{/.test(read('webui/private/css/app.css')),'legacy toast CSS must leave app.css');
 assert((html.match(/css\/feedback\.css/g)||[]).length===1&&(html.match(/scripts\/feedback\.js/g)||[]).length===1,'feedback assets must load exactly once');
 assert(/id="toast-region" class="feedback-stack"/.test(html)&&/aria-relevant="additions text"/.test(html),'canonical live region contract is missing');
-assert(!/fact\(text\('Version','版本'\),'0\.3\./.test(settings),'About must not hard-code product version');
+assert(!/fact\(text\('Version','版本'\),'0\.3\./.test(settings),'About must not hard-code product version');assert(settings.includes("fetch('product-identity.json'")&&!/ensureProductVersion\(\)[\s\S]{0,500}installMeta\(/.test(settings),'About must read canonical Product Identity rather than installer metadata');
 assert(/W\.toast\(msg,'error'\)/.test(session)&&/W\.toast\(\(e&&e\.message\)\|\|String\(e\),'error'\)/.test(session),'Session failures must use canonical error feedback semantics');
 for(const [name,source] of scriptSources){
   assert(!/W\.toast\([^;\n]*,\s*['"]danger['"]/.test(source),`${name} must not use legacy danger W.toast kind`);

@@ -50,7 +50,7 @@ jobs:
 
           pages_materialization_relevant_path() {
             case "$1" in
-              .github/workflows/pages-source.yml|.github/workflows/pages.yml|webui/*|simulator/*|installers/*|VERSION|tools/build-webui-dist.mjs|tools/qb-settings-*.mjs|tools/qb-locale-*.mjs|tools/qb-native-qm-recovery.mjs|tools/qb-owned-ui-source.mjs|tools/qb-preference-semantics.mjs|tools/qb-qm-provisioning-source.mjs|tools/qb-release-catalog*.mjs|tools/qb-source-parsers.mjs|tools/qb-detail-surface-parsers.mjs|tools/qb-torrent-fields-parser.mjs|tools/qb-translator-behavior-source.mjs|tools/qb-cpp-literals.mjs|tools/qb-webui-catalog.mjs|tools/data/qb-stable-lkg.json|tools/data/qb-locale-lkg.json|tools/data/qb-translator-behavior-lkg.json|tests/fixtures/qb-release-catalog.lkg.json)
+              .github/workflows/pages-source.yml|.github/workflows/pages.yml|webui/*|simulator/*|installers/*|VERSION|tools/build-webui-dist.mjs|tools/product-identity.mjs|tools/qb-settings-*.mjs|tools/qb-locale-*.mjs|tools/qb-native-qm-recovery.mjs|tools/qb-owned-ui-source.mjs|tools/qb-preference-semantics.mjs|tools/qb-qm-provisioning-source.mjs|tools/qb-release-catalog*.mjs|tools/qb-source-parsers.mjs|tools/qb-detail-surface-parsers.mjs|tools/qb-torrent-fields-parser.mjs|tools/qb-translator-behavior-source.mjs|tools/qb-cpp-literals.mjs|tools/qb-webui-catalog.mjs|tools/data/qb-stable-lkg.json|tools/data/qb-locale-lkg.json|tools/data/qb-translator-behavior-lkg.json|tests/fixtures/qb-release-catalog.lkg.json)
                 return 0
                 ;;
               *)
