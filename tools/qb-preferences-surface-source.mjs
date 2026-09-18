@@ -96,7 +96,7 @@ function buildControlGraph(markup,tabs,fieldsets,caches,preferences){
     const graphFields=tabFields.map((item,index)=>{
       const parent=nearestContaining(tabFields.filter(candidate=>candidate!==item),item.start),legend=legends.find(value=>value.start>=item.openEnd&&value.end<=item.endStart),legendControls=[];
       if(legend){for(const control of caches.controls.values())if(inside(legend,control.start)){sourceControls.add(control.id);representedControls.add(control.id);legendControlIds.add(control.id);legendControls.push(graphControl(control,preferenceById,behavior,markup,'gate',legend.endStart));}}
-      return{id:tab.id+':fieldset:'+index,parentId:parent?fieldIds.get(parent):null,title:directLegend(markup,item),template:legendControls.length?'nested-gated-fieldset':'fieldset',legendControls};
+      return{id:tab.id+':fieldset:'+index,parentId:parent?fieldIds.get(parent):null,title:directLegend(markup,item),template:legendControls.length?'nested-gated-fieldset':'fieldset',legendControls,sourceOrder:0,_sourcePos:item.start};
     });
     const rows=[],assignedControls=new Set(),assignedButtons=new Set(),tabRows=allRows.filter(row=>inside(tab.range,row.start));
     for(const row of tabRows){
@@ -107,18 +107,26 @@ function buildControlGraph(markup,tabs,fieldsets,caches,preferences){
       for(const button of rowButtons){assignedButtons.add(button.id);representedHelpers.add(button.id);sourceHelpers.add(button.id);items.push({kind:'helper',id:button.id,role:'helper',label:button.label,action:sourceHelperAction(button.onclick,markup)});}
       const mapped=items.filter(item=>item.kind==='control'&&item.preferenceKey).length,auxCheckbox=items.some(item=>item.kind==='control'&&!item.preferenceKey&&item.semantic==='checkbox'),hasHelper=items.some(item=>item.kind==='helper');
       const template=hasHelper?(mapped>1?'inline-multi-helper':'control-helper'):(auxCheckbox&&mapped?'gated-sentinel':mapped>1?'inline-multi-control':'single-row');
-      rows.push({id:tab.id+':row:'+rows.length,parentFieldsetId:parent?fieldIds.get(parent):null,order:rows.length,template,items});
+      rows.push({id:tab.id+':row:'+rows.length,parentFieldsetId:parent?fieldIds.get(parent):null,order:rows.length,sourceOrder:0,_sourcePos:row.start,template,items});
     }
     for(const control of caches.controls.values()){
       if(!inside(tab.range,control.start))continue;
       sourceControls.add(control.id);if(legendControlIds.has(control.id)||assignedControls.has(control.id))continue;representedControls.add(control.id);const parent=nearestContaining(tabFields,control.start);
-      rows.push({id:tab.id+':row:'+rows.length,parentFieldsetId:parent?fieldIds.get(parent):null,order:rows.length,template:'single-row',items:[{kind:'control',...graphControl(control,preferenceById,behavior,markup,null,null)}]});
+      rows.push({id:tab.id+':row:'+rows.length,parentFieldsetId:parent?fieldIds.get(parent):null,order:rows.length,sourceOrder:0,_sourcePos:control.start,template:'single-row',items:[{kind:'control',...graphControl(control,preferenceById,behavior,markup,null,null)}]});
     }
     for(const button of buttons){
       if(!inside(tab.range,button.start))continue;
       sourceHelpers.add(button.id);if(assignedButtons.has(button.id))continue;representedHelpers.add(button.id);const parent=nearestContaining(tabFields,button.start);
-      rows.push({id:tab.id+':row:'+rows.length,parentFieldsetId:parent?fieldIds.get(parent):null,order:rows.length,template:'helper-only',items:[{kind:'helper',id:button.id,role:'helper',label:button.label,action:sourceHelperAction(button.onclick,markup)}]});
+      rows.push({id:tab.id+':row:'+rows.length,parentFieldsetId:parent?fieldIds.get(parent):null,order:rows.length,sourceOrder:0,_sourcePos:button.start,template:'helper-only',items:[{kind:'helper',id:button.id,role:'helper',label:button.label,action:sourceHelperAction(button.onclick,markup)}]});
     }
+    for(const parentId of [null,...graphFields.map(field=>field.id)]){
+      const children=[
+        ...graphFields.filter(field=>field.parentId===parentId).map(field=>({node:field,pos:field._sourcePos})),
+        ...rows.filter(row=>row.parentFieldsetId===parentId).map(row=>({node:row,pos:row._sourcePos}))
+      ].sort((a,b)=>a.pos-b.pos);
+      children.forEach((entry,index)=>{entry.node.sourceOrder=index;});
+    }
+    graphFields.forEach(field=>{delete field._sourcePos;});rows.forEach(row=>{delete row._sourcePos;});
     graphTabs[tab.id]={id:tab.id,fieldsets:graphFields,rows};
   }
   const mappedControls=new Set([...preferenceById.keys()]),unknownBehaviors=Object.entries(behavior.predicates||{}).filter(([,predicate])=>predicate?.kind==='unknown').map(([controlId])=>controlId),behaviorControls=new Set((behavior.assignments||[]).map(item=>String(item.controlId||'')).filter(Boolean)),sourceAdornmentControls=new Set([...caches.controls.values()].filter(control=>tabs.some(tab=>inside(tab.range,control.start))&&immediateUnit(markup,control,null,null)).map(control=>control.id)),graphItems=Object.values(graphTabs).flatMap(tab=>tab.rows.flatMap(row=>row.items).concat(tab.fieldsets.flatMap(field=>field.legendControls||[]))),representedAdornmentControls=new Set(graphItems.filter(item=>item.kind==='control'&&item.adornment).map(item=>item.id)),representedBehaviorControls=new Set([...behaviorControls].filter(id=>representedControls.has(id)||representedHelpers.has(id))),complete=sourceControls.size===representedControls.size&&sourceHelpers.size===representedHelpers.size&&sourceAdornmentControls.size===representedAdornmentControls.size&&behaviorControls.size===representedBehaviorControls.size;

@@ -121,6 +121,9 @@ assert.equal(rowFor('schedule_from_hour').template,'inline-multi-control','same 
 assert.equal(structural.controlGraph.tabs.speed.rows.some(row=>row.items.some(item=>item.id==='limitSchedulingCheckbox')),false,'legend-owned gate controls must not be duplicated as standalone rows');
 assert.deepEqual(rowFor('schedule_from_hour').items.filter(item=>item.preferenceKey).map(item=>item.preferenceKey),['schedule_from_hour','schedule_from_min','schedule_to_hour','schedule_to_min']);
 assert.deepEqual(rowFor('schedule_from_hour').items.filter(item=>item.preferenceKey).map(item=>item.suffix&&item.suffix.literal),[':',null,':',null],'time-range punctuation must stay source-owned instead of being reconstructed from preference names');
+const speedScheduleField=structural.controlGraph.tabs.speed.fieldsets.find(field=>field.legendControls.some(control=>control.preferenceKey==='scheduler_enabled'));
+const speedScheduleRow=rowFor('schedule_from_hour');
+assert.ok(Number.isInteger(speedScheduleField.sourceOrder)&&Number.isInteger(speedScheduleRow.sourceOrder),'fieldset/row source order must be explicit structural data');
 assert.deepEqual(itemFor('proxy_ip').condition,{kind:'notEquals',key:'proxy_type',value:'None'},'source disabled expressions must compile to a declarative proxy predicate');
 assert.deepEqual(itemFor('proxy_auth_enabled').condition,{kind:'allOf',items:[{kind:'notEquals',key:'proxy_type',value:'None'},{kind:'notEquals',key:'proxy_type',value:'SOCKS4'}]},'compound proxy conditions must preserve exact source behavior without key-specific runtime code');
 assert.deepEqual(structural.preferences.send_buffer_watermark_factor.control.unit,{literal:'%'},'display adornments must be source-owned even when they are not tied to a numeric scale projection');

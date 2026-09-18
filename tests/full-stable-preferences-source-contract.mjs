@@ -101,6 +101,13 @@ const scheduleRow=latestRowFor('schedule_from_hour');
 assert.equal(scheduleRow?.template,'inline-multi-control','latest scheduler range must stay one source row');
 assert.deepEqual((scheduleRow?.items||[]).filter(item=>item.preferenceKey).map(item=>item.preferenceKey),['schedule_from_hour','schedule_from_min','schedule_to_hour','schedule_to_min'],'latest scheduler range controls must preserve source order');
 assert.deepEqual((scheduleRow?.items||[]).filter(item=>item.preferenceKey).map(item=>item.suffix?.literal||null),[':',null,':',null],'latest scheduler range punctuation must remain source-owned');
+for(const [tabId,graphTab] of Object.entries(latestManifest.controlGraph.tabs||{})){
+  for(const parentId of [null,...graphTab.fieldsets.map(field=>field.id)]){
+    const orders=[...graphTab.fieldsets.filter(field=>field.parentId===parentId),...graphTab.rows.filter(row=>row.parentFieldsetId===parentId)].map(node=>node.sourceOrder).sort((a,b)=>a-b);
+    assert.deepEqual(orders,orders.map((_value,index)=>index),'latest '+tabId+': parent-local Control Graph source order must be contiguous and deterministic');
+  }
+}
+
 assert.deepEqual(latestItemFor('proxy_ip')?.condition,{kind:'notEquals',key:'proxy_type',value:'None'},'latest proxy host gate must be source-derived');
 assert.deepEqual(latestItemFor('proxy_auth_enabled')?.condition,{kind:'allOf',items:[{kind:'notEquals',key:'proxy_type',value:'None'},{kind:'notEquals',key:'proxy_type',value:'SOCKS4'}]},'latest proxy authentication gate must preserve compound source behavior');
 assert.deepEqual(latestManifest.preferences.send_buffer_watermark?.control?.unit,{source:'KiB',context:'OptionsDialog'},'latest send buffer watermark must retain KiB adornment');
