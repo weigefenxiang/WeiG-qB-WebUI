@@ -53,9 +53,19 @@ function labelRefForControl(markup,id){
   if(labelled){for(const labelId of String(labelled).split(/\s+/)){const lid=escapeRegex(labelId);match=String(markup||'').match(new RegExp("<label\\b[^>]*\\bid\\s*=\\s*([\\\"'])"+lid+"\\1[^>]*>([\\s\\S]*?)<\\/label>",'i'));if(match)return qbtOrLiteral(match[2]);}}
   return null;
 }
-function sourceHelperAction(handler){
+function balancedBlock(text,start){text=String(text||'');const open=text.indexOf('{',start);if(open<0)return'';let depth=0,quote='',escape=false,lineComment=false,blockComment=false;for(let i=open;i<text.length;i++){const ch=text[i],next=text[i+1];if(lineComment){if(ch==='\n')lineComment=false;continue;}if(blockComment){if(ch==='*'&&next==='/'){blockComment=false;i++;}continue;}if(quote){if(escape){escape=false;continue;}if(ch==='\\'){escape=true;continue;}if(ch===quote)quote='';continue;}if(ch==='/'&&next==='/'){lineComment=true;i++;continue;}if(ch==='/'&&next==='*'){blockComment=true;i++;continue;}if(ch==='"'||ch==="'"){quote=ch;continue;}if(ch==='{')depth++;else if(ch==='}'){depth--;if(depth===0)return text.slice(open+1,i);}}return'';}
+function sourceHelperAction(handler,markup){
   const value=String(handler||'').trim(),match=value.match(/^(?:qBittorrent\.Preferences\.)?([A-Za-z_$][\w$]*)\(\s*\)\s*;?$/);
-  return match?{kind:'source-helper',name:match[1]}:{kind:'unknown'};
+  if(!match)return{kind:'unknown'};
+  const name=match[1],escaped=escapeRegex(name),decl=new RegExp('\\b(?:const|let|var)\\s+'+escaped+'\\s*=\\s*(?:\\(\\s*\\)\\s*=>|function\\s*\\(\\s*\\))\\s*\\{','g'),hit=decl.exec(String(markup||'')),body=hit?balancedBlock(String(markup||''),hit.index):'';
+  if(body){
+    const typed=body.match(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*new\s+Uint(8|16|32)Array\(\s*1\s*\)\s*;/),random=body.match(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*crypto\.getRandomValues\(\s*([A-Za-z_$][\w$]*)\s*\)\s*\[\s*0\s*\]\s*;/);
+    if(typed&&random&&typed[1]===random[2]){
+      const variable=random[1],bits=Number(typed[2]),guard=body.match(new RegExp('while\\s*\\(\\s*'+escapeRegex(variable)+'\\s*<\\s*(\\d+)\\s*\\)')),target=body.match(new RegExp('document\\.getElementById\\(\\s*["\\\']([^"\\\']+)["\\\']\\s*\\)\\.value\\s*=\\s*'+escapeRegex(variable)+'\\s*;'));
+      if(guard&&target&&Number.isFinite(bits))return{kind:'random-int',targetControlId:target[1],min:Number(guard[1]),max:(2**bits)-1};
+    }
+  }
+  return{kind:'source-helper',name};
 }
 function gatePredicate(preference){
   const gates=preference?.dependencies?.gates||[],items=gates.map(gate=>gate?.preferenceKey?{kind:'truthy',key:String(gate.preferenceKey)}:null).filter(Boolean);
@@ -94,7 +104,7 @@ function buildControlGraph(markup,tabs,fieldsets,caches,preferences){
       if(!controls.length&&!rowButtons.length)continue;
       const parent=nearestContaining(tabFields,row.start),items=[];
       for(const control of controls){assignedControls.add(control.id);representedControls.add(control.id);sourceControls.add(control.id);items.push({kind:'control',...graphControl(control,preferenceById,behavior,markup,null,row.endStart)});}
-      for(const button of rowButtons){assignedButtons.add(button.id);representedHelpers.add(button.id);sourceHelpers.add(button.id);items.push({kind:'helper',id:button.id,role:'helper',label:button.label,action:sourceHelperAction(button.onclick)});}
+      for(const button of rowButtons){assignedButtons.add(button.id);representedHelpers.add(button.id);sourceHelpers.add(button.id);items.push({kind:'helper',id:button.id,role:'helper',label:button.label,action:sourceHelperAction(button.onclick,markup)});}
       const mapped=items.filter(item=>item.kind==='control'&&item.preferenceKey).length,auxCheckbox=items.some(item=>item.kind==='control'&&!item.preferenceKey&&item.semantic==='checkbox'),hasHelper=items.some(item=>item.kind==='helper');
       const template=hasHelper?(mapped>1?'inline-multi-helper':'control-helper'):(auxCheckbox&&mapped?'gated-sentinel':mapped>1?'inline-multi-control':'single-row');
       rows.push({id:tab.id+':row:'+rows.length,parentFieldsetId:parent?fieldIds.get(parent):null,order:rows.length,template,items});
@@ -107,7 +117,7 @@ function buildControlGraph(markup,tabs,fieldsets,caches,preferences){
     for(const button of buttons){
       if(!inside(tab.range,button.start))continue;
       sourceHelpers.add(button.id);if(assignedButtons.has(button.id))continue;representedHelpers.add(button.id);const parent=nearestContaining(tabFields,button.start);
-      rows.push({id:tab.id+':row:'+rows.length,parentFieldsetId:parent?fieldIds.get(parent):null,order:rows.length,template:'helper-only',items:[{kind:'helper',id:button.id,role:'helper',label:button.label,action:sourceHelperAction(button.onclick)}]});
+      rows.push({id:tab.id+':row:'+rows.length,parentFieldsetId:parent?fieldIds.get(parent):null,order:rows.length,template:'helper-only',items:[{kind:'helper',id:button.id,role:'helper',label:button.label,action:sourceHelperAction(button.onclick,markup)}]});
     }
     graphTabs[tab.id]={id:tab.id,fieldsets:graphFields,rows};
   }

@@ -92,6 +92,27 @@ const mapped=`
 </script>`;
 assert.deepEqual(extractQbPreferenceValueProjection(mapped,'proxy_type','proxy'),{kind:'switch-map',values:[['5','socks4'],['2','socks5'],['4','socks5'],['1','http'],['3','http']],defaultValue:'none',safeWrite:false},'source switch map may drive display but must stay non-writable when an independent inverse cannot be proven');
 
+const sentinel=`
+<input id="maxConnectionsCheckbox" type="checkbox">
+<input id="maxConnectionsValue" type="text">
+<script>
+  const maxConnec = Number(pref.max_connec);
+  if (maxConnec <= 0) {
+    document.getElementById("maxConnectionsCheckbox").checked = false;
+    document.getElementById("maxConnectionsValue").value = 500;
+  }
+  else {
+    document.getElementById("maxConnectionsCheckbox").checked = true;
+    document.getElementById("maxConnectionsValue").value = maxConnec;
+  }
+  let maxConnecWrite = -1;
+  if (document.getElementById("maxConnectionsCheckbox").checked) {
+    maxConnecWrite = Number(document.getElementById("maxConnectionsValue").value);
+  }
+  settings["max_connec"] = maxConnecWrite;
+</script>`;
+assert.deepEqual(extractQbPreferenceValueProjection(sentinel,'max_connec','maxConnectionsValue'),{kind:'sentinel-gate',gateControlId:'maxConnectionsCheckbox',disabledValue:-1,defaultValue:500,enabledWhen:{kind:'gt',value:0},safeWrite:true},'source-proven disabled sentinel + checkbox/value pair must compile into one generic safe sentinel projection');
+
 const mismatch=`
 <input id="value" type="number">
 <script>

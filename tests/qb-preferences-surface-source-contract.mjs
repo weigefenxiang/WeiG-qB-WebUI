@@ -101,6 +101,7 @@ const structuralSource='<div id="ConnectionTab" class="PrefTab">'
 +'const updatePeerProxySettings=()=>{const proxyType=document.getElementById("peer_proxy_type_select").value;const isProxyDisabled=(proxyType==="None");const isProxySocks4=(proxyType==="SOCKS4");document.getElementById("peer_proxy_host_text").disabled=isProxyDisabled;document.getElementById("peer_proxy_auth_checkbox").disabled=(isProxyDisabled||isProxySocks4);};'
 +'const updatePeerProxyAuthSettings=()=>{const proxyType=document.getElementById("peer_proxy_type_select").value;const isProxyDisabled=(proxyType==="None");const authEnabled=(!document.getElementById("peer_proxy_auth_checkbox").disabled&&document.getElementById("peer_proxy_auth_checkbox").checked);document.getElementById("peer_proxy_username_text").disabled=(isProxyDisabled||!authEnabled);};'
 +'const updateSchedulingEnabled=()=>{const enabled=document.getElementById("limitSchedulingCheckbox").checked;document.getElementById("schedule_from_hour").disabled=!enabled;document.getElementById("schedule_from_min").disabled=!enabled;document.getElementById("schedule_to_hour").disabled=!enabled;document.getElementById("schedule_to_min").disabled=!enabled;};'
++'const generateRandomPort=()=>{const buffer=new Uint16Array(1);let port=crypto.getRandomValues(buffer)[0];while(port<1024)port=crypto.getRandomValues(buffer)[0];document.getElementById("portValue").value=port;};'
 +'</script>';
 const structuralDescriptors=[
   ['listen_port','number'],['max_connec','number'],['proxy_type','string'],['proxy_ip','string'],['proxy_auth_enabled','boolean'],['proxy_username','string'],
@@ -114,7 +115,7 @@ assert.equal(structural.structuralCensus.sourceHelpers,structural.structuralCens
 assert.equal(structural.structuralCensus.sourceAdornments,structural.structuralCensus.representedAdornments);
 assert.equal(structural.structuralCensus.behaviorControls,structural.structuralCensus.representedBehaviorControls);
 assert.equal(rowFor('listen_port').template,'control-helper','Listening Port + Random must be represented as a generic control/helper row');
-assert.deepEqual(rowFor('listen_port').items.find(item=>item.kind==='helper').action,{kind:'source-helper',name:'generateRandomPort'});
+assert.deepEqual(rowFor('listen_port').items.find(item=>item.kind==='helper').action,{kind:'random-int',targetControlId:'portValue',min:1024,max:65535},'source helper behavior must compile to bounded random-int IR instead of arbitrary upstream JS execution');
 assert.equal(rowFor('max_connec').template,'gated-sentinel','unmapped native gate + mapped value must preserve the generic sentinel row shape');
 assert.equal(rowFor('schedule_from_hour').template,'inline-multi-control','same source row must stay one inline multi-control cluster');
 assert.deepEqual(rowFor('schedule_from_hour').items.filter(item=>item.preferenceKey).map(item=>item.preferenceKey),['schedule_from_hour','schedule_from_min','schedule_to_hour','schedule_to_min']);

@@ -44,7 +44,7 @@ for(let i=0;i<census.profiles.length;i++){
 }
 assert.equal(censusFailures.length,0,`Preferences independent source census is incomplete across the Frozen release set:\n${censusFailures.join('\n')}`);
 
-let previousRatio=null,minimumRatio=1,scaleProjectionCount=0,switchProjectionCount=0,unprovenProjectionCount=0;
+let previousRatio=null,minimumRatio=1,scaleProjectionCount=0,switchProjectionCount=0,sentinelProjectionCount=0,unprovenProjectionCount=0;
 for(let i=0;i<catalog.length;i++){
   const base=catalog[i],profile=source.profiles[i];
   assert.equal(profile.qbVersion,base.qbVersion,`${base.qbVersion}: release order drift`);
@@ -69,7 +69,7 @@ for(let i=0;i<catalog.length;i++){
   for(const tab of manifest.tabs){
     assert.equal(typeof tab.id,'string');assert.ok(tab.id);assert.ok(Number.isInteger(tab.order));
     let previous=-1;
-    for(const key of tab.preferences||[]){const item=manifest.preferences[key];assert.ok(item,`${base.qbVersion}: tab ${tab.id} references missing ${key}`);assert.ok(allowed.has(key),`${base.qbVersion}: native manifest escaped app/preferences: ${key}`);assert.equal(item.tab,tab.id);assert.ok(item.order>previous,`${base.qbVersion}: ${tab.id} preference order is not source monotonic`);previous=item.order;assert.ok(item.title?.source&&item.title?.context,`${base.qbVersion}: ${key} lacks source/context title identity`);assert.ok(item.control?.id&&item.control?.semantic,`${base.qbVersion}: ${key} lacks native control semantics`);assert.ok(item.descriptor&&Object.prototype.hasOwnProperty.call(item.descriptor,'writable'),`${base.qbVersion}: ${key} lacks API read/write provenance`);assert.ok(item.projection&&typeof item.projection==='object'&&typeof item.projection.safeWrite==='boolean',`${base.qbVersion}: ${key} lacks source value-projection accounting`);if(item.projection.kind==='scale')scaleProjectionCount+=1;else if(item.projection.kind==='switch-map')switchProjectionCount+=1;else if(item.projection.kind==='unproven')unprovenProjectionCount+=1;if(item.control.semantic==='select')for(const option of item.control.options||[])assert.ok(option.label&&(option.label.source||Object.prototype.hasOwnProperty.call(option.label,'literal')),`${base.qbVersion}: ${key} select option lacks source identity`);}
+    for(const key of tab.preferences||[]){const item=manifest.preferences[key];assert.ok(item,`${base.qbVersion}: tab ${tab.id} references missing ${key}`);assert.ok(allowed.has(key),`${base.qbVersion}: native manifest escaped app/preferences: ${key}`);assert.equal(item.tab,tab.id);assert.ok(item.order>previous,`${base.qbVersion}: ${tab.id} preference order is not source monotonic`);previous=item.order;assert.ok(item.title?.source&&item.title?.context,`${base.qbVersion}: ${key} lacks source/context title identity`);assert.ok(item.control?.id&&item.control?.semantic,`${base.qbVersion}: ${key} lacks native control semantics`);assert.ok(item.descriptor&&Object.prototype.hasOwnProperty.call(item.descriptor,'writable'),`${base.qbVersion}: ${key} lacks API read/write provenance`);assert.ok(item.projection&&typeof item.projection==='object'&&typeof item.projection.safeWrite==='boolean',`${base.qbVersion}: ${key} lacks source value-projection accounting`);if(item.projection.kind==='scale')scaleProjectionCount+=1;else if(item.projection.kind==='switch-map')switchProjectionCount+=1;else if(item.projection.kind==='sentinel-gate')sentinelProjectionCount+=1;else if(item.projection.kind==='unproven')unprovenProjectionCount+=1;if(item.control.semantic==='select')for(const option of item.control.options||[])assert.ok(option.label&&(option.label.source||Object.prototype.hasOwnProperty.call(option.label,'literal')),`${base.qbVersion}: ${key} select option lacks source identity`);}
   }
 }
 assert.ok(scaleProjectionCount>0,'Frozen Preferences source must prove at least one native raw/UI numeric scale instead of relying on manual runtime metadata');
@@ -80,8 +80,17 @@ const latestRowFor=key=>latestRows.find(row=>(row.items||[]).some(item=>item.pre
 const latestItemFor=key=>latestRows.flatMap(row=>row.items||[]).find(item=>item.preferenceKey===key);
 const listeningRow=latestRowFor('listen_port');
 assert.equal(listeningRow?.template,'control-helper','latest Listening Port must preserve the source helper sibling');
-assert.deepEqual(listeningRow?.items?.find(item=>item.kind==='helper')?.action,{kind:'source-helper',name:'generateRandomPort'},'latest Random helper must retain source helper identity');
+assert.deepEqual(listeningRow?.items?.find(item=>item.kind==='helper')?.action,{kind:'random-int',targetControlId:'portValue',min:1024,max:65535},'latest Random helper must compile exact bounded helper semantics');
 assert.equal(latestRowFor('max_connec')?.template,'gated-sentinel','latest connection limit must preserve the checkbox/sentinel row shape');
+for(const [key,gate,defaultValue] of [
+  ['max_connec','maxConnectionsCheckbox',500],
+  ['max_connec_per_torrent','maxConnectionsPerTorrentCheckbox',100],
+  ['max_uploads','maxUploadsCheckbox',8],
+  ['max_uploads_per_torrent','maxUploadsPerTorrentCheckbox',4]
+]){
+  assert.deepEqual(latestManifest.preferences[key]?.projection,{kind:'sentinel-gate',gateControlId:gate,disabledValue:-1,defaultValue,enabledWhen:{kind:'gt',value:0},safeWrite:true},'latest '+key+' sentinel UI/value projection must be source-proven and generic');
+}
+
 const scheduleRow=latestRowFor('schedule_from_hour');
 assert.equal(scheduleRow?.template,'inline-multi-control','latest scheduler range must stay one source row');
 assert.deepEqual((scheduleRow?.items||[]).filter(item=>item.preferenceKey).map(item=>item.preferenceKey),['schedule_from_hour','schedule_from_min','schedule_to_hour','schedule_to_min'],'latest scheduler range controls must preserve source order');
@@ -115,4 +124,4 @@ for(const profile of source.profiles){
     assert.equal(actual.tab,item.tab,`${profile.qbVersion}: ${key} tab drift`);assert.equal(actual.sectionId,item.sectionId,`${profile.qbVersion}: ${key} section drift`);assert.equal(actual.order,item.order,`${profile.qbVersion}: ${key} order drift`);assert.equal(actual.control.id,item.control.id,`${profile.qbVersion}: ${key} control id drift`);assert.equal(actual.control.semantic,item.control.semantic,`${profile.qbVersion}: ${key} control semantic drift`);assert.deepEqual(actual.control.attributes,item.control.attributes||{},`${profile.qbVersion}: ${key} control attributes drift`);assert.equal(actual.title?.source,item.title?.source,`${profile.qbVersion}: ${key} source title drift`);assert.equal(actual.title?.context,item.title?.context,`${profile.qbVersion}: ${key} source title context drift`);assert.deepEqual(actual.descriptor,item.descriptor,`${profile.qbVersion}: ${key} API descriptor drift`);assert.deepEqual(actual.projection,item.projection,`${profile.qbVersion}: ${key} source value projection drift`);
   }
 }
-console.log(`Full stable qB Preferences source contract passed: ${catalog.length} exact releases, structural control/helper/adornment/behavior census complete, Frozen catalog ${expectedIdentity.releaseSetSha256.slice(0,12)}, ${(minimumRatio*100).toFixed(1)}% minimum native mapping, ${scaleProjectionCount} scale / ${switchProjectionCount} switch / ${unprovenProjectionCount} unproven value projections, ${bytes} byte keyed compact IR, and lossless tab/section/control/API/value provenance.`);
+console.log(`Full stable qB Preferences source contract passed: ${catalog.length} exact releases, structural control/helper/adornment/behavior census complete, Frozen catalog ${expectedIdentity.releaseSetSha256.slice(0,12)}, ${(minimumRatio*100).toFixed(1)}% minimum native mapping, ${scaleProjectionCount} scale / ${switchProjectionCount} switch / ${sentinelProjectionCount} sentinel / ${unprovenProjectionCount} unproven value projections, ${bytes} byte keyed compact IR, and lossless tab/section/control/API/value provenance.`);

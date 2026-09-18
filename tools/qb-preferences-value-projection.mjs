@@ -36,6 +36,50 @@ function assignedLiteral(segment,id){const escaped=escapeRe(id),patterns=[
 ];for(const re of patterns){const match=String(segment||'').match(re);if(match)return match[1];}return null;}
 function switchProjection(body,id){if(!body)return null;const markers=[];for(const item of body.matchAll(/\bcase\s+([^:]+)\s*:|\bdefault\s*:/g))markers.push({pos:item.index??0,value:item[1]===undefined?null:String(item[1]).trim()});const values=[];let defaultValue=null;for(let i=0;i<markers.length;i++){const marker=markers[i],breakPos=body.indexOf('break',marker.pos),end=breakPos>=0?breakPos:body.length,segment=body.slice(marker.pos,end),literal=assignedLiteral(segment,id);if(literal===null)continue;if(marker.value===null)defaultValue=literal;else{const raw=marker.value.replace(/^['"]|['"]$/g,'');if(!values.some(row=>row[0]===raw))values.push([raw,literal]);}}return values.length||defaultValue!==null?{kind:'switch-map',values,defaultValue,safeWrite:false}:null;}
 function rememberLatest(map,key,value,pos,positions){const previous=positions.get(key)??-1;if(pos>=previous){map.set(key,value);positions.set(key,pos);}}
+function numericLiteral(value){const text=stripOuterParens(String(value??'').trim());return/^-?\d+(?:\.\d+)?$/.test(text)?Number(text):null;}
+function assignedExpression(segment,id,property='value'){
+  const escaped=escapeRe(id),patterns=[
+    new RegExp(modernControlPattern(id,property)+'\\s*=\\s*([^;\\n]+)'),
+    new RegExp('\\$\\(\\s*["\']'+escaped+'["\']\\s*\\)\\s*\\.\\s*(?:setProperty|set)\\(\\s*["\']'+escapeRe(property)+'["\']\\s*,\\s*([^;\\n\\)]+(?:\\)[^;\\n\\)]*)?)\\s*\\)')
+  ];
+  for(const re of patterns){const match=String(segment||'').match(re);if(match)return String(match[1]||'').trim();}
+  return null;
+}
+function checkedControl(segment,expected){
+  const bool=expected?'true':'false',patterns=[
+    new RegExp('document\\.getElementById\\(\\s*["\']([^"\']+)["\']\\s*\\)\\s*\\.\\s*checked\\s*=\\s*'+bool+'\\b'),
+    new RegExp('\\$\\(\\s*["\']([^"\']+)["\']\\s*\\)\\s*\\.\\s*(?:setProperty|set)\\(\\s*["\']checked["\']\\s*,\\s*'+bool+'\\s*\\)')
+  ];
+  for(const re of patterns){const match=String(segment||'').match(re);if(match)return String(match[1]||'');}
+  return null;
+}
+function sentinelGateProjection(source,key,controlId,writes,declarations){
+  const writeExpression=String(writes.get(String(key))??'').trim();
+  if(!/^[A-Za-z_$][\w$]*$/.test(writeExpression))return null;
+  const disabledValue=numericLiteral(declarations.get(writeExpression));if(disabledValue===null)return null;
+  const escapedKey=escapeRe(key),readDecl=new RegExp('\\b(?:const|let|var)\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*(?:Number\\(\\s*pref\\s*\\.\\s*'+escapedKey+'\\s*\\)|pref\\s*\\.\\s*'+escapedKey+'(?:\\s*\\.\\s*toInt\\s*\\(\\s*\\))?)\\s*;?');
+  const readDeclMatch=String(source||'').match(readDecl),readVar=readDeclMatch?String(readDeclMatch[1]||''):null;
+  if(!readVar)return null;
+  const readRe=new RegExp('if\\s*\\(\\s*'+escapeRe(readVar)+'\\s*<=\\s*(-?\\d+(?:\\.\\d+)?)\\s*\\)\\s*\\{([\\s\\S]*?)\\}\\s*else\\s*\\{([\\s\\S]*?)\\}','g');
+  let readMatch=null;
+  for(const match of String(source||'').matchAll(readRe)){
+    const off=match[2]||'',on=match[3]||'',offGate=checkedControl(off,false),onGate=checkedControl(on,true);
+    if(!offGate||offGate!==onGate)continue;
+    const fallback=numericLiteral(assignedExpression(off,controlId)),onValue=assignedExpression(on,controlId);
+    if(fallback===null||String(onValue||'').trim()!==readVar)continue;
+    readMatch={threshold:Number(match[1]),gateControlId:offGate,defaultValue:fallback};break;
+  }
+  if(!readMatch||!Number.isFinite(readMatch.threshold))return null;
+  const gate=escapeRe(readMatch.gateControlId),modern='document\\.getElementById\\(\\s*["\']'+gate+'["\']\\s*\\)\\s*\\.\\s*checked',legacy='\\$\\(\\s*["\']'+gate+'["\']\\s*\\)\\s*\\.\\s*getProperty\\(\\s*["\']checked["\']\\s*\\)';
+  const writeIf=new RegExp('if\\s*\\(\\s*(?:'+modern+'|'+legacy+')\\s*\\)\\s*\\{([\\s\\S]*?)\\}','g');
+  let writeFactor=null;
+  for(const match of String(source||'').matchAll(writeIf)){
+    const body=match[1]||'',assignment=body.match(new RegExp('\\b'+escapeRe(writeExpression)+'\\s*=\\s*([^;\\n]+)'));
+    if(!assignment)continue;writeFactor=controlNumericFactor(assignment[1],controlId);if(writeFactor!==null)break;
+  }
+  if(writeFactor!==1||disabledValue>readMatch.threshold||readMatch.defaultValue<=readMatch.threshold)return null;
+  return{kind:'sentinel-gate',gateControlId:readMatch.gateControlId,disabledValue,defaultValue:readMatch.defaultValue,enabledWhen:{kind:'gt',value:readMatch.threshold},safeWrite:true};
+}
 
 export function createQbPreferenceValueProjector(source){
   const text=String(source||''),reads=new Map(),writes=new Map(),declarations=new Map(),switches=new Map(),readPos=new Map(),writePos=new Map();let match;
@@ -55,6 +99,7 @@ export function createQbPreferenceValueProjector(source){
   while((match=switchRe.exec(text))){const body=balancedBody(text,match.index??0);if(body)switches.set(match[1],body);}
   return function project(key,controlId){
     const switchMap=switchProjection(switches.get(String(key)),controlId);if(switchMap)return switchMap;
+    const sentinel=sentinelGateProjection(text,key,controlId,writes,declarations);if(sentinel)return sentinel;
     const read=reads.get(String(controlId)),write=writes.get(String(key));
     const readFactor=read===undefined?null:resolveExpression(read,value=>preferenceNumericFactor(value,key),declarations),writeFactor=write===undefined?null:resolveExpression(write,value=>controlNumericFactor(value,controlId),declarations);
     if(readFactor===1&&writeFactor===1)return{kind:'identity',safeWrite:true};
