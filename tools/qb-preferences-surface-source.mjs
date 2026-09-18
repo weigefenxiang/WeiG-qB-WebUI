@@ -57,12 +57,24 @@ function balancedBlock(text,start){text=String(text||'');const open=text.indexOf
 function sourceHelperAction(handler,markup){
   const value=String(handler||'').trim(),match=value.match(/^(?:qBittorrent\.Preferences\.)?([A-Za-z_$][\w$]*)\(\s*\)\s*;?$/);
   if(!match)return{kind:'unknown'};
-  const name=match[1],escaped=escapeRegex(name),decl=new RegExp('\\b(?:const|let|var)\\s+'+escaped+'\\s*=\\s*(?:\\(\\s*\\)\\s*=>|function\\s*\\(\\s*\\))\\s*\\{','g'),hit=decl.exec(String(markup||'')),body=hit?balancedBlock(String(markup||''),hit.index):'';
+  const name=match[1],escaped=escapeRegex(name),text=String(markup||''),decl=new RegExp('\\b(?:(?:const|let|var)\\s+)?'+escaped+'\\s*=\\s*(?:\\(\\s*\\)\\s*=>|function\\s*\\(\\s*\\))\\s*\\{','g'),hit=decl.exec(text),body=hit?balancedBlock(text,hit.index):'';
   if(body){
+    const targetFor=variable=>{
+      const direct=body.match(new RegExp('document\\.getElementById\\(\\s*["\\\']([^"\\\']+)["\\\']\\s*\\)\\.value\\s*=\\s*'+escapeRegex(variable)+'\\s*;?'));
+      if(direct)return direct[1];
+      const mootools=body.match(new RegExp('\\$\\(\\s*["\\\']([^"\\\']+)["\\\']\\s*\\)\\.setProperty\\(\\s*["\\\']value["\\\']\\s*,\\s*'+escapeRegex(variable)+'\\s*\\)\\s*;?'));
+      return mootools?mootools[1]:null;
+    };
     const typed=body.match(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*new\s+Uint(8|16|32)Array\(\s*1\s*\)\s*;/),random=body.match(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*crypto\.getRandomValues\(\s*([A-Za-z_$][\w$]*)\s*\)\s*\[\s*0\s*\]\s*;/);
     if(typed&&random&&typed[1]===random[2]){
-      const variable=random[1],bits=Number(typed[2]),guard=body.match(new RegExp('while\\s*\\(\\s*'+escapeRegex(variable)+'\\s*<\\s*(\\d+)\\s*\\)')),target=body.match(new RegExp('document\\.getElementById\\(\\s*["\\\']([^"\\\']+)["\\\']\\s*\\)\\.value\\s*=\\s*'+escapeRegex(variable)+'\\s*;'));
-      if(guard&&target&&Number.isFinite(bits))return{kind:'random-int',targetControlId:target[1],min:Number(guard[1]),max:(2**bits)-1};
+      const variable=random[1],bits=Number(typed[2]),guard=body.match(new RegExp('while\\s*\\(\\s*'+escapeRegex(variable)+'\\s*<\\s*(\\d+)\\s*\\)')),target=targetFor(variable);
+      if(guard&&target&&Number.isFinite(bits))return{kind:'random-int',targetControlId:target,min:Number(guard[1]),max:(2**bits)-1};
+    }
+    const numeric=new Map([...body.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(-?\d+)\s*;/g)].map(hit=>[hit[1],Number(hit[2])])),
+      legacy=body.match(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*Math\.floor\(\s*Math\.random\(\s*\)\s*\*\s*\(\s*([A-Za-z_$][\w$]*)\s*-\s*([A-Za-z_$][\w$]*)\s*\+\s*1\s*\)\s*\+\s*([A-Za-z_$][\w$]*)\s*\)\s*;/);
+    if(legacy&&legacy[3]===legacy[4]&&numeric.has(legacy[2])&&numeric.has(legacy[3])){
+      const variable=legacy[1],min=numeric.get(legacy[3]),max=numeric.get(legacy[2]),target=targetFor(variable);
+      if(target&&Number.isFinite(min)&&Number.isFinite(max)&&max>=min)return{kind:'random-int',targetControlId:target,min,max};
     }
   }
   return{kind:'source-helper',name};

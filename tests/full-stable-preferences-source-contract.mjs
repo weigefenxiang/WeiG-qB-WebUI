@@ -74,6 +74,11 @@ for(let i=0;i<catalog.length;i++){
 }
 assert.ok(scaleProjectionCount>0,'Frozen Preferences source must prove at least one native raw/UI numeric scale instead of relying on manual runtime metadata');
 assert.ok(switchProjectionCount>0,'Frozen Preferences source must retain at least one historical switch-map composite projection');
+const legacyRandomManifest=source.profiles.find(profile=>profile.qbVersion==='4.1.9.1')?.manifest;
+const legacyRandomRows=Object.values(legacyRandomManifest?.controlGraph?.tabs||{}).flatMap(tab=>tab.rows||[]);
+const legacyListeningRow=legacyRandomRows.find(row=>(row.items||[]).some(item=>item.preferenceKey==='listen_port'));
+assert.equal(legacyListeningRow?.template,'control-helper','qB 4.1.9.1 Listening Port must preserve its source helper sibling');
+assert.deepEqual(legacyListeningRow?.items?.find(item=>item.kind==='helper')?.action,{kind:'random-int',targetControlId:'port_value',min:1024,max:65535},'qB 4.1.9.1 Math.random/MooTools helper must compile to the same bounded random-int IR without helper-name special casing');
 const latestManifest=source.profiles.at(-1).manifest;
 const latestRows=Object.values(latestManifest.controlGraph.tabs||{}).flatMap(tab=>tab.rows||[]);
 const latestRowFor=key=>latestRows.find(row=>(row.items||[]).some(item=>item.preferenceKey===key));
