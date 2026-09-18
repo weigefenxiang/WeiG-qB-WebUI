@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import {settingsTabRefs} from '../tools/qb-owned-ui-source.mjs';
 import {compileCompactRuntime} from '../tools/qb-compact-runtime.mjs';
-import {extractQbPreferencesNativeSurface} from '../tools/qb-preferences-surface-source.mjs';
+import {extractQbPreferencesNativeSurface,mergeQbPreferencesSourceCatalogShards,selectQbPreferencesCatalogShard} from '../tools/qb-preferences-surface-source.mjs';
 import {compileQbPreferencesCompact,expandQbPreferencesCompact} from '../tools/qb-preferences-compact.mjs';
 import {extractQbPreferenceValueProjection} from '../tools/qb-preferences-value-projection.mjs';
+import {catalogIdentity} from '../tools/qb-catalog-identity.mjs';
 
 const toolbar=`
 <menu>
@@ -79,6 +80,16 @@ assert.deepEqual(
   {kind:'scale',scale:1024,safeWrite:true},
   'legacy qB 4.x variable-backed rate-limit projection must resolve linearly without catastrophic regex backtracking'
 );
+
+const shardBase=Array.from({length:5},(_value,index)=>({qbVersion:`5.0.${index}`,sourceSha:String(index+1).repeat(40)}));
+const shardIdentity=catalogIdentity(shardBase),shard0=selectQbPreferencesCatalogShard(shardBase,0,2),shard1=selectQbPreferencesCatalogShard(shardBase,1,2);
+assert.deepEqual(shard0.map(item=>item.qbVersion),['5.0.0','5.0.2','5.0.4']);
+assert.deepEqual(shard1.map(item=>item.qbVersion),['5.0.1','5.0.3']);
+const shardCatalog=(rows,index)=>({schemaVersion:1,source:'qb-upstream-preferences-native-surface',catalogIdentity:shardIdentity,shard:{index,count:2},profiles:rows.map(item=>({...item,tag:`release-${item.qbVersion}`,manifest:{tabs:[{id:'behavior'}],preferences:{},mappedPreferences:1,totalPreferences:1}}))});
+const mergedShardCatalog=mergeQbPreferencesSourceCatalogShards(shardBase,[shardCatalog(shard0,0),shardCatalog(shard1,1)]);
+assert.deepEqual(mergedShardCatalog.profiles.map(item=>item.qbVersion),shardBase.map(item=>item.qbVersion),'Preferences shard aggregate must restore canonical release order');
+assert.throws(()=>mergeQbPreferencesSourceCatalogShards(shardBase,[shardCatalog(shard0,0)]),/missing=\[5\.0\.1,5\.0\.3\]/,'Preferences shard aggregate must fail closed on missing releases');
+assert.throws(()=>mergeQbPreferencesSourceCatalogShards(shardBase,[shardCatalog(shard0,0),shardCatalog(shard0,0),shardCatalog(shard1,1)]),/duplicate=\[/,'Preferences shard aggregate must fail closed on duplicate releases');
 
 const sourceCatalog={schemaVersion:1,profiles:[
   {qbVersion:'5.2.3',sourceSha:'1111111111111111111111111111111111111111',manifest},

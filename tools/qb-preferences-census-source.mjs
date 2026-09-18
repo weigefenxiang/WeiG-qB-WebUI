@@ -30,7 +30,8 @@ export function buildQbPreferencesCensus(catalog,sourceCatalog,qbRoot){
   if(sourceCatalog.profiles.length!==rows.length)throw new Error(`qB Preferences census release-set mismatch: semantic=${sourceCatalog.profiles.length}, expected=${rows.length}.`);
   const profiles=[];
   for(let index=0;index<rows.length;index++){
-    const row=rows[index],base=bases[index],semantic=sourceCatalog.profiles[index];
+    const started=Date.now(),row=rows[index],base=bases[index],semantic=sourceCatalog.profiles[index];
+    console.log(`[Preferences census ${index+1}/${rows.length} qB ${row.qbVersion}] START`);
     if(String(base?.qbVersion||'')!==row.qbVersion||!sameSha(base?.sourceSha,row.sourceSha))throw new Error(`${row.qbVersion}: canonical catalog row/profile drift.`);
     if(String(semantic?.qbVersion||'')!==row.qbVersion||!sameSha(semantic?.sourceSha,row.sourceSha))throw new Error(`${row.qbVersion}: semantic Preferences source identity drift.`);
     const tag=String(base?.tag||semantic?.tag||`release-${row.qbVersion}`).trim();
@@ -57,6 +58,7 @@ export function buildQbPreferencesCensus(catalog,sourceCatalog,qbRoot){
       reviewedExclusions:exclusions,
       census
     });
+    console.log(`[Preferences census ${index+1}/${rows.length} qB ${row.qbVersion}] DONE ${Date.now()-started}ms tabs=${inventory.tabs.length} preferences=${inventory.preferenceRefs.length} bindings=${inventory.bindings.length}`);
   }
   return{schemaVersion:1,source:'qb-upstream-preferences-independent-census',catalogIdentity:catalogIdentity(catalog),profiles};
 }
