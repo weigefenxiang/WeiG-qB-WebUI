@@ -1,5 +1,8 @@
 # qBittorrent WebAPI evolution ledger
 
+
+> **2026-09-18 全量复盘同步**：本文件已按当前 A–F 方案复核。mutable current status / blocker / TODO / next-AI handoff 只维护在 `docs/014.AI协作与分支纪律.md` 的 `STOP — COMPLETED ARCHIVE BELOW` 之前；本文件只维护本领域 authority/contract。具体 exact SHA、Actions 与运行结果在实际开发前必须 fresh-read，不以本注记代替 repository truth。
+
 本文件说明 WebAPI evolution ledger 的长期用途。它是**兼容 evidence index**，不是产品 roadmap，也不是 runtime compatibility owner。
 
 Machine-readable source：
@@ -121,7 +124,7 @@ switch-map
 unproven
 ```
 
-并携带 `safeWrite`。例如 source可证明 bytes/s <-> KiB/s或 bytes <-> MiB的 scale；历史 composite只有 read-side switch map、没有可信 inverse时必须 `safeWrite:false`。
+并携带 `safeWrite`。例如 source可证明 bytes/s <-> KiB/s或 bytes <-> MiB的 scale；历史 composite只有 read-side switch map、没有可信 inverse时必须 `safeWrite:false`。若 exact descriptor是 writable string、native control属于 text/select/password/textarea且 source明确 direct identity setter，则可额外记录 `writeIdentity:true`，只证明该 string写回安全；不能据此推导 numeric/composite inverse。
 
 这类 projection属于 source UI semantics，不应降级成手工 `META.scale`、版本 if/else或仅由 WebAPI ledger推断。正式 A runtime完成后，Settings危险写回必须同时满足 API descriptor provenance与 source projection write safety。
 
