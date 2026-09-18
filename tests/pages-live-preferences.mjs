@@ -144,15 +144,15 @@ try{
     const expectedSurfaces=await page.evaluate(async prefs=>{
       const schema=window.WeiG.SettingsSchema;
       if(schema.loadCompatibility)await schema.loadCompatibility();
-      function project(surface){const sourceKeys=schema.group(surface,prefs).flatMap(group=>group.keys).sort();return{sourceKeys,rowKeys:[...sourceKeys]};}
+      function project(surface){const sourceKeys=schema.group(surface,prefs).flatMap(group=>group.keys).sort();return{sourceKeys,controlKeys:[...sourceKeys]};}
       return Object.fromEntries(['speed','advanced'].map(surface=>[surface,project(surface)]));
     },anchorResponse.json);
     assert.ok(expectedSurfaces.advanced.sourceKeys.length>=20,`WeiG ${anchor.qbVersion} Advanced route unexpectedly small: ${expectedSurfaces.advanced.sourceKeys.length}`);
     async function assertSettingsSurface(surface,expected,examples){
       await page.evaluate(async target=>window.WeiG.SettingsRenderer.open(target),surface);
-      const renderedKeys=(await page.locator('#settings-content [data-setting-key]').evaluateAll(rows=>rows.map(row=>row.dataset.settingKey))).sort();
-      assert.deepEqual(renderedKeys,expected.rowKeys,`WeiG ${anchor.qbVersion} ${surface} settings must render the exact source-native row projection with no stale extras`);
-      for(const key of examples){assert.ok(expected.sourceKeys.includes(key),`WeiG ${surface} route must include upstream preference ${key}`);const row=page.locator(`#settings-content [data-setting-key="${key}"]`);await row.waitFor({state:'attached',timeout:5000});}
+      const renderedKeys=(await page.locator('#settings-content [data-preference-key]').evaluateAll(nodes=>[...new Set(nodes.map(node=>node.dataset.preferenceKey).filter(Boolean))].sort()));
+      assert.deepEqual(renderedKeys,expected.controlKeys,`WeiG ${anchor.qbVersion} ${surface} settings must render every exact source-native preference control with no stale extras`);
+      for(const key of examples){assert.ok(expected.sourceKeys.includes(key),`WeiG ${surface} route must include upstream preference ${key}`);const control=page.locator(`#settings-content [data-preference-key="${key}"]`);await control.waitFor({state:'attached',timeout:5000});}
     }
     await assertSettingsSurface('advanced',expectedSurfaces.advanced,routeExamples.advanced);
     await assertSettingsSurface('speed',expectedSurfaces.speed,routeExamples.speed);
