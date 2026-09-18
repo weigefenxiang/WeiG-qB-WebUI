@@ -90,17 +90,17 @@ function buildControlGraph(markup,tabs,fieldsets,caches,preferences){
   const preferenceById=new Map(),preferenceObject={};
   for(const [key,item] of Object.entries(preferences||{})){const id=String(item?.control?.id||'');if(id&&!preferenceById.has(id))preferenceById.set(id,key);preferenceObject[key]=item;}
   preferenceById.preferences=preferenceObject;
-  const controlToPreference=Object.fromEntries([...preferenceById.entries()]),behavior=extractQbPreferencesBehaviorPredicates(markup,controlToPreference),buttons=buttonRanges(markup),legends=elementRanges(markup,'legend'),formRows=(caches.divs||[]).filter(row=>String(attrText(row.attrs,'class')||'').split(/\s+/).includes('formRow')),tableRows=caches.trs||[],allRows=[...formRows,...tableRows].sort((a,b)=>a.start-b.start||a.end-b.end),graphTabs={},representedControls=new Set(),representedHelpers=new Set(),sourceControls=new Set(),sourceHelpers=new Set();
+  const controlToPreference=Object.fromEntries([...preferenceById.entries()]),behavior=extractQbPreferencesBehaviorPredicates(markup,controlToPreference),buttons=buttonRanges(markup),legends=elementRanges(markup,'legend'),formRows=(caches.divs||[]).filter(row=>String(attrText(row.attrs,'class')||'').split(/\s+/).includes('formRow')),tableRows=caches.trs||[],allRows=[...formRows,...tableRows].sort((a,b)=>a.start-b.start||a.end-b.end),graphTabs={},representedControls=new Set(),representedHelpers=new Set(),sourceControls=new Set(),sourceHelpers=new Set(),legendControlIds=new Set();
   for(const tab of tabs){
     const tabFields=fieldsets.filter(item=>inside(tab.range,item.start)).sort((a,b)=>a.start-b.start),fieldIds=new Map(tabFields.map((item,index)=>[item,tab.id+':fieldset:'+index]));
     const graphFields=tabFields.map((item,index)=>{
       const parent=nearestContaining(tabFields.filter(candidate=>candidate!==item),item.start),legend=legends.find(value=>value.start>=item.openEnd&&value.end<=item.endStart),legendControls=[];
-      if(legend){for(const control of caches.controls.values())if(inside(legend,control.start)){representedControls.add(control.id);legendControls.push(graphControl(control,preferenceById,behavior,markup,'gate',legend.endStart));}}
+      if(legend){for(const control of caches.controls.values())if(inside(legend,control.start)){sourceControls.add(control.id);representedControls.add(control.id);legendControlIds.add(control.id);legendControls.push(graphControl(control,preferenceById,behavior,markup,'gate',legend.endStart));}}
       return{id:tab.id+':fieldset:'+index,parentId:parent?fieldIds.get(parent):null,title:directLegend(markup,item),template:legendControls.length?'nested-gated-fieldset':'fieldset',legendControls};
     });
     const rows=[],assignedControls=new Set(),assignedButtons=new Set(),tabRows=allRows.filter(row=>inside(tab.range,row.start));
     for(const row of tabRows){
-      const controls=[...caches.controls.values()].filter(control=>inside(row,control.start)),rowButtons=buttons.filter(button=>inside(row,button.start));
+      const controls=[...caches.controls.values()].filter(control=>inside(row,control.start)&&!legendControlIds.has(control.id)),rowButtons=buttons.filter(button=>inside(row,button.start));
       if(!controls.length&&!rowButtons.length)continue;
       const parent=nearestContaining(tabFields,row.start),items=[];
       for(const control of controls){assignedControls.add(control.id);representedControls.add(control.id);sourceControls.add(control.id);items.push({kind:'control',...graphControl(control,preferenceById,behavior,markup,null,row.endStart)});}
@@ -111,7 +111,7 @@ function buildControlGraph(markup,tabs,fieldsets,caches,preferences){
     }
     for(const control of caches.controls.values()){
       if(!inside(tab.range,control.start))continue;
-      sourceControls.add(control.id);if(assignedControls.has(control.id))continue;representedControls.add(control.id);const parent=nearestContaining(tabFields,control.start);
+      sourceControls.add(control.id);if(legendControlIds.has(control.id)||assignedControls.has(control.id))continue;representedControls.add(control.id);const parent=nearestContaining(tabFields,control.start);
       rows.push({id:tab.id+':row:'+rows.length,parentFieldsetId:parent?fieldIds.get(parent):null,order:rows.length,template:'single-row',items:[{kind:'control',...graphControl(control,preferenceById,behavior,markup,null,null)}]});
     }
     for(const button of buttons){

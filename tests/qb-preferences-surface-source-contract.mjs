@@ -118,6 +118,7 @@ assert.equal(rowFor('listen_port').template,'control-helper','Listening Port + R
 assert.deepEqual(rowFor('listen_port').items.find(item=>item.kind==='helper').action,{kind:'random-int',targetControlId:'portValue',min:1024,max:65535},'source helper behavior must compile to bounded random-int IR instead of arbitrary upstream JS execution');
 assert.equal(rowFor('max_connec').template,'gated-sentinel','unmapped native gate + mapped value must preserve the generic sentinel row shape');
 assert.equal(rowFor('schedule_from_hour').template,'inline-multi-control','same source row must stay one inline multi-control cluster');
+assert.equal(structural.controlGraph.tabs.speed.rows.some(row=>row.items.some(item=>item.id==='limitSchedulingCheckbox')),false,'legend-owned gate controls must not be duplicated as standalone rows');
 assert.deepEqual(rowFor('schedule_from_hour').items.filter(item=>item.preferenceKey).map(item=>item.preferenceKey),['schedule_from_hour','schedule_from_min','schedule_to_hour','schedule_to_min']);
 assert.deepEqual(rowFor('schedule_from_hour').items.filter(item=>item.preferenceKey).map(item=>item.suffix&&item.suffix.literal),[':',null,':',null],'time-range punctuation must stay source-owned instead of being reconstructed from preference names');
 assert.deepEqual(itemFor('proxy_ip').condition,{kind:'notEquals',key:'proxy_type',value:'None'},'source disabled expressions must compile to a declarative proxy predicate');

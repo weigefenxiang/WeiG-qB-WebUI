@@ -82,6 +82,12 @@ const listeningRow=latestRowFor('listen_port');
 assert.equal(listeningRow?.template,'control-helper','latest Listening Port must preserve the source helper sibling');
 assert.deepEqual(listeningRow?.items?.find(item=>item.kind==='helper')?.action,{kind:'random-int',targetControlId:'portValue',min:1024,max:65535},'latest Random helper must compile exact bounded helper semantics');
 assert.equal(latestRowFor('max_connec')?.template,'gated-sentinel','latest connection limit must preserve the checkbox/sentinel row shape');
+for(const [tabId,graphTab] of Object.entries(latestManifest.controlGraph.tabs||{})){
+  const legendIds=new Set((graphTab.fieldsets||[]).flatMap(field=>(field.legendControls||[]).map(control=>control.id)));
+  const duplicateRows=(graphTab.rows||[]).flatMap(row=>(row.items||[]).filter(item=>item.kind==='control'&&legendIds.has(item.id)).map(item=>item.id));
+  assert.deepEqual(duplicateRows,[],'latest '+tabId+': legend-owned controls must have exactly one structural placement');
+}
+
 for(const [key,gate,defaultValue] of [
   ['max_connec','maxConnectionsCheckbox',500],
   ['max_connec_per_torrent','maxConnectionsPerTorrentCheckbox',100],
@@ -119,7 +125,7 @@ for(const profile of source.profiles){
   const expanded=expandQbPreferencesCompact(compact,profile.qbVersion),manifest=profile.manifest;
   assert.deepEqual(expanded.tabs.map(tab=>tab.id),manifest.tabs.map(tab=>tab.id),`${profile.qbVersion}: compact native tab order is not lossless`);
   assert.equal(Object.keys(expanded.preferences).length,Object.keys(manifest.preferences).length,`${profile.qbVersion}: compact mapped Preference count is not lossless`);
-  assert.deepEqual(Object.keys(expanded.controlGraph?.tabs||{}),Object.keys(manifest.controlGraph?.tabs||{}),`${profile.qbVersion}: compact Control Graph tab set drift`);
+  assert.deepEqual(Object.keys(expanded.controlGraph?.tabs||{}).sort(),Object.keys(manifest.controlGraph?.tabs||{}).sort(),`${profile.qbVersion}: compact Control Graph tab set drift`);
   for(const tabId of Object.keys(manifest.controlGraph?.tabs||{}))assert.deepEqual(expanded.controlGraph.tabs[tabId],manifest.controlGraph.tabs[tabId],`${profile.qbVersion}: compact Control Graph drift in ${tabId}`);
   for(const [key,item] of Object.entries(manifest.preferences)){
     const actual=expanded.preferences[key];assert.ok(actual,`${profile.qbVersion}: compact IR lost ${key}`);
