@@ -17,6 +17,35 @@ function compactControl(item,remember){if(!item)return null;const control=item.c
 function compactDescriptor(item){const descriptor=item?.descriptor;if(!descriptor)return null;return DESCRIPTOR_FIELDS.map(field=>Object.prototype.hasOwnProperty.call(descriptor,field)?descriptor[field]:null);}
 function compactTabs(manifest,remember){return(Array.isArray(manifest?.tabs)?manifest.tabs:[]).map(tab=>[String(tab?.id||''),String(tab?.nativeId||''),remember(tab?.title)]);}
 function compactSections(manifest,tabId,remember){const tab=(Array.isArray(manifest?.tabs)?manifest.tabs:[]).find(item=>String(item?.id||'')===String(tabId));if(!tab)return null;return(Array.isArray(tab.sections)?tab.sections:[]).map(section=>[String(section?.id||''),remember(section?.title)]);}
+const GRAPH_ROLES=['preference','auxiliary','gate','helper'];
+const GRAPH_SEMANTICS=['text','number','checkbox','select','password','textarea','radio','structured'];
+const GRAPH_TEMPLATES=['fieldset','nested-gated-fieldset','single-row','inline-multi-control','inline-multi-helper','control-helper','gated-sentinel','helper-only'];
+const GRAPH_PREDICATES=['truthy','falsy','equals','notEquals','allOf','anyOf','unknown','true','false'];
+const GRAPH_ACTIONS=['random-int','source-helper','unknown'];
+function graphStringTable(){const strings=[],ids=new Map();const remember=value=>{const text=String(value??'');if(!text)return 0;if(!ids.has(text)){ids.set(text,strings.length+1);strings.push(text);}return ids.get(text);};return{strings,remember};}
+function compactGraphLabel(label,remember){if(!label)return 0;return literalOrRef(label,remember);}
+function compactPredicate(predicate,rememberString){
+  if(!predicate)return 0;const kind=GRAPH_PREDICATES.indexOf(String(predicate.kind||''));if(kind<0)return[GRAPH_PREDICATES.indexOf('unknown')];
+  if(predicate.kind==='truthy'||predicate.kind==='falsy')return[kind,rememberString(predicate.key)];
+  if(predicate.kind==='equals'||predicate.kind==='notEquals')return[kind,rememberString(predicate.key),stable(predicate.value)];
+  if(predicate.kind==='allOf'||predicate.kind==='anyOf')return[kind,(predicate.items||[]).map(item=>compactPredicate(item,rememberString))];
+  return[kind];
+}
+function compactGraphAction(action,rememberString){
+  if(!action)return 0;const kind=GRAPH_ACTIONS.indexOf(String(action.kind||''));if(kind===0)return[kind,rememberString(action.targetControlId),Number(action.min),Number(action.max)];if(kind===1)return[kind,rememberString(action.name)];return[GRAPH_ACTIONS.indexOf('unknown')];
+}
+function compactGraphControl(item,remember,rememberString){
+  return[0,rememberString(item?.id),rememberString(item?.preferenceKey),GRAPH_ROLES.indexOf(String(item?.role||'')),GRAPH_SEMANTICS.indexOf(String(item?.semantic||'')),item?.staticDisabled===true?1:0,compactGraphLabel(item?.label,remember),compactGraphLabel(item?.adornment,remember),compactGraphLabel(item?.suffix,remember),compactPredicate(item?.condition,rememberString)];
+}
+function compactGraphHelper(item,remember,rememberString){return[1,rememberString(item?.id),compactGraphLabel(item?.label,remember),compactGraphAction(item?.action,rememberString)];}
+function compactGraphItem(item,remember,rememberString){return item?.kind==='helper'?compactGraphHelper(item,remember,rememberString):compactGraphControl(item,remember,rememberString);}
+function compactGraphTab(tab,remember,rememberString){
+  if(!tab)return null;
+  const fieldsets=(tab.fieldsets||[]).map(item=>[rememberString(item?.id),rememberString(item?.parentId),compactGraphLabel(item?.title,remember),GRAPH_TEMPLATES.indexOf(String(item?.template||'')),(item?.legendControls||[]).map(control=>compactGraphControl(control,remember,rememberString))]);
+  const rows=(tab.rows||[]).map(item=>[rememberString(item?.id),rememberString(item?.parentFieldsetId),Number(item?.order)||0,GRAPH_TEMPLATES.indexOf(String(item?.template||'')),(item?.items||[]).map(child=>compactGraphItem(child,remember,rememberString))]);
+  return[fieldsets,rows];
+}
+
 function exactCatalogIdentity(identities,canonicalCatalog){
   const rows=admittedCatalogRows(canonicalCatalog);
   if(rows.length!==identities.length)throw new Error(`Preferences compact canonical release-set length mismatch: ${identities.length} != ${rows.length}.`);
@@ -29,15 +58,16 @@ function exactCatalogIdentity(identities,canonicalCatalog){
 
 export function compileQbPreferencesCompact(sourceCatalog,canonicalCatalog=null){
   if(!sourceCatalog||sourceCatalog.schemaVersion!==1||!Array.isArray(sourceCatalog.profiles)||!sourceCatalog.profiles.length)throw new Error('Preferences compact compiler requires source catalog schemaVersion 1.');
-  const profiles=sourceCatalog.profiles,identities=profiles.map(exactIdentity),identity=exactCatalogIdentity(identities,canonicalCatalog||profiles),{refs,remember}=sourceRefTable(),tabIds=new Set(),preferenceKeys=new Set();
-  for(const profile of profiles){for(const tab of profile?.manifest?.tabs||[])if(tab?.id)tabIds.add(String(tab.id));for(const key of Object.keys(profile?.manifest?.preferences||{}))preferenceKeys.add(String(key));}
-  const tabs=timeline(profiles.map(profile=>({from:profile.qbVersion,value:compactTabs(profile.manifest,remember)}))),sections={},preferences={},descriptors={};
+  const profiles=sourceCatalog.profiles,identities=profiles.map(exactIdentity),identity=exactCatalogIdentity(identities,canonicalCatalog||profiles),{refs,remember}=sourceRefTable(),{strings:graphStrings,remember:rememberGraphString}=graphStringTable(),tabIds=new Set(),graphTabIds=new Set(),preferenceKeys=new Set();
+  for(const profile of profiles){for(const tab of profile?.manifest?.tabs||[])if(tab?.id)tabIds.add(String(tab.id));for(const tabId of Object.keys(profile?.manifest?.controlGraph?.tabs||{}))graphTabIds.add(String(tabId));for(const key of Object.keys(profile?.manifest?.preferences||{}))preferenceKeys.add(String(key));}
+  const tabs=timeline(profiles.map(profile=>({from:profile.qbVersion,value:compactTabs(profile.manifest,remember)}))),sections={},preferences={},descriptors={},graphs={};
   for(const tabId of [...tabIds].sort())sections[tabId]=timeline(profiles.map(profile=>({from:profile.qbVersion,value:compactSections(profile.manifest,tabId,remember)})));
   for(const key of [...preferenceKeys].sort()){
     preferences[key]=timeline(profiles.map(profile=>({from:profile.qbVersion,value:compactControl(profile?.manifest?.preferences?.[key],remember)})));
     descriptors[key]=timeline(profiles.map(profile=>({from:profile.qbVersion,value:compactDescriptor(profile?.manifest?.preferences?.[key])})));
   }
-  return{schemaVersion:2,source:'qb-upstream-preferences-native-surface-compact',catalogIdentity:identity,format:{release:['qbVersion','sourceSha'],ref:['context','source'],tab:['id','nativeId','titleRef'],section:['id','titleRef'],preference:CONTROL_FIELDS,descriptor:DESCRIPTOR_FIELDS,option:['value',['kind','refOrLiteral']],gate:['controlId','preferenceKey'],projection:{identity:['kind','safeWrite'],scale:['kind','safeWrite','scale'],'switch-map':['kind','safeWrite','values','defaultValue'],'sentinel-gate':['kind','safeWrite','gateControlId','disabledValue','defaultValue','enabledWhen'],unproven:['kind','safeWrite','readFactor?','writeFactor?']}},releases:identities.map(item=>[item.qbVersion,item.sourceSha]),refs,tabs,sections,preferences,descriptors};
+  for(const tabId of [...graphTabIds].sort())graphs[tabId]=timeline(profiles.map(profile=>({from:profile.qbVersion,value:compactGraphTab(profile?.manifest?.controlGraph?.tabs?.[tabId],remember,rememberGraphString)})));
+  return{schemaVersion:2,source:'qb-upstream-preferences-native-surface-compact',catalogIdentity:identity,format:{release:['qbVersion','sourceSha'],ref:['context','source'],tab:['id','nativeId','titleRef'],section:['id','titleRef'],preference:CONTROL_FIELDS,descriptor:DESCRIPTOR_FIELDS,option:['value',['kind','refOrLiteral']],gate:['controlId','preferenceKey'],projection:{identity:['kind','safeWrite'],scale:['kind','safeWrite','scale'],'switch-map':['kind','safeWrite','values','defaultValue'],'sentinel-gate':['kind','safeWrite','gateControlId','disabledValue','defaultValue','enabledWhen'],unproven:['kind','safeWrite','readFactor?','writeFactor?']},graph:{string:'1-based graphStrings index, 0=null',roles:GRAPH_ROLES,semantics:GRAPH_SEMANTICS,templates:GRAPH_TEMPLATES,predicates:GRAPH_PREDICATES,actions:GRAPH_ACTIONS,tab:['fieldsets','rows'],fieldset:['id','parentId','title','template','legendControls'],row:['id','parentFieldsetId','order','template','items'],control:['kind=0','id','preferenceKey','role','semantic','staticDisabled','label','adornment','suffix','condition'],helper:['kind=1','id','label','action']}},releases:identities.map(item=>[item.qbVersion,item.sourceSha]),refs,graphStrings,tabs,sections,preferences,descriptors,graphs};
 }
 
 export function expandQbPreferencesCompact(compact,qbVersion){
@@ -45,6 +75,14 @@ export function expandQbPreferencesCompact(compact,qbVersion){
   const compare=(a,b)=>{const aa=String(a||'0').split('.').map(Number),bb=String(b||'0').split('.').map(Number),n=Math.max(aa.length,bb.length);for(let i=0;i<n;i++){const x=aa[i]||0,y=bb[i]||0;if(x!==y)return x-y;}return 0;};
   const change=(rows)=>{let value=null;for(const row of rows||[]){if(compare(row.from,qbVersion)>0)break;value=row.value;}return value;};
   const ref=(id)=>Number.isInteger(id)&&id>=0&&compact.refs?.[id]?{context:compact.refs[id][0],source:compact.refs[id][1]}:null;
+  const graphString=(id)=>Number.isInteger(id)&&id>0&&compact.graphStrings?.[id-1]!=null?String(compact.graphStrings[id-1]):null;
+  const graphLabel=(raw)=>!raw?null:(raw[0]==='r'?ref(raw[1]):raw[0]==='l'?{literal:raw[1]}:null);
+  const graphPredicate=(raw)=>{if(!Array.isArray(raw)||raw.length===0)return null;const kind=GRAPH_PREDICATES[raw[0]]||'unknown';if(kind==='truthy'||kind==='falsy')return{kind,key:graphString(raw[1])};if(kind==='equals'||kind==='notEquals')return{kind,key:graphString(raw[1]),value:structuredClone(raw[2])};if(kind==='allOf'||kind==='anyOf')return{kind,items:(raw[1]||[]).map(graphPredicate)};return{kind};};
+  const graphAction=(raw)=>{if(!Array.isArray(raw)||raw.length===0)return null;const kind=GRAPH_ACTIONS[raw[0]]||'unknown';if(kind==='random-int')return{kind,targetControlId:graphString(raw[1]),min:raw[2],max:raw[3]};if(kind==='source-helper')return{kind,name:graphString(raw[1])};return{kind};};
+  const graphControl=(raw)=>({id:graphString(raw[1]),preferenceKey:graphString(raw[2]),role:GRAPH_ROLES[raw[3]]||'',semantic:GRAPH_SEMANTICS[raw[4]]||'',staticDisabled:raw[5]===1,label:graphLabel(raw[6]),adornment:graphLabel(raw[7]),suffix:graphLabel(raw[8]),condition:graphPredicate(raw[9])});
+  const graphItem=(raw)=>raw?.[0]===1?{kind:'helper',id:graphString(raw[1]),role:'helper',label:graphLabel(raw[2]),action:graphAction(raw[3])}:{kind:'control',...graphControl(raw)};
+  const graphTab=(raw)=>{if(!Array.isArray(raw))return null;return{fieldsets:(raw[0]||[]).map(row=>({id:graphString(row[0]),parentId:graphString(row[1]),title:graphLabel(row[2]),template:GRAPH_TEMPLATES[row[3]]||'',legendControls:(row[4]||[]).map(graphControl)})),rows:(raw[1]||[]).map(row=>({id:graphString(row[0]),parentFieldsetId:graphString(row[1]),order:row[2],template:GRAPH_TEMPLATES[row[3]]||'',items:(row[4]||[]).map(graphItem)}))};};
+
   const tabs=(change(compact.tabs)||[]).map(row=>({id:row[0],nativeId:row[1],title:ref(row[2]),sections:[],preferences:[]})),byTab=new Map(tabs.map(tab=>[tab.id,tab]));
   for(const tab of tabs){tab.sections=(change(compact.sections?.[tab.id])||[]).map((row,index)=>({id:row[0],order:index,title:ref(row[1]),preferences:[]}));}
   const preferences={};
@@ -54,7 +92,8 @@ export function expandQbPreferencesCompact(compact,qbVersion){
     preferences[key]=item;const tab=byTab.get(item.tab);if(tab){tab.preferences.push(key);const section=tab.sections.find(value=>value.id===item.sectionId);if(section)section.preferences.push(key);}
   }
   for(const tab of tabs){tab.preferences.sort((a,b)=>(preferences[a]?.order||0)-(preferences[b]?.order||0));for(const section of tab.sections)section.preferences.sort((a,b)=>(preferences[a]?.order||0)-(preferences[b]?.order||0));}
-  return{tabs,preferences};
+  const graphTabs={};for(const tabId of Object.keys(compact.graphs||{})){const value=graphTab(change(compact.graphs[tabId]));if(value)graphTabs[tabId]={id:tabId,...value};}
+  return{tabs,preferences,controlGraph:{schemaVersion:1,tabs:graphTabs}};
 }
 
 const isMain=process.argv[1]&&path.resolve(process.argv[1])===path.resolve(fileURLToPath(import.meta.url));

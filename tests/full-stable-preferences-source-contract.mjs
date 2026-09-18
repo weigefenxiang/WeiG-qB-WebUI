@@ -112,16 +112,18 @@ assertCatalogIdentity(compact.catalogIdentity,expectedIdentity,'Preferences comp
 assert.equal(compact.releases.length,catalog.length,'compact Preferences release identity must remain exact');
 assert.ok(compact.tabs.length>0&&compact.tabs.length<=catalog.length,'compact Preferences tab change-point count is invalid');
 assert.equal(compact.format.preference.at(-1),'projection','compact Preferences format must expose value projection as a first-class source fact');
-assert.ok(bytes<512*1024,`compact Preferences runtime IR is ${bytes} bytes; whole-manifest duplication or another size regression reappeared`);
+assert.ok(bytes<640*1024,`compact Preferences + Control Graph runtime IR is ${bytes} bytes; source graph transport must stay bounded instead of duplicating full manifests`);
 assert.equal(compact.releases.at(-1)[0],catalog.at(-1).qbVersion);
 assert.equal(compact.releases.at(-1)[1],catalog.at(-1).sourceSha);
 for(const profile of source.profiles){
   const expanded=expandQbPreferencesCompact(compact,profile.qbVersion),manifest=profile.manifest;
   assert.deepEqual(expanded.tabs.map(tab=>tab.id),manifest.tabs.map(tab=>tab.id),`${profile.qbVersion}: compact native tab order is not lossless`);
   assert.equal(Object.keys(expanded.preferences).length,Object.keys(manifest.preferences).length,`${profile.qbVersion}: compact mapped Preference count is not lossless`);
+  assert.deepEqual(Object.keys(expanded.controlGraph?.tabs||{}),Object.keys(manifest.controlGraph?.tabs||{}),`${profile.qbVersion}: compact Control Graph tab set drift`);
+  for(const tabId of Object.keys(manifest.controlGraph?.tabs||{}))assert.deepEqual(expanded.controlGraph.tabs[tabId],manifest.controlGraph.tabs[tabId],`${profile.qbVersion}: compact Control Graph drift in ${tabId}`);
   for(const [key,item] of Object.entries(manifest.preferences)){
     const actual=expanded.preferences[key];assert.ok(actual,`${profile.qbVersion}: compact IR lost ${key}`);
     assert.equal(actual.tab,item.tab,`${profile.qbVersion}: ${key} tab drift`);assert.equal(actual.sectionId,item.sectionId,`${profile.qbVersion}: ${key} section drift`);assert.equal(actual.order,item.order,`${profile.qbVersion}: ${key} order drift`);assert.equal(actual.control.id,item.control.id,`${profile.qbVersion}: ${key} control id drift`);assert.equal(actual.control.semantic,item.control.semantic,`${profile.qbVersion}: ${key} control semantic drift`);assert.deepEqual(actual.control.attributes,item.control.attributes||{},`${profile.qbVersion}: ${key} control attributes drift`);assert.equal(actual.title?.source,item.title?.source,`${profile.qbVersion}: ${key} source title drift`);assert.equal(actual.title?.context,item.title?.context,`${profile.qbVersion}: ${key} source title context drift`);assert.deepEqual(actual.descriptor,item.descriptor,`${profile.qbVersion}: ${key} API descriptor drift`);assert.deepEqual(actual.projection,item.projection,`${profile.qbVersion}: ${key} source value projection drift`);
   }
 }
-console.log(`Full stable qB Preferences source contract passed: ${catalog.length} exact releases, structural control/helper/adornment/behavior census complete, Frozen catalog ${expectedIdentity.releaseSetSha256.slice(0,12)}, ${(minimumRatio*100).toFixed(1)}% minimum native mapping, ${scaleProjectionCount} scale / ${switchProjectionCount} switch / ${sentinelProjectionCount} sentinel / ${unprovenProjectionCount} unproven value projections, ${bytes} byte keyed compact IR, and lossless tab/section/control/API/value provenance.`);
+console.log(`Full stable qB Preferences source contract passed: ${catalog.length} exact releases, structural control/helper/adornment/behavior census complete, Frozen catalog ${expectedIdentity.releaseSetSha256.slice(0,12)}, ${(minimumRatio*100).toFixed(1)}% minimum native mapping, ${scaleProjectionCount} scale / ${switchProjectionCount} switch / ${sentinelProjectionCount} sentinel / ${unprovenProjectionCount} unproven value projections, ${bytes} byte keyed + structural compact IR, and lossless tab/section/control/API/value/Control-Graph provenance.`);

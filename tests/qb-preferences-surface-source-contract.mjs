@@ -167,6 +167,8 @@ assert.equal(expanded.preferences.future_limit.descriptor.writeType,'number');
 assert.deepEqual(expanded.preferences.future_limit.projection,{kind:'scale',safeWrite:true,scale:1024},'compact expansion must preserve exact source value projection');
 assert.equal(expanded.preferences.future_limit.dependencies.gates[0].preferenceKey,'future_gate');
 assert.deepEqual(expanded.tabs[1].preferences,['future_gate','future_limit']);
+assert.ok(Array.isArray(compact.graphStrings)&&compact.graphs?.futurenetwork,'compact contract must carry interned Control Graph transport');
+assert.deepEqual(expanded.controlGraph.tabs.futurenetwork,manifest.controlGraph.tabs.futurenetwork,'compact expansion must losslessly restore structural rows/fieldsets/helper/predicate facts');
 const changed=structuredClone(manifest);changed.preferences.future_limit.control.attributes.max='10000';
 const compactChanged=compileQbPreferencesCompact({schemaVersion:1,profiles:[sourceCatalog.profiles[0],{qbVersion:'5.2.4',sourceSha:'2222222222222222222222222222222222222222',manifest:changed}]});
 assert.equal(compactChanged.preferences.future_limit.length,2,'one preference change must create one keyed change point instead of duplicating every other native setting');
