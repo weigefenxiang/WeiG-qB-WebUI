@@ -108,7 +108,7 @@ const structuralDescriptors=[
   ['scheduler_enabled','boolean'],['schedule_from_hour','number'],['schedule_from_min','number'],['schedule_to_hour','number'],['schedule_to_min','number'],['send_buffer_watermark_factor','number']
 ].map(([key,type])=>({key,getterPresent:true,setterPresent:true,readType:type,writeType:type,typeAgreement:'EXACT',writable:true}));
 const structural=extractQbPreferencesNativeSurface({preferencesSource:structuralSource,toolbarSource:structuralToolbar,preferenceDescriptors:structuralDescriptors});
-const structuralRows=Object.values(structural.controlGraph.tabs).flatMap(tab=>tab.rows),rowFor=key=>structuralRows.find(row=>row.items.some(item=>item.preferenceKey===key)),itemFor=key=>structuralRows.flatMap(row=>row.items).find(item=>item.preferenceKey===key);
+const structuralTabs=Object.values(structural.controlGraph.tabs),structuralRows=structuralTabs.flatMap(tab=>tab.rows),structuralControls=structuralRows.flatMap(row=>row.items).concat(structuralTabs.flatMap(tab=>tab.fieldsets.flatMap(field=>field.legendControls||[]))),rowFor=key=>structuralRows.find(row=>row.items.some(item=>item.preferenceKey===key)),itemFor=key=>structuralControls.find(item=>item.preferenceKey===key);
 assert.equal(structural.structuralCensus.complete,true,'structural source census must account for controls, helpers, adornments and behavior targets independently of preference mapping');
 assert.equal(structural.structuralCensus.sourceControls,structural.structuralCensus.representedControls);
 assert.equal(structural.structuralCensus.sourceHelpers,structural.structuralCensus.representedHelpers);

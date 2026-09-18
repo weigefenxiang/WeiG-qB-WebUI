@@ -77,7 +77,7 @@ assert.ok(switchProjectionCount>0,'Frozen Preferences source must retain at leas
 const latestManifest=source.profiles.at(-1).manifest;
 const latestRows=Object.values(latestManifest.controlGraph.tabs||{}).flatMap(tab=>tab.rows||[]);
 const latestRowFor=key=>latestRows.find(row=>(row.items||[]).some(item=>item.preferenceKey===key));
-const latestItemFor=key=>latestRows.flatMap(row=>row.items||[]).find(item=>item.preferenceKey===key);
+const latestControls=latestRows.flatMap(row=>row.items||[]).concat(Object.values(latestManifest.controlGraph.tabs||{}).flatMap(tab=>(tab.fieldsets||[]).flatMap(field=>field.legendControls||[]))),latestItemFor=key=>latestControls.find(item=>item.preferenceKey===key);
 const listeningRow=latestRowFor('listen_port');
 assert.equal(listeningRow?.template,'control-helper','latest Listening Port must preserve the source helper sibling');
 assert.deepEqual(listeningRow?.items?.find(item=>item.kind==='helper')?.action,{kind:'random-int',targetControlId:'portValue',min:1024,max:65535},'latest Random helper must compile exact bounded helper semantics');
