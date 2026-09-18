@@ -43,7 +43,7 @@ export function createQbPreferenceValueProjector(source){
   while((match=declarationRe.exec(text)))declarations.set(match[1],match[2]);
   const modernRead=/document\.getElementById\(\s*["']([^"']+)["']\s*\)\s*\.\s*(?:value|checked)\s*=\s*([^;\n]+)/g;
   while((match=modernRead.exec(text)))rememberLatest(reads,match[1],match[2],match.index??0,readPos);
-  const legacyRead=/\$\(\s*["']([^"']+)["']\s*\)\s*\.\s*(?:setProperty|set)\(\s*["'](?:value|checked)["']\s*,\s*([^;\n]+)/g;
+  const legacyRead=/\$\(\s*["']([^"']+)["']\s*\)\s*\.\s*(?:setProperty|set)\(\s*["'](?:value|checked)["']\s*,\s*([^;\n]+)\)\s*;?/g;
   while((match=legacyRead.exec(text)))rememberLatest(reads,match[1],match[2],match.index??0,readPos);
   const bracketWrite=/settings\s*\[\s*["']([^"']+)["']\s*\]\s*=\s*([^;\n]+)/g;
   while((match=bracketWrite.exec(text)))rememberLatest(writes,match[1],match[2],match.index??0,writePos);
