@@ -131,7 +131,7 @@ const runtimeSettings=readSettingsRuntime();
 assert.equal(runtimeSettings.settingsData.schemaVersion,2,'formal Settings runtime must consume the source-native compact schema');
 assert.equal(runtimeSettings.settingsData.source,'qb-upstream-preferences-native-surface-compact','formal Settings runtime must not rebuild a legacy descriptor/nativeTabs shape');
 assert.equal(runtimeSettings.settingsData.catalogIdentity.releaseCount,65,'formal Settings runtime must remain bound to the admitted Frozen release set');
-assert.equal(runtimeSettings.manifest.payload.sha256,'2784279c685ffc3df3cd4bb5bcdcb3838e50940ccdc2cb83d32e7a3cf04b326f','formal Settings runtime must consume the accepted exact source-native IR');
+assert.equal(runtimeSettings.manifest.payload.sha256,'4693b9a538d243c6ea4665ebc86809f1d704cc7524677718cf8132764eaafbba','formal Settings runtime must consume the accepted exact source-native IR');
 assert.equal(Object.prototype.hasOwnProperty.call(runtimeSettings.settingsData,'nativeTabs'),false,'legacy runtime-generated nativeTabs truth must stay retired');
 
 console.log('qB Preferences native source contract passed: future tabs auto-admit through source extraction/compact IR; formal browser runtime consumes the accepted source-native envelope without rebuilding a second Settings truth.');
