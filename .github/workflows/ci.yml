@@ -581,7 +581,7 @@ jobs:
     name: qB Preferences source focused profile
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[native-surfaces-profile]') }}
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
     needs: smoke
     steps:
       - uses: actions/checkout@v7
@@ -606,7 +606,7 @@ jobs:
           node - <<'NODE'
           const fs=require('fs');
           const catalog=JSON.parse(fs.readFileSync('qb-releases.json','utf8'));
-          const wanted=new Set(['4.1.0','4.6.7','5.2.3']);
+          const wanted=new Set(['4.6.7']);
           const selected=catalog.filter(profile=>wanted.has(String(profile.qbVersion)));
           if(selected.length!==wanted.size)throw new Error(`focused Preferences profile expected ${wanted.size} releases, got ${selected.length}`);
           fs.writeFileSync('qb-preferences-profile.json',JSON.stringify(selected,null,2)+'\n');
@@ -616,7 +616,7 @@ jobs:
         shell: bash
         env:
           QB_PREFERENCES_TRACE: '1'
-        run: timeout --signal=TERM 300s node tools/qb-preferences-surface-source.mjs upstream-qb qb-preferences-profile.json qb-preferences-profile-output.json
+        run: timeout --signal=TERM 90s node tools/qb-preferences-surface-source.mjs upstream-qb qb-preferences-profile.json qb-preferences-profile-output.json
 
   native_surface_source:
     name: qB native surface source admission

@@ -48,10 +48,16 @@ export function extractQbPreferencesNativeSurface({preferencesSource='',toolbarS
     const rows=[];
     for(const [key,fact] of Object.entries(ui)){
       const control=findControl(preferencesSource,fact.controlId,caches);if(!control||control.start<tab.range.start||control.start>tab.range.end)continue;
-      const containing=fieldsets.filter(item=>item.start<control.start&&item.end>control.start&&item.start>=tab.range.start&&item.end<=tab.range.end).sort((a,b)=>(a.end-a.start)-(b.end-b.start));
+      const prefStarted=Date.now();trace?.(`tab:${tab.id} pref:${key} START control=${control.id}`);
+      const layoutStarted=Date.now(),containing=fieldsets.filter(item=>item.start<control.start&&item.end>control.start&&item.start>=tab.range.start&&item.end<=tab.range.end).sort((a,b)=>(a.end-a.start)-(b.end-b.start));
       const nearest=containing[0]||null,sectionRef=directLegend(preferencesSource,nearest),gates=[];
       for(const ancestor of containing){for(const gate of controlsInLegend(preferencesSource,ancestor,uiByControl))if(gate.controlId!==control.id&&!gates.some(item=>item.controlId===gate.controlId))gates.push(gate);}
-      rows.push({key,sourcePos:control.start,sectionKey:nearest?String(nearest.start):'root',sectionRef,control,fact,gates,descriptor:descriptorSubset(descriptors.get(key)),projection:extractQbPreferenceValueProjection(preferencesSource,key,control.id)});
+      trace?.(`tab:${tab.id} pref:${key} layout DONE ${Date.now()-layoutStarted}ms ancestors=${containing.length} gates=${gates.length}`);
+      const projectionStarted=Date.now();trace?.(`tab:${tab.id} pref:${key} projection START`);
+      const projection=extractQbPreferenceValueProjection(preferencesSource,key,control.id);
+      trace?.(`tab:${tab.id} pref:${key} projection DONE ${Date.now()-projectionStarted}ms kind=${projection?.kind||'unknown'}`);
+      rows.push({key,sourcePos:control.start,sectionKey:nearest?String(nearest.start):'root',sectionRef,control,fact,gates,descriptor:descriptorSubset(descriptors.get(key)),projection});
+      trace?.(`tab:${tab.id} pref:${key} DONE ${Date.now()-prefStarted}ms`);
     }
     rows.sort((a,b)=>a.sourcePos-b.sourcePos||a.key.localeCompare(b.key));
     const sections=[],sectionByTransition=[];let lastKey=null,current=null;
