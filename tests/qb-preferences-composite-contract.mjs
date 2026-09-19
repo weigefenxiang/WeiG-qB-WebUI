@@ -166,6 +166,62 @@ const mapped=`
 </script>`;
 assert.deepEqual(extractQbPreferenceValueProjection(mapped,'proxy_type','proxy'),{kind:'switch-map',values:[['5','socks4'],['2','socks5'],['4','socks5'],['1','http'],['3','http']],defaultValue:'none',safeWrite:false},'source switch map may drive display but must stay non-writable when an independent inverse cannot be proven');
 
+const compoundMapped=`
+<select id="mode_select"><option value="none">None</option><option value="a">A</option><option value="b">B</option><option value="c">C</option></select>
+<input id="mode_auth" type="checkbox">
+<script>
+switch (pref.mode.toInt()) {
+  case 5: $('mode_select').setProperty('value', 'a'); break;
+  case 2:
+  case 4: $('mode_select').setProperty('value', 'b'); break;
+  case 1:
+  case 3: $('mode_select').setProperty('value', 'c'); break;
+  default: $('mode_select').setProperty('value', 'none');
+}
+$('mode_auth').setProperty('checked', pref.mode_auth);
+var mode_str = $('mode_select').getProperty('value');
+var mode_raw = 0;
+if (mode_str == "b") {
+  if ($('mode_auth').getProperty('checked')) {
+    mode_raw = 4;
+  }
+  else {
+    mode_raw = 2;
+  }
+}
+else {
+  if (mode_str == "a") {
+    mode_raw = 5;
+  }
+  else {
+    if (mode_str == "c") {
+      if ($('mode_auth').getProperty('checked')) {
+        mode_raw = 3;
+      }
+      else {
+        mode_raw = 1;
+      }
+    }
+  }
+}
+settings.set('mode', mode_raw);
+</script>`;
+assert.deepEqual(extractQbPreferenceValueProjection(compoundMapped,'mode','mode_select'),{
+  kind:'compound-switch-map',
+  values:[['5','a'],['2','b'],['4','b'],['1','c'],['3','c']],
+  defaultValue:'none',
+  auxiliary:{controlId:'mode_auth',preferenceKey:'mode_auth',semantic:'checkbox'},
+  writeCases:[
+    {value:'none',raw:0},
+    {value:'a',raw:5},
+    {value:'b',aux:true,raw:4},
+    {value:'b',aux:false,raw:2},
+    {value:'c',aux:true,raw:3},
+    {value:'c',aux:false,raw:1}
+  ],
+  safeWrite:true
+},'compound source switch writes must become writable only when the select domain, auxiliary checkbox and every raw value round-trip exactly');
+
 const sentinel=`
 <input id="maxConnectionsCheckbox" type="checkbox">
 <input id="maxConnectionsValue" type="text">
