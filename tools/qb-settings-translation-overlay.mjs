@@ -26,6 +26,17 @@ function contentHash(value) { return crypto.createHash('sha256').update(stableJs
 function refsFromPreferences(preferences) {
   return Object.values(preferences||{}).flatMap((item)=>[item?.title,item?.description]).filter((ref)=>ref?.source&&ref?.context);
 }
+function decodeQbtSource(value) {
+  return String(value||'').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,'$1').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&#(\d+);/g,(_m,n)=>String.fromCodePoint(Number(n))).replace(/&#x([0-9a-f]+);/gi,(_m,n)=>String.fromCodePoint(Number.parseInt(n,16))).replace(/&amp;/g,'&').replace(/<[^>]*>/g,'').replace(/\s+/g,' ').trim();
+}
+function refsFromPreferencesSource(source) {
+  const out=[],seen=new Set();
+  for(const match of String(source||'').matchAll(/QBT_TR\(([\s\S]*?)\)QBT_TR\[CONTEXT=([^\]]+)\]/gi)){
+    const ref={source:decodeQbtSource(match[1]),context:String(match[2]||'').trim()},identity=ref.context+'\u0000'+ref.source;
+    if(ref.source&&ref.context&&!seen.has(identity)){seen.add(identity);out.push(ref);}
+  }
+  return out;
+}
 function refsFromOwnedUi(ui) { return Object.values(ui||{}).filter((ref)=>ref?.source&&ref?.context); }
 function englishSourceMessages(preferences,ui) {
   const out=[];
@@ -146,6 +157,11 @@ export function buildQbSettingsTranslationOverlay(catalog, readReleaseSources, o
       dynamicTableSource:releaseSources.dynamicTableSource || ''
     });
     Object.assign(ui,torrentDetailTranslationRefs(profile.torrentDetailUi),detailControlTranslationRefs(profile.torrentDetailUi));
+    const ownedIdentities=new Set([...refsFromPreferences(preferences),...refsFromOwnedUi(ui)].map(ref=>ref.context+'\u0000'+ref.source));
+    for(const ref of refsFromPreferencesSource(releaseSources.preferencesSource || '')){
+      const identity=ref.context+'\u0000'+ref.source;if(ownedIdentities.has(identity))continue;ownedIdentities.add(identity);
+      ui['settings.preferences.copy.'+contentHash([ref.context,ref.source]).slice(0,20)]=ref;
+    }
     const ownsDynamicTableSource=Object.hasOwn(releaseSources,'dynamicTableSource');
     const torrentTableColumns=ownsDynamicTableSource
       ? extractTorrentTableColumns(releaseSources.dynamicTableSource || '',`${qbVersion} dynamicTable owned UI`)

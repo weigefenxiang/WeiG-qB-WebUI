@@ -97,6 +97,7 @@ const preferencesSource=`
 <input type="text" id="savepath_text">
 <label for="locale_select">QBT_TR(Language:)QBT_TR[CONTEXT=OptionsDialog]</label>
 <select id="locale_select"></select>
+<p>QBT_TR(Supported parameters (case sensitive):)QBT_TR[CONTEXT=OptionsDialog]</p>
 <script>
   document.getElementById("savepath_text").value = pref.save_path;
   document.getElementById("locale_select").value = pref.locale;
@@ -115,6 +116,7 @@ const qtTs=`<?xml version="1.0" encoding="utf-8"?>
   <message><source>Save</source><translation>Speichern &amp; schließen</translation></message>
   <message><source>Default Save Path:</source><translation>Standard-Speicherpfad:</translation></message>
   <message><source>Language:</source><translation>Sprache:</translation></message>
+  <message><source>Supported parameters (case sensitive):</source><translation>Unterstützte Parameter (Groß-/Kleinschreibung beachten):</translation></message>
   <message><source>Unfinished</source><translation type="unfinished"></translation></message>
   <message><source>Old</source><translation type="vanished">Alt</translation></message>
   <message numerus="yes"><source>%n minute(s)</source><translation><numerusform>%n Minute</numerusform><numerusform>%n Minuten</numerusform></translation></message>
@@ -152,6 +154,7 @@ assert.equal(overlay.source,'qb-upstream-preferences-ui+webui-ts');
 assert.equal(overlay.profiles.length,2);
 assert.equal(overlay.profiles[0].mappedPreferences,2);
 assert.equal(overlay.profiles[0].preferences.save_path.title.source,'Default Save Path:');
+assert.ok(Object.values(overlay.profiles[0].ui).some(ref=>ref.source==='Supported parameters (case sensitive):'&&ref.context==='OptionsDialog'),'qB Preferences source-owned note/list/hint/placeholder copy must join the exact-release translation closure even when it is not a preference title/description');
 assert.equal(overlay.profiles[0].sourceSha,'sha-old');
 assert.equal(overlay.profiles[1].sourceSha,'sha-new');
 assert.equal(Object.keys(overlay.profiles[0].translations).length,2);
@@ -179,4 +182,4 @@ const referencedSetHashes=new Set(mergedShards.flatMap(item=>Object.values(item.
 assert.deepEqual([...mergedSetHashes].sort(),[...referencedSetHashes].sort(),'shard merge must globally deduplicate but retain every referenced translation set payload');
 assert.throws(()=>mergeEnrichedCatalogShards(catalog,[enrichShard(shard0Catalog)]),/Missing enriched qB locale profile/,'incomplete shard sets fail closed');
 
-console.log('qB locale source contract passed: exact-release locale sets and Settings labels are derived from qB preference controls plus official TS translations, hash-bound to source SHA.');
+console.log('qB locale source contract passed: exact-release locale sets plus full qB Preferences-owned copy closure are derived from source/context refs and official TS translations, hash-bound to source SHA.');
