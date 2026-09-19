@@ -726,6 +726,20 @@ jobs:
           node tools/qb-preferences-surface-source.mjs --merge native-base/qb-releases.json preferences-shards qb-preferences-source-catalog.json
       - name: Compile Preferences compact contract
         run: node tools/qb-preferences-compact.mjs qb-preferences-source-catalog.json settings-native-compat.json native-base/qb-releases.json
+      - name: Emit canonical Settings runtime materialization evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import crypto from 'node:crypto';
+          import {packSettingsRuntime} from './tools/qb-compact-runtime.mjs';
+          const source=JSON.parse(fs.readFileSync('settings-native-compat.json','utf8'));
+          const rendered=JSON.stringify(packSettingsRuntime(source,source.catalogIdentity).manifest)+'\n';
+          const encoded=Buffer.from(rendered,'utf8').toString('base64');
+          console.log('@@SETTINGS_RUNTIME_META\t'+Buffer.byteLength(rendered)+'\t'+crypto.createHash('sha256').update(rendered).digest('hex')+'\t'+encoded.length);
+          for(let offset=0,index=0;offset<encoded.length;offset+=4000,index++)console.log('@@SETTINGS_RUNTIME_B64\t'+index+'\t'+encoded.slice(offset,offset+4000));
+          NODE
       - name: Verify every admitted stable Preferences source profile and independent census
         env:
           QB_PREFERENCES_CENSUS_OUTPUT: qb-preferences-census.json
