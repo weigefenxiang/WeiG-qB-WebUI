@@ -86,6 +86,16 @@ const missingPeerFacts=extractQbPreferencesNativeSurface({preferencesSource:miss
 assert.equal(missingPeerFacts.preferences.bittorrent_protocol,undefined,'missing Connection copy must fail closed instead of borrowing the Downloads label');
 assert.ok(missingPeerFacts.ownershipCensus.missingRequiredLabel>0,'fail-closed ownership must expose the unresolved native label in the census');
 
+const ambiguousGroupSource=`
+<div id="ConnectionTab" class="PrefTab"><fieldset class="settings"><legend>QBT_TR(Connections)QBT_TR[CONTEXT=OptionsDialog]</legend>
+  <select id="first_control"><option value="0">zero</option></select>
+  <select id="second_control"><option value="0">zero</option></select>
+</fieldset></div>
+<script>document.getElementById("first_control").value = pref.first_setting;</script>`;
+const ambiguousGroupFacts=extractQbPreferencesNativeSurface({preferencesSource:ambiguousGroupSource,toolbarSource:'<li id="PrefConnectionLink">Connection</li>',preferenceDescriptors:[{key:'first_setting',getterPresent:true,setterPresent:true,readType:'number',writeType:'number',typeAgreement:'EXACT',writable:true}]});
+assert.equal(ambiguousGroupFacts.preferences.first_setting,undefined,'fieldset legend must not be fabricated as an individual control label when multiple direct controls make group ownership ambiguous');
+assert.ok(ambiguousGroupFacts.ownershipCensus.missingRequiredLabel>0,'unproven E3 group ownership must fail closed and remain visible in the census');
+
 const scaled=`
 <input id="rate" type="number">
 <script>
