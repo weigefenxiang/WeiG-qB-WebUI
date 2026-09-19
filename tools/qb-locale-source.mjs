@@ -4,6 +4,7 @@ import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {applyQbSettingsTranslationOverlay,buildQbSettingsTranslationOverlayFromClone} from './qb-settings-translation-overlay.mjs';
+import {enrichCatalogRssSurface} from './qb-rss-source-overlay.mjs';
 import {mergeQbNativeQmRecoveryEvidence} from './qb-native-qm-recovery.mjs';
 
 function unique(values){const out=[];for(const value of values||[]){const item=String(value||'').trim();if(item&&!out.includes(item))out.push(item);}return out;}
@@ -112,8 +113,9 @@ export function enrichCatalogWebuiLocales(catalog,qbRoot){
 
 export function enrichCatalogWebuiSourceEvidence(catalog,qbRoot){
   const localized=enrichCatalogWebuiLocales(catalog,qbRoot);
-  const settingsOverlay=buildQbSettingsTranslationOverlayFromClone(localized,qbRoot);
-  return {catalog:applyQbSettingsTranslationOverlay(localized,settingsOverlay),recoveryEvidence:settingsOverlay.recoveryEvidence};
+  const nativeSurfaces=enrichCatalogRssSurface(localized,qbRoot);
+  const settingsOverlay=buildQbSettingsTranslationOverlayFromClone(nativeSurfaces,qbRoot);
+  return {catalog:applyQbSettingsTranslationOverlay(nativeSurfaces,settingsOverlay),recoveryEvidence:settingsOverlay.recoveryEvidence};
 }
 export function enrichCatalogWebuiSourceFacts(catalog,qbRoot){
   return enrichCatalogWebuiSourceEvidence(catalog,qbRoot).catalog;

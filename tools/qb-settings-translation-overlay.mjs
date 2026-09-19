@@ -10,6 +10,7 @@ import {buildQbNativeQmRecoveryEvidence} from './qb-native-qm-recovery.mjs';
 import {extractTorrentTableColumns} from './qb-torrent-fields-parser.mjs';
 import {torrentDetailTranslationRefs} from './qb-detail-surface-parsers.mjs';
 import {detailControlTranslationRefs} from './qb-detail-control-parsers.mjs';
+import {rssSurfaceTranslationRefs} from './qb-rss-surface-source.mjs';
 
 function unique(values) {
   const out=[];
@@ -157,6 +158,7 @@ export function buildQbSettingsTranslationOverlay(catalog, readReleaseSources, o
       dynamicTableSource:releaseSources.dynamicTableSource || ''
     });
     Object.assign(ui,torrentDetailTranslationRefs(profile.torrentDetailUi),detailControlTranslationRefs(profile.torrentDetailUi));
+    for(const ref of rssSurfaceTranslationRefs(profile.rssDownloaderUi))ui['rss.downloader.copy.'+contentHash([ref.context,ref.source]).slice(0,20)]=ref;
     const ownedIdentities=new Set([...refsFromPreferences(preferences),...refsFromOwnedUi(ui)].map(ref=>ref.context+'\u0000'+ref.source));
     for(const ref of refsFromPreferencesSource(releaseSources.preferencesSource || '')){
       const identity=ref.context+'\u0000'+ref.source;if(ownedIdentities.has(identity))continue;ownedIdentities.add(identity);

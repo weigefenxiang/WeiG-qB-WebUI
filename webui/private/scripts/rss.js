@@ -7,7 +7,7 @@
   function text(en,cn){return zh()?cn:en;}
   function hasAction(name){return !!(R&&typeof R.hasAction==='function'&&R.hasAction(name));}
   function canWrite(name){return !!(R&&typeof R.supportsWriteAction==='function'&&R.supportsWriteAction(name));}
-  var state={rules:{},selected:'',draft:null,matching:{},busy:false,root:null,list:null,editor:null,status:null,matchingRoot:null,manifest:null,manifestTask:null,controls:{}};
+  var state={rules:{},selected:'',draft:null,matching:{},busy:false,root:null,list:null,editor:null,status:null,disabledNote:null,matchingRoot:null,manifest:null,manifestTask:null,controls:{}};
   function clone(value){if(value===undefined)return undefined;try{return structuredClone(value);}catch(_e){return JSON.parse(JSON.stringify(value));}}
   function button(copyText,kind){var el=document.createElement('button');el.type='button';el.className='btn '+(kind||'btn--ghost');el.textContent=copyText;return el;}
   function input(type,value){var el=document.createElement('input');el.type=type||'text';el.className='field-input';if(type==='checkbox')el.checked=!!value;else el.value=value==null?'':String(value);return el;}
@@ -15,8 +15,10 @@
   function ownKey(obj,key){return !!obj&&own.call(obj,key);}
   function setStatus(message,error){if(!state.status)return;state.status.textContent=message||'';state.status.classList.toggle('danger-text',!!error);}
   function currentClient(){return W.AppState&&W.AppState.client;}
-  function sourceText(ref,fallback){return String(ref&&ref.source||fallback||'');}
+  function sourceText(ref,fallback){var source=String(ref&&ref.source||fallback||'');return W.I18n&&W.I18n.qbSourceText?W.I18n.qbSourceText(ref,source):source;}
   function nativeCopy(key,fallback){return sourceText(state.manifest&&state.manifest.copy&&state.manifest.copy[key],fallback);}
+  function autoDownloadEnabled(){var prefs=W.AppState&&W.AppState.preferences;return !prefs||prefs.rss_auto_downloading_enabled!==false;}
+  function renderAutoDownloadState(){if(!state.root)return;if(!state.disabledNote){state.disabledNote=document.createElement('p');state.disabledNote.className='text-description rss-downloader-disabled';state.disabledNote.hidden=true;var head=state.root.querySelector('.workspace__header');if(head&&head.nextSibling)state.root.insertBefore(state.disabledNote,head.nextSibling);else state.root.appendChild(state.disabledNote);}var disabled=!autoDownloadEnabled();state.disabledNote.hidden=!disabled;state.disabledNote.textContent=disabled?nativeCopy('disabled','Auto downloading of RSS torrents is disabled now! You can enable it in application settings.'):'';}
   function resolveTimeline(changes,qb){if(!Array.isArray(changes)||!changes.length||!R||typeof R.compareVersions!=='function')return null;var hit=null;for(var i=0;i<changes.length;i++){if(R.compareVersions(changes[i].from,qb)<=0)hit=changes[i].value;else break;}return clone(hit);}
   async function ensureManifest(){
     if(state.manifestTask)return state.manifestTask;
@@ -103,19 +105,20 @@
     try{if(state.selected&&state.selected!==value.name){if(!canWrite('rsscontroller.h:renameRuleAction'))throw new Error(text('This qBittorrent release cannot safely rename RSS rules.','当前 qBittorrent 版本无法安全重命名 RSS 规则。'));await client.rssRenameRule(state.selected,value.name);}await client.rssSetRule(value.name,value.rule);state.selected=value.name;await loadRules();await loadMatchingArticles();setStatus(text('RSS rule saved.','RSS 规则已保存。'));}catch(error){setStatus(text('Failed to save RSS rule: ','保存 RSS 规则失败：')+(error&&error.message||error),true);}finally{state.busy=false;}
   }
   async function removeRule(){if(state.busy||!state.selected)return;var client=currentClient();if(!client||!state.manifest||!canWrite('rsscontroller.h:removeRuleAction'))return;state.busy=true;setStatus(text('Removing rule…','正在删除规则…'));try{await client.rssRemoveRule(state.selected);state.selected='';state.draft=null;state.matching={};await loadRules();setStatus(text('RSS rule removed.','RSS 规则已删除。'));}catch(error){setStatus(text('Failed to remove RSS rule: ','删除 RSS 规则失败：')+(error&&error.message||error),true);}finally{state.busy=false;}}
-  function render(){renderList();renderEditor();}
+  function render(){renderAutoDownloadState();renderList();renderEditor();}
   async function loadRules(){var client=currentClient();if(!state.root||!state.manifest||!client||!hasAction('rsscontroller.h:rulesAction'))return;try{var rules=await client.rssRules();state.rules=rules&&typeof rules==='object'&&!Array.isArray(rules)?rules:{};if(state.selected&&ownKey(state.rules,state.selected))state.draft=clone(state.rules[state.selected]);else if(state.selected){state.selected='';state.draft=null;state.matching={};}render();}catch(error){setStatus(text('Failed to load RSS rules: ','读取 RSS 规则失败：')+(error&&error.message||error),true);}}
-  function teardown(){if(state.root)state.root.remove();state.root=null;state.list=null;state.editor=null;state.status=null;state.matchingRoot=null;state.controls={};}
+  function teardown(){if(state.root)state.root.remove();state.root=null;state.list=null;state.editor=null;state.status=null;state.disabledNote=null;state.matchingRoot=null;state.controls={};}
   async function install(){
     var view=document.getElementById('rss-view');if(!view||document.getElementById('rss-rules-panel'))return;
     var manifest=await ensureManifest();if(!manifest||!hasAction('rsscontroller.h:rulesAction'))return;
     var panel=document.createElement('div');panel.id='rss-rules-panel';panel.className='tool-page surface surface--panel';var head=document.createElement('div');head.className='workspace__header';var title=document.createElement('h2');title.textContent='RSS Downloader';head.appendChild(title);
     var actions=document.createElement('div');actions.className='inline-form';var add=button(text('New rule','新建规则'),'btn--primary');add.disabled=!canWrite('rsscontroller.h:setRuleAction');add.addEventListener('click',function(){state.selected='';state.draft=emptyDraft();state.matching={};render();});var refresh=button(text('Refresh rules','刷新规则'),'btn--ghost');refresh.addEventListener('click',loadRules);actions.appendChild(add);actions.appendChild(refresh);head.appendChild(actions);panel.appendChild(head);
-    var layout=document.createElement('div');layout.className='settings-layout';state.list=document.createElement('nav');state.list.id='rss-rules-list';state.list.className='settings-tabs';state.editor=document.createElement('div');state.editor.id='rss-rule-editor';state.editor.className='settings-content';layout.appendChild(state.list);layout.appendChild(state.editor);panel.appendChild(layout);state.status=document.createElement('p');state.status.className='text-description';panel.appendChild(state.status);var existing=view.querySelector('.tool-page');if(existing&&existing.parentNode)existing.parentNode.insertBefore(panel,existing.nextSibling);else view.appendChild(panel);state.root=panel;await loadRules();
+    var layout=document.createElement('div');layout.className='settings-layout';state.list=document.createElement('nav');state.list.id='rss-rules-list';state.list.className='settings-tabs';state.editor=document.createElement('div');state.editor.id='rss-rule-editor';state.editor.className='settings-content';layout.appendChild(state.list);layout.appendChild(state.editor);panel.appendChild(layout);state.status=document.createElement('p');state.status.className='text-description';panel.appendChild(state.status);var existing=view.querySelector('.tool-page');if(existing&&existing.parentNode)existing.parentNode.insertBefore(panel,existing.nextSibling);else view.appendChild(panel);state.root=panel;renderAutoDownloadState();await loadRules();
   }
-  async function refresh(){await ensureManifest();if(!state.root)await install();else if(location.hash.replace(/^#\/?/,'').split('/')[0]==='rss')await loadRules();}
+  async function open(){if(W.Router&&W.Router.go)W.Router.go('rss');else location.hash='#/rss';await install();renderAutoDownloadState();if(state.root&&state.root.scrollIntoView)state.root.scrollIntoView({block:'start'});}
+  async function refresh(){await ensureManifest();if(!state.root)await install();else{renderAutoDownloadState();if(location.hash.replace(/^#\/?/,'').split('/')[0]==='rss')await loadRules();}}
   function resetForEnvironment(){state.manifest=null;state.manifestTask=null;teardown();install();}
-  W.RSSRules={install:install,refresh:refresh,loadRules:loadRules,loadMatchingArticles:loadMatchingArticles,state:function(){return{selected:state.selected,rules:Object.keys(state.rules||{}),matching:clone(state.matching||{}),manifest:clone(state.manifest||null)};}};
+  W.RSSRules={install:install,open:open,refresh:refresh,loadRules:loadRules,loadMatchingArticles:loadMatchingArticles,state:function(){return{selected:state.selected,rules:Object.keys(state.rules||{}),matching:clone(state.matching||{}),manifest:clone(state.manifest||null),autoDownloadEnabled:autoDownloadEnabled()};}};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
   global.addEventListener('hashchange',refresh);global.addEventListener('weigg:capabilities-ready',resetForEnvironment);global.addEventListener('weigg:languagechange',function(){teardown();install();});
 })(window);

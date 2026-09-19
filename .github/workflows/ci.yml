@@ -150,6 +150,8 @@ jobs:
             script: tests/browser-torrent-field-provenance.mjs
           - name: sidebar-capability
             script: tests/browser-sidebar-capability-visual.mjs
+          - name: settings-fidelity
+            script: tests/browser-settings-fidelity.mjs
     env:
       WEIGG_BROWSER_CHANNEL: chrome
     steps:

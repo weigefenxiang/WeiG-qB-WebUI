@@ -30,6 +30,7 @@ assert.equal(q460.fields.find(x=>x.key==='layout').path.join('.'),'torrentParams
 assert.equal(q500.fields.find(x=>x.key==='stopped').controlId,'addStoppedCombobox');
 assert.equal(q500.fields.find(x=>x.key==='stopped').translation.source,'Add Stopped:');
 for(const surface of [q430,q432,q460,q500])for(const field of surface.fields.filter(x=>x.kind==='triState'||x.kind==='select'))assert.ok(field.options.every(x=>Object.prototype.hasOwnProperty.call(x,'writeValue')),'select/tri-state options must carry source-proven write values.');
+for(const surface of [q430,q432,q460,q500])assert.deepEqual(surface.copy.disabled,{source:'Auto downloading of RSS torrents is disabled now! You can enable it in application settings.',context:'AutomatedRssDownloader'},'RSS Downloader disabled feedback must remain exact source/context copy.');
 
 assert.match(rss,/R\.ensure\('rss'\)/,'RSS runtime must lazy-load its compact source domain through CapabilityRegistry.');
 assert.match(rss,/release\.certified!==true/,'unknown or inherited release identities must fail closed before native RSS projection.');
@@ -41,6 +42,9 @@ assert.match(rss,/state\.draft=clone\(state\.rules\[name\]\|\|\{\}\)/,'RSS editi
 assert.doesNotMatch(rss,/function pathIn\(/,'returned-object-shape path guessing must be retired after manifest cutover.');
 assert.doesNotMatch(rss,/function triState\(|function triValue\(|function layoutState\(/,'manual historical tri-state/layout owners must be retired after manifest cutover.');
 assert.doesNotMatch(rss,/ownKey\(rule,'smartFilter'\).*appendControl/s,'smartFilter visibility must come from exact source manifest, not returned rule shape.');
+assert.match(rss,/W\.I18n&&W\.I18n\.qbSourceText/,'RSS source-owned copy must resolve through the shared qB translation owner.');
+assert.match(rss,/rss_auto_downloading_enabled!==false/,'RSS Downloader disabled feedback must follow the canonical app preference snapshot.');
+assert.match(rss,/W\.RSSRules=\{install:install,open:open/,'Settings source-action must reuse the existing RSSRules owner instead of creating a second editor.');
 assert.doesNotMatch(rss,/Client\.prototype\./,'RSS feature module must not regain transport ownership.');
 
 console.log('RSS native projection contract passed: exact 65-release identity, five source change points, source-path rendering/writes, fail-closed unknown releases, and old shape owners retired.');
