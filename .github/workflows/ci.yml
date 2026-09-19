@@ -818,7 +818,7 @@ jobs:
     if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'native-surfaces' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[native-surfaces]')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    needs: smoke
+    needs: classify
     steps:
       - uses: actions/checkout@v7
         with:
@@ -963,16 +963,6 @@ jobs:
           console.log('@@SETTINGS_RUNTIME_META\t'+Buffer.byteLength(rendered)+'\t'+crypto.createHash('sha256').update(rendered).digest('hex')+'\t'+encoded.length);
           for(let offset=0,index=0;offset<encoded.length;offset+=4000,index++)console.log('@@SETTINGS_RUNTIME_B64\t'+index+'\t'+encoded.slice(offset,offset+4000));
           NODE
-      - name: Compare canonical Settings runtime to committed product runtime
-        shell: bash
-        run: |
-          set -euo pipefail
-          cmp -s settings-runtime-materialized.json webui/private/data/settings-compat.json || {
-            echo 'Committed Settings runtime does not match the exact-SHA canonical materialization.' >&2
-            sha256sum settings-runtime-materialized.json webui/private/data/settings-compat.json >&2
-            exit 1
-          }
-          sha256sum settings-runtime-materialized.json
       - name: Verify every admitted stable Preferences source profile and independent census
         env:
           QB_PREFERENCES_CENSUS_OUTPUT: qb-preferences-census.json
@@ -998,3 +988,13 @@ jobs:
             settings-runtime-materialized.json
           if-no-files-found: error
           retention-days: 7
+      - name: Compare canonical Settings runtime to committed product runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmp -s settings-runtime-materialized.json webui/private/data/settings-compat.json || {
+            echo 'Committed Settings runtime does not match the exact-SHA canonical materialization.' >&2
+            sha256sum settings-runtime-materialized.json webui/private/data/settings-compat.json >&2
+            exit 1
+          }
+          sha256sum settings-runtime-materialized.json
