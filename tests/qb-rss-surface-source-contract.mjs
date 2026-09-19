@@ -83,4 +83,8 @@ const refs=rssSurfaceTranslationRefs(modernSurface);
 assert.ok(refs.some(x=>x.source==='Use Smart Episode Filter'&&x.context==='AutomatedRssDownloader'));
 assert.ok(refs.some(x=>x.source==='Use global settings'&&x.context==='AutomatedRssDownloader'));
 
+
+const disabledSurface=extractRssDownloaderSurface('<div id="RssDownloader"><div id="rssDownloaderDisabled" class="invisible">QBT_TR(Auto downloading of RSS torrents is disabled now! You can enable it in application settings.)QBT_TR[CONTEXT=AutomatedRssDownloader]</div></div>');
+assert.deepEqual(disabledSurface.copy.disabled,{source:'Auto downloading of RSS torrents is disabled now! You can enable it in application settings.',context:'AutomatedRssDownloader'},'RSS Downloader disabled feedback must stay source-owned and context-exact');
+assert.ok(rssSurfaceTranslationRefs(disabledSurface).some(x=>x.source==='Auto downloading of RSS torrents is disabled now! You can enable it in application settings.'&&x.context==='AutomatedRssDownloader'));
 console.log('qB RSS source contract passed: absence stays absent; native DOM field order, source write values, translation refs, tri-state semantics, and historical/modern rule bindings are extracted from source without qB version guesses.');

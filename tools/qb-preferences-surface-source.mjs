@@ -173,10 +173,28 @@ function immediateSuffix(markup,control,rowEnd){
   const literal=decodeHtml(tail).replace(/&nbsp;/gi,' ').trim();
   return literal&&literal.length<=12&&/^[:;,/|·–—-]+$/.test(literal)?{literal}:null;
 }
+function sourceDisplayFormat(markup,controlId){
+  const text=String(markup||''),escaped=escapeRegex(controlId);
+  const assignment=new RegExp('document\\.getElementById\\(\\s*["\\\']'+escaped+'["\\\']\\s*\\)\\s*\\.\\s*value\\s*=\\s*([A-Za-z_$][\\w$]*)\\s*\\(').exec(text);
+  if(!assignment)return null;
+  const name=escapeRegex(assignment[1]);
+  const arrow=new RegExp('(?:const|let|var)\\s+'+name+'\\s*=\\s*\\([^)]*\\)\\s*=>\\s*\\{([\\s\\S]{0,700}?)\\n\\s*\\};').exec(text);
+  const declared=new RegExp('function\\s+'+name+'\\s*\\([^)]*\\)\\s*\\{([\\s\\S]{0,700}?)\\n\\s*\\}').exec(text);
+  const body=String((arrow&&arrow[1])||(declared&&declared[1])||'');
+  const valueMatch=/\b(?:let|const|var)\s+([A-Za-z_$][\w$]*)\s*=\s*[A-Za-z_$][\w$]*\.toString\(\)\s*;?/.exec(body);
+  const value=valueMatch&&valueMatch[1];
+  if(!value)return null;
+  const v=escapeRegex(value);
+  if(!new RegExp('\\b'+v+'\\.length\\s*===?\\s*1\\b').test(body))return null;
+  const tick=String.fromCharCode(96),template=tick+'0${'+value+'}'+tick;
+  if(body.indexOf(template)<0&&!new RegExp('["\\\']0["\\\']\\s*\\+\\s*'+v).test(body))return null;
+  if(!new RegExp('return\\s+'+v+'\\s*;').test(body))return null;
+  return'zero-pad-2';
+}
 function graphControl(control,preferencesByControl,behavior,markup,role,rowEnd,writeOnlyByControl){
   const key=preferencesByControl.get(control.id)||null,preference=key&&preferencesByControl.preferences?.[key]||null,writeOnly=!key&&writeOnlyByControl&&writeOnlyByControl.get(control.id)||null;
-  const condition=behavior.predicates?.[control.id]||gatePredicate(preference),adornment=(preference&&preference.control&&preference.control.unit)||immediateUnit(markup,control,null,null),dynamicOptions=control.semantic==='select'?sourceDynamicOptions(markup,control.id):null;
-  return{id:control.id,preferenceKey:key,role:role||(key?'preference':'auxiliary'),semantic:control.semantic,staticDisabled:control.staticDisabled===true,label:(preference&&preference.title)||labelRefForControl(markup,control.id),adornment:adornment||null,suffix:immediateSuffix(markup,control,rowEnd),condition:condition||null,...(dynamicOptions?{dynamicOptions}:{}),...(writeOnly&&['text','password','textarea','select'].includes(control.semantic)?{writeOnly}:{})};
+  const condition=behavior.predicates?.[control.id]||gatePredicate(preference),adornment=(preference&&preference.control&&preference.control.unit)||immediateUnit(markup,control,null,null),dynamicOptions=control.semantic==='select'?sourceDynamicOptions(markup,control.id):null,displayFormat=sourceDisplayFormat(markup,control.id);
+  return{id:control.id,preferenceKey:key,role:role||(key?'preference':'auxiliary'),semantic:control.semantic,staticDisabled:control.staticDisabled===true,label:(preference&&preference.title)||labelRefForControl(markup,control.id),adornment:adornment||null,suffix:immediateSuffix(markup,control,rowEnd),condition:condition||null,...(dynamicOptions?{dynamicOptions}:{}),...(writeOnly&&['text','password','textarea','select'].includes(control.semantic)?{writeOnly}:{}),...(displayFormat?{displayFormat}:{})};
 }
 function buildControlGraph(markup,tabs,fieldsets,caches,preferences,writeOnlyByControl){
   const preferenceById=new Map(),preferenceObject={};

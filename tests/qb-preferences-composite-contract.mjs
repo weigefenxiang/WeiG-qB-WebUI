@@ -205,4 +205,29 @@ assert.equal(rssGraphItems.find(item=>item.id==='optionalIPAddressToBind').dynam
 assert.equal(rssGraphItems.find(item=>item.id==='optionalIPAddressToBind').dynamicOptions.queryParam,'iface');
 assert.equal(rssGraphItems.find(item=>item.id==='optionalIPAddressToBind').dynamicOptions.dependsOnControlId,'networkInterface');
 
+
+const timePresentationToolbar='<li id="PrefSpeedLink">QBT_TR(Speed)QBT_TR[CONTEXT=OptionsDialog]</li>';
+const timePresentationMarkup=[
+  '<div id="SpeedTab" class="PrefTab"><div class="formRow">',
+  '<label for="schedule_from_hour">QBT_TR(From:)QBT_TR[CONTEXT=OptionsDialog]</label>',
+  '<input type="text" id="schedule_from_hour">:<input type="text" id="schedule_from_min">',
+  '<label for="schedule_to_hour">QBT_TR(To:)QBT_TR[CONTEXT=OptionsDialog]</label>',
+  '<input type="text" id="schedule_to_hour">:<input type="text" id="schedule_to_min">',
+  '</div></div><script>',
+  'const time_padding = (val) => {',
+  '  let ret = val.toString();',
+  '  if (ret.length === 1)',
+  '    ret = `0${ret}`;',
+  '  return ret;',
+  '};',
+  'document.getElementById("schedule_from_hour").value = time_padding(pref.schedule_from_hour);',
+  'document.getElementById("schedule_from_min").value = time_padding(pref.schedule_from_min);',
+  'document.getElementById("schedule_to_hour").value = time_padding(pref.schedule_to_hour);',
+  'document.getElementById("schedule_to_min").value = time_padding(pref.schedule_to_min);',
+  '</script>'
+].join('\n');
+const timeFacts=extractQbPreferencesNativeSurface({preferencesSource:timePresentationMarkup,toolbarSource:timePresentationToolbar,preferenceDescriptors:[]});
+const timeItems=timeFacts.controlGraph.tabs.speed.rows.flatMap(row=>row.items).filter(item=>item.kind==='control');
+for(const id of ['schedule_from_hour','schedule_from_min','schedule_to_hour','schedule_to_min'])
+  assert.equal(timeItems.find(item=>item.id===id)?.displayFormat,'zero-pad-2',id+' must retain source-proven two-digit presentation without a key whitelist');
 console.log('qB Preferences composite/value contract passed: sibling labels and switch bindings are censused independently, helper metadata is reviewed explicitly, inverse source scales are writable, and unproven transforms fail closed.');

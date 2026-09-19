@@ -101,7 +101,8 @@ export function extractRssDownloaderSurface(source=''){
       rules:surfaceRef(source,/<[^>]+\bid=["']rulesTableDesc["'][^>]*>([\s\S]*?)<\//i),
       definition:surfaceRef(source,/<fieldset\b[^>]*\bid=["']ruleSettings["'][^>]*>[\s\S]*?<legend>([\s\S]*?)<\/legend>/i),
       matching:surfaceRef(source,/<[^>]+\bid=["']articleTableDesc["'][^>]*>([\s\S]*?)<\//i),
-      save:surfaceRef(source,/<button\b[^>]*\bid=["']saveButton["'][^>]*>([\s\S]*?)<\/button>/i)
+      save:surfaceRef(source,/<button\b[^>]*\bid=["']saveButton["'][^>]*>([\s\S]*?)<\/button>/i),
+      disabled:surfaceRef(source,/<div\b[^>]*\bid=["']rssDownloaderDisabled["'][^>]*>([\s\S]*?)<\/div>/i)
     }
   };
 }
