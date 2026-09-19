@@ -68,7 +68,7 @@
   function decodeField(value){try{return decodeURIComponent(String(value||''));}catch(_e){return String(value||'');}}
   function routeLocale(list){if(!Array.isArray(list))return null;for(var i=0;i<list.length;i++)if(sameQbLocale(list[i],qbLocale))return list[i];var wanted=normalize(qbLocale);for(var j=0;j<list.length;j++)if(normalize(list[j])===wanted)return list[j];return null;}
   function parseOwnedCopyRegistry(text,expectedSha,expectedVersion){
-    var source=String(text||''),refs={},bindings={},values={},sets={},bridges={},profile=null,match;
+    var source=String(text||''),refs={},bindings={},values={},setDefs={},sets={},bridges={},profile=null,match;
     var refRe=/^@@REF\t([0-9a-f]{24})\t([^\t\r\n]*)\t([^\t\r\n]*)\r?\n([\s\S]*?)\r?\n@@END\s*$/gm;
     while((match=refRe.exec(source))){var raw=String(match[4]||'').trim();refs[match[1]]={context:decodeField(match[2]),source:decodeField(match[3]),text:raw&&raw.indexOf('QBT_TR(')<0?raw:null};}
     var profileRe=/^@@PROFILE\t([0-9a-f]{40})\t([^\t\r\n]*)\t([^\t\r\n]*)\t(b[0-9a-f]{20})\t([^\t\r\n]*)\t([^\t\r\n]*)\s*$/gm;
@@ -79,14 +79,15 @@
     var uiRe=/^@@UI\t(b[0-9a-f]{20})\t([^\t\r\n]*)\t([0-9a-f]{24})\s*$/gm;
     while((match=uiRe.exec(source))){var uiBind=bindings[match[1]]||(bindings[match[1]]={preferences:{},ui:{}});uiBind.ui[decodeField(match[2])]=match[3];}
     var valueRe=/^@@VAL\t([0-9a-z]+)\t([0-9a-f]{24})\t([^\t\r\n]*)\s*$/gm;
-    while((match=valueRe.exec(source)))values[match[1]]={ref:match[2],value:decodeField(match[3])};
-    var setRe=/^@@SET\t(t[0-9a-f]{20})\t([0-9a-z,]*)\s*$/gm;
-    while((match=setRe.exec(source)))sets[match[1]]=match[2]?match[2].split(','):[];
-    var bridgeRe=/^@@BRIDGE\t([0-9a-f]{40})\t([^\t\r\n]*)\t(t[0-9a-f]{20}|-)\s*$/gm;
+    while((match=valueRe.exec(source))){var decodedValue;try{decodedValue=JSON.parse(match[3]);}catch(_e){return null;}if(typeof decodedValue!=='string')return null;values[match[1]]={ref:match[2],value:decodedValue};}
+    var setRe=/^@@SET\t(t[0-9a-f]{20})\t(t[0-9a-f]{20}|-)\t([0-9a-z,]*)\t([0-9a-z,]*)\s*$/gm;
+    while((match=setRe.exec(source)))setDefs[match[1]]={parent:match[2]==='-'?null:match[2],add:match[3]?match[3].split(','):[],remove:match[4]?match[4].split(','):[]};
+    function resolveBridgeTokens(id,trail){if(!id)return[];if(sets[id])return sets[id].slice();var def=setDefs[id];if(!def)return null;trail=trail||{};if(trail[id])return null;trail[id]=true;var base=def.parent?resolveBridgeTokens(def.parent,trail):[];if(base===null)return null;var active={};for(var i=0;i<base.length;i++)active[base[i]]=true;for(var j=0;j<def.remove.length;j++)delete active[def.remove[j]];for(var k=0;k<def.add.length;k++)active[def.add[k]]=true;delete trail[id];var resolved=Object.keys(active).sort(function(a,b){return parseInt(a,36)-parseInt(b,36);});sets[id]=resolved;return resolved.slice();}
+    var bridgeRe=var bridgeRe=/^@@BRIDGE\t([0-9a-f]{40})\t([^\t\r\n]*)\t(t[0-9a-f]{20}|-)\s*$/gm;
     while((match=bridgeRe.exec(source))){if(match[1]===expectedSha)bridges[decodeField(match[2])]=match[3]==='-'?null:match[3];}
     var binding=bindings[profile.bindingId];if(!binding)return null;
     var nativeLocale=routeLocale(profile.nativeLocales),bridgeLocale=nativeLocale?null:routeLocale(profile.bridgeLocales),mode=nativeLocale?'native':(bridgeLocale?'bridge':null);if(!mode)return null;
-    var bridgeSet={};if(mode==='bridge'&&bridges[bridgeLocale]){var tokens=sets[bridges[bridgeLocale]];if(!tokens)return null;for(var i=0;i<tokens.length;i++){var item=values[tokens[i]];if(!item)return null;bridgeSet[item.ref]=item.value;}}
+    var bridgeSet={};if(mode==='bridge'&&bridges[bridgeLocale]){var tokens=resolveBridgeTokens(bridges[bridgeLocale],{});if(!tokens)return null;for(var i=0;i<tokens.length;i++){var item=values[tokens[i]];if(!item)return null;if(bridgeSet[item.ref]!==undefined&&bridgeSet[item.ref]!==item.value)return null;bridgeSet[item.ref]=item.value;}}
     function resolve(id){var ref=refs[id];if(!ref)return null;if(mode==='bridge')return String(bridgeSet[id]!==undefined?bridgeSet[id]:ref.source);return ref.text===null?null:String(ref.text);}
     var preferences={},ui={},resolvedRefs={},unresolved=false;
     Object.keys(refs).forEach(function(id){var value=resolve(id);if(value!==null)resolvedRefs[refs[id].context+'\u0000'+refs[id].source]=value;});

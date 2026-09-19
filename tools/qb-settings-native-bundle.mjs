@@ -112,19 +112,40 @@ export function buildNativeSettingsBundle(catalog,behaviorEvidence,{recoveryUnio
   return{schemaVersion:3,source:'qB-source-context-runtime-copy-ir+minimal-official-qm',profileCount:profiles.length,profiles,refs:Object.fromEntries([...refs.values()].sort((a,b)=>a.id.localeCompare(b.id)).map(item=>[item.id,{context:item.context,source:item.source}])),bindings:stableObject(bindings),bridgeSets:stableObject(bridgeSets),localeMessages};
 }
 
-function compactBridgeTables(bridgeSets){
+function tokenOrder(a,b){return Number.parseInt(a,36)-Number.parseInt(b,36);}
+function compactBridgeTables(bridgeSets,profiles){
   const pairKeys=new Set();
   for(const setId of Object.keys(bridgeSets||{}).sort())for(const ref of Object.keys(bridgeSets[setId]||{}).sort())pairKeys.add(JSON.stringify([ref,String(bridgeSets[setId][ref])]));
   const values={},tokens=new Map(),ordered=[...pairKeys].sort();
   ordered.forEach((key,index)=>{const [ref,value]=JSON.parse(key),token=index.toString(36);tokens.set(key,token);values[token]={ref,value};});
-  const sets={};
-  for(const setId of Object.keys(bridgeSets||{}).sort())sets[setId]=Object.keys(bridgeSets[setId]||{}).sort().map(ref=>tokens.get(JSON.stringify([ref,String(bridgeSets[setId][ref])])));
+  const fullSets={};
+  for(const setId of Object.keys(bridgeSets||{}).sort())fullSets[setId]=Object.keys(bridgeSets[setId]||{}).sort().map(ref=>tokens.get(JSON.stringify([ref,String(bridgeSets[setId][ref])])));
+  const sets={},previousByLocale=new Map();
+  const fullPlan=setId=>({parent:null,add:[...(fullSets[setId]||[])],remove:[]});
+  for(const profile of profiles||[]){
+    for(const locale of Object.keys(profile?.bridges||{}).sort()){
+      const setId=profile.bridges[locale];
+      if(!setId||!fullSets[setId]){previousByLocale.delete(locale);continue;}
+      if(!sets[setId]){
+        let plan=fullPlan(setId),parent=previousByLocale.get(locale);
+        if(parent&&parent!==setId&&sets[parent]&&fullSets[parent]){
+          const current=new Set(fullSets[setId]),previous=new Set(fullSets[parent]);
+          const add=[...current].filter(token=>!previous.has(token)).sort(tokenOrder),remove=[...previous].filter(token=>!current.has(token)).sort(tokenOrder);
+          const fullCost=plan.add.join(',').length,deltaCost=parent.length+add.join(',').length+remove.join(',').length+2;
+          if(deltaCost<fullCost)plan={parent,add,remove};
+        }
+        sets[setId]=plan;
+      }
+      previousByLocale.set(locale,setId);
+    }
+  }
+  for(const setId of Object.keys(fullSets).sort())if(!sets[setId])sets[setId]=fullPlan(setId);
   return{values,sets};
 }
 
-export function renderOwnedCopyRegistry(bundle){
+export function renderOwnedCopyRegistry(bundle){export function renderOwnedCopyRegistry(bundle){
   if(!bundle||bundle.schemaVersion!==3)throw new Error('Owned copy registry requires runtime copy bundle schemaVersion 3.');
-  const compact=compactBridgeTables(bundle.bridgeSets),lines=['# WeiG qB-owned copy runtime IR v2'];
+  const compact=compactBridgeTables(bundle.bridgeSets,bundle.profiles),lines=['# WeiG qB-owned copy runtime IR v3'];
   for(const profile of [...bundle.profiles].sort((a,b)=>a.sourceSha.localeCompare(b.sourceSha))){
     lines.push(`@@PROFILE\t${profile.sourceSha}\t${encodeField(profile.qbVersion)}\t${encodeField(profile.family)}\t${profile.bindingId}\t${encodeField(profile.nativeLocales.join(','))}\t${encodeField(profile.bridgeLocales.join(','))}`);
     for(const locale of Object.keys(profile.bridges||{}).sort())lines.push(`@@BRIDGE\t${profile.sourceSha}\t${encodeField(locale)}\t${profile.bridges[locale]||'-'}`);
@@ -137,8 +158,8 @@ export function renderOwnedCopyRegistry(bundle){
     }
     for(const key of Object.keys(binding.ui||{}).sort())lines.push(`@@UI\t${bindingId}\t${encodeField(key)}\t${binding.ui[key]}`);
   }
-  for(const token of Object.keys(compact.values).sort((a,b)=>parseInt(a,36)-parseInt(b,36))){const item=compact.values[token];lines.push(`@@VAL\t${token}\t${item.ref}\t${encodeField(item.value)}`);}
-  for(const setId of Object.keys(compact.sets).sort())lines.push(`@@SET\t${setId}\t${compact.sets[setId].join(',')}`);
+  for(const token of Object.keys(compact.values).sort(tokenOrder)){const item=compact.values[token];lines.push(`@@VAL\t${token}\t${item.ref}\t${JSON.stringify(item.value)}`);}
+  for(const setId of Object.keys(compact.sets).sort()){const set=compact.sets[setId];lines.push(`@@SET\t${setId}\t${set.parent||'-'}\t${set.add.join(',')}\t${set.remove.join(',')}`);}
   for(const id of Object.keys(bundle.refs||{}).sort()){
     const item=bundle.refs[id];lines.push(`@@REF\t${id}\t${encodeField(item.context)}\t${encodeField(item.source)}`);lines.push(`QBT_TR(${item.source})QBT_TR[CONTEXT=${item.context}]`);lines.push('@@END');
   }
