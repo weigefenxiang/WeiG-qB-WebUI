@@ -265,7 +265,7 @@ export function extractQbPreferencesNativeSurface({preferencesSource='',toolbarS
   const keys=[...descriptors.keys()].filter(Boolean);
   const ui=timedTrace(trace,'ui-facts',()=>extractQbPreferenceUiFacts(preferencesSource,keys));
   const supplement=timedTrace(trace,'composite-ui-facts',()=>extractQbPreferencesCompositeUiFacts(preferencesSource,keys));
-  for(const [key,fact] of Object.entries(supplement))if(!ui[key])ui[key]=fact;
+  for(const [key,fact] of Object.entries(supplement)){if(!ui[key]){ui[key]=fact;continue;}if(fact?.structured&&String(ui[key]?.controlId||'')===String(fact?.controlId||''))ui[key]={...ui[key],title:ui[key].title||fact.title,evidence:fact.evidence,structured:fact.structured};}
   const uiByControl=new Map(Object.entries(ui).map(([key,item])=>[String(item?.controlId||''),key]).filter(([id])=>id));
   const indexes=timedTrace(trace,'structural-indexes',()=>{
     const tabs=sourceTabs(preferencesSource,toolbarSource),fieldsets=elementRanges(preferencesSource,'fieldset'),selects=elementRanges(preferencesSource,'select'),textareas=elementRanges(preferencesSource,'textarea'),tables=elementRanges(preferencesSource,'table'),divs=elementRanges(preferencesSource,'div'),trs=elementRanges(preferencesSource,'tr'),caches={selects,textareas,tables,divs,trs,selectsById:rangeIndex(selects),textareasById:rangeIndex(textareas),tablesById:rangeIndex(tables)};
