@@ -125,10 +125,31 @@ jobs:
           Write-Host 'PowerShell installer syntax parsed.'
 
   ui_browser:
-    name: Linux semantic UI regression
+    name: Linux semantic UI · ${{ matrix.suite.name }}
     if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'ui' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[ui]')) }}
     runs-on: ubuntu-24.04
     needs: smoke
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        suite:
+          - name: runtime
+            script: tests/browser-runtime.mjs
+          - name: theme
+            script: tests/browser-theme.mjs
+          - name: feedback
+            script: tests/browser-feedback.mjs
+          - name: feature-parity
+            script: tests/browser-feature-parity.mjs
+          - name: torrent-workspace
+            script: tests/browser-torrent-workspace.mjs
+          - name: adaptive-ui
+            script: tests/browser-adaptive-ui.mjs
+          - name: torrent-field-provenance
+            script: tests/browser-torrent-field-provenance.mjs
+          - name: sidebar-capability
+            script: tests/browser-sidebar-capability-visual.mjs
     env:
       WEIGG_BROWSER_CHANNEL: chrome
     steps:
@@ -149,16 +170,9 @@ jobs:
           node -p "require('playwright/package.json').version"
           printf 'Runner image: %s %s\n' "${ImageOS:-unknown}" "${ImageVersion:-unknown}"
           printf 'Git SHA: %s\n' "$GITHUB_SHA"
-      - name: Representative qB4/qB5 semantic UI regressions
-        run: |
-          node tests/browser-runtime.mjs
-          node tests/browser-theme.mjs
-          node tests/browser-feedback.mjs
-          node tests/browser-feature-parity.mjs
-          node tests/browser-torrent-workspace.mjs
-          node tests/browser-adaptive-ui.mjs
-          node tests/browser-torrent-field-provenance.mjs
-          node tests/browser-sidebar-capability-visual.mjs
+          printf 'UI suite: %s\n' "${{ matrix.suite.name }}"
+      - name: Representative qB4/qB5 semantic UI · ${{ matrix.suite.name }}
+        run: node "${{ matrix.suite.script }}"
 
 
   release_fixture:
