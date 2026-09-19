@@ -195,9 +195,9 @@ jobs:
     needs: smoke
     strategy:
       fail-fast: false
-      max-parallel: 16
+      max-parallel: 15
       matrix:
-        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -212,7 +212,7 @@ jobs:
           fetch-tags: true
           filter: blob:none
       - name: Extract exact qB stable source catalog shard
-        run: node tools/qb-release-catalog.mjs upstream-qb --output=qb-release-catalog-shard-${{ matrix.shard }}.json --shard-index=${{ matrix.shard }} --shard-count=16
+        run: node tools/qb-release-catalog.mjs upstream-qb --output=qb-release-catalog-shard-${{ matrix.shard }}.json --shard-index=${{ matrix.shard }} --shard-count=15
       - name: Upload exact source catalog shard
         uses: actions/upload-artifact@v7
         with:
@@ -238,7 +238,7 @@ jobs:
           path: base-shards
           merge-multiple: true
       - name: Merge and validate canonical qB 4.1.0 to latest stable catalog
-        run: node tools/qb-release-catalog.mjs --merge-shards=base-shards --expected-shards=16 --output=qb-releases.json
+        run: node tools/qb-release-catalog.mjs --merge-shards=base-shards --expected-shards=15 --output=qb-releases.json
       - name: Upload base stable catalog
         uses: actions/upload-artifact@v7
         with:
