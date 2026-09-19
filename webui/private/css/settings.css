@@ -40,3 +40,5 @@ html[data-theme=light]{--settings-section-surface:linear-gradient(180deg,#fff,#f
 .setting-inline-action{min-height:34px;height:34px;padding-inline:12px;white-space:nowrap}
 .setting-native-fieldset .setting-native-fieldset{box-shadow:none}
 @media(max-width:820px){.setting-native-fieldset--nested{margin:4px 8px 8px}.setting-native-fieldset__header{align-items:flex-start}.setting-control-slot--compound{grid-column:1;width:100%;justify-self:stretch;justify-content:flex-start}.setting-inline-controls{justify-content:flex-start}.setting-inline-item>[data-control-kind="text"],.setting-inline-item>[data-control-kind="number"]{width:min(150px,38vw)}}
+
+.setting-row--content{grid-column:1/-1;display:block;min-height:0}.setting-source-content-group{display:grid;gap:7px;width:100%;padding:8px 0}.setting-source-content{margin:0;color:var(--text-muted);line-height:1.5;text-align:left}.setting-source-content--list{padding-left:1.4em}.setting-source-content--list>li+li{margin-top:3px}.setting-source-content--hint{font-size:var(--text-label)}
