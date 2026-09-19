@@ -94,7 +94,8 @@ function structuredReturnFacts(source,wanted){
   const text=String(source||''),tables=structuredTables(text),functions=namedFunctions(text),byName=new Map(functions.map(item=>[item.name,item])),out=[];
   const assignments=[
     ...text.matchAll(/settings\s*\[\s*["']([^"']+)["']\s*\]\s*=\s*([A-Za-z_$][\w$]*)\s*\(\s*\)\s*;?/g),
-    ...text.matchAll(/\bsettings\s*\.\s*([A-Za-z_$][\w$]*)\s*=\s*([A-Za-z_$][\w$]*)\s*\(\s*\)\s*;?/g)
+    ...text.matchAll(/\bsettings\s*\.\s*([A-Za-z_$][\w$]*)\s*=\s*([A-Za-z_$][\w$]*)\s*\(\s*\)\s*;?/g),
+    ...text.matchAll(/\bsettings\s*\.\s*set\(\s*["']([^"']+)["']\s*,\s*([A-Za-z_$][\w$]*)\s*\(\s*\)\s*\)\s*;?/g)
   ];
   for(const match of assignments){
     const key=String(match[1]||''),fn=byName.get(String(match[2]||''));if(!key||!fn||(wanted.size&&!wanted.has(key)))continue;
