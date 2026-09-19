@@ -80,3 +80,5 @@ try{
   }
   console.log('Semantic runtime browser regression passed: exact-source Control Graph composition (Random, sentinel, I2P, scheduler, Proxy, adornments), canonical Product Identity, deep link, qB 4.1.9.1/5.2.0, verified logout, Back/BFCache guard and auth bypass.');
 }finally{await browser.close();await new Promise(r=>server.close(r));}
+
+await import('./browser-settings-fidelity.mjs');
