@@ -32,6 +32,33 @@ function controlNumericFactor(expression,id){
 }
 function resolveExpression(expression,factor,declarations){const direct=factor(expression);if(direct!==null)return direct;const name=String(expression||'').trim();if(!/^[A-Za-z_$][\w$]*$/.test(name))return null;const declared=declarations.get(name);return declared===undefined?null:factor(declared);}
 function balancedBody(text,start){const open=String(text).indexOf('{',start);if(open<0)return'';let depth=0,quote='',escape=false;for(let i=open;i<text.length;i++){const ch=text[i];if(quote){if(escape){escape=false;continue;}if(ch==='\\'){escape=true;continue;}if(ch===quote)quote='';continue;}if(ch==='"'||ch==="'"||ch==='`'){quote=ch;continue;}if(ch==='{')depth++;else if(ch==='}'){depth--;if(depth===0)return text.slice(open+1,i);}}return'';}
+function numericPresentationFunctions(source){
+  const text=String(source||''),out=new Set(),patterns=[
+    /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:function\s*)?\(\s*([A-Za-z_$][\w$]*)\s*\)\s*(?:=>\s*)?\{/g,
+    /\bfunction\s+([A-Za-z_$][\w$]*)\s*\(\s*([A-Za-z_$][\w$]*)\s*\)\s*\{/g
+  ];
+  for(const pattern of patterns)for(const match of text.matchAll(pattern)){
+    const name=String(match[1]||''),param=String(match[2]||''),body=balancedBody(text,match.index??0);if(!name||!param||!body)continue;
+    const declaration=new RegExp('\\b(?:let|const|var)\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*'+escapeRe(param)+'\\.toString\\(\\s*\\)\\s*;?').exec(body);
+    const value=String(declaration?.[1]||'');if(!value)continue;const v=escapeRe(value);
+    if(!new RegExp('\\b'+v+'\\.length\\s*={2,3}\\s*1\\b').test(body))continue;
+    if(!(body.includes("'0' + "+value)||body.includes('"0" + '+value)))continue;
+    if(!new RegExp('return\\s+'+v+'\\s*;').test(body))continue;
+    out.add(name);
+  }
+  return out;
+}
+function preferencePresentationFactor(expression,key,presentationFunctions){
+  const direct=preferenceNumericFactor(expression,key);if(direct!==null)return direct;
+  const text=stripOuterParens(String(expression||'').trim()),match=text.match(/^([A-Za-z_$][\w$]*)\s*\(\s*([\s\S]+)\s*\)$/);if(!match||!presentationFunctions.has(match[1]))return null;
+  return preferenceNumericFactor(match[2],key)===1?1:null;
+}
+function controlStringCoercion(expression,id,declarations,seen=new Set()){
+  const text=stripOuterParens(String(expression||'').trim()),patterns=[modernControlPattern(id,'value'),dollarControlPattern(id,'value'),legacyControlPattern(id,'value')];
+  if(patterns.some(pattern=>new RegExp('^'+pattern+'\\s*\\.\\s*toString\\(\\s*\\)$').test(text)))return true;
+  if(!/^[A-Za-z_$][\w$]*$/.test(text)||seen.has(text))return false;
+  const declared=declarations.get(text);if(declared===undefined)return false;const next=new Set(seen);next.add(text);return controlStringCoercion(declared,id,declarations,next);
+}
 function assignedLiteral(segment,id){const escaped=escapeRe(id),patterns=[
   new RegExp(`${modernControlPattern(id,'value')}\\s*=\\s*["']([^"']*)["']`),
   new RegExp(`\\$\\(\\s*["']${escaped}["']\\s*\\)\\s*\\.\\s*(?:setProperty|set)\\(\\s*["']value["']\\s*,\\s*["']([^"']*)["']`)
@@ -133,7 +160,7 @@ function sentinelGateProjection(source,key,controlId,writes,declarations){
 }
 
 export function createQbPreferenceValueProjector(source){
-  const text=String(source||''),reads=new Map(),writes=new Map(),declarations=new Map(),switches=new Map(),readPos=new Map(),writePos=new Map();let match;
+  const text=String(source||''),reads=new Map(),writes=new Map(),declarations=new Map(),switches=new Map(),readPos=new Map(),writePos=new Map(),presentationFunctions=numericPresentationFunctions(text);let match;
   const declarationRe=/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*([^;\n]+)/g;
   while((match=declarationRe.exec(text)))declarations.set(match[1],match[2]);
   const modernRead=/document\.getElementById\(\s*["']([^"']+)["']\s*\)\s*\.\s*(?:value|checked)\s*=\s*([^;\n]+)/g;
@@ -154,8 +181,9 @@ export function createQbPreferenceValueProjector(source){
     const presence=presenceGateProjection(text,key,controlId);if(presence)return presence;
     const sentinel=sentinelGateProjection(text,key,controlId,writes,declarations);if(sentinel)return sentinel;
     const read=reads.get(String(controlId)),write=writes.get(String(key));
-    const readFactor=read===undefined?null:resolveExpression(read,value=>preferenceNumericFactor(value,key),declarations),writeFactor=write===undefined?null:resolveExpression(write,value=>controlNumericFactor(value,controlId),declarations);
+    const readFactor=read===undefined?null:resolveExpression(read,value=>preferencePresentationFactor(value,key,presentationFunctions),declarations),writeFactor=write===undefined?null:resolveExpression(write,value=>controlNumericFactor(value,controlId),declarations),stringWriteIdentity=write!==undefined&&controlStringCoercion(write,controlId,declarations);
     if(writeFactor===1&&selectedOptionIdentity(text,key,controlId,declarations,switches.get(String(key))))return{kind:'identity',safeWrite:true};
+    if(readFactor===1&&stringWriteIdentity)return{kind:'unproven',safeWrite:false,readFactor:1,writeFactor:1,writeIdentity:'string'};
     const switchMap=switchProjection(switches.get(String(key)),controlId);if(switchMap)return switchMap;
     if(readFactor===1&&writeFactor===1)return{kind:'identity',safeWrite:true};
     if(readFactor!==null&&writeFactor!==null&&readFactor>0&&writeFactor>0){const product=readFactor*writeFactor;if(Math.abs(product-1)<1e-12){const scale=writeFactor;if(Number.isFinite(scale)&&scale>0)return scale===1?{kind:'identity',safeWrite:true}:{kind:'scale',scale,safeWrite:true};}}
