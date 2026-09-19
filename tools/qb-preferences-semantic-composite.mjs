@@ -207,6 +207,12 @@ function parseRawPredicate(value,env){
   if(text==='true')return{kind:'true'};if(text==='false')return{kind:'false'};
   return null;
 }
+function rawPredicateControlIds(item,out=new Set()){
+  if(!item)return out;
+  if(item.controlId)out.add(String(item.controlId));
+  for(const child of item.items||[])rawPredicateControlIds(child,out);
+  return out;
+}
 function resolvePreferencePredicate(item,controlToPreference,enabledByControl,seen=new Set()){
   if(!item)return null;
   if(item.kind==='true'||item.kind==='false')return item;
@@ -285,7 +291,8 @@ export function extractQbPreferencesBehaviorPredicates(source,controlToPreferenc
     if(resolved)predicates[row.controlId]=resolved;
     else{predicates[row.controlId]={kind:'unknown'};unresolved.push({controlId:row.controlId,functionName:row.functionName});}
   }
-  return{predicates,assignments,unresolved};
+  const controlDependencies=Object.fromEntries([...enabledByControl.entries()].map(([controlId,raw])=>[controlId,[...rawPredicateControlIds(raw)]]).filter(([,ids])=>ids.length));
+  return{predicates,assignments,unresolved,controlDependencies};
 }
 
 export function extractQbPreferencesCompositeUiFacts(source,preferenceKeys=[]){
