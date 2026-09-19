@@ -156,6 +156,8 @@ assert.equal(overlay.source,'qb-upstream-preferences-ui+webui-ts');
 assert.equal(overlay.profiles.length,2);
 assert.equal(overlay.profiles[0].mappedPreferences,2);
 assert.equal(overlay.profiles[0].preferences.save_path.title.source,'Default Save Path:');
+assert.equal(overlay.profiles[0].preferences.save_path.evidence,'canonical-source-owner','translation overlay preference facts must come from the single canonical Settings owner');
+assert.equal(overlay.profiles[0].preferences.locale.evidence,'canonical-source-owner','every translated Settings preference must share the canonical owner provenance');
 assert.ok(Object.values(overlay.profiles[0].ui).some(ref=>ref.source==='Supported parameters (case sensitive):'&&ref.context==='OptionsDialog'),'qB Preferences source-owned note/list/hint/placeholder copy must join the exact-release translation closure even when it is not a preference title/description');
 assert.equal(overlay.profiles[0].sourceSha,'sha-old');
 assert.equal(overlay.profiles[1].sourceSha,'sha-new');
