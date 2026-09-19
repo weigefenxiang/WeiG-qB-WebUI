@@ -127,10 +127,10 @@ function resolveCanonicalPreferenceFacts(keys,directCandidates,legacyUi,suppleme
       byId.set(id,current);
     };
     for(const candidate of directCandidates[key]||[])add(candidate.controlId,candidate.evidence,'direct');
-    const legacy=legacyUi[key];if(legacy)add(legacy.controlId,legacy.evidence,'legacy',legacy);
+    const legacy=legacyUi[key]||null;
     const extra=supplement[key];if(extra)add(extra.controlId,extra.evidence,'supplement',extra);
     const ranked=[...byId.values()].map(candidate=>{
-      const owner=ownership.get(candidate.controlId),labelScore=(owner?.label?.rank||0)*100,directScore=candidate.evidences.reduce((max,value)=>Math.max(max,bindingEvidenceWeight(value)),0),originScore=(candidate.origins.has('legacy')?35:0)+(candidate.origins.has('supplement')?30:0)+(candidate.supplement?.structured?70:0);
+      const owner=ownership.get(candidate.controlId),labelScore=(owner?.label?.rank||0)*100,directScore=candidate.evidences.reduce((max,value)=>Math.max(max,bindingEvidenceWeight(value)),0),originScore=(candidate.origins.has('supplement')?30:0)+(candidate.supplement?.structured?70:0);
       return{...candidate,owner,score:labelScore+directScore+originScore};
     }).sort((a,b)=>b.score-a.score||a.controlId.localeCompare(b.controlId));
     if(!ranked.length)continue;
@@ -144,7 +144,7 @@ function resolveCanonicalPreferenceFacts(keys,directCandidates,legacyUi,suppleme
       unresolvedBindings.push({key,controlId:selected.controlId,reason:owner?.ambiguousLabelRefs?.length?'ambiguous-label':'missing-structural-label'});
       continue;
     }
-    const structured=selected.supplement?.structured||null,description=(selected.legacy?.description||selected.supplement?.description||null);
+    const structured=selected.supplement?.structured||null,legacyForSelected=legacy&&String(legacy.controlId||'')===selected.controlId?legacy:null,description=(legacyForSelected?.description||selected.supplement?.description||null);
     ui[key]={controlId:selected.controlId,evidence:'canonical-source-owner',title:owner.label.ref,...(description?{description}:{}),...(structured?{structured}:{})};
   }
   return{ui,diagnostics:{ambiguousBindings,unresolvedBindings}};
