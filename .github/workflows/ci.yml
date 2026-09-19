@@ -113,7 +113,7 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-      - name: Materialize compact runtime against canonical Frozen catalog identity
+      - name: Materialize Settings and capability control plane against canonical Frozen identity
         shell: bash
         run: |
           set -euo pipefail
@@ -121,19 +121,23 @@ jobs:
           cp "$RUNNER_TEMP/settings-compat.json" webui/private/data/settings-compat.json
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
-          import {compileCompactRuntime} from './tools/qb-compact-runtime.mjs';
+          import {admittedCatalogRows,catalogIdentity} from './tools/qb-catalog-identity.mjs';
           const catalog=JSON.parse(fs.readFileSync('tests/fixtures/qb-release-catalog.lkg.json','utf8'));
-          const compact=compileCompactRuntime(catalog);
-          for(const [file,data] of [
-            ['webui/private/data/capabilities.json',compact.capabilityData],
-            ['webui/private/data/torrent-compat.json',compact.torrentData],
-            ['webui/private/data/detail-compat.json',compact.detailData],
-            ['webui/private/data/source-actions.json',compact.actionData]
-          ])fs.writeFileSync(file,JSON.stringify(data,null,2)+'\n','utf8');
-          console.log('Materialized common Frozen identity '+compact.catalogIdentity.sourceCatalogSha256.slice(0,12)+'.');
+          const expected=admittedCatalogRows(catalog);
+          const file='webui/private/data/capabilities.json';
+          const capability=JSON.parse(fs.readFileSync(file,'utf8'));
+          if(!Array.isArray(capability.releases)||capability.releases.length!==expected.length)throw new Error('Capability/Frozen release-set length mismatch.');
+          for(let i=0;i<expected.length;i++){
+            const actual=capability.releases[i],row=expected[i];
+            if(String(actual?.qbVersion||'')!==row.qbVersion||String(actual?.sourceSha||'').toLowerCase()!==row.sourceSha)throw new Error('Capability/Frozen exact release identity mismatch at index '+i);
+          }
+          const identity=catalogIdentity(catalog);
+          capability.catalogIdentity=identity;
+          fs.writeFileSync(file,JSON.stringify(capability,null,2)+'\n','utf8');
+          console.log('Materialized capability control plane Frozen identity '+identity.sourceCatalogSha256.slice(0,12)+'.');
           NODE
-          if git diff --quiet -- webui/private/data/capabilities.json webui/private/data/torrent-compat.json webui/private/data/detail-compat.json webui/private/data/source-actions.json webui/private/data/settings-compat.json; then
-            echo "Committed compact runtime already has canonical Frozen identity."
+          if git diff --quiet -- webui/private/data/capabilities.json webui/private/data/settings-compat.json; then
+            echo "Committed Settings/capability runtime already has canonical Frozen identity."
             exit 0
           fi
           node <<'NODE'
@@ -151,13 +155,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git diff --quiet -- webui/private/data/capabilities.json webui/private/data/torrent-compat.json webui/private/data/detail-compat.json webui/private/data/source-actions.json webui/private/data/settings-compat.json VERSION webui/VERSION package.json package-lock.json webui/private/product-identity.json && exit 0
+          git diff --quiet -- webui/private/data/capabilities.json webui/private/data/settings-compat.json VERSION webui/VERSION package.json package-lock.json webui/private/product-identity.json && exit 0
           git fetch --no-tags origin dev
           test "$(git rev-parse origin/dev)" = "$GITHUB_SHA" || { echo "SAFE-REF abort before compact runtime materialization push." >&2; exit 1; }
           git config user.name "WeiG CI"
           git config user.email "actions@users.noreply.github.com"
-          git add webui/private/data/capabilities.json webui/private/data/torrent-compat.json webui/private/data/detail-compat.json webui/private/data/source-actions.json webui/private/data/settings-compat.json VERSION webui/VERSION package.json package-lock.json webui/private/product-identity.json
-          git commit -m "a3: materialize common Frozen runtime identity [settings-evidence] [ui]"
+          git add webui/private/data/capabilities.json webui/private/data/settings-compat.json VERSION webui/VERSION package.json package-lock.json webui/private/product-identity.json
+          git commit -m "a3: materialize Settings Frozen identity [settings-evidence] [ui]"
           git push origin HEAD:dev
 
   smoke:
