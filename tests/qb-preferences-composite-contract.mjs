@@ -4,6 +4,7 @@ import {extractQbPreferencesInventory,auditQbPreferencesInventory} from '../tool
 import {reviewedQbPreferencesExclusions} from '../tools/qb-preferences-reviewed-exclusions.mjs';
 import {extractQbPreferenceValueProjection} from '../tools/qb-preferences-value-projection.mjs';
 import {assertCompleteSourceCensus} from '../tools/qb-source-census.mjs';
+import {compileQbPreferencesCompact,expandQbPreferencesCompact} from '../tools/qb-preferences-compact.mjs';
 
 const toolbar='<li id="PrefNetworkLink">QBT_TR(Network)QBT_TR[CONTEXT=OptionsDialog]</li>';
 const source=`
@@ -205,6 +206,61 @@ assert.equal(rssGraphItems.find(item=>item.id==='optionalIPAddressToBind').dynam
 assert.equal(rssGraphItems.find(item=>item.id==='optionalIPAddressToBind').dynamicOptions.queryParam,'iface');
 assert.equal(rssGraphItems.find(item=>item.id==='optionalIPAddressToBind').dynamicOptions.dependsOnControlId,'networkInterface');
 
+
+
+const structuredToolbar='<li id="PrefDownloadsLink">QBT_TR(Downloads)QBT_TR[CONTEXT=OptionsDialog]</li>';
+const structuredMarkup=[
+  '<div id="DownloadsTab" class="PrefTab">',
+  '<fieldset class="settings"><legend>QBT_TR(Automatically add items from:)QBT_TR[CONTEXT=OptionsDialog]</legend>',
+  '<table id="futureFolders"><thead><tr>',
+  '<th>QBT_TR(Monitored Folder)QBT_TR[CONTEXT=ScanFoldersModel]</th>',
+  '<th>QBT_TR(Override Save Location)QBT_TR[CONTEXT=ScanFoldersModel]</th>',
+  '</tr></thead><tbody></tbody></table></fieldset></div><script>',
+  'const addFutureFolder = (folder = "", sel = "default_folder", other = "") => {',
+  '  const pos = document.getElementById("futureFolders").rows.length;',
+  '  const html = "<option value=\x27watch_folder\x27>QBT_TR(Monitored folder)QBT_TR[CONTEXT=ScanFoldersModel]</option>"',
+  '    + "<option value=\x27default_folder\x27>QBT_TR(Default save location)QBT_TR[CONTEXT=ScanFoldersModel]</option>"',
+  '    + "<option value=\x27other\x27>QBT_TR(Other...)QBT_TR[CONTEXT=ScanFoldersModel]</option>";',
+  '};',
+  'const getFutureFolders = () => {',
+  '  const folders = {};',
+  '  const count = document.getElementById("futureFolders").rows.length;',
+  '  let sel = ""; let other;',
+  '  switch (sel) {',
+  '    case "watch_folder": other = 0; break;',
+  '    case "default_folder": other = 1; break;',
+  '    case "other": other = rowOverride.value.trim(); break;',
+  '  }',
+  '  return folders;',
+  '};',
+  'for (const folder in pref.future_folders) { addFutureFolder(folder, "default_folder", ""); }',
+  'addFutureFolder();',
+  'settings["future_folders"] = getFutureFolders();',
+  '</script>'
+].join('\n');
+const structuredFacts=extractQbPreferencesNativeSurface({
+  preferencesSource:structuredMarkup,
+  toolbarSource:structuredToolbar,
+  preferenceDescriptors:[{key:'future_folders',getterPresent:true,setterPresent:true,readType:'object',writeType:'object',typeAgreement:'EXACT',writable:true}]
+});
+const structuredPref=structuredFacts.preferences.future_folders;
+assert.ok(structuredPref,'structured helper-return preference must bind to its source table without a key whitelist');
+assert.equal(structuredPref.control.id,'futureFolders');
+assert.equal(structuredPref.control.semantic,'structured');
+assert.equal(structuredPref.control.structured.kind,'keyed-map');
+assert.deepEqual(structuredPref.control.structured.columns.map(item=>item.source),['Monitored Folder','Override Save Location']);
+assert.deepEqual(structuredPref.control.structured.modes.map(item=>({id:item.id,value:item.value,custom:item.custom===true})),[
+  {id:'watch_folder',value:0,custom:false},
+  {id:'default_folder',value:1,custom:false},
+  {id:'other',value:undefined,custom:true}
+]);
+assert.equal(structuredPref.control.structured.defaultMode,'default_folder');
+assert.deepEqual(structuredPref.projection,{kind:'identity',safeWrite:true},'source-proven object table serializer must admit exact object writeback');
+assert.equal(structuredFacts.controlGraph.tabs.downloads.rows.flatMap(row=>row.items).find(item=>item.id==='futureFolders')?.preferenceKey,'future_folders','structured table must enter the same source-native Control Graph as ordinary preferences');
+const structuredCompact=compileQbPreferencesCompact({schemaVersion:1,profiles:[{qbVersion:'9.9.9',sourceSha:'9999999999999999999999999999999999999999',manifest:structuredFacts}]});
+assert.equal(structuredCompact.format.preference.at(-1),'structured','compact preference transport must explicitly own structured table metadata');
+const structuredExpanded=expandQbPreferencesCompact(structuredCompact,'9.9.9');
+assert.deepEqual(structuredExpanded.preferences.future_folders.control.structured,structuredPref.control.structured,'structured table metadata must survive compact roundtrip losslessly');
 
 const timePresentationToolbar='<li id="PrefSpeedLink">QBT_TR(Speed)QBT_TR[CONTEXT=OptionsDialog]</li>';
 const timePresentationMarkup=[

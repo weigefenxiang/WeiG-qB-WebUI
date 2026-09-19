@@ -38,6 +38,74 @@ function balancedBody(text,start){
 }
 function controlIds(statement){const out=[];for(const match of String(statement||'').matchAll(/document\.getElementById\(\s*["']([^"']+)["']\s*\)|\$\(\s*["']([^"']+)["']\s*\)/g)){const id=match[1]||match[2];if(id&&!out.includes(id))out.push(id);}return out;}
 
+function escapeRegex(value){return String(value||'').replace(/[|\\{}()[\]^$+*?.-]/g,'\\$&');}
+function namedFunctions(source){
+  const text=String(source||''),out=[],seen=new Set(),patterns=[
+    /(?:\b(?:const|let|var)\s+)?([A-Za-z_$][\w$]*)\s*=\s*(?:\(([^)]*)\)\s*=>|function\s*\(([^)]*)\))\s*\{/g,
+    /\bfunction\s+([A-Za-z_$][\w$]*)\s*\(([^)]*)\)\s*\{/g
+  ];
+  for(const pattern of patterns){for(const match of text.matchAll(pattern)){const start=match.index??0;if(seen.has(start))continue;const body=balancedBody(text,start);if(!body)continue;seen.add(start);out.push({name:String(match[1]||''),params:String(match[2]??match[3]??''),body,start});}}
+  return out.sort((a,b)=>a.start-b.start);
+}
+function structuredTables(source){
+  const text=String(source||''),titles=new Map(),stack=[],token=/<fieldset\b[^>]*>|<\/fieldset>|<legend\b[^>]*>([\s\S]*?)<\/legend>|<table\b([^>]*)>/gi;let match;
+  while((match=token.exec(text))){
+    const raw=String(match[0]||'').toLowerCase();
+    if(raw.startsWith('<fieldset')){stack.push({title:null});continue;}
+    if(raw.startsWith('</fieldset')){stack.pop();continue;}
+    if(raw.startsWith('<legend')){if(stack.length&&!stack[stack.length-1].title)stack[stack.length-1].title=qbtTr(match[1]);continue;}
+    const attrs=match[2]||'',id=(attrs.match(/\bid\s*=\s*["']([^"']+)["']/i)||[])[1];if(id&&stack.length&&stack[stack.length-1].title)titles.set(id,stack[stack.length-1].title);
+  }
+  const out=new Map();
+  for(const table of text.matchAll(/<table\b([^>]*)>([\s\S]*?)<\/table>/gi)){
+    const attrs=table[1]||'',id=(attrs.match(/\bid\s*=\s*["']([^"']+)["']/i)||[])[1];if(!id)continue;
+    const columns=[];for(const th of String(table[2]||'').matchAll(/<th\b[^>]*>([\s\S]*?)<\/th>/gi)){const ref=qbtTr(th[1]);if(ref)columns.push(ref);}
+    const title=titles.get(id)||null;if(title&&columns.length)out.set(id,{id,title,columns});
+  }
+  return out;
+}
+function dynamicTableOptions(body){
+  const out=[],seen=new Set();
+  for(const match of String(body||'').matchAll(/<option\b[^>]*\bvalue\s*=\s*['"]([^'"]+)['"][^>]*>([\s\S]*?)<\/option>/gi)){
+    const id=String(match[1]||'');if(!id||seen.has(id))continue;const label=qbtTr(match[2]);if(!label)continue;seen.add(id);out.push({id,label});
+  }
+  return out;
+}
+function structuredModeSpec(saveBody,producer,table){
+  const options=dynamicTableOptions(producer?.body);if(options.length<2)return null;
+  const mapped=new Map(),custom=new Set(),body=String(saveBody||'');
+  for(const option of options){
+    const id=escapeRegex(option.id),caseMatch=body.match(new RegExp('case\\s+["\\\']'+id+'["\\\']\\s*:[\\s\\S]{0,220}?\\b[A-Za-z_$][\\w$]*\\s*=\\s*([^;]+);','i'));
+    if(caseMatch){const value=literalValue(caseMatch[1]);if(value===undefined)custom.add(option.id);else mapped.set(option.id,value);continue;}
+    const ifMatch=body.match(new RegExp('if\\s*\\(\\s*[A-Za-z_$][\\w$]*\\s*===\\s*["\\\']'+id+'["\\\']\\s*\\)\\s*\\b[A-Za-z_$][\\w$]*\\s*=\\s*([^;]+);','i'));
+    if(ifMatch){const value=literalValue(ifMatch[1]);if(value===undefined)custom.add(option.id);else mapped.set(option.id,value);}
+  }
+  for(const ternary of body.matchAll(/\b[A-Za-z_$][\w$]*\s*=\s*\(\s*[A-Za-z_$][\w$]*\s*===\s*["']([^"']+)["']\s*\)\s*\?\s*([^:;]+)\s*:\s*([^;]+);/g)){
+    const id=String(ternary[1]||''),yes=literalValue(ternary[2]),no=literalValue(ternary[3]);if(yes!==undefined)mapped.set(id,yes);
+    if(no!==undefined){const candidates=options.map(item=>item.id).filter(value=>value!==id&&!custom.has(value)&&!mapped.has(value));if(candidates.length===1)mapped.set(candidates[0],no);}
+  }
+  const unresolved=options.map(item=>item.id).filter(id=>!mapped.has(id)&&!custom.has(id));if(unresolved.length===1)custom.add(unresolved[0]);
+  if(options.some(item=>!mapped.has(item.id)&&!custom.has(item.id)))return null;
+  const defaultValues=[];for(const match of String(producer?.params||'').matchAll(/(?:^|,)\s*[A-Za-z_$][\w$]*\s*=\s*["']([^"']*)["']/g))defaultValues.push(String(match[1]||''));
+  const defaultMode=defaultValues.find(value=>options.some(item=>item.id===value))||options.find(item=>!custom.has(item.id))?.id||options[0].id;
+  return{kind:'keyed-map',columns:table.columns,modes:options.map(item=>({id:item.id,label:item.label,...(custom.has(item.id)?{custom:true}:{value:mapped.get(item.id)})})),defaultMode};
+}
+function structuredReturnFacts(source,wanted){
+  const text=String(source||''),tables=structuredTables(text),functions=namedFunctions(text),byName=new Map(functions.map(item=>[item.name,item])),out=[];
+  const assignments=[
+    ...text.matchAll(/settings\s*\[\s*["']([^"']+)["']\s*\]\s*=\s*([A-Za-z_$][\w$]*)\s*\(\s*\)\s*;?/g),
+    ...text.matchAll(/\bsettings\s*\.\s*([A-Za-z_$][\w$]*)\s*=\s*([A-Za-z_$][\w$]*)\s*\(\s*\)\s*;?/g)
+  ];
+  for(const match of assignments){
+    const key=String(match[1]||''),fn=byName.get(String(match[2]||''));if(!key||!fn||(wanted.size&&!wanted.has(key)))continue;
+    const ids=controlIds(fn.body).filter(id=>tables.has(id));if(ids.length!==1)continue;const table=tables.get(ids[0]);
+    const producer=functions.find(item=>item.name!==fn.name&&controlIds(item.body).includes(table.id)&&/<option\b/i.test(item.body));if(!producer)continue;
+    const loadProof=new RegExp('pref\\s*\\.\\s*'+escapeRegex(key)+'[\\s\\S]{0,2400}?\\b'+escapeRegex(producer.name)+'\\s*\\(').test(text);if(!loadProof)continue;
+    const structured=structuredModeSpec(fn.body,producer,table);if(!structured)continue;out.push({key,controlId:table.id,title:table.title,evidence:'semantic-structured-return',structured});
+  }
+  return out;
+}
+
 
 function stripOuterParens(value){
   let text=String(value||'').trim(),changed=true;
@@ -222,7 +290,7 @@ export function extractQbPreferencesBehaviorPredicates(source,controlToPreferenc
 
 export function extractQbPreferencesCompositeUiFacts(source,preferenceKeys=[]){
   const text=String(source||''),wanted=new Set((preferenceKeys||[]).map(String)),out={},titles=controlTitles(text);
-  const add=(key,id,evidence)=>{key=String(key||'');id=String(id||'');if(!key||!id||out[key]||(wanted.size&&!wanted.has(key)))return;const title=titles.get(id);if(title)out[key]={controlId:id,evidence,title};};
+  const add=(key,id,evidence,titleOverride=null,structured=null)=>{key=String(key||'');id=String(id||'');if(!key||!id||out[key]||(wanted.size&&!wanted.has(key)))return;const title=titleOverride||titles.get(id);if(title)out[key]={controlId:id,evidence,title,...(structured?{structured}:{})};};
   const statementPatterns=[
     {re:/document\.getElementById\(\s*["']([^"']+)["']\s*\)[^;\n]*?=[^;\n]*;?/g,family:'semantic-modern-statement'},
     {re:/\$\(\s*["']([^"']+)["']\s*\)[^;\n]*?=[^;\n]*;?/g,family:'semantic-legacy-statement'},
@@ -232,5 +300,6 @@ export function extractQbPreferencesCompositeUiFacts(source,preferenceKeys=[]){
   for(const match of text.matchAll(/\bswitch\s*\(\s*(?:Number\s*\(\s*)?pref\s*\.\s*([A-Za-z_$][\w$]*)(?:\s*\))?(?:\s*\.\s*toInt\s*\(\s*\))?\s*\)/g)){
     const key=String(match[1]||'');if(wanted.size&&!wanted.has(key))continue;const body=balancedBody(text,match.index??0),ids=controlIds(body);if(ids.length===1)add(key,ids[0],'semantic-switch');
   }
+  for(const fact of structuredReturnFacts(text,wanted))add(fact.key,fact.controlId,fact.evidence,fact.title,fact.structured);
   return out;
 }

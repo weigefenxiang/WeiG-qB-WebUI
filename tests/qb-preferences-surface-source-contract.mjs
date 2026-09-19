@@ -298,7 +298,8 @@ assert.equal(compact.releases.length,2,'compact contract must retain exact relea
 assert.equal(compact.tabs.length,1,'unchanged native tabs must deduplicate to one change point');
 assert.equal(Object.keys(compact.preferences).length,3,'compact contract must be keyed by source-mapped preference identity instead of repeating whole manifests');
 assert.ok(Array.isArray(compact.refs)&&compact.refs.some(ref=>ref[1]==='Future limit:'),'source/context identities must be interned once');
-assert.equal(compact.format.preference.at(-1),'projection','compact format must make source value projection an explicit keyed preference fact');
+assert.equal(compact.format.preference.at(-2),'projection','compact format must keep source value projection as an explicit keyed preference fact');
+assert.equal(compact.format.preference.at(-1),'structured','compact format must explicitly transport optional source-proven structured editor metadata');
 const expanded=expandQbPreferencesCompact(compact,'5.2.3');
 assert.deepEqual(expanded.tabs.map(tab=>tab.id),['behavior','futurenetwork']);
 assert.equal(expanded.preferences.future_limit.tab,'futurenetwork');

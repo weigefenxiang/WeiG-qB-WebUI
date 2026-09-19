@@ -29,11 +29,14 @@ function findControl(_markup,id,caches){return caches.controls.get(String(id||''
 function selectOptions(markup,control){if(!control||control.tag!=='select'||!control.range)return[];const body=String(markup||'').slice(control.range.openEnd,control.range.endStart),out=[];for(const match of body.matchAll(/<option\b([^>]*)>([\s\S]*?)<\/option>/gi)){const value=attrText(match[1],'value'),ref=qbtTr(match[2]),literal=ref?null:decodeHtml(match[2]);out.push({value:value===null?decodeHtml(match[2]):value,label:ref||{literal}});}return out;}
 function immediateUnit(markup,control,_descriptor,_projection){if(!control||control.semantic==='select')return null;let tail=String(markup||'').slice(control.openEnd,control.openEnd+180),stop=tail.search(/<(?:input|select|textarea|button|label|div|tr|fieldset)\b|<\/(?:td|div|span|fieldset)>/i);if(stop>=0)tail=tail.slice(0,stop);const ref=qbtTr(tail);if(ref)return ref;const literal=decodeHtml(tail).replace(/&nbsp;/gi,' ').replace(/^[:\s\u00a0]+|[:\s\u00a0]+$/g,'');return literal&&literal.length<=48&&!/[.!?。！？]$/.test(literal)?{literal}:null;}
 function descriptorSubset(descriptor){if(!descriptor)return null;const out={};for(const key of ['getterPresent','setterPresent','readType','writeType','typeAgreement','writable'])out[key]=Object.prototype.hasOwnProperty.call(descriptor,key)?descriptor[key]:null;return out;}
-function safeStringWriteProjection(projection,descriptor,control){
+function safeSourceWriteProjection(projection,descriptor,control,fact){
   if(!projection||projection.safeWrite===true)return projection;
   const semantic=String(control?.semantic||''),direct=projection.kind==='unproven'&&projection.writeFactor===1;
   const exactString=descriptor?.setterPresent===true&&descriptor?.writable===true&&descriptor?.writeType==='string'&&descriptor?.typeAgreement==='EXACT';
-  return direct&&exactString&&['text','select','password','textarea'].includes(semantic)?{...projection,safeWrite:true,writeIdentity:true}:projection;
+  if(direct&&exactString&&['text','select','password','textarea'].includes(semantic))return{...projection,safeWrite:true,writeIdentity:true};
+  const exactObject=descriptor?.getterPresent===true&&descriptor?.setterPresent===true&&descriptor?.writable===true&&descriptor?.readType==='object'&&descriptor?.writeType==='object'&&descriptor?.typeAgreement==='EXACT';
+  if(semantic==='structured'&&fact?.evidence==='semantic-structured-return'&&fact?.structured?.kind==='keyed-map'&&exactObject)return{kind:'identity',safeWrite:true};
+  return projection;
 }
 function sourceTabs(preferencesSource,toolbarSource){const divs=elementRanges(preferencesSource,'div').filter(item=>/\bPrefTab\b/.test(String(attrText(item.attrs,'class')||''))),bySlug=new Map(divs.map(item=>[tabSlug(attrText(item.attrs,'id')),item])),toolbar=settingsTabRefs(toolbarSource||preferencesSource),out=[];for(const item of toolbar){const range=bySlug.get(item.tab)||null;if(range)out.push({id:item.tab,nativeId:attrText(range.attrs,'id')||null,title:item.ref,range});}if(out.length)return out;for(const range of divs){const id=tabSlug(attrText(range.attrs,'id'));if(id)out.push({id,nativeId:attrText(range.attrs,'id')||null,title:null,range});}return out;}
 
@@ -281,7 +284,7 @@ export function extractQbPreferencesNativeSurface({preferencesSource='',toolbarS
       for(const ancestor of containing){for(const gate of controlsInLegend(preferencesSource,ancestor,uiByControl))if(gate.controlId!==control.id&&!gates.some(item=>item.controlId===gate.controlId))gates.push(gate);}
       trace?.(`tab:${tab.id} pref:${key} layout DONE ${Date.now()-layoutStarted}ms ancestors=${containing.length} gates=${gates.length}`);
       const projectionStarted=Date.now();trace?.(`tab:${tab.id} pref:${key} projection START`);
-      const descriptor=descriptorSubset(descriptors.get(key)),projection=safeStringWriteProjection(extractQbPreferenceValueProjection(preferencesSource,key,control.id),descriptor,control);
+      const descriptor=descriptorSubset(descriptors.get(key)),projection=safeSourceWriteProjection(extractQbPreferenceValueProjection(preferencesSource,key,control.id),descriptor,control,fact);
       trace?.(`tab:${tab.id} pref:${key} projection DONE ${Date.now()-projectionStarted}ms kind=${projection?.kind||'unknown'}`);
       rows.push({key,sourcePos:control.start,sectionKey:nearest?String(nearest.start):'root',sectionRef,control,fact,gates,descriptor,projection});
       trace?.(`tab:${tab.id} pref:${key} DONE ${Date.now()-prefStarted}ms`);
@@ -289,7 +292,7 @@ export function extractQbPreferencesNativeSurface({preferencesSource='',toolbarS
     rows.sort((a,b)=>a.sourcePos-b.sourcePos||a.key.localeCompare(b.key));
     const sections=[],sectionByTransition=[];let lastKey=null,current=null;
     rows.forEach((row,order)=>{if(row.sectionKey!==lastKey){current={id:`${tab.id}:${sections.length}`,order:sections.length,title:row.sectionRef||null,preferences:[]};sections.push(current);lastKey=row.sectionKey;}current.preferences.push(row.key);sectionByTransition[order]=current;});
-    rows.forEach((row,order)=>{const section=sectionByTransition[order],options=selectOptions(preferencesSource,row.control),unit=immediateUnit(preferencesSource,row.control,row.descriptor,row.projection);preferences[row.key]={key:row.key,tab:tab.id,tabOrder,sectionId:section.id,sectionOrder:section.order,order,title:row.fact.title||null,description:row.fact.description||null,control:{id:row.control.id,tag:row.control.tag,type:row.control.type,semantic:row.control.semantic,attributes:row.control.attributes,classes:row.control.classes,handlers:row.control.handlers,staticDisabled:row.control.staticDisabled,options,...(unit?{unit}:{})},dependencies:{gates:row.gates},descriptor:row.descriptor,projection:row.projection};});
+    rows.forEach((row,order)=>{const section=sectionByTransition[order],options=selectOptions(preferencesSource,row.control),unit=immediateUnit(preferencesSource,row.control,row.descriptor,row.projection);preferences[row.key]={key:row.key,tab:tab.id,tabOrder,sectionId:section.id,sectionOrder:section.order,order,title:row.fact.title||null,description:row.fact.description||null,control:{id:row.control.id,tag:row.control.tag,type:row.control.type,semantic:row.control.semantic,attributes:row.control.attributes,classes:row.control.classes,handlers:row.control.handlers,staticDisabled:row.control.staticDisabled,options,...(unit?{unit}:{}),...(row.fact.structured?{structured:row.fact.structured}:{})},dependencies:{gates:row.gates},descriptor:row.descriptor,projection:row.projection};});
     tabRows.push({id:tab.id,nativeId:tab.nativeId,title:tab.title||null,order:tabOrder,sections,preferences:rows.map(row=>row.key)});
     trace?.(`tab:${tab.id} DONE ${Date.now()-tabStarted}ms rows=${rows.length}`);
   });
