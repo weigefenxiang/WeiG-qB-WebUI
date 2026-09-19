@@ -94,7 +94,7 @@ async function seedAllPrefs(page){return page.evaluate(async()=>{
     for(const row of graph.rows||[])for(const item of row.items||[])if(item&&item.kind==='control')controls.push(item);
   }
   for(const item of controls){const key=item&&item.preferenceKey;if(!key||own(prefs,key))continue;const source=S.sourcePreference(key)||{},type=String(source.descriptor&&source.descriptor.readType||source.descriptor&&source.descriptor.writeType||'').toLowerCase(),semantic=String(source.semantic||item.semantic||'').toLowerCase(),attrs=source.attributes||{};let value='';if(Array.isArray(source.options)&&source.options.length)value=source.options[0].value;else if(type.includes('bool')||semantic.includes('check')||semantic.includes('switch'))value=false;else if(type.includes('int')||type.includes('double')||type.includes('float')||type.includes('number')||semantic.includes('spin')||semantic.includes('number')){const min=Number(attrs.min);value=Number.isFinite(min)?min:0;}prefs[key]=value;}
-  state.prefs=prefs;if(WeiG.AppState)WeiG.AppState.preferences=prefs;state.draft={};state.auxDraft={};await WeiG.SettingsRenderer.open(state.tab);return{tabs:S.nativeSurfaces(),keys:Object.keys(prefs).length};
+  state.prefs=prefs;if(WeiG.AppState)WeiG.AppState.preferences=prefs;state.draft={};state.auxDraft={};await WeiG.SettingsRenderer.open(state.tab);return{tabs:S.nativeSurfaces(),keys:Object.keys(prefs).length,prefs:prefs};
 });}
 function sorted(values){return [...values].sort((a,b)=>String(a).localeCompare(String(b)));}
 async function auditTab(page,tab){const result=await page.evaluate(value=>{
@@ -140,7 +140,7 @@ try{
   const context=await browser.newContext({viewport:{width:1366,height:900},locale:'en-US'}),page=await context.newPage(),errors=[];
   page.on('pageerror',error=>errors.push(String(error)));page.on('console',message=>{if(message.type()==='error'&&!/favicon|Wei\.G\.ico/i.test(message.text()))errors.push(message.text());});
   await page.goto('http://'+host+':'+port+'/en/#/',{waitUntil:'networkidle'});await page.waitForSelector('#torrent-list');await openSettings(page);
-  const seeded=await seedAllPrefs(page);assert(seeded.tabs.length>=8,'Expected the full native qB Options tab set, got '+JSON.stringify(seeded.tabs));
+  const seeded=await seedAllPrefs(page);variants.en.prefs={...seeded.prefs};assert(seeded.tabs.length>=8,'Expected the full native qB Options tab set, got '+JSON.stringify(seeded.tabs));
   const domTabs=await page.locator('#settings-qb-tabs [data-settings-tab]').evaluateAll(nodes=>nodes.map(node=>node.dataset.settingsTab));assert(JSON.stringify(domTabs)===JSON.stringify(seeded.tabs),'Rendered qB tab order diverged from SettingsSchema.nativeSurfaces()');
   const allAudit={};for(const tab of seeded.tabs){await selectTab(page,tab);allAudit[tab]=await auditTab(page,tab);}
   for(const required of ['behavior','downloads','connection','speed','bittorrent','rss','webui','advanced'])assert(seeded.tabs.includes(required),'Native Options audit lost required tab '+required);
