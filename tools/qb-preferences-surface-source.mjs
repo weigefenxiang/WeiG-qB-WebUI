@@ -57,7 +57,7 @@ function sourceRefIdentity(ref){
   return JSON.stringify(ref);
 }
 function buildSourceOwnershipIndex(markup,tabs,fieldsets,caches){
-  const labels=sourceLabelRanges(markup),byFor=new Map(),byId=new Map(),rows=[...(caches.divs||[]).filter(row=>String(attrText(row.attrs,'class')||'').split(/\s+/).includes('formRow')),...(caches.trs||[])].sort((a,b)=>a.start-b.start||a.end-b.end),owners=new Map();
+  const labels=sourceLabelRanges(markup),legends=elementRanges(markup,'legend'),byFor=new Map(),byId=new Map(),rows=[...(caches.divs||[]).filter(row=>String(attrText(row.attrs,'class')||'').split(/\s+/).includes('formRow')),...(caches.trs||[])].sort((a,b)=>a.start-b.start||a.end-b.end),owners=new Map();
   for(const label of labels){
     if(label.forId){const list=byFor.get(label.forId)||[];list.push(label);byFor.set(label.forId,list);}
     if(label.id&&!byId.has(label.id))byId.set(label.id,label);
@@ -95,8 +95,9 @@ function buildSourceOwnershipIndex(markup,tabs,fieldsets,caches){
       if(adjacent.length)add(adjacent[0],3,'E2:direct-adjacent');
     }
     if(!candidates.length&&nearestField){
-      const ref=directLegend(markup,nearestField);
-      if(ref)candidates.push({ref,rank:2,evidence:'E3:fieldset-group',sourceRange:{start:nearestField.start,end:nearestField.openEnd}});
+      const ref=directLegend(markup,nearestField),directFieldControls=[...caches.controls.values()].filter(item=>inside(nearestField,item.start)&&nearestContaining(tabFields,item.start)===nearestField),controlLegend=legends.find(legend=>inside(nearestField,legend.start)&&inside(legend,control.start))||null;
+      const evidence=controlLegend?'E3:legend-control':(control.tag==='table'?'E3:structured-group':(directFieldControls.length===1?'E3:single-control-group':''));
+      if(ref&&evidence)candidates.push({ref,rank:2,evidence,sourceRange:{start:controlLegend?.start??nearestField.start,end:controlLegend?.end??nearestField.openEnd}});
     }
     candidates.sort((a,b)=>b.rank-a.rank||a.sourceRange.start-b.sourceRange.start);
     const topRank=candidates[0]?.rank||0,top=candidates.filter(item=>item.rank===topRank),identities=[...new Set(top.map(item=>sourceRefIdentity(item.ref)).filter(Boolean))],label=identities.length===1?top[0]:null;
