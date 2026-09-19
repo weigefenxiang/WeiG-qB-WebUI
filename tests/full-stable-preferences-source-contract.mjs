@@ -141,7 +141,8 @@ assert.equal(compact.schemaVersion,2,'compact Preferences IR must use the keyed 
 assertCatalogIdentity(compact.catalogIdentity,expectedIdentity,'Preferences compact Frozen catalog identity');
 assert.equal(compact.releases.length,catalog.length,'compact Preferences release identity must remain exact');
 assert.ok(compact.tabs.length>0&&compact.tabs.length<=catalog.length,'compact Preferences tab change-point count is invalid');
-assert.equal(compact.format.preference.at(-1),'projection','compact Preferences format must expose value projection as a first-class source fact');
+assert.equal(compact.format.preference.at(-2),'projection','compact Preferences format must keep value projection as a first-class source fact');
+assert.equal(compact.format.preference.at(-1),'structured','compact Preferences format must expose optional source-proven structured editor metadata after projection');
 assert.ok(bytes<640*1024,`compact Preferences + Control Graph runtime IR is ${bytes} bytes; source graph transport must stay bounded instead of duplicating full manifests`);
 assert.equal(compact.releases.at(-1)[0],catalog.at(-1).qbVersion);
 assert.equal(compact.releases.at(-1)[1],catalog.at(-1).sourceSha);
