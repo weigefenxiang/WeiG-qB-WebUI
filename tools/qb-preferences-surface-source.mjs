@@ -69,6 +69,9 @@ function sourceContentNodes(markup,tabs,caches){
   }
   return out;
 }
+function graphContentItem(content){
+  return{kind:'content',contentKind:String(content?.contentKind||'note'),id:String(content?.id||''),forControlId:content?.forControlId??null,label:content?.label??null,items:Array.isArray(content?.items)?content.items:[]};
+}
 function escapeRegex(value){return String(value||'').replace(/[-/\\^$*+?.()|[\]{}]/g,match=>'\\'+match);}
 function labelRefForControl(markup,id){
   const escaped=escapeRegex(id);
@@ -145,7 +148,7 @@ function buildControlGraph(markup,tabs,fieldsets,caches,preferences){
       const parent=nearestContaining(tabFields,row.start),items=[];
       for(const control of controls){assignedControls.add(control.id);representedControls.add(control.id);sourceControls.add(control.id);items.push({kind:'control',...graphControl(control,preferenceById,behavior,markup,null,row.endStart)});}
       for(const helper of rowHelpers){assignedHelpers.add(helper.id);representedHelpers.add(helper.id);sourceHelpers.add(helper.id);items.push({kind:'helper',id:helper.id,role:'helper',label:helper.label,action:sourceHelperAction(helper.onclick,markup),condition:behavior.predicates?.[helper.id]||null});}
-      for(const content of rowContents){assignedContents.add(content.id);representedContents.add(content.id);sourceContents.add(content.id);items.push({...content});}
+      for(const content of rowContents){assignedContents.add(content.id);representedContents.add(content.id);sourceContents.add(content.id);items.push(graphContentItem(content));}
       const mapped=items.filter(item=>item.kind==='control'&&item.preferenceKey).length,auxCheckbox=items.some(item=>item.kind==='control'&&!item.preferenceKey&&item.semantic==='checkbox'),hasHelper=items.some(item=>item.kind==='helper'),hasContent=items.some(item=>item.kind==='content');
       const template=hasContent&&!mapped&&!hasHelper?'content-only':hasHelper?(mapped>1?'inline-multi-helper':'control-helper'):(auxCheckbox&&mapped?'gated-sentinel':mapped>1?'inline-multi-control':'single-row');
       rows.push({id:tab.id+':row:'+rows.length,parentFieldsetId:parent?fieldIds.get(parent):null,order:rows.length,sourceOrder:0,_sourcePos:row.start,template,items});
@@ -162,7 +165,7 @@ function buildControlGraph(markup,tabs,fieldsets,caches,preferences){
     }
     for(const content of tabContents){
       sourceContents.add(content.id);if(assignedContents.has(content.id))continue;representedContents.add(content.id);const parent=nearestContaining(tabFields,content.start);
-      rows.push({id:tab.id+':row:'+rows.length,parentFieldsetId:parent?fieldIds.get(parent):null,order:rows.length,sourceOrder:0,_sourcePos:content.start,template:'content-only',items:[{...content}]});
+      rows.push({id:tab.id+':row:'+rows.length,parentFieldsetId:parent?fieldIds.get(parent):null,order:rows.length,sourceOrder:0,_sourcePos:content.start,template:'content-only',items:[graphContentItem(content)]});
     }
     for(const parentId of [null,...graphFields.map(field=>field.id)]){
       const children=[
