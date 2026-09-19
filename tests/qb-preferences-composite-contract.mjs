@@ -407,6 +407,16 @@ const legacyStructuredFacts=extractQbPreferencesNativeSurface({
 assert.equal(legacyStructuredFacts.preferences.future_folders?.control?.structured?.kind,'keyed-map','legacy settings.set serializer must compile into the same canonical structured metadata');
 assert.deepEqual(legacyStructuredFacts.preferences.future_folders?.projection,{kind:'identity',safeWrite:true},'canonical structured metadata plus exact object getter/setter proof must admit legacy structured writeback without relying on legacy evidence names');
 
+const structuredLocalCopyMarkup=structuredMarkup
+  .replace('QBT_TR(Automatically add items from:)QBT_TR[CONTEXT=OptionsDialog]</legend>','QBT_TR(Hard Disk)QBT_TR[CONTEXT=OptionsDialog]</legend>')
+  .replace('<table id="futureFolders">','QBT_TR(Automatically add items from:)QBT_TR[CONTEXT=OptionsDialog]<br><table id="futureFolders">');
+const structuredLocalCopyFacts=extractQbPreferencesNativeSurface({
+  preferencesSource:structuredLocalCopyMarkup,
+  toolbarSource:structuredToolbar,
+  preferenceDescriptors:[{key:'future_folders',getterPresent:true,setterPresent:true,readType:'object',writeType:'object',typeAgreement:'EXACT',writable:true}]
+});
+assert.deepEqual(structuredLocalCopyFacts.preferences.future_folders?.title,{source:'Automatically add items from:',context:'OptionsDialog'},'a bounded standalone copy immediately owning a structured table must outrank its broader fieldset legend');
+
 const timePresentationToolbar='<li id="PrefSpeedLink">QBT_TR(Speed)QBT_TR[CONTEXT=OptionsDialog]</li>';
 const timePresentationMarkup=[
   '<div id="SpeedTab" class="PrefTab"><div class="formRow">',
