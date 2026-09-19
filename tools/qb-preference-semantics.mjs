@@ -68,12 +68,21 @@ function cppType(type) {
   return null;
 }
 
-function declaredGetterTypes(source) {
+function declaredEnumNames(source) {
+  const out = new Set();
+  for (const match of String(source || '').matchAll(/\benum\s+(?:class\s+)?([A-Za-z_]\w*)\b/g)) out.add(String(match[1] || ''));
+  return out;
+}
+
+function declaredGetterTypes(source, inheritedEnums = null) {
   const out = new Map();
   const text = String(source || '');
+  const enums = inheritedEnums || declaredEnumNames(text);
   const declaration = /^\s*(?:virtual\s+)?(.+?)\s+([A-Za-z_]\w*)\s*\(\s*\)\s*(?:const\s*)?(?:noexcept\s*)?(?:=\s*0\s*)?;\s*$/gm;
   for (const match of text.matchAll(declaration)) {
-    const type = cppType(match[1]);
+    const rawType = compact(match[1]).replace(/\bconst\b/g, '').replace(/[&*]/g, '').trim();
+    const shortType = rawType.split('::').at(-1);
+    const type = cppType(match[1]) || ((enums.has(rawType) || enums.has(shortType)) ? 'number' : null);
     if (type && !out.has(match[2])) out.set(match[2], type);
   }
   return out;
@@ -145,7 +154,8 @@ function declaredClassGetterTypes(sources = []) {
       const closeIndex = matchingBrace(text, openIndex);
       if (closeIndex < 0) continue;
       const body = text.slice(openIndex + 1, closeIndex);
-      for (const [name, type] of declaredGetterTypes(body)) out.set(`${match[1]}.${name}`, type);
+      const enums = declaredEnumNames(text);
+      for (const [name, type] of declaredGetterTypes(body, enums)) out.set(`${match[1]}.${name}`, type);
     }
   }
   return out;
