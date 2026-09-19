@@ -35,7 +35,7 @@ function safeSourceWriteProjection(projection,descriptor,control,fact){
   const exactString=descriptor?.setterPresent===true&&descriptor?.writable===true&&descriptor?.writeType==='string'&&descriptor?.typeAgreement==='EXACT';
   if(direct&&exactString&&['text','select','password','textarea'].includes(semantic))return{...projection,safeWrite:true,writeIdentity:true};
   const exactObject=descriptor?.getterPresent===true&&descriptor?.setterPresent===true&&descriptor?.writable===true&&descriptor?.readType==='object'&&descriptor?.writeType==='object'&&descriptor?.typeAgreement==='EXACT';
-  if(semantic==='structured'&&fact?.evidence==='semantic-structured-return'&&fact?.structured?.kind==='keyed-map'&&exactObject)return{kind:'identity',safeWrite:true};
+  if(semantic==='structured'&&fact?.structured?.kind==='keyed-map'&&exactObject)return{kind:'identity',safeWrite:true};
   return projection;
 }
 function sourceTabs(preferencesSource,toolbarSource){const divs=elementRanges(preferencesSource,'div').filter(item=>/\bPrefTab\b/.test(String(attrText(item.attrs,'class')||''))),bySlug=new Map(divs.map(item=>[tabSlug(attrText(item.attrs,'id')),item])),toolbar=settingsTabRefs(toolbarSource||preferencesSource),out=[];for(const item of toolbar){const range=bySlug.get(item.tab)||null;if(range)out.push({id:item.tab,nativeId:attrText(range.attrs,'id')||null,title:item.ref,range});}if(out.length)return out;for(const range of divs){const id=tabSlug(attrText(range.attrs,'id'));if(id)out.push({id,nativeId:attrText(range.attrs,'id')||null,title:null,range});}return out;}
