@@ -79,8 +79,8 @@ function buildSourceOwnershipIndex(markup,tabs,fieldsets,caches){
     const labelledBy=String(attrText(control.sourceAttrs||'','aria-labelledby')||'').trim();
     if(labelledBy)for(const labelId of labelledBy.split(/\s+/)){const label=byId.get(labelId);if(label)add(label,4,'E1:aria-labelledby');}
     if(!candidates.some(item=>item.rank===4)&&row){
-      const rowLabels=labels.filter(label=>inside(row,label.start)),rowControls=[...caches.controls.values()].filter(item=>inside(row,item.start)),unbound=rowLabels.filter(label=>!label.forId);
-      const before=unbound.filter(label=>label.end<=control.start).sort((a,b)=>b.end-a.end);
+      const rowLabels=labels.filter(label=>inside(row,label.start)),rowControls=[...caches.controls.values()].filter(item=>inside(row,item.start)),available=rowLabels.filter(label=>!label.forId||!caches.controls.has(label.forId));
+      const before=available.filter(label=>label.end<=control.start).sort((a,b)=>b.end-a.end);
       for(const label of before){
         const crossedControl=rowControls.some(item=>item.id!==control.id&&item.start>label.end&&item.start<control.start),crossedLabel=rowLabels.some(item=>item!==label&&item.start>label.end&&item.end<=control.start);
         if(!crossedControl&&!crossedLabel){add(label,3,'E2:bounded-row-adjacent');break;}
@@ -90,7 +90,7 @@ function buildSourceOwnershipIndex(markup,tabs,fieldsets,caches){
           if(explicitIds.has(item.id))return false;
           return !String(attrText(item.sourceAttrs||'','aria-labelledby')||'').trim();
         });
-        if(unbound.length===1&&unlabeledControls.length===1&&unlabeledControls[0].id===control.id)add(unbound[0],3,'E2:bounded-row-unique');
+        if(available.length===1&&unlabeledControls.length===1&&unlabeledControls[0].id===control.id)add(available[0],3,available[0].forId?'E2:bounded-row-dangling-for':'E2:bounded-row-unique');
       }
     }
     if(!candidates.some(item=>item.rank>=3)){
