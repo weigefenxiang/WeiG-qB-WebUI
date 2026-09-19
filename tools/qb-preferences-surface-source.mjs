@@ -104,12 +104,17 @@ function buildSourceOwnershipIndex(markup,tabs,fieldsets,caches){
     }
     if(!candidates.some(item=>item.rank>=3)&&row){
       const free=copyRefs.filter(copy=>{
-        if(!inside(row,copy.start)||copy.end>control.start||!/:\s*$/.test(String(copy.ref?.source||'')))return false;
+        if(!inside(row,copy.start)||copy.end>control.start)return false;
         if(labels.some(label=>copy.start>=label.start&&copy.end<=label.end))return false;
         if(options.some(option=>inside(option,copy.start)))return false;
         return true;
       }).sort((a,b)=>b.end-a.end);
-      if(free.length)candidates.push({ref:free[0].ref,rank:3,evidence:'E2:inline-copy-group',sourceRange:{start:free[0].start,end:free[0].end}});
+      const colon=free.filter(copy=>/:\s*$/.test(String(copy.ref?.source||'')));
+      if(colon.length)candidates.push({ref:colon[0].ref,rank:3,evidence:'E2:inline-copy-group',sourceRange:{start:colon[0].start,end:colon[0].end}});
+      else{
+        const rowControls=[...caches.controls.values()].filter(item=>inside(row,item.start)&&!explicitIds.has(item.id)&&!String(attrText(item.sourceAttrs||'','aria-labelledby')||'').trim());
+        if(free.length===1&&rowControls.length===1&&rowControls[0].id===control.id)candidates.push({ref:free[0].ref,rank:3,evidence:'E2:inline-copy-unique',sourceRange:{start:free[0].start,end:free[0].end}});
+      }
     }
     if(!candidates.length){
       const gateLabels=[];
