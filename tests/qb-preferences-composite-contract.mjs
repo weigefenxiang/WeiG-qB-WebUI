@@ -251,6 +251,19 @@ const mismatch=`
 </script>`;
 assert.deepEqual(extractQbPreferenceValueProjection(mismatch,'example','value'),{kind:'unproven',safeWrite:false,readFactor:1/1024,writeFactor:1000},'mismatched source transforms must fail closed instead of inventing a reversible projection');
 
+const legacyBooleanAliasMarkup=`
+<div id="AdvancedTab" class="PrefTab"><div class="formRow"><label for="flag_control">QBT_TR(Flag:)QBT_TR[CONTEXT=OptionsDialog]</label><input id="flag_control" type="checkbox"></div></div>
+<script>
+$('flag_control').setProperty('checked', pref.legacy_flag_name);
+settings.set('current_flag_name', $('flag_control').getProperty('checked'));
+</script>`;
+const legacyBooleanAliasFacts=extractQbPreferencesNativeSurface({
+  preferencesSource:legacyBooleanAliasMarkup,
+  toolbarSource:'<li id="PrefAdvancedLink">Advanced</li>',
+  preferenceDescriptors:[{key:'current_flag_name',getterPresent:true,setterPresent:true,readType:'boolean',writeType:'boolean',typeAgreement:'EXACT',writable:true}]
+});
+assert.deepEqual(legacyBooleanAliasFacts.preferences.current_flag_name?.projection,{kind:'identity',safeWrite:true},'exact API boolean getter/setter plus direct checkbox write must prove identity even when historical native UI read copy used a stale alias');
+
 const selectedIndexIdentity=`
 <select id="content_layout"><option value="Original">Original</option><option value="Subfolder">Subfolder</option><option value="NoSubfolder">NoSubfolder</option></select>
 <script>
