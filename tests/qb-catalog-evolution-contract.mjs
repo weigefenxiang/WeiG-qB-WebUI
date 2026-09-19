@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {annotateCatalogEvolution, validateCatalogEvolution} from '../tools/qb-catalog-evolution.mjs';
+import {buildReleaseCatalogShard,mergeReleaseCatalogShards,selectStableTagShard} from '../tools/qb-release-catalog-shards.mjs';
 function actionParams(actions,overrides={}){return Object.fromEntries(actions.map(action=>[action,overrides[action]||{parameters:[],required:[],optional:[]} ]));}
 function surfaces(extra={}){return{torrentFilters:['all','downloading'],torrentInfoParameters:['filter'],torrentInfoFields:['name','state',...(extra.infoFields||[])],torrentStates:['downloading','unknown'],torrentPropertiesFields:['eta'],torrentTrackerFields:['url'],torrentFileFields:['name'],torrentWebSeedFields:['url']};}
 const catalog=[
@@ -9,4 +10,11 @@ const catalog=[
 ];
 annotateCatalogEvolution(catalog);assert.equal(validateCatalogEvolution(catalog),true);assert.deepEqual(catalog[0].preferenceChanges.added,['a','b']);assert.deepEqual(catalog[1].preferenceChanges.added,['c']);assert.deepEqual(catalog[2].preferenceChanges.removed,['b']);assert.deepEqual(catalog[1].preferenceChanges.typeChanged,[{key:'b',from:'number',to:'string'}]);assert.deepEqual(catalog[1].preferenceChanges.readTypeChanged,[{key:'b',from:'number',to:'string'}]);assert.deepEqual(catalog[1].preferenceChanges.writeTypeChanged,[{key:'b',from:'number',to:'string'}]);assert.deepEqual(catalog[2].preferenceChanges.writeTypeChanged,[{key:'a',from:'boolean',to:null}]);assert.deepEqual(catalog[2].preferenceChanges.writableChanged,[{key:'a',from:true,to:false}]);assert.deepEqual(catalog[2].preferenceChanges.agreementChanged,[{key:'a',from:'EXACT',to:'READ_ONLY'}]);assert.deepEqual(catalog[1].preferenceChanges.fallbackChanged,[{key:'b',from:null,to:'None'}]);assert.deepEqual(catalog[1].apiActionChanges.added,['app/c']);assert.deepEqual(catalog[2].apiActionChanges.removed,['app/a']);assert.deepEqual(catalog[1].surfaceChanges.torrentInfoFields.added,['private']);assert.deepEqual(catalog[2].surfaceChanges.torrentInfoFields.added,['download_path']);assert.equal(catalog[1].apiActionParameterChanges.changed[0].action,'app/a');
 const c=catalog[2].preferenceDescriptors.find(item=>item.key==='c');assert.equal(c.firstSeenInLabCatalog,'4.2.0');assert.equal(c.schemaLastChangedInLabCatalog,'5.0.0');assert.equal(c.readTypeLastChangedInLabCatalog,'5.0.0');assert.equal(c.firstWritableInLabCatalog,null);const a=catalog[2].preferenceDescriptors.find(item=>item.key==='a');assert.equal(a.firstWritableInLabCatalog,'4.1.0');assert.equal(a.writeTypeLastChangedInLabCatalog,'5.0.0');assert.equal(a.schemaLastChangedInLabCatalog,'5.0.0');
-console.log('qB catalog evolution contract passed: Preference/API/action-parameter/Torrent response surfaces have machine-readable release deltas.');
+const stableTags=['release-4.1.0','release-4.1.1','release-4.1.2','release-4.1.3','release-4.1.4'];
+assert.deepEqual(selectStableTagShard(stableTags,0,2),['release-4.1.0','release-4.1.2','release-4.1.4']);
+const raw=stableTags.map((tag,index)=>({tag,qbVersion:tag.slice(8),raw:index}));
+const shard0=buildReleaseCatalogShard(stableTags,[raw[0],raw[2],raw[4]],0,2),shard1=buildReleaseCatalogShard(stableTags,[raw[1],raw[3]],1,2);
+assert.deepEqual(mergeReleaseCatalogShards([shard1,shard0],2).map(item=>item.tag),stableTags,'parallel source shards must merge back into canonical release order');
+assert.throws(()=>mergeReleaseCatalogShards([shard0],2),/Expected 2 catalog shards/);
+assert.throws(()=>mergeReleaseCatalogShards([shard0,{...shard1,expectedTags:[...stableTags].reverse()}],2),/expected-tag snapshot drift/);
+console.log('qB catalog evolution contract passed: Preference/API/action-parameter/Torrent response surfaces have machine-readable release deltas and 16-way source extraction can merge exact shard coverage without changing canonical order.');

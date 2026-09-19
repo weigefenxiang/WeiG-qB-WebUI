@@ -8,15 +8,21 @@ import {compareQbVersions,isSupportedStableReleaseTag,supportedStableReleaseTags
 import {enrichPreferenceDescriptorsFromGetter} from './qb-preference-semantics.mjs';
 import {annotateCatalogEvolution,validateCatalogEvolution} from './qb-catalog-evolution.mjs';
 import {summarizeCatalogQuality,validateCatalogQuality} from './qb-catalog-quality.mjs';
+import {buildReleaseCatalogShard,mergeReleaseCatalogShards,selectStableTagShard} from './qb-release-catalog-shards.mjs';
 
-const qbRoot=path.resolve(process.argv[2]||process.env.QB_UPSTREAM_DIR||'');
-const outputArg=process.argv.find(x=>x.startsWith('--output='));
-const output=path.resolve(outputArg?outputArg.slice('--output='.length):'simulator/versions/catalog.generated.json');
-const baseArg=process.argv.find(x=>x.startsWith('--base-catalog='));
-const basePath=baseArg?path.resolve(baseArg.slice('--base-catalog='.length)):null;
-const refsArg=process.argv.find(x=>x.startsWith('--refs='));
-const requestedRefs=refsArg?refsArg.slice('--refs='.length).split(',').map(x=>x.trim()).filter(Boolean):[];
-if(!qbRoot||!fs.existsSync(qbRoot)){console.error('Usage: node tools/qb-release-catalog.mjs <qBittorrent-clone> [--output=path] [--base-catalog=path] [--refs=release-x.y.z,...]');process.exit(2);}
+const args=process.argv.slice(2),option=value=>args.find(x=>x.startsWith(value));
+const mergeArg=option('--merge-shards='),mergeShardDir=mergeArg?path.resolve(mergeArg.slice('--merge-shards='.length)):null;
+const expectedShardsArg=option('--expected-shards='),expectedShards=expectedShardsArg?Number(expectedShardsArg.slice('--expected-shards='.length)):null;
+const shardIndexArg=option('--shard-index='),shardCountArg=option('--shard-count=');
+if(Boolean(shardIndexArg)!==Boolean(shardCountArg))throw new Error('qB source catalog sharding requires both --shard-index and --shard-count.');
+const shardIndex=shardIndexArg?Number(shardIndexArg.slice('--shard-index='.length)):null,shardCount=shardCountArg?Number(shardCountArg.slice('--shard-count='.length)):null;
+const positional=args.filter(x=>!x.startsWith('--')),qbRoot=path.resolve(positional[0]||process.env.QB_UPSTREAM_DIR||'.');
+const outputArg=option('--output='),output=path.resolve(outputArg?outputArg.slice('--output='.length):'simulator/versions/catalog.generated.json');
+const baseArg=option('--base-catalog='),basePath=baseArg?path.resolve(baseArg.slice('--base-catalog='.length)):null;
+const refsArg=option('--refs='),requestedRefs=refsArg?refsArg.slice('--refs='.length).split(',').map(x=>x.trim()).filter(Boolean):[];
+if(!mergeShardDir&&(!positional[0]&&!process.env.QB_UPSTREAM_DIR||!fs.existsSync(qbRoot))){console.error('Usage: node tools/qb-release-catalog.mjs <qBittorrent-clone> [--output=path] [--base-catalog=path] [--refs=release-x.y.z,...] [--shard-index=N --shard-count=M] | --merge-shards=dir --expected-shards=N --output=path');process.exit(2);}
+if(mergeShardDir&&(shardIndexArg||refsArg||baseArg))throw new Error('Catalog shard merge cannot combine extraction/base/refs arguments.');
+if(shardIndexArg&&(refsArg||baseArg))throw new Error('Catalog shard extraction cannot combine --refs or --base-catalog.');
 function git(...args){return execFileSync('git',['-C',qbRoot,...args],{encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();}
 function parts(v){return String(v).replace(/^release-/,'').split('.').map(x=>Number.parseInt(x,10)||0);}
 function show(ref,file){return git('show',`${ref}:${file}`);}
@@ -106,6 +112,17 @@ function assertFrozenPrefix(allTags,baseCatalog){
   return baseTags;
 }
 
+if(mergeShardDir){
+  if(!fs.existsSync(mergeShardDir))throw new Error(`Catalog shard directory not found: ${mergeShardDir}`);
+  if(!Number.isInteger(expectedShards)||expectedShards<1)throw new Error('Catalog shard merge requires --expected-shards=N.');
+  const names=fs.readdirSync(mergeShardDir).filter(name=>/^qb-release-catalog-shard-\d+\.json$/.test(name)).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+  const shards=names.map(name=>JSON.parse(fs.readFileSync(path.join(mergeShardDir,name),'utf8'))),catalog=mergeReleaseCatalogShards(shards,expectedShards);
+  annotateCatalogEvolution(catalog);validateCatalogEvolution(catalog);validateCatalogQuality(catalog);
+  fs.mkdirSync(path.dirname(output),{recursive:true});fs.writeFileSync(output,JSON.stringify(catalog,null,2)+'\n','utf8');
+  const totals=summarizeCatalogQuality(catalog),safeFallback=catalog.reduce((sum,item)=>sum+(Number(item.preferenceDescriptorStats?.safeFallback)||0),0);
+  console.log(`Merged ${shards.length}/${expectedShards} exact qB source-catalog shards into ${catalog.length} stable profiles: ${catalog[0].qbVersion} -> ${catalog.at(-1).qbVersion}; API actions ${totals.actions} / params ${totals.actionParameters}; preference getter types ${totals.readTyped}/${totals.preferences}, setter types ${totals.writeTyped}/${totals.preferences}, conflicts ${totals.mismatched}, enum fallbacks ${safeFallback}.`);
+  process.exit(0);
+}
 const allTags=stableTags();
 if(!allTags.length)throw new Error('No stable qBittorrent release tags found from 4.1.0.');
 const baseCatalog=readBaseCatalog();
@@ -116,6 +133,7 @@ if(requestedRefs.length){
   for(const tag of tags){if(!isSupportedStableReleaseTag(tag))throw new Error(`Invalid or unsupported stable ref: ${tag}`);git('rev-parse','--verify',`refs/tags/${tag}`);}
   if(baseCatalog.length){const frozen=new Set(baseCatalog.map(item=>item.tag));for(const tag of tags)if(frozen.has(tag))throw new Error(`Incremental extraction must not re-parse frozen stable tag ${tag}`);}
 }else tags=baseCatalog.length?allTags.slice(baseCatalog.length):allTags;
+if(shardIndexArg)tags=selectStableTagShard(allTags,shardIndex,shardCount);
 
 const catalog=baseCatalog.map(item=>structuredClone(item));
 for(const tag of tags){
@@ -134,6 +152,12 @@ for(const tag of tags){
   });
 }
 if(!catalog.length)throw new Error('No catalog profiles were produced.');
+if(shardIndexArg){
+  const envelope=buildReleaseCatalogShard(allTags,catalog,shardIndex,shardCount);
+  fs.mkdirSync(path.dirname(output),{recursive:true});fs.writeFileSync(output,JSON.stringify(envelope,null,2)+'\n','utf8');
+  console.log(`Generated qB source-catalog shard ${shardIndex+1}/${shardCount}: ${catalog.length}/${allTags.length} stable profiles.`);
+  process.exit(0);
+}
 if(tags.length||!baseCatalog.length){
   const frozenJson=baseCatalog.map(item=>JSON.stringify(item));
   annotateCatalogEvolution(catalog);

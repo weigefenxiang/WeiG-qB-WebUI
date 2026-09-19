@@ -22,7 +22,7 @@ const promote=read('.github/workflows/promote.yml');
 const release=read('.github/workflows/release.yml');
 const compatVerifier=read('tests/release-compat-evidence.mjs');
 
-assert(ci.includes('qb-release-catalog.mjs upstream-qb --output=qb-releases.json'),'candidate CI must regenerate exact supported stable source facts');
+assert(ci.includes('qb-release-catalog.mjs upstream-qb --output=qb-release-catalog-shard-${{ matrix.shard }}.json --shard-index=${{ matrix.shard }} --shard-count=16')&&ci.includes('qb-release-catalog.mjs --merge-shards=base-shards --expected-shards=16 --output=qb-releases.json'),'candidate/settings evidence CI must regenerate exact supported stable source facts through 16 independent extraction runners plus one canonical merge');
 assert(ci.includes('tests/upstream-release-audit.mjs upstream-qb'),'candidate CI must audit every supported stable upstream release');
 assert(ci.includes('tests/full-stable-product-compat.mjs qb-releases.json'),'candidate CI must execute formal product compatibility across the generated stable catalog');
 assert(ci.includes('name: qb-release-catalog-${{ github.sha }}'),'candidate CI must publish an exact-SHA stable catalog artifact');
