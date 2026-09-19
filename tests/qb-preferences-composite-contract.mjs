@@ -342,6 +342,15 @@ assert.equal(structuredCompact.format.preference.at(-1),'structured','compact pr
 const structuredExpanded=expandQbPreferencesCompact(structuredCompact,'9.9.9');
 assert.deepEqual(structuredExpanded.preferences.future_folders.control.structured,structuredPref.control.structured,'structured table metadata must survive compact roundtrip losslessly');
 
+const legacyStructuredMarkup=structuredMarkup.replace('settings["future_folders"] = getFutureFolders();','settings.set("future_folders", getFutureFolders());');
+const legacyStructuredFacts=extractQbPreferencesNativeSurface({
+  preferencesSource:legacyStructuredMarkup,
+  toolbarSource:structuredToolbar,
+  preferenceDescriptors:[{key:'future_folders',getterPresent:true,setterPresent:true,readType:'object',writeType:'object',typeAgreement:'EXACT',writable:true}]
+});
+assert.equal(legacyStructuredFacts.preferences.future_folders?.control?.structured?.kind,'keyed-map','legacy settings.set serializer must compile into the same canonical structured metadata');
+assert.deepEqual(legacyStructuredFacts.preferences.future_folders?.projection,{kind:'identity',safeWrite:true},'canonical structured metadata plus exact object getter/setter proof must admit legacy structured writeback without relying on legacy evidence names');
+
 const timePresentationToolbar='<li id="PrefSpeedLink">QBT_TR(Speed)QBT_TR[CONTEXT=OptionsDialog]</li>';
 const timePresentationMarkup=[
   '<div id="SpeedTab" class="PrefTab"><div class="formRow">',
