@@ -77,10 +77,10 @@ function structuredModeSpec(saveBody,producer,table){
   for(const option of options){
     const id=escapeRegex(option.id),caseMatch=body.match(new RegExp('case\\s+["\\\']'+id+'["\\\']\\s*:[\\s\\S]{0,220}?\\b[A-Za-z_$][\\w$]*\\s*=\\s*([^;]+);','i'));
     if(caseMatch){const value=literalValue(caseMatch[1]);if(value===undefined)custom.add(option.id);else mapped.set(option.id,value);continue;}
-    const ifMatch=body.match(new RegExp('if\\s*\\(\\s*[A-Za-z_$][\\w$]*\\s*===\\s*["\\\']'+id+'["\\\']\\s*\\)\\s*\\b[A-Za-z_$][\\w$]*\\s*=\\s*([^;]+);','i'));
+    const ifMatch=body.match(new RegExp('if\\s*\\(\\s*[A-Za-z_$][\\w$]*\\s*={2,3}\\s*["\\\']'+id+'["\\\']\\s*\\)\\s*(?:\\{\\s*)?\\b[A-Za-z_$][\\w$]*\\s*=\\s*([^;]+);','i'));
     if(ifMatch){const value=literalValue(ifMatch[1]);if(value===undefined)custom.add(option.id);else mapped.set(option.id,value);}
   }
-  for(const ternary of body.matchAll(/\b[A-Za-z_$][\w$]*\s*=\s*\(\s*[A-Za-z_$][\w$]*\s*===\s*["']([^"']+)["']\s*\)\s*\?\s*([^:;]+)\s*:\s*([^;]+);/g)){
+  for(const ternary of body.matchAll(/\b[A-Za-z_$][\w$]*\s*=\s*\(\s*[A-Za-z_$][\w$]*\s*={2,3}\s*["']([^"']+)["']\s*\)\s*\?\s*([^:;]+)\s*:\s*([^;]+);/g)){
     const id=String(ternary[1]||''),yes=literalValue(ternary[2]),no=literalValue(ternary[3]);if(yes!==undefined)mapped.set(id,yes);
     if(no!==undefined){const candidates=options.map(item=>item.id).filter(value=>value!==id&&!custom.has(value)&&!mapped.has(value));if(candidates.length===1)mapped.set(candidates[0],no);}
   }
@@ -100,7 +100,12 @@ function structuredReturnFacts(source,wanted){
   for(const match of assignments){
     const key=String(match[1]||''),fn=byName.get(String(match[2]||''));if(!key||!fn||(wanted.size&&!wanted.has(key)))continue;
     const ids=controlIds(fn.body).filter(id=>tables.has(id));if(ids.length!==1)continue;const table=tables.get(ids[0]);
-    const producer=functions.find(item=>item.name!==fn.name&&controlIds(item.body).includes(table.id)&&/<option\b/i.test(item.body));if(!producer)continue;
+    const aliases=[];for(const aliasMatch of text.matchAll(/\b(?:var|let|const)\s+([A-Za-z_$][\w$]*)\s*=\s*new\s+HtmlTable\s*\(\s*\$\(\s*["']([^"']+)["']\s*\)\s*\)/g))if(String(aliasMatch[2]||'')===table.id)aliases.push(String(aliasMatch[1]||''));
+    const producer=functions.find(item=>{
+      if(item.name===fn.name||!/<option\b/i.test(item.body))return false;
+      if(controlIds(item.body).includes(table.id))return true;
+      return aliases.some(alias=>new RegExp('\\b'+escapeRegex(alias)+'\\s*\\.\\s*(?:push|adopt|append)\\s*\\(').test(item.body));
+    });if(!producer)continue;
     const loadProof=new RegExp('pref\\s*\\.\\s*'+escapeRegex(key)+'[\\s\\S]{0,2400}?\\b'+escapeRegex(producer.name)+'\\s*\\(').test(text);if(!loadProof)continue;
     const structured=structuredModeSpec(fn.body,producer,table);if(!structured)continue;out.push({key,controlId:table.id,title:table.title,evidence:'semantic-structured-return',structured});
   }
