@@ -84,31 +84,37 @@ function presenceGateProjection(source,key,controlId){
   return null;
 }
 function sentinelGateProjection(source,key,controlId,writes,declarations){
-  const writeExpression=String(writes.get(String(key))??'').trim();
+  const text=String(source||''),writeExpression=String(writes.get(String(key))??'').trim();
   if(!/^[A-Za-z_$][\w$]*$/.test(writeExpression))return null;
   const disabledValue=numericLiteral(declarations.get(writeExpression));if(disabledValue===null)return null;
-  const escapedKey=escapeRe(key),readDecl=new RegExp('\\b(?:const|let|var)\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*(?:Number\\(\\s*pref\\s*\\.\\s*'+escapedKey+'\\s*\\)|pref\\s*\\.\\s*'+escapedKey+'(?:\\s*\\.\\s*toInt\\s*\\(\\s*\\))?)\\s*;?');
-  const readDeclMatch=String(source||'').match(readDecl),readVar=readDeclMatch?String(readDeclMatch[1]||''):null;
-  if(!readVar)return null;
+  let readVar=null,readFactor=null;
+  for(const match of text.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*([^;\n]+)/g)){
+    const factor=preferenceNumericFactor(match[2],key);
+    if(factor!==null&&factor>0){readVar=String(match[1]);readFactor=factor;break;}
+  }
+  if(!readVar||!Number.isFinite(readFactor)||readFactor<=0)return null;
   const readRe=new RegExp('if\\s*\\(\\s*'+escapeRe(readVar)+'\\s*<=\\s*(-?\\d+(?:\\.\\d+)?)\\s*\\)\\s*\\{([\\s\\S]*?)\\}\\s*else\\s*\\{([\\s\\S]*?)\\}','g');
   let readMatch=null;
-  for(const match of String(source||'').matchAll(readRe)){
+  for(const match of text.matchAll(readRe)){
     const off=match[2]||'',on=match[3]||'',offGate=checkedControl(off,false),onGate=checkedControl(on,true);
     if(!offGate||offGate!==onGate)continue;
-    const fallback=numericLiteral(assignedExpression(off,controlId)),onValue=assignedExpression(on,controlId);
-    if(fallback===null||String(onValue||'').trim()!==readVar)continue;
-    readMatch={threshold:Number(match[1]),gateControlId:offGate,defaultValue:fallback};break;
+    const fallbackExpression=assignedExpression(off,controlId),fallback=fallbackExpression===null?null:numericLiteral(fallbackExpression),onValue=assignedExpression(on,controlId);
+    if(String(onValue||'').trim()!==readVar)continue;
+    const uiThreshold=Number(match[1]),rawThreshold=uiThreshold/readFactor;
+    if(!Number.isFinite(rawThreshold))continue;
+    readMatch={rawThreshold,gateControlId:offGate,defaultValue:fallback};break;
   }
-  if(!readMatch||!Number.isFinite(readMatch.threshold))return null;
-  const gate=escapeRe(readMatch.gateControlId),modern='document\\.getElementById\\(\\s*["\']'+gate+'["\']\\s*\\)\\s*\\.\\s*checked',legacy='\\$\\(\\s*["\']'+gate+'["\']\\s*\\)\\s*\\.\\s*getProperty\\(\\s*["\']checked["\']\\s*\\)';
-  const writeIf=new RegExp('if\\s*\\(\\s*(?:'+modern+'|'+legacy+')\\s*\\)\\s*\\{([\\s\\S]*?)\\}','g');
+  if(!readMatch)return null;
+  const gate=escapeRe(readMatch.gateControlId),modern='document\\.getElementById\\(\\s*["\']'+gate+'["\']\\s*\\)\\s*\\.\\s*checked',dollar='\\$\\(\\s*["\']'+gate+'["\']\\s*\\)\\s*\\.\\s*checked',legacy='\\$\\(\\s*["\']'+gate+'["\']\\s*\\)\\s*\\.\\s*getProperty\\(\\s*["\']checked["\']\\s*\\)';
+  const writeIf=new RegExp('if\\s*\\(\\s*(?:'+modern+'|'+dollar+'|'+legacy+')\\s*\\)\\s*\\{([\\s\\S]*?)\\}','g');
   let writeFactor=null;
-  for(const match of String(source||'').matchAll(writeIf)){
+  for(const match of text.matchAll(writeIf)){
     const body=match[1]||'',assignment=body.match(new RegExp('\\b'+escapeRe(writeExpression)+'\\s*=\\s*([^;\\n]+)'));
     if(!assignment)continue;writeFactor=controlNumericFactor(assignment[1],controlId);if(writeFactor!==null)break;
   }
-  if(writeFactor!==1||disabledValue>readMatch.threshold||readMatch.defaultValue<=readMatch.threshold)return null;
-  return{kind:'sentinel-gate',gateControlId:readMatch.gateControlId,disabledValue,defaultValue:readMatch.defaultValue,enabledWhen:{kind:'gt',value:readMatch.threshold},safeWrite:true};
+  if(writeFactor===null||writeFactor<=0||Math.abs((readFactor*writeFactor)-1)>1e-12||disabledValue>readMatch.rawThreshold)return null;
+  if(readMatch.defaultValue!==null&&readMatch.defaultValue<=readMatch.rawThreshold*readFactor)return null;
+  return{kind:'sentinel-gate',gateControlId:readMatch.gateControlId,disabledValue,defaultValue:readMatch.defaultValue,enabledWhen:{kind:'gt',value:readMatch.rawThreshold},safeWrite:true,...(writeFactor===1?{}:{scale:writeFactor})};
 }
 
 export function createQbPreferenceValueProjector(source){

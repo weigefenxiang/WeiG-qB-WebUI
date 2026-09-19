@@ -144,6 +144,7 @@ assert.equal(rowFor('listen_port').template,'control-helper','Listening Port + R
 assert.deepEqual(rowFor('listen_port').items.find(item=>item.kind==='helper').action,{kind:'random-int',targetControlId:'portValue',min:1024,max:65535},'source helper behavior must compile to bounded random-int IR instead of arbitrary upstream JS execution');
 assert.equal(rowFor('max_connec').template,'gated-sentinel','unmapped native gate + mapped value must preserve the generic sentinel row shape');
 assert.deepEqual(structural.preferences.max_connec.projection,{kind:'sentinel-gate',gateControlId:'maxConnectionsCheckbox',disabledValue:-1,defaultValue:500,enabledWhen:{kind:'gt',value:0},safeWrite:true},'auxiliary checkbox ownership must be source-proven by the same Preference sentinel projection');
+assert.deepEqual(itemFor('max_connec').condition,{kind:'gt',key:'max_connec',value:0},'sentinel gate behavior must resolve against the proven raw Preference threshold instead of checkbox truthiness');
 assert.equal(rowFor('schedule_from_hour').template,'inline-multi-control','same source row must stay one inline multi-control cluster');
 assert.equal(structural.controlGraph.tabs.speed.rows.some(row=>row.items.some(item=>item.id==='limitSchedulingCheckbox')),false,'legend-owned gate controls must not be duplicated as standalone rows');
 assert.deepEqual(rowFor('schedule_from_hour').items.filter(item=>item.preferenceKey).map(item=>item.preferenceKey),['schedule_from_hour','schedule_from_min','schedule_to_hour','schedule_to_min']);
@@ -211,6 +212,27 @@ const unknownBehaviorSource=behaviorSource.replace('pros.disabled||!pros.checked
 const unknownBehaviorManifest=extractQbPreferencesNativeSurface({preferencesSource:unknownBehaviorSource,toolbarSource:behaviorToolbar,preferenceDescriptors:behaviorDescriptors});
 assert.equal(unknownBehaviorManifest.structuralCensus.complete,false,'any unresolved source behavior must fail structural completeness instead of false-green');
 assert.ok(unknownBehaviorManifest.structuralCensus.unknownBehaviors.includes('filelog_max_size_input'),'unresolved behavior target must be named in the census');
+
+const legacyScaledSentinelSource=`
+var up_limit = pref.up_limit.toInt() / 1024;
+if (up_limit <= 0) {
+  $('up_limit_checkbox').setProperty('checked', false);
+}
+else {
+  $('up_limit_checkbox').setProperty('checked', true);
+  $('up_limit_value').setProperty('value', up_limit);
+}
+var up_limit = -1;
+if ($('up_limit_checkbox').getProperty('checked')) {
+  up_limit = $('up_limit_value').getProperty('value').toInt() * 1024;
+}
+settings.set('up_limit', up_limit);
+`;
+assert.deepEqual(
+  extractQbPreferenceValueProjection(legacyScaledSentinelSource,'up_limit','up_limit_value'),
+  {kind:'sentinel-gate',gateControlId:'up_limit_checkbox',disabledValue:-1,defaultValue:null,enabledWhen:{kind:'gt',value:0},safeWrite:true,scale:1024},
+  'legacy scaled sentinel gates must preserve raw threshold + UI scale without inventing an enable default'
+);
 
 const legacyAltLimitSource=`
 $('alt_dl_limit_value').setProperty('value', (pref.alt_dl_limit.toInt() / 1024));

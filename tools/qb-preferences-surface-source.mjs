@@ -141,7 +141,11 @@ function buildControlGraph(markup,tabs,fieldsets,caches,preferences){
   for(const [key,item] of Object.entries(preferences||{})){const id=String(item?.control?.id||'');if(id&&!preferenceById.has(id))preferenceById.set(id,key);preferenceObject[key]=item;}
   preferenceById.preferences=preferenceObject;
   const controlToPreference=Object.fromEntries([...preferenceById.entries()]),predicateAliases={...controlToPreference};
-  for(const [key,item] of Object.entries(preferenceObject)){const gateId=String(item?.projection?.gateControlId||'');if(gateId&&!predicateAliases[gateId]&&['sentinel-gate','presence-gate'].includes(String(item?.projection?.kind||'')))predicateAliases[gateId]=key;}
+  for(const [key,item] of Object.entries(preferenceObject)){
+    const projection=item?.projection||{},gateId=String(projection.gateControlId||'');if(!gateId||predicateAliases[gateId])continue;
+    if(projection.kind==='sentinel-gate'&&projection.enabledWhen?.kind==='gt')predicateAliases[gateId]={predicate:{kind:'gt',key,value:Number(projection.enabledWhen.value)}};
+    else if(projection.kind==='presence-gate')predicateAliases[gateId]=key;
+  }
   const behavior=extractQbPreferencesBehaviorPredicates(markup,predicateAliases),helpers=helperRanges(markup),contents=sourceContentNodes(markup,tabs,caches),legends=elementRanges(markup,'legend'),formRows=(caches.divs||[]).filter(row=>String(attrText(row.attrs,'class')||'').split(/\s+/).includes('formRow')),tableRows=caches.trs||[],allRows=[...formRows,...tableRows].sort((a,b)=>a.start-b.start||a.end-b.end),graphTabs={},representedControls=new Set(),representedHelpers=new Set(),representedContents=new Set(),sourceControls=new Set(),sourceHelpers=new Set(),sourceContents=new Set(),legendControlIds=new Set();
   for(const tab of tabs){
     const tabFields=fieldsets.filter(item=>inside(tab.range,item.start)).sort((a,b)=>a.start-b.start),fieldIds=new Map(tabFields.map((item,index)=>[item,tab.id+':fieldset:'+index]));

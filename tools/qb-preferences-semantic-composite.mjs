@@ -149,7 +149,18 @@ function resolvePreferencePredicate(item,controlToPreference,enabledByControl,se
     return item.kind==='controlEnabled'?resolved:negatePreferencePredicate(resolved);
   }
   if(['controlTruthy','controlFalsy','controlEquals','controlNotEquals'].includes(item.kind)){
-    const key=controlToPreference[String(item.controlId||'')];if(!key)return null;
+    const binding=controlToPreference[String(item.controlId||'')];if(!binding)return null;
+    if(binding&&typeof binding==='object'&&binding.predicate){
+      const base=binding.predicate;
+      if(item.kind==='controlTruthy')return base;
+      if(item.kind==='controlFalsy')return negatePreferencePredicate(base);
+      if(item.kind==='controlEquals'&&item.value===true)return base;
+      if(item.kind==='controlEquals'&&item.value===false)return negatePreferencePredicate(base);
+      if(item.kind==='controlNotEquals'&&item.value===true)return negatePreferencePredicate(base);
+      if(item.kind==='controlNotEquals'&&item.value===false)return base;
+      return null;
+    }
+    const key=String(binding||'');if(!key)return null;
     if(item.kind==='controlTruthy')return{kind:'truthy',key};
     if(item.kind==='controlFalsy')return{kind:'falsy',key};
     if(item.kind==='controlEquals')return{kind:'equals',key,value:item.value};
@@ -166,6 +177,7 @@ function negatePreferencePredicate(item){
   if(item.kind==='true')return{kind:'false'};if(item.kind==='false')return{kind:'true'};
   if(item.kind==='truthy')return{kind:'falsy',key:item.key};if(item.kind==='falsy')return{kind:'truthy',key:item.key};
   if(item.kind==='equals')return{kind:'notEquals',key:item.key,value:item.value};if(item.kind==='notEquals')return{kind:'equals',key:item.key,value:item.value};
+  if(item.kind==='gt')return{kind:'lte',key:item.key,value:item.value};if(item.kind==='lte')return{kind:'gt',key:item.key,value:item.value};
   if(item.kind==='allOf')return rawAll('anyOf',item.items.map(negatePreferencePredicate));
   if(item.kind==='anyOf')return rawAll('allOf',item.items.map(negatePreferencePredicate));
   return null;
