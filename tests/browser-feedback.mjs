@@ -177,7 +177,7 @@ try{
   await page.locator('#app-nav [data-route="settings"]').click();
   await page.waitForFunction(()=>document.getElementById('settings-view')?.classList.contains('is-active'));
   await page.locator('#settings-tabs [data-settings-tab="connection"]').click();
-  const portInput=page.locator('[data-setting-key="listen_port_compound"] input[type="number"]');
+  const portInput=page.locator('[data-preference-key="listen_port"] input[type="number"]');
   await portInput.waitFor();await portInput.fill('6999');await portInput.press('Tab');
   await page.locator('#save-settings-btn').click();
   const settingsProcessing=page.locator('.feedback-toast[data-kind="info"]',{hasText:'Saving settings'}).first();
