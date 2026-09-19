@@ -39,7 +39,7 @@ function numericPresentationFunctions(source){
   ];
   for(const pattern of patterns)for(const match of text.matchAll(pattern)){
     const name=String(match[1]||''),param=String(match[2]||''),body=balancedBody(text,match.index??0);if(!name||!param||!body)continue;
-    const declaration=new RegExp('\\b(?:let|const|var)\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*'+escapeRe(param)+'\\.toString\\(\\s*\\)\\s*;?').exec(body);
+    const declaration=new RegExp('(?:\\b(?:let|const|var)\\s+)?([A-Za-z_$][\\w$]*)\\s*=\\s*'+escapeRe(param)+'\\.toString\\(\\s*\\)\\s*;?').exec(body);
     const value=String(declaration?.[1]||'');if(!value)continue;const v=escapeRe(value);
     if(!new RegExp('\\b'+v+'\\.length\\s*={2,3}\\s*1\\b').test(body))continue;
     if(!(body.includes("'0' + "+value)||body.includes('"0" + '+value)))continue;
