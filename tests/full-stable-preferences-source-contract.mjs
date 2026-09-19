@@ -45,6 +45,12 @@ for(let i=0;i<census.profiles.length;i++){
 assert.equal(censusFailures.length,0,`Preferences independent source census is incomplete across the Frozen release set:\n${censusFailures.join('\n')}`);
 
 let previousRatio=null,minimumRatio=1,scaleProjectionCount=0,switchProjectionCount=0,sentinelProjectionCount=0,presenceProjectionCount=0,unprovenProjectionCount=0;
+const ownershipZeroFields=[
+  'crossTabOwnershipMismatch','crossFieldsetOwnershipMismatch','crossRowOwnershipMismatch',
+  'ambiguousBinding','duplicatePreferenceOwnership','duplicateControlOwnership',
+  'wrongSourceRef','ambiguousSourceRef','missingRequiredLabel','missingOptions','optionOrderMismatch',
+  'unaccountedNativeControl','unaccountedNativeHelper','unaccountedNativeContent','runtimeRelevantUnknownBehavior'
+];
 for(let i=0;i<catalog.length;i++){
   const base=catalog[i],profile=source.profiles[i];
   assert.equal(profile.qbVersion,base.qbVersion,`${base.qbVersion}: release order drift`);
@@ -63,6 +69,9 @@ for(let i=0;i<catalog.length;i++){
   assert.equal(manifest.structuralCensus.sourceAdornments,manifest.structuralCensus.representedAdornments,base.qbVersion+': source adornment coverage drift');
   assert.equal(manifest.structuralCensus.behaviorControls,manifest.structuralCensus.representedBehaviorControls,base.qbVersion+': source behavior coverage drift');
   assert.deepEqual(manifest.structuralCensus.unknownBehaviors,[],base.qbVersion+': runtime-relevant source behavior must not remain unknown in a structurally complete profile');
+  assert.equal(manifest.ownershipCensus?.schemaVersion,1,base.qbVersion+': canonical Settings ownership census missing');
+  for(const field of ownershipZeroFields)assert.equal(Number(manifest.ownershipCensus?.[field]??-1),0,base.qbVersion+': canonical Settings ownership census '+field+' must be zero');
+  assert.equal(manifest.ownershipCensus?.complete,true,base.qbVersion+': canonical Settings ownership census must fail closed on any unresolved/ambiguous/cross-boundary source fact');
   assert.ok(Number(manifest.mappedPreferences)>0,`${base.qbVersion}: no source-mapped native preferences`);
   assert.equal(Number(manifest.totalPreferences),Array.isArray(base.preferenceDescriptors)?base.preferenceDescriptors.length:0,`${base.qbVersion}: preference surface size drift`);
   const total=Number(manifest.totalPreferences)||0,mapped=Number(manifest.mappedPreferences)||0,ratio=total?mapped/total:0;
@@ -76,6 +85,16 @@ for(let i=0;i<catalog.length;i++){
     for(const key of tab.preferences||[]){const item=manifest.preferences[key];assert.ok(item,`${base.qbVersion}: tab ${tab.id} references missing ${key}`);assert.ok(allowed.has(key),`${base.qbVersion}: native manifest escaped app/preferences: ${key}`);assert.equal(item.tab,tab.id);assert.ok(item.order>previous,`${base.qbVersion}: ${tab.id} preference order is not source monotonic`);previous=item.order;assert.ok(item.title?.source&&item.title?.context,`${base.qbVersion}: ${key} lacks source/context title identity`);assert.ok(item.control?.id&&item.control?.semantic,`${base.qbVersion}: ${key} lacks native control semantics`);assert.ok(item.descriptor&&Object.prototype.hasOwnProperty.call(item.descriptor,'writable'),`${base.qbVersion}: ${key} lacks API read/write provenance`);assert.ok(item.projection&&typeof item.projection==='object'&&typeof item.projection.safeWrite==='boolean',`${base.qbVersion}: ${key} lacks source value-projection accounting`);if(item.projection.kind==='scale')scaleProjectionCount+=1;else if(item.projection.kind==='switch-map')switchProjectionCount+=1;else if(item.projection.kind==='sentinel-gate')sentinelProjectionCount+=1;else if(item.projection.kind==='presence-gate')presenceProjectionCount+=1;else if(item.projection.kind==='unproven')unprovenProjectionCount+=1;if(item.control.semantic==='select')for(const option of item.control.options||[])assert.ok(option.label&&(option.label.source||Object.prototype.hasOwnProperty.call(option.label,'literal')),`${base.qbVersion}: ${key} select option lacks source identity`);}
   }
 }
+const peerProtocol445=source.profiles.find(profile=>profile.qbVersion==='4.4.5')?.manifest?.preferences?.bittorrent_protocol;
+assert.ok(peerProtocol445,'qB 4.4.5 exact source must map bittorrent_protocol');
+assert.equal(peerProtocol445.tab,'connection','qB 4.4.5 Peer connection protocol must remain owned by Connection');
+assert.equal(peerProtocol445.control?.id,'enable_protocol_combobox','qB 4.4.5 Peer connection protocol must retain its exact native select');
+assert.deepEqual(peerProtocol445.title,{source:'Peer connection protocol:',context:'OptionsDialog'},'qB 4.4.5 exact source must never borrow the Downloads Do-not-start label');
+const ownership445=source.profiles.find(profile=>profile.qbVersion==='4.4.5')?.manifest?.ownershipCensus;
+assert.equal(ownership445?.complete,true,'qB 4.4.5 exact source ownership census must close completely');
+assert.equal(ownership445?.wrongSourceRef,0,'qB 4.4.5 exact source must have no wrong label sourceRef');
+assert.equal(ownership445?.crossTabOwnershipMismatch,0,'qB 4.4.5 exact source must have no cross-tab ownership');
+
 assert.ok(scaleProjectionCount>0,'Frozen Preferences source must prove at least one native raw/UI numeric scale instead of relying on manual runtime metadata');
 assert.ok(switchProjectionCount>0,'Frozen Preferences source must retain at least one historical switch-map composite projection');
 assert.ok(presenceProjectionCount>0,'Frozen Preferences source must prove at least one empty-string/presence gate instead of requiring a Downloads key exception');
@@ -157,4 +176,4 @@ for(const profile of source.profiles){
     assert.equal(actual.tab,item.tab,`${profile.qbVersion}: ${key} tab drift`);assert.equal(actual.sectionId,item.sectionId,`${profile.qbVersion}: ${key} section drift`);assert.equal(actual.order,item.order,`${profile.qbVersion}: ${key} order drift`);assert.equal(actual.control.id,item.control.id,`${profile.qbVersion}: ${key} control id drift`);assert.equal(actual.control.semantic,item.control.semantic,`${profile.qbVersion}: ${key} control semantic drift`);assert.deepEqual(actual.control.attributes,item.control.attributes||{},`${profile.qbVersion}: ${key} control attributes drift`);assert.equal(actual.title?.source,item.title?.source,`${profile.qbVersion}: ${key} source title drift`);assert.equal(actual.title?.context,item.title?.context,`${profile.qbVersion}: ${key} source title context drift`);assert.deepEqual(actual.descriptor,item.descriptor,`${profile.qbVersion}: ${key} API descriptor drift`);assert.deepEqual(actual.projection,item.projection,`${profile.qbVersion}: ${key} source value projection drift`);
   }
 }
-console.log(`Full stable qB Preferences source contract passed: ${catalog.length} exact releases, structural control/action/adornment/copy/behavior census complete with unknown=0, Frozen catalog ${expectedIdentity.releaseSetSha256.slice(0,12)}, ${(minimumRatio*100).toFixed(1)}% minimum native mapping, ${scaleProjectionCount} scale / ${switchProjectionCount} switch / ${sentinelProjectionCount} sentinel / ${presenceProjectionCount} presence / ${unprovenProjectionCount} unproven value projections, ${bytes} byte keyed + structural compact IR, and lossless tab/section/control/API/value/Control-Graph provenance.`);
+console.log(`Full stable qB Preferences source contract passed: ${catalog.length} exact releases, structural + canonical ownership census complete with every A5 boundary/ambiguity/sourceRef counter at zero, exact qB 4.4.5 Peer protocol ownership locked, Frozen catalog ${expectedIdentity.releaseSetSha256.slice(0,12)}, ${(minimumRatio*100).toFixed(1)}% minimum native mapping, ${scaleProjectionCount} scale / ${switchProjectionCount} switch / ${sentinelProjectionCount} sentinel / ${presenceProjectionCount} presence / ${unprovenProjectionCount} unproven value projections, ${bytes} byte keyed + structural compact IR, and lossless tab/section/control/API/value/Control-Graph provenance.`);
