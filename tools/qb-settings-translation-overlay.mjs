@@ -4,7 +4,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {extractQbPreferenceUiFacts,extractQbSettingsTranslationFacts,translationSourcesForPreferenceUi} from './qb-settings-translation-source.mjs';
+import {extractQbSettingsTranslationFacts,translationSourcesForPreferenceUi} from './qb-settings-translation-source.mjs';
+import {extractQbPreferencesNativeSurface} from './qb-preferences-surface-source.mjs';
 import {extractQbOwnedUiFacts,translationContextsForQbOwnedUi,translationSourcesForQbOwnedUi} from './qb-owned-ui-source.mjs';
 import {buildQbNativeQmRecoveryEvidence} from './qb-native-qm-recovery.mjs';
 import {extractTorrentTableColumns} from './qb-torrent-fields-parser.mjs';
@@ -150,7 +151,17 @@ export function buildQbSettingsTranslationOverlay(catalog, readReleaseSources, o
     seen.add(identity);
     const releaseSources=readReleaseSources({profile,qbVersion,sourceSha,tag}) || {};
     const preferenceKeys=(profile.preferenceDescriptors || []).map((item) => item?.key).filter(Boolean);
-    const preferences=extractQbPreferenceUiFacts(releaseSources.preferencesSource || '', preferenceKeys);
+    const nativePreferences=extractQbPreferencesNativeSurface({
+      preferencesSource:releaseSources.preferencesSource || '',
+      toolbarSource:releaseSources.toolbarSource || '',
+      preferenceDescriptors:profile.preferenceDescriptors || []
+    });
+    const preferences=Object.fromEntries(Object.entries(nativePreferences.preferences || {}).map(([key,item])=>[key,{
+      controlId:String(item?.control?.id || ''),
+      evidence:'canonical-source-owner',
+      title:item?.title || null,
+      ...(item?.description ? {description:item.description} : {})
+    }]));
     const ui=extractQbOwnedUiFacts({
       preferencesSource:releaseSources.preferencesSource || '',
       toolbarSource:releaseSources.toolbarSource || '',
