@@ -100,7 +100,7 @@ jobs:
           fi
 
   settings_runtime_materialize:
-    name: qB Settings runtime Frozen identity materialization
+    name: qB compact runtime Frozen identity materialization
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[settings-runtime-materialize]') }}
     runs-on: ubuntu-latest
     needs: classify
@@ -113,16 +113,29 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-      - name: Rebind source-native Settings runtime to canonical Frozen catalog identity
+      - name: Materialize compact runtime against canonical Frozen catalog identity
         shell: bash
         run: |
           set -euo pipefail
           node tools/qb-settings-runtime-rebind.mjs "$RUNNER_TEMP/settings-compat.json" tests/fixtures/qb-release-catalog.lkg.json
-          if cmp -s "$RUNNER_TEMP/settings-compat.json" webui/private/data/settings-compat.json; then
-            echo "Committed Settings runtime already has canonical Frozen identity."
+          cp "$RUNNER_TEMP/settings-compat.json" webui/private/data/settings-compat.json
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import {compileCompactRuntime} from './tools/qb-compact-runtime.mjs';
+          const catalog=JSON.parse(fs.readFileSync('tests/fixtures/qb-release-catalog.lkg.json','utf8'));
+          const compact=compileCompactRuntime(catalog);
+          for(const [file,data] of [
+            ['webui/private/data/capabilities.json',compact.capabilityData],
+            ['webui/private/data/torrent-compat.json',compact.torrentData],
+            ['webui/private/data/detail-compat.json',compact.detailData],
+            ['webui/private/data/source-actions.json',compact.actionData]
+          ])fs.writeFileSync(file,JSON.stringify(data,null,2)+'\n','utf8');
+          console.log('Materialized common Frozen identity '+compact.catalogIdentity.sourceCatalogSha256.slice(0,12)+'.');
+          NODE
+          if git diff --quiet -- webui/private/data/capabilities.json webui/private/data/torrent-compat.json webui/private/data/detail-compat.json webui/private/data/source-actions.json webui/private/data/settings-compat.json; then
+            echo "Committed compact runtime already has canonical Frozen identity."
             exit 0
           fi
-          cp "$RUNNER_TEMP/settings-compat.json" webui/private/data/settings-compat.json
           node <<'NODE'
           const fs=require('fs');
           const current=fs.readFileSync('VERSION','utf8').trim(),parts=current.split('.').map(Number);
@@ -134,17 +147,17 @@ jobs:
           console.log('Materialized Product VERSION '+next);
           NODE
           npm test
-      - name: Commit canonical Settings runtime if changed
+      - name: Commit canonical compact runtime if changed
         shell: bash
         run: |
           set -euo pipefail
-          git diff --quiet -- webui/private/data/settings-compat.json VERSION webui/VERSION package.json package-lock.json webui/private/product-identity.json && exit 0
+          git diff --quiet -- webui/private/data/capabilities.json webui/private/data/torrent-compat.json webui/private/data/detail-compat.json webui/private/data/source-actions.json webui/private/data/settings-compat.json VERSION webui/VERSION package.json package-lock.json webui/private/product-identity.json && exit 0
           git fetch --no-tags origin dev
-          test "$(git rev-parse origin/dev)" = "$GITHUB_SHA" || { echo "SAFE-REF abort before Settings runtime materialization push." >&2; exit 1; }
+          test "$(git rev-parse origin/dev)" = "$GITHUB_SHA" || { echo "SAFE-REF abort before compact runtime materialization push." >&2; exit 1; }
           git config user.name "WeiG CI"
           git config user.email "actions@users.noreply.github.com"
-          git add webui/private/data/settings-compat.json VERSION webui/VERSION package.json package-lock.json webui/private/product-identity.json
-          git commit -m "a3: materialize Frozen Settings runtime [settings-evidence] [ui]"
+          git add webui/private/data/capabilities.json webui/private/data/torrent-compat.json webui/private/data/detail-compat.json webui/private/data/source-actions.json webui/private/data/settings-compat.json VERSION webui/VERSION package.json package-lock.json webui/private/product-identity.json
+          git commit -m "a3: materialize common Frozen runtime identity [settings-evidence] [ui]"
           git push origin HEAD:dev
 
   smoke:
