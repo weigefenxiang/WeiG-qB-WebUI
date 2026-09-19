@@ -18,6 +18,7 @@ const basePrefs={
   preallocate_all:false,create_subfolder_enabled:true,start_paused_enabled:false,auto_tmm_enabled:false,torrent_content_layout:'Original',
   listen_port:6881,upnp:false,random_port:false,max_connec:500,max_connec_per_torrent:100,max_uploads:20,max_uploads_per_torrent:4,
   i2p_enabled:false,i2p_address:'127.0.0.1',i2p_port:7656,i2p_mixed_mode:false,i2p_inbound_quantity:3,i2p_outbound_quantity:3,i2p_inbound_length:3,i2p_outbound_length:3,
+  ip_filter_enabled:true,ip_filter_path:'/config/ipfilter.dat',ip_filter_trackers:false,
   proxy_type:'None',proxy_ip:'127.0.0.1',proxy_port:8080,proxy_auth_enabled:false,proxy_username:'',proxy_password:'',proxy_hostname_lookup:false,proxy_bittorrent:false,proxy_peer_connections:false,proxy_rss:false,proxy_misc:false,
   dl_limit:1048576,up_limit:524288,alt_dl_limit:262144,alt_up_limit:131072,scheduler_enabled:false,schedule_from_hour:8,schedule_from_min:0,schedule_to_hour:20,schedule_to_min:5,scheduler_days:0,
   limit_utp_rate:true,limit_tcp_overhead:false,limit_lan_peers:false,dht:true,pex:true,lsd:true,encryption:0,queueing_enabled:true,max_active_downloads:5,max_active_uploads:5,max_active_torrents:10,max_ratio:2,max_ratio_enabled:false,max_ratio_act:0,max_seeding_time:1440,max_seeding_time_enabled:false,
