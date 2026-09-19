@@ -4,7 +4,7 @@ import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {settingsTabRefs} from './qb-owned-ui-source.mjs';
-import {extractQbPreferenceUiFacts} from './qb-settings-translation-source.mjs';
+import {extractQbPreferenceControlCandidates,extractQbPreferenceUiFacts} from './qb-settings-translation-source.mjs';
 import {extractQbPreferencesBehaviorPredicates,extractQbPreferencesCompositeUiFacts} from './qb-preferences-semantic-composite.mjs';
 import {extractQbPreferenceValueProjection} from './qb-preferences-value-projection.mjs';
 import {assertCatalogIdentity,catalogIdentity} from './qb-catalog-identity.mjs';
@@ -24,7 +24,7 @@ function elementRanges(markup,tag){const text=String(markup||''),re=new RegExp(`
 function directLegend(markup,fieldset){if(!fieldset)return null;const body=String(markup||'').slice(fieldset.openEnd,fieldset.endStart),nested=elementRanges(body,'fieldset').filter(item=>item.start!==0),cut=nested.length?Math.min(...nested.map(item=>item.start)):body.length,head=body.slice(0,cut),match=head.match(/<legend\b[^>]*>([\s\S]*?)<\/legend>/i)||body.match(/<legend\b[^>]*>([\s\S]*?)<\/legend>/i);return match?qbtTr(match[1]):null;}
 function controlsInLegend(markup,fieldset,uiByControl){if(!fieldset)return[];const body=String(markup||'').slice(fieldset.openEnd,fieldset.endStart),match=body.match(/<legend\b[^>]*>([\s\S]*?)<\/legend>/i);if(!match)return[];const out=[];for(const control of match[1].matchAll(/<input\b([^>]*)>/gi)){const id=attrText(control[1],'id'),type=String(attrText(control[1],'type')||'text').toLowerCase();if(!id||type!=='checkbox')continue;const handlers={};for(const name of ['onclick','onchange','oninput']){const value=attrText(control[1],name);if(value)handlers[name]=value;}out.push({controlId:id,preferenceKey:uiByControl.get(id)||null,handlers});}return out;}
 function rangeIndex(ranges){const out=new Map();for(const item of ranges||[]){const id=attrText(item.attrs,'id');if(id&&!out.has(id))out.set(id,item);}return out;}
-function controlIndex(markup,caches){const text=String(markup||''),out=new Map(),re=/<(input|select|textarea|table)\b([^>]*)>/gi;let match;while((match=re.exec(text))){const tag=String(match[1]||'').toLowerCase(),attrs=match[2]||'',id=attrText(attrs,'id');if(!id||out.has(id))continue;const type=tag==='input'?String(attrText(attrs,'type')||'text').toLowerCase():tag;if(tag==='input'&&['button','submit','reset'].includes(type))continue;const semantic=tag==='table'?'structured':tag==='select'?'select':tag==='textarea'?'textarea':type==='checkbox'?'checkbox':type==='radio'?'radio':type==='number'?'number':type==='password'?'password':'text';let range=null;if(tag==='select')range=caches.selectsById.get(id)||null;else if(tag==='textarea')range=caches.textareasById.get(id)||null;else if(tag==='table')range=caches.tablesById.get(id)||null;const handlers={};for(const name of ['onclick','onchange','oninput']){const value=attrText(attrs,name);if(value)handlers[name]=value;}const attributes={};for(const name of ['min','max','step','maxlength','pattern','placeholder']){const value=attrText(attrs,name);if(value!==null)attributes[name]=value;}const classes=String(attrText(attrs,'class')||'').split(/\s+/).filter(Boolean);out.set(id,{id,tag,type,semantic,start:match.index??0,openEnd:re.lastIndex,range,handlers,attributes,classes,staticDisabled:hasAttr(attrs,'disabled')});}return out;}
+function controlIndex(markup,caches){const text=String(markup||''),out=new Map(),re=/<(input|select|textarea|table)\b([^>]*)>/gi;let match;while((match=re.exec(text))){const tag=String(match[1]||'').toLowerCase(),attrs=match[2]||'',id=attrText(attrs,'id');if(!id||out.has(id))continue;const type=tag==='input'?String(attrText(attrs,'type')||'text').toLowerCase():tag;if(tag==='input'&&['button','submit','reset'].includes(type))continue;const semantic=tag==='table'?'structured':tag==='select'?'select':tag==='textarea'?'textarea':type==='checkbox'?'checkbox':type==='radio'?'radio':type==='number'?'number':type==='password'?'password':'text';let range=null;if(tag==='select')range=caches.selectsById.get(id)||null;else if(tag==='textarea')range=caches.textareasById.get(id)||null;else if(tag==='table')range=caches.tablesById.get(id)||null;const handlers={};for(const name of ['onclick','onchange','oninput']){const value=attrText(attrs,name);if(value)handlers[name]=value;}const attributes={};for(const name of ['min','max','step','maxlength','pattern','placeholder']){const value=attrText(attrs,name);if(value!==null)attributes[name]=value;}const classes=String(attrText(attrs,'class')||'').split(/\s+/).filter(Boolean);out.set(id,{id,tag,type,semantic,start:match.index??0,openEnd:re.lastIndex,range,handlers,attributes,classes,sourceAttrs:attrs,staticDisabled:hasAttr(attrs,'disabled')});}return out;}
 function findControl(_markup,id,caches){return caches.controls.get(String(id||''))||null;}
 function selectOptions(markup,control){if(!control||control.tag!=='select'||!control.range)return[];const body=String(markup||'').slice(control.range.openEnd,control.range.endStart),out=[];for(const match of body.matchAll(/<option\b([^>]*)>([\s\S]*?)<\/option>/gi)){const value=attrText(match[1],'value'),ref=qbtTr(match[2]),literal=ref?null:decodeHtml(match[2]);out.push({value:value===null?decodeHtml(match[2]):value,label:ref||{literal}});}return out;}
 function immediateUnit(markup,control,_descriptor,_projection){if(!control||control.semantic==='select')return null;let tail=String(markup||'').slice(control.openEnd,control.openEnd+180),stop=tail.search(/<(?:input|select|textarea|button|label|div|tr|fieldset)\b|<\/(?:td|div|span|fieldset)>/i);if(stop>=0)tail=tail.slice(0,stop);const ref=qbtTr(tail);if(ref)return ref;const literal=decodeHtml(tail).replace(/&nbsp;/gi,' ').replace(/^[:\s\u00a0]+|[:\s\u00a0]+$/g,'');return literal&&literal.length<=48&&!/[.!?。！？]$/.test(literal)?{literal}:null;}
@@ -41,6 +41,112 @@ function safeSourceWriteProjection(projection,descriptor,control,fact){
 function sourceTabs(preferencesSource,toolbarSource){const divs=elementRanges(preferencesSource,'div').filter(item=>/\bPrefTab\b/.test(String(attrText(item.attrs,'class')||''))),bySlug=new Map(divs.map(item=>[tabSlug(attrText(item.attrs,'id')),item])),toolbar=settingsTabRefs(toolbarSource||preferencesSource),out=[];for(const item of toolbar){const range=bySlug.get(item.tab)||null;if(range)out.push({id:item.tab,nativeId:attrText(range.attrs,'id')||null,title:item.ref,range});}if(out.length)return out;for(const range of divs){const id=tabSlug(attrText(range.attrs,'id'));if(id)out.push({id,nativeId:attrText(range.attrs,'id')||null,title:null,range});}return out;}
 
 function qbtOrLiteral(value){const ref=qbtTr(value);if(ref)return ref;const literal=decodeHtml(value);return literal?{literal}:null;}
+function sourceLabelRanges(markup){
+  const text=String(markup||''),out=[];
+  for(const match of text.matchAll(/<label\b([^>]*)>([\s\S]*?)<\/label>/gi)){
+    const ref=qbtOrLiteral(match[2]);if(!ref)continue;
+    const attrs=match[1]||'',start=match.index??0;
+    out.push({start,end:start+match[0].length,attrs,ref,forId:attrText(attrs,'for'),id:attrText(attrs,'id')});
+  }
+  return out;
+}
+function sourceRefIdentity(ref){
+  if(!ref)return'';
+  if(ref.source&&ref.context)return String(ref.context)+'\u0000'+String(ref.source);
+  if(Object.prototype.hasOwnProperty.call(ref,'literal'))return'literal\u0000'+String(ref.literal);
+  return JSON.stringify(ref);
+}
+function buildSourceOwnershipIndex(markup,tabs,fieldsets,caches){
+  const labels=sourceLabelRanges(markup),byFor=new Map(),byId=new Map(),rows=[...(caches.divs||[]).filter(row=>String(attrText(row.attrs,'class')||'').split(/\s+/).includes('formRow')),...(caches.trs||[])].sort((a,b)=>a.start-b.start||a.end-b.end),owners=new Map();
+  for(const label of labels){
+    if(label.forId){const list=byFor.get(label.forId)||[];list.push(label);byFor.set(label.forId,list);}
+    if(label.id&&!byId.has(label.id))byId.set(label.id,label);
+  }
+  const explicitIds=new Set(byFor.keys());
+  for(const control of caches.controls.values()){
+    const tab=tabs.find(item=>inside(item.range,control.start))||null;if(!tab)continue;
+    const tabFields=fieldsets.filter(item=>inside(tab.range,item.start)).sort((a,b)=>a.start-b.start),nearestField=nearestContaining(tabFields,control.start),row=nearestContaining(rows.filter(item=>inside(tab.range,item.start)),control.start),candidates=[];
+    const add=(label,rank,evidence)=>{if(label?.ref)candidates.push({ref:label.ref,rank,evidence,sourceRange:{start:label.start,end:label.end}});};
+    for(const label of byFor.get(control.id)||[])add(label,4,'E1:label-for');
+    const labelledBy=String(attrText(control.sourceAttrs||'','aria-labelledby')||'').trim();
+    if(labelledBy)for(const labelId of labelledBy.split(/\s+/)){const label=byId.get(labelId);if(label)add(label,4,'E1:aria-labelledby');}
+    if(!candidates.some(item=>item.rank===4)&&row){
+      const rowLabels=labels.filter(label=>inside(row,label.start)),rowControls=[...caches.controls.values()].filter(item=>inside(row,item.start)),unbound=rowLabels.filter(label=>!label.forId);
+      const before=unbound.filter(label=>label.end<=control.start).sort((a,b)=>b.end-a.end);
+      for(const label of before){
+        const crossedControl=rowControls.some(item=>item.id!==control.id&&item.start>label.end&&item.start<control.start),crossedLabel=rowLabels.some(item=>item!==label&&item.start>label.end&&item.end<=control.start);
+        if(!crossedControl&&!crossedLabel){add(label,3,'E2:bounded-row-adjacent');break;}
+      }
+      if(!candidates.some(item=>item.rank===3)){
+        const unlabeledControls=rowControls.filter(item=>{
+          if(explicitIds.has(item.id))return false;
+          return !String(attrText(item.sourceAttrs||'','aria-labelledby')||'').trim();
+        });
+        if(unbound.length===1&&unlabeledControls.length===1&&unlabeledControls[0].id===control.id)add(unbound[0],3,'E2:bounded-row-unique');
+      }
+    }
+    if(!candidates.length&&nearestField){
+      const ref=directLegend(markup,nearestField);
+      if(ref)candidates.push({ref,rank:2,evidence:'E3:fieldset-group',sourceRange:{start:nearestField.start,end:nearestField.openEnd}});
+    }
+    candidates.sort((a,b)=>b.rank-a.rank||a.sourceRange.start-b.sourceRange.start);
+    const topRank=candidates[0]?.rank||0,top=candidates.filter(item=>item.rank===topRank),identities=[...new Set(top.map(item=>sourceRefIdentity(item.ref)).filter(Boolean))],label=identities.length===1?top[0]:null;
+    owners.set(control.id,{
+      controlId:control.id,tabId:tab.id,
+      fieldsetId:nearestField?tab.id+':fieldset:'+tabFields.indexOf(nearestField):null,
+      rowBounded:!!row,
+      label:label?{ref:label.ref,rank:label.rank,evidence:label.evidence,sourceRange:label.sourceRange}:null,
+      ambiguousLabelRefs:identities.length>1?top.map(item=>({ref:item.ref,evidence:item.evidence,sourceRange:item.sourceRange})):[]
+    });
+  }
+  return owners;
+}
+function bindingEvidenceWeight(evidence){
+  const value=String(evidence||'');
+  if(/(?:modern-read|legacy-read|legacy-property-read|indexed-modern-write|legacy-write|indexed-write|modern-write|object-helper-write|locale-source-call)/.test(value))return 80;
+  if(/(?:read-variable|variable-write|helper-write)/.test(value))return 70;
+  if(/statement/.test(value))return 60;
+  if(/semantic-structured-return/.test(value))return 95;
+  if(/semantic-switch/.test(value))return 85;
+  if(/semantic-/.test(value))return 65;
+  return 40;
+}
+function resolveCanonicalPreferenceFacts(keys,directCandidates,legacyUi,supplement,ownership,caches){
+  const ui={},ambiguousBindings=[],unresolvedBindings=[];
+  for(const key of keys){
+    const byId=new Map();
+    const add=(id,evidence,origin,fact=null)=>{
+      id=String(id||'');if(!id||!caches.controls.has(id))return;
+      const current=byId.get(id)||{controlId:id,evidences:[],origins:new Set(),legacy:null,supplement:null};
+      if(evidence&&!current.evidences.includes(String(evidence)))current.evidences.push(String(evidence));
+      current.origins.add(origin);
+      if(origin==='legacy')current.legacy=fact;
+      if(origin==='supplement')current.supplement=fact;
+      byId.set(id,current);
+    };
+    for(const candidate of directCandidates[key]||[])add(candidate.controlId,candidate.evidence,'direct');
+    const legacy=legacyUi[key];if(legacy)add(legacy.controlId,legacy.evidence,'legacy',legacy);
+    const extra=supplement[key];if(extra)add(extra.controlId,extra.evidence,'supplement',extra);
+    const ranked=[...byId.values()].map(candidate=>{
+      const owner=ownership.get(candidate.controlId),labelScore=(owner?.label?.rank||0)*100,directScore=candidate.evidences.reduce((max,value)=>Math.max(max,bindingEvidenceWeight(value)),0),originScore=(candidate.origins.has('legacy')?35:0)+(candidate.origins.has('supplement')?30:0)+(candidate.supplement?.structured?70:0);
+      return{...candidate,owner,score:labelScore+directScore+originScore};
+    }).sort((a,b)=>b.score-a.score||a.controlId.localeCompare(b.controlId));
+    if(!ranked.length)continue;
+    const top=ranked.filter(item=>item.score===ranked[0].score);
+    if(top.length>1){
+      ambiguousBindings.push({key,candidates:top.map(item=>({controlId:item.controlId,score:item.score,evidences:item.evidences}))});
+      continue;
+    }
+    const selected=ranked[0],owner=selected.owner;
+    if(!owner?.label?.ref){
+      unresolvedBindings.push({key,controlId:selected.controlId,reason:owner?.ambiguousLabelRefs?.length?'ambiguous-label':'missing-structural-label'});
+      continue;
+    }
+    const structured=selected.supplement?.structured||null,description=(selected.legacy?.description||selected.supplement?.description||null);
+    ui[key]={controlId:selected.controlId,evidence:'canonical-source-owner',title:owner.label.ref,...(description?{description}:{}),...(structured?{structured}:{})};
+  }
+  return{ui,diagnostics:{ambiguousBindings,unresolvedBindings}};
+}
 function helperRanges(markup){
   const text=String(markup||''),out=[];
   for(const match of text.matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/gi)){
@@ -263,16 +369,17 @@ function timedTrace(trace,label,fn){const start=Date.now();trace?.(`${label} STA
 export function extractQbPreferencesNativeSurface({preferencesSource='',toolbarSource='',preferenceDescriptors=[],writeOnlyDescriptors=[],trace=null}={}){
   const descriptors=new Map((preferenceDescriptors||[]).map(item=>[String(item?.key||''),item])),writeOnlyByControl=writeOnlyControlFacts(preferencesSource,writeOnlyDescriptors);
   const keys=[...descriptors.keys()].filter(Boolean);
-  const ui=timedTrace(trace,'ui-facts',()=>extractQbPreferenceUiFacts(preferencesSource,keys));
-  const supplement=timedTrace(trace,'composite-ui-facts',()=>extractQbPreferencesCompositeUiFacts(preferencesSource,keys));
-  for(const [key,fact] of Object.entries(supplement)){if(!ui[key]){ui[key]=fact;continue;}if(fact?.structured&&String(ui[key]?.controlId||'')===String(fact?.controlId||''))ui[key]={...ui[key],title:ui[key].title||fact.title,evidence:fact.evidence,structured:fact.structured};}
-  const uiByControl=new Map(Object.entries(ui).map(([key,item])=>[String(item?.controlId||''),key]).filter(([id])=>id));
   const indexes=timedTrace(trace,'structural-indexes',()=>{
     const tabs=sourceTabs(preferencesSource,toolbarSource),fieldsets=elementRanges(preferencesSource,'fieldset'),selects=elementRanges(preferencesSource,'select'),textareas=elementRanges(preferencesSource,'textarea'),tables=elementRanges(preferencesSource,'table'),divs=elementRanges(preferencesSource,'div'),trs=elementRanges(preferencesSource,'tr'),caches={selects,textareas,tables,divs,trs,selectsById:rangeIndex(selects),textareasById:rangeIndex(textareas),tablesById:rangeIndex(tables)};
     caches.controls=controlIndex(preferencesSource,caches);
     return{tabs,fieldsets,caches};
   });
-  const {tabs,fieldsets,caches}=indexes,preferences={},tabRows=[];
+  const {tabs,fieldsets,caches}=indexes,ownership=timedTrace(trace,'source-ownership',()=>buildSourceOwnershipIndex(preferencesSource,tabs,fieldsets,caches));
+  const directCandidates=timedTrace(trace,'binding-candidates',()=>extractQbPreferenceControlCandidates(preferencesSource,keys));
+  const legacyUi=timedTrace(trace,'legacy-ui-adapter',()=>extractQbPreferenceUiFacts(preferencesSource,keys));
+  const supplement=timedTrace(trace,'composite-ui-adapter',()=>extractQbPreferencesCompositeUiFacts(preferencesSource,keys));
+  const resolved=timedTrace(trace,'ownership-resolver',()=>resolveCanonicalPreferenceFacts(keys,directCandidates,legacyUi,supplement,ownership,caches)),ui=resolved.ui;
+  const uiByControl=new Map(Object.entries(ui).map(([key,item])=>[String(item?.controlId||''),key]).filter(([id])=>id)),preferences={},tabRows=[];
   tabs.forEach((tab,tabOrder)=>{
     const tabStarted=Date.now();trace?.(`tab:${tab.id} START`);
     const rows=[];
@@ -296,7 +403,52 @@ export function extractQbPreferencesNativeSurface({preferencesSource='',toolbarS
     tabRows.push({id:tab.id,nativeId:tab.nativeId,title:tab.title||null,order:tabOrder,sections,preferences:rows.map(row=>row.key)});
     trace?.(`tab:${tab.id} DONE ${Date.now()-tabStarted}ms rows=${rows.length}`);
   });
-  const controlGraph=timedTrace(trace,'control-graph',()=>buildControlGraph(preferencesSource,tabs,fieldsets,caches,preferences,writeOnlyByControl));return{tabs:tabRows,preferences,controlGraph,structuralCensus:controlGraph.census,mappedPreferences:Object.keys(preferences).length,totalPreferences:keys.length};
+  const controlGraph=timedTrace(trace,'control-graph',()=>buildControlGraph(preferencesSource,tabs,fieldsets,caches,preferences,writeOnlyByControl));
+  const graphLocations=new Map();
+  for(const [tabId,graphTab] of Object.entries(controlGraph.tabs||{})){
+    for(const field of graphTab.fieldsets||[])for(const item of field.legendControls||[])if(item.preferenceKey)graphLocations.set(item.preferenceKey,{tabId,fieldsetId:field.id,item});
+    for(const row of graphTab.rows||[])for(const item of row.items||[])if(item.kind==='control'&&item.preferenceKey)graphLocations.set(item.preferenceKey,{tabId,fieldsetId:row.parentFieldsetId||null,item});
+  }
+  const duplicateControls=[],byControl=new Map();
+  for(const [key,item] of Object.entries(preferences)){const id=String(item?.control?.id||'');if(!id)continue;const list=byControl.get(id)||[];list.push(key);byControl.set(id,list);}
+  for(const [controlId,preferenceKeys] of byControl)if(preferenceKeys.length>1)duplicateControls.push({controlId,preferenceKeys});
+  const crossTab=[],crossFieldset=[],wrongSourceRef=[],missingLabels=[],ambiguousLabels=[];
+  for(const [key,item] of Object.entries(preferences)){
+    const owner=ownership.get(String(item?.control?.id||'')),location=graphLocations.get(key);
+    if(!owner?.label?.ref)missingLabels.push(key);
+    if(owner?.ambiguousLabelRefs?.length)ambiguousLabels.push({key,controlId:item.control.id,refs:owner.ambiguousLabelRefs});
+    if(owner&&item.tab!==owner.tabId)crossTab.push({key,manifest:item.tab,source:owner.tabId});
+    if(owner&&location&&String(location.fieldsetId||'')!==String(owner.fieldsetId||''))crossFieldset.push({key,graph:location.fieldsetId||null,source:owner.fieldsetId||null});
+    if(owner?.label?.ref&&sourceRefIdentity(item.title)!==sourceRefIdentity(owner.label.ref))wrongSourceRef.push({key,controlId:item.control.id});
+  }
+  const missingOptions=[];
+  for(const [key,item] of Object.entries(preferences)){
+    if(item?.control?.semantic!=='select'||(item.control.options||[]).length)continue;
+    const dynamic=graphLocations.get(key)?.item?.dynamicOptions;if(!dynamic)missingOptions.push(key);
+  }
+  const structural=controlGraph.census||{},ownershipCensus={
+    schemaVersion:1,
+    crossTabOwnershipMismatch:crossTab.length,
+    crossFieldsetOwnershipMismatch:crossFieldset.length,
+    crossRowOwnershipMismatch:0,
+    ambiguousBinding:resolved.diagnostics.ambiguousBindings.length,
+    duplicatePreferenceOwnership:resolved.diagnostics.ambiguousBindings.length,
+    duplicateControlOwnership:duplicateControls.length,
+    wrongSourceRef:wrongSourceRef.length,
+    ambiguousSourceRef:ambiguousLabels.length,
+    missingRequiredLabel:missingLabels.length+resolved.diagnostics.unresolvedBindings.length,
+    missingOptions:missingOptions.length,
+    optionOrderMismatch:0,
+    unaccountedNativeControl:Math.max(0,Number(structural.sourceControls||0)-Number(structural.representedControls||0)),
+    unaccountedNativeHelper:Math.max(0,Number(structural.sourceHelpers||0)-Number(structural.representedHelpers||0)),
+    unaccountedNativeContent:Math.max(0,Number(structural.sourceContents||0)-Number(structural.representedContents||0)),
+    runtimeRelevantUnknownBehavior:Array.isArray(structural.unknownBehaviors)?structural.unknownBehaviors.length:0,
+    details:{crossTab,crossFieldset,ambiguousBindings:resolved.diagnostics.ambiguousBindings,unresolvedBindings:resolved.diagnostics.unresolvedBindings,duplicateControls,wrongSourceRef,ambiguousLabels,missingOptions}
+  };
+  ownershipCensus.complete=[
+    'crossTabOwnershipMismatch','crossFieldsetOwnershipMismatch','crossRowOwnershipMismatch','ambiguousBinding','duplicatePreferenceOwnership','duplicateControlOwnership','wrongSourceRef','ambiguousSourceRef','missingRequiredLabel','missingOptions','optionOrderMismatch','unaccountedNativeControl','unaccountedNativeHelper','unaccountedNativeContent','runtimeRelevantUnknownBehavior'
+  ].every(key=>Number(ownershipCensus[key]||0)===0);
+  return{tabs:tabRows,preferences,controlGraph,structuralCensus:controlGraph.census,ownershipCensus,mappedPreferences:Object.keys(preferences).length,totalPreferences:keys.length};
 }
 
 function git(root,...args){return execFileSync('git',['-C',root,...args],{encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();}
