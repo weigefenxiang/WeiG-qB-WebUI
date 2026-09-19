@@ -143,7 +143,7 @@ function compactBridgeTables(bridgeSets,profiles){
   return{values,sets};
 }
 
-export function renderOwnedCopyRegistry(bundle){export function renderOwnedCopyRegistry(bundle){
+export function renderOwnedCopyRegistry(bundle){
   if(!bundle||bundle.schemaVersion!==3)throw new Error('Owned copy registry requires runtime copy bundle schemaVersion 3.');
   const compact=compactBridgeTables(bundle.bridgeSets,bundle.profiles),lines=['# WeiG qB-owned copy runtime IR v3'];
   for(const profile of [...bundle.profiles].sort((a,b)=>a.sourceSha.localeCompare(b.sourceSha))){
