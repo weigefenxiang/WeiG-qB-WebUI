@@ -34,7 +34,7 @@ function resolveExpression(expression,factor,declarations){const direct=factor(e
 function balancedBody(text,start){const open=String(text).indexOf('{',start);if(open<0)return'';let depth=0,quote='',escape=false;for(let i=open;i<text.length;i++){const ch=text[i];if(quote){if(escape){escape=false;continue;}if(ch==='\\'){escape=true;continue;}if(ch===quote)quote='';continue;}if(ch==='"'||ch==="'"||ch==='`'){quote=ch;continue;}if(ch==='{')depth++;else if(ch==='}'){depth--;if(depth===0)return text.slice(open+1,i);}}return'';}
 function numericPresentationFunctions(source){
   const text=String(source||''),out=new Set(),patterns=[
-    /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:function\s*)?\(\s*([A-Za-z_$][\w$]*)\s*\)\s*(?:=>\s*)?\{/g,
+    /\b(?:(?:const|let|var)\s+)?([A-Za-z_$][\w$]*)\s*=\s*(?:function\s*)?\(\s*([A-Za-z_$][\w$]*)\s*\)\s*(?:=>\s*)?\{/g,
     /\bfunction\s+([A-Za-z_$][\w$]*)\s*\(\s*([A-Za-z_$][\w$]*)\s*\)\s*\{/g
   ];
   for(const pattern of patterns)for(const match of text.matchAll(pattern)){
