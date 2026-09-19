@@ -83,7 +83,7 @@
     var setRe=/^@@SET\t(t[0-9a-f]{20})\t(t[0-9a-f]{20}|-)\t([0-9a-z,]*)\t([0-9a-z,]*)\s*$/gm;
     while((match=setRe.exec(source)))setDefs[match[1]]={parent:match[2]==='-'?null:match[2],add:match[3]?match[3].split(','):[],remove:match[4]?match[4].split(','):[]};
     function resolveBridgeTokens(id,trail){if(!id)return[];if(sets[id])return sets[id].slice();var def=setDefs[id];if(!def)return null;trail=trail||{};if(trail[id])return null;trail[id]=true;var base=def.parent?resolveBridgeTokens(def.parent,trail):[];if(base===null)return null;var active={};for(var i=0;i<base.length;i++)active[base[i]]=true;for(var j=0;j<def.remove.length;j++)delete active[def.remove[j]];for(var k=0;k<def.add.length;k++)active[def.add[k]]=true;delete trail[id];var resolved=Object.keys(active).sort(function(a,b){return parseInt(a,36)-parseInt(b,36);});sets[id]=resolved;return resolved.slice();}
-    var bridgeRe=var bridgeRe=/^@@BRIDGE\t([0-9a-f]{40})\t([^\t\r\n]*)\t(t[0-9a-f]{20}|-)\s*$/gm;
+    var bridgeRe=/^@@BRIDGE\t([0-9a-f]{40})\t([^\t\r\n]*)\t(t[0-9a-f]{20}|-)\s*$/gm;
     while((match=bridgeRe.exec(source))){if(match[1]===expectedSha)bridges[decodeField(match[2])]=match[3]==='-'?null:match[3];}
     var binding=bindings[profile.bindingId];if(!binding)return null;
     var nativeLocale=routeLocale(profile.nativeLocales),bridgeLocale=nativeLocale?null:routeLocale(profile.bridgeLocales),mode=nativeLocale?'native':(bridgeLocale?'bridge':null);if(!mode)return null;
