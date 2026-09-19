@@ -299,7 +299,11 @@ function functionBodies(markup){
   return out;
 }
 function sourceDynamicOptions(markup,controlId){
-  const text=String(markup||''),escaped=escapeRegex(controlId);
+  const text=String(markup||''),escaped=escapeRegex(controlId),selectRange=elementRanges(text,'select').find(item=>attrText(item.attrs,'id')===controlId)||null;
+  if(selectRange){
+    const body=text.slice(selectRange.openEnd,selectRange.endStart),template=body.match(/^\s*\$\{([A-Za-z_$][\w$]*)\}\s*$/);
+    if(template)return{kind:'server-template-options',token:String(template[1])};
+  }
   for(const fn of functionBodies(text)){
     const modernTarget=new RegExp('getElementById\\(\\s*["\\\']'+escaped+'["\\\']\\s*\\)').test(fn.body),legacyTarget=new RegExp('\\$\\(\\s*["\\\']'+escaped+'["\\\']\\s*\\)').test(fn.body);
     if((!modernTarget&&!legacyTarget)||!/\.options\.add\s*\(/.test(fn.body))continue;
