@@ -279,6 +279,13 @@ assert.equal(rssGraphItems.find(item=>item.id==='optionalIPAddressToBind').dynam
 assert.equal(rssGraphItems.find(item=>item.id==='optionalIPAddressToBind').dynamicOptions.queryParam,'iface');
 assert.equal(rssGraphItems.find(item=>item.id==='optionalIPAddressToBind').dynamicOptions.dependsOnControlId,'networkInterface');
 
+const templateOptionsMarkup='<div id="WebUITab" class="PrefTab"><label for="locale_select">QBT_TR(User Interface Language:)QBT_TR[CONTEXT=OptionsDialog]</label><select id="locale_select">${LANGUAGE_OPTIONS}</select></div><script>document.getElementById("locale_select").value = pref.locale;</script>';
+const templateOptionsFacts=extractQbPreferencesNativeSurface({preferencesSource:templateOptionsMarkup,toolbarSource:'<li id="PrefWebUILink">Web UI</li>',preferenceDescriptors:[{key:'locale',getterPresent:true,setterPresent:true,readType:'string',writeType:'string',typeAgreement:'EXACT',writable:true}]});
+const templateOptionsItem=templateOptionsFacts.controlGraph.tabs.webui.rows.flatMap(row=>row.items).find(item=>item.id==='locale_select');
+assert.deepEqual(templateOptionsItem?.dynamicOptions,{kind:'server-template-options',token:'LANGUAGE_OPTIONS'},'server-rendered select placeholders must enter the canonical option-provider IR without a locale key exception');
+assert.equal(templateOptionsFacts.ownershipCensus.missingOptions,0);
+assert.equal(templateOptionsFacts.ownershipCensus.complete,true,'server-template option providers must satisfy source option accounting');
+
 
 
 const structuredToolbar='<li id="PrefDownloadsLink">QBT_TR(Downloads)QBT_TR[CONTEXT=OptionsDialog]</li>';
