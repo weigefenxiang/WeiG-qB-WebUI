@@ -99,6 +99,54 @@ jobs:
             echo "Only documentation paths changed; heavy CI smoke is skipped."
           fi
 
+  settings_runtime_materialize:
+    name: qB Settings runtime Frozen identity materialization
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[settings-runtime-materialize]') }}
+    runs-on: ubuntu-latest
+    needs: classify
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Rebind source-native Settings runtime to canonical Frozen catalog identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/qb-settings-runtime-rebind.mjs "$RUNNER_TEMP/settings-compat.json" tests/fixtures/qb-release-catalog.lkg.json
+          if cmp -s "$RUNNER_TEMP/settings-compat.json" webui/private/data/settings-compat.json; then
+            echo "Committed Settings runtime already has canonical Frozen identity."
+            exit 0
+          fi
+          cp "$RUNNER_TEMP/settings-compat.json" webui/private/data/settings-compat.json
+          node <<'NODE'
+          const fs=require('fs');
+          const current=fs.readFileSync('VERSION','utf8').trim(),parts=current.split('.').map(Number);
+          if(parts.length!==3||parts.some(v=>!Number.isInteger(v)))throw new Error('Invalid VERSION '+current);
+          parts[2]+=1;const next=parts.join('.');
+          fs.writeFileSync('VERSION',next+'\n');fs.writeFileSync('webui/VERSION',next+'\n');
+          for(const file of ['package.json','package-lock.json']){const data=JSON.parse(fs.readFileSync(file,'utf8'));data.version=next;if(file==='package-lock.json'&&data.packages?.[''])data.packages[''].version=next;fs.writeFileSync(file,JSON.stringify(data,null,2)+'\n');}
+          const identity=JSON.parse(fs.readFileSync('webui/private/product-identity.json','utf8'));identity.version=next;fs.writeFileSync('webui/private/product-identity.json',JSON.stringify(identity,null,2)+'\n');
+          console.log('Materialized Product VERSION '+next);
+          NODE
+          npm test
+      - name: Commit canonical Settings runtime if changed
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --quiet -- webui/private/data/settings-compat.json VERSION webui/VERSION package.json package-lock.json webui/private/product-identity.json && exit 0
+          git fetch --no-tags origin dev
+          test "$(git rev-parse origin/dev)" = "$GITHUB_SHA" || { echo "SAFE-REF abort before Settings runtime materialization push." >&2; exit 1; }
+          git config user.name "WeiG CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add webui/private/data/settings-compat.json VERSION webui/VERSION package.json package-lock.json webui/private/product-identity.json
+          git commit -m "a3: materialize Frozen Settings runtime [settings-evidence] [ui]"
+          git push origin HEAD:dev
+
   smoke:
     needs: classify
     if: ${{ always() && (github.event_name == 'workflow_dispatch' || needs.classify.outputs.relevant == 'true') }}
@@ -882,7 +930,7 @@ jobs:
           set -euo pipefail
           node tools/qb-preferences-surface-source.mjs --merge native-base/qb-releases.json preferences-shards qb-preferences-source-catalog.json
       - name: Compile Preferences compact contract
-        run: node tools/qb-preferences-compact.mjs qb-preferences-source-catalog.json settings-native-compat.json native-base/qb-releases.json
+        run: node tools/qb-preferences-compact.mjs qb-preferences-source-catalog.json settings-native-compat.json tests/fixtures/qb-release-catalog.lkg.json
       - name: Emit canonical Settings runtime materialization evidence
         shell: bash
         run: |
