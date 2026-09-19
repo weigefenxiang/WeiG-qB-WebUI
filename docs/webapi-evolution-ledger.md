@@ -1,7 +1,9 @@
 # qBittorrent WebAPI evolution ledger
 
 
-> **2026-09-18 全量复盘同步**：本文件已按当前 A–F 方案复核。mutable current status / blocker / TODO / next-AI handoff 只维护在 `docs/014.AI协作与分支纪律.md` 的 `STOP — COMPLETED ARCHIVE BELOW` 之前；本文件只维护本领域 authority/contract。具体 exact SHA、Actions 与运行结果在实际开发前必须 fresh-read，不以本注记代替 repository truth。
+
+> **A3 当前交接事实（dev 160473f13c5c）**：Product VERSION **0.3.125**；A3已推dev但exact-SHA CI #35442179347 与 Virtual qB Pages #35442186315 FAIL。首要blocker是Settings runtime/common Frozen catalog identity未一致；main未移动、未创建/使用 `[candidate]`。当前仍为 **🟡 A3 IN_PROGRESS**；TODO只看 `docs/014` STOP 前。
+> **2026-09-19 A3交接同步**：本文件已按当前 A–F 方案复核。mutable current status / blocker / TODO / next-AI handoff 只维护在 `docs/014.AI协作与分支纪律.md` 的 `STOP — COMPLETED ARCHIVE BELOW` 之前；本文件只维护本领域 authority/contract。具体 exact SHA、Actions 与运行结果在实际开发前必须 fresh-read，不以本注记代替 repository truth。
 
 本文件说明 WebAPI evolution ledger 的长期用途。它是**兼容 evidence index**，不是产品 roadmap，也不是 runtime compatibility owner。
 
@@ -203,3 +205,8 @@ official source/runtime truth
 ```
 
 不要为了保留旧 ledger/test expectation修改正确产品语义，也不要把离线 release/profile evidence重新升级成 browser runtime owner。
+
+
+## 12. A3 Settings source facts / current gap（2026-09-19）
+
+5.2.3 exact source目前已提供并进入Preferences IR的事实包括：RSS Downloader bounded source action、network interface/address dynamic option providers、WebUI Password setter-only/write-only语义、Scheduler `time_padding()` presentation、RSS Downloader disabled source/context copy。它们属于SOURCE_DERIVED，并已存在0.3.125 product consumer代码；但当前formal runtime仍因common Frozen `sourceCatalogSha256` identity mismatch fail closed，所以不能把SOURCE_DERIVED记成CONTRACT_COVERED/product-complete。下一步先统一Settings runtime materialization identity，再运行真实browser interaction gate。
