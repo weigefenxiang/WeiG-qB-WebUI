@@ -23,6 +23,9 @@ const required=[
   '015.开发硬规则（长期版）.md'
 ];
 for(const name of required)assert.ok(files.includes(name),`missing canonical docs authority: ${name}`);
+
+const specialized=['016.Options历史方案归档.md','017.A4-Settings复合交互收口.md'];
+for(const name of specialized)assert.ok(files.includes(name),`missing bounded/archive docs: ${name}`);
 assert.ok(fs.existsSync(path.join(root,'DESIGN.md')),'DESIGN.md must remain the Current Owner / design authority');
 
 const retired=[
@@ -49,10 +52,18 @@ assert.match(handoff,/## \d+\. 当前最大 blocker[^\n]*[\s\S]*## \d+\. 其它�
 assert.match(handoff,/按顺序完整阅读[：:][\s\S]*读完后 fresh-read dev\/main exact HEAD/,'copyable handoff must require docs reading + fresh repository truth before development without pinning one obsolete sentence');
 assert.ok(handoff.includes('SKIPPED != PASS'),'014 must keep skipped evidence distinct from exact-head PASS');
 assert.match(handoff,/final ordinary CI\/browser\/Pages/,'014 copyable handoff must retain final ordinary CI/browser/Pages evidence closure');
+assert.ok(handoff.includes('017.A4-Settings复合交互收口.md'),'014 must route current A4 detail to bounded doc 017');
+assert.ok(handoff.includes('016.Options历史方案归档.md'),'014 must point historical A1-A3 work to archive doc 016');
+const archive=read('016.Options历史方案归档.md');
+assert.match(archive,/archive-only/i,'016 must remain archive-only');
+assert.ok(archive.includes('默认不要读取'),'016 must explicitly stay out of default AI reading');
+const a4=read('017.A4-Settings复合交互收口.md');
+assert.match(a4,/bounded A4 design/i,'017 must remain a bounded A4 design rather than a second handoff authority');
+assert.ok(!a4.includes('single current handoff authority'),'017 must not become a second handoff authority');
 
 const project=read('001.项目总方案.md');
 const current=read('002.兼容与实现状态.md');
 assert.ok(project.includes('Git history 是版本历史档案'),'001 must keep completed version history out of current authority docs');
 assert.ok(current.includes('当前未完成事项只维护在 `docs/014.AI协作与分支纪律.md`'),'002 must route mutable handoff/TODO state to the single handoff owner');
 
-console.log(`Docs authority contract passed: ${required.length} canonical docs + DESIGN remain, ${retired.length} retired duplicate/version-history docs stay removed, per-VERSION retrospective/handoff files are blocked, and docs/014 is the single copyable exact-head-evidence-bound current handoff owner.`);
+console.log(`Docs authority contract passed: ${required.length} canonical docs + ${specialized.length} bounded/archive docs + DESIGN remain, ${retired.length} retired duplicate/version-history docs stay removed, per-VERSION retrospective/handoff files are blocked, docs/016 stays archive-only, docs/017 stays bounded, and docs/014 is the single current handoff owner.`);
