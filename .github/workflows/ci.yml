@@ -736,10 +736,21 @@ jobs:
           import {packSettingsRuntime} from './tools/qb-compact-runtime.mjs';
           const source=JSON.parse(fs.readFileSync('settings-native-compat.json','utf8'));
           const rendered=JSON.stringify(packSettingsRuntime(source,source.catalogIdentity).manifest)+'\n';
+          fs.writeFileSync('settings-runtime-materialized.json',rendered,'utf8');
           const encoded=Buffer.from(rendered,'utf8').toString('base64');
           console.log('@@SETTINGS_RUNTIME_META\t'+Buffer.byteLength(rendered)+'\t'+crypto.createHash('sha256').update(rendered).digest('hex')+'\t'+encoded.length);
           for(let offset=0,index=0;offset<encoded.length;offset+=4000,index++)console.log('@@SETTINGS_RUNTIME_B64\t'+index+'\t'+encoded.slice(offset,offset+4000));
           NODE
+      - name: Compare canonical Settings runtime to committed product runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmp -s settings-runtime-materialized.json webui/private/data/settings-compat.json || {
+            echo 'Committed Settings runtime does not match the exact-SHA canonical materialization.' >&2
+            sha256sum settings-runtime-materialized.json webui/private/data/settings-compat.json >&2
+            exit 1
+          }
+          sha256sum settings-runtime-materialized.json
       - name: Verify every admitted stable Preferences source profile and independent census
         env:
           QB_PREFERENCES_CENSUS_OUTPUT: qb-preferences-census.json
@@ -762,5 +773,6 @@ jobs:
             qb-preferences-source-catalog.json
             qb-preferences-census.json
             settings-native-compat.json
+            settings-runtime-materialized.json
           if-no-files-found: error
           retention-days: 7
