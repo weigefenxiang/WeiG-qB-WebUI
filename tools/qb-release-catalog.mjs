@@ -34,7 +34,7 @@ function preferenceSurface(ref){
   const source=show(ref,'src/webui/api/appcontroller.cpp');
   const sessionHeaderSource=show(ref,'src/base/bittorrent/session.h');
   const preferencesHeaderSource=show(ref,'src/base/preferences.h');
-  const applicationHeaderSource=firstSource(ref,['src/app/application.h','src/app/iapplication.h']);
+  const applicationHeaderSource=firstSource(ref,['src/base/interfaces/iapplication.h','src/app/application.h','src/app/iapplication.h']);
   const memberHeaderSources=[
     showMaybe(ref,'src/base/net/proxyconfigurationmanager.h')
   ].filter(Boolean);

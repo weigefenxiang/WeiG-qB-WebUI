@@ -91,13 +91,13 @@ namespace Net
 `;
 
 const applicationHeader=`
-class Application
+class IApplication
 {
 public:
-    bool isFileLoggerEnabled() const;
-    int fileLoggerMaxSize() const;
-    void setFileLoggerEnabled(bool value);
-    void setFileLoggerMaxSize(int value);
+    virtual bool isFileLoggerEnabled() const = 0;
+    virtual int fileLoggerMaxSize() const = 0;
+    virtual void setFileLoggerEnabled(bool value) = 0;
+    virtual void setFileLoggerMaxSize(int value) = 0;
 };
 `;
 
