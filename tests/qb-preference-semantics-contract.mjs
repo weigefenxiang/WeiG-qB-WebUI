@@ -204,4 +204,34 @@ assert.equal(singleton.typeAgreement,'EXACT','singleton getter and setter types 
 assert.equal(singleton.writable,true,'source-proven singleton getter/setter pair must remain writable');
 assert.equal(singleton.getterKind,'SINGLETON_DECLARATION','singleton provenance must stay explicit instead of name-based guessing');
 
+const enumSource=`
+void AppController::preferencesAction()
+{
+    data[u"enum_value"_s] = session->mode();
+}
+void AppController::setPreferencesAction()
+{
+    if (hasKey(u"enum_value"_s)) session->setMode(static_cast<Mode>(it.value().toInt()));
+}
+`;
+const enumHeader=`
+enum class Mode
+{
+    First = 0,
+    Second = 1
+};
+class Session
+{
+public:
+    virtual Mode mode() const = 0;
+    virtual void setMode(Mode mode) = 0;
+};
+`;
+const enumDescriptor={key:'enum_value',getterPresent:true,setterPresent:true,readType:null,writeType:'number',typeAgreement:'READ_UNRESOLVED',writable:true};
+const [enumEnriched]=enrichPreferenceDescriptorsFromGetter(enumSource,[enumDescriptor],'enum getter',{sessionHeaderSource:enumHeader});
+assert.equal(enumEnriched.readType,'number','source-declared enum getter must serialize as a numeric JSON preference');
+assert.equal(enumEnriched.typeAgreement,'EXACT','enum getter plus numeric setter must prove exact read/write type agreement');
+assert.equal(enumEnriched.writable,true,'source-declared enum getter must not leave an otherwise writable preference read-only');
+assert.equal(enumEnriched.getterKind,'SESSION_DECLARATION');
+
 console.log('qB semantic getter contract passed: operators, typed locals, version-matched struct members, Session/Preferences/Application declarations prove getter types while opaque methods remain fail-closed.');
