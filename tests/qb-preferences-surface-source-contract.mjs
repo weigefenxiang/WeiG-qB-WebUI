@@ -319,7 +319,7 @@ const runtimeSettings=readSettingsRuntime();
 assert.equal(runtimeSettings.settingsData.schemaVersion,2,'formal Settings runtime must consume the source-native compact schema');
 assert.equal(runtimeSettings.settingsData.source,'qb-upstream-preferences-native-surface-compact','formal Settings runtime must not rebuild a legacy descriptor/nativeTabs shape');
 assert.equal(runtimeSettings.settingsData.catalogIdentity.releaseCount,65,'formal Settings runtime must remain bound to the admitted Frozen release set');
-assert.equal(runtimeSettings.manifest.payload.sha256,'41c60f301eb419b5bb9b861737884be85f62e248528867cb472229c561226f9e','formal Settings runtime must consume the accepted exact source-native IR');
+assert.equal(runtimeSettings.manifest.payload.sha256,'3e4be9fcc85dbefc9e77cfc96ce50ca79bee69d01912917d5b8a647ee07e08ba','formal Settings runtime must consume the accepted exact source-native IR');
 assert.equal(Object.prototype.hasOwnProperty.call(runtimeSettings.settingsData,'nativeTabs'),false,'legacy runtime-generated nativeTabs truth must stay retired');
 
 const transportManifest=structuredClone(manifest);
