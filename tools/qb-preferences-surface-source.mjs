@@ -102,6 +102,16 @@ function buildSourceOwnershipIndex(markup,tabs,fieldsets,caches){
       }).sort((a,b)=>b.end-a.end);
       if(adjacent.length)add(adjacent[0],3,'E2:direct-adjacent');
     }
+    if(!candidates.some(item=>item.rank>=3)&&control.tag==='table'){
+      const ownerRange=nearestField||tab.range,localCopies=copyRefs.filter(copy=>{
+        if(!inside(ownerRange,copy.start)||copy.end>control.start)return false;
+        if(labels.some(label=>copy.start>=label.start&&copy.end<=label.end))return false;
+        if(options.some(option=>inside(option,copy.start))||legends.some(legend=>inside(legend,copy.start)))return false;
+        if([...caches.controls.values()].some(item=>item.id!==control.id&&item.start>copy.end&&item.start<control.start))return false;
+        return decodeHtml(String(markup||'').slice(copy.end,control.start))==='';
+      }).sort((a,b)=>b.end-a.end);
+      if(localCopies.length)candidates.push({ref:localCopies[0].ref,rank:3,evidence:'E2:structured-local-copy',sourceRange:{start:localCopies[0].start,end:localCopies[0].end}});
+    }
     if(!candidates.some(item=>item.rank>=3)&&row){
       const free=copyRefs.filter(copy=>{
         if(!inside(row,copy.start)||copy.end>control.start)return false;
