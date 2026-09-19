@@ -116,6 +116,18 @@ assert.equal(inlineCopyFacts.ownershipCensus.missingRequiredLabel,0);
 assert.equal(inlineCopyFacts.ownershipCensus.ambiguousSourceRef,0);
 assert.equal(inlineCopyFacts.ownershipCensus.complete,true,'historical inline-copy control ownership must close without a version/key exception');
 
+const danglingForSource=`
+<div id="DownloadsTab" class="PrefTab"><div class="formRow">
+  <input type="checkbox" id="dontstartdownloads_checkbox">
+  <label for="stale_control_id">QBT_TR(Do not start the download automatically)QBT_TR[CONTEXT=OptionsDialog]</label>
+</div></div>
+<script>document.getElementById("dontstartdownloads_checkbox").checked = pref.start_paused_enabled;</script>`;
+const danglingForFacts=extractQbPreferencesNativeSurface({preferencesSource:danglingForSource,toolbarSource:'<li id="PrefDownloadsLink">Downloads</li>',preferenceDescriptors:[{key:'start_paused_enabled',getterPresent:true,setterPresent:true,readType:'boolean',writeType:'boolean',typeAgreement:'EXACT',writable:true}]});
+assert.equal(danglingForFacts.preferences.start_paused_enabled?.control?.id,'dontstartdownloads_checkbox');
+assert.deepEqual(danglingForFacts.preferences.start_paused_enabled?.title,{source:'Do not start the download automatically',context:'OptionsDialog'},'a unique row-local dangling for= label must recover its actual source control without a key exception');
+assert.equal(danglingForFacts.ownershipCensus.missingRequiredLabel,0);
+assert.equal(danglingForFacts.ownershipCensus.complete,true,'historical dangling label ownership must close only when row structure is unique');
+
 const scaled=`
 <input id="rate" type="number">
 <script>
