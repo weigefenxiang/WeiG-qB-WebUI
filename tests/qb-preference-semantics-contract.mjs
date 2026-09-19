@@ -234,4 +234,42 @@ assert.equal(enumEnriched.typeAgreement,'EXACT','enum getter plus numeric setter
 assert.equal(enumEnriched.writable,true,'source-declared enum getter must not leave an otherwise writable preference read-only');
 assert.equal(enumEnriched.getterKind,'SESSION_DECLARATION');
 
+const wrappedSource=`
+void AppController::preferencesAction()
+{
+    auto proxyManager = Net::ProxyConfigurationManager::instance();
+    data[u"native_path"_s] = Utils::Fs::toNativePath(session->defaultSavePath());
+    data[u"singleton_string"_s] = BitTorrent::Session::instance()->networkInterfaceAddress();
+    data[u"alias_bool"_s] = proxyManager->isProxyOnlyForTorrents();
+}
+void AppController::setPreferencesAction()
+{
+    if (hasKey(u"native_path"_s)) session->setDefaultSavePath(it.value().toString());
+    if (hasKey(u"singleton_string"_s)) session->setNetworkInterfaceAddress(it.value().toString());
+    if (hasKey(u"alias_bool"_s)) proxyManager->setProxyOnlyForTorrents(it.value().toBool());
+}
+`;
+const wrappedSessionHeader=`
+class Session
+{
+public:
+    virtual QString defaultSavePath() const = 0;
+    virtual QString networkInterfaceAddress() const = 0;
+};
+`;
+const wrappedProxyHeader=`
+class ProxyConfigurationManager
+{
+public:
+    bool isProxyOnlyForTorrents() const;
+};
+`;
+const wrappedHints=extractSemanticGetterHints(wrappedSource,'wrapped getters',{sessionHeaderSource:wrappedSessionHeader,memberHeaderSources:[wrappedProxyHeader]});
+assert.equal(wrappedHints.get('native_path').readType,'string','native-path conversion wrapper must prove JSON string semantics without a preference-key exception');
+assert.equal(wrappedHints.get('native_path').getterKind,'NATIVE_PATH_STRING');
+assert.equal(wrappedHints.get('singleton_string').readType,'string','Session::instance() getter must reuse the exact Session class declaration');
+assert.equal(wrappedHints.get('singleton_string').getterKind,'SINGLETON_DECLARATION');
+assert.equal(wrappedHints.get('alias_bool').readType,'boolean','a local alias of an exact singleton class must retain getter type provenance');
+assert.equal(wrappedHints.get('alias_bool').getterKind,'SINGLETON_ALIAS_DECLARATION');
+
 console.log('qB semantic getter contract passed: operators, typed locals, version-matched struct members, Session/Preferences/Application declarations prove getter types while opaque methods remain fail-closed.');
