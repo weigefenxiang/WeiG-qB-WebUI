@@ -75,6 +75,88 @@ function selectedIndexExpression(source,id){const escaped=escapeRe(id),patterns=
 function switchBodyForIndex(source,key,indexVariable,declarations){if(!indexVariable)return null;for(const match of String(source||'').matchAll(/\bswitch\s*\(\s*([A-Za-z_$][\w$]*)\s*\)/g)){const factor=resolveExpression(match[1],value=>preferenceNumericFactor(value,key),declarations);if(factor!==1)continue;const body=balancedBody(source,match.index??0);if(body&&new RegExp('\\b'+escapeRe(indexVariable)+'\\s*=').test(body))return body;}return null;}
 function switchIndexMap(body,variable,options,declarations){if(!body||!variable||!options.length)return null;const markers=[];for(const item of body.matchAll(/\bcase\s+([^:]+)\s*:|\bdefault\s*:/g))markers.push({pos:item.index??0,value:item[1]===undefined?null:String(item[1]).trim()});const values=[];for(let i=0;i<markers.length;i++){const marker=markers[i];if(marker.value===null)continue;const breakPos=body.indexOf('break',marker.pos),end=breakPos>=0?breakPos:body.length,segment=body.slice(marker.pos,end),assign=segment.match(new RegExp('\\b'+escapeRe(variable)+'\\s*=\\s*(\\d+)\\b'));if(!assign)continue;const index=Number(assign[1]),raw=marker.value.replace(/^['"]|['"]$/g,''),display=options[index];if(display===undefined)return null;values.push([raw,display]);}const initial=numericLiteral(declarations.get(variable));if(initial!==null&&Number.isInteger(initial)&&initial>=0&&initial<options.length&&!values.some(row=>String(row[0])===String(options[initial])))values.push([String(options[initial]),String(options[initial])]);return values.length?values:null;}
 function selectedOptionIdentity(source,key,id,declarations,directSwitchBody){const options=selectOptionValues(source,id),indexExpression=selectedIndexExpression(source,id);if(!options.length||!indexExpression)return false;const direct=resolveExpression(indexExpression,value=>preferenceNumericFactor(value,key),declarations);if(direct===1&&options.every((value,index)=>String(value)===String(index)))return true;if(!/^[A-Za-z_$][\w$]*$/.test(indexExpression))return false;const switchBody=directSwitchBody||switchBodyForIndex(source,key,indexExpression,declarations),rows=switchIndexMap(switchBody,indexExpression,options,declarations);if(!rows||!rows.length)return false;return rows.every(row=>String(row[0])===String(row[1]))&&new Set(rows.map(row=>String(row[0]))).size===new Set(options.map(String)).size;}
+function balancedBlock(text,start){
+  const source=String(text||''),open=source.indexOf('{',start);if(open<0)return null;let depth=0,quote='',escape=false,lineComment=false,blockComment=false;
+  for(let i=open;i<source.length;i++){
+    const ch=source[i],next=source[i+1]||'';
+    if(lineComment){if(ch==='\n')lineComment=false;continue;}
+    if(blockComment){if(ch==='*'&&next==='/'){blockComment=false;i++;}continue;}
+    if(quote){if(escape){escape=false;continue;}if(ch==='\\'){escape=true;continue;}if(ch===quote)quote='';continue;}
+    if(ch==='/'&&next==='/'){lineComment=true;i++;continue;}if(ch==='/'&&next==='*'){blockComment=true;i++;continue;}
+    if(ch==='"'||ch==="'"||ch.charCodeAt(0)===96){quote=ch;continue;}
+    if(ch==='{')depth++;else if(ch==='}'){depth--;if(depth===0)return{body:source.slice(open+1,i),open,close:i};}
+  }
+  return null;
+}
+function numericAssignment(segment,name){
+  const match=String(segment||'').match(new RegExp('\\b'+escapeRe(name)+'\\s*=\\s*(-?\\d+(?:\\.\\d+)?)\\b'));
+  return match?Number(match[1]):null;
+}
+function controlValueVariable(declarations,controlId){
+  for(const [name,expression] of declarations)if(directControlValue(expression,controlId))return String(name);
+  return null;
+}
+function equalityBranch(source,variable,value){
+  const re=new RegExp('\\bif\\s*\\(\\s*'+escapeRe(variable)+'\\s*={2,3}\\s*["\\\']'+escapeRe(value)+'["\\\']\\s*\\)','g');
+  const match=re.exec(String(source||''));return match?balancedBlock(source,match.index??0):null;
+}
+function checkboxBranch(block,targetName){
+  const body=String(block?.body||''),patterns=[
+    /if\s*\(\s*(!)?document\.getElementById\(\s*["']([^"']+)["']\s*\)\s*\.\s*checked\s*\)/g,
+    /if\s*\(\s*(!)?\$\(\s*["']([^"']+)["']\s*\)\s*\.\s*checked\s*\)/g,
+    /if\s*\(\s*(!)?\$\(\s*["']([^"']+)["']\s*\)\s*\.\s*getProperty\(\s*["']checked["']\s*\)\s*\)/g
+  ];
+  for(const pattern of patterns)for(const match of body.matchAll(pattern)){
+    const yes=balancedBlock(body,match.index??0);if(!yes)continue;
+    let cursor=yes.close+1;while(/\s/.test(body[cursor]||''))cursor++;
+    if(body.slice(cursor,cursor+4)!=='else')continue;cursor+=4;while(/\s/.test(body[cursor]||''))cursor++;
+    const no=balancedBlock(body,cursor);if(!no)continue;
+    const yesRaw=numericAssignment(yes.body,targetName),noRaw=numericAssignment(no.body,targetName);if(yesRaw===null||noRaw===null)continue;
+    return{controlId:String(match[2]||''),yesRaw,noRaw,checkedWhenYes:!match[1]};
+  }
+  return null;
+}
+function checkboxReadPreference(source,controlId){
+  const escaped=escapeRe(controlId),patterns=[
+    new RegExp('document\\.getElementById\\(\\s*["\\\']'+escaped+'["\\\']\\s*\\)\\s*\\.\\s*checked\\s*=\\s*pref\\s*\\.\\s*([A-Za-z_$][\\w$]*)'),
+    new RegExp('\\$\\(\\s*["\\\']'+escaped+'["\\\']\\s*\\)\\s*\\.\\s*checked\\s*=\\s*pref\\s*\\.\\s*([A-Za-z_$][\\w$]*)'),
+    new RegExp('\\$\\(\\s*["\\\']'+escaped+'["\\\']\\s*\\)\\s*\\.\\s*(?:setProperty|set)\\(\\s*["\\\']checked["\\\']\\s*,\\s*pref\\s*\\.\\s*([A-Za-z_$][\\w$]*)\\s*\\)')
+  ];
+  for(const re of patterns){const match=String(source||'').match(re);if(match)return String(match[1]||'');}
+  return null;
+}
+function compoundSwitchProjection(source,key,controlId,switchMap,writes,declarations){
+  if(!switchMap||switchMap.kind!=='switch-map')return null;
+  const target=String(writes.get(String(key))??'').trim();if(!/^[A-Za-z_$][\w$]*$/.test(target))return null;
+  const initialRaw=numericLiteral(declarations.get(target));if(initialRaw===null)return null;
+  const displayVariable=controlValueVariable(declarations,controlId);if(!displayVariable)return null;
+  const options=selectOptionValues(source,controlId);if(!options.length||!options.includes(String(switchMap.defaultValue??'')))return null;
+  const groups=new Map();for(const row of switchMap.values||[]){const raw=Number(row?.[0]),display=String(row?.[1]??'');if(!Number.isFinite(raw)||!display)return null;const list=groups.get(display)||[];list.push(raw);groups.set(display,list);}
+  if(![...groups.values()].some(list=>list.length>1))return null;
+  if((switchMap.values||[]).some(row=>Number(row?.[0])===initialRaw))return null;
+  const cases=[{value:String(switchMap.defaultValue),raw:initialRaw}],explicitRaw=new Set(),auxIds=new Set();
+  for(const value of options){
+    if(value===String(switchMap.defaultValue))continue;
+    const raws=groups.get(value)||[];if(!raws.length)return null;
+    const branch=equalityBranch(source,displayVariable,value);if(!branch)return null;
+    if(raws.length===1){
+      const raw=numericAssignment(branch.body,target);if(raw===null||raw!==raws[0])return null;
+      cases.push({value,raw});explicitRaw.add(raw);continue;
+    }
+    if(raws.length!==2)return null;
+    const pair=checkboxBranch(branch,target);if(!pair)return null;
+    const pairSet=new Set([pair.yesRaw,pair.noRaw]);if(raws.some(raw=>!pairSet.has(raw))||pairSet.size!==2)return null;
+    auxIds.add(pair.controlId);
+    cases.push({value,aux:pair.checkedWhenYes,raw:pair.yesRaw},{value,aux:!pair.checkedWhenYes,raw:pair.noRaw});
+    explicitRaw.add(pair.yesRaw);explicitRaw.add(pair.noRaw);
+  }
+  if(auxIds.size!==1)return null;
+  const expectedRaw=new Set((switchMap.values||[]).map(row=>Number(row?.[0])));
+  if(expectedRaw.size!==explicitRaw.size||[...expectedRaw].some(raw=>!explicitRaw.has(raw)))return null;
+  const coveredValues=new Set(cases.map(item=>String(item.value)));if(coveredValues.size!==new Set(options.map(String)).size||options.some(value=>!coveredValues.has(String(value))))return null;
+  const auxiliaryControlId=[...auxIds][0],auxiliaryPreferenceKey=checkboxReadPreference(source,auxiliaryControlId);if(!auxiliaryPreferenceKey)return null;
+  return{kind:'compound-switch-map',values:switchMap.values,defaultValue:switchMap.defaultValue,auxiliary:{controlId:auxiliaryControlId,preferenceKey:auxiliaryPreferenceKey,semantic:'checkbox'},writeCases:cases,safeWrite:true};
+}
 
 function rememberLatest(map,key,value,pos,positions){const previous=positions.get(key)??-1;if(pos>=previous){map.set(key,value);positions.set(key,pos);}}
 function numericLiteral(value){const text=stripOuterParens(String(value??'').trim());return/^-?\d+(?:\.\d+)?$/.test(text)?Number(text):null;}
@@ -184,7 +266,7 @@ export function createQbPreferenceValueProjector(source){
     const readFactor=read===undefined?null:resolveExpression(read,value=>preferencePresentationFactor(value,key,presentationFunctions),declarations),writeFactor=write===undefined?null:resolveExpression(write,value=>controlNumericFactor(value,controlId),declarations),stringWriteIdentity=write!==undefined&&controlStringCoercion(write,controlId,declarations);
     if(writeFactor===1&&selectedOptionIdentity(text,key,controlId,declarations,switches.get(String(key))))return{kind:'identity',safeWrite:true};
     if(readFactor===1&&stringWriteIdentity)return{kind:'unproven',safeWrite:false,readFactor:1,writeFactor:1,writeIdentity:'string'};
-    const switchMap=switchProjection(switches.get(String(key)),controlId);if(switchMap)return switchMap;
+    const switchMap=switchProjection(switches.get(String(key)),controlId);if(switchMap){const compound=compoundSwitchProjection(text,key,controlId,switchMap,writes,declarations);if(compound)return compound;return switchMap;}
     if(readFactor===1&&writeFactor===1)return{kind:'identity',safeWrite:true};
     if(readFactor!==null&&writeFactor!==null&&readFactor>0&&writeFactor>0){const product=readFactor*writeFactor;if(Math.abs(product-1)<1e-12){const scale=writeFactor;if(Number.isFinite(scale)&&scale>0)return scale===1?{kind:'identity',safeWrite:true}:{kind:'scale',scale,safeWrite:true};}}
     if(readFactor!==null)return{kind:'unproven',safeWrite:false,readFactor,...(writeFactor!==null?{writeFactor}:{})};
