@@ -163,7 +163,7 @@ function stripOuterParens(value) {
   return result;
 }
 
-function inferGetter(expression, locals, declaredSessionGetters = new Map(), declaredPreferenceGetters = new Map(), declaredLocals = new Map(), declaredMembers = new Map()) {
+function inferGetter(expression, locals, declaredSessionGetters = new Map(), declaredPreferenceGetters = new Map(), declaredApplicationGetters = new Map(), declaredLocals = new Map(), declaredMembers = new Map()) {
   const value = stripOuterParens(expression);
   if (!value) return {type: null, kind: 'UNRESOLVED'};
   if (/^(?:true|false)$/.test(value)) return {type: 'boolean', kind: 'BOOLEAN_LITERAL'};
@@ -188,6 +188,10 @@ function inferGetter(expression, locals, declaredSessionGetters = new Map(), dec
   if (preferenceCall && declaredPreferenceGetters.has(preferenceCall[1])) {
     return {type: declaredPreferenceGetters.get(preferenceCall[1]), kind: 'PREFERENCES_DECLARATION'};
   }
+  const applicationCall = value.match(/^app\s*\(\s*\)\s*->\s*([A-Za-z_]\w*)\s*\(\s*\)$/);
+  if (applicationCall && declaredApplicationGetters.has(applicationCall[1])) {
+    return {type: declaredApplicationGetters.get(applicationCall[1]), kind: 'APPLICATION_DECLARATION'};
+  }
   const memberAccess = value.match(/^([A-Za-z_]\w*)\s*(?:\.|->)\s*([A-Za-z_]\w*)$/);
   if (memberAccess && declaredLocals.has(memberAccess[1])) {
     const declaredType = String(declaredLocals.get(memberAccess[1]) || '').split('::').at(-1);
@@ -211,6 +215,7 @@ export function extractSemanticGetterHints(source, label = 'source', options = {
   const locals = localTypes(body);
   const declaredSessionGetters = declaredGetterTypes(options.sessionHeaderSource);
   const declaredPreferenceGetters = declaredGetterTypes(options.preferencesHeaderSource);
+  const declaredApplicationGetters = declaredGetterTypes(options.applicationHeaderSource);
   const declaredLocals = declaredLocalTypes(body);
   const declaredMembers = declaredMemberTypes(options.memberHeaderSources || []);
   const out = new Map();
@@ -219,7 +224,7 @@ export function extractSemanticGetterHints(source, label = 'source', options = {
     const key = capturedKey(match, 1);
     if (!key) continue;
     const expression = readExpression(body, match.index + match[0].length);
-    const inferred = inferGetter(expression, locals, declaredSessionGetters, declaredPreferenceGetters, declaredLocals, declaredMembers);
+    const inferred = inferGetter(expression, locals, declaredSessionGetters, declaredPreferenceGetters, declaredApplicationGetters, declaredLocals, declaredMembers);
     out.set(key, {
       key,
       readType: inferred.type,

@@ -40,6 +40,7 @@ function numericLiteral(value){const text=stripOuterParens(String(value??'').tri
 function assignedExpression(segment,id,property='value'){
   const escaped=escapeRe(id),patterns=[
     new RegExp(modernControlPattern(id,property)+'\\s*=\\s*([^;\\n]+)'),
+    new RegExp('\\$\\(\\s*["\']'+escaped+'["\']\\s*\\)\\s*\\.\\s*'+escapeRe(property)+'\\s*=\\s*([^;\\n]+)'),
     new RegExp('\\$\\(\\s*["\']'+escaped+'["\']\\s*\\)\\s*\\.\\s*(?:setProperty|set)\\(\\s*["\']'+escapeRe(property)+'["\']\\s*,\\s*([^;\\n\\)]+(?:\\)[^;\\n\\)]*)?)\\s*\\)')
   ];
   for(const re of patterns){const match=String(segment||'').match(re);if(match)return String(match[1]||'').trim();}
@@ -48,9 +49,38 @@ function assignedExpression(segment,id,property='value'){
 function checkedControl(segment,expected){
   const bool=expected?'true':'false',patterns=[
     new RegExp('document\\.getElementById\\(\\s*["\']([^"\']+)["\']\\s*\\)\\s*\\.\\s*checked\\s*=\\s*'+bool+'\\b'),
+    new RegExp('\\$\\(\\s*["\']([^"\']+)["\']\\s*\\)\\s*\\.\\s*checked\\s*=\\s*'+bool+'\\b'),
     new RegExp('\\$\\(\\s*["\']([^"\']+)["\']\\s*\\)\\s*\\.\\s*(?:setProperty|set)\\(\\s*["\']checked["\']\\s*,\\s*'+bool+'\\s*\\)')
   ];
   for(const re of patterns){const match=String(segment||'').match(re);if(match)return String(match[1]||'');}
+  return null;
+}
+function emptyStringValue(value){const text=stripOuterParens(String(value??'').trim());return text==='""'||text==="''"?'':null;}
+function directControlValue(value,id){
+  const text=stripOuterParens(String(value||'').trim()),escaped=escapeRe(id);
+  return new RegExp('^'+modernControlPattern(id,'value')+'$').test(text)
+    ||new RegExp('^\\$\\(\\s*["\']'+escaped+'["\']\\s*\\)\\s*\\.\\s*value$').test(text)
+    ||new RegExp('^'+legacyControlPattern(id,'value')+'$').test(text);
+}
+function presenceGateProjection(source,key,controlId){
+  const text=String(source||''),escapedKey=escapeRe(key);
+  const readRe=new RegExp('if\\s*\\(\\s*pref\\s*\\.\\s*'+escapedKey+'\\s*!={1,2}\\s*(?:""|\'\')\\s*\\)\\s*\\{([\\s\\S]*?)\\}\\s*else\\s*\\{([\\s\\S]*?)\\}','g');
+  let readGate=null;
+  for(const match of text.matchAll(readRe)){
+    const on=match[1]||'',off=match[2]||'',onGate=checkedControl(on,true),offGate=checkedControl(off,false);
+    if(!onGate||onGate!==offGate)continue;
+    const onValue=stripOuterParens(String(assignedExpression(on,controlId)||'').trim()),offValue=assignedExpression(off,controlId);
+    if(onValue!==('pref.'+key)||emptyStringValue(offValue)!=='')continue;
+    readGate=onGate;break;
+  }
+  if(!readGate)return null;
+  const gate=escapeRe(readGate),modern='document\\.getElementById\\(\\s*["\']'+gate+'["\']\\s*\\)\\s*\\.\\s*checked',dollar='\\$\\(\\s*["\']'+gate+'["\']\\s*\\)\\s*\\.\\s*(?:checked|getProperty\\(\\s*["\']checked["\']\\s*\\))',gateAccess='(?:'+modern+'|'+dollar+')';
+  const bracketAssignment='settings\\s*\\[\\s*["\']'+escapedKey+'["\']\\s*\\]\\s*=\\s*([^;\\n]+)\\s*;';
+  const bracketWrite=new RegExp('if\\s*\\(\\s*'+gateAccess+'\\s*\\)\\s*(?:\\{\\s*)?'+bracketAssignment+'\\s*(?:\\}\\s*)?else\\s*(?:\\{\\s*)?'+bracketAssignment,'g');
+  for(const match of text.matchAll(bracketWrite)){if(directControlValue(match[1],controlId)&&emptyStringValue(match[2])==='')return{kind:'presence-gate',gateControlId:readGate,disabledValue:'',enabledWhen:{kind:'non-empty'},safeWrite:true};}
+  const setAssignment='settings\\s*\\.\\s*set\\(\\s*["\']'+escapedKey+'["\']\\s*,\\s*([\\s\\S]*?)\\)\\s*;';
+  const setWrite=new RegExp('if\\s*\\(\\s*'+gateAccess+'\\s*\\)\\s*(?:\\{\\s*)?'+setAssignment+'\\s*(?:\\}\\s*)?else\\s*(?:\\{\\s*)?'+setAssignment,'g');
+  for(const match of text.matchAll(setWrite)){if(directControlValue(match[1],controlId)&&emptyStringValue(match[2])==='')return{kind:'presence-gate',gateControlId:readGate,disabledValue:'',enabledWhen:{kind:'non-empty'},safeWrite:true};}
   return null;
 }
 function sentinelGateProjection(source,key,controlId,writes,declarations){
@@ -99,6 +129,7 @@ export function createQbPreferenceValueProjector(source){
   while((match=switchRe.exec(text))){const body=balancedBody(text,match.index??0);if(body)switches.set(match[1],body);}
   return function project(key,controlId){
     const switchMap=switchProjection(switches.get(String(key)),controlId);if(switchMap)return switchMap;
+    const presence=presenceGateProjection(text,key,controlId);if(presence)return presence;
     const sentinel=sentinelGateProjection(text,key,controlId,writes,declarations);if(sentinel)return sentinel;
     const read=reads.get(String(controlId)),write=writes.get(String(key));
     const readFactor=read===undefined?null:resolveExpression(read,value=>preferenceNumericFactor(value,key),declarations),writeFactor=write===undefined?null:resolveExpression(write,value=>controlNumericFactor(value,controlId),declarations);

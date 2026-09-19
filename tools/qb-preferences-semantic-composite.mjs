@@ -86,6 +86,8 @@ function sourceControlAccess(value){
   const text=stripOuterParens(value);
   let match=text.match(/^document\.getElementById\(\s*["']([^"']+)["']\s*\)\.(checked|value|disabled)$/);
   if(match)return{controlId:match[1],property:match[2]};
+  match=text.match(/^\$\(\s*["']([^"']+)["']\s*\)\.(checked|value|disabled)$/);
+  if(match)return{controlId:match[1],property:match[2]};
   match=text.match(/^\$\(\s*["']([^"']+)["']\s*\)\.(?:getProperty|get)\(\s*["'](checked|value|disabled)["']\s*\)$/);
   return match?{controlId:match[1],property:match[2]}:null;
 }
@@ -95,6 +97,25 @@ function literalValue(value){
   if(text==='true')return true;if(text==='false')return false;if(text==='null')return null;
   if(/^-?\d+(?:\.\d+)?$/.test(text))return Number(text);
   return undefined;
+}
+function sourcePropertyBag(value){
+  const text=stripOuterParens(value),patterns=[
+    /^document\.getElementById\(\s*["']([^"']+)["']\s*\)\.getProperties\(\s*([\s\S]*)\s*\)$/,
+    /^\$\(\s*["']([^"']+)["']\s*\)\.getProperties\(\s*([\s\S]*)\s*\)$/
+  ];
+  for(const pattern of patterns){
+    const match=text.match(pattern);if(!match)continue;
+    const controlId=String(match[1]||''),properties=[];
+    for(const property of String(match[2]||'').matchAll(/["'](checked|value|disabled)["']/g))if(!properties.includes(property[1]))properties.push(property[1]);
+    if(controlId&&properties.length)return{controlId,properties};
+  }
+  return null;
+}
+function rawControlProperty(controlId,property){
+  if(property==='checked')return{kind:'controlTruthy',controlId};
+  if(property==='value')return{kind:'controlValue',controlId};
+  if(property==='disabled')return{kind:'controlDisabled',controlId};
+  return null;
 }
 function parseRawPredicate(value,env){
   let text=stripOuterParens(value);if(!text)return null;
@@ -152,17 +173,25 @@ function negatePreferencePredicate(item){
 
 export function extractQbPreferencesBehaviorPredicates(source,controlToPreference={}){
   const text=String(source||''),enabledByControl=new Map(),assignments=[],functions=[];
-  for(const match of text.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:\(\s*\)\s*=>|function\s*\(\s*\))\s*\{/g)){
+  for(const match of text.matchAll(/(?:\b(?:const|let|var)\s+)?([A-Za-z_$][\w$]*)\s*=\s*(?:\(\s*\)\s*=>|function\s*\(\s*\))\s*\{/g)){
     const body=balancedBody(text,match.index??0);if(body)functions.push({name:String(match[1]),body,start:match.index??0});
+  }
+  for(const match of text.matchAll(/\bfunction\s+([A-Za-z_$][\w$]*)\s*\(\s*\)\s*\{/g)){
+    const body=balancedBody(text,match.index??0);if(body&&!functions.some(item=>item.start===(match.index??0)))functions.push({name:String(match[1]),body,start:match.index??0});
   }
   functions.sort((a,b)=>a.start-b.start);
   for(const fn of functions){
     const env=new Map();
-    for(const match of fn.body.matchAll(/\bconst\s+([A-Za-z_$][\w$]*)\s*=\s*([^;]+);/g)){
-      const parsed=parseRawPredicate(match[2],env);if(parsed)env.set(String(match[1]),parsed);
+    for(const match of fn.body.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*([^;]+);/g)){
+      const name=String(match[1]),expression=match[2],bag=sourcePropertyBag(expression);
+      if(bag){for(const property of bag.properties){const raw=rawControlProperty(bag.controlId,property);if(raw)env.set(name+'.'+property,raw);}continue;}
+      const parsed=parseRawPredicate(expression,env);if(parsed)env.set(name,parsed);
     }
-    const modern=[...fn.body.matchAll(/document\.getElementById\(\s*["']([^"']+)["']\s*\)\.disabled\s*=\s*([^;]+);/g)].map(match=>({target:match[1],expr:match[2],evidence:'property'}));
-    const legacy=[...fn.body.matchAll(/\$\(\s*["']([^"']+)["']\s*\)\.(?:setProperty|set)\(\s*["']disabled["']\s*,\s*([^;\)]+(?:\)[^;\)]*)?)\s*\)\s*;?/g)].map(match=>({target:match[1],expr:match[2],evidence:'setter'}));
+    const modern=[
+      ...fn.body.matchAll(/document\.getElementById\(\s*["']([^"']+)["']\s*\)\.disabled\s*=\s*([^;]+);/g),
+      ...fn.body.matchAll(/\$\(\s*["']([^"']+)["']\s*\)\.disabled\s*=\s*([^;]+);/g)
+    ].map(match=>({target:match[1],expr:match[2],evidence:'property'}));
+    const legacy=[...fn.body.matchAll(/\$\(\s*["']([^"']+)["']\s*\)\.(?:setProperty|set)\(\s*["']disabled["']\s*,\s*([\s\S]*?)\)\s*;/g)].map(match=>({target:match[1],expr:match[2],evidence:'setter'}));
     for(const row of [...modern,...legacy]){
       const disabled=parseRawPredicate(row.expr,env),enabled=negateRaw(disabled),target=String(row.target||'');
       if(enabled)enabledByControl.set(target,enabled);

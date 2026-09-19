@@ -32,6 +32,10 @@ const preferences=`
     </legend>
     <label for="future_limit">QBT_TR(Future limit:)QBT_TR[CONTEXT=OptionsDialog]</label>
     <input id="future_limit" type="number" min="0" max="9000" step="1">QBT_TR(KiB)QBT_TR[CONTEXT=OptionsDialog]
+    <div class="formRow"><input type="button" id="future_test_button" value="QBT_TR(Test future action)QBT_TR[CONTEXT=OptionsDialog]" onclick="qBittorrent.Preferences.testFuture();"></div>
+    <div style="font-style: italic;">QBT_TR(Supported parameters (case sensitive):)QBT_TR[CONTEXT=OptionsDialog]
+      <ul><li>QBT_TR(%N: Torrent name)QBT_TR[CONTEXT=OptionsDialog]</li><li>QBT_TR(%D: Save path)QBT_TR[CONTEXT=OptionsDialog]</li></ul>
+    </div>
   </fieldset>
 </div>
 <script>
@@ -41,6 +45,7 @@ const preferences=`
   settings["locale"] = document.getElementById("locale_select").value;
   settings["future_gate"] = document.getElementById("future_gate").checked;
   settings["future_limit"] = Number(document.getElementById("future_limit").value) * 1024;
+const updateFutureHelper=()=>{const enabled=document.getElementById("future_gate").checked;document.getElementById("future_test_button").disabled=!enabled;};
 </script>`;
 const descriptors=[
   {key:'locale',getterPresent:true,setterPresent:true,readType:'string',writeType:'string',typeAgreement:'EXACT',writable:true},
@@ -85,6 +90,18 @@ assert.equal(manifest.controlGraph.schemaVersion,1,'source extraction must emit 
 assert.equal(manifest.structuralCensus.complete,true,'every source control in admitted Settings tabs must be represented by the Control Graph');
 assert.equal(manifest.controlGraph.tabs.futurenetwork.fieldsets[0].template,'nested-gated-fieldset','fieldset legend gates must remain structural graph nodes');
 assert.deepEqual(manifest.controlGraph.tabs.futurenetwork.rows.find(row=>row.items.some(item=>item.preferenceKey==='future_limit')).items[0].condition,{kind:'truthy',key:'future_gate'},'fieldset gates must compile into declarative predicates');
+const futureItems=manifest.controlGraph.tabs.futurenetwork.rows.flatMap(row=>row.items);
+const futureHelper=futureItems.find(item=>item.kind==='helper'&&item.id==='future_test_button');
+assert.ok(futureHelper,'input type=button must be represented as a source helper rather than a fake text control');
+assert.equal(futureHelper.label.source,'Test future action');
+assert.deepEqual(futureHelper.action,{kind:'source-helper',name:'testFuture'});
+assert.deepEqual(futureHelper.condition,{kind:'truthy',key:'future_gate'},'helper disabled behavior must stay in the source graph');
+const futureNote=futureItems.find(item=>item.kind==='content'&&item.contentKind==='note');
+const futureList=futureItems.find(item=>item.kind==='content'&&item.contentKind==='list');
+assert.equal(futureNote.label.source,'Supported parameters (case sensitive):','source note copy must survive the Control Graph');
+assert.deepEqual(futureList.items.map(item=>item.source),['%N: Torrent name','%D: Save path'],'source list copy must survive without screenshot-key exceptions');
+assert.equal(manifest.structuralCensus.sourceContents,2);
+assert.equal(manifest.structuralCensus.representedContents,2);
 
 const structuralToolbar='<menu><li id="PrefConnectionLink">QBT_TR(Connection)QBT_TR[CONTEXT=OptionsDialog]</li><li id="PrefSpeedLink">QBT_TR(Speed)QBT_TR[CONTEXT=OptionsDialog]</li><li id="PrefAdvancedLink">QBT_TR(Advanced)QBT_TR[CONTEXT=OptionsDialog]</li></menu>';
 const structuralSource='<div id="ConnectionTab" class="PrefTab">'
@@ -129,6 +146,62 @@ assert.deepEqual(itemFor('proxy_auth_enabled').condition,{kind:'allOf',items:[{k
 assert.deepEqual(structural.preferences.send_buffer_watermark_factor.control.unit,{literal:'%'},'display adornments must be source-owned even when they are not tied to a numeric scale projection');
 assert.equal(structural.preferences.proxy_type.control.unit,undefined,'select option copy must never be misclassified as a control adornment');
 
+const presenceGateSource=`
+if (pref.export_dir !== "") {
+  document.getElementById("exportdir_checkbox").checked = true;
+  document.getElementById("exportdir_text").value = pref.export_dir;
+}
+else {
+  document.getElementById("exportdir_checkbox").checked = false;
+  document.getElementById("exportdir_text").value = "";
+}
+if (document.getElementById("exportdir_checkbox").checked)
+  settings["export_dir"] = document.getElementById("exportdir_text").value;
+else
+  settings["export_dir"] = "";
+`;
+assert.deepEqual(
+  extractQbPreferenceValueProjection(presenceGateSource,'export_dir','exportdir_text'),
+  {kind:'presence-gate',gateControlId:'exportdir_checkbox',disabledValue:'',enabledWhen:{kind:'non-empty'},safeWrite:true},
+  'empty-string/presence Preferences must compile a generic auxiliary gate projection from exact read+write source'
+);
+const legacyPresenceGateSource=`
+if (pref.export_dir != '') {
+  $('exportdir_checkbox').setProperty('checked', true);
+  $('exportdir_text').setProperty('value', pref.export_dir);
+}
+else {
+  $('exportdir_checkbox').setProperty('checked', false);
+  $('exportdir_text').setProperty('value', '');
+}
+if ($('exportdir_checkbox').getProperty('checked'))
+  settings.set('export_dir', $('exportdir_text').getProperty('value'));
+else
+  settings.set('export_dir', '');
+`;
+assert.deepEqual(
+  extractQbPreferenceValueProjection(legacyPresenceGateSource,'export_dir','exportdir_text'),
+  {kind:'presence-gate',gateControlId:'exportdir_checkbox',disabledValue:'',enabledWhen:{kind:'non-empty'},safeWrite:true},
+  'presence gate proof must cover the admitted legacy qB syntax without a version-specific whitelist'
+);
+
+const behaviorToolbar='<menu><li id="PrefBehaviorLink">QBT_TR(Behavior)QBT_TR[CONTEXT=OptionsDialog]</li></menu>';
+const behaviorSource='<div id="BehaviorTab" class="PrefTab"><fieldset class="settings"><legend><input type="checkbox" id="filelog_checkbox"><label for="filelog_checkbox">QBT_TR(Log Files)QBT_TR[CONTEXT=OptionsDialog]</label></legend><div class="formRow"><input type="checkbox" id="filelog_backup_checkbox"><label for="filelog_backup_checkbox">QBT_TR(Backup)QBT_TR[CONTEXT=OptionsDialog]</label><input type="number" id="filelog_max_size_input"></div></fieldset></div><script>'
++'document.getElementById("filelog_checkbox").checked=pref.file_log_enabled;document.getElementById("filelog_backup_checkbox").checked=pref.file_log_backup_enabled;document.getElementById("filelog_max_size_input").value=pref.file_log_max_size;'
++'settings["file_log_enabled"]=document.getElementById("filelog_checkbox").checked;settings["file_log_backup_enabled"]=document.getElementById("filelog_backup_checkbox").checked;settings["file_log_max_size"]=Number(document.getElementById("filelog_max_size_input").value);'
++'const updateFileLogEnabled=()=>{const enabled=document.getElementById("filelog_checkbox").checked;document.getElementById("filelog_backup_checkbox").disabled=!enabled;};'
++'const updateFileLogBackupEnabled=()=>{const pros=document.getElementById("filelog_backup_checkbox").getProperties("disabled","checked");document.getElementById("filelog_max_size_input").disabled=pros.disabled||!pros.checked;};'
++'</script>';
+const behaviorDescriptors=[['file_log_enabled','boolean'],['file_log_backup_enabled','boolean'],['file_log_max_size','number']].map(([key,type])=>({key,getterPresent:true,setterPresent:true,readType:type,writeType:type,typeAgreement:'EXACT',writable:true}));
+const behaviorManifest=extractQbPreferencesNativeSurface({preferencesSource:behaviorSource,toolbarSource:behaviorToolbar,preferenceDescriptors:behaviorDescriptors});
+const behaviorItems=behaviorManifest.controlGraph.tabs.behavior.rows.flatMap(row=>row.items).concat(behaviorManifest.controlGraph.tabs.behavior.fieldsets.flatMap(field=>field.legendControls||[]));
+assert.deepEqual(behaviorItems.find(item=>item.preferenceKey==='file_log_max_size').condition,{kind:'allOf',items:[{kind:'truthy',key:'file_log_enabled'},{kind:'truthy',key:'file_log_backup_enabled'}]},'getProperties(disabled, checked) chains must compile into nested declarative predicates');
+assert.equal(behaviorManifest.structuralCensus.complete,true,'resolved nested source predicates must keep the structural census complete');
+const unknownBehaviorSource=behaviorSource.replace('pros.disabled||!pros.checked','runtimeMystery(pros)');
+const unknownBehaviorManifest=extractQbPreferencesNativeSurface({preferencesSource:unknownBehaviorSource,toolbarSource:behaviorToolbar,preferenceDescriptors:behaviorDescriptors});
+assert.equal(unknownBehaviorManifest.structuralCensus.complete,false,'any unresolved source behavior must fail structural completeness instead of false-green');
+assert.ok(unknownBehaviorManifest.structuralCensus.unknownBehaviors.includes('filelog_max_size_input'),'unresolved behavior target must be named in the census');
+
 const legacyAltLimitSource=`
 $('alt_dl_limit_value').setProperty('value', (pref.alt_dl_limit.toInt() / 1024));
 const alt_dl_limit = $('alt_dl_limit_value').getProperty('value').toInt() * 1024;
@@ -172,7 +245,7 @@ assert.deepEqual(expanded.preferences.future_limit.projection,{kind:'scale',safe
 assert.equal(expanded.preferences.future_limit.dependencies.gates[0].preferenceKey,'future_gate');
 assert.deepEqual(expanded.tabs[1].preferences,['future_gate','future_limit']);
 assert.ok(Array.isArray(compact.graphStrings)&&compact.graphs?.futurenetwork,'compact contract must carry interned Control Graph transport');
-assert.deepEqual(expanded.controlGraph.tabs.futurenetwork,manifest.controlGraph.tabs.futurenetwork,'compact expansion must losslessly restore structural rows/fieldsets/helper/predicate facts');
+assert.deepEqual(expanded.controlGraph.tabs.futurenetwork,manifest.controlGraph.tabs.futurenetwork,'compact expansion must losslessly restore structural rows/fieldsets/helper/content/predicate facts');
 const changed=structuredClone(manifest);changed.preferences.future_limit.control.attributes.max='10000';
 const compactChanged=compileQbPreferencesCompact({schemaVersion:1,profiles:[sourceCatalog.profiles[0],{qbVersion:'5.2.4',sourceSha:'2222222222222222222222222222222222222222',manifest:changed}]});
 assert.equal(compactChanged.preferences.future_limit.length,2,'one preference change must create one keyed change point instead of duplicating every other native setting');

@@ -22,7 +22,7 @@ function elementRanges(markup,tag){const text=String(markup||''),re=new RegExp(`
 function directLegend(markup,fieldset){if(!fieldset)return null;const body=String(markup||'').slice(fieldset.openEnd,fieldset.endStart),nested=elementRanges(body,'fieldset').filter(item=>item.start!==0),cut=nested.length?Math.min(...nested.map(item=>item.start)):body.length,head=body.slice(0,cut),match=head.match(/<legend\b[^>]*>([\s\S]*?)<\/legend>/i)||body.match(/<legend\b[^>]*>([\s\S]*?)<\/legend>/i);return match?qbtTr(match[1]):null;}
 function controlsInLegend(markup,fieldset,uiByControl){if(!fieldset)return[];const body=String(markup||'').slice(fieldset.openEnd,fieldset.endStart),match=body.match(/<legend\b[^>]*>([\s\S]*?)<\/legend>/i);if(!match)return[];const out=[];for(const control of match[1].matchAll(/<input\b([^>]*)>/gi)){const id=attrText(control[1],'id'),type=String(attrText(control[1],'type')||'text').toLowerCase();if(!id||type!=='checkbox')continue;const handlers={};for(const name of ['onclick','onchange','oninput']){const value=attrText(control[1],name);if(value)handlers[name]=value;}out.push({controlId:id,preferenceKey:uiByControl.get(id)||null,handlers});}return out;}
 function rangeIndex(ranges){const out=new Map();for(const item of ranges||[]){const id=attrText(item.attrs,'id');if(id&&!out.has(id))out.set(id,item);}return out;}
-function controlIndex(markup,caches){const text=String(markup||''),out=new Map(),re=/<(input|select|textarea|table)\b([^>]*)>/gi;let match;while((match=re.exec(text))){const tag=String(match[1]||'').toLowerCase(),attrs=match[2]||'',id=attrText(attrs,'id');if(!id||out.has(id))continue;const type=tag==='input'?String(attrText(attrs,'type')||'text').toLowerCase():tag,semantic=tag==='table'?'structured':tag==='select'?'select':tag==='textarea'?'textarea':type==='checkbox'?'checkbox':type==='radio'?'radio':type==='number'?'number':type==='password'?'password':'text';let range=null;if(tag==='select')range=caches.selectsById.get(id)||null;else if(tag==='textarea')range=caches.textareasById.get(id)||null;else if(tag==='table')range=caches.tablesById.get(id)||null;const handlers={};for(const name of ['onclick','onchange','oninput']){const value=attrText(attrs,name);if(value)handlers[name]=value;}const attributes={};for(const name of ['min','max','step','maxlength','pattern','placeholder']){const value=attrText(attrs,name);if(value!==null)attributes[name]=value;}const classes=String(attrText(attrs,'class')||'').split(/\s+/).filter(Boolean);out.set(id,{id,tag,type,semantic,start:match.index??0,openEnd:re.lastIndex,range,handlers,attributes,classes,staticDisabled:hasAttr(attrs,'disabled')});}return out;}
+function controlIndex(markup,caches){const text=String(markup||''),out=new Map(),re=/<(input|select|textarea|table)\b([^>]*)>/gi;let match;while((match=re.exec(text))){const tag=String(match[1]||'').toLowerCase(),attrs=match[2]||'',id=attrText(attrs,'id');if(!id||out.has(id))continue;const type=tag==='input'?String(attrText(attrs,'type')||'text').toLowerCase():tag;if(tag==='input'&&['button','submit','reset'].includes(type))continue;const semantic=tag==='table'?'structured':tag==='select'?'select':tag==='textarea'?'textarea':type==='checkbox'?'checkbox':type==='radio'?'radio':type==='number'?'number':type==='password'?'password':'text';let range=null;if(tag==='select')range=caches.selectsById.get(id)||null;else if(tag==='textarea')range=caches.textareasById.get(id)||null;else if(tag==='table')range=caches.tablesById.get(id)||null;const handlers={};for(const name of ['onclick','onchange','oninput']){const value=attrText(attrs,name);if(value)handlers[name]=value;}const attributes={};for(const name of ['min','max','step','maxlength','pattern','placeholder']){const value=attrText(attrs,name);if(value!==null)attributes[name]=value;}const classes=String(attrText(attrs,'class')||'').split(/\s+/).filter(Boolean);out.set(id,{id,tag,type,semantic,start:match.index??0,openEnd:re.lastIndex,range,handlers,attributes,classes,staticDisabled:hasAttr(attrs,'disabled')});}return out;}
 function findControl(_markup,id,caches){return caches.controls.get(String(id||''))||null;}
 function selectOptions(markup,control){if(!control||control.tag!=='select'||!control.range)return[];const body=String(markup||'').slice(control.range.openEnd,control.range.endStart),out=[];for(const match of body.matchAll(/<option\b([^>]*)>([\s\S]*?)<\/option>/gi)){const value=attrText(match[1],'value'),ref=qbtTr(match[2]),literal=ref?null:decodeHtml(match[2]);out.push({value:value===null?decodeHtml(match[2]):value,label:ref||{literal}});}return out;}
 function immediateUnit(markup,control,_descriptor,_projection){if(!control||control.semantic==='select')return null;let tail=String(markup||'').slice(control.openEnd,control.openEnd+180),stop=tail.search(/<(?:input|select|textarea|button|label|div|tr|fieldset)\b|<\/(?:td|div|span|fieldset)>/i);if(stop>=0)tail=tail.slice(0,stop);const ref=qbtTr(tail);if(ref)return ref;const literal=decodeHtml(tail).replace(/&nbsp;/gi,' ').replace(/^[:\s\u00a0]+|[:\s\u00a0]+$/g,'');return literal&&literal.length<=48&&!/[.!?。！？]$/.test(literal)?{literal}:null;}
@@ -36,10 +36,36 @@ function safeStringWriteProjection(projection,descriptor,control){
 function sourceTabs(preferencesSource,toolbarSource){const divs=elementRanges(preferencesSource,'div').filter(item=>/\bPrefTab\b/.test(String(attrText(item.attrs,'class')||''))),bySlug=new Map(divs.map(item=>[tabSlug(attrText(item.attrs,'id')),item])),toolbar=settingsTabRefs(toolbarSource||preferencesSource),out=[];for(const item of toolbar){const range=bySlug.get(item.tab)||null;if(range)out.push({id:item.tab,nativeId:attrText(range.attrs,'id')||null,title:item.ref,range});}if(out.length)return out;for(const range of divs){const id=tabSlug(attrText(range.attrs,'id'));if(id)out.push({id,nativeId:attrText(range.attrs,'id')||null,title:null,range});}return out;}
 
 function qbtOrLiteral(value){const ref=qbtTr(value);if(ref)return ref;const literal=decodeHtml(value);return literal?{literal}:null;}
-function buttonRanges(markup){
-  const text=String(markup||''),out=[];for(const match of text.matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/gi)){
+function helperRanges(markup){
+  const text=String(markup||''),out=[];
+  for(const match of text.matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/gi)){
     const attrs=match[1]||'',start=match.index??0,end=start+match[0].length,onclick=attrText(attrs,'onclick')||'',id=attrText(attrs,'id')||('button@'+start);
-    out.push({id,start,end,attrs,onclick,label:qbtOrLiteral(match[2])});
+    out.push({id,start,end,attrs,onclick,label:qbtOrLiteral(match[2]),sourceTag:'button'});
+  }
+  for(const match of text.matchAll(/<input\b([^>]*)>/gi)){
+    const attrs=match[1]||'',type=String(attrText(attrs,'type')||'text').toLowerCase();if(!['button','submit','reset'].includes(type))continue;
+    const start=match.index??0,end=start+match[0].length,onclick=attrText(attrs,'onclick')||'',id=attrText(attrs,'id')||('input-button@'+start),value=attrText(attrs,'value')||'';
+    out.push({id,start,end,attrs,onclick,label:qbtOrLiteral(value),sourceTag:'input'});
+  }
+  return out.sort((a,b)=>a.start-b.start);
+}
+function qbtRefs(value){
+  const out=[];for(const match of String(value||'').matchAll(/QBT_TR\(([\s\S]*?)\)QBT_TR\[CONTEXT=([^\]]+)\]/gi)){const source=decodeHtml(match[1]),context=String(match[2]||'').trim();if(source&&context)out.push({source,context});}
+  return out;
+}
+function sourceContentNodes(markup,tabs,caches){
+  const text=String(markup||''),lists=[...elementRanges(text,'ul'),...elementRanges(text,'ol')].sort((a,b)=>a.start-b.start),out=[];
+  for(const list of lists){
+    if(!tabs.some(tab=>inside(tab.range,list.start)))continue;
+    const body=text.slice(list.openEnd,list.endStart),items=[];
+    for(const match of body.matchAll(/<li\b[^>]*>([\s\S]*?)<\/li>/gi)){const label=qbtOrLiteral(match[1]);if(label)items.push(label);}
+    if(!items.length)continue;
+    const parent=nearestContaining((caches.divs||[]).filter(div=>!String(attrText(div.attrs,'class')||'').split(/\s+/).includes('PrefTab')),list.start);
+    if(parent){
+      const prefix=text.slice(parent.openEnd,list.start);
+      if(!/<(?:input|select|textarea|table|fieldset)\b/i.test(prefix)){const refs=qbtRefs(prefix);const label=refs.at(-1)||null;if(label)out.push({kind:'content',contentKind:'note',id:'note@'+list.start,start:list.start-0.1,end:list.start,label,items:[],forControlId:null});}
+    }
+    out.push({kind:'content',contentKind:'list',id:'list@'+list.start,start:list.start,end:list.end,label:null,items,forControlId:null});
   }
   return out;
 }
@@ -102,7 +128,9 @@ function buildControlGraph(markup,tabs,fieldsets,caches,preferences){
   const preferenceById=new Map(),preferenceObject={};
   for(const [key,item] of Object.entries(preferences||{})){const id=String(item?.control?.id||'');if(id&&!preferenceById.has(id))preferenceById.set(id,key);preferenceObject[key]=item;}
   preferenceById.preferences=preferenceObject;
-  const controlToPreference=Object.fromEntries([...preferenceById.entries()]),behavior=extractQbPreferencesBehaviorPredicates(markup,controlToPreference),buttons=buttonRanges(markup),legends=elementRanges(markup,'legend'),formRows=(caches.divs||[]).filter(row=>String(attrText(row.attrs,'class')||'').split(/\s+/).includes('formRow')),tableRows=caches.trs||[],allRows=[...formRows,...tableRows].sort((a,b)=>a.start-b.start||a.end-b.end),graphTabs={},representedControls=new Set(),representedHelpers=new Set(),sourceControls=new Set(),sourceHelpers=new Set(),legendControlIds=new Set();
+  const controlToPreference=Object.fromEntries([...preferenceById.entries()]),predicateAliases={...controlToPreference};
+  for(const [key,item] of Object.entries(preferenceObject)){const gateId=String(item?.projection?.gateControlId||'');if(gateId&&!predicateAliases[gateId]&&['sentinel-gate','presence-gate'].includes(String(item?.projection?.kind||'')))predicateAliases[gateId]=key;}
+  const behavior=extractQbPreferencesBehaviorPredicates(markup,predicateAliases),helpers=helperRanges(markup),contents=sourceContentNodes(markup,tabs,caches),legends=elementRanges(markup,'legend'),formRows=(caches.divs||[]).filter(row=>String(attrText(row.attrs,'class')||'').split(/\s+/).includes('formRow')),tableRows=caches.trs||[],allRows=[...formRows,...tableRows].sort((a,b)=>a.start-b.start||a.end-b.end),graphTabs={},representedControls=new Set(),representedHelpers=new Set(),representedContents=new Set(),sourceControls=new Set(),sourceHelpers=new Set(),sourceContents=new Set(),legendControlIds=new Set();
   for(const tab of tabs){
     const tabFields=fieldsets.filter(item=>inside(tab.range,item.start)).sort((a,b)=>a.start-b.start),fieldIds=new Map(tabFields.map((item,index)=>[item,tab.id+':fieldset:'+index]));
     const graphFields=tabFields.map((item,index)=>{
@@ -110,15 +138,16 @@ function buildControlGraph(markup,tabs,fieldsets,caches,preferences){
       if(legend){for(const control of caches.controls.values())if(inside(legend,control.start)){sourceControls.add(control.id);representedControls.add(control.id);legendControlIds.add(control.id);legendControls.push(graphControl(control,preferenceById,behavior,markup,'gate',legend.endStart));}}
       return{id:tab.id+':fieldset:'+index,parentId:parent?fieldIds.get(parent):null,title:directLegend(markup,item),template:legendControls.length?'nested-gated-fieldset':'fieldset',legendControls,sourceOrder:0,_sourcePos:item.start};
     });
-    const rows=[],assignedControls=new Set(),assignedButtons=new Set(),tabRows=allRows.filter(row=>inside(tab.range,row.start));
+    const rows=[],assignedControls=new Set(),assignedHelpers=new Set(),assignedContents=new Set(),tabRows=allRows.filter(row=>inside(tab.range,row.start)),tabContents=contents.filter(content=>inside(tab.range,content.start));
     for(const row of tabRows){
-      const controls=[...caches.controls.values()].filter(control=>inside(row,control.start)&&!legendControlIds.has(control.id)),rowButtons=buttons.filter(button=>inside(row,button.start));
-      if(!controls.length&&!rowButtons.length)continue;
+      const controls=[...caches.controls.values()].filter(control=>inside(row,control.start)&&!legendControlIds.has(control.id)),rowHelpers=helpers.filter(helper=>inside(row,helper.start)),rowContents=tabContents.filter(content=>inside(row,content.start));
+      if(!controls.length&&!rowHelpers.length&&!rowContents.length)continue;
       const parent=nearestContaining(tabFields,row.start),items=[];
       for(const control of controls){assignedControls.add(control.id);representedControls.add(control.id);sourceControls.add(control.id);items.push({kind:'control',...graphControl(control,preferenceById,behavior,markup,null,row.endStart)});}
-      for(const button of rowButtons){assignedButtons.add(button.id);representedHelpers.add(button.id);sourceHelpers.add(button.id);items.push({kind:'helper',id:button.id,role:'helper',label:button.label,action:sourceHelperAction(button.onclick,markup)});}
-      const mapped=items.filter(item=>item.kind==='control'&&item.preferenceKey).length,auxCheckbox=items.some(item=>item.kind==='control'&&!item.preferenceKey&&item.semantic==='checkbox'),hasHelper=items.some(item=>item.kind==='helper');
-      const template=hasHelper?(mapped>1?'inline-multi-helper':'control-helper'):(auxCheckbox&&mapped?'gated-sentinel':mapped>1?'inline-multi-control':'single-row');
+      for(const helper of rowHelpers){assignedHelpers.add(helper.id);representedHelpers.add(helper.id);sourceHelpers.add(helper.id);items.push({kind:'helper',id:helper.id,role:'helper',label:helper.label,action:sourceHelperAction(helper.onclick,markup),condition:behavior.predicates?.[helper.id]||null});}
+      for(const content of rowContents){assignedContents.add(content.id);representedContents.add(content.id);sourceContents.add(content.id);items.push({...content});}
+      const mapped=items.filter(item=>item.kind==='control'&&item.preferenceKey).length,auxCheckbox=items.some(item=>item.kind==='control'&&!item.preferenceKey&&item.semantic==='checkbox'),hasHelper=items.some(item=>item.kind==='helper'),hasContent=items.some(item=>item.kind==='content');
+      const template=hasContent&&!mapped&&!hasHelper?'content-only':hasHelper?(mapped>1?'inline-multi-helper':'control-helper'):(auxCheckbox&&mapped?'gated-sentinel':mapped>1?'inline-multi-control':'single-row');
       rows.push({id:tab.id+':row:'+rows.length,parentFieldsetId:parent?fieldIds.get(parent):null,order:rows.length,sourceOrder:0,_sourcePos:row.start,template,items});
     }
     for(const control of caches.controls.values()){
@@ -126,10 +155,14 @@ function buildControlGraph(markup,tabs,fieldsets,caches,preferences){
       sourceControls.add(control.id);if(legendControlIds.has(control.id)||assignedControls.has(control.id))continue;representedControls.add(control.id);const parent=nearestContaining(tabFields,control.start);
       rows.push({id:tab.id+':row:'+rows.length,parentFieldsetId:parent?fieldIds.get(parent):null,order:rows.length,sourceOrder:0,_sourcePos:control.start,template:'single-row',items:[{kind:'control',...graphControl(control,preferenceById,behavior,markup,null,null)}]});
     }
-    for(const button of buttons){
-      if(!inside(tab.range,button.start))continue;
-      sourceHelpers.add(button.id);if(assignedButtons.has(button.id))continue;representedHelpers.add(button.id);const parent=nearestContaining(tabFields,button.start);
-      rows.push({id:tab.id+':row:'+rows.length,parentFieldsetId:parent?fieldIds.get(parent):null,order:rows.length,sourceOrder:0,_sourcePos:button.start,template:'helper-only',items:[{kind:'helper',id:button.id,role:'helper',label:button.label,action:sourceHelperAction(button.onclick,markup)}]});
+    for(const helper of helpers){
+      if(!inside(tab.range,helper.start))continue;
+      sourceHelpers.add(helper.id);if(assignedHelpers.has(helper.id))continue;representedHelpers.add(helper.id);const parent=nearestContaining(tabFields,helper.start);
+      rows.push({id:tab.id+':row:'+rows.length,parentFieldsetId:parent?fieldIds.get(parent):null,order:rows.length,sourceOrder:0,_sourcePos:helper.start,template:'helper-only',items:[{kind:'helper',id:helper.id,role:'helper',label:helper.label,action:sourceHelperAction(helper.onclick,markup),condition:behavior.predicates?.[helper.id]||null}]});
+    }
+    for(const content of tabContents){
+      sourceContents.add(content.id);if(assignedContents.has(content.id))continue;representedContents.add(content.id);const parent=nearestContaining(tabFields,content.start);
+      rows.push({id:tab.id+':row:'+rows.length,parentFieldsetId:parent?fieldIds.get(parent):null,order:rows.length,sourceOrder:0,_sourcePos:content.start,template:'content-only',items:[{...content}]});
     }
     for(const parentId of [null,...graphFields.map(field=>field.id)]){
       const children=[
@@ -141,8 +174,8 @@ function buildControlGraph(markup,tabs,fieldsets,caches,preferences){
     graphFields.forEach(field=>{delete field._sourcePos;});rows.forEach(row=>{delete row._sourcePos;});
     graphTabs[tab.id]={id:tab.id,fieldsets:graphFields,rows};
   }
-  const mappedControls=new Set([...preferenceById.keys()]),unknownBehaviors=Object.entries(behavior.predicates||{}).filter(([,predicate])=>predicate?.kind==='unknown').map(([controlId])=>controlId),behaviorControls=new Set((behavior.assignments||[]).map(item=>String(item.controlId||'')).filter(Boolean)),sourceAdornmentControls=new Set([...caches.controls.values()].filter(control=>tabs.some(tab=>inside(tab.range,control.start))&&immediateUnit(markup,control,null,null)).map(control=>control.id)),graphItems=Object.values(graphTabs).flatMap(tab=>tab.rows.flatMap(row=>row.items).concat(tab.fieldsets.flatMap(field=>field.legendControls||[]))),representedAdornmentControls=new Set(graphItems.filter(item=>item.kind==='control'&&item.adornment).map(item=>item.id)),representedBehaviorControls=new Set([...behaviorControls].filter(id=>representedControls.has(id)||representedHelpers.has(id))),complete=sourceControls.size===representedControls.size&&sourceHelpers.size===representedHelpers.size&&sourceAdornmentControls.size===representedAdornmentControls.size&&behaviorControls.size===representedBehaviorControls.size;
-  return{schemaVersion:1,tabs:graphTabs,census:{sourceControls:sourceControls.size,representedControls:representedControls.size,sourceHelpers:sourceHelpers.size,representedHelpers:representedHelpers.size,sourceAdornments:sourceAdornmentControls.size,representedAdornments:representedAdornmentControls.size,behaviorControls:behaviorControls.size,representedBehaviorControls:representedBehaviorControls.size,mappedPreferenceControls:mappedControls.size,behaviorAssignments:behavior.assignments.length,unknownBehaviors,complete}};
+  const mappedControls=new Set([...preferenceById.keys()]),unknownBehaviors=[...new Set([...Object.entries(behavior.predicates||{}).filter(([,predicate])=>predicate?.kind==='unknown').map(([controlId])=>controlId),...(behavior.unresolved||[]).map(item=>String(item?.controlId||'')).filter(Boolean)])],behaviorControls=new Set((behavior.assignments||[]).map(item=>String(item.controlId||'')).filter(Boolean)),sourceAdornmentControls=new Set([...caches.controls.values()].filter(control=>tabs.some(tab=>inside(tab.range,control.start))&&immediateUnit(markup,control,null,null)).map(control=>control.id)),graphItems=Object.values(graphTabs).flatMap(tab=>tab.rows.flatMap(row=>row.items).concat(tab.fieldsets.flatMap(field=>field.legendControls||[]))),representedAdornmentControls=new Set(graphItems.filter(item=>item.kind==='control'&&item.adornment).map(item=>item.id)),representedBehaviorControls=new Set([...behaviorControls].filter(id=>representedControls.has(id)||representedHelpers.has(id))),complete=sourceControls.size===representedControls.size&&sourceHelpers.size===representedHelpers.size&&sourceContents.size===representedContents.size&&sourceAdornmentControls.size===representedAdornmentControls.size&&behaviorControls.size===representedBehaviorControls.size&&unknownBehaviors.length===0;
+  return{schemaVersion:1,tabs:graphTabs,census:{sourceControls:sourceControls.size,representedControls:representedControls.size,sourceHelpers:sourceHelpers.size,representedHelpers:representedHelpers.size,sourceContents:sourceContents.size,representedContents:representedContents.size,sourceAdornments:sourceAdornmentControls.size,representedAdornments:representedAdornmentControls.size,behaviorControls:behaviorControls.size,representedBehaviorControls:representedBehaviorControls.size,mappedPreferenceControls:mappedControls.size,behaviorAssignments:behavior.assignments.length,unknownBehaviors,complete}};
 }
 
 
