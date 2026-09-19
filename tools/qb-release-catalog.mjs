@@ -37,6 +37,7 @@ function preferenceSurface(ref){
   const applicationHeaderSource=firstSource(ref,['src/base/interfaces/iapplication.h','src/app/application.h','src/app/iapplication.h']);
   const memberHeaderSources=[
     showMaybe(ref,'src/base/net/proxyconfigurationmanager.h'),
+    showMaybe(ref,'src/base/net/portforwarder.h'),
     showMaybe(ref,'src/base/rss/rss_session.h'),
     showMaybe(ref,'src/base/rss/rss_autodownloader.h')
   ].filter(Boolean);
