@@ -213,6 +213,38 @@ const unknownBehaviorManifest=extractQbPreferencesNativeSurface({preferencesSour
 assert.equal(unknownBehaviorManifest.structuralCensus.complete,false,'any unresolved source behavior must fail structural completeness instead of false-green');
 assert.ok(unknownBehaviorManifest.structuralCensus.unknownBehaviors.includes('filelog_max_size_input'),'unresolved behavior target must be named in the census');
 
+const dollarIdentitySource=`
+$("direct_value").value = pref.direct_value;
+settings["direct_value"] = $("direct_value").value;
+`;
+assert.deepEqual(
+  extractQbPreferenceValueProjection(dollarIdentitySource,'direct_value','direct_value'),
+  {kind:'identity',safeWrite:true},
+  'MooTools direct value properties must remain source-proven identity projections'
+);
+
+const dollarSentinelSource=`
+const max_connec = Number(pref.max_connec);
+if (max_connec <= 0) {
+  $("max_connec_checkbox").checked = false;
+  $("max_connec_value").value = 500;
+}
+else {
+  $("max_connec_checkbox").checked = true;
+  $("max_connec_value").value = max_connec;
+}
+let max_connec = -1;
+if ($("max_connec_checkbox").checked) {
+  max_connec = Number($("max_connec_value").value);
+}
+settings["max_connec"] = max_connec;
+`;
+assert.deepEqual(
+  extractQbPreferenceValueProjection(dollarSentinelSource,'max_connec','max_connec_value'),
+  {kind:'sentinel-gate',gateControlId:'max_connec_checkbox',disabledValue:-1,defaultValue:500,enabledWhen:{kind:'gt',value:0},safeWrite:true},
+  'MooTools direct checked/value syntax must prove modern sentinel gates without a version whitelist'
+);
+
 const legacyScaledSentinelSource=`
 var up_limit = pref.up_limit.toInt() / 1024;
 if (up_limit <= 0) {

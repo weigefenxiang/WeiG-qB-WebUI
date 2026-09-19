@@ -20,12 +20,13 @@ function preferenceNumericFactor(expression,key){
   ]);
 }
 function modernControlPattern(id,property='value'){return `document\\.getElementById\\(\\s*["']${escapeRe(id)}["']\\s*\\)\\s*\\.\\s*${property}`;}
+function dollarControlPattern(id,property='value'){return `\\$\\(\\s*["']${escapeRe(id)}["']\\s*\\)\\s*\\.\\s*${property}`;}
 function legacyControlPattern(id,property='value'){return `\\$\\(\\s*["']${escapeRe(id)}["']\\s*\\)\\s*\\.\\s*getProperty\\(\\s*["']${property}["']\\s*\\)`;}
 function controlNumericFactor(expression,id){
-  const modern=modernControlPattern(id,'(?:value|checked)'),legacy=legacyControlPattern(id,'(?:value|checked)');
+  const modern=modernControlPattern(id,'(?:value|checked)'),dollar=dollarControlPattern(id,'(?:value|checked)'),legacy=legacyControlPattern(id,'(?:value|checked)');
   return anchoredFactor(expression,[
-    new RegExp(`^Number\\(\\s*(?:${modern}|${legacy})(?:\\s*\\.\\s*toInt\\s*\\(\\s*\\))?\\s*\\)`),
-    new RegExp(`^(?:${modern}|${legacy})(?:\\s*\\.\\s*toInt\\s*\\(\\s*\\))?`)
+    new RegExp(`^Number\\(\\s*(?:${modern}|${dollar}|${legacy})(?:\\s*\\.\\s*toInt\\s*\\(\\s*\\))?\\s*\\)`),
+    new RegExp(`^(?:${modern}|${dollar}|${legacy})(?:\\s*\\.\\s*toInt\\s*\\(\\s*\\))?`)
   ]);
 }
 function resolveExpression(expression,factor,declarations){const direct=factor(expression);if(direct!==null)return direct;const name=String(expression||'').trim();if(!/^[A-Za-z_$][\w$]*$/.test(name))return null;const declared=declarations.get(name);return declared===undefined?null:factor(declared);}
@@ -59,7 +60,7 @@ function emptyStringValue(value){const text=stripOuterParens(String(value??'').t
 function directControlValue(value,id){
   const text=stripOuterParens(String(value||'').trim()),escaped=escapeRe(id);
   return new RegExp('^'+modernControlPattern(id,'value')+'$').test(text)
-    ||new RegExp('^\\$\\(\\s*["\']'+escaped+'["\']\\s*\\)\\s*\\.\\s*value$').test(text)
+    ||new RegExp('^'+dollarControlPattern(id,'value')+'$').test(text)
     ||new RegExp('^'+legacyControlPattern(id,'value')+'$').test(text);
 }
 function presenceGateProjection(source,key,controlId){
@@ -123,6 +124,8 @@ export function createQbPreferenceValueProjector(source){
   while((match=declarationRe.exec(text)))declarations.set(match[1],match[2]);
   const modernRead=/document\.getElementById\(\s*["']([^"']+)["']\s*\)\s*\.\s*(?:value|checked)\s*=\s*([^;\n]+)/g;
   while((match=modernRead.exec(text)))rememberLatest(reads,match[1],match[2],match.index??0,readPos);
+  const dollarRead=/\$\(\s*["']([^"']+)["']\s*\)\s*\.\s*(?:value|checked)\s*=\s*([^;\n]+)/g;
+  while((match=dollarRead.exec(text)))rememberLatest(reads,match[1],match[2],match.index??0,readPos);
   const legacyRead=/\$\(\s*["']([^"']+)["']\s*\)\s*\.\s*(?:setProperty|set)\(\s*["'](?:value|checked)["']\s*,\s*([^;\n]+)\)\s*;?/g;
   while((match=legacyRead.exec(text)))rememberLatest(reads,match[1],match[2],match.index??0,readPos);
   const bracketWrite=/settings\s*\[\s*["']([^"']+)["']\s*\]\s*=\s*([^;\n]+)/g;
