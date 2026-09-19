@@ -237,6 +237,19 @@ function preferenceControlRelations(source) {
   return relations;
 }
 
+export function extractQbPreferenceControlCandidates(preferencesSource, preferenceKeys = []) {
+  const relations = preferenceControlRelations(preferencesSource);
+  const wanted = new Set((Array.isArray(preferenceKeys) ? preferenceKeys : []).map(String));
+  const keys = wanted.size ? [...wanted] : [...relations.keys()];
+  const out = {};
+  for (const key of keys) {
+    const candidates = relations.get(key) || [];
+    if (!candidates.length) continue;
+    out[key] = candidates.map((item) => ({controlId:String(item.id || ''), evidence:String(item.evidence || '')})).filter((item) => item.controlId);
+  }
+  return out;
+}
+
 export function extractQbPreferenceUiFacts(preferencesSource, preferenceKeys = []) {
   const markup = String(preferencesSource || '');
   const labels = labelsByControlId(markup);
