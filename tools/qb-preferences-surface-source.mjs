@@ -63,11 +63,20 @@ function sourceContentNodes(markup,tabs,caches){
     const parent=nearestContaining((caches.divs||[]).filter(div=>!String(attrText(div.attrs,'class')||'').split(/\s+/).includes('PrefTab')),list.start);
     if(parent){
       const prefix=text.slice(parent.openEnd,list.start);
-      if(!/<(?:input|select|textarea|table|fieldset)\b/i.test(prefix)){const refs=qbtRefs(prefix);const label=refs.at(-1)||null;if(label)out.push({kind:'content',contentKind:'note',id:'note@'+list.start,start:list.start-0.1,end:list.start,label,items:[],forControlId:null});}
+      if(!/<(?:input|select|textarea|table|fieldset)\b/i.test(prefix)){
+        const refs=qbtRefs(prefix),label=refs.at(-1)||null;
+        if(label)out.push({kind:'content',contentKind:'note',id:'note@'+list.start,start:list.start-0.1,end:list.start,label,items:[],forControlId:null});
+      }
     }
     out.push({kind:'content',contentKind:'list',id:'list@'+list.start,start:list.start,end:list.end,label:null,items,forControlId:null});
+    if(parent){
+      const suffix=text.slice(list.end,parent.endStart);
+      if(!/<(?:input|select|textarea|table|fieldset|ul|ol)\b/i.test(suffix)){
+        qbtRefs(suffix).forEach((label,index)=>out.push({kind:'content',contentKind:'hint',id:'hint@'+list.end+':'+index,start:list.end+(index+1)/100,end:list.end+(index+1)/100,label,items:[],forControlId:null}));
+      }
+    }
   }
-  return out;
+  return out.sort((a,b)=>a.start-b.start);
 }
 function graphContentItem(content){
   return{kind:'content',contentKind:String(content?.contentKind||'note'),id:String(content?.id||''),forControlId:content?.forControlId??null,label:content?.label??null,items:Array.isArray(content?.items)?content.items:[]};
@@ -178,7 +187,7 @@ function buildControlGraph(markup,tabs,fieldsets,caches,preferences){
     graphTabs[tab.id]={id:tab.id,fieldsets:graphFields,rows};
   }
   const mappedControls=new Set([...preferenceById.keys()]),unknownBehaviors=[...new Set([...Object.entries(behavior.predicates||{}).filter(([,predicate])=>predicate?.kind==='unknown').map(([controlId])=>controlId),...(behavior.unresolved||[]).map(item=>String(item?.controlId||'')).filter(Boolean)])],behaviorControls=new Set((behavior.assignments||[]).map(item=>String(item.controlId||'')).filter(Boolean)),sourceAdornmentControls=new Set([...caches.controls.values()].filter(control=>tabs.some(tab=>inside(tab.range,control.start))&&immediateUnit(markup,control,null,null)).map(control=>control.id)),graphItems=Object.values(graphTabs).flatMap(tab=>tab.rows.flatMap(row=>row.items).concat(tab.fieldsets.flatMap(field=>field.legendControls||[]))),representedAdornmentControls=new Set(graphItems.filter(item=>item.kind==='control'&&item.adornment).map(item=>item.id)),representedBehaviorControls=new Set([...behaviorControls].filter(id=>representedControls.has(id)||representedHelpers.has(id))),complete=sourceControls.size===representedControls.size&&sourceHelpers.size===representedHelpers.size&&sourceContents.size===representedContents.size&&sourceAdornmentControls.size===representedAdornmentControls.size&&behaviorControls.size===representedBehaviorControls.size&&unknownBehaviors.length===0;
-  return{schemaVersion:1,tabs:graphTabs,census:{sourceControls:sourceControls.size,representedControls:representedControls.size,sourceHelpers:sourceHelpers.size,representedHelpers:representedHelpers.size,sourceContents:sourceContents.size,representedContents:representedContents.size,sourceAdornments:sourceAdornmentControls.size,representedAdornments:representedAdornmentControls.size,behaviorControls:behaviorControls.size,representedBehaviorControls:representedBehaviorControls.size,mappedPreferenceControls:mappedControls.size,behaviorAssignments:behavior.assignments.length,unknownBehaviors,complete}};
+  return{schemaVersion:1,tabs:graphTabs,census:{sourceControls:sourceControls.size,representedControls:representedControls.size,sourceHelpers:sourceHelpers.size,representedHelpers:representedHelpers.size,sourceActions:sourceHelpers.size,representedActions:representedHelpers.size,sourceContents:sourceContents.size,representedContents:representedContents.size,sourceCopyNodes:sourceContents.size,representedCopyNodes:representedContents.size,sourceAdornments:sourceAdornmentControls.size,representedAdornments:representedAdornmentControls.size,behaviorControls:behaviorControls.size,representedBehaviorControls:representedBehaviorControls.size,mappedPreferenceControls:mappedControls.size,behaviorAssignments:behavior.assignments.length,unknownBehaviors,complete}};
 }
 
 

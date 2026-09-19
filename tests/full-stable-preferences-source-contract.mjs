@@ -44,7 +44,7 @@ for(let i=0;i<census.profiles.length;i++){
 }
 assert.equal(censusFailures.length,0,`Preferences independent source census is incomplete across the Frozen release set:\n${censusFailures.join('\n')}`);
 
-let previousRatio=null,minimumRatio=1,scaleProjectionCount=0,switchProjectionCount=0,sentinelProjectionCount=0,unprovenProjectionCount=0;
+let previousRatio=null,minimumRatio=1,scaleProjectionCount=0,switchProjectionCount=0,sentinelProjectionCount=0,presenceProjectionCount=0,unprovenProjectionCount=0;
 for(let i=0;i<catalog.length;i++){
   const base=catalog[i],profile=source.profiles[i];
   assert.equal(profile.qbVersion,base.qbVersion,`${base.qbVersion}: release order drift`);
@@ -57,8 +57,12 @@ for(let i=0;i<catalog.length;i++){
   assert.equal(manifest.structuralCensus?.complete,true,base.qbVersion+': structural source census incomplete');
   assert.equal(manifest.structuralCensus.sourceControls,manifest.structuralCensus.representedControls,base.qbVersion+': source control coverage drift');
   assert.equal(manifest.structuralCensus.sourceHelpers,manifest.structuralCensus.representedHelpers,base.qbVersion+': source helper coverage drift');
+  assert.equal(manifest.structuralCensus.sourceActions,manifest.structuralCensus.representedActions,base.qbVersion+': source action coverage drift');
+  assert.equal(manifest.structuralCensus.sourceContents,manifest.structuralCensus.representedContents,base.qbVersion+': source content coverage drift');
+  assert.equal(manifest.structuralCensus.sourceCopyNodes,manifest.structuralCensus.representedCopyNodes,base.qbVersion+': source copy coverage drift');
   assert.equal(manifest.structuralCensus.sourceAdornments,manifest.structuralCensus.representedAdornments,base.qbVersion+': source adornment coverage drift');
   assert.equal(manifest.structuralCensus.behaviorControls,manifest.structuralCensus.representedBehaviorControls,base.qbVersion+': source behavior coverage drift');
+  assert.deepEqual(manifest.structuralCensus.unknownBehaviors,[],base.qbVersion+': runtime-relevant source behavior must not remain unknown in a structurally complete profile');
   assert.ok(Number(manifest.mappedPreferences)>0,`${base.qbVersion}: no source-mapped native preferences`);
   assert.equal(Number(manifest.totalPreferences),Array.isArray(base.preferenceDescriptors)?base.preferenceDescriptors.length:0,`${base.qbVersion}: preference surface size drift`);
   const total=Number(manifest.totalPreferences)||0,mapped=Number(manifest.mappedPreferences)||0,ratio=total?mapped/total:0;
@@ -69,11 +73,12 @@ for(let i=0;i<catalog.length;i++){
   for(const tab of manifest.tabs){
     assert.equal(typeof tab.id,'string');assert.ok(tab.id);assert.ok(Number.isInteger(tab.order));
     let previous=-1;
-    for(const key of tab.preferences||[]){const item=manifest.preferences[key];assert.ok(item,`${base.qbVersion}: tab ${tab.id} references missing ${key}`);assert.ok(allowed.has(key),`${base.qbVersion}: native manifest escaped app/preferences: ${key}`);assert.equal(item.tab,tab.id);assert.ok(item.order>previous,`${base.qbVersion}: ${tab.id} preference order is not source monotonic`);previous=item.order;assert.ok(item.title?.source&&item.title?.context,`${base.qbVersion}: ${key} lacks source/context title identity`);assert.ok(item.control?.id&&item.control?.semantic,`${base.qbVersion}: ${key} lacks native control semantics`);assert.ok(item.descriptor&&Object.prototype.hasOwnProperty.call(item.descriptor,'writable'),`${base.qbVersion}: ${key} lacks API read/write provenance`);assert.ok(item.projection&&typeof item.projection==='object'&&typeof item.projection.safeWrite==='boolean',`${base.qbVersion}: ${key} lacks source value-projection accounting`);if(item.projection.kind==='scale')scaleProjectionCount+=1;else if(item.projection.kind==='switch-map')switchProjectionCount+=1;else if(item.projection.kind==='sentinel-gate')sentinelProjectionCount+=1;else if(item.projection.kind==='unproven')unprovenProjectionCount+=1;if(item.control.semantic==='select')for(const option of item.control.options||[])assert.ok(option.label&&(option.label.source||Object.prototype.hasOwnProperty.call(option.label,'literal')),`${base.qbVersion}: ${key} select option lacks source identity`);}
+    for(const key of tab.preferences||[]){const item=manifest.preferences[key];assert.ok(item,`${base.qbVersion}: tab ${tab.id} references missing ${key}`);assert.ok(allowed.has(key),`${base.qbVersion}: native manifest escaped app/preferences: ${key}`);assert.equal(item.tab,tab.id);assert.ok(item.order>previous,`${base.qbVersion}: ${tab.id} preference order is not source monotonic`);previous=item.order;assert.ok(item.title?.source&&item.title?.context,`${base.qbVersion}: ${key} lacks source/context title identity`);assert.ok(item.control?.id&&item.control?.semantic,`${base.qbVersion}: ${key} lacks native control semantics`);assert.ok(item.descriptor&&Object.prototype.hasOwnProperty.call(item.descriptor,'writable'),`${base.qbVersion}: ${key} lacks API read/write provenance`);assert.ok(item.projection&&typeof item.projection==='object'&&typeof item.projection.safeWrite==='boolean',`${base.qbVersion}: ${key} lacks source value-projection accounting`);if(item.projection.kind==='scale')scaleProjectionCount+=1;else if(item.projection.kind==='switch-map')switchProjectionCount+=1;else if(item.projection.kind==='sentinel-gate')sentinelProjectionCount+=1;else if(item.projection.kind==='presence-gate')presenceProjectionCount+=1;else if(item.projection.kind==='unproven')unprovenProjectionCount+=1;if(item.control.semantic==='select')for(const option of item.control.options||[])assert.ok(option.label&&(option.label.source||Object.prototype.hasOwnProperty.call(option.label,'literal')),`${base.qbVersion}: ${key} select option lacks source identity`);}
   }
 }
 assert.ok(scaleProjectionCount>0,'Frozen Preferences source must prove at least one native raw/UI numeric scale instead of relying on manual runtime metadata');
 assert.ok(switchProjectionCount>0,'Frozen Preferences source must retain at least one historical switch-map composite projection');
+assert.ok(presenceProjectionCount>0,'Frozen Preferences source must prove at least one empty-string/presence gate instead of requiring a Downloads key exception');
 const legacyRandomManifest=source.profiles.find(profile=>profile.qbVersion==='4.1.9.1')?.manifest;
 const legacyRandomRows=Object.values(legacyRandomManifest?.controlGraph?.tabs||{}).flatMap(tab=>tab.rows||[]);
 const legacyListeningRow=legacyRandomRows.find(row=>(row.items||[]).some(item=>item.preferenceKey==='listen_port'));
@@ -83,6 +88,13 @@ const latestManifest=source.profiles.at(-1).manifest;
 const latestRows=Object.values(latestManifest.controlGraph.tabs||{}).flatMap(tab=>tab.rows||[]);
 const latestRowFor=key=>latestRows.find(row=>(row.items||[]).some(item=>item.preferenceKey===key));
 const latestControls=latestRows.flatMap(row=>row.items||[]).concat(Object.values(latestManifest.controlGraph.tabs||{}).flatMap(tab=>(tab.fieldsets||[]).flatMap(field=>field.legendControls||[]))),latestItemFor=key=>latestControls.find(item=>item.preferenceKey===key);
+const latestContent=latestRows.flatMap(row=>row.items||[]).filter(item=>item.kind==='content');
+const latestSupportedNote=latestContent.find(item=>item.contentKind==='note'&&item.label?.source==='Supported parameters (case sensitive):');
+const latestParameterList=latestContent.find(item=>item.contentKind==='list'&&(item.items||[]).some(ref=>ref?.source==='%N: Torrent name'));
+const latestParameterHint=latestContent.find(item=>item.contentKind==='hint'&&String(item.label?.source||'').startsWith('Tip: Encapsulate parameter'));
+assert.ok(latestSupportedNote,'latest Run external program source note must be present in the Control Graph');
+assert.ok((latestParameterList?.items||[]).length>=10,'latest Run external program source parameter list must retain upstream entries');
+assert.ok(latestParameterHint,'latest Run external program trailing source hint must be retained');
 const listeningRow=latestRowFor('listen_port');
 assert.equal(listeningRow?.template,'control-helper','latest Listening Port must preserve the source helper sibling');
 assert.deepEqual(listeningRow?.items?.find(item=>item.kind==='helper')?.action,{kind:'random-int',targetControlId:'portValue',min:1024,max:65535},'latest Random helper must compile exact bounded helper semantics');
@@ -144,4 +156,4 @@ for(const profile of source.profiles){
     assert.equal(actual.tab,item.tab,`${profile.qbVersion}: ${key} tab drift`);assert.equal(actual.sectionId,item.sectionId,`${profile.qbVersion}: ${key} section drift`);assert.equal(actual.order,item.order,`${profile.qbVersion}: ${key} order drift`);assert.equal(actual.control.id,item.control.id,`${profile.qbVersion}: ${key} control id drift`);assert.equal(actual.control.semantic,item.control.semantic,`${profile.qbVersion}: ${key} control semantic drift`);assert.deepEqual(actual.control.attributes,item.control.attributes||{},`${profile.qbVersion}: ${key} control attributes drift`);assert.equal(actual.title?.source,item.title?.source,`${profile.qbVersion}: ${key} source title drift`);assert.equal(actual.title?.context,item.title?.context,`${profile.qbVersion}: ${key} source title context drift`);assert.deepEqual(actual.descriptor,item.descriptor,`${profile.qbVersion}: ${key} API descriptor drift`);assert.deepEqual(actual.projection,item.projection,`${profile.qbVersion}: ${key} source value projection drift`);
   }
 }
-console.log(`Full stable qB Preferences source contract passed: ${catalog.length} exact releases, structural control/helper/adornment/behavior census complete, Frozen catalog ${expectedIdentity.releaseSetSha256.slice(0,12)}, ${(minimumRatio*100).toFixed(1)}% minimum native mapping, ${scaleProjectionCount} scale / ${switchProjectionCount} switch / ${sentinelProjectionCount} sentinel / ${unprovenProjectionCount} unproven value projections, ${bytes} byte keyed + structural compact IR, and lossless tab/section/control/API/value/Control-Graph provenance.`);
+console.log(`Full stable qB Preferences source contract passed: ${catalog.length} exact releases, structural control/action/adornment/copy/behavior census complete with unknown=0, Frozen catalog ${expectedIdentity.releaseSetSha256.slice(0,12)}, ${(minimumRatio*100).toFixed(1)}% minimum native mapping, ${scaleProjectionCount} scale / ${switchProjectionCount} switch / ${sentinelProjectionCount} sentinel / ${presenceProjectionCount} presence / ${unprovenProjectionCount} unproven value projections, ${bytes} byte keyed + structural compact IR, and lossless tab/section/control/API/value/Control-Graph provenance.`);

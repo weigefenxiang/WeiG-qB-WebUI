@@ -35,6 +35,7 @@ const preferences=`
     <div class="formRow"><input type="button" id="future_test_button" value="QBT_TR(Test future action)QBT_TR[CONTEXT=OptionsDialog]" onclick="qBittorrent.Preferences.testFuture();"></div>
     <div style="font-style: italic;">QBT_TR(Supported parameters (case sensitive):)QBT_TR[CONTEXT=OptionsDialog]
       <ul><li>QBT_TR(%N: Torrent name)QBT_TR[CONTEXT=OptionsDialog]</li><li>QBT_TR(%D: Save path)QBT_TR[CONTEXT=OptionsDialog]</li></ul>
+      QBT_TR(Tip: quote parameters with spaces)QBT_TR[CONTEXT=OptionsDialog]
     </div>
   </fieldset>
 </div>
@@ -98,10 +99,16 @@ assert.deepEqual(futureHelper.action,{kind:'source-helper',name:'testFuture'});
 assert.deepEqual(futureHelper.condition,{kind:'truthy',key:'future_gate'},'helper disabled behavior must stay in the source graph');
 const futureNote=futureItems.find(item=>item.kind==='content'&&item.contentKind==='note');
 const futureList=futureItems.find(item=>item.kind==='content'&&item.contentKind==='list');
+const futureHint=futureItems.find(item=>item.kind==='content'&&item.contentKind==='hint');
 assert.equal(futureNote.label.source,'Supported parameters (case sensitive):','source note copy must survive the Control Graph');
 assert.deepEqual(futureList.items.map(item=>item.source),['%N: Torrent name','%D: Save path'],'source list copy must survive without screenshot-key exceptions');
-assert.equal(manifest.structuralCensus.sourceContents,2);
-assert.equal(manifest.structuralCensus.representedContents,2);
+assert.equal(futureHint.label.source,'Tip: quote parameters with spaces','source trailing hint copy must survive the Control Graph');
+assert.equal(manifest.structuralCensus.sourceContents,3);
+assert.equal(manifest.structuralCensus.representedContents,3);
+assert.equal(manifest.structuralCensus.sourceCopyNodes,3);
+assert.equal(manifest.structuralCensus.representedCopyNodes,3);
+assert.equal(manifest.structuralCensus.sourceActions,manifest.structuralCensus.sourceHelpers);
+assert.equal(manifest.structuralCensus.representedActions,manifest.structuralCensus.representedHelpers);
 
 const structuralToolbar='<menu><li id="PrefConnectionLink">QBT_TR(Connection)QBT_TR[CONTEXT=OptionsDialog]</li><li id="PrefSpeedLink">QBT_TR(Speed)QBT_TR[CONTEXT=OptionsDialog]</li><li id="PrefAdvancedLink">QBT_TR(Advanced)QBT_TR[CONTEXT=OptionsDialog]</li></menu>';
 const structuralSource='<div id="ConnectionTab" class="PrefTab">'
@@ -129,6 +136,8 @@ const structuralTabs=Object.values(structural.controlGraph.tabs),structuralRows=
 assert.equal(structural.structuralCensus.complete,true,'structural source census must account for controls, helpers, adornments and behavior targets independently of preference mapping');
 assert.equal(structural.structuralCensus.sourceControls,structural.structuralCensus.representedControls);
 assert.equal(structural.structuralCensus.sourceHelpers,structural.structuralCensus.representedHelpers);
+assert.equal(structural.structuralCensus.sourceActions,structural.structuralCensus.representedActions);
+assert.equal(structural.structuralCensus.sourceCopyNodes,structural.structuralCensus.representedCopyNodes);
 assert.equal(structural.structuralCensus.sourceAdornments,structural.structuralCensus.representedAdornments);
 assert.equal(structural.structuralCensus.behaviorControls,structural.structuralCensus.representedBehaviorControls);
 assert.equal(rowFor('listen_port').template,'control-helper','Listening Port + Random must be represented as a generic control/helper row');
