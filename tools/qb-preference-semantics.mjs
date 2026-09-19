@@ -135,6 +135,22 @@ function declaredMemberTypes(sources = []) {
   return out;
 }
 
+function declaredClassGetterTypes(sources = []) {
+  const out = new Map();
+  for (const source of Array.isArray(sources) ? sources : [sources]) {
+    const text = String(source || '');
+    const typeStart = /\b(?:struct|class)\s+([A-Za-z_]\w*)[^;{]*\{/g;
+    for (const match of text.matchAll(typeStart)) {
+      const openIndex = match.index + match[0].lastIndexOf('{');
+      const closeIndex = matchingBrace(text, openIndex);
+      if (closeIndex < 0) continue;
+      const body = text.slice(openIndex + 1, closeIndex);
+      for (const [name, type] of declaredGetterTypes(body)) out.set(`${match[1]}.${name}`, type);
+    }
+  }
+  return out;
+}
+
 function stripOuterParens(value) {
   let result = compact(value);
   let changed = true;
@@ -163,7 +179,7 @@ function stripOuterParens(value) {
   return result;
 }
 
-function inferGetter(expression, locals, declaredSessionGetters = new Map(), declaredPreferenceGetters = new Map(), declaredApplicationGetters = new Map(), declaredLocals = new Map(), declaredMembers = new Map()) {
+function inferGetter(expression, locals, declaredSessionGetters = new Map(), declaredPreferenceGetters = new Map(), declaredApplicationGetters = new Map(), declaredLocals = new Map(), declaredMembers = new Map(), declaredClassGetters = new Map()) {
   const value = stripOuterParens(expression);
   if (!value) return {type: null, kind: 'UNRESOLVED'};
   if (/^(?:true|false)$/.test(value)) return {type: 'boolean', kind: 'BOOLEAN_LITERAL'};
@@ -192,6 +208,11 @@ function inferGetter(expression, locals, declaredSessionGetters = new Map(), dec
   if (applicationCall && declaredApplicationGetters.has(applicationCall[1])) {
     return {type: declaredApplicationGetters.get(applicationCall[1]), kind: 'APPLICATION_DECLARATION'};
   }
+  const singletonCall = value.match(/^(?:[A-Za-z_]\w*::)*([A-Za-z_]\w*)::instance\s*\(\s*\)\s*->\s*([A-Za-z_]\w*)\s*\(\s*\)$/);
+  if (singletonCall) {
+    const singletonType = declaredClassGetters.get(`${singletonCall[1]}.${singletonCall[2]}`);
+    if (singletonType) return {type: singletonType, kind: 'SINGLETON_DECLARATION'};
+  }
   const memberAccess = value.match(/^([A-Za-z_]\w*)\s*(?:\.|->)\s*([A-Za-z_]\w*)$/);
   if (memberAccess && declaredLocals.has(memberAccess[1])) {
     const declaredType = String(declaredLocals.get(memberAccess[1]) || '').split('::').at(-1);
@@ -218,13 +239,14 @@ export function extractSemanticGetterHints(source, label = 'source', options = {
   const declaredApplicationGetters = declaredGetterTypes(options.applicationHeaderSource);
   const declaredLocals = declaredLocalTypes(body);
   const declaredMembers = declaredMemberTypes(options.memberHeaderSources || []);
+  const declaredClassGetters = declaredClassGetterTypes(options.memberHeaderSources || []);
   const out = new Map();
   DATA_KEY_RE.lastIndex = 0;
   for (const match of body.matchAll(DATA_KEY_RE)) {
     const key = capturedKey(match, 1);
     if (!key) continue;
     const expression = readExpression(body, match.index + match[0].length);
-    const inferred = inferGetter(expression, locals, declaredSessionGetters, declaredPreferenceGetters, declaredApplicationGetters, declaredLocals, declaredMembers);
+    const inferred = inferGetter(expression, locals, declaredSessionGetters, declaredPreferenceGetters, declaredApplicationGetters, declaredLocals, declaredMembers, declaredClassGetters);
     out.set(key, {
       key,
       readType: inferred.type,

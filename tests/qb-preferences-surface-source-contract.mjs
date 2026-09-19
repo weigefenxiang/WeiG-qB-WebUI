@@ -322,4 +322,14 @@ assert.equal(runtimeSettings.settingsData.catalogIdentity.releaseCount,65,'forma
 assert.equal(runtimeSettings.manifest.payload.sha256,'41c60f301eb419b5bb9b861737884be85f62e248528867cb472229c561226f9e','formal Settings runtime must consume the accepted exact source-native IR');
 assert.equal(Object.prototype.hasOwnProperty.call(runtimeSettings.settingsData,'nativeTabs'),false,'legacy runtime-generated nativeTabs truth must stay retired');
 
+const transportManifest=structuredClone(manifest);
+transportManifest.controlGraph.tabs.futurenetwork.rows[0].items.push({kind:'helper',id:'source-action-helper',role:'helper',label:{literal:'Rules'},action:{kind:'source-action',owner:'Rss',name:'openRssDownloader'},condition:null});
+transportManifest.controlGraph.tabs.futurenetwork.rows[0].items.push({kind:'control',id:'dynamic-select',preferenceKey:null,role:'auxiliary',semantic:'select',staticDisabled:false,label:{literal:'Interface'},adornment:null,suffix:null,condition:null,dynamicOptions:{kind:'api-options',endpoint:'app/networkInterfaceList',responseShape:'object-array',labelField:'name',valueField:'value',queryParam:null,dependsOnControlId:null,staticOptions:[]},writeOnly:{key:'secret',writeType:'string',safeWrite:true,omitEmpty:true}});
+const transportCompact=compileQbPreferencesCompact({schemaVersion:1,profiles:[{qbVersion:'5.2.3',sourceSha:'3333333333333333333333333333333333333333',manifest:transportManifest}]});
+const transportExpanded=expandQbPreferencesCompact(transportCompact,'5.2.3');
+const transported=transportExpanded.controlGraph.tabs.futurenetwork.rows.flatMap(row=>row.items);
+assert.deepEqual(transported.find(item=>item.id==='source-action-helper').action,{kind:'source-action',owner:'Rss',name:'openRssDownloader'},'compact IR must preserve bounded source actions');
+assert.equal(transported.find(item=>item.id==='dynamic-select').dynamicOptions.endpoint,'app/networkInterfaceList','compact IR must preserve dynamic option provenance');
+assert.equal(transported.find(item=>item.id==='dynamic-select').writeOnly.key,'secret','compact IR must preserve write-only control provenance');
+
 console.log('qB Preferences native source contract passed: future tabs auto-admit through source extraction/compact IR; formal browser runtime consumes the accepted source-native envelope without rebuilding a second Settings truth.');

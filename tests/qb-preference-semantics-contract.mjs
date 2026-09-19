@@ -177,4 +177,31 @@ assert.equal(enriched.opaque.typeAgreement,'READ_UNRESOLVED');
 assert.equal(enriched.already_typed.semanticGetterEnriched,undefined,'structurally high-confidence getter truth must not be overwritten by enrichment');
 assert.equal(enriched.already_typed.getterKind,'NUMBER');
 
+const singletonSource=`
+void AppController::preferencesAction()
+{
+    data[u"rss_auto_downloading_enabled"_s] = RSS::AutoDownloader::instance()->isProcessingEnabled();
+}
+void AppController::setPreferencesAction()
+{
+    if (hasKey(u"rss_auto_downloading_enabled"_s)) RSS::AutoDownloader::instance()->setProcessingEnabled(it.value().toBool());
+}
+`;
+const singletonDescriptor={key:'rss_auto_downloading_enabled',getterPresent:true,setterPresent:true,readType:null,writeType:'boolean',typeAgreement:'READ_UNRESOLVED',writable:true};
+const singletonHeader=`
+namespace RSS {
+class AutoDownloader final
+{
+public:
+    bool isProcessingEnabled() const;
+    void setProcessingEnabled(bool enabled);
+};
+}
+`;
+const [singleton]=enrichPreferenceDescriptorsFromGetter(singletonSource,[singletonDescriptor],'rss singleton',{memberHeaderSources:[singletonHeader]});
+assert.equal(singleton.readType,'boolean','exact singleton component getter declaration must type RSS auto-downloading state');
+assert.equal(singleton.typeAgreement,'EXACT','singleton getter and setter types must agree exactly');
+assert.equal(singleton.writable,true,'source-proven singleton getter/setter pair must remain writable');
+assert.equal(singleton.getterKind,'SINGLETON_DECLARATION','singleton provenance must stay explicit instead of name-based guessing');
+
 console.log('qB semantic getter contract passed: operators, typed locals, version-matched struct members, Session/Preferences/Application declarations prove getter types while opaque methods remain fail-closed.');

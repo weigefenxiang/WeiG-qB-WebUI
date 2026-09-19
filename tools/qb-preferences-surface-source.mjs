@@ -8,10 +8,12 @@ import {extractQbPreferenceUiFacts} from './qb-settings-translation-source.mjs';
 import {extractQbPreferencesBehaviorPredicates,extractQbPreferencesCompositeUiFacts} from './qb-preferences-semantic-composite.mjs';
 import {extractQbPreferenceValueProjection} from './qb-preferences-value-projection.mjs';
 import {assertCatalogIdentity,catalogIdentity} from './qb-catalog-identity.mjs';
+import {extractPreferenceSetterHints} from './qb-source-parsers.mjs';
 
 const PREFERENCES_SOURCE_PATHS=['src/webui/www/private/views/preferences.html','src/webui/www/private/preferences_content.html','src/webui/www/private/preferences.html'];
 const TOOLBAR_SOURCE_PATHS=['src/webui/www/private/views/preferencesToolbar.html','src/webui/www/private/preferences.html'];
-const SOURCE_BLOB_PATHS=[...new Set([...PREFERENCES_SOURCE_PATHS,...TOOLBAR_SOURCE_PATHS])];
+const APP_CONTROLLER_PATH='src/webui/api/appcontroller.cpp';
+const SOURCE_BLOB_PATHS=[...new Set([...PREFERENCES_SOURCE_PATHS,...TOOLBAR_SOURCE_PATHS,APP_CONTROLLER_PATH])];
 
 function decodeHtml(value){return String(value||'').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,'$1').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&#(\d+);/g,(_m,n)=>String.fromCodePoint(Number(n))).replace(/&#x([0-9a-f]+);/gi,(_m,n)=>String.fromCodePoint(Number.parseInt(n,16))).replace(/&amp;/g,'&').replace(/<[^>]*>/g,'').replace(/\s+/g,' ').trim();}
 function qbtTr(value){const match=String(value||'').match(/QBT_TR\(([\s\S]*?)\)QBT_TR\[CONTEXT=([^\]]+)\]/i);if(!match)return null;const source=decodeHtml(match[1]),context=String(match[2]||'').trim();return source&&context?{source,context}:null;}
@@ -93,7 +95,9 @@ function labelRefForControl(markup,id){
 }
 function balancedBlock(text,start){text=String(text||'');const open=text.indexOf('{',start);if(open<0)return'';let depth=0,quote='',escape=false,lineComment=false,blockComment=false;for(let i=open;i<text.length;i++){const ch=text[i],next=text[i+1];if(lineComment){if(ch==='\n')lineComment=false;continue;}if(blockComment){if(ch==='*'&&next==='/'){blockComment=false;i++;}continue;}if(quote){if(escape){escape=false;continue;}if(ch==='\\'){escape=true;continue;}if(ch===quote)quote='';continue;}if(ch==='/'&&next==='/'){lineComment=true;i++;continue;}if(ch==='/'&&next==='*'){blockComment=true;i++;continue;}if(ch==='"'||ch==="'"){quote=ch;continue;}if(ch==='{')depth++;else if(ch==='}'){depth--;if(depth===0)return text.slice(open+1,i);}}return'';}
 function sourceHelperAction(handler,markup){
-  const value=String(handler||'').trim(),match=value.match(/^(?:qBittorrent\.Preferences\.)?([A-Za-z_$][\w$]*)\(\s*\)\s*;?$/);
+  const value=String(handler||'').trim(),qualified=value.match(/^(?:window\.)?qBittorrent\.([A-Za-z_$][\w$]*)\.([A-Za-z_$][\w$]*)\(\s*\)\s*;?$/);
+  if(qualified&&qualified[1]!=='Preferences')return{kind:'source-action',owner:qualified[1],name:qualified[2]};
+  const match=value.match(/^(?:qBittorrent\.Preferences\.)?([A-Za-z_$][\w$]*)\(\s*\)\s*;?$/);
   if(!match)return{kind:'unknown'};
   const name=match[1],escaped=escapeRegex(name),text=String(markup||''),decl=new RegExp('\\b(?:(?:const|let|var)\\s+)?'+escaped+'\\s*=\\s*(?:\\(\\s*\\)\\s*=>|function\\s*\\(\\s*\\))\\s*\\{','g'),hit=decl.exec(text),body=hit?balancedBlock(text,hit.index):'';
   if(body){
@@ -117,6 +121,44 @@ function sourceHelperAction(handler,markup){
   }
   return{kind:'source-helper',name};
 }
+function directValueControlId(expression){
+  const text=String(expression||'').trim(),patterns=[
+    /document\.getElementById\(\s*["']([^"']+)["']\s*\)\s*\.\s*value$/,
+    /\$\(\s*["']([^"']+)["']\s*\)\s*\.\s*(?:value|getProperty\(\s*["']value["']\s*\))$/
+  ];
+  for(const re of patterns){const match=text.match(re);if(match)return String(match[1]||'');}
+  return null;
+}
+function writeOnlyControlFacts(markup,descriptors){
+  const text=String(markup||''),byKey=new Map((descriptors||[]).map(item=>[String(item?.key||''),item]).filter(([key])=>key)),variables=new Map(),out=new Map();
+  for(const match of text.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*([^;\n]+)/g)){const id=directValueControlId(match[2]);if(id)variables.set(match[1],id);}
+  for(const match of text.matchAll(/settings\s*\[\s*["']([^"']+)["']\s*\]\s*=\s*([^;\n]+)/g)){
+    const key=String(match[1]||''),descriptor=byKey.get(key);if(!descriptor||descriptor.getterPresent!==false||descriptor.setterPresent!==true||descriptor.writeType!=='string')continue;
+    const expression=String(match[2]||'').trim(),id=directValueControlId(expression)||variables.get(expression);if(!id)continue;
+    const before=text.slice(Math.max(0,(match.index||0)-500),match.index||0),omitEmpty=new RegExp('if\\s*\\(\\s*'+escapeRegex(expression)+'\\s*\\.\\s*length\\s*>\\s*0\\s*\\)').test(before);
+    out.set(id,{key,writeType:'string',safeWrite:true,omitEmpty});
+  }
+  return out;
+}
+function functionBodies(markup){
+  const text=String(markup||''),out=[],re=/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*\(([^)]*)\)\s*=>\s*\{|\bfunction\s+([A-Za-z_$][\w$]*)\s*\(([^)]*)\)\s*\{/g;
+  let match;while((match=re.exec(text))){const name=String(match[1]||match[3]||''),args=String(match[2]||match[4]||'').split(',').map(value=>value.trim()).filter(Boolean),body=balancedBlock(text,match.index||0);if(name&&body)out.push({name,args,body});}
+  return out;
+}
+function sourceDynamicOptions(markup,controlId){
+  const text=String(markup||''),escaped=escapeRegex(controlId);
+  for(const fn of functionBodies(text)){
+    if(!new RegExp('getElementById\\(\\s*["\\\']'+escaped+'["\\\']\\s*\\)').test(fn.body)||!/\.options\.add\s*\(/.test(fn.body))continue;
+    const endpointMatch=fn.body.match(/["']api\/v2\/([^"']+)["']/);if(!endpointMatch)continue;
+    const endpoint=String(endpointMatch[1]||''),objectPair=fn.body.match(/new\s+Option\(\s*([A-Za-z_$][\w$]*)\.([A-Za-z_$][\w$]*)\s*,\s*\1\.([A-Za-z_$][\w$]*)\s*\)/),scalarPair=fn.body.match(/new\s+Option\(\s*([A-Za-z_$][\w$]*)\s*,\s*\1\s*\)/);
+    let responseShape='unknown',labelField=null,valueField=null;if(objectPair){responseShape='object-array';labelField=objectPair[2];valueField=objectPair[3];}else if(scalarPair)responseShape='string-array';
+    let queryParam=null,queryArg=null,dependsOnControlId=null;const query=fn.body.match(/new\s+URLSearchParams\(\s*\{\s*([A-Za-z_$][\w$]*)\s*:\s*([A-Za-z_$][\w$]*)\s*\}\s*\)/);if(query){queryParam=query[1];queryArg=query[2];const argIndex=fn.args.indexOf(queryArg);if(argIndex>=0){const callRe=new RegExp('document\\.getElementById\\(\\s*["\\\']([^"\\\']+)["\\\']\\s*\\)\\.addEventListener\\(\\s*["\\\']change["\\\'][\\s\\S]{0,600}?'+escapeRegex(fn.name)+'\\(\\s*this\\.value','g'),call=callRe.exec(text);if(call)dependsOnControlId=call[1];}}
+    const staticOptions=[];for(const option of fn.body.matchAll(/new\s+Option\(\s*["']([^"']*)["']\s*,\s*["']([^"']*)["']\s*\)/g)){const ref=qbtTr(option[1]);staticOptions.push({value:String(option[2]||''),label:ref||{literal:decodeHtml(option[1])}});}
+    return{kind:'api-options',endpoint,responseShape,labelField,valueField,queryParam,dependsOnControlId,staticOptions};
+  }
+  return null;
+}
+
 function gatePredicate(preference){
   const gates=preference?.dependencies?.gates||[],items=gates.map(gate=>gate?.preferenceKey?{kind:'truthy',key:String(gate.preferenceKey)}:null).filter(Boolean);
   if(!items.length)return null;return items.length===1?items[0]:{kind:'allOf',items};
@@ -131,12 +173,12 @@ function immediateSuffix(markup,control,rowEnd){
   const literal=decodeHtml(tail).replace(/&nbsp;/gi,' ').trim();
   return literal&&literal.length<=12&&/^[:;,/|·–—-]+$/.test(literal)?{literal}:null;
 }
-function graphControl(control,preferencesByControl,behavior,markup,role,rowEnd){
-  const key=preferencesByControl.get(control.id)||null,preference=key&&preferencesByControl.preferences?.[key]||null;
-  const condition=behavior.predicates?.[control.id]||gatePredicate(preference),adornment=(preference&&preference.control&&preference.control.unit)||immediateUnit(markup,control,null,null);
-  return{id:control.id,preferenceKey:key,role:role||(key?'preference':'auxiliary'),semantic:control.semantic,staticDisabled:control.staticDisabled===true,label:(preference&&preference.title)||labelRefForControl(markup,control.id),adornment:adornment||null,suffix:immediateSuffix(markup,control,rowEnd),condition:condition||null};
+function graphControl(control,preferencesByControl,behavior,markup,role,rowEnd,writeOnlyByControl){
+  const key=preferencesByControl.get(control.id)||null,preference=key&&preferencesByControl.preferences?.[key]||null,writeOnly=!key&&writeOnlyByControl&&writeOnlyByControl.get(control.id)||null;
+  const condition=behavior.predicates?.[control.id]||gatePredicate(preference),adornment=(preference&&preference.control&&preference.control.unit)||immediateUnit(markup,control,null,null),dynamicOptions=control.semantic==='select'?sourceDynamicOptions(markup,control.id):null;
+  return{id:control.id,preferenceKey:key,role:role||(key?'preference':'auxiliary'),semantic:control.semantic,staticDisabled:control.staticDisabled===true,label:(preference&&preference.title)||labelRefForControl(markup,control.id),adornment:adornment||null,suffix:immediateSuffix(markup,control,rowEnd),condition:condition||null,...(dynamicOptions?{dynamicOptions}:{}),...(writeOnly&&['text','password','textarea','select'].includes(control.semantic)?{writeOnly}:{})};
 }
-function buildControlGraph(markup,tabs,fieldsets,caches,preferences){
+function buildControlGraph(markup,tabs,fieldsets,caches,preferences,writeOnlyByControl){
   const preferenceById=new Map(),preferenceObject={};
   for(const [key,item] of Object.entries(preferences||{})){const id=String(item?.control?.id||'');if(id&&!preferenceById.has(id))preferenceById.set(id,key);preferenceObject[key]=item;}
   preferenceById.preferences=preferenceObject;
@@ -151,7 +193,7 @@ function buildControlGraph(markup,tabs,fieldsets,caches,preferences){
     const tabFields=fieldsets.filter(item=>inside(tab.range,item.start)).sort((a,b)=>a.start-b.start),fieldIds=new Map(tabFields.map((item,index)=>[item,tab.id+':fieldset:'+index]));
     const graphFields=tabFields.map((item,index)=>{
       const parent=nearestContaining(tabFields.filter(candidate=>candidate!==item),item.start),legend=legends.find(value=>value.start>=item.openEnd&&value.end<=item.endStart),legendControls=[];
-      if(legend){for(const control of caches.controls.values())if(inside(legend,control.start)){sourceControls.add(control.id);representedControls.add(control.id);legendControlIds.add(control.id);legendControls.push(graphControl(control,preferenceById,behavior,markup,'gate',legend.endStart));}}
+      if(legend){for(const control of caches.controls.values())if(inside(legend,control.start)){sourceControls.add(control.id);representedControls.add(control.id);legendControlIds.add(control.id);legendControls.push(graphControl(control,preferenceById,behavior,markup,'gate',legend.endStart,writeOnlyByControl));}}
       return{id:tab.id+':fieldset:'+index,parentId:parent?fieldIds.get(parent):null,title:directLegend(markup,item),template:legendControls.length?'nested-gated-fieldset':'fieldset',legendControls,sourceOrder:0,_sourcePos:item.start};
     });
     const rows=[],assignedControls=new Set(),assignedHelpers=new Set(),assignedContents=new Set(),tabRows=allRows.filter(row=>inside(tab.range,row.start)),tabContents=contents.filter(content=>inside(tab.range,content.start));
@@ -159,7 +201,7 @@ function buildControlGraph(markup,tabs,fieldsets,caches,preferences){
       const controls=[...caches.controls.values()].filter(control=>inside(row,control.start)&&!legendControlIds.has(control.id)),rowHelpers=helpers.filter(helper=>inside(row,helper.start)),rowContents=tabContents.filter(content=>inside(row,content.start));
       if(!controls.length&&!rowHelpers.length&&!rowContents.length)continue;
       const parent=nearestContaining(tabFields,row.start),items=[];
-      for(const control of controls){assignedControls.add(control.id);representedControls.add(control.id);sourceControls.add(control.id);items.push({kind:'control',...graphControl(control,preferenceById,behavior,markup,null,row.endStart)});}
+      for(const control of controls){assignedControls.add(control.id);representedControls.add(control.id);sourceControls.add(control.id);items.push({kind:'control',...graphControl(control,preferenceById,behavior,markup,null,row.endStart,writeOnlyByControl)});}
       for(const helper of rowHelpers){assignedHelpers.add(helper.id);representedHelpers.add(helper.id);sourceHelpers.add(helper.id);items.push({kind:'helper',id:helper.id,role:'helper',label:helper.label,action:sourceHelperAction(helper.onclick,markup),condition:behavior.predicates?.[helper.id]||null});}
       for(const content of rowContents){assignedContents.add(content.id);representedContents.add(content.id);sourceContents.add(content.id);items.push(graphContentItem(content));}
       const mapped=items.filter(item=>item.kind==='control'&&item.preferenceKey).length,auxCheckbox=items.some(item=>item.kind==='control'&&!item.preferenceKey&&item.semantic==='checkbox'),hasHelper=items.some(item=>item.kind==='helper'),hasContent=items.some(item=>item.kind==='content');
@@ -169,7 +211,7 @@ function buildControlGraph(markup,tabs,fieldsets,caches,preferences){
     for(const control of caches.controls.values()){
       if(!inside(tab.range,control.start))continue;
       sourceControls.add(control.id);if(legendControlIds.has(control.id)||assignedControls.has(control.id))continue;representedControls.add(control.id);const parent=nearestContaining(tabFields,control.start);
-      rows.push({id:tab.id+':row:'+rows.length,parentFieldsetId:parent?fieldIds.get(parent):null,order:rows.length,sourceOrder:0,_sourcePos:control.start,template:'single-row',items:[{kind:'control',...graphControl(control,preferenceById,behavior,markup,null,null)}]});
+      rows.push({id:tab.id+':row:'+rows.length,parentFieldsetId:parent?fieldIds.get(parent):null,order:rows.length,sourceOrder:0,_sourcePos:control.start,template:'single-row',items:[{kind:'control',...graphControl(control,preferenceById,behavior,markup,null,null,writeOnlyByControl)}]});
     }
     for(const helper of helpers){
       if(!inside(tab.range,helper.start))continue;
@@ -197,8 +239,8 @@ function buildControlGraph(markup,tabs,fieldsets,caches,preferences){
 
 function timedTrace(trace,label,fn){const start=Date.now();trace?.(`${label} START`);const value=fn();trace?.(`${label} DONE ${Date.now()-start}ms`);return value;}
 
-export function extractQbPreferencesNativeSurface({preferencesSource='',toolbarSource='',preferenceDescriptors=[],trace=null}={}){
-  const descriptors=new Map((preferenceDescriptors||[]).map(item=>[String(item?.key||''),item]));
+export function extractQbPreferencesNativeSurface({preferencesSource='',toolbarSource='',preferenceDescriptors=[],writeOnlyDescriptors=[],trace=null}={}){
+  const descriptors=new Map((preferenceDescriptors||[]).map(item=>[String(item?.key||''),item])),writeOnlyByControl=writeOnlyControlFacts(preferencesSource,writeOnlyDescriptors);
   const keys=[...descriptors.keys()].filter(Boolean);
   const ui=timedTrace(trace,'ui-facts',()=>extractQbPreferenceUiFacts(preferencesSource,keys));
   const supplement=timedTrace(trace,'composite-ui-facts',()=>extractQbPreferencesCompositeUiFacts(preferencesSource,keys));
@@ -233,13 +275,14 @@ export function extractQbPreferencesNativeSurface({preferencesSource='',toolbarS
     tabRows.push({id:tab.id,nativeId:tab.nativeId,title:tab.title||null,order:tabOrder,sections,preferences:rows.map(row=>row.key)});
     trace?.(`tab:${tab.id} DONE ${Date.now()-tabStarted}ms rows=${rows.length}`);
   });
-  const controlGraph=timedTrace(trace,'control-graph',()=>buildControlGraph(preferencesSource,tabs,fieldsets,caches,preferences));return{tabs:tabRows,preferences,controlGraph,structuralCensus:controlGraph.census,mappedPreferences:Object.keys(preferences).length,totalPreferences:keys.length};
+  const controlGraph=timedTrace(trace,'control-graph',()=>buildControlGraph(preferencesSource,tabs,fieldsets,caches,preferences,writeOnlyByControl));return{tabs:tabRows,preferences,controlGraph,structuralCensus:controlGraph.census,mappedPreferences:Object.keys(preferences).length,totalPreferences:keys.length};
 }
 
 function git(root,...args){return execFileSync('git',['-C',root,...args],{encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();}
 function showMaybe(root,tag,file){try{return git(root,'show',`${tag}:${file}`);}catch{return'';}}
 function preferencesSource(root,tag){for(const file of PREFERENCES_SOURCE_PATHS){const source=showMaybe(root,tag,file);if(source)return source;}return'';}
 function toolbarSource(root,tag){for(const file of TOOLBAR_SOURCE_PATHS){const source=showMaybe(root,tag,file);if(source)return source;}return'';}
+function appControllerSource(root,tag){return showMaybe(root,tag,APP_CONTROLLER_PATH);}
 function isPartialClone(root){try{return git(root,'config','--get','remote.origin.promisor')==='true';}catch{return false;}}
 function sourceBlobOid(root,tag,file){try{const oid=git(root,'rev-parse','--verify',`${tag}:${file}`);return /^[0-9a-f]{40}$/i.test(oid)?oid:'';}catch{return'';}}
 function prefetchSourceBlobs(root,catalog){
@@ -299,10 +342,11 @@ export function buildQbPreferencesSourceCatalog(catalog,qbRoot,{trace=false,full
     if(!qbVersion||!/^[0-9a-f]{40}$/i.test(sourceSha)||!tag)throw new Error('Each qB Preferences profile requires exact qbVersion + sourceSha + tag.');
     const prefix=`[Preferences ${index+1}/${catalog.length} qB ${qbVersion}]`,detail=message=>{if(trace)console.log(`${prefix} ${message}`);},started=Date.now();
     console.log(`${prefix} release START`);
-    const sourceStarted=Date.now(),source=preferencesSource(qbRoot,tag),toolbar=toolbarSource(qbRoot,tag);
-    detail(`source-read DONE ${Date.now()-sourceStarted}ms sourceBytes=${source.length} toolbarBytes=${toolbar.length}`);
-    if(!source)throw new Error(`${qbVersion}: qB Preferences source is unavailable.`);
-    const manifest=extractQbPreferencesNativeSurface({preferencesSource:source,toolbarSource:toolbar,preferenceDescriptors:profile.preferenceDescriptors||[],trace:trace?(message=>detail(message)):null});
+    const sourceStarted=Date.now(),source=preferencesSource(qbRoot,tag),toolbar=toolbarSource(qbRoot,tag),appSource=appControllerSource(qbRoot,tag);
+    detail(`source-read DONE ${Date.now()-sourceStarted}ms sourceBytes=${source.length} toolbarBytes=${toolbar.length} appBytes=${appSource.length}`);
+    if(!source||!appSource)throw new Error(`${qbVersion}: qB Preferences source is unavailable.`);
+    const readable=new Set((profile.preferenceKeys||[]).map(String)),setterHints=extractPreferenceSetterHints(appSource,tag),writeOnlyDescriptors=[...setterHints.values()].filter(item=>item?.setterPresent===true&&item?.writeType&&!readable.has(String(item.key))).map(item=>({...item,getterPresent:false,readType:null,typeAgreement:'WRITE_ONLY',writable:true}));
+    const manifest=extractQbPreferencesNativeSurface({preferencesSource:source,toolbarSource:toolbar,preferenceDescriptors:profile.preferenceDescriptors||[],writeOnlyDescriptors,trace:trace?(message=>detail(message)):null});
     if(!manifest.tabs.length)throw new Error(`${qbVersion}: qB Preferences native tabs are unresolved.`);
     profiles.push({qbVersion,sourceSha,tag,manifest});
     console.log(`${prefix} release DONE ${Date.now()-started}ms mapped=${manifest.mappedPreferences}/${manifest.totalPreferences} tabs=${manifest.tabs.length}`);
