@@ -34,6 +34,8 @@ function safeSourceWriteProjection(projection,descriptor,control,fact){
   const semantic=String(control?.semantic||''),direct=projection.kind==='unproven'&&projection.writeFactor===1;
   const exactString=descriptor?.setterPresent===true&&descriptor?.writable===true&&descriptor?.writeType==='string'&&descriptor?.typeAgreement==='EXACT';
   if(direct&&exactString&&['text','select','password','textarea'].includes(semantic))return{...projection,safeWrite:true,writeIdentity:true};
+  const exactBoolean=descriptor?.getterPresent===true&&descriptor?.setterPresent===true&&descriptor?.writable===true&&descriptor?.readType==='boolean'&&descriptor?.writeType==='boolean'&&descriptor?.typeAgreement==='EXACT';
+  if(direct&&exactBoolean&&semantic==='checkbox')return{kind:'identity',safeWrite:true};
   const exactObject=descriptor?.getterPresent===true&&descriptor?.setterPresent===true&&descriptor?.writable===true&&descriptor?.readType==='object'&&descriptor?.writeType==='object'&&descriptor?.typeAgreement==='EXACT';
   if(semantic==='structured'&&fact?.structured?.kind==='keyed-map'&&exactObject)return{kind:'identity',safeWrite:true};
   return projection;
