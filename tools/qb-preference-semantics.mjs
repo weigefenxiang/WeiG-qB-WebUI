@@ -105,6 +105,13 @@ function declaredLocalTypes(body) {
   return out;
 }
 
+function declaredSingletonAliases(body) {
+  const out = new Map();
+  const re = /\b(?:const\s+)?(?:auto|[A-Za-z_]\w*(?:::[A-Za-z_]\w*)*)\s*[*&]?\s*([A-Za-z_]\w*)\s*=\s*(?:[A-Za-z_]\w*::)*([A-Za-z_]\w*)::instance\s*\(\s*\)/g;
+  for (const match of String(body || '').matchAll(re)) out.set(String(match[1] || ''), String(match[2] || ''));
+  return out;
+}
+
 function matchingBrace(text, openIndex) {
   let depth = 0;
   let quote = '';
@@ -189,7 +196,7 @@ function stripOuterParens(value) {
   return result;
 }
 
-function inferGetter(expression, locals, declaredSessionGetters = new Map(), declaredPreferenceGetters = new Map(), declaredApplicationGetters = new Map(), declaredLocals = new Map(), declaredMembers = new Map(), declaredClassGetters = new Map()) {
+function inferGetter(expression, locals, declaredSessionGetters = new Map(), declaredPreferenceGetters = new Map(), declaredApplicationGetters = new Map(), declaredLocals = new Map(), declaredMembers = new Map(), declaredClassGetters = new Map(), singletonAliases = new Map()) {
   const value = stripOuterParens(expression);
   if (!value) return {type: null, kind: 'UNRESOLVED'};
   if (/^(?:true|false)$/.test(value)) return {type: 'boolean', kind: 'BOOLEAN_LITERAL'};
@@ -201,6 +208,7 @@ function inferGetter(expression, locals, declaredSessionGetters = new Map(), dec
   if (/\bstatic_cast\s*<\s*(?:u?int\d*_t|q?u?int\d*|unsigned(?:\s+long(?:\s+long)?)?|signed(?:\s+long(?:\s+long)?)?|int|long(?:\s+long)?|float|double|qsizetype|size_t)\s*>/.test(value)) return {type: 'number', kind: 'NUMBER_CAST'};
   if (/\bUtils::String::fromEnum\s*\(/.test(value)) return {type: 'string', kind: 'ENUM_STRING'};
   if (/\bQString::number\s*\(|\.toString\s*\(|\.join\s*\(|\bQStringLiteral\s*\(|\bQLatin1String\s*\(|\bQString\s*[({]/.test(value)) return {type: 'string', kind: 'STRING_EXPRESSION'};
+  if (/^Utils::Fs::toNativePath\s*\(/.test(value)) return {type: 'string', kind: 'NATIVE_PATH_STRING'};
   if (/\bQJsonArray\b|\bQVariantList\b|\bQStringList\b/.test(value)) return {type: 'array', kind: 'ARRAY_EXPRESSION'};
   if (/\bQJsonObject\b|\bQVariantMap\b|\bQVariantHash\b/.test(value)) return {type: 'object', kind: 'OBJECT_EXPRESSION'};
   if (/\.(?:hour|minute|second|msec|size|count|length|toSecsSinceEpoch|toMSecsSinceEpoch)\s*\(/.test(value)) return {type: 'number', kind: 'NUMBER_METHOD'};
@@ -222,6 +230,11 @@ function inferGetter(expression, locals, declaredSessionGetters = new Map(), dec
   if (singletonCall) {
     const singletonType = declaredClassGetters.get(`${singletonCall[1]}.${singletonCall[2]}`);
     if (singletonType) return {type: singletonType, kind: 'SINGLETON_DECLARATION'};
+  }
+  const singletonAliasCall = value.match(/^([A-Za-z_]\w*)\s*->\s*([A-Za-z_]\w*)\s*\(\s*\)$/);
+  if (singletonAliasCall && singletonAliases.has(singletonAliasCall[1])) {
+    const singletonType = declaredClassGetters.get(`${singletonAliases.get(singletonAliasCall[1])}.${singletonAliasCall[2]}`);
+    if (singletonType) return {type: singletonType, kind: 'SINGLETON_ALIAS_DECLARATION'};
   }
   const memberAccess = value.match(/^([A-Za-z_]\w*)\s*(?:\.|->)\s*([A-Za-z_]\w*)$/);
   if (memberAccess && declaredLocals.has(memberAccess[1])) {
@@ -248,15 +261,17 @@ export function extractSemanticGetterHints(source, label = 'source', options = {
   const declaredPreferenceGetters = declaredGetterTypes(options.preferencesHeaderSource);
   const declaredApplicationGetters = declaredGetterTypes(options.applicationHeaderSource);
   const declaredLocals = declaredLocalTypes(body);
-  const declaredMembers = declaredMemberTypes(options.memberHeaderSources || []);
-  const declaredClassGetters = declaredClassGetterTypes(options.memberHeaderSources || []);
+  const singletonAliases = declaredSingletonAliases(body);
+  const memberSources = options.memberHeaderSources || [];
+  const declaredMembers = declaredMemberTypes(memberSources);
+  const declaredClassGetters = declaredClassGetterTypes([options.sessionHeaderSource, options.preferencesHeaderSource, options.applicationHeaderSource, ...memberSources].filter(Boolean));
   const out = new Map();
   DATA_KEY_RE.lastIndex = 0;
   for (const match of body.matchAll(DATA_KEY_RE)) {
     const key = capturedKey(match, 1);
     if (!key) continue;
     const expression = readExpression(body, match.index + match[0].length);
-    const inferred = inferGetter(expression, locals, declaredSessionGetters, declaredPreferenceGetters, declaredApplicationGetters, declaredLocals, declaredMembers, declaredClassGetters);
+    const inferred = inferGetter(expression, locals, declaredSessionGetters, declaredPreferenceGetters, declaredApplicationGetters, declaredLocals, declaredMembers, declaredClassGetters, singletonAliases);
     out.set(key, {
       key,
       readType: inferred.type,
