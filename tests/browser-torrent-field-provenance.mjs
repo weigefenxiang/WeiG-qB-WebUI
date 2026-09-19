@@ -33,10 +33,10 @@ const commonProfile={
   preferenceDescriptors:[]
 };
 const profiles=[
-  {...commonProfile,qbVersion:'6.0.0',torrentInfoFields:['hash',...productFields.filter(key=>key!=='ratio')]},
-  {...commonProfile,qbVersion:'6.0.1',torrentInfoFields:['hash',...productFields]}
+  {...commonProfile,qbVersion:'6.0.0',sourceSha:'6'.repeat(40),torrentInfoFields:['hash',...productFields.filter(key=>key!=='ratio')]},
+  {...commonProfile,qbVersion:'6.0.1',sourceSha:'7'.repeat(40),torrentInfoFields:['hash',...productFields]}
 ];
-const compact=compileCompactRuntime(profiles);const compactByName=new Map([['capabilities.json',compact.capabilityData],['torrent-compat.json',compact.torrentData],['detail-compat.json',compact.detailData],['source-actions.json',compact.actionData],['settings-compat.json',compact.settingsData]]);
+const compact=compileCompactRuntime(profiles,{includeSettings:false});const compactByName=new Map([['capabilities.json',compact.capabilityData],['torrent-compat.json',compact.torrentData],['detail-compat.json',compact.detailData],['source-actions.json',compact.actionData],['settings-compat.json',compact.settingsData]]);
 const torrent={
   hash:'f'.repeat(40),
   name:'Field provenance fixture',
