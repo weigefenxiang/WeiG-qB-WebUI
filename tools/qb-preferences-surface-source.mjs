@@ -50,6 +50,14 @@ function sourceLabelRanges(markup){
   }
   return out;
 }
+function sourceQbtRanges(markup){
+  const text=String(markup||''),out=[];
+  for(const match of text.matchAll(/QBT_TR\(([\s\S]*?)\)QBT_TR\[CONTEXT=([^\]]+)\]/gi)){
+    const ref={source:decodeHtml(match[1]),context:String(match[2]||'').trim()},start=match.index??0;
+    if(ref.source&&ref.context)out.push({start,end:start+match[0].length,ref});
+  }
+  return out;
+}
 function sourceRefIdentity(ref){
   if(!ref)return'';
   if(ref.source&&ref.context)return String(ref.context)+'\u0000'+String(ref.source);
@@ -57,7 +65,7 @@ function sourceRefIdentity(ref){
   return JSON.stringify(ref);
 }
 function buildSourceOwnershipIndex(markup,tabs,fieldsets,caches){
-  const labels=sourceLabelRanges(markup),legends=elementRanges(markup,'legend'),byFor=new Map(),byId=new Map(),rows=[...(caches.divs||[]).filter(row=>String(attrText(row.attrs,'class')||'').split(/\s+/).includes('formRow')),...(caches.trs||[])].sort((a,b)=>a.start-b.start||a.end-b.end),owners=new Map();
+  const labels=sourceLabelRanges(markup),legends=elementRanges(markup,'legend'),options=elementRanges(markup,'option'),copyRefs=sourceQbtRanges(markup),behaviorGates=extractQbPreferencesBehaviorPredicates(markup,{}).controlDependencies||{},byFor=new Map(),byId=new Map(),rows=[...(caches.divs||[]).filter(row=>String(attrText(row.attrs,'class')||'').split(/\s+/).includes('formRow')),...(caches.trs||[])].sort((a,b)=>a.start-b.start||a.end-b.end),owners=new Map();
   for(const label of labels){
     if(label.forId){const list=byFor.get(label.forId)||[];list.push(label);byFor.set(label.forId,list);}
     if(label.id&&!byId.has(label.id))byId.set(label.id,label);
@@ -93,6 +101,25 @@ function buildSourceOwnershipIndex(markup,tabs,fieldsets,caches){
         return labelField===nearestField;
       }).sort((a,b)=>b.end-a.end);
       if(adjacent.length)add(adjacent[0],3,'E2:direct-adjacent');
+    }
+    if(!candidates.some(item=>item.rank>=3)&&row){
+      const free=copyRefs.filter(copy=>{
+        if(!inside(row,copy.start)||copy.end>control.start||!/:\s*$/.test(String(copy.ref?.source||'')))return false;
+        if(labels.some(label=>copy.start>=label.start&&copy.end<=label.end))return false;
+        if(options.some(option=>inside(option,copy.start)))return false;
+        return true;
+      }).sort((a,b)=>b.end-a.end);
+      if(free.length)candidates.push({ref:free[0].ref,rank:3,evidence:'E2:inline-copy-group',sourceRange:{start:free[0].start,end:free[0].end}});
+    }
+    if(!candidates.length){
+      const gateLabels=[];
+      for(const gateId of behaviorGates[control.id]||[]){
+        const gate=caches.controls.get(String(gateId||''));if(gate?.semantic!=='checkbox')continue;
+        for(const label of byFor.get(gate.id)||[])gateLabels.push(label);
+      }
+      const identities=[...new Set(gateLabels.map(label=>sourceRefIdentity(label.ref)).filter(Boolean))];
+      if(identities.length===1)for(const label of gateLabels)add(label,2,'E3:behavior-gate');
+      else if(identities.length>1)for(const label of gateLabels)add(label,2,'E3:ambiguous-behavior-gate');
     }
     if(!candidates.length&&nearestField){
       const ref=directLegend(markup,nearestField),directFieldControls=[...caches.controls.values()].filter(item=>inside(nearestField,item.start)&&nearestContaining(tabFields,item.start)===nearestField),controlLegend=legends.find(legend=>inside(nearestField,legend.start)&&inside(legend,control.start))||null;
@@ -337,9 +364,10 @@ function buildControlGraph(markup,tabs,fieldsets,caches,preferences,writeOnlyByC
     });
     const rows=[],assignedControls=new Set(),assignedHelpers=new Set(),assignedContents=new Set(),tabRows=allRows.filter(row=>inside(tab.range,row.start)),tabContents=contents.filter(content=>inside(tab.range,content.start));
     for(const row of tabRows){
-      const controls=[...caches.controls.values()].filter(control=>inside(row,control.start)&&!legendControlIds.has(control.id)),rowHelpers=helpers.filter(helper=>inside(row,helper.start)),rowContents=tabContents.filter(content=>inside(row,content.start));
+      const parent=nearestContaining(tabFields,row.start),sameField=pos=>nearestContaining(tabFields,pos)===parent;
+      const controls=[...caches.controls.values()].filter(control=>inside(row,control.start)&&!legendControlIds.has(control.id)&&sameField(control.start)),rowHelpers=helpers.filter(helper=>inside(row,helper.start)&&sameField(helper.start)),rowContents=tabContents.filter(content=>inside(row,content.start)&&sameField(content.start));
       if(!controls.length&&!rowHelpers.length&&!rowContents.length)continue;
-      const parent=nearestContaining(tabFields,row.start),items=[];
+      const items=[];
       for(const control of controls){assignedControls.add(control.id);representedControls.add(control.id);sourceControls.add(control.id);items.push({kind:'control',...graphControl(control,preferenceById,behavior,markup,null,row.endStart,writeOnlyByControl)});}
       for(const helper of rowHelpers){assignedHelpers.add(helper.id);representedHelpers.add(helper.id);sourceHelpers.add(helper.id);items.push({kind:'helper',id:helper.id,role:'helper',label:helper.label,action:sourceHelperAction(helper.onclick,markup),condition:behavior.predicates?.[helper.id]||null});}
       for(const content of rowContents){assignedContents.add(content.id);representedContents.add(content.id);sourceContents.add(content.id);items.push(graphContentItem(content));}
