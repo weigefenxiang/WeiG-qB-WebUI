@@ -55,6 +55,37 @@ const writableDescriptors=descriptors.map(item=>item.key==='current_interface_na
 const noExclusion=reviewedQbPreferencesExclusions({source,preferenceDescriptors:writableDescriptors,inventory,manifest});
 assert.equal(noExclusion.preferences.length,0,'reviewed helper exclusion must fail closed if upstream ever makes the field writable');
 
+const boundaryToolbar='<li id="PrefDownloadsLink">QBT_TR(Downloads)QBT_TR[CONTEXT=OptionsDialog]</li><li id="PrefConnectionLink">QBT_TR(Connection)QBT_TR[CONTEXT=OptionsDialog]</li>';
+const boundarySource=`
+<div id="DownloadsTab" class="PrefTab">
+  <div class="formRow"><input id="dontstartdownloads_checkbox" type="checkbox"><label for="dontstartdownloads_checkbox">QBT_TR(Do not start the download automatically)QBT_TR[CONTEXT=OptionsDialog]</label></div>
+</div>
+<div id="ConnectionTab" class="PrefTab invisible">
+  <div class="formRow">
+    <label>QBT_TR(Peer connection protocol:)QBT_TR[CONTEXT=OptionsDialog]</label>
+    <select id="enable_protocol_combobox"><option value="0">QBT_TR(TCP and μTP)QBT_TR[CONTEXT=OptionsDialog]</option><option value="1">TCP</option><option value="2">μTP</option></select>
+  </div>
+</div>
+<script>
+  $('enable_protocol_combobox').setProperty('value', pref.bittorrent_protocol);
+  settings.set('bittorrent_protocol', $('enable_protocol_combobox').getProperty('value'));
+</script>`;
+const boundaryDescriptor=[{key:'bittorrent_protocol',getterPresent:true,setterPresent:true,readType:'number',writeType:'number',typeAgreement:'EXACT',writable:true}];
+const boundaryFacts=extractQbPreferencesNativeSurface({preferencesSource:boundarySource,toolbarSource:boundaryToolbar,preferenceDescriptors:boundaryDescriptor});
+assert.equal(boundaryFacts.preferences.bittorrent_protocol?.control?.id,'enable_protocol_combobox','bounded resolver must retain the exact Connection control');
+assert.equal(boundaryFacts.preferences.bittorrent_protocol?.tab,'connection','Downloads source copy must never move a Connection preference across tabs');
+assert.deepEqual(boundaryFacts.preferences.bittorrent_protocol?.title,{source:'Peer connection protocol:',context:'OptionsDialog'},'same-row native no-for label must outrank unrelated prior source copy');
+assert.equal(boundaryFacts.ownershipCensus.crossTabOwnershipMismatch,0);
+assert.equal(boundaryFacts.ownershipCensus.crossRowOwnershipMismatch,0);
+assert.equal(boundaryFacts.ownershipCensus.wrongSourceRef,0);
+assert.equal(boundaryFacts.ownershipCensus.ambiguousBinding,0);
+assert.equal(boundaryFacts.ownershipCensus.complete,true,'bounded source fixture must close every ownership census dimension');
+
+const missingPeerLabel=boundarySource.replace('<label>QBT_TR(Peer connection protocol:)QBT_TR[CONTEXT=OptionsDialog]</label>','');
+const missingPeerFacts=extractQbPreferencesNativeSurface({preferencesSource:missingPeerLabel,toolbarSource:boundaryToolbar,preferenceDescriptors:boundaryDescriptor});
+assert.equal(missingPeerFacts.preferences.bittorrent_protocol,undefined,'missing Connection copy must fail closed instead of borrowing the Downloads label');
+assert.ok(missingPeerFacts.ownershipCensus.missingRequiredLabel>0,'fail-closed ownership must expose the unresolved native label in the census');
+
 const scaled=`
 <input id="rate" type="number">
 <script>
