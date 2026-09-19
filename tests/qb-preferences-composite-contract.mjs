@@ -96,6 +96,26 @@ const ambiguousGroupFacts=extractQbPreferencesNativeSurface({preferencesSource:a
 assert.equal(ambiguousGroupFacts.preferences.first_setting,undefined,'fieldset legend must not be fabricated as an individual control label when multiple direct controls make group ownership ambiguous');
 assert.ok(ambiguousGroupFacts.ownershipCensus.missingRequiredLabel>0,'unproven E3 group ownership must fail closed and remain visible in the census');
 
+const inlineCopySource=`
+<div id="SpeedTab" class="PrefTab"><table>
+  <tr><td><input type="checkbox" id="ratio_gate"><label for="ratio_gate">QBT_TR(Ratio gate)QBT_TR[CONTEXT=OptionsDialog]</label></td></tr>
+  <tr><td><input type="checkbox" id="time_gate"><label for="time_gate">QBT_TR(Time gate)QBT_TR[CONTEXT=OptionsDialog]</label></td></tr>
+  <tr><td>QBT_TR(then)QBT_TR[CONTEXT=OptionsDialog]</td><td><select id="max_ratio_act"><option value="0">QBT_TR(Pause them)QBT_TR[CONTEXT=OptionsDialog]</option><option value="1">QBT_TR(Remove them)QBT_TR[CONTEXT=OptionsDialog]</option></select></td></tr>
+</table></div>
+<script>
+function updateRatioActionEnabled() {
+  const disabled = !($('ratio_gate').getProperty('checked') || $('time_gate').getProperty('checked'));
+  $('max_ratio_act').setProperty('disabled', disabled);
+}
+$('max_ratio_act').setProperty('value', pref.max_ratio_act);
+</script>`;
+const inlineCopyFacts=extractQbPreferencesNativeSurface({preferencesSource:inlineCopySource,toolbarSource:'<li id="PrefSpeedLink">Speed</li>',preferenceDescriptors:[{key:'max_ratio_act',getterPresent:true,setterPresent:true,readType:'number',writeType:'number',typeAgreement:'EXACT',writable:true}]});
+assert.equal(inlineCopyFacts.preferences.max_ratio_act?.control?.id,'max_ratio_act');
+assert.deepEqual(inlineCopyFacts.preferences.max_ratio_act?.title,{source:'then',context:'OptionsDialog'},'unique row-local source copy must own its control before multiple behavior-gate labels can make E3 ambiguous');
+assert.equal(inlineCopyFacts.ownershipCensus.missingRequiredLabel,0);
+assert.equal(inlineCopyFacts.ownershipCensus.ambiguousSourceRef,0);
+assert.equal(inlineCopyFacts.ownershipCensus.complete,true,'historical inline-copy control ownership must close without a version/key exception');
+
 const scaled=`
 <input id="rate" type="number">
 <script>
