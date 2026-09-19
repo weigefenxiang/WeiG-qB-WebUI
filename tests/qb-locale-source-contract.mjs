@@ -93,11 +93,13 @@ assert.throws(
 );
 
 const preferencesSource=`
+<div id="BehaviorTab" class="PrefTab">
 <label for="savepath_text">QBT_TR(Default Save Path:)QBT_TR[CONTEXT=OptionsDialog]</label>
 <input type="text" id="savepath_text">
 <label for="locale_select">QBT_TR(Language:)QBT_TR[CONTEXT=OptionsDialog]</label>
 <select id="locale_select"></select>
 <p>QBT_TR(Supported parameters (case sensitive):)QBT_TR[CONTEXT=OptionsDialog]</p>
+</div>
 <script>
   document.getElementById("savepath_text").value = pref.save_path;
   document.getElementById("locale_select").value = pref.locale;
