@@ -94,7 +94,9 @@ function buildSourceOwnershipIndex(markup,tabs,fieldsets,caches){
     owners.set(control.id,{
       controlId:control.id,tabId:tab.id,
       fieldsetId:nearestField?tab.id+':fieldset:'+tabFields.indexOf(nearestField):null,
+      fieldsetRange:nearestField?{start:nearestField.start,end:nearestField.end}:null,
       rowBounded:!!row,
+      rowRange:row?{start:row.start,end:row.end}:null,
       label:label?{ref:label.ref,rank:label.rank,evidence:label.evidence,sourceRange:label.sourceRange}:null,
       ambiguousLabelRefs:identities.length>1?top.map(item=>({ref:item.ref,evidence:item.evidence,sourceRange:item.sourceRange})):[]
     });
@@ -412,13 +414,17 @@ export function extractQbPreferencesNativeSurface({preferencesSource='',toolbarS
   const duplicateControls=[],byControl=new Map();
   for(const [key,item] of Object.entries(preferences)){const id=String(item?.control?.id||'');if(!id)continue;const list=byControl.get(id)||[];list.push(key);byControl.set(id,list);}
   for(const [controlId,preferenceKeys] of byControl)if(preferenceKeys.length>1)duplicateControls.push({controlId,preferenceKeys});
-  const crossTab=[],crossFieldset=[],wrongSourceRef=[],missingLabels=[],ambiguousLabels=[];
+  const crossTab=[],crossFieldset=[],crossRow=[],wrongSourceRef=[],missingLabels=[],ambiguousLabels=[];
   for(const [key,item] of Object.entries(preferences)){
     const owner=ownership.get(String(item?.control?.id||'')),location=graphLocations.get(key);
     if(!owner?.label?.ref)missingLabels.push(key);
     if(owner?.ambiguousLabelRefs?.length)ambiguousLabels.push({key,controlId:item.control.id,refs:owner.ambiguousLabelRefs});
     if(owner&&item.tab!==owner.tabId)crossTab.push({key,manifest:item.tab,source:owner.tabId});
     if(owner&&location&&String(location.fieldsetId||'')!==String(owner.fieldsetId||''))crossFieldset.push({key,graph:location.fieldsetId||null,source:owner.fieldsetId||null});
+    if(String(owner?.label?.evidence||'').startsWith('E2:')){
+      const row=owner?.rowRange,labelRange=owner?.label?.sourceRange;
+      if(!row||!labelRange||labelRange.start<row.start||labelRange.end>row.end)crossRow.push({key,controlId:item.control.id,evidence:owner?.label?.evidence||null});
+    }
     if(owner?.label?.ref&&sourceRefIdentity(item.title)!==sourceRefIdentity(owner.label.ref))wrongSourceRef.push({key,controlId:item.control.id});
   }
   const missingOptions=[];
@@ -430,7 +436,7 @@ export function extractQbPreferencesNativeSurface({preferencesSource='',toolbarS
     schemaVersion:1,
     crossTabOwnershipMismatch:crossTab.length,
     crossFieldsetOwnershipMismatch:crossFieldset.length,
-    crossRowOwnershipMismatch:0,
+    crossRowOwnershipMismatch:crossRow.length,
     ambiguousBinding:resolved.diagnostics.ambiguousBindings.length,
     duplicatePreferenceOwnership:resolved.diagnostics.ambiguousBindings.length,
     duplicateControlOwnership:duplicateControls.length,
@@ -443,7 +449,7 @@ export function extractQbPreferencesNativeSurface({preferencesSource='',toolbarS
     unaccountedNativeHelper:Math.max(0,Number(structural.sourceHelpers||0)-Number(structural.representedHelpers||0)),
     unaccountedNativeContent:Math.max(0,Number(structural.sourceContents||0)-Number(structural.representedContents||0)),
     runtimeRelevantUnknownBehavior:Array.isArray(structural.unknownBehaviors)?structural.unknownBehaviors.length:0,
-    details:{crossTab,crossFieldset,ambiguousBindings:resolved.diagnostics.ambiguousBindings,unresolvedBindings:resolved.diagnostics.unresolvedBindings,duplicateControls,wrongSourceRef,ambiguousLabels,missingOptions}
+    details:{crossTab,crossFieldset,crossRow,ambiguousBindings:resolved.diagnostics.ambiguousBindings,unresolvedBindings:resolved.diagnostics.unresolvedBindings,duplicateControls,wrongSourceRef,ambiguousLabels,missingOptions}
   };
   ownershipCensus.complete=[
     'crossTabOwnershipMismatch','crossFieldsetOwnershipMismatch','crossRowOwnershipMismatch','ambiguousBinding','duplicatePreferenceOwnership','duplicateControlOwnership','wrongSourceRef','ambiguousSourceRef','missingRequiredLabel','missingOptions','optionOrderMismatch','unaccountedNativeControl','unaccountedNativeHelper','unaccountedNativeContent','runtimeRelevantUnknownBehavior'
