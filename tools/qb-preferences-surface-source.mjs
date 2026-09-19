@@ -85,6 +85,15 @@ function buildSourceOwnershipIndex(markup,tabs,fieldsets,caches){
         if(unbound.length===1&&unlabeledControls.length===1&&unlabeledControls[0].id===control.id)add(unbound[0],3,'E2:bounded-row-unique');
       }
     }
+    if(!candidates.some(item=>item.rank>=3)){
+      const adjacent=labels.filter(label=>{
+        if(label.forId||label.end>control.start||!inside(tab.range,label.start))return false;
+        if(String(markup||'').slice(label.end,control.start).trim()!=='')return false;
+        const labelField=nearestContaining(tabFields,label.start);
+        return labelField===nearestField;
+      }).sort((a,b)=>b.end-a.end);
+      if(adjacent.length)add(adjacent[0],3,'E2:direct-adjacent');
+    }
     if(!candidates.length&&nearestField){
       const ref=directLegend(markup,nearestField);
       if(ref)candidates.push({ref,rank:2,evidence:'E3:fieldset-group',sourceRange:{start:nearestField.start,end:nearestField.openEnd}});
@@ -421,7 +430,7 @@ export function extractQbPreferencesNativeSurface({preferencesSource='',toolbarS
     if(owner?.ambiguousLabelRefs?.length)ambiguousLabels.push({key,controlId:item.control.id,refs:owner.ambiguousLabelRefs});
     if(owner&&item.tab!==owner.tabId)crossTab.push({key,manifest:item.tab,source:owner.tabId});
     if(owner&&location&&String(location.fieldsetId||'')!==String(owner.fieldsetId||''))crossFieldset.push({key,graph:location.fieldsetId||null,source:owner.fieldsetId||null});
-    if(String(owner?.label?.evidence||'').startsWith('E2:')){
+    if(String(owner?.label?.evidence||'').startsWith('E2:bounded-row')){
       const row=owner?.rowRange,labelRange=owner?.label?.sourceRange;
       if(!row||!labelRange||labelRange.start<row.start||labelRange.end>row.end)crossRow.push({key,controlId:item.control.id,evidence:owner?.label?.evidence||null});
     }
