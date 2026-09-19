@@ -289,18 +289,28 @@ function writeOnlyControlFacts(markup,descriptors){
   return out;
 }
 function functionBodies(markup){
-  const text=String(markup||''),out=[],re=/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*\(([^)]*)\)\s*=>\s*\{|\bfunction\s+([A-Za-z_$][\w$]*)\s*\(([^)]*)\)\s*\{/g;
-  let match;while((match=re.exec(text))){const name=String(match[1]||match[3]||''),args=String(match[2]||match[4]||'').split(',').map(value=>value.trim()).filter(Boolean),body=balancedBlock(text,match.index||0);if(name&&body)out.push({name,args,body});}
+  const text=String(markup||''),out=[],re=/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*\(([^)]*)\)\s*=>\s*\{|\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*function\s*\(([^)]*)\)\s*\{|\bfunction\s+([A-Za-z_$][\w$]*)\s*\(([^)]*)\)\s*\{/g;
+  let match;while((match=re.exec(text))){const name=String(match[1]||match[3]||match[5]||''),args=String(match[2]||match[4]||match[6]||'').split(',').map(value=>value.trim()).filter(Boolean),body=balancedBlock(text,match.index||0);if(name&&body)out.push({name,args,body});}
   return out;
 }
 function sourceDynamicOptions(markup,controlId){
   const text=String(markup||''),escaped=escapeRegex(controlId);
   for(const fn of functionBodies(text)){
-    if(!new RegExp('getElementById\\(\\s*["\\\']'+escaped+'["\\\']\\s*\\)').test(fn.body)||!/\.options\.add\s*\(/.test(fn.body))continue;
+    const modernTarget=new RegExp('getElementById\\(\\s*["\\\']'+escaped+'["\\\']\\s*\\)').test(fn.body),legacyTarget=new RegExp('\\$\\(\\s*["\\\']'+escaped+'["\\\']\\s*\\)').test(fn.body);
+    if((!modernTarget&&!legacyTarget)||!/\.options\.add\s*\(/.test(fn.body))continue;
     const endpointMatch=fn.body.match(/["']api\/v2\/([^"']+)["']/);if(!endpointMatch)continue;
     const endpoint=String(endpointMatch[1]||''),objectPair=fn.body.match(/new\s+Option\(\s*([A-Za-z_$][\w$]*)\.([A-Za-z_$][\w$]*)\s*,\s*\1\.([A-Za-z_$][\w$]*)\s*\)/),scalarPair=fn.body.match(/new\s+Option\(\s*([A-Za-z_$][\w$]*)\s*,\s*\1\s*\)/);
     let responseShape='unknown',labelField=null,valueField=null;if(objectPair){responseShape='object-array';labelField=objectPair[2];valueField=objectPair[3];}else if(scalarPair)responseShape='string-array';
-    let queryParam=null,queryArg=null,dependsOnControlId=null;const query=fn.body.match(/new\s+URLSearchParams\(\s*\{\s*([A-Za-z_$][\w$]*)\s*:\s*([A-Za-z_$][\w$]*)\s*\}\s*\)/);if(query){queryParam=query[1];queryArg=query[2];const argIndex=fn.args.indexOf(queryArg);if(argIndex>=0){const callRe=new RegExp('document\\.getElementById\\(\\s*["\\\']([^"\\\']+)["\\\']\\s*\\)\\.addEventListener\\(\\s*["\\\']change["\\\'][\\s\\S]{0,600}?'+escapeRegex(fn.name)+'\\(\\s*this\\.value','g'),call=callRe.exec(text);if(call)dependsOnControlId=call[1];}}
+    let queryParam=null,queryArg=null,dependsOnControlId=null;
+    const query=fn.body.match(/new\s+URLSearchParams\(\s*\{\s*([A-Za-z_$][\w$]*)\s*:\s*([A-Za-z_$][\w$]*)\s*\}\s*\)/),legacyQuery=fn.body.match(/\bdata\s*:\s*\{\s*["']?([A-Za-z_$][\w$]*)["']?\s*:\s*([A-Za-z_$][\w$]*)\s*\}/);
+    if(query||legacyQuery){
+      const pair=query||legacyQuery;queryParam=pair[1];queryArg=pair[2];
+      if(fn.args.includes(queryArg)){
+        const modernCall=new RegExp('document\\.getElementById\\(\\s*["\\\']([^"\\\']+)["\\\']\\s*\\)\\.addEventListener\\(\\s*["\\\']change["\\\'][\\s\\S]{0,600}?'+escapeRegex(fn.name)+'\\(\\s*this\\.value').exec(text);
+        const legacyCall=new RegExp('\\$\\(\\s*["\\\']([^"\\\']+)["\\\']\\s*\\)\\.addEvent\\(\\s*["\\\']change["\\\'][\\s\\S]{0,600}?'+escapeRegex(fn.name)+'\\(\\s*\\$\\(this\\)\\.(?:getProperty|get)\\(\\s*["\\\']value["\\\']\\s*\\)').exec(text);
+        dependsOnControlId=(modernCall&&modernCall[1])||(legacyCall&&legacyCall[1])||null;
+      }
+    }
     const staticOptions=[];for(const option of fn.body.matchAll(/new\s+Option\(\s*["']([^"']*)["']\s*,\s*["']([^"']*)["']\s*\)/g)){const ref=qbtTr(option[1]);staticOptions.push({value:String(option[2]||''),label:ref||{literal:decodeHtml(option[1])}});}
     return{kind:'api-options',endpoint,responseShape,labelField,valueField,queryParam,dependsOnControlId,staticOptions};
   }
