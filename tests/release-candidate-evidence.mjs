@@ -47,7 +47,7 @@ assert(String(evidence.candidate?.packageSha256||'').toLowerCase()===packageSha2
 
 const deploymentChecks=[
   'candidateSha','packageGitSha','packageSha256','installerReleasePath','exactCandidateInstallers','officialDockerConfig',
-  'smallReleaseIndex','exactProfileShard','sourceProvenPreferences','installMetadata','qbConfigWrite','realWebuiServe','exactBuildSha',
+  'compactRuntimeFiles','frozenCatalogIdentity','sourceProvenPreferences','installMetadata','qbConfigWrite','realWebuiServe','exactBuildSha',
   'browserLogin','canonicalSettings','localeRoundTrip','alternativeWebuiPath'
 ];
 for(const key of deploymentChecks)assert(evidence.checks?.[key]===true,`candidate deployment check is not true: ${key}`);

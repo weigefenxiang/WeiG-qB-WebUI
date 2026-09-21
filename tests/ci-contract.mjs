@@ -85,6 +85,10 @@ for(const [name,section] of [['release_fixture',releaseFixture],['release_catalo
   assert(!section.includes("github.ref == 'refs/heads/main'"),`${name} must not require a second heavy main candidate`);
 }
 
+const candidateDeployment=read('tests/candidate-deployment.sh');
+assert(candidateDeployment.includes("DEST=\"$CONFIG_ROOT/weig_qb-webui\"")&&candidateDeployment.includes("QB_ROOT='/config/weig_qb-webui'"),'candidate deployment must verify the installer canonical Docker path');
+assert(candidateDeployment.includes("'capabilities.json','settings-compat.json','source-actions.json'")&&candidateDeployment.includes('qb-settings-native.txt')&&!candidateDeployment.includes("path.join(dataDir,'qb-releases.json')")&&!candidateDeployment.includes('profile.profilePath'),'candidate deployment must validate the compact runtime instead of the retired release-profile index/shards');
+
 const promote=read('.github/workflows/promote.yml'),release=read('.github/workflows/release.yml');
 assert(!promote.includes('LIVE-PASS')&&!promote.includes('live_gate:'),'promotion must not require deferred Phase G LIVE-PASS for the current release checkpoint');
 assert(promote.includes("branch: 'dev'")&&promote.includes('release-candidate-${sha}'),'promotion must resolve the exact reusable dev candidate artifact');

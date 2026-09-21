@@ -77,8 +77,8 @@ HOME_DIR="$TMP/home"
 CONFIG_ROOT="$TMP/qb-config"
 DOWNLOADS="$TMP/downloads"
 MOCK_BIN="$TMP/mock-bin"
-DEST="$CONFIG_ROOT/weigg-qb-webui"
-QB_ROOT='/config/weigg-qb-webui'
+DEST="$CONFIG_ROOT/weig_qb-webui"
+QB_ROOT='/config/weig_qb-webui'
 QBT_CONFIG="$CONFIG_ROOT/qBittorrent/config/qBittorrent.conf"
 NAME="weigg-candidate-qb-${GITHUB_RUN_ID:-$$}-${RANDOM}"
 NET="weigg-candidate-net-${GITHUB_RUN_ID:-$$}-${RANDOM}"
@@ -245,29 +245,32 @@ if(meta.gitSha!==sha)throw new Error('candidate metadata Git SHA mismatch');
 if(meta.channel!=='release')throw new Error('candidate metadata channel mismatch');
 if(meta.installer!=='linux')throw new Error('candidate metadata installer mismatch');
 if(meta.container!==container)throw new Error('candidate metadata container mismatch');
-if(meta.hostPath!==path.join(hostConfigRoot,'weigg-qb-webui'))throw new Error('candidate metadata host path mismatch');
+if(meta.hostPath!==path.join(hostConfigRoot,'weig_qb-webui'))throw new Error('candidate metadata host path mismatch');
 if(meta.qbPath!==qbRoot)throw new Error('candidate metadata qB path mismatch');
 const dataDir=path.join(dest,'private/data');
-const catalogPath=path.join(dataDir,'qb-releases.json');
-const catalog=JSON.parse(fs.readFileSync(catalogPath,'utf8'));
-if(!Array.isArray(catalog)||catalog.length===0)throw new Error('candidate release profile index is empty');
-if(fs.statSync(catalogPath).size>=64*1024)throw new Error('candidate release profile index exceeds the 64 KiB runtime budget');
-const entry=catalog.find(item=>String(item&&item.qbVersion||'')===expectedQb);
-if(!entry)throw new Error(`candidate release profile index is missing qB ${expectedQb}`);
-if(!entry.profilePath)throw new Error(`candidate qB ${expectedQb} index entry has no profile shard path`);
-const profilePath=path.join(dataDir,entry.profilePath);
-if(!fs.existsSync(profilePath))throw new Error(`candidate qB ${expectedQb} profile shard is missing`);
-if(fs.statSync(profilePath).size>=5*1024*1024)throw new Error(`candidate qB ${expectedQb} profile shard exceeds project static-file budget`);
-const profile=JSON.parse(fs.readFileSync(profilePath,'utf8'));
-if(profile.qbVersion!==expectedQb||profile.sourceSha!==entry.sourceSha)throw new Error(`candidate qB ${expectedQb} profile shard identity mismatch`);
+const requiredCompactFiles=['capabilities.json','settings-compat.json','source-actions.json','detail-compat.json','rss-compat.json','torrent-compat.json','qb-settings-native.txt'];
+for(const file of requiredCompactFiles){
+  const full=path.join(dataDir,file);
+  if(!fs.existsSync(full)||fs.statSync(full).size===0)throw new Error(`candidate compact runtime asset is missing or empty: ${file}`);
+}
+for(const retired of ['qb-releases.json','qb-release-profiles']){
+  if(fs.existsSync(path.join(dataDir,retired)))throw new Error(`retired release-profile runtime reappeared: ${retired}`);
+}
+if(fs.existsSync(path.join(dest,'private/scripts/release-profile.js')))throw new Error('retired release-profile.js runtime reappeared');
+const capabilities=JSON.parse(fs.readFileSync(path.join(dataDir,'capabilities.json'),'utf8'));
+if(capabilities.schemaVersion!==2)throw new Error('candidate capabilities schemaVersion mismatch');
+const identity=capabilities.catalogIdentity||{};
+if(identity.supportFloor!=='4.1.0'||identity.latestAdmittedStable!=='5.2.3'||identity.releaseCount!==65)throw new Error('candidate Frozen catalog identity mismatch');
+const release=Array.isArray(capabilities.releases)?capabilities.releases.find(item=>String(item?.qbVersion||'')===expectedQb):null;
+if(!release||!/^[0-9a-f]{40}$/.test(String(release.sourceSha||'')))throw new Error(`candidate compact capabilities are missing exact qB ${expectedQb} source identity`);
+const settings=JSON.parse(fs.readFileSync(path.join(dataDir,'settings-compat.json'),'utf8'));
+if(settings.schemaVersion!==3||JSON.stringify(settings.catalogIdentity)!==JSON.stringify(identity))throw new Error('candidate Settings compact catalog identity mismatch');
+const actions=JSON.parse(fs.readFileSync(path.join(dataDir,'source-actions.json'),'utf8')).sourceActions||{};
 for(const action of ['appcontroller.h:preferencesAction','appcontroller.h:setPreferencesAction']){
-  if(!Array.isArray(profile.apiActions)||!profile.apiActions.includes(action))throw new Error(`candidate qB ${expectedQb} profile does not source-prove ${action}`);
+  if(!Array.isArray(actions[action])||actions[action].length===0)throw new Error(`candidate compact action catalog does not source-prove ${action}`);
 }
-if(localeTarget){
-  const routes=new Set([...(profile.settingsNativeLocales||[]),...(profile.settingsTranslationLocales||[])]);
-  if(!routes.has(localeTarget))throw new Error(`candidate qB ${expectedQb} profile has no source-bound ${localeTarget} Settings translation route`);
-  if(profile.settingsTranslationPath&&!fs.existsSync(path.join(dataDir,profile.settingsTranslationPath)))throw new Error(`candidate qB ${expectedQb} translation shard is missing`);
-}
+if(fs.statSync(path.join(dataDir,'qb-settings-native.txt')).size>=5*1024*1024)throw new Error('candidate compact Settings copy IR exceeds project static-file budget');
+if(localeTarget&&!fs.existsSync(path.join(dest,'translations',`webui_${localeTarget}.qm`)))throw new Error(`candidate qB-owned translation QM is missing for ${localeTarget}`);
 NODE
 
 docker start "$NAME" >/dev/null
@@ -327,8 +330,8 @@ const evidence={
     installerReleasePath:true,
     exactCandidateInstallers:true,
     officialDockerConfig:true,
-    smallReleaseIndex:true,
-    exactProfileShard:true,
+    compactRuntimeFiles:true,
+    frozenCatalogIdentity:true,
     sourceProvenPreferences:true,
     installMetadata:true,
     qbConfigWrite:true,

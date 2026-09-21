@@ -47,7 +47,9 @@ jobs:
               'tests/qb-locale-pipeline-contract.mjs',
               'tests/release-evidence-contract.mjs',
               'tests/compatibility-governance-contract.mjs',
-              'tests/upstream-workflow-contract.mjs'
+              'tests/upstream-workflow-contract.mjs',
+              'tests/release-candidate-evidence.mjs',
+              'tests/candidate-deployment.sh'
             ]);
             async function reusableCompatibilitySha(evidenceSha) {
               evidenceSha = String(evidenceSha || '').toLowerCase();
