@@ -351,7 +351,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(find settings-shards -maxdepth 1 -name 'qb-releases-shard-*.json' | wc -l)" -eq 16
+          test "$(find settings-shards -maxdepth 1 -name 'qb-releases-shard-*.json' ! -name 'qb-releases-shard-*.meta.json' | wc -l)" -eq 16
           test "$(find settings-shards -maxdepth 1 -name 'qb-releases-shard-*.meta.json' | wc -l)" -eq 16
           node tools/qb-release-catalog-shard-merge.mjs settings-shards qb-releases.json
           test -s qb-releases.recovery.json
