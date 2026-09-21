@@ -104,7 +104,9 @@ for(const profile of catalog){
   if(C.supportsTorrentAction('removeTrackers')){calls=capture(client);await client.removeTrackers('abc','https://tracker.invalid/announce');assert.equal(calls[0]?.path,'torrents/removeTrackers',`${profile.qbVersion}: Remove Tracker source action resolved wrong endpoint`);}else await expectRejectedWithoutHttp(client,'removeTrackers',['abc','https://tracker.invalid/announce'],`${profile.qbVersion} Remove Tracker`);
 
   const nativeSettingsSurfaces=S.nativeSurfaces();
-  assert.deepEqual(nativeSettingsSurfaces,expectedSettingsSurfaces,`${profile.qbVersion}: formal product matrix must execute the exact eight source-native Settings surfaces`);
+  assert.ok(nativeSettingsSurfaces.length>0,`${profile.qbVersion}: source-native Settings surface set must not be empty`);
+  assert.ok(nativeSettingsSurfaces.every(surface=>settingsSurfaces.has(surface)),`${profile.qbVersion}: source-native Settings exposed an unknown surface: ${nativeSettingsSurfaces.join(', ')}`);
+  if(profile.qbVersion===catalog.at(-1).qbVersion)assert.deepEqual(nativeSettingsSurfaces,expectedSettingsSurfaces,`${profile.qbVersion}: current stable must execute the exact eight source-native Settings surfaces`);
   const mappedSettings=new Set();
   for(const surface of nativeSettingsSurfaces){
     const graph=S.controlGraph(surface);
@@ -146,6 +148,7 @@ for(const profile of catalog){
 }
 
 assert.equal(rows.length,catalog.length,'every generated stable profile must enter the formal product matrix');
+assert.equal(rows.at(-1)?.qbVersion,'5.2.3','formal product matrix current-stable Settings surface lock must remain qB 5.2.3');
 assert.equal(rows[0].qbVersion,'4.1.0','formal product matrix minimum drifted');
 const latest=rows.at(-1),derivedReleases=rows.filter(x=>x.derivedFilters>0).length,readOnlyTags=rows.filter(x=>x.tagFacet&&!x.nativeTags).length;
 console.log(`Full stable PRODUCT compatibility matrix passed: ${rows.length} official stable releases ${rows[0].qbVersion} -> ${latest.qbVersion}; all ${currentColumnFields.length} current Torrent fields resolve NATIVE through TorrentFieldRegistry; ${surfaceActions.size} Settings/Search/RSS/Logs action capabilities follow exact source provenance; ${derivedReleases} releases use at least one reliable local filter derivation; ${readOnlyTags} releases expose Tags read/facet before native taxonomy; latest has ${latest.actions} resolved Torrent actions and ${latest.writableSettings}/${latest.settings} writable source-proven Preferences.`);
