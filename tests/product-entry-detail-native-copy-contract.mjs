@@ -16,8 +16,19 @@ const fn=(settings.match(/function qbTabTitle\(tab\)\{[^}]+\}/)||[])[0]||'';
 assert.ok(fn.includes('tabTitleRef')&&fn.includes('sourceText(ref,fallback||tab)'),'Settings sidebar must resolve version-bound source/native copy');
 assert.equal(fn.includes("qbText('settings.tab.'"),false,'internal settings.tab.* key may not override source/native copy');
 assert.ok(i18n.includes("value!==undefined&&value!==null?value:(fallback||source)"),'missing exact qB copy must fall back to upstream English source');
-for(const html of [login,publicIndex]){assert.match(html,/<html lang="en"/);assert.match(html,/assets\/favicon\.svg\?v=round-1/);for(const lang of ["'zh-CN'","'zh-TW'",'ja:','ko:','de:','fr:','es:','pt:','ru:'])assert.ok(html.includes(lang),'missing public locale '+lang);}
+const publicFavicon=read('webui/public/assets/favicon.svg'),privateFavicon=read('webui/private/favicon.svg');
+assert.equal(publicFavicon,privateFavicon,'public/private browser favicon must stay one round visual asset');
+assert.match(publicFavicon,/<circle cx="32" cy="32" r="30"/,'favicon primary silhouette must remain circular');
+for(const html of [login,publicIndex]){
+  assert.match(html,/<html lang="en"/);
+  assert.match(html,/assets\/favicon\.svg\?v=round-1/);
+  assert.match(html,/src="assets\/Wei\.G\.ico"/,'page-internal login logo must stay on the existing Wei.G asset');
+  assert.doesNotMatch(html,/src="assets\/favicon\.svg/,'favicon must not replace the page-internal logo');
+  for(const lang of ["'zh-CN'","'zh-TW'",'ja:','ko:','de:','fr:','es:','pt:','ru:'])assert.ok(html.includes(lang),'missing public locale '+lang);
+  assert.ok(html.includes("var lang='en'")&&html.includes("return'';"),'public entry locale must default/fallback to English when browser languages are unsupported');
+}
 assert.match(index,/<html lang="en"/);assert.match(index,/href="favicon\.svg\?v=round-1"/);assert.ok(index.includes('Loading WeiG WebUI…')&&!index.includes('正在加载 WeiG WebUI'));
 for(const lang of ["'zh-CN'","'zh-TW'","'ja'","'ko'","'de'","'fr'","'es'","'pt'","'ru'"])assert.ok(i18n.includes(lang),'missing canonical locale '+lang);
+for(const probe of ["return'zh-CN'","return'zh-TW'","return'ja'","return'ko'","return'de'","return'fr'","return'es'","return'pt'","return'ru'","return'en'"])assert.ok(i18n.includes(probe),'missing canonical persisted-locale mapping '+probe);
 assert.ok(i18n.includes('supported:Object.keys(dicts)'));
 console.log('Product entry/detail/native-copy contract passed.');
