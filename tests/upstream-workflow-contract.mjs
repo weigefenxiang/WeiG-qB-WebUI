@@ -24,7 +24,7 @@ const compatVerifier=read('tests/release-compat-evidence.mjs');
 
 assert(ci.includes('qb-release-catalog.mjs upstream-qb --output=qb-release-catalog-shard-${{ matrix.shard }}.json --shard-index=${{ matrix.shard }} --shard-count=15')&&ci.includes('qb-release-catalog.mjs --merge-shards=base-shards --expected-shards=15 --output=qb-releases.json'),'candidate/settings evidence CI must regenerate exact supported stable source facts through 15 independent extraction runners plus one canonical merge');
 assert(ci.includes('tests/upstream-release-audit.mjs upstream-qb'),'candidate CI must audit every supported stable upstream release');
-assert(ci.includes('tests/full-stable-product-compat.mjs qb-releases.json'),'candidate CI must execute formal product compatibility across the generated stable catalog');
+assert(ci.includes('tests/full-stable-product-compat.mjs base-catalog/qb-releases.json'),'candidate CI must execute formal product compatibility across the canonical generated base stable catalog');
 assert(ci.includes('name: qb-release-catalog-${{ github.sha }}'),'candidate CI must publish an exact-SHA stable catalog artifact');
 
 assert(gfm.includes('workflow_dispatch:'),'real qB Full Frozen Matrix must remain manually runnable for release-grade Exhaustive evidence');
@@ -37,11 +37,11 @@ assert(!gfm.includes('real-qb-fast-aggregate-${{ github.sha }}'),'Fast 65-versio
 assert(gfm.includes('Require Exhaustive complete 65/65 Frozen real-qB evidence')&&gfm.includes('real-qb-full-aggregate-${{ github.sha }}'),'manual Exhaustive G-FM must preserve strict 65/65 aggregate evidence');
 
 assert(promote.includes("resolveManualAggregate('real-qb-full.yml', gfmArtifactName")&&promote.includes('workflow_id: workflowId')&&promote.includes("run.event === 'workflow_dispatch'"),'promotion must require the manually dispatched exact-SHA Exhaustive G-FM through the shared resolver');
-assert(promote.includes('real-qb-full-aggregate-${sha}')&&promote.includes('node tests/release-compat-evidence.mjs'),'promotion must require and centrally revalidate exact-SHA Exhaustive G-FM aggregate evidence');
+assert(promote.includes('real-qb-full-aggregate-${compatSha}')&&promote.includes('node tests/release-compat-evidence.mjs')&&promote.includes('Compatibility evidence reuse refused'),'promotion must centrally revalidate Exhaustive G-FM bound to a guarded compatibility evidence SHA');
 assert(!promote.includes('real-qb-fast-aggregate-${sha}'),'promotion must never substitute Fast G-FM evidence for Exhaustive evidence');
 assert(compatVerifier.includes('gfm.expected_stable_count!==65||gfm.executed_runtime_count!==65')&&compatVerifier.includes('gfm.PASS!==65||gfm.FAIL!==0||gfm.BLOCKED!==0'),'central release compatibility verifier must enforce Exhaustive 65/65 G-FM');
 assert(!release.includes("workflow_id: 'upstream-compat.yml'"),'Release must not depend on the retired upstream compatibility workflow');
 assert(!release.includes("workflow_id: 'frozen-stable-compat.yml'"),'Release must not depend on the retired frozen compatibility workflow');
-assert(release.includes("resolveManualAggregate('real-qb-full.yml', gfmArtifactName")&&release.includes('node tests/release-compat-evidence.mjs'),'Release must independently resolve and revalidate exact-SHA manual Full Frozen Matrix evidence');
+assert(release.includes("workflow_id: 'real-qb-full.yml'")&&release.includes('reusableCompatibilitySha')&&release.includes('real-qb-full-aggregate-${evidenceSha}')&&release.includes('node tests/release-compat-evidence.mjs'),'Release must independently discover and revalidate manual Full Frozen evidence only through the guarded compatibility-evidence descendant rule');
 
-console.log('Upstream validation workflow contract passed: ordinary dev pushes stay on lightweight CI; candidate CI owns source/product audit; promotion/release accept only centrally revalidated exact-SHA manually dispatched Exhaustive 65/65 evidence.');
+console.log('Upstream validation workflow contract passed: ordinary dev pushes stay on lightweight CI; candidate CI owns source/product audit; promotion/release accept centrally revalidated manually dispatched Exhaustive 65/65 evidence only at the exact evidence SHA or across a guarded validation-only descendant boundary.');

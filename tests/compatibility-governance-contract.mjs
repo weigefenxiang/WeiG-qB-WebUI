@@ -36,7 +36,7 @@ assert(!gfm.includes('real-qb-fast-aggregate-${{ github.sha }}'),'ordinary Fast 
 assert(gfm.includes('real-qb-full-aggregate-${{ github.sha }}'),'Exhaustive G-FM must publish exact-SHA release-grade aggregate evidence');
 assert(promote.includes("resolveManualAggregate('real-qb-full.yml', gfmArtifactName")&&promote.includes('workflow_id: workflowId'),'promotion must require the real qB Full Frozen Matrix through the shared manual evidence resolver');
 assert(promote.includes("run.event === 'workflow_dispatch'"),'promotion must require a manually dispatched Exhaustive matrix run');
-assert(promote.includes('real-qb-full-aggregate-${sha}'),'promotion must resolve exact-SHA Exhaustive G-FM aggregate evidence');
+assert(promote.includes('real-qb-full-aggregate-${compatSha}')&&promote.includes('compat_evidence_sha')&&promote.includes('Compatibility evidence reuse refused'),'promotion must bind Exhaustive G-FM to one explicitly guarded compatibility evidence SHA');
 assert(!promote.includes('real-qb-fast-aggregate-${sha}'),'promotion must not accept Fast G-FM aggregate evidence');
 assert(promote.includes('node tests/release-compat-evidence.mjs'),'promotion must revalidate release-grade G-FM evidence before main moves');
 assert(compatVerifier.includes('gfm.expected_stable_count!==65||gfm.executed_runtime_count!==65'),'central compatibility verifier must require an exact 65-version Exhaustive matrix');
@@ -58,4 +58,4 @@ const productDiff=read('tools/qb-product-capability-diff.mjs');
 for(const owner of ['capabilities.js','torrent-semantics.js','torrent-fields.js'])assert(productDiff.includes(`'${owner}'`),`product capability diff must execute compact formal owner ${owner}`);
 assert(!productDiff.includes("'release-profile.js'"),'product capability diff must not execute retired ReleaseProfile runtime owner');
 
-console.log(`Compatibility governance contract passed: retired legacy workflows stay removed; frozen LKG ${catalog.length} profiles ${catalog[0].qbVersion} -> ${catalog.at(-1)?.qbVersion} remains hash-bound; ordinary dev pushes stay lightweight while manual exact-SHA Exhaustive remains the promotion-grade G-FM evidence.`);
+console.log(`Compatibility governance contract passed: retired legacy workflows stay removed; frozen LKG ${catalog.length} profiles ${catalog[0].qbVersion} -> ${catalog.at(-1)?.qbVersion} remains hash-bound; ordinary dev pushes stay lightweight while manual exact-evidence-SHA Exhaustive G-FM may cross only a guarded validation-only descendant boundary.`);

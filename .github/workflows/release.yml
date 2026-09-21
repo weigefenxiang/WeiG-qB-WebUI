@@ -45,7 +45,9 @@ jobs:
               'tests/ci-contract.mjs',
               'tests/full-stable-product-compat.mjs',
               'tests/qb-locale-pipeline-contract.mjs',
-              'tests/release-evidence-contract.mjs'
+              'tests/release-evidence-contract.mjs',
+              'tests/compatibility-governance-contract.mjs',
+              'tests/upstream-workflow-contract.mjs'
             ]);
             async function reusableCompatibilitySha(evidenceSha) {
               evidenceSha = String(evidenceSha || '').toLowerCase();
