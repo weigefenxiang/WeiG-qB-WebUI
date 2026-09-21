@@ -41,7 +41,7 @@ EXPECTED_QB_VERSION=${WEIG_QB_EXPECTED_VERSION:-'5.2.3'}
 LOCALE_TARGET=${WEIG_QB_LOCALE_TARGET:-'zh_CN'}
 EVIDENCE_BASENAME=${WEIG_CANDIDATE_EVIDENCE_BASENAME:-'candidate.json'}
 RUN_REHEARSAL=${WEIG_CANDIDATE_RUN_REHEARSAL:-1}
-EXPECTED_SHA=${GITHUB_SHA:-}
+EXPECTED_SHA=${WEIG_CANDIDATE_EXPECTED_SHA:-${GITHUB_SHA:-}}
 
 [[ "$EXPECTED_QB_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.][0-9]+)?$ ]] || { echo 'WEIG_QB_EXPECTED_VERSION is invalid.' >&2; exit 2; }
 [[ "$EVIDENCE_BASENAME" =~ ^[A-Za-z0-9._-]+\.json$ ]] || { echo 'WEIG_CANDIDATE_EVIDENCE_BASENAME must be a simple .json filename.' >&2; exit 2; }
@@ -57,8 +57,8 @@ command -v google-chrome >/dev/null || { echo 'Google Chrome Stable is required'
 CANDIDATE_SHA=$(tr -d '\r\n' < "$CANDIDATE_SHA_FILE")
 [[ "$CANDIDATE_SHA" =~ ^[0-9a-fA-F]{40}$ ]] || { echo 'CANDIDATE_SHA is not an exact Git SHA.' >&2; exit 1; }
 if [[ -z "$EXPECTED_SHA" ]]; then EXPECTED_SHA="$CANDIDATE_SHA"; fi
-[[ "$EXPECTED_SHA" =~ ^[0-9a-fA-F]{40}$ ]] || { echo 'GITHUB_SHA is not an exact Git SHA.' >&2; exit 1; }
-[[ "$CANDIDATE_SHA" == "$EXPECTED_SHA" ]] || { echo 'Candidate artifact SHA does not match workflow SHA.' >&2; exit 1; }
+[[ "$EXPECTED_SHA" =~ ^[0-9a-fA-F]{40}$ ]] || { echo 'Candidate expected SHA is not an exact Git SHA.' >&2; exit 1; }
+[[ "$CANDIDATE_SHA" == "$EXPECTED_SHA" ]] || { echo 'Candidate artifact SHA does not match expected candidate SHA.' >&2; exit 1; }
 (cd "$CANDIDATE_DIR" && sha256sum -c SHA256SUMS)
 cmp -s "$LINUX_INSTALLER" "$ROOT/installers/install.sh" || { echo 'Candidate Linux installer is not byte-identical to the exact-SHA source.' >&2; exit 1; }
 cmp -s "$WINDOWS_INSTALLER" "$ROOT/installers/install.ps1" || { echo 'Candidate Windows installer is not byte-identical to the exact-SHA source.' >&2; exit 1; }
@@ -67,7 +67,7 @@ bash -n "$LINUX_INSTALLER"
 VERSION=$(unzip -p "$PACKAGE" WeiG-qB-WebUI/VERSION 2>/dev/null | tr -d '\r\n')
 [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Candidate VERSION is invalid.' >&2; exit 1; }
 PACKAGE_GIT_SHA=$(unzip -p "$PACKAGE" WeiG-qB-WebUI/GIT_SHA 2>/dev/null | tr -d '\r\n')
-[[ "$PACKAGE_GIT_SHA" == "$EXPECTED_SHA" ]] || { echo 'Candidate package GIT_SHA does not match workflow SHA.' >&2; exit 1; }
+[[ "$PACKAGE_GIT_SHA" == "$EXPECTED_SHA" ]] || { echo 'Candidate package GIT_SHA does not match expected candidate SHA.' >&2; exit 1; }
 EXPECTED_SUM=$(awk '$2=="WeiG-qB-WebUI.zip" || $2=="*WeiG-qB-WebUI.zip" {print $1; exit}' "$SUMS" | tr 'A-F' 'a-f')
 ACTUAL_SUM=$(sha256sum "$PACKAGE" | awk '{print $1}' | tr 'A-F' 'a-f')
 [[ "$EXPECTED_SUM" =~ ^[0-9a-f]{64}$ && "$EXPECTED_SUM" == "$ACTUAL_SUM" ]] || { echo 'Candidate artifact SHA256 verification failed.' >&2; exit 1; }

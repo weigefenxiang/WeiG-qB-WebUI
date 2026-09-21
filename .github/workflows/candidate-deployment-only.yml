@@ -1,0 +1,121 @@
+name: Candidate Deployment Only
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: Exact candidate package SHA to deploy
+        required: true
+        type: string
+      candidate_run_id:
+        description: Optional CI run id that owns release-candidate-<SHA>
+        required: false
+        type: string
+  push:
+    branches:
+      - dev
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: candidate-deployment-only-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy exact candidate to official qB and Chrome
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[candidate-deployment-only]')) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      WEIGG_BROWSER_CHANNEL: chrome
+    steps:
+      - name: Checkout current validation policy
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install browser test dependency
+        run: npm ci --no-audit --no-fund --prefer-offline
+      - name: Resolve reusable exact candidate artifact
+        id: resolve
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_SHA: ${{ inputs.candidate_sha }}
+          INPUT_RUN: ${{ inputs.candidate_run_id }}
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            CANDIDATE_SHA="${INPUT_SHA,,}"
+            RUN_ID="${INPUT_RUN:-}"
+          else
+            CANDIDATE_SHA="$(git rev-parse HEAD^)"
+            RUN_ID=""
+          fi
+          [[ "$CANDIDATE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "Invalid candidate SHA: $CANDIDATE_SHA" >&2; exit 2; }
+          if [ "$CANDIDATE_SHA" != "$GITHUB_SHA" ]; then
+            blocked=0
+            while IFS= read -r path; do
+              [ -n "$path" ] || continue
+              case "$path" in
+                .github/workflows/*|tests/*.mjs|tests/*.sh|docs/*|*.md|LICENSE)
+                  echo "Validation-only candidate descendant change: $path"
+                  ;;
+                *)
+                  echo "Candidate artifact reuse refused across product/runtime change: $path" >&2
+                  blocked=1
+                  ;;
+              esac
+            done < <(git diff --name-only "$CANDIDATE_SHA" "$GITHUB_SHA")
+            [ "$blocked" -eq 0 ] || exit 1
+          fi
+          ARTIFACT="release-candidate-$CANDIDATE_SHA"
+          if [ -z "$RUN_ID" ]; then
+            while IFS= read -r id; do
+              [ -n "$id" ] || continue
+              found="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$id/artifacts?per_page=100" --jq ".artifacts[] | select(.name==\"$ARTIFACT\" and .expired==false) | .id" | head -n1)"
+              if [ -n "$found" ]; then RUN_ID="$id"; break; fi
+            done < <(gh api --paginate "/repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?branch=dev&per_page=100" --jq ".workflow_runs[] | select(.head_sha==\"$CANDIDATE_SHA\") | .id")
+          fi
+          [[ "$RUN_ID" =~ ^[0-9]+$ ]] || { echo "No CI run owns $ARTIFACT for $CANDIDATE_SHA" >&2; exit 1; }
+          gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/artifacts?per_page=100" --jq ".artifacts[] | select(.name==\"$ARTIFACT\" and .expired==false) | .id" | grep -Eq '^[0-9]+$' || { echo "Run $RUN_ID does not contain $ARTIFACT" >&2; exit 1; }
+          echo "candidate_sha=$CANDIDATE_SHA" >> "$GITHUB_OUTPUT"
+          echo "candidate_run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+          echo "artifact=$ARTIFACT" >> "$GITHUB_OUTPUT"
+      - name: Download exact candidate artifact only
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ steps.resolve.outputs.candidate_run_id }}
+          ARTIFACT: ${{ steps.resolve.outputs.artifact }}
+        run: |
+          set -euo pipefail
+          rm -rf candidate-artifact
+          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" -n "$ARTIFACT" -D candidate-artifact
+      - name: Candidate deployment syntax
+        run: |
+          bash -n tests/candidate-deployment.sh
+          bash -n candidate-artifact/weigg-install.sh
+          node --check tests/installer-lifecycle-browser.mjs
+      - name: Deploy exact candidate to official qB and Chrome
+        shell: bash
+        env:
+          WEIG_CANDIDATE_EXPECTED_SHA: ${{ steps.resolve.outputs.candidate_sha }}
+        run: bash tests/candidate-deployment.sh candidate-artifact
+      - name: Upload exact candidate deployment evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: candidate-deployment-${{ steps.resolve.outputs.candidate_sha }}
+          path: |
+            artifacts/candidate-deployment/candidate.json
+            artifacts/candidate-deployment/candidate-qb-4.6.7.json
+          if-no-files-found: error
+          retention-days: 90

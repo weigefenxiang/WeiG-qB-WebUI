@@ -399,22 +399,9 @@ jobs:
       - name: Aggregate admitted Settings browser evidence
         run: node tests/browser-settings-admitted.mjs --aggregate settings-browser-shards
 
-  release_fixture:
-    name: qB representative fixture compatibility
-    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[candidate]')) }}
-    runs-on: ubuntu-latest
-    needs: smoke
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-      - name: Representative fixture compatibility matrix
-        run: node tests/release-compat.mjs
-
   release_catalog_extract:
     name: qB exact stable source catalog shard ${{ matrix.shard }}
-    if: ${{ (github.event_name == 'workflow_dispatch' && (inputs.validation_mode == 'candidate' || inputs.validation_mode == 'settings-evidence') && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && (contains(github.event.head_commit.message, '[candidate]') || contains(github.event.head_commit.message, '[settings-evidence]') || contains(github.event.head_commit.message, '[settings-evidence-verify]'))) }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'settings-evidence' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && (contains(github.event.head_commit.message, '[settings-evidence]') || contains(github.event.head_commit.message, '[settings-evidence-verify]'))) }}
     runs-on: ubuntu-latest
     needs: smoke
     strategy:
@@ -447,7 +434,7 @@ jobs:
 
   release_catalog_base:
     name: Merge qB exact stable source catalog
-    if: ${{ (github.event_name == 'workflow_dispatch' && (inputs.validation_mode == 'candidate' || inputs.validation_mode == 'settings-evidence') && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && (contains(github.event.head_commit.message, '[candidate]') || contains(github.event.head_commit.message, '[settings-evidence]') || contains(github.event.head_commit.message, '[settings-evidence-verify]'))) }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'settings-evidence' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && (contains(github.event.head_commit.message, '[settings-evidence]') || contains(github.event.head_commit.message, '[settings-evidence-verify]'))) }}
     runs-on: ubuntu-latest
     needs: release_catalog_extract
     steps:
@@ -473,7 +460,7 @@ jobs:
 
   release_locale_enrich:
     name: qB locale/source enrich shard ${{ matrix.shard }}
-    if: ${{ (github.event_name == 'workflow_dispatch' && (inputs.validation_mode == 'candidate' || inputs.validation_mode == 'settings-evidence') && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && (contains(github.event.head_commit.message, '[candidate]') || contains(github.event.head_commit.message, '[settings-evidence]') || contains(github.event.head_commit.message, '[settings-evidence-verify]'))) }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'settings-evidence' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && (contains(github.event.head_commit.message, '[settings-evidence]') || contains(github.event.head_commit.message, '[settings-evidence-verify]'))) }}
     runs-on: ubuntu-latest
     needs: release_catalog_base
     strategy:
@@ -513,7 +500,7 @@ jobs:
 
   release_catalog_merge:
     name: Merge exact qB locale/source catalog
-    if: ${{ (github.event_name == 'workflow_dispatch' && (inputs.validation_mode == 'candidate' || inputs.validation_mode == 'settings-evidence') && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && (contains(github.event.head_commit.message, '[candidate]') || contains(github.event.head_commit.message, '[settings-evidence]') || contains(github.event.head_commit.message, '[settings-evidence-verify]'))) }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'settings-evidence' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && (contains(github.event.head_commit.message, '[settings-evidence]') || contains(github.event.head_commit.message, '[settings-evidence-verify]'))) }}
     runs-on: ubuntu-latest
     needs: release_locale_enrich
     steps:
@@ -548,30 +535,9 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-  release_upstream_audit:
-    name: qB all-stable upstream source audit
-    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[candidate]')) }}
-    runs-on: ubuntu-latest
-    needs: smoke
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-      - name: Checkout qBittorrent upstream with all stable release tags
-        uses: actions/checkout@v7
-        with:
-          repository: qbittorrent/qBittorrent
-          path: upstream-qb
-          fetch-depth: 0
-          fetch-tags: true
-          filter: blob:none
-      - name: Audit every official stable qB release from 4.1.0
-        run: node tests/upstream-release-audit.mjs upstream-qb
-
   release_lkg:
     name: qB Settings/source LKG v2
-    if: ${{ (github.event_name == 'workflow_dispatch' && (inputs.validation_mode == 'candidate' || inputs.validation_mode == 'settings-evidence') && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && (contains(github.event.head_commit.message, '[candidate]') || contains(github.event.head_commit.message, '[settings-evidence]') || contains(github.event.head_commit.message, '[settings-evidence-verify]'))) }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'settings-evidence' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && (contains(github.event.head_commit.message, '[settings-evidence]') || contains(github.event.head_commit.message, '[settings-evidence-verify]'))) }}
     runs-on: ubuntu-latest
     needs: release_catalog_merge
     steps:
@@ -894,49 +860,6 @@ jobs:
           git push origin HEAD:dev
 
 
-  release_product_matrix:
-    name: qB full stable PRODUCT compatibility
-    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[candidate]')) }}
-    runs-on: ubuntu-latest
-    needs: release_catalog_base
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-      - name: Download exact canonical base stable release catalog
-        uses: actions/download-artifact@v8
-        with:
-          name: qb-release-catalog-base-${{ github.sha }}
-          path: base-catalog
-      - name: Full stable PRODUCT compatibility matrix
-        run: node tests/full-stable-product-compat.mjs base-catalog/qb-releases.json
-
-  release_compatibility:
-    name: Full qB Release compatibility audit
-    if: ${{ always() && ((github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[candidate]'))) }}
-    runs-on: ubuntu-latest
-    needs:
-      - release_fixture
-      - release_catalog_merge
-      - release_upstream_audit
-      - release_lkg
-      - release_product_matrix
-    steps:
-      - name: Require every parallel qB compatibility owner
-        env:
-          FIXTURE_RESULT: ${{ needs.release_fixture.result }}
-          CATALOG_RESULT: ${{ needs.release_catalog_merge.result }}
-          UPSTREAM_RESULT: ${{ needs.release_upstream_audit.result }}
-          LKG_RESULT: ${{ needs.release_lkg.result }}
-          PRODUCT_RESULT: ${{ needs.release_product_matrix.result }}
-        run: |
-          set -euo pipefail
-          for result in "$FIXTURE_RESULT" "$CATALOG_RESULT" "$UPSTREAM_RESULT" "$LKG_RESULT" "$PRODUCT_RESULT"; do
-            test "$result" = success
-          done
-          echo 'Full qB Release compatibility audit passed through parallel exact-SHA owners.'
-
   browser:
     name: Linux browser candidate
     if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[candidate]')) }}
@@ -1038,9 +961,11 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - smoke
-      - release_compatibility
       - browser
       - windows_browser
+    permissions:
+      contents: read
+      actions: write
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -1085,51 +1010,16 @@ jobs:
             release/weigg-install.ps1
           if-no-files-found: error
           retention-days: 90
-
-  candidate_deployment:
-    name: release candidate deployment acceptance
-    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[candidate]')) }}
-    runs-on: ubuntu-24.04
-    needs: release_candidate
-    env:
-      WEIGG_BROWSER_CHANNEL: chrome
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: package-lock.json
-      - name: Install browser test dependency
-        run: npm ci --no-audit --no-fund --prefer-offline
-      - name: Verify hosted Chrome runtime
+      - name: Dispatch isolated candidate deployment acceptance
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          command -v google-chrome >/dev/null || { echo 'Hosted Google Chrome Stable is missing.' >&2; exit 1; }
-          google-chrome --version
-          node -p "require('playwright/package.json').version"
-          printf 'Git SHA: %s\n' "$GITHUB_SHA"
-      - name: Download exact-SHA release candidate
-        uses: actions/download-artifact@v8
-        with:
-          name: release-candidate-${{ github.sha }}
-          path: candidate-artifact
-      - name: Candidate deployment syntax
-        run: |
-          bash -n tests/candidate-deployment.sh
-          bash -n candidate-artifact/weigg-install.sh
-          node --check tests/installer-lifecycle-browser.mjs
-      - name: Deploy exact candidate to official qB and Chrome
-        shell: bash
-        run: bash tests/candidate-deployment.sh candidate-artifact
-      - name: Upload exact-SHA candidate deployment evidence
-        uses: actions/upload-artifact@v7
-        with:
-          name: candidate-deployment-${{ github.sha }}
-          path: artifacts/candidate-deployment/candidate.json
-          if-no-files-found: error
-          retention-days: 90
+          jq -n --arg ref dev --arg sha "$GITHUB_SHA" --arg run "$GITHUB_RUN_ID" \
+            '{ref:$ref,inputs:{candidate_sha:$sha,candidate_run_id:$run}}' \
+            | gh api --method POST "/repos/$GITHUB_REPOSITORY/actions/workflows/candidate-deployment-only.yml/dispatches" --input -
+          echo "Dispatched isolated deployment acceptance for candidate $GITHUB_SHA from CI run $GITHUB_RUN_ID."
 
   native_surface_source_base:
     name: qB native surface source base

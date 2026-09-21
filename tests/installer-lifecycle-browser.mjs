@@ -87,8 +87,9 @@ try{
     const writable=await page.evaluate(locale=>{
       const W=window.WeiG,state=W&&W.SettingsState,schema=W&&W.SettingsSchema;
       if(!state||!schema)return false;
-      const current=state.prefs&&state.prefs.locale;
-      if(!schema.isWritable||!schema.isWritable('locale',current))return false;
+      const prefs=state.prefs||{},draft=state.draft||{},aux=state.auxDraft||{};
+      const trial=Object.assign({},prefs,draft,{locale});
+      if(!schema.isWritable||schema.isWritable('locale',locale,prefs,trial,aux)===false)return false;
       state.draft.locale=locale;
       return true;
     },localeTarget);
