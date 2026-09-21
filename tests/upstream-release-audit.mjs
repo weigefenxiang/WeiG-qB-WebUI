@@ -31,10 +31,6 @@ const sandbox={console,URLSearchParams,FormData:TestFormData,Blob,fetch:async()=
 sandbox.window.window=sandbox.window;
 vm.runInNewContext(clientSource,sandbox,{filename:'qb-client.js'});
 const Client=sandbox.window.WeiG.QBClient;
-const settingsSandbox={window:{WeiG:{t:key=>key,util:{parseScalar:value=>value},I18n:{getLocale:()=> 'en'}}}};settingsSandbox.window.window=settingsSandbox.window;
-vm.runInNewContext(fs.readFileSync(path.join(projectRoot,'webui/private/scripts/settings-schema.js'),'utf8'),settingsSandbox,{filename:'settings-schema.js'});
-const SettingsSchema=settingsSandbox.window.WeiG.SettingsSchema;
-
 function git(...args){return execFileSync('git',['-C',qbRoot,...args],{encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();}
 function parts(v){return String(v).replace(/^release-/,'').split('.').map(x=>Number.parseInt(x,10)||0);}
 function parseApi(header,tag){const m=header.match(/API_VERSION\s*\{\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\}/);assert.ok(m,`${tag}: cannot parse API_VERSION`);return `${m[1]}.${m[2]}.${m[3]}`;}
@@ -57,7 +53,9 @@ for(const tag of tags){
   const start=sourceAction(actions,'torrentscontroller.h:startAction','torrentscontroller.h:resumeAction'),stop=sourceAction(actions,'torrentscontroller.h:stopAction','torrentscontroller.h:pauseAction');
   if(start&&stop){const actionCalls=capture(c);await c.resume('abc');await c.pause('abc');assert.equal(actionCalls[0].path,`torrents/${start}`,`${label}: source-derived start action`);assert.equal(actionCalls[1].path,`torrents/${stop}`,`${label}: source-derived stop action`);}
   const stopped=surface.filters.includes('stopped')?'stopped':surface.filters.includes('paused')?'paused':null;if(stopped){const filterCalls=capture(c);await c.getTorrents({filter:'stopped'});assert.match(filterCalls[0].path,new RegExp(`filter=${stopped}`),`${label}: source-derived stopped alias`);}
-  const allowed=new Set(['downloads','connection','speed','bittorrent','webui','advanced']);for(const key of prefs){const info=SettingsSchema.describe(key);assert.ok(allowed.has(info.surface)&&info.section,`${label}: preference ${key} has no safe Settings route`);}
+  assert.ok(prefs.length>0,`${label}: app/preferences source surface is unexpectedly empty`);
+  // Settings routing is source-native and independently certified by the exact stable Preferences source catalog.
+  // This upstream API audit must not recreate a second static tab/section owner in browser SettingsSchema.
   audited.push({qbVersion,apiVersion,tag,prefs:prefs.length,actions:actions.size,filters:surface.filters.length,infoFields:surface.infoFields.length,states:surface.states.length,privateParam:surface.infoParameters.includes('private')});
 }
 activeTruth=null;
