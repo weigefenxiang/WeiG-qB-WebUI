@@ -118,6 +118,26 @@ if($Mode -eq 'Rollback' -and !$DestinationExplicit){
   }
 }
 
+function Move-OutOfInstallTarget([string]$Path) {
+  if([string]::IsNullOrWhiteSpace($Path)){return}
+  $destinationFull=[IO.Path]::GetFullPath($Path).TrimEnd([IO.Path]::DirectorySeparatorChar,[IO.Path]::AltDirectorySeparatorChar)
+  $location=Get-Location
+  if($location.Provider.Name -ne 'FileSystem'){return}
+  $currentFull=[IO.Path]::GetFullPath($location.ProviderPath).TrimEnd([IO.Path]::DirectorySeparatorChar,[IO.Path]::AltDirectorySeparatorChar)
+  $inside=$currentFull.Equals($destinationFull,[StringComparison]::OrdinalIgnoreCase) -or
+    $currentFull.StartsWith($destinationFull+[IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase)
+  if(!$inside){return}
+  $safe=Split-Path $destinationFull -Parent
+  if([string]::IsNullOrWhiteSpace($safe) -or !(Test-Path -LiteralPath $safe -PathType Container)){
+    $safe=$env:TEMP
+  }
+  if([string]::IsNullOrWhiteSpace($safe) -or !(Test-Path -LiteralPath $safe -PathType Container)){
+    throw "Unable to leave install target before atomic directory swap: $destinationFull"
+  }
+  Set-Location -LiteralPath $safe
+  Write-Host "Working directory moved outside install target before atomic swap: $safe"
+}
+
 function Resolve-UniqueQBConfig([object[]]$Candidates) {
   $unique=@{}
   foreach($candidate in @($Candidates)){
@@ -722,6 +742,7 @@ try {
 
   $old="$Destination.old"
   if(Test-Path $old){Remove-Item $old -Recurse -Force}
+  Move-OutOfInstallTarget $Destination
   if(Test-Path $Destination){Move-Item $Destination $old}
   try {
     Move-Item $new $Destination
