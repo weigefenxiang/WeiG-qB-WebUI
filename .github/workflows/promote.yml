@@ -84,7 +84,8 @@ jobs:
                 '.github/workflows/ci.yml',
                 '.github/workflows/promote.yml',
                 'tests/ci-contract.mjs',
-                'tests/full-stable-product-compat.mjs'
+                'tests/full-stable-product-compat.mjs',
+                'tests/qb-locale-pipeline-contract.mjs'
               ]);
               const blocked = (compatCompare.data.files || []).map(file => file.filename).filter(file =>
                 !validationOnly.has(file) && !file.startsWith('docs/') && !file.endsWith('.md') && file !== 'LICENSE'
