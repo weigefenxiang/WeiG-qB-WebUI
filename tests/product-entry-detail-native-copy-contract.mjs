@@ -1,0 +1,23 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {settingsTabRefs} from '../tools/qb-owned-ui-source.mjs';
+const here=path.dirname(fileURLToPath(import.meta.url)),root=path.resolve(here,'..'),read=p=>fs.readFileSync(path.join(root,p),'utf8');
+const index=read('webui/private/index.html'),appCss=read('webui/private/css/app.css'),layoutCss=read('webui/private/css/layout.css'),settings=read('webui/private/scripts/settings.js'),i18n=read('webui/private/scripts/i18n.js'),login=read('webui/public/login.html'),publicIndex=read('webui/public/index.html');
+assert.match(index,/class="detail-status-stack"><div id="detail-state"[\s\S]*?<div class="detail-progress">[\s\S]*?id="detail-progress-text"/,'Detail status + progress must share one canonical DOM owner.');
+assert.match(appCss,/\.detail-status-stack\{display:flex;[^}]*flex-direction:column;[^}]*align-items:flex-end/);
+assert.match(appCss,/\.detail-status-stack #detail-state\{align-self:flex-end\}/);
+assert.match(layoutCss,/#detail-view \.detail-identity,#detail-view \.detail-state-row,#detail-view \.detail-status-stack\{display:contents\}/,'mobile must reuse the same status-stack DOM');
+assert.doesNotMatch(appCss,/\.detail-status-stack\{[^}]*position:absolute/);
+const toolbar='<ul><li id="PrefBehaviorLink"><a>QBT_TR(Behavior)QBT_TR[CONTEXT=OptionsDialog]</a></li><li id="PrefSpeedLink"><a>QBT_TR(Speed)QBT_TR[CONTEXT=OptionsDialog]</a></li></ul>',speed=settingsTabRefs(toolbar).find(x=>x.tab==='speed');
+assert.deepEqual(speed?.ref,{source:'Speed',context:'OptionsDialog'},'qB 4.6.7 Speed source identity changed');
+const fn=(settings.match(/function qbTabTitle\(tab\)\{[^}]+\}/)||[])[0]||'';
+assert.ok(fn.includes('tabTitleRef')&&fn.includes('sourceText(ref,fallback||tab)'),'Settings sidebar must resolve version-bound source/native copy');
+assert.equal(fn.includes("qbText('settings.tab.'"),false,'internal settings.tab.* key may not override source/native copy');
+assert.ok(i18n.includes("value!==undefined&&value!==null?value:(fallback||source)"),'missing exact qB copy must fall back to upstream English source');
+for(const html of [login,publicIndex]){assert.match(html,/<html lang="en"/);assert.match(html,/assets\/favicon\.svg\?v=round-1/);for(const lang of ["'zh-CN'","'zh-TW'",'ja:','ko:','de:','fr:','es:','pt:','ru:'])assert.ok(html.includes(lang),'missing public locale '+lang);}
+assert.match(index,/<html lang="en"/);assert.match(index,/href="favicon\.svg\?v=round-1"/);assert.ok(index.includes('Loading WeiG WebUI…')&&!index.includes('正在加载 WeiG WebUI'));
+for(const lang of ["'zh-CN'","'zh-TW'","'ja'","'ko'","'de'","'fr'","'es'","'pt'","'ru'"])assert.ok(i18n.includes(lang),'missing canonical locale '+lang);
+assert.ok(i18n.includes('supported:Object.keys(dicts)'));
+console.log('Product entry/detail/native-copy contract passed.');
