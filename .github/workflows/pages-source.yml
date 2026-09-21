@@ -324,6 +324,7 @@ jobs:
           path: |
             qb-releases-shard-${{ matrix.shard }}.json
             qb-releases-shard-${{ matrix.shard }}.meta.json
+            qb-releases-shard-${{ matrix.shard }}.recovery.json
           if-no-files-found: error
           retention-days: 1
 
@@ -351,8 +352,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(find settings-shards -maxdepth 1 -name 'qb-releases-shard-*.json' ! -name 'qb-releases-shard-*.meta.json' | wc -l)" -eq 16
+          test "$(find settings-shards -maxdepth 1 -name 'qb-releases-shard-*.json' ! -name 'qb-releases-shard-*.meta.json' ! -name 'qb-releases-shard-*.recovery.json' | wc -l)" -eq 16
           test "$(find settings-shards -maxdepth 1 -name 'qb-releases-shard-*.meta.json' | wc -l)" -eq 16
+          test "$(find settings-shards -maxdepth 1 -name 'qb-releases-shard-*.recovery.json' | wc -l)" -eq 16
           node tools/qb-release-catalog-shard-merge.mjs settings-shards qb-releases.json
           test -s qb-releases.recovery.json
       - name: Upload exact source-enriched bootstrap catalog
