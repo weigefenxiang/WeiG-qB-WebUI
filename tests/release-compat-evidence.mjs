@@ -55,7 +55,11 @@ for(const result of gfm.results){
   seen.add(qb);
   if(result.status!=='PASS')fail(`G-FM qB ${qb} did not PASS.`);
   if(qb!==String(result.runtime_version||''))fail(`G-FM qB ${qb} runtime identity is not exact.`);
-  if(!String(result.resolved_image||'').match(/@sha256:[0-9a-f]{64}$/))fail(`G-FM qB ${qb} runtime image is not immutable digest-pinned.`);
+  const image=String(result.resolved_image||'');
+  const registryDigest=/@sha256:[0-9a-f]{64}$/.test(image);
+  const localContentId=/^sha256:[0-9a-f]{64}$/.test(image);
+  const sourceBuilt=result.provider==='frozen-official-source';
+  if(!(registryDigest||(sourceBuilt&&localContentId)))fail(`G-FM qB ${qb} runtime image is not immutable digest-pinned.`);
 }
 const frozenCatalog=JSON.parse(frozenText);
 const expectedVersions=frozenCatalog.map(item=>String(item.qbVersion));
