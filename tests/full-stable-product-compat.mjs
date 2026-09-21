@@ -7,13 +7,17 @@ import {createCompactRuntime} from '../tools/qb-compact-runtime.mjs';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(here,'..');
-const catalogPath=path.resolve(process.argv[2]||'');
-assert.ok(catalogPath&&fs.existsSync(catalogPath),'Usage: node tests/full-stable-product-compat.mjs <qb-releases.json>');
-const catalog=JSON.parse(fs.readFileSync(catalogPath,'utf8'));
+const catalogPath=path.resolve(process.argv[2]||''),settingsCatalogPath=path.resolve(process.argv[3]||'');
+assert.ok(catalogPath&&fs.existsSync(catalogPath)&&settingsCatalogPath&&fs.existsSync(settingsCatalogPath),'Usage: node tests/full-stable-product-compat.mjs <enriched-qb-releases.json> <base-qb-releases.json>');
+const catalog=JSON.parse(fs.readFileSync(catalogPath,'utf8')),settingsCatalog=JSON.parse(fs.readFileSync(settingsCatalogPath,'utf8'));
 assert.ok(Array.isArray(catalog)&&catalog.length>0,'full-stable product matrix requires a non-empty generated release catalog');
+assert.ok(Array.isArray(settingsCatalog)&&settingsCatalog.length>0,'full-stable product matrix requires the exact canonical Settings base catalog');
 assert.equal(catalog[0].qbVersion,'4.1.0','formal product matrix floor must be qB 4.1.0');
 assert.ok(catalog.every(x=>x.stable===true&&x.officialWeiGSupport!==false),'formal product matrix accepts official supported stable profiles only');
-const {W}=createCompactRuntime(catalog,{owners:['settings-schema.js','capabilities.js','torrent-fields.js','torrent-semantics.js','qb-client.js']});
+const exactIdentity=profile=>[String(profile?.qbVersion||''),String(profile?.sourceSha||'').toLowerCase()];
+assert.deepEqual(settingsCatalog.map(exactIdentity),catalog.map(exactIdentity),'Settings base catalog and enriched product catalog must retain identical exact stable release identity');
+const {W}=createCompactRuntime(settingsCatalog,{owners:['settings-schema.js']});
+createCompactRuntime(catalog,{owners:['capabilities.js','torrent-fields.js','torrent-semantics.js','qb-client.js'],W});
 const F=W.TorrentFieldRegistry,C=W.CapabilityRegistry,T=W.TorrentSemantics,S=W.SettingsSchema,Client=W.QBClient;
 assert.ok(F&&C&&T&&S&&Client,'formal compact product compatibility owners must load');
 

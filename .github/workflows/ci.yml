@@ -907,10 +907,15 @@ jobs:
         with:
           name: qb-release-catalog-${{ github.sha }}
           path: release-catalog
+      - name: Download exact base stable release catalog
+        uses: actions/download-artifact@v8
+        with:
+          name: qb-release-catalog-base-${{ github.sha }}
+          path: base-catalog
       - name: Full stable PRODUCT compatibility matrix
         run: |
           cp release-catalog/qb-releases.json qb-releases.json
-          node tests/full-stable-product-compat.mjs qb-releases.json
+          node tests/full-stable-product-compat.mjs qb-releases.json base-catalog/qb-releases.json
 
   release_compatibility:
     name: Full qB Release compatibility audit
