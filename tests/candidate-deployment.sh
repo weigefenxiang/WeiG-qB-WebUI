@@ -24,7 +24,7 @@ if [[ "${WEIG_CANDIDATE_MATRIX_CHILD:-0}" != 1 && -z "${WEIG_QB_IMAGE:-}" && -z 
   WEIG_QB_EXPECTED_VERSION='5.2.3' \
   WEIG_QB_LOCALE_TARGET='zh_CN' \
   WEIG_CANDIDATE_EVIDENCE_BASENAME='candidate.json' \
-  WEIG_CANDIDATE_RUN_REHEARSAL=1 \
+  WEIG_CANDIDATE_RUN_REHEARSAL="${WEIG_CANDIDATE_RUN_REHEARSAL:-1}" \
     bash "$ROOT/tests/candidate-deployment.sh" "$CANDIDATE_DIR"
 
   printf 'Release candidate real-qB matrix passed: qB 4.6.7 + 5.2.3 both completed app/preferences, locale write/read/reload and canonical Settings acceptance.\n'

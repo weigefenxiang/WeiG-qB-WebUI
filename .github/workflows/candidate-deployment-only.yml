@@ -102,6 +102,13 @@ jobs:
           echo "candidate_sha=$CANDIDATE_SHA" >> "$GITHUB_OUTPUT"
           echo "candidate_run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
           echo "artifact=$ARTIFACT" >> "$GITHUB_OUTPUT"
+          if [ "$CANDIDATE_SHA" = "$GITHUB_SHA" ]; then
+            echo "run_rehearsal=1" >> "$GITHUB_OUTPUT"
+            echo "Exact-head candidate: promotion/release rehearsal remains mandatory."
+          else
+            echo "run_rehearsal=0" >> "$GITHUB_OUTPUT"
+            echo "Ancestor candidate debug: run real qB/Chrome acceptance only; final exact-head candidate will own promotion rehearsal."
+          fi
       - name: Download exact candidate artifact only
         shell: bash
         env:
@@ -121,6 +128,7 @@ jobs:
         shell: bash
         env:
           WEIG_CANDIDATE_EXPECTED_SHA: ${{ steps.resolve.outputs.candidate_sha }}
+          WEIG_CANDIDATE_RUN_REHEARSAL: ${{ steps.resolve.outputs.run_rehearsal }}
         run: bash tests/candidate-deployment.sh candidate-artifact
       - name: Upload exact candidate deployment evidence
         uses: actions/upload-artifact@v7
