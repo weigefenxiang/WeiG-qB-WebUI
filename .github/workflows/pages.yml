@@ -226,7 +226,14 @@ jobs:
           - {name: release-profile-floor, script: tests/pages-live-release-profile.mjs, pref_mode: none, pref_index: '0', pref_total: '1', release_mode: floor}
           - {name: release-profile-latest, script: tests/pages-live-release-profile.mjs, pref_mode: none, pref_index: '0', pref_total: '1', release_mode: latest}
           - {name: release-profile-settings, script: tests/pages-live-release-profile.mjs, pref_mode: none, pref_index: '0', pref_total: '1', release_mode: settings}
-          - {name: services, script: tests/pages-live-services.mjs, pref_mode: none, pref_index: '0', pref_total: '1', release_mode: none}
+          - {name: services-auth, script: tests/pages-live-auth.mjs, service_mode: none, pref_mode: none, pref_index: '0', pref_total: '1', release_mode: none}
+          - {name: services-modern, script: tests/pages-live-services-core.mjs, service_mode: modern, pref_mode: none, pref_index: '0', pref_total: '1', release_mode: none}
+          - {name: services-owner-ui, script: tests/pages-live-services-core.mjs, service_mode: owner-ui, pref_mode: none, pref_index: '0', pref_total: '1', release_mode: none}
+          - {name: services-legacy, script: tests/pages-live-services-core.mjs, service_mode: legacy, pref_mode: none, pref_index: '0', pref_total: '1', release_mode: none}
+          - {name: services-isolation, script: tests/pages-live-services-core.mjs, service_mode: isolation, pref_mode: none, pref_index: '0', pref_total: '1', release_mode: none}
+          - {name: services-offline, script: tests/pages-live-services-core.mjs, service_mode: offline, pref_mode: none, pref_index: '0', pref_total: '1', release_mode: none}
+          - {name: services-protocol, script: tests/pages-live-protocol.mjs, service_mode: none, pref_mode: none, pref_index: '0', pref_total: '1', release_mode: none}
+          - {name: services-branch-alias, script: tests/pages-live-branch-alias.mjs, service_mode: none, pref_mode: none, pref_index: '0', pref_total: '1', release_mode: none}
           - {name: mobile-layout, script: tests/pages-live-mobile-layout.mjs, pref_mode: none, pref_index: '0', pref_total: '1', release_mode: none}
           - {name: preferences-anchor, script: tests/pages-live-preferences.mjs, pref_mode: anchor, pref_index: '0', pref_total: '10', release_mode: none}
           - {name: preferences-0, script: tests/pages-live-preferences.mjs, pref_mode: shard, pref_index: '0', pref_total: '10', release_mode: none}
@@ -248,6 +255,8 @@ jobs:
       WEIGG_EXPECTED_SIMULATOR_SHA: ${{ github.sha }}
       WEIGG_VERIFY_SCRIPT: ${{ matrix.script }}
       WEIGG_RELEASE_PROFILE_MODE: ${{ matrix.release_mode }}
+      WEIGG_SERVICES_CORE_MODE: ${{ matrix.service_mode }}
+      WEIGG_PAGES_SESSION_TIMEOUT_MS: '20000'
       WEIGG_PAGES_PREF_MODE: ${{ matrix.pref_mode }}
       WEIGG_PAGES_PREF_SHARD_INDEX: ${{ matrix.pref_index }}
       WEIGG_PAGES_PREF_SHARD_TOTAL: ${{ matrix.pref_total }}
@@ -277,7 +286,7 @@ jobs:
           node -e "console.log('Playwright ' + require('playwright/package.json').version)"
           google-chrome --version
           echo "Pages build/deployment version: $GITHUB_SHA"
-          echo "Verify shard: ${{ matrix.name }} -> $WEIGG_VERIFY_SCRIPT (release-mode=$WEIGG_RELEASE_PROFILE_MODE)"
+          echo "Verify shard: ${{ matrix.name }} -> $WEIGG_VERIFY_SCRIPT (release-mode=$WEIGG_RELEASE_PROFILE_MODE service-mode=${WEIGG_SERVICES_CORE_MODE:-none})"
 
       - name: Verify deployed Virtual qB Pages runtime (${{ matrix.name }})
         shell: bash

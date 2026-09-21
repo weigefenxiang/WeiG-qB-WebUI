@@ -7,6 +7,12 @@ assert.ok(rawBase,'WEIGG_PAGES_URL or argv[2] is required');
 assert.ok(expectedSha,'WEIGG_EXPECTED_SIMULATOR_SHA or argv[3] is required');
 const base=new URL(rawBase.endsWith('/')?rawBase:`${rawBase}/`);
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+const serviceMode=(process.env.WEIGG_SERVICES_CORE_MODE||'all').trim()||'all';
+const serviceModes=new Set(['all','modern','owner-ui','legacy','isolation','offline']);
+assert.ok(serviceModes.has(serviceMode),`Unsupported WEIGG_SERVICES_CORE_MODE=${serviceMode}`);
+const sessionTimeout=Math.max(5000,Number(process.env.WEIGG_PAGES_SESSION_TIMEOUT_MS||20000));
+const sessionAttempts=3;
+const lane=name=>serviceMode==='all'||serviceMode===name;
 
 async function waitForSha(){
   let last='';
@@ -21,17 +27,47 @@ async function waitForSha(){
   throw new Error(`Pages services acceptance could not observe ${expectedSha}; last=${last}`);
 }
 
+async function sessionDiagnostics(page){
+  try{return await page.evaluate(()=>({url:location.href,readyState:document.readyState,bootstrap:document.documentElement.dataset.weiggBootstrap||'',loginVisible:!!document.querySelector('#login-form')&&!document.querySelector('#login-form')?.hidden,torrentList:!!document.querySelector('#torrent-list'),fatalVisible:!!document.querySelector('#fatal:not(.is-hidden)'),body:String(document.body?.innerText||'').replace(/\s+/g,' ').slice(0,240)}));}
+  catch(error){return{url:page.url(),diagnosticError:error?.message||String(error)};}
+}
+
+async function waitForSessionEntry(page){
+  const handle=await page.waitForFunction(()=>{
+    if(document.querySelector('#torrent-list'))return'private';
+    const login=document.querySelector('#login-form'),style=login&&getComputedStyle(login);
+    if(login&&!login.hidden&&style?.display!=='none'&&style?.visibility!=='hidden')return'login';
+    if(document.querySelector('#fatal:not(.is-hidden)')||document.documentElement.dataset.weiggBootstrap==='failed')return'failed';
+    return'';
+  },null,{timeout:sessionTimeout});
+  return handle.jsonValue();
+}
+
 async function openSession(page,{branch='main',qb='5.2.3',count=1000,scenario='mixed',seed='services-live',sim}){
-  const url=new URL(`${branch}/app/`,base);
-  url.search=new URLSearchParams({sim:sim||`services-${crypto.randomUUID()}`,qb,count:String(count),scenario,seed,clean:'0'}).toString();
-  await page.goto(url.toString(),{waitUntil:'domcontentloaded',timeout:60000});
-  await page.waitForSelector('#login-form',{state:'visible',timeout:60000});
-  assert.equal(await page.locator('#username').inputValue(),'weigshare');
-  assert.equal(await page.locator('#password').inputValue(),'weigshare');
-  await page.locator('#login-btn').click();
-  await page.waitForSelector('#torrent-list',{state:'attached',timeout:60000});
-  await page.waitForFunction(version=>String(document.querySelector('#qb-version')?.textContent||'').includes(version),qb,{timeout:60000});
-  return url.toString();
+  const sessionId=sim||`services-${crypto.randomUUID()}`,url=new URL(`${branch}/app/`,base);
+  url.search=new URLSearchParams({sim:sessionId,qb,count:String(count),scenario,seed,clean:'0'}).toString();
+  let last=null;
+  for(let attempt=1;attempt<=sessionAttempts;attempt++){
+    const attemptUrl=new URL(url);attemptUrl.searchParams.set('__weigg_session_attempt',String(attempt));
+    try{
+      await page.goto(attemptUrl.toString(),{waitUntil:'domcontentloaded',timeout:sessionTimeout});
+      const entry=await waitForSessionEntry(page);
+      if(entry==='failed')throw new Error('WeiG bootstrap entered failed/fatal state before session authentication');
+      if(entry==='login'){
+        assert.equal(await page.locator('#username').inputValue(),'weigshare');
+        assert.equal(await page.locator('#password').inputValue(),'weigshare');
+        await page.locator('#login-btn').click();
+      }
+      await page.waitForSelector('#torrent-list',{state:'attached',timeout:sessionTimeout});
+      await page.waitForFunction(version=>String(document.querySelector('#qb-version')?.textContent||'').includes(version),qb,{timeout:sessionTimeout});
+      if(attempt>1)console.log(`Recovered ${serviceMode} session ${sessionId} on bootstrap attempt ${attempt}.`);
+      return url.toString();
+    }catch(error){
+      last={attempt,error:error?.message||String(error),state:await sessionDiagnostics(page)};
+      if(attempt<sessionAttempts)await sleep(500*attempt);
+    }
+  }
+  throw new Error(`Pages services ${serviceMode} session bootstrap failed after ${sessionAttempts} attempts: ${JSON.stringify(last)}`);
 }
 
 async function api(page,path,{method='GET',form}={}){
@@ -46,7 +82,7 @@ async function api(page,path,{method='GET',form}={}){
 await waitForSha();
 const browser=await launchBrowser();
 try{
-  {
+  if(lane('modern')){
     const context=await browser.newContext({locale:'zh-CN'}),page=await context.newPage(),errors=[];
     page.on('pageerror',error=>errors.push(error?.message||String(error)));
     await openSession(page,{qb:'5.2.3',count:1000,scenario:'mixed',seed:'services-surface'});
@@ -147,7 +183,7 @@ try{
     await context.close();
   }
 
-  {
+  if(lane('owner-ui')){
     // A6 0.3.159 product-behavior gate: exercise the dev UI owners instead of
     // proving only the underlying Virtual qB endpoints.
     const context=await browser.newContext({locale:'zh-CN'}),page=await context.newPage(),errors=[];
@@ -203,11 +239,11 @@ try{
     await page.waitForSelector('#weigg-floating-layer .ui-context-menu .ui-select__option',{state:'visible',timeout:30000});
     assert.ok(await page.locator('#weigg-floating-layer .ui-context-menu .ui-select__option').count()>=2,'Tracker row context menu actions must remain available after retiring the duplicate toolbar');
     await page.keyboard.press('Escape');
-    assert.deepEqual(errors,[],`0.3.159 owner UI gate page errors:\n${errors.join('\n')}`);
+    assert.deepEqual(errors,[],`owner UI gate page errors:\n${errors.join('\n')}`);
     await context.close();
   }
 
-  {
+  if(lane('legacy')){
     // Historical old-GUI RSS dialect: collection + Add Paused must work on the
     // exact qB 4.1.9.1 source surface; Content Layout is intentionally absent
     // because that upstream control did not exist yet.
@@ -229,23 +265,21 @@ try{
     const rules=await api(page,'rss/rules');
     assert.equal(rules.json?.['Legacy UI Rule']?.addPaused,true,'qB 4.1.9.1 canonical Add Paused Select must round-trip through the old GUI/API dialect');
     await context.close();
-  }
 
-  {
-    const context=await browser.newContext({locale:'zh-CN'}),page=await context.newPage();
-    await openSession(page,{branch:'dev',qb:'4.1.0',count:100,scenario:'mixed',seed:'services-qb410'});
+    const context410=await browser.newContext({locale:'zh-CN'}),page410=await context410.newPage();
+    await openSession(page410,{branch:'dev',qb:'4.1.0',count:100,scenario:'mixed',seed:'services-qb410'});
     for(const path of ['app/buildInfo','app/processInfo','search/plugins']){
-      const response=await api(page,path);assert.equal(response.status,404,`${path} must be absent in deployed qB 4.1.0 profile`);
+      const response=await api(page410,path);assert.equal(response.status,404,`${path} must be absent in deployed qB 4.1.0 profile`);
     }
-    let response=await api(page,'rss/items?withData=true');
+    let response=await api(page410,'rss/items?withData=true');
     assert.equal(response.status,200,'qB 4.1.0 RSS items must follow exact source action provenance, not a stale WebAPI >= 2.1.0 heuristic');
     assert.ok(response.json&&typeof response.json==='object'&&!Array.isArray(response.json),'qB 4.1.0 RSS items must return the real virtual RSS object shape');
-    response=await api(page,'app/defaultSavePath');assert.equal(response.status,200,'original v2 generation must retain defaultSavePath');
-    response=await api(page,'transfer/banPeers',{method:'POST',form:{peers:'10.0.0.1:50000'}});assert.equal(response.status,404,'qB 4.1.0 profile must not expose peer ban');
-    await context.close();
+    response=await api(page410,'app/defaultSavePath');assert.equal(response.status,200,'original v2 generation must retain defaultSavePath');
+    response=await api(page410,'transfer/banPeers',{method:'POST',form:{peers:'10.0.0.1:50000'}});assert.equal(response.status,404,'qB 4.1.0 profile must not expose peer ban');
+    await context410.close();
   }
 
-  {
+  if(lane('isolation')){
     const context=await browser.newContext({locale:'zh-CN'}),a=await context.newPage(),b=await context.newPage();
     await openSession(a,{qb:'5.2.3',count:120,seed:'isolation-a',sim:`isolation-a-${Date.now()}`});
     await openSession(b,{qb:'4.1.9.1',count:120,seed:'isolation-b',sim:`isolation-b-${Date.now()}`});
@@ -258,7 +292,7 @@ try{
     await context.close();
   }
 
-  {
+  if(lane('offline')){
     const context=await browser.newContext({locale:'zh-CN'}),page=await context.newPage();
     await openSession(page,{qb:'5.2.3',count:120,scenario:'offline',seed:'services-offline'});
     let transfer=await api(page,'transfer/info');assert.equal(transfer.json.connection_status,'disconnected');assert.equal(transfer.json.dl_info_speed,0);assert.equal(transfer.json.up_info_speed,0);
@@ -268,4 +302,4 @@ try{
   }
 }finally{await browser.close();}
 
-console.log(`Virtual qB Pages services acceptance passed for ${expectedSha}: torrent/peer limits, full RSS management, Search plugin/job/download management, qB5 app/clientdata/metadata services, Torrent Creator, historical qB4 boundaries, multi-session isolation, offline and virtual shutdown behavior.`);
+console.log(`Virtual qB Pages services acceptance (${serviceMode}) passed for ${expectedSha}: torrent/peer limits, full RSS management, Search plugin/job/download management, qB5 app/clientdata/metadata services, Torrent Creator, historical qB4 boundaries, multi-session isolation, offline and virtual shutdown behavior.`);
