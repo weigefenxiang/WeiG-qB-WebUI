@@ -1,0 +1,293 @@
+import {canonicalQbContext,canonicalQbDisplayText,canonicalQbHtmlText,canonicalQbSourceText,qbSourceRefKey} from './qb-source-text.mjs';
+
+function textOf(block, tag) {
+  const match=String(block||'').match(new RegExp(`<${tag}(?:\\s[^>]*)?>([\\s\\S]*?)<\\/${tag}>`,'i'));
+  if(!match)return '';
+  return tag==='source'||tag==='name'||tag==='comment'?canonicalQbSourceText(match[1]):canonicalQbDisplayText(match[1]);
+}
+
+function baseLanguage(value) {
+  return String(value || '').trim().replace('-', '_').split('_')[0].toLowerCase();
+}
+
+function translationOf(message, sourceText, sourceFallback) {
+  const match = String(message || '').match(/<translation(?:\s+([^>]*))?>([\s\S]*?)<\/translation>|<translation(?:\s+([^>]*))?\s*\/>/i);
+  if (!match) return sourceFallback && sourceText ? {value: sourceText, numerus: false} : null;
+  const attrs = String(match[1] || match[3] || '');
+  const type = (attrs.match(/\btype\s*=\s*["']([^"']+)["']/i) || [])[1] || '';
+  const body = String(match[2] || '');
+  const unusable = /^(?:unfinished|vanished|obsolete)$/i.test(type);
+  if (unusable) return sourceFallback && sourceText ? {value: sourceText, numerus: false} : null;
+  const numerus = [...body.matchAll(/<numerusform(?:\s[^>]*)?>([\s\S]*?)<\/numerusform>/gi)].map((item) => canonicalQbDisplayText(item[1])).filter(Boolean);
+  if (numerus.length) return {value: numerus, numerus: true};
+  const value = canonicalQbDisplayText(body);
+  if (value) return {value, numerus: false};
+  return sourceFallback && sourceText ? {value: sourceText, numerus: false} : null;
+}
+
+export function parseQtTsTranslationSource(source, options = {}) {
+  const xml = String(source || '');
+  const language = (xml.match(/<TS\b[^>]*\blanguage\s*=\s*["']([^"']+)["']/i) || [])[1] || null;
+  const includeContexts = Array.isArray(options.contexts) && options.contexts.length ? new Set(options.contexts.map(canonicalQbContext)) : null;
+  const includeSources = Array.isArray(options.sources) && options.sources.length ? new Set(options.sources.map(canonicalQbSourceText)) : null;
+  const sourceFallback = options.sourceFallback === true || (options.sourceFallback === 'english' && baseLanguage(language) === 'en');
+  const messages = [];
+  for (const contextMatch of xml.matchAll(/<context(?:\s[^>]*)?>([\s\S]*?)<\/context>/gi)) {
+    const contextBody = contextMatch[1];
+    const context = textOf(contextBody, 'name');
+    if (!context || (includeContexts && !includeContexts.has(context))) continue;
+    for (const messageMatch of contextBody.matchAll(/<message(?:\s[^>]*)?>([\s\S]*?)<\/message>/gi)) {
+      const message = messageMatch[1];
+      const sourceText = textOf(message, 'source');
+      if (!sourceText || (includeSources && !includeSources.has(sourceText))) continue;
+      const translation = translationOf(message, sourceText, sourceFallback);
+      if (!translation) continue;
+      messages.push({context, source: sourceText, comment: textOf(message, 'comment') || null, translation: translation.value, numerus: translation.numerus});
+    }
+  }
+  return {language, messages};
+}
+
+function qbtTr(text) {
+  const match=String(text||'').match(/QBT_TR\(([\s\S]*?)\)QBT_TR\[CONTEXT=([^\]]+)\]/i);
+  if(!match)return null;
+  const source=canonicalQbHtmlText(match[1]),context=canonicalQbContext(match[2]);
+  return source&&context?{source,context}:null;
+}
+
+function qbtRefs(text) {
+  const out = [];
+  for (const match of String(text || '').matchAll(/QBT_TR\(([\s\S]*?)\)QBT_TR\[CONTEXT=([^\]]+)\]/gi)) {
+    const source = canonicalQbHtmlText(match[1]), context = canonicalQbContext(match[2]);
+    if (source && context) out.push({source, context});
+  }
+  return out;
+}
+
+function labelRefs(markup) {
+  const byControl = new Map(), byLabelId = new Map();
+  for (const match of String(markup || '').matchAll(/<label\b([^>]*)>([\s\S]*?)<\/label>/gi)) {
+    const attrs = match[1] || '';
+    const controlId = (attrs.match(/\bfor\s*=\s*["']([^"']+)["']/i) || [])[1];
+    const labelId = (attrs.match(/\bid\s*=\s*["']([^"']+)["']/i) || [])[1];
+    const translated = qbtTr(match[2]);
+    if (!translated || !translated.source) continue;
+    if (controlId) byControl.set(controlId, translated);
+    if (labelId) byLabelId.set(labelId, translated);
+  }
+  return {byControl, byLabelId};
+}
+
+function controlIds(markup) {
+  const out = [];
+  for (const match of String(markup || '').matchAll(/<(?:input|select|textarea|table)\b([^>]*)>/gi)) {
+    const id = (String(match[1] || '').match(/\bid\s*=\s*["']([^"']+)["']/i) || [])[1];
+    if (id && !out.includes(id)) out.push(id);
+  }
+  return out;
+}
+
+function labelsByControlId(markup) {
+  const labels = labelRefs(markup);
+  const out = new Map(labels.byControl);
+  for (const match of String(markup || '').matchAll(/<(?:input|select|textarea|table)\b([^>]*)>/gi)) {
+    const attrs = match[1] || '';
+    const id = (attrs.match(/\bid\s*=\s*["']([^"']+)["']/i) || [])[1];
+    const labelledBy = (attrs.match(/\baria-labelledby\s*=\s*["']([^"']+)["']/i) || [])[1];
+    if (!id || !labelledBy || out.has(id)) continue;
+    const ref = String(labelledBy).split(/\s+/).map((labelId) => labels.byLabelId.get(labelId)).find(Boolean);
+    if (ref) out.set(id, ref);
+  }
+  return out;
+}
+
+function rowLabelsByControlId(markup) {
+  const out = new Map();
+  for (const match of String(markup || '').matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)) {
+    const row = match[1] || '';
+    const labelRefsInRow=[];
+    for(const label of row.matchAll(/<label\b[^>]*>([\s\S]*?)<\/label>/gi)){
+      const ref=qbtTr(label[1]);
+      if(ref&&!labelRefsInRow.some(item=>item.source===ref.source&&item.context===ref.context))labelRefsInRow.push(ref);
+    }
+    let selected=labelRefsInRow.length===1?labelRefsInRow[0]:null;
+    if(!selected){
+      const refs=qbtRefs(row),uniqueRefs=[];
+      for(const ref of refs)if(!uniqueRefs.some(item=>item.source===ref.source&&item.context===ref.context))uniqueRefs.push(ref);
+      if(uniqueRefs.length===1)selected=uniqueRefs[0];
+    }
+    if(!selected)continue;
+    for (const id of controlIds(row)) if (!out.has(id)) out.set(id, selected);
+  }
+  return out;
+}
+
+function fieldsetLabelsByControlId(markup){
+  const out=new Map(),stack=[];
+  const token=/<fieldset\b[^>]*>|<\/fieldset>|<legend\b[^>]*>[\s\S]*?<\/legend>|<(?:input|select|textarea|table)\b[^>]*>/gi;
+  for(const match of String(markup||'').matchAll(token)){
+    const raw=match[0];
+    if(/^<fieldset\b/i.test(raw)){stack.push({legend:null});continue;}
+    if(/^<\/fieldset/i.test(raw)){stack.pop();continue;}
+    if(/^<legend\b/i.test(raw)){
+      if(stack.length){const ref=qbtTr(raw);if(ref)stack[stack.length-1].legend=ref;}
+      continue;
+    }
+    const id=(raw.match(/\bid\s*=\s*["']([^"']+)["']/i)||[])[1];
+    if(!id||out.has(id))continue;
+    for(let i=stack.length-1;i>=0;i--)if(stack[i].legend){out.set(id,stack[i].legend);break;}
+  }
+  return out;
+}
+
+function directDescriptionsByControlId(markup) {
+  const out = new Map();
+  for (const match of String(markup || '').matchAll(/<(?:input|select|textarea|table)\b([^>]*)>/gi)) {
+    const attrs = match[1] || '';
+    const id = (attrs.match(/\bid\s*=\s*["']([^"']+)["']/i) || [])[1];
+    const title = (attrs.match(/\btitle\s*=\s*["']([\s\S]*?)["']/i) || [])[1];
+    const translated = qbtTr(title);
+    if (id && translated && translated.source) out.set(id, translated);
+  }
+  return out;
+}
+
+function addRelation(relations, key, id, evidence) {
+  key = String(key || '').trim(); id = String(id || '').trim();
+  if (!key || !id) return;
+  const list = relations.get(key) || [];
+  if (!list.some((item) => item.id === id)) list.push({id, evidence});
+  relations.set(key, list);
+}
+
+function dotPreferenceRefs(value) {
+  const out=[];
+  for(const match of String(value||'').matchAll(/\bpref\.([A-Za-z0-9_]+)/g)) if(!out.includes(match[1])) out.push(match[1]);
+  return out;
+}
+function helperStaticControlId(text,name){
+  const escaped=String(name||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const patterns=[
+    new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=\\s*(?:function\\s*\\([^)]*\\)|\\([^)]*\\)\\s*=>)\\s*\\{`),
+    new RegExp(`(?:^|[;{}\\n]\\s*)${escaped}\\s*=\\s*function\\s*\\([^)]*\\)\\s*\\{`,'m'),
+    new RegExp(`\\bfunction\\s+${escaped}\\s*\\([^)]*\\)\\s*\\{`)
+  ];
+  let index=-1;
+  for(const re of patterns){const match=re.exec(text);if(match){index=match.index;break;}}
+  if(index<0)return'';
+  const body=String(text).slice(index,index+7000);
+  const modern=/document\.getElementById\(\s*["']([^"']+)["']\s*\)/.exec(body),legacy=/\$\(\s*["']([^"']+)["']\s*\)/.exec(body);
+  if(modern&&legacy)return modern.index<legacy.index?modern[1]:legacy[1];
+  return modern?.[1]||legacy?.[1]||'';
+}
+
+function preferenceControlRelations(source) {
+  const text = String(source || ''), relations = new Map();
+  for (const match of text.matchAll(/document\.getElementById\(\s*["']([^"']+)["']\s*\)[^;\n]*?=\s*[^;\n]*?\bpref\.([A-Za-z0-9_]+)/g)) addRelation(relations, match[2], match[1], 'modern-read');
+  for (const match of text.matchAll(/\$\(\s*["']([^"']+)["']\s*\)[^;\n]*?=\s*[^;\n]*?\bpref\.([A-Za-z0-9_]+)/g)) addRelation(relations, match[2], match[1], 'legacy-property-read');
+  for (const match of text.matchAll(/\$\(\s*["']([^"']+)["']\s*\)\.(?:setProperty|set)\([^;\n]*?pref\.([A-Za-z0-9_]+)/g)) addRelation(relations, match[2], match[1], 'legacy-read');
+  for (const match of text.matchAll(/document\.getElementById\(\s*["']([^"']+)["']\s*\)[^;\n]*?=[^;\n]*;?/g)) for (const key of dotPreferenceRefs(match[0])) addRelation(relations, key, match[1], 'modern-read-statement');
+  for (const match of text.matchAll(/\$\(\s*["']([^"']+)["']\s*\)[^;\n]*?=[^;\n]*;?/g)) for (const key of dotPreferenceRefs(match[0])) addRelation(relations, key, match[1], 'legacy-property-read-statement');
+  for (const match of text.matchAll(/\$\(\s*["']([^"']+)["']\s*\)\.(?:setProperty|set)\([^;\n]*\)\s*;?/g)) for (const key of dotPreferenceRefs(match[0])) addRelation(relations, key, match[1], 'legacy-read-statement');
+
+  for (const match of text.matchAll(/settings\.set\(\s*["']([^"']+)["']\s*,[^;\n]*?\$\(\s*["']([^"']+)["']\s*\)/g)) addRelation(relations, match[1], match[2], 'legacy-write');
+  for (const match of text.matchAll(/settings\[\s*["']([^"']+)["']\s*\]\s*=\s*[^;\n]*?\$\(\s*["']([^"']+)["']\s*\)/g)) addRelation(relations, match[1], match[2], 'indexed-write');
+  for (const match of text.matchAll(/settings\[\s*["']([^"']+)["']\s*\]\s*=\s*[^;\n]*?document\.getElementById\(\s*["']([^"']+)["']\s*\)/g)) addRelation(relations, match[1], match[2], 'indexed-modern-write');
+  for (const match of text.matchAll(/(?:^|[,{;]\s*)([A-Za-z0-9_]+)\s*:\s*document\.getElementById\(\s*["']([^"']+)["']\s*\)/gm)) addRelation(relations, match[1], match[2], 'modern-write');
+  for (const match of text.matchAll(/(?:^|[,{;]\s*)([A-Za-z0-9_]+)\s*:\s*[^,;\n]*?\$\(\s*["']([^"']+)["']\s*\)/gm)) addRelation(relations, match[1], match[2], 'object-helper-write');
+  for (const match of text.matchAll(/(?:settings|preferences)\.([A-Za-z0-9_]+)\s*=\s*document\.getElementById\(\s*["']([^"']+)["']\s*\)/g)) addRelation(relations, match[1], match[2], 'modern-write');
+  for(const match of text.matchAll(/settings\.set\(\s*["']([^"']+)["']\s*,\s*([A-Za-z_$][\w$]*)\s*\(\s*\)\s*\)/g)){
+    const id=helperStaticControlId(text,match[2]);if(id)addRelation(relations,match[1],id,'legacy-helper-write');
+  }
+  for(const match of text.matchAll(/settings\[\s*["']([^"']+)["']\s*\]\s*=\s*([A-Za-z_$][\w$]*)\s*\(\s*\)\s*;/g)){
+    const id=helperStaticControlId(text,match[2]);if(id)addRelation(relations,match[1],id,'indexed-helper-write');
+  }
+
+  const keyVars = new Map();
+  for (const match of text.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*[^;\n]*?\bpref\.([A-Za-z0-9_]+)/g)) keyVars.set(match[1], match[2]);
+  for (const [name,key] of keyVars) {
+    const escaped=name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    const idRe=new RegExp(`document\\.getElementById\\(\\s*["']([^"']+)["']\\s*\\)[^;\\n]*?\\b${escaped}\\b`,'g');
+    for (const match of text.matchAll(idRe)) addRelation(relations,key,match[1],'modern-read-variable');
+    const oldRe=new RegExp(`\\$\\(\\s*["']([^"']+)["']\\s*\\)[^;\\n]*?\\b${escaped}\\b`,'g');
+    for (const match of text.matchAll(oldRe)) addRelation(relations,key,match[1],'legacy-read-variable');
+  }
+
+  const controlVars = new Map();
+  for (const match of text.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*[^;\n]*?\$\(\s*["']([^"']+)["']\s*\)/g)) controlVars.set(match[1],match[2]);
+  for (const match of text.matchAll(/(?:^|[;{}\n]\s*)([A-Za-z_$][\w$]*)\s*=\s*[^;\n]*?\$\(\s*["']([^"']+)["']\s*\)/gm)) if(!controlVars.has(match[1])) controlVars.set(match[1],match[2]);
+  for (const match of text.matchAll(/settings\[\s*["']([^"']+)["']\s*\]\s*=\s*([A-Za-z_$][\w$]*)\s*;/g)) {
+    const id=controlVars.get(match[2]);
+    if(id)addRelation(relations,match[1],id,'indexed-variable-write');
+  }
+
+  if (/updateWebuiLocaleSelect\(\s*pref\.locale\s*\)/.test(text)) addRelation(relations,'locale','locale_select','locale-source-call');
+  return relations;
+}
+
+export function extractQbPreferenceControlCandidates(preferencesSource, preferenceKeys = []) {
+  const relations = preferenceControlRelations(preferencesSource);
+  const wanted = new Set((Array.isArray(preferenceKeys) ? preferenceKeys : []).map(String));
+  const keys = wanted.size ? [...wanted] : [...relations.keys()];
+  const out = {};
+  for (const key of keys) {
+    const candidates = relations.get(key) || [];
+    if (!candidates.length) continue;
+    out[key] = candidates.map((item) => ({controlId:String(item.id || ''), evidence:String(item.evidence || '')})).filter((item) => item.controlId);
+  }
+  return out;
+}
+
+export function extractQbPreferenceUiFacts(preferencesSource, preferenceKeys = []) {
+  const markup = String(preferencesSource || '');
+  const labels = labelsByControlId(markup);
+  const rowLabels = rowLabelsByControlId(markup);
+  const fieldsetLabels=fieldsetLabelsByControlId(markup);
+  const descriptions = directDescriptionsByControlId(markup);
+  const relations = preferenceControlRelations(markup);
+  const wanted = new Set((Array.isArray(preferenceKeys) ? preferenceKeys : []).map(String));
+  const keys = wanted.size ? [...wanted] : [...relations.keys()];
+  const preferences = {};
+  for (const key of keys) {
+    const candidates = relations.get(key) || [];
+    let selected = candidates.find((item) => labels.has(item.id));
+    let title = selected ? labels.get(selected.id) : null;
+    let evidence = selected?.evidence || '';
+    if (!title) {
+      selected = candidates.find((item) => rowLabels.has(item.id));
+      if (selected) { title = rowLabels.get(selected.id); evidence = `${selected.evidence}+source-row`; }
+    }
+    if(!title){
+      selected=candidates.find(item=>fieldsetLabels.has(item.id));
+      if(selected){title=fieldsetLabels.get(selected.id);evidence=`${selected.evidence}+source-fieldset`;}
+    }
+    if (!selected || !title) continue;
+    const description = descriptions.get(selected.id) || null;
+    preferences[key] = {controlId: selected.id, evidence, title, ...(description ? {description} : {})};
+  }
+  return preferences;
+}
+
+export function translationSourcesForPreferenceUi(preferences) {
+  const out=[];
+  for (const item of Object.values(preferences || {})) for (const ref of [item?.title,item?.description]) if (ref?.source && !out.includes(ref.source)) out.push(ref.source);
+  return out;
+}
+
+export function extractQbSettingsTranslationFacts({qbVersion, sourceSha, locale, translationSource, contexts = ['OptionsDialog'], sources = null} = {}) {
+  if (!qbVersion || !sourceSha) throw new Error('qB Settings translation facts require exact qbVersion + sourceSha identity.');
+  const parsed = parseQtTsTranslationSource(translationSource, {contexts, sources, sourceFallback: 'english'});
+  const resolvedLocale = String(locale || parsed.language || '').trim();
+  if (!resolvedLocale) throw new Error('qB Settings translation facts require a locale.');
+  if (parsed.language && locale && baseLanguage(parsed.language) !== baseLanguage(locale)) throw new Error(`qB Settings translation locale mismatch: expected ${locale}, source says ${parsed.language}`);
+  return {qbVersion:String(qbVersion),sourceSha:String(sourceSha),locale:resolvedLocale,sourceLanguage:parsed.language,source:'qb-upstream-webui-ts',contexts:[...new Set(contexts.map(String))],messages:parsed.messages};
+}
+
+export function indexQbSettingsTranslationFacts(facts) {
+  const out = new Map();
+  for (const item of Array.isArray(facts?.messages) ? facts.messages : []) {
+    const key = `${qbSourceRefKey(item.context,item.source)}\u0000${canonicalQbSourceText(item.comment || '')}`;
+    if (!out.has(key)) out.set(key, item.translation);
+  }
+  return out;
+}

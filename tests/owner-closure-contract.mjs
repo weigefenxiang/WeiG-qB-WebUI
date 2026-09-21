@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..'),read=rel=>fs.readFileSync(path.join(root,rel),'utf8');
+const index=read('webui/private/index.html'),session=read('webui/private/scripts/session.js'),settings=read('webui/private/scripts/settings.js'),rss=read('webui/private/scripts/rss.js'),core=read('webui/private/scripts/core.js'),app=read('webui/private/scripts/app.js'),ui=read('webui/private/scripts/ui.js'),dialogs=read('webui/private/scripts/dialog-runtime.js'),actions=read('webui/private/scripts/action-registry.js'),columns=read('webui/private/scripts/column-configurator.js');
+assert.ok(settings.includes('W.PreferenceTransaction={')&&settings.includes('canInteract:preferenceCanInteract')&&settings.includes('sourceState[key]=prefs[key]')&&settings.includes('executePreferenceTransaction')&&session.includes('isNativeWebUiReturnTransition'),'Preference Transaction + Session transition owner must preserve self-affecting OFF interaction, draft, verified write and handoff.');
+assert.ok(actions.includes("LOADING:'LOADING'")&&actions.includes("AVAILABLE:'AVAILABLE'")&&actions.includes("UNSUPPORTED:'UNSUPPORTED'")&&actions.includes("ERROR:'ERROR'"),'ActionRegistry must expose the four canonical availability states.');
+assert.ok(rss.includes("W.ActionRegistry.register('rss.downloader.open'")&&settings.includes('W.ActionRegistry.bind(button,registryId)'),'RSS Downloader must have one source-action owner shared by RSS and Settings.');
+assert.ok(rss.includes('C.selectControl')&&!rss.includes("document.createElement('select')"),'RSS select/tri-state controls must reuse canonical Select.');
+assert.ok(rss.includes("dataset.rssRuleCollectionAction='add'")&&rss.includes("dataset.rssRuleCollectionAction='remove'")&&rss.includes('rss-rule-collection__list'),'RSSRules must own one source-proven rule collection with list/add/remove/new-draft state.');
+assert.ok(!app.includes('toolbarActions=detailActionItems')&&!app.includes('detailActionItems(surface,null,-1,0)'),'Detail source context-menu actions must not be projected into a duplicate top toolbar.');
+assert.ok(dialogs.includes('W.DialogRuntime={')&&columns.includes('W.DialogRuntime.open')&&rss.includes('W.DialogRuntime.open(state.dialog'),'Dialog lifecycle/drag must stay under DialogRuntime.');
+assert.ok(core.includes('W.ColumnConfigurator.open(options.surfaceId)')&&app.includes("W.ColumnConfigurator.register('torrent-main'"),'Torrent main header right-click and toolbar must converge on ColumnConfigurator.');
+for(const id of ['torrent-content','torrent-trackers','torrent-peers','torrent-webseeds'])assert.ok(ui.includes(`'${id}'`),`missing detail ColumnConfigurator surface ${id}`);
+assert.ok(!app.includes('columns-dialog')&&!ui.includes('shared-column-dialog')&&!index.includes('id="columns-dialog"'),'retired column-setting presentation owners must leave runtime.');
+assert.ok(!ui.includes('installDismissPolicy'),'feature-local global Dialog backdrop/Escape policy must be retired.');
+console.log('Owner closure contract passed: PreferenceTransaction, ActionRegistry, DialogRuntime, ColumnConfigurator and canonical Select have one active owner path.');

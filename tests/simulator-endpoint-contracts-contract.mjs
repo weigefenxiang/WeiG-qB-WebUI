@@ -1,0 +1,143 @@
+import assert from 'node:assert/strict';
+import {resolveEndpointContract,resolveMissingEndpointContract} from '../simulator/protocol/endpoint-contracts.js';
+
+const profile=webApiVersion=>({webApiVersion});
+
+{
+  const before=resolveEndpointContract(profile('2.11.8'),'torrents/addTrackers');
+  const after=resolveEndpointContract(profile('2.11.9'),'torrents/addTrackers');
+  assert.equal(before.hashSelection,'single');
+  assert.equal(before.allSelector,false);
+  assert.equal(after.hashSelection,'multi-or-all');
+  assert.equal(after.allSelector,true);
+  assert.equal(after.pipeSeparatedHashes,true);
+  assert.equal(after.ignoreMissingBatchMembers,true);
+}
+
+{
+  const before=resolveEndpointContract(profile('2.11.8'),'torrents/removeTrackers');
+  const after=resolveEndpointContract(profile('2.11.9'),'torrents/removeTrackers');
+  assert.equal(before.hashSelection,'single-or-star-all');
+  assert.equal(before.legacyStarSelector,true);
+  assert.equal(before.pipeSeparatedHashes,false);
+  assert.equal(after.hashSelection,'multi-or-all');
+  assert.equal(after.legacyStarSelector,true);
+  assert.equal(after.ignoreMissingBatchMembers,true);
+}
+
+{
+  const legacyTrackers=resolveEndpointContract(profile('2.12.9'),'torrents/trackers');
+  const modernTrackers=resolveEndpointContract(profile('2.13.0'),'torrents/trackers');
+  assert.equal(legacyTrackers.trackerTimingFields,false);
+  assert.equal(legacyTrackers.trackerExtendedStatuses,false,'pre-2.13 tracker errors must collapse into NotWorking');
+  assert.equal(modernTrackers.trackerTimingFields,true);
+  assert.equal(modernTrackers.trackerExtendedStatuses,true,'WebAPI 2.13.0 must expose TrackerError=5 and Unreachable=6');
+  assert.equal(resolveEndpointContract(profile('2.15.0'),'torrents/properties').availabilityField,false);
+  assert.equal(resolveEndpointContract(profile('2.15.1'),'torrents/properties').availabilityField,true);
+
+  const legacyMainData=resolveEndpointContract(profile('2.0.2'),'sync/maindata');
+  const categoryMapMainData=resolveEndpointContract(profile('2.1.0'),'sync/maindata');
+  const freeSpaceMainData=resolveEndpointContract(profile('2.1.1'),'sync/maindata');
+  assert.equal(legacyMainData.categoriesShape,'name-list','sync/maindata categories must be a name list before WebAPI 2.1.0');
+  assert.equal(categoryMapMainData.categoriesShape,'details-map','sync/maindata categories must become a details map at WebAPI 2.1.0');
+  assert.equal(categoryMapMainData.freeSpaceOnDiskField,false,'free_space_on_disk must not appear at WebAPI 2.1.0');
+  assert.equal(freeSpaceMainData.freeSpaceOnDiskField,true,'free_space_on_disk must appear at WebAPI 2.1.1');
+
+  const beforeSubcategories=resolveEndpointContract(profile('2.8.19'),'sync/maindata');
+  const introducedSubcategories=resolveEndpointContract(profile('2.9.2'),'sync/maindata');
+  const retainedSubcategories=resolveEndpointContract(profile('2.14.1'),'sync/maindata');
+  const removedSubcategories=resolveEndpointContract(profile('2.15.0'),'sync/maindata');
+  assert.equal(beforeSubcategories.useSubcategoriesField,false,'sync/maindata must not invent use_subcategories before WebAPI 2.9.2');
+  assert.equal(introducedSubcategories.useSubcategoriesField,true,'sync/maindata must introduce use_subcategories at WebAPI 2.9.2');
+  assert.equal(introducedSubcategories.useSubcategoriesPreference,'use_subcategories','Endpoint Contract must point projection at the canonical Preference key');
+  assert.equal(retainedSubcategories.useSubcategoriesField,true);
+  assert.equal(removedSubcategories.useSubcategoriesField,false,'sync/maindata must remove use_subcategories from WebAPI 2.15.0 onward');
+}
+
+{
+  const before=resolveEndpointContract(profile('2.15.0'),'sync/torrentPeers');
+  const after=resolveEndpointContract(profile('2.15.1'),'sync/torrentPeers');
+  assert.equal(before.hostNameField,false,'sync/torrentPeers must not invent host_name before WebAPI 2.15.1');
+  assert.equal(after.hostNameField,true,'sync/torrentPeers must expose host_name from WebAPI 2.15.1');
+  assert.equal(after.hostNamePreference,'resolve_peer_host_names');
+  assert.equal(after.hostNameNonI2POnly,true);
+}
+
+{
+  const legacy=resolveEndpointContract(profile('2.13.1'),'auth/login');
+  const modern=resolveEndpointContract(profile('2.14.0'),'auth/login');
+  assert.equal(legacy.successStatus,200);assert.equal(legacy.successBody,'legacy-text');assert.equal(legacy.successText,'Ok.');
+  assert.equal(legacy.invalidCredentialsStatus,200);assert.equal(legacy.invalidCredentialsText,'Fails.');
+  assert.equal(modern.successStatus,204);assert.equal(modern.successBody,'empty');
+  assert.equal(modern.invalidCredentialsStatus,401);assert.equal(modern.invalidCredentialsBody,'status-text');assert.equal(modern.invalidCredentialsText,'Unauthorized');
+
+  const legacyMissing=resolveMissingEndpointContract(profile('2.13.1'));
+  const modernMissing=resolveMissingEndpointContract(profile('2.14.0'));
+  assert.equal(legacyMissing.status,404);assert.equal(legacyMissing.body,'Not Found');
+  assert.equal(modernMissing.status,404);assert.equal(modernMissing.body,'Endpoint does not exist');
+}
+
+{
+  const legacy=resolveEndpointContract(profile('2.13.1'),'torrents/add');
+  const modern=resolveEndpointContract(profile('2.14.0'),'torrents/add');
+  assert.equal(legacy.responseShape,'legacy-text');
+  assert.equal(legacy.successStatus,200);
+  assert.equal(legacy.successText,'Ok.');
+  assert.equal(legacy.failureText,'Fails.');
+  assert.equal(modern.responseShape,'structured-result');
+  assert.equal(modern.successStatus,200);
+  assert.equal(modern.pendingStatus,202);
+  assert.equal(modern.allFailedStatus,409);
+}
+
+{
+  const legacy=resolveEndpointContract(profile('2.12.9'),'torrents/parseMetadata');
+  const modern=resolveEndpointContract(profile('2.13.0'),'torrents/parseMetadata');
+  assert.equal(legacy.responseShape,'filename-map','pre-2.13 parseMetadata must preserve the filename-keyed object response');
+  assert.equal(modern.responseShape,'ordered-array','WebAPI 2.13.0 parseMetadata must return request-order array results');
+}
+
+{
+  const legacy=resolveEndpointContract(profile('2.15.0'),'torrents/editCategory');
+  const modern=resolveEndpointContract(profile('2.15.1'),'torrents/editCategory');
+  assert.deepEqual(legacy.requiredParameters,['category','savePath']);
+  assert.equal(legacy.emptyCategoryStatus,400);
+  assert.equal(legacy.missingResourceStatus,409);
+  assert.equal(legacy.noOp,'conflict');
+  assert.equal(modern.missingResourceStatus,404);
+  assert.equal(modern.noOp,'success');
+}
+
+{
+  const legacy=resolveEndpointContract(profile('2.12.1'),'torrents/editTracker');
+  const modern=resolveEndpointContract(profile('2.13.0'),'torrents/editTracker');
+  assert.deepEqual(legacy.requiredParameters,['hash','origUrl','newUrl']);
+  assert.equal(legacy.trackerUrlParameter,'origUrl');
+  assert.equal(legacy.tierEdit,false);
+  assert.equal(legacy.successStatus,200);
+  assert.deepEqual(modern.requiredParameters,['hash','url']);
+  assert.deepEqual(modern.mutationParameters,['newUrl','tier']);
+  assert.equal(modern.mutationParameterRequirement,'at-least-one');
+  assert.equal(modern.trackerUrlParameter,'url');
+  assert.equal(modern.tierEdit,true);
+  assert.equal(modern.successStatus,204);
+}
+
+{
+  const unknown=resolveEndpointContract(profile('2.15.2'),'torrents/properties');
+  assert.deepEqual(unknown,{path:'torrents/properties',webApiVersion:'2.15.2',semanticRevision:'unclassified'});
+  const unknownPeers=resolveEndpointContract(profile('2.15.2'),'sync/torrentPeers');
+  assert.deepEqual(unknownPeers,{path:'sync/torrentPeers',webApiVersion:'2.15.2',semanticRevision:'unclassified'});
+  const unknownParseMetadata=resolveEndpointContract(profile('2.15.2'),'torrents/parseMetadata');
+  assert.deepEqual(unknownParseMetadata,{path:'torrents/parseMetadata',webApiVersion:'2.15.2',semanticRevision:'unclassified'});
+  const unknownAdd=resolveEndpointContract(profile('2.15.2'),'torrents/add');
+  assert.deepEqual(unknownAdd,{path:'torrents/add',webApiVersion:'2.15.2',semanticRevision:'unclassified'});
+  const unknownLogin=resolveEndpointContract(profile('2.15.2'),'auth/login');
+  assert.deepEqual(unknownLogin,{path:'auth/login',webApiVersion:'2.15.2',semanticRevision:'unclassified'});
+  assert.deepEqual(resolveMissingEndpointContract(profile('2.15.2')),{webApiVersion:'2.15.2',semanticRevision:'unclassified'});
+  const missing=resolveEndpointContract({},'torrents/properties');
+  assert.equal(missing.semanticRevision,'unclassified');
+  assert.equal(resolveEndpointContract(profile('2.15.1'),'torrents/reannounce'),null,'structural-only endpoints must not be copied into Endpoint Contract');
+}
+
+console.log('Virtual qB endpoint contracts passed: audited semantic revisions resolve through one interface, login/missing-endpoint and add result/status boundaries, tracker status/timing, parseMetadata, peer hostname and sync/maindata response lifecycles stay canonical, structural truth stays out, and future unknown revisions fail closed.');

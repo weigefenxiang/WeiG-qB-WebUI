@@ -1,0 +1,178 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import {execFileSync} from 'node:child_process';
+import {extractPreferenceDescriptors,extractPreferenceKeys} from './qb-source-parsers.mjs';
+import {extractControllerActionParameters} from './qb-action-surface-parsers.mjs';
+import {extractQbReleaseTorrentSurface} from './qb-release-torrent-surface.mjs';
+import {compareQbVersions,isSupportedStableReleaseTag,supportedStableReleaseTags} from './qb-release-tags.mjs';
+import {enrichPreferenceDescriptorsFromGetter} from './qb-preference-semantics.mjs';
+import {annotateCatalogEvolution,validateCatalogEvolution} from './qb-catalog-evolution.mjs';
+import {summarizeCatalogQuality,validateCatalogQuality} from './qb-catalog-quality.mjs';
+import {buildReleaseCatalogShard,mergeReleaseCatalogShards,selectStableTagShard} from './qb-release-catalog-shards.mjs';
+
+const args=process.argv.slice(2),option=value=>args.find(x=>x.startsWith(value));
+const mergeArg=option('--merge-shards='),mergeShardDir=mergeArg?path.resolve(mergeArg.slice('--merge-shards='.length)):null;
+const expectedShardsArg=option('--expected-shards='),expectedShards=expectedShardsArg?Number(expectedShardsArg.slice('--expected-shards='.length)):null;
+const shardIndexArg=option('--shard-index='),shardCountArg=option('--shard-count=');
+if(Boolean(shardIndexArg)!==Boolean(shardCountArg))throw new Error('qB source catalog sharding requires both --shard-index and --shard-count.');
+const shardIndex=shardIndexArg?Number(shardIndexArg.slice('--shard-index='.length)):null,shardCount=shardCountArg?Number(shardCountArg.slice('--shard-count='.length)):null;
+const positional=args.filter(x=>!x.startsWith('--')),qbRoot=path.resolve(positional[0]||process.env.QB_UPSTREAM_DIR||'.');
+const outputArg=option('--output='),output=path.resolve(outputArg?outputArg.slice('--output='.length):'simulator/versions/catalog.generated.json');
+const baseArg=option('--base-catalog='),basePath=baseArg?path.resolve(baseArg.slice('--base-catalog='.length)):null;
+const refsArg=option('--refs='),requestedRefs=refsArg?refsArg.slice('--refs='.length).split(',').map(x=>x.trim()).filter(Boolean):[];
+if(!mergeShardDir&&(!positional[0]&&!process.env.QB_UPSTREAM_DIR||!fs.existsSync(qbRoot))){console.error('Usage: node tools/qb-release-catalog.mjs <qBittorrent-clone> [--output=path] [--base-catalog=path] [--refs=release-x.y.z,...] [--shard-index=N --shard-count=M] | --merge-shards=dir --expected-shards=N --output=path');process.exit(2);}
+if(mergeShardDir&&(shardIndexArg||refsArg||baseArg))throw new Error('Catalog shard merge cannot combine extraction/base/refs arguments.');
+if(shardIndexArg&&(refsArg||baseArg))throw new Error('Catalog shard extraction cannot combine --refs or --base-catalog.');
+function git(...args){return execFileSync('git',['-C',qbRoot,...args],{encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();}
+function parts(v){return String(v).replace(/^release-/,'').split('.').map(x=>Number.parseInt(x,10)||0);}
+function show(ref,file){return git('show',`${ref}:${file}`);}
+function showMaybe(ref,file){try{return show(ref,file);}catch{return '';}}
+function firstSource(ref,files){for(const file of files){const source=showMaybe(ref,file);if(source)return source;}return '';}
+function parseApi(source,tag){const m=source.match(/API_VERSION\s*\{\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\}/);if(!m)throw new Error(`${tag}: cannot parse API_VERSION`);return`${m[1]}.${m[2]}.${m[3]}`;}
+
+function preferenceSurface(ref){
+  const source=show(ref,'src/webui/api/appcontroller.cpp');
+  const sessionHeaderSource=show(ref,'src/base/bittorrent/session.h');
+  const preferencesHeaderSource=show(ref,'src/base/preferences.h');
+  const applicationHeaderSource=firstSource(ref,['src/base/interfaces/iapplication.h','src/app/application.h','src/app/iapplication.h']);
+  const memberHeaderSources=[
+    showMaybe(ref,'src/base/net/proxyconfigurationmanager.h'),
+    showMaybe(ref,'src/base/net/portforwarder.h'),
+    showMaybe(ref,'src/base/rss/rss_session.h'),
+    showMaybe(ref,'src/base/rss/rss_autodownloader.h')
+  ].filter(Boolean);
+  const preferenceKeys=extractPreferenceKeys(source,ref);
+  const structuralDescriptors=extractPreferenceDescriptors(source,ref);
+  const preferenceDescriptors=enrichPreferenceDescriptorsFromGetter(source,structuralDescriptors,ref,{sessionHeaderSource,preferencesHeaderSource,applicationHeaderSource,memberHeaderSources});
+  if(preferenceDescriptors.length!==preferenceKeys.length)throw new Error(`${ref}: descriptor/key count mismatch ${preferenceDescriptors.length}/${preferenceKeys.length}`);
+  const expected=new Set(preferenceKeys),seen=new Set();
+  for(const descriptor of preferenceDescriptors){
+    if(!expected.has(descriptor.key))throw new Error(`${ref}: descriptor escaped Preferences surface: ${descriptor.key}`);
+    if(seen.has(descriptor.key))throw new Error(`${ref}: duplicate descriptor: ${descriptor.key}`);
+    seen.add(descriptor.key);
+    if(descriptor.writable&&!descriptor.writeType)throw new Error(`${ref}: writable descriptor lacks high-confidence writeType: ${descriptor.key}`);
+    if(descriptor.typeAgreement==='MISMATCH'&&descriptor.writable)throw new Error(`${ref}: conflicting descriptor cannot remain writable: ${descriptor.key}`);
+  }
+  const getterPresent=preferenceDescriptors.filter(item=>item.getterPresent===true).length;
+  const setterPresent=preferenceDescriptors.filter(item=>item.setterPresent===true).length;
+  const readTyped=preferenceDescriptors.filter(item=>item.readType).length;
+  const writeTyped=preferenceDescriptors.filter(item=>item.writeType).length;
+  const exactAgreement=preferenceDescriptors.filter(item=>item.typeAgreement==='EXACT').length;
+  const mismatched=preferenceDescriptors.filter(item=>item.typeAgreement==='MISMATCH').length;
+  const safeFallback=preferenceDescriptors.filter(item=>item.upstreamFallbackValue!==null&&item.upstreamFallbackValue!==undefined).length;
+  const semanticGetterEnriched=preferenceDescriptors.filter(item=>item.semanticGetterEnriched===true).length;
+  const structuredRead=preferenceDescriptors.filter(item=>item.readType==='array'||item.readType==='object').length;
+  const structuredWrite=preferenceDescriptors.filter(item=>item.writeType==='array'||item.writeType==='object').length;
+  return{preferenceKeys,preferenceDescriptors,preferenceDescriptorStats:{total:preferenceKeys.length,getterPresent,setterPresent,readTyped,writeTyped,exactAgreement,mismatched,safeFallback,semanticGetterEnriched,unresolvedRead:preferenceKeys.length-readTyped,unresolvedWrite:preferenceKeys.length-writeTyped,structuredRead,structuredWrite,typed:writeTyped,highConfidence:writeTyped,unresolved:preferenceKeys.length-writeTyped,structured:structuredWrite}};
+}
+
+function apiActions(ref){
+  const names=git('ls-tree','-r','--name-only',ref,'src/webui/api').split(/\r?\n/).filter(x=>x.endsWith('controller.h'));
+  const actions=new Set();
+  for(const file of names){
+    const source=show(ref,file);
+    for(const m of source.matchAll(/\bvoid\s+([A-Za-z0-9_]+Action)\s*\(/g))actions.add(`${path.basename(file)}:${m[1]}`);
+  }
+  return[...actions].sort();
+}
+
+function apiActionSurface(ref,actions){
+  const byHeader=new Map();
+  for(const action of actions){const [header]=action.split(':');if(!byHeader.has(header))byHeader.set(header,[]);byHeader.get(header).push(action);}
+  const result={};
+  for(const [header,expected] of byHeader){
+    const cpp=`src/webui/api/${header.replace(/\.h$/,'.cpp')}`;
+    let source;try{source=show(ref,cpp);}catch(error){throw new Error(`${ref}: missing controller implementation ${cpp} for ${expected.join(', ')}`);}
+    const parsed=extractControllerActionParameters(source,header,ref);
+    for(const action of expected){if(!Object.prototype.hasOwnProperty.call(parsed,action))throw new Error(`${ref}: action parameter parser missed ${action}`);result[action]=parsed[action];}
+  }
+  return Object.fromEntries(Object.entries(result).sort(([a],[b])=>a.localeCompare(b)));
+}
+
+function torrentSurface(ref,actions){
+  return extractQbReleaseTorrentSurface({
+    ref,
+    apiActions:actions,
+    readSource:file=>show(ref,file),
+    readOptionalSource:file=>showMaybe(ref,file),
+    readFirstSource:files=>firstSource(ref,files)
+  });
+}
+
+function readBaseCatalog(){
+  if(!basePath)return[];
+  if(!fs.existsSync(basePath))throw new Error(`Frozen base catalog not found: ${basePath}`);
+  const value=JSON.parse(fs.readFileSync(basePath,'utf8'));
+  if(!Array.isArray(value)||!value.length)throw new Error('Frozen base catalog must be a non-empty array.');
+  return value;
+}
+function stableTags(){return supportedStableReleaseTags(git('tag','--list','release-*').split(/\r?\n/).filter(Boolean));}
+function assertFrozenPrefix(allTags,baseCatalog){
+  const baseTags=baseCatalog.map(item=>String(item?.tag||''));
+  if(baseTags[0]!=='release-4.1.0')throw new Error(`Frozen base catalog floor must be release-4.1.0, got ${baseTags[0]||'empty'}`);
+  if(baseTags.length>allTags.length)throw new Error(`Upstream stable tag set shrank below frozen LKG: ${allTags.length} < ${baseTags.length}`);
+  for(let i=0;i<baseTags.length;i++)if(baseTags[i]!==allTags[i])throw new Error(`Frozen stable history changed at ordinal ${i}: LKG ${baseTags[i]} vs upstream ${allTags[i]||'missing'}`);
+  return baseTags;
+}
+
+if(mergeShardDir){
+  if(!fs.existsSync(mergeShardDir))throw new Error(`Catalog shard directory not found: ${mergeShardDir}`);
+  if(!Number.isInteger(expectedShards)||expectedShards<1)throw new Error('Catalog shard merge requires --expected-shards=N.');
+  const names=fs.readdirSync(mergeShardDir).filter(name=>/^qb-release-catalog-shard-\d+\.json$/.test(name)).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+  const shards=names.map(name=>JSON.parse(fs.readFileSync(path.join(mergeShardDir,name),'utf8'))),catalog=mergeReleaseCatalogShards(shards,expectedShards);
+  annotateCatalogEvolution(catalog);validateCatalogEvolution(catalog);validateCatalogQuality(catalog);
+  fs.mkdirSync(path.dirname(output),{recursive:true});fs.writeFileSync(output,JSON.stringify(catalog,null,2)+'\n','utf8');
+  const totals=summarizeCatalogQuality(catalog),safeFallback=catalog.reduce((sum,item)=>sum+(Number(item.preferenceDescriptorStats?.safeFallback)||0),0);
+  console.log(`Merged ${shards.length}/${expectedShards} exact qB source-catalog shards into ${catalog.length} stable profiles: ${catalog[0].qbVersion} -> ${catalog.at(-1).qbVersion}; API actions ${totals.actions} / params ${totals.actionParameters}; preference getter types ${totals.readTyped}/${totals.preferences}, setter types ${totals.writeTyped}/${totals.preferences}, conflicts ${totals.mismatched}, enum fallbacks ${safeFallback}.`);
+  process.exit(0);
+}
+const allTags=stableTags();
+if(!allTags.length)throw new Error('No stable qBittorrent release tags found from 4.1.0.');
+const baseCatalog=readBaseCatalog();
+if(baseCatalog.length)assertFrozenPrefix(allTags,baseCatalog);
+let tags;
+if(requestedRefs.length){
+  tags=[...new Set(requestedRefs)].sort(compareQbVersions);
+  for(const tag of tags){if(!isSupportedStableReleaseTag(tag))throw new Error(`Invalid or unsupported stable ref: ${tag}`);git('rev-parse','--verify',`refs/tags/${tag}`);}
+  if(baseCatalog.length){const frozen=new Set(baseCatalog.map(item=>item.tag));for(const tag of tags)if(frozen.has(tag))throw new Error(`Incremental extraction must not re-parse frozen stable tag ${tag}`);}
+}else tags=baseCatalog.length?allTags.slice(baseCatalog.length):allTags;
+if(shardIndexArg)tags=selectStableTagShard(allTags,shardIndex,shardCount);
+
+const catalog=baseCatalog.map(item=>structuredClone(item));
+for(const tag of tags){
+  const qbVersion=tag.slice('release-'.length);
+  const webApiVersion=parseApi(show(tag,'src/webui/webapplication.h'),tag);
+  const sourceSha=git('rev-list','-n','1',tag);
+  const preferences=preferenceSurface(tag);
+  const actions=apiActions(tag);
+  catalog.push({
+    qbVersion,webApiVersion,tag,sourceSha,stable:true,officialWeiGSupport:true,
+    protocolGeneration:`webapi-v${parts(webApiVersion)[0]||'unknown'}`,
+    ...preferences,
+    apiActions:actions,
+    apiActionParameters:apiActionSurface(tag,actions),
+    ...torrentSurface(tag,actions)
+  });
+}
+if(!catalog.length)throw new Error('No catalog profiles were produced.');
+if(shardIndexArg){
+  const envelope=buildReleaseCatalogShard(allTags,catalog,shardIndex,shardCount);
+  fs.mkdirSync(path.dirname(output),{recursive:true});fs.writeFileSync(output,JSON.stringify(envelope,null,2)+'\n','utf8');
+  console.log(`Generated qB source-catalog shard ${shardIndex+1}/${shardCount}: ${catalog.length}/${allTags.length} stable profiles.`);
+  process.exit(0);
+}
+if(tags.length||!baseCatalog.length){
+  const frozenJson=baseCatalog.map(item=>JSON.stringify(item));
+  annotateCatalogEvolution(catalog);
+  validateCatalogEvolution(catalog);
+  validateCatalogQuality(catalog);
+  for(let i=0;i<frozenJson.length;i++)if(JSON.stringify(catalog[i])!==frozenJson[i])throw new Error(`Incremental annotation mutated frozen LKG profile ${baseCatalog[i].qbVersion}`);
+}else{
+  validateCatalogEvolution(catalog);
+  validateCatalogQuality(catalog);
+}
+fs.mkdirSync(path.dirname(output),{recursive:true});
+fs.writeFileSync(output,JSON.stringify(catalog,null,2)+'\n','utf8');
+const totals=summarizeCatalogQuality(catalog),safeFallback=catalog.reduce((sum,item)=>sum+(Number(item.preferenceDescriptorStats?.safeFallback)||0),0);
+const admission=baseCatalog.length?`; preserved ${baseCatalog.length} frozen profiles and source-parsed ${tags.length} new stable tag${tags.length===1?'':'s'}`:'';
+console.log(`Generated ${catalog.length} stable qB profiles: ${catalog[0].qbVersion} -> ${catalog.at(-1).qbVersion}${admission}; API actions ${totals.actions} / params ${totals.actionParameters}; Torrent fields ${totals.torrentInfoFields}, states ${totals.torrentStates}, filters ${totals.torrentFilters}, properties ${totals.torrentPropertiesFields}, tracker fields ${totals.torrentTrackerFields}, file fields ${totals.torrentFileFields}; preference getter types ${totals.readTyped}/${totals.preferences} (${totals.semanticGetterEnriched} semantic enrichments), setter types ${totals.writeTyped}/${totals.preferences}, exact read/write agreement ${totals.exactAgreement}, conflicts ${totals.mismatched}, enum fallbacks ${safeFallback}.`);

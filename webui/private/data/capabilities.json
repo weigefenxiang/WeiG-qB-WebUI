@@ -1,0 +1,1366 @@
+{
+  "schemaVersion": 2,
+  "webApiMilestones": [
+    {
+      "qb": "4.1.0",
+      "webApi": "2.0.0"
+    },
+    {
+      "qb": "4.1.1",
+      "webApi": "2.0.1"
+    },
+    {
+      "qb": "4.1.2",
+      "webApi": "2.0.2"
+    },
+    {
+      "qb": "4.1.3",
+      "webApi": "2.1.0"
+    },
+    {
+      "qb": "4.1.4",
+      "webApi": "2.1.1"
+    },
+    {
+      "qb": "4.1.5",
+      "webApi": "2.2.0"
+    },
+    {
+      "qb": "4.1.9.1",
+      "webApi": "2.2.1"
+    },
+    {
+      "qb": "4.2.0",
+      "webApi": "2.3.0"
+    },
+    {
+      "qb": "4.2.1",
+      "webApi": "2.4.0"
+    },
+    {
+      "qb": "4.2.2",
+      "webApi": "2.4.1"
+    },
+    {
+      "qb": "4.2.4",
+      "webApi": "2.5.0"
+    },
+    {
+      "qb": "4.2.5",
+      "webApi": "2.5.1"
+    },
+    {
+      "qb": "4.3.0",
+      "webApi": "2.6.0"
+    },
+    {
+      "qb": "4.3.1",
+      "webApi": "2.6.1"
+    },
+    {
+      "qb": "4.3.2",
+      "webApi": "2.7.0"
+    },
+    {
+      "qb": "4.3.3",
+      "webApi": "2.7.0"
+    },
+    {
+      "qb": "4.3.4",
+      "webApi": "2.8.1"
+    },
+    {
+      "qb": "4.3.5",
+      "webApi": "2.8.2"
+    },
+    {
+      "qb": "4.3.9",
+      "webApi": "2.8.2"
+    },
+    {
+      "qb": "4.4.0",
+      "webApi": "2.8.4"
+    },
+    {
+      "qb": "4.4.5",
+      "webApi": "2.8.5"
+    },
+    {
+      "qb": "4.5.0",
+      "webApi": "2.8.18"
+    },
+    {
+      "qb": "4.5.5",
+      "webApi": "2.8.19"
+    },
+    {
+      "qb": "4.6.0",
+      "webApi": "2.9.2"
+    },
+    {
+      "qb": "4.6.1",
+      "webApi": "2.9.3"
+    },
+    {
+      "qb": "5.0.0",
+      "webApi": "2.11.2"
+    },
+    {
+      "qb": "5.0.5",
+      "webApi": "2.11.2"
+    },
+    {
+      "qb": "5.1.0",
+      "webApi": "2.11.4"
+    },
+    {
+      "qb": "5.1.2",
+      "webApi": "2.11.4"
+    },
+    {
+      "qb": "5.2.0",
+      "webApi": "2.15.1"
+    },
+    {
+      "qb": "5.2.3",
+      "webApi": "2.15.1"
+    }
+  ],
+  "features": {
+    "privateFilter": {
+      "rule": {
+        "qb": {
+          "gte": "5.0.0"
+        }
+      },
+      "sourceRequired": true,
+      "upstream": {
+        "torrentInfoField": "private"
+      },
+      "presentation": {
+        "unsupported": "hide",
+        "badge": "auto",
+        "requirements": {
+          "qb": "5.0.0",
+          "webApi": "2.11.2",
+          "knownQb": "5.0.0"
+        }
+      },
+      "copy": {
+        "title": {
+          "en": "Private / PT"
+        },
+        "reason": {
+          "en": "Shown in the Tracker facet only when the selected qBittorrent release exposes authoritative Private metadata.",
+          "zh": "只有当前 qBittorrent 稳定版明确返回权威 Private 元数据时，Tracker 筛选中才显示 Private / PT。"
+        }
+      }
+    },
+    "categoryFacet": {
+      "rule": {
+        "all": [
+          {
+            "qb": {
+              "gte": "4.1.4"
+            }
+          },
+          {
+            "webApi": {
+              "gte": "2.1.1"
+            }
+          }
+        ]
+      },
+      "sourceRequired": true,
+      "upstream": {
+        "torrentInfoField": "category"
+      },
+      "selectors": [
+        "[data-facet=\"category\"]"
+      ],
+      "presentation": {
+        "unsupported": "hide",
+        "badge": "auto"
+      },
+      "copy": {
+        "title": {
+          "en": "Categories",
+          "zh": "分类"
+        },
+        "reason": {
+          "en": "Category filtering requires a source-proven Torrent category field.",
+          "zh": "分类筛选需要上游源码明确返回 Torrent category 字段。"
+        }
+      }
+    },
+    "tagFacet": {
+      "rule": {
+        "webApi": {
+          "gte": "2.3.0"
+        }
+      },
+      "sourceRequired": true,
+      "upstream": {
+        "torrentInfoField": "tags"
+      },
+      "selectors": [
+        "[data-facet=\"tag\"]"
+      ],
+      "presentation": {
+        "unsupported": "hide",
+        "badge": "auto"
+      },
+      "copy": {
+        "title": {
+          "en": "Tags",
+          "zh": "标签"
+        },
+        "reason": {
+          "en": "Tag filtering requires a source-proven Torrent tags field.",
+          "zh": "标签筛选需要上游源码明确返回 Torrent tags 字段。"
+        }
+      }
+    },
+    "tags": {
+      "rule": {
+        "webApi": {
+          "gte": "2.3.0"
+        }
+      },
+      "upstream": {
+        "action": "torrentscontroller.h:tagsAction"
+      }
+    },
+    "torrentAdd": {
+      "rule": {
+        "qb": {
+          "gte": "4.1.0"
+        }
+      },
+      "sourceRequired": true,
+      "writeRequired": true,
+      "upstream": {
+        "action": "torrentscontroller.h:addAction"
+      },
+      "selectors": [
+        "#add-btn",
+        "#empty-add-btn",
+        "#add-submit"
+      ]
+    },
+    "search": {
+      "rule": {
+        "webApi": {
+          "gte": "2.1.1"
+        }
+      },
+      "upstream": {
+        "action": "searchcontroller.h:pluginsAction"
+      },
+      "selectors": [
+        "[data-capability=\"search\"]"
+      ],
+      "presentation": {
+        "unsupported": "disable",
+        "badge": "auto"
+      },
+      "copy": {
+        "title": {
+          "en": "Search",
+          "zh": "搜索"
+        },
+        "reason": {
+          "en": "Certified releases use exact Search source actions; the WebAPI milestone is fallback-only.",
+          "zh": "认证 release 以 Search 源码 action 为准；WebAPI 版本门槛仅用于非认证回退。"
+        }
+      }
+    },
+    "searchPlugins": {
+      "rule": {
+        "webApi": {
+          "gte": "2.1.1"
+        }
+      },
+      "upstream": {
+        "action": "searchcontroller.h:pluginsAction"
+      }
+    },
+    "searchStart": {
+      "rule": {
+        "webApi": {
+          "gte": "2.1.1"
+        }
+      },
+      "sourceRequired": true,
+      "writeRequired": true,
+      "upstream": {
+        "action": "searchcontroller.h:startAction"
+      },
+      "selectors": [
+        "#engine-search-btn"
+      ]
+    },
+    "searchStatus": {
+      "rule": {
+        "webApi": {
+          "gte": "2.1.1"
+        }
+      },
+      "upstream": {
+        "action": "searchcontroller.h:statusAction"
+      }
+    },
+    "searchResults": {
+      "rule": {
+        "webApi": {
+          "gte": "2.1.1"
+        }
+      },
+      "upstream": {
+        "action": "searchcontroller.h:resultsAction"
+      }
+    },
+    "searchStop": {
+      "rule": {
+        "webApi": {
+          "gte": "2.1.1"
+        }
+      },
+      "sourceRequired": true,
+      "writeRequired": true,
+      "upstream": {
+        "action": "searchcontroller.h:stopAction"
+      },
+      "selectors": [
+        "#engine-stop-btn"
+      ]
+    },
+    "rss": {
+      "rule": {
+        "webApi": {
+          "gte": "2.1.0"
+        }
+      },
+      "upstream": {
+        "action": "rsscontroller.h:itemsAction"
+      },
+      "selectors": [
+        "[data-capability=\"rss\"]"
+      ],
+      "presentation": {
+        "unsupported": "disable",
+        "badge": "auto"
+      },
+      "copy": {
+        "title": {
+          "en": "RSS",
+          "zh": "RSS"
+        },
+        "reason": {
+          "en": "RSS availability follows the exact qBittorrent RSS source action when a certified release profile is available; the WebAPI milestone is fallback-only.",
+          "zh": "存在认证 release profile 时，RSS 可用性以 qBittorrent RSS 源码 action 为准；WebAPI 版本门槛仅用于非认证回退。"
+        }
+      }
+    },
+    "rssItems": {
+      "rule": {
+        "qb": {
+          "gte": "4.1.0"
+        }
+      },
+      "upstream": {
+        "action": "rsscontroller.h:itemsAction"
+      }
+    },
+    "rssAddFeed": {
+      "rule": {
+        "qb": {
+          "gte": "4.1.0"
+        }
+      },
+      "sourceRequired": true,
+      "writeRequired": true,
+      "upstream": {
+        "action": "rsscontroller.h:addFeedAction"
+      },
+      "selectors": [
+        "#rss-add-btn"
+      ]
+    },
+    "rssRemoveItem": {
+      "rule": {
+        "qb": {
+          "gte": "4.1.0"
+        }
+      },
+      "sourceRequired": true,
+      "writeRequired": true,
+      "upstream": {
+        "action": "rsscontroller.h:removeItemAction"
+      }
+    },
+    "rssRules": {
+      "rule": {
+        "qb": {
+          "gte": "4.1.0"
+        }
+      },
+      "upstream": {
+        "action": "rsscontroller.h:rulesAction"
+      }
+    },
+    "rssSetRule": {
+      "rule": {
+        "qb": {
+          "gte": "4.1.0"
+        }
+      },
+      "sourceRequired": true,
+      "writeRequired": true,
+      "upstream": {
+        "action": "rsscontroller.h:setRuleAction"
+      }
+    },
+    "rssRenameRule": {
+      "rule": {
+        "qb": {
+          "gte": "4.1.0"
+        }
+      },
+      "sourceRequired": true,
+      "writeRequired": true,
+      "upstream": {
+        "action": "rsscontroller.h:renameRuleAction"
+      }
+    },
+    "rssRemoveRule": {
+      "rule": {
+        "qb": {
+          "gte": "4.1.0"
+        }
+      },
+      "sourceRequired": true,
+      "writeRequired": true,
+      "upstream": {
+        "action": "rsscontroller.h:removeRuleAction"
+      }
+    },
+    "rssRefresh": {
+      "rule": {
+        "webApi": {
+          "gte": "2.2.1"
+        }
+      },
+      "sourceRequired": true,
+      "writeRequired": true,
+      "upstream": {
+        "action": "rsscontroller.h:refreshItemAction"
+      }
+    },
+    "logs": {
+      "rule": {
+        "qb": {
+          "gte": "4.1.0"
+        }
+      },
+      "upstream": {
+        "action": "logcontroller.h:mainAction"
+      },
+      "selectors": [
+        "[data-capability=\"logs\"]"
+      ],
+      "presentation": {
+        "unsupported": "disable",
+        "badge": "auto"
+      },
+      "copy": {
+        "title": {
+          "en": "Logs",
+          "zh": "日志"
+        },
+        "reason": {
+          "en": "Certified releases use exact log/main source provenance from the qB 4.1.0 support floor.",
+          "zh": "认证 release 从 qB 4.1.0 支持下限起以 log/main 精确源码 provenance 为准。"
+        }
+      }
+    },
+    "logsMain": {
+      "rule": {
+        "qb": {
+          "gte": "4.1.0"
+        }
+      },
+      "upstream": {
+        "action": "logcontroller.h:mainAction"
+      }
+    },
+    "logsPeers": {
+      "rule": {
+        "qb": {
+          "gte": "4.1.0"
+        }
+      },
+      "upstream": {
+        "action": "logcontroller.h:peersAction"
+      }
+    },
+    "settingsRead": {
+      "rule": {
+        "qb": {
+          "gte": "4.1.0"
+        }
+      },
+      "upstream": {
+        "action": "appcontroller.h:preferencesAction"
+      }
+    },
+    "settingsWrite": {
+      "rule": {
+        "qb": {
+          "gte": "4.1.0"
+        }
+      },
+      "sourceRequired": true,
+      "writeRequired": true,
+      "upstream": {
+        "action": "appcontroller.h:setPreferencesAction"
+      }
+    },
+    "globalSpeedLimitWrite": {
+      "rule": {
+        "qb": {
+          "gte": "4.1.0"
+        }
+      },
+      "sourceRequired": true,
+      "writeRequired": true,
+      "upstream": {
+        "allActions": [
+          "transfercontroller.h:setDownloadLimitAction",
+          "transfercontroller.h:setUploadLimitAction",
+          "transfercontroller.h:toggleSpeedLimitsModeAction"
+        ]
+      }
+    },
+    "altSpeedLimitWrite": {
+      "rule": {
+        "qb": {
+          "gte": "4.1.0"
+        }
+      },
+      "sourceRequired": true,
+      "writeRequired": true,
+      "upstream": {
+        "allActions": [
+          "appcontroller.h:setPreferencesAction",
+          "transfercontroller.h:toggleSpeedLimitsModeAction"
+        ]
+      }
+    },
+    "stalledFilter": {
+      "rule": {
+        "webApi": {
+          "gte": "2.4.1"
+        }
+      },
+      "upstream": {
+        "torrentFilter": "stalled"
+      },
+      "copy": {
+        "title": {
+          "en": "Native stalled filter",
+          "zh": "原生停滞筛选"
+        },
+        "reason": {
+          "en": "Describes only the native upstream filter. Product visibility is owned by TorrentSemantics and may use reliable local derivation.",
+          "zh": "这里只描述上游原生筛选；产品是否显示由 TorrentSemantics 决定，并可使用可靠的本地推导。"
+        }
+      }
+    },
+    "trackerEdit": {
+      "rule": {
+        "webApi": {
+          "gte": "2.2.0"
+        }
+      },
+      "writeRequired": true,
+      "upstream": {
+        "action": "torrentscontroller.h:editTrackerAction"
+      }
+    },
+    "trackerRemove": {
+      "rule": {
+        "qb": {
+          "gte": "4.1.0"
+        }
+      },
+      "sourceRequired": true,
+      "writeRequired": true,
+      "upstream": {
+        "action": "torrentscontroller.h:removeTrackersAction"
+      }
+    },
+    "peerBan": {
+      "rule": {
+        "webApi": {
+          "gte": "2.3.0"
+        }
+      },
+      "writeRequired": true,
+      "upstream": {
+        "action": "transfercontroller.h:banPeersAction"
+      }
+    },
+    "buildInfo": {
+      "rule": {
+        "webApi": {
+          "gte": "2.3.0"
+        }
+      },
+      "upstream": {
+        "action": "appcontroller.h:buildInfoAction"
+      }
+    },
+    "renameFile": {
+      "rule": {
+        "webApi": {
+          "gte": "2.4.0"
+        }
+      },
+      "writeRequired": true,
+      "upstream": {
+        "action": "torrentscontroller.h:renameFileAction"
+      }
+    },
+    "filePriorityWrite": {
+      "rule": {
+        "qb": {
+          "gte": "4.1.0"
+        }
+      },
+      "sourceRequired": true,
+      "writeRequired": true,
+      "upstream": {
+        "action": "torrentscontroller.h:filePrioAction"
+      },
+      "selectors": [
+        ".ui-select__trigger[aria-label$=\" priority\"]"
+      ]
+    },
+    "contentPath": {
+      "rule": {
+        "webApi": {
+          "gte": "2.6.1"
+        }
+      },
+      "sourceRequired": true,
+      "upstream": {
+        "torrentInfoField": "content_path"
+      }
+    },
+    "addTags": {
+      "rule": {
+        "webApi": {
+          "gte": "2.3.0"
+        }
+      },
+      "writeRequired": true,
+      "upstream": {
+        "action": "torrentscontroller.h:addTagsAction"
+      }
+    },
+    "renameFolder": {
+      "rule": {
+        "any": [
+          {
+            "qb": {
+              "eq": "4.3.3"
+            }
+          },
+          {
+            "webApi": {
+              "gte": "2.8.0"
+            }
+          }
+        ]
+      },
+      "writeRequired": true,
+      "upstream": {
+        "action": "torrentscontroller.h:renameFolderAction"
+      }
+    },
+    "fileIndexes": {
+      "rule": {
+        "webApi": {
+          "gte": "2.8.2"
+        }
+      }
+    },
+    "tagFilter": {
+      "rule": {
+        "webApi": {
+          "gte": "2.8.3"
+        }
+      },
+      "upstream": {
+        "torrentInfoParameter": "tag"
+      }
+    },
+    "torrentCreator": {
+      "rule": {
+        "all": [
+          {
+            "qb": {
+              "gte": "5.0.0"
+            }
+          },
+          {
+            "webApi": {
+              "gte": "2.11.0"
+            }
+          }
+        ]
+      },
+      "sourceRequired": true,
+      "writeRequired": true,
+      "upstream": {
+        "action": "torrentcreatorcontroller.h:addTaskAction"
+      }
+    },
+    "cookies": {
+      "rule": {
+        "webApi": {
+          "gte": "2.11.3"
+        }
+      },
+      "upstream": {
+        "action": "appcontroller.h:cookiesAction"
+      }
+    },
+    "trackerEditUrl": {
+      "rule": {
+        "webApi": {
+          "gte": "2.13.0"
+        }
+      },
+      "sourceRequired": true,
+      "writeRequired": true,
+      "upstream": {
+        "actionParameter": {
+          "action": "torrentscontroller.h:editTrackerAction",
+          "parameter": "url"
+        }
+      }
+    },
+    "structuredTorrentAdd": {
+      "rule": {
+        "webApi": {
+          "gte": "2.14.0"
+        }
+      }
+    },
+    "webseeds": {
+      "rule": {
+        "qb": {
+          "gte": "4.1.0"
+        }
+      },
+      "upstream": {
+        "action": "torrentscontroller.h:webseedsAction"
+      }
+    },
+    "categories": {
+      "rule": {
+        "all": [
+          {
+            "qb": {
+              "gte": "4.1.4"
+            }
+          },
+          {
+            "webApi": {
+              "gte": "2.1.1"
+            }
+          }
+        ]
+      },
+      "upstream": {
+        "anyActions": [
+          "torrentscontroller.h:categoriesAction",
+          "synccontroller.h:maindataAction"
+        ]
+      }
+    },
+    "preferences": {
+      "rule": {
+        "qb": {
+          "gte": "4.1.0"
+        }
+      },
+      "upstream": {
+        "action": "appcontroller.h:preferencesAction"
+      }
+    },
+    "globalSpeedLimits": {
+      "rule": {
+        "qb": {
+          "gte": "4.1.0"
+        }
+      }
+    },
+    "altSpeedLimits": {
+      "rule": {
+        "qb": {
+          "gte": "4.1.0"
+        }
+      }
+    },
+    "mainData": {
+      "rule": {
+        "qb": {
+          "gte": "4.1.0"
+        }
+      }
+    },
+    "sessionStats": {
+      "rule": {
+        "qb": {
+          "gte": "4.1.0"
+        }
+      }
+    }
+  },
+  "releases": [
+    {
+      "qbVersion": "4.1.0",
+      "webApiVersion": "2.0.0",
+      "sourceSha": "e9ed621178af841114a045887c5ce1e6b50cb366",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.1.1",
+      "webApiVersion": "2.0.1",
+      "sourceSha": "ea5a29018fba738223d0f1143ac97722e3ee9b5f",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.1.2",
+      "webApiVersion": "2.0.2",
+      "sourceSha": "d1ebbcb35d8833dabcb5130609f2d37dec1b4f66",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.1.3",
+      "webApiVersion": "2.1.0",
+      "sourceSha": "a574c4a70a5a3293d2f6135952c301d930d23627",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.1.4",
+      "webApiVersion": "2.1.1",
+      "sourceSha": "0061b752001e2d5c60b88f736e46685a64ea6bb9",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.1.5",
+      "webApiVersion": "2.2.0",
+      "sourceSha": "3f0e0a319a6f4833b238842744ed1f37104fcd4c",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.1.6",
+      "webApiVersion": "2.2.0",
+      "sourceSha": "ea7e47d11328f408ba435bafaf618b483851c651",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.1.7",
+      "webApiVersion": "2.2.0",
+      "sourceSha": "05a82afeb6c927bfc0cda4fe8fb25ecc3faecd86",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.1.8",
+      "webApiVersion": "2.2.0",
+      "sourceSha": "359b4649583564407628ebdac234a71c2f25e4dc",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.1.9",
+      "webApiVersion": "2.2.1",
+      "sourceSha": "7825d8627f8be4682167bbe091870edad9dc33b6",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.1.9.1",
+      "webApiVersion": "2.2.1",
+      "sourceSha": "eea38e7c9ecb1e1df5e889cb42fc93d3f79d429f",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.2.0",
+      "webApiVersion": "2.3.0",
+      "sourceSha": "912b0767071f564646e9ced06a8382b0d67423b8",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.2.1",
+      "webApiVersion": "2.4.0",
+      "sourceSha": "118af03534e5ded6d3c8323b5dbeeff57b177193",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.2.2",
+      "webApiVersion": "2.4.1",
+      "sourceSha": "3c17ad566c94a92b6beefae119db3da5cb26456e",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.2.3",
+      "webApiVersion": "2.4.1",
+      "sourceSha": "29e9594859151b774ee5f2f18a989a91d541b6f2",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.2.4",
+      "webApiVersion": "2.5.0",
+      "sourceSha": "50f676c30507ece9fca6cc2bf61cf5fe79cf46c2",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.2.5",
+      "webApiVersion": "2.5.1",
+      "sourceSha": "2c65b796401f924d6889aadde958de3d2846bb4b",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.3.0",
+      "webApiVersion": "2.6.0",
+      "sourceSha": "b925cffddb386b2ca10e58fc9c55d99721cfa2ff",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.3.0.1",
+      "webApiVersion": "2.6.0",
+      "sourceSha": "f09ee1b3986e51b9e0a63cefd361e9702a108a24",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.3.1",
+      "webApiVersion": "2.6.1",
+      "sourceSha": "587688634561b17229a6f5951478cbdd5ae0c128",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.3.2",
+      "webApiVersion": "2.7.0",
+      "sourceSha": "abb854a1e6309bec8ddbcccd7c550cd07c13c16e",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.3.3",
+      "webApiVersion": "2.7.0",
+      "sourceSha": "da0b276d5fc4582f40e6fc8f17883083d2662316",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.3.4",
+      "webApiVersion": "2.8.1",
+      "sourceSha": "f7e6b964931c305c4a341c75e4b32e4e7b1443ce",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.3.4.1",
+      "webApiVersion": "2.8.1",
+      "sourceSha": "332b173e080aa2deb2933eb848298fd98b71514b",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.3.5",
+      "webApiVersion": "2.8.2",
+      "sourceSha": "063844ed44bffd3fbf2ac2792590ba47bf3fb78e",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.3.6",
+      "webApiVersion": "2.8.2",
+      "sourceSha": "ac8105c304b84c77b7b72fbf4547e7ad977d44fc",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.3.7",
+      "webApiVersion": "2.8.2",
+      "sourceSha": "0415c0c6f87d0093811f03c99d0e8cefe6945347",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.3.8",
+      "webApiVersion": "2.8.2",
+      "sourceSha": "9392ce436db5e9ed4e5ce68d9fe1f279f0b89b9f",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.3.9",
+      "webApiVersion": "2.8.2",
+      "sourceSha": "01519b5e77d2a1e577ebc0c4291611fc37df0d4a",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.4.0",
+      "webApiVersion": "2.8.4",
+      "sourceSha": "b9164adb7ae933e81c278cd40d2c529848494e22",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.4.1",
+      "webApiVersion": "2.8.5",
+      "sourceSha": "4cb386af35bc81ff911c78a5b612857703f4af81",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.4.2",
+      "webApiVersion": "2.8.5",
+      "sourceSha": "ede7c8acbb79c1c6627fa03e8402b89f47711f70",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.4.3",
+      "webApiVersion": "2.8.5",
+      "sourceSha": "9ed9ffcaf22f281b426cf0ccc524218631bf9bf1",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.4.3.1",
+      "webApiVersion": "2.8.5",
+      "sourceSha": "6c546df70bbbb5602ddb91fbbd0e3762e75472c3",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.4.4",
+      "webApiVersion": "2.8.5",
+      "sourceSha": "4a56c3f5df344c4984900352a800deefb504ae67",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.4.5",
+      "webApiVersion": "2.8.5",
+      "sourceSha": "f9811ec3b0f727562c6fa5376e8a43ca8c8c8fa3",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.5.0",
+      "webApiVersion": "2.8.18",
+      "sourceSha": "480e3f02cae0ad7b2463e7e188867d747487c0bb",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.5.1",
+      "webApiVersion": "2.8.19",
+      "sourceSha": "927732f1900efcc7a6102c605c513e9f4b7f6454",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.5.2",
+      "webApiVersion": "2.8.19",
+      "sourceSha": "97853f31f25bd427b7f821f16c8b1d7131842db8",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.5.3",
+      "webApiVersion": "2.8.19",
+      "sourceSha": "04bd33e5b3754c7e070a9fa0cb5df294ac57b219",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.5.4",
+      "webApiVersion": "2.8.19",
+      "sourceSha": "c8763f08da080cd9a9ea22caafff999ee54cbaa2",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.5.5",
+      "webApiVersion": "2.8.19",
+      "sourceSha": "7d7097b024788814cf74b05ca6857d074467285e",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.6.0",
+      "webApiVersion": "2.9.2",
+      "sourceSha": "7bc49423c7e6a69554a27b75fdc2f4ea7606ad84",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.6.1",
+      "webApiVersion": "2.9.3",
+      "sourceSha": "92f810873a2ae2387ddcd82e657c7ba1741b0efe",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.6.2",
+      "webApiVersion": "2.9.3",
+      "sourceSha": "1773b1ea05d60ccdb2c5185e48410267c5245632",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.6.3",
+      "webApiVersion": "2.9.3",
+      "sourceSha": "cfa7a6db46e8376273ec9ae833cf637fe7670b4e",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.6.4",
+      "webApiVersion": "2.9.3",
+      "sourceSha": "785320e7f6a5e228caf817b01dca69da0b83a012",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.6.5",
+      "webApiVersion": "2.9.3",
+      "sourceSha": "5e81347933adec219dab27a503f8dc9c4a1c522d",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.6.6",
+      "webApiVersion": "2.9.3",
+      "sourceSha": "c01265c4cffe98db2ee2fba651f7f254ca8afbec",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "4.6.7",
+      "webApiVersion": "2.9.3",
+      "sourceSha": "839bc696d066aca34ebd994ee1673c4b2d5afd7b",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "5.0.0",
+      "webApiVersion": "2.11.2",
+      "sourceSha": "cce295faeb27ebf9d57498ac5e35490c845b9d4f",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "5.0.1",
+      "webApiVersion": "2.11.2",
+      "sourceSha": "94136262a84293da0d8504724e7143df0d0baa12",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "5.0.2",
+      "webApiVersion": "2.11.2",
+      "sourceSha": "15b60912610d5a1e6712013079d3b2db4b78b85d",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "5.0.3",
+      "webApiVersion": "2.11.2",
+      "sourceSha": "0188e11dd7ece1ee8b6004145c4437d7455745d4",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "5.0.4",
+      "webApiVersion": "2.11.2",
+      "sourceSha": "100ee5dbe0eacfff30147ad1ee666d5c5eb35eb5",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "5.0.5",
+      "webApiVersion": "2.11.2",
+      "sourceSha": "4b794a9930435a8c011601365667b9f7de9d1e64",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "5.1.0",
+      "webApiVersion": "2.11.4",
+      "sourceSha": "da87be2b12893dfb769df8124afeb064f099dc71",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "5.1.1",
+      "webApiVersion": "2.11.4",
+      "sourceSha": "ea9f3800ce70ded6db66b2c9f0d2f0513399e969",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "5.1.2",
+      "webApiVersion": "2.11.4",
+      "sourceSha": "202ff8a099cfc1ca9421e7d30944b3c58a4a47cd",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "5.1.3",
+      "webApiVersion": "2.11.4",
+      "sourceSha": "6ede4e49ff1432ade8a75d37daf076b6000e2a57",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "5.1.4",
+      "webApiVersion": "2.11.4",
+      "sourceSha": "33e5e772200b5e2f9d23af8870ce7436ec216faa",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "5.2.0",
+      "webApiVersion": "2.15.1",
+      "sourceSha": "b2270f7f6fec1b10117564f642b961621ae0058a",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "5.2.1",
+      "webApiVersion": "2.15.1",
+      "sourceSha": "7e8db603f207fec1ee5dc192cacf44fed264452c",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "5.2.2",
+      "webApiVersion": "2.15.1",
+      "sourceSha": "89aad1aad9fc7d819a28db3dc01f19c6b1f1be8c",
+      "stable": true,
+      "officialWeiGSupport": true
+    },
+    {
+      "qbVersion": "5.2.3",
+      "webApiVersion": "2.15.1",
+      "sourceSha": "0b63c3d17373f6132ea211c9dcd4241284ccdfaf",
+      "stable": true,
+      "officialWeiGSupport": true
+    }
+  ],
+  "compatFiles": {
+    "torrent": "data/torrent-compat.json",
+    "detail": "data/detail-compat.json",
+    "actions": "data/source-actions.json",
+    "settings": "data/settings-compat.json",
+    "rss": "data/rss-compat.json"
+  },
+  "catalogIdentity": {
+    "supportFloor": "4.1.0",
+    "latestAdmittedStable": "5.2.3",
+    "releaseCount": 65,
+    "releaseSetSha256": "67abde3a4649d1142d798d5d3c14eb53b1f1eaf7fba4cf14d5cdebeb03161888",
+    "sourceCatalogSha256": "e560d015965c281605775fca0b87690836a8a5001bf7cb40a3f62c980f54a5e4"
+  },
+  "domainRelations": {
+    "schemaVersion": 1,
+    "domains": [
+      "torrent",
+      "detail",
+      "actions",
+      "settings",
+      "rss",
+      "locale",
+      "copy"
+    ],
+    "specialStable": {
+      "4.1.9.1": {
+        "equivalent": {
+          "torrent": "4.1.9",
+          "detail": "4.1.9",
+          "actions": "4.1.9",
+          "settings": "4.1.9",
+          "rss": "4.1.9",
+          "locale": "4.1.9",
+          "copy": "4.1.9"
+        },
+        "evidence": "upstream-source-diff:no-webui-webapi-preferences-relevant-diff"
+      },
+      "4.3.0.1": {
+        "equivalent": {
+          "torrent": "4.3.0",
+          "detail": "4.3.0",
+          "actions": "4.3.0",
+          "settings": "4.3.0",
+          "rss": "4.3.0",
+          "locale": "4.3.0",
+          "copy": "4.3.0"
+        },
+        "evidence": "upstream-source-diff:no-webui-webapi-preferences-relevant-diff"
+      },
+      "4.3.4.1": {
+        "exact": [
+          "torrent",
+          "detail",
+          "actions",
+          "settings",
+          "rss",
+          "locale",
+          "copy"
+        ],
+        "evidence": "upstream-source-diff:webui-dynamicTable.js-relevant-diff"
+      },
+      "4.4.3.1": {
+        "exact": [
+          "torrent",
+          "detail",
+          "actions",
+          "settings",
+          "rss",
+          "locale",
+          "copy"
+        ],
+        "evidence": "upstream-source-diff:official-translation-relevant-diff"
+      }
+    }
+  }
+}

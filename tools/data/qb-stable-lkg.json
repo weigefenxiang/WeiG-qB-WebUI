@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "supportFloor": "4.1.0",
+  "latestAdmittedStable": "5.2.3",
+  "profileCount": 65,
+  "catalogPath": "tests/fixtures/qb-release-catalog.lkg.json",
+  "catalogSha256": "b28013434435cb21c1d21da6d7dc96bb3db0d72f699ab627714501b6259e4dfc",
+  "seedEvidence": {
+    "weiGCommit": "b16016313316fd4e0decb1c04cecefc5b13bd77d",
+    "ciRunId": 35537903977,
+    "artifactName": "qb-release-catalog-base-b16016313316fd4e0decb1c04cecefc5b13bd77d",
+    "verifiedDate": "2026-09-20",
+    "mode": "same-stable-source-refresh"
+  }
+}

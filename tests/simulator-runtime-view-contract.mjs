@@ -1,0 +1,162 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {
+  createCategory,createWorld,listTorrents,mainData,removeCategories,transferInfo
+} from '../simulator/core/engine.js';
+import {
+  listTorrentsSnapshot,mainDataSnapshot,runtimeSnapshotStats,transferSnapshot
+} from '../simulator/core/runtime-view.js';
+import {resolveEndpointContract} from '../simulator/protocol/endpoint-contracts.js';
+
+const baseNow=1700000000000;
+const profile={qbVersion:'5.2.3',webApiVersion:'2.15.1'};
+function make(seed='runtime-view'){return createWorld({profile,count:5000,seed,now:baseNow});}
+function contract(world,path){return resolveEndpointContract(world.profile,path);}
+
+{
+  const world=make('shared-snapshot');
+  const now=baseNow+2500;
+  const transfer=transferSnapshot(world,now);
+  const main=mainDataSnapshot(world,0,now+100,contract(world,'sync/maindata'));
+  const rows=listTorrentsSnapshot(world,{sort:'added_on',reverse:'true',limit:50,offset:0},now+200);
+  const stats=runtimeSnapshotStats(world);
+  assert.equal(stats.snapshotIntervalMs,2000,'5000-Torrent worlds must use the low-power two-second snapshot cadence');
+  assert.equal(stats.advanceRuns,1,'transfer/info, sync/maindata and torrents/info within one two-second snapshot must share one world advance');
+  assert.equal(rows.length,50);
+  assert.equal(Object.keys(main.torrents).length,5000,'full sync snapshot must still expose the full virtual library');
+  assert.equal(main.server_state.dl_info_speed,transfer.dl_info_speed,'mainData server_state and transfer/info must read the same world snapshot');
+  assert.ok(stats.sortedRows>=5000,'sorted library request must project each candidate once');
+}
+
+{
+  const world=createWorld({profile,count:64,seed:'small-world-cadence',now:baseNow});
+  transferSnapshot(world,baseNow+1100);
+  let stats=runtimeSnapshotStats(world);
+  assert.equal(stats.snapshotIntervalMs,1000,'small worlds must retain the responsive one-second snapshot cadence');
+  assert.equal(stats.advanceRuns,1);
+  transferSnapshot(world,baseNow+1600);
+  stats=runtimeSnapshotStats(world);
+  assert.equal(stats.advanceRuns,1,'reads inside the same small-world one-second bucket must coalesce');
+  transferSnapshot(world,baseNow+2100);
+  stats=runtimeSnapshotStats(world);
+  assert.equal(stats.advanceRuns,2,'small worlds must advance again at the next one-second boundary');
+}
+
+{
+  const world=make('page-projection');
+  const now=baseNow+2000;
+  const first=listTorrentsSnapshot(world,{limit:50,offset:0},now);
+  const stats=runtimeSnapshotStats(world);
+  assert.equal(first.length,50);
+  assert.equal(stats.projectedRows,50,'unsorted first page must serialize only the requested 50 rows, not all 5000 torrents');
+  assert.equal(stats.sortedRows,0,'unsorted page must avoid sort projection work entirely');
+}
+
+{
+  const world=make('same-bucket-rate-controls');
+  world.preferences.alt_dl_limit=32;
+  world.preferences.alt_up_limit=16;
+  const normal=transferSnapshot(world,baseNow+100);
+  assert.ok(normal.dl_info_speed>32*1024,'same-bucket control fixture must begin above alternate cap');
+  world.altSpeedMode=true;
+  const alternate=transferSnapshot(world,baseNow+200);
+  assert.ok(alternate.dl_info_speed<=32*1024,'alternate mode changed inside one snapshot bucket must immediately reschedule torrent rates');
+  assert.ok(alternate.up_info_speed<=16*1024,'alternate upload mode must also apply inside the current bucket');
+  world.altSpeedMode=false;
+  world.globalDownloadLimit=48*1024;
+  const limited=transferSnapshot(world,baseNow+300);
+  assert.ok(limited.dl_info_speed<=48*1024,'normal global download limit changed inside one bucket must immediately reschedule rates');
+  const stats=runtimeSnapshotStats(world);
+  assert.equal(stats.advanceRuns,0,'same-bucket control changes must not advance simulation time');
+  assert.equal(stats.controlReschedules,3,'initial same-bucket read plus two control changes should require only three zero-elapsed schedules');
+}
+
+{
+  const legacy=make('semantic-equivalence'),modern=make('semantic-equivalence');
+  const now=baseNow+2000;
+  const legacyRows=listTorrents(legacy,{sort:'added_on',reverse:'true',limit:200,offset:400,now});
+  const snapshotRows=listTorrentsSnapshot(modern,{sort:'added_on',reverse:'true',limit:200,offset:400},now);
+  assert.deepEqual(snapshotRows.map(row=>row.hash),legacyRows.map(row=>row.hash),'optimized sorting must preserve qB torrent ordering exactly');
+  assert.deepEqual(snapshotRows.map(row=>row.state),legacyRows.map(row=>row.state),'optimized projection must preserve version-correct torrent states');
+}
+
+{
+  const legacy=make('transfer-equivalence'),modern=make('transfer-equivalence');
+  const now=baseNow+2000;
+  assert.deepEqual(transferSnapshot(modern,now),transferInfo(legacy,now),'snapshot transfer/info must preserve legacy API values');
+}
+
+{
+  const legacy=make('main-equivalence'),modern=make('main-equivalence');
+  const now=baseNow+2000;
+  const a=mainData(legacy,0,now),b=mainDataSnapshot(modern,0,now,contract(modern,'sync/maindata'));
+  assert.equal(b.full_update,a.full_update);
+  assert.deepEqual(b.server_state,a.server_state,'snapshot mainData server_state must preserve legacy values');
+  assert.deepEqual(Object.keys(b.torrents),Object.keys(a.torrents),'snapshot full sync must preserve torrent membership and order');
+}
+
+{
+  const listWorld=createWorld({profile:{qbVersion:'4.1.2',webApiVersion:'2.0.2'},count:16,seed:'categories-list',now:baseNow});
+  const listFull=mainDataSnapshot(listWorld,0,baseNow+1000,contract(listWorld,'sync/maindata'));
+  assert.ok(Array.isArray(listFull.categories),'sync/maindata categories must be an array before WebAPI 2.1.0');
+  assert.deepEqual(listFull.categories,Object.keys(listWorld.categories).sort((a,b)=>a.localeCompare(b)),'legacy category list must follow upstream ordered-map iteration');
+  assert.ok(!('free_space_on_disk' in listFull.server_state),'sync/maindata must not expose free_space_on_disk before WebAPI 2.1.1');
+  let rid=listWorld.rid;
+  createCategory(listWorld,'AAA','/downloads/aaa');
+  const listAdded=mainDataSnapshot(listWorld,rid,baseNow+1000,contract(listWorld,'sync/maindata'));
+  assert.deepEqual(listAdded.categories,['AAA'],'legacy incremental category additions must remain a name list');
+  rid=listWorld.rid;
+  removeCategories(listWorld,'AAA');
+  const listRemoved=mainDataSnapshot(listWorld,rid,baseNow+1000,contract(listWorld,'sync/maindata'));
+  assert.deepEqual(listRemoved.categories_removed,['AAA'],'legacy incremental category removals must use categories_removed names');
+
+  const mapWorld=createWorld({profile:{qbVersion:'4.1.3',webApiVersion:'2.1.0'},count:16,seed:'categories-map',now:baseNow});
+  const mapFull=mainDataSnapshot(mapWorld,0,baseNow+1000,contract(mapWorld,'sync/maindata'));
+  assert.equal(Array.isArray(mapFull.categories),false,'sync/maindata categories must become a details map at WebAPI 2.1.0');
+  assert.deepEqual(mapFull.categories.Linux,{name:'Linux',savePath:'/downloads/linux'});
+  assert.ok(!('free_space_on_disk' in mapFull.server_state),'WebAPI 2.1.0 must still omit free_space_on_disk');
+  rid=mapWorld.rid;
+  createCategory(mapWorld,'AAA','/downloads/aaa');
+  const mapAdded=mainDataSnapshot(mapWorld,rid,baseNow+1000,contract(mapWorld,'sync/maindata'));
+  assert.deepEqual(mapAdded.categories.AAA,{name:'AAA',savePath:'/downloads/aaa'},'modern incremental category additions must carry category details');
+
+  const freeSpaceWorld=createWorld({profile:{qbVersion:'4.1.4',webApiVersion:'2.1.1'},count:16,seed:'free-space-introduction',now:baseNow});
+  const freeSpaceMain=mainDataSnapshot(freeSpaceWorld,0,baseNow+1000,contract(freeSpaceWorld,'sync/maindata'));
+  assert.equal(freeSpaceMain.server_state.free_space_on_disk,Math.floor(freeSpaceWorld.environment.freeSpace),'sync/maindata must introduce free_space_on_disk at WebAPI 2.1.1');
+}
+
+{
+  const beforeWorld=createWorld({profile:{qbVersion:'4.5.5',webApiVersion:'2.8.19'},count:16,seed:'subcategories-before',now:baseNow});
+  beforeWorld.preferences.use_subcategories=true;
+  const beforeMain=mainDataSnapshot(beforeWorld,0,baseNow+1000,contract(beforeWorld,'sync/maindata'));
+  assert.ok(!('use_subcategories' in beforeMain.server_state),'sync/maindata must not expose use_subcategories before WebAPI 2.9.2 even if preference-like state is present');
+
+  const introducedWorld=createWorld({profile:{qbVersion:'4.6.0',webApiVersion:'2.9.2'},count:16,seed:'subcategories-introduced',now:baseNow});
+  introducedWorld.preferences.use_subcategories=false;
+  const disabledMain=mainDataSnapshot(introducedWorld,0,baseNow+1000,contract(introducedWorld,'sync/maindata'));
+  assert.equal(disabledMain.server_state.use_subcategories,false,'sync/maindata must expose the actual disabled subcategories preference from WebAPI 2.9.2');
+  introducedWorld.preferences.use_subcategories=true;
+  const enabledMain=mainDataSnapshot(introducedWorld,0,baseNow+2000,contract(introducedWorld,'sync/maindata'));
+  assert.equal(enabledMain.server_state.use_subcategories,true,'sync/maindata must mirror the enabled subcategories preference rather than hard-code true');
+
+  const retainedWorld=createWorld({profile:{qbVersion:'5.1.4',webApiVersion:'2.11.4'},count:16,seed:'subcategories-retained',now:baseNow});
+  retainedWorld.preferences.use_subcategories=true;
+  const retainedMain=mainDataSnapshot(retainedWorld,0,baseNow+1000,contract(retainedWorld,'sync/maindata'));
+  assert.equal(retainedMain.server_state.use_subcategories,true,'sync/maindata must retain preference-driven use_subcategories before WebAPI 2.15.0');
+
+  const removedWorld=createWorld({profile:{qbVersion:'5.2.0',webApiVersion:'2.15.0'},count:16,seed:'subcategories-removed',now:baseNow});
+  removedWorld.preferences.use_subcategories=true;
+  const removedMain=mainDataSnapshot(removedWorld,0,baseNow+1000,contract(removedWorld,'sync/maindata'));
+  assert.ok(!('use_subcategories' in removedMain.server_state),'sync/maindata must remove use_subcategories from WebAPI 2.15.0 onward');
+}
+
+{
+  const router=fs.readFileSync(new URL('../simulator/protocol/router.js',import.meta.url),'utf8');
+  assert.match(router,/transferSnapshot\(world,now\)/,'router transfer/info must use the shared snapshot path');
+  assert.match(router,/mainDataSnapshot\(world,url\.searchParams\.get\('rid'\)\|\|0,now,contract\)/,'router sync/maindata must use the shared snapshot path with Endpoint Contract semantics');
+  assert.match(router,/listTorrentsSnapshot\(world,query,now,\{trackerContract\}\)/,'router torrents/info must use the shared optimized projection path with explicit tracker semantics');
+  assert.doesNotMatch(router,/\bmainData\(world,/,'router hot path must not fall back to legacy mainData world advancement');
+  assert.doesNotMatch(router,/\btransferInfo\(world/,'router hot path must not fall back to legacy transferInfo world advancement');
+}
+
+console.log('Virtual qB runtime-view contract passed: shared snapshots preserve performance while Endpoint Contract owns sync/maindata category shape, free-space introduction, and subcategories lifecycle semantics.');

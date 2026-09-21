@@ -1,0 +1,291 @@
+#!/usr/bin/env node
+import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
+import {execFileSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
+import {extractQbSettingsTranslationFacts,translationSourcesForPreferenceUi} from './qb-settings-translation-source.mjs';
+import {extractQbPreferencesNativeSurface} from './qb-preferences-surface-source.mjs';
+import {extractQbOwnedUiFacts,translationContextsForQbOwnedUi,translationSourcesForQbOwnedUi} from './qb-owned-ui-source.mjs';
+import {buildQbNativeQmRecoveryEvidence} from './qb-native-qm-recovery.mjs';
+import {extractTorrentTableColumns} from './qb-torrent-fields-parser.mjs';
+import {torrentDetailTranslationRefs} from './qb-detail-surface-parsers.mjs';
+import {detailControlTranslationRefs} from './qb-detail-control-parsers.mjs';
+import {rssSurfaceTranslationRefs} from './qb-rss-surface-source.mjs';
+import {auditQbtSourceEntities,extractQbtSourceRefs,qbSourceRefKey} from './qb-source-text.mjs';
+
+function unique(values) {
+  const out=[];
+  for (const value of values || []) {
+    const item=String(value || '').trim();
+    if (item && !out.includes(item)) out.push(item);
+  }
+  return out;
+}
+function localeValues(profile) { return unique((Array.isArray(profile?.webuiLocales) ? profile.webuiLocales : []).map((item) => typeof item === 'string' ? item : item?.value)); }
+function languageBase(value) { return String(value || '').trim().replace('-', '_').split('_')[0].split('@')[0].toLowerCase(); }
+function stableJson(value) { return JSON.stringify(value); }
+function contentHash(value) { return crypto.createHash('sha256').update(stableJson(value)).digest('hex'); }
+function refsFromPreferences(preferences) {
+  return Object.values(preferences||{}).flatMap((item)=>[item?.title,item?.description]).filter((ref)=>ref?.source&&ref?.context);
+}
+function refsFromPreferencesSource(source) {
+  const out=[],seen=new Set();
+  for(const ref of extractQbtSourceRefs(source)){const identity=qbSourceRefKey(ref.context,ref.source);if(!seen.has(identity)){seen.add(identity);out.push(ref);}}
+  return out;
+}
+function refsFromOwnedUi(ui) { return Object.values(ui||{}).filter((ref)=>ref?.source&&ref?.context); }
+function englishSourceMessages(preferences,ui) {
+  const out=[];
+  const seen=new Set();
+  for (const ref of [...refsFromPreferences(preferences),...refsFromOwnedUi(ui)]) {
+    const identity=qbSourceRefKey(ref.context,ref.source);
+    if (seen.has(identity)) continue;
+    seen.add(identity);
+    out.push({context:ref.context,source:ref.source,comment:null,translation:ref.source,numerus:false});
+  }
+  return out;
+}
+
+function localeIdentity(value) {
+  const raw=String(value || '').trim();
+  const at=raw.indexOf('@');
+  const main=(at >= 0 ? raw.slice(0,at) : raw).replace(/-/g,'_');
+  const modifierRaw=at >= 0 ? raw.slice(at + 1).trim().toLowerCase() : '';
+  const modifier=modifierRaw === 'latin' ? 'latn' : modifierRaw;
+  const parts=main.split('_').filter(Boolean);
+  return {
+    language:String(parts.shift() || '').toLowerCase(),
+    region:parts.join('_').toLowerCase(),
+    modifier
+  };
+}
+
+function translationResource(pathname) {
+  const value=String(pathname || '').trim();
+  let match=value.match(/(?:^|\/)src\/webui\/www\/translations\/webui_(.+)\.ts$/);
+  if (match) return {path:value,locale:match[1],kind:'webui'};
+  match=value.match(/(?:^|\/)src\/lang\/qbittorrent_(.+)\.ts$/);
+  if (match) return {path:value,locale:match[1],kind:'app'};
+  return null;
+}
+
+function resourceMatchScore(requested,candidate) {
+  const want=localeIdentity(requested);
+  const got=localeIdentity(candidate);
+  if (!want.language || want.language !== got.language) return 0;
+  if (want.modifier || got.modifier) {
+    if (!want.modifier || !got.modifier || want.modifier !== got.modifier) return 0;
+  }
+  if (want.region === got.region) return 3;
+  if (want.region && !got.region) return 2;
+  return 0;
+}
+
+function translationSourceLanguage(source) {
+  const match=String(source || '').match(/<TS\b[^>]*\blanguage\s*=\s*["']([^"']+)["']/i);
+  return match ? String(match[1] || '').trim() : null;
+}
+
+function resolveDeclaredResourcePath(locale,family,readSource) {
+  if (typeof readSource !== 'function') return null;
+  const requestedLanguage=localeIdentity(locale).language;
+  if (!requestedLanguage) return null;
+  const scored=family
+    .filter((item)=>localeIdentity(item.locale).language === requestedLanguage)
+    .map((item)=>{
+      const declared=translationSourceLanguage(readSource(item.path));
+      return {...item,declared,score:declared ? resourceMatchScore(locale,declared) : 0};
+    })
+    .filter((item)=>item.score > 0);
+  if (!scored.length) return null;
+  const best=Math.max(...scored.map((item)=>item.score));
+  const matches=scored.filter((item)=>item.score === best);
+  if (matches.length !== 1) {
+    throw new Error(`Ambiguous official qB translation source declaration for ${locale}: ${matches.map((item)=>`${item.path} (${item.declared})`).join(', ')}`);
+  }
+  return matches[0].path;
+}
+
+export function resolveQbTranslationResourcePath(locale, paths = [], readSource = null) {
+  const resources=(paths || []).map(translationResource).filter(Boolean);
+  for (const kind of ['webui','app']) {
+    const family=resources.filter((item)=>item.kind === kind);
+    const scored=family
+      .map((item)=>({...item,score:resourceMatchScore(locale,item.locale)}))
+      .filter((item)=>item.score > 0);
+    if (scored.length) {
+      const best=Math.max(...scored.map((item)=>item.score));
+      const matches=scored.filter((item)=>item.score === best);
+      if (matches.length === 1) return matches[0].path;
+      const declared=resolveDeclaredResourcePath(locale,family,readSource);
+      if (declared) return declared;
+      throw new Error(`Ambiguous official qB translation source for ${locale}: ${matches.map((item)=>item.path).join(', ')}`);
+    }
+    const declared=resolveDeclaredResourcePath(locale,family,readSource);
+    if (declared) return declared;
+  }
+  return null;
+}
+
+export function buildQbSettingsTranslationOverlay(catalog, readReleaseSources, options = {}) {
+  if (!Array.isArray(catalog) || !catalog.length) throw new Error('qB Settings translation overlay requires a non-empty exact-release catalog.');
+  if (typeof readReleaseSources !== 'function') throw new Error('qB Settings translation overlay requires an exact-release source loader.');
+  const profiles=[];
+  const sets={};
+  const seen=new Set();
+  const recoveryEntries=[];
+  const recoveryEnabled=options.recoveryEvidence === true;
+  for (const profile of catalog) {
+    const qbVersion=String(profile?.qbVersion || '').trim();
+    const sourceSha=String(profile?.sourceSha || '').trim();
+    const tag=String(profile?.tag || (qbVersion ? `release-${qbVersion}` : '')).trim();
+    if (!qbVersion || !sourceSha || !tag) throw new Error('Each qB Settings translation profile must bind qbVersion + sourceSha + tag.');
+    const identity=`${qbVersion}\u0000${sourceSha}`;
+    if (seen.has(identity)) throw new Error(`Duplicate qB Settings translation profile identity: ${qbVersion} ${sourceSha}`);
+    seen.add(identity);
+    const releaseSources=readReleaseSources({profile,qbVersion,sourceSha,tag}) || {};
+    const sourceTextAudit=auditQbtSourceEntities(releaseSources.preferencesSource||'');
+    if(sourceTextAudit.unresolved.length)throw new Error(`${qbVersion}: unresolved qB Preferences QBT_TR entities: ${sourceTextAudit.unresolved.join(', ')}`);
+    const preferenceKeys=(profile.preferenceDescriptors || []).map((item) => item?.key).filter(Boolean);
+    const nativePreferences=extractQbPreferencesNativeSurface({
+      preferencesSource:releaseSources.preferencesSource || '',
+      toolbarSource:releaseSources.toolbarSource || '',
+      preferenceDescriptors:profile.preferenceDescriptors || []
+    });
+    const preferences=Object.fromEntries(Object.entries(nativePreferences.preferences || {}).map(([key,item])=>[key,{
+      controlId:String(item?.control?.id || ''),
+      evidence:'canonical-source-owner',
+      title:item?.title || null,
+      ...(item?.description ? {description:item.description} : {})
+    }]));
+    const ui=extractQbOwnedUiFacts({
+      preferencesSource:releaseSources.preferencesSource || '',
+      toolbarSource:releaseSources.toolbarSource || '',
+      filtersSource:releaseSources.filtersSource || '',
+      dynamicTableSource:releaseSources.dynamicTableSource || ''
+    });
+    Object.assign(ui,torrentDetailTranslationRefs(profile.torrentDetailUi),detailControlTranslationRefs(profile.torrentDetailUi));
+    for(const ref of rssSurfaceTranslationRefs(profile.rssDownloaderUi))ui['rss.downloader.copy.'+contentHash([ref.context,ref.source]).slice(0,20)]=ref;
+    const ownedIdentities=new Set([...refsFromPreferences(preferences),...refsFromOwnedUi(ui)].map(ref=>qbSourceRefKey(ref.context,ref.source)));
+    for(const ref of refsFromPreferencesSource(releaseSources.preferencesSource || '')){
+      const identity=qbSourceRefKey(ref.context,ref.source);if(ownedIdentities.has(identity))continue;ownedIdentities.add(identity);
+      ui['settings.preferences.copy.'+contentHash([ref.context,ref.source]).slice(0,20)]=ref;
+    }
+    const ownsDynamicTableSource=Object.hasOwn(releaseSources,'dynamicTableSource');
+    const torrentTableColumns=ownsDynamicTableSource
+      ? extractTorrentTableColumns(releaseSources.dynamicTableSource || '',`${qbVersion} dynamicTable owned UI`)
+      : null;
+    const sourceStrings=unique([...translationSourcesForPreferenceUi(preferences),...translationSourcesForQbOwnedUi(ui)]);
+    const contexts=unique([
+      ...Object.values(preferences).flatMap((item) => [item?.title?.context,item?.description?.context]).filter(Boolean),
+      ...translationContextsForQbOwnedUi(ui)
+    ]);
+    const locales=localeValues(profile);
+    if (!locales.length) throw new Error(`${qbVersion}: exact WebUI locale facts are unresolved.`);
+    const ownsFullUiSource=Object.hasOwn(releaseSources,'toolbarSource')||Object.hasOwn(releaseSources,'filtersSource')||Object.hasOwn(releaseSources,'dynamicTableSource');
+    if (ownsFullUiSource&&!Object.keys(ui).length) throw new Error(`${qbVersion}: source-derived qB-owned UI copy is unresolved.`);
+    const translations={};
+    for (const locale of locales) {
+      const source=typeof releaseSources.translationSource === 'function' ? releaseSources.translationSource(locale) : '';
+      let payload;
+      if (!source && languageBase(locale) === 'en') {
+        payload={messages:englishSourceMessages(preferences,ui)};
+      }
+      else {
+        if (!source) throw new Error(`${qbVersion}: missing official WebUI translation source for ${locale}.`);
+        if (recoveryEnabled) recoveryEntries.push({qbVersion,sourceSha,locale,translationSource:source});
+        const facts=extractQbSettingsTranslationFacts({qbVersion,sourceSha,locale,translationSource:source,contexts,sources:sourceStrings});
+        payload={messages:facts.messages};
+      }
+      const hash=contentHash(payload);
+      if (!sets[hash]) sets[hash]=payload;
+      else if (stableJson(sets[hash]) !== stableJson(payload)) throw new Error(`Settings translation hash collision: ${hash}`);
+      translations[locale]=hash;
+    }
+    profiles.push({qbVersion,sourceSha,source:'qb-upstream-preferences-ui',ownedUiSource:'qb-upstream-webui-source-context',mappedPreferences:Object.keys(preferences).length,totalPreferences:preferenceKeys.length,sourceTextAudit,preferences,ui,translations,...(torrentTableColumns?{torrentTableColumns}:{})});
+  }
+  const recoveryEvidence=recoveryEnabled?buildQbNativeQmRecoveryEvidence(recoveryEntries):null;
+  return {schemaVersion:1,source:'qb-upstream-preferences-ui+webui-ts',profiles,sets,recoveryEvidence};
+}
+
+export function applyQbSettingsTranslationOverlay(catalog, overlay) {
+  if (!Array.isArray(catalog)) throw new Error('qB release catalog must be an array.');
+  if (!overlay || overlay.schemaVersion !== 1 || !Array.isArray(overlay.profiles) || !overlay.sets) throw new Error('Invalid qB Settings translation overlay.');
+  const overlayByIdentity=new Map(overlay.profiles.map((item)=>[`${item.qbVersion}\u0000${item.sourceSha}`,item]));
+  const emitted=new Set();
+  return catalog.map((profile)=>{
+    const identity=`${profile?.qbVersion || ''}\u0000${profile?.sourceSha || ''}`;
+    const item=overlayByIdentity.get(identity);
+    if (!item) throw new Error(`${profile?.qbVersion || 'unknown'}: missing exact Settings translation overlay profile.`);
+    const localSets={};
+    for (const hash of Object.values(item.translations || {})) {
+      if (emitted.has(hash)) continue;
+      if (!overlay.sets[hash]) throw new Error(`${profile.qbVersion}: missing Settings translation set ${hash}.`);
+      emitted.add(hash);
+      localSets[hash]=overlay.sets[hash];
+    }
+    return {
+      ...profile,
+      settingsUiSource:item.source,
+      settingsUiMappedPreferences:item.mappedPreferences,
+      settingsUiTotalPreferences:item.totalPreferences,
+      settingsSourceTextAudit:item.sourceTextAudit,
+      settingsUi:item.preferences,
+      qbOwnedUiSource:item.ownedUiSource,
+      qbOwnedUi:item.ui,
+      settingsTranslations:item.translations,
+      ...(Array.isArray(item.torrentTableColumns)?{torrentTableColumns:item.torrentTableColumns}:{}),
+      ...(Object.keys(localSets).length ? {settingsTranslationSets:localSets} : {})
+    };
+  });
+}
+
+function git(root,...args) { return execFileSync('git',['-C',root,...args],{encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim(); }
+function showMaybe(root,tag,file) { try { return git(root,'show',`${tag}:${file}`); } catch { return ''; } }
+function preferencesSource(root,tag) { return showMaybe(root,tag,'src/webui/www/private/views/preferences.html') || showMaybe(root,tag,'src/webui/www/private/preferences_content.html') || showMaybe(root,tag,'src/webui/www/private/preferences.html'); }
+function toolbarSource(root,tag) { return showMaybe(root,tag,'src/webui/www/private/views/preferencesToolbar.html') || showMaybe(root,tag,'src/webui/www/private/preferences.html'); }
+function filtersSource(root,tag) { return showMaybe(root,tag,'src/webui/www/private/views/filters.html') || showMaybe(root,tag,'src/webui/www/private/filters.html'); }
+function dynamicTableSource(root,tag) { return showMaybe(root,tag,'src/webui/www/private/scripts/dynamicTable.js'); }
+function translationPaths(root,tag) {
+  let output='';
+  try { output=git(root,'ls-tree','-r','--name-only',tag,'src/webui/www/translations','src/lang'); }
+  catch { return []; }
+  return output.split(/\r?\n/).map((item)=>item.trim()).filter(Boolean);
+}
+export function buildQbSettingsTranslationOverlayFromClone(catalog,qbRoot) {
+  return buildQbSettingsTranslationOverlay(catalog,({tag})=>{
+    const paths=translationPaths(qbRoot,tag);
+    const sourceCache=new Map();
+    const sourceOf=(resourcePath)=>{
+      if (!sourceCache.has(resourcePath)) sourceCache.set(resourcePath,showMaybe(qbRoot,tag,resourcePath));
+      return sourceCache.get(resourcePath);
+    };
+    return {
+      preferencesSource:preferencesSource(qbRoot,tag),
+      toolbarSource:toolbarSource(qbRoot,tag),
+      filtersSource:filtersSource(qbRoot,tag),
+      dynamicTableSource:dynamicTableSource(qbRoot,tag),
+      translationSource:(locale)=>{
+        const resourcePath=resolveQbTranslationResourcePath(locale,paths,sourceOf);
+        return resourcePath ? sourceOf(resourcePath) : '';
+      }
+    };
+  },{recoveryEvidence:true});
+}
+
+const isMain=process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
+if (isMain) {
+  try {
+    const qbRoot=path.resolve(process.argv[2] || process.env.QB_UPSTREAM_DIR || '');
+    const catalogPath=path.resolve(process.argv[3] || '');
+    const outputPath=path.resolve(process.argv[4] || '');
+    if (!qbRoot || !fs.existsSync(qbRoot) || !catalogPath || !fs.existsSync(catalogPath) || !outputPath) throw new Error('Usage: node tools/qb-settings-translation-overlay.mjs <qBittorrent-clone> <catalog.json> <output.json>');
+    const catalog=JSON.parse(fs.readFileSync(catalogPath,'utf8'));
+    const overlay=buildQbSettingsTranslationOverlayFromClone(catalog,qbRoot);
+    fs.mkdirSync(path.dirname(outputPath),{recursive:true});
+    fs.writeFileSync(outputPath,JSON.stringify(overlay,null,2)+'\n','utf8');
+    const mapped=overlay.profiles.reduce((sum,item)=>sum+item.mappedPreferences,0),total=overlay.profiles.reduce((sum,item)=>sum+item.totalPreferences,0),ui=overlay.profiles.reduce((sum,item)=>sum+Object.keys(item.ui||{}).length,0);
+    console.log(`Generated exact qB Settings translation overlay for ${overlay.profiles.length} releases; source-proven preference labels ${mapped}/${total}; qB-owned UI refs ${ui}; deduplicated translation sets ${Object.keys(overlay.sets).length}; recovery TS routes ${overlay.recoveryEvidence?.releases?.length||0}.`);
+  } catch (error) { console.error(error?.message || error); process.exitCode=1; }
+}

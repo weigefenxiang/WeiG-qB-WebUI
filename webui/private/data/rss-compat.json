@@ -1,0 +1,1366 @@
+{
+  "schemaVersion": 1,
+  "source": "qb-upstream-rss-downloader",
+  "releaseSet": {
+    "count": 65,
+    "first": "4.1.0",
+    "last": "5.2.3",
+    "identitySha256": "5755c4c8f3e2098dee0fa9febfe27a37e74bf38b23806da88abc941ca098d545"
+  },
+  "sourceFacts": {
+    "rssDownloaderUi": [
+      {
+        "from": "4.1.0",
+        "value": {
+          "available": true,
+          "source": "qb-upstream-rss-downloader-gui-api",
+          "collection": {
+            "listControlId": "listRules",
+            "addControlId": "addRuleBtn",
+            "removeControlId": "removeRuleBtn"
+          },
+          "fields": [
+            {
+              "key": "useRegex",
+              "controlId": "checkRegex",
+              "kind": "checkbox",
+              "path": [
+                "rule",
+                "useRegex"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Use Regular Expressions"
+              }
+            },
+            {
+              "key": "smartFilter",
+              "controlId": "checkSmart",
+              "kind": "checkbox",
+              "path": [
+                "rule",
+                "smartFilter"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Use Smart Episode Filter"
+              }
+            },
+            {
+              "key": "mustContain",
+              "controlId": "lineContains",
+              "kind": "text",
+              "path": [
+                "rule",
+                "mustContain"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Must Contain:"
+              }
+            },
+            {
+              "key": "mustNotContain",
+              "controlId": "lineNotContains",
+              "kind": "text",
+              "path": [
+                "rule",
+                "mustNotContain"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Must Not Contain:"
+              }
+            },
+            {
+              "key": "episodeFilter",
+              "controlId": "lineEFilter",
+              "kind": "text",
+              "path": [
+                "rule",
+                "episodeFilter"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Episode Filter:"
+              }
+            },
+            {
+              "key": "category",
+              "controlId": "comboCategory",
+              "kind": "text",
+              "path": [
+                "rule",
+                "assignedCategory"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Assign Category:"
+              }
+            },
+            {
+              "key": "savePath",
+              "controlId": "lineSavePath",
+              "kind": "text",
+              "path": [
+                "rule",
+                "savePath"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Save to:"
+              }
+            },
+            {
+              "key": "ignoreDays",
+              "controlId": "spinIgnorePeriod",
+              "kind": "number",
+              "path": [
+                "rule",
+                "ignoreDays"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Ignore Subsequent Matches for (0 to Disable)"
+              },
+              "min": 0
+            },
+            {
+              "key": "stopped",
+              "controlId": "comboAddPaused",
+              "kind": "triState",
+              "path": [
+                "rule",
+                "addPaused"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Add Paused:"
+              },
+              "options": [
+                {
+                  "value": "default",
+                  "translation": {
+                    "context": "AutomatedRssDownloader",
+                    "source": "Use global settings"
+                  },
+                  "writeValue": null
+                },
+                {
+                  "value": "always",
+                  "translation": {
+                    "context": "AutomatedRssDownloader",
+                    "source": "Always"
+                  },
+                  "writeValue": true
+                },
+                {
+                  "value": "never",
+                  "translation": {
+                    "context": "AutomatedRssDownloader",
+                    "source": "Never"
+                  },
+                  "writeValue": false
+                }
+              ]
+            },
+            {
+              "key": "affectedFeeds",
+              "controlId": "listFeeds",
+              "kind": "feeds",
+              "path": [
+                "rule",
+                "affectedFeeds"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Apply Rule to Feeds:"
+              }
+            }
+          ],
+          "copy": {
+            "rules": {
+              "context": "AutomatedRssDownloader",
+              "source": "Download Rules"
+            },
+            "definition": {
+              "context": "AutomatedRssDownloader",
+              "source": "Rule Definition"
+            },
+            "matching": {
+              "context": "AutomatedRssDownloader",
+              "source": "Matching RSS Articles"
+            },
+            "save": null,
+            "disabled": null
+          }
+        }
+      },
+      {
+        "from": "4.1.1",
+        "value": {
+          "available": true,
+          "source": "qb-upstream-rss-downloader-gui-api",
+          "collection": {
+            "listControlId": "listRules",
+            "addControlId": "addRuleBtn",
+            "removeControlId": "removeRuleBtn"
+          },
+          "fields": [
+            {
+              "key": "useRegex",
+              "controlId": "checkRegex",
+              "kind": "checkbox",
+              "path": [
+                "rule",
+                "useRegex"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Use Regular Expressions"
+              }
+            },
+            {
+              "key": "mustContain",
+              "controlId": "lineContains",
+              "kind": "text",
+              "path": [
+                "rule",
+                "mustContain"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Must Contain:"
+              }
+            },
+            {
+              "key": "mustNotContain",
+              "controlId": "lineNotContains",
+              "kind": "text",
+              "path": [
+                "rule",
+                "mustNotContain"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Must Not Contain:"
+              }
+            },
+            {
+              "key": "episodeFilter",
+              "controlId": "lineEFilter",
+              "kind": "text",
+              "path": [
+                "rule",
+                "episodeFilter"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Episode Filter:"
+              }
+            },
+            {
+              "key": "smartFilter",
+              "controlId": "checkSmart",
+              "kind": "checkbox",
+              "path": [
+                "rule",
+                "smartFilter"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Use Smart Episode Filter"
+              }
+            },
+            {
+              "key": "category",
+              "controlId": "comboCategory",
+              "kind": "text",
+              "path": [
+                "rule",
+                "assignedCategory"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Assign Category:"
+              }
+            },
+            {
+              "key": "savePath",
+              "controlId": "lineSavePath",
+              "kind": "text",
+              "path": [
+                "rule",
+                "savePath"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Save to:"
+              }
+            },
+            {
+              "key": "ignoreDays",
+              "controlId": "spinIgnorePeriod",
+              "kind": "number",
+              "path": [
+                "rule",
+                "ignoreDays"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Ignore Subsequent Matches for (0 to Disable)"
+              },
+              "min": 0
+            },
+            {
+              "key": "stopped",
+              "controlId": "comboAddPaused",
+              "kind": "triState",
+              "path": [
+                "rule",
+                "addPaused"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Add Paused:"
+              },
+              "options": [
+                {
+                  "value": "default",
+                  "translation": {
+                    "context": "AutomatedRssDownloader",
+                    "source": "Use global settings"
+                  },
+                  "writeValue": null
+                },
+                {
+                  "value": "always",
+                  "translation": {
+                    "context": "AutomatedRssDownloader",
+                    "source": "Always"
+                  },
+                  "writeValue": true
+                },
+                {
+                  "value": "never",
+                  "translation": {
+                    "context": "AutomatedRssDownloader",
+                    "source": "Never"
+                  },
+                  "writeValue": false
+                }
+              ]
+            },
+            {
+              "key": "affectedFeeds",
+              "controlId": "listFeeds",
+              "kind": "feeds",
+              "path": [
+                "rule",
+                "affectedFeeds"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Apply Rule to Feeds:"
+              }
+            }
+          ],
+          "copy": {
+            "rules": {
+              "context": "AutomatedRssDownloader",
+              "source": "Download Rules"
+            },
+            "definition": {
+              "context": "AutomatedRssDownloader",
+              "source": "Rule Definition"
+            },
+            "matching": {
+              "context": "AutomatedRssDownloader",
+              "source": "Matching RSS Articles"
+            },
+            "save": null,
+            "disabled": null
+          }
+        }
+      },
+      {
+        "from": "4.3.0",
+        "value": {
+          "available": true,
+          "source": "qb-upstream-rss-downloader",
+          "collection": {
+            "listControlId": "rulesTable",
+            "addControlId": "newRuleButton",
+            "removeControlId": "deleteRuleButton"
+          },
+          "fields": [
+            {
+              "key": "useRegex",
+              "controlId": "useRegEx",
+              "kind": "checkbox",
+              "path": [
+                "rule",
+                "useRegex"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Use Regular Expressions"
+              }
+            },
+            {
+              "key": "mustContain",
+              "controlId": "mustContainText",
+              "kind": "text",
+              "path": [
+                "rule",
+                "mustContain"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Must Contain:"
+              }
+            },
+            {
+              "key": "mustNotContain",
+              "controlId": "mustNotContainText",
+              "kind": "text",
+              "path": [
+                "rule",
+                "mustNotContain"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Must Not Contain:"
+              }
+            },
+            {
+              "key": "episodeFilter",
+              "controlId": "episodeFilterText",
+              "kind": "text",
+              "path": [
+                "rule",
+                "episodeFilter"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Episode Filter:"
+              }
+            },
+            {
+              "key": "smartFilter",
+              "controlId": "useSmartFilter",
+              "kind": "checkbox",
+              "path": [
+                "rule",
+                "smartFilter"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Use Smart Episode Filter"
+              }
+            },
+            {
+              "key": "category",
+              "controlId": "assignCategoryCombobox",
+              "kind": "text",
+              "path": [
+                "rule",
+                "assignedCategory"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Assign Category:"
+              }
+            },
+            {
+              "key": "savePath",
+              "controlId": "saveToText",
+              "kind": "text",
+              "path": [
+                "rule",
+                "savePath"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Save to:"
+              }
+            },
+            {
+              "key": "ignoreDays",
+              "controlId": "ignoreDaysValue",
+              "kind": "number",
+              "path": [
+                "rule",
+                "ignoreDays"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Ignore Subsequent Matches for (0 to Disable)"
+              },
+              "min": 0
+            },
+            {
+              "key": "stopped",
+              "controlId": "addPausedCombobox",
+              "kind": "triState",
+              "path": [
+                "rule",
+                "addPaused"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Add Paused:"
+              },
+              "options": [
+                {
+                  "value": "default",
+                  "translation": {
+                    "context": "AutomatedRssDownloader",
+                    "source": "Use global settings"
+                  },
+                  "writeValue": null
+                },
+                {
+                  "value": "always",
+                  "translation": {
+                    "context": "AutomatedRssDownloader",
+                    "source": "Always"
+                  },
+                  "writeValue": true
+                },
+                {
+                  "value": "never",
+                  "translation": {
+                    "context": "AutomatedRssDownloader",
+                    "source": "Never"
+                  },
+                  "writeValue": false
+                }
+              ]
+            },
+            {
+              "key": "subfolder",
+              "controlId": "creatSubfolderCombobox",
+              "kind": "triState",
+              "path": [
+                "rule",
+                "createSubfolder"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Create Subfolder:"
+              },
+              "options": [
+                {
+                  "value": "default",
+                  "translation": {
+                    "context": "AutomatedRssDownloader",
+                    "source": "Use global settings"
+                  },
+                  "writeValue": null
+                },
+                {
+                  "value": "always",
+                  "translation": {
+                    "context": "AutomatedRssDownloader",
+                    "source": "Always"
+                  },
+                  "writeValue": true
+                },
+                {
+                  "value": "never",
+                  "translation": {
+                    "context": "AutomatedRssDownloader",
+                    "source": "Never"
+                  },
+                  "writeValue": false
+                }
+              ]
+            },
+            {
+              "key": "affectedFeeds",
+              "controlId": "rssDownloaderFeeds",
+              "kind": "feeds",
+              "path": [
+                "rule",
+                "affectedFeeds"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Apply Rule to Feeds:"
+              }
+            }
+          ],
+          "copy": {
+            "rules": {
+              "context": "AutomatedRssDownloader",
+              "source": "Download Rules"
+            },
+            "definition": {
+              "context": "AutomatedRssDownloader",
+              "source": "Rule Definition"
+            },
+            "matching": {
+              "context": "AutomatedRssDownloader",
+              "source": "Matching RSS Articles"
+            },
+            "save": {
+              "context": "HttpServer",
+              "source": "Save"
+            },
+            "disabled": {
+              "context": "AutomatedRssDownloader",
+              "source": "Auto downloading of RSS torrents is disabled now! You can enable it in application settings."
+            }
+          }
+        }
+      },
+      {
+        "from": "4.3.2",
+        "value": {
+          "available": true,
+          "source": "qb-upstream-rss-downloader",
+          "collection": {
+            "listControlId": "rulesTable",
+            "addControlId": "newRuleButton",
+            "removeControlId": "deleteRuleButton"
+          },
+          "fields": [
+            {
+              "key": "useRegex",
+              "controlId": "useRegEx",
+              "kind": "checkbox",
+              "path": [
+                "rule",
+                "useRegex"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Use Regular Expressions"
+              }
+            },
+            {
+              "key": "mustContain",
+              "controlId": "mustContainText",
+              "kind": "text",
+              "path": [
+                "rule",
+                "mustContain"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Must Contain:"
+              }
+            },
+            {
+              "key": "mustNotContain",
+              "controlId": "mustNotContainText",
+              "kind": "text",
+              "path": [
+                "rule",
+                "mustNotContain"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Must Not Contain:"
+              }
+            },
+            {
+              "key": "episodeFilter",
+              "controlId": "episodeFilterText",
+              "kind": "text",
+              "path": [
+                "rule",
+                "episodeFilter"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Episode Filter:"
+              }
+            },
+            {
+              "key": "smartFilter",
+              "controlId": "useSmartFilter",
+              "kind": "checkbox",
+              "path": [
+                "rule",
+                "smartFilter"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Use Smart Episode Filter"
+              }
+            },
+            {
+              "key": "category",
+              "controlId": "assignCategoryCombobox",
+              "kind": "text",
+              "path": [
+                "rule",
+                "assignedCategory"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Assign Category:"
+              }
+            },
+            {
+              "key": "savePath",
+              "controlId": "saveToText",
+              "kind": "text",
+              "path": [
+                "rule",
+                "savePath"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Save to:"
+              }
+            },
+            {
+              "key": "ignoreDays",
+              "controlId": "ignoreDaysValue",
+              "kind": "number",
+              "path": [
+                "rule",
+                "ignoreDays"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Ignore Subsequent Matches for (0 to Disable)"
+              },
+              "min": 0
+            },
+            {
+              "key": "stopped",
+              "controlId": "addPausedCombobox",
+              "kind": "triState",
+              "path": [
+                "rule",
+                "addPaused"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Add Paused:"
+              },
+              "options": [
+                {
+                  "value": "default",
+                  "translation": {
+                    "context": "AutomatedRssDownloader",
+                    "source": "Use global settings"
+                  },
+                  "writeValue": null
+                },
+                {
+                  "value": "always",
+                  "translation": {
+                    "context": "AutomatedRssDownloader",
+                    "source": "Always"
+                  },
+                  "writeValue": true
+                },
+                {
+                  "value": "never",
+                  "translation": {
+                    "context": "AutomatedRssDownloader",
+                    "source": "Never"
+                  },
+                  "writeValue": false
+                }
+              ]
+            },
+            {
+              "key": "layout",
+              "controlId": "contentLayoutCombobox",
+              "kind": "select",
+              "path": [
+                "rule",
+                "torrentContentLayout"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Torrent content layout:"
+              },
+              "options": [
+                {
+                  "value": "Default",
+                  "translation": {
+                    "context": "AutomatedRssDownloader",
+                    "source": "Use global settings"
+                  },
+                  "writeValue": null
+                },
+                {
+                  "value": "Original",
+                  "translation": {
+                    "context": "AutomatedRssDownloader",
+                    "source": "Original"
+                  },
+                  "writeValue": "Original"
+                },
+                {
+                  "value": "Subfolder",
+                  "translation": {
+                    "context": "AutomatedRssDownloader",
+                    "source": "Create subfolder"
+                  },
+                  "writeValue": "Subfolder"
+                },
+                {
+                  "value": "NoSubfolder",
+                  "translation": {
+                    "context": "AutomatedRssDownloader",
+                    "source": "Don't create subfolder"
+                  },
+                  "writeValue": "NoSubfolder"
+                }
+              ]
+            },
+            {
+              "key": "affectedFeeds",
+              "controlId": "rssDownloaderFeeds",
+              "kind": "feeds",
+              "path": [
+                "rule",
+                "affectedFeeds"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Apply Rule to Feeds:"
+              }
+            }
+          ],
+          "copy": {
+            "rules": {
+              "context": "AutomatedRssDownloader",
+              "source": "Download Rules"
+            },
+            "definition": {
+              "context": "AutomatedRssDownloader",
+              "source": "Rule Definition"
+            },
+            "matching": {
+              "context": "AutomatedRssDownloader",
+              "source": "Matching RSS Articles"
+            },
+            "save": {
+              "context": "HttpServer",
+              "source": "Save"
+            },
+            "disabled": {
+              "context": "AutomatedRssDownloader",
+              "source": "Auto downloading of RSS torrents is disabled now! You can enable it in application settings."
+            }
+          }
+        }
+      },
+      {
+        "from": "4.6.0",
+        "value": {
+          "available": true,
+          "source": "qb-upstream-rss-downloader",
+          "collection": {
+            "listControlId": "rulesTable",
+            "addControlId": "newRuleButton",
+            "removeControlId": "deleteRuleButton"
+          },
+          "fields": [
+            {
+              "key": "useRegex",
+              "controlId": "useRegEx",
+              "kind": "checkbox",
+              "path": [
+                "rule",
+                "useRegex"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Use Regular Expressions"
+              }
+            },
+            {
+              "key": "mustContain",
+              "controlId": "mustContainText",
+              "kind": "text",
+              "path": [
+                "rule",
+                "mustContain"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Must Contain:"
+              }
+            },
+            {
+              "key": "mustNotContain",
+              "controlId": "mustNotContainText",
+              "kind": "text",
+              "path": [
+                "rule",
+                "mustNotContain"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Must Not Contain:"
+              }
+            },
+            {
+              "key": "episodeFilter",
+              "controlId": "episodeFilterText",
+              "kind": "text",
+              "path": [
+                "rule",
+                "episodeFilter"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Episode Filter:"
+              }
+            },
+            {
+              "key": "smartFilter",
+              "controlId": "useSmartFilter",
+              "kind": "checkbox",
+              "path": [
+                "rule",
+                "smartFilter"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Use Smart Episode Filter"
+              }
+            },
+            {
+              "key": "category",
+              "controlId": "assignCategoryCombobox",
+              "kind": "text",
+              "path": [
+                "torrentParams",
+                "category"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Assign Category:"
+              }
+            },
+            {
+              "key": "tags",
+              "controlId": "ruleAddTags",
+              "kind": "tags",
+              "path": [
+                "torrentParams",
+                "tags"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Add Tags:"
+              }
+            },
+            {
+              "key": "savePath",
+              "controlId": "saveToText",
+              "kind": "text",
+              "path": [
+                "torrentParams",
+                "save_path"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Save to:"
+              }
+            },
+            {
+              "key": "ignoreDays",
+              "controlId": "ignoreDaysValue",
+              "kind": "number",
+              "path": [
+                "rule",
+                "ignoreDays"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Ignore Subsequent Matches for (0 to Disable)"
+              },
+              "min": 0
+            },
+            {
+              "key": "stopped",
+              "controlId": "addPausedCombobox",
+              "kind": "triState",
+              "path": [
+                "torrentParams",
+                "stopped"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Add Paused:"
+              },
+              "options": [
+                {
+                  "value": "default",
+                  "translation": {
+                    "context": "AutomatedRssDownloader",
+                    "source": "Use global settings"
+                  },
+                  "writeValue": null
+                },
+                {
+                  "value": "always",
+                  "translation": {
+                    "context": "AutomatedRssDownloader",
+                    "source": "Always"
+                  },
+                  "writeValue": true
+                },
+                {
+                  "value": "never",
+                  "translation": {
+                    "context": "AutomatedRssDownloader",
+                    "source": "Never"
+                  },
+                  "writeValue": false
+                }
+              ]
+            },
+            {
+              "key": "layout",
+              "controlId": "contentLayoutCombobox",
+              "kind": "select",
+              "path": [
+                "torrentParams",
+                "content_layout"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Torrent content layout:"
+              },
+              "options": [
+                {
+                  "value": "Default",
+                  "translation": {
+                    "context": "AutomatedRssDownloader",
+                    "source": "Use global settings"
+                  },
+                  "writeValue": null
+                },
+                {
+                  "value": "Original",
+                  "translation": {
+                    "context": "AutomatedRssDownloader",
+                    "source": "Original"
+                  },
+                  "writeValue": "Original"
+                },
+                {
+                  "value": "Subfolder",
+                  "translation": {
+                    "context": "AutomatedRssDownloader",
+                    "source": "Create subfolder"
+                  },
+                  "writeValue": "Subfolder"
+                },
+                {
+                  "value": "NoSubfolder",
+                  "translation": {
+                    "context": "AutomatedRssDownloader",
+                    "source": "Don't create subfolder"
+                  },
+                  "writeValue": "NoSubfolder"
+                }
+              ]
+            },
+            {
+              "key": "affectedFeeds",
+              "controlId": "rssDownloaderFeeds",
+              "kind": "feeds",
+              "path": [
+                "rule",
+                "affectedFeeds"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Apply Rule to Feeds:"
+              }
+            }
+          ],
+          "copy": {
+            "rules": {
+              "context": "AutomatedRssDownloader",
+              "source": "Download Rules"
+            },
+            "definition": {
+              "context": "AutomatedRssDownloader",
+              "source": "Rule Definition"
+            },
+            "matching": {
+              "context": "AutomatedRssDownloader",
+              "source": "Matching RSS Articles"
+            },
+            "save": {
+              "context": "HttpServer",
+              "source": "Save"
+            },
+            "disabled": {
+              "context": "AutomatedRssDownloader",
+              "source": "Auto downloading of RSS torrents is disabled now! You can enable it in application settings."
+            }
+          }
+        }
+      },
+      {
+        "from": "5.0.0",
+        "value": {
+          "available": true,
+          "source": "qb-upstream-rss-downloader",
+          "collection": {
+            "listControlId": "rulesTable",
+            "addControlId": "newRuleButton",
+            "removeControlId": "deleteRuleButton"
+          },
+          "fields": [
+            {
+              "key": "useRegex",
+              "controlId": "useRegEx",
+              "kind": "checkbox",
+              "path": [
+                "rule",
+                "useRegex"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Use Regular Expressions"
+              }
+            },
+            {
+              "key": "mustContain",
+              "controlId": "mustContainText",
+              "kind": "text",
+              "path": [
+                "rule",
+                "mustContain"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Must Contain:"
+              }
+            },
+            {
+              "key": "mustNotContain",
+              "controlId": "mustNotContainText",
+              "kind": "text",
+              "path": [
+                "rule",
+                "mustNotContain"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Must Not Contain:"
+              }
+            },
+            {
+              "key": "episodeFilter",
+              "controlId": "episodeFilterText",
+              "kind": "text",
+              "path": [
+                "rule",
+                "episodeFilter"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Episode Filter:"
+              }
+            },
+            {
+              "key": "smartFilter",
+              "controlId": "useSmartFilter",
+              "kind": "checkbox",
+              "path": [
+                "rule",
+                "smartFilter"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Use Smart Episode Filter"
+              }
+            },
+            {
+              "key": "category",
+              "controlId": "assignCategoryCombobox",
+              "kind": "text",
+              "path": [
+                "torrentParams",
+                "category"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Assign Category:"
+              }
+            },
+            {
+              "key": "tags",
+              "controlId": "ruleAddTags",
+              "kind": "tags",
+              "path": [
+                "torrentParams",
+                "tags"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Add Tags:"
+              }
+            },
+            {
+              "key": "savePath",
+              "controlId": "saveToText",
+              "kind": "text",
+              "path": [
+                "torrentParams",
+                "save_path"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Save to:"
+              }
+            },
+            {
+              "key": "ignoreDays",
+              "controlId": "ignoreDaysValue",
+              "kind": "number",
+              "path": [
+                "rule",
+                "ignoreDays"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Ignore Subsequent Matches for (0 to Disable)"
+              },
+              "min": 0
+            },
+            {
+              "key": "stopped",
+              "controlId": "addStoppedCombobox",
+              "kind": "triState",
+              "path": [
+                "torrentParams",
+                "stopped"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Add Stopped:"
+              },
+              "options": [
+                {
+                  "value": "default",
+                  "translation": {
+                    "context": "AutomatedRssDownloader",
+                    "source": "Use global settings"
+                  },
+                  "writeValue": null
+                },
+                {
+                  "value": "always",
+                  "translation": {
+                    "context": "AutomatedRssDownloader",
+                    "source": "Always"
+                  },
+                  "writeValue": true
+                },
+                {
+                  "value": "never",
+                  "translation": {
+                    "context": "AutomatedRssDownloader",
+                    "source": "Never"
+                  },
+                  "writeValue": false
+                }
+              ]
+            },
+            {
+              "key": "layout",
+              "controlId": "contentLayoutCombobox",
+              "kind": "select",
+              "path": [
+                "torrentParams",
+                "content_layout"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Torrent content layout:"
+              },
+              "options": [
+                {
+                  "value": "Default",
+                  "translation": {
+                    "context": "AutomatedRssDownloader",
+                    "source": "Use global settings"
+                  },
+                  "writeValue": null
+                },
+                {
+                  "value": "Original",
+                  "translation": {
+                    "context": "AutomatedRssDownloader",
+                    "source": "Original"
+                  },
+                  "writeValue": "Original"
+                },
+                {
+                  "value": "Subfolder",
+                  "translation": {
+                    "context": "AutomatedRssDownloader",
+                    "source": "Create subfolder"
+                  },
+                  "writeValue": "Subfolder"
+                },
+                {
+                  "value": "NoSubfolder",
+                  "translation": {
+                    "context": "AutomatedRssDownloader",
+                    "source": "Don't create subfolder"
+                  },
+                  "writeValue": "NoSubfolder"
+                }
+              ]
+            },
+            {
+              "key": "affectedFeeds",
+              "controlId": "rssDownloaderFeeds",
+              "kind": "feeds",
+              "path": [
+                "rule",
+                "affectedFeeds"
+              ],
+              "translation": {
+                "context": "AutomatedRssDownloader",
+                "source": "Apply Rule to Feeds:"
+              }
+            }
+          ],
+          "copy": {
+            "rules": {
+              "context": "AutomatedRssDownloader",
+              "source": "Download Rules"
+            },
+            "definition": {
+              "context": "AutomatedRssDownloader",
+              "source": "Rule Definition"
+            },
+            "matching": {
+              "context": "AutomatedRssDownloader",
+              "source": "Matching RSS Articles"
+            },
+            "save": {
+              "context": "HttpServer",
+              "source": "Save"
+            },
+            "disabled": {
+              "context": "AutomatedRssDownloader",
+              "source": "Auto downloading of RSS torrents is disabled now! You can enable it in application settings."
+            }
+          }
+        }
+      }
+    ]
+  }
+}

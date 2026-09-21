@@ -1,0 +1,233 @@
+name: Promote validated dev to main
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: Exact 40-character current dev SHA with successful candidate, Full Frozen Matrix and Locale evidence
+        required: true
+        type: string
+      confirmation:
+        description: Type PROMOTE-VALIDATED-DEV to fast-forward main
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: promote-main
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve exact validated dev evidence
+        id: verify
+        uses: actions/github-script@v9
+        env:
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          PROMOTION_CONFIRMATION: ${{ inputs.confirmation }}
+        with:
+          script: |
+            const sha = String(process.env.CANDIDATE_SHA || '').trim().toLowerCase();
+            const confirmation = String(process.env.PROMOTION_CONFIRMATION || '').trim();
+            if (context.ref !== 'refs/heads/dev') {
+              core.setFailed('Run this promotion workflow from the dev branch only.');
+              return;
+            }
+            if (!/^[0-9a-f]{40}$/.test(sha)) {
+              core.setFailed('candidate_sha must be exactly 40 hexadecimal characters.');
+              return;
+            }
+            if (confirmation !== 'PROMOTE-VALIDATED-DEV') {
+              core.setFailed('Promotion confirmation is missing.');
+              return;
+            }
+
+            const {owner, repo} = context.repo;
+            const dev = await github.rest.repos.getBranch({owner, repo, branch: 'dev'});
+            const main = await github.rest.repos.getBranch({owner, repo, branch: 'main'});
+            const devSha = dev.data.commit.sha.toLowerCase();
+            const mainSha = main.data.commit.sha.toLowerCase();
+            if (devSha !== sha) {
+              core.setFailed(`Candidate ${sha} is not the current dev HEAD ${devSha}.`);
+              return;
+            }
+
+            const compare = await github.rest.repos.compareCommits({owner, repo, base: mainSha, head: sha});
+            if (compare.data.behind_by !== 0 || !['ahead', 'identical'].includes(compare.data.status)) {
+              core.setFailed(`main cannot be fast-forwarded safely to ${sha}; status=${compare.data.status}, behind_by=${compare.data.behind_by}.`);
+              return;
+            }
+
+            const candidateRuns = await github.paginate(github.rest.actions.listWorkflowRuns, {
+              owner, repo, workflow_id: 'ci.yml', branch: 'dev', status: 'success', per_page: 100
+            });
+            const artifactName = `release-candidate-${sha}`;
+            const evidenceName = `candidate-deployment-${sha}`;
+            let validated = null;
+            let candidateArtifact = null;
+            let evidenceArtifact = null;
+            for (const run of candidateRuns.filter(run => run.head_sha && run.head_sha.toLowerCase() === sha && run.conclusion === 'success')) {
+              const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {owner, repo, run_id: run.id, per_page: 100});
+              const candidate = artifacts.find(item => item.name === artifactName && !item.expired);
+              const evidence = artifacts.find(item => item.name === evidenceName && !item.expired);
+              if (candidate && evidence) {
+                validated = run;
+                candidateArtifact = candidate;
+                evidenceArtifact = evidence;
+                break;
+              }
+            }
+            if (!validated || !candidateArtifact || !evidenceArtifact) {
+              core.setFailed(`No successful dev CI run contains both ${artifactName} and ${evidenceName} for exact SHA ${sha}.`);
+              return;
+            }
+
+            async function resolveManualAggregate(workflowId, artifactName, label) {
+              const runs = await github.paginate(github.rest.actions.listWorkflowRuns, {
+                owner, repo, workflow_id: workflowId, branch: 'dev', status: 'success', per_page: 100
+              });
+              for (const run of runs.filter(run => run.head_sha && run.head_sha.toLowerCase() === sha && run.conclusion === 'success' && run.event === 'workflow_dispatch')) {
+                const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {owner, repo, run_id: run.id, per_page: 100});
+                const artifact = artifacts.find(item => item.name === artifactName && !item.expired);
+                if (artifact) return {run, artifact};
+              }
+              core.setFailed(`No successful manually dispatched ${label} run contains ${artifactName} for exact SHA ${sha}. Run ${label} on the final dev candidate before promotion.`);
+              return null;
+            }
+
+            const gfmArtifactName = `real-qb-full-aggregate-${sha}`;
+            const localeArtifactName = `real-qb-current-locale-aggregate-${sha}`;
+            const gfm = await resolveManualAggregate('real-qb-full.yml', gfmArtifactName, 'Real qB Full Frozen Matrix');
+            if (!gfm) return;
+            const locale = await resolveManualAggregate('real-qb-locale.yml', localeArtifactName, 'Real qB Current Stable Locale Matrix');
+            if (!locale) return;
+
+            core.info(`Validated dev candidate CI run #${validated.run_number}: ${validated.html_url}`);
+            core.info(`Reusable artifact: ${candidateArtifact.name} (${candidateArtifact.id})`);
+            core.info(`Deployment evidence: ${evidenceArtifact.name} (${evidenceArtifact.id})`);
+            core.info(`Validated Full Frozen Matrix run #${gfm.run.run_number}: ${gfm.run.html_url}`);
+            core.info(`Validated Locale Matrix run #${locale.run.run_number}: ${locale.run.html_url}`);
+            core.setOutput('sha', sha);
+            core.setOutput('main_sha', mainSha);
+            core.setOutput('run_id', String(validated.id));
+            core.setOutput('artifact_name', artifactName);
+            core.setOutput('evidence_name', evidenceName);
+            core.setOutput('gfm_run_id', String(gfm.run.id));
+            core.setOutput('gfm_artifact_name', gfmArtifactName);
+            core.setOutput('locale_run_id', String(locale.run.id));
+            core.setOutput('locale_artifact_name', localeArtifactName);
+
+      - name: Checkout exact candidate evidence policy
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.verify.outputs.sha }}
+          persist-credentials: false
+
+      - name: Download exact validated dev candidate
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ steps.verify.outputs.artifact_name }}
+          path: candidate
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.verify.outputs.run_id }}
+
+      - name: Download exact candidate deployment evidence
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ steps.verify.outputs.evidence_name }}
+          path: evidence
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.verify.outputs.run_id }}
+
+      - name: Download exact 65-version G-FM aggregate
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ steps.verify.outputs.gfm_artifact_name }}
+          path: gfm
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.verify.outputs.gfm_run_id }}
+
+      - name: Download exact current-stable Locale aggregate
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ steps.verify.outputs.locale_artifact_name }}
+          path: locale
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.verify.outputs.locale_run_id }}
+
+      - name: Verify release-grade compatibility evidence
+        env:
+          CANDIDATE_SHA: ${{ steps.verify.outputs.sha }}
+        run: |
+          set -euo pipefail
+          VERSION="$(tr -d '\r\n' < VERSION)"
+          node tests/release-compat-evidence.mjs \
+            --gfm="gfm/${CANDIDATE_SHA}.json" \
+            --locale="locale/${CANDIDATE_SHA}.json" \
+            --sha="$CANDIDATE_SHA" \
+            --version="$VERSION"
+
+      - name: Verify reusable candidate and rehearsal evidence before promotion
+        env:
+          CANDIDATE_SHA: ${{ steps.verify.outputs.sha }}
+          MAIN_BEFORE: ${{ steps.verify.outputs.main_sha }}
+        run: |
+          set -euo pipefail
+          VERSION="$(tr -d '\r\n' < VERSION)"
+          test -f candidate/WeiG-qB-WebUI.zip
+          test -f candidate/SHA256SUMS
+          test -f candidate/CANDIDATE_SHA
+          test -f candidate/weigg-install.sh
+          test -f candidate/weigg-install.ps1
+          test -f evidence/candidate.json
+          test "$(tr -d '\r\n' < candidate/CANDIDATE_SHA)" = "$CANDIDATE_SHA"
+          (cd candidate && sha256sum -c SHA256SUMS)
+          cmp -s candidate/weigg-install.sh installers/install.sh
+          cmp -s candidate/weigg-install.ps1 installers/install.ps1
+          bash -n candidate/weigg-install.sh
+          test "$(unzip -p candidate/WeiG-qB-WebUI.zip WeiG-qB-WebUI/GIT_SHA | tr -d '\r\n')" = "$CANDIDATE_SHA"
+          test "$(unzip -p candidate/WeiG-qB-WebUI.zip WeiG-qB-WebUI/VERSION | tr -d '\r\n')" = "$VERSION"
+          node tests/release-candidate-evidence.mjs \
+            --mode=promotion \
+            --evidence=evidence/candidate.json \
+            --package=candidate/WeiG-qB-WebUI.zip \
+            --sha="$CANDIDATE_SHA" \
+            --version="$VERSION" \
+            --main-before="$MAIN_BEFORE"
+
+      - name: Checkout main for authenticated fast-forward
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Fast-forward main to exact validated dev SHA
+        env:
+          CANDIDATE_SHA: ${{ steps.verify.outputs.sha }}
+        run: |
+          set -euo pipefail
+          git fetch origin main dev
+          test "$(git rev-parse origin/dev)" = "$CANDIDATE_SHA"
+          git merge-base --is-ancestor origin/main "$CANDIDATE_SHA"
+          git push origin "$CANDIDATE_SHA:refs/heads/main"
+
+      - name: Promotion summary
+        run: |
+          echo "main now points to the exact validated dev state: ${{ steps.verify.outputs.sha }}"
+          echo "Reused dev candidate CI run: ${{ steps.verify.outputs.run_id }}"
+          echo "Reused validated artifact: ${{ steps.verify.outputs.artifact_name }}"
+          echo "Reused deployment/rehearsal evidence: ${{ steps.verify.outputs.evidence_name }}"
+          echo "Reused manual Full Frozen Matrix run: ${{ steps.verify.outputs.gfm_run_id }}"
+          echo "Reused G-FM aggregate: ${{ steps.verify.outputs.gfm_artifact_name }}"
+          echo "Reused manual Locale Matrix run: ${{ steps.verify.outputs.locale_run_id }}"
+          echo "Reused Locale aggregate: ${{ steps.verify.outputs.locale_artifact_name }}"
+          echo "No main candidate rebuild is required; create the stable tag only after confirming main still equals this exact SHA."
