@@ -96,7 +96,9 @@ jobs:
                 'tests/qb-recovery-ci-contract.mjs',
                 '.github/workflows/candidate-deployment-only.yml',
                 'tests/release-compat-evidence.mjs',
-                'tests/release-compat-evidence-contract.mjs'
+                'tests/release-compat-evidence-contract.mjs',
+                'installers/install.ps1',
+                'tests/platform-contract.mjs'
               ]);
               const blocked = (compatCompare.data.files || []).map(file => file.filename).filter(file =>
                 !validationOnly.has(file) && !file.startsWith('docs/') && !file.endsWith('.md') && file !== 'LICENSE'
