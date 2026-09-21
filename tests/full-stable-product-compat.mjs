@@ -106,7 +106,7 @@ for(const profile of catalog){
   const nativeSettingsSurfaces=S.nativeSurfaces();
   assert.ok(nativeSettingsSurfaces.length>0,`${profile.qbVersion}: source-native Settings surface set must not be empty`);
   assert.ok(nativeSettingsSurfaces.every(surface=>settingsSurfaces.has(surface)),`${profile.qbVersion}: source-native Settings exposed an unknown surface: ${nativeSettingsSurfaces.join(', ')}`);
-  if(profile.qbVersion===catalog.at(-1).qbVersion)assert.deepEqual(nativeSettingsSurfaces,expectedSettingsSurfaces,`${profile.qbVersion}: current stable must execute the exact eight source-native Settings surfaces`);
+  if(profile.qbVersion===catalog.at(-1).qbVersion)assert.deepEqual(Array.from(nativeSettingsSurfaces),expectedSettingsSurfaces,`${profile.qbVersion}: current stable must execute the exact eight source-native Settings surfaces`);
   const mappedSettings=new Set();
   for(const surface of nativeSettingsSurfaces){
     const graph=S.controlGraph(surface);
