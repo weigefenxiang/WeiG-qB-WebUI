@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  actions: write
+  actions: read
   contents: read
   pages: write
   id-token: write
@@ -46,7 +46,7 @@ jobs:
       - name: Validate current simulator contracts
         run: npm test
 
-      - name: Resolve certified official qB Settings translation evidence
+      - name: Load prepared exact-SHA qB Settings translation evidence
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -54,9 +54,10 @@ jobs:
           set -euo pipefail
           node tools/qb-settings-translation-artifact.mjs \
             --repo="$GITHUB_REPOSITORY" \
-            --branch="$GITHUB_REF_NAME" \
+            --branch=dev \
+            --source-sha="$WEIGG_PAGES_SOURCE_SHA" \
             --out="$RUNNER_TEMP/qb-settings-translation-lkg.json" \
-            --dispatch-if-missing
+            --certified-only
           test -s "$RUNNER_TEMP/qb-settings-translation-lkg.json"
 
       - name: Build exact dev/main Virtual qB site from Frozen LKG
@@ -217,7 +218,7 @@ jobs:
     timeout-minutes: 5
     strategy:
       fail-fast: false
-      max-parallel: 18
+      max-parallel: 16
       matrix:
         include:
           - {name: core, script: tests/pages-live-acceptance.mjs, pref_mode: none, pref_index: '0', pref_total: '1', release_mode: none}
@@ -283,182 +284,3 @@ jobs:
         run: |
           set -euo pipefail
           timeout --signal=TERM --kill-after=10s 240s node "$WEIGG_VERIFY_SCRIPT"
-
-  reuse_main:
-    if: ${{ github.ref_name == 'main' }}
-    runs-on: ubuntu-latest
-    outputs:
-      source_run_id: ${{ steps.resolve.outputs.source_run_id }}
-    steps:
-      - name: Resolve exact successful dev Pages site
-        id: resolve
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          EXACT_SHA: ${{ env.WEIGG_PAGES_SOURCE_SHA }}
-        run: |
-          set -euo pipefail
-          test "$GITHUB_SHA" = "$EXACT_SHA"
-          test "$(git ls-remote "https://github.com/$GITHUB_REPOSITORY.git" refs/heads/main | awk '{print $1}')" = "$EXACT_SHA"
-          rm -rf reusable-site
-
-          mapfile -t RUN_IDS < <(gh api \
-            "/repos/$GITHUB_REPOSITORY/actions/workflows/pages.yml/runs?branch=dev&event=workflow_dispatch&status=success&per_page=30" \
-            --jq '.workflow_runs[].id')
-
-          for RUN_ID in "${RUN_IDS[@]}"; do
-            if gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/artifacts?per_page=100" \
-              --jq ".artifacts[] | select(.expired == false and .name == \"virtual-qb-pages-site-$EXACT_SHA\") | .id" | grep -q .; then
-              rm -rf reusable-site
-              gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" \
-                --name "virtual-qb-pages-site-$EXACT_SHA" --dir reusable-site
-              if node --input-type=module - "$EXACT_SHA" <<'NODE'
-          import fs from 'node:fs';
-          const sha=process.argv[2];
-          const site=JSON.parse(fs.readFileSync('reusable-site/metadata/site.json','utf8'));
-          const dev=JSON.parse(fs.readFileSync('reusable-site/dev/app/virtual-qb-build.json','utf8'));
-          if(site.simulatorSha!==sha||site.branches?.dev?.exactSha!==sha||dev.branch!=='dev'||dev.exactSha!==sha||dev.simulatorSha!==sha)process.exit(1);
-          NODE
-              then
-                echo "source_run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
-                echo "Reusing exact dev Pages artifact from successful workflow_dispatch run $RUN_ID."
-                exit 0
-              fi
-            fi
-          done
-
-          echo "No successful exact reusable dev Pages artifact exists for $EXACT_SHA." >&2
-          exit 1
-
-      - name: Promote exact dev snapshot to main alias
-        shell: bash
-        env:
-          EXACT_SHA: ${{ env.WEIGG_PAGES_SOURCE_SHA }}
-        run: |
-          set -euo pipefail
-          test -f reusable-site/metadata/site.json
-          test -f reusable-site/dev/app/virtual-qb-build.json
-          test -f reusable-site/dev/app/index.html
-          node --input-type=module <<'NODE'
-          import fs from 'node:fs';
-          import path from 'node:path';
-
-          const sha=process.env.EXACT_SHA;
-          const root=path.resolve('reusable-site');
-          const readJson=file=>JSON.parse(fs.readFileSync(file,'utf8'));
-          const writeJson=(file,value)=>fs.writeFileSync(file,JSON.stringify(value,null,2)+'\n','utf8');
-
-          const siteFile=path.join(root,'metadata','site.json');
-          const site=readJson(siteFile);
-          if(site.simulatorSha!==sha)throw new Error(`Reusable site simulatorSha ${site.simulatorSha} != ${sha}`);
-          if(site.branches?.dev?.exactSha!==sha)throw new Error(`Reusable site dev SHA ${site.branches?.dev?.exactSha} != ${sha}`);
-
-          const devBuildFile=path.join(root,'dev','app','virtual-qb-build.json');
-          const devBuild=readJson(devBuildFile);
-          if(devBuild.branch!=='dev'||devBuild.exactSha!==sha||devBuild.simulatorSha!==sha)throw new Error('Reusable dev app identity mismatch.');
-
-          const mainApp=path.join(root,'main','app');
-          fs.rmSync(mainApp,{recursive:true,force:true});
-          fs.cpSync(path.join(root,'dev','app'),mainApp,{recursive:true,force:true});
-
-          const mainIndex=path.join(mainApp,'index.html');
-          fs.writeFileSync(mainIndex,fs.readFileSync(mainIndex,'utf8').replace('Branch: dev.','Branch: main.'),'utf8');
-
-          const mainBuildFile=path.join(mainApp,'virtual-qb-build.json');
-          const mainBuild=readJson(mainBuildFile);
-          mainBuild.branch='main';
-          mainBuild.exactSha=sha;
-          mainBuild.productVersion=site.branches.dev.productVersion;
-          mainBuild.simulatorSha=sha;
-          writeJson(mainBuildFile,mainBuild);
-
-          const mainMeta=readJson(path.join(root,'metadata','dev.json'));
-          mainMeta.branch='main';
-          mainMeta.exactSha=sha;
-          mainMeta.productVersion=site.branches.dev.productVersion;
-          mainMeta.simulatorSha=sha;
-          mainMeta.webuiSource='refs/heads/main:webui/**';
-          writeJson(path.join(root,'metadata','main.json'),mainMeta);
-
-          site.branches.main={...site.branches.dev,exactSha:sha};
-          site.promotedMainAt=new Date().toISOString();
-          writeJson(siteFile,site);
-
-          const finalMain=readJson(mainBuildFile);
-          const finalSite=readJson(siteFile);
-          if(finalMain.branch!=='main'||finalMain.exactSha!==sha||finalMain.simulatorSha!==sha)throw new Error('Promoted main app identity check failed.');
-          if(finalSite.branches?.main?.exactSha!==sha||finalSite.branches?.dev?.exactSha!==sha)throw new Error('Promoted site branch identity check failed.');
-          NODE
-
-      - name: Configure GitHub Pages
-        uses: actions/configure-pages@v6
-
-      - name: Upload promoted GitHub Pages artifact
-        uses: actions/upload-pages-artifact@v5
-        with:
-          path: reusable-site
-
-  promote_deploy:
-    if: ${{ github.ref_name == 'main' }}
-    needs: reuse_main
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Refuse stale main Pages deployment
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          EXACT_SHA: ${{ env.WEIGG_PAGES_SOURCE_SHA }}
-        run: |
-          set -euo pipefail
-          test "$GITHUB_REF_NAME" = "main"
-          REMOTE_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')"
-          if [ "$REMOTE_SHA" != "$EXACT_SHA" ]; then
-            echo "Refusing stale main Pages deployment: candidate=$EXACT_SHA current=$REMOTE_SHA" >&2
-            exit 1
-          fi
-          echo "Fresh main Pages deployment owner confirmed: $EXACT_SHA"
-
-      - name: Deploy promoted exact dev snapshot as main
-        id: deployment
-        uses: actions/deploy-pages@v5
-
-      - name: Verify promoted main Pages identity
-        shell: bash
-        env:
-          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
-          EXACT_SHA: ${{ env.WEIGG_PAGES_SOURCE_SHA }}
-        run: |
-          set -euo pipefail
-          test "$GITHUB_SHA" = "$EXACT_SHA"
-          BASE="${PAGE_URL%/}"
-          for ATTEMPT in $(seq 1 24); do
-            rm -f "$RUNNER_TEMP/promoted-site.json" "$RUNNER_TEMP/promoted-main.json"
-            if curl -fsS "$BASE/metadata/site.json?weigg_main_sha=$EXACT_SHA&attempt=$ATTEMPT" -o "$RUNNER_TEMP/promoted-site.json" \
-              && curl -fsS "$BASE/main/app/virtual-qb-build.json?weigg_main_sha=$EXACT_SHA&attempt=$ATTEMPT" -o "$RUNNER_TEMP/promoted-main.json" \
-              && node --input-type=module <<'NODE'
-          import fs from 'node:fs';
-          const sha=process.env.EXACT_SHA;
-          const site=JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/promoted-site.json`,'utf8'));
-          const main=JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/promoted-main.json`,'utf8'));
-          if(site.simulatorSha!==sha||site.branches?.dev?.exactSha!==sha||site.branches?.main?.exactSha!==sha)process.exit(1);
-          if(main.branch!=='main'||main.exactSha!==sha||main.simulatorSha!==sha)process.exit(1);
-          NODE
-            then
-              echo "Promoted Pages live identity PASS for main/dev exact SHA $EXACT_SHA."
-              exit 0
-            fi
-            echo "Waiting for promoted Pages identity $EXACT_SHA (attempt $ATTEMPT/24)..."
-            sleep 5
-          done
-          echo "Promoted Pages did not converge to exact main SHA $EXACT_SHA." >&2
-          exit 1
-
-      - name: Promotion summary
-        run: |
-          echo "main Pages reused exact dev validation for $WEIGG_PAGES_SOURCE_SHA"
-          echo "Reusable dev Pages run: ${{ needs.reuse_main.outputs.source_run_id }}"
-          echo "Deployment build version: $GITHUB_SHA"
-          echo "No qB checkout, npm test, site rebuild, or browser verify was rerun on main."

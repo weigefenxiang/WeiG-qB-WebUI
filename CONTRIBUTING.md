@@ -78,7 +78,7 @@ Examples:
 
 ## Documentation
 
-Public documentation is English and describes current behavior. Historical implementation notes and completed work logs do not belong in the current documentation tree.
+Public developer and architecture documentation is English and describes current behavior. User-facing README and installation-guide translations live under `translations/`; runtime qB translation assets remain separate under `webui/translations/`. Historical implementation notes and completed work logs do not belong in the current documentation tree.
 
 Update the nearest subsystem documentation when an architectural boundary changes.
 

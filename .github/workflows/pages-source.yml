@@ -2,7 +2,7 @@ name: Virtual qB Pages Source
 
 # Source relay owns normal Pages trigger choreography. Ordinary development pushes only deploy
 # when public WebUI/simulator/installer payload or Pages materialization inputs changed. Heavy
-# Settings evidence is demand-driven and remains isolated behind the manual settings-evidence mode.
+# Settings evidence is demand-driven; manual settings-evidence forces a refresh without deploying Pages.
 # Keep this relevance boundary symmetric with pages.yml; repository contracts lock the pair.
 on:
   workflow_dispatch:
@@ -30,8 +30,10 @@ concurrency:
 
 jobs:
   source:
-    if: ${{ github.event_name == 'push' || inputs.mode != 'settings-evidence' }}
     runs-on: ubuntu-latest
+    outputs:
+      relevant: ${{ steps.relevance.outputs.relevant }}
+      force_evidence: ${{ steps.relevance.outputs.force_evidence }}
     steps:
       - name: Checkout source history
         uses: actions/checkout@v6
@@ -45,6 +47,7 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           BEFORE_SHA: ${{ github.event.before }}
+          REQUESTED_MODE: ${{ inputs.mode }}
         run: |
           set -euo pipefail
 
@@ -101,9 +104,16 @@ jobs:
             return 1
           }
 
+          echo "force_evidence=false" >> "$GITHUB_OUTPUT"
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             echo "relevant=true" >> "$GITHUB_OUTPUT"
-            echo "Manual Pages dispatch explicitly requests a deployment owner run."
+            if [ "$REQUESTED_MODE" = "settings-evidence" ]; then
+              test "$GITHUB_REF_NAME" = "dev" || { echo "settings-evidence refresh must run on dev." >&2; exit 1; }
+              echo "force_evidence=true" >> "$GITHUB_OUTPUT"
+              echo "Manual Settings evidence refresh requested on dev."
+            else
+              echo "Manual Pages dispatch explicitly requests a deployment owner run."
+            fi
             exit 0
           fi
 
@@ -201,42 +211,88 @@ jobs:
             fi
           done
 
-      - name: Dispatch exact-ref Pages owner
+      - name: Defer Pages owner until exact-dev Settings evidence is ready
         if: ${{ steps.relevance.outputs.relevant == 'true' }}
+        run: echo "Pages owner dispatch is gated by the exact-dev Settings evidence DAG below."
+
+  settings_evidence_probe:
+    name: Probe exact-dev-SHA Settings evidence
+    needs: source
+    if: ${{ needs.source.outputs.relevant == 'true' }}
+    runs-on: ubuntu-latest
+    outputs:
+      dev_sha: ${{ steps.dev.outputs.dev_sha }}
+      ready: ${{ steps.probe.outputs.ready }}
+    steps:
+      - name: Resolve current dev Pages owner SHA
+        id: dev
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          BRANCH="$GITHUB_REF_NAME"
-          case "$BRANCH" in
-            dev|main) ;;
-            *) echo "Unsupported Pages source branch: $BRANCH" >&2; exit 1 ;;
-          esac
+          DEV_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/commits/dev" --jq '.sha')"
+          test "${#DEV_SHA}" -eq 40
+          echo "dev_sha=$DEV_SHA" >> "$GITHUB_OUTPUT"
+          echo "Exact dev Pages owner: $DEV_SHA"
 
-          REMOTE_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/commits/$BRANCH" --jq '.sha')"
-          if [ "$REMOTE_SHA" != "$GITHUB_SHA" ]; then
-            echo "Pages source $BRANCH@$GITHUB_SHA is stale; current head is $REMOTE_SHA. A newer source run owns deployment."
+      - name: Checkout exact dev evidence source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.dev.outputs.dev_sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Probe prepared certified Settings/source LKG
+        id: probe
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEV_SHA: ${{ steps.dev.outputs.dev_sha }}
+          FORCE_EVIDENCE: ${{ needs.source.outputs.force_evidence }}
+        run: |
+          set -euo pipefail
+          if [ "$FORCE_EVIDENCE" = "true" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "Forced evidence refresh requested for $DEV_SHA."
             exit 0
           fi
 
-          gh api --method POST \
-            "/repos/$GITHUB_REPOSITORY/actions/workflows/pages.yml/dispatches" \
-            -f ref="$BRANCH" >/dev/null
-
-          echo "Dispatched Virtual qB Pages on $BRANCH@$GITHUB_SHA because a public payload, materialization input, live verifier, or unpublished relevant dev change requires deployment."
+          if node tools/qb-settings-translation-artifact.mjs \
+            --repo="$GITHUB_REPOSITORY" \
+            --branch=dev \
+            --source-sha="$DEV_SHA" \
+            --out="$RUNNER_TEMP/qb-settings-translation-lkg.json" \
+            --certified-only
+          then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "Exact-dev certified Settings evidence already exists for $DEV_SHA."
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "Exact-dev certified Settings evidence is missing for $DEV_SHA; fan out 16 independent runners."
+          fi
 
   settings_evidence_shard:
-    name: Settings source runner ${{ matrix.runner }}
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'settings-evidence' && github.ref == 'refs/heads/dev' }}
+    name: Settings source shard ${{ matrix.shard }}
+    needs: settings_evidence_probe
+    if: ${{ needs.settings_evidence_probe.outputs.ready != 'true' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      max-parallel: 4
+      max-parallel: 16
       matrix:
-        runner: [0, 1, 2, 3]
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
     steps:
-      - uses: actions/checkout@v7
+      - name: Checkout exact dev evidence source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.settings_evidence_probe.outputs.dev_sha }}
+          persist-credentials: false
       - uses: actions/setup-node@v7
         with:
           node-version: 22
@@ -248,71 +304,61 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
           filter: blob:none
-      - name: Extract and enrich four exact source subshards concurrently
+      - name: Extract and enrich one exact source shard
         shell: bash
         run: |
           set -euo pipefail
-          pids=()
-          for lane in 0 1 2 3; do
-            subshard=$(( ${{ matrix.runner }} + lane * 4 ))
-            (
-              set -euo pipefail
-              node tools/qb-release-catalog-shard.mjs upstream-qb \
-                --shard-index="$subshard" \
-                --shard-count=16 \
-                --output="qb-releases-shard-${subshard}.raw.json" \
-                --manifest="qb-releases-shard-${subshard}.meta.json"
-              node tools/qb-locale-source.mjs upstream-qb \
-                "qb-releases-shard-${subshard}.raw.json" \
-                "qb-releases-shard-${subshard}.json"
-              rm "qb-releases-shard-${subshard}.raw.json"
-            ) &
-            pids+=("$!")
-          done
-
-          failed=0
-          for pid in "${pids[@]}"; do
-            if ! wait "$pid"; then
-              failed=1
-            fi
-          done
-          test "$failed" -eq 0
-      - name: Upload exact source subshards
+          node tools/qb-release-catalog-shard.mjs upstream-qb \
+            --shard-index="${{ matrix.shard }}" \
+            --shard-count=16 \
+            --output="qb-releases-shard-${{ matrix.shard }}.raw.json" \
+            --manifest="qb-releases-shard-${{ matrix.shard }}.meta.json"
+          node tools/qb-locale-source.mjs upstream-qb \
+            "qb-releases-shard-${{ matrix.shard }}.raw.json" \
+            "qb-releases-shard-${{ matrix.shard }}.json"
+          rm "qb-releases-shard-${{ matrix.shard }}.raw.json"
+      - name: Upload exact source shard
         uses: actions/upload-artifact@v7
         with:
-          name: qb-settings-source-runner-${{ github.sha }}-${{ matrix.runner }}
+          name: qb-settings-source-shard-${{ needs.settings_evidence_probe.outputs.dev_sha }}-${{ matrix.shard }}
           path: |
-            qb-releases-shard-*.json
-            qb-releases-shard-*.meta.json
+            qb-releases-shard-${{ matrix.shard }}.json
+            qb-releases-shard-${{ matrix.shard }}.meta.json
           if-no-files-found: error
           retention-days: 1
 
   settings_evidence_merge:
-    name: Merge 16 Settings source subshards
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'settings-evidence' && github.ref == 'refs/heads/dev' }}
+    name: Merge 16 Settings source shards
+    needs: [settings_evidence_probe, settings_evidence_shard]
+    if: ${{ always() && needs.settings_evidence_probe.result == 'success' && needs.settings_evidence_probe.outputs.ready != 'true' && needs.settings_evidence_shard.result == 'success' }}
     runs-on: ubuntu-latest
-    needs: settings_evidence_shard
     steps:
-      - uses: actions/checkout@v7
+      - name: Checkout exact dev evidence source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.settings_evidence_probe.outputs.dev_sha }}
+          persist-credentials: false
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-      - name: Download all exact source subshards
+      - name: Download all 16 exact source shards
         uses: actions/download-artifact@v8
         with:
-          pattern: qb-settings-source-runner-${{ github.sha }}-*
+          pattern: qb-settings-source-shard-${{ needs.settings_evidence_probe.outputs.dev_sha }}-*
           path: settings-shards
           merge-multiple: true
       - name: Merge exact source-derived catalog and recovery evidence
         shell: bash
         run: |
           set -euo pipefail
+          test "$(find settings-shards -maxdepth 1 -name 'qb-releases-shard-*.json' | wc -l)" -eq 16
+          test "$(find settings-shards -maxdepth 1 -name 'qb-releases-shard-*.meta.json' | wc -l)" -eq 16
           node tools/qb-release-catalog-shard-merge.mjs settings-shards qb-releases.json
           test -s qb-releases.recovery.json
-      - name: Upload source-enriched bootstrap catalog
+      - name: Upload exact source-enriched bootstrap catalog
         uses: actions/upload-artifact@v7
         with:
-          name: qb-release-catalog-${{ github.sha }}
+          name: qb-release-catalog-${{ needs.settings_evidence_probe.outputs.dev_sha }}
           path: |
             qb-releases.json
             qb-releases.recovery.json
@@ -321,20 +367,24 @@ jobs:
 
   settings_evidence_lkg:
     name: Freeze certified Settings/source LKG v2
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'settings-evidence' && github.ref == 'refs/heads/dev' }}
+    needs: [settings_evidence_probe, settings_evidence_merge]
+    if: ${{ always() && needs.settings_evidence_probe.result == 'success' && needs.settings_evidence_probe.outputs.ready != 'true' && needs.settings_evidence_merge.result == 'success' }}
     runs-on: ubuntu-latest
-    needs: settings_evidence_merge
     steps:
-      - uses: actions/checkout@v7
+      - name: Checkout exact dev evidence source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.settings_evidence_probe.outputs.dev_sha }}
+          persist-credentials: false
       - uses: actions/setup-node@v7
         with:
           node-version: 22
       - name: Download exact merged catalog
         uses: actions/download-artifact@v8
         with:
-          name: qb-release-catalog-${{ github.sha }}
+          name: qb-release-catalog-${{ needs.settings_evidence_probe.outputs.dev_sha }}
           path: release-catalog
-      - name: Freeze and validate reusable Settings/source evidence
+      - name: Freeze and validate exact-dev reusable Settings/source evidence
         shell: bash
         run: |
           set -euo pipefail
@@ -348,12 +398,49 @@ jobs:
           node tools/qb-webui-catalog.mjs qb-releases.json "$RUNNER_TEMP/qb-materialized/private/data/qb-releases.json"
           test -s "$RUNNER_TEMP/qb-materialized/private/data/qb-settings-native.txt"
           find "$RUNNER_TEMP/qb-materialized/translations" -type f -name 'webui_*.qm' -print -quit | grep -q .
-      - name: Upload certified qB Settings translation LKG
+      - name: Upload certified exact-dev qB Settings translation LKG
         uses: actions/upload-artifact@v7
         with:
-          name: qb-settings-translation-lkg-${{ github.sha }}
+          name: qb-settings-translation-lkg-${{ needs.settings_evidence_probe.outputs.dev_sha }}
           path: |
             qb-settings-translation-lkg.json
             qb-settings-translation-lkg.SHA256
           if-no-files-found: error
           retention-days: 90
+
+  dispatch_pages:
+    name: Dispatch dev Pages owner after evidence
+    needs: [source, settings_evidence_probe, settings_evidence_lkg]
+    if: ${{ always() && needs.source.outputs.relevant == 'true' && needs.settings_evidence_probe.result == 'success' && (needs.settings_evidence_probe.outputs.ready == 'true' || needs.settings_evidence_lkg.result == 'success') && (github.event_name != 'workflow_dispatch' || inputs.mode != 'settings-evidence') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch fresh dev-only Pages owner
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREPARED_DEV_SHA: ${{ needs.settings_evidence_probe.outputs.dev_sha }}
+        run: |
+          set -euo pipefail
+          EVENT_BRANCH="$GITHUB_REF_NAME"
+          case "$EVENT_BRANCH" in
+            dev|main) ;;
+            *) echo "Unsupported Pages source branch: $EVENT_BRANCH" >&2; exit 1 ;;
+          esac
+
+          REMOTE_EVENT_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/commits/$EVENT_BRANCH" --jq '.sha')"
+          if [ "$REMOTE_EVENT_SHA" != "$GITHUB_SHA" ]; then
+            echo "Pages source $EVENT_BRANCH@$GITHUB_SHA is stale; current head is $REMOTE_EVENT_SHA. A newer source run owns deployment."
+            exit 0
+          fi
+
+          REMOTE_DEV_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/commits/dev" --jq '.sha')"
+          if [ "$REMOTE_DEV_SHA" != "$PREPARED_DEV_SHA" ]; then
+            echo "Prepared dev evidence $PREPARED_DEV_SHA is stale; current dev is $REMOTE_DEV_SHA. A newer source run owns deployment."
+            exit 0
+          fi
+
+          gh api --method POST \
+            "/repos/$GITHUB_REPOSITORY/actions/workflows/pages.yml/dispatches" \
+            -f ref=dev >/dev/null
+
+          echo "Dispatched Virtual qB Pages on dev@$PREPARED_DEV_SHA after exact-SHA Settings evidence was ready. The build will refresh both /dev/app and /main/app from current branch snapshots."

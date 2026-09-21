@@ -11,19 +11,18 @@ const here=path.dirname(fileURLToPath(import.meta.url));
 const projectRoot=path.resolve(here,'..');
 const ARTIFACT_PAGE_SIZE=100;
 const ARTIFACT_MAX_PAGES=10;
-const POLL_INTERVAL_MS=10000;
-const POLL_ATTEMPTS=90;
 const incompatibleArtifactIds=new Set();
 function arg(name,fallback=''){const prefix=`--${name}=`;const hit=process.argv.find(value=>value.startsWith(prefix));return hit?hit.slice(prefix.length):fallback;}
 function required(name){const value=arg(name);if(!value)throw new Error(`Missing --${name}=...`);return value;}
-function sleep(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
 function canonical(text){return Buffer.from(text.replace(/\r\n?/g,'\n'),'utf8');}
 function sha256(bytes){return crypto.createHash('sha256').update(bytes).digest('hex');}
 
 const repository=arg('repo',process.env.GITHUB_REPOSITORY||'');
 const branch=arg('branch',process.env.GITHUB_REF_NAME||'dev');
 const output=path.resolve(required('out'));
-const dispatchIfMissing=process.argv.includes('--dispatch-if-missing');
+const sourceSha=arg('source-sha',process.env.WEIGG_PAGES_SOURCE_SHA||process.env.GITHUB_SHA||'').toLowerCase();
+const certifiedOnly=process.argv.includes('--certified-only');
+if(sourceSha&&!/^[0-9a-f]{40}$/.test(sourceSha))throw new Error(`Invalid --source-sha=${sourceSha}`);
 const token=process.env.GH_TOKEN||process.env.GITHUB_TOKEN||'';
 if(!repository||!token)throw new Error('qB Settings/source artifact resolver requires repository identity and GH_TOKEN.');
 
@@ -85,7 +84,8 @@ function saveLkg(lkg,source){
   return true;
 }
 async function tryCertifiedArtifact(artifacts){
-  for(const artifact of artifacts.filter(item=>String(item.name).startsWith('qb-settings-translation-lkg-')&&!incompatibleArtifactIds.has(item.id))){
+  const expected=sourceSha?`qb-settings-translation-lkg-${sourceSha}`:'';
+  for(const artifact of artifacts.filter(item=>(expected?String(item.name)===expected:String(item.name).startsWith('qb-settings-translation-lkg-'))&&!incompatibleArtifactIds.has(item.id))){
     try{
       const dir=await downloadArtifact(artifact);
       const file=path.join(dir,'qb-settings-translation-lkg.json');
@@ -100,7 +100,8 @@ async function tryCertifiedArtifact(artifacts){
   return null;
 }
 async function tryBootstrapCatalog(artifacts){
-  for(const artifact of artifacts.filter(item=>String(item.name).startsWith('qb-release-catalog-')&&!incompatibleArtifactIds.has(item.id))){
+  const expected=sourceSha?`qb-release-catalog-${sourceSha}`:'';
+  for(const artifact of artifacts.filter(item=>(expected?String(item.name)===expected:String(item.name).startsWith('qb-release-catalog-'))&&!incompatibleArtifactIds.has(item.id))){
     try{
       const dir=await downloadArtifact(artifact);
       const file=path.join(dir,'qb-releases.json'),recoveryFile=path.join(dir,'qb-releases.recovery.json');
@@ -121,30 +122,9 @@ async function tryBootstrapCatalog(artifacts){
   }
   return null;
 }
-async function activeSettingsEvidenceRun(){
-  const data=await api(`/repos/${repository}/actions/workflows/pages-source.yml/runs?branch=${encodeURIComponent(branch)}&event=workflow_dispatch&per_page=20`);
-  const active=new Set(['queued','in_progress','waiting','pending','requested']);
-  return (Array.isArray(data?.workflow_runs)?data.workflow_runs:[]).find(run=>active.has(String(run?.status||'')))||null;
-}
-async function dispatchSettingsEvidence(){
-  const active=await activeSettingsEvidenceRun();
-  if(active){console.log(`Reusing active Settings evidence refresh run ${active.id} (${active.status}) on ${branch}; no duplicate dispatch.`);return false;}
-  await api(`/repos/${repository}/actions/workflows/pages-source.yml/dispatches`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ref:branch,inputs:{mode:'settings-evidence'}})});
-  console.log(`Dispatched demand-driven Settings/source v2 evidence refresh on ${branch}: 4 runners x 4 local workers (16 source/locale subshards total).`);
-  return true;
-}
-
-console.log(`Scanning up to ${ARTIFACT_MAX_PAGES*ARTIFACT_PAGE_SIZE} recent artifacts for reusable qB Settings/source v2 evidence.`);
-let artifacts=await listArtifacts({maxPages:ARTIFACT_MAX_PAGES});
+console.log(`Scanning up to ${ARTIFACT_MAX_PAGES*ARTIFACT_PAGE_SIZE} recent artifacts for ${sourceSha?`exact ${sourceSha} `:''}qB Settings/source v2 evidence.`);
+const artifacts=await listArtifacts({maxPages:ARTIFACT_MAX_PAGES});
 if(await tryCertifiedArtifact(artifacts))process.exit(0);
-if(await tryBootstrapCatalog(artifacts))process.exit(0);
-if(!dispatchIfMissing)throw new Error('No compatible certified Settings/source v2 LKG or source-enriched bootstrap artifact is available.');
-await dispatchSettingsEvidence();
-for(let attempt=1;attempt<=POLL_ATTEMPTS;attempt++){
-  await sleep(POLL_INTERVAL_MS);
-  artifacts=await listArtifacts({maxPages:1});
-  if(await tryCertifiedArtifact(artifacts))process.exit(0);
-  if(await tryBootstrapCatalog(artifacts))process.exit(0);
-  console.log(`Waiting for certified qB Settings/source v2 evidence (${attempt}/${POLL_ATTEMPTS})...`);
-}
-throw new Error('Timed out waiting for compatible certified qB Settings/source v2 evidence.');
+if(!certifiedOnly&&await tryBootstrapCatalog(artifacts))process.exit(0);
+const identity=sourceSha?` for exact source SHA ${sourceSha}`:'';
+throw new Error(`No compatible certified Settings/source v2 LKG${certifiedOnly?'': ' or source-enriched bootstrap artifact'} is available${identity}. Evidence must be prepared before this resolver runs.`);
