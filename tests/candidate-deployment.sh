@@ -242,7 +242,7 @@ const [dest,version,sha,container,hostConfigRoot,qbRoot,expectedQb,localeTarget]
 const meta=JSON.parse(fs.readFileSync(path.join(dest,'private/weigg-install.json'),'utf8'));
 if(meta.version!==version)throw new Error('candidate metadata version mismatch');
 if(meta.gitSha!==sha)throw new Error('candidate metadata Git SHA mismatch');
-if(meta.channel!=='release')throw new Error('candidate metadata channel mismatch');
+if(meta.channel!=='main')throw new Error(`candidate metadata channel mismatch: expected normalized main, got ${meta.channel}`);
 if(meta.installer!=='linux')throw new Error('candidate metadata installer mismatch');
 if(meta.container!==container)throw new Error('candidate metadata container mismatch');
 if(meta.hostPath!==path.join(hostConfigRoot,'weig_qb-webui'))throw new Error('candidate metadata host path mismatch');
