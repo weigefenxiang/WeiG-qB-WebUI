@@ -38,6 +38,32 @@ jobs:
               return;
             }
 
+            const validationOnly = new Set([
+              '.github/workflows/ci.yml',
+              '.github/workflows/promote.yml',
+              '.github/workflows/release.yml',
+              'tests/ci-contract.mjs',
+              'tests/full-stable-product-compat.mjs',
+              'tests/qb-locale-pipeline-contract.mjs',
+              'tests/release-evidence-contract.mjs'
+            ]);
+            async function reusableCompatibilitySha(evidenceSha) {
+              evidenceSha = String(evidenceSha || '').toLowerCase();
+              if (!/^[0-9a-f]{40}$/.test(evidenceSha)) return false;
+              if (evidenceSha === sha) return true;
+              const compared = await github.rest.repos.compareCommits({owner, repo, base: evidenceSha, head: sha});
+              if (compared.data.behind_by !== 0 || !['ahead', 'identical'].includes(compared.data.status)) return false;
+              const blocked = (compared.data.files || []).map(file => file.filename).filter(file =>
+                !validationOnly.has(file) && !file.startsWith('docs/') && !file.endsWith('.md') && file !== 'LICENSE'
+              );
+              if (blocked.length) {
+                core.info(`Compatibility evidence ${evidenceSha} cannot represent release ${sha}: non-validation changes: ${blocked.join(', ')}`);
+                return false;
+              }
+              core.info(`Compatibility evidence ${evidenceSha} can represent release ${sha}; intervening changes are validation-only.`);
+              return true;
+            }
+
             const runs = await github.paginate(github.rest.actions.listWorkflowRuns, {
               owner, repo, workflow_id: 'ci.yml', branch: 'dev', status: 'success', per_page: 100
             });
@@ -62,31 +88,50 @@ jobs:
               return;
             }
 
-            async function resolveManualAggregate(workflowId, aggregateName, label) {
-              const matrixRuns = await github.paginate(github.rest.actions.listWorkflowRuns, {
-                owner, repo, workflow_id: workflowId, branch: 'dev', status: 'success', per_page: 100
-              });
-              for (const run of matrixRuns.filter(run => run.head_sha && run.head_sha.toLowerCase() === sha && run.conclusion === 'success' && run.event === 'workflow_dispatch')) {
-                const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {owner, repo, run_id: run.id, per_page: 100});
-                const artifact = artifacts.find(item => item.name === aggregateName && !item.expired);
-                if (artifact) return {run, artifact};
+            const gfmRuns = await github.paginate(github.rest.actions.listWorkflowRuns, {
+              owner, repo, workflow_id: 'real-qb-full.yml', branch: 'dev', status: 'success', per_page: 100
+            });
+            const localeRuns = await github.paginate(github.rest.actions.listWorkflowRuns, {
+              owner, repo, workflow_id: 'real-qb-locale.yml', branch: 'dev', status: 'success', per_page: 100
+            });
+            let compatSha = null, gfm = null, locale = null;
+            const candidates = gfmRuns
+              .filter(run => run.head_sha && run.conclusion === 'success' && run.event === 'workflow_dispatch')
+              .sort((a,b)=>(a.head_sha.toLowerCase()===sha?-1:0)-(b.head_sha.toLowerCase()===sha?-1:0));
+            for (const run of candidates) {
+              const evidenceSha = run.head_sha.toLowerCase();
+              if (!await reusableCompatibilitySha(evidenceSha)) continue;
+              const gfmName = `real-qb-full-aggregate-${evidenceSha}`;
+              const gfmArtifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {owner, repo, run_id: run.id, per_page: 100});
+              const gfmArtifact = gfmArtifacts.find(item => item.name === gfmName && !item.expired);
+              if (!gfmArtifact) continue;
+              for (const localeRun of localeRuns.filter(item =>
+                item.head_sha && item.head_sha.toLowerCase() === evidenceSha && item.conclusion === 'success' && item.event === 'workflow_dispatch'
+              )) {
+                const localeName = `real-qb-current-locale-aggregate-${evidenceSha}`;
+                const localeArtifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {owner, repo, run_id: localeRun.id, per_page: 100});
+                const localeArtifact = localeArtifacts.find(item => item.name === localeName && !item.expired);
+                if (!localeArtifact) continue;
+                compatSha = evidenceSha;
+                gfm = {run, artifact:gfmArtifact, name:gfmName};
+                locale = {run:localeRun, artifact:localeArtifact, name:localeName};
+                break;
               }
-              core.setFailed(`No successful manually dispatched ${label} run contains ${aggregateName} for exact release SHA ${sha}.`);
-              return null;
+              if (gfm && locale) break;
             }
-
-            const gfmArtifactName = `real-qb-full-aggregate-${sha}`;
-            const localeArtifactName = `real-qb-current-locale-aggregate-${sha}`;
-            const gfm = await resolveManualAggregate('real-qb-full.yml', gfmArtifactName, 'Real qB Full Frozen Matrix');
-            if (!gfm) return;
-            const locale = await resolveManualAggregate('real-qb-locale.yml', localeArtifactName, 'Real qB Current Stable Locale Matrix');
-            if (!locale) return;
+            if (!gfm || !locale || !compatSha) {
+              core.setFailed(`No Full Frozen + Locale evidence pair can safely represent exact release SHA ${sha}.`);
+              return;
+            }
+            const gfmArtifactName = gfm.name;
+            const localeArtifactName = locale.name;
 
             core.info(`Reusing dev candidate CI run #${validated.run_number}: ${validated.html_url}`);
             core.info(`Reusing validated artifact ${candidateArtifact.name} (${candidateArtifact.id})`);
             core.info(`Reusing deployment evidence ${evidenceArtifact.name} (${evidenceArtifact.id})`);
             core.info(`Reusing Full Frozen Matrix run #${gfm.run.run_number}: ${gfm.run.html_url}`);
             core.info(`Reusing Locale Matrix run #${locale.run.run_number}: ${locale.run.html_url}`);
+            core.setOutput('compat_sha', compatSha);
             core.setOutput('run_id', String(validated.id));
             core.setOutput('artifact_name', artifactName);
             core.setOutput('evidence_name', evidenceName);
@@ -138,6 +183,8 @@ jobs:
           run-id: ${{ steps.verify.outputs.locale_run_id }}
 
       - name: Verify version, candidate integrity and all release-grade evidence
+        env:
+          COMPAT_EVIDENCE_SHA: ${{ steps.verify.outputs.compat_sha }}
         run: |
           set -euo pipefail
           VERSION="$(tr -d '\r\n' < VERSION)"
@@ -156,9 +203,9 @@ jobs:
           test "$(unzip -p release/WeiG-qB-WebUI.zip WeiG-qB-WebUI/GIT_SHA | tr -d '\r\n')" = "$GITHUB_SHA"
           test "$(unzip -p release/WeiG-qB-WebUI.zip WeiG-qB-WebUI/VERSION | tr -d '\r\n')" = "$VERSION"
           node tests/release-compat-evidence.mjs \
-            --gfm="gfm/${GITHUB_SHA}.json" \
-            --locale="locale/${GITHUB_SHA}.json" \
-            --sha="$GITHUB_SHA" \
+            --gfm="gfm/${COMPAT_EVIDENCE_SHA}.json" \
+            --locale="locale/${COMPAT_EVIDENCE_SHA}.json" \
+            --sha="$COMPAT_EVIDENCE_SHA" \
             --version="$VERSION"
           node tests/release-candidate-evidence.mjs \
             --mode=release \

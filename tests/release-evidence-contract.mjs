@@ -17,13 +17,17 @@ for(const [name,source] of [['promotion',promote],['release',release]]){
   assert(source.includes('release-candidate-${sha}'),`${name} must resolve the exact candidate artifact`);
   assert(source.includes('candidate-deployment-${sha}'),`${name} must resolve same-run candidate deployment evidence`);
   assert(source.includes('if (candidate && evidence)')&&source.includes('candidateArtifact = candidate')&&source.includes('evidenceArtifact = evidence')&&source.includes('!candidateArtifact || !evidenceArtifact'),`${name} must require candidate + evidence from the same successful CI run`);
-  assert(source.includes("resolveManualAggregate('real-qb-full.yml', gfmArtifactName")&&source.includes('real-qb-full-aggregate-${sha}'),`${name} must resolve exact-SHA Full Frozen Matrix evidence`);
-  assert(source.includes("resolveManualAggregate('real-qb-locale.yml', localeArtifactName")&&source.includes('real-qb-current-locale-aggregate-${sha}'),`${name} must resolve exact-SHA current-stable Locale evidence`);
-  assert(source.includes('workflow_id: workflowId')&&source.includes("run.event === 'workflow_dispatch'"),`${name} compatibility resolver must query the requested workflow and admit manual runs only`);
+  assert(source.includes('real-qb-full-aggregate-${compatSha}')&&source.includes('real-qb-current-locale-aggregate-${compatSha}')||source.includes('real-qb-full-aggregate-${evidenceSha}')&&source.includes('real-qb-current-locale-aggregate-${evidenceSha}'),`${name} must bind both expensive matrix aggregates to one verified compatibility evidence SHA`);
+  assert(source.includes("run.event === 'workflow_dispatch'"),`${name} compatibility resolver must admit manually dispatched matrix evidence only`);
   assert(source.includes('path: gfm')&&source.includes('path: locale'),`${name} must download both G-FM and Locale aggregate evidence`);
   assert(source.includes('node tests/release-compat-evidence.mjs'),`${name} must execute the central release compatibility evidence verifier`);
   assert(source.includes('node tests/release-candidate-evidence.mjs'),`${name} must execute the repository-owned candidate evidence verifier`);
   assert(!source.includes('real-qb-fast-aggregate-${sha}'),`${name} must never accept Fast G-FM aggregate evidence`);
+}
+assert(promote.includes('compat_evidence_sha')&&promote.includes('Compatibility evidence reuse refused')&&promote.includes('compatSha !== sha'),'promotion must require explicit guarded reuse whenever compatibility evidence SHA differs from the final candidate');
+assert(release.includes('reusableCompatibilitySha')&&release.includes('No Full Frozen + Locale evidence pair can safely represent exact release SHA')&&release.includes('Compatibility evidence')&&release.includes('non-validation changes'),'release must rediscover reusable compatibility evidence only through the same fail-closed validation-only descendant rule');
+for(const source of [promote,release]){
+  assert(source.includes("'.github/workflows/ci.yml'")&&source.includes("'.github/workflows/promote.yml'")&&source.includes("'.github/workflows/release.yml'")&&source.includes("'tests/full-stable-product-compat.mjs'")&&source.includes("'tests/release-evidence-contract.mjs'"),'compatibility evidence reuse allowlist must stay explicit and narrow');
 }
 assert(promote.includes('--mode=promotion')&&promote.includes('--main-before="$MAIN_BEFORE"'),'promotion must bind rehearsal evidence to the current pre-promotion main SHA');
 assert(promote.includes("core.setOutput('main_sha', mainSha)"),'promotion resolver must export the exact current main SHA used for rehearsal freshness');
@@ -51,4 +55,4 @@ assert(!full.includes('real-qb-fast-aggregate-${{ github.sha }}')&&full.includes
 assert(localeWorkflow.includes('workflow_dispatch:')&&!/\n\s*push:\s*/.test(localeWorkflow),'Locale Matrix must remain manually runnable and must not create ordinary dev-push runs');
 assert(pkg.scripts.test.includes('tests/release-evidence-contract.mjs'),'npm test must protect promotion/release evidence ownership');
 
-console.log('Release evidence contract passed: ordinary dev pushes do not start release-grade compatibility matrices; promote/release require same-run candidate rehearsal evidence plus manual exact-SHA Exhaustive G-FM 65/65 and current-stable Locale 61/61 aggregates, all revalidated fail-closed before promotion or publication.');
+console.log('Release evidence contract passed: ordinary dev pushes do not start release-grade compatibility matrices; candidate/rehearsal evidence stays exact-SHA while Full Frozen 65/65 + Locale 61/61 may cross only an explicit validation-only descendant boundary, with aggregate SHA identity revalidated fail-closed before promotion or publication.');
