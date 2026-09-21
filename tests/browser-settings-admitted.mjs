@@ -4,7 +4,6 @@
   const path=await import('node:path');
   const http=await import('node:http');
   const {fileURLToPath}=await import('node:url');
-  const {readWebuiStatic}=await import('./browser-driver.mjs');
   const here=path.dirname(fileURLToPath(import.meta.url));
   const root=path.resolve(here,'..');
   const fixturePath=path.join(root,'tests/fixtures/qb-release-catalog.lkg.json');
@@ -56,6 +55,7 @@
     return;
   }
 
+  const {readWebuiStatic}=await import('./browser-driver.mjs');
   const shardIndex=Number(process.env.WEIGG_SETTINGS_SHARD_INDEX||0);
   const shardCount=Number(process.env.WEIGG_SETTINGS_SHARD_COUNT||1);
   assert(Number.isInteger(shardIndex)&&Number.isInteger(shardCount)&&shardCount>0&&shardIndex>=0&&shardIndex<shardCount,'Invalid admitted Settings browser shard '+shardIndex+'/'+shardCount);
