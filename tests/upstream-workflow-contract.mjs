@@ -2,8 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
-const here=path.dirname(fileURLToPath(import.meta.url));
-const root=path.resolve(here,'..');
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const read=rel=>fs.readFileSync(path.join(root,rel),'utf8').replace(/\r\n?/g,'\n');
 const exists=rel=>fs.existsSync(path.join(root,rel));
 const assert=(ok,msg)=>{if(!ok)throw new Error(msg);};
@@ -20,28 +19,20 @@ const ci=read('.github/workflows/ci.yml');
 const gfm=read('.github/workflows/real-qb-full.yml');
 const promote=read('.github/workflows/promote.yml');
 const release=read('.github/workflows/release.yml');
-const compatVerifier=read('tests/release-compat-evidence.mjs');
+const compat=read('tests/release-compat-evidence.mjs');
 
-assert(ci.includes('qb-release-catalog.mjs upstream-qb --output=qb-release-catalog-shard-${{ matrix.shard }}.json --shard-index=${{ matrix.shard }} --shard-count=15')&&ci.includes('qb-release-catalog.mjs --merge-shards=base-shards --expected-shards=15 --output=qb-releases.json'),'candidate/settings evidence CI must regenerate exact supported stable source facts through 15 independent extraction runners plus one canonical merge');
-assert(ci.includes('tests/upstream-release-audit.mjs upstream-qb'),'candidate CI must audit every supported stable upstream release');
-assert(ci.includes('tests/full-stable-product-compat.mjs base-catalog/qb-releases.json'),'candidate CI must execute formal product compatibility across the canonical generated base stable catalog');
-assert(ci.includes('name: qb-release-catalog-${{ github.sha }}'),'candidate CI must publish an exact-SHA stable catalog artifact');
+assert(ci.includes('qb-release-catalog.mjs upstream-qb --output=qb-release-catalog-shard-${{ matrix.shard }}.json --shard-index=${{ matrix.shard }} --shard-count=15'),'settings-evidence CI must retain exact supported source extraction');
+const evidenceLane=ci.slice(ci.indexOf('  release_catalog_extract:'),ci.indexOf('  settings_bundle_materialize:'));
+assert(evidenceLane.includes("inputs.validation_mode == 'settings-evidence'")&&!evidenceLane.includes("inputs.validation_mode == 'candidate'"),'expensive upstream source/locale extraction must not run on every release candidate');
+assert(!ci.includes('\n  release_upstream_audit:\n')&&!ci.includes('\n  release_product_matrix:\n')&&!ci.includes('\n  release_fixture:\n'),'slim candidate must not duplicate Frozen/product/upstream owners');
+assert(ci.includes('node tests/full-stable-product-compat.mjs tests/fixtures/qb-release-catalog.lkg.json'),'cheap smoke must retain the frozen formal product compatibility contract');
 
-assert(gfm.includes('workflow_dispatch:'),'real qB Full Frozen Matrix must remain manually runnable for release-grade Exhaustive evidence');
-assert(!/\n\s*push:\s*/.test(gfm),'G-FM must not start 65 real runtimes on ordinary dev pushes');
-assert(/max-parallel:\s*16/.test(gfm),'real qB Full Frozen Matrix must keep max-parallel 16 for intentional final validation');
-assert(gfm.includes('Resolve Exhaustive mode and all Frozen stable versions')&&gfm.includes('= "65"'),'G-FM final plan must resolve exactly 65 Frozen stable runtimes');
-assert(gfm.includes('mode=exhaustive')&&gfm.includes('real-qb-capability-plan.mjs --matrix "$mode"'),'G-FM final-only route must use planner-owned Exhaustive assignments');
-assert(gfm.includes('Run isolated exact-version real qB evidence'),'G-FM must execute real exact-version qB evidence');
-assert(!gfm.includes('real-qb-fast-aggregate-${{ github.sha }}'),'Fast 65-version evidence must not be part of ordinary development automation');
-assert(gfm.includes('Require Exhaustive complete 65/65 Frozen real-qB evidence')&&gfm.includes('real-qb-full-aggregate-${{ github.sha }}'),'manual Exhaustive G-FM must preserve strict 65/65 aggregate evidence');
+assert(gfm.includes('workflow_dispatch:')&&!/\n\s*push:\s*/.test(gfm),'G-FM must remain manual release-grade evidence');
+assert(/max-parallel:\s*16/.test(gfm)&&gfm.includes('= "65"')&&gfm.includes('real-qb-full-aggregate-${{ github.sha }}'),'G-FM must preserve exhaustive 65-version evidence and bounded concurrency');
+assert(promote.includes('real-qb-full-aggregate-${compatSha}')&&promote.includes('node tests/release-compat-evidence.mjs')&&promote.includes('Compatibility evidence reuse refused'),'Promotion must centrally revalidate guarded Full Frozen/Locale evidence before main moves');
+assert(compat.includes('gfm.expected_stable_count!==65||gfm.executed_runtime_count!==65')&&compat.includes('gfm.PASS!==65||gfm.FAIL!==0||gfm.BLOCKED!==0'),'central compatibility verifier must remain fail-closed at 65/65');
 
-assert(promote.includes("resolveManualAggregate('real-qb-full.yml', gfmArtifactName")&&promote.includes('workflow_id: workflowId')&&promote.includes("run.event === 'workflow_dispatch'"),'promotion must require the manually dispatched exact-SHA Exhaustive G-FM through the shared resolver');
-assert(promote.includes('real-qb-full-aggregate-${compatSha}')&&promote.includes('node tests/release-compat-evidence.mjs')&&promote.includes('Compatibility evidence reuse refused'),'promotion must centrally revalidate Exhaustive G-FM bound to a guarded compatibility evidence SHA');
-assert(!promote.includes('real-qb-fast-aggregate-${sha}'),'promotion must never substitute Fast G-FM evidence for Exhaustive evidence');
-assert(compatVerifier.includes('gfm.expected_stable_count!==65||gfm.executed_runtime_count!==65')&&compatVerifier.includes('gfm.PASS!==65||gfm.FAIL!==0||gfm.BLOCKED!==0'),'central release compatibility verifier must enforce Exhaustive 65/65 G-FM');
-assert(!release.includes("workflow_id: 'upstream-compat.yml'"),'Release must not depend on the retired upstream compatibility workflow');
-assert(!release.includes("workflow_id: 'frozen-stable-compat.yml'"),'Release must not depend on the retired frozen compatibility workflow');
-assert(release.includes("workflow_id: 'real-qb-full.yml'")&&release.includes('reusableCompatibilitySha')&&release.includes('real-qb-full-aggregate-${evidenceSha}')&&release.includes('node tests/release-compat-evidence.mjs'),'Release must independently discover and revalidate manual Full Frozen evidence only through the guarded compatibility-evidence descendant rule');
+assert(release.includes("workflow_id:'promote.yml'")&&release.includes('release-certification-${sha}'),'Release must consume successful Promotion certification');
+assert(!release.includes("workflow_id: 'real-qb-full.yml'")&&!release.includes('node tests/release-compat-evidence.mjs'),'Release must not repeat exhaustive evidence discovery/verification');
 
-console.log('Upstream validation workflow contract passed: ordinary dev pushes stay on lightweight CI; candidate CI owns source/product audit; promotion/release accept centrally revalidated manually dispatched Exhaustive 65/65 evidence only at the exact evidence SHA or across a guarded validation-only descendant boundary.');
+console.log('Upstream workflow contract passed: source extraction is settings-evidence maintenance, release candidates stay bounded, Full Frozen remains intentional 65/65 evidence, Promotion certifies it once, and Release consumes that certification.');

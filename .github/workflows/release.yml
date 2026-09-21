@@ -17,207 +17,113 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - name: Resolve exact reusable dev candidate and release-grade evidence
-        id: verify
+      - name: Resolve successful promotion certification
+        id: resolve
         uses: actions/github-script@v9
         env:
           RELEASE_SHA: ${{ github.sha }}
         with:
           script: |
-            const sha = String(process.env.RELEASE_SHA || '').trim().toLowerCase();
-            if (!/^[0-9a-f]{40}$/.test(sha)) {
-              core.setFailed(`Release SHA is invalid: ${sha}`);
+            const sha=String(process.env.RELEASE_SHA||'').trim().toLowerCase();
+            if(!/^[0-9a-f]{40}$/.test(sha)){core.setFailed(`Release SHA is invalid: ${sha}`);return;}
+            const {owner,repo}=context.repo;
+            const main=await github.rest.repos.getBranch({owner,repo,branch:'main'});
+            const mainSha=main.data.commit.sha.toLowerCase();
+            if(mainSha!==sha){
+              core.setFailed(`Tag ${context.ref.replace('refs/tags/','')} points to ${sha}, but current main is ${mainSha}.`);
               return;
             }
-
-            const {owner, repo} = context.repo;
-            const main = await github.rest.repos.getBranch({owner, repo, branch: 'main'});
-            const mainSha = main.data.commit.sha.toLowerCase();
-            if (mainSha !== sha) {
-              core.setFailed(`Tag ${context.ref.replace('refs/tags/', '')} points to ${sha}, but current main is ${mainSha}. Refusing to publish a non-current stable commit.`);
-              return;
-            }
-
-            const validationOnly = new Set([
-              '.github/workflows/ci.yml',
-              '.github/workflows/promote.yml',
-              '.github/workflows/release.yml',
-              'tests/ci-contract.mjs',
-              'tests/full-stable-product-compat.mjs',
-              'tests/qb-locale-pipeline-contract.mjs',
-              'tests/release-evidence-contract.mjs',
-              'tests/compatibility-governance-contract.mjs',
-              'tests/upstream-workflow-contract.mjs',
-              'tests/release-candidate-evidence.mjs',
-              'tests/candidate-deployment.sh'
-            ]);
-            async function reusableCompatibilitySha(evidenceSha) {
-              evidenceSha = String(evidenceSha || '').toLowerCase();
-              if (!/^[0-9a-f]{40}$/.test(evidenceSha)) return false;
-              if (evidenceSha === sha) return true;
-              const compared = await github.rest.repos.compareCommits({owner, repo, base: evidenceSha, head: sha});
-              if (compared.data.behind_by !== 0 || !['ahead', 'identical'].includes(compared.data.status)) return false;
-              const blocked = (compared.data.files || []).map(file => file.filename).filter(file =>
-                !validationOnly.has(file) && !file.startsWith('docs/') && !file.endsWith('.md') && file !== 'LICENSE'
-              );
-              if (blocked.length) {
-                core.info(`Compatibility evidence ${evidenceSha} cannot represent release ${sha}: non-validation changes: ${blocked.join(', ')}`);
-                return false;
-              }
-              core.info(`Compatibility evidence ${evidenceSha} can represent release ${sha}; intervening changes are validation-only.`);
-              return true;
-            }
-
-            const runs = await github.paginate(github.rest.actions.listWorkflowRuns, {
-              owner, repo, workflow_id: 'ci.yml', branch: 'dev', status: 'success', per_page: 100
+            const certName=`release-certification-${sha}`;
+            const runs=await github.paginate(github.rest.actions.listWorkflowRuns,{
+              owner,repo,workflow_id:'promote.yml',branch:'dev',status:'success',per_page:100
             });
-            const artifactName = `release-candidate-${sha}`;
-            const evidenceName = `candidate-deployment-${sha}`;
-            let validated = null;
-            let candidateArtifact = null;
-            let evidenceArtifact = null;
-            for (const run of runs.filter(run => run.head_sha && run.head_sha.toLowerCase() === sha && run.conclusion === 'success')) {
-              const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {owner, repo, run_id: run.id, per_page: 100});
-              const candidate = artifacts.find(item => item.name === artifactName && !item.expired);
-              const evidence = artifacts.find(item => item.name === evidenceName && !item.expired);
-              if (candidate && evidence) {
-                validated = run;
-                candidateArtifact = candidate;
-                evidenceArtifact = evidence;
-                break;
-              }
+            let promotionRun=null,certArtifact=null;
+            for(const run of runs.filter(run=>run.conclusion==='success'&&run.event==='workflow_dispatch')){
+              const artifacts=await github.paginate(github.rest.actions.listWorkflowRunArtifacts,{owner,repo,run_id:run.id,per_page:100});
+              const artifact=artifacts.find(item=>item.name===certName&&!item.expired);
+              if(artifact){promotionRun=run;certArtifact=artifact;break;}
             }
-            if (!validated || !candidateArtifact || !evidenceArtifact) {
-              core.setFailed(`No successful dev CI run contains both ${artifactName} and ${evidenceName} for exact release SHA ${sha}.`);
+            if(!promotionRun||!certArtifact){
+              core.setFailed(`No successful promotion contains ${certName} for exact release SHA ${sha}.`);
               return;
             }
+            core.info(`Using promotion run #${promotionRun.run_number}: ${promotionRun.html_url}`);
+            core.setOutput('promotion_run_id',String(promotionRun.id));
+            core.setOutput('certification_name',certName);
 
-            const gfmRuns = await github.paginate(github.rest.actions.listWorkflowRuns, {
-              owner, repo, workflow_id: 'real-qb-full.yml', branch: 'dev', status: 'success', per_page: 100
-            });
-            const localeRuns = await github.paginate(github.rest.actions.listWorkflowRuns, {
-              owner, repo, workflow_id: 'real-qb-locale.yml', branch: 'dev', status: 'success', per_page: 100
-            });
-            let compatSha = null, gfm = null, locale = null;
-            const candidates = gfmRuns
-              .filter(run => run.head_sha && run.conclusion === 'success' && run.event === 'workflow_dispatch')
-              .sort((a,b)=>(a.head_sha.toLowerCase()===sha?-1:0)-(b.head_sha.toLowerCase()===sha?-1:0));
-            for (const run of candidates) {
-              const evidenceSha = run.head_sha.toLowerCase();
-              if (!await reusableCompatibilitySha(evidenceSha)) continue;
-              const gfmName = `real-qb-full-aggregate-${evidenceSha}`;
-              const gfmArtifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {owner, repo, run_id: run.id, per_page: 100});
-              const gfmArtifact = gfmArtifacts.find(item => item.name === gfmName && !item.expired);
-              if (!gfmArtifact) continue;
-              for (const localeRun of localeRuns.filter(item =>
-                item.head_sha && item.head_sha.toLowerCase() === evidenceSha && item.conclusion === 'success' && item.event === 'workflow_dispatch'
-              )) {
-                const localeName = `real-qb-current-locale-aggregate-${evidenceSha}`;
-                const localeArtifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {owner, repo, run_id: localeRun.id, per_page: 100});
-                const localeArtifact = localeArtifacts.find(item => item.name === localeName && !item.expired);
-                if (!localeArtifact) continue;
-                compatSha = evidenceSha;
-                gfm = {run, artifact:gfmArtifact, name:gfmName};
-                locale = {run:localeRun, artifact:localeArtifact, name:localeName};
-                break;
-              }
-              if (gfm && locale) break;
-            }
-            if (!gfm || !locale || !compatSha) {
-              core.setFailed(`No Full Frozen + Locale evidence pair can safely represent exact release SHA ${sha}.`);
-              return;
-            }
-            const gfmArtifactName = gfm.name;
-            const localeArtifactName = locale.name;
-
-            core.info(`Reusing dev candidate CI run #${validated.run_number}: ${validated.html_url}`);
-            core.info(`Reusing validated artifact ${candidateArtifact.name} (${candidateArtifact.id})`);
-            core.info(`Reusing deployment evidence ${evidenceArtifact.name} (${evidenceArtifact.id})`);
-            core.info(`Reusing Full Frozen Matrix run #${gfm.run.run_number}: ${gfm.run.html_url}`);
-            core.info(`Reusing Locale Matrix run #${locale.run.run_number}: ${locale.run.html_url}`);
-            core.setOutput('compat_sha', compatSha);
-            core.setOutput('run_id', String(validated.id));
-            core.setOutput('artifact_name', artifactName);
-            core.setOutput('evidence_name', evidenceName);
-            core.setOutput('gfm_run_id', String(gfm.run.id));
-            core.setOutput('gfm_artifact_name', gfmArtifactName);
-            core.setOutput('locale_run_id', String(locale.run.id));
-            core.setOutput('locale_artifact_name', localeArtifactName);
-
-      - name: Checkout exact release source for version and evidence policy
+      - name: Checkout exact release source
         uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
 
-      - name: Download validated dev release candidate
+      - name: Download immutable promotion certification
         uses: actions/download-artifact@v8
         with:
-          name: ${{ steps.verify.outputs.artifact_name }}
-          path: release
+          name: ${{ steps.resolve.outputs.certification_name }}
+          path: certification
           github-token: ${{ github.token }}
           repository: ${{ github.repository }}
-          run-id: ${{ steps.verify.outputs.run_id }}
+          run-id: ${{ steps.resolve.outputs.promotion_run_id }}
 
-      - name: Download exact candidate deployment evidence
-        uses: actions/download-artifact@v8
-        with:
-          name: ${{ steps.verify.outputs.evidence_name }}
-          path: evidence
-          github-token: ${{ github.token }}
-          repository: ${{ github.repository }}
-          run-id: ${{ steps.verify.outputs.run_id }}
-
-      - name: Download exact 65-version G-FM aggregate
-        uses: actions/download-artifact@v8
-        with:
-          name: ${{ steps.verify.outputs.gfm_artifact_name }}
-          path: gfm
-          github-token: ${{ github.token }}
-          repository: ${{ github.repository }}
-          run-id: ${{ steps.verify.outputs.gfm_run_id }}
-
-      - name: Download exact current-stable Locale aggregate
-        uses: actions/download-artifact@v8
-        with:
-          name: ${{ steps.verify.outputs.locale_artifact_name }}
-          path: locale
-          github-token: ${{ github.token }}
-          repository: ${{ github.repository }}
-          run-id: ${{ steps.verify.outputs.locale_run_id }}
-
-      - name: Verify version, candidate integrity and all release-grade evidence
-        env:
-          COMPAT_EVIDENCE_SHA: ${{ steps.verify.outputs.compat_sha }}
+      - name: Verify certification identity
+        id: certification
+        shell: bash
         run: |
           set -euo pipefail
           VERSION="$(tr -d '\r\n' < VERSION)"
           test "$GITHUB_REF_NAME" = "v$VERSION"
+          export VERSION
+          node <<'NODE'
+          const fs=require('node:fs');
+          const cert=JSON.parse(fs.readFileSync('certification/release-certification.json','utf8'));
+          const sha=String(process.env.GITHUB_SHA||'').toLowerCase(),version=process.env.VERSION;
+          const fail=msg=>{throw new Error(msg);};
+          if(cert.schemaVersion!==1||cert.kind!=='weig-release-certification')fail('Unsupported release certification.');
+          if(String(cert.candidateSha||'').toLowerCase()!==sha)fail('Certification candidate SHA mismatch.');
+          if(cert.version!==version)fail('Certification VERSION mismatch.');
+          if(!/^[0-9a-f]{40}$/.test(String(cert.compatEvidenceSha||'')))fail('Certification compatibility SHA is invalid.');
+          if(!Number.isInteger(cert.candidate?.runId)||cert.candidate.runId<1)fail('Certification candidate run id is invalid.');
+          if(cert.candidate.artifact!==`release-candidate-${sha}`)fail('Certification candidate artifact name mismatch.');
+          if(!/^[0-9a-f]{64}$/.test(String(cert.candidate.packageSha256||'')))fail('Certification package digest is invalid.');
+          if(!Number.isInteger(cert.deployment?.runId)||cert.deployment.artifact!==`candidate-deployment-${sha}`)fail('Certification deployment evidence identity mismatch.');
+          for(const owner of ['deployment','fullFrozen','locale']){
+            if(!/^[0-9a-f]{64}$/.test(String(cert[owner]?.evidenceSha256||'')))fail(`Certification ${owner} digest is invalid.`);
+          }
+          fs.appendFileSync(process.env.GITHUB_OUTPUT,`candidate_run_id=${cert.candidate.runId}\nartifact_name=${cert.candidate.artifact}\npackage_sha256=${cert.candidate.packageSha256}\n`);
+          console.log(`Certification PASS: candidate ${sha}, compat ${cert.compatEvidenceSha}, promotion run ${cert.promotionRunId}`);
+          NODE
+
+      - name: Download certified release candidate
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ steps.certification.outputs.artifact_name }}
+          path: release
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.certification.outputs.candidate_run_id }}
+
+      - name: Verify certified candidate bytes
+        env:
+          CERTIFIED_PACKAGE_SHA256: ${{ steps.certification.outputs.package_sha256 }}
+        run: |
+          set -euo pipefail
+          VERSION="$(tr -d '\r\n' < VERSION)"
           test -f release/WeiG-qB-WebUI.zip
           test -f release/SHA256SUMS
           test -f release/CANDIDATE_SHA
           test -f release/weigg-install.sh
           test -f release/weigg-install.ps1
-          test -f evidence/candidate.json
           test "$(tr -d '\r\n' < release/CANDIDATE_SHA)" = "$GITHUB_SHA"
           (cd release && sha256sum -c SHA256SUMS)
+          ACTUAL="$(sha256sum release/WeiG-qB-WebUI.zip | awk '{print $1}')"
+          test "$ACTUAL" = "$CERTIFIED_PACKAGE_SHA256"
           cmp -s release/weigg-install.sh installers/install.sh
           cmp -s release/weigg-install.ps1 installers/install.ps1
           bash -n release/weigg-install.sh
           test "$(unzip -p release/WeiG-qB-WebUI.zip WeiG-qB-WebUI/GIT_SHA | tr -d '\r\n')" = "$GITHUB_SHA"
           test "$(unzip -p release/WeiG-qB-WebUI.zip WeiG-qB-WebUI/VERSION | tr -d '\r\n')" = "$VERSION"
-          node tests/release-compat-evidence.mjs \
-            --gfm="gfm/${COMPAT_EVIDENCE_SHA}.json" \
-            --locale="locale/${COMPAT_EVIDENCE_SHA}.json" \
-            --sha="$COMPAT_EVIDENCE_SHA" \
-            --version="$VERSION"
-          node tests/release-candidate-evidence.mjs \
-            --mode=release \
-            --evidence=evidence/candidate.json \
-            --package=release/WeiG-qB-WebUI.zip \
-            --sha="$GITHUB_SHA" \
-            --version="$VERSION" \
-            --tag="$GITHUB_REF_NAME"
+          echo "Certified candidate bytes PASS: $ACTUAL"
 
       - name: Publish GitHub Release
         env:
@@ -233,5 +139,5 @@ jobs:
             --verify-tag \
             --latest \
             --generate-notes \
-            --notes $'Latest stable release of WeiG qB WebUI.\n\nVerified compatibility: qBittorrent 4.1.0–5.2.3, release-grade Full Frozen Matrix 65/65 and current-stable Locale Matrix 61/61.' \
+            --notes $'Latest stable release of WeiG qB WebUI.\n\nPromotion certification already verified release-grade Full Frozen 65/65, current-stable Locale 61/61, and exact candidate deployment acceptance.' \
             --title "WeiG qB WebUI ${VERSION}"

@@ -91,7 +91,10 @@ jobs:
                 'tests/compatibility-governance-contract.mjs',
                 'tests/upstream-workflow-contract.mjs',
                 'tests/release-candidate-evidence.mjs',
-                'tests/candidate-deployment.sh'
+                'tests/candidate-deployment.sh',
+                'tests/installer-lifecycle-browser.mjs',
+                'tests/qb-recovery-ci-contract.mjs',
+                '.github/workflows/candidate-deployment-only.yml'
               ]);
               const blocked = (compatCompare.data.files || []).map(file => file.filename).filter(file =>
                 !validationOnly.has(file) && !file.startsWith('docs/') && !file.endsWith('.md') && file !== 'LICENSE'
@@ -110,20 +113,36 @@ jobs:
             const evidenceName = `candidate-deployment-${sha}`;
             let validated = null;
             let candidateArtifact = null;
-            let evidenceArtifact = null;
             for (const run of candidateRuns.filter(run => run.head_sha && run.head_sha.toLowerCase() === sha && run.conclusion === 'success')) {
               const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {owner, repo, run_id: run.id, per_page: 100});
               const candidate = artifacts.find(item => item.name === artifactName && !item.expired);
-              const evidence = artifacts.find(item => item.name === evidenceName && !item.expired);
-              if (candidate && evidence) {
+              if (candidate) {
                 validated = run;
                 candidateArtifact = candidate;
+                break;
+              }
+            }
+            if (!validated || !candidateArtifact) {
+              core.setFailed(`No successful dev CI run contains ${artifactName} for exact SHA ${sha}.`);
+              return;
+            }
+
+            const deploymentRuns = await github.paginate(github.rest.actions.listWorkflowRuns, {
+              owner, repo, workflow_id: 'candidate-deployment-only.yml', branch: 'dev', status: 'success', per_page: 100
+            });
+            let evidenceRun = null;
+            let evidenceArtifact = null;
+            for (const run of deploymentRuns.filter(run => run.conclusion === 'success' && run.event === 'workflow_dispatch')) {
+              const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {owner, repo, run_id: run.id, per_page: 100});
+              const evidence = artifacts.find(item => item.name === evidenceName && !item.expired);
+              if (evidence) {
+                evidenceRun = run;
                 evidenceArtifact = evidence;
                 break;
               }
             }
-            if (!validated || !candidateArtifact || !evidenceArtifact) {
-              core.setFailed(`No successful dev CI run contains both ${artifactName} and ${evidenceName} for exact SHA ${sha}.`);
+            if (!evidenceRun || !evidenceArtifact) {
+              core.setFailed(`No successful isolated deployment acceptance contains ${evidenceName} for exact SHA ${sha}.`);
               return;
             }
 
@@ -149,13 +168,14 @@ jobs:
 
             core.info(`Validated dev candidate CI run #${validated.run_number}: ${validated.html_url}`);
             core.info(`Reusable artifact: ${candidateArtifact.name} (${candidateArtifact.id})`);
-            core.info(`Deployment evidence: ${evidenceArtifact.name} (${evidenceArtifact.id})`);
+            core.info(`Deployment evidence: ${evidenceArtifact.name} (${evidenceArtifact.id}) from isolated run #${evidenceRun.run_number}`);
             core.info(`Validated Full Frozen Matrix run #${gfm.run.run_number}: ${gfm.run.html_url}`);
             core.info(`Validated Locale Matrix run #${locale.run.run_number}: ${locale.run.html_url}`);
             core.setOutput('sha', sha);
             core.setOutput('compat_sha', compatSha);
             core.setOutput('main_sha', mainSha);
             core.setOutput('run_id', String(validated.id));
+            core.setOutput('deployment_run_id', String(evidenceRun.id));
             core.setOutput('artifact_name', artifactName);
             core.setOutput('evidence_name', evidenceName);
             core.setOutput('gfm_run_id', String(gfm.run.id));
@@ -185,7 +205,7 @@ jobs:
           path: evidence
           github-token: ${{ github.token }}
           repository: ${{ github.repository }}
-          run-id: ${{ steps.verify.outputs.run_id }}
+          run-id: ${{ steps.verify.outputs.deployment_run_id }}
 
       - name: Download exact 65-version G-FM aggregate
         uses: actions/download-artifact@v8
@@ -245,6 +265,75 @@ jobs:
             --version="$VERSION" \
             --main-before="$MAIN_BEFORE"
 
+      - name: Build release certification
+        id: certification
+        shell: bash
+        env:
+          CANDIDATE_SHA: ${{ steps.verify.outputs.sha }}
+          COMPAT_SHA: ${{ steps.verify.outputs.compat_sha }}
+          MAIN_BEFORE: ${{ steps.verify.outputs.main_sha }}
+          CANDIDATE_RUN_ID: ${{ steps.verify.outputs.run_id }}
+          CANDIDATE_ARTIFACT: ${{ steps.verify.outputs.artifact_name }}
+          DEPLOYMENT_RUN_ID: ${{ steps.verify.outputs.deployment_run_id }}
+          DEPLOYMENT_ARTIFACT: ${{ steps.verify.outputs.evidence_name }}
+          GFM_RUN_ID: ${{ steps.verify.outputs.gfm_run_id }}
+          GFM_ARTIFACT: ${{ steps.verify.outputs.gfm_artifact_name }}
+          LOCALE_RUN_ID: ${{ steps.verify.outputs.locale_run_id }}
+          LOCALE_ARTIFACT: ${{ steps.verify.outputs.locale_artifact_name }}
+        run: |
+          set -euo pipefail
+          mkdir -p certification
+          VERSION="$(tr -d '\r\n' < VERSION)"
+          export VERSION
+          node <<'NODE'
+          const crypto=require('node:crypto'),fs=require('node:fs');
+          const hash=file=>crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+          const sha=process.env.CANDIDATE_SHA,compat=process.env.COMPAT_SHA;
+          if(!/^[0-9a-f]{40}$/.test(sha)||!/^[0-9a-f]{40}$/.test(compat))throw new Error('Certification SHA identity is invalid.');
+          const certification={
+            schemaVersion:1,
+            kind:'weig-release-certification',
+            candidateSha:sha,
+            compatEvidenceSha:compat,
+            version:process.env.VERSION,
+            mainBefore:process.env.MAIN_BEFORE,
+            promotionRunId:Number(process.env.GITHUB_RUN_ID),
+            candidate:{
+              runId:Number(process.env.CANDIDATE_RUN_ID),
+              artifact:process.env.CANDIDATE_ARTIFACT,
+              packageSha256:hash('candidate/WeiG-qB-WebUI.zip')
+            },
+            deployment:{
+              runId:Number(process.env.DEPLOYMENT_RUN_ID),
+              artifact:process.env.DEPLOYMENT_ARTIFACT,
+              evidenceSha256:hash('evidence/candidate.json')
+            },
+            fullFrozen:{
+              runId:Number(process.env.GFM_RUN_ID),
+              artifact:process.env.GFM_ARTIFACT,
+              evidenceSha256:hash(`gfm/${compat}.json`)
+            },
+            locale:{
+              runId:Number(process.env.LOCALE_RUN_ID),
+              artifact:process.env.LOCALE_ARTIFACT,
+              evidenceSha256:hash(`locale/${compat}.json`)
+            }
+          };
+          for(const value of [certification.candidate.packageSha256,certification.deployment.evidenceSha256,certification.fullFrozen.evidenceSha256,certification.locale.evidenceSha256]){
+            if(!/^[0-9a-f]{64}$/.test(value))throw new Error('Certification evidence digest is invalid.');
+          }
+          fs.writeFileSync('certification/release-certification.json',JSON.stringify(certification,null,2)+'\n');
+          console.log(JSON.stringify(certification,null,2));
+          NODE
+
+      - name: Upload immutable release certification
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-certification-${{ steps.verify.outputs.sha }}
+          path: certification/release-certification.json
+          if-no-files-found: error
+          retention-days: 90
+
       - name: Checkout main for authenticated fast-forward
         uses: actions/checkout@v7
         with:
@@ -267,6 +356,8 @@ jobs:
           echo "Reused dev candidate CI run: ${{ steps.verify.outputs.run_id }}"
           echo "Reused validated artifact: ${{ steps.verify.outputs.artifact_name }}"
           echo "Reused deployment/rehearsal evidence: ${{ steps.verify.outputs.evidence_name }}"
+          echo "Deployment evidence run: ${{ steps.verify.outputs.deployment_run_id }}"
+          echo "Release certification: release-certification-${{ steps.verify.outputs.sha }}"
           echo "Compatibility evidence SHA: ${{ steps.verify.outputs.compat_sha }}"
           echo "Reused manual Full Frozen Matrix run: ${{ steps.verify.outputs.gfm_run_id }}"
           echo "Reused G-FM aggregate: ${{ steps.verify.outputs.gfm_artifact_name }}"

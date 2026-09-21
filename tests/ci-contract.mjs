@@ -104,16 +104,16 @@ assert(promote.includes('git merge-base --is-ancestor origin/main "$CANDIDATE_SH
 assert(promote.includes('compat_evidence_sha')&&promote.includes('Compatibility evidence reuse refused')&&promote.includes("'.github/workflows/ci.yml'")&&promote.includes("'tests/full-stable-product-compat.mjs'")&&promote.includes("compatSha !== sha"),'promotion may reuse expensive matrix evidence only through the explicit validation-only descendant guard');
 assert(promote.includes('core.setOutput(\'compat_sha\', compatSha)')&&promote.includes('real-qb-full-aggregate-${compatSha}')&&promote.includes('real-qb-current-locale-aggregate-${compatSha}'),'matrix artifact lookup must be bound to the separately verified compatibility evidence SHA');
 assert(!promote.includes('validation_mode=candidate')&&!promote.includes('main-only candidate'),'promotion must not instruct a redundant main candidate rebuild');
+assert(promote.includes("workflow_id: 'candidate-deployment-only.yml'")&&promote.includes("core.setOutput('deployment_run_id'")&&promote.includes('release-certification-${{ steps.verify.outputs.sha }}'),'promotion must resolve isolated deployment evidence and emit immutable release certification');
 
-assert(release.includes("branch: 'dev'")&&release.includes('release-candidate-${sha}'),'Release must reuse the exact dev candidate artifact');
-assert(!release.includes("branch: 'main'\n              event: 'workflow_dispatch'"),'Release must not depend on a second main candidate run');
-assert(release.includes('actions/download-artifact@v8')&&release.includes('run-id: ${{ steps.verify.outputs.run_id }}'),'Release must download the exact validated candidate run artifact');
+assert(release.includes("workflow_id:'promote.yml'")&&release.includes('release-certification-${sha}'),'Release must require exact-SHA successful Promotion certification');
+assert(release.includes('Download immutable promotion certification')&&release.includes('candidate_run_id')&&release.includes('CERTIFIED_PACKAGE_SHA256'),'Release must resolve candidate bytes only through the immutable certification');
+assert(!release.includes("workflow_id: 'real-qb-full.yml'")&&!release.includes("workflow_id: 'real-qb-locale.yml'")&&!release.includes('node tests/release-compat-evidence.mjs'),'Release must not repeat compatibility evidence discovery/verification after Promotion certification');
 assert(release.includes('test "$GITHUB_REF_NAME" = "v$VERSION"'),'Release tag must equal repository VERSION');
-assert(release.includes('sha256sum -c SHA256SUMS')&&release.includes('WeiG-qB-WebUI/GIT_SHA')&&release.includes('WeiG-qB-WebUI/VERSION'),'Release must verify checksum, exact SHA and embedded VERSION');
+assert(release.includes('sha256sum -c SHA256SUMS')&&release.includes('WeiG-qB-WebUI/GIT_SHA')&&release.includes('WeiG-qB-WebUI/VERSION'),'Release must verify checksum, certified package digest, exact SHA and embedded VERSION');
 assert(release.includes('--verify-tag')&&release.includes('--latest')&&release.includes('--generate-notes'),'Release must verify the pushed tag, publish it as Latest and generate notes');
 assert(release.includes("Latest stable release of WeiG qB WebUI.")&&release.includes('--title "WeiG qB WebUI ${VERSION}"'),'Release presentation must lead with English stable-release text and a version title without the v-prefix');
-assert(!release.includes('qb-release-catalog.mjs')&&!release.includes('zip -r WeiG-qB-WebUI.zip'),'Release workflow must publish the validated artifact without rebuilding product/catalog');
-assert(!release.includes("workflow_id: 'upstream-compat.yml'"),'Release must rely on the full candidate all-stable source/product audit rather than require an unrelated exact-SHA parser workflow');
+assert(!release.includes('qb-release-catalog.mjs')&&!release.includes('zip -r WeiG-qB-WebUI.zip'),'Release workflow must publish the certified artifact without rebuilding product/catalog');
 
 const fullProduct=read('tests/full-stable-product-compat.mjs');
 for(const owner of ['torrent-fields.js','settings-schema.js','capabilities.js','torrent-semantics.js','qb-client.js'])assert(fullProduct.includes(`'${owner}'`),`full stable product matrix must execute formal owner ${owner}`);
