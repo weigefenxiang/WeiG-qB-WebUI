@@ -109,6 +109,9 @@ assert.match(ps,/function Configure-QBWebUI/,'Windows qB config mutation must pa
 assert.match(ps,/qBittorrent config encoding preserved/,'Windows installer must report the preserved config encoding for diagnostics');
 assert.doesNotMatch(ps,/\$text=Get-Content \$cfg -Raw/,'Windows configure must never decode qBittorrent.ini through the locale-dependent PowerShell default');
 assert.doesNotMatch(ps,/Set-Content -Path \$cfg -Value \$text -Encoding UTF8/,'Windows configure must never transcode the entire qBittorrent config through Set-Content UTF8');
+assert.match(ps,/function Move-OutOfInstallTarget/,'Windows installer must protect self-hosted installs whose shell starts inside the destination directory');
+assert.match(ps,/Working directory moved outside install target before atomic swap/,'Windows installer must expose the self-hosted directory escape for diagnostics');
+assert.ok(ps.indexOf('Move-OutOfInstallTarget $Destination')<ps.indexOf('Move-Item $Destination $old'),'Windows installer must leave the destination working tree before renaming the destination during atomic swap');
 
 assert.match(live,/BACKUP_RETENTION=3/,'LIVE deploy must retain exactly three rollback backups');
 assert.match(live,/prune_target_backups/,'LIVE deploy must prune old sibling rollback backups');
