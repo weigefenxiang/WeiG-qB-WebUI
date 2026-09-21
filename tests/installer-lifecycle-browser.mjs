@@ -112,9 +112,16 @@ try{
     await page.locator('#app-nav [data-route="settings"]').click();
     await page.waitForFunction(()=>location.hash.includes('settings'));
     await page.waitForSelector('#settings-content[data-settings-renderer="canonical"]',{timeout:10000});
-    const advancedTab=page.locator('#settings-tabs [data-settings-tab="advanced"]');
-    await advancedTab.click();
-    await page.waitForSelector('#settings-tabs [data-settings-tab="advanced"].is-active',{timeout:10000});
+    const localeTab=await page.evaluate(()=>{
+      const schema=window.WeiG&&window.WeiG.SettingsSchema;
+      const item=schema&&schema.sourcePreference&&schema.sourcePreference('locale');
+      return String(item&&item.tab||'');
+    });
+    assert(localeTab,`qB ${expectedQb} source-native Settings does not expose a locale owner tab.`);
+    const localeTabButton=page.locator(`#settings-tabs [data-settings-tab="${localeTab}"]`);
+    assert(await localeTabButton.count()===1,`qB ${expectedQb} locale owner tab is missing from canonical Settings: ${localeTab}`);
+    await localeTabButton.click();
+    await page.waitForSelector(`#settings-tabs [data-settings-tab="${localeTab}"].is-active`,{timeout:10000});
     const localeRow=page.locator('[data-setting-key="locale"]');
     await localeRow.waitFor({state:'attached',timeout:10000});
     localizedSettingTitle=String(await localeRow.locator('.setting-title').textContent()||'').trim();
