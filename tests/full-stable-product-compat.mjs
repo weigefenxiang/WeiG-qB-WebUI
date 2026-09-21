@@ -7,17 +7,13 @@ import {createCompactRuntime} from '../tools/qb-compact-runtime.mjs';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(here,'..');
-const catalogPath=path.resolve(process.argv[2]||''),settingsCatalogPath=path.resolve(process.argv[3]||'');
-assert.ok(catalogPath&&fs.existsSync(catalogPath)&&settingsCatalogPath&&fs.existsSync(settingsCatalogPath),'Usage: node tests/full-stable-product-compat.mjs <enriched-qb-releases.json> <base-qb-releases.json>');
-const catalog=JSON.parse(fs.readFileSync(catalogPath,'utf8')),settingsCatalog=JSON.parse(fs.readFileSync(settingsCatalogPath,'utf8'));
-assert.ok(Array.isArray(catalog)&&catalog.length>0,'full-stable product matrix requires a non-empty generated release catalog');
-assert.ok(Array.isArray(settingsCatalog)&&settingsCatalog.length>0,'full-stable product matrix requires the exact canonical Settings base catalog');
+const catalogPath=path.resolve(process.argv[2]||path.join(root,'tests/fixtures/qb-release-catalog.lkg.json'));
+assert.ok(catalogPath&&fs.existsSync(catalogPath),'Usage: node tests/full-stable-product-compat.mjs [base-qb-releases.json]');
+const catalog=JSON.parse(fs.readFileSync(catalogPath,'utf8'));
+assert.ok(Array.isArray(catalog)&&catalog.length>0,'full-stable product matrix requires a non-empty canonical base catalog');
 assert.equal(catalog[0].qbVersion,'4.1.0','formal product matrix floor must be qB 4.1.0');
 assert.ok(catalog.every(x=>x.stable===true&&x.officialWeiGSupport!==false),'formal product matrix accepts official supported stable profiles only');
-const exactIdentity=profile=>[String(profile?.qbVersion||''),String(profile?.sourceSha||'').toLowerCase()];
-assert.deepEqual(settingsCatalog.map(exactIdentity),catalog.map(exactIdentity),'Settings base catalog and enriched product catalog must retain identical exact stable release identity');
-const {W}=createCompactRuntime(settingsCatalog,{owners:['settings-schema.js']});
-createCompactRuntime(catalog,{owners:['capabilities.js','torrent-fields.js','torrent-semantics.js','qb-client.js'],W});
+const {W}=createCompactRuntime(catalog,{owners:['settings-schema.js','capabilities.js','torrent-fields.js','torrent-semantics.js','qb-client.js']});
 const F=W.TorrentFieldRegistry,C=W.CapabilityRegistry,T=W.TorrentSemantics,S=W.SettingsSchema,Client=W.QBClient;
 assert.ok(F&&C&&T&&S&&Client,'formal compact product compatibility owners must load');
 
@@ -26,7 +22,14 @@ assert.deepEqual(Array.from(F.fields,x=>x.key),currentColumnFields,'runtime Torr
 const baselineFilters=['all','downloading','seeding','completed','stopped','running','active','inactive','errored'];
 const coreActions=['start','stop','delete','force','recheck','sequential','firstlast','autotmm','top','bottom','rename','location','category','dllimit','uplimit','addTrackers'];
 const optionalActions=['reannounce','removeTrackers','editTracker','tags'];
-const expectedSettingsSurfaces=['behavior','downloads','connection','speed','bittorrent','rss','webui','advanced'];const settingsSurfaces=new Set(Array.from(S.surfaces||[]));assert.deepEqual(Array.from(settingsSurfaces),expectedSettingsSurfaces,'formal product matrix must execute the exact eight qB SettingsSchema surfaces');
+const expectedSettingsSurfaces=['behavior','downloads','connection','speed','bittorrent','rss','webui','advanced'];
+const settingsSurfaces=new Set(expectedSettingsSurfaces);
+function settingsGraphKeys(graph){
+  const keys=new Set();
+  for(const field of graph?.fieldsets||[])for(const control of field?.legendControls||[])if(control?.preferenceKey)keys.add(String(control.preferenceKey));
+  for(const row of graph?.rows||[])for(const item of row?.items||[])if(item?.preferenceKey)keys.add(String(item.preferenceKey));
+  return keys;
+}
 const surfaceActions=new Map([
   ['search','searchcontroller.h:pluginsAction'],
   ['searchPlugins','searchcontroller.h:pluginsAction'],
@@ -58,6 +61,7 @@ async function expectRejectedWithoutHttp(client,method,args,label){const calls=c
 for(const profile of catalog){
   const client=new Client();client.qbVersion=profile.qbVersion;client.webApiVersion=profile.webApiVersion;
   await C.bind(client);
+  await S.loadCompatibility();
   const release=C.releaseIdentity();
   assert.equal(release?.qbVersion,profile.qbVersion,`${profile.qbVersion}: CapabilityRegistry exact bind`);
   assert.equal(release?.sourceSha,profile.sourceSha,`${profile.qbVersion}: CapabilityRegistry source SHA drift`);
@@ -99,17 +103,46 @@ for(const profile of catalog){
   if(C.supportsTorrentAction('reannounce')){calls=capture(client);await client.reannounce('abc');assert.equal(calls[0]?.path,'torrents/reannounce',`${profile.qbVersion}: Reannounce source action resolved wrong endpoint`);}else await expectRejectedWithoutHttp(client,'reannounce',['abc'],`${profile.qbVersion} Reannounce`);
   if(C.supportsTorrentAction('removeTrackers')){calls=capture(client);await client.removeTrackers('abc','https://tracker.invalid/announce');assert.equal(calls[0]?.path,'torrents/removeTrackers',`${profile.qbVersion}: Remove Tracker source action resolved wrong endpoint`);}else await expectRejectedWithoutHttp(client,'removeTrackers',['abc','https://tracker.invalid/announce'],`${profile.qbVersion} Remove Tracker`);
 
-  await S.bindRelease(C.releaseIdentity());
+  const nativeSettingsSurfaces=S.nativeSurfaces();
+  assert.deepEqual(nativeSettingsSurfaces,expectedSettingsSurfaces,`${profile.qbVersion}: formal product matrix must execute the exact eight source-native Settings surfaces`);
+  const mappedSettings=new Set();
+  for(const surface of nativeSettingsSurfaces){
+    const graph=S.controlGraph(surface);
+    assert.ok(graph,`${profile.qbVersion}: Settings surface ${surface} lacks source-native Control Graph`);
+    for(const key of settingsGraphKeys(graph))mappedSettings.add(key);
+  }
+  assert.ok(mappedSettings.size>0,`${profile.qbVersion}: source-native Settings graph exposes no preference controls`);
+  const descriptorByKey=new Map(profile.preferenceDescriptors.map(item=>[String(item.key),item]));
   assert.equal(profile.preferenceDescriptors.length,profile.preferenceKeys.length,`${profile.qbVersion}: Preference descriptor/key count mismatch`);
   let writableSettings=0;
-  for(const descriptor of profile.preferenceDescriptors){const bound=S.descriptor(descriptor.key);assert.ok(bound&&bound.key===descriptor.key,`${profile.qbVersion}: SettingsSchema lost descriptor ${descriptor.key}`);const route=S.describe(descriptor.key);assert.ok(settingsSurfaces.has(route.surface)&&route.section,`${profile.qbVersion}: Preference ${descriptor.key} lacks safe Settings route`);if(descriptor.writable===true){writableSettings++;assert.equal(descriptor.setterPresent,true,`${profile.qbVersion}: writable ${descriptor.key} lacks setter`);assert.ok(descriptor.writeType,`${profile.qbVersion}: writable ${descriptor.key} lacks write type`);assert.notEqual(descriptor.typeAgreement,'MISMATCH',`${profile.qbVersion}: mismatched ${descriptor.key} must not remain writable`);}}
+  for(const key of mappedSettings){
+    const source=descriptorByKey.get(key);
+    assert.ok(source,`${profile.qbVersion}: Settings graph preference ${key} escaped the exact source descriptor set`);
+    const bound=S.sourcePreference(key);
+    assert.ok(bound&&bound.key===key,`${profile.qbVersion}: SettingsSchema lost source-native preference ${key}`);
+    assert.ok(settingsSurfaces.has(bound.tab)&&bound.sectionId,`${profile.qbVersion}: Preference ${key} lacks a source-native Settings route`);
+    const proof=bound.descriptor;
+    assert.ok(proof,`${profile.qbVersion}: Preference ${key} lacks source descriptor proof`);
+    assert.equal(proof.getterPresent,source.getterPresent,`${profile.qbVersion}: ${key} getter provenance drift`);
+    assert.equal(proof.setterPresent,source.setterPresent,`${profile.qbVersion}: ${key} setter provenance drift`);
+    assert.equal(proof.readType,source.readType,`${profile.qbVersion}: ${key} read type drift`);
+    assert.equal(proof.writeType,source.writeType,`${profile.qbVersion}: ${key} write type drift`);
+    assert.equal(proof.typeAgreement,source.typeAgreement,`${profile.qbVersion}: ${key} type agreement drift`);
+    assert.equal(proof.writable,source.writable,`${profile.qbVersion}: ${key} writable proof drift`);
+    if(proof.writable===true){
+      writableSettings++;
+      assert.equal(proof.setterPresent,true,`${profile.qbVersion}: writable ${key} lacks setter`);
+      assert.ok(proof.writeType,`${profile.qbVersion}: writable ${key} lacks write type`);
+      assert.notEqual(proof.typeAgreement,'MISMATCH',`${profile.qbVersion}: mismatched ${key} must not remain writable`);
+    }
+  }
 
   const search=C.supports('search'),rss=C.supports('rss'),logs=C.supports('logs');
   assert.equal(search,profile.apiActions.includes('searchcontroller.h:pluginsAction'),`${profile.qbVersion}: Search top-level availability must be exact-source`);
   assert.equal(rss,profile.apiActions.includes('rsscontroller.h:itemsAction'),`${profile.qbVersion}: RSS top-level availability must be exact-source`);
   assert.equal(logs,profile.apiActions.includes('logcontroller.h:mainAction'),`${profile.qbVersion}: Logs top-level availability must be exact-source`);
 
-  rows.push({qbVersion:profile.qbVersion,webApiVersion:profile.webApiVersion,nativeFilters,derivedFilters,categoryFacet:C.supports('categoryFacet'),tagFacet:C.supports('tagFacet'),nativeCategories:C.supports('categories'),nativeTags:C.supports('tags'),privateFilter:C.supports('privateFilter'),actions:[...coreActions,...optionalActions].filter(x=>C.supportsTorrentAction(x)).length,settings:profile.preferenceDescriptors.length,writableSettings,search,rss,logs});
+  rows.push({qbVersion:profile.qbVersion,webApiVersion:profile.webApiVersion,nativeFilters,derivedFilters,categoryFacet:C.supports('categoryFacet'),tagFacet:C.supports('tagFacet'),nativeCategories:C.supports('categories'),nativeTags:C.supports('tags'),privateFilter:C.supports('privateFilter'),actions:[...coreActions,...optionalActions].filter(x=>C.supportsTorrentAction(x)).length,settings:mappedSettings.size,writableSettings,search,rss,logs});
 }
 
 assert.equal(rows.length,catalog.length,'every generated stable profile must enter the formal product matrix');

@@ -177,6 +177,8 @@ jobs:
           node-version: 22
       - name: Semantic runtime, qB baselines and JavaScript syntax
         run: npm test
+      - name: Full Frozen product compatibility contract
+        run: node tests/full-stable-product-compat.mjs tests/fixtures/qb-release-catalog.lkg.json
       - name: Linux installer syntax and qB [Preferences] contract
         run: |
           sh -n installers/install.sh
@@ -896,26 +898,19 @@ jobs:
     name: qB full stable PRODUCT compatibility
     if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[candidate]')) }}
     runs-on: ubuntu-latest
-    needs: release_catalog_merge
+    needs: release_catalog_base
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-      - name: Download exact stable release catalog
-        uses: actions/download-artifact@v8
-        with:
-          name: qb-release-catalog-${{ github.sha }}
-          path: release-catalog
-      - name: Download exact base stable release catalog
+      - name: Download exact canonical base stable release catalog
         uses: actions/download-artifact@v8
         with:
           name: qb-release-catalog-base-${{ github.sha }}
           path: base-catalog
       - name: Full stable PRODUCT compatibility matrix
-        run: |
-          cp release-catalog/qb-releases.json qb-releases.json
-          node tests/full-stable-product-compat.mjs qb-releases.json base-catalog/qb-releases.json
+        run: node tests/full-stable-product-compat.mjs base-catalog/qb-releases.json
 
   release_compatibility:
     name: Full qB Release compatibility audit
