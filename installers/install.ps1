@@ -21,7 +21,7 @@ Usage: weig_qb-webui_install.ps1 [options]
 Default: install the latest stable GitHub Release.
 
 Options:
-  -version VERSION          Install a specific Release, for example 0.1.0.
+  -version VERSION          Install a specific Release, for example 1.0.0.
   -dev                      Install the current dev exact Git SHA.
   -o PATH, -output PATH     WebUI install path.
   -qbconfig PATH            Exact qBittorrent config path for custom/portable profiles.
@@ -101,7 +101,7 @@ if($releaseVersion){
     $releaseVersion=$releaseVersion.Substring(1)
   }
   if($releaseVersion -notmatch '^\d+\.\d+\.\d+$'){
-    throw "Invalid Release version: $Version. Expected a version such as 0.1.0."
+    throw "Invalid Release version: $Version. Expected a version such as 1.0.0."
   }
   $releaseTag="v$releaseVersion"
 }

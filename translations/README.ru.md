@@ -237,7 +237,7 @@ C:\Users\<имя-пользователя>\AppData\Local\WeiG_qB-WebUI
 | Назначение | Linux / Docker / NAS | Windows PowerShell |
 |---|---|---|
 | Последний стабильный Release | По умолчанию | По умолчанию |
-| Конкретный Release | `-version 0.1.0` | `-version 0.1.0` |
+| Конкретный Release | `-version 1.0.0` | `-version 1.0.0` |
 | Версия разработки | `-dev` | `-dev` |
 | Каталог установки | `-o /path` или `-o /path` | `-o D:\path` или `-output D:\path` |
 | Автоматически настроить qBittorrent | `-configure` | `-configure` |
@@ -256,13 +256,13 @@ C:\Users\<имя-пользователя>\AppData\Local\WeiG_qB-WebUI
 Linux:
 
 ```sh
-sh weig_qb-webui_install.sh -version 0.1.0 -o /opt/weig_qb-webui -configure
+sh weig_qb-webui_install.sh -version 1.0.0 -o /opt/weig_qb-webui -configure
 ```
 
 Windows:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 0.1.0 -o D:\WeiG_qB-WebUI -configure
+powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 1.0.0 -o D:\WeiG_qB-WebUI -configure
 ```
 
 Откат:

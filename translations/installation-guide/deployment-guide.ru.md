@@ -66,7 +66,7 @@ sh weig_qb-webui_install.sh
 ### Пример 3: конкретный Release
 
 ```sh
-sh weig_qb-webui_install.sh -version 0.1.0 -configure
+sh weig_qb-webui_install.sh -version 1.0.0 -configure
 ```
 
 ### Пример 4: пользовательский каталог
@@ -84,7 +84,7 @@ sh weig_qb-webui_install.sh -o /opt/weig_qb-webui -configure
 ### Пример 5: версия + каталог
 
 ```sh
-sh weig_qb-webui_install.sh -version 0.1.0 -o /opt/weig_qb-webui -configure
+sh weig_qb-webui_install.sh -version 1.0.0 -o /opt/weig_qb-webui -configure
 ```
 
 ### Пример 6: dev
@@ -259,7 +259,7 @@ sh weig_qb-webui_install.sh --container=qbittorrent -o /config/weig_qb-webui -co
 ### Пример 9: конкретный Release
 
 ```sh
-sh weig_qb-webui_install.sh --container=qbittorrent -version 0.1.0 -configure
+sh weig_qb-webui_install.sh --container=qbittorrent -version 1.0.0 -configure
 ```
 
 ### Пример 10: dev
@@ -328,7 +328,7 @@ powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1
 ### Пример 3: конкретный Release
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 0.1.0 -configure
+powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 1.0.0 -configure
 ```
 
 ### Пример 4: установка на D:\
@@ -340,7 +340,7 @@ powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -o D:\WeiG_
 ### Пример 5: версия + каталог
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 0.1.0 -o D:\WeiG_qB-WebUI -configure
+powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 1.0.0 -o D:\WeiG_qB-WebUI -configure
 ```
 
 ### Пример 6: dev
@@ -418,7 +418,7 @@ Linux / Docker / NAS используют `install.sh`, Windows использу
 | Назначение | Linux / Docker / NAS | Windows PowerShell | Примечание |
 |---|---|---|---|
 | Последний стабильный Release | По умолчанию | По умолчанию | Рекомендуется |
-| Конкретный Release | `-version 0.1.0` | `-version 0.1.0` | Установить только эту версию |
+| Конкретный Release | `-version 1.0.0` | `-version 1.0.0` | Установить только эту версию |
 | Версия разработки | `-dev` | `-dev` | Точный Git SHA текущего `dev` |
 | Каталог установки | `-o /path` / `-o /path` | `-o D:\path` / `-output D:\path` | `o` = output |
 | Автонастройка qBittorrent | `-configure` | `-configure` | Включить альтернативный веб-интерфейс и задать путь |

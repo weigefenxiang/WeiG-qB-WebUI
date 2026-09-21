@@ -239,7 +239,7 @@ PowerShell 매개변수 이름은 대소문자를 구분하지 않습니다.
 | 용도 | Linux / Docker / NAS | Windows PowerShell |
 |---|---|---|
 | 최신 정식 버전 | 기본값 | 기본값 |
-| 특정 Release | `-version 0.1.0` | `-version 0.1.0` |
+| 특정 Release | `-version 1.0.0` | `-version 1.0.0` |
 | 개발 버전 | `-dev` | `-dev` |
 | 설치 경로 지정 | `-o /path` 또는 `-o /path` | `-o D:\path` 또는 `-output D:\path` |
 | qBittorrent 자동 설정 | `-configure` | `-configure` |
@@ -258,13 +258,13 @@ PowerShell 매개변수 이름은 대소문자를 구분하지 않습니다.
 Linux 예시:
 
 ```sh
-sh weig_qb-webui_install.sh -version 0.1.0 -o /opt/weig_qb-webui -configure
+sh weig_qb-webui_install.sh -version 1.0.0 -o /opt/weig_qb-webui -configure
 ```
 
 Windows 예시:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 0.1.0 -o D:\WeiG_qB-WebUI -configure
+powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 1.0.0 -o D:\WeiG_qB-WebUI -configure
 ```
 
 롤백:

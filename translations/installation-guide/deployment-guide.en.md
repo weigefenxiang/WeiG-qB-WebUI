@@ -72,7 +72,7 @@ Then configure qBittorrent manually:
 ### Example 3: install a specific Release
 
 ```sh
-sh weig_qb-webui_install.sh -version 0.1.0 -configure
+sh weig_qb-webui_install.sh -version 1.0.0 -configure
 ```
 
 ### Example 4: custom directory
@@ -90,7 +90,7 @@ sh weig_qb-webui_install.sh -o /opt/weig_qb-webui -configure
 ### Example 5: specific version + custom directory
 
 ```sh
-sh weig_qb-webui_install.sh -version 0.1.0 -o /opt/weig_qb-webui -configure
+sh weig_qb-webui_install.sh -version 1.0.0 -o /opt/weig_qb-webui -configure
 ```
 
 ### Example 6: test dev
@@ -304,7 +304,7 @@ The corresponding qBittorrent path becomes `/config/weig_qb-webui`.
 ### Example 10: specific Release
 
 ```sh
-sh weig_qb-webui_install.sh --container=qbittorrent -version 0.1.0 -configure
+sh weig_qb-webui_install.sh --container=qbittorrent -version 1.0.0 -configure
 ```
 
 ### Example 11: dev
@@ -391,7 +391,7 @@ Enable **Use alternative WebUI** and set **Files location:** to the install dire
 ### Example 3: specific Release
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 0.1.0 -configure
+powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 1.0.0 -configure
 ```
 
 ### Example 4: install on D:\
@@ -409,7 +409,7 @@ powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -output D:\
 ### Example 5: version + custom directory
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 0.1.0 -o D:\WeiG_qB-WebUI -configure
+powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 1.0.0 -o D:\WeiG_qB-WebUI -configure
 ```
 
 ### Example 6: dev
@@ -507,7 +507,7 @@ Linux / Docker / NAS use `install.sh`; Windows uses `install.ps1`. PowerShell op
 | Purpose | Linux / Docker / NAS | Windows PowerShell | Notes |
 |---|---|---|---|
 | Latest stable Release | Default, no option | Default, no option | Recommended |
-| Specific Release | `-version 0.1.0` | `-version 0.1.0` | Install only that Release |
+| Specific Release | `-version 1.0.0` | `-version 1.0.0` | Install only that Release |
 | Development build | `-dev` | `-dev` | Current `dev` exact Git SHA |
 | Install directory | `-o /path` or `-o /path` | `-o D:\path` or `-output D:\path` | `o` = output |
 | Configure qBittorrent automatically | `-configure` | `-configure` | Enable alternative WebUI and set the path |

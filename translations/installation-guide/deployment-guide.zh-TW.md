@@ -68,7 +68,7 @@ sh weig_qb-webui_install.sh
 ### 案例 3：指定版本
 
 ```sh
-sh weig_qb-webui_install.sh -version 0.1.0 -configure
+sh weig_qb-webui_install.sh -version 1.0.0 -configure
 ```
 
 ### 案例 4：指定安裝目錄
@@ -86,7 +86,7 @@ sh weig_qb-webui_install.sh -o /opt/weig_qb-webui -configure
 ### 案例 5：版本 + 目錄
 
 ```sh
-sh weig_qb-webui_install.sh -version 0.1.0 -o /opt/weig_qb-webui -configure
+sh weig_qb-webui_install.sh -version 1.0.0 -o /opt/weig_qb-webui -configure
 ```
 
 ### 案例 6：測試 dev
@@ -270,7 +270,7 @@ sh weig_qb-webui_install.sh --container=qbittorrent -o /config/weig_qb-webui -co
 ### 案例 9：指定正式版本
 
 ```sh
-sh weig_qb-webui_install.sh --container=qbittorrent -version 0.1.0 -configure
+sh weig_qb-webui_install.sh --container=qbittorrent -version 1.0.0 -configure
 ```
 
 ### 案例 10：dev
@@ -345,7 +345,7 @@ powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1
 ### 案例 3：指定版本
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 0.1.0 -configure
+powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 1.0.0 -configure
 ```
 
 ### 案例 4：安裝到 D 槽
@@ -357,7 +357,7 @@ powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -o D:\WeiG_
 ### 案例 5：版本 + 目錄
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 0.1.0 -o D:\WeiG_qB-WebUI -configure
+powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 1.0.0 -o D:\WeiG_qB-WebUI -configure
 ```
 
 ### 案例 6：dev
@@ -437,7 +437,7 @@ Linux / Docker / NAS 使用 `install.sh`，Windows 使用 `install.ps1`。PowerS
 | 用途 | Linux / Docker / NAS | Windows PowerShell | 說明 |
 |---|---|---|---|
 | 最新正式版 | 預設，不需參數 | 預設，不需參數 | 推薦一般使用者 |
-| 指定正式版本 | `-version 0.1.0` | `-version 0.1.0` | 只安裝指定 Release |
+| 指定正式版本 | `-version 1.0.0` | `-version 1.0.0` | 只安裝指定 Release |
 | 開發版 | `-dev` | `-dev` | 目前 `dev` 的 exact Git SHA |
 | 指定安裝目錄 | `-o /path` 或 `-o /path` | `-o D:\path` 或 `-output D:\path` | `o` = output |
 | 自動設定 qBittorrent | `-configure` | `-configure` | 啟用替補 WebUI 並設定路徑 |

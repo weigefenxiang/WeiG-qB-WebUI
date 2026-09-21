@@ -235,7 +235,7 @@ Les noms des paramètres PowerShell ne sont pas sensibles à la casse.
 | Usage | Linux / Docker / NAS | Windows PowerShell |
 |---|---|---|
 | Dernière version stable | Par défaut | Par défaut |
-| Release précise | `-version 0.1.0` | `-version 0.1.0` |
+| Release précise | `-version 1.0.0` | `-version 1.0.0` |
 | Version de développement | `-dev` | `-dev` |
 | Dossier d'installation | `-o /path` ou `-o /path` | `-o D:\path` ou `-output D:\path` |
 | Configurer qBittorrent | `-configure` | `-configure` |
@@ -254,13 +254,13 @@ Les noms des paramètres PowerShell ne sont pas sensibles à la casse.
 Linux :
 
 ```sh
-sh weig_qb-webui_install.sh -version 0.1.0 -o /opt/weig_qb-webui -configure
+sh weig_qb-webui_install.sh -version 1.0.0 -o /opt/weig_qb-webui -configure
 ```
 
 Windows :
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 0.1.0 -o D:\WeiG_qB-WebUI -configure
+powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 1.0.0 -o D:\WeiG_qB-WebUI -configure
 ```
 
 Retour arrière :

@@ -235,7 +235,7 @@ Los nombres de parámetros de PowerShell no distinguen mayúsculas y minúsculas
 | Uso | Linux / Docker / NAS | Windows PowerShell |
 |---|---|---|
 | Última Release estable | Predeterminado | Predeterminado |
-| Release específica | `-version 0.1.0` | `-version 0.1.0` |
+| Release específica | `-version 1.0.0` | `-version 1.0.0` |
 | Versión de desarrollo | `-dev` | `-dev` |
 | Directorio de instalación | `-o /path` o `-o /path` | `-o D:\path` o `-output D:\path` |
 | Configurar qBittorrent | `-configure` | `-configure` |
@@ -254,13 +254,13 @@ Los nombres de parámetros de PowerShell no distinguen mayúsculas y minúsculas
 Linux:
 
 ```sh
-sh weig_qb-webui_install.sh -version 0.1.0 -o /opt/weig_qb-webui -configure
+sh weig_qb-webui_install.sh -version 1.0.0 -o /opt/weig_qb-webui -configure
 ```
 
 Windows:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 0.1.0 -o D:\WeiG_qB-WebUI -configure
+powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 1.0.0 -o D:\WeiG_qB-WebUI -configure
 ```
 
 Rollback:

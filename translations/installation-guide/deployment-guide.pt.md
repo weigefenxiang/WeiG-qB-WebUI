@@ -66,7 +66,7 @@ Depois configure o qBittorrent manualmente:
 ### Exemplo 3: Release específica
 
 ```sh
-sh weig_qb-webui_install.sh -version 0.1.0 -configure
+sh weig_qb-webui_install.sh -version 1.0.0 -configure
 ```
 
 ### Exemplo 4: diretório personalizado
@@ -84,7 +84,7 @@ sh weig_qb-webui_install.sh -o /opt/weig_qb-webui -configure
 ### Exemplo 5: versão + diretório
 
 ```sh
-sh weig_qb-webui_install.sh -version 0.1.0 -o /opt/weig_qb-webui -configure
+sh weig_qb-webui_install.sh -version 1.0.0 -o /opt/weig_qb-webui -configure
 ```
 
 ### Exemplo 6: dev
@@ -259,7 +259,7 @@ Se `/config` corresponder a `/root/qbittorrent/config`:
 ### Exemplo 9: Release específica
 
 ```sh
-sh weig_qb-webui_install.sh --container=qbittorrent -version 0.1.0 -configure
+sh weig_qb-webui_install.sh --container=qbittorrent -version 1.0.0 -configure
 ```
 
 ### Exemplo 10: dev
@@ -328,7 +328,7 @@ Depois abra **Ferramentas → Opções... → WebUI**, ative **Usar interface we
 ### Exemplo 3: Release específica
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 0.1.0 -configure
+powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 1.0.0 -configure
 ```
 
 ### Exemplo 4: instalar em D:\
@@ -340,7 +340,7 @@ powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -o D:\WeiG_
 ### Exemplo 5: versão + diretório
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 0.1.0 -o D:\WeiG_qB-WebUI -configure
+powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 1.0.0 -o D:\WeiG_qB-WebUI -configure
 ```
 
 ### Exemplo 6: dev
@@ -418,7 +418,7 @@ Linux / Docker / NAS usam `install.sh`; Windows usa `install.ps1`. Os parâmetro
 | Finalidade | Linux / Docker / NAS | Windows PowerShell | Nota |
 |---|---|---|---|
 | Última Release estável | Predefinição | Predefinição | Recomendado |
-| Release específica | `-version 0.1.0` | `-version 0.1.0` | Instala apenas essa Release |
+| Release específica | `-version 1.0.0` | `-version 1.0.0` | Instala apenas essa Release |
 | Versão de desenvolvimento | `-dev` | `-dev` | SHA Git exato do `dev` atual |
 | Diretório de instalação | `-o /path` / `-o /path` | `-o D:\path` / `-output D:\path` | `o` = output |
 | Configurar qBittorrent | `-configure` | `-configure` | Ativa a interface web alternativa e define o caminho |

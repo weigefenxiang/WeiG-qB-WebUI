@@ -322,7 +322,7 @@ Linux and Windows use the same public option names where practical. Documentatio
 | Purpose | Linux / Docker / NAS | Windows PowerShell |
 |---|---|---|
 | Stable main | Default, no option | Default, no option |
-| Specific Release | `-version 0.1.0` | `-version 0.1.0` |
+| Specific Release | `-version 1.0.0` | `-version 1.0.0` |
 | Development build | `-dev` | `-dev` |
 | Custom install directory | `-o /path` (repeatable on Linux) | `-o D:\path` or `-output D:\path` |
 | Configure qBittorrent automatically | `-configure` | `-configure` |
@@ -342,7 +342,7 @@ Notes:
 - Installer backups stay under `~/.config/weig_qb-webui/backups/` and the latest **3 backups are retained independently per install target**.
 - `-configure` enables qBittorrent **Use alternative WebUI** and sets **Files location** after installation. It is intentionally single-target only.
 - `-rollback` restores the newest installer-owned backup for the selected target; repeat `-o` to roll back multiple explicit targets.
-- `-version` installs an exact GitHub Release such as `0.1.0`. If the requested version does not exist, installation fails and **never falls back to latest or dev**.
+- `-version` installs an exact GitHub Release such as `1.0.0`. If the requested version does not exist, installation fails and **never falls back to latest or dev**.
 - `-help` shows the current Linux syntax. Long `--...` forms remain accepted as compatibility aliases.
 - With multiple qBittorrent Docker containers, use `--list-containers`, then select one with `--container=NAME`. You can also use `--config-root=/path` if you already know the host qBittorrent configuration directory.
 
@@ -351,13 +351,13 @@ Notes:
 Linux:
 
 ```sh
-sh weig_qb-webui_install.sh -version 0.1.0 -o /opt/weig_qb-webui -configure
+sh weig_qb-webui_install.sh -version 1.0.0 -o /opt/weig_qb-webui -configure
 ```
 
 Windows:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 0.1.0 -o D:\WeiG_qB-WebUI -configure
+powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 1.0.0 -o D:\WeiG_qB-WebUI -configure
 ```
 
 ### Rollback

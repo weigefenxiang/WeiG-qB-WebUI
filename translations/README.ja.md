@@ -272,7 +272,7 @@ PowerShell のパラメーター名は大文字・小文字を区別しません
 | 用途 | Linux / Docker / NAS | Windows PowerShell |
 |---|---|---|
 | 最新正式版 | 既定、引数不要 | 既定、引数不要 |
-| 正式版を指定 | `-version 0.1.0` | `-version 0.1.0` |
+| 正式版を指定 | `-version 1.0.0` | `-version 1.0.0` |
 | 開発版 | `-dev` | `-dev` |
 | インストール先を指定 | `-o /path` または `-o /path` | `-o D:\path` または `-output D:\path` |
 | qBittorrent を自動設定 | `-configure` | `-configure` |
@@ -294,13 +294,13 @@ PowerShell のパラメーター名は大文字・小文字を区別しません
 Linux：
 
 ```sh
-sh weig_qb-webui_install.sh -version 0.1.0 -o /opt/weig_qb-webui -configure
+sh weig_qb-webui_install.sh -version 1.0.0 -o /opt/weig_qb-webui -configure
 ```
 
 Windows：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 0.1.0 -o D:\WeiG_qB-WebUI -configure
+powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 1.0.0 -o D:\WeiG_qB-WebUI -configure
 ```
 
 ### ロールバック

@@ -66,7 +66,7 @@ sh weig_qb-webui_install.sh
 ### 例 3: 特定バージョン
 
 ```sh
-sh weig_qb-webui_install.sh -version 0.1.0 -configure
+sh weig_qb-webui_install.sh -version 1.0.0 -configure
 ```
 
 ### 例 4: `/opt/weig_qb-webui` にインストール
@@ -84,7 +84,7 @@ sh weig_qb-webui_install.sh -o /opt/weig_qb-webui -configure
 ### 例 5: バージョン + パス
 
 ```sh
-sh weig_qb-webui_install.sh -version 0.1.0 -o /opt/weig_qb-webui -configure
+sh weig_qb-webui_install.sh -version 1.0.0 -o /opt/weig_qb-webui -configure
 ```
 
 ### 例 6: dev
@@ -259,7 +259,7 @@ sh weig_qb-webui_install.sh --container=qbittorrent -o /config/weig_qb-webui -co
 ### 例 9: 特定 Release
 
 ```sh
-sh weig_qb-webui_install.sh --container=qbittorrent -version 0.1.0 -configure
+sh weig_qb-webui_install.sh --container=qbittorrent -version 1.0.0 -configure
 ```
 
 ### 例 10: dev
@@ -334,7 +334,7 @@ powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1
 ### 例 3: 特定 Release
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 0.1.0 -configure
+powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 1.0.0 -configure
 ```
 
 ### 例 4: D ドライブ
@@ -346,7 +346,7 @@ powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -o D:\WeiG_
 ### 例 5: バージョン + D ドライブ
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 0.1.0 -o D:\WeiG_qB-WebUI -configure
+powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 1.0.0 -o D:\WeiG_qB-WebUI -configure
 ```
 
 ### 例 6: dev
@@ -424,7 +424,7 @@ Linux / Docker / NAS は `install.sh`、Windows は `install.ps1` を使用し�
 | 用途 | Linux / Docker / NAS | Windows PowerShell | 説明 |
 |---|---|---|---|
 | 最新安定版 | 既定、指定不要 | 既定、指定不要 | 推奨 |
-| 特定 Release | `-version 0.1.0` | `-version 0.1.0` | 指定した Release のみ |
+| 特定 Release | `-version 1.0.0` | `-version 1.0.0` | 指定した Release のみ |
 | 開発版 | `-dev` | `-dev` | 現在の `dev` exact Git SHA |
 | インストール先 | `-o /path` / `-o /path` | `-o D:\path` / `-output D:\path` | `o` = output |
 | qBittorrent を自動設定 | `-configure` | `-configure` | 代替 WebUI を有効化しパスを設定 |

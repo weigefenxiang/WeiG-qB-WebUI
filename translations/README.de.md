@@ -237,7 +237,7 @@ PowerShell-Parameternamen unterscheiden nicht zwischen Groß- und Kleinschreibun
 | Zweck | Linux / Docker / NAS | Windows PowerShell |
 |---|---|---|
 | Neuester stabiler Release | Standard | Standard |
-| Bestimmter Release | `-version 0.1.0` | `-version 0.1.0` |
+| Bestimmter Release | `-version 1.0.0` | `-version 1.0.0` |
 | Entwicklungsstand | `-dev` | `-dev` |
 | Zielordner | `-o /path` oder `-o /path` | `-o D:\path` oder `-output D:\path` |
 | qBittorrent automatisch konfigurieren | `-configure` | `-configure` |
@@ -256,13 +256,13 @@ PowerShell-Parameternamen unterscheiden nicht zwischen Groß- und Kleinschreibun
 Linux-Beispiel:
 
 ```sh
-sh weig_qb-webui_install.sh -version 0.1.0 -o /opt/weig_qb-webui -configure
+sh weig_qb-webui_install.sh -version 1.0.0 -o /opt/weig_qb-webui -configure
 ```
 
 Windows-Beispiel:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 0.1.0 -o D:\WeiG_qB-WebUI -configure
+powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 1.0.0 -o D:\WeiG_qB-WebUI -configure
 ```
 
 Rollback:

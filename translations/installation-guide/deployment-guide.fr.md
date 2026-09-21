@@ -66,7 +66,7 @@ Puis configurez qBittorrent manuellement :
 ### Exemple 3 : Release précise
 
 ```sh
-sh weig_qb-webui_install.sh -version 0.1.0 -configure
+sh weig_qb-webui_install.sh -version 1.0.0 -configure
 ```
 
 ### Exemple 4 : répertoire personnalisé
@@ -84,7 +84,7 @@ sh weig_qb-webui_install.sh -o /opt/weig_qb-webui -configure
 ### Exemple 5 : version + répertoire
 
 ```sh
-sh weig_qb-webui_install.sh -version 0.1.0 -o /opt/weig_qb-webui -configure
+sh weig_qb-webui_install.sh -version 1.0.0 -o /opt/weig_qb-webui -configure
 ```
 
 ### Exemple 6 : dev
@@ -259,7 +259,7 @@ Si `/config` correspond à `/root/qbittorrent/config` :
 ### Exemple 9 : Release précise
 
 ```sh
-sh weig_qb-webui_install.sh --container=qbittorrent -version 0.1.0 -configure
+sh weig_qb-webui_install.sh --container=qbittorrent -version 1.0.0 -configure
 ```
 
 ### Exemple 10 : dev
@@ -328,7 +328,7 @@ Ensuite ouvrez **Outils → Options… → WebUI**, activez **Utiliser l'IU Web 
 ### Exemple 3 : Release précise
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 0.1.0 -configure
+powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 1.0.0 -configure
 ```
 
 ### Exemple 4 : installation sur D:\
@@ -340,7 +340,7 @@ powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -o D:\WeiG_
 ### Exemple 5 : version + répertoire
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 0.1.0 -o D:\WeiG_qB-WebUI -configure
+powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 1.0.0 -o D:\WeiG_qB-WebUI -configure
 ```
 
 ### Exemple 6 : dev
@@ -418,7 +418,7 @@ Linux / Docker / NAS utilisent `install.sh`, Windows utilise `install.ps1`. Les 
 | Usage | Linux / Docker / NAS | Windows PowerShell | Remarque |
 |---|---|---|---|
 | Dernière Release stable | Par défaut | Par défaut | Recommandé |
-| Release précise | `-version 0.1.0` | `-version 0.1.0` | Installe uniquement cette Release |
+| Release précise | `-version 1.0.0` | `-version 1.0.0` | Installe uniquement cette Release |
 | Version de développement | `-dev` | `-dev` | SHA Git exact du `dev` actuel |
 | Répertoire d'installation | `-o /path` / `-o /path` | `-o D:\path` / `-output D:\path` | `o` = output |
 | Configurer qBittorrent | `-configure` | `-configure` | Active l'IU Web alternative et définit le chemin |

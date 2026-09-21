@@ -66,7 +66,7 @@ sh weig_qb-webui_install.sh
 ### 예시 3: 특정 버전
 
 ```sh
-sh weig_qb-webui_install.sh -version 0.1.0 -configure
+sh weig_qb-webui_install.sh -version 1.0.0 -configure
 ```
 
 ### 예시 4: 사용자 지정 경로
@@ -84,7 +84,7 @@ sh weig_qb-webui_install.sh -o /opt/weig_qb-webui -configure
 ### 예시 5: 버전 + 경로
 
 ```sh
-sh weig_qb-webui_install.sh -version 0.1.0 -o /opt/weig_qb-webui -configure
+sh weig_qb-webui_install.sh -version 1.0.0 -o /opt/weig_qb-webui -configure
 ```
 
 ### 예시 6: dev
@@ -263,7 +263,7 @@ sh weig_qb-webui_install.sh --container=qbittorrent -o /config/weig_qb-webui -co
 ### 예시 9: 특정 Release
 
 ```sh
-sh weig_qb-webui_install.sh --container=qbittorrent -version 0.1.0 -configure
+sh weig_qb-webui_install.sh --container=qbittorrent -version 1.0.0 -configure
 ```
 
 ### 예시 10: dev
@@ -332,7 +332,7 @@ powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1
 ### 예시 3: 특정 Release
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 0.1.0 -configure
+powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 1.0.0 -configure
 ```
 
 ### 예시 4: D 드라이브
@@ -344,7 +344,7 @@ powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -o D:\WeiG_
 ### 예시 5: 버전 + 경로
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 0.1.0 -o D:\WeiG_qB-WebUI -configure
+powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 1.0.0 -o D:\WeiG_qB-WebUI -configure
 ```
 
 ### 예시 6: dev
@@ -422,7 +422,7 @@ Linux / Docker / NAS는 `install.sh`, Windows는 `install.ps1`을 사용합니�
 | 용도 | Linux / Docker / NAS | Windows PowerShell | 설명 |
 |---|---|---|---|
 | 최신 안정 Release | 기본값 | 기본값 | 권장 |
-| 특정 Release | `-version 0.1.0` | `-version 0.1.0` | 지정한 버전만 설치 |
+| 특정 Release | `-version 1.0.0` | `-version 1.0.0` | 지정한 버전만 설치 |
 | 개발 버전 | `-dev` | `-dev` | 현재 `dev` exact Git SHA |
 | 설치 경로 | `-o /path` / `-o /path` | `-o D:\path` / `-output D:\path` | `o` = output |
 | qBittorrent 자동 설정 | `-configure` | `-configure` | 대체 WebUI 활성화 및 경로 설정 |

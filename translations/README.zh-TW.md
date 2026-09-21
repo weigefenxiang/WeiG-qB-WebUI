@@ -310,7 +310,7 @@ Linux 與 Windows 盡量使用相同的公開參數名稱；文件統一使用�
 | 用途 | Linux / Docker / NAS | Windows PowerShell |
 |---|---|---|
 | 最新穩定版 | 預設，不需參數 | 預設，不需參數 |
-| 指定正式版本 | `-version 0.1.0` | `-version 0.1.0` |
+| 指定正式版本 | `-version 1.0.0` | `-version 1.0.0` |
 | 開發版 | `-dev` | `-dev` |
 | 指定安裝目錄 | `-o /path` 或 `-o /path` | `-o D:\path` 或 `-output D:\path` |
 | 自動設定 qBittorrent | `-configure` | `-configure` |
@@ -328,7 +328,7 @@ Linux 與 Windows 盡量使用相同的公開參數名稱；文件統一使用�
 - `-o` 中的 `o` 表示 **output**，用來指定 WeiG qB WebUI 的安裝目錄。
 - `-configure` 會在安裝後自動啟用 qBittorrent 的 **使用替補 WebUI / Use alternative WebUI**，並設定 **檔案位置 / Files location**；修改前會先備份 qBittorrent 設定。
 - `-rollback` 會還原上一次安裝與對應的 qBittorrent 設定；預設會記住上一次安裝目錄。
-- `-version` 安裝指定 GitHub Release，例如 `0.1.0`；指定版本不存在時直接報錯，**不會自動退回 latest 或 dev**。
+- `-version` 安裝指定 GitHub Release，例如 `1.0.0`；指定版本不存在時直接報錯，**不會自動退回 latest 或 dev**。
 - `-dev` 只用於測試目前開發版的 exact Git SHA，不能和 `-version` 同時使用。
 - Docker 有多個 qBittorrent 容器時，用 `--list-containers` 查看，再用 `--container=NAME` 明確指定；也可以用 `--config-root=/path` 直接指定宿主機上的 qBittorrent 設定目錄。
 
@@ -337,13 +337,13 @@ Linux 與 Windows 盡量使用相同的公開參數名稱；文件統一使用�
 Linux：
 
 ```sh
-sh weig_qb-webui_install.sh -version 0.1.0 -o /opt/weig_qb-webui -configure
+sh weig_qb-webui_install.sh -version 1.0.0 -o /opt/weig_qb-webui -configure
 ```
 
 Windows：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 0.1.0 -o D:\WeiG_qB-WebUI -configure
+powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 1.0.0 -o D:\WeiG_qB-WebUI -configure
 ```
 
 ### 回滾
