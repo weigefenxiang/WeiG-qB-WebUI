@@ -273,7 +273,38 @@ try{
     const renderedLocaleValues=await visibleLocaleOptions.evaluateAll(nodes=>nodes.map(node=>String(node.dataset.value||'')));
     assert.deepEqual(renderedLocaleValues,localeProvider.values,'qB 4.6.7 Behavior Locale menu must render the complete canonical provider inventory in source order');
     assert.ok(renderedLocaleValues.length>1,'qB 4.6.7 Behavior Locale must never render only zh_CN');
-    await page.keyboard.press('Escape');
+    assert.ok(renderedLocaleValues.includes('zh_TW'),'qB 4.6.7 canonical locale inventory must include Traditional Chinese');
+    const zhTwOption=page.locator('#weigg-floating-layer .ui-select__menu:not([hidden]) .ui-select__option[data-value="zh_TW"]');
+    await zhTwOption.waitFor({state:'visible',timeout:30000});
+    await zhTwOption.click();
+    await page.waitForFunction(()=>window.WeiG?.SettingsState?.draft?.locale==='zh_TW',null,{timeout:30000});
+    const localeReload=page.waitForNavigation({waitUntil:'domcontentloaded',timeout:30000}).catch(()=>null);
+    await page.locator('#save-settings-btn').click();
+    await localeReload;
+    await page.waitForFunction(version=>String(document.querySelector('#qb-version')?.textContent||'').includes(version),'4.6.7',{timeout:60000});
+    await page.waitForFunction(()=>window.WeiG?.I18n?.getQbLocale?.()==='zh_TW',null,{timeout:30000});
+    const zhTwPrefs=await api(page,'app/preferences');
+    assert.equal(zhTwPrefs.status,200,'qB 4.6.7 zh_TW Settings transition must keep app/preferences readable');
+    assert.equal(zhTwPrefs.json?.locale,'zh_TW','qB 4.6.7 Traditional Chinese must persist through the canonical Settings transaction');
+    await page.evaluate(()=>window.WeiG.Router.go('settings'));
+    await page.waitForFunction(()=>document.getElementById('settings-view')?.classList.contains('is-active'),null,{timeout:30000});
+    await page.evaluate(async()=>window.WeiG.SettingsRenderer.open('speed'));
+    const zhTwSidebar=await page.evaluate(()=>{
+      const S=window.WeiG.SettingsSchema,I=window.WeiG.I18n;
+      return [...document.querySelectorAll('#settings-qb-tabs [data-settings-tab]')].map(node=>{
+        const tab=String(node.dataset.settingsTab||''),ref=S.tabTitleRef?.(tab)||null;
+        return{tab,dom:String(node.textContent||'').trim(),source:String(ref?.source||''),context:String(ref?.context||''),resolved:ref?String(I.qbSourceText(ref,ref.source||tab)):''};
+      });
+    });
+    assert.ok(zhTwSidebar.length>1,'qB 4.6.7 zh_TW native Settings sidebar must render the exact source-native tab set');
+    for(const item of zhTwSidebar){
+      assert.equal(item.dom,item.resolved,`qB 4.6.7 zh_TW sidebar ${item.tab} must render canonical exact source/native copy: ${JSON.stringify(item)}`);
+      assert.doesNotMatch(item.dom,/^settings\./i,`qB 4.6.7 zh_TW sidebar leaked internal key: ${JSON.stringify(item)}`);
+    }
+    const speedSidebar=zhTwSidebar.find(item=>item.tab==='speed');
+    assert.equal(speedSidebar?.source,'Speed','qB 4.6.7 Speed sidebar source identity must remain upstream-native');
+    assert.equal(speedSidebar?.context,'OptionsDialog','qB 4.6.7 Speed sidebar context identity must remain upstream-native');
+    assert.ok(speedSidebar?.dom&&speedSidebar.dom!=='Speed'&&speedSidebar.dom!=='settings.speed',`qB 4.6.7 zh_TW Speed sidebar must resolve an official Traditional Chinese native label: ${JSON.stringify(speedSidebar)}`);
 
     // Real 0.3.158 human regression: qB 4.1.9.1 Alternate WebUI was visibly ON
     // but could not be toggled OFF. Exercise the rendered Switch, draft, Save
