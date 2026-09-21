@@ -6,7 +6,7 @@
   function own(obj,key){return Object.prototype.hasOwnProperty.call(obj||{},key);}
   function qbText(key,fallback){return W.I18n&&W.I18n.qbText?W.I18n.qbText(key,fallback):String(fallback||key);}
   function sourceText(ref,fallback){if(ref&&own(ref,'literal'))return String(ref.literal==null?(fallback||''):ref.literal);var source=ref&&ref.source!=null?String(ref.source):'',nativeFallback=source||String(fallback||'');return W.I18n&&W.I18n.qbSourceText?W.I18n.qbSourceText(ref,nativeFallback):nativeFallback;}
-  function qbTabTitle(tab){var fallback=sourceText(S.tabTitleRef&&S.tabTitleRef(tab),S.tabTitle?S.tabTitle(tab):tab);return qbText('settings.tab.'+tab,fallback||tab);}
+  function qbTabTitle(tab){var ref=S.tabTitleRef&&S.tabTitleRef(tab),fallback=S.tabTitle?S.tabTitle(tab):tab;return sourceText(ref,fallback||tab);}
   var settingOptionProviders={locale:{options:function(){return W.I18n&&W.I18n.settingOptions?W.I18n.settingOptions('locale'):null;},state:function(){return W.I18n&&W.I18n.settingOptionsState?W.I18n.settingOptionsState('locale'):null;},ready:async function(){var R=W.CapabilityRegistry;if(R&&typeof R.ensure==='function')await R.ensure('torrent');if(W.I18n&&W.I18n.loadLocaleOptions)await W.I18n.loadLocaleOptions();return this.state();}}};
   function settingOptionProvider(key){return settingOptionProviders[String(key||'')]||null;}
   function settingOptionProviderState(key){var provider=settingOptionProvider(key);return provider&&provider.state?provider.state():null;}
