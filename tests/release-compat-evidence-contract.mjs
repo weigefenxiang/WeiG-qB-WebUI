@@ -100,6 +100,16 @@ try{
   wrongRuntime.results[0].runtime_version='9.9.9';
   expectFail('inexact qB runtime identity',wrongRuntime,validLocale,/runtime identity is not exact/);
 
+  const sourceBuiltImage=clone(validGfm);
+  sourceBuiltImage.results[0].provider='frozen-official-source';
+  sourceBuiltImage.results[0].resolved_image=`sha256:${digest}`;
+  expectPass(sourceBuiltImage,validLocale);
+
+  const untrustedLocalImage=clone(validGfm);
+  untrustedLocalImage.results[0].provider='synthetic-contract';
+  untrustedLocalImage.results[0].resolved_image=`sha256:${digest}`;
+  expectFail('non-source provider local image ID',untrustedLocalImage,validLocale,/runtime image is not immutable digest-pinned/);
+
   const mutableImage=clone(validGfm);
   mutableImage.results[0].resolved_image='synthetic/qb:latest';
   expectFail('mutable runtime image',mutableImage,validLocale,/runtime image is not immutable digest-pinned/);
@@ -112,7 +122,7 @@ try{
   wrongLocaleSha.weigSha='e'.repeat(40);
   expectFail('wrong Locale SHA',validGfm,wrongLocaleSha,/Locale exact SHA mismatch/);
 
-  console.log('Release compatibility evidence behavioral contract passed: valid exact-SHA G-FM 65/65 + Locale 61/61 is accepted; SHA, qB identity, immutable runtime digest and Locale completeness mutations all fail closed.');
+  console.log('Release compatibility evidence behavioral contract passed: registry RepoDigests and frozen-official-source local content IDs are accepted as immutable identities; untrusted local IDs, mutable tags, SHA drift, qB identity drift and Locale incompleteness fail closed.');
 }finally{
   fs.rmSync(tmp,{recursive:true,force:true});
 }
