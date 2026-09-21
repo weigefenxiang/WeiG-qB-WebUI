@@ -122,6 +122,42 @@ try{
   assert.equal(logSearch.visible,true,'Logs Header Search input must be visible when opened');
   assert.match(logSearch.placeholder,/日志|logs/i,'opened Header Search must retain the Logs-specific placeholder');
 
+  await page.locator('#mobile-bottom-nav [data-route="settings"]').click();
+  await page.waitForFunction(()=>document.getElementById('settings-view')?.classList.contains('is-active')&&document.querySelectorAll('#settings-tabs [data-settings-tab]').length>2&&window.WeiG?.SettingsSchema?.nativeSurfaces?.().length>0,null,{timeout:30000});
+  const settingsWidths=[320,360,390,430];
+  for(const width of settingsWidths){
+    await page.setViewportSize({width,height:844});
+    await page.waitForTimeout(180);
+    const rail=await page.evaluate(()=>{
+      const host=document.getElementById('settings-tabs'),buttons=[...host.querySelectorAll('[data-settings-tab]')],qb=[...document.querySelectorAll('#settings-qb-tabs [data-settings-tab]')],native=window.WeiG?.SettingsSchema?.nativeSurfaces?.()||[];
+      if(!host||buttons.length<3)throw new Error('Settings mobile tab rail is missing');
+      const rect=n=>{const r=n.getBoundingClientRect();return{top:r.top,bottom:r.bottom,left:r.left,right:r.right,width:r.width,height:r.height};};
+      const br=buttons.map(button=>({...rect(button),tab:button.dataset.settingsTab,text:(button.textContent||'').trim(),whiteSpace:getComputedStyle(button).whiteSpace,flex:getComputedStyle(button).flexShrink}));
+      const tops=br.map(item=>Math.round(item.top));
+      return{host:rect(host),buttons:br,native,qbTabs:qb.map(button=>button.dataset.settingsTab),rows:[...new Set(tops)],hostOverflow:host.scrollWidth-host.clientWidth,documentOverflow:document.documentElement.scrollWidth-window.innerWidth,groupDisplay:getComputedStyle(document.querySelector('#settings-tabs .settings-nav-group')).display,qbDisplay:getComputedStyle(document.getElementById('settings-qb-tabs')).display,scrollLeft:host.scrollLeft};
+    });
+    assert.deepEqual(rail.qbTabs,rail.native,`mobile Settings qB tabs must exactly follow source-native surfaces at ${width}px: ${JSON.stringify(rail)}`);
+    assert.equal(rail.rows.length,1,`all Settings tabs must stay on one physical row at ${width}px: ${JSON.stringify(rail)}`);
+    assert.equal(rail.groupDisplay,'contents',`WeiG Settings group must flatten into the one mobile rail at ${width}px: ${JSON.stringify(rail)}`);
+    assert.equal(rail.qbDisplay,'contents',`qB Settings group must flatten into the one mobile rail at ${width}px: ${JSON.stringify(rail)}`);
+    assert.ok(rail.buttons.every(button=>button.whiteSpace==='nowrap'),`Settings labels must never wrap at ${width}px: ${JSON.stringify(rail.buttons)}`);
+    assert.ok(rail.host.left>=-1&&rail.host.right<=width+1,`Settings rail itself must stay inside the viewport at ${width}px: ${JSON.stringify(rail)}`);
+    assert.ok(rail.documentOverflow<=1,`Settings rail must not create page-level horizontal overflow at ${width}px: ${JSON.stringify(rail)}`);
+    if(width===320)assert.ok(rail.hostOverflow>20,`narrow mobile Settings must overflow only inside its horizontal rail: ${JSON.stringify(rail)}`);
+  }
+  await page.setViewportSize({width:320,height:844});
+  await page.evaluate(()=>{const buttons=[...document.querySelectorAll('#settings-tabs [data-settings-tab]')];buttons.at(-1)?.click();});
+  await page.waitForTimeout(220);
+  const activeSettingsTab=await page.evaluate(()=>{
+    const host=document.getElementById('settings-tabs'),active=host?.querySelector('[data-settings-tab].is-active');
+    if(!host||!active)throw new Error('active Settings tab is missing after selecting the last dynamic tab');
+    const rr=host.getBoundingClientRect(),ar=active.getBoundingClientRect();
+    return{tab:active.dataset.settingsTab,rail:{left:rr.left,right:rr.right},active:{left:ar.left,right:ar.right},ariaCurrent:active.getAttribute('aria-current'),scrollLeft:host.scrollLeft};
+  });
+  assert.equal(activeSettingsTab.ariaCurrent,'page',`active Settings tab must expose navigation state: ${JSON.stringify(activeSettingsTab)}`);
+  assert.ok(activeSettingsTab.active.left>=activeSettingsTab.rail.left-1&&activeSettingsTab.active.right<=activeSettingsTab.rail.right+1,`last source-derived Settings tab must auto-scroll into view: ${JSON.stringify(activeSettingsTab)}`);
+  await page.setViewportSize({width:390,height:844});
+
   await page.locator('#mobile-bottom-nav [data-route=""]').click();
   await page.waitForFunction(()=>document.getElementById('list-view')?.classList.contains('is-active'));
   await page.locator('#menu-btn').click();
@@ -148,7 +184,7 @@ try{
 
   assert.deepEqual(errors,[],`deployed mobile layout produced browser errors: ${errors.join('\n')}`);
   await context.close();
-  console.log(`Virtual qB Pages mobile layout acceptance passed for ${expectedSha}: stacked progress, single-line pager/actions, RSS header actions + Add Feed dialog, Header-owned Logs search layout, and a Drawer with fixed telemetry plus hidden mobile version metadata.`);
+  console.log(`Virtual qB Pages mobile layout acceptance passed for ${expectedSha}: stacked progress, single-line pager/actions, RSS header actions + Add Feed dialog, Header-owned Logs search layout, a single-row source-derived Settings rail, and a Drawer with fixed telemetry plus hidden mobile version metadata.`);
 } finally {
   await browser.close();
 }
