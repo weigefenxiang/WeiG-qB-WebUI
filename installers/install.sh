@@ -68,6 +68,9 @@ need_value() {
 append_target() {
   target=$1
   [ -n "$target" ] || { echo "Install path cannot be empty." >&2; exit 2; }
+  while [ "$target" != "/" ] && [ "${target%/}" != "$target" ]; do
+    target=${target%/}
+  done
   if [ -z "$TARGETS" ]; then
     TARGETS=$target
   else
