@@ -26,6 +26,8 @@ assert.match(sh,/WebUI\\\\RootFolder=/,'Linux installer must persist qB-visible 
 assert.match(sh,/-version VERSION, --version VERSION/,'Linux installer must expose a specific Release version option');
 assert.match(sh,/-dev, --dev\s+Install\/update the current dev exact Git SHA/,'Linux installer must expose the documented single-dash dev option');
 assert.match(sh,/-o PATH, --output PATH\s+WebUI install path\. Repeat -o/,'Linux installer must expose repeatable output targets');
+assert.match(sh,/while \[ "\$target" != "\/" \] && \[ "\$\{target%\/\}" != "\$target" \]; do/,'Linux installer must normalize trailing slashes on explicit install targets');
+assert.match(sh,/old="\$target\.old"/,'Linux installer staging must keep the previous install as a sibling, not a child of the target');
 assert.match(sh,/-configure, --configure\s+Enable qBittorrent Alternative WebUI and set Root Folder/,'Linux configure help must explain the qB config mutation');
 assert.match(sh,/-rollback, --rollback\s+Restore the previous installer backup/,'Linux installer must expose rollback');
 assert.match(sh,/-help, -h, --help\s+Show this help/,'Linux installer must expose the documented -help option');
