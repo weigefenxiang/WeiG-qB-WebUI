@@ -294,6 +294,10 @@ jobs:
             script: tests/browser-feature-parity.mjs
           - name: torrent-workspace
             script: tests/browser-torrent-workspace.mjs
+          - name: torrent-detail
+            script: tests/browser-torrent-detail.mjs
+          - name: entry-locale
+            script: tests/browser-entry-locale.mjs
           - name: adaptive-ui
             script: tests/browser-adaptive-ui.mjs
           - name: torrent-field-provenance
