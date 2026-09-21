@@ -98,6 +98,7 @@ jobs:
                 'tests/release-compat-evidence.mjs',
                 'tests/release-compat-evidence-contract.mjs',
                 'installers/install.ps1',
+                'installers/install.sh',
                 'tests/platform-contract.mjs'
               ]);
               const blocked = (compatCompare.data.files || []).map(file => file.filename).filter(file =>
