@@ -66,7 +66,7 @@ sh weig_qb-webui_install.sh
 ### 指定正式版本
 
 ```sh
-sh weig_qb-webui_install.sh -version 0.1.0 -configure
+sh weig_qb-webui_install.sh -version 1.0.0 -configure
 ```
 
 ### 指定安装目录
@@ -205,7 +205,7 @@ sh weig_qb-webui_install.sh --container=qbittorrent -o /config/weig_qb-webui -co
 ### 指定正式版本
 
 ```sh
-sh weig_qb-webui_install.sh --container=qbittorrent -version 0.1.0 -configure
+sh weig_qb-webui_install.sh --container=qbittorrent -version 1.0.0 -configure
 ```
 
 ### 测试 dev
@@ -270,7 +270,7 @@ powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1
 ### 指定正式版本
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 0.1.0 -configure
+powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 1.0.0 -configure
 ```
 
 ### 安装到 D 盘
@@ -357,7 +357,7 @@ Linux 安装器备份保存在：
 | 用途 | Linux / Docker / NAS | Windows PowerShell | 说明 |
 |---|---|---|---|
 | 最新稳定版 | 默认，无需参数 | 默认，无需参数 | 推荐一般用户 |
-| 指定正式版本 | `-version 0.1.0` | `-version 0.1.0` | 只安装指定版本 |
+| 指定正式版本 | `-version 1.0.0` | `-version 1.0.0` | 只安装指定版本 |
 | 开发测试版 | `-dev` | `-dev` | 只有测试开发版时使用 |
 | 指定安装目录 | `-o /path` | `-o D:\path` 或 `-output D:\path` | `o` = output |
 | 自动配置 qBittorrent | `-configure` | `-configure` | 启用备选 WebUI 并设置路径 |
@@ -556,10 +556,10 @@ qBittorrent 4.0.x 使用旧 WebAPI v1，不在当前主线支持范围内。
 指定：
 
 ```text
--version 0.1.0
+-version 1.0.0
 ```
 
-时，只安装对应的 `v0.1.0` Release；如果指定版本不存在，会直接停止，不会自动换成其他来源。
+时，只安装对应的 `v1.0.0` Release；如果指定版本不存在，会直接停止，不会自动换成其他来源。
 
 ### 开发版
 

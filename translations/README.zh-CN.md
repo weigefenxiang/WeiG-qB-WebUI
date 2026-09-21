@@ -324,7 +324,7 @@ Linux 和 Windows 使用相同的参数名称，文档统一使用小写；Power
 | 用途 | Linux / Docker / NAS | Windows PowerShell |
 |---|---|---|
 | 稳定 main | 默认，无需参数 | 默认，无需参数 |
-| 指定正式版本 | `-version 0.1.0` | `-version 0.1.0` |
+| 指定正式版本 | `-version 1.0.0` | `-version 1.0.0` |
 | 开发版 | `-dev` | `-dev` |
 | 指定安装目录 | `-o /path`（Linux 可重复） | `-o D:\path` 或 `-output D:\path` |
 | 自动配置 qBittorrent | `-configure` | `-configure` |
@@ -342,7 +342,7 @@ Linux 和 Windows 使用相同的参数名称，文档统一使用小写；Power
 - 安装器备份始终放在 `~/.config/weig_qb-webui/backups/`，并且**每个安装目标独立只保留最近 3 份**。
 - `-configure` 会在安装后自动启用 qBittorrent 的 **使用备选 WebUI / Use alternative WebUI** 并设置 **文件位置 / Files location**；它只允许单目标使用。
 - `-rollback` 会恢复所选目标最近一次由安装器创建的备份；也可以重复 `-o` 一次回滚多个明确目标。
-- `-version` 安装指定 GitHub Release，例如 `0.1.0`；指定版本不存在时直接报错，**不会自动退回 latest 或 dev**。
+- `-version` 安装指定 GitHub Release，例如 `1.0.0`；指定版本不存在时直接报错，**不会自动退回 latest 或 dev**。
 - `-help` 显示当前 Linux 参数；旧的 `--...` 长参数继续作为兼容别名保留。
 - Docker 有多个 qBittorrent 容器时，用 `--list-containers` 查看，再用 `--container=NAME` 明确指定；也可以用 `--config-root=/path` 直接指定宿主机上的 qBittorrent 配置目录。
 
@@ -351,13 +351,13 @@ Linux 和 Windows 使用相同的参数名称，文档统一使用小写；Power
 Linux：
 
 ```sh
-sh weig_qb-webui_install.sh -version 0.1.0 -o /opt/weig_qb-webui -configure
+sh weig_qb-webui_install.sh -version 1.0.0 -o /opt/weig_qb-webui -configure
 ```
 
 Windows：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 0.1.0 -o D:\WeiG_qB-WebUI -configure
+powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 1.0.0 -o D:\WeiG_qB-WebUI -configure
 ```
 
 ### 回滚
