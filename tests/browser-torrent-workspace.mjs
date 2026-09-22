@@ -133,8 +133,8 @@ try{
 
     // Facet action updates semantic state.
     const tracker=page.locator('.facet-control[data-facet="tracker"] .ui-select__trigger');await tracker.click();
-    await page.waitForSelector('#weigg-floating-layer .ui-select__option[data-value="https://tracker.one.example/announce"]');
-    await page.locator('#weigg-floating-layer .ui-select__option[data-value="https://tracker.one.example/announce"]').click();
+    await page.waitForSelector('#weig-floating-layer .ui-select__option[data-value="https://tracker.one.example/announce"]');
+    await page.locator('#weig-floating-layer .ui-select__option[data-value="https://tracker.one.example/announce"]').click();
     await page.waitForFunction(()=>WeiG.LibraryController.state().tracker.includes('tracker.one.example'));
 
     // Connection help uses existing TransferRuntime snapshot and no retired Network summary.
@@ -164,8 +164,8 @@ try{
 
     // Mobile sort calls the same semantic owner; no hidden Columns bridge is involved.
     const sortTrigger=page.locator('.mobile-sort-control .ui-select__trigger');await sortTrigger.click();
-    await page.waitForSelector('#weigg-floating-layer .ui-select__option[data-value="size:desc"]');
-    await page.locator('#weigg-floating-layer .ui-select__option[data-value="size:desc"]').click();
+    await page.waitForSelector('#weig-floating-layer .ui-select__option[data-value="size:desc"]');
+    await page.locator('#weig-floating-layer .ui-select__option[data-value="size:desc"]').click();
     await page.waitForFunction(()=>WeiG.LibraryController.state().sort==='size'&&WeiG.LibraryController.state().reverse===true);
     assert(await page.locator('#column-configurator-dialog[open]').count()===0,`${name}: Mobile sort opened hidden Columns bridge`);
 
