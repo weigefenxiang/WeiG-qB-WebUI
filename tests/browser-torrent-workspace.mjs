@@ -84,7 +84,7 @@ const server=http.createServer(async(req,res)=>{try{
 }catch(e){res.writeHead(e?.code==='ENOENT'?404:500,{'content-type':'text/plain; charset=utf-8'});res.end(String(e));}});
 await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(port,host,resolve);});
 
-const browser=await launchBrowser();
+const browser=await launchBrowser({args:['--disable-features=OverlayScrollbar']});
 try{
   for(const name of ['legacy','modern']){
     const context=await browser.newContext({viewport:{width:1366,height:768},locale:'en-US'}),page=await context.newPage(),errors=[];
