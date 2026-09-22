@@ -328,20 +328,7 @@ jobs:
           printf 'Git SHA: %s\n' "$GITHUB_SHA"
           printf 'UI suite: %s\n' "${{ matrix.suite.name }}"
       - name: Representative qB4/qB5 semantic UI · ${{ matrix.suite.name }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ "${{ matrix.suite.name }}" = "torrent-workspace" ]; then
-            command -v xvfb-run >/dev/null || { echo 'xvfb-run is required for native scrollbar thumb-drag evidence.' >&2; exit 1; }
-            if ! command -v xdotool >/dev/null; then
-              sudo apt-get update -qq
-              sudo apt-get install -y --no-install-recommends xdotool
-            fi
-            command -v xdotool >/dev/null || { echo 'xdotool is required for OS-level native scrollbar thumb-drag evidence.' >&2; exit 1; }
-            WEIG_NATIVE_SCROLLBAR_DRAG=1 xvfb-run -a -s "-screen 0 1920x1080x24" node "${{ matrix.suite.script }}"
-          else
-            node "${{ matrix.suite.script }}"
-          fi
+        run: node "${{ matrix.suite.script }}"
 
 
   settings_browser_matrix:

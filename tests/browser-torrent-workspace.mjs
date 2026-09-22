@@ -3,7 +3,6 @@ import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {execFileSync} from 'node:child_process';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(here,'../webui/private');
@@ -30,34 +29,16 @@ const torrents=Array.from({length:55},(_,i)=>{
 });
 const mime={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.ico':'image/x-icon'};
 const assert=(ok,msg)=>{if(!ok)throw new Error(msg);};
-async function dragNativeScrollbar(page,selector,axis){
-  const node=page.locator(selector),saved=await node.evaluate((el,axis)=>{const state={overflowX:el.style.overflowX,overflowY:el.style.overflowY};if(axis==='x')el.style.overflowY='hidden';else el.style.overflowX='hidden';return state;},axis);
-  try{
-    await page.waitForTimeout(60);
-    const box=await node.boundingBox();if(!box)throw new Error(`Missing scrollbar target ${selector}`);
-    const metrics=await node.evaluate((el,axis)=>{const horizontal=axis==='x',client=horizontal?el.clientWidth:el.clientHeight,scroll=horizontal?el.scrollWidth:el.scrollHeight,max=Math.max(0,scroll-client),border=horizontal?el.clientTop:el.clientLeft,layoutThickness=horizontal?el.offsetHeight-el.clientHeight-(el.clientTop*2):el.offsetWidth-el.clientWidth-(el.clientLeft*2),pseudo=getComputedStyle(el,'::-webkit-scrollbar'),styledThickness=parseFloat(horizontal?pseudo.height:pseudo.width)||0,thickness=Math.max(0,layoutThickness,styledThickness);return{client,scroll,max,border,layoutThickness:Math.max(0,layoutThickness),styledThickness:Math.max(0,styledThickness),thickness};},axis);
-    if(metrics.max<=0||metrics.thickness<=0)throw new Error(`${selector} has no measurable ${axis==='x'?'horizontal':'vertical'} scrollbar: ${JSON.stringify(metrics)}`);
-    const track=metrics.client,thumb=Math.min(track-8,Math.max(36,track*(metrics.client/metrics.scroll))),travel=Math.max(8,track-thumb),delta=Math.max(28,Math.min(64,travel*.14)),start=thumb/2+2,target=Math.min(track-thumb/2-2,start+delta),overlay=metrics.layoutThickness<=0;
-    const origin=axis==='x'?box.x+metrics.border:box.y+metrics.border,fixed=axis==='x'?(overlay?box.y+box.height-(metrics.thickness/2):box.y+metrics.border+metrics.client+(metrics.thickness/2)):(overlay?box.x+box.width-(metrics.thickness/2):box.x+metrics.border+metrics.client+(metrics.thickness/2));
-    const x0=axis==='x'?origin+start:fixed,y0=axis==='x'?fixed:origin+start,x1=axis==='x'?origin+target:fixed,y1=axis==='x'?fixed:origin+target;
-    if(process.env.WEIG_NATIVE_SCROLLBAR_DRAG==='1'){
-      await page.bringToFront();
-      const screen=await page.evaluate(({x0,y0,x1,y1})=>{const dpr=Number(window.devicePixelRatio)||1,outerGapX=Math.max(0,window.outerWidth-window.innerWidth),outerGapY=Math.max(0,window.outerHeight-window.innerHeight),viewportX=window.screenX+(outerGapX/2),viewportY=window.screenY+Math.max(0,outerGapY-(outerGapX/2));return{x0:Math.round((viewportX+x0)*dpr),y0:Math.round((viewportY+y0)*dpr),x1:Math.round((viewportX+x1)*dpr),y1:Math.round((viewportY+y1)*dpr),dpr,screenX:window.screenX,screenY:window.screenY,outerWidth:window.outerWidth,outerHeight:window.outerHeight,innerWidth:window.innerWidth,innerHeight:window.innerHeight,viewportX,viewportY};},{x0,y0,x1,y1});
-      const run=(...args)=>execFileSync('xdotool',args,{stdio:['ignore','pipe','pipe']}),runText=(...args)=>String(execFileSync('xdotool',args,{encoding:'utf8',stdio:['ignore','pipe','pipe']})).trim();
-      const windows=runText('search','--onlyvisible','--class','google-chrome').split(/\\s+/).filter(Boolean);
-      if(!windows.length)throw new Error('xdotool could not find the visible Google Chrome window');
-      const windowId=windows[windows.length-1];run('windowfocus','--sync',windowId);await page.waitForTimeout(120);
-      const focused=runText('getwindowfocus');if(focused!==windowId)throw new Error(`xdotool focus mismatch: expected ${windowId}, got ${focused}`);
-      run('mousemove','--sync',String(screen.x0),String(screen.y0));await page.waitForTimeout(100);run('mousedown','1');await page.waitForTimeout(100);
-      for(let step=1;step<=12;step++){const t=step/12;run('mousemove','--sync',String(Math.round(screen.x0+(screen.x1-screen.x0)*t)),String(Math.round(screen.y0+(screen.y1-screen.y0)*t)));await page.waitForTimeout(22);}
-      run('mouseup','1');await page.waitForTimeout(320);
-      return await node.evaluate((el,payload)=>({left:el.scrollLeft,top:el.scrollTop,max:payload.axis==='x'?el.scrollWidth-el.clientWidth:el.scrollHeight-el.clientHeight,screen:payload.screen,windowId:payload.windowId}),{axis,screen,windowId});
-    }
-    await page.mouse.move(x0,y0);await page.waitForTimeout(120);await page.mouse.down();await page.mouse.move(x1,y1,{steps:12});await page.mouse.up();await page.waitForTimeout(220);
-    return await node.evaluate((el,axis)=>({left:el.scrollLeft,top:el.scrollTop,max:axis==='x'?el.scrollWidth-el.clientWidth:el.scrollHeight-el.clientHeight}),axis);
-  }finally{
-    await node.evaluate((el,saved)=>{el.style.overflowX=saved.overflowX;el.style.overflowY=saved.overflowY;},saved);
-  }
+async function scrollByBrowserInput(page,selector,axis){
+  const node=page.locator(selector),box=await node.boundingBox();
+  if(!box)throw new Error(`Missing scroll target ${selector}`);
+  const before=await node.evaluate((el,axis)=>({left:el.scrollLeft,top:el.scrollTop,max:axis==='x'?Math.max(0,el.scrollWidth-el.clientWidth):Math.max(0,el.scrollHeight-el.clientHeight)}),axis);
+  if(before.max<=0)throw new Error(`${selector} has no ${axis==='x'?'horizontal':'vertical'} overflow: ${JSON.stringify(before)}`);
+  await page.mouse.move(box.x+Math.max(8,Math.min(box.width-8,box.width/2)),box.y+Math.max(8,Math.min(box.height-8,box.height/2)));
+  const delta=Math.max(80,Math.min(240,before.max*.22));
+  if(axis==='x')await page.mouse.wheel(delta,0);else await page.mouse.wheel(0,delta);
+  await page.waitForTimeout(260);
+  return node.evaluate((el,axis)=>({left:el.scrollLeft,top:el.scrollTop,max:axis==='x'?el.scrollWidth-el.clientWidth:el.scrollHeight-el.clientHeight}),axis);
 }
 
 const json=(res,v,status=200)=>{res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store'});res.end(JSON.stringify(v));};
@@ -98,8 +79,7 @@ const server=http.createServer(async(req,res)=>{try{
 }catch(e){res.writeHead(e?.code==='ENOENT'?404:500,{'content-type':'text/plain; charset=utf-8'});res.end(String(e));}});
 await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(port,host,resolve);});
 
-const nativeScrollbarDrag=process.env.WEIG_NATIVE_SCROLLBAR_DRAG==='1';
-const browser=await launchBrowser(nativeScrollbarDrag?{headless:false,ignoreDefaultArgs:['--hide-scrollbars'],args:['--disable-features=OverlayScrollbar,OverlayScrollbars']}:{});
+const browser=await launchBrowser();
 try{
   for(const name of ['legacy','modern']){
     const context=await browser.newContext({viewport:{width:1366,height:768},locale:'en-US'}),page=await context.newPage(),errors=[];
@@ -115,23 +95,23 @@ try{
     assert(await page.locator('#mobile-command-slot,#mobile-facet-slot,.mobile-summary,#dl-speed,#up-speed,#connection-status,#network-meta,#torrent-count,#page-range').count()===0,`${name}: retired summary/mobile shelf DOM survived`);
     const panelTop=await page.evaluate(()=>({panel:Math.round(document.querySelector('#list-view>.torrent-panel').getBoundingClientRect().top),view:Math.round(document.getElementById('list-view').getBoundingClientRect().top)}));
     assert(Math.abs(panelTop.panel-panelTop.view)<=2,`${name}: TorrentPanel does not start at desktop workspace top`);
-    // Real native scrollbar thumb drag is certified only in the dedicated Xvfb/headful Chrome lane.
-    if(nativeScrollbarDrag){
+    // Automated browser input covers the same horizontal/vertical scroll pipeline and VirtualList cost.
+    // Native scrollbar-thumb mouse drag remains a mandatory final human acceptance item because hosted Chrome/Xvfb
+    // does not expose native scrollbar chrome to DevTools/XTest pointer injection reliably.
     await page.setViewportSize({width:900,height:768});await page.waitForTimeout(120);
     await page.evaluate(()=>{const list=document.getElementById('torrent-list');list.scrollLeft=0;list.scrollTop=0;WeiG.AppState.virtual.resetMetrics();});
-    const horizontal=await dragNativeScrollbar(page,'#torrent-list','x');
-    assert(horizontal.left>8,`${name}: real horizontal scrollbar thumb drag did not move scrollLeft ${JSON.stringify(horizontal)}`);
+    const horizontal=await scrollByBrowserInput(page,'#torrent-list','x');
+    assert(horizontal.left>8,`${name}: horizontal browser scroll input did not move scrollLeft ${JSON.stringify(horizontal)}`);
     const horizontalMetrics=await page.evaluate(()=>WeiG.AppState.virtual.metrics());
-    assert(horizontalMetrics.renders===0,`${name}: horizontal scrollbar drag triggered VirtualList repaint ${JSON.stringify(horizontalMetrics)}`);
-    await page.evaluate(()=>{WeiG.AppState.virtual.resetScroll();document.getElementById('torrent-list').scrollLeft=0;WeiG.AppState.virtual.resetMetrics();});
+    assert(horizontalMetrics.renders===0,`${name}: horizontal scroll input triggered VirtualList repaint ${JSON.stringify(horizontalMetrics)}`);
+    await page.evaluate(()=>{WeiG.AppState.virtual.resetScroll();const list=document.getElementById('torrent-list');list.scrollLeft=0;list.scrollTop=0;WeiG.AppState.virtual.resetMetrics();});
     await page.waitForTimeout(80);
-    const vertical=await dragNativeScrollbar(page,'#torrent-list','y');
-    assert(vertical.top>40,`${name}: real vertical scrollbar thumb drag did not move scrollTop ${JSON.stringify(vertical)}`);
+    const vertical=await scrollByBrowserInput(page,'#torrent-list','y');
+    assert(vertical.top>40,`${name}: vertical browser scroll input did not move scrollTop ${JSON.stringify(vertical)}`);
     const verticalMetrics=await page.evaluate(()=>WeiG.AppState.virtual.metrics());
-    assert(verticalMetrics.renders>0&&verticalMetrics.reused>0&&verticalMetrics.reused>verticalMetrics.created,`${name}: vertical scrollbar drag did not recycle the overlapping row pool ${JSON.stringify(verticalMetrics)}`);
-    assert(verticalMetrics.maxRenderMs<80,`${name}: scrollbar-driven VirtualList render exceeded the bounded browser regression budget ${JSON.stringify(verticalMetrics)}`);
+    assert(verticalMetrics.renders>0&&verticalMetrics.reused>0&&verticalMetrics.reused>verticalMetrics.created,`${name}: vertical scroll input did not recycle the overlapping row pool ${JSON.stringify(verticalMetrics)}`);
+    assert(verticalMetrics.maxRenderMs<80,`${name}: browser-scroll VirtualList render exceeded the bounded regression budget ${JSON.stringify(verticalMetrics)}`);
     await page.setViewportSize({width:1366,height:768});await page.waitForTimeout(120);
-    }
 
 
     // Real progress semantics and Reduced Motion remain protected.
@@ -211,7 +191,7 @@ try{
     assert(errors.length===0,`${name}: browser errors: ${errors.join(' | ')}`);
     await context.close();
   }
-  console.log('Torrent workspace browser gate passed: '+(nativeScrollbarDrag?'real horizontal/vertical scrollbar thumb drag, ':'')+'keyed row reuse, permanent Sidebar facets, canonical Drawer telemetry, semantic sort/count, compact Mobile toolbar/cards, inline truthful progress, pager actions, anchored Search, Connection help and Reduced Motion.');
+  console.log('Torrent workspace browser gate passed: horizontal/vertical browser scroll input with keyed row reuse, permanent Sidebar facets, canonical Drawer telemetry, semantic sort/count, compact Mobile toolbar/cards, inline truthful progress, pager actions, anchored Search, Connection help and Reduced Motion. Native scrollbar-thumb drag remains final human acceptance.');
 }finally{
   await browser.close();
   await new Promise(r=>server.close(r));
