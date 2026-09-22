@@ -36,7 +36,7 @@ assert((index.match(/id="search-input"/g)||[]).length===1,'Canonical Header Sear
 assert(header.includes('function searchRoute()')&&header.includes('function routeSearchInput(event)'),'Header must own route-aware Search dispatch presentation');
 
 // Torrent detail density is responsive presentation of the existing semantic nodes.
-assert(index.includes('id="detail-context-slot"')&&index.includes('class="detail-state-row"'),'Mobile detail must provide one adaptive Back/status row slot');
+assert(index.includes('id="detail-context-slot"')&&index.includes('id="detail-state"')&&!index.includes('class="detail-state-row"'),'Mobile detail must reuse the canonical context slot and direct state node without the retired layout wrapper');
 assert((index.match(/id="detail-state"/g)||[]).length===1&&(index.match(/id="detail-progress-bar"/g)||[]).length===1,'Detail status/progress must retain one semantic DOM owner');
 assert(navigation.includes("target=mobile&&slot?slot:tabs")&&navigation.includes("label.textContent=mobile?'Back':'Back to torrents'"),'Navigation must move the same Back control between Mobile status row and Desktop tabs');
 assert(!navigation.includes('cloneNode'),'Adaptive Back presentation must not duplicate the navigation control');
