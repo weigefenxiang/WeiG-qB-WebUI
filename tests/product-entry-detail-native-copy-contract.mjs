@@ -4,7 +4,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {settingsTabRefs} from '../tools/qb-owned-ui-source.mjs';
 const here=path.dirname(fileURLToPath(import.meta.url)),root=path.resolve(here,'..'),read=p=>fs.readFileSync(path.join(root,p),'utf8');
-const index=read('webui/private/index.html'),appCss=read('webui/private/css/app.css'),layoutCss=read('webui/private/css/layout.css'),tableCss=read('webui/private/css/table.css'),settings=read('webui/private/scripts/settings.js'),i18n=read('webui/private/scripts/i18n.js'),login=read('webui/public/login.html'),publicIndex=read('webui/public/index.html'),entryLocale=read('webui/public/assets/entry-locale.js');
+const index=read('webui/private/index.html'),appCss=read('webui/private/css/app.css'),layoutCss=read('webui/private/css/layout.css'),tableCss=read('webui/private/css/table.css'),settings=read('webui/private/scripts/settings.js'),i18n=read('webui/private/scripts/i18n.js'),login=read('webui/public/login.html'),publicIndex=read('webui/public/index.html'),entryLocale=read('webui/public/scripts/entry-locale.js');
 assert.match(index,/class="detail-hero[\s\S]*?data-i18n="detail\.eyebrow"[\s\S]*?id="detail-state"[\s\S]*?id="detail-title"[\s\S]*?class="detail-progress"/,'Detail four-corner nodes must share one direct hero owner.');
 assert.match(layoutCss,/grid-template-areas:"eyebrow state" "title progress"/,'desktop Detail must use the canonical 2x2 four-corner grid');
 for(const css of [appCss,tableCss])assert.doesNotMatch(css,/\.detail-hero\{[^}]*grid-template-areas|\.detail-status-stack\{/,'non-owner CSS must not retain Detail hero geometry');
@@ -21,13 +21,13 @@ assert.equal(fs.existsSync(path.join(root,'webui/public/assets/favicon.svg')),fa
 assert.equal(fs.existsSync(path.join(root,'webui/private/favicon.svg')),false,'generated private favicon.svg must stay retired');
 for(const html of [login,publicIndex]){
   assert.match(html,/<html lang="en"/);
-  assert.match(html,/assets\/Wei\.G\.ico\?v=brand-1/);
+  assert.match(html,/assets\/Wei\.G\.ico\?v=__WEIG_GIT_SHA__/);
   assert.match(html,/src="assets\/Wei\.G\.ico"/,'page-internal login logo must stay on the existing Wei.G asset');
-  assert.match(html,/assets\/entry-locale\.js\?v=__WEIGG_GIT_SHA__/,'public entry pages must consume one shared locale owner');
+  assert.match(html,/scripts\/entry-locale\.js\?v=__WEIG_GIT_SHA__/,'public entry pages must consume one shared locale owner');
   assert.doesNotMatch(html,/var D=\{/,'public HTML must not embed a second locale dictionary');
   assert.ok(html.includes("var lang='en'")&&html.includes('E.dictionary')&&html.includes('E.normalize'),'public entry must default to English through the shared owner');
 }
-assert.match(index,/<html lang="en"/);assert.match(index,/href="assets\/Wei\.G\.ico\?v=brand-1"/);assert.ok(index.includes('Loading WeiG WebUI…')&&!index.includes('正在加载 WeiG WebUI'));
+assert.match(index,/<html lang="en"/);assert.match(index,/href="assets\/Wei\.G\.ico\?v=__WEIG_GIT_SHA__"/);assert.ok(index.includes('Loading WeiG WebUI…')&&!index.includes('正在加载 WeiG WebUI'));
 for(const lang of ["'zh-CN'","'zh-TW'","'zh-HK'","'ja'","'ko'","'de'","'fr'","'es'","'pt'","'ru'"])assert.ok(i18n.includes(lang),'missing canonical locale '+lang);
 for(const probe of ["return'zh-CN'","return'zh-TW'","return'zh-HK'","return'ja'","return'ko'","return'de'","return'fr'","return'es'","return'pt'","return'ru'","return'en'"])assert.ok(i18n.includes(probe),'missing canonical persisted-locale mapping '+probe);
 assert.ok(i18n.includes('supported:Object.keys(dicts)'));assert.ok(entryLocale.includes("return'zh-HK'")&&entryLocale.includes("'zh-HK':"),'public entry owner must keep Hong Kong Traditional Chinese distinct');
