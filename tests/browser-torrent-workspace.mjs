@@ -61,6 +61,11 @@ function assertQuietCommitBounded(name,axis,active,settled){
   assert(settled.created-active.created<=bound&&settled.removed-active.removed<=bound,`${name}: ${axis} quiet-period snapshot commit exceeded the visible row pool ${JSON.stringify({active,settled})}`);
   assert(settled.maxRenderMs<80,`${name}: ${axis} active/quiet VirtualList render exceeded the bounded regression budget ${JSON.stringify(settled)}`);
 }
+async function waitForProgressMotion(page,hash,active){
+  const selector=`.torrent-row[data-hash="${hash}"] .progress-fill`,expected=active?'weig-progress-flow':'none';
+  await page.waitForFunction(({selector,expected})=>{const fill=document.querySelector(selector);return !!fill&&getComputedStyle(fill,'::after').animationName===expected;},{selector,expected},{timeout:1500});
+  return page.locator(selector).evaluate(n=>getComputedStyle(n,'::after').animationName);
+}
 
 const json=(res,v,status=200)=>{res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store'});res.end(JSON.stringify(v));};
 const text=(res,v,status=200)=>{res.writeHead(status,{'content-type':'text/plain; charset=utf-8','cache-control':'no-store'});res.end(String(v));};
@@ -141,17 +146,23 @@ try{
     await waitForVirtualIdle(page,180);
 
 
-    // Real progress semantics and Reduced Motion remain protected.
+    // Real progress semantics and Reduced Motion remain protected. Pseudo-element animation style can settle
+    // a frame after row replacement/media emulation, so wait for the exact CSS contract instead of sampling once.
     const expected={1:['download','45%','true'],2:['seed','100%','true'],3:['paused','45%','false'],4:['complete','100%','false'],5:['error','45%','false'],6:['checking','45%','true'],7:['queued','45%','false'],8:['stalled','45%','false']};
     for(const [n,e] of Object.entries(expected)){
-      const track=page.locator(`.torrent-row[data-hash="${String(n).padStart(40,'0')}"] .progress-track`);await track.waitFor();
-      const state=await track.evaluate(el=>({state:el.dataset.progressState,active:el.dataset.progressActive,width:el.querySelector('.progress-fill').style.width,motion:getComputedStyle(el.querySelector('.progress-fill'),'::after').animationName}));
+      const hash=String(n).padStart(40,'0'),track=page.locator(`.torrent-row[data-hash="${hash}"] .progress-track`);await track.waitFor();
+      const state=await track.evaluate(el=>({state:el.dataset.progressState,active:el.dataset.progressActive,width:el.querySelector('.progress-fill').style.width}));
       assert(state.state===e[0]&&state.width===e[1]&&state.active===e[2],`${name}: progress ${n} semantic mismatch ${JSON.stringify(state)}`);
-      assert((e[2]==='true')===(state.motion!=='none'),`${name}: progress ${n} activity motion mismatch`);
+      const motion=await waitForProgressMotion(page,hash,e[2]==='true');
+      assert(motion===(e[2]==='true'?'weig-progress-flow':'none'),`${name}: progress ${n} activity motion mismatch ${JSON.stringify({state,motion})}`);
     }
-    await page.emulateMedia({reducedMotion:'reduce'});await page.waitForTimeout(20);
-    assert(await page.locator('.torrent-row[data-hash="0000000000000000000000000000000000000001"] .progress-fill').evaluate(n=>getComputedStyle(n,'::after').animationName)==='none',`${name}: Reduced Motion failed for progress`);
+    const activeProgressHash='0000000000000000000000000000000000000001';
+    await page.emulateMedia({reducedMotion:'reduce'});
+    const reducedMotion=await waitForProgressMotion(page,activeProgressHash,false);
+    assert(reducedMotion==='none',`${name}: Reduced Motion failed for progress ${JSON.stringify({motion:reducedMotion})}`);
     await page.emulateMedia({reducedMotion:'no-preference'});
+    const restoredMotion=await waitForProgressMotion(page,activeProgressHash,true);
+    assert(restoredMotion==='weig-progress-flow',`${name}: progress motion did not resume after Reduced Motion was cleared ${JSON.stringify({motion:restoredMotion})}`);
 
     // Canonical sort state: desktop header and Mobile Select share LibraryController state.
     const nameHead=page.locator('#torrent-table-head .grid-head-cell[data-key="name"]');await nameHead.click();
