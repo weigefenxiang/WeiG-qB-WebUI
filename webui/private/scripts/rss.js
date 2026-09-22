@@ -153,5 +153,5 @@
   W.RSSWorkspace={load:loadWorkspace,refresh:loadWorkspace,addFeed:addWorkspaceFeed,render:renderWorkspace,state:workspaceSnapshot};
   W.RSSRules={install:install,open:open,refresh:refresh,loadRules:loadRules,loadMatchingArticles:loadMatchingArticles,state:function(){return{selected:state.selected,newDraft:state.newDraft,rules:Object.keys(state.rules||{}),matching:clone(state.matching||{}),manifest:clone(state.manifest||null),autoDownloadEnabled:autoDownloadEnabled()};}};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
-  global.addEventListener('hashchange',refresh);global.addEventListener('weigg:capabilities-ready',resetForEnvironment);global.addEventListener('weigg:languagechange',function(){teardown();install();});
+  global.addEventListener('hashchange',refresh);global.addEventListener('weig:capabilities-ready',resetForEnvironment);global.addEventListener('weig:languagechange',function(){teardown();install();});
 })(window);

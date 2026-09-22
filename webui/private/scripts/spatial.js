@@ -26,6 +26,6 @@
   function init(){installFacetControls();capabilitiesReady().then(function(registry){return registry.load().then(function(){registry.sync();return registry;});}).catch(function(error){console.error('[WeiG capabilities]',error);});}
   W.SpatialRuntime={init:init,installFacetControls:installFacetControls,syncFacets:syncFacets,capabilitiesReady:capabilitiesReady};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
-  global.addEventListener('weigg:library-state',function(){requestAnimationFrame(syncFacets);});
-  global.addEventListener('weigg:languagechange',function(){requestAnimationFrame(sync);});
+  global.addEventListener('weig:library-state',function(){requestAnimationFrame(syncFacets);});
+  global.addEventListener('weig:languagechange',function(){requestAnimationFrame(sync);});
 })(window);

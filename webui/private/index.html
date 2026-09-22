@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-weigg-bootstrap="pending" data-theme="dark" data-font-size="large" data-density="standard" data-starfield="subtle" data-motion="system" data-country-flags="failed">
+<html lang="en" data-weig-bootstrap="pending" data-theme="dark" data-font-size="large" data-density="standard" data-starfield="subtle" data-motion="system">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -8,22 +8,22 @@
   <meta http-equiv="Cache-Control" content="no-store,no-cache,must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <meta name="weigg-build-sha" content="__WEIGG_GIT_SHA__">
-  <link rel="icon" href="assets/Wei.G.ico?v=brand-1">
+  <meta name="weig-build-sha" content="__WEIG_GIT_SHA__">
+  <link rel="icon" href="assets/Wei.G.ico?v=__WEIG_GIT_SHA__">
   <title>WeiG qB WebUI</title>
-  <script>try{if(sessionStorage.getItem('weigg.logoutGuard')||sessionStorage.getItem('weigg.loginHandshake.v2'))document.documentElement.dataset.sessionLocked='1';}catch(_e){}</script>
+  <script>try{if(sessionStorage.getItem('weig.logoutGuard')||sessionStorage.getItem('weig.loginHandshake'))document.documentElement.dataset.sessionLocked='1';}catch(_e){}</script>
 
-  <style id="weigg-bootstrap-shell">
-    html[data-weigg-bootstrap="pending"] #app,html[data-weigg-bootstrap="failed"] #app{visibility:hidden}
-    #weigg-bootstrap-status{position:fixed;inset:0;z-index:2147483647;display:grid;place-items:center;padding:24px;background:#070b14;color:#e8edf7;font-family:Inter,"Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif}
-    #weigg-bootstrap-status[hidden]{display:none}
-    #weigg-bootstrap-status>div{width:min(92vw,620px);padding:24px;border:1px solid rgba(255,255,255,.12);border-radius:16px;background:#111a2b;box-shadow:0 24px 80px rgba(0,0,0,.46)}
-    #weigg-bootstrap-status strong{display:block;font-size:18px;margin-bottom:8px}#weigg-bootstrap-status p{margin:6px 0;color:#b8c2d9;line-height:1.55;overflow-wrap:anywhere}
-    #weigg-bootstrap-retry{margin-top:14px;min-height:40px;padding:0 16px;border:0;border-radius:9px;background:#6f83ff;color:#fff;font:inherit;font-weight:700;cursor:pointer}
+  <style id="weig-bootstrap-shell">
+    html[data-weig-bootstrap="pending"] #app,html[data-weig-bootstrap="failed"] #app{visibility:hidden}
+    #weig-bootstrap-status{position:fixed;inset:0;z-index:2147483647;display:grid;place-items:center;padding:24px;background:#070b14;color:#e8edf7;font-family:Inter,"Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif}
+    #weig-bootstrap-status[hidden]{display:none}
+    #weig-bootstrap-status>div{width:min(92vw,620px);padding:24px;border:1px solid rgba(255,255,255,.12);border-radius:16px;background:#111a2b;box-shadow:0 24px 80px rgba(0,0,0,.46)}
+    #weig-bootstrap-status strong{display:block;font-size:18px;margin-bottom:8px}#weig-bootstrap-status p{margin:6px 0;color:#b8c2d9;line-height:1.55;overflow-wrap:anywhere}
+    #weig-bootstrap-retry{margin-top:14px;min-height:40px;padding:0 16px;border:0;border-radius:9px;background:#6f83ff;color:#fff;font:inherit;font-weight:700;cursor:pointer}
   </style>
 </head>
 <body>
-  <div id="weigg-bootstrap-status" role="status" aria-live="polite"><div><strong id="weigg-bootstrap-title">Loading WeiG WebUI…</strong><p id="weigg-bootstrap-copy">Loading interface resources in dependency order.</p><button id="weigg-bootstrap-retry" type="button" hidden>Reload</button></div></div>
+  <div id="weig-bootstrap-status" role="status" aria-live="polite"><div><strong id="weig-bootstrap-title">Loading WeiG WebUI…</strong><p id="weig-bootstrap-copy">Loading interface resources in dependency order.</p><button id="weig-bootstrap-retry" type="button" hidden>Reload</button></div></div>
   <a class="skip-link" href="#torrent-list" data-i18n="app.skip">Skip to torrent list</a>
   <div class="starfield" aria-hidden="true"><span class="stars stars-a"></span><span class="stars stars-b"></span><span class="nebula nebula-a"></span><span class="nebula nebula-b"></span></div>
   <div id="app" class="app-shell">
@@ -47,7 +47,7 @@
 
       <section id="detail-view" class="view"><div class="detail-hero surface surface--raised"><div class="eyebrow" data-i18n="detail.eyebrow">TORRENT DETAIL</div><div id="detail-state" class="status-pill">—</div><h1 id="detail-title">—</h1><div class="detail-progress"><div class="progress-track"><div id="detail-progress-bar" class="progress-fill"></div></div><strong id="detail-progress-text">0%</strong></div><span id="detail-context-slot" class="detail-context-slot"></span></div><div id="detail-tabs" class="detail-tabs" role="tablist"></div><div id="detail-content" class="detail-content surface surface--panel"></div></section>
 
-      <section id="settings-view" class="view"><div class="workspace__header settings-header"><div><div class="eyebrow" data-i18n="settings.eyebrow">SETTINGS</div><h1 data-i18n="settings.title">Settings</h1><p class="text-description" data-i18n="settings.description">Interface preferences and qBittorrent settings supported by this instance.</p></div><div class="settings-header__actions"><label class="search-box settings-search-box"><span aria-hidden="true">⌕</span><input id="settings-search-input" type="search" autocomplete="off" data-i18n-placeholder="settings.search" placeholder="Search settings…"></label><button id="save-settings-btn" class="btn btn--primary" data-i18n="settings.save">Save</button></div></div><div class="settings-layout"><nav id="settings-tabs" class="settings-tabs surface surface--panel"><div class="settings-nav-group"><div class="eyebrow">WEIG</div><button class="nav-item is-active" data-settings-tab="weigg" data-i18n="settings.weig.title">WeiG WebUI</button><button class="nav-item" data-settings-tab="about">About</button></div><div class="settings-nav-group"><div class="eyebrow">QBITTORRENT</div><div id="settings-qb-tabs"></div></div></nav><div id="settings-content" class="settings-content surface surface--panel"></div></div></section>
+      <section id="settings-view" class="view"><div class="workspace__header settings-header"><div><div class="eyebrow" data-i18n="settings.eyebrow">SETTINGS</div><h1 data-i18n="settings.title">Settings</h1><p class="text-description" data-i18n="settings.description">Interface preferences and qBittorrent settings supported by this instance.</p></div><div class="settings-header__actions"><label class="search-box settings-search-box"><span aria-hidden="true">⌕</span><input id="settings-search-input" type="search" autocomplete="off" data-i18n-placeholder="settings.search" placeholder="Search settings…"></label><button id="save-settings-btn" class="btn btn--primary" data-i18n="settings.save">Save</button></div></div><div class="settings-layout"><nav id="settings-tabs" class="settings-tabs surface surface--panel"><div class="settings-nav-group"><div class="eyebrow">WEIG</div><button class="nav-item is-active" data-settings-tab="weig" data-i18n="settings.weig.title">WeiG WebUI</button><button class="nav-item" data-settings-tab="about">About</button></div><div class="settings-nav-group"><div class="eyebrow">QBITTORRENT</div><div id="settings-qb-tabs"></div></div></nav><div id="settings-content" class="settings-content surface surface--panel"></div></div></section>
 
       <section id="search-view" class="view"><div class="workspace__header"><div><div class="eyebrow">SEARCH</div><h1 data-i18n="search.title">Search Engine</h1><p class="text-description" data-i18n="search.description">Search through qBittorrent Search API.</p></div></div><div class="tool-page surface surface--panel"><div class="inline-form"><input id="engine-query" class="field-input" data-i18n-placeholder="search.query" placeholder="Search query"><button id="engine-search-btn" class="btn btn--primary" data-i18n="search.start">Search</button><button id="engine-stop-btn" class="btn btn--ghost" data-i18n="search.stop">Stop</button></div><div id="search-results" class="large-tool-list"></div></div></section>
       <section id="rss-view" class="view"><div class="workspace__header"><div><div class="eyebrow">RSS</div><h1>RSS</h1><p class="text-description" data-i18n="rss.description">Feeds, articles and compatible RSS actions.</p></div></div><div class="tool-page surface surface--panel"><div class="inline-form"><input id="rss-url" class="field-input" data-i18n-placeholder="search.rss" placeholder="RSS Feed URL"><button id="rss-add-btn" class="btn btn--primary" data-i18n="rss.add">Add Feed</button><button id="rss-refresh-btn" class="btn btn--ghost" data-i18n="rss.refresh">Refresh</button></div><div id="rss-content" class="large-tool-list"></div></div></section>
@@ -65,23 +65,23 @@
   <dialog id="prompt-dialog" class="dialog surface surface--modal"><div class="dialog__head"><div><div class="eyebrow">ACTION</div><h2 id="prompt-title" data-i18n="dialog.action.title">Action</h2></div><button id="prompt-close" class="icon-btn">×</button></div><label class="field"><span id="prompt-label" data-i18n="dialog.action.value">Value</span><input id="prompt-value" type="text"></label><div class="dialog__actions"><button id="prompt-cancel" class="btn btn--ghost" data-i18n="app.cancel">Cancel</button><button id="prompt-confirm" class="btn btn--primary" data-i18n="app.confirm">Confirm</button></div></dialog>
   <div id="fatal" class="fatal is-hidden"><div class="fatal__card surface surface--modal"><h2 data-i18n="fatal.title">WebUI cannot continue</h2><p id="fatal-message"></p><div class="fatal__actions"><button id="fatal-back" class="btn btn--ghost" type="button">← <span data-i18n="app.back">Back</span></button><button id="fatal-home" class="btn btn--ghost" type="button">⌂ <span data-i18n="app.home">Home</span></button><button class="btn btn--primary" type="button" onclick="location.reload()">↻ <span data-i18n="app.reload">Reload</span></button></div></div></div>
 
-  <script id="weigg-private-bootstrap">
+  <script id="weig-private-bootstrap">
   (function(global){
     'use strict';
-    var BUILD='__WEIGG_GIT_SHA__';
+    var BUILD='__WEIG_GIT_SHA__';
     var STYLE_CONCURRENCY=2,MAX_ATTEMPTS=3;
     var styles=["css/app.css","css/base.css","css/spatial.css","css/transfer.css","css/progress.css","css/controls.css","css/layout.css","css/theme.css","css/ui.css","css/polish.css","css/logs.css","css/brand.css","css/header.css","css/session.css","css/settings.css","css/feedback.css"];
-    var scripts=["session-contract.js","scripts/i18n.js","scripts/core.js","scripts/dialog-runtime.js","scripts/action-registry.js","scripts/feedback.js","scripts/torrent-semantics.js","scripts/settings-schema.js","scripts/qb-client.js","scripts/capabilities.js","scripts/components.js","scripts/torrent-fields.js","scripts/floating.js","scripts/theme.js","scripts/time.js","scripts/brand.js","scripts/session.js","scripts/settings.js","scripts/navigation.js","scripts/spatial.js","scripts/transfer.js","scripts/responsive.js","scripts/selection.js","scripts/torrent-filter-view.js","scripts/layout.js","scripts/column-configurator.js","scripts/ui.js","scripts/polish.js","scripts/ux.js","scripts/header.js","scripts/logs.js","scripts/rss.js","scripts/app.js"];
+    var scripts=["storage-migration.js","session-contract.js","scripts/i18n.js","scripts/core.js","scripts/dialog-runtime.js","scripts/action-registry.js","scripts/feedback.js","scripts/torrent-semantics.js","scripts/settings-schema.js","scripts/qb-client.js","scripts/capabilities.js","scripts/components.js","scripts/torrent-fields.js","scripts/floating.js","scripts/theme.js","scripts/time.js","scripts/brand.js","scripts/session.js","scripts/settings.js","scripts/navigation.js","scripts/spatial.js","scripts/transfer.js","scripts/responsive.js","scripts/selection.js","scripts/torrent-filter-view.js","scripts/layout.js","scripts/column-configurator.js","scripts/ui.js","scripts/polish.js","scripts/ux.js","scripts/header.js","scripts/logs.js","scripts/rss.js","scripts/app.js"];
     var failed=false;
     function byId(id){return document.getElementById(id);}
-    function assetUrl(path,attempt){var url=new URL(path,global.location.href);url.searchParams.set('v',BUILD);if(attempt>0)url.searchParams.set('__weigg_retry',String(attempt));return url.href;}
+    function assetUrl(path,attempt){var url=new URL(path,global.location.href);url.searchParams.set('v',BUILD);if(attempt>0)url.searchParams.set('__weig_retry',String(attempt));return url.href;}
     function delay(ms){return new Promise(function(resolve){setTimeout(resolve,ms);});}
-    function loadOne(kind,path,attempt){return new Promise(function(resolve,reject){var node;if(kind==='style'){node=document.createElement('link');node.rel='stylesheet';node.href=assetUrl(path,attempt);}else{node=document.createElement('script');node.async=false;node.src=assetUrl(path,attempt);}node.dataset.weiggBootstrapAsset=path;node.onload=function(){resolve(node);};node.onerror=function(){node.remove();reject(new Error('asset-load-failed:'+path));};document.head.appendChild(node);});}
+    function loadOne(kind,path,attempt){return new Promise(function(resolve,reject){var node;if(kind==='style'){node=document.createElement('link');node.rel='stylesheet';node.href=assetUrl(path,attempt);}else{node=document.createElement('script');node.async=false;node.src=assetUrl(path,attempt);}node.dataset.weigBootstrapAsset=path;node.onload=function(){resolve(node);};node.onerror=function(){node.remove();reject(new Error('asset-load-failed:'+path));};document.head.appendChild(node);});}
     async function loadWithRetry(kind,path){var last=null;for(var attempt=0;attempt<MAX_ATTEMPTS;attempt++){try{return await loadOne(kind,path,attempt);}catch(error){last=error;if(attempt+1<MAX_ATTEMPTS)await delay(attempt===0?250:700);}}throw last||new Error('asset-load-failed:'+path);}
     async function loadStyles(){var next=0;async function worker(){while(true){var index=next++;if(index>=styles.length)return;await loadWithRetry('style',styles[index]);}}var workers=[];for(var i=0;i<Math.min(STYLE_CONCURRENCY,styles.length);i++)workers.push(worker());await Promise.all(workers);}
     async function loadScripts(){for(var i=0;i<scripts.length;i++)await loadWithRetry('script',scripts[i]);}
-    function success(){document.documentElement.dataset.weiggBootstrap='ready';var status=byId('weigg-bootstrap-status');if(status)status.hidden=true;}
-    function failure(error){if(failed)return;failed=true;document.documentElement.dataset.weiggBootstrap='failed';var raw=String(error&&error.message||error||'unknown'),path=raw.indexOf('asset-load-failed:')===0?raw.slice(18):raw;var title=byId('weigg-bootstrap-title'),copy=byId('weigg-bootstrap-copy'),retry=byId('weigg-bootstrap-retry');if(title)title.textContent='WeiG WebUI 启动资源加载失败';if(copy)copy.textContent='资源：'+path+'。已进行有限重试。若浏览器 Network 显示 5xx/502，请检查反向代理到 qBittorrent 的上游连接与 qBittorrent 进程日志。';if(retry){retry.hidden=false;retry.onclick=function(){global.location.reload();};}try{console.error('[WeiG bootstrap]',path,error);}catch(_e){}}
+    function success(){document.documentElement.dataset.weigBootstrap='ready';var status=byId('weig-bootstrap-status');if(status)status.hidden=true;}
+    function failure(error){if(failed)return;failed=true;document.documentElement.dataset.weigBootstrap='failed';var raw=String(error&&error.message||error||'unknown'),path=raw.indexOf('asset-load-failed:')===0?raw.slice(18):raw;var title=byId('weig-bootstrap-title'),copy=byId('weig-bootstrap-copy'),retry=byId('weig-bootstrap-retry');if(title)title.textContent='WeiG WebUI 启动资源加载失败';if(copy)copy.textContent='资源：'+path+'。已进行有限重试。若浏览器 Network 显示 5xx/502，请检查反向代理到 qBittorrent 的上游连接与 qBittorrent 进程日志。';if(retry){retry.hidden=false;retry.onclick=function(){global.location.reload();};}try{console.error('[WeiG bootstrap]',path,error);}catch(_e){}}
     Promise.resolve().then(loadStyles).then(loadScripts).then(success).catch(failure);
   })(window);
   </script>

@@ -10,7 +10,7 @@
   function syncActive(){var active=W.LibraryController&&W.LibraryController.state?W.LibraryController.state().filter:'all';document.querySelectorAll('#filter-nav [data-filter]').forEach(function(node){node.classList.toggle('is-active',node.dataset.filter===active);});}
   function render(){var root=document.getElementById('filter-nav');if(!root)return;var active=W.LibraryController&&W.LibraryController.state?W.LibraryController.state().filter:'all';root.textContent='';desired().forEach(function(name){var button=document.createElement('button');button.className='nav-item';button.type='button';button.dataset.filter=name;button.textContent=label(name);button.classList.toggle('is-active',name===active);button.addEventListener('click',function(){if(W.LibraryController&&W.LibraryController.setFilter)W.LibraryController.setFilter(name);});root.appendChild(button);});}
   function refreshOwned(){if(I&&I.loadQbOwnedText)I.loadQbOwnedText().then(render);else render();}
-  function install(){render();refreshOwned();global.addEventListener('weigg:capabilities-ready',function(){render();refreshOwned();});global.addEventListener('weigg:languagechange',refreshOwned);global.addEventListener('weigg:library-state',syncActive);}
+  function install(){render();refreshOwned();global.addEventListener('weig:capabilities-ready',function(){render();refreshOwned();});global.addEventListener('weig:languagechange',refreshOwned);global.addEventListener('weig:library-state',syncActive);}
   W.TorrentFilterView={render:render,sync:syncActive,filters:desired};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 })(window);

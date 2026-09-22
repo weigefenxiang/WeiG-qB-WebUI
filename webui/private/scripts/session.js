@@ -2,11 +2,13 @@
   'use strict';
   var W=global.WeiG=global.WeiG||{};
   if(!W.QBClient)return;
-  var GUARD='weigg.logoutGuard',state='idle',busy=false,entryTask=null;
-  function setState(next){state=next;global.dispatchEvent(new CustomEvent('weigg:sessionstate',{detail:{state:state}}));}
-  function guardSet(){try{sessionStorage.setItem(GUARD,String(Date.now()));}catch(_e){}}
-  function guardClear(){try{sessionStorage.removeItem(GUARD);}catch(_e){}}
-  function guarded(){try{return !!sessionStorage.getItem(GUARD);}catch(_e){return false;}}
+  var state='idle',busy=false,entryTask=null;
+  function setState(next){state=next;global.dispatchEvent(new CustomEvent('weig:sessionstate',{detail:{state:state}}));}
+  function contract(){return W.SessionContract||null;}
+  function guardSet(){var c=contract();return !!(c&&c.setLogoutGuard&&c.setLogoutGuard());}
+  function guardClear(){var c=contract();if(c&&c.clearLogoutGuard)c.clearLogoutGuard();}
+  function guarded(){var c=contract();return !!(c&&c.logoutGuarded&&c.logoutGuarded());}
+  function navigatePublic(){var c=contract();if(!c||!c.navigatePublic)throw new Error('WeiG SessionContract navigation owner is unavailable.');return c.navigatePublic();}
   function lock(){document.documentElement.dataset.sessionLocked='1';var app=document.getElementById('app');if(app){app.setAttribute('aria-hidden','true');app.inert=true;}}
   function unlock(){delete document.documentElement.dataset.sessionLocked;var app=document.getElementById('app');if(app){app.removeAttribute('aria-hidden');app.inert=false;}}
   function sharedClient(client){client=client||(W.AppState&&W.AppState.client);if(client)return client;throw new Error('qBittorrent client is not ready.');}
@@ -49,7 +51,7 @@
       client=sharedClient(client);await client.request('auth/logout',{method:'POST',type:'void'});setState('verifying');
       var active=await probeSession(client);
       if(active){setState('auth-bypass');explainBypass();return false;}
-      setState('logged-out');guardSet();clearPrivateState();lock();location.replace('./');return true;
+      setState('logged-out');guardSet();clearPrivateState();lock();navigatePublic();return true;
     }catch(e){setState('failed');if(W.toast)W.toast((e&&e.message)||String(e),'error');return false;}
     finally{busy=false;}
   }
@@ -59,11 +61,11 @@
     try{
       var active=await probeSession(sharedClient());
       if(active){guardClear();unlock();return true;}
-      location.replace('./');return false;
+      navigatePublic();return false;
     }catch(_e){
       /* AUTH-BFCACHE-FAIL-CLOSED: a guarded private shell is never restored when
        * server session state cannot be positively verified. */
-      location.replace('./');return false;
+      navigatePublic();return false;
     }
   }
   function onPageShow(e){if(e.persisted||guarded())verifyReentry();}
@@ -72,9 +74,8 @@
    * preferences.locale is the single persisted/current language truth.
    * Once browser selection is verified in qB, native WebUI return never
    * restores a pre-WeiG locale. */
-  var LEGACY_HANDOFF_KEY='weigg.localeHandoff.v1',BOOTSTRAP_KEY='weigg.localeBootstrap.v2';
+  var BOOTSTRAP_KEY=(W.StorageKeys&&W.StorageKeys.localeBootstrap)||'weig.localeBootstrap';
   function cleanLocale(value){return String(value==null?'':value).trim();}
-  function clearLegacyHandoff(){try{localStorage.removeItem(LEGACY_HANDOFF_KEY);}catch(_e){}}
   function readBootstrap(){
     try{var value=JSON.parse(localStorage.getItem(BOOTSTRAP_KEY)||'null');return value&&value.schemaVersion===2&&value.initialized===true?value:null;}catch(_e){return null;}
   }
@@ -88,7 +89,6 @@
   function syncPreferences(prefs){if(!prefs||typeof prefs!=='object')return;if(W.AppState)W.AppState.preferences=prefs;if(W.SettingsState)W.SettingsState.prefs=prefs;}
   function bootstrapRecord(reason,target,observed,initialized){return{schemaVersion:2,initialized:initialized===true,reason:String(reason||''),selectedLocale:cleanLocale(target)||null,observedLocale:cleanLocale(observed)||null,completedAt:initialized===true?Date.now():null};}
   async function bootstrapBrowserLocale(client,prefs){
-    clearLegacyHandoff();
     client=client||sharedClient();prefs=prefs||(W.AppState&&W.AppState.preferences)||await client.getPreferences();
     if(!prefs||prefs.alternative_webui_enabled!==true)return{changed:false,reason:'not-alternative-webui'};
     if(!i18nReady())return{changed:false,reason:'locale-owner-not-ready'};
@@ -157,7 +157,7 @@
     });
   }
   function installLocaleReadyBootstrap(){
-    var I=W.I18n;if(!I||typeof I.ready!=='function'||I.__weiggBrowserBootstrapWrapped)return false;
+    var I=W.I18n;if(!I||typeof I.ready!=='function'||I.__weigBrowserBootstrapWrapped)return false;
     var original=I.ready;
     I.ready=function(){
       var owner=this,args=arguments;
@@ -175,7 +175,7 @@
         return value;
       });
     };
-    I.__weiggBrowserBootstrapWrapped=true;
+    I.__weigBrowserBootstrapWrapped=true;
     return true;
   }
 
@@ -184,6 +184,5 @@
   global.addEventListener('pageshow',onPageShow);
   if(guarded()){lock();setTimeout(verifyReentry,0);}
   if(W.SessionContract&&W.SessionContract.pendingHandoff())lock();
-  clearLegacyHandoff();
   installLocaleReadyBootstrap();
 })(window);

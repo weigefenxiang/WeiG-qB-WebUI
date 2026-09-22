@@ -12,7 +12,7 @@
 
   function mobileRowHeight(){var density=document.documentElement.dataset.density||'standard';if(global.innerHeight<=680)return 94;if(density==='compact')return 94;if(density==='comfortable')return 104;return 98;}
   function desktopRowHeight(){var density=document.documentElement.dataset.density||'standard';return density==='compact'?48:density==='comfortable'?64:56;}
-  function syncTorrentRowHeight(){var list=document.getElementById('torrent-list'),instance=list&&list.__weiggTorrentVirtual;if(!instance||!instance.setRowHeight)return;var next=isMobile()?mobileRowHeight():desktopRowHeight();if(instance.rowHeight!==next)instance.setRowHeight(next);}
+  function syncTorrentRowHeight(){var list=document.getElementById('torrent-list'),instance=list&&list.__weigTorrentVirtual;if(!instance||!instance.setRowHeight)return;var next=isMobile()?mobileRowHeight():desktopRowHeight();if(instance.rowHeight!==next)instance.setRowHeight(next);}
 
   function compactMetricText(value){var s=String(value==null?'':value);s=s.replace(/^([↓↑])\s+/, '$1');s=s.replace(/(\d+\.\d*?[1-9])0+(?=\s*(?:[KMGTPE]?i?B|B)(?:\/s)?\b)/g,'$1');s=s.replace(/(\d+)\.0+(?=\s*(?:[KMGTPE]?i?B|B)(?:\/s)?\b)/g,'$1');s=s.replace(/(\d+(?:\.\d+)?)\s+(?=(?:[KMGTPE]?i?B|B)(?:\/s)?\b)/g,'$1');s=s.replace(/(\d+[dhms])\s+(?=\d)/g,'$1');return s;}
   function compactMetaCells(cells){cells.forEach(function(cell){if(cell.dataset.mobileFullText===undefined)cell.dataset.mobileFullText=cell.textContent||'';var full=cell.dataset.mobileFullText,compact=compactMetricText(full);cell.textContent=compact;cell.removeAttribute('title');cell.setAttribute('aria-label',full);});}
@@ -70,12 +70,12 @@
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
   document.addEventListener('visibilitychange',function(){if(!document.hidden){syncResponsiveSystem();refreshStorage();}});
   global.addEventListener('resize',function(){requestAnimationFrame(syncResponsiveSystem);},{passive:true});
-  global.addEventListener('weigg:route-state',function(){syncDetailTitleContract();});
-  global.addEventListener('weigg:library-state',function(){requestAnimationFrame(syncResponsiveSystem);});
-  global.addEventListener('weigg:transfer',function(){requestAnimationFrame(mountStatusTelemetry);});
-  global.addEventListener('weigg:status-state',function(event){paintConnection(event.detail&&event.detail.connection||'unknown');});
-  global.addEventListener('weigg:maindata',function(event){var state=event.detail&&event.detail.serverState||{},free=state.free_space_on_disk;if(free!=null&&Number.isFinite(Number(free)))paintStorage(free);else refreshStorage();if(connectionDialog&&connectionDialog.open)requestAnimationFrame(openConnectionDialog);});
-  global.addEventListener('weigg:languagechange',function(){localizeStorage(document.getElementById('status-free-space'));paintConnection(lastConnection);syncPagerCopy();mountStatusTelemetry();if(connectionDialog&&connectionDialog.open)openConnectionDialog();});
+  global.addEventListener('weig:route-state',function(){syncDetailTitleContract();});
+  global.addEventListener('weig:library-state',function(){requestAnimationFrame(syncResponsiveSystem);});
+  global.addEventListener('weig:transfer',function(){requestAnimationFrame(mountStatusTelemetry);});
+  global.addEventListener('weig:status-state',function(event){paintConnection(event.detail&&event.detail.connection||'unknown');});
+  global.addEventListener('weig:maindata',function(event){var state=event.detail&&event.detail.serverState||{},free=state.free_space_on_disk;if(free!=null&&Number.isFinite(Number(free)))paintStorage(free);else refreshStorage();if(connectionDialog&&connectionDialog.open)requestAnimationFrame(openConnectionDialog);});
+  global.addEventListener('weig:languagechange',function(){localizeStorage(document.getElementById('status-free-space'));paintConnection(lastConnection);syncPagerCopy();mountStatusTelemetry();if(connectionDialog&&connectionDialog.open)openConnectionDialog();});
 
   W.MobileAdaptive={formatFreeSpace:formatFreeSpace,mobileRowHeight:mobileRowHeight,fitMobileMeta:fitMobileMeta,refreshStorage:refreshStorage,paintConnection:paintConnection,openConnectionDialog:openConnectionDialog,installPageContracts:installPageContracts,primaryScrollOwners:primaryScrollOwners,mountSelectionToolbar:mountSelectionToolbar,mountStatusTelemetry:mountStatusTelemetry,syncPagerCopy:syncPagerCopy,installDetailTitleInteraction:installDetailTitleInteraction};
 })(window);

@@ -19,7 +19,7 @@ function run(command,args,options={}){
   return String(result.stdout||'').trim();
 }
 function ensurePinnedSource(){
-  const cache=path.join(os.tmpdir(),`weigg-qb-peer-flags-${QB_PEER_FLAGS_SOURCE.commit}`);
+  const cache=path.join(os.tmpdir(),`weig-qb-peer-flags-${QB_PEER_FLAGS_SOURCE.commit}`);
   const gitDir=path.join(cache,'.git');
   if(!fs.existsSync(gitDir)){
     fs.rmSync(cache,{recursive:true,force:true});
@@ -45,20 +45,9 @@ function sourceFlagFiles(sourceRoot){
 function renderCss(files){
   return `/* Generated from qBittorrent ${QB_PEER_FLAGS_SOURCE.tag}@${QB_PEER_FLAGS_SOURCE.commit}; do not hand-edit. */\n`+files.map(name=>{
     const iso=name.slice(0,-4).toLowerCase();
-    return `.peer-country-flag.flag.${iso}{display:inline-block;background-image:url('../images/flags/${name}');background-size:16px 11px;background-position:center;background-repeat:no-repeat}.peer-country-flag.flag.${iso}+.peer-country-code{display:none}`;
+    return `.peer-country-flag.flag.${iso}{display:inline-block;background-image:url('../images/flags/${name}');background-size:16px 11px;background-position:center;background-repeat:no-repeat;font-size:0;color:transparent}`;
   }).join('\n')+'\n';
 }
-function failClosedIndex(privateRoot){
-  const file=path.join(privateRoot,'index.html');
-  if(!fs.existsSync(file))throw new Error(`Missing WebUI private index: ${file}`);
-  const before=fs.readFileSync(file,'utf8');
-  let after=before;
-  if(/<html\b[^>]*\bdata-country-flags=/.test(after))after=after.replace(/(<html\b[^>]*\bdata-country-flags=)["'][^"']*["']/,'$1"failed"');
-  else after=after.replace(/<html\b/,'<html data-country-flags="failed"');
-  if(after===before&&!before.includes('data-country-flags="failed"'))throw new Error('Unable to install fail-closed peer flag bootstrap state.');
-  fs.writeFileSync(file,after,'utf8');
-}
-
 export function materializeQbPeerFlags(privateRoot,{sourceRoot=null}={}){
   privateRoot=path.resolve(privateRoot);
   const uiFile=path.join(privateRoot,'scripts/ui.js');
@@ -74,7 +63,6 @@ export function materializeQbPeerFlags(privateRoot,{sourceRoot=null}={}){
   fs.rmSync(target,{recursive:true,force:true});fs.mkdirSync(target,{recursive:true});
   for(const name of files)fs.copyFileSync(path.join(dir,name),path.join(target,name));
   const cssFile=path.join(privateRoot,'css/qb-peer-flags.css');fs.writeFileSync(cssFile,renderCss(files),'utf8');
-  failClosedIndex(privateRoot);
   return{materialized:true,sourceCommit:QB_PEER_FLAGS_SOURCE.commit,sourceTag:QB_PEER_FLAGS_SOURCE.tag,flagCount:files.length,cssBytes:fs.statSync(cssFile).size};
 }
 
