@@ -6,8 +6,7 @@
   var SIDEBAR_KEY=(W.StorageKeys&&W.StorageKeys.sidebar)||'weig.sidebarCollapsed';
   var TABLE_COLUMN_KEY=(W.StorageKeys&&W.StorageKeys.tableColumnsPrefix)||'weig.tableColumns:';
   function isDesktop(){return !!(global.matchMedia&&global.matchMedia('(min-width: 821px)').matches);}
-  function zh(){return !!(W.I18n&&W.I18n.getLocale&&W.I18n.getLocale()==='zh-CN');}
-  function label(en,cn){return zh()?cn:en;}
+  function tr(key){return W.I18n&&W.I18n.t?W.I18n.t(key):String(key||'');}
   function own(obj,key){return !!(obj&&Object.prototype.hasOwnProperty.call(obj,key));}
   function cloneColumn(column){var out=Object.assign({},column||{});if(Array.isArray(out.dataProperties))out.dataProperties=out.dataProperties.slice();if(out.translation&&typeof out.translation==='object')out.translation=Object.assign({},out.translation);return out;}
   function officialText(key,ref,fallback){var source=String(ref&&ref.source||fallback||key||'').trim();if(W.I18n&&typeof W.I18n.qbText==='function')return W.I18n.qbText(String(key||''),source||String(key||''));return source||String(key||'');}
@@ -21,7 +20,7 @@
   function finite(value){var n=Number(value);return Number.isFinite(n)?n:null;}
   function generalDuration(value){var n=finite(value);if(n===null||n<0)return'—';return U&&U.formatEta?U.formatEta(n):String(n);}
   function generalDate(value){var n=finite(value);return n!==null&&n>0?new Date(n*1000).toLocaleString():'—';}
-  function generalYesNo(value){return value?label('Yes','是'):label('No','否');}
+  function generalYesNo(value){return value?tr('common.yes'):tr('common.no');}
   function generalScalar(key,value){
     key=String(key||'').toLowerCase();
     if(value===undefined||value===null||value==='')return'—';
@@ -42,18 +41,18 @@
   }
   function generalSecondaryLabel(key){
     key=String(key||'').toLowerCase();
-    if(key==='seeding_time')return label('seeding','已做种');
-    if(/_session$/.test(key))return label('this session','本次会话');
-    if(/_avg$/.test(key))return label('average','平均');
-    if(/(?:^|_)limit$/.test(key))return label('max','最大');
-    if(/_total$/.test(key))return label('total','总计');
+    if(key==='seeding_time')return tr('detail.secondary.seeding');
+    if(/_session$/.test(key))return tr('detail.secondary.session');
+    if(/_avg$/.test(key))return tr('detail.secondary.average');
+    if(/(?:^|_)limit$/.test(key))return tr('detail.secondary.max');
+    if(/_total$/.test(key))return tr('detail.secondary.total');
     return'';
   }
   function sourceGeneralFieldValue(field,data,hash){
     if(field&&field.valueSource==='torrentHash')return String(hash||'—');
     var keys=Array.isArray(field&&field.dataProperties)?field.dataProperties.map(String):[];
     if(!keys.length)return null;
-    if(field.id==='private'&&keys.indexOf('has_metadata')>=0&&keys.indexOf('private')>=0){if(!own(data,'has_metadata')||!own(data,'private'))return'—';if(!data.has_metadata)return label('N/A','不适用');return generalYesNo(!!data.private);}
+    if(field.id==='private'&&keys.indexOf('has_metadata')>=0&&keys.indexOf('private')>=0){if(!own(data,'has_metadata')||!own(data,'private'))return'—';if(!data.has_metadata)return tr('common.na');return generalYesNo(!!data.private);}
     if(field.id==='pieces'&&keys.indexOf('pieces_num')>=0){if(!own(data,'pieces_num'))return'—';var pieces=data.pieces_num,pieceSize=keys.indexOf('piece_size')>=0&&own(data,'piece_size')?data.piece_size:null;return pieces==null?'—':String(pieces)+(pieceSize==null?'':' × '+(U&&U.formatBytes?U.formatBytes(pieceSize):String(pieceSize)));}
     var values=[];keys.forEach(function(key){var text=own(data,key)?generalScalar(key,data[key]):'—';if(text!=='—'||values.length===0)values.push({key:key,text:text});});
     if(!values.length)return'—';
@@ -135,7 +134,7 @@
   function paintSidebarRates(){
     var panel=document.getElementById('desktop-sidebar-transfer-panel');if(!panel)return;var info=W.TransferRuntime&&W.TransferRuntime.last?W.TransferRuntime.last()||{}:{};
     var down=panel.querySelector('[data-sidebar-rate="down"]'),up=panel.querySelector('[data-sidebar-rate="up"]'),downLabel=panel.querySelector('[data-sidebar-rate-label="down"]'),upLabel=panel.querySelector('[data-sidebar-rate-label="up"]');
-    if(down)down.textContent=formatRate(info.dl_info_speed);if(up)up.textContent=formatRate(info.up_info_speed);if(downLabel)downLabel.textContent=label('Download','下载');if(upLabel)upLabel.textContent=label('Upload','上传');
+    if(down)down.textContent=formatRate(info.dl_info_speed);if(up)up.textContent=formatRate(info.up_info_speed);if(downLabel)downLabel.textContent=tr('transfer.download');if(upLabel)upLabel.textContent=tr('transfer.upload');
   }
   function mountDesktopTransfer(){
     var panel=ensureSidebarTransferPanel();if(!panel)return;var chartHost=panel.querySelector('#desktop-sidebar-transfer-chart'),mobileHost=document.getElementById('mobile-drawer-transfer-chart');
@@ -146,7 +145,7 @@
   }
   function updateToggle(){
     var button=ensureSidebarToggle();if(!button)return;var expanded=!sidebarCollapsed;
-    button.textContent=expanded?'‹':'›';button.setAttribute('aria-expanded',expanded?'true':'false');button.setAttribute('aria-label',expanded?label('Collapse Torrent sidebar','收起种子侧栏'):label('Expand Torrent sidebar','展开种子侧栏'));
+    button.textContent=expanded?'‹':'›';button.setAttribute('aria-expanded',expanded?'true':'false');button.setAttribute('aria-label',expanded?tr('sidebar.collapse'):tr('sidebar.expand'));
   }
   function projectSidebarState(){
     var app=document.getElementById('app');if(!app)return;if(isDesktop())app.dataset.sidebarCollapsed=sidebarCollapsed?'1':'0';else app.removeAttribute('data-sidebar-collapsed');updateToggle();
