@@ -80,8 +80,6 @@ Windows 예시:
 D:\WeiG_qB-WebUI
 ```
 
-일반 ### 특정 버전과 설치 디렉터리
-
 Linux 예시:
 
 ```text
@@ -256,6 +254,8 @@ PowerShell 매개변수 이름은 대소문자를 구분하지 않습니다.
 
 - 존재하지 않는 `-version`은 latest나 dev로 자동 전환되지 않습니다.
 - `-dev`와 `-version`은 함께 사용할 수 없습니다.
+
+### 특정 버전과 설치 디렉터리
 
 Linux 예시:
 

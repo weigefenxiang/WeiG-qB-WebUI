@@ -253,6 +253,8 @@ Les noms des paramètres PowerShell ne sont pas sensibles à la casse.
 - Une version inexistante ne bascule jamais automatiquement vers latest ou dev.
 - `-dev` ne peut pas être combiné avec `-version`.
 
+### Version précise et répertoire d’installation
+
 Linux :
 
 ```sh

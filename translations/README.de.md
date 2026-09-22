@@ -80,8 +80,6 @@ Windows-Beispiel:
 D:\WeiG_qB-WebUI
 ```
 
-### Bestimmte Version und Installationsverzeichnis
-
 Linux-Beispiel:
 
 ```text
@@ -254,6 +252,8 @@ PowerShell-Parameternamen unterscheiden nicht zwischen Groß- und Kleinschreibun
 
 - Eine nicht vorhandene Version fällt **nicht** automatisch auf latest oder dev zurück.
 - `-dev` kann nicht zusammen mit `-version` verwendet werden.
+
+### Bestimmte Version und Installationsverzeichnis
 
 Linux-Beispiel:
 

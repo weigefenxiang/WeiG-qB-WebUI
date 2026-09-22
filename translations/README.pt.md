@@ -253,6 +253,8 @@ Os nomes dos parâmetros PowerShell não distinguem maiúsculas de minúsculas.
 - Uma versão inexistente não muda automaticamente para latest ou dev.
 - `-dev` não pode ser combinado com `-version`.
 
+### Versão específica e diretório de instalação
+
 Linux:
 
 ```sh
