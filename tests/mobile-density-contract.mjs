@@ -38,7 +38,7 @@ assert(header.includes('function searchRoute()')&&header.includes('function rout
 // Torrent detail density is responsive presentation of the existing semantic nodes.
 assert(index.includes('id="detail-context-slot"')&&index.includes('id="detail-state"')&&!index.includes('class="detail-state-row"'),'Mobile detail must reuse the canonical context slot and direct state node without the retired layout wrapper');
 assert((index.match(/id="detail-state"/g)||[]).length===1&&(index.match(/id="detail-progress-bar"/g)||[]).length===1,'Detail status/progress must retain one semantic DOM owner');
-assert(navigation.includes("target=mobile&&slot?slot:tabs")&&navigation.includes("label.textContent=mobile?'Back':'Back to torrents'"),'Navigation must move the same Back control between Mobile status row and Desktop tabs');
+assert(navigation.includes("target=mobile&&slot?slot:tabs")&&navigation.includes("I.t(mobile?'detail.backShort':'detail.back')")&&navigation.includes("(mobile?'Back':'Back to torrents')"),'Navigation must move the same Back control between Mobile status row and Desktop tabs while copy stays i18n-owned');
 assert(!navigation.includes('cloneNode'),'Adaptive Back presentation must not duplicate the navigation control');
 assert(layout.includes('#detail-view .detail-hero .eyebrow{display:none}')&&layout.includes('grid-template-columns:repeat(5,minmax(0,1fr))'),'Mobile detail must hide eyebrow and keep all five tabs on one row');
 assert(layout.includes('[data-tab="webseeds"]::after{content:"HTTP"'),'Mobile Web Seeds tab must use the compact HTTP label');
@@ -51,7 +51,7 @@ assert(!createsLegacyHoverMetadata,'Responsive presentation must not create nati
 assert(settingsCss.includes('#settings-view>.settings-header>div:first-child{display:none}'),'Mobile Settings title/description block must be retired from presentation');
 assert(settingsCss.includes('grid-template-columns:minmax(0,1fr) auto')&&!settingsCss.includes('@media(max-width:560px){.settings-header__actions{grid-template-columns:1fr}'),'Mobile Search and Save must remain on the same row at narrow widths');
 assert(index.includes('id="save-settings-btn"')&&(index.match(/id="save-settings-btn"/g)||[]).length===1,'Settings must retain exactly one Save button');
-assert(settings.includes("save.hidden=ctx.tab==='about'")&&settings.includes('weiggDraft')&&settings.includes('async function saveWeiG()')&&settings.includes("if(controller.tab==='weigg')return saveWeiG()"),'WeiG and qB Settings must share the canonical Save entry while keeping separate persistence targets');
+assert(settings.includes("save.hidden=ctx.tab==='about'")&&settings.includes('weigDraft')&&settings.includes('async function saveWeiG()')&&settings.includes("if(controller.tab==='weig')return saveWeiG()"),'WeiG and qB Settings must share the canonical Save entry while keeping separate persistence targets');
 const qbWrite=settings.indexOf('await client.setPreferences(pending)');
 const qbVerifyRead=settings.indexOf('verified=await client.getPreferences()',qbWrite);
 const qbExecute=settings.indexOf('result=await W.PreferenceTransaction.execute');
