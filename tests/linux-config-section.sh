@@ -8,9 +8,9 @@ ROOT_FOLDER='/config/weig_qb-webui'
 
 run_configure() {
   HOME="$TMP/home" \
-  WEIGG_QB_CONFIG_TEST_ONLY=1 \
-  WEIGG_QB_CONFIG_TEST_PATH="$1" \
-  WEIGG_QB_CONFIG_TEST_ROOT="$ROOT_FOLDER" \
+  WEIG_QB_CONFIG_TEST_ONLY=1 \
+  WEIG_QB_CONFIG_TEST_PATH="$1" \
+  WEIG_QB_CONFIG_TEST_ROOT="$ROOT_FOLDER" \
     sh "$ROOT/installers/install.sh"
 }
 
@@ -29,7 +29,7 @@ Session\DefaultSavePath=/downloads
 EOF
 cp "$valid" "$valid.before"
 run_configure "$valid"
-cmp -s "$valid.before" "$valid.weigg.bak"
+cmp -s "$valid.before" "$valid.weig.bak"
 awk -v want="$ROOT_FOLDER" '
   /^\[[^]]+\]$/ { section=$0 }
   /^WebUI\\AlternativeUIEnabled=/ { if(section!="[Preferences]" || $0!="WebUI\\AlternativeUIEnabled=true") exit 1; alt++ }
@@ -72,7 +72,7 @@ EOF
 cp "$wrong" "$wrong.before"
 if run_configure "$wrong"; then echo 'wrong-section config unexpectedly succeeded' >&2; exit 1; fi
 cmp -s "$wrong" "$wrong.before"
-test ! -e "$wrong.weigg.bak"
+test ! -e "$wrong.weig.bak"
 
 dup_section="$TMP/dup-section.conf"
 cat > "$dup_section" <<'EOF'
@@ -88,7 +88,7 @@ EOF
 cp "$dup_section" "$dup_section.before"
 if run_configure "$dup_section"; then echo 'duplicate [Preferences] unexpectedly succeeded' >&2; exit 1; fi
 cmp -s "$dup_section" "$dup_section.before"
-test ! -e "$dup_section.weigg.bak"
+test ! -e "$dup_section.weig.bak"
 
 dup_key="$TMP/dup-key.conf"
 cat > "$dup_key" <<'EOF'
@@ -100,6 +100,6 @@ EOF
 cp "$dup_key" "$dup_key.before"
 if run_configure "$dup_key"; then echo 'duplicate managed key unexpectedly succeeded' >&2; exit 1; fi
 cmp -s "$dup_key" "$dup_key.before"
-test ! -e "$dup_key.weigg.bak"
+test ! -e "$dup_key.weig.bak"
 
 echo 'Linux qB config section contract passed: [Preferences] ownership, exact values, raw backup and fail-closed ambiguity are enforced.'
