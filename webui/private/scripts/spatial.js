@@ -27,4 +27,5 @@
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
   global.addEventListener('weig:library-state',function(){requestAnimationFrame(syncFacets);});
   global.addEventListener('weig:languagechange',function(){requestAnimationFrame(sync);});
+  global.addEventListener('weig:qbcopychange',function(){requestAnimationFrame(sync);});
 })(window);

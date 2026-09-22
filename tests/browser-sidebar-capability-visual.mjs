@@ -44,8 +44,8 @@ await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(p
 async function waitReady(page){await page.waitForSelector('#logout-btn');await page.waitForFunction(()=>window.WeiG?.CapabilityRegistry?.releaseIdentity()?.qbVersion&&window.WeiG?.CapabilityRegistry?.state('tags')?.feature&&window.WeiG?.AppState?.client?.qbVersion&&window.WeiG.AppState.client.qbVersion!=='0.0.0');await page.waitForFunction(()=>document.querySelectorAll('[title],[data-tooltip]').length===0,{timeout:5000});}
 async function assertPrivateTrackerOwnership(page,supported,label){
   const options=await page.evaluate(()=>window.WeiG.LibraryController.facetOptions('tracker'));
-  const privateOptions=options.filter(x=>x.value==='__weigg_private__');
-  if(supported)assert(options[0]?.value===''&&privateOptions.length===1&&options[1]?.value==='__weigg_private__'&&options[1]?.label==='Private / PT',`${label}: Private / PT must be the first special Tracker option ${JSON.stringify(options)}`);
+  const privateOptions=options.filter(x=>x.value==='__weig_private__');
+  if(supported)assert(options[0]?.value===''&&privateOptions.length===1&&options[1]?.value==='__weig_private__'&&options[1]?.label==='Private / PT',`${label}: Private / PT must be the first special Tracker option ${JSON.stringify(options)}`);
   else assert(privateOptions.length===0,`${label}: source-unproven Private / PT must be absent from Tracker facet ${JSON.stringify(options)}`);
 }
 async function assertSupportedTags(page,label){

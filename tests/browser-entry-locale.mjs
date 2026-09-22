@@ -61,7 +61,7 @@ async function verify(pathname,item){
     assert.equal(facts.title,item.title,`${pathname} ${item.locale}: entry copy mismatch ${JSON.stringify(facts)}`);
     assert.equal(facts.brand,'WeiG qB WebUI',`${pathname}: page brand must remain unchanged`);
     assert.equal(facts.logo,'assets/Wei.G.ico',`${pathname}: page logo must remain on Wei.G.ico`);
-    assert.equal(facts.favicon,'assets/Wei.G.ico?v=brand-1',`${pathname}: browser favicon must use the canonical Wei.G.ico asset`);
+    assert.equal(facts.favicon,'assets/Wei.G.ico?v=__WEIG_GIT_SHA__',`${pathname}: browser favicon must use the canonical Wei.G.ico asset`);
     assert.ok(facts.languages.length&&facts.language,`${pathname} ${item.locale}: browser language signals missing`);
     assert.deepEqual(errors,[],`${pathname} ${item.locale}: browser errors:\n${errors.join('\n')}`);
   }finally{await context.close();}

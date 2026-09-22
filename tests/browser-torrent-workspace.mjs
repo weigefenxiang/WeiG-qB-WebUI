@@ -30,18 +30,20 @@ const torrents=Array.from({length:55},(_,i)=>{
 const mime={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.ico':'image/x-icon'};
 const assert=(ok,msg)=>{if(!ok)throw new Error(msg);};
 async function dragNativeScrollbar(page,selector,axis){
-  const node=page.locator(selector),box=await node.boundingBox();
-  if(!box)throw new Error(`Missing scrollbar target ${selector}`);
-  const metrics=await node.evaluate((el,axis)=>axis==='x'
-    ?{client:el.clientWidth,scroll:el.scrollWidth,max:Math.max(0,el.scrollWidth-el.clientWidth)}
-    :{client:el.clientHeight,scroll:el.scrollHeight,max:Math.max(0,el.scrollHeight-el.clientHeight)},axis);
-  if(metrics.max<=0)throw new Error(`${selector} has no ${axis==='x'?'horizontal':'vertical'} overflow: ${JSON.stringify(metrics)}`);
-  const track=axis==='x'?box.width:box.height,thumb=Math.min(track-8,Math.max(36,track*(metrics.client/metrics.scroll))),travel=Math.max(8,track-thumb),delta=Math.max(28,Math.min(64,travel*.14));
-  const start=thumb/2+2,target=Math.min(track-thumb/2-2,start+delta);
-  const fixed=axis==='x'?box.y+box.height-4:box.x+box.width-4;
-  const x0=axis==='x'?box.x+start:fixed,y0=axis==='x'?fixed:box.y+start,x1=axis==='x'?box.x+target:fixed,y1=axis==='x'?fixed:box.y+target;
-  await page.mouse.move(x0,y0);await page.mouse.down();await page.mouse.move(x1,y1,{steps:12});await page.mouse.up();await page.waitForTimeout(220);
-  return node.evaluate((el,axis)=>({left:el.scrollLeft,top:el.scrollTop,max:axis==='x'?el.scrollWidth-el.clientWidth:el.scrollHeight-el.clientHeight}),axis);
+  const node=page.locator(selector),saved=await node.evaluate((el,axis)=>{const state={overflowX:el.style.overflowX,overflowY:el.style.overflowY};if(axis==='x')el.style.overflowY='hidden';else el.style.overflowX='hidden';return state;},axis);
+  try{
+    await page.waitForTimeout(60);
+    const box=await node.boundingBox();if(!box)throw new Error(`Missing scrollbar target ${selector}`);
+    const metrics=await node.evaluate((el,axis)=>{const horizontal=axis==='x',client=horizontal?el.clientWidth:el.clientHeight,scroll=horizontal?el.scrollWidth:el.scrollHeight,max=Math.max(0,scroll-client),border=horizontal?el.clientTop:el.clientLeft,thickness=horizontal?el.offsetHeight-el.clientHeight-(el.clientTop*2):el.offsetWidth-el.clientWidth-(el.clientLeft*2);return{client,scroll,max,border,thickness:Math.max(0,thickness)};},axis);
+    if(metrics.max<=0||metrics.thickness<=0)throw new Error(`${selector} has no measurable ${axis==='x'?'horizontal':'vertical'} scrollbar: ${JSON.stringify(metrics)}`);
+    const track=metrics.client,thumb=Math.min(track-8,Math.max(36,track*(metrics.client/metrics.scroll))),travel=Math.max(8,track-thumb),delta=Math.max(28,Math.min(64,travel*.14)),start=thumb/2+2,target=Math.min(track-thumb/2-2,start+delta);
+    const origin=axis==='x'?box.x+metrics.border:box.y+metrics.border,fixed=axis==='x'?box.y+metrics.border+metrics.client+(metrics.thickness/2):box.x+metrics.border+metrics.client+(metrics.thickness/2);
+    const x0=axis==='x'?origin+start:fixed,y0=axis==='x'?fixed:origin+start,x1=axis==='x'?origin+target:fixed,y1=axis==='x'?fixed:origin+target;
+    await page.mouse.move(x0,y0);await page.mouse.down();await page.mouse.move(x1,y1,{steps:12});await page.mouse.up();await page.waitForTimeout(220);
+    return await node.evaluate((el,axis)=>({left:el.scrollLeft,top:el.scrollTop,max:axis==='x'?el.scrollWidth-el.clientWidth:el.scrollHeight-el.clientHeight}),axis);
+  }finally{
+    await node.evaluate((el,saved)=>{el.style.overflowX=saved.overflowX;el.style.overflowY=saved.overflowY;},saved);
+  }
 }
 
 const json=(res,v,status=200)=>{res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store'});res.end(JSON.stringify(v));};
@@ -105,7 +107,8 @@ try{
     assert(horizontal.left>8,`${name}: real horizontal scrollbar thumb drag did not move scrollLeft ${JSON.stringify(horizontal)}`);
     const horizontalMetrics=await page.evaluate(()=>WeiG.AppState.virtual.metrics());
     assert(horizontalMetrics.renders===0,`${name}: horizontal scrollbar drag triggered VirtualList repaint ${JSON.stringify(horizontalMetrics)}`);
-    await page.evaluate(()=>WeiG.AppState.virtual.resetMetrics());
+    await page.evaluate(()=>{WeiG.AppState.virtual.resetScroll();document.getElementById('torrent-list').scrollLeft=0;WeiG.AppState.virtual.resetMetrics();});
+    await page.waitForTimeout(80);
     const vertical=await dragNativeScrollbar(page,'#torrent-list','y');
     assert(vertical.top>40,`${name}: real vertical scrollbar thumb drag did not move scrollTop ${JSON.stringify(vertical)}`);
     const verticalMetrics=await page.evaluate(()=>WeiG.AppState.virtual.metrics());

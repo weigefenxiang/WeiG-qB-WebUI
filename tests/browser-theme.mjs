@@ -60,7 +60,7 @@ try{
     await openSettings(page);
     const settingsSurface=await surface(page,'#settings-content'),sectionSurface=await surface(page,'#settings-content .settings-section'),searchSurface=await surface(page,'.settings-search-box');
     assert(whiteBased(settingsSurface)&&whiteBased(sectionSurface)&&whiteBased(searchSurface),`${name}: Light Settings surfaces are not white-based`);
-    const themeRow=page.locator('[data-setting-key="weigg_theme"]');await themeRow.waitFor();await choose(page,'[data-setting-key="weigg_theme"]','time');
+    const themeRow=page.locator('[data-setting-key="weig_theme"]');await themeRow.waitFor();await choose(page,'[data-setting-key="weig_theme"]','time');
     const beforeSave=await page.evaluate(()=>({draft:WeiG.SettingsState.weiggDraft.theme,state:WeiG.Theme.state(),saved:WeiG.Config.load().theme,header:document.getElementById('theme-control')?.getValue?.()}));
     assert(beforeSave.draft==='time'&&beforeSave.state.mode==='light'&&beforeSave.saved==='light'&&beforeSave.header==='light',`${name}: Settings Theme draft changed canonical Theme before Save: ${JSON.stringify(beforeSave)}`);
     assert((await page.locator('#save-settings-btn').textContent()).trim()==='Save',`${name}: shared Settings Save label is not compact`);
