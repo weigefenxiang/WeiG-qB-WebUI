@@ -29,6 +29,21 @@ const torrents=Array.from({length:55},(_,i)=>{
 });
 const mime={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.ico':'image/x-icon'};
 const assert=(ok,msg)=>{if(!ok)throw new Error(msg);};
+async function dragNativeScrollbar(page,selector,axis){
+  const node=page.locator(selector),box=await node.boundingBox();
+  if(!box)throw new Error(`Missing scrollbar target ${selector}`);
+  const metrics=await node.evaluate((el,axis)=>axis==='x'
+    ?{client:el.clientWidth,scroll:el.scrollWidth,max:Math.max(0,el.scrollWidth-el.clientWidth)}
+    :{client:el.clientHeight,scroll:el.scrollHeight,max:Math.max(0,el.scrollHeight-el.clientHeight)},axis);
+  if(metrics.max<=0)throw new Error(`${selector} has no ${axis==='x'?'horizontal':'vertical'} overflow: ${JSON.stringify(metrics)}`);
+  const track=axis==='x'?box.width:box.height,thumb=Math.min(track-8,Math.max(36,track*(metrics.client/metrics.scroll))),travel=Math.max(8,track-thumb),delta=Math.max(28,Math.min(64,travel*.14));
+  const start=thumb/2+2,target=Math.min(track-thumb/2-2,start+delta);
+  const fixed=axis==='x'?box.y+box.height-4:box.x+box.width-4;
+  const x0=axis==='x'?box.x+start:fixed,y0=axis==='x'?fixed:box.y+start,x1=axis==='x'?box.x+target:fixed,y1=axis==='x'?fixed:box.y+target;
+  await page.mouse.move(x0,y0);await page.mouse.down();await page.mouse.move(x1,y1,{steps:12});await page.mouse.up();await page.waitForTimeout(220);
+  return node.evaluate((el,axis)=>({left:el.scrollLeft,top:el.scrollTop,max:axis==='x'?el.scrollWidth-el.clientWidth:el.scrollHeight-el.clientHeight}),axis);
+}
+
 const json=(res,v,status=200)=>{res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store'});res.end(JSON.stringify(v));};
 const text=(res,v,status=200)=>{res.writeHead(status,{'content-type':'text/plain; charset=utf-8','cache-control':'no-store'});res.end(String(v));};
 const empty=(res,status=200)=>{res.writeHead(status,{'cache-control':'no-store'});res.end('');};
@@ -83,6 +98,21 @@ try{
     assert(await page.locator('#mobile-command-slot,#mobile-facet-slot,.mobile-summary,#dl-speed,#up-speed,#connection-status,#network-meta,#torrent-count,#page-range').count()===0,`${name}: retired summary/mobile shelf DOM survived`);
     const panelTop=await page.evaluate(()=>({panel:Math.round(document.querySelector('#list-view>.torrent-panel').getBoundingClientRect().top),view:Math.round(document.getElementById('list-view').getBoundingClientRect().top)}));
     assert(Math.abs(panelTop.panel-panelTop.view)<=2,`${name}: TorrentPanel does not start at desktop workspace top`);
+    // Real native scrollbar thumb drag: horizontal scroll must stay projection-only; vertical scroll must recycle overlapping rows.
+    await page.setViewportSize({width:900,height:768});await page.waitForTimeout(120);
+    await page.evaluate(()=>{const list=document.getElementById('torrent-list');list.scrollLeft=0;list.scrollTop=0;WeiG.AppState.virtual.resetMetrics();});
+    const horizontal=await dragNativeScrollbar(page,'#torrent-list','x');
+    assert(horizontal.left>8,`${name}: real horizontal scrollbar thumb drag did not move scrollLeft ${JSON.stringify(horizontal)}`);
+    const horizontalMetrics=await page.evaluate(()=>WeiG.AppState.virtual.metrics());
+    assert(horizontalMetrics.renders===0,`${name}: horizontal scrollbar drag triggered VirtualList repaint ${JSON.stringify(horizontalMetrics)}`);
+    await page.evaluate(()=>WeiG.AppState.virtual.resetMetrics());
+    const vertical=await dragNativeScrollbar(page,'#torrent-list','y');
+    assert(vertical.top>40,`${name}: real vertical scrollbar thumb drag did not move scrollTop ${JSON.stringify(vertical)}`);
+    const verticalMetrics=await page.evaluate(()=>WeiG.AppState.virtual.metrics());
+    assert(verticalMetrics.renders>0&&verticalMetrics.reused>0&&verticalMetrics.reused>verticalMetrics.created,`${name}: vertical scrollbar drag did not recycle the overlapping row pool ${JSON.stringify(verticalMetrics)}`);
+    assert(verticalMetrics.maxRenderMs<80,`${name}: scrollbar-driven VirtualList render exceeded the bounded browser regression budget ${JSON.stringify(verticalMetrics)}`);
+    await page.setViewportSize({width:1366,height:768});await page.waitForTimeout(120);
+
 
     // Real progress semantics and Reduced Motion remain protected.
     const expected={1:['download','45%','true'],2:['seed','100%','true'],3:['paused','45%','false'],4:['complete','100%','false'],5:['error','45%','false'],6:['checking','45%','true'],7:['queued','45%','false'],8:['stalled','45%','false']};
@@ -161,7 +191,7 @@ try{
     assert(errors.length===0,`${name}: browser errors: ${errors.join(' | ')}`);
     await context.close();
   }
-  console.log('Torrent workspace browser gate passed: permanent Sidebar facets, canonical Drawer telemetry, semantic sort/count, compact Mobile toolbar/cards, inline truthful progress, pager actions, anchored Search, Connection help and Reduced Motion.');
+  console.log('Torrent workspace browser gate passed: real horizontal/vertical scrollbar thumb drag, keyed row reuse, permanent Sidebar facets, canonical Drawer telemetry, semantic sort/count, compact Mobile toolbar/cards, inline truthful progress, pager actions, anchored Search, Connection help and Reduced Motion.');
 }finally{
   await browser.close();
   await new Promise(r=>server.close(r));
