@@ -18,18 +18,14 @@ const tableCss=read('webui/private/css/table.css');
 const core=read('webui/private/scripts/core.js');
 const privateIcon=bytes('webui/private/assets/Wei.G.ico');
 const publicIcon=bytes('webui/public/assets/Wei.G.ico');
-const privateFavicon=bytes('webui/private/favicon.svg');
-const publicFavicon=bytes('webui/public/assets/favicon.svg');
 
 assert(privateIcon.equals(publicIcon),'public/private Wei.G icon copies must remain byte-identical');
 assert(privateIcon.length>100&&privateIcon.subarray(0,8).equals(Buffer.from([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a])),'Wei.G icon asset must contain the expected PNG payload');
-assert(privateFavicon.equals(publicFavicon),'public/private browser favicon copies must remain byte-identical');
-assert(publicFavicon.toString('utf8').includes('<circle cx="32" cy="32" r="30"'),'browser favicon must preserve a circular primary silhouette');
 assert(brand.includes("var ICON='assets/Wei.G.ico'"),'Brand owner must use the local Wei.G asset');
 for(const [name,source] of [['public/index.html',login],['public/login.html',loginAlias]]){
-  assert(source.includes('href="assets/favicon.svg?v=round-1"'),`${name} favicon must use the local cache-busted round browser asset`);
+  assert(source.includes('href="assets/Wei.G.ico?v=brand-1"'),`${name} favicon must use the canonical local Wei.G.ico asset`);
   assert(source.includes('src="assets/Wei.G.ico"'),`${name} brand image must keep the existing local Wei.G asset`);
-  assert(!source.includes('src="assets/favicon.svg'),`${name} page logo must not be replaced by the favicon asset`);
+  assert(!source.includes('favicon.svg'),`${name} must not reference the retired generated favicon.svg`);
 }
 function walk(dir){return fs.readdirSync(dir,{withFileTypes:true}).flatMap(entry=>{const p=path.join(dir,entry.name);return entry.isDirectory()?walk(p):[p];});}
 for(const file of walk(path.join(root,'webui')).filter(p=>/\.(?:html|js|css)$/i.test(p))){

@@ -31,6 +31,7 @@ const cases=[
   {locale:'en-US',app:'en',title:'Welcome back'},
   {locale:'zh-CN',app:'zh-CN',title:'欢迎回来'},
   {locale:'zh-TW',app:'zh-TW',title:'歡迎回來'},
+  {locale:'zh-HK',app:'zh-HK',title:'歡迎回來'},
   {locale:'ja-JP',app:'ja',title:'おかえりなさい'},
   {locale:'ko-KR',app:'ko',title:'다시 오신 것을 환영합니다'},
   {locale:'de-DE',app:'de',title:'Willkommen zurück'},
@@ -60,7 +61,7 @@ async function verify(pathname,item){
     assert.equal(facts.title,item.title,`${pathname} ${item.locale}: entry copy mismatch ${JSON.stringify(facts)}`);
     assert.equal(facts.brand,'WeiG qB WebUI',`${pathname}: page brand must remain unchanged`);
     assert.equal(facts.logo,'assets/Wei.G.ico',`${pathname}: page logo must remain on Wei.G.ico`);
-    assert.equal(facts.favicon,'assets/favicon.svg?v=round-1',`${pathname}: browser favicon must use cache-busted round asset`);
+    assert.equal(facts.favicon,'assets/Wei.G.ico?v=brand-1',`${pathname}: browser favicon must use the canonical Wei.G.ico asset`);
     assert.ok(facts.languages.length&&facts.language,`${pathname} ${item.locale}: browser language signals missing`);
     assert.deepEqual(errors,[],`${pathname} ${item.locale}: browser errors:\n${errors.join('\n')}`);
   }finally{await context.close();}
@@ -68,9 +69,9 @@ async function verify(pathname,item){
 
 try{
   for(const item of cases)await verify('index.html',item);
-  for(const item of cases.filter(item=>['en','zh-CN','zh-TW'].includes(item.app)||item.locale==='ar-AE'))await verify('login.html',item);
+  for(const item of cases.filter(item=>['en','zh-CN','zh-TW','zh-HK'].includes(item.app)||item.locale==='ar-AE'))await verify('login.html',item);
 }finally{
   await browser.close();
   await new Promise(resolve=>server.close(resolve));
 }
-console.log('Entry locale browser acceptance passed: English-first fallback, browser auto-detect for ten supported languages, zh-CN/zh-TW mapping, round favicon, and unchanged page logo are consistent on public/index.html and public/login.html.');
+console.log('Entry locale browser acceptance passed: English-first fallback, browser auto-detect for eleven supported languages, distinct zh-CN/zh-TW/zh-HK mapping, canonical Wei.G.ico favicon, and unchanged page logo are consistent on public/index.html and public/login.html.');

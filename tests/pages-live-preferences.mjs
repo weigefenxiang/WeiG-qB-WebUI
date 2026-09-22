@@ -293,7 +293,7 @@ try{
       const S=window.WeiG.SettingsSchema,I=window.WeiG.I18n;
       return [...document.querySelectorAll('#settings-qb-tabs [data-settings-tab]')].map(node=>{
         const tab=String(node.dataset.settingsTab||''),ref=S.tabTitleRef?.(tab)||null;
-        return{tab,dom:String(node.textContent||'').trim(),source:String(ref?.source||''),context:String(ref?.context||''),resolved:ref?String(I.qbSourceText(ref,ref.source||tab)):''};
+        return{tab,dom:String(node.textContent||'').trim(),source:String(ref?.source||''),context:String(ref?.context||''),resolved:String(I.qbText('settings.tab.'+tab,ref?I.qbSourceText(ref,ref.source||tab):''))};
       });
     });
     assert.ok(zhTwSidebar.length>1,'qB 4.6.7 zh_TW native Settings sidebar must render the exact source-native tab set');
@@ -305,6 +305,30 @@ try{
     assert.equal(speedSidebar?.source,'Speed','qB 4.6.7 Speed sidebar source identity must remain upstream-native');
     assert.equal(speedSidebar?.context,'OptionsDialog','qB 4.6.7 Speed sidebar context identity must remain upstream-native');
     assert.ok(speedSidebar?.dom&&speedSidebar.dom!=='Speed'&&speedSidebar.dom!=='settings.speed',`qB 4.6.7 zh_TW Speed sidebar must resolve an official Traditional Chinese native label: ${JSON.stringify(speedSidebar)}`);
+    await page.evaluate(async()=>window.WeiG.SettingsRenderer.open('behavior'));
+    const hkLocale=page.locator('#settings-content [data-preference-key="locale"] .ui-select__trigger').first();
+    await hkLocale.click();
+    const hkOption=page.locator('#weigg-floating-layer .ui-select__menu:not([hidden]) .ui-select__option[data-value="zh_HK"]');
+    await hkOption.waitFor({state:'visible',timeout:30000});
+    await hkOption.click();
+    await page.waitForFunction(()=>window.WeiG?.SettingsState?.draft?.locale==='zh_HK',null,{timeout:30000});
+    const hkReload=page.waitForNavigation({waitUntil:'domcontentloaded',timeout:30000}).catch(()=>null);
+    await page.locator('#save-settings-btn').click();
+    await hkReload;
+    await page.waitForFunction(version=>String(document.querySelector('#qb-version')?.textContent||'').includes(version),'4.6.7',{timeout:60000});
+    await page.waitForFunction(()=>window.WeiG?.I18n?.getQbLocale?.()==='zh_HK'&&window.WeiG?.I18n?.getLocale?.()==='zh-HK',null,{timeout:30000});
+    const hkPrefs=await api(page,'app/preferences');
+    assert.equal(hkPrefs.json?.locale,'zh_HK','qB 4.6.7 Hong Kong Traditional Chinese must persist as zh_HK, not collapse to zh_TW');
+    await page.evaluate(()=>window.WeiG.Router.go('settings'));
+    await page.waitForFunction(()=>document.getElementById('settings-view')?.classList.contains('is-active'),null,{timeout:30000});
+    await page.evaluate(async()=>window.WeiG.SettingsRenderer.open('speed'));
+    const hkSidebar=await page.evaluate(()=>[...document.querySelectorAll('#settings-qb-tabs [data-settings-tab]')].map(node=>({tab:String(node.dataset.settingsTab||''),dom:String(node.textContent||'').trim()})));
+    for(const item of hkSidebar)assert.doesNotMatch(item.dom,/^settings\./i,`qB 4.6.7 zh_HK sidebar leaked internal key: ${JSON.stringify(item)}`);
+    const hkSpeed=hkSidebar.find(item=>item.tab==='speed');
+    assert.ok(hkSpeed?.dom&&hkSpeed.dom!=='Speed'&&hkSpeed.dom!=='settings.speed',`qB 4.6.7 zh_HK Speed must resolve official Hong Kong native copy: ${JSON.stringify(hkSpeed)}`);
+    await page.evaluate(async()=>window.WeiG.SettingsRenderer.open('weigg'));
+    const weigHeadings=await page.locator('#settings-content .settings-section__header h2').allTextContents();
+    assert.ok(weigHeadings.includes('介面')&&weigHeadings.includes('效能'),`qB 4.6.7 zh_HK WeiG Interface/Performance must be localized: ${JSON.stringify(weigHeadings)}`);
 
     // Real 0.3.158 human regression: qB 4.1.9.1 Alternate WebUI was visibly ON
     // but could not be toggled OFF. Exercise the rendered Switch, draft, Save

@@ -10,13 +10,6 @@
 .grid-head-label{display:block;flex:1 1 auto;min-width:0;max-width:100%;padding-right:12px;overflow:hidden;text-overflow:clip;white-space:nowrap;word-break:keep-all;overflow-wrap:normal;writing-mode:horizontal-tb}
 @media(pointer:coarse){.col-resize{right:-10px;width:20px}.col-resize:after{left:9px}.grid-head-cell{min-height:44px}}
 
-.detail-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,34%) auto;grid-template-areas:"eyebrow . state" "title progress progress";align-items:center;column-gap:16px;row-gap:9px}
-.detail-identity{display:contents}
-.detail-identity>.eyebrow{grid-area:eyebrow;align-self:center}
-.detail-identity>h1{grid-area:title;min-width:0;margin:0}
-.detail-state-row{grid-area:state;justify-self:end;align-self:center;margin:0}
-.detail-progress{grid-area:progress;align-self:center;min-width:0}
-
 .shared-table{display:flex;flex:1 1 0;flex-direction:column;min-width:0;min-height:0;overflow:hidden}
 .shared-table__toolbar{display:flex;align-items:center;justify-content:flex-start;gap:8px;flex:0 0 auto;min-height:38px;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden}
 .shared-table__toolbar>.btn{flex:0 0 auto}
@@ -72,4 +65,4 @@ html[data-country-flags=ready] .peer-country-code{display:none}
 #detail-content>.general-detail{flex:1 1 0;min-height:0;overflow:auto;overscroll-behavior:contain}
 #detail-content>.section-note{flex:0 0 auto}
 
-@media(max-width:820px){.detail-hero{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"eyebrow state" "title title" "progress progress";column-gap:10px;row-gap:8px}#torrent-list>.torrent-table-head{display:none!important}#detail-content{padding-bottom:max(4px,env(safe-area-inset-bottom))}.shared-table__toolbar{flex-wrap:wrap;overflow-x:visible}.shared-table__head>.grid-head-cell,.shared-table__row>[data-column-key]{padding-inline:8px}.general-detail{gap:10px}.general-detail__section{padding:8px 10px}.general-detail__grid{grid-template-columns:1fr}.general-detail__grid>.kv{grid-template-columns:minmax(100px,max-content) minmax(0,1fr)}}
+@media(max-width:820px){#torrent-list>.torrent-table-head{display:none!important}#detail-content{padding-bottom:max(4px,env(safe-area-inset-bottom))}.shared-table__toolbar{flex-wrap:wrap;overflow-x:visible}.shared-table__head>.grid-head-cell,.shared-table__row>[data-column-key]{padding-inline:8px}.general-detail{gap:10px}.general-detail__section{padding:8px 10px}.general-detail__grid{grid-template-columns:1fr}.general-detail__grid>.kv{grid-template-columns:minmax(100px,max-content) minmax(0,1fr)}}

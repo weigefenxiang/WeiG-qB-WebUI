@@ -4,7 +4,7 @@
   var MODES=['system','time','light','dark'],mode='dark',resolved='dark',systemQuery=null,timeTimer=null;
   function normalize(value){value=String(value||'dark');return MODES.indexOf(value)>=0?value:'dark';}
   function locale(){return W.I18n&&W.I18n.getLocale?W.I18n.getLocale():'en';}
-  function labels(){var l=locale();if(l==='zh-CN')return{system:'自动 · 跟随系统',time:'智能自动 · 20:00–08:00',light:'浅色',dark:'深色',aria:'主题模式'};if(l==='zh-TW')return{system:'自動 · 跟隨系統',time:'智慧自動 · 20:00–08:00',light:'淺色',dark:'深色',aria:'主題模式'};if(l==='ja')return{system:'自動 · システムに従う',time:'スマート自動 · 20:00–08:00',light:'ライト',dark:'ダーク',aria:'テーマモード'};if(l==='ko')return{system:'자동 · 시스템 따름',time:'스마트 자동 · 20:00–08:00',light:'라이트',dark:'다크',aria:'테마 모드'};return{system:'Automatic · Follow system',time:'Smart auto · 20:00–08:00',light:'Light',dark:'Dark',aria:'Theme mode'};}
+  function labels(){var I=W.I18n,t=I&&I.t?function(key){return I.t(key);}:function(key){return key;};return{system:t('settings.weig.theme.system'),time:t('settings.weig.theme.time'),light:t('settings.weig.theme.light'),dark:t('settings.weig.theme.dark'),aria:t('settings.weig.theme.aria')};}
   function options(){var x=labels();return MODES.map(function(value){return{value:value,label:x[value]};});}
   function systemTheme(){return global.matchMedia&&global.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}
   function timeTheme(now){now=now||new Date();var hour=now.getHours();return hour>=20||hour<8?'dark':'light';}
