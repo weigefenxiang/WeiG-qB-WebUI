@@ -1,8 +1,8 @@
 @import url('./qb-peer-flags.css');
 /* Shared table/column interaction and detail workspace layout. */
-#torrent-list>.torrent-table-head{position:sticky;top:0;z-index:8;width:max-content;min-width:100%;background:var(--surface);backdrop-filter:blur(15px);box-shadow:0 1px 0 var(--border)}
+#torrent-list>.torrent-table-head{position:sticky;top:0;z-index:8;width:max-content;min-width:100%;background:var(--surface);box-shadow:0 1px 0 var(--border)}
 #torrent-list>.virtual-list__spacer{position:relative;width:max-content;min-width:100%}
-.torrent-panel{--weig-grid-template:minmax(220px,420px) 105px 220px 110px 110px 90px 125px}
+.torrent-panel{--weig-grid-template:minmax(220px,420px) 105px 220px 110px 110px 90px 125px;backdrop-filter:none}
 .torrent-table-head,.torrent-row{grid-template-columns:var(--weig-grid-template)}
 .grid-head-cell.is-column-dragging{cursor:grabbing;touch-action:none}
 .col-resize{touch-action:none}
