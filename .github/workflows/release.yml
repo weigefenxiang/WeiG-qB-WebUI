@@ -56,6 +56,7 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
+          fetch-depth: 0
 
       - name: Download immutable promotion certification
         uses: actions/download-artifact@v8
@@ -125,6 +126,14 @@ jobs:
           test "$(unzip -p release/WeiG-qB-WebUI.zip WeiG-qB-WebUI/VERSION | tr -d '\r\n')" = "$VERSION"
           echo "Certified candidate bytes PASS: $ACTUAL"
 
+      - name: Generate deterministic release notes
+        env:
+          RELEASE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          node tools/release-notes.mjs --to "$RELEASE_SHA" --current-tag "$GITHUB_REF_NAME" --out release-notes.md
+          test -s release-notes.md
+
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -138,6 +147,5 @@ jobs:
             release/SHA256SUMS \
             --verify-tag \
             --latest \
-            --generate-notes \
-            --notes $'Latest stable release of WeiG qB WebUI.\n\nPromotion certification already verified release-grade Full Frozen 65/65, current-stable Locale 61/61, and exact candidate deployment acceptance.' \
+            --notes-file release-notes.md \
             --title "WeiG qB WebUI ${VERSION}"
