@@ -38,6 +38,9 @@ function displaySubject(subject=''){
   const cleaned=cleanSubject(subject).replace(/^[a-zA-Z]+(?:\([^)]*\))?[!:]\s*/,'').trim();
   return cleaned||cleanSubject(subject)||'Untitled change';
 }
+function markdownText(value=''){
+  return String(value).replace(/\\/g,'\\\\').replace(/([\`*_\[\]<>])/g,'\\$1');
+}
 function releaseNoteMetadata(body=''){
   const match=String(body).match(/^Release-Note:\s*(.+)$/im);
   if(!match)return null;
@@ -65,8 +68,9 @@ export function buildReleaseNotes({commits=[],fromTag='',toSha='',maxHighlights=
   const userFacing=normalized.filter(item=>item.category!=='internal');
   const highlights=userFacing.slice(0,Math.max(0,Number(maxHighlights)||8));
   const lines=['## 主要更新',''];
-  if(highlights.length)highlights.forEach(item=>lines.push(`- ${item.text}`));
-  else lines.push('- 本次版本以内部工程与维护更新为主，完整记录见下方。');
+  if(highlights.length)highlights.forEach(item=>lines.push(`- ${markdownText(item.text)}`));
+  else if(normalized.length)lines.push('- 本次版本以内部工程与维护更新为主，完整记录见下方。');
+  else lines.push('- 本次范围没有可列出的更新。');
   lines.push('','<details>',`<summary>查看完整更新记录（${normalized.length} 项）</summary>`,'');
   for(const category of CATEGORY_ORDER){
     const items=grouped[category];
@@ -74,7 +78,7 @@ export function buildReleaseNotes({commits=[],fromTag='',toSha='',maxHighlights=
     lines.push(`### ${CATEGORY_TITLES[category]}`,'');
     for(const item of items){
       const short=/^[0-9a-f]{7,40}$/i.test(item.hash)?item.hash.slice(0,7):'';
-      lines.push(`- ${item.text}${short?` (\`${short}\`)`:''}`);
+      lines.push(`- ${markdownText(item.text)}${short?` (\`${short}\`)`:''}`);
     }
     lines.push('');
   }
