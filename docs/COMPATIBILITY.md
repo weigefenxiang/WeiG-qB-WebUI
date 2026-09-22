@@ -91,6 +91,10 @@ Locale options combine exact source/native inventory with trustworthy runtime in
 
 The runtime also uses official qB WebUI QM assets under `webui/translations/`.
 
+WeiG-owned presentation copy has one runtime owner: `W.I18n` in `webui/private/scripts/i18n.js`. Feature modules consume translation keys; they must not maintain feature-local English/Simplified-Chinese pairs or branch visible copy on `zh-CN`. The product runtime set is English, Simplified Chinese, Traditional Chinese (Taiwan and Hong Kong), Japanese, Korean, German, French, Spanish, Portuguese and Russian, and every WeiG runtime key must preserve the same interpolation placeholders across that set.
+
+qB-owned visible copy remains a separate source-truth path: exact source text / compact qB-owned copy evidence and official QM assets stay authoritative for native qB labels. WeiG presentation translations must not replace or guess native qB copy.
+
 ## Source Text and Translation Identity
 
 qB source text may pass through HTML, XML, CDATA or entity encoding layers.
