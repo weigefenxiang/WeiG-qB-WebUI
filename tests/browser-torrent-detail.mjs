@@ -122,7 +122,7 @@ try{
   assert(headerLayout.title.right<headerLayout.progress.x,'Long Detail title overlaps the right progress owner: '+JSON.stringify(headerLayout));
   await page.locator('.detail-tabs [data-tab="files"]').click();
   await page.waitForSelector('.shared-table__viewport .shared-table__row');
-  await page.waitForFunction(()=>document.getElementById('weigg-table-layout-css')&&getComputedStyle(document.getElementById('detail-content')).display==='flex');
+  await page.waitForFunction(()=>getComputedStyle(document.getElementById('detail-content')).display==='flex');
 
   for(const key of ['checked','name','size','progress','remaining','priority'])await setColumnVisible(page,key,true);
 
