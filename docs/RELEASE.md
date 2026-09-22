@@ -64,6 +64,18 @@ A release tag must point to the current `main` commit.
 
 The release workflow reuses the validated distribution/evidence for that exact commit and publishes stable release assets.
 
+### Release Notes
+
+GitHub Release notes have one repository-owned generator: `tools/release-notes.mjs`.
+
+- Range: previous stable semantic-version tag → current release exact SHA.
+- The overview lists at most 8 user-facing changes.
+- Full history is grouped into Feature/UI, Fixes, Performance, Compatibility, and Internal Engineering inside a folded `<details>` block.
+- `test`, `ci`, `docs`, `chore`, `refactor`, and other engineering-only commits stay out of the overview by default but remain in the full record.
+- A commit body line such as `Release-Note: 修复: 修复某个用户可见问题` may replace an engineering-oriented subject with explicit user-facing release copy. `Release-Note: skip` omits that commit.
+- The release workflow writes `release-notes.md` and passes it to `gh release create --notes-file`; GitHub auto-generated notes and static inline notes are not parallel owners.
+
+
 ## Product Version
 
 Product version files must agree before release:
