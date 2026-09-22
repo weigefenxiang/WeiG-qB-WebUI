@@ -322,9 +322,21 @@ try{
     await page.evaluate(()=>window.WeiG.Router.go('settings'));
     await page.waitForFunction(()=>document.getElementById('settings-view')?.classList.contains('is-active'),null,{timeout:30000});
     await page.evaluate(async()=>window.WeiG.SettingsRenderer.open('speed'));
-    const hkSidebar=await page.evaluate(()=>[...document.querySelectorAll('#settings-qb-tabs [data-settings-tab]')].map(node=>({tab:String(node.dataset.settingsTab||''),dom:String(node.textContent||'').trim()})));
-    for(const item of hkSidebar)assert.doesNotMatch(item.dom,/^settings\./i,`qB 4.6.7 zh_HK sidebar leaked internal key: ${JSON.stringify(item)}`);
+    const hkSidebar=await page.evaluate(()=>{
+      const S=window.WeiG.SettingsSchema,I=window.WeiG.I18n;
+      return [...document.querySelectorAll('#settings-qb-tabs [data-settings-tab]')].map(node=>{
+        const tab=String(node.dataset.settingsTab||''),ref=S.tabTitleRef?.(tab)||null;
+        return{tab,dom:String(node.textContent||'').trim(),source:String(ref?.source||''),context:String(ref?.context||''),resolved:String(I.qbText('settings.tab.'+tab,ref?I.qbSourceText(ref,ref.source||tab):''))};
+      });
+    });
+    assert.ok(hkSidebar.length>1,'qB 4.6.7 zh_HK native Settings sidebar must render the exact source-native tab set');
+    for(const item of hkSidebar){
+      assert.equal(item.dom,item.resolved,`qB 4.6.7 zh_HK sidebar ${item.tab} must remain canonical exact source/native copy: ${JSON.stringify(item)}`);
+      assert.doesNotMatch(item.dom,/^settings\./i,`qB 4.6.7 zh_HK sidebar leaked internal key: ${JSON.stringify(item)}`);
+    }
     const hkSpeed=hkSidebar.find(item=>item.tab==='speed');
+    assert.equal(hkSpeed?.source,'Speed','qB 4.6.7 zh_HK Speed source identity must remain upstream-native');
+    assert.equal(hkSpeed?.context,'OptionsDialog','qB 4.6.7 zh_HK Speed context identity must remain upstream-native');
     assert.ok(hkSpeed?.dom&&hkSpeed.dom!=='Speed'&&hkSpeed.dom!=='settings.speed',`qB 4.6.7 zh_HK Speed must resolve official Hong Kong native copy: ${JSON.stringify(hkSpeed)}`);
     await page.evaluate(async()=>window.WeiG.SettingsRenderer.open('weigg'));
     const weigHeadings=await page.locator('#settings-content .settings-section__header h2').allTextContents();
