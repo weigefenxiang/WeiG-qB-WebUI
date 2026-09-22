@@ -158,9 +158,9 @@
             if(keys.length!==4||new Set(keys).size!==4||sourceItems.length!==4){familyChecks.push({row:row.id,ok:false,reason:'invalid-source-family',keys,sourceControls:sourceItems.map(item=>item.id)});continue;}
             if(!(row.items||[]).some(relevant))continue;
             const node=[...document.querySelectorAll('#settings-content [data-native-row]')].find(n=>n.dataset.nativeRow===row.id);
-            const inputs=node?[...node.querySelectorAll('input[type="time"]')]:[],labels=node?[...node.querySelectorAll('.setting-time-label')].map(n=>String(n.textContent||'').trim()):[];
+            const inputs=node?[...node.querySelectorAll('[data-ui-time-control="1"]')]:[],labels=node?[...node.querySelectorAll('.setting-time-label')].map(n=>String(n.textContent||'').trim()):[];
             const expectedValues=specs.map(spec=>{const h=Number(state[spec.hourPreference]),m=Number(state[spec.minutePreference]);return Number.isInteger(h)&&Number.isInteger(m)?String(h).padStart(2,'0')+':'+String(m).padStart(2,'0'):'';});
-            const actualValues=inputs.map(input=>String(input.value||''));
+            const actualValues=inputs.map(input=>String(input.getValue?input.getValue():''));
             const ok=!!node&&node.dataset.nativeFamily==='time-range'&&inputs.length===2&&actualValues.every(value=>/^\d{2}:\d{2}$/.test(value))&&JSON.stringify(actualValues)===JSON.stringify(expectedValues);
             familyChecks.push({row:row.id,ok,kind:'time-range',keys,labels,expectedValues,actualValues,count:inputs.length,nativeFamily:node?.dataset.nativeFamily||''});
             continue;
