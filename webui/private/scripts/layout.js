@@ -115,7 +115,6 @@
   function ensureSidebarStyles(){
     var suffix=layoutAssetSuffix();
     if(!document.getElementById('weig-sidebar-layout-css')){var link=document.createElement('link');link.id='weig-sidebar-layout-css';link.rel='stylesheet';link.href='css/sidebar.css'+suffix;document.head.appendChild(link);}
-    if(!document.getElementById('weig-table-layout-css')){var table=document.createElement('link');table.id='weig-table-layout-css';table.rel='stylesheet';table.href='css/table.css'+suffix;document.head.appendChild(table);}
   }
   function readSidebarPreference(){try{return localStorage.getItem(SIDEBAR_KEY)==='1';}catch(_e){return false;}}
   function writeSidebarPreference(value){try{localStorage.setItem(SIDEBAR_KEY,value?'1':'0');}catch(_e){}}
