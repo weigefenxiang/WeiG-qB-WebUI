@@ -250,14 +250,14 @@ try{
     const detailHeaderFacts=[];
     for(const surface of ['files','trackers','peers','webseeds']){
       await page.evaluate(({hash,surface})=>window.WeiG.Router.detail(hash,surface),{hash:detailHash,surface});
-      await page.waitForFunction(surface=>window.WeiG.Router.route().tab===surface&&window.WeiG.AppState?.detailVirtual?.__weiggSharedDetail?.surface===surface&&document.querySelector('#detail-content .shared-table__head .grid-head-cell'),surface,{timeout:30000});
+      await page.waitForFunction(surface=>window.WeiG.Router.route().tab===surface&&window.WeiG.AppState?.detailVirtual?.__weigSharedDetail?.surface===surface&&document.querySelector('#detail-content .shared-table__head .grid-head-cell'),surface,{timeout:30000});
       const facts=await page.evaluate(surface=>{
-        const W=window.WeiG,ctx=W.AppState?.detailVirtual?.__weiggSharedDetail;
+        const W=window.WeiG,ctx=W.AppState?.detailVirtual?.__weigSharedDetail;
         if(!ctx||ctx.surface!==surface)throw new Error(`shared detail context missing for ${surface}`);
         const cell=[...ctx.head.querySelectorAll('.grid-head-cell')].find(node=>String(node.querySelector('.grid-head-label')?.dataset.fullLabel||'').length>0);
         if(!cell)throw new Error(`no labeled detail header for ${surface}`);
         const column=ctx.visible.find(item=>String(item.key)===String(cell.dataset.key)),label=cell.querySelector('.grid-head-label'),full=String(label.dataset.fullLabel||cell.getAttribute('aria-label')||''),parts=W.DataGridHeader.graphemes(full);
-        column.width=W.DataGridHeader.hardMin(column,cell);ctx.container.style.setProperty('--weigg-detail-grid-template',W.DataGrid.template(ctx.visible));ctx.head.style.gridTemplateColumns='var(--weigg-detail-grid-template)';W.DataGridHeader.refresh(ctx.head,ctx.visible);
+        column.width=W.DataGridHeader.hardMin(column,cell);ctx.container.style.setProperty('--weig-detail-grid-template',W.DataGrid.template(ctx.visible));ctx.head.style.gridTemplateColumns='var(--weig-detail-grid-template)';W.DataGridHeader.refresh(ctx.head,ctx.visible);
         const style=getComputedStyle(label);
         return{surface,key:column.key,full,parts,minDisplay:String(label.textContent||''),whiteSpace:style.whiteSpace,writingMode:style.writingMode,aria:cell.getAttribute('aria-label')};
       },surface);

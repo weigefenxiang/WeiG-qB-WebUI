@@ -54,9 +54,11 @@ async function api(page,path,{method='GET',form}={}){
 
 await waitForDeployedSha();
 const browser=await launchBrowser();
+// Protocol acceptance owns WebAPI behavior, not browser-locale reload behavior.
+// Locale bootstrap/reload has dedicated Pages gates; use matching English here to keep this lane single-purpose.
 try{
   {
-    const context=await browser.newContext({locale:'zh-CN'});
+    const context=await browser.newContext({locale:'en-US'});
     const page=await context.newPage();
     await openSession(page,'5.2.3','pages-live-protocol-523');
 
@@ -90,7 +92,7 @@ try{
   }
 
   {
-    const context=await browser.newContext({locale:'zh-CN'});
+    const context=await browser.newContext({locale:'en-US'});
     const page=await context.newPage();
     await openSession(page,'5.1.4','pages-live-protocol-514');
     let response=await api(page,'torrents/info?limit=20');

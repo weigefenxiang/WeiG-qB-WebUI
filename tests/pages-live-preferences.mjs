@@ -117,7 +117,10 @@ assert.ok(anchor.preferenceKeys.length>100,`${anchor.qbVersion} upstream prefere
 
 const browser=await launchBrowser();
 try{
-  const context=await browser.newContext({locale:'zh-CN'});
+  // Dedicated preference shards validate WebAPI/source fidelity, not browser-locale bootstrap.
+  // Keep anchor/all on zh-CN for qB-owned copy coverage; isolate shard mode on canonical English.
+  const bootstrapLocale=mode==='shard'?'en-US':'zh-CN',expectedBootstrapQbLocale=mode==='shard'?'en':'zh_CN';
+  const context=await browser.newContext({locale:bootstrapLocale});
   const page=await context.newPage();
   const pageErrors=[];
   page.on('pageerror',error=>pageErrors.push(error?.stack||error?.message||String(error)));
@@ -132,7 +135,7 @@ try{
     await page.waitForFunction(()=>window.WeiG?.SessionController?.readLocaleBootstrap?.()?.initialized===true,null,{timeout:30000});
     await page.waitForTimeout(1800);
     await page.waitForFunction(version=>String(document.querySelector('#qb-version')?.textContent||'').includes(version),anchor.qbVersion,{timeout:60000});
-    await page.waitForFunction(()=>window.WeiG?.I18n?.getQbLocale?.()==='zh_CN',null,{timeout:30000});
+    await page.waitForFunction(locale=>window.WeiG?.I18n?.getQbLocale?.()===locale,expectedBootstrapQbLocale,{timeout:30000});
   }
   await openBootstrapSession();
   async function openEntitySession(qbVersion,lane,{requireZh=true}={}){
@@ -271,13 +274,13 @@ try{
     assert.equal(localeProvider.state?.ready,true,`qB 4.6.7 locale provider must be READY before Behavior renders: ${JSON.stringify(localeProvider.state)}`);
     assert.ok(localeProvider.values.length>1&&localeProvider.values.includes('en')&&localeProvider.values.includes('zh_CN'),`qB 4.6.7 canonical locale provider collapsed to current-only: ${JSON.stringify(localeProvider)}`);
     await behaviorLocale.click();
-    const visibleLocaleOptions=page.locator('#weigg-floating-layer .ui-select__menu:not([hidden]) .ui-select__option');
+    const visibleLocaleOptions=page.locator('#weig-floating-layer .ui-select__menu:not([hidden]) .ui-select__option');
     await visibleLocaleOptions.first().waitFor({state:'visible',timeout:30000});
     const renderedLocaleValues=await visibleLocaleOptions.evaluateAll(nodes=>nodes.map(node=>String(node.dataset.value||'')));
     assert.deepEqual(renderedLocaleValues,localeProvider.values,'qB 4.6.7 Behavior Locale menu must render the complete canonical provider inventory in source order');
     assert.ok(renderedLocaleValues.length>1,'qB 4.6.7 Behavior Locale must never render only zh_CN');
     assert.ok(renderedLocaleValues.includes('zh_TW'),'qB 4.6.7 canonical locale inventory must include Traditional Chinese');
-    const zhTwOption=page.locator('#weigg-floating-layer .ui-select__menu:not([hidden]) .ui-select__option[data-value="zh_TW"]');
+    const zhTwOption=page.locator('#weig-floating-layer .ui-select__menu:not([hidden]) .ui-select__option[data-value="zh_TW"]');
     await zhTwOption.waitFor({state:'visible',timeout:30000});
     await zhTwOption.click();
     await page.waitForFunction(()=>window.WeiG?.SettingsState?.draft?.locale==='zh_TW',null,{timeout:30000});
@@ -311,7 +314,7 @@ try{
     await page.evaluate(async()=>window.WeiG.SettingsRenderer.open('behavior'));
     const hkLocale=page.locator('#settings-content [data-preference-key="locale"] .ui-select__trigger').first();
     await hkLocale.click();
-    const hkOption=page.locator('#weigg-floating-layer .ui-select__menu:not([hidden]) .ui-select__option[data-value="zh_HK"]');
+    const hkOption=page.locator('#weig-floating-layer .ui-select__menu:not([hidden]) .ui-select__option[data-value="zh_HK"]');
     await hkOption.waitFor({state:'visible',timeout:30000});
     await hkOption.click();
     await page.waitForFunction(()=>window.WeiG?.SettingsState?.draft?.locale==='zh_HK',null,{timeout:30000});
