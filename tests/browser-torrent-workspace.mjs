@@ -34,12 +34,12 @@ async function dragNativeScrollbar(page,selector,axis){
   try{
     await page.waitForTimeout(60);
     const box=await node.boundingBox();if(!box)throw new Error(`Missing scrollbar target ${selector}`);
-    const metrics=await node.evaluate((el,axis)=>{const horizontal=axis==='x',client=horizontal?el.clientWidth:el.clientHeight,scroll=horizontal?el.scrollWidth:el.scrollHeight,max=Math.max(0,scroll-client),border=horizontal?el.clientTop:el.clientLeft,thickness=horizontal?el.offsetHeight-el.clientHeight-(el.clientTop*2):el.offsetWidth-el.clientWidth-(el.clientLeft*2);return{client,scroll,max,border,thickness:Math.max(0,thickness)};},axis);
+    const metrics=await node.evaluate((el,axis)=>{const horizontal=axis==='x',client=horizontal?el.clientWidth:el.clientHeight,scroll=horizontal?el.scrollWidth:el.scrollHeight,max=Math.max(0,scroll-client),border=horizontal?el.clientTop:el.clientLeft,layoutThickness=horizontal?el.offsetHeight-el.clientHeight-(el.clientTop*2):el.offsetWidth-el.clientWidth-(el.clientLeft*2),pseudo=getComputedStyle(el,'::-webkit-scrollbar'),styledThickness=parseFloat(horizontal?pseudo.height:pseudo.width)||0,thickness=Math.max(0,layoutThickness,styledThickness);return{client,scroll,max,border,layoutThickness:Math.max(0,layoutThickness),styledThickness:Math.max(0,styledThickness),thickness};},axis);
     if(metrics.max<=0||metrics.thickness<=0)throw new Error(`${selector} has no measurable ${axis==='x'?'horizontal':'vertical'} scrollbar: ${JSON.stringify(metrics)}`);
-    const track=metrics.client,thumb=Math.min(track-8,Math.max(36,track*(metrics.client/metrics.scroll))),travel=Math.max(8,track-thumb),delta=Math.max(28,Math.min(64,travel*.14)),start=thumb/2+2,target=Math.min(track-thumb/2-2,start+delta);
-    const origin=axis==='x'?box.x+metrics.border:box.y+metrics.border,fixed=axis==='x'?box.y+metrics.border+metrics.client+(metrics.thickness/2):box.x+metrics.border+metrics.client+(metrics.thickness/2);
+    const track=metrics.client,thumb=Math.min(track-8,Math.max(36,track*(metrics.client/metrics.scroll))),travel=Math.max(8,track-thumb),delta=Math.max(28,Math.min(64,travel*.14)),start=thumb/2+2,target=Math.min(track-thumb/2-2,start+delta),overlay=metrics.layoutThickness<=0;
+    const origin=axis==='x'?box.x+metrics.border:box.y+metrics.border,fixed=axis==='x'?(overlay?box.y+box.height-(metrics.thickness/2):box.y+metrics.border+metrics.client+(metrics.thickness/2)):(overlay?box.x+box.width-(metrics.thickness/2):box.x+metrics.border+metrics.client+(metrics.thickness/2));
     const x0=axis==='x'?origin+start:fixed,y0=axis==='x'?fixed:origin+start,x1=axis==='x'?origin+target:fixed,y1=axis==='x'?fixed:origin+target;
-    await page.mouse.move(x0,y0);await page.mouse.down();await page.mouse.move(x1,y1,{steps:12});await page.mouse.up();await page.waitForTimeout(220);
+    await page.mouse.move(x0,y0);await page.waitForTimeout(120);await page.mouse.down();await page.mouse.move(x1,y1,{steps:12});await page.mouse.up();await page.waitForTimeout(220);
     return await node.evaluate((el,axis)=>({left:el.scrollLeft,top:el.scrollTop,max:axis==='x'?el.scrollWidth-el.clientWidth:el.scrollHeight-el.clientHeight}),axis);
   }finally{
     await node.evaluate((el,saved)=>{el.style.overflowX=saved.overflowX;el.style.overflowY=saved.overflowY;},saved);
@@ -84,7 +84,7 @@ const server=http.createServer(async(req,res)=>{try{
 }catch(e){res.writeHead(e?.code==='ENOENT'?404:500,{'content-type':'text/plain; charset=utf-8'});res.end(String(e));}});
 await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(port,host,resolve);});
 
-const browser=await launchBrowser({args:['--disable-features=OverlayScrollbar']});
+const browser=await launchBrowser({ignoreDefaultArgs:['--hide-scrollbars'],args:['--disable-features=OverlayScrollbar,OverlayScrollbars']});
 try{
   for(const name of ['legacy','modern']){
     const context=await browser.newContext({viewport:{width:1366,height:768},locale:'en-US'}),page=await context.newPage(),errors=[];
