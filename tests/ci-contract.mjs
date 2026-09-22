@@ -111,8 +111,8 @@ assert(release.includes('Download immutable promotion certification')&&release.i
 assert(!release.includes("workflow_id: 'real-qb-full.yml'")&&!release.includes("workflow_id: 'real-qb-locale.yml'")&&!release.includes('node tests/release-compat-evidence.mjs'),'Release must not repeat compatibility evidence discovery/verification after Promotion certification');
 assert(release.includes('test "$GITHUB_REF_NAME" = "v$VERSION"'),'Release tag must equal repository VERSION');
 assert(release.includes('sha256sum -c SHA256SUMS')&&release.includes('WeiG-qB-WebUI/GIT_SHA')&&release.includes('WeiG-qB-WebUI/VERSION'),'Release must verify checksum, certified package digest, exact SHA and embedded VERSION');
-assert(release.includes('--verify-tag')&&release.includes('--latest')&&release.includes('--generate-notes'),'Release must verify the pushed tag, publish it as Latest and generate notes');
-assert(release.includes("Latest stable release of WeiG qB WebUI.")&&release.includes('--title "WeiG qB WebUI ${VERSION}"'),'Release presentation must lead with English stable-release text and a version title without the v-prefix');
+assert(release.includes('--verify-tag')&&release.includes('--latest')&&release.includes('--notes-file release-notes.md')&&release.includes('node tools/release-notes.mjs'),'Release must verify the pushed tag, publish it as Latest and consume the deterministic notes file');
+assert(!release.includes('--generate-notes')&&!/\s--notes\s/.test(release)&&release.includes('--title "WeiG qB WebUI ${VERSION}"'),'Release presentation must keep one notes owner and a version title without the v-prefix');
 assert(!release.includes('qb-release-catalog.mjs')&&!release.includes('zip -r WeiG-qB-WebUI.zip'),'Release workflow must publish the certified artifact without rebuilding product/catalog');
 
 const fullProduct=read('tests/full-stable-product-compat.mjs');
