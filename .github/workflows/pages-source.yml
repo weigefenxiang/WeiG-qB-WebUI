@@ -30,6 +30,9 @@ concurrency:
 
 jobs:
   source:
+    # Small incremental dev commits may opt out of the expensive Pages evidence/deploy chain.
+    # Manual dispatch always runs, and the final validation commit intentionally omits [skip-pages].
+    if: ${{ github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, '[skip-pages]') }}
     runs-on: ubuntu-latest
     outputs:
       relevant: ${{ steps.relevance.outputs.relevant }}
