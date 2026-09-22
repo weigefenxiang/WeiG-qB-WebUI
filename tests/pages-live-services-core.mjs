@@ -1,16 +1,16 @@
 import assert from 'node:assert/strict';
 import {launchBrowser} from './browser-driver.mjs';
 
-const rawBase=(process.env.WEIGG_PAGES_URL||process.argv[2]||'').trim();
-const expectedSha=(process.env.WEIGG_EXPECTED_SIMULATOR_SHA||process.argv[3]||'').trim();
-assert.ok(rawBase,'WEIGG_PAGES_URL or argv[2] is required');
-assert.ok(expectedSha,'WEIGG_EXPECTED_SIMULATOR_SHA or argv[3] is required');
+const rawBase=(process.env.WEIG_PAGES_URL||process.argv[2]||'').trim();
+const expectedSha=(process.env.WEIG_EXPECTED_SIMULATOR_SHA||process.argv[3]||'').trim();
+assert.ok(rawBase,'WEIG_PAGES_URL or argv[2] is required');
+assert.ok(expectedSha,'WEIG_EXPECTED_SIMULATOR_SHA or argv[3] is required');
 const base=new URL(rawBase.endsWith('/')?rawBase:`${rawBase}/`);
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-const serviceMode=(process.env.WEIGG_SERVICES_CORE_MODE||'all').trim()||'all';
+const serviceMode=(process.env.WEIG_SERVICES_CORE_MODE||'all').trim()||'all';
 const serviceModes=new Set(['all','modern','owner-ui','legacy','isolation','offline']);
-assert.ok(serviceModes.has(serviceMode),`Unsupported WEIGG_SERVICES_CORE_MODE=${serviceMode}`);
-const sessionTimeout=Math.max(5000,Number(process.env.WEIGG_PAGES_SESSION_TIMEOUT_MS||20000));
+assert.ok(serviceModes.has(serviceMode),`Unsupported WEIG_SERVICES_CORE_MODE=${serviceMode}`);
+const sessionTimeout=Math.max(5000,Number(process.env.WEIG_PAGES_SESSION_TIMEOUT_MS||20000));
 const sessionAttempts=3;
 const lane=name=>serviceMode==='all'||serviceMode===name;
 
@@ -48,7 +48,7 @@ async function openSession(page,{branch='main',qb='5.2.3',count=1000,scenario='m
   url.search=new URLSearchParams({sim:sessionId,qb,count:String(count),scenario,seed,clean:'0'}).toString();
   let last=null;
   for(let attempt=1;attempt<=sessionAttempts;attempt++){
-    const attemptUrl=new URL(url);attemptUrl.searchParams.set('__weigg_session_attempt',String(attempt));
+    const attemptUrl=new URL(url);attemptUrl.searchParams.set('__weig_session_attempt',String(attempt));
     try{
       await page.goto(attemptUrl.toString(),{waitUntil:'domcontentloaded',timeout:sessionTimeout});
       const entry=await waitForSessionEntry(page);
