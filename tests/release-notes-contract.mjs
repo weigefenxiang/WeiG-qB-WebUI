@@ -47,6 +47,9 @@ try{
   assert.ok(history.some(item=>item.body.includes('Release-Note: 修复: 修复用户可见问题')),'git parser must preserve structured Release-Note body metadata');
 }finally{fs.rmSync(temp,{recursive:true,force:true});}
 
+const releaseDocs=fs.readFileSync(new URL('../docs/RELEASE.md',import.meta.url),'utf8');
+assert.ok(releaseDocs.includes('Release-Note: Fix: Correct a user-visible issue'),'public release docs must document structured metadata with an English-only example');
+
 const workflow=fs.readFileSync(new URL('../.github/workflows/release.yml',import.meta.url),'utf8');
 assert.ok(workflow.includes('fetch-depth: 0'),'Release checkout must fetch tag history for deterministic range resolution');
 assert.ok(workflow.includes('node tools/release-notes.mjs'),'Release workflow must consume the unique release-note generator');
