@@ -78,8 +78,17 @@ try{
   }
 
   const first=await launchLabSession(1);
-  const firstRecord=await page.evaluate(()=>localStorage.getItem('weigg.localeBootstrap.v2'));
-  assert.ok(firstRecord,'first Lab session must leave a completed bootstrap record on the shared Pages origin');
+  const firstRecord=await page.evaluate(()=>{
+    const key=window.WeiG?.StorageKeys?.localeBootstrap||'';
+    return{key,value:key?localStorage.getItem(key):null,legacy:localStorage.getItem('weigg.localeBootstrap.v2')};
+  });
+  assert.equal(firstRecord.key,'weig.localeBootstrap','locale bootstrap acceptance must consume the canonical StorageKeys owner');
+  assert.ok(firstRecord.value,'first Lab session must leave a completed bootstrap record on the shared Pages origin');
+  assert.equal(firstRecord.legacy,null,'legacy weigg.localeBootstrap.v2 must remain retired after storage migration');
+  // Pages multiplexes independent Virtual qB daemons behind one browser origin.
+  // Reset only the canonical one-time browser-bootstrap record between sims so
+  // this verifier models a fresh qB origin without teaching product runtime about sim.
+  await page.evaluate(key=>localStorage.removeItem(key),firstRecord.key);
   const second=await launchLabSession(2);
   assert.notEqual(second.sim,first.sim,'second Lab launch must use a fresh Virtual qB sim');
   assert.equal(second.state.locale,'zh-CN','fresh sim must not inherit an old initialized record that skips browser matching');

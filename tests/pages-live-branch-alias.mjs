@@ -45,24 +45,24 @@ async function openSettings(page){
   });
   await page.waitForFunction(()=>window.WeiG?.Router?.route?.().name==='settings',null,{timeout:30000});
   await page.evaluate(async()=>{await window.WeiG.SettingsRenderer.open('weigg');});
-  await page.waitForSelector('#settings-view.is-active [data-setting-key="weigg_language"] .ui-select__trigger',{state:'visible',timeout:30000});
+  await page.waitForSelector('#settings-view.is-active [data-setting-key="weig_language"] .ui-select__trigger',{state:'visible',timeout:30000});
 }
 async function setVerifiedLocale(page,target){
   const current=await page.evaluate(()=>window.WeiG?.I18n?.getQbLocale?.()||'');
   if(current===target)return false;
   await openSettings(page);
   const before=await page.evaluate(()=>{
-    const row=document.querySelector('[data-setting-key="weigg_language"]'),control=row?.querySelector('.ui-select'),trigger=row?.querySelector('.ui-select__trigger'),draft=window.WeiG?.SettingsState?.draft||{},prefs=window.WeiG?.SettingsState?.prefs||{},value=Object.prototype.hasOwnProperty.call(draft,'locale')?draft.locale:prefs.locale;
+    const row=document.querySelector('[data-setting-key="weig_language"]'),control=row?.querySelector('.ui-select'),trigger=row?.querySelector('.ui-select__trigger'),draft=window.WeiG?.SettingsState?.draft||{},prefs=window.WeiG?.SettingsState?.prefs||{},value=Object.prototype.hasOwnProperty.call(draft,'locale')?draft.locale:prefs.locale;
     return{value:control?.getValue?.()||'',disabled:!!trigger?.disabled,writable:window.WeiG?.SettingsSchema?.isWritable?.('locale',value,prefs,{...prefs,...draft})===true};
   });
   assert.equal(before.disabled,false,`${target}: Language UI control must be enabled`);
   assert.equal(before.writable,true,`${target}: Locale must be writable through SettingsSchema before user interaction`);
-  const trigger=page.locator('[data-setting-key="weigg_language"] .ui-select__trigger');
+  const trigger=page.locator('[data-setting-key="weig_language"] .ui-select__trigger');
   await trigger.click();
   const option=page.locator(`.ui-select__menu:not([hidden]) .ui-select__option[data-value="${target}"]`);
   await option.waitFor({state:'visible',timeout:30000});
   await option.click();
-  const drafted=await page.evaluate(()=>{const row=document.querySelector('[data-setting-key="weigg_language"]'),control=row?.querySelector('.ui-select');return{value:control?.getValue?.()||'',draft:window.WeiG?.SettingsState?.draft?.locale||''};});
+  const drafted=await page.evaluate(()=>{const row=document.querySelector('[data-setting-key="weig_language"]'),control=row?.querySelector('.ui-select');return{value:control?.getValue?.()||'',draft:window.WeiG?.SettingsState?.draft?.locale||''};});
   assert.equal(drafted.value,target,`${target}: user-selected Language control value must update before save`);
   assert.equal(drafted.draft,target,`${target}: user-selected Language control must update the qB locale draft`);
   const documentLoads=await page.evaluate(key=>Number(sessionStorage.getItem(key)||0),DOC_LOAD_KEY);
@@ -86,7 +86,7 @@ async function setVerifiedLocale(page,target){
   assert.equal(persisted.locale,target,`${target}: qB preferences.locale must persist after automatic locale reload`);
   assert.equal(persisted.qbLocale,target,`${target}: runtime qB locale must match the persisted locale after reload`);
   await openSettings(page);
-  const reopened=await page.evaluate(()=>{const row=document.querySelector('[data-setting-key="weigg_language"]'),control=row?.querySelector('.ui-select'),trigger=row?.querySelector('.ui-select__trigger');return{value:control?.getValue?.()||'',disabled:!!trigger?.disabled};});
+  const reopened=await page.evaluate(()=>{const row=document.querySelector('[data-setting-key="weig_language"]'),control=row?.querySelector('.ui-select'),trigger=row?.querySelector('.ui-select__trigger');return{value:control?.getValue?.()||'',disabled:!!trigger?.disabled};});
   assert.equal(reopened.disabled,false,`${target}: Language UI control must remain enabled after reload`);
   assert.equal(reopened.value,target,`${target}: reopening Settings must show the persisted qB locale selection`);
   console.log(`Locale UI transition ${current||'(unset)'} -> ${target} persisted through app/setPreferences, verified app/preferences reread and automatic document reload.`);

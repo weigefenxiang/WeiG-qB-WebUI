@@ -139,7 +139,10 @@ try{
     // This verifier switches between independent Virtual qB sims directly instead
     // of going through Lab. Do not let the previous sim's browser-locale bootstrap
     // record suppress initialization for the next daemon world.
-    await page.evaluate(()=>localStorage.removeItem('weigg.localeBootstrap.v2'));
+    await page.evaluate(()=>{
+      const key=window.WeiG?.StorageKeys?.localeBootstrap||'weig.localeBootstrap';
+      localStorage.removeItem(key);
+    });
     const url=new URL('dev/app/',base);
     url.search=new URLSearchParams({sim:`pages-live-preferences-${lane}-${shardIndex}-${Date.now()}`,qb:qbVersion,count:'24',scenario:'mixed',seed:'pages-live-preferences-entity',clean:'0'}).toString();
     await page.goto(url.toString(),{waitUntil:'domcontentloaded',timeout:60000});
