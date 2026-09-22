@@ -18,8 +18,8 @@ assert.ok(i18n.includes("value!==undefined&&value!==null&&value!==''?value:(fall
 const publicMark=fs.readFileSync(path.join(root,'webui/public/assets/Wei.G.png'));
 assert.equal(publicMark.length,7905,'canonical Wei.G PNG must keep the verified historical visible brand bytes');
 assert.ok(publicMark.subarray(0,8).equals(Buffer.from([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a])),'canonical Wei.G asset must be a real PNG');
-assert.equal(fs.existsSync(path.join(root,'webui/public/assets/Wei.G.png')),false,'retired public ICO must stay absent');
-assert.equal(fs.existsSync(path.join(root,'webui/private/assets/Wei.G.png'))||fs.existsSync(path.join(root,'webui/private/assets/Wei.G.png')),false,'private duplicate Wei.G asset must stay absent');
+assert.equal(fs.existsSync(path.join(root,'webui/public/assets/Wei.G.ico')),false,'retired public ICO must stay absent');
+assert.equal(fs.existsSync(path.join(root,'webui/private/assets/Wei.G.png'))||fs.existsSync(path.join(root,'webui/private/assets/Wei.G.ico')),false,'private duplicate Wei.G asset must stay absent');
 assert.equal(fs.existsSync(path.join(root,'webui/public/assets/favicon.svg')),false,'generated public favicon.svg must stay retired');
 assert.equal(fs.existsSync(path.join(root,'webui/private/favicon.svg')),false,'generated private favicon.svg must stay retired');
 for(const html of [login,publicIndex]){
