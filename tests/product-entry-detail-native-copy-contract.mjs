@@ -15,19 +15,22 @@ const fn=(settings.match(/function qbTabTitle\(tab\)\{[^}]+\}/)||[])[0]||'';
 assert.ok(settings.includes('function tabCopyKey(tab)')&&fn.includes("W.I18n.qbText?W.I18n.qbText(key,'')"),'Settings sidebar must resolve exact qB-owned tab copy before safe English source fallback');
 assert.ok(settings.includes('internalSettingsKey')&&settings.includes('safeTabEnglish'),'Settings sidebar must fail closed against visible settings.* internals');
 assert.ok(i18n.includes("value!==undefined&&value!==null&&value!==''?value:(fallback||'')"),'qB lookup keys must never become visible fallback copy');
-const publicIcon=fs.readFileSync(path.join(root,'webui/public/assets/Wei.G.ico')),privateIcon=fs.readFileSync(path.join(root,'webui/private/assets/Wei.G.ico'));
-assert.ok(publicIcon.equals(privateIcon),'public/private browser icon assets must stay byte-identical');
+const publicMark=fs.readFileSync(path.join(root,'webui/public/assets/Wei.G.png'));
+assert.equal(publicMark.length,7905,'canonical Wei.G PNG must keep the verified historical visible brand bytes');
+assert.ok(publicMark.subarray(0,8).equals(Buffer.from([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a])),'canonical Wei.G asset must be a real PNG');
+assert.equal(fs.existsSync(path.join(root,'webui/public/assets/Wei.G.png')),false,'retired public ICO must stay absent');
+assert.equal(fs.existsSync(path.join(root,'webui/private/assets/Wei.G.png'))||fs.existsSync(path.join(root,'webui/private/assets/Wei.G.png')),false,'private duplicate Wei.G asset must stay absent');
 assert.equal(fs.existsSync(path.join(root,'webui/public/assets/favicon.svg')),false,'generated public favicon.svg must stay retired');
 assert.equal(fs.existsSync(path.join(root,'webui/private/favicon.svg')),false,'generated private favicon.svg must stay retired');
 for(const html of [login,publicIndex]){
   assert.match(html,/<html lang="en"/);
-  assert.match(html,/assets\/Wei\.G\.ico\?v=__WEIG_GIT_SHA__/);
-  assert.match(html,/src="assets\/Wei\.G\.ico"/,'page-internal login logo must stay on the existing Wei.G asset');
+  assert.match(html,/assets\/Wei\.G\.png\?v=__WEIG_GIT_SHA__/);
+  assert.match(html,/src="assets\/Wei\.G\.png"/,'page-internal login logo must stay on the existing Wei.G asset');
   assert.match(html,/scripts\/entry-locale\.js\?v=__WEIG_GIT_SHA__/,'public entry pages must consume one shared locale owner');
   assert.doesNotMatch(html,/var D=\{/,'public HTML must not embed a second locale dictionary');
   assert.ok(html.includes("var lang='en'")&&html.includes('E.dictionary')&&html.includes('E.normalize'),'public entry must default to English through the shared owner');
 }
-assert.match(index,/<html lang="en"/);assert.match(index,/href="assets\/Wei\.G\.ico\?v=__WEIG_GIT_SHA__"/);assert.ok(index.includes('Loading WeiG WebUI…')&&!index.includes('正在加载 WeiG WebUI'));
+assert.match(index,/<html lang="en"/);assert.match(index,/href="assets\/Wei\.G\.png\?v=__WEIG_GIT_SHA__"/);assert.ok(index.includes('Loading WeiG WebUI…')&&!index.includes('正在加载 WeiG WebUI'));
 for(const lang of ["'zh-CN'","'zh-TW'","'zh-HK'","'ja'","'ko'","'de'","'fr'","'es'","'pt'","'ru'"])assert.ok(i18n.includes(lang),'missing canonical locale '+lang);
 for(const probe of ["return'zh-CN'","return'zh-TW'","return'zh-HK'","return'ja'","return'ko'","return'de'","return'fr'","return'es'","return'pt'","return'ru'","return'en'"])assert.ok(i18n.includes(probe),'missing canonical persisted-locale mapping '+probe);
 assert.ok(i18n.includes('supported:Object.keys(dicts)'));assert.ok(entryLocale.includes("return'zh-HK'")&&entryLocale.includes("'zh-HK':"),'public entry owner must keep Hong Kong Traditional Chinese distinct');

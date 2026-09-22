@@ -60,8 +60,8 @@ async function verify(pathname,item){
     assert.equal(facts.lang,item.app,`${pathname} ${item.locale}: entry language mismatch ${JSON.stringify(facts)}`);
     assert.equal(facts.title,item.title,`${pathname} ${item.locale}: entry copy mismatch ${JSON.stringify(facts)}`);
     assert.equal(facts.brand,'WeiG qB WebUI',`${pathname}: page brand must remain unchanged`);
-    assert.equal(facts.logo,'assets/Wei.G.ico',`${pathname}: page logo must remain on Wei.G.ico`);
-    assert.equal(facts.favicon,'assets/Wei.G.ico?v=__WEIG_GIT_SHA__',`${pathname}: browser favicon must use the canonical Wei.G.ico asset`);
+    assert.equal(facts.logo,'assets/Wei.G.png',`${pathname}: page logo must remain on Wei.G.png`);
+    assert.equal(facts.favicon,'assets/Wei.G.png?v=__WEIG_GIT_SHA__',`${pathname}: browser favicon must use the canonical Wei.G.png asset`);
     assert.ok(facts.languages.length&&facts.language,`${pathname} ${item.locale}: browser language signals missing`);
     assert.deepEqual(errors,[],`${pathname} ${item.locale}: browser errors:\n${errors.join('\n')}`);
   }finally{await context.close();}
@@ -74,4 +74,4 @@ try{
   await browser.close();
   await new Promise(resolve=>server.close(resolve));
 }
-console.log('Entry locale browser acceptance passed: English-first fallback, browser auto-detect for eleven supported languages, distinct zh-CN/zh-TW/zh-HK mapping, canonical Wei.G.ico favicon, and unchanged page logo are consistent on public/index.html and public/login.html.');
+console.log('Entry locale browser acceptance passed: English-first fallback, browser auto-detect for eleven supported languages, distinct zh-CN/zh-TW/zh-HK mapping, canonical Wei.G.png favicon, and unchanged page logo are consistent on public/index.html and public/login.html.');
