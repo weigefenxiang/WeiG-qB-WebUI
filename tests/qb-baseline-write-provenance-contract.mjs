@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import vm from 'node:vm';
+import {qbClientTestI18n} from './qb-client-test-i18n.mjs';
 
 const source=await fs.readFile(new URL('../webui/private/scripts/qb-client.js',import.meta.url),'utf8');
 const registry=JSON.parse(await fs.readFile(new URL('../webui/private/data/capabilities.json',import.meta.url),'utf8'));
@@ -11,7 +12,7 @@ function descriptor(action){
   return{sourceAction:action,endpoint:(action.split(':')[1]||'').replace(/Action$/,''),parameters:Array.isArray(item.parameters)?item.parameters:[],required:Array.isArray(item.required)?item.required:[],optional:Array.isArray(item.optional)?item.optional:[]};
 }
 const certified=()=>!!(profile&&profile.fallback!==true&&['EXACT','EQUIVALENT'].includes(profile.resolutionMode||'EXACT'));
-const WeiG={util:{form:obj=>new URLSearchParams(Object.entries(obj||{}).map(([key,value])=>[key,String(value)])).toString()},I18n:{getLocale:()=> 'en-US'},CapabilityRegistry:{isCertified:certified,sourceActionDescriptor:action=>{if(!profile)return undefined;if(profile.fallback===true)return null;return descriptor(action);}}};
+const WeiG={util:{form:obj=>new URLSearchParams(Object.entries(obj||{}).map(([key,value])=>[key,String(value)])).toString()},I18n:qbClientTestI18n,CapabilityRegistry:{isCertified:certified,sourceActionDescriptor:action=>{if(!profile)return undefined;if(profile.fallback===true)return null;return descriptor(action);}}};
 const calls=[];
 const window={WeiG};
 const context={window,URLSearchParams,FormData,Blob,Response,console,fetch:async(url,init={})=>{calls.push({url:String(url),init});return new Response(String(url).endsWith('/torrents/add')?'Ok.':'',{status:200});}};

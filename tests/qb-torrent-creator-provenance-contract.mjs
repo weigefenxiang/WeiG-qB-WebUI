@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import vm from 'node:vm';
+import {qbClientTestI18n} from './qb-client-test-i18n.mjs';
 
 const source=await fs.readFile(new URL('../webui/private/scripts/qb-client.js',import.meta.url),'utf8');
 let profile=null,calls=[];
@@ -11,7 +12,7 @@ function descriptor(action){
 const certified=()=>!!(profile&&profile.fallback!==true);
 const WeiG={
   util:{form:obj=>new URLSearchParams(Object.entries(obj||{}).map(([key,value])=>[key,String(value)])).toString()},
-  I18n:{getLocale:()=> 'en-US'},
+  I18n:qbClientTestI18n,
   CapabilityRegistry:{isCertified:certified,sourceActionDescriptor:action=>{if(!profile)return undefined;if(profile.fallback===true)return null;return descriptor(action);}}
 };
 const window={WeiG};
