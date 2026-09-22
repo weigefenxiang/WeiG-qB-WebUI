@@ -32,6 +32,13 @@ assert.ok(!built.markdown.split('<details>')[0].includes('internal regression co
 for(const heading of ['### 功能 / UI','### 修复','### 性能','### 兼容','### 内部工程'])assert.ok(built.markdown.includes(heading),`missing release-note category ${heading}`);
 assert.ok(built.markdown.includes('<summary>查看完整更新记录（15 项）</summary>'),'full update history must expose a stable folded item count');
 assert.ok(built.markdown.includes('_范围：v1.0.0 → 0123456789abcdef0123456789abcdef01234567_'),'release notes must state the source range');
+const empty=buildReleaseNotes({commits:[],fromTag:'v1.0.0',toSha:'0123456789abcdef0123456789abcdef01234567'});
+assert.equal(empty.items.length,0,'empty synthetic history must remain empty');
+assert.ok(empty.markdown.includes('<summary>查看完整更新记录（0 项）</summary>')&&empty.markdown.includes('本次范围没有可列出的更新。'),'empty release range must render a truthful zero-change summary');
+
+const escaped=buildReleaseNotes({commits:[{hash:'1234567',subject:'fix: close </details> and [label] *bold* `code`',body:''}]});
+assert.ok(escaped.markdown.includes('close \\</details\\> and \\[label\\] \\*bold\\* \\`code\\`'),'release-note text must escape Markdown/HTML control characters instead of breaking the folded record');
+
 
 const temp=fs.mkdtempSync(path.join(os.tmpdir(),'weig-release-notes-'));
 try{
@@ -58,4 +65,4 @@ assert.ok(workflow.includes('--notes-file release-notes.md'),'Release publicatio
 assert.ok(!workflow.includes('--generate-notes'),'GitHub generated notes must be retired as a second owner');
 assert.ok(!/\s--notes\s/.test(workflow),'static inline release notes must be retired as a second owner');
 
-console.log('Release notes contract passed: previous-stable exact-SHA range, structured overrides, capped user highlights, folded categorized history and single workflow owner are deterministic.');
+console.log('Release notes contract passed: previous-stable exact-SHA range, structured overrides, Markdown escaping, zero/large histories, capped user highlights, folded categorized history and single workflow owner are deterministic.');
