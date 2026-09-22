@@ -15,7 +15,7 @@ assert.ok(core.includes('W.ColumnConfigurator.open(options.surfaceId)')&&app.inc
 for(const id of ['torrent-content','torrent-trackers','torrent-peers','torrent-webseeds'])assert.ok(ui.includes(`'${id}'`),`missing detail ColumnConfigurator surface ${id}`);
 assert.ok(!app.includes('columns-dialog')&&!ui.includes('shared-column-dialog')&&!index.includes('id="columns-dialog"'),'retired column-setting presentation owners must leave runtime.');
 assert.ok(!ui.includes('installDismissPolicy'),'feature-local global Dialog backdrop/Escape policy must be retired.');
-assert.ok(index.includes('"css/table.css"')&&tableCss.includes("@import url('./qb-peer-flags.css')"),'Private bootstrap must consume the shared table stylesheet so materialized local peer flags are reachable.');
+assert.ok(index.includes('"css/table.css"')&&!tableCss.includes('qb-peer-flags')&&ui.includes("W.QbFlagProvider={mode:'qB-alternative-ui-gap',assetRoute:null"),'Peers must keep one qB-country FlagProvider owner without bundling a second flag asset truth.');
 assert.ok(!layout.includes("weig-table-layout-css")&&!layout.includes("css/table.css'+suffix"),'Layout runtime must not reinsert the bootstrap-owned table stylesheet as a second owner.');
 assert.ok(!index.includes('data-i18n="rss.description"')&&!index.includes('data-i18n="logs.description"')&&!index.includes('data-i18n="settings.description"')&&!index.includes('<div class="inline-form"><input id="rss-url"'),'retired tool subtitles and RSS page-level form must leave source DOM.');
 assert.ok(ui.includes("url.id='rss-url'")&&ui.includes("W.DialogRuntime.create({id:'rss-add-dialog'"),'RSS Add Feed must be created only inside the canonical Dialog path.');

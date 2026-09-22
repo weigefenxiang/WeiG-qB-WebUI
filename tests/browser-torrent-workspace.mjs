@@ -29,15 +29,15 @@ const torrents=Array.from({length:55},(_,i)=>{
 });
 const mime={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.ico':'image/x-icon'};
 const assert=(ok,msg)=>{if(!ok)throw new Error(msg);};
-async function waitForVirtualIdle(page,settleMs=0){
+async function waitForDataViewportIdle(page,settleMs=0){
   if(settleMs>0)await page.waitForTimeout(settleMs);
-  await page.waitForFunction(()=>{const list=document.getElementById('torrent-list'),v=window.WeiG?.AppState?.virtual;return !!list&&!!v&&!v._scrolling&&!v._hasPendingItems&&!list.__weigVirtualScrollIdleTimer;});
+  await page.waitForFunction(()=>{const list=document.getElementById('torrent-list'),v=window.WeiG?.AppState?.viewport;return !!list&&!!v&&!v._scrolling&&!v._hasPendingItems&&!list.__weigDataViewportScrollIdleTimer;});
 }
 async function resetScrollProbe(page){
-  await page.evaluate(()=>{const list=document.getElementById('torrent-list'),v=WeiG.AppState.virtual;v.resetScroll();list.scrollLeft=0;list.scrollTop=0;});
+  await page.evaluate(()=>{const list=document.getElementById('torrent-list'),v=WeiG.AppState.viewport;v.resetScroll();list.scrollLeft=0;list.scrollTop=0;});
   await page.waitForTimeout(20);
-  await waitForVirtualIdle(page);
-  await page.evaluate(()=>WeiG.AppState.virtual.resetMetrics());
+  await waitForDataViewportIdle(page);
+  await page.evaluate(()=>WeiG.AppState.viewport.resetMetrics());
 }
 async function scrollByBrowserInput(page,selector,axis){
   const node=page.locator(selector),box=await node.boundingBox();
@@ -47,19 +47,19 @@ async function scrollByBrowserInput(page,selector,axis){
   await page.mouse.move(box.x+Math.max(8,Math.min(box.width-8,box.width/2)),box.y+Math.max(8,Math.min(box.height-8,box.height/2)));
   const delta=Math.max(80,Math.min(240,before.max*.22));
   if(axis==='x')await page.mouse.wheel(delta,0);else await page.mouse.wheel(0,delta);
-  await page.waitForFunction(()=>window.WeiG?.AppState?.virtual?._scrolling===true);
+  await page.waitForFunction(()=>window.WeiG?.AppState?.viewport?._scrolling===true);
   await page.waitForTimeout(60);
-  return node.evaluate((el,axis)=>({left:el.scrollLeft,top:el.scrollTop,max:axis==='x'?el.scrollWidth-el.clientWidth:el.scrollHeight-el.clientHeight,metrics:WeiG.AppState.virtual.metrics()}),axis);
+  return node.evaluate((el,axis)=>({left:el.scrollLeft,top:el.scrollTop,max:axis==='x'?el.scrollWidth-el.clientWidth:el.scrollHeight-el.clientHeight,metrics:WeiG.AppState.viewport.metrics()}),axis);
 }
 async function settledScrollMetrics(page){
-  await waitForVirtualIdle(page);
-  return page.evaluate(()=>WeiG.AppState.virtual.metrics());
+  await waitForDataViewportIdle(page);
+  return page.evaluate(()=>WeiG.AppState.viewport.metrics());
 }
 function assertQuietCommitBounded(name,axis,active,settled){
   const quietRenders=settled.renders-active.renders,bound=Math.max(active.visible,settled.visible);
   assert(quietRenders>=0&&quietRenders<=1,`${name}: ${axis} quiet period committed more than the newest pending snapshot ${JSON.stringify({active,settled})}`);
   assert(settled.created-active.created<=bound&&settled.removed-active.removed<=bound,`${name}: ${axis} quiet-period snapshot commit exceeded the visible row pool ${JSON.stringify({active,settled})}`);
-  assert(settled.maxRenderMs<80,`${name}: ${axis} active/quiet VirtualList render exceeded the bounded regression budget ${JSON.stringify(settled)}`);
+  assert(settled.maxRenderMs<80,`${name}: ${axis} active/quiet DataViewport render exceeded the bounded regression budget ${JSON.stringify(settled)}`);
 }
 async function waitForProgressMotion(page,hash,active){
   const selector=`.torrent-row[data-hash="${hash}"] .progress-fill`,expected=active?'weig-progress-flow':'none';
@@ -125,12 +125,12 @@ try{
     // Native scrollbar-thumb mouse drag remains a mandatory final human acceptance item because hosted Chrome/Xvfb
     // does not expose native scrollbar chrome to DevTools/XTest pointer injection reliably.
     await page.setViewportSize({width:900,height:768});
-    await waitForVirtualIdle(page,180);
+    await waitForDataViewportIdle(page,180);
     await resetScrollProbe(page);
     const horizontal=await scrollByBrowserInput(page,'#torrent-list','x');
     assert(horizontal.left>8,`${name}: horizontal browser scroll input did not move scrollLeft ${JSON.stringify(horizontal)}`);
     const horizontalActive=horizontal.metrics;
-    assert(horizontalActive.renders===0,`${name}: horizontal active scroll triggered VirtualList repaint ${JSON.stringify(horizontalActive)}`);
+    assert(horizontalActive.renders===0,`${name}: horizontal active scroll triggered DataViewport repaint ${JSON.stringify(horizontalActive)}`);
     const horizontalSettled=await settledScrollMetrics(page);
     assertQuietCommitBounded(name,'horizontal',horizontalActive,horizontalSettled);
 
@@ -139,11 +139,11 @@ try{
     assert(vertical.top>40,`${name}: vertical browser scroll input did not move scrollTop ${JSON.stringify(vertical)}`);
     const verticalActive=vertical.metrics;
     assert(verticalActive.renders>0&&verticalActive.reused>0&&verticalActive.reused>verticalActive.created,`${name}: vertical active scroll did not recycle the overlapping row pool ${JSON.stringify(verticalActive)}`);
-    assert(verticalActive.maxRenderMs<80,`${name}: vertical active-scroll VirtualList render exceeded the bounded regression budget ${JSON.stringify(verticalActive)}`);
+    assert(verticalActive.maxRenderMs<80,`${name}: vertical active-scroll DataViewport render exceeded the bounded regression budget ${JSON.stringify(verticalActive)}`);
     const verticalSettled=await settledScrollMetrics(page);
     assertQuietCommitBounded(name,'vertical',verticalActive,verticalSettled);
     await page.setViewportSize({width:1366,height:768});
-    await waitForVirtualIdle(page,180);
+    await waitForDataViewportIdle(page,180);
 
 
     // Real progress semantics and Reduced Motion remain protected. Pseudo-element animation style can settle

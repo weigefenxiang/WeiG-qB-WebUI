@@ -1,4 +1,0 @@
-/* Materialization target for source-pinned qBittorrent Peer flag artwork.
- * Raw source intentionally renders the ISO-code fallback; packCatalog() replaces
- * this file with local images/flags/<iso>.svg bindings for end-user products.
- */

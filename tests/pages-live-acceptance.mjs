@@ -250,9 +250,9 @@ try{
     const detailHeaderFacts=[];
     for(const surface of ['files','trackers','peers','webseeds']){
       await page.evaluate(({hash,surface})=>window.WeiG.Router.detail(hash,surface),{hash:detailHash,surface});
-      await page.waitForFunction(surface=>window.WeiG.Router.route().tab===surface&&window.WeiG.AppState?.detailVirtual?.__weigSharedDetail?.surface===surface&&document.querySelector('#detail-content .shared-table__head .grid-head-cell'),surface,{timeout:30000});
+      await page.waitForFunction(surface=>window.WeiG.Router.route().tab===surface&&window.WeiG.AppState?.detailViewport?.__weigSharedDetail?.surface===surface&&document.querySelector('#detail-content .shared-table__head .grid-head-cell'),surface,{timeout:30000});
       const facts=await page.evaluate(surface=>{
-        const W=window.WeiG,ctx=W.AppState?.detailVirtual?.__weigSharedDetail;
+        const W=window.WeiG,ctx=W.AppState?.detailViewport?.__weigSharedDetail;
         if(!ctx||ctx.surface!==surface)throw new Error(`shared detail context missing for ${surface}`);
         const cell=[...ctx.head.querySelectorAll('.grid-head-cell')].find(node=>String(node.querySelector('.grid-head-label')?.dataset.fullLabel||'').length>0);
         if(!cell)throw new Error(`no labeled detail header for ${surface}`);

@@ -48,7 +48,7 @@ try{
   await page.waitForFunction(()=>String(document.querySelector('#qb-version')?.textContent||'').includes('5.2.3'),null,{timeout:60000});
   await page.waitForFunction(()=>window.WeiG?.I18n?.getQbLocale?.()==='zh_CN',null,{timeout:30000});
   await page.waitForSelector('.torrent-mobile-card--two-line',{state:'visible',timeout:60000});
-  await page.evaluate(()=>{if(window.WeiG?.I18n?.setLocale)WeiG.I18n.setLocale('zh-CN');WeiG.TorrentFieldRegistry?.saveMobileFields?.(['state','size','dlspeed','upspeed','eta','progress']);WeiG.AppState?.virtual?.render?.();WeiG.UiSystem?.enforceMobileHeight?.();});
+  await page.evaluate(()=>{if(window.WeiG?.I18n?.setLocale)WeiG.I18n.setLocale('zh-CN');WeiG.TorrentFieldRegistry?.saveMobileFields?.(['state','size','dlspeed','upspeed','eta','progress']);WeiG.AppState?.viewport?.render?.();WeiG.UiSystem?.enforceMobileHeight?.();});
   await page.waitForTimeout(150);
 
   const card=await page.locator('.torrent-mobile-card--two-line').first().evaluate(node=>{

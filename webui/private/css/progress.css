@@ -1,5 +1,5 @@
 /* Canonical torrent progress presentation. Width is real qBittorrent progress; semantic color and motion reflect current torrent state only. */
-.progress-cell{display:grid;grid-template-columns:minmax(50px,1fr) 48px;gap:8px;align-items:center;min-width:0}
+.progress-cell{display:grid;grid-template-columns:minmax(50px,1fr) 48px;gap:8px;align-items:center;align-self:stretch;width:100%;min-width:0}
 .progress-track{--progress-accent:var(--accent-primary);--progress-end:var(--accent-cyan);--progress-flow-duration:2.6s;--progress-sweep-duration:3.2s;position:relative;height:10px;overflow:hidden;border:1px solid color-mix(in srgb,var(--progress-accent) 24%,var(--border-strong) 76%);border-radius:999px;background:linear-gradient(180deg,color-mix(in srgb,var(--text-primary) 5%,transparent),transparent 36%),color-mix(in srgb,var(--surface-raised) 90%,var(--text-primary) 2%);box-shadow:inset 0 2px 4px rgba(255,255,255,.035),inset 0 -2px 4px rgba(0,0,0,.36),0 1px 0 rgba(255,255,255,.025)}
 .progress-track[data-progress-state=download]{--progress-accent:var(--accent-primary);--progress-end:var(--accent-cyan)}
 .progress-track[data-progress-state=seed]{--progress-accent:var(--success);--progress-end:color-mix(in srgb,var(--success) 62%,var(--accent-cyan) 38%);--progress-flow-duration:3.25s;--progress-sweep-duration:4.1s}
@@ -18,7 +18,7 @@
 .progress-track[data-progress-state=checking][data-progress-active=true] .progress-fill::after{opacity:.15}
 .progress-track[data-progress-state=error] .progress-fill{filter:saturate(.94)}
 .progress-track[data-progress-state=paused] .progress-fill,.progress-track[data-progress-state=queued] .progress-fill,.progress-track[data-progress-state=stalled] .progress-fill{filter:saturate(.72)}
-.progress-number{font-weight:680;font-variant-numeric:tabular-nums;color:var(--text-secondary);transition:color var(--motion-fast)}
+.progress-number{justify-self:end;text-align:right;font-weight:680;font-variant-numeric:tabular-nums;color:var(--text-secondary);transition:color var(--motion-fast)}
 .progress-cell[data-progress-state=download] .progress-number,.progress-cell[data-progress-state=paused] .progress-number,.progress-cell[data-progress-state=checking] .progress-number,.progress-cell[data-progress-state=queued] .progress-number,.progress-cell[data-progress-state=stalled] .progress-number{color:color-mix(in srgb,var(--accent-cyan) 68%,var(--text-primary) 32%)}
 .progress-cell[data-progress-state=seed] .progress-number,.progress-cell[data-progress-state=complete] .progress-number{color:color-mix(in srgb,var(--success) 78%,var(--text-primary) 22%)}
 .progress-cell[data-progress-state=error] .progress-number{color:color-mix(in srgb,var(--danger) 82%,var(--text-primary) 18%)}

@@ -66,7 +66,7 @@ W.CapabilityRegistry
 canonical semantic owners
   ├─ SettingsSchema / SettingsRenderer / PreferenceTransaction
   ├─ I18n
-  ├─ VirtualList
+  ├─ DataViewport
   ├─ ActionRegistry
   ├─ DialogRuntime
   ├─ ColumnConfigurator
