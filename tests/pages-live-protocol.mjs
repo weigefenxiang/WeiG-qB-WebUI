@@ -8,6 +8,8 @@ assert.ok(expectedSha,'WEIG_EXPECTED_SIMULATOR_SHA or argv[3] is required');
 
 const base=new URL(rawBase.endsWith('/')?rawBase:`${rawBase}/`);
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+const sessionTimeout=Math.max(5000,Number(process.env.WEIG_PAGES_SESSION_TIMEOUT_MS||20000));
+const sessionAttempts=3;
 
 async function deployedSha(){
   const url=new URL('metadata/site.json',base);
@@ -26,14 +28,47 @@ async function waitForDeployedSha(){
   throw new Error(`Pages protocol gate did not observe simulator SHA ${expectedSha}; last=${last}`);
 }
 
+async function sessionDiagnostics(page){
+  try{return await page.evaluate(()=>({url:location.href,readyState:document.readyState,bootstrap:document.documentElement.dataset.weigBootstrap||'',loginVisible:!!document.querySelector('#login-form')&&!document.querySelector('#login-form')?.hidden,torrentList:!!document.querySelector('#torrent-list'),fatalVisible:!!document.querySelector('#fatal:not(.is-hidden)'),body:String(document.body?.innerText||'').replace(/\\s+/g,' ').slice(0,240)}));}
+  catch(error){return{url:page.url(),diagnosticError:error?.message||String(error)};}
+}
+
+async function waitForSessionEntry(page){
+  const handle=await page.waitForFunction(()=>{
+    if(document.querySelector('#torrent-list'))return'private';
+    const login=document.querySelector('#login-form'),style=login&&getComputedStyle(login);
+    if(login&&!login.hidden&&style?.display!=='none'&&style?.visibility!=='hidden')return'login';
+    if(document.querySelector('#fatal:not(.is-hidden)')||document.documentElement.dataset.weigBootstrap==='failed')return'failed';
+    return'';
+  },null,{timeout:sessionTimeout});
+  return handle.jsonValue();
+}
+
 async function openSession(page,qb,seed){
-  const url=new URL('dev/app/',base);
-  url.search=new URLSearchParams({sim:`protocol-${qb}-${Date.now()}-${Math.random().toString(16).slice(2)}`,qb,count:'64',scenario:'mixed',seed}).toString();
-  await page.goto(url.toString(),{waitUntil:'domcontentloaded',timeout:60000});
-  await page.waitForSelector('#login-form',{state:'visible',timeout:60000});
-  await page.locator('#login-btn').click();
-  await page.waitForSelector('#torrent-list',{state:'attached',timeout:60000});
-  await page.waitForFunction(version=>String(document.querySelector('#qb-version')?.textContent||'').includes(version),qb,{timeout:60000});
+  const sessionId=`protocol-${qb}-${Date.now()}-${Math.random().toString(16).slice(2)}`,url=new URL('dev/app/',base);
+  url.search=new URLSearchParams({sim:sessionId,qb,count:'64',scenario:'mixed',seed,clean:'0'}).toString();
+  let last=null;
+  for(let attempt=1;attempt<=sessionAttempts;attempt++){
+    const attemptUrl=new URL(url);attemptUrl.searchParams.set('__weig_session_attempt',String(attempt));
+    try{
+      await page.goto(attemptUrl.toString(),{waitUntil:'domcontentloaded',timeout:sessionTimeout});
+      const entry=await waitForSessionEntry(page);
+      if(entry==='failed')throw new Error('WeiG bootstrap entered failed/fatal state before protocol authentication');
+      if(entry==='login'){
+        assert.equal(await page.locator('#username').inputValue(),'weigshare');
+        assert.equal(await page.locator('#password').inputValue(),'weigshare');
+        await page.locator('#login-btn').click();
+      }
+      await page.waitForSelector('#torrent-list',{state:'attached',timeout:sessionTimeout});
+      await page.waitForFunction(version=>String(document.querySelector('#qb-version')?.textContent||'').includes(version),qb,{timeout:sessionTimeout});
+      if(attempt>1)console.log(`Recovered protocol session ${sessionId} on bootstrap attempt ${attempt}.`);
+      return;
+    }catch(error){
+      last={attempt,error:error?.message||String(error),state:await sessionDiagnostics(page)};
+      if(attempt<sessionAttempts)await sleep(500*attempt);
+    }
+  }
+  throw new Error(`Pages protocol session bootstrap failed after ${sessionAttempts} attempts: ${JSON.stringify(last)}`);
 }
 
 async function api(page,path,{method='GET',form}={}){
