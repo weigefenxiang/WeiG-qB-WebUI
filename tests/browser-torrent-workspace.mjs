@@ -43,11 +43,15 @@ async function dragNativeScrollbar(page,selector,axis){
     if(process.env.WEIG_NATIVE_SCROLLBAR_DRAG==='1'){
       await page.bringToFront();
       const screen=await page.evaluate(({x0,y0,x1,y1})=>{const dpr=Number(window.devicePixelRatio)||1,outerGapX=Math.max(0,window.outerWidth-window.innerWidth),outerGapY=Math.max(0,window.outerHeight-window.innerHeight),viewportX=window.screenX+(outerGapX/2),viewportY=window.screenY+Math.max(0,outerGapY-(outerGapX/2));return{x0:Math.round((viewportX+x0)*dpr),y0:Math.round((viewportY+y0)*dpr),x1:Math.round((viewportX+x1)*dpr),y1:Math.round((viewportY+y1)*dpr),dpr,screenX:window.screenX,screenY:window.screenY,outerWidth:window.outerWidth,outerHeight:window.outerHeight,innerWidth:window.innerWidth,innerHeight:window.innerHeight,viewportX,viewportY};},{x0,y0,x1,y1});
-      const run=(...args)=>execFileSync('xdotool',args,{stdio:['ignore','pipe','pipe']});
-      run('mousemove','--sync',String(screen.x0),String(screen.y0));run('mousedown','1');
-      for(let step=1;step<=12;step++){const t=step/12;run('mousemove','--sync',String(Math.round(screen.x0+(screen.x1-screen.x0)*t)),String(Math.round(screen.y0+(screen.y1-screen.y0)*t)));}
-      run('mouseup','1');await page.waitForTimeout(260);
-      return await node.evaluate((el,payload)=>({left:el.scrollLeft,top:el.scrollTop,max:payload.axis==='x'?el.scrollWidth-el.clientWidth:el.scrollHeight-el.clientHeight,screen:payload.screen}),{axis,screen});
+      const run=(...args)=>execFileSync('xdotool',args,{stdio:['ignore','pipe','pipe']}),runText=(...args)=>String(execFileSync('xdotool',args,{encoding:'utf8',stdio:['ignore','pipe','pipe']})).trim();
+      const windows=runText('search','--onlyvisible','--class','google-chrome').split(/\\s+/).filter(Boolean);
+      if(!windows.length)throw new Error('xdotool could not find the visible Google Chrome window');
+      const windowId=windows[windows.length-1];run('windowfocus','--sync',windowId);await page.waitForTimeout(120);
+      const focused=runText('getwindowfocus');if(focused!==windowId)throw new Error(`xdotool focus mismatch: expected ${windowId}, got ${focused}`);
+      run('mousemove','--sync',String(screen.x0),String(screen.y0));await page.waitForTimeout(100);run('mousedown','1');await page.waitForTimeout(100);
+      for(let step=1;step<=12;step++){const t=step/12;run('mousemove','--sync',String(Math.round(screen.x0+(screen.x1-screen.x0)*t)),String(Math.round(screen.y0+(screen.y1-screen.y0)*t)));await page.waitForTimeout(22);}
+      run('mouseup','1');await page.waitForTimeout(320);
+      return await node.evaluate((el,payload)=>({left:el.scrollLeft,top:el.scrollTop,max:payload.axis==='x'?el.scrollWidth-el.clientWidth:el.scrollHeight-el.clientHeight,screen:payload.screen,windowId:payload.windowId}),{axis,screen,windowId});
     }
     await page.mouse.move(x0,y0);await page.waitForTimeout(120);await page.mouse.down();await page.mouse.move(x1,y1,{steps:12});await page.mouse.up();await page.waitForTimeout(220);
     return await node.evaluate((el,axis)=>({left:el.scrollLeft,top:el.scrollTop,max:axis==='x'?el.scrollWidth-el.clientWidth:el.scrollHeight-el.clientHeight}),axis);
