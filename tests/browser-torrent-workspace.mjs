@@ -42,7 +42,7 @@ async function dragNativeScrollbar(page,selector,axis){
     const x0=axis==='x'?origin+start:fixed,y0=axis==='x'?fixed:origin+start,x1=axis==='x'?origin+target:fixed,y1=axis==='x'?fixed:origin+target;
     if(process.env.WEIG_NATIVE_SCROLLBAR_DRAG==='1'){
       await page.bringToFront();
-      const screen=await page.evaluate(({x0,y0,x1,y1})=>{const dpr=Number(window.devicePixelRatio)||1;return{x0:Math.round((window.screenX+x0)*dpr),y0:Math.round((window.screenY+y0)*dpr),x1:Math.round((window.screenX+x1)*dpr),y1:Math.round((window.screenY+y1)*dpr),dpr,screenX:window.screenX,screenY:window.screenY};},{x0,y0,x1,y1});
+      const screen=await page.evaluate(({x0,y0,x1,y1})=>{const dpr=Number(window.devicePixelRatio)||1,outerGapX=Math.max(0,window.outerWidth-window.innerWidth),outerGapY=Math.max(0,window.outerHeight-window.innerHeight),viewportX=window.screenX+(outerGapX/2),viewportY=window.screenY+Math.max(0,outerGapY-(outerGapX/2));return{x0:Math.round((viewportX+x0)*dpr),y0:Math.round((viewportY+y0)*dpr),x1:Math.round((viewportX+x1)*dpr),y1:Math.round((viewportY+y1)*dpr),dpr,screenX:window.screenX,screenY:window.screenY,outerWidth:window.outerWidth,outerHeight:window.outerHeight,innerWidth:window.innerWidth,innerHeight:window.innerHeight,viewportX,viewportY};},{x0,y0,x1,y1});
       const run=(...args)=>execFileSync('xdotool',args,{stdio:['ignore','pipe','pipe']});
       run('mousemove','--sync',String(screen.x0),String(screen.y0));run('mousedown','1');
       for(let step=1;step<=12;step++){const t=step/12;run('mousemove','--sync',String(Math.round(screen.x0+(screen.x1-screen.x0)*t)),String(Math.round(screen.y0+(screen.y1-screen.y0)*t)));}
