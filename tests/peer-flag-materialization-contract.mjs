@@ -4,6 +4,10 @@ import os from 'node:os';
 import path from 'node:path';
 import {materializeQbPeerFlags,QB_PEER_FLAGS_SOURCE} from '../tools/qb-release-catalog-peer-flags.mjs';
 
+const uiSource=fs.readFileSync(new URL('../webui/private/scripts/ui.js',import.meta.url),'utf8');
+const coreSource=fs.readFileSync(new URL('../webui/private/scripts/core.js',import.meta.url),'utf8');
+assert.ok(!uiSource.includes('countryFlag')&&!coreSource.includes('U.countryFlag'),'peer renderer must not retain emoji as a second flag truth beside materialized local SVG assets');
+
 const temp=fs.mkdtempSync(path.join(os.tmpdir(),'weig-peer-flags-'));
 try{
   const sourceRoot=path.join(temp,'upstream'),privateRoot=path.join(temp,'private');
