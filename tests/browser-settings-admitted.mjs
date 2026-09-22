@@ -56,12 +56,12 @@
   }
 
   const {readWebuiStatic}=await import('./browser-driver.mjs');
-  const shardIndex=Number(process.env.WEIGG_SETTINGS_SHARD_INDEX||0);
-  const shardCount=Number(process.env.WEIGG_SETTINGS_SHARD_COUNT||1);
+  const shardIndex=Number(process.env.WEIG_SETTINGS_SHARD_INDEX||0);
+  const shardCount=Number(process.env.WEIG_SETTINGS_SHARD_COUNT||1);
   assert(Number.isInteger(shardIndex)&&Number.isInteger(shardCount)&&shardCount>0&&shardIndex>=0&&shardIndex<shardCount,'Invalid admitted Settings browser shard '+shardIndex+'/'+shardCount);
   const assigned=admitted.filter((_,index)=>index%shardCount===shardIndex);
   assert(assigned.length>0,'Admitted Settings browser shard '+shardIndex+' is empty.');
-  const output=path.resolve(root,process.env.WEIGG_SETTINGS_MATRIX_OUTPUT||('settings-browser-shard-'+shardIndex+'.json'));
+  const output=path.resolve(root,process.env.WEIG_SETTINGS_MATRIX_OUTPUT||('settings-browser-shard-'+shardIndex+'.json'));
   const privateRoot=path.join(root,'webui/private');
   const publicRoot=path.join(root,'webui/public');
   const productVersion=(await fs.readFile(path.resolve(here,'../VERSION'),'utf8')).trim();
@@ -73,7 +73,7 @@
   function sendText(res,value,status=200){res.writeHead(status,{'content-type':'text/plain; charset=utf-8','cache-control':'no-store'});res.end(String(value));}
   function sendEmpty(res,status=200){res.writeHead(status,{'cache-control':'no-store'});res.end('');}
   async function body(req){let value='';for await(const chunk of req)value+=chunk;return value;}
-  function initialPrefs(){return{locale:'en',save_path:'/downloads',alternative_webui_enabled:true,alternative_webui_path:'/config/weigg-qb-webui'};}
+  function initialPrefs(){return{locale:'en',save_path:'/downloads',alternative_webui_enabled:true,alternative_webui_path:'/config/weig-qb-webui'};}
   async function api(req,res,p,url){
     if(p==='app/version')return sendText(res,'v'+activeProfile.qbVersion);
     if(p==='app/webapiVersion')return sendText(res,activeProfile.webApiVersion);
@@ -105,7 +105,7 @@
     if(rel.startsWith('api/v2/'))return await api(req,res,rel.slice(7),url);
     if(rel==='data/qb-releases.json')return sendJson(res,[activeProfile]);
     if(rel==='views/preferences.html')return sendText(res,'<!doctype html><select id="localeSelect"><option value="en">English</option><option value="zh_CN">简体中文</option></select>');
-    if(rel==='weigg-install.json')return sendJson(res,{version:productVersion,gitSha:'a5-settings-matrix',qbPath:'/config/weigg-qb-webui',hostPath:'/srv/qb/config/weigg-qb-webui'});
+    if(rel==='weigg-install.json')return sendJson(res,{version:productVersion,gitSha:'a5-settings-matrix',qbPath:'/config/weig-qb-webui',hostPath:'/srv/qb/config/weig-qb-webui'});
     const requested=rel||'index.html',{file,body:bytes}=await readWebuiStatic([privateRoot,publicRoot],requested);res.writeHead(200,{'content-type':mime[path.extname(file).toLowerCase()]||'application/octet-stream','cache-control':'no-store'});res.end(bytes);
   }catch(error){res.writeHead(error&&error.code==='ENOENT'?404:500,{'content-type':'text/plain; charset=utf-8'});res.end(String(error&&error.stack||error));}});
   await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(port,host,resolve);});
