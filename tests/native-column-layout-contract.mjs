@@ -29,7 +29,7 @@ const W={
   util:{formatBytes:v=>`B${v}`,percent:v=>Number(v)*100,formatSpeed:v=>`S${v}`,formatEta:v=>`E${v}`,formatRatio:v=>`R${v}`,trackerLabel:v=>String(v),isMobile:()=>false},
   Config:{load:()=>structuredClone(saved),save:value=>{saved=structuredClone(value);}},
   Components:{state:code=>[`STATE:${code}`,'']},
-  I18n:{getLocale:()=> 'zh-CN'},
+  I18n:{getLocale:()=> 'zh-CN',qbText:(key,fallback)=>key==='column.selected_size'?'选定大小':fallback,t:key=>key==='columns.aux.stateIcon'?'状态图标':key},
   CapabilityRegistry:{torrentFieldFacts:()=>profile},
   DataGrid:{defaults:[]}
 };
@@ -94,7 +94,7 @@ assert.ok(coreSource.includes("e.pointerType==='touch'")&&coreSource.includes('l
 assert.ok(layoutSource.includes("var TABLE_COLUMN_KEY=(W.StorageKeys&&W.StorageKeys.tableColumnsPrefix)||'weig.tableColumns:'")&&layoutSource.includes('W.SharedColumns={resolve:resolveColumns,commit:commitColumns,reset:resetColumns,read:tableState'),'all reusable detail tables must share one stable schema-backed column state owner');
 assert.ok(layoutSource.includes('function insertMissingOfficialKeys(order,official)')&&layoutSource.includes('if(!sameOrder(order,official))state.order=order'),'shared column persistence must merge new official columns into current source order while persisting user order only when it is an override');
 assert.ok(layoutSource.includes('if(!!column.visible!==!!base.defaultVisible)visibility[column.key]=!!column.visible')&&layoutSource.includes('Math.abs(width-defaultWidth)>.5'),'shared column persistence must store visibility/width differences rather than copying the current qB schema into localStorage');
-assert.ok(layoutSource.includes("return W.I18n.qbText(String(key||''),source||String(key||''))")&&layoutSource.includes("out.label=officialText('column.'+out.key,native.translation,fallback)"),'main table labels must reuse the existing exact-qB official translation resolver instead of storing WeiG-owned translated column names');
+assert.ok(source.includes("return qbText('column.'+field.key,fallback)||fallback")&&source.includes("return qbText('column.'+String(col&&col.key||''),source)||source"),'main table labels must reuse the exact qB-owned copy resolver instead of storing WeiG-owned translated column names');
 assert.ok(layoutSource.includes("function exactDetailUi(){var R=W.CapabilityRegistry,ui=R&&typeof R.torrentDetailUi==='function'?R.torrentDetailUi():null;")&&!layoutSource.includes('W.ReleaseProfile')&&!layoutSource.includes('profile&&profile.torrentDetailUi'),'detail UI evidence must be consumed only through CapabilityRegistry.torrentDetailUi(), whose owner enforces exact/equivalent certification and fallback closure');
 assert.ok(layoutSource.includes("return'detail.'+String(surface||'')+'.'+String(key||'')")&&layoutSource.includes("officialText('detail.tab.'")&&layoutSource.includes("officialText('detail.property.'"),'detail tabs/properties/table columns must all resolve through the source-generated official translation keyspace');
 assert.ok(appSource.includes('C.torrentRow(t,app.selection.has(t.hash),handlers,app.columns,W.DataGrid.template(app.columns))'),'VirtualList rows must render from the current column order/width instead of a stale captured template');
