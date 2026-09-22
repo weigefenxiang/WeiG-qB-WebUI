@@ -57,6 +57,8 @@ WeiG_qB-WebUI/
 
 ```text
 Windows: D:\WeiG_qB-WebUI
+### Конкретная версия и каталог установки
+
 Linux:   /opt/WeiG_qB-WebUI
 ```
 
@@ -264,6 +266,8 @@ Windows:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 1.0.0 -o D:\WeiG_qB-WebUI -configure
 ```
+
+### Откат
 
 Откат:
 

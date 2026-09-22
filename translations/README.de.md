@@ -80,6 +80,8 @@ Windows-Beispiel:
 D:\WeiG_qB-WebUI
 ```
 
+### Bestimmte Version und Installationsverzeichnis
+
 Linux-Beispiel:
 
 ```text
@@ -264,6 +266,8 @@ Windows-Beispiel:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 1.0.0 -o D:\WeiG_qB-WebUI -configure
 ```
+
+### Rollback
 
 Rollback:
 

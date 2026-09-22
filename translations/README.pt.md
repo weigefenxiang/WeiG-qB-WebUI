@@ -55,6 +55,8 @@ A pasta **`WeiG_qB-WebUI` completa** é a raiz da WebUI. Não copie apenas `publ
 
 ```text
 Windows: D:\WeiG_qB-WebUI
+### Versão específica e diretório de instalação
+
 Linux:   /opt/WeiG_qB-WebUI
 ```
 
@@ -262,6 +264,8 @@ Windows:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 1.0.0 -o D:\WeiG_qB-WebUI -configure
 ```
+
+### Restauro
 
 Restauro:
 

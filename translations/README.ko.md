@@ -80,7 +80,9 @@ Windows 예시:
 D:\WeiG_qB-WebUI
 ```
 
-일반 Linux 예시:
+일반 ### 특정 버전과 설치 디렉터리
+
+Linux 예시:
 
 ```text
 /opt/WeiG_qB-WebUI
@@ -266,6 +268,8 @@ Windows 예시:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 1.0.0 -o D:\WeiG_qB-WebUI -configure
 ```
+
+### 롤백
 
 롤백:
 

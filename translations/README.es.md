@@ -55,6 +55,8 @@ La carpeta **`WeiG_qB-WebUI` completa** es la raíz de la WebUI. No copies solo 
 
 ```text
 Windows: D:\WeiG_qB-WebUI
+### Versión específica y directorio de instalación
+
 Linux:   /opt/WeiG_qB-WebUI
 ```
 
@@ -262,6 +264,8 @@ Windows:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 1.0.0 -o D:\WeiG_qB-WebUI -configure
 ```
+
+### Reversión
 
 Rollback:
 
