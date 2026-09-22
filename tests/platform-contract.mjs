@@ -32,7 +32,7 @@ assert.match(sh,/-configure, --configure\s+Enable qBittorrent Alternative WebUI 
 assert.match(sh,/-rollback, --rollback\s+Restore the previous installer backup/,'Linux installer must expose rollback');
 assert.match(sh,/-help, -h, --help\s+Show this help/,'Linux installer must expose the documented -help option');
 assert.match(sh,/-version and -dev cannot be used together/,'Linux installer must reject version/dev ambiguity');
-assert.match(sh,/CHANNEL="\$\{WEIGG_QB_CHANNEL:-main\}"/,'Linux installer must default to the stable main channel');
+assert.match(sh,/CHANNEL="\$\{WEIG_QB_CHANNEL:-main\}"/,'Linux installer must default to the stable main channel');
 assert.match(sh,/BACKUP_RETENTION=3/,'Linux installer must retain exactly three installer backups per target');
 assert.match(sh,/latest_backup_for_dest/,'Linux rollback must resolve backups by explicit install target');
 assert.match(sh,/prune_backups_for_dest/,'Linux backup pruning must be target-scoped');
@@ -122,7 +122,7 @@ assert.match(live,/\.ui-backup-\*/,'LIVE deploy must include historical ui-backu
 
 for(const [name,html] of [['public/index.html',publicIndex],['public/login.html',publicLogin]]){
   assert.match(html,/api\/v2\/auth\/login/,`${name} must use relative same-origin WebAPI login`);
-  assert.match(html,/session-contract\.js\?v=__WEIGG_GIT_SHA__/,`${name} must consume the shared Session Contract`);
+  assert.match(html,/session-contract\.js\?v=__WEIG_GIT_SHA__/,`${name} must consume the shared Session Contract`);
   assert.doesNotMatch(html,/[A-Za-z]:\\|\/config\/weig_qb-webui/,`${name} must not embed OS/deployment-specific paths`);
 }
 assert.equal(publicIndex,publicLogin,'both qB public login entry filenames must have identical Session Contract behavior');
