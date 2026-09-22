@@ -23,7 +23,7 @@ assert(privateIcon.equals(publicIcon),'public/private Wei.G icon copies must rem
 assert(privateIcon.length>100&&privateIcon.subarray(0,8).equals(Buffer.from([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a])),'Wei.G icon asset must contain the expected PNG payload');
 assert(brand.includes("var ICON='assets/Wei.G.ico'"),'Brand owner must use the local Wei.G asset');
 for(const [name,source] of [['public/index.html',login],['public/login.html',loginAlias]]){
-  assert(source.includes('href="assets/Wei.G.ico?v=brand-1"'),`${name} favicon must use the canonical local Wei.G.ico asset`);
+  assert(source.includes('href="assets/Wei.G.ico?v=__WEIG_GIT_SHA__"'),`${name} favicon must use the canonical local Wei.G.ico asset`);
   assert(source.includes('src="assets/Wei.G.ico"'),`${name} brand image must keep the existing local Wei.G asset`);
   assert(!source.includes('favicon.svg'),`${name} must not reference the retired generated favicon.svg`);
 }
@@ -47,7 +47,7 @@ assert(appCss.includes('.virtual-list__spacer{position:relative;width:100%;min-w
 assert(appCss.includes('.status-pill{display:inline-flex;align-items:center;justify-content:center;width:max-content'),'Canonical status pills must center their content without log-specific fixed widths');
 assert(!/(^|})\.virtual-list \.virtual-row\{display:grid;grid-template-columns:/.test(appCss),'Generic VirtualList must not impose detail row columns on Logs');
 assert(!appCss.includes('#detail-content .virtual-list .virtual-row{display:grid;grid-template-columns:'),'Legacy Detail virtual-row columns must stay retired so Shared Detail is the only detail table geometry owner');
-assert(tableCss.includes('.shared-table__head,.shared-table__row{display:grid;align-items:center;min-width:max-content;grid-template-columns:var(--weigg-detail-grid-template)}'),'Shared Detail header and rows must retain one canonical column geometry outside generic VirtualList CSS');
+assert(tableCss.includes('.shared-table__head,.shared-table__row{display:grid;align-items:center;min-width:max-content;grid-template-columns:var(--weig-detail-grid-template)}'),'Shared Detail header and rows must retain one canonical column geometry outside generic VirtualList CSS');
 assert(!appCss.includes('.virtual-list .virtual-row:not(.torrent-mobile-card)>:nth-child(3){display:none}'),'Mobile third-column hiding must not apply to every VirtualList row');
 assert(!appCss.includes('#detail-content .virtual-list .virtual-row>:nth-child(3){display:none}'),'Legacy mobile Detail third-column hiding must stay retired with the old virtual-row layout owner');
 assert(!tableCss.includes('.shared-table__row>:nth-child(3){display:none}'),'Shared Detail mobile layout must not discard source columns by positional nth-child rules');

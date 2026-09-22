@@ -29,9 +29,9 @@ assert(theme.includes('::-webkit-scrollbar-button{display:none;width:0;height:0}
 assert(/@media\(max-width:820px\)[\s\S]*::-webkit-scrollbar\{width:7px;height:7px\}/.test(theme),'Mobile scrollbar must use the slimmer presentation');
 
 assert(core.includes("this.staticHead=options.staticHead||((this.el.id==='torrent-list')?document.getElementById('torrent-table-head'):null)"),'Torrent header and rows must share one native scroll owner');
-assert(core.includes('self.el.__weiggVirtualScrollLeft=left')&&core.includes('if(!vertical||self._rendering||self.el.__weiggVirtualScrollFrame)return'),'VirtualList may remember horizontal position, but pure horizontal native scrollbar motion must not rebuild rows');
+assert(core.includes('self.el.__weigVirtualScrollLeft=left')&&core.includes('if(!vertical||self._rendering||self.el.__weigVirtualScrollFrame)return'),'VirtualList may remember horizontal position, but pure horizontal native scrollbar motion must not rebuild rows');
 assert(!core.includes('Math.max(0,this.el.scrollWidth-this.el.clientWidth)'),'Horizontal scroll must not be repaired after row reconstruction; the native scroll owner keeps scrollLeft continuously');
 assert(!/function renderList\(\)\{var list=U\.\$\('torrent-list'\),items=app\.torrents;list\.textContent='';/.test(app),'App renderList must not clear the horizontal scroll owner before VirtualList can preserve native ownership');
-assert(core.includes("W.VirtualList.prototype.resetScroll=function(){this.el.__weiggVirtualScrollTop=0;this._lastScrollTop=0;this.el.scrollTop=0;this._lastRange='';this.render(true);}"),'Semantic filter/page reset remains vertical-only and must not reset user horizontal position');
+assert(core.includes("W.VirtualList.prototype.resetScroll=function(){this.el.__weigVirtualScrollTop=0;this._lastScrollTop=0;this.el.scrollTop=0;this._lastRange='';this.render(true);}"),'Semantic filter/page reset remains vertical-only and must not reset user horizontal position');
 
 console.log('Navigation/scrollbar contract passed: standalone Search nav retired, themed scrollbars remain canonical, and torrent header/rows share native horizontal scroll ownership without VirtualList rebuild repair.');
