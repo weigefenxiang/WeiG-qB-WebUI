@@ -16,16 +16,16 @@ const css=read('webui/private/css/logs.css');
 const appCss=read('webui/private/css/app.css');
 const tableCss=read('webui/private/css/table.css');
 const core=read('webui/private/scripts/core.js');
-const publicIcon=bytes('webui/public/assets/Wei.G.ico');
+const publicMark=bytes('webui/public/assets/Wei.G.png');
 
-assert(!fs.existsSync(path.join(root,'webui/private/assets/Wei.G.ico')),'retired private Wei.G icon duplicate must stay absent');
-assert(publicIcon.length>100&&publicIcon.readUInt16LE(0)===0&&publicIcon.readUInt16LE(2)===1,'Wei.G icon asset must be a valid ICO container');
-const iconCount=publicIcon.readUInt16LE(4),iconSizes=[];for(let i=0;i<iconCount;i++){const off=6+i*16,w=publicIcon[off]||256,h=publicIcon[off+1]||256;iconSizes.push(w+'x'+h);}assert(iconCount===3&&iconSizes.join(',')==='16x16,32x32,48x48','Wei.G favicon must keep 16/32/48 ICO layers');
-assert(publicIcon.indexOf(Buffer.from([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a]))>=0,'Wei.G ICO must contain PNG-backed image layers');
-assert(brand.includes("var ICON='assets/Wei.G.ico'"),'Brand owner must use the local Wei.G asset');
+assert(!fs.existsSync(path.join(root,'webui/private/assets/Wei.G.ico'))&&!fs.existsSync(path.join(root,'webui/private/assets/Wei.G.png')),'private Wei.G asset duplicates must stay absent; authenticated qB requests fall back to the one public asset');
+assert(publicMark.length===7905,'canonical Wei.G PNG must keep the verified historical visible brand bytes');
+assert(publicMark.subarray(0,8).equals(Buffer.from([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a])),'Wei.G brand asset must be a real PNG, not image bytes mislabeled as ICO');
+assert(!fs.existsSync(path.join(root,'webui/public/assets/Wei.G.ico')),'damaged/blank ICO owner must stay retired once the canonical PNG is active');
+assert(brand.includes("var ICON='assets/Wei.G.png'"),'Brand owner must use the canonical local Wei.G PNG');
 for(const [name,source] of [['public/index.html',login],['public/login.html',loginAlias]]){
-  assert(source.includes('href="assets/Wei.G.ico?v=__WEIG_GIT_SHA__"'),`${name} favicon must use the canonical local Wei.G.ico asset`);
-  assert(source.includes('src="assets/Wei.G.ico"'),`${name} brand image must keep the existing local Wei.G asset`);
+  assert(source.includes('href="assets/Wei.G.png?v=__WEIG_GIT_SHA__"'),`${name} favicon must use the canonical local Wei.G.png asset`);
+  assert(source.includes('src="assets/Wei.G.png"'),`${name} brand image must keep the existing local Wei.G asset`);
   assert(!source.includes('favicon.svg'),`${name} must not reference the retired generated favicon.svg`);
 }
 function walk(dir){return fs.readdirSync(dir,{withFileTypes:true}).flatMap(entry=>{const p=path.join(dir,entry.name);return entry.isDirectory()?walk(p):[p];});}
