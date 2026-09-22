@@ -2,13 +2,13 @@ import assert from 'node:assert/strict';
 import {launchBrowser} from './browser-driver.mjs';
 import {atLeast} from '../simulator/core/profiles.js';
 
-const rawBase=(process.env.WEIGG_PAGES_URL||process.argv[2]||'').trim();
+const rawBase=(process.env.WEIG_PAGES_URL||process.argv[2]||'').trim();
 const expectedSha=(process.env.WEIGG_EXPECTED_SIMULATOR_SHA||process.argv[3]||'').trim();
 const mode=String(process.env.WEIGG_PAGES_PREF_MODE||'all').trim().toLowerCase();
 const shardTotal=Math.max(1,Number(process.env.WEIGG_PAGES_PREF_SHARD_TOTAL)||1);
 const shardIndex=Math.max(0,Number(process.env.WEIGG_PAGES_PREF_SHARD_INDEX)||0);
 const profileTimeoutMs=Math.max(10000,Number(process.env.WEIGG_PAGES_PROFILE_TIMEOUT_MS)||45000);
-assert.ok(rawBase,'WEIGG_PAGES_URL or argv[2] is required');
+assert.ok(rawBase,'WEIG_PAGES_URL or argv[2] is required');
 assert.ok(expectedSha,'WEIGG_EXPECTED_SIMULATOR_SHA or argv[3] is required');
 assert.ok(['all','anchor','shard'].includes(mode),`Unsupported WEIGG_PAGES_PREF_MODE ${mode}`);
 if(mode==='shard')assert.ok(shardIndex<shardTotal,`Preference shard index ${shardIndex} must be < shard total ${shardTotal}`);

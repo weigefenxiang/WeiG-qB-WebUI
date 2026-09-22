@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import {launchBrowser} from './browser-driver.mjs';
 
-const rawBase=(process.env.WEIGG_PAGES_URL||process.argv[2]||'').trim();
+const rawBase=(process.env.WEIG_PAGES_URL||process.argv[2]||'').trim();
 const expectedSha=(process.env.WEIGG_EXPECTED_SIMULATOR_SHA||process.argv[3]||'').trim();
-assert.ok(rawBase,'WEIGG_PAGES_URL or argv[2] is required');
+assert.ok(rawBase,'WEIG_PAGES_URL or argv[2] is required');
 assert.ok(expectedSha,'WEIGG_EXPECTED_SIMULATOR_SHA or argv[3] is required');
 const base=new URL(rawBase.endsWith('/')?rawBase:`${rawBase}/`);
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
