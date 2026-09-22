@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict';
 import {launchBrowser} from './browser-driver.mjs';
 
-const rawBase=(process.env.WEIGG_PAGES_URL||process.argv[2]||'').trim();
-const expectedSha=(process.env.WEIGG_EXPECTED_SIMULATOR_SHA||process.argv[3]||'').trim();
-const requestedMode=(process.env.WEIGG_RELEASE_PROFILE_MODE||'all').trim().toLowerCase();
-const laneTimeoutMs=Math.max(30000,Number(process.env.WEIGG_RELEASE_PROFILE_LANE_TIMEOUT_MS||210000)||210000);
-assert.ok(rawBase,'WEIGG_PAGES_URL or argv[2] is required');
-assert.ok(expectedSha,'WEIGG_EXPECTED_SIMULATOR_SHA or argv[3] is required');
-assert.ok(['all','floor','latest','settings'].includes(requestedMode),`Unsupported WEIGG_RELEASE_PROFILE_MODE ${requestedMode}`);
+const rawBase=(process.env.WEIG_PAGES_URL||process.argv[2]||'').trim();
+const expectedSha=(process.env.WEIG_EXPECTED_SIMULATOR_SHA||process.argv[3]||'').trim();
+const requestedMode=(process.env.WEIG_RELEASE_PROFILE_MODE||'all').trim().toLowerCase();
+const laneTimeoutMs=Math.max(30000,Number(process.env.WEIG_RELEASE_PROFILE_LANE_TIMEOUT_MS||210000)||210000);
+assert.ok(rawBase,'WEIG_PAGES_URL or argv[2] is required');
+assert.ok(expectedSha,'WEIG_EXPECTED_SIMULATOR_SHA or argv[3] is required');
+assert.ok(['all','floor','latest','settings'].includes(requestedMode),`Unsupported WEIG_RELEASE_PROFILE_MODE ${requestedMode}`);
 const base=new URL(rawBase.endsWith('/')?rawBase:`${rawBase}/`);
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 
