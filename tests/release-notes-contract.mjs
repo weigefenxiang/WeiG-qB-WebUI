@@ -50,6 +50,7 @@ try{
 const workflow=fs.readFileSync(new URL('../.github/workflows/release.yml',import.meta.url),'utf8');
 assert.ok(workflow.includes('fetch-depth: 0'),'Release checkout must fetch tag history for deterministic range resolution');
 assert.ok(workflow.includes('node tools/release-notes.mjs'),'Release workflow must consume the unique release-note generator');
+assert.ok(workflow.includes('--to "$RELEASE_SHA"')&&workflow.includes('--current-tag "$GITHUB_REF_NAME"'),'Release workflow must bind note generation to the exact release SHA and current tag identity.');
 assert.ok(workflow.includes('--notes-file release-notes.md'),'Release publication must consume the generated notes file');
 assert.ok(!workflow.includes('--generate-notes'),'GitHub generated notes must be retired as a second owner');
 assert.ok(!/\s--notes\s/.test(workflow),'static inline release notes must be retired as a second owner');
