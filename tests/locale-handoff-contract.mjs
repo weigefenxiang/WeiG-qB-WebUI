@@ -8,6 +8,7 @@ const read=relative=>fs.readFileSync(new URL(`../${relative}`,import.meta.url),'
 const i18nSource=read('webui/private/scripts/i18n.js');
 const settingsSource=read('webui/private/scripts/settings.js');
 const sessionSource=read('webui/private/scripts/session.js');
+const migrationSource=read('webui/public/storage-migration.js');
 const runnerSource=read('tests/real-qb-locale-runner.sh');
 const harnessSource=read('tests/real-qb-locale-harness.mjs');
 const lkg=JSON.parse(read('tools/data/qb-locale-lkg.json'));
@@ -35,9 +36,11 @@ assert.ok(harnessSource.includes("requireStatus(login,'auth/login',[200,204])"),
 assert.ok(harnessSource.includes('version!==expectedVersion')&&harnessSource.includes('Expected exact qB ${expectedVersion}, got ${version}.'),'403 readiness must never replace authenticated exact-version verification');
 
 const LEGACY_HANDOFF_KEY='weigg.localeHandoff.v1';
-const BOOTSTRAP_KEY='weigg.localeBootstrap.v2';
+const BOOTSTRAP_KEY='weig.localeBootstrap';
 class Storage{
   constructor(initial={}){this.map=new Map(Object.entries(initial).map(([k,v])=>[k,String(v)]));}
+  get length(){return this.map.size;}
+  key(i){return [...this.map.keys()][i]??null;}
   getItem(k){return this.map.has(k)?this.map.get(k):null;}
   setItem(k,v){this.map.set(k,String(v));}
   removeItem(k){this.map.delete(k);}
@@ -56,7 +59,7 @@ class VirtualClient{
 }
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const escapeHtml=value=>String(value).replaceAll('&','&amp;').replaceAll('"','&quot;').replaceAll('<','&lt;').replaceAll('>','&gt;');
-const localeHtmlFor=values=>`<select id="weigg-qb-locale-options">${values.map(value=>`<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join('')}</select>`;
+const localeHtmlFor=values=>`<select id="weig-qb-locale-options">${values.map(value=>`<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join('')}</select>`;
 const localeHtml=localeHtmlFor(stableLocales);
 const legacySpecial=lkg.profiles.find(item=>item.qbVersion==='4.1.9.1');
 const legacySpecialLocales=lkg.localeSets[legacySpecial.localeSet];
@@ -89,6 +92,7 @@ async function makeRuntime(browserLanguages,prefs={locale:'ja',alternative_webui
   const fetch=async()=>{if(options.localeProbeError)throw new Error('simulated locale probe failure');var body=Object.hasOwn(options,'localeHtml')?options.localeHtml:localeHtml;return{ok:true,status:200,text:async()=>body,json:async()=>({})};};
   class CustomEvent{constructor(type,init){this.type=type;this.detail=init?.detail;}}
   const context={window,document,localStorage,sessionStorage,location,CustomEvent,Intl,JSON,Promise,Date,setTimeout,clearTimeout,console,fetch};
+  vm.runInNewContext(migrationSource,context,{filename:'storage-migration.js'});
   vm.runInNewContext(i18nSource,context,{filename:'i18n.js'});
   await window.WeiG.I18n.loadLocaleOptions();
   const appState={client,preferences:{...initialPrefs}};
@@ -132,9 +136,9 @@ for(const qbVersion of ['4.6.7','5.2.0']){
 }
 assert.ok(settingsSource.includes('var settingOptionProviders={locale:')&&settingsSource.includes('function canonicalSettingOptions(key)')&&settingsSource.includes("W.I18n&&W.I18n.settingOptions?W.I18n.settingOptions('locale'):null"),'Settings must consume W.I18n through one canonical Settings option-provider registry.');
 assert.ok(settingsSource.includes('hasCanonicalSettingProvider(item.preferenceKey)')&&settingsSource.includes("await readyCanonicalSettingOptions('locale')"),'source-native Behavior locale must never launch a second runtime options request and Settings open must wait for the canonical locale provider.');
-assert.ok(settingsSource.includes("global.addEventListener('weigg:setting-optionschange'")&&settingsSource.includes("e.detail.key!=='locale'"),'an already-open Settings route must reconcile in place when the canonical locale options revision changes.');
+assert.ok(settingsSource.includes("global.addEventListener('weig:setting-optionschange'")&&settingsSource.includes("e.detail.key!=='locale'"),'an already-open Settings route must reconcile in place when the canonical locale options revision changes.');
 {
-  const runtime=await makeRuntime(['zh-CN'],{locale:'zh',alternative_webui_enabled:true},{sourceLocales:legacySpecialLocales,qbVersion:'4.1.9.1',compatQbVersion:'4.1.9',resolutionMode:'EQUIVALENT',localeHtml:'<select id="weigg-qb-locale-options">${LANGUAGE_OPTIONS}</select>'});
+  const runtime=await makeRuntime(['zh-CN'],{locale:'zh',alternative_webui_enabled:true},{sourceLocales:legacySpecialLocales,qbVersion:'4.1.9.1',compatQbVersion:'4.1.9',resolutionMode:'EQUIVALENT',localeHtml:'<select id="weig-qb-locale-options">${LANGUAGE_OPTIONS}</select>'});
   const evidence=runtime.window.WeiG.I18n.localeInventoryEvidence();
   assert.equal(evidence.classification,'TEMPLATE_UNRESOLVED');
   assert.equal(evidence.selectedOwner,'source-baseline');
@@ -248,7 +252,8 @@ for(const locale of stableLocales){
   assert.equal(bootstrapRecord(storage).initialized,true,'successful retry must replace pending state with completed bootstrap metadata');
 }
 
-assert.ok(sessionSource.includes("BOOTSTRAP_KEY='weigg.localeBootstrap.v2'")&&sessionSource.includes("LEGACY_HANDOFF_KEY='weigg.localeHandoff.v1'"),'Session must use one-way locale bootstrap metadata and explicitly retire the old reversible handoff key');
+assert.ok(sessionSource.includes("BOOTSTRAP_KEY=(W.StorageKeys&&W.StorageKeys.localeBootstrap)||'weig.localeBootstrap'"),'Session must consume the stable schema-backed locale bootstrap key');
+assert.ok(migrationSource.includes("localStorage.removeItem('weigg.localeHandoff.v1')")&&migrationSource.includes("move(localStorage,'weigg.localeBootstrap.v2',K.localeBootstrap)"),'legacy reversible handoff/bootstrap keys must be owned only by the one-way storage migration layer');
 assert.ok(sessionSource.includes('W.I18n.matchBrowserLocale')&&sessionSource.includes('W.I18n.sameQbLocale')&&sessionSource.includes('W.I18n.hasExactLocale'),'Session lifecycle must consume the canonical W.I18n locale matcher instead of duplicating normalization');
 assert.ok(sessionSource.includes('await client.setPreferences({locale:target})')&&sessionSource.includes('var verified=await client.getPreferences()'),'browser locale initialization must write qB preferences.locale and verify by reread');
 assert.ok(sessionSource.includes("bootstrapRecord('write-pending',target,current,false)"),'write-pending metadata must remain retryable and must not be marked initialized before verification');
