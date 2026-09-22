@@ -231,7 +231,7 @@ jobs:
       matrix:
         qb: ['4.1.9', '4.1.9.1']
     env:
-      WEIGG_BROWSER_CHANNEL: chrome
+      WEIG_BROWSER_CHANNEL: chrome
       WEIG_GFM_RUNTIME_INDEX: runtime-index/linuxserver-tags.json
       WEIG_REAL_QB_EVIDENCE_DIR: artifacts/session-handshake
     steps:
@@ -307,7 +307,7 @@ jobs:
           - name: settings-fidelity
             script: tests/browser-settings-fidelity.mjs
     env:
-      WEIGG_BROWSER_CHANNEL: chrome
+      WEIG_BROWSER_CHANNEL: chrome
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -343,10 +343,10 @@ jobs:
       matrix:
         shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
     env:
-      WEIGG_BROWSER_CHANNEL: chrome
-      WEIGG_SETTINGS_SHARD_COUNT: '16'
-      WEIGG_SETTINGS_SHARD_INDEX: ${{ matrix.shard }}
-      WEIGG_SETTINGS_MATRIX_OUTPUT: settings-browser-shard-${{ matrix.shard }}.json
+      WEIG_BROWSER_CHANNEL: chrome
+      WEIG_SETTINGS_SHARD_COUNT: '16'
+      WEIG_SETTINGS_SHARD_INDEX: ${{ matrix.shard }}
+      WEIG_SETTINGS_MATRIX_OUTPUT: settings-browser-shard-${{ matrix.shard }}.json
     steps:
       - uses: actions/checkout@v7
         with:
@@ -870,7 +870,7 @@ jobs:
     runs-on: ubuntu-24.04
     needs: smoke
     env:
-      WEIGG_BROWSER_CHANNEL: chrome
+      WEIG_BROWSER_CHANNEL: chrome
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -905,7 +905,7 @@ jobs:
     runs-on: windows-2025
     needs: smoke
     env:
-      WEIGG_BROWSER_CHANNEL: chrome
+      WEIG_BROWSER_CHANNEL: chrome
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -988,10 +988,10 @@ jobs:
             --version="$VERSION"
           mkdir -p release
           cp "$RUNNER_TEMP/candidate-dist/WeiG-qB-WebUI.zip" release/WeiG-qB-WebUI.zip
-          cp "$RUNNER_TEMP/candidate-dist/install.sh" release/weigg-install.sh
-          cp "$RUNNER_TEMP/candidate-dist/install.ps1" release/weigg-install.ps1
-          chmod 0755 release/weigg-install.sh
-          (cd release && sha256sum WeiG-qB-WebUI.zip weigg-install.sh weigg-install.ps1 > SHA256SUMS)
+          cp "$RUNNER_TEMP/candidate-dist/install.sh" release/weig-install.sh
+          cp "$RUNNER_TEMP/candidate-dist/install.ps1" release/weig-install.ps1
+          chmod 0755 release/weig-install.sh
+          (cd release && sha256sum WeiG-qB-WebUI.zip weig-install.sh weig-install.ps1 > SHA256SUMS)
           printf '%s\n' "$GITHUB_SHA" > release/CANDIDATE_SHA
           test "$(unzip -p release/WeiG-qB-WebUI.zip WeiG-qB-WebUI/GIT_SHA | tr -d '\r\n')" = "$GITHUB_SHA"
           test "$(unzip -p release/WeiG-qB-WebUI.zip WeiG-qB-WebUI/VERSION | tr -d '\r\n')" = "$VERSION"
@@ -1010,8 +1010,8 @@ jobs:
             release/WeiG-qB-WebUI.zip
             release/SHA256SUMS
             release/CANDIDATE_SHA
-            release/weigg-install.sh
-            release/weigg-install.ps1
+            release/weig-install.sh
+            release/weig-install.ps1
           if-no-files-found: error
           retention-days: 90
       - name: Dispatch isolated candidate deployment acceptance

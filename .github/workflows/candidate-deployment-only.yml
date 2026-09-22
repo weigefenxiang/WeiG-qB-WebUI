@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
-      WEIGG_BROWSER_CHANNEL: chrome
+      WEIG_BROWSER_CHANNEL: chrome
     steps:
       - name: Checkout current validation policy
         uses: actions/checkout@v7
@@ -122,7 +122,7 @@ jobs:
       - name: Candidate deployment syntax
         run: |
           bash -n tests/candidate-deployment.sh
-          bash -n candidate-artifact/weigg-install.sh
+          bash -n candidate-artifact/weig-install.sh
           node --check tests/installer-lifecycle-browser.mjs
       - name: Deploy exact candidate to official qB and Chrome
         shell: bash

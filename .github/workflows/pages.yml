@@ -19,8 +19,8 @@ env:
   # workflow_dispatch is deliberately run on dev/main itself. For this event GitHub sets
   # GITHUB_SHA/github.sha to the selected ref's commit, so deploy-pages pages_build_version
   # and WeiG source identity are the same exact SHA. Do not restore workflow_run here.
-  WEIGG_PAGES_SOURCE_SHA: ${{ github.sha }}
-  WEIGG_PAGES_SOURCE_BRANCH: ${{ github.ref_name }}
+  WEIG_PAGES_SOURCE_SHA: ${{ github.sha }}
+  WEIG_PAGES_SOURCE_BRANCH: ${{ github.ref_name }}
 
 jobs:
   build:
@@ -30,7 +30,7 @@ jobs:
       - name: Checkout exact WeiG source
         uses: actions/checkout@v6
         with:
-          ref: ${{ env.WEIGG_PAGES_SOURCE_SHA }}
+          ref: ${{ env.WEIG_PAGES_SOURCE_SHA }}
           fetch-depth: 0
           persist-credentials: false
 
@@ -55,7 +55,7 @@ jobs:
           node tools/qb-settings-translation-artifact.mjs \
             --repo="$GITHUB_REPOSITORY" \
             --branch=dev \
-            --source-sha="$WEIGG_PAGES_SOURCE_SHA" \
+            --source-sha="$WEIG_PAGES_SOURCE_SHA" \
             --out="$RUNNER_TEMP/qb-settings-translation-lkg.json" \
             --certified-only
           test -s "$RUNNER_TEMP/qb-settings-translation-lkg.json"
@@ -65,11 +65,11 @@ jobs:
         run: |
           set -euo pipefail
           test "$GITHUB_REF_NAME" = "dev"
-          test "$(git rev-parse HEAD)" = "$WEIGG_PAGES_SOURCE_SHA"
+          test "$(git rev-parse HEAD)" = "$WEIG_PAGES_SOURCE_SHA"
 
           git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
 
-          DEV_SHA="$WEIGG_PAGES_SOURCE_SHA"
+          DEV_SHA="$WEIG_PAGES_SOURCE_SHA"
           MAIN_SHA="$(git rev-parse refs/remotes/origin/main)"
           DEV_VERSION="$(git show "$DEV_SHA":VERSION | tr -d '\r\n')"
           MAIN_VERSION="$(git show refs/remotes/origin/main:VERSION | tr -d '\r\n')"
@@ -104,7 +104,7 @@ jobs:
             --out="$RUNNER_TEMP/virtual-qb-site" \
             --catalog="$RUNNER_TEMP/qb-releases.json" \
             --settings-translation-lkg="$RUNNER_TEMP/qb-settings-translation-lkg.json" \
-            --simulator-sha="$WEIGG_PAGES_SOURCE_SHA" \
+            --simulator-sha="$WEIG_PAGES_SOURCE_SHA" \
             --dev-webui="$RUNNER_TEMP/weig-dev-webui" \
             --dev-sha="$DEV_SHA" \
             --dev-version="$DEV_VERSION" \
@@ -124,7 +124,7 @@ jobs:
 
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
-          const sha=process.env.WEIGG_PAGES_SOURCE_SHA;
+          const sha=process.env.WEIG_PAGES_SOURCE_SHA;
           const site=JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/virtual-qb-site/metadata/site.json`,'utf8'));
           const dev=JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/virtual-qb-site/dev/app/virtual-qb-build.json`,'utf8'));
           const catalog=JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/virtual-qb-site/metadata/qb-releases.json`,'utf8'));
@@ -139,7 +139,7 @@ jobs:
       - name: Publish exact reusable dev Pages site
         uses: actions/upload-artifact@v6
         with:
-          name: virtual-qb-pages-site-${{ env.WEIGG_PAGES_SOURCE_SHA }}
+          name: virtual-qb-pages-site-${{ env.WEIG_PAGES_SOURCE_SHA }}
           path: ${{ runner.temp }}/virtual-qb-site
           if-no-files-found: error
           retention-days: 14
@@ -166,7 +166,7 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-          EXACT_SHA: ${{ env.WEIGG_PAGES_SOURCE_SHA }}
+          EXACT_SHA: ${{ env.WEIG_PAGES_SOURCE_SHA }}
         run: |
           set -euo pipefail
           test "$GITHUB_REF_NAME" = "dev"
@@ -247,24 +247,24 @@ jobs:
           - {name: preferences-8, script: tests/pages-live-preferences.mjs, pref_mode: shard, pref_index: '8', pref_total: '10', release_mode: none}
           - {name: preferences-9, script: tests/pages-live-preferences.mjs, pref_mode: shard, pref_index: '9', pref_total: '10', release_mode: none}
     env:
-      WEIGG_BROWSER_CHANNEL: chrome
-      WEIGG_BROWSER_FETCH_TIMEOUT_MS: '15000'
-      WEIGG_PAGES_PROFILE_TIMEOUT_MS: '45000'
-      WEIGG_RELEASE_PROFILE_LANE_TIMEOUT_MS: '210000'
-      WEIGG_PAGES_URL: ${{ needs.deploy.outputs.page_url }}
-      WEIGG_EXPECTED_SIMULATOR_SHA: ${{ github.sha }}
-      WEIGG_VERIFY_SCRIPT: ${{ matrix.script }}
-      WEIGG_RELEASE_PROFILE_MODE: ${{ matrix.release_mode }}
-      WEIGG_SERVICES_CORE_MODE: ${{ matrix.service_mode }}
-      WEIGG_PAGES_SESSION_TIMEOUT_MS: '20000'
-      WEIGG_PAGES_PREF_MODE: ${{ matrix.pref_mode }}
-      WEIGG_PAGES_PREF_SHARD_INDEX: ${{ matrix.pref_index }}
-      WEIGG_PAGES_PREF_SHARD_TOTAL: ${{ matrix.pref_total }}
+      WEIG_BROWSER_CHANNEL: chrome
+      WEIG_BROWSER_FETCH_TIMEOUT_MS: '15000'
+      WEIG_PAGES_PROFILE_TIMEOUT_MS: '45000'
+      WEIG_RELEASE_PROFILE_LANE_TIMEOUT_MS: '210000'
+      WEIG_PAGES_URL: ${{ needs.deploy.outputs.page_url }}
+      WEIG_EXPECTED_SIMULATOR_SHA: ${{ github.sha }}
+      WEIG_VERIFY_SCRIPT: ${{ matrix.script }}
+      WEIG_RELEASE_PROFILE_MODE: ${{ matrix.release_mode }}
+      WEIG_SERVICES_CORE_MODE: ${{ matrix.service_mode }}
+      WEIG_PAGES_SESSION_TIMEOUT_MS: '20000'
+      WEIG_PAGES_PREF_MODE: ${{ matrix.pref_mode }}
+      WEIG_PAGES_PREF_SHARD_INDEX: ${{ matrix.pref_index }}
+      WEIG_PAGES_PREF_SHARD_TOTAL: ${{ matrix.pref_total }}
     steps:
       - name: Checkout exact WeiG source
         uses: actions/checkout@v6
         with:
-          ref: ${{ env.WEIGG_PAGES_SOURCE_SHA }}
+          ref: ${{ env.WEIG_PAGES_SOURCE_SHA }}
           fetch-depth: 1
           persist-credentials: false
 
@@ -282,14 +282,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$GITHUB_SHA" = "$WEIGG_PAGES_SOURCE_SHA"
+          test "$GITHUB_SHA" = "$WEIG_PAGES_SOURCE_SHA"
           node -e "console.log('Playwright ' + require('playwright/package.json').version)"
           google-chrome --version
           echo "Pages build/deployment version: $GITHUB_SHA"
-          echo "Verify shard: ${{ matrix.name }} -> $WEIGG_VERIFY_SCRIPT (release-mode=$WEIGG_RELEASE_PROFILE_MODE service-mode=${WEIGG_SERVICES_CORE_MODE:-none})"
+          echo "Verify shard: ${{ matrix.name }} -> $WEIG_VERIFY_SCRIPT (release-mode=$WEIG_RELEASE_PROFILE_MODE service-mode=${WEIG_SERVICES_CORE_MODE:-none})"
 
       - name: Verify deployed Virtual qB Pages runtime (${{ matrix.name }})
         shell: bash
         run: |
           set -euo pipefail
-          timeout --signal=TERM --kill-after=10s 240s node "$WEIGG_VERIFY_SCRIPT"
+          timeout --signal=TERM --kill-after=10s 240s node "$WEIG_VERIFY_SCRIPT"
