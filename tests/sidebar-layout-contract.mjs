@@ -13,10 +13,10 @@ const filterView=read('webui/private/scripts/torrent-filter-view.js');
 const spatial=read('webui/private/scripts/spatial.js');
 const transfer=read('webui/private/scripts/transfer.js');
 
-assert(layout.includes("SIDEBAR_KEY='weigg.sidebarCollapsed'"),'Desktop sidebar collapse preference must have one explicit UI-state owner');
+assert(layout.includes("SIDEBAR_KEY=(W.StorageKeys&&W.StorageKeys.sidebar)||'weig.sidebarCollapsed'"),'Desktop sidebar collapse preference must have one stable UI-state owner');
 assert(layout.includes('setSidebarCollapsed')&&layout.includes("dataset.sidebarCollapsed"),'LayoutRuntime must project one collapse state into layout');
 assert(layout.includes("W.Transfer.mountCompactChart")&&layout.includes('W.TransferRuntime.last'),'Desktop sidebar must reuse canonical transfer chart/history and current rates');
-assert(layout.includes("addEventListener('weigg:transfer',paintSidebarRates)"),'Sidebar rate text must follow the canonical transfer event');
+assert(layout.includes("addEventListener('weig:transfer',paintSidebarRates)"),'Sidebar rate text must follow the canonical transfer event');
 assert(!layout.includes('setInterval(')&&!layout.includes('fetch('),'Desktop sidebar presentation must add no polling or HTTP requests');
 assert(layout.includes("link.href='css/sidebar.css'+suffix")&&layout.includes("searchParams.get('v')"),'Sidebar stylesheet must inherit the exact loaded asset cache identity');
 
