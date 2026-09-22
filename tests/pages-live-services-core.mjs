@@ -28,7 +28,7 @@ async function waitForSha(){
 }
 
 async function sessionDiagnostics(page){
-  try{return await page.evaluate(()=>({url:location.href,readyState:document.readyState,bootstrap:document.documentElement.dataset.weiggBootstrap||'',loginVisible:!!document.querySelector('#login-form')&&!document.querySelector('#login-form')?.hidden,torrentList:!!document.querySelector('#torrent-list'),fatalVisible:!!document.querySelector('#fatal:not(.is-hidden)'),body:String(document.body?.innerText||'').replace(/\s+/g,' ').slice(0,240)}));}
+  try{return await page.evaluate(()=>({url:location.href,readyState:document.readyState,bootstrap:document.documentElement.dataset.weigBootstrap||'',loginVisible:!!document.querySelector('#login-form')&&!document.querySelector('#login-form')?.hidden,torrentList:!!document.querySelector('#torrent-list'),fatalVisible:!!document.querySelector('#fatal:not(.is-hidden)'),body:String(document.body?.innerText||'').replace(/\s+/g,' ').slice(0,240)}));}
   catch(error){return{url:page.url(),diagnosticError:error?.message||String(error)};}
 }
 
@@ -37,7 +37,7 @@ async function waitForSessionEntry(page){
     if(document.querySelector('#torrent-list'))return'private';
     const login=document.querySelector('#login-form'),style=login&&getComputedStyle(login);
     if(login&&!login.hidden&&style?.display!=='none'&&style?.visibility!=='hidden')return'login';
-    if(document.querySelector('#fatal:not(.is-hidden)')||document.documentElement.dataset.weiggBootstrap==='failed')return'failed';
+    if(document.querySelector('#fatal:not(.is-hidden)')||document.documentElement.dataset.weigBootstrap==='failed')return'failed';
     return'';
   },null,{timeout:sessionTimeout});
   return handle.jsonValue();
@@ -212,10 +212,10 @@ try{
 
     const stopped=page.locator('#rss-rules-dialog [data-rss-rule-key="stopped"] .ui-select__trigger');
     await stopped.waitFor({state:'visible',timeout:30000});await stopped.click();
-    await page.locator('#rss-rules-dialog .weigg-floating-layer--dialog .ui-select__option[data-value="1"]').click();
+    await page.locator('#rss-rules-dialog .weig-floating-layer--dialog .ui-select__option[data-value="1"]').click();
     const layout=page.locator('#rss-rules-dialog [data-rss-rule-key="layout"] .ui-select__trigger');
     await layout.waitFor({state:'visible',timeout:30000});await layout.click();
-    await page.locator('#rss-rules-dialog .weigg-floating-layer--dialog .ui-select__option[data-value="2"]').click();
+    await page.locator('#rss-rules-dialog .weig-floating-layer--dialog .ui-select__option[data-value="2"]').click();
     await page.locator('#rss-rules-dialog [data-rss-rule-save="1"]').click();
     await page.waitForFunction(name=>window.WeiG?.RSSRules?.state?.().rules?.includes(name)&&window.WeiG?.RSSRules?.state?.().newDraft===false,ruleName,{timeout:30000});
     response=await api(page,'rss/rules');
@@ -236,8 +236,8 @@ try{
     assert.equal(await page.locator('#detail-content .shared-table__toolbar .btn--primary').count(),0,'Tracker source context actions must not be duplicated as Add/Edit/Remove/Copy top buttons');
     const trackerRow=page.locator('#detail-content .shared-table__row').last();
     await trackerRow.waitFor({state:'visible',timeout:30000});await trackerRow.click({button:'right'});
-    await page.waitForSelector('#weigg-floating-layer .ui-context-menu .ui-select__option',{state:'visible',timeout:30000});
-    assert.ok(await page.locator('#weigg-floating-layer .ui-context-menu .ui-select__option').count()>=2,'Tracker row context menu actions must remain available after retiring the duplicate toolbar');
+    await page.waitForSelector('#weig-floating-layer .ui-context-menu .ui-select__option',{state:'visible',timeout:30000});
+    assert.ok(await page.locator('#weig-floating-layer .ui-context-menu .ui-select__option').count()>=2,'Tracker row context menu actions must remain available after retiring the duplicate toolbar');
     await page.keyboard.press('Escape');
     assert.deepEqual(errors,[],`owner UI gate page errors:\n${errors.join('\n')}`);
     await context.close();
@@ -258,7 +258,7 @@ try{
     await page.locator('#rss-rules-dialog [data-rss-rule-collection-action="add"]').click();
     await page.locator('#rss-rules-dialog [data-rss-rule-field="name"]').fill('Legacy UI Rule');
     const stopped=page.locator('#rss-rules-dialog [data-rss-rule-key="stopped"] .ui-select__trigger');
-    await stopped.waitFor({state:'visible',timeout:30000});await stopped.click();await page.locator('#rss-rules-dialog .weigg-floating-layer--dialog .ui-select__option[data-value="1"]').click();
+    await stopped.waitFor({state:'visible',timeout:30000});await stopped.click();await page.locator('#rss-rules-dialog .weig-floating-layer--dialog .ui-select__option[data-value="1"]').click();
     assert.equal(await page.locator('#rss-rules-dialog [data-rss-rule-key="layout"]').count(),0,'qB 4.1.9.1 must not fabricate a Torrent Content Layout control absent from exact upstream source');
     await page.locator('#rss-rules-dialog [data-rss-rule-save="1"]').click();
     await page.waitForFunction(()=>window.WeiG?.RSSRules?.state?.().rules?.includes('Legacy UI Rule'),null,{timeout:30000});

@@ -204,7 +204,7 @@ async function emulateSourceTranslation(response,world,path){
   const contentType=response.headers.get('content-type');
   if(contentType)headers.set('content-type',contentType);
   headers.set('cache-control','no-store');
-  headers.set('x-weigg-qbt-emulation',result.mode);
+  headers.set('x-weig-qbt-emulation',result.mode);
   return new Response(result.text,{status:response.status,statusText:response.statusText,headers});
 }
 
@@ -243,7 +243,7 @@ async function handleNavigation(event,url){
 async function handleAsset(event,url){
   const {world}=await ensureWorld(event,url);
   const path=relativePath(url);
-  if(path==='weigg-install.json'){
+  if(path==='weig-install.json'){
     return new Response(JSON.stringify({
       version:'virtual-lab',gitSha:'pages-artifact',qbPath:'/virtual',hostPath:'/virtual',simulator:true,
       qbVersion:world.profile.qbVersion,webApiVersion:world.profile.webApiVersion,
@@ -266,14 +266,14 @@ async function handleApiQueued(event,url){
 
 self.addEventListener('message',event=>{
   const data=event.data||{};
-  if(data.type==='weigg-sim-reset'){
+  if(data.type==='weig-sim-reset'){
     event.waitUntil((async()=>{
       const id=String(data.id||DEFAULT_SESSION);
       await worlds.reset(id);
-      event.source?.postMessage?.({type:'weigg-sim-reset-complete',id});
+      event.source?.postMessage?.({type:'weig-sim-reset-complete',id});
     })());
   }
-  if(data.type==='weigg-sim-flush')event.waitUntil(worlds.flush(data.id));
+  if(data.type==='weig-sim-flush')event.waitUntil(worlds.flush(data.id));
 });
 
 self.addEventListener('fetch',event=>{

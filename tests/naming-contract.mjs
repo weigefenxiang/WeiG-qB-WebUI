@@ -27,7 +27,7 @@ const rootTextFiles=['DESIGN.md','README.md','package.json']
   .filter(file=>fs.existsSync(file));
 const auditFiles=[...new Set([...firstPartyFiles,...rootTextFiles])];
 
-const currentBrandRoots=['webui','tools','installers','docs','.github/workflows']
+const currentBrandRoots=['webui','simulator','tools','installers','docs','.github/workflows']
   .map(rel=>path.join(root,rel));
 const currentBrandFiles=[
   ...currentBrandRoots.flatMap(dir=>walk(dir)),

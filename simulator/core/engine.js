@@ -72,7 +72,7 @@ export const DEFAULT_PREFERENCES={
   web_ui_max_auth_fail_count:5,
   web_ui_ban_duration:3600,
   alternative_webui_enabled:true,
-  alternative_webui_path:'/config/weigg-qb-webui',
+  alternative_webui_path:'/config/weig-qb-webui',
   socket_receive_buffer_size:0,
   torrent_file_size_limit:104857600,
   upload_choking_algorithm:1

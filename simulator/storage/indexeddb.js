@@ -1,4 +1,4 @@
-const DB_NAME='weigg-virtual-qb';
+const DB_NAME='weig-virtual-qb';
 const DB_VERSION=1;
 const STORE='worlds';
 let dbPromise=null;

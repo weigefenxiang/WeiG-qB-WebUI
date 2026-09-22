@@ -60,7 +60,7 @@ function basic(value){return `Basic ${btoa(value)}`;}
   assert.equal(sessionForEvent(sessions,{clientId:'client-c'}),'sim-b','an explicit new virtual session must override inherited client identity');
   assert.deepEqual(sessionClientIds({clientId:'same',replacesClientId:'same',resultingClientId:'next'}),['same','next'],'client identity list must stay unique and ordered');
 
-  const handoffs=new Map(),handoffUrl='https://lab.example/index.html?__weigg_handoff=nonce-a';
+  const handoffs=new Map(),handoffUrl='https://lab.example/index.html?__weig_handoff=nonce-a';
   rememberHandoffSession(handoffs,handoffUrl,'sim-a',1000);
   assert.equal(sessionForHandoff(handoffs,handoffUrl,2000),'sim-a','canonical handoff nonce must recover the virtual world before the new client id is known');
   assert.equal(sessionForHandoff(handoffs,handoffUrl,122001),'','handoff recovery must expire instead of becoming a second durable session owner');
