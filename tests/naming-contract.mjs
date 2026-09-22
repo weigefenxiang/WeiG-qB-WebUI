@@ -27,6 +27,25 @@ const rootTextFiles=['DESIGN.md','README.md','package.json']
   .filter(file=>fs.existsSync(file));
 const auditFiles=[...new Set([...firstPartyFiles,...rootTextFiles])];
 
+const currentBrandRoots=['webui','tools','installers','docs','.github/workflows']
+  .map(rel=>path.join(root,rel));
+const currentBrandFiles=[
+  ...currentBrandRoots.flatMap(dir=>walk(dir)),
+  ...['README.md','ARCHITECTURE.md','DESIGN.md','package.json','package-lock.json']
+    .map(rel=>path.join(root,rel)).filter(file=>fs.existsSync(file))
+];
+const legacyBrandOwner='webui/public/storage-migration.js';
+const brandViolations=[];
+for(const file of currentBrandFiles){
+  const ext=path.extname(file).toLowerCase();
+  if(!textExtensions.has(ext))continue;
+  const rel=path.relative(root,file).replaceAll('\\','/');
+  if(rel===legacyBrandOwner)continue;
+  const source=fs.readFileSync(file,'utf8');
+  if(/weigg|WEIGG/.test(source))brandViolations.push(rel);
+}
+assert(brandViolations.length===0,`Current first-party identifiers must use weig/WEIG; legacy weigg tokens belong only to ${legacyBrandOwner}:\n${brandViolations.join('\n')}`);
+
 // Stable responsibility filenames may use docs ordering prefixes, but never WeiG/qB release labels.
 const versionedName=/(?:^|[-.])(?:v\d+(?:\.\d+)*|qb\d+)(?=[^0-9]|$)/i;
 const versionedPaths=auditFiles
