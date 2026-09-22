@@ -43,10 +43,10 @@ prepare_session_handshake_stage(){
     return 1
   fi
   while IFS= read -r -d '' file; do
-    sed -i "s/__WEIGG_GIT_SHA__/${WEIG_SHA}/g" "$file"
+    sed -i "s/__WEIG_GIT_SHA__/${WEIG_SHA}/g" "$file"
   done < <(find "$SESSION_STAGE" -type f \( -name '*.html' -o -name '*.js' -o -name '*.css' -o -name '*.json' -o -name 'GIT_SHA' \) -print0)
   printf '%s\n' "$WEIG_SHA" > "$SESSION_STAGE/GIT_SHA"
-  if grep -R -l --include='*.html' --include='*.js' --include='*.css' --include='*.json' --include='GIT_SHA' '__WEIGG_GIT_SHA__' "$SESSION_STAGE" | grep -q .; then
+  if grep -R -l --include='*.html' --include='*.js' --include='*.css' --include='*.json' --include='GIT_SHA' '__WEIG_GIT_SHA__' "$SESSION_STAGE" | grep -q .; then
     echo 'Session handshake staging still contains an unresolved Git SHA placeholder.' >&2
     return 1
   fi
