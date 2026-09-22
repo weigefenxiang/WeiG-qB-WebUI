@@ -4,7 +4,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {settingsTabRefs} from '../tools/qb-owned-ui-source.mjs';
 const here=path.dirname(fileURLToPath(import.meta.url)),root=path.resolve(here,'..'),read=p=>fs.readFileSync(path.join(root,p),'utf8');
-const index=read('webui/private/index.html'),appCss=read('webui/private/css/app.css'),layoutCss=read('webui/private/css/layout.css'),tableCss=read('webui/private/css/table.css'),settings=read('webui/private/scripts/settings.js'),i18n=read('webui/private/scripts/i18n.js'),login=read('webui/public/login.html'),publicIndex=read('webui/public/index.html'),entryLocale=read('webui/public/scripts/entry-locale.js');
+const index=read('webui/private/index.html'),app=read('webui/private/scripts/app.js'),appCss=read('webui/private/css/app.css'),layoutCss=read('webui/private/css/layout.css'),tableCss=read('webui/private/css/table.css'),settings=read('webui/private/scripts/settings.js'),i18n=read('webui/private/scripts/i18n.js'),login=read('webui/public/login.html'),publicIndex=read('webui/public/index.html'),entryLocale=read('webui/public/scripts/entry-locale.js');
 assert.match(index,/class="detail-hero[\s\S]*?data-i18n="detail\.eyebrow"[\s\S]*?id="detail-state"[\s\S]*?id="detail-title"[\s\S]*?class="detail-progress"/,'Detail four-corner nodes must share one direct hero owner.');
 assert.match(layoutCss,/grid-template-areas:"eyebrow state" "title progress"/,'desktop Detail must use the canonical 2x2 four-corner grid');
 for(const css of [appCss,tableCss])assert.doesNotMatch(css,/\.detail-hero\{[^}]*grid-template-areas|\.detail-status-stack\{/,'non-owner CSS must not retain Detail hero geometry');
@@ -34,4 +34,7 @@ assert.ok(i18n.includes('supported:Object.keys(dicts)'));assert.ok(entryLocale.i
 for(const key of ['settings.weig.interface.title','settings.weig.performance.title','settings.weig.language.title','settings.weig.theme.title'])for(const locale of ['en','zh-CN','zh-TW','zh-HK','ja','ko','de','fr','es','pt','ru'])assert.ok(i18n.includes('"'+key+'"')&&i18n.includes('"'+locale+'"'),'WeiG Settings key/locale matrix missing '+locale+' '+key);
 assert.equal(i18n.includes('settings.weigg'),false,'i18n namespace must use settings.weig.*, never settings.weigg.*');
 assert.ok(settings.includes("tr('settings.weig.interface.title')")&&settings.includes("tr('settings.weig.performance.title')"),'WeiG Settings renderer must consume key-based i18n');
+for(const key of ['detail.loading','detail.loadFailed','detail.virtualSummary'])for(const locale of ['en','zh-CN','zh-TW','zh-HK','ja','ko','de','fr','es','pt','ru'])assert.ok(i18n.includes('"'+key+'"')&&i18n.includes('"'+locale+'"'),'Detail runtime key/locale matrix missing '+locale+' '+key);
+assert.ok(app.includes("fallback=tr('detail.eyebrow')")&&app.includes("tr('detail.loading')")&&app.includes("tr('detail.loadFailed',{error:e.message})")&&app.includes("tr('detail.virtualSummary',{count:items.length})"),'Detail runtime fallback/loading/error/virtual copy must use key-based i18n');
+for(const retired of ['种子详情','正在加载…','加载失败：','仅挂载可视区域 DOM'])assert.equal(app.includes(retired),false,'Detail runtime must not retain Simplified-Chinese-only fallback copy: '+retired);
 console.log('Product entry/detail/native-copy contract passed.');
