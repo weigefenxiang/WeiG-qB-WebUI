@@ -4,7 +4,7 @@ set -eu
 REPO="weigefenxiang/WeiG-qB-WebUI"
 DEV_DIST_BASE="https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev"
 DEFAULT_DEST="${HOME}/.local/share/weig_qb-webui"
-DEST="${WEIGG_QB_WEBUI_DIR:-$DEFAULT_DEST}"
+DEST="${WEIG_QB_WEBUI_DIR:-$DEFAULT_DEST}"
 REQUESTED_DEST="$DEST"
 QBT_ROOT_FOLDER="$DEST"
 DEST_EXPLICIT=0
@@ -12,7 +12,7 @@ TARGETS=""
 TARGET_COUNT=0
 BACKUP_RETENTION=3
 MODE="install"
-CHANNEL="${WEIGG_QB_CHANNEL:-main}"
+CHANNEL="${WEIG_QB_CHANNEL:-main}"
 CHANNEL_EXPLICIT=""
 REQUEST_DEV=0
 RELEASE_VERSION=""
@@ -378,7 +378,7 @@ assert_materialized_webui() {
 
 inject_build_sha() {
   valid_sha "$SOURCE_SHA" || { echo "Unable to resolve a valid 40-character Git SHA for this payload." >&2; exit 1; }
-  find "$DEST.new" -type f \( -name '*.html' -o -name '*.js' -o -name '*.css' -o -name '*.json' -o -name 'GIT_SHA' \) -exec sed -i "s/__WEIGG_GIT_SHA__/$SOURCE_SHA/g" {} +
+  find "$DEST.new" -type f \( -name '*.html' -o -name '*.js' -o -name '*.css' -o -name '*.json' -o -name 'GIT_SHA' \) -exec sed -i "s/__WEIG_GIT_SHA__/$SOURCE_SHA/g" {} +
   printf '%s\n' "$SOURCE_SHA" > "$DEST.new/GIT_SHA"
 }
 
@@ -392,7 +392,7 @@ write_install_metadata() {
   meta_qb_path=$(json_escape "$QBT_ROOT_FOLDER")
   meta_host_path=$(json_escape "$DEST")
   meta_installed_at=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
-  cat > "$DEST.new/private/weigg-install.json" <<EOF_META
+  cat > "$DEST.new/private/weig-install.json" <<EOF_META
 {
   "version": "$meta_version",
   "gitSha": "$meta_git_sha",
@@ -569,12 +569,12 @@ configure_qb_webui_file() {
   [ -f "$cfg" ] || { echo "qBittorrent config does not exist: $cfg" >&2; return 1; }
   validate_qb_webui_config_file "$cfg" "$qb_root" 0 || return 1
 
-  backup="$cfg.weigg.bak"
+  backup="$cfg.weig.bak"
   cp -a "$cfg" "$backup"
   cmp -s "$cfg" "$backup" || { echo "qBittorrent safety backup is not byte-identical; refusing mutation." >&2; return 1; }
 
   cfg_dir=$(dirname "$cfg")
-  tmp_cfg=$(mktemp "$cfg_dir/.weigg-qb-config.XXXXXX")
+  tmp_cfg=$(mktemp "$cfg_dir/.weig-qb-config.XXXXXX")
   tmp_body="$tmp_cfg.body"
   cleanup_qb_tmp() { rm -f "$tmp_cfg" "$tmp_body"; }
   cp -p "$cfg" "$tmp_cfg" 2>/dev/null || cp "$cfg" "$tmp_cfg"
@@ -633,12 +633,12 @@ configure_qb_webui_file() {
   fi
 }
 
-if [ "${WEIGG_QB_CONFIG_TEST_ONLY:-0}" = "1" ]; then
-  [ -n "${WEIGG_QB_CONFIG_TEST_PATH:-}" ] && [ -n "${WEIGG_QB_CONFIG_TEST_ROOT:-}" ] || {
-    echo "WEIGG_QB_CONFIG_TEST_PATH and WEIGG_QB_CONFIG_TEST_ROOT are required in config test mode." >&2
+if [ "${WEIG_QB_CONFIG_TEST_ONLY:-0}" = "1" ]; then
+  [ -n "${WEIG_QB_CONFIG_TEST_PATH:-}" ] && [ -n "${WEIG_QB_CONFIG_TEST_ROOT:-}" ] || {
+    echo "WEIG_QB_CONFIG_TEST_PATH and WEIG_QB_CONFIG_TEST_ROOT are required in config test mode." >&2
     exit 2
   }
-  configure_qb_webui_file "$WEIGG_QB_CONFIG_TEST_PATH" "$WEIGG_QB_CONFIG_TEST_ROOT"
+  configure_qb_webui_file "$WEIG_QB_CONFIG_TEST_PATH" "$WEIG_QB_CONFIG_TEST_ROOT"
   exit $?
 fi
 
@@ -1003,7 +1003,7 @@ prepare_target() {
   if [ "$CHANNEL" = "dev" ]; then
     assert_materialized_webui "$DEST.new" || { rm -rf "$DEST.new"; return 1; }
   fi
-  [ -f "$DEST.new/public/index.html" ] && [ -f "$DEST.new/public/login.html" ] && [ -f "$DEST.new/private/index.html" ] && [ -f "$DEST.new/VERSION" ] && [ -f "$DEST.new/GIT_SHA" ] && [ -f "$DEST.new/private/weigg-install.json" ] || { echo "Installed payload validation failed for $dest." >&2; rm -rf "$DEST.new"; return 1; }
+  [ -f "$DEST.new/public/index.html" ] && [ -f "$DEST.new/public/login.html" ] && [ -f "$DEST.new/private/index.html" ] && [ -f "$DEST.new/VERSION" ] && [ -f "$DEST.new/GIT_SHA" ] && [ -f "$DEST.new/private/weig-install.json" ] || { echo "Installed payload validation failed for $dest." >&2; rm -rf "$DEST.new"; return 1; }
   valid_sha "$(tr -d '\r\n' < "$DEST.new/GIT_SHA")" || { echo "Installed Git SHA validation failed for $dest." >&2; rm -rf "$DEST.new"; return 1; }
   printf '%s|%s|%s\n' "$dest" "$DEST.new" "$qb_root" >> "$PREPARED_FILE"
   echo "Prepared: $dest"
@@ -1052,7 +1052,7 @@ while IFS='|' read -r target new qb_root; do
     echo "  Channel: $CHANNEL"
     echo "  Version: $(cat "$target/VERSION")"
     echo "  Git SHA: $(cat "$target/GIT_SHA")"
-    echo "  Metadata: $target/private/weigg-install.json"
+    echo "  Metadata: $target/private/weig-install.json"
   else
     [ -d "$old" ] && mv "$old" "$target" || true
     echo "Installation switch failed: $target" >&2

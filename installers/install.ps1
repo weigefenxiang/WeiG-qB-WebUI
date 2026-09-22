@@ -386,8 +386,8 @@ function Restore-QBConfigBackupAtomically([string]$Path,[string]$Backup) {
   if(!(Test-Path -LiteralPath $Backup -PathType Leaf)){throw "qBittorrent safety backup is missing: $Backup"}
   [byte[]]$expected=[IO.File]::ReadAllBytes($Backup)
   $dir=Split-Path $Path -Parent
-  $restoreTemp=Join-Path $dir ('.weigg-qb-restore-'+[guid]::NewGuid().ToString('N')+'.tmp')
-  $replaceBackup="$Path.weigg.restore-replaced"
+  $restoreTemp=Join-Path $dir ('.weig-qb-restore-'+[guid]::NewGuid().ToString('N')+'.tmp')
+  $replaceBackup="$Path.weig.restore-replaced"
   try {
     [IO.File]::WriteAllBytes($restoreTemp,$expected)
     if(Test-Path -LiteralPath $Path -PathType Leaf){
@@ -413,15 +413,15 @@ function Configure-QBWebUI([string]$Path,[string]$RootFolder) {
   $text=Set-QBWebUIConfigText $originalText $RootFolder $newline
   Assert-QBWebUIMutation $originalText $text $RootFolder $newline
 
-  $backup="$Path.weigg.bak"
+  $backup="$Path.weig.bak"
   [IO.File]::WriteAllBytes($backup,$originalBytes)
   if(!(Compare-QBBytes $originalBytes ([IO.File]::ReadAllBytes($backup)))){
     throw 'qBittorrent safety backup is not byte-identical; refusing mutation.'
   }
 
   $dir=Split-Path $Path -Parent
-  $tempPath=Join-Path $dir ('.weigg-qb-config-'+[guid]::NewGuid().ToString('N')+'.tmp')
-  $replaceBackup="$Path.weigg.replace.bak"
+  $tempPath=Join-Path $dir ('.weig-qb-config-'+[guid]::NewGuid().ToString('N')+'.tmp')
+  $replaceBackup="$Path.weig.replace.bak"
   [byte[]]$candidateBytes=$null
   try {
     Write-QBConfigText $tempPath $text $state
@@ -557,7 +557,7 @@ function Inject-BuildSha([string]$Root,[string]$Sha) {
   $utf8=New-Object System.Text.UTF8Encoding($false)
   Get-ChildItem $Root -Recurse -File | Where-Object { $_.Extension -in @('.html','.js','.css','.json') -or $_.Name -eq 'GIT_SHA' } | ForEach-Object {
     $text=[IO.File]::ReadAllText($_.FullName)
-    if($text.Contains('__WEIGG_GIT_SHA__')){[IO.File]::WriteAllText($_.FullName,$text.Replace('__WEIGG_GIT_SHA__',$Sha),$utf8)}
+    if($text.Contains('__WEIG_GIT_SHA__')){[IO.File]::WriteAllText($_.FullName,$text.Replace('__WEIG_GIT_SHA__',$Sha),$utf8)}
   }
   [IO.File]::WriteAllText((Join-Path $Root 'GIT_SHA'),$Sha+"`n",$utf8)
 }
@@ -595,7 +595,7 @@ if($Configure){
 }
 
 Backup-Current $cfg
-$tmp=Join-Path ([IO.Path]::GetTempPath()) ("weigg-qb-"+[guid]::NewGuid().ToString('N'))
+$tmp=Join-Path ([IO.Path]::GetTempPath()) ("weig-qb-"+[guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Force -Path $tmp | Out-Null
 try {
   $archive=Join-Path $tmp 'WeiG-qB-WebUI.zip'
@@ -738,7 +738,7 @@ try {
     installer='windows'
     materialized=$true
   }
-  $meta | ConvertTo-Json | Set-Content -Path (Join-Path $new 'private\weigg-install.json') -Encoding UTF8
+  $meta | ConvertTo-Json | Set-Content -Path (Join-Path $new 'private\weig-install.json') -Encoding UTF8
 
   $old="$Destination.old"
   if(Test-Path $old){Remove-Item $old -Recurse -Force}
@@ -756,7 +756,7 @@ try {
   Write-Host "Channel: $($Channel.ToLowerInvariant())"
   Write-Host "Installed version: $version"
   Write-Host "Installed Git SHA: $sourceSha"
-  Write-Host "Install metadata: $(Join-Path $Destination 'private\weigg-install.json')"
+  Write-Host "Install metadata: $(Join-Path $Destination 'private\weig-install.json')"
 
   if($Configure){
     Configure-QBWebUI $cfg $Destination
