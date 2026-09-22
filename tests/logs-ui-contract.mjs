@@ -16,13 +16,12 @@ const css=read('webui/private/css/logs.css');
 const appCss=read('webui/private/css/app.css');
 const tableCss=read('webui/private/css/table.css');
 const core=read('webui/private/scripts/core.js');
-const privateIcon=bytes('webui/private/assets/Wei.G.ico');
 const publicIcon=bytes('webui/public/assets/Wei.G.ico');
 
-assert(privateIcon.equals(publicIcon),'public/private Wei.G icon copies must remain byte-identical');
-assert(privateIcon.length>100&&privateIcon.readUInt16LE(0)===0&&privateIcon.readUInt16LE(2)===1,'Wei.G icon asset must be a valid ICO container');
-const iconCount=privateIcon.readUInt16LE(4),iconSizes=[];for(let i=0;i<iconCount;i++){const off=6+i*16,w=privateIcon[off]||256,h=privateIcon[off+1]||256;iconSizes.push(w+'x'+h);}assert(iconCount===3&&iconSizes.join(',')==='16x16,32x32,48x48','Wei.G favicon must keep 16/32/48 ICO layers');
-assert(privateIcon.indexOf(Buffer.from([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a]))>=0,'Wei.G ICO must contain PNG-backed image layers');
+assert(!fs.existsSync(path.join(root,'webui/private/assets/Wei.G.ico')),'retired private Wei.G icon duplicate must stay absent');
+assert(publicIcon.length>100&&publicIcon.readUInt16LE(0)===0&&publicIcon.readUInt16LE(2)===1,'Wei.G icon asset must be a valid ICO container');
+const iconCount=publicIcon.readUInt16LE(4),iconSizes=[];for(let i=0;i<iconCount;i++){const off=6+i*16,w=publicIcon[off]||256,h=publicIcon[off+1]||256;iconSizes.push(w+'x'+h);}assert(iconCount===3&&iconSizes.join(',')==='16x16,32x32,48x48','Wei.G favicon must keep 16/32/48 ICO layers');
+assert(publicIcon.indexOf(Buffer.from([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a]))>=0,'Wei.G ICO must contain PNG-backed image layers');
 assert(brand.includes("var ICON='assets/Wei.G.ico'"),'Brand owner must use the local Wei.G asset');
 for(const [name,source] of [['public/index.html',login],['public/login.html',loginAlias]]){
   assert(source.includes('href="assets/Wei.G.ico?v=__WEIG_GIT_SHA__"'),`${name} favicon must use the canonical local Wei.G.ico asset`);
