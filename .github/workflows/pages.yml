@@ -251,7 +251,7 @@ jobs:
       WEIG_BROWSER_FETCH_TIMEOUT_MS: '15000'
       WEIG_PAGES_PROFILE_TIMEOUT_MS: '45000'
       WEIG_RELEASE_PROFILE_LANE_TIMEOUT_MS: '210000'
-      WEIG_PAGES_URL: ${{ needs.deploy.outputs.page_url }}
+      WEIGG_PAGES_URL: ${{ needs.deploy.outputs.page_url }}
       WEIG_EXPECTED_SIMULATOR_SHA: ${{ github.sha }}
       WEIG_VERIFY_SCRIPT: ${{ matrix.script }}
       WEIG_RELEASE_PROFILE_MODE: ${{ matrix.release_mode }}
