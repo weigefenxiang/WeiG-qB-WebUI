@@ -31,7 +31,7 @@ function api(req,res,v,p,url){
 const server=http.createServer(async(req,res)=>{try{const url=new URL(req.url,`http://${host}:${port}`),m=url.pathname.match(/^\/(legacy|modern)(?:\/(.*))?$/);if(!m){res.writeHead(404);return res.end('not found');}const v=variants[m[1]],rel=m[2]||'';if(rel.startsWith('api/v2/'))return api(req,res,v,rel.slice(7),url);if(rel==='data/qb-releases.json')return json(res,exactProfiles);if(rel==='weigg-install.json')return json(res,{version:productVersion,gitSha:'theme-fixture',qbPath:'/config/weigg-qb-webui',hostPath:'/srv/qb/config/weigg-qb-webui'});const requested=rel||'index.html',{file,body}=await readWebuiStatic([privateRoot,publicRoot],requested);res.writeHead(200,{'content-type':mime[path.extname(file).toLowerCase()]||'application/octet-stream','cache-control':'no-store'});res.end(body);}catch(e){res.writeHead(e?.code==='ENOENT'?404:500,{'content-type':'text/plain; charset=utf-8'});res.end(String(e));}});
 await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(port,host,resolve);});
 
-async function choose(page,root,value){const trigger=page.locator(`${root} .ui-select__trigger`);await trigger.click();const option=page.locator(`#weigg-floating-layer .ui-select__option[data-value="${value}"]`);await option.waitFor();await option.click();}
+async function choose(page,root,value){const trigger=page.locator(`${root} .ui-select__trigger`);await trigger.click();const option=page.locator(`#weig-floating-layer .ui-select__option[data-value="${value}"]`);await option.waitFor();await option.click();}
 async function surface(page,selector){return page.locator(selector).first().evaluate(n=>{const s=getComputedStyle(n);return{image:s.backgroundImage,color:s.backgroundColor,text:s.color,display:s.display,opacity:s.opacity};});}
 function whiteBased(s){return [...`${s.image} ${s.color}`.matchAll(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/g)].some(([,r,g,b])=>Number(r)>=250&&Number(g)>=250&&Number(b)>=250);}
 async function openSettings(page){await page.locator('#app-nav [data-route="settings"]').click();await page.waitForFunction(()=>document.getElementById('settings-view')?.classList.contains('is-active'));await page.waitForSelector('#settings-content[data-settings-renderer="canonical"]');}
@@ -53,8 +53,8 @@ try{
     assert(whiteBased(lightTop)&&whiteBased(lightStatus),`${name}: Light top/status surfaces are not white-based: ${JSON.stringify({lightTop,lightStatus})}`);
 
     // Open the canonical Header Select and inspect the real top-layer menu surface.
-    await page.locator('#theme-control .ui-select__trigger').click();await page.waitForSelector('#weigg-floating-layer .ui-select__menu');
-    const menuLight=await surface(page,'#weigg-floating-layer .ui-select__menu');assert(whiteBased(menuLight),`${name}: Light Select menu remained Dark: ${JSON.stringify(menuLight)}`);await page.keyboard.press('Escape');
+    await page.locator('#theme-control .ui-select__trigger').click();await page.waitForSelector('#weig-floating-layer .ui-select__menu');
+    const menuLight=await surface(page,'#weig-floating-layer .ui-select__menu');assert(whiteBased(menuLight),`${name}: Light Select menu remained Dark: ${JSON.stringify(menuLight)}`);await page.keyboard.press('Escape');
 
     // Settings is a draft presentation caller of the same owner; Theme changes only when shared Save commits the draft.
     await openSettings(page);
