@@ -85,7 +85,7 @@ const server=http.createServer(async(req,res)=>{try{
 await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(port,host,resolve);});
 
 const nativeScrollbarDrag=process.env.WEIG_NATIVE_SCROLLBAR_DRAG==='1';
-const browser=await launchBrowser(nativeScrollbarDrag?{headless:false}:{});
+const browser=await launchBrowser(nativeScrollbarDrag?{headless:false,ignoreDefaultArgs:['--hide-scrollbars'],args:['--disable-features=OverlayScrollbar,OverlayScrollbars']}:{});
 try{
   for(const name of ['legacy','modern']){
     const context=await browser.newContext({viewport:{width:1366,height:768},locale:'en-US'}),page=await context.newPage(),errors=[];
