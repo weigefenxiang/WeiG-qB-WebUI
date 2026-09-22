@@ -65,6 +65,14 @@ function difference(left,right){
   const rhs=new Set(Array.isArray(right)?right.map(String):[]);
   return [...new Set(Array.isArray(left)?left.map(String):[])].filter(value=>!rhs.has(value)).sort();
 }
+async function setTimeControl(page,control,value){
+  const parts=String(value).split(':');assert.equal(parts.length,2,'invalid HH:mm test value');
+  for(const [selector,part] of [['.ui-time-control__hour',parts[0]],['.ui-time-control__minute',parts[1]]]){
+    await control.locator(selector+' .ui-select__trigger').click();
+    const option=page.locator('#weig-floating-layer .ui-select__option[data-value="'+String(part).replaceAll('"','\\"')+'"]');
+    await option.waitFor({state:'visible',timeout:30000});await option.click();
+  }
+}
 
 const site=await waitForDeployedSha();
 const catalog=await fetchJson('metadata/qb-releases.json');
@@ -224,13 +232,13 @@ try{
     if(timeKeys.every(key=>expectedSurfaces.speed.sourceKeys.includes(key))){
       const row=page.locator('#settings-content .setting-row--time-range[data-native-family="time-range"]');
       assert.equal(await row.count(),1,'canonical scheduler family must render once');
-      const inputs=row.locator('input[type="time"]');
+      const inputs=row.locator('[data-ui-time-control="1"]');
       assert.equal(await inputs.count(),2,'canonical scheduler family must render exactly two HH:mm controls');
       const settingKeys=String(await row.getAttribute('data-setting-key')||'').split(',').filter(Boolean).sort();
       assert.deepEqual(settingKeys,[...timeKeys].sort(),'time-range row must retain all four raw Preferences keys for audit/writeback');
       const pad=value=>String(Number(value)).padStart(2,'0');
       const expectedTimes=[pad(anchorResponse.json.schedule_from_hour)+':'+pad(anchorResponse.json.schedule_from_min),pad(anchorResponse.json.schedule_to_hour)+':'+pad(anchorResponse.json.schedule_to_min)];
-      const observedTimes=await inputs.evaluateAll(nodes=>nodes.map(node=>node.value));
+      const observedTimes=await inputs.evaluateAll(nodes=>nodes.map(node=>node.getValue?node.getValue():''));
       assert.deepEqual(observedTimes,expectedTimes,'HH:mm controls must reconstruct exact raw hour/minute Preferences');
       assert.ok(observedTimes.every(value=>/^\d{2}:\d{2}$/.test(value)),'time controls must expose canonical zero-padded HH:mm values');
       const schedulerControl=page.locator('#settings-content [data-preference-key="scheduler_enabled"] .switch-control');
@@ -241,9 +249,9 @@ try{
         await schedulerControl.click();
         await page.waitForFunction(()=>window.WeiG.SettingsState.draft.scheduler_enabled===true,null,{timeout:30000});
       }
-      await page.waitForFunction(()=>[...document.querySelectorAll('#settings-content [data-native-family="time-range"] input[type="time"]')].every(input=>!input.disabled&&!input.readOnly),null,{timeout:30000});
-      await inputs.nth(0).fill('09:15');await inputs.nth(0).press('Tab');
-      await inputs.nth(1).fill('21:45');await inputs.nth(1).press('Tab');
+      await page.waitForFunction(()=>[...document.querySelectorAll('#settings-content [data-native-family="time-range"] [data-ui-time-control="1"]')].every(control=>control.getAttribute('aria-disabled')!=='true'&&control.getAttribute('aria-readonly')!=='true'),null,{timeout:30000});
+      await setTimeControl(page,inputs.nth(0),'09:15');
+      await setTimeControl(page,inputs.nth(1),'21:45');
       await page.waitForFunction(()=>{const d=window.WeiG.SettingsState.draft||{};return d.schedule_from_hour===9&&d.schedule_from_min===15&&d.schedule_to_hour===21&&d.schedule_to_min===45;},null,{timeout:30000});
       await page.locator('#save-settings-btn').click();
       await page.waitForFunction(()=>Object.keys(window.WeiG.SettingsState.draft||{}).length===0,null,{timeout:30000});
