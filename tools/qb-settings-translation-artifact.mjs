@@ -20,7 +20,7 @@ function sha256(bytes){return crypto.createHash('sha256').update(bytes).digest('
 const repository=arg('repo',process.env.GITHUB_REPOSITORY||'');
 const branch=arg('branch',process.env.GITHUB_REF_NAME||'dev');
 const output=path.resolve(required('out'));
-const sourceSha=arg('source-sha',process.env.WEIGG_PAGES_SOURCE_SHA||process.env.GITHUB_SHA||'').toLowerCase();
+const sourceSha=arg('source-sha',process.env.WEIG_PAGES_SOURCE_SHA||process.env.GITHUB_SHA||'').toLowerCase();
 const certifiedOnly=process.argv.includes('--certified-only');
 if(sourceSha&&!/^[0-9a-f]{40}$/.test(sourceSha))throw new Error(`Invalid --source-sha=${sourceSha}`);
 const token=process.env.GH_TOKEN||process.env.GITHUB_TOKEN||'';
@@ -55,7 +55,7 @@ async function downloadArtifact(artifact){
   const response=await fetch(artifact.archive_download_url,{headers:{Accept:'application/vnd.github+json',Authorization:`Bearer ${token}`},redirect:'follow'});
   if(!response.ok)throw new Error(`Artifact ${artifact.id} download failed: ${response.status}`);
   const zip=Buffer.from(await response.arrayBuffer());
-  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'weigg-qb-settings-'));
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'weig-qb-settings-'));
   const zipPath=path.join(dir,'artifact.zip');
   fs.writeFileSync(zipPath,zip);
   const unzip=spawnSync('unzip',['-qo',zipPath,'-d',dir],{stdio:'inherit'});
