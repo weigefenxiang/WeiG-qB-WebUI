@@ -72,7 +72,7 @@ GitHub Release notes have one repository-owned generator: `tools/release-notes.m
 - The overview lists at most 8 user-facing changes.
 - Full history is grouped into Feature/UI, Fixes, Performance, Compatibility, and Internal Engineering inside a folded `<details>` block.
 - `test`, `ci`, `docs`, `chore`, `refactor`, and other engineering-only commits stay out of the overview by default but remain in the full record.
-- A commit body line such as `Release-Note: 修复: 修复某个用户可见问题` may replace an engineering-oriented subject with explicit user-facing release copy. `Release-Note: skip` omits that commit.
+- A commit body line such as `Release-Note: Fix: Correct a user-visible issue` may replace an engineering-oriented subject with explicit user-facing release copy. `Release-Note: skip` omits that commit.
 - The release workflow writes `release-notes.md` and passes it to `gh release create --notes-file`; GitHub auto-generated notes and static inline notes are not parallel owners.
 
 
