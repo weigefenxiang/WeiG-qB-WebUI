@@ -223,7 +223,7 @@
   },{tab,family});}
   async function perform(page,plan){
     const rootNode=page.locator('[data-native-control="'+attr(plan.id)+'"]').first();await rootNode.waitFor({state:'visible'});
-    if(plan.family==='select'){await rootNode.locator('.ui-select__trigger').click();const option=page.locator('#weigg-floating-layer .ui-select__option[data-value="'+attr(plan.value)+'"]').first();await option.waitFor({state:'visible'});await option.click();}
+    if(plan.family==='select'){await rootNode.locator('.ui-select__trigger').click();const option=page.locator('#weig-floating-layer .ui-select__option[data-value="'+attr(plan.value)+'"]').first();await option.waitFor({state:'visible'});await option.click();}
     else if(plan.family==='checkbox'||plan.family==='projection-aux'||plan.family==='gate')await rootNode.locator('input[type="checkbox"]').first().click();
     else if(plan.family==='structured'){const table=rootNode.locator('.setting-structured-map'),rows=table.locator('.setting-structured-map__row'),count=await rows.count();assert(count>0,'Structured control '+plan.id+' has no editable row');const input=rows.nth(count-1).locator('[data-structured-path]');await input.fill(plan.path);await input.press('Tab');}
     else{const input=rootNode.locator('input:not([type="checkbox"]),textarea').first();await input.fill(String(plan.value==null?'':plan.value));await input.press('Tab');}
