@@ -22,3 +22,5 @@ assert.ok(i18n.includes("'zh-HK':Object.assign({},EN,ZHHK)")&&i18n.includes("ret
 console.log('I18n runtime owner contract passed: app/preferences.locale remains the single language truth; W.I18n consumes one exact-source compact qB-owned copy IR, native routes use minimal official QM, exact bridge leaves are globally deduplicated and losslessly reconstructed, and per-release qb-settings shards plus the old native-registry parser/dual-loader remain retired.');
 
 assert.equal(read('webui/private/scripts/qb-client.js').includes('localeText('),false,'QBClient must use W.I18n keys instead of an en/zh error-text owner');
+assert.equal(read('webui/private/scripts/rss.js').includes('function text(en,cn)'),false,'RSS runtime must use W.I18n keys instead of an en/zh presentation owner');
+assert.equal(read('webui/private/scripts/rss.js').includes('function zh()'),false,'RSS runtime must not branch copy on zh-CN');
