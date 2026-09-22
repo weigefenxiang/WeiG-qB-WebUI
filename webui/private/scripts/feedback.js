@@ -13,17 +13,8 @@
     error:['m9 9 6 6','m15 9-6 6']
   };
 
-  function locale(){
-    return W.I18n&&W.I18n.getLocale?W.I18n.getLocale():'en';
-  }
-  function words(){
-    var l=locale();
-    if(l==='zh-CN')return{dismiss:'关闭通知',info:'提示',success:'操作成功',warning:'请注意',error:'操作失败'};
-    if(l==='zh-TW')return{dismiss:'關閉通知',info:'提示',success:'操作成功',warning:'請注意',error:'操作失敗'};
-    if(l==='ja')return{dismiss:'通知を閉じる',info:'お知らせ',success:'完了',warning:'注意',error:'エラー'};
-    if(l==='ko')return{dismiss:'알림 닫기',info:'안내',success:'완료',warning:'주의',error:'오류'};
-    return{dismiss:'Dismiss notification',info:'Information',success:'Completed',warning:'Attention',error:'Action failed'};
-  }
+  function tr(key,vars){return W.I18n&&W.I18n.t?W.I18n.t(key,vars):String(key||'');}
+  function words(){return{dismiss:tr('feedback.dismiss'),info:tr('feedback.info'),success:tr('feedback.success'),warning:tr('feedback.warning'),error:tr('feedback.error')};}
   function normalizeKind(kind){
     kind=String(kind||'info').toLowerCase();
     return Object.prototype.hasOwnProperty.call(DEFAULT_DURATION,kind)?kind:'info';

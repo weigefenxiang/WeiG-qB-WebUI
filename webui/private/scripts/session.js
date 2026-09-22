@@ -5,6 +5,7 @@
   var state='idle',busy=false,entryTask=null;
   function setState(next){state=next;global.dispatchEvent(new CustomEvent('weig:sessionstate',{detail:{state:state}}));}
   function contract(){return W.SessionContract||null;}
+  function tr(key,vars){return W.I18n&&W.I18n.t?W.I18n.t(key,vars):String(key||'');}
   function guardSet(){var c=contract();return !!(c&&c.setLogoutGuard&&c.setLogoutGuard());}
   function guardClear(){var c=contract();if(c&&c.clearLogoutGuard)c.clearLogoutGuard();}
   function guarded(){var c=contract();return !!(c&&c.logoutGuarded&&c.logoutGuarded());}
@@ -39,9 +40,7 @@
     if(app.selection&&app.selection.clear)app.selection.clear(true);
   }
   function explainBypass(){
-    var msg=(W.I18n&&W.I18n.getLocale&&W.I18n.getLocale()==='zh-CN')
-      ?'qBittorrent 当前允许此客户端免认证访问。Session 已结束，但服务器立即创建了新 Session，因此无法保持真正登出。请关闭本机免认证或移除当前地址的认证白名单后再试。'
-      :'qBittorrent currently allows this client to bypass authentication. The session ended, but the server immediately created a new session, so a durable logout is impossible. Disable local-auth bypass or remove this client from the authentication subnet whitelist.';
+    var msg=tr('session.logoutBypass');
     if(W.toast)W.toast(msg,'error');
     var fatal=document.getElementById('fatal'),copy=document.getElementById('fatal-message');if(fatal&&copy){copy.textContent=msg;fatal.classList.remove('is-hidden');}
   }
