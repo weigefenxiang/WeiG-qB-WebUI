@@ -21,7 +21,7 @@ const out=path.resolve(required('out'));
 const catalog=path.resolve(required('catalog'));
 const localeOverlayPath=path.resolve(arg('locale-overlay',path.join(projectRoot,'tools/data/qb-locale-lkg.json')));
 const settingsLkgPath=path.resolve(required('settings-translation-lkg'));
-process.env.WEIGG_SETTINGS_LKG_PATH=settingsLkgPath;
+process.env.WEIG_SETTINGS_LKG_PATH=settingsLkgPath;
 const simulatorSha=required('simulator-sha');
 const branches=[
   {name:'dev',webuiRoot:path.resolve(required('dev-webui')),sha:required('dev-sha'),version:required('dev-version')},
