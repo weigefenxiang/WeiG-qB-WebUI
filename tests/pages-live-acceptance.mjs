@@ -218,18 +218,28 @@ try{
     // Real 0.3.156 human regression: every desktop data-table header must share one
     // grapheme-aware Header owner and retain one visible grapheme at the resize floor.
     const mainHeaderFacts=await page.evaluate(()=>{
-      const W=window.WeiG,head=document.getElementById('torrent-table-head'),column=(W.AppState?.columns||[]).find(item=>item.key==='state_icon')||(W.AppState?.columns||[]).find(item=>String(item.label||'').length>1);
-      if(!head||!column||!W.DataGridHeader)throw new Error('canonical Torrent DataGridHeader/state column is missing');
+      const W=window.WeiG,head=document.getElementById('torrent-table-head');
+      if(!head||!W.DataGridHeader)throw new Error('canonical Torrent DataGridHeader is missing');
+      const columns=W.AppState?.columns||[],iconColumn=columns.find(item=>item.key==='state_icon'),column=columns.find(item=>W.DataGridHeader.graphemes(String(item.label||'')).length>1);
+      if(!iconColumn)throw new Error('source-derived state_icon column is missing');
+      if(!column)throw new Error('canonical Torrent DataGridHeader has no multi-grapheme text column');
+      const iconCell=head.querySelector(`.grid-head-cell[data-key="${CSS.escape(String(iconColumn.key))}"]`),iconLabel=iconCell?.querySelector('.grid-head-label');
+      if(!iconCell||!iconLabel)throw new Error('source-derived state_icon header cell is missing');
+      const icon={key:iconColumn.key,full:String(iconLabel.dataset.fullLabel||iconCell.getAttribute('aria-label')||''),display:String(iconLabel.textContent||''),hardMin:W.DataGridHeader.hardMin(iconColumn,iconCell)};
       const cell=head.querySelector(`.grid-head-cell[data-key="${CSS.escape(String(column.key))}"]`);
-      if(!cell)throw new Error(`Torrent header cell ${column.key} is missing`);
+      if(!cell)throw new Error(`Torrent text header cell ${column.key} is missing`);
       const label=cell.querySelector('.grid-head-label'),full=String(label?.dataset.fullLabel||cell.getAttribute('aria-label')||'');
       const parts=W.DataGridHeader.graphemes(full),large=Math.max(Number(column.width)||0,240);
-      column.width=large;head.style.gridTemplateColumns=W.DataGrid.template(W.AppState.columns);W.DataGridHeader.refresh(head,W.AppState.columns);const fullDisplay=String(label.textContent||'');
-      column.width=W.DataGridHeader.hardMin(column,cell);head.style.gridTemplateColumns=W.DataGrid.template(W.AppState.columns);W.DataGridHeader.refresh(head,W.AppState.columns);
+      column.width=large;head.style.gridTemplateColumns=W.DataGrid.template(columns);W.DataGridHeader.refresh(head,columns);const fullDisplay=String(label.textContent||'');
+      column.width=W.DataGridHeader.hardMin(column,cell);head.style.gridTemplateColumns=W.DataGrid.template(columns);W.DataGridHeader.refresh(head,columns);
       const style=getComputedStyle(label);
-      return{key:column.key,full,parts,minDisplay:String(label.textContent||''),fullDisplay,whiteSpace:style.whiteSpace,writingMode:style.writingMode,overflowWrap:style.overflowWrap,aria:cell.getAttribute('aria-label')};
+      return{key:column.key,full,parts,minDisplay:String(label.textContent||''),fullDisplay,whiteSpace:style.whiteSpace,writingMode:style.writingMode,overflowWrap:style.overflowWrap,aria:cell.getAttribute('aria-label'),icon};
     });
-    assert.ok(mainHeaderFacts.parts.length>1,`main header regression needs a multi-grapheme label: ${JSON.stringify(mainHeaderFacts)}`);
+    assert.equal(mainHeaderFacts.icon.key,'state_icon','qB4 native state icon column must remain present');
+    assert.equal(mainHeaderFacts.icon.full,'','qB4 source-derived state_icon header must remain icon-only instead of receiving a fake visible label');
+    assert.equal(mainHeaderFacts.icon.display,'','qB4 source-derived state_icon header must render without text');
+    assert.ok(mainHeaderFacts.icon.hardMin>=24,`icon-only Torrent header must retain the shared DataGrid minimum: ${JSON.stringify(mainHeaderFacts.icon)}`);
+    assert.ok(mainHeaderFacts.parts.length>1,`main text-header regression needs a multi-grapheme label: ${JSON.stringify(mainHeaderFacts)}`);
     assert.equal(mainHeaderFacts.fullDisplay,mainHeaderFacts.full,`wide Torrent header must preserve the complete label: ${JSON.stringify(mainHeaderFacts)}`);
     assert.equal(mainHeaderFacts.minDisplay,mainHeaderFacts.parts[0],`minimum Torrent header must retain exactly the first visible grapheme, not wrap/disappear/ellipsis-only: ${JSON.stringify(mainHeaderFacts)}`);
     assert.equal(mainHeaderFacts.aria,mainHeaderFacts.full,'truncated Torrent header must retain the complete accessible label');
