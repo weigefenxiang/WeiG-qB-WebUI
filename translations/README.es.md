@@ -55,8 +55,6 @@ La carpeta **`WeiG_qB-WebUI` completa** es la raíz de la WebUI. No copies solo 
 
 ```text
 Windows: D:\WeiG_qB-WebUI
-### Versión específica y directorio de instalación
-
 Linux:   /opt/WeiG_qB-WebUI
 ```
 

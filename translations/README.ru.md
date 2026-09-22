@@ -57,8 +57,6 @@ WeiG_qB-WebUI/
 
 ```text
 Windows: D:\WeiG_qB-WebUI
-### Конкретная версия и каталог установки
-
 Linux:   /opt/WeiG_qB-WebUI
 ```
 

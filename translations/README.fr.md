@@ -55,8 +55,6 @@ Le dossier **`WeiG_qB-WebUI` entier** est la racine WebUI. Ne copiez pas uniquem
 
 ```text
 Windows : D:\WeiG_qB-WebUI
-### Version précise et répertoire d’installation
-
 Linux :   /opt/WeiG_qB-WebUI
 ```
 

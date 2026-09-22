@@ -55,8 +55,6 @@ A pasta **`WeiG_qB-WebUI` completa** é a raiz da WebUI. Não copie apenas `publ
 
 ```text
 Windows: D:\WeiG_qB-WebUI
-### Versão específica e diretório de instalação
-
 Linux:   /opt/WeiG_qB-WebUI
 ```
 
