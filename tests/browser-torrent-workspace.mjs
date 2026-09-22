@@ -29,6 +29,16 @@ const torrents=Array.from({length:55},(_,i)=>{
 });
 const mime={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.ico':'image/x-icon'};
 const assert=(ok,msg)=>{if(!ok)throw new Error(msg);};
+async function waitForVirtualIdle(page,settleMs=0){
+  if(settleMs>0)await page.waitForTimeout(settleMs);
+  await page.waitForFunction(()=>{const list=document.getElementById('torrent-list'),v=window.WeiG?.AppState?.virtual;return !!list&&!!v&&!v._scrolling&&!v._hasPendingItems&&!list.__weigVirtualScrollIdleTimer;});
+}
+async function resetScrollProbe(page){
+  await page.evaluate(()=>{const list=document.getElementById('torrent-list'),v=WeiG.AppState.virtual;v.resetScroll();list.scrollLeft=0;list.scrollTop=0;});
+  await page.waitForTimeout(20);
+  await waitForVirtualIdle(page);
+  await page.evaluate(()=>WeiG.AppState.virtual.resetMetrics());
+}
 async function scrollByBrowserInput(page,selector,axis){
   const node=page.locator(selector),box=await node.boundingBox();
   if(!box)throw new Error(`Missing scroll target ${selector}`);
@@ -37,8 +47,19 @@ async function scrollByBrowserInput(page,selector,axis){
   await page.mouse.move(box.x+Math.max(8,Math.min(box.width-8,box.width/2)),box.y+Math.max(8,Math.min(box.height-8,box.height/2)));
   const delta=Math.max(80,Math.min(240,before.max*.22));
   if(axis==='x')await page.mouse.wheel(delta,0);else await page.mouse.wheel(0,delta);
-  await page.waitForTimeout(260);
-  return node.evaluate((el,axis)=>({left:el.scrollLeft,top:el.scrollTop,max:axis==='x'?el.scrollWidth-el.clientWidth:el.scrollHeight-el.clientHeight}),axis);
+  await page.waitForFunction(()=>window.WeiG?.AppState?.virtual?._scrolling===true);
+  await page.waitForTimeout(60);
+  return node.evaluate((el,axis)=>({left:el.scrollLeft,top:el.scrollTop,max:axis==='x'?el.scrollWidth-el.clientWidth:el.scrollHeight-el.clientHeight,metrics:WeiG.AppState.virtual.metrics()}),axis);
+}
+async function settledScrollMetrics(page){
+  await waitForVirtualIdle(page);
+  return page.evaluate(()=>WeiG.AppState.virtual.metrics());
+}
+function assertQuietCommitBounded(name,axis,active,settled){
+  const quietRenders=settled.renders-active.renders,bound=Math.max(active.visible,settled.visible);
+  assert(quietRenders>=0&&quietRenders<=1,`${name}: ${axis} quiet period committed more than the newest pending snapshot ${JSON.stringify({active,settled})}`);
+  assert(settled.created-active.created<=bound&&settled.removed-active.removed<=bound,`${name}: ${axis} quiet-period snapshot commit exceeded the visible row pool ${JSON.stringify({active,settled})}`);
+  assert(settled.maxRenderMs<80,`${name}: ${axis} active/quiet VirtualList render exceeded the bounded regression budget ${JSON.stringify(settled)}`);
 }
 
 const json=(res,v,status=200)=>{res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store'});res.end(JSON.stringify(v));};
@@ -95,23 +116,29 @@ try{
     assert(await page.locator('#mobile-command-slot,#mobile-facet-slot,.mobile-summary,#dl-speed,#up-speed,#connection-status,#network-meta,#torrent-count,#page-range').count()===0,`${name}: retired summary/mobile shelf DOM survived`);
     const panelTop=await page.evaluate(()=>({panel:Math.round(document.querySelector('#list-view>.torrent-panel').getBoundingClientRect().top),view:Math.round(document.getElementById('list-view').getBoundingClientRect().top)}));
     assert(Math.abs(panelTop.panel-panelTop.view)<=2,`${name}: TorrentPanel does not start at desktop workspace top`);
-    // Automated browser input covers the same horizontal/vertical scroll pipeline and VirtualList cost.
+    // Browser input verifies the active scroll path separately from the bounded quiet-period snapshot commit.
     // Native scrollbar-thumb mouse drag remains a mandatory final human acceptance item because hosted Chrome/Xvfb
     // does not expose native scrollbar chrome to DevTools/XTest pointer injection reliably.
-    await page.setViewportSize({width:900,height:768});await page.waitForTimeout(120);
-    await page.evaluate(()=>{const list=document.getElementById('torrent-list');list.scrollLeft=0;list.scrollTop=0;WeiG.AppState.virtual.resetMetrics();});
+    await page.setViewportSize({width:900,height:768});
+    await waitForVirtualIdle(page,180);
+    await resetScrollProbe(page);
     const horizontal=await scrollByBrowserInput(page,'#torrent-list','x');
     assert(horizontal.left>8,`${name}: horizontal browser scroll input did not move scrollLeft ${JSON.stringify(horizontal)}`);
-    const horizontalMetrics=await page.evaluate(()=>WeiG.AppState.virtual.metrics());
-    assert(horizontalMetrics.renders===0,`${name}: horizontal scroll input triggered VirtualList repaint ${JSON.stringify(horizontalMetrics)}`);
-    await page.evaluate(()=>{WeiG.AppState.virtual.resetScroll();const list=document.getElementById('torrent-list');list.scrollLeft=0;list.scrollTop=0;WeiG.AppState.virtual.resetMetrics();});
-    await page.waitForTimeout(80);
+    const horizontalActive=horizontal.metrics;
+    assert(horizontalActive.renders===0,`${name}: horizontal active scroll triggered VirtualList repaint ${JSON.stringify(horizontalActive)}`);
+    const horizontalSettled=await settledScrollMetrics(page);
+    assertQuietCommitBounded(name,'horizontal',horizontalActive,horizontalSettled);
+
+    await resetScrollProbe(page);
     const vertical=await scrollByBrowserInput(page,'#torrent-list','y');
     assert(vertical.top>40,`${name}: vertical browser scroll input did not move scrollTop ${JSON.stringify(vertical)}`);
-    const verticalMetrics=await page.evaluate(()=>WeiG.AppState.virtual.metrics());
-    assert(verticalMetrics.renders>0&&verticalMetrics.reused>0&&verticalMetrics.reused>verticalMetrics.created,`${name}: vertical scroll input did not recycle the overlapping row pool ${JSON.stringify(verticalMetrics)}`);
-    assert(verticalMetrics.maxRenderMs<80,`${name}: browser-scroll VirtualList render exceeded the bounded regression budget ${JSON.stringify(verticalMetrics)}`);
-    await page.setViewportSize({width:1366,height:768});await page.waitForTimeout(120);
+    const verticalActive=vertical.metrics;
+    assert(verticalActive.renders>0&&verticalActive.reused>0&&verticalActive.reused>verticalActive.created,`${name}: vertical active scroll did not recycle the overlapping row pool ${JSON.stringify(verticalActive)}`);
+    assert(verticalActive.maxRenderMs<80,`${name}: vertical active-scroll VirtualList render exceeded the bounded regression budget ${JSON.stringify(verticalActive)}`);
+    const verticalSettled=await settledScrollMetrics(page);
+    assertQuietCommitBounded(name,'vertical',verticalActive,verticalSettled);
+    await page.setViewportSize({width:1366,height:768});
+    await waitForVirtualIdle(page,180);
 
 
     // Real progress semantics and Reduced Motion remain protected.
