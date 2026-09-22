@@ -4,10 +4,10 @@ import path from 'node:path';
 
 const DEFAULT_CHANNEL='chrome';
 const DEFAULT_FETCH_TIMEOUT_MS=15000;
-const fetchTimeoutMs=Number(process.env.WEIGG_BROWSER_FETCH_TIMEOUT_MS)||DEFAULT_FETCH_TIMEOUT_MS;
+const fetchTimeoutMs=Number(process.env.WEIG_BROWSER_FETCH_TIMEOUT_MS)||DEFAULT_FETCH_TIMEOUT_MS;
 
 function resolveChannel(){
-  const configured=process.env.WEIGG_BROWSER_CHANNEL;
+  const configured=process.env.WEIG_BROWSER_CHANNEL;
   const channel=(configured===undefined?DEFAULT_CHANNEL:String(configured)).trim();
   if(channel!=='chrome'){
     throw new Error(`Unsupported browser channel "${channel}". WeiG browser gates use hosted Google Chrome Stable only.`);
@@ -25,9 +25,9 @@ function timedFetchFactory(nativeFetch,timeoutMs,label){
   };
 }
 
-if(typeof globalThis.fetch==='function'&&!globalThis.__weiggTimedFetchInstalled){
+if(typeof globalThis.fetch==='function'&&!globalThis.__weigTimedFetchInstalled){
   globalThis.fetch=timedFetchFactory(globalThis.fetch.bind(globalThis),fetchTimeoutMs,'Node fetch');
-  Object.defineProperty(globalThis,'__weiggTimedFetchInstalled',{value:true,configurable:false,enumerable:false,writable:false});
+  Object.defineProperty(globalThis,'__weigTimedFetchInstalled',{value:true,configurable:false,enumerable:false,writable:false});
 }
 
 export async function readWebuiStatic(roots,requested='index.html'){
@@ -53,7 +53,7 @@ export async function launchBrowser(options={}){
   browser.newContext=async function(options={}){
     const context=await nativeNewContext(options);
     await context.addInitScript(({timeoutMs})=>{
-      if(typeof globalThis.fetch!=='function'||globalThis.__weiggTimedFetchInstalled)return;
+      if(typeof globalThis.fetch!=='function'||globalThis.__weigTimedFetchInstalled)return;
       const nativeFetch=globalThis.fetch.bind(globalThis);
       globalThis.fetch=async function(input,init={}){
         if(init?.signal)return nativeFetch(input,init);
@@ -62,7 +62,7 @@ export async function launchBrowser(options={}){
         try{return await nativeFetch(input,{...init,signal:controller.signal});}
         finally{clearTimeout(timer);}
       };
-      Object.defineProperty(globalThis,'__weiggTimedFetchInstalled',{value:true,configurable:false,enumerable:false,writable:false});
+      Object.defineProperty(globalThis,'__weigTimedFetchInstalled',{value:true,configurable:false,enumerable:false,writable:false});
     },{timeoutMs:fetchTimeoutMs});
     return context;
   };
