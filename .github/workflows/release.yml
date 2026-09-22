@@ -112,15 +112,15 @@ jobs:
           test -f release/WeiG-qB-WebUI.zip
           test -f release/SHA256SUMS
           test -f release/CANDIDATE_SHA
-          test -f release/weigg-install.sh
-          test -f release/weigg-install.ps1
+          test -f release/weig-install.sh
+          test -f release/weig-install.ps1
           test "$(tr -d '\r\n' < release/CANDIDATE_SHA)" = "$GITHUB_SHA"
           (cd release && sha256sum -c SHA256SUMS)
           ACTUAL="$(sha256sum release/WeiG-qB-WebUI.zip | awk '{print $1}')"
           test "$ACTUAL" = "$CERTIFIED_PACKAGE_SHA256"
-          cmp -s release/weigg-install.sh installers/install.sh
-          cmp -s release/weigg-install.ps1 installers/install.ps1
-          bash -n release/weigg-install.sh
+          cmp -s release/weig-install.sh installers/install.sh
+          cmp -s release/weig-install.ps1 installers/install.ps1
+          bash -n release/weig-install.sh
           test "$(unzip -p release/WeiG-qB-WebUI.zip WeiG-qB-WebUI/GIT_SHA | tr -d '\r\n')" = "$GITHUB_SHA"
           test "$(unzip -p release/WeiG-qB-WebUI.zip WeiG-qB-WebUI/VERSION | tr -d '\r\n')" = "$VERSION"
           echo "Certified candidate bytes PASS: $ACTUAL"
@@ -133,8 +133,8 @@ jobs:
           VERSION="$(tr -d '\r\n' < VERSION)"
           gh release create "${GITHUB_REF_NAME}" \
             release/WeiG-qB-WebUI.zip \
-            release/weigg-install.sh \
-            release/weigg-install.ps1 \
+            release/weig-install.sh \
+            release/weig-install.ps1 \
             release/SHA256SUMS \
             --verify-tag \
             --latest \
