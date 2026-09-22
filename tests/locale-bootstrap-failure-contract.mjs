@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 
 const sessionSource=fs.readFileSync(new URL('../webui/private/scripts/session.js',import.meta.url),'utf8');
-const BOOTSTRAP_KEY='weigg.localeBootstrap.v2';
+const BOOTSTRAP_KEY='weig.localeBootstrap';
 
 class Storage{
   constructor(){this.map=new Map();}
