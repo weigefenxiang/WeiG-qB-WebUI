@@ -175,6 +175,14 @@ try{
     const nameHead=page.locator('#torrent-table-head .grid-head-cell[data-key="name"]');await nameHead.click();
     await page.waitForFunction(()=>WeiG.LibraryController.state().sort==='name');
     assert((await page.evaluate(()=>WeiG.LibraryController.state())).sort==='name',`${name}: desktop sort did not reach semantic owner`);
+    await page.locator('#columns-btn').click();
+    await page.waitForSelector('#column-configurator-dialog[open]');
+    const totalSizeCheck=page.locator('#column-configurator-dialog [data-column-key="total_size"] input[type="checkbox"]');
+    if(!(await totalSizeCheck.isChecked()))await totalSizeCheck.click();
+    await page.locator('#column-configurator-dialog .column-configurator__done').click();
+    const totalSizeHead=page.locator('#torrent-table-head .grid-head-cell[data-key="total_size"]');await totalSizeHead.waitFor();await totalSizeHead.click();
+    await page.waitForFunction(()=>WeiG.LibraryController.state().sort==='total_size');
+    assert((await page.evaluate(()=>WeiG.LibraryController.state())).sort==='total_size',`${name}: Total Size source column did not reach canonical sort owner`);
 
     // Facet action updates semantic state.
     const tracker=page.locator('.facet-control[data-facet="tracker"] .ui-select__trigger');await tracker.click();

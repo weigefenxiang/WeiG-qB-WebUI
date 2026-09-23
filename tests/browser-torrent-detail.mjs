@@ -74,7 +74,7 @@ async function api(req,res,p,url){
   if(p==='torrents/filePrio'&&req.method==='POST'){const form=await readForm(req),ids=String(form.get('id')||'').split('|').map(Number).filter(Number.isFinite),priority=Number(form.get('priority'));filePrioWrites.push({ids:ids.slice(),priority});ids.forEach(id=>{if(files[id])files[id].priority=priority;});return empty(res);}
   if(p==='torrents/trackers')return json(res,[{url:'** [DHT] **',status:0,tier:-1,msg:'',num_peers:-1,num_seeds:-1,num_leeches:-1,num_downloaded:-1,next_announce:0,min_announce:0,endpoints:[]},{url:'** [PeX] **',status:0,tier:-1,msg:'',num_peers:-1,num_seeds:-1,num_leeches:-1,num_downloaded:-1,next_announce:0,min_announce:0,endpoints:[]},{url:'** [LSD] **',status:0,tier:-1,msg:'',num_peers:-1,num_seeds:-1,num_leeches:-1,num_downloaded:-1,next_announce:0,min_announce:0,endpoints:[]},{url:'https://tracker.example/announce?token=exact',status:2,tier:0,msg:'Working',num_peers:4,num_seeds:8,num_leeches:2,num_downloaded:12,next_announce:120,min_announce:60,endpoints:[]}]);
   if(p==='sync/torrentPeers')return json(res,{rid:1,full_update:true,peers:{'112.46.3.128:2028':{ip:'112.46.3.128',port:2028,connection:'BT',flags:'',flags_desc:'',client:'fixture',progress:0,dl_speed:0,up_speed:0,downloaded:0,uploaded:0,relevance:0,files:'',country:'China',country_code:'cn'},'2001:b011::1:1825':{ip:'2001:b011::1',port:1825,connection:'BT',flags:'U H E',flags_desc:'',client:'BitComet 2.03',progress:.056,dl_speed:0,up_speed:40192,downloaded:0,uploaded:177000000,relevance:0,files:'',country:'Taiwan',country_code:'tw'}}});
-  if(p==='torrents/webseeds')return json(res,[{url:'https://cdn.example/files/'}]);
+  if(p==='torrents/webseeds')return json(res,[{url:'https://z-cdn.example/files/'},{url:'https://a-cdn.example/files/'}]);
   if(p==='torrents/categories')return json(res,{Detail:{name:'Detail',savePath:'/downloads'}});
   if(p==='torrents/tags')return json(res,['source']);
   if(['search/plugins','log/main','log/peers'].includes(p))return json(res,[]);
@@ -130,6 +130,25 @@ try{
   const trackerTiers=await page.evaluate(()=>Array.from(document.querySelectorAll('.shared-table__row')).slice(0,4).map(row=>({url:row.querySelector('[data-column-key="url"]')?.textContent||'',tier:row.querySelector('[data-column-key="tier"]')?.textContent||''})));
   assert(trackerTiers.slice(0,3).every(row=>row.tier===''),'Tracker pseudo rows exposed negative tier sentinel '+JSON.stringify(trackerTiers));
   assert(trackerTiers[3]?.tier==='0','Real Tracker tier was lost '+JSON.stringify(trackerTiers));
+  const trackerUrlHead=page.locator('.shared-table__head .grid-head-cell[data-key="url"]');await trackerUrlHead.click();
+  await page.waitForFunction(()=>document.querySelector('.shared-table__head .grid-head-cell[data-key="url"]')?.textContent.includes('↑'));
+  const trackerSorted=await page.evaluate(()=>Array.from(document.querySelectorAll('.shared-table__row')).slice(0,4).map(row=>row.querySelector('[data-column-key="url"]')?.textContent||''));
+  assert(trackerSorted.slice(0,3).every(value=>/^\*\* \[/.test(value)),'Tracker sort displaced pseudo rows '+JSON.stringify(trackerSorted));
+
+  await page.locator('.detail-tabs [data-tab="webseeds"]').click();
+  await page.waitForSelector('.shared-table__head .grid-head-cell[data-key="url"]');
+  const webseedHead=page.locator('.shared-table__head .grid-head-cell[data-key="url"]');await webseedHead.click();
+  const webseedAsc=await page.evaluate(()=>Array.from(document.querySelectorAll('.shared-table__row [data-column-key="url"]')).map(node=>node.textContent));
+  assert(webseedAsc[0]?.includes('a-cdn.example'),'HTTP Sources ascending sort failed '+JSON.stringify(webseedAsc));
+  await webseedHead.click();
+  const webseedDesc=await page.evaluate(()=>Array.from(document.querySelectorAll('.shared-table__row [data-column-key="url"]')).map(node=>node.textContent));
+  assert(webseedDesc[0]?.includes('z-cdn.example'),'HTTP Sources descending sort failed '+JSON.stringify(webseedDesc));
+
+  await page.locator('.detail-tabs [data-tab="files"]').click();
+  await page.waitForSelector('.shared-table__head .grid-head-cell[data-key="size"]');
+  const fileSizeHead=page.locator('.shared-table__head .grid-head-cell[data-key="size"]');await fileSizeHead.click();
+  const fileSortState=await page.evaluate(()=>({head:document.querySelector('.shared-table__head .grid-head-cell[data-key="size"]')?.textContent||'',folders:Array.from(document.querySelectorAll('.shared-table__row[data-file-kind="folder"] .detail-file-label')).slice(0,2).map(node=>node.textContent),kinds:Array.from(document.querySelectorAll('.shared-table__row')).slice(0,6).map(row=>row.dataset.fileKind||'')}));
+  assert(fileSortState.head.includes('↑')&&fileSortState.folders.length>=2,'Content sort did not preserve tree/header semantics '+JSON.stringify(fileSortState));
   await page.locator('.detail-tabs [data-tab="peers"]').click();
   await page.waitForSelector('.peer-country-code');
   const countryUi=await page.evaluate(()=>Array.from(document.querySelectorAll('.peer-country-cell')).map(cell=>({code:cell.querySelector('.peer-country-code')?.textContent||'',src:cell.querySelector('.peer-country-flag')?.getAttribute('src')||'',text:cell.textContent.trim(),title:cell.title})));
