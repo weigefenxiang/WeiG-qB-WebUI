@@ -35,7 +35,7 @@
     var refresh=makeButton('↻ '+tr('logs.ui.refresh',null,'Refresh'),'btn btn--ghost logs-refresh');
     actions.append(size,refresh);toolbar.append(filters,actions);
 
-    var panel=document.createElement('section');panel.className='logs-panel surface surface--panel';
+    var panel=document.createElement('section');panel.className='logs-panel surface surface--panel surface--scroll';
     var head=document.createElement('div');head.className='logs-head';head.innerHTML='<span>'+tr('logs.ui.log',null,'Log')+'</span><span>'+tr('logs.ui.time',null,'Time')+'</span><span>'+tr('logs.ui.level',null,'Level')+'</span>';
     var list=document.createElement('div');list.className='logs-list';list.setAttribute('role','list');
     var empty=document.createElement('div');empty.className='logs-empty is-hidden';empty.textContent=tr('logs.ui.empty',null,'No logs match the current filters.');

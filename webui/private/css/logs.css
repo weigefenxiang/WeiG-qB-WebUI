@@ -3,7 +3,7 @@
 html[data-theme=light]{--logs-toolbar-surface:var(--surface-raised);--logs-toolbar-shadow:var(--shadow-sm),inset 0 1px rgba(255,255,255,.96);--logs-head-surface:rgba(79,108,173,.035);--logs-row-border:rgba(51,73,112,.08);--logs-row-hover:linear-gradient(90deg,rgba(86,126,255,.075),rgba(133,100,255,.025));--logs-warning-surface:linear-gradient(90deg,rgba(255,189,90,.075),transparent 35%);--logs-danger-surface:linear-gradient(90deg,rgba(255,102,122,.075),transparent 38%);--logs-status-surface:rgba(72,100,160,.035);--logs-tone-info:#148fb3;--logs-tone-warning:#a86c00;--logs-tone-danger:#d63f58}
 #logs-view.is-active{display:grid;grid-template-rows:auto minmax(0,1fr);height:100%;min-height:0}
 #logs-view>.workspace__header{align-items:flex-end}
-#logs-view>.tool-page{display:flex;min-height:0;height:100%;padding:0;overflow:hidden;background:transparent;border:0;box-shadow:none;backdrop-filter:none}
+#logs-view>.tool-page{display:flex;min-height:0;height:100%;padding:0;overflow:hidden;background:transparent;border:0;box-shadow:none}
 #logs-content.large-tool-list{width:100%;height:100%;min-height:0;max-height:none;overflow:hidden;border:0;border-radius:0}
 .logs-shell{display:grid;grid-template-rows:auto minmax(0,1fr);gap:10px;width:100%;height:100%;min-height:0}
 .logs-toolbar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;min-height:58px;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--logs-toolbar-surface);box-shadow:var(--logs-toolbar-shadow)}
