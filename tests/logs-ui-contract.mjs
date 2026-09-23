@@ -12,6 +12,8 @@ const brand=read('webui/private/scripts/brand.js');
 const login=read('webui/public/index.html');
 const loginAlias=read('webui/public/login.html');
 const logs=read('webui/private/scripts/logs.js');
+const components=read('webui/private/scripts/components.js');
+const app=read('webui/private/scripts/app.js');
 const css=read('webui/private/css/logs.css');
 const appCss=read('webui/private/css/app.css');
 const tableCss=read('webui/private/css/table.css');
@@ -40,6 +42,12 @@ assert(!logs.includes('state.types.size>1'),'Logs must allow all four levels to 
 for(const tone of ['normal','info','warning','danger'])assert(logs.includes('b.dataset.tone=typeTone(type)')&&css.includes(`--logs-tone-${tone}`),`Missing canonical ${tone} log tone`);
 assert(logs.includes('expandedId:null')&&logs.includes("row.setAttribute('aria-expanded',expanded?'true':'false')"),'Log rows must expose one shared expand/collapse state');
 assert(logs.includes('variableHeight:true')&&logs.includes('itemKey:rowKey'),'Logs must reuse the canonical DataViewport in variable-height mode');
+assert(components.includes('C.pagerControl=function(opts)'),'Pager must have one canonical shared Components owner');
+assert(app.includes('app.pagerControl=C.pagerControl')&&!app.includes("U.$('prev-btn').onclick"),'Torrent pager must consume the shared Pager owner and retire feature-local prev/next handlers');
+assert(logs.includes('state.pager=C.pagerControl')&&logs.includes('items=all.slice(start,start+state.pageSize)'),'Logs must reuse the shared Pager owner and project one bounded history page into DataViewport');
+assert(logs.includes("panel.className='logs-panel surface surface--panel surface--scroll'"),'Dynamic Logs panel must consume the canonical scroll-surface compositor owner');
+assert(logs.includes('pageSize:50')&&logs.includes('var MAX_ITEMS=5000'),'Logs pagination must bound presentation independently from the retained 5000-item history');
+assert(css.includes('.logs-pager{min-height:42px')&&css.includes('.logs-pager .pager__nav'),'Logs pager presentation must reuse the shared pager DOM rather than a second control family');
 assert(core.includes('this.variableHeight=!!options.variableHeight')&&core.includes('W.DataViewport.prototype.resetHeights'),'DataViewport must own the reusable variable-height behavior');
 assert(css.includes('.logs-message{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis'),'Collapsed log messages must stay single-line with ellipsis');
 assert(css.includes('.logs-row.is-expanded .logs-message{white-space:pre-wrap;overflow:visible;text-overflow:clip'),'Expanded log rows must reveal wrapped full content');
@@ -59,4 +67,4 @@ assert(!css.includes('width:72px')&&!css.includes('min-width:72px')&&!css.includ
 assert(css.includes('.logs-row{min-height:72px;grid-template-columns:max-content minmax(0,1fr);grid-template-rows:auto auto;gap:5px 8px'),'Mobile log metadata must form one compact left-aligned level/time group');
 assert(css.includes('.logs-row .logs-level{grid-column:1;grid-row:2;justify-self:start}')&&css.includes('.logs-time{grid-column:2;grid-row:2;justify-self:start;align-self:center'),'Mobile metadata must place the visible colored level immediately before date/time');
 
-console.log('Logs UI contract passed: local brand asset, independent filters, canonical tones, intrinsic centered desktop level pills, generic DataViewport isolation, Shared Detail table ownership, left-aligned mobile level/time metadata, and click expansion.');
+console.log('Logs UI contract passed: shared bounded Pager + DataViewport history projection, canonical tones, Shared Detail isolation, responsive metadata, and click expansion.');
