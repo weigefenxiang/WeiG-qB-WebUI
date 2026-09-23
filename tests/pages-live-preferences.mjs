@@ -68,7 +68,9 @@ function difference(left,right){
 async function setTimeControl(page,control,value){
   const parts=String(value).split(':');assert.equal(parts.length,2,'invalid HH:mm test value');
   for(const [selector,part] of [['.ui-time-control__hour',parts[0]],['.ui-time-control__minute',parts[1]]]){
-    const input=control.locator(selector);await input.fill(part);await input.press('Enter');
+    const select=control.locator(selector);await select.locator('.ui-select__trigger').click();
+    const search=page.locator('#weig-floating-layer .ui-select__menu:not([hidden]) .ui-select__search');
+    await search.waitFor({state:'visible',timeout:30000});await search.fill(part);await search.press('Enter');
   }
 }
 
@@ -301,6 +303,24 @@ try{
     await page.evaluate(()=>window.WeiG.Router.go('settings'));
     await page.waitForFunction(()=>document.getElementById('settings-view')?.classList.contains('is-active'),null,{timeout:30000});
     await page.evaluate(async()=>window.WeiG.SettingsRenderer.open('speed'));
+    const q4Schedule=page.locator('#settings-content .setting-row--time-range[data-native-family="time-range"]');
+    assert.equal(await q4Schedule.count(),1,'qB 4.6.7 Scheduler must render one canonical time-range owner');
+    assert.equal(await q4Schedule.locator('[data-ui-time-control="1"]').count(),2,'qB 4.6.7 Scheduler must render exactly two canonical HH:mm controls');
+    assert.equal(await q4Schedule.locator('.ui-time-control__part,input[type="time"]').count(),0,'qB 4.6.7 must not retain retired/native duplicate Scheduler time controls');
+    const q4SchedulerToggle=page.locator('#settings-content [data-preference-key="scheduler_enabled"] input[type="checkbox"]');
+    assert.equal(await q4SchedulerToggle.count(),1,'qB 4.6.7 Scheduler enable switch missing');
+    const q4SchedulerWasEnabled=await q4SchedulerToggle.isChecked();
+    if(!q4SchedulerWasEnabled){await q4SchedulerToggle.click();await page.waitForFunction(()=>window.WeiG.SettingsState?.draft?.scheduler_enabled===true,null,{timeout:30000});}
+    await page.setViewportSize({width:390,height:844});await page.waitForTimeout(100);
+    const q4Clock=page.locator('#settings-content [data-native-family="time-range"] .ui-time-control__clock-trigger').first();
+    assert.notEqual(await q4Clock.evaluate(node=>getComputedStyle(node).display),'none','qB 4.6.7 mobile Scheduler must expose the circular clock trigger');
+    await q4Clock.click();
+    const q4ClockDialog=page.locator('dialog.ui-time-picker[open]');await q4ClockDialog.waitFor({state:'visible',timeout:30000});
+    assert.equal(await q4ClockDialog.getAttribute('data-dialog-runtime'),'1','qB 4.6.7 Scheduler circular picker must use canonical DialogRuntime');
+    assert.equal(await q4ClockDialog.locator('.ui-time-picker__face-option').count(),24,'qB 4.6.7 Scheduler must open a 24-hour circular face');
+    await q4ClockDialog.locator('[data-time-picker-cancel]').click();
+    await page.setViewportSize({width:1280,height:720});await page.waitForTimeout(100);
+    if(!q4SchedulerWasEnabled){const restore=page.locator('#settings-content [data-preference-key="scheduler_enabled"] input[type="checkbox"]');if(await restore.isChecked())await restore.click();}
     const zhTwSidebar=await page.evaluate(()=>{
       const S=window.WeiG.SettingsSchema,I=window.WeiG.I18n;
       return [...document.querySelectorAll('#settings-qb-tabs [data-settings-tab]')].map(node=>{
