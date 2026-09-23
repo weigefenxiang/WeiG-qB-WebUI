@@ -14,7 +14,7 @@ assert(C.hasTorrentInfoField('category')&&C.hasTorrentInfoField('tags'));
 assert.equal(T.filterMode('stalled'),'local');
 assert.equal(T.filterMode('checking'),'local');
 assert(T.matchesStatus({state:'stalledDL',progress:.4,dlspeed:0,upspeed:0},'stalled',[]));
-assert(T.matchesStatus({state:'checkingUP',progress:1,dlspeed:0,upspeed:0},'checking',[]));
+assert(T.matchesStatus({state:'checkingUP',progress:1,dlspeed:0,upspeed:0},'checking',[]));assert.deepEqual(T.progressVisual({state:'pausedUP',progress:1,upspeed:0}),{state:'paused',active:false,percent:100});assert.deepEqual(T.progressVisual({state:'stalledUP',progress:1,upspeed:0}),{state:'seed-idle',active:false,percent:100});assert.deepEqual(T.progressVisual({state:'uploading',progress:1,upspeed:240}),{state:'seed',active:true,percent:100});
 assert(!T.isSupportedFilter('private'));
 let requests=[];client.request=(path,options)=>{requests.push({path,options});return Promise.resolve(null);};
 await assert.rejects(client.reannounce('a'));await assert.rejects(client.removeTrackers('a','https://tracker.example/announce'));assert.equal(requests.length,0);
@@ -22,5 +22,5 @@ await assert.rejects(client.reannounce('a'));await assert.rejects(client.removeT
 client=new Client();client.qbVersion='5.2.3';client.webApiVersion='2.15.1';client.major=5;await C.bind(client);requests=[];client.request=(path,options)=>{requests.push({path,options});return Promise.resolve(null);};await client.reannounce('b');await client.removeTrackers('b','https://tracker.example/announce');
 assert.equal(requests.length,2);assert.equal(requests[0].path,'torrents/reannounce');assert.equal(requests[1].path,'torrents/removeTrackers');
 assert.equal(T.filterMode('stalled'),'native');
-assert(T.isSupportedFilter('private'));
+assert(T.isSupportedFilter('private'));assert.deepEqual(T.progressVisual({state:'stoppedUP',progress:1,upspeed:0}),{state:'paused',active:false,percent:100});assert.deepEqual(T.progressVisual({state:'stalledUP',progress:1,upspeed:0}),{state:'seed-idle',active:false,percent:100});assert.deepEqual(T.progressVisual({state:'downloading',progress:.4,dlspeed:0}),{state:'download-idle',active:false,percent:40});
 console.log('Product compatibility contract passed: TorrentSemantics and QBClient consume source-compiled compact CapabilityRegistry facts; qB4 local derivation/fail-closed writes converge with qB5 native semantics.');
