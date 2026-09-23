@@ -1,13 +1,14 @@
 /* Shared DataViewport, table geometry, column interaction and detail workspace layout. */
 .data-grid__head,.data-grid__row{display:grid;align-items:center;column-gap:10px;min-width:max-content}
+.data-grid__head>[data-align=start],.data-grid__row>[data-align=start]{justify-content:flex-start;text-align:left}
 .data-grid__head>[data-align=end],.data-grid__row>[data-align=end]{justify-content:flex-end;text-align:right}
 .data-grid__head>[data-align=center],.data-grid__row>[data-align=center]{justify-content:center;text-align:center}
 .data-grid__row>[data-column-key]{min-width:0;align-self:stretch;display:flex;align-items:center}
 .data-grid__row>.torrent-name-cell{display:grid}
 .data-grid__row>[data-column-key=progress]{display:grid}
-.data-viewport>.data-viewport__head{flex:0 0 auto}
+.data-viewport>.data-viewport__head{flex:0 0 auto;isolation:isolate;background:var(--bg-surface)}
 
-#torrent-list>.torrent-table-head{position:sticky;top:0;z-index:8;width:max-content;min-width:100%;background:var(--surface);box-shadow:0 1px 0 var(--border)}
+#torrent-list>.torrent-table-head{position:sticky;top:0;z-index:8;width:max-content;min-width:100%;background:var(--bg-surface);box-shadow:0 1px 0 var(--border)}
 #torrent-list>.data-viewport__spacer{position:relative;width:max-content;min-width:100%}
 .torrent-panel{--weig-grid-template:minmax(220px,420px) 105px 220px 110px 110px 90px 125px;backdrop-filter:none}
 .torrent-table-head,.torrent-row{grid-template-columns:var(--weig-grid-template)}
@@ -50,7 +51,6 @@
 .shared-column-settings__row:hover{background:rgba(255,255,255,.035)}
 .peer-country-cell{display:flex;align-items:center;gap:7px}
 .peer-country-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.peer-country-code{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:15px;padding:0 3px;border:1px solid var(--border-strong);border-radius:3px;color:var(--text-muted);font-size:9px;font-weight:800;line-height:1;letter-spacing:.04em}
 
 .general-detail{display:grid;gap:14px;padding:2px 0 12px;min-width:0}
 .general-detail__section{display:grid;gap:8px;min-width:0;padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:transparent}

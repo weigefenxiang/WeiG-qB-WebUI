@@ -1,26 +1,42 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "kind": "qb-peer-flag-hosting",
   "countryTruth": [
     "country",
     "country_code"
   ],
-  "officialFlagPath": "private/images/flags/<country_code>.svg",
+  "countryPresentation": {
+    "visibleLabel": "country",
+    "officialFlagKey": "country_code",
+    "weigCountryLookup": false,
+    "visibleCodeBadge": false
+  },
+  "officialFlagWebPath": "private/images/flags/<country_code>.svg",
+  "officialFlagResourcePath": ":/www/private/images/flags/<country_code>.svg",
+  "officialFlagStorage": "Qt qresource embedded by src/webui/www/webui.qrc",
   "alternativeWebUiStaticRoot": "custom-webui-only",
   "builtinStaticFallback": false,
+  "installedQbMaterialization": {
+    "browserCopy": false,
+    "supportedExtractor": false,
+    "status": "blocked",
+    "reason": "The official flags are embedded in qBittorrent's Qt resource system, not exposed as installed filesystem files or a WebAPI/static fallback when Alternative WebUI is active. Browser JavaScript cannot copy server-side Qt resources into the Alternative WebUI directory."
+  },
   "status": "blocked",
-  "reason": "qB Alternative WebUI replaces the built-in WebUI static root; qB does not expose its bundled flag files through a separate route.",
+  "reason": "qB Alternative WebUI replaces the built-in WebUI static root; qB does not expose its bundled flag files through a separate route, and there is no supported installed-qB resource extraction API.",
   "evidence": [
     {
       "qbVersion": "4.6.7",
       "sourceSha": "839bc696d066aca34ebd994ee1673c4b2d5afd7b",
       "renderer": "src/webui/www/private/scripts/dynamicTable.js",
+      "resourceManifest": "src/webui/www/webui.qrc",
       "host": "src/webui/webapplication.cpp"
     },
     {
       "qbVersion": "5.2.3",
       "sourceSha": "0b63c3d17373f6132ea211c9dcd4241284ccdfaf",
       "renderer": "src/webui/www/private/scripts/dynamicTable.js",
+      "resourceManifest": "src/webui/www/webui.qrc",
       "host": "src/webui/webapplication.cpp"
     }
   ]
