@@ -19,4 +19,13 @@ assert.match(floating,/v\.width<=820\?\.84:\.68/,'Shared geometry must keep the 
 assert.match(controls,/\.ui-select__options\{[^}]*min-height:0;max-height:none;overflow:auto/,'Floating list contents must own overflow scrolling inside the bounded menu');
 assert.doesNotMatch(floating,/function placeContextMenu\(menu,x,y\)\{var v=viewport\(\)/,'Context Menu must not restore a parallel viewport-placement implementation');
 
+assert.match(floating,/function intrinsicMenuWidth\(menu\)/,'Shared Select must have one DOM-aware intrinsic-width measurement owner');
+assert.match(floating,/horizontalBox\(menuStyle\)\+horizontalBox\(listStyle\)\+gutter/,'Intrinsic Select width must include real menu/list chrome and scrollbar gutter instead of a magic allowance');
+assert.match(floating,/pseudoWidth\(option,optionStyle\)/,'Intrinsic Select width must include selected-option check/gap chrome');
+assert.match(floating,/desktopMax=v\.width>820\?Math\.max\(160,Math\.floor\(v\.width\*\.5\)\):viewportMax/,'Desktop Select overlay must remain capped to about half the visual viewport');
+assert.doesNotMatch(floating,/measureText\(label\.textContent,label\)\)\+38/,'Shared Select intrinsic sizing must not use the retired +38px chrome guess');
+const ui=read('webui/private/css/ui.css');
+assert.match(ui,/\.ui-select__menu\{min-inline-size:0;max-inline-size:none\}/,'CSS must not keep a second ch/360px menu-width owner');
+assert.doesNotMatch(ui,/--select-menu-ch|360px/,'Retired Select ch/360px width policy must not survive in ui.css');
+
 console.log('Floating geometry contract passed: Select and Context Menu share one visual-viewport-bounded placement owner with internal list scrolling.');
