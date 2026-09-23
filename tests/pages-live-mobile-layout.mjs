@@ -187,12 +187,15 @@ try{
   await page.setViewportSize({width:1100,height:844});
   await page.waitForTimeout(180);
   const rssDesktop=await page.evaluate(()=>{
-    const heads=[...document.querySelectorAll('#rss-content .rss-workspace__pane-head')],lists=[document.querySelector('#rss-content .rss-feed-list'),document.querySelector('#rss-content .rss-article-list')];
-    if(heads.length!==2||lists.some(node=>!node))throw new Error('RSS desktop panes are missing');
-    const a=heads[0].getBoundingClientRect(),b=heads[1].getBoundingClientRect(),la=lists[0].getBoundingClientRect(),lb=lists[1].getBoundingClientRect();
-    return{topDelta:Math.abs(a.top-b.top),bottomDelta:Math.abs(a.bottom-b.bottom),heightDelta:Math.abs(a.height-b.height),listTopDelta:Math.abs(la.top-lb.top)};
+    const root=document.getElementById('rss-content'),heads=[...document.querySelectorAll('#rss-content .rss-workspace__pane-head')],lists=[document.querySelector('#rss-content .rss-feed-list'),document.querySelector('#rss-content .rss-article-list')],horizontal=document.querySelector('#rss-content>.rss-workspace__divider--horizontal'),vertical=document.querySelector('#rss-content>.rss-workspace__divider--vertical');
+    if(!root||heads.length!==2||lists.some(node=>!node)||!horizontal||!vertical)throw new Error('RSS desktop panes/divider owners are missing');
+    const rect=n=>{const r=n.getBoundingClientRect();return{top:r.top,bottom:r.bottom,left:r.left,right:r.right,width:r.width,height:r.height};},rr=rect(root),a=rect(heads[0]),b=rect(heads[1]),la=rect(lists[0]),lb=rect(lists[1]),hr=rect(horizontal),vr=rect(vertical),as=getComputedStyle(heads[0]),bs=getComputedStyle(heads[1]),ls=getComputedStyle(lists[1]);
+    return{topDelta:Math.abs(a.top-b.top),bottomDelta:Math.abs(a.bottom-b.bottom),heightDelta:Math.abs(a.height-b.height),listTopDelta:Math.abs(la.top-lb.top),horizontal:{bottomDelta:Math.abs(hr.bottom-a.bottom),leftDelta:Math.abs(hr.left-rr.left),rightDelta:Math.abs(hr.right-rr.right),height:hr.height},vertical:{rightDelta:Math.abs(vr.right-b.left),topDelta:Math.abs(vr.top-rr.top),bottomDelta:Math.abs(vr.bottom-rr.bottom),width:vr.width},childBorders:[as.borderBottomWidth,bs.borderBottomWidth,ls.borderLeftWidth]};
   });
   assert.ok(rssDesktop.topDelta<=1&&rssDesktop.bottomDelta<=1&&rssDesktop.heightDelta<=1&&rssDesktop.listTopDelta<=1,'desktop RSS Subscriptions/Articles headers and content starts must align: '+JSON.stringify(rssDesktop));
+  assert.ok(rssDesktop.horizontal.bottomDelta<=1&&rssDesktop.horizontal.leftDelta<=1&&rssDesktop.horizontal.rightDelta<=1&&rssDesktop.horizontal.height>=.5&&rssDesktop.horizontal.height<=1.5,'desktop RSS horizontal divider must be one full-width grid-owned border: '+JSON.stringify(rssDesktop));
+  assert.ok(rssDesktop.vertical.rightDelta<=1&&rssDesktop.vertical.topDelta<=1&&rssDesktop.vertical.bottomDelta<=1&&rssDesktop.vertical.width>=.5&&rssDesktop.vertical.width<=1.5,'desktop RSS vertical divider must be one continuous grid-owned border: '+JSON.stringify(rssDesktop));
+  assert.ok(rssDesktop.childBorders.every(value=>parseFloat(value)===0),'desktop RSS pane children must retire duplicate divider borders: '+JSON.stringify(rssDesktop));
   await page.setViewportSize({width:390,height:844});
 
   await page.locator('#mobile-bottom-nav [data-route=""]').click();
