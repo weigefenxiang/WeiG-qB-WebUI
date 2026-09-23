@@ -69,7 +69,7 @@ function api(req,res,p,url){
   if(p==='torrents/properties')return json(res,properties);
   if(p==='torrents/files')return json(res,files);
   if(p==='torrents/trackers')return json(res,[{url:'https://tracker.example/announce?token=exact',status:2,tier:0,msg:'Working',num_peers:4,num_seeds:8,num_leeches:2,num_downloaded:12,next_announce:120,min_announce:60,endpoints:[]}]);
-  if(p==='sync/torrentPeers')return json(res,{rid:1,full_update:true,peers:{}});
+  if(p==='sync/torrentPeers')return json(res,{rid:1,full_update:true,peers:{'112.46.3.128:2028':{ip:'112.46.3.128',port:2028,connection:'BT',flags:'',flags_desc:'',client:'fixture',progress:0,dl_speed:0,up_speed:0,downloaded:0,uploaded:0,relevance:0,files:'',country:'China',country_code:'cn'},'2001:b011::1:1825':{ip:'2001:b011::1',port:1825,connection:'BT',flags:'U H E',flags_desc:'',client:'BitComet 2.03',progress:.056,dl_speed:0,up_speed:40192,downloaded:0,uploaded:177000000,relevance:0,files:'',country:'Taiwan',country_code:'tw'}}});
   if(p==='torrents/webseeds')return json(res,[{url:'https://cdn.example/files/'}]);
   if(p==='torrents/categories')return json(res,{Detail:{name:'Detail',savePath:'/downloads'}});
   if(p==='torrents/tags')return json(res,['source']);
@@ -121,6 +121,10 @@ try{
   assert(Math.abs(headerLayout.track.cy-headerLayout.pct.cy)<3&&headerLayout.text==='100%','Detail progress track and percentage must share one 100% row: '+JSON.stringify(headerLayout));
   assert(headerLayout.pctAlign==='right'&&Math.abs(headerLayout.pctTextRight-headerLayout.state.right)<3,'Detail percentage glyph must end-align to the same right boundary as the state owner: '+JSON.stringify(headerLayout));
   assert(headerLayout.title.right<headerLayout.progress.x,'Long Detail title overlaps the right progress owner: '+JSON.stringify(headerLayout));
+  await page.locator('.detail-tabs [data-tab="peers"]').click();
+  await page.waitForSelector('.peer-country-code');
+  const countryUi=await page.evaluate(()=>Array.from(document.querySelectorAll('.peer-country-cell')).map(cell=>({code:cell.querySelector('.peer-country-code')?.textContent||'',src:cell.querySelector('.peer-country-flag')?.getAttribute('src')||'',text:cell.textContent.trim(),title:cell.title})));
+  assert(countryUi.some(x=>x.code==='CN'&&x.src==='images/flags/cn.svg')&&countryUi.some(x=>x.code==='TW'&&x.src==='images/flags/tw.svg')&&countryUi.every(x=>!x.text.includes('China')&&!x.text.includes('Taiwan')),'Peer country must show official flag + ISO only: '+JSON.stringify(countryUi));
   await page.locator('.detail-tabs [data-tab="files"]').click();
   await page.waitForSelector('.shared-table__viewport .shared-table__row');
   await page.waitForFunction(()=>getComputedStyle(document.getElementById('detail-content')).display==='flex');
@@ -134,9 +138,11 @@ try{
 
   const tableAlignment=await page.evaluate(()=>{const head=document.querySelector('.shared-table__head .grid-head-cell[data-key="size"]'),cell=document.querySelector('.shared-table__row [data-column-key="size"]');return{headAlign:head&&head.dataset.align,cellAlign:cell&&cell.dataset.align,headText:head&&getComputedStyle(head).textAlign,cellText:cell&&getComputedStyle(cell).textAlign};});
   assert(tableAlignment.headAlign==='start'&&tableAlignment.cellAlign==='start'&&tableAlignment.headText==='left'&&tableAlignment.cellText==='left',`Ordinary numeric detail columns must share the canonical left/start alignment: ${JSON.stringify(tableAlignment)}`);
-  const hierarchy=await page.evaluate(()=>({firstKind:document.querySelector('.shared-table__row')?.dataset.fileKind||'',folderCount:document.querySelectorAll('.shared-table__row[data-file-kind="folder"]').length,fileCount:document.querySelectorAll('.shared-table__row[data-file-kind="file"]').length}));
+  const detailRecycler=await page.evaluate(async()=>{const v=WeiG.AppState.detailViewport,el=v.el,max=Math.max(0,el.scrollHeight-el.clientHeight);el.scrollTop=Math.round(max*.5);await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));v.resetMetrics();const nodes=v._rowPool.map(slot=>slot.node);for(const ratio of [.05,.60,.20,.90,.35,.75]){el.scrollTop=Math.round(max*ratio);el.dispatchEvent(new Event('scroll'));await new Promise(r=>requestAnimationFrame(r));}return{metrics:v.metrics(),same:nodes.length===v._rowPool.length&&nodes.every((node,i)=>v._rowPool[i].node===node),max};});
+  assert(detailRecycler.max>0&&detailRecycler.same&&detailRecycler.metrics.created===0&&detailRecycler.metrics.removed===0&&detailRecycler.metrics.updated>0,'Detail thumb-like recycler stress failed: '+JSON.stringify(detailRecycler));
+  const hierarchy=await page.evaluate(()=>({firstKind:document.querySelector('.shared-table__row:not([hidden])')?.dataset.fileKind||'',folderCount:document.querySelectorAll('.shared-table__row[data-file-kind="folder"]:not([hidden])').length,fileCount:document.querySelectorAll('.shared-table__row[data-file-kind="file"]:not([hidden])').length}));
   assert(hierarchy.firstKind==='folder'&&hierarchy.folderCount>=1&&hierarchy.fileCount>=2,`Content hierarchy did not preserve the synthetic folder row above source file rows: ${JSON.stringify(hierarchy)}`);
-  const derived=await page.evaluate(()=>{const rows=[...document.querySelectorAll('.shared-table__row[data-file-kind="file"]')].slice(0,2),fmt=window.WeiG.util.formatBytes;return{rows:rows.map(row=>({checked:row.querySelector('[data-column-key="checked"] input[type="checkbox"]')?.checked,remaining:row.querySelector('[data-column-key="remaining"]')?.textContent?.trim()})),expectedIgnored:fmt(0),expectedNormal:fmt(1048576*(1-.25))};});
+  const derived=await page.evaluate(()=>{const rows=[...document.querySelectorAll('.shared-table__row[data-file-kind="file"]:not([hidden])')].slice(0,2),fmt=window.WeiG.util.formatBytes;return{rows:rows.map(row=>({checked:row.querySelector('[data-column-key="checked"] input[type="checkbox"]')?.checked,remaining:row.querySelector('[data-column-key="remaining"]')?.textContent?.trim()})),expectedIgnored:fmt(0),expectedNormal:fmt(1048576*(1-.25))};});
   assert(derived.rows.length===2,'Content browser gate did not render the first two source file rows beneath the hierarchy.');
   assert(derived.rows[0].checked===false&&derived.rows[1].checked===true,`Source-driven checked state is wrong: ${JSON.stringify(derived.rows)}`);
   assert(derived.rows[0].remaining===derived.expectedIgnored,`Ignored-file remaining must be zero: ${JSON.stringify(derived)}`);

@@ -142,6 +142,9 @@ try{
     assert(verticalActive.maxRenderMs<80,`${name}: vertical active-scroll DataViewport render exceeded the bounded regression budget ${JSON.stringify(verticalActive)}`);
     const verticalSettled=await settledScrollMetrics(page);
     assertQuietCommitBounded(name,'vertical',verticalActive,verticalSettled);
+    const recyclerStress=await page.evaluate(async()=>{const list=document.getElementById('torrent-list'),v=WeiG.AppState.viewport,max=Math.max(0,list.scrollHeight-list.clientHeight);list.scrollTop=Math.round(max*.5);await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));v.resetMetrics();const nodes=v._rowPool.map(slot=>slot.node);for(const ratio of [.05,.60,.20,.90,.35,.75]){list.scrollTop=Math.round(max*ratio);list.dispatchEvent(new Event('scroll'));await new Promise(r=>requestAnimationFrame(r));}return{metrics:v.metrics(),same:nodes.length===v._rowPool.length&&nodes.every((node,i)=>v._rowPool[i].node===node),max};});
+    assert(recyclerStress.max>0&&recyclerStress.same,name+': thumb-like stress replaced row-shell identity '+JSON.stringify(recyclerStress));
+    assert(recyclerStress.metrics.created===0&&recyclerStress.metrics.removed===0&&recyclerStress.metrics.updated>0,name+': thumb-like stress caused DOM churn '+JSON.stringify(recyclerStress.metrics));
     await page.setViewportSize({width:1366,height:768});
     await waitForDataViewportIdle(page,180);
 
