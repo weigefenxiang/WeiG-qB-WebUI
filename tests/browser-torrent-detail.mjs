@@ -72,7 +72,7 @@ async function api(req,res,p,url){
   if(p==='torrents/properties')return json(res,properties);
   if(p==='torrents/files')return json(res,files);
   if(p==='torrents/filePrio'&&req.method==='POST'){const form=await readForm(req),ids=String(form.get('id')||'').split('|').map(Number).filter(Number.isFinite),priority=Number(form.get('priority'));filePrioWrites.push({ids:ids.slice(),priority});ids.forEach(id=>{if(files[id])files[id].priority=priority;});return empty(res);}
-  if(p==='torrents/trackers')return json(res,[{url:'https://tracker.example/announce?token=exact',status:2,tier:0,msg:'Working',num_peers:4,num_seeds:8,num_leeches:2,num_downloaded:12,next_announce:120,min_announce:60,endpoints:[]}]);
+  if(p==='torrents/trackers')return json(res,[{url:'** [DHT] **',status:0,tier:-1,msg:'',num_peers:-1,num_seeds:-1,num_leeches:-1,num_downloaded:-1,next_announce:0,min_announce:0,endpoints:[]},{url:'** [PeX] **',status:0,tier:-1,msg:'',num_peers:-1,num_seeds:-1,num_leeches:-1,num_downloaded:-1,next_announce:0,min_announce:0,endpoints:[]},{url:'** [LSD] **',status:0,tier:-1,msg:'',num_peers:-1,num_seeds:-1,num_leeches:-1,num_downloaded:-1,next_announce:0,min_announce:0,endpoints:[]},{url:'https://tracker.example/announce?token=exact',status:2,tier:0,msg:'Working',num_peers:4,num_seeds:8,num_leeches:2,num_downloaded:12,next_announce:120,min_announce:60,endpoints:[]}]);
   if(p==='sync/torrentPeers')return json(res,{rid:1,full_update:true,peers:{'112.46.3.128:2028':{ip:'112.46.3.128',port:2028,connection:'BT',flags:'',flags_desc:'',client:'fixture',progress:0,dl_speed:0,up_speed:0,downloaded:0,uploaded:0,relevance:0,files:'',country:'China',country_code:'cn'},'2001:b011::1:1825':{ip:'2001:b011::1',port:1825,connection:'BT',flags:'U H E',flags_desc:'',client:'BitComet 2.03',progress:.056,dl_speed:0,up_speed:40192,downloaded:0,uploaded:177000000,relevance:0,files:'',country:'Taiwan',country_code:'tw'}}});
   if(p==='torrents/webseeds')return json(res,[{url:'https://cdn.example/files/'}]);
   if(p==='torrents/categories')return json(res,{Detail:{name:'Detail',savePath:'/downloads'}});
@@ -125,6 +125,11 @@ try{
   assert(Math.abs(headerLayout.track.cy-headerLayout.pct.cy)<3&&headerLayout.text==='100%','Detail progress track and percentage must share one 100% row: '+JSON.stringify(headerLayout));
   assert(headerLayout.pctAlign==='right'&&Math.abs(headerLayout.pctTextRight-headerLayout.state.right)<3,'Detail percentage glyph must end-align to the same right boundary as the state owner: '+JSON.stringify(headerLayout));
   assert(headerLayout.title.right<headerLayout.progress.x,'Long Detail title overlaps the right progress owner: '+JSON.stringify(headerLayout));
+  await page.locator('.detail-tabs [data-tab="trackers"]').click();
+  await page.waitForSelector('.shared-table__row');
+  const trackerTiers=await page.evaluate(()=>Array.from(document.querySelectorAll('.shared-table__row')).slice(0,4).map(row=>({url:row.querySelector('[data-column-key="url"]')?.textContent||'',tier:row.querySelector('[data-column-key="tier"]')?.textContent||''})));
+  assert(trackerTiers.slice(0,3).every(row=>row.tier===''),'Tracker pseudo rows exposed negative tier sentinel '+JSON.stringify(trackerTiers));
+  assert(trackerTiers[3]?.tier==='0','Real Tracker tier was lost '+JSON.stringify(trackerTiers));
   await page.locator('.detail-tabs [data-tab="peers"]').click();
   await page.waitForSelector('.peer-country-code');
   const countryUi=await page.evaluate(()=>Array.from(document.querySelectorAll('.peer-country-cell')).map(cell=>({code:cell.querySelector('.peer-country-code')?.textContent||'',src:cell.querySelector('.peer-country-flag')?.getAttribute('src')||'',text:cell.textContent.trim(),title:cell.title})));

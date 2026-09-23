@@ -78,7 +78,7 @@ function api(req,res,v,p,url){
   if(p==='app/buildInfo')return json(res,{});
   if(p==='transfer/info')return json(res,{dl_info_speed:2048,up_info_speed:1024,connection_status:'firewalled',dht_nodes:999,total_peer_connections:999});
   if(p==='transfer/speedLimitsMode'||p==='transfer/downloadLimit'||p==='transfer/uploadLimit')return text(res,'0');
-  if(p==='sync/maindata')return json(res,{rid:1,full_update:true,torrents:{},categories:{},tags:[],server_state:{connection_status:'firewalled',dl_info_speed:2048,up_info_speed:1024,dht_nodes:12,total_peer_connections:4,free_space_on_disk:10737418240}});
+  if(p==='sync/maindata'){const trackerData=v===variants.modern?{'https://tracker.one.example/announce?passkey=a':torrents.filter((_,i)=>i%2===0).map(t=>t.hash),'https://tracker.one.example/announce?passkey=b':[torrents[1].hash],'udp://tracker.two.example:6969/announce':torrents.filter((_,i)=>i%2===1).map(t=>t.hash)}:{};return json(res,{rid:1,full_update:true,torrents:{},trackers:trackerData,categories:{},tags:[],server_state:{connection_status:'firewalled',dl_info_speed:2048,up_info_speed:1024,dht_nodes:12,total_peer_connections:4,free_space_on_disk:10737418240}});}
   if(p==='torrents/info'){
     let out=rows(v);const hashes=url.searchParams.get('hashes');if(hashes){const set=new Set(hashes.split('|'));out=out.filter(t=>set.has(t.hash));}
     const category=url.searchParams.get('category');if(category)out=out.filter(t=>t.category===category);
@@ -178,9 +178,12 @@ try{
 
     // Facet action updates semantic state.
     const tracker=page.locator('.facet-control[data-facet="tracker"] .ui-select__trigger');await tracker.click();
-    await page.waitForSelector('#weig-floating-layer .ui-select__option[data-value="https://tracker.one.example/announce"]');
-    await page.locator('#weig-floating-layer .ui-select__option[data-value="https://tracker.one.example/announce"]').click();
-    await page.waitForFunction(()=>WeiG.LibraryController.state().tracker.includes('tracker.one.example'));
+    await page.waitForSelector('#weig-floating-layer .ui-select__option[data-value="host:tracker.one.example"]');
+    const trackerOptions=await page.evaluate(()=>Array.from(document.querySelectorAll('#weig-floating-layer .ui-select__option')).map(node=>({value:node.dataset.value,text:node.textContent})));
+    assert(trackerOptions.some(item=>item.value==='host:tracker.one.example'&&item.text.includes('tracker.one.example')),name+': Tracker facet did not keep hostname presentation '+JSON.stringify(trackerOptions));
+    if(name==='modern')assert(trackerOptions.some(item=>item.value==='host:tracker.one.example'&&item.text.includes('29')),name+': Tracker facet did not merge same-host maindata memberships '+JSON.stringify(trackerOptions));
+    await page.locator('#weig-floating-layer .ui-select__option[data-value="host:tracker.one.example"]').click();
+    await page.waitForFunction(()=>WeiG.LibraryController.state().tracker==='host:tracker.one.example');
 
     // Connection help uses existing TransferRuntime snapshot and no retired Network summary.
     await page.waitForFunction(()=>document.getElementById('status-connection')?.dataset.connection==='firewalled');
