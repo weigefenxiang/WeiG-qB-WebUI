@@ -158,6 +158,43 @@ try{
   assert.ok(activeSettingsTab.active.left>=activeSettingsTab.rail.left-1&&activeSettingsTab.active.right<=activeSettingsTab.rail.right+1,`last source-derived Settings tab must auto-scroll into view: ${JSON.stringify(activeSettingsTab)}`);
   await page.setViewportSize({width:390,height:844});
 
+  await page.locator('#settings-tabs [data-settings-tab="speed"]').click();
+  await page.waitForFunction(()=>document.querySelector('#settings-tabs [data-settings-tab="speed"]')?.classList.contains('is-active')&&document.querySelector('[data-native-family="time-range"] [data-ui-time-control="1"]'),null,{timeout:30000});
+  const schedule=page.locator('[data-native-family="time-range"][data-native-row]');
+  const schedulerControl=page.locator('#settings-content [data-preference-key="scheduler_enabled"] .switch-control');
+  const schedulerToggle=schedulerControl.locator('input[type="checkbox"]');
+  if(!await schedulerToggle.isChecked()){
+    await schedulerControl.click();
+    await page.waitForFunction(()=>window.WeiG.SettingsState?.draft?.scheduler_enabled===true,null,{timeout:30000});
+  }
+  await page.waitForFunction(()=>[...document.querySelectorAll('[data-native-family="time-range"] [data-ui-time-control="1"]')].every(control=>control.getAttribute('aria-disabled')!=='true'&&control.getAttribute('aria-readonly')!=='true'),null,{timeout:30000});
+  const clockTrigger=schedule.locator('.ui-time-control__clock-trigger').first();
+  assert.notEqual(await clockTrigger.evaluate(node=>getComputedStyle(node).display),'none','mobile Scheduler must expose the circular clock trigger');
+  await clockTrigger.click();
+  const clock=page.locator('dialog.ui-time-picker[open]');
+  await clock.waitFor({state:'visible',timeout:30000});
+  assert.equal(await clock.getAttribute('data-dialog-runtime'),'1','mobile circular clock must be owned by canonical DialogRuntime');
+  assert.equal(await clock.getAttribute('data-time-mode'),'hour','mobile circular clock must open on the hour face');
+  assert.equal(await clock.locator('.ui-time-picker__face-option').count(),24,'mobile circular hour face must expose all 24 hours');
+  await clock.locator('.ui-time-picker__face-option[data-time-value="9"]').click();
+  await page.waitForFunction(()=>document.querySelector('dialog.ui-time-picker')?.dataset.timeMode==='minute',null,{timeout:30000});
+  await clock.locator('.ui-time-picker__face-option[data-time-value="15"]').click();
+  await clock.locator('[data-time-picker-ok]').click();
+  await page.waitForFunction(()=>window.WeiG.SettingsState?.draft?.schedule_from_hour===9&&window.WeiG.SettingsState?.draft?.schedule_from_min===15,null,{timeout:30000});
+
+  await page.evaluate(()=>window.WeiG.Router.go('rss'));
+  await page.waitForFunction(()=>document.getElementById('rss-view')?.classList.contains('is-active')&&document.querySelectorAll('#rss-content .rss-workspace__pane-head').length===2,null,{timeout:30000});
+  await page.setViewportSize({width:1100,height:844});
+  await page.waitForTimeout(180);
+  const rssDesktop=await page.evaluate(()=>{
+    const heads=[...document.querySelectorAll('#rss-content .rss-workspace__pane-head')],lists=[document.querySelector('#rss-content .rss-feed-list'),document.querySelector('#rss-content .rss-article-list')];
+    if(heads.length!==2||lists.some(node=>!node))throw new Error('RSS desktop panes are missing');
+    const a=heads[0].getBoundingClientRect(),b=heads[1].getBoundingClientRect(),la=lists[0].getBoundingClientRect(),lb=lists[1].getBoundingClientRect();
+    return{topDelta:Math.abs(a.top-b.top),bottomDelta:Math.abs(a.bottom-b.bottom),heightDelta:Math.abs(a.height-b.height),listTopDelta:Math.abs(la.top-lb.top)};
+  });
+  assert.ok(rssDesktop.topDelta<=1&&rssDesktop.bottomDelta<=1&&rssDesktop.heightDelta<=1&&rssDesktop.listTopDelta<=1,'desktop RSS Subscriptions/Articles headers and content starts must align: '+JSON.stringify(rssDesktop));
+  await page.setViewportSize({width:390,height:844});
+
   await page.locator('#mobile-bottom-nav [data-route=""]').click();
   await page.waitForFunction(()=>document.getElementById('list-view')?.classList.contains('is-active'));
   await page.locator('#menu-btn').click();
