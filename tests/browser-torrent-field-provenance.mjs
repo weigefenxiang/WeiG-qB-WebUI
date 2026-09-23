@@ -33,9 +33,10 @@ const commonProfile={
   torrentStates:['error','missingFiles','uploading','stoppedUP','queuedUP','stalledUP','checkingUP','forcedUP','allocating','downloading','metaDL','stoppedDL','queuedDL','stalledDL','checkingDL','forcedDL','checkingResumeData','moving'],
   preferenceDescriptors:[]
 };
+const sourceColumns=fields=>fields.map(key=>({key,caption:key==='state'?'Status':key.replaceAll('_',' '),defaultWidth:key==='name'?200:100,defaultVisible:true,dataProperties:[key]}));
 const profiles=[
-  {...commonProfile,qbVersion:'6.0.0',sourceSha:'6'.repeat(40),torrentInfoFields:['hash',...productFields.filter(key=>key!=='ratio')]},
-  {...commonProfile,qbVersion:'6.0.1',sourceSha:'7'.repeat(40),torrentInfoFields:['hash',...productFields]}
+  {...commonProfile,qbVersion:'6.0.0',sourceSha:'6'.repeat(40),torrentInfoFields:['hash',...productFields.filter(key=>key!=='ratio')],torrentTableColumns:sourceColumns(productFields.filter(key=>key!=='ratio'))},
+  {...commonProfile,qbVersion:'6.0.1',sourceSha:'7'.repeat(40),torrentInfoFields:['hash',...productFields],torrentTableColumns:sourceColumns(productFields)}
 ];
 const compact=compileCompactRuntime(profiles,{includeSettings:false});const compactByName=new Map([['capabilities.json',compact.capabilityData],['torrent-compat.json',compact.torrentData],['detail-compat.json',compact.detailData],['source-actions.json',compact.actionData],['settings-compat.json',compact.settingsData]]);
 const torrent={
