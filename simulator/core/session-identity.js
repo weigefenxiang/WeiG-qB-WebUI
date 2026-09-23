@@ -1,4 +1,4 @@
-const HANDOFF_PARAM='__weig_handoff';
+const HANDOFF_PARAMS=['__weig_handoff','__weigg_handoff'];
 const HANDOFF_MAX_AGE=120000;
 
 export function sessionClientIds(event={}){
@@ -26,8 +26,14 @@ export function sessionForEvent(clientSessions,event){
 }
 
 function handoffToken(url){
-  try{return String((url instanceof URL?url:new URL(String(url))).searchParams.get(HANDOFF_PARAM)||'').trim();}
-  catch(_e){return '';}
+  try{
+    const params=(url instanceof URL?url:new URL(String(url))).searchParams;
+    for(const name of HANDOFF_PARAMS){
+      const token=String(params.get(name)||'').trim();
+      if(token)return token;
+    }
+    return '';
+  }catch(_e){return '';}
 }
 
 function pruneHandoffs(handoffs,now,maxAge){

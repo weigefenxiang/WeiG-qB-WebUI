@@ -60,10 +60,13 @@ function basic(value){return `Basic ${btoa(value)}`;}
   assert.equal(sessionForEvent(sessions,{clientId:'client-c'}),'sim-b','an explicit new virtual session must override inherited client identity');
   assert.deepEqual(sessionClientIds({clientId:'same',replacesClientId:'same',resultingClientId:'next'}),['same','next'],'client identity list must stay unique and ordered');
 
-  const handoffs=new Map(),handoffUrl='https://lab.example/index.html?__weig_handoff=nonce-a';
+  const handoffs=new Map(),handoffUrl='https://lab.example/index.html?__weig_handoff=nonce-a',legacyHandoffUrl='https://lab.example/index.html?__weigg_handoff=nonce-b';
   rememberHandoffSession(handoffs,handoffUrl,'sim-a',1000);
   assert.equal(sessionForHandoff(handoffs,handoffUrl,2000),'sim-a','canonical handoff nonce must recover the virtual world before the new client id is known');
+  rememberHandoffSession(handoffs,legacyHandoffUrl,'sim-legacy',1000);
+  assert.equal(sessionForHandoff(handoffs,legacyHandoffUrl,2000),'sim-legacy','historical main __weigg_handoff nonce must recover its virtual world without rewriting the snapshot');
   assert.equal(sessionForHandoff(handoffs,handoffUrl,122001),'','handoff recovery must expire instead of becoming a second durable session owner');
+  assert.equal(sessionForHandoff(handoffs,legacyHandoffUrl,122001),'','legacy handoff recovery must expire under the same bounded owner');
 }
 
 const sw=fs.readFileSync(new URL('../simulator/service-worker/service-worker.js',import.meta.url),'utf8');
@@ -74,4 +77,4 @@ assert.match(sw,/rememberSessionForEvent\(clientSessions,event,/,'Service Worker
 assert.match(sw,/rememberHandoffSession\(handoffSessions,url,sessionId\)/,'Service Worker must remember the canonical navigation nonce while its virtual world is known');
 assert.match(sw,/sessionForHandoff\(handoffSessions,clientUrl\)/,'post-navigation dynamic assets must recover the virtual world from the client handoff nonce when resulting-client identity is unavailable');
 
-console.log('Virtual qB transport contract passed: WebAPI transport semantics and canonical-navigation client/handoff identity stay under explicit Service Worker owners.');
+console.log('Virtual qB transport contract passed: WebAPI transport semantics plus canonical and historical-main navigation handoff identity stay under explicit bounded Service Worker owners.');
