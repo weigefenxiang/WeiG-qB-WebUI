@@ -125,6 +125,9 @@ try{
   await page.waitForSelector('.peer-country-code');
   const countryUi=await page.evaluate(()=>Array.from(document.querySelectorAll('.peer-country-cell')).map(cell=>({code:cell.querySelector('.peer-country-code')?.textContent||'',src:cell.querySelector('.peer-country-flag')?.getAttribute('src')||'',text:cell.textContent.trim(),title:cell.title})));
   assert(countryUi.some(x=>x.code==='CN'&&x.src==='images/flags/cn.svg')&&countryUi.some(x=>x.code==='TW'&&x.src==='images/flags/tw.svg')&&countryUi.every(x=>!x.text.includes('China')&&!x.text.includes('Taiwan')),'Peer country must show official flag + ISO only: '+JSON.stringify(countryUi));
+  await page.waitForFunction(()=>{const imgs=Array.from(document.querySelectorAll('.peer-country-flag'));return imgs.length>=2&&imgs.every(img=>img.complete&&img.naturalWidth>0&&!img.hidden);});
+  const loadedFlags=await page.evaluate(()=>Array.from(document.querySelectorAll('.peer-country-flag')).map(img=>({src:img.getAttribute('src'),width:img.naturalWidth,height:img.naturalHeight,hidden:img.hidden})));
+  assert(loadedFlags.every(x=>x.width>0&&x.height>0&&!x.hidden),'Peer official SVG assets must load successfully from the bundled qB snapshot: '+JSON.stringify(loadedFlags));
   await page.locator('.detail-tabs [data-tab="files"]').click();
   await page.waitForSelector('.shared-table__viewport .shared-table__row');
   await page.waitForFunction(()=>getComputedStyle(document.getElementById('detail-content')).display==='flex');
