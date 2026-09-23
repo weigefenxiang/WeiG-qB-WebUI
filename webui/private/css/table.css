@@ -28,7 +28,7 @@
 .shared-table__head,.shared-table__row{grid-template-columns:var(--weig-detail-grid-template)}
 .shared-table__head{position:sticky;top:0;z-index:5;isolation:isolate;min-height:42px;border-bottom:1px solid var(--border);background:var(--bg-surface);color:var(--text-muted);font-size:var(--text-table-header);font-weight:760;box-shadow:0 1px 0 var(--border),0 5px 14px rgba(0,0,0,.14)}
 .shared-table__head>.grid-head-cell,.shared-table__row>[data-column-key],.shared-table__sticky-folder>[data-column-key]{min-width:0;padding:7px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;justify-self:stretch}
-.shared-table__head>.grid-head-cell{display:flex;align-items:center;justify-content:flex-start}
+.shared-table__head>.grid-head-cell{display:flex;align-items:center;justify-content:flex-start}.shared-table__head>.grid-head-cell[data-sort-direction]::after{content:"↑";display:inline-grid;place-items:center;flex:0 0 16px;width:16px;margin-left:3px;color:var(--accent-cyan);font-size:12px;font-weight:900;line-height:1}.shared-table__head>.grid-head-cell[data-sort-direction="desc"]::after{content:"↓"}
 .shared-table__head>.grid-head-cell[data-key="checked"],.shared-table__row>[data-column-key="checked"]{text-align:center;justify-content:center;justify-self:stretch}
 .shared-table__row[data-context-menu=true]{cursor:context-menu}
 .shared-table__head .col-resize{right:0}

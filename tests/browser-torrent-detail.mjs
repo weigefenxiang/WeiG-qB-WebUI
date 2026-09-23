@@ -131,7 +131,7 @@ try{
   assert(trackerTiers.slice(0,3).every(row=>row.tier===''),'Tracker pseudo rows exposed negative tier sentinel '+JSON.stringify(trackerTiers));
   assert(trackerTiers[3]?.tier==='0','Real Tracker tier was lost '+JSON.stringify(trackerTiers));
   const trackerUrlHead=page.locator('.shared-table__head .grid-head-cell[data-key="url"]');await trackerUrlHead.click();
-  await page.waitForFunction(()=>document.querySelector('.shared-table__head .grid-head-cell[data-key="url"]')?.textContent.includes('↑'));
+  await page.waitForFunction(()=>document.querySelector('.shared-table__head .grid-head-cell[data-key="url"]')?.dataset.sortDirection==='asc');
   const trackerSorted=await page.evaluate(()=>Array.from(document.querySelectorAll('.shared-table__row')).slice(0,4).map(row=>row.querySelector('[data-column-key="url"]')?.textContent||''));
   assert(trackerSorted.slice(0,3).every(value=>/^\*\* \[/.test(value)),'Tracker sort displaced pseudo rows '+JSON.stringify(trackerSorted));
 
@@ -148,7 +148,7 @@ try{
   await page.waitForSelector('.shared-table__head .grid-head-cell[data-key="size"]');
   const fileSizeHead=page.locator('.shared-table__head .grid-head-cell[data-key="size"]');await fileSizeHead.click();
   const fileSortState=await page.evaluate(()=>({head:document.querySelector('.shared-table__head .grid-head-cell[data-key="size"]')?.textContent||'',folders:Array.from(document.querySelectorAll('.shared-table__row[data-file-kind="folder"] .detail-file-label')).slice(0,2).map(node=>node.textContent),kinds:Array.from(document.querySelectorAll('.shared-table__row')).slice(0,6).map(row=>row.dataset.fileKind||'')}));
-  assert(fileSortState.head.includes('↑')&&fileSortState.folders.length>=2,'Content sort did not preserve tree/header semantics '+JSON.stringify(fileSortState));
+  assert(await page.locator('.shared-table__head .grid-head-cell[data-key="size"]').getAttribute('data-sort-direction')==='asc'&&fileSortState.folders.length>=2,'Content sort did not preserve tree/header semantics '+JSON.stringify(fileSortState));
   await page.locator('.detail-tabs [data-tab="peers"]').click();
   await page.waitForSelector('.peer-country-code');
   const countryUi=await page.evaluate(()=>Array.from(document.querySelectorAll('.peer-country-cell')).map(cell=>({code:cell.querySelector('.peer-country-code')?.textContent||'',src:cell.querySelector('.peer-country-flag')?.getAttribute('src')||'',text:cell.textContent.trim(),title:cell.title})));
