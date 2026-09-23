@@ -170,7 +170,7 @@ try{
   await page.locator('#columns-btn').click();
   await page.waitForSelector('#column-configurator-dialog[open]');
   assert(await page.locator('#column-configurator-dialog .shared-column-settings__row').filter({hasText:'Ratio'}).count()===1,'restored: Desktop Columns dialog did not restore Ratio');
-  const mainSourceOrder=await page.evaluate(()=>WeiG.CapabilityRegistry.torrentFieldFacts().torrentTableColumns.map(column=>column.key)),mainConfigOrder=await page.evaluate(()=>[...document.querySelectorAll('#column-configurator-dialog .shared-column-settings__row')].map(row=>row.dataset.columnKey));
+  const mainSourceOrder=await page.evaluate(()=>{const facts=WeiG.CapabilityRegistry.torrentFieldFacts(),native=Array.isArray(facts?.torrentTableColumns)?facts.torrentTableColumns:[];return native.length?native.map(column=>column.key):WeiG.TorrentFieldRegistry.sourceOrderedColumnDefinitions().map(column=>column.key);}),mainConfigOrder=await page.evaluate(()=>[...document.querySelectorAll('#column-configurator-dialog .shared-column-settings__row')].map(row=>row.dataset.columnKey));
   assert(JSON.stringify(mainConfigOrder)===JSON.stringify(mainSourceOrder),`restored: Desktop Column settings must use exact qB source order instead of saved table order ${JSON.stringify({mainConfigOrder,mainSourceOrder})}`);
   assert(await page.locator('#column-configurator-dialog .shared-column-settings__order:not([hidden])').count()===0,'restored: source-ordered Desktop Column settings exposed duplicate reorder buttons');
   const ratioConfigBox=page.locator('#column-configurator-dialog .shared-column-settings__row[data-column-key="ratio"] input[type="checkbox"]');
