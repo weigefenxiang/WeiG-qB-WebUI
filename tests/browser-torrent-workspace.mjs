@@ -147,6 +147,7 @@ try{
     assert(recyclerStress.metrics.created===0&&recyclerStress.metrics.removed===0&&recyclerStress.metrics.updated>0,name+': thumb-like stress caused DOM churn '+JSON.stringify(recyclerStress.metrics));
     await page.setViewportSize({width:1366,height:768});
     await waitForDataViewportIdle(page,180);
+    await resetScrollProbe(page);
 
 
     // Real progress semantics and Reduced Motion remain protected. Pseudo-element animation style can settle
