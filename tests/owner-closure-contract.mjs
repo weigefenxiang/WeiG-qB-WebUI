@@ -19,6 +19,6 @@ assert.ok(index.includes('"css/table.css"')&&!tableCss.includes('qb-peer-flags')
 assert.ok(!layout.includes("weig-table-layout-css")&&!layout.includes("css/table.css'+suffix"),'Layout runtime must not reinsert the bootstrap-owned table stylesheet as a second owner.');
 assert.ok(!index.includes('data-i18n="rss.description"')&&!index.includes('data-i18n="logs.description"')&&!index.includes('data-i18n="settings.description"')&&!index.includes('<div class="inline-form"><input id="rss-url"'),'retired tool subtitles and RSS page-level form must leave source DOM.');
 assert.ok(ui.includes("url.id='rss-url'")&&ui.includes("W.DialogRuntime.create({id:'rss-add-dialog'"),'RSS Add Feed must be created only inside the canonical Dialog path.');
-assert.ok(floating.includes('C.timeControl=function(opts)')&&settings.includes('C.timeControl({')&&!settings.includes("input.type='time'"),'Scheduler time-range must consume canonical themed TimeControl and retire the native time picker.');
+assert.ok(floating.includes('C.timeControl=function(opts)')&&settings.includes('C.timeControl({')&&!settings.includes("input.type='time'"),'Scheduler time-range must consume canonical TimeControl; platform-native input may exist only inside that shared owner.');
 assert.ok(!theme.includes('v037')&&!i18n.includes('v036.logs.'),'active versioned UI selectors/copy namespaces must stay retired.');
 console.log('Owner closure contract passed: PreferenceTransaction, ActionRegistry, DialogRuntime, ColumnConfigurator and canonical Select have one active owner path.');
