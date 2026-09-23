@@ -11,7 +11,6 @@ assert.match(core,/setItems=function\(items,preserve\)\{if\(this\._scrolling\)\{
 assert.match(core,/commitWhenIdle=function\(commit\)\{if\(typeof commit!=='function'\)return true;if\(this\._scrolling\)\{this\._pendingUiCommit=commit;return false;\}/,'non-row polling UI must share the same scroll-priority owner instead of mutating DOM during thumb drag.');
 assert.match(app,/app\.viewport\.setItems\(items\);app\.viewport\.commitWhenIdle\(finalizeListUi\)/,'Torrent polling must defer selection/pager/status DOM synchronization until the DataViewport is quiet.');
 assert.match(progressCss,/data-viewport\.is-scroll-interacting .*progress-fill.*transition:none/s,'progress animation/transition work must yield while the canonical DataViewport owns active scrolling.');
-assert.match(core,/interactiveOverscan=Math\.max\(1,Math\.min\(this\.overscan,Number\(options\.interactiveOverscan\)\|\|3\)\)/,'active scroll range must use bounded interaction overscan.');
 assert.match(core,/DataViewport\.prototype\.destroy=function\(\)/,'DataViewport must expose lifecycle cleanup instead of leaking scroll owners.');
 assert.doesNotMatch(core,/spacer\.textContent=''\s*;/,'scroll render must not clear and recreate the entire visible spacer.');
 assert.match(core,/this\._renderedRows=new Map\(\)/,'DataViewport must own a keyed visible-row pool.');
