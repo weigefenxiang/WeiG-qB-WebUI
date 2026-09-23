@@ -45,14 +45,16 @@ for(const key of ['checked','name','size','progress','remaining','priority','ava
 const host='127.0.0.1',port=8777;
 const hash='d'.repeat(40);
 const torrent={hash,name:'Detail source browser fixture — '+('long title ownership '.repeat(12)),size:64*1024*1024,progress:1,dlspeed:0,upspeed:2048,eta:0,state:'stalledUP',ratio:.5,tracker:'https://tracker.example/announce?token=exact',category:'Detail',tags:'source',num_seeds:5,num_leechs:2,save_path:'/downloads',added_on:1700000000,completion_on:0,priority:1,private:false};
-const files=Array.from({length:40},(_,index)=>({index,name:`folder/file-${String(index).padStart(2,'0')}.bin`,size:1048576,progress:index<2?.25:Math.min(.95,.1+(index%9)/10),priority:index===0?0:1,is_seed:false,piece_range:[index,index+1],availability:index===0?-1:.8}));
+const files=Array.from({length:40},(_,index)=>({index,name:`${index<2?'folder-a':'folder-b'}/file-${String(index).padStart(2,'0')}.bin`,size:1048576,progress:index<2?.25:Math.min(.95,.1+(index%9)/10),priority:index===0?0:1,is_seed:false,piece_range:[index,index+1],availability:index===0?-1:.8}));
+const filePrioWrites=[];
 const properties={save_path:'/downloads',total_size:torrent.size,time_elapsed:300,seeding_time:0,eta:900,nb_connections:4,nb_connections_limit:100,total_downloaded:16*1024*1024,total_downloaded_session:4*1024*1024,total_uploaded:2*1024*1024,total_uploaded_session:512*1024,dl_speed:65536,dl_speed_avg:60000,up_speed:2048,up_speed_avg:1800,dl_limit:-1,up_limit:-1,total_wasted:0,seeds:5,seeds_total:12,peers:2,peers_total:9,share_ratio:.5,popularity:1,reannounce:120,pieces_num:256,piece_size:262144,pieces_have:64,created_by:'fixture',last_seen:1700000100,addition_date:1700000000,completion_date:0,creation_date:1699990000,download_path:'/downloads',comment:'detail browser evidence',private:false,has_metadata:true,progress:.25};
 const assert=(ok,msg)=>{if(!ok)throw new Error(msg);};
 const json=(res,value,status=200)=>{res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store'});res.end(JSON.stringify(value));};
 const text=(res,value,status=200)=>{res.writeHead(status,{'content-type':'text/plain; charset=utf-8','cache-control':'no-store'});res.end(String(value));};
 const empty=(res,status=200)=>{res.writeHead(status,{'cache-control':'no-store'});res.end('');};
 const mime={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.ico':'image/x-icon'};
-function api(req,res,p,url){
+async function readForm(req){let body='';for await(const chunk of req)body+=chunk;return new URLSearchParams(body);}
+async function api(req,res,p,url){
   if(p==='app/version')return text(res,'v'+profile.qbVersion);
   if(p==='app/webapiVersion')return text(res,profile.webApiVersion||'2.11.4');
   if(p==='app/preferences')return json(res,{save_path:'/downloads',alternative_webui_enabled:true,alternative_webui_path:'/config/weigg-qb-webui',locale:'en'});
@@ -68,6 +70,7 @@ function api(req,res,p,url){
   }
   if(p==='torrents/properties')return json(res,properties);
   if(p==='torrents/files')return json(res,files);
+  if(p==='torrents/filePrio'&&req.method==='POST'){const form=await readForm(req),ids=String(form.get('id')||'').split('|').map(Number).filter(Number.isFinite),priority=Number(form.get('priority'));filePrioWrites.push({ids:ids.slice(),priority});ids.forEach(id=>{if(files[id])files[id].priority=priority;});return empty(res);}
   if(p==='torrents/trackers')return json(res,[{url:'https://tracker.example/announce?token=exact',status:2,tier:0,msg:'Working',num_peers:4,num_seeds:8,num_leeches:2,num_downloaded:12,next_announce:120,min_announce:60,endpoints:[]}]);
   if(p==='sync/torrentPeers')return json(res,{rid:1,full_update:true,peers:{'112.46.3.128:2028':{ip:'112.46.3.128',port:2028,connection:'BT',flags:'',flags_desc:'',client:'fixture',progress:0,dl_speed:0,up_speed:0,downloaded:0,uploaded:0,relevance:0,files:'',country:'China',country_code:'cn'},'2001:b011::1:1825':{ip:'2001:b011::1',port:1825,connection:'BT',flags:'U H E',flags_desc:'',client:'BitComet 2.03',progress:.056,dl_speed:0,up_speed:40192,downloaded:0,uploaded:177000000,relevance:0,files:'',country:'Taiwan',country_code:'tw'}}});
   if(p==='torrents/webseeds')return json(res,[{url:'https://cdn.example/files/'}]);
@@ -81,7 +84,7 @@ function api(req,res,p,url){
 const server=http.createServer(async(req,res)=>{
   try{
     const url=new URL(req.url,`http://${host}:${port}`),rel=url.pathname.replace(/^\//,'');
-    if(rel.startsWith('api/v2/'))return api(req,res,rel.slice(7),url);
+    if(rel.startsWith('api/v2/'))return await api(req,res,rel.slice(7),url);
     if(rel==='data/qb-releases.json')return json(res,[profile]);
     if(rel==='weigg-install.json')return json(res,{version:productVersion,gitSha:'detail-browser-fixture',qbPath:'/config/weigg-qb-webui'});
     const {file,body}=await readWebuiStatic([root,publicRoot],rel||'index.html');
@@ -155,6 +158,25 @@ try{
   assert(derived.rows[0].checked===false&&derived.rows[1].checked===true,`Source-driven checked state is wrong: ${JSON.stringify(derived.rows)}`);
   assert(derived.rows[0].remaining===derived.expectedIgnored,`Ignored-file remaining must be zero: ${JSON.stringify(derived)}`);
   assert(derived.rows[1].remaining===derived.expectedNormal,`Source-driven remaining formula is wrong: ${JSON.stringify(derived)}`);assert(derived.rows[0].availability==='N/A'&&derived.rows[1].availability==='80%',`Content availability sentinel/percentage projection is wrong: ${JSON.stringify(derived.rows)}`);
+  const folderCheckbox=page.locator('.shared-table__row[data-file-kind="folder"] [data-column-key="checked"] input[type="checkbox"]').first(),headerCheckbox=page.locator('.shared-table__head .grid-head-cell[data-key="checked"] input.detail-files-header-checkbox');
+  assert(await folderCheckbox.evaluate(node=>node.indeterminate===true),'Mixed Content folder must render a tri-state partial checkbox before writes.');
+  assert(await headerCheckbox.evaluate(node=>node.indeterminate===true),'Mixed Content header must render a global tri-state partial checkbox before writes.');
+  await folderCheckbox.click();
+  await page.waitForFunction(()=>{const row=[...document.querySelectorAll('.shared-table__row[data-file-kind="folder"]')].find(row=>row.querySelector('.detail-file-label')?.textContent==='folder-a'),box=row?.querySelector('[data-column-key="checked"] input[type="checkbox"]');return !!box&&box.checked&&!box.indeterminate;});
+  assert(filePrioWrites.length>=2&&filePrioWrites.slice(-2).every((write,index)=>write.ids.length===1&&write.ids[0]===index&&write.priority===1),`Folder checkbox did not issue source filePrio writes for all descendants: ${JSON.stringify(filePrioWrites)}`);
+  assert(files[0].priority===1&&files[1].priority===1,'Folder checkbox fixture server truth did not converge to Normal priority.');
+  const firstLeafCheckbox=page.locator('.shared-table__row[data-file-kind="file"] [data-column-key="checked"] input[type="checkbox"]').first();
+  await firstLeafCheckbox.click();
+  await page.waitForFunction(()=>{const box=document.querySelector('.shared-table__row[data-file-kind="file"] [data-column-key="checked"] input[type="checkbox"]');return !!box&&!box.checked;});
+  assert(filePrioWrites.at(-1)?.ids?.[0]===0&&filePrioWrites.at(-1)?.priority===0&&files[0].priority===0,'Leaf checkbox did not round-trip Ignored priority through the fixture server.');
+  assert(await folderCheckbox.evaluate(node=>node.indeterminate===true),'Parent folder did not return to partial state after one child was ignored.');
+  assert(await headerCheckbox.evaluate(node=>node.indeterminate===true),'Global Content checkbox did not return to partial state after one file was ignored.');
+  const beforeHeaderWrites=filePrioWrites.length;
+  await headerCheckbox.click();
+  await page.waitForFunction(()=>{const box=document.querySelector('.shared-table__head .grid-head-cell[data-key="checked"] input.detail-files-header-checkbox');return !!box&&box.checked&&!box.indeterminate;});
+  const headerWrites=filePrioWrites.slice(beforeHeaderWrites);
+  assert(headerWrites.length===files.length&&headerWrites.every((write,index)=>write.ids.length===1&&write.ids[0]===index&&write.priority===1),`Header checkbox did not round-trip every source file through filePrio: ${JSON.stringify(headerWrites)}`);
+  assert(files.every(file=>file.priority===1),'Header checkbox fixture server truth did not converge all files to Normal priority.');
 
   const normalFolderStyle=await page.evaluate(()=>{const visible=row=>{const style=getComputedStyle(row),rect=row.getBoundingClientRect();return style.display!=='none'&&style.visibility!=='hidden'&&rect.width>0&&rect.height>0;},row=[...document.querySelectorAll('.shared-table__row[data-file-kind="folder"]')].find(visible),label=row&&row.querySelector('.detail-file-label'),toggle=row&&row.querySelector('.detail-file-toggle'),rr=row&&row.getBoundingClientRect(),lr=label&&label.getBoundingClientRect(),tr=toggle&&toggle.getBoundingClientRect(),fileCount=[...document.querySelectorAll('.shared-table__row[data-file-kind="file"]')].filter(visible).length;return row&&label&&toggle?{fontWeight:getComputedStyle(row).fontWeight,height:rr.height,labelTop:lr.top-rr.top,labelLeft:lr.left-rr.left,toggleTop:tr.top-rr.top,expanded:toggle.getAttribute('aria-expanded'),fileCount}:null;});
   assert(normalFolderStyle&&normalFolderStyle.expanded==='true'&&normalFolderStyle.fileCount>=2,'Normal Content folder row did not start expanded: '+JSON.stringify(normalFolderStyle));

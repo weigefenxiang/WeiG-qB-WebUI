@@ -33,7 +33,7 @@ const commonProfile={
   torrentStates:['error','missingFiles','uploading','stoppedUP','queuedUP','stalledUP','checkingUP','forcedUP','allocating','downloading','metaDL','stoppedDL','queuedDL','stalledDL','checkingDL','forcedDL','checkingResumeData','moving'],
   preferenceDescriptors:[]
 };
-const sourceColumns=fields=>fields.map(key=>({key,caption:key==='state'?'Status':key.replaceAll('_',' '),defaultWidth:key==='name'?200:100,defaultVisible:true,dataProperties:[key]}));
+const sourceColumns=fields=>{const out=[];for(const key of fields){if(key==='state'){out.push({key:'state_icon',caption:'Status Icon',translation:{source:'Status Icon',context:'TransferListModel'},defaultWidth:30,defaultVisible:false,dataProperties:['state']});out.push({key:'status',caption:'Status',translation:{source:'Status',context:'TransferListModel'},defaultWidth:100,defaultVisible:true,dataProperties:['state']});continue;}out.push({key,caption:key.replaceAll('_',' '),defaultWidth:key==='name'?200:100,defaultVisible:true,dataProperties:[key]});}return out;};
 const profiles=[
   {...commonProfile,qbVersion:'6.0.0',sourceSha:'6'.repeat(40),torrentInfoFields:['hash',...productFields.filter(key=>key!=='ratio')],torrentTableColumns:sourceColumns(productFields.filter(key=>key!=='ratio'))},
   {...commonProfile,qbVersion:'6.0.1',sourceSha:'7'.repeat(40),torrentInfoFields:['hash',...productFields],torrentTableColumns:sourceColumns(productFields)}
@@ -171,9 +171,17 @@ try{
   await page.locator('#columns-btn').click();
   await page.waitForSelector('#column-configurator-dialog[open]');
   assert(await page.locator('#column-configurator-dialog .shared-column-settings__row').filter({hasText:'Ratio'}).count()===1,'restored: Desktop Columns dialog did not restore Ratio');
-  const mainSourceOrder=await page.evaluate(()=>{const facts=WeiG.CapabilityRegistry.torrentFieldFacts(),native=Array.isArray(facts?.torrentTableColumns)?facts.torrentTableColumns:[];return native.length?native.map(column=>column.key):WeiG.TorrentFieldRegistry.sourceOrderedColumnDefinitions().map(column=>column.key);}),mainConfigOrder=await page.evaluate(()=>[...document.querySelectorAll('#column-configurator-dialog .shared-column-settings__row')].map(row=>row.dataset.columnKey));
+  const expectedMainSourceOrder=profiles[1].torrentTableColumns.map(column=>column.key),mainSourceOrder=await page.evaluate(()=>{const facts=WeiG.CapabilityRegistry.torrentFieldFacts(),native=Array.isArray(facts?.torrentTableColumns)?facts.torrentTableColumns:[];return native.length?native.map(column=>column.key):WeiG.TorrentFieldRegistry.sourceOrderedColumnDefinitions().map(column=>column.key);}),mainConfigOrder=await page.evaluate(()=>[...document.querySelectorAll('#column-configurator-dialog .shared-column-settings__row')].map(row=>row.dataset.columnKey));
+  assert(JSON.stringify(mainSourceOrder)===JSON.stringify(expectedMainSourceOrder),`restored: compact capability source facts lost torrentTableColumns order ${JSON.stringify({mainSourceOrder,expectedMainSourceOrder})}`);
   assert(JSON.stringify(mainConfigOrder)===JSON.stringify(mainSourceOrder),`restored: Desktop Column settings must use exact qB source order instead of saved table order ${JSON.stringify({mainConfigOrder,mainSourceOrder})}`);
   assert(await page.locator('#column-configurator-dialog .shared-column-settings__order:not([hidden])').count()===0,'restored: source-ordered Desktop Column settings exposed duplicate reorder buttons');
+  const stateIconRow=page.locator('#column-configurator-dialog .shared-column-settings__row[data-column-key="state_icon"]'),stateIconBox=stateIconRow.locator('input[type="checkbox"]');
+  assert(await stateIconRow.count()===1&&await stateIconRow.getByText('Status Icon',{exact:true}).count()===1,'restored: 5.x+ state_icon must expose exact source copy Status Icon in Column settings.');
+  assert(!(await stateIconBox.isChecked()),'restored: 5.x+ state_icon source default must remain hidden.');
+  await stateIconBox.click();await page.waitForFunction(()=>!!document.querySelector('#torrent-table-head .grid-head-cell[data-key="state_icon"]'));
+  const stateIconHeader=await page.evaluate(()=>{const cell=document.querySelector('#torrent-table-head .grid-head-cell[data-key="state_icon"]'),label=cell?.querySelector('.grid-head-label');return{aria:cell?.getAttribute('aria-label')||'',full:label?.dataset.fullLabel||'',visible:(label?.textContent||'').trim()};});
+  assert(stateIconHeader.aria==='Status Icon'&&stateIconHeader.full==='Status Icon'&&stateIconHeader.visible.length>0,`restored: enabled 5.x+ state_icon header lost exact source label: ${JSON.stringify(stateIconHeader)}`);
+  await stateIconBox.click();await page.waitForFunction(()=>!document.querySelector('#torrent-table-head .grid-head-cell[data-key="state_icon"]'));
   const ratioConfigBox=page.locator('#column-configurator-dialog .shared-column-settings__row[data-column-key="ratio"] input[type="checkbox"]');
   await ratioConfigBox.click();await page.waitForFunction(()=>![...document.querySelectorAll('#torrent-table-head .grid-head-cell')].some(node=>node.dataset.key==='ratio'));
   await ratioConfigBox.click();await page.waitForFunction(()=>[...document.querySelectorAll('#torrent-table-head .grid-head-cell')].some(node=>node.dataset.key==='ratio'));
