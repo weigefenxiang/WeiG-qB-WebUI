@@ -49,6 +49,7 @@ const files=Array.from({length:40},(_,index)=>({index,name:`${index<2?'folder-a'
 const filePrioWrites=[];
 const properties={save_path:'/downloads',total_size:torrent.size,time_elapsed:300,seeding_time:0,eta:900,nb_connections:4,nb_connections_limit:100,total_downloaded:16*1024*1024,total_downloaded_session:4*1024*1024,total_uploaded:2*1024*1024,total_uploaded_session:512*1024,dl_speed:65536,dl_speed_avg:60000,up_speed:2048,up_speed_avg:1800,dl_limit:-1,up_limit:-1,total_wasted:0,seeds:5,seeds_total:12,peers:2,peers_total:9,share_ratio:.5,popularity:1,reannounce:120,pieces_num:256,piece_size:262144,pieces_have:64,created_by:'fixture',last_seen:1700000100,addition_date:1700000000,completion_date:0,creation_date:1699990000,download_path:'/downloads',comment:'detail browser evidence',private:false,has_metadata:true,progress:.25};
 const assert=(ok,msg)=>{if(!ok)throw new Error(msg);};
+async function waitFixture(predicate,message,timeout=5000){const started=Date.now();while(!predicate()){if(Date.now()-started>timeout)throw new Error(message);await new Promise(resolve=>setTimeout(resolve,20));}}
 const json=(res,value,status=200)=>{res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store'});res.end(JSON.stringify(value));};
 const text=(res,value,status=200)=>{res.writeHead(status,{'content-type':'text/plain; charset=utf-8','cache-control':'no-store'});res.end(String(value));};
 const empty=(res,status=200)=>{res.writeHead(status,{'cache-control':'no-store'});res.end('');};
@@ -162,17 +163,21 @@ try{
   assert(await folderCheckbox.evaluate(node=>node.indeterminate===true),'Mixed Content folder must render a tri-state partial checkbox before writes.');
   assert(await headerCheckbox.evaluate(node=>node.indeterminate===true),'Mixed Content header must render a global tri-state partial checkbox before writes.');
   await folderCheckbox.click();
+  await waitFixture(()=>filePrioWrites.length>=2,`Folder checkbox filePrio requests did not reach fixture: ${JSON.stringify(filePrioWrites)}`);
   await page.waitForFunction(()=>{const row=[...document.querySelectorAll('.shared-table__row[data-file-kind="folder"]')].find(row=>row.querySelector('.detail-file-label')?.textContent==='folder-a'),box=row?.querySelector('[data-column-key="checked"] input[type="checkbox"]');return !!box&&box.checked&&!box.indeterminate;});
-  assert(filePrioWrites.length>=2&&filePrioWrites.slice(-2).every((write,index)=>write.ids.length===1&&write.ids[0]===index&&write.priority===1),`Folder checkbox did not issue source filePrio writes for all descendants: ${JSON.stringify(filePrioWrites)}`);
+  assert(filePrioWrites.slice(-2).every((write,index)=>write.ids.length===1&&write.ids[0]===index&&write.priority===1),`Folder checkbox did not issue source filePrio writes for all descendants: ${JSON.stringify(filePrioWrites)}`);
   assert(files[0].priority===1&&files[1].priority===1,'Folder checkbox fixture server truth did not converge to Normal priority.');
   const firstLeafCheckbox=page.locator('.shared-table__row[data-file-kind="file"] [data-column-key="checked"] input[type="checkbox"]').first();
+  const beforeLeafWrites=filePrioWrites.length;
   await firstLeafCheckbox.click();
+  await waitFixture(()=>filePrioWrites.length>=beforeLeafWrites+1,`Leaf checkbox filePrio request did not reach fixture: ${JSON.stringify(filePrioWrites)}`);
   await page.waitForFunction(()=>{const box=document.querySelector('.shared-table__row[data-file-kind="file"] [data-column-key="checked"] input[type="checkbox"]');return !!box&&!box.checked;});
   assert(filePrioWrites.at(-1)?.ids?.[0]===0&&filePrioWrites.at(-1)?.priority===0&&files[0].priority===0,'Leaf checkbox did not round-trip Ignored priority through the fixture server.');
   assert(await folderCheckbox.evaluate(node=>node.indeterminate===true),'Parent folder did not return to partial state after one child was ignored.');
   assert(await headerCheckbox.evaluate(node=>node.indeterminate===true),'Global Content checkbox did not return to partial state after one file was ignored.');
   const beforeHeaderWrites=filePrioWrites.length;
   await headerCheckbox.click();
+  await waitFixture(()=>filePrioWrites.length>=beforeHeaderWrites+files.length,`Header checkbox did not complete all filePrio requests: ${filePrioWrites.length-beforeHeaderWrites}/${files.length}`,10000);
   await page.waitForFunction(()=>{const box=document.querySelector('.shared-table__head .grid-head-cell[data-key="checked"] input.detail-files-header-checkbox');return !!box&&box.checked&&!box.indeterminate;});
   const headerWrites=filePrioWrites.slice(beforeHeaderWrites);
   assert(headerWrites.length===files.length&&headerWrites.every((write,index)=>write.ids.length===1&&write.ids[0]===index&&write.priority===1),`Header checkbox did not round-trip every source file through filePrio: ${JSON.stringify(headerWrites)}`);
