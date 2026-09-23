@@ -2,7 +2,7 @@
   'use strict';
   var W=global.WeiG=global.WeiG||{};
   var EN={
-    'app.skip':'Skip to torrent list','app.back':'Back','app.home':'Home','app.reload':'Reload','app.refresh':'Refresh','app.theme':'Toggle theme','app.menu':'Open navigation','app.close':'Close','app.cancel':'Cancel','app.confirm':'Confirm','app.done':'Done','app.reset':'Reset','app.more':'More','app.loading':'Loading…','app.connected':'WeiG qB WebUI connected','app.compatible':'Adapted','app.compatMode':'Compatibility mode','app.detecting':'Detecting…',
+    'app.skip':'Skip to torrent list','app.back':'Back','app.home':'Home','app.reload':'Reload','app.refresh':'Refresh','app.theme':'Toggle theme','app.menu':'Open navigation','app.close':'Close','app.cancel':'Cancel','app.confirm':'Confirm','app.done':'Done','app.reset':'Reset','app.more':'More','app.loading':'Loading…','time.select':'Select time','time.hour':'Choose hour','time.minute':'Choose minute','time.ok':'OK','app.connected':'WeiG qB WebUI connected','app.compatible':'Adapted','app.compatMode':'Compatibility mode','app.detecting':'Detecting…',
     'nav.torrents':'Torrents','nav.search':'Search','nav.rss':'RSS','nav.logs':'Logs','nav.settings':'Settings','nav.more':'More',
     'sidebar.torrents':'TORRENTS','sidebar.trackers':'TRACKERS','sidebar.savePath':'SAVE PATH','sidebar.categories':'CATEGORIES','sidebar.tags':'TAGS','sidebar.connection':'CONNECTION',
     'tracker.all':'All Trackers','tracker.none':'No Tracker','tracker.indexing':'Building Tracker index…','path.all':'All Paths','category.all':'All Categories','tag.all':'All Tags',
@@ -22,7 +22,7 @@
     'language.en':'English','language.zh-CN':'简体中文','language.zh-TW':'繁體中文','language.zh-HK':'香港正體字','language.ja':'日本語','language.ko':'한국어'
   };
   var ZH={
-    'app.skip':'跳到种子列表','app.back':'返回','app.home':'首页','app.reload':'重载','app.refresh':'刷新','app.theme':'切换主题','app.menu':'打开导航','app.close':'关闭','app.cancel':'取消','app.confirm':'确认','app.done':'完成','app.reset':'恢复默认','app.more':'更多','app.loading':'正在加载…','app.connected':'WeiG qB WebUI 已连接','app.compatible':'已适配','app.compatMode':'兼容模式','app.detecting':'检测中…',
+    'app.skip':'跳到种子列表','app.back':'返回','app.home':'首页','app.reload':'重载','app.refresh':'刷新','app.theme':'切换主题','app.menu':'打开导航','app.close':'关闭','app.cancel':'取消','app.confirm':'确认','app.done':'完成','app.reset':'恢复默认','app.more':'更多','app.loading':'正在加载…','time.select':'选择时间','time.hour':'选择小时','time.minute':'选择分钟','time.ok':'确定','app.connected':'WeiG qB WebUI 已连接','app.compatible':'已适配','app.compatMode':'兼容模式','app.detecting':'检测中…',
     'nav.torrents':'种子','nav.search':'搜索','nav.rss':'RSS','nav.logs':'日志','nav.settings':'设置','nav.more':'更多',
     'sidebar.torrents':'种子','sidebar.trackers':'Tracker','sidebar.savePath':'保存路径','sidebar.categories':'分类','sidebar.tags':'标签','sidebar.connection':'连接',
     'tracker.all':'全部 Tracker','tracker.none':'无 Tracker','tracker.indexing':'正在建立 Tracker 索引…','path.all':'全部路径','category.all':'全部分类','tag.all':'全部标签',
