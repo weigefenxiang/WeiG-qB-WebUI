@@ -68,9 +68,7 @@ function difference(left,right){
 async function setTimeControl(page,control,value){
   const parts=String(value).split(':');assert.equal(parts.length,2,'invalid HH:mm test value');
   for(const [selector,part] of [['.ui-time-control__hour',parts[0]],['.ui-time-control__minute',parts[1]]]){
-    await control.locator(selector+' .ui-select__trigger').click();
-    const option=page.locator('#weig-floating-layer .ui-select__option[data-value="'+String(part).replaceAll('"','\\"')+'"]');
-    await option.waitFor({state:'visible',timeout:30000});await option.click();
+    const input=control.locator(selector);await input.fill(part);await input.press('Enter');
   }
 }
 
