@@ -163,7 +163,8 @@ export function buildQbSettingsTranslationOverlay(catalog, readReleaseSources, o
       preferencesSource:releaseSources.preferencesSource || '',
       toolbarSource:releaseSources.toolbarSource || '',
       filtersSource:releaseSources.filtersSource || '',
-      dynamicTableSource:releaseSources.dynamicTableSource || ''
+      dynamicTableSource:releaseSources.dynamicTableSource || '',
+      clientSource:releaseSources.clientSource || ''
     });
     Object.assign(ui,torrentDetailTranslationRefs(profile.torrentDetailUi),detailControlTranslationRefs(profile.torrentDetailUi));
     for(const ref of rssSurfaceTranslationRefs(profile.rssDownloaderUi))ui['rss.downloader.copy.'+contentHash([ref.context,ref.source]).slice(0,20)]=ref;
@@ -247,6 +248,7 @@ function preferencesSource(root,tag) { return showMaybe(root,tag,'src/webui/www/
 function toolbarSource(root,tag) { return showMaybe(root,tag,'src/webui/www/private/views/preferencesToolbar.html') || showMaybe(root,tag,'src/webui/www/private/preferences.html'); }
 function filtersSource(root,tag) { return showMaybe(root,tag,'src/webui/www/private/views/filters.html') || showMaybe(root,tag,'src/webui/www/private/filters.html'); }
 function dynamicTableSource(root,tag) { return showMaybe(root,tag,'src/webui/www/private/scripts/dynamicTable.js'); }
+function clientSource(root,tag) { return showMaybe(root,tag,'src/webui/www/private/scripts/client.js'); }
 function translationPaths(root,tag) {
   let output='';
   try { output=git(root,'ls-tree','-r','--name-only',tag,'src/webui/www/translations','src/lang'); }
@@ -266,6 +268,7 @@ export function buildQbSettingsTranslationOverlayFromClone(catalog,qbRoot) {
       toolbarSource:toolbarSource(qbRoot,tag),
       filtersSource:filtersSource(qbRoot,tag),
       dynamicTableSource:dynamicTableSource(qbRoot,tag),
+      clientSource:clientSource(qbRoot,tag),
       translationSource:(locale)=>{
         const resourcePath=resolveQbTranslationResourcePath(locale,paths,sourceOf);
         return resourcePath ? sourceOf(resourcePath) : '';

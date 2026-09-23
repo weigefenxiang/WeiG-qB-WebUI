@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import {extractTorrentTableColumns} from './qb-torrent-fields-parser.mjs';
 import {canonicalQbHtmlText,parseQbtSourceRef} from './qb-source-text.mjs';
+import {extractTrackerFilterFacts} from './qb-tracker-filter-source.mjs';
 
 function decodeHtml(value){return canonicalQbHtmlText(value);}
 function qbtTr(value){return parseQbtSourceRef(value);}
@@ -31,7 +32,7 @@ function torrentStatusRefs(source){
   return out;
 }
 
-export function extractQbOwnedUiFacts({preferencesSource='',toolbarSource='',filtersSource='',dynamicTableSource=''}={}){
+export function extractQbOwnedUiFacts({preferencesSource='',toolbarSource='',filtersSource='',dynamicTableSource='',clientSource=''}={}){
   const out={},toolbar=toolbarSource||preferencesSource;
   for(const item of settingsTabRefs(toolbar))add(out,item.key,item.ref);
   add(out,'transfer.rate.global',exactRef(preferencesSource,'Global Rate Limits'));
@@ -42,6 +43,7 @@ export function extractQbOwnedUiFacts({preferencesSource='',toolbarSource='',fil
   add(out,'sidebar.trackers',exactRef(filtersSource,'Trackers','TransferListFiltersWidget'));
   const filters=['all','downloading','seeding','completed','resumed','paused','running','stopped','active','inactive','stalled','stalled_uploading','stalled_downloading','checking','moving','errored'];
   for(const name of filters)add(out,`filter.${name}`,itemRef(filtersSource,`${name}_filter`));
+  for(const item of extractTrackerFilterFacts(clientSource))add(out,`tracker.filter.${item.id}`,item.copy);
   if(dynamicTableSource){
     for(const column of extractTorrentTableColumns(dynamicTableSource,'qB dynamicTable owned UI'))if(column.translation)add(out,`column.${column.key}`,column.translation);
     const states=torrentStatusRefs(dynamicTableSource);
