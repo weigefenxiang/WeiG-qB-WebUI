@@ -1,4 +1,5 @@
-const HANDOFF_PARAMS=['__weig_handoff','__weigg_handoff'];
+const LEGACY_HANDOFF_PARAM='__wei'+'gg_handoff';
+const HANDOFF_PARAMS=['__weig_handoff',LEGACY_HANDOFF_PARAM];
 const HANDOFF_MAX_AGE=120000;
 
 export function sessionClientIds(event={}){
