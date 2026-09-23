@@ -8,7 +8,7 @@ import {createWorldCache} from './__simulator/storage/world-cache.js';
 import {handleApi} from './__simulator/protocol/router.js';
 import {applyTransportPolicy} from './__simulator/protocol/transport-contract.js';
 import {emulateQbtDocument} from './__simulator/qbt-tr-emulator.mjs';
-import {rememberHandoffSession,rememberSessionForEvent,sessionClientIds,sessionForEvent,sessionForHandoff} from './__simulator/core/session-identity.js';
+import {rememberHandoffSession,rememberSessionForEvent,sessionClientIds,sessionForEvent,sessionForHandoff,sessionForUrl} from './__simulator/core/session-identity.js';
 
 const SOURCE_PRIVATE='./__source/private/';
 const SOURCE_PUBLIC='./__source/public/';
@@ -77,7 +77,7 @@ function rememberResolvedSession(event,url,sessionId){
 }
 
 async function sessionIdForEvent(event,url){
-  const direct=url.searchParams.get('sim');
+  const direct=sessionForUrl(url);
   if(direct){
     rememberResolvedSession(event,url,direct);
     return direct;
@@ -91,7 +91,7 @@ async function sessionIdForEvent(event,url){
     try{
       const client=await self.clients.get(clientId);
       if(!client)continue;
-      const clientUrl=new URL(client.url),fromClient=clientUrl.searchParams.get('sim');
+      const clientUrl=new URL(client.url),fromClient=sessionForUrl(clientUrl);
       if(fromClient){
         rememberResolvedSession(event,url,fromClient);
         return fromClient;
@@ -103,6 +103,19 @@ async function sessionIdForEvent(event,url){
       }
     }catch(_e){}
   }
+  try{
+    const rawReferrer=String(event?.request?.referrer||'').trim();
+    if(rawReferrer){
+      const referrerUrl=new URL(rawReferrer);
+      if(referrerUrl.origin===url.origin){
+        const fromReferrer=sessionForUrl(referrerUrl)||sessionForHandoff(handoffSessions,referrerUrl);
+        if(fromReferrer){
+          rememberResolvedSession(event,url,fromReferrer);
+          return fromReferrer;
+        }
+      }
+    }
+  }catch(_e){}
   return DEFAULT_SESSION;
 }
 

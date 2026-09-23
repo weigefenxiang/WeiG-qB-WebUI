@@ -26,6 +26,11 @@ export function sessionForEvent(clientSessions,event){
   return '';
 }
 
+export function sessionForUrl(url){
+  try{return String((url instanceof URL?url:new URL(String(url))).searchParams.get('sim')||'').trim();}
+  catch(_e){return '';}
+}
+
 function handoffToken(url){
   try{
     const params=(url instanceof URL?url:new URL(String(url))).searchParams;

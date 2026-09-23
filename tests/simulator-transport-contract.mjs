@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {createWorld} from '../simulator/core/engine.js';
 import {applyTransportPolicy,isCrossSiteRequest,resolveTransportContract,selectTargetHost} from '../simulator/protocol/transport-contract.js';
-import {rememberHandoffSession,rememberSessionForEvent,sessionClientIds,sessionForEvent,sessionForHandoff} from '../simulator/core/session-identity.js';
+import {rememberHandoffSession,rememberSessionForEvent,sessionClientIds,sessionForEvent,sessionForHandoff,sessionForUrl} from '../simulator/core/session-identity.js';
 
 function world(qb,api){
   const value=createWorld({profile:{qbVersion:qb,webApiVersion:api,stable:true},count:1,seed:'transport-contract',now:1700000000000});
@@ -60,6 +60,9 @@ function basic(value){return `Basic ${btoa(value)}`;}
   assert.equal(sessionForEvent(sessions,{clientId:'client-c'}),'sim-b','an explicit new virtual session must override inherited client identity');
   assert.deepEqual(sessionClientIds({clientId:'same',replacesClientId:'same',resultingClientId:'next'}),['same','next'],'client identity list must stay unique and ordered');
 
+  assert.equal(sessionForUrl('https://lab.example/login.html?sim=sim-referrer'),'sim-referrer','same-origin login referrer must expose its explicit virtual world id');
+  assert.equal(sessionForUrl('https://lab.example/index.html'),'','URLs without ?sim= must not invent a virtual world id');
+
   const handoffs=new Map(),handoffUrl='https://lab.example/index.html?__weig_handoff=nonce-a',legacyHandoffUrl='https://lab.example/index.html?__weigg_handoff=nonce-b';
   rememberHandoffSession(handoffs,handoffUrl,'sim-a',1000);
   assert.equal(sessionForHandoff(handoffs,handoffUrl,2000),'sim-a','canonical handoff nonce must recover the virtual world before the new client id is known');
@@ -76,5 +79,8 @@ assert.match(sw,/sessionForEvent\(clientSessions,event\)/,'Service Worker must i
 assert.match(sw,/rememberSessionForEvent\(clientSessions,event,/,'Service Worker must propagate the virtual world to resulting navigation clients');
 assert.match(sw,/rememberHandoffSession\(handoffSessions,url,sessionId\)/,'Service Worker must remember the canonical navigation nonce while its virtual world is known');
 assert.match(sw,/sessionForHandoff\(handoffSessions,clientUrl\)/,'post-navigation dynamic assets must recover the virtual world from the client handoff nonce when resulting-client identity is unavailable');
+assert.match(sw,/event\?\.request\?\.referrer/,'navigation identity recovery must inspect the initiating request referrer when client ids are unavailable');
+assert.match(sw,/referrerUrl\.origin===url\.origin/,'referrer fallback must stay same-origin and never trust an external session identity');
+assert.match(sw,/sessionForUrl\(referrerUrl\)\|\|sessionForHandoff\(handoffSessions,referrerUrl\)/,'same-origin referrer must recover either the explicit sim id or a bounded handoff identity before defaulting');
 
 console.log('Virtual qB transport contract passed: WebAPI transport semantics plus canonical and historical-main navigation handoff identity stay under explicit bounded Service Worker owners.');
