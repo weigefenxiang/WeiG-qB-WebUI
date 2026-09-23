@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {canonicalTorrentFilters,extractTorrentFilters,extractTorrentInfoParameters} from '../tools/qb-torrent-surface-parsers.mjs';
-import {extractTrackerFilterFacts} from '../tools/qb-tracker-filter-source.mjs';
+import {extractTrackerFacetMode,extractTrackerFilterFacts} from '../tools/qb-tracker-filter-source.mjs';
 const legacyFilter=`bool TorrentFilter::setTypeByName(const QString &filter){if(filter=="downloading")return true;else if(filter==QStringLiteral("seeding"))return true;else if(filter=="completed")return true;else if(filter=="paused")return true;else if(filter=="resumed")return true;else if(filter=="active")return true;else if(filter=="inactive")return true;else if(filter=="errored")return true;return false;}`;
 const legacyController=`void TorrentsController::infoAction(){const QString filter{params()["filter"]};const QString category{params()[QStringLiteral("category")]};const QString sortedColumn{params()["sort"]};const bool reverse{parseBool(params()["reverse"],false)};int limit{params()["limit"].toInt()};int offset{params()["offset"].toInt()};}`;
 const modernController=`TorrentFilter::Status parseTorrentStatus(const QString &statusStr){if(statusStr==u"downloading"_s)return A;if(statusStr==u"seeding"_s)return B;if(statusStr==u"stopped"_s)return C;if(statusStr==u"running"_s)return D;if(statusStr==u"stalled"_s)return E;if(statusStr==u"checking"_s)return F;return G;} void TorrentsController::infoAction(){const QString filter{params()[u"filter"_s]};const auto category=getOptionalString(params(),u"category"_s);const auto tag=getOptionalTag(params(),u"tag"_s);const QString sort{params()[u"sort"_s]};const bool reverse=parseBool(params()[u"reverse"_s]).value_or(false);int limit{params()[u"limit"_s].toInt()};int offset{params()[u"offset"_s].toInt()};const auto hashes=params()[u"hashes"_s];const auto isPrivate=parseBool(params()[u"private"_s]);}`;
@@ -16,4 +16,7 @@ trackerFilterList.appendChild(createLink(TRACKERS_ANNOUNCE_ERROR, "QBT_TR(Other 
 trackerFilterList.appendChild(createLink(TRACKERS_WARNING, "QBT_TR(Warning)QBT_TR[CONTEXT=TrackerFiltersList]", trackerWarningCount));
 `;
 assert.deepEqual(extractTrackerFilterFacts(`trackerFilterList.appendChild(createLink(TRACKERS_ALL, \"QBT_TR(All)QBT_TR[CONTEXT=TrackerFiltersList]\", torrentsTable.getRowSize()));\n${modernTrackerClient}`,'qB5 tracker source').map(item=>item.id),['all','trackerless','error','otherError','warning']);
+assert.equal(extractTrackerFacetMode('void noop(){}'),'none','pre-Tracker-filter client source must fail closed');
+assert.equal(extractTrackerFacetMode("if (response['trackers']) { const hash = genHash(tracker); trackerList.set(hash,{url:tracker,torrents}); }"),'url','legacy Tracker facet must preserve exact URL grouping');
+assert.equal(extractTrackerFacetMode("if (response['trackers']) { const hash = genHash(getHost(tracker)); trackerList.set(hash,{url:tracker,torrents}); }"),'hostname','modern Tracker facet must prove hostname grouping from qB source');
 console.log('qB Torrent surface parser contract passed.');

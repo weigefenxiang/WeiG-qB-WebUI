@@ -18,3 +18,15 @@ export function extractTrackerFilterFacts(source,context='qB Tracker filters'){
   }
   return ORDER.filter(id=>byId.has(id)).map(id=>byId.get(id));
 }
+
+
+export function extractTrackerFacetMode(source){
+  const text=String(source||'');
+  const ownsTrackerSync=/response(?:JSON)?\s*\[?["']trackers["']\]?|response\[['"]trackers['"]\]/.test(text);
+  if(!ownsTrackerSync)return 'none';
+  const hostnameOwned=/genHash\(getHost\(tracker\)\)|trackerMap\.get\(host\)|trackerListItem\s*=\s*trackerMap\.get\(host\)/.test(text);
+  if(hostnameOwned)return 'hostname';
+  const urlOwned=/genHash\(tracker\)|trackerList\.set\(hash\s*,\s*\{[\s\S]*?url\s*:\s*tracker/.test(text);
+  if(urlOwned)return 'url';
+  return 'none';
+}

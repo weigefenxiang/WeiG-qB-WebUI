@@ -12,7 +12,7 @@ const clone=value=>value==null?value:structuredClone(value);
 const readJson=file=>JSON.parse(fs.readFileSync(file,'utf8'));
 const SETTINGS_RUNTIME_SOURCE='qb-upstream-preferences-native-surface-runtime';
 const SETTINGS_PAYLOAD_SOURCE='qb-upstream-preferences-native-surface-compact';
-export const TORRENT_FACTS=['torrentFilters','torrentInfoParameters','torrentInfoFields','trackerFilters','torrentStates','torrentPropertiesFields','torrentTrackerFields','torrentFileFields','torrentWebSeedFields','torrentTableColumns','webuiLocales'];
+export const TORRENT_FACTS=['torrentFilters','torrentInfoParameters','torrentInfoFields','trackerFilters','trackerFacetMode','torrentStates','torrentPropertiesFields','torrentTrackerFields','torrentFileFields','torrentWebSeedFields','torrentTableColumns','webuiLocales'];
 
 function releaseRows(catalog){return catalog.map(profile=>({qbVersion:String(profile.qbVersion||''),webApiVersion:String(profile.webApiVersion||''),sourceSha:String(profile.sourceSha||''),stable:profile.stable!==false,officialWeiGSupport:profile.officialWeiGSupport!==false}));}
 function factTimeline(catalog,key){return catalog.map(profile=>({from:String(profile.qbVersion||''),value:clone(Object.prototype.hasOwnProperty.call(profile,key)?profile[key]:null)}));}

@@ -82,7 +82,7 @@ const detailUi=()=>({
   }
 });
 const trackerFilters=[{id:'all',copy:ref('All (%1)','TrackerFiltersList')},{id:'trackerless',copy:ref('Trackerless (%1)','TrackerFiltersList')}];
-const sourceProfile=(qbVersion,sourceSha,sets)=>({qbVersion,sourceSha,webuiLocales:[{value:'en'},{value:'de'}],settingsUiSource:'qb-upstream-preferences-ui',settingsUiMappedPreferences:1,settingsUiTotalPreferences:1,settingsUi:{locale:{controlId:'locale_select',title:{source:'Language:',context:'OptionsDialog'}}},qbOwnedUiSource:'qb-upstream-webui-source-context',qbOwnedUi:{'column.name':{source:'Name',context:'TransferListModel'},'tracker.filter.all':ref('All (%1)','TrackerFiltersList'),'tracker.filter.trackerless':ref('Trackerless (%1)','TrackerFiltersList')},settingsTranslations:{en:hEn,de:hDe},settingsTranslationSets:sets,torrentTableColumns:[nativeColumn('name','Name'),nativeColumn('size','Size',false)],trackerFilters,torrentDetailUi:detailUi()});
+const sourceProfile=(qbVersion,sourceSha,sets)=>({qbVersion,sourceSha,webuiLocales:[{value:'en'},{value:'de'}],settingsUiSource:'qb-upstream-preferences-ui',settingsUiMappedPreferences:1,settingsUiTotalPreferences:1,settingsUi:{locale:{controlId:'locale_select',title:{source:'Language:',context:'OptionsDialog'}}},qbOwnedUiSource:'qb-upstream-webui-source-context',qbOwnedUi:{'column.name':{source:'Name',context:'TransferListModel'},'tracker.filter.all':ref('All (%1)','TrackerFiltersList'),'tracker.filter.trackerless':ref('Trackerless (%1)','TrackerFiltersList')},settingsTranslations:{en:hEn,de:hDe},settingsTranslationSets:sets,torrentTableColumns:[nativeColumn('name','Name'),nativeColumn('size','Size',false)],trackerFilters,trackerFacetMode:qbVersion==='4.1.0'?'none':'hostname',torrentDetailUi:detailUi()});
 const frozen=[{qbVersion:'4.1.0',sourceSha:shaA},{qbVersion:'5.2.3',sourceSha:shaB}];
 const enriched=[sourceProfile('4.1.0',shaA,{[hEn]:setEn,[hDe]:setDe}),sourceProfile('5.2.3',shaB,{})];
 const recoveryEvidence={schemaVersion:1,source:'qb-official-ts-full-recovery-votes',releases:[{qbVersion:'4.1.0',sourceSha:shaA,locale:'de',sourceLanguage:'de',translationSourceSha256:'1'.repeat(64)},{qbVersion:'5.2.3',sourceSha:shaB,locale:'de',sourceLanguage:'de',translationSourceSha256:'2'.repeat(64)}],locales:[{locale:'de',messages:[{context:'OptionsDialog',source:'Language:',candidates:[{translation:'Sprache:',numerus:false,count:2,latestQbVersion:'5.2.3'}]}]}]};
@@ -102,10 +102,14 @@ assert.equal(lkg.profiles[1].torrentDetailUi.tables.files[0].defaultWidth,300,'L
 const materialized=applyQbSettingsTranslationLkg(frozen,lkg,{catalogSha256:'f'.repeat(64)});
 assert.deepEqual(materialized[0].torrentTableColumns.map(item=>item.key),['name','size'],'Frozen materialization must restore exact native columns before runtime packaging');
 assert.deepEqual(materialized[0].trackerFilters.map(item=>item.id),['all','trackerless'],'Frozen materialization must restore exact Tracker filter facts before compact runtime packaging');
+assert.equal(materialized[0].trackerFacetMode,'none','Frozen materialization must preserve exact Tracker facet grouping mode');
+assert.equal(materialized[1].trackerFacetMode,'hostname');
 assert.deepEqual(materialized[0].torrentDetailUi.tabOrder,['overview','trackers','peers','webseeds','files'],'Frozen materialization must restore exact source Detail tab order');
 assert.equal(materialized[0].torrentDetailUi.tables.trackers[0].key,'url','Frozen materialization must restore exact Torrent detail UI facts before runtime packaging');
 assert.deepEqual(materialized[0].torrentDetailUi.propertyLayout[0].fields,[{id:'eta',valueSource:'properties',dataProperties:['eta']}],'Frozen materialization must restore exact General layout facts before runtime packaging');
 assert.throws(()=>applyQbSettingsTranslationLkg(frozen,{...lkg,schemaVersion:1}),/schemaVersion 2/,'stale v1 Settings LKG must fail closed');
+const badTrackerFacetMode=structuredClone(enriched);badTrackerFacetMode[0].trackerFacetMode='guessed';
+assert.throws(()=>buildQbSettingsTranslationLkg(badTrackerFacetMode,frozen,{recoveryEvidence}),/Tracker facet mode is invalid/,'Tracker grouping behavior may not be guessed from version labels');
 const missingTrackerFilters=structuredClone(enriched);delete missingTrackerFilters[0].trackerFilters;
 assert.throws(()=>buildQbSettingsTranslationLkg(missingTrackerFilters,frozen,{recoveryEvidence}),/Tracker filter facts are missing/,'ephemeral Tracker source facts may not disappear before the LKG boundary');
 const missingColumns=structuredClone(enriched);delete missingColumns[0].torrentTableColumns;

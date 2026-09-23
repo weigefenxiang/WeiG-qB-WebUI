@@ -3,7 +3,7 @@ import {extractTorrentInfoFields,extractTorrentStates,extractTorrentTableColumns
 import {extractTorrentDetailSurfaces,extractTorrentDetailUi} from './qb-detail-surface-parsers.mjs';
 import {extractDetailContextMenus,extractFilePriorityControl} from './qb-detail-control-parsers.mjs';
 import {enrichTorrentFileColumnProvenance} from './qb-release-catalog-detail-provenance.mjs';
-import {extractTrackerFilterFacts} from './qb-tracker-filter-source.mjs';
+import {extractTrackerFacetMode,extractTrackerFilterFacts} from './qb-tracker-filter-source.mjs';
 
 export function extractQbReleaseTorrentSurface({ref='',apiActions=[],readSource,readOptionalSource,readFirstSource}={}){
   const context=String(ref||'qB release');
@@ -63,6 +63,7 @@ export function extractQbReleaseTorrentSurface({ref='',apiActions=[],readSource,
     torrentInfoParameters:extractTorrentInfoParameters(torrentsControllerSource,context),
     torrentInfoFields:extractTorrentInfoFields({headerSource:serializerHeaderSource,serializerSource},context),
     trackerFilters:extractTrackerFilterFacts(clientSource,context),
+    trackerFacetMode:extractTrackerFacetMode(clientSource),
     torrentStates:extractTorrentStates(serializerSource,context),
     torrentTableColumns,
     torrentDetailUi,
