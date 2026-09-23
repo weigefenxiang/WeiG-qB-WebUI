@@ -318,6 +318,8 @@ try{
     const q4ClockDialog=page.locator('dialog.ui-time-picker[open]');await q4ClockDialog.waitFor({state:'visible',timeout:30000});
     assert.equal(await q4ClockDialog.getAttribute('data-dialog-runtime'),'1','qB 4.6.7 Scheduler circular picker must use canonical DialogRuntime');
     assert.equal(await q4ClockDialog.locator('.ui-time-picker__face-option').count(),24,'qB 4.6.7 Scheduler must open a 24-hour circular face');
+    const q4CompactClock=await q4ClockDialog.evaluate(node=>{const surface=node.querySelector('.ui-time-picker__surface')?.getBoundingClientRect(),face=node.querySelector('.ui-time-picker__face')?.getBoundingClientRect();return surface&&face?{surfaceWidth:surface.width,faceWidth:face.width}:null;});
+    assert.ok(q4CompactClock&&q4CompactClock.surfaceWidth<=304&&q4CompactClock.faceWidth<=250,`qB 4.6.7 Scheduler must consume the same compact shared dial: ${JSON.stringify(q4CompactClock)}`);
     await q4ClockDialog.locator('[data-time-picker-cancel]').click();
     await page.setViewportSize({width:1280,height:720});await page.waitForTimeout(100);
     if(!q4SchedulerWasEnabled){const restore=page.locator('#settings-content [data-preference-key="scheduler_enabled"] input[type="checkbox"]');if(await restore.isChecked())await restore.click();}

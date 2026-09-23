@@ -176,9 +176,16 @@ try{
   assert.equal(await clock.getAttribute('data-dialog-runtime'),'1','mobile circular clock must be owned by canonical DialogRuntime');
   assert.equal(await clock.getAttribute('data-time-mode'),'hour','mobile circular clock must open on the hour face');
   assert.equal(await clock.locator('.ui-time-picker__face-option').count(),24,'mobile circular hour face must expose all 24 hours');
+  const compactClock=await clock.evaluate(node=>{const surface=node.querySelector('.ui-time-picker__surface'),face=node.querySelector('.ui-time-picker__face'),hand=node.querySelector('.ui-time-picker__hand');if(!surface||!face||!hand)throw new Error('compact time dial canonical nodes are missing');const sr=surface.getBoundingClientRect(),fr=face.getBoundingClientRect(),hs=getComputedStyle(hand);window.__weigClockHand=hand;return{surfaceWidth:sr.width,faceWidth:fr.width,handTransition:hs.transitionDuration};});
+  assert.ok(compactClock.surfaceWidth<=304&&compactClock.faceWidth<=250,`mobile circular picker must use the compact dial geometry: ${JSON.stringify(compactClock)}`);
+  assert.notEqual(compactClock.handTransition,'0s','mobile compact dial hand must retain motion feedback outside reduced-motion mode');
   await clock.locator('.ui-time-picker__face-option[data-time-value="9"]').click();
   await page.waitForFunction(()=>document.querySelector('dialog.ui-time-picker')?.dataset.timeMode==='minute',null,{timeout:30000});
+  const stableHandAfterMode=await page.evaluate(()=>document.querySelector('dialog.ui-time-picker .ui-time-picker__hand')===window.__weigClockHand);
+  assert.equal(stableHandAfterMode,true,'mobile compact dial must keep one hand DOM owner across Hour -> Minute transition');
   await clock.locator('.ui-time-picker__face-option[data-time-value="15"]').click();
+  const stableHandAfterMinute=await page.evaluate(()=>document.querySelector('dialog.ui-time-picker .ui-time-picker__hand')===window.__weigClockHand);
+  assert.equal(stableHandAfterMinute,true,'mobile compact dial must animate value changes without rebuilding the hand DOM');
   await clock.locator('[data-time-picker-ok]').click();
   await page.waitForFunction(()=>window.WeiG.SettingsState?.draft?.schedule_from_hour===9&&window.WeiG.SettingsState?.draft?.schedule_from_min===15,null,{timeout:30000});
 
