@@ -90,6 +90,17 @@ export function rememberPendingHandoffSession(pending,url,sessionId,now=Date.now
   records.set(value,now);
 }
 
+export function forgetPendingHandoffSession(pending,url,sessionId,now=Date.now(),maxAge=HANDOFF_MAX_AGE){
+  const value=String(sessionId||'').trim(),root=appRoot(url);
+  prunePendingHandoffs(pending,now,maxAge);
+  if(!value||!root)return false;
+  const records=pending.get(root);
+  if(!(records instanceof Map))return false;
+  const removed=records.delete(value);
+  if(!records.size)pending.delete(root);
+  return removed;
+}
+
 export function consumePendingHandoffSession(pending,url,now=Date.now(),maxAge=HANDOFF_MAX_AGE){
   const token=handoffToken(url),root=appRoot(url);
   prunePendingHandoffs(pending,now,maxAge);

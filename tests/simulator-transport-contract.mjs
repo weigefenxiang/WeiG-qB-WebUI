@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {createWorld} from '../simulator/core/engine.js';
 import {applyTransportPolicy,isCrossSiteRequest,resolveTransportContract,selectTargetHost} from '../simulator/protocol/transport-contract.js';
-import {consumePendingHandoffSession,rememberHandoffSession,rememberPendingHandoffSession,rememberSessionForEvent,sessionClientIds,sessionForEvent,sessionForHandoff,sessionForUrl} from '../simulator/core/session-identity.js';
+import {consumePendingHandoffSession,forgetPendingHandoffSession,rememberHandoffSession,rememberPendingHandoffSession,rememberSessionForEvent,sessionClientIds,sessionForEvent,sessionForHandoff,sessionForUrl} from '../simulator/core/session-identity.js';
 
 function world(qb,api){
   const value=createWorld({profile:{qbVersion:qb,webApiVersion:api,stable:true},count:1,seed:'transport-contract',now:1700000000000});
@@ -85,6 +85,9 @@ function basic(value){return `Basic ${btoa(value)}`;}
   rememberPendingHandoffSession(ambiguous,mainLogin,'sim-one',1000);
   rememberPendingHandoffSession(ambiguous,mainLogin,'sim-two',1001);
   assert.equal(consumePendingHandoffSession(ambiguous,mainCanonicalTarget,2000),'','multiple pending worlds for one app root must fail closed instead of guessing a session');
+  assert.equal(forgetPendingHandoffSession(ambiguous,mainCanonicalTarget,'sim-one',2001),true,'a session recovered by stronger client/referrer identity must retire only its own stale pending handoff candidate');
+  assert.equal(consumePendingHandoffSession(ambiguous,mainCanonicalTarget,2002),'sim-two','retiring a strongly resolved candidate must preserve the remaining unambiguous pending world');
+  assert.equal(forgetPendingHandoffSession(ambiguous,mainCanonicalTarget,'sim-missing',2003),false,'retiring an unrelated session must not mutate the pending handoff owner');
 }
 
 const sw=fs.readFileSync(new URL('../simulator/service-worker/service-worker.js',import.meta.url),'utf8');
@@ -92,6 +95,7 @@ assert.match(sw,/applyTransportPolicy\(world,event\.request\)/,'Service Worker m
 assert.match(sw,/if\(transport\.rejected\)/,'Service Worker must enforce transport rejection outcomes');
 assert.match(sw,/sessionForEvent\(clientSessions,event\)/,'Service Worker must inherit the virtual world across canonical navigation client replacement');
 assert.match(sw,/rememberSessionForEvent\(clientSessions,event,/,'Service Worker must propagate the virtual world to resulting navigation clients');
+assert.match(sw,/forgetPendingHandoffSession\(pendingHandoffSessions,url,sessionId\)/,'strong client/referrer/direct session recovery must retire its stale app-root pending fallback candidate instead of letting successful logins accumulate ambiguity');
 assert.match(sw,/rememberHandoffSession\(handoffSessions,url,sessionId\)/,'Service Worker must remember the canonical navigation nonce while its virtual world is known');
 assert.match(sw,/sessionForHandoff\(handoffSessions,clientUrl\)/,'post-navigation dynamic assets must recover the virtual world from the client handoff nonce when resulting-client identity is unavailable');
 assert.match(sw,/event\?\.request\?\.referrer/,'navigation identity recovery must inspect the initiating request referrer when client ids are unavailable');
