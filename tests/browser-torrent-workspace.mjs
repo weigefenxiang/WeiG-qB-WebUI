@@ -185,17 +185,29 @@ try{
     assert((await page.evaluate(()=>WeiG.LibraryController.state())).sort==='total_size',`${name}: Total Size source column did not reach canonical sort owner`);
     assert(await page.evaluate(()=>WeiG.TorrentFieldRegistry.availableColumnDefinitions().find(column=>column.key==='total_size')?.sort===null&&WeiG.TorrentFieldRegistry.availableColumnDefinitions().find(column=>column.key==='total_size')?.localSort==='total_size'),`${name}: Total Size must use local catalog sort without inventing server-side sort provenance`);
 
-    // Facet action updates semantic state.
+    // Facet action follows the exact qB source-owned Tracker surface.
     const tracker=page.locator('.facet-control[data-facet="tracker"] .ui-select__trigger');await tracker.click();
-    await page.waitForSelector('#weig-floating-layer .ui-select__option[data-value="host:tracker.one.example"]');
+    await page.waitForSelector('#weig-floating-layer .ui-select__option');
     const trackerOptions=await page.evaluate(()=>Array.from(document.querySelectorAll('#weig-floating-layer .ui-select__option')).map(node=>({value:node.dataset.value,text:node.textContent})));
     const trackerSourceFacts=await page.evaluate(()=>WeiG.CapabilityRegistry.trackerFilters());
     const trackerFacetMode=await page.evaluate(()=>WeiG.CapabilityRegistry.trackerFacetMode());
-    assert(trackerOptions.some(item=>item.value==='host:tracker.one.example'&&item.text.includes('tracker.one.example')),name+': Tracker facet did not keep hostname presentation '+JSON.stringify(trackerOptions));
-    if(name==='modern'){assert(trackerFacetMode==='hostname',name+': modern Tracker grouping mode is not source-proven '+trackerFacetMode);assert(JSON.stringify(trackerSourceFacts.map(item=>item.id))===JSON.stringify(['all','trackerless','error','otherError','warning']),name+': exact qB Tracker source-fact order drifted '+JSON.stringify(trackerSourceFacts));assert(trackerOptions[0]?.text.startsWith('All'),name+': Tracker All copy is not source-owned '+JSON.stringify(trackerOptions));assert(trackerOptions.some(item=>item.value==='host:tracker.one.example'&&item.text.includes('28')),name+': Tracker facet did not merge same-host maindata memberships '+JSON.stringify(trackerOptions));for(const value of ['special:trackerless','special:tracker-error','special:other-error','special:warning'])assert(trackerOptions.some(item=>item.value===value&&item.text.includes('· 1')),name+': source-proven special Tracker filter missing '+value+' '+JSON.stringify(trackerOptions));}else{assert(trackerFacetMode==='none',name+': qB 4.1 Tracker facet mode must fail closed '+trackerFacetMode);assert(trackerSourceFacts.length===0,name+': qB 4.1 must not expose later Tracker source facts '+JSON.stringify(trackerSourceFacts));assert(!trackerOptions.some(item=>String(item.value||'').startsWith('special:')),name+': qB 4.1 must not invent upstream Tracker special filters '+JSON.stringify(trackerOptions));}
-    if(name==='modern'){await page.locator('#weig-floating-layer .ui-select__option[data-value="special:trackerless"]').click();await page.waitForFunction(()=>WeiG.LibraryController.state().tracker==='special:trackerless'&&WeiG.AppState.torrents.length===1);await tracker.click();await page.waitForSelector('#weig-floating-layer .ui-select__option[data-value="host:tracker.one.example"]');}
-    await page.locator('#weig-floating-layer .ui-select__option[data-value="host:tracker.one.example"]').click();
-    await page.waitForFunction(()=>WeiG.LibraryController.state().tracker==='host:tracker.one.example');
+    if(name==='modern'){
+      assert(trackerFacetMode==='hostname',name+': modern Tracker grouping mode is not source-proven '+trackerFacetMode);
+      assert(JSON.stringify(trackerSourceFacts.map(item=>item.id))===JSON.stringify(['all','trackerless','error','otherError','warning']),name+': exact qB Tracker source-fact order drifted '+JSON.stringify(trackerSourceFacts));
+      assert(trackerOptions[0]?.text.startsWith('All'),name+': Tracker All copy is not source-owned '+JSON.stringify(trackerOptions));
+      assert(trackerOptions.some(item=>item.value==='host:tracker.one.example'&&item.text.includes('tracker.one.example')&&item.text.includes('28')),name+': Tracker facet did not merge same-host maindata memberships '+JSON.stringify(trackerOptions));
+      for(const value of ['special:trackerless','special:tracker-error','special:other-error','special:warning'])assert(trackerOptions.some(item=>item.value===value&&item.text.includes('· 1')),name+': source-proven special Tracker filter missing '+value+' '+JSON.stringify(trackerOptions));
+      await page.locator('#weig-floating-layer .ui-select__option[data-value="special:trackerless"]').click();
+      await page.waitForFunction(()=>WeiG.LibraryController.state().tracker==='special:trackerless'&&WeiG.AppState.torrents.length===1);
+      await tracker.click();await page.waitForSelector('#weig-floating-layer .ui-select__option[data-value="host:tracker.one.example"]');
+      await page.locator('#weig-floating-layer .ui-select__option[data-value="host:tracker.one.example"]').click();
+      await page.waitForFunction(()=>WeiG.LibraryController.state().tracker==='host:tracker.one.example');
+    }else{
+      assert(trackerFacetMode==='none',name+': qB 4.1 Tracker facet mode must fail closed '+trackerFacetMode);
+      assert(trackerSourceFacts.length===0,name+': qB 4.1 must not expose later Tracker source facts '+JSON.stringify(trackerSourceFacts));
+      assert(!trackerOptions.some(item=>String(item.value||'').startsWith('special:')||String(item.value||'').startsWith('host:')),name+': qB 4.1 must not invent later Tracker facet members '+JSON.stringify(trackerOptions));
+      await page.keyboard.press('Escape');
+    }
 
     // Connection help uses existing TransferRuntime snapshot and no retired Network summary.
     await page.waitForFunction(()=>document.getElementById('status-connection')?.dataset.connection==='firewalled');
