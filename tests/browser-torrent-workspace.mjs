@@ -25,7 +25,7 @@ const visualStates=[
 ];
 const torrents=Array.from({length:55},(_,i)=>{
   const v=visualStates[i]||{state:i%5===0?'uploading':'downloading',progress:i%5===0?1:.45,dlspeed:i%2?0:1200,upspeed:i%3?0:240};
-  return {hash:String(i+1).padStart(40,'0'),name:`Workspace Torrent ${i+1}`,size:1048576*(i+1),progress:v.progress,dlspeed:v.dlspeed,upspeed:v.upspeed,eta:3600,state:v.state,ratio:.2,tracker:i%2?'https://tracker.two.example/announce':'https://tracker.one.example/announce',category:i%2?'Movies':'',tags:i%3?'Fixture':'',added_on:i<visualStates.length?10000-i:1000+i,save_path:i%2?'/downloads/movies':'/downloads',private:i===0};
+  return {hash:String(i+1).padStart(40,'0'),name:`Workspace Torrent ${i+1}`,size:1048576*(i+1),progress:v.progress,dlspeed:v.dlspeed,upspeed:v.upspeed,eta:3600,state:v.state,ratio:.2,tracker:i%2?'https://tracker.two.example/announce':'https://tracker.one.example/announce',category:i%2?'Movies':'',tags:i%3?'Fixture':'',added_on:i<visualStates.length?10000-i:1000+i,save_path:i===0?'/downloads/'+('very-long-path-segment-'.repeat(5))+'movie-file':(i%2?'/downloads/movies':'/downloads'),private:i===0};
 });
 const mime={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.ico':'image/x-icon'};
 const assert=(ok,msg)=>{if(!ok)throw new Error(msg);};
@@ -202,6 +202,13 @@ try{
       await tracker.click();await page.waitForSelector('#weig-floating-layer .ui-select__option[data-value="host:tracker.one.example"]');
       await page.locator('#weig-floating-layer .ui-select__option[data-value="host:tracker.one.example"]').click();
       await page.waitForFunction(()=>WeiG.LibraryController.state().tracker==='host:tracker.one.example');
+      const pathTrigger=page.locator('.facet-control[data-facet="savePath"] .ui-select__trigger');await pathTrigger.click();
+      await page.waitForSelector('#weig-floating-layer .ui-select__option');
+      const pathMenu=await page.evaluate(()=>{const menu=document.querySelector('#weig-floating-layer .ui-select__menu'),option=Array.from(menu?.querySelectorAll('.ui-select__option')||[]).find(node=>node.textContent.includes('very-long-path-segment'));if(!menu||!option)return null;const cs=getComputedStyle(option),line=parseFloat(cs.lineHeight)||16;return{menuWidth:menu.getBoundingClientRect().width,optionHeight:option.getBoundingClientRect().height,lineHeight:line,wrap:menu.dataset.wrap,text:option.textContent};});
+      assert(pathMenu&&pathMenu.menuWidth>560&&pathMenu.wrap==='0'&&pathMenu.optionHeight<pathMenu.lineHeight*2.2,name+': shared Select wrapped a path despite available viewport width '+JSON.stringify(pathMenu));
+      await page.keyboard.press('Escape');
+      const toolbarFonts=await page.evaluate(()=>{const nodes=[document.querySelector('#selection-control .ui-select__value'),document.getElementById('selection-count'),document.querySelector('#list-view .grid-toolbar>div:first-child>label'),document.querySelector('#page-size-control .ui-select__value')];return nodes.map(node=>node?getComputedStyle(node).fontSize:null);});
+      assert(toolbarFonts.every(value=>value===toolbarFonts[0]),name+': seed toolbar typography diverged '+JSON.stringify(toolbarFonts));
     }else{
       assert(trackerFacetMode==='none',name+': qB 4.1 Tracker facet mode must fail closed '+trackerFacetMode);
       assert(trackerSourceFacts.length===0,name+': qB 4.1 must not expose later Tracker source facts '+JSON.stringify(trackerSourceFacts));
