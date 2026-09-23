@@ -183,6 +183,7 @@ try{
     const totalSizeHead=page.locator('#torrent-table-head .grid-head-cell[data-key="total_size"]');await totalSizeHead.waitFor();await totalSizeHead.click();
     await page.waitForFunction(()=>WeiG.LibraryController.state().sort==='total_size');
     assert((await page.evaluate(()=>WeiG.LibraryController.state())).sort==='total_size',`${name}: Total Size source column did not reach canonical sort owner`);
+    assert(await page.evaluate(()=>WeiG.TorrentFieldRegistry.availableColumnDefinitions().find(column=>column.key==='total_size')?.sort===null&&WeiG.TorrentFieldRegistry.availableColumnDefinitions().find(column=>column.key==='total_size')?.localSort==='total_size'),`${name}: Total Size must use local catalog sort without inventing server-side sort provenance`);
 
     // Facet action updates semantic state.
     const tracker=page.locator('.facet-control[data-facet="tracker"] .ui-select__trigger');await tracker.click();
