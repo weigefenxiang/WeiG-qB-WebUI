@@ -8,7 +8,7 @@ import {createWorldCache} from './__simulator/storage/world-cache.js';
 import {handleApi} from './__simulator/protocol/router.js';
 import {applyTransportPolicy} from './__simulator/protocol/transport-contract.js';
 import {emulateQbtDocument} from './__simulator/qbt-tr-emulator.mjs';
-import {rememberHandoffSession,rememberSessionForEvent,sessionClientIds,sessionForEvent,sessionForHandoff,sessionForUrl} from './__simulator/core/session-identity.js';
+import {consumePendingHandoffSession,rememberHandoffSession,rememberPendingHandoffSession,rememberSessionForEvent,sessionClientIds,sessionForEvent,sessionForHandoff,sessionForUrl} from './__simulator/core/session-identity.js';
 
 const SOURCE_PRIVATE='./__source/private/';
 const SOURCE_PUBLIC='./__source/public/';
@@ -20,6 +20,7 @@ const LAB_PASSWORD='weigshare';
 const LAB_AUTH_POLICY_VERSION=1;
 const clientSessions=new Map();
 const handoffSessions=new Map();
+const pendingHandoffSessions=new Map();
 const worlds=createWorldCache({load:loadWorld,save:saveWorld,remove:deleteWorld,maxEntries:6,readPersistMs:30000});
 let queue=Promise.resolve();
 let catalogPromise=null;
@@ -116,6 +117,11 @@ async function sessionIdForEvent(event,url){
       }
     }
   }catch(_e){}
+  const pending=consumePendingHandoffSession(pendingHandoffSessions,url);
+  if(pending){
+    rememberResolvedSession(event,url,pending);
+    return pending;
+  }
   return DEFAULT_SESSION;
 }
 
@@ -274,6 +280,7 @@ async function handleApiQueued(event,url){
   }
   const response=await handleApi(world,event.request,url);
   await worlds.touch(id,world,{mutation:event.request.method.toUpperCase()!=='GET'});
+  if(world.authenticated&&event.request.method.toUpperCase()==='POST'&&/\/api\/v2\/auth\/login\/?$/.test(url.pathname))rememberPendingHandoffSession(pendingHandoffSessions,url,id);
   return response;
 }
 

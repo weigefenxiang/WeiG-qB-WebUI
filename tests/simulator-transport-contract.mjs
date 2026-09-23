@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {createWorld} from '../simulator/core/engine.js';
 import {applyTransportPolicy,isCrossSiteRequest,resolveTransportContract,selectTargetHost} from '../simulator/protocol/transport-contract.js';
-import {rememberHandoffSession,rememberSessionForEvent,sessionClientIds,sessionForEvent,sessionForHandoff,sessionForUrl} from '../simulator/core/session-identity.js';
+import {consumePendingHandoffSession,rememberHandoffSession,rememberPendingHandoffSession,rememberSessionForEvent,sessionClientIds,sessionForEvent,sessionForHandoff,sessionForUrl} from '../simulator/core/session-identity.js';
 
 function world(qb,api){
   const value=createWorld({profile:{qbVersion:qb,webApiVersion:api,stable:true},count:1,seed:'transport-contract',now:1700000000000});
@@ -70,6 +70,21 @@ function basic(value){return `Basic ${btoa(value)}`;}
   assert.equal(sessionForHandoff(handoffs,legacyHandoffUrl,2000),'sim-legacy','historical main __weigg_handoff nonce must recover its virtual world without rewriting the snapshot');
   assert.equal(sessionForHandoff(handoffs,handoffUrl,122001),'','handoff recovery must expire instead of becoming a second durable session owner');
   assert.equal(sessionForHandoff(handoffs,legacyHandoffUrl,122001),'','legacy handoff recovery must expire under the same bounded owner');
+
+  const pending=new Map(),mainLogin='https://lab.example/main/app/api/v2/auth/login',mainLegacyTarget='https://lab.example/main/app/index.html?__weigg_handoff=nonce-main';
+  rememberPendingHandoffSession(pending,mainLogin,'sim-main',1000);
+  assert.equal(consumePendingHandoffSession(pending,mainLegacyTarget,2000),'sim-main','historical main login must recover one unambiguous pending virtual world when navigation client/referrer identity is unavailable');
+  assert.equal(consumePendingHandoffSession(pending,mainLegacyTarget,2001),'','pending login recovery must be one-shot after ownership transfers to the handoff token');
+
+  const isolated=new Map();
+  rememberPendingHandoffSession(isolated,'https://lab.example/dev/app/api/v2/auth/login','sim-dev',1000);
+  assert.equal(consumePendingHandoffSession(isolated,mainLegacyTarget,2000),'','pending handoff recovery must never cross branch app roots');
+  assert.equal(consumePendingHandoffSession(isolated,'https://lab.example/dev/app/index.html?__weig_handoff=nonce-dev',122001),'','pending handoff recovery must expire under the same bounded age as nonce recovery');
+
+  const ambiguous=new Map(),mainCanonicalTarget='https://lab.example/main/app/index.html?__weig_handoff=nonce-canonical';
+  rememberPendingHandoffSession(ambiguous,mainLogin,'sim-one',1000);
+  rememberPendingHandoffSession(ambiguous,mainLogin,'sim-two',1001);
+  assert.equal(consumePendingHandoffSession(ambiguous,mainCanonicalTarget,2000),'','multiple pending worlds for one app root must fail closed instead of guessing a session');
 }
 
 const sw=fs.readFileSync(new URL('../simulator/service-worker/service-worker.js',import.meta.url),'utf8');
@@ -82,5 +97,8 @@ assert.match(sw,/sessionForHandoff\(handoffSessions,clientUrl\)/,'post-navigatio
 assert.match(sw,/event\?\.request\?\.referrer/,'navigation identity recovery must inspect the initiating request referrer when client ids are unavailable');
 assert.match(sw,/referrerUrl\.origin===url\.origin/,'referrer fallback must stay same-origin and never trust an external session identity');
 assert.match(sw,/sessionForUrl\(referrerUrl\)\|\|sessionForHandoff\(handoffSessions,referrerUrl\)/,'same-origin referrer must recover either the explicit sim id or a bounded handoff identity before defaulting');
+assert.match(sw,/rememberPendingHandoffSession\(pendingHandoffSessions,url,id\)/,'successful virtual auth/login must register one bounded app-root handoff candidate before legacy navigation drops ?sim=');
+assert.match(sw,/const pending=consumePendingHandoffSession\(pendingHandoffSessions,url\)/,'handoff navigation must consume the bounded pending login only after direct client and referrer recovery fail');
+assert.match(sw,/world\.authenticated&&event\.request\.method\.toUpperCase\(\)==='POST'/,'pending handoff ownership must only be seeded by an authenticated POST login response');
 
 console.log('Virtual qB transport contract passed: WebAPI transport semantics plus canonical and historical-main navigation handoff identity stay under explicit bounded Service Worker owners.');

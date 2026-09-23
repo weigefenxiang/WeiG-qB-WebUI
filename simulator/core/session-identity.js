@@ -60,3 +60,43 @@ export function sessionForHandoff(handoffs,url,now=Date.now(),maxAge=HANDOFF_MAX
   const record=token&&handoffs.get(token);
   return record&&record.sessionId?String(record.sessionId):'';
 }
+
+function appRoot(url){
+  try{
+    const value=url instanceof URL?url:new URL(String(url));
+    let path=value.pathname,api=path.indexOf('/api/v2/');
+    if(api>=0)path=path.slice(0,api+1);
+    else if(!path.endsWith('/'))path=path.replace(/[^/]*$/,'');
+    return value.origin+path;
+  }catch(_e){return '';}
+}
+
+function prunePendingHandoffs(pending,now,maxAge){
+  for(const [root,records] of pending){
+    if(!(records instanceof Map)){pending.delete(root);continue;}
+    for(const [sessionId,createdAt] of records){
+      if(!sessionId||now-Number(createdAt||0)>maxAge)records.delete(sessionId);
+    }
+    if(!records.size)pending.delete(root);
+  }
+}
+
+export function rememberPendingHandoffSession(pending,url,sessionId,now=Date.now(),maxAge=HANDOFF_MAX_AGE){
+  const value=String(sessionId||'').trim(),root=appRoot(url);
+  prunePendingHandoffs(pending,now,maxAge);
+  if(!value||!root)return;
+  let records=pending.get(root);
+  if(!(records instanceof Map)){records=new Map();pending.set(root,records);}
+  records.set(value,now);
+}
+
+export function consumePendingHandoffSession(pending,url,now=Date.now(),maxAge=HANDOFF_MAX_AGE){
+  const token=handoffToken(url),root=appRoot(url);
+  prunePendingHandoffs(pending,now,maxAge);
+  if(!token||!root)return '';
+  const records=pending.get(root);
+  if(!(records instanceof Map)||records.size!==1)return '';
+  const sessionId=String(records.keys().next().value||'');
+  pending.delete(root);
+  return sessionId;
+}
