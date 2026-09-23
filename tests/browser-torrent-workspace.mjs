@@ -138,7 +138,7 @@ try{
     const vertical=await scrollByBrowserInput(page,'#torrent-list','y');
     assert(vertical.top>40,`${name}: vertical browser scroll input did not move scrollTop ${JSON.stringify(vertical)}`);
     const verticalActive=vertical.metrics;
-    assert(verticalActive.renders>0&&verticalActive.reused>0&&verticalActive.reused>verticalActive.created,`${name}: vertical active scroll did not recycle the overlapping row pool ${JSON.stringify(verticalActive)}`);
+    assert(verticalActive.renders>0&&verticalActive.reused>0&&verticalActive.reused>verticalActive.created,`${name}: vertical active scroll did not reuse the warmed recycler pool ${JSON.stringify(verticalActive)}`);
     assert(verticalActive.maxRenderMs<80,`${name}: vertical active-scroll DataViewport render exceeded the bounded regression budget ${JSON.stringify(verticalActive)}`);
     const verticalSettled=await settledScrollMetrics(page);
     assertQuietCommitBounded(name,'vertical',verticalActive,verticalSettled);
