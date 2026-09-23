@@ -181,6 +181,9 @@ try{
 
   await page.locator('.shared-table__toolbar button').first().click();
   await page.waitForSelector('#column-configurator-dialog[open]');
+  const sourceConfigOrder=await page.evaluate(()=>WeiG.QbUiEvidence.detailColumns('files').map(column=>column.key)),configOrderBefore=await page.evaluate(()=>[...document.querySelectorAll('#column-configurator-dialog .shared-column-settings__row')].map(row=>row.dataset.columnKey)),visibleOrderControls=await page.locator('#column-configurator-dialog .shared-column-settings__order:not([hidden])').count();
+  assert(JSON.stringify(configOrderBefore)===JSON.stringify(sourceConfigOrder),`Detail Column settings must stay on exact source order: ${JSON.stringify({configOrderBefore,sourceConfigOrder})}`);
+  assert(visibleOrderControls===0,'Detail source-ordered Column settings must not expose a second reorder owner.');
   const progressLabel=await columnLabel(page,'progress'),progressBox=page.getByRole('checkbox',{name:progressLabel,exact:true});
   assert(await progressBox.isChecked(),'Column settings did not reflect source-visible Progress state.');
   await progressBox.click();
@@ -189,6 +192,8 @@ try{
   assert(hiddenState.visibility?.progress===false,`Column settings did not persist visibility through canonical owner: ${JSON.stringify(hiddenState)}`);
   await progressBox.click();
   await page.waitForFunction(()=>!!document.querySelector('.shared-table__head .grid-head-cell[data-key="progress"]'));
+  const configOrderAfter=await page.evaluate(()=>[...document.querySelectorAll('#column-configurator-dialog .shared-column-settings__row')].map(row=>row.dataset.columnKey));
+  assert(JSON.stringify(configOrderAfter)===JSON.stringify(sourceConfigOrder),`Detail Column settings order moved after visibility toggles: ${JSON.stringify({configOrderAfter,sourceConfigOrder})}`);
   await page.locator('#column-configurator-dialog .dialog__actions button').last().click();
 
   const nameHead=page.locator('.shared-table__head .grid-head-cell[data-key="name"]'),resize=nameHead.locator('.col-resize');

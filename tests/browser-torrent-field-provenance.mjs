@@ -170,6 +170,16 @@ try{
   await page.locator('#columns-btn').click();
   await page.waitForSelector('#column-configurator-dialog[open]');
   assert(await page.locator('#column-configurator-dialog .shared-column-settings__row').filter({hasText:'Ratio'}).count()===1,'restored: Desktop Columns dialog did not restore Ratio');
+  const mainSourceOrder=await page.evaluate(()=>WeiG.TorrentFieldRegistry.sourceColumns().map(column=>column.key)),mainConfigOrder=await page.evaluate(()=>[...document.querySelectorAll('#column-configurator-dialog .shared-column-settings__row')].map(row=>row.dataset.columnKey));
+  assert(JSON.stringify(mainConfigOrder)===JSON.stringify(mainSourceOrder),`restored: Desktop Column settings must use exact qB source order instead of saved table order ${JSON.stringify({mainConfigOrder,mainSourceOrder})}`);
+  assert(await page.locator('#column-configurator-dialog .shared-column-settings__order:not([hidden])').count()===0,'restored: source-ordered Desktop Column settings exposed duplicate reorder buttons');
+  const ratioConfigBox=page.locator('#column-configurator-dialog .shared-column-settings__row[data-column-key="ratio"] input[type="checkbox"]');
+  await ratioConfigBox.click();await page.waitForFunction(()=>![...document.querySelectorAll('#torrent-table-head .grid-head-cell')].some(node=>node.dataset.key==='ratio'));
+  await ratioConfigBox.click();await page.waitForFunction(()=>[...document.querySelectorAll('#torrent-table-head .grid-head-cell')].some(node=>node.dataset.key==='ratio'));
+  const mainConfigOrderAfter=await page.evaluate(()=>[...document.querySelectorAll('#column-configurator-dialog .shared-column-settings__row')].map(row=>row.dataset.columnKey));
+  assert(JSON.stringify(mainConfigOrderAfter)===JSON.stringify(mainSourceOrder),`restored: Desktop Column settings option positions changed after visibility toggles ${JSON.stringify({mainConfigOrderAfter,mainSourceOrder})}`);
+  const restoredTableOrderAfterToggle=await page.evaluate(()=>[...document.querySelectorAll('#torrent-table-head .grid-head-cell')].map(node=>node.dataset.key));
+  assert(JSON.stringify(restoredTableOrderAfterToggle)===JSON.stringify(restored.head),`restored: visibility toggles must not overwrite independent table order ${JSON.stringify({restoredTableOrderAfterToggle,expected:restored.head})}`);
   await page.locator('#column-configurator-dialog .column-configurator__close').click();
 
   await page.setViewportSize({width:390,height:844});

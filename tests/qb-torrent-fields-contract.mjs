@@ -14,7 +14,7 @@ const q4Table=`const TorrentsTable = new Class({Extends: DynamicTable,initColumn
 const q4Columns=extractTorrentTableColumns(q4Table,'qB4 table synthetic');
 assert.deepEqual(q4Columns.map(x=>x.key),['priority','state_icon','name','status']);
 assert.deepEqual(q4Columns[0],{key:'priority',caption:'#',defaultWidth:30,defaultVisible:true,dataProperties:['priority']});
-assert.deepEqual(q4Columns[1].dataProperties,['state']);
+assert.equal(q4Columns[1].caption,'');assert.equal(q4Columns[1].defaultWidth,22);assert.equal(q4Columns[1].defaultVisible,true);assert.deepEqual(q4Columns[1].dataProperties,['state']);
 assert.deepEqual(q4Columns[2].translation,{source:'Name',context:'TransferListModel'});
 assert.deepEqual(q4Columns[2].dataProperties,['name','state']);
 const legacyCommentTable=`var TorrentsTable = new Class({Extends: DynamicTable,initColumns:function(){this.newColumn('name','','QBT_TR(Name)QBT_TR[CONTEXT=TorrentModel]',200,true);},formatRatio:function(){var ratio=1; //Don't round up\nreturn ratio; /* preserve a ' quote and { brace } inside comments */}}); var TorrentPeersTable = new Class({});`;
@@ -23,6 +23,6 @@ assert.deepEqual(extractTorrentTableColumns(legacyCommentTable,'qB4 comment scan
 const q5Table=`class TorrentsTable extends DynamicTable {initColumns(){this.newColumn("priority", "", "#", 30, true);this.newColumn("infohash_v1", "", "QBT_TR(Info Hash v1)QBT_TR[CONTEXT=TransferListModel]", 200, false);this.newColumn("infohash_v2", "", "QBT_TR(Info Hash v2)QBT_TR[CONTEXT=TransferListModel]", 200, false);this.newColumn("state_icon", "", "QBT_TR(Status Icon)QBT_TR[CONTEXT=TransferListModel]", 22, false);this.columns["state_icon"].dataProperties[0]="state";}} class TorrentPeersTable extends DynamicTable {}`;
 const q5Columns=extractTorrentTableColumns(q5Table,'qB5 table synthetic');
 assert.deepEqual(q5Columns.map(x=>x.key),['priority','infohash_v1','infohash_v2','state_icon']);
-assert.equal(q5Columns[1].defaultVisible,false);assert.equal(q5Columns[1].defaultWidth,200);assert.deepEqual(q5Columns[1].translation,{source:'Info Hash v1',context:'TransferListModel'});assert.deepEqual(q5Columns[3].dataProperties,['state']);
+assert.equal(q5Columns[1].defaultVisible,false);assert.equal(q5Columns[1].defaultWidth,200);assert.deepEqual(q5Columns[1].translation,{source:'Info Hash v1',context:'TransferListModel'});assert.equal(q5Columns[3].caption,'Status Icon');assert.equal(q5Columns[3].defaultVisible,false);assert.deepEqual(q5Columns[3].translation,{source:'Status Icon',context:'TransferListModel'});assert.deepEqual(q5Columns[3].dataProperties,['state']);
 assert.throws(()=>extractTorrentTableColumns('class OtherTable {}','broken columns'),/unable to locate TorrentsTable/);
 console.log('qB Torrent field contract passed: serializer fields/states plus qB4/qB5 native TorrentsTable columns are source-derived and fail-closed.');
