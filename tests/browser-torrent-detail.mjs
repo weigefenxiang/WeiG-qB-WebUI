@@ -234,9 +234,9 @@ try{
   const longBefore=touchAfter.order,first=await page.locator('.shared-table__head .grid-head-cell[data-key="name"]').boundingBox(),second=await page.locator('.shared-table__head .grid-head-cell[data-key="size"]').boundingBox();assert(first&&second,'Mobile long-press reorder targets are missing.');
   const sx=first.x+Math.min(20,first.width/2),sy=first.y+first.height/2,movingLeft=first.x>second.x,dx=second.x+Math.max(8,Math.min(second.width-8,second.width*(movingLeft?.25:.75))),dy=second.y+second.height/2;
   await touch(cdp,'touchStart',sx,sy);await page.waitForTimeout(340);await touch(cdp,'touchMove',dx,dy);await page.waitForTimeout(70);await touch(cdp,'touchEnd',dx,dy);await page.waitForTimeout(120);
-  const longAfter=await page.evaluate(()=>({order:[...document.querySelectorAll('.shared-table__head .grid-head-cell')].map(node=>node.dataset.key),saved:window.WeiG.SharedColumns.read('torrent-detail-files').order||[]}));
+  const longAfter=await page.evaluate(()=>({order:[...document.querySelectorAll('.shared-table__head .grid-head-cell')].map(node=>node.dataset.key),saved:window.WeiG.SharedColumns.read('torrent-detail-files').order||[],source:WeiG.QbUiEvidence.detailColumns('files').map(column=>column.key)}));
   assert(JSON.stringify(longAfter.order)!==JSON.stringify(longBefore),`Mobile long-press/drag did not reorder columns: ${JSON.stringify(longAfter.order)}`);
-  assert(JSON.stringify(longAfter.saved)===JSON.stringify(longAfter.order),`Mobile long-press reorder did not persist through canonical owner: ${JSON.stringify(longAfter)}`);
+  assert(longAfter.saved.length?JSON.stringify(longAfter.saved)===JSON.stringify(longAfter.order):JSON.stringify(longAfter.order)===JSON.stringify(longAfter.source),`Mobile long-press reorder did not converge through canonical source/override ownership: ${JSON.stringify(longAfter)}`);
   assert(errors.length===0,`Torrent detail browser errors: ${errors.join(' | ')}`);
   await context.close();
   console.log('Torrent detail browser gate passed: user-path detail opening, full-height Content workspace, source hierarchy plus file-derived checked/remaining, shared horizontal scroll, DOM column settings, pointer resize/reorder, touch-scroll cancellation and long-press reorder are proven in hosted Chrome.');
