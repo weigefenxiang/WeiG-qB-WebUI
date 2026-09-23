@@ -15,6 +15,7 @@
   function installSharedColumnInteraction(){if(!W.DataGridHeader||!W.DataGridHeader.bind)return;W.ColumnInteraction={attach:W.DataGridHeader.bind};W.DataGrid.addResizeHandles=W.DataGridHeader.bind;}
   installSharedColumnInteraction();
 
+  function detailSurface(tab){tab=String(tab||'');return['files','trackers','peers','webseeds'].indexOf(tab)>=0?tab:'';}
   function detailSurfaceId(surface){var map={files:'torrent-content',trackers:'torrent-trackers',peers:'torrent-peers',webseeds:'torrent-webseeds'};return map[String(surface||'')]||'';}
   function detailConfiguratorProvider(ctx){return{title:function(){return W.I18n&&W.I18n.t?W.I18n.t('columns.title'):'Columns';},columns:function(){return (ctx.resolved||[]).map(function(column){return Object.assign({},column,{visible:column.visible!==false,label:column.label||column.caption||column.key});});},commit:function(next){ctx.resolved=(next||[]).map(function(column){return Object.assign({},column);});W.SharedColumns.commit(ctx.tableId,ctx.source,ctx.resolved);ctx.apply(true);},reset:function(){W.SharedColumns.reset(ctx.tableId);ctx.resolved=W.SharedColumns.resolve(ctx.tableId,ctx.source);ctx.apply(true);}};}
   function registerDetailConfigurator(ctx){var id=detailSurfaceId(ctx&&ctx.surface);if(id&&W.ColumnConfigurator)W.ColumnConfigurator.register(id,detailConfiguratorProvider(ctx));return id;}
