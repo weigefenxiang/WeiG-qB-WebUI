@@ -127,6 +127,9 @@ try{
     await page.setViewportSize({width:900,height:768});
     await waitForDataViewportIdle(page,180);
     await resetScrollProbe(page);
+    const initialRecyclerVisibility=await page.evaluate(()=>{const v=WeiG.AppState.viewport,idle=v._rowPool.filter(slot=>!slot.bound).map(slot=>slot.node),active=v._rowPool.filter(slot=>slot.bound).map(slot=>slot.node),paintedIdle=idle.filter(node=>{const style=getComputedStyle(node),rect=node.getBoundingClientRect();return style.display!=='none'&&style.visibility!=='hidden'&&rect.width>0&&rect.height>0;});return{idleCount:idle.length,idlePainted:paintedIdle.length,activeCount:active.length,activeTops:active.map(node=>Math.round(node.getBoundingClientRect().top*10)/10)};});
+    assert(initialRecyclerVisibility.idleCount>0&&initialRecyclerVisibility.idlePainted===0,`${name}: prewarmed idle row shells painted over the first Torrent row ${JSON.stringify(initialRecyclerVisibility)}`);
+    assert(new Set(initialRecyclerVisibility.activeTops).size===initialRecyclerVisibility.activeCount,`${name}: active Torrent recycler rows overlap at first paint ${JSON.stringify(initialRecyclerVisibility)}`);
     const horizontal=await scrollByBrowserInput(page,'#torrent-list','x');
     assert(horizontal.left>8,`${name}: horizontal browser scroll input did not move scrollLeft ${JSON.stringify(horizontal)}`);
     const horizontalActive=horizontal.metrics;

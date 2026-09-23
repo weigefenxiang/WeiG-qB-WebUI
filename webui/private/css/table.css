@@ -3,9 +3,10 @@
 .data-grid__head>[data-align=start],.data-grid__row>[data-align=start]{justify-content:flex-start;text-align:left}
 .data-grid__head>[data-align=end],.data-grid__row>[data-align=end]{justify-content:flex-end;text-align:right}
 .data-grid__head>[data-align=center],.data-grid__row>[data-align=center]{justify-content:center;text-align:center}
-.data-grid__row>[data-column-key]{min-width:0;align-self:stretch;display:flex;align-items:center}
+.data-grid__row>[data-column-key],.shared-table__sticky-folder>[data-column-key]{min-width:0;align-self:stretch;display:flex;align-items:center}
 .data-grid__row>.torrent-name-cell{display:grid}
 .data-grid__row>[data-column-key=progress]{display:grid}
+.data-viewport__row[hidden]{display:none!important;pointer-events:none!important}
 .data-viewport>.data-viewport__head{flex:0 0 auto;isolation:isolate;background:var(--bg-surface)}
 
 #torrent-list>.torrent-table-head{position:sticky;top:0;z-index:8;width:max-content;min-width:100%;background:var(--bg-surface);box-shadow:0 1px 0 var(--border)}
@@ -26,7 +27,7 @@
 .shared-table__viewport{position:relative;flex:1 1 0;min-width:0;min-height:0;overflow:auto;overscroll-behavior:contain}
 .shared-table__head,.shared-table__row{grid-template-columns:var(--weig-detail-grid-template)}
 .shared-table__head{position:sticky;top:0;z-index:5;isolation:isolate;min-height:42px;border-bottom:1px solid var(--border);background:var(--bg-surface);color:var(--text-muted);font-size:var(--text-table-header);font-weight:760;box-shadow:0 1px 0 var(--border),0 5px 14px rgba(0,0,0,.14)}
-.shared-table__head>.grid-head-cell,.shared-table__row>[data-column-key]{min-width:0;padding:7px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;justify-self:stretch}
+.shared-table__head>.grid-head-cell,.shared-table__row>[data-column-key],.shared-table__sticky-folder>[data-column-key]{min-width:0;padding:7px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;justify-self:stretch}
 .shared-table__head>.grid-head-cell{display:flex;align-items:center;justify-content:flex-start}
 .shared-table__head>.grid-head-cell[data-key="checked"],.shared-table__row>[data-column-key="checked"]{text-align:center;justify-content:center;justify-self:stretch}
 .shared-table__row[data-context-menu=true]{cursor:context-menu}
@@ -34,16 +35,15 @@
 .shared-table__row{min-height:48px;border-bottom:1px solid rgba(255,255,255,.045);font-size:var(--text-table-cell)}
 .shared-table__row:hover{background:rgba(114,151,255,.035)}
 .shared-table__row.is-selected{background:rgba(114,151,255,.12)}
-.shared-table__row[data-file-kind="folder"]{font-weight:720}
+.shared-table__row[data-file-kind="folder"],.shared-table__sticky-folder[data-file-kind="folder"]{font-weight:720}
 .detail-file-name{display:flex;align-items:center;gap:7px;min-width:0;padding-left:calc(var(--file-depth,0) * 18px)}
 .detail-file-toggle{display:inline-grid;place-items:center;width:20px;height:20px;flex:0 0 20px;padding:0;border:0;background:transparent;color:var(--text-secondary);font:inherit;cursor:pointer;border-radius:6px}
 .detail-file-toggle:hover,.detail-file-toggle:focus-visible{background:rgba(114,151,255,.1);color:var(--text-primary)}
 .detail-file-toggle[aria-expanded="false"]{transform:none}
 .detail-file-icon{flex:0 0 auto;font-size:14px;line-height:1}
 .detail-file-label{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.shared-table__sticky-folder{position:sticky;top:42px;z-index:4;display:grid;align-items:center;min-width:max-content;grid-template-columns:var(--weig-detail-grid-template);height:44px;border-bottom:1px solid var(--border);background:var(--bg-surface);box-shadow:0 6px 14px rgba(0,0,0,.12);margin-bottom:-44px}
+.shared-table__sticky-folder{position:sticky;top:42px;z-index:4;display:grid;align-items:center;min-width:max-content;grid-template-columns:var(--weig-detail-grid-template);height:var(--weig-detail-row-height,54px);border-bottom:1px solid var(--border);background:var(--bg-surface);box-shadow:0 6px 14px rgba(0,0,0,.12);margin-bottom:calc(-1 * var(--weig-detail-row-height,54px));font-size:var(--text-table-cell)}
 .shared-table__sticky-folder[hidden]{display:none}
-.shared-table__sticky-folder>[data-column-key]{min-width:0;padding:7px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 .shared-table__empty{display:grid;place-items:center;min-height:150px;color:var(--text-muted)}
 .shared-column-settings{display:grid;gap:6px}
