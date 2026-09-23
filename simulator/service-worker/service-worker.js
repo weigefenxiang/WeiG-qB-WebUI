@@ -8,7 +8,7 @@ import {createWorldCache} from './__simulator/storage/world-cache.js';
 import {handleApi} from './__simulator/protocol/router.js';
 import {applyTransportPolicy} from './__simulator/protocol/transport-contract.js';
 import {emulateQbtDocument} from './__simulator/qbt-tr-emulator.mjs';
-import {consumePendingHandoffSession,forgetPendingHandoffSession,rememberHandoffSession,rememberPendingHandoffSession,rememberSessionForEvent,sessionClientIds,sessionForEvent,sessionForHandoff,sessionForUrl} from './__simulator/core/session-identity.js';
+import {consumePendingHandoffSession,forgetPendingHandoffSession,hasHandoffSessionToken,rememberHandoffSession,rememberPendingHandoffSession,rememberSessionForEvent,sessionClientIds,sessionForEvent,sessionForHandoff,sessionForUrl} from './__simulator/core/session-identity.js';
 
 const SOURCE_PRIVATE='./__source/private/';
 const SOURCE_PUBLIC='./__source/public/';
@@ -75,7 +75,7 @@ function configFromUrl(url){
 function rememberResolvedSession(event,url,sessionId){
   rememberSessionForEvent(clientSessions,event,sessionId);
   rememberHandoffSession(handoffSessions,url,sessionId);
-  forgetPendingHandoffSession(pendingHandoffSessions,url,sessionId);
+  if(hasHandoffSessionToken(url))forgetPendingHandoffSession(pendingHandoffSessions,url,sessionId);
 }
 
 async function sessionIdForEvent(event,url){

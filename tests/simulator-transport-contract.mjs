@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {createWorld} from '../simulator/core/engine.js';
 import {applyTransportPolicy,isCrossSiteRequest,resolveTransportContract,selectTargetHost} from '../simulator/protocol/transport-contract.js';
-import {consumePendingHandoffSession,forgetPendingHandoffSession,rememberHandoffSession,rememberPendingHandoffSession,rememberSessionForEvent,sessionClientIds,sessionForEvent,sessionForHandoff,sessionForUrl} from '../simulator/core/session-identity.js';
+import {consumePendingHandoffSession,forgetPendingHandoffSession,hasHandoffSessionToken,rememberHandoffSession,rememberPendingHandoffSession,rememberSessionForEvent,sessionClientIds,sessionForEvent,sessionForHandoff,sessionForUrl} from '../simulator/core/session-identity.js';
 
 function world(qb,api){
   const value=createWorld({profile:{qbVersion:qb,webApiVersion:api,stable:true},count:1,seed:'transport-contract',now:1700000000000});
@@ -72,6 +72,8 @@ function basic(value){return `Basic ${btoa(value)}`;}
   assert.equal(sessionForHandoff(handoffs,legacyHandoffUrl,122001),'','legacy handoff recovery must expire under the same bounded owner');
 
   const pending=new Map(),mainLogin='https://lab.example/main/app/api/v2/auth/login',mainLegacyTarget='https://lab.example/main/app/index.html?__weigg_handoff=nonce-main';
+  assert.equal(hasHandoffSessionToken(mainLogin),false,'protected API probes must not be mistaken for handoff navigation and must preserve pending fallback identity');
+  assert.equal(hasHandoffSessionToken(mainLegacyTarget),true,'historical and canonical handoff navigation tokens must be recognized by one session-identity owner');
   rememberPendingHandoffSession(pending,mainLogin,'sim-main',1000);
   assert.equal(consumePendingHandoffSession(pending,mainLegacyTarget,2000),'sim-main','historical main login must recover one unambiguous pending virtual world when navigation client/referrer identity is unavailable');
   assert.equal(consumePendingHandoffSession(pending,mainLegacyTarget,2001),'','pending login recovery must be one-shot after ownership transfers to the handoff token');
@@ -95,7 +97,7 @@ assert.match(sw,/applyTransportPolicy\(world,event\.request\)/,'Service Worker m
 assert.match(sw,/if\(transport\.rejected\)/,'Service Worker must enforce transport rejection outcomes');
 assert.match(sw,/sessionForEvent\(clientSessions,event\)/,'Service Worker must inherit the virtual world across canonical navigation client replacement');
 assert.match(sw,/rememberSessionForEvent\(clientSessions,event,/,'Service Worker must propagate the virtual world to resulting navigation clients');
-assert.match(sw,/forgetPendingHandoffSession\(pendingHandoffSessions,url,sessionId\)/,'strong client/referrer/direct session recovery must retire its stale app-root pending fallback candidate instead of letting successful logins accumulate ambiguity');
+assert.match(sw,/if\(hasHandoffSessionToken\(url\)\)forgetPendingHandoffSession\(pendingHandoffSessions,url,sessionId\)/,'only a resolved handoff navigation may retire its stale app-root pending fallback candidate; protected API probes must keep the fallback alive until navigation');
 assert.match(sw,/rememberHandoffSession\(handoffSessions,url,sessionId\)/,'Service Worker must remember the canonical navigation nonce while its virtual world is known');
 assert.match(sw,/sessionForHandoff\(handoffSessions,clientUrl\)/,'post-navigation dynamic assets must recover the virtual world from the client handoff nonce when resulting-client identity is unavailable');
 assert.match(sw,/event\?\.request\?\.referrer/,'navigation identity recovery must inspect the initiating request referrer when client ids are unavailable');

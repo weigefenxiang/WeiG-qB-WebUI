@@ -61,6 +61,8 @@ export function sessionForHandoff(handoffs,url,now=Date.now(),maxAge=HANDOFF_MAX
   return record&&record.sessionId?String(record.sessionId):'';
 }
 
+export function hasHandoffSessionToken(url){return !!handoffToken(url);}
+
 function appRoot(url){
   try{
     const value=url instanceof URL?url:new URL(String(url));
