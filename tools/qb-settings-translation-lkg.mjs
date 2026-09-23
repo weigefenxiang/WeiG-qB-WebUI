@@ -38,6 +38,19 @@ function validateColumns(columns,qbVersion){
   return out;
 }
 function validateRef(ref,label){assert(ref&&String(ref.source||'').trim()&&String(ref.context||'').trim(),`${label}: translation ref is invalid.`);return clone(ref);}
+function validateTrackerFilters(filters,qbVersion){
+  assert(Array.isArray(filters),`${qbVersion}: source-derived Tracker filter facts are missing.`);
+  const allowed=new Set(['all','trackerless','error','otherError','warning']),seen=new Set(),out=[];
+  for(const item of filters){
+    const id=String(item?.id||'').trim();
+    assert(allowed.has(id),`${qbVersion}: invalid Tracker filter fact ${id||'(empty)'}.`);
+    assert(!seen.has(id),`${qbVersion}: duplicate Tracker filter fact ${id}.`);seen.add(id);
+    out.push({id,copy:validateRef(item?.copy,`${qbVersion} Tracker filter ${id}`)});
+  }
+  const order=['all','trackerless','error','otherError','warning'];
+  assert(out.every((item,index)=>order.indexOf(item.id)>(index?order.indexOf(out[index-1].id):-1)),`${qbVersion}: Tracker filter fact order drifted.`);
+  return out;
+}
 function validateDetailControls(value,qbVersion){
   if(value===undefined)return null;
   assert(value&&typeof value==='object'&&!Array.isArray(value),`${qbVersion}: Torrent detail controls are invalid.`);
@@ -222,7 +235,7 @@ export function buildQbSettingsTranslationLkg(enrichedCatalog,frozenCatalog,{bas
   const sets={};
   const profiles=[];
   const seenProfiles=new Set();
-  let mappedProfiles=0,mappedPreferences=0,translationRoutes=0,ownedUiBindings=0,torrentColumnBindings=0,detailUiBindings=0;
+  let mappedProfiles=0,mappedPreferences=0,translationRoutes=0,ownedUiBindings=0,torrentColumnBindings=0,trackerFilterBindings=0,detailUiBindings=0;
 
   for(const source of enrichedCatalog){
     const qbVersion=profileKey(source),sourceSha=String(source?.sourceSha||'').trim();
@@ -232,20 +245,20 @@ export function buildQbSettingsTranslationLkg(enrichedCatalog,frozenCatalog,{bas
     assert(frozen,`${qbVersion}: release is not present in the admitted Frozen catalog.`);
     assert(String(frozen.sourceSha||'')===sourceSha,`${qbVersion}: Settings/source evidence source SHA drift.`);
 
-    const preferences=clone(source.settingsUi||{}),ui=clone(source.qbOwnedUi||{}),translations=clone(source.settingsTranslations||{}),torrentTableColumns=validateColumns(source.torrentTableColumns,qbVersion),torrentDetailUi=validateDetailUi(source.torrentDetailUi,qbVersion);
+    const preferences=clone(source.settingsUi||{}),ui=clone(source.qbOwnedUi||{}),translations=clone(source.settingsTranslations||{}),torrentTableColumns=validateColumns(source.torrentTableColumns,qbVersion),trackerFilters=validateTrackerFilters(source.trackerFilters,qbVersion),torrentDetailUi=validateDetailUi(source.torrentDetailUi,qbVersion);
     const mapped=Number(source.settingsUiMappedPreferences)||0,total=Number(source.settingsUiTotalPreferences)||0;
     assert(mapped===Object.keys(preferences).length,`${qbVersion}: mapped Settings preference count drift.`);
     assert(mapped<=total,`${qbVersion}: mapped Settings preference count exceeds source preference surface.`);
     assert(Object.keys(ui).length>0,`${qbVersion}: source-derived qB-owned UI copy is missing.`);
     if(mapped>0)mappedProfiles+=1;
-    mappedPreferences+=mapped;ownedUiBindings+=Object.keys(ui).length;translationRoutes+=Object.keys(translations).length;torrentColumnBindings+=torrentTableColumns.length;detailUiBindings+=detailUiBindingCount(torrentDetailUi);
+    mappedPreferences+=mapped;ownedUiBindings+=Object.keys(ui).length;translationRoutes+=Object.keys(translations).length;torrentColumnBindings+=torrentTableColumns.length;trackerFilterBindings+=trackerFilters.length;detailUiBindings+=detailUiBindingCount(torrentDetailUi);
 
     for(const [hash,payload] of Object.entries(source.settingsTranslationSets||{})){
       validateTranslationSet(hash,payload,qbVersion);
       if(sets[hash])assert(stableJson(sets[hash])===stableJson(payload),`${qbVersion}: Settings translation set hash collision ${hash}.`);
       else sets[hash]=clone(payload);
     }
-    profiles.push({qbVersion,sourceSha,source:String(source.settingsUiSource||''),ownedUiSource:String(source.qbOwnedUiSource||''),mappedPreferences:mapped,totalPreferences:total,preferences,ui,translations,torrentTableColumns,torrentDetailUi,recoveryLocales:[]});
+    profiles.push({qbVersion,sourceSha,source:String(source.settingsUiSource||''),ownedUiSource:String(source.qbOwnedUiSource||''),mappedPreferences:mapped,totalPreferences:total,preferences,ui,translations,torrentTableColumns,trackerFilters,torrentDetailUi,recoveryLocales:[]});
   }
 
   assert(profiles.length===frozenByVersion.size&&seenProfiles.size===frozenByVersion.size,'Settings/source LKG must cover every admitted stable exactly once.');
@@ -253,6 +266,7 @@ export function buildQbSettingsTranslationLkg(enrichedCatalog,frozenCatalog,{bas
   assert(mappedProfiles>0&&mappedPreferences>0,'Settings/source LKG must contain source-mapped qB Settings copy.');
   assert(ownedUiBindings>0,'Settings/source LKG must contain source-derived qB-owned UI copy.');
   assert(torrentColumnBindings>0,'Settings/source LKG must contain source-derived native Torrent columns.');
+  assert(trackerFilterBindings>0,'Settings/source LKG must contain source-derived Tracker filter facts.');
   assert(detailUiBindings>0,'Settings/source LKG must contain source-derived Torrent detail UI facts.');
   assert(translationRoutes>0&&Object.keys(sets).length>0,'Settings/source LKG must contain official locale translation evidence.');
   const recovery=freezeRecovery(enrichedCatalog,recoveryEvidence);
@@ -260,7 +274,7 @@ export function buildQbSettingsTranslationLkg(enrichedCatalog,frozenCatalog,{bas
   for(const route of recovery.routes){const list=recoveryLocalesByVersion.get(route.qbVersion)||[];if(!list.includes(route.locale))list.push(route.locale);recoveryLocalesByVersion.set(route.qbVersion,list);}
   for(const profile of profiles)profile.recoveryLocales=(recoveryLocalesByVersion.get(profile.qbVersion)||[]).sort();
 
-  return{schemaVersion:LKG_SCHEMA_VERSION,source:'qb-upstream-preferences-ui+owned-ui+torrent-columns+detail-ui+official-ts-recovery',supportFloor:profileKey(frozenCatalog[0]),latestAdmittedStable:profileKey(frozenCatalog.at(-1)),profileCount:profiles.length,ownedUiBindings,torrentColumnBindings,detailUiBindings,...(baseCatalogSha256?{baseCatalogSha256}:{}),...(sourceEvidence?{sourceEvidence}:{}),profiles,sets,recovery};
+  return{schemaVersion:LKG_SCHEMA_VERSION,source:'qb-upstream-preferences-ui+owned-ui+torrent-columns+tracker-filters+detail-ui+official-ts-recovery',supportFloor:profileKey(frozenCatalog[0]),latestAdmittedStable:profileKey(frozenCatalog.at(-1)),profileCount:profiles.length,ownedUiBindings,torrentColumnBindings,trackerFilterBindings,detailUiBindings,...(baseCatalogSha256?{baseCatalogSha256}:{}),...(sourceEvidence?{sourceEvidence}:{}),profiles,sets,recovery};
 }
 
 export function applyQbSettingsTranslationLkg(catalog,lkg,{catalogSha256=''}={}){
@@ -269,6 +283,7 @@ export function applyQbSettingsTranslationLkg(catalog,lkg,{catalogSha256=''}={})
   assert(Number(lkg.profileCount)===catalog.length&&lkg.profiles.length===catalog.length,`Settings/source LKG profile count mismatch: ${lkg.profiles.length}/${lkg.profileCount} != ${catalog.length}`);
   assert(Number(lkg.ownedUiBindings)>0,'Settings/source LKG is stale: source-derived qB-owned UI bindings are missing.');
   assert(Number(lkg.torrentColumnBindings)>0,'Settings/source LKG is stale: native Torrent column bindings are missing.');
+  assert(Number(lkg.trackerFilterBindings)>0,'Settings/source LKG is stale: Tracker filter bindings are missing.');
   assert(Number(lkg.detailUiBindings)>0,'Settings/source LKG is stale: Torrent detail UI bindings are missing.');
   assert(profileKey(catalog[0])===String(lkg.supportFloor||''),`Settings/source LKG support floor mismatch: ${lkg.supportFloor} != ${profileKey(catalog[0])}`);
   assert(profileKey(catalog.at(-1))===String(lkg.latestAdmittedStable||''),`Settings/source LKG latest stable mismatch: ${lkg.latestAdmittedStable} != ${profileKey(catalog.at(-1))}`);
@@ -282,14 +297,14 @@ export function applyQbSettingsTranslationLkg(catalog,lkg,{catalogSha256=''}={})
     const qbVersion=profileKey(profile),fact=byVersion.get(qbVersion);
     assert(fact,`${qbVersion}: Settings/source LKG profile missing.`);
     assert(String(fact.sourceSha||'')===String(profile.sourceSha||''),`${qbVersion}: Settings/source LKG source SHA mismatch.`);
-    const preferences=clone(fact.preferences||{}),ui=clone(fact.ui||{}),translations=clone(fact.translations||{}),sets={},torrentTableColumns=validateColumns(fact.torrentTableColumns,qbVersion),torrentDetailUi=validateDetailUi(fact.torrentDetailUi,qbVersion);
+    const preferences=clone(fact.preferences||{}),ui=clone(fact.ui||{}),translations=clone(fact.translations||{}),sets={},torrentTableColumns=validateColumns(fact.torrentTableColumns,qbVersion),trackerFilters=validateTrackerFilters(fact.trackerFilters,qbVersion),torrentDetailUi=validateDetailUi(fact.torrentDetailUi,qbVersion);
     const mapped=Number(fact.mappedPreferences)||0,total=Number(fact.totalPreferences)||0;
     assert(mapped===Object.keys(preferences).length,`${qbVersion}: Settings/source LKG mapped preference count drift.`);
     assert(mapped<=total,`${qbVersion}: Settings/source LKG mapped preferences exceed source surface.`);
     assert(Object.keys(ui).length>0,`${qbVersion}: Settings/source LKG qB-owned UI bindings are missing.`);
     for(const hash of new Set(Object.values(translations))){assert(lkg.sets[hash],`${qbVersion}: Settings translation set ${hash} is missing from the LKG.`);validateTranslationSet(hash,lkg.sets[hash],qbVersion);sets[hash]=clone(lkg.sets[hash]);}
     appliedColumns+=torrentTableColumns.length;appliedDetailUi+=detailUiBindingCount(torrentDetailUi);
-    return{...profile,torrentTableColumns,torrentDetailUi,settingsUiSource:String(fact.source||''),settingsUiMappedPreferences:mapped,settingsUiTotalPreferences:total,settingsUi:preferences,qbOwnedUiSource:String(fact.ownedUiSource||''),qbOwnedUi:ui,settingsTranslations:translations,settingsTranslationSets:sets};
+    return{...profile,torrentTableColumns,trackerFilters,torrentDetailUi,settingsUiSource:String(fact.source||''),settingsUiMappedPreferences:mapped,settingsUiTotalPreferences:total,settingsUi:preferences,qbOwnedUiSource:String(fact.ownedUiSource||''),qbOwnedUi:ui,settingsTranslations:translations,settingsTranslationSets:sets};
   });
   assert(appliedColumns===Number(lkg.torrentColumnBindings),`Settings/source LKG native Torrent column count drift: ${appliedColumns} != ${lkg.torrentColumnBindings}`);
   assert(appliedDetailUi===Number(lkg.detailUiBindings),`Settings/source LKG Torrent detail UI count drift: ${appliedDetailUi} != ${lkg.detailUiBindings}`);
