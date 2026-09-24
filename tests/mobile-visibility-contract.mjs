@@ -12,6 +12,7 @@ const ui=read('webui/private/css/ui.css');
 const spatial=read('webui/private/css/spatial.css');
 const layout=read('webui/private/css/layout.css');
 const baseCss=read('webui/private/css/base.css');
+const appCss=read('webui/private/css/app.css');
 const progress=read('webui/private/css/progress.css');
 const transfer=read('webui/private/css/transfer.css');
 const logsCss=read('webui/private/css/logs.css');
@@ -36,6 +37,8 @@ assert(layout.includes('.mobile-pager-actions-slot #torrent-selection-toolbar{di
 assert(layout.includes('font-size:clamp(11px,2.95vw,13px)'),'mobile batch actions must use readable text before narrow-screen shrinking');
 assert(layout.includes('#actions-dialog .action-grid{grid-template-columns:repeat(2,minmax(0,1fr))'),'mobile More Actions must preserve the canonical two-column action layout');
 assert(layout.includes('#actions-dialog .action-grid .btn')&&layout.includes('font-size:clamp(12px,3.35vw,15px)')&&layout.includes('overflow-wrap:anywhere'),'mobile More Actions labels must stay readable and contained');
+assert(!appCss.includes('#actions-dialog[open]{position:fixed;inset:auto 7px 7px 7px'),'mobile More Actions must use canonical centered DialogRuntime geometry instead of a feature-local bottom sheet');
+
 
 assert((index.match(/id="search-input"/g)||[]).length===1,'Header Search input must remain unique');
 assert(!uiJs.includes('rss-search-input')&&!uiJs.includes('installRSSSearch'),'retired page-local RSS Search must leave runtime');
