@@ -88,14 +88,16 @@
 
 @media(max-width:820px){#column-configurator-dialog.shared-column-dialog[open]{width:calc(100vw - 14px);max-width:calc(100vw - 14px);max-height:90svh}#column-configurator-dialog .shared-column-settings{grid-template-columns:minmax(0,1fr)}#torrent-list>.torrent-table-head{display:none!important}#detail-content{padding-bottom:max(4px,env(safe-area-inset-bottom))}.shared-table__toolbar{flex-wrap:wrap;overflow-x:visible}.shared-table__head>.grid-head-cell,.shared-table__row>[data-column-key]{padding-inline:8px}.general-detail{gap:10px}.general-detail__section{padding:8px 10px}.general-detail__grid{grid-template-columns:1fr}.general-detail__grid>.kv{grid-template-columns:minmax(100px,max-content) minmax(0,1fr)}}
 .state-icon-cell{display:flex;align-items:center;justify-content:center;overflow:visible}
-.torrent-state-icon{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--text-muted);box-shadow:0 0 0 2px rgba(255,255,255,.05)}
-.torrent-state-icon[data-tone=download]{background:var(--accent-cyan)}
-.torrent-state-icon[data-tone=seed]{background:var(--success)}
-.torrent-state-icon[data-tone=stalled-down]{background:var(--warning)}
-.torrent-state-icon[data-tone=stalled-up]{background:#a88cff}
-.torrent-state-icon[data-tone=stopped-incomplete]{background:color-mix(in srgb,var(--accent-cyan) 42%,var(--text-muted) 58%)}
-.torrent-state-icon[data-tone=stopped-complete]{background:color-mix(in srgb,var(--success) 60%,var(--text-muted) 40%)}
-.torrent-state-icon[data-tone=stopped],.torrent-state-icon[data-tone=muted]{background:var(--text-muted)}
-.torrent-state-icon[data-tone=queued]{background:var(--accent-primary)}
-.torrent-state-icon[data-tone=checking]{background:#ffe09b}
-.torrent-state-icon[data-tone=danger]{background:var(--danger)}
+.torrent-state-icon{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--torrent-tone-muted);box-shadow:0 0 0 2px rgba(255,255,255,.05)}
+.torrent-state-icon[data-tone=download]{background:var(--torrent-tone-download)}
+.torrent-state-icon[data-tone=seed]{background:var(--torrent-tone-seed)}
+.torrent-state-icon[data-tone=stalled-down]{background:var(--torrent-tone-stalled-down)}
+.torrent-state-icon[data-tone=stalled-up]{background:var(--torrent-tone-stalled-up)}
+.torrent-state-icon[data-tone=stopped-incomplete]{background:var(--torrent-tone-stopped-incomplete)}
+.torrent-state-icon[data-tone=stopped-complete]{background:var(--torrent-tone-stopped-complete)}
+.torrent-state-icon[data-tone=stopped],.torrent-state-icon[data-tone=muted]{background:var(--torrent-tone-muted)}
+.torrent-state-icon[data-tone=queued]{background:var(--torrent-tone-queued)}
+.torrent-state-icon[data-tone=checking]{background:var(--torrent-tone-checking)}
+.torrent-state-icon[data-tone=danger]{background:var(--torrent-tone-danger)}
+.torrent-state-icon[data-active=true]{animation:weig-indicator-pulse 3.8s ease-in-out infinite;box-shadow:0 0 0 2px rgba(255,255,255,.06),0 0 10px color-mix(in srgb,var(--text-primary) 12%,transparent)}
+.data-viewport.is-scroll-interacting .torrent-state-icon{animation:none!important;filter:none!important;transform:none!important}

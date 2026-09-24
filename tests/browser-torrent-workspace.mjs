@@ -191,8 +191,8 @@ try{
     const expected={1:['download','45%','true'],2:['seed','100%','true'],3:['paused','45%','false'],4:['complete-idle','100%','false'],5:['error','45%','false'],6:['checking','45%','true'],7:['queued','45%','false'],8:['download-idle','45%','false'],9:['seed-idle','100%','false']};
     for(const [n,e] of Object.entries(expected)){
       const hash=String(n).padStart(40,'0'),track=page.locator(`.torrent-row[data-hash="${hash}"] .progress-track`);await track.waitFor();
-      const state=await track.evaluate(el=>({state:el.dataset.progressState,active:el.dataset.progressActive,width:el.querySelector('.progress-fill').style.width}));
-      assert(state.state===e[0]&&state.width===e[1]&&state.active===e[2],`${name}: progress ${n} semantic mismatch ${JSON.stringify(state)}`);
+      const state=await track.evaluate(el=>({state:el.dataset.progressState,tone:el.dataset.progressTone,active:el.dataset.progressActive,width:el.querySelector('.progress-fill').style.width}));
+      assert(state.state===e[0]&&state.width===e[1]&&state.active===e[2]&&!!state.tone,`${name}: progress ${n} semantic mismatch ${JSON.stringify(state)}`);
       const motion=await waitForProgressMotion(page,hash,e[2]==='true');
       assert(motion===(e[2]==='true'?'weig-progress-flow':'none'),`${name}: progress ${n} activity motion mismatch ${JSON.stringify({state,motion})}`);
     }
@@ -203,6 +203,12 @@ try{
     await page.emulateMedia({reducedMotion:'no-preference'});
     const restoredMotion=await waitForProgressMotion(page,activeProgressHash,true);
     assert(restoredMotion==='weig-progress-flow',`${name}: progress motion did not resume after Reduced Motion was cleared ${JSON.stringify({motion:restoredMotion})}`);
+    const dotMotion=await page.evaluate(()=>{const t={hash:'p'.repeat(40),name:'pulse',state:'downloading',progress:.5,dlspeed:1000,upspeed:0},row=WeiG.Components.torrentRow(t,false,{open:function(){},menu:function(){}},[{key:'state_icon'}],'40px');document.body.appendChild(row);const dot=row.querySelector('.torrent-state-icon'),result={tone:dot.dataset.tone,active:dot.dataset.active,motion:getComputedStyle(dot).animationName};row.remove();return result;});
+    assert(dotMotion.tone==='download'&&dotMotion.active==='true'&&dotMotion.motion==='weig-indicator-pulse',`${name}: active Torrent dot did not use shared pulse ${JSON.stringify(dotMotion)}`);
+    await page.emulateMedia({reducedMotion:'reduce'});
+    const reducedDotMotion=await page.evaluate(()=>{const t={hash:'r'.repeat(40),name:'pulse reduced',state:'downloading',progress:.5,dlspeed:1000,upspeed:0},row=WeiG.Components.torrentRow(t,false,{open:function(){},menu:function(){}},[{key:'state_icon'}],'40px');document.body.appendChild(row);const dot=row.querySelector('.torrent-state-icon'),motion=getComputedStyle(dot).animationName;row.remove();return motion;});
+    assert(reducedDotMotion==='none',`${name}: Reduced Motion did not disable Torrent state-dot pulse ${reducedDotMotion}`);
+    await page.emulateMedia({reducedMotion:'no-preference'});
 
     // Canonical sort state: desktop header and Mobile Select share LibraryController state.
     const nameHead=page.locator('#torrent-table-head .grid-head-cell[data-key="name"]');await nameHead.click();
