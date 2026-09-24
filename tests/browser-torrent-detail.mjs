@@ -299,7 +299,7 @@ try{
   await page.waitForSelector('.shared-table__viewport .shared-table__row');
   await page.locator('.detail-tabs [data-tab="peers"]').click();
   await page.waitForFunction(()=>document.querySelector('.detail-tabs [data-tab="peers"]')?.classList.contains('is-active'));
-  await page.locator('[data-detail-back]').click();
+  await page.locator('#mobile-bottom-nav [data-route=""]').click();
   await page.waitForFunction(()=>WeiG.Router.route().name==='home'&&document.getElementById('list-view')?.classList.contains('is-active'));
   await page.waitForSelector(`.torrent-mobile-card[data-hash="${hash}"] .mobile-card-title`);
   await page.locator(`.torrent-mobile-card[data-hash="${hash}"] .mobile-card-title`).click();
