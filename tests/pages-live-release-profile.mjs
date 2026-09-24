@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import {launchBrowser} from './browser-driver.mjs';
+import {recoverPageSession} from './pages-live-session.mjs';
 
 const rawBase=(process.env.WEIG_PAGES_URL||process.argv[2]||'').trim();
 const expectedSha=(process.env.WEIG_EXPECTED_SIMULATOR_SHA||process.argv[3]||'').trim();
 const requestedMode=(process.env.WEIG_RELEASE_PROFILE_MODE||'all').trim().toLowerCase();
 const laneTimeoutMs=Math.max(30000,Number(process.env.WEIG_RELEASE_PROFILE_LANE_TIMEOUT_MS||210000)||210000);
+const sessionTimeoutMs=Math.max(5000,Number(process.env.WEIG_PAGES_SESSION_TIMEOUT_MS||20000)||20000);
 assert.ok(rawBase,'WEIG_PAGES_URL or argv[2] is required');
 assert.ok(expectedSha,'WEIG_EXPECTED_SIMULATOR_SHA or argv[3] is required');
 assert.ok(['all','floor','latest','settings'].includes(requestedMode),`Unsupported WEIG_RELEASE_PROFILE_MODE ${requestedMode}`);
@@ -38,7 +40,24 @@ function expectedModes(profile){return Object.fromEntries(expectedRenderedFilter
 function observeBrowserErrors(page){const errors=[];page.on('pageerror',error=>errors.push(String(error)));page.on('console',msg=>{const text=msg.text();if(msg.type()==='error'&&!/favicon|Wei\.G\.ico/i.test(text)&&!/Failed to load resource:\s*the server responded with a status of 404/i.test(text))errors.push(text);});return errors;}
 // Release identity becomes observable before the capabilities-ready render; live evidence owns final semantic/DOM convergence.
 async function waitForFilterView(page){await page.waitForFunction(()=>{const view=window.WeiG?.TorrentFilterView,semantic=view?.filters?.();if(!Array.isArray(semantic)||!semantic.length)return false;const visible=Array.from(document.querySelectorAll('#filter-nav [data-filter]')).filter(n=>!n.hidden&&getComputedStyle(n).display!=='none').map(n=>n.dataset.filter);return visible.length===semantic.length&&semantic.every((name,index)=>visible[index]===name);},null,{timeout:45000});}
-async function openSession(page,qb,lane){const sim=`pages-release-profile-${lane}-${qb}-${Date.now()}-${Math.random().toString(16).slice(2)}`;const url=new URL('dev/app/',base);url.search=new URLSearchParams({sim,qb,count:'40',scenario:'mixed',seed:`release-profile-${lane}-${qb}`,clean:'0'}).toString();await page.goto(url.toString(),{waitUntil:'domcontentloaded',timeout:60000});await page.waitForSelector('#login-form',{state:'visible',timeout:60000});await page.locator('#login-btn').click();await page.waitForSelector('#torrent-list',{state:'attached',timeout:60000});await page.waitForFunction(version=>window.WeiG?.CapabilityRegistry?.releaseIdentity()?.qbVersion===version,qb,{timeout:45000});await page.waitForFunction(()=>{const registry=window.WeiG?.CapabilityRegistry;return !!(registry?.state('tags')?.feature&&registry?.state('tagFacet')?.feature&&window.WeiG?.TorrentFilterView&&window.WeiG?.TorrentSemantics);},null,{timeout:45000});await page.waitForFunction(()=>document.readyState==='complete',null,{timeout:30000});await waitForFilterView(page);}
+async function openSession(page,qb,lane){
+  const sim=`pages-release-profile-${lane}-${qb}-${Date.now()}-${Math.random().toString(16).slice(2)}`,url=new URL('dev/app/',base);
+  url.search=new URLSearchParams({sim,qb,count:'40',scenario:'mixed',seed:`release-profile-${lane}-${qb}`,clean:'0'}).toString();
+  const recovered=await recoverPageSession(page,{
+    label:`Pages release-profile ${lane} qB ${qb}`,
+    qbVersion:qb,
+    timeoutMs:sessionTimeoutMs,
+    navigate:async attempt=>{
+      const attemptUrl=new URL(url);attemptUrl.searchParams.set('__weig_session_attempt',String(attempt));
+      await page.goto(attemptUrl.toString(),{waitUntil:'domcontentloaded',timeout:sessionTimeoutMs});
+    }
+  });
+  if(recovered.attempt>1)console.log(`Recovered release-profile ${lane} qB ${qb} on bootstrap attempt ${recovered.attempt}.`);
+  await page.waitForFunction(version=>window.WeiG?.CapabilityRegistry?.releaseIdentity()?.qbVersion===version,qb,{timeout:45000});
+  await page.waitForFunction(()=>{const registry=window.WeiG?.CapabilityRegistry;return !!(registry?.state('tags')?.feature&&registry?.state('tagFacet')?.feature&&window.WeiG?.TorrentFilterView&&window.WeiG?.TorrentSemantics);},null,{timeout:45000});
+  await page.waitForFunction(()=>document.readyState==='complete',null,{timeout:30000});
+  await waitForFilterView(page);
+}
 async function inspect(page){return page.evaluate(()=>{const filters=Array.from(document.querySelectorAll('#filter-nav [data-filter]')).filter(n=>!n.hidden&&getComputedStyle(n).display!=='none').map(n=>n.dataset.filter);return{profile:window.WeiG.CapabilityRegistry.releaseIdentity(),filters,filterModes:Object.fromEntries(filters.map(name=>[name,window.WeiG.TorrentSemantics.filterMode(name)])),tag:(()=>{const n=document.querySelector('[data-facet="tag"]');return n?!(n.hidden||getComputedStyle(n).display==='none'):false;})(),tagFacetSupported:window.WeiG.CapabilityRegistry.supports('tagFacet'),privateSupported:window.WeiG.CapabilityRegistry.supports('privateFilter'),tagsSupported:window.WeiG.CapabilityRegistry.supports('tags'),stalledSupported:window.WeiG.CapabilityRegistry.supports('stalledFilter'),certified:window.WeiG.CapabilityRegistry.isCertified()};});}
 function withTimeout(label,promise){let timer;const timeout=new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(`release-profile ${label} lane exceeded ${laneTimeoutMs}ms`)),laneTimeoutMs);});return Promise.race([promise,timeout]).finally(()=>clearTimeout(timer));}
 

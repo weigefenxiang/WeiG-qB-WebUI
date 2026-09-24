@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {launchBrowser} from './browser-driver.mjs';
+import {recoverPageSession} from './pages-live-session.mjs';
 
 const rawBase=(process.env.WEIG_PAGES_URL||process.argv[2]||'').trim();
 const expectedSha=(process.env.WEIG_EXPECTED_SIMULATOR_SHA||process.argv[3]||'').trim();
@@ -8,6 +9,7 @@ assert.ok(expectedSha,'WEIG_EXPECTED_SIMULATOR_SHA or argv[3] is required');
 const base=new URL(rawBase.endsWith('/')?rawBase:`${rawBase}/`);
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const DOC_LOAD_KEY='__weigg_locale_doc_loads';
+const sessionTimeoutMs=Math.max(5000,Number(process.env.WEIG_PAGES_SESSION_TIMEOUT_MS||20000)||20000);
 
 async function fetchJson(relative){
   const url=new URL(String(relative).replace(/^\/+/,''),base);
@@ -116,17 +118,25 @@ async function verifyBranchEntry(browser,{branch,entryPath,branchSha,label}){
     const errors=observeBrowserErrors(page);
     const params=new URLSearchParams({sim:`pages-${branch}-root-${Date.now()}`,qb:'5.2.3',count:'80',scenario:'mixed',seed:`${branch}-root-alias`});
     const entry=new URL(entryPath,base);entry.search=params.toString();entry.hash='#branch-root';
-    await page.goto(entry.toString(),{waitUntil:'domcontentloaded',timeout:60000});
-    await page.waitForURL(url=>url.pathname.endsWith(`/${branch}/app/`)&&url.hash==='#branch-root',{timeout:60000});
-    const landed=new URL(page.url());
-    for(const [key,value] of params)assert.equal(landed.searchParams.get(key),value,`${label} must preserve ${key}`);
-    assert.equal(landed.hash,'#branch-root',`${label} must preserve hash`);
-    await page.waitForSelector('#login-form',{state:'visible',timeout:60000});
-    assert.equal(await page.locator('#username').inputValue(),'weigshare',`${label} must land in the Lab-enabled ${branch} app`);
-    assert.equal(await page.locator('#password').inputValue(),'weigshare',`${label} must retain the Lab credential preset`);
-    await page.locator('#login-btn').click();
-    await page.waitForSelector('#torrent-list',{state:'attached',timeout:60000});
-    await page.waitForFunction(()=>String(document.querySelector('#qb-version')?.textContent||'').includes('5.2.3'),null,{timeout:60000});
+    const recovered=await recoverPageSession(page,{
+      label:`${label} branch alias`,
+      qbVersion:'5.2.3',
+      timeoutMs:sessionTimeoutMs,
+      navigate:async attempt=>{
+        const attemptEntry=new URL(entry);attemptEntry.searchParams.set('__weig_session_attempt',String(attempt));
+        await page.goto(attemptEntry.toString(),{waitUntil:'domcontentloaded',timeout:sessionTimeoutMs});
+        await page.waitForURL(url=>url.pathname.endsWith(`/${branch}/app/`)&&url.hash==='#branch-root',{timeout:sessionTimeoutMs});
+        const landed=new URL(page.url());
+        for(const [key,value] of params)assert.equal(landed.searchParams.get(key),value,`${label} must preserve ${key}`);
+        assert.equal(landed.hash,'#branch-root',`${label} must preserve hash`);
+      },
+      onLogin:async()=>{
+        assert.equal(await page.locator('#username').inputValue(),'weigshare',`${label} must land in the Lab-enabled ${branch} app`);
+        assert.equal(await page.locator('#password').inputValue(),'weigshare',`${label} must retain the Lab credential preset`);
+        await page.locator('#login-btn').click();
+      }
+    });
+    if(recovered.attempt>1)console.log(`Recovered ${label} branch alias on bootstrap attempt ${recovered.attempt}.`);
     if(branch==='dev')await verifyDevLocale(page);
     const build=await readLandedBuild(new URL(page.url()));
     assert.equal(build.branch,branch,`${label} must resolve to the ${branch} app snapshot`);
