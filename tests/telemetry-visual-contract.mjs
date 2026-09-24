@@ -37,8 +37,8 @@ assert(speedFont==='clamp(10px,3vw,13.5px)','Android transfer/connection typogra
 assert(transferCss.includes('.transfer-runtime-capsule__limits{width:30px;min-width:30px;flex:0 0 30px}'),'Rate-limit control must retain its reserved Mobile hit region');
 
 // Connected status breathes at half the old frequency while Reduced Motion remains authoritative.
-assert(layout.includes('connection-online-pulse 3.8s ease-in-out infinite'),'Connected marker must use the slower 3.8s breathing period');
-assert(layout.includes('connection-online-pulse 2.6s ease-in-out infinite'),'Firewalled warning timing must remain protected baseline');
+assert(layout.includes('weig-indicator-pulse 3.8s ease-in-out infinite'),'Connected marker must use the shared slower 3.8s indicator breathing period');
+assert(layout.includes('weig-indicator-pulse 2.6s ease-in-out infinite'),'Firewalled warning timing must remain protected on the shared indicator pulse');
 assert(layout.includes('@media(prefers-reduced-motion:reduce)')&&layout.includes('html[data-motion="reduced"]')&&layout.includes('.connection-indicator[data-connection="connected"] .connection-indicator__dot'),'System and WeiG Reduced Motion must still target the canonical Connected marker');
 assert((layout.match(/connection-indicator\[data-connection="connected"\] \.connection-indicator__dot/g)||[]).length>=3,'Connected marker must have base plus both Reduced Motion protections');
 
