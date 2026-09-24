@@ -73,8 +73,7 @@ await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(p
 const browser=await launchBrowser();
 try{
   const context=await browser.newContext({viewport:{width:1366,height:768},locale:'en-US'});
-  const page=await context.newPage(),errors=[],navigations=[];
-  page.on('framenavigated',frame=>{if(frame===page.mainFrame())navigations.push({url:frame.url(),at:Date.now()});});
+  const page=await context.newPage(),errors=[];
   page.on('pageerror',e=>errors.push(String(e)));
   page.on('console',m=>{if(m.type()==='error'&&!/favicon|Wei\.G\.ico/i.test(m.text()))errors.push(m.text());});
   await page.goto(`http://${host}:${port}/#/`,{waitUntil:'domcontentloaded'});
@@ -187,8 +186,7 @@ try{
   assert(prefs.listen_port===6999,'Settings fixture did not receive the submitted preference');
 
   // Real WeiG-only save must use the same Feedback owner and name the changed semantic control.
-  const navigationBaseline=navigations.length;
-  await page.evaluate(()=>{WeiG.Feedback.dismissAll();window.__weigFeedbackCalls=[];const original=WeiG.toast;WeiG.toast=function(message,kind,options){window.__weigFeedbackCalls.push({message:String(message??''),kind:String(kind??''),title:String(options&&options.title||''),duration:options&&options.duration});return original(message,kind,options);};});await page.waitForTimeout(260);
+  await page.evaluate(()=>WeiG.Feedback.dismissAll());await page.waitForTimeout(260);
   await page.locator('#settings-tabs [data-settings-tab="weig"]').click();
   await page.waitForFunction(()=>WeiG.SettingsState?.tab==='weig');
   const densityRow=page.locator('[data-setting-key="weig_density"]'),densityTitle=String(await densityRow.locator('.setting-title').textContent()).trim();
@@ -199,7 +197,7 @@ try{
   await page.waitForFunction(value=>WeiG.SettingsState?.weigDraft?.density===value,densityNext);
   await page.locator('#save-settings-btn').click();
   const weigSuccess=page.locator('.feedback-toast[data-kind="success"]',{hasText:densityTitle}).first();
-  try{await weigSuccess.waitFor({timeout:2500});}catch(error){const snapshot=await page.evaluate(()=>({tab:WeiG.SettingsState?.tab||'',weigDraft:{...(WeiG.SettingsState?.weigDraft||{})},qBDraft:{...(WeiG.SettingsState?.draft||{})},config:WeiG.Config?.load?WeiG.Config.load():null,htmlDensity:document.documentElement.dataset.density||'',saveHidden:!!document.getElementById('save-settings-btn')?.hidden,cards:[...document.querySelectorAll('.feedback-toast')].map(node=>({kind:node.dataset.kind||'',state:node.dataset.state||'',text:String(node.textContent||'').trim()})),toastCalls:[...(window.__weigFeedbackCalls||[])],feedbackSize:WeiG.Feedback?.size?WeiG.Feedback.size():null,toastRegionPresent:!!document.getElementById('toast-region'),storedConfig:localStorage.getItem(WeiG.Config?.key||'weig.preferences')}));throw new Error('WeiG-only save feedback missing after real Save click: '+JSON.stringify({snapshot,errors,navigations:navigations.slice(navigationBaseline)}));}
+  await weigSuccess.waitFor({timeout:2500});
   assert((await weigSuccess.textContent()).includes(densityTitle),'WeiG-only save feedback lost the changed semantic control label');
   assert(Object.keys(await page.evaluate(()=>WeiG.SettingsState?.weigDraft||{})).length===0,'WeiG-only verified save did not clear its draft');
 
