@@ -50,6 +50,13 @@ for(const rel of runtimeFiles){
 }
 assert(qbClientCreators.length===1&&qbClientCreators[0][0]==='scripts/app.js'&&qbClientCreators[0][1]===1,`Exactly app.js may create one QBClient: ${JSON.stringify(qbClientCreators)}`);
 
+
+const timeSource=read('webui/private/scripts/time.js');
+assert(!timeSource.includes('System / Browser'),'Timezone presentation must not expose the retired System / Browser copy');
+assert(timeSource.includes("if(zone==='system')return Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC'"),'Timezone system sentinel must continue resolving from the browser/system IANA zone');
+assert(timeSource.includes('localStorage.setItem(KEY,zone)'),'Timezone explicit selection must remain persisted by the canonical Time owner');
+assert(timeSource.includes("return off+' · '+r;"),'Timezone labels must present only UTC offset plus resolved IANA zone');
+
 // Browser fixtures may read VERSION but must not pin a WeiG 0.3.x product version.
 for(const rel of walk(path.join(root,'tests')).filter(rel=>/^browser-.*\.mjs$/.test(path.basename(rel)))){
   const source=read('tests/'+rel);
