@@ -16,14 +16,9 @@ let prefs={
 };
 let feeds={};
 const torrent={hash:'f'.repeat(40),name:'Feedback Fixture',size:1048576,progress:.4,dlspeed:1000,upspeed:200,eta:3600,state:'downloading',ratio:.2,tracker:'https://tracker.example/announce',category:'',tags:'',added_on:1000,save_path:'/downloads',private:false};
-const releaseProfile={
-  qbVersion:'5.2.0',webApiVersion:'2.15.1',officialWeiGSupport:true,protocolGeneration:'qb5',
-  apiActions:['appcontroller.h:preferencesAction','appcontroller.h:setPreferencesAction','torrentscontroller.h:categoriesAction','torrentscontroller.h:tagsAction','torrentscontroller.h:startAction','torrentscontroller.h:stopAction','torrentscontroller.h:webseedsAction','torrentscontroller.h:addAction','rsscontroller.h:itemsAction','rsscontroller.h:addFeedAction'],
-  torrentFilters:['all','downloading','seeding','completed','stopped','running','active','inactive','stalled','stalled_uploading','stalled_downloading','checking','moving','errored'],
-  torrentInfoParameters:['filter','category','tag','sort','reverse','limit','offset','hashes','private'],
-  preferenceKeys:['listen_port'],
-  preferenceDescriptors:[{key:'listen_port',type:'number',readType:'number',writeType:'number',getterPresent:true,setterPresent:true,writable:true,typeAgreement:'EXACT',getterKind:'NUMBER',setterKind:'NUMBER',getterConfidence:'HIGH',setterConfidence:'HIGH',upstreamFallbackValue:null}]
-};
+const frozenCatalog=JSON.parse(await fs.readFile(path.resolve(here,'fixtures/qb-release-catalog.lkg.json'),'utf8'));
+const releaseProfile=frozenCatalog.find(item=>String(item&&item.qbVersion||'')==='5.2.0');
+if(!releaseProfile||!/^[0-9a-f]{40}$/.test(String(releaseProfile.sourceSha||'')))throw new Error('Feedback browser gate requires frozen exact qB 5.2.0 source identity.');
 const mime={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.ico':'image/x-icon'};
 function assert(ok,msg){if(!ok)throw new Error(msg);}
 function json(res,v,status=200){res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store'});res.end(JSON.stringify(v));}
@@ -176,8 +171,9 @@ try{
   await page.locator('#app-nav [data-route="settings"]').click();
   await page.waitForFunction(()=>document.getElementById('settings-view')?.classList.contains('is-active'));
   await page.locator('#settings-tabs [data-settings-tab="connection"]').click();
-  const portInput=page.locator('[data-preference-key="listen_port"] input[type="number"]');
-  await portInput.waitFor();const portTitle=String(await page.locator('[data-preference-key="listen_port"] .setting-title').textContent()).trim();await portInput.fill('6999');await portInput.press('Tab');
+  await page.waitForFunction(()=>WeiG.SettingsState?.tab==='connection');
+  const portRoot=':is([data-preference-key="listen_port"],[data-setting-key="listen_port"])',portInput=page.locator(portRoot+' input[type="number"]');
+  await portInput.waitFor();const portTitle=String(await page.locator(portRoot+' .setting-title').textContent()).trim();await portInput.fill('6999');await portInput.press('Tab');
   await page.locator('#save-settings-btn').click();
   const settingsProcessing=page.locator('.feedback-toast[data-kind="info"]',{hasText:'Saving settings'}).first();
   await settingsProcessing.waitFor();
