@@ -10,7 +10,17 @@ assert.match(core,/__weigDataViewportScrollIdleTimer=global\.setTimeout\(functio
 assert.match(core,/setItems=function\(items,preserve\)\{if\(this\._scrolling\)\{this\._pendingItems=items\|\|\[\];/,'polling updates must coalesce in the existing DataViewport while the user scrolls.');
 assert.match(core,/commitWhenIdle=function\(commit\)\{if\(typeof commit!=='function'\)return true;if\(this\._scrolling\)\{this\._pendingUiCommit=commit;return false;\}/,'non-row polling UI must share the same scroll-priority owner instead of mutating DOM during thumb drag.');
 assert.match(app,/app\.viewport\.setItems\(items\);app\.viewport\.commitWhenIdle\(finalizeListUi\)/,'Torrent polling must defer selection/pager/status DOM synchronization until the DataViewport is quiet.');
-assert.match(progressCss,/data-viewport\.is-scroll-interacting .*progress-fill.*transition:none/s,'progress animation/transition work must yield while the canonical DataViewport owns active scrolling.');
+assert.match(app,/function torrentScrollInteracting\(\).*viewport\.isInteracting&&viewport\.isInteracting\(\)/,'Torrent native scroll priority must be observable through one App/DataViewport owner.');
+assert.match(app,/nextHeight=rowHeight\(\),nextOverscan=mobile\?2:3/,'Torrent recycler must keep only a small bounded edge buffer instead of the retired seven-row desktop overscan.');
+assert.match(app,/async function loadPage\(silent\)\{if\(silent&&torrentScrollInteracting\(\)\)return false;.*if\(silent&&torrentScrollInteracting\(\)\)\{deferredByScroll=true;return false;\}/s,'Silent Torrent polling must yield both before request work and before response commit when native scroll becomes active.');
+assert.match(app,/async function loadTransfer\(\)\{if\(torrentScrollInteracting\(\)\)return false;.*if\(torrentScrollInteracting\(\)\)return false;/s,'Transfer/status polling must not mutate global UI during active Torrent native scroll.');
+assert.match(app,/function schedulePoll\(\).*r\.name==='home'&&torrentScrollInteracting\(\).*schedulePoll\(\);return;.*await loadPage\(true\).*r\.name==='home'&&torrentScrollInteracting\(\).*schedulePoll\(\);return;/s,'Poll scheduler must check scroll ownership before and after the async Torrent refresh boundary.');
+assert.match(progressCss,/data-viewport\.is-scroll-interacting \.progress-fill\{transition:none;box-shadow:none\}/,'Active native scroll must retire expensive progress glow work.');
+assert.match(progressCss,/data-viewport\.is-scroll-interacting \.progress-fill::before,\.data-viewport\.is-scroll-interacting \.progress-fill::after\{animation:none!important;opacity:0!important\}/,'Active native scroll must remove progress animation layers rather than merely pausing them.');
+assert.match(tableCss,/\.torrent-row,\.torrent-mobile-card\{contain:layout paint style\}/,'Torrent rows must isolate layout/paint invalidation from neighboring rows during wide native scrolling.');
+assert.doesNotMatch(progressCss,/animation-play-state:paused/,'Retired pause-only progress scroll workaround must not survive as a second compositor policy.');
+
+assert.match(progressCss,/data-viewport\.is-scroll-interacting .*progress-fill.*transition:none/s,'progress presentation work must yield while the canonical DataViewport owns active scrolling.');
 assert.match(core,/DataViewport\.prototype\.destroy=function\(\)/,'DataViewport must expose lifecycle cleanup instead of leaking scroll owners.');
 assert.doesNotMatch(core,/spacer\.textContent=''\s*;/,'scroll render must not clear and recreate the entire visible spacer.');
 assert.match(core,/this\._rowPool=\[\]/,'DataViewport must own one bounded recyclable row-shell pool.');

@@ -62,6 +62,17 @@ function assertQuietCommitBounded(name,axis,active,settled){
   assert(settled.created-active.created<=bound&&settled.removed-active.removed<=bound,`${name}: ${axis} quiet-period snapshot commit exceeded the visible row pool ${JSON.stringify({active,settled})}`);
   assert(settled.maxRenderMs<80,`${name}: ${axis} active/quiet DataViewport render exceeded the bounded regression budget ${JSON.stringify(settled)}`);
 }
+async function continuousFrameScrollProbe(page,axis){
+  return page.evaluate(async axis=>{
+    const list=document.getElementById('torrent-list'),v=WeiG.AppState.viewport,prop=axis==='x'?'scrollLeft':'scrollTop',max=axis==='x'?Math.max(0,list.scrollWidth-list.clientWidth):Math.max(0,list.scrollHeight-list.clientHeight),ratios=[.05,.18,.34,.52,.71,.88,.63,.42,.79,.27,.92,.48],gaps=[],longTasks=[];
+    const supported=!!(globalThis.PerformanceObserver&&PerformanceObserver.supportedEntryTypes&&PerformanceObserver.supportedEntryTypes.includes('longtask'));
+    let observer=null;if(supported){observer=new PerformanceObserver(entries=>entries.getEntries().forEach(entry=>longTasks.push(entry.duration)));observer.observe({entryTypes:['longtask']});}
+    v.resetMetrics();let last=performance.now();
+    for(const ratio of ratios){list[prop]=Math.round(max*ratio);await new Promise(resolve=>requestAnimationFrame(now=>{gaps.push(now-last);last=now;resolve();}));}
+    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));if(observer)observer.disconnect();
+    return{max,axis,maxGap:gaps.length?Math.max(...gaps):0,maxLongTask:longTasks.length?Math.max(...longTasks):0,longTasks:longTasks.length,longTaskSupported:supported,metrics:v.metrics(),left:list.scrollLeft,top:list.scrollTop};
+  },axis);
+}
 async function waitForProgressMotion(page,hash,active){
   const selector=`.torrent-row[data-hash="${hash}"] .progress-fill`,expected=active?'weig-progress-flow':'none';
   await page.waitForFunction(({selector,expected})=>{const fill=document.querySelector(selector);return !!fill&&getComputedStyle(fill,'::after').animationName===expected;},{selector,expected},{timeout:1500});
@@ -128,15 +139,24 @@ try{
     await page.setViewportSize({width:900,height:768});
     await waitForDataViewportIdle(page,180);
     await resetScrollProbe(page);
-    const initialRecyclerVisibility=await page.evaluate(()=>{const v=WeiG.AppState.viewport,idle=v._rowPool.filter(slot=>!slot.bound).map(slot=>slot.node),active=v._rowPool.filter(slot=>slot.bound).map(slot=>slot.node),paintedIdle=idle.filter(node=>{const style=getComputedStyle(node),rect=node.getBoundingClientRect();return style.display!=='none'&&style.visibility!=='hidden'&&rect.width>0&&rect.height>0;});return{idleCount:idle.length,idlePainted:paintedIdle.length,activeCount:active.length,activeTops:active.map(node=>Math.round(node.getBoundingClientRect().top*10)/10)};});
+    const initialRecyclerVisibility=await page.evaluate(()=>{const v=WeiG.AppState.viewport,idle=v._rowPool.filter(slot=>!slot.bound).map(slot=>slot.node),active=v._rowPool.filter(slot=>slot.bound).map(slot=>slot.node),paintedIdle=idle.filter(node=>{const style=getComputedStyle(node),rect=node.getBoundingClientRect();return style.display!=='none'&&style.visibility!=='hidden'&&rect.width>0&&rect.height>0;});return{overscan:v.overscan,idleCount:idle.length,idlePainted:paintedIdle.length,activeCount:active.length,activeTops:active.map(node=>Math.round(node.getBoundingClientRect().top*10)/10)};});
+    assert(initialRecyclerVisibility.overscan===3,`${name}: desktop Torrent recycler kept the retired oversized scroll buffer ${JSON.stringify(initialRecyclerVisibility)}`);
     assert(initialRecyclerVisibility.idleCount>0&&initialRecyclerVisibility.idlePainted===0,`${name}: prewarmed idle row shells painted over the first Torrent row ${JSON.stringify(initialRecyclerVisibility)}`);
     assert(new Set(initialRecyclerVisibility.activeTops).size===initialRecyclerVisibility.activeCount,`${name}: active Torrent recycler rows overlap at first paint ${JSON.stringify(initialRecyclerVisibility)}`);
     const horizontal=await scrollByBrowserInput(page,'#torrent-list','x');
     assert(horizontal.left>8,`${name}: horizontal browser scroll input did not move scrollLeft ${JSON.stringify(horizontal)}`);
     const horizontalActive=horizontal.metrics;
     assert(horizontalActive.renders===0,`${name}: horizontal active scroll triggered DataViewport repaint ${JSON.stringify(horizontalActive)}`);
+    const horizontalScrollPolicy=await page.evaluate(()=>{const list=document.getElementById('torrent-list'),row=list.querySelector('.torrent-row:not([hidden])'),fill=row&&row.querySelector('.progress-fill'),pseudo=fill&&getComputedStyle(fill,'::after');return{interacting:list.classList.contains('is-scroll-interacting'),contain:row&&getComputedStyle(row).contain,animation:pseudo&&pseudo.animationName,shadow:fill&&getComputedStyle(fill).boxShadow};});
+    assert(horizontalScrollPolicy.interacting&&/layout/.test(horizontalScrollPolicy.contain)&&/paint/.test(horizontalScrollPolicy.contain)&&horizontalScrollPolicy.animation==='none'&&horizontalScrollPolicy.shadow==='none',`${name}: horizontal active-scroll paint/compositor policy did not engage ${JSON.stringify(horizontalScrollPolicy)}`);
     const horizontalSettled=await settledScrollMetrics(page);
     assertQuietCommitBounded(name,'horizontal',horizontalActive,horizontalSettled);
+    await resetScrollProbe(page);
+    const horizontalFrames=await continuousFrameScrollProbe(page,'x');
+    assert(horizontalFrames.max>0&&horizontalFrames.metrics.renders===0,`${name}: continuous horizontal scroll must remain compositor-only for DataViewport ${JSON.stringify(horizontalFrames)}`);
+    assert(horizontalFrames.maxGap<100,`${name}: continuous horizontal scroll exceeded the 100ms frame-gap guard ${JSON.stringify(horizontalFrames)}`);
+    if(horizontalFrames.longTaskSupported)assert(horizontalFrames.maxLongTask<80,`${name}: continuous horizontal scroll exposed an >80ms main-thread long task ${JSON.stringify(horizontalFrames)}`);
+    await waitForDataViewportIdle(page);
 
     const signatureProjection=await page.evaluate(()=>{const v=WeiG.AppState.viewport,base=v.items.map(item=>Object.assign({},item));v.resetMetrics();v.setItems(base.map((item,index)=>Object.assign({},item,{__hidden_poll_noise:index+Date.now()})));const hidden=v.metrics();v.resetMetrics();const visible=base.map((item,index)=>index===0?Object.assign({},item,{progress:Math.max(0,Math.min(1,(Number(item.progress)||0)+.01))}):item);v.setItems(visible);const visibleMetrics=v.metrics();v.resetMetrics();v.setItems(base);return{hidden,visible:visibleMetrics};});
     assert(signatureProjection.hidden.updated===0,`${name}: hidden polling fields invalidated visible Torrent rows ${JSON.stringify(signatureProjection)}`);
@@ -146,9 +166,15 @@ try{
     assert(vertical.top>40,`${name}: vertical browser scroll input did not move scrollTop ${JSON.stringify(vertical)}`);
     const verticalActive=vertical.metrics;
     assert(verticalActive.renders>0&&verticalActive.reused>0&&verticalActive.reused>verticalActive.created,`${name}: vertical active scroll did not reuse the warmed recycler pool ${JSON.stringify(verticalActive)}`);
-    assert(verticalActive.maxRenderMs<80,`${name}: vertical active-scroll DataViewport render exceeded the bounded regression budget ${JSON.stringify(verticalActive)}`);
+    assert(verticalActive.maxRenderMs<50,`${name}: vertical active-scroll DataViewport render exceeded the tightened 50ms regression ceiling ${JSON.stringify(verticalActive)}`);
     const verticalSettled=await settledScrollMetrics(page);
     assertQuietCommitBounded(name,'vertical',verticalActive,verticalSettled);
+    await resetScrollProbe(page);
+    const verticalFrames=await continuousFrameScrollProbe(page,'y');
+    assert(verticalFrames.max>0&&verticalFrames.metrics.renders>0&&verticalFrames.metrics.maxRenderMs<50,`${name}: continuous vertical scroll must stay inside the tightened DataViewport render ceiling ${JSON.stringify(verticalFrames)}`);
+    assert(verticalFrames.maxGap<100,`${name}: continuous vertical scroll exceeded the 100ms frame-gap guard ${JSON.stringify(verticalFrames)}`);
+    if(verticalFrames.longTaskSupported)assert(verticalFrames.maxLongTask<80,`${name}: continuous vertical scroll exposed an >80ms main-thread long task ${JSON.stringify(verticalFrames)}`);
+    await waitForDataViewportIdle(page);
     const recyclerStress=await page.evaluate(async()=>{const list=document.getElementById('torrent-list'),v=WeiG.AppState.viewport,max=Math.max(0,list.scrollHeight-list.clientHeight);list.scrollTop=Math.round(max*.5);await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));v.resetMetrics();const nodes=v._rowPool.map(slot=>slot.node);for(const ratio of [.05,.60,.20,.90,.35,.75]){list.scrollTop=Math.round(max*ratio);list.dispatchEvent(new Event('scroll'));await new Promise(r=>requestAnimationFrame(r));}return{metrics:v.metrics(),same:nodes.length===v._rowPool.length&&nodes.every((node,i)=>v._rowPool[i].node===node),max};});
     assert(recyclerStress.max>0&&recyclerStress.same,name+': thumb-like stress replaced row-shell identity '+JSON.stringify(recyclerStress));
     assert(recyclerStress.metrics.created===0&&recyclerStress.metrics.removed===0&&recyclerStress.metrics.updated>0,name+': thumb-like stress caused DOM churn '+JSON.stringify(recyclerStress.metrics));
@@ -274,7 +300,7 @@ try{
     assert(errors.length===0,`${name}: browser errors: ${errors.join(' | ')}`);
     await context.close();
   }
-  console.log('Torrent workspace browser gate passed: horizontal/vertical browser scroll input with keyed row reuse, permanent Sidebar facets, canonical Drawer telemetry, semantic sort/count, compact Mobile toolbar/cards, inline truthful progress, pager actions, anchored Search, Connection help and Reduced Motion. Native scrollbar-thumb drag remains final human acceptance.');
+  console.log('Torrent workspace browser gate passed: horizontal/vertical browser input plus continuous frame/long-task scroll probes, keyed row reuse, permanent Sidebar facets, canonical Drawer telemetry, semantic sort/count, compact Mobile toolbar/cards, inline truthful progress, pager actions, anchored Search, Connection help and Reduced Motion. Native scrollbar-thumb drag remains final human acceptance.');
 }finally{
   await browser.close();
   await new Promise(r=>server.close(r));

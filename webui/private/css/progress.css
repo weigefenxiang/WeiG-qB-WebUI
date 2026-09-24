@@ -21,8 +21,8 @@
 .progress-track[data-progress-state=paused] .progress-fill,.progress-track[data-progress-state=queued] .progress-fill,.progress-track[data-progress-state=download-idle] .progress-fill,.progress-track[data-progress-state=seed-idle] .progress-fill{filter:saturate(.68)}
 .progress-number{justify-self:end;text-align:right;font-weight:680;font-variant-numeric:tabular-nums;color:var(--text-secondary);transition:color var(--motion-fast)}
 .detail-progress__number{width:100%;min-width:0}
-.data-viewport.is-scroll-interacting .progress-fill{transition:none}
-.data-viewport.is-scroll-interacting .progress-fill::before,.data-viewport.is-scroll-interacting .progress-fill::after{animation-play-state:paused}
+.data-viewport.is-scroll-interacting .progress-fill{transition:none;box-shadow:none}
+.data-viewport.is-scroll-interacting .progress-fill::before,.data-viewport.is-scroll-interacting .progress-fill::after{animation:none!important;opacity:0!important}
 .progress-cell[data-progress-state=download] .progress-number{color:color-mix(in srgb,var(--accent-cyan) 68%,var(--text-primary) 32%)}
 .progress-cell[data-progress-state=download-idle] .progress-number,.progress-cell[data-progress-state=checking] .progress-number,.progress-cell[data-progress-state=queued] .progress-number{color:color-mix(in srgb,var(--accent-primary) 52%,var(--text-muted) 48%)}
 .progress-cell[data-progress-state=paused] .progress-number{color:var(--text-muted)}
