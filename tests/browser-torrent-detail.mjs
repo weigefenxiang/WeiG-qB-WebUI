@@ -108,6 +108,7 @@ async function setColumnVisible(page,key,visible){
   await page.waitForFunction(({key,visible})=>!!document.querySelector(`.shared-table__head .grid-head-cell[data-key="${key}"]`)===visible,{key,visible});
 }
 async function touch(cdp,type,x,y){const touchPoints=type==='touchEnd'?[]:[{x,y,radiusX:2,radiusY:2,force:1,id:1}];await cdp.send('Input.dispatchTouchEvent',{type,touchPoints});}
+async function touchScroll(cdp,x,y,dy){await cdp.send('Input.synthesizeScrollGesture',{x,y,yDistance:dy,gestureSourceType:'touch',speed:800});}
 
 const browser=await launchBrowser();
 try{
@@ -321,10 +322,10 @@ try{
   const touchBefore=await page.evaluate(()=>({order:[...document.querySelectorAll('.shared-table__head .grid-head-cell')].map(node=>node.dataset.key),saved:JSON.stringify(window.WeiG.SharedColumns.read('torrent-detail-files')),top:document.querySelector('.shared-table__viewport').scrollTop}));
   const firstBox=await page.locator('.shared-table__head .grid-head-cell[data-key="name"]').boundingBox();assert(firstBox,'Mobile detail Name header is missing.');
   const tx=firstBox.x+Math.min(24,firstBox.width/2),ty=firstBox.y+firstBox.height/2;
-  await touch(cdp,'touchStart',tx,ty);await touch(cdp,'touchMove',tx,ty-45);await touch(cdp,'touchMove',tx,ty-95);await touch(cdp,'touchEnd',tx,ty-95);await page.waitForTimeout(160);
+  await touchScroll(cdp,tx,ty,-120);await page.waitForTimeout(160);
   const touchAfter=await page.evaluate(()=>({order:[...document.querySelectorAll('.shared-table__head .grid-head-cell')].map(node=>node.dataset.key),saved:JSON.stringify(window.WeiG.SharedColumns.read('torrent-detail-files')),top:document.querySelector('.shared-table__viewport').scrollTop}));
   assert(JSON.stringify(touchAfter.order)===JSON.stringify(touchBefore.order)&&touchAfter.saved===touchBefore.saved,`Ordinary mobile touch scroll accidentally reordered columns: ${JSON.stringify({touchBefore,touchAfter})}`);
-  assert(touchAfter.top>touchBefore.top,`Ordinary mobile touch gesture did not scroll forward from the bounded top edge: ${JSON.stringify({touchBefore,touchAfter})}`);
+  assert(touchAfter.top>touchBefore.top,`Ordinary mobile touch scroll gesture did not move the native viewport from the bounded top edge: ${JSON.stringify({touchBefore,touchAfter})}`);
 
   const longBefore=touchAfter.order,first=await page.locator('.shared-table__head .grid-head-cell[data-key="name"]').boundingBox(),second=await page.locator('.shared-table__head .grid-head-cell[data-key="size"]').boundingBox();assert(first&&second,'Mobile long-press reorder targets are missing.');
   const sx=first.x+Math.min(20,first.width/2),sy=first.y+first.height/2,movingLeft=first.x>second.x,dx=second.x+Math.max(8,Math.min(second.width-8,second.width*(movingLeft?.25:.75))),dy=second.y+second.height/2;
