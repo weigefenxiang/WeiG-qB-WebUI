@@ -31,6 +31,17 @@ export function sessionForUrl(url){
   catch(_e){return '';}
 }
 
+export function durableSessionUrl(url,sessionId,defaultSession='default'){
+  const value=String(sessionId||'').trim(),fallback=String(defaultSession||'default').trim()||'default';
+  if(!value||value===fallback)return'';
+  try{
+    const target=url instanceof URL?new URL(url.href):new URL(String(url));
+    if(sessionForUrl(target))return'';
+    target.searchParams.set('sim',value);
+    return target.toString();
+  }catch(_e){return'';}
+}
+
 function handoffToken(url){
   try{
     const params=(url instanceof URL?url:new URL(String(url))).searchParams;

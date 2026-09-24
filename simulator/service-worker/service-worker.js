@@ -8,7 +8,7 @@ import {createWorldCache} from './__simulator/storage/world-cache.js';
 import {handleApi} from './__simulator/protocol/router.js';
 import {applyTransportPolicy} from './__simulator/protocol/transport-contract.js';
 import {emulateQbtDocument} from './__simulator/qbt-tr-emulator.mjs';
-import {consumePendingHandoffSession,forgetPendingHandoffSession,hasHandoffSessionToken,rememberHandoffSession,rememberPendingHandoffSession,rememberSessionForEvent,sessionClientIds,sessionForEvent,sessionForHandoff,sessionForUrl} from './__simulator/core/session-identity.js';
+import {consumePendingHandoffSession,durableSessionUrl,forgetPendingHandoffSession,hasHandoffSessionToken,rememberHandoffSession,rememberPendingHandoffSession,rememberSessionForEvent,sessionClientIds,sessionForEvent,sessionForHandoff,sessionForUrl} from './__simulator/core/session-identity.js';
 
 const SOURCE_PRIVATE='./__source/private/';
 const SOURCE_PUBLIC='./__source/public/';
@@ -256,6 +256,8 @@ function relativePath(url){
 async function handleNavigation(event,url){
   const {id,world}=await ensureWorld(event,url);
   if(event.clientId)clientSessions.set(event.clientId,id);
+  const durable=durableSessionUrl(url,id,DEFAULT_SESSION);
+  if(durable)return Response.redirect(durable,302);
   if(world.authenticated)return fetchSource('private','index.html',{world});
   return fetchSource('public','index.html',{injectLabCredentials:!world.lab?.clean,world});
 }
