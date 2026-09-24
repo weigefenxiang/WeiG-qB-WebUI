@@ -47,6 +47,7 @@ client.qbVersion='6.0.0';client.webApiVersion='3.0.0';client.major=6;
 const PREF_READ='appcontroller.h:preferencesAction';
 const PREF_WRITE='appcontroller.h:setPreferencesAction';
 const EDIT='torrentscontroller.h:editTrackerAction';
+const ADD='torrentscontroller.h:addAction';
 const DETAIL_PROPERTIES='torrentscontroller.h:propertiesAction';
 const DETAIL_FILES='torrentscontroller.h:filesAction';
 const DETAIL_TRACKERS='torrentscontroller.h:trackersAction';
@@ -117,6 +118,16 @@ profile={
 };
 await assert.rejects(client.editTracker('future','https://old.invalid/announce','https://new.invalid/announce'),/cannot prove URL editing/,'unknown future editTracker form must fail closed when newUrl is not source-proven');
 assert.equal(calls.length,before,'unknown future editTracker form must fail before HTTP');
+
+profile={qbVersion:'5.2.0',webApiVersion:'2.11.4',fallback:false,apiActions:[ADD],apiActionParameters:{[ADD]:{parameters:['urls','savepath','category','stopped','dlLimit'],required:[],optional:['urls','savepath','category','stopped','dlLimit']}}};
+before=calls.length;
+await client.add('magnet:?xt=urn:btih:'+('a'.repeat(40)),[],'/downloads',{category:'Linux',stopped:false,dlLimit:1024});
+assert.equal(calls.length,before+1,'source-proven Add Torrent write must issue one HTTP request');
+let addCall=calls.at(-1);assert.equal(addCall.url,'api/v2/torrents/add');assert(addCall.init.body instanceof FormData,'Add Torrent must remain multipart FormData');
+assert.equal(addCall.init.body.get('savepath'),'/downloads');assert.equal(addCall.init.body.get('category'),'Linux');assert.equal(addCall.init.body.get('stopped'),'false');assert.equal(addCall.init.body.get('dlLimit'),'1024');
+before=calls.length;
+await assert.rejects(client.add('magnet:?xt=urn:btih:'+('b'.repeat(40)),[],'/downloads',{forced:true}),/source-proven|not proven|forced/i,'source-unproven Add Torrent parameter must fail closed');
+assert.equal(calls.length,before,'source-unproven Add Torrent parameter must make zero HTTP requests');
 
 profile={qbVersion:'6.0.0',webApiVersion:'3.0.0',fallback:false,apiActions:[SEARCH_PLUGINS],apiActionParameters:{}};
 before=calls.length;
