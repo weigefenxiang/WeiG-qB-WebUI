@@ -42,6 +42,8 @@ assert(!uiJs.includes('rss-search-input')&&!uiJs.includes('installRSSSearch'),'r
 assert(uiJs.includes('W.RSS={setQuery:setRSSQuery')&&uiJs.includes('function applyRSSQuery(root)'),'RSS filtering must consume one route query without another API poller');
 assert(uiJs.includes("W.DialogRuntime.create({id:'rss-add-dialog'")&&uiJs.includes("rssOpenButton.id='rss-add-open-btn'")&&uiJs.includes('header.appendChild(actions)'),'RSS Add Feed and Refresh must move to the page header while Feed URL lives in canonical DialogRuntime');
 assert(layout.includes('.rss-header-actions')&&layout.includes('#rss-view>.workspace__header{display:grid;grid-template-columns:minmax(0,1fr) auto'),'RSS title and page actions must share the mobile header row');
+assert(layout.includes('.rss-rules-dialog{--dialog-width:calc(100vw - 24px);--dialog-max-width:min(680px,calc(100vw - 24px));height:min(720px,calc(100dvh - 40px));max-height:calc(100dvh - 40px)}'),'RSS Downloader must retain visible mobile viewport margins instead of forcing a near-fullscreen sheet');
+
 assert(header.includes('function routeSearchInput(event)')&&header.includes("W.RSS.setQuery(input.value)")&&header.includes("W.Logs.setQuery(input.value)"),'Header Search must dispatch to current RSS/Logs semantic owners');
 
 assert(!logs.includes('logs-search-toggle')&&!logs.includes('logs-search-input')&&!logsCss.includes('.logs-search-toggle')&&!logsCss.includes('.logs-search{'),'Logs page-local Search icon/input must be retired completely');
