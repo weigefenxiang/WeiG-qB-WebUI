@@ -45,7 +45,7 @@ for(const key of ['checked','name','size','progress','remaining','priority','ava
 const host='127.0.0.1',port=8777;
 const hash='d'.repeat(40),hash2='e'.repeat(40);
 const torrent={hash,name:'Detail source browser fixture — '+('long title ownership '.repeat(12)),size:64*1024*1024,progress:1,dlspeed:0,upspeed:2048,eta:0,state:'stalledUP',ratio:.5,tracker:'https://tracker.example/announce?token=exact',category:'Detail',tags:'source',num_seeds:5,num_leechs:2,save_path:'/downloads',added_on:1700000000,completion_on:0,priority:1,private:false};
-const torrent2=Object.assign({},torrent,{hash:hash2,name:'Detail second torrent fixture'});
+const torrent2=Object.assign({},torrent,{hash:hash2,name:'Detail second torrent fixture — '+('mobile floating title '.repeat(10))});
 const iconFixtures=['clip.mp4','photo.jpg','installer.exe','notes.txt','archive.zip','report.pdf','script.js','song.flac'];
 const files=Array.from({length:40},(_,index)=>({index,name:`${index<2?'folder-a':'folder-b'}/${iconFixtures[index]||('file-'+String(index).padStart(2,'0')+'.bin')}`,size:1048576,progress:index<2?.25:Math.min(.95,.1+(index%9)/10),priority:index===0?0:1,is_seed:false,piece_range:[index,index+1],availability:index===0?-1:.8}));
 const filePrioWrites=[];
@@ -132,7 +132,7 @@ try{
   const trackerInitial=await page.evaluate(()=>Array.from(document.querySelectorAll('.shared-table__row')).map(row=>({kind:row.dataset.trackerKind||'',url:row.querySelector('[data-column-key="url"]')?.textContent||'',tier:row.querySelector('[data-column-key="tier"]')?.textContent||'',bt:row.querySelector('[data-column-key="btVersion"]')?.textContent||''})));
   assert(trackerInitial.slice(0,3).every(row=>row.tier===''&&row.kind==='parent'),'Tracker pseudo rows exposed negative tier sentinel or lost parent semantics '+JSON.stringify(trackerInitial));
   assert(trackerInitial.some(row=>row.kind==='endpoint'&&row.url==='a-child.example:443'&&row.tier===''&&row.bt==='v1'),'Tracker endpoint projection did not expose source endpoint BT protocol/tier semantics '+JSON.stringify(trackerInitial));
-  await page.evaluate(()=>WeiG.Router.home());await page.waitForSelector(`.torrent-row[data-hash="${hash2}"] .torrent-title`);await page.locator(`.torrent-row[data-hash="${hash2}"] .torrent-title`).click();await page.waitForFunction(()=>document.querySelector('.detail-tabs [data-tab="trackers"]')?.classList.contains('is-active')&&document.getElementById('detail-view')?.classList.contains('is-active'));assert(await page.locator('.detail-tabs [data-tab="trackers"].is-active').count()===1,'Opening another Torrent must preserve the last valid Tracker detail tab');
+  await page.locator('[data-detail-back]').click();await page.waitForFunction(()=>WeiG.Router.route().name==='home'&&document.getElementById('list-view')?.classList.contains('is-active'));await page.waitForSelector(`.torrent-row[data-hash="${hash2}"] .torrent-title`);await page.locator(`.torrent-row[data-hash="${hash2}"] .torrent-title`).click();await page.waitForFunction(()=>document.querySelector('.detail-tabs [data-tab="overview"]')?.classList.contains('is-active')&&document.getElementById('detail-view')?.classList.contains('is-active'));assert(await page.locator('.detail-tabs [data-tab="overview"].is-active').count()===1,'Opening another Torrent after leaving a sub-tab must start a fresh Detail session on Overview');await page.locator('.detail-tabs [data-tab="trackers"]').click();await page.waitForSelector('.shared-table__row');
   const trackerUrlHead=page.locator('.shared-table__head .grid-head-cell[data-key="url"]');await trackerUrlHead.click();
   await page.waitForFunction(()=>document.querySelector('.shared-table__head .grid-head-cell[data-key="url"]')?.dataset.sortDirection==='asc');
   const trackerAsc=await page.evaluate(()=>Array.from(document.querySelectorAll('.shared-table__row')).map(row=>({kind:row.dataset.trackerKind||'',url:row.querySelector('[data-column-key="url"]')?.textContent||''})));
@@ -297,6 +297,13 @@ try{
 
   await page.setViewportSize({width:390,height:844});
   await page.waitForSelector('.shared-table__viewport .shared-table__row');
+  const mobileHero=await page.evaluate(()=>{const hero=document.querySelector('.detail-hero'),back=document.querySelector('[data-detail-back]'),state=document.getElementById('detail-state'),progress=document.querySelector('#detail-view .detail-progress'),track=progress&&progress.querySelector('.progress-track'),pct=document.getElementById('detail-progress-text'),title=document.getElementById('detail-title'),box=node=>{const r=node.getBoundingClientRect();return{x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height,cy:r.y+r.height/2};};return{hero:box(hero),back:box(back),state:box(state),progress:box(progress),track:box(track),pct:box(pct),title:box(title),clipped:title.scrollWidth>title.clientWidth+1,titleText:title.textContent};});
+  assert(Math.abs(mobileHero.back.cy-mobileHero.state.cy)<4&&Math.abs(mobileHero.state.cy-mobileHero.progress.cy)<4,'Mobile Detail Back/State/Progress must share the first row: '+JSON.stringify(mobileHero));
+  assert(mobileHero.title.y>=Math.max(mobileHero.back.bottom,mobileHero.state.bottom,mobileHero.progress.bottom)-2,'Mobile Detail title must occupy the second row below Back/State/Progress: '+JSON.stringify(mobileHero));
+  assert(mobileHero.track.width>=70&&mobileHero.pct.right<=mobileHero.hero.right+1,'Mobile Detail progress track/percentage must retain usable width inside the hero: '+JSON.stringify(mobileHero));
+  assert(mobileHero.clipped,'Mobile Detail fixture must exercise the clipped-title floating preview path');
+  await page.locator('#detail-title').click();await page.waitForSelector('.ui-floating-preview');
+  const titlePreview=await page.locator('.ui-floating-preview').textContent();assert(titlePreview===mobileHero.titleText,'Mobile Detail floating preview must expose the complete clipped Torrent title');
   const cdp=await context.newCDPSession(page);await cdp.send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:5});
   await page.evaluate(()=>{const viewport=document.querySelector('.shared-table__viewport');viewport.scrollTop=120;viewport.scrollLeft=0;});
   const touchBefore=await page.evaluate(()=>({order:[...document.querySelectorAll('.shared-table__head .grid-head-cell')].map(node=>node.dataset.key),saved:JSON.stringify(window.WeiG.SharedColumns.read('torrent-detail-files')),top:document.querySelector('.shared-table__viewport').scrollTop}));
@@ -315,7 +322,7 @@ try{
   assert(longAfter.saved.length?JSON.stringify(longAfter.saved)===JSON.stringify(longAfter.order):JSON.stringify(longAfter.order)===JSON.stringify(longAfter.source),`Mobile long-press reorder did not converge through canonical source/override ownership: ${JSON.stringify(longAfter)}`);
   assert(errors.length===0,`Torrent detail browser errors: ${errors.join(' | ')}`);
   await context.close();
-  console.log('Torrent detail browser gate passed: user-path detail opening, last-valid tab reuse across Torrents, full-height Content workspace, source hierarchy plus file-derived checked/remaining, shared horizontal scroll, DOM column settings, pointer resize/reorder, touch-scroll cancellation and long-press reorder are proven in hosted Chrome.');
+  console.log('Torrent detail browser gate passed: direct Detail-session exit, fresh Overview entry across Torrents, mobile Back/State/Progress geometry plus floating full-title preview, full-height Content workspace, source hierarchy, shared horizontal scroll, column settings, touch-scroll cancellation and long-press reorder are proven in hosted Chrome.');
 }finally{
   await browser.close();
   await new Promise(resolve=>server.close(resolve));
