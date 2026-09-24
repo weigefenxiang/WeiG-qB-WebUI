@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {launchBrowser} from './browser-driver.mjs';
+import {recoverPageSession} from './pages-live-session.mjs';
 import {atLeast} from '../simulator/core/profiles.js';
 
 const rawBase=(process.env.WEIG_PAGES_URL||process.argv[2]||'').trim();
@@ -8,6 +9,7 @@ const mode=String(process.env.WEIG_PAGES_PREF_MODE||'all').trim().toLowerCase();
 const shardTotal=Math.max(1,Number(process.env.WEIG_PAGES_PREF_SHARD_TOTAL)||1);
 const shardIndex=Math.max(0,Number(process.env.WEIG_PAGES_PREF_SHARD_INDEX)||0);
 const profileTimeoutMs=Math.max(10000,Number(process.env.WEIG_PAGES_PROFILE_TIMEOUT_MS)||45000);
+const sessionTimeoutMs=Math.max(5000,Number(process.env.WEIG_PAGES_SESSION_TIMEOUT_MS||20000)||20000);
 assert.ok(rawBase,'WEIG_PAGES_URL or argv[2] is required');
 assert.ok(expectedSha,'WEIG_EXPECTED_SIMULATOR_SHA or argv[3] is required');
 assert.ok(['all','anchor','shard'].includes(mode),`Unsupported WEIG_PAGES_PREF_MODE ${mode}`);
@@ -136,10 +138,16 @@ try{
   async function openBootstrapSession(){
     const url=new URL('dev/app/',base);
     url.search=new URLSearchParams({sim:`pages-live-preferences-${mode}-${shardIndex}-${Date.now()}`,qb:anchor.qbVersion,count:'24',scenario:'mixed',seed:'pages-live-preferences',clean:'0'}).toString();
-    await page.goto(url.toString(),{waitUntil:'domcontentloaded',timeout:60000});
-    await page.waitForSelector('#login-form',{state:'visible',timeout:60000});
-    await page.locator('#login-btn').click();
-    await page.waitForFunction(version=>String(document.querySelector('#qb-version')?.textContent||'').includes(version),anchor.qbVersion,{timeout:60000});
+    const recovered=await recoverPageSession(page,{
+      label:`Pages Preferences bootstrap ${mode}-${shardIndex}`,
+      qbVersion:anchor.qbVersion,
+      timeoutMs:sessionTimeoutMs,
+      navigate:async attempt=>{
+        const attemptUrl=new URL(url);attemptUrl.searchParams.set('__weig_session_attempt',String(attempt));
+        await page.goto(attemptUrl.toString(),{waitUntil:'domcontentloaded',timeout:sessionTimeoutMs});
+      }
+    });
+    if(recovered.attempt>1)console.log(`Recovered Preferences bootstrap ${mode}-${shardIndex} on session attempt ${recovered.attempt}.`);
     await page.waitForFunction(()=>window.WeiG?.SessionController?.readLocaleBootstrap?.()?.initialized===true,null,{timeout:30000});
     await page.waitForTimeout(1800);
     await page.waitForFunction(version=>String(document.querySelector('#qb-version')?.textContent||'').includes(version),anchor.qbVersion,{timeout:60000});
@@ -149,17 +157,24 @@ try{
   async function openEntitySession(qbVersion,lane,{requireZh=true}={}){
     // This verifier switches between independent Virtual qB sims directly instead
     // of going through Lab. Do not let the previous sim's browser-locale bootstrap
-    // record suppress initialization for the next daemon world.
+    // record suppress initialization for the next daemon world. Clear once per new
+    // world; session retries keep that same sim and must not reset locale ownership.
     await page.evaluate(()=>{
       const key=window.WeiG?.StorageKeys?.localeBootstrap||'weig.localeBootstrap';
       localStorage.removeItem(key);
     });
     const url=new URL('dev/app/',base);
     url.search=new URLSearchParams({sim:`pages-live-preferences-${lane}-${shardIndex}-${Date.now()}`,qb:qbVersion,count:'24',scenario:'mixed',seed:'pages-live-preferences-entity',clean:'0'}).toString();
-    await page.goto(url.toString(),{waitUntil:'domcontentloaded',timeout:60000});
-    await page.waitForSelector('#login-form',{state:'visible',timeout:60000});
-    await page.locator('#login-btn').click();
-    await page.waitForFunction(version=>String(document.querySelector('#qb-version')?.textContent||'').includes(version),qbVersion,{timeout:60000});
+    const recovered=await recoverPageSession(page,{
+      label:`Pages Preferences ${lane} qB ${qbVersion}`,
+      qbVersion,
+      timeoutMs:sessionTimeoutMs,
+      navigate:async attempt=>{
+        const attemptUrl=new URL(url);attemptUrl.searchParams.set('__weig_session_attempt',String(attempt));
+        await page.goto(attemptUrl.toString(),{waitUntil:'domcontentloaded',timeout:sessionTimeoutMs});
+      }
+    });
+    if(recovered.attempt>1)console.log(`Recovered Preferences ${lane} qB ${qbVersion} on session attempt ${recovered.attempt}.`);
     await page.waitForFunction(version=>window.WeiG?.CapabilityRegistry?.releaseIdentity?.()?.qbVersion===version,qbVersion,{timeout:60000});
     await page.waitForFunction(()=>window.WeiG?.SessionController?.readLocaleBootstrap?.()?.initialized===true,null,{timeout:30000});
     await page.waitForTimeout(1800);
