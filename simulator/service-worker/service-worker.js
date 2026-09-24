@@ -8,6 +8,7 @@ import {createWorldCache} from './__simulator/storage/world-cache.js';
 import {handleApi} from './__simulator/protocol/router.js';
 import {applyTransportPolicy} from './__simulator/protocol/transport-contract.js';
 import {emulateQbtDocument} from './__simulator/qbt-tr-emulator.mjs';
+import {adaptSessionContractSource} from './__simulator/core/session-contract-adapter.js';
 import {consumePendingHandoffSession,durableSessionUrl,forgetPendingHandoffSession,hasHandoffSessionToken,rememberHandoffSession,rememberPendingHandoffSession,rememberSessionForEvent,sessionClientIds,sessionForEvent,sessionForHandoff,sessionForUrl} from './__simulator/core/session-identity.js';
 
 const SOURCE_PRIVATE='./__source/private/';
@@ -232,6 +233,10 @@ async function fetchSource(kind,path,options={}){
   let response=await fetch(sourceUrl(kind,path),{cache:'no-store'});
   if(!response.ok&&kind==='private')response=await fetch(sourceUrl('public',path),{cache:'no-store'});
   if(!response.ok)return response;
+  if(path==='session-contract.js'){
+    const original=await response.text(),adapted=adaptSessionContractSource(original,path);
+    response=new Response(adapted,{status:response.status,statusText:response.statusText,headers:{'content-type':response.headers.get('content-type')||'text/javascript; charset=utf-8','cache-control':'no-store'}});
+  }
   if(options.injectLabCredentials&&path==='index.html'){
     let html=await response.text();
     html=html.replace(

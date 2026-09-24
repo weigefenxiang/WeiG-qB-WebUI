@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {createWorld} from '../simulator/core/engine.js';
 import {applyTransportPolicy,isCrossSiteRequest,resolveTransportContract,selectTargetHost} from '../simulator/protocol/transport-contract.js';
+import {adaptSessionContractSource} from '../simulator/core/session-contract-adapter.js';
 import {consumePendingHandoffSession,durableSessionUrl,forgetPendingHandoffSession,hasHandoffSessionToken,rememberHandoffSession,rememberPendingHandoffSession,rememberSessionForEvent,sessionClientIds,sessionForEvent,sessionForHandoff,sessionForUrl} from '../simulator/core/session-identity.js';
 
 function world(qb,api){
@@ -95,6 +96,18 @@ function basic(value){return `Basic ${btoa(value)}`;}
   assert.equal(forgetPendingHandoffSession(ambiguous,mainCanonicalTarget,'sim-missing',2003),false,'retiring an unrelated session must not mutate the pending handoff owner');
 }
 
+{
+  const canonical="(function(global){var BASE=new URL('./',global.location.href);function authenticatedEntryUrl(record){var url=new URL('index.html',BASE);if(record&&record.nonce)url.searchParams.set('__weig_handoff',record.nonce);return url;}})(window);";
+  const legacy="(function(global){var BASE=new URL('./',global.location.href);function authenticatedEntryUrl(record){var url=new URL('index.html',BASE);if(record&&record.nonce)url.searchParams.set('__weigg_handoff',record.nonce);return url;}})(window);";
+  for(const [name,source] of [['canonical',canonical],['legacy',legacy]]){
+    const adapted=adaptSessionContractSource(source,'session-contract.js');
+    assert.match(adapted,/searchParams\.get\('sim'\)/,name+' SessionContract adapter must preserve the explicit virtual sim id in authenticated navigation');
+    assert.match(adapted,/searchParams\.set\('sim',virtualSim\)/,name+' SessionContract adapter must carry sim before the one-time handoff token is consumed');
+    assert.equal(adaptSessionContractSource(adapted,'session-contract.js'),adapted,name+' SessionContract adaptation must be idempotent');
+  }
+  assert.equal(adaptSessionContractSource('var untouched=true;','other.js'),'var untouched=true;','only SessionContract may receive the simulator navigation adapter');
+}
+
 const sw=fs.readFileSync(new URL('../simulator/service-worker/service-worker.js',import.meta.url),'utf8');
 assert.match(sw,/applyTransportPolicy\(world,event\.request\)/,'Service Worker must run the canonical transport policy before routing WebAPI requests');
 assert.match(sw,/if\(transport\.rejected\)/,'Service Worker must enforce transport rejection outcomes');
@@ -109,6 +122,7 @@ assert.match(sw,/sessionForUrl\(referrerUrl\)\|\|sessionForHandoff\(handoffSessi
 assert.match(sw,/rememberPendingHandoffSession\(pendingHandoffSessions,url,id\)/,'successful virtual auth/login must register one bounded app-root handoff candidate before legacy navigation drops ?sim=');
 assert.match(sw,/const pending=consumePendingHandoffSession\(pendingHandoffSessions,url\)/,'handoff navigation must consume the bounded pending login only after direct client and referrer recovery fail');
 assert.match(sw,/const durable=durableSessionUrl\(url,id,DEFAULT_SESSION\);[\s\S]*Response\.redirect\(durable,302\)/,'resolved non-default virtual sessions must become URL-durable before one-time handoff cleanup so locale reloads survive Service Worker restart');
+assert.match(sw,/adaptSessionContractSource\(original,path\)/,'Virtual Pages must make the login handoff URL carry its explicit sim id before navigation, so a Service Worker restart between login and private entry cannot lose the world identity');
 assert.match(sw,/world\.authenticated&&event\.request\.method\.toUpperCase\(\)==='POST'/,'pending handoff ownership must only be seeded by an authenticated POST login response');
 
 console.log('Virtual qB transport contract passed: WebAPI transport semantics plus canonical and historical-main navigation handoff identity stay under explicit bounded Service Worker owners.');
