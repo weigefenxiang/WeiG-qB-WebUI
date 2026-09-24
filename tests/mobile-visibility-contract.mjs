@@ -11,6 +11,7 @@ const index=read('webui/private/index.html');
 const ui=read('webui/private/css/ui.css');
 const spatial=read('webui/private/css/spatial.css');
 const layout=read('webui/private/css/layout.css');
+const baseCss=read('webui/private/css/base.css');
 const progress=read('webui/private/css/progress.css');
 const transfer=read('webui/private/css/transfer.css');
 const logsCss=read('webui/private/css/logs.css');
@@ -27,6 +28,7 @@ assert(progress.includes('.mobile-card-meta--rail{display:grid!important')&&prog
 assert(progress.includes('.mobile-card-progress{width:100%;max-width:none')&&progress.includes('grid-template-columns:minmax(0,1fr) max-content'),'mobile progress must use full-width bar + right-side percentage');
 assert(responsive.includes("if(density==='compact')return 94")&&responsive.includes("if(density==='comfortable')return 104")&&responsive.includes('return 98'),'mobile row-height owner must reserve enough height for the third progress line');
 
+assert(baseCss.includes('.app-shell{grid-template-rows:var(--topbar-h) minmax(0,1fr) 66px}')&&baseCss.includes('.statusbar{display:none!important}')&&baseCss.includes('.mobile-bottom-nav{display:grid!important;grid-column:1/-1;grid-row:3;'),'mobile shell must not reserve a hidden statusbar track below the workspace');
 assert(layout.includes('grid-template-columns:minmax(124px,auto) minmax(0,1fr)'),'mobile pager must keep pagination and action rail on one physical row');
 assert(layout.includes('.mobile-pager-actions-slot #torrent-selection-toolbar{display:flex')&&layout.includes('gap:5px'),'mobile Start/Pause/More/Delete must have visible separation');
 assert(layout.includes('font-size:clamp(11px,2.95vw,13px)'),'mobile batch actions must use readable text before narrow-screen shrinking');
