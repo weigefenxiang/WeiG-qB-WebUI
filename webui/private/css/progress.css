@@ -35,7 +35,7 @@
 .progress-cell[data-progress-tone=queued],.mobile-card-progress[data-progress-tone=queued],.detail-progress[data-progress-tone=queued]{--progress-number-tone:var(--torrent-tone-queued)}
 .progress-cell[data-progress-tone=checking],.mobile-card-progress[data-progress-tone=checking],.detail-progress[data-progress-tone=checking]{--progress-number-tone:var(--torrent-tone-checking)}
 .progress-cell[data-progress-tone=danger],.mobile-card-progress[data-progress-tone=danger],.detail-progress[data-progress-tone=danger]{--progress-number-tone:var(--torrent-tone-danger)}
-.progress-cell .progress-number,.mobile-card-progress .progress-number,.detail-progress .progress-number{color:color-mix(in srgb,var(--progress-number-tone,var(--text-secondary)) 72%,var(--text-primary) 28%)}
+.progress-cell .progress-number,.mobile-card-progress .progress-number,.detail-progress .progress-number{color:var(--progress-number-tone,var(--text-secondary))}
 .mobile-card-metrics{display:flex;align-items:center;gap:var(--mobile-meta-gap,8px);min-width:0;overflow:hidden;white-space:nowrap;font-size:var(--mobile-meta-font,inherit)}
 .mobile-card-progress{display:grid;grid-template-columns:minmax(44px,1fr) max-content;align-items:center;gap:5px;flex:1 1 126px;min-width:92px;max-width:48%;margin-left:auto}
 .mobile-card-progress .progress-track{width:100%;min-width:0;height:7px}
