@@ -148,7 +148,8 @@ try{
     const horizontalActive=horizontal.metrics;
     assert(horizontalActive.renders===0,`${name}: horizontal active scroll triggered DataViewport repaint ${JSON.stringify(horizontalActive)}`);
     const horizontalScrollPolicy=await page.evaluate(()=>{const list=document.getElementById('torrent-list'),row=list.querySelector('.torrent-row:not([hidden])'),fill=row&&row.querySelector('.progress-fill'),pseudo=fill&&getComputedStyle(fill,'::after');return{interacting:list.classList.contains('is-scroll-interacting'),contain:row&&getComputedStyle(row).contain,animation:pseudo&&pseudo.animationName,shadow:fill&&getComputedStyle(fill).boxShadow};});
-    assert(horizontalScrollPolicy.interacting&&/layout/.test(horizontalScrollPolicy.contain)&&/paint/.test(horizontalScrollPolicy.contain)&&horizontalScrollPolicy.animation==='none'&&horizontalScrollPolicy.shadow==='none',`${name}: horizontal active-scroll paint/compositor policy did not engage ${JSON.stringify(horizontalScrollPolicy)}`);
+    const containmentActive=/\b(?:content|strict)\b/.test(horizontalScrollPolicy.contain)||(/\blayout\b/.test(horizontalScrollPolicy.contain)&&/\bpaint\b/.test(horizontalScrollPolicy.contain));
+    assert(horizontalScrollPolicy.interacting&&containmentActive&&horizontalScrollPolicy.animation==='none'&&horizontalScrollPolicy.shadow==='none',`${name}: horizontal active-scroll paint/compositor policy did not engage ${JSON.stringify(horizontalScrollPolicy)}`);
     const horizontalSettled=await settledScrollMetrics(page);
     assertQuietCommitBounded(name,'horizontal',horizontalActive,horizontalSettled);
     await resetScrollProbe(page);
