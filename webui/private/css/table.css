@@ -93,6 +93,8 @@
 .torrent-state-icon[data-tone=seed]{background:var(--success)}
 .torrent-state-icon[data-tone=stalled-down]{background:var(--warning)}
 .torrent-state-icon[data-tone=stalled-up]{background:#a88cff}
+.torrent-state-icon[data-tone=stopped-incomplete]{background:color-mix(in srgb,var(--accent-cyan) 42%,var(--text-muted) 58%)}
+.torrent-state-icon[data-tone=stopped-complete]{background:color-mix(in srgb,var(--success) 60%,var(--text-muted) 40%)}
 .torrent-state-icon[data-tone=stopped],.torrent-state-icon[data-tone=muted]{background:var(--text-muted)}
 .torrent-state-icon[data-tone=queued]{background:var(--accent-primary)}
 .torrent-state-icon[data-tone=checking]{background:#ffe09b}
