@@ -55,12 +55,12 @@ for(const pair of [
 
 assert(i18n.includes("key.indexOf('add.copy.')!==0")&&i18n.includes('addRefs:addRefs'),'runtime Add visibility must consume only exact add.copy.* source inventory');
 assert(i18n.includes('qbAddSourceHas')&&i18n.includes('qbAddSourceField:qbAddSourceField')&&i18n.includes('qbAddSourceGroup:qbAddSourceGroup'),'Add renderer source projection helpers missing');
-assert.equal(i18n.includes('upgradeAddSuggestion'),false,'post-DOM Add suggestion upgrade must stay retired once the renderer owns canonical controls');
-assert.equal(i18n.includes('syncAddSourceSurface'),false,'post-DOM Add copy/visibility repair must stay retired once the renderer owns exact source projection');
+assert(!i18n.includes('upgradeAddSuggestion'),'post-DOM Add suggestion upgrade must stay retired once the renderer owns canonical controls');
+assert(!i18n.includes('syncAddSourceSurface'),'post-DOM Add copy/visibility repair must stay retired once the renderer owns exact source projection');
 const app=read('webui/private/scripts/app.js');
 assert(floating.includes('C.comboControl=function(opts)')&&controls.includes('.ui-combo__input'),'Category/Tags suggestions must use the canonical shared floating/select skin');
 assert(app.includes("addCombo(settingsGroup,'add-category'")&&app.includes("addCombo(settingsGroup,'add-tags'")&&app.includes('qbAddSourceField'),'Add renderer must directly own exact source projection plus canonical Category/Tags combos');
-assert.equal(app.includes("createElement('datalist')"),false,'Add renderer must not retain browser-native datalist popup ownership');
+assert(!app.includes("createElement('datalist')"),'Add renderer must not retain browser-native datalist popup ownership');
 assert(app.indexOf('await app.client.add(')<app.indexOf("W.DialogRuntime.close(U.$('add-dialog'))"),'successful Add must close only after the qB add request completes');
 assert(appCss.includes('.add-source-file:before')&&appCss.includes("content:'＋'")&&appCss.includes('.add-source-file:hover'),'Add Torrent File entry must expose an explicit action affordance');
 
