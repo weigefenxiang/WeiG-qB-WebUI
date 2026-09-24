@@ -30,6 +30,7 @@ assert(/MAX_VISIBLE\s*=\s*4/.test(feedback),'feedback stack must be bounded to f
 assert(/nextAutoOrder/.test(feedback)&&/timeoutInFlight/.test(feedback)&&/flushTimeoutQueue/.test(feedback),'automatic feedback lifetime must preserve strict FIFO exit order');
 for(const kind of ['info','success','warning','error'])assert(new RegExp(`${kind}:\\d+`).test(feedback),`missing ${kind} duration`);
 assert(/update:function/.test(feedback)&&/dismiss:function/.test(feedback),'toast handle must support update and dismiss');
+assert(/SETTING_SUMMARY_MAX=88/.test(settings)&&/out\.slice\(0,2\)/.test(settings)&&/shown\.push\('…'\)/.test(settings)&&/trimEnd\(\)\+'…'/.test(settings),'Settings success summaries must stay bounded and ellipsize long/multi-setting feedback instead of flooding the Dynamic Island');
 assert(/role',kind==='error'\?'alert':'status'/.test(feedback),'feedback roles must distinguish error alerts');
 assert(/aria-atomic/.test(feedback),'feedback card must be aria-atomic');
 for(const forbidden of ['new W.QBClient','MutationObserver','fetch('])assert(!feedback.includes(forbidden),`feedback owner must not contain ${forbidden}`);
