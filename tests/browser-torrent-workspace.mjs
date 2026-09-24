@@ -186,7 +186,7 @@ try{
 
     // Real progress semantics and Reduced Motion remain protected. Pseudo-element animation style can settle
     // a frame after row replacement/media emulation, so wait for the exact CSS contract instead of sampling once.
-    const expected={1:['download','45%','true'],2:['seed','100%','true'],3:['paused','45%','false'],4:['paused','100%','false'],5:['error','45%','false'],6:['checking','45%','false'],7:['queued','45%','false'],8:['download-idle','45%','false'],9:['seed-idle','100%','false']};
+    const expected={1:['download','45%','true'],2:['seed','100%','true'],3:['paused','45%','false'],4:['complete-idle','100%','false'],5:['error','45%','false'],6:['checking','45%','true'],7:['queued','45%','false'],8:['download-idle','45%','false'],9:['seed-idle','100%','false']};
     for(const [n,e] of Object.entries(expected)){
       const hash=String(n).padStart(40,'0'),track=page.locator(`.torrent-row[data-hash="${hash}"] .progress-track`);await track.waitFor();
       const state=await track.evaluate(el=>({state:el.dataset.progressState,active:el.dataset.progressActive,width:el.querySelector('.progress-fill').style.width}));
