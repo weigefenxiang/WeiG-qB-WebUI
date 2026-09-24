@@ -295,7 +295,7 @@ try{
   assert(Math.abs((scroll.a.h-scroll.b.h)-scroll.scrollLeft)<3&&Math.abs((scroll.a.r-scroll.b.r)-scroll.scrollLeft)<3&&Math.abs((scroll.a.h-scroll.a.r)-(scroll.b.h-scroll.b.r))<2,`Header/body horizontal scroll ownership diverged: ${JSON.stringify(scroll)}`);
   assert(scroll.detailScrollLeft===0,'Outer detail-content stole horizontal scroll ownership from shared table viewport.');
 
-  await page.setViewportSize({width:390,height:844});
+  await page.setViewportSize({width:360,height:800});
   await page.waitForSelector('.shared-table__viewport .shared-table__row');
   await page.locator('.detail-tabs [data-tab="peers"]').click();
   await page.waitForFunction(()=>document.querySelector('.detail-tabs [data-tab="peers"]')?.classList.contains('is-active'));
