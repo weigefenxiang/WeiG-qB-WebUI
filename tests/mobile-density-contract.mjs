@@ -88,7 +88,7 @@ assert(logsCss.includes('.logs-refresh::before{content:"↻"'),'Narrow Mobile Lo
 assert(sharedUiCss.includes('#list-view .grid-toolbar .ui-select__trigger::before')&&!/(^|})\.grid-toolbar \.ui-select__trigger::before/.test(sharedUiCss),'Torrent-only inset Select skin must not leak into the Logs canonical Select');
 
 // Mobile Torrent progress remains one canonical bar below metadata with the real percentage immediately to its right.
-assert(components.includes("cluster.className='mobile-card-progress'")&&components.includes("number.textContent=built.visual.percent+'%'"),'Mobile Torrent card must compose progress bar and percentage together');
+assert(components.includes("cluster.className='mobile-card-progress'")&&components.includes("number.textContent=progressText(t)")&&components.includes("if(number)number.textContent=progressText(t)"),'Mobile Torrent card must compose the canonical progress bar and one-decimal percentage together on create/update');
 assert(!components.includes('progress-track--mobile-edge')&&!progressCss.includes('progress-track--mobile-edge'),'Retired duplicate bottom-edge progress presentation must not return');
 assert(progressCss.includes('.mobile-card-meta--rail{display:grid!important;grid-template-columns:minmax(0,1fr)!important;grid-template-rows:auto auto!important'),'Mobile progress must occupy its own row below Torrent metadata');
 assert(progressCss.includes('.mobile-card-progress{width:100%;max-width:none;min-width:0;margin-left:0;grid-template-columns:minmax(0,1fr) max-content'),'Mobile progress percentage must remain to the right of the canonical full-width bar');
