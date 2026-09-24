@@ -106,7 +106,7 @@
     function resolveBridgeTokens(id,trail){if(!id)return[];if(sets[id])return sets[id].slice();var def=setDefs[id];if(!def)return null;trail=trail||{};if(trail[id])return null;trail[id]=true;var base=def.parent?resolveBridgeTokens(def.parent,trail):[];if(base===null)return null;var active={};for(var i=0;i<base.length;i++)active[base[i]]=true;for(var j=0;j<def.remove.length;j++)delete active[def.remove[j]];for(var k=0;k<def.add.length;k++)active[def.add[k]]=true;delete trail[id];var resolved=Object.keys(active).sort(function(a,b){return parseInt(a,36)-parseInt(b,36);});sets[id]=resolved;return resolved.slice();}
     var bridgeRe=/^@@BRIDGE\t([0-9a-f]{40})\t([^\t\r\n]*)\t(t[0-9a-f]{20}|-)\s*$/gm;
     while((match=bridgeRe.exec(source))){if(match[1]===expectedSha)bridges[decodeField(match[2])]=match[3]==='-'?null:match[3];}
-    var binding=bindings[profile.bindingId];if(!binding)return null;
+    var binding=bindings[profile.bindingId];if(!binding)return null;var addRefs={};Object.keys(binding.ui||{}).forEach(function(key){if(key.indexOf('add.copy.')!==0)return;var ref=refs[binding.ui[key]];if(ref)addRefs[ref.context+'\u0000'+ref.source]=true;});
     var nativeLocale=routeLocale(profile.nativeLocales),bridgeLocale=nativeLocale?null:routeLocale(profile.bridgeLocales),mode=nativeLocale?'native':(bridgeLocale?'bridge':null);if(!mode)return null;
     var bridgeSet={};if(mode==='bridge'&&bridges[bridgeLocale]){var tokens=resolveBridgeTokens(bridges[bridgeLocale],{});if(!tokens)return null;for(var i=0;i<tokens.length;i++){var item=values[tokens[i]];if(!item)return null;if(bridgeSet[item.ref]!==undefined&&bridgeSet[item.ref]!==item.value)return null;bridgeSet[item.ref]=item.value;}}
     function resolve(id){var ref=refs[id];if(!ref)return null;if(mode==='bridge')return String(bridgeSet[id]!==undefined?bridgeSet[id]:ref.source);return ref.text===null?null:String(ref.text);}
@@ -115,7 +115,7 @@
     Object.keys(binding.preferences).forEach(function(key){var entry=binding.preferences[key],title=resolve(entry.title),description=entry.description?resolve(entry.description):'';if(title===null||description===null){unresolved=true;return;}preferences[key]={title:title,description:description||'',controlId:entry.controlId||null};});
     Object.keys(binding.ui).forEach(function(key){var value=resolve(binding.ui[key]);if(value===null){unresolved=true;return;}ui[key]=value;});
     if(mode==='native'&&unresolved)return null;
-    return{schemaVersion:2,source:mode==='native'?'qb-native-QBT_TR+minimal-official-QM':'qb-exact-official-TS-compact-bridge',sourceSha:expectedSha,qbVersion:expectedVersion,locale:qbLocale,mode:mode,preferences:preferences,ui:ui,resolvedRefs:resolvedRefs};
+    return{schemaVersion:2,source:mode==='native'?'qb-native-QBT_TR+minimal-official-QM':'qb-exact-official-TS-compact-bridge',sourceSha:expectedSha,qbVersion:expectedVersion,locale:qbLocale,mode:mode,preferences:preferences,ui:ui,resolvedRefs:resolvedRefs,addRefs:addRefs};
   }
   function loadQbOwnedCopy(){
     var current=currentProfile();if(!current||current.fallback)return Promise.resolve(null);var expectedSha=String(current.sourceSha||''),expectedVersion=String(current.qbVersion||'');if(!/^[0-9a-f]{40}$/.test(expectedSha)||!expectedVersion)return Promise.resolve(null);
@@ -126,9 +126,46 @@
   function qbSetting(key){var data=resolvedQbCopy(),entry=data&&data.preferences&&data.preferences[key];if(!entry)return null;return{title:entry.title,description:entry.description||'',source:data.source,controlId:entry.controlId||null};}
   function qbOwnedText(){var data=resolvedQbCopy();return data&&data.ui?Object.assign({},data.ui):{};}
   function qbSourceText(ref,fallback){var data=resolvedQbCopy(),context=ref&&String(ref.context||''),source=ref&&String(ref.source||'');if(!context||!source)return String(fallback||source||'');var value=data&&data.resolvedRefs?data.resolvedRefs[context+'\u0000'+source]:undefined;return String(value!==undefined&&value!==null?value:(fallback||source));}
+  function qbAddSourceHas(ref){var data=resolvedQbCopy(),context=ref&&String(ref.context||''),source=ref&&String(ref.source||'');return !!(context&&source&&data&&data.addRefs&&data.addRefs[context+'\u0000'+source]);}
   function qbText(key,fallback){var values=qbOwnedText(),value=values[key];return String(value!==undefined&&value!==null&&value!==''?value:(fallback||''));}
+  var ADD_SOURCE_FIELDS={
+    'add-auto-tmm':[['autoTMM'],[['Torrent Management Mode:','AddNewTorrentDialog']]],
+    'save-path':[['savepath'],[['Save files to location:','AddNewTorrentDialog'],['Save files to location:','HttpServer']]],
+    'add-use-download-path':[['useDownloadPath'],[['Use another path for incomplete torrent','AddNewTorrentDialog']]],
+    'add-download-path':[['downloadPath'],[['Save path:','AddNewTorrentDialog']]],
+    'add-rename':[['rename'],[['Rename torrent','AddNewTorrentDialog'],['Rename torrent','HttpServer']]],
+    'add-category':[['category'],[['Category:','AddNewTorrentDialog']]],
+    'add-tags':[['tags'],[['Tags:','AddNewTorrentDialog']]],
+    'add-cookie':[['cookie'],[['Cookie:','HttpServer']]],
+    'add-start':[['stopped','paused'],[['Start torrent','AddNewTorrentDialog']]],
+    'add-queue-top':[['addToTopOfQueue'],[['Add to top of queue','AddNewTorrentDialog']]],
+    'add-stop-condition':[['stopCondition'],[['Stop condition:','AddNewTorrentDialog']]],
+    'add-skip-check':[['skip_checking'],[['Skip hash check','AddNewTorrentDialog']]],
+    'add-sequential':[['sequentialDownload'],[['Download in sequential order','AddNewTorrentDialog'],['Download in sequential order','TransferListWidget']]],
+    'add-first-last':[['firstLastPiecePrio'],[['Download first and last pieces first','AddNewTorrentDialog'],['Download first and last pieces first','TransferListWidget']]],
+    'add-content-layout':[['contentLayout','root_folder'],[['Content layout:','AddNewTorrentDialog'],['Create subfolder','AddNewTorrentDialog']]],
+    'add-dl-limit':[['dlLimit'],[['Limit download rate','AddNewTorrentDialog'],['Limit download rate','HttpServer']]],
+    'add-up-limit':[['upLimit'],[['Limit upload rate','AddNewTorrentDialog'],['Limit upload rate','HttpServer']]],
+    'add-ratio-limit':[['ratioLimit'],[['ratio','UpDownRatioDialog']]],
+    'add-seeding-time':[['seedingTimeLimit'],[['total minutes','UpDownRatioDialog']]],
+    'add-inactive-seeding-time':[['inactiveSeedingTimeLimit'],[['inactive minutes','UpDownRatioDialog']]],
+    'add-share-action':[['shareLimitAction'],[['Action when the limit is reached','UpDownRatioDialog']]]
+  };
+  function addFieldRef(refs){for(var i=0;i<(refs||[]).length;i++){var pair=refs[i],ref={source:String(pair[0]||''),context:String(pair[1]||'')};if(qbAddSourceHas(ref))return ref;}return null;}
+  function disableAddField(node,disabled){var field=node&&node.closest&&node.closest('.add-option-field,.add-option-check');if(field)field.hidden=!!disabled;if(node&&typeof node.setDisabled==='function')node.setDisabled(!!disabled);else if(node&&'disabled' in node)node.disabled=!!disabled;return field;}
+  function syncAddSourceSurface(){var root=document.getElementById('add-options'),R=W.CapabilityRegistry,desc=R&&typeof R.sourceActionDescriptor==='function'?R.sourceActionDescriptor('torrentscontroller.h:addAction'):null;if(!root||!desc)return false;var params=new Set(desc.parameters||[]);
+    Object.keys(ADD_SOURCE_FIELDS).forEach(function(id){var node=document.getElementById(id),spec=ADD_SOURCE_FIELDS[id];if(!node)return;var ref=addFieldRef(spec[1]),visible=spec[0].some(function(name){return params.has(name);})&&!!ref,field=disableAddField(node,!visible);if(visible&&field&&ref){var label=field.querySelector('span');if(label)label.textContent=qbSourceText(ref,ref.source);}});
+    ['add-forced'].forEach(function(id){var node=document.getElementById(id);if(node)disableAddField(node,true);});
+    var groupRefs={save:['Save at','AddNewTorrentDialog'],settings:['Torrent settings','AddNewTorrentDialog']};Array.from(root.querySelectorAll('.add-option-group')).forEach(function(group){var legend=group.querySelector(':scope>legend'),pair=groupRefs[group.dataset.addGroup],ref=pair?{source:pair[0],context:pair[1]}:null;if(legend){legend.hidden=!ref||!qbAddSourceHas(ref);if(!legend.hidden)legend.textContent=qbSourceText(ref,ref.source);}if(!Array.from(group.querySelectorAll('.add-option-field,.add-option-check')).some(function(field){return !field.hidden;}))group.hidden=true;else group.hidden=false;});
+    var cookie=document.getElementById('add-cookie'),cookieField=cookie&&cookie.closest('.add-option-field');if(cookieField&&!cookieField.hidden){var copy=cookieField.querySelector('span'),ref=addFieldRef([['Cookie:','HttpServer']]);if(copy&&ref)copy.textContent=qbSourceText(ref,ref.source);}
+    return true;
+  }
+  function upgradeAddSuggestion(id,multiple){var input=document.getElementById(id),C=W.Components;if(!input||!C||typeof C.comboControl!=='function'||input.dataset.weigCombo==='1')return;var list=document.getElementById(input.getAttribute('list')||'');if(!list)return;var options=Array.from(list.querySelectorAll('option')).map(function(option){var value=String(option.value||'');return{value:value,label:value};}).filter(function(option){return option.value;});var combo=C.comboControl({value:input.value||'',options:options,multiple:!!multiple,onInput:function(value){input.value=value;},onChange:function(value){input.value=value;}}),field=input.parentNode;input.dataset.weigCombo='1';input.removeAttribute('list');input.style.display='none';field.appendChild(combo);list.remove();}
+  function syncAddEnhancements(){syncAddSourceSurface();upgradeAddSuggestion('add-category',false);upgradeAddSuggestion('add-tags',true);}
+  function bindAddSourceSurface(){document.addEventListener('click',function(event){var hit=event.target&&event.target.closest&&event.target.closest('#add-btn,#empty-add-btn');if(hit)setTimeout(syncAddEnhancements,0);},true);}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bindAddSourceSurface,{once:true});else bindAddSourceSurface();
   function loadQbOwnedText(){return loadQbOwnedCopy().then(function(){return qbOwnedText();});}
   function ready(){return Promise.all([loadLocaleOptions(),loadQbOwnedCopy()]).then(function(){return api;});}
-  var api={t:t,apply:apply,applyLocale:applyLocale,getLocale:function(){return locale;},getQbLocale:function(){return qbLocale;},normalize:normalize,canonicalQbTag:canonicalQbTag,sameQbLocale:sameQbLocale,hasExactLocale:hasExactLocale,matchBrowserLocale:matchBrowserLocale,parseLocaleOptions:parseLocaleOptions,parseOwnedCopyRegistry:parseOwnedCopyRegistry,loadLocaleOptions:loadLocaleOptions,localeOptions:function(){return localeOptions.slice();},settingOptions:settingOptions,settingOptionsState:settingOptionsState,localeInventoryEvidence:localeInventoryEvidence,loadQbOwnedCopy:loadQbOwnedCopy,loadQbOwnedText:loadQbOwnedText,qbSetting:qbSetting,qbSourceText:qbSourceText,qbText:qbText,ready:ready,supported:Object.keys(dicts),english:EN};
+  var api={t:t,apply:apply,applyLocale:applyLocale,getLocale:function(){return locale;},getQbLocale:function(){return qbLocale;},normalize:normalize,canonicalQbTag:canonicalQbTag,sameQbLocale:sameQbLocale,hasExactLocale:hasExactLocale,matchBrowserLocale:matchBrowserLocale,parseLocaleOptions:parseLocaleOptions,parseOwnedCopyRegistry:parseOwnedCopyRegistry,loadLocaleOptions:loadLocaleOptions,localeOptions:function(){return localeOptions.slice();},settingOptions:settingOptions,settingOptionsState:settingOptionsState,localeInventoryEvidence:localeInventoryEvidence,loadQbOwnedCopy:loadQbOwnedCopy,loadQbOwnedText:loadQbOwnedText,qbSetting:qbSetting,qbSourceText:qbSourceText,qbAddSourceHas:qbAddSourceHas,qbText:qbText,syncAddSourceSurface:syncAddSourceSurface,ready:ready,supported:Object.keys(dicts),english:EN};
   W.I18n=api;W.t=t;
 })(window);
