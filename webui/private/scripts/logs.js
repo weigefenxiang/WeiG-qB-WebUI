@@ -3,7 +3,7 @@
   var W=global.WeiG,U=W&&W.util,C=W&&W.Components;
   if(!W||!U||!W.QBClient||!W.DataViewport||!C)return;
 
-  var state={items:[],lastId:-1,types:new Set([1,2,4,8]),query:'',follow:true,page:0,pageSize:50,pager:null,viewport:null,timer:null,loading:false,active:false,root:null,sizeMode:localStorage.getItem((W.StorageKeys&&W.StorageKeys.logsSizeMode)||'weig.logs.sizeMode')||'auto',programmaticScroll:false,expandedId:null};
+  var state={items:[],lastId:-1,types:new Set([1,2,4,8]),query:'',follow:true,page:0,pageSize:50,pager:null,pageSizeControl:null,viewport:null,timer:null,loading:false,active:false,root:null,sizeMode:localStorage.getItem((W.StorageKeys&&W.StorageKeys.logsSizeMode)||'weig.logs.sizeMode')||'auto',programmaticScroll:false,expandedId:null};
   var MAX_ITEMS=5000;
   function tr(key,vars,fallback){var I=W.I18n,value=I&&I.t?I.t(key,vars):key;return value===key?(fallback||key):value;}
   function onLogsRoute(){return W.Router&&W.Router.route&&W.Router.route().name==='logs';}
@@ -34,7 +34,7 @@
     var size=C.selectControl({id:'logs-size-mode',value:state.sizeMode,options:[{value:'compact',label:tr('logs.ui.compact',null,'Compact')},{value:'auto',label:tr('logs.ui.auto',null,'Auto')},{value:'max',label:tr('logs.ui.max',null,'Max')}],ariaLabel:tr('logs.ui.auto',null,'Auto'),onChange:function(value){state.sizeMode=value;applySizeMode();setTimeout(function(){if(state.viewport&&state.viewport.resetHeights)state.viewport.resetHeights();else if(state.viewport&&state.viewport.render)state.viewport.render();},40);}});size.classList.add('logs-size-mode');
     var refresh=makeButton('↻ '+tr('logs.ui.refresh',null,'Refresh'),'btn btn--ghost logs-refresh');
     actions.append(size,refresh);toolbar.append(filters,actions);
-    state.pager=C.pagerControl({prevLabel:tr('library.prev',null,'Previous'),nextLabel:tr('library.next',null,'Next'),onPrev:function(){setPage(state.page-1);},onNext:function(){setPage(state.page+1);}});state.pager.root.classList.add('logs-pager');
+    state.pager=C.pagerControl({prevLabel:tr('library.prev',null,'Previous'),nextLabel:tr('library.next',null,'Next'),onPrev:function(){setPage(state.page-1);},onNext:function(){setPage(state.page+1);}});state.pager.root.classList.add('logs-pager');var pageSizeWrap=document.createElement('label');pageSizeWrap.className='logs-page-size';var pageSizeCopy=document.createElement('span');pageSizeCopy.textContent=tr('library.pageSize',null,'Per page');state.pageSizeControl=C.selectControl({id:'logs-page-size',value:String(state.pageSize),options:[20,50,100,200].map(function(n){return{value:String(n),label:String(n)};}),ariaLabel:tr('library.pageSize',null,'Per page'),onChange:function(value){state.pageSize=Math.max(1,Number(value)||50);state.page=0;state.expandedId=null;renderRows(true,0);}});pageSizeWrap.append(pageSizeCopy,state.pageSizeControl);state.pager.root.insertBefore(pageSizeWrap,state.pager.nav);
 
     var panel=document.createElement('section');panel.className='logs-panel surface surface--panel surface--scroll';
     var head=document.createElement('div');head.className='logs-head';head.innerHTML='<span>'+tr('logs.ui.log',null,'Log')+'</span><span>'+tr('logs.ui.time',null,'Time')+'</span><span>'+tr('logs.ui.level',null,'Level')+'</span>';
