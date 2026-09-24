@@ -319,15 +319,23 @@ try{
   const titlePreview=await page.locator('.ui-floating-preview').textContent();assert(titlePreview===mobileHero.titleText,'Mobile Detail floating preview must expose the complete clipped Torrent title');
   const cdp=await context.newCDPSession(page);await cdp.send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:5});
   await page.evaluate(()=>{const viewport=document.querySelector('.shared-table__viewport');viewport.scrollTop=0;viewport.scrollLeft=0;});
-  const touchBefore=await page.evaluate(()=>({order:[...document.querySelectorAll('.shared-table__head .grid-head-cell')].map(node=>node.dataset.key),saved:JSON.stringify(window.WeiG.SharedColumns.read('torrent-detail-files')),top:document.querySelector('.shared-table__viewport').scrollTop}));
+  const headerBefore=await page.evaluate(()=>({order:[...document.querySelectorAll('.shared-table__head .grid-head-cell')].map(node=>node.dataset.key),saved:JSON.stringify(window.WeiG.SharedColumns.read('torrent-detail-files'))}));
   const firstBox=await page.locator('.shared-table__head .grid-head-cell[data-key="name"]').boundingBox();assert(firstBox,'Mobile detail Name header is missing.');
   const tx=firstBox.x+Math.min(24,firstBox.width/2),ty=firstBox.y+firstBox.height/2;
-  await touchScroll(cdp,tx,ty,-120);await page.waitForTimeout(160);
-  const touchAfter=await page.evaluate(()=>({order:[...document.querySelectorAll('.shared-table__head .grid-head-cell')].map(node=>node.dataset.key),saved:JSON.stringify(window.WeiG.SharedColumns.read('torrent-detail-files')),top:document.querySelector('.shared-table__viewport').scrollTop}));
-  assert(JSON.stringify(touchAfter.order)===JSON.stringify(touchBefore.order)&&touchAfter.saved===touchBefore.saved,`Ordinary mobile touch scroll accidentally reordered columns: ${JSON.stringify({touchBefore,touchAfter})}`);
-  assert(touchAfter.top>touchBefore.top,`Ordinary mobile touch scroll gesture did not move the native viewport from the bounded top edge: ${JSON.stringify({touchBefore,touchAfter})}`);
+  await touch(cdp,'touchStart',tx,ty);await touch(cdp,'touchMove',tx,ty-45);await touch(cdp,'touchMove',tx,ty-95);await touch(cdp,'touchEnd',tx,ty-95);await page.waitForTimeout(120);
+  const headerAfter=await page.evaluate(()=>({order:[...document.querySelectorAll('.shared-table__head .grid-head-cell')].map(node=>node.dataset.key),saved:JSON.stringify(window.WeiG.SharedColumns.read('torrent-detail-files'))}));
+  assert(JSON.stringify(headerAfter.order)===JSON.stringify(headerBefore.order)&&headerAfter.saved===headerBefore.saved,`Quick mobile header drag accidentally reordered columns instead of cancelling before long-press arm: ${JSON.stringify({headerBefore,headerAfter})}`);
 
-  const longBefore=touchAfter.order,first=await page.locator('.shared-table__head .grid-head-cell[data-key="name"]').boundingBox(),second=await page.locator('.shared-table__head .grid-head-cell[data-key="size"]').boundingBox();assert(first&&second,'Mobile long-press reorder targets are missing.');
+  await page.evaluate(()=>{const viewport=document.querySelector('.shared-table__viewport');viewport.scrollTop=0;viewport.scrollLeft=0;});
+  const nativeBefore=await page.evaluate(()=>{const viewport=document.querySelector('.shared-table__viewport');return{top:viewport.scrollTop,max:Math.max(0,viewport.scrollHeight-viewport.clientHeight)};});
+  assert(nativeBefore.max>0,`Mobile Detail touch-scroll fixture has no native vertical overflow: ${JSON.stringify(nativeBefore)}`);
+  const bodyBox=await page.locator('.shared-table__row [data-column-key="size"]').first().boundingBox();assert(bodyBox,'Mobile detail non-interactive body cell is missing.');
+  const bx=bodyBox.x+Math.min(20,bodyBox.width/2),by=bodyBox.y+bodyBox.height/2,scrollDistance=-Math.min(120,Math.max(24,nativeBefore.max));
+  await touchScroll(cdp,bx,by,scrollDistance);await page.waitForTimeout(160);
+  const nativeAfter=await page.evaluate(()=>({top:document.querySelector('.shared-table__viewport').scrollTop}));
+  assert(nativeAfter.top>nativeBefore.top,`Ordinary mobile touch scroll gesture did not move the native viewport from a non-interactive body cell: ${JSON.stringify({nativeBefore,nativeAfter})}`);
+
+  const longBefore=headerAfter.order,first=await page.locator('.shared-table__head .grid-head-cell[data-key="name"]').boundingBox(),second=await page.locator('.shared-table__head .grid-head-cell[data-key="size"]').boundingBox();assert(first&&second,'Mobile long-press reorder targets are missing.');
   const sx=first.x+Math.min(20,first.width/2),sy=first.y+first.height/2,movingLeft=first.x>second.x,dx=second.x+Math.max(8,Math.min(second.width-8,second.width*(movingLeft?.25:.75))),dy=second.y+second.height/2;
   await touch(cdp,'touchStart',sx,sy);await page.waitForTimeout(340);await touch(cdp,'touchMove',dx,dy);await page.waitForTimeout(70);await touch(cdp,'touchEnd',dx,dy);await page.waitForTimeout(120);
   const longAfter=await page.evaluate(()=>({order:[...document.querySelectorAll('.shared-table__head .grid-head-cell')].map(node=>node.dataset.key),saved:window.WeiG.SharedColumns.read('torrent-detail-files').order||[],source:WeiG.QbUiEvidence.detailColumns('files').map(column=>column.key)}));
