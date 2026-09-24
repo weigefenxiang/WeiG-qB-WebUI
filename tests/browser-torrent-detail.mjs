@@ -317,6 +317,7 @@ try{
   assert(mobileHero.clipped,'Mobile Detail fixture must exercise the clipped-title floating preview path');
   await page.locator('#detail-title').click();await page.waitForSelector('.ui-floating-preview');
   const titlePreview=await page.locator('.ui-floating-preview').textContent();assert(titlePreview===mobileHero.titleText,'Mobile Detail floating preview must expose the complete clipped Torrent title');
+  await page.evaluate(()=>WeiG.Components.closeTextPreview());await page.waitForSelector('.ui-floating-preview',{state:'detached'});
   const cdp=await context.newCDPSession(page);await cdp.send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:5});
   await page.evaluate(()=>{const viewport=document.querySelector('.shared-table__viewport');viewport.scrollTop=0;viewport.scrollLeft=0;});
   const headerBefore=await page.evaluate(()=>({order:[...document.querySelectorAll('.shared-table__head .grid-head-cell')].map(node=>node.dataset.key),saved:JSON.stringify(window.WeiG.SharedColumns.read('torrent-detail-files'))}));
