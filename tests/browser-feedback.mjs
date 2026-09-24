@@ -177,7 +177,7 @@ try{
   await page.waitForFunction(()=>document.getElementById('settings-view')?.classList.contains('is-active'));
   await page.locator('#settings-tabs [data-settings-tab="connection"]').click();
   const portInput=page.locator('[data-preference-key="listen_port"] input[type="number"]');
-  await portInput.waitFor();await portInput.fill('6999');await portInput.press('Tab');
+  await portInput.waitFor();const portTitle=String(await page.locator('[data-preference-key="listen_port"] .setting-title').textContent()).trim();await portInput.fill('6999');await portInput.press('Tab');
   await page.locator('#save-settings-btn').click();
   const settingsProcessing=page.locator('.feedback-toast[data-kind="info"]',{hasText:'Saving settings'}).first();
   await settingsProcessing.waitFor();
@@ -185,8 +185,25 @@ try{
   assert(await settingsProcessing.locator('.feedback-toast__progress').getAttribute('data-mode')==='activity','Settings processing must use activity rail');
   await page.waitForFunction(id=>document.querySelector(`.feedback-toast[data-feedback-id="${id}"]`)?.dataset.kind==='success',settingsId);
   assert((await page.locator(`.feedback-toast[data-feedback-id="${settingsId}"]`).textContent()).includes('Settings saved'),'Settings save did not update the same feedback record');
+  assert((await page.locator(`.feedback-toast[data-feedback-id="${settingsId}"]`).textContent()).includes(portTitle),'Settings success feedback lost the source-owned changed-control label');
   assert(await page.locator(`.feedback-toast[data-feedback-id="${settingsId}"] .feedback-toast__progress`).getAttribute('data-mode')==='lifetime','Settings completion did not switch activity rail to lifetime');
   assert(prefs.listen_port===6999,'Settings fixture did not receive the submitted preference');
+
+  // Real WeiG-only save must use the same Feedback owner and name the changed semantic control.
+  await page.evaluate(()=>WeiG.Feedback.dismissAll());await page.waitForTimeout(260);
+  await page.locator('#settings-tabs [data-settings-tab="weig"]').click();
+  await page.waitForFunction(()=>WeiG.SettingsState?.tab==='weig');
+  const densityRow=page.locator('[data-setting-key="weig_density"]'),densityTitle=String(await densityRow.locator('.setting-title').textContent()).trim();
+  const densityControl=densityRow.locator('.ui-select'),densityCurrent=await densityControl.evaluate(node=>node.getValue());
+  const densityNext=densityCurrent==='compact'?'comfortable':'compact';
+  await densityControl.locator('.ui-select__trigger').click();
+  await page.locator('#weig-floating-layer .ui-select__option[data-value="'+densityNext+'"]').click();
+  await page.waitForFunction(value=>WeiG.SettingsState?.weigDraft?.density===value,densityNext);
+  await page.locator('#save-settings-btn').click();
+  const weigSuccess=page.locator('.feedback-toast[data-kind="success"]',{hasText:densityTitle}).first();
+  await weigSuccess.waitFor();
+  assert((await weigSuccess.textContent()).includes(densityTitle),'WeiG-only save feedback lost the changed semantic control label');
+  assert(Object.keys(await page.evaluate(()=>WeiG.SettingsState?.weigDraft||{})).length===0,'WeiG-only verified save did not clear its draft');
 
   // Real RSS add + list readback produces success through the canonical Add Feed dialog.
   await page.evaluate(()=>WeiG.Feedback.dismissAll());await page.waitForTimeout(260);
