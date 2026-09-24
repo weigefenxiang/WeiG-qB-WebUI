@@ -1,6 +1,18 @@
 import assert from 'node:assert/strict';
 import {buildQbOwnedStringInventory,collectSourceProvenQbRefs,extractQbtRefs,extractWeiGI18nKeys,hasQbSettingBridgeConsumer} from '../tools/qb-qbt-owned-string-inventory.mjs';
+import {extractQbOwnedUiFacts} from '../tools/qb-owned-ui-source.mjs';
 import {auditQbEntityText,auditQbtSourceEntities,qbSourceRefKey} from '../tools/qb-source-text.mjs';
+
+const addUi=extractQbOwnedUiFacts({
+  addTorrentSource:'<title>QBT_TR(Add torrent)QBT_TR[CONTEXT=AddNewTorrentDialog]</title><legend>QBT_TR(Save at)QBT_TR[CONTEXT=AddNewTorrentDialog]</legend><button>QBT_TR(Add Torrent)QBT_TR[CONTEXT=AddNewTorrentDialog]</button>',
+  downloadSource:'<h2>QBT_TR(Add torrent links)QBT_TR[CONTEXT=DownloadFromURLDialog]</h2><textarea aria-label="QBT_TR(URLs)QBT_TR[CONTEXT=DownloadFromURLDialog]"></textarea>',
+  indexSource:'<img alt="QBT_TR(Add Torrent File...)QBT_TR[CONTEXT=MainWindow]">'
+});
+assert.deepEqual(addUi['add.title'],{source:'Add torrent',context:'AddNewTorrentDialog'});
+assert.deepEqual(addUi['add.links'],{source:'Add torrent links',context:'DownloadFromURLDialog'});
+assert.deepEqual(addUi['add.files'],{source:'Add Torrent File...',context:'MainWindow'});
+assert.deepEqual(addUi['add.submit'],{source:'Add Torrent',context:'AddNewTorrentDialog'});
+assert.ok(Object.keys(addUi).some(key=>key.startsWith('add.copy.')),'Add Torrent source family must be retained in qB-owned runtime copy facts');
 
 const sourceSha410='a'.repeat(40);
 const sourceSha523='b'.repeat(40);

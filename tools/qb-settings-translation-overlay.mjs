@@ -147,6 +147,7 @@ export function buildQbSettingsTranslationOverlay(catalog, readReleaseSources, o
     const releaseSources=readReleaseSources({profile,qbVersion,sourceSha,tag}) || {};
     const sourceTextAudit=auditQbtSourceEntities(releaseSources.preferencesSource||'');
     if(sourceTextAudit.unresolved.length)throw new Error(`${qbVersion}: unresolved qB Preferences QBT_TR entities: ${sourceTextAudit.unresolved.join(', ')}`);
+    for(const [label,source] of [['Add Torrent',releaseSources.addTorrentSource],['Download links',releaseSources.downloadSource]]){const audit=auditQbtSourceEntities(source||'');if(audit.unresolved.length)throw new Error(`${qbVersion}: unresolved qB ${label} QBT_TR entities: ${audit.unresolved.join(', ')}`);}
     const preferenceKeys=(profile.preferenceDescriptors || []).map((item) => item?.key).filter(Boolean);
     const nativePreferences=extractQbPreferencesNativeSurface({
       preferencesSource:releaseSources.preferencesSource || '',
@@ -164,7 +165,10 @@ export function buildQbSettingsTranslationOverlay(catalog, readReleaseSources, o
       toolbarSource:releaseSources.toolbarSource || '',
       filtersSource:releaseSources.filtersSource || '',
       dynamicTableSource:releaseSources.dynamicTableSource || '',
-      clientSource:releaseSources.clientSource || ''
+      clientSource:releaseSources.clientSource || '',
+      addTorrentSource:releaseSources.addTorrentSource || '',
+      downloadSource:releaseSources.downloadSource || '',
+      indexSource:releaseSources.indexSource || ''
     });
     Object.assign(ui,torrentDetailTranslationRefs(profile.torrentDetailUi),detailControlTranslationRefs(profile.torrentDetailUi));
     for(const ref of rssSurfaceTranslationRefs(profile.rssDownloaderUi))ui['rss.downloader.copy.'+contentHash([ref.context,ref.source]).slice(0,20)]=ref;
@@ -249,6 +253,9 @@ function toolbarSource(root,tag) { return showMaybe(root,tag,'src/webui/www/priv
 function filtersSource(root,tag) { return showMaybe(root,tag,'src/webui/www/private/views/filters.html') || showMaybe(root,tag,'src/webui/www/private/filters.html'); }
 function dynamicTableSource(root,tag) { return showMaybe(root,tag,'src/webui/www/private/scripts/dynamicTable.js'); }
 function clientSource(root,tag) { return showMaybe(root,tag,'src/webui/www/private/scripts/client.js'); }
+function addTorrentSource(root,tag) { return showMaybe(root,tag,'src/webui/www/private/addtorrent.html') || showMaybe(root,tag,'src/webui/www/private/download.html'); }
+function downloadSource(root,tag) { return showMaybe(root,tag,'src/webui/www/private/download.html'); }
+function indexSource(root,tag) { return showMaybe(root,tag,'src/webui/www/private/index.html'); }
 function translationPaths(root,tag) {
   let output='';
   try { output=git(root,'ls-tree','-r','--name-only',tag,'src/webui/www/translations','src/lang'); }
@@ -269,6 +276,9 @@ export function buildQbSettingsTranslationOverlayFromClone(catalog,qbRoot) {
       filtersSource:filtersSource(qbRoot,tag),
       dynamicTableSource:dynamicTableSource(qbRoot,tag),
       clientSource:clientSource(qbRoot,tag),
+      addTorrentSource:addTorrentSource(qbRoot,tag),
+      downloadSource:downloadSource(qbRoot,tag),
+      indexSource:indexSource(qbRoot,tag),
       translationSource:(locale)=>{
         const resourcePath=resolveQbTranslationResourcePath(locale,paths,sourceOf);
         return resourcePath ? sourceOf(resourcePath) : '';
