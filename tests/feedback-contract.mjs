@@ -41,7 +41,8 @@ assert(/dataset\.mode='lifetime'/.test(feedback)&&/--feedback-duration/.test(fee
 assert(!/progress\.hidden\s*=/.test(feedback),'processing activity rail must not be hidden by legacy duration logic');
 assert(/color-mix/.test(css)&&/var\(--surface-floating\)/.test(css),'feedback skin must consume current surface tokens');
 assert(/feedback-activity/.test(css)&&/data-mode=activity/.test(css)&&/data-mode=lifetime/.test(css),'feedback skin must own both activity and lifetime rail modes');
-assert(/env\(safe-area-inset-top\)/.test(css)&&/env\(safe-area-inset-left\)/.test(css)&&/env\(safe-area-inset-right\)/.test(css),'mobile feedback must respect safe areas');
+assert(/env\(safe-area-inset-top\)/.test(css)&&/env\(safe-area-inset-left\)/.test(css)&&/env\(safe-area-inset-right\)/.test(css)&&/env\(safe-area-inset-bottom\)/.test(css),'mobile feedback must respect every safe area while sharing the desktop island owner');
+assert(/@media\(max-width:820px\)\{\.feedback-stack\{top:auto;/.test(css)&&/bottom:calc\(66px \+ max\(12px,env\(safe-area-inset-bottom\)\)\)/.test(css)&&/flex-direction:column/.test(css)&&!css.includes('flex-direction:column-reverse'),'mobile feedback must remain a bounded bottom island above the shared mobile nav, not a legacy top/full-width stack');
 assert(/translate3d\(42px,0,0\)/.test(css),'canonical dismissal must slide to the right');
 assert(/prefers-reduced-motion/.test(css)&&/data-motion=reduced/.test(css),'feedback must honor both reduced-motion authorities');
 assert(!/\.toast-region\{/.test(read('webui/private/css/app.css'))&&!/\.toast\{/.test(read('webui/private/css/app.css')),'legacy toast CSS must leave app.css');
@@ -58,4 +59,4 @@ for(const [name,source] of browserSources){
   assert(source.includes("path.resolve(here,'../VERSION')"),`${name} fixture must derive product version from canonical VERSION`);
   assert(!/version\s*:\s*['"]\d+\.\d+\.\d+['"]/.test(source),`${name} fixture must not hard-code a product version`);
 }
-console.log('Floating feedback contract passed: single owner, canonical kinds, activity/lifetime rails, bounded stack, safe-area, right-slide exit, reduced motion, non-overlap insertion ownership, precise monkey-patch guard, and canonical version authority.');
+console.log('Floating feedback contract passed: single owner, canonical kinds, desktop/mobile bottom-island parity, activity/lifetime rails, bounded safe-area stack, right-slide exit, reduced motion and canonical version authority.');

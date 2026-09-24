@@ -82,6 +82,8 @@ try{
 
   // Real Add Torrent lifecycle: one processing card uses an activity rail, then updates in place after the real API resolves.
   await page.locator('#add-btn').click();
+  await page.locator('#torrent-files').setInputFiles({name:'fixture.torrent',mimeType:'application/x-bittorrent',buffer:Buffer.alloc(0)});
+  assert(await page.locator('#add-dialog[open]').count()===1,'choosing a local .torrent file must keep Add Torrent open before submission');
   await page.locator('#torrent-urls').fill('magnet:?xt=urn:btih:'+'a'.repeat(40));
   await page.locator('#add-submit').click();
   const processing=page.locator('.feedback-toast[data-kind="info"]',{hasText:'Adding torrent'}).first();
@@ -91,7 +93,9 @@ try{
   assert(await processingRail.isVisible(),'indeterminate Add feedback must expose an activity rail');
   assert(await processingRail.getAttribute('data-mode')==='activity','processing rail must be activity mode, not fake lifetime progress');
   await page.waitForFunction(id=>{const rail=document.querySelector(`.feedback-toast[data-feedback-id="${id}"] .feedback-toast__progress`);return !!(rail&&rail.dataset.mode==='activity'&&getComputedStyle(rail,'::before').animationName==='feedback-activity');},addId,{timeout:1500});
+  assert(await page.locator('#add-dialog[open]').count()===1,'Add Torrent must remain open while the qB add request is pending');
   await page.waitForFunction(id=>document.querySelector(`.feedback-toast[data-feedback-id="${id}"]`)?.dataset.kind==='success',addId);
+  await page.waitForFunction(()=>!document.getElementById('add-dialog')?.open);
   const added=page.locator(`.feedback-toast[data-feedback-id="${addId}"]`);
   assert((await added.textContent()).includes('Torrent added'),'Add success did not update the same feedback card');
   const addedRail=added.locator('.feedback-toast__progress');
@@ -216,7 +220,7 @@ try{
   await page.waitForFunction(id=>document.querySelector(`.feedback-toast[data-feedback-id="${id}"]`)?.dataset.kind==='success',rssId);
   assert((await page.locator(`.feedback-toast[data-feedback-id="${rssId}"]`).textContent()).includes('RSS added'),'RSS add did not update the same feedback record');
 
-  // Mobile uses the same queue but moves to the top safe-area and keeps newest first visually.
+  // Mobile uses the same Dynamic Island owner and bottom anchor above the mobile nav.
   await page.evaluate(()=>WeiG.Feedback.dismissAll());await page.waitForTimeout(260);
   await page.setViewportSize({width:390,height:844});
   await page.evaluate(()=>{
@@ -224,11 +228,33 @@ try{
     WeiG.toast('A very long mobile feedback message that must wrap safely without escaping the viewport or colliding with the Android bottom navigation.','success',{title:'Newer',duration:5000});
   });
   await page.waitForFunction(()=>document.querySelectorAll('.feedback-toast:not(.is-leaving)').length===2);
-  const mobile=await page.locator('.feedback-stack').evaluate(n=>{const r=n.getBoundingClientRect(),cards=[...n.querySelectorAll('.feedback-toast:not(.is-leaving)')].map(x=>({text:x.textContent,top:x.getBoundingClientRect().top,bottom:x.getBoundingClientRect().bottom}));return{left:r.left,right:innerWidth-r.right,top:r.top,cards};});
-  assert(mobile.left>=11&&mobile.right>=11&&mobile.top>=11,`mobile feedback violates safe spacing: ${JSON.stringify(mobile)}`);
+  const mobile=await page.locator('.feedback-stack').evaluate(n=>{const r=n.getBoundingClientRect(),cards=[...n.querySelectorAll('.feedback-toast:not(.is-leaving)')].map(x=>({text:x.textContent,top:x.getBoundingClientRect().top,bottom:x.getBoundingClientRect().bottom}));return{left:r.left,right:innerWidth-r.right,bottom:innerHeight-r.bottom,width:r.width,cards};});
+  assert(mobile.left>=11&&mobile.right>=11&&mobile.bottom>=77&&mobile.width<=392,'mobile feedback must keep the desktop island width and bottom safe anchor: '+JSON.stringify(mobile));
   assert(await page.locator('.feedback-toast:not(.is-leaving)').evaluateAll(nodes=>nodes.every(n=>{const r=n.getBoundingClientRect();return r.left>=11&&r.right<=379&&r.width<=368;})),'mobile long feedback escaped the viewport');
   const newer=mobile.cards.find(x=>x.text.includes('Newer')),older=mobile.cards.find(x=>x.text.includes('Older'));
-  assert(newer&&older&&newer.top<older.top,'mobile newest feedback must appear nearest the top anchor');
+  assert(newer&&older&&newer.top>older.top,'mobile newest feedback must use the same bottom-stack order as desktop');
+
+  // A real mobile Settings write/readback must reuse the same verified summary card.
+  await page.evaluate(()=>WeiG.Feedback.dismissAll());await page.waitForTimeout(260);
+  await page.locator('#mobile-bottom-nav [data-route="settings"]').click();
+  await page.waitForFunction(()=>document.getElementById('settings-view')?.classList.contains('is-active'));
+  await page.locator('#settings-tabs [data-settings-tab="connection"]').click();
+  await page.waitForFunction(()=>WeiG.SettingsState?.tab==='connection');
+  const mobilePortRoot=':is([data-preference-key="listen_port"],[data-setting-key="listen_port"])',mobilePortInput=page.locator(mobilePortRoot+' input[type="number"]');
+  await mobilePortInput.waitFor();
+  const mobilePortTitle=String(await page.locator(mobilePortRoot+' .setting-title').textContent()).trim();
+  await mobilePortInput.fill('7001');await mobilePortInput.press('Tab');
+  await page.locator('#save-settings-btn').click();
+  const mobileSettings=page.locator('.feedback-toast',{hasText:'Saving settings'}).first();
+  await mobileSettings.waitFor();
+  const mobileSettingsId=await mobileSettings.getAttribute('data-feedback-id');
+  await page.waitForFunction(id=>document.querySelector('.feedback-toast[data-feedback-id="'+id+'"]')?.dataset.kind==='success',mobileSettingsId);
+  const mobileSaved=page.locator('.feedback-toast[data-feedback-id="'+mobileSettingsId+'"]');
+  const mobileSavedText=String(await mobileSaved.textContent());
+  assert(mobileSavedText.includes('Settings saved')&&mobileSavedText.includes(mobilePortTitle)&&mobileSavedText.includes('7001'),'mobile Settings feedback lost the verified value/state summary: '+mobileSavedText);
+  const mobileSavedRect=await mobileSaved.evaluate(n=>{const r=n.getBoundingClientRect();return{right:innerWidth-r.right,bottom:innerHeight-r.bottom,width:r.width};});
+  assert(mobileSavedRect.right>=11&&mobileSavedRect.bottom>=77&&mobileSavedRect.width<=368,'mobile Settings feedback did not use the canonical bottom island geometry: '+JSON.stringify(mobileSavedRect));
+  assert(prefs.listen_port===7001,'mobile Settings fixture did not receive the verified preference');
 
   // Light/Dark both resolve from the project theme tokens through the rendered gradient surface.
   await page.evaluate(()=>{const c=WeiG.Config.load();c.theme='light';WeiG.Config.apply(c);});
@@ -276,7 +302,7 @@ try{
   const systemActivity=await reducedPage.locator(`.feedback-toast[data-feedback-id="${systemActivityId}"] .feedback-toast__progress`).evaluate(n=>({mode:n.dataset.mode,animation:getComputedStyle(n,'::before').animationName}));
   assert(systemActivity.mode==='activity'&&systemActivity.animation==='none','system Reduced Motion must keep static activity semantics without movement');
   await reducedContext.close();
-  console.log('Floating feedback browser regression passed: real Add/Settings/RSS same-record activity-to-lifetime lifecycle, bounded non-overlapping FIFO stack/reflow, right-slide dismiss, Light/Dark, long-text mobile safe-area and both Reduced Motion authorities.');
+  console.log('Floating feedback browser regression passed: local-file Add lifecycle, real Add/Settings/RSS same-record activity-to-lifetime flow, desktop/mobile bottom-island parity, verified mobile Settings summary, Light/Dark and both Reduced Motion authorities.');
 }finally{
   await browser.close();
   await new Promise(r=>server.close(r));
