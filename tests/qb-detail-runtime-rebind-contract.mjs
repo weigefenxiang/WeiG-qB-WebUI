@@ -25,7 +25,7 @@ const compactSource=fs.readFileSync(path.join(root,'tools/qb-compact-runtime.mjs
 const ciSource=fs.readFileSync(path.join(root,'.github/workflows/ci.yml'),'utf8');
 assert.match(compactSource,/compileDetailRuntime\(catalog\)\.sourceFacts/,'compact runtime must delegate Detail compression to the canonical Detail materializer');
 assert.match(ciSource,/detail_runtime_materialize:/,'CI must own exact-source Detail runtime materialization');
-assert.match(ciSource,/qb-detail-runtime-rebind\.mjs native-base\/qb-releases\.json webui\/private\/data\/detail-compat\.json/,'Detail materializer must consume the exact native source catalog');
+assert.match(ciSource,/qb-detail-runtime-rebind\.mjs webui\/private\/data\/detail-compat\.json native-base\/qb-releases\.json/,'Detail materializer must consume the exact native source catalog');
 assert.match(ciSource,/cmp -s detail-runtime-materialized\.json webui\/private\/data\/detail-compat\.json/,'native-surface gate must detect committed Detail runtime drift');
 
 console.log('qB Detail runtime rebind contract passed: exact release facts compress deterministically to merge changes and round-trip without inventing or losing source state.');

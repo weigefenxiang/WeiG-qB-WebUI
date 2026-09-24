@@ -1090,7 +1090,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node tools/qb-detail-runtime-rebind.mjs native-base/qb-releases.json webui/private/data/detail-compat.json
+          node tools/qb-detail-runtime-rebind.mjs webui/private/data/detail-compat.json native-base/qb-releases.json
           node tests/qb-detail-runtime-rebind-contract.mjs
           node tests/qb-detail-control-source-contract.mjs
           node tests/detail-runtime-contract.mjs
@@ -1263,7 +1263,7 @@ jobs:
         run: |
           set -euo pipefail
           mismatch=0
-          node tools/qb-detail-runtime-rebind.mjs native-base/qb-releases.json detail-runtime-materialized.json
+          node tools/qb-detail-runtime-rebind.mjs detail-runtime-materialized.json native-base/qb-releases.json
           cmp -s settings-runtime-materialized.json webui/private/data/settings-compat.json || {
             echo 'Committed Settings runtime does not match the exact-SHA canonical materialization.' >&2
             sha256sum settings-runtime-materialized.json webui/private/data/settings-compat.json >&2
