@@ -54,8 +54,14 @@ for(const pair of [
 ])assert(!has(refs467,pair[0],pair[1]),'4.6.7 Add source inventory must not expose '+pair.join(': '));
 
 assert(i18n.includes("key.indexOf('add.copy.')!==0")&&i18n.includes('addRefs:addRefs'),'runtime Add visibility must consume only exact add.copy.* source inventory');
-assert(i18n.includes('qbAddSourceHas')&&i18n.includes("upgradeAddSuggestion('add-category',false)")&&i18n.includes("upgradeAddSuggestion('add-tags',true)"),'Add source projection/shared suggestion upgrade missing');
+assert(i18n.includes('qbAddSourceHas')&&i18n.includes('qbAddSourceField:qbAddSourceField')&&i18n.includes('qbAddSourceGroup:qbAddSourceGroup'),'Add renderer source projection helpers missing');
+assert.equal(i18n.includes('upgradeAddSuggestion'),false,'post-DOM Add suggestion upgrade must stay retired once the renderer owns canonical controls');
+assert.equal(i18n.includes('syncAddSourceSurface'),false,'post-DOM Add copy/visibility repair must stay retired once the renderer owns exact source projection');
+const app=read('webui/private/scripts/app.js');
 assert(floating.includes('C.comboControl=function(opts)')&&controls.includes('.ui-combo__input'),'Category/Tags suggestions must use the canonical shared floating/select skin');
+assert(app.includes("addCombo(settingsGroup,'add-category'")&&app.includes("addCombo(settingsGroup,'add-tags'")&&app.includes('qbAddSourceField'),'Add renderer must directly own exact source projection plus canonical Category/Tags combos');
+assert.equal(app.includes("createElement('datalist')"),false,'Add renderer must not retain browser-native datalist popup ownership');
+assert(app.indexOf('await app.client.add(')<app.indexOf("W.DialogRuntime.close(U.$('add-dialog'))"),'successful Add must close only after the qB add request completes');
 assert(appCss.includes('.add-source-file:before')&&appCss.includes("content:'＋'")&&appCss.includes('.add-source-file:hover'),'Add Torrent File entry must expose an explicit action affordance');
 
-console.log('A16 Add Torrent contract passed: 4.6.7 source-visible controls/copy are separated from addAction writability, native datalist popup is replaced by the shared combo primitive, and the file entry is visually promoted.');
+console.log('A17 Add Torrent contract passed: exact source-visible copy is projected by the renderer, post-DOM repair/datalist owners are retired, canonical combo controls own Category/Tags, and successful Add closes only after the qB request.');
