@@ -14,7 +14,7 @@
   function adopt(target,next){var dialog=node(target);if(!dialog||String(dialog.tagName||'').toLowerCase()!=='dialog')return null;options(dialog,next);dialog.dataset.dialogRuntime='1';if(dialog.__weigDialogRuntimeBound)return dialog;dialog.__weigDialogRuntimeBound=true;
     dialog.addEventListener('pointerdown',function(event){startDrag(dialog,event);});
     dialog.addEventListener('cancel',function(event){var opts=options(dialog);if(opts.escapeClose===false){event.preventDefault();return;}event.preventDefault();close(dialog,'escape');});
-    dialog.addEventListener('dblclick',function(event){var opts=options(dialog);if(event.target!==dialog||opts.backdropClose===false)return;close(dialog,'backdrop');});
+    dialog.addEventListener('click',function(event){var opts=options(dialog);if(event.target!==dialog||opts.backdropClose===false)return;close(dialog,'backdrop');});
     dialog.addEventListener('close',function(){openDialogs.delete(dialog);stopDrag();reset(dialog);var opener=dialog.__weigDialogOpener;dialog.__weigDialogOpener=null;if(options(dialog).removeOnClose===true&&dialog.isConnected)dialog.remove();if(opener&&opener.isConnected&&typeof opener.focus==='function')try{opener.focus();}catch(_e){}});
     return dialog;
   }

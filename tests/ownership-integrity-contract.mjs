@@ -40,6 +40,9 @@ for(const file of webuiFiles){
 assert.deepEqual(decoderHits,[],'Ownership integrity scan found a second raw entity decoder outside tools/qb-source-text.mjs: '+decoderHits.join(', '));
 assert.deepEqual(qbtParserEscapes,[],'Ownership integrity scan found a QBT_TR parser bypassing shared qB source-text ownership: '+qbtParserEscapes.join(', '));
 assert.deepEqual(specialVersionHits,[],'Ownership integrity scan found product special-version literals; per-domain source relation must stay data-driven: '+JSON.stringify(specialVersionHits));
+const dialogRuntime=read('webui/private/scripts/dialog-runtime.js');
+assert.match(dialogRuntime,/addEventListener\('click',[\s\S]*event\.target!==dialog[\s\S]*backdropClose===false[\s\S]*close\(dialog,'backdrop'\)/,'DialogRuntime backdropClose must use one single-click canonical owner');
+assert.doesNotMatch(dialogRuntime,/addEventListener\('dblclick',[\s\S]*close\(dialog,'backdrop'\)/,'DialogRuntime must not require a double-click to close a backdrop');
 assert.deepEqual(rawDialogCreators,[],'PRIMITIVE-GATE found feature-local Dialog construction outside DialogRuntime: '+rawDialogCreators.join(', '));
 assert.deepEqual(directShowModal,[],'PRIMITIVE-GATE found feature-local showModal lifecycle outside DialogRuntime: '+directShowModal.join(', '));
 assert.deepEqual(rawSelectCreators,[],'PRIMITIVE-GATE found feature-local native Select construction outside the canonical Select owner: '+rawSelectCreators.join(', '));
