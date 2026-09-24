@@ -18,6 +18,8 @@ const progressCss=read('webui/private/css/progress.css');
 const transferCss=read('webui/private/css/transfer.css');
 const navigation=read('webui/private/scripts/navigation.js');
 const responsive=read('webui/private/scripts/responsive.js');
+const app=read('webui/private/scripts/app.js');
+const tableCss=read('webui/private/css/table.css');
 const settings=read('webui/private/scripts/settings.js');
 const settingsSchema=read('webui/private/scripts/settings-schema.js');
 const logs=read('webui/private/scripts/logs.js');
@@ -46,6 +48,9 @@ assert(layout.includes('[data-tab="webseeds"]::after{content:"HTTP"'),'Mobile We
 assert(layout.includes('grid-template-columns:max-content max-content minmax(0,1fr)')&&layout.includes("#detail-view>.detail-hero>#detail-title{grid-area:2 / 1 / 3 / -1;justify-self:stretch;width:100%")&&layout.includes("#detail-context-slot{grid-column:1;grid-row:1")&&layout.includes("#detail-state{grid-column:2;grid-row:1")&&layout.includes("#detail-view .detail-progress{grid-column:3;grid-row:1;min-width:0;width:100%")&&layout.includes('grid-template-columns:minmax(0,1fr) max-content'),'Mobile Detail hero must keep compact Back/State/Progress on row one and give the Torrent title the entire second row');
 assert(layout.includes('.detail-context-back--mobile{width:auto')&&!controlsCss.includes('.detail-context-back{width:100%;justify-content:flex-start'),'Mobile Detail Back must stay content-sized instead of consuming the narrow hero column');
 assert(!layout.includes('#detail-title.is-expanded'),'Retired inline Detail-title expansion CSS must not survive after the shared floating preview owns full-title presentation');
+assert(!responsive.includes("['detail-view','detail-content','scroll']")&&responsive.includes('function syncDetailPrimaryScrollOwner()')&&responsive.includes("root.querySelector(':scope > .shared-table__viewport, :scope > .general-detail')||root")&&responsive.includes("global.addEventListener('weig:detail-content',syncDetailPrimaryScrollOwner)"),'Detail responsive contract must dynamically assign exactly one primary scroll owner to the rendered table/general surface instead of pinning the outer content shell');
+assert(app.includes("event('weig:detail-content',{tab:tab,surface:surface||''})"),'Detail runtime must notify responsive geometry after each rendered tab so the primary scroll owner follows the active surface');
+assert(!layout.includes('#detail-content[data-primary-scroll="1"]{')&&tableCss.includes('#detail-content{display:flex;flex:1 1 0;flex-direction:column;min-height:0!important;height:auto!important;max-height:none!important;overflow:hidden')&&tableCss.includes('#detail-content>.data-viewport{flex:1 1 0;min-height:0;height:auto!important;max-height:none!important;overflow:auto')&&tableCss.includes('#detail-content>.general-detail{flex:1 1 0;min-height:0;overflow:auto'),'Detail outer shell must stay non-scrolling while table/Overview child surfaces own their single native scroll container');
 assert(responsive.includes("dataset.detailTitleAction='copy-preview'")&&!responsive.includes("addEventListener('dblclick'")&&responsive.includes('C.showTextPreview')&&responsive.includes('navigator.clipboard')&&responsive.includes('W.toast'),'Torrent title must use canonical single-click copy plus shared floating preview Feedback');
 assert(floating.includes('C.showTextPreview=function')&&floating.includes("node.className='ui-floating-preview surface surface--floating'"),'Detail title and Select overflow must converge on the one shared floating preview owner');
 const createsLegacyHoverMetadata=/\.dataset\.tooltip\s*=|setAttribute\(\s*['"]data-tooltip['"]|\.title\s*=|setAttribute\(\s*['"]title['"]/.test(responsive);

@@ -327,13 +327,16 @@ try{
   assert(JSON.stringify(headerAfter.order)===JSON.stringify(headerBefore.order)&&headerAfter.saved===headerBefore.saved,`Quick mobile header drag accidentally reordered columns instead of cancelling before long-press arm: ${JSON.stringify({headerBefore,headerAfter})}`);
 
   await page.evaluate(()=>{const viewport=document.querySelector('.shared-table__viewport');viewport.scrollTop=0;viewport.scrollLeft=0;});
-  const nativeBefore=await page.evaluate(()=>{const viewport=document.querySelector('.shared-table__viewport');return{top:viewport.scrollTop,max:Math.max(0,viewport.scrollHeight-viewport.clientHeight)};});
+  const nativeBefore=await page.evaluate(()=>{const root=document.getElementById('detail-content'),viewport=document.querySelector('.shared-table__viewport'),owners=[...document.querySelectorAll('#detail-view [data-primary-scroll="1"]')];return{top:viewport.scrollTop,max:Math.max(0,viewport.scrollHeight-viewport.clientHeight),outerTop:root.scrollTop,outerMax:Math.max(0,root.scrollHeight-root.clientHeight),outerOverflow:getComputedStyle(root).overflowY,innerOverflow:getComputedStyle(viewport).overflowY,owners:owners.map(node=>node===viewport?'inner':node===root?'outer':node.className||node.id)};});
   assert(nativeBefore.max>0,`Mobile Detail touch-scroll fixture has no native vertical overflow: ${JSON.stringify(nativeBefore)}`);
+  assert(JSON.stringify(nativeBefore.owners)===JSON.stringify(['inner'])&&nativeBefore.outerOverflow==='hidden'&&/auto|scroll/.test(nativeBefore.innerOverflow),`Mobile Detail must expose one table scroll owner and keep the outer shell non-scrolling: ${JSON.stringify(nativeBefore)}`);
   const bodyBox=await page.locator('.shared-table__row [data-column-key="size"]').first().boundingBox();assert(bodyBox,'Mobile detail non-interactive body cell is missing.');
+  const hit=await page.evaluate(({x,y})=>{const node=document.elementFromPoint(x,y),viewport=document.querySelector('.shared-table__viewport');return{inside:!!(node&&viewport&&viewport.contains(node)),tag:node&&node.tagName,className:node&&node.className};},{x:bodyBox.x+Math.min(20,bodyBox.width/2),y:bodyBox.y+bodyBox.height/2});
+  assert(hit.inside,`Mobile Detail touch-scroll start point must hit the canonical inner viewport: ${JSON.stringify(hit)}`);
   const bx=bodyBox.x+Math.min(20,bodyBox.width/2),by=bodyBox.y+bodyBox.height/2,scrollDistance=-Math.min(120,Math.max(24,nativeBefore.max));
   await touchScroll(cdp,bx,by,scrollDistance);await page.waitForTimeout(160);
-  const nativeAfter=await page.evaluate(()=>({top:document.querySelector('.shared-table__viewport').scrollTop}));
-  assert(nativeAfter.top>nativeBefore.top,`Ordinary mobile touch scroll gesture did not move the native viewport from a non-interactive body cell: ${JSON.stringify({nativeBefore,nativeAfter})}`);
+  const nativeAfter=await page.evaluate(()=>({top:document.querySelector('.shared-table__viewport').scrollTop,outerTop:document.getElementById('detail-content').scrollTop}));
+  assert(nativeAfter.top>nativeBefore.top&&nativeAfter.outerTop===0,`Ordinary mobile touch scroll must move only the canonical inner viewport: ${JSON.stringify({nativeBefore,nativeAfter})}`);
 
   const longBefore=headerAfter.order,first=await page.locator('.shared-table__head .grid-head-cell[data-key="name"]').boundingBox(),second=await page.locator('.shared-table__head .grid-head-cell[data-key="size"]').boundingBox();assert(first&&second,'Mobile long-press reorder targets are missing.');
   const sx=first.x+Math.min(20,first.width/2),sy=first.y+first.height/2,movingLeft=first.x>second.x,dx=second.x+Math.max(8,Math.min(second.width-8,second.width*(movingLeft?.25:.75))),dy=second.y+second.height/2;
