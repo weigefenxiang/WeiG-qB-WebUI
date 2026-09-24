@@ -7,7 +7,7 @@ const catalog=[
 ];
 const {W}=createCompactRuntime(catalog,{owners:['capabilities.js','torrent-semantics.js','qb-client.js']});
 const C=W.CapabilityRegistry,T=W.TorrentSemantics,Client=W.QBClient;
-const visual=t=>JSON.parse(JSON.stringify(T.progressVisual(t)));
+const visual=t=>{const value=JSON.parse(JSON.stringify(T.presentation(t)));delete value.tone;return value;};
 
 let client=new Client();client.qbVersion='4.1.0';client.webApiVersion='2.0.0';client.major=4;await C.bind(client);
 assert(C.isCertified(),'qB4 exact stable compact release must bind');
