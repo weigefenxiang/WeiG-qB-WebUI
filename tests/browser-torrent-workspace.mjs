@@ -138,6 +138,9 @@ try{
     const horizontalSettled=await settledScrollMetrics(page);
     assertQuietCommitBounded(name,'horizontal',horizontalActive,horizontalSettled);
 
+    const signatureProjection=await page.evaluate(()=>{const v=WeiG.AppState.viewport,base=v.items.map(item=>Object.assign({},item));v.resetMetrics();v.setItems(base.map((item,index)=>Object.assign({},item,{__hidden_poll_noise:index+Date.now()})));const hidden=v.metrics();v.resetMetrics();const visible=base.map((item,index)=>index===0?Object.assign({},item,{progress:Math.max(0,Math.min(1,(Number(item.progress)||0)+.01))}):item);v.setItems(visible);const visibleMetrics=v.metrics();v.resetMetrics();v.setItems(base);return{hidden,visible:visibleMetrics};});
+    assert(signatureProjection.hidden.updated===0,`${name}: hidden polling fields invalidated visible Torrent rows ${JSON.stringify(signatureProjection)}`);
+    assert(signatureProjection.visible.updated>0,`${name}: rendered progress change did not invalidate the affected Torrent row ${JSON.stringify(signatureProjection)}`);
     await resetScrollProbe(page);
     const vertical=await scrollByBrowserInput(page,'#torrent-list','y');
     assert(vertical.top>40,`${name}: vertical browser scroll input did not move scrollTop ${JSON.stringify(vertical)}`);
