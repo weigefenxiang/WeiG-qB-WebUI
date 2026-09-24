@@ -48,9 +48,11 @@ async function scrollByBrowserInput(page,selector,axis){
   await page.mouse.move(box.x+Math.max(8,Math.min(box.width-8,box.width/2)),box.y+Math.max(8,Math.min(box.height-8,box.height/2)));
   const delta=Math.max(80,Math.min(240,before.max*.22));
   if(axis==='x')await page.mouse.wheel(delta,0);else await page.mouse.wheel(0,delta);
-  await page.waitForFunction(()=>window.WeiG?.AppState?.viewport?._scrolling===true);
+  const policyHandle=await page.waitForFunction(selector=>{const list=document.querySelector(selector),v=window.WeiG&&window.WeiG.AppState&&window.WeiG.AppState.viewport;if(!list||!v||v._scrolling!==true||!list.classList.contains('is-scroll-interacting'))return false;const row=list.querySelector('.torrent-row:not([hidden])'),fill=row&&row.querySelector('.progress-fill'),pseudo=fill&&getComputedStyle(fill,'::after');return{interacting:true,contain:row&&getComputedStyle(row).contain,animation:pseudo&&pseudo.animationName,shadow:fill&&getComputedStyle(fill).boxShadow};},selector);
+  const policy=await policyHandle.jsonValue();
+  await policyHandle.dispose();
   await page.waitForTimeout(60);
-  return node.evaluate((el,axis)=>({left:el.scrollLeft,top:el.scrollTop,max:axis==='x'?el.scrollWidth-el.clientWidth:el.scrollHeight-el.clientHeight,metrics:WeiG.AppState.viewport.metrics()}),axis);
+  return node.evaluate((el,args)=>({left:el.scrollLeft,top:el.scrollTop,max:args.axis==='x'?el.scrollWidth-el.clientWidth:el.scrollHeight-el.clientHeight,metrics:WeiG.AppState.viewport.metrics(),policy:args.policy}),{axis:axis,policy:policy});
 }
 async function settledScrollMetrics(page){
   await waitForDataViewportIdle(page);
@@ -147,7 +149,7 @@ try{
     assert(horizontal.left>8,`${name}: horizontal browser scroll input did not move scrollLeft ${JSON.stringify(horizontal)}`);
     const horizontalActive=horizontal.metrics;
     assert(horizontalActive.renders===0,`${name}: horizontal active scroll triggered DataViewport repaint ${JSON.stringify(horizontalActive)}`);
-    const horizontalScrollPolicy=await page.evaluate(()=>{const list=document.getElementById('torrent-list'),row=list.querySelector('.torrent-row:not([hidden])'),fill=row&&row.querySelector('.progress-fill'),pseudo=fill&&getComputedStyle(fill,'::after');return{interacting:list.classList.contains('is-scroll-interacting'),contain:row&&getComputedStyle(row).contain,animation:pseudo&&pseudo.animationName,shadow:fill&&getComputedStyle(fill).boxShadow};});
+    const horizontalScrollPolicy=horizontal.policy;
     const containmentActive=/\b(?:content|strict)\b/.test(horizontalScrollPolicy.contain)||(/\blayout\b/.test(horizontalScrollPolicy.contain)&&/\bpaint\b/.test(horizontalScrollPolicy.contain));
     assert(horizontalScrollPolicy.interacting&&containmentActive&&horizontalScrollPolicy.animation==='none'&&horizontalScrollPolicy.shadow==='none',`${name}: horizontal active-scroll paint/compositor policy did not engage ${JSON.stringify(horizontalScrollPolicy)}`);
     const horizontalSettled=await settledScrollMetrics(page);
