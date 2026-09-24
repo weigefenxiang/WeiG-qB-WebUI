@@ -36,10 +36,10 @@ function firstSourceRef(markups,candidates){
 function addTorrentOwnedUiFacts(out,{addTorrentSource='',downloadSource='',indexSource=''}={}){
   addSourceFamily(out,'add.copy',addTorrentSource);
   if(downloadSource!==addTorrentSource)addSourceFamily(out,'add.copy',downloadSource);
-  const fileRef=firstSourceRef([indexSource],['Add Torrent File...']);
+  const fileRef=firstSourceRef([indexSource],['Add Torrent File...','&Add Torrent File...']);
   if(fileRef)add(out,'add.files',fileRef);
   add(out,'add.title',firstSourceRef([addTorrentSource,downloadSource],['Add torrent','Add Torrent','Add Torrent Links','Download Torrents from their URLs or Magnet links']));
-  add(out,'add.links',firstSourceRef([downloadSource,indexSource],['Add torrent links','Add Torrent Links','Add Torrent Link...','URLs','Download Torrents from their URLs or Magnet links']));
+  add(out,'add.links',firstSourceRef([downloadSource,indexSource],['Add torrent links','Add Torrent Links','Add Torrent Link...','&Add Torrent Link...','URLs','Download Torrents from their URLs or Magnet links']));
   add(out,'add.submit',firstSourceRef([addTorrentSource,downloadSource],['Add Torrent','Download']));
 }
 function torrentStatusRefs(source){

@@ -14,6 +14,13 @@ assert.deepEqual(addUi['add.files'],{source:'Add Torrent File...',context:'MainW
 assert.deepEqual(addUi['add.submit'],{source:'Add Torrent',context:'AddNewTorrentDialog'});
 assert.ok(Object.keys(addUi).some(key=>key.startsWith('add.copy.')),'Add Torrent source family must be retained in qB-owned runtime copy facts');
 
+const legacyAddUi=extractQbOwnedUiFacts({
+  downloadSource:'<title>QBT_TR(Download Torrents from their URLs or Magnet links)QBT_TR[CONTEXT=DownloadFromURLDialog]</title>',
+  indexSource:'<a>QBT_TR(&Add Torrent File...)QBT_TR[CONTEXT=MainWindow]</a><a>QBT_TR(&Add Torrent Link...)QBT_TR[CONTEXT=MainWindow]</a>'
+});
+assert.deepEqual(legacyAddUi['add.files'],{source:'&Add Torrent File...',context:'MainWindow'},'qB 4.1 mnemonic-bearing Add Torrent File source must remain official-copy addressable');
+assert.deepEqual(legacyAddUi['add.links'],{source:'&Add Torrent Link...',context:'MainWindow'},'qB 4.1 mnemonic-bearing Add Torrent Link fallback must remain official-copy addressable');
+
 const sourceSha410='a'.repeat(40);
 const sourceSha523='b'.repeat(40);
 const catalog=[
