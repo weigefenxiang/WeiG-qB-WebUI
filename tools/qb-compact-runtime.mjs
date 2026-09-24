@@ -5,6 +5,7 @@ import {createHash} from 'node:crypto';
 import {deflateRawSync,inflateRawSync} from 'node:zlib';
 import {fileURLToPath} from 'node:url';
 import {catalogIdentity} from './qb-catalog-identity.mjs';
+import {compileDetailRuntime} from './qb-detail-runtime-rebind.mjs';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(here,'..');
@@ -54,7 +55,7 @@ export function compileCompactRuntime(catalog,{includeSettings=true}={}){
   }
   capabilityData.releases=releaseRows(catalog);
   torrentData.sourceFacts={};for(const key of TORRENT_FACTS)torrentData.sourceFacts[key]=factTimeline(catalog,key);
-  detailData.sourceFacts={torrentDetailUi:factTimeline(catalog,'torrentDetailUi')};
+  detailData.sourceFacts=clone(compileDetailRuntime(catalog).sourceFacts);
   const names=new Set(Object.keys(actionData.sourceActions||{}));for(const profile of catalog)for(const action of profile.apiActions||[])names.add(String(action));
   actionData.sourceActions={};for(const action of names)actionData.sourceActions[action]=catalog.map(profile=>({from:String(profile.qbVersion||''),value:actionValue(profile,action)}));
   return{catalogIdentity:identity,capabilityData,torrentData,detailData,actionData,settingsManifest,settingsData};

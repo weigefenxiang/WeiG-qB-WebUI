@@ -1027,7 +1027,7 @@ jobs:
 
   native_surface_source_base:
     name: qB native surface source base
-    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'native-surfaces' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[native-surfaces]')) }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'native-surfaces' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && (contains(github.event.head_commit.message, '[native-surfaces]') || contains(github.event.head_commit.message, '[detail-runtime-materialize]'))) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     needs: classify
@@ -1065,6 +1065,55 @@ jobs:
             rss-compat.json
           if-no-files-found: error
           retention-days: 1
+
+  detail_runtime_materialize:
+    name: qB Detail source runtime materialization
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[detail-runtime-materialize]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    needs: native_surface_source_base
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Download exact native surface source base
+        uses: actions/download-artifact@v8
+        with:
+          name: native-surface-base-${{ github.sha }}
+          path: native-base
+      - name: Materialize exact Detail runtime from source catalog
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/qb-detail-runtime-rebind.mjs native-base/qb-releases.json webui/private/data/detail-compat.json
+          node tests/qb-detail-runtime-rebind-contract.mjs
+          node tests/qb-detail-control-source-contract.mjs
+          node tests/detail-runtime-contract.mjs
+          git diff --check
+          test -z "$(git diff --name-only -- webui/translations)"
+      - name: Commit canonical Detail runtime if changed
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --quiet -- webui/private/data/detail-compat.json && {
+            echo "Committed Detail runtime already matches exact native source catalog."
+            exit 0
+          }
+          git fetch --no-tags origin dev
+          test "$(git rev-parse origin/dev)" = "$GITHUB_SHA" || {
+            echo "SAFE-REF abort before Detail runtime materialization push." >&2
+            exit 1
+          }
+          git config user.name "WeiG CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add webui/private/data/detail-compat.json
+          git commit -m "a16: materialize exact Detail runtime [ui]"
+          git push origin HEAD:dev
 
   native_surface_preferences:
     name: qB Preferences source shard ${{ matrix.shard }}
@@ -1209,11 +1258,12 @@ jobs:
             settings-runtime-materialized.json
           if-no-files-found: error
           retention-days: 7
-      - name: Compare canonical Settings runtime to committed product runtime
+      - name: Compare canonical runtimes to committed product runtime
         shell: bash
         run: |
           set -euo pipefail
           mismatch=0
+          node tools/qb-detail-runtime-rebind.mjs native-base/qb-releases.json detail-runtime-materialized.json
           cmp -s settings-runtime-materialized.json webui/private/data/settings-compat.json || {
             echo 'Committed Settings runtime does not match the exact-SHA canonical materialization.' >&2
             sha256sum settings-runtime-materialized.json webui/private/data/settings-compat.json >&2
@@ -1224,5 +1274,10 @@ jobs:
             sha256sum native-base/rss-compat.json webui/private/data/rss-compat.json >&2
             mismatch=1
           }
+          cmp -s detail-runtime-materialized.json webui/private/data/detail-compat.json || {
+            echo 'Committed Detail runtime does not match the exact-SHA canonical materialization.' >&2
+            sha256sum detail-runtime-materialized.json webui/private/data/detail-compat.json >&2
+            mismatch=1
+          }
           test "$mismatch" -eq 0
-          sha256sum settings-runtime-materialized.json native-base/rss-compat.json
+          sha256sum settings-runtime-materialized.json native-base/rss-compat.json detail-runtime-materialized.json

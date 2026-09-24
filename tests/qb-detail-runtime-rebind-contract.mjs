@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
 import {compileDetailRuntime,resolveDetailRuntime} from '../tools/qb-detail-runtime-rebind.mjs';
 
 const catalog=[
@@ -17,4 +20,12 @@ assert.equal(runtime.sourceFacts.torrentDetailUi.changes[2].patch.old,null,'remo
 assert.ok(Object.prototype.hasOwnProperty.call(runtime.sourceFacts.torrentDetailUi.changes[3],'value'),'literal null data must fall back to a full value so null is not mistaken for deletion');
 for(const profile of catalog)assert.deepEqual(resolveDetailRuntime(runtime,profile.qbVersion),profile.torrentDetailUi);
 assert.throws(()=>compileDetailRuntime([{qbVersion:'4.2.0',torrentDetailUi:{}},{qbVersion:'4.1.0',torrentDetailUi:{}}]),/not strictly ordered/);
+const here=path.dirname(fileURLToPath(import.meta.url)),root=path.resolve(here,'..');
+const compactSource=fs.readFileSync(path.join(root,'tools/qb-compact-runtime.mjs'),'utf8');
+const ciSource=fs.readFileSync(path.join(root,'.github/workflows/ci.yml'),'utf8');
+assert.match(compactSource,/compileDetailRuntime\(catalog\)\.sourceFacts/,'compact runtime must delegate Detail compression to the canonical Detail materializer');
+assert.match(ciSource,/detail_runtime_materialize:/,'CI must own exact-source Detail runtime materialization');
+assert.match(ciSource,/qb-detail-runtime-rebind\.mjs native-base\/qb-releases\.json webui\/private\/data\/detail-compat\.json/,'Detail materializer must consume the exact native source catalog');
+assert.match(ciSource,/cmp -s detail-runtime-materialized\.json webui\/private\/data\/detail-compat\.json/,'native-surface gate must detect committed Detail runtime drift');
+
 console.log('qB Detail runtime rebind contract passed: exact release facts compress deterministically to merge changes and round-trip without inventing or losing source state.');
