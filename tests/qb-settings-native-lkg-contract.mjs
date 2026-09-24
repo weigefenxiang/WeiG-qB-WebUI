@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {applyQbSettingsTranslationLkg,buildQbSettingsTranslationLkg} from '../tools/qb-settings-translation-lkg.mjs';
+import {applyQbSettingsTranslationLkg,buildQbSettingsTranslationLkg,validateDetailUi} from '../tools/qb-settings-translation-lkg.mjs';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const catalogText=fs.readFileSync(path.join(here,'fixtures/qb-release-catalog.lkg.json'),'utf8').replace(/\r\n/g,'\n');
@@ -81,6 +81,12 @@ const detailUi=()=>({
     webseeds:[{key:'url',caption:'URL',defaultWidth:500,defaultVisible:true,translation:ref('URL','HttpServer'),dataProperties:['url']}]
   }
 });
+
+const detailWithMixed=detailUi();
+detailWithMixed.controls={filePriority:{valueType:'integer',sourceKind:'upstream-createPriorityCombo',options:[{value:'1',translation:ref('Normal','PropListDelegate')},{value:'-1',translation:ref('Mixed','PropListDelegate'),disabled:true}]}};
+assert.deepEqual(validateDetailUi(detailWithMixed,'5.2.3').controls.filePriority.options,[{value:'1',translation:ref('Normal','PropListDelegate')},{value:'-1',translation:ref('Mixed','PropListDelegate'),disabled:true}],'Settings/source LKG validation must preserve source-owned display-only Detail options such as Mixed');
+const badDisabled=structuredClone(detailWithMixed);badDisabled.controls.filePriority.options[1].disabled='true';
+assert.throws(()=>validateDetailUi(badDisabled,'5.2.3'),/disabled is invalid/,'Detail control disabled provenance must fail closed instead of coercing non-boolean values');
 const trackerFilters=[{id:'all',copy:ref('All (%1)','TrackerFiltersList')},{id:'trackerless',copy:ref('Trackerless (%1)','TrackerFiltersList')}];
 const sourceProfile=(qbVersion,sourceSha,sets)=>({qbVersion,sourceSha,webuiLocales:[{value:'en'},{value:'de'}],settingsUiSource:'qb-upstream-preferences-ui',settingsUiMappedPreferences:1,settingsUiTotalPreferences:1,settingsUi:{locale:{controlId:'locale_select',title:{source:'Language:',context:'OptionsDialog'}}},qbOwnedUiSource:'qb-upstream-webui-source-context',qbOwnedUi:{'column.name':{source:'Name',context:'TransferListModel'},'tracker.filter.all':ref('All (%1)','TrackerFiltersList'),'tracker.filter.trackerless':ref('Trackerless (%1)','TrackerFiltersList')},settingsTranslations:{en:hEn,de:hDe},settingsTranslationSets:sets,torrentTableColumns:[nativeColumn('name','Name'),nativeColumn('size','Size',false)],trackerFilters,trackerFacetMode:qbVersion==='4.1.0'?'none':'hostname',torrentDetailUi:detailUi()});
 const frozen=[{qbVersion:'4.1.0',sourceSha:shaA},{qbVersion:'5.2.3',sourceSha:shaB}];

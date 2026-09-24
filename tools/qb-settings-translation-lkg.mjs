@@ -72,7 +72,10 @@ function validateDetailControls(value,qbVersion){
       const optionValue=String(option?.value??'').trim();
       assert(optionValue,`${qbVersion} detail control ${key}: option value is empty.`);
       assert(!seen.has(optionValue),`${qbVersion} detail control ${key}: duplicate option value ${optionValue}.`);seen.add(optionValue);
-      normalized.push({value:optionValue,translation:validateRef(option?.translation,`${qbVersion} detail control ${key} option ${optionValue}`)});
+      if(option?.disabled!==undefined)assert(typeof option.disabled==='boolean',`${qbVersion} detail control ${key} option ${optionValue}: disabled is invalid.`);
+      const normalizedOption={value:optionValue,translation:validateRef(option?.translation,`${qbVersion} detail control ${key} option ${optionValue}`)};
+      if(option?.disabled===true)normalizedOption.disabled=true;
+      normalized.push(normalizedOption);
     }
     controls[key]={valueType,options:normalized,sourceKind};
   }
