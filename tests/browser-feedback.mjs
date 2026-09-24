@@ -197,7 +197,7 @@ try{
   await page.waitForFunction(value=>WeiG.SettingsState?.weigDraft?.density===value,densityNext);
   await page.locator('#save-settings-btn').click();
   const weigSuccess=page.locator('.feedback-toast[data-kind="success"]',{hasText:densityTitle}).first();
-  await weigSuccess.waitFor();
+  try{await weigSuccess.waitFor({timeout:2500});}catch(error){const snapshot=await page.evaluate(()=>({tab:WeiG.SettingsState?.tab||'',weigDraft:{...(WeiG.SettingsState?.weigDraft||{})},qBDraft:{...(WeiG.SettingsState?.draft||{})},config:WeiG.Config?.load?WeiG.Config.load():null,htmlDensity:document.documentElement.dataset.density||'',saveHidden:!!document.getElementById('save-settings-btn')?.hidden,cards:[...document.querySelectorAll('.feedback-toast')].map(node=>({kind:node.dataset.kind||'',text:String(node.textContent||'').trim()})),storedConfig:localStorage.getItem(WeiG.Config?.key||'weig.preferences')}));throw new Error('WeiG-only save feedback missing after real Save click: '+JSON.stringify({snapshot,errors}));}
   assert((await weigSuccess.textContent()).includes(densityTitle),'WeiG-only save feedback lost the changed semantic control label');
   assert(Object.keys(await page.evaluate(()=>WeiG.SettingsState?.weigDraft||{})).length===0,'WeiG-only verified save did not clear its draft');
 
