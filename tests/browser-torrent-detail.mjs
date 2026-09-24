@@ -170,7 +170,31 @@ try{
   await page.waitForFunction(()=>{const imgs=Array.from(document.querySelectorAll('.peer-country-flag'));return imgs.length>=2&&imgs.every(img=>img.complete&&img.naturalWidth>0&&!img.hidden);});
   const loadedFlags=await page.evaluate(()=>Array.from(document.querySelectorAll('.peer-country-flag')).map(img=>({src:img.getAttribute('src'),width:img.naturalWidth,height:img.naturalHeight,hidden:img.hidden})));
   assert(loadedFlags.every(x=>x.width>0&&x.height>0&&!x.hidden),'Peer official SVG assets must load successfully from the bundled qB snapshot: '+JSON.stringify(loadedFlags));
+
+  // Every Detail surface owns one persisted sort state shared across torrents, not a viewport-local transient.
+  await page.locator('[data-detail-back]').click();
+  await page.waitForFunction(()=>WeiG.Router.route().name==='home'&&document.getElementById('list-view')?.classList.contains('is-active'));
+  await page.locator(`.torrent-row[data-hash="${hash}"] .torrent-title`).click();
+  await page.waitForFunction(()=>document.querySelector('.detail-tabs [data-tab="peers"]')?.classList.contains('is-active')&&document.getElementById('detail-view')?.classList.contains('is-active'));
+  await page.waitForFunction(()=>document.querySelector('.shared-table__head .grid-head-cell[data-key="client"]')?.dataset.sortDirection==='desc');
+  const persistedPeer=await page.evaluate(()=>Array.from(document.querySelectorAll('.shared-table__row [data-column-key="client"]')).map(node=>node.textContent||''));
+  assert(persistedPeer[0]==='fixture',`Peers sort did not persist across torrents: ${JSON.stringify(persistedPeer)}`);
+
+  await page.locator('.detail-tabs [data-tab="trackers"]').click();
+  await page.waitForFunction(()=>document.querySelector('.shared-table__head .grid-head-cell[data-key="url"]')?.dataset.sortDirection==='desc');
+  const persistedTrackers=await page.evaluate(()=>Array.from(document.querySelectorAll('.shared-table__row')).map(row=>({kind:row.dataset.trackerKind||'',url:row.querySelector('[data-column-key="url"]')?.textContent||''})));
+  assert(persistedTrackers.slice(0,3).every(row=>/^\*\* \[/.test(row.url))&&persistedTrackers[3]?.url==='https://z-tracker.example/announce','Tracker sort did not persist with pseudo rows/tree ownership: '+JSON.stringify(persistedTrackers));
+
+  await page.locator('.detail-tabs [data-tab="webseeds"]').click();
+  await page.waitForFunction(()=>document.querySelector('.shared-table__head .grid-head-cell[data-key="url"]')?.dataset.sortDirection==='desc');
+  const persistedWebseeds=await page.evaluate(()=>Array.from(document.querySelectorAll('.shared-table__row [data-column-key="url"]')).map(node=>node.textContent||''));
+  assert(persistedWebseeds[0]?.includes('z-cdn.example'),'HTTP Sources sort did not persist across torrents: '+JSON.stringify(persistedWebseeds));
+
   await page.locator('.detail-tabs [data-tab="files"]').click();
+  await page.waitForFunction(()=>document.querySelector('.shared-table__head .grid-head-cell[data-key="size"]')?.dataset.sortDirection==='asc');
+  const persistedFiles=await page.evaluate(()=>({folders:Array.from(document.querySelectorAll('.shared-table__row[data-file-kind="folder"] .detail-file-label')).slice(0,2).map(node=>node.textContent),direction:document.querySelector('.shared-table__head .grid-head-cell[data-key="size"]')?.dataset.sortDirection||''}));
+  assert(persistedFiles.direction==='asc'&&persistedFiles.folders.length>=2,'Content Total Size sort did not persist across torrents/tree rebuild: '+JSON.stringify(persistedFiles));
+
   await page.waitForSelector('.shared-table__viewport .shared-table__row');
   await page.waitForFunction(()=>getComputedStyle(document.getElementById('detail-content')).display==='flex');
 
