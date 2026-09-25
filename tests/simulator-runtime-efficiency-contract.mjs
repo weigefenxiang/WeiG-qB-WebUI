@@ -82,6 +82,20 @@ assert.notEqual(moveTarget.canonicalState,CANONICAL.MOVING,'due move must still 
 }
 
 {
+  const unlimited=createWorld({profile:{qbVersion:'5.2.3',webApiVersion:'2.15.1'},count:12,seed:'checking-unlimited',now:baseNow});
+  unlimited.preferences.max_active_checking_torrents=-1;
+  const requested=unlimited.torrents.slice(0,6).map(t=>t.hash).join('|');
+  assert.equal(recheckTorrents(unlimited,requested,baseNow),6,'-1 checking concurrency must preserve qB unlimited semantics');
+  assert.equal(unlimited.torrents.filter(t=>t.canonicalState===CANONICAL.CHECKING).length,6,'unlimited checking mode must allow all requested checks to become active');
+
+  const disabled=createWorld({profile:{qbVersion:'5.2.3',webApiVersion:'2.15.1'},count:12,seed:'checking-disabled',now:baseNow});
+  disabled.preferences.max_active_checking_torrents=0;
+  const disabledTarget=disabled.torrents[0];
+  assert.equal(recheckTorrents(disabled,disabledTarget.hash,baseNow),0,'0 checking concurrency must disable active recheck starts');
+  assert.notEqual(disabledTarget.canonicalState,CANONICAL.CHECKING,'disabled checking concurrency must not start an active check');
+}
+
+{
   const checkingWorld=createWorld({profile:{qbVersion:'5.2.3',webApiVersion:'2.15.1'},count:12,seed:'checking-cap',now:baseNow});
   checkingWorld.preferences.max_active_checking_torrents=2;
   const requested=checkingWorld.torrents.slice(0,6).map(t=>t.hash).join('|');
