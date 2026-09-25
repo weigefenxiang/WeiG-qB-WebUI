@@ -234,7 +234,7 @@ try{
       const privateRows=(world.torrents||[]).filter(item=>item.private===true).slice(0,9);
       if(privateRows.length<3)throw new Error('persisted migration fixture lacks private torrents');
       privateRows.forEach((torrent,index)=>{
-        torrent.category='Private';
+        torrent.category=index===0?'Movies':'Private';
         if(index===0){
           torrent.name='Open Archive · Collection 2026';
           torrent.contentPath='/downloads/private/Open Archive · Collection 2026';
@@ -270,7 +270,7 @@ try{
     assert.ok(!response.json?.categories?.Private,'legacy generic Private category must retire after all migrated rows leave it');
 
     assert.deepEqual(pageErrors,[],`persisted-world schema migration emitted browser errors:\n${pageErrors.join('\n')}`);
-    console.log(`Persisted Virtual world v1 migrated in-place: four log levels restored, ${seeded.privateCount} sampled legacy Private rows remapped to the nine PT category pool, and synthetic names retired without clearing IndexedDB.`);
+    console.log(`Persisted Virtual world v1 migrated in-place: four log levels restored, ${seeded.privateCount} sampled legacy Private/PT rows (including pt-tag + Movies) remapped to the nine PT category pool, and synthetic names retired without clearing IndexedDB.`);
     await context.close();
   }
 

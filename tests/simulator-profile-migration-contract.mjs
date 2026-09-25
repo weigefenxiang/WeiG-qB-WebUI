@@ -132,7 +132,7 @@ const catalog=[
   legacy.logs=legacy.logs.filter(item=>[1,2].includes(Number(item.type)));
   const privateTargets=legacy.torrents.filter(t=>t.private===true).slice(0,12);
   assert.ok(privateTargets.length,'legacy migration fixture needs private torrents');
-  privateTargets.forEach(t=>{t.category='Private';});
+  privateTargets.forEach((t,index)=>{t.category=index===0?'Movies':'Private';});
   legacy.categories={...legacy.categories,Private:{name:'Private',savePath:'/downloads/private'}};
   VIRTUAL_PT_CATEGORIES.forEach(name=>{delete legacy.categories[name];});
 
@@ -149,7 +149,7 @@ const catalog=[
   assert.ok(result.privateRemapped>=privateTargets.length,'legacy Private torrents must be remapped into PT categories');
   assert.deepEqual(new Set(logs(legacy,-1).map(item=>Number(item.type))),new Set([1,2,4,8]),'legacy worlds must gain missing Warning/Critical log levels');
   for(const name of VIRTUAL_PT_CATEGORIES)assert.ok(legacy.categories[name],`migrated world must expose PT category ${name}`);
-  for(const t of privateTargets)assert.ok(VIRTUAL_PT_CATEGORIES.includes(t.category),`private torrent must migrate away from legacy Private category: ${t.category}`);
+  for(const t of privateTargets)assert.ok(VIRTUAL_PT_CATEGORIES.includes(t.category),`legacy generated private/PT torrent must migrate away from generic/public generated category: ${t.category}`);
   assert.equal(beforePublic.category,beforePublicCategory,'world migration must not rewrite unrelated public categories');
   const views=listTorrents(legacy,{limit:5000,now:1700000005000});
   assert.ok(views.filter(row=>row.private===true).every(row=>!row.category||VIRTUAL_PT_CATEGORIES.includes(row.category)),'qB5 private rows must project migrated PT categories');

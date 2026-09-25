@@ -3,6 +3,7 @@ import {TORRENT_NAME_POOL} from '../data/torrent-name-pool.js';
 import {CURRENT_WORLD_SCHEMA_VERSION,VIRTUAL_PT_CATEGORIES} from './engine.js';
 
 const LEGACY_PRIVATE_CATEGORY='Private';
+const LEGACY_GENERATED_CATEGORIES=new Set(['','Private','Linux','Movies','TV','Music','Archive','Games','Books','Software']);
 const LOG_SAMPLES=[
   [1,'Virtual qBittorrent session initialized.'],
   [2,'Virtual network and discovery services are ready.'],
@@ -98,7 +99,8 @@ export function upgradeWorldSchema(world,now=Date.now()){
     const tags=tagList(torrent);
     if(!tags.some(tag=>tag.toLowerCase()==='pt')){tags.push('pt');torrent.tags=tags;changed=true;}
     const category=String(torrent.category||'');
-    if(!category||category===LEGACY_PRIVATE_CATEGORY){
+    const legacyGeneratedCategory=from<2&&LEGACY_GENERATED_CATEGORIES.has(category);
+    if(!category||category===LEGACY_PRIVATE_CATEGORY||legacyGeneratedCategory){
       torrent.category=deterministicPtCategory(world,torrent);
       privateRemapped++;changed=true;
     }
