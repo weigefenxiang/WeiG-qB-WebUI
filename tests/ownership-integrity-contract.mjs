@@ -19,7 +19,7 @@ function run(file){
 
 const toolFiles=gitFiles('tools').filter(file=>/\.(?:mjs|js)$/.test(file));
 const webuiFiles=gitFiles('webui').filter(file=>/\.(?:mjs|js|html)$/.test(file));
-const decoderHits=[],qbtParserEscapes=[],specialVersionHits=[],rawDialogCreators=[],directShowModal=[],rawSelectCreators=[];
+const decoderHits=[],qbtParserEscapes=[],specialVersionHits=[],rawDialogCreators=[],directShowModal=[],rawSelectCreators=[],featureBackdropClosers=[],featureCancelOwners=[];
 const entityDecode=/\.replace\([^\n]*\/&(?:amp|lt|gt|quot|apos|#(?:x[0-9a-f]+|\d+));/i;
 const directQbtParser=/(?:match|matchAll)\(\/QBT_TR\\\(/;
 for(const file of toolFiles){
@@ -35,6 +35,8 @@ for(const file of webuiFiles){
     if(file!=='webui/private/scripts/dialog-runtime.js'&&/document\.createElement\(['"]dialog['"]\)/.test(source))rawDialogCreators.push(file);
     if(file!=='webui/private/scripts/dialog-runtime.js'&&/\.showModal\(\)/.test(source))directShowModal.push(file);
     if(file!=='webui/private/scripts/floating.js'&&/document\.createElement\(['"]select['"]\)/.test(source))rawSelectCreators.push(file);
+    if(file!=='webui/private/scripts/dialog-runtime.js'&&/addEventListener\(['"](?:click|dblclick)['"][\s\S]{0,260}event\.target\s*===\s*dialog[\s\S]{0,260}(?:\.close\(|DialogRuntime\.close)/.test(source))featureBackdropClosers.push(file);
+    if(file!=='webui/private/scripts/dialog-runtime.js'&&/addEventListener\(['"]cancel['"]/.test(source))featureCancelOwners.push(file);
   }
 }
 assert.deepEqual(decoderHits,[],'Ownership integrity scan found a second raw entity decoder outside tools/qb-source-text.mjs: '+decoderHits.join(', '));
@@ -46,6 +48,8 @@ assert.match(dialogRuntime,/addEventListener\('dblclick',[\s\S]*event\.target!==
 assert.deepEqual(rawDialogCreators,[],'PRIMITIVE-GATE found feature-local Dialog construction outside DialogRuntime: '+rawDialogCreators.join(', '));
 assert.deepEqual(directShowModal,[],'PRIMITIVE-GATE found feature-local showModal lifecycle outside DialogRuntime: '+directShowModal.join(', '));
 assert.deepEqual(rawSelectCreators,[],'PRIMITIVE-GATE found feature-local native Select construction outside the canonical Select owner: '+rawSelectCreators.join(', '));
+assert.deepEqual(featureBackdropClosers,[],'PRIMITIVE-GATE found feature-local Dialog backdrop close lifecycle outside DialogRuntime: '+featureBackdropClosers.join(', '));
+assert.deepEqual(featureCancelOwners,[],'PRIMITIVE-GATE found feature-local Dialog cancel lifecycle outside DialogRuntime: '+featureCancelOwners.join(', '));
 
 const focused=[
   'tests/release-profile-contract.mjs',
@@ -61,7 +65,7 @@ const focusedResults=Object.fromEntries(focused.map(file=>[file,run(file)]));
 const report={
   schemaVersion:1,
   source:'ownership-integrity-exact-tree-contract',
-  scanned:{toolFiles:toolFiles.length,webuiFiles:webuiFiles.length,rawDialogCreators:rawDialogCreators.length,directShowModal:directShowModal.length,rawSelectCreators:rawSelectCreators.length},
+  scanned:{toolFiles:toolFiles.length,webuiFiles:webuiFiles.length,rawDialogCreators:rawDialogCreators.length,directShowModal:directShowModal.length,rawSelectCreators:rawSelectCreators.length,featureBackdropClosers:featureBackdropClosers.length,featureCancelOwners:featureCancelOwners.length},
   versionRelation:{specialVersionProductHits:specialVersionHits.length,focused:'release-profile-contract'},
   session:{versionAliasProductHits:specialVersionHits.length,focused:'session-contract'},
   locale:{focused:['qb-locale-source-contract','locale-bootstrap-failure-contract']},
