@@ -347,9 +347,15 @@ function naturalJitter(world,torrent,now,direction){
   return Math.max(.58,Math.min(1.18,.72+local*.30+shared*.16));
 }
 
+export function checkingConcurrencyLimit(world){
+  const raw=Math.round(Number(world.preferences?.max_active_checking_torrents));
+  if(!Number.isFinite(raw))return 1;
+  return raw<0?Infinity:raw;
+}
+
 function queueCandidates(world,now){
   const downloads=[],uploads=[],checking=[],normalizedChecking=[];
-  const checkingLimit=Math.max(1,Math.round(Number(world.preferences?.max_active_checking_torrents)||1));
+  const checkingLimit=checkingConcurrencyLimit(world);
   const enqueue=t=>{
     if([CANONICAL.ERROR,CANONICAL.METADATA,CANONICAL.MOVING,CANONICAL.DOWNLOAD_PAUSED,CANONICAL.SEED_PAUSED].includes(t.canonicalState))return;
     if(t.completed)uploads.push(t);else downloads.push(t);
