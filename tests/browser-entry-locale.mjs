@@ -13,10 +13,9 @@ const server=http.createServer(async(req,res)=>{
   try{
     const url=new URL(req.url,'http://127.0.0.1');
     const requested=decodeURIComponent(url.pathname).replace(/^\/+/, '')||'index.html';
-    if(requested==='version/qbittorrent'){if(!legacyQbVersion){res.writeHead(404,{'content-type':'text/plain; charset=utf-8','cache-control':'no-store'});return res.end('not found');}res.writeHead(200,{'content-type':'text/plain; charset=utf-8','cache-control':'no-store'});return res.end(legacyQbVersion);}
     const file=path.resolve(publicRoot,requested);
     if(!(file===publicRoot||file.startsWith(publicRoot+path.sep)))throw Object.assign(new Error('path escape'),{code:'EACCES'});
-    const raw=await fs.readFile(file),body=path.extname(file).toLowerCase()==='.html'?Buffer.from(raw.toString('utf8').replaceAll('__WEIG_VERSION__',productVersion)):raw;
+    const raw=await fs.readFile(file),body=path.extname(file).toLowerCase()==='.html'?Buffer.from(raw.toString('utf8').replaceAll('__WEIG_VERSION__',productVersion).replaceAll('${VERSION}',legacyQbVersion||'${VERSION}')):raw;
     res.writeHead(200,{'content-type':mime[path.extname(file).toLowerCase()]||'application/octet-stream','cache-control':'no-store'});
     res.end(body);
   }catch(error){

@@ -6,7 +6,7 @@
   function probeKind(status){status=Number(status)||0;if(status>=200&&status<300)return'authenticated';if(status===403)return'session-missing';if(status===401)return'request-rejected';if(status===0)return'offline';return'unexpected-probe-response';}
   async function probe(){try{var response=await fetch(PROBE,{credentials:'same-origin',cache:'no-store'});return{ok:response.ok,status:response.status,kind:probeKind(response.status)};}catch(error){return{ok:false,status:0,kind:'offline',error:error};}}
   function cleanPublicVersion(value){value=String(value||'').trim();return /^v?\d+(?:\.\d+){1,3}(?:[-+][0-9A-Za-z.-]+)?$/.test(value)?value:'';}
-  async function publicVersionIdentity(){var qb='';try{var response=await fetch('version/qbittorrent',{credentials:'same-origin',cache:'no-store'});if(response.ok)qb=cleanPublicVersion(await response.text());}catch(_e){}return{qbVersion:qb,webApiVersion:'',source:qb?'legacy-public-qb':'pre-auth-unavailable'};}
+  async function publicVersionIdentity(){var qb='';try{var doc=global.document,node=doc&&doc.querySelector?doc.querySelector('meta[name="qb-server-version"]'):null;qb=cleanPublicVersion(node&&node.content);}catch(_e){}return{qbVersion:qb,webApiVersion:'',source:qb?'legacy-server-template':'pre-auth-unavailable'};}
   function write(key,value){try{sessionStorage.setItem(key,JSON.stringify(value));return true;}catch(_e){return false;}}
   function read(key,remove){try{var raw=sessionStorage.getItem(key);if(!raw)return null;var value=JSON.parse(raw);if(remove)sessionStorage.removeItem(key);return value&&typeof value==='object'?value:null;}catch(_e){return null;}}
   function localeIntent(){var value=read(LOCALE_INTENT,false);return value&&value.schemaVersion===1?String(value.locale||'').trim():'';}
