@@ -38,7 +38,7 @@ stop_lane(){
 }
 cleanup_all(){
   local pid
-  for pid in "${active[@]:-}"; do [[ -n "${PID_LANE[$pid]:-}" ]] && stop_lane "$pid"; done
+  for pid in "${active[@]}"; do [[ -n "${PID_LANE[$pid]:-}" ]] && stop_lane "$pid"; done
 }
 trap cleanup_all EXIT INT TERM
 
@@ -65,7 +65,7 @@ while (("${#active[@]}" > 0)); do
 done
 
 if [[ -n "$winner" ]]; then
-  for pid in "${active[@]:-}"; do
+  for pid in "${active[@]}"; do
     lane="${PID_LANE[$pid]:-unknown}"
     stop_lane "$pid"
     started="${PID_STARTED[$pid]:-$RACE_STARTED}"
