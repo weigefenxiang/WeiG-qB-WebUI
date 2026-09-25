@@ -54,13 +54,14 @@ export function advanceActionStates(world,now=Date.now()){
   if(Number.isFinite(next)&&next>now)return[];
   diagnosticsFor(world).actionStateScans++;
   const changed=[];
-  let nextAt=-1;
+  let nextAt=-1,freedChecking=0;
   for(const t of world.torrents){
     if(t.checkingUntil&&t.canonicalState===CANONICAL.CHECKING){
       if(now>=t.checkingUntil){
         t.checkingUntil=0;
         t.canonicalState=t.maintenanceResumeState||resumableState(t);
         t.maintenanceResumeState='';
+        freedChecking++;
         changed.push(t.hash);
       }else nextAt=nextAt===-1?t.checkingUntil:Math.min(nextAt,t.checkingUntil);
     }
