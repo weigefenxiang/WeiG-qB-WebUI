@@ -27,6 +27,29 @@ function addRefsFor(version,sha){
 }
 function has(set,context,source){return set.has(context+'\u0000'+source);}
 
+const refs410=addRefsFor('4.1.0','e9ed621178af841114a045887c5ce1e6b50cb366');
+for(const pair of [
+  ['HttpServer','Save files to location:'],
+  ['HttpServer','Cookie:'],
+  ['HttpServer','Rename torrent'],
+  ['AddNewTorrentDialog','Category:'],
+  ['AddNewTorrentDialog','Start torrent'],
+  ['AddNewTorrentDialog','Skip hash check'],
+  ['AddNewTorrentDialog','Create subfolder'],
+  ['TransferListWidget','Download in sequential order'],
+  ['TransferListWidget','Download first and last pieces first'],
+  ['HttpServer','Limit download rate'],
+  ['HttpServer','Limit upload rate']
+])assert(has(refs410,pair[0],pair[1]),'4.1.0 Add source inventory missing '+pair.join(': '));
+for(const pair of [
+  ['AddNewTorrentDialog','Torrent Management Mode:'],
+  ['AddNewTorrentDialog','Tags:'],
+  ['AddNewTorrentDialog','Add to top of queue'],
+  ['AddNewTorrentDialog','Stop condition:'],
+  ['AddNewTorrentDialog','Use another path for incomplete torrent'],
+  ['AddNewTorrentDialog','Save path:']
+])assert(!has(refs410,pair[0],pair[1]),'4.1.0 Add source inventory must not expose '+pair.join(': '));
+
 const refs467=addRefsFor('4.6.7','839bc696d066aca34ebd994ee1673c4b2d5afd7b');
 for(const pair of [
   ['AddNewTorrentDialog','Torrent Management Mode:'],
@@ -53,6 +76,27 @@ for(const pair of [
   ['UpDownRatioDialog','Action when the limit is reached']
 ])assert(!has(refs467,pair[0],pair[1]),'4.6.7 Add source inventory must not expose '+pair.join(': '));
 
+const refs523=addRefsFor('5.2.3','0b63c3d17373f6132ea211c9dcd4241284ccdfaf');
+for(const pair of [
+  ['AddNewTorrentDialog','Torrent Management Mode:'],
+  ['AddNewTorrentDialog','Save files to location:'],
+  ['AddNewTorrentDialog','Use another path for incomplete torrent'],
+  ['AddNewTorrentDialog','Save path:'],
+  ['AddNewTorrentDialog','Rename torrent'],
+  ['AddNewTorrentDialog','Category:'],
+  ['AddNewTorrentDialog','Tags:'],
+  ['AddNewTorrentDialog','Start torrent'],
+  ['AddNewTorrentDialog','Stop condition:'],
+  ['AddNewTorrentDialog','Add to top of queue'],
+  ['AddNewTorrentDialog','Skip hash check'],
+  ['AddNewTorrentDialog','Download in sequential order'],
+  ['AddNewTorrentDialog','Download first and last pieces first'],
+  ['AddNewTorrentDialog','Content layout:'],
+  ['AddNewTorrentDialog','Limit download rate'],
+  ['AddNewTorrentDialog','Limit upload rate']
+])assert(has(refs523,pair[0],pair[1]),'5.2.3 Add source inventory missing '+pair.join(': '));
+assert(!has(refs523,'HttpServer','Cookie:'),'5.2.3 Add source inventory must not retain legacy Cookie');
+
 assert(i18n.includes("key.indexOf('add.copy.')!==0")&&i18n.includes('addRefs:addRefs'),'runtime Add visibility must consume only exact add.copy.* source inventory');
 assert(i18n.includes('qbAddSourceHas')&&i18n.includes('qbAddSourceField:qbAddSourceField')&&i18n.includes('qbAddSourceGroup:qbAddSourceGroup'),'Add renderer source projection helpers missing');
 assert(!i18n.includes('upgradeAddSuggestion'),'post-DOM Add suggestion upgrade must stay retired once the renderer owns canonical controls');
@@ -62,7 +106,8 @@ assert(floating.includes('C.comboControl=function(opts)')&&controls.includes('.u
 assert(app.includes("addCombo(settingsGroup,'add-category'")&&app.includes("addCombo(settingsGroup,'add-tags'")&&app.includes('qbAddSourceField'),'Add renderer must directly own exact source projection plus canonical Category/Tags combos');
 assert(app.includes("return copy&&copy.visible?copy.text:''")&&app.includes('l.hidden=!copy'),'Add group legends without exact upstream source ownership must stay hidden instead of leaking English fallback into localized legacy dialogs');
 assert(!app.includes("createElement('datalist')"),'Add renderer must not retain browser-native datalist popup ownership');
+assert(!app.includes("'add-forced'"),'Add renderer must not expose API-only forced when the exact qB Add surface has no source-owned control');
 assert(app.indexOf('await app.client.add(')<app.indexOf("W.DialogRuntime.close(U.$('add-dialog'))"),'successful Add must close only after the qB add request completes');
 assert(appCss.includes('.add-source-file:before')&&appCss.includes("content:'＋'")&&appCss.includes('.add-source-file:hover'),'Add Torrent File entry must expose an explicit action affordance');
 
-console.log('A17 Add Torrent contract passed: exact source-visible copy is projected by the renderer, post-DOM repair/datalist owners are retired, canonical combo controls own Category/Tags, and successful Add closes only after the qB request.');
+console.log('A17 Add Torrent contract passed: 4.1.0 / 4.6.7 / 5.2.3 exact Add source inventories drive renderer visibility, API-only forced stays hidden, canonical combos replace datalist, and successful Add closes only after the qB request.');
