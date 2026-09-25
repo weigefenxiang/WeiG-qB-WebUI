@@ -117,6 +117,8 @@ assert(indexHtml.includes('id="torrent-urls" rows="5" aria-label="Add torrent li
 assert(app.includes("urls=U.$('torrent-urls')")&&app.includes("urls.setAttribute('aria-label',value)"),'exact Add source copy must update the textarea accessible name after the visible duplicate label is retired');
 assert(app.includes('stretch:true,onChange:function(next)')&&app.includes('ariaLabel:label,stretch:true,onInput:function()'),'Add Select/Combo geometry must opt into the canonical stretch primitive');
 assert(uiCss.includes('.ui-select--stretch')&&uiCss.includes('dialog.dialog[data-dialog-mobile="compact"]'),'canonical UI CSS must own stretch controls and compact-mobile dialog geometry');
+assert(/dialog\.dialog\{[^}]*overflow:visible/.test(uiCss)&&/dialog\.dialog>form\{[^}]*display:flex[^}]*overflow:visible/.test(uiCss)&&/\.dialog__body\{[^}]*overflow-y:auto/.test(uiCss),'canonical Dialog frame must keep floating menus unclipped while only the body owns scrolling');
+assert(uiCss.includes('--dialog-max-height:min(720px,calc(100dvh - 72px))'),'compact mobile Dialog must keep a bounded RSS-like height with visible backdrop space');
 assert(!appCss.includes('.add-option-field>.ui-select{width:100%;max-width:none}'),'Add must not restore a local Select width owner');
 
 console.log('A17 Add Torrent contract passed: 4.1.0 / 4.6.7 / 5.2.3 exact Add source inventories drive renderer visibility, API-only forced stays hidden, canonical combos replace datalist, and successful Add closes only after the qB request.');

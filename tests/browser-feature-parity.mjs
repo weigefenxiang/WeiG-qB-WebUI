@@ -53,6 +53,27 @@ await page.locator('#filter-nav [data-filter="all"]').click();await page.waitFor
   assert(audit.rows.every(row=>row.present),'qB 4.6.7 Add omitted source-proven controls: '+JSON.stringify(audit.rows.filter(row=>!row.present)));
   assert(audit.rows.every(row=>row.actual===row.expected),'qB 4.6.7 Add copy diverged from exact source/context localization: '+JSON.stringify(audit.rows.filter(row=>row.actual!==row.expected)));
   assert(audit.rows.filter(row=>row.localized).length>=10,'qB 4.6.7 Add did not load enough official zh-CN source translations to prove fallback removal: '+JSON.stringify(audit.rows));
+  for(const [id,value] of [['add-stop-condition','None'],['add-content-layout','Original']]){
+    const trigger=page.locator('#'+id+' .ui-select__trigger');
+    await trigger.click();
+    const option=page.locator('#add-dialog .weig-floating-layer[data-ui-modal-layer="1"] .ui-select__option[data-value="'+value+'"]');
+    await option.waitFor({state:'visible'});
+    const geometry=await option.evaluate(node=>{const r=node.getBoundingClientRect(),dialog=document.getElementById('add-dialog')?.getBoundingClientRect();return{left:r.left,right:r.right,top:r.top,bottom:r.bottom,viewportW:innerWidth,viewportH:innerHeight,dialogLeft:dialog?.left,dialogRight:dialog?.right,dialogTop:dialog?.top,dialogBottom:dialog?.bottom};});
+    assert(geometry.left>=0&&geometry.right<=geometry.viewportW&&geometry.top>=0&&geometry.bottom<=geometry.viewportH,'qB 4.6.7 Add '+id+' popup escaped the viewport: '+JSON.stringify(geometry));
+    await option.click();
+    assert(await page.locator('#'+id).evaluate(node=>node.getValue?.()||'' )===value,'qB 4.6.7 Add '+id+' selected source value was not clickable');
+  }
+  assert(await page.locator('#add-urls-label').count()===0,'qB 4.6.7 Add must not render duplicate visible Add Torrent Links copy');
+  await page.locator('#add-dialog .dialog__actions [value="cancel"]').click();
+  await page.waitForFunction(()=>!document.getElementById('add-dialog')?.open);
+  await page.setViewportSize({width:390,height:844});
+  await page.locator('#add-btn').click();
+  await page.waitForSelector('#add-dialog[open]');
+  const mobileDialog=await page.evaluate(()=>{const d=document.getElementById('add-dialog'),body=d?.querySelector('.dialog__body'),head=d?.querySelector('.dialog__head'),actions=d?.querySelector('.dialog__actions'),r=d?.getBoundingClientRect();return r?{top:r.top,bottom:r.bottom,height:r.height,width:r.width,viewportH:innerHeight,bodyOverflow:body?getComputedStyle(body).overflowY:'',headTop:head?.getBoundingClientRect().top,actionsBottom:actions?.getBoundingClientRect().bottom}:null;});
+  assert(mobileDialog&&mobileDialog.height<=722&&mobileDialog.top>=34&&mobileDialog.viewportH-mobileDialog.bottom>=34&&mobileDialog.bodyOverflow==='auto'&&mobileDialog.headTop>=mobileDialog.top&&mobileDialog.actionsBottom<=mobileDialog.bottom+1,'qB 4.6.7 mobile Add must use bounded canonical header/body/footer geometry with visible backdrop: '+JSON.stringify(mobileDialog));
+  await page.mouse.click(2,2);
+  await page.waitForFunction(()=>!document.getElementById('add-dialog')?.open);
+
   assert(audit.visibleLegends.length===0,'qB 4.6.7 Add leaked unsourced English group legends: '+JSON.stringify(audit.visibleLegends));
   assert(!audit.tags&&audit.categoryCombo,'qB 4.6.7 Add must keep source-absent Tags hidden and Category on the canonical themed combo: '+JSON.stringify(audit));
   assert(errors.length===0,'legacy467 zh-CN Add browser errors: '+errors.join(' | '));
