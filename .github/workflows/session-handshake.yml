@@ -4,6 +4,13 @@ on:
   push:
     branches:
       - dev
+    paths:
+      - 'webui/public/**'
+      - 'webui/private/index.html'
+      - 'webui/private/scripts/session.js'
+      - 'webui/private/scripts/core.js'
+      - 'webui/private/scripts/qb-client.js'
+      - 'tools/build-webui-dist.mjs'
   workflow_dispatch:
 
 permissions:
@@ -16,7 +23,6 @@ concurrency:
 jobs:
   plan:
     name: Session runtime plan
-    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[session-handshake]')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -41,7 +47,6 @@ jobs:
 
   handshake:
     name: qB ${{ matrix.qb }} provider race
-    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[session-handshake]')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     needs: plan
@@ -64,6 +69,12 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: package-lock.json
+      - name: Restore exact qB source runtime image
+        id: source-runtime-cache
+        uses: actions/cache@v6
+        with:
+          path: runtime-cache/qb-${{ matrix.qb }}.tar
+          key: session-source-image-v1-${{ runner.os }}-${{ matrix.qb }}-${{ hashFiles('tests/real-qb-full-provider-lib.sh', 'tools/data/qb-stable-lkg.json', 'tests/fixtures/qb-release-catalog.lkg.json') }}
       - name: Install browser test dependency
         run: npm ci --no-audit --no-fund --prefer-offline
       - name: Verify hosted Chrome and race harness
@@ -82,12 +93,34 @@ jobs:
         with:
           name: session-runtime-index-${{ github.sha }}
           path: runtime-index
+      - name: Load cached exact qB source runtime image
+        if: steps.source-runtime-cache.outputs.cache-hit == 'true'
+        env:
+          QB_VERSION: ${{ matrix.qb }}
+        run: |
+          set -euo pipefail
+          test -s "runtime-cache/qb-${QB_VERSION}.tar"
+          docker load -i "runtime-cache/qb-${QB_VERSION}.tar"
       - name: Race approved runtime providers and capture session evidence
         env:
           QB_VERSION: ${{ matrix.qb }}
         run: |
           set -euo pipefail
           bash tests/real-qb-session-race.sh --version "$QB_VERSION"
+      - name: Stage exact qB source runtime image for reuse
+        if: success() && steps.source-runtime-cache.outputs.cache-hit != 'true'
+        env:
+          QB_VERSION: ${{ matrix.qb }}
+        run: |
+          set -euo pipefail
+          mkdir -p runtime-cache
+          source_tag="$(docker images --format '{{.Repository}}:{{.Tag}}' | grep -E "^weig-gfm-source:${QB_VERSION//./\\.}-[0-9a-f]{12}$" | head -n 1 || true)"
+          if [[ -n "$source_tag" ]]; then
+            docker save -o "runtime-cache/qb-${QB_VERSION}.tar" "$source_tag"
+            echo "Staged reusable exact source runtime: $source_tag"
+          else
+            echo "No exact source image was materialized; cache remains empty."
+          fi
       - name: Upload exact-SHA provider-race evidence
         if: always()
         uses: actions/upload-artifact@v7

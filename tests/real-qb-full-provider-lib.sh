@@ -145,9 +145,26 @@ prepare_frozen_source_runtime(){
   image_tag="weig-gfm-source:${VERSION}-${qb_sha:0:12}"
   mkdir -p "$build_dir"
 
+  local cached_image_id='' cached_qb_sha='' cached_lt_sha='' cached_profile='' cached_base=''
+  cached_image_id="$(docker image inspect "$image_tag" --format '{{.Id}}' 2>/dev/null || true)"
+  if [[ "$cached_image_id" == sha256:* ]]; then
+    cached_qb_sha="$(docker image inspect "$image_tag" --format '{{ index .Config.Labels "com.weig.gfm.qb-source-sha" }}' 2>/dev/null || true)"
+    cached_lt_sha="$(docker image inspect "$image_tag" --format '{{ index .Config.Labels "com.weig.gfm.libtorrent-source-sha" }}' 2>/dev/null || true)"
+    cached_profile="$(docker image inspect "$image_tag" --format '{{ index .Config.Labels "com.weig.gfm.runtime-profile" }}' 2>/dev/null || true)"
+    cached_base="$(docker image inspect "$image_tag" --format '{{ index .Config.Labels "com.weig.gfm.base-image" }}' 2>/dev/null || true)"
+    if [[ "$cached_qb_sha" == "$qb_sha" && "$cached_lt_sha" == "$lt_sha" && "$cached_profile" == "$runtime_profile" && "$cached_base" == "$base_image" ]]; then
+      IMAGE="$cached_image_id"
+      record_attempt "$PROVIDER" "$SOURCE_REF" RUNTIME_CACHE_ESTABLISHED "exact Frozen qB ${VERSION} source image restored from validated local runtime cache as ${cached_image_id}"
+      return 0
+    fi
+    record_attempt "$PROVIDER" "$SOURCE_REF" RUNTIME_CACHE_REJECTED "local source image identity mismatch; rebuilding from Frozen source"
+    docker image rm -f "$image_tag" >/dev/null 2>&1 || true
+  fi
+
   cat >"$build_dir/Dockerfile" <<'DOCKER'
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
+ARG BASE_IMAGE
 ARG DEBIAN_FRONTEND=noninteractive
 ARG QB_TAG
 ARG QB_SOURCE_SHA
@@ -156,6 +173,10 @@ ARG LT_SOURCE_SHA
 ARG LT_BUILD
 ARG LT_DEPRECATED
 ARG QB_RUNTIME_PROFILE
+LABEL com.weig.gfm.qb-source-sha="${QB_SOURCE_SHA}" \
+      com.weig.gfm.libtorrent-source-sha="${LT_SOURCE_SHA}" \
+      com.weig.gfm.runtime-profile="${QB_RUNTIME_PROFILE}" \
+      com.weig.gfm.base-image="${BASE_IMAGE}"
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates git build-essential pkg-config autoconf automake libtool cmake ninja-build \
     libssl-dev zlib1g-dev \
