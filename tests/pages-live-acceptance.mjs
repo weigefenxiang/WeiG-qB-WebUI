@@ -182,6 +182,25 @@ try{
     assert.equal(response.json?.queueing_enabled,true,'queueing preference must persist in the virtual daemon');
     assert.equal(Number(response.json?.max_active_downloads),3,'max active downloads must persist in the virtual daemon');
 
+    response=await api(page,'app/setPreferences',{method:'POST',form:{json:JSON.stringify({
+      max_connec:8,max_connec_per_torrent:4,max_uploads:1,max_uploads_per_torrent:1,max_active_checking_torrents:2
+    })}});
+    assert.equal(response.status,200,'connection/upload/checking preference write must succeed');
+    const boundedTransfer=await api(page,'transfer/info');
+    assert.ok(Number(boundedTransfer.json?.total_peer_connections)<=8,'deployed connection limit must cap the actual virtual peer population');
+    const boundedRows=await api(page,'torrents/info?limit=5001&offset=0');
+    assert.ok(boundedRows.json.filter(item=>Number(item.upspeed)>0).length<=1,'deployed global upload-slot limit must cap simultaneous uploading Torrents');
+
+    const recheckHashes=boundedRows.json
+      .filter(item=>!/checking|moving|error|meta/i.test(String(item.state||'')))
+      .slice(0,6).map(item=>item.hash).join('|');
+    assert.ok(recheckHashes.split('|').filter(Boolean).length>=3,'checking live fixture must find several eligible Torrents');
+    response=await api(page,'torrents/recheck',{method:'POST',form:{hashes:recheckHashes}});
+    assert.equal(response.status,200,'multi-Torrent recheck must succeed');
+    const checkingRows=await api(page,'torrents/info?hashes='+encodeURIComponent(recheckHashes));
+    const checkingCount=checkingRows.json.filter(item=>/checking/i.test(String(item.state||''))).length;
+    assert.ok(checkingCount>0&&checkingCount<=2,`deployed checking concurrency must stay within configured cap 2; got ${checkingCount}`);
+
     const addResult=await page.evaluate(async()=>{
       const form=new FormData();
       form.append('torrents',new File(['virtual-pages-acceptance'],'Pages-Live-Acceptance.torrent',{type:'application/x-bittorrent'}));
