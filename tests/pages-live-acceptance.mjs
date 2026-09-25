@@ -279,6 +279,83 @@ try{
     const page=await context.newPage();
     const pageErrors=[];
     page.on('pageerror',error=>pageErrors.push(error?.stack||error?.message||String(error)));
+
+    const source=await openVirtualSession(page,{branch:'dev',qb:'5.2.3',count:60,scenario:'mixed',seed:'pages-live-schema3-noise-source',clean:true});
+    const legacySim=`pages-live-persisted-realism-v3-${Date.now()}`;
+    const seeded=await page.evaluate(async({sourceSim,legacySim})=>{
+      const db=await new Promise((resolve,reject)=>{
+        const request=indexedDB.open('weig-virtual-qb',1);
+        request.onsuccess=()=>resolve(request.result);
+        request.onerror=()=>reject(request.error);
+      });
+      const read=await new Promise((resolve,reject)=>{
+        const tx=db.transaction('worlds','readonly'),request=tx.objectStore('worlds').get(sourceSim);
+        request.onsuccess=()=>resolve(request.result);
+        request.onerror=()=>reject(request.error);
+      });
+      if(!read?.world)throw new Error('schema3 source persisted Virtual world missing');
+      const world=structuredClone(read.world);
+      world.schemaVersion=3;
+      const generated=(world.torrents||[])[0],userAdded=(world.torrents||[])[1];
+      if(!generated||!userAdded)throw new Error('schema3 migration fixture lacks torrents');
+      generated.name='Order by Category';
+      generated.contentPath='/downloads/movies/Order by Category';
+      delete generated.addSourceKind;delete generated.addSource;
+      userAdded.name='Download My Custom Release Fast';
+      userAdded.contentPath='/downloads/custom/Download My Custom Release Fast';
+      userAdded.addSourceKind='url';
+      userAdded.addSource='magnet:?xt=urn:btih:LIVEUSER&dn=Download+My+Custom+Release+Fast';
+      userAdded.private=true;
+      userAdded.tags=Array.from(new Set([...(Array.isArray(userAdded.tags)?userAdded.tags:[]),'pt']));
+      userAdded.category='Movies';
+      await new Promise((resolve,reject)=>{
+        const tx=db.transaction('worlds','readwrite');
+        tx.objectStore('worlds').put({id:legacySim,world,updatedAt:Date.now()});
+        tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);
+      });
+      db.close();
+      return{generatedHash:generated.hash,userHash:userAdded.hash,userName:userAdded.name,userCategory:userAdded.category};
+    },{sourceSim:source.sim,legacySim});
+
+    await openVirtualSession(page,{branch:'dev',qb:'5.2.3',count:60,scenario:'mixed',seed:'pages-live-schema3-noise-source',clean:true,sim:legacySim});
+    let response=await api(page,`torrents/info?hashes=${encodeURIComponent(seeded.generatedHash+'|'+seeded.userHash)}`);
+    assert.equal(response.status,200,'schema3 migrated torrent rows must be readable');
+    const generated=response.json.find(item=>item.hash===seeded.generatedHash),userAdded=response.json.find(item=>item.hash===seeded.userHash);
+    assert.ok(generated&&userAdded,'schema3 migrated generated/user-added rows must both survive');
+    assert.notEqual(generated.name,'Order by Category','persisted schema3 generated page-caption noise must be cleaned on reopen');
+    assert.equal(userAdded.name,seeded.userName,'persisted user-added Torrent name must survive schema3->4 migration');
+    assert.equal(userAdded.category,seeded.userCategory,'persisted user-added PT category must survive schema3->4 migration');
+
+    const persisted=await page.evaluate(async legacySim=>{
+      const db=await new Promise((resolve,reject)=>{
+        const request=indexedDB.open('weig-virtual-qb',1);
+        request.onsuccess=()=>resolve(request.result);
+        request.onerror=()=>reject(request.error);
+      });
+      const row=await new Promise((resolve,reject)=>{
+        const tx=db.transaction('worlds','readonly'),request=tx.objectStore('worlds').get(legacySim);
+        request.onsuccess=()=>resolve(request.result);
+        request.onerror=()=>reject(request.error);
+      });
+      db.close();
+      return row?.world||null;
+    },legacySim);
+    assert.equal(persisted?.schemaVersion,4,'schema3 persisted world must checkpoint the current schema4 after migration');
+    const persistedGenerated=persisted?.torrents?.find(item=>item.hash===seeded.generatedHash);
+    const persistedUser=persisted?.torrents?.find(item=>item.hash===seeded.userHash);
+    assert.ok(persistedGenerated?.contentPath?.endsWith(String(persistedGenerated.name||'').replace(/[\\/]+/g,'_')),'schema3 generated contentPath must follow the cleaned display name');
+    assert.equal(persistedUser?.name,seeded.userName,'schema4 checkpoint must retain user-added name');
+    assert.equal(persistedUser?.category,seeded.userCategory,'schema4 checkpoint must retain user-added PT category');
+    assert.deepEqual(pageErrors,[],`schema3->4 persisted-world migration emitted browser errors:\n${pageErrors.join('\n')}`);
+    console.log('Persisted Virtual world v3 migrated in-place to schema4: generated page-caption name noise retired while user-added name/category remained unchanged.');
+    await context.close();
+  }
+
+  {
+    const context=await browser.newContext({locale:'zh-CN'});
+    const page=await context.newPage();
+    const pageErrors=[];
+    page.on('pageerror',error=>pageErrors.push(error?.stack||error?.message||String(error)));
     await openVirtualSession(page,{branch:'dev',qb:'4.1.9.1',count:5000,scenario:'mixed',seed:'pages-live-qb4-catalog-5000',clean:true});
     const qB4CatalogState=await waitForCatalog(page,{count:5000,timeout:30000});
     assert.equal(qB4CatalogState.ready,true,'qB4 5000-torrent catalog must finish instead of leaving the pager spinner active');
