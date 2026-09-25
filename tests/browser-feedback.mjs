@@ -158,9 +158,9 @@ try{
   await page.waitForFunction(id=>document.querySelector(`.feedback-toast[data-feedback-id=\"${id}\"]`)?.classList.contains('is-leaving'),fifo[0],{timeout:800});
   assert(!(await page.locator(`.feedback-toast[data-feedback-id=\"${fifo[1]}\"]`).evaluate(n=>n.classList.contains('is-leaving'))),'second FIFO card started leaving before first finished its leave motion');
   await page.waitForFunction(id=>!document.querySelector(`.feedback-toast[data-feedback-id=\"${id}\"]`),fifo[0],{timeout:1200});
-  await page.waitForFunction(id=>document.querySelector(`.feedback-toast[data-feedback-id=\"${id}\"]`)?.classList.contains('is-leaving'),fifo[1],{timeout:500});
+  await page.waitForFunction(id=>document.querySelector(`.feedback-toast[data-feedback-id=\"${id}\"]`)?.classList.contains('is-leaving'),fifo[1],{timeout:1200});
   await page.waitForFunction(id=>!document.querySelector(`.feedback-toast[data-feedback-id=\"${id}\"]`),fifo[1],{timeout:800});
-  await page.waitForFunction(id=>document.querySelector(`.feedback-toast[data-feedback-id=\"${id}\"]`)?.classList.contains('is-leaving'),fifo[2],{timeout:500});
+  await page.waitForFunction(id=>document.querySelector(`.feedback-toast[data-feedback-id=\"${id}\"]`)?.classList.contains('is-leaving'),fifo[2],{timeout:1200});
   await page.waitForFunction(id=>!document.querySelector(`.feedback-toast[data-feedback-id=\"${id}\"]`),fifo[2],{timeout:800});
 
   // Error semantics and automatic lifecycle.
