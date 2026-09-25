@@ -164,5 +164,8 @@ const catalog=[
   assert.equal(TORRENT_NAME_POOL_PROVENANCE.nonAscii,100);
   assert.equal(new Set(TORRENT_NAME_POOL.map(name=>name.normalize('NFKC').toLocaleLowerCase())).size,1000,'real name snapshot must remain unique after NFKC/case folding');
   assert.ok(TORRENT_NAME_POOL.every(name=>!/(?:magnet:\?|urn:btih|https?:\/\/|www\.)/i.test(name)),'name snapshot must not retain network/download identifiers');
+  assert.ok(TORRENT_NAME_POOL.every(name=>!/(?:Torrent:\s*(?:Magnet Link|Download Mirror)|^Download\s+.+\s+Fast$|^Discuss about\s+|^Order by Category$|^Magnet Link$|^Torrent Magnet(?: Link)?$)/i.test(name)),'name snapshot must not retain scraped page-caption/UI noise');
+  assert.equal(TORRENT_NAME_POOL_PROVENANCE.source,'public-github-magnet-dn-snapshot');
+  assert.ok(Array.isArray(TORRENT_NAME_POOL_PROVENANCE.sourceFiles)&&TORRENT_NAME_POOL_PROVENANCE.sourceFiles.length>=8,'real-name provenance must identify concrete GitHub repo/path/SHA sources');
 }
 console.log('Virtual qB persisted-profile/schema migration contract passed: stale IndexedDB worlds refresh source profiles, four log levels, PT categories and legacy synthetic names while preserving user/custom names.');
