@@ -95,7 +95,7 @@ export const DEFAULT_ENVIRONMENT={
 };
 
 const PUBLIC_CATEGORIES=['Linux','Movies','TV','Music','Archive','Games','Books','Software'];
-export const CURRENT_WORLD_SCHEMA_VERSION=3;
+export const CURRENT_WORLD_SCHEMA_VERSION=4;
 export const VIRTUAL_PT_CATEGORIES=['1+1DBits','nn-team','BeyondH1 Ɔ','RE1Ɔ','TheGeeks','B1tMe','PT1 Ɔ','Gaze11eGames','JP0psuk1'];
 const CATEGORIES=[...PUBLIC_CATEGORIES,...VIRTUAL_PT_CATEGORIES];
 const TAGS=['fast','archive','public','favorite','seedbox','large','small'];

@@ -53,22 +53,56 @@ const LEGACY_INTERNATIONAL=[
   'Coleção de software livre','Arquivo de documentários','Seleção de música clássica','Arquivo de fotografia urbana','Curso de programação',
   'Коллекция свободного ПО','Архив документальных фильмов','Сборник классической музыки','Архив городской фотографии','Курс программирования'
 ];
+function userAddedTorrent(torrent){
+  return !!String(torrent?.addSourceKind||'').trim()||!!String(torrent?.addSource||'').trim();
+}
 function legacySyntheticName(value){
   const name=String(value||'');
   if(/^Virtual Torrent \d+ · (?:Ubuntu|Fedora|Archive|Dataset|Media|Backup|Source|Demo)$/.test(name))return true;
   if(LEGACY_EN_RE.test(name))return true;
   return LEGACY_INTERNATIONAL.some(prefix=>name.startsWith(prefix+' · ')&&/(?:2024|2025|2026|Vol\. 1|Complete)$/.test(name));
 }
-function migrateSyntheticName(world,torrent){
-  if(!legacySyntheticName(torrent?.name))return false;
-  const previous=String(torrent.name);
-  const key=`${String(world?.seed||'20260905')}:${String(torrent?.hash||previous)}:real-name-v1`;
-  const next=TORRENT_NAME_POOL[hash32(key)%TORRENT_NAME_POOL.length];
+function replaceTorrentName(torrent,previous,next){
   if(!next||next===previous)return false;
   torrent.name=next;
   const path=String(torrent.contentPath||'');
   if(path&&path.endsWith(previous))torrent.contentPath=path.slice(0,-previous.length)+next.replace(/[\\/]+/g,'_');
   return true;
+}
+function deterministicRealName(world,torrent,salt='real-name-v1'){
+  const previous=String(torrent?.name||'');
+  const key=`${String(world?.seed||'20260905')}:${String(torrent?.hash||previous)}:${salt}`;
+  return TORRENT_NAME_POOL[hash32(key)%TORRENT_NAME_POOL.length];
+}
+function migrateSyntheticName(world,torrent){
+  if(userAddedTorrent(torrent)||!legacySyntheticName(torrent?.name))return false;
+  const previous=String(torrent.name);
+  return replaceTorrentName(torrent,previous,deterministicRealName(world,torrent));
+}
+
+const CLEAN_NAME_BY_FOLD=new Map(TORRENT_NAME_POOL.map(name=>[String(name).normalize('NFKC').toLocaleLowerCase(),name]));
+function cleanedLegacySnapshotName(value){
+  const previous=String(value||'').trim();
+  let next=previous
+    .replace(/\s+Torrent:\s*Magnet Link$/i,'')
+    .replace(/\s+Magnet Link$/i,'')
+    .replace(/\s+Torrent:\s*Download Mirror\s*#?\d+$/i,'')
+    .replace(/^Discuss about\s+/i,'')
+    .trim();
+  const download=next.match(/^Download\s+(.+?)\s+Fast$/i);
+  if(download)next=download[1].trim();
+  if(/^(?:Order by Category|Torrent Magnet(?: Link)?|Magnet Link|Download this torrent using magnet|Magnet \(Ubuntu BT\)|I\.am\.a\.magnet|Discuss about this show)$/i.test(next))next='';
+  if(next===previous)return null;
+  if(!next)return'';
+  return CLEAN_NAME_BY_FOLD.get(next.normalize('NFKC').toLocaleLowerCase())||'';
+}
+function migrateLegacySnapshotNoise(world,torrent){
+  if(userAddedTorrent(torrent))return false;
+  const previous=String(torrent?.name||'');
+  const cleaned=cleanedLegacySnapshotName(previous);
+  if(cleaned===null)return false;
+  const next=cleaned||deterministicRealName(world,torrent,'real-name-clean-v2');
+  return replaceTorrentName(torrent,previous,next);
 }
 
 function ensurePtCategories(world){
@@ -93,13 +127,13 @@ export function upgradeWorldSchema(world,now=Date.now()){
   changed=ensurePtCategories(world)||changed;
 
   for(const torrent of Array.isArray(world.torrents)?world.torrents:[]){
-    if(migrateSyntheticName(world,torrent)){namesRemapped++;changed=true;}
+    if(migrateSyntheticName(world,torrent)||migrateLegacySnapshotNoise(world,torrent)){namesRemapped++;changed=true;}
     if(!privateLike(torrent))continue;
     if(torrent.private!==true){torrent.private=true;changed=true;}
     const tags=tagList(torrent);
     if(!tags.some(tag=>tag.toLowerCase()==='pt')){tags.push('pt');torrent.tags=tags;changed=true;}
     const category=String(torrent.category||'');
-    const legacyGeneratedCategory=from<CURRENT_WORLD_SCHEMA_VERSION&&LEGACY_GENERATED_CATEGORIES.has(category);
+    const legacyGeneratedCategory=!userAddedTorrent(torrent)&&from<CURRENT_WORLD_SCHEMA_VERSION&&LEGACY_GENERATED_CATEGORIES.has(category);
     if(!category||category===LEGACY_PRIVATE_CATEGORY||legacyGeneratedCategory){
       torrent.category=deterministicPtCategory(world,torrent);
       privateRemapped++;changed=true;

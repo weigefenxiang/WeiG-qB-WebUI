@@ -122,6 +122,42 @@ const catalog=[
 }
 
 {
+  const noisy=createWorld({profile:{qbVersion:'5.2.3',webApiVersion:'2.15.1'},count:50,seed:'world-schema-v3-noise',now:1700000000000});
+  noisy.schemaVersion=3;
+  const generated=noisy.torrents[0];
+  generated.name='Order by Category';
+  generated.contentPath='/downloads/movies/Order by Category';
+  const userAdded=noisy.torrents[1];
+  userAdded.name='Download My Custom Release Fast';
+  userAdded.contentPath='/downloads/custom/Download My Custom Release Fast';
+  userAdded.addSourceKind='url';
+  userAdded.addSource='magnet:?xt=urn:btih:TEST&dn=Download+My+Custom+Release+Fast';
+  userAdded.private=true;
+  userAdded.tags=Array.from(new Set([...(userAdded.tags||[]),'pt']));
+  userAdded.category='Movies';
+
+  const result=upgradeWorldSchema(noisy,1700000005000);
+  assert.equal(result.from,3,'schema-v3 deployed worlds must migrate old real-name snapshot noise');
+  assert.equal(noisy.schemaVersion,CURRENT_WORLD_SCHEMA_VERSION);
+  assert.notEqual(generated.name,'Order by Category','generated page-caption noise must be replaced during schema-v3 migration');
+  assert.ok(TORRENT_NAME_POOL.includes(generated.name),'generated noisy name must migrate into the current checked-in clean pool');
+  assert.ok(generated.contentPath.endsWith(generated.name.replace(/[\\/]+/g,'_')),'generated contentPath must follow the migrated clean name');
+  assert.equal(userAdded.name,'Download My Custom Release Fast','user-added Torrent name must not be rewritten by snapshot-noise migration');
+  assert.equal(userAdded.category,'Movies','user-added PT Torrent category must not be rewritten as a legacy generated category');
+}
+
+{
+  const syntheticCustom=createWorld({profile:{qbVersion:'5.2.3',webApiVersion:'2.15.1'},count:20,seed:'world-schema-user-synthetic-name',now:1700000000000});
+  syntheticCustom.schemaVersion=2;
+  const userAdded=syntheticCustom.torrents[0];
+  userAdded.name='Open Archive · Collection 2026';
+  userAdded.addSourceKind='url';
+  userAdded.addSource='magnet:?xt=urn:btih:USER&dn=Open+Archive';
+  upgradeWorldSchema(syntheticCustom,1700000005000);
+  assert.equal(userAdded.name,'Open Archive · Collection 2026','user-added name that resembles the retired synthetic generator must be preserved');
+}
+
+{
   const transitional=createWorld({profile:{qbVersion:'5.2.3',webApiVersion:'2.15.1'},count:200,seed:'world-schema-v2-transition',now:1700000000000});
   transitional.schemaVersion=2;
   const legacyPt=transitional.torrents.find(t=>t.private===true);
