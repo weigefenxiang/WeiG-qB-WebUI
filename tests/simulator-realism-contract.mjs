@@ -72,6 +72,33 @@ const baseNow=1700000000000;
   assert.ok(w.environment.peerAvailability<w.environment.basePeerAvailability*.6,'disabling DHT/PeX/LSD must materially reduce peer discovery');
 }
 
+
+{
+  const discoveryOn=createWorld({profile:{qbVersion:'5.2.3',webApiVersion:'2.15.1'},count:200,seed:'discovery-components',now:baseNow});
+  const discoveryOff=createWorld({profile:{qbVersion:'5.2.3',webApiVersion:'2.15.1'},count:200,seed:'discovery-components',now:baseNow});
+  setPreferences(discoveryOn,{dht:false,pex:true,lsd:true},baseNow);
+  setPreferences(discoveryOff,{dht:false,pex:false,lsd:false},baseNow);
+  applyRuntimePolicies(discoveryOn,baseNow+15000);
+  applyRuntimePolicies(discoveryOff,baseNow+15000);
+  assert.ok(discoveryOn.environment.peerAvailability>discoveryOff.environment.peerAvailability,'PeX/LSD enabled state must materially increase virtual peer discovery availability');
+}
+
+{
+  const w=createWorld({profile:{qbVersion:'5.2.3',webApiVersion:'2.15.1'},count:80,seed:'scheduler-window',now:baseNow});
+  const date=new Date(baseNow),start=date.getHours()*60+date.getMinutes(),end=(start+2)%1440;
+  setPreferences(w,{
+    scheduler_enabled:true,
+    schedule_from_hour:Math.floor(start/60),
+    schedule_from_min:start%60,
+    schedule_to_hour:Math.floor(end/60),
+    schedule_to_min:end%60
+  },baseNow);
+  applyRuntimePolicies(w,baseNow+30000);
+  assert.equal(w.altSpeedMode,true,'enabled scheduler must activate alternate speed mode inside its configured time window');
+  applyRuntimePolicies(w,baseNow+180000);
+  assert.equal(w.altSpeedMode,false,'enabled scheduler must leave alternate speed mode outside its configured time window');
+}
+
 {
   const w=createWorld({profile:{qbVersion:'5.2.3',webApiVersion:'2.15.1'},count:1000,seed:'tracker-failure',now:baseNow});
   applyScenario(w,'tracker-failure',baseNow);
