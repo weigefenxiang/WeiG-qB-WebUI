@@ -348,24 +348,29 @@ function naturalJitter(world,torrent,now,direction){
 }
 
 function queueCandidates(world,now){
-  const downloads=[],uploads=[],normalizedChecking=[];
+  const downloads=[],uploads=[],checking=[],normalizedChecking=[];
   const checkingLimit=Math.max(1,Math.round(Number(world.preferences?.max_active_checking_torrents)||1));
-  let checkingCount=0;
-  for(const t of world.torrents){
-    if(t.canonicalState===CANONICAL.CHECKING){
-      checkingCount++;
-      if(checkingCount>checkingLimit){
-        const fallback=t.maintenanceResumeState||(t.completed?CANONICAL.SEED_QUEUED:CANONICAL.DOWNLOAD_QUEUED);
-        t.canonicalState=fallback;
-        if(t.resumeState===CANONICAL.CHECKING)t.resumeState=fallback;
-        t.checkingUntil=0;
-        t.maintenanceResumeState='';
-        t.lastStateChange=Math.floor(now/1000);
-        normalizedChecking.push(t.hash);
-      }else continue;
-    }
-    if([CANONICAL.ERROR,CANONICAL.METADATA,CANONICAL.MOVING,CANONICAL.DOWNLOAD_PAUSED,CANONICAL.SEED_PAUSED].includes(t.canonicalState))continue;
+  const enqueue=t=>{
+    if([CANONICAL.ERROR,CANONICAL.METADATA,CANONICAL.MOVING,CANONICAL.DOWNLOAD_PAUSED,CANONICAL.SEED_PAUSED].includes(t.canonicalState))return;
     if(t.completed)uploads.push(t);else downloads.push(t);
+  };
+  for(const t of world.torrents){
+    if(t.canonicalState===CANONICAL.CHECKING){checking.push(t);continue;}
+    enqueue(t);
+  }
+  checking.sort((a,b)=>{
+    const aActive=Number(a.checkingUntil)>now?0:1,bActive=Number(b.checkingUntil)>now?0:1;
+    return aActive-bActive||(Number(a.queuePosition)||Number.MAX_SAFE_INTEGER)-(Number(b.queuePosition)||Number.MAX_SAFE_INTEGER)||String(a.hash).localeCompare(String(b.hash));
+  });
+  for(const t of checking.slice(checkingLimit)){
+    const fallback=t.maintenanceResumeState||(t.completed?CANONICAL.SEED_QUEUED:CANONICAL.DOWNLOAD_QUEUED);
+    t.canonicalState=fallback;
+    if(t.resumeState===CANONICAL.CHECKING)t.resumeState=fallback;
+    t.checkingUntil=0;
+    t.maintenanceResumeState='';
+    t.lastStateChange=Math.floor(now/1000);
+    normalizedChecking.push(t.hash);
+    enqueue(t);
   }
   const sort=(a,b)=>(b.forceStart-a.forceStart)||(a.queuePosition-b.queuePosition)||a.hash.localeCompare(b.hash);
   downloads.sort(sort);uploads.sort(sort);
