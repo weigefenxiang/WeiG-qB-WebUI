@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {authenticate,createWorld} from '../simulator/core/engine.js';
-import {generatedPeers,peerViewStats} from '../simulator/core/peer-view.js';
+import {generatedPeers,peerCountForTorrent,peerViewStats} from '../simulator/core/peer-view.js';
+import {indexedWebseedList,webseedCountForTorrent} from '../simulator/core/webseed-view.js';
 import {runtimeIndexStats} from '../simulator/core/runtime-index.js';
 import {handleApi} from '../simulator/protocol/router.js';
 
@@ -10,7 +11,12 @@ const world=createWorld({profile:{qbVersion:'5.2.3',webApiVersion:'2.15.1',stabl
 authenticate(world,'demo','demo',baseNow);
 function get(path){return new Request(`https://example.invalid/api/v2/${path}`);}
 function post(path,body){return new Request(`https://example.invalid/api/v2/${path}`,{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams(body)});}
-const target=world.torrents[3456];
+const countClasses=new Map();
+for(const torrent of world.torrents){const count=peerCountForTorrent(world,torrent.hash);if(!countClasses.has(count))countClasses.set(count,torrent);}
+for(const expected of [0,3,50,100])assert.ok(countClasses.has(expected),`5000-torrent world must include a seeded ${expected}-peer detail example`);
+assert.equal(peerViewStats(world).templateRows,0,'scanning seeded peer counts must not materialize any peer templates');
+const target=[...countClasses.entries()].find(([count])=>count>0)?.[1];
+assert.ok(target,'peer detail fixture needs one non-empty target');
 const peerPath=`sync/torrentPeers?hash=${target.hash}`;
 
 function peerIdentity(row){
@@ -49,7 +55,7 @@ let peerStats=peerViewStats(world);
 const initialGeneratedPeers=Object.keys(body.peers).length;
 assert.equal(peerStats.templateBuilds,1,'first peer poll must create one static metadata cache entry');
 assert.equal(peerStats.templateRows,initialGeneratedPeers,'first peer poll must lazily generate only the peer templates actually returned');
-assert.ok(peerStats.templateRows<=40,'peer metadata cache must stay bounded to qB maximum peer projection size');
+assert.ok(peerStats.templateRows<=100,'peer metadata cache must stay bounded to qB maximum peer projection size');
 
 response=await handleApi(world,get(peerPath));
 assert.equal(response.status,200);
@@ -80,20 +86,26 @@ assert.equal(peerStats.templateRows,initialGeneratedPeers,'rate changes must not
 const missing=await handleApi(world,get('sync/torrentPeers?hash=missing'));
 assert.equal(missing.status,404,'unknown torrent peer lookup must preserve Not Found behavior');
 
-const publicTorrent=world.torrents.find(t=>!t.private);
+const publicTorrent=world.torrents.find(t=>!t.private&&webseedCountForTorrent(world,t.hash)>0);
+const zeroWebseedTorrent=world.torrents.find(t=>!t.private&&webseedCountForTorrent(world,t.hash)===0);
 const privateTorrent=world.torrents.find(t=>t.private);
-assert.ok(publicTorrent&&privateTorrent,'webseed fixture needs both public and private torrents');
+assert.ok(publicTorrent&&zeroWebseedTorrent&&privateTorrent,'webseed fixture needs public nonzero/zero and private torrents');
+const sampledWebseedCounts=new Set(world.torrents.filter(t=>!t.private).slice(0,200).map(t=>webseedCountForTorrent(world,t.hash)));
+assert.ok(sampledWebseedCounts.size>=5,'public torrents must expose varied seeded HTTP-source counts without materializing URL lists');
 const publicWebseedPath=`torrents/webseeds?hash=${publicTorrent.hash}`;
 const hitsBeforeWebseed=runtimeIndexStats(world).indexHits;
 response=await handleApi(world,get(publicWebseedPath));
 assert.equal(response.status,200);
 const webseeds=await response.json();
-assert.ok(webseeds.length>=1&&webseeds.length<=2,'public torrents must expose one or two deterministic WebSeed entries');
+assert.equal(webseeds.length,webseedCountForTorrent(world,publicTorrent.hash),'public torrent WebSeed count must match its seeded 0–6 detail cardinality');
+assert.ok(webseeds.length>=1&&webseeds.length<=6,'selected public torrent must expose a bounded nonzero WebSeed set');
 for(let i=0;i<webseeds.length;i++){
   assert.equal(webseeds[i].url,`https://cdn${i+1}.example.invalid/${publicTorrent.hash.slice(0,12)}/${encodeURIComponent(publicTorrent.name)}`,'WebSeed URL must be deterministic and tied to torrent identity');
 }
 response=await handleApi(world,get(publicWebseedPath));
 assert.equal(response.status,200);assert.deepEqual(await response.json(),webseeds,'repeated public WebSeed reads must preserve deterministic identity');
+response=await handleApi(world,get(`torrents/webseeds?hash=${zeroWebseedTorrent.hash}`));
+assert.equal(response.status,200);assert.deepEqual(await response.json(),[],'seeded zero-source public torrents must remain empty');
 response=await handleApi(world,get(`torrents/webseeds?hash=${privateTorrent.hash}`));
 assert.equal(response.status,200);assert.deepEqual(await response.json(),[],'private torrents must expose no WebSeeds');
 response=await handleApi(world,get('torrents/webseeds?hash=missing'));
@@ -128,11 +140,11 @@ assert.ok(body.rid>=ridAfterManual,'peer response rid must remain monotonic afte
 assert.equal(body.peers[manualEndpoint],undefined,'banned manual peer must disappear immediately without rebuilding static generated-peer metadata');
 peerStats=peerViewStats(world);
 assert.equal(peerStats.templateBuilds,1,'manual-peer and ban overlays must not rebuild static generated-peer metadata');
-assert.ok(peerStats.templateRows<=40,'dynamic peer count growth must lazily expand but never exceed 40 static templates');
+assert.ok(peerStats.templateRows<=100,'dynamic peer count growth must lazily expand but never exceed 100 static templates');
 
 const auxiliaryRouter=fs.readFileSync(new URL('../simulator/protocol/auxiliary-router.js',import.meta.url),'utf8');
 assert.match(auxiliaryRouter,/generatedPeers\(world,hash\)/,'live auxiliary sync/torrentPeers route must use the indexed peer projection');
 assert.match(auxiliaryRouter,/indexedWebseedList\(world,url\.searchParams\.get\('hash'\)\|\|''\)/,'live WebSeed GET must use the indexed detail projection');
 assert.doesNotMatch(auxiliaryRouter,/import\s*\{\s*peers\s*\}\s*from\s*['"]\.\.\/core\/engine\.js['"]/,'live peer polling must not import the legacy linear-scan engine peer helper');
 
-console.log(`Virtual qB detail-view contract passed: 120 peer/WebSeed cycles on 5000 Torrents reused one membership index (+${stats.indexHits-soakIndexHits} hits), lazily built peer metadata once (${peerStats.templateRows}/40 templates), and kept manual-peer/ban overlays live.`);
+console.log(`Virtual qB detail-view contract passed: seeded 0/3/50/100 peer examples and varied 0–6 HTTP sources stay lazy; 120 peer/WebSeed cycles reused one 5000-row membership index (+${stats.indexHits-soakIndexHits} hits), with at most ${peerStats.maxGeneratedPeers} peer templates per opened torrent.`);

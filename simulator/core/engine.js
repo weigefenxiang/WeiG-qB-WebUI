@@ -155,6 +155,11 @@ function makeTorrent(seed,index,now){
   const trackerUrl=privateFlag?PT_TRACKER:pick(rng,TRACKERS);
   const trackerStatus=trackerFacetKind==='tracker-error'?5:trackerFacetKind==='other-error'?4:2;
   const trackerMessage=trackerFacetKind==='tracker-error'?'Virtual tracker error':trackerFacetKind==='other-error'?'Virtual announce failure':trackerFacetKind==='warning'?'Virtual tracker warning':'';
+  const trackerCount=trackerFacetKind==='trackerless'?0:int(rng,1,5);
+  const trackerRows=Array.from({length:trackerCount},(_,trackerIndex)=>{
+    const url=trackerIndex===0?trackerUrl:(privateFlag?`https://pt${trackerIndex+1}.example/announce`:`https://tracker-${1+(hash32(`${seed}:${index}:${trackerIndex}`)%24)}.example.invalid/announce`);
+    return{url,status:trackerIndex===0?trackerStatus:2,tier:trackerIndex,num_peers:Math.max(0,baseLeechers-trackerIndex),num_seeds:Math.max(0,baseSeeders-trackerIndex),num_leeches:Math.max(0,baseLeechers-trackerIndex),num_downloaded:int(rng,0,5000),msg:trackerIndex===0?trackerMessage:''};
+  });
   const name=pick(rng,TORRENT_NAME_POOL);
   return {
     hash:makeHash(seed,index),
@@ -199,9 +204,7 @@ function makeTorrent(seed,index,now){
     files:[
       {index:0,name:'content.bin',size,progress,priority:1,is_seed:complete,piece_range:[0,Math.max(0,Math.ceil(size/(4*MiB))-1)]}
     ],
-    trackers:trackerFacetKind==='trackerless'?[]:[
-      {url:trackerUrl,status:trackerStatus,tier:0,num_peers:baseLeechers,num_seeds:baseSeeders,num_leeches:baseLeechers,num_downloaded:int(rng,0,5000),msg:trackerMessage}
-    ]
+    trackers:trackerRows
   };
 }
 

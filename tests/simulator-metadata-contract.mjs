@@ -31,6 +31,12 @@ function getRequest(path){return new Request(`https://example.invalid/api/v2/${p
 }
 
 {
+  const w=world('5.2.3','2.15.1',{});
+  const counts=new Set(w.torrents.map(t=>(t.trackers||[]).length));
+  assert.ok(counts.has(0)&&[...counts].some(count=>count>=3),'virtual tracker detail cardinality must vary between trackerless and multi-tracker torrents');
+}
+
+{
   const w=world();authenticate(w,'demo','demo');
   const t=w.torrents.find(x=>!x.completed);assert.ok(t);
   t.has_metadata=false;t.canonicalState=CANONICAL.METADATA;
@@ -63,7 +69,7 @@ function getRequest(path){return new Request(`https://example.invalid/api/v2/${p
 }
 
 {
-  const w=world('4.1.0','2.0.0');const t=w.torrents[0];
+  const w=world('4.1.0','2.0.0');const t=w.torrents.find(item=>item.trackers?.length);assert.ok(t);
   const p=propertiesForTorrent(w,t.hash,1700000005000,contract(w,'torrents/properties'));assert.ok(p);
   assert.ok(!('hash' in p)&&!('private' in p)&&!('has_metadata' in p),'qB 4.1.0 properties must retain legacy field surface');
   const trackers=trackersForTorrent(w,t.hash,1700000005000,contract(w,'torrents/trackers'));assert.ok(trackers.length>=1);
@@ -72,7 +78,7 @@ function getRequest(path){return new Request(`https://example.invalid/api/v2/${p
 }
 
 {
-  const w=world('5.1.4','2.11.4');const t=w.torrents[0];
+  const w=world('5.1.4','2.11.4');const t=w.torrents.find(item=>item.trackers?.length);assert.ok(t);
   const trackers=trackersForTorrent(w,t.hash,1700000005000,contract(w,'torrents/trackers'));assert.ok(trackers.length>=4);
   assert.deepEqual(trackers.slice(0,3).map(x=>x.url),['** [DHT] **','** [PeX] **','** [LSD] **']);
   const real=trackers[3];assert.equal(typeof real.status,'number');
@@ -80,7 +86,7 @@ function getRequest(path){return new Request(`https://example.invalid/api/v2/${p
 }
 
 {
-  const w=world('5.2.0','2.12.9');const t=w.torrents[0];
+  const w=world('5.2.0','2.12.9');const t=w.torrents.find(item=>item.trackers?.length);assert.ok(t);
   t.trackers[0].status=5;
   let real=trackersForTorrent(w,t.hash,1700000005000,contract(w,'torrents/trackers'))[3];
   assert.equal(real.status,4,'pre-2.13 WebAPI must collapse TrackerError=5 into NotWorking=4');
@@ -91,7 +97,7 @@ function getRequest(path){return new Request(`https://example.invalid/api/v2/${p
 }
 
 {
-  const w=world('5.2.0','2.13.0');const t=w.torrents[0];t.has_metadata=true;t.private=true;
+  const w=world('5.2.0','2.13.0');const t=w.torrents.find(item=>item.trackers?.length);assert.ok(t);t.has_metadata=true;t.private=true;
   t.trackers[0].status=5;
   let trackers=trackersForTorrent(w,t.hash,1700000005000,contract(w,'torrents/trackers'));assert.ok(trackers.length>=4);
   assert.deepEqual(trackers.slice(0,3).map(x=>x.url),['** [DHT] **','** [PeX] **','** [LSD] **']);
