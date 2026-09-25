@@ -315,6 +315,15 @@ function cap(value,limit){
   return limit>0?Math.min(value,limit):value;
 }
 
+function encryptionPeerFactor(world,torrent){
+  const mode=Math.max(0,Math.min(2,Math.round(Number(world.preferences?.encryption)||0)));
+  if(mode===0)return 1;
+  if(!Number.isFinite(torrent.encryptedPeerShare)){
+    torrent.encryptedPeerShare=.35+deterministicUnit(String(world.seed||'virtual'),`${torrent.hash}:encrypted-peer-share`)*.45;
+  }
+  return mode===1?torrent.encryptedPeerShare:1-torrent.encryptedPeerShare;
+}
+
 function applyBudget(items,budget,key){
   const total=items.reduce((sum,x)=>sum+x.demand,0);
   const factor=total>0?Math.min(1,budget/total):0;
@@ -384,7 +393,8 @@ export function schedule(world,now=Date.now(),elapsedSeconds=0){
     }else if(!t.completed&&![CANONICAL.DOWNLOAD_PAUSED,CANONICAL.ERROR,CANONICAL.CHECKING,CANONICAL.METADATA,CANONICAL.MOVING].includes(t.canonicalState)){
       if(!activeDownloads.has(t.hash))t.canonicalState=CANONICAL.DOWNLOAD_QUEUED;
       else{
-        const possiblePeers=Math.max(0,Math.round((t.seeders+t.leechers)*env.peerAvailability));
+        const encryptionFactor=encryptionPeerFactor(world,t);
+        const possiblePeers=Math.max(0,Math.round((t.seeders+t.leechers)*env.peerAvailability*encryptionFactor));
         const perTorrent=Math.max(0,Number(prefs.max_connec_per_torrent)||0)||possiblePeers;
         const connections=Math.min(possiblePeers,perTorrent,remainingConnections);
         t.connectedPeers=Number.isFinite(connections)?connections:possiblePeers;
@@ -397,7 +407,7 @@ export function schedule(world,now=Date.now(),elapsedSeconds=0){
           demand=cap(demand,Number(t.downloadLimit)||0);
           dlItems.push({torrent:t,demand});
           const shareable=t.size>0?Math.min(1,Math.max(0,t.downloaded/t.size)):0;
-          const possibleUploadPeers=Math.min(t.connectedPeers,Math.max(0,Math.round(t.leechers*env.peerAvailability*shareable)));
+          const possibleUploadPeers=Math.min(t.connectedPeers,Math.max(0,Math.round(t.leechers*env.peerAvailability*encryptionFactor*shareable)));
           const perTorrentSlots=Math.max(0,Number(prefs.max_uploads_per_torrent)||0)||possibleUploadPeers;
           t.uploadSlots=Math.min(possibleUploadPeers,perTorrentSlots,remainingUploadSlots);
           if(Number.isFinite(remainingUploadSlots))remainingUploadSlots=Math.max(0,remainingUploadSlots-t.uploadSlots);
@@ -413,7 +423,8 @@ export function schedule(world,now=Date.now(),elapsedSeconds=0){
     }else if(t.completed&&![CANONICAL.SEED_PAUSED,CANONICAL.ERROR,CANONICAL.CHECKING,CANONICAL.MOVING].includes(t.canonicalState)){
       if(!activeUploads.has(t.hash))t.canonicalState=CANONICAL.SEED_QUEUED;
       else{
-        const possiblePeers=Math.max(0,Math.round(t.leechers*env.peerAvailability));
+        const encryptionFactor=encryptionPeerFactor(world,t);
+        const possiblePeers=Math.max(0,Math.round(t.leechers*env.peerAvailability*encryptionFactor));
         const perTorrent=Math.max(0,Number(prefs.max_connec_per_torrent)||0)||possiblePeers;
         const connections=Math.min(possiblePeers,perTorrent,remainingConnections);
         t.connectedPeers=Number.isFinite(connections)?connections:possiblePeers;
