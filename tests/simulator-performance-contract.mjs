@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {authenticate,createWorld} from '../simulator/core/engine.js';
 import {handleApi,simulatorApiCacheStats} from '../simulator/protocol/router.js';
+import {virtualCatalogTermination} from '../simulator/core/catalog-scan-adapter.js';
 
 const baseNow=1700000000000;
 function authenticatedWorld(profile,count=5000,seed='performance-contract'){
@@ -40,6 +41,16 @@ const qB4All=await (await handleApi(qB4,new Request('https://example.invalid/api
 const qB4Overflow=await (await handleApi(qB4,new Request('https://example.invalid/api/v2/torrents/info?sort=added_on&limit=2&offset=999'))).json();
 assert.deepEqual(qB4Overflow.map(row=>row.hash),qB4All.slice(0,2).map(row=>row.hash),'qB4 cached Router slicing must preserve historical out-of-range offset reset-to-zero behavior');
 
+const qB4Large=authenticatedWorld({qbVersion:'4.6.7',webApiVersion:'2.10.4',stable:true},5000,'pages-catalog-qb4');
+const qB4CatalogEnd=new Request('https://example.invalid/api/v2/torrents/info?sort=added_on&reverse=true&limit=200&offset=5000');
+const qB4CatalogBeforeEnd=new Request('https://example.invalid/api/v2/torrents/info?sort=added_on&reverse=true&limit=200&offset=4800');
+assert.equal(virtualCatalogTermination(qB4Large,qB4CatalogEnd,new URL(qB4CatalogEnd.url)),true,'Virtual Pages adapter must terminate the qB4 5000-row / 200-row catalog scan at offset 5000');
+assert.equal(virtualCatalogTermination(qB4Large,qB4CatalogBeforeEnd,new URL(qB4CatalogBeforeEnd.url)),false,'Virtual Pages adapter must preserve the final real qB4 catalog page at offset 4800');
+const rawQb4End=await (await handleApi(qB4Large,qB4CatalogEnd)).json();
+assert.equal(rawQb4End.length,200,'raw simulator Router must retain source-faithful qB4 out-of-range reset behavior behind the Pages adapter');
+const qualified=new Request('https://example.invalid/api/v2/torrents/info?sort=added_on&reverse=true&limit=200&offset=5000&filter=active');
+assert.equal(virtualCatalogTermination(qB4Large,qualified,new URL(qualified.url)),false,'Virtual Pages adapter must not alter qualified/filter requests');
+
 const qB5Small=authenticatedWorld({qbVersion:'5.2.3',webApiVersion:'2.15.1',stable:true},20,'router-window-qb5');
 const qB5Overflow=await (await handleApi(qB5Small,new Request('https://example.invalid/api/v2/torrents/info?sort=added_on&limit=2&offset=999'))).json();
 assert.deepEqual(qB5Overflow,[],'qB5 cached Router slicing must preserve QList out-of-range empty behavior');
@@ -60,4 +71,4 @@ const rebuilt=simulatorApiCacheStats(world);
 assert.equal(rebuilt.cached,true,'first read after a mutation must rebuild the projection cache');
 assert.equal(rebuilt.hits,0,'rebuilt projection must not report a stale cache hit');
 
-console.log(`Virtual qB performance contract passed: 5000 torrents paged through one reusable projection (${stats.hits} hits, ${elapsedMs} ms), Router slicing preserves qB4/qB5 window semantics, and shared runtime membership indexes enrich rows without duplicate Maps.`);
+console.log(`Virtual qB performance contract passed: 5000 torrents paged through one reusable projection (${stats.hits} hits, ${elapsedMs} ms); raw qB4/qB5 window semantics remain source-faithful while the O(1) Pages-only qB4 catalog adapter terminates the exact 200-row background scan.`);

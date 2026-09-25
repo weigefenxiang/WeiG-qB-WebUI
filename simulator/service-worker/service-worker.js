@@ -9,6 +9,7 @@ import {handleApi} from './__simulator/protocol/router.js';
 import {applyTransportPolicy} from './__simulator/protocol/transport-contract.js';
 import {emulateQbtDocument} from './__simulator/qbt-tr-emulator.mjs';
 import {adaptSessionContractSource} from './__simulator/core/session-contract-adapter.js';
+import {virtualCatalogTermination} from './__simulator/core/catalog-scan-adapter.js';
 import {consumePendingHandoffSession,durableSessionUrl,forgetPendingHandoffSession,hasHandoffSessionToken,rememberHandoffSession,rememberPendingHandoffSession,rememberSessionForEvent,sessionClientIds,sessionForEvent,sessionForHandoff,sessionForUrl} from './__simulator/core/session-identity.js';
 
 const SOURCE_PRIVATE='./__source/private/';
@@ -286,7 +287,10 @@ async function handleApiQueued(event,url){
   if(transport.rejected){
     return new Response(transport.body||'Unauthorized',{status:transport.status||401,headers:{'content-type':'text/plain; charset=utf-8','cache-control':'no-store'}});
   }
-  const response=await handleApi(world,event.request,url);
+  const boundedCatalog=virtualCatalogTermination(world,event.request,url);
+  const response=boundedCatalog
+    ?new Response('[]',{status:200,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-weig-virtual-catalog-termination':'qb4-bounded-scan'}})
+    :await handleApi(world,event.request,url);
   await worlds.touch(id,world,{mutation:event.request.method.toUpperCase()!=='GET'});
   if(world.authenticated&&event.request.method.toUpperCase()==='POST'&&/\/api\/v2\/auth\/login\/?$/.test(url.pathname))rememberPendingHandoffSession(pendingHandoffSessions,url,id);
   return response;
