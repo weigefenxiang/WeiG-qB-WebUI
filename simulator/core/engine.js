@@ -438,9 +438,9 @@ export function schedule(world,now=Date.now(),elapsedSeconds=0){
           appendLog(world,`Torrent completed: ${t.name}`,1,now);
         }
       }
-      if(t.effectiveUploadRate>0&&t.completed){
+      if(t.effectiveUploadRate>0){
         const amount=t.effectiveUploadRate*elapsedSeconds;
-        t.uploaded+=amount;world.stats.alltime_ul+=amount;t.seedTime+=elapsedSeconds;
+        t.uploaded+=amount;world.stats.alltime_ul+=amount;if(t.completed)t.seedTime+=elapsedSeconds;
       }
       if(t.effectiveDownloadRate>0||t.effectiveUploadRate>0)t.activeTime+=elapsedSeconds;
       const ratio=t.downloaded>0?t.uploaded/t.downloaded:0;
