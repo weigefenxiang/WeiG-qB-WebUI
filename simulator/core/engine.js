@@ -386,6 +386,18 @@ export function schedule(world,now=Date.now(),elapsedSeconds=0){
           let demand=t.naturalDownloadRate*naturalJitter(world,t,now,'dl')*peerFactor;
           demand=cap(demand,Number(t.downloadLimit)||0);
           dlItems.push({torrent:t,demand});
+          const shareable=t.size>0?Math.min(1,Math.max(0,t.downloaded/t.size)):0;
+          const possibleUploadPeers=Math.min(t.connectedPeers,Math.max(0,Math.round(t.leechers*env.peerAvailability*shareable)));
+          const perTorrentSlots=Math.max(0,Number(prefs.max_uploads_per_torrent)||0)||possibleUploadPeers;
+          t.uploadSlots=Math.min(possibleUploadPeers,perTorrentSlots,remainingUploadSlots);
+          if(Number.isFinite(remainingUploadSlots))remainingUploadSlots=Math.max(0,remainingUploadSlots-t.uploadSlots);
+          if(t.uploadSlots>0){
+            const uploadPeerFactor=Math.min(1,Math.max(.08,t.uploadSlots/4));
+            const pieceFactor=Math.min(1,Math.max(.12,shareable));
+            let uploadDemand=t.naturalUploadRate*naturalJitter(world,t,now,'ul')*uploadPeerFactor*pieceFactor;
+            uploadDemand=cap(uploadDemand,Number(t.uploadLimit)||0);
+            ulItems.push({torrent:t,demand:uploadDemand});
+          }
         }
       }
     }else if(t.completed&&![CANONICAL.SEED_PAUSED,CANONICAL.ERROR,CANONICAL.CHECKING,CANONICAL.MOVING].includes(t.canonicalState)){
