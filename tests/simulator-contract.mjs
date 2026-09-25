@@ -167,7 +167,7 @@ function formRequest(url,body){
 }
 
 {
-  const w=world();authenticate(w,'demo','demo');
+  const w=world();authenticate(w,'demo','demo');w.preferences.max_active_checking_torrents=1000;
   const target=w.torrents.find(t=>!t.completed&&Array.isArray(t.trackers)&&t.trackers.length);assert.ok(target,'reannounce fixture requires an incomplete torrent with at least one tracker');
   recheckTorrents(w,target.hash,1700000000000);assert.equal(target.canonicalState,'CHECKING','recheck must enter checking state');
   advanceActionStates(w,1700000003000);assert.notEqual(target.canonicalState,'CHECKING','recheck must recover after its virtual window');
