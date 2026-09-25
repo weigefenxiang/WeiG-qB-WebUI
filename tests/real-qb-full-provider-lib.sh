@@ -220,7 +220,7 @@ DOCKER
 }
 
 start_runtime(){
-  NAME="weig-gfm-${VERSION//./-}-${GITHUB_RUN_ID:-$$}-${RANDOM}"
+  NAME="weig-gfm-${VERSION//./-}-${PROVIDER_LANE//[^a-zA-Z0-9]/-}-${GITHUB_RUN_ID:-$$}-${RANDOM}"
   local common=(-d -t --name "$NAME" --network "$NET")
   if [[ -n "${WEIG_GFM_ALT_WEBUI_STAGE:-}" ]]; then
     [[ -d "$WEIG_GFM_ALT_WEBUI_STAGE" ]] || return 1
