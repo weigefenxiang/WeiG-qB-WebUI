@@ -44,11 +44,11 @@ export function registerDefaultPreferenceBindings(registry) {
     'max_uploads_per_torrent'
   ],roundedNumber,{modeled:true,effect:'scheduler-capacity'});
 
-  // These values are normalized but do not yet own a simulator behavior side effect.
-  registry.register('max_active_checking_torrents',roundedNumber,{modeled:false});
+  registry.register('max_active_checking_torrents',roundedNumber,{modeled:true,effect:'checking-concurrency'});
 
   registerMany(registry,['dl_limit','up_limit'],nonNegativeInteger,{modeled:true,effect:'global-rate-limit'});
   registerMany(registry,['alt_dl_limit','alt_up_limit'],nonNegativeInteger,{modeled:true,effect:'alternate-rate-budget'});
+  registry.register('encryption',roundedNumber,{modeled:true,effect:'peer-encryption-compatibility'});
 
   registry.register('queueing_enabled',booleanValue,{modeled:true,effect:'scheduler-capacity'});
   registry.register('dht',booleanValue,{modeled:true,effect:'transfer-dht-state'});
