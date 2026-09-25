@@ -1,4 +1,4 @@
-import {CANONICAL,normalizeQueuePositions,reconcileManagedPaths,recordTorrentChanges,schedule} from './engine.js';
+import {CANONICAL,checkingConcurrencyLimit,normalizeQueuePositions,reconcileManagedPaths,recordTorrentChanges,schedule} from './engine.js';
 import {deterministicUnit,hash32} from './random.js';
 import {torrentIndex,torrentsByHashes} from './runtime-index.js';
 
@@ -274,7 +274,7 @@ export function applyRuntimePolicies(world,now=Date.now()){
 
 export function recheckTorrents(world,hashes,now=Date.now()){
   const changed=[];
-  const maxChecking=Math.max(1,Math.round(Number(world.preferences?.max_active_checking_torrents)||1));
+  const maxChecking=checkingConcurrencyLimit(world);
   let activeChecking=world.torrents.filter(t=>t.canonicalState===CANONICAL.CHECKING&&Number(t.checkingUntil)>now).length;
   for(const t of selected(world,hashes)){
     if([CANONICAL.ERROR,CANONICAL.METADATA,CANONICAL.MOVING].includes(t.canonicalState))continue;
