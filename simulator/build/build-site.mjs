@@ -12,9 +12,10 @@ function arg(name,fallback=''){const prefix=`--${name}=`;const hit=process.argv.
 function required(name){const value=arg(name);if(!value)throw new Error(`Missing --${name}=...`);return value}
 function runNode(file,args){const result=spawnSync(process.execPath,[file,...args],{cwd:projectRoot,stdio:'inherit'});if(result.status!==0)throw new Error(`${path.basename(file)} failed with status ${result.status}`)}
 function digest(bytes){return crypto.createHash('sha256').update(bytes).digest('hex')}
-function branchAliasHtml(branch){
-  const title=`WeiG qB WebUI — ${branch}`;
-  return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${title}</title><script>(()=>{const target=new URL('./app/',window.location.href);target.search=window.location.search;target.hash=window.location.hash;window.location.replace(target.href)})();</script><noscript><meta http-equiv="refresh" content="0;url=./app/"></noscript></head><body><p><a href="./app/">进入 WeiG qB WebUI ${branch}</a></p></body></html>`;
+function labAliasHtml(branch,relativeLab){
+  const title=`WeiG Virtual qB Lab — ${branch}`;
+  const labPath=`${relativeLab}?branch=${encodeURIComponent(branch)}`;
+  return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${title}</title><script>(()=>{const target=new URL('${labPath}',window.location.href);for(const [key,value] of new URLSearchParams(window.location.search))if(key!=='branch')target.searchParams.set(key,value);target.hash=window.location.hash;window.location.replace(target.href)})();</script><noscript><meta http-equiv="refresh" content="0;url=${labPath}"></noscript></head><body><p><a href="${labPath}">进入 WeiG Virtual qB Lab (${branch})</a></p></body></html>`;
 }
 
 const out=path.resolve(required('out'));
@@ -68,7 +69,7 @@ for(const branch of branches){
     `--product-version=${branch.version}`,
     `--simulator-sha=${simulatorSha}`
   ]);
-  await fs.writeFile(path.join(out,branch.name,'index.html'),branchAliasHtml(branch.name),'utf8');
+  await fs.writeFile(path.join(out,branch.name,'index.html'),labAliasHtml(branch.name,'../lab/'),'utf8');
 }
 
 const devBranch=branches.find(item=>item.name==='dev');
@@ -101,5 +102,5 @@ const preferenceCatalog={schemaVersion:3,profiles:Array.isArray(catalogData)?cat
 const siteMeta={simulatorSha,builtAt:new Date().toISOString(),stableProfiles:Array.isArray(catalogData)?catalogData.length:0,preferenceCatalog,localeCatalog,settingsTranslationCatalog,devDistribution:{path:'downloads/dev/WeiG-qB-WebUI.zip',gitSha:devBranch.sha,version:devBranch.version,materialized:true},branches:Object.fromEntries(branches.map(x=>[x.name,{exactSha:x.sha,productVersion:x.version}]))};
 await fs.writeFile(path.join(out,'metadata','site.json'),JSON.stringify(siteMeta,null,2)+'\n','utf8');
 await fs.writeFile(path.join(out,'.nojekyll'),'','utf8');
-await fs.writeFile(path.join(out,'index.html'),'<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="0;url=./lab/"><title>WeiG Virtual qB Lab</title></head><body><p><a href="./lab/">进入 WeiG Virtual qB Lab</a></p></body></html>','utf8');
+await fs.writeFile(path.join(out,'index.html'),labAliasHtml('dev','./lab/'),'utf8');
 console.log(`Assembled WeiG Virtual qB Pages artifact: ${out} with ${localeCatalog.profiles} exact locale profiles / ${localeCatalog.localeSets} sets, ${settingsTranslationCatalog.mappedPreferences} official Settings mappings, ${settingsTranslationCatalog.nativeTorrentColumns} native Torrent columns and ${settingsTranslationCatalog.recoveryLocales} recovery QM locales`);
