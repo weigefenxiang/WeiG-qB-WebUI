@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {createWorld,setPreferences} from '../simulator/core/engine.js';
 import {applyRuntimePolicies} from '../simulator/core/torrent-actions.js';
+import {transferSnapshot} from '../simulator/core/runtime-view.js';
 
 const MiB=1024*1024;
 const baseNow=1700000000000;
@@ -70,6 +71,55 @@ function sampleTrace(seed,times){
   applyRuntimePolicies(world,baseNow+5000);
   assert.ok(world.environment.downCapacity<=96*MiB,'alternate download limit must own the jittered hard cap while alternate mode is active');
   assert.ok(world.environment.upCapacity<=24*MiB,'alternate upload limit must own the jittered hard cap while alternate mode is active');
+}
+
+
+function fiveMinuteTransferTrace(seed){
+  const world=createWorld({
+    profile:{qbVersion:'5.2.3',webApiVersion:'2.15.1'},
+    count:80,
+    seed,
+    now:baseNow
+  });
+  setPreferences(world,{queueing_enabled:false},baseNow);
+  const raw=[];
+  for(let i=1;i<=150;i++){
+    const now=baseNow+i*2000;
+    applyRuntimePolicies(world,now);
+    const snapshot=transferSnapshot(world,now);
+    raw.push({t:now,dl:snapshot.dl_info_speed,up:snapshot.up_info_speed});
+  }
+  const buckets=[];
+  for(const sample of raw){
+    const index=Math.floor((sample.t-baseNow-1)/15000);
+    const row=buckets[index]||(buckets[index]={dl:0,up:0,count:0});
+    row.dl+=sample.dl;row.up+=sample.up;row.count++;
+  }
+  return buckets.filter(Boolean).map(row=>({dl:row.dl/row.count,up:row.up/row.count}));
+}
+function turningPoints(values){
+  let count=0,previous=0;
+  for(let i=1;i<values.length;i++){
+    const delta=values[i]-values[i-1],sign=delta>0?1:delta<0?-1:0;
+    if(sign&&previous&&sign!==previous)count++;
+    if(sign)previous=sign;
+  }
+  return count;
+}
+
+{
+  const first=fiveMinuteTransferTrace('irregular-transfer-chart');
+  const second=fiveMinuteTransferTrace('irregular-transfer-chart');
+  assert.deepEqual(first,second,'five-minute virtual transfer trace must be reproducible for the same seed and clock');
+  const dl=first.map(row=>row.dl),up=first.map(row=>row.up);
+  assert.ok(dl.every(value=>value>0),'five-minute realism trace must retain active download traffic');
+  assert.ok(up.some(value=>value>0),'five-minute realism trace must retain active upload traffic');
+  assert.ok(turningPoints(dl)>=3,`15-second averaged download trace must retain several non-monotonic turns; got ${turningPoints(dl)}`);
+  assert.ok(turningPoints(up)>=3,`15-second averaged upload trace must retain several non-monotonic turns; got ${turningPoints(up)}`);
+  const dlSpan=(Math.max(...dl)-Math.min(...dl))/Math.max(...dl);
+  const upSpan=(Math.max(...up)-Math.min(...up))/Math.max(...up);
+  assert.ok(dlSpan>=.05,`15-second averaged download trace must keep visible bounded variation; got ${dlSpan}`);
+  assert.ok(upSpan>=.05,`15-second averaged upload trace must keep visible bounded variation; got ${upSpan}`);
 }
 
 console.log('Virtual qB limit-jitter contract passed: seeded 3–30s 5–10% waves plus rare 20–40% excursions remain deterministic and bounded by qB/physical hard caps.');
