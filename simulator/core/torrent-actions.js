@@ -108,7 +108,7 @@ function runtimeSeed(world){return String(world.networkSeed||world.seed||'virtua
 
 function interpolatedNoise(seed,key,now,periodMs){
   const bucket=Math.floor(now/periodMs),phase=(now-bucket*periodMs)/periodMs;
-  const a=deterministicUnit(seed,`${key}:${bucket}`),b=deterministicUnit(seed,`${key}:${bucket+1}`);
+  const a=deterministicUnit(seed,`${key}:${bucket}:a`),b=deterministicUnit(seed,`${key}:${bucket+1}:b`);
   return a+(b-a)*smoothstep(phase);
 }
 
