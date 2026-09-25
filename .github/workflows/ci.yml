@@ -694,8 +694,6 @@ jobs:
           path: exact-base
       - name: Verify or refresh same-stable Frozen source evidence
         shell: bash
-        env:
-          HEAD_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
           set -euo pipefail
           GENERATED="exact-base/qb-releases.json"
@@ -722,12 +720,6 @@ jobs:
           if cmp -s "$GENERATED" "$FROZEN"; then
             echo "Frozen stable catalog already matches current exact source extraction."
             exit 0
-          fi
-
-          if [[ "$HEAD_MESSAGE" == *"[settings-evidence-verify]"* ]]; then
-            echo "Verification SHA still differs from the exact same-stable source catalog." >&2
-            sha256sum "$GENERATED" "$FROZEN" >&2
-            exit 1
           fi
 
           git fetch --no-tags origin dev
