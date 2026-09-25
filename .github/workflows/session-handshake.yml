@@ -54,6 +54,7 @@ jobs:
       WEIG_BROWSER_CHANNEL: chrome
       WEIG_GFM_RUNTIME_INDEX: runtime-index/linuxserver-tags.json
       WEIG_SESSION_RACE_DIR: artifacts/session-handshake-race
+      WEIG_GFM_SOURCE_CACHE_SCOPE: session-source-v1-${{ matrix.qb }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -70,6 +71,7 @@ jobs:
           set -euo pipefail
           command -v google-chrome >/dev/null
           google-chrome --version
+          docker buildx version
           node -p "require('playwright/package.json').version"
           bash -n tests/real-qb-full-runner.sh
           bash -n tests/real-qb-full-provider-lib.sh

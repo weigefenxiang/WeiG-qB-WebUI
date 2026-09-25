@@ -196,7 +196,39 @@ RUN mkdir -p /root/.config/qBittorrent \
 ENTRYPOINT ["/opt/qb/bin/qbittorrent-nox"]
 DOCKER
 
-  if ! docker build --pull \
+  local cache_scope="${WEIG_GFM_SOURCE_CACHE_SCOPE:-}" cache_ready=0
+  if [[ -n "$cache_scope" && "${GITHUB_ACTIONS:-}" == true ]] && docker buildx version >/dev/null 2>&1; then
+    BUILDX_BUILDER="weig-gfm-cache-${VERSION//./-}-${GITHUB_RUN_ID:-$$}-${RANDOM}"
+    if docker buildx create --driver docker-container --name "$BUILDX_BUILDER" --use >/dev/null 2>&1 \
+      && docker buildx inspect --bootstrap >/dev/null 2>&1; then
+      cache_ready=1
+      log_stage "source build cache enabled scope=$cache_scope"
+    else
+      record_attempt "$PROVIDER" "$SOURCE_REF" CACHE_UNAVAILABLE 'BuildKit/GHA cache builder could not be initialized; falling back to canonical docker build'
+      cleanup_buildx >/dev/null 2>&1 || true
+    fi
+  fi
+
+  if ((cache_ready)); then
+    if ! docker buildx build --load --pull \
+        --cache-from "type=gha,scope=$cache_scope" \
+        --cache-to "type=gha,mode=max,ignore-error=true,scope=$cache_scope" \
+        --build-arg "BASE_IMAGE=$base_image" \
+        --build-arg "QB_TAG=$qb_tag" \
+        --build-arg "QB_SOURCE_SHA=$qb_sha" \
+        --build-arg "LT_TAG=$lt_tag" \
+        --build-arg "LT_SOURCE_SHA=$lt_sha" \
+        --build-arg "LT_BUILD=$lt_build" \
+        --build-arg "LT_DEPRECATED=$lt_deprecated" \
+        --build-arg "QB_RUNTIME_PROFILE=$runtime_profile" \
+        -t "$image_tag" "$build_dir"; then
+      record_attempt "$PROVIDER" "$SOURCE_REF" CACHE_BUILD_FAILED 'cache-enabled exact source build failed; retrying once with canonical docker build'
+      cleanup_buildx >/dev/null 2>&1 || true
+      cache_ready=0
+    fi
+  fi
+
+  if ((!cache_ready)) && ! docker build --pull \
       --build-arg "BASE_IMAGE=$base_image" \
       --build-arg "QB_TAG=$qb_tag" \
       --build-arg "QB_SOURCE_SHA=$qb_sha" \

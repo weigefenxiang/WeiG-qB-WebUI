@@ -62,7 +62,7 @@ prepare_session_handshake_stage(){
 if ((SESSION_HANDSHAKE)); then prepare_session_handshake_stage; fi
 ATTEMPTS_FILE="$TMP_ROOT/attempts.tsv"
 : > "$ATTEMPTS_FILE"
-IMAGE=''; SOURCE_REF=''; PROVIDER=''; MODE=''; PACKAGE_ID=''; RUNTIME_VERSION=''; RUNTIME_IDENTITY=''; PASSWORD=''; TARGET=''; NAME=''
+IMAGE=''; SOURCE_REF=''; PROVIDER=''; MODE=''; PACKAGE_ID=''; RUNTIME_VERSION=''; RUNTIME_IDENTITY=''; PASSWORD=''; TARGET=''; NAME=''; BUILDX_BUILDER=''
 NET="weig-gfm-${VERSION//./-}-${PROVIDER_LANE//[^a-zA-Z0-9]/-}-${GITHUB_RUN_ID:-$$}-${RANDOM}"
 NETWORK_CREATED=0; CONTAINER_CREATED=0; FINALIZED=0; CLEANUP_RESULT='PENDING'
 declare -A SEEN_REFS=()
@@ -70,7 +70,8 @@ declare -A SEEN_REFS=()
 record_attempt(){ local p="$1" r="$2" result="$3" reason="$4"; reason="${reason//$'\t'/ }"; reason="${reason//$'\n'/ }"; printf '%s\t%s\t%s\t%s\n' "$p" "$r" "$result" "$reason" >> "$ATTEMPTS_FILE"; }
 log_stage(){ printf '[gfm][%ss][qB %s][lane=%s] %s\n' "$(( $(date +%s) - RUN_STARTED_EPOCH ))" "$VERSION" "$PROVIDER_LANE" "$*"; }
 cleanup_container(){ local failed=0; if ((CONTAINER_CREATED)); then docker rm -f "$NAME" >/dev/null 2>&1 || failed=1; CONTAINER_CREATED=0; fi; return "$failed"; }
-cleanup_for_final(){ local failed=0; cleanup_container || failed=1; if ((NETWORK_CREATED)); then docker network rm "$NET" >/dev/null 2>&1 || failed=1; NETWORK_CREATED=0; fi; return "$failed"; }
+cleanup_buildx(){ local failed=0; if [[ -n "$BUILDX_BUILDER" ]]; then docker buildx rm --force "$BUILDX_BUILDER" >/dev/null 2>&1 || failed=1; BUILDX_BUILDER=''; fi; return "$failed"; }
+cleanup_for_final(){ local failed=0; cleanup_container || failed=1; cleanup_buildx || failed=1; if ((NETWORK_CREATED)); then docker network rm "$NET" >/dev/null 2>&1 || failed=1; NETWORK_CREATED=0; fi; return "$failed"; }
 write_runtime_evidence(){
   local status="$1" reason="${2:-}" attempts_copy="$EVIDENCE_DIR/${WEIG_SHA}-${VERSION}-attempts.tsv"
   cp "$ATTEMPTS_FILE" "$attempts_copy"
@@ -78,7 +79,7 @@ write_runtime_evidence(){
 import fs from 'node:fs'; import path from 'node:path';
 const manifest=JSON.parse(fs.readFileSync('tools/data/qb-stable-lkg.json','utf8'));
 const attempts=fs.readFileSync(process.env.GFM_ATTEMPTS_FILE,'utf8').trim().split('\n').filter(Boolean).map(line=>{const [provider,source_ref,result,...reason]=line.split('\t');return {provider,source_ref,result,reason:reason.join('\t')};});
-const out={schemaVersion:3,phase:'G-FM',module:'runtime-resolver',status:process.env.GFM_STATUS,reason:process.env.GFM_REASON||null,expected_qb_version:process.env.GFM_VERSION,weig_sha:process.env.GFM_WEIG_SHA,webui_version:fs.readFileSync('VERSION','utf8').trim(),frozen_catalog_sha256:manifest.catalogSha256,runtime_index_sha256:process.env.GFM_INDEX_SHA,provider_lane:process.env.GFM_PROVIDER_LANE||'all',duration_seconds:Number(process.env.GFM_DURATION_SECONDS||0),provider:process.env.GFM_PROVIDER||null,source_ref:process.env.GFM_SOURCE_REF||null,resolved_image:process.env.GFM_IMAGE||null,package_id:process.env.GFM_PACKAGE_ID||null,runtime_version:process.env.GFM_RUNTIME_VERSION||null,runtime_identity:process.env.GFM_RUNTIME_IDENTITY||null,platform:'GitHub Actions Ubuntu / isolated Docker network',architecture:process.arch,deployment_mode:'ephemeral real-qB container; outbound network denied; host access through private internal Docker bridge only',remote_service_exposure:'none',cleanup_result:process.env.GFM_CLEANUP_RESULT||'PENDING',attempts};
+const out={schemaVersion:3,phase:'G-FM',module:'runtime-resolver',status:process.env.GFM_STATUS,reason:process.env.GFM_REASON||null,expected_qb_version:process.env.GFM_VERSION,weig_sha:process.env.GFM_WEIG_SHA,webui_version:fs.readFileSync('VERSION','utf8').trim(),frozen_catalog_sha256:manifest.catalogSha256,runtime_index_sha256:process.env.GFM_INDEX_SHA,provider_lane:process.env.GFM_PROVIDER_LANE||'all',duration_seconds:Number(process.env.GFM_DURATION_SECONDS||0),source_cache_scope:process.env.WEIG_GFM_SOURCE_CACHE_SCOPE||null,provider:process.env.GFM_PROVIDER||null,source_ref:process.env.GFM_SOURCE_REF||null,resolved_image:process.env.GFM_IMAGE||null,package_id:process.env.GFM_PACKAGE_ID||null,runtime_version:process.env.GFM_RUNTIME_VERSION||null,runtime_identity:process.env.GFM_RUNTIME_IDENTITY||null,platform:'GitHub Actions Ubuntu / isolated Docker network',architecture:process.arch,deployment_mode:'ephemeral real-qB container; outbound network denied; host access through private internal Docker bridge only',remote_service_exposure:'none',cleanup_result:process.env.GFM_CLEANUP_RESULT||'PENDING',attempts};
 const dir=process.env.GFM_EVIDENCE_DIR; fs.mkdirSync(dir,{recursive:true}); fs.writeFileSync(path.join(dir,`${process.env.GFM_WEIG_SHA}-${process.env.GFM_VERSION}-runtime.json`),`${JSON.stringify(out,null,2)}\n`);
 NODE
   rm -f "$attempts_copy"; FINALIZED=1
