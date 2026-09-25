@@ -121,18 +121,25 @@ function configuredRateLimit(world,direction){
   return Math.max(0,direction==='down'?Number(world.globalDownloadLimit)||0:Number(world.globalUploadLimit)||0);
 }
 
+function seededWavePeriod(seed,key,minMs=3000,maxMs=30000){
+  return Math.round(minMs+deterministicUnit(seed,`${key}:period`)*(maxMs-minMs));
+}
+function signedWave(seed,key,now,minAmplitude=.05,maxAmplitude=.10){
+  const period=seededWavePeriod(seed,key),unit=interpolatedNoise(seed,key,now,period)*2-1;
+  const amplitude=minAmplitude+deterministicUnit(seed,`${key}:amplitude`)*(maxAmplitude-minAmplitude);
+  return unit*amplitude;
+}
+function rareExcursion(seed,key,now){
+  const eventPeriod=60000+Math.round(deterministicUnit(seed,`${key}:event-period`)*90000);
+  const bucket=Math.floor(now/eventPeriod),phase=(now-bucket*eventPeriod)/eventPeriod;
+  if(deterministicUnit(seed,`${key}:event-roll:${bucket}`)>=.22)return 0;
+  const depth=.20+deterministicUnit(seed,`${key}:event-depth:${bucket}`)*.20;
+  const direction=deterministicUnit(seed,`${key}:event-direction:${bucket}`)>=.5?1:-1;
+  return direction*depth*Math.sin(Math.PI*phase)**2;
+}
 function limiterPacingFactor(world,now,direction){
-  const seed=runtimeSeed(world);
-  const microLoss=interpolatedNoise(seed,`limit-${direction}-micro`,now,1600)*.012;
-  const driftLoss=interpolatedNoise(seed,`limit-${direction}-drift`,now,12000)*.004;
-  const eventPeriod=45000,eventBucket=Math.floor(now/eventPeriod),eventPhase=(now-eventBucket*eventPeriod)/eventPeriod;
-  const eventRoll=deterministicUnit(seed,`limit-${direction}-event:${eventBucket}`);
-  let dip=0;
-  if(eventRoll<.15){
-    const depth=.05+deterministicUnit(seed,`limit-${direction}-event-depth:${eventBucket}`)*.05;
-    dip=depth*Math.sin(Math.PI*eventPhase)**2;
-  }
-  return clamp(1-microLoss-driftLoss-dip,.88,1);
+  const seed=runtimeSeed(world),key=`limit-${direction}`;
+  return clamp(.89+signedWave(seed,key,now)+rareExcursion(seed,key,now),.50,1);
 }
 
 function applyConfiguredLimitPacing(world,now){
@@ -145,17 +152,8 @@ function applyConfiguredLimitPacing(world,now){
 }
 
 function physicalLinkFactor(world,now,direction){
-  const seed=runtimeSeed(world);
-  const microLoss=interpolatedNoise(seed,`physical-${direction}-micro`,now,1800)*.012;
-  const driftLoss=interpolatedNoise(seed,`physical-${direction}-drift`,now,18000)*.015;
-  const eventPeriod=60000,eventBucket=Math.floor(now/eventPeriod),eventPhase=(now-eventBucket*eventPeriod)/eventPeriod;
-  const eventRoll=deterministicUnit(seed,`physical-${direction}-event:${eventBucket}`);
-  let dip=0;
-  if(eventRoll<.18){
-    const depth=.05+deterministicUnit(seed,`physical-${direction}-event-depth:${eventBucket}`)*.05;
-    dip=depth*Math.sin(Math.PI*eventPhase)**2;
-  }
-  return clamp(1-microLoss-driftLoss-dip,.88,1);
+  const seed=runtimeSeed(world),key=`physical-${direction}`;
+  return clamp(.88+signedWave(seed,key,now)+rareExcursion(seed,key,now),.48,1);
 }
 
 function applyLightweightCapacityWave(world,now){

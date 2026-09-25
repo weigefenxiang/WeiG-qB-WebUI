@@ -36,7 +36,9 @@ function sampleTrace(seed,times){
   assert.ok(new Set(first.map(([down])=>down)).size>8,'140 MiB/s limit must produce frequent small download-capacity variation');
   assert.ok(new Set(first.map(([,up])=>up)).size>8,'upload limit must produce frequent small capacity variation');
   assert.ok(first.every(([down,up])=>down<=downLimit&&up<=upLimit),'configured qB speed limits must remain hard upper bounds');
-  assert.ok(first.some(([down])=>down<downLimit*.995),'normal jitter must visibly dip below a saturated download limit');
+  assert.ok(first.some(([down])=>down<downLimit*.90),'normal seeded pacing must visibly traverse at least the requested 5–10% band below the hard cap');
+  const downValues=first.map(([down])=>down),span=(Math.max(...downValues)-Math.min(...downValues))/downLimit;
+  assert.ok(span>=.05,`short trace must show at least 5% configured-limit variation; observed ${span}`);
 }
 
 {
@@ -44,7 +46,7 @@ function sampleTrace(seed,times){
   const times=Array.from({length:240},(_,i)=>(startBucket+i)*45000+22500);
   const trace=sampleTrace('rare-limit-dip',times);
   const minimum=Math.min(...trace.map(([down])=>down));
-  assert.ok(minimum<downLimit*.95,'long deterministic trace must contain an occasional multi-percent download dip');
+  assert.ok(minimum<downLimit*.80,'long deterministic trace must contain an occasional 20%+ download excursion');
   assert.ok(trace.every(([down])=>down<=downLimit),'rare excursions must not violate the configured hard download cap');
 }
 
@@ -56,8 +58,8 @@ function sampleTrace(seed,times){
     now:baseNow
   });
   applyRuntimePolicies(world,baseNow+15000);
-  assert.ok(world.environment.downCapacity>200*MiB,'without a qB download limit the seedbox physical network wave must retain its high-capacity baseline');
-  assert.ok(world.environment.upCapacity>60*MiB,'without a qB upload limit the physical upload wave must retain its scenario capacity');
+  assert.ok(world.environment.downCapacity>140*MiB,'without a qB download limit the seedbox physical network wave must retain substantial high-capacity headroom');
+  assert.ok(world.environment.upCapacity>40*MiB,'without a qB upload limit the physical upload wave must retain substantial scenario capacity');
 }
 
 {
@@ -70,4 +72,4 @@ function sampleTrace(seed,times){
   assert.ok(world.environment.upCapacity<=24*MiB,'alternate upload limit must own the jittered hard cap while alternate mode is active');
 }
 
-console.log('Virtual qB limit-jitter contract passed: configured limits stay authoritative while deterministic micro jitter, drift and rare dips make saturated transfer rates non-flat.');
+console.log('Virtual qB limit-jitter contract passed: seeded 3–30s 5–10% waves plus rare 20–40% excursions remain deterministic and bounded by qB/physical hard caps.');

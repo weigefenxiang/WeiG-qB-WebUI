@@ -1,5 +1,6 @@
 import {createRng,int,pick,range,deterministicUnit,hash32} from './random.js';
 import {normalizeProfile,atLeast} from './profiles.js';
+import {TORRENT_NAME_POOL} from '../data/torrent-name-pool.js';
 
 export const CANONICAL={
   DOWNLOAD_ACTIVE:'DOWNLOAD_ACTIVE',
@@ -93,14 +94,17 @@ export const DEFAULT_ENVIRONMENT={
   online:true
 };
 
-const CATEGORIES=['Linux','Movies','TV','Music','Archive','Games','Books','Software','Private'];
-const TAGS=['fast','archive','pt','public','favorite','seedbox','large','small'];
+const PUBLIC_CATEGORIES=['Linux','Movies','TV','Music','Archive','Games','Books','Software'];
+export const VIRTUAL_PT_CATEGORIES=['1+1DBits','nn-team','BeyondH1 Ɔ','RE1Ɔ','TheGeeks','B1tMe','PT1 Ɔ','Gaze11eGames','JP0psuk1'];
+const CATEGORIES=[...PUBLIC_CATEGORIES,...VIRTUAL_PT_CATEGORIES];
+const TAGS=['fast','archive','public','favorite','seedbox','large','small'];
 const TRACKERS=[
   'https://tracker.example/announce',
   'https://tracker2.example/announce',
-  'https://pt.example/announce',
-  'udp://tracker.example:6969/announce'
+  'udp://tracker.example:6969/announce',
+  'https://announce.example.net/tracker'
 ];
+const PT_TRACKER='https://pt.example/announce';
 
 function makeHash(seed,index){
   const a=hash32(`${seed}:${index}:a`).toString(16).padStart(8,'0');
@@ -141,13 +145,20 @@ function makeTorrent(seed,index,now){
   const uploaded=complete?Math.round(size*range(rng,0,3.4)):Math.round(downloaded*range(rng,0,0.35));
   const baseSeeders=state===CANONICAL.DOWNLOAD_STALLED?0:int(rng,0,180);
   const baseLeechers=state===CANONICAL.SEED_STALLED?0:int(rng,0,120);
-  const category=pick(rng,CATEGORIES);
+  const privateFlag=rng()<.18;
+  const category=privateFlag?pick(rng,VIRTUAL_PT_CATEGORIES):pick(rng,PUBLIC_CATEGORIES);
   const tags=[pick(rng,TAGS)];
   if(rng()>.72)tags.push(pick(rng,TAGS));
-  const privateFlag=category==='Private'||tags.includes('pt');
+  if(privateFlag)tags.push('pt');
+  const facetBucket=index%32;
+  const trackerFacetKind=!privateFlag&&facetBucket===0?'trackerless':facetBucket===1?'tracker-error':facetBucket===2?'other-error':facetBucket===3?'warning':'working';
+  const trackerUrl=privateFlag?PT_TRACKER:pick(rng,TRACKERS);
+  const trackerStatus=trackerFacetKind==='tracker-error'?5:trackerFacetKind==='other-error'?4:2;
+  const trackerMessage=trackerFacetKind==='tracker-error'?'Virtual tracker error':trackerFacetKind==='other-error'?'Virtual announce failure':trackerFacetKind==='warning'?'Virtual tracker warning':'';
+  const name=pick(rng,TORRENT_NAME_POOL);
   return {
     hash:makeHash(seed,index),
-    name:`Virtual Torrent ${String(index+1).padStart(4,'0')} · ${pick(rng,['Ubuntu','Fedora','Archive','Dataset','Media','Backup','Source','Demo'])}`,
+    name,
     size,
     downloaded,
     uploaded,
@@ -168,11 +179,13 @@ function makeTorrent(seed,index,now){
     priority:index+1,
     category,
     tags:Array.from(new Set(tags)),
-    tracker:privateFlag?'https://pt.example/announce':pick(rng,TRACKERS),
+    tracker:trackerFacetKind==='trackerless'?'':trackerUrl,
+    trackerFacetKind,
+    trackerWarning:trackerFacetKind==='warning',
     private:privateFlag,
     has_metadata:state!==CANONICAL.METADATA,
     savePath:`/downloads/${category.toLowerCase()}`,
-    contentPath:`/downloads/${category.toLowerCase()}/Virtual Torrent ${index+1}`,
+    contentPath:`/downloads/${category.toLowerCase()}/${name.replace(/[\\/]+/g,'_')}`,
     addedOn:Math.floor(now/1000)-int(rng,30,365*86400),
     completionOn:complete?Math.floor(now/1000)-int(rng,0,60*86400):-1,
     activeTime:int(rng,0,30*86400),
@@ -186,8 +199,8 @@ function makeTorrent(seed,index,now){
     files:[
       {index:0,name:'content.bin',size,progress,priority:1,is_seed:complete,piece_range:[0,Math.max(0,Math.ceil(size/(4*MiB))-1)]}
     ],
-    trackers:[
-      {url:privateFlag?'https://pt.example/announce':pick(rng,TRACKERS),status:2,tier:0,num_peers:baseLeechers,num_seeds:baseSeeders,num_leeches:baseLeechers,num_downloaded:int(rng,0,5000),msg:''}
+    trackers:trackerFacetKind==='trackerless'?[]:[
+      {url:trackerUrl,status:trackerStatus,tier:0,num_peers:baseLeechers,num_seeds:baseSeeders,num_leeches:baseLeechers,num_downloaded:int(rng,0,5000),msg:trackerMessage}
     ]
   };
 }
@@ -276,6 +289,9 @@ export function createWorld(options={}){
   };
   schedule(world,now,0);
   appendLog(world,'Virtual qBittorrent session initialized.',1,now);
+  appendLog(world,'Virtual network and discovery services are ready.',2,now+1000);
+  appendLog(world,'Virtual tracker latency warning sample.',4,now+2000);
+  appendLog(world,'Virtual critical diagnostic sample (non-destructive).',8,now+3000);
   return world;
 }
 
@@ -509,7 +525,12 @@ export function torrentView(t,profileInput){
     seen_complete:t.completionOn,force_start:t.forceStart,auto_tmm:!!t.autoManagement,seq_dl:t.sequential,
     f_l_piece_prio:t.firstLastPriority,priority:Math.max(1,Number(t.queuePosition)||1)
   };
+  if(atLeast(profile.qbVersion,'4.3.0'))view.trackers_count=Array.isArray(t.trackers)?t.trackers.length:0;
   if(profile.major>=5)view.private=!!t.private;
+  const trackerRows=Array.isArray(t.trackers)?t.trackers:[];
+  view.has_tracker_error=trackerRows.some(item=>Number(item.status)===5);
+  view.has_other_announce_error=trackerRows.some(item=>[4,6].includes(Number(item.status)));
+  view.has_tracker_warning=!!t.trackerWarning||trackerRows.some(item=>/warning/i.test(String(item.msg||'')));
   return view;
 }
 

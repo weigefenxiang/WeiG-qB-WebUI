@@ -11,7 +11,7 @@ function restoreInitialStates(world){
   }
 }
 
-function prioritizeCoverage(world){
+function prioritizeCoverage(world,now=Date.now()){
   const dlSlots=Math.max(1,Number(world.preferences.max_active_downloads)||8);
   const ulSlots=Math.max(1,Number(world.preferences.max_active_uploads)||24);
   const dlStalledCount=Math.min(2,Math.max(1,Math.floor(dlSlots/4)));
@@ -20,8 +20,22 @@ function prioritizeCoverage(world){
   const dlActive=world.torrents.filter(t=>t.resumeState===CANONICAL.DOWNLOAD_ACTIVE).slice(0,Math.max(1,dlSlots-dlStalled.length));
   const upStalled=world.torrents.filter(t=>t.resumeState===CANONICAL.SEED_STALLED).slice(0,ulStalledCount);
   const upActive=world.torrents.filter(t=>t.resumeState===CANONICAL.SEED_ACTIVE).slice(0,Math.max(1,ulSlots-upStalled.length));
+  const representativeStates=[
+    CANONICAL.DOWNLOAD_ACTIVE,CANONICAL.DOWNLOAD_STALLED,CANONICAL.DOWNLOAD_PAUSED,
+    CANONICAL.SEED_ACTIVE,CANONICAL.SEED_STALLED,CANONICAL.SEED_PAUSED,
+    CANONICAL.CHECKING,CANONICAL.MOVING,CANONICAL.ERROR
+  ];
+  const representatives=representativeStates.map(state=>world.torrents.find(t=>t.resumeState===state)).filter(Boolean);
+  const latest=Math.floor(now/1000)+60;
+  representatives.forEach((t,index)=>{
+    t.addedOn=latest-index;
+    if(t.resumeState===CANONICAL.DOWNLOAD_ACTIVE){t.seeders=Math.max(12,t.seeders);t.leechers=Math.max(4,t.leechers);}
+    if(t.resumeState===CANONICAL.DOWNLOAD_STALLED)t.seeders=0;
+    if(t.resumeState===CANONICAL.SEED_ACTIVE)t.leechers=Math.max(8,t.leechers);
+    if(t.resumeState===CANONICAL.SEED_STALLED)t.leechers=0;
+  });
   let pos=-10000;
-  for(const t of [...dlStalled,...dlActive,...upStalled,...upActive])t.queuePosition=pos++;
+  for(const t of [...representatives,...dlStalled,...dlActive,...upStalled,...upActive])t.queuePosition=pos++;
 }
 
 function makeDownloadHeavy(world){
@@ -72,7 +86,7 @@ export function applyScenario(world,name='mixed',now=Date.now()){
   else if(scenario==='tracker-failure')Object.assign(world.environment,{trackerFailureRate:.68,latencyMs:85,jitterMs:35});
   else if(scenario==='offline')Object.assign(world.environment,{online:false,downCapacity:0,upCapacity:0,peerAvailability:0});
   clearRuntimeBaseline(world);
-  prioritizeCoverage(world);
+  prioritizeCoverage(world,now);
   normalizeQueuePositions(world);
   schedule(world,now,0);
   return world;

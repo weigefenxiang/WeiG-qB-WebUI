@@ -1,14 +1,40 @@
 import assert from 'node:assert/strict';
 import {
   CANONICAL,addTags,createCategory,createTags,createWorld,deleteTags,listTorrents,mainData,removeCategories,
-  setCategory,setForceStart,setPreferences,transferInfo
+  logs,setCategory,setForceStart,setPreferences,transferInfo,VIRTUAL_PT_CATEGORIES
 } from '../simulator/core/engine.js';
 import {applyRuntimePolicies,movePriority,peerLogItems,setAutoManagement} from '../simulator/core/torrent-actions.js';
 import {applyScenario} from '../simulator/core/scenarios.js';
 import {normalizeProfile,profileByVersion} from '../simulator/core/profiles.js';
+import {torrentStatusMatches} from '../simulator/core/torrent-query.js';
+import {TORRENT_NAME_POOL} from '../simulator/data/torrent-name-pool.js';
 
 const MiB=1024*1024;
 const baseNow=1700000000000;
+
+{
+  assert.equal(TORRENT_NAME_POOL.length,1000,'simulator name pool must expose exactly 1000 reusable names');
+  const nonAscii=TORRENT_NAME_POOL.filter(name=>/[^\x00-\x7F]/.test(name)).length;
+  assert.ok(nonAscii>=100,'simulator name pool must retain a meaningful multilingual minority');
+}
+
+{
+  const w=createWorld({profile:{qbVersion:'5.2.3',webApiVersion:'2.15.1'},count:5000,seed:'first-page-coverage',now:baseNow});
+  applyScenario(w,'mixed',baseNow);
+  const top=[...w.torrents].sort((a,b)=>b.addedOn-a.addedOn).slice(0,50);
+  for(const filter of ['downloading','seeding','completed','stopped','running','active','inactive','stalled','stalled_uploading','stalled_downloading','checking','moving','errored']){
+    assert.ok(top.some(t=>torrentStatusMatches(t,filter,w.profile)),`mixed first page must contain a representative torrent for ${filter}`);
+  }
+  const rows=listTorrents(w,{sort:'added_on',reverse:'true',limit:5000,now:baseNow});
+  assert.ok(rows.some(row=>row.trackers_count===0),'virtual catalog must contain trackerless torrents');
+  assert.ok(rows.some(row=>row.has_tracker_error),'virtual catalog must contain Tracker error samples');
+  assert.ok(rows.some(row=>row.has_other_announce_error),'virtual catalog must contain Other error samples');
+  assert.ok(rows.some(row=>row.has_tracker_warning),'virtual catalog must contain Warning samples');
+  const privateCategories=new Set(rows.filter(row=>row.private===true).map(row=>row.category));
+  for(const category of VIRTUAL_PT_CATEGORIES)assert.ok(privateCategories.has(category),`Private/PT category pool must expose ${category}`);
+  assert.ok(rows.some(row=>/[^\x00-\x7F]/.test(row.name)),'5000-torrent world must expose multilingual torrent names');
+  assert.deepEqual(new Set(logs(w,-1).map(item=>item.type)),new Set([1,2,4,8]),'initial virtual log history must cover Normal/Info/Warning/Critical');
+}
 
 {
   const profile=normalizeProfile({
