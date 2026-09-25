@@ -68,11 +68,24 @@ try{
 
     let response=await api(page,'torrents/info?limit=1001&offset=0');
     assert.equal(response.status,200);assert.equal(response.json.length,1000);
-    const publicTorrent=response.json.find(t=>t.private!==true),privateTorrent=response.json.find(t=>t.private===true);
-    assert.ok(publicTorrent&&privateTorrent,'qB5 live world must contain public and private/PT torrents');
+    const publicTorrents=response.json.filter(t=>t.private!==true),privateTorrent=response.json.find(t=>t.private===true);
+    assert.ok(publicTorrents.length&&privateTorrent,'qB5 live world must contain public and private/PT torrents');
 
+    const webseedSamples=[];
+    for(const torrent of publicTorrents.slice(0,32)){
+      const probe=await api(page,`torrents/webseeds?hash=${encodeURIComponent(torrent.hash)}`);
+      assert.equal(probe.status,200,'deployed public WebSeed endpoint must remain readable');
+      assert.ok(Array.isArray(probe.json),'deployed public WebSeed endpoint must return an array');
+      webseedSamples.push({torrent,count:probe.json.length,items:probe.json});
+      if(webseedSamples.some(item=>item.count===0)&&webseedSamples.some(item=>item.count>0))break;
+    }
+    const positiveWebseed=webseedSamples.find(item=>item.count>0),zeroWebseed=webseedSamples.find(item=>item.count===0);
+    assert.ok(positiveWebseed&&zeroWebseed,`deployed public torrents must expose seeded WebSeed cardinality variation including zero and nonzero examples; observed ${webseedSamples.map(item=>item.count).join(',')}`);
+    const publicTorrent=positiveWebseed.torrent;
     response=await api(page,`torrents/webseeds?hash=${encodeURIComponent(publicTorrent.hash)}`);
-    assert.ok(Array.isArray(response.json)&&response.json.length>=1,'public torrent must expose virtual web seeds on deployed Pages');
+    assert.ok(Array.isArray(response.json)&&response.json.length===positiveWebseed.count,'selected public torrent must preserve its seeded nonzero WebSeed count on deployed Pages');
+    response=await api(page,`torrents/webseeds?hash=${encodeURIComponent(zeroWebseed.torrent.hash)}`);
+    assert.deepEqual(response.json,[],'public torrent may legitimately expose zero seeded HTTP Sources');
     response=await api(page,`torrents/webseeds?hash=${encodeURIComponent(privateTorrent.hash)}`);
     assert.deepEqual(response.json,[],'private/PT torrent must not expose fabricated public web seeds');
 
