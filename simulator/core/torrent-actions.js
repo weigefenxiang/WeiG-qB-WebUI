@@ -141,7 +141,7 @@ function rareExcursion(seed,key,now){
 }
 function limiterPacingFactor(world,now,direction){
   const seed=runtimeSeed(world),key=`limit-${direction}`;
-  return clamp(.94+signedWave(seed,key,now)+rareExcursion(seed,key,now),.45,1);
+  return clamp(.91+signedWave(seed,key,now)+rareExcursion(seed,key,now),.45,1);
 }
 
 function applyConfiguredLimitPacing(world,now){
