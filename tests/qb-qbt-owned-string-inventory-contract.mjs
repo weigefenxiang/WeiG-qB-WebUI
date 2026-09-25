@@ -14,6 +14,11 @@ assert.deepEqual(addUi['add.files'],{source:'Add Torrent File...',context:'MainW
 assert.deepEqual(addUi['add.submit'],{source:'Add Torrent',context:'AddNewTorrentDialog'});
 assert.ok(Object.keys(addUi).some(key=>key.startsWith('add.copy.')),'Add Torrent source family must be retained in qB-owned runtime copy facts');
 
+const routeUi=extractQbOwnedUiFacts({indexSource:'<span>QBT_TR(RSS)QBT_TR[CONTEXT=MainWindow]</span><span>QBT_TR(Execution Log)QBT_TR[CONTEXT=MainWindow]</span><img title="QBT_TR(Options)QBT_TR[CONTEXT=OptionsDialog]">'});
+assert.deepEqual(routeUi['route.rss'],{source:'RSS',context:'MainWindow'});
+assert.deepEqual(routeUi['route.logs'],{source:'Execution Log',context:'MainWindow'});
+assert.deepEqual(routeUi['route.settings'],{source:'Options',context:'OptionsDialog'},'route header copy must be source-owned by exact qB index markup instead of a WeiG hand translation');
+
 const legacyAddUi=extractQbOwnedUiFacts({
   downloadSource:'<title>QBT_TR(Download Torrents from their URLs or Magnet links)QBT_TR[CONTEXT=DownloadFromURLDialog]</title>',
   indexSource:'<a>QBT_TR(&Add Torrent File...)QBT_TR[CONTEXT=MainWindow]</a><a>QBT_TR(&Add Torrent Link...)QBT_TR[CONTEXT=MainWindow]</a>'

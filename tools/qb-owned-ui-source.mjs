@@ -63,6 +63,9 @@ export function extractQbOwnedUiFacts({preferencesSource='',toolbarSource='',fil
   add(out,'sidebar.categories',exactRef(filtersSource,'Categories','TransferListFiltersWidget'));
   add(out,'sidebar.tags',exactRef(filtersSource,'Tags','TransferListFiltersWidget'));
   add(out,'sidebar.trackers',exactRef(filtersSource,'Trackers','TransferListFiltersWidget'));
+  add(out,'route.rss',firstSourceRef([indexSource],['RSS','RSS Reader']));
+  add(out,'route.logs',firstSourceRef([indexSource],['Execution Log','Log']));
+  add(out,'route.settings',firstSourceRef([indexSource],['Options','&Options...','Options...','&Options']));
   const filters=['all','downloading','seeding','completed','resumed','paused','running','stopped','active','inactive','stalled','stalled_uploading','stalled_downloading','checking','moving','errored'];
   for(const name of filters)add(out,`filter.${name}`,itemRef(filtersSource,`${name}_filter`));
   for(const item of extractTrackerFilterFacts(clientSource))add(out,`tracker.filter.${item.id}`,item.copy);
