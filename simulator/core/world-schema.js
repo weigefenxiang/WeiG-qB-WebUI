@@ -1,4 +1,5 @@
 import {hash32} from './random.js';
+import {TORRENT_NAME_POOL} from '../data/torrent-name-pool.js';
 import {CURRENT_WORLD_SCHEMA_VERSION,VIRTUAL_PT_CATEGORIES} from './engine.js';
 
 const LEGACY_PRIVATE_CATEGORY='Private';
@@ -37,6 +38,74 @@ function deterministicPtCategory(world,torrent){
   const key=`${String(world?.seed||'20260905')}:${String(torrent?.hash||torrent?.name||'torrent')}:pt-category-v2`;
   return VIRTUAL_PT_CATEGORIES[hash32(key)%VIRTUAL_PT_CATEGORIES.length];
 }
+
+const LEGACY_EN_PREFIX='(?:Open|Blue|Silent|Northern|Golden|Rapid|Clear|Deep|Bright|Urban|Classic|Digital|Parallel|Hidden|Infinite|Modern|Prime|Solar|Vector|Wild)';
+const LEGACY_EN_SUBJECT='(?:Archive|Atlas|Dataset|Documentary|Library|Source|Collection|Workshop|Chronicle|Studio|Manual|Sessions|Footage|Research|Bundle|Compendium|Projects|Reference|Samples|Vault)';
+const LEGACY_EN_RE=new RegExp(`^${LEGACY_EN_PREFIX} ${LEGACY_EN_SUBJECT} · (?:Collection 2026|Pack 1080p)import {hash32} from './random.js';
+import {TORRENT_NAME_POOL} from '../data/torrent-name-pool.js';
+import {CURRENT_WORLD_SCHEMA_VERSION,VIRTUAL_PT_CATEGORIES} from './engine.js';
+
+const LEGACY_PRIVATE_CATEGORY='Private';
+const LOG_SAMPLES=[
+  [1,'Virtual qBittorrent session initialized.'],
+  [2,'Virtual network and discovery services are ready.'],
+  [4,'Virtual tracker latency warning sample.'],
+  [8,'Virtual critical diagnostic sample (non-destructive).']
+];
+
+function tagList(torrent){
+  if(Array.isArray(torrent?.tags))return torrent.tags.map(String).filter(Boolean);
+  return String(torrent?.tags||'').split(',').map(x=>x.trim()).filter(Boolean);
+}
+function privateLike(torrent){
+  if(torrent?.private===true)return true;
+  if(tagList(torrent).some(tag=>tag.toLowerCase()==='pt'))return true;
+  if(String(torrent?.category||'')===LEGACY_PRIVATE_CATEGORY)return true;
+  return /(?:^|\.)pt\.example$/i.test((()=>{try{return new URL(String(torrent?.tracker||'')).hostname}catch{return''}})());
+}
+function ensureLogTypes(world,now){
+  world.logs=Array.isArray(world.logs)?world.logs:[];
+  const types=new Set(world.logs.map(item=>Number(item?.type)));
+  let nextId=world.logs.reduce((max,item)=>Math.max(max,Number(item?.id)||0),0)+1;
+  let offset=0,changed=false;
+  for(const [type,message] of LOG_SAMPLES){
+    if(types.has(type))continue;
+    world.logs.push({id:nextId++,message,type,timestamp:Math.floor((now+offset*1000)/1000)});
+    types.add(type);offset++;changed=true;
+  }
+  world.logs.sort((a,b)=>(Number(a?.id)||0)-(Number(b?.id)||0));
+  if(world.logs.length>1000)world.logs.splice(0,world.logs.length-1000);
+  return changed;
+}
+);
+const LEGACY_INTERNATIONAL=[
+  '开源软件合集','纪录片资料库','古典音乐精选','城市摄影档案','编程课程资料',
+  '開源軟體合集','紀錄片資料庫','古典音樂精選','城市攝影檔案','程式設計課程',
+  'オープンソース資料集','ドキュメンタリー全集','クラシック音楽選集','都市写真アーカイブ','プログラミング教材',
+  '오픈소스 자료 모음','다큐멘터리 컬렉션','클래식 음악 모음','도시 사진 아카이브','프로그래밍 강의',
+  'Freie Software Sammlung','Dokumentarfilm Archiv','Klassik Sammlung','Stadtfotografie Archiv','Programmierkurs Material',
+  'Collection logiciel libre','Archives documentaires','Sélection musique classique','Archives photo urbaines','Cours de programmation',
+  'Colección de software libre','Archivo documental','Selección de música clásica','Archivo de fotografía urbana','Curso de programación',
+  'Coleção de software livre','Arquivo de documentários','Seleção de música clássica','Arquivo de fotografia urbana','Curso de programação',
+  'Коллекция свободного ПО','Архив документальных фильмов','Сборник классической музыки','Архив городской фотографии','Курс программирования'
+];
+function legacySyntheticName(value){
+  const name=String(value||'');
+  if(/^Virtual Torrent \d+ · (?:Ubuntu|Fedora|Archive|Dataset|Media|Backup|Source|Demo)$/.test(name))return true;
+  if(LEGACY_EN_RE.test(name))return true;
+  return LEGACY_INTERNATIONAL.some(prefix=>name.startsWith(prefix+' · ')&&/(?:2024|2025|2026|Vol\. 1|Complete)$/.test(name));
+}
+function migrateSyntheticName(world,torrent){
+  if(!legacySyntheticName(torrent?.name))return false;
+  const previous=String(torrent.name);
+  const key=`${String(world?.seed||'20260905')}:${String(torrent?.hash||previous)}:real-name-v1`;
+  const next=TORRENT_NAME_POOL[hash32(key)%TORRENT_NAME_POOL.length];
+  if(!next||next===previous)return false;
+  torrent.name=next;
+  const path=String(torrent.contentPath||'');
+  if(path&&path.endsWith(previous))torrent.contentPath=path.slice(0,-previous.length)+next.replace(/[\\/]+/g,'_');
+  return true;
+}
 function ensurePtCategories(world){
   let changed=false;
   if(!world.categories||typeof world.categories!=='object'||Array.isArray(world.categories)){world.categories={};changed=true;}
@@ -49,16 +118,17 @@ function ensurePtCategories(world){
 }
 
 export function upgradeWorldSchema(world,now=Date.now()){
-  if(!world||typeof world!=='object')return{changed:false,from:null,to:CURRENT_WORLD_SCHEMA_VERSION,privateRemapped:0,logTypesAdded:0};
+  if(!world||typeof world!=='object')return{changed:false,from:null,to:CURRENT_WORLD_SCHEMA_VERSION,privateRemapped:0,logTypesAdded:0,namesRemapped:0};
   const from=Math.max(0,Number(world.schemaVersion)||0);
-  if(from>=CURRENT_WORLD_SCHEMA_VERSION)return{changed:false,from,to:CURRENT_WORLD_SCHEMA_VERSION,privateRemapped:0,logTypesAdded:0};
+  if(from>=CURRENT_WORLD_SCHEMA_VERSION)return{changed:false,from,to:CURRENT_WORLD_SCHEMA_VERSION,privateRemapped:0,logTypesAdded:0,namesRemapped:0};
 
-  let changed=false,privateRemapped=0;
+  let changed=false,privateRemapped=0,namesRemapped=0;
   const beforeLogTypes=new Set((Array.isArray(world.logs)?world.logs:[]).map(item=>Number(item?.type)));
   changed=ensureLogTypes(world,now)||changed;
   changed=ensurePtCategories(world)||changed;
 
   for(const torrent of Array.isArray(world.torrents)?world.torrents:[]){
+    if(migrateSyntheticName(world,torrent)){namesRemapped++;changed=true;}
     if(!privateLike(torrent))continue;
     if(torrent.private!==true){torrent.private=true;changed=true;}
     const tags=tagList(torrent);
@@ -78,5 +148,5 @@ export function upgradeWorldSchema(world,now=Date.now()){
   changed=true;
   const afterLogTypes=new Set(world.logs.map(item=>Number(item?.type)));
   const logTypesAdded=[1,2,4,8].filter(type=>!beforeLogTypes.has(type)&&afterLogTypes.has(type)).length;
-  return{changed,from,to:CURRENT_WORLD_SCHEMA_VERSION,privateRemapped,logTypesAdded};
+  return{changed,from,to:CURRENT_WORLD_SCHEMA_VERSION,privateRemapped,logTypesAdded,namesRemapped};
 }

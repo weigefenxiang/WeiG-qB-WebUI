@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {reconcileWorldProfile} from '../simulator/core/world-profile.js';
 import {CURRENT_WORLD_SCHEMA_VERSION,VIRTUAL_PT_CATEGORIES,createWorld,logs,listTorrents} from '../simulator/core/engine.js';
 import {upgradeWorldSchema} from '../simulator/core/world-schema.js';
+import {TORRENT_NAME_POOL,TORRENT_NAME_POOL_PROVENANCE} from '../simulator/data/torrent-name-pool.js';
 import {createPreferenceRuntime} from '../simulator/preferences/runtime.js';
 
 const catalog=[
@@ -123,6 +124,11 @@ const catalog=[
 {
   const legacy=createWorld({profile:{qbVersion:'5.2.3',webApiVersion:'2.15.1'},count:500,seed:'world-schema-legacy',now:1700000000000});
   legacy.schemaVersion=1;
+  const legacySynthetic=legacy.torrents[0];
+  legacySynthetic.name='Open Archive · Collection 2026';
+  legacySynthetic.contentPath='/downloads/archive/Open Archive · Collection 2026';
+  const customName=legacy.torrents[1];
+  customName.name='User Custom Torrent Name';
   legacy.logs=legacy.logs.filter(item=>[1,2].includes(Number(item.type)));
   const privateTargets=legacy.torrents.filter(t=>t.private===true).slice(0,12);
   assert.ok(privateTargets.length,'legacy migration fixture needs private torrents');
@@ -136,6 +142,10 @@ const catalog=[
   assert.equal(result.changed,true,'persisted pre-realism worlds must run the schema migration');
   assert.equal(result.from,1);
   assert.equal(result.to,CURRENT_WORLD_SCHEMA_VERSION);
+  assert.ok(result.namesRemapped>=1,'legacy synthetic torrent names must migrate to the real-name snapshot');
+  assert.notEqual(legacySynthetic.name,'Open Archive · Collection 2026');
+  assert.ok(TORRENT_NAME_POOL.includes(legacySynthetic.name),'migrated synthetic name must come from the checked-in real-name pool');
+  assert.equal(customName.name,'User Custom Torrent Name','world migration must preserve user/custom names');
   assert.ok(result.privateRemapped>=privateTargets.length,'legacy Private torrents must be remapped into PT categories');
   assert.deepEqual(new Set(logs(legacy,-1).map(item=>Number(item.type))),new Set([1,2,4,8]),'legacy worlds must gain missing Warning/Critical log levels');
   for(const name of VIRTUAL_PT_CATEGORIES)assert.ok(legacy.categories[name],`migrated world must expose PT category ${name}`);
@@ -147,4 +157,12 @@ const catalog=[
   assert.equal(second.changed,false,'world schema migration must be idempotent once current');
 }
 
-console.log('Virtual qB persisted-profile/schema migration contract passed: stale IndexedDB worlds refresh source profiles and realism schema (four log levels + PT categories) without crossing qB versions or rewriting unrelated public categories.');
+{
+  assert.equal(TORRENT_NAME_POOL.length,1000,'checked-in real torrent-name snapshot must contain exactly 1000 names');
+  assert.equal(TORRENT_NAME_POOL_PROVENANCE.retained,1000);
+  assert.equal(TORRENT_NAME_POOL_PROVENANCE.ascii,900);
+  assert.equal(TORRENT_NAME_POOL_PROVENANCE.nonAscii,100);
+  assert.equal(new Set(TORRENT_NAME_POOL.map(name=>name.normalize('NFKC').toLocaleLowerCase())).size,1000,'real name snapshot must remain unique after NFKC/case folding');
+  assert.ok(TORRENT_NAME_POOL.every(name=>!/(?:magnet:\?|urn:btih|https?:\/\/|www\.)/i.test(name)),'name snapshot must not retain network/download identifiers');
+}
+console.log('Virtual qB persisted-profile/schema migration contract passed: stale IndexedDB worlds refresh source profiles, four log levels, PT categories and legacy synthetic names while preserving user/custom names.');
