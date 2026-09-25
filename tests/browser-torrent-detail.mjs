@@ -186,11 +186,13 @@ try{
   assert(persistedTrackers.slice(0,3).every(row=>/^\*\* \[/.test(row.url))&&persistedTrackers[3]?.url==='https://z-tracker.example/announce','Tracker sort did not persist with pseudo rows/tree ownership: '+JSON.stringify(persistedTrackers));
 
   await page.locator('.detail-tabs [data-tab="webseeds"]').click();
+  await page.waitForFunction(()=>document.querySelector('.detail-tabs [data-tab="webseeds"]')?.classList.contains('is-active')&&Array.from(document.querySelectorAll('.shared-table__row [data-column-key="url"]')).some(node=>String(node.textContent||'').includes('cdn.example')));
   await page.waitForFunction(()=>document.querySelector('.shared-table__head .grid-head-cell[data-key="url"]')?.dataset.sortDirection==='desc');
   const persistedWebseeds=await page.evaluate(()=>Array.from(document.querySelectorAll('.shared-table__row [data-column-key="url"]')).map(node=>node.textContent||''));
   assert(persistedWebseeds[0]?.includes('z-cdn.example'),'HTTP Sources sort did not persist across torrents: '+JSON.stringify(persistedWebseeds));
 
   await page.locator('.detail-tabs [data-tab="files"]').click();
+  await page.waitForFunction(()=>document.querySelector('.detail-tabs [data-tab="files"]')?.classList.contains('is-active')&&document.querySelector('.shared-table__row[data-file-kind]'));
   await page.waitForFunction(()=>document.querySelector('.shared-table__head .grid-head-cell[data-key="size"]')?.dataset.sortDirection==='asc');
   const persistedFiles=await page.evaluate(()=>({folders:Array.from(document.querySelectorAll('.shared-table__row[data-file-kind="folder"] .detail-file-label')).slice(0,2).map(node=>node.textContent),direction:document.querySelector('.shared-table__head .grid-head-cell[data-key="size"]')?.dataset.sortDirection||''}));
   assert(persistedFiles.direction==='asc'&&persistedFiles.folders.length>=2,'Content Total Size sort did not persist across torrents/tree rebuild: '+JSON.stringify(persistedFiles));
