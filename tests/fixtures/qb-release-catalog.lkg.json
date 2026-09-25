@@ -3404,6 +3404,8 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [],
+    "trackerFacetMode": "none",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -8296,6 +8298,8 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [],
+    "trackerFacetMode": "none",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -13036,6 +13040,8 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [],
+    "trackerFacetMode": "none",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -17738,6 +17744,8 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [],
+    "trackerFacetMode": "none",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -22581,6 +22589,8 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [],
+    "trackerFacetMode": "none",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -27887,6 +27897,8 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [],
+    "trackerFacetMode": "none",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -28995,6 +29007,35 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -33329,6 +33370,8 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [],
+    "trackerFacetMode": "none",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -34437,6 +34480,35 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -38679,6 +38751,8 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [],
+    "trackerFacetMode": "none",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -39787,6 +39861,35 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -44039,6 +44142,8 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [],
+    "trackerFacetMode": "none",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -45147,6 +45252,35 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -49401,6 +49535,8 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [],
+    "trackerFacetMode": "none",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -50509,6 +50645,35 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -54761,6 +54926,8 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [],
+    "trackerFacetMode": "none",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -55869,6 +56036,35 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -61082,6 +61278,8 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [],
+    "trackerFacetMode": "none",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -62235,6 +62433,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -67538,6 +67780,8 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [],
+    "trackerFacetMode": "none",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -68695,6 +68939,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -74088,6 +74376,8 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [],
+    "trackerFacetMode": "none",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -75245,6 +75535,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -80674,6 +81008,8 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [],
+    "trackerFacetMode": "none",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -81831,6 +82167,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -87222,6 +87602,8 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [],
+    "trackerFacetMode": "none",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -88379,6 +88761,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -93912,6 +94338,8 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [],
+    "trackerFacetMode": "none",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -95069,6 +95497,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -100811,6 +101283,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All (%1)",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless (%1)",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "url",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -101968,6 +102457,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -107738,6 +108271,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All (%1)",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless (%1)",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "url",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -108895,6 +109445,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -114632,6 +115226,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All (%1)",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless (%1)",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "url",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -115788,6 +116399,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -121560,6 +122215,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All (%1)",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless (%1)",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "url",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -122716,6 +123388,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -128575,6 +129291,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All (%1)",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless (%1)",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "url",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -129727,6 +130460,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -135576,6 +136353,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All (%1)",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless (%1)",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "url",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -136729,6 +137523,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -142628,6 +143466,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All (%1)",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless (%1)",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "url",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -143781,6 +144636,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -149598,6 +150497,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All (%1)",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless (%1)",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "url",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -150751,6 +151667,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -156571,6 +157531,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All (%1)",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless (%1)",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "url",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -157724,6 +158701,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -163542,6 +164563,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All (%1)",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless (%1)",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "url",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -164695,6 +165733,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -170543,6 +171625,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All (%1)",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless (%1)",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "url",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -171696,6 +172795,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -177546,6 +178689,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All (%1)",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless (%1)",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "url",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -178699,6 +179859,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -184709,6 +185913,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All (%1)",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless (%1)",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "url",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -185876,6 +187097,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -192132,6 +193397,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All (%1)",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless (%1)",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "url",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -193299,6 +194581,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -199312,6 +200638,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All (%1)",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless (%1)",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "url",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -200479,6 +201822,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -206492,6 +207879,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All (%1)",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless (%1)",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "url",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -207659,6 +209063,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -213672,6 +215120,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All (%1)",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless (%1)",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "url",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -214839,6 +216304,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -220852,6 +222361,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All (%1)",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless (%1)",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "url",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -222019,6 +223545,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -228032,6 +229602,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All (%1)",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless (%1)",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "url",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -229199,6 +230786,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -235702,6 +237333,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All (%1)",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless (%1)",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "url",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -236882,6 +238530,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -243642,6 +245334,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All (%1)",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless (%1)",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "url",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -244822,6 +246531,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -251363,6 +253116,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All (%1)",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless (%1)",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "url",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -252543,6 +254313,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -259078,6 +260892,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All (%1)",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless (%1)",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "url",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -260258,6 +262089,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -266793,6 +268668,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All (%1)",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless (%1)",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "url",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -267973,6 +269865,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -274508,6 +276444,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All (%1)",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless (%1)",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "url",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -275688,6 +277641,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -282842,6 +284839,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All (%1)",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless (%1)",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "hostname",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -284022,6 +286036,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -291653,6 +293711,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All (%1)",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless (%1)",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "hostname",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -292833,6 +294908,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -300244,6 +302363,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All (%1)",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless (%1)",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "hostname",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -301424,6 +303560,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -308824,6 +311004,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All (%1)",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless (%1)",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "hostname",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -310004,6 +312201,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -317404,6 +319645,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All (%1)",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless (%1)",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "hostname",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -318584,6 +320842,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -325984,6 +328286,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All (%1)",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless (%1)",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "hostname",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -327164,6 +329483,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -334564,6 +336927,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All (%1)",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless (%1)",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "hostname",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -335744,6 +338124,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -343144,6 +345568,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All (%1)",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless (%1)",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "hostname",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -344324,6 +346765,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -352153,6 +354638,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All (%1)",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless (%1)",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "hostname",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -353433,6 +355935,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -361522,6 +364068,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All (%1)",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless (%1)",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "hostname",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -362802,6 +365365,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -370666,6 +373273,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All (%1)",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless (%1)",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "hostname",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -371946,6 +374570,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -379810,6 +382478,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All (%1)",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless (%1)",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "hostname",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -381090,6 +383775,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -389020,6 +391749,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All (%1)",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless (%1)",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "hostname",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -390300,6 +393046,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -398164,6 +400954,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All (%1)",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless (%1)",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "hostname",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -399444,6 +402251,50 @@
             ]
           }
         ]
+      },
+      "controls": {
+        "filePriority": {
+          "valueType": "integer",
+          "options": [
+            {
+              "value": "0",
+              "translation": {
+                "source": "Do not download",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "1",
+              "translation": {
+                "source": "Normal",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "6",
+              "translation": {
+                "source": "High",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "7",
+              "translation": {
+                "source": "Maximum",
+                "context": "PropListDelegate"
+              }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
+            }
+          ],
+          "sourceKind": "upstream-createPriorityCombo"
+        }
       },
       "contextMenus": {
         "trackers": [
@@ -407616,6 +410467,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "hostname",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -408936,6 +411804,14 @@
                 "source": "Maximum",
                 "context": "PropListDelegate"
               }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
             }
           ],
           "sourceKind": "upstream-createPriorityCombo"
@@ -417316,6 +420192,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "hostname",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -418636,6 +421529,14 @@
                 "source": "Maximum",
                 "context": "PropListDelegate"
               }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
             }
           ],
           "sourceKind": "upstream-createPriorityCombo"
@@ -426823,6 +429724,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "hostname",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -428143,6 +431061,14 @@
                 "source": "Maximum",
                 "context": "PropListDelegate"
               }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
             }
           ],
           "sourceKind": "upstream-createPriorityCombo"
@@ -436330,6 +439256,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "hostname",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -437650,6 +440593,14 @@
                 "source": "Maximum",
                 "context": "PropListDelegate"
               }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
             }
           ],
           "sourceKind": "upstream-createPriorityCombo"
@@ -445837,6 +448788,23 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "hostname",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -447157,6 +450125,14 @@
                 "source": "Maximum",
                 "context": "PropListDelegate"
               }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
             }
           ],
           "sourceKind": "upstream-createPriorityCombo"
@@ -455535,6 +458511,44 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "error",
+        "copy": {
+          "source": "Tracker error",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "otherError",
+        "copy": {
+          "source": "Other error",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "warning",
+        "copy": {
+          "source": "Warning",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "hostname",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -456943,6 +459957,14 @@
                 "source": "Maximum",
                 "context": "PropListDelegate"
               }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
             }
           ],
           "sourceKind": "upstream-createPriorityCombo"
@@ -465734,6 +468756,44 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "error",
+        "copy": {
+          "source": "Tracker error",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "otherError",
+        "copy": {
+          "source": "Other error",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "warning",
+        "copy": {
+          "source": "Warning",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "hostname",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -467142,6 +470202,14 @@
                 "source": "Maximum",
                 "context": "PropListDelegate"
               }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
             }
           ],
           "sourceKind": "upstream-createPriorityCombo"
@@ -475558,6 +478626,44 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "error",
+        "copy": {
+          "source": "Tracker error",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "otherError",
+        "copy": {
+          "source": "Other error",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "warning",
+        "copy": {
+          "source": "Warning",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "hostname",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -476966,6 +480072,14 @@
                 "source": "Maximum",
                 "context": "PropListDelegate"
               }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
             }
           ],
           "sourceKind": "upstream-createPriorityCombo"
@@ -485382,6 +488496,44 @@
       "uploaded_session",
       "upspeed"
     ],
+    "trackerFilters": [
+      {
+        "id": "all",
+        "copy": {
+          "source": "All",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "trackerless",
+        "copy": {
+          "source": "Trackerless",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "error",
+        "copy": {
+          "source": "Tracker error",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "otherError",
+        "copy": {
+          "source": "Other error",
+          "context": "TrackerFiltersList"
+        }
+      },
+      {
+        "id": "warning",
+        "copy": {
+          "source": "Warning",
+          "context": "TrackerFiltersList"
+        }
+      }
+    ],
+    "trackerFacetMode": "hostname",
     "torrentStates": [
       "error",
       "missingFiles",
@@ -486790,6 +489942,14 @@
                 "source": "Maximum",
                 "context": "PropListDelegate"
               }
+            },
+            {
+              "value": "-1",
+              "translation": {
+                "source": "Mixed",
+                "context": "PropListDelegate"
+              },
+              "disabled": true
             }
           ],
           "sourceKind": "upstream-createPriorityCombo"

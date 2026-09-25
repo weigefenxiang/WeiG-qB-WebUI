@@ -1299,7 +1299,7 @@
     "latestAdmittedStable": "5.2.3",
     "releaseCount": 65,
     "releaseSetSha256": "67abde3a4649d1142d798d5d3c14eb53b1f1eaf7fba4cf14d5cdebeb03161888",
-    "sourceCatalogSha256": "e560d015965c281605775fca0b87690836a8a5001bf7cb40a3f62c980f54a5e4"
+    "sourceCatalogSha256": "b8d687081effb77aa33476daa4834bc742336a6ef0dee64a3df6d0ef7cf293c0"
   },
   "domainRelations": {
     "schemaVersion": 1,
