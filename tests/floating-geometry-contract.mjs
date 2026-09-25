@@ -34,4 +34,7 @@ const ui=read('webui/private/css/ui.css');
 assert.match(ui,/\.ui-select__menu\{min-inline-size:0;max-inline-size:none\}/,'CSS must not keep a second ch/360px menu-width owner');
 assert.doesNotMatch(ui,/--select-menu-ch|360px/,'Retired Select ch/360px width policy must not survive in ui.css');
 
+const ownedEscapeClosures=floating.match(/if\(e\.key==='Escape'\)\{e\.preventDefault\(\);e\.stopPropagation\(\);close\(w,true\);\}/g)||[];
+assert.equal(ownedEscapeClosures.length,3,'Canonical floating Select/Combo must consume each owned Escape before app-level route navigation can observe it.');
+
 console.log('Floating geometry contract passed: Select and Context Menu share one dialog-aware/viewport-bounded placement owner with four-direction fallback and internal list scrolling.');
