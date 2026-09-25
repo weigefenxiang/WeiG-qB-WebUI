@@ -20,7 +20,9 @@ const baseNow=1700000000000;
 
 {
   const w=createWorld({profile:{qbVersion:'5.2.3',webApiVersion:'2.15.1'},count:5000,seed:'first-page-coverage',now:baseNow});
+  assert.ok(w.torrents.filter(t=>t.canonicalState===CANONICAL.CHECKING).length<=w.preferences.max_active_checking_torrents,'fresh 5000-Torrent world must honor checking concurrency before any action');
   applyScenario(w,'mixed',baseNow);
+  assert.ok(w.torrents.filter(t=>t.canonicalState===CANONICAL.CHECKING).length<=w.preferences.max_active_checking_torrents,'scenario restore must not reintroduce excess generated CHECKING state');
   const top=[...w.torrents].sort((a,b)=>b.addedOn-a.addedOn).slice(0,50);
   for(const filter of ['downloading','seeding','completed','stopped','running','active','inactive','stalled','stalled_uploading','stalled_downloading','checking','moving','errored']){
     assert.ok(top.some(t=>torrentStatusMatches(t,filter,w.profile)),`mixed first page must contain a representative torrent for ${filter}`);
@@ -119,6 +121,21 @@ const baseNow=1700000000000;
   assert.ok(allow>requirePlain,'allow-encryption mode must retain peers that require either transport mode');
   assert.ok(requireEncrypted>0&&requirePlain>0,'exclusive encryption modes must keep a plausible compatible peer subset');
   assert.notEqual(requireEncrypted,requirePlain,'encrypted/plaintext-only modes must project distinct deterministic peer populations');
+}
+
+{
+  const w=createWorld({profile:{qbVersion:'5.2.3',webApiVersion:'2.15.1'},count:40,seed:'checking-normalization',now:baseNow});
+  const forced=w.torrents.slice(0,6);
+  for(const t of forced){
+    t.canonicalState=CANONICAL.CHECKING;
+    t.resumeState=CANONICAL.CHECKING;
+    t.checkingUntil=baseNow+60000;
+  }
+  setPreferences(w,{max_active_checking_torrents:2},baseNow+1);
+  const checking=w.torrents.filter(t=>t.canonicalState===CANONICAL.CHECKING);
+  assert.equal(checking.length,2,'scheduler must normalize legacy/generated CHECKING population to the configured hard cap');
+  assert.ok(forced.slice(2).every(t=>t.canonicalState!==CANONICAL.CHECKING),'excess CHECKING torrents must return to resumable queue state');
+  assert.ok(forced.slice(2).every(t=>t.resumeState!==CANONICAL.CHECKING),'normalized baseline must not let a later scenario restore recreate excess CHECKING torrents');
 }
 
 {
