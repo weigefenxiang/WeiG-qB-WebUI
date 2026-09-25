@@ -325,14 +325,14 @@ function naturalJitter(world,torrent,now,direction){
   const seed=String(world.seed||'virtual');
   const period=5000+(hash32(`${torrent.hash}:${direction}:period`)%7000);
   const bucket=Math.floor(now/period),phase=(now-bucket*period)/period,smooth=phase*phase*(3-2*phase);
-  const a=deterministicUnit(seed,`${torrent.hash}:${direction}:local:${bucket}`);
-  const b=deterministicUnit(seed,`${torrent.hash}:${direction}:local:${bucket+1}`);
+  const a=deterministicUnit(seed,`${torrent.hash}:${direction}:local:${bucket}:a`);
+  const b=deterministicUnit(seed,`${torrent.hash}:${direction}:local:${bucket+1}:b`);
   const local=a+(b-a)*smooth;
   const sharedPeriod=31000+(direction==='dl'?0:9000);
   const sharedBucket=Math.floor(now/sharedPeriod),sharedPhase=(now-sharedBucket*sharedPeriod)/sharedPeriod;
   const sharedSmooth=sharedPhase*sharedPhase*(3-2*sharedPhase);
-  const sa=deterministicUnit(seed,`transfer:${direction}:shared:${sharedBucket}`);
-  const sb=deterministicUnit(seed,`transfer:${direction}:shared:${sharedBucket+1}`);
+  const sa=deterministicUnit(seed,`transfer:${direction}:shared:${sharedBucket}:a`);
+  const sb=deterministicUnit(seed,`transfer:${direction}:shared:${sharedBucket+1}:b`);
   const shared=sa+(sb-sa)*sharedSmooth;
   return Math.max(.58,Math.min(1.18,.72+local*.30+shared*.16));
 }
