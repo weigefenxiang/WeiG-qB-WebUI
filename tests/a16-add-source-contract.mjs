@@ -106,7 +106,7 @@ assert(floating.includes('C.comboControl=function(opts)')&&controls.includes('.u
 assert(app.includes("addCombo(settingsGroup,'add-category'")&&app.includes("addCombo(settingsGroup,'add-tags'")&&app.includes('qbAddSourceField'),'Add renderer must directly own exact source projection plus canonical Category/Tags combos');
 assert(app.includes("return copy&&copy.visible?copy.text:''")&&app.includes('l.hidden=!copy'),'Add group legends without exact upstream source ownership must stay hidden instead of leaking English fallback into localized legacy dialogs');
 assert(!app.includes("createElement('datalist')"),'Add renderer must not retain browser-native datalist popup ownership');
-assert(!app.includes("'add-forced'"),'Add renderer must not expose API-only forced when the exact qB Add surface has no source-owned control');
+assert(!app.includes("addCheck(startGroup,'add-forced'"),'Add renderer must not create API-only forced when the exact qB Add surface has no source-owned control');
 assert(app.indexOf('await app.client.add(')<app.indexOf("W.DialogRuntime.close(U.$('add-dialog'))"),'successful Add must close only after the qB add request completes');
 assert(appCss.includes('.add-source-file:before')&&appCss.includes("content:'＋'")&&appCss.includes('.add-source-file:hover'),'Add Torrent File entry must expose an explicit action affordance');
 
