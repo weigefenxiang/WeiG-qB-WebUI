@@ -7,12 +7,22 @@ import {filterTorrentCandidates,sliceTorrentWindow} from './torrent-query.js';
 const runtimeSnapshots=new WeakMap();
 
 function rateControlKey(world){
+  const prefs=world.preferences||{};
   return[
     world.altSpeedMode?1:0,
     Number(world.globalDownloadLimit)||0,
     Number(world.globalUploadLimit)||0,
-    Number(world.preferences?.alt_dl_limit)||0,
-    Number(world.preferences?.alt_up_limit)||0
+    Number(prefs.alt_dl_limit)||0,
+    Number(prefs.alt_up_limit)||0,
+    prefs.queueing_enabled===false?0:1,
+    Number(prefs.max_active_downloads)||0,
+    Number(prefs.max_active_uploads)||0,
+    Number(prefs.max_active_torrents)||0,
+    Number(prefs.max_connec)||0,
+    Number(prefs.max_connec_per_torrent)||0,
+    Number(prefs.max_uploads)||0,
+    Number(prefs.max_uploads_per_torrent)||0,
+    Number(prefs.encryption)||0
   ].join('|');
 }
 
