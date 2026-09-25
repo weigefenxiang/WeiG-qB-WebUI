@@ -54,14 +54,13 @@ export function advanceActionStates(world,now=Date.now()){
   if(Number.isFinite(next)&&next>now)return[];
   diagnosticsFor(world).actionStateScans++;
   const changed=[];
-  let nextAt=-1,freedChecking=0;
+  let nextAt=-1;
   for(const t of world.torrents){
     if(t.checkingUntil&&t.canonicalState===CANONICAL.CHECKING){
       if(now>=t.checkingUntil){
         t.checkingUntil=0;
         t.canonicalState=t.maintenanceResumeState||resumableState(t);
         t.maintenanceResumeState='';
-        freedChecking++;
         changed.push(t.hash);
       }else nextAt=nextAt===-1?t.checkingUntil:Math.min(nextAt,t.checkingUntil);
     }
@@ -74,7 +73,6 @@ export function advanceActionStates(world,now=Date.now()){
       }else nextAt=nextAt===-1?t.movingUntil:Math.min(nextAt,t.movingUntil);
     }
   }
-  const maxChecking=Math.max(1,Math.round(Number(world.preferences?.max_active_checking_torrents)||1));
   world.nextActionTransitionAt=nextAt;
   if(changed.length){
     const scheduled=schedule(world,now,0);
@@ -280,7 +278,7 @@ export function recheckTorrents(world,hashes,now=Date.now()){
   let activeChecking=world.torrents.filter(t=>t.canonicalState===CANONICAL.CHECKING).length;
   for(const t of selected(world,hashes)){
     if([CANONICAL.ERROR,CANONICAL.METADATA,CANONICAL.MOVING].includes(t.canonicalState))continue;
-    if(activeChecking>=maxChecking){t.pendingRecheck=true;continue;}
+    if(activeChecking>=maxChecking)continue;
     t.maintenanceResumeState=t.canonicalState||resumableState(t);
     t.canonicalState=CANONICAL.CHECKING;
     t.checkingUntil=now+2500;
