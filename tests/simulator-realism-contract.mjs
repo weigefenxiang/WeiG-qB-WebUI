@@ -201,4 +201,49 @@ const baseNow=1700000000000;
   assert.equal(view.save_path,w.preferences.save_path,'managed torrent must fall back to global save path after category removal');
 }
 
+
+{
+  const w=createWorld({profile:{qbVersion:'5.2.3',webApiVersion:'2.15.1'},count:12,seed:'duplex-download-upload',now:baseNow});
+  for(const t of w.torrents){
+    t.canonicalState=CANONICAL.DOWNLOAD_PAUSED;
+    t.resumeState=CANONICAL.DOWNLOAD_PAUSED;
+    t.completed=false;
+    t.effectiveDownloadRate=0;
+    t.effectiveUploadRate=0;
+    t.connectedPeers=0;
+    t.uploadSlots=0;
+  }
+  const duplex=w.torrents[0],downloadOnly=w.torrents[1];
+  for(const t of [duplex,downloadOnly]){
+    t.canonicalState=CANONICAL.DOWNLOAD_ACTIVE;
+    t.resumeState=CANONICAL.DOWNLOAD_ACTIVE;
+    t.downloaded=Math.floor(t.size*.55);
+    t.seeders=8;
+    t.leechers=8;
+    t.naturalDownloadRate=24*MiB;
+    t.naturalUploadRate=6*MiB;
+  }
+  downloadOnly.leechers=0;
+  setPreferences(w,{
+    queueing_enabled:false,
+    max_connec:6,
+    max_connec_per_torrent:3,
+    max_uploads:2,
+    max_uploads_per_torrent:2
+  },baseNow);
+
+  assert.ok(duplex.effectiveDownloadRate>0,'an incomplete active Torrent must keep downloading');
+  assert.ok(duplex.effectiveUploadRate>0,'an incomplete active Torrent with shareable pieces and interested leechers must upload concurrently');
+  assert.equal(downloadOnly.effectiveUploadRate,0,'a downloading Torrent with no interested leechers may legitimately upload 0 B/s');
+  assert.ok(w.torrents.reduce((sum,t)=>sum+t.connectedPeers,0)<=6,'global connection limit must remain a hard cap');
+  assert.ok(w.torrents.every(t=>t.connectedPeers<=3),'per-Torrent connection limit must remain a hard cap');
+  assert.ok(w.torrents.reduce((sum,t)=>sum+t.uploadSlots,0)<=2,'global upload-slot limit must include downloading Torrents');
+  assert.ok(w.torrents.every(t=>t.uploadSlots<=2),'per-Torrent upload-slot limit must remain a hard cap');
+
+  const uploadedBefore=duplex.uploaded;
+  const transfer=transferInfo(w,baseNow+1000);
+  assert.ok(duplex.uploaded>uploadedBefore,'elapsed runtime must account upload bytes while a Torrent is still incomplete');
+  assert.ok(transfer.dl_info_speed>0&&transfer.up_info_speed>0,'global transfer projection must expose simultaneous download and upload');
+}
+
 console.log('Virtual qB realism contract passed: upstream profile facts survive normalization; deterministic environment policies remain bounded; forced states, queue ranks, facet deltas and automatic management stay coherent.');
