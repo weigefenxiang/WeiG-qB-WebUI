@@ -67,4 +67,14 @@ applyRuntimePolicies(world,baseNow+35900);
 assert.equal(simulatorRuntimePolicyStats(world).actionStateScans,beforeMoveScans+1,'move deadline must trigger one maintenance scan');
 assert.notEqual(moveTarget.canonicalState,CANONICAL.MOVING,'due move must still finish normally');
 
+
+{
+  const checkingWorld=createWorld({profile:{qbVersion:'5.2.3',webApiVersion:'2.15.1'},count:12,seed:'checking-cap',now:baseNow});
+  checkingWorld.preferences.max_active_checking_torrents=2;
+  const requested=checkingWorld.torrents.slice(0,6).map(t=>t.hash).join('|');
+  const started=recheckTorrents(checkingWorld,requested,baseNow);
+  assert.equal(started,2,'virtual recheck action must respect the configured concurrent checking hard cap');
+  assert.equal(checkingWorld.torrents.filter(t=>t.canonicalState===CANONICAL.CHECKING).length,2,'only the allowed checking population may enter CHECKING at once');
+}
+
 console.log(`Virtual qB runtime-efficiency contract passed: idle maintenance scans=${stats.actionStateScans}, heavy scans=${stats.environmentHeavyScans}, environment visited=${stats.heavyTorrentsVisited}; share-limit idle candidates=${shareStats.candidateCount}, candidate visits=${shareStats.torrentsVisited} for a 5000-Torrent world.`);
