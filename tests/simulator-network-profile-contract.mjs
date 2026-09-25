@@ -102,7 +102,9 @@ assert.equal(NETWORK_TIER_WEIGHTS.reduce((sum,value)=>sum+value,0),100,'network 
   }
   assert.ok(new Set(capacityTrace).size>20,'physical link must fluctuate smoothly during a session instead of staying fixed');
   assert.ok(Math.max(...capacityTrace)<=baseDown,'runtime physical capacity must not exceed the provisioned line');
-  assert.ok(Math.min(...capacityTrace)>=baseDown*.879,'physical-link runtime variation must stay within the modeled safety floor');
+  const span=(Math.max(...capacityTrace)-Math.min(...capacityTrace))/baseDown;
+  assert.ok(span>=.05,`physical-link runtime trace must visibly exercise at least the common 5% wave band; observed ${span}`);
+  assert.ok(Math.min(...capacityTrace)>=baseDown*.50,'physical-link runtime variation must retain the 50% safety floor even during rare 20–40% excursions');
   assert.ok(new Set(speedTrace.filter(value=>value>0)).size>8,'physical capacity changes must propagate into transfer/info rather than remaining environment-only data');
 }
 
