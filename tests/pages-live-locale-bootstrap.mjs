@@ -92,10 +92,66 @@ try{
   const second=await launchLabSession(2);
   assert.notEqual(second.sim,first.sim,'second Lab launch must use a fresh Virtual qB sim');
   assert.equal(second.state.locale,'zh-CN','fresh sim must not inherit an old initialized record that skips browser matching');
-  assert.deepEqual(errors,[],`locale bootstrap browser errors:\n${errors.join('\n')}`);
+
+  const entryLanguageRoots=new Set(['en','zh','ja','ko','de','fr','es','pt','ru']);
+  const nativeLocaleOptions=await page.evaluate(()=>window.WeiG?.I18n?.localeOptions?.()||[]);
+  const dynamicTarget=nativeLocaleOptions.map(item=>{
+    const qbLocale=String(item?.value||'').trim();
+    const browserLocale=qbLocale.replace(/@(?:latin|latn)$/i,'-Latn').replace(/_/g,'-');
+    let language='';try{language=new Intl.Locale(browserLocale).language.toLowerCase();}catch{}
+    return{qbLocale,browserLocale,language};
+  }).find(item=>item.qbLocale&&item.language&&!entryLanguageRoots.has(item.language));
+  assert.ok(dynamicTarget,`qB 5.2.3 locale inventory must expose at least one native locale outside the entry-page dictionary: ${JSON.stringify(nativeLocaleOptions)}`);
+  assert.deepEqual(errors,[],`locale bootstrap browser errors before dynamic native-locale case:\n${errors.join('\n')}`);
   await context.close();
+
+  const dynamicContext=await browser.newContext({locale:dynamicTarget.browserLocale});
+  const dynamicPage=await dynamicContext.newPage();
+  const dynamicErrors=[];
+  dynamicPage.on('pageerror',error=>dynamicErrors.push(error?.stack||error?.message||String(error)));
+  try{
+    await dynamicPage.goto(new URL('lab/',base).toString(),{waitUntil:'domcontentloaded',timeout:60000});
+    await dynamicPage.waitForFunction(()=>document.querySelectorAll('#qb-version option').length>1,null,{timeout:30000});
+    await dynamicPage.selectOption('#branch','dev');
+    await dynamicPage.selectOption('#qb-version','5.2.3');
+    await dynamicPage.fill('#torrent-count','12');
+    await dynamicPage.selectOption('#clean','0');
+    await dynamicPage.locator('#launch-form button[type="submit"]').click();
+    await dynamicPage.waitForURL(url=>url.pathname.includes('/dev/app/'),{timeout:30000});
+    await dynamicPage.waitForSelector('#login-form',{state:'visible',timeout:60000});
+    const entryState=await dynamicPage.evaluate(()=>({lang:document.documentElement.lang,title:String(document.querySelector('#login-title')?.textContent||'').trim(),selected:String(document.querySelector('#login-language')?.value||'')}));
+    assert.equal(entryState.lang,'en',`unsupported entry locale ${dynamicTarget.browserLocale} must fall back to English before authentication: ${JSON.stringify(entryState)}`);
+    assert.equal(entryState.title,'Welcome back',`unsupported entry locale ${dynamicTarget.browserLocale} must use English login copy before authentication`);
+    assert.equal(entryState.selected,'en',`unsupported entry locale ${dynamicTarget.browserLocale} must select English on the public login page`);
+    assert.equal(await dynamicPage.locator('#username').inputValue(),'weigshare','dynamic locale Lab username must be prefilled');
+    assert.equal(await dynamicPage.locator('#password').inputValue(),'weigshare','dynamic locale Lab password must be prefilled');
+    await dynamicPage.locator('#login-btn').click();
+    await dynamicPage.waitForFunction(()=>String(document.querySelector('#qb-version')?.textContent||'').includes('5.2.3'),null,{timeout:60000});
+    await dynamicPage.waitForFunction(()=>window.WeiG?.SessionController?.readLocaleBootstrap?.()?.initialized===true,null,{timeout:30000});
+    await dynamicPage.waitForTimeout(1800);
+    await dynamicPage.waitForFunction(()=>String(document.querySelector('#qb-version')?.textContent||'').includes('5.2.3'),null,{timeout:60000});
+    const dynamicPrefs=await api(dynamicPage,'app/preferences');
+    assert.equal(dynamicPrefs.status,200,'dynamic locale app/preferences must be readable');
+    assert.equal(dynamicPrefs.json?.locale,dynamicTarget.qbLocale,`authenticated bootstrap must persist the qB-native browser locale ${dynamicTarget.qbLocale}`);
+    const dynamicState=await dynamicPage.evaluate(()=>({
+      qbLocale:String(window.WeiG?.I18n?.getQbLocale?.()||''),
+      locale:String(window.WeiG?.I18n?.getLocale?.()||''),
+      record:window.WeiG?.SessionController?.readLocaleBootstrap?.()||null,
+      saveCopy:String(window.WeiG?.I18n?.t?.('settings.save')||''),
+      englishSave:String(window.WeiG?.I18n?.english?.['settings.save']||''),
+      browserLanguages:[...(navigator.languages||[])]
+    }));
+    assert.equal(dynamicState.qbLocale,dynamicTarget.qbLocale,`WeiG must retain the exact persisted qB locale identity ${dynamicTarget.qbLocale}`);
+    assert.equal(dynamicState.record?.initialized,true,'dynamic qB-native locale bootstrap must complete');
+    assert.equal(dynamicState.record?.selectedLocale,dynamicTarget.qbLocale,'dynamic bootstrap record must bind the qB-native locale');
+    assert.equal(dynamicState.saveCopy,dynamicState.englishSave,`WeiG-owned copy without a local dictionary must safely fall back to English while qB locale remains ${dynamicTarget.qbLocale}`);
+    assert.ok(dynamicState.browserLanguages.some(value=>String(value).toLowerCase().startsWith(dynamicTarget.language)),`dynamic browser context must expose the selected native language ${dynamicTarget.browserLocale}`);
+    assert.deepEqual(dynamicErrors,[],`dynamic native-locale bootstrap browser errors:\n${dynamicErrors.join('\n')}`);
+  }finally{
+    await dynamicContext.close();
+  }
 }finally{
   await browser.close();
 }
 
-console.log(`Virtual qB Pages locale-bootstrap acceptance passed for ${expectedSha}: two fresh Lab sims in one zh-CN browser both persist qB zh_CN and render WeiG zh-CN without cross-sim localStorage pollution.`);
+console.log(`Virtual qB Pages locale-bootstrap acceptance passed for ${expectedSha}: fresh zh-CN sims persist qB zh_CN, while a dynamically selected qB-native locale outside the public login dictionary falls back to English before auth and is persisted after auth with WeiG-owned copy safely falling back to English.`);
