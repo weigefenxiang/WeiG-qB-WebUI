@@ -347,40 +347,34 @@ function naturalJitter(world,torrent,now,direction){
   return Math.max(.58,Math.min(1.18,.72+local*.30+shared*.16));
 }
 
-function normalizeCheckingConcurrency(world,now){
-  const limit=Math.max(1,Math.round(Number(world.preferences?.max_active_checking_torrents)||1));
-  const checking=(world.torrents||[])
-    .filter(t=>t.canonicalState===CANONICAL.CHECKING)
-    .sort((a,b)=>(Number(a.queuePosition)||Number.MAX_SAFE_INTEGER)-(Number(b.queuePosition)||Number.MAX_SAFE_INTEGER)||String(a.hash).localeCompare(String(b.hash)));
-  if(checking.length<=limit)return[];
-  const changed=[];
-  for(const t of checking.slice(limit)){
-    const fallback=t.maintenanceResumeState||(t.completed?CANONICAL.SEED_QUEUED:CANONICAL.DOWNLOAD_QUEUED);
-    t.canonicalState=fallback;
-    if(t.resumeState===CANONICAL.CHECKING)t.resumeState=fallback;
-    t.checkingUntil=0;
-    t.maintenanceResumeState='';
-    t.lastStateChange=Math.floor(now/1000);
-    changed.push(t.hash);
-  }
-  return changed;
-}
-
-function queueCandidates(world){
-  const downloads=[],uploads=[];
+function queueCandidates(world,now){
+  const downloads=[],uploads=[],normalizedChecking=[];
+  const checkingLimit=Math.max(1,Math.round(Number(world.preferences?.max_active_checking_torrents)||1));
+  let checkingCount=0;
   for(const t of world.torrents){
-    if([CANONICAL.ERROR,CANONICAL.CHECKING,CANONICAL.METADATA,CANONICAL.MOVING,CANONICAL.DOWNLOAD_PAUSED,CANONICAL.SEED_PAUSED].includes(t.canonicalState))continue;
+    if(t.canonicalState===CANONICAL.CHECKING){
+      checkingCount++;
+      if(checkingCount>checkingLimit){
+        const fallback=t.maintenanceResumeState||(t.completed?CANONICAL.SEED_QUEUED:CANONICAL.DOWNLOAD_QUEUED);
+        t.canonicalState=fallback;
+        if(t.resumeState===CANONICAL.CHECKING)t.resumeState=fallback;
+        t.checkingUntil=0;
+        t.maintenanceResumeState='';
+        t.lastStateChange=Math.floor(now/1000);
+        normalizedChecking.push(t.hash);
+      }else continue;
+    }
+    if([CANONICAL.ERROR,CANONICAL.METADATA,CANONICAL.MOVING,CANONICAL.DOWNLOAD_PAUSED,CANONICAL.SEED_PAUSED].includes(t.canonicalState))continue;
     if(t.completed)uploads.push(t);else downloads.push(t);
   }
   const sort=(a,b)=>(b.forceStart-a.forceStart)||(a.queuePosition-b.queuePosition)||a.hash.localeCompare(b.hash);
   downloads.sort(sort);uploads.sort(sort);
-  return{downloads,uploads};
+  return{downloads,uploads,normalizedChecking};
 }
 
 export function schedule(world,now=Date.now(),elapsedSeconds=0){
   const prefs=world.preferences,env=world.environment;
-  const normalizedChecking=normalizeCheckingConcurrency(world,now);
-  const {downloads,uploads}=queueCandidates(world);
+  const {downloads,uploads,normalizedChecking}=queueCandidates(world,now);
   const activeDownloads=new Set(),activeUploads=new Set();
   let totalSlots=prefs.queueing_enabled?Math.max(0,Number(prefs.max_active_torrents)||0):Infinity;
   let dlSlots=prefs.queueing_enabled?Math.max(0,Number(prefs.max_active_downloads)||0):Infinity;
