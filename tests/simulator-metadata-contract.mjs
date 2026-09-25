@@ -31,9 +31,9 @@ function getRequest(path){return new Request(`https://example.invalid/api/v2/${p
 }
 
 {
-  const w=world('5.2.3','2.15.1',{});
+  const w=createWorld({profile:{qbVersion:'5.2.3',webApiVersion:'2.15.1',stable:true},count:5000,seed:'metadata-cardinality-contract',now:1700000000000});
   const counts=new Set(w.torrents.map(t=>(t.trackers||[]).length));
-  assert.ok(counts.has(0)&&[...counts].some(count=>count>=3),'virtual tracker detail cardinality must vary between trackerless and multi-tracker torrents');
+  assert.ok(counts.has(0)&&[...counts].some(count=>count>=3),'5000-torrent virtual world must vary tracker detail cardinality between trackerless and multi-tracker torrents');
 }
 
 {
