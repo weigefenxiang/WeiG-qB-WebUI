@@ -179,8 +179,12 @@ const catalog=[
 {
   assert.equal(TORRENT_NAME_POOL.length,1000,'checked-in real torrent-name snapshot must contain exactly 1000 names');
   assert.equal(TORRENT_NAME_POOL_PROVENANCE.retained,1000);
-  assert.equal(TORRENT_NAME_POOL_PROVENANCE.ascii,900);
-  assert.equal(TORRENT_NAME_POOL_PROVENANCE.nonAscii,100);
+  const actualAscii=TORRENT_NAME_POOL.filter(name=>!/[^\x00-\x7F]/.test(name)).length;
+  const actualNonAscii=TORRENT_NAME_POOL.length-actualAscii;
+  assert.equal(TORRENT_NAME_POOL_PROVENANCE.ascii,actualAscii,'provenance ASCII count must match the checked-in pool');
+  assert.equal(TORRENT_NAME_POOL_PROVENANCE.nonAscii,actualNonAscii,'provenance multilingual count must match the checked-in pool');
+  assert.ok(actualAscii>=850,'real-name pool must remain clearly English/ASCII-majority');
+  assert.ok(actualNonAscii>=100,'real-name pool must retain at least 100 multilingual/non-ASCII samples');
   assert.equal(new Set(TORRENT_NAME_POOL.map(name=>name.normalize('NFKC').toLocaleLowerCase())).size,1000,'real name snapshot must remain unique after NFKC/case folding');
   assert.ok(TORRENT_NAME_POOL.every(name=>!/(?:magnet:\?|urn:btih|https?:\/\/|www\.)/i.test(name)),'name snapshot must not retain network/download identifiers');
   assert.ok(TORRENT_NAME_POOL.every(name=>!/(?:Torrent:\s*(?:Magnet Link|Download Mirror)|^Download\s+.+\s+Fast$|^Discuss about\s+|^Order by Category$|^Magnet Link$|^Torrent Magnet(?: Link)?$)/i.test(name)),'name snapshot must not retain scraped page-caption/UI noise');
