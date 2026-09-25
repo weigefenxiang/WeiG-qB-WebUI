@@ -95,7 +95,7 @@ await page.locator('#filter-nav [data-filter="all"]').click();await page.waitFor
       'priority-7.bin':{source:'Maximum',context:'PropListDelegate'}
     };
     return[...document.querySelectorAll('.shared-table__row[data-file-kind="file"]')].map(row=>{
-      const name=String(row.querySelector('.detail-file-label')?.textContent||'').trim(),ref=refs[name],actual=String(row.querySelector('[data-column-key="priority"] .ui-select__trigger')?.textContent||'').trim(),expected=ref?String(WeiG.I18n.qbSourceText(ref,ref.source)||'').trim():'';
+      const name=String(row.querySelector('.detail-file-label')?.textContent||'').trim(),ref=refs[name],actual=String(row.querySelector('[data-column-key="priority"] .ui-select__value')?.textContent||'').trim(),expected=ref?String(WeiG.I18n.qbSourceText(ref,ref.source)||'').trim():'';
       return{name,actual,expected,source:ref?.source||'',localized:!!ref&&expected!==ref.source};
     }).filter(row=>refs[row.name]);
   });
