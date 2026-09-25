@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import {reconcileWorldProfile} from '../simulator/core/world-profile.js';
+import {CURRENT_WORLD_SCHEMA_VERSION,VIRTUAL_PT_CATEGORIES,createWorld,logs,listTorrents} from '../simulator/core/engine.js';
+import {upgradeWorldSchema} from '../simulator/core/world-schema.js';
 import {createPreferenceRuntime} from '../simulator/preferences/runtime.js';
 
 const catalog=[
@@ -113,4 +115,36 @@ const catalog=[
   assert.equal(world.profile,before);
 }
 
-console.log('Virtual qB persisted-profile migration contract passed: stale IndexedDB worlds refresh exact release keys, API actions and preference descriptors without losing torrents/user settings or crossing qB versions.');
+{
+  const fresh=createWorld({profile:{qbVersion:'5.2.3',webApiVersion:'2.15.1'},count:200,seed:'world-schema-current',now:1700000000000});
+  assert.equal(fresh.schemaVersion,CURRENT_WORLD_SCHEMA_VERSION,'new worlds must carry the current simulator schema version');
+}
+
+{
+  const legacy=createWorld({profile:{qbVersion:'5.2.3',webApiVersion:'2.15.1'},count:500,seed:'world-schema-legacy',now:1700000000000});
+  legacy.schemaVersion=1;
+  legacy.logs=legacy.logs.filter(item=>[1,2].includes(Number(item.type)));
+  const privateTargets=legacy.torrents.filter(t=>t.private===true).slice(0,12);
+  assert.ok(privateTargets.length,'legacy migration fixture needs private torrents');
+  privateTargets.forEach(t=>{t.category='Private';});
+  legacy.categories={...legacy.categories,Private:{name:'Private',savePath:'/downloads/private'}};
+  VIRTUAL_PT_CATEGORIES.forEach(name=>{delete legacy.categories[name];});
+
+  const beforePublic=legacy.torrents.find(t=>t.private!==true);
+  const beforePublicCategory=beforePublic.category;
+  const result=upgradeWorldSchema(legacy,1700000005000);
+  assert.equal(result.changed,true,'persisted pre-realism worlds must run the schema migration');
+  assert.equal(result.from,1);
+  assert.equal(result.to,CURRENT_WORLD_SCHEMA_VERSION);
+  assert.ok(result.privateRemapped>=privateTargets.length,'legacy Private torrents must be remapped into PT categories');
+  assert.deepEqual(new Set(logs(legacy,-1).map(item=>Number(item.type))),new Set([1,2,4,8]),'legacy worlds must gain missing Warning/Critical log levels');
+  for(const name of VIRTUAL_PT_CATEGORIES)assert.ok(legacy.categories[name],`migrated world must expose PT category ${name}`);
+  for(const t of privateTargets)assert.ok(VIRTUAL_PT_CATEGORIES.includes(t.category),`private torrent must migrate away from legacy Private category: ${t.category}`);
+  assert.equal(beforePublic.category,beforePublicCategory,'world migration must not rewrite unrelated public categories');
+  const views=listTorrents(legacy,{limit:5000,now:1700000005000});
+  assert.ok(views.filter(row=>row.private===true).every(row=>!row.category||VIRTUAL_PT_CATEGORIES.includes(row.category)),'qB5 private rows must project migrated PT categories');
+  const second=upgradeWorldSchema(legacy,1700000010000);
+  assert.equal(second.changed,false,'world schema migration must be idempotent once current');
+}
+
+console.log('Virtual qB persisted-profile/schema migration contract passed: stale IndexedDB worlds refresh source profiles and realism schema (four log levels + PT categories) without crossing qB versions or rewriting unrelated public categories.');

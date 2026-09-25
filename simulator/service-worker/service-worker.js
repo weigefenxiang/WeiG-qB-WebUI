@@ -2,6 +2,7 @@ import {createWorld} from './__simulator/core/engine.js';
 import {networkEnvironmentForSeed} from './__simulator/core/network-profile.js';
 import {profileByVersion,BOOTSTRAP_RELEASES} from './__simulator/core/profiles.js';
 import {reconcileWorldProfile} from './__simulator/core/world-profile.js';
+import {upgradeWorldSchema} from './__simulator/core/world-schema.js';
 import {applyScenario} from './__simulator/core/scenarios.js';
 import {loadWorld,saveWorld,deleteWorld} from './__simulator/storage/indexeddb.js';
 import {createWorldCache} from './__simulator/storage/world-cache.js';
@@ -194,6 +195,8 @@ async function ensureWorld(event,url){
     await worlds.seed(id,world,{persist:true});
   }else{
     let changed=false;
+    const schemaMigration=upgradeWorldSchema(world,Date.now());
+    changed=changed||schemaMigration.changed;
     const requestedVersion=url.searchParams.has('qb')?cfg.qb:(world.profile?.qbVersion||cfg.qb);
     const migration=reconcileWorldProfile(world,catalog,requestedVersion);
     changed=changed||migration.changed;
