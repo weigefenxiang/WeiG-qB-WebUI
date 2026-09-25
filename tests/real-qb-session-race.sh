@@ -40,7 +40,7 @@ cleanup_all(){
   local pid
   for pid in "${active[@]:-}"; do [[ -n "${PID_LANE[$pid]:-}" ]] && stop_lane "$pid"; done
 }
-trap cleanup_all INT TERM
+trap cleanup_all EXIT INT TERM
 
 for lane in "${lanes[@]}"; do start_lane "$lane"; done
 winner=''

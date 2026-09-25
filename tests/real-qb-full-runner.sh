@@ -85,8 +85,10 @@ NODE
 }
 finalize(){ local status="$1" reason="$2" code="$3"; if cleanup_for_final; then CLEANUP_RESULT='PASS'; else CLEANUP_RESULT='FAIL'; fi; if [[ "$CLEANUP_RESULT" != PASS && "$status" == PASS ]]; then status='FAIL'; reason='Semantic execution passed but isolated Docker cleanup failed.'; code=1; fi; write_runtime_evidence "$status" "$reason"; FINALIZED=1; rm -rf "$TMP_ROOT" >/dev/null 2>&1 || true; trap - ERR EXIT INT TERM; exit "$code"; }
 on_error(){ local code=$?; trap - ERR; if ((FINALIZED)); then exit "$code"; fi; if cleanup_for_final; then CLEANUP_RESULT='PASS'; else CLEANUP_RESULT='FAIL'; fi; write_runtime_evidence 'FAIL' "Unhandled G-FM runner failure with exit code ${code}." || true; FINALIZED=1; rm -rf "$TMP_ROOT" >/dev/null 2>&1 || true; exit "$code"; }
+on_signal(){ trap - INT TERM; if (( ! FINALIZED )); then cleanup_for_final >/dev/null 2>&1 || true; FINALIZED=1; fi; rm -rf "$TMP_ROOT" >/dev/null 2>&1 || true; exit 143; }
 trap on_error ERR
-trap 'if (( ! FINALIZED )); then cleanup_for_final >/dev/null 2>&1 || true; fi; rm -rf "$TMP_ROOT" >/dev/null 2>&1 || true' EXIT INT TERM
+trap 'if (( ! FINALIZED )); then cleanup_for_final >/dev/null 2>&1 || true; fi; rm -rf "$TMP_ROOT" >/dev/null 2>&1 || true' EXIT
+trap on_signal INT TERM
 
 . "$(dirname "$0")/real-qb-full-provider-lib.sh"
 
