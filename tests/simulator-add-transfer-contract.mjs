@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {authenticate,CANONICAL,createWorld} from '../simulator/core/engine.js';
 import {handleApi} from '../simulator/protocol/router.js';
+import {advanceActionStates} from '../simulator/core/torrent-actions.js';
 
 function makeWorld(profile,seed='add-transfer'){
   const w=createWorld({
@@ -136,6 +137,11 @@ const anchor=modern.torrents[0];anchor.completed=false;anchor.downloaded=0;ancho
   assert.equal(t.canonicalState,CANONICAL.CHECKING,'FilesChecked stop condition must enter checking');
   assert.equal(t.maintenanceResumeState,CANONICAL.DOWNLOAD_PAUSED,'FilesChecked must stop after the synthetic check completes');
   assert.ok(t.checkingUntil>Date.now());
+  const deadline=t.checkingUntil;
+  assert.ok(Number(modern.nextActionTransitionAt)>0&&Number(modern.nextActionTransitionAt)<=deadline,'FilesChecked must register its maintenance deadline');
+  advanceActionStates(modern,deadline+1);
+  assert.equal(t.canonicalState,CANONICAL.DOWNLOAD_PAUSED,'FilesChecked must leave CHECKING at its deadline and honor the stop condition');
+  assert.equal(t.checkingUntil,0,'completed FilesChecked maintenance must clear its checking deadline');
 }
 
 {
