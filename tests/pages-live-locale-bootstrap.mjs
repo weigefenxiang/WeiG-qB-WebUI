@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {launchBrowser} from './browser-driver.mjs';
+import {recoverPageSession} from './pages-live-session.mjs';
 
 const rawBase=(process.env.WEIG_PAGES_URL||process.argv[2]||'').trim();
 const expectedSha=(process.env.WEIG_EXPECTED_SIMULATOR_SHA||process.argv[3]||'').trim();
@@ -7,6 +8,7 @@ assert.ok(rawBase,'WEIG_PAGES_URL or argv[2] is required');
 assert.ok(expectedSha,'WEIG_EXPECTED_SIMULATOR_SHA or argv[3] is required');
 const base=new URL(rawBase.endsWith('/')?rawBase:`${rawBase}/`);
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+const sessionTimeoutMs=Math.max(5000,Number(process.env.WEIG_PAGES_SESSION_TIMEOUT_MS||20000)||20000);
 
 async function fetchJson(relative){
   const url=new URL(String(relative).replace(/^\/+/,''),base);
@@ -52,11 +54,25 @@ try{
     const sessionUrl=new URL(page.url());
     const sim=sessionUrl.searchParams.get('sim');
     assert.ok(sim,`session ${ordinal}: Lab must allocate a unique sim id`);
-    await page.waitForSelector('#login-form',{state:'visible',timeout:60000});
-    assert.equal(await page.locator('#username').inputValue(),'weigshare',`session ${ordinal}: Lab username must be prefilled`);
-    assert.equal(await page.locator('#password').inputValue(),'weigshare',`session ${ordinal}: Lab password must be prefilled`);
-    await page.locator('#login-btn').click();
-    await page.waitForFunction(()=>String(document.querySelector('#qb-version')?.textContent||'').includes('5.2.3'),null,{timeout:60000});
+    let loginObserved=false;
+    const recovered=await recoverPageSession(page,{
+      label:`Pages locale-bootstrap session ${ordinal} ${sim}`,
+      qbVersion:'5.2.3',
+      timeoutMs:sessionTimeoutMs,
+      navigate:async attempt=>{
+        const target=new URL(sessionUrl);
+        target.searchParams.set('__weig_session_attempt',String(attempt));
+        await page.goto(target.toString(),{waitUntil:'domcontentloaded',timeout:sessionTimeoutMs});
+      },
+      onLogin:async()=>{
+        loginObserved=true;
+        assert.equal(await page.locator('#username').inputValue(),'weigshare',`session ${ordinal}: Lab username must be prefilled`);
+        assert.equal(await page.locator('#password').inputValue(),'weigshare',`session ${ordinal}: Lab password must be prefilled`);
+        await page.locator('#login-btn').click();
+      }
+    });
+    assert.equal(loginObserved,true,`session ${ordinal}: fresh Lab sim must expose the prefilled login at least once during bounded recovery`);
+    if(recovered.attempt>1)console.log(`Recovered locale-bootstrap session ${ordinal} ${sim} on attempt ${recovered.attempt}.`);
     await page.waitForFunction(()=>window.WeiG?.SessionController?.readLocaleBootstrap?.()?.initialized===true,null,{timeout:30000});
     await page.waitForTimeout(1800);
     await page.waitForFunction(()=>String(document.querySelector('#qb-version')?.textContent||'').includes('5.2.3'),null,{timeout:60000});
@@ -118,15 +134,32 @@ try{
     await dynamicPage.selectOption('#clean','0');
     await dynamicPage.locator('#launch-form button[type="submit"]').click();
     await dynamicPage.waitForURL(url=>url.pathname.includes('/dev/app/'),{timeout:30000});
-    await dynamicPage.waitForSelector('#login-form',{state:'visible',timeout:60000});
-    const entryState=await dynamicPage.evaluate(()=>({lang:document.documentElement.lang,title:String(document.querySelector('#login-title')?.textContent||'').trim(),selected:String(document.querySelector('#login-language')?.value||'')}));
-    assert.equal(entryState.lang,'en',`unsupported entry locale ${dynamicTarget.browserLocale} must fall back to English before authentication: ${JSON.stringify(entryState)}`);
-    assert.equal(entryState.title,'Welcome back',`unsupported entry locale ${dynamicTarget.browserLocale} must use English login copy before authentication`);
-    assert.equal(entryState.selected,'en',`unsupported entry locale ${dynamicTarget.browserLocale} must select English on the public login page`);
-    assert.equal(await dynamicPage.locator('#username').inputValue(),'weigshare','dynamic locale Lab username must be prefilled');
-    assert.equal(await dynamicPage.locator('#password').inputValue(),'weigshare','dynamic locale Lab password must be prefilled');
-    await dynamicPage.locator('#login-btn').click();
-    await dynamicPage.waitForFunction(()=>String(document.querySelector('#qb-version')?.textContent||'').includes('5.2.3'),null,{timeout:60000});
+    const dynamicSessionUrl=new URL(dynamicPage.url());
+    const dynamicSim=dynamicSessionUrl.searchParams.get('sim');
+    assert.ok(dynamicSim,'dynamic locale Lab must allocate a unique sim id');
+    let dynamicLoginObserved=false;
+    const recovered=await recoverPageSession(dynamicPage,{
+      label:`Pages dynamic locale-bootstrap ${dynamicTarget.browserLocale} ${dynamicSim}`,
+      qbVersion:'5.2.3',
+      timeoutMs:sessionTimeoutMs,
+      navigate:async attempt=>{
+        const target=new URL(dynamicSessionUrl);
+        target.searchParams.set('__weig_session_attempt',String(attempt));
+        await dynamicPage.goto(target.toString(),{waitUntil:'domcontentloaded',timeout:sessionTimeoutMs});
+      },
+      onLogin:async()=>{
+        dynamicLoginObserved=true;
+        const entryState=await dynamicPage.evaluate(()=>({lang:document.documentElement.lang,title:String(document.querySelector('#login-title')?.textContent||'').trim(),selected:String(document.querySelector('#login-language')?.value||'')}));
+        assert.equal(entryState.lang,'en',`unsupported entry locale ${dynamicTarget.browserLocale} must fall back to English before authentication: ${JSON.stringify(entryState)}`);
+        assert.equal(entryState.title,'Welcome back',`unsupported entry locale ${dynamicTarget.browserLocale} must use English login copy before authentication`);
+        assert.equal(entryState.selected,'en',`unsupported entry locale ${dynamicTarget.browserLocale} must select English on the public login page`);
+        assert.equal(await dynamicPage.locator('#username').inputValue(),'weigshare','dynamic locale Lab username must be prefilled');
+        assert.equal(await dynamicPage.locator('#password').inputValue(),'weigshare','dynamic locale Lab password must be prefilled');
+        await dynamicPage.locator('#login-btn').click();
+      }
+    });
+    assert.equal(dynamicLoginObserved,true,'fresh dynamic locale Lab sim must expose the public login at least once during bounded recovery');
+    if(recovered.attempt>1)console.log(`Recovered dynamic locale-bootstrap ${dynamicTarget.browserLocale} ${dynamicSim} on attempt ${recovered.attempt}.`);
     await dynamicPage.waitForFunction(()=>window.WeiG?.SessionController?.readLocaleBootstrap?.()?.initialized===true,null,{timeout:30000});
     await dynamicPage.waitForTimeout(1800);
     await dynamicPage.waitForFunction(()=>String(document.querySelector('#qb-version')?.textContent||'').includes('5.2.3'),null,{timeout:60000});
