@@ -91,11 +91,11 @@
     client=client||sharedClient();prefs=prefs||(W.AppState&&W.AppState.preferences)||await client.getPreferences();
     if(!prefs||prefs.alternative_webui_enabled!==true)return{changed:false,reason:'not-alternative-webui'};
     if(!i18nReady())return{changed:false,reason:'locale-owner-not-ready'};
-    var existing=readBootstrap();if(existing)return{changed:false,reason:'already-initialized',record:existing};
+    var sessionContract=contract(),manualIntent=sessionContract&&sessionContract.localeIntent?cleanLocale(sessionContract.localeIntent()):'',existing=readBootstrap();if(existing&&!manualIntent)return{changed:false,reason:'already-initialized',record:existing};
     var current=cleanLocale(prefs.locale);if(!current)return{changed:false,reason:'no-current-locale'};
-    var target=W.I18n.matchBrowserLocale(browserLanguages(),currentLocaleOptions());
-    if(!target){var noMatch=bootstrapRecord('no-browser-match',null,current,true);if(!saveBootstrap(noMatch))return{changed:false,reason:'bootstrap-storage-unavailable'};return{changed:false,reason:'no-browser-match',record:noMatch};}
-    if(sameLocale(target,current)){var matched=bootstrapRecord('already-matched',target,current,true);if(!saveBootstrap(matched))return{changed:false,reason:'bootstrap-storage-unavailable'};return{changed:false,reason:'already-matched',record:matched};}
+    var target=manualIntent?W.I18n.matchBrowserLocale([manualIntent],currentLocaleOptions()):W.I18n.matchBrowserLocale(browserLanguages(),currentLocaleOptions()),manual=!!manualIntent;
+    if(!target){if(manual&&sessionContract&&sessionContract.consumeLocaleIntent)sessionContract.consumeLocaleIntent();if(manual)return{changed:false,reason:'login-locale-unavailable'};var noMatch=bootstrapRecord('no-browser-match',null,current,true);if(!saveBootstrap(noMatch))return{changed:false,reason:'bootstrap-storage-unavailable'};return{changed:false,reason:'no-browser-match',record:noMatch};}
+    if(sameLocale(target,current)){if(manual&&sessionContract&&sessionContract.consumeLocaleIntent)sessionContract.consumeLocaleIntent();var matched=bootstrapRecord(manual?'login-locale-already-matched':'already-matched',target,current,true);if(!saveBootstrap(matched))return{changed:false,reason:'bootstrap-storage-unavailable'};return{changed:false,reason:manual?'login-locale-already-matched':'already-matched',record:matched};}
     await ensureLocaleWriteProof();
     if(!localeWritable(target,prefs,Object.assign({},prefs,{locale:target}))){var blocked=bootstrapRecord('locale-not-writable',target,current,true);if(!saveBootstrap(blocked))return{changed:false,reason:'bootstrap-storage-unavailable'};return{changed:false,reason:'locale-not-writable',record:blocked};}
     if(!saveBootstrap(bootstrapRecord('write-pending',target,current,false)))return{changed:false,reason:'bootstrap-storage-unavailable'};
@@ -104,7 +104,8 @@
       var verified=await client.getPreferences();
       if(verified)syncPreferences(verified);
       if(verified&&sameLocale(verified.locale,target)){
-        var record=bootstrapRecord('browser-locale-verified',target,verified.locale,true);saveBootstrap(record);
+        if(manual&&sessionContract&&sessionContract.consumeLocaleIntent)sessionContract.consumeLocaleIntent();
+        var record=bootstrapRecord(manual?'login-locale-verified':'browser-locale-verified',target,verified.locale,true);saveBootstrap(record);
         return{changed:true,verified:true,reloadRequired:true,record:record,prefs:verified};
       }
       var observed=verified&&cleanLocale(verified.locale)||current;
@@ -115,7 +116,8 @@
       var after=null;try{after=await client.getPreferences();}catch(_read){}
       if(after)syncPreferences(after);
       if(after&&sameLocale(after.locale,target)){
-        var recovered=bootstrapRecord('browser-locale-verified-after-error',target,after.locale,true);saveBootstrap(recovered);
+        if(manual&&sessionContract&&sessionContract.consumeLocaleIntent)sessionContract.consumeLocaleIntent();
+        var recovered=bootstrapRecord(manual?'login-locale-verified-after-error':'browser-locale-verified-after-error',target,after.locale,true);saveBootstrap(recovered);
         return{changed:true,verified:true,reloadRequired:true,record:recovered,prefs:after,recovered:true};
       }
       saveBootstrap(bootstrapRecord('write-failed',target,after&&after.locale||current,false));

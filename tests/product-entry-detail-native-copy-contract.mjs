@@ -28,7 +28,7 @@ for(const html of [login,publicIndex]){
   assert.match(html,/src="assets\/Wei\.G\.png"/,'page-internal login logo must stay on the existing Wei.G asset');
   assert.match(html,/scripts\/entry-locale\.js\?v=__WEIG_GIT_SHA__/,'public entry pages must consume one shared locale owner');
   assert.doesNotMatch(html,/var D=\{/,'public HTML must not embed a second locale dictionary');
-  assert.ok(html.includes("var lang='en'")&&html.includes('E.dictionary')&&html.includes('E.normalize'),'public entry must default to English through the shared owner');
+  assert.ok(html.includes("lang=intent||'en'")&&html.includes('E.dictionary')&&html.includes('E.normalize')&&html.includes('SC.localeIntent&&norm'),'public entry must remain English-first while allowing one canonical login locale intent through the shared owner');
 }
 assert.match(index,/<html lang="en"/);assert.match(index,/href="assets\/Wei\.G\.png\?v=__WEIG_GIT_SHA__"/);assert.ok(index.includes('Loading WeiG WebUI…')&&!index.includes('正在加载 WeiG WebUI'));
 for(const lang of ["'zh-CN'","'zh-TW'","'zh-HK'","'ja'","'ko'","'de'","'fr'","'es'","'pt'","'ru'"])assert.ok(i18n.includes(lang),'missing canonical locale '+lang);
