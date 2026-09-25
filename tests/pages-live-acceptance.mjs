@@ -189,7 +189,7 @@ try{
     response=await api(page,'torrents/info?limit=5002&offset=0');
     assert.ok(response.json.some(item=>item.name==='Pages-Live-Acceptance.torrent'),'added Torrent must survive a real page reload');
 
-    await page.evaluate(()=>window.WeiG.SessionController.logout());
+    await page.evaluate(()=>{void window.WeiG.SessionController.logout();});
     await waitForLogin(page);
     response=await api(page,'app/preferences');
     assert.equal(response.status,403,'real SessionController logout must leave protected API unauthenticated');
