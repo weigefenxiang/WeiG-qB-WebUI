@@ -21,6 +21,7 @@ const appJs=read('webui/private/scripts/app.js');
 const uiJs=read('webui/private/scripts/ui.js');
 const header=read('webui/private/scripts/header.js');
 const logs=read('webui/private/scripts/logs.js');
+const rss=read('webui/private/scripts/rss.js');
 const transferJs=read('webui/private/scripts/transfer.js');
 
 assert(!ui.includes('grid-template-rows:44px 20px!important'),'ui.css must not force the mobile torrent card back to a two-row progress layout');
@@ -45,7 +46,9 @@ assert(!uiJs.includes('rss-search-input')&&!uiJs.includes('installRSSSearch'),'r
 assert(uiJs.includes('W.RSS={setQuery:setRSSQuery')&&uiJs.includes('function applyRSSQuery(root)'),'RSS filtering must consume one route query without another API poller');
 assert(uiJs.includes("W.DialogRuntime.create({id:'rss-add-dialog'")&&uiJs.includes("rssOpenButton.id='rss-add-open-btn'")&&uiJs.includes('header.appendChild(actions)'),'RSS Add Feed and Refresh must move to the page header while Feed URL lives in canonical DialogRuntime');
 assert(layout.includes('.rss-header-actions')&&layout.includes('#rss-view>.workspace__header{display:grid;grid-template-columns:minmax(0,1fr) auto'),'RSS title and page actions must share the mobile header row');
-assert(layout.includes('.rss-rules-dialog{--dialog-width:calc(100vw - 24px);--dialog-max-width:min(680px,calc(100vw - 24px));height:min(720px,calc(100dvh - 40px));max-height:calc(100dvh - 40px)}'),'RSS Downloader must retain visible mobile viewport margins instead of forcing a near-fullscreen sheet');
+assert(rss.includes("dialog.dataset.dialogMobile='compact'"),'RSS Downloader must opt into the canonical compact-mobile Dialog variant');
+assert(ui.includes('dialog.dialog[data-dialog-mobile="compact"]')&&ui.includes('--dialog-max-height:min(720px,calc(100dvh - 72px))')&&ui.includes('calc(100vw - 32px)'),'shared compact Dialog owner must retain visible mobile viewport margins and bounded RSS-like height');
+assert(!layout.includes('.rss-rules-dialog{height:min(720px,calc(100dvh - 40px))'),'RSS Downloader must not restore a second mobile height owner after adopting the shared compact Dialog variant');
 
 assert(header.includes('function routeSearchInput(event)')&&header.includes("W.RSS.setQuery(input.value)")&&header.includes("W.Logs.setQuery(input.value)"),'Header Search must dispatch to current RSS/Logs semantic owners');
 
