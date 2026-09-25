@@ -64,8 +64,8 @@ export function registerDefaultPreferenceBindings(registry) {
     return next;
   },{modeled:true,effect:'new-torrent-start-state'});
 
-  // qB exposes these state values, but the simulator does not yet claim their real side effects.
-  registerMany(registry,['scheduler_enabled','pex','lsd'],booleanValue,{modeled:false});
+  registry.register('scheduler_enabled',booleanValue,{modeled:true,effect:'alternate-rate-schedule'});
+  registerMany(registry,['pex','lsd'],booleanValue,{modeled:true,effect:'peer-discovery'});
 
   return registry;
 }
