@@ -189,11 +189,8 @@ async function productFormFlow(browser){
   const loginEntry=new URL('login.html',base);
   await page.goto(loginEntry.href,{waitUntil:'domcontentloaded'});
   assert(await page.locator('#login-form').count()===1,'Form-flow explicit public login path did not show WeiG login form');
-  await page.waitForFunction(expected=>String(document.querySelector('#login-qb-version')?.textContent||'').trim().replace(/^v/i,'')===expected,expectedVersion);
-  const publicIdentity=await page.evaluate(()=>({qb:String(document.querySelector('#login-qb-version')?.textContent||'').trim().replace(/^v/i,''),api:String(document.querySelector('#login-api-version')?.textContent||'').trim(),weig:String(document.querySelector('#login-weig-version')?.textContent||'').trim()}));
-  assert(publicIdentity.qb===expectedVersion,`public login must display the real legacy qB version before authentication: ${JSON.stringify(publicIdentity)}`);
-  assert(publicIdentity.api==='—',`legacy /version/api is a compatibility API integer and must never be displayed as WebAPI: ${JSON.stringify(publicIdentity)}`);
-  assert(publicIdentity.weig&&publicIdentity.weig!=='—'&&!publicIdentity.weig.includes('__WEIG_'),`materialized public login must display the Wei.G product version: ${JSON.stringify(publicIdentity)}`);
+  assert(await page.locator('#login-versions').count()===0,'Form-flow public login must keep the retired qB/WebAPI/Wei.G version panel absent');
+  assert(await page.locator('meta[name="qb-server-version"],meta[name="weig-version"]').count()===0,'Form-flow public login must not expose retired pre-auth version metadata');
   await page.locator('#username').fill(username);
   await page.locator('#password').fill(password);
   const loginResponsePromise=page.waitForResponse(response=>endpointPath(response.url())==='/api/v2/auth/login'&&response.request().method()==='POST',{timeout:10000});
