@@ -14,4 +14,4 @@
 @media(prefers-reduced-motion:reduce){.ui-time-picker__surface,.ui-time-picker__ring.is-entering{animation:none!important}.ui-time-picker__hand,.ui-time-picker__face-option,.ui-time-picker__display-part{transition:none!important}}html[data-motion="reduced"] .ui-time-picker__surface,html[data-motion="reduced"] .ui-time-picker__ring.is-entering{animation:none!important}html[data-motion="reduced"] .ui-time-picker__hand,html[data-motion="reduced"] .ui-time-picker__face-option,html[data-motion="reduced"] .ui-time-picker__display-part{transition:none!important}
 
 /* Long floating lists keep native scrollbar ownership while off-screen options skip layout/paint work. */
-.ui-select__options{will-change:scroll-position;overflow-anchor:none}.ui-select__option{content-visibility:auto;contain-intrinsic-size:auto 36px}.ui-select__options.is-scroll-interacting .ui-select__option{transition:none!important}
+.ui-select__options{will-change:scroll-position;overflow-anchor:none}.ui-select__option{content-visibility:auto;contain-intrinsic-size:auto 22px}.ui-select__options.is-scroll-interacting .ui-select__option{transition:none!important}
