@@ -48,10 +48,10 @@ const registry=createPreferenceBindingRegistry();
 registerDefaultPreferenceBindings(registry);
 assert.ok(registry.modeledKeys().includes('queueing_enabled'));
 assert.ok(registry.modeledKeys().includes('max_ratio'));
-assert.ok(!registry.modeledKeys().includes('scheduler_enabled'),'normalization is not behavior modeling');
-assert.ok(!registry.modeledKeys().includes('pex'),'state persistence is not behavior modeling');
+assert.ok(registry.modeledKeys().includes('scheduler_enabled'),'scheduler time-window behavior is modeled');
+assert.ok(registry.modeledKeys().includes('pex'),'PeX peer-availability behavior is modeled');
 assert.equal(registry.metadata('queueing_enabled').effect,'scheduler-capacity');
-assert.equal(registry.metadata('scheduler_enabled').effect,null);
+assert.equal(registry.metadata('scheduler_enabled').effect,'alternate-rate-schedule');
 
 const defaultsSource=fs.readFileSync(new URL('../simulator/preferences/defaults.js',import.meta.url),'utf8');
 assert.doesNotMatch(defaultsSource,/BOOLEAN_PREFIX|BOOLEAN_SUFFIX|NUMBER_PATTERN|NUMBER_SPECIAL/,'key-name default guessing must stay retired');
