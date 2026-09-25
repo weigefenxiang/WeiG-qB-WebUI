@@ -15,13 +15,16 @@ assert.match(floating,/boundary:boundary/,'Select placement must pass the resolv
 assert.match(floating,/placement==='left'\|\|placement==='right'/,'Shared geometry must support horizontal fallback rather than escaping a Dialog when vertical space is exhausted');
 assert.match(floating,/function modalLayer\(owner\)[\s\S]*closest\('dialog\[open\]'\)[\s\S]*dataset\.uiModalLayer='1'/,'Canonical Select must portal a modal menu into the open dialog top-layer subtree instead of leaving it below showModal().');
 assert.match(floating,/function selectLayer\(owner\)\{return modalLayer\(owner\)\|\|layer\(\);\}/,'Canonical Select must keep one portal resolver: dialog-local when modal, global otherwise.');
-assert.match(floating,/function setViewportPosition\(menu,left,top\)[\s\S]*menu\.style\.left='0px'[\s\S]*getBoundingClientRect\(\)[\s\S]*left-origin\.left[\s\S]*top-origin\.top/,'Floating geometry must convert desired viewport coordinates into the actual portal containing-block coordinate space.');
+assert.match(floating,/function setViewportPosition\(menu,left,top\)[\s\S]*dataset\.uiModalLayer==='1'[\s\S]*host\.getBoundingClientRect\(\)[\s\S]*left-origin\.left[\s\S]*top-origin\.top[\s\S]*menu\.style\.left=left\+'px'/,'Floating geometry must convert viewport coordinates through the actual modal portal rect while keeping the global portal viewport-fixed.');
 assert.match(floating,/function placeBounded\(menu,anchor,opts\)[\s\S]*setViewportPosition\(menu,left,top\)/,'All bounded floating placement must use the shared portal coordinate conversion before exposing the menu.');
 assert.match(floating,/selectLayer\(w\)\.appendChild\(m\)/,'Select open must consume the canonical modal-aware portal resolver.');
 assert.match(floating,/function place\(w\)[\s\S]*placeBounded\(m,r,/,'Canonical Select must use the shared bounded geometry owner');
 assert.match(floating,/function placeContextMenu\(menu,x,y\)[\s\S]*placeBounded\(menu,r,/,'Context Menu must use the same bounded geometry owner');
 assert.match(floating,/menu\.style\.maxHeight=maxH\+'px'/,'Shared geometry must cap the floating menu inside its resolved safe boundary');
 assert.match(floating,/v\.width<=820\?\.84:\.68/,'Shared geometry must keep the existing mobile/desktop viewport budget');
+assert.match(controls,/\.weig-floating-layer\{position:fixed;[^}]*width:0;height:0/,'Global floating portal must remain viewport-fixed.');
+assert.match(controls,/\.weig-floating-layer--dialog\{position:absolute;inset:0;width:auto;height:auto\}/,'Modal floating portal must use an explicit dialog-local absolute coordinate space.');
+assert.match(controls,/\.weig-floating-layer--dialog>\.ui-select__menu\{position:absolute\}/,'Menus inside the modal portal must be positioned in that dialog-local coordinate space.');
 assert.match(controls,/\.ui-select__options\{[^}]*min-height:0;max-height:none;overflow:auto/,'Floating list contents must own overflow scrolling inside the bounded menu');
 assert.doesNotMatch(floating,/function placeContextMenu\(menu,x,y\)\{var v=viewport\(\)/,'Context Menu must not restore a parallel viewport-placement implementation');
 
