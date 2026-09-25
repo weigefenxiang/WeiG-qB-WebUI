@@ -279,7 +279,7 @@ export function recheckTorrents(world,hashes,now=Date.now()){
   let activeChecking=world.torrents.filter(t=>t.canonicalState===CANONICAL.CHECKING).length;
   for(const t of selected(world,hashes)){
     if([CANONICAL.ERROR,CANONICAL.METADATA,CANONICAL.MOVING].includes(t.canonicalState))continue;
-    if(activeChecking>=maxChecking)continue;
+    if(activeChecking>=maxChecking){world.pendingRechecks.push(t.hash);continue;}
     t.maintenanceResumeState=t.canonicalState||resumableState(t);
     t.canonicalState=CANONICAL.CHECKING;
     t.checkingUntil=now+2500;
