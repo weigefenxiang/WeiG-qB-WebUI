@@ -70,6 +70,18 @@ assert.notEqual(moveTarget.canonicalState,CANONICAL.MOVING,'due move must still 
 
 
 {
+  const preemptWorld=createWorld({profile:{qbVersion:'5.2.3',webApiVersion:'2.15.1'},count:100,seed:'checking-action-preempts-generated',now:baseNow});
+  const generated=preemptWorld.torrents.find(t=>t.canonicalState===CANONICAL.CHECKING);
+  const target=preemptWorld.torrents.find(t=>t!==generated&&![CANONICAL.ERROR,CANONICAL.METADATA,CANONICAL.MOVING,CANONICAL.CHECKING].includes(t.canonicalState));
+  assert.ok(generated&&target,'preemption fixture needs one generated CHECKING sample and one actionable Torrent');
+  assert.equal(preemptWorld.torrents.filter(t=>t.canonicalState===CANONICAL.CHECKING).length,1,'default world must begin at the checking concurrency cap');
+  assert.equal(recheckTorrents(preemptWorld,target.hash,baseNow+1000),1,'explicit recheck must not be blocked by a static generated CHECKING sample');
+  assert.equal(target.canonicalState,CANONICAL.CHECKING,'explicit recheck must own the active checking slot');
+  assert.equal(preemptWorld.torrents.filter(t=>t.canonicalState===CANONICAL.CHECKING).length,1,'generated CHECKING must yield so the world remains inside the hard cap');
+  assert.notEqual(generated.canonicalState,CANONICAL.CHECKING,'static generated CHECKING sample must yield to the explicit action');
+}
+
+{
   const checkingWorld=createWorld({profile:{qbVersion:'5.2.3',webApiVersion:'2.15.1'},count:12,seed:'checking-cap',now:baseNow});
   checkingWorld.preferences.max_active_checking_torrents=2;
   const requested=checkingWorld.torrents.slice(0,6).map(t=>t.hash).join('|');
