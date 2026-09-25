@@ -66,9 +66,15 @@ function contract(world,path){return resolveEndpointContract(world.profile,path)
   world.globalDownloadLimit=48*1024;
   const limited=transferSnapshot(world,baseNow+300);
   assert.ok(limited.dl_info_speed<=48*1024,'normal global download limit changed inside one bucket must immediately reschedule rates');
+  world.preferences.max_uploads=1;
+  transferSnapshot(world,baseNow+400);
+  assert.ok(world.torrents.filter(t=>t.effectiveUploadRate>0).length<=1,'global upload-slot changes inside one bucket must immediately reschedule upload activity');
+  world.preferences.max_connec=2;
+  const connected=transferSnapshot(world,baseNow+500);
+  assert.ok(connected.total_peer_connections<=2,'global connection changes inside one bucket must immediately reschedule peer allocation');
   const stats=runtimeSnapshotStats(world);
   assert.equal(stats.advanceRuns,0,'same-bucket control changes must not advance simulation time');
-  assert.equal(stats.controlReschedules,3,'initial same-bucket read plus two control changes should require only three zero-elapsed schedules');
+  assert.equal(stats.controlReschedules,5,'initial same-bucket read plus four control changes should require only five zero-elapsed schedules');
 }
 
 {
