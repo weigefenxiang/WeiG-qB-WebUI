@@ -122,6 +122,25 @@ const catalog=[
 }
 
 {
+  const transitional=createWorld({profile:{qbVersion:'5.2.3',webApiVersion:'2.15.1'},count:200,seed:'world-schema-v2-transition',now:1700000000000});
+  transitional.schemaVersion=2;
+  const legacyPt=transitional.torrents.find(t=>t.private===true);
+  assert.ok(legacyPt,'schema-v2 transition fixture needs a private torrent');
+  legacyPt.tags=Array.from(new Set([...(legacyPt.tags||[]),'pt']));
+  legacyPt.category='Movies';
+  const custom=transitional.torrents.find(t=>t.private===true&&t!==legacyPt);
+  assert.ok(custom,'schema-v2 transition fixture needs a second private torrent');
+  custom.tags=Array.from(new Set([...(custom.tags||[]),'pt']));
+  custom.category='MyCustomPT';
+  transitional.categories.MyCustomPT={name:'MyCustomPT',savePath:'/downloads/custom-pt'};
+
+  const result=upgradeWorldSchema(transitional,1700000005000);
+  assert.equal(result.from,2,'schema-v2 persisted worlds must be explicitly covered by the realism migration');
+  assert.ok(VIRTUAL_PT_CATEGORIES.includes(legacyPt.category),'schema-v2 pt-tag torrent left in an old generated public category must migrate into the requested PT pool');
+  assert.equal(custom.category,'MyCustomPT','schema-v2 migration must preserve unknown/user custom PT categories');
+}
+
+{
   const legacy=createWorld({profile:{qbVersion:'5.2.3',webApiVersion:'2.15.1'},count:500,seed:'world-schema-legacy',now:1700000000000});
   legacy.schemaVersion=1;
   const legacySynthetic=legacy.torrents[0];

@@ -99,7 +99,7 @@ export function upgradeWorldSchema(world,now=Date.now()){
     const tags=tagList(torrent);
     if(!tags.some(tag=>tag.toLowerCase()==='pt')){tags.push('pt');torrent.tags=tags;changed=true;}
     const category=String(torrent.category||'');
-    const legacyGeneratedCategory=from<2&&LEGACY_GENERATED_CATEGORIES.has(category);
+    const legacyGeneratedCategory=from<CURRENT_WORLD_SCHEMA_VERSION&&LEGACY_GENERATED_CATEGORIES.has(category);
     if(!category||category===LEGACY_PRIVATE_CATEGORY||legacyGeneratedCategory){
       torrent.category=deterministicPtCategory(world,torrent);
       privateRemapped++;changed=true;
