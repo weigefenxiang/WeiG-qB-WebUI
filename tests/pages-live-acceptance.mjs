@@ -69,12 +69,12 @@ async function waitForCatalog(page,{count,timeout=30000}={}){
   return{...state,elapsedMs};
 }
 
-async function openVirtualSession(page,{branch,qb,count,scenario='mixed',seed='pages-live',clean=false}){
-  const sim=`pages-live-${branch}-${qb}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+async function openVirtualSession(page,{branch,qb,count,scenario='mixed',seed='pages-live',clean=false,sim=null}){
+  const sessionId=sim||`pages-live-${branch}-${qb}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   const url=new URL(`${branch}/app/`,base);
-  url.search=new URLSearchParams({sim,qb,count:String(count),scenario,seed,clean:clean?'1':'0'}).toString();
+  url.search=new URLSearchParams({sim:sessionId,qb,count:String(count),scenario,seed,clean:clean?'1':'0'}).toString();
   const recovered=await recoverPageSession(page,{
-    label:`Pages core ${branch} qB ${qb} ${sim}`,
+    label:`Pages core ${branch} qB ${qb} ${sessionId}`,
     qbVersion:qb,
     timeoutMs:sessionTimeoutMs,
     navigate:async attempt=>{
@@ -84,8 +84,8 @@ async function openVirtualSession(page,{branch,qb,count,scenario='mixed',seed='p
     },
     onLogin:async()=>{await login(page,{expectPrefill:!clean});}
   });
-  if(recovered.attempt>1)console.log(`Recovered Pages core ${branch} qB ${qb} session ${sim} on bootstrap attempt ${recovered.attempt}.`);
-  return{sim,url:url.toString(),recovered};
+  if(recovered.attempt>1)console.log(`Recovered Pages core ${branch} qB ${qb} session ${sessionId} on bootstrap attempt ${recovered.attempt}.`);
+  return{sim:sessionId,url:url.toString(),recovered};
 }
 
 async function login(page,{expectPrefill}){
@@ -204,6 +204,73 @@ try{
     response=await api(page,'app/preferences');
     assert.equal(response.status,403,'real SessionController logout must leave protected API unauthenticated');
     assert.deepEqual(pageErrors,[],`qB5 Pages session emitted page errors:\n${pageErrors.join('\n')}`);
+    await context.close();
+  }
+
+  {
+    const context=await browser.newContext({locale:'zh-CN'});
+    const page=await context.newPage();
+    const pageErrors=[];
+    page.on('pageerror',error=>pageErrors.push(error?.stack||error?.message||String(error)));
+
+    const source=await openVirtualSession(page,{branch:'dev',qb:'5.2.3',count:120,scenario:'mixed',seed:'pages-live-persisted-migration-source',clean:true});
+    const legacySim=`pages-live-persisted-realism-v1-${Date.now()}`;
+    const seeded=await page.evaluate(async({sourceSim,legacySim})=>{
+      const PT=['1+1DBits','nn-team','BeyondH1 Ɔ','RE1Ɔ','TheGeeks','B1tMe','PT1 Ɔ','Gaze11eGames','JP0psuk1'];
+      const db=await new Promise((resolve,reject)=>{
+        const request=indexedDB.open('weig-virtual-qb',1);
+        request.onsuccess=()=>resolve(request.result);
+        request.onerror=()=>reject(request.error);
+      });
+      const read=await new Promise((resolve,reject)=>{
+        const tx=db.transaction('worlds','readonly'),request=tx.objectStore('worlds').get(sourceSim);
+        request.onsuccess=()=>resolve(request.result);
+        request.onerror=()=>reject(request.error);
+      });
+      if(!read?.world)throw new Error('source persisted Virtual world missing');
+      const world=structuredClone(read.world);
+      world.schemaVersion=1;
+      world.logs=(world.logs||[]).filter(item=>[1,2].includes(Number(item.type)));
+      const privateRows=(world.torrents||[]).filter(item=>item.private===true).slice(0,9);
+      if(privateRows.length<3)throw new Error('persisted migration fixture lacks private torrents');
+      privateRows.forEach((torrent,index)=>{
+        torrent.category='Private';
+        if(index===0){
+          torrent.name='Open Archive · Collection 2026';
+          torrent.contentPath='/downloads/private/Open Archive · Collection 2026';
+        }
+      });
+      world.categories={...(world.categories||{}),Private:{name:'Private',savePath:'/downloads/private'}};
+      PT.forEach(name=>{delete world.categories[name];});
+      await new Promise((resolve,reject)=>{
+        const tx=db.transaction('worlds','readwrite');
+        tx.objectStore('worlds').put({id:legacySim,world,updatedAt:Date.now()});
+        tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);
+      });
+      db.close();
+      return{privateCount:privateRows.length,legacyName:'Open Archive · Collection 2026'};
+    },{sourceSim:source.sim,legacySim});
+
+    await openVirtualSession(page,{branch:'dev',qb:'5.2.3',count:120,scenario:'mixed',seed:'pages-live-persisted-migration-source',clean:true,sim:legacySim});
+
+    let response=await api(page,'log/main?normal=true&info=true&warning=true&critical=true&last_known_id=-1');
+    assert.equal(response.status,200,'migrated persisted world log API must remain readable');
+    assert.deepEqual(new Set(response.json.map(item=>Number(item.type))),new Set([1,2,4,8]),'persisted old session must automatically gain Normal/Info/Warning/Critical without clearing IndexedDB');
+
+    response=await api(page,'torrents/info?limit=500&offset=0');
+    assert.equal(response.status,200);
+    const PT=['1+1DBits','nn-team','BeyondH1 Ɔ','RE1Ɔ','TheGeeks','B1tMe','PT1 Ɔ','Gaze11eGames','JP0psuk1'];
+    const privateRows=response.json.filter(item=>item.private===true);
+    assert.ok(privateRows.length>=seeded.privateCount,'migrated persisted world must retain its private/PT torrents');
+    assert.ok(privateRows.every(item=>PT.includes(item.category)),`all qB5 private/PT torrents must project one of the nine requested PT categories after migration: ${[...new Set(privateRows.map(item=>item.category))].join(', ')}`);
+    assert.ok(!response.json.some(item=>item.name===seeded.legacyName),'legacy synthetic name must be replaced automatically in the persisted session');
+
+    response=await api(page,'sync/maindata?rid=0');
+    for(const name of PT)assert.ok(response.json?.categories?.[name],`migrated persisted world must publish PT category ${name} through sync/maindata`);
+    assert.ok(!response.json?.categories?.Private,'legacy generic Private category must retire after all migrated rows leave it');
+
+    assert.deepEqual(pageErrors,[],`persisted-world schema migration emitted browser errors:\n${pageErrors.join('\n')}`);
+    console.log(`Persisted Virtual world v1 migrated in-place: four log levels restored, ${seeded.privateCount} sampled legacy Private rows remapped to the nine PT category pool, and synthetic names retired without clearing IndexedDB.`);
     await context.close();
   }
 
