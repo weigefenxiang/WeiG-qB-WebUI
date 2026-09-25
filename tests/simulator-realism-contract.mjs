@@ -100,6 +100,28 @@ const baseNow=1700000000000;
 }
 
 {
+  const w=createWorld({profile:{qbVersion:'5.2.3',webApiVersion:'2.15.1'},count:1,seed:'encryption-compatibility',now:baseNow});
+  const t=w.torrents[0];
+  t.completed=false;
+  t.canonicalState=CANONICAL.DOWNLOAD_ACTIVE;
+  t.resumeState=CANONICAL.DOWNLOAD_ACTIVE;
+  t.downloaded=Math.floor(t.size*.5);
+  t.seeders=100;
+  t.leechers=100;
+  w.environment.peerAvailability=1;
+  setPreferences(w,{queueing_enabled:false,max_connec:1000,max_connec_per_torrent:1000,encryption:0},baseNow);
+  const allow=t.connectedPeers;
+  setPreferences(w,{encryption:1},baseNow+1);
+  const requireEncrypted=t.connectedPeers;
+  setPreferences(w,{encryption:2},baseNow+2);
+  const requirePlain=t.connectedPeers;
+  assert.ok(allow>requireEncrypted,'allow-encryption mode must retain peers that require either transport mode');
+  assert.ok(allow>requirePlain,'allow-encryption mode must retain peers that require either transport mode');
+  assert.ok(requireEncrypted>0&&requirePlain>0,'exclusive encryption modes must keep a plausible compatible peer subset');
+  assert.notEqual(requireEncrypted,requirePlain,'encrypted/plaintext-only modes must project distinct deterministic peer populations');
+}
+
+{
   const w=createWorld({profile:{qbVersion:'5.2.3',webApiVersion:'2.15.1'},count:1000,seed:'tracker-failure',now:baseNow});
   applyScenario(w,'tracker-failure',baseNow);
   applyRuntimePolicies(w,baseNow+15000);
