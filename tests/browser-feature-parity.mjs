@@ -65,11 +65,21 @@ await page.locator('#filter-nav [data-filter="all"]').click();await page.waitFor
     const option=page.locator('#add-dialog .weig-floating-layer[data-ui-modal-layer="1"] .ui-select__option[data-value="'+value+'"]');
     await option.waitFor({state:'visible'});
     const geometry=await option.evaluate(node=>{const r=node.getBoundingClientRect(),dialog=document.getElementById('add-dialog')?.getBoundingClientRect();return{left:r.left,right:r.right,top:r.top,bottom:r.bottom,viewportW:innerWidth,viewportH:innerHeight,dialogLeft:dialog?.left,dialogRight:dialog?.right,dialogTop:dialog?.top,dialogBottom:dialog?.bottom};});
-    assert(geometry.left>=0&&geometry.right<=geometry.viewportW&&geometry.top>=0&&geometry.bottom<=geometry.viewportH,'qB 4.6.7 Add '+id+' popup escaped the viewport: '+JSON.stringify(geometry));
+    assert(geometry.left>=0&&geometry.right<=geometry.viewportW&&geometry.top>=0&&geometry.bottom<=geometry.viewportH&&geometry.left>=geometry.dialogLeft-1&&geometry.right<=geometry.dialogRight+1&&geometry.top>=geometry.dialogTop-1&&geometry.bottom<=geometry.dialogBottom+1,'qB 4.6.7 Add '+id+' popup escaped the canonical Dialog boundary: '+JSON.stringify(geometry));
     await option.click();
     assert(await page.locator('#'+id).evaluate(node=>node.getValue?.()||'' )===value,'qB 4.6.7 Add '+id+' selected source value was not clickable');
   }
   assert(await page.locator('#add-urls-label').count()===0,'qB 4.6.7 Add must not render duplicate visible Add Torrent Links copy');
+  await page.locator('#torrent-files').evaluate(node=>node.dispatchEvent(new Event('cancel',{bubbles:true,cancelable:false})));
+  await page.waitForTimeout(40);
+  assert(await page.locator('#add-dialog').evaluate(node=>node.open===true),'qB 4.6.7 Add must remain open when Windows file chooser cancellation bubbles from input[type=file]');
+  const titleBox=await page.locator('#add-dialog-title').boundingBox();assert(titleBox&&titleBox.width>20,'qB 4.6.7 Add title selection fixture missing geometry');
+  await page.evaluate(()=>getSelection()?.removeAllRanges());await page.mouse.move(titleBox.x+3,titleBox.y+titleBox.height/2);await page.mouse.down();await page.mouse.move(titleBox.x+Math.min(titleBox.width-3,90),titleBox.y+titleBox.height/2,{steps:8});await page.mouse.up();
+  const selectedTitle=await page.evaluate(()=>String(getSelection()?.toString()||''));assert(selectedTitle.trim().length>0,'desktop Dialog header text must remain mouse-selectable/copyable instead of being consumed by drag ownership');
+  await page.evaluate(()=>getSelection()?.removeAllRanges());
+  await page.mouse.click(2,2);await page.waitForTimeout(60);assert(await page.locator('#add-dialog').evaluate(node=>node.open===true),'desktop Dialog backdrop single click must not close the modal');
+  await page.mouse.dblclick(2,2);await page.waitForFunction(()=>!document.getElementById('add-dialog')?.open);
+  await page.locator('#add-btn').click();await page.waitForSelector('#add-dialog[open]');
   await page.locator('#add-dialog .dialog__actions [value="cancel"]').click();
   await page.waitForFunction(()=>!document.getElementById('add-dialog')?.open);
   await page.setViewportSize({width:390,height:844});
