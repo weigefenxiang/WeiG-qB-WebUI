@@ -246,4 +246,31 @@ const baseNow=1700000000000;
   assert.ok(transfer.dl_info_speed>0&&transfer.up_info_speed>0,'global transfer projection must expose simultaneous download and upload');
 }
 
+
+{
+  const w=createWorld({profile:{qbVersion:'5.2.3',webApiVersion:'2.15.1'},count:20,seed:'queue-limit-runtime',now:baseNow});
+  w.torrents.forEach((t,index)=>{
+    t.completed=index>=10;
+    t.downloaded=t.completed?t.size:Math.floor(t.size*.5);
+    t.canonicalState=t.completed?CANONICAL.SEED_QUEUED:CANONICAL.DOWNLOAD_QUEUED;
+    t.resumeState=t.canonicalState;
+    t.seeders=Math.max(8,t.seeders);
+    t.leechers=Math.max(8,t.leechers);
+    t.queuePosition=index+1;
+  });
+  setPreferences(w,{
+    queueing_enabled:true,
+    max_active_downloads:2,
+    max_active_uploads:3,
+    max_active_torrents:4,
+    max_connec:500,
+    max_connec_per_torrent:100
+  },baseNow);
+  const activeDownloads=w.torrents.filter(t=>t.canonicalState===CANONICAL.DOWNLOAD_ACTIVE).length;
+  const activeUploads=w.torrents.filter(t=>t.canonicalState===CANONICAL.SEED_ACTIVE).length;
+  assert.ok(activeDownloads<=2,'maximum active downloads must remain a hard upper bound');
+  assert.ok(activeUploads<=3,'maximum active uploads must remain a hard upper bound');
+  assert.ok(activeDownloads+activeUploads<=4,'maximum active Torrents must bound the unique active queue population');
+}
+
 console.log('Virtual qB realism contract passed: upstream profile facts survive normalization; deterministic environment policies remain bounded; forced states, queue ranks, facet deltas and automatic management stay coherent.');
