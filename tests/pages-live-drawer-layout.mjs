@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {launchBrowser} from './browser-driver.mjs';
+import {recoverPageSession} from './pages-live-session.mjs';
 
 const rawBase=(process.env.WEIG_PAGES_URL||process.argv[2]||'').trim();
 const expectedSha=(process.env.WEIG_EXPECTED_SIMULATOR_SHA||process.argv[3]||'').trim();
@@ -7,6 +8,7 @@ assert.ok(rawBase,'WEIG_PAGES_URL or argv[2] is required');
 assert.ok(expectedSha,'WEIG_EXPECTED_SIMULATOR_SHA or argv[3] is required');
 const base=new URL(rawBase.endsWith('/')?rawBase:`${rawBase}/`);
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+const sessionTimeoutMs=Math.max(5000,Number(process.env.WEIG_PAGES_SESSION_TIMEOUT_MS||20000)||20000);
 
 async function waitForDeployedSha(){
   let last='not fetched';
@@ -37,13 +39,22 @@ try{
     errors.push(source?`${text} (${source})`:text);
   });
 
+  const sessionId=`pages-drawer-${Date.now()}`;
   const url=new URL('dev/app/',base);
-  url.search=new URLSearchParams({sim:`pages-drawer-${Date.now()}`,qb:'5.2.3',count:'80',scenario:'mixed',seed:'drawer-layout-047'}).toString();
-  await page.goto(url.toString(),{waitUntil:'domcontentloaded',timeout:60000});
-  await page.waitForSelector('#login-form',{state:'visible',timeout:60000});
-  await page.locator('#login-btn').click();
+  url.search=new URLSearchParams({sim:sessionId,qb:'5.2.3',count:'80',scenario:'mixed',seed:'drawer-layout-047'}).toString();
+  const recovered=await recoverPageSession(page,{
+    label:`Pages Drawer layout ${sessionId}`,
+    qbVersion:'5.2.3',
+    timeoutMs:sessionTimeoutMs,
+    navigate:async attempt=>{
+      const target=new URL(url);
+      target.searchParams.set('__weig_session_attempt',String(attempt));
+      await page.goto(target.toString(),{waitUntil:'domcontentloaded',timeout:sessionTimeoutMs});
+    },
+    onLogin:async()=>{await page.locator('#login-btn').click();}
+  });
+  if(recovered.attempt>1)console.log(`Recovered Pages Drawer layout ${sessionId} on attempt ${recovered.attempt}.`);
   await page.waitForSelector('.torrent-mobile-card--two-line',{state:'visible',timeout:60000});
-  await page.waitForFunction(()=>String(document.querySelector('#qb-version')?.textContent||'').includes('5.2.3'),null,{timeout:60000});
 
   await page.locator('#menu-btn').click();
   await page.waitForFunction(()=>document.getElementById('sidebar')?.classList.contains('is-open'),null,{timeout:10000});
