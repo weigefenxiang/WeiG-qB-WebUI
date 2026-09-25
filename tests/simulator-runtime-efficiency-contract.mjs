@@ -46,7 +46,8 @@ shareStats=shareLimitPolicyStats(shareWorld);
 assert.equal(shareStats.candidateBuilds,2,'stable per-torrent share limits must keep the candidate cache reusable');
 assert.equal(shareStats.torrentsVisited,21,'twenty additional ticks must add twenty candidate visits, not 100000 full-world visits');
 
-const recheckTarget=world.torrents.find(t=>![CANONICAL.ERROR,CANONICAL.METADATA,CANONICAL.MOVING].includes(t.canonicalState));
+world.preferences.max_active_checking_torrents=1000;
+const recheckTarget=world.torrents.find(t=>![CANONICAL.ERROR,CANONICAL.METADATA,CANONICAL.MOVING,CANONICAL.CHECKING].includes(t.canonicalState));
 assert.ok(recheckTarget);
 const beforeRecheckScans=stats.actionStateScans;
 assert.equal(recheckTorrents(world,recheckTarget.hash,baseNow+31000),1);
