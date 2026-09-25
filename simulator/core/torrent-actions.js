@@ -41,7 +41,7 @@ function resumableState(t){
   return CANONICAL.DOWNLOAD_QUEUED;
 }
 
-function noteActionTransition(world,at){
+export function noteActionTransition(world,at){
   const when=Math.max(0,Number(at)||0);
   if(!when)return;
   const current=Number(world.nextActionTransitionAt);
