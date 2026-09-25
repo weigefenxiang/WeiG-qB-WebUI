@@ -166,6 +166,9 @@ try{
     assert.equal(all.json.length,5000,'Pages runtime must sustain the requested 5000 Torrent world');
     const states=new Set(all.json.map(item=>item.state));
     assert.ok(states.size>=6,`5000 Torrent world must expose diverse states; got ${[...states].join(', ')}`);
+    const activeDownloads=all.json.filter(item=>Number(item.progress)<1&&Number(item.dlspeed)>0);
+    assert.ok(activeDownloads.some(item=>Number(item.upspeed)>0),'deployed Virtual qB must allow an incomplete Torrent to upload while downloading');
+    assert.ok(activeDownloads.some(item=>Number(item.upspeed)===0),'deployed Virtual qB must retain plausible download-only samples when no upload slot/interest is available');
 
 
     let response=await api(page,'transfer/setDownloadLimit',{method:'POST',form:{limit:3*1024*1024}});
