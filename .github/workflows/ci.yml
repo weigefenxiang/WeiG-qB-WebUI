@@ -108,6 +108,8 @@ jobs:
     needs: classify
     permissions:
       contents: write
+    outputs:
+      materialized_sha: ${{ steps.commit.outputs.materialized_sha }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -144,6 +146,7 @@ jobs:
           fi
           npm test
       - name: Commit canonical compact runtime if changed
+        id: commit
         shell: bash
         run: |
           set -euo pipefail
@@ -155,6 +158,7 @@ jobs:
           git add webui/private/data/capabilities.json webui/private/data/settings-compat.json
           git commit -m "a3: materialize Settings Frozen identity [settings-evidence] [ui]"
           git push origin HEAD:dev
+          echo "materialized_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
   smoke:
     needs: classify
@@ -569,13 +573,15 @@ jobs:
 
   settings_bundle_materialize:
     name: qB Settings copy/QM exact materialization
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/dev' && (contains(github.event.head_commit.message, '[settings-evidence]') || contains(github.event.head_commit.message, '[settings-evidence-verify]')) }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'settings-evidence' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && (contains(github.event.head_commit.message, '[settings-evidence]') || contains(github.event.head_commit.message, '[settings-evidence-verify]'))) }}
     runs-on: ubuntu-latest
     needs:
       - release_catalog_merge
       - release_lkg
     permissions:
       contents: write
+    outputs:
+      materialized_sha: ${{ steps.materialize.outputs.materialized_sha }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -604,6 +610,7 @@ jobs:
           find "$RUNNER_TEMP/qb-settings-materialized/translations" -type f -name 'webui_*.qm' -print -quit | grep -q .
           node tests/qb-runtime-copy-materialization-contract.mjs release-catalog/qb-releases.json "$RUNNER_TEMP/qb-settings-materialized/private/data/qb-settings-native.txt"
       - name: Verify or materialize exact product assets
+        id: materialize
         shell: bash
         env:
           HEAD_MESSAGE: ${{ github.event.head_commit.message }}
@@ -661,6 +668,7 @@ jobs:
             exit 1
           }
           git push origin HEAD:dev
+          echo "materialized_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - name: Upload exact generated qB Settings copy/QM evidence
         uses: actions/upload-artifact@v7
         with:
@@ -673,13 +681,15 @@ jobs:
 
   stable_lkg_refresh:
     name: qB same-stable Frozen LKG refresh
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/dev' && (contains(github.event.head_commit.message, '[settings-evidence]') || contains(github.event.head_commit.message, '[settings-evidence-verify]')) }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'settings-evidence' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && (contains(github.event.head_commit.message, '[settings-evidence]') || contains(github.event.head_commit.message, '[settings-evidence-verify]'))) }}
     runs-on: ubuntu-latest
     needs:
       - release_catalog_base
       - settings_bundle_materialize
     permissions:
       contents: write
+    outputs:
+      materialized_sha: ${{ steps.materialize.outputs.materialized_sha }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -693,6 +703,7 @@ jobs:
           name: qb-release-catalog-base-${{ github.sha }}
           path: exact-base
       - name: Verify or refresh same-stable Frozen source evidence
+        id: materialize
         shell: bash
         run: |
           set -euo pipefail
@@ -814,6 +825,7 @@ jobs:
             exit 1
           }
           git push origin HEAD:dev
+          echo "materialized_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
 
   browser:
@@ -1026,6 +1038,8 @@ jobs:
     needs: native_surface_source_base
     permissions:
       contents: write
+    outputs:
+      materialized_sha: ${{ steps.commit.outputs.materialized_sha }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -1049,6 +1063,7 @@ jobs:
           git diff --check
           test -z "$(git diff --name-only -- webui/translations)"
       - name: Commit canonical Detail runtime if changed
+        id: commit
         shell: bash
         run: |
           set -euo pipefail
@@ -1066,6 +1081,7 @@ jobs:
           git add webui/private/data/detail-compat.json
           git commit -m "a16: materialize exact Detail runtime [ui]"
           git push origin HEAD:dev
+          echo "materialized_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
   native_surface_preferences:
     name: qB Preferences source shard ${{ matrix.shard }}
@@ -1233,3 +1249,54 @@ jobs:
           }
           test "$mismatch" -eq 0
           sha256sum settings-runtime-materialized.json native-base/rss-compat.json detail-runtime-materialized.json
+
+  materialized_validation_dispatch:
+    name: Dispatch materialized exact-SHA validation
+    if: ${{ always() && github.ref == 'refs/heads/dev' }}
+    runs-on: ubuntu-latest
+    needs:
+      - settings_runtime_materialize
+      - settings_bundle_materialize
+      - stable_lkg_refresh
+      - detail_runtime_materialize
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Dispatch validation owners for generated dev head
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SETTINGS_RUNTIME_SHA: ${{ needs.settings_runtime_materialize.outputs.materialized_sha }}
+          SETTINGS_BUNDLE_SHA: ${{ needs.settings_bundle_materialize.outputs.materialized_sha }}
+          STABLE_RUNTIME_SHA: ${{ needs.stable_lkg_refresh.outputs.materialized_sha }}
+          DETAIL_RUNTIME_SHA: ${{ needs.detail_runtime_materialize.outputs.materialized_sha }}
+        run: |
+          set -euo pipefail
+          shas=()
+          for value in "$SETTINGS_RUNTIME_SHA" "$SETTINGS_BUNDLE_SHA" "$STABLE_RUNTIME_SHA" "$DETAIL_RUNTIME_SHA"; do
+            [ -n "$value" ] && shas+=("$value")
+          done
+          if [ "${#shas[@]}" -eq 0 ]; then
+            echo "No generated dev commit was published; no materialized validation dispatch is needed."
+            exit 0
+          fi
+          mapfile -t unique_shas < <(printf '%s\n' "${shas[@]}" | sort -u)
+          if [ "${#unique_shas[@]}" -ne 1 ]; then
+            echo "Multiple generated dev SHAs escaped one CI run: ${unique_shas[*]}" >&2
+            exit 1
+          fi
+          TARGET_SHA="${unique_shas[0]}"
+          REMOTE_DEV_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/commits/dev" --jq '.sha')"
+          if [ "$REMOTE_DEV_SHA" != "$TARGET_SHA" ]; then
+            echo "Generated checkpoint $TARGET_SHA is stale; current dev is $REMOTE_DEV_SHA. A newer owner must dispatch validation."
+            exit 0
+          fi
+
+          for mode in ui settings-matrix settings-evidence native-surfaces; do
+            jq -n --arg ref dev --arg mode "$mode"               '{ref:$ref,inputs:{validation_mode:$mode}}'               | gh api --method POST "/repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/dispatches" --input -
+            echo "Dispatched CI $mode for dev@$TARGET_SHA."
+          done
+
+          jq -n --arg ref dev             '{ref:$ref,inputs:{mode:"pages"}}'             | gh api --method POST "/repos/$GITHUB_REPOSITORY/actions/workflows/pages-source.yml/dispatches" --input -
+          echo "Dispatched Virtual qB Pages Source for dev@$TARGET_SHA."
