@@ -285,6 +285,7 @@ export function recheckTorrents(world,hashes,now=Date.now()){
     noteActionTransition(world,t.checkingUntil);
     t.lastStateChange=Math.floor(now/1000);
     changed.push(t.hash);
+    activeChecking++;
   }
   if(changed.length){recordTorrentChanges(world,changed,[]);appendLog(world,`Rechecking ${changed.length} virtual torrent(s).`,1,now);}
   return changed.length;
