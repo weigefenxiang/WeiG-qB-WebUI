@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {launchBrowser} from './browser-driver.mjs';
+import {recoverPageSession} from './pages-live-session.mjs';
 
 const rawBase=(process.env.WEIG_PAGES_URL||process.argv[2]||'').trim();
 const expectedSha=(process.env.WEIG_EXPECTED_SIMULATOR_SHA||process.argv[3]||'').trim();
@@ -8,6 +9,7 @@ assert.ok(expectedSha,'WEIG_EXPECTED_SIMULATOR_SHA or argv[3] is required');
 
 const base=new URL(rawBase.endsWith('/')?rawBase:`${rawBase}/`);
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+const sessionTimeoutMs=Math.max(5000,Number(process.env.WEIG_PAGES_SESSION_TIMEOUT_MS||20000)||20000);
 const absolute=relative=>new URL(String(relative).replace(/^\/+/,''),base).toString();
 
 async function fetchJson(relative){
@@ -71,9 +73,19 @@ async function openVirtualSession(page,{branch,qb,count,scenario='mixed',seed='p
   const sim=`pages-live-${branch}-${qb}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   const url=new URL(`${branch}/app/`,base);
   url.search=new URLSearchParams({sim,qb,count:String(count),scenario,seed,clean:clean?'1':'0'}).toString();
-  await page.goto(url.toString(),{waitUntil:'domcontentloaded',timeout:60000});
-  await waitForLogin(page);
-  return{sim,url:url.toString()};
+  const recovered=await recoverPageSession(page,{
+    label:`Pages core ${branch} qB ${qb} ${sim}`,
+    qbVersion:qb,
+    timeoutMs:sessionTimeoutMs,
+    navigate:async attempt=>{
+      const attemptUrl=new URL(url);
+      attemptUrl.searchParams.set('__weig_session_attempt',String(attempt));
+      await page.goto(attemptUrl.toString(),{waitUntil:'domcontentloaded',timeout:sessionTimeoutMs});
+    },
+    onLogin:async()=>{await login(page,{expectPrefill:!clean});}
+  });
+  if(recovered.attempt>1)console.log(`Recovered Pages core ${branch} qB ${qb} session ${sim} on bootstrap attempt ${recovered.attempt}.`);
+  return{sim,url:url.toString(),recovered};
 }
 
 async function login(page,{expectPrefill}){
@@ -137,8 +149,6 @@ try{
     page.on('pageerror',error=>pageErrors.push(error?.stack||error?.message||String(error)));
 
     await openVirtualSession(page,{branch:'main',qb:'5.2.3',count:5000,scenario:'mixed',seed:'pages-live-5000'});
-    await login(page,{expectPrefill:true});
-    await waitForPrivate(page,'5.2.3');
 
     const catalogState=await waitForCatalog(page,{count:5000,timeout:30000});
     const pagerPattern=catalogState.locale==='zh-CN'?/第\s*1\s*\/\s*100\s*页\s*·\s*每页\s*50/:/Page\s*1\s*\/\s*100\s*·\s*50\s*per page/i;
@@ -204,8 +214,6 @@ try{
     page.on('pageerror',error=>pageErrors.push(error?.stack||error?.message||String(error)));
 
     await openVirtualSession(page,{branch:'dev',qb:'4.1.9.1',count:320,scenario:'mixed',seed:'pages-live-qb4',clean:true});
-    await login(page,{expectPrefill:false});
-    await waitForPrivate(page,'4.1.9.1');
 
     const version=await api(page,'app/version');
     const webApi=await api(page,'app/webapiVersion');
@@ -289,8 +297,6 @@ try{
     page.on('console',message=>{if(message.type()==='error'&&!/favicon|Wei\.G\.ico/i.test(message.text()))pageErrors.push(message.text());});
 
     await openVirtualSession(page,{branch:'dev',qb:'5.2.3',count:80,scenario:'mixed',seed:'pages-live-android'});
-    await login(page,{expectPrefill:true});
-    await waitForPrivate(page,'5.2.3');
     await page.waitForSelector('.torrent-mobile-card--two-line',{state:'visible',timeout:60000});
 
     await page.locator('#menu-btn').click();
