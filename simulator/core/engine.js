@@ -347,6 +347,25 @@ function naturalJitter(world,torrent,now,direction){
   return Math.max(.58,Math.min(1.18,.72+local*.30+shared*.16));
 }
 
+function normalizeCheckingConcurrency(world,now){
+  const limit=Math.max(1,Math.round(Number(world.preferences?.max_active_checking_torrents)||1));
+  const checking=(world.torrents||[])
+    .filter(t=>t.canonicalState===CANONICAL.CHECKING)
+    .sort((a,b)=>(Number(a.queuePosition)||Number.MAX_SAFE_INTEGER)-(Number(b.queuePosition)||Number.MAX_SAFE_INTEGER)||String(a.hash).localeCompare(String(b.hash)));
+  if(checking.length<=limit)return[];
+  const changed=[];
+  for(const t of checking.slice(limit)){
+    const fallback=t.maintenanceResumeState||(t.completed?CANONICAL.SEED_QUEUED:CANONICAL.DOWNLOAD_QUEUED);
+    t.canonicalState=fallback;
+    if(t.resumeState===CANONICAL.CHECKING)t.resumeState=fallback;
+    t.checkingUntil=0;
+    t.maintenanceResumeState='';
+    t.lastStateChange=Math.floor(now/1000);
+    changed.push(t.hash);
+  }
+  return changed;
+}
+
 function queueCandidates(world){
   const downloads=[],uploads=[];
   for(const t of world.torrents){
@@ -360,6 +379,7 @@ function queueCandidates(world){
 
 export function schedule(world,now=Date.now(),elapsedSeconds=0){
   const prefs=world.preferences,env=world.environment;
+  const normalizedChecking=normalizeCheckingConcurrency(world,now);
   const {downloads,uploads}=queueCandidates(world);
   const activeDownloads=new Set(),activeUploads=new Set();
   let totalSlots=prefs.queueing_enabled?Math.max(0,Number(prefs.max_active_torrents)||0):Infinity;
@@ -379,7 +399,7 @@ export function schedule(world,now=Date.now(),elapsedSeconds=0){
 
   let remainingConnections=Math.max(0,Number(prefs.max_connec)||0)||Infinity;
   let remainingUploadSlots=Math.max(0,Number(prefs.max_uploads)||0)||Infinity;
-  const dlItems=[],ulItems=[],changed=new Set();
+  const dlItems=[],ulItems=[],changed=new Set(normalizedChecking);
 
   for(const t of world.torrents){
     const before=t.canonicalState;
