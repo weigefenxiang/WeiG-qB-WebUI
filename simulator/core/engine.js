@@ -57,6 +57,7 @@ export const DEFAULT_PREFERENCES={
   max_active_downloads:8,
   max_active_uploads:24,
   max_active_torrents:30,
+  max_active_checking_torrents:1,
   max_ratio:2,
   max_ratio_enabled:false,
   max_seeding_time:1440,
