@@ -125,21 +125,22 @@ function seededWavePeriod(seed,key,minMs=3000,maxMs=30000){
   return Math.round(minMs+deterministicUnit(seed,`${key}:period`)*(maxMs-minMs));
 }
 function signedWave(seed,key,now,minAmplitude=.05,maxAmplitude=.10){
-  const period=seededWavePeriod(seed,key),unit=interpolatedNoise(seed,key,now,period)*2-1;
+  const period=seededWavePeriod(seed,key);
   const amplitude=minAmplitude+deterministicUnit(seed,`${key}:amplitude`)*(maxAmplitude-minAmplitude);
-  return unit*amplitude;
+  const phase=deterministicUnit(seed,`${key}:phase`)*Math.PI*2;
+  const cycle=(now%period)/period;
+  return Math.sin(Math.PI*2*cycle+phase)*amplitude;
 }
 function rareExcursion(seed,key,now){
   const eventPeriod=60000+Math.round(deterministicUnit(seed,`${key}:event-period`)*90000);
   const bucket=Math.floor(now/eventPeriod),phase=(now-bucket*eventPeriod)/eventPeriod;
   if(deterministicUnit(seed,`${key}:event-roll:${bucket}`)>=.22)return 0;
   const depth=.20+deterministicUnit(seed,`${key}:event-depth:${bucket}`)*.20;
-  const direction=deterministicUnit(seed,`${key}:event-direction:${bucket}`)>=.5?1:-1;
-  return direction*depth*Math.sin(Math.PI*phase)**2;
+  return -depth*Math.sin(Math.PI*phase)**2;
 }
 function limiterPacingFactor(world,now,direction){
   const seed=runtimeSeed(world),key=`limit-${direction}`;
-  return clamp(.89+signedWave(seed,key,now)+rareExcursion(seed,key,now),.50,1);
+  return clamp(.94+signedWave(seed,key,now)+rareExcursion(seed,key,now),.45,1);
 }
 
 function applyConfiguredLimitPacing(world,now){
@@ -153,7 +154,7 @@ function applyConfiguredLimitPacing(world,now){
 
 function physicalLinkFactor(world,now,direction){
   const seed=runtimeSeed(world),key=`physical-${direction}`;
-  return clamp(.88+signedWave(seed,key,now)+rareExcursion(seed,key,now),.48,1);
+  return clamp(.93+signedWave(seed,key,now)+rareExcursion(seed,key,now),.50,1);
 }
 
 function applyLightweightCapacityWave(world,now){
