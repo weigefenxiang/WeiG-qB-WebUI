@@ -127,9 +127,10 @@ function seededWavePeriod(seed,key,minMs=3000,maxMs=30000){
 function signedWave(seed,key,now,minAmplitude=.05,maxAmplitude=.10){
   const period=seededWavePeriod(seed,key);
   const amplitude=minAmplitude+deterministicUnit(seed,`${key}:amplitude`)*(maxAmplitude-minAmplitude);
-  const phase=deterministicUnit(seed,`${key}:phase`)*Math.PI*2;
-  const cycle=(now%period)/period;
-  return Math.sin(Math.PI*2*cycle+phase)*amplitude;
+  const primary=interpolatedNoise(seed,`${key}:primary`,now,period);
+  const secondary=interpolatedNoise(seed,`${key}:secondary`,now,Math.max(2500,Math.round(period*.37)));
+  const normalized=((primary-.5)*.72+(secondary-.5)*.28)*2;
+  return normalized*amplitude;
 }
 function rareExcursion(seed,key,now){
   const eventPeriod=60000+Math.round(deterministicUnit(seed,`${key}:event-period`)*90000);
