@@ -15,6 +15,8 @@ assert.match(floating,/boundary:boundary/,'Select placement must pass the resolv
 assert.match(floating,/placement==='left'\|\|placement==='right'/,'Shared geometry must support horizontal fallback rather than escaping a Dialog when vertical space is exhausted');
 assert.match(floating,/function modalLayer\(owner\)[\s\S]*closest\('dialog\[open\]'\)[\s\S]*dataset\.uiModalLayer='1'/,'Canonical Select must portal a modal menu into the open dialog top-layer subtree instead of leaving it below showModal().');
 assert.match(floating,/function selectLayer\(owner\)\{return modalLayer\(owner\)\|\|layer\(\);\}/,'Canonical Select must keep one portal resolver: dialog-local when modal, global otherwise.');
+assert.match(floating,/function setViewportPosition\(menu,left,top\)[\s\S]*menu\.style\.left='0px'[\s\S]*getBoundingClientRect\(\)[\s\S]*left-origin\.left[\s\S]*top-origin\.top/,'Floating geometry must convert desired viewport coordinates into the actual portal containing-block coordinate space.');
+assert.match(floating,/function placeBounded\(menu,anchor,opts\)[\s\S]*setViewportPosition\(menu,left,top\)/,'All bounded floating placement must use the shared portal coordinate conversion before exposing the menu.');
 assert.match(floating,/selectLayer\(w\)\.appendChild\(m\)/,'Select open must consume the canonical modal-aware portal resolver.');
 assert.match(floating,/function place\(w\)[\s\S]*placeBounded\(m,r,/,'Canonical Select must use the shared bounded geometry owner');
 assert.match(floating,/function placeContextMenu\(menu,x,y\)[\s\S]*placeBounded\(menu,r,/,'Context Menu must use the same bounded geometry owner');
