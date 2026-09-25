@@ -12,6 +12,8 @@ const i18n=read('webui/private/scripts/i18n.js');
 const floating=read('webui/private/scripts/floating.js');
 const controls=read('webui/private/css/controls.css');
 const appCss=read('webui/private/css/app.css');
+const uiCss=read('webui/private/css/ui.css');
+const indexHtml=read('webui/private/index.html');
 
 function decode(value){try{return decodeURIComponent(String(value||''));}catch{return String(value||'');}}
 function addRefsFor(version,sha){
@@ -110,5 +112,11 @@ assert(!app.includes("createElement('datalist')"),'Add renderer must not retain 
 assert(!app.includes("addCheck(startGroup,'add-forced'"),'Add renderer must not create API-only forced when the exact qB Add surface has no source-owned control');
 assert(app.indexOf('await app.client.add(')<app.indexOf("W.DialogRuntime.close(U.$('add-dialog'))"),'successful Add must close only after the qB add request completes');
 assert(appCss.includes('.add-source-file:before')&&appCss.includes("content:'＋'")&&appCss.includes('.add-source-file:hover'),'Add Torrent File entry must expose an explicit action affordance');
+assert(!indexHtml.includes('id="add-urls-label"'),'Add dialog must not render a second visible Add Torrent Links label below its source-owned title');
+assert(indexHtml.includes('id="torrent-urls" rows="5" aria-label="Add torrent links"'),'Add URL textarea must keep an accessible source-copy target without duplicate visible copy');
+assert(app.includes("urls=U.$('torrent-urls')")&&app.includes("urls.setAttribute('aria-label',value)"),'exact Add source copy must update the textarea accessible name after the visible duplicate label is retired');
+assert(app.includes('stretch:true,onChange:function(next)')&&app.includes('ariaLabel:label,stretch:true,onInput:function()'),'Add Select/Combo geometry must opt into the canonical stretch primitive');
+assert(uiCss.includes('.ui-select--stretch')&&uiCss.includes('dialog.dialog[data-dialog-mobile="compact"]'),'canonical UI CSS must own stretch controls and compact-mobile dialog geometry');
+assert(!appCss.includes('.add-option-field>.ui-select{width:100%;max-width:none}'),'Add must not restore a local Select width owner');
 
 console.log('A17 Add Torrent contract passed: 4.1.0 / 4.6.7 / 5.2.3 exact Add source inventories drive renderer visibility, API-only forced stays hidden, canonical combos replace datalist, and successful Add closes only after the qB request.');
