@@ -78,7 +78,7 @@ async function makeRuntime(browserLanguages,prefs={locale:'ja',alternative_webui
     addEventListener(type,fn,capture){events[`document:${type}:${capture===true?'capture':'bubble'}`]=fn;}
   };
   const location={reload(){reloadCount++;},replace(){}};
-  const WeiG={};let loginLocaleIntent=String(options.loginLocaleIntent||'');if(loginLocaleIntent)WeiG.SessionContract={localeIntent:()=>loginLocaleIntent,consumeLocaleIntent:()=>{const value=loginLocaleIntent;loginLocaleIntent='';return value;}};
+  const WeiG={};let loginLocaleIntent=String(options.loginLocaleIntent||'');if(loginLocaleIntent)WeiG.SessionContract={localeIntent:()=>loginLocaleIntent,consumeLocaleIntent:()=>{const value=loginLocaleIntent;loginLocaleIntent='';return value;},pendingHandoff:()=>false,logoutGuarded:()=>false};
   if(Array.isArray(options.sourceLocales))WeiG.CapabilityRegistry={webuiLocales:()=>options.sourceLocales.map(value=>({value,label:value})),domainResolution:()=>({domain:'locale',detectedQbVersion:options.qbVersion||'4.1.9.1',catalogQbVersion:options.qbVersion||'4.1.9.1',qbVersion:options.compatQbVersion||options.qbVersion||'4.1.9.1',resolutionMode:options.resolutionMode||'EXACT',fallback:false,certified:true})};
   const window={
     WeiG,
