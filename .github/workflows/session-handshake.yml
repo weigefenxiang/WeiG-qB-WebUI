@@ -1,0 +1,96 @@
+name: Session Handshake
+
+on:
+  push:
+    branches:
+      - dev
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: session-handshake-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'push' }}
+
+jobs:
+  plan:
+    name: Session runtime plan
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[session-handshake]')) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Build shared historical runtime index
+        run: |
+          set -euo pipefail
+          mkdir -p runtime-index
+          node tests/real-qb-full-runtime-index.mjs runtime-index/linuxserver-tags.json
+      - name: Upload focused runtime index
+        uses: actions/upload-artifact@v7
+        with:
+          name: session-runtime-index-${{ github.sha }}
+          path: runtime-index/linuxserver-tags.json
+          if-no-files-found: error
+          retention-days: 1
+
+  handshake:
+    name: qB ${{ matrix.qb }} provider race
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[session-handshake]')) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    needs: plan
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        qb: ['4.1.9', '4.1.9.1']
+    env:
+      WEIG_BROWSER_CHANNEL: chrome
+      WEIG_GFM_RUNTIME_INDEX: runtime-index/linuxserver-tags.json
+      WEIG_SESSION_RACE_DIR: artifacts/session-handshake-race
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install browser test dependency
+        run: npm ci --no-audit --no-fund --prefer-offline
+      - name: Verify hosted Chrome and race harness
+        run: |
+          set -euo pipefail
+          command -v google-chrome >/dev/null
+          google-chrome --version
+          node -p "require('playwright/package.json').version"
+          bash -n tests/real-qb-full-runner.sh
+          bash -n tests/real-qb-full-provider-lib.sh
+          bash -n tests/real-qb-session-race.sh
+          node --check tests/real-qb-session-handshake.mjs
+      - name: Download shared historical runtime index
+        uses: actions/download-artifact@v8
+        with:
+          name: session-runtime-index-${{ github.sha }}
+          path: runtime-index
+      - name: Race approved runtime providers and capture session evidence
+        env:
+          QB_VERSION: ${{ matrix.qb }}
+        run: |
+          set -euo pipefail
+          bash tests/real-qb-session-race.sh --version "$QB_VERSION"
+      - name: Upload exact-SHA provider-race evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: session-handshake-race-${{ matrix.qb }}-${{ github.sha }}
+          path: artifacts/session-handshake-race/**
+          if-no-files-found: error
+          retention-days: 14

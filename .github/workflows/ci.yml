@@ -18,7 +18,6 @@ on:
           - candidate
           - settings-evidence
           - native-surfaces
-          - session-handshake
 
 permissions:
   contents: read
@@ -59,7 +58,7 @@ jobs:
           fi
 
           case "$HEAD_MESSAGE" in
-            *'[ui]'*|*'[settings-matrix]'*|*'[candidate]'*|*'[native-surfaces]'*|*'[settings-evidence]'*|*'[settings-evidence-verify]'*|*'[session-handshake]'*)
+            *'[ui]'*|*'[settings-matrix]'*|*'[candidate]'*|*'[native-surfaces]'*|*'[settings-evidence]'*|*'[settings-evidence-verify]'*)
               echo "relevant=true" >> "$GITHUB_OUTPUT"
               echo "Commit message explicitly requests an extended CI gate."
               exit 0
@@ -181,92 +180,12 @@ jobs:
         run: |
           sh -n tests/live.sh
           bash -n tests/live-api.sh
+          bash -n tests/real-qb-session-race.sh
       - name: PowerShell installer syntax
         shell: pwsh
         run: |
           $null = [scriptblock]::Create((Get-Content 'installers/install.ps1' -Raw))
           Write-Host 'PowerShell installer syntax parsed.'
-
-  session_handshake_plan:
-    name: Session runtime plan
-    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'session-handshake' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[session-handshake]')) }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    needs: smoke
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-      - name: Build shared historical runtime index
-        run: |
-          set -euo pipefail
-          mkdir -p runtime-index
-          node tests/real-qb-full-runtime-index.mjs runtime-index/linuxserver-tags.json
-      - name: Upload focused runtime index
-        uses: actions/upload-artifact@v7
-        with:
-          name: session-runtime-index-${{ github.sha }}
-          path: runtime-index/linuxserver-tags.json
-          if-no-files-found: error
-          retention-days: 1
-
-  session_handshake:
-    name: qB ${{ matrix.qb }} session handshake
-    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'session-handshake' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[session-handshake]')) }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
-    needs: [smoke, session_handshake_plan]
-    strategy:
-      fail-fast: false
-      max-parallel: 2
-      matrix:
-        qb: ['4.1.9', '4.1.9.1']
-    env:
-      WEIG_BROWSER_CHANNEL: chrome
-      WEIG_GFM_RUNTIME_INDEX: runtime-index/linuxserver-tags.json
-      WEIG_REAL_QB_EVIDENCE_DIR: artifacts/session-handshake
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: package-lock.json
-      - name: Install browser test dependency
-        run: npm ci --no-audit --no-fund --prefer-offline
-      - name: Verify hosted Chrome and focused harness
-        run: |
-          set -euo pipefail
-          command -v google-chrome >/dev/null
-          google-chrome --version
-          node -p "require('playwright/package.json').version"
-          bash -n tests/real-qb-full-runner.sh
-          bash -n tests/real-qb-full-provider-lib.sh
-          node --check tests/real-qb-session-handshake.mjs
-      - name: Download shared historical runtime index
-        uses: actions/download-artifact@v8
-        with:
-          name: session-runtime-index-${{ github.sha }}
-          path: runtime-index
-      - name: Capture real Linux login -> protected probe -> reload evidence
-        env:
-          QB_VERSION: ${{ matrix.qb }}
-        run: |
-          set -euo pipefail
-          bash tests/real-qb-full-runner.sh --version "$QB_VERSION" --allow-writes --session-handshake
-      - name: Upload exact-SHA session handshake evidence
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: session-handshake-${{ matrix.qb }}-${{ github.sha }}
-          path: artifacts/session-handshake/*
-          if-no-files-found: error
-          retention-days: 14
 
   ui_browser:
     name: Linux semantic UI · ${{ matrix.suite.name }}

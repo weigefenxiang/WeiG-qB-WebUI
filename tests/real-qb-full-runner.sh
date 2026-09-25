@@ -3,15 +3,19 @@ set -Eeuo pipefail
 VERSION=''
 ALLOW_WRITES=0
 SESSION_HANDSHAKE=0
+PROVIDER_LANE='all'
+RUN_STARTED_EPOCH="$(date +%s)"
 while (($#)); do
   case "$1" in
     --version) VERSION="${2:-}"; shift 2 ;;
     --allow-writes) ALLOW_WRITES=1; shift ;;
     --session-handshake) SESSION_HANDSHAKE=1; shift ;;
+    --provider-lane) PROVIDER_LANE="${2:-}"; shift 2 ;;
     *) echo "Unknown argument: $1" >&2; exit 2 ;;
   esac
 done
 [[ "$VERSION" =~ ^[0-9]+(\.[0-9]+){2,3}$ ]] || { echo "--version must be an exact qB stable version" >&2; exit 2; }
+case "$PROVIDER_LANE" in all|images|indexed|source) ;; *) echo "--provider-lane must be one of: all, images, indexed, source" >&2; exit 2 ;; esac
 ((ALLOW_WRITES)) || { echo "--allow-writes is required" >&2; exit 2; }
 for cmd in docker node curl sha256sum; do command -v "$cmd" >/dev/null || { echo "$cmd is required" >&2; exit 2; }; done
 NODE_OPTIONS='' node tests/real-qb-full-matrix.mjs --assert-version "$VERSION" >/dev/null
@@ -64,16 +68,17 @@ NETWORK_CREATED=0; CONTAINER_CREATED=0; FINALIZED=0; CLEANUP_RESULT='PENDING'
 declare -A SEEN_REFS=()
 
 record_attempt(){ local p="$1" r="$2" result="$3" reason="$4"; reason="${reason//$'\t'/ }"; reason="${reason//$'\n'/ }"; printf '%s\t%s\t%s\t%s\n' "$p" "$r" "$result" "$reason" >> "$ATTEMPTS_FILE"; }
+log_stage(){ printf '[gfm][%ss][qB %s][lane=%s] %s\n' "$(( $(date +%s) - RUN_STARTED_EPOCH ))" "$VERSION" "$PROVIDER_LANE" "$*"; }
 cleanup_container(){ local failed=0; if ((CONTAINER_CREATED)); then docker rm -f "$NAME" >/dev/null 2>&1 || failed=1; CONTAINER_CREATED=0; fi; return "$failed"; }
 cleanup_for_final(){ local failed=0; cleanup_container || failed=1; if ((NETWORK_CREATED)); then docker network rm "$NET" >/dev/null 2>&1 || failed=1; NETWORK_CREATED=0; fi; return "$failed"; }
 write_runtime_evidence(){
   local status="$1" reason="${2:-}" attempts_copy="$EVIDENCE_DIR/${WEIG_SHA}-${VERSION}-attempts.tsv"
   cp "$ATTEMPTS_FILE" "$attempts_copy"
-  GFM_STATUS="$status" GFM_REASON="$reason" GFM_VERSION="$VERSION" GFM_WEIG_SHA="$WEIG_SHA" GFM_PROVIDER="$PROVIDER" GFM_IMAGE="$IMAGE" GFM_SOURCE_REF="$SOURCE_REF" GFM_PACKAGE_ID="$PACKAGE_ID" GFM_RUNTIME_VERSION="$RUNTIME_VERSION" GFM_RUNTIME_IDENTITY="$RUNTIME_IDENTITY" GFM_CLEANUP_RESULT="$CLEANUP_RESULT" GFM_EVIDENCE_DIR="$EVIDENCE_DIR" GFM_ATTEMPTS_FILE="$attempts_copy" GFM_INDEX_SHA="$INDEX_SHA" NODE_OPTIONS='' node --input-type=module <<'NODE'
+  GFM_STATUS="$status" GFM_REASON="$reason" GFM_VERSION="$VERSION" GFM_WEIG_SHA="$WEIG_SHA" GFM_PROVIDER="$PROVIDER" GFM_IMAGE="$IMAGE" GFM_SOURCE_REF="$SOURCE_REF" GFM_PACKAGE_ID="$PACKAGE_ID" GFM_RUNTIME_VERSION="$RUNTIME_VERSION" GFM_RUNTIME_IDENTITY="$RUNTIME_IDENTITY" GFM_CLEANUP_RESULT="$CLEANUP_RESULT" GFM_EVIDENCE_DIR="$EVIDENCE_DIR" GFM_ATTEMPTS_FILE="$attempts_copy" GFM_INDEX_SHA="$INDEX_SHA" GFM_PROVIDER_LANE="$PROVIDER_LANE" GFM_DURATION_SECONDS="$(( $(date +%s) - RUN_STARTED_EPOCH ))" NODE_OPTIONS='' node --input-type=module <<'NODE'
 import fs from 'node:fs'; import path from 'node:path';
 const manifest=JSON.parse(fs.readFileSync('tools/data/qb-stable-lkg.json','utf8'));
 const attempts=fs.readFileSync(process.env.GFM_ATTEMPTS_FILE,'utf8').trim().split('\n').filter(Boolean).map(line=>{const [provider,source_ref,result,...reason]=line.split('\t');return {provider,source_ref,result,reason:reason.join('\t')};});
-const out={schemaVersion:3,phase:'G-FM',module:'runtime-resolver',status:process.env.GFM_STATUS,reason:process.env.GFM_REASON||null,expected_qb_version:process.env.GFM_VERSION,weig_sha:process.env.GFM_WEIG_SHA,webui_version:fs.readFileSync('VERSION','utf8').trim(),frozen_catalog_sha256:manifest.catalogSha256,runtime_index_sha256:process.env.GFM_INDEX_SHA,provider:process.env.GFM_PROVIDER||null,source_ref:process.env.GFM_SOURCE_REF||null,resolved_image:process.env.GFM_IMAGE||null,package_id:process.env.GFM_PACKAGE_ID||null,runtime_version:process.env.GFM_RUNTIME_VERSION||null,runtime_identity:process.env.GFM_RUNTIME_IDENTITY||null,platform:'GitHub Actions Ubuntu / isolated Docker network',architecture:process.arch,deployment_mode:'ephemeral real-qB container; outbound network denied; host access through private internal Docker bridge only',remote_service_exposure:'none',cleanup_result:process.env.GFM_CLEANUP_RESULT||'PENDING',attempts};
+const out={schemaVersion:3,phase:'G-FM',module:'runtime-resolver',status:process.env.GFM_STATUS,reason:process.env.GFM_REASON||null,expected_qb_version:process.env.GFM_VERSION,weig_sha:process.env.GFM_WEIG_SHA,webui_version:fs.readFileSync('VERSION','utf8').trim(),frozen_catalog_sha256:manifest.catalogSha256,runtime_index_sha256:process.env.GFM_INDEX_SHA,provider_lane:process.env.GFM_PROVIDER_LANE||'all',duration_seconds:Number(process.env.GFM_DURATION_SECONDS||0),provider:process.env.GFM_PROVIDER||null,source_ref:process.env.GFM_SOURCE_REF||null,resolved_image:process.env.GFM_IMAGE||null,package_id:process.env.GFM_PACKAGE_ID||null,runtime_version:process.env.GFM_RUNTIME_VERSION||null,runtime_identity:process.env.GFM_RUNTIME_IDENTITY||null,platform:'GitHub Actions Ubuntu / isolated Docker network',architecture:process.arch,deployment_mode:'ephemeral real-qB container; outbound network denied; host access through private internal Docker bridge only',remote_service_exposure:'none',cleanup_result:process.env.GFM_CLEANUP_RESULT||'PENDING',attempts};
 const dir=process.env.GFM_EVIDENCE_DIR; fs.mkdirSync(dir,{recursive:true}); fs.writeFileSync(path.join(dir,`${process.env.GFM_WEIG_SHA}-${process.env.GFM_VERSION}-runtime.json`),`${JSON.stringify(out,null,2)}\n`);
 NODE
   rm -f "$attempts_copy"; FINALIZED=1
@@ -102,21 +107,39 @@ NODE
 
 docker network create --internal "$NET" >/dev/null; NETWORK_CREATED=1
 RUNTIME_ESTABLISHED=0
-case "$VERSION" in
-  4.1.0) if try_candidate wernight wernight 'wernight/qbittorrent@sha256:f4504b29dce8f4cddcc3e0fe2e6a3410269a41e6843ffc8cb99e0c923f3dee4a' 'wernight source-built historical qB 4.1.0 image (certified representative pin)'; then RUNTIME_ESTABLISHED=1; fi ;;
-  4.6.7) if try_candidate qbittorrentofficial official 'qbittorrentofficial/qbittorrent-nox@sha256:4f8059f1ec56f404fca04193b1134563e3aed3179428b1bc659cfe69bfedb951' 'qBittorrent official Docker image 4.6.7-1 (certified representative pin)'; then RUNTIME_ESTABLISHED=1; fi ;;
-  5.0.0) if try_candidate qbittorrentofficial official 'qbittorrentofficial/qbittorrent-nox@sha256:03c968cd9d82c92a90b6ddde6c9a7a4093cf072c329090815c355dabeadd1fc9' 'qBittorrent official Docker image 5.0.0-1 (certified representative pin)'; then RUNTIME_ESTABLISHED=1; fi ;;
-  5.2.3) if try_candidate qbittorrentofficial official 'qbittorrentofficial/qbittorrent-nox@sha256:9ebb534fe30bab98622cb84a8c3acecfd88319b2d540f52ecdec7b9f866374d7' 'qBittorrent official Docker image 5.2.3-1 (certified representative pin)'; then RUNTIME_ESTABLISHED=1; fi ;;
+try_direct_image_lane(){
+  case "$VERSION" in
+    4.1.0) if try_candidate wernight wernight 'wernight/qbittorrent@sha256:f4504b29dce8f4cddcc3e0fe2e6a3410269a41e6843ffc8cb99e0c923f3dee4a' 'wernight source-built historical qB 4.1.0 image (certified representative pin)'; then return 0; fi ;;
+    4.6.7) if try_candidate qbittorrentofficial official 'qbittorrentofficial/qbittorrent-nox@sha256:4f8059f1ec56f404fca04193b1134563e3aed3179428b1bc659cfe69bfedb951' 'qBittorrent official Docker image 4.6.7-1 (certified representative pin)'; then return 0; fi ;;
+    5.0.0) if try_candidate qbittorrentofficial official 'qbittorrentofficial/qbittorrent-nox@sha256:03c968cd9d82c92a90b6ddde6c9a7a4093cf072c329090815c355dabeadd1fc9' 'qBittorrent official Docker image 5.0.0-1 (certified representative pin)'; then return 0; fi ;;
+    5.2.3) if try_candidate qbittorrentofficial official 'qbittorrentofficial/qbittorrent-nox@sha256:9ebb534fe30bab98622cb84a8c3acecfd88319b2d540f52ecdec7b9f866374d7' 'qBittorrent official Docker image 5.2.3-1 (certified representative pin)'; then return 0; fi ;;
+  esac
+  for ref in "qbittorrentofficial/qbittorrent-nox:${VERSION}-1" "qbittorrentofficial/qbittorrent-nox:${VERSION}"; do if try_candidate qbittorrentofficial official "$ref" "qBittorrent official Docker image ${VERSION}"; then return 0; fi; done
+  for ref in "linuxserver/qbittorrent:${VERSION}" "linuxserver/qbittorrent:version-${VERSION}" "linuxserver/qbittorrent:amd64-${VERSION}" "linuxserver/qbittorrent:amd64-version-${VERSION}"; do if try_candidate linuxserver linuxserver "$ref" "LinuxServer historical qB ${VERSION} wrapper"; then return 0; fi; done
+  if try_candidate crazymax crazymax "crazymax/qbittorrent:${VERSION}" "CrazyMax historical qB ${VERSION} wrapper"; then return 0; fi
+  return 1
+}
+try_indexed_image_lane(){
+  while IFS= read -r tag; do [[ -n "$tag" ]] || continue; if try_candidate linuxserver linuxserver "linuxserver/qbittorrent:${tag}" "LinuxServer historical qB ${VERSION} indexed tag"; then return 0; fi; done < <(historical_tags)
+  return 1
+}
+try_source_lane(){ try_frozen_source_candidate; }
+
+log_stage "runtime resolution started"
+case "$PROVIDER_LANE" in
+  images) if try_direct_image_lane; then RUNTIME_ESTABLISHED=1; fi ;;
+  indexed) if try_indexed_image_lane; then RUNTIME_ESTABLISHED=1; fi ;;
+  source) if try_source_lane; then RUNTIME_ESTABLISHED=1; fi ;;
+  all)
+    if try_direct_image_lane; then RUNTIME_ESTABLISHED=1; fi
+    if (( ! RUNTIME_ESTABLISHED )) && try_indexed_image_lane; then RUNTIME_ESTABLISHED=1; fi
+    if (( ! RUNTIME_ESTABLISHED )) && try_source_lane; then RUNTIME_ESTABLISHED=1; fi
+    ;;
 esac
-if (( ! RUNTIME_ESTABLISHED )); then for ref in "qbittorrentofficial/qbittorrent-nox:${VERSION}-1" "qbittorrentofficial/qbittorrent-nox:${VERSION}"; do if try_candidate qbittorrentofficial official "$ref" "qBittorrent official Docker image ${VERSION}"; then RUNTIME_ESTABLISHED=1; break; fi; done; fi
-if (( ! RUNTIME_ESTABLISHED )); then for ref in "linuxserver/qbittorrent:${VERSION}" "linuxserver/qbittorrent:version-${VERSION}" "linuxserver/qbittorrent:amd64-${VERSION}" "linuxserver/qbittorrent:amd64-version-${VERSION}"; do if try_candidate linuxserver linuxserver "$ref" "LinuxServer historical qB ${VERSION} wrapper"; then RUNTIME_ESTABLISHED=1; break; fi; done; fi
-if (( ! RUNTIME_ESTABLISHED )); then if try_candidate crazymax crazymax "crazymax/qbittorrent:${VERSION}" "CrazyMax historical qB ${VERSION} wrapper"; then RUNTIME_ESTABLISHED=1; fi; fi
-if (( ! RUNTIME_ESTABLISHED )); then while IFS= read -r tag; do [[ -n "$tag" ]] || continue; if try_candidate linuxserver linuxserver "linuxserver/qbittorrent:${tag}" "LinuxServer historical qB ${VERSION} indexed tag"; then RUNTIME_ESTABLISHED=1; break; fi; done < <(historical_tags); fi
-# Image providers remain preferred. Only versions with a declared historical
-# source-build profile can fall back to Frozen official source materialization.
-if (( ! RUNTIME_ESTABLISHED )); then if try_frozen_source_candidate; then RUNTIME_ESTABLISHED=1; fi; fi
+if ((RUNTIME_ESTABLISHED)); then log_stage "runtime established provider=${PROVIDER:-unknown}"; fi
 if (( ! RUNTIME_ESTABLISHED )); then finalize BLOCKED 'No approved historical provider or Frozen official-source profile produced a reachable, authenticated exact-version qB runtime.' 3; fi
 if ((SESSION_HANDSHAKE)); then
+  log_stage "browser session handshake started"
   if ! run_session_handshake; then finalize FAIL 'Exact qB runtime was established, but the browser session contract failed.' 1; fi
 else
   if ! run_semantics; then finalize FAIL 'Exact qB runtime was established, but the real semantic/API evidence harness failed.' 1; fi
