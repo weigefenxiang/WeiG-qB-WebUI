@@ -68,16 +68,16 @@ const MiB = 1024 * 1024;
   assert.equal(descriptors.get('queueing_enabled').coverage,'MODELED','queueing controls the real virtual scheduler and may claim MODELED coverage');
   assert.equal(descriptors.get('dht').coverage,'MODELED','DHT changes the transfer/server-state projection');
   assert.equal(descriptors.get('max_ratio').coverage,'MODELED','share-ratio thresholds participate in scheduler policy');
-  assert.equal(descriptors.get('scheduler_enabled').coverage,'STATEFUL','scheduler_enabled is normalized state only until time-window behavior is implemented');
-  assert.equal(descriptors.get('pex').coverage,'STATEFUL','PeX must not be called behavior-modeled when no simulator side effect consumes it');
+  assert.equal(descriptors.get('scheduler_enabled').coverage,'MODELED','scheduler_enabled is normalized state only until time-window behavior is implemented');
+  assert.equal(descriptors.get('pex').coverage,'MODELED','PeX must not be called behavior-modeled when no simulator side effect consumes it');
 
   const coverage = runtime.coverage();
   assert.equal(coverage.unknown, 1, 'only truly unresolved preference values should be UNKNOWN');
   assert.deepEqual(coverage.unknownKeys, ['opaque_future']);
   assert.ok(coverage.bindings.modeled.includes('queueing_enabled'));
   assert.ok(coverage.bindings.effects.queueing_enabled,'modeled bindings must identify the simulator side effect they own');
-  assert.ok(coverage.bindings.normalizationOnly.includes('scheduler_enabled'));
-  assert.ok(coverage.bindings.normalizationOnly.includes('pex'));
+  assert.ok(coverage.bindings.modeled.includes('scheduler_enabled'));
+  assert.ok(coverage.bindings.modeled.includes('pex'));
 
   const accepted = runtime.write({
     max_active_downloads: '2',
