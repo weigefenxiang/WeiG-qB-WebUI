@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {authenticate,createWorld} from '../simulator/core/engine.js';
 import {handleApi} from '../simulator/protocol/router.js';
+import {webseedCountForTorrent} from '../simulator/core/webseed-view.js';
 
 function world(qb='5.2.3',api='2.15.1',extra={}){
   const w=createWorld({profile:{qbVersion:qb,webApiVersion:api,stable:true,...extra},count:320,seed:`services-${qb}-${api}`,now:1700000000000});
@@ -48,12 +49,14 @@ function getRequest(path){return new Request(`https://example.invalid/api/v2/${p
   const middle=world('4.1.4','2.1.1');
   let response=await handleApi(middle,getRequest('torrents/categories'));
   assert.equal(response.status,200,'categories getter must become available at qB 4.1.4 / WebAPI 2.1.1');
-  const middleTarget=middle.torrents[0],middleTracker=middleTarget.trackers[0].url;
+  const middleTarget=middle.torrents.find(t=>Array.isArray(t.trackers)&&t.trackers.length);assert.ok(middleTarget,'removeTrackers pre-boundary fixture requires a tracker-bearing torrent');
+  const middleTracker=middleTarget.trackers[0].url;
   response=await handleApi(middle,formRequest('torrents/removeTrackers',{hash:middleTarget.hash,urls:middleTracker}));
   assert.equal(response.status,404,'removeTrackers must remain unavailable through qB 4.1.4 / WebAPI 2.1.1');
 
   const atBoundary=world('4.1.5','2.2.0');
-  const target=atBoundary.torrents[0],tracker=target.trackers[0].url,beforeCount=target.trackers.length;
+  const target=atBoundary.torrents.find(t=>Array.isArray(t.trackers)&&t.trackers.length);assert.ok(target,'removeTrackers boundary fixture requires a tracker-bearing torrent');
+  const tracker=target.trackers[0].url,beforeCount=target.trackers.length;
   response=await handleApi(atBoundary,formRequest('torrents/removeTrackers',{hash:target.hash,urls:tracker}));
   assert.equal(response.status,200,'removeTrackers must become available at qB 4.1.5 / WebAPI 2.2.0');
   assert.equal(target.trackers.length,beforeCount-1,'removeTrackers must mutate persistent tracker state once available');
@@ -61,10 +64,11 @@ function getRequest(path){return new Request(`https://example.invalid/api/v2/${p
 
 {
   const w=world('4.1.9.1','2.2.1');
-  const target=w.torrents[0],oldUrl=target.trackers[0].url,newUrl='https://edited.example.invalid/announce';
+  const target=w.torrents.find(t=>Array.isArray(t.trackers)&&t.trackers.length);assert.ok(target,'editTracker fixture requires a tracker-bearing torrent');
+  const oldUrl=target.trackers[0].url,newUrl='https://edited.example.invalid/announce';
   let response=await handleApi(w,formRequest('torrents/editTracker',{hash:target.hash,origUrl:oldUrl,newUrl}));
   assert.equal(response.status,200,'tracker edit must exist at WebAPI 2.2.1');
-  assert.equal(target.trackers[0].url,newUrl,'tracker edit must mutate persistent virtual tracker state');
+  assert.ok(target.trackers.some(item=>item.url===newUrl),'tracker edit must mutate persistent virtual tracker state');
   response=await handleApi(w,formRequest('rss/addFeed',{url:'https://feed.example.invalid/rss',path:''}));
   assert.equal(response.status,200);
   const items=await (await handleApi(w,getRequest('rss/items?withData=true'))).json();
@@ -159,10 +163,12 @@ function getRequest(path){return new Request(`https://example.invalid/api/v2/${p
 
 {
   const w=world('5.2.3','2.15.1');
-  const publicTorrent=w.torrents.find(t=>!t.private),privateTorrent=w.torrents.find(t=>t.private);
-  assert.ok(publicTorrent&&privateTorrent,'service contract needs public and private torrents');
+  const publicTorrent=w.torrents.find(t=>!t.private&&webseedCountForTorrent(w,t.hash)>0),zeroWebseedTorrent=w.torrents.find(t=>!t.private&&webseedCountForTorrent(w,t.hash)===0),privateTorrent=w.torrents.find(t=>t.private);
+  assert.ok(publicTorrent&&zeroWebseedTorrent&&privateTorrent,'service contract needs public nonzero/zero WebSeed examples and a private torrent');
   let response=await handleApi(w,getRequest(`torrents/webseeds?hash=${encodeURIComponent(publicTorrent.hash)}`));
-  const publicWebseeds=await response.json();assert.ok(publicWebseeds.length>=1,'public torrent must expose deterministic virtual web seeds');
+  const publicWebseeds=await response.json();assert.equal(publicWebseeds.length,webseedCountForTorrent(w,publicTorrent.hash),'public WebSeed API must expose the seeded per-torrent count');
+  response=await handleApi(w,getRequest(`torrents/webseeds?hash=${encodeURIComponent(zeroWebseedTorrent.hash)}`));
+  assert.deepEqual(await response.json(),[],'public torrents may legitimately have zero seeded HTTP Sources');
   response=await handleApi(w,getRequest(`torrents/webseeds?hash=${encodeURIComponent(privateTorrent.hash)}`));
   assert.deepEqual(await response.json(),[],'private/PT torrent must not fabricate public web seeds');
 

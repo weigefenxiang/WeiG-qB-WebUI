@@ -17,7 +17,8 @@ function post(path,body){return new Request(`https://example.invalid/api/v2/${pa
 }
 
 {
-  const w=world('5.1.4','2.11.4'),t=w.torrents[0],original=t.trackers[0].url,replacement='https://tracker.example/legacy-edited';
+  const w=world('5.1.4','2.11.4'),t=w.torrents.find(item=>Array.isArray(item.trackers)&&item.trackers.length);assert.ok(t,'qB 5.1 editTracker fixture requires a tracker-bearing torrent');
+  const original=t.trackers[0].url,replacement='https://tracker.example/legacy-edited';
   let r=await handleApi(w,post('torrents/editTracker',{hash:t.hash,url:original,newUrl:replacement}));
   assert.equal(r.status,400,'qB 5.1 editTracker must reject the qB 5.2 url parameter contract');
   r=await handleApi(w,post('torrents/editTracker',{hash:t.hash,origUrl:original,newUrl:replacement}));
@@ -26,7 +27,8 @@ function post(path,body){return new Request(`https://example.invalid/api/v2/${pa
 }
 
 {
-  const w=world('5.2.0','2.15.1'),t=w.torrents[0],original=t.trackers[0].url,replacement='https://tracker.example/modern-edited';
+  const w=world('5.2.0','2.15.1'),t=w.torrents.find(item=>Array.isArray(item.trackers)&&item.trackers.length);assert.ok(t,'qB 5.2 editTracker fixture requires a tracker-bearing torrent');
+  const original=t.trackers[0].url,replacement='https://tracker.example/modern-edited';
   let r=await handleApi(w,post('torrents/editTracker',{hash:t.hash,origUrl:original,newUrl:replacement}));
   assert.equal(r.status,400,'qB 5.2 editTracker must reject the legacy origUrl parameter contract');
   r=await handleApi(w,post('torrents/editTracker',{hash:t.hash,url:original}));
