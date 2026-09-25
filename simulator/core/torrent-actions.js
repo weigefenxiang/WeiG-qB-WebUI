@@ -274,6 +274,7 @@ export function applyRuntimePolicies(world,now=Date.now()){
 
 export function recheckTorrents(world,hashes,now=Date.now()){
   const changed=[];
+  if(!Array.isArray(world.pendingRechecks))world.pendingRechecks=[];
   const maxChecking=Math.max(1,Math.round(Number(world.preferences?.max_active_checking_torrents)||1));
   let activeChecking=world.torrents.filter(t=>t.canonicalState===CANONICAL.CHECKING).length;
   for(const t of selected(world,hashes)){
