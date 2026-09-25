@@ -22,6 +22,8 @@ const MiB = 1024 * 1024;
     'max_active_downloads',
     'max_active_uploads',
     'max_active_torrents',
+    'max_active_checking_torrents',
+    'encryption',
     'dl_limit',
     'max_ratio',
     'max_ratio_enabled',
@@ -68,6 +70,8 @@ const MiB = 1024 * 1024;
   assert.equal(descriptors.get('queueing_enabled').coverage,'MODELED','queueing controls the real virtual scheduler and may claim MODELED coverage');
   assert.equal(descriptors.get('dht').coverage,'MODELED','DHT changes the transfer/server-state projection');
   assert.equal(descriptors.get('max_ratio').coverage,'MODELED','share-ratio thresholds participate in scheduler policy');
+  assert.equal(descriptors.get('max_active_checking_torrents').coverage,'MODELED','checking concurrency is enforced by the virtual recheck action');
+  assert.equal(descriptors.get('encryption').coverage,'MODELED','encryption mode changes the compatible virtual peer population');
   assert.equal(descriptors.get('scheduler_enabled').coverage,'MODELED','scheduler_enabled is normalized state only until time-window behavior is implemented');
   assert.equal(descriptors.get('pex').coverage,'MODELED','PeX must not be called behavior-modeled when no simulator side effect consumes it');
 
@@ -78,11 +82,15 @@ const MiB = 1024 * 1024;
   assert.ok(coverage.bindings.effects.queueing_enabled,'modeled bindings must identify the simulator side effect they own');
   assert.ok(coverage.bindings.modeled.includes('scheduler_enabled'));
   assert.ok(coverage.bindings.modeled.includes('pex'));
+  assert.equal(coverage.bindings.effects.max_active_checking_torrents,'checking-concurrency');
+  assert.equal(coverage.bindings.effects.encryption,'peer-encryption-compatibility');
 
   const accepted = runtime.write({
     max_active_downloads: '2',
     max_active_uploads: 3,
     max_active_torrents: 4,
+    max_active_checking_torrents: 2,
+    encryption: 9,
     dl_limit: 140 * MiB,
     max_ratio:'2.5',
     future_scalar: 'visible',
@@ -93,6 +101,9 @@ const MiB = 1024 * 1024;
 
   assert.equal(accepted.max_active_downloads, 2, 'modeled numeric bindings must normalize values');
   assert.equal(world.preferences.max_active_downloads, 2, 'runtime writes must reach the canonical world preferences');
+  assert.equal(world.preferences.max_active_checking_torrents,2,'checking concurrency writes must reach canonical world preferences');
+  assert.equal(accepted.encryption,2,'encryption writes must clamp to qB modes 0..2');
+  assert.equal(world.preferences.encryption,2,'clamped encryption mode must persist in the canonical world');
   assert.equal(world.globalDownloadLimit, 140 * MiB, 'dl_limit must keep the existing scheduler side effect');
   assert.equal(accepted.max_ratio,2.5,'modeled ratio policy values must retain non-negative numeric semantics');
   assert.equal(world.preferences.future_scalar, 'visible', 'typed STATEFUL future preferences may persist safely');
