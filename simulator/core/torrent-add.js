@@ -1,5 +1,5 @@
 import {addVirtualTorrent,CANONICAL,recordTorrentChanges,schedule} from './engine.js';
-import {movePriority} from './torrent-actions.js';
+import {movePriority,noteActionTransition} from './torrent-actions.js';
 import {setShareLimits} from './torrent-content.js';
 
 const MiB=1024*1024;
@@ -140,6 +140,7 @@ export function addVirtualTorrentBatch(world,form={},now=Date.now()){
     if(stopped===true)t.canonicalState=CANONICAL.DOWNLOAD_PAUSED;
     else if(stopped===false&&t.canonicalState===CANONICAL.DOWNLOAD_PAUSED)t.canonicalState=CANONICAL.DOWNLOAD_QUEUED;
     applyStopCondition(t,form.stopCondition,now+i);
+    if(t.canonicalState===CANONICAL.CHECKING&&Number(t.checkingUntil)>now+i)noteActionTransition(world,t.checkingUntil);
     t.ratioLimit=finite(form.ratioLimit,-2);
     t.seedingTimeLimit=Math.trunc(finite(form.seedingTimeLimit,-2));
     t.inactiveSeedingTimeLimit=Math.trunc(finite(form.inactiveSeedingTimeLimit,-2));
