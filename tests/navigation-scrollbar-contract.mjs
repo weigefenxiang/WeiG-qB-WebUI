@@ -12,6 +12,8 @@ const theme=read('webui/private/css/theme.css');
 const headerCss=read('webui/private/css/header.css');
 const core=read('webui/private/scripts/core.js');
 const app=read('webui/private/scripts/app.js');
+const controls=read('webui/private/css/controls.css');
+const settingsCss=read('webui/private/css/settings.css');
 const desktopNav=(index.match(/<nav id="app-nav"[\s\S]*?<\/nav>/)||[])[0]||'';
 const mobileNav=(index.match(/<nav id="mobile-bottom-nav"[\s\S]*?<\/nav>/)||[])[0]||'';
 
@@ -37,6 +39,10 @@ assert(/@media\(max-width:820px\)[\s\S]*::-webkit-scrollbar\{width:7px;height:7p
 assert(core.includes("this.staticHead=options.staticHead||null")&&app.includes("staticHead:U.$('torrent-table-head')"),'Torrent header and rows must share one explicitly wired DataViewport scroll owner');
 assert(core.includes('self.el.__weigDataViewportScrollLeft=left')&&core.includes('if(!vertical||self._rendering||self.el.__weigDataViewportScrollFrame)return'),'DataViewport may remember horizontal position, but pure horizontal native scrollbar motion must not rebuild rows');
 assert(!core.includes('Math.max(0,this.el.scrollWidth-this.el.clientWidth)'),'Horizontal scroll must not be repaired after row reconstruction; the native scroll owner keeps scrollLeft continuously');
+assert(core.includes("{capture:true,passive:true}")&&core.includes(".settings-content,.settings-tabs,.ui-select__options"),'non-virtual Settings/Select surfaces must use one passive scroll-activity owner without stealing native pointer motion');
+assert(theme.includes('overflow-anchor:none')&&theme.includes('will-change:scroll-position'),'canonical scroll surfaces must disable browser anchoring repairs and expose scroll-position compositor intent');
+assert(controls.includes('content-visibility:auto')&&controls.includes('contain-intrinsic-size:auto 36px'),'long Select option lists must skip off-screen rendering while keeping one native scrollbar');
+assert(settingsCss.includes('.setting-native-fieldset{content-visibility:auto;contain-intrinsic-size:auto 420px}'),'large source-native Settings fieldsets must leave off-screen layout/paint work out of thumb drag');
 assert(!/function renderList\(\)\{var list=U\.\$\('torrent-list'\),items=app\.torrents;list\.textContent='';/.test(app),'App renderList must not clear the horizontal scroll owner before DataViewport can preserve native ownership');
 assert(core.includes("W.DataViewport.prototype.resetScroll=function(){this.el.__weigDataViewportScrollTop=0;this._lastScrollTop=0;this.el.scrollTop=0;this._lastRange='';this.render(true);}"),'Semantic filter/page reset remains vertical-only and must not reset user horizontal position');
 
