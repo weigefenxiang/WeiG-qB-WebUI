@@ -99,6 +99,7 @@ assert(!has(refs523,'HttpServer','Cookie:'),'5.2.3 Add source inventory must not
 
 assert(i18n.includes("key.indexOf('add.copy.')!==0")&&i18n.includes('addRefs:addRefs'),'runtime Add visibility must consume only exact add.copy.* source inventory');
 assert(i18n.includes('qbAddSourceHas')&&i18n.includes('qbAddSourceField:qbAddSourceField')&&i18n.includes('qbAddSourceGroup:qbAddSourceGroup'),'Add renderer source projection helpers missing');
+assert(i18n.includes("var refs={save:[['Save at','AddNewTorrentDialog']],settings:[['Torrent settings','AddNewTorrentDialog']]}"),'Add group headings must be limited to real upstream Add section legends; field labels/dialog titles must not be repurposed as group headings');
 assert(!i18n.includes('upgradeAddSuggestion'),'post-DOM Add suggestion upgrade must stay retired once the renderer owns canonical controls');
 assert(!i18n.includes('syncAddSourceSurface'),'post-DOM Add copy/visibility repair must stay retired once the renderer owns exact source projection');
 const app=read('webui/private/scripts/app.js');
