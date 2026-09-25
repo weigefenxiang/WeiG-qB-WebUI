@@ -181,6 +181,8 @@ try{
     response=await api(page,'app/preferences');
     assert.equal(response.json?.queueing_enabled,true,'queueing preference must persist in the virtual daemon');
     assert.equal(Number(response.json?.max_active_downloads),3,'max active downloads must persist in the virtual daemon');
+    const queuedRows=await api(page,'torrents/info?limit=5001&offset=0');
+    assert.ok(queuedRows.json.filter(item=>Number(item.progress)<1&&Number(item.dlspeed)>0).length<=3,'deployed max active downloads must cap the actual downloading population');
 
     response=await api(page,'app/setPreferences',{method:'POST',form:{json:JSON.stringify({
       max_connec:8,max_connec_per_torrent:4,max_uploads:1,max_uploads_per_torrent:1,max_active_checking_torrents:2
@@ -200,6 +202,9 @@ try{
     const checkingRows=await api(page,'torrents/info?hashes='+encodeURIComponent(recheckHashes));
     const checkingCount=checkingRows.json.filter(item=>/checking/i.test(String(item.state||''))).length;
     assert.ok(checkingCount>0&&checkingCount<=2,`deployed checking concurrency must stay within configured cap 2; got ${checkingCount}`);
+    const checkingWorld=await api(page,'torrents/info?limit=5001&offset=0');
+    const worldCheckingCount=checkingWorld.json.filter(item=>/checking/i.test(String(item.state||''))).length;
+    assert.ok(worldCheckingCount<=2,`deployed world must not retain generated/legacy CHECKING state above configured cap 2; got ${worldCheckingCount}`);
 
     const addResult=await page.evaluate(async()=>{
       const form=new FormData();
