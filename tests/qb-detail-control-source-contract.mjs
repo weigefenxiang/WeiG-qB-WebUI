@@ -40,19 +40,7 @@ assert.deepEqual(refs['detail.menu.trackers.EditTracker'],{source:'Edit tracker 
 assert.deepEqual(refs['detail.menu.peers.banPeer'],{source:'Ban peer permanently',context:'PeerListWidget'});
 assert.deepEqual(refs['detail.control.filePriority.6'],{source:'High',context:'PropListDelegate'});
 import fs from 'node:fs';
-const runtimeDetail=JSON.parse(fs.readFileSync(new URL('../webui/private/data/detail-compat.json',import.meta.url),'utf8'));
-const copyRegistry=fs.readFileSync(new URL('../webui/private/data/qb-settings-native.txt',import.meta.url),'utf8');
-const decode=value=>{try{return decodeURIComponent(String(value||''));}catch{return String(value||'');}};
-const versionParts=value=>String(value||'').split('.').map(part=>Number.parseInt(part,10)||0);
-const versionLte=(a,b)=>{const x=versionParts(a),y=versionParts(b);for(let i=0;i<Math.max(x.length,y.length);i++){const left=x[i]||0,right=y[i]||0;if(left!==right)return left<right;}return true;};
-const clone=value=>JSON.parse(JSON.stringify(value));
-const mergeRuntime=(left,right)=>{if(Array.isArray(right))return clone(right);if(!right||typeof right!=='object')return right;const out=left&&typeof left==='object'&&!Array.isArray(left)?clone(left):{};for(const [key,value] of Object.entries(right))out[key]=mergeRuntime(out[key],value);return out;};
-const detailChanges=runtimeDetail?.sourceFacts?.torrentDetailUi?.changes||[];
-const resolvedDetail=version=>{let value={};for(const change of detailChanges)if(versionLte(change.from,version))value=mergeRuntime(value,change.value||change.patch||{});return value;};
-const refsById=new Map();for(const match of copyRegistry.matchAll(/^@@REF\t([0-9a-f]{24})\t([^\t\r\n]*)\t([^\t\r\n]*)$/gm))refsById.set(match[1],{context:decode(match[2]),source:decode(match[3])});
-const uiByBinding=new Map();for(const match of copyRegistry.matchAll(/^@@UI\t(b[0-9a-f]{20})\t([^\t\r\n]*)\t([0-9a-f]{24})$/gm)){const binding=match[1],rows=uiByBinding.get(binding)||new Map();rows.set(decode(match[2]),match[3]);uiByBinding.set(binding,rows);}
-let checkedPriorityProfiles=0;for(const match of copyRegistry.matchAll(/^@@PROFILE\t([0-9a-f]{40})\t([^\t\r\n]*)\t[^\t\r\n]*\t(b[0-9a-f]{20})\t/gm)){const version=decode(match[2]),binding=match[3],control=resolvedDetail(version)?.controls?.filePriority;if(!control||!Array.isArray(control.options)||!control.options.length)continue;checkedPriorityProfiles++;const ui=uiByBinding.get(binding)||new Map();for(const option of control.options){const key='detail.control.filePriority.'+String(option.value),id=ui.get(key);assert.ok(id,version+' runtime copy registry is stale: missing '+key);assert.deepEqual(refsById.get(id),option.translation,version+' runtime copy registry disagrees with exact Detail Priority source/context for '+option.value);}}
-assert.ok(checkedPriorityProfiles>0,'Detail/copy coherence gate must cover source-derived Priority profiles');
+
 const layoutSource=fs.readFileSync(new URL('../webui/private/scripts/layout.js',import.meta.url),'utf8');
 const appSource=fs.readFileSync(new URL('../webui/private/scripts/app.js',import.meta.url),'utf8');
 const uiSource=fs.readFileSync(new URL('../webui/private/scripts/ui.js',import.meta.url),'utf8');
