@@ -7,7 +7,7 @@ while (($#)); do
     *) echo "Unknown argument: $1" >&2; exit 2 ;;
   esac
 done
-[[ "$VERSION" =~ ^4\.1\.9(?:\.1)?$ ]] || { echo "--version must be 4.1.9 or 4.1.9.1" >&2; exit 2; }
+[[ "$VERSION" =~ ^4\.1\.9(\.1)?$ ]] || { echo "--version must be 4.1.9 or 4.1.9.1" >&2; exit 2; }
 for cmd in bash node setsid; do command -v "$cmd" >/dev/null || { echo "$cmd is required" >&2; exit 2; }; done
 WEIG_SHA="${GITHUB_SHA:-$(git rev-parse HEAD)}"
 [[ "$WEIG_SHA" =~ ^[0-9a-fA-F]{40}$ ]] || { echo "Exact Git SHA is required" >&2; exit 2; }
