@@ -41,8 +41,8 @@ assert.deepEqual(decoderHits,[],'Ownership integrity scan found a second raw ent
 assert.deepEqual(qbtParserEscapes,[],'Ownership integrity scan found a QBT_TR parser bypassing shared qB source-text ownership: '+qbtParserEscapes.join(', '));
 assert.deepEqual(specialVersionHits,[],'Ownership integrity scan found product special-version literals; per-domain source relation must stay data-driven: '+JSON.stringify(specialVersionHits));
 const dialogRuntime=read('webui/private/scripts/dialog-runtime.js');
-assert.match(dialogRuntime,/addEventListener\('click',[\s\S]*event\.target!==dialog[\s\S]*backdropClose===false[\s\S]*close\(dialog,'backdrop'\)/,'DialogRuntime backdropClose must use one single-click canonical owner');
-assert.doesNotMatch(dialogRuntime,/addEventListener\('dblclick',[\s\S]*close\(dialog,'backdrop'\)/,'DialogRuntime must not require a double-click to close a backdrop');
+assert.match(dialogRuntime,/addEventListener\('click',[\s\S]*event\.target!==dialog[\s\S]*backdropClose===false[\s\S]*!mobile\(\)[\s\S]*close\(dialog,'backdrop'\)/,'DialogRuntime mobile backdropClose must keep one canonical single-click owner');
+assert.match(dialogRuntime,/addEventListener\('dblclick',[\s\S]*event\.target!==dialog[\s\S]*backdropClose===false[\s\S]*mobile\(\)[\s\S]*event\.button!==0[\s\S]*close\(dialog,'backdrop'\)/,'DialogRuntime desktop backdropClose must keep one canonical left-double-click owner');
 assert.deepEqual(rawDialogCreators,[],'PRIMITIVE-GATE found feature-local Dialog construction outside DialogRuntime: '+rawDialogCreators.join(', '));
 assert.deepEqual(directShowModal,[],'PRIMITIVE-GATE found feature-local showModal lifecycle outside DialogRuntime: '+directShowModal.join(', '));
 assert.deepEqual(rawSelectCreators,[],'PRIMITIVE-GATE found feature-local native Select construction outside the canonical Select owner: '+rawSelectCreators.join(', '));
