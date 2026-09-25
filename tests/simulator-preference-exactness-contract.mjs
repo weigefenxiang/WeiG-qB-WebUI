@@ -50,8 +50,12 @@ assert.ok(registry.modeledKeys().includes('queueing_enabled'));
 assert.ok(registry.modeledKeys().includes('max_ratio'));
 assert.ok(registry.modeledKeys().includes('scheduler_enabled'),'scheduler time-window behavior is modeled');
 assert.ok(registry.modeledKeys().includes('pex'),'PeX peer-availability behavior is modeled');
+assert.ok(registry.modeledKeys().includes('max_active_checking_torrents'),'checking concurrency is modeled');
+assert.ok(registry.modeledKeys().includes('encryption'),'encryption peer compatibility is modeled');
 assert.equal(registry.metadata('queueing_enabled').effect,'scheduler-capacity');
 assert.equal(registry.metadata('scheduler_enabled').effect,'alternate-rate-schedule');
+assert.equal(registry.metadata('max_active_checking_torrents').effect,'checking-concurrency');
+assert.equal(registry.metadata('encryption').effect,'peer-encryption-compatibility');
 
 const defaultsSource=fs.readFileSync(new URL('../simulator/preferences/defaults.js',import.meta.url),'utf8');
 assert.doesNotMatch(defaultsSource,/BOOLEAN_PREFIX|BOOLEAN_SUFFIX|NUMBER_PATTERN|NUMBER_SPECIAL/,'key-name default guessing must stay retired');
