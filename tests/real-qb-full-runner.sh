@@ -42,12 +42,15 @@ prepare_session_handshake_stage(){
     echo 'Session handshake staging contains a symlink; qB rejects Alternative WebUI symlinks.' >&2
     return 1
   fi
+  local webui_version
+  webui_version="$(tr -d '\r\n' < VERSION)"
+  [[ "$webui_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Session handshake staging requires a canonical semantic VERSION.' >&2; return 1; }
   while IFS= read -r -d '' file; do
-    sed -i "s/__WEIG_GIT_SHA__/${WEIG_SHA}/g" "$file"
+    sed -i -e "s/__WEIG_GIT_SHA__/${WEIG_SHA}/g" -e "s/__WEIG_VERSION__/${webui_version}/g" "$file"
   done < <(find "$SESSION_STAGE" -type f \( -name '*.html' -o -name '*.js' -o -name '*.css' -o -name '*.json' -o -name 'GIT_SHA' \) -print0)
   printf '%s\n' "$WEIG_SHA" > "$SESSION_STAGE/GIT_SHA"
-  if grep -R -l --include='*.html' --include='*.js' --include='*.css' --include='*.json' --include='GIT_SHA' '__WEIG_GIT_SHA__' "$SESSION_STAGE" | grep -q .; then
-    echo 'Session handshake staging still contains an unresolved Git SHA placeholder.' >&2
+  if grep -R -l --include='*.html' --include='*.js' --include='*.css' --include='*.json' --include='GIT_SHA' -e '__WEIG_GIT_SHA__' -e '__WEIG_VERSION__' "$SESSION_STAGE" | grep -q .; then
+    echo 'Session handshake staging still contains an unresolved product identity placeholder.' >&2
     return 1
   fi
   WEIG_GFM_ALT_WEBUI_STAGE="$SESSION_STAGE"
