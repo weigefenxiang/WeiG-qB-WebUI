@@ -78,7 +78,7 @@ async function makeRuntime(browserLanguages,prefs={locale:'ja',alternative_webui
     addEventListener(type,fn,capture){events[`document:${type}:${capture===true?'capture':'bubble'}`]=fn;}
   };
   const location={reload(){reloadCount++;},replace(){}};
-  const WeiG={};
+  const WeiG={};let loginLocaleIntent=String(options.loginLocaleIntent||'');if(loginLocaleIntent)WeiG.SessionContract={localeIntent:()=>loginLocaleIntent,consumeLocaleIntent:()=>{const value=loginLocaleIntent;loginLocaleIntent='';return value;}};
   if(Array.isArray(options.sourceLocales))WeiG.CapabilityRegistry={webuiLocales:()=>options.sourceLocales.map(value=>({value,label:value})),domainResolution:()=>({domain:'locale',detectedQbVersion:options.qbVersion||'4.1.9.1',catalogQbVersion:options.qbVersion||'4.1.9.1',qbVersion:options.compatQbVersion||options.qbVersion||'4.1.9.1',resolutionMode:options.resolutionMode||'EXACT',fallback:false,certified:true})};
   const window={
     WeiG,
@@ -252,6 +252,16 @@ for(const locale of stableLocales){
   assert.equal(bootstrapRecord(storage).initialized,true,'successful retry must replace pending state with completed bootstrap metadata');
 }
 
+
+{
+  const initialized=new Storage({[BOOTSTRAP_KEY]:JSON.stringify({schemaVersion:2,initialized:true,reason:'already-matched',selectedLocale:'ja',observedLocale:'ja',completedAt:1})});
+  const runtime=await makeRuntime(['en-US'],{locale:'ja',alternative_webui_enabled:true},{localStorage:initialized,loginLocaleIntent:'pt-PT'});
+  await bootstrap(runtime);
+  assert.deepEqual(runtime.client.writes,[{locale:'pt_PT'}],'explicit login language must override an already-completed browser bootstrap through the canonical qB locale inventory');
+  assert.equal(runtime.client.prefs.locale,'pt_PT','explicit Portuguese login choice must persist the unambiguous qB pt_PT locale');
+  assert.equal(bootstrapRecord(runtime.localStorage).reason,'login-locale-verified','manual login locale verification must be recorded separately from browser auto-detection');
+  assert.equal(runtime.window.WeiG.SessionContract.localeIntent(),'','verified manual locale intent must be consumed exactly once');
+}
 assert.ok(sessionSource.includes("BOOTSTRAP_KEY=(W.StorageKeys&&W.StorageKeys.localeBootstrap)||'weig.localeBootstrap'"),'Session must consume the stable schema-backed locale bootstrap key');
 assert.ok(migrationSource.includes("localStorage.removeItem('weigg.localeHandoff.v1')")&&migrationSource.includes("move(localStorage,'weigg.localeBootstrap.v2',K.localeBootstrap)"),'legacy reversible handoff/bootstrap keys must be owned only by the one-way storage migration layer');
 assert.ok(sessionSource.includes('W.I18n.matchBrowserLocale')&&sessionSource.includes('W.I18n.sameQbLocale')&&sessionSource.includes('W.I18n.hasExactLocale'),'Session lifecycle must consume the canonical W.I18n locale matcher instead of duplicating normalization');
