@@ -73,6 +73,7 @@ export function advanceActionStates(world,now=Date.now()){
       }else nextAt=nextAt===-1?t.movingUntil:Math.min(nextAt,t.movingUntil);
     }
   }
+  const maxChecking=Math.max(1,Math.round(Number(world.preferences?.max_active_checking_torrents)||1));
   world.nextActionTransitionAt=nextAt;
   if(changed.length){
     const scheduled=schedule(world,now,0);
