@@ -168,7 +168,7 @@ function formRequest(url,body){
 
 {
   const w=world();authenticate(w,'demo','demo');
-  const target=w.torrents.find(t=>!t.completed);assert.ok(target);
+  const target=w.torrents.find(t=>!t.completed&&Array.isArray(t.trackers)&&t.trackers.length);assert.ok(target,'reannounce fixture requires an incomplete torrent with at least one tracker');
   recheckTorrents(w,target.hash,1700000000000);assert.equal(target.canonicalState,'CHECKING','recheck must enter checking state');
   advanceActionStates(w,1700000003000);assert.notEqual(target.canonicalState,'CHECKING','recheck must recover after its virtual window');
   const tracker=target.trackers[0];tracker.status=4;tracker.msg='timeout';
@@ -177,7 +177,8 @@ function formRequest(url,body){
 
 {
   const w=world();authenticate(w,'demo','demo');
-  const target=w.torrents[0],original=target.trackers[0].url,newUrl='https://virtual-added.example/announce',edited='https://virtual-edited.example/announce';
+  const target=w.torrents.find(t=>Array.isArray(t.trackers)&&t.trackers.length);assert.ok(target,'tracker mutation fixture requires an existing tracker');
+  const original=target.trackers[0].url,newUrl='https://virtual-added.example/announce',edited='https://virtual-edited.example/announce';
   assert.ok(addTrackers(w,target.hash,newUrl));assert.ok(target.trackers.some(x=>x.url===newUrl),'addTrackers must persist');
   assert.ok(editTracker(w,target.hash,newUrl,edited));assert.ok(target.trackers.some(x=>x.url===edited),'editTracker must persist');
   assert.ok(removeTrackers(w,target.hash,edited));assert.ok(!target.trackers.some(x=>x.url===edited),'removeTrackers must persist');
