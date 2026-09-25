@@ -15,6 +15,10 @@ function nonNegativeNumber(value) {
   return Math.max(0, finiteNumber(value, 0));
 }
 
+function encryptionMode(value) {
+  return Math.max(0, Math.min(2, roundedNumber(value)));
+}
+
 function booleanValue(value) {
   if (value === true || value === 1 || value === '1' || value === 'true') return true;
   if (value === false || value === 0 || value === '0' || value === 'false') return false;
@@ -48,7 +52,7 @@ export function registerDefaultPreferenceBindings(registry) {
 
   registerMany(registry,['dl_limit','up_limit'],nonNegativeInteger,{modeled:true,effect:'global-rate-limit'});
   registerMany(registry,['alt_dl_limit','alt_up_limit'],nonNegativeInteger,{modeled:true,effect:'alternate-rate-budget'});
-  registry.register('encryption',roundedNumber,{modeled:true,effect:'peer-encryption-compatibility'});
+  registry.register('encryption',encryptionMode,{modeled:true,effect:'peer-encryption-compatibility'});
 
   registry.register('queueing_enabled',booleanValue,{modeled:true,effect:'scheduler-capacity'});
   registry.register('dht',booleanValue,{modeled:true,effect:'transfer-dht-state'});
