@@ -118,7 +118,7 @@
   }
   function ensureSidebarStyles(){
     var suffix=layoutAssetSuffix();
-    if(!document.getElementById('weig-sidebar-layout-css')){var link=document.createElement('link');link.id='weig-sidebar-layout-css';link.rel='stylesheet';link.href='css/sidebar.css'+suffix;document.head.appendChild(link);}
+    if(!document.getElementById('weig-sidebar-layout-css')){var link=document.createElement('link');link.id='weig-sidebar-layout-css';link.rel='stylesheet';link.href='css/sidebar.css'+suffix;document.head.appendChild(link);}if(!document.getElementById('weig-scroll-motion-css')){var motion=document.createElement('link');motion.id='weig-scroll-motion-css';motion.rel='stylesheet';motion.href='css/scroll.css'+suffix;document.head.appendChild(motion);}
   }
   function readSidebarPreference(){try{return localStorage.getItem(SIDEBAR_KEY)==='1';}catch(_e){return false;}}
   function writeSidebarPreference(value){try{localStorage.setItem(SIDEBAR_KEY,value?'1':'0');}catch(_e){}}
