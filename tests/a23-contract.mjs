@@ -27,4 +27,5 @@ assert.ok(scroll.includes('.data-viewport__row{will-change:transform}'),'Bounded
 assert.ok(scroll.includes('.torrent-state-icon[data-active=true]')&&scroll.includes('animation-name:weig-indicator-pulse!important')&&scroll.includes('animation-play-state:paused!important'),'Torrent state pulse must keep the same animation identity and pause phase during scroll.');
 assert.ok(layout.includes("motion.href='css/scroll.css'+suffix"),'Canonical scroll-motion policy must be loaded after the base table styles by the layout runtime.');
 
+// Final exact-SHA UI gate marker for A23.
 console.log('A23 contract passed: canonical transfer arrows, route-independent RSS Downloader, and phase-preserving native-scroll motion are locked.');
