@@ -185,6 +185,21 @@ try{
     assert.ok(queuedRows.json.filter(item=>Number(item.progress)<1&&Number(item.dlspeed)>0).length<=3,'deployed max active downloads must cap the actual downloading population');
 
     response=await api(page,'app/setPreferences',{method:'POST',form:{json:JSON.stringify({
+      max_active_downloads:1,max_active_torrents:1,dont_count_slow_torrents:true,
+      slow_torrent_dl_rate_threshold:1048576,slow_torrent_ul_rate_threshold:1048576,slow_torrent_inactive_timer:0
+    })}});
+    assert.equal(response.status,200,'slow-torrent queue preference write must succeed');
+    const slowExcludedRows=await api(page,'torrents/info?limit=5001&offset=0');
+    const slowExcludedDownloads=slowExcludedRows.json.filter(item=>Number(item.progress)<1&&Number(item.dlspeed)>0).length;
+    assert.ok(slowExcludedDownloads>1,`deployed slow-torrent exclusion must allow slow downloads beyond the counted max-active slot; got ${slowExcludedDownloads}`);
+    response=await api(page,'app/setPreferences',{method:'POST',form:{json:JSON.stringify({dont_count_slow_torrents:false})}});
+    assert.equal(response.status,200,'slow-torrent queue exclusion disable must succeed');
+    const slowCountedRows=await api(page,'torrents/info?limit=5001&offset=0');
+    assert.ok(slowCountedRows.json.filter(item=>Number(item.progress)<1&&Number(item.dlspeed)>0).length<=1,'disabling slow-torrent exclusion must restore the configured max-active cap');
+    response=await api(page,'app/setPreferences',{method:'POST',form:{json:JSON.stringify({max_active_downloads:3,max_active_torrents:30})}});
+    assert.equal(response.status,200,'queue cap restoration after slow-torrent live proof must succeed');
+
+    response=await api(page,'app/setPreferences',{method:'POST',form:{json:JSON.stringify({
       max_connec:8,max_connec_per_torrent:4,max_uploads:1,max_uploads_per_torrent:1,max_active_checking_torrents:2
     })}});
     assert.equal(response.status,200,'connection/upload/checking preference write must succeed');
