@@ -60,10 +60,10 @@ export function translationIndexForProfile(catalog,profile,locale){
   return out;
 }
 
-export function emulateQbtDocument(source,{catalog,behaviorEvidence,qbVersion,locale='en'}={}){
+export function emulateQbtDocument(source,{catalog,behaviorEvidence,qbVersion,locale='en',materializeLanguageOptions=false}={}){
   const original=String(source||''),profile=exactCatalogProfile(catalog,qbVersion);
   const localeHtml=languageOptionsHtmlForProfile(profile);
-  const hasLanguageOptions=original.includes('${LANGUAGE_OPTIONS}');
+  const hasLanguageOptions=materializeLanguageOptions===true&&original.includes('${LANGUAGE_OPTIONS}');
   const text=hasLanguageOptions&&localeHtml?original.replaceAll('${LANGUAGE_OPTIONS}',localeHtml):original;
   const markers=[...text.matchAll(new RegExp(QBT_TR_RE.source,'g'))];
   if(!markers.length)return{text,mode:hasLanguageOptions&&localeHtml?'native-language-options':'none',markers:0,translated:0,fallback:0,missing:[],family:null,languageOptions:localeHtml?localeHtml.split('\n').filter(Boolean).length:0};
