@@ -1,3 +1,0 @@
-/* Canonical native-scroll compositor hint.
-   DataViewport owns data coalescing/render cadence; semantic motion stays with its component CSS owner. */
-.data-viewport__row{will-change:transform}
