@@ -438,6 +438,21 @@ function applyBudget(items,budget,key){
   for(const item of items)item.torrent[key]=Math.max(0,Math.floor(item.demand*factor));
 }
 
+function aggregateUtilizationFactor(world,now,direction){
+  const seed=String(world.seed||'virtual');
+  const period=direction==='dl'?43000:53000;
+  const bucket=Math.floor(now/period),phase=(now-bucket*period)/period,smooth=phase*phase*(3-2*phase);
+  const a=deterministicUnit(seed,`transfer:${direction}:aggregate:${bucket}:a`);
+  const b=deterministicUnit(seed,`transfer:${direction}:aggregate:${bucket+1}:b`);
+  const main=a+(b-a)*smooth;
+  const pulsePeriod=direction==='dl'?17000:23000,pulseBucket=Math.floor(now/pulsePeriod),pulsePhase=(now-pulseBucket*pulsePeriod)/pulsePeriod;
+  const pulseSmooth=pulsePhase*pulsePhase*(3-2*pulsePhase);
+  const pa=deterministicUnit(seed,`transfer:${direction}:pulse:${pulseBucket}:a`);
+  const pb=deterministicUnit(seed,`transfer:${direction}:pulse:${pulseBucket+1}:b`);
+  const pulse=pa+(pb-pa)*pulseSmooth;
+  return Math.max(.42,Math.min(.98,.44+main*.34+pulse*.22));
+}
+
 function naturalJitter(world,torrent,now,direction){
   const seed=String(world.seed||'virtual');
   const period=5000+(hash32(`${torrent.hash}:${direction}:period`)%7000);
@@ -608,6 +623,8 @@ export function schedule(world,now=Date.now(),elapsedSeconds=0){
     if(world.globalDownloadLimit>0)dlBudget=Math.min(dlBudget,world.globalDownloadLimit);
     if(world.globalUploadLimit>0)ulBudget=Math.min(ulBudget,world.globalUploadLimit);
   }
+  dlBudget=Math.floor(dlBudget*aggregateUtilizationFactor(world,now,'dl'));
+  ulBudget=Math.floor(ulBudget*aggregateUtilizationFactor(world,now,'ul'));
   applyBudget(dlItems,dlBudget,'effectiveDownloadRate');
   applyBudget(ulItems,ulBudget,'effectiveUploadRate');
 
