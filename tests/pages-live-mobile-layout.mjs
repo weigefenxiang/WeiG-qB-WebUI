@@ -246,9 +246,9 @@ try{
   assert.ok(drawer.filters.top>=drawer.sidebar.top-1&&drawer.filters.bottom<=drawer.telemetry.top+1,`Filter/facet zone must end before fixed telemetry: ${JSON.stringify(drawer)}`);
   assert.ok(drawer.chart.height>=90,`Drawer realtime transfer chart must be visibly rendered: ${JSON.stringify(drawer)}`);
   assert.equal(drawer.legendText.length,2,`Drawer mini chart must expose exactly download/upload totals: ${JSON.stringify(drawer)}`);
-  assert.match(drawer.legendText[0],/^↓\s/,`mini chart download total must use the canonical down arrow: ${JSON.stringify(drawer.legendText)}`);
-  assert.match(drawer.legendText[1],/^↑\s/,`mini chart upload total must use the canonical up arrow: ${JSON.stringify(drawer.legendText)}`);
-  assert.ok(drawer.legendBefore.every(value=>value==='none'||value==='normal'||value==='""'),`retired mini-chart dot pseudo markers must stay absent: ${JSON.stringify(drawer.legendBefore)}`);
+  assert.match(drawer.legendText[0],/^(?:已下载|Downloaded)\s/,`mini chart download total must use cumulative Downloaded semantics: ${JSON.stringify(drawer.legendText)}`);
+  assert.match(drawer.legendText[1],/^(?:已上传|Uploaded)\s/,`mini chart upload total must use cumulative Uploaded semantics: ${JSON.stringify(drawer.legendText)}`);
+  assert.ok(drawer.legendBefore.every(value=>value&&value!=='none'&&value!=='normal'),`mini-chart cumulative totals must expose the circular series pseudo marker: ${JSON.stringify(drawer.legendBefore)}`);
   assert.ok(drawer.metaDisplay==='none'||(drawer.meta.width===0&&drawer.meta.height===0),`mobile Drawer must hide qBittorrent/WebAPI/version metadata: ${JSON.stringify(drawer)}`);
   assert.ok(drawer.telemetry.top>=drawer.sidebar.top&&drawer.telemetry.bottom<=drawer.sidebar.bottom+1&&drawer.sidebar.bottom-drawer.telemetry.bottom<=12,`Drawer telemetry/chart must use the released bottom space: ${JSON.stringify(drawer)}`);
 
