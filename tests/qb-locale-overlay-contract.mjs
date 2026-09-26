@@ -80,6 +80,15 @@ for(const profile of frozenApplied){
 }
 const rebindSource=fs.readFileSync(new URL('../tools/qb-torrent-runtime-rebind.mjs',import.meta.url),'utf8');
 assert.ok(rebindSource.includes("applyLocaleOverlay")&&rebindSource.includes("tools/data/qb-locale-lkg.json")&&rebindSource.includes("torrentData.sourceFacts.webuiLocales=compactTimeline"),'canonical Torrent runtime materializer must compile the hash-bound Locale overlay into compact webuiLocales while preserving the base Frozen catalog identity');
+const compactTorrent=JSON.parse(fs.readFileSync(new URL('../webui/private/data/torrent-compat.json',import.meta.url),'utf8'));
+const localeTimeline=compactTorrent?.sourceFacts?.webuiLocales;
+assert.ok(Array.isArray(localeTimeline)&&localeTimeline.length>0,'checked-in compact Torrent runtime must materialize source-derived webuiLocales');
+const atVersion=(timeline,version)=>{let hit=null;const parts=value=>String(value||'0').split('.').map(Number),compare=(a,b)=>{const aa=parts(a),bb=parts(b),n=Math.max(aa.length,bb.length);for(let i=0;i<n;i++){const d=(aa[i]||0)-(bb[i]||0);if(d)return d;}return 0;};for(const row of timeline){if(compare(row.from,version)<=0)hit=row.value;else break;}return hit;};
+const compactFloorLocales=atVersion(localeTimeline,'4.1.0')||[],compactLatestLocales=atVersion(localeTimeline,'5.2.3')||[];
+assert.ok(compactFloorLocales.length>1&&compactFloorLocales.some(item=>item?.value==='zh'),'qB 4.1 compact Locale baseline must remain source-materialized instead of null/runtime-only');
+assert.ok(compactLatestLocales.some(item=>item?.value==='zh_CN')&&compactLatestLocales.some(item=>item?.value==='zh_HK')&&compactLatestLocales.some(item=>item?.value==='zh_TW'),'latest compact Locale baseline must expose exact qB Chinese locale identities');
+assert.ok(Array.isArray(compactTorrent?.sourceFacts?.torrentContextMenu)&&compactTorrent.sourceFacts.torrentContextMenu.length>0,'Locale materialization must not regress the already-materialized Torrent context-menu source fact');
+
 const latest=frozenApplied.at(-1);
 assert.equal(latest.qbVersion,'5.2.3');
 assert.ok(latest.webuiLocales.some(item=>item.value==='zh_CN'),'Latest qB Locale surface must expose zh_CN');
