@@ -85,6 +85,8 @@ try{
   await page.locator('#torrent-files').setInputFiles({name:'fixture.torrent',mimeType:'application/x-bittorrent',buffer:Buffer.alloc(0)});
   assert(await page.locator('#add-dialog[open]').count()===1,'choosing a local .torrent file must keep Add Torrent open before submission');
   await page.locator('#torrent-urls').fill('magnet:?xt=urn:btih:'+'a'.repeat(40));
+  const addExpectedSubject=await page.evaluate(()=>{const files=document.getElementById('torrent-files')?.files,urls=String(document.getElementById('torrent-urls')?.value||'').trim();return files&&files.length?String(files[0].name||''):String(urls.split(/\s+/)[0]||'');});
+  assert(addExpectedSubject,'Add receipt test requires at least one browser-visible source immediately before submit');
   await page.locator('#add-submit').click();
   const processing=page.locator('.feedback-toast[data-kind="info"]',{hasText:'Adding torrent'}).first();
   await processing.waitFor();
@@ -97,7 +99,7 @@ try{
   await page.waitForFunction(id=>document.querySelector(`.feedback-toast[data-feedback-id="${id}"]`)?.dataset.kind==='success',addId);
   await page.waitForFunction(()=>!document.getElementById('add-dialog')?.open);
   const added=page.locator(`.feedback-toast[data-feedback-id="${addId}"]`);
-  assert((await added.textContent()).includes('Torrent added'),'Add success did not update the same feedback card');const addReceipt=await added.evaluate(n=>({receipt:n.dataset.feedbackReceipt,title:n.querySelector('.feedback-toast__title')?.textContent||'',results:[...n.querySelectorAll('.feedback-toast__result')].map(x=>x.textContent||'')}));assert(addReceipt.receipt==='1'&&addReceipt.title==='fixture.torrent'&&addReceipt.results.some(x=>x.includes('Torrent added')),`Add structured receipt lost subject/action rows: ${JSON.stringify(addReceipt)}`);
+  assert((await added.textContent()).includes('Torrent added'),'Add success did not update the same feedback card');const addReceipt=await added.evaluate(n=>({receipt:n.dataset.feedbackReceipt,title:n.querySelector('.feedback-toast__title')?.textContent||'',results:[...n.querySelectorAll('.feedback-toast__result')].map(x=>x.textContent||'')}));assert(addReceipt.receipt==='1'&&addReceipt.title===addExpectedSubject&&addReceipt.results.some(x=>x.includes('Torrent added')),`Add structured receipt must bind the actual browser-visible submitted source and action rows: expected=${addExpectedSubject} actual=${JSON.stringify(addReceipt)}`);
   const addedRail=added.locator('.feedback-toast__progress');
   assert(await addedRail.getAttribute('data-mode')==='lifetime','completed Add feedback did not switch the same rail to lifetime mode');
   await page.waitForFunction(id=>{const rail=document.querySelector(`.feedback-toast[data-feedback-id="${id}"] .feedback-toast__progress`);return !!(rail&&rail.dataset.mode==='lifetime'&&getComputedStyle(rail,'::before').animationName==='feedback-lifecycle');},addId,{timeout:1500});
