@@ -100,4 +100,4 @@
 .torrent-state-icon[data-tone=checking]{background:var(--torrent-tone-checking)}
 .torrent-state-icon[data-tone=danger]{background:var(--torrent-tone-danger)}
 .torrent-state-icon[data-active=true]{animation:weig-indicator-pulse 3.8s ease-in-out infinite;box-shadow:0 0 0 2px rgba(255,255,255,.06),0 0 10px color-mix(in srgb,var(--text-primary) 12%,transparent)}
-.data-viewport.is-scroll-interacting .torrent-state-icon{animation:none!important;filter:none!important;transform:none!important}
+.data-viewport.is-scroll-interacting .torrent-state-icon[data-active=true]{animation-play-state:paused!important;filter:none!important}
