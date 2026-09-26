@@ -36,20 +36,20 @@ client.qbVersion='6.0.0';client.webApiVersion='3.0.0';client.major=6;
 const A={categories:'torrentscontroller.h:categoriesAction',setCategory:'torrentscontroller.h:setCategoryAction',createCategory:'torrentscontroller.h:createCategoryAction',removeCategories:'torrentscontroller.h:removeCategoriesAction',tags:'torrentscontroller.h:tagsAction',addTags:'torrentscontroller.h:addTagsAction',removeTags:'torrentscontroller.h:removeTagsAction',createTags:'torrentscontroller.h:createTagsAction',deleteTags:'torrentscontroller.h:deleteTagsAction'};
 const MAINDATA='synccontroller.h:maindataAction';
 const ALL=Object.values(A);
-const createParams=(modern=false)=>({[A.createCategory]:modern?{parameters:['category','downloadPath','downloadPathEnabled','savePath'],required:['category'],optional:['downloadPath','downloadPathEnabled','savePath']}:{parameters:['category','savePath'],required:['category'],optional:['savePath']}});
+const createParams=(modern=false)=>Object.assign({[A.removeTags]:{parameters:['hashes','tags'],required:['hashes'],optional:['tags']}},{[A.createCategory]:modern?{parameters:['category','downloadPath','downloadPathEnabled','savePath'],required:['category'],optional:['downloadPath','downloadPathEnabled','savePath']}:{parameters:['category','savePath'],required:['category'],optional:['savePath']}});
 const body=call=>new URLSearchParams(String(call?.init?.body||''));
-const operations={categories:()=>client.categories(),setCategory:()=>client.setCategory('hash-a','Movies'),createCategory:()=>client.createCategory('Movies','/downloads/movies'),removeCategories:()=>client.removeCategories('Movies'),tags:()=>client.tags(),addTags:()=>client.addTags('hash-a','linux'),removeTags:()=>client.removeTags('hash-a','linux'),createTags:()=>client.createTags('linux,iso'),deleteTags:()=>client.deleteTags('linux,iso')};
+const operations={categories:()=>client.categories(),setCategory:()=>client.setCategory('hash-a','Movies'),createCategory:()=>client.createCategory('Movies','/downloads/movies'),removeCategories:()=>client.removeCategories('Movies'),tags:()=>client.tags(),addTags:()=>client.addTags('hash-a','linux'),removeTags:()=>client.removeTags('hash-a','linux'),removeAllTags:()=>client.removeAllTags('hash-a'),createTags:()=>client.createTags('linux,iso'),deleteTags:()=>client.deleteTags('linux,iso')};
 
 profile={qbVersion:'6.0.0',webApiVersion:'3.0.0',fallback:false,apiActions:ALL,apiActionParameters:createParams(true)};
 let before=calls.length;
 const categories=await operations.categories();const tags=await operations.tags();
-await operations.setCategory();await operations.createCategory();await operations.removeCategories();await operations.addTags();await operations.removeTags();await operations.createTags();await operations.deleteTags();
-assert.equal(calls.length,before+9,'nine source-proven taxonomy operations must emit exactly nine HTTP requests');
+await operations.setCategory();await operations.createCategory();await operations.removeCategories();await operations.addTags();await operations.removeTags();await operations.removeAllTags();await operations.createTags();await operations.deleteTags();
+assert.equal(calls.length,before+10,'ten source-proven taxonomy operations must emit exactly ten HTTP requests');
 assert.equal(categories.Movies.name,'Movies');assert.equal(Array.isArray(tags)&&tags.join(',')==='linux,iso',true);
 assert.equal(calls[before].url,'api/v2/torrents/categories');assert.equal(calls[before+1].url,'api/v2/torrents/tags');
 assert.equal(calls[before+2].url,'api/v2/torrents/setCategory');assert.equal(body(calls[before+2]).get('category'),'Movies');
 assert.equal(calls[before+3].url,'api/v2/torrents/createCategory');assert.equal(body(calls[before+3]).get('savePath'),'/downloads/movies');
-assert.equal(calls[before+4].url,'api/v2/torrents/removeCategories');assert.equal(calls[before+5].url,'api/v2/torrents/addTags');assert.equal(calls[before+6].url,'api/v2/torrents/removeTags');assert.equal(calls[before+7].url,'api/v2/torrents/createTags');assert.equal(calls[before+8].url,'api/v2/torrents/deleteTags');
+assert.equal(calls[before+4].url,'api/v2/torrents/removeCategories');assert.equal(calls[before+5].url,'api/v2/torrents/addTags');assert.equal(calls[before+6].url,'api/v2/torrents/removeTags');assert.equal(calls[before+7].url,'api/v2/torrents/removeTags');assert.equal(body(calls[before+7]).has('tags'),false,'remove-all tags must omit the optional tags parameter');assert.equal(calls[before+8].url,'api/v2/torrents/createTags');assert.equal(calls[before+9].url,'api/v2/torrents/deleteTags');
 
 for(const [name,action] of Object.entries(A)){
   profile={qbVersion:'6.0.0',webApiVersion:'3.0.0',fallback:false,apiActions:ALL.filter(item=>item!==action),apiActionParameters:createParams(true)};
