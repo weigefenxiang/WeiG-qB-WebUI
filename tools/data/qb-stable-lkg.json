@@ -4,12 +4,12 @@
   "latestAdmittedStable": "5.2.3",
   "profileCount": 65,
   "catalogPath": "tests/fixtures/qb-release-catalog.lkg.json",
-  "catalogSha256": "0bfc626974c6dd85aa7c3192c2000938b9c71af37097f801ca0023e4c8561b98",
+  "catalogSha256": "3986594b401a7b6e46dc1a731592591a843f4e6605ea3c6637207c4b9fa38f0c",
   "seedEvidence": {
-    "weiGCommit": "4515e210455a7c2221977acd006d45b271a9a6be",
-    "ciRunId": 36102106643,
-    "artifactName": "qb-release-catalog-base-4515e210455a7c2221977acd006d45b271a9a6be",
-    "verifiedDate": "2026-09-25",
+    "weiGCommit": "d94d13ccb373540e0996bc6649eb176d0d31cbd8",
+    "ciRunId": 36260651678,
+    "artifactName": "qb-release-catalog-base-d94d13ccb373540e0996bc6649eb176d0d31cbd8",
+    "verifiedDate": "2026-09-26",
     "mode": "same-stable-source-refresh"
   }
 }
