@@ -78,6 +78,8 @@ for(const profile of frozenApplied){
   assert.ok(descriptor.schemaLastChangedInLabCatalog,`${profile.qbVersion}: locale schema-change provenance must exist`);
   assert.ok(descriptor.readTypeLastChangedInLabCatalog,`${profile.qbVersion}: locale read-type provenance must exist`);
 }
+const rebindSource=fs.readFileSync(new URL('../tools/qb-torrent-runtime-rebind.mjs',import.meta.url),'utf8');
+assert.ok(rebindSource.includes("applyLocaleOverlay")&&rebindSource.includes("tools/data/qb-locale-lkg.json")&&rebindSource.includes("torrentData.sourceFacts.webuiLocales=compactTimeline"),'canonical Torrent runtime materializer must compile the hash-bound Locale overlay into compact webuiLocales while preserving the base Frozen catalog identity');
 const latest=frozenApplied.at(-1);
 assert.equal(latest.qbVersion,'5.2.3');
 assert.ok(latest.webuiLocales.some(item=>item.value==='zh_CN'),'Latest qB Locale surface must expose zh_CN');
