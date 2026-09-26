@@ -29,8 +29,8 @@ function api(req,res,p,url){
   if(p==='app/buildInfo')return json(res,{});
   if(p==='transfer/info')return json(res,{dl_info_speed:1024,up_info_speed:0,connection_status:'firewalled'});
   if(p==='transfer/speedLimitsMode'||p==='transfer/downloadLimit'||p==='transfer/uploadLimit')return text(res,'0');
-  if(p==='sync/maindata')return json(res,{rid:1,full_update:true,torrents:{},categories:{},tags:['Fixture'],server_state:{connection_status:'firewalled',dht_nodes:8,total_peer_connections:2,free_space_on_disk:10737418240}});
-  if(p==='torrents/info'){const offset=Number(url.searchParams.get('offset')||0),limit=Number(url.searchParams.get('limit')||0),row={...torrent};if(fixtureMode==='q4')delete row.private;const rows=[row];return json(res,limit?rows.slice(offset,offset+limit):rows.slice(offset));}
+  if(p==='sync/maindata'){const syncTorrents=fixtureMode==='q5'?{[torrent.hash]:{trackers_count:0,has_tracker_error:true,has_other_announce_error:true,has_tracker_warning:true}}:{};const trackers=fixtureMode==='q5'?{'https://tracker.example/announce':[torrent.hash]}:{};return json(res,{rid:1,full_update:true,torrents:syncTorrents,trackers:trackers,categories:{},tags:['Fixture'],server_state:{connection_status:'firewalled',dht_nodes:8,total_peer_connections:2,free_space_on_disk:10737418240}});}
+  if(p==='torrents/info'){const offset=Number(url.searchParams.get('offset')||0),limit=Number(url.searchParams.get('limit')||0),row={...torrent};if(fixtureMode==='q4')delete row.private;else row.private=true;const rows=[row];return json(res,limit?rows.slice(offset,offset+limit):rows.slice(offset));}
   if(p==='torrents/categories')return json(res,{});
   if(p==='torrents/tags')return json(res,['Fixture']);
   if(['search/plugins','log/main','log/peers','rss/items'].includes(p))return json(res,p==='rss/items'?{}:[]);
