@@ -15,7 +15,7 @@ const E=sandbox.window.WeiG.TorrentActionEditor;
 const rows=[{hash:'a',name:'One',save_path:'/x',dl_limit:0,up_limit:51200,tags:'PT, VR'},{hash:'b',name:'Two',save_path:'/x',dl_limit:0,up_limit:51200,tags:'PT'}];
 const ctx=E.createContext(rows,['a','b']);
 assert.equal(ctx.complete,true);
-assert.deepEqual(E.common(ctx,'save_path'),{available:true,mixed:false,value:'/x'});
+assert.deepEqual(JSON.parse(JSON.stringify(E.common(ctx,'save_path'))),{available:true,mixed:false,value:'/x'});
 assert.equal(E.common(ctx,'name').mixed,true);
 assert.equal(E.choiceState(ctx,'save_path','/x'),'all');
 assert.equal(E.choiceState(ctx,'name','One'),'partial');
