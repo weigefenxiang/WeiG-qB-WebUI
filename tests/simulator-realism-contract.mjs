@@ -315,6 +315,33 @@ const baseNow=1700000000000;
 
 
 {
+  const w=createWorld({profile:{qbVersion:'5.2.3',webApiVersion:'2.15.1'},count:40,seed:'mixed-upload-slot-fairness',now:baseNow});
+  w.torrents.forEach((t,index)=>{
+    t.completed=index>=20;
+    t.downloaded=t.completed?t.size:Math.floor(t.size*.6);
+    t.canonicalState=t.completed?CANONICAL.SEED_QUEUED:CANONICAL.DOWNLOAD_QUEUED;
+    t.resumeState=t.canonicalState;
+    t.seeders=12;
+    t.leechers=12;
+    t.queuePosition=(index%20)+1;
+  });
+  setPreferences(w,{
+    queueing_enabled:true,
+    max_active_downloads:5,
+    max_active_uploads:5,
+    max_active_torrents:10,
+    max_connec:40,
+    max_connec_per_torrent:4,
+    max_uploads:4,
+    max_uploads_per_torrent:1
+  },baseNow);
+  assert.ok(w.torrents.some(t=>!t.completed&&t.effectiveDownloadRate>0&&t.effectiveUploadRate>0),'global upload-slot allocation must not let seeders starve every incomplete active downloader of concurrent upload');
+  assert.ok(w.torrents.some(t=>t.completed&&t.effectiveUploadRate>0),'mixed upload-slot allocation must still leave active seeding traffic');
+  assert.ok(w.torrents.reduce((sum,t)=>sum+t.uploadSlots,0)<=4,'mixed download/seeding upload-slot allocation must preserve the global hard cap');
+}
+
+
+{
   const w=createWorld({profile:{qbVersion:'5.2.3',webApiVersion:'2.15.1'},count:20,seed:'queue-limit-runtime',now:baseNow});
   w.torrents.forEach((t,index)=>{
     t.completed=index>=10;

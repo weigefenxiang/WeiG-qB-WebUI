@@ -373,6 +373,15 @@ function allocateFair(items,globalLimit,capacityFor){
   return result;
 }
 
+function interleaveTransferKinds(downloads,uploads){
+  const result=[],count=Math.max(downloads.length,uploads.length);
+  for(let index=0;index<count;index++){
+    if(index<downloads.length)result.push(downloads[index]);
+    if(index<uploads.length)result.push(uploads[index]);
+  }
+  return result;
+}
+
 function schedulerDayMatches(dayCode,day){
   const code=Math.max(0,Math.min(9,Math.round(Number(dayCode)||0)));
   if(code===0)return true;
@@ -555,11 +564,8 @@ export function schedule(world,now=Date.now(),elapsedSeconds=0){
   const activeUploadList=uploads.filter(t=>activeUploads.has(t.hash));
   const connectionOrder=[...activeDownloadList,...activeUploadList];
   const connectionAllocations=allocateFair(connectionOrder,prefs.max_connec,t=>transferPeerCapacity(world,t,t.completed?'upload':'download'));
-  const seedUploadAllocations=allocateFair(activeUploadList,prefs.max_uploads,t=>uploadSlotCapacity(world,t,connectionAllocations.get(t.hash)||0));
-  const seedSlotsUsed=Array.from(seedUploadAllocations.values()).reduce((sum,value)=>sum+value,0);
-  const globalUploadCapacity=queueCapacity(prefs.max_uploads);
-  const remainingDuplexSlots=Number.isFinite(globalUploadCapacity)?Math.max(0,globalUploadCapacity-seedSlotsUsed):Infinity;
-  const duplexUploadAllocations=allocateFair(activeDownloadList,remainingDuplexSlots,t=>uploadSlotCapacity(world,t,connectionAllocations.get(t.hash)||0));
+  const uploadAllocationOrder=interleaveTransferKinds(activeDownloadList,activeUploadList);
+  const uploadAllocations=allocateFair(uploadAllocationOrder,prefs.max_uploads,t=>uploadSlotCapacity(world,t,connectionAllocations.get(t.hash)||0));
   const dlItems=[],ulItems=[],changed=new Set(normalizedChecking);
 
   for(const t of world.torrents){
@@ -584,7 +590,7 @@ export function schedule(world,now=Date.now(),elapsedSeconds=0){
           demand=cap(demand,Number(t.downloadLimit)||0);
           dlItems.push({torrent:t,demand});
           const shareable=t.size>0?Math.min(1,Math.max(0,t.downloaded/t.size)):0;
-          t.uploadSlots=duplexUploadAllocations.get(t.hash)||0;
+          t.uploadSlots=uploadAllocations.get(t.hash)||0;
           if(t.uploadSlots>0){
             const uploadPeerFactor=Math.min(1,Math.max(.08,t.uploadSlots/4));
             const pieceFactor=Math.min(1,Math.max(.12,shareable));
@@ -598,7 +604,7 @@ export function schedule(world,now=Date.now(),elapsedSeconds=0){
       if(!activeUploads.has(t.hash)){var idlePeerCapacity=transferPeerCapacity(world,t,'upload');t.canonicalState=(idlePeerCapacity>0&&uploadSlotCapacity(world,t,idlePeerCapacity)>0)?CANONICAL.SEED_QUEUED:CANONICAL.SEED_STALLED;}
       else{
         t.connectedPeers=connectionAllocations.get(t.hash)||0;
-        t.uploadSlots=seedUploadAllocations.get(t.hash)||0;
+        t.uploadSlots=uploadAllocations.get(t.hash)||0;
         if(t.leechers<=0||t.connectedPeers<=0||t.uploadSlots<=0)t.canonicalState=CANONICAL.SEED_STALLED;
         else{
           t.canonicalState=CANONICAL.SEED_ACTIVE;
