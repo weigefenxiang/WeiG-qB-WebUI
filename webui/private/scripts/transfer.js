@@ -1,12 +1,11 @@
 (function(global){
   'use strict';
-  var W=global.WeiG=global.WeiG||{},C=W.Components,U=W.util;
-  if(!W.QBClient||!C||!U||W.Transfer)return;
+  var W=global.WeiG=global.WeiG||{},C=W.Components,U=W.util,RV=W.RateValue;
+  if(!W.QBClient||!C||!U||!RV||W.Transfer)return;
 
   var DISPLAY_BUCKET_MAX=900,displayAggregate={seconds:0,completed:[],active:null};
   var last=null,samples=[],minuteBuckets=[],RAW_MAX=900,BUCKET_MAX=2880,statsDialog=null,limitDialog=null,compactChart=null,chartWindow=300,chartAverage=15,rateUnitChoice=localStorage.getItem((W.StorageKeys&&W.StorageKeys.transferUnit)||'weig.transferUnit')||'Auto',displayRateUnit='MiB/s',limitMode='normal';
   var snapshot={dhtNodes:null,peers:null,freeSpace:null},mainRid=0,metadataTimer=null,metadataPending=null;
-  var UNITS={'KiB/s':1024,'MiB/s':1048576,'GiB/s':1073741824};
   var limits={normal:{down:0,up:0},alt:{down:0,up:0}};
 
   function tr(key,vars){return W.I18n&&W.I18n.t?W.I18n.t(key,vars):String(key||'');}
@@ -29,12 +28,8 @@
 
   W.TransferRuntime={last:function(){return last;},samples:function(){return samples.slice();},minuteBuckets:function(){return bucketSamples();},displayAggregates:function(seconds){return displayAggregates(seconds).map(function(row){return Object.assign({},row);});},snapshot:function(){return Object.assign({},snapshot);},merge:mergeSnapshot,ingest:ingest,refreshMetadata:refreshMetadata};
 
-  function unitFor(bytes){var n=Math.max(0,Number(bytes)||0);if(n<UNITS['MiB/s'])return'KiB/s';if(n<UNITS['GiB/s'])return'MiB/s';return'GiB/s';}
-  function autoUnit(state){var max=Math.max(Number(state&&state.down)||0,Number(state&&state.up)||0);return max>0?unitFor(max):'MiB/s';}
-  function significant(value){var n=Number(value)||0;if(!n)return'0';var abs=Math.abs(n),power=Math.floor(Math.log10(abs)),decimals=Math.max(0,Math.min(6,2-power));return n.toFixed(decimals);}
-  function bytesTo(value,unit){var n=Math.max(0,Number(value)||0);return significant(n/(UNITS[unit]||UNITS['MiB/s']));}
-  function toBytes(value,unit){var n=Number(value);return Number.isFinite(n)&&n>0?Math.round(n*(UNITS[unit]||UNITS['MiB/s'])):0;}
-  function unitOptions(){return[{value:'Auto',label:'Auto · '+displayRateUnit},{value:'KiB/s',label:'KiB/s'},{value:'MiB/s',label:'MiB/s'},{value:'GiB/s',label:'GiB/s'}];}
+  function autoUnit(state){return RV.autoUnit([state&&state.down,state&&state.up],'MiB/s');}
+  function unitOptions(){return[{value:'Auto',label:'Auto · '+displayRateUnit}].concat(RV.unitOptions());}
   function windowLabel(seconds){var map={60:'1 min',300:'5 min',900:'15 min',1800:'30 min',3600:'1 h',10800:'3 h',21600:'6 h',43200:'12 h',86400:'24 h',172800:'48 h'};return map[Number(seconds)]||Math.max(1,Math.round(Number(seconds||300)/60))+' min';}
   function averageOptions(){return[{value:'0',label:tr('transfer.raw')},{value:'3',label:'3 s'},{value:'5',label:'5 s'},{value:'10',label:'10 s'},{value:'15',label:'15 s'},{value:'20',label:'20 s'},{value:'30',label:'30 s'},{value:'60',label:'60 s'},{value:'120',label:'120 s'}];}
   function windowOptions(){return[1,5,15,30,60,180,360,720,1440,2880].map(function(minutes){return{value:String(minutes),label:windowLabel(minutes*60)};});}
@@ -73,10 +68,10 @@
   async function openStats(){var dialog=ensureStatsDialog();W.DialogRuntime.open(dialog,{draggable:true});renderStats(last||{});await refreshPanelMetadata();drawChart();}
 
   function rateField(kind){var field=document.createElement('label');field.className='transfer-rate-field';field.dataset.rateKind=kind;var title=document.createElement('span');title.className='transfer-rate-field__label';title.dataset.rateLabel=kind;var input=document.createElement('input');input.type='number';input.min='0';input.step='any';input.inputMode='decimal';input.className='field-input transfer-rate-field__input';input.dataset.transferRate=kind;field.append(title,input);return field;}
-  function captureLimits(){if(!limitDialog)return;var state=limits[limitMode];state.down=toBytes(limitDialog.querySelector('[data-transfer-rate="down"]').value,displayRateUnit);state.up=toBytes(limitDialog.querySelector('[data-transfer-rate="up"]').value,displayRateUnit);}
+  function captureLimits(){if(!limitDialog)return;var state=limits[limitMode];state.down=RV.toBytes(limitDialog.querySelector('[data-transfer-rate="down"]').value,displayRateUnit);state.up=RV.toBytes(limitDialog.querySelector('[data-transfer-rate="up"]').value,displayRateUnit);}
   function limitWriteCapability(){return limitMode==='alt'?'altSpeedLimitWrite':'globalSpeedLimitWrite';}
   function decorateLimitApply(dialog){var apply=dialog&&dialog.querySelector('#transfer-limit-apply');if(apply&&W.CapabilityRegistry&&W.CapabilityRegistry.decorate)W.CapabilityRegistry.decorate(apply,limitWriteCapability());return apply;}
-  function paintLimitDialog(){var dialog=ensureLimitDialog(),state=limits[limitMode];if(rateUnitChoice==='Auto')displayRateUnit=autoUnit(state);else displayRateUnit=rateUnitChoice;dialog.dataset.mode=limitMode;dialog.querySelector('[data-rate-label="down"]').textContent=limitMode==='alt'?tr('transfer.altDownloadLimit'):tr('transfer.downloadLimit');dialog.querySelector('[data-rate-label="up"]').textContent=limitMode==='alt'?tr('transfer.altUploadLimit'):tr('transfer.uploadLimit');dialog.querySelector('[data-transfer-rate="down"]').value=bytesTo(state.down,displayRateUnit);dialog.querySelector('[data-transfer-rate="up"]').value=bytesTo(state.up,displayRateUnit);Array.from(dialog.querySelectorAll('[data-transfer-mode]')).forEach(function(button){button.classList.toggle('is-active',button.dataset.transferMode===limitMode);});var select=dialog.querySelector('#transfer-limit-unit');if(select&&select.setOptions){select.setOptions(unitOptions());select.setValue(rateUnitChoice);}decorateLimitApply(dialog);}
+  function paintLimitDialog(){var dialog=ensureLimitDialog(),state=limits[limitMode];if(rateUnitChoice==='Auto')displayRateUnit=autoUnit(state);else displayRateUnit=rateUnitChoice;dialog.dataset.mode=limitMode;dialog.querySelector('[data-rate-label="down"]').textContent=limitMode==='alt'?tr('transfer.altDownloadLimit'):tr('transfer.downloadLimit');dialog.querySelector('[data-rate-label="up"]').textContent=limitMode==='alt'?tr('transfer.altUploadLimit'):tr('transfer.uploadLimit');dialog.querySelector('[data-transfer-rate="down"]').value=RV.bytesTo(state.down,displayRateUnit);dialog.querySelector('[data-transfer-rate="up"]').value=RV.bytesTo(state.up,displayRateUnit);Array.from(dialog.querySelectorAll('[data-transfer-mode]')).forEach(function(button){button.classList.toggle('is-active',button.dataset.transferMode===limitMode);});var select=dialog.querySelector('#transfer-limit-unit');if(select&&select.setOptions){select.setOptions(unitOptions());select.setValue(rateUnitChoice);}decorateLimitApply(dialog);}
   function ensureLimitDialog(){
     if(limitDialog&&limitDialog.isConnected)return limitDialog;
     limitDialog=W.DialogRuntime.create({id:'transfer-limit-dialog',className:'dialog surface surface--modal transfer-limit-dialog',draggable:true});
