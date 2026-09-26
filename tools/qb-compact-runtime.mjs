@@ -16,7 +16,7 @@ const SETTINGS_PAYLOAD_SOURCE='qb-upstream-preferences-native-surface-compact';
 export const TORRENT_FACTS=['torrentFilters','torrentInfoParameters','torrentInfoFields','trackerFilters','trackerFacetMode','torrentStates','torrentPropertiesFields','torrentTrackerFields','torrentFileFields','torrentWebSeedFields','torrentTableColumns','torrentContextMenu','webuiLocales'];
 
 function releaseRows(catalog){return catalog.map(profile=>({qbVersion:String(profile.qbVersion||''),webApiVersion:String(profile.webApiVersion||''),sourceSha:String(profile.sourceSha||''),stable:profile.stable!==false,officialWeiGSupport:profile.officialWeiGSupport!==false}));}
-function factTimeline(catalog,key){return catalog.map(profile=>({from:String(profile.qbVersion||''),value:clone(Object.prototype.hasOwnProperty.call(profile,key)?profile[key]:null)}));}
+function compactTimeline(rows){const out=[];let prior,hasPrior=false;for(const row of rows){const value=clone(row.value),signature=JSON.stringify(value);if(!hasPrior||signature!==prior){out.push({from:String(row.from||''),value:value});prior=signature;hasPrior=true;}}return out;}function factTimeline(catalog,key){return compactTimeline(catalog.map(profile=>({from:String(profile.qbVersion||''),value:clone(Object.prototype.hasOwnProperty.call(profile,key)?profile[key]:null)})));}
 function actionValue(profile,action){if(!Array.isArray(profile.apiActions)||!profile.apiActions.includes(action))return null;const raw=profile.apiActionParameters&&profile.apiActionParameters[action]||{};return{parameters:Array.isArray(raw.parameters)?raw.parameters.map(String):[],required:Array.isArray(raw.required)?raw.required.map(String):[],optional:Array.isArray(raw.optional)?raw.optional.map(String):[],parameterOptions:raw.parameterOptions&&typeof raw.parameterOptions==='object'?clone(raw.parameterOptions):{}};}
 function identityKey(value){value=value||{};return[String(value.supportFloor||''),String(value.latestAdmittedStable||''),Number(value.releaseCount)||0,String(value.releaseSetSha256||''),String(value.sourceCatalogSha256||'')].join('|');}
 function sha256(bytes){return createHash('sha256').update(bytes).digest('hex');}
@@ -57,7 +57,7 @@ export function compileCompactRuntime(catalog,{includeSettings=true}={}){
   torrentData.sourceFacts={};for(const key of TORRENT_FACTS)torrentData.sourceFacts[key]=factTimeline(catalog,key);
   detailData.sourceFacts=clone(compileDetailRuntime(catalog).sourceFacts);
   const names=new Set(Object.keys(actionData.sourceActions||{}));for(const profile of catalog)for(const action of profile.apiActions||[])names.add(String(action));
-  actionData.sourceActions={};for(const action of names)actionData.sourceActions[action]=catalog.map(profile=>({from:String(profile.qbVersion||''),value:actionValue(profile,action)}));
+  actionData.sourceActions={};for(const action of names)actionData.sourceActions[action]=compactTimeline(catalog.map(profile=>({from:String(profile.qbVersion||''),value:actionValue(profile,action)})));
   return{catalogIdentity:identity,capabilityData,torrentData,detailData,actionData,settingsManifest,settingsData};
 }
 
