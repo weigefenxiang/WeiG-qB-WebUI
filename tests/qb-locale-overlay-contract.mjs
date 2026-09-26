@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
-import {applyLocaleOverlay,extractLocaleOverlay,repairLocalePreferenceSemantics} from '../tools/qb-locale-overlay.mjs';
+import {applyLocaleOverlay,applyLocaleOverlaySubset,extractLocaleOverlay,repairLocalePreferenceSemantics} from '../tools/qb-locale-overlay.mjs';
 import {validateCatalogEvolution} from '../tools/qb-catalog-evolution.mjs';
 import {createWorld} from '../simulator/core/engine.js';
 import {createPreferenceRuntime} from '../simulator/preferences/runtime.js';
@@ -29,6 +29,9 @@ assert.deepEqual(overlay.profiles.map(item=>[item.qbVersion,item.sourceSha,item.
 ]);
 const applied=applyLocaleOverlay(base,overlay,{catalogSha256:'deadbeef'});
 assert.deepEqual(applied.map(item=>item.webuiLocales.map(locale=>locale.value)),[['en','zh'],['en','zh'],['en','zh_CN']]);
+const subsetApplied=applyLocaleOverlaySubset([base[0],base[2]],overlay);
+assert.deepEqual(subsetApplied.map(item=>item.webuiLocales.map(locale=>locale.value)),[['en','zh'],['en','zh_CN']],'Virtual qB bootstrap/subset catalogs must consume the same exact source-SHA Locale overlay without a second locale table');
+assert.throws(()=>applyLocaleOverlaySubset([{...base[0],sourceSha:'wrong'}],overlay),/source SHA mismatch/);
 assert.deepEqual(base.map(item=>Object.hasOwn(item,'webuiLocales')),[false,false,false],'overlay application must not mutate the Frozen LKG input');
 assert.throws(()=>applyLocaleOverlay(base,{...overlay,profiles:[{...overlay.profiles[0],sourceSha:'wrong'},...overlay.profiles.slice(1)]},{catalogSha256:'deadbeef'}),/source SHA mismatch/);
 assert.throws(()=>applyLocaleOverlay(base,{...overlay,profileCount:2,profiles:overlay.profiles.slice(0,2)},{catalogSha256:'deadbeef'}),/profile count mismatch/);
@@ -78,6 +81,8 @@ for(const profile of frozenApplied){
   assert.ok(descriptor.schemaLastChangedInLabCatalog,`${profile.qbVersion}: locale schema-change provenance must exist`);
   assert.ok(descriptor.readTypeLastChangedInLabCatalog,`${profile.qbVersion}: locale read-type provenance must exist`);
 }
+const buildPagesSource=fs.readFileSync(new URL('../simulator/build/build-pages.mjs',import.meta.url),'utf8');
+assert.ok(buildPagesSource.includes('simulatorCatalogWithLocaleFacts')&&buildPagesSource.includes('applyLocaleOverlaySubset')&&buildPagesSource.includes("__simulator/versions/catalog.generated.json"),'Virtual Pages materializer must enrich simulator catalog.generated.json from the canonical hash-bound Locale overlay instead of copying raw Frozen catalog');
 const rebindSource=fs.readFileSync(new URL('../tools/qb-torrent-runtime-rebind.mjs',import.meta.url),'utf8');
 assert.ok(rebindSource.includes("applyLocaleOverlay")&&rebindSource.includes("tools/data/qb-locale-lkg.json")&&rebindSource.includes("torrentData.sourceFacts.webuiLocales=compactTimeline"),'canonical Torrent runtime materializer must compile the hash-bound Locale overlay into compact webuiLocales while preserving the base Frozen catalog identity');
 const compactTorrent=JSON.parse(fs.readFileSync(new URL('../webui/private/data/torrent-compat.json',import.meta.url),'utf8'));
