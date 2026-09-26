@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {
-  CANONICAL,addTags,createCategory,createTags,createWorld,deleteTags,listTorrents,mainData,removeCategories,
+  CANONICAL,addTags,createCategory,createTags,createWorld,deleteTags,effectiveAltSpeedMode,listTorrents,mainData,removeCategories,
   logs,setCategory,setForceStart,setPreferences,transferInfo,VIRTUAL_PT_CATEGORIES
 } from '../simulator/core/engine.js';
 import {applyRuntimePolicies,movePriority,peerLogItems,setAutoManagement} from '../simulator/core/torrent-actions.js';
@@ -96,9 +96,10 @@ const baseNow=1700000000000;
     schedule_to_min:end%60
   },baseNow);
   applyRuntimePolicies(w,baseNow+30000);
-  assert.equal(w.altSpeedMode,true,'enabled scheduler must activate alternate speed mode inside its configured time window');
+  assert.equal(effectiveAltSpeedMode(w,baseNow+30000),true,'enabled scheduler must activate effective alternate speed limits inside its configured time window');
   applyRuntimePolicies(w,baseNow+180000);
-  assert.equal(w.altSpeedMode,false,'enabled scheduler must leave alternate speed mode outside its configured time window');
+  assert.equal(effectiveAltSpeedMode(w,baseNow+180000),false,'enabled scheduler must leave effective alternate speed limits outside its configured time window');
+  assert.equal(w.altSpeedMode,false,'scheduled ALT must not overwrite the manual alternate-speed toggle owner');
 }
 
 {
