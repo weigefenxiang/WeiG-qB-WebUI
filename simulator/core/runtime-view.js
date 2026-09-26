@@ -1,4 +1,4 @@
-import {capabilityAvailable,recordTorrentChanges,schedule,torrentView} from './engine.js';
+import {capabilityAvailable,effectiveAltSpeedMode,recordTorrentChanges,schedule,torrentView} from './engine.js';
 import {clearRuntimeIndexes,primeTransferAggregate,runtimeIndexStats,torrentIndex,torrentsByHashes,transferAggregate} from './runtime-index.js';
 import {snapshotIntervalForWorld} from './low-power-policy.js';
 import {expandTorrentInfoRows} from './torrent-info-options.js';
@@ -6,10 +6,16 @@ import {filterTorrentCandidates,sliceTorrentWindow} from './torrent-query.js';
 
 const runtimeSnapshots=new WeakMap();
 
-function rateControlKey(world){
+function rateControlKey(world,now=Date.now()){
   const prefs=world.preferences||{};
   return[
-    world.altSpeedMode?1:0,
+    effectiveAltSpeedMode(world,now)?1:0,
+    prefs.scheduler_enabled?1:0,
+    Number(prefs.schedule_from_hour)||0,
+    Number(prefs.schedule_from_min)||0,
+    Number(prefs.schedule_to_hour)||0,
+    Number(prefs.schedule_to_min)||0,
+    Number(prefs.scheduler_days)||0,
     Number(world.globalDownloadLimit)||0,
     Number(world.globalUploadLimit)||0,
     Number(prefs.alt_dl_limit)||0,
@@ -55,7 +61,7 @@ function rememberScheduleAggregate(world,result){
 export function advanceRuntimeSnapshot(world,now=Date.now()){
   const stats=diagnostics(world);
   const lastTick=Number(world.lastTick)||0;
-  const currentControlKey=rateControlKey(world);
+  const currentControlKey=rateControlKey(world,now);
   const controlsChanged=stats.controlKey!==null&&stats.controlKey!==currentControlKey;
   stats.controlKey=currentControlKey;
   const interval=snapshotIntervalForWorld(world);

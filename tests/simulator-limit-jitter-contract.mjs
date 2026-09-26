@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {createWorld,setPreferences} from '../simulator/core/engine.js';
+import {createWorld,effectiveAltSpeedMode,setPreferences} from '../simulator/core/engine.js';
 import {applyRuntimePolicies} from '../simulator/core/torrent-actions.js';
 import {transferSnapshot} from '../simulator/core/runtime-view.js';
 
@@ -74,6 +74,34 @@ function sampleTrace(seed,times){
 }
 
 
+
+{
+  const monday0900=new Date(2026,8,21,9,0,0,0).getTime();
+  const monday1100=new Date(2026,8,21,11,0,0,0).getTime();
+  const world=createWorld({
+    profile:{qbVersion:'5.2.3',webApiVersion:'2.15.1'},
+    count:24,
+    seed:'scheduled-alt-runtime',
+    now:monday0900
+  });
+  setPreferences(world,{
+    scheduler_enabled:true,
+    scheduler_days:3,
+    schedule_from_hour:8,
+    schedule_from_min:30,
+    schedule_to_hour:10,
+    schedule_to_min:0,
+    alt_dl_limit:32*1024,
+    alt_up_limit:8*1024
+  },monday0900);
+  assert.equal(effectiveAltSpeedMode(world,monday0900),true,'Monday schedule must activate alternate limits inside the configured hour/minute window');
+  applyRuntimePolicies(world,monday0900);
+  assert.ok(world.environment.downCapacity<=32*MiB&&world.environment.upCapacity<=8*MiB,'scheduled alternate limits must own the same bounded runtime capacity path as manual ALT mode');
+  assert.equal(effectiveAltSpeedMode(world,monday1100),false,'scheduled alternate limits must deactivate outside the configured window without mutating manual ALT state');
+  applyRuntimePolicies(world,monday1100);
+  assert.equal(world.altSpeedMode,false,'schedule evaluation must not overwrite the manual alternate-speed toggle owner');
+}
+
 function fiveMinuteTransferTrace(seed){
   const world=createWorld({
     profile:{qbVersion:'5.2.3',webApiVersion:'2.15.1'},
@@ -118,8 +146,8 @@ function turningPoints(values){
   assert.ok(turningPoints(up)>=3,`15-second averaged upload trace must retain several non-monotonic turns; got ${turningPoints(up)}`);
   const dlSpan=(Math.max(...dl)-Math.min(...dl))/Math.max(...dl);
   const upSpan=(Math.max(...up)-Math.min(...up))/Math.max(...up);
-  assert.ok(dlSpan>=.05,`15-second averaged download trace must keep visible bounded variation; got ${dlSpan}`);
-  assert.ok(upSpan>=.05,`15-second averaged upload trace must keep visible bounded variation; got ${upSpan}`);
+  assert.ok(dlSpan>=.15,`15-second averaged download trace must keep clearly visible bounded variation; got ${dlSpan}`);
+  assert.ok(upSpan>=.12,`15-second averaged upload trace must keep clearly visible bounded variation; got ${upSpan}`);
 }
 
 console.log('Virtual qB limit-jitter contract passed: seeded 3–30s 5–10% waves plus rare 20–40% excursions remain deterministic and bounded by qB/physical hard caps.');

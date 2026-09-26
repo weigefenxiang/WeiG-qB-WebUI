@@ -445,13 +445,18 @@ function naturalJitter(world,torrent,now,direction){
   const a=deterministicUnit(seed,`${torrent.hash}:${direction}:local:${bucket}:a`);
   const b=deterministicUnit(seed,`${torrent.hash}:${direction}:local:${bucket+1}:b`);
   const local=a+(b-a)*smooth;
-  const sharedPeriod=31000+(direction==='dl'?0:9000);
+  const sharedPeriod=19000+(direction==='dl'?0:7000);
   const sharedBucket=Math.floor(now/sharedPeriod),sharedPhase=(now-sharedBucket*sharedPeriod)/sharedPeriod;
   const sharedSmooth=sharedPhase*sharedPhase*(3-2*sharedPhase);
   const sa=deterministicUnit(seed,`transfer:${direction}:shared:${sharedBucket}:a`);
   const sb=deterministicUnit(seed,`transfer:${direction}:shared:${sharedBucket+1}:b`);
   const shared=sa+(sb-sa)*sharedSmooth;
-  return Math.max(.58,Math.min(1.18,.72+local*.30+shared*.16));
+  const swellPeriod=61000+(direction==='dl'?0:17000),swellBucket=Math.floor(now/swellPeriod),swellPhase=(now-swellBucket*swellPeriod)/swellPeriod;
+  const swellSmooth=swellPhase*swellPhase*(3-2*swellPhase);
+  const wa=deterministicUnit(seed,`transfer:${direction}:swell:${swellBucket}:a`);
+  const wb=deterministicUnit(seed,`transfer:${direction}:swell:${swellBucket+1}:b`);
+  const swell=wa+(wb-wa)*swellSmooth;
+  return Math.max(.42,Math.min(1.20,.46+local*.18+shared*.42+swell*.20));
 }
 
 export function checkingConcurrencyLimit(world){

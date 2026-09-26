@@ -1,4 +1,4 @@
-import {CANONICAL,checkingConcurrencyLimit,normalizeQueuePositions,reconcileManagedPaths,recordTorrentChanges,schedule} from './engine.js';
+import {CANONICAL,checkingConcurrencyLimit,effectiveAltSpeedMode,normalizeQueuePositions,reconcileManagedPaths,recordTorrentChanges,schedule,scheduledAltSpeedActive} from './engine.js';
 import {deterministicUnit,hash32} from './random.js';
 import {torrentIndex,torrentsByHashes} from './runtime-index.js';
 
@@ -112,9 +112,9 @@ function interpolatedNoise(seed,key,now,periodMs){
   return a+(b-a)*smoothstep(phase);
 }
 
-function configuredRateLimit(world,direction){
+function configuredRateLimit(world,direction,now=Date.now()){
   const prefs=world.preferences||{};
-  if(world.altSpeedMode){
+  if(effectiveAltSpeedMode(world,now)){
     const kib=direction==='down'?Number(prefs.alt_dl_limit)||0:Number(prefs.alt_up_limit)||0;
     return Math.max(0,kib*1024);
   }
@@ -148,7 +148,7 @@ function applyConfiguredLimitPacing(world,now){
   const env=ensureEnvironmentBaseline(world);
   const physicalDown=Math.max(0,Number(env.waveDownCapacity??env.downCapacity??env.baseDownCapacity)||0);
   const physicalUp=Math.max(0,Number(env.waveUpCapacity??env.upCapacity??env.baseUpCapacity)||0);
-  const downLimit=configuredRateLimit(world,'down'),upLimit=configuredRateLimit(world,'up');
+  const downLimit=configuredRateLimit(world,'down',now),upLimit=configuredRateLimit(world,'up',now);
   env.downCapacity=downLimit>0?Math.min(physicalDown,Math.floor(downLimit*limiterPacingFactor(world,now,'down'))):physicalDown;
   env.upCapacity=upLimit>0?Math.min(physicalUp,Math.floor(upLimit*limiterPacingFactor(world,now,'up'))):physicalUp;
 }
@@ -257,13 +257,7 @@ export function applyRuntimePolicies(world,now=Date.now()){
   const latencyFactor=1/(1+Math.max(0,(Number(env.latencyMs)||0)-50)/500);
   env.peerAvailability=Math.max(0,Math.min(1,env.basePeerAvailability*sourceFactor*lossFactor*latencyFactor));
 
-  if(prefs.scheduler_enabled){
-    const date=new Date(now),minute=date.getHours()*60+date.getMinutes();
-    const start=(Number(prefs.schedule_from_hour)||0)*60+(Number(prefs.schedule_from_min)||0);
-    const end=(Number(prefs.schedule_to_hour)||0)*60+(Number(prefs.schedule_to_min)||0);
-    const active=start===end?true:(start<end?minute>=start&&minute<end:minute>=start||minute<end);
-    world.altSpeedMode=active;
-  }
+  world.schedulerAltSpeedActive=scheduledAltSpeedActive(world,now);
   applyConfiguredLimitPacing(world,now);
   if(changed.length){
     const scheduled=schedule(world,now,0);
