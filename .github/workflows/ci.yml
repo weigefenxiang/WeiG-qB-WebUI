@@ -107,6 +107,7 @@ jobs:
     needs: classify
     permissions:
       contents: write
+      actions: write
     outputs:
       materialized_sha: ${{ steps.commit.outputs.materialized_sha }}
     steps:
@@ -125,6 +126,8 @@ jobs:
       - name: Commit canonical Torrent/Action compact runtime if changed
         id: commit
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           if git diff --quiet -- webui/private/data/torrent-compat.json webui/private/data/source-actions.json; then
@@ -132,11 +135,19 @@ jobs:
             exit 0
           fi
 
-          git fetch --no-tags origin dev
-          test "$(git rev-parse origin/dev)" = "$GITHUB_SHA" || {
-            echo "SAFE-REF abort before Torrent/Action runtime materialization push." >&2
-            exit 1
+          handoff_latest_settings_evidence() {
+            local remote_sha="$1"
+            echo "Torrent runtime owner $GITHUB_SHA is stale; handing settings-evidence to latest dev $remote_sha."
+            jq -n --arg ref dev '{ref:$ref,inputs:{validation_mode:"settings-evidence"}}' \
+              | gh api --method POST "/repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/dispatches" --input -
           }
+
+          git fetch --no-tags origin dev
+          REMOTE_DEV_SHA="$(git rev-parse origin/dev)"
+          if [ "$REMOTE_DEV_SHA" != "$GITHUB_SHA" ]; then
+            handoff_latest_settings_evidence "$REMOTE_DEV_SHA"
+            exit 0
+          fi
 
           mapfile -t changed < <(git diff --name-only)
           for path in "${changed[@]}"; do
@@ -152,10 +163,11 @@ jobs:
           git commit -m "a25: materialize Torrent Action source runtime [settings-evidence] [ui]"
 
           git fetch --no-tags origin dev
-          test "$(git rev-parse origin/dev)" = "$GITHUB_SHA" || {
-            echo "SAFE-REF abort before Torrent/Action runtime push." >&2
-            exit 1
-          }
+          REMOTE_DEV_SHA="$(git rev-parse origin/dev)"
+          if [ "$REMOTE_DEV_SHA" != "$GITHUB_SHA" ]; then
+            handoff_latest_settings_evidence "$REMOTE_DEV_SHA"
+            exit 0
+          fi
           git push origin HEAD:dev
           echo "materialized_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
