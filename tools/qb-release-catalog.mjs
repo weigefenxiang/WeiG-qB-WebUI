@@ -89,10 +89,11 @@ function apiActionSurface(ref,actions){
   return Object.fromEntries(Object.entries(result).sort(([a],[b])=>a.localeCompare(b)));
 }
 
-function torrentSurface(ref,actions){
+function torrentSurface(ref,actions,actionParameters){
   return extractQbReleaseTorrentSurface({
     ref,
     apiActions:actions,
+    apiActionParameters:actionParameters||{},
     readSource:file=>show(ref,file),
     readOptionalSource:file=>showMaybe(ref,file),
     readFirstSource:files=>firstSource(ref,files)
@@ -145,13 +146,14 @@ for(const tag of tags){
   const sourceSha=git('rev-list','-n','1',tag);
   const preferences=preferenceSurface(tag);
   const actions=apiActions(tag);
+  const actionParameters=apiActionSurface(tag,actions);
   catalog.push({
     qbVersion,webApiVersion,tag,sourceSha,stable:true,officialWeiGSupport:true,
     protocolGeneration:`webapi-v${parts(webApiVersion)[0]||'unknown'}`,
     ...preferences,
     apiActions:actions,
-    apiActionParameters:apiActionSurface(tag,actions),
-    ...torrentSurface(tag,actions)
+    apiActionParameters:actionParameters,
+    ...torrentSurface(tag,actions,actionParameters)
   });
 }
 if(!catalog.length)throw new Error('No catalog profiles were produced.');

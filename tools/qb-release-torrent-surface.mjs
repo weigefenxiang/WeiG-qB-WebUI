@@ -5,7 +5,7 @@ import {extractDetailContextMenus,extractFilePriorityControl,extractTorrentConte
 import {enrichTorrentFileColumnProvenance} from './qb-release-catalog-detail-provenance.mjs';
 import {extractTrackerFacetMode,extractTrackerFilterFacts} from './qb-tracker-filter-source.mjs';
 
-export function extractQbReleaseTorrentSurface({ref='',apiActions=[],readSource,readOptionalSource,readFirstSource}={}){
+export function extractQbReleaseTorrentSurface({ref='',apiActions=[],apiActionParameters={},readSource,readOptionalSource,readFirstSource}={}){
   const context=String(ref||'qB release');
   if(typeof readSource!=='function'||typeof readOptionalSource!=='function'||typeof readFirstSource!=='function')throw new Error(`${context}: Torrent release surface extractor requires exact source readers`);
   const torrentsControllerSource=readSource('src/webui/api/torrentscontroller.cpp');
@@ -45,7 +45,7 @@ export function extractQbReleaseTorrentSurface({ref='',apiActions=[],readSource,
   const filePriorityControl=extractFilePriorityControl({filesSource:torrentContentSource||propFilesSource,fileTreeSource},context);
   if(filePriorityControl)torrentDetailUi.controls={...(torrentDetailUi.controls||{}),filePriority:filePriorityControl};
 
-  const torrentContextMenu=extractTorrentContextMenu({menuSource,clientSource,apiActions},context);
+  const torrentContextMenu=extractTorrentContextMenu({menuSource,clientSource,apiActions,apiActionParameters},context);
   const contextMenus=extractDetailContextMenus({
     menuSource,
     trackerSource,

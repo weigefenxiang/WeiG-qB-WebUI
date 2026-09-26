@@ -12,11 +12,12 @@ const menu=new ContextMenu({actions:{
  futureRefresh: () => { fetch("api/v2/torrents/futureRefresh",{method:"POST",body:new URLSearchParams({hashes:"x"})}); }
 }});`;
 const actions=['torrentscontroller.h:startAction','torrentscontroller.h:futureRefreshAction'];
-const menu=extractTorrentContextMenu({menuSource:html,clientSource:js,apiActions:actions},'synthetic Torrent menu');
+const menu=extractTorrentContextMenu({menuSource:html,clientSource:js,apiActions:actions,apiActionParameters:{'torrentscontroller.h:startAction':{parameters:['hashes'],required:['hashes'],optional:[]},'torrentscontroller.h:futureRefreshAction':{parameters:['hashes'],required:['hashes'],optional:[]}}},'synthetic Torrent menu');
 assert.deepEqual(menu.map(x=>x.id),['start','Category','futureRefresh']);
 assert.equal(menu[0].sourceAction,'torrentscontroller.h:startAction');
 assert.equal(menu[2].endpoint,'torrents/futureRefresh');
 assert.equal(menu[2].sourceAction,'torrentscontroller.h:futureRefreshAction');
+assert.deepEqual(menu[2].required,['hashes']);assert.deepEqual(menu[2].parameters,['hashes']);
 const release=await import('../tools/qb-release-torrent-surface.mjs');
 const compact=await import('../tools/qb-compact-runtime.mjs');
 assert.equal(typeof release.extractQbReleaseTorrentSurface,'function');

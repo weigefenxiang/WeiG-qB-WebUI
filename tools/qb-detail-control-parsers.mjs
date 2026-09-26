@@ -34,8 +34,12 @@ function actionEndpoint(source,id,dialogs,apiActions,context){const trace=traced
 function selectionAvailability(source,id){const text=String(source||''),escaped=escapeRe(id),availability={};if(new RegExp(`selected[A-Za-z0-9_$]*\\.length\\s*===\\s*0[\\s\\S]{0,900}?hideItem\\(\\s*["']${escaped}["']\\s*\\)`).test(text)||new RegExp(`selected[A-Za-z0-9_$]*\\.length\\s*>=\\s*1[\\s\\S]{0,900}?showItem\\(\\s*["']${escaped}["']\\s*\\)`).test(text))availability.minSelection=1;if(new RegExp(`selected[A-Za-z0-9_$]*\\.length\\s*===\\s*1\\s*\\)[\\s\\S]{0,300}?showItem\\(\\s*["']${escaped}["']\\s*\\)[\\s\\S]{0,300}?else[\\s\\S]{0,300}?hideItem\\(\\s*["']${escaped}["']\\s*\\)`).test(text)){availability.minSelection=1;availability.maxSelection=1;}return availability;}
 function trackerExcludedPrefixes(source,id){const text=String(source||''),escaped=escapeRe(id),prefixes=[...text.matchAll(/\.startsWith\(\s*["']([^"']+)["']\s*\)/g)].map(match=>match[1]);if(!prefixes.length)return[];const staticBranch=/if\s*\(\s*containsStaticTracker[\s\S]*?\)\s*\{([\s\S]*?)\}\s*else/.exec(text);if(!staticBranch||!new RegExp(`hideItem\\(\\s*["']${escaped}["']\\s*\\)`).test(staticBranch[1]))return[];return[...new Set(prefixes)];}
 function enrichMenu(items,scriptSource,dialogs,apiActions,surface,context){return items.map(item=>{const resolved=actionEndpoint(scriptSource,item.id,dialogs,apiActions,context),availability=selectionAvailability(scriptSource,item.id),prefixes=surface==='trackers'?trackerExcludedPrefixes(scriptSource,item.id):[];if(prefixes.length)availability.excludedPrefixes=prefixes;return{...item,...(resolved||{}),...(Object.keys(availability).length?{availability}:{})};});}
-export function extractTorrentContextMenu({menuSource='',clientSource='',apiActions=[]}={},context='qB source'){
-  return enrichMenu(menuItems(menuSource,'torrentsTableMenu',context),clientSource,{},apiActions,'torrents',context);
+export function extractTorrentContextMenu({menuSource='',clientSource='',apiActions=[],apiActionParameters={}}={},context='qB source'){
+  return enrichMenu(menuItems(menuSource,'torrentsTableMenu',context),clientSource,{},apiActions,'torrents',context).map(item=>{
+    const raw=item&&item.sourceAction&&apiActionParameters&&apiActionParameters[item.sourceAction]||null;
+    if(!raw)return item;
+    return{...item,parameters:Array.isArray(raw.parameters)?raw.parameters.map(String):[],required:Array.isArray(raw.required)?raw.required.map(String):[],optional:Array.isArray(raw.optional)?raw.optional.map(String):[],parameterOptions:raw.parameterOptions&&typeof raw.parameterOptions==='object'?structuredClone(raw.parameterOptions):{}};
+  });
 }
 
 export function extractDetailContextMenus({menuSource='',trackerSource='',peerSource='',dialogSources={},apiActions=[]}={},context='qB source'){
