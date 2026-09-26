@@ -7,6 +7,10 @@ const editor=read('webui/private/scripts/torrent-action-editor.js');
 const selection=read('webui/private/scripts/selection.js');
 const index=read('webui/private/index.html');
 const app=read('webui/private/scripts/app.js');
+const pkg=JSON.parse(read('package.json'));
+const version=read('VERSION').trim();
+const runtimeVersion=read('webui/VERSION').trim();
+const identity=JSON.parse(read('webui/private/product-identity.json'));
 const sandbox={window:{WeiG:{Components:{},RateValue:null}}};sandbox.window.window=sandbox.window;
 vm.runInNewContext(rate,sandbox,{filename:'rate-value.js'});
 sandbox.window.WeiG.Components={}; // module creation only needs truthy Components; open() is not exercised
@@ -29,4 +33,5 @@ const client=read('webui/private/scripts/qb-client.js');assert.ok(client.include
 assert.ok(!selection.includes('function promptValue('),'Selection must retire its generic blank prompt path.');
 assert.ok(index.includes('id="prompt-dialog"')&&app.includes('function detailPromptValue('),'Shared Detail prompt must remain because Detail runtime still owns source-proven value prompts.');
 assert.ok(index.indexOf('scripts/torrent-action-editor.js')<index.indexOf('scripts/selection.js'),'Torrent Action Editor must load before Selection.');
-console.log('A24 action editor contract passed: current-value context, mixed state, canonical rate editor, and verified reread are wired.');
+assert.equal(version,'1.0.14');assert.equal(runtimeVersion,version);assert.equal(pkg.version,version);assert.equal(identity.version,version);
+console.log('A24 action editor contract passed: current-value context, mixed state, canonical rate editor, verified reread, and 1.0.14 identity are wired.');
