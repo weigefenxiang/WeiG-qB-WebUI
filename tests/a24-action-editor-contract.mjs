@@ -33,5 +33,5 @@ const client=read('webui/private/scripts/qb-client.js');assert.ok(client.include
 assert.ok(!selection.includes('function promptValue('),'Selection must retire its generic blank prompt path.');
 assert.ok(index.includes('id="prompt-dialog"')&&app.includes('function detailPromptValue('),'Shared Detail prompt must remain because Detail runtime still owns source-proven value prompts.');
 assert.ok(index.indexOf('scripts/torrent-action-editor.js')<index.indexOf('scripts/selection.js'),'Torrent Action Editor must load before Selection.');
-assert.equal(version,'1.0.14');assert.equal(runtimeVersion,version);assert.equal(pkg.version,version);assert.equal(identity.version,version);
+assert.equal(version,'1.0.15');assert.equal(runtimeVersion,version);assert.equal(pkg.version,version);assert.equal(identity.version,version);
 console.log('A24 action editor contract passed: current-value context, mixed state, canonical rate editor, verified reread, and 1.0.14 identity are wired.');
