@@ -102,7 +102,7 @@ jobs:
 
   torrent_runtime_materialize:
     name: qB Torrent/Action compact runtime materialization
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[torrent-runtime-materialize]') }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'settings-evidence' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[torrent-runtime-materialize]')) }}
     runs-on: ubuntu-latest
     needs: classify
     permissions:
@@ -593,6 +593,7 @@ jobs:
         shell: bash
         env:
           HEAD_MESSAGE: ${{ github.event.head_commit.message }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           GENERATED="$RUNNER_TEMP/qb-settings-materialized"
@@ -612,11 +613,19 @@ jobs:
             exit 1
           fi
 
-          git fetch --no-tags origin dev
-          test "$(git rev-parse origin/dev)" = "$GITHUB_SHA" || {
-            echo "SAFE-REF abort before materialization: dev moved away from $GITHUB_SHA" >&2
-            exit 1
+          handoff_latest_settings_evidence() {
+            local remote_sha="$1"
+            echo "Settings source owner $GITHUB_SHA is stale; handing settings-evidence to latest dev $remote_sha."
+            jq -n --arg ref dev '{ref:$ref,inputs:{validation_mode:"settings-evidence"}}' \
+              | gh api --method POST "/repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/dispatches" --input -
           }
+
+          git fetch --no-tags origin dev
+          REMOTE_DEV_SHA="$(git rev-parse origin/dev)"
+          if [ "$REMOTE_DEV_SHA" != "$GITHUB_SHA" ]; then
+            handoff_latest_settings_evidence "$REMOTE_DEV_SHA"
+            exit 0
+          fi
 
           cp "$GENERATED/private/data/qb-settings-native.txt" webui/private/data/qb-settings-native.txt
           rm -rf webui/translations
@@ -642,10 +651,11 @@ jobs:
           git commit -m "a2: materialize exact qB settings copy bundle [settings-evidence-verify] [native-surfaces] [settings-matrix] [ui]"
 
           git fetch --no-tags origin dev
-          test "$(git rev-parse origin/dev)" = "$GITHUB_SHA" || {
-            echo "SAFE-REF abort before push: dev moved away from $GITHUB_SHA" >&2
-            exit 1
-          }
+          REMOTE_DEV_SHA="$(git rev-parse origin/dev)"
+          if [ "$REMOTE_DEV_SHA" != "$GITHUB_SHA" ]; then
+            handoff_latest_settings_evidence "$REMOTE_DEV_SHA"
+            exit 0
+          fi
           git push origin HEAD:dev
           echo "materialized_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - name: Upload exact generated qB Settings copy/QM evidence
@@ -667,6 +677,7 @@ jobs:
       - settings_bundle_materialize
     permissions:
       contents: write
+      actions: write
     outputs:
       materialized_sha: ${{ steps.materialize.outputs.materialized_sha }}
     steps:
@@ -1245,6 +1256,7 @@ jobs:
     if: ${{ always() && github.ref == 'refs/heads/dev' }}
     runs-on: ubuntu-latest
     needs:
+      - torrent_runtime_materialize
       - settings_runtime_materialize
       - settings_bundle_materialize
       - stable_lkg_refresh
@@ -1257,6 +1269,7 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          TORRENT_RUNTIME_SHA: ${{ needs.torrent_runtime_materialize.outputs.materialized_sha }}
           SETTINGS_RUNTIME_SHA: ${{ needs.settings_runtime_materialize.outputs.materialized_sha }}
           SETTINGS_BUNDLE_SHA: ${{ needs.settings_bundle_materialize.outputs.materialized_sha }}
           STABLE_RUNTIME_SHA: ${{ needs.stable_lkg_refresh.outputs.materialized_sha }}
@@ -1264,7 +1277,7 @@ jobs:
         run: |
           set -euo pipefail
           shas=()
-          for value in "$SETTINGS_RUNTIME_SHA" "$SETTINGS_BUNDLE_SHA" "$STABLE_RUNTIME_SHA" "$DETAIL_RUNTIME_SHA"; do
+          for value in "$TORRENT_RUNTIME_SHA" "$SETTINGS_RUNTIME_SHA" "$SETTINGS_BUNDLE_SHA" "$STABLE_RUNTIME_SHA" "$DETAIL_RUNTIME_SHA"; do
             [ -n "$value" ] && shas+=("$value")
           done
           if [ "${#shas[@]}" -eq 0 ]; then
