@@ -6,6 +6,7 @@
 .data-grid__row>[data-column-key],.shared-table__sticky-folder>[data-column-key]{min-width:0;align-self:stretch;display:flex;align-items:center}
 .data-grid__row>.torrent-name-cell{display:grid}
 .data-grid__row>[data-column-key=progress]{display:grid}
+.data-viewport__row{will-change:transform}
 .data-viewport__row[hidden]{display:none!important;pointer-events:none!important}
 .data-viewport>.data-viewport__head{flex:0 0 auto;isolation:isolate;background:var(--bg-surface)}
 
