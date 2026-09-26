@@ -46,7 +46,10 @@ export const DEFAULT_PREFERENCES={
   alt_up_limit:2048,
   scheduler_enabled:false,
   schedule_from_hour:8,
+  schedule_from_min:0,
   schedule_to_hour:20,
+  schedule_to_min:0,
+  scheduler_days:0,
   limit_utp_rate:true,
   limit_tcp_overhead:false,
   dht:true,
@@ -327,6 +330,77 @@ function queueCapacity(value){
   return Math.max(0,number);
 }
 
+function transferPeerCapacity(world,torrent,direction){
+  const env=world.environment,prefs=world.preferences;
+  const encryptionFactor=encryptionPeerFactor(world,torrent);
+  const population=direction==='download'?(Number(torrent.seeders)||0)+(Number(torrent.leechers)||0):(Number(torrent.leechers)||0);
+  if(direction==='download'&&(Number(torrent.seeders)||0)<=0)return 0;
+  const possible=Math.max(0,Math.round(population*env.peerAvailability*encryptionFactor));
+  const perTorrent=queueCapacity(prefs.max_connec_per_torrent);
+  return Math.max(0,Math.min(possible,perTorrent));
+}
+
+function uploadSlotCapacity(world,torrent,connectedPeers){
+  const prefs=world.preferences,env=world.environment;
+  const shareable=torrent.completed?1:(torrent.size>0?Math.min(1,Math.max(0,torrent.downloaded/torrent.size)):0);
+  if(shareable<=0)return 0;
+  const encryptionFactor=encryptionPeerFactor(world,torrent);
+  const interested=Math.max(0,Math.round((Number(torrent.leechers)||0)*env.peerAvailability*encryptionFactor*shareable));
+  const perTorrent=queueCapacity(prefs.max_uploads_per_torrent);
+  return Math.max(0,Math.min(Number(connectedPeers)||0,interested,perTorrent));
+}
+
+function allocateFair(items,globalLimit,capacityFor){
+  const result=new Map(),capacities=items.map(item=>Math.max(0,Math.floor(Number(capacityFor(item))||0)));
+  let remaining=queueCapacity(globalLimit);
+  if(!Number.isFinite(remaining)){
+    items.forEach((item,index)=>result.set(item.hash,capacities[index]));
+    return result;
+  }
+  for(let index=0;index<items.length&&remaining>0;index++){
+    if(capacities[index]<=0)continue;
+    result.set(items[index].hash,1);remaining--;
+  }
+  let progressed=true;
+  while(remaining>0&&progressed){
+    progressed=false;
+    for(let index=0;index<items.length&&remaining>0;index++){
+      const capacity=capacities[index],current=result.get(items[index].hash)||0;
+      if(current>=capacity)continue;
+      result.set(items[index].hash,current+1);remaining--;progressed=true;
+    }
+  }
+  return result;
+}
+
+function schedulerDayMatches(dayCode,day){
+  const code=Math.max(0,Math.min(9,Math.round(Number(dayCode)||0)));
+  if(code===0)return true;
+  if(code===1)return day>=1&&day<=5;
+  if(code===2)return day===0||day===6;
+  return day===((code-2)%7);
+}
+
+export function scheduledAltSpeedActive(world,now=Date.now()){
+  const prefs=world?.preferences||{};
+  if(!prefs.scheduler_enabled)return false;
+  const date=new Date(now),day=date.getDay(),minute=date.getHours()*60+date.getMinutes();
+  const fromHour=Math.max(0,Math.min(23,Math.round(Number(prefs.schedule_from_hour)||0)));
+  const toHour=Math.max(0,Math.min(23,Math.round(Number(prefs.schedule_to_hour)||0)));
+  const fromMin=Math.max(0,Math.min(59,Math.round(Number(prefs.schedule_from_min)||0)));
+  const toMin=Math.max(0,Math.min(59,Math.round(Number(prefs.schedule_to_min)||0)));
+  const from=fromHour*60+fromMin,to=toHour*60+toMin;
+  if(from===to)return schedulerDayMatches(prefs.scheduler_days,day);
+  if(from<to)return schedulerDayMatches(prefs.scheduler_days,day)&&minute>=from&&minute<to;
+  if(minute>=from)return schedulerDayMatches(prefs.scheduler_days,day);
+  const previous=(day+6)%7;
+  return minute<to&&schedulerDayMatches(prefs.scheduler_days,previous);
+}
+
+export function effectiveAltSpeedMode(world,now=Date.now()){
+  return !!world?.altSpeedMode||scheduledAltSpeedActive(world,now);
+}
+
 function updateSlowQueueState(world,torrent,now){
   const prefs=world.preferences||{};
   const active=[CANONICAL.DOWNLOAD_ACTIVE,CANONICAL.DOWNLOAD_STALLED,CANONICAL.SEED_ACTIVE,CANONICAL.SEED_STALLED].includes(torrent.canonicalState);
@@ -424,22 +498,48 @@ export function schedule(world,now=Date.now(),elapsedSeconds=0){
   let totalSlots=prefs.queueing_enabled?queueCapacity(prefs.max_active_torrents):Infinity;
   let dlSlots=prefs.queueing_enabled?queueCapacity(prefs.max_active_downloads):Infinity;
   let ulSlots=prefs.queueing_enabled?queueCapacity(prefs.max_active_uploads):Infinity;
+  let admissionConnections=queueCapacity(prefs.max_connec);
+  let admissionUploadSlots=queueCapacity(prefs.max_uploads);
 
   for(const t of downloads){
     const exempt=!!prefs.dont_count_slow_torrents&&t.queueSlow===true;
-    if(t.forceStart||exempt){activeDownloads.add(t.hash);continue;}
-    if(!allowedActive(world,t,'download'))continue;
-    if(dlSlots>0&&totalSlots>0){activeDownloads.add(t.hash);if(Number.isFinite(dlSlots))dlSlots--;if(Number.isFinite(totalSlots))totalSlots--;}
+    const forced=t.forceStart||exempt;
+    if(!forced&&!allowedActive(world,t,'download'))continue;
+    if(transferPeerCapacity(world,t,'download')<=0){if(forced)activeDownloads.add(t.hash);continue;}
+    if(!forced&&(dlSlots<=0||totalSlots<=0||admissionConnections<=0))continue;
+    activeDownloads.add(t.hash);
+    if(!forced){
+      if(Number.isFinite(dlSlots))dlSlots--;
+      if(Number.isFinite(totalSlots))totalSlots--;
+      if(Number.isFinite(admissionConnections))admissionConnections--;
+    }
   }
   for(const t of uploads){
     const exempt=!!prefs.dont_count_slow_torrents&&t.queueSlow===true;
-    if(t.forceStart||exempt){activeUploads.add(t.hash);continue;}
-    if(!allowedActive(world,t,'upload'))continue;
-    if(ulSlots>0&&totalSlots>0){activeUploads.add(t.hash);if(Number.isFinite(ulSlots))ulSlots--;if(Number.isFinite(totalSlots))totalSlots--;}
+    const forced=t.forceStart||exempt;
+    if(!forced&&!allowedActive(world,t,'upload'))continue;
+    const peerCapacity=transferPeerCapacity(world,t,'upload');
+    const slotCapacity=uploadSlotCapacity(world,t,peerCapacity);
+    if(peerCapacity<=0||slotCapacity<=0){if(forced)activeUploads.add(t.hash);continue;}
+    if(!forced&&(ulSlots<=0||totalSlots<=0||admissionConnections<=0||admissionUploadSlots<=0))continue;
+    activeUploads.add(t.hash);
+    if(!forced){
+      if(Number.isFinite(ulSlots))ulSlots--;
+      if(Number.isFinite(totalSlots))totalSlots--;
+      if(Number.isFinite(admissionConnections))admissionConnections--;
+      if(Number.isFinite(admissionUploadSlots))admissionUploadSlots--;
+    }
   }
 
-  let remainingConnections=Math.max(0,Number(prefs.max_connec)||0)||Infinity;
-  let remainingUploadSlots=Math.max(0,Number(prefs.max_uploads)||0)||Infinity;
+  const activeDownloadList=downloads.filter(t=>activeDownloads.has(t.hash));
+  const activeUploadList=uploads.filter(t=>activeUploads.has(t.hash));
+  const connectionOrder=[...activeDownloadList,...activeUploadList];
+  const connectionAllocations=allocateFair(connectionOrder,prefs.max_connec,t=>transferPeerCapacity(world,t,t.completed?'upload':'download'));
+  const seedUploadAllocations=allocateFair(activeUploadList,prefs.max_uploads,t=>uploadSlotCapacity(world,t,connectionAllocations.get(t.hash)||0));
+  const seedSlotsUsed=Array.from(seedUploadAllocations.values()).reduce((sum,value)=>sum+value,0);
+  const globalUploadCapacity=queueCapacity(prefs.max_uploads);
+  const remainingDuplexSlots=Number.isFinite(globalUploadCapacity)?Math.max(0,globalUploadCapacity-seedSlotsUsed):Infinity;
+  const duplexUploadAllocations=allocateFair(activeDownloadList,remainingDuplexSlots,t=>uploadSlotCapacity(world,t,connectionAllocations.get(t.hash)||0));
   const dlItems=[],ulItems=[],changed=new Set(normalizedChecking);
 
   for(const t of world.torrents){
@@ -455,12 +555,7 @@ export function schedule(world,now=Date.now(),elapsedSeconds=0){
     }else if(!t.completed&&![CANONICAL.DOWNLOAD_PAUSED,CANONICAL.ERROR,CANONICAL.CHECKING,CANONICAL.METADATA,CANONICAL.MOVING].includes(t.canonicalState)){
       if(!activeDownloads.has(t.hash))t.canonicalState=CANONICAL.DOWNLOAD_QUEUED;
       else{
-        const encryptionFactor=encryptionPeerFactor(world,t);
-        const possiblePeers=Math.max(0,Math.round((t.seeders+t.leechers)*env.peerAvailability*encryptionFactor));
-        const perTorrent=Math.max(0,Number(prefs.max_connec_per_torrent)||0)||possiblePeers;
-        const connections=Math.min(possiblePeers,perTorrent,remainingConnections);
-        t.connectedPeers=Number.isFinite(connections)?connections:possiblePeers;
-        if(Number.isFinite(remainingConnections))remainingConnections=Math.max(0,remainingConnections-t.connectedPeers);
+        t.connectedPeers=connectionAllocations.get(t.hash)||0;
         if(t.seeders<=0||t.connectedPeers<=0)t.canonicalState=CANONICAL.DOWNLOAD_STALLED;
         else{
           t.canonicalState=CANONICAL.DOWNLOAD_ACTIVE;
@@ -469,10 +564,7 @@ export function schedule(world,now=Date.now(),elapsedSeconds=0){
           demand=cap(demand,Number(t.downloadLimit)||0);
           dlItems.push({torrent:t,demand});
           const shareable=t.size>0?Math.min(1,Math.max(0,t.downloaded/t.size)):0;
-          const possibleUploadPeers=Math.min(t.connectedPeers,Math.max(0,Math.round(t.leechers*env.peerAvailability*encryptionFactor*shareable)));
-          const perTorrentSlots=Math.max(0,Number(prefs.max_uploads_per_torrent)||0)||possibleUploadPeers;
-          t.uploadSlots=Math.min(possibleUploadPeers,perTorrentSlots,remainingUploadSlots);
-          if(Number.isFinite(remainingUploadSlots))remainingUploadSlots=Math.max(0,remainingUploadSlots-t.uploadSlots);
+          t.uploadSlots=duplexUploadAllocations.get(t.hash)||0;
           if(t.uploadSlots>0){
             const uploadPeerFactor=Math.min(1,Math.max(.08,t.uploadSlots/4));
             const pieceFactor=Math.min(1,Math.max(.12,shareable));
@@ -485,15 +577,8 @@ export function schedule(world,now=Date.now(),elapsedSeconds=0){
     }else if(t.completed&&![CANONICAL.SEED_PAUSED,CANONICAL.ERROR,CANONICAL.CHECKING,CANONICAL.MOVING].includes(t.canonicalState)){
       if(!activeUploads.has(t.hash))t.canonicalState=CANONICAL.SEED_QUEUED;
       else{
-        const encryptionFactor=encryptionPeerFactor(world,t);
-        const possiblePeers=Math.max(0,Math.round(t.leechers*env.peerAvailability*encryptionFactor));
-        const perTorrent=Math.max(0,Number(prefs.max_connec_per_torrent)||0)||possiblePeers;
-        const connections=Math.min(possiblePeers,perTorrent,remainingConnections);
-        t.connectedPeers=Number.isFinite(connections)?connections:possiblePeers;
-        if(Number.isFinite(remainingConnections))remainingConnections=Math.max(0,remainingConnections-t.connectedPeers);
-        const perTorrentSlots=Math.max(0,Number(prefs.max_uploads_per_torrent)||0)||possiblePeers;
-        t.uploadSlots=Math.min(possiblePeers,perTorrentSlots,remainingUploadSlots);
-        if(Number.isFinite(remainingUploadSlots))remainingUploadSlots=Math.max(0,remainingUploadSlots-t.uploadSlots);
+        t.connectedPeers=connectionAllocations.get(t.hash)||0;
+        t.uploadSlots=seedUploadAllocations.get(t.hash)||0;
         if(t.leechers<=0||t.connectedPeers<=0||t.uploadSlots<=0)t.canonicalState=CANONICAL.SEED_STALLED;
         else{
           t.canonicalState=CANONICAL.SEED_ACTIVE;
@@ -509,7 +594,7 @@ export function schedule(world,now=Date.now(),elapsedSeconds=0){
 
   let dlBudget=Math.min(env.downCapacity,env.diskWriteCapacity);
   let ulBudget=Math.min(env.upCapacity,env.diskReadCapacity);
-  if(world.altSpeedMode){
+  if(effectiveAltSpeedMode(world,now)){
     const altDl=(Number(prefs.alt_dl_limit)||0)*1024;
     const altUl=(Number(prefs.alt_up_limit)||0)*1024;
     if(altDl>0)dlBudget=Math.min(dlBudget,altDl);
@@ -687,7 +772,7 @@ export function serverState(world,now=Date.now()){
     alltime_dl:Math.floor(world.stats.alltime_dl),
     alltime_ul:Math.floor(world.stats.alltime_ul),
     free_space_on_disk:Math.floor(world.environment.freeSpace),
-    use_alt_speed_limits:world.altSpeedMode,
+    use_alt_speed_limits:effectiveAltSpeedMode(world,now),
     queueing:!!world.preferences.queueing_enabled
   };
 }

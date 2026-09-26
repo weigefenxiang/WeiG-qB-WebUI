@@ -78,6 +78,9 @@ export function registerDefaultPreferenceBindings(registry) {
   },{modeled:true,effect:'new-torrent-start-state'});
 
   registry.register('scheduler_enabled',booleanValue,{modeled:true,effect:'alternate-rate-schedule'});
+  registerMany(registry,['schedule_from_hour','schedule_to_hour'],value=>Math.max(0,Math.min(23,roundedNumber(value))),{modeled:true,effect:'alternate-rate-schedule'});
+  registerMany(registry,['schedule_from_min','schedule_to_min'],value=>Math.max(0,Math.min(59,roundedNumber(value))),{modeled:true,effect:'alternate-rate-schedule'});
+  registry.register('scheduler_days',value=>Math.max(0,Math.min(9,roundedNumber(value))),{modeled:true,effect:'alternate-rate-schedule'});
   registerMany(registry,['pex','lsd'],booleanValue,{modeled:true,effect:'peer-discovery'});
 
   return registry;

@@ -17,6 +17,11 @@ const MiB = 1024 * 1024;
   const preferenceKeys = [
     'queueing_enabled',
     'scheduler_enabled',
+    'schedule_from_hour',
+    'schedule_from_min',
+    'schedule_to_hour',
+    'schedule_to_min',
+    'scheduler_days',
     'dht',
     'pex',
     'max_active_downloads',
@@ -82,7 +87,8 @@ const MiB = 1024 * 1024;
   assert.equal(descriptors.get('max_inactive_seeding_time').coverage,'MODELED','inactive seeding time must feed the canonical share-limit policy');
   assert.equal(descriptors.get('max_ratio_act').coverage,'MODELED','global share-limit action must drive the canonical share-limit action owner');
   assert.equal(descriptors.get('encryption').coverage,'MODELED','encryption mode changes the compatible virtual peer population');
-  assert.equal(descriptors.get('scheduler_enabled').coverage,'MODELED','scheduler_enabled is normalized state only until time-window behavior is implemented');
+  assert.equal(descriptors.get('scheduler_enabled').coverage,'MODELED','scheduler_enabled must drive the alternate-rate time-window policy');
+  for(const key of ['schedule_from_hour','schedule_from_min','schedule_to_hour','schedule_to_min','scheduler_days'])assert.equal(descriptors.get(key).coverage,'MODELED',`${key} must participate in the alternate-rate schedule`);
   assert.equal(descriptors.get('pex').coverage,'MODELED','PeX must not be called behavior-modeled when no simulator side effect consumes it');
 
   const coverage = runtime.coverage();
@@ -97,6 +103,12 @@ const MiB = 1024 * 1024;
 
   const accepted = runtime.write({
     max_active_downloads: '2',
+    scheduler_enabled:true,
+    schedule_from_hour:25,
+    schedule_from_min:61,
+    schedule_to_hour:-3,
+    schedule_to_min:-4,
+    scheduler_days:12,
     max_active_uploads: 3,
     max_active_torrents: 4,
     max_active_checking_torrents: 2,
@@ -117,6 +129,7 @@ const MiB = 1024 * 1024;
   }, 1700000001000);
 
   assert.equal(accepted.max_active_downloads, 2, 'modeled numeric bindings must normalize values');
+  assert.equal(accepted.schedule_from_hour,23);assert.equal(accepted.schedule_from_min,59);assert.equal(accepted.schedule_to_hour,0);assert.equal(accepted.schedule_to_min,0);assert.equal(accepted.scheduler_days,9);
   assert.equal(world.preferences.max_active_downloads, 2, 'runtime writes must reach the canonical world preferences');
   assert.equal(world.preferences.max_active_checking_torrents,2,'checking concurrency writes must reach canonical world preferences');
   assert.equal(world.preferences.dont_count_slow_torrents,true,'slow torrent queue exclusion must persist');

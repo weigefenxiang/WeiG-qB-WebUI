@@ -339,4 +339,40 @@ const baseNow=1700000000000;
   assert.ok(activeDownloads+activeUploads<=4,'maximum active Torrents must bound the unique active queue population');
 }
 
+
+{
+  const w=createWorld({profile:{qbVersion:'5.2.3',webApiVersion:'2.15.1'},count:32,seed:'queue-target-fill-runtime',now:baseNow});
+  w.torrents.forEach((t,index)=>{
+    t.completed=index>=16;
+    t.downloaded=t.completed?t.size:Math.floor(t.size*.5);
+    t.canonicalState=t.completed?CANONICAL.SEED_QUEUED:CANONICAL.DOWNLOAD_QUEUED;
+    t.resumeState=t.canonicalState;
+    t.seeders=index<2?0:12;
+    t.leechers=index>=16&&index<18?0:12;
+    t.queuePosition=index+1;
+  });
+  setPreferences(w,{
+    queueing_enabled:true,
+    max_active_downloads:8,
+    max_active_uploads:8,
+    max_active_torrents:16,
+    max_connec:64,
+    max_connec_per_torrent:4,
+    max_uploads:32,
+    max_uploads_per_torrent:2
+  },baseNow);
+  assert.equal(w.torrents.filter(t=>t.effectiveDownloadRate>0).length,8,'eligible downloads later in the queue must backfill zero-peer entries until the configured active target is met');
+  assert.equal(w.torrents.filter(t=>t.completed&&t.effectiveUploadRate>0).length,8,'eligible seeders later in the queue must backfill zero-peer entries until the configured upload target is met');
+
+  setPreferences(w,{max_connec:3,max_connec_per_torrent:1,max_uploads:2,max_uploads_per_torrent:1},baseNow+1);
+  assert.ok(w.torrents.filter(t=>t.effectiveDownloadRate>0||t.effectiveUploadRate>0).length<=3,'global connection capacity must bound the number of concurrently transferring Torrents when each needs a peer');
+  assert.ok(w.torrents.filter(t=>t.effectiveUploadRate>0).length<=2,'global upload slots must remain a tighter bound than queue upload targets');
+  assert.ok(w.torrents.every(t=>t.connectedPeers<=1),'per-Torrent connection limit must remain a hard cap');
+  assert.ok(w.torrents.every(t=>t.uploadSlots<=1),'per-Torrent upload slot limit must remain a hard cap');
+
+  setPreferences(w,{max_connec:0,max_uploads:0},baseNow+2);
+  assert.equal(w.torrents.filter(t=>t.effectiveDownloadRate>0||t.effectiveUploadRate>0).length,0,'zero global connections must mean zero, not unlimited');
+  assert.equal(w.torrents.reduce((sum,t)=>sum+t.uploadSlots,0),0,'zero global upload slots must mean zero, not unlimited');
+}
+
 console.log('Virtual qB realism contract passed: upstream profile facts survive normalization; deterministic environment policies remain bounded; forced states, queue ranks, facet deltas and automatic management stay coherent.');
