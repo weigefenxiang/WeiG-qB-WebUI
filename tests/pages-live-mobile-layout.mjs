@@ -170,6 +170,17 @@ try{
   assert.ok(activeSettingsTab.active.left>=activeSettingsTab.rail.left-1&&activeSettingsTab.active.right<=activeSettingsTab.rail.right+1,`last source-derived Settings tab must auto-scroll into view: ${JSON.stringify(activeSettingsTab)}`);
   await page.setViewportSize({width:390,height:844});
 
+  const rssSettingsTab=page.locator('#settings-tabs [data-settings-tab="rss"]');
+  assert.equal(await rssSettingsTab.count(),1,'source-native RSS Settings tab must be available for RSS Downloader return-context acceptance');
+  await rssSettingsTab.click();
+  await page.waitForFunction(()=>document.querySelector('#settings-tabs [data-settings-tab="rss"]')?.classList.contains('is-active')&&document.querySelector('[data-source-action="Rss.openRssDownloader"]'),null,{timeout:30000});
+  const rssDownloaderOpen=page.locator('[data-source-action="Rss.openRssDownloader"]').first();
+  await rssDownloaderOpen.click();
+  await page.waitForFunction(()=>location.hash.startsWith('#/rss')&&document.getElementById('rss-rules-dialog')?.open===true,null,{timeout:30000});
+  const rssDownloaderClose=page.locator('#rss-rules-dialog .workspace__header .inline-form button').last();
+  await rssDownloaderClose.click();
+  await page.waitForFunction(()=>location.hash.startsWith('#/settings')&&document.getElementById('settings-view')?.classList.contains('is-active')&&document.querySelector('#settings-tabs [data-settings-tab="rss"]')?.classList.contains('is-active')&&!document.getElementById('rss-rules-dialog')?.open,null,{timeout:30000});
+
   await page.locator('#settings-tabs [data-settings-tab="behavior"]').click();
   await page.waitForFunction(()=>document.querySelector('#settings-tabs [data-settings-tab="behavior"]')?.classList.contains('is-active')&&document.querySelector('#settings-content .ui-select__trigger'),null,{timeout:30000});
   const behaviorSelect=page.locator('#settings-content .ui-select__trigger').first();
