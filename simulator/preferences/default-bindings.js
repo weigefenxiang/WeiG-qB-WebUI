@@ -19,6 +19,10 @@ function encryptionMode(value) {
   return Math.max(0, Math.min(2, roundedNumber(value)));
 }
 
+function shareLimitAction(value) {
+  return Math.max(0, Math.min(3, roundedNumber(value)));
+}
+
 function booleanValue(value) {
   if (value === true || value === 1 || value === '1' || value === 'true') return true;
   if (value === false || value === 0 || value === '0' || value === 'false') return false;
@@ -55,11 +59,16 @@ export function registerDefaultPreferenceBindings(registry) {
   registry.register('encryption',encryptionMode,{modeled:true,effect:'peer-encryption-compatibility'});
 
   registry.register('queueing_enabled',booleanValue,{modeled:true,effect:'scheduler-capacity'});
+  registry.register('dont_count_slow_torrents',booleanValue,{modeled:true,effect:'slow-torrent-queueing'});
+  registerMany(registry,['slow_torrent_dl_rate_threshold','slow_torrent_ul_rate_threshold','slow_torrent_inactive_timer'],nonNegativeInteger,{modeled:true,effect:'slow-torrent-queueing'});
   registry.register('dht',booleanValue,{modeled:true,effect:'transfer-dht-state'});
   registry.register('max_ratio',nonNegativeNumber,{modeled:true,effect:'share-ratio-policy'});
   registry.register('max_ratio_enabled',booleanValue,{modeled:true,effect:'share-ratio-policy'});
   registry.register('max_seeding_time',nonNegativeNumber,{modeled:true,effect:'seeding-time-policy'});
   registry.register('max_seeding_time_enabled',booleanValue,{modeled:true,effect:'seeding-time-policy'});
+  registry.register('max_inactive_seeding_time',roundedNumber,{modeled:true,effect:'inactive-seeding-policy'});
+  registry.register('max_inactive_seeding_time_enabled',booleanValue,{modeled:true,effect:'inactive-seeding-policy'});
+  registry.register('max_ratio_act',shareLimitAction,{modeled:true,effect:'share-limit-action'});
   registry.register('save_path',stringValue,{modeled:true,effect:'managed-save-path'});
   registry.register('start_paused_enabled',booleanValue,{modeled:true,effect:'new-torrent-start-state'});
   registry.register('add_stopped_enabled',(value,context={})=>{

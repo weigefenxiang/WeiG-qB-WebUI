@@ -58,10 +58,17 @@ export const DEFAULT_PREFERENCES={
   max_active_uploads:24,
   max_active_torrents:30,
   max_active_checking_torrents:1,
+  dont_count_slow_torrents:false,
+  slow_torrent_dl_rate_threshold:2,
+  slow_torrent_ul_rate_threshold:2,
+  slow_torrent_inactive_timer:60,
   max_ratio:2,
   max_ratio_enabled:false,
   max_seeding_time:1440,
   max_seeding_time_enabled:false,
+  max_inactive_seeding_time:-1,
+  max_inactive_seeding_time_enabled:false,
+  max_ratio_act:0,
   web_ui_domain_list:'*',
   web_ui_address:'*',
   web_ui_port:8080,
@@ -201,6 +208,8 @@ function makeTorrent(seed,index,now){
     leechers:baseLeechers,
     connectedPeers:0,
     uploadSlots:0,
+    slowTorrentSince:0,
+    queueSlow:false,
     lastStateChange:Math.floor(now/1000),
     error:state===CANONICAL.ERROR?'Virtual disk I/O error':'',
     files:[
@@ -312,6 +321,30 @@ function allowedActive(world,torrent,direction){
   return true;
 }
 
+function queueCapacity(value){
+  const number=Math.round(Number(value));
+  if(!Number.isFinite(number)||number<0)return Infinity;
+  return Math.max(0,number);
+}
+
+function updateSlowQueueState(world,torrent,now){
+  const prefs=world.preferences||{};
+  const active=[CANONICAL.DOWNLOAD_ACTIVE,CANONICAL.DOWNLOAD_STALLED,CANONICAL.SEED_ACTIVE,CANONICAL.SEED_STALLED].includes(torrent.canonicalState);
+  if(!active||torrent.forceStart){
+    torrent.slowTorrentSince=0;torrent.queueSlow=false;return false;
+  }
+  const dlThreshold=Math.max(0,Number(prefs.slow_torrent_dl_rate_threshold)||0)*1024;
+  const ulThreshold=Math.max(0,Number(prefs.slow_torrent_ul_rate_threshold)||0)*1024;
+  const below=dlThreshold>0&&ulThreshold>0
+    &&(Number(torrent.effectiveDownloadRate)||0)<dlThreshold
+    &&(Number(torrent.effectiveUploadRate)||0)<ulThreshold;
+  if(!below){torrent.slowTorrentSince=0;torrent.queueSlow=false;return false;}
+  if(!Number.isFinite(Number(torrent.slowTorrentSince))||Number(torrent.slowTorrentSince)<=0)torrent.slowTorrentSince=now;
+  const wait=Math.max(0,Number(prefs.slow_torrent_inactive_timer)||0)*1000;
+  torrent.queueSlow=(now-Number(torrent.slowTorrentSince))>=wait;
+  return torrent.queueSlow;
+}
+
 function cap(value,limit){
   return limit>0?Math.min(value,limit):value;
 }
@@ -361,6 +394,7 @@ function queueCandidates(world,now){
     if(t.completed)uploads.push(t);else downloads.push(t);
   };
   for(const t of world.torrents){
+    updateSlowQueueState(world,t,now);
     if(t.canonicalState===CANONICAL.CHECKING){checking.push(t);continue;}
     enqueue(t);
   }
@@ -387,19 +421,21 @@ export function schedule(world,now=Date.now(),elapsedSeconds=0){
   const prefs=world.preferences,env=world.environment;
   const {downloads,uploads,normalizedChecking}=queueCandidates(world,now);
   const activeDownloads=new Set(),activeUploads=new Set();
-  let totalSlots=prefs.queueing_enabled?Math.max(0,Number(prefs.max_active_torrents)||0):Infinity;
-  let dlSlots=prefs.queueing_enabled?Math.max(0,Number(prefs.max_active_downloads)||0):Infinity;
-  let ulSlots=prefs.queueing_enabled?Math.max(0,Number(prefs.max_active_uploads)||0):Infinity;
+  let totalSlots=prefs.queueing_enabled?queueCapacity(prefs.max_active_torrents):Infinity;
+  let dlSlots=prefs.queueing_enabled?queueCapacity(prefs.max_active_downloads):Infinity;
+  let ulSlots=prefs.queueing_enabled?queueCapacity(prefs.max_active_uploads):Infinity;
 
   for(const t of downloads){
-    if(t.forceStart){activeDownloads.add(t.hash);continue;}
+    const exempt=!!prefs.dont_count_slow_torrents&&t.queueSlow===true;
+    if(t.forceStart||exempt){activeDownloads.add(t.hash);continue;}
     if(!allowedActive(world,t,'download'))continue;
-    if(dlSlots>0&&totalSlots>0){activeDownloads.add(t.hash);dlSlots--;totalSlots--;}
+    if(dlSlots>0&&totalSlots>0){activeDownloads.add(t.hash);if(Number.isFinite(dlSlots))dlSlots--;if(Number.isFinite(totalSlots))totalSlots--;}
   }
   for(const t of uploads){
-    if(t.forceStart){activeUploads.add(t.hash);continue;}
+    const exempt=!!prefs.dont_count_slow_torrents&&t.queueSlow===true;
+    if(t.forceStart||exempt){activeUploads.add(t.hash);continue;}
     if(!allowedActive(world,t,'upload'))continue;
-    if(ulSlots>0&&totalSlots>0){activeUploads.add(t.hash);ulSlots--;totalSlots--;}
+    if(ulSlots>0&&totalSlots>0){activeUploads.add(t.hash);if(Number.isFinite(ulSlots))ulSlots--;if(Number.isFinite(totalSlots))totalSlots--;}
   }
 
   let remainingConnections=Math.max(0,Number(prefs.max_connec)||0)||Infinity;
@@ -502,15 +538,6 @@ export function schedule(world,now=Date.now(),elapsedSeconds=0){
         t.uploaded+=amount;world.stats.alltime_ul+=amount;if(t.completed)t.seedTime+=elapsedSeconds;
       }
       if(t.effectiveDownloadRate>0||t.effectiveUploadRate>0)t.activeTime+=elapsedSeconds;
-      const ratio=t.downloaded>0?t.uploaded/t.downloaded:0;
-      if(t.completed&&prefs.max_ratio_enabled&&Number(prefs.max_ratio)>0&&ratio>=Number(prefs.max_ratio)){
-        t.canonicalState=CANONICAL.SEED_PAUSED;t.effectiveUploadRate=0;
-        appendLog(world,`Share ratio limit reached: ${t.name}`,1,now);
-      }
-      if(t.completed&&prefs.max_seeding_time_enabled&&Number(prefs.max_seeding_time)>0&&t.seedTime>=Number(prefs.max_seeding_time)*60){
-        t.canonicalState=CANONICAL.SEED_PAUSED;t.effectiveUploadRate=0;
-        appendLog(world,`Seeding time limit reached: ${t.name}`,1,now);
-      }
       if(oldDownloaded!==t.downloaded||oldUploaded!==t.uploaded)changed.add(t.hash);
       if(t.files?.[0])t.files[0].progress=t.size?Math.min(1,t.downloaded/t.size):0;
     }

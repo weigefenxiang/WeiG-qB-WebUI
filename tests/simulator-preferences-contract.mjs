@@ -23,6 +23,13 @@ const MiB = 1024 * 1024;
     'max_active_uploads',
     'max_active_torrents',
     'max_active_checking_torrents',
+    'dont_count_slow_torrents',
+    'slow_torrent_dl_rate_threshold',
+    'slow_torrent_ul_rate_threshold',
+    'slow_torrent_inactive_timer',
+    'max_inactive_seeding_time',
+    'max_inactive_seeding_time_enabled',
+    'max_ratio_act',
     'encryption',
     'dl_limit',
     'max_ratio',
@@ -71,6 +78,9 @@ const MiB = 1024 * 1024;
   assert.equal(descriptors.get('dht').coverage,'MODELED','DHT changes the transfer/server-state projection');
   assert.equal(descriptors.get('max_ratio').coverage,'MODELED','share-ratio thresholds participate in scheduler policy');
   assert.equal(descriptors.get('max_active_checking_torrents').coverage,'MODELED','checking concurrency is enforced by the virtual recheck action');
+  assert.equal(descriptors.get('dont_count_slow_torrents').coverage,'MODELED','slow torrent exclusion must have a real scheduler effect');
+  assert.equal(descriptors.get('max_inactive_seeding_time').coverage,'MODELED','inactive seeding time must feed the canonical share-limit policy');
+  assert.equal(descriptors.get('max_ratio_act').coverage,'MODELED','global share-limit action must drive the canonical share-limit action owner');
   assert.equal(descriptors.get('encryption').coverage,'MODELED','encryption mode changes the compatible virtual peer population');
   assert.equal(descriptors.get('scheduler_enabled').coverage,'MODELED','scheduler_enabled is normalized state only until time-window behavior is implemented');
   assert.equal(descriptors.get('pex').coverage,'MODELED','PeX must not be called behavior-modeled when no simulator side effect consumes it');
@@ -90,6 +100,13 @@ const MiB = 1024 * 1024;
     max_active_uploads: 3,
     max_active_torrents: 4,
     max_active_checking_torrents: 2,
+    dont_count_slow_torrents:true,
+    slow_torrent_dl_rate_threshold:3,
+    slow_torrent_ul_rate_threshold:4,
+    slow_torrent_inactive_timer:30,
+    max_inactive_seeding_time:12,
+    max_inactive_seeding_time_enabled:true,
+    max_ratio_act:9,
     encryption: 9,
     dl_limit: 140 * MiB,
     max_ratio:'2.5',
@@ -102,6 +119,10 @@ const MiB = 1024 * 1024;
   assert.equal(accepted.max_active_downloads, 2, 'modeled numeric bindings must normalize values');
   assert.equal(world.preferences.max_active_downloads, 2, 'runtime writes must reach the canonical world preferences');
   assert.equal(world.preferences.max_active_checking_torrents,2,'checking concurrency writes must reach canonical world preferences');
+  assert.equal(world.preferences.dont_count_slow_torrents,true,'slow torrent queue exclusion must persist');
+  assert.equal(world.preferences.slow_torrent_inactive_timer,30,'slow torrent timer must persist');
+  assert.equal(world.preferences.max_inactive_seeding_time,12,'inactive seeding limit must persist');
+  assert.equal(accepted.max_ratio_act,3,'global share-limit action must clamp to the qB WebAPI 0..3 enum');
   assert.equal(accepted.encryption,2,'encryption writes must clamp to qB modes 0..2');
   assert.equal(world.preferences.encryption,2,'clamped encryption mode must persist in the canonical world');
   assert.equal(world.globalDownloadLimit, 140 * MiB, 'dl_limit must keep the existing scheduler side effect');
