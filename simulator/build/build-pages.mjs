@@ -25,7 +25,10 @@ async function prepareQbtEmulator(){
 async function simulatorCatalogWithLocaleFacts(){
   if(!(await exists(localeOverlayPath)))throw new Error(`Missing locale overlay evidence: ${localeOverlayPath}`);
   const raw=(await fs.readFile(catalogPath,'utf8')).replace(/\r\n?/g,'\n');
-  const catalog=JSON.parse(raw),overlay=JSON.parse(await fs.readFile(localeOverlayPath,'utf8'));
+  const catalog=JSON.parse(raw);
+  const hasExactLocaleFacts=Array.isArray(catalog)&&catalog.length>0&&catalog.every(profile=>Array.isArray(profile?.webuiLocales)&&profile.webuiLocales.length>0);
+  if(hasExactLocaleFacts)return catalog;
+  const overlay=JSON.parse(await fs.readFile(localeOverlayPath,'utf8'));
   const isFull=Number(overlay.profileCount)===catalog.length
     &&String(overlay.supportFloor||'')===String(catalog[0]?.qbVersion||'')
     &&String(overlay.latestAdmittedStable||'')===String(catalog.at(-1)?.qbVersion||'');

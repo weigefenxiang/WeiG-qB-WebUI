@@ -83,6 +83,7 @@ for(const profile of frozenApplied){
 }
 const buildPagesSource=fs.readFileSync(new URL('../simulator/build/build-pages.mjs',import.meta.url),'utf8');
 assert.ok(buildPagesSource.includes('simulatorCatalogWithLocaleFacts')&&buildPagesSource.includes('applyLocaleOverlaySubset')&&buildPagesSource.includes("__simulator/versions/catalog.generated.json"),'Virtual Pages materializer must enrich simulator catalog.generated.json from the canonical hash-bound Locale overlay instead of copying raw Frozen catalog');
+assert.ok(buildPagesSource.includes('hasExactLocaleFacts')&&buildPagesSource.includes('if(hasExactLocaleFacts)return catalog'),'Virtual Pages materializer must be idempotent when build-site already supplied an exact Locale-enriched catalog; it must not re-hash derived catalog bytes against the raw Frozen overlay identity');
 const rebindSource=fs.readFileSync(new URL('../tools/qb-torrent-runtime-rebind.mjs',import.meta.url),'utf8');
 assert.ok(rebindSource.includes("applyLocaleOverlay")&&rebindSource.includes("tools/data/qb-locale-lkg.json")&&rebindSource.includes("torrentData.sourceFacts.webuiLocales=compactTimeline"),'canonical Torrent runtime materializer must compile the hash-bound Locale overlay into compact webuiLocales while preserving the base Frozen catalog identity');
 const compactTorrent=JSON.parse(fs.readFileSync(new URL('../webui/private/data/torrent-compat.json',import.meta.url),'utf8'));
