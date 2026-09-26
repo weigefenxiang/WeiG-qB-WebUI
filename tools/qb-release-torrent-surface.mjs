@@ -14,6 +14,8 @@ export function extractQbReleaseTorrentSurface({ref='',apiActions=[],apiActionPa
   const serializerHeaderSource=readSource('src/webui/api/serialize/serialize_torrent.h');
   const dynamicTableSource=readSource('src/webui/www/private/scripts/dynamicTable.js');
   const clientSource=readOptionalSource('src/webui/www/private/scripts/client.js');
+  const transferListSource=readOptionalSource('src/webui/www/private/views/transferlist.html');
+  const torrentMenuHandlerSource=[transferListSource,clientSource].filter(Boolean).join('\n');
   const torrentTableColumns=extractTorrentTableColumns(dynamicTableSource,context);
   if(!torrentTableColumns.length)throw new Error(`${context}: native Torrent table column surface is unresolved`);
 
@@ -45,7 +47,7 @@ export function extractQbReleaseTorrentSurface({ref='',apiActions=[],apiActionPa
   const filePriorityControl=extractFilePriorityControl({filesSource:torrentContentSource||propFilesSource,fileTreeSource},context);
   if(filePriorityControl)torrentDetailUi.controls={...(torrentDetailUi.controls||{}),filePriority:filePriorityControl};
 
-  const torrentContextMenu=extractTorrentContextMenu({menuSource,clientSource,apiActions,apiActionParameters},context);
+  const torrentContextMenu=extractTorrentContextMenu({menuSource,clientSource:torrentMenuHandlerSource,apiActions,apiActionParameters},context);
   const contextMenus=extractDetailContextMenus({
     menuSource,
     trackerSource,
