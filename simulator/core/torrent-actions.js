@@ -155,7 +155,9 @@ function applyConfiguredLimitPacing(world,now){
 
 function physicalLinkFactor(world,now,direction){
   const seed=runtimeSeed(world),key=`physical-${direction}`;
-  return clamp(.93+signedWave(seed,key,now)+rareExcursion(seed,key,now),.50,1);
+  const fast=signedWave(seed,key,now,.12,.24);
+  const slow=signedWave(seed,`${key}-slow`,now,.08,.16);
+  return clamp(.78+fast+slow+rareExcursion(seed,key,now),.35,1);
 }
 
 function applyLightweightCapacityWave(world,now){

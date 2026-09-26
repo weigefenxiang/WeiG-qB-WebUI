@@ -150,4 +150,4 @@ function turningPoints(values){
   assert.ok(upSpan>=.12,`15-second averaged upload trace must keep clearly visible bounded variation; got ${upSpan}`);
 }
 
-console.log('Virtual qB limit-jitter contract passed: seeded 3–30s 5–10% waves plus rare 20–40% excursions remain deterministic and bounded by qB/physical hard caps.');
+console.log('Virtual qB limit-jitter contract passed: aggregate-visible multi-scale physical waves plus rare excursions remain deterministic and bounded by qB/physical hard caps.');
