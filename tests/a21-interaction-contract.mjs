@@ -9,6 +9,6 @@ const css=read('webui/private/css/transfer.css');
 assert.ok(logs.includes("meta:(U.isMobile&&U.isMobile()?items.length+' / '+all.length:tr('logs.ui.showing'"),'mobile Logs meta must be shown / filtered total only');
 assert.ok(floating.includes("addEventListener('weig:route-state',function(){C.closeSelects(false);closePreview(true);})"),'route change must close floating selects');
 assert.ok(settings.includes("async function openOwned(tab){if(C&&C.closeSelects)C.closeSelects(false);"),'Settings tab open must close any portaled select synchronously');
-assert.ok(transfer.includes("legend.innerHTML='<span>↓ '+tr('transfer.download')")&&transfer.includes("<span>↑ '+tr('transfer.upload')"),'mini transfer legend must use canonical ↓/↑ direction');
-assert.ok(!css.includes('.transfer-mini-chart__legend span::before'),'mini transfer dot marker must be retired');
+assert.ok(transfer.includes('data-mini-series="download"')&&transfer.includes('data-mini-series="upload"')&&transfer.includes("tr('detail.downloaded')")&&transfer.includes("tr('detail.uploaded')"),'mini transfer legend must use cumulative Downloaded/Uploaded semantics');
+assert.ok(css.includes('.transfer-mini-chart__legend [data-mini-series]::before'),'mini transfer cumulative totals must use the canonical circular series marker');
 console.log('A21 B1 interaction contract passed.');
