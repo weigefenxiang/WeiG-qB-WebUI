@@ -29,8 +29,8 @@ const activeDownload=w=>w.torrents.filter(t=>!t.completed&&t.canonicalState===CA
 
 {
   const w=createWorld({profile:{qbVersion:'5.2.3',webApiVersion:'2.15.1'},count:30,seed:'a21-share-action',now});
-  const t=w.torrents.find(x=>x.completed);assert.ok(t);
-  t.downloaded=t.size;t.uploaded=t.size;t.canonicalState=CANONICAL.SEED_ACTIVE;t.shareLimitTriggered=false;
+  const t=w.torrents[0];assert.ok(t);
+  t.completed=true;t.downloaded=t.size;t.uploaded=t.size;t.completionOn=Math.floor(now/1000)-600;t.canonicalState=CANONICAL.SEED_ACTIVE;t.shareLimitTriggered=false;
   setPreferences(w,{max_ratio_enabled:true,max_ratio:.5,max_seeding_time_enabled:false,max_inactive_seeding_time_enabled:false,max_ratio_act:2},now);
   schedule(w,now,0);
   assert.notEqual(t.canonicalState,CANONICAL.SEED_PAUSED,'scheduler must not retain a duplicate Stop-only global share-limit owner');
@@ -41,8 +41,8 @@ const activeDownload=w=>w.torrents.filter(t=>!t.completed&&t.canonicalState===CA
 
 {
   const w=createWorld({profile:{qbVersion:'5.2.3',webApiVersion:'2.15.1'},count:30,seed:'a21-inactive-seed',now});
-  const t=w.torrents.find(x=>x.completed);assert.ok(t);
-  t.canonicalState=CANONICAL.SEED_STALLED;t.effectiveUploadRate=0;t.lastUploadActivity=now-2*60000;t.shareLimitTriggered=false;
+  const t=w.torrents[0];assert.ok(t);
+  t.completed=true;t.downloaded=t.size;t.completionOn=Math.floor(now/1000)-600;t.leechers=0;t.canonicalState=CANONICAL.SEED_STALLED;t.effectiveUploadRate=0;t.lastUploadActivity=now-2*60000;t.shareLimitTriggered=false;
   t.ratioLimit=-2;t.seedingTimeLimit=-2;t.inactiveSeedingTimeLimit=-2;
   setPreferences(w,{max_ratio_enabled:false,max_seeding_time_enabled:false,max_inactive_seeding_time_enabled:true,max_inactive_seeding_time:1,max_ratio_act:0},now);
   applyShareLimitPolicies(w,now);
