@@ -23,7 +23,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}-${{ (github.event_name == 'workflow_dispatch' && (inputs.validation_mode == 'ui' || inputs.validation_mode == 'settings-evidence' || inputs.validation_mode == 'native-surfaces' || inputs.validation_mode == 'settings-matrix') && inputs.validation_mode) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[settings-evidence-verify]') && 'settings-evidence-verify') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[settings-matrix]') && 'settings-matrix') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[native-surfaces]') && 'native-surfaces') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[settings-evidence]') && 'settings-evidence') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[detail-runtime-materialize]') && 'detail-runtime-materialize') || 'default' }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}-${{ (github.event_name == 'workflow_dispatch' && (inputs.validation_mode == 'ui' || inputs.validation_mode == 'settings-evidence' || inputs.validation_mode == 'native-surfaces' || inputs.validation_mode == 'settings-matrix') && inputs.validation_mode) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[settings-evidence-verify]') && 'settings-evidence-verify') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[settings-matrix]') && 'settings-matrix') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[native-surfaces]') && 'native-surfaces') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[settings-evidence]') && 'settings-evidence') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[detail-runtime-materialize]') && 'detail-runtime-materialize') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[torrent-runtime-materialize]') && 'torrent-runtime-materialize') || 'default' }}
   cancel-in-progress: true
 
 jobs:
@@ -99,6 +99,65 @@ jobs:
           if [ "$relevant" != "true" ]; then
             echo "Only documentation paths changed; heavy CI smoke is skipped."
           fi
+
+  torrent_runtime_materialize:
+    name: qB Torrent/Action compact runtime materialization
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[torrent-runtime-materialize]') }}
+    runs-on: ubuntu-latest
+    needs: classify
+    permissions:
+      contents: write
+    outputs:
+      materialized_sha: ${{ steps.commit.outputs.materialized_sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Materialize Torrent/Action compact runtime from Frozen exact source catalog
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/qb-torrent-runtime-rebind.mjs tests/fixtures/qb-release-catalog.lkg.json
+          node tools/qb-torrent-runtime-rebind.mjs tests/fixtures/qb-release-catalog.lkg.json --check
+      - name: Commit canonical Torrent/Action compact runtime if changed
+        id: commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- webui/private/data/torrent-compat.json webui/private/data/source-actions.json; then
+            echo "Torrent/Action compact runtime already matches Frozen exact source catalog."
+            exit 0
+          fi
+
+          git fetch --no-tags origin dev
+          test "$(git rev-parse origin/dev)" = "$GITHUB_SHA" || {
+            echo "SAFE-REF abort before Torrent/Action runtime materialization push." >&2
+            exit 1
+          }
+
+          mapfile -t changed < <(git diff --name-only)
+          for path in "${changed[@]}"; do
+            case "$path" in
+              webui/private/data/torrent-compat.json|webui/private/data/source-actions.json) ;;
+              *) echo "Unexpected Torrent/Action materializer path: $path" >&2; exit 1 ;;
+            esac
+          done
+
+          git config user.name "WeiG CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add webui/private/data/torrent-compat.json webui/private/data/source-actions.json
+          git commit -m "a25: materialize Torrent Action source runtime [ui]"
+
+          git fetch --no-tags origin dev
+          test "$(git rev-parse origin/dev)" = "$GITHUB_SHA" || {
+            echo "SAFE-REF abort before Torrent/Action runtime push." >&2
+            exit 1
+          }
+          git push origin HEAD:dev
+          echo "materialized_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
   settings_runtime_materialize:
     name: qB compact runtime Frozen identity materialization
