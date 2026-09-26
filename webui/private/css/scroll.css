@@ -1,0 +1,10 @@
+/* Canonical native-scroll motion policy.
+   DataViewport owns data coalescing/render cadence; this file only preserves visual animation identity. */
+.data-viewport__row{will-change:transform}
+.data-viewport.is-scroll-interacting .torrent-state-icon[data-active=true]{
+  animation-name:weig-indicator-pulse!important;
+  animation-duration:3.8s!important;
+  animation-timing-function:ease-in-out!important;
+  animation-iteration-count:infinite!important;
+  animation-play-state:paused!important;
+}
