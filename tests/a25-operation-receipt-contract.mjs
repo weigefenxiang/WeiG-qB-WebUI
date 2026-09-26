@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const read=p=>fs.readFileSync(new URL('../'+p,import.meta.url),'utf8');
+const feedback=read('webui/private/scripts/feedback.js');
+const css=read('webui/private/css/feedback.css');
+const selection=read('webui/private/scripts/selection.js');
+assert.match(feedback,/DEFAULT_DURATION=\{info:5000,success:6000,warning:7000,error:8000\}/);
+assert.match(feedback,/receipt:function\(receipt,kind,options\)/);
+assert.match(feedback,/data\.feedbackReceipt='1'/);
+assert.match(feedback,/receipt\.results\.forEach/);
+assert.match(css,/text-overflow:ellipsis;white-space:nowrap/);
+assert.match(css,/\.feedback-toast__result/);
+assert.match(selection,/function selectedSubject\(hashes\)/);
+assert.match(selection,/function actionReceipt\(kind,value,verified,hashes,labelOverride\)/);
+assert.match(selection,/W\.Feedback&&W\.Feedback\.receipt/);
+assert.match(selection,/actionReceipt\(kind,value,verified===false\?false:true,hashes\)/);
+assert.ok(!selection.includes("notify(verified===true?tr('app.operationCompleteMessage')"),'generic operation-complete toast must retire from main Torrent action completion');
+console.log('A25 B2 contract passed: structured receipts own subject/result projection and success lifetime is six seconds.');

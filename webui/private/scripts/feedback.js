@@ -4,7 +4,7 @@
   if(!U||W.Feedback)return;
 
   var MAX_VISIBLE=4;
-  var DEFAULT_DURATION={info:3800,success:3800,warning:4400,error:5200};
+  var DEFAULT_DURATION={info:5000,success:6000,warning:7000,error:8000};
   var active=[],nextId=1,nextAutoOrder=1,timeoutInFlight=false;
   var iconPaths={
     info:['M12 10v6','M12 7h.01'],
@@ -174,8 +174,23 @@
     record.node.dataset.kind=kind;
     record.node.setAttribute('role',kind==='error'?'alert':'status');
     record.node.setAttribute('aria-atomic','true');
-    record.title.textContent=options.title==null?words()[kind]:String(options.title);
-    record.message.textContent=message==null?'':String(message);
+    var receipt=options.receipt&&typeof options.receipt==='object'?options.receipt:null;
+    var titleText=receipt&&receipt.subject!=null?String(receipt.subject):options.title==null?words()[kind]:String(options.title);
+    record.title.textContent=titleText;
+    record.title.title=titleText;
+    record.title.setAttribute('aria-label',titleText);
+    record.message.textContent='';
+    if(receipt&&Array.isArray(receipt.results)){
+      record.node.dataset.feedbackReceipt='1';
+      receipt.results.forEach(function(result){
+        result=result||{};var line=document.createElement('span');line.className='feedback-toast__result';
+        var label=String(result.label==null?'':result.label),value=result.value==null?'':String(result.value),suffix=result.verified===false?'':result.mark==null?' ✓':String(result.mark);
+        line.textContent=label+(value?': '+value:'')+suffix;record.message.appendChild(line);
+      });
+    }else{
+      delete record.node.dataset.feedbackReceipt;
+      record.message.textContent=message==null?'':String(message);
+    }
     record.message.hidden=!record.message.textContent;
     record.close.setAttribute('aria-label',words().dismiss);
     setIcon(record,kind);
@@ -279,6 +294,7 @@
 
   W.Feedback={
     show:toast,
+    receipt:function(receipt,kind,options){options=Object.assign({},options||{},{receipt:receipt||{}});return toast('',kind||'success',options);},
     dismissAll:function(){active.slice().forEach(function(record){dismiss(record,'all');});},
     size:function(){return active.filter(function(record){return record.state!=='removed';}).length;},
     kinds:Object.keys(DEFAULT_DURATION)
