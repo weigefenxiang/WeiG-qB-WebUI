@@ -104,13 +104,13 @@ export function transferSnapshot(world,now=Date.now()){
   return transferSnapshotRaw(world);
 }
 
-function serverStateSnapshotRaw(world,contract){
+function serverStateSnapshotRaw(world,contract,now=Date.now()){
   const transfer=transferSnapshotRaw(world);
   const state={
     ...transfer,
     alltime_dl:Math.floor(world.stats.alltime_dl),
     alltime_ul:Math.floor(world.stats.alltime_ul),
-    use_alt_speed_limits:world.altSpeedMode,
+    use_alt_speed_limits:effectiveAltSpeedMode(world,now),
     queueing:!!world.preferences.queueing_enabled
   };
   if(contract?.freeSpaceOnDiskField===true)state.free_space_on_disk=Math.floor(world.environment.freeSpace);
@@ -158,7 +158,7 @@ function indexedWorld(world){
 export function mainDataSnapshot(world,clientRid=0,now=Date.now(),contract=null){
   advanceRuntimeSnapshot(world,now);
   const rid=Number(clientRid)||0;
-  const common={rid:world.rid,server_state:serverStateSnapshotRaw(world,contract)};
+  const common={rid:world.rid,server_state:serverStateSnapshotRaw(world,contract,now)};
   if(rid<=0||!world.journal.length||rid<world.journal[0].rid-1){
     return{
       ...common,full_update:true,

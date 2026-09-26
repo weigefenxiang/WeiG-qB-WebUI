@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {
-  createCategory,createWorld,listTorrents,mainData,removeCategories,transferInfo
+  createCategory,createWorld,listTorrents,mainData,removeCategories,setPreferences,transferInfo
 } from '../simulator/core/engine.js';
 import {
   listTorrentsSnapshot,mainDataSnapshot,runtimeSnapshotStats,transferSnapshot
@@ -90,6 +90,25 @@ function contract(world,path){return resolveEndpointContract(world.profile,path)
   const legacy=make('transfer-equivalence'),modern=make('transfer-equivalence');
   const now=baseNow+2000;
   assert.deepEqual(transferSnapshot(modern,now),transferInfo(legacy,now),'snapshot transfer/info must preserve legacy API values');
+}
+
+
+{
+  const world=createWorld({profile,count:16,seed:'runtime-view-scheduled-alt',now:baseNow});
+  const date=new Date(baseNow),start=date.getHours()*60+date.getMinutes(),end=(start+5)%1440;
+  setPreferences(world,{
+    scheduler_enabled:true,
+    scheduler_days:0,
+    schedule_from_hour:Math.floor(start/60),
+    schedule_from_min:start%60,
+    schedule_to_hour:Math.floor(end/60),
+    schedule_to_min:end%60
+  },baseNow);
+  const inside=mainDataSnapshot(world,0,baseNow+60000,contract(world,'sync/maindata'));
+  assert.equal(inside.server_state.use_alt_speed_limits,true,'sync/maindata must expose scheduled effective ALT state without overwriting manual mode');
+  const outside=mainDataSnapshot(world,0,baseNow+10*60000,contract(world,'sync/maindata'));
+  assert.equal(outside.server_state.use_alt_speed_limits,false,'sync/maindata must clear scheduled effective ALT state outside the configured window');
+  assert.equal(world.altSpeedMode,false,'runtime-view scheduled ALT projection must not mutate the manual toggle owner');
 }
 
 {
