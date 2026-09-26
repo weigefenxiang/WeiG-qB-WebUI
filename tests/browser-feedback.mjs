@@ -97,7 +97,7 @@ try{
   await page.waitForFunction(id=>document.querySelector(`.feedback-toast[data-feedback-id="${id}"]`)?.dataset.kind==='success',addId);
   await page.waitForFunction(()=>!document.getElementById('add-dialog')?.open);
   const added=page.locator(`.feedback-toast[data-feedback-id="${addId}"]`);
-  assert((await added.textContent()).includes('Torrent added'),'Add success did not update the same feedback card');
+  assert((await added.textContent()).includes('Torrent added'),'Add success did not update the same feedback card');const addReceipt=await added.evaluate(n=>({receipt:n.dataset.feedbackReceipt,title:n.querySelector('.feedback-toast__title')?.textContent||'',results:[...n.querySelectorAll('.feedback-toast__result')].map(x=>x.textContent||'')}));assert(addReceipt.receipt==='1'&&addReceipt.title==='fixture.torrent'&&addReceipt.results.some(x=>x.includes('Torrent added')),`Add structured receipt lost subject/action rows: ${JSON.stringify(addReceipt)}`);
   const addedRail=added.locator('.feedback-toast__progress');
   assert(await addedRail.getAttribute('data-mode')==='lifetime','completed Add feedback did not switch the same rail to lifetime mode');
   await page.waitForFunction(id=>{const rail=document.querySelector(`.feedback-toast[data-feedback-id="${id}"] .feedback-toast__progress`);return !!(rail&&rail.dataset.mode==='lifetime'&&getComputedStyle(rail,'::before').animationName==='feedback-lifecycle');},addId,{timeout:1500});
@@ -185,7 +185,7 @@ try{
   assert(await settingsProcessing.locator('.feedback-toast__progress').getAttribute('data-mode')==='activity','Settings processing must use activity rail');
   await page.waitForFunction(id=>document.querySelector(`.feedback-toast[data-feedback-id="${id}"]`)?.dataset.kind==='success',settingsId);
   assert((await page.locator(`.feedback-toast[data-feedback-id="${settingsId}"]`).textContent()).includes('Settings saved'),'Settings save did not update the same feedback record');
-  assert((await page.locator(`.feedback-toast[data-feedback-id="${settingsId}"]`).textContent()).includes(portTitle),'Settings success feedback lost the source-owned changed-control label');
+  assert((await page.locator(`.feedback-toast[data-feedback-id="${settingsId}"]`).textContent()).includes(portTitle),'Settings success feedback lost the source-owned changed-control label');const settingsReceipt=await page.locator(`.feedback-toast[data-feedback-id="${settingsId}"]`).evaluate(n=>({receipt:n.dataset.feedbackReceipt,title:n.querySelector('.feedback-toast__title')?.textContent||'',results:[...n.querySelectorAll('.feedback-toast__result')].map(x=>x.textContent||'')}));assert(settingsReceipt.receipt==='1'&&settingsReceipt.title.includes('Settings saved')&&settingsReceipt.results.some(x=>x.includes(portTitle)),`Settings structured receipt lost subject/result separation: ${JSON.stringify(settingsReceipt)}`);
   assert(await page.locator(`.feedback-toast[data-feedback-id="${settingsId}"] .feedback-toast__progress`).getAttribute('data-mode')==='lifetime','Settings completion did not switch activity rail to lifetime');
   assert(prefs.listen_port===6999,'Settings fixture did not receive the submitted preference');
 
@@ -218,7 +218,7 @@ try{
   const rssId=await rssProcessing.getAttribute('data-feedback-id');
   assert(await rssProcessing.locator('.feedback-toast__progress').getAttribute('data-mode')==='activity','RSS processing must use activity rail');
   await page.waitForFunction(id=>document.querySelector(`.feedback-toast[data-feedback-id="${id}"]`)?.dataset.kind==='success',rssId);
-  assert((await page.locator(`.feedback-toast[data-feedback-id="${rssId}"]`).textContent()).includes('RSS added'),'RSS add did not update the same feedback record');
+  assert((await page.locator(`.feedback-toast[data-feedback-id="${rssId}"]`).textContent()).includes('RSS added'),'RSS add did not update the same feedback record');const rssReceipt=await page.locator(`.feedback-toast[data-feedback-id="${rssId}"]`).evaluate(n=>({receipt:n.dataset.feedbackReceipt,title:n.querySelector('.feedback-toast__title')?.textContent||'',results:[...n.querySelectorAll('.feedback-toast__result')].map(x=>x.textContent||'')}));assert(rssReceipt.receipt==='1'&&rssReceipt.title==='RSS'&&rssReceipt.results.some(x=>x.includes('RSS added')&&x.includes('https://example.com/feed.xml')),`RSS structured receipt lost subject/action/value rows: ${JSON.stringify(rssReceipt)}`);
 
   // Mobile uses the same Dynamic Island owner and bottom anchor above the mobile nav.
   await page.evaluate(()=>WeiG.Feedback.dismissAll());await page.waitForTimeout(260);
