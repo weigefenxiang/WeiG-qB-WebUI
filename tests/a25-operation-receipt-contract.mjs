@@ -6,7 +6,7 @@ const css=read('webui/private/css/feedback.css');
 const selection=read('webui/private/scripts/selection.js');
 assert.match(feedback,/DEFAULT_DURATION=\{info:5000,success:6000,warning:7000,error:8000\}/);
 assert.match(feedback,/receipt:function\(receipt,kind,options\)/);
-assert.match(feedback,/data\.feedbackReceipt='1'/);
+assert.match(feedback,/dataset\.feedbackReceipt='1'/);
 assert.match(feedback,/receipt\.results\.forEach/);
 assert.match(css,/text-overflow:ellipsis;white-space:nowrap/);
 assert.match(css,/\.feedback-toast__result/);
