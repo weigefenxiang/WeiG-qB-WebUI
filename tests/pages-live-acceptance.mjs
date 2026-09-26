@@ -520,6 +520,49 @@ try{
     assert.ok(drawer.speedFonts.length===2&&drawer.speedFonts.every(v=>v>=10),`Drawer transfer speed typography must be larger and readable: ${JSON.stringify(drawer.speedFonts)}`);
     assert.ok(drawer.limit.left>=drawer.stats.right-1&&drawer.limit.right<=drawer.capsule.right+1,`rate-limit button must retain its reserved region without overlap: ${JSON.stringify(drawer)}`);
 
+    const contextualExpected=await page.evaluate(()=>{
+      const W=window.WeiG,items=W.AppState?.catalog||[],isPrivate=t=>W.TorrentSemantics?.isPrivateOrPt?.(t,(W.Config?.load?.()||{}).ptTrackers||[]);
+      const privateRows=items.filter(isPrivate);
+      const values=(rows,kind)=>{
+        const out=new Set();
+        for(const t of rows){
+          if(kind==='category'){const v=String(t.category||'').trim();if(v)out.add(v);}
+          else if(kind==='savePath'){const v=String(t.save_path||'').trim();if(v)out.add(v);}
+          else if(kind==='tag')String(t.tags||'').split(',').map(v=>v.trim()).filter(Boolean).forEach(v=>out.add(v));
+        }
+        return [...out].sort();
+      };
+      return{privateCount:privateRows.length,category:values(privateRows,'category'),savePath:values(privateRows,'savePath'),tag:values(privateRows,'tag')};
+    });
+    assert.ok(contextualExpected.privateCount>0&&contextualExpected.category.length>0,'contextual facet live fixture must include Private/PT rows and categories');
+
+    await page.locator('[data-facet="tracker"] .ui-select__trigger').click();
+    const privateOption=page.locator('#weig-floating-layer .ui-select__menu:not([hidden]) .ui-select__option[data-value="__weig_private__"]');
+    await privateOption.waitFor({state:'visible',timeout:30000});
+    await privateOption.click();
+    await page.waitForFunction(()=>window.WeiG?.AppState?.tracker==='__weig_private__',null,{timeout:30000});
+
+    for(const kind of ['category','tag','savePath']){
+      await page.locator(`[data-facet="${kind}"] .ui-select__trigger`).click();
+      const observed=await page.locator('#weig-floating-layer .ui-select__menu:not([hidden]) .ui-select__option').evaluateAll(nodes=>nodes.map(node=>String(node.dataset.value||'')).filter(Boolean).sort());
+      assert.deepEqual(observed,contextualExpected[kind],`Private/PT must contextually project only nonzero ${kind} options; got ${JSON.stringify(observed)}, expected ${JSON.stringify(contextualExpected[kind])}`);
+      await page.keyboard.press('Escape');
+    }
+
+    const selectedCategory=contextualExpected.category[0];
+    await page.locator('[data-facet="category"] .ui-select__trigger').click();
+    await page.locator(`#weig-floating-layer .ui-select__menu:not([hidden]) .ui-select__option[data-value="${selectedCategory}"]`).click();
+    await page.waitForFunction(value=>window.WeiG?.AppState?.category===value,selectedCategory,{timeout:30000});
+    const trackerExpected=await page.evaluate(category=>{
+      const W=window.WeiG,rows=(W.AppState?.catalog||[]).filter(t=>String(t.category||'')===category),values=new Set();
+      for(const t of rows)for(const value of (W.AppState?.trackerValuesByHash?.[String(t.hash||'')]||[]))values.add(String(value));
+      return[...values].sort();
+    },selectedCategory);
+    await page.locator('[data-facet="tracker"] .ui-select__trigger').click();
+    const trackerObserved=await page.locator('#weig-floating-layer .ui-select__menu:not([hidden]) .ui-select__option').evaluateAll(nodes=>nodes.map(node=>String(node.dataset.value||'')).filter(value=>value&&value!=='__weig_private__'&&!value.startsWith('special:')).sort());
+    assert.deepEqual(trackerObserved,trackerExpected,`selected category must contextually narrow regular Tracker options; got ${JSON.stringify(trackerObserved)}, expected ${JSON.stringify(trackerExpected)}`);
+    await page.keyboard.press('Escape');
+
     const scrim=page.locator('#drawer-scrim'),scrimBox=await scrim.boundingBox(),sidebarBox=await page.locator('#sidebar').boundingBox();
     assert.ok(scrimBox&&sidebarBox&&scrimBox.x+scrimBox.width-16>sidebarBox.x+sidebarBox.width,`Android Drawer must expose a visible scrim close target: ${JSON.stringify({scrimBox,sidebarBox})}`);
     await scrim.click({position:{x:Math.max(1,scrimBox.width-16),y:Math.max(1,Math.min(scrimBox.height-16,scrimBox.height/2))}});

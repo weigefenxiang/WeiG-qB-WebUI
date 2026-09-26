@@ -116,7 +116,8 @@ try{
     const toolbar=document.querySelector('.logs-toolbar'),filters=document.querySelector('.logs-filters'),actions=document.querySelector('.logs-actions'),searchButton=document.getElementById('mobile-search-btn'),searchInput=document.getElementById('search-input'),chips=filters?[...filters.querySelectorAll('[data-log-type]')]:[];
     if(!toolbar||!filters||!actions||!searchButton||!searchInput)throw new Error('Logs canonical toolbar/Header Search controls are missing');
     const rect=n=>{const r=n.getBoundingClientRect();return{top:r.top,bottom:r.bottom,left:r.left,right:r.right,width:r.width,height:r.height,display:getComputedStyle(n).display};};
-    return{toolbar:rect(toolbar),filters:rect(filters),actions:rect(actions),searchButton:rect(searchButton),chips:chips.length,sizeMode:!!document.getElementById('logs-size-mode'),refresh:!!document.querySelector('.logs-refresh'),searchOpen:document.querySelector('.topbar')?.classList.contains('search-open')||false,placeholder:searchInput.placeholder,overflow:toolbar.scrollWidth-toolbar.clientWidth};
+    const pagerMeta=document.querySelector('.logs-pager [data-pager-meta]');
+    return{toolbar:rect(toolbar),filters:rect(filters),actions:rect(actions),searchButton:rect(searchButton),chips:chips.length,sizeMode:!!document.getElementById('logs-size-mode'),refresh:!!document.querySelector('.logs-refresh'),searchOpen:document.querySelector('.topbar')?.classList.contains('search-open')||false,placeholder:searchInput.placeholder,overflow:toolbar.scrollWidth-toolbar.clientWidth,pagerMeta:String(pagerMeta?.textContent||'').trim()};
   });
   assert.equal(logs.chips,4,`Logs toolbar must keep Normal/Info/Warning/Critical filters: ${JSON.stringify(logs)}`);
   assert.ok(logs.sizeMode&&logs.refresh,`Logs toolbar must keep size mode and Refresh controls: ${JSON.stringify(logs)}`);
@@ -124,6 +125,7 @@ try{
   assert.equal(logs.searchOpen,false,'phone Logs Header Search must start collapsed');
   assert.match(logs.placeholder,/日志|logs/i,`Logs Header Search must expose the route-specific placeholder: ${JSON.stringify(logs)}`);
   assert.ok(logs.overflow<=1,`Logs mobile toolbar must not overflow: ${JSON.stringify(logs)}`);
+  assert.match(logs.pagerMeta,/^\d+\s*\/\s*\d+$/,`phone Logs pager meta must expose only shown / filtered total: ${JSON.stringify(logs)}`);
 
   await page.locator('#mobile-search-btn').click();
   await page.waitForFunction(()=>document.querySelector('.topbar')?.classList.contains('search-open')&&getComputedStyle(document.getElementById('search-input')).display!=='none');
@@ -168,7 +170,14 @@ try{
   assert.ok(activeSettingsTab.active.left>=activeSettingsTab.rail.left-1&&activeSettingsTab.active.right<=activeSettingsTab.rail.right+1,`last source-derived Settings tab must auto-scroll into view: ${JSON.stringify(activeSettingsTab)}`);
   await page.setViewportSize({width:390,height:844});
 
+  await page.locator('#settings-tabs [data-settings-tab="behavior"]').click();
+  await page.waitForFunction(()=>document.querySelector('#settings-tabs [data-settings-tab="behavior"]')?.classList.contains('is-active')&&document.querySelector('#settings-content .ui-select__trigger'),null,{timeout:30000});
+  const behaviorSelect=page.locator('#settings-content .ui-select__trigger').first();
+  await behaviorSelect.click();
+  await page.locator('#weig-floating-layer .ui-select__menu:not([hidden])').waitFor({state:'visible',timeout:30000});
   await page.locator('#settings-tabs [data-settings-tab="speed"]').click();
+  await page.waitForFunction(()=>document.querySelector('#settings-tabs [data-settings-tab="speed"]')?.classList.contains('is-active')&&!document.querySelector('#weig-floating-layer .ui-select__menu:not([hidden])'),null,{timeout:30000});
+
   await page.waitForFunction(()=>document.querySelector('#settings-tabs [data-settings-tab="speed"]')?.classList.contains('is-active')&&document.querySelector('[data-native-family="time-range"] [data-ui-time-control="1"]'),null,{timeout:30000});
   const schedule=page.locator('[data-native-family="time-range"][data-native-row]');
   const schedulerControl=page.locator('#settings-content [data-preference-key="scheduler_enabled"] .switch-control');
@@ -225,17 +234,21 @@ try{
   });
   await page.waitForTimeout(200);
   const drawer=await page.evaluate(()=>{
-    const sidebar=document.getElementById('sidebar'),filters=sidebar?.querySelector(':scope > .sidebar__section:first-child'),telemetry=document.getElementById('mobile-drawer-telemetry'),meta=sidebar?.querySelector('.sidebar__meta'),chart=telemetry?.querySelector('.transfer-mini-chart');
+    const sidebar=document.getElementById('sidebar'),filters=sidebar?.querySelector(':scope > .sidebar__section:first-child'),telemetry=document.getElementById('mobile-drawer-telemetry'),meta=sidebar?.querySelector('.sidebar__meta'),chart=telemetry?.querySelector('.transfer-mini-chart'),legend=[...chart.querySelectorAll('.transfer-mini-chart__legend span')];
     if(!sidebar||!filters||!telemetry||!meta||!chart)throw new Error('mobile Drawer canonical zones are missing');
     const rect=n=>{const r=n.getBoundingClientRect();return{top:r.top,bottom:r.bottom,left:r.left,right:r.right,width:r.width,height:r.height};};
     const sidebarStyle=getComputedStyle(sidebar),filterStyle=getComputedStyle(filters),metaStyle=getComputedStyle(meta);
-    return{sidebar:rect(sidebar),filters:rect(filters),telemetry:rect(telemetry),meta:rect(meta),chart:rect(chart),display:sidebarStyle.display,filterOverflow:filterStyle.overflowY,metaDisplay:metaStyle.display,hasTorrent:!!telemetry.querySelector('#status-torrents'),hasStorage:!!telemetry.querySelector('#status-free-space'),hasTransfer:!!telemetry.querySelector('#transfer-capsule'),hasConnection:!!telemetry.querySelector('#status-connection')};
+    return{sidebar:rect(sidebar),filters:rect(filters),telemetry:rect(telemetry),meta:rect(meta),chart:rect(chart),display:sidebarStyle.display,filterOverflow:filterStyle.overflowY,metaDisplay:metaStyle.display,hasTorrent:!!telemetry.querySelector('#status-torrents'),hasStorage:!!telemetry.querySelector('#status-free-space'),hasTransfer:!!telemetry.querySelector('#transfer-capsule'),hasConnection:!!telemetry.querySelector('#status-connection'),legendText:legend.map(node=>String(node.textContent||'').trim()),legendBefore:legend.map(node=>getComputedStyle(node,'::before').content)};
   });
   assert.ok(drawer.hasTorrent&&drawer.hasStorage&&drawer.hasTransfer&&drawer.hasConnection,`Drawer must contain the canonical status nodes: ${JSON.stringify(drawer)}`);
   assert.equal(drawer.display,'grid',`Mobile Drawer must resolve to the responsive grid: ${JSON.stringify(drawer)}`);
   assert.ok(drawer.filterOverflow==='auto'||drawer.filterOverflow==='scroll',`Only the filter/facet zone must own Drawer scrolling: ${JSON.stringify(drawer)}`);
   assert.ok(drawer.filters.top>=drawer.sidebar.top-1&&drawer.filters.bottom<=drawer.telemetry.top+1,`Filter/facet zone must end before fixed telemetry: ${JSON.stringify(drawer)}`);
   assert.ok(drawer.chart.height>=90,`Drawer realtime transfer chart must be visibly rendered: ${JSON.stringify(drawer)}`);
+  assert.equal(drawer.legendText.length,2,`Drawer mini chart must expose exactly download/upload totals: ${JSON.stringify(drawer)}`);
+  assert.match(drawer.legendText[0],/^↓\s/,`mini chart download total must use the canonical down arrow: ${JSON.stringify(drawer.legendText)}`);
+  assert.match(drawer.legendText[1],/^↑\s/,`mini chart upload total must use the canonical up arrow: ${JSON.stringify(drawer.legendText)}`);
+  assert.ok(drawer.legendBefore.every(value=>value==='none'||value==='normal'||value==='""'),`retired mini-chart dot pseudo markers must stay absent: ${JSON.stringify(drawer.legendBefore)}`);
   assert.ok(drawer.metaDisplay==='none'||(drawer.meta.width===0&&drawer.meta.height===0),`mobile Drawer must hide qBittorrent/WebAPI/version metadata: ${JSON.stringify(drawer)}`);
   assert.ok(drawer.telemetry.top>=drawer.sidebar.top&&drawer.telemetry.bottom<=drawer.sidebar.bottom+1&&drawer.sidebar.bottom-drawer.telemetry.bottom<=12,`Drawer telemetry/chart must use the released bottom space: ${JSON.stringify(drawer)}`);
 
