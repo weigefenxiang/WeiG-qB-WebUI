@@ -15,7 +15,8 @@ export function extractQbReleaseTorrentSurface({ref='',apiActions=[],apiActionPa
   const dynamicTableSource=readSource('src/webui/www/private/scripts/dynamicTable.js');
   const clientSource=readOptionalSource('src/webui/www/private/scripts/client.js');
   const transferListSource=readOptionalSource('src/webui/www/private/views/transferlist.html');
-  const torrentMenuHandlerSource=[transferListSource,clientSource].filter(Boolean).join('\n');
+  const mochaInitSource=readOptionalSource('src/webui/www/private/scripts/mocha-init.js');
+  const torrentMenuHandlerSource=[transferListSource,mochaInitSource,clientSource].filter(Boolean).join('\n');
   const torrentTableColumns=extractTorrentTableColumns(dynamicTableSource,context);
   if(!torrentTableColumns.length)throw new Error(`${context}: native Torrent table column surface is unresolved`);
 
