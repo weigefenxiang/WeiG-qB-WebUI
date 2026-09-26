@@ -151,7 +151,7 @@ try{
     assert(horizontalActive.renders===0,`${name}: horizontal active scroll triggered DataViewport repaint ${JSON.stringify(horizontalActive)}`);
     const horizontalScrollPolicy=horizontal.policy;
     const containmentActive=/\b(?:content|strict)\b/.test(horizontalScrollPolicy.contain)||(/\blayout\b/.test(horizontalScrollPolicy.contain)&&/\bpaint\b/.test(horizontalScrollPolicy.contain));
-    assert(horizontalScrollPolicy.interacting&&containmentActive&&horizontalScrollPolicy.animation==='none'&&horizontalScrollPolicy.shadow==='none',`${name}: horizontal active-scroll paint/compositor policy did not engage ${JSON.stringify(horizontalScrollPolicy)}`);
+    assert(horizontalScrollPolicy.interacting&&containmentActive&&horizontalScrollPolicy.animation==='weig-progress-flow'&&horizontalScrollPolicy.animationState==='paused'&&horizontalScrollPolicy.dotAnimation==='weig-indicator-pulse'&&horizontalScrollPolicy.dotAnimationState==='paused'&&horizontalScrollPolicy.shadow==='none',`${name}: horizontal active-scroll paint/compositor policy did not engage ${JSON.stringify(horizontalScrollPolicy)}`);
     const horizontalSettled=await settledScrollMetrics(page);
     assertQuietCommitBounded(name,'horizontal',horizontalActive,horizontalSettled);
     await resetScrollProbe(page);
