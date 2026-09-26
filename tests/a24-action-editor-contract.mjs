@@ -16,11 +16,11 @@ const rows=[{hash:'a',name:'One',save_path:'/x',dl_limit:0,up_limit:51200,tags:'
 const ctx=E.createContext(rows,['a','b']);
 assert.equal(ctx.complete,true);
 assert.deepEqual(E.common(ctx,'save_path'),{available:true,mixed:false,value:'/x'});
-assert.equal(E.common(ctx,'name').mixed,true);
+assert.equal(E.common(ctx,'name').mixed,true);\nassert.equal(E.choiceState(ctx,'save_path','/x'),'all');\nassert.equal(E.choiceState(ctx,'name','One'),'partial');
 const memberships=JSON.parse(JSON.stringify(E.memberships(ctx,'tags')));
 assert.deepEqual(memberships,[{value:'PT',count:2,state:'all'},{value:'VR',count:1,state:'partial'}]);
 assert.ok(selection.includes("editor:{type:'text',field:'name'}")&&selection.includes("editor:{type:'path',field:'save_path'}")&&selection.includes("editor:{type:'rate',field:'dl_limit'}")&&selection.includes("editor:{type:'rate',field:'up_limit'}"),'Edit actions must declare current-value fields.');
-assert.ok(selection.includes('ActionEditor.createContext(rows,hashes)')&&selection.includes('verifyEdit(qb,kind,hashes,value)'),'Selection must consume canonical Action Context and verified reread.');
+assert.ok(selection.includes('ActionEditor.createContext(rows,hashes)')&&selection.includes('verifyEdit(qb,kind,hashes,value)'),'Selection must consume canonical Action Context and verified reread.');\nassert.ok(selection.includes("kind:'category-new'")&&selection.includes("kind:'category-reset'")&&selection.includes("kind:'tag-remove-all'")&&selection.includes("state==='partial'?'– '"),'Category/Tags menus must project current/partial state plus source-proven create/reset/remove-all actions.');\nconst client=read('webui/private/scripts/qb-client.js');assert.ok(client.includes('Client.prototype.removeAllTags')&&client.includes("desc.optional.indexOf('tags')<0")&&client.includes("['category','savePath','downloadPath','downloadPathEnabled']"),'QBClient taxonomy adapters must bind source-proven optional parameters without feature-local version branches.');
 assert.ok(!selection.includes('function promptValue(')&&!index.includes('id="prompt-dialog"')&&!app.includes("prompt-close"),'Retired generic blank prompt owner must be removed.');
 assert.ok(index.indexOf('scripts/torrent-action-editor.js')<index.indexOf('scripts/selection.js'),'Torrent Action Editor must load before Selection.');
 console.log('A24 action editor contract passed: current-value context, mixed state, canonical rate editor, and verified reread are wired.');
