@@ -30,12 +30,12 @@
   }
   function ensureDialog(){
     if(dialog&&dialog.isConnected)return dialog;
-    dialog=document.createElement('dialog');dialog.id='torrent-action-editor-dialog';dialog.className='dialog surface surface--modal torrent-action-editor';dialog.dataset.dialogMobile='compact';
+    dialog=W.DialogRuntime.create({id:'torrent-action-editor-dialog',className:'dialog surface surface--modal torrent-action-editor',draggable:true});dialog.dataset.dialogMobile='compact';
     var head=document.createElement('div');head.className='dialog__head';var copy=document.createElement('div'),eyebrow=document.createElement('div'),title=document.createElement('h2'),close=document.createElement('button');
     eyebrow.className='eyebrow';eyebrow.textContent='ACTION';title.dataset.actionEditorTitle='1';copy.append(eyebrow,title);close.type='button';close.className='icon-btn';close.textContent='×';close.setAttribute('aria-label',tr('app.close'));close.onclick=function(){W.DialogRuntime.close(dialog);};head.append(copy,close);
     var body=document.createElement('div');body.className='dialog__body torrent-action-editor__body';
     var actions=document.createElement('div');actions.className='dialog__actions torrent-action-editor__actions';var left=document.createElement('span');left.className='torrent-action-editor__footer-left';left.dataset.actionEditorUnitSlot='1';var cancel=document.createElement('button'),confirm=document.createElement('button');cancel.type='button';cancel.className='btn btn--ghost';cancel.textContent=tr('app.cancel');cancel.onclick=function(){W.DialogRuntime.close(dialog);};confirm.type='button';confirm.className='btn btn--primary';confirm.textContent=tr('app.confirm');confirm.dataset.actionEditorConfirm='1';actions.append(left,cancel,confirm);
-    dialog.append(head,body,actions);document.body.appendChild(dialog);
+    dialog.append(head,body,actions);
     dialog.addEventListener('close',function(){active=null;unitControl=null;});
     return dialog;
   }
