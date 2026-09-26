@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const read=p=>fs.readFileSync(new URL('../'+p,import.meta.url),'utf8');
+const rss=read('webui/private/scripts/rss.js');
+const css=read('webui/private/css/layout.css');
+assert.match(rss,/dialogBody\.className='dialog__body rss-rules-dialog__body'/);
+assert.match(rss,/dialogBody\.appendChild\(panel\);dialog\.appendChild\(dialogBody\)/);
+assert.match(css,/\.rss-rules-dialog>\.rss-rules-dialog__body\{[^}]*flex:1 1 auto[^}]*min-height:0[^}]*overflow:hidden/);
+assert.match(css,/\.rss-rules-dialog #rss-rules-list,\.rss-rules-dialog #rss-rule-editor\{[^}]*overflow:auto[^}]*overscroll-behavior:contain/);
+assert.match(css,/@media\(max-width:820px\)[\s\S]*\.rss-rules-dialog \.settings-layout\{grid-template-columns:1fr;overflow:auto;overscroll-behavior:contain\}/);
+assert.match(css,/@media\(max-width:820px\)[\s\S]*\.rss-rules-dialog #rss-rules-list,\.rss-rules-dialog #rss-rule-editor\{overflow:visible\}/);
+console.log('A25 B4 contract passed: RSS Downloader has a bounded canonical dialog body with explicit desktop/mobile scroll ownership.');
