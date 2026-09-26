@@ -530,33 +530,29 @@ export function schedule(world,now=Date.now(),elapsedSeconds=0){
   let admissionConnections=queueCapacity(prefs.max_connec);
   let admissionUploadSlots=queueCapacity(prefs.max_uploads);
 
-  for(const t of downloads){
+  for(const t of interleaveTransferKinds(downloads,uploads)){
+    const upload=!!t.completed,direction=upload?'upload':'download';
     const exempt=!!prefs.dont_count_slow_torrents&&t.queueSlow===true;
     const forced=t.forceStart||exempt;
-    if(!forced&&!allowedActive(world,t,'download'))continue;
-    if(transferPeerCapacity(world,t,'download')<=0){if(forced)activeDownloads.add(t.hash);continue;}
-    if(!forced&&(dlSlots<=0||totalSlots<=0||admissionConnections<=0))continue;
-    activeDownloads.add(t.hash);
-    if(!forced){
-      if(Number.isFinite(dlSlots))dlSlots--;
-      if(Number.isFinite(totalSlots))totalSlots--;
-      if(Number.isFinite(admissionConnections))admissionConnections--;
+    if(!forced&&!allowedActive(world,t,direction))continue;
+    const peerCapacity=transferPeerCapacity(world,t,direction);
+    const slotCapacity=upload?uploadSlotCapacity(world,t,peerCapacity):Infinity;
+    if(peerCapacity<=0||(upload&&slotCapacity<=0)){
+      if(forced)(upload?activeUploads:activeDownloads).add(t.hash);
+      continue;
     }
-  }
-  for(const t of uploads){
-    const exempt=!!prefs.dont_count_slow_torrents&&t.queueSlow===true;
-    const forced=t.forceStart||exempt;
-    if(!forced&&!allowedActive(world,t,'upload'))continue;
-    const peerCapacity=transferPeerCapacity(world,t,'upload');
-    const slotCapacity=uploadSlotCapacity(world,t,peerCapacity);
-    if(peerCapacity<=0||slotCapacity<=0){if(forced)activeUploads.add(t.hash);continue;}
-    if(!forced&&(ulSlots<=0||totalSlots<=0||admissionConnections<=0||admissionUploadSlots<=0))continue;
-    activeUploads.add(t.hash);
     if(!forced){
-      if(Number.isFinite(ulSlots))ulSlots--;
+      if(totalSlots<=0||admissionConnections<=0)continue;
+      if(upload&&(ulSlots<=0||admissionUploadSlots<=0))continue;
+      if(!upload&&dlSlots<=0)continue;
+    }
+    (upload?activeUploads:activeDownloads).add(t.hash);
+    if(!forced){
+      if(upload&&Number.isFinite(ulSlots))ulSlots--;
+      if(!upload&&Number.isFinite(dlSlots))dlSlots--;
       if(Number.isFinite(totalSlots))totalSlots--;
       if(Number.isFinite(admissionConnections))admissionConnections--;
-      if(Number.isFinite(admissionUploadSlots))admissionUploadSlots--;
+      if(upload&&Number.isFinite(admissionUploadSlots))admissionUploadSlots--;
     }
   }
 
