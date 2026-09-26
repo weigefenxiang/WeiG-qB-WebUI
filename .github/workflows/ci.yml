@@ -438,6 +438,8 @@ jobs:
           merge-multiple: true
       - name: Merge and validate canonical qB 4.1.0 to latest stable catalog
         run: node tools/qb-release-catalog.mjs --merge-shards=base-shards --expected-shards=15 --output=qb-releases.json
+      - name: Require source-proven Torrent action surface across all stable profiles
+        run: node tests/full-stable-torrent-menu-source-contract.mjs qb-releases.json
       - name: Upload base stable catalog
         uses: actions/upload-artifact@v7
         with:
