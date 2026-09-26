@@ -558,7 +558,7 @@ export function schedule(world,now=Date.now(),elapsedSeconds=0){
       if(activeDownloads.has(t.hash)&&!t.completed)t.canonicalState=CANONICAL.DOWNLOAD_STALLED;
       else if(activeUploads.has(t.hash)&&t.completed)t.canonicalState=CANONICAL.SEED_STALLED;
     }else if(!t.completed&&![CANONICAL.DOWNLOAD_PAUSED,CANONICAL.ERROR,CANONICAL.CHECKING,CANONICAL.METADATA,CANONICAL.MOVING].includes(t.canonicalState)){
-      if(!activeDownloads.has(t.hash))t.canonicalState=CANONICAL.DOWNLOAD_QUEUED;
+      if(!activeDownloads.has(t.hash))t.canonicalState=transferPeerCapacity(world,t,'download')>0?CANONICAL.DOWNLOAD_QUEUED:CANONICAL.DOWNLOAD_STALLED;
       else{
         t.connectedPeers=connectionAllocations.get(t.hash)||0;
         if(t.seeders<=0||t.connectedPeers<=0)t.canonicalState=CANONICAL.DOWNLOAD_STALLED;
@@ -580,7 +580,7 @@ export function schedule(world,now=Date.now(),elapsedSeconds=0){
         }
       }
     }else if(t.completed&&![CANONICAL.SEED_PAUSED,CANONICAL.ERROR,CANONICAL.CHECKING,CANONICAL.MOVING].includes(t.canonicalState)){
-      if(!activeUploads.has(t.hash))t.canonicalState=CANONICAL.SEED_QUEUED;
+      if(!activeUploads.has(t.hash)){var idlePeerCapacity=transferPeerCapacity(world,t,'upload');t.canonicalState=(idlePeerCapacity>0&&uploadSlotCapacity(world,t,idlePeerCapacity)>0)?CANONICAL.SEED_QUEUED:CANONICAL.SEED_STALLED;}
       else{
         t.connectedPeers=connectionAllocations.get(t.hash)||0;
         t.uploadSlots=seedUploadAllocations.get(t.hash)||0;
