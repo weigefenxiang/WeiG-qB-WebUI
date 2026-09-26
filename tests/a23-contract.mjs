@@ -12,7 +12,6 @@ const layout=read('webui/private/scripts/layout.js');
 const sidebar=read('webui/private/css/sidebar.css');
 const rss=read('webui/private/scripts/rss.js');
 const progress=read('webui/private/css/progress.css');
-const scroll=read('webui/private/css/scroll.css');
 const table=read('webui/private/css/table.css');
 const app=read('webui/private/scripts/app.js');
 
@@ -25,10 +24,8 @@ assert.ok(rss.includes('async function openResolved(){await install();')&&rss.in
 
 assert.ok(progress.includes('.data-viewport.is-scroll-interacting .progress-fill::before,.data-viewport.is-scroll-interacting .progress-fill::after{animation-play-state:paused!important}'),'Progress motion must pause without destroying animation identity.');
 assert.ok(!progress.includes('.data-viewport.is-scroll-interacting .progress-fill::before,.data-viewport.is-scroll-interacting .progress-fill::after{animation:none!important'),'Progress scroll policy must not reset animation timelines.');
-assert.ok(scroll.includes('.data-viewport__row{will-change:transform}'),'Bounded recycler rows must keep transform motion compositor-ready.');
+assert.ok(table.includes('.data-viewport__row{will-change:transform}'),'Bounded recycler rows must keep transform motion compositor-ready with the table/DataViewport presentation owner.');
 assert.ok(table.includes('.data-viewport.is-scroll-interacting .torrent-state-icon[data-active=true]{animation-play-state:paused!important;filter:none!important}'),'Torrent state pulse must keep its component-owned animation identity and only pause phase during scroll.');
-assert.ok(!scroll.includes('torrent-state-icon'),'scroll.css must not override component-owned Torrent state animation semantics.');
-assert.ok(layout.includes("motion.href='css/scroll.css'+suffix"),'Canonical scroll-motion policy must be loaded after the base table styles by the layout runtime.');
 
 // Final exact-SHA UI gate marker for A23.
 assert.ok(app.includes("await refreshTrackerFacet();app.catalogReady=true;emitLibraryState('catalog-ready')"),'catalog readiness must include tracker enrichment before browser consumers observe READY.');
