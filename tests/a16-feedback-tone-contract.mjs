@@ -17,6 +17,8 @@ assert(settings.includes("tr(display?'common.yes':'common.no')"),'boolean Settin
 assert(settings.includes('Array.isArray(info.meta.enum)')&&settings.includes('option.label'),'enum Settings feedback must use the source-derived localized option label');
 assert(settings.includes("String(display)+(unit?' '+unit:'')"),'numeric Settings feedback must retain the source-derived unit when available');
 assert(!settings.includes('function qBChangeLabels('),'retired label-only qB Settings feedback owner must stay removed');
+assert(settings.includes('function settingReceipt(labels,subject)')&&settings.includes("notice.update('','success',{receipt:settingReceipt(labels,tr('settings.savedTitle'))})"),'verified qB Settings completion must update the existing processing card through structured Feedback receipt');
+assert(settings.includes("W.Feedback.receipt(settingReceipt(localLabels,tr('settings.savedTitle')),'success')"),'WeiG-only Settings commits, including Theme, must use the same structured Feedback receipt owner');
 
 assert(progress.includes('--torrent-tone-stalled-up:#79d9ad;'),'stalled seeding tone must be light green');
 assert(progress.includes('--torrent-tone-stopped-complete:#a88cff;'),'completed-but-stopped tone must be purple');
