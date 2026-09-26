@@ -76,7 +76,7 @@
     if(!target||parameters.some(function(name){return name!==target;}))return null;
     if(target==='hash'&&context.hashes.length!==1)return null;
     var label=sourceMenuLabel(item),kind='source:'+String(item.id||item.endpoint),form={};form[target]=target==='hash'?context.hashes[0]:context.hashes.join('|');
-    return{kind:kind,label:label,tone:'neutral',sourceAction:String(item.sourceAction),run:async function(){await qb.request('torrents/'+String(item.endpoint),{method:'POST',form:form,type:'void'});if(W.Feedback&&W.Feedback.receipt)W.Feedback.receipt({subject:selectedSubject(context.hashes),results:[{label:label}]},'success');if(typeof Selection.onCommandComplete==='function')await Selection.onCommandComplete(kind);}};
+    return{kind:kind,label:label,tone:'neutral',sourceAction:String(item.sourceAction),run:async function(){var endpoint=String(item.endpoint||'');if(endpoint.indexOf('/')<0)endpoint='torrents/'+endpoint;await qb.request(endpoint,{method:'POST',form:form,type:'void'});if(W.Feedback&&W.Feedback.receipt)W.Feedback.receipt({subject:selectedSubject(context.hashes),results:[{label:label}]},'success');if(typeof Selection.onCommandComplete==='function')await Selection.onCommandComplete(kind);}};
   }
   function appendSourceMenuActions(root,qb,context){
     var R=W.CapabilityRegistry,menu=R&&R.torrentContextMenu?R.torrentContextMenu():[];if(!menu.length)return root;
