@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {createWorld,transferInfo,setTorrentLimit,setPaused,authenticate,logout,setPreferences,addVirtualTorrent,deleteTorrents,mainData} from '../simulator/core/engine.js';
+import {createWorld,effectiveAltSpeedMode,transferInfo,setTorrentLimit,setPaused,authenticate,logout,setPreferences,addVirtualTorrent,deleteTorrents,mainData} from '../simulator/core/engine.js';
 import {handleApi} from '../simulator/protocol/router.js';
 import {
   addTrackers,advanceActionStates,applyRuntimePolicies,banPeers,editTracker,filterBannedPeers,
@@ -198,9 +198,11 @@ function formRequest(url,body){
   setPreferences(w,{dht:false,pex:false,lsd:false},1700000000000);
   applyRuntimePolicies(w,1700000000000);
   assert.ok(w.environment.peerAvailability<.5,'disabling discovery sources must reduce available virtual peers');
-  setPreferences(w,{scheduler_enabled:true,schedule_from_hour:8,schedule_to_hour:20},1700000000000);
-  applyRuntimePolicies(w,Date.UTC(2026,0,1,9,0));assert.equal(w.altSpeedMode,true,'scheduler window must enable alternate speed mode');
-  applyRuntimePolicies(w,Date.UTC(2026,0,1,21,0));assert.equal(w.altSpeedMode,false,'outside scheduler window must disable alternate speed mode');
+  setPreferences(w,{scheduler_enabled:true,scheduler_days:0,schedule_from_hour:8,schedule_from_min:0,schedule_to_hour:20,schedule_to_min:0},1700000000000);
+  const inside=Date.UTC(2026,0,1,9,0),outside=Date.UTC(2026,0,1,21,0);
+  applyRuntimePolicies(w,inside);assert.equal(effectiveAltSpeedMode(w,inside),true,'scheduler window must enable effective alternate speed limits');
+  applyRuntimePolicies(w,outside);assert.equal(effectiveAltSpeedMode(w,outside),false,'outside scheduler window must disable scheduled alternate limits');
+  assert.equal(w.altSpeedMode,false,'scheduler must not overwrite the manual alternate-speed toggle owner');
 }
 
 {
