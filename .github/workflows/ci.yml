@@ -558,6 +558,7 @@ jobs:
       - release_lkg
     permissions:
       contents: write
+      actions: write
     outputs:
       materialized_sha: ${{ steps.materialize.outputs.materialized_sha }}
     steps:
@@ -683,6 +684,8 @@ jobs:
       - name: Verify or refresh same-stable Frozen source evidence
         id: materialize
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           GENERATED="exact-base/qb-releases.json"
@@ -711,11 +714,19 @@ jobs:
             exit 0
           fi
 
-          git fetch --no-tags origin dev
-          test "$(git rev-parse origin/dev)" = "$GITHUB_SHA" || {
-            echo "SAFE-REF abort before Frozen LKG refresh: dev moved away from $GITHUB_SHA" >&2
-            exit 1
+          handoff_latest_settings_evidence() {
+            local remote_sha="$1"
+            echo "Source evidence owner $GITHUB_SHA is stale; handing settings-evidence to latest dev $remote_sha."
+            jq -n --arg ref dev '{ref:$ref,inputs:{validation_mode:"settings-evidence"}}' \
+              | gh api --method POST "/repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/dispatches" --input -
           }
+
+          git fetch --no-tags origin dev
+          REMOTE_DEV_SHA="$(git rev-parse origin/dev)"
+          if [ "$REMOTE_DEV_SHA" != "$GITHUB_SHA" ]; then
+            handoff_latest_settings_evidence "$REMOTE_DEV_SHA"
+            exit 0
+          fi
 
           cp "$GENERATED" "$FROZEN"
           node --input-type=module <<'NODE'
@@ -798,10 +809,11 @@ jobs:
           }
 
           git fetch --no-tags origin dev
-          test "$(git rev-parse origin/dev)" = "$GITHUB_SHA" || {
-            echo "SAFE-REF abort before Frozen/runtime push: dev moved away from $GITHUB_SHA" >&2
-            exit 1
-          }
+          REMOTE_DEV_SHA="$(git rev-parse origin/dev)"
+          if [ "$REMOTE_DEV_SHA" != "$GITHUB_SHA" ]; then
+            handoff_latest_settings_evidence "$REMOTE_DEV_SHA"
+            exit 0
+          fi
           git push origin HEAD:dev
           echo "materialized_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
