@@ -137,7 +137,7 @@ try{
     assert(Math.abs(panelTop.panel-panelTop.view)<=2,`${name}: TorrentPanel does not start at desktop workspace top`);
     await page.waitForFunction(()=>document.querySelector('#desktop-sidebar-transfer-panel [data-transfer-direction="download"]')?.textContent==='↓'&&document.querySelector('#desktop-sidebar-transfer-panel [data-transfer-direction="upload"]')?.textContent==='↑');
     const sidebarRates=await page.evaluate(()=>['download','upload'].map(kind=>{const arrow=document.querySelector('#desktop-sidebar-transfer-panel [data-transfer-direction="'+kind+'"]'),label=document.querySelector('#desktop-sidebar-transfer-panel [data-transfer-label="'+kind+'"]'),rate=arrow?.parentElement?.querySelector('strong');return{kind,arrow:arrow?.textContent||'',label:label?.textContent||'',rate:rate?.textContent||''};}));
-    assert(sidebarRates[0]?.arrow==='↓'&&sidebarRates[1]?.arrow==='↑'&&sidebarRates.every(item=>item.label&&/\\/s$/.test(item.rate)),`${name}: Desktop Sidebar must render canonical direction + label + realtime rate without dot ownership ${JSON.stringify(sidebarRates)}`);
+    assert(sidebarRates[0]?.arrow==='↓'&&sidebarRates[1]?.arrow==='↑'&&sidebarRates.every(item=>item.label&&item.rate.includes('/s')),`${name}: Desktop Sidebar must render canonical direction + label + realtime rate without dot ownership ${JSON.stringify(sidebarRates)}`);
     // Browser input verifies the active scroll path separately from the bounded quiet-period snapshot commit.
     // Native scrollbar-thumb mouse drag remains a mandatory final human acceptance item because hosted Chrome/Xvfb
     // does not expose native scrollbar chrome to DevTools/XTest pointer injection reliably.
