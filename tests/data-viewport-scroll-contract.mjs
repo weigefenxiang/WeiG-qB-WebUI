@@ -18,7 +18,7 @@ assert.match(app,/function schedulePoll\(\).*r\.name==='home'&&torrentScrollInte
 assert.match(progressCss,/data-viewport\.is-scroll-interacting \.progress-fill\{transition:none;box-shadow:none\}/,'Active native scroll must retire expensive progress glow work.');
 assert.match(progressCss,/data-viewport\.is-scroll-interacting \.progress-fill::before,\.data-viewport\.is-scroll-interacting \.progress-fill::after\{animation-play-state:paused!important\}/,'Active native scroll must preserve the progress animation timeline.');
 assert.match(tableCss,/\.torrent-row,\.torrent-mobile-card\{contain:layout paint style\}/,'Torrent rows must isolate layout/paint invalidation from neighboring rows during wide native scrolling.');
-assert.doesNotMatch(progressCss,/animation-play-state:paused/,'Retired pause-only progress scroll workaround must not survive as a second compositor policy.');
+assert.match(progressCss,/animation-play-state:paused/,'Progress animation phase must survive native scroll interaction.');
 
 assert.match(progressCss,/data-viewport\.is-scroll-interacting .*progress-fill.*transition:none/s,'progress presentation work must yield while the canonical DataViewport owns active scrolling.');
 assert.match(core,/DataViewport\.prototype\.destroy=function\(\)/,'DataViewport must expose lifecycle cleanup instead of leaking scroll owners.');
