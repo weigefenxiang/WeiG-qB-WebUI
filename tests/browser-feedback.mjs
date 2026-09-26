@@ -14,7 +14,7 @@ let prefs={
   dl_limit:0,up_limit:0,alt_dl_limit:0,alt_up_limit:0,dht:true,pex:true,lsd:true,
   alternative_webui_enabled:true,alternative_webui_path:'/config/weigg-qb-webui'
 };
-let feeds={};
+let feeds={},lastAddBody='';
 const torrent={hash:'f'.repeat(40),name:'Feedback Fixture',size:1048576,progress:.4,dlspeed:1000,upspeed:200,eta:3600,state:'downloading',ratio:.2,tracker:'https://tracker.example/announce',category:'',tags:'',added_on:1000,save_path:'/downloads',private:false};
 const frozenCatalog=JSON.parse(await fs.readFile(path.resolve(here,'fixtures/qb-release-catalog.lkg.json'),'utf8'));
 const releaseProfile=frozenCatalog.find(item=>String(item&&item.qbVersion||'')==='5.2.0');
@@ -49,7 +49,7 @@ async function api(req,res,p,url){
   }
   if(p==='torrents/categories')return json(res,{});
   if(p==='torrents/tags')return json(res,[]);
-  if(p==='torrents/add'&&req.method==='POST'){await body(req);await new Promise(r=>setTimeout(r,700));return text(res,'Ok.');}
+  if(p==='torrents/add'&&req.method==='POST'){lastAddBody=await body(req);await new Promise(r=>setTimeout(r,700));return text(res,'Ok.');}
   if(p==='rss/items')return json(res,feeds);
   if(p==='rss/addFeed'&&req.method==='POST'){
     const raw=await body(req),params=new URLSearchParams(raw),feed=params.get('url')||'';
@@ -85,8 +85,6 @@ try{
   await page.locator('#torrent-files').setInputFiles({name:'fixture.torrent',mimeType:'application/x-bittorrent',buffer:Buffer.alloc(0)});
   assert(await page.locator('#add-dialog[open]').count()===1,'choosing a local .torrent file must keep Add Torrent open before submission');
   await page.locator('#torrent-urls').fill('magnet:?xt=urn:btih:'+'a'.repeat(40));
-  const addExpectedSubject=await page.evaluate(()=>{const files=document.getElementById('torrent-files')?.files,urls=String(document.getElementById('torrent-urls')?.value||'').trim();return files&&files.length?String(files[0].name||''):String(urls.split(/\s+/)[0]||'');});
-  assert(addExpectedSubject,'Add receipt test requires at least one browser-visible source immediately before submit');
   await page.locator('#add-submit').click();
   const processing=page.locator('.feedback-toast[data-kind="info"]',{hasText:'Adding torrent'}).first();
   await processing.waitFor();
@@ -99,7 +97,7 @@ try{
   await page.waitForFunction(id=>document.querySelector(`.feedback-toast[data-feedback-id="${id}"]`)?.dataset.kind==='success',addId);
   await page.waitForFunction(()=>!document.getElementById('add-dialog')?.open);
   const added=page.locator(`.feedback-toast[data-feedback-id="${addId}"]`);
-  assert((await added.textContent()).includes('Torrent added'),'Add success did not update the same feedback card');const addReceipt=await added.evaluate(n=>({receipt:n.dataset.feedbackReceipt,title:n.querySelector('.feedback-toast__title')?.textContent||'',results:[...n.querySelectorAll('.feedback-toast__result')].map(x=>x.textContent||'')}));assert(addReceipt.receipt==='1'&&addReceipt.title===addExpectedSubject&&addReceipt.results.some(x=>x.includes('Torrent added')),`Add structured receipt must bind the actual browser-visible submitted source and action rows: expected=${addExpectedSubject} actual=${JSON.stringify(addReceipt)}`);
+  assert((await added.textContent()).includes('Torrent added'),'Add success did not update the same feedback card');const addReceipt=await added.evaluate(n=>({receipt:n.dataset.feedbackReceipt,title:n.querySelector('.feedback-toast__title')?.textContent||'',results:[...n.querySelectorAll('.feedback-toast__result')].map(x=>x.textContent||'')}));const submittedFile=(lastAddBody.match(/filename="([^"]+)"/)||[])[1]||'',submittedUrls=((lastAddBody.match(/name="urls"\r?\n(?:[^\r\n]*\r?\n)*\r?\n([^\r\n]*)/i)||[])[1]||'').trim(),submittedSubject=submittedFile||String(submittedUrls.split(/\s+/)[0]||'');assert(submittedSubject,`Add request did not contain a submitted torrent source: ${lastAddBody.slice(0,400)}`);assert(addReceipt.receipt==='1'&&addReceipt.title===submittedSubject&&addReceipt.results.some(x=>x.includes('Torrent added')),`Add structured receipt must bind the actual request source and action rows: expected=${submittedSubject} actual=${JSON.stringify(addReceipt)}`);
   const addedRail=added.locator('.feedback-toast__progress');
   assert(await addedRail.getAttribute('data-mode')==='lifetime','completed Add feedback did not switch the same rail to lifetime mode');
   await page.waitForFunction(id=>{const rail=document.querySelector(`.feedback-toast[data-feedback-id="${id}"] .feedback-toast__progress`);return !!(rail&&rail.dataset.mode==='lifetime'&&getComputedStyle(rail,'::before').animationName==='feedback-lifecycle');},addId,{timeout:1500});
