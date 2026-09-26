@@ -176,7 +176,7 @@ try{
   await page.waitForFunction(()=>document.querySelector('#settings-tabs [data-settings-tab="rss"]')?.classList.contains('is-active')&&document.querySelector('[data-source-action="Rss.openRssDownloader"]'),null,{timeout:30000});
   const rssDownloaderOpen=page.locator('[data-source-action="Rss.openRssDownloader"]').first();
   await rssDownloaderOpen.click();
-  await page.waitForFunction(()=>location.hash.startsWith('#/rss')&&document.getElementById('rss-rules-dialog')?.open===true,null,{timeout:30000});
+  await page.waitForFunction(()=>location.hash.startsWith('#/settings')&&document.querySelector('#settings-tabs [data-settings-tab="rss"]')?.classList.contains('is-active')&&document.getElementById('rss-rules-dialog')?.open===true,null,{timeout:30000});
   const rssDownloaderClose=page.locator('#rss-rules-dialog .workspace__header .inline-form button').last();
   await rssDownloaderClose.click();
   await page.waitForFunction(()=>location.hash.startsWith('#/settings')&&document.getElementById('settings-view')?.classList.contains('is-active')&&document.querySelector('#settings-tabs [data-settings-tab="rss"]')?.classList.contains('is-active')&&!document.getElementById('rss-rules-dialog')?.open,null,{timeout:30000});
