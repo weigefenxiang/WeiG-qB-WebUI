@@ -36,10 +36,11 @@ client.qbVersion='6.0.0';client.webApiVersion='3.0.0';client.major=6;
 const A={categories:'torrentscontroller.h:categoriesAction',setCategory:'torrentscontroller.h:setCategoryAction',createCategory:'torrentscontroller.h:createCategoryAction',removeCategories:'torrentscontroller.h:removeCategoriesAction',tags:'torrentscontroller.h:tagsAction',addTags:'torrentscontroller.h:addTagsAction',removeTags:'torrentscontroller.h:removeTagsAction',createTags:'torrentscontroller.h:createTagsAction',deleteTags:'torrentscontroller.h:deleteTagsAction'};
 const MAINDATA='synccontroller.h:maindataAction';
 const ALL=Object.values(A);
+const createParams=(modern=false)=>({[A.createCategory]:modern?{parameters:['category','downloadPath','downloadPathEnabled','savePath'],required:['category'],optional:['downloadPath','downloadPathEnabled','savePath']}:{parameters:['category','savePath'],required:['category'],optional:['savePath']}});
 const body=call=>new URLSearchParams(String(call?.init?.body||''));
 const operations={categories:()=>client.categories(),setCategory:()=>client.setCategory('hash-a','Movies'),createCategory:()=>client.createCategory('Movies','/downloads/movies'),removeCategories:()=>client.removeCategories('Movies'),tags:()=>client.tags(),addTags:()=>client.addTags('hash-a','linux'),removeTags:()=>client.removeTags('hash-a','linux'),createTags:()=>client.createTags('linux,iso'),deleteTags:()=>client.deleteTags('linux,iso')};
 
-profile={qbVersion:'6.0.0',webApiVersion:'3.0.0',fallback:false,apiActions:ALL,apiActionParameters:{}};
+profile={qbVersion:'6.0.0',webApiVersion:'3.0.0',fallback:false,apiActions:ALL,apiActionParameters:createParams(true)};
 let before=calls.length;
 const categories=await operations.categories();const tags=await operations.tags();
 await operations.setCategory();await operations.createCategory();await operations.removeCategories();await operations.addTags();await operations.removeTags();await operations.createTags();await operations.deleteTags();
@@ -51,19 +52,19 @@ assert.equal(calls[before+3].url,'api/v2/torrents/createCategory');assert.equal(
 assert.equal(calls[before+4].url,'api/v2/torrents/removeCategories');assert.equal(calls[before+5].url,'api/v2/torrents/addTags');assert.equal(calls[before+6].url,'api/v2/torrents/removeTags');assert.equal(calls[before+7].url,'api/v2/torrents/createTags');assert.equal(calls[before+8].url,'api/v2/torrents/deleteTags');
 
 for(const [name,action] of Object.entries(A)){
-  profile={qbVersion:'6.0.0',webApiVersion:'3.0.0',fallback:false,apiActions:ALL.filter(item=>item!==action),apiActionParameters:{}};
+  profile={qbVersion:'6.0.0',webApiVersion:'3.0.0',fallback:false,apiActions:ALL.filter(item=>item!==action),apiActionParameters:createParams(true)};
   before=calls.length;await assert.rejects(Promise.resolve().then(operations[name]),/source-proven/,`${name} must require its own exact source action`);assert.equal(calls.length,before,`${name} without its exact source action must make zero HTTP requests`);
 }
 
-profile={qbVersion:'4.1.0',webApiVersion:'2.0.0',fallback:false,apiActions:[A.setCategory,A.createCategory,A.removeCategories],apiActionParameters:{}};
+profile={qbVersion:'4.1.0',webApiVersion:'2.0.0',fallback:false,apiActions:[A.setCategory,A.createCategory,A.removeCategories],apiActionParameters:{[A.createCategory]:{parameters:['category'],required:['category'],optional:[]}}};
 before=calls.length;await operations.setCategory();await operations.createCategory();await operations.removeCategories();assert.equal(calls.length,before+3,'qB 4.1.0-style source facts must preserve category writes');
 for(const name of ['categories','tags','addTags','removeTags','createTags','deleteTags']){const count=calls.length;await assert.rejects(Promise.resolve().then(operations[name]),/source-proven/);assert.equal(calls.length,count,`${name} must fail closed on qB 4.1.0-style source facts`);}
 
-profile={qbVersion:'4.1.2',webApiVersion:'2.0.2',fallback:false,apiActions:[MAINDATA,A.setCategory,A.createCategory,A.removeCategories],apiActionParameters:{}};
+profile={qbVersion:'4.1.2',webApiVersion:'2.0.2',fallback:false,apiActions:[MAINDATA,A.setCategory,A.createCategory,A.removeCategories],apiActionParameters:{[A.createCategory]:{parameters:['category'],required:['category'],optional:[]}}};
 before=calls.length;const legacyArray=await operations.categories();assert.equal(calls.length,before+1,'qB 4.1.2 source facts must read categories from sync/maindata');assert.equal(calls[before].url,'api/v2/sync/maindata?rid=0');assert.deepEqual(Object.keys(legacyArray).sort(),['Linux','Movies']);assert.equal(legacyArray.Movies.name,'Movies');assert.equal(legacyArray.Movies.savePath,'');
-profile={qbVersion:'4.1.3',webApiVersion:'2.1.0',fallback:false,apiActions:[MAINDATA,A.setCategory,A.createCategory,A.removeCategories],apiActionParameters:{}};
+profile={qbVersion:'4.1.3',webApiVersion:'2.1.0',fallback:false,apiActions:[MAINDATA,A.setCategory,A.createCategory,A.removeCategories],apiActionParameters:createParams(false)};
 before=calls.length;const legacyObject=await operations.categories();assert.equal(calls.length,before+1,'qB 4.1.3 source facts must read categories from sync/maindata');assert.equal(calls[before].url,'api/v2/sync/maindata?rid=0');assert.equal(legacyObject.Movies.name,'Movies');assert.equal(legacyObject.Movies.savePath,'/downloads/movies');
-profile={qbVersion:'4.1.4',webApiVersion:'2.1.1',fallback:false,apiActions:[A.categories,A.setCategory,A.createCategory,A.removeCategories],apiActionParameters:{}};
+profile={qbVersion:'4.1.4',webApiVersion:'2.1.1',fallback:false,apiActions:[A.categories,A.setCategory,A.createCategory,A.removeCategories],apiActionParameters:createParams(false)};
 before=calls.length;await operations.categories();assert.equal(calls.length,before+1,'qB 4.1.4-style source facts must enable categories read');before=calls.length;await assert.rejects(Promise.resolve().then(operations.tags),/source-proven/);assert.equal(calls.length,before,'Tags read must remain zero-HTTP before exact tagsAction');
 profile={qbVersion:'6.9.0',webApiVersion:'99.0.0',fallback:true,apiActions:[...ALL,MAINDATA],apiActionParameters:{}};
 before=calls.length;for(const operation of Object.values(operations))await assert.rejects(Promise.resolve().then(operation),/source-proven/,'future fallback must not guess taxonomy support');assert.equal(calls.length,before,'future fallback taxonomy operations must make zero HTTP requests');
