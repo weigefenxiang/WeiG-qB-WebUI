@@ -25,7 +25,7 @@
 .progress-number{justify-self:end;text-align:right;font-weight:680;font-variant-numeric:tabular-nums;color:var(--text-secondary);transition:color var(--motion-fast)}
 .detail-progress__number{width:100%;min-width:0}
 .data-viewport.is-scroll-interacting .progress-fill{transition:none;box-shadow:none}
-.data-viewport.is-scroll-interacting .progress-fill::before,.data-viewport.is-scroll-interacting .progress-fill::after{animation:none!important;opacity:0!important}
+.data-viewport.is-scroll-interacting .progress-fill::before,.data-viewport.is-scroll-interacting .progress-fill::after{animation-play-state:paused!important}
 .progress-cell[data-progress-tone=download],.mobile-card-progress[data-progress-tone=download],.detail-progress[data-progress-tone=download]{--progress-number-tone:var(--torrent-tone-download)}
 .progress-cell[data-progress-tone=seed],.mobile-card-progress[data-progress-tone=seed],.detail-progress[data-progress-tone=seed]{--progress-number-tone:var(--torrent-tone-seed)}
 .progress-cell[data-progress-tone=stalled-down],.mobile-card-progress[data-progress-tone=stalled-down],.detail-progress[data-progress-tone=stalled-down]{--progress-number-tone:var(--torrent-tone-stalled-down)}
