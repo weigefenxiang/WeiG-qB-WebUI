@@ -130,13 +130,13 @@
     var sidebar=document.getElementById('sidebar');if(!sidebar)return null;var panel=document.getElementById('desktop-sidebar-transfer-panel');if(panel)return panel;
     panel=document.createElement('section');panel.id='desktop-sidebar-transfer-panel';panel.className='sidebar-transfer-panel';
     var chartHost=document.createElement('div');chartHost.id='desktop-sidebar-transfer-chart';chartHost.className='sidebar-transfer-panel__chart';
-    var rates=document.createElement('div');rates.className='sidebar-transfer-rates';rates.innerHTML='<span class="sidebar-transfer-rate sidebar-transfer-rate--down"><span data-sidebar-rate-label="down"></span><strong data-sidebar-rate="down">0 B/s</strong></span><span class="sidebar-transfer-rate sidebar-transfer-rate--up"><span data-sidebar-rate-label="up"></span><strong data-sidebar-rate="up">0 B/s</strong></span>';
-    panel.append(chartHost,rates);sidebar.appendChild(panel);return panel;
+    var rates=document.createElement('div');rates.className='sidebar-transfer-rates';rates.innerHTML='<span class="sidebar-transfer-rate sidebar-transfer-rate--down"><strong data-sidebar-rate="down">0 B/s</strong></span><span class="sidebar-transfer-rate sidebar-transfer-rate--up"><strong data-sidebar-rate="up">0 B/s</strong></span>';
+    var downMetric=rates.querySelector('.sidebar-transfer-rate--down'),upMetric=rates.querySelector('.sidebar-transfer-rate--up');if(W.Transfer&&W.Transfer.decorateRateMetric){W.Transfer.decorateRateMetric(downMetric,'download',tr('transfer.download'));W.Transfer.decorateRateMetric(upMetric,'upload',tr('transfer.upload'));}panel.append(chartHost,rates);sidebar.appendChild(panel);return panel;
   }
   function formatRate(value){var n=Math.max(0,Number(value)||0);return U&&U.formatSpeed?U.formatSpeed(n):(Math.round(n)+' B/s');}
   function paintSidebarRates(){
     var panel=document.getElementById('desktop-sidebar-transfer-panel');if(!panel)return;var info=W.TransferRuntime&&W.TransferRuntime.last?W.TransferRuntime.last()||{}:{};
-    var down=panel.querySelector('[data-sidebar-rate="down"]'),up=panel.querySelector('[data-sidebar-rate="up"]'),downLabel=panel.querySelector('[data-sidebar-rate-label="down"]'),upLabel=panel.querySelector('[data-sidebar-rate-label="up"]');
+    var down=panel.querySelector('[data-sidebar-rate="down"]'),up=panel.querySelector('[data-sidebar-rate="up"]'),downLabel=panel.querySelector('[data-transfer-label="download"]'),upLabel=panel.querySelector('[data-transfer-label="upload"]');
     if(down)down.textContent=formatRate(info.dl_info_speed);if(up)up.textContent=formatRate(info.up_info_speed);if(downLabel)downLabel.textContent=tr('transfer.download');if(upLabel)upLabel.textContent=tr('transfer.upload');
   }
   function mountDesktopTransfer(){
