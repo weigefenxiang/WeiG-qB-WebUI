@@ -15,7 +15,7 @@ const actions=['torrentscontroller.h:startAction','torrentscontroller.h:futureRe
 const menu=extractTorrentContextMenu({menuSource:html,clientSource:js,apiActions:actions},'synthetic Torrent menu');
 assert.deepEqual(menu.map(x=>x.id),['start','Category','futureRefresh']);
 assert.equal(menu[0].sourceAction,'torrentscontroller.h:startAction');
-assert.equal(menu[2].endpoint,'torrents/futureRefresh'.split('/')[1]);
+assert.equal(menu[2].endpoint,'torrents/futureRefresh');
 assert.equal(menu[2].sourceAction,'torrentscontroller.h:futureRefreshAction');
 const release=await import('../tools/qb-release-torrent-surface.mjs');
 const compact=await import('../tools/qb-compact-runtime.mjs');
