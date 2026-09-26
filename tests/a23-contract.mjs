@@ -13,6 +13,7 @@ const sidebar=read('webui/private/css/sidebar.css');
 const rss=read('webui/private/scripts/rss.js');
 const progress=read('webui/private/css/progress.css');
 const scroll=read('webui/private/css/scroll.css');
+const app=read('webui/private/scripts/app.js');
 
 assert.ok(transfer.includes('function decorateRateMetric(node,kind,labelText)')&&transfer.includes('decorateRateMetric:decorateRateMetric'),'Transfer must own one reusable direction/label/rate presenter.');
 assert.ok(layout.includes("W.Transfer.decorateRateMetric(downMetric,'download',tr('transfer.download'))")&&layout.includes("W.Transfer.decorateRateMetric(upMetric,'upload',tr('transfer.upload'))"),'Desktop Sidebar must consume canonical Transfer arrow semantics.');
@@ -28,4 +29,6 @@ assert.ok(scroll.includes('.torrent-state-icon[data-active=true]')&&scroll.inclu
 assert.ok(layout.includes("motion.href='css/scroll.css'+suffix"),'Canonical scroll-motion policy must be loaded after the base table styles by the layout runtime.');
 
 // Final exact-SHA UI gate marker for A23.
+assert.ok(app.includes("await refreshTrackerFacet();app.catalogReady=true;emitLibraryState('catalog-ready')"),'catalog readiness must include tracker enrichment before browser consumers observe READY.');
+
 console.log('A23 contract passed: canonical transfer arrows, route-independent RSS Downloader, and phase-preserving native-scroll motion are locked.');
