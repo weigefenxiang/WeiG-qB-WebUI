@@ -16,6 +16,7 @@ assert.equal(R.display(0,'KiB/s'),'∞');
 assert.equal(R.autoUnit([0,0],'MiB/s'),'MiB/s');
 assert.equal(R.autoUnit([1024,0],'MiB/s'),'KiB/s');
 assert.ok(transfer.includes('RV=W.RateValue')&&transfer.includes('RV.toBytes')&&transfer.includes('RV.bytesTo')&&transfer.includes('RV.unitOptions()'),'Transfer must consume the shared rate-value owner.');
+const selection=read('webui/private/scripts/selection.js');assert.ok(selection.includes('RV=W.RateValue')&&selection.includes("RV.toBytes(value,'KiB/s')")&&!selection.includes('*1024'),'Torrent action writes must consume the same rate-value owner instead of retaining a fixed KiB conversion.');
 assert.ok(!transfer.includes("var UNITS={'KiB/s'")&&!transfer.includes('function bytesTo(')&&!transfer.includes('function toBytes('),'Transfer must not retain a second unit-conversion owner.');
 assert.ok(index.indexOf('scripts/rate-value.js')<index.indexOf('scripts/transfer.js'),'RateValue must load before Transfer.');
 console.log('A24 rate-value contract passed: bytes/s conversion, unlimited semantics, and shared Transfer ownership are canonical.');
