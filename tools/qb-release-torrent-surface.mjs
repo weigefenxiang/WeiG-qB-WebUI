@@ -1,7 +1,7 @@
 import {extractTorrentFilters,extractTorrentInfoParameters} from './qb-torrent-surface-parsers.mjs';
 import {extractTorrentInfoFields,extractTorrentStates,extractTorrentTableColumns} from './qb-torrent-fields-parser.mjs';
 import {extractTorrentDetailSurfaces,extractTorrentDetailUi} from './qb-detail-surface-parsers.mjs';
-import {extractDetailContextMenus,extractFilePriorityControl} from './qb-detail-control-parsers.mjs';
+import {extractDetailContextMenus,extractFilePriorityControl,extractTorrentContextMenu} from './qb-detail-control-parsers.mjs';
 import {enrichTorrentFileColumnProvenance} from './qb-release-catalog-detail-provenance.mjs';
 import {extractTrackerFacetMode,extractTrackerFilterFacts} from './qb-tracker-filter-source.mjs';
 
@@ -45,6 +45,7 @@ export function extractQbReleaseTorrentSurface({ref='',apiActions=[],readSource,
   const filePriorityControl=extractFilePriorityControl({filesSource:torrentContentSource||propFilesSource,fileTreeSource},context);
   if(filePriorityControl)torrentDetailUi.controls={...(torrentDetailUi.controls||{}),filePriority:filePriorityControl};
 
+  const torrentContextMenu=extractTorrentContextMenu({menuSource,clientSource,apiActions},context);
   const contextMenus=extractDetailContextMenus({
     menuSource,
     trackerSource,
@@ -66,6 +67,7 @@ export function extractQbReleaseTorrentSurface({ref='',apiActions=[],readSource,
     trackerFacetMode:extractTrackerFacetMode(clientSource),
     torrentStates:extractTorrentStates(serializerSource,context),
     torrentTableColumns,
+    torrentContextMenu,
     torrentDetailUi,
     ...detailSurfaces
   };
