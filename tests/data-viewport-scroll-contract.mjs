@@ -16,7 +16,7 @@ assert.match(app,/async function loadPage\(silent\)\{if\(silent&&torrentScrollIn
 assert.match(app,/async function loadTransfer\(\)\{if\(torrentScrollInteracting\(\)\)return false;.*if\(torrentScrollInteracting\(\)\)return false;/s,'Transfer/status polling must not mutate global UI during active Torrent native scroll.');
 assert.match(app,/function schedulePoll\(\).*r\.name==='home'&&torrentScrollInteracting\(\).*schedulePoll\(\);return;.*await loadPage\(true\).*r\.name==='home'&&torrentScrollInteracting\(\).*schedulePoll\(\);return;/s,'Poll scheduler must check scroll ownership before and after the async Torrent refresh boundary.');
 assert.match(progressCss,/data-viewport\.is-scroll-interacting \.progress-fill\{transition:none;box-shadow:none\}/,'Active native scroll must retire expensive progress glow work.');
-assert.match(progressCss,/data-viewport\.is-scroll-interacting \.progress-fill::before,\.data-viewport\.is-scroll-interacting \.progress-fill::after\{animation:none!important;opacity:0!important\}/,'Active native scroll must remove progress animation layers rather than merely pausing them.');
+assert.match(progressCss,/data-viewport\.is-scroll-interacting \.progress-fill::before,\.data-viewport\.is-scroll-interacting \.progress-fill::after\{animation-play-state:paused!important\}/,'Active native scroll must preserve the progress animation timeline.');
 assert.match(tableCss,/\.torrent-row,\.torrent-mobile-card\{contain:layout paint style\}/,'Torrent rows must isolate layout/paint invalidation from neighboring rows during wide native scrolling.');
 assert.doesNotMatch(progressCss,/animation-play-state:paused/,'Retired pause-only progress scroll workaround must not survive as a second compositor policy.');
 
