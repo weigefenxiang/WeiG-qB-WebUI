@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 const app=fs.readFileSync(new URL('../webui/private/scripts/app.js',import.meta.url),'utf8');
 assert.ok(app.includes('function facetStateWithout(kind)'),'contextual facets need one shared state projection');
+assert.ok(app.indexOf('await refreshTrackerFacet();app.catalogReady=true;emitLibraryState(\'catalog-ready\')')>=0,'catalogReady must publish only after tracker-derived flags/membership have been merged into the canonical catalog.');
 assert.ok(app.includes("tracker:kind==='tracker'?'':app.tracker")&&app.includes("category:kind==='category'?'':app.category")&&app.includes("tag:kind==='tag'?'':app.tag")&&app.includes("savePath:kind==='savePath'?'':app.savePath"),'each facet count must exclude only its own active filter');
 assert.ok(app.includes('function facetBase(kind)')&&app.includes('return app.catalog.filter(function(t){return filterMatch(t,state);});'),'contextual facets must reuse the full local filter semantics over the existing catalog');
 assert.ok(app.includes('function facetValueCounts(kind,items)'),'category/tag/tracker/path must share one bounded count projection');
