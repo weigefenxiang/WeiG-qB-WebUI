@@ -84,8 +84,12 @@ async function waitForProgressMotion(page,hash,active){
 const json=(res,v,status=200)=>{res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store'});res.end(JSON.stringify(v));};
 const text=(res,v,status=200)=>{res.writeHead(status,{'content-type':'text/plain; charset=utf-8','cache-control':'no-store'});res.end(String(v));};
 const empty=(res,status=200)=>{res.writeHead(status,{'cache-control':'no-store'});res.end('');};
+const readForm=async req=>{let body='';for await(const chunk of req)body+=chunk;return new URLSearchParams(body);};
+const categoryInventory={Movies:{name:'Movies',savePath:'/downloads/movies'}};
+const tagInventory=new Set(['Fixture']);
+
 function rows(v){return torrents.map(t=>{const x={...t};if(v===variants.legacy)delete x.private;return x;});}
-function api(req,res,v,p,url){
+async function api(req,res,v,p,url){
   if(p==='app/version')return text(res,v.qb);
   if(p==='app/webapiVersion')return text(res,v.api);
   if(p==='app/preferences')return json(res,{save_path:'/downloads',alternative_webui_enabled:true,alternative_webui_path:'/config/weigg-qb-webui'});
@@ -101,18 +105,30 @@ function api(req,res,v,p,url){
     if(url.searchParams.get('reverse')==='true')out.reverse();
     const offset=Number(url.searchParams.get('offset')||0),limit=Number(url.searchParams.get('limit')||0);return json(res,limit?out.slice(offset,offset+limit):out.slice(offset));
   }
-  if(p==='torrents/categories')return json(res,{Movies:{name:'Movies',savePath:'/downloads/movies'}});
-  if(p==='torrents/tags')return json(res,['Fixture']);
+  if(p==='torrents/categories')return json(res,categoryInventory);
+  if(p==='torrents/tags')return json(res,Array.from(tagInventory));
   if(p==='torrents/properties')return json(res,{save_path:'/downloads',total_size:1048576,total_downloaded:400000,total_uploaded:100000,share_ratio:.2,nb_connections:4,seeds:2,peers:3,addition_date:1000,completion_date:-1,created_by:'fixture',pieces_num:20,piece_size:65536,private:v===variants.modern});
   if(['torrents/files','torrents/trackers','torrents/webseeds','search/plugins','log/main','log/peers'].includes(p))return json(res,[]);
   if(p==='sync/torrentPeers')return json(res,{peers:{}});
   if(p==='rss/items')return json(res,{});
-  if(req.method==='POST')return empty(res);
+  if(req.method==='POST'){
+    const form=await readForm(req),hashes=String(form.get('hashes')||form.get('hash')||'').split('|').filter(Boolean),matches=torrents.filter(t=>hashes.includes(t.hash));
+    if(p==='torrents/setUploadLimit'){const limit=Number(form.get('limit')||0);matches.forEach(t=>t.up_limit=limit);return empty(res);}
+    if(p==='torrents/setDownloadLimit'){const limit=Number(form.get('limit')||0);matches.forEach(t=>t.dl_limit=limit);return empty(res);}
+    if(p==='torrents/rename'){const t=torrents.find(x=>x.hash===String(form.get('hash')||''));if(t)t.name=String(form.get('name')||'');return empty(res);}
+    if(p==='torrents/setLocation'){const value=String(form.get('location')||'');matches.forEach(t=>t.save_path=value);return empty(res);}
+    if(p==='torrents/setCategory'){const value=String(form.get('category')||'');matches.forEach(t=>t.category=value);return empty(res);}
+    if(p==='torrents/createCategory'){const category=String(form.get('category')||'');if(category)categoryInventory[category]={name:category,savePath:String(form.get('savePath')||'')};return empty(res);}
+    if(p==='torrents/createTags'){String(form.get('tags')||'').split(',').map(x=>x.trim()).filter(Boolean).forEach(tag=>tagInventory.add(tag));return empty(res);}
+    if(p==='torrents/addTags'){const add=String(form.get('tags')||'').split(',').map(x=>x.trim()).filter(Boolean);matches.forEach(t=>{const set=new Set(String(t.tags||'').split(',').map(x=>x.trim()).filter(Boolean));add.forEach(tag=>set.add(tag));t.tags=Array.from(set).join(', ');});return empty(res);}
+    if(p==='torrents/removeTags'){const raw=form.get('tags'),remove=raw==null?null:String(raw).split(',').map(x=>x.trim()).filter(Boolean);matches.forEach(t=>{if(remove===null){t.tags='';return;}const set=new Set(String(t.tags||'').split(',').map(x=>x.trim()).filter(Boolean));remove.forEach(tag=>set.delete(tag));t.tags=Array.from(set).join(', ');});return empty(res);}
+    return empty(res);
+  }
   return json(res,{});
 }
 const server=http.createServer(async(req,res)=>{try{
   const url=new URL(req.url,`http://${host}:${port}`),m=url.pathname.match(/^\/(legacy|modern)(?:\/(.*))?$/);if(!m){res.writeHead(404);return res.end('not found');}
-  const v=variants[m[1]],rel=m[2]||'';if(rel.startsWith('api/v2/'))return api(req,res,v,rel.slice(7),url);
+  const v=variants[m[1]],rel=m[2]||'';if(rel.startsWith('api/v2/'))return await api(req,res,v,rel.slice(7),url);
   if(rel==='data/qb-releases.json')return json(res,profiles);
   if(rel==='weigg-install.json')return json(res,{version:productVersion,gitSha:'workspace-fixture',qbPath:'/config/weigg-qb-webui',hostPath:'/srv/qb/config/weigg-qb-webui'});
   const requested=rel||'index.html',{file,body}=await readWebuiStatic([root,publicRoot],requested);res.writeHead(200,{'content-type':mime[path.extname(file).toLowerCase()]||'application/octet-stream','cache-control':'no-store'});res.end(body);
@@ -146,9 +162,13 @@ try{
     await openAction('location');await page.waitForSelector('#torrent-action-editor-dialog[open]');actionValue=await page.locator('#torrent-action-editor-dialog [data-action-editor-value]').inputValue();assert(actionValue.startsWith('/downloads/very-long-path-segment-'),name+': Location editor did not prefill current save path '+actionValue);await page.locator('#torrent-action-editor-dialog .dialog__head .icon-btn').click();
     await openAction('uplimit');await page.waitForSelector('#torrent-action-editor-dialog[open]');actionValue=await page.locator('#torrent-action-editor-dialog [data-action-editor-value]').inputValue();assert(actionValue==='∞',name+': Unlimited upload limit must render ∞, got '+actionValue);await page.locator('#torrent-action-editor-dialog .dialog__head .icon-btn').click();
     await openAction('dllimit');await page.waitForSelector('#torrent-action-editor-dialog[open]');actionValue=await page.locator('#torrent-action-editor-dialog [data-action-editor-value]').inputValue();assert(actionValue==='50',name+': Download limit did not render current 50 KiB/s, got '+actionValue);
-    await page.locator('#torrent-action-rate-unit .ui-select__trigger').click();await page.locator('#weig-floating-layer .ui-select__option[data-value="MiB/s"]').click();actionValue=await page.locator('#torrent-action-editor-dialog [data-action-editor-value]').inputValue();assert(Number(actionValue)>0&&Number(actionValue)<1,name+': Rate unit conversion did not preserve canonical bytes '+actionValue);await page.locator('#torrent-action-editor-dialog .dialog__head .icon-btn').click();
-    await page.locator('#more-actions-btn').click();await page.locator('#actions-dialog [data-torrent-action="group-category"]').click();const categoryReset=await page.locator('#actions-dialog [data-torrent-action="category-reset"]').textContent();assert(categoryReset.trim().startsWith('✓')&&await page.locator('#actions-dialog [data-torrent-action="category-new"]').count()===1,name+': Category menu lacks current marker/new/reset actions '+categoryReset);await page.locator('#actions-close').click();
-    if(name==='modern'){const secondRow=page.locator('#torrent-list [data-hash]').nth(1);await secondRow.click();await page.waitForFunction(()=>WeiG.Selection.count()===1);await page.locator('#more-actions-btn').click();await page.locator('#actions-dialog [data-torrent-action="group-tags"]').click();const fixtureTag=await page.locator('#actions-dialog [data-torrent-action="tag:Fixture"]').textContent();assert(fixtureTag.trim().startsWith('✓')&&await page.locator('#actions-dialog [data-torrent-action="tag-remove-all"]').count()===1,name+': Tags menu lacks current marker/remove-all '+fixtureTag);await page.locator('#actions-close').click();}
+    await page.locator('#torrent-action-rate-unit .ui-select__trigger').click();await page.locator('#weig-floating-layer .ui-select__option[data-value="MiB/s"]').click();actionValue=await page.locator('#torrent-action-editor-dialog [data-action-editor-value]').inputValue();assert(Number(actionValue)>0&&Number(actionValue)<1,name+': Rate unit conversion did not preserve canonical bytes '+actionValue);
+    await page.locator('#torrent-action-rate-unit .ui-select__trigger').click();await page.locator('#weig-floating-layer .ui-select__option[data-value="KiB/s"]').click();await page.locator('#torrent-action-editor-dialog [data-action-editor-value]').fill('500');await page.locator('#torrent-action-editor-dialog [data-action-editor-confirm]').click();await page.waitForSelector('#torrent-action-editor-dialog',{state:'hidden'});
+    await openAction('dllimit');await page.waitForSelector('#torrent-action-editor-dialog[open]');assert(await page.locator('#torrent-action-editor-dialog [data-action-editor-value]').inputValue()==='500',name+': 50→500 limit write did not authoritative-reread');await page.locator('#torrent-action-editor-dialog [data-action-editor-value]').fill('50');await page.locator('#torrent-action-editor-dialog [data-action-editor-confirm]').click();await page.waitForSelector('#torrent-action-editor-dialog',{state:'hidden'});
+    await openAction('dllimit');await page.waitForSelector('#torrent-action-editor-dialog[open]');assert(await page.locator('#torrent-action-editor-dialog [data-action-editor-value]').inputValue()==='50',name+': 500→50 limit write did not authoritative-reread');await page.locator('#torrent-action-editor-dialog .dialog__head .icon-btn').click();
+    await page.locator('#more-actions-btn').click();await page.locator('#actions-dialog [data-torrent-action="group-category"]').click();const categoryReset=await page.locator('#actions-dialog [data-torrent-action="category-reset"]').textContent();assert(categoryReset.trim().startsWith('✓')&&await page.locator('#actions-dialog [data-torrent-action="category-new"]').count()===1,name+': Category menu lacks current marker/new/reset actions '+categoryReset);
+    await page.locator('#actions-dialog [data-torrent-action="category-new"]').click();await page.waitForSelector('#torrent-action-editor-dialog[open]');await page.locator('#torrent-action-editor-dialog [data-action-editor-field="category"]').fill('A24 New');await page.locator('#torrent-action-editor-dialog [data-action-editor-confirm]').click();await page.waitForSelector('#torrent-action-editor-dialog',{state:'hidden'});await page.locator('#more-actions-btn').click();await page.locator('#actions-dialog [data-torrent-action="group-category"]').click();const newCategory=await page.locator('#actions-dialog [data-torrent-action="category:A24 New"]').textContent();assert(newCategory.trim().startsWith('✓'),name+': newly created category was not assigned/current '+newCategory);await page.locator('#actions-dialog [data-torrent-action="category-reset"]').click();await page.waitForTimeout(30);
+    if(name==='modern'){const secondRow=page.locator('#torrent-list [data-hash]').nth(1);await secondRow.click();await page.waitForFunction(()=>WeiG.Selection.count()===1);await page.locator('#more-actions-btn').click();await page.locator('#actions-dialog [data-torrent-action="group-tags"]').click();const fixtureTag=await page.locator('#actions-dialog [data-torrent-action="tag:Fixture"]').textContent();assert(fixtureTag.trim().startsWith('✓')&&await page.locator('#actions-dialog [data-torrent-action="tag-remove-all"]').count()===1,name+': Tags menu lacks current marker/remove-all '+fixtureTag);await page.locator('#actions-dialog [data-torrent-action="tag-remove-all"]').click();await page.waitForTimeout(30);await page.locator('#more-actions-btn').click();await page.locator('#actions-dialog [data-torrent-action="group-tags"]').click();assert(!(await page.locator('#actions-dialog [data-torrent-action="tag:Fixture"]').textContent()).trim().startsWith('✓'),name+': remove-all did not clear current tag state');await page.locator('#actions-dialog [data-torrent-action="tag-add"]').click();await page.waitForSelector('#torrent-action-editor-dialog[open]');await page.locator('#torrent-action-editor-dialog [data-action-editor-value]').fill('FreshTag');await page.locator('#torrent-action-editor-dialog [data-action-editor-confirm]').click();await page.waitForSelector('#torrent-action-editor-dialog',{state:'hidden'});await page.locator('#more-actions-btn').click();await page.locator('#actions-dialog [data-torrent-action="group-tags"]').click();const freshTag=await page.locator('#actions-dialog [data-torrent-action="tag:FreshTag"]').textContent();assert(freshTag.trim().startsWith('✓'),name+': add/create tag flow did not authoritative-reread '+freshTag);await page.locator('#actions-close').click();}
 
     // Browser input verifies the active scroll path separately from the bounded quiet-period snapshot commit.
     // Native scrollbar-thumb mouse drag remains a mandatory final human acceptance item because hosted Chrome/Xvfb
