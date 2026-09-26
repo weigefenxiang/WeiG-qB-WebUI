@@ -1,0 +1,26 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+const read=p=>fs.readFileSync(new URL('../'+p,import.meta.url),'utf8');
+const rate=read('webui/private/scripts/rate-value.js');
+const editor=read('webui/private/scripts/torrent-action-editor.js');
+const selection=read('webui/private/scripts/selection.js');
+const index=read('webui/private/index.html');
+const app=read('webui/private/scripts/app.js');
+const sandbox={window:{WeiG:{Components:{},RateValue:null}}};sandbox.window.window=sandbox.window;
+vm.runInNewContext(rate,sandbox,{filename:'rate-value.js'});
+sandbox.window.WeiG.Components={}; // module creation only needs truthy Components; open() is not exercised
+vm.runInNewContext(editor,sandbox,{filename:'torrent-action-editor.js'});
+const E=sandbox.window.WeiG.TorrentActionEditor;
+const rows=[{hash:'a',name:'One',save_path:'/x',dl_limit:0,up_limit:51200,tags:'PT, VR'},{hash:'b',name:'Two',save_path:'/x',dl_limit:0,up_limit:51200,tags:'PT'}];
+const ctx=E.createContext(rows,['a','b']);
+assert.equal(ctx.complete,true);
+assert.deepEqual(E.common(ctx,'save_path'),{available:true,mixed:false,value:'/x'});
+assert.equal(E.common(ctx,'name').mixed,true);
+const memberships=JSON.parse(JSON.stringify(E.memberships(ctx,'tags')));
+assert.deepEqual(memberships,[{value:'PT',count:2,state:'all'},{value:'VR',count:1,state:'partial'}]);
+assert.ok(selection.includes("editor:{type:'text',field:'name'}")&&selection.includes("editor:{type:'path',field:'save_path'}")&&selection.includes("editor:{type:'rate',field:'dl_limit'}")&&selection.includes("editor:{type:'rate',field:'up_limit'}"),'Edit actions must declare current-value fields.');
+assert.ok(selection.includes('ActionEditor.createContext(rows,hashes)')&&selection.includes('verifyEdit(qb,kind,hashes,value)'),'Selection must consume canonical Action Context and verified reread.');
+assert.ok(!selection.includes('function promptValue(')&&!index.includes('id="prompt-dialog"')&&!app.includes("prompt-close"),'Retired generic blank prompt owner must be removed.');
+assert.ok(index.indexOf('scripts/torrent-action-editor.js')<index.indexOf('scripts/selection.js'),'Torrent Action Editor must load before Selection.');
+console.log('A24 action editor contract passed: current-value context, mixed state, canonical rate editor, and verified reread are wired.');
