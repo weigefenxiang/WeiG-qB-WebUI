@@ -156,7 +156,8 @@ function makeTorrent(seed,index,now){
   const downloaded=Math.round(size*progress);
   const uploaded=complete?Math.round(size*range(rng,0,3.4)):Math.round(downloaded*range(rng,0,0.35));
   const baseSeeders=state===CANONICAL.DOWNLOAD_STALLED?0:int(rng,0,180);
-  const baseLeechers=state===CANONICAL.SEED_STALLED?0:int(rng,0,120);
+  const downloadOnlySample=!complete&&(index%100===1);
+  const baseLeechers=(state===CANONICAL.SEED_STALLED||downloadOnlySample)?0:int(rng,0,120);
   const privateFlag=rng()<.18;
   const category=privateFlag?pick(rng,VIRTUAL_PT_CATEGORIES):pick(rng,PUBLIC_CATEGORIES);
   const tags=[pick(rng,TAGS)];

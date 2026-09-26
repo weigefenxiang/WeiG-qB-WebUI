@@ -250,6 +250,14 @@ const baseNow=1700000000000;
 }
 
 {
+  const w=createWorld({profile:{qbVersion:'5.2.3',webApiVersion:'2.15.1'},count:120,seed:'mixed-duplex-fixture',now:baseNow});
+  const activeDownloads=w.torrents.filter(t=>!t.completed&&t.effectiveDownloadRate>0);
+  assert.ok(activeDownloads.some(t=>t.effectiveUploadRate>0),'seeded mixed world must retain at least one incomplete duplex Torrent');
+  assert.ok(activeDownloads.some(t=>t.effectiveUploadRate===0&&t.leechers===0&&t.seeders>0),'seeded mixed world must retain a plausible download-only Torrent with seeders but no interested leechers');
+}
+
+
+{
   const w=createWorld({profile:{qbVersion:'5.2.3',webApiVersion:'2.15.1'},count:100,seed:'auto-tmm',now:baseNow});
   const t=w.torrents[0];
   createCategory(w,'Managed','/managed-a');
