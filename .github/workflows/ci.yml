@@ -786,7 +786,7 @@ jobs:
           git config user.name "WeiG CI"
           git config user.email "actions@users.noreply.github.com"
           git add tests/fixtures/qb-release-catalog.lkg.json tools/data/qb-stable-lkg.json tools/data/qb-locale-lkg.json webui/private/data/capabilities.json webui/private/data/settings-compat.json
-          git commit -m "a3: refresh same-stable Frozen runtime [settings-evidence-verify] [native-surfaces] [settings-matrix] [ui]"
+          git commit -m "a3: refresh same-stable Frozen runtime [settings-evidence-verify] [native-surfaces] [settings-matrix] [torrent-runtime-materialize] [ui]"
 
           # Repository contracts that prove committed Git blob identity must inspect the
           # exact local materialized commit that will be pushed, not the stale external HEAD.

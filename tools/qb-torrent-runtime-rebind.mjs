@@ -13,6 +13,8 @@ const actionPath=path.resolve('webui/private/data/source-actions.json');
 if(!fs.existsSync(catalogPath))throw new Error('Torrent runtime rebind catalog not found: '+catalogPath);
 const catalog=JSON.parse(fs.readFileSync(catalogPath,'utf8'));
 if(!Array.isArray(catalog)||!catalog.length)throw new Error('Torrent runtime rebind requires a non-empty exact source catalog.');
+if(!catalog.every(profile=>Object.prototype.hasOwnProperty.call(profile,'torrentContextMenu')))throw new Error('Frozen exact source catalog has not been refreshed with torrentContextMenu provenance; run same-stable source evidence refresh first.');
+if(!catalog.some(profile=>Array.isArray(profile.torrentContextMenu)&&profile.torrentContextMenu.length))throw new Error('Frozen exact source catalog contains no source-proven Torrent context-menu facts; refusing empty materialization.');
 
 const {torrentData,actionData}=compileCompactRuntime(catalog,{includeSettings:false});
 const renderedTorrent=JSON.stringify(torrentData)+'\n';
