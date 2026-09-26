@@ -338,6 +338,11 @@ const baseNow=1700000000000;
   assert.ok(w.torrents.some(t=>!t.completed&&t.effectiveDownloadRate>0&&t.effectiveUploadRate>0),'global upload-slot allocation must not let seeders starve every incomplete active downloader of concurrent upload');
   assert.ok(w.torrents.some(t=>t.completed&&t.effectiveUploadRate>0),'mixed upload-slot allocation must still leave active seeding traffic');
   assert.ok(w.torrents.reduce((sum,t)=>sum+t.uploadSlots,0)<=4,'mixed download/seeding upload-slot allocation must preserve the global hard cap');
+
+  setPreferences(w,{max_connec:4,max_connec_per_torrent:1,max_uploads:4,max_uploads_per_torrent:1},baseNow+1);
+  assert.ok(w.torrents.some(t=>!t.completed&&t.effectiveDownloadRate>0),'tight global connection allocation must retain active downloading traffic');
+  assert.ok(w.torrents.some(t=>t.completed&&t.effectiveUploadRate>0),'tight global connection allocation must not let downloaders starve all active seeders');
+  assert.ok(w.torrents.reduce((sum,t)=>sum+t.connectedPeers,0)<=4,'mixed download/seeding connection allocation must preserve the global hard cap');
 }
 
 

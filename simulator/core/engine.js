@@ -562,7 +562,7 @@ export function schedule(world,now=Date.now(),elapsedSeconds=0){
 
   const activeDownloadList=downloads.filter(t=>activeDownloads.has(t.hash));
   const activeUploadList=uploads.filter(t=>activeUploads.has(t.hash));
-  const connectionOrder=[...activeDownloadList,...activeUploadList];
+  const connectionOrder=interleaveTransferKinds(activeDownloadList,activeUploadList);
   const connectionAllocations=allocateFair(connectionOrder,prefs.max_connec,t=>transferPeerCapacity(world,t,t.completed?'upload':'download'));
   const uploadAllocationOrder=interleaveTransferKinds(activeDownloadList,activeUploadList);
   const uploadAllocations=allocateFair(uploadAllocationOrder,prefs.max_uploads,t=>uploadSlotCapacity(world,t,connectionAllocations.get(t.hash)||0));
