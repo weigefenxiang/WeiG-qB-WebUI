@@ -64,7 +64,7 @@
     var shell=document.createElement('section');shell.className='transfer-mini-chart';shell.tabIndex=0;shell.setAttribute('role','button');shell.setAttribute('aria-label',tr('transfer.openStats'));
     var head=document.createElement('div');head.className='transfer-mini-chart__head';var title=document.createElement('strong');title.textContent=tr('transfer.realtimeSpeed');var windowText=document.createElement('span');windowText.dataset.miniWindow='1';windowText.textContent=windowLabel(chartWindow);head.append(title,windowText);
     var canvas=document.createElement('canvas');canvas.className='transfer-mini-chart__canvas';canvas.width=520;canvas.height=220;canvas.setAttribute('aria-label',tr('transfer.speedHistory'));
-    var legend=document.createElement('div');legend.className='transfer-mini-chart__legend';legend.innerHTML='<span>'+tr('transfer.download')+' <strong data-mini-total="download">—</strong></span><span>'+tr('transfer.upload')+' <strong data-mini-total="upload">—</strong></span>';
+    var legend=document.createElement('div');legend.className='transfer-mini-chart__legend';legend.innerHTML='<span>↓ '+tr('transfer.download')+' <strong data-mini-total="download">—</strong></span><span>↑ '+tr('transfer.upload')+' <strong data-mini-total="upload">—</strong></span>';
     shell.append(head,canvas,legend);shell.addEventListener('click',openStats);shell.addEventListener('keydown',function(event){if(event.key==='Enter'||event.key===' '){event.preventDefault();openStats();}});host.appendChild(shell);compactChart=shell;renderCompactChart();return shell;
   }
 

@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const read=p=>fs.readFileSync(new URL('../'+p,import.meta.url),'utf8');
+const logs=read('webui/private/scripts/logs.js');
+const floating=read('webui/private/scripts/floating.js');
+const settings=read('webui/private/scripts/settings.js');
+const transfer=read('webui/private/scripts/transfer.js');
+const css=read('webui/private/css/transfer.css');
+assert.ok(logs.includes("meta:(U.isMobile&&U.isMobile()?items.length+' / '+all.length:tr('logs.ui.showing'"),'mobile Logs meta must be shown / filtered total only');
+assert.ok(floating.includes("addEventListener('weig:route-state',function(){C.closeSelects(false);closePreview(true);})"),'route change must close floating selects');
+assert.ok(settings.includes("async function openOwned(tab){if(C&&C.closeSelects)C.closeSelects(false);"),'Settings tab open must close any portaled select synchronously');
+assert.ok(transfer.includes("legend.innerHTML='<span>↓ '+tr('transfer.download')")&&transfer.includes("<span>↑ '+tr('transfer.upload')"),'mini transfer legend must use canonical ↓/↑ direction');
+assert.ok(!css.includes('.transfer-mini-chart__legend span::before'),'mini transfer dot marker must be retired');
+console.log('A21 B1 interaction contract passed.');

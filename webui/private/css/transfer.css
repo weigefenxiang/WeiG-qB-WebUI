@@ -67,7 +67,6 @@ html[data-theme=light]{--transfer-stat-surface:linear-gradient(180deg,#fff,#f7fa
 .transfer-mini-chart__canvas{display:block;width:100%;height:116px;border-radius:8px}
 .transfer-mini-chart__legend{justify-content:center;gap:16px;color:var(--text-muted);font-size:10px}
 .transfer-mini-chart__legend span:first-child{color:var(--accent-primary)}.transfer-mini-chart__legend span+span{color:var(--accent-cyan)}
-.transfer-mini-chart__legend span::before{content:"";display:inline-block;width:7px;height:7px;margin-right:5px;border-radius:999px;background:currentColor}
 
 @media(max-width:820px){
   .transfer-runtime-capsule{min-height:30px}.transfer-runtime-capsule__stats{flex:1 1 auto;gap:4px;padding-inline:6px;overflow:hidden}.transfer-runtime-capsule__limits{width:30px;min-width:30px;flex:0 0 30px}
