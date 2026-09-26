@@ -10,6 +10,19 @@ export function exactCatalogProfile(catalog,qbVersion){
   return (Array.isArray(catalog)?catalog:[]).find(item=>String(item?.qbVersion||'')===String(qbVersion||''))||null;
 }
 
+function escapeHtml(value){return String(value??'').replaceAll('&','&amp;').replaceAll('"','&quot;').replaceAll('<','&lt;').replaceAll('>','&gt;');}
+export function languageOptionsHtmlForProfile(profile){
+  const seen=new Set(),rows=[];
+  for(const item of Array.isArray(profile?.webuiLocales)?profile.webuiLocales:[]){
+    const value=String(item&&typeof item==='object'?item.value:item||'').trim();
+    if(!value||seen.has(value))continue;
+    seen.add(value);
+    const label=String(item&&typeof item==='object'&&item.label?item.label:value);
+    rows.push(`<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`);
+  }
+  return rows.join('\n');
+}
+
 export function exactTranslatorBehavior(behaviorEvidence,profile){
   if(!behaviorEvidence||behaviorEvidence.schemaVersion!==1||!profile)return null;
   const hit=(behaviorEvidence.profiles||[]).find(item=>String(item?.qbVersion||'')===String(profile.qbVersion||''));
@@ -48,11 +61,13 @@ export function translationIndexForProfile(catalog,profile,locale){
 }
 
 export function emulateQbtDocument(source,{catalog,behaviorEvidence,qbVersion,locale='en'}={}){
-  const text=String(source||'');
+  const original=String(source||''),profile=exactCatalogProfile(catalog,qbVersion);
+  const localeHtml=languageOptionsHtmlForProfile(profile);
+  const hasLanguageOptions=original.includes('${LANGUAGE_OPTIONS}');
+  const text=hasLanguageOptions&&localeHtml?original.replaceAll('${LANGUAGE_OPTIONS}',localeHtml):original;
   const markers=[...text.matchAll(new RegExp(QBT_TR_RE.source,'g'))];
-  if(!markers.length)return{text,mode:'none',markers:0,translated:0,fallback:0,missing:[],family:null};
+  if(!markers.length)return{text,mode:hasLanguageOptions&&localeHtml?'native-language-options':'none',markers:0,translated:0,fallback:0,missing:[],family:null,languageOptions:localeHtml?localeHtml.split('\n').filter(Boolean).length:0};
 
-  const profile=exactCatalogProfile(catalog,qbVersion);
   const behavior=exactTranslatorBehavior(behaviorEvidence,profile);
   if(!profile||!behavior){
     return{text,mode:'blocked-missing-evidence',markers:markers.length,translated:0,fallback:0,missing:markers.map(item=>({source:item[1],context:item[2]})),family:null};

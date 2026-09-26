@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import {buildTranslationSetIndex,emulateQbtDocument,exactTranslatorBehavior,translationIndexForProfile} from '../simulator/build/qbt-tr-emulator.mjs';
+import {buildTranslationSetIndex,emulateQbtDocument,exactTranslatorBehavior,languageOptionsHtmlForProfile,translationIndexForProfile} from '../simulator/build/qbt-tr-emulator.mjs';
+import fs from 'node:fs';
 
 const behavior={schemaVersion:1,families:{
   'qapp-native':{altWebuiTranslation:true},
@@ -17,7 +18,7 @@ const catalog=[
   {qbVersion:'4.1.3',sourceSha:'a'.repeat(40),settingsTranslations:{zh:'set1'},settingsTranslationSets:{set1:shared}},
   {qbVersion:'4.1.4',sourceSha:'e'.repeat(40),settingsTranslations:{zh_CN:'missing-set'}},
   {qbVersion:'4.6.4',sourceSha:'b'.repeat(40),settingsTranslations:{zh_CN:'set1'}},
-  {qbVersion:'5.2.3',sourceSha:'c'.repeat(40),settingsTranslations:{zh_CN:'set1'}}
+  {qbVersion:'5.2.3',sourceSha:'c'.repeat(40),settingsTranslations:{zh_CN:'set1'},webuiLocales:[{value:'en',label:null},{value:'zh_CN',label:null},{value:'zh_HK',label:null},{value:'zh_TW',label:null}]}
 ];
 assert.equal(buildTranslationSetIndex(catalog).get('set1'),shared,'deduplicated translation sets must be resolved across profiles');
 assert.equal(exactTranslatorBehavior(behavior,catalog[3]).family,'dedicated-native-explicit-fallback');
@@ -45,4 +46,14 @@ assert.ok(!result.text.includes('QBT_TR('));
 const stale=catalog.map(item=>({...item}));stale[3].sourceSha='d'.repeat(40);
 result=emulateQbtDocument(marker,{catalog:stale,behaviorEvidence:behavior,qbVersion:'5.2.3',locale:'zh_CN'});
 assert.equal(result.mode,'blocked-missing-evidence','source-SHA drift must fail closed');
-console.log('QBT_TR emulator contract passed: Pages only emulates native-capable exact source-SHA profiles and reuses frozen official translation sets.');
+const languageHtml=languageOptionsHtmlForProfile(catalog[3]);
+assert.ok(languageHtml.includes('value="zh_CN"')&&languageHtml.includes('>zh_CN</option>'),'Virtual qB LANGUAGE_OPTIONS must come from exact profile locale facts without invented labels');
+result=emulateQbtDocument('<select id="locale_select">${LANGUAGE_OPTIONS}</select>',{catalog,behaviorEvidence:behavior,qbVersion:'5.2.3',locale:'zh_CN'});
+assert.equal(result.mode,'native-language-options');
+assert.equal(result.languageOptions,4);
+assert.ok(!result.text.includes('${LANGUAGE_OPTIONS}')&&result.text.includes('value="zh_HK"')&&result.text.includes('value="zh_TW"'));
+const serviceWorker=fs.readFileSync(new URL('../simulator/service-worker/service-worker.js',import.meta.url),'utf8');
+assert.ok(serviceWorker.includes("text.includes('${LANGUAGE_OPTIONS}')"));
+const preferences=fs.readFileSync(new URL('../webui/private/views/preferences.html',import.meta.url),'utf8');
+assert.ok(preferences.includes('id="locale_select"')&&preferences.includes('${LANGUAGE_OPTIONS}'));
+console.log('QBT_TR emulator contract passed: Pages emulates exact translation behavior plus qB server-side LANGUAGE_OPTIONS from exact locale facts.');

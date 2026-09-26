@@ -222,7 +222,7 @@ function isQbtTextResponse(response,path){
 async function emulateSourceTranslation(response,world,path){
   if(!world||!isQbtTextResponse(response,path))return response;
   const text=await response.clone().text();
-  if(!text.includes('QBT_TR('))return response;
+  if(!text.includes('QBT_TR(')&&!text.includes('${LANGUAGE_OPTIONS}'))return response;
   const [catalog,behaviorEvidence]=await Promise.all([loadCatalog(),loadTranslatorBehavior()]);
   const result=emulateQbtDocument(text,{catalog,behaviorEvidence,qbVersion:world.profile?.qbVersion,locale:world.preferences?.locale||'en'});
   const headers=new Headers();
