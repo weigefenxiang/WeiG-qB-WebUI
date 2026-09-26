@@ -149,7 +149,7 @@ jobs:
           git config user.name "WeiG CI"
           git config user.email "actions@users.noreply.github.com"
           git add webui/private/data/torrent-compat.json webui/private/data/source-actions.json
-          git commit -m "a25: materialize Torrent Action source runtime [ui]"
+          git commit -m "a25: materialize Torrent Action source runtime [settings-evidence] [ui]"
 
           git fetch --no-tags origin dev
           test "$(git rev-parse origin/dev)" = "$GITHUB_SHA" || {

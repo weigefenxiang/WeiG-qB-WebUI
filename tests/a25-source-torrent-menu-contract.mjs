@@ -8,9 +8,12 @@ const html=`
 </ul>`;
 const js=`
 const menu=new ContextMenu({actions:{
- start: () => { fetch("api/v2/torrents/start",{method:"POST",body:new URLSearchParams({hashes:"x"})}); },
- futureRefresh: () => { fetch("api/v2/torrents/futureRefresh",{method:"POST",body:new URLSearchParams({hashes:"x"})}); }
-}});`;
+ start: () => { startFN(); },
+ futureRefresh: () => { futureRefreshFN(); }
+}});
+let startFN=()=>{};let futureRefreshFN=()=>{};
+startFN=()=>{fetch("api/v2/torrents/start",{method:"POST",body:new URLSearchParams({hashes:"x"})});};
+futureRefreshFN=()=>{fetch("api/v2/torrents/futureRefresh",{method:"POST",body:new URLSearchParams({hashes:"x"})});};`;
 const actions=['torrentscontroller.h:startAction','torrentscontroller.h:futureRefreshAction'];
 const menu=extractTorrentContextMenu({menuSource:html,clientSource:js,apiActions:actions,apiActionParameters:{'torrentscontroller.h:startAction':{parameters:['hashes'],required:['hashes'],optional:[]},'torrentscontroller.h:futureRefreshAction':{parameters:['hashes'],required:['hashes'],optional:[]}}},'synthetic Torrent menu');
 assert.deepEqual(menu.map(x=>x.id),['start','Category','futureRefresh']);
