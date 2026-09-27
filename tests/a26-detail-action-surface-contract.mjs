@@ -7,9 +7,12 @@ const app=read('webui/private/scripts/app.js');
 const runtime=JSON.parse(read('webui/private/data/detail-compat.json'));
 
 const version=read('VERSION').trim();
-assert.match(version,/^\\d+\\.\\d+\\.\\d+$/,'canonical VERSION must remain semantic version text');
+assert.match(version,/^\d+\.\d+\.\d+$/,'canonical VERSION must remain semantic version text');
 assert.equal(read('webui/VERSION').trim(),version,'webui/VERSION must follow canonical VERSION');
 assert.equal(JSON.parse(read('webui/private/product-identity.json')).version,version,'generated product identity must follow canonical VERSION');
+assert.equal(JSON.parse(read('package.json')).version,version,'package.json tooling metadata must mirror canonical VERSION');
+assert.equal(JSON.parse(read('package-lock.json')).version,version,'package-lock.json tooling metadata must mirror canonical VERSION');
+assert.equal(JSON.parse(read('package-lock.json')).packages[''].version,version,'package-lock root package metadata must mirror canonical VERSION');
 assert.equal(app.includes('derivedFileMenu'),false,'A26 must not restore a feature-local native Content context-menu owner');
 assert.equal(app.includes('requiresNonSeed'),false,'Content priority availability must not guess from is_seed');
 assert.ok(app.includes("sourceOptions.filter(function(option){return option&&option.disabled!==true;})"),'writable priority Select choices must exclude source display-only states');
