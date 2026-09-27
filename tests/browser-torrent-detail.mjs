@@ -127,11 +127,11 @@ try{
   assert(Math.abs(headerLayout.track.cy-headerLayout.pct.cy)<3&&headerLayout.text==='100.0%','Detail progress track and percentage must share canonical one-decimal progress text: '+JSON.stringify(headerLayout));assert(headerLayout.progressState==='seed-idle'&&headerLayout.progressTone==='stalled-up'&&headerLayout.stateTone==='stalled-up'&&headerLayout.progressActive==='false','Detail must consume the same stalled-upload presentation snapshot as Library: '+JSON.stringify(headerLayout));
   assert(headerLayout.pctAlign==='right'&&Math.abs(headerLayout.pct.right-headerLayout.state.right)<2,'Detail percentage element must end-align to the same canonical right boundary as the state owner: '+JSON.stringify(headerLayout));
   assert(headerLayout.title.right<headerLayout.progress.x,'Long Detail title overlaps the right progress owner: '+JSON.stringify(headerLayout));
-  const generalText=await page.locator('.general-detail').innerText();
-  assert(generalText.includes('176d 6h')&&!generalText.includes('∞'),'Elapsed/seeding duration must render finite day/hour text instead of ETA infinity semantics: '+generalText);
-  assert(generalText.includes('410.39 GiB'),'General total size must preserve fixed two-decimal detail precision: '+generalText);
-  assert(generalText.includes('52531 × 8.00 MiB')&&generalText.includes('(have 52531)'),'General Pieces must consume source-proven pieces_num/piece_size/pieces_have: '+generalText);
-  assert(generalText.includes('N/A'),'Source-proven unavailable General values must preserve qB N/A semantics: '+generalText);
+  const general=await page.evaluate(()=>Object.fromEntries([...document.querySelectorAll('.general-detail .kv')].map(row=>{const nodes=row.children;return[String(nodes[0]?.textContent||'').trim().replace(/:$/,''),String(nodes[1]?.textContent||'').trim()];})));
+  assert(general['Time Active']?.includes('176d 6h')&&!general['Time Active']?.includes('∞'),'Elapsed/seeding duration must render finite day/hour text instead of ETA infinity semantics: '+JSON.stringify(general));
+  assert(general['Total Size']==='410.39 GiB','General total size must preserve fixed two-decimal detail precision: '+JSON.stringify(general));
+  assert(general['Pieces']?.includes('52531 × 8.00 MiB')&&general['Pieces']?.includes('(have 52531)'),'General Pieces must consume source-proven pieces_num/piece_size/pieces_have: '+JSON.stringify(general));
+  assert(general['Info Hash v2']==='N/A','Source-proven unavailable General values must preserve qB N/A semantics: '+JSON.stringify(general));
   await page.locator('.detail-tabs [data-tab="trackers"]').click();
   await page.waitForSelector('.shared-table__row');
   const trackerInitial=await page.evaluate(()=>Array.from(document.querySelectorAll('.shared-table__row')).map(row=>({kind:row.dataset.trackerKind||'',url:row.querySelector('[data-column-key="url"]')?.textContent||'',tier:row.querySelector('[data-column-key="tier"]')?.textContent||'',bt:row.querySelector('[data-column-key="btVersion"]')?.textContent||''})));
