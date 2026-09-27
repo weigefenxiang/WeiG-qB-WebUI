@@ -13,7 +13,7 @@ const version=read('VERSION').trim(),webVersion=read('webui/VERSION').trim(),pkg
 assert(version===webVersion&&version===pkg.version&&version===lock.version&&version===lock.packages?.['']?.version,`Version sources diverged: ${version} / ${webVersion} / ${pkg.version} / ${lock.version}`);
 assert(pkg.devDependencies?.playwright==='1.62.1','Playwright must be exact repository-owned dependency 1.62.1');
 assert(lock.lockfileVersion===3&&lock.packages?.['node_modules/playwright']?.version==='1.62.1'&&lock.packages?.['node_modules/playwright-core']?.version==='1.62.1','package-lock must pin Playwright 1.62.1 with lockfile v3');
-assert(pkg.scripts.test.includes('tests/qb-torrent-surface-parser-contract.mjs')&&pkg.scripts.test.includes('tests/release-profile-contract.mjs')&&pkg.scripts.test.includes('tests/torrent-field-provenance-contract.mjs'),'npm test must cover source-derived Torrent surface, compact release-resolution ownership, and formal Torrent field provenance');
+assert(pkg.scripts.test.includes('tests/qb-torrent-surface-parser-contract.mjs')&&pkg.scripts.test.includes('tests/release-profile-contract.mjs')&&pkg.scripts.test.includes('tests/torrent-field-provenance-contract.mjs')&&pkg.scripts.test.includes('tests/release-prepare-contract.mjs')&&pkg.scripts.test.includes('tests/release-publish-contract.mjs'),'npm test must cover source-derived Torrent surface, compact release-resolution ownership, formal Torrent field provenance, and release orchestration contracts');
 
 const browserTests=['browser-runtime.mjs','browser-theme.mjs','browser-feedback.mjs','browser-feature-parity.mjs','browser-torrent-workspace.mjs','browser-adaptive-ui.mjs','browser-sidebar-capability-visual.mjs'];
 const driver=read('tests/browser-driver.mjs');
@@ -25,7 +25,7 @@ const directPlaywrightOwners=filesUnder('tests',['.mjs']).filter(rel=>/from\s*['
 assert(JSON.stringify(directPlaywrightOwners)===JSON.stringify(['tests/browser-driver.mjs']),`Playwright ownership duplicated: ${directPlaywrightOwners.join(', ')}`);
 
 const workflowFiles=filesUnder('.github/workflows',['.yml','.yaml']);
-const canonicalWorkflows=['.github/workflows/candidate-deployment-only.yml','.github/workflows/ci.yml','.github/workflows/pages-source.yml','.github/workflows/pages.yml','.github/workflows/promote.yml','.github/workflows/real-qb-full.yml','.github/workflows/real-qb-locale.yml','.github/workflows/release.yml','.github/workflows/session-handshake.yml'];
+const canonicalWorkflows=['.github/workflows/candidate-deployment-only.yml','.github/workflows/ci.yml','.github/workflows/pages-source.yml','.github/workflows/pages.yml','.github/workflows/promote.yml','.github/workflows/publish.yml','.github/workflows/real-qb-full.yml','.github/workflows/real-qb-locale.yml','.github/workflows/release-prepare.yml','.github/workflows/release.yml','.github/workflows/session-handshake.yml'];
 assert(JSON.stringify(workflowFiles)===JSON.stringify(canonicalWorkflows),`Canonical workflow set diverged: ${workflowFiles.join(', ')}`);
 for(const rel of workflowFiles){const source=read(rel);assert(!/npm\s+install[^\n]*playwright(?:@|\s|$)/i.test(source),`${rel} dynamically installs Playwright`);assert(!/\bnpx\s+playwright\s+install(?:-deps)?\b/i.test(source),`${rel} provisions a second browser runtime`);}
 
