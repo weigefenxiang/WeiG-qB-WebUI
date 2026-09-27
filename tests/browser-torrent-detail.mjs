@@ -180,20 +180,6 @@ try{
   const priorityLabels=await page.locator('.ui-context-menu[data-context-level="1"] .ui-context-menu__label').allTextContents();
   assert(priorityLabels.includes('Normal')&&priorityLabels.includes('High')&&priorityLabels.includes('Maximum'),'Priority submenu did not expose source-proven priority choices: '+JSON.stringify(priorityLabels));
   assert(await page.locator('.ui-context-menu[data-context-level="1"] .ui-select__option.is-context-checked').count()===0,'Mixed folder priority must not invent a checked source priority choice.');
-  const highPriorityValue=await page.evaluate(()=>Number(WeiG.CapabilityRegistry.torrentDetailUi()?.controls?.filePriority?.options?.find(option=>option?.translation?.source==='High')?.value));
-  assert(Number.isFinite(highPriorityValue),'High priority test value must come from the exact qB source control, not a version-specific hardcode.');
-  const beforeFolderMenuWrites=filePrioWrites.length;
-  await page.locator('.ui-context-menu[data-context-level="1"] .ui-select__option').filter({hasText:'High'}).click();
-  await waitFixture(()=>filePrioWrites.length>=beforeFolderMenuWrites+2,'Folder priority submenu did not write all descendants: '+JSON.stringify(filePrioWrites.slice(beforeFolderMenuWrites)));
-  assert(filePrioWrites.slice(beforeFolderMenuWrites,beforeFolderMenuWrites+2).every((write,index)=>write.ids.length===1&&write.ids[0]===index&&write.priority===highPriorityValue),'Folder priority submenu must reuse canonical descendant filePrio writes with the exact source priority value: '+JSON.stringify(filePrioWrites.slice(beforeFolderMenuWrites)));
-  await page.waitForFunction(expected=>WeiG.AppState.detailViewport?.items?.find(item=>item?.__weigFileKind==='folder'&&item.__weigPath==='folder-a')?.priority===expected,highPriorityValue);
-  assert(await page.locator('.ui-context-menu').count()===0,'Selecting a nested priority action must close the entire Context Menu tree.');
-  const folderA=page.locator('.shared-table__row[data-file-kind="folder"]').filter({hasText:'folder-a'}).first();
-  await folderA.click({button:'right'});
-  await page.waitForSelector('.ui-context-menu[data-context-level="0"] .ui-select__option[aria-haspopup="menu"]');
-  await page.locator('.ui-context-menu[data-context-level="0"] .ui-select__option[aria-haspopup="menu"]').filter({hasText:'Priority'}).hover();
-  await page.waitForSelector('.ui-context-menu[data-context-level="1"]');
-  assert(await page.locator('.ui-context-menu[data-context-level="1"] .ui-select__option.is-context-checked').filter({hasText:'High'}).count()===1,'Uniform folder priority after authoritative reread must mark the matching submenu choice.');
   await page.keyboard.press('Escape');await page.waitForSelector('.ui-context-menu[data-context-level="1"]',{state:'detached'});
   assert(await page.locator('.ui-context-menu[data-context-level="0"]').count()===1,'First Escape from a nested Context Menu must close only the child submenu.');
   await page.keyboard.press('Escape');await page.waitForSelector('.ui-context-menu[data-context-level="0"]',{state:'detached'});
@@ -288,6 +274,21 @@ try{
   const headerWrites=filePrioWrites.slice(beforeHeaderWrites);
   assert(headerWrites.length===files.length&&headerWrites.every((write,index)=>write.ids.length===1&&write.ids[0]===index&&write.priority===1),`Header checkbox did not round-trip every source file through filePrio: ${JSON.stringify(headerWrites)}`);
   assert(files.every(file=>file.priority===1),'Header checkbox fixture server truth did not converge all files to Normal priority.');
+
+  const folderA=page.locator('.shared-table__row[data-file-kind="folder"]').filter({hasText:'folder-a'}).first();
+  await folderA.click({button:'right'});
+  await page.waitForSelector('.ui-context-menu[data-context-level="0"] .ui-select__option[aria-haspopup="menu"]');
+  await page.locator('.ui-context-menu[data-context-level="0"] .ui-select__option[aria-haspopup="menu"]').filter({hasText:'Priority'}).hover();
+  await page.waitForSelector('.ui-context-menu[data-context-level="1"]');
+  assert(await page.locator('.ui-context-menu[data-context-level="1"] .ui-select__option.is-context-checked').filter({hasText:'Normal'}).count()===1,'Uniform Normal folder priority must mark the matching nested source choice.');
+  const highPriorityValue=await page.evaluate(()=>Number(WeiG.CapabilityRegistry.torrentDetailUi()?.controls?.filePriority?.options?.find(option=>option?.translation?.source==='High')?.value));
+  assert(Number.isFinite(highPriorityValue),'High priority test value must come from the exact qB source control, not a version-specific hardcode.');
+  const beforeFolderMenuWrites=filePrioWrites.length;
+  await page.locator('.ui-context-menu[data-context-level="1"] .ui-select__option').filter({hasText:'High'}).click();
+  await waitFixture(()=>filePrioWrites.length>=beforeFolderMenuWrites+2,'Folder priority submenu did not write all descendants: '+JSON.stringify(filePrioWrites.slice(beforeFolderMenuWrites)));
+  assert(filePrioWrites.slice(beforeFolderMenuWrites,beforeFolderMenuWrites+2).every((write,index)=>write.ids.length===1&&write.ids[0]===index&&write.priority===highPriorityValue),'Folder priority submenu must reuse canonical descendant filePrio writes with the exact source priority value: '+JSON.stringify(filePrioWrites.slice(beforeFolderMenuWrites)));
+  await page.waitForFunction(expected=>WeiG.AppState.detailViewport?.items?.find(item=>item?.__weigFileKind==='folder'&&item.__weigPath==='folder-a')?.priority===expected,highPriorityValue);
+  assert(await page.locator('.ui-context-menu').count()===0,'Selecting a nested priority action must close the entire Context Menu tree.');
 
   const normalFolderStyle=await page.evaluate(()=>{const visible=row=>{const style=getComputedStyle(row),rect=row.getBoundingClientRect();return style.display!=='none'&&style.visibility!=='hidden'&&rect.width>0&&rect.height>0;},row=[...document.querySelectorAll('.shared-table__row[data-file-kind="folder"]')].find(visible),label=row&&row.querySelector('.detail-file-label'),toggle=row&&row.querySelector('.detail-file-toggle'),rr=row&&row.getBoundingClientRect(),lr=label&&label.getBoundingClientRect(),tr=toggle&&toggle.getBoundingClientRect(),fileCount=[...document.querySelectorAll('.shared-table__row[data-file-kind="file"]')].filter(visible).length;return row&&label&&toggle?{fontWeight:getComputedStyle(row).fontWeight,height:rr.height,labelTop:lr.top-rr.top,labelLeft:lr.left-rr.left,toggleTop:tr.top-rr.top,expanded:toggle.getAttribute('aria-expanded'),fileCount}:null;});
   assert(normalFolderStyle&&normalFolderStyle.expanded==='true'&&normalFolderStyle.fileCount>=2,'Normal Content folder row did not start expanded: '+JSON.stringify(normalFolderStyle));
