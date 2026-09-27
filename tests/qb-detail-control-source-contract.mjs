@@ -60,6 +60,8 @@ assert.match(layoutSource,/qbSourceText\(\{source:source,context:context\},sourc
 assert.ok(appSource.includes('__weigDescendantFileIds')&&appSource.includes('option&&option.disabled!==true'),'folder Download Priority must reuse descendant file ids while excluding source display-only options from writable choices');
 assert.ok(appSource.includes("priorityLabels[String(option.value)]=detailOptionLabel('filePriority',option)")&&appSource.includes('formatValue:function(value){return priorityLabels[String(value)]'),'display-only Mixed must remain a renderable state label without becoming a selectable action');
 assert.equal(appSource.includes('requiresNonSeed'),false,'file priority availability must not use the retired feature-local is_seed guess');
+assert.equal(appSource.includes('derivedFileMenu'),false,'source-proven Content actions must retire the feature-local native file-menu synthesizer');
+assert.ok(appSource.includes('next.translation=priorityColumn.translation'),'Content priority parent caption must project the exact source-derived Download Priority column copy');
 assert.equal(uiSource.includes("folder&&column.key==='priority'"),false,'file-tree presentation must not blank folder Priority');
 assert.equal(uiSource.includes("!folder&&typeof ctx.cellRenderer==='function'"),false,'folder rows must reach the canonical Detail cell renderer');
 assert.ok(floatingSource.includes('option.disabled=!!item.disabled')&&floatingSource.includes('b.disabled=!!item.disabled'),'shared Select must preserve display-only source options');
