@@ -133,4 +133,5 @@ assert.match(sessionContract,/status===401/,'shared Session Contract must handle
 assert.match(sessionContract,/text==='Ok\.'/,'shared Session Contract must accept legacy qB 4.x Ok. login');
 assert.match(privateIndex,/scripts\/qb-client\.js/,'private WebUI must load the shared API compatibility client');
 
+assert.match(ps,/function Disable-QBWebUI[\s\S]*\$candidateBytes=\$null[\s\S]*Compare-QBBytes \$candidateBytes \$currentBytes[\s\S]*config changed unexpectedly during uninstall mutation/s,'Windows uninstall config mutation must only auto-restore bytes it wrote and must not overwrite a concurrent qB config change');
 console.log('Platform contract passed: Linux/Windows Release installs pin one concrete tag and require tag/VERSION/GIT_SHA identity; Dev consumes one materialized qB-aware payload, permits newer docs-only heads only after compare verification, fails closed on Pages-relevant lag, and forbids raw-source fallback; Windows qB config mutation preserves original text encoding; installer compatibility and LIVE rollback retention remain guarded.');

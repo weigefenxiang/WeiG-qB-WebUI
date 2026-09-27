@@ -493,18 +493,32 @@ function Disable-QBWebUI([string]$Path,[string]$RootFolder) {
   $dir=Split-Path $Path -Parent
   $tempPath=Join-Path $dir ('.weig-qb-uninstall-'+[guid]::NewGuid().ToString('N')+'.tmp')
   $replaceBackup="$Path.weig.uninstall-replace.bak"
+  [byte[]]$candidateBytes=$null
   try {
     Write-QBConfigText $tempPath $text $state
     $verify=Read-QBConfigText $tempPath
     if($verify.Text -ne $text){throw 'qBittorrent uninstall config verification failed.'}
+    if($verify.EncodingName -ne $state.EncodingName -or !(Compare-QBBytes ([byte[]]$verify.Preamble) ([byte[]]$state.Preamble))){throw 'qBittorrent uninstall config did not preserve the original encoding.'}
+    [byte[]]$candidateBytes=[IO.File]::ReadAllBytes($tempPath)
     $null=Assert-QBConfigMutationSafe $Path
     if(!(Compare-QBBytes $originalBytes ([IO.File]::ReadAllBytes($Path)))){throw 'qBittorrent config changed after uninstall preflight; refusing to overwrite a newer file.'}
     Invoke-QBAtomicReplace $tempPath $Path $replaceBackup
     $final=Read-QBConfigText $Path
-    if($final.Text -ne $text){throw 'qBittorrent config verification failed after uninstall mutation.'}
+    if($final.Text -ne $text -or !(Compare-QBBytes $candidateBytes ([IO.File]::ReadAllBytes($Path)))){throw 'qBittorrent config verification failed after uninstall mutation.'}
   } catch {
-    if(Test-Path -LiteralPath $backup -PathType Leaf){Restore-QBConfigBackupAtomically $Path $backup}
-    throw
+    $failure=$_.Exception
+    $currentBytes=$null
+    if(Test-Path -LiteralPath $Path -PathType Leaf){[byte[]]$currentBytes=[IO.File]::ReadAllBytes($Path)}
+    if($candidateBytes -and $currentBytes -and (Compare-QBBytes $candidateBytes $currentBytes)){
+      try {
+        Restore-QBConfigBackupAtomically $Path $backup
+      } catch {
+        throw "qBittorrent uninstall config mutation failed and automatic rollback also failed. Original safety backup remains at $backup. Mutation error: $($failure.Message) Rollback error: $($_.Exception.Message)"
+      }
+    } elseif($currentBytes -and !(Compare-QBBytes $originalBytes $currentBytes)){
+      throw "qBittorrent config changed unexpectedly during uninstall mutation; refusing to overwrite it. Original safety backup remains at $backup. Mutation error: $($failure.Message)"
+    }
+    throw $failure
   } finally {
     if(Test-Path -LiteralPath $tempPath){Remove-Item -LiteralPath $tempPath -Force -ErrorAction SilentlyContinue}
     if(Test-Path -LiteralPath $replaceBackup){Remove-Item -LiteralPath $replaceBackup -Force -ErrorAction SilentlyContinue}
