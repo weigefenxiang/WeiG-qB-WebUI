@@ -209,4 +209,6 @@ assert(authLive.includes("virtualQbAuthLifecycle:'PASS'")&&authLive.includes('wr
 
 assert(ci.includes('@@RSS_RUNTIME_META')&&ci.includes('@@RSS_RUNTIME_B64'),'native-surface admission must emit exact RSS runtime materialization evidence alongside Settings.');
 assert(ci.includes("cmp -s native-base/rss-compat.json webui/private/data/rss-compat.json")&&ci.includes('Committed RSS runtime does not match the exact-SHA canonical materialization.'),'native-surface admission must fail when committed RSS compact runtime drifts from exact source materialization.');
+assert(ci.includes('name: Linux installer lifecycle')&&ci.includes('run: bash tests/installer-lifecycle.sh'),'ordinary exact-SHA CI must execute the isolated Linux installer lifecycle, including uninstall and rollback');
+assert(ci.includes('name: Windows installer lifecycle')&&ci.includes('runs-on: windows-latest')&&ci.includes('run: ./tests/installer-lifecycle.ps1'),'ordinary exact-SHA CI must execute the native Windows installer lifecycle instead of syntax-only coverage');
 console.log(`CI contract passed for WeiG ${version}: ordinary/candidate CI stays bounded to smoke + browser + package, source/locale extraction remains settings-evidence-only, candidate deployment is independently retryable, and Pages keeps its separate exact-source acceptance owner.`);

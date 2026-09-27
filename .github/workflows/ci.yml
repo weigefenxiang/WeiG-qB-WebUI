@@ -258,6 +258,35 @@ jobs:
           $null = [scriptblock]::Create((Get-Content 'installers/install.ps1' -Raw))
           Write-Host 'PowerShell installer syntax parsed.'
 
+
+  installer_lifecycle_linux:
+    name: Linux installer lifecycle
+    needs: classify
+    if: ${{ always() && (github.event_name == 'workflow_dispatch' || needs.classify.outputs.relevant == 'true') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Install lifecycle · install -> upgrade -> rollback -> uninstall -> rollback
+        shell: bash
+        run: bash tests/installer-lifecycle.sh
+
+  installer_lifecycle_windows:
+    name: Windows installer lifecycle
+    needs: classify
+    if: ${{ always() && (github.event_name == 'workflow_dispatch' || needs.classify.outputs.relevant == 'true') }}
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Install lifecycle · install -> upgrade -> rollback -> uninstall -> rollback
+        shell: pwsh
+        run: ./tests/installer-lifecycle.ps1
+
   ui_browser:
     name: Linux semantic UI · ${{ matrix.suite.name }}
     if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'ui' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[ui]')) }}
