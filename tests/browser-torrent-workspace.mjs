@@ -38,6 +38,8 @@ async function resetScrollProbe(page){
   await page.evaluate(()=>{const list=document.getElementById('torrent-list'),v=WeiG.AppState.viewport;v.resetScroll();list.scrollLeft=0;list.scrollTop=0;});
   await page.waitForTimeout(20);
   await waitForDataViewportIdle(page);
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  await waitForDataViewportIdle(page);
   await page.evaluate(()=>WeiG.AppState.viewport.resetMetrics());
 }
 async function scrollByBrowserInput(page,selector,axis){
