@@ -33,12 +33,28 @@ const currentSourceFileColumns=[
   {key:'remaining',caption:'Remaining',translation:{source:'Remaining',context:'TrackerListWidget'},defaultWidth:75,defaultVisible:true,dataProperties:['size','progress','priority']},
   {key:'availability',caption:'Availability',translation:{source:'Availability',context:'TrackerListWidget'},defaultWidth:75,defaultVisible:true,dataProperties:['availability']}
 ];
+const currentSourceFileMenu=[
+  {id:'Rename',translation:{source:'Rename...',context:'PropertiesWidget'}},
+  {id:'FilePrio',translation:{source:'Priority',context:'PropertiesWidget'},semantic:'file-priority',children:[
+    {id:'FilePrioIgnore',translation:{source:'Do not download',context:'PropListDelegate'},semantic:'file-priority-value',priorityValue:'0'},
+    {id:'FilePrioNormal',translation:{source:'Normal',context:'PropListDelegate'},semantic:'file-priority-value',priorityValue:'1'},
+    {id:'FilePrioHigh',translation:{source:'High',context:'PropListDelegate'},semantic:'file-priority-value',priorityValue:'6'},
+    {id:'FilePrioMaximum',translation:{source:'Maximum',context:'PropListDelegate'},semantic:'file-priority-value',priorityValue:'7'}
+  ]}
+];
+const currentSourceWebseedMenu=[
+  {id:'AddWebSeeds',translation:{source:'Add web seeds...',context:'PropertiesWidget'},endpoint:'torrents/addWebSeeds',sourceAction:'torrentscontroller.h:addWebSeedsAction'},
+  {id:'RemoveWebSeed',translation:{source:'Remove web seed',context:'PropertiesWidget'},endpoint:'torrents/removeWebSeeds',sourceAction:'torrentscontroller.h:removeWebSeedsAction',availability:{minSelection:1}},
+  {id:'CopyWebseedUrl',translation:{source:'Copy web seed URL',context:'PropertiesWidget'},availability:{minSelection:1}},
+  {id:'EditWebSeed',translation:{source:'Edit web seed URL...',context:'PropertiesWidget'},endpoint:'torrents/editWebSeed',sourceAction:'torrentscontroller.h:editWebSeedAction',availability:{minSelection:1,maxSelection:1}}
+];
 const profile=structuredClone(frozenProfile);
 profile.torrentDetailUi=profile.torrentDetailUi||{};
 profile.torrentDetailUi.tabs=currentSourceTabs;
 profile.torrentDetailUi.tabOrder=currentSourceTabOrder;
 profile.torrentDetailUi.tables=profile.torrentDetailUi.tables||{};
 profile.torrentDetailUi.tables.files=currentSourceFileColumns;
+profile.torrentDetailUi.contextMenus={...(profile.torrentDetailUi.contextMenus||{}),files:currentSourceFileMenu,webseeds:currentSourceWebseedMenu};
 const fileColumns=profile.torrentDetailUi.tables.files;
 for(const key of ['checked','name','size','progress','remaining','priority','availability'])if(!fileColumns.some(column=>column.key===key))throw new Error(`Current qB 5.2.0 Content source overlay is missing ${key}.`);
 
@@ -162,6 +178,10 @@ try{
   await webseedHead.click();
   const webseedDesc=await page.evaluate(()=>Array.from(document.querySelectorAll('.shared-table__row [data-column-key="url"]')).map(node=>node.textContent));
   assert(webseedDesc[0]?.includes('z-cdn.example'),'HTTP Sources descending sort failed '+JSON.stringify(webseedDesc));
+  const webseedRow=page.locator('.shared-table__row').first();await webseedRow.click({button:'right'});await page.waitForSelector('.ui-context-menu[data-context-level="0"]');
+  const webseedMenuLabels=await page.locator('.ui-context-menu[data-context-level="0"] .ui-context-menu__label').allTextContents();
+  assert(['Add web seeds...','Remove web seed','Copy web seed URL','Edit web seed URL...'].every(label=>webseedMenuLabels.includes(label)),'HTTP Sources native context actions must project from exact qB source order/capability: '+JSON.stringify(webseedMenuLabels));
+  await page.keyboard.press('Escape');await page.waitForSelector('.ui-context-menu[data-context-level="0"]',{state:'detached'});
 
   await page.locator('.detail-tabs [data-tab="files"]').click();
   await page.waitForSelector('.shared-table__head .grid-head-cell[data-key="size"]');
