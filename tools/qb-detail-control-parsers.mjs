@@ -46,11 +46,12 @@ export function extractTorrentContextMenu({menuSource='',clientSource='',apiActi
   });
 }
 
-export function extractDetailContextMenus({menuSource='',fileSource='',filePriorityControl=null,trackerSource='',peerSource='',dialogSources={},apiActions=[]}={},context='qB source'){
+export function extractDetailContextMenus({menuSource='',fileSource='',filePriorityControl=null,trackerSource='',peerSource='',webseedSource='',dialogSources={},apiActions=[]}={},context='qB source'){
   const files=bindFilePriorityMenu(enrichMenu(menuItems(menuSource,'torrentFilesMenu',context),fileSource,dialogSources,apiActions,'files',context),filePriorityControl);
   const trackers=enrichMenu(menuItems(menuSource,'torrentTrackersMenu',context),trackerSource,dialogSources,apiActions,'trackers',context);
   const peers=enrichMenu(menuItems(menuSource,'torrentPeersMenu',context),peerSource,dialogSources,apiActions,'peers',context);
-  const result={};if(files.length)result.files=files;if(trackers.length)result.trackers=trackers;if(peers.length)result.peers=peers;return result;
+  const webseeds=enrichMenu(menuItems(menuSource,'torrentWebseedsMenu',context),webseedSource,dialogSources,apiActions,'webseeds',context);
+  const result={};if(files.length)result.files=files;if(trackers.length)result.trackers=trackers;if(peers.length)result.peers=peers;if(webseeds.length)result.webseeds=webseeds;return result;
 }
 
 export function detailControlTranslationRefs(detailUi){const out={};function addMenu(surface,item,path){const ref=item&&item.translation,key=path?path+'.'+item.id:item.id;if(ref&&ref.source&&ref.context)out[`detail.menu.${surface}.${key}`]={source:String(ref.source),context:String(ref.context)};for(const child of item&&Array.isArray(item.children)?item.children:[])addMenu(surface,child,key);}for(const [surface,items] of Object.entries(detailUi&&detailUi.contextMenus||{}))for(const item of items||[])addMenu(surface,item,'');for(const [name,control] of Object.entries(detailUi&&detailUi.controls||{}))for(const option of control&&Array.isArray(control.options)?control.options:[]){const ref=option&&option.translation;if(ref&&ref.source&&ref.context)out[`detail.control.${name}.${option.value}`]={source:String(ref.source),context:String(ref.context)};}return out;}

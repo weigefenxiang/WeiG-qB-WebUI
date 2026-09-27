@@ -30,6 +30,7 @@ export function extractQbReleaseTorrentSurface({ref='',apiActions=[],apiActionPa
   const fileTreeSource=readOptionalSource('src/webui/www/private/scripts/file-tree.js');
   const trackerSource=readOptionalSource('src/webui/www/private/scripts/prop-trackers.js');
   const peerSource=readOptionalSource('src/webui/www/private/scripts/prop-peers.js');
+  const webseedSource=readOptionalSource('src/webui/www/private/scripts/prop-webseeds.js');
   const menuSource=readOptionalSource('src/webui/www/private/index.html');
   const fileProjectionSource=[propFilesSource,torrentContentSource,fileTreeSource].filter(Boolean).join('\n');
 
@@ -41,7 +42,7 @@ export function extractQbReleaseTorrentSurface({ref='',apiActions=[],apiActionPa
     dynamicTableSource,
     legacyFilesSource:propFilesSource,
     legacyTrackersSource:trackerSource,
-    legacyWebseedsSource:readOptionalSource('src/webui/www/private/scripts/prop-webseeds.js')
+    legacyWebseedsSource:webseedSource
   },context);
   torrentDetailUi.tables.files=enrichTorrentFileColumnProvenance(torrentDetailUi.tables.files,fileProjectionSource,detailSurfaces.torrentFileFields,context);
 
@@ -55,10 +56,13 @@ export function extractQbReleaseTorrentSurface({ref='',apiActions=[],apiActionPa
     filePriorityControl,
     trackerSource,
     peerSource,
+    webseedSource,
     dialogSources:{
       'addtrackers.html':readOptionalSource('src/webui/www/private/addtrackers.html'),
       'edittracker.html':readOptionalSource('src/webui/www/private/edittracker.html'),
-      'addpeers.html':readOptionalSource('src/webui/www/private/addpeers.html')
+      'addpeers.html':readOptionalSource('src/webui/www/private/addpeers.html'),
+      'addwebseeds.html':readOptionalSource('src/webui/www/private/addwebseeds.html'),
+      'editwebseed.html':readOptionalSource('src/webui/www/private/editwebseed.html')
     },
     apiActions
   },context);
