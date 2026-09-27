@@ -39,7 +39,7 @@ assert.doesNotMatch(ui,/--select-menu-ch|360px/,'Retired Select ch/360px width p
 
 const ownedEscapeClosures=floating.match(/if\(e\.key==='Escape'\)\{e\.preventDefault\(\);e\.stopPropagation\(\);close\(w,true\);\}/g)||[];
 assert.equal(ownedEscapeClosures.length,3,'Canonical floating Select/Combo must consume each owned Escape before app-level route navigation can observe it.');
-assert.match(floating,/if\(contextMenu\)\{e\.preventDefault\(\);e\.stopImmediatePropagation\(\);closeContextMenu\(\);closePreview\(true\);return;\}/,'Context Menu must consume its owned Escape before app-level route navigation can observe it.');
+assert.match(floating,/document\.addEventListener\('keydown',function\(e\)\{if\(e\.key!=='Escape'\)return;if\(contextMenu\)\{e\.preventDefault\(\);e\.stopImmediatePropagation\(\);closeContextMenu\(\);closePreview\(true\);return;\}closePreview\(true\);\},true\)/,'Context Menu must capture and consume its owned Escape before app-level route navigation can observe it.');
 
 assert.match(floating,/function placeContextMenu\(menu,x,y\).*intrinsicMenuWidth\(menu\).*dataset\.wrap/s,'Context Menu must size to intrinsic label width and only wrap when bounded');
 assert.ok(floating.includes("label.className='ui-select__option-label ui-context-menu__label'")&&floating.includes("button.appendChild(label)"),'Context Menu items must use the shared measurable label primitive');
