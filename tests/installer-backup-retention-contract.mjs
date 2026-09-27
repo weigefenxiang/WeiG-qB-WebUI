@@ -8,8 +8,8 @@ const ps=fs.readFileSync(path.join(root,'installers/install.ps1'),'utf8');
 const sh=fs.readFileSync(path.join(root,'installers/install.sh'),'utf8');
 
 assert.ok(ps.includes('function Get-OwnedBackupsForDestination([string]$Target)')&&ps.includes('function Prune-Backups([string]$Target,[int]$Keep=3)'), 'Windows installer must centralize exact-target backup ownership and retention.');
-assert.ok(ps.includes("$item.Name -notmatch '^\\d{8}-\\d{6}
-assert.ok(ps.includes("Join-Path $_.FullName 'had-webui'")&&ps.includes("Join-Path $_.FullName 'dest-path'"), 'Windows pruning must require installer ownership markers before deletion.');
+assert.ok(ps.includes("$item.Name -notmatch '^\\d{8}-\\d{6}$'"), 'Windows backup ownership must reject non timestamp-named backup directories.');
+assert.ok(ps.includes("Join-Path $item.FullName 'had-webui'")&&ps.includes("Join-Path $item.FullName 'dest-path'"), 'Windows pruning must require installer ownership markers before deletion.');
 assert.ok(ps.includes('Sort-Object Name -Descending')&&ps.includes('Select-Object -Skip $Keep'), 'Windows pruning must preserve the newest owned backups.');
 assert.ok(ps.includes('Prune-Backups $Destination 3'), 'Windows backup creation must cap retained backups at three for the exact destination.');
 assert.ok(ps.indexOf("Set-Content -Encoding UTF8 -Path (Join-Path $State 'last-backup') -Value $b")<ps.indexOf('Prune-Backups $Destination 3'), 'Windows must publish the new rollback pointer before pruning older backups.');
@@ -30,7 +30,7 @@ assert.ok(sh.includes('[ "$PURGE_BACKUPS" -eq 1 ] && [ "$MODE" != "uninstall" ]'
 
 console.log('Installer backup lifecycle contract passed: Linux and Windows keep exact-target owned backups, share retention ownership with purge, and only permit destructive purge during uninstall.');
 "), 'Windows backup ownership must reject non timestamp-named backup directories.');
-assert.ok(ps.includes("Join-Path $_.FullName 'had-webui'")&&ps.includes("Join-Path $_.FullName 'dest-path'"), 'Windows pruning must require installer ownership markers before deletion.');
+assert.ok(ps.includes("Join-Path $item.FullName 'had-webui'")&&ps.includes("Join-Path $item.FullName 'dest-path'"), 'Windows pruning must require installer ownership markers before deletion.');
 assert.ok(ps.includes('Sort-Object Name -Descending')&&ps.includes('Select-Object -Skip $Keep'), 'Windows pruning must preserve the newest owned backups.');
 assert.ok(ps.includes('Prune-Backups $Destination 3'), 'Windows backup creation must cap retained backups at three for the exact destination.');
 assert.ok(ps.indexOf("Set-Content -Encoding UTF8 -Path (Join-Path $State 'last-backup') -Value $b")<ps.indexOf('Prune-Backups $Destination 3'), 'Windows must publish the new rollback pointer before pruning older backups.');
