@@ -90,7 +90,7 @@ try {
   }
 
   $Installer=Join-Path $Root 'installers\install.ps1'
-  $State=Join-Path $env:APPDATA 'WeiG-qB-WebUI'
+  $State=Join-Path $env:APPDATA 'WeiG_qB-WebUI'
 
   function Assert-Install([string]$ExpectedVersion,[string]$ExpectedSha,[string]$ExpectedMarker){
     Assert-True (Test-Path (Join-Path $Destination 'public\index.html')) 'public/index.html missing after install.'
