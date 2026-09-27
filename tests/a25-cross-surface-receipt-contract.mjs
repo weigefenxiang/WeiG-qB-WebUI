@@ -23,7 +23,7 @@ assert.match(app,/var submitted=await executeDetailAction/);
 assert.match(app,/notice\.update\('',\s*'success',\{receipt:\{subject:addSubject/);
 assert.match(app,/receipt:\{subject:'RSS',results:\[\{label:tr\('rss\.addedTitle'/);
 assert.match(app,/var copied=await executeDetailLocalAction\(localAction,rowValue,item\)/);
-assert.match(app,/operationReceipt\(localSubject,detailMenuLabel\(surface,menuItem\),copied,'success'\)/);
+assert.match(app,/operationReceipt\(localSubject,detailActionLabel\(surface,menuItem,rowItem\),copied,'success'\)/,'Detail local receipts must use the same row-aware action label shown in the menu');
 assert.ok(!app.includes('function promptAction('),'retired orphan generic prompt success owner must stay removed');
 assert.ok(!app.includes("W.toast(tr('common.copiedMessage'),'success'"),'Detail local copy must not bypass structured receipt owner');
 console.log('A25 B3 contract passed: shared semantic receipts cover transfer, columns, logs, Add, Detail and RSS user commits without duplicate polling/Feed noise.');
