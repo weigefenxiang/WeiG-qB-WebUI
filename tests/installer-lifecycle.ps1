@@ -190,7 +190,9 @@ try {
   })
   Assert-True ($remaining.Count -eq 0) 'Purge uninstall left installer-owned backups for the selected destination.'
   & $pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Installer -Rollback
-  Assert-True ($LASTEXITCODE -ne 0) 'Rollback unexpectedly succeeded after target backup purge.'
+  $purgeRollbackExit=$LASTEXITCODE
+  Assert-True ($purgeRollbackExit -ne 0) 'Rollback unexpectedly succeeded after target backup purge.'
+  $global:LASTEXITCODE=0
   & $Installer -Version $VersionOne -Configure -Destination $Destination
   Assert-Install $VersionOne $ShaOne 'release-one'
 
