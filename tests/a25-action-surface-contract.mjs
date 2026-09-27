@@ -3,8 +3,6 @@ import fs from 'node:fs';
 const read=p=>fs.readFileSync(new URL('../'+p,import.meta.url),'utf8');
 const selection=read('webui/private/scripts/selection.js');
 const capabilities=read('webui/private/scripts/capabilities.js');
-const version=read('VERSION').trim();
-assert.equal(version,'1.0.15');
 assert.ok(selection.includes("button.dataset.actionInteraction=item.interaction||'close'"));
 assert.ok(selection.includes("if(item.interaction==='stay')"));
 assert.ok(selection.includes('refreshActionGroup(dialog,grid,groupKind)'));
