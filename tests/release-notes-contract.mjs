@@ -28,7 +28,7 @@ assert.equal(built.items.length,6,'only user-visible WebUI runtime changes shoul
 assert.equal(built.highlights.length,6);
 assert.ok(built.markdown.startsWith('![WeiG qB WebUI preview](https://example.invalid/demo.gif)'));
 assert.ok(built.markdown.includes('Add theme-consistent time picker'));
-assert.equal(/[\\p{Script=Han}]/u.test(built.markdown),false,'release notes must remain English-only');
+assert.equal(/\p{Script=Han}/u.test(built.markdown),false,'release notes must remain English-only');
 assert.ok(!built.markdown.includes('engineering subject should be replaced'));
 assert.ok(!built.markdown.includes('internal regression coverage'));
 assert.ok(!built.markdown.includes('version only'));

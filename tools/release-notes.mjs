@@ -49,7 +49,7 @@ function displaySubject(subject=''){
   const cleaned=cleanSubject(subject).replace(/^[a-zA-Z]+(?:\([^)]*\))?[!:]\s*/,'').trim();
   return cleaned||cleanSubject(subject)||'Untitled change';
 }
-const HAN_TEXT=/[\\p{Script=Han}]/u;
+const HAN_TEXT=/\p{Script=Han}/u;
 function markdownText(value=''){
   return String(value).replace(/\\/g,'\\\\').replace(/([\`*_\[\]<>])/g,'\\$1');
 }
