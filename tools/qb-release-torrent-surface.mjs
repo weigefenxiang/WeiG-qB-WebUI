@@ -51,6 +51,8 @@ export function extractQbReleaseTorrentSurface({ref='',apiActions=[],apiActionPa
   const torrentContextMenu=extractTorrentContextMenu({menuSource,clientSource:torrentMenuHandlerSource,apiActions,apiActionParameters},context);
   const contextMenus=extractDetailContextMenus({
     menuSource,
+    fileSource:fileProjectionSource,
+    filePriorityControl,
     trackerSource,
     peerSource,
     dialogSources:{
