@@ -31,9 +31,10 @@ EOF_CFG
 BASE="$TMP/base/WeiG-qB-WebUI"
 mkdir -p "$(dirname "$BASE")"
 cp -a "$ROOT/webui" "$BASE"
-node "$ROOT/tools/qb-webui-catalog.mjs" \
-  "$ROOT/tests/fixtures/qb-release-catalog.lkg.json" \
-  "$BASE/private/data/qb-releases.json"
+for required in capabilities.json detail-compat.json settings-compat.json torrent-compat.json source-actions.json rss-compat.json qb-settings-native.txt; do
+  test -s "$BASE/private/data/$required" || { echo "Missing current compact runtime fixture: $required" >&2; exit 1; }
+done
+test ! -e "$BASE/private/data/qb-releases.json"
 
 build_release() {
   version=$1
@@ -134,10 +135,9 @@ if(meta.gitSha!==sha)throw new Error(`metadata gitSha ${meta.gitSha} != ${sha}`)
 if(meta.channel!=='release')throw new Error(`metadata channel ${meta.channel} != release`);
 if(meta.installer!=='linux')throw new Error(`metadata installer ${meta.installer} != linux`);
 if(meta.hostPath!==dest||meta.qbPath!==dest)throw new Error('metadata install paths do not match isolated destination');
-const catalogPath=path.join(dest,'private/data/qb-releases.json');
-const catalog=JSON.parse(fs.readFileSync(catalogPath,'utf8'));
-if(!Array.isArray(catalog)||catalog.length===0)throw new Error('packed release catalog is empty');
-if(fs.statSync(catalogPath).size>=10*1024*1024)throw new Error('packed release catalog exceeds qB static-file limit');
+const compact=['capabilities.json','detail-compat.json','settings-compat.json','torrent-compat.json','source-actions.json','rss-compat.json','qb-settings-native.txt'];
+for(const name of compact){const file=path.join(dest,'private/data',name);if(!fs.existsSync(file)||fs.statSync(file).size<=0)throw new Error('missing compact runtime '+name);}
+if(fs.existsSync(path.join(dest,'private/data/qb-releases.json')))throw new Error('retired qb-releases.json must not be restored by installer lifecycle fixtures');
 NODE
 }
 
@@ -189,8 +189,8 @@ const fs=require('node:fs');
 const path=require('node:path');
 const root=process.env.ROOT;
 const dest=process.env.DEST;
-const catalogPath=path.join(dest,'private/data/qb-releases.json');
-const catalog=JSON.parse(fs.readFileSync(catalogPath,'utf8'));
+const compact=['capabilities.json','detail-compat.json','settings-compat.json','torrent-compat.json','source-actions.json','rss-compat.json','qb-settings-native.txt'];
+const compactBytes=compact.reduce((sum,name)=>sum+fs.statSync(path.join(dest,'private/data',name)).size,0);
 const meta=JSON.parse(fs.readFileSync(path.join(dest,'private/weig-install.json'),'utf8'));
 const evidence={
   schemaVersion:1,
@@ -218,8 +218,8 @@ const evidence={
   rollbackState:{
     version:meta.version,
     gitSha:meta.gitSha,
-    catalogProfiles:catalog.length,
-    packedCatalogBytes:fs.statSync(catalogPath).size
+    compactRuntimeFiles:compact.length,
+    compactRuntimeBytes:compactBytes
   }
 };
 fs.writeFileSync(path.join(root,'artifacts/install-lifecycle/linux.json'),JSON.stringify(evidence,null,2)+'\n');

@@ -35,8 +35,12 @@ try {
   $Base=Join-Path $Tmp 'base\WeiG-qB-WebUI'
   New-Item -ItemType Directory -Force -Path $Base | Out-Null
   Copy-Item (Join-Path $Root 'webui\*') $Base -Recurse -Force
-  & node (Join-Path $Root 'tools\qb-webui-catalog.mjs') (Join-Path $Root 'tests\fixtures\qb-release-catalog.lkg.json') (Join-Path $Base 'private\data\qb-releases.json')
-  if($LASTEXITCODE -ne 0){throw 'Failed to pack Frozen catalog for Windows installer lifecycle fixture.'}
+  $CompactRuntime=@('capabilities.json','detail-compat.json','settings-compat.json','torrent-compat.json','source-actions.json','rss-compat.json','qb-settings-native.txt')
+  foreach($name in $CompactRuntime){
+    $file=Join-Path $Base ('private\data\'+$name)
+    Assert-True ((Test-Path -LiteralPath $file -PathType Leaf) -and (Get-Item -LiteralPath $file).Length -gt 0) "Missing current compact runtime fixture: $name"
+  }
+  Assert-True (!(Test-Path -LiteralPath (Join-Path $Base 'private\data\qb-releases.json'))) 'Retired qb-releases.json must not be recreated for lifecycle fixtures.'
 
   function Build-Release([string]$Version,[string]$SourceSha,[string]$Marker){
     $work=Join-Path $Tmp "build-$Version"
@@ -106,10 +110,11 @@ try {
     Assert-True ($meta.installer -eq 'windows') 'Install metadata installer mismatch.'
     Assert-True ($meta.hostPath -eq $Destination -and $meta.qbPath -eq $Destination) 'Install metadata paths mismatch.'
 
-    $catalogPath=Join-Path $Destination 'private\data\qb-releases.json'
-    $catalog=Get-Content $catalogPath -Raw | ConvertFrom-Json
-    Assert-True ($catalog.Count -gt 0) 'Packed release catalog is empty.'
-    Assert-True ((Get-Item $catalogPath).Length -lt 10MB) 'Packed release catalog exceeds qB static-file limit.'
+    foreach($name in $CompactRuntime){
+      $file=Join-Path $Destination ('private\data\'+$name)
+      Assert-True ((Test-Path -LiteralPath $file -PathType Leaf) -and (Get-Item -LiteralPath $file).Length -gt 0) "Installed compact runtime missing: $name"
+    }
+    Assert-True (!(Test-Path -LiteralPath (Join-Path $Destination 'private\data\qb-releases.json'))) 'Retired qb-releases.json reappeared after install.'
   }
 
   & $Installer -Version $VersionOne -Configure -Destination $Destination
@@ -160,8 +165,8 @@ try {
   New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
   $repoSha=$env:GITHUB_SHA
   if(!$repoSha){$repoSha=(& git -C $Root rev-parse HEAD).Trim()}
-  $catalogPath=Join-Path $Destination 'private\data\qb-releases.json'
-  $catalog=Get-Content $catalogPath -Raw | ConvertFrom-Json
+  $compactBytes=0
+  foreach($name in $CompactRuntime){$compactBytes+=(Get-Item -LiteralPath (Join-Path $Destination ('private\data\'+$name))).Length}
   $meta=Get-Content (Join-Path $Destination 'private\weig-install.json') -Raw | ConvertFrom-Json
   $evidence=[ordered]@{
     schemaVersion=1
@@ -189,8 +194,8 @@ try {
     rollbackState=[ordered]@{
       version=$meta.version
       gitSha=$meta.gitSha
-      catalogProfiles=$catalog.Count
-      packedCatalogBytes=(Get-Item $catalogPath).Length
+      compactRuntimeFiles=$CompactRuntime.Count
+      compactRuntimeBytes=$compactBytes
     }
   }
   Write-Utf8NoBom (Join-Path $artifactDir 'windows.json') (($evidence | ConvertTo-Json -Depth 8)+"`n")
