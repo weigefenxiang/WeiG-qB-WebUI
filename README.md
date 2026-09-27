@@ -26,11 +26,11 @@ The ZIP still contains the top-level folder `WeiG-qB-WebUI`. After extraction, r
 
 ### Desktop
 
-![WeiG qB WebUI desktop interface](assets/screenshots/weig-qb-webui-desktop-overview.png)
+![WeiG qB WebUI desktop interface](assets/screenshots/weig-qb-webui-desktop-overview-v1.1.0.png)
 
 ### Mobile
 
-![WeiG qB WebUI mobile interface](assets/screenshots/weig-qb-webui-mobile-overview.png)
+![WeiG qB WebUI mobile interface](assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.png)
 
 ## New User Installation
 

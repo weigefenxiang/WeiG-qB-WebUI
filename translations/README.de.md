@@ -26,11 +26,11 @@ Das ZIP enthält weiterhin den obersten Ordner `WeiG-qB-WebUI`. Benenne diesen l
 
 ### Desktop
 
-![WeiG qB WebUI Desktop-Oberfläche](../assets/screenshots/weig-qb-webui-desktop-overview.png)
+![WeiG qB WebUI Desktop-Oberfläche](../assets/screenshots/weig-qb-webui-desktop-overview-v1.1.0.png)
 
 ### Mobil
 
-![WeiG qB WebUI mobile Oberfläche](../assets/screenshots/weig-qb-webui-mobile-overview.png)
+![WeiG qB WebUI mobile Oberfläche](../assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.png)
 
 ## Installation für Einsteiger
 

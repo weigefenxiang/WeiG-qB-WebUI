@@ -26,11 +26,11 @@ Le ZIP contient toujours le dossier racine `WeiG-qB-WebUI`. Après extraction, r
 
 ### Bureau
 
-![Interface de bureau de WeiG qB WebUI](../assets/screenshots/weig-qb-webui-desktop-overview.png)
+![Interface de bureau de WeiG qB WebUI](../assets/screenshots/weig-qb-webui-desktop-overview-v1.1.0.png)
 
 ### Mobile
 
-![Interface mobile de WeiG qB WebUI](../assets/screenshots/weig-qb-webui-mobile-overview.png)
+![Interface mobile de WeiG qB WebUI](../assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.png)
 
 ## Installation pour débutants
 
