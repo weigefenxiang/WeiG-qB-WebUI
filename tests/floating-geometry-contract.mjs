@@ -44,4 +44,10 @@ assert.match(floating,/document\.addEventListener\('keydown',function\(e\)\{if\(
 assert.match(floating,/function placeContextMenu\(menu,x,y\).*intrinsicMenuWidth\(menu\).*dataset\.wrap/s,'Context Menu must size to intrinsic label width and only wrap when bounded');
 assert.ok(floating.includes("label.className='ui-select__option-label ui-context-menu__label'")&&floating.includes("button.appendChild(label)"),'Context Menu items must use the shared measurable label primitive');
 assert.ok(controls.includes('.ui-context-menu[data-wrap="1"] .ui-context-menu__label{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere}'),'Context Menu labels may wrap only after placement proves the boundary is too narrow');
+assert.match(floating,/function openContextSubmenu\(owner,item,level\)[\s\S]*placeContextSubmenu\(menu,owner\)/,'Canonical Context Menu must own nested submenu lifecycle and geometry instead of feature-local popovers');
+assert.match(floating,/placements:\['right','left','bottom','top'\]/,'Nested Context Menu must prefer right placement and automatically flip left before vertical fallback');
+assert.match(floating,/item\.children/,'Context Menu item contract must expose canonical children rather than flattening grouped actions');
+assert.match(floating,/ArrowRight[\s\S]*openContextSubmenu[\s\S]*ArrowLeft[\s\S]*closeContextSubmenus/s,'Nested Context Menu must support keyboard enter/exit semantics');
+assert.match(floating,/contextMenuStack\.length>1[\s\S]*closeContextSubmenus/,'Escape must close the deepest submenu before closing the root Context Menu');
+assert.ok(controls.includes('.ui-context-menu__chevron')&&controls.includes('.ui-context-menu--submenu'),'Nested Context Menu must reuse canonical menu skin with only submenu geometry/state additions');
 console.log('Floating geometry contract passed: Select and Context Menu share one dialog-aware/viewport-bounded placement owner with four-direction fallback and internal list scrolling.');
