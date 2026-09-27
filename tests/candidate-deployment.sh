@@ -239,7 +239,7 @@ node - "$DEST" "$VERSION" "$EXPECTED_SHA" "" "$CONFIG_ROOT" "$QB_ROOT" "$EXPECTE
 const fs=require('node:fs');
 const path=require('node:path');
 const [dest,version,sha,container,hostConfigRoot,qbRoot,expectedQb,localeTarget]=process.argv.slice(2);
-const meta=JSON.parse(fs.readFileSync(path.join(dest,'private/weigg-install.json'),'utf8'));
+const meta=JSON.parse(fs.readFileSync(path.join(dest,'private/weig-install.json'),'utf8'));
 if(meta.version!==version)throw new Error('candidate metadata version mismatch');
 if(meta.gitSha!==sha)throw new Error('candidate metadata Git SHA mismatch');
 if(meta.channel!=='main')throw new Error(`candidate metadata channel mismatch: expected normalized main, got ${meta.channel}`);
