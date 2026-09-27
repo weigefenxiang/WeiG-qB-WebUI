@@ -81,7 +81,9 @@ assert.match(ps,/packageVersion.*releaseVersion|releaseVersion.*packageVersion/s
 assert.match(ps,/sourceSha.*releaseExpectedSha|releaseExpectedSha.*sourceSha/s,'Windows Release install must bind package GIT_SHA to the resolved tag commit');
 assert.match(ps,/SHA256SUMS/,'Windows Release installs must remain checksum-verified');
 assert.match(ps,/ValidateSet\('Release','Dev'\)/,'Windows installer must retain legacy Release/Dev channel compatibility');
-assert.match(ps,/ValidateSet\('Install','Update','Rollback'\)/,'Windows installer must retain legacy mode compatibility');
+assert.match(sh,/-uninstall, --uninstall/,'Linux installer help must expose the canonical uninstall mode');
+assert.match(ps,/-uninstall\s+Remove an installer-owned WeiG WebUI/,'Windows installer help must expose the canonical uninstall mode');
+assert.match(ps,/ValidateSet\('Install','Update','Rollback','Uninstall'\)/,'Windows installer must retain legacy mode compatibility while admitting the canonical uninstall mode');
 assert.match(ps,/api\.github\.com\/repos\/\$Repo\/commits\/dev/,'Windows Dev channel must resolve the current dev exact SHA');
 assert.match(ps,/DevDistBase='https:\/\/weigefenxiang\.github\.io\/WeiG-qB-WebUI\/downloads\/dev'/,'Windows Dev channel must consume the canonical public materialized payload');
 assert.match(ps,/function Test-DevPayloadCanRepresentHead/,'Windows Dev channel must verify whether a materialized payload may represent a newer non-payload dev HEAD');
