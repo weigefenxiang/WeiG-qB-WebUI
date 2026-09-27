@@ -5,7 +5,7 @@ import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 
 const CATEGORY_ORDER=['feature','fix','performance','compatibility'];
-const CATEGORY_TITLES={feature:'功能 / UI',fix:'修复',performance:'性能',compatibility:'兼容'};
+const CATEGORY_TITLES={feature:'Features / UI',fix:'Fixes',performance:'Performance',compatibility:'Compatibility'};
 const CATEGORY_SCORE={feature:40,fix:30,performance:20,compatibility:10};
 const SEMVER_TAG=/^v\d+\.\d+\.\d+$/;
 const RELEASE_VISIBLE_EXACT=new Set([
@@ -49,6 +49,7 @@ function displaySubject(subject=''){
   const cleaned=cleanSubject(subject).replace(/^[a-zA-Z]+(?:\([^)]*\))?[!:]\s*/,'').trim();
   return cleaned||cleanSubject(subject)||'Untitled change';
 }
+const HAN_TEXT=/[\\p{Script=Han}]/u;
 function markdownText(value=''){
   return String(value).replace(/\\/g,'\\\\').replace(/([\`*_\[\]<>])/g,'\\$1');
 }
@@ -71,7 +72,12 @@ export function normalizeCommit(commit){
   if(meta?.skip)return null;
   const category=meta?.category||inferCategory(subject);
   if(category==='internal'&&!meta?.explicit)return null;
-  const text=(meta?.text||displaySubject(subject)).trim();
+  let text=(meta?.text||displaySubject(subject)).trim();
+  if(HAN_TEXT.test(text)){
+    const fallback=displaySubject(subject).trim();
+    if(!fallback||HAN_TEXT.test(fallback))return null;
+    text=fallback;
+  }
   if(!text)return null;
   return{hash:String(commit?.hash||''),subject,body,paths,category,text,explicit:!!meta?.explicit};
 }
@@ -94,10 +100,10 @@ export function buildReleaseNotes({commits=[],fromTag='',toSha='',maxHighlights=
   details.forEach(item=>(grouped[item.category]||grouped.feature).push(item));
   const lines=[];
   if(imageUrl)lines.push(`![WeiG qB WebUI preview](${imageUrl})`,'');
-  lines.push('## 主要更新','');
+  lines.push('## Highlights','');
   if(highlights.length)highlights.forEach(item=>lines.push(`- ${markdownText(item.text)}`));
-  else lines.push('- 本次范围没有可展示的 WebUI 用户更新。');
-  lines.push('','<details>',`<summary>查看 WebUI 更新记录（显示 ${details.length} / 共 ${normalized.length} 项）</summary>`,'');
+  else lines.push('- No user-visible WebUI changes are available for this release range.');
+  lines.push('','<details>',`<summary>View WebUI changes (showing ${details.length} of ${normalized.length})</summary>`,'');
   for(const category of CATEGORY_ORDER){
     const items=grouped[category];
     if(!items.length)continue;
@@ -108,9 +114,9 @@ export function buildReleaseNotes({commits=[],fromTag='',toSha='',maxHighlights=
     }
     lines.push('');
   }
-  if(normalized.length>details.length)lines.push(`其余 ${normalized.length-details.length} 项 WebUI 变更已省略，以保持发布页简洁。`,'');
+  if(normalized.length>details.length)lines.push(`${normalized.length-details.length} additional WebUI changes are omitted to keep this release page concise.`,'');
   lines.push('</details>','');
-  if(fromTag||toSha)lines.push(`_范围：${fromTag||'repository start'} → ${toSha||'current release'}_`,'');
+  if(fromTag||toSha)lines.push(`_Range: ${fromTag||'repository start'} → ${toSha||'current release'}_`,'');
   return{markdown:lines.join('\n'),highlights,items:normalized,details,grouped};
 }
 function runGit(args,{cwd=process.cwd()}={}){
