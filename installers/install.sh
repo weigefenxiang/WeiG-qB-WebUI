@@ -642,11 +642,11 @@ configure_qb_webui_file() {
 qb_config_has_exact_line() {
   cfg=$1
   expected=$2
-  awk -v expected="$expected" '
+  QB_EXPECTED_LINE="$expected" awk '
     {
       line=$0
       sub(/\r$/, "", line)
-      if (line == expected) found=1
+      if (line == ENVIRON["QB_EXPECTED_LINE"]) found=1
     }
     END { exit found ? 0 : 1 }
   ' "$cfg"
