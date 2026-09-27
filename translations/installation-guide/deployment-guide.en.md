@@ -462,15 +462,16 @@ Windows may block local scripts under the current execution policy. This flag ap
 
 ---
 
-## 4. How to upgrade and roll back
+## 4. How to upgrade, roll back, and uninstall
 
-
-Re-running the installer is the normal upgrade method.
+**Re-running the installer is the normal upgrade path.** The installer prepares and verifies the new payload before switching the WebUI.
 
 <details>
-<summary><b>Show upgrade and rollback commands (click to expand)</b></summary>
+<summary><b>Show upgrade, rollback, and uninstall commands</b></summary>
 
-Linux:
+### Upgrade to the latest stable Release
+
+Linux / NAS / Docker:
 
 ```sh
 sh weig_qb-webui_install.sh -configure
@@ -482,24 +483,59 @@ Windows:
 powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -configure
 ```
 
-Rollback:
+### Roll back the previous installation
+
+Linux / NAS / Docker:
 
 ```sh
 sh weig_qb-webui_install.sh -rollback
 ```
 
+Windows:
+
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -rollback
 ```
 
-If you only want to immediately return to qBittorrent's built-in WebUI, open **Tools → Options... → WebUI** and disable **Use alternative WebUI**.
+### One-click uninstall
 
----
+The recommended uninstall **does not keep installer backups**. It safely removes the current WeiG WebUI, disables the matching alternative WebUI configuration, purges installer-owned backups / rollback state for this target, and deletes the downloaded installer script after success.
+
+Linux / NAS:
+
+```sh
+sh weig_qb-webui_install.sh -uninstall -configure -purge && rm -f -- ./weig_qb-webui_install.sh
+```
+
+Docker (single container / automatic detection):
+
+```sh
+sh weig_qb-webui_install.sh -uninstall -configure -purge && rm -f -- ./weig_qb-webui_install.sh
+```
+
+Docker (multiple containers, explicit selection):
+
+```sh
+sh weig_qb-webui_install.sh -uninstall -configure -purge --container=qbittorrent && rm -f -- ./weig_qb-webui_install.sh
+```
+
+Windows:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -uninstall -configure -purge; if ($LASTEXITCODE -eq 0) { Remove-Item .\weig_qb-webui_install.ps1 -Force }
+```
+
+For a custom install path, add `-o /path` or `-o D:\path`. If you do not want to modify qBittorrent configuration, omit `-configure`.
+
+`-purge` only cleans the current uninstall target. If the shared state directory becomes empty, Linux `~/.config/weig_qb-webui` (root: `/root/.config/weig_qb-webui`) or Windows `%APPDATA%\WeiG_qB-WebUI` is removed too.
+
+To keep backups for a later `-rollback`, omit `-purge`.
+
+Linux installer backups are stored under `~/.config/weig_qb-webui/backups/`, with the latest three kept independently per install target.
+
+If you only want to temporarily return to qBittorrent's native WebUI, disable **Use alternative WebUI** under **Tools → Options… → WebUI**.
 
 </details>
-
----
-
 ## 5. Common options
 
 Linux / Docker / NAS use `install.sh`; Windows uses `install.ps1`. PowerShell option names are case-insensitive, but this documentation uses lowercase consistently.
@@ -512,6 +548,7 @@ Linux / Docker / NAS use `install.sh`; Windows uses `install.ps1`. PowerShell op
 | Install directory | `-o /path` or `-o /path` | `-o D:\path` or `-output D:\path` | `o` = output |
 | Configure qBittorrent automatically | `-configure` | `-configure` | Enable alternative WebUI and set the path |
 | Roll back | `-rollback` | `-rollback` | Restore the previous install and qB config |
+| Complete uninstall (recommended; do not keep installer backups) | `-uninstall -purge` | `-uninstall -purge` | Purges this target's installer-owned backups / rollback state |
 | Help | `-help` | `-help` | Show full installer help |
 | Select Docker container | `--container=NAME` | — | Useful with multiple qB containers |
 | List Docker containers | `--list-containers` | — | Show detected qB containers |
@@ -532,7 +569,6 @@ Important rules:
 </details>
 
 ---
-
 ## 6. Manual installation
 
 You can install without running the scripts.

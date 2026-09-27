@@ -26,12 +26,16 @@ ZIP 內部的最上層資料夾名稱仍然是 `WeiG-qB-WebUI`。解壓縮後，
 
 ### 桌面端
 
-![WeiG qB WebUI 桌面端介面](../assets/screenshots/weig-qb-webui-desktop-overview-v1.1.0.png)
+<p align="center">
+  <img src="../assets/screenshots/weig-qb-webui-desktop-overview-v1.1.0.png" alt="WeiG qB WebUI 桌面端介面" width="800">
+</p>
 
 ### 手機端
 
-![WeiG qB WebUI 手機端介面](../assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.png)
-
+<p align="center">
+  <img src="../assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.gif" alt="WeiG qB WebUI 手機端動態示範" height="341">
+  <img src="../assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.png" alt="WeiG qB WebUI 手機端介面" height="341">
+</p>
 ## 新手安裝
 
 <details>
@@ -315,6 +319,7 @@ Linux 與 Windows 盡量使用相同的公開參數名稱；文件統一使用�
 | 指定安裝目錄 | `-o /path` 或 `-o /path` | `-o D:\path` 或 `-output D:\path` |
 | 自動設定 qBittorrent | `-configure` | `-configure` |
 | 回滾上一次安裝 | `-rollback` | `-rollback` |
+| 完整解除安裝（不保留安裝器備份） | `-uninstall -purge` | `-uninstall -purge` |
 | 查看完整說明 | `-help` | `-help` |
 | 指定 Docker 容器 | `--container=NAME` | — |
 | 列出 Docker 容器 | `--list-containers` | — |
@@ -362,6 +367,55 @@ powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -rollback
 
 
 </details>
+## 一鍵解除安裝
+
+<details>
+<summary><b>Linux / NAS、Docker、Windows PowerShell 一鍵完整解除安裝</b></summary>
+
+預設建議**不保留安裝器備份**：解除安裝 WebUI、關閉目前目標的備選 WebUI、清理該目標的 installer-owned backups / rollback 狀態，並刪除目前目錄中下載的安裝腳本。
+
+### Linux / NAS
+
+```sh
+sh weig_qb-webui_install.sh -uninstall -configure -purge && rm -f -- ./weig_qb-webui_install.sh
+```
+
+自訂安裝目錄請再加上 `-o /你的/weig_qb-webui`。
+
+### Docker
+
+單一容器自動辨識：
+
+```sh
+sh weig_qb-webui_install.sh -uninstall -configure -purge && rm -f -- ./weig_qb-webui_install.sh
+```
+
+多個容器：
+
+```sh
+sh weig_qb-webui_install.sh -uninstall -configure -purge --container=qbittorrent && rm -f -- ./weig_qb-webui_install.sh
+```
+
+使用 `--config-root` 時：
+
+```sh
+sh weig_qb-webui_install.sh -uninstall -configure -purge --config-root=/path/to/qbittorrent/config && rm -f -- ./weig_qb-webui_install.sh
+```
+
+### Windows PowerShell
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -uninstall -configure -purge; if ($LASTEXITCODE -eq 0) { Remove-Item .\weig_qb-webui_install.ps1 -Force }
+```
+
+自訂安裝目錄請再加上 `-o D:\WeiG_qB-WebUI`。
+
+`-purge` 只會清理目前解除安裝目標的備份，不會刪除其他安裝實例。共享狀態目錄沒有其他內容時，Linux 的 `~/.config/weig_qb-webui`（root 為 `/root/.config/weig_qb-webui`）或 Windows 的 `%APPDATA%\WeiG_qB-WebUI` 也會一併清除。
+
+若要保留備份以便之後使用 `-rollback`，只需移除 `-purge`。
+
+</details>
+
 ## 更多說明
 
 Docker 多容器、NAS、自訂路徑、更新及進階部署說明請參閱：[安裝、升級與手動部署](installation-guide/deployment-guide.zh-TW.md)。

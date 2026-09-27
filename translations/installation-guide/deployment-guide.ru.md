@@ -375,15 +375,16 @@ powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -help
 
 ---
 
-## 4. Обновление и откат
+## 4. Обновление, откат и удаление
 
-
-Повторный запуск установщика — обычный способ обновления.
+**Обычное обновление выполняется повторным запуском установщика.** Он сначала подготавливает и проверяет новую версию, а затем переключает WebUI.
 
 <details>
-<summary><b>Показать команды обновления и отката (нажмите, чтобы раскрыть)</b></summary>
+<summary><b>Показать команды обновления, отката и удаления</b></summary>
 
-Linux:
+### Обновить до последней стабильной версии
+
+Linux / NAS / Docker:
 
 ```sh
 sh weig_qb-webui_install.sh -configure
@@ -395,22 +396,59 @@ Windows:
 powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -configure
 ```
 
-Откат:
+### Откатить предыдущую установку
+
+Linux / NAS / Docker:
 
 ```sh
 sh weig_qb-webui_install.sh -rollback
 ```
 
+Windows:
+
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -rollback
 ```
 
-Чтобы сразу вернуться к встроенному WebUI qBittorrent, отключите **Использовать альтернативный веб-интерфейс**.
+### Удаление одной командой
+
+По умолчанию рекомендуется **полное удаление без сохранения резервных копий установщика**. Команда безопасно удаляет текущий WeiG WebUI, отключает соответствующий альтернативный WebUI, очищает принадлежащие этой цели резервные копии / состояние rollback и после успеха удаляет скрипт установки из текущего каталога.
+
+Linux / NAS:
+
+```sh
+sh weig_qb-webui_install.sh -uninstall -configure -purge && rm -f -- ./weig_qb-webui_install.sh
+```
+
+Docker (single container / automatic detection):
+
+```sh
+sh weig_qb-webui_install.sh -uninstall -configure -purge && rm -f -- ./weig_qb-webui_install.sh
+```
+
+Docker (multiple containers, explicit selection):
+
+```sh
+sh weig_qb-webui_install.sh -uninstall -configure -purge --container=qbittorrent && rm -f -- ./weig_qb-webui_install.sh
+```
+
+Windows:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -uninstall -configure -purge; if ($LASTEXITCODE -eq 0) { Remove-Item .\weig_qb-webui_install.ps1 -Force }
+```
+
+Для собственного пути добавьте `-o /path` или `-o D:\path`. Если конфигурацию qBittorrent менять не нужно, можно убрать `-configure`.
+
+`-purge` очищает только текущую цель удаления. Если общий каталог состояния становится пустым, также удаляется `~/.config/weig_qb-webui` в Linux (root: `/root/.config/weig_qb-webui`) или `%APPDATA%\WeiG_qB-WebUI` в Windows.
+
+Чтобы сохранить резервные копии для последующего `-rollback`, уберите `-purge`.
+
+Резервные копии Linux-установщика находятся в `~/.config/weig_qb-webui/backups/`; для каждой цели отдельно сохраняются последние три.
+
+Если нужно лишь временно вернуться к стандартному WebUI qBittorrent, отключите **Использовать альтернативный WebUI** в **Инструменты → Настройки… → WebUI**.
 
 </details>
-
----
-
 ## 5. Основные параметры
 
 Linux / Docker / NAS используют `install.sh`, Windows использует `install.ps1`. Параметры PowerShell не чувствительны к регистру.
@@ -423,6 +461,7 @@ Linux / Docker / NAS используют `install.sh`, Windows использу
 | Каталог установки | `-o /path` / `-o /path` | `-o D:\path` / `-output D:\path` | `o` = output |
 | Автонастройка qBittorrent | `-configure` | `-configure` | Включить альтернативный веб-интерфейс и задать путь |
 | Откат | `-rollback` | `-rollback` | Восстановить предыдущую установку и конфигурацию qB |
+| Полное удаление (рекомендуется, без резервных копий установщика) | `-uninstall -purge` | `-uninstall -purge` | Очищает резервные копии / состояние rollback этой цели |
 | Справка | `-help` | `-help` | Показать полную справку |
 | Выбрать Docker-контейнер | `--container=NAME` | — | Для нескольких контейнеров qB |
 | Список Docker-контейнеров | `--list-containers` | — | Показать найденные контейнеры qB |
@@ -442,7 +481,6 @@ Linux / Docker / NAS используют `install.sh`, Windows использу
 </details>
 
 ---
-
 ## 6. Ручная установка
 
 Последний Release:

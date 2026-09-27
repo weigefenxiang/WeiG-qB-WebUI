@@ -27,7 +27,7 @@
 ### 桌面端
 
 <p align="center">
-  <img src="../assets/screenshots/weig-qb-webui-desktop-overview-v1.1.0.gif" alt="WeiG qB WebUI 桌面端动态演示" width="800">
+  <img src="../assets/screenshots/weig-qb-webui-desktop-overview-v1.1.0.png" alt="WeiG qB WebUI 桌面端界面" width="800">
 </p>
 
 ### 手机端
@@ -36,7 +36,6 @@
   <img src="../assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.gif" alt="WeiG qB WebUI 手机端动态演示" height="341">
   <img src="../assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.png" alt="WeiG qB WebUI 手机端界面" height="341">
 </p>
-
 ## 新手安装
 
 <details>
@@ -416,7 +415,7 @@ sh weig_qb-webui_install.sh -uninstall -configure -purge --container=qbittorrent
 使用 `--config-root` 时：
 
 ```sh
-sh weig_qb-webui_install.sh -uninstall -configure -purge --config-root=/你的/qbittorrent/config && rm -f -- ./weig_qb-webui_install.sh
+sh weig_qb-webui_install.sh -uninstall -configure -purge --config-root=/path/to/qbittorrent/config && rm -f -- ./weig_qb-webui_install.sh
 ```
 
 ### Windows PowerShell

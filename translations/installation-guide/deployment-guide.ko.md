@@ -379,15 +379,16 @@ PowerShell 매개변수는 대소문자를 구분하지 않습니다. `-Executio
 
 ---
 
-## 4. 업그레이드와 롤백
+## 4. 업그레이드, 롤백 및 제거
 
-
-설치기를 다시 실행하는 것이 일반적인 업그레이드 방법입니다.
+**일반적인 업그레이드는 설치 프로그램을 다시 실행하면 됩니다.** 새 페이로드를 준비하고 검증한 뒤 WebUI를 전환합니다.
 
 <details>
-<summary><b>업그레이드와 롤백 명령 보기 (클릭하여 펼치기)</b></summary>
+<summary><b>업그레이드, 롤백 및 제거 명령 보기</b></summary>
 
-Linux:
+### 최신 안정 버전으로 업그레이드
+
+Linux / NAS / Docker:
 
 ```sh
 sh weig_qb-webui_install.sh -configure
@@ -399,22 +400,59 @@ Windows:
 powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -configure
 ```
 
-롤백:
+### 이전 설치로 롤백
+
+Linux / NAS / Docker:
 
 ```sh
 sh weig_qb-webui_install.sh -rollback
 ```
 
+Windows:
+
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -rollback
 ```
 
-기본 qBittorrent WebUI로 바로 돌아가려면 **대체 WebUI 사용**을 끄면 됩니다.
+### 원클릭 제거
+
+기본적으로 **설치 프로그램 백업을 남기지 않는 완전 제거**를 권장합니다. 현재 WeiG WebUI를 안전하게 제거하고, 해당 대체 WebUI 설정을 비활성화하고, 이 대상이 소유한 installer-owned backups / rollback 상태를 정리한 뒤 성공 시 현재 디렉터리의 설치 스크립트도 삭제합니다.
+
+Linux / NAS:
+
+```sh
+sh weig_qb-webui_install.sh -uninstall -configure -purge && rm -f -- ./weig_qb-webui_install.sh
+```
+
+Docker (single container / automatic detection):
+
+```sh
+sh weig_qb-webui_install.sh -uninstall -configure -purge && rm -f -- ./weig_qb-webui_install.sh
+```
+
+Docker (multiple containers, explicit selection):
+
+```sh
+sh weig_qb-webui_install.sh -uninstall -configure -purge --container=qbittorrent && rm -f -- ./weig_qb-webui_install.sh
+```
+
+Windows:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -uninstall -configure -purge; if ($LASTEXITCODE -eq 0) { Remove-Item .\weig_qb-webui_install.ps1 -Force }
+```
+
+사용자 지정 경로라면 `-o /path` 또는 `-o D:\path`를 추가하세요. qBittorrent 설정을 수정하지 않으려면 `-configure`를 생략할 수 있습니다.
+
+`-purge`는 현재 제거 대상만 정리합니다. 공유 상태 디렉터리가 비면 Linux의 `~/.config/weig_qb-webui`(root는 `/root/.config/weig_qb-webui`) 또는 Windows의 `%APPDATA%\WeiG_qB-WebUI`도 제거됩니다.
+
+나중에 `-rollback`을 위해 백업을 남기려면 `-purge`를 빼세요.
+
+Linux 설치 프로그램 백업은 `~/.config/weig_qb-webui/backups/`에 저장되며 설치 대상마다 최근 3개를 유지합니다.
+
+잠시 qBittorrent 기본 WebUI로 돌아가기만 하려면 **도구 → 옵션… → WebUI**에서 **대체 WebUI 사용**을 해제하세요.
 
 </details>
-
----
-
 ## 5. 자주 쓰는 옵션
 
 Linux / Docker / NAS는 `install.sh`, Windows는 `install.ps1`을 사용합니다. PowerShell 매개변수는 대소문자를 구분하지 않습니다.
@@ -427,6 +465,7 @@ Linux / Docker / NAS는 `install.sh`, Windows는 `install.ps1`을 사용합니�
 | 설치 경로 | `-o /path` / `-o /path` | `-o D:\path` / `-output D:\path` | `o` = output |
 | qBittorrent 자동 설정 | `-configure` | `-configure` | 대체 WebUI 활성화 및 경로 설정 |
 | 롤백 | `-rollback` | `-rollback` | 이전 설치와 qB 설정 복원 |
+| 완전 제거(권장, 설치 프로그램 백업 미보관) | `-uninstall -purge` | `-uninstall -purge` | 현재 대상의 installer-owned backups / rollback 상태도 정리 |
 | 도움말 | `-help` | `-help` | 전체 도움말 출력 |
 | Docker 컨테이너 지정 | `--container=NAME` | — | qB 컨테이너가 여러 개일 때 |
 | Docker 컨테이너 목록 | `--list-containers` | — | 감지된 qB 컨테이너 표시 |
@@ -446,7 +485,6 @@ Linux / Docker / NAS는 `install.sh`, Windows는 `install.ps1`을 사용합니�
 </details>
 
 ---
-
 ## 6. 수동 설치
 
 최신 Release:

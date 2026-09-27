@@ -304,17 +304,17 @@ PowerShell 参数不区分大小写，文档统一使用小写。
 **重新执行安装器就是正常升级方式。** 安装器会先准备和验证新版本，再切换 WebUI。
 
 <details>
-<summary><b>查看升级、回滚和卸载命令（点击展开）</b></summary>
+<summary><b>查看升级、回滚和卸载命令</b></summary>
 
 ### 升级到最新稳定版
 
-Linux / NAS / Docker：
+Linux / NAS / Docker:
 
 ```sh
 sh weig_qb-webui_install.sh -configure
 ```
 
-Windows：
+Windows:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -configure
@@ -322,13 +322,13 @@ powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -configure
 
 ### 回滚上一次安装
 
-Linux / NAS / Docker：
+Linux / NAS / Docker:
 
 ```sh
 sh weig_qb-webui_install.sh -rollback
 ```
 
-Windows：
+Windows:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -rollback
@@ -338,25 +338,25 @@ powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -rollback
 
 默认推荐**不保留安装器备份**。下面的命令会安全卸载当前 WeiG WebUI、关闭匹配目标的备选 WebUI、清理该目标的 installer-owned backups / rollback 状态，并在成功后删除当前目录中的安装脚本。
 
-Linux / NAS：
+Linux / NAS:
 
 ```sh
 sh weig_qb-webui_install.sh -uninstall -configure -purge && rm -f -- ./weig_qb-webui_install.sh
 ```
 
-Docker（单容器自动识别）：
+Docker (single container / automatic detection):
 
 ```sh
 sh weig_qb-webui_install.sh -uninstall -configure -purge && rm -f -- ./weig_qb-webui_install.sh
 ```
 
-Docker（多容器明确指定）：
+Docker (multiple containers, explicit selection):
 
 ```sh
 sh weig_qb-webui_install.sh -uninstall -configure -purge --container=qbittorrent && rm -f -- ./weig_qb-webui_install.sh
 ```
 
-Windows：
+Windows:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -uninstall -configure -purge; if ($LASTEXITCODE -eq 0) { Remove-Item .\weig_qb-webui_install.ps1 -Force }
@@ -368,24 +368,11 @@ powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -uninstall 
 
 如需保留备份以后使用 `-rollback`，去掉 `-purge` 即可。
 
-Linux 安装器备份保存在：
+Linux 安装器备份保存在 `~/.config/weig_qb-webui/backups/`，每个安装目标独立保留最近 3 份。
 
-```text
-~/.config/weig_qb-webui/backups/
-```
-
-每个安装目标独立保留最近 3 份安装器备份。
-
-如果只是想临时回到 qBittorrent 原生 WebUI，可以进入：
-
-**工具 → 选项… → WebUI**
-
-取消 **使用备选 WebUI** 即可。
+如果只是想临时回到 qBittorrent 原生 WebUI，可以进入 **工具 → 选项… → WebUI**，取消 **使用备选 WebUI**。
 
 </details>
-
----
-
 ## 5. 常用参数
 
 | 用途 | Linux / Docker / NAS | Windows PowerShell | 说明 |
@@ -418,7 +405,6 @@ Linux 安装器备份保存在：
 </details>
 
 ---
-
 ## 6. 手动安装
 
 如果一键安装不适合你的环境，也可以手动下载最新正式版：

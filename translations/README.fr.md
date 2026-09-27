@@ -26,12 +26,16 @@ Le ZIP contient toujours le dossier racine `WeiG-qB-WebUI`. Après extraction, r
 
 ### Bureau
 
-![Interface de bureau de WeiG qB WebUI](../assets/screenshots/weig-qb-webui-desktop-overview-v1.1.0.png)
+<p align="center">
+  <img src="../assets/screenshots/weig-qb-webui-desktop-overview-v1.1.0.png" alt="Interface bureau de WeiG qB WebUI" width="800">
+</p>
 
 ### Mobile
 
-![Interface mobile de WeiG qB WebUI](../assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.png)
-
+<p align="center">
+  <img src="../assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.gif" alt="Animation mobile de WeiG qB WebUI" height="341">
+  <img src="../assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.png" alt="Interface mobile de WeiG qB WebUI" height="341">
+</p>
 ## Installation pour débutants
 
 <details>
@@ -240,6 +244,7 @@ Les noms des paramètres PowerShell ne sont pas sensibles à la casse.
 | Dossier d'installation | `-o /path` ou `-o /path` | `-o D:\path` ou `-output D:\path` |
 | Configurer qBittorrent | `-configure` | `-configure` |
 | Restaurer l'installation précédente | `-rollback` | `-rollback` |
+| Désinstallation complète (sans sauvegardes de l’installateur) | `-uninstall -purge` | `-uninstall -purge` |
 | Aide | `-help` | `-help` |
 | Choisir un conteneur Docker | `--container=NAME` | — |
 | Lister les conteneurs Docker | `--list-containers` | — |
@@ -279,6 +284,55 @@ powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -rollback
 
 
 </details>
+## Désinstallation en une commande
+
+<details>
+<summary><b>Désinstallation complète Linux / NAS, Docker et Windows PowerShell</b></summary>
+
+Par défaut, nous recommandons la **désinstallation complète sans conserver les sauvegardes de l’installateur** : suppression du WebUI, désactivation de l’interface alternative correspondant à la cible, purge des sauvegardes / de l’état de rollback appartenant à cette cible, puis suppression du script d’installation téléchargé dans le dossier courant.
+
+### Linux / NAS
+
+```sh
+sh weig_qb-webui_install.sh -uninstall -configure -purge && rm -f -- ./weig_qb-webui_install.sh
+```
+
+Pour un répertoire personnalisé, ajoutez `-o /path/to/weig_qb-webui`.
+
+### Docker
+
+Un seul conteneur / détection automatique :
+
+```sh
+sh weig_qb-webui_install.sh -uninstall -configure -purge && rm -f -- ./weig_qb-webui_install.sh
+```
+
+Plusieurs conteneurs :
+
+```sh
+sh weig_qb-webui_install.sh -uninstall -configure -purge --container=qbittorrent && rm -f -- ./weig_qb-webui_install.sh
+```
+
+Avec `--config-root` :
+
+```sh
+sh weig_qb-webui_install.sh -uninstall -configure -purge --config-root=/path/to/qbittorrent/config && rm -f -- ./weig_qb-webui_install.sh
+```
+
+### Windows PowerShell
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -uninstall -configure -purge; if ($LASTEXITCODE -eq 0) { Remove-Item .\weig_qb-webui_install.ps1 -Force }
+```
+
+Pour un répertoire personnalisé, ajoutez `-o D:\WeiG_qB-WebUI`.
+
+`-purge` ne supprime que les sauvegardes appartenant à la cible en cours de désinstallation et ne touche pas aux autres installations. Si le répertoire d’état partagé devient vide, `~/.config/weig_qb-webui` sous Linux (root : `/root/.config/weig_qb-webui`) ou `%APPDATA%\WeiG_qB-WebUI` sous Windows est également supprimé.
+
+Pour conserver les sauvegardes afin d’utiliser `-rollback` plus tard, retirez simplement `-purge`.
+
+</details>
+
 ## Aide supplémentaire
 
 Pour Docker, NAS, les chemins personnalisés, les mises à jour et le déploiement manuel, consultez [Installation, mise à niveau et déploiement manuel](installation-guide/deployment-guide.fr.md).

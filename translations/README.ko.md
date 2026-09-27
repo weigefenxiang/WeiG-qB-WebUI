@@ -26,12 +26,16 @@ ZIP 내부의 최상위 폴더 이름은 계속 `WeiG-qB-WebUI`입니다. 압축
 
 ### 데스크톱
 
-![WeiG qB WebUI 데스크톱 화면](../assets/screenshots/weig-qb-webui-desktop-overview-v1.1.0.png)
+<p align="center">
+  <img src="../assets/screenshots/weig-qb-webui-desktop-overview-v1.1.0.png" alt="WeiG qB WebUI 데스크톱 화면" width="800">
+</p>
 
 ### 모바일
 
-![WeiG qB WebUI 모바일 화면](../assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.png)
-
+<p align="center">
+  <img src="../assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.gif" alt="WeiG qB WebUI 모바일 애니메이션" height="341">
+  <img src="../assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.png" alt="WeiG qB WebUI 모바일 화면" height="341">
+</p>
 ## 초보자 설치
 
 <details>
@@ -244,6 +248,7 @@ PowerShell 매개변수 이름은 대소문자를 구분하지 않습니다.
 | 설치 경로 지정 | `-o /path` 또는 `-o /path` | `-o D:\path` 또는 `-output D:\path` |
 | qBittorrent 자동 설정 | `-configure` | `-configure` |
 | 이전 설치로 롤백 | `-rollback` | `-rollback` |
+| 완전 제거(설치 프로그램 백업 미보관) | `-uninstall -purge` | `-uninstall -purge` |
 | 도움말 | `-help` | `-help` |
 | Docker 컨테이너 지정 | `--container=NAME` | — |
 | Docker 컨테이너 목록 | `--list-containers` | — |
@@ -283,6 +288,55 @@ powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -rollback
 
 
 </details>
+## 원클릭 제거
+
+<details>
+<summary><b>Linux / NAS, Docker, Windows PowerShell 완전 제거</b></summary>
+
+기본적으로 **설치 프로그램 백업을 남기지 않는 완전 제거**를 권장합니다. WebUI를 제거하고 현재 대상의 대체 WebUI 설정을 비활성화한 뒤, 해당 대상의 installer-owned backups / rollback 상태와 현재 디렉터리의 설치 스크립트까지 정리합니다.
+
+### Linux / NAS
+
+```sh
+sh weig_qb-webui_install.sh -uninstall -configure -purge && rm -f -- ./weig_qb-webui_install.sh
+```
+
+사용자 지정 설치 경로라면 `-o /path/to/weig_qb-webui`를 추가하세요.
+
+### Docker
+
+단일 컨테이너 자동 감지:
+
+```sh
+sh weig_qb-webui_install.sh -uninstall -configure -purge && rm -f -- ./weig_qb-webui_install.sh
+```
+
+여러 컨테이너:
+
+```sh
+sh weig_qb-webui_install.sh -uninstall -configure -purge --container=qbittorrent && rm -f -- ./weig_qb-webui_install.sh
+```
+
+`--config-root` 사용 시:
+
+```sh
+sh weig_qb-webui_install.sh -uninstall -configure -purge --config-root=/path/to/qbittorrent/config && rm -f -- ./weig_qb-webui_install.sh
+```
+
+### Windows PowerShell
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -uninstall -configure -purge; if ($LASTEXITCODE -eq 0) { Remove-Item .\weig_qb-webui_install.ps1 -Force }
+```
+
+사용자 지정 설치 경로라면 `-o D:\WeiG_qB-WebUI`를 추가하세요.
+
+`-purge`는 현재 제거 대상이 소유한 백업만 삭제하며 다른 설치의 백업은 건드리지 않습니다. 공유 상태 디렉터리가 비면 Linux의 `~/.config/weig_qb-webui`(root는 `/root/.config/weig_qb-webui`) 또는 Windows의 `%APPDATA%\WeiG_qB-WebUI`도 함께 제거됩니다.
+
+나중에 `-rollback`을 위해 백업을 남기려면 `-purge`만 빼면 됩니다.
+
+</details>
+
 ## 추가 도움말
 
 Docker, NAS, 사용자 지정 경로, 업데이트 및 수동 배포는 [설치, 업그레이드 및 수동 배포](installation-guide/deployment-guide.ko.md)를 참고하세요.

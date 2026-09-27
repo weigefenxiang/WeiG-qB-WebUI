@@ -375,15 +375,16 @@ Los parámetros de PowerShell no distinguen mayúsculas y minúsculas. `-Executi
 
 ---
 
-## 4. Cómo actualizar y volver atrás
+## 4. Cómo actualizar, revertir y desinstalar
 
-
-Volver a ejecutar el instalador es el método normal de actualización.
+**Volver a ejecutar el instalador es la forma normal de actualizar.** Prepara y verifica la nueva versión antes de cambiar el WebUI.
 
 <details>
-<summary><b>Ver comandos de actualización y rollback (haz clic para desplegar)</b></summary>
+<summary><b>Mostrar comandos de actualización, reversión y desinstalación</b></summary>
 
-Linux:
+### Actualizar a la última versión estable
+
+Linux / NAS / Docker:
 
 ```sh
 sh weig_qb-webui_install.sh -configure
@@ -395,22 +396,59 @@ Windows:
 powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -configure
 ```
 
-Rollback:
+### Volver a la instalación anterior
+
+Linux / NAS / Docker:
 
 ```sh
 sh weig_qb-webui_install.sh -rollback
 ```
 
+Windows:
+
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -rollback
 ```
 
-Para volver inmediatamente a la WebUI integrada de qBittorrent, desactiva **Usar la interfaz Web alternativa**.
+### Desinstalación con un solo comando
+
+De forma predeterminada recomendamos la **desinstalación completa sin conservar copias del instalador**. Elimina de forma segura el WeiG WebUI actual, desactiva la interfaz alternativa correspondiente, purga las copias / el estado de rollback de este destino y, al finalizar correctamente, elimina también el script de instalación del directorio actual.
+
+Linux / NAS:
+
+```sh
+sh weig_qb-webui_install.sh -uninstall -configure -purge && rm -f -- ./weig_qb-webui_install.sh
+```
+
+Docker (single container / automatic detection):
+
+```sh
+sh weig_qb-webui_install.sh -uninstall -configure -purge && rm -f -- ./weig_qb-webui_install.sh
+```
+
+Docker (multiple containers, explicit selection):
+
+```sh
+sh weig_qb-webui_install.sh -uninstall -configure -purge --container=qbittorrent && rm -f -- ./weig_qb-webui_install.sh
+```
+
+Windows:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -uninstall -configure -purge; if ($LASTEXITCODE -eq 0) { Remove-Item .\weig_qb-webui_install.ps1 -Force }
+```
+
+Para una ruta personalizada, añade `-o /path` o `-o D:\path`. Si no quieres modificar la configuración de qBittorrent, omite `-configure`.
+
+`-purge` solo limpia el destino que se está desinstalando. Si el directorio de estado compartido queda vacío, también se elimina `~/.config/weig_qb-webui` en Linux (root: `/root/.config/weig_qb-webui`) o `%APPDATA%\WeiG_qB-WebUI` en Windows.
+
+Para conservar las copias y usar `-rollback` más adelante, omite `-purge`.
+
+Las copias del instalador de Linux se guardan en `~/.config/weig_qb-webui/backups/`; se conservan las tres más recientes de forma independiente por destino.
+
+Si solo quieres volver temporalmente al WebUI nativo de qBittorrent, desactiva **Usar WebUI alternativa** en **Herramientas → Opciones… → WebUI**.
 
 </details>
-
----
-
 ## 5. Opciones habituales
 
 Linux / Docker / NAS usan `install.sh`; Windows usa `install.ps1`. Los parámetros de PowerShell no distinguen mayúsculas y minúsculas.
@@ -423,6 +461,7 @@ Linux / Docker / NAS usan `install.sh`; Windows usa `install.ps1`. Los parámetr
 | Directorio de instalación | `-o /path` / `-o /path` | `-o D:\path` / `-output D:\path` | `o` = output |
 | Configurar qBittorrent automáticamente | `-configure` | `-configure` | Activa la WebUI alternativa y fija la ruta |
 | Revertir | `-rollback` | `-rollback` | Restaura la instalación y config qB anteriores |
+| Desinstalación completa (recomendada, sin copias del instalador) | `-uninstall -purge` | `-uninstall -purge` | Purga las copias / estado de rollback de este destino |
 | Ayuda | `-help` | `-help` | Muestra la ayuda completa |
 | Elegir contenedor Docker | `--container=NAME` | — | Útil con varios contenedores qB |
 | Listar contenedores Docker | `--list-containers` | — | Muestra los contenedores qB detectados |
@@ -442,7 +481,6 @@ Reglas importantes:
 </details>
 
 ---
-
 ## 6. Instalación manual
 
 Última Release:

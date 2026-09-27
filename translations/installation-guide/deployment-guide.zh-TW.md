@@ -392,44 +392,80 @@ PowerShell 參數大小寫不敏感。`-ExecutionPolicy Bypass` 只套用於這�
 
 ---
 
-## 4. 怎麼升級與回滾
+## 4. 怎麼升級、回滾與解除安裝
 
-
-重新執行安裝器就是正常升級方式。
+**重新執行安裝器就是正常升級方式。** 安裝器會先準備並驗證新版本，再切換 WebUI。
 
 <details>
-<summary><b>查看升級與回滾指令（點擊展開）</b></summary>
+<summary><b>查看升級、回滾與解除安裝命令</b></summary>
 
-Linux：
+### 升級到最新穩定版
+
+Linux / NAS / Docker:
 
 ```sh
 sh weig_qb-webui_install.sh -configure
 ```
 
-Windows：
+Windows:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -configure
 ```
 
-回滾：
+### 回滾上一次安裝
+
+Linux / NAS / Docker:
 
 ```sh
 sh weig_qb-webui_install.sh -rollback
 ```
 
+Windows:
+
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -rollback
 ```
 
-如果只想立刻回到 qBittorrent 原生 WebUI，進入 **工具 → 選項… → WebUI**，取消 **使用替補 WebUI** 即可。
+### 一鍵解除安裝
 
----
+預設建議**不保留安裝器備份**。以下命令會安全解除安裝目前的 WeiG WebUI、關閉對應目標的備選 WebUI、清理該目標的 installer-owned backups / rollback 狀態，並在成功後刪除目前目錄中的安裝腳本。
+
+Linux / NAS:
+
+```sh
+sh weig_qb-webui_install.sh -uninstall -configure -purge && rm -f -- ./weig_qb-webui_install.sh
+```
+
+Docker (single container / automatic detection):
+
+```sh
+sh weig_qb-webui_install.sh -uninstall -configure -purge && rm -f -- ./weig_qb-webui_install.sh
+```
+
+Docker (multiple containers, explicit selection):
+
+```sh
+sh weig_qb-webui_install.sh -uninstall -configure -purge --container=qbittorrent && rm -f -- ./weig_qb-webui_install.sh
+```
+
+Windows:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -uninstall -configure -purge; if ($LASTEXITCODE -eq 0) { Remove-Item .\weig_qb-webui_install.ps1 -Force }
+```
+
+自訂安裝路徑時繼續加上 `-o /path` 或 `-o D:\path`；如果不需要修改 qBittorrent 設定，可省略 `-configure`。
+
+`-purge` 只清理目前的解除安裝目標。共享狀態目錄沒有其他內容時，Linux 的 `~/.config/weig_qb-webui`（root 為 `/root/.config/weig_qb-webui`）或 Windows 的 `%APPDATA%\WeiG_qB-WebUI` 也會一併清除。
+
+若要保留備份以便之後使用 `-rollback`，移除 `-purge` 即可。
+
+Linux 安裝器備份位於 `~/.config/weig_qb-webui/backups/`，每個安裝目標各自保留最近 3 份。
+
+如果只想暫時回到 qBittorrent 原生 WebUI，請在 **工具 → 選項… → WebUI** 中取消 **使用備選 WebUI**。
 
 </details>
-
----
-
 ## 5. 常用參數
 
 Linux / Docker / NAS 使用 `install.sh`，Windows 使用 `install.ps1`。PowerShell 參數不區分大小寫，文件統一使用小寫。
@@ -442,6 +478,7 @@ Linux / Docker / NAS 使用 `install.sh`，Windows 使用 `install.ps1`。PowerS
 | 指定安裝目錄 | `-o /path` 或 `-o /path` | `-o D:\path` 或 `-output D:\path` | `o` = output |
 | 自動設定 qBittorrent | `-configure` | `-configure` | 啟用替補 WebUI 並設定路徑 |
 | 回滾 | `-rollback` | `-rollback` | 還原上一次安裝與 qB 設定 |
+| 完整解除安裝（預設建議，不保留安裝器備份） | `-uninstall -purge` | `-uninstall -purge` | 解除安裝 WebUI 並清理目前目標的 installer-owned backups / rollback 狀態 |
 | 說明 | `-help` | `-help` | 顯示完整參數 |
 | 指定 Docker 容器 | `--container=NAME` | — | 多個 qB 容器時使用 |
 | 列出 Docker 容器 | `--list-containers` | — | 查看偵測到的 qB 容器 |
@@ -462,7 +499,6 @@ Linux / Docker / NAS 使用 `install.sh`，Windows 使用 `install.ps1`。PowerS
 </details>
 
 ---
-
 ## 6. 手動安裝
 
 最新 Release：

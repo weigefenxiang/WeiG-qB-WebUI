@@ -375,15 +375,16 @@ PowerShell-Parameter sind nicht groß-/kleinschreibungssensitiv. `-ExecutionPoli
 
 ---
 
-## 4. Upgrade und Rollback
+## 4. Upgrade, Rollback und Deinstallation
 
-
-Installer erneut ausführen = normales Upgrade.
+**Für ein normales Upgrade wird der Installer einfach erneut ausgeführt.** Er bereitet die neue Version vor, prüft sie und schaltet erst danach das WebUI um.
 
 <details>
-<summary><b>Upgrade- und Rollback-Befehle anzeigen (zum Aufklappen klicken)</b></summary>
+<summary><b>Upgrade-, Rollback- und Deinstallationsbefehle anzeigen</b></summary>
 
-Linux:
+### Auf die neueste stabile Version aktualisieren
+
+Linux / NAS / Docker:
 
 ```sh
 sh weig_qb-webui_install.sh -configure
@@ -395,22 +396,59 @@ Windows:
 powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -configure
 ```
 
-Rollback:
+### Vorherige Installation wiederherstellen
+
+Linux / NAS / Docker:
 
 ```sh
 sh weig_qb-webui_install.sh -rollback
 ```
 
+Windows:
+
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -rollback
 ```
 
-Für eine sofortige Rückkehr zur eingebauten qBittorrent-WebUI einfach **Alternative Weboberfläche verwenden** deaktivieren.
+### Ein-Klick-Deinstallation
+
+Empfohlen ist standardmäßig die **vollständige Deinstallation ohne Installer-Backups**. Sie entfernt das aktuelle WeiG WebUI sicher, deaktiviert die passende Alternative-WebUI-Konfiguration, bereinigt die installer-eigenen Backups / den Rollback-Status dieses Ziels und löscht nach Erfolg auch das Installationsskript im aktuellen Verzeichnis.
+
+Linux / NAS:
+
+```sh
+sh weig_qb-webui_install.sh -uninstall -configure -purge && rm -f -- ./weig_qb-webui_install.sh
+```
+
+Docker (single container / automatic detection):
+
+```sh
+sh weig_qb-webui_install.sh -uninstall -configure -purge && rm -f -- ./weig_qb-webui_install.sh
+```
+
+Docker (multiple containers, explicit selection):
+
+```sh
+sh weig_qb-webui_install.sh -uninstall -configure -purge --container=qbittorrent && rm -f -- ./weig_qb-webui_install.sh
+```
+
+Windows:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -uninstall -configure -purge; if ($LASTEXITCODE -eq 0) { Remove-Item .\weig_qb-webui_install.ps1 -Force }
+```
+
+Bei einem eigenen Installationspfad `-o /path` oder `-o D:\path` ergänzen. Wenn die qBittorrent-Konfiguration nicht geändert werden soll, `-configure` weglassen.
+
+`-purge` bereinigt nur das aktuelle Deinstallationsziel. Ist das gemeinsame Statusverzeichnis danach leer, wird unter Linux auch `~/.config/weig_qb-webui` (root: `/root/.config/weig_qb-webui`) bzw. unter Windows `%APPDATA%\WeiG_qB-WebUI` entfernt.
+
+Sollen Backups für ein späteres `-rollback` erhalten bleiben, `-purge` weglassen.
+
+Linux-Installer-Backups liegen unter `~/.config/weig_qb-webui/backups/`; pro Installationsziel werden die letzten drei getrennt aufbewahrt.
+
+Wenn nur vorübergehend zur nativen qBittorrent-WebUI zurückgekehrt werden soll, unter **Werkzeuge → Optionen… → WebUI** die **Alternative WebUI verwenden** deaktivieren.
 
 </details>
-
----
-
 ## 5. Häufige Optionen
 
 Linux / Docker / NAS verwenden `install.sh`, Windows verwendet `install.ps1`. PowerShell-Parameter sind nicht groß-/kleinschreibungssensitiv.
@@ -423,6 +461,7 @@ Linux / Docker / NAS verwenden `install.sh`, Windows verwendet `install.ps1`. Po
 | Installationspfad | `-o /path` / `-o /path` | `-o D:\path` / `-output D:\path` | `o` = output |
 | qBittorrent automatisch konfigurieren | `-configure` | `-configure` | Alternative Weboberfläche aktivieren und Pfad setzen |
 | Rollback | `-rollback` | `-rollback` | Vorherige Installation und qB-Konfiguration wiederherstellen |
+| Vollständig deinstallieren (empfohlen, keine Installer-Backups behalten) | `-uninstall -purge` | `-uninstall -purge` | Bereinigt installer-eigene Backups / Rollback-Status dieses Ziels |
 | Hilfe | `-help` | `-help` | Vollständige Hilfe anzeigen |
 | Docker-Container wählen | `--container=NAME` | — | Bei mehreren qB-Containern |
 | Docker-Container auflisten | `--list-containers` | — | Erkannte qB-Container anzeigen |
@@ -442,7 +481,6 @@ Wichtige Regeln:
 </details>
 
 ---
-
 ## 6. Manuelle Installation
 
 Neueste Release:

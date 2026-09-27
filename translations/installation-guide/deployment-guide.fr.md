@@ -375,42 +375,80 @@ Les noms de paramètres PowerShell ne sont pas sensibles à la casse. `-Executio
 
 ---
 
-## 4. Mettre à niveau et revenir en arrière
+## 4. Mettre à niveau, revenir en arrière et désinstaller
 
-
-Relancer l'installateur est la méthode normale de mise à niveau.
+**Relancer l’installateur est la méthode normale de mise à niveau.** Il prépare et vérifie la nouvelle version avant de remplacer le WebUI.
 
 <details>
-<summary><b>Afficher les commandes de mise à niveau et de rollback (cliquer pour développer)</b></summary>
+<summary><b>Afficher les commandes de mise à niveau, rollback et désinstallation</b></summary>
 
-Linux :
+### Mettre à niveau vers la dernière version stable
+
+Linux / NAS / Docker:
 
 ```sh
 sh weig_qb-webui_install.sh -configure
 ```
 
-Windows :
+Windows:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -configure
 ```
 
-Rollback :
+### Revenir à l’installation précédente
+
+Linux / NAS / Docker:
 
 ```sh
 sh weig_qb-webui_install.sh -rollback
 ```
 
+Windows:
+
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -rollback
 ```
 
-Pour revenir immédiatement à l'interface Web intégrée de qBittorrent, désactivez simplement **Utiliser l'IU Web alternative**.
+### Désinstallation en une commande
+
+Par défaut, nous recommandons la **désinstallation complète sans conserver les sauvegardes de l’installateur**. Elle supprime le WeiG WebUI actuel, désactive l’interface alternative correspondante, purge les sauvegardes / l’état de rollback appartenant à cette cible, puis supprime le script d’installation du dossier courant en cas de succès.
+
+Linux / NAS:
+
+```sh
+sh weig_qb-webui_install.sh -uninstall -configure -purge && rm -f -- ./weig_qb-webui_install.sh
+```
+
+Docker (single container / automatic detection):
+
+```sh
+sh weig_qb-webui_install.sh -uninstall -configure -purge && rm -f -- ./weig_qb-webui_install.sh
+```
+
+Docker (multiple containers, explicit selection):
+
+```sh
+sh weig_qb-webui_install.sh -uninstall -configure -purge --container=qbittorrent && rm -f -- ./weig_qb-webui_install.sh
+```
+
+Windows:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -uninstall -configure -purge; if ($LASTEXITCODE -eq 0) { Remove-Item .\weig_qb-webui_install.ps1 -Force }
+```
+
+Pour un chemin personnalisé, ajoutez `-o /path` ou `-o D:\path`. Si vous ne souhaitez pas modifier la configuration qBittorrent, omettez `-configure`.
+
+`-purge` ne nettoie que la cible désinstallée. Si le répertoire d’état partagé devient vide, `~/.config/weig_qb-webui` sous Linux (root : `/root/.config/weig_qb-webui`) ou `%APPDATA%\WeiG_qB-WebUI` sous Windows est également supprimé.
+
+Pour conserver les sauvegardes et utiliser `-rollback` plus tard, omettez `-purge`.
+
+Les sauvegardes Linux de l’installateur sont stockées dans `~/.config/weig_qb-webui/backups/`, avec les trois plus récentes conservées séparément par cible.
+
+Pour revenir temporairement au WebUI natif de qBittorrent, désactivez **Utiliser une interface Web alternative** dans **Outils → Options… → WebUI**.
 
 </details>
-
----
-
 ## 5. Options courantes
 
 Linux / Docker / NAS utilisent `install.sh`, Windows utilise `install.ps1`. Les paramètres PowerShell ne sont pas sensibles à la casse.
@@ -423,6 +461,7 @@ Linux / Docker / NAS utilisent `install.sh`, Windows utilise `install.ps1`. Les 
 | Répertoire d'installation | `-o /path` / `-o /path` | `-o D:\path` / `-output D:\path` | `o` = output |
 | Configurer qBittorrent | `-configure` | `-configure` | Active l'IU Web alternative et définit le chemin |
 | Revenir en arrière | `-rollback` | `-rollback` | Restaure l'installation et la config qB précédentes |
+| Désinstallation complète (recommandée, sans sauvegardes de l’installateur) | `-uninstall -purge` | `-uninstall -purge` | Purge les sauvegardes / l’état de rollback de cette cible |
 | Aide | `-help` | `-help` | Affiche l'aide complète |
 | Choisir un conteneur Docker | `--container=NAME` | — | Utile avec plusieurs conteneurs qB |
 | Lister les conteneurs | `--list-containers` | — | Affiche les conteneurs qB détectés |
@@ -442,7 +481,6 @@ Règles importantes :
 </details>
 
 ---
-
 ## 6. Installation manuelle
 
 Dernière Release :
