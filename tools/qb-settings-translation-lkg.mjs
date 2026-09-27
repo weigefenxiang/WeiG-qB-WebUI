@@ -85,39 +85,50 @@ function validateDetailControls(value,qbVersion){
 function validateDetailContextMenus(value,qbVersion){
   if(value===undefined)return null;
   assert(value&&typeof value==='object'&&!Array.isArray(value),`${qbVersion}: Torrent detail context menus are invalid.`);
+  function validateItems(items,name,path=''){
+    assert(Array.isArray(items)&&items.length>0,`${qbVersion}: invalid Torrent detail context menu ${name||'(empty)'}.`);
+    const seen=new Set();
+    return items.map(item=>{
+      const allowed=new Set(['id','translation','endpoint','sourceAction','availability','children','semantic','priorityValue']);
+      for(const key of Object.keys(item||{}))assert(allowed.has(key),`${qbVersion} detail ${name}: unsupported context-menu fact ${key}.`);
+      const id=String(item?.id||'').trim(),where=path?path+'.'+id:id;
+      assert(id&&!seen.has(id),`${qbVersion} detail ${name}: invalid or duplicate context-menu action ${id||'(empty)'}.`);seen.add(id);
+      const translation=validateRef(item.translation,`${qbVersion} detail ${name} action ${where}`);
+      const endpoint=item.endpoint===undefined?null:String(item.endpoint||'').trim(),sourceAction=item.sourceAction===undefined?null:String(item.sourceAction||'').trim();
+      if(item.endpoint!==undefined)assert(endpoint,`${qbVersion} detail ${name} action ${where}: endpoint is empty.`);
+      if(item.sourceAction!==undefined)assert(sourceAction,`${qbVersion} detail ${name} action ${where}: sourceAction is empty.`);
+      let availability=null;
+      if(item.availability!==undefined){
+        assert(item.availability&&typeof item.availability==='object'&&!Array.isArray(item.availability),`${qbVersion} detail ${name} action ${where}: availability is invalid.`);
+        const allowedAvailability=new Set(['minSelection','maxSelection','excludedPrefixes']);
+        for(const key of Object.keys(item.availability))assert(allowedAvailability.has(key),`${qbVersion} detail ${name} action ${where}: unsupported availability fact ${key}.`);
+        availability={};
+        if(item.availability.minSelection!==undefined){const v=Number(item.availability.minSelection);assert(Number.isInteger(v)&&v>=0,`${qbVersion} detail ${name} action ${where}: minSelection is invalid.`);availability.minSelection=v;}
+        if(item.availability.maxSelection!==undefined){const v=Number(item.availability.maxSelection);assert(Number.isInteger(v)&&v>=0,`${qbVersion} detail ${name} action ${where}: maxSelection is invalid.`);availability.maxSelection=v;}
+        if(availability.minSelection!==undefined&&availability.maxSelection!==undefined)assert(availability.maxSelection>=availability.minSelection,`${qbVersion} detail ${name} action ${where}: selection range is invalid.`);
+        if(item.availability.excludedPrefixes!==undefined){
+          assert(Array.isArray(item.availability.excludedPrefixes),`${qbVersion} detail ${name} action ${where}: excludedPrefixes is invalid.`);
+          const prefixes=item.availability.excludedPrefixes.map(value=>String(value||''));
+          assert(prefixes.every(Boolean)&&new Set(prefixes).size===prefixes.length,`${qbVersion} detail ${name} action ${where}: excludedPrefixes contains empty or duplicate values.`);
+          availability.excludedPrefixes=prefixes;
+        }
+        assert(Object.keys(availability).length>0,`${qbVersion} detail ${name} action ${where}: availability is empty.`);
+      }
+      const semantic=item.semantic===undefined?'':String(item.semantic||'').trim();
+      if(semantic)assert(semantic==='file-priority'||semantic==='file-priority-value',`${qbVersion} detail ${name} action ${where}: unsupported semantic ${semantic}.`);
+      let priorityValue=null;
+      if(item.priorityValue!==undefined){priorityValue=String(item.priorityValue);assert(semantic==='file-priority-value'&&/^-?\d+$/.test(priorityValue),`${qbVersion} detail ${name} action ${where}: priorityValue requires file-priority-value semantic.`);}
+      const children=item.children===undefined?null:validateItems(item.children,name,where);
+      if(semantic==='file-priority')assert(children&&children.length&&children.every(child=>child.semantic==='file-priority-value'),`${qbVersion} detail ${name} action ${where}: file-priority group requires file-priority-value children.`);
+      if(semantic==='file-priority-value')assert(!children,`${qbVersion} detail ${name} action ${where}: file-priority-value must be a leaf.`);
+      return{id,translation,...(endpoint?{endpoint}:{}),...(sourceAction?{sourceAction}:{}),...(availability?{availability}:{}),...(children?{children}:{}),...(semantic?{semantic}:{}),...(priorityValue!==null?{priorityValue}:{})};
+    });
+  }
   const menus={};
   for(const [surface,items] of Object.entries(value)){
     const name=String(surface||'').trim();
-    assert(name&&Array.isArray(items)&&items.length>0,`${qbVersion}: invalid Torrent detail context menu ${name||'(empty)'}.`);
-    const seen=new Set();
-    menus[name]=items.map(item=>{
-      const allowed=new Set(['id','translation','endpoint','sourceAction','availability']);
-      for(const key of Object.keys(item||{}))assert(allowed.has(key),`${qbVersion} detail ${name}: unsupported context-menu fact ${key}.`);
-      const id=String(item?.id||'').trim();
-      assert(id&&!seen.has(id),`${qbVersion} detail ${name}: invalid or duplicate context-menu action ${id||'(empty)'}.`);seen.add(id);
-      const translation=validateRef(item.translation,`${qbVersion} detail ${name} action ${id}`);
-      const endpoint=item.endpoint===undefined?null:String(item.endpoint||'').trim(),sourceAction=item.sourceAction===undefined?null:String(item.sourceAction||'').trim();
-      if(item.endpoint!==undefined)assert(endpoint,`${qbVersion} detail ${name} action ${id}: endpoint is empty.`);
-      if(item.sourceAction!==undefined)assert(sourceAction,`${qbVersion} detail ${name} action ${id}: sourceAction is empty.`);
-      let availability=null;
-      if(item.availability!==undefined){
-        assert(item.availability&&typeof item.availability==='object'&&!Array.isArray(item.availability),`${qbVersion} detail ${name} action ${id}: availability is invalid.`);
-        const allowedAvailability=new Set(['minSelection','maxSelection','excludedPrefixes']);
-        for(const key of Object.keys(item.availability))assert(allowedAvailability.has(key),`${qbVersion} detail ${name} action ${id}: unsupported availability fact ${key}.`);
-        availability={};
-        if(item.availability.minSelection!==undefined){const n=Number(item.availability.minSelection);assert(Number.isInteger(n)&&n>=0,`${qbVersion} detail ${name} action ${id}: minSelection is invalid.`);availability.minSelection=n;}
-        if(item.availability.maxSelection!==undefined){const n=Number(item.availability.maxSelection);assert(Number.isInteger(n)&&n>=0,`${qbVersion} detail ${name} action ${id}: maxSelection is invalid.`);availability.maxSelection=n;}
-        if(availability.minSelection!==undefined&&availability.maxSelection!==undefined)assert(availability.maxSelection>=availability.minSelection,`${qbVersion} detail ${name} action ${id}: selection range is invalid.`);
-        if(item.availability.excludedPrefixes!==undefined){
-          assert(Array.isArray(item.availability.excludedPrefixes),`${qbVersion} detail ${name} action ${id}: excludedPrefixes is invalid.`);
-          const prefixes=item.availability.excludedPrefixes.map(value=>String(value||''));
-          assert(prefixes.every(Boolean)&&new Set(prefixes).size===prefixes.length,`${qbVersion} detail ${name} action ${id}: excludedPrefixes contains empty or duplicate values.`);
-          availability.excludedPrefixes=prefixes;
-        }
-        assert(Object.keys(availability).length>0,`${qbVersion} detail ${name} action ${id}: availability is empty.`);
-      }
-      return{id,translation,...(endpoint?{endpoint}:{}),...(sourceAction?{sourceAction}:{}),...(availability?{availability}:{})};
-    });
+    assert(name,`${qbVersion}: invalid Torrent detail context menu (empty).`);
+    menus[name]=validateItems(items,name);
   }
   assert(Object.keys(menus).length>0,`${qbVersion}: Torrent detail context menus are empty.`);
   return menus;
@@ -184,7 +195,7 @@ export function validateDetailUi(value,qbVersion){
   const controls=validateDetailControls(value.controls,qbVersion),contextMenus=validateDetailContextMenus(value.contextMenus,qbVersion);
   return{tabs,tabOrder,propertyGroups,propertyLabels,propertyLayout,tables,...(controls?{controls}:{}),...(contextMenus?{contextMenus}:{})};
 }
-export function detailUiBindingCount(detailUi){return Object.keys(detailUi.tabs||{}).length+Object.keys(detailUi.propertyGroups||{}).length+Object.keys(detailUi.propertyLabels||{}).length+(detailUi.propertyLayout||[]).reduce((sum,group)=>sum+(group?.fields?.length||0),0)+Object.values(detailUi.tables||{}).reduce((sum,columns)=>sum+(columns?.length||0),0)+Object.values(detailUi.controls||{}).reduce((sum,control)=>sum+(control?.options?.length||0),0)+Object.values(detailUi.contextMenus||{}).reduce((sum,items)=>sum+(items?.length||0),0);}
+export function detailUiBindingCount(detailUi){const menuCount=items=>(items||[]).reduce((sum,item)=>sum+1+menuCount(item?.children),0);return Object.keys(detailUi.tabs||{}).length+Object.keys(detailUi.propertyGroups||{}).length+Object.keys(detailUi.propertyLabels||{}).length+(detailUi.propertyLayout||[]).reduce((sum,group)=>sum+(group?.fields?.length||0),0)+Object.values(detailUi.tables||{}).reduce((sum,columns)=>sum+(columns?.length||0),0)+Object.values(detailUi.controls||{}).reduce((sum,control)=>sum+(control?.options?.length||0),0)+Object.values(detailUi.contextMenus||{}).reduce((sum,items)=>sum+menuCount(items),0);}
 function freezeRecovery(enrichedCatalog,recoveryEvidence){
   assert(recoveryEvidence,'Settings/source LKG v2 requires deterministic full official-TS recovery evidence.');
   const union=materializeQbNativeQmRecoveryUnion(recoveryEvidence);

@@ -16,6 +16,7 @@ const detailUi={
   },
   controls:{filePriority:{valueType:'integer',options:[{value:'0',translation:ref('Do not download','PropListDelegate')},{value:'1',translation:ref('Normal','PropListDelegate')}],sourceKind:'upstream-createPriorityCombo'}},
   contextMenus:{
+    files:[{id:'FilePrio',translation:ref('Priority','PropertiesWidget'),semantic:'file-priority',children:[{id:'FilePrioIgnore',translation:ref('Do not download','PropListDelegate'),semantic:'file-priority-value',priorityValue:'0'},{id:'FilePrioNormal',translation:ref('Normal','PropListDelegate'),semantic:'file-priority-value',priorityValue:'1'}]}],
     trackers:[{id:'EditTracker',translation:ref('Edit tracker URL...','TrackerListWidget'),endpoint:'torrents/editTracker',sourceAction:'torrentscontroller.h:editTrackerAction',availability:{minSelection:1,maxSelection:1,excludedPrefixes:['** [','endpoint|']}}],
     peers:[{id:'banPeer',translation:ref('Ban peer permanently','PeerListWidget'),endpoint:'transfer/banPeers',sourceAction:'transfercontroller.h:banPeersAction',availability:{minSelection:1}}]
   }
@@ -23,7 +24,7 @@ const detailUi={
 
 const normalized=validateDetailUi(detailUi,'5.2.0 synthetic');
 assert.deepEqual(normalized,detailUi,'Settings/source LKG must preserve exact tab order, source-derived controls and Tracker/Peer context-menu facts instead of dropping them at the freeze boundary');
-assert.equal(detailUiBindingCount(normalized),16,'Detail binding accounting must include source-derived control options and context-menu actions without double-counting tab order');
+assert.equal(detailUiBindingCount(normalized),19,'Detail binding accounting must recursively include nested source-derived context-menu actions without double-counting tab order');
 
 const duplicateTab=structuredClone(detailUi);duplicateTab.tabOrder[4]='overview';
 assert.throws(()=>validateDetailUi(duplicateTab,'duplicate tab synthetic'),/tab order contains empty or duplicate keys/,'duplicate source tab order must fail closed');
@@ -35,5 +36,7 @@ const unsupportedAvailability=structuredClone(detailUi);unsupportedAvailability.
 assert.throws(()=>validateDetailUi(unsupportedAvailability,'unsupported availability synthetic'),/unsupported availability fact selectedRows/,'unknown action-availability semantics must fail closed rather than silently crossing the LKG boundary');
 const unsupportedMenuFact=structuredClone(detailUi);unsupportedMenuFact.contextMenus.peers[0].parameters=['ip'];
 assert.throws(()=>validateDetailUi(unsupportedMenuFact,'unsupported menu synthetic'),/unsupported context-menu fact parameters/,'new unowned context-menu descriptor semantics must stop at the provenance boundary until the canonical owner validates them');
+const unsupportedSemantic=structuredClone(detailUi);unsupportedSemantic.contextMenus.files[0].semantic='future-unknown';
+assert.throws(()=>validateDetailUi(unsupportedSemantic,'unsupported nested semantic'),/unsupported semantic future-unknown/,'unknown nested context-menu semantics must fail closed at the LKG boundary');
 
-console.log('qB Settings Detail source-facts contract passed: exact tab order, controls/options and Tracker/Peer context-menu provenance survive the LKG boundary, contribute to binding evidence, and unknown semantics fail closed.');
+console.log('qB Settings Detail source-facts contract passed: exact tab order, controls/options and nested Content/Tracker/Peer context-menu provenance survive the LKG boundary, contribute to binding evidence, and unknown semantics fail closed.');
