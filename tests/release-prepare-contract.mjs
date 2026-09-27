@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const workflow=fs.readFileSync(new URL('../.github/workflows/release-prepare.yml',import.meta.url),'utf8');
+assert.ok(workflow.includes('name: Release Prepare'));
+assert.ok(workflow.includes("contains(github.event.head_commit.message, '[release-prepare]')"),'dev push marker must be the non-interactive prepare trigger');
+assert.ok(workflow.includes('actions: write')&&workflow.includes('contents: read'),'prepare may dispatch validation but must not write repository contents');
+for(const id of ['ci.yml','pages-source.yml','session-handshake.yml','real-qb-full.yml','real-qb-locale.yml'])assert.ok(workflow.includes(`/actions/workflows/$workflow/dispatches`)||workflow.includes(id));
+for(const evidence of ['ordinary_ci','candidate_ci','pages_source','pages','session','full','locale','deployment'])assert.ok(workflow.includes(`key:'${evidence}'`),`missing evidence owner ${evidence}`);
+assert.ok(workflow.includes('release-candidate-${sha}')&&workflow.includes('candidate-deployment-${sha}')&&workflow.includes('real-qb-full-aggregate-${sha}')&&workflow.includes('real-qb-current-locale-aggregate-${sha}'));
+assert.ok(workflow.includes('dev moved from frozen ${sha}'),'prepare must fail closed if dev moves');
+assert.ok(workflow.includes('--image-ref "$SHA"')&&workflow.includes('release-preview-${{ steps.freeze.outputs.sha }}'),'preview must bind image and artifact to exact frozen SHA');
+assert.ok(workflow.includes('No main, tag, or GitHub Release was changed'),'prepare must stop before publication');
+assert.ok(!workflow.includes('git push origin')&&!workflow.includes('gh release create'),'prepare must not promote or publish');
+console.log('Release prepare contract passed: exact-dev orchestration covers all release-grade evidence, generates preview, and cannot mutate main/tag/release.');
