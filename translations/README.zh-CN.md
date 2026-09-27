@@ -27,7 +27,7 @@
 ### 桌面端
 
 <p align="center">
-  <img src="../assets/screenshots/weig-qb-webui-desktop-overview-v1.1.0.gif" alt="WeiG qB WebUI 桌面端动态演示">
+  <img src="../assets/screenshots/weig-qb-webui-desktop-overview-v1.1.0.gif" alt="WeiG qB WebUI 桌面端动态演示" width="800">
 </p>
 
 ### 手机端
@@ -335,7 +335,6 @@ Linux 和 Windows 使用相同的参数名称，文档统一使用小写；Power
 | 自动配置 qBittorrent | `-configure` | `-configure` |
 | 回滚上一次安装 | `-rollback` | `-rollback` |
 | 彻底卸载（不保留安装器备份） | `-uninstall -purge` | `-uninstall -purge` |
-| 彻底卸载并清理该目标的安装器备份 | `-uninstall -purge` | `-uninstall -purge` |
 | 查看完整帮助 | `-help` | `-help` |
 | 指定 Docker 容器 | `--container=NAME` | — |
 | 列出 Docker 容器 | `--list-containers` | — |
@@ -387,7 +386,7 @@ powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -rollback
 
 ## 一键卸载
 
-<details open>
+<details>
 <summary><b>Linux / NAS、Docker、Windows PowerShell 一键彻底卸载</b></summary>
 
 默认推荐**不保留安装器备份**：卸载 WebUI、关闭当前目标的备选 WebUI、清理该目标的 installer-owned backups / rollback 状态，并删除下载到当前目录的安装脚本。
