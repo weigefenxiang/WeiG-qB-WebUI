@@ -36,6 +36,7 @@ ZIP 内の最上位フォルダー名は引き続き `WeiG-qB-WebUI` です。�
   <img src="../assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.gif" alt="WeiG qB WebUI モバイル動画" height="341">
   <img src="../assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.png" alt="WeiG qB WebUI モバイル画面" height="341">
 </p>
+
 ## 初心者向けインストール
 
 <details>
@@ -102,6 +103,7 @@ D:\WeiG_qB-WebUI
 ## ワンクリックインストール
 
 Linux / NAS 用のワンクリックインストーラーは、下の固定 Dev Pages URL から取得します。**スクリプトの URL はインストール先のチャンネルを決めません：** `-dev` を付けなければ検証済みの最新安定 Release をインストールし、`-dev` は現在の開発版を明示的に試す場合だけ使用します。
+
 ### Linux / NAS
 
 ```sh
@@ -322,8 +324,8 @@ Windows：
 powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -rollback
 ```
 
-
 </details>
+
 ## ワンクリックアンインストール
 
 <details>

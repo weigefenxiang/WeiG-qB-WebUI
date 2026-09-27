@@ -19,8 +19,6 @@ curl -fsSL https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.s
 <details>
 <summary><b>Show script location, default install directory, and more (click to expand)</b></summary>
 
-
-
 This saves `weig_qb-webui_install.sh` in the current directory, installs the latest stable Release, and tries to configure qBittorrent automatically.
 
 ### Default install directory
@@ -139,8 +137,6 @@ For Release verification it looks for a SHA-256 implementation such as `sha256su
 
 ---
 
----
-
 ## 2. Docker one-click install
 
 If qBittorrent runs in Docker, try the same one-click command first:
@@ -151,8 +147,6 @@ curl -fsSL https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.s
 
 <details>
 <summary><b>Docker paths, multiple containers, and advanced usage (click to expand)</b></summary>
-
-
 
 If there is only one running qBittorrent container and it exposes a normal `/config` mount, the installer will try to detect it automatically.
 
@@ -341,8 +335,6 @@ Automatic Docker configuration relies on a usable `/config` mount. If the contai
 
 ---
 
----
-
 ## 3. Windows one-click install
 
 Recommended one-click command:
@@ -353,8 +345,6 @@ Invoke-WebRequest https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/in
 
 <details>
 <summary><b>Show default install directory and more Windows usage (click to expand)</b></summary>
-
-
 
 This saves `weig_qb-webui_install.ps1` in the current PowerShell directory, installs the latest stable Release, and tries to configure qBittorrent automatically.
 
@@ -460,8 +450,6 @@ Windows may block local scripts under the current execution policy. This flag ap
 
 ---
 
----
-
 ## 4. How to upgrade, roll back, and uninstall
 
 **Re-running the installer is the normal upgrade path.** The installer prepares and verifies the new payload before switching the WebUI.
@@ -536,6 +524,7 @@ Linux installer backups are stored under `~/.config/weig_qb-webui/backups/`, wit
 If you only want to temporarily return to qBittorrent's native WebUI, disable **Use alternative WebUI** under **Tools → Options… → WebUI**.
 
 </details>
+
 ## 5. Common options
 
 Linux / Docker / NAS use `install.sh`; Windows uses `install.ps1`. PowerShell option names are case-insensitive, but this documentation uses lowercase consistently.
@@ -569,6 +558,7 @@ Important rules:
 </details>
 
 ---
+
 ## 6. Manual installation
 
 You can install without running the scripts.
@@ -664,8 +654,6 @@ Docker example:
 
 ---
 
----
-
 ## 7. Troubleshooting
 
 <details>
@@ -736,8 +724,6 @@ The installer stops and does not switch to latest or dev.
 
 ---
 
----
-
 ## 8. How to confirm the installed version
 
 Check these files in the install directory:
@@ -754,8 +740,6 @@ private/weigg-install.json
 
 ---
 
----
-
 ## 9. Compatibility
 
 Current supported range:
@@ -765,8 +749,6 @@ qBittorrent 4.1.x → 5.2.x
 ```
 
 The minimum mainline WebAPI v2 target is **qBittorrent 4.1.0**. qBittorrent 4.0.x uses the older WebAPI v1 and is outside the current mainline support statement.
-
----
 
 ---
 

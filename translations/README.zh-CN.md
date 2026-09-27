@@ -36,6 +36,7 @@
   <img src="../assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.gif" alt="WeiG qB WebUI 手机端动态演示" height="341">
   <img src="../assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.png" alt="WeiG qB WebUI 手机端界面" height="341">
 </p>
+
 ## 新手安装
 
 <details>

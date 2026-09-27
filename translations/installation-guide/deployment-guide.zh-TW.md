@@ -125,8 +125,6 @@ Linux 安裝器會依序尋找可用的下載、解壓與 SHA-256 工具。若�
 
 ---
 
----
-
 ## 2. Docker 一鍵安裝
 
 先試最簡單的一鍵命令：
@@ -137,8 +135,6 @@ curl -fsSL https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.s
 
 <details>
 <summary><b>Docker 路徑、多容器和進階用法（點擊展開）</b></summary>
-
-
 
 如果只有一個正在執行的 qBittorrent 容器，而且有正常 `/config` 掛載，安裝器會嘗試自動辨識。
 
@@ -299,8 +295,6 @@ sh weig_qb-webui_install.sh -rollback
 
 ---
 
----
-
 ## 3. Windows 一鍵安裝
 
 最常用的一鍵安裝：
@@ -390,8 +384,6 @@ PowerShell 參數大小寫不敏感。`-ExecutionPolicy Bypass` 只套用於這�
 
 ---
 
----
-
 ## 4. 怎麼升級、回滾與解除安裝
 
 **重新執行安裝器就是正常升級方式。** 安裝器會先準備並驗證新版本，再切換 WebUI。
@@ -466,6 +458,7 @@ Linux 安裝器備份位於 `~/.config/weig_qb-webui/backups/`，每個安裝目
 如果只想暫時回到 qBittorrent 原生 WebUI，請在 **工具 → 選項… → WebUI** 中取消 **使用備選 WebUI**。
 
 </details>
+
 ## 5. 常用參數
 
 Linux / Docker / NAS 使用 `install.sh`，Windows 使用 `install.ps1`。PowerShell 參數不區分大小寫，文件統一使用小寫。
@@ -499,6 +492,7 @@ Linux / Docker / NAS 使用 `install.sh`，Windows 使用 `install.ps1`。PowerS
 </details>
 
 ---
+
 ## 6. 手動安裝
 
 最新 Release：
@@ -561,8 +555,6 @@ WeiG_qB-WebUI/
 
 ---
 
----
-
 ## 7. 常見問題
 
 <details>
@@ -603,8 +595,6 @@ sh weig_qb-webui_install.sh --container=qbittorrent -configure
 不要略過。重新下載後再試。安裝器會在 ZIP 與 `SHA256SUMS` 不一致時安全停止。
 
 </details>
-
----
 
 ---
 

@@ -123,8 +123,6 @@ Linux-установщик автоматически ищет доступны�
 
 ---
 
----
-
 ## 2. Установка Docker в один шаг
 
 Сначала попробуйте обычную команду:
@@ -135,8 +133,6 @@ curl -fsSL https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.s
 
 <details>
 <summary><b>Пути Docker, несколько контейнеров и расширенные варианты (нажмите, чтобы раскрыть)</b></summary>
-
-
 
 Если запущен только один контейнер qBittorrent с обычным монтированием `/config`, установщик попытается определить его автоматически.
 
@@ -286,8 +282,6 @@ sh weig_qb-webui_install.sh -rollback
 
 ---
 
----
-
 ## 3. Установка Windows в один шаг
 
 Рекомендуемая команда:
@@ -373,8 +367,6 @@ powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -help
 
 ---
 
----
-
 ## 4. Обновление, откат и удаление
 
 **Обычное обновление выполняется повторным запуском установщика.** Он сначала подготавливает и проверяет новую версию, а затем переключает WebUI.
@@ -449,6 +441,7 @@ powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -uninstall 
 Если нужно лишь временно вернуться к стандартному WebUI qBittorrent, отключите **Использовать альтернативный WebUI** в **Инструменты → Настройки… → WebUI**.
 
 </details>
+
 ## 5. Основные параметры
 
 Linux / Docker / NAS используют `install.sh`, Windows использует `install.ps1`. Параметры PowerShell не чувствительны к регистру.
@@ -481,6 +474,7 @@ Linux / Docker / NAS используют `install.sh`, Windows использу
 </details>
 
 ---
+
 ## 6. Ручная установка
 
 Последний Release:

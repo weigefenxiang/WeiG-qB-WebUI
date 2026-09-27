@@ -36,6 +36,7 @@ ZIP 내부의 최상위 폴더 이름은 계속 `WeiG-qB-WebUI`입니다. 압축
   <img src="../assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.gif" alt="WeiG qB WebUI 모바일 애니메이션" height="341">
   <img src="../assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.png" alt="WeiG qB WebUI 모바일 화면" height="341">
 </p>
+
 ## 초보자 설치
 
 <details>
@@ -102,6 +103,7 @@ Linux 예시:
 ## 원클릭 설치
 
 Linux / NAS 원클릭 설치 스크립트는 아래의 고정 Dev Pages 주소에서 내려받습니다. **스크립트 주소가 설치 채널을 결정하지 않습니다:** `-dev`를 붙이지 않으면 검증된 최신 안정 Release를 설치하며, 현재 개발 버전을 시험할 때만 `-dev`를 사용합니다.
+
 ### Linux / NAS
 
 ```sh
@@ -286,8 +288,8 @@ sh weig_qb-webui_install.sh -rollback
 powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -rollback
 ```
 
-
 </details>
+
 ## 원클릭 제거
 
 <details>

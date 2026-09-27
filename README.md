@@ -36,6 +36,7 @@ The ZIP still contains the top-level folder `WeiG-qB-WebUI`. After extraction, r
   <img src="assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.gif" alt="WeiG qB WebUI mobile animation" height="341">
   <img src="assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.png" alt="WeiG qB WebUI mobile interface" height="341">
 </p>
+
 ## New User Installation
 
 <details>
@@ -102,6 +103,7 @@ Regular Linux example:
 ## One-click Install
 
 The Linux/NAS one-click installer is always downloaded from the fixed Dev Pages URL below. **The script URL does not choose the install channel:** without `-dev`, it installs the latest verified stable GitHub Release; add `-dev` only when you intentionally want the current development build.
+
 ### Linux / NAS
 
 ```sh
@@ -379,8 +381,8 @@ Windows:
 powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -rollback
 ```
 
-
 </details>
+
 ## One-click Uninstall
 
 <details>

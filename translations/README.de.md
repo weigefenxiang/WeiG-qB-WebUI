@@ -36,6 +36,7 @@ Das ZIP enthält weiterhin den obersten Ordner `WeiG-qB-WebUI`. Benenne diesen l
   <img src="../assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.gif" alt="WeiG qB WebUI Mobil-Animation" height="341">
   <img src="../assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.png" alt="WeiG qB WebUI Mobil-Oberfläche" height="341">
 </p>
+
 ## Installation für Einsteiger
 
 <details>
@@ -102,6 +103,7 @@ Linux-Beispiel:
 ## Ein-Klick-Installation
 
 Das Linux-/NAS-Installationsskript wird immer über den festen Dev-Pages-Link unten geladen. **Die Skriptadresse bestimmt nicht den Installationskanal:** ohne `-dev` wird die neueste geprüfte stabile GitHub-Release installiert; `-dev` ist nur für die aktuelle Entwicklungsversion.
+
 ### Linux / NAS
 
 ```sh
@@ -284,8 +286,8 @@ sh weig_qb-webui_install.sh -rollback
 powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -rollback
 ```
 
-
 </details>
+
 ## Ein-Klick-Deinstallation
 
 <details>

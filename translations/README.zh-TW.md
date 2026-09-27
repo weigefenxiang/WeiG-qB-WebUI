@@ -36,6 +36,7 @@ ZIP 內部的最上層資料夾名稱仍然是 `WeiG-qB-WebUI`。解壓縮後，
   <img src="../assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.gif" alt="WeiG qB WebUI 手機端動態示範" height="341">
   <img src="../assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.png" alt="WeiG qB WebUI 手機端介面" height="341">
 </p>
+
 ## 新手安裝
 
 <details>
@@ -102,6 +103,7 @@ D:\WeiG_qB-WebUI
 ## 一鍵安裝
 
 Linux / NAS 一鍵安裝腳本統一從下面的 Dev Pages 固定入口下載。**腳本網址不決定安裝通道：** 不加 `-dev` 預設安裝最新且經過驗證的穩定 Release；只有明確要測試目前開發版時才加 `-dev`。
+
 ### Linux / NAS
 
 ```sh
@@ -365,8 +367,8 @@ Windows：
 powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -rollback
 ```
 
-
 </details>
+
 ## 一鍵解除安裝
 
 <details>

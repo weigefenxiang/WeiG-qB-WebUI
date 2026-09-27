@@ -123,8 +123,6 @@ Linux インストーラーは `curl` / `wget` / BusyBox / Python 3 などを自
 
 ---
 
----
-
 ## 2. Docker ワンクリックインストール
 
 まず通常のワンライナーを試してください。
@@ -135,8 +133,6 @@ curl -fsSL https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.s
 
 <details>
 <summary><b>Docker のパス、複数コンテナー、高度な使い方（クリックして展開）</b></summary>
-
-
 
 実行中の qBittorrent コンテナが 1 つで、通常の `/config` マウントがあれば自動検出を試みます。
 
@@ -288,8 +284,6 @@ qBittorrent 内にホスト側パスを入力してしまうことです。コ�
 
 ---
 
----
-
 ## 3. Windows ワンクリックインストール
 
 推奨ワンライナー:
@@ -379,8 +373,6 @@ PowerShell のパラメータ名は大文字小文字を区別しません。`-E
 
 ---
 
----
-
 ## 4. アップグレード、ロールバック、アンインストール
 
 **通常のアップグレードはインストーラーをもう一度実行するだけです。** 新しいペイロードを準備・検証してから WebUI を切り替えます。
@@ -455,6 +447,7 @@ Linux のインストーラーバックアップは `~/.config/weig_qb-webui/bac
 一時的に qBittorrent 標準 WebUI へ戻すだけなら、**ツール → オプション… → WebUI** で **代替 WebUI を使用** を無効にしてください。
 
 </details>
+
 ## 5. よく使うオプション
 
 Linux / Docker / NAS は `install.sh`、Windows は `install.ps1` を使用します。PowerShell のパラメータ名は大文字小文字を区別しません。
@@ -487,6 +480,7 @@ Linux / Docker / NAS は `install.sh`、Windows は `install.ps1` を使用し�
 </details>
 
 ---
+
 ## 6. 手動インストール
 
 最新 Release:
@@ -542,8 +536,6 @@ WeiG_qB-WebUI/
 qBittorrent で **ツール → オプション... → WebUI** を開き、**別のWebUIを使用する** を有効化し、**ファイルの場所:** を `WeiG_qB-WebUI` ルートへ設定します。
 
 </details>
-
----
 
 ---
 

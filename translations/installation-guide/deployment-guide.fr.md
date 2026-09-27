@@ -123,8 +123,6 @@ L'installateur Linux recherche automatiquement des outils disponibles tels que `
 
 ---
 
----
-
 ## 2. Installation en un clic avec Docker
 
 Essayez d'abord la commande normale :
@@ -135,8 +133,6 @@ curl -fsSL https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.s
 
 <details>
 <summary><b>Chemins Docker, plusieurs conteneurs et options avancées (cliquer pour développer)</b></summary>
-
-
 
 S'il n'y a qu'un seul conteneur qBittorrent actif avec un montage `/config` normal, l'installateur tente de le détecter automatiquement.
 
@@ -286,8 +282,6 @@ Entrer un chemin hôte dans qBittorrent. Dans le conteneur, le chemin correct es
 
 ---
 
----
-
 ## 3. Installation en un clic sur Windows
 
 Commande recommandée :
@@ -373,8 +367,6 @@ Les noms de paramètres PowerShell ne sont pas sensibles à la casse. `-Executio
 
 ---
 
----
-
 ## 4. Mettre à niveau, revenir en arrière et désinstaller
 
 **Relancer l’installateur est la méthode normale de mise à niveau.** Il prépare et vérifie la nouvelle version avant de remplacer le WebUI.
@@ -449,6 +441,7 @@ Les sauvegardes Linux de l’installateur sont stockées dans `~/.config/weig_qb
 Pour revenir temporairement au WebUI natif de qBittorrent, désactivez **Utiliser une interface Web alternative** dans **Outils → Options… → WebUI**.
 
 </details>
+
 ## 5. Options courantes
 
 Linux / Docker / NAS utilisent `install.sh`, Windows utilise `install.ps1`. Les paramètres PowerShell ne sont pas sensibles à la casse.
@@ -481,6 +474,7 @@ Règles importantes :
 </details>
 
 ---
+
 ## 6. Installation manuelle
 
 Dernière Release :

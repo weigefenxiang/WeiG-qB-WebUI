@@ -123,8 +123,6 @@ Der Linux-Installer sucht automatisch nach verfügbaren Werkzeugen wie `curl`, `
 
 ---
 
----
-
 ## 2. Docker – Ein-Klick-Installation
 
 Zuerst den normalen Einzeiler versuchen:
@@ -135,8 +133,6 @@ curl -fsSL https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.s
 
 <details>
 <summary><b>Docker-Pfade, mehrere Container und erweiterte Optionen (zum Aufklappen klicken)</b></summary>
-
-
 
 Wenn nur ein laufender qBittorrent-Container mit normalem `/config`-Mount vorhanden ist, versucht der Installer ihn automatisch zu erkennen.
 
@@ -286,8 +282,6 @@ Ein Host-Pfad wird in qBittorrent eingetragen. Im Container wird normalerweise d
 
 ---
 
----
-
 ## 3. Windows – Ein-Klick-Installation
 
 Empfohlener Einzeiler:
@@ -373,8 +367,6 @@ PowerShell-Parameter sind nicht groß-/kleinschreibungssensitiv. `-ExecutionPoli
 
 ---
 
----
-
 ## 4. Upgrade, Rollback und Deinstallation
 
 **Für ein normales Upgrade wird der Installer einfach erneut ausgeführt.** Er bereitet die neue Version vor, prüft sie und schaltet erst danach das WebUI um.
@@ -449,6 +441,7 @@ Linux-Installer-Backups liegen unter `~/.config/weig_qb-webui/backups/`; pro Ins
 Wenn nur vorübergehend zur nativen qBittorrent-WebUI zurückgekehrt werden soll, unter **Werkzeuge → Optionen… → WebUI** die **Alternative WebUI verwenden** deaktivieren.
 
 </details>
+
 ## 5. Häufige Optionen
 
 Linux / Docker / NAS verwenden `install.sh`, Windows verwendet `install.ps1`. PowerShell-Parameter sind nicht groß-/kleinschreibungssensitiv.
@@ -481,6 +474,7 @@ Wichtige Regeln:
 </details>
 
 ---
+
 ## 6. Manuelle Installation
 
 Neueste Release:

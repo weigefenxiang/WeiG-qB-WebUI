@@ -36,6 +36,7 @@ O ZIP continua a conter a pasta de topo `WeiG-qB-WebUI`. Depois de extrair, mude
   <img src="../assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.gif" alt="Animação mobile do WeiG qB WebUI" height="341">
   <img src="../assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.png" alt="Interface mobile do WeiG qB WebUI" height="341">
 </p>
+
 ## Instalação para iniciantes
 
 <details>
@@ -100,6 +101,7 @@ Exemplo Linux:
 ## Instalação com um comando
 
 O instalador de um clique para Linux/NAS é sempre descarregado pelo endereço fixo do Dev Pages abaixo. **O endereço do script não escolhe o canal de instalação:** sem `-dev`, instala a Release estável mais recente e verificada; use `-dev` apenas para a versão de desenvolvimento atual.
+
 ### Linux / NAS
 
 ```sh
@@ -282,8 +284,8 @@ sh weig_qb-webui_install.sh -rollback
 powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -rollback
 ```
 
-
 </details>
+
 ## Desinstalação com um comando
 
 <details>

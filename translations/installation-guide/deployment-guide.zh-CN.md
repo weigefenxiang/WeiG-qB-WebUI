@@ -373,6 +373,7 @@ Linux 安装器备份保存在 `~/.config/weig_qb-webui/backups/`，每个安装
 如果只是想临时回到 qBittorrent 原生 WebUI，可以进入 **工具 → 选项… → WebUI**，取消 **使用备选 WebUI**。
 
 </details>
+
 ## 5. 常用参数
 
 | 用途 | Linux / Docker / NAS | Windows PowerShell | 说明 |
@@ -405,6 +406,7 @@ Linux 安装器备份保存在 `~/.config/weig_qb-webui/backups/`，每个安装
 </details>
 
 ---
+
 ## 6. 手动安装
 
 如果一键安装不适合你的环境，也可以手动下载最新正式版：

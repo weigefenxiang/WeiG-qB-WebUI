@@ -36,6 +36,7 @@
   <img src="../assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.gif" alt="Анимация мобильного интерфейса WeiG qB WebUI" height="341">
   <img src="../assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.png" alt="Мобильный интерфейс WeiG qB WebUI" height="341">
 </p>
+
 ## Установка для начинающих
 
 <details>
@@ -102,6 +103,7 @@ D:\WeiG_qB-WebUI
 ## Установка одной командой
 
 Однокликовый установщик для Linux/NAS всегда загружается по фиксированному адресу Dev Pages ниже. **Адрес скрипта не определяет канал установки:** без `-dev` устанавливается последний проверенный стабильный Release; `-dev` используется только для текущей версии разработки.
+
 ### Linux / NAS
 
 ```sh
@@ -284,8 +286,8 @@ sh weig_qb-webui_install.sh -rollback
 powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -rollback
 ```
 
-
 </details>
+
 ## Удаление одной командой
 
 <details>

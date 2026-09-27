@@ -123,8 +123,6 @@ Linux 설치기는 `curl`, `wget`, BusyBox, Python 3 등 사용 가능한 도구
 
 ---
 
----
-
 ## 2. Docker 원클릭 설치
 
 먼저 기본 원클릭 명령을 실행해 보세요.
@@ -135,8 +133,6 @@ curl -fsSL https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.s
 
 <details>
 <summary><b>Docker 경로, 여러 컨테이너와 고급 사용법 (클릭하여 펼치기)</b></summary>
-
-
 
 실행 중인 qBittorrent 컨테이너가 하나이고 정상적인 `/config` 마운트가 있으면 자동 감지를 시도합니다.
 
@@ -290,8 +286,6 @@ qBittorrent에 호스트 경로를 입력하는 것입니다. 컨테이너 내�
 
 ---
 
----
-
 ## 3. Windows 원클릭 설치
 
 권장 원클릭 명령:
@@ -377,8 +371,6 @@ PowerShell 매개변수는 대소문자를 구분하지 않습니다. `-Executio
 
 ---
 
----
-
 ## 4. 업그레이드, 롤백 및 제거
 
 **일반적인 업그레이드는 설치 프로그램을 다시 실행하면 됩니다.** 새 페이로드를 준비하고 검증한 뒤 WebUI를 전환합니다.
@@ -453,6 +445,7 @@ Linux 설치 프로그램 백업은 `~/.config/weig_qb-webui/backups/`에 저장
 잠시 qBittorrent 기본 WebUI로 돌아가기만 하려면 **도구 → 옵션… → WebUI**에서 **대체 WebUI 사용**을 해제하세요.
 
 </details>
+
 ## 5. 자주 쓰는 옵션
 
 Linux / Docker / NAS는 `install.sh`, Windows는 `install.ps1`을 사용합니다. PowerShell 매개변수는 대소문자를 구분하지 않습니다.
@@ -485,6 +478,7 @@ Linux / Docker / NAS는 `install.sh`, Windows는 `install.ps1`을 사용합니�
 </details>
 
 ---
+
 ## 6. 수동 설치
 
 최신 Release:
@@ -540,8 +534,6 @@ WeiG_qB-WebUI/
 qBittorrent에서 **도구 → 옵션… → WebUI**를 열고 **대체 WebUI 사용**을 활성화한 뒤 **파일 위치:**를 `WeiG_qB-WebUI` 루트 디렉터리로 지정하세요.
 
 </details>
-
----
 
 ---
 
