@@ -82,6 +82,7 @@ try{
 
   // Real Add Torrent lifecycle: one processing card uses an activity rail, then updates in place after the real API resolves.
   await page.locator('#add-btn').click();
+  await page.locator('#add-dialog[open]').waitFor();
   await page.locator('#torrent-files').setInputFiles({name:'fixture.torrent',mimeType:'application/x-bittorrent',buffer:Buffer.alloc(0)});
   assert(await page.locator('#add-dialog[open]').count()===1,'choosing a local .torrent file must keep Add Torrent open before submission');
   await page.locator('#torrent-urls').fill('magnet:?xt=urn:btih:'+'a'.repeat(40));
