@@ -168,10 +168,12 @@ try{
   const fileSizeHead=page.locator('.shared-table__head .grid-head-cell[data-key="size"]');await fileSizeHead.click();
   const fileSortState=await page.evaluate(()=>({head:document.querySelector('.shared-table__head .grid-head-cell[data-key="size"]')?.textContent||'',folders:Array.from(document.querySelectorAll('.shared-table__row[data-file-kind="folder"] .detail-file-label')).slice(0,2).map(node=>node.textContent),kinds:Array.from(document.querySelectorAll('.shared-table__row')).slice(0,6).map(row=>row.dataset.fileKind||'')}));
   assert(await page.locator('.shared-table__head .grid-head-cell[data-key="size"]').getAttribute('data-sort-direction')==='asc'&&fileSortState.folders.length>=2,'Content sort did not preserve tree/header semantics '+JSON.stringify(fileSortState));
-  await page.locator('.shared-table__row[data-file-kind="folder"]').first().click({button:'right'});
-  await page.waitForSelector('.ui-context-menu');
-  const folderMenuText=await page.locator('.ui-context-menu').innerText();
-  assert(folderMenuText.includes('Copy file path')&&folderMenuText.includes('Copy containing folder path'),'Folder Content context menu must expose both canonical path-copy actions: '+folderMenuText);
+  const folderRow=page.locator('.shared-table__row[data-file-kind="folder"]').first();
+  assert(await folderRow.getAttribute('data-context-menu')==='true','Folder Content row must advertise canonical context-menu actions before pointer dispatch.');
+  await folderRow.click({button:'right'});
+  await page.waitForFunction(()=>{const menu=document.querySelector('.ui-context-menu');if(!menu||!menu.dataset.placement)return false;const labels=[...menu.querySelectorAll('.ui-context-menu__label')].map(node=>String(node.textContent||'').trim());return labels.includes('Copy file path')&&labels.includes('Copy containing folder path');});
+  const folderMenuLabels=await page.locator('.ui-context-menu__label').allTextContents();
+  assert(folderMenuLabels.includes('Copy file path')&&folderMenuLabels.includes('Copy containing folder path'),'Folder Content context menu must expose both canonical path-copy actions: '+JSON.stringify(folderMenuLabels));
   await page.keyboard.press('Escape');await page.waitForSelector('.ui-context-menu',{state:'detached'});
   await page.locator('.detail-tabs [data-tab="peers"]').click();
   await page.waitForSelector('.peer-country-code');
