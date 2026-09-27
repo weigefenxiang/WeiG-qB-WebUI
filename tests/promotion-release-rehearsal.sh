@@ -9,8 +9,8 @@ EVIDENCE_FILE=$(cd "$(dirname "$EVIDENCE_FILE")" && pwd)/$(basename "$EVIDENCE_F
 PACKAGE="$CANDIDATE_DIR/WeiG-qB-WebUI.zip"
 SUMS="$CANDIDATE_DIR/SHA256SUMS"
 CANDIDATE_SHA_FILE="$CANDIDATE_DIR/CANDIDATE_SHA"
-LINUX_INSTALLER="$CANDIDATE_DIR/weigg-install.sh"
-WINDOWS_INSTALLER="$CANDIDATE_DIR/weigg-install.ps1"
+LINUX_INSTALLER="$CANDIDATE_DIR/weig-install.sh"
+WINDOWS_INSTALLER="$CANDIDATE_DIR/weig-install.ps1"
 
 command -v git >/dev/null || { echo 'git is required' >&2; exit 2; }
 command -v node >/dev/null || { echo 'node is required' >&2; exit 2; }
@@ -93,13 +93,13 @@ mkdir -p "$PUBLISHED"
 cp "$PACKAGE" "$PUBLISHED/WeiG-qB-WebUI.zip"
 cp "$SUMS" "$PUBLISHED/SHA256SUMS"
 cp "$CANDIDATE_SHA_FILE" "$PUBLISHED/CANDIDATE_SHA"
-cp "$LINUX_INSTALLER" "$PUBLISHED/weigg-install.sh"
-cp "$WINDOWS_INSTALLER" "$PUBLISHED/weigg-install.ps1"
+cp "$LINUX_INSTALLER" "$PUBLISHED/weig-install.sh"
+cp "$WINDOWS_INSTALLER" "$PUBLISHED/weig-install.ps1"
 cmp -s "$PACKAGE" "$PUBLISHED/WeiG-qB-WebUI.zip"
 cmp -s "$SUMS" "$PUBLISHED/SHA256SUMS"
 cmp -s "$CANDIDATE_SHA_FILE" "$PUBLISHED/CANDIDATE_SHA"
-cmp -s "$LINUX_INSTALLER" "$PUBLISHED/weigg-install.sh"
-cmp -s "$WINDOWS_INSTALLER" "$PUBLISHED/weigg-install.ps1"
+cmp -s "$LINUX_INSTALLER" "$PUBLISHED/weig-install.sh"
+cmp -s "$WINDOWS_INSTALLER" "$PUBLISHED/weig-install.ps1"
 PUBLISHED_SUM=$(sha256sum "$PUBLISHED/WeiG-qB-WebUI.zip" | awk '{print $1}' | tr 'A-F' 'a-f')
 [[ "$PUBLISHED_SUM" == "$PACKAGE_SUM" ]] || { echo 'Simulated release artifact bytes changed.' >&2; exit 1; }
 

@@ -112,6 +112,7 @@ try{
 
   await page.locator('#mobile-bottom-nav [data-route="logs"]').click();
   await page.waitForFunction(()=>document.getElementById('logs-view')?.classList.contains('is-active')&&document.querySelector('.logs-toolbar')&&document.getElementById('mobile-search-btn')&&document.getElementById('search-input'));
+  await page.waitForFunction(()=>/^\\d+\\s*\\/\\s*\\d+$/.test(String(document.querySelector('.logs-pager [data-pager-meta]')?.textContent||'').trim()),null,{timeout:30000});
   const logs=await page.evaluate(()=>{
     const toolbar=document.querySelector('.logs-toolbar'),filters=document.querySelector('.logs-filters'),actions=document.querySelector('.logs-actions'),searchButton=document.getElementById('mobile-search-btn'),searchInput=document.getElementById('search-input'),chips=filters?[...filters.querySelectorAll('[data-log-type]')]:[];
     if(!toolbar||!filters||!actions||!searchButton||!searchInput)throw new Error('Logs canonical toolbar/Header Search controls are missing');
