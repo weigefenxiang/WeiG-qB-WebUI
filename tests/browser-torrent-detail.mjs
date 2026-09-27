@@ -139,6 +139,7 @@ try{
   assert(trackerInitial.some(row=>row.kind==='endpoint'&&row.url==='a-child.example:443'&&row.tier===''&&row.bt==='v1'),'Tracker endpoint projection did not expose source endpoint BT protocol/tier semantics '+JSON.stringify(trackerInitial));
   await page.locator('.shared-table__row').nth(3).click({button:'right'});
   await page.waitForSelector('.ui-context-menu');
+  await page.waitForFunction(()=>{const menu=document.querySelector('.ui-context-menu');return !!(menu&&menu.dataset.placement&&(menu.dataset.wrap==='0'||menu.dataset.wrap==='1'));});
   const trackerMenuGeometry=await page.evaluate(()=>{const menu=document.querySelector('.ui-context-menu'),labels=[...menu.querySelectorAll('.ui-context-menu__label')];return{wrap:menu?.dataset.wrap||'',menuWidth:menu?.getBoundingClientRect().width||0,viewport:innerWidth,labels:labels.map(label=>({text:label.textContent,whiteSpace:getComputedStyle(label).whiteSpace,height:label.getBoundingClientRect().height,lineHeight:parseFloat(getComputedStyle(label).lineHeight)||0}))};});
   assert(trackerMenuGeometry.wrap==='0'&&trackerMenuGeometry.labels.every(item=>item.whiteSpace==='nowrap'&&(!item.lineHeight||item.height<item.lineHeight*1.6)), 'Context Menu must keep labels on one line whenever the viewport can fit the intrinsic width: '+JSON.stringify(trackerMenuGeometry));
   await page.keyboard.press('Escape');await page.waitForSelector('.ui-context-menu',{state:'detached'});
