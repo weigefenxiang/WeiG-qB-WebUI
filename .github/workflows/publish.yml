@@ -1,0 +1,77 @@
+name: Publish Command
+
+on:
+  push:
+    tags:
+      - 'publish-v*'
+
+permissions:
+  actions: write
+  contents: write
+
+concurrency:
+  group: publish-command
+  cancel-in-progress: false
+
+jobs:
+  authorize:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate chat-confirmed publish command
+        id: command
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          SHA="${GITHUB_SHA,,}"
+          VERSION="$(tr -d '\r\n' < VERSION)"
+          [[ "$GITHUB_REF_NAME" =~ ^publish-v([0-9]+\.[0-9]+\.[0-9]+)-([0-9a-f]{7,40})$ ]]
+          test "${BASH_REMATCH[1]}" = "$VERSION"
+          [[ "$SHA" == "${BASH_REMATCH[2]}"* ]]
+          test "$(tr -d '\r\n' < webui/VERSION)" = "$VERSION"
+          test "$(gh api "/repos/$GITHUB_REPOSITORY/commits/dev" --jq '.sha')" = "$SHA"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Require successful exact-SHA Release Preview
+        uses: actions/github-script@v9
+        env:
+          SHA: ${{ steps.command.outputs.sha }}
+        with:
+          script: |
+            const sha=process.env.SHA.toLowerCase(),{owner,repo}=context.repo;
+            const runs=await github.paginate(github.rest.actions.listWorkflowRuns,{owner,repo,workflow_id:'release-prepare.yml',branch:'dev',status:'success',per_page:100});
+            for(const run of runs.filter(run=>run.head_sha?.toLowerCase()===sha&&run.conclusion==='success')){
+              const artifacts=await github.paginate(github.rest.actions.listWorkflowRunArtifacts,{owner,repo,run_id:run.id,per_page:100});
+              if(artifacts.some(item=>item.name===`release-preview-${sha}`&&!item.expired)){
+                core.info(`Authorized prepared SHA ${sha} from Release Prepare run #${run.run_number}`);return;
+              }
+            }
+            core.setFailed(`No successful release-preview-${sha}; refusing publish command.`);
+
+      - name: Hand off publication to Promotion owner
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ steps.command.outputs.sha }}
+        run: |
+          set -euo pipefail
+          jq -n --arg ref dev --arg sha "$SHA" \
+            '{ref:$ref,inputs:{candidate_sha:$sha,compat_evidence_sha:"",confirmation:"PROMOTE-VALIDATED-DEV",publish_after:"true"}}' \
+            | gh api --method POST "/repos/$GITHUB_REPOSITORY/actions/workflows/promote.yml/dispatches" --input -
+
+      - name: Retire one-shot publish command tag
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api --method DELETE "/repos/$GITHUB_REPOSITORY/git/refs/tags/$GITHUB_REF_NAME"
+          echo "Retired command tag $GITHUB_REF_NAME after Promotion handoff."

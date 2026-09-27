@@ -54,7 +54,7 @@ jobs:
           echo "Frozen release candidate: v$VERSION @ $SHA"
 
       - name: Release-note policy focused evidence
-        run: node tests/release-notes-contract.mjs
+        run: node tests/release-notes-contract.mjs && node tests/release-prepare-contract.mjs && node tests/release-publish-contract.mjs
 
       - name: Dispatch exact-SHA release-grade validation
         shell: bash

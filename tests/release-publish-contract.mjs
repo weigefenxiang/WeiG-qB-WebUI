@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const publish=fs.readFileSync(new URL('../.github/workflows/publish.yml',import.meta.url),'utf8');
+const promote=fs.readFileSync(new URL('../.github/workflows/promote.yml',import.meta.url),'utf8');
+const release=fs.readFileSync(new URL('../.github/workflows/release.yml',import.meta.url),'utf8');
+assert.ok(publish.includes("- 'publish-v*'")&&publish.includes('release-preview-${sha}'),'publish command must be tag-driven and exact-preview-gated');
+assert.ok(publish.includes('publish_after:"true"')&&publish.includes('/actions/workflows/promote.yml/dispatches'),'publish command must delegate to Promotion owner');
+assert.ok(publish.includes('Retire one-shot publish command tag'),'command tag must be temporary');
+assert.ok(promote.includes('publish_after:')&&promote.includes('Create stable release tag after certified Promotion')&&promote.includes('/actions/workflows/release.yml/dispatches'),'Promotion must optionally create stable tag and explicitly dispatch Release');
+assert.ok(release.includes('workflow_dispatch:'),'Release must support explicit Bot dispatch on stable tag');
+console.log('Release publish contract passed: a one-shot exact-SHA command delegates to canonical Promotion, which can create the stable tag and explicitly dispatch canonical Release.');

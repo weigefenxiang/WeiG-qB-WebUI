@@ -15,9 +15,14 @@ on:
         description: Type PROMOTE-VALIDATED-DEV to fast-forward main
         required: true
         type: string
+      publish_after:
+        description: After certified Promotion, create stable tag and explicitly dispatch Release
+        required: false
+        default: false
+        type: boolean
 
 permissions:
-  actions: read
+  actions: write
   contents: write
 
 concurrency:
@@ -354,6 +359,28 @@ jobs:
           test "$(git rev-parse origin/dev)" = "$CANDIDATE_SHA"
           git merge-base --is-ancestor origin/main "$CANDIDATE_SHA"
           git push origin "$CANDIDATE_SHA:refs/heads/main"
+
+      - name: Create stable release tag after certified Promotion
+        if: ${{ inputs.publish_after == true }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CANDIDATE_SHA: ${{ steps.verify.outputs.sha }}
+        run: |
+          set -euo pipefail
+          VERSION="$(tr -d '\r\n' < VERSION)"
+          TAG="v$VERSION"
+          test "$(gh api "/repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')" = "$CANDIDATE_SHA"
+          EXISTING="$(gh api "/repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" --jq '.object.sha' 2>/dev/null || true)"
+          if [ -n "$EXISTING" ]; then
+            test "${EXISTING,,}" = "$CANDIDATE_SHA"
+          else
+            jq -n --arg ref "refs/tags/$TAG" --arg sha "$CANDIDATE_SHA" '{ref:$ref,sha:$sha}' \
+              | gh api --method POST "/repos/$GITHUB_REPOSITORY/git/refs" --input - >/dev/null
+          fi
+          jq -n --arg ref "$TAG" '{ref:$ref}' \
+            | gh api --method POST "/repos/$GITHUB_REPOSITORY/actions/workflows/release.yml/dispatches" --input -
+          echo "Stable tag $TAG points to $CANDIDATE_SHA; Release Bot dispatched explicitly."
 
       - name: Promotion summary
         run: |
