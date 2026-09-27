@@ -639,12 +639,25 @@ configure_qb_webui_file() {
   fi
 }
 
+qb_config_has_exact_line() {
+  cfg=$1
+  expected=$2
+  awk -v expected="$expected" '
+    {
+      line=$0
+      sub(/\r$/, "", line)
+      if (line == expected) found=1
+    }
+    END { exit found ? 0 : 1 }
+  ' "$cfg"
+}
+
 disable_qb_webui_file() {
   cfg=$1
   qb_root=$2
   [ -f "$cfg" ] || { echo "qBittorrent config does not exist: $cfg" >&2; return 1; }
   validate_qb_webui_config_file "$cfg" "$qb_root" 0 || return 1
-  grep -Fqx "WebUI\\RootFolder=$qb_root" "$cfg" || { echo "qBittorrent Root Folder does not match the uninstall target; refusing config mutation." >&2; return 1; }
+  qb_config_has_exact_line "$cfg" "WebUI\\RootFolder=$qb_root" || { echo "qBittorrent Root Folder does not match the uninstall target; refusing config mutation." >&2; return 1; }
 
   backup="$cfg.weig.bak"
   cp -a "$cfg" "$backup"
@@ -652,6 +665,10 @@ disable_qb_webui_file() {
 
   cfg_dir=$(dirname "$cfg")
   tmp_cfg=$(mktemp "$cfg_dir/.weig-qb-uninstall.XXXXXX")
+  tmp_body="$tmp_cfg.body"
+  cleanup_qb_uninstall_tmp() { rm -f "$tmp_cfg" "$tmp_body"; }
+  cp -p "$cfg" "$tmp_cfg" 2>/dev/null || cp "$cfg" "$tmp_cfg"
+
   if ! awk '
     BEGIN { in_preferences=0 }
     {
@@ -669,15 +686,41 @@ disable_qb_webui_file() {
       }
       print raw
     }
-  ' "$cfg" > "$tmp_cfg"; then
-    rm -f "$tmp_cfg"
+  ' "$cfg" > "$tmp_body"; then
+    cleanup_qb_uninstall_tmp
     return 1
   fi
-  validate_qb_webui_config_file "$tmp_cfg" "$qb_root" 0 || { rm -f "$tmp_cfg"; return 1; }
-  grep -Fqx "WebUI\\RootFolder=$qb_root" "$tmp_cfg" || { rm -f "$tmp_cfg"; return 1; }
-  grep -Fqx "WebUI\\AlternativeUIEnabled=false" "$tmp_cfg" || { rm -f "$tmp_cfg"; return 1; }
-  mv "$tmp_cfg" "$cfg" || { cp -a "$backup" "$cfg"; return 1; }
+  cat "$tmp_body" > "$tmp_cfg"
+  rm -f "$tmp_body"
+
+  validate_qb_webui_config_file "$tmp_cfg" "$qb_root" 0 || { cleanup_qb_uninstall_tmp; return 1; }
+  qb_config_has_exact_line "$tmp_cfg" "WebUI\\RootFolder=$qb_root" || { cleanup_qb_uninstall_tmp; return 1; }
+  qb_config_has_exact_line "$tmp_cfg" "WebUI\\AlternativeUIEnabled=false" || { cleanup_qb_uninstall_tmp; return 1; }
+
+  if ! mv "$tmp_cfg" "$cfg"; then
+    cleanup_qb_uninstall_tmp
+    cp -a "$backup" "$cfg"
+    echo "Failed to atomically replace qBittorrent config during uninstall; original restored." >&2
+    return 1
+  fi
+  if ! validate_qb_webui_config_file "$cfg" "$qb_root" 0 \
+    || ! qb_config_has_exact_line "$cfg" "WebUI\\RootFolder=$qb_root" \
+    || ! qb_config_has_exact_line "$cfg" "WebUI\\AlternativeUIEnabled=false"; then
+    cp -a "$backup" "$cfg"
+    echo "qBittorrent uninstall config post-write verification failed; original restored." >&2
+    return 1
+  fi
 }
+
+
+if [ "${WEIG_QB_UNINSTALL_CONFIG_TEST_ONLY:-0}" = "1" ]; then
+  [ -n "${WEIG_QB_CONFIG_TEST_PATH:-}" ] && [ -n "${WEIG_QB_CONFIG_TEST_ROOT:-}" ] || {
+    echo "WEIG_QB_CONFIG_TEST_PATH and WEIG_QB_CONFIG_TEST_ROOT are required in uninstall config test mode." >&2
+    exit 2
+  }
+  disable_qb_webui_file "$WEIG_QB_CONFIG_TEST_PATH" "$WEIG_QB_CONFIG_TEST_ROOT"
+  exit $?
+fi
 
 if [ "${WEIG_QB_CONFIG_TEST_ONLY:-0}" = "1" ]; then
   [ -n "${WEIG_QB_CONFIG_TEST_PATH:-}" ] && [ -n "${WEIG_QB_CONFIG_TEST_ROOT:-}" ] || {

@@ -14,6 +14,14 @@ run_configure() {
     sh "$ROOT/installers/install.sh"
 }
 
+run_uninstall_config() {
+  HOME="$TMP/home" \
+  WEIG_QB_UNINSTALL_CONFIG_TEST_ONLY=1 \
+  WEIG_QB_CONFIG_TEST_PATH="$1" \
+  WEIG_QB_CONFIG_TEST_ROOT="$ROOT_FOLDER" \
+    sh "$ROOT/installers/install.sh"
+}
+
 valid="$TMP/valid.conf"
 cat > "$valid" <<'EOF'
 [General]
@@ -102,4 +110,35 @@ if run_configure "$dup_key"; then echo 'duplicate managed key unexpectedly succe
 cmp -s "$dup_key" "$dup_key.before"
 test ! -e "$dup_key.weig.bak"
 
-echo 'Linux qB config section contract passed: [Preferences] ownership, exact values, raw backup and fail-closed ambiguity are enforced.'
+crlf="$TMP/crlf.conf"
+printf '[General]\r\nLocale=zh_CN\r\n\r\n[Preferences]\r\nWebUI\\AlternativeUIEnabled=true\r\nWebUI\\RootFolder=%s\r\nLifecycle\\Marker=preserve-me\r\n' "$ROOT_FOLDER" > "$crlf"
+cp "$crlf" "$crlf.before"
+run_uninstall_config "$crlf"
+cmp -s "$crlf.before" "$crlf.weig.bak"
+python3 - "$crlf" "$ROOT_FOLDER" <<'PY'
+import pathlib,sys
+path=pathlib.Path(sys.argv[1]); root=sys.argv[2]
+data=path.read_bytes()
+if b'\r\n' not in data or b'\n' in data.replace(b'\r\n',b''):
+    raise SystemExit('uninstall config mutation did not preserve CRLF line endings')
+text=data.decode()
+if 'WebUI\\AlternativeUIEnabled=false\r\n' not in text:
+    raise SystemExit('uninstall config mutation did not disable Alternative WebUI')
+if f'WebUI\\RootFolder={root}\r\n' not in text:
+    raise SystemExit('uninstall config mutation changed RootFolder')
+if 'Lifecycle\\Marker=preserve-me\r\n' not in text:
+    raise SystemExit('uninstall config mutation changed unrelated qB config')
+PY
+
+mismatch="$TMP/mismatch.conf"
+cat > "$mismatch" <<'EOF'
+[Preferences]
+WebUI\AlternativeUIEnabled=true
+WebUI\RootFolder=/different/webui
+EOF
+cp "$mismatch" "$mismatch.before"
+if run_uninstall_config "$mismatch"; then echo 'mismatched uninstall RootFolder unexpectedly succeeded' >&2; exit 1; fi
+cmp -s "$mismatch" "$mismatch.before"
+test ! -e "$mismatch.weig.bak"
+
+echo 'Linux qB config section contract passed: [Preferences] ownership, exact values, raw backup, uninstall CRLF preservation and fail-closed ambiguity are enforced.'
