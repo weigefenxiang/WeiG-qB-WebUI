@@ -180,7 +180,7 @@ try{
   assert(webseedDesc[0]?.includes('z-cdn.example'),'HTTP Sources descending sort failed '+JSON.stringify(webseedDesc));
   const webseedRow=page.locator('.shared-table__row').first();await webseedRow.click({button:'right'});await page.waitForSelector('.ui-context-menu[data-context-level="0"]');
   const webseedMenuLabels=await page.locator('.ui-context-menu[data-context-level="0"] .ui-context-menu__label').allTextContents();
-  assert(['Add web seeds...','Remove web seed','Copy web seed URL','Edit web seed URL...'].every(label=>webseedMenuLabels.includes(label)),'HTTP Sources native context actions must project from exact qB source order/capability: '+JSON.stringify(webseedMenuLabels));
+  assert.deepEqual(webseedMenuLabels,['Add web seeds...','Remove web seed','Copy web seed URL','Edit web seed URL...'],'HTTP Sources native context actions must preserve exact qB source order/capability: '+JSON.stringify(webseedMenuLabels));
   await page.keyboard.press('Escape');await page.waitForSelector('.ui-context-menu[data-context-level="0"]',{state:'detached'});
 
   await page.locator('.detail-tabs [data-tab="files"]').click();
@@ -193,7 +193,7 @@ try{
   await folderRow.click({button:'right'});
   await page.waitForFunction(()=>{const menu=document.querySelector('.ui-context-menu[data-context-level="0"]');if(!menu||!menu.dataset.placement)return false;const labels=[...menu.querySelectorAll(':scope > .ui-select__options > .ui-select__option > .ui-context-menu__label')].map(node=>String(node.textContent||'').trim());return labels.includes('Download Priority')&&labels.includes('Copy file path')&&labels.includes('Copy containing folder path');});
   const folderRootLabels=await page.locator('.ui-context-menu[data-context-level="0"] > .ui-select__options > .ui-select__option > .ui-context-menu__label').allTextContents();
-  assert(folderRootLabels.includes('Download Priority')&&folderRootLabels.includes('Copy file path')&&folderRootLabels.includes('Copy containing folder path')&&!folderRootLabels.includes('Normal')&&!folderRootLabels.includes('High')&&!folderRootLabels.includes('Maximum'),'Folder Content root context menu must group source priority choices under one Download Priority submenu: '+JSON.stringify(folderRootLabels));
+  assert.deepEqual(folderRootLabels,['Rename...','Download Priority','Copy file path','Copy containing folder path'],'Content context menu must preserve qB-native source order and append WeiG path extensions last: '+JSON.stringify(folderRootLabels));
   const priorityParent=page.locator('.ui-context-menu[data-context-level="0"] .ui-select__option[aria-haspopup="menu"]').filter({hasText:'Download Priority'}).first();
   await priorityParent.hover();
   await page.waitForSelector('.ui-context-menu[data-context-level="1"]');
