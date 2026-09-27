@@ -640,16 +640,16 @@ configure_qb_webui_file() {
 }
 
 qb_config_has_exact_line() {
-  cfg=$1
-  expected=$2
-  QB_EXPECTED_LINE="$expected" awk '
+  exact_cfg=$1
+  exact_expected=$2
+  QB_EXPECTED_LINE="$exact_expected" awk '
     {
       line=$0
       sub(/\r$/, "", line)
       if (line == ENVIRON["QB_EXPECTED_LINE"]) found=1
     }
     END { exit found ? 0 : 1 }
-  ' "$cfg"
+  ' "$exact_cfg"
 }
 
 disable_qb_webui_file() {

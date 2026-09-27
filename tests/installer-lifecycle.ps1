@@ -76,7 +76,21 @@ try {
       [Parameter(Position=0,Mandatory=$true)][string]$Uri
     )
     switch -Regex ($Uri) {
-      '/releases/tags/v9\.9\.90
+      '/releases/tags/v9\.9\.90$' { return [pscustomobject]@{tag_name='v9.9.90'} }
+      '/commits/v9\.9\.90$' { return [pscustomobject]@{sha=$ShaOne} }
+      '/releases/tags/v9\.9\.91$' { return [pscustomobject]@{tag_name='v9.9.91'} }
+      '/commits/v9\.9\.91$' { return [pscustomobject]@{sha=$ShaTwo} }
+      default { throw "mock Invoke-RestMethod: unexpected URL: $Uri" }
+    }
+  }
+
+  function Invoke-WebRequest {
+    [CmdletBinding()]
+    param(
+      [switch]$UseBasicParsing,
+      [Parameter(Position=0,Mandatory=$true)][string]$Uri,
+      [Parameter(Mandatory=$true)][string]$OutFile
+    )
     $relative=$null
     switch -Regex ($Uri) {
       '/releases/download/v9\.9\.90/WeiG-qB-WebUI\.zip$' { $relative='v9.9.90\WeiG-qB-WebUI.zip'; break }
