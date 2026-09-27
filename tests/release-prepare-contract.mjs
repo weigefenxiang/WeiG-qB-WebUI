@@ -7,6 +7,7 @@ assert.ok(workflow.includes('actions: write')&&workflow.includes('contents: read
 for(const id of ['ci.yml','pages-source.yml','session-handshake.yml','real-qb-full.yml','real-qb-locale.yml'])assert.ok(workflow.includes(`/actions/workflows/$workflow/dispatches`)||workflow.includes(id));
 for(const evidence of ['ordinary_ci','candidate_ci','pages_source','pages','session','full','locale','deployment'])assert.ok(workflow.includes(`key:'${evidence}'`),`missing evidence owner ${evidence}`);
 assert.ok(workflow.includes('release-candidate-${sha}')&&workflow.includes('candidate-deployment-${sha}')&&workflow.includes('real-qb-full-aggregate-${sha}')&&workflow.includes('real-qb-current-locale-aggregate-${sha}'));
+assert.ok(workflow.includes('cancelWorkflowRun')&&workflow.includes("run.event!=='workflow_dispatch'")&&workflow.includes("run.head_sha?.toLowerCase()===sha"),'prepare must cancel only superseded managed release runs while preserving the current exact SHA');
 assert.ok(workflow.includes('dev moved from frozen ${sha}'),'prepare must fail closed if dev moves');
 assert.ok(workflow.includes('--image-ref "$SHA"')&&workflow.includes('release-preview-${{ steps.freeze.outputs.sha }}'),'preview must bind image and artifact to exact frozen SHA');
 assert.ok(workflow.includes('No main, tag, or GitHub Release was changed'),'prepare must stop before publication');

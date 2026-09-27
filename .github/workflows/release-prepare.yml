@@ -56,6 +56,37 @@ jobs:
       - name: Release-note policy focused evidence
         run: node tests/release-notes-contract.mjs && node tests/release-prepare-contract.mjs && node tests/release-publish-contract.mjs
 
+      - name: Cancel superseded release-prepare-owned validation
+        uses: actions/github-script@v9
+        env:
+          SHA: ${{ steps.freeze.outputs.sha }}
+        with:
+          script: |
+            const sha=process.env.SHA.toLowerCase();
+            const {owner,repo}=context.repo;
+            const managed=[
+              'ci.yml',
+              'pages-source.yml',
+              'pages.yml',
+              'session-handshake.yml',
+              'real-qb-full.yml',
+              'real-qb-locale.yml',
+              'candidate-deployment-only.yml',
+              'release-prepare.yml'
+            ];
+            const active=new Set(['queued','in_progress','pending','requested','waiting']);
+            for(const workflow_id of managed){
+              const runs=await github.paginate(github.rest.actions.listWorkflowRuns,{owner,repo,workflow_id,branch:'dev',per_page:100});
+              for(const run of runs){
+                if(run.id===context.runId)continue;
+                if(run.event!=='workflow_dispatch'&&workflow_id!=='release-prepare.yml')continue;
+                if(run.head_sha?.toLowerCase()===sha)continue;
+                if(!active.has(run.status))continue;
+                core.info(`Cancel superseded ${workflow_id} run #${run.run_number} at ${run.head_sha}; current frozen SHA is ${sha}.`);
+                await github.rest.actions.cancelWorkflowRun({owner,repo,run_id:run.id});
+              }
+            }
+
       - name: Dispatch exact-SHA release-grade validation
         shell: bash
         env:
