@@ -134,6 +134,22 @@ Installer-owned backups are retained per target under:
 
 The current installer retains the latest three backups independently per install target.
 
+Normal uninstall keeps a rollback backup. To remove the selected installer-owned WebUI and then purge only that install target's installer backups:
+
+Linux:
+
+```sh
+sh weig_qb-webui_install.sh -uninstall -configure -purge
+```
+
+Windows:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -uninstall -configure -purge
+```
+
+`-purge` is uninstall-only and destructive. Backup ownership is resolved by the existing destination markers; shared backup roots are never purged wholesale, and other install targets remain untouched. Matching rollback pointers are removed with the purged backups.
+
 Rollback:
 
 Linux:
