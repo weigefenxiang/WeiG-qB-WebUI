@@ -1,18 +1,31 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
+import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 
-const CATEGORY_ORDER=['feature','fix','performance','compatibility','internal'];
-const CATEGORY_TITLES={
-  feature:'功能 / UI',
-  fix:'修复',
-  performance:'性能',
-  compatibility:'兼容',
-  internal:'内部工程'
-};
+const CATEGORY_ORDER=['feature','fix','performance','compatibility'];
+const CATEGORY_TITLES={feature:'功能 / UI',fix:'修复',performance:'性能',compatibility:'兼容'};
+const CATEGORY_SCORE={feature:40,fix:30,performance:20,compatibility:10};
 const SEMVER_TAG=/^v\d+\.\d+\.\d+$/;
+const RELEASE_VISIBLE_EXACT=new Set([
+  'webui/private/index.html',
+  'webui/public/index.html',
+  'webui/public/login.html',
+  'webui/public/session-contract.js',
+  'webui/public/storage-migration.js'
+]);
+const RELEASE_VISIBLE_PREFIXES=[
+  'webui/private/scripts/',
+  'webui/private/css/',
+  'webui/private/views/',
+  'webui/public/scripts/'
+];
 
+export function isReleaseVisiblePath(value=''){
+  const file=String(value).replaceAll('\\','/');
+  return RELEASE_VISIBLE_EXACT.has(file)||RELEASE_VISIBLE_PREFIXES.some(prefix=>file.startsWith(prefix));
+}
 function cleanSubject(subject=''){
   return String(subject).trim().replace(/^\[[^\]]+\]\s*/,'');
 }
@@ -22,12 +35,10 @@ function normalizeCategory(value=''){
   if(['修复','fix','fixes','bugfix','bug'].includes(v))return'fix';
   if(['性能','perf','performance'].includes(v))return'performance';
   if(['兼容','compat','compatibility'].includes(v))return'compatibility';
-  if(['内部工程','内部','internal','engineering','infra'].includes(v))return'internal';
   return null;
 }
 function inferCategory(subject=''){
-  const s=String(subject).trim();
-  const prefix=(s.match(/^([a-zA-Z]+)(?:\([^)]*\))?[!:]/)||[])[1]?.toLowerCase()||'';
+  const prefix=(String(subject).trim().match(/^([a-zA-Z]+)(?:\([^)]*\))?[!:]/)||[])[1]?.toLowerCase()||'';
   if(['feat','feature','ui'].includes(prefix))return'feature';
   if(['fix','bugfix'].includes(prefix))return'fix';
   if(['perf','performance'].includes(prefix))return'performance';
@@ -51,27 +62,42 @@ function releaseNoteMetadata(body=''){
     const category=normalizeCategory(categorized[1]);
     if(category)return{category,text:categorized[2].trim(),explicit:true};
   }
-  return{text:raw,explicit:true};
+  return{category:'feature',text:raw,explicit:true};
 }
 export function normalizeCommit(commit){
+  const paths=Array.isArray(commit?.paths)?commit.paths:[];
+  if(paths.length&&!paths.some(isReleaseVisiblePath))return null;
   const subject=String(commit?.subject||'').trim(),body=String(commit?.body||''),meta=releaseNoteMetadata(body);
   if(meta?.skip)return null;
   const category=meta?.category||inferCategory(subject);
+  if(category==='internal'&&!meta?.explicit)return null;
   const text=(meta?.text||displaySubject(subject)).trim();
   if(!text)return null;
-  return{hash:String(commit?.hash||''),subject,body,category,text,explicit:!!meta?.explicit};
+  return{hash:String(commit?.hash||''),subject,body,paths,category,text,explicit:!!meta?.explicit};
 }
-export function buildReleaseNotes({commits=[],fromTag='',toSha='',maxHighlights=8}={}){
-  const normalized=commits.map(normalizeCommit).filter(Boolean);
+function dedupe(items){
+  const seen=new Set(),out=[];
+  for(const item of items){
+    const key=`${item.category}|${item.text.toLowerCase().replace(/\s+/g,' ').trim()}`;
+    if(seen.has(key))continue;
+    seen.add(key);out.push(item);
+  }
+  return out;
+}
+export function buildReleaseNotes({commits=[],fromTag='',toSha='',maxHighlights=8,maxDetails=24,imageUrl=''}={}){
+  const normalized=dedupe(commits.map(normalizeCommit).filter(Boolean));
+  const ranked=normalized.map((item,index)=>({item,index,score:(item.explicit?100:0)+(CATEGORY_SCORE[item.category]||0)}))
+    .sort((a,b)=>b.score-a.score||a.index-b.index);
+  const highlights=ranked.slice(0,Math.max(0,Number(maxHighlights)||8)).map(row=>row.item);
+  const details=normalized.slice(0,Math.max(0,Number(maxDetails)||24));
   const grouped=Object.fromEntries(CATEGORY_ORDER.map(key=>[key,[]]));
-  normalized.forEach(item=>(grouped[item.category]||grouped.internal).push(item));
-  const userFacing=normalized.filter(item=>item.category!=='internal');
-  const highlights=userFacing.slice(0,Math.max(0,Number(maxHighlights)||8));
-  const lines=['## 主要更新',''];
+  details.forEach(item=>(grouped[item.category]||grouped.feature).push(item));
+  const lines=[];
+  if(imageUrl)lines.push(`![WeiG qB WebUI preview](${imageUrl})`,'');
+  lines.push('## 主要更新','');
   if(highlights.length)highlights.forEach(item=>lines.push(`- ${markdownText(item.text)}`));
-  else if(normalized.length)lines.push('- 本次版本以内部工程与维护更新为主，完整记录见下方。');
-  else lines.push('- 本次范围没有可列出的更新。');
-  lines.push('','<details>',`<summary>查看完整更新记录（${normalized.length} 项）</summary>`,'');
+  else lines.push('- 本次范围没有可展示的 WebUI 用户更新。');
+  lines.push('','<details>',`<summary>查看 WebUI 更新记录（显示 ${details.length} / 共 ${normalized.length} 项）</summary>`,'');
   for(const category of CATEGORY_ORDER){
     const items=grouped[category];
     if(!items.length)continue;
@@ -82,9 +108,10 @@ export function buildReleaseNotes({commits=[],fromTag='',toSha='',maxHighlights=
     }
     lines.push('');
   }
+  if(normalized.length>details.length)lines.push(`其余 ${normalized.length-details.length} 项 WebUI 变更已省略，以保持发布页简洁。`,'');
   lines.push('</details>','');
   if(fromTag||toSha)lines.push(`_范围：${fromTag||'repository start'} → ${toSha||'current release'}_`,'');
-  return{markdown:lines.join('\n'),highlights,items:normalized,grouped};
+  return{markdown:lines.join('\n'),highlights,items:normalized,details,grouped};
 }
 function runGit(args,{cwd=process.cwd()}={}){
   return execFileSync('git',args,{cwd,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
@@ -94,15 +121,25 @@ export function resolvePreviousStableTag({to,currentTag='',cwd=process.cwd()}={}
   const tags=runGit(['tag','--merged',to,'--sort=-version:refname'],{cwd}).split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
   return tags.find(tag=>SEMVER_TAG.test(tag)&&tag!==currentTag)||'';
 }
+function changedPaths(hash,cwd){
+  const raw=runGit(['diff-tree','--root','--no-commit-id','--name-only','-r',hash],{cwd});
+  return raw?raw.split(/\r?\n/).map(x=>x.trim()).filter(Boolean):[];
+}
 export function readGitCommits({fromTag='',to,cwd=process.cwd()}={}){
   if(!/^[0-9a-f]{40}$/i.test(String(to||'')))throw new Error('Release notes require an exact 40-character target SHA.');
   const range=fromTag?`${fromTag}..${to}`:to;
   const raw=runGit(['log','--no-merges','--format=%H%x1f%s%x1f%b%x1e',range],{cwd});
   if(!raw)return[];
   return raw.split('\x1e').map(record=>record.trim()).filter(Boolean).map(record=>{
-    const [hash='',subject='',...body]=record.split('\x1f');
-    return{hash:hash.trim(),subject:subject.trim(),body:body.join('\x1f').trim()};
+    const [hash='',subject='',...body]=record.split('\x1f'),cleanHash=hash.trim();
+    return{hash:cleanHash,subject:subject.trim(),body:body.join('\x1f').trim(),paths:changedPaths(cleanHash,cwd)};
   });
+}
+function releaseImage({cwd,version,ref,repository}){
+  const rel=`assets/screenshots/weig-qb-webui-desktop-overview-v${version}.gif`;
+  if(!fs.existsSync(path.join(cwd,rel)))return'';
+  if(!/^[\w.-]+\/[\w.-]+$/.test(repository)||!ref)return'';
+  return `https://raw.githubusercontent.com/${repository}/${ref}/${rel}`;
 }
 function arg(name,fallback=''){
   const prefix=`--${name}=`,inline=process.argv.find(value=>value.startsWith(prefix));
@@ -110,17 +147,23 @@ function arg(name,fallback=''){
   const index=process.argv.indexOf(`--${name}`);
   return index>=0&&process.argv[index+1]!==undefined?process.argv[index+1]:fallback;
 }
-export function generateFromGit({to,currentTag='',out='',cwd=process.cwd()}={}){
-  const fromTag=resolvePreviousStableTag({to,currentTag,cwd}),commits=readGitCommits({fromTag,to,cwd}),result=buildReleaseNotes({commits,fromTag,toSha:to});
+export function generateFromGit({to,currentTag='',out='',cwd=process.cwd(),repository=process.env.GITHUB_REPOSITORY||'',imageRef=''}={}){
+  const fromTag=resolvePreviousStableTag({to,currentTag,cwd}),commits=readGitCommits({fromTag,to,cwd});
+  const version=fs.readFileSync(path.join(cwd,'VERSION'),'utf8').trim();
+  const ref=imageRef||currentTag||to;
+  const imageUrl=releaseImage({cwd,version,ref,repository});
+  const result=buildReleaseNotes({commits,fromTag,toSha:to,imageUrl});
   if(out)fs.writeFileSync(out,result.markdown,'utf8');
-  return{...result,fromTag,toSha:to};
+  return{...result,fromTag,toSha:to,imageUrl};
 }
 const isCli=process.argv[1]&&fileURLToPath(import.meta.url)===process.argv[1];
 if(isCli){
   const to=String(arg('to',process.env.GITHUB_SHA||'')).trim().toLowerCase();
   const currentTag=String(arg('current-tag',process.env.GITHUB_REF_NAME||'')).trim();
   const out=String(arg('out','')).trim();
-  const result=generateFromGit({to,currentTag,out});
+  const repository=String(arg('repository',process.env.GITHUB_REPOSITORY||'')).trim();
+  const imageRef=String(arg('image-ref','')).trim();
+  const result=generateFromGit({to,currentTag,out,repository,imageRef});
   if(!out)process.stdout.write(result.markdown);
-  else console.log(`Release notes: ${result.fromTag||'repository start'} -> ${result.toSha}; ${result.items.length} entries; ${result.highlights.length} highlights; wrote ${out}`);
+  else console.log(`Release notes: ${result.fromTag||'repository start'} -> ${result.toSha}; ${result.items.length} WebUI entries; ${result.highlights.length} highlights; image=${result.imageUrl||'none'}; wrote ${out}`);
 }
