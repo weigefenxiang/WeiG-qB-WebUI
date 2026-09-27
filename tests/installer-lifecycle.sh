@@ -60,7 +60,7 @@ build_release() {
     sha256sum WeiG-qB-WebUI.zip > SHA256SUMS
   )
   printf '{"tag_name":"v%s"}\n' "$version" > "$out/release.json"
-  printf '{"sha":"%s"}\n' "$source_sha" > "$out/commit.json"
+  printf '{\n  "sha": "%s"\n}\n' "$source_sha" > "$out/commit.json"
 }
 
 build_release "$VERSION_ONE" "$SHA_ONE" release-one
