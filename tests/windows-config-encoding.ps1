@@ -26,7 +26,8 @@ $requiredFunctions=@(
   'Assert-QBWebUIMutation',
   'Invoke-QBAtomicReplace',
   'Restore-QBConfigBackupAtomically',
-  'Configure-QBWebUI'
+  'Configure-QBWebUI',
+  'Disable-QBWebUI'
 )
 foreach($name in $requiredFunctions){
   $fn=$ast.Find({param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq $name},$true)
@@ -141,6 +142,28 @@ WebUI\RootFolder=D:\old\webui
   $decodedBe=$utf16Be.GetString($afterBe[2..($afterBe.Length-1)])
   Assert-True ($decodedBe.Contains('SavePathHistory=E:\clash\u\moka酱;E:\影视;D:\下载\电影;E:\clash\u\小西まりえ')) 'UTF-16 BE Unicode values were corrupted.'
 
+  # Uninstall config mutation shares the same encoding-preserving owner and only disables
+  # Alternative WebUI when the configured RootFolder exactly matches the target.
+  $uninstallCfg=Join-Path $temp 'qBittorrent-uninstall.ini'
+  $uninstallOriginal=$original.Replace('WebUI\AlternativeUIEnabled=false','WebUI\AlternativeUIEnabled=true').Replace('WebUI\RootFolder=D:\old\webui',"WebUI\RootFolder=$rootFolder")
+  Write-EncodedFile $uninstallCfg $uninstallOriginal $utf8NoBom ([byte[]]@(0xEF,0xBB,0xBF))
+  [byte[]]$uninstallBefore=[IO.File]::ReadAllBytes($uninstallCfg)
+  Disable-QBWebUI $uninstallCfg $rootFolder
+  [byte[]]$uninstallAfter=[IO.File]::ReadAllBytes($uninstallCfg)
+  Assert-True ($uninstallAfter[0] -eq 0xEF -and $uninstallAfter[1] -eq 0xBB -and $uninstallAfter[2] -eq 0xBF) 'Uninstall config mutation must preserve UTF-8 BOM.'
+  $uninstallDecoded=$utf8NoBom.GetString($uninstallAfter[3..($uninstallAfter.Length-1)])
+  Assert-True ($uninstallDecoded.Contains('WebUI\AlternativeUIEnabled=false')) 'Uninstall config mutation did not disable Alternative WebUI.'
+  Assert-True ($uninstallDecoded.Contains("WebUI\RootFolder=$rootFolder")) 'Uninstall config mutation must preserve the exact RootFolder.'
+  Assert-True ($uninstallDecoded.Contains('Session\Tags=姫川ゆうな,羽田桃子,电影,moka酱,动漫,永野いち夏,小西まりえ')) 'Uninstall config mutation corrupted Unicode qB values.'
+  Assert-True (Bytes-Equal $uninstallBefore ([IO.File]::ReadAllBytes("$uninstallCfg.weig.bak"))) 'Uninstall config safety backup must be byte-identical.'
+
+  $uninstallMismatch=Join-Path $temp 'qBittorrent-uninstall-mismatch.ini'
+  Write-EncodedFile $uninstallMismatch $uninstallOriginal $utf8NoBom ([byte[]]@())
+  [byte[]]$uninstallMismatchBefore=[IO.File]::ReadAllBytes($uninstallMismatch)
+  Assert-Throws { Disable-QBWebUI $uninstallMismatch 'D:\different\webui' } 'Root Folder does not match the uninstall target' 'Uninstall must refuse a mismatched RootFolder.'
+  Assert-True (Bytes-Equal $uninstallMismatchBefore ([IO.File]::ReadAllBytes($uninstallMismatch))) 'Uninstall RootFolder mismatch must leave qB config byte-identical.'
+  Assert-True (-not (Test-Path "$uninstallMismatch.weig.bak")) 'Uninstall RootFolder mismatch must fail before creating a mutation backup.'
+
   # qB running -> fail closed before touching the target or creating a backup.
   $runningCfg=Join-Path $temp 'qBittorrent-running.ini'
   Write-EncodedFile $runningCfg $original $utf8NoBom ([byte[]]@())
@@ -225,7 +248,7 @@ WebUI\RootFolder=D:\old\webui
   Assert-True (Bytes-Equal $failureBefore ([IO.File]::ReadAllBytes("$failureCfg.weigg.bak"))) 'Safety backup must remain the exact original after rollback.'
   Invoke-Expression $functionText['Invoke-QBAtomicReplace']
 
-  Write-Host 'Windows qB config safety contract passed: encoding preservation, process/recovery guards, invalid/ambiguous refusal, temp verification, atomic replace and exact rollback are enforced.'
+  Write-Host 'Windows qB config safety contract passed: configure/uninstall encoding preservation, exact RootFolder ownership, process/recovery guards, invalid/ambiguous refusal, temp verification, atomic replace and exact rollback are enforced.'
 } finally {
   Remove-Item $temp -Recurse -Force -ErrorAction SilentlyContinue
 }
