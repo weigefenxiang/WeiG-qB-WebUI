@@ -26,11 +26,11 @@ ZIP 內部的最上層資料夾名稱仍然是 `WeiG-qB-WebUI`。解壓縮後，
 
 ### 桌面端
 
-![WeiG qB WebUI 桌面端介面](../assets/screenshots/weig-qb-webui-desktop-overview.png)
+![WeiG qB WebUI 桌面端介面](../assets/screenshots/weig-qb-webui-desktop-overview-v1.1.0.png)
 
 ### 手機端
 
-![WeiG qB WebUI 手機端介面](../assets/screenshots/weig-qb-webui-mobile-overview.png)
+![WeiG qB WebUI 手機端介面](../assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.png)
 
 ## 新手安裝
 
