@@ -109,10 +109,10 @@ WebUI\RootFolder=D:\old\webui
   Assert-QBWebUISectionOwnership $decoded $rootFolder
   Assert-True ((Get-QBUnmanagedConfigText $decoded) -eq (Get-QBUnmanagedConfigText $original)) 'Only the two managed WebUI lines may change when both already exist.'
 
-  $backup="$cfg.weigg.bak"
+  $backup="$cfg.weig.bak"
   Assert-True (Test-Path $backup) 'Safe configure must create a raw-byte safety backup.'
   Assert-True (Bytes-Equal $before ([IO.File]::ReadAllBytes($backup))) 'qB config safety backup must be byte-identical to the pre-mutation file.'
-  Assert-True (-not (Test-Path "$cfg.weigg.replace.bak")) 'Successful configure must not leave the internal atomic-replace backup behind.'
+  Assert-True (-not (Test-Path "$cfg.weig.replace.bak")) 'Successful configure must not leave the internal atomic-replace backup behind.'
 
   # UTF-8 BOM stays BOM.
   $cfgBom=Join-Path $temp 'qBittorrent-bom.ini'
@@ -171,7 +171,7 @@ WebUI\RootFolder=D:\old\webui
   function Test-QBittorrentRunning { return $true }
   Assert-Throws { Configure-QBWebUI $runningCfg $rootFolder } 'qBittorrent is running' 'Configure must refuse while qBittorrent is running.'
   Assert-True (Bytes-Equal $runningBefore ([IO.File]::ReadAllBytes($runningCfg))) 'Running-process refusal must leave qB config byte-identical.'
-  Assert-True (-not (Test-Path "$runningCfg.weigg.bak")) 'Running-process refusal must occur before creating a mutation backup.'
+  Assert-True (-not (Test-Path "$runningCfg.weig.bak")) 'Running-process refusal must occur before creating a mutation backup.'
   Invoke-Expression $functionText['Test-QBittorrentRunning']
   function Test-QBittorrentRunning { return $false }
 
@@ -213,7 +213,7 @@ WebUI\RootFolder=D:\old\webui
   [byte[]]$wrongSectionBefore=[IO.File]::ReadAllBytes($wrongSectionCfg)
   Assert-Throws { Configure-QBWebUI $wrongSectionCfg $rootFolder } 'must belong to the [Preferences] section' 'Configure must refuse managed WebUI keys outside [Preferences].'
   Assert-True (Bytes-Equal $wrongSectionBefore ([IO.File]::ReadAllBytes($wrongSectionCfg))) 'Wrong-section refusal must leave bytes untouched.'
-  Assert-True (-not (Test-Path "$wrongSectionCfg.weigg.bak")) 'Wrong-section refusal must occur before creating a mutation backup.'
+  Assert-True (-not (Test-Path "$wrongSectionCfg.weig.bak")) 'Wrong-section refusal must occur before creating a mutation backup.'
 
   # Multiple [Preferences] sections are ambiguous and must fail closed.
   $duplicateSectionCfg=Join-Path $temp 'qBittorrent-duplicate-section.ini'
@@ -222,7 +222,7 @@ WebUI\RootFolder=D:\old\webui
   [byte[]]$duplicateSectionBefore=[IO.File]::ReadAllBytes($duplicateSectionCfg)
   Assert-Throws { Configure-QBWebUI $duplicateSectionCfg $rootFolder } 'exactly one [Preferences] section' 'Configure must refuse duplicate [Preferences] sections.'
   Assert-True (Bytes-Equal $duplicateSectionBefore ([IO.File]::ReadAllBytes($duplicateSectionCfg))) 'Duplicate-section refusal must leave bytes untouched.'
-  Assert-True (-not (Test-Path "$duplicateSectionCfg.weigg.bak")) 'Duplicate-section refusal must occur before creating a mutation backup.'
+  Assert-True (-not (Test-Path "$duplicateSectionCfg.weig.bak")) 'Duplicate-section refusal must occur before creating a mutation backup.'
 
   # Multiple discovered configs must never choose the first one.
   $candidateA=Join-Path $temp 'candidate-a.ini'
@@ -245,7 +245,7 @@ WebUI\RootFolder=D:\old\webui
   }
   Assert-Throws { Configure-QBWebUI $failureCfg $rootFolder } 'simulated post-replace failure' 'Configure must surface an atomic replace failure.'
   Assert-True (Bytes-Equal $failureBefore ([IO.File]::ReadAllBytes($failureCfg))) 'Atomic replace failure must restore exact original qB config bytes.'
-  Assert-True (Bytes-Equal $failureBefore ([IO.File]::ReadAllBytes("$failureCfg.weigg.bak"))) 'Safety backup must remain the exact original after rollback.'
+  Assert-True (Bytes-Equal $failureBefore ([IO.File]::ReadAllBytes("$failureCfg.weig.bak"))) 'Safety backup must remain the exact original after rollback.'
   Invoke-Expression $functionText['Invoke-QBAtomicReplace']
 
   Write-Host 'Windows qB config safety contract passed: configure/uninstall encoding preservation, exact RootFolder ownership, process/recovery guards, invalid/ambiguous refusal, temp verification, atomic replace and exact rollback are enforced.'
