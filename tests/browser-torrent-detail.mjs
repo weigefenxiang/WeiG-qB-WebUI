@@ -208,7 +208,6 @@ try{
   await seedLeaf.click({button:'right'});await page.waitForSelector('.ui-context-menu[data-context-level="0"]');
   const seedLeafLabels=await page.locator('.ui-context-menu[data-context-level="0"] .ui-context-menu__label').allTextContents();
   assert(seedLeafLabels.includes('Download Priority'),'Completed/seed file row must retain source-proven Download Priority action: '+JSON.stringify(seedLeafLabels));
-  await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');await page.waitForSelector('.ui-context-menu[data-context-level="0"]',{state:'detached'});
   await page.locator('.detail-tabs [data-tab="peers"]').click();
   await page.waitForSelector('.peer-country-code');
