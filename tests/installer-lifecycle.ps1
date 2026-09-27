@@ -99,7 +99,7 @@ try {
     Assert-True ($cfgText.Contains("WebUI\RootFolder=$Destination")) 'qB RootFolder was not configured to isolated destination.'
     Assert-True ($cfgText.Contains('Lifecycle\Marker=preserve-me')) 'Unrelated qB config marker was not preserved.'
 
-    $meta=Get-Content (Join-Path $Destination 'private\weigg-install.json') -Raw | ConvertFrom-Json
+    $meta=Get-Content (Join-Path $Destination 'private\weig-install.json') -Raw | ConvertFrom-Json
     Assert-True ($meta.version -eq $ExpectedVersion) 'Install metadata version mismatch.'
     Assert-True ($meta.gitSha -eq $ExpectedSha) 'Install metadata gitSha mismatch.'
     Assert-True ($meta.channel -eq 'release') 'Install metadata channel mismatch.'
@@ -142,13 +142,27 @@ try {
   Assert-Install $VersionOne $ShaOne 'release-one'
   Assert-True (((Get-Content (Join-Path $State 'last-dest') -Raw).Trim()) -eq $Destination) 'Remembered destination mismatch.'
 
+  Start-Sleep -Milliseconds 1100
+  & $pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Installer -Uninstall -Configure -Destination $Destination
+  if($LASTEXITCODE -ne 0){throw "Uninstall subprocess failed with exit code $LASTEXITCODE."}
+  Assert-True (!(Test-Path -LiteralPath $Destination)) 'Uninstall did not remove the installer-owned WebUI directory.'
+  $uninstallCfg=Get-Content $Cfg -Raw
+  Assert-True ($uninstallCfg.Contains('WebUI\AlternativeUIEnabled=false')) 'Uninstall did not disable Alternative WebUI.'
+  Assert-True ($uninstallCfg.Contains("WebUI\RootFolder=$Destination")) 'Uninstall unexpectedly rewrote the remembered RootFolder.'
+  $UninstallBackup=(Get-Content (Join-Path $State 'last-backup') -Raw).Trim()
+  Assert-True (((Get-Content (Join-Path $UninstallBackup 'had-webui') -Raw).Trim()) -eq '1') 'Uninstall backup did not preserve the removed WebUI.'
+
+  & $pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Installer -Rollback
+  if($LASTEXITCODE -ne 0){throw "Post-uninstall rollback subprocess failed with exit code $LASTEXITCODE."}
+  Assert-Install $VersionOne $ShaOne 'release-one'
+
   $artifactDir=Join-Path $Root 'artifacts\install-lifecycle'
   New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
   $repoSha=$env:GITHUB_SHA
   if(!$repoSha){$repoSha=(& git -C $Root rev-parse HEAD).Trim()}
   $catalogPath=Join-Path $Destination 'private\data\qb-releases.json'
   $catalog=Get-Content $catalogPath -Raw | ConvertFrom-Json
-  $meta=Get-Content (Join-Path $Destination 'private\weigg-install.json') -Raw | ConvertFrom-Json
+  $meta=Get-Content (Join-Path $Destination 'private\weig-install.json') -Raw | ConvertFrom-Json
   $evidence=[ordered]@{
     schemaVersion=1
     kind='isolated-windows-installer-lifecycle'
@@ -168,6 +182,9 @@ try {
       upgrade=$true
       rollbackWebui=$true
       rollbackQbConfig=$true
+      uninstall=$true
+      uninstallConfigDisable=$true
+      uninstallRollback=$true
     }
     rollbackState=[ordered]@{
       version=$meta.version
@@ -178,7 +195,7 @@ try {
   }
   Write-Utf8NoBom (Join-Path $artifactDir 'windows.json') (($evidence | ConvertTo-Json -Depth 8)+"`n")
 
-  Write-Host "Windows installer lifecycle passed: install $VersionOne -> upgrade $VersionTwo -> rollback $VersionOne"
+  Write-Host "Windows installer lifecycle passed: install $VersionOne -> upgrade $VersionTwo -> rollback $VersionOne -> uninstall -> rollback"
 }
 finally {
   Remove-Item Env:WEIGG_INSTALLER_FIXTURE_ROOT -ErrorAction SilentlyContinue

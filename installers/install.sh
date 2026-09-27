@@ -36,6 +36,7 @@ Main options:
   -o PATH, --output PATH    WebUI install path. Repeat -o to update multiple targets with one download.
   -configure, --configure   Enable qBittorrent Alternative WebUI and set Root Folder (single target only).
   -rollback, --rollback     Restore the previous installer backup.
+  -uninstall, --uninstall   Remove an installer-owned WeiG WebUI. Add -configure to disable it in qBittorrent too.
   -help, -h, --help         Show this help.
 
 Advanced / compatibility:
@@ -110,6 +111,9 @@ while [ "$#" -gt 0 ]; do
       ;;
     -rollback|--rollback)
       MODE="rollback"
+      ;;
+    -uninstall|--uninstall)
+      MODE="uninstall"
       ;;
     -update|--update)
       MODE="update"
@@ -214,8 +218,10 @@ STATE="${HOME}/.config/weig_qb-webui"
 BACKUPS="$STATE/backups"
 mkdir -p "$BACKUPS"
 
-if [ "$MODE" = "rollback" ] && [ "$DEST_EXPLICIT" -eq 0 ] && [ -s "$STATE/last-dest" ]; then
+if { [ "$MODE" = "rollback" ] || [ "$MODE" = "uninstall" ]; } && [ "$DEST_EXPLICIT" -eq 0 ] && [ -s "$STATE/last-dest" ]; then
   DEST=$(cat "$STATE/last-dest")
+  REQUESTED_DEST="$DEST"
+  QBT_ROOT_FOLDER="$DEST"
 fi
 
 is_safe_config_path() {
@@ -633,6 +639,46 @@ configure_qb_webui_file() {
   fi
 }
 
+disable_qb_webui_file() {
+  cfg=$1
+  qb_root=$2
+  [ -f "$cfg" ] || { echo "qBittorrent config does not exist: $cfg" >&2; return 1; }
+  validate_qb_webui_config_file "$cfg" "$qb_root" 0 || return 1
+  grep -Fqx "WebUI\\RootFolder=$qb_root" "$cfg" || { echo "qBittorrent Root Folder does not match the uninstall target; refusing config mutation." >&2; return 1; }
+
+  backup="$cfg.weig.bak"
+  cp -a "$cfg" "$backup"
+  cmp -s "$cfg" "$backup" || { echo "qBittorrent safety backup is not byte-identical; refusing mutation." >&2; return 1; }
+
+  cfg_dir=$(dirname "$cfg")
+  tmp_cfg=$(mktemp "$cfg_dir/.weig-qb-uninstall.XXXXXX")
+  if ! awk '
+    BEGIN { in_preferences=0 }
+    {
+      raw=$0
+      line=raw
+      had_cr=sub(/\r$/, "", line)
+      if (line ~ /^\[[^]]+\]$/) {
+        in_preferences=(line == "[Preferences]")
+        print raw
+        next
+      }
+      if (in_preferences && line ~ /^WebUI\\AlternativeUIEnabled=/) {
+        print "WebUI\\AlternativeUIEnabled=false" (had_cr ? "\r" : "")
+        next
+      }
+      print raw
+    }
+  ' "$cfg" > "$tmp_cfg"; then
+    rm -f "$tmp_cfg"
+    return 1
+  fi
+  validate_qb_webui_config_file "$tmp_cfg" "$qb_root" 0 || { rm -f "$tmp_cfg"; return 1; }
+  grep -Fqx "WebUI\\RootFolder=$qb_root" "$tmp_cfg" || { rm -f "$tmp_cfg"; return 1; }
+  grep -Fqx "WebUI\\AlternativeUIEnabled=false" "$tmp_cfg" || { rm -f "$tmp_cfg"; return 1; }
+  mv "$tmp_cfg" "$cfg" || { cp -a "$backup" "$cfg"; return 1; }
+}
+
 if [ "${WEIG_QB_CONFIG_TEST_ONLY:-0}" = "1" ]; then
   [ -n "${WEIG_QB_CONFIG_TEST_PATH:-}" ] && [ -n "${WEIG_QB_CONFIG_TEST_ROOT:-}" ] || {
     echo "WEIG_QB_CONFIG_TEST_PATH and WEIG_QB_CONFIG_TEST_ROOT are required in config test mode." >&2
@@ -850,6 +896,44 @@ EOF_TARGETS
 
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT INT TERM
+
+if [ "$MODE" = "uninstall" ]; then
+  BACKUP_MAP_FILE="$TMP/backup-map"
+  : > "$BACKUP_MAP_FILE"
+  BACKUP_STAMP=$(date '+%Y%m%d-%H%M%S')
+  index=0
+  while IFS= read -r target; do
+    [ -n "$target" ] || continue
+    case "$target" in ""|"/") echo "Refusing unsafe uninstall target." >&2; exit 1 ;; esac
+    [ -d "$target" ] && [ -f "$target/public/index.html" ] && [ -f "$target/private/index.html" ] && [ -f "$target/VERSION" ] && [ -f "$target/GIT_SHA" ] && [ -f "$target/private/weig-install.json" ] || {
+      echo "Refusing to uninstall a directory that is not an installer-owned WeiG qB WebUI: $target" >&2
+      exit 1
+    }
+    index=$((index+1))
+    backup_target "$target" "$index" "$(qb_root_for_target "$target")" || exit 1
+  done <<EOF_UNINSTALL_TARGETS
+$TARGETS
+EOF_UNINSTALL_TARGETS
+
+  if [ "$CONFIGURE" -eq 1 ]; then
+    [ "$TARGET_COUNT" -le 1 ] || { echo "-uninstall -configure supports one target at a time." >&2; exit 2; }
+    cfg=$(find_config || true)
+    [ -n "$cfg" ] || { echo "No unambiguous qBittorrent config was found; uninstall stopped before deleting files." >&2; exit 1; }
+    disable_qb_webui_file "$cfg" "$QBT_ROOT_FOLDER" || exit 1
+    echo "Disabled qBittorrent Alternative WebUI: $cfg"
+  fi
+
+  while IFS= read -r target; do
+    [ -n "$target" ] || continue
+    rm -rf -- "$target"
+    [ ! -e "$target" ] || { echo "Failed to remove WeiG qB WebUI: $target" >&2; exit 1; }
+    echo "Uninstalled WeiG qB WebUI: $target"
+  done <<EOF_UNINSTALL_REMOVE
+$TARGETS
+EOF_UNINSTALL_REMOVE
+  echo "Rollback is available with: sh weig_qb-webui_install.sh -rollback"
+  exit 0
+fi
 
 if [ "$MODE" = "rollback" ]; then
   rollback

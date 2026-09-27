@@ -128,7 +128,7 @@ assert_install() {
 const fs=require('node:fs');
 const path=require('node:path');
 const [dest,version,sha]=process.argv.slice(2);
-const meta=JSON.parse(fs.readFileSync(path.join(dest,'private/weigg-install.json'),'utf8'));
+const meta=JSON.parse(fs.readFileSync(path.join(dest,'private/weig-install.json'),'utf8'));
 if(meta.version!==version)throw new Error(`metadata version ${meta.version} != ${version}`);
 if(meta.gitSha!==sha)throw new Error(`metadata gitSha ${meta.gitSha} != ${sha}`);
 if(meta.channel!=='release')throw new Error(`metadata channel ${meta.channel} != release`);
@@ -169,6 +169,18 @@ assert_install "$VERSION_ONE" "$SHA_ONE" release-one
 test "$(cat "$STATE/last-dest")" = "$DEST"
 test "$(cat "$STATE/last-qb-root-folder")" = "$DEST"
 
+sleep 1
+bash "$ROOT/installers/install.sh" -uninstall -configure -o "$DEST"
+test ! -e "$DEST"
+grep -Fx 'WebUI\AlternativeUIEnabled=false' "$CFG" >/dev/null
+grep -Fx "WebUI\\RootFolder=$DEST" "$CFG" >/dev/null
+UNINSTALL_BACKUP=$(cat "$STATE/last-backup")
+test "$(cat "$UNINSTALL_BACKUP/had-webui")" = 1
+test "$(tr -d '\r\n' < "$UNINSTALL_BACKUP/webui/VERSION")" = "$VERSION_ONE"
+
+bash "$ROOT/installers/install.sh" -rollback
+assert_install "$VERSION_ONE" "$SHA_ONE" release-one
+
 mkdir -p "$ROOT/artifacts/install-lifecycle"
 REPO_SHA=${GITHUB_SHA:-$(git -C "$ROOT" rev-parse HEAD)}
 export ROOT DEST REPO_SHA VERSION_ONE VERSION_TWO SHA_ONE SHA_TWO
@@ -179,7 +191,7 @@ const root=process.env.ROOT;
 const dest=process.env.DEST;
 const catalogPath=path.join(dest,'private/data/qb-releases.json');
 const catalog=JSON.parse(fs.readFileSync(catalogPath,'utf8'));
-const meta=JSON.parse(fs.readFileSync(path.join(dest,'private/weigg-install.json'),'utf8'));
+const meta=JSON.parse(fs.readFileSync(path.join(dest,'private/weig-install.json'),'utf8'));
 const evidence={
   schemaVersion:1,
   kind:'isolated-linux-installer-lifecycle',
@@ -198,7 +210,10 @@ const evidence={
     upgradeBackup:true,
     upgrade:true,
     rollbackWebui:true,
-    rollbackQbConfig:true
+    rollbackQbConfig:true,
+    uninstall:true,
+    uninstallConfigDisable:true,
+    uninstallRollback:true
   },
   rollbackState:{
     version:meta.version,
@@ -210,5 +225,5 @@ const evidence={
 fs.writeFileSync(path.join(root,'artifacts/install-lifecycle/linux.json'),JSON.stringify(evidence,null,2)+'\n');
 NODE
 
-printf 'Linux installer lifecycle passed: install %s -> upgrade %s -> rollback %s\n' \
+printf 'Linux installer lifecycle passed: install %s -> upgrade %s -> rollback %s -> uninstall -> rollback\n' \
   "$VERSION_ONE" "$VERSION_TWO" "$VERSION_ONE"

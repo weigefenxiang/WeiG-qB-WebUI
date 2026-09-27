@@ -299,12 +299,12 @@ PowerShell 参数不区分大小写，文档统一使用小写。
 
 ---
 
-## 4. 怎么升级和回滚
+## 4. 怎么升级、回滚和卸载
 
 **重新执行安装器就是正常升级方式。** 安装器会先准备和验证新版本，再切换 WebUI。
 
 <details>
-<summary><b>查看升级和回滚命令（点击展开）</b></summary>
+<summary><b>查看升级、回滚和卸载命令（点击展开）</b></summary>
 
 ### 升级到最新稳定版
 
@@ -334,6 +334,36 @@ Windows：
 powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -rollback
 ```
 
+### 一键卸载
+
+卸载会先确认目标是安装器管理的 WeiG qB WebUI，并在删除前创建可回滚备份。加 `-configure` 时，只有 qBittorrent 当前 Root Folder 与目标完全一致才会关闭备选 WebUI。
+
+Linux / NAS：
+
+```sh
+sh weig_qb-webui_install.sh -uninstall -configure
+```
+
+Docker（单容器自动识别）：
+
+```sh
+sh weig_qb-webui_install.sh -uninstall -configure
+```
+
+Docker（多容器明确指定）：
+
+```sh
+sh weig_qb-webui_install.sh -uninstall -configure --container=qbittorrent
+```
+
+Windows：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -uninstall -configure
+```
+
+自定义安装路径时继续加 `-o /path` 或 `-o D:\path`。如果只想删除 WebUI 文件、不修改 qBittorrent 配置，可省略 `-configure`。卸载后仍可用 `-rollback` 恢复。
+
 Linux 安装器备份保存在：
 
 ```text
@@ -362,6 +392,7 @@ Linux 安装器备份保存在：
 | 指定安装目录 | `-o /path` | `-o D:\path` 或 `-output D:\path` | `o` = output |
 | 自动配置 qBittorrent | `-configure` | `-configure` | 启用备选 WebUI 并设置路径 |
 | 回滚 | `-rollback` | `-rollback` | 恢复上一次安装 |
+| 卸载 | `-uninstall` | `-uninstall` | 删除安装器管理的 WebUI；配合 `-configure` 同时关闭备选 WebUI |
 | 查看帮助 | `-help` | `-help` | 显示完整参数 |
 | 指定 Docker 容器 | `--container=NAME` | — | 多容器时使用 |
 | 列出 Docker 容器 | `--list-containers` | — | 查看检测到的容器 |
@@ -374,6 +405,7 @@ Linux 安装器备份保存在：
 - `-version` 只安装指定版本；指定版本不存在时直接停止，**不会自动退回 latest 或 dev**。
 - `-dev` 与 `-version` 不能同时使用。
 - `-configure` 会在安装后尝试启用 qBittorrent 的备选 WebUI，并在修改配置前创建备份。
+- `-uninstall` 只处理带安装器身份文件的 WeiG WebUI；与 `-configure` 同时使用时会先核对 Root Folder，再关闭备选 WebUI并删除文件，整个过程保留可回滚备份。
 - Linux 的 `-o` 可以重复使用，一次下载和验证后更新多个明确目标；多目标模式不能同时使用 `-configure`、`--container` 或 `--config-root`。
 - Docker 专用的 `--container`、`--list-containers`、`--config-root` 保持双横线写法。
 - 旧的 Linux 长参数仍保留兼容性，但新安装建议优先使用上表中的单横线参数。
@@ -521,12 +553,12 @@ VERSION
 
 ```text
 GIT_SHA
-private/weigg-install.json
+private/weig-install.json
 ```
 
 - `VERSION`：产品版本号。
 - `GIT_SHA`：这份 WebUI 对应的精确 Git 提交。
-- `private/weigg-install.json`：安装器记录的来源、SHA、安装路径和 Docker 等信息。
+- `private/weig-install.json`：安装器记录的来源、SHA、安装路径和 Docker 等信息。
 
 普通用户通常只需要确认 `VERSION`。
 
@@ -588,6 +620,7 @@ SHA256SUMS
 --output
 --configure
 --rollback
+--uninstall
 --help
 --channel=release|dev
 --dir=/path
@@ -602,6 +635,7 @@ SHA256SUMS
 -o
 -configure
 -rollback
+-uninstall
 -help
 ```
 

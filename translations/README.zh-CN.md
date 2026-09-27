@@ -329,6 +329,7 @@ Linux 和 Windows 使用相同的参数名称，文档统一使用小写；Power
 | 指定安装目录 | `-o /path`（Linux 可重复） | `-o D:\path` 或 `-output D:\path` |
 | 自动配置 qBittorrent | `-configure` | `-configure` |
 | 回滚上一次安装 | `-rollback` | `-rollback` |
+| 卸载 | `-uninstall` | `-uninstall` |
 | 查看完整帮助 | `-help` | `-help` |
 | 指定 Docker 容器 | `--container=NAME` | — |
 | 列出 Docker 容器 | `--list-containers` | — |
@@ -342,6 +343,7 @@ Linux 和 Windows 使用相同的参数名称，文档统一使用小写；Power
 - 安装器备份始终放在 `~/.config/weig_qb-webui/backups/`，并且**每个安装目标独立只保留最近 3 份**。
 - `-configure` 会在安装后自动启用 qBittorrent 的 **使用备选 WebUI / Use alternative WebUI** 并设置 **文件位置 / Files location**；它只允许单目标使用。
 - `-rollback` 会恢复所选目标最近一次由安装器创建的备份；也可以重复 `-o` 一次回滚多个明确目标。
+- `-uninstall` 只删除带有安装器身份文件的 WeiG WebUI；与 `-configure` 一起使用时，还会在确认 Root Folder 与卸载目标一致后关闭 qBittorrent 的备选 WebUI。卸载前会创建可回滚备份。
 - `-version` 安装指定 GitHub Release，例如 `1.0.0`；指定版本不存在时直接报错，**不会自动退回 latest 或 dev**。
 - `-help` 显示当前 Linux 参数；旧的 `--...` 长参数继续作为兼容别名保留。
 - Docker 有多个 qBittorrent 容器时，用 `--list-containers` 查看，再用 `--container=NAME` 明确指定；也可以用 `--config-root=/path` 直接指定宿主机上的 qBittorrent 配置目录。
@@ -373,6 +375,63 @@ Windows：
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -rollback
 ```
+
+</details>
+
+## 一键卸载
+
+<details>
+<summary><b>查看 Linux / NAS、Docker、Windows PowerShell 一键卸载命令</b></summary>
+
+卸载命令会先确认目标目录属于安装器管理的 WeiG qB WebUI，再创建备份。加上 `-configure` 时，安装器只会在 qBittorrent 当前 **Root Folder 与卸载目标完全一致** 时关闭备选 WebUI，不会随意改动其它 WebUI 配置。
+
+### Linux / NAS
+
+默认或最近一次安装路径：
+
+```sh
+sh weig_qb-webui_install.sh -uninstall -configure
+```
+
+自定义安装目录：
+
+```sh
+sh weig_qb-webui_install.sh -uninstall -configure -o /你的/weig_qb-webui
+```
+
+### Docker
+
+只有一个可识别的 qBittorrent 容器：
+
+```sh
+sh weig_qb-webui_install.sh -uninstall -configure
+```
+
+多个容器时明确指定：
+
+```sh
+sh weig_qb-webui_install.sh -uninstall -configure --container=qbittorrent
+```
+
+如果你一直使用 `--config-root` 管理 Docker，也可以继续显式指定：
+
+```sh
+sh weig_qb-webui_install.sh -uninstall -configure --config-root=/你的/qbittorrent/config
+```
+
+### Windows PowerShell
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -uninstall -configure
+```
+
+自定义安装目录时加 `-o`：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -uninstall -configure -o D:\WeiG_qB-WebUI
+```
+
+如果卸载后想恢复，可运行 `-rollback`。不加 `-configure` 时只删除安装器管理的 WebUI 文件，不修改 qBittorrent 配置。
 
 </details>
 

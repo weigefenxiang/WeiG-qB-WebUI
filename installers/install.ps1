@@ -1,5 +1,5 @@
 param(
-  [ValidateSet('Install','Update','Rollback')][string]$Mode='Install',
+  [ValidateSet('Install','Update','Rollback','Uninstall')][string]$Mode='Install',
   [ValidateSet('Release','Dev')][string]$Channel='Release',
   [Alias('o','output')][string]$Destination="$env:LOCALAPPDATA\WeiG_qB-WebUI",
   [string]$QBConfig='',
@@ -7,6 +7,7 @@ param(
   [switch]$Dev,
   [switch]$Configure,
   [switch]$Rollback,
+  [switch]$Uninstall,
   [switch]$Help
 )
 
@@ -27,12 +28,13 @@ Options:
   -qbconfig PATH            Exact qBittorrent config path for custom/portable profiles.
   -configure                Enable qBittorrent Alternative WebUI and set Root Folder.
   -rollback                 Restore the previous installation and qBittorrent config.
+  -uninstall                Remove an installer-owned WeiG WebUI. Add -configure to disable it in qBittorrent too.
   -help                     Show this help.
 
 Compatibility parameters kept for existing users:
   -Channel Release|Dev
   -Destination PATH
-  -Mode Install|Update|Rollback
+  -Mode Install|Update|Rollback|Uninstall
 
 Notes:
   -dev and -version cannot be used together.
@@ -88,6 +90,7 @@ if($Help){ Show-Usage; exit 0 }
 $DestinationExplicit=$PSBoundParameters.ContainsKey('Destination')
 $ChannelExplicit=$PSBoundParameters.ContainsKey('Channel')
 if($Rollback){ $Mode='Rollback' }
+if($Uninstall){ $Mode='Uninstall' }
 if($Dev){
   if($ChannelExplicit -and $Channel -eq 'Release'){ throw '-dev conflicts with -Channel Release.' }
   $Channel='Dev'
@@ -110,7 +113,7 @@ $State=Join-Path $env:APPDATA 'WeiG_qB-WebUI'
 $Backups=Join-Path $State 'backups'
 New-Item -ItemType Directory -Force -Path $Backups | Out-Null
 
-if($Mode -eq 'Rollback' -and !$DestinationExplicit){
+if(($Mode -eq 'Rollback' -or $Mode -eq 'Uninstall') -and !$DestinationExplicit){
   $lastDest=Join-Path $State 'last-dest'
   if(Test-Path $lastDest){
     $remembered=(Get-Content $lastDest -Raw).Trim()
@@ -469,6 +472,45 @@ function Configure-QBWebUI([string]$Path,[string]$RootFolder) {
   Write-Host "qBittorrent config encoding preserved and atomically replaced: $($state.EncodingName)"
 }
 
+function Disable-QBWebUI([string]$Path,[string]$RootFolder) {
+  $state=Assert-QBConfigMutationSafe $Path
+  [byte[]]$originalBytes=[IO.File]::ReadAllBytes($Path)
+  $originalText=[string]$state.Text
+  $section=Get-QBPreferencesSectionInfo $originalText
+  foreach($match in @(Get-QBManagedWebUIKeyMatches $originalText)){
+    if($match.Index -lt $section.Start -or $match.Index -ge $section.End){throw 'qBittorrent managed WebUI keys must belong to the [Preferences] section.'}
+  }
+  $rootPattern='(?m)^'+[regex]::Escape('WebUI\RootFolder='+$RootFolder)+'\r?$'
+  if(([regex]::Matches($originalText,$rootPattern)).Count -ne 1){throw 'qBittorrent Root Folder does not match the uninstall target; refusing config mutation.'}
+  $altPattern='(?m)^WebUI\\AlternativeUIEnabled=(?:true|false)(\r?)$'
+  if(([regex]::Matches($originalText,$altPattern)).Count -ne 1){throw 'qBittorrent AlternativeUIEnabled is missing or ambiguous; refusing config mutation.'}
+  $text=[regex]::Replace($originalText,$altPattern,{param($m) 'WebUI\AlternativeUIEnabled=false'+$m.Groups[1].Value})
+  if(([regex]::Matches($text,'(?m)^WebUI\\AlternativeUIEnabled=false\r?$')).Count -ne 1){throw 'Failed to build a disabled Alternative WebUI config candidate.'}
+
+  $backup="$Path.weig.bak"
+  [IO.File]::WriteAllBytes($backup,$originalBytes)
+  if(!(Compare-QBBytes $originalBytes ([IO.File]::ReadAllBytes($backup)))){throw 'qBittorrent safety backup is not byte-identical; refusing mutation.'}
+  $dir=Split-Path $Path -Parent
+  $tempPath=Join-Path $dir ('.weig-qb-uninstall-'+[guid]::NewGuid().ToString('N')+'.tmp')
+  $replaceBackup="$Path.weig.uninstall-replace.bak"
+  try {
+    Write-QBConfigText $tempPath $text $state
+    $verify=Read-QBConfigText $tempPath
+    if($verify.Text -ne $text){throw 'qBittorrent uninstall config verification failed.'}
+    $null=Assert-QBConfigMutationSafe $Path
+    if(!(Compare-QBBytes $originalBytes ([IO.File]::ReadAllBytes($Path)))){throw 'qBittorrent config changed after uninstall preflight; refusing to overwrite a newer file.'}
+    Invoke-QBAtomicReplace $tempPath $Path $replaceBackup
+    $final=Read-QBConfigText $Path
+    if($final.Text -ne $text){throw 'qBittorrent config verification failed after uninstall mutation.'}
+  } catch {
+    if(Test-Path -LiteralPath $backup -PathType Leaf){Restore-QBConfigBackupAtomically $Path $backup}
+    throw
+  } finally {
+    if(Test-Path -LiteralPath $tempPath){Remove-Item -LiteralPath $tempPath -Force -ErrorAction SilentlyContinue}
+    if(Test-Path -LiteralPath $replaceBackup){Remove-Item -LiteralPath $replaceBackup -Force -ErrorAction SilentlyContinue}
+  }
+}
+
 function Prune-Backups([int]$Keep=3) {
   if($Keep -lt 1){throw 'Backup retention must keep at least one backup.'}
   $owned=@(Get-ChildItem -LiteralPath $Backups -Directory -ErrorAction SilentlyContinue | Where-Object {
@@ -552,6 +594,37 @@ function Restore-Last {
   }
 }
 
+function Assert-WeiGInstallTarget([string]$Path) {
+  if([string]::IsNullOrWhiteSpace($Path)){throw 'Refusing an empty uninstall target.'}
+  $full=[IO.Path]::GetFullPath($Path).TrimEnd([IO.Path]::DirectorySeparatorChar,[IO.Path]::AltDirectorySeparatorChar)
+  $root=[IO.Path]::GetPathRoot($full).TrimEnd([IO.Path]::DirectorySeparatorChar,[IO.Path]::AltDirectorySeparatorChar)
+  if($full.Equals($root,[StringComparison]::OrdinalIgnoreCase)){throw "Refusing unsafe uninstall target: $full"}
+  foreach($relative in @('public\index.html','private\index.html','VERSION','GIT_SHA','private\weig-install.json')){
+    if(!(Test-Path -LiteralPath (Join-Path $full $relative) -PathType Leaf)){throw "Refusing to uninstall a directory that is not an installer-owned WeiG qB WebUI: $full"}
+  }
+  return $full
+}
+
+function Uninstall-Current {
+  $script:Destination=Assert-WeiGInstallTarget $Destination
+  $cfg=$null
+  if($Configure){
+    $cfg=Find-QBConfig $QBConfig
+    if(!$cfg){throw 'No unambiguous qBittorrent config was found; uninstall stopped before deleting files.'}
+    $null=Assert-QBConfigMutationSafe $cfg
+  }
+  Backup-Current $cfg
+  if($Configure){
+    Disable-QBWebUI $cfg $Destination
+    Write-Host "Disabled qBittorrent Alternative WebUI: $cfg"
+  }
+  Move-OutOfInstallTarget $Destination
+  Remove-Item -LiteralPath $Destination -Recurse -Force
+  if(Test-Path -LiteralPath $Destination){throw "Failed to remove WeiG qB WebUI: $Destination"}
+  Write-Host "Uninstalled WeiG qB WebUI: $Destination"
+  Write-Host 'Rollback is available with: powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -rollback'
+}
+
 function Inject-BuildSha([string]$Root,[string]$Sha) {
   if($Sha -notmatch '^[0-9a-fA-F]{40}$'){throw 'Invalid Git SHA for asset versioning.'}
   $utf8=New-Object System.Text.UTF8Encoding($false)
@@ -584,6 +657,10 @@ function Assert-MaterializedWebUI([string]$Root) {
 
 if($Mode -eq 'Rollback'){
   Restore-Last
+  exit 0
+}
+if($Mode -eq 'Uninstall'){
+  Uninstall-Current
   exit 0
 }
 
