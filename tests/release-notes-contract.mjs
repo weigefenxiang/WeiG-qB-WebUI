@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
-import {buildReleaseNotes,readGitCommits,resolvePreviousStableTag,isReleaseVisiblePath} from './release-notes.mjs';
+import {buildReleaseNotes,readGitCommits,resolvePreviousStableTag,isReleaseVisiblePath} from '../tools/release-notes.mjs';
 
 const visible='webui/private/scripts/app.js';
 const excluded='webui/VERSION';
