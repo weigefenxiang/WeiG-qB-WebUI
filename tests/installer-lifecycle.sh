@@ -146,7 +146,7 @@ const [dest,version,sha]=process.argv.slice(2);
 const meta=JSON.parse(fs.readFileSync(path.join(dest,'private/weig-install.json'),'utf8'));
 if(meta.version!==version)throw new Error(`metadata version ${meta.version} != ${version}`);
 if(meta.gitSha!==sha)throw new Error(`metadata gitSha ${meta.gitSha} != ${sha}`);
-if(meta.channel!=='release')throw new Error(`metadata channel ${meta.channel} != release`);
+if(meta.channel!=='main')throw new Error(`metadata channel ${meta.channel} != main`);
 if(meta.installer!=='linux')throw new Error(`metadata installer ${meta.installer} != linux`);
 if(meta.hostPath!==dest||meta.qbPath!==dest)throw new Error('metadata install paths do not match isolated destination');
 const compact=['capabilities.json','detail-compat.json','settings-compat.json','torrent-compat.json','source-actions.json','rss-compat.json','qb-settings-native.txt'];
