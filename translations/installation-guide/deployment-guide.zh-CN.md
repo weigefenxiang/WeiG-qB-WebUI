@@ -336,49 +336,37 @@ powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -rollback
 
 ### 一键卸载
 
-卸载会先确认目标是安装器管理的 WeiG qB WebUI，并在删除前创建可回滚备份。加 `-configure` 时，只有 qBittorrent 当前 Root Folder 与目标完全一致才会关闭备选 WebUI。
+默认推荐**不保留安装器备份**。下面的命令会安全卸载当前 WeiG WebUI、关闭匹配目标的备选 WebUI、清理该目标的 installer-owned backups / rollback 状态，并在成功后删除当前目录中的安装脚本。
 
 Linux / NAS：
 
 ```sh
-sh weig_qb-webui_install.sh -uninstall -configure
+sh weig_qb-webui_install.sh -uninstall -configure -purge && rm -f -- ./weig_qb-webui_install.sh
 ```
 
 Docker（单容器自动识别）：
 
 ```sh
-sh weig_qb-webui_install.sh -uninstall -configure
+sh weig_qb-webui_install.sh -uninstall -configure -purge && rm -f -- ./weig_qb-webui_install.sh
 ```
 
 Docker（多容器明确指定）：
 
 ```sh
-sh weig_qb-webui_install.sh -uninstall -configure --container=qbittorrent
+sh weig_qb-webui_install.sh -uninstall -configure -purge --container=qbittorrent && rm -f -- ./weig_qb-webui_install.sh
 ```
 
 Windows：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -uninstall -configure
+powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -uninstall -configure -purge; if ($LASTEXITCODE -eq 0) { Remove-Item .\weig_qb-webui_install.ps1 -Force }
 ```
 
-自定义安装路径时继续加 `-o /path` 或 `-o D:\path`。如果只想删除 WebUI 文件、不修改 qBittorrent 配置，可省略 `-configure`。默认卸载会保留安装器备份，因此仍可用 `-rollback` 恢复。
+自定义安装路径时继续加 `-o /path` 或 `-o D:\path`；不需要修改 qBittorrent 配置时可省略 `-configure`。
 
-如果确认不再需要该目标的安装器备份，可在卸载命令后加 `-purge`：
+`-purge` 只清当前卸载目标。共享状态目录没有其它内容时，Linux 的 `~/.config/weig_qb-webui`（root 即 `/root/.config/weig_qb-webui`）或 Windows 的 `%APPDATA%\WeiG_qB-WebUI` 也会一起清空。
 
-Linux / NAS / Docker：
-
-```sh
-sh weig_qb-webui_install.sh -uninstall -configure -purge
-```
-
-Windows：
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -uninstall -configure -purge
-```
-
-`-purge` 只能和 `-uninstall` 一起使用。它会在安全卸载完成后删除**当前卸载目标所属的 installer-owned backups**并清理对应 rollback 状态，不会删除其它安装目标的备份。执行后该目标无法再通过安装器 `-rollback` 恢复。
+如需保留备份以后使用 `-rollback`，去掉 `-purge` 即可。
 
 Linux 安装器备份保存在：
 
@@ -408,8 +396,7 @@ Linux 安装器备份保存在：
 | 指定安装目录 | `-o /path` | `-o D:\path` 或 `-output D:\path` | `o` = output |
 | 自动配置 qBittorrent | `-configure` | `-configure` | 启用备选 WebUI 并设置路径 |
 | 回滚 | `-rollback` | `-rollback` | 恢复上一次安装 |
-| 卸载 | `-uninstall` | `-uninstall` | 删除安装器管理的 WebUI；配合 `-configure` 同时关闭备选 WebUI |
-| 彻底卸载并清理该目标备份 | `-uninstall -purge` | `-uninstall -purge` | 卸载后清理当前目标的 installer-owned backups；不可再用安装器回滚 |
+| 彻底卸载（默认推荐，不保留安装器备份） | `-uninstall -purge` | `-uninstall -purge` | 卸载 WebUI并清理当前目标的 installer-owned backups / rollback 状态 |
 | 查看帮助 | `-help` | `-help` | 显示完整参数 |
 | 指定 Docker 容器 | `--container=NAME` | — | 多容器时使用 |
 | 列出 Docker 容器 | `--list-containers` | — | 查看检测到的容器 |
@@ -422,8 +409,8 @@ Linux 安装器备份保存在：
 - `-version` 只安装指定版本；指定版本不存在时直接停止，**不会自动退回 latest 或 dev**。
 - `-dev` 与 `-version` 不能同时使用。
 - `-configure` 会在安装后尝试启用 qBittorrent 的备选 WebUI，并在修改配置前创建备份。
-- `-uninstall` 只处理带安装器身份文件的 WeiG WebUI；与 `-configure` 同时使用时会先核对 Root Folder，再关闭备选 WebUI并删除文件；默认保留可回滚备份。
-- `-purge` 只能与 `-uninstall` 一起使用；它复用相同的 target ownership，不会跨目标删除备份，并会清理指向已删除备份/目标的 installer rollback 状态。
+- 推荐使用 `-uninstall -purge` 完成彻底卸载；它复用 installer 的 target ownership，只清当前目标的 backups / rollback 状态，不跨目标删除。共享状态目录为空时会自动清掉 `~/.config/weig_qb-webui`（root 即 `/root/.config/weig_qb-webui`）或 Windows 的 `%APPDATA%\\WeiG_qB-WebUI`。
+- 如需保留备份以后 `-rollback`，卸载时去掉 `-purge` 即可。
 - Linux 的 `-o` 可以重复使用，一次下载和验证后更新多个明确目标；多目标模式不能同时使用 `-configure`、`--container` 或 `--config-root`。
 - Docker 专用的 `--container`、`--list-containers`、`--config-root` 保持双横线写法。
 - 旧的 Linux 长参数仍保留兼容性，但新安装建议优先使用上表中的单横线参数。
