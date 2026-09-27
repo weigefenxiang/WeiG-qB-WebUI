@@ -177,6 +177,23 @@ try {
   if($LASTEXITCODE -ne 0){throw "Post-uninstall rollback subprocess failed with exit code $LASTEXITCODE."}
   Assert-Install $VersionOne $ShaOne 'release-one'
 
+  Start-Sleep -Milliseconds 1100
+  & $pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Installer -Uninstall -Configure -Purge -Destination $Destination
+  if($LASTEXITCODE -ne 0){throw "Purge uninstall subprocess failed with exit code $LASTEXITCODE."}
+  Assert-True (!(Test-Path -LiteralPath $Destination)) 'Purge uninstall did not remove the installer-owned WebUI directory.'
+  Assert-True (!(Test-Path -LiteralPath (Join-Path $State 'last-backup'))) 'Purge uninstall left the last-backup pointer behind.'
+  Assert-True (!(Test-Path -LiteralPath (Join-Path $State 'last-dest'))) 'Purge uninstall left the last-dest pointer behind.'
+  $remaining=@(Get-ChildItem -LiteralPath (Join-Path $State 'backups') -Directory -ErrorAction SilentlyContinue | Where-Object {
+    $marker=Join-Path $_.FullName 'dest-path'
+    if(!(Test-Path -LiteralPath $marker -PathType Leaf)){return $false}
+    ((Get-Content $marker -Raw).Trim()).Equals($Destination,[StringComparison]::OrdinalIgnoreCase)
+  })
+  Assert-True ($remaining.Count -eq 0) 'Purge uninstall left installer-owned backups for the selected destination.'
+  & $pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Installer -Rollback
+  Assert-True ($LASTEXITCODE -ne 0) 'Rollback unexpectedly succeeded after target backup purge.'
+  & $Installer -Version $VersionOne -Configure -Destination $Destination
+  Assert-Install $VersionOne $ShaOne 'release-one'
+
   $artifactDir=Join-Path $Root 'artifacts\install-lifecycle'
   New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
   $repoSha=$env:GITHUB_SHA
@@ -206,6 +223,9 @@ try {
       uninstall=$true
       uninstallConfigDisable=$true
       uninstallRollback=$true
+      uninstallPurge=$true
+      purgeClearsRollbackState=$true
+      rollbackUnavailableAfterPurge=$true
     }
     rollbackState=[ordered]@{
       version=$meta.version
@@ -216,7 +236,7 @@ try {
   }
   Write-Utf8NoBom (Join-Path $artifactDir 'windows.json') (($evidence | ConvertTo-Json -Depth 8)+"`n")
 
-  Write-Host "Windows installer lifecycle passed: install $VersionOne -> upgrade $VersionTwo -> rollback $VersionOne -> uninstall -> rollback"
+  Write-Host "Windows installer lifecycle passed: install $VersionOne -> upgrade $VersionTwo -> rollback $VersionOne -> uninstall -> rollback -> purge uninstall -> clean reinstall"
 }
 finally {
   Remove-Item Env:WEIGG_INSTALLER_FIXTURE_ROOT -ErrorAction SilentlyContinue

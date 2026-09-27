@@ -24,6 +24,7 @@ CONTAINER_REQUESTED=""
 CONFIG_ROOT_REQUESTED=""
 SOURCE_SHA=""
 LIST_CONTAINERS=0
+PURGE_BACKUPS=0
 
 usage() {
   cat <<'EOF_USAGE'
@@ -37,6 +38,7 @@ Main options:
   -configure, --configure   Enable qBittorrent Alternative WebUI and set Root Folder (single target only).
   -rollback, --rollback     Restore the previous installer backup.
   -uninstall, --uninstall   Remove an installer-owned WeiG WebUI. Add -configure to disable it in qBittorrent too.
+  -purge, --purge           With -uninstall, also remove installer-owned backups for the selected target(s).
   -help, -h, --help         Show this help.
 
 Advanced / compatibility:
@@ -56,6 +58,7 @@ Notes:
   - Multiple -o targets download and verify one payload, then update all targets transactionally.
   - Multiple -o targets cannot be combined with -configure, --container or --config-root.
   - Installer backups stay under ~/.config/weig_qb-webui/backups/ and retain the latest 3 per target.
+  - -purge is destructive and is only accepted together with -uninstall.
   - A requested Release version never falls back to latest or dev.
 EOF_USAGE
 }
@@ -114,6 +117,9 @@ while [ "$#" -gt 0 ]; do
       ;;
     -uninstall|--uninstall)
       MODE="uninstall"
+      ;;
+    -purge|--purge)
+      PURGE_BACKUPS=1
       ;;
     -update|--update)
       MODE="update"
@@ -188,6 +194,11 @@ fi
 
 if [ -n "$RELEASE_VERSION" ] && [ "$CHANNEL" = "dev" ]; then
   echo "-version and -dev cannot be used together." >&2
+  exit 2
+fi
+
+if [ "$PURGE_BACKUPS" -eq 1 ] && [ "$MODE" != "uninstall" ]; then
+  echo "-purge can only be used together with -uninstall." >&2
   exit 2
 fi
 
@@ -804,15 +815,18 @@ backup_is_owned() {
   [ -d "$backup" ] && [ -f "$backup/had-webui" ] && [ -f "$backup/dest-path" ]
 }
 
-latest_backup_for_dest() {
+owned_backups_for_dest() {
   target=$1
   find "$BACKUPS" -mindepth 1 -maxdepth 1 -type d -print 2>/dev/null | sort -r | while IFS= read -r backup; do
     backup_is_owned "$backup" || continue
     saved_dest=$(cat "$backup/dest-path" 2>/dev/null || true)
     [ "$saved_dest" = "$target" ] || continue
     printf '%s\n' "$backup"
-    break
   done
+}
+
+latest_backup_for_dest() {
+  owned_backups_for_dest "$1" | sed -n '1p'
 }
 
 prune_backups_for_dest() {
@@ -820,16 +834,41 @@ prune_backups_for_dest() {
   keep=${2:-$BACKUP_RETENTION}
   [ "$keep" -ge 1 ] || { echo "Backup retention must keep at least one backup." >&2; return 1; }
   count=0
-  find "$BACKUPS" -mindepth 1 -maxdepth 1 -type d -print 2>/dev/null | sort -r | while IFS= read -r backup; do
-    backup_is_owned "$backup" || continue
-    saved_dest=$(cat "$backup/dest-path" 2>/dev/null || true)
-    [ "$saved_dest" = "$target" ] || continue
+  owned_backups_for_dest "$target" | while IFS= read -r backup; do
+    [ -n "$backup" ] || continue
     count=$((count+1))
     if [ "$count" -gt "$keep" ]; then
       rm -rf -- "$backup"
       echo "Pruned old installer backup: $backup"
     fi
   done
+}
+
+purge_backups_for_dest() {
+  target=$1
+  last_backup_for_target=""
+  if [ -s "$STATE/last-backup" ]; then
+    candidate=$(cat "$STATE/last-backup" 2>/dev/null || true)
+    if backup_is_owned "$candidate"; then
+      candidate_dest=$(cat "$candidate/dest-path" 2>/dev/null || true)
+      [ "$candidate_dest" = "$target" ] && last_backup_for_target=$candidate
+    fi
+  fi
+
+  owned_backups_for_dest "$target" | while IFS= read -r backup; do
+    [ -n "$backup" ] || continue
+    rm -rf -- "$backup"
+    echo "Purged installer backup: $backup"
+  done
+
+  if [ -n "$last_backup_for_target" ]; then
+    rm -f -- "$STATE/last-backup"
+  fi
+  if [ -s "$STATE/last-dest" ] && [ "$(cat "$STATE/last-dest" 2>/dev/null || true)" = "$target" ]; then
+    rm -f -- "$STATE/last-dest" "$STATE/last-qb-root-folder"
+  fi
+  rmdir "$BACKUPS" 2>/dev/null || true
+  rmdir "$STATE" 2>/dev/null || true
 }
 
 qb_root_for_target() {
@@ -974,7 +1013,17 @@ EOF_UNINSTALL_TARGETS
   done <<EOF_UNINSTALL_REMOVE
 $TARGETS
 EOF_UNINSTALL_REMOVE
-  echo "Rollback is available with: sh weig_qb-webui_install.sh -rollback"
+  if [ "$PURGE_BACKUPS" -eq 1 ]; then
+    while IFS= read -r target; do
+      [ -n "$target" ] || continue
+      purge_backups_for_dest "$target"
+    done <<EOF_UNINSTALL_PURGE
+$TARGETS
+EOF_UNINSTALL_PURGE
+    echo "Installer backups for the uninstalled target(s) were purged; installer rollback is no longer available for them."
+  else
+    echo "Rollback is available with: sh weig_qb-webui_install.sh -rollback"
+  fi
   exit 0
 fi
 

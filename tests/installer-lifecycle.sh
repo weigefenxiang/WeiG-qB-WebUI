@@ -195,6 +195,26 @@ test "$(tr -d '\r\n' < "$UNINSTALL_BACKUP/webui/VERSION")" = "$VERSION_ONE"
 bash "$ROOT/installers/install.sh" -rollback
 assert_install "$VERSION_ONE" "$SHA_ONE" release-one
 
+sleep 1
+bash "$ROOT/installers/install.sh" -uninstall -configure -purge -o "$DEST"
+test ! -e "$DEST"
+test ! -e "$STATE/last-backup"
+test ! -e "$STATE/last-dest"
+test ! -e "$STATE/last-qb-root-folder"
+if find "$STATE/backups" -mindepth 1 -maxdepth 1 -type d -print 2>/dev/null | while IFS= read -r backup; do
+  test -f "$backup/dest-path" || continue
+  test "$(cat "$backup/dest-path")" != "$DEST" || exit 1
+done; then :; else
+  echo "Purge left an installer-owned backup for $DEST" >&2
+  exit 1
+fi
+if bash "$ROOT/installers/install.sh" -rollback >/dev/null 2>&1; then
+  echo "Rollback unexpectedly succeeded after target backup purge." >&2
+  exit 1
+fi
+bash "$ROOT/installers/install.sh" --version "$VERSION_ONE" --configure -o "$DEST"
+assert_install "$VERSION_ONE" "$SHA_ONE" release-one
+
 mkdir -p "$ROOT/artifacts/install-lifecycle"
 REPO_SHA=${GITHUB_SHA:-$(git -C "$ROOT" rev-parse HEAD)}
 export ROOT DEST REPO_SHA VERSION_ONE VERSION_TWO SHA_ONE SHA_TWO
@@ -227,7 +247,10 @@ const evidence={
     rollbackQbConfig:true,
     uninstall:true,
     uninstallConfigDisable:true,
-    uninstallRollback:true
+    uninstallRollback:true,
+    uninstallPurge:true,
+    purgeClearsRollbackState:true,
+    rollbackUnavailableAfterPurge:true
   },
   rollbackState:{
     version:meta.version,
@@ -239,5 +262,5 @@ const evidence={
 fs.writeFileSync(path.join(root,'artifacts/install-lifecycle/linux.json'),JSON.stringify(evidence,null,2)+'\n');
 NODE
 
-printf 'Linux installer lifecycle passed: install %s -> upgrade %s -> rollback %s -> uninstall -> rollback\n' \
+printf 'Linux installer lifecycle passed: install %s -> upgrade %s -> rollback %s -> uninstall -> rollback -> purge uninstall -> clean reinstall\n' \
   "$VERSION_ONE" "$VERSION_TWO" "$VERSION_ONE"
