@@ -4,6 +4,7 @@ const workflow=fs.readFileSync(new URL('../.github/workflows/release-prepare.yml
 assert.ok(workflow.includes('name: Release Prepare'));
 assert.ok(workflow.includes("contains(github.event.head_commit.message, '[release-prepare]')"),'dev push marker must be the non-interactive prepare trigger');
 assert.ok(workflow.includes('actions: write')&&workflow.includes('contents: read'),'prepare may dispatch validation but must not write repository contents');
+assert.ok(workflow.includes('group: release-prepare')&&workflow.includes('cancel-in-progress: true'),'newest frozen dev SHA must supersede an older Release Prepare orchestration instead of waiting behind stale evidence');
 for(const id of ['ci.yml','pages-source.yml','session-handshake.yml','real-qb-full.yml','real-qb-locale.yml'])assert.ok(workflow.includes(`/actions/workflows/$workflow/dispatches`)||workflow.includes(id));
 for(const evidence of ['ordinary_ci','candidate_ci','pages_source','pages','session','full','locale','deployment'])assert.ok(workflow.includes(`key:'${evidence}'`),`missing evidence owner ${evidence}`);
 assert.ok(workflow.includes('release-candidate-${sha}')&&workflow.includes('candidate-deployment-${sha}')&&workflow.includes('real-qb-full-aggregate-${sha}')&&workflow.includes('real-qb-current-locale-aggregate-${sha}'));
