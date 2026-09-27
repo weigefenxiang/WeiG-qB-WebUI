@@ -51,7 +51,7 @@ try{
 
   await page.goto(base.href,{waitUntil:'domcontentloaded'});
   await page.waitForSelector('#login-form',{timeout:10000});
-  const publicSha=await page.locator('meta[name="weigg-build-sha"]').getAttribute('content');
+  const publicSha=await page.locator('meta[name="weig-build-sha"]').getAttribute('content');
   assert(publicSha===expectedSha,`Chrome public build SHA mismatch: ${publicSha}`);
 
   await page.locator('#username').fill(user);
@@ -62,7 +62,7 @@ try{
   await page.waitForFunction(()=>document.querySelector('#qb-version')?.textContent?.trim()&&!['—','Detecting…'].includes(document.querySelector('#qb-version').textContent.trim()),null,{timeout:10000});
   await page.waitForFunction(()=>document.querySelector('#api-version')?.textContent?.trim()&&!['—','Detecting…'].includes(document.querySelector('#api-version').textContent.trim()),null,{timeout:10000});
 
-  const privateSha=await page.locator('meta[name="weigg-build-sha"]').getAttribute('content');
+  const privateSha=await page.locator('meta[name="weig-build-sha"]').getAttribute('content');
   const uiQb=norm(await page.locator('#qb-version').textContent());
   const uiApi=norm(await page.locator('#api-version').textContent());
   assert(privateSha===expectedSha,`Chrome private build SHA mismatch: ${privateSha}`);
