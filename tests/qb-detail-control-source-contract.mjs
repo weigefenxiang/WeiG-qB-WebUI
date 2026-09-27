@@ -46,9 +46,11 @@ const appSource=fs.readFileSync(new URL('../webui/private/scripts/app.js',import
 const uiSource=fs.readFileSync(new URL('../webui/private/scripts/ui.js',import.meta.url),'utf8');
 const floatingSource=fs.readFileSync(new URL('../webui/private/scripts/floating.js',import.meta.url),'utf8');
 assert.match(layoutSource,/qbSourceText\(\{source:source,context:context\},source\)/,'Detail copy must resolve exact qB source/context before key fallback');
-assert.ok(appSource.includes('__weigDescendantFileIds')&&appSource.includes('disabled:option&&option.disabled===true'),'folder Priority must reuse exact options and descendant file ids');
+assert.ok(appSource.includes('__weigDescendantFileIds')&&appSource.includes('option&&option.disabled!==true'),'folder Download Priority must reuse descendant file ids while excluding source display-only options from writable choices');
+assert.ok(appSource.includes("priorityLabels[String(option.value)]=detailOptionLabel('filePriority',option)")&&appSource.includes('formatValue:function(value){return priorityLabels[String(value)]'),'display-only Mixed must remain a renderable state label without becoming a selectable action');
+assert.equal(appSource.includes('requiresNonSeed'),false,'file priority availability must not use the retired feature-local is_seed guess');
 assert.equal(uiSource.includes("folder&&column.key==='priority'"),false,'file-tree presentation must not blank folder Priority');
 assert.equal(uiSource.includes("!folder&&typeof ctx.cellRenderer==='function'"),false,'folder rows must reach the canonical Detail cell renderer');
 assert.ok(floatingSource.includes('option.disabled=!!item.disabled')&&floatingSource.includes('b.disabled=!!item.disabled'),'shared Select must preserve display-only source options');
 
-console.log('qB Detail control source contract passed: priority choices including display-only Mixed and Tracker/Peer menu order, labels, WebAPI actions, legacy/modern handler syntax, write-vs-refresh endpoint provenance, selection/static-row availability, and translation refs are source-derived and fail closed when unresolved.');
+console.log('qB Detail control source contract passed: priority state/action separation including display-only Mixed and Tracker/Peer menu order, labels, WebAPI actions, legacy/modern handler syntax, write-vs-refresh endpoint provenance, selection/static-row availability, and translation refs are source-derived and fail closed when unresolved.');
