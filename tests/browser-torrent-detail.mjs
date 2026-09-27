@@ -180,11 +180,13 @@ try{
   const priorityLabels=await page.locator('.ui-context-menu[data-context-level="1"] .ui-context-menu__label').allTextContents();
   assert(priorityLabels.includes('Normal')&&priorityLabels.includes('High')&&priorityLabels.includes('Maximum'),'Priority submenu did not expose source-proven priority choices: '+JSON.stringify(priorityLabels));
   assert(await page.locator('.ui-context-menu[data-context-level="1"] .ui-select__option.is-context-checked').count()===0,'Mixed folder priority must not invent a checked source priority choice.');
+  const highPriorityValue=await page.evaluate(()=>Number(WeiG.CapabilityRegistry.torrentDetailUi()?.controls?.filePriority?.options?.find(option=>option?.translation?.source==='High')?.value));
+  assert(Number.isFinite(highPriorityValue),'High priority test value must come from the exact qB source control, not a version-specific hardcode.');
   const beforeFolderMenuWrites=filePrioWrites.length;
   await page.locator('.ui-context-menu[data-context-level="1"] .ui-select__option').filter({hasText:'High'}).click();
   await waitFixture(()=>filePrioWrites.length>=beforeFolderMenuWrites+2,'Folder priority submenu did not write all descendants: '+JSON.stringify(filePrioWrites.slice(beforeFolderMenuWrites)));
-  assert(filePrioWrites.slice(beforeFolderMenuWrites,beforeFolderMenuWrites+2).every((write,index)=>write.ids.length===1&&write.ids[0]===index&&write.priority===2),'Folder priority submenu must reuse canonical descendant filePrio writes: '+JSON.stringify(filePrioWrites.slice(beforeFolderMenuWrites)));
-  await page.waitForFunction(()=>WeiG.AppState.detailViewport?.items?.find(item=>item?.__weigFileKind==='folder'&&item.__weigPath==='folder-a')?.priority===2);
+  assert(filePrioWrites.slice(beforeFolderMenuWrites,beforeFolderMenuWrites+2).every((write,index)=>write.ids.length===1&&write.ids[0]===index&&write.priority===highPriorityValue),'Folder priority submenu must reuse canonical descendant filePrio writes with the exact source priority value: '+JSON.stringify(filePrioWrites.slice(beforeFolderMenuWrites)));
+  await page.waitForFunction(expected=>WeiG.AppState.detailViewport?.items?.find(item=>item?.__weigFileKind==='folder'&&item.__weigPath==='folder-a')?.priority===expected,highPriorityValue);
   assert(await page.locator('.ui-context-menu').count()===0,'Selecting a nested priority action must close the entire Context Menu tree.');
   const folderA=page.locator('.shared-table__row[data-file-kind="folder"]').filter({hasText:'folder-a'}).first();
   await folderA.click({button:'right'});
