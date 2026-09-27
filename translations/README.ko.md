@@ -26,11 +26,11 @@ ZIP 내부의 최상위 폴더 이름은 계속 `WeiG-qB-WebUI`입니다. 압축
 
 ### 데스크톱
 
-![WeiG qB WebUI 데스크톱 화면](../assets/screenshots/weig-qb-webui-desktop-overview.png)
+![WeiG qB WebUI 데스크톱 화면](../assets/screenshots/weig-qb-webui-desktop-overview-v1.1.0.png)
 
 ### 모바일
 
-![WeiG qB WebUI 모바일 화면](../assets/screenshots/weig-qb-webui-mobile-overview.png)
+![WeiG qB WebUI 모바일 화면](../assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.png)
 
 ## 초보자 설치
 

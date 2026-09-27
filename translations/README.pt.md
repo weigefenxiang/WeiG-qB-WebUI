@@ -26,11 +26,11 @@ O ZIP continua a conter a pasta de topo `WeiG-qB-WebUI`. Depois de extrair, mude
 
 ### Desktop
 
-![Interface de desktop do WeiG qB WebUI](../assets/screenshots/weig-qb-webui-desktop-overview.png)
+![Interface de desktop do WeiG qB WebUI](../assets/screenshots/weig-qb-webui-desktop-overview-v1.1.0.png)
 
 ### Mobile
 
-![Interface móvel do WeiG qB WebUI](../assets/screenshots/weig-qb-webui-mobile-overview.png)
+![Interface móvel do WeiG qB WebUI](../assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.png)
 
 ## Instalação para iniciantes
 

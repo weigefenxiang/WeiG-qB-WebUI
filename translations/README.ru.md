@@ -26,11 +26,11 @@
 
 ### Настольная версия
 
-![Настольный интерфейс WeiG qB WebUI](../assets/screenshots/weig-qb-webui-desktop-overview.png)
+![Настольный интерфейс WeiG qB WebUI](../assets/screenshots/weig-qb-webui-desktop-overview-v1.1.0.png)
 
 ### Мобильная версия
 
-![Мобильный интерфейс WeiG qB WebUI](../assets/screenshots/weig-qb-webui-mobile-overview.png)
+![Мобильный интерфейс WeiG qB WebUI](../assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.png)
 
 ## Установка для начинающих
 
