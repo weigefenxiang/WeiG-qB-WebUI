@@ -59,6 +59,8 @@ build_release() {
     cd "$out"
     sha256sum WeiG-qB-WebUI.zip > SHA256SUMS
   )
+  printf '{"tag_name":"v%s"}\n' "$version" > "$out/release.json"
+  printf '{"sha":"%s"}\n' "$source_sha" > "$out/commit.json"
 }
 
 build_release "$VERSION_ONE" "$SHA_ONE" release-one
@@ -86,6 +88,18 @@ while [[ $# -gt 0 ]]; do
 done
 [[ -n "$url" && -n "$out" ]] || { echo 'mock curl: missing URL or output path' >&2; exit 2; }
 case "$url" in
+  */releases/tags/v9.9.90)
+    src="$WEIGG_INSTALLER_FIXTURE_ROOT/v9.9.90/release.json"
+    ;;
+  */commits/v9.9.90)
+    src="$WEIGG_INSTALLER_FIXTURE_ROOT/v9.9.90/commit.json"
+    ;;
+  */releases/tags/v9.9.91)
+    src="$WEIGG_INSTALLER_FIXTURE_ROOT/v9.9.91/release.json"
+    ;;
+  */commits/v9.9.91)
+    src="$WEIGG_INSTALLER_FIXTURE_ROOT/v9.9.91/commit.json"
+    ;;
   */releases/download/v9.9.90/WeiG-qB-WebUI.zip)
     src="$WEIGG_INSTALLER_FIXTURE_ROOT/v9.9.90/WeiG-qB-WebUI.zip"
     ;;

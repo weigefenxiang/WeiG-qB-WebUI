@@ -68,6 +68,550 @@ try {
   Build-Release $VersionOne $ShaOne 'release-one'
   Build-Release $VersionTwo $ShaTwo 'release-two'
 
+  function Invoke-RestMethod {
+    [CmdletBinding()]
+    param(
+      [switch]$UseBasicParsing,
+      [hashtable]$Headers,
+      [Parameter(Position=0,Mandatory=$true)][string]$Uri
+    )
+    switch -Regex ($Uri) {
+      '/releases/tags/v9\.9\.90
+    $relative=$null
+    switch -Regex ($Uri) {
+      '/releases/download/v9\.9\.90/WeiG-qB-WebUI\.zip$' { $relative='v9.9.90\WeiG-qB-WebUI.zip'; break }
+      '/releases/download/v9\.9\.90/SHA256SUMS$' { $relative='v9.9.90\SHA256SUMS'; break }
+      '/releases/download/v9\.9\.91/WeiG-qB-WebUI\.zip$' { $relative='v9.9.91\WeiG-qB-WebUI.zip'; break }
+      '/releases/download/v9\.9\.91/SHA256SUMS$' { $relative='v9.9.91\SHA256SUMS'; break }
+      default { throw "mock Invoke-WebRequest: unexpected URL: $Uri" }
+    }
+    Copy-Item (Join-Path $env:WEIGG_INSTALLER_FIXTURE_ROOT $relative) $OutFile -Force
+    [pscustomobject]@{StatusCode=200}
+  }
+
+  $Installer=Join-Path $Root 'installers\install.ps1'
+  $State=Join-Path $env:APPDATA 'WeiG-qB-WebUI'
+
+  function Assert-Install([string]$ExpectedVersion,[string]$ExpectedSha,[string]$ExpectedMarker){
+    Assert-True (Test-Path (Join-Path $Destination 'public\index.html')) 'public/index.html missing after install.'
+    Assert-True (Test-Path (Join-Path $Destination 'public\login.html')) 'public/login.html missing after install.'
+    Assert-True (Test-Path (Join-Path $Destination 'private\index.html')) 'private/index.html missing after install.'
+    Assert-True (((Get-Content (Join-Path $Destination 'VERSION') -Raw).Trim()) -eq $ExpectedVersion) 'Installed VERSION mismatch.'
+    Assert-True (((Get-Content (Join-Path $Destination 'GIT_SHA') -Raw).Trim()) -eq $ExpectedSha) 'Installed GIT_SHA mismatch.'
+    Assert-True (((Get-Content (Join-Path $Destination 'private\lifecycle-marker.txt') -Raw).Trim()) -eq $ExpectedMarker) 'Installed lifecycle marker mismatch.'
+
+    $cfgText=Get-Content $Cfg -Raw
+    Assert-True ($cfgText.Contains('WebUI\AlternativeUIEnabled=true')) 'qB AlternativeUIEnabled was not configured.'
+    Assert-True ($cfgText.Contains("WebUI\RootFolder=$Destination")) 'qB RootFolder was not configured to isolated destination.'
+    Assert-True ($cfgText.Contains('Lifecycle\Marker=preserve-me')) 'Unrelated qB config marker was not preserved.'
+
+    $meta=Get-Content (Join-Path $Destination 'private\weig-install.json') -Raw | ConvertFrom-Json
+    Assert-True ($meta.version -eq $ExpectedVersion) 'Install metadata version mismatch.'
+    Assert-True ($meta.gitSha -eq $ExpectedSha) 'Install metadata gitSha mismatch.'
+    Assert-True ($meta.channel -eq 'release') 'Install metadata channel mismatch.'
+    Assert-True ($meta.installer -eq 'windows') 'Install metadata installer mismatch.'
+    Assert-True ($meta.hostPath -eq $Destination -and $meta.qbPath -eq $Destination) 'Install metadata paths mismatch.'
+
+    foreach($name in $CompactRuntime){
+      $file=Join-Path $Destination ('private\data\'+$name)
+      Assert-True ((Test-Path -LiteralPath $file -PathType Leaf) -and (Get-Item -LiteralPath $file).Length -gt 0) "Installed compact runtime missing: $name"
+    }
+    Assert-True (!(Test-Path -LiteralPath (Join-Path $Destination 'private\data\qb-releases.json'))) 'Retired qb-releases.json reappeared after install.'
+  }
+
+  & $Installer -Version $VersionOne -Configure -Destination $Destination
+  Assert-Install $VersionOne $ShaOne 'release-one'
+  $FirstBackup=(Get-Content (Join-Path $State 'last-backup') -Raw).Trim()
+  Assert-True (((Get-Content (Join-Path $FirstBackup 'had-webui') -Raw).Trim()) -eq '0') 'First backup should record no previous WebUI.'
+  $firstCfg=Get-Content (Join-Path $FirstBackup 'qBittorrent.conf') -Raw
+  Assert-True ($firstCfg.Contains('WebUI\AlternativeUIEnabled=false')) 'First backup lost original AlternativeUIEnabled.'
+  Assert-True ($firstCfg.Contains('WebUI\RootFolder=C:\original\webui')) 'First backup lost original RootFolder.'
+
+  Start-Sleep -Milliseconds 1100
+  & $Installer -Version $VersionTwo -Configure -Destination $Destination
+  Assert-Install $VersionTwo $ShaTwo 'release-two'
+  $SecondBackup=(Get-Content (Join-Path $State 'last-backup') -Raw).Trim()
+  Assert-True ($SecondBackup -ne $FirstBackup) 'Upgrade backup reused the initial backup directory.'
+  Assert-True (((Get-Content (Join-Path $SecondBackup 'had-webui') -Raw).Trim()) -eq '1') 'Upgrade backup should record previous WebUI.'
+  Assert-True (((Get-Content (Join-Path $SecondBackup 'webui\VERSION') -Raw).Trim()) -eq $VersionOne) 'Upgrade backup VERSION mismatch.'
+  Assert-True (((Get-Content (Join-Path $SecondBackup 'webui\GIT_SHA') -Raw).Trim()) -eq $ShaOne) 'Upgrade backup GIT_SHA mismatch.'
+  Assert-True (((Get-Content (Join-Path $SecondBackup 'webui\private\lifecycle-marker.txt') -Raw).Trim()) -eq 'release-one') 'Upgrade backup marker mismatch.'
+  $secondCfg=Get-Content (Join-Path $SecondBackup 'qBittorrent.conf') -Raw
+  Assert-True ($secondCfg.Contains('WebUI\AlternativeUIEnabled=true')) 'Upgrade backup lost configured AlternativeUIEnabled.'
+  Assert-True ($secondCfg.Contains("WebUI\RootFolder=$Destination")) 'Upgrade backup lost configured RootFolder.'
+
+  $mutated=(Get-Content $Cfg -Raw).Replace('WebUI\AlternativeUIEnabled=true','WebUI\AlternativeUIEnabled=false').Replace("WebUI\RootFolder=$Destination",'WebUI\RootFolder=C:\post-upgrade-mutated')
+  Write-Utf8NoBom $Cfg $mutated
+
+  $pwsh=Join-Path $PSHOME 'pwsh.exe'
+  & $pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Installer -Rollback
+  if($LASTEXITCODE -ne 0){throw "Rollback subprocess failed with exit code $LASTEXITCODE."}
+  Assert-Install $VersionOne $ShaOne 'release-one'
+  Assert-True (((Get-Content (Join-Path $State 'last-dest') -Raw).Trim()) -eq $Destination) 'Remembered destination mismatch.'
+
+  Start-Sleep -Milliseconds 1100
+  & $pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Installer -Uninstall -Configure -Destination $Destination
+  if($LASTEXITCODE -ne 0){throw "Uninstall subprocess failed with exit code $LASTEXITCODE."}
+  Assert-True (!(Test-Path -LiteralPath $Destination)) 'Uninstall did not remove the installer-owned WebUI directory.'
+  $uninstallCfg=Get-Content $Cfg -Raw
+  Assert-True ($uninstallCfg.Contains('WebUI\AlternativeUIEnabled=false')) 'Uninstall did not disable Alternative WebUI.'
+  Assert-True ($uninstallCfg.Contains("WebUI\RootFolder=$Destination")) 'Uninstall unexpectedly rewrote the remembered RootFolder.'
+  $UninstallBackup=(Get-Content (Join-Path $State 'last-backup') -Raw).Trim()
+  Assert-True (((Get-Content (Join-Path $UninstallBackup 'had-webui') -Raw).Trim()) -eq '1') 'Uninstall backup did not preserve the removed WebUI.'
+
+  & $pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Installer -Rollback
+  if($LASTEXITCODE -ne 0){throw "Post-uninstall rollback subprocess failed with exit code $LASTEXITCODE."}
+  Assert-Install $VersionOne $ShaOne 'release-one'
+
+  $artifactDir=Join-Path $Root 'artifacts\install-lifecycle'
+  New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
+  $repoSha=$env:GITHUB_SHA
+  if(!$repoSha){$repoSha=(& git -C $Root rev-parse HEAD).Trim()}
+  $compactBytes=0
+  foreach($name in $CompactRuntime){$compactBytes+=(Get-Item -LiteralPath (Join-Path $Destination ('private\data\'+$name))).Length}
+  $meta=Get-Content (Join-Path $Destination 'private\weig-install.json') -Raw | ConvertFrom-Json
+  $evidence=[ordered]@{
+    schemaVersion=1
+    kind='isolated-windows-installer-lifecycle'
+    gitSha=$repoSha
+    target='REDACTED'
+    fixture=[ordered]@{
+      versions=@($VersionOne,$VersionTwo)
+      sourceShas=@($ShaOne,$ShaTwo)
+    }
+    checks=[ordered]@{
+      initialInstall=$true
+      releaseChecksum=$true
+      packedCatalog=$true
+      installMetadata=$true
+      qbConfigWrite=$true
+      upgradeBackup=$true
+      upgrade=$true
+      rollbackWebui=$true
+      rollbackQbConfig=$true
+      uninstall=$true
+      uninstallConfigDisable=$true
+      uninstallRollback=$true
+    }
+    rollbackState=[ordered]@{
+      version=$meta.version
+      gitSha=$meta.gitSha
+      compactRuntimeFiles=$CompactRuntime.Count
+      compactRuntimeBytes=$compactBytes
+    }
+  }
+  Write-Utf8NoBom (Join-Path $artifactDir 'windows.json') (($evidence | ConvertTo-Json -Depth 8)+"`n")
+
+  Write-Host "Windows installer lifecycle passed: install $VersionOne -> upgrade $VersionTwo -> rollback $VersionOne -> uninstall -> rollback"
+}
+finally {
+  Remove-Item Env:WEIGG_INSTALLER_FIXTURE_ROOT -ErrorAction SilentlyContinue
+  if(Test-Path $Tmp){Remove-Item $Tmp -Recurse -Force -ErrorAction SilentlyContinue}
+}
+ { return [pscustomobject]@{tag_name='v9.9.90'} }
+      '/commits/v9\.9\.90
+    $relative=$null
+    switch -Regex ($Uri) {
+      '/releases/download/v9\.9\.90/WeiG-qB-WebUI\.zip$' { $relative='v9.9.90\WeiG-qB-WebUI.zip'; break }
+      '/releases/download/v9\.9\.90/SHA256SUMS$' { $relative='v9.9.90\SHA256SUMS'; break }
+      '/releases/download/v9\.9\.91/WeiG-qB-WebUI\.zip$' { $relative='v9.9.91\WeiG-qB-WebUI.zip'; break }
+      '/releases/download/v9\.9\.91/SHA256SUMS$' { $relative='v9.9.91\SHA256SUMS'; break }
+      default { throw "mock Invoke-WebRequest: unexpected URL: $Uri" }
+    }
+    Copy-Item (Join-Path $env:WEIGG_INSTALLER_FIXTURE_ROOT $relative) $OutFile -Force
+    [pscustomobject]@{StatusCode=200}
+  }
+
+  $Installer=Join-Path $Root 'installers\install.ps1'
+  $State=Join-Path $env:APPDATA 'WeiG-qB-WebUI'
+
+  function Assert-Install([string]$ExpectedVersion,[string]$ExpectedSha,[string]$ExpectedMarker){
+    Assert-True (Test-Path (Join-Path $Destination 'public\index.html')) 'public/index.html missing after install.'
+    Assert-True (Test-Path (Join-Path $Destination 'public\login.html')) 'public/login.html missing after install.'
+    Assert-True (Test-Path (Join-Path $Destination 'private\index.html')) 'private/index.html missing after install.'
+    Assert-True (((Get-Content (Join-Path $Destination 'VERSION') -Raw).Trim()) -eq $ExpectedVersion) 'Installed VERSION mismatch.'
+    Assert-True (((Get-Content (Join-Path $Destination 'GIT_SHA') -Raw).Trim()) -eq $ExpectedSha) 'Installed GIT_SHA mismatch.'
+    Assert-True (((Get-Content (Join-Path $Destination 'private\lifecycle-marker.txt') -Raw).Trim()) -eq $ExpectedMarker) 'Installed lifecycle marker mismatch.'
+
+    $cfgText=Get-Content $Cfg -Raw
+    Assert-True ($cfgText.Contains('WebUI\AlternativeUIEnabled=true')) 'qB AlternativeUIEnabled was not configured.'
+    Assert-True ($cfgText.Contains("WebUI\RootFolder=$Destination")) 'qB RootFolder was not configured to isolated destination.'
+    Assert-True ($cfgText.Contains('Lifecycle\Marker=preserve-me')) 'Unrelated qB config marker was not preserved.'
+
+    $meta=Get-Content (Join-Path $Destination 'private\weig-install.json') -Raw | ConvertFrom-Json
+    Assert-True ($meta.version -eq $ExpectedVersion) 'Install metadata version mismatch.'
+    Assert-True ($meta.gitSha -eq $ExpectedSha) 'Install metadata gitSha mismatch.'
+    Assert-True ($meta.channel -eq 'release') 'Install metadata channel mismatch.'
+    Assert-True ($meta.installer -eq 'windows') 'Install metadata installer mismatch.'
+    Assert-True ($meta.hostPath -eq $Destination -and $meta.qbPath -eq $Destination) 'Install metadata paths mismatch.'
+
+    foreach($name in $CompactRuntime){
+      $file=Join-Path $Destination ('private\data\'+$name)
+      Assert-True ((Test-Path -LiteralPath $file -PathType Leaf) -and (Get-Item -LiteralPath $file).Length -gt 0) "Installed compact runtime missing: $name"
+    }
+    Assert-True (!(Test-Path -LiteralPath (Join-Path $Destination 'private\data\qb-releases.json'))) 'Retired qb-releases.json reappeared after install.'
+  }
+
+  & $Installer -Version $VersionOne -Configure -Destination $Destination
+  Assert-Install $VersionOne $ShaOne 'release-one'
+  $FirstBackup=(Get-Content (Join-Path $State 'last-backup') -Raw).Trim()
+  Assert-True (((Get-Content (Join-Path $FirstBackup 'had-webui') -Raw).Trim()) -eq '0') 'First backup should record no previous WebUI.'
+  $firstCfg=Get-Content (Join-Path $FirstBackup 'qBittorrent.conf') -Raw
+  Assert-True ($firstCfg.Contains('WebUI\AlternativeUIEnabled=false')) 'First backup lost original AlternativeUIEnabled.'
+  Assert-True ($firstCfg.Contains('WebUI\RootFolder=C:\original\webui')) 'First backup lost original RootFolder.'
+
+  Start-Sleep -Milliseconds 1100
+  & $Installer -Version $VersionTwo -Configure -Destination $Destination
+  Assert-Install $VersionTwo $ShaTwo 'release-two'
+  $SecondBackup=(Get-Content (Join-Path $State 'last-backup') -Raw).Trim()
+  Assert-True ($SecondBackup -ne $FirstBackup) 'Upgrade backup reused the initial backup directory.'
+  Assert-True (((Get-Content (Join-Path $SecondBackup 'had-webui') -Raw).Trim()) -eq '1') 'Upgrade backup should record previous WebUI.'
+  Assert-True (((Get-Content (Join-Path $SecondBackup 'webui\VERSION') -Raw).Trim()) -eq $VersionOne) 'Upgrade backup VERSION mismatch.'
+  Assert-True (((Get-Content (Join-Path $SecondBackup 'webui\GIT_SHA') -Raw).Trim()) -eq $ShaOne) 'Upgrade backup GIT_SHA mismatch.'
+  Assert-True (((Get-Content (Join-Path $SecondBackup 'webui\private\lifecycle-marker.txt') -Raw).Trim()) -eq 'release-one') 'Upgrade backup marker mismatch.'
+  $secondCfg=Get-Content (Join-Path $SecondBackup 'qBittorrent.conf') -Raw
+  Assert-True ($secondCfg.Contains('WebUI\AlternativeUIEnabled=true')) 'Upgrade backup lost configured AlternativeUIEnabled.'
+  Assert-True ($secondCfg.Contains("WebUI\RootFolder=$Destination")) 'Upgrade backup lost configured RootFolder.'
+
+  $mutated=(Get-Content $Cfg -Raw).Replace('WebUI\AlternativeUIEnabled=true','WebUI\AlternativeUIEnabled=false').Replace("WebUI\RootFolder=$Destination",'WebUI\RootFolder=C:\post-upgrade-mutated')
+  Write-Utf8NoBom $Cfg $mutated
+
+  $pwsh=Join-Path $PSHOME 'pwsh.exe'
+  & $pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Installer -Rollback
+  if($LASTEXITCODE -ne 0){throw "Rollback subprocess failed with exit code $LASTEXITCODE."}
+  Assert-Install $VersionOne $ShaOne 'release-one'
+  Assert-True (((Get-Content (Join-Path $State 'last-dest') -Raw).Trim()) -eq $Destination) 'Remembered destination mismatch.'
+
+  Start-Sleep -Milliseconds 1100
+  & $pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Installer -Uninstall -Configure -Destination $Destination
+  if($LASTEXITCODE -ne 0){throw "Uninstall subprocess failed with exit code $LASTEXITCODE."}
+  Assert-True (!(Test-Path -LiteralPath $Destination)) 'Uninstall did not remove the installer-owned WebUI directory.'
+  $uninstallCfg=Get-Content $Cfg -Raw
+  Assert-True ($uninstallCfg.Contains('WebUI\AlternativeUIEnabled=false')) 'Uninstall did not disable Alternative WebUI.'
+  Assert-True ($uninstallCfg.Contains("WebUI\RootFolder=$Destination")) 'Uninstall unexpectedly rewrote the remembered RootFolder.'
+  $UninstallBackup=(Get-Content (Join-Path $State 'last-backup') -Raw).Trim()
+  Assert-True (((Get-Content (Join-Path $UninstallBackup 'had-webui') -Raw).Trim()) -eq '1') 'Uninstall backup did not preserve the removed WebUI.'
+
+  & $pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Installer -Rollback
+  if($LASTEXITCODE -ne 0){throw "Post-uninstall rollback subprocess failed with exit code $LASTEXITCODE."}
+  Assert-Install $VersionOne $ShaOne 'release-one'
+
+  $artifactDir=Join-Path $Root 'artifacts\install-lifecycle'
+  New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
+  $repoSha=$env:GITHUB_SHA
+  if(!$repoSha){$repoSha=(& git -C $Root rev-parse HEAD).Trim()}
+  $compactBytes=0
+  foreach($name in $CompactRuntime){$compactBytes+=(Get-Item -LiteralPath (Join-Path $Destination ('private\data\'+$name))).Length}
+  $meta=Get-Content (Join-Path $Destination 'private\weig-install.json') -Raw | ConvertFrom-Json
+  $evidence=[ordered]@{
+    schemaVersion=1
+    kind='isolated-windows-installer-lifecycle'
+    gitSha=$repoSha
+    target='REDACTED'
+    fixture=[ordered]@{
+      versions=@($VersionOne,$VersionTwo)
+      sourceShas=@($ShaOne,$ShaTwo)
+    }
+    checks=[ordered]@{
+      initialInstall=$true
+      releaseChecksum=$true
+      packedCatalog=$true
+      installMetadata=$true
+      qbConfigWrite=$true
+      upgradeBackup=$true
+      upgrade=$true
+      rollbackWebui=$true
+      rollbackQbConfig=$true
+      uninstall=$true
+      uninstallConfigDisable=$true
+      uninstallRollback=$true
+    }
+    rollbackState=[ordered]@{
+      version=$meta.version
+      gitSha=$meta.gitSha
+      compactRuntimeFiles=$CompactRuntime.Count
+      compactRuntimeBytes=$compactBytes
+    }
+  }
+  Write-Utf8NoBom (Join-Path $artifactDir 'windows.json') (($evidence | ConvertTo-Json -Depth 8)+"`n")
+
+  Write-Host "Windows installer lifecycle passed: install $VersionOne -> upgrade $VersionTwo -> rollback $VersionOne -> uninstall -> rollback"
+}
+finally {
+  Remove-Item Env:WEIGG_INSTALLER_FIXTURE_ROOT -ErrorAction SilentlyContinue
+  if(Test-Path $Tmp){Remove-Item $Tmp -Recurse -Force -ErrorAction SilentlyContinue}
+}
+ { return [pscustomobject]@{sha=$ShaOne} }
+      '/releases/tags/v9\.9\.91
+    $relative=$null
+    switch -Regex ($Uri) {
+      '/releases/download/v9\.9\.90/WeiG-qB-WebUI\.zip$' { $relative='v9.9.90\WeiG-qB-WebUI.zip'; break }
+      '/releases/download/v9\.9\.90/SHA256SUMS$' { $relative='v9.9.90\SHA256SUMS'; break }
+      '/releases/download/v9\.9\.91/WeiG-qB-WebUI\.zip$' { $relative='v9.9.91\WeiG-qB-WebUI.zip'; break }
+      '/releases/download/v9\.9\.91/SHA256SUMS$' { $relative='v9.9.91\SHA256SUMS'; break }
+      default { throw "mock Invoke-WebRequest: unexpected URL: $Uri" }
+    }
+    Copy-Item (Join-Path $env:WEIGG_INSTALLER_FIXTURE_ROOT $relative) $OutFile -Force
+    [pscustomobject]@{StatusCode=200}
+  }
+
+  $Installer=Join-Path $Root 'installers\install.ps1'
+  $State=Join-Path $env:APPDATA 'WeiG-qB-WebUI'
+
+  function Assert-Install([string]$ExpectedVersion,[string]$ExpectedSha,[string]$ExpectedMarker){
+    Assert-True (Test-Path (Join-Path $Destination 'public\index.html')) 'public/index.html missing after install.'
+    Assert-True (Test-Path (Join-Path $Destination 'public\login.html')) 'public/login.html missing after install.'
+    Assert-True (Test-Path (Join-Path $Destination 'private\index.html')) 'private/index.html missing after install.'
+    Assert-True (((Get-Content (Join-Path $Destination 'VERSION') -Raw).Trim()) -eq $ExpectedVersion) 'Installed VERSION mismatch.'
+    Assert-True (((Get-Content (Join-Path $Destination 'GIT_SHA') -Raw).Trim()) -eq $ExpectedSha) 'Installed GIT_SHA mismatch.'
+    Assert-True (((Get-Content (Join-Path $Destination 'private\lifecycle-marker.txt') -Raw).Trim()) -eq $ExpectedMarker) 'Installed lifecycle marker mismatch.'
+
+    $cfgText=Get-Content $Cfg -Raw
+    Assert-True ($cfgText.Contains('WebUI\AlternativeUIEnabled=true')) 'qB AlternativeUIEnabled was not configured.'
+    Assert-True ($cfgText.Contains("WebUI\RootFolder=$Destination")) 'qB RootFolder was not configured to isolated destination.'
+    Assert-True ($cfgText.Contains('Lifecycle\Marker=preserve-me')) 'Unrelated qB config marker was not preserved.'
+
+    $meta=Get-Content (Join-Path $Destination 'private\weig-install.json') -Raw | ConvertFrom-Json
+    Assert-True ($meta.version -eq $ExpectedVersion) 'Install metadata version mismatch.'
+    Assert-True ($meta.gitSha -eq $ExpectedSha) 'Install metadata gitSha mismatch.'
+    Assert-True ($meta.channel -eq 'release') 'Install metadata channel mismatch.'
+    Assert-True ($meta.installer -eq 'windows') 'Install metadata installer mismatch.'
+    Assert-True ($meta.hostPath -eq $Destination -and $meta.qbPath -eq $Destination) 'Install metadata paths mismatch.'
+
+    foreach($name in $CompactRuntime){
+      $file=Join-Path $Destination ('private\data\'+$name)
+      Assert-True ((Test-Path -LiteralPath $file -PathType Leaf) -and (Get-Item -LiteralPath $file).Length -gt 0) "Installed compact runtime missing: $name"
+    }
+    Assert-True (!(Test-Path -LiteralPath (Join-Path $Destination 'private\data\qb-releases.json'))) 'Retired qb-releases.json reappeared after install.'
+  }
+
+  & $Installer -Version $VersionOne -Configure -Destination $Destination
+  Assert-Install $VersionOne $ShaOne 'release-one'
+  $FirstBackup=(Get-Content (Join-Path $State 'last-backup') -Raw).Trim()
+  Assert-True (((Get-Content (Join-Path $FirstBackup 'had-webui') -Raw).Trim()) -eq '0') 'First backup should record no previous WebUI.'
+  $firstCfg=Get-Content (Join-Path $FirstBackup 'qBittorrent.conf') -Raw
+  Assert-True ($firstCfg.Contains('WebUI\AlternativeUIEnabled=false')) 'First backup lost original AlternativeUIEnabled.'
+  Assert-True ($firstCfg.Contains('WebUI\RootFolder=C:\original\webui')) 'First backup lost original RootFolder.'
+
+  Start-Sleep -Milliseconds 1100
+  & $Installer -Version $VersionTwo -Configure -Destination $Destination
+  Assert-Install $VersionTwo $ShaTwo 'release-two'
+  $SecondBackup=(Get-Content (Join-Path $State 'last-backup') -Raw).Trim()
+  Assert-True ($SecondBackup -ne $FirstBackup) 'Upgrade backup reused the initial backup directory.'
+  Assert-True (((Get-Content (Join-Path $SecondBackup 'had-webui') -Raw).Trim()) -eq '1') 'Upgrade backup should record previous WebUI.'
+  Assert-True (((Get-Content (Join-Path $SecondBackup 'webui\VERSION') -Raw).Trim()) -eq $VersionOne) 'Upgrade backup VERSION mismatch.'
+  Assert-True (((Get-Content (Join-Path $SecondBackup 'webui\GIT_SHA') -Raw).Trim()) -eq $ShaOne) 'Upgrade backup GIT_SHA mismatch.'
+  Assert-True (((Get-Content (Join-Path $SecondBackup 'webui\private\lifecycle-marker.txt') -Raw).Trim()) -eq 'release-one') 'Upgrade backup marker mismatch.'
+  $secondCfg=Get-Content (Join-Path $SecondBackup 'qBittorrent.conf') -Raw
+  Assert-True ($secondCfg.Contains('WebUI\AlternativeUIEnabled=true')) 'Upgrade backup lost configured AlternativeUIEnabled.'
+  Assert-True ($secondCfg.Contains("WebUI\RootFolder=$Destination")) 'Upgrade backup lost configured RootFolder.'
+
+  $mutated=(Get-Content $Cfg -Raw).Replace('WebUI\AlternativeUIEnabled=true','WebUI\AlternativeUIEnabled=false').Replace("WebUI\RootFolder=$Destination",'WebUI\RootFolder=C:\post-upgrade-mutated')
+  Write-Utf8NoBom $Cfg $mutated
+
+  $pwsh=Join-Path $PSHOME 'pwsh.exe'
+  & $pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Installer -Rollback
+  if($LASTEXITCODE -ne 0){throw "Rollback subprocess failed with exit code $LASTEXITCODE."}
+  Assert-Install $VersionOne $ShaOne 'release-one'
+  Assert-True (((Get-Content (Join-Path $State 'last-dest') -Raw).Trim()) -eq $Destination) 'Remembered destination mismatch.'
+
+  Start-Sleep -Milliseconds 1100
+  & $pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Installer -Uninstall -Configure -Destination $Destination
+  if($LASTEXITCODE -ne 0){throw "Uninstall subprocess failed with exit code $LASTEXITCODE."}
+  Assert-True (!(Test-Path -LiteralPath $Destination)) 'Uninstall did not remove the installer-owned WebUI directory.'
+  $uninstallCfg=Get-Content $Cfg -Raw
+  Assert-True ($uninstallCfg.Contains('WebUI\AlternativeUIEnabled=false')) 'Uninstall did not disable Alternative WebUI.'
+  Assert-True ($uninstallCfg.Contains("WebUI\RootFolder=$Destination")) 'Uninstall unexpectedly rewrote the remembered RootFolder.'
+  $UninstallBackup=(Get-Content (Join-Path $State 'last-backup') -Raw).Trim()
+  Assert-True (((Get-Content (Join-Path $UninstallBackup 'had-webui') -Raw).Trim()) -eq '1') 'Uninstall backup did not preserve the removed WebUI.'
+
+  & $pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Installer -Rollback
+  if($LASTEXITCODE -ne 0){throw "Post-uninstall rollback subprocess failed with exit code $LASTEXITCODE."}
+  Assert-Install $VersionOne $ShaOne 'release-one'
+
+  $artifactDir=Join-Path $Root 'artifacts\install-lifecycle'
+  New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
+  $repoSha=$env:GITHUB_SHA
+  if(!$repoSha){$repoSha=(& git -C $Root rev-parse HEAD).Trim()}
+  $compactBytes=0
+  foreach($name in $CompactRuntime){$compactBytes+=(Get-Item -LiteralPath (Join-Path $Destination ('private\data\'+$name))).Length}
+  $meta=Get-Content (Join-Path $Destination 'private\weig-install.json') -Raw | ConvertFrom-Json
+  $evidence=[ordered]@{
+    schemaVersion=1
+    kind='isolated-windows-installer-lifecycle'
+    gitSha=$repoSha
+    target='REDACTED'
+    fixture=[ordered]@{
+      versions=@($VersionOne,$VersionTwo)
+      sourceShas=@($ShaOne,$ShaTwo)
+    }
+    checks=[ordered]@{
+      initialInstall=$true
+      releaseChecksum=$true
+      packedCatalog=$true
+      installMetadata=$true
+      qbConfigWrite=$true
+      upgradeBackup=$true
+      upgrade=$true
+      rollbackWebui=$true
+      rollbackQbConfig=$true
+      uninstall=$true
+      uninstallConfigDisable=$true
+      uninstallRollback=$true
+    }
+    rollbackState=[ordered]@{
+      version=$meta.version
+      gitSha=$meta.gitSha
+      compactRuntimeFiles=$CompactRuntime.Count
+      compactRuntimeBytes=$compactBytes
+    }
+  }
+  Write-Utf8NoBom (Join-Path $artifactDir 'windows.json') (($evidence | ConvertTo-Json -Depth 8)+"`n")
+
+  Write-Host "Windows installer lifecycle passed: install $VersionOne -> upgrade $VersionTwo -> rollback $VersionOne -> uninstall -> rollback"
+}
+finally {
+  Remove-Item Env:WEIGG_INSTALLER_FIXTURE_ROOT -ErrorAction SilentlyContinue
+  if(Test-Path $Tmp){Remove-Item $Tmp -Recurse -Force -ErrorAction SilentlyContinue}
+}
+ { return [pscustomobject]@{tag_name='v9.9.91'} }
+      '/commits/v9\.9\.91
+    $relative=$null
+    switch -Regex ($Uri) {
+      '/releases/download/v9\.9\.90/WeiG-qB-WebUI\.zip$' { $relative='v9.9.90\WeiG-qB-WebUI.zip'; break }
+      '/releases/download/v9\.9\.90/SHA256SUMS$' { $relative='v9.9.90\SHA256SUMS'; break }
+      '/releases/download/v9\.9\.91/WeiG-qB-WebUI\.zip$' { $relative='v9.9.91\WeiG-qB-WebUI.zip'; break }
+      '/releases/download/v9\.9\.91/SHA256SUMS$' { $relative='v9.9.91\SHA256SUMS'; break }
+      default { throw "mock Invoke-WebRequest: unexpected URL: $Uri" }
+    }
+    Copy-Item (Join-Path $env:WEIGG_INSTALLER_FIXTURE_ROOT $relative) $OutFile -Force
+    [pscustomobject]@{StatusCode=200}
+  }
+
+  $Installer=Join-Path $Root 'installers\install.ps1'
+  $State=Join-Path $env:APPDATA 'WeiG-qB-WebUI'
+
+  function Assert-Install([string]$ExpectedVersion,[string]$ExpectedSha,[string]$ExpectedMarker){
+    Assert-True (Test-Path (Join-Path $Destination 'public\index.html')) 'public/index.html missing after install.'
+    Assert-True (Test-Path (Join-Path $Destination 'public\login.html')) 'public/login.html missing after install.'
+    Assert-True (Test-Path (Join-Path $Destination 'private\index.html')) 'private/index.html missing after install.'
+    Assert-True (((Get-Content (Join-Path $Destination 'VERSION') -Raw).Trim()) -eq $ExpectedVersion) 'Installed VERSION mismatch.'
+    Assert-True (((Get-Content (Join-Path $Destination 'GIT_SHA') -Raw).Trim()) -eq $ExpectedSha) 'Installed GIT_SHA mismatch.'
+    Assert-True (((Get-Content (Join-Path $Destination 'private\lifecycle-marker.txt') -Raw).Trim()) -eq $ExpectedMarker) 'Installed lifecycle marker mismatch.'
+
+    $cfgText=Get-Content $Cfg -Raw
+    Assert-True ($cfgText.Contains('WebUI\AlternativeUIEnabled=true')) 'qB AlternativeUIEnabled was not configured.'
+    Assert-True ($cfgText.Contains("WebUI\RootFolder=$Destination")) 'qB RootFolder was not configured to isolated destination.'
+    Assert-True ($cfgText.Contains('Lifecycle\Marker=preserve-me')) 'Unrelated qB config marker was not preserved.'
+
+    $meta=Get-Content (Join-Path $Destination 'private\weig-install.json') -Raw | ConvertFrom-Json
+    Assert-True ($meta.version -eq $ExpectedVersion) 'Install metadata version mismatch.'
+    Assert-True ($meta.gitSha -eq $ExpectedSha) 'Install metadata gitSha mismatch.'
+    Assert-True ($meta.channel -eq 'release') 'Install metadata channel mismatch.'
+    Assert-True ($meta.installer -eq 'windows') 'Install metadata installer mismatch.'
+    Assert-True ($meta.hostPath -eq $Destination -and $meta.qbPath -eq $Destination) 'Install metadata paths mismatch.'
+
+    foreach($name in $CompactRuntime){
+      $file=Join-Path $Destination ('private\data\'+$name)
+      Assert-True ((Test-Path -LiteralPath $file -PathType Leaf) -and (Get-Item -LiteralPath $file).Length -gt 0) "Installed compact runtime missing: $name"
+    }
+    Assert-True (!(Test-Path -LiteralPath (Join-Path $Destination 'private\data\qb-releases.json'))) 'Retired qb-releases.json reappeared after install.'
+  }
+
+  & $Installer -Version $VersionOne -Configure -Destination $Destination
+  Assert-Install $VersionOne $ShaOne 'release-one'
+  $FirstBackup=(Get-Content (Join-Path $State 'last-backup') -Raw).Trim()
+  Assert-True (((Get-Content (Join-Path $FirstBackup 'had-webui') -Raw).Trim()) -eq '0') 'First backup should record no previous WebUI.'
+  $firstCfg=Get-Content (Join-Path $FirstBackup 'qBittorrent.conf') -Raw
+  Assert-True ($firstCfg.Contains('WebUI\AlternativeUIEnabled=false')) 'First backup lost original AlternativeUIEnabled.'
+  Assert-True ($firstCfg.Contains('WebUI\RootFolder=C:\original\webui')) 'First backup lost original RootFolder.'
+
+  Start-Sleep -Milliseconds 1100
+  & $Installer -Version $VersionTwo -Configure -Destination $Destination
+  Assert-Install $VersionTwo $ShaTwo 'release-two'
+  $SecondBackup=(Get-Content (Join-Path $State 'last-backup') -Raw).Trim()
+  Assert-True ($SecondBackup -ne $FirstBackup) 'Upgrade backup reused the initial backup directory.'
+  Assert-True (((Get-Content (Join-Path $SecondBackup 'had-webui') -Raw).Trim()) -eq '1') 'Upgrade backup should record previous WebUI.'
+  Assert-True (((Get-Content (Join-Path $SecondBackup 'webui\VERSION') -Raw).Trim()) -eq $VersionOne) 'Upgrade backup VERSION mismatch.'
+  Assert-True (((Get-Content (Join-Path $SecondBackup 'webui\GIT_SHA') -Raw).Trim()) -eq $ShaOne) 'Upgrade backup GIT_SHA mismatch.'
+  Assert-True (((Get-Content (Join-Path $SecondBackup 'webui\private\lifecycle-marker.txt') -Raw).Trim()) -eq 'release-one') 'Upgrade backup marker mismatch.'
+  $secondCfg=Get-Content (Join-Path $SecondBackup 'qBittorrent.conf') -Raw
+  Assert-True ($secondCfg.Contains('WebUI\AlternativeUIEnabled=true')) 'Upgrade backup lost configured AlternativeUIEnabled.'
+  Assert-True ($secondCfg.Contains("WebUI\RootFolder=$Destination")) 'Upgrade backup lost configured RootFolder.'
+
+  $mutated=(Get-Content $Cfg -Raw).Replace('WebUI\AlternativeUIEnabled=true','WebUI\AlternativeUIEnabled=false').Replace("WebUI\RootFolder=$Destination",'WebUI\RootFolder=C:\post-upgrade-mutated')
+  Write-Utf8NoBom $Cfg $mutated
+
+  $pwsh=Join-Path $PSHOME 'pwsh.exe'
+  & $pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Installer -Rollback
+  if($LASTEXITCODE -ne 0){throw "Rollback subprocess failed with exit code $LASTEXITCODE."}
+  Assert-Install $VersionOne $ShaOne 'release-one'
+  Assert-True (((Get-Content (Join-Path $State 'last-dest') -Raw).Trim()) -eq $Destination) 'Remembered destination mismatch.'
+
+  Start-Sleep -Milliseconds 1100
+  & $pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Installer -Uninstall -Configure -Destination $Destination
+  if($LASTEXITCODE -ne 0){throw "Uninstall subprocess failed with exit code $LASTEXITCODE."}
+  Assert-True (!(Test-Path -LiteralPath $Destination)) 'Uninstall did not remove the installer-owned WebUI directory.'
+  $uninstallCfg=Get-Content $Cfg -Raw
+  Assert-True ($uninstallCfg.Contains('WebUI\AlternativeUIEnabled=false')) 'Uninstall did not disable Alternative WebUI.'
+  Assert-True ($uninstallCfg.Contains("WebUI\RootFolder=$Destination")) 'Uninstall unexpectedly rewrote the remembered RootFolder.'
+  $UninstallBackup=(Get-Content (Join-Path $State 'last-backup') -Raw).Trim()
+  Assert-True (((Get-Content (Join-Path $UninstallBackup 'had-webui') -Raw).Trim()) -eq '1') 'Uninstall backup did not preserve the removed WebUI.'
+
+  & $pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Installer -Rollback
+  if($LASTEXITCODE -ne 0){throw "Post-uninstall rollback subprocess failed with exit code $LASTEXITCODE."}
+  Assert-Install $VersionOne $ShaOne 'release-one'
+
+  $artifactDir=Join-Path $Root 'artifacts\install-lifecycle'
+  New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
+  $repoSha=$env:GITHUB_SHA
+  if(!$repoSha){$repoSha=(& git -C $Root rev-parse HEAD).Trim()}
+  $compactBytes=0
+  foreach($name in $CompactRuntime){$compactBytes+=(Get-Item -LiteralPath (Join-Path $Destination ('private\data\'+$name))).Length}
+  $meta=Get-Content (Join-Path $Destination 'private\weig-install.json') -Raw | ConvertFrom-Json
+  $evidence=[ordered]@{
+    schemaVersion=1
+    kind='isolated-windows-installer-lifecycle'
+    gitSha=$repoSha
+    target='REDACTED'
+    fixture=[ordered]@{
+      versions=@($VersionOne,$VersionTwo)
+      sourceShas=@($ShaOne,$ShaTwo)
+    }
+    checks=[ordered]@{
+      initialInstall=$true
+      releaseChecksum=$true
+      packedCatalog=$true
+      installMetadata=$true
+      qbConfigWrite=$true
+      upgradeBackup=$true
+      upgrade=$true
+      rollbackWebui=$true
+      rollbackQbConfig=$true
+      uninstall=$true
+      uninstallConfigDisable=$true
+      uninstallRollback=$true
+    }
+    rollbackState=[ordered]@{
+      version=$meta.version
+      gitSha=$meta.gitSha
+      compactRuntimeFiles=$CompactRuntime.Count
+      compactRuntimeBytes=$compactBytes
+    }
+  }
+  Write-Utf8NoBom (Join-Path $artifactDir 'windows.json') (($evidence | ConvertTo-Json -Depth 8)+"`n")
+
+  Write-Host "Windows installer lifecycle passed: install $VersionOne -> upgrade $VersionTwo -> rollback $VersionOne -> uninstall -> rollback"
+}
+finally {
+  Remove-Item Env:WEIGG_INSTALLER_FIXTURE_ROOT -ErrorAction SilentlyContinue
+  if(Test-Path $Tmp){Remove-Item $Tmp -Recurse -Force -ErrorAction SilentlyContinue}
+}
+ { return [pscustomobject]@{sha=$ShaTwo} }
+      default { throw "mock Invoke-RestMethod: unexpected URL: $Uri" }
+    }
+  }
+
   function Invoke-WebRequest {
     [CmdletBinding()]
     param(
