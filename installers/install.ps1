@@ -531,8 +531,65 @@ function Disable-QBWebUI([string]$Path,[string]$RootFolder) {
 
 function Get-OwnedBackupsForDestination([string]$Target) {
   $targetFull=[IO.Path]::GetFullPath($Target).TrimEnd([IO.Path]::DirectorySeparatorChar,[IO.Path]::AltDirectorySeparatorChar)
-  return @(Get-ChildItem -LiteralPath $Backups -Directory -ErrorAction SilentlyContinue | Where-Object {
-    if($_.Name -notmatch '^\d{8}-\d{6}
+  $owned=@()
+  foreach($item in @(Get-ChildItem -LiteralPath $Backups -Directory -ErrorAction SilentlyContinue)){
+    if($item.Name -notmatch '^\d{8}-\d{6}$'){continue}
+    $had=Join-Path $item.FullName 'had-webui'
+    $destMarker=Join-Path $item.FullName 'dest-path'
+    if(!(Test-Path -LiteralPath $had -PathType Leaf) -or !(Test-Path -LiteralPath $destMarker -PathType Leaf)){continue}
+    try{
+      $saved=(Get-Content $destMarker -Raw).Trim()
+      $savedFull=[IO.Path]::GetFullPath($saved).TrimEnd([IO.Path]::DirectorySeparatorChar,[IO.Path]::AltDirectorySeparatorChar)
+    }catch{continue}
+    if($savedFull.Equals($targetFull,[StringComparison]::OrdinalIgnoreCase)){$owned += $item}
+  }
+  return @($owned | Sort-Object Name -Descending)
+}
+
+function Prune-Backups([string]$Target,[int]$Keep=3) {
+  if($Keep -lt 1){throw 'Backup retention must keep at least one backup.'}
+  $owned=@(Get-OwnedBackupsForDestination $Target)
+  foreach($item in @($owned | Select-Object -Skip $Keep)){
+    Remove-Item -LiteralPath $item.FullName -Recurse -Force
+  }
+}
+
+function Purge-BackupsForDestination([string]$Target) {
+  $owned=@(Get-OwnedBackupsForDestination $Target)
+  $deleted=@{}
+  foreach($item in $owned){
+    $deleted[$item.FullName.ToLowerInvariant()]=$true
+    Remove-Item -LiteralPath $item.FullName -Recurse -Force
+    Write-Host "Purged installer backup: $($item.FullName)"
+  }
+
+  $lastBackupMarker=Join-Path $State 'last-backup'
+  if(Test-Path -LiteralPath $lastBackupMarker -PathType Leaf){
+    $lastBackup=(Get-Content $lastBackupMarker -Raw).Trim()
+    if($lastBackup -and $deleted.ContainsKey($lastBackup.ToLowerInvariant())){
+      Remove-Item -LiteralPath $lastBackupMarker -Force
+    }
+  }
+
+  $lastDestMarker=Join-Path $State 'last-dest'
+  if(Test-Path -LiteralPath $lastDestMarker -PathType Leaf){
+    $saved=(Get-Content $lastDestMarker -Raw).Trim()
+    try{
+      $savedFull=[IO.Path]::GetFullPath($saved).TrimEnd([IO.Path]::DirectorySeparatorChar,[IO.Path]::AltDirectorySeparatorChar)
+      $targetFull=[IO.Path]::GetFullPath($Target).TrimEnd([IO.Path]::DirectorySeparatorChar,[IO.Path]::AltDirectorySeparatorChar)
+      if($savedFull.Equals($targetFull,[StringComparison]::OrdinalIgnoreCase)){
+        Remove-Item -LiteralPath $lastDestMarker -Force
+      }
+    }catch{}
+  }
+
+  if((Test-Path -LiteralPath $Backups -PathType Container) -and -not (Get-ChildItem -LiteralPath $Backups -Force -ErrorAction SilentlyContinue | Select-Object -First 1)){
+    Remove-Item -LiteralPath $Backups -Force
+  }
+  if((Test-Path -LiteralPath $State -PathType Container) -and -not (Get-ChildItem -LiteralPath $State -Force -ErrorAction SilentlyContinue | Select-Object -First 1)){
+    Remove-Item -LiteralPath $State -Force
+  }
+}
 function Backup-Current([string]$ConfigPath='') {
   $stamp=Get-Date -Format 'yyyyMMdd-HHmmss'
   $b=Join-Path $Backups $stamp

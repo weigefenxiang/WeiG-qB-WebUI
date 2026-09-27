@@ -201,11 +201,19 @@ test ! -e "$DEST"
 test ! -e "$STATE/last-backup"
 test ! -e "$STATE/last-dest"
 test ! -e "$STATE/last-qb-root-folder"
-if find "$STATE/backups" -mindepth 1 -maxdepth 1 -type d -print 2>/dev/null | while IFS= read -r backup; do
-  test -f "$backup/dest-path" || continue
-  test "$(cat "$backup/dest-path")" != "$DEST" || exit 1
-done; then :; else
-  echo "Purge left an installer-owned backup for $DEST" >&2
+remaining_backup=$(
+  if [ -d "$STATE/backups" ]; then
+    find "$STATE/backups" -mindepth 1 -maxdepth 1 -type d -print 2>/dev/null | while IFS= read -r backup; do
+      test -f "$backup/dest-path" || continue
+      if [ "$(cat "$backup/dest-path")" = "$DEST" ]; then
+        printf '%s\n' "$backup"
+        break
+      fi
+    done
+  fi
+)
+if [ -n "$remaining_backup" ]; then
+  echo "Purge left an installer-owned backup for $DEST: $remaining_backup" >&2
   exit 1
 fi
 if bash "$ROOT/installers/install.sh" -rollback >/dev/null 2>&1; then
