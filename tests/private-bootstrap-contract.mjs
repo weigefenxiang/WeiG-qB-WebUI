@@ -9,7 +9,8 @@ for(const token of ["STYLE_CONCURRENCY=2,MAX_ATTEMPTS=3","loadWithRetry","loadSt
 assert(bootstrap.indexOf('"scripts/dialog-runtime.js"')>bootstrap.indexOf('"scripts/core.js"')&&bootstrap.indexOf('"scripts/dialog-runtime.js"')<bootstrap.indexOf('"scripts/capabilities.js"'),'DialogRuntime must load after Core and before dialog consumers');
 assert(bootstrap.indexOf('"scripts/action-registry.js"')<bootstrap.indexOf('"scripts/settings.js"'),'ActionRegistry must load before Settings source-action binding');
 assert(bootstrap.indexOf('"scripts/column-configurator.js"')>bootstrap.indexOf('"scripts/layout.js"')&&bootstrap.indexOf('"scripts/column-configurator.js"')<bootstrap.indexOf('"scripts/ui.js"'),'ColumnConfigurator must load after SharedColumns persistence and before Detail callers');
-assert(bootstrap.includes('"../public/scripts/select-geometry.js"')&&bootstrap.indexOf('"../public/scripts/select-geometry.js"')<bootstrap.indexOf('"scripts/floating.js"'),'shared Select geometry must load before canonical floating Select');
+assert(bootstrap.includes('"scripts/select-geometry.js"')&&bootstrap.indexOf('"scripts/select-geometry.js"')<bootstrap.indexOf('"scripts/floating.js"'),'shared Select geometry must load in the canonical private/public URL namespace before floating Select');
+assert(!bootstrap.includes('../public/'),'private bootstrap assets must not escape the Alternative WebUI URL namespace with ../public paths');
 assert(bootstrap.indexOf('"scripts/floating.js"')<bootstrap.indexOf('"scripts/spatial.js"'),'floating Select owner must load before spatial consumer');
 assert(bootstrap.indexOf('"scripts/logs.js"')<bootstrap.indexOf('"scripts/app.js"'),'app startup must run after the full module surface is present');
 assert(bootstrap.includes('"scripts/rss.js"')&&bootstrap.indexOf('"scripts/rss.js"')<bootstrap.indexOf('"scripts/app.js"'),'RSSWorkspace/RSSRules must load before App can route into RSS');
