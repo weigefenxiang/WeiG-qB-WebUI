@@ -5,6 +5,7 @@ import {fileURLToPath} from 'node:url';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const read=rel=>fs.readFileSync(path.join(root,rel),'utf8');
+const geometry=read('webui/public/scripts/select-geometry.js');
 const floating=read('webui/private/scripts/floating.js');
 const controls=read('webui/private/css/controls.css');
 
@@ -21,18 +22,23 @@ assert.match(floating,/selectLayer\(w\)\.appendChild\(m\)/,'Select open must con
 assert.match(floating,/function place\(w\)[\s\S]*placeBounded\(m,r,/,'Canonical Select must use the shared bounded geometry owner');
 assert.match(floating,/function placeContextMenu\(menu,x,y\)[\s\S]*placeBounded\(menu,r,/,'Context Menu must use the same bounded geometry owner');
 assert.match(floating,/menu\.style\.maxHeight=maxH\+'px'/,'Shared geometry must cap the floating menu inside its resolved safe boundary');
-assert.match(floating,/v\.width<=820\?\.84:\.68/,'Shared geometry must keep the existing mobile/desktop viewport budget');
+assert.match(geometry,/v\.width<=820\?\.84:\.68/,'Shared geometry must keep the existing mobile/desktop viewport budget');
+assert.match(floating,/heightCap=G\.menuHeightCap\(v,innerH\)/,'Floating placement must consume the shared menu-height budget owner instead of copying the formula');
 assert.match(controls,/\.weig-floating-layer\{position:fixed;[^}]*width:0;height:0/,'Global floating portal must remain viewport-fixed.');
 assert.match(controls,/\.weig-floating-layer--dialog\{position:absolute;inset:0;width:auto;height:auto\}/,'Modal floating portal must use an explicit dialog-local absolute coordinate space.');
 assert.match(controls,/\.weig-floating-layer--dialog>\.ui-select__menu\{position:absolute\}/,'Menus inside the modal portal must be positioned in that dialog-local coordinate space.');
 assert.match(controls,/\.ui-select__options\{[^}]*min-height:0;max-height:none;overflow:auto/,'Floating list contents must own overflow scrolling inside the bounded menu');
 assert.doesNotMatch(floating,/function placeContextMenu\(menu,x,y\)\{var v=viewport\(\)/,'Context Menu must not restore a parallel viewport-placement implementation');
 
-assert.match(floating,/function intrinsicMenuWidth\(menu\)/,'Shared Select must have one DOM-aware intrinsic-width measurement owner');
-assert.match(floating,/horizontalBox\(menuStyle\)\+horizontalBox\(listStyle\)\+gutter/,'Intrinsic Select width must include real menu/list chrome and scrollbar gutter instead of a magic allowance');
-assert.match(floating,/pseudoWidth\(option,optionStyle\)/,'Intrinsic Select width must include selected-option check/gap chrome');
+assert.match(geometry,/function intrinsicMenuWidth\(menu\)/,'Shared Select geometry must have one DOM-aware intrinsic-width measurement owner');
+assert.match(geometry,/horizontalBox\(menuStyle\)\+horizontalBox\(listStyle\)\+gutter/,'Intrinsic Select width must include real menu/list chrome and scrollbar gutter instead of a magic allowance');
+assert.match(geometry,/pseudoWidth\(option,optionStyle\)/,'Intrinsic Select width must include selected-option check/gap chrome');
+assert.match(geometry,/function triggerIntrinsicWidth\(wrapper,trigger,label\)/,'Shared Select geometry must own current-value trigger measurement');
+assert.match(geometry,/function applyTriggerWidth\(wrapper,trigger,label,opts\)/,'Shared Select geometry must own trigger width application');
+assert.match(floating,/G\.intrinsicMenuWidth\(m\)/,'Canonical floating Select must consume shared intrinsic menu measurement');
+assert.doesNotMatch(floating,/function intrinsicMenuWidth\(|function measureText\(|function cssPx\(|function horizontalBox\(|function pseudoWidth\(/,'Floating Select must not restore retired parallel sizing helpers');
 assert.match(floating,/desktopMax=v\.width>820\?Math\.max\(160,Math\.floor\(v\.width\*\.5\)\):viewportMax/,'Desktop Select overlay must remain capped to about half the visual viewport');
-assert.doesNotMatch(floating,/measureText\(label\.textContent,label\)\)\+38/,'Shared Select intrinsic sizing must not use the retired +38px chrome guess');
+assert.doesNotMatch(geometry,/measureText\(label\.textContent,label\)\)\+38/,'Shared Select intrinsic sizing must not use the retired +38px chrome guess');
 const ui=read('webui/private/css/ui.css');
 assert.match(ui,/\.ui-select__menu\{min-inline-size:0;max-inline-size:none\}/,'CSS must not keep a second ch/360px menu-width owner');
 assert.doesNotMatch(ui,/--select-menu-ch|360px/,'Retired Select ch/360px width policy must not survive in ui.css');
@@ -50,4 +56,4 @@ assert.match(floating,/item\.children/,'Context Menu item contract must expose c
 assert.match(floating,/ArrowRight[\s\S]*openContextSubmenu[\s\S]*ArrowLeft[\s\S]*closeContextSubmenus/s,'Nested Context Menu must support keyboard enter/exit semantics');
 assert.match(floating,/contextMenuStack\.length>1[\s\S]*closeContextSubmenus/,'Escape must close the deepest submenu before closing the root Context Menu');
 assert.ok(controls.includes('.ui-context-menu__chevron')&&controls.includes('.ui-context-menu--submenu'),'Nested Context Menu must reuse canonical menu skin with only submenu geometry/state additions');
-console.log('Floating geometry contract passed: Select and Context Menu share one dialog-aware/viewport-bounded placement owner with four-direction fallback and internal list scrolling.');
+console.log('Floating geometry contract passed: public Login and private floating Select share one sizing geometry owner while floating placement remains dialog-aware/viewport-bounded with four-direction fallback.');
