@@ -5,17 +5,20 @@ on:
   push:
     tags:
       - 'v*'
+    branches:
+      - 'release-refresh-v*'
 
 permissions:
   actions: read
   contents: write
 
 concurrency:
-  group: release-${{ github.ref_name }}
+  group: release-publication
   cancel-in-progress: false
 
 jobs:
   publish:
+    if: ${{ startsWith(github.ref, 'refs/tags/v') }}
     runs-on: ubuntu-latest
     steps:
       - name: Resolve successful promotion certification
@@ -196,3 +199,206 @@ jobs:
             }
 
             core.info(`Latest Release PASS: ${tag} / ${expectedTitle} / exact canonical body / ${sha}.`);
+
+  refresh_public_copy:
+    if: ${{ startsWith(github.ref, 'refs/heads/release-refresh-v') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout canonical release tooling command
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Resolve bounded existing Release refresh target
+        id: target
+        uses: actions/github-script@v9
+        env:
+          COMMAND_REF: ${{ github.ref_name }}
+          COMMAND_SHA: ${{ github.sha }}
+        with:
+          script: |
+            const fs = require('node:fs');
+            const commandRef = String(process.env.COMMAND_REF || '').trim();
+            const commandSha = String(process.env.COMMAND_SHA || '').trim().toLowerCase();
+            const match = commandRef.match(/^release-refresh-v(\d+\.\d+\.\d+)-([0-9a-f]{7,40})$/);
+            if (!match) {
+              core.setFailed(`Invalid Release refresh command ref: ${commandRef}`);
+              return;
+            }
+            const version = match[1];
+            const stablePrefix = match[2].toLowerCase();
+            const tag = `v${version}`;
+            const {owner, repo} = context.repo;
+
+            const dev = await github.rest.repos.getBranch({owner, repo, branch: 'dev'});
+            const devSha = String(dev.data.commit.sha || '').toLowerCase();
+            const command = await github.rest.repos.getCommit({owner, repo, ref: commandSha});
+            const parentShas = (command.data.parents || []).map(item => String(item.sha || '').toLowerCase());
+            if (commandSha !== devSha && !parentShas.includes(devSha)) {
+              core.setFailed(`Refresh command ${commandSha} is not current dev ${devSha} or a one-shot child of it.`);
+              return;
+            }
+
+            const versionFile = await github.rest.repos.getContent({owner, repo, path: 'VERSION', ref: commandSha});
+            if (Array.isArray(versionFile.data) || versionFile.data.type !== 'file' || !versionFile.data.content) {
+              core.setFailed('Refresh command VERSION is not readable.');
+              return;
+            }
+            const sourceVersion = Buffer.from(versionFile.data.content, versionFile.data.encoding || 'base64').toString('utf8').trim();
+            if (sourceVersion !== version) {
+              core.setFailed(`Refresh version ${version} does not match current tooling VERSION ${sourceVersion}.`);
+              return;
+            }
+
+            const main = await github.rest.repos.getBranch({owner, repo, branch: 'main'});
+            const mainSha = String(main.data.commit.sha || '').toLowerCase();
+            const tagRef = await github.rest.git.getRef({owner, repo, ref: `tags/${tag}`});
+            const stableSha = String(tagRef.data.object.sha || '').toLowerCase();
+            if (stableSha !== mainSha || !stableSha.startsWith(stablePrefix)) {
+              core.setFailed(`Stable identity mismatch: main=${mainSha}, ${tag}=${stableSha}, requested prefix=${stablePrefix}.`);
+              return;
+            }
+
+            const release = await github.rest.repos.getReleaseByTag({owner, repo, tag});
+            if (release.data.draft || release.data.prerelease || release.data.tag_name !== tag) {
+              core.setFailed(`Existing ${tag} is not a published stable Release.`);
+              return;
+            }
+            const requiredAssets = new Set(['WeiG-qB-WebUI.zip','weig-install.sh','weig-install.ps1','SHA256SUMS']);
+            const assets = (release.data.assets || []).map(item => ({
+              id:item.id,
+              name:item.name,
+              size:item.size,
+              digest:item.digest || ''
+            })).sort((a,b)=>a.name.localeCompare(b.name));
+            for (const name of requiredAssets) {
+              if (!assets.some(item => item.name === name)) {
+                core.setFailed(`Existing Release is missing certified asset ${name}.`);
+                return;
+              }
+            }
+            fs.writeFileSync('release-refresh-before.json', JSON.stringify({
+              releaseId:release.data.id,
+              tag,
+              stableSha,
+              assets
+            }, null, 2) + '\n');
+
+            core.setOutput('version', version);
+            core.setOutput('tag', tag);
+            core.setOutput('stable_sha', stableSha);
+            core.setOutput('release_id', String(release.data.id));
+            core.info(`Authorized metadata-only refresh for ${tag} @ ${stableSha}; Release id ${release.data.id}.`);
+
+      - name: Generate canonical public copy for existing stable SHA
+        env:
+          RELEASE_SHA: ${{ steps.target.outputs.stable_sha }}
+          RELEASE_TAG: ${{ steps.target.outputs.tag }}
+        run: |
+          set -euo pipefail
+          node tools/release-notes.mjs \
+            --to "$RELEASE_SHA" \
+            --current-tag "$RELEASE_TAG" \
+            --repository "$GITHUB_REPOSITORY" \
+            --image-ref "$RELEASE_TAG" \
+            --out release-notes-refresh.md
+          test -s release-notes-refresh.md
+          node <<'NODE'
+          const fs=require('node:fs');
+          const text=fs.readFileSync('release-notes-refresh.md','utf8');
+          const highlight=text.indexOf('## Highlights');
+          const image=text.indexOf('![WeiG qB WebUI preview]');
+          const details=text.indexOf('<details>');
+          if(highlight!==0||image<=highlight||details<=image)throw new Error('Release refresh layout must be Highlights -> preview -> details.');
+          NODE
+
+      - name: Refresh existing Release public copy and verify immutable identity
+        uses: actions/github-script@v9
+        env:
+          VERSION: ${{ steps.target.outputs.version }}
+          RELEASE_TAG: ${{ steps.target.outputs.tag }}
+          RELEASE_SHA: ${{ steps.target.outputs.stable_sha }}
+          RELEASE_ID: ${{ steps.target.outputs.release_id }}
+        with:
+          script: |
+            const fs = require('node:fs');
+            const before = JSON.parse(fs.readFileSync('release-refresh-before.json','utf8'));
+            const body = fs.readFileSync('release-notes-refresh.md','utf8').trim();
+            const version = String(process.env.VERSION || '').trim();
+            const tag = String(process.env.RELEASE_TAG || '').trim();
+            const sha = String(process.env.RELEASE_SHA || '').trim().toLowerCase();
+            const releaseId = Number(process.env.RELEASE_ID);
+            const title = `WeiG qB WebUI ${version}`;
+            const {owner, repo} = context.repo;
+            const fingerprint = release => (release.assets || []).map(item => ({
+              id:item.id,
+              name:item.name,
+              size:item.size,
+              digest:item.digest || ''
+            })).sort((a,b)=>a.name.localeCompare(b.name));
+
+            const pre = await github.rest.repos.getRelease({owner, repo, release_id: releaseId});
+            if (pre.data.id !== before.releaseId || JSON.stringify(fingerprint(pre.data)) !== JSON.stringify(before.assets)) {
+              core.setFailed('Existing Release identity/assets changed before refresh.');
+              return;
+            }
+
+            await github.rest.repos.updateRelease({
+              owner,
+              repo,
+              release_id: releaseId,
+              name: title,
+              body,
+              draft: false,
+              prerelease: false,
+              make_latest: 'true'
+            });
+
+            const after = await github.rest.repos.getRelease({owner, repo, release_id: releaseId});
+            if (after.data.id !== before.releaseId || after.data.tag_name !== tag) {
+              core.setFailed('Release id/tag changed during metadata-only refresh.');
+              return;
+            }
+            if (JSON.stringify(fingerprint(after.data)) !== JSON.stringify(before.assets)) {
+              core.setFailed('Certified Release assets changed during public-copy refresh.');
+              return;
+            }
+            if (String(after.data.name || '') !== title || String(after.data.body || '').trim() !== body || after.data.draft || after.data.prerelease) {
+              core.setFailed('Refreshed Release title/body/stability state does not match canonical public copy.');
+              return;
+            }
+
+            const tagRef = await github.rest.git.getRef({owner, repo, ref: `tags/${tag}`});
+            const tagSha = String(tagRef.data.object.sha || '').toLowerCase();
+            if (tagSha !== sha || tagSha !== String(before.stableSha || '').toLowerCase()) {
+              core.setFailed(`Stable tag moved during refresh: ${tagSha} != ${sha}.`);
+              return;
+            }
+
+            const latest = await github.rest.repos.getLatestRelease({owner, repo});
+            if (latest.data.id !== releaseId || latest.data.tag_name !== tag) {
+              core.setFailed(`Refreshed Release ${tag} is not authoritative Latest.`);
+              return;
+            }
+
+            const listed = await github.rest.repos.listReleases({owner, repo, per_page: 20, page: 1});
+            const firstPublished = listed.data.find(item => !item.draft);
+            if (!firstPublished || firstPublished.id !== releaseId) {
+              core.setFailed(`Refreshed Release ${tag} is not the first published Release.`);
+              return;
+            }
+
+            core.info(`Release refresh PASS: ${tag} remains ${sha}; Release id/assets unchanged; canonical English public copy is Latest.`);
+
+      - name: Retire one-shot Release refresh command branch
+        if: ${{ always() && startsWith(github.ref, 'refs/heads/release-refresh-v') }}
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const ref = context.ref.replace(/^refs\/heads\//,'');
+            await github.rest.git.deleteRef({owner:context.repo.owner, repo:context.repo.repo, ref:`heads/${ref}`});
+            core.info(`Retired Release refresh command branch ${ref}.`);
+
