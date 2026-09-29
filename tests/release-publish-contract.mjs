@@ -19,4 +19,8 @@ assert.ok(release.includes("make_latest: 'true'")&&release.includes("github.rest
 assert.ok(release.includes("release-refresh-before.json")&&release.includes("Certified Release assets changed during public-copy refresh."),'refresh must fingerprint and preserve certified assets');
 assert.ok(release.includes("Stable tag moved during refresh")&&release.includes("github.rest.git.deleteRef"),'refresh must preserve stable tag identity and retire its one-shot command branch');
 assert.ok(release.includes("group: release-publication"),'new publication and metadata refresh must share one mutation concurrency owner');
+assert.ok(release.includes("Snapshot previous Latest presentation")&&release.includes("previous-latest.json"),'new publication must snapshot the authoritative previous Latest before mutation');
+assert.ok(release.includes("--presentation latest")&&release.includes("--presentation archive"),'canonical Release workflow must explicitly request latest/archive presentation from one generator');
+assert.ok(release.includes("Archive previous Latest presentation")&&release.includes("Previous Latest certified assets changed during archive refresh."),'publishing a new Latest must automatically archive the previous Latest while preserving certified assets');
+assert.ok(release.includes("presentation = authoritativeLatest.data.id === release.data.id ? 'latest' : 'archive'"),'manual metadata refresh must derive presentation from authoritative GitHub Latest identity');
 console.log('Release publish contract passed: command -> Promotion -> stable tag -> canonical Release; bounded metadata refresh reuses the same owner and preserves tag/assets.');

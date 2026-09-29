@@ -8,6 +8,12 @@ const CATEGORY_ORDER=['feature','fix','performance','compatibility'];
 const CATEGORY_TITLES={feature:'Features / UI',fix:'Fixes',performance:'Performance',compatibility:'Compatibility'};
 const CATEGORY_SCORE={feature:40,fix:30,performance:20,compatibility:10};
 const SEMVER_TAG=/^v\d+\.\d+\.\d+$/;
+const PRESENTATION_MODES=new Set(['latest','archive']);
+export function normalizePresentation(value='latest'){
+  const mode=String(value||'latest').trim().toLowerCase();
+  if(!PRESENTATION_MODES.has(mode))throw new Error(`Unsupported Release presentation: ${value}`);
+  return mode;
+}
 const RELEASE_VISIBLE_EXACT=new Set([
   'webui/private/index.html',
   'webui/public/index.html',
@@ -97,7 +103,8 @@ function dedupe(items){
   }
   return out;
 }
-export function buildReleaseNotes({commits=[],fromTag='',toSha='',maxHighlights=8,maxDetails=24,imageUrl=''}={}){
+export function buildReleaseNotes({commits=[],fromTag='',toSha='',maxHighlights=8,maxDetails=24,imageUrl='',presentation='latest'}={}){
+  const mode=normalizePresentation(presentation);
   const normalized=dedupe(commits.map(normalizeCommit).filter(Boolean));
   const ranked=normalized.map((item,index)=>({item,index,score:(item.explicit?100:0)+(CATEGORY_SCORE[item.category]||0)}))
     .sort((a,b)=>b.score-a.score||a.index-b.index);
@@ -106,10 +113,10 @@ export function buildReleaseNotes({commits=[],fromTag='',toSha='',maxHighlights=
   const grouped=Object.fromEntries(CATEGORY_ORDER.map(key=>[key,[]]));
   details.forEach(item=>(grouped[item.category]||grouped.feature).push(item));
   const lines=[];
+  if(mode==='latest'&&imageUrl)lines.push(`![WeiG qB WebUI preview](${imageUrl})`,'');
   lines.push('## Highlights','');
   if(highlights.length)highlights.forEach(item=>lines.push(`- ${markdownText(item.text)}`));
   else lines.push('- No user-visible WebUI changes are available for this release range.');
-  if(imageUrl)lines.push('',`![WeiG qB WebUI preview](${imageUrl})`);
   lines.push('','<details>',`<summary>View WebUI changes (showing ${details.length} of ${normalized.length})</summary>`,'');
   for(const category of CATEGORY_ORDER){
     const items=grouped[category];
@@ -126,7 +133,7 @@ export function buildReleaseNotes({commits=[],fromTag='',toSha='',maxHighlights=
   if(fromTag||toSha)lines.push(`_Range: ${fromTag||'repository start'} → ${toSha||'current release'}_`,'');
   const markdown=lines.join('\n');
   if(containsNonLatinLetter(markdown))throw new Error('Public Release Notes must use Latin-script public text.');
-  return{markdown,highlights,items:normalized,details,grouped};
+  return{markdown,highlights,items:normalized,details,grouped,presentation:mode};
 }
 function runGit(args,{cwd=process.cwd()}={}){
   return execFileSync('git',args,{cwd,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
@@ -162,12 +169,17 @@ function arg(name,fallback=''){
   const index=process.argv.indexOf(`--${name}`);
   return index>=0&&process.argv[index+1]!==undefined?process.argv[index+1]:fallback;
 }
-export function generateFromGit({to,currentTag='',out='',cwd=process.cwd(),repository=process.env.GITHUB_REPOSITORY||'',imageRef=''}={}){
+export function generateFromGit({to,currentTag='',out='',cwd=process.cwd(),repository=process.env.GITHUB_REPOSITORY||'',imageRef='',presentation='latest'}={}){
+  const mode=normalizePresentation(presentation);
   const fromTag=resolvePreviousStableTag({to,currentTag,cwd}),commits=readGitCommits({fromTag,to,cwd});
-  const version=fs.readFileSync(path.join(cwd,'VERSION'),'utf8').trim();
-  const ref=imageRef||currentTag||to;
-  const imageUrl=releaseImage({cwd,version,ref,repository});
-  const result=buildReleaseNotes({commits,fromTag,toSha:to,imageUrl});
+  let imageUrl='';
+  if(mode==='latest'){
+    const taggedVersion=SEMVER_TAG.test(currentTag)?currentTag.slice(1):'';
+    const version=taggedVersion||fs.readFileSync(path.join(cwd,'VERSION'),'utf8').trim();
+    const ref=imageRef||currentTag||to;
+    imageUrl=releaseImage({cwd,version,ref,repository});
+  }
+  const result=buildReleaseNotes({commits,fromTag,toSha:to,imageUrl,presentation:mode});
   if(out)fs.writeFileSync(out,result.markdown,'utf8');
   return{...result,fromTag,toSha:to,imageUrl};
 }
@@ -178,7 +190,8 @@ if(isCli){
   const out=String(arg('out','')).trim();
   const repository=String(arg('repository',process.env.GITHUB_REPOSITORY||'')).trim();
   const imageRef=String(arg('image-ref','')).trim();
-  const result=generateFromGit({to,currentTag,out,repository,imageRef});
+  const presentation=String(arg('presentation','latest')).trim();
+  const result=generateFromGit({to,currentTag,out,repository,imageRef,presentation});
   if(!out)process.stdout.write(result.markdown);
   else console.log(`Release notes: ${result.fromTag||'repository start'} -> ${result.toSha}; ${result.items.length} WebUI entries; ${result.highlights.length} highlights; image=${result.imageUrl||'none'}; wrote ${out}`);
 }

@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
-import {buildReleaseNotes,readGitCommits,resolvePreviousStableTag,isReleaseVisiblePath,containsNonLatinLetter} from '../tools/release-notes.mjs';
+import {buildReleaseNotes,readGitCommits,resolvePreviousStableTag,isReleaseVisiblePath,containsNonLatinLetter,normalizePresentation} from '../tools/release-notes.mjs';
 
 const visible='webui/private/scripts/app.js';
 const excluded='webui/VERSION';
@@ -23,13 +23,23 @@ const commits=[
  {hash:'aaaaaaa',subject:'fix: explicitly hidden note',body:'Release-Note: skip',paths:[visible]},
  {hash:'bbbbbbb',subject:'feat: English fallback for localized note',body:'Release-Note: 功能/UI: 中文发布说明',paths:[visible]}
 ];
-const built=buildReleaseNotes({commits,fromTag:'v1.0.0',toSha:'0123456789abcdef0123456789abcdef01234567',imageUrl:'https://example.invalid/demo.gif'});
+const built=buildReleaseNotes({commits,fromTag:'v1.0.0',toSha:'0123456789abcdef0123456789abcdef01234567',imageUrl:'https://example.invalid/demo.gif',presentation:'latest'});
 assert.equal(built.items.length,6,'only user-visible WebUI runtime changes should survive filtering/dedupe');
 assert.equal(built.highlights.length,6);
-assert.ok(built.markdown.startsWith('## Highlights\n'),'Highlights must be the first Release Notes content');
-const imageIndex=built.markdown.indexOf('![WeiG qB WebUI preview](https://example.invalid/demo.gif)');
+assert.equal(built.presentation,'latest');
+const imageMarker='![WeiG qB WebUI preview](https://example.invalid/demo.gif)';
+const imageIndex=built.markdown.indexOf(imageMarker);
+const highlightIndex=built.markdown.indexOf('## Highlights');
 const detailIndex=built.markdown.indexOf('<details>');
-assert.ok(imageIndex>built.markdown.indexOf('## Highlights')&&detailIndex>imageIndex,'Release Notes must render Highlights -> preview -> details');
+assert.equal(imageIndex,0,'Latest Release must put the preview GIF first');
+assert.ok(highlightIndex>imageIndex&&detailIndex>highlightIndex,'Latest Release must render preview -> Highlights -> details');
+const archived=buildReleaseNotes({commits,fromTag:'v1.0.0',toSha:'0123456789abcdef0123456789abcdef01234567',imageUrl:'https://example.invalid/demo.gif',presentation:'archive'});
+assert.equal(archived.presentation,'archive');
+assert.ok(archived.markdown.startsWith('## Highlights\n'),'Archived Release must start with Highlights');
+assert.equal(archived.markdown.includes(imageMarker),false,'Archived Release must not contain the preview GIF');
+assert.ok(archived.markdown.indexOf('<details>')>archived.markdown.indexOf('## Highlights'),'Archived Release must render Highlights -> details');
+assert.equal(normalizePresentation('LATEST'),'latest');
+assert.throws(()=>normalizePresentation('legacy'),/Unsupported Release presentation/);
 assert.ok(built.markdown.includes('Add theme-consistent time picker'));
 for(const sample of ['中文','日本語','한국어','Русский'])assert.equal(containsNonLatinLetter(sample),true,`non-Latin public text must be rejected: ${sample}`);
 assert.equal(containsNonLatinLetter('English release notes 1.1.0'),false);
@@ -64,4 +74,4 @@ try{
  assert.equal(filtered.items.length,1,'identity-only webui commit must not enter release notes');
 }finally{fs.rmSync(temp,{recursive:true,force:true});}
 
-console.log('Release notes contract passed: only user-visible WebUI runtime paths are eligible; identity/generated/assets are excluded; internal noise is hidden; duplicates are bounded; image insertion is deterministic.');
+console.log('Release notes contract passed: latest/archive presentation is canonical; only Latest gets a GIF, archived releases omit it, and user-visible change filtering remains deterministic.');

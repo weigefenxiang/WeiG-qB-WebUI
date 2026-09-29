@@ -62,6 +62,43 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
+      - name: Snapshot previous Latest presentation
+        id: previous_latest
+        uses: actions/github-script@v9
+        env:
+          NEW_TAG: ${{ github.ref_name }}
+        with:
+          script: |
+            const fs=require('node:fs');
+            const {owner,repo}=context.repo;
+            const newTag=String(process.env.NEW_TAG||'').trim();
+            let latest=null;
+            try{
+              latest=(await github.rest.repos.getLatestRelease({owner,repo})).data;
+            }catch(error){
+              if(error?.status!==404)throw error;
+            }
+            const snapshot={exists:false};
+            if(latest&&latest.tag_name!==newTag){
+              const tagRef=await github.rest.git.getRef({owner,repo,ref:`tags/${latest.tag_name}`});
+              snapshot.exists=true;
+              snapshot.releaseId=latest.id;
+              snapshot.tag=latest.tag_name;
+              snapshot.sha=String(tagRef.data.object.sha||'').toLowerCase();
+              snapshot.assets=(latest.assets||[]).map(item=>({
+                id:item.id,name:item.name,size:item.size,digest:item.digest||''
+              })).sort((a,b)=>a.name.localeCompare(b.name));
+            }
+            fs.writeFileSync('previous-latest.json',JSON.stringify(snapshot,null,2)+'\n');
+            core.setOutput('archive_required',snapshot.exists?'true':'false');
+            if(snapshot.exists){
+              core.setOutput('tag',snapshot.tag);
+              core.setOutput('sha',snapshot.sha);
+              core.info(`Previous Latest ${snapshot.tag} @ ${snapshot.sha} will be archived after ${newTag} becomes Latest.`);
+            }else{
+              core.info('No previous Latest presentation needs archiving.');
+            }
+
       - name: Download immutable promotion certification
         uses: actions/download-artifact@v8
         with:
@@ -135,8 +172,23 @@ jobs:
           RELEASE_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          node tools/release-notes.mjs --to "$RELEASE_SHA" --current-tag "$GITHUB_REF_NAME" --out release-notes.md
+          node tools/release-notes.mjs --to "$RELEASE_SHA" --current-tag "$GITHUB_REF_NAME" --presentation latest --out release-notes.md
           test -s release-notes.md
+
+      - name: Generate archive copy for previous Latest
+        if: ${{ steps.previous_latest.outputs.archive_required == 'true' }}
+        env:
+          PREVIOUS_SHA: ${{ steps.previous_latest.outputs.sha }}
+          PREVIOUS_TAG: ${{ steps.previous_latest.outputs.tag }}
+        run: |
+          set -euo pipefail
+          node tools/release-notes.mjs \
+            --to "$PREVIOUS_SHA" \
+            --current-tag "$PREVIOUS_TAG" \
+            --presentation archive \
+            --out previous-release-notes.md
+          test -s previous-release-notes.md
+          ! grep -Fq '![WeiG qB WebUI preview]' previous-release-notes.md
 
       - name: Publish GitHub Release
         env:
@@ -199,6 +251,57 @@ jobs:
             }
 
             core.info(`Latest Release PASS: ${tag} / ${expectedTitle} / exact canonical body / ${sha}.`);
+
+      - name: Archive previous Latest presentation
+        if: ${{ steps.previous_latest.outputs.archive_required == 'true' }}
+        uses: actions/github-script@v9
+        env:
+          CURRENT_TAG: ${{ github.ref_name }}
+        with:
+          script: |
+            const fs=require('node:fs');
+            const before=JSON.parse(fs.readFileSync('previous-latest.json','utf8'));
+            const body=fs.readFileSync('previous-release-notes.md','utf8').trim();
+            const {owner,repo}=context.repo;
+            if(!before.exists)throw new Error('Previous Latest snapshot is missing.');
+            if(body.includes('![WeiG qB WebUI preview]'))throw new Error('Archive presentation must not contain the preview GIF.');
+            const fingerprint=release=>(release.assets||[]).map(item=>({
+              id:item.id,name:item.name,size:item.size,digest:item.digest||''
+            })).sort((a,b)=>a.name.localeCompare(b.name));
+
+            const pre=(await github.rest.repos.getRelease({owner,repo,release_id:before.releaseId})).data;
+            if(pre.tag_name!==before.tag||JSON.stringify(fingerprint(pre))!==JSON.stringify(before.assets)){
+              core.setFailed('Previous Latest identity/assets changed before archive refresh.');
+              return;
+            }
+            const tagBefore=await github.rest.git.getRef({owner,repo,ref:`tags/${before.tag}`});
+            if(String(tagBefore.data.object.sha||'').toLowerCase()!==String(before.sha||'').toLowerCase()){
+              core.setFailed('Previous Latest stable tag moved before archive refresh.');
+              return;
+            }
+
+            await github.rest.repos.updateRelease({owner,repo,release_id:before.releaseId,body});
+
+            const after=(await github.rest.repos.getRelease({owner,repo,release_id:before.releaseId})).data;
+            if(after.id!==before.releaseId||after.tag_name!==before.tag||String(after.body||'').trim()!==body){
+              core.setFailed('Previous Latest archive body/identity verification failed.');
+              return;
+            }
+            if(JSON.stringify(fingerprint(after))!==JSON.stringify(before.assets)){
+              core.setFailed('Previous Latest certified assets changed during archive refresh.');
+              return;
+            }
+            const tagAfter=await github.rest.git.getRef({owner,repo,ref:`tags/${before.tag}`});
+            if(String(tagAfter.data.object.sha||'').toLowerCase()!==String(before.sha||'').toLowerCase()){
+              core.setFailed('Previous Latest stable tag moved during archive refresh.');
+              return;
+            }
+            const latest=(await github.rest.repos.getLatestRelease({owner,repo})).data;
+            if(latest.tag_name!==String(process.env.CURRENT_TAG||'')){
+              core.setFailed(`Archiving previous presentation changed authoritative Latest to ${latest.tag_name}.`);
+              return;
+            }
+            core.info(`Archived previous Latest presentation ${before.tag}; Release id/assets/tag preserved.`);
 
   refresh_public_copy:
     if: ${{ startsWith(github.ref, 'refs/heads/release-refresh-v') }}
@@ -263,6 +366,8 @@ jobs:
             }
 
             const release = await github.rest.repos.getReleaseByTag({owner, repo, tag});
+            const authoritativeLatest = await github.rest.repos.getLatestRelease({owner, repo});
+            const presentation = authoritativeLatest.data.id === release.data.id ? 'latest' : 'archive';
             if (release.data.draft || release.data.prerelease || release.data.tag_name !== tag) {
               core.setFailed(`Existing ${tag} is not a published stable Release.`);
               return;
@@ -291,12 +396,14 @@ jobs:
             core.setOutput('tag', tag);
             core.setOutput('stable_sha', stableSha);
             core.setOutput('release_id', String(release.data.id));
-            core.info(`Authorized metadata-only refresh for ${tag} @ ${stableSha}; Release id ${release.data.id}.`);
+            core.setOutput('presentation', presentation);
+            core.info(`Authorized metadata-only refresh for ${tag} @ ${stableSha}; Release id ${release.data.id}; presentation=${presentation}.`);
 
       - name: Generate canonical public copy for existing stable SHA
         env:
           RELEASE_SHA: ${{ steps.target.outputs.stable_sha }}
           RELEASE_TAG: ${{ steps.target.outputs.tag }}
+          PRESENTATION: ${{ steps.target.outputs.presentation }}
         run: |
           set -euo pipefail
           node tools/release-notes.mjs \
@@ -304,15 +411,21 @@ jobs:
             --current-tag "$RELEASE_TAG" \
             --repository "$GITHUB_REPOSITORY" \
             --image-ref "$RELEASE_TAG" \
+            --presentation "$PRESENTATION" \
             --out release-notes-refresh.md
           test -s release-notes-refresh.md
-          node <<'NODE'
+          PRESENTATION="$PRESENTATION" node <<'NODE'
           const fs=require('node:fs');
           const text=fs.readFileSync('release-notes-refresh.md','utf8');
+          const mode=process.env.PRESENTATION;
           const highlight=text.indexOf('## Highlights');
           const image=text.indexOf('![WeiG qB WebUI preview]');
           const details=text.indexOf('<details>');
-          if(highlight!==0||image<=highlight||details<=image)throw new Error('Release refresh layout must be Highlights -> preview -> details.');
+          if(mode==='latest'){
+            if(image!==0||highlight<=image||details<=highlight)throw new Error('Latest refresh layout must be preview -> Highlights -> details.');
+          }else if(mode==='archive'){
+            if(image!==-1||highlight!==0||details<=highlight)throw new Error('Archive refresh layout must be Highlights -> details with no preview.');
+          }else throw new Error(`Unsupported refresh presentation: ${mode}`);
           NODE
 
       - name: Refresh existing Release public copy and verify immutable identity
@@ -322,6 +435,7 @@ jobs:
           RELEASE_TAG: ${{ steps.target.outputs.tag }}
           RELEASE_SHA: ${{ steps.target.outputs.stable_sha }}
           RELEASE_ID: ${{ steps.target.outputs.release_id }}
+          PRESENTATION: ${{ steps.target.outputs.presentation }}
         with:
           script: |
             const fs = require('node:fs');
@@ -331,6 +445,7 @@ jobs:
             const tag = String(process.env.RELEASE_TAG || '').trim();
             const sha = String(process.env.RELEASE_SHA || '').trim().toLowerCase();
             const releaseId = Number(process.env.RELEASE_ID);
+            const presentation = String(process.env.PRESENTATION || '').trim();
             const title = `WeiG qB WebUI ${version}`;
             const {owner, repo} = context.repo;
             const fingerprint = release => (release.assets || []).map(item => ({
@@ -346,16 +461,9 @@ jobs:
               return;
             }
 
-            await github.rest.repos.updateRelease({
-              owner,
-              repo,
-              release_id: releaseId,
-              name: title,
-              body,
-              draft: false,
-              prerelease: false,
-              make_latest: 'true'
-            });
+            const update={owner,repo,release_id:releaseId,name:title,body,draft:false,prerelease:false};
+            if(presentation==='latest')update.make_latest='true';
+            await github.rest.repos.updateRelease(update);
 
             const after = await github.rest.repos.getRelease({owner, repo, release_id: releaseId});
             if (after.data.id !== before.releaseId || after.data.tag_name !== tag) {
@@ -379,19 +487,33 @@ jobs:
             }
 
             const latest = await github.rest.repos.getLatestRelease({owner, repo});
-            if (latest.data.id !== releaseId || latest.data.tag_name !== tag) {
-              core.setFailed(`Refreshed Release ${tag} is not authoritative Latest.`);
-              return;
+            if(presentation==='latest'){
+              if (latest.data.id !== releaseId || latest.data.tag_name !== tag) {
+                core.setFailed(`Refreshed Release ${tag} is not authoritative Latest.`);
+                return;
+              }
+              const listed = await github.rest.repos.listReleases({owner, repo, per_page: 20, page: 1});
+              const firstPublished = listed.data.find(item => !item.draft);
+              if (!firstPublished || firstPublished.id !== releaseId) {
+                core.setFailed(`Refreshed Release ${tag} is not the first published Release.`);
+                return;
+              }
+              if(!body.startsWith('![WeiG qB WebUI preview]')){
+                core.setFailed('Latest presentation must start with the preview GIF.');
+                return;
+              }
+            }else{
+              if(latest.data.id===releaseId){
+                core.setFailed(`Archived Release ${tag} must not remain authoritative Latest.`);
+                return;
+              }
+              if(body.includes('![WeiG qB WebUI preview]')){
+                core.setFailed('Archive presentation must not contain the preview GIF.');
+                return;
+              }
             }
 
-            const listed = await github.rest.repos.listReleases({owner, repo, per_page: 20, page: 1});
-            const firstPublished = listed.data.find(item => !item.draft);
-            if (!firstPublished || firstPublished.id !== releaseId) {
-              core.setFailed(`Refreshed Release ${tag} is not the first published Release.`);
-              return;
-            }
-
-            core.info(`Release refresh PASS: ${tag} remains ${sha}; Release id/assets unchanged; canonical English public copy is Latest.`);
+            core.info(`Release refresh PASS: ${tag} remains ${sha}; Release id/assets unchanged; presentation=${presentation}.`);
 
       - name: Retire one-shot Release refresh command branch
         if: ${{ always() && startsWith(github.ref, 'refs/heads/release-refresh-v') }}
