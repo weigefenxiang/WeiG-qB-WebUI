@@ -61,7 +61,9 @@ async function verify(pathname,item){
       versionPanel:document.querySelectorAll('#login-versions').length,
       oldHint:document.querySelectorAll('#login-hint').length,
       entrySelects:document.querySelectorAll('.entry-select').length,
-      entryTrigger:document.querySelector('.entry-select__trigger')?.getBoundingClientRect().toJSON?.()||null
+      entryTrigger:document.querySelector('.entry-select .ui-select__trigger')?.getBoundingClientRect().toJSON?.()||null,
+      canonicalParts:document.querySelectorAll('.entry-select .ui-select__trigger,.ui-select__menu[data-entry-select-menu="1"],.ui-select__menu[data-entry-select-menu="1"] .ui-select__option').length,
+      legacyParts:document.querySelectorAll('.entry-select__trigger,.entry-select__menu,.entry-select__option').length
     }));
     assert.equal(facts.lang,item.app,`${pathname} ${item.locale}: entry language mismatch ${JSON.stringify(facts)}`);
     assert.equal(facts.title,item.title,`${pathname} ${item.locale}: entry copy mismatch ${JSON.stringify(facts)}`);
@@ -73,7 +75,8 @@ async function verify(pathname,item){
     assert.equal(facts.versionPanel,0,`${pathname}: retired pre-auth qB/WebAPI/Wei.G version panel must stay absent`);
     assert.equal(facts.oldHint,0,`${pathname}: retired compatibility hint must stay absent`);
     assert.equal(facts.entrySelects,1,`${pathname}: canonical entry language Select enhancement missing`);
-    assert.ok(facts.entryTrigger&&facts.entryTrigger.width<150&&facts.entryTrigger.right<=430+facts.entryTrigger.left,`${pathname}: entry language trigger must stay intrinsic instead of expanding across the login card: ${JSON.stringify(facts.entryTrigger)}`);
+    assert.ok(facts.entryTrigger&&facts.entryTrigger.width<200&&facts.entryTrigger.right<=430+facts.entryTrigger.left,`${pathname}: entry language trigger must stay intrinsic instead of expanding across the login card: ${JSON.stringify(facts.entryTrigger)}`);
+    assert.ok(facts.canonicalParts>=2&&facts.legacyParts===0,`${pathname}: entry language must consume the canonical ui-select DOM template without retired entry-select child owners: ${JSON.stringify(facts)}`);
     assert.deepEqual(errors,[],`${pathname} ${item.locale}: browser errors:\n${errors.join('\n')}`);
   }finally{await context.close();}
 }
@@ -81,9 +84,37 @@ async function verify(pathname,item){
 try{
   for(const item of cases)await verify('index.html',item);
   for(const item of cases.filter(item=>['en','zh-CN','zh-TW','zh-HK'].includes(item.app)||item.locale==='ar-AE'))await verify('login.html',item);
-  {const context=await browser.newContext({locale:'en-US'});try{const page=await context.newPage();await page.goto(new URL('login.html',base).toString(),{waitUntil:'domcontentloaded'});const entryTrigger=page.locator('.entry-select__trigger');await entryTrigger.click();const entryMenu=page.locator('.entry-select__menu:not([hidden])');await entryMenu.waitFor();const entryGeometry=await entryMenu.evaluate(menu=>{const r=menu.getBoundingClientRect(),options=[...menu.querySelectorAll('.entry-select__option')];return{left:r.left,right:r.right,top:r.top,bottom:r.bottom,vw:innerWidth,vh:innerHeight,width:r.width,overflow:options.some(option=>option.scrollWidth>option.clientWidth+1)};});assert.ok(entryGeometry.left>=7&&entryGeometry.right<=entryGeometry.vw-7&&entryGeometry.top>=7&&entryGeometry.bottom<=entryGeometry.vh-7&&!entryGeometry.overflow,'Login language menu must remain intrinsic and viewport-bounded: '+JSON.stringify(entryGeometry));await page.locator('.entry-select__option[data-value="zh-TW"]').click();assert.equal(await page.locator('#login-title').textContent(),'歡迎回來');assert.equal(await page.evaluate(()=>WeiG.SessionContract.localeIntent()),'zh-TW');await page.reload({waitUntil:'domcontentloaded'});assert.equal(await page.locator('#login-language').inputValue(),'zh-TW');assert.equal(await page.locator('#login-title').textContent(),'歡迎回來');await page.selectOption('#login-language','pt-PT');assert.equal(await page.evaluate(()=>WeiG.SessionContract.localeIntent()),'pt-PT');assert.equal(await page.locator('#login-language').inputValue(),'pt-PT');}finally{await context.close();}}
+  {
+    const context=await browser.newContext({locale:'en-US'});
+    try{
+      const page=await context.newPage();
+      await page.goto(new URL('login.html',base).toString(),{waitUntil:'domcontentloaded'});
+      const entryTrigger=page.locator('.entry-select .ui-select__trigger');
+      await entryTrigger.click();
+      const entryMenu=page.locator('.ui-select__menu[data-entry-select-menu="1"]:not([hidden])');
+      await entryMenu.waitFor();
+      const entryGeometry=await page.evaluate(()=>{
+        const trigger=document.querySelector('.entry-select .ui-select__trigger'),value=trigger&&trigger.querySelector('.ui-select__value'),menu=document.querySelector('.ui-select__menu[data-entry-select-menu="1"]:not([hidden])'),list=menu&&menu.querySelector('.ui-select__options'),options=[...(menu?.querySelectorAll('.ui-select__option')||[])],labels=options.map(option=>option.querySelector('.ui-select__option-label')).filter(Boolean);
+        if(!trigger||!value||!menu||!list)return null;
+        const r=menu.getBoundingClientRect(),tr=trigger.getBoundingClientRect(),vr=value.getBoundingClientRect(),lr=list.getBoundingClientRect(),triggerStyle=getComputedStyle(trigger),optionStyle=options[0]&&getComputedStyle(options[0]),scrollbar=Math.max(0,list.offsetWidth-list.clientWidth),maxLabelRight=labels.reduce((max,label)=>Math.max(max,label.getBoundingClientRect().right),lr.left);
+        return{left:r.left,right:r.right,top:r.top,bottom:r.bottom,vw:innerWidth,vh:innerHeight,width:r.width,triggerWidth:tr.width,centerDelta:Math.abs((vr.left+vr.width/2)-(tr.left+tr.width/2)),fontSizeMatch:!!optionStyle&&triggerStyle.fontSize===optionStyle.fontSize,fontFamilyMatch:!!optionStyle&&triggerStyle.fontFamily===optionStyle.fontFamily,scrollbar:scrollbar,labelRightGap:lr.right-scrollbar-maxLabelRight,clipped:labels.some(label=>label.scrollWidth>label.clientWidth+1)};
+      });
+      assert.ok(entryGeometry&&entryGeometry.left>=7&&entryGeometry.right<=entryGeometry.vw-7&&entryGeometry.top>=7&&entryGeometry.bottom<=entryGeometry.vh-7&&entryGeometry.width<220&&!entryGeometry.clipped,'Login language menu must remain compact, complete and viewport-bounded: '+JSON.stringify(entryGeometry));
+      assert.ok(entryGeometry.fontSizeMatch&&entryGeometry.fontFamilyMatch&&entryGeometry.centerDelta<=2,'Login trigger and menu must share typography and the selected value must be geometrically centered: '+JSON.stringify(entryGeometry));
+      assert.ok(entryGeometry.labelRightGap>=6,'Login language labels must retain safe space before the scrollbar gutter: '+JSON.stringify(entryGeometry));
+      await page.locator('.ui-select__menu[data-entry-select-menu="1"] .ui-select__option[data-value="zh-TW"]').click();
+      assert.equal(await page.locator('#login-title').textContent(),'歡迎回來');
+      assert.equal(await page.evaluate(()=>WeiG.SessionContract.localeIntent()),'zh-TW');
+      await page.reload({waitUntil:'domcontentloaded'});
+      assert.equal(await page.locator('#login-language').inputValue(),'zh-TW');
+      assert.equal(await page.locator('#login-title').textContent(),'歡迎回來');
+      await page.selectOption('#login-language','pt-PT');
+      assert.equal(await page.evaluate(()=>WeiG.SessionContract.localeIntent()),'pt-PT');
+      assert.equal(await page.locator('#login-language').inputValue(),'pt-PT');
+    }finally{await context.close();}
+  }
 }finally{
   await browser.close();
   await new Promise(resolve=>server.close(resolve));
 }
-console.log('Entry locale browser acceptance passed: English-first fallback for unsupported entry locales, browser auto-detect for supported entry languages, distinct zh-CN/zh-TW/zh-HK mapping, canonical Wei.G.png favicon, unchanged page logo, and no pre-auth version panel are consistent on public/index.html and public/login.html.');
+console.log('Entry locale browser acceptance passed: public entry uses the canonical ui-select DOM template with compact scrollbar-safe geometry, matching trigger/menu typography, centered selected value, locale persistence, canonical favicon and unchanged page logo.');
