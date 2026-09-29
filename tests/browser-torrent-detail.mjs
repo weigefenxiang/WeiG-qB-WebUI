@@ -74,12 +74,27 @@ async function resetDetailViewport(page){
     owner.resetScroll();
     viewport.scrollLeft=0;
   });
-  await page.waitForFunction(()=>{
-    const viewport=document.querySelector('.shared-table__viewport'),cell=document.querySelector('.shared-table__row [data-column-key="size"]');
-    if(!viewport||!cell||viewport.scrollTop!==0||viewport.scrollLeft!==0)return false;
-    const vr=viewport.getBoundingClientRect(),r=cell.getBoundingClientRect();
-    return r.bottom>vr.top&&r.top<vr.bottom;
-  },undefined,{timeout:1500});
+  await page.waitForFunction(()=>{const viewport=document.querySelector('.shared-table__viewport');return !!viewport&&viewport.scrollTop===0&&viewport.scrollLeft===0;},undefined,{timeout:1500});
+}
+async function visibleDetailBodyPoint(page){
+  const handle=await page.waitForFunction(()=>{
+    const viewport=document.querySelector('.shared-table__viewport'),head=viewport&&viewport.querySelector('.shared-table__head');
+    if(!viewport)return false;
+    const vr=viewport.getBoundingClientRect(),hr=head&&head.getBoundingClientRect(),bodyTop=Math.max(vr.top,hr?hr.bottom:vr.top)+2,bodyBottom=vr.bottom-2;
+    const cells=[...viewport.querySelectorAll('.shared-table__row:not([hidden]) [data-column-key]')].filter(cell=>cell.dataset.columnKey!=='checked');
+    for(const cell of cells){
+      const r=cell.getBoundingClientRect(),left=Math.max(vr.left+2,r.left+2),right=Math.min(vr.right-2,r.right-2),top=Math.max(bodyTop,r.top+2),bottom=Math.min(bodyBottom,r.bottom-2);
+      if(right-left<8||bottom-top<8)continue;
+      for(const fraction of [.5,.75,.25]){
+        const x=left+(right-left)*fraction,y=top+(bottom-top)/2,node=document.elementFromPoint(x,y);
+        if(!node||!viewport.contains(node)||!node.closest('.shared-table__row'))continue;
+        if(node.closest('button,input,a,select,textarea,[role="button"],[role="checkbox"]'))continue;
+        return{x,y,column:cell.dataset.columnKey,tag:node.tagName,className:String(node.className||'')};
+      }
+    }
+    return false;
+  },undefined,{timeout:2000});
+  const point=await handle.jsonValue();await handle.dispose();return point;
 }
 async function waitFixture(predicate,message,timeout=5000){const started=Date.now();while(!predicate()){if(Date.now()-started>timeout)throw new Error(message);await new Promise(resolve=>setTimeout(resolve,20));}}
 const json=(res,value,status=200)=>{res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store'});res.end(JSON.stringify(value));};
@@ -441,10 +456,10 @@ try{
   const nativeBefore=await page.evaluate(()=>{const root=document.getElementById('detail-content'),viewport=document.querySelector('.shared-table__viewport'),owners=[...document.querySelectorAll('#detail-view [data-primary-scroll="1"]')];return{top:viewport.scrollTop,max:Math.max(0,viewport.scrollHeight-viewport.clientHeight),outerTop:root.scrollTop,outerMax:Math.max(0,root.scrollHeight-root.clientHeight),outerOverflow:getComputedStyle(root).overflowY,innerOverflow:getComputedStyle(viewport).overflowY,owners:owners.map(node=>node===viewport?'inner':node===root?'outer':node.className||node.id)};});
   assert(nativeBefore.max>0,`Mobile Detail touch-scroll fixture has no native vertical overflow: ${JSON.stringify(nativeBefore)}`);
   assert(JSON.stringify(nativeBefore.owners)===JSON.stringify(['inner'])&&nativeBefore.outerOverflow==='hidden'&&/auto|scroll/.test(nativeBefore.innerOverflow),`Mobile Detail must expose one table scroll owner and keep the outer shell non-scrolling: ${JSON.stringify(nativeBefore)}`);
-  const bodyBox=await page.locator('.shared-table__row [data-column-key="size"]').first().boundingBox();assert(bodyBox,'Mobile detail non-interactive body cell is missing.');
-  const hit=await page.evaluate(({x,y})=>{const node=document.elementFromPoint(x,y),viewport=document.querySelector('.shared-table__viewport');return{inside:!!(node&&viewport&&viewport.contains(node)),tag:node&&node.tagName,className:node&&node.className};},{x:bodyBox.x+Math.min(20,bodyBox.width/2),y:bodyBox.y+bodyBox.height/2});
-  assert(hit.inside,`Mobile Detail touch-scroll start point must hit the canonical inner viewport: ${JSON.stringify(hit)}`);
-  const bx=bodyBox.x+Math.min(20,bodyBox.width/2),by=bodyBox.y+bodyBox.height/2,scrollDistance=Math.min(120,Math.max(24,nativeBefore.max));
+  const bodyPoint=await visibleDetailBodyPoint(page);assert(bodyPoint,'Mobile detail visible non-interactive body point is missing.');
+  const hit=await page.evaluate(({x,y})=>{const node=document.elementFromPoint(x,y),viewport=document.querySelector('.shared-table__viewport'),row=node&&node.closest&&node.closest('.shared-table__row'),interactive=node&&node.closest&&node.closest('button,input,a,select,textarea,[role="button"],[role="checkbox"]');return{inside:!!(node&&viewport&&viewport.contains(node)),row:!!row,interactive:!!interactive,tag:node&&node.tagName,className:node&&node.className};},bodyPoint);
+  assert(hit.inside&&hit.row&&!hit.interactive,`Mobile Detail touch-scroll start point must hit a visible non-interactive cell inside the canonical inner viewport: ${JSON.stringify({bodyPoint,hit})}`);
+  const bx=bodyPoint.x,by=bodyPoint.y,scrollDistance=Math.min(120,Math.max(24,nativeBefore.max));
   await page.mouse.move(bx,by);await page.mouse.wheel(0,scrollDistance);await page.waitForTimeout(160);
   const nativeAfter=await page.evaluate(()=>({top:document.querySelector('.shared-table__viewport').scrollTop,outerTop:document.getElementById('detail-content').scrollTop}));
   assert(nativeAfter.top>nativeBefore.top&&nativeAfter.outerTop===0,`Native browser wheel input must move only the canonical inner Detail viewport: ${JSON.stringify({nativeBefore,nativeAfter})}`);
