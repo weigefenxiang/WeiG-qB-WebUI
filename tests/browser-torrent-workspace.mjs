@@ -241,6 +241,8 @@ try{
       assert(motion===(e[2]==='true'?'weig-progress-flow':'none'),`${name}: progress ${n} activity motion mismatch ${JSON.stringify({state,motion})}`);
     }
     const activeProgressHash='0000000000000000000000000000000000000001';
+    const progressVisual=await page.locator(`.torrent-row[data-hash="${activeProgressHash}"] .progress-fill`).evaluate(fill=>{const sweep=getComputedStyle(fill,'::before'),flow=getComputedStyle(fill,'::after'),width=fill.getBoundingClientRect().width;return{sweepAnimation:sweep.animationName,sweepWidth:parseFloat(sweep.width)||0,sweepRatio:width?((parseFloat(sweep.width)||0)/width):0,sweepBackground:sweep.backgroundImage,flowAnimation:flow.animationName};});
+    assert(progressVisual.sweepAnimation==='weig-progress-sweep'&&progressVisual.flowAnimation==='weig-progress-flow'&&progressVisual.sweepRatio>0&&progressVisual.sweepRatio<.36&&/linear-gradient/.test(progressVisual.sweepBackground),`${name}: active progress must expose one narrow canonical left-to-right specular sweep ${JSON.stringify(progressVisual)}`);
     await page.emulateMedia({reducedMotion:'reduce'});
     const reducedMotion=await waitForProgressMotion(page,activeProgressHash,false);
     assert(reducedMotion==='none',`${name}: Reduced Motion failed for progress ${JSON.stringify({motion:reducedMotion})}`);
