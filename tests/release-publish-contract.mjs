@@ -15,7 +15,7 @@ assert.ok(release.includes('--latest')&&release.includes('github.rest.repos.getL
 assert.ok(release.includes('github.rest.repos.listReleases')&&release.includes('Repository Release list is not headed by canonical Latest Release'),'Release must verify the canonical Latest Release also heads the repository Release list');
 assert.ok(release.includes("Published Release body does not equal the canonical generated release notes."),'Release must verify GitHub published the exact canonical generated body');
 assert.ok(release.includes("- 'release-refresh-v*'")&&release.includes("refresh_public_copy:"),'existing stable Release refresh must remain inside the canonical Release workflow');
-assert.ok(release.includes("make_latest: 'true'")&&release.includes("github.rest.repos.updateRelease"),'metadata-only refresh must reuse GitHub Release API and restore authoritative Latest');
+assert.ok(release.includes("update.make_latest='true'")&&release.includes("github.rest.repos.updateRelease"),'metadata-only refresh must reuse GitHub Release API and set Latest only for authoritative latest presentation');
 assert.ok(release.includes("release-refresh-before.json")&&release.includes("Certified Release assets changed during public-copy refresh."),'refresh must fingerprint and preserve certified assets');
 assert.ok(release.includes("Stable tag moved during refresh")&&release.includes("github.rest.git.deleteRef"),'refresh must preserve stable tag identity and retire its one-shot command branch');
 assert.ok(release.includes("group: release-publication"),'new publication and metadata refresh must share one mutation concurrency owner');
