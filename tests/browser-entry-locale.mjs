@@ -9,6 +9,19 @@ const here=path.dirname(fileURLToPath(import.meta.url));
 const publicRoot=path.resolve(here,'../webui/public');
 const mime={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.ico':'image/x-icon'};
 
+const [entrySource,entryStyle,indexSource,loginSource]=await Promise.all([
+  fs.readFile(path.join(publicRoot,'scripts/entry-select.js'),'utf8'),
+  fs.readFile(path.join(publicRoot,'styles/entry-select.css'),'utf8'),
+  fs.readFile(path.join(publicRoot,'index.html'),'utf8'),
+  fs.readFile(path.join(publicRoot,'login.html'),'utf8')
+]);
+for(const retired of ['entry-select__trigger','entry-select__menu','entry-select__option','entry-select__value','entry-select__chevron','entry-select__options']){
+  assert.ok(!entrySource.includes(retired),`retired public Select runtime child owner returned: ${retired}`);
+  assert.ok(!entryStyle.includes('.'+retired),`retired public Select skin selector returned: ${retired}`);
+}
+for(const canonical of ['ui-select__trigger','ui-select__menu','ui-select__option','ui-select__value','ui-select__chevron','ui-select__options'])assert.ok(entrySource.includes(canonical),`public entry adapter must consume canonical Select DOM contract: ${canonical}`);
+assert.ok(!/\.language-select\{/.test(indexSource)&&!/\.language-select\{/.test(loginSource),'public entry HTML must not regain a duplicate inline language Select skin');
+
 const server=http.createServer(async(req,res)=>{
   try{
     const url=new URL(req.url,'http://127.0.0.1');
