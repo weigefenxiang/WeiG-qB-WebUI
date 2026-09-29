@@ -25,6 +25,7 @@ const settingsSchema=read('webui/private/scripts/settings-schema.js');
 const logs=read('webui/private/scripts/logs.js');
 const components=read('webui/private/scripts/components.js');
 const transfer=read('webui/private/scripts/transfer.js');
+const selectGeometry=read('webui/public/scripts/select-geometry.js');
 const floating=read('webui/private/scripts/floating.js');
 const ui=read('webui/private/scripts/ui.js');
 const header=read('webui/private/scripts/header.js');
@@ -114,7 +115,7 @@ assert(transferCss.includes('.mobile-drawer-telemetry__row--primary')&&transferC
 assert(transferCss.includes('#sidebar{display:grid!important;grid-template-rows:minmax(0,1fr) auto!important')&&transferCss.includes('.sidebar__meta{display:none!important}'),'Mobile Drawer must retire qB/WebAPI/compat metadata from its visible layout');
 assert(spatial.includes('#filter-nav{grid-template-columns:repeat(2,minmax(0,1fr))')&&spatial.includes('.facet-controls{grid-template-columns:repeat(2,minmax(0,1fr))'),'Android Drawer Torrent filters and all four facets must remain two-column');
 assert(spatial.includes('font-size:clamp(13px,3.8vw,15px)')&&spatial.includes('font-size:clamp(12px,3.3vw,14px)'),'Android Drawer state and facet labels must be at least two CSS pixels larger than the retired compact typography');
-assert(floating.includes("v.width<=820?.84:.68")&&floating.includes("scrollIntoView({block:'nearest'})"),'Canonical Select must use more Mobile visual viewport and keep the focused/selected option reachable');
+assert(selectGeometry.includes("v.width<=820?.84:.68")&&floating.includes("G.menuHeightCap(v,innerH)")&&floating.includes("scrollIntoView({block:'nearest'})"),'Canonical Select must use the shared Mobile visual-viewport budget while keeping the focused/selected option reachable');
 assert(!transferCss.includes('@container mobile-drawer (max-height:650px)'),'Facet responsive ownership must stay in Spatial CSS rather than Transfer CSS');
 assert(transferCss.includes('font-size:clamp(10px,3vw,13.5px)')&&transferCss.includes('.transfer-runtime-capsule__limits{width:30px;min-width:30px;flex:0 0 30px}'),'Mobile speeds must be larger while the rate-limit button keeps its reserved hit region');
 
