@@ -314,6 +314,7 @@ jobs:
           node tools/qb-release-catalog-shard.mjs upstream-qb \
             --shard-index="${{ matrix.shard }}" \
             --shard-count=16 \
+            --admitted-catalog=tests/fixtures/qb-release-catalog.lkg.json \
             --output="qb-releases-shard-${{ matrix.shard }}.raw.json" \
             --manifest="qb-releases-shard-${{ matrix.shard }}.meta.json"
           node tools/qb-locale-source.mjs upstream-qb \

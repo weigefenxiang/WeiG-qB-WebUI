@@ -23,9 +23,11 @@ function requiredInt(name){
 const qbRoot=path.resolve(process.argv[2]||process.env.QB_UPSTREAM_DIR||'');
 const output=path.resolve(arg('output','qb-releases-shard.json'));
 const manifestOutput=path.resolve(arg('manifest','qb-releases-shard.meta.json'));
+const admittedCatalogArg=arg('admitted-catalog');
+const admittedCatalogPath=admittedCatalogArg?path.resolve(admittedCatalogArg):null;
 const shardIndex=requiredInt('shard-index');
 const shardCount=requiredInt('shard-count');
-if(!qbRoot||!fs.existsSync(qbRoot))throw new Error('Usage: node tools/qb-release-catalog-shard.mjs <qBittorrent-clone> --shard-index=N --shard-count=M [--output=path] [--manifest=path]');
+if(!qbRoot||!fs.existsSync(qbRoot))throw new Error('Usage: node tools/qb-release-catalog-shard.mjs <qBittorrent-clone> --shard-index=N --shard-count=M [--output=path] [--manifest=path] [--admitted-catalog=path]');
 if(shardCount<1||shardIndex<0||shardIndex>=shardCount)throw new Error(`Invalid catalog shard ${shardIndex}/${shardCount}.`);
 
 function git(...args){return execFileSync('git',['-C',qbRoot,...args],{encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();}
@@ -97,8 +99,32 @@ function torrentSurface(ref,actions){
   });
 }
 
-const allTags=supportedStableReleaseTags(git('tag','--list','release-*').split(/\r?\n/).filter(Boolean));
-if(!allTags.length)throw new Error('No stable qBittorrent release tags found from 4.1.0.');
+function admittedSourceScope(file){
+  if(!file)return null;
+  if(!fs.existsSync(file))throw new Error(`Admitted qB catalog does not exist: ${file}`);
+  const catalog=JSON.parse(fs.readFileSync(file,'utf8'));
+  if(!Array.isArray(catalog)||!catalog.length)throw new Error('Admitted qB catalog is empty or invalid.');
+  const tags=[],sourceShas=new Map();
+  for(const profile of catalog){
+    const qbVersion=String(profile?.qbVersion||'').trim(),tag=String(profile?.tag||('release-'+qbVersion)).trim(),sourceSha=String(profile?.sourceSha||'').trim().toLowerCase();
+    if(profile?.stable!==true||profile?.officialWeiGSupport===false)throw new Error(`Admitted qB catalog contains a non-supported profile: ${qbVersion||tag||'(unknown)'}`);
+    if(supportedStableReleaseTags([tag]).length!==1||tag!=='release-'+qbVersion)throw new Error(`Admitted qB catalog contains an invalid stable identity: ${tag||qbVersion||'(unknown)'}`);
+    if(!/^[0-9a-f]{40}$/.test(sourceSha))throw new Error(`${tag}: admitted source SHA is invalid.`);
+    if(sourceShas.has(tag))throw new Error(`Admitted qB catalog contains duplicate tag ${tag}.`);
+    tags.push(tag);sourceShas.set(tag,sourceSha);
+  }
+  const canonical=supportedStableReleaseTags(tags);
+  if(JSON.stringify(canonical)!==JSON.stringify(tags))throw new Error('Admitted qB catalog tag order is not canonical.');
+  return{tags,sourceShas};
+}
+const upstreamTags=supportedStableReleaseTags(git('tag','--list','release-*').split(/\r?\n/).filter(Boolean));
+if(!upstreamTags.length)throw new Error('No stable qBittorrent release tags found from 4.1.0.');
+const admittedScope=admittedSourceScope(admittedCatalogPath);
+const allTags=admittedScope?admittedScope.tags:upstreamTags;
+if(admittedScope){
+  const upstreamSet=new Set(upstreamTags),missing=allTags.filter(tag=>!upstreamSet.has(tag));
+  if(missing.length)throw new Error(`Admitted qB source tags disappeared upstream: ${missing.join(', ')}`);
+}
 const tags=allTags.filter((_,position)=>position%shardCount===shardIndex);
 if(!tags.length)throw new Error(`Catalog shard ${shardIndex}/${shardCount} owns no stable tags.`);
 
@@ -107,6 +133,8 @@ for(const tag of tags){
   const qbVersion=tag.slice('release-'.length);
   const webApiVersion=parseApi(show(tag,'src/webui/webapplication.h'),tag);
   const sourceSha=git('rev-list','-n','1',tag);
+  const expectedSourceSha=admittedScope&&admittedScope.sourceShas.get(tag);
+  if(expectedSourceSha&&sourceSha.toLowerCase()!==expectedSourceSha)throw new Error(`${tag}: admitted source identity mismatch ${expectedSourceSha} -> ${sourceSha.toLowerCase()}`);
   const preferences=preferenceSurface(tag);
   const actions=apiActions(tag);
   profiles.push({
@@ -123,5 +151,6 @@ validateCatalogQuality(profiles);
 fs.mkdirSync(path.dirname(output),{recursive:true});
 fs.mkdirSync(path.dirname(manifestOutput),{recursive:true});
 fs.writeFileSync(output,JSON.stringify(profiles,null,2)+'\n','utf8');
-fs.writeFileSync(manifestOutput,JSON.stringify({schemaVersion:1,shardIndex,shardCount,allTags,ownedTags:tags,profileCount:profiles.length},null,2)+'\n','utf8');
-console.log(`Extracted raw qB catalog shard ${shardIndex+1}/${shardCount}: ${profiles.length}/${allTags.length} stable releases (${tags[0]} -> ${tags.at(-1)}).`);
+const unadmittedTags=admittedScope?upstreamTags.filter(tag=>!admittedScope.sourceShas.has(tag)):[];
+fs.writeFileSync(manifestOutput,JSON.stringify({schemaVersion:1,shardIndex,shardCount,sourceScope:admittedScope?'admitted-catalog':'upstream-stable',allTags,ownedTags:tags,profileCount:profiles.length,upstreamStableCount:upstreamTags.length,unadmittedTags},null,2)+'\n','utf8');
+console.log(`Extracted raw qB catalog shard ${shardIndex+1}/${shardCount}: ${profiles.length}/${allTags.length} ${admittedScope?'admitted':'upstream stable'} releases (${tags[0]} -> ${tags.at(-1)}); upstream stable=${upstreamTags.length}, unadmitted=${unadmittedTags.length}.`);

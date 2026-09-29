@@ -20,12 +20,17 @@ const gfm=read('.github/workflows/real-qb-full.yml');
 const promote=read('.github/workflows/promote.yml');
 const release=read('.github/workflows/release.yml');
 const compat=read('tests/release-compat-evidence.mjs');
+const pagesSource=read('.github/workflows/pages-source.yml');
+const pagesShard=read('tools/qb-release-catalog-shard.mjs');
 
 assert(ci.includes('qb-release-catalog.mjs upstream-qb --output=qb-release-catalog-shard-${{ matrix.shard }}.json --shard-index=${{ matrix.shard }} --shard-count=15'),'settings-evidence CI must retain exact supported source extraction');
 const evidenceLane=ci.slice(ci.indexOf('  release_catalog_extract:'),ci.indexOf('  settings_bundle_materialize:'));
 assert(evidenceLane.includes("inputs.validation_mode == 'settings-evidence'")&&!evidenceLane.includes("inputs.validation_mode == 'candidate'"),'expensive upstream source/locale extraction must not run on every release candidate');
 assert(!ci.includes('\n  release_upstream_audit:\n')&&!ci.includes('\n  release_product_matrix:\n')&&!ci.includes('\n  release_fixture:\n'),'slim candidate must not duplicate Frozen/product/upstream owners');
 assert(ci.includes('node tests/full-stable-product-compat.mjs tests/fixtures/qb-release-catalog.lkg.json'),'cheap smoke must retain the frozen formal product compatibility contract');
+assert(pagesSource.includes('--admitted-catalog=tests/fixtures/qb-release-catalog.lkg.json'),'ordinary Pages exact-dev Settings evidence must bind to the currently admitted Frozen qB source set rather than auto-admitting a newly published upstream stable tag');
+assert(pagesShard.includes("const admittedCatalogArg=arg('admitted-catalog')")&&pagesShard.includes('admitted source identity mismatch')&&pagesShard.includes("sourceScope:admittedScope?'admitted-catalog':'upstream-stable'")&&pagesShard.includes('unadmittedTags'),'parallel Pages source extraction must enforce exact admitted tag/source identity while reporting newer unadmitted upstream stable tags');
+assert(!ci.includes('--admitted-catalog=tests/fixtures/qb-release-catalog.lkg.json'),'explicit settings-evidence maintenance must remain upstream-unbounded so stable admission discovery cannot be hidden by the Pages Frozen scope');
 
 assert(gfm.includes('workflow_dispatch:')&&!/\n\s*push:\s*/.test(gfm),'G-FM must remain manual release-grade evidence');
 assert(/max-parallel:\s*16/.test(gfm)&&gfm.includes('= "65"')&&gfm.includes('real-qb-full-aggregate-${{ github.sha }}'),'G-FM must preserve exhaustive 65-version evidence and bounded concurrency');
