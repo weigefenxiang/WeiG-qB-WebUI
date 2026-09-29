@@ -29,7 +29,7 @@ assert.ok(!/\.language-select\{/.test(indexSource)&&!/\.language-select\{/.test(
 assert.ok(geometrySource.includes('global.WeiGSelectGeometry=')&&entrySource.includes('global.WeiGSelectGeometry')&&floatingSource.includes('global.WeiGSelectGeometry'),'Login and private Select must consume one shared geometry/sizing owner');
 assert.ok(!entrySource.includes('longest=0')&&!entrySource.includes('function triggerWidth()')&&!floatingSource.includes('function intrinsicMenuWidth('),'retired feature-local Select sizing owners must stay removed');
 assert.ok(indexSource.indexOf('scripts/select-geometry.js')<indexSource.indexOf('scripts/entry-select.js')&&loginSource.indexOf('scripts/select-geometry.js')<loginSource.indexOf('scripts/entry-select.js'),'public entry must load shared Select geometry before the entry adapter');
-assert.ok(privateIndexSource.indexOf('../public/scripts/select-geometry.js')<privateIndexSource.indexOf('scripts/floating.js'),'private runtime must load shared Select geometry before canonical floating Select');
+assert.ok(privateIndexSource.indexOf('scripts/select-geometry.js')<privateIndexSource.indexOf('scripts/floating.js')&&!privateIndexSource.includes('../public/'),'private runtime must load shared Select geometry through the canonical private/public fallback namespace before floating Select');
 assert.ok(/languageRow\([^\n]+intrinsicValue:true/.test(settingsSource)&&/timezoneRow\([^\n]+intrinsicValue:true/.test(settingsSource),'Settings interface language/timezone must opt into shared current-value intrinsic trigger sizing');
 
 const server=http.createServer(async(req,res)=>{
