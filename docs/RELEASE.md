@@ -64,7 +64,9 @@ A release tag must point to the current `main` commit.
 
 `promote.yml` owns the stable-tag lifecycle. It resolves the tag through the GitHub REST API: an exact existing tag is accepted, a real 404 may create the tag, and every other API error fails closed. The retired stdout/empty-string probe is not a valid existence check.
 
-`release.yml` is the only GitHub Release publisher. It reuses the certified candidate bytes, publishes the stable Release explicitly as GitHub `Latest`, then authoritative-rereads GitHub state. Publication is successful only when the exact tag is Latest, the canonical Release is first in the published Release list, title/body match the generated result, and the tag still points to the exact release SHA.
+`release.yml` is the only GitHub Release mutation owner. It reuses the certified candidate bytes, publishes the stable Release explicitly as GitHub `Latest`, then authoritative-rereads GitHub state. Publication is successful only when the exact tag is Latest, the canonical Release is first in the published Release list, title/body match the generated result, and the tag still points to the exact release SHA.
+
+For an already-published stable Release whose certified bytes and tag must remain unchanged, the same workflow owns a bounded metadata-only refresh command. It may update only the existing Release title/body/Latest metadata from the canonical generator. Before and after the mutation it fingerprints the Release id and every asset id/name/size/digest, verifies the stable tag still equals current `main`, then retires the one-shot command branch. It must never delete/recreate the Release or re-upload certified assets merely to change public copy.
 
 ### Release Notes
 
