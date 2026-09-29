@@ -42,4 +42,10 @@ assert(layout.includes('weig-indicator-pulse 2.6s ease-in-out infinite'),'Firewa
 assert(layout.includes('@media(prefers-reduced-motion:reduce)')&&layout.includes('html[data-motion="reduced"]')&&layout.includes('.connection-indicator[data-connection="connected"] .connection-indicator__dot'),'System and WeiG Reduced Motion must still target the canonical Connected marker');
 assert((layout.match(/connection-indicator\[data-connection="connected"\] \.connection-indicator__dot/g)||[]).length>=3,'Connected marker must have base plus both Reduced Motion protections');
 
+const progressCss=read('webui/private/css/progress.css');
+assert(progressCss.includes('--progress-flow-duration:4.6s;--progress-sweep-duration:6.2s')&&progressCss.includes('[data-progress-state=seed]{--progress-flow-duration:5.2s;--progress-sweep-duration:6.8s}')&&progressCss.includes('[data-progress-state=checking]{--progress-flow-duration:4.2s;--progress-sweep-duration:5.8s}'),'Active torrent progress motion must use the slower canonical cadence across download/seed/checking states');
+assert(progressCss.includes('color-mix(in srgb,var(--progress-end) 52%,transparent)')&&progressCss.includes('color-mix(in srgb,var(--progress-accent) 24%,transparent)')&&!progressCss.includes('var(--text-primary) 42%,transparent'),'Active sweep must use semantic state color instead of the retired white flash');
+assert(progressCss.includes('filter:drop-shadow(0 0 5px color-mix(in srgb,var(--progress-accent) 28%,transparent))'),'Active progress sweep must retain the low-cost state-colored depth cue');
+assert(progressCss.includes('@media(prefers-reduced-motion:reduce)')&&progressCss.includes('html[data-motion="reduced"] .progress-fill::before')&&progressCss.includes('animation:none!important;opacity:0!important'),'Reduced Motion must remain authoritative over progress motion');
+
 console.log('Telemetry visual contract passed: completed smoothing buckets freeze incrementally, realtime/session semantics stay separated, Android transfer typography matches Connected, and Reduced Motion remains protected.');
