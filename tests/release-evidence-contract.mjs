@@ -29,6 +29,7 @@ assert(release.includes('candidate_run_id')&&release.includes('CERTIFIED_PACKAGE
 assert(!release.includes("workflow_id: 'real-qb-full.yml'")&&!release.includes("workflow_id: 'real-qb-locale.yml'")&&!release.includes('node tests/release-compat-evidence.mjs'),'Release must not repeat Full Frozen/Locale discovery or compatibility verification already certified by Promotion');
 assert(!release.includes('Download exact candidate deployment evidence')&&!release.includes('node tests/release-candidate-evidence.mjs'),'Release must not redownload/revalidate deployment evidence already certified by Promotion');
 assert(release.includes('test "$GITHUB_REF_NAME" = "v$VERSION"')&&release.includes('--verify-tag')&&release.includes('--latest'),'Release must still bind tag, VERSION and published assets exactly');
+assert(release.includes('github.rest.repos.getLatestRelease')&&release.includes('github.rest.repos.listReleases')&&release.includes('Published Release body does not equal the canonical generated release notes.'),'Release must post-verify authoritative Latest/list-head identity and exact canonical public body');
 assert(release.includes('fetch-depth: 0')&&release.includes('node tools/release-notes.mjs')&&release.includes('--notes-file release-notes.md'),'Release must generate notes from full exact-SHA tag history through one local owner.');
 assert(!release.includes('--generate-notes')&&!/\\s--notes\\s/.test(release),'Release must not retain GitHub-generated or static inline notes as competing owners.');
 

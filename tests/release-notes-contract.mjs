@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
-import {buildReleaseNotes,readGitCommits,resolvePreviousStableTag,isReleaseVisiblePath} from '../tools/release-notes.mjs';
+import {buildReleaseNotes,readGitCommits,resolvePreviousStableTag,isReleaseVisiblePath,containsNonLatinLetter} from '../tools/release-notes.mjs';
 
 const visible='webui/private/scripts/app.js';
 const excluded='webui/VERSION';
@@ -26,9 +26,14 @@ const commits=[
 const built=buildReleaseNotes({commits,fromTag:'v1.0.0',toSha:'0123456789abcdef0123456789abcdef01234567',imageUrl:'https://example.invalid/demo.gif'});
 assert.equal(built.items.length,6,'only user-visible WebUI runtime changes should survive filtering/dedupe');
 assert.equal(built.highlights.length,6);
-assert.ok(built.markdown.startsWith('![WeiG qB WebUI preview](https://example.invalid/demo.gif)'));
+assert.ok(built.markdown.startsWith('## Highlights\n'),'Highlights must be the first Release Notes content');
+const imageIndex=built.markdown.indexOf('![WeiG qB WebUI preview](https://example.invalid/demo.gif)');
+const detailIndex=built.markdown.indexOf('<details>');
+assert.ok(imageIndex>built.markdown.indexOf('## Highlights')&&detailIndex>imageIndex,'Release Notes must render Highlights -> preview -> details');
 assert.ok(built.markdown.includes('Add theme-consistent time picker'));
-assert.equal(/\p{Script=Han}/u.test(built.markdown),false,'release notes must remain English-only');
+for(const sample of ['中文','日本語','한국어','Русский'])assert.equal(containsNonLatinLetter(sample),true,`non-Latin public text must be rejected: ${sample}`);
+assert.equal(containsNonLatinLetter('English release notes 1.1.0'),false);
+assert.equal(containsNonLatinLetter(built.markdown),false,'release notes must remain English/Latin-script only');
 assert.ok(!built.markdown.includes('engineering subject should be replaced'));
 assert.ok(!built.markdown.includes('internal regression coverage'));
 assert.ok(!built.markdown.includes('version only'));

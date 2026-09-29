@@ -150,3 +150,49 @@ jobs:
             --latest \
             --notes-file release-notes.md \
             --title "WeiG qB WebUI ${VERSION}"
+
+      - name: Verify published Release is repository Latest
+        uses: actions/github-script@v9
+        env:
+          RELEASE_SHA: ${{ github.sha }}
+          EXPECTED_TAG: ${{ github.ref_name }}
+        with:
+          script: |
+            const fs = require('node:fs');
+            const sha = String(process.env.RELEASE_SHA || '').trim().toLowerCase();
+            const tag = String(process.env.EXPECTED_TAG || '').trim();
+            const version = fs.readFileSync('VERSION', 'utf8').trim();
+            const expectedTitle = `WeiG qB WebUI ${version}`;
+            const expectedBody = fs.readFileSync('release-notes.md', 'utf8').trim();
+            const {owner, repo} = context.repo;
+
+            const latest = await github.rest.repos.getLatestRelease({owner, repo});
+            const published = latest.data;
+            if (published.tag_name !== tag || published.draft || published.prerelease) {
+              core.setFailed(`Latest Release identity mismatch: tag=${published.tag_name}, draft=${published.draft}, prerelease=${published.prerelease}; expected ${tag}.`);
+              return;
+            }
+            if (String(published.name || '') !== expectedTitle) {
+              core.setFailed(`Latest Release title mismatch: ${published.name} != ${expectedTitle}.`);
+              return;
+            }
+            if (String(published.body || '').trim() !== expectedBody) {
+              core.setFailed('Published Release body does not equal the canonical generated release notes.');
+              return;
+            }
+
+            const tagRef = await github.rest.git.getRef({owner, repo, ref: `tags/${tag}`});
+            const tagSha = String(tagRef.data.object.sha || '').toLowerCase();
+            if (tagSha !== sha) {
+              core.setFailed(`Latest Release tag ${tag} points to ${tagSha}, expected ${sha}.`);
+              return;
+            }
+
+            const listed = await github.rest.repos.listReleases({owner, repo, per_page: 20, page: 1});
+            const firstPublished = listed.data.find(item => !item.draft);
+            if (!firstPublished || firstPublished.id !== published.id) {
+              core.setFailed(`Repository Release list is not headed by canonical Latest Release ${tag}.`);
+              return;
+            }
+
+            core.info(`Latest Release PASS: ${tag} / ${expectedTitle} / exact canonical body / ${sha}.`);

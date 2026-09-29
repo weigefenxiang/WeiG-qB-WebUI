@@ -49,7 +49,14 @@ function displaySubject(subject=''){
   const cleaned=cleanSubject(subject).replace(/^[a-zA-Z]+(?:\([^)]*\))?[!:]\s*/,'').trim();
   return cleaned||cleanSubject(subject)||'Untitled change';
 }
-const HAN_TEXT=/\p{Script=Han}/u;
+const LETTER_CHAR=/\p{L}/u;
+const LATIN_CHAR=/\p{Script=Latin}/u;
+export function containsNonLatinLetter(value=''){
+  for(const ch of String(value)){
+    if(LETTER_CHAR.test(ch)&&!LATIN_CHAR.test(ch))return true;
+  }
+  return false;
+}
 function markdownText(value=''){
   return String(value).replace(/\\/g,'\\\\').replace(/([\`*_\[\]<>])/g,'\\$1');
 }
@@ -73,9 +80,9 @@ export function normalizeCommit(commit){
   const category=meta?.category||inferCategory(subject);
   if(category==='internal'&&!meta?.explicit)return null;
   let text=(meta?.text||displaySubject(subject)).trim();
-  if(HAN_TEXT.test(text)){
+  if(containsNonLatinLetter(text)){
     const fallback=displaySubject(subject).trim();
-    if(!fallback||HAN_TEXT.test(fallback))return null;
+    if(!fallback||containsNonLatinLetter(fallback))return null;
     text=fallback;
   }
   if(!text)return null;
@@ -99,10 +106,10 @@ export function buildReleaseNotes({commits=[],fromTag='',toSha='',maxHighlights=
   const grouped=Object.fromEntries(CATEGORY_ORDER.map(key=>[key,[]]));
   details.forEach(item=>(grouped[item.category]||grouped.feature).push(item));
   const lines=[];
-  if(imageUrl)lines.push(`![WeiG qB WebUI preview](${imageUrl})`,'');
   lines.push('## Highlights','');
   if(highlights.length)highlights.forEach(item=>lines.push(`- ${markdownText(item.text)}`));
   else lines.push('- No user-visible WebUI changes are available for this release range.');
+  if(imageUrl)lines.push('',`![WeiG qB WebUI preview](${imageUrl})`);
   lines.push('','<details>',`<summary>View WebUI changes (showing ${details.length} of ${normalized.length})</summary>`,'');
   for(const category of CATEGORY_ORDER){
     const items=grouped[category];
@@ -117,7 +124,9 @@ export function buildReleaseNotes({commits=[],fromTag='',toSha='',maxHighlights=
   if(normalized.length>details.length)lines.push(`${normalized.length-details.length} additional WebUI changes are omitted to keep this release page concise.`,'');
   lines.push('</details>','');
   if(fromTag||toSha)lines.push(`_Range: ${fromTag||'repository start'} → ${toSha||'current release'}_`,'');
-  return{markdown:lines.join('\n'),highlights,items:normalized,details,grouped};
+  const markdown=lines.join('\n');
+  if(containsNonLatinLetter(markdown))throw new Error('Public Release Notes must use Latin-script public text.');
+  return{markdown,highlights,items:normalized,details,grouped};
 }
 function runGit(args,{cwd=process.cwd()}={}){
   return execFileSync('git',args,{cwd,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();

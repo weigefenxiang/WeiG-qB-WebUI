@@ -6,6 +6,12 @@ const release=fs.readFileSync(new URL('../.github/workflows/release.yml',import.
 assert.ok(publish.includes("- 'publish-v*'")&&publish.includes('release-preview-${sha}'),'publish command must be tag-driven and exact-preview-gated');
 assert.ok(publish.includes('publish_after:"true"')&&publish.includes('/actions/workflows/promote.yml/dispatches'),'publish command must delegate to Promotion owner');
 assert.ok(publish.includes('Retire one-shot publish command tag'),'command tag must be temporary');
-assert.ok(promote.includes('publish_after:')&&promote.includes('Create stable release tag after certified Promotion')&&promote.includes('/actions/workflows/release.yml/dispatches'),'Promotion must optionally create stable tag and explicitly dispatch Release');
+assert.ok(promote.includes('publish_after:')&&promote.includes('Create stable release tag after certified Promotion'),'Promotion must optionally create the stable tag');
+assert.ok(promote.includes('github.rest.git.getRef')&&promote.includes('error?.status !== 404')&&promote.includes('github.rest.git.createRef'),'Promotion stable-tag lifecycle must distinguish existing, missing, and API-error states through GitHub REST');
+assert.ok(promote.includes("github.rest.actions.createWorkflowDispatch")&&promote.includes("workflow_id: 'release.yml'"),'Promotion must explicitly dispatch the canonical Release workflow');
+assert.ok(!promote.includes('EXISTING="$(gh api'),'retired stdout/empty-string tag probing must not remain active');
 assert.ok(release.includes('workflow_dispatch:'),'Release must support explicit Bot dispatch on stable tag');
-console.log('Release publish contract passed: a one-shot exact-SHA command delegates to canonical Promotion, which can create the stable tag and explicitly dispatch canonical Release.');
+assert.ok(release.includes('--latest')&&release.includes('github.rest.repos.getLatestRelease'),'Release must explicitly publish and authoritative-reread GitHub Latest');
+assert.ok(release.includes('github.rest.repos.listReleases')&&release.includes('Repository Release list is not headed by canonical Latest Release'),'Release must verify the canonical Latest Release also heads the repository Release list');
+assert.ok(release.includes("Published Release body does not equal the canonical generated release notes."),'Release must verify GitHub published the exact canonical generated body');
+console.log('Release publish contract passed: command -> Promotion -> source-proven stable tag -> canonical Release -> authoritative Latest/body verification.');
