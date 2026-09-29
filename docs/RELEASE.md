@@ -62,17 +62,19 @@ The promotion workflow verifies the requested exact SHA and required validation 
 
 A release tag must point to the current `main` commit.
 
-The release workflow reuses the validated distribution/evidence for that exact commit and publishes stable release assets.
+`promote.yml` owns the stable-tag lifecycle. It resolves the tag through the GitHub REST API: an exact existing tag is accepted, a real 404 may create the tag, and every other API error fails closed. The retired stdout/empty-string probe is not a valid existence check.
+
+`release.yml` is the only GitHub Release publisher. It reuses the certified candidate bytes, publishes the stable Release explicitly as GitHub `Latest`, then authoritative-rereads GitHub state. Publication is successful only when the exact tag is Latest, the canonical Release is first in the published Release list, title/body match the generated result, and the tag still points to the exact release SHA.
 
 ### Release Notes
 
-GitHub Release notes have one repository-owned generator: `tools/release-notes.mjs`.
+GitHub Release notes have one repository-owned generator: `tools/release-notes.mjs`. Release Preview and final publication consume the same generator; there is no second public-copy or layout owner.
 
 - Range: previous stable semantic-version tag → current release exact SHA.
-- The overview lists at most 8 user-facing changes.
-- Full history is grouped into Feature/UI, Fixes, Performance, Compatibility, and Internal Engineering inside a folded `<details>` block.
-- `test`, `ci`, `docs`, `chore`, `refactor`, and other engineering-only commits stay out of the overview by default but remain in the full record.
-- A commit body line such as `Release-Note: Fix: Correct a user-visible issue` may replace an engineering-oriented subject with explicit user-facing release copy. `Release-Note: skip` omits that commit.
+- Public Release text is English/Latin-script only; non-Latin explicit metadata falls back to an eligible English commit subject or is omitted.
+- Presentation order is `Highlights -> preview GIF -> folded details`, so the first Release viewport explains the current version before the showcase image.
+- Highlights list at most 8 user-facing changes; folded details are bounded and grouped into Feature/UI, Fixes, Performance, and Compatibility.
+- Identity/generated/support-only paths and engineering-only commits are excluded from public Release Notes unless an explicit eligible `Release-Note:` overrides the subject. `Release-Note: skip` omits that commit.
 - The release workflow writes `release-notes.md` and passes it to `gh release create --notes-file`; GitHub auto-generated notes and static inline notes are not parallel owners.
 
 
