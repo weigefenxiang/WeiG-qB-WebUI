@@ -67,14 +67,25 @@ const files=Array.from({length:40},(_,index)=>({index,name:`${index<2?'folder-a'
 const filePrioWrites=[];
 const properties={save_path:'/downloads',total_size:torrent.size,time_elapsed:176*86400+6*3600,seeding_time:176*86400+6*3600,eta:900,nb_connections:4,nb_connections_limit:100,total_downloaded:16*1024*1024,total_downloaded_session:4*1024*1024,total_uploaded:2*1024*1024,total_uploaded_session:512*1024,dl_speed:65536,dl_speed_avg:60000,up_speed:2048,up_speed_avg:1800,dl_limit:-1,up_limit:-1,total_wasted:0,seeds:5,seeds_total:12,peers:2,peers_total:9,share_ratio:.5,popularity:1,reannounce:120,pieces_num:52531,piece_size:8*1024*1024,pieces_have:52531,infohash_v1:hash,infohash_v2:'',created_by:'fixture',last_seen:1700000100,addition_date:1700000000,completion_date:0,creation_date:1699990000,download_path:'/downloads',comment:'detail browser evidence',private:false,has_metadata:true,progress:.25};
 const assert=(ok,msg)=>{if(!ok)throw new Error(msg);};
+async function waitDetailViewportIdle(page,expected){
+  expected=expected||{};
+  await page.waitForFunction(({top,left})=>{
+    const owner=window.WeiG&&WeiG.AppState&&WeiG.AppState.detailViewport,viewport=owner&&owner.el;
+    if(!owner||!viewport||owner._scrolling||owner._hasPendingItems||viewport.__weigDataViewportScrollIdleTimer)return false;
+    if(top!=null&&Math.abs(viewport.scrollTop-top)>.5)return false;
+    if(left!=null&&Math.abs(viewport.scrollLeft-left)>.5)return false;
+    return true;
+  },{top:expected.top??null,left:expected.left??null},{timeout:3000});
+}
 async function resetDetailViewport(page){
+  await waitDetailViewportIdle(page);
   await page.evaluate(()=>{
     const viewport=document.querySelector('.shared-table__viewport'),owner=window.WeiG&&WeiG.AppState&&WeiG.AppState.detailViewport;
     if(!viewport||!owner||owner.el!==viewport||typeof owner.resetScroll!=='function')throw new Error('canonical Detail DataViewport reset owner unavailable');
     owner.resetScroll();
     viewport.scrollLeft=0;
   });
-  await page.waitForFunction(()=>{const viewport=document.querySelector('.shared-table__viewport');return !!viewport&&viewport.scrollTop===0&&viewport.scrollLeft===0;},undefined,{timeout:1500});
+  await waitDetailViewportIdle(page,{top:0,left:0});
 }
 async function visibleDetailBodyPoint(page){
   const handle=await page.waitForFunction(()=>{
@@ -293,8 +304,7 @@ try{
   assert(tableAlignment.headAlign==='start'&&tableAlignment.cellAlign==='start'&&tableAlignment.headText==='left'&&tableAlignment.cellText==='left',`Ordinary numeric detail columns must share the canonical left/start alignment: ${JSON.stringify(tableAlignment)}`);
   const detailRecycler=await page.evaluate(async()=>{const v=WeiG.AppState.detailViewport,el=v.el,max=Math.max(0,el.scrollHeight-el.clientHeight);el.scrollTop=Math.round(max*.5);await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));v.resetMetrics();const nodes=v._rowPool.map(slot=>slot.node);for(const ratio of [.05,.60,.20,.90,.35,.75]){el.scrollTop=Math.round(max*ratio);el.dispatchEvent(new Event('scroll'));await new Promise(r=>requestAnimationFrame(r));}return{metrics:v.metrics(),same:nodes.length===v._rowPool.length&&nodes.every((node,i)=>v._rowPool[i].node===node),max};});
   assert(detailRecycler.max>0&&detailRecycler.same&&detailRecycler.metrics.created===0&&detailRecycler.metrics.removed===0&&detailRecycler.metrics.updated>0,'Detail thumb-like recycler stress failed: '+JSON.stringify(detailRecycler));
-  await page.evaluate(()=>{const v=WeiG.AppState.detailViewport,el=v&&v.el;if(!v||!el)return;v.resetScroll();el.scrollTop=0;el.scrollLeft=0;});
-  await page.waitForFunction(()=>{const v=WeiG.AppState.detailViewport,el=v&&v.el;return !!v&&!!el&&!v._scrolling&&!v._hasPendingItems&&!el.__weigDataViewportScrollIdleTimer&&el.scrollTop===0;});
+  await resetDetailViewport(page);
   const detailPoolVisibility=await page.evaluate(()=>{const v=WeiG.AppState.detailViewport,idle=v._rowPool.filter(slot=>!slot.bound).map(slot=>slot.node),active=v._rowPool.filter(slot=>slot.bound).map(slot=>slot.node),paintedIdle=idle.filter(node=>{const style=getComputedStyle(node),rect=node.getBoundingClientRect();return style.display!=='none'&&style.visibility!=='hidden'&&rect.width>0&&rect.height>0;});return{idleCount:idle.length,idlePainted:paintedIdle.length,activeCount:active.length,activeTops:active.map(node=>Math.round(node.getBoundingClientRect().top*10)/10)};});
   assert(detailPoolVisibility.idleCount>0&&detailPoolVisibility.idlePainted===0,'Detail prewarmed idle row shells painted over the first row: '+JSON.stringify(detailPoolVisibility));
   assert(new Set(detailPoolVisibility.activeTops).size===detailPoolVisibility.activeCount,'Detail active recycler rows overlap at first paint: '+JSON.stringify(detailPoolVisibility));
@@ -370,11 +380,10 @@ try{
   await page.waitForFunction(path=>{const v=WeiG.AppState.detailViewport,folder=v?.items?.find(item=>item?.__weigFileKind==='folder'&&item.__weigBaseName===path);return folder?.__weigExpanded===false&&!v.items.some(item=>item?.__weigFileKind==='file'&&item.__weigParentPath===folder.__weigPath);},String(stickyPath||'').trim());
   const stickyCollapsed=await page.evaluate(path=>{const v=WeiG.AppState.detailViewport,folder=v.items.find(item=>item?.__weigFileKind==='folder'&&item.__weigBaseName===path);return{path:folder?.__weigPath||'',expanded:folder?.__weigExpanded,descendants:v.items.filter(item=>item?.__weigFileKind==='file'&&item.__weigParentPath===folder?.__weigPath).length,totalFiles:v.items.filter(item=>item?.__weigFileKind==='file').length};},String(stickyPath||'').trim());
   assert(stickyCollapsed.expanded===false&&stickyCollapsed.descendants===0,'Sticky Content folder toggle did not remove the selected folder descendants: '+JSON.stringify(stickyCollapsed));
-  await page.evaluate(()=>{const v=WeiG.AppState.detailViewport,el=v.el;v.resetScroll();el.scrollTop=0;el.scrollLeft=0;});
-  await page.waitForFunction(()=>{const v=WeiG.AppState.detailViewport,el=v.el;return !v._scrolling&&!el.__weigDataViewportScrollIdleTimer&&el.scrollTop===0;});
+  await resetDetailViewport(page);
   await page.locator('.shared-table__row[data-file-kind="folder"]:not([hidden]) .detail-file-toggle').first().click();
   await page.waitForFunction(()=>WeiG.AppState.detailViewport.items.some(item=>item&&item.__weigFileKind==='file'));
-  await page.evaluate(()=>{const v=WeiG.AppState.detailViewport,el=v.el;v.resetScroll();el.scrollTop=0;el.scrollLeft=0;});
+  await resetDetailViewport(page);
 
   await page.locator('.shared-table__toolbar button').first().click();
   await page.waitForSelector('#column-configurator-dialog[open]');
