@@ -20,6 +20,7 @@ const packageVersion=JSON.parse(read('package.json')).version;
 assert(version===webVersion&&version===packageVersion,`Version sources diverged: VERSION=${version}, webui/VERSION=${webVersion}, package.json=${packageVersion}`);
 
 const required=[
+  'webui/public/scripts/select-geometry.js',
   'webui/private/index.html',
   'webui/private/scripts/core.js',
   'webui/private/scripts/qb-client.js',
