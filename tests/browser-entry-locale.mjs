@@ -59,7 +59,9 @@ async function verify(pathname,item){
       options:[...document.querySelectorAll('#login-language option')].map(option=>({value:option.value,label:option.textContent})),
       selected:String(document.querySelector('#login-language')?.value||''),
       versionPanel:document.querySelectorAll('#login-versions').length,
-      oldHint:document.querySelectorAll('#login-hint').length
+      oldHint:document.querySelectorAll('#login-hint').length,
+      entrySelects:document.querySelectorAll('.entry-select').length,
+      entryTrigger:document.querySelector('.entry-select__trigger')?.getBoundingClientRect().toJSON?.()||null
     }));
     assert.equal(facts.lang,item.app,`${pathname} ${item.locale}: entry language mismatch ${JSON.stringify(facts)}`);
     assert.equal(facts.title,item.title,`${pathname} ${item.locale}: entry copy mismatch ${JSON.stringify(facts)}`);
@@ -70,6 +72,8 @@ async function verify(pathname,item){
     assert.deepEqual(facts.options.map(x=>x.label),['English','简中','繁中','日本語','한국어','Deutsch','Français','Español','Português','Русский'],`${pathname}: login language inventory drifted`);
     assert.equal(facts.versionPanel,0,`${pathname}: retired pre-auth qB/WebAPI/Wei.G version panel must stay absent`);
     assert.equal(facts.oldHint,0,`${pathname}: retired compatibility hint must stay absent`);
+    assert.equal(facts.entrySelects,1,`${pathname}: canonical entry language Select enhancement missing`);
+    assert.ok(facts.entryTrigger&&facts.entryTrigger.width<150&&facts.entryTrigger.right<=430+facts.entryTrigger.left,`${pathname}: entry language trigger must stay intrinsic instead of expanding across the login card: ${JSON.stringify(facts.entryTrigger)}`);
     assert.deepEqual(errors,[],`${pathname} ${item.locale}: browser errors:\n${errors.join('\n')}`);
   }finally{await context.close();}
 }
@@ -77,7 +81,7 @@ async function verify(pathname,item){
 try{
   for(const item of cases)await verify('index.html',item);
   for(const item of cases.filter(item=>['en','zh-CN','zh-TW','zh-HK'].includes(item.app)||item.locale==='ar-AE'))await verify('login.html',item);
-  {const context=await browser.newContext({locale:'en-US'});try{const page=await context.newPage();await page.goto(new URL('login.html',base).toString(),{waitUntil:'domcontentloaded'});await page.selectOption('#login-language','zh-TW');assert.equal(await page.locator('#login-title').textContent(),'歡迎回來');assert.equal(await page.evaluate(()=>WeiG.SessionContract.localeIntent()),'zh-TW');await page.reload({waitUntil:'domcontentloaded'});assert.equal(await page.locator('#login-language').inputValue(),'zh-TW');assert.equal(await page.locator('#login-title').textContent(),'歡迎回來');await page.selectOption('#login-language','pt-PT');assert.equal(await page.evaluate(()=>WeiG.SessionContract.localeIntent()),'pt-PT');assert.equal(await page.locator('#login-language').inputValue(),'pt-PT');}finally{await context.close();}}
+  {const context=await browser.newContext({locale:'en-US'});try{const page=await context.newPage();await page.goto(new URL('login.html',base).toString(),{waitUntil:'domcontentloaded'});const entryTrigger=page.locator('.entry-select__trigger');await entryTrigger.click();const entryMenu=page.locator('.entry-select__menu:not([hidden])');await entryMenu.waitFor();const entryGeometry=await entryMenu.evaluate(menu=>{const r=menu.getBoundingClientRect(),options=[...menu.querySelectorAll('.entry-select__option')];return{left:r.left,right:r.right,top:r.top,bottom:r.bottom,vw:innerWidth,vh:innerHeight,width:r.width,overflow:options.some(option=>option.scrollWidth>option.clientWidth+1)};});assert.ok(entryGeometry.left>=7&&entryGeometry.right<=entryGeometry.vw-7&&entryGeometry.top>=7&&entryGeometry.bottom<=entryGeometry.vh-7&&!entryGeometry.overflow,'Login language menu must remain intrinsic and viewport-bounded: '+JSON.stringify(entryGeometry));await page.locator('.entry-select__option[data-value="zh-TW"]').click();assert.equal(await page.locator('#login-title').textContent(),'歡迎回來');assert.equal(await page.evaluate(()=>WeiG.SessionContract.localeIntent()),'zh-TW');await page.reload({waitUntil:'domcontentloaded'});assert.equal(await page.locator('#login-language').inputValue(),'zh-TW');assert.equal(await page.locator('#login-title').textContent(),'歡迎回來');await page.selectOption('#login-language','pt-PT');assert.equal(await page.evaluate(()=>WeiG.SessionContract.localeIntent()),'pt-PT');assert.equal(await page.locator('#login-language').inputValue(),'pt-PT');}finally{await context.close();}}
 }finally{
   await browser.close();
   await new Promise(resolve=>server.close(resolve));
