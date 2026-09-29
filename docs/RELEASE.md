@@ -66,7 +66,9 @@ A release tag must point to the current `main` commit.
 
 `release.yml` is the only GitHub Release mutation owner. It reuses the certified candidate bytes, publishes the stable Release explicitly as GitHub `Latest`, then authoritative-rereads GitHub state. Publication is successful only when the exact tag is Latest, the canonical Release is first in the published Release list, title/body match the generated result, and the tag still points to the exact release SHA.
 
-For an already-published stable Release whose certified bytes and tag must remain unchanged, the same workflow owns a bounded metadata-only refresh command. It may update only the existing Release title/body/Latest metadata from the canonical generator. Before and after the mutation it fingerprints the Release id and every asset id/name/size/digest, verifies the stable tag still equals current `main`, then retires the one-shot command branch. It must never delete/recreate the Release or re-upload certified assets merely to change public copy.
+For an already-published stable Release whose certified bytes and tag must remain unchanged, the same workflow owns a bounded metadata-only refresh command. It derives the presentation from authoritative GitHub Latest identity, updates only the existing Release title/body/Latest metadata from the canonical generator, fingerprints the Release id and every asset id/name/size/digest before and after mutation, verifies the stable tag still equals current `main`, then retires the one-shot command branch. It must never delete/recreate the Release or re-upload certified assets merely to change public copy.
+
+When a new stable Release becomes Latest, the same workflow snapshots the previous Latest before publication. After the new Release is verified as authoritative Latest, it regenerates the previous Release with archive presentation and updates only that existing Release body. Historical Release id, tag SHA and certified asset fingerprints must remain unchanged.
 
 ### Release Notes
 
@@ -74,7 +76,10 @@ GitHub Release notes have one repository-owned generator: `tools/release-notes.m
 
 - Range: previous stable semantic-version tag → current release exact SHA.
 - Public Release text is English/Latin-script only; non-Latin explicit metadata falls back to an eligible English commit subject or is omitted.
-- Presentation order is `Highlights -> preview GIF -> folded details`, so the first Release viewport explains the current version before the showcase image.
+- Presentation is state-based, not version-special-cased:
+  - authoritative GitHub **Latest**: `preview GIF -> Highlights -> folded details`;
+  - **archive/history**: `Highlights -> folded details`, with no preview GIF.
+- Publishing a new Latest automatically archives the previous Latest public copy through the same generator and Release mutation owner; Markdown does not attempt to detect Latest dynamically.
 - Highlights list at most 8 user-facing changes; folded details are bounded and grouped into Feature/UI, Fixes, Performance, and Compatibility.
 - Identity/generated/support-only paths and engineering-only commits are excluded from public Release Notes unless an explicit eligible `Release-Note:` overrides the subject. `Release-Note: skip` omits that commit.
 - The release workflow writes `release-notes.md` and passes it to `gh release create --notes-file`; GitHub auto-generated notes and static inline notes are not parallel owners.
