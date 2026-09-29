@@ -59,6 +59,7 @@ const floatingSource=fs.readFileSync(new URL('../webui/private/scripts/floating.
 assert.match(layoutSource,/qbSourceText\(\{source:source,context:context\},source\)/,'Detail copy must resolve exact qB source/context before key fallback');
 assert.ok(appSource.includes('__weigDescendantFileIds')&&appSource.includes('option&&option.disabled!==true'),'folder Download Priority must reuse descendant file ids while excluding source display-only options from writable choices');
 assert.ok(appSource.includes("priorityLabels[String(option.value)]=detailOptionLabel('filePriority',option)")&&appSource.includes('formatValue:function(value){return priorityLabels[String(value)]'),'display-only Mixed must remain a renderable state label without becoming a selectable action');
+assert.ok(appSource.includes("displayLabel=priorityLabels[current]")&&appSource.includes("ctx.cell.dataset.filePriorityMode='display'")&&appSource.includes("ctx.cell.__weigFilePriorityControl=null"),'display-only source priority states must be rendered by the canonical priority cell without leaking into writable choices');
 assert.equal(appSource.includes('requiresNonSeed'),false,'file priority availability must not use the retired feature-local is_seed guess');
 assert.equal(appSource.includes('derivedFileMenu'),false,'source-proven Content actions must retire the feature-local native file-menu synthesizer');
 assert.ok(appSource.includes('next.translation=priorityColumn.translation'),'Content priority parent caption must project the exact source-derived Download Priority column copy');

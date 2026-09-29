@@ -280,6 +280,9 @@ try{
   assert(derived.rows[0].remaining===derived.expectedIgnored,`Ignored-file remaining must be zero: ${JSON.stringify(derived)}`);
   assert(derived.rows[1].remaining===derived.expectedNormal,`Source-driven remaining formula is wrong: ${JSON.stringify(derived)}`);assert(derived.rows[0].availability==='N/A'&&derived.rows[1].availability==='80%',`Content availability sentinel/percentage projection is wrong: ${JSON.stringify(derived.rows)}`);
   const folderCheckbox=page.locator('.shared-table__row[data-file-kind="folder"] [data-column-key="checked"] input[type="checkbox"]').first(),headerCheckbox=page.locator('.shared-table__head .grid-head-cell[data-key="checked"] input.detail-files-header-checkbox');
+  const mixedFolderPriority=page.locator('.shared-table__row[data-file-kind="folder"]').filter({hasText:'folder-a'}).first().locator('[data-column-key="priority"]');
+  assert((await mixedFolderPriority.textContent()).trim()==='Mixed','Mixed Content folder priority must render the exact source display label instead of the raw -1 sentinel.');
+  assert(await mixedFolderPriority.locator('.ui-select').count()===0,'Display-only Mixed priority must not become a writable Select choice.');
   assert(await folderCheckbox.evaluate(node=>node.indeterminate===true),'Mixed Content folder must render a tri-state partial checkbox before writes.');
   assert(await headerCheckbox.evaluate(node=>node.indeterminate===true),'Mixed Content header must render a global tri-state partial checkbox before writes.');
   await folderCheckbox.click();
