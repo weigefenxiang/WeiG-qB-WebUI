@@ -67,6 +67,20 @@ const files=Array.from({length:40},(_,index)=>({index,name:`${index<2?'folder-a'
 const filePrioWrites=[];
 const properties={save_path:'/downloads',total_size:torrent.size,time_elapsed:176*86400+6*3600,seeding_time:176*86400+6*3600,eta:900,nb_connections:4,nb_connections_limit:100,total_downloaded:16*1024*1024,total_downloaded_session:4*1024*1024,total_uploaded:2*1024*1024,total_uploaded_session:512*1024,dl_speed:65536,dl_speed_avg:60000,up_speed:2048,up_speed_avg:1800,dl_limit:-1,up_limit:-1,total_wasted:0,seeds:5,seeds_total:12,peers:2,peers_total:9,share_ratio:.5,popularity:1,reannounce:120,pieces_num:52531,piece_size:8*1024*1024,pieces_have:52531,infohash_v1:hash,infohash_v2:'',created_by:'fixture',last_seen:1700000100,addition_date:1700000000,completion_date:0,creation_date:1699990000,download_path:'/downloads',comment:'detail browser evidence',private:false,has_metadata:true,progress:.25};
 const assert=(ok,msg)=>{if(!ok)throw new Error(msg);};
+async function resetDetailViewport(page){
+  await page.evaluate(()=>{
+    const viewport=document.querySelector('.shared-table__viewport'),owner=window.WeiG&&WeiG.AppState&&WeiG.AppState.detailViewport;
+    if(!viewport||!owner||owner.el!==viewport||typeof owner.resetScroll!=='function')throw new Error('canonical Detail DataViewport reset owner unavailable');
+    owner.resetScroll();
+    viewport.scrollLeft=0;
+  });
+  await page.waitForFunction(()=>{
+    const viewport=document.querySelector('.shared-table__viewport'),cell=document.querySelector('.shared-table__row [data-column-key="size"]');
+    if(!viewport||!cell||viewport.scrollTop!==0||viewport.scrollLeft!==0)return false;
+    const vr=viewport.getBoundingClientRect(),r=cell.getBoundingClientRect();
+    return r.bottom>vr.top&&r.top<vr.bottom;
+  },undefined,{timeout:1500});
+}
 async function waitFixture(predicate,message,timeout=5000){const started=Date.now();while(!predicate()){if(Date.now()-started>timeout)throw new Error(message);await new Promise(resolve=>setTimeout(resolve,20));}}
 const json=(res,value,status=200)=>{res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store'});res.end(JSON.stringify(value));};
 const text=(res,value,status=200)=>{res.writeHead(status,{'content-type':'text/plain; charset=utf-8','cache-control':'no-store'});res.end(String(value));};
@@ -415,7 +429,7 @@ try{
   const titlePreview=await page.locator('.ui-floating-preview').textContent();assert(titlePreview===mobileHero.titleText,'Mobile Detail floating preview must expose the complete clipped Torrent title');
   await page.evaluate(()=>WeiG.Components.closeTextPreview());await page.waitForSelector('.ui-floating-preview',{state:'detached'});
   const cdp=await context.newCDPSession(page);await cdp.send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:5});
-  await page.evaluate(()=>{const viewport=document.querySelector('.shared-table__viewport');viewport.scrollTop=0;viewport.scrollLeft=0;});
+  await resetDetailViewport(page);
   const headerBefore=await page.evaluate(()=>({order:[...document.querySelectorAll('.shared-table__head .grid-head-cell')].map(node=>node.dataset.key),saved:JSON.stringify(window.WeiG.SharedColumns.read('torrent-detail-files'))}));
   const firstBox=await page.locator('.shared-table__head .grid-head-cell[data-key="name"]').boundingBox();assert(firstBox,'Mobile detail Name header is missing.');
   const tx=firstBox.x+Math.min(24,firstBox.width/2),ty=firstBox.y+firstBox.height/2;
@@ -423,7 +437,7 @@ try{
   const headerAfter=await page.evaluate(()=>({order:[...document.querySelectorAll('.shared-table__head .grid-head-cell')].map(node=>node.dataset.key),saved:JSON.stringify(window.WeiG.SharedColumns.read('torrent-detail-files'))}));
   assert(JSON.stringify(headerAfter.order)===JSON.stringify(headerBefore.order)&&headerAfter.saved===headerBefore.saved,`Quick mobile header drag accidentally reordered columns instead of cancelling before long-press arm: ${JSON.stringify({headerBefore,headerAfter})}`);
 
-  await page.evaluate(()=>{const viewport=document.querySelector('.shared-table__viewport');viewport.scrollTop=0;viewport.scrollLeft=0;});
+  await resetDetailViewport(page);
   const nativeBefore=await page.evaluate(()=>{const root=document.getElementById('detail-content'),viewport=document.querySelector('.shared-table__viewport'),owners=[...document.querySelectorAll('#detail-view [data-primary-scroll="1"]')];return{top:viewport.scrollTop,max:Math.max(0,viewport.scrollHeight-viewport.clientHeight),outerTop:root.scrollTop,outerMax:Math.max(0,root.scrollHeight-root.clientHeight),outerOverflow:getComputedStyle(root).overflowY,innerOverflow:getComputedStyle(viewport).overflowY,owners:owners.map(node=>node===viewport?'inner':node===root?'outer':node.className||node.id)};});
   assert(nativeBefore.max>0,`Mobile Detail touch-scroll fixture has no native vertical overflow: ${JSON.stringify(nativeBefore)}`);
   assert(JSON.stringify(nativeBefore.owners)===JSON.stringify(['inner'])&&nativeBefore.outerOverflow==='hidden'&&/auto|scroll/.test(nativeBefore.innerOverflow),`Mobile Detail must expose one table scroll owner and keep the outer shell non-scrolling: ${JSON.stringify(nativeBefore)}`);
