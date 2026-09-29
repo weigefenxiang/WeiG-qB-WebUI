@@ -123,6 +123,7 @@ async function verifyBranchEntry(browser,{branch,entryPath,branchSha,label}){
       qbVersion:'5.2.3',
       timeoutMs:sessionTimeoutMs,
       navigate:async attempt=>{
+        errors.length=0;
         const attemptEntry=new URL(entry);attemptEntry.searchParams.set('__weig_session_attempt',String(attempt));
         await page.goto(attemptEntry.toString(),{waitUntil:'domcontentloaded',timeout:sessionTimeoutMs});
         await page.waitForURL(url=>url.pathname.endsWith('/lab/')&&url.searchParams.get('branch')===branch&&url.hash==='#branch-root',{timeout:sessionTimeoutMs});
