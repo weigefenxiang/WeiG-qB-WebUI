@@ -71,6 +71,13 @@ async function verifyModern(){
   assert.equal(initial.disabled,false,'zero-selection Dock tabs must remain usable when the Torrent viewport has a visible subject');
   assert.equal(initial.dockHidden,true);assert.equal(initial.splitterHidden,true);assert.equal(initial.route,'home');
 
+  const listTitle=page.locator('#torrent-list .torrent-title').first();
+  const listTitleText=String(await listTitle.textContent()||'').trim();
+  await listTitle.evaluate(node=>{node.style.width='96px';node.style.maxWidth='96px';});
+  await listTitle.hover();await page.waitForSelector('.ui-floating-preview',{state:'visible',timeout:5000});
+  assert.equal(String(await page.locator('.ui-floating-preview').textContent()||'').trim(),listTitleText,'clipped Torrent list title hover must reuse the bounded floating preview owner');
+  await page.mouse.move(4,4);await page.waitForTimeout(180);
+
   const zeroSubject=await page.evaluate(()=>{const viewport=document.getElementById('torrent-list')?.__weigTorrentDataViewport,item=viewport?.firstVisibleItem?.();return{selection:window.WeiG.Selection.count(),hash:item?.hash||''};});
   assert.equal(zeroSubject.selection,0);assert.ok(zeroSubject.hash,'zero-selection regression needs a visible Torrent subject');
   await page.locator('#torrent-detail-tabs .tab[data-tab="overview"]').click();
@@ -138,6 +145,20 @@ async function verifyModern(){
   }));
   assert.equal(trackerState.route,'home');assert.equal(trackerState.tab,'trackers');assert.deepEqual(trackerState.active,['trackers']);assert.equal(trackerState.detailViewport,true);assert.equal(trackerState.toolbarCount,0,'inline Detail tables must hide the Column settings toolbar row');assert.equal(trackerState.summaryCount,0,'inline Detail tables must hide the toolbar summary row with the Column settings control');
   if(scrollState.max>0)assert.equal(trackerState.mainLeft,scrollState.left,'switching Detail tabs must not reset Main Torrent horizontal scroll');
+
+  const fallbackCopied=await page.evaluate(async()=>{
+    const own=Object.getOwnPropertyDescriptor(navigator,'clipboard'),originalExec=document.execCommand;let copied='';
+    try{
+      Object.defineProperty(navigator,'clipboard',{value:undefined,configurable:true});
+      document.execCommand=function(command){if(command!=='copy')return false;var node=document.activeElement;copied=node&&typeof node.value==='string'?node.value:'';return true;};
+      await window.WeiG.Clipboard.writeText('https://tracker.example/announce');
+      return copied;
+    }finally{
+      document.execCommand=originalExec;
+      if(own)Object.defineProperty(navigator,'clipboard',own);else delete navigator.clipboard;
+    }
+  });
+  assert.equal(fallbackCopied,'https://tracker.example/announce','shared Clipboard owner must fall back when Async Clipboard is unavailable, including insecure LAN-style browser contexts');
 
   const sourceTabKeys=await page.locator('#torrent-detail-tabs .tab').evaluateAll(nodes=>nodes.map(node=>node.dataset.tab));
   assert.deepEqual(sourceTabKeys,['overview','trackers','peers','webseeds','files'],'inline Dock must expose the complete source-driven qB Detail tab family in source order');
@@ -231,6 +252,11 @@ async function verifyModern(){
   await page.waitForFunction(()=>window.WeiG.Router.route().name==='torrent'&&document.getElementById('detail-view')?.classList.contains('is-active'),null,{timeout:30000});
   assert.equal(await page.locator('#detail-view [data-detail-back]').count(),1,'full Detail route must retain Back to torrents');
   assert.equal(await page.locator('#torrent-detail-dock:not([hidden])').count(),0,'full Detail route must not leave the inline Dock open');
+  const detailTitle=page.locator('#detail-title'),detailTitleText=String(await detailTitle.textContent()||'').trim();
+  await detailTitle.evaluate(node=>{node.style.width='150px';node.style.maxWidth='150px';});
+  await detailTitle.hover();await page.waitForSelector('.ui-floating-preview',{state:'visible',timeout:5000});
+  assert.equal(String(await page.locator('.ui-floating-preview').textContent()||'').trim(),detailTitleText,'clipped full Detail title hover must expose the complete Torrent name within the shared bounded preview');
+  await page.mouse.move(4,4);await page.waitForTimeout(180);
   await page.locator('#detail-view .detail-tabs .tab[data-tab="trackers"]').click();
   await page.waitForSelector('#detail-content>.shared-table__toolbar [data-detail-columns]',{state:'visible',timeout:30000});
   assert.equal(await page.locator('#detail-content>.shared-table__toolbar [data-detail-columns]').count(),1,'full Detail route must retain Column settings chrome');
@@ -261,4 +287,4 @@ try{
   await verifyLegacy();
 }finally{await browser.close();}
 
-console.log(`A35 Pages Detail Dock acceptance passed for ${expectedSha}: shared source-driven tabs, inline route isolation, selection rebinding, full-width persisted SplitPane geometry, collision-aware centered adaptive pager, no-wrap tab rail, reload persistence, full Detail route preservation, and qB 4.1.9.1 compatibility.`);
+console.log(`A35 Pages Detail Dock acceptance passed for ${expectedSha}: shared source-driven tabs, inline route isolation, selection rebinding, full-width persisted SplitPane geometry, collision-aware centered adaptive pager, no-wrap tab rail, reload persistence, bounded Torrent-title previews, shared clipboard fallback, full Detail route preservation, and qB 4.1.9.1 compatibility.`);
