@@ -164,6 +164,12 @@ async function setColumnVisible(page,key,visible){
   await page.waitForFunction(({key,visible})=>!!document.querySelector(`.shared-table__head .grid-head-cell[data-key="${key}"]`)===visible,{key,visible});
 }
 async function touch(cdp,type,x,y){const touchPoints=type==='touchEnd'?[]:[{x,y,radiusX:2,radiusY:2,force:1,id:1}];await cdp.send('Input.dispatchTouchEvent',{type,touchPoints});}
+async function dataGridFrameGeometry(page,{frame,head,row}){
+  await page.waitForSelector(head+' > .grid-head-cell');
+  if(row)await page.waitForSelector(row+' > [data-column-key]');
+  return page.evaluate(({frame,head,row})=>{const f=document.querySelector(frame),h=document.querySelector(head),hc=h&&h.querySelector(':scope > .grid-head-cell'),r=row&&document.querySelector(row),rc=r&&r.querySelector(':scope > [data-column-key]');if(!f||!h||!hc||!r||!rc)return null;const fr=f.getBoundingClientRect(),hr=h.getBoundingClientRect(),hcr=hc.getBoundingClientRect(),rr=r.getBoundingClientRect(),rcr=rc.getBoundingClientRect(),hs=getComputedStyle(h),hcs=getComputedStyle(hc),rs=getComputedStyle(r),rcs=getComputedStyle(rc);return{headFrameInset:hcr.left-fr.left,rowFrameInset:rcr.left-fr.left,headInset:hcr.left-hr.left,rowInset:rcr.left-rr.left,headPaddingLeft:hs.paddingLeft,rowPaddingLeft:rs.paddingLeft,headCellPaddingLeft:hcs.paddingLeft,rowCellPaddingLeft:rcs.paddingLeft};},{frame,head,row});
+}
+async function assertDetailFrameGeometry(page,main,surface){const detail=await dataGridFrameGeometry(page,{frame:'#detail-content',head:'.shared-table__head',row:'.shared-table__row:not([hidden])'});assert(detail&&Math.abs(detail.headFrameInset-main.headFrameInset)<=1.5&&Math.abs(detail.rowFrameInset-main.rowFrameInset)<=1.5&&Math.abs(detail.headInset-main.headInset)<=1.5&&Math.abs(detail.rowInset-main.rowInset)<=1.5&&detail.headCellPaddingLeft===main.headCellPaddingLeft&&detail.rowCellPaddingLeft===main.rowCellPaddingLeft,surface+' Detail table must consume the same shared DataGrid frame/header gutter as the main Torrent grid: '+JSON.stringify({main,detail}));return detail;}
 
 const browser=await launchBrowser();
 try{
@@ -172,6 +178,8 @@ try{
   page.on('console',message=>{if(message.type()==='error'&&!/favicon|Wei\.G\.ico/i.test(message.text()))errors.push(message.text());});
   await page.goto(`http://${host}:${port}/#/`,{waitUntil:'domcontentloaded'});
   await page.waitForSelector(`.torrent-row[data-hash="${hash}"] .torrent-title`);
+  const mainGridFrame=await dataGridFrameGeometry(page,{frame:'.torrent-panel',head:'#torrent-table-head',row:`.torrent-row[data-hash="${hash}"]`});
+  assert(mainGridFrame&&mainGridFrame.headFrameInset>0&&Math.abs(mainGridFrame.headFrameInset-mainGridFrame.rowFrameInset)<=1.5&&mainGridFrame.headCellPaddingLeft==='0px'&&mainGridFrame.rowCellPaddingLeft==='0px','Main Torrent grid must expose one shared frame gutter outside zero-inline-padding cells: '+JSON.stringify(mainGridFrame));
   await page.locator(`.torrent-row[data-hash="${hash}"] .torrent-title`).click();
   await page.waitForSelector('#detail-view.is-active');
   const headerLayout=await page.evaluate(()=>{const hero=document.querySelector('.detail-hero'),eyebrow=hero&&hero.querySelector(':scope>.eyebrow'),state=document.getElementById('detail-state'),progress=hero&&hero.querySelector(':scope>.detail-progress'),track=progress&&progress.querySelector('.progress-track'),pct=document.getElementById('detail-progress-text'),title=document.getElementById('detail-title'),box=x=>{const r=x.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom,cy:r.y+r.height/2};};return{direct:!!(hero&&eyebrow&&state&&title&&progress&&eyebrow.parentElement===hero&&state.parentElement===hero&&title.parentElement===hero&&progress.parentElement===hero),hero:box(hero),eyebrow:box(eyebrow),state:box(state),progress:box(progress),track:box(track),pct:box(pct),pctAlign:getComputedStyle(pct).textAlign,title:box(title),text:pct.textContent,stateText:state.textContent,stateTone:state.dataset.tone,progressState:track.dataset.progressState,progressTone:track.dataset.progressTone,progressActive:track.dataset.progressActive};});
@@ -190,6 +198,7 @@ try{
   assert(general['Info Hash v2']==='N/A','Source-proven unavailable General values must preserve qB N/A semantics: '+JSON.stringify(general));
   await page.locator('.detail-tabs [data-tab="trackers"]').click();
   await page.waitForSelector('.shared-table__row');
+  await assertDetailFrameGeometry(page,mainGridFrame,'Trackers');
   const trackerInitial=await page.evaluate(()=>Array.from(document.querySelectorAll('.shared-table__row')).map(row=>({kind:row.dataset.trackerKind||'',url:row.querySelector('[data-column-key="url"]')?.textContent||'',tier:row.querySelector('[data-column-key="tier"]')?.textContent||'',bt:row.querySelector('[data-column-key="btVersion"]')?.textContent||''})));
   assert(trackerInitial.slice(0,3).every(row=>row.tier===''&&row.kind==='parent'),'Tracker pseudo rows exposed negative tier sentinel or lost parent semantics '+JSON.stringify(trackerInitial));
   assert(trackerInitial.some(row=>row.kind==='endpoint'&&row.url==='a-child.example:443'&&row.tier===''&&row.bt==='v1'),'Tracker endpoint projection did not expose source endpoint BT protocol/tier semantics '+JSON.stringify(trackerInitial));
@@ -200,7 +209,7 @@ try{
   assert(trackerMenuGeometry.wrap==='0'&&trackerMenuGeometry.labels.every(item=>item.whiteSpace==='nowrap'&&(!item.lineHeight||item.height<item.lineHeight*1.6)), 'Context Menu must keep labels on one line whenever the viewport can fit the intrinsic width: '+JSON.stringify(trackerMenuGeometry));
   await page.keyboard.press('Escape');await page.waitForSelector('.ui-context-menu',{state:'detached'});
   assert(await page.locator('#detail-view.is-active').count()===1,'Closing a Context Menu with Escape must not bubble into Detail route navigation.');
-  await page.locator('.detail-tabs [data-tab="peers"]').click();await page.waitForFunction(()=>document.querySelector('.detail-tabs [data-tab="peers"]')?.classList.contains('is-active'));await page.locator('[data-detail-back]').click();await page.waitForFunction(()=>WeiG.Router.route().name==='home'&&document.getElementById('list-view')?.classList.contains('is-active'));await page.waitForSelector(`.torrent-row[data-hash="${hash2}"] .torrent-title`);await page.locator(`.torrent-row[data-hash="${hash2}"] .torrent-title`).click();await page.waitForFunction(()=>document.querySelector('.detail-tabs [data-tab="peers"]')?.classList.contains('is-active')&&document.getElementById('detail-view')?.classList.contains('is-active'));assert(await page.locator('.detail-tabs [data-tab="peers"].is-active').count()===1,'Opening another Torrent after leaving the Users tab must preserve the last Detail tab');await page.locator('.detail-tabs [data-tab="trackers"]').click();await page.waitForSelector('.shared-table__row');
+  await page.locator('.detail-tabs [data-tab="peers"]').click();await page.waitForFunction(()=>document.querySelector('.detail-tabs [data-tab="peers"]')?.classList.contains('is-active'));await assertDetailFrameGeometry(page,mainGridFrame,'Peers');await page.locator('[data-detail-back]').click();await page.waitForFunction(()=>WeiG.Router.route().name==='home'&&document.getElementById('list-view')?.classList.contains('is-active'));await page.waitForSelector(`.torrent-row[data-hash="${hash2}"] .torrent-title`);await page.locator(`.torrent-row[data-hash="${hash2}"] .torrent-title`).click();await page.waitForFunction(()=>document.querySelector('.detail-tabs [data-tab="peers"]')?.classList.contains('is-active')&&document.getElementById('detail-view')?.classList.contains('is-active'));assert(await page.locator('.detail-tabs [data-tab="peers"].is-active').count()===1,'Opening another Torrent after leaving the Users tab must preserve the last Detail tab');await page.locator('.detail-tabs [data-tab="trackers"]').click();await page.waitForSelector('.shared-table__row');
   const trackerUrlHead=page.locator('.shared-table__head .grid-head-cell[data-key="url"]');await trackerUrlHead.click();
   await page.waitForFunction(()=>document.querySelector('.shared-table__head .grid-head-cell[data-key="url"]')?.dataset.sortDirection==='asc');
   const trackerAsc=await page.evaluate(()=>Array.from(document.querySelectorAll('.shared-table__row')).map(row=>({kind:row.dataset.trackerKind||'',url:row.querySelector('[data-column-key="url"]')?.textContent||''})));
@@ -212,6 +221,7 @@ try{
 
   await page.locator('.detail-tabs [data-tab="webseeds"]').click();
   await page.waitForSelector('.shared-table__head .grid-head-cell[data-key="url"]');
+  await assertDetailFrameGeometry(page,mainGridFrame,'Web Seeds');
   const webseedHead=page.locator('.shared-table__head .grid-head-cell[data-key="url"]');await webseedHead.click();
   const webseedAsc=await page.evaluate(()=>Array.from(document.querySelectorAll('.shared-table__row [data-column-key="url"]')).map(node=>node.textContent));
   assert(webseedAsc[0]?.includes('a-cdn.example'),'HTTP Sources ascending sort failed '+JSON.stringify(webseedAsc));
@@ -225,6 +235,7 @@ try{
 
   await page.locator('.detail-tabs [data-tab="files"]').click();
   await page.waitForSelector('.shared-table__head .grid-head-cell[data-key="size"]');
+  await assertDetailFrameGeometry(page,mainGridFrame,'Files');
   const fileSizeHead=page.locator('.shared-table__head .grid-head-cell[data-key="size"]');await fileSizeHead.click();
   const fileSortState=await page.evaluate(()=>({head:document.querySelector('.shared-table__head .grid-head-cell[data-key="size"]')?.textContent||'',folders:Array.from(document.querySelectorAll('.shared-table__row[data-file-kind="folder"] .detail-file-label')).slice(0,2).map(node=>node.textContent),kinds:Array.from(document.querySelectorAll('.shared-table__row')).slice(0,6).map(row=>row.dataset.fileKind||'')}));
   assert(await page.locator('.shared-table__head .grid-head-cell[data-key="size"]').getAttribute('data-sort-direction')==='asc'&&fileSortState.folders.length>=2,'Content sort did not preserve tree/header semantics '+JSON.stringify(fileSortState));
