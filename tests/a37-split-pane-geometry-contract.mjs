@@ -7,6 +7,7 @@ const app=read('webui/private/scripts/app.js');
 
 assert.match(layout,/function bound\(value,fallback\).*typeof value==='function'.*return Math\.max\(0,splitFinite\(value,fallback\)\)/s,'SplitPane bounds must accept dynamic geometry providers in the shared owner');
 assert.match(layout,/function trackSize\(\).*options\.trackSize.*root\.clientHeight/s,'SplitPane must own a dynamic available-track provider with a root-height fallback');
+assert.match(layout,/function readStored\(\).*var raw=localStorage\.getItem\(storageKey\);if\(raw===null\|\|raw===''\)return defaultSecondary;var n=Number\(raw\);return Number\.isFinite\(n\)&&n>=0\?n:defaultSecondary/s,'SplitPane persistence must distinguish an absent storage key from an explicitly persisted zero height');
 assert.match(layout,/function maxSecondary\(\).*trackSize\(\)-minPrimary\(\)-handle/s,'SplitPane maximum secondary size must derive from track size, primary semantic minimum and separator size');
 assert.match(layout,/aria-valuemin'.*minSecondary\(\).*aria-valuemax'.*maxSecondary\(\)/s,'SplitPane accessibility bounds must reflect current dynamic geometry');
 assert.match(app,/function detailDockMinListHeight\(\).*torrent-table-head.*offsetHeight/s,'Torrent Dock primary minimum must be the actual canonical sticky header height');

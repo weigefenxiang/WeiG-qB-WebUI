@@ -203,6 +203,8 @@ try{
   await page.waitForSelector('#torrent-detail-dock-content .shared-table__viewport .shared-table__row');
   const inlineDetail=await page.evaluate(()=>{const owner=window.WeiG?.AppState?.detailViewport,viewport=document.querySelector('#torrent-detail-dock-content .shared-table__viewport');return{route:window.WeiG?.Router?.route?.().name,tab:window.WeiG?.AppState?.detailDockTab,surface:owner?.__weigSharedDetail?.surface||'',owned:!!(owner&&viewport&&owner.el===viewport),mount:viewport?.closest('.detail-runtime-content')?.id||''};});
   assert(inlineDetail.route==='home'&&inlineDetail.tab==='trackers'&&inlineDetail.surface==='trackers'&&inlineDetail.owned&&inlineDetail.mount==='torrent-detail-dock-content','Inline Trackers Dock must consume the presentation-neutral shared Detail DataGrid owner before full-route navigation: '+JSON.stringify(inlineDetail));
+  const freshSplit=await page.evaluate(()=>{const split=document.getElementById('torrent-detail-splitter'),dock=document.getElementById('torrent-detail-dock'),key=window.WeiG?.StorageKeys?.torrentDetailDockHeight;return{stored:key?localStorage.getItem(key):null,now:Number(split?.getAttribute('aria-valuenow')),height:dock?.getBoundingClientRect().height||0};});
+  assert(freshSplit.stored===null&&freshSplit.now>0&&freshSplit.height>0,'A37 fresh storage must open the Detail Dock at the nonzero default instead of coercing missing localStorage to persisted zero: '+JSON.stringify(freshSplit));
 
   // A37 SplitPane: the actual draggable track spans from the Torrent sticky-header bottom to the Detail tabs/pager top.
   let splitBox=await page.locator('#torrent-detail-splitter').boundingBox();

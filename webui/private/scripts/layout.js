@@ -106,7 +106,7 @@
     function minSecondary(){return bound(options.minSecondary,160);}
     function trackSize(){var n=typeof options.trackSize==='function'?Number(options.trackSize()):Number.NaN;return Number.isFinite(n)&&n>=0?n:Math.max(0,Number(root.clientHeight)||0);}
     var defaultSecondary=Math.max(minSecondary(),splitFinite(options.defaultSecondary,280)),step=Math.max(1,splitFinite(options.step,16)),storageKey=String(options.storageKey||''),open=false,dragging=false,startY=0,startSize=defaultSecondary,size=defaultSecondary;
-    function readStored(){if(!storageKey)return defaultSecondary;try{var n=Number(localStorage.getItem(storageKey));return Number.isFinite(n)&&n>=0?n:defaultSecondary;}catch(_e){return defaultSecondary;}}
+    function readStored(){if(!storageKey)return defaultSecondary;try{var raw=localStorage.getItem(storageKey);if(raw===null||raw==='')return defaultSecondary;var n=Number(raw);return Number.isFinite(n)&&n>=0?n:defaultSecondary;}catch(_e){return defaultSecondary;}}
     function writeStored(){if(!storageKey)return;try{localStorage.setItem(storageKey,String(Math.round(size)));}catch(_e){}}
     function maxSecondary(){var minimum=minSecondary(),n=typeof options.maxSecondary==='function'?Number(options.maxSecondary()):Number.NaN;if(!Number.isFinite(n)){var handle=Math.max(0,separator.getBoundingClientRect?separator.getBoundingClientRect().height:0);n=trackSize()-minPrimary()-handle;}return Math.max(minimum,n);}
     function clamp(value){return Math.min(maxSecondary(),Math.max(minSecondary(),splitFinite(value,defaultSecondary)));}
