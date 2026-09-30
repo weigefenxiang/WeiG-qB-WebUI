@@ -108,12 +108,14 @@ async function verifyModern(){
 
   const geometry=await page.evaluate(()=>{
     const rect=node=>{const r=node.getBoundingClientRect();return{top:r.top,bottom:r.bottom,left:r.left,right:r.right,width:r.width,height:r.height};};
-    const list=document.getElementById('torrent-list'),separator=document.getElementById('torrent-detail-splitter'),dock=document.getElementById('torrent-detail-dock'),pager=document.querySelector('#list-view .torrent-pager'),nav=pager.querySelector('.pager__nav');
-    return{list:rect(list),separator:rect(separator),dock:rect(dock),pager:rect(pager),nav:rect(nav),listScrollWidth:list.scrollWidth,listClientWidth:list.clientWidth};
+    const list=document.getElementById('torrent-list'),separator=document.getElementById('torrent-detail-splitter'),dock=document.getElementById('torrent-detail-dock'),pager=document.querySelector('#list-view .torrent-pager'),nav=pager.querySelector('.pager__nav'),rail=document.getElementById('torrent-detail-tabs');
+    return{list:rect(list),separator:rect(separator),dock:rect(dock),pager:rect(pager),nav:rect(nav),rail:rect(rail),railScroll:rail.scrollWidth,railClient:rail.clientWidth,listScrollWidth:list.scrollWidth,listClientWidth:list.clientWidth};
   });
   assert.ok(geometry.separator.top>=geometry.list.bottom-1.5,`splitter must sit below the Torrent viewport/scrollbar: ${JSON.stringify(geometry)}`);
   assert.ok(geometry.dock.top>=geometry.separator.bottom-1.5,`Detail Dock must sit below the splitter: ${JSON.stringify(geometry)}`);
-  assert.ok(Math.abs(geometry.nav.right-(geometry.pager.right-10))<=3,`desktop pager navigation must anchor to the pager's right padding: ${JSON.stringify(geometry)}`);
+  const pagerCenter=(geometry.pager.left+geometry.pager.right)/2,navCenter=(geometry.nav.left+geometry.nav.right)/2;
+  assert.ok(navCenter>=pagerCenter-3,`desktop pager may stay centered or shift right only to avoid the Detail rail: ${JSON.stringify(geometry)}`);
+  assert.ok(Math.abs(navCenter-pagerCenter)<=4||geometry.nav.left>=geometry.rail.right+7,`desktop pager must remain centered whenever possible and otherwise clear the left Detail rail: ${JSON.stringify(geometry)}`);
 
   // Main and Detail scroll owners must stay independent after the Dock is inserted.
   const scrollState=await page.evaluate(()=>{
@@ -130,9 +132,11 @@ async function verifyModern(){
     tab:window.WeiG.AppState.detailDockTab,
     active:[...document.querySelectorAll('#torrent-detail-tabs .tab.is-active')].map(node=>node.dataset.tab),
     mainLeft:document.getElementById('torrent-list').scrollLeft,
-    detailViewport:!!document.querySelector('#torrent-detail-dock-content .shared-table__viewport')
+    detailViewport:!!document.querySelector('#torrent-detail-dock-content .shared-table__viewport'),
+    toolbarCount:document.querySelectorAll('#torrent-detail-dock-content>.shared-table__toolbar').length,
+    summaryCount:document.querySelectorAll('#torrent-detail-dock-content>.section-note').length
   }));
-  assert.equal(trackerState.route,'home');assert.equal(trackerState.tab,'trackers');assert.deepEqual(trackerState.active,['trackers']);assert.equal(trackerState.detailViewport,true);
+  assert.equal(trackerState.route,'home');assert.equal(trackerState.tab,'trackers');assert.deepEqual(trackerState.active,['trackers']);assert.equal(trackerState.detailViewport,true);assert.equal(trackerState.toolbarCount,0,'inline Detail tables must hide the Column settings toolbar row');assert.equal(trackerState.summaryCount,0,'inline Detail tables must hide the toolbar summary row with the Column settings control');
   if(scrollState.max>0)assert.equal(trackerState.mainLeft,scrollState.left,'switching Detail tabs must not reset Main Torrent horizontal scroll');
 
   const sourceTabKeys=await page.locator('#torrent-detail-tabs .tab').evaluateAll(nodes=>nodes.map(node=>node.dataset.tab));
@@ -227,6 +231,9 @@ async function verifyModern(){
   await page.waitForFunction(()=>window.WeiG.Router.route().name==='torrent'&&document.getElementById('detail-view')?.classList.contains('is-active'),null,{timeout:30000});
   assert.equal(await page.locator('#detail-view [data-detail-back]').count(),1,'full Detail route must retain Back to torrents');
   assert.equal(await page.locator('#torrent-detail-dock:not([hidden])').count(),0,'full Detail route must not leave the inline Dock open');
+  await page.locator('#detail-view .detail-tabs .tab[data-tab="trackers"]').click();
+  await page.waitForSelector('#detail-content>.shared-table__toolbar [data-detail-columns]',{state:'visible',timeout:30000});
+  assert.equal(await page.locator('#detail-content>.shared-table__toolbar [data-detail-columns]').count(),1,'full Detail route must retain Column settings chrome');
 
   assert.deepEqual(errors,[],`A35 modern Detail Dock emitted page errors:\n${errors.join('\n')}`);
   await context.close();
@@ -254,4 +261,4 @@ try{
   await verifyLegacy();
 }finally{await browser.close();}
 
-console.log(`A35 Pages Detail Dock acceptance passed for ${expectedSha}: shared source-driven tabs, inline route isolation, selection rebinding, full-width persisted SplitPane geometry, right-anchored adaptive pager, no-wrap tab rail, reload persistence, full Detail route preservation, and qB 4.1.9.1 compatibility.`);
+console.log(`A35 Pages Detail Dock acceptance passed for ${expectedSha}: shared source-driven tabs, inline route isolation, selection rebinding, full-width persisted SplitPane geometry, collision-aware centered adaptive pager, no-wrap tab rail, reload persistence, full Detail route preservation, and qB 4.1.9.1 compatibility.`);
