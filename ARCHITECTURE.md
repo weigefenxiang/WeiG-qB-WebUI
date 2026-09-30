@@ -81,7 +81,7 @@ canonical semantic owners
 
 `W.CapabilityRegistry` owns runtime compatibility resolution. UI code consumes resolved domain facts instead of guessing behavior from version strings.
 
-`W.DataViewport` owns virtualized visibility semantics. `firstVisible*` remains the generic partial-visibility API; consumers that must not choose content hidden beneath a sticky/static header use `firstUnobscuredIndex/Item`. Features must not recover this with DOM scans or fixed row offsets.
+`W.DataViewport` owns virtualized visibility and static-header geometry. It runtime-mounts `staticHead` inside the viewport and exposes `headerHeight()` as the read-only live geometry owner. `firstVisible*` remains the generic partial-visibility API; consumers that must not choose content hidden beneath a sticky/static header use `firstUnobscuredIndex/Item`. Features must not recover either visibility or header geometry with DOM scans, duplicate measurements, or fixed row offsets.
 
 `W.SplitPane` owns resize pointer/keyboard lifecycle, persistence, and clamping. Callers may provide dynamic semantic bounds such as `minPrimary`, `minSecondary`, and `trackSize`; feature code must not layer fixed-pixel max-height clamps over the shared owner.
 
