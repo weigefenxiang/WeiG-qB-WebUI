@@ -47,6 +47,10 @@ assert.doesNotMatch(app,/textContent=['"](?:General|Overview|Trackers|Peers|HTTP
 
 assert.ok(layout.includes("W.SplitPane={create:createSplitPane}"),'Dock must consume the shared SplitPane owner');
 assert.match(app,/W\.SplitPane\.create\(\{root:panel,primary:list,secondary:dock,separator:separator,minPrimary:180,minSecondary:160,defaultSecondary:280,step:20,storageKey:'weig\.torrentDetailDockHeight',maxSecondary:detailDockMaxHeight\}\)/,'Dock geometry must be bounded, persisted and delegated to SplitPane');
+assert.match(app,/function detailDockInteracting\(\).*app\.detailViewport\.isInteracting/s,'Dock background refresh must yield to the active shared Detail DataViewport scroll owner');
+assert.match(app,/async function refreshDetailDock\(\).*if\(!app\.detailDockOpen\|\|detailDockInteracting\(\)\)return false;.*if\(surface==='files'\)\{await refreshDetailFiles\(\);return true;\}.*app\.detailViewport&&app\.detailViewport\.setItems/s,'one active Dock surface must refresh through existing Detail owners without rebuilding a second polling runtime');
+assert.match(app,/function schedulePoll\(\).*if\(r\.name==='home'&&app\.detailDockOpen\)await refreshDetailDock\(\);await loadTransfer\(\);schedulePoll\(\);/s,'inline Detail refresh must be scheduled by the existing app poll owner');
+assert.doesNotMatch(app,/setInterval\(/,'A35 must not introduce a second Detail polling timer owner');
 assert.match(layout,/pointerDown.*pointerMove.*pointerEnd.*keyDown.*reset/s,'SplitPane must own pointer, keyboard and reset lifecycle');
 assert.ok(layoutCss.includes('.split-pane__separator{')&&layoutCss.includes('cursor:ns-resize'),'the full separator rail, not only the grip, must be draggable');
 assert.ok(!/torrent-detail-splitter[^}]*position:absolute/.test(layoutCss+tableCss),'splitter must remain a flex sibling below the Torrent scroll surface, never an overlay');
