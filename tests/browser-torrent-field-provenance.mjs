@@ -33,10 +33,10 @@ const commonProfile={
   torrentStates:['error','missingFiles','uploading','stoppedUP','queuedUP','stalledUP','checkingUP','forcedUP','allocating','downloading','metaDL','stoppedDL','queuedDL','stalledDL','checkingDL','forcedDL','checkingResumeData','moving'],
   preferenceDescriptors:[]
 };
-const sourceColumns=fields=>{const out=[];for(const key of fields){if(key==='state'){out.push({key:'state_icon',caption:'Status Icon',translation:{source:'Status Icon',context:'TransferListModel'},defaultWidth:30,defaultVisible:false,dataProperties:['state']});out.push({key:'status',caption:'Status',translation:{source:'Status',context:'TransferListModel'},defaultWidth:100,defaultVisible:true,dataProperties:['state']});continue;}out.push({key,caption:key.replaceAll('_',' '),defaultWidth:key==='name'?200:100,defaultVisible:true,dataProperties:[key]});}return out;};
+const sourceColumns=fields=>{const out=[];for(const key of fields){if(key==='state'){out.push({key:'state_icon',caption:'Status Icon',translation:{source:'Status Icon',context:'TransferListModel'},defaultWidth:30,defaultVisible:false,dataProperties:['state']});out.push({key:'status',caption:'Status',translation:{source:'Status',context:'TransferListModel'},defaultWidth:100,defaultVisible:true,dataProperties:['state']});continue;}const dataProperties=key==='num_seeds'?['num_seeds','num_complete']:key==='num_leechs'?['num_leechs','num_incomplete']:[key];out.push({key,caption:key.replaceAll('_',' '),defaultWidth:key==='name'?200:100,defaultVisible:true,dataProperties});}return out;};
 const profiles=[
-  {...commonProfile,qbVersion:'6.0.0',sourceSha:'6'.repeat(40),torrentInfoFields:['hash',...productFields.filter(key=>key!=='ratio')],torrentTableColumns:sourceColumns(productFields.filter(key=>key!=='ratio'))},
-  {...commonProfile,qbVersion:'6.0.1',sourceSha:'7'.repeat(40),torrentInfoFields:['hash',...productFields],torrentTableColumns:sourceColumns(productFields)}
+  {...commonProfile,qbVersion:'6.0.0',sourceSha:'6'.repeat(40),torrentInfoFields:['hash','num_complete','num_incomplete',...productFields.filter(key=>key!=='ratio')],torrentTableColumns:sourceColumns(productFields.filter(key=>key!=='ratio'))},
+  {...commonProfile,qbVersion:'6.0.1',sourceSha:'7'.repeat(40),torrentInfoFields:['hash','num_complete','num_incomplete',...productFields],torrentTableColumns:sourceColumns(productFields)}
 ];
 const compact=compileCompactRuntime(profiles,{includeSettings:false});const compactByName=new Map([['capabilities.json',compact.capabilityData],['torrent-compat.json',compact.torrentData],['detail-compat.json',compact.detailData],['source-actions.json',compact.actionData],['settings-compat.json',compact.settingsData]]);
 const torrent={
@@ -53,7 +53,9 @@ const torrent={
   category:'Fixture',
   tags:'PhaseE',
   num_seeds:4,
+  num_complete:12,
   num_leechs:2,
+  num_incomplete:9,
   save_path:'/downloads',
   added_on:1000,
   completion_on:0,
@@ -167,6 +169,10 @@ try{
   assert(JSON.stringify(restored.active)===JSON.stringify([{key:'name',width:333},{key:'ratio',width:177},{key:'size',width:123}]),`restored: hidden desktop width/order did not revive ${JSON.stringify(restored.active)}`);
   assert(JSON.stringify(restored.saved)===JSON.stringify([{key:'name',width:333},{key:'ratio',width:177},{key:'size',width:123}]),`restored: saved desktop preference changed unexpectedly ${JSON.stringify(restored.saved)}`);
   assert(JSON.stringify(restored.effectiveMobile)===JSON.stringify(['ratio','size']),`restored: mobile preference did not revive ${JSON.stringify(restored.effectiveMobile)}`);
+  const nativePresentation=await page.evaluate(()=>{const original=WeiG.Time.format,calls=[];WeiG.Time.format=function(){calls.push({argc:arguments.length,value:arguments[0]});return'STAMP';};let timestamp;try{timestamp=WeiG.TorrentFieldRegistry.get('added_on').format({added_on:1234});}finally{WeiG.Time.format=original;}return{seeds:WeiG.TorrentFieldRegistry.get('num_seeds').format({num_seeds:4,num_complete:12}),seedsUnknown:WeiG.TorrentFieldRegistry.get('num_seeds').format({num_seeds:4,num_complete:-1}),peers:WeiG.TorrentFieldRegistry.get('num_leechs').format({num_leechs:2,num_incomplete:9}),friendlyGiB:WeiG.util.formatBytes((123+468/1024)*1024*1024*1024),timestamp,calls};});
+  assert(nativePresentation.seeds==='4 (12)'&&nativePresentation.seedsUnknown==='4'&&nativePresentation.peers==='2 (9)',`restored: qB native Seeds/Peers presentation drifted ${JSON.stringify(nativePresentation)}`);
+  assert(nativePresentation.friendlyGiB==='123.45 GiB',`restored: qB friendlyUnit GiB precision/truncation drifted ${JSON.stringify(nativePresentation)}`);
+  assert(nativePresentation.timestamp==='STAMP'&&nativePresentation.calls.length===1&&nativePresentation.calls[0].argc===1&&nativePresentation.calls[0].value===1234000,`restored: torrent timestamp must consume canonical full Time.format without dateStyle/timeStyle override ${JSON.stringify(nativePresentation)}`);
 
   await page.locator('#columns-btn').click();
   await page.waitForSelector('#column-configurator-dialog[open]');

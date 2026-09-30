@@ -15,6 +15,7 @@ const columnSource=fs.readFileSync(path.join(root,'webui/private/scripts/column-
 const dialogSource=fs.readFileSync(path.join(root,'webui/private/scripts/dialog-runtime.js'),'utf8');
 const tableCss=fs.readFileSync(path.join(root,'webui/private/css/table.css'),'utf8');
 let saved={mobileFields:['status','progress','dl','up'],columns:[{key:'name',width:500},{key:'size',width:120},{key:'dlspeed',width:111},{key:'upspeed',width:112},{key:'state',width:125}]};
+const timeCalls=[];
 const profile={fallback:false,officialWeiGSupport:true,torrentInfoFields:['priority','name','selected_size','size','progress','state','dlspeed','upspeed','eta','ratio','category','tags','added_on','completion_on','tracker','dl_limit','up_limit','downloaded','uploaded','downloaded_session','uploaded_session','amount_left','time_active','save_path','download_path','completed','ratio_limit','seen_complete','last_activity','availability','infohash_v1','infohash_v2'],torrentTableColumns:[
   {key:'priority',caption:'#',defaultWidth:30,defaultVisible:true,dataProperties:['priority']},
   {key:'name',caption:'Name',defaultWidth:200,defaultVisible:true,dataProperties:['name','state']},
@@ -31,6 +32,7 @@ const W={
   Components:{state:code=>[`STATE:${code}`,'']},
   I18n:{getLocale:()=> 'zh-CN',qbText:(key,fallback)=>key==='column.selected_size'?'选定大小':fallback,t:key=>key==='columns.aux.stateIcon'?'状态图标':key},
   CapabilityRegistry:{torrentFieldFacts:()=>profile},
+  Time:{format:function(){timeCalls.push({argc:arguments.length,value:arguments[0]});return'TIME';}},
   DataGrid:{defaults:[]}
 };
 const window={WeiG:W};window.window=window;
@@ -48,6 +50,13 @@ assert.equal(defs.find(x=>x.key==='selected_size').sort,null,'source-only native
 assert.equal(defs.find(x=>x.key==='status').sort,'state','native columns may reuse an already-proven canonical WeiG sort semantic through dataProperties');
 assert.equal(F.get('selected_size').format({selected_size:2048}),'B2048','source-only native columns must render their runtime torrentInfo value rather than a placeholder');
 assert.equal(F.get('status').format({state:'downloading'}),'STATE:downloading','native status must render through the canonical state semantic');
+assert.equal(F.get('num_seeds').format({num_seeds:4,num_complete:12}),'4 (12)','Seeds must match qB native current (total) presentation when total availability is known.');
+assert.equal(F.get('num_seeds').format({num_seeds:4,num_complete:-1}),'4','Seeds must omit qB total availability when the source reports -1.');
+assert.equal(F.get('num_leechs').format({num_leechs:2,num_incomplete:9}),'2 (9)','Peers must match qB native current (total) presentation.');
+assert.equal(F.get('added_on').format({added_on:1234}),'TIME','torrent timestamps must delegate to the canonical Time owner.');
+assert.deepEqual(timeCalls,[{argc:1,value:1234000}],'torrent timestamp presentation must not override canonical full date/time parts with dateStyle/timeStyle shortcuts.');
+assert.ok(source.includes("swarmTotal=source==='num_seeds'")&&source.includes("props.indexOf('num_complete')")&&source.includes("props.indexOf('num_incomplete')"),'generic native formatting must consume qB multi-property Seeds/Peers source contracts instead of silently dropping every property after index 0.');
+assert.ok(coreSource.includes("i<=1?1:i===2?2:3")&&coreSource.includes("formatFixedPoint(n,digits)")&&!coreSource.includes("n>=100?0:n>=10?1:2"),'shared byte/speed presentation must use qB friendlyUnit unit precision and retire magnitude-based decimal loss.');
 let active=F.effectiveDesktopColumns(saved,profile);
 assert.deepEqual(Array.from(active,x=>x.key),['name','size','dlspeed','upspeed','status'],'legacy WeiG user intent must survive migration while newly reachable native columns use exact source defaults');
 assert.equal(active.find(x=>x.key==='name').width,500,'legacy user width override must survive migration');

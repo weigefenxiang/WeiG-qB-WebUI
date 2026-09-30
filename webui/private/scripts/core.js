@@ -6,7 +6,8 @@
   U.clamp=function(v,min,max){return Math.min(max,Math.max(min,v));};
   U.escapeText=function(v){return v==null?'':String(v);};
   U.sleep=function(ms){return new Promise(function(resolve){setTimeout(resolve,ms);});};
-  U.formatBytes=function(value,options){var n=Number(value)||0,opts=options&&typeof options==='object'?options:{},fixed=Number.isInteger(opts.fixedDecimals)?Math.max(0,Math.min(6,opts.fixedDecimals)):null;if(n<1024)return n+' B';var units=['KiB','MiB','GiB','TiB','PiB'],i=-1;do{n/=1024;i++;}while(n>=1024&&i<units.length-1);var digits=fixed===null?(n>=100?0:n>=10?1:2):fixed;return n.toFixed(digits)+' '+units[i];};
+  function formatFixedPoint(value,digits){if(!Number.isFinite(value))return String(value);var sign=value<0?'-':'',tmp=Math.trunc(String(Math.abs(value))+'e'+digits).toString();if(digits<=0)return tmp==='0'?tmp:sign+tmp;if(digits<tmp.length){var at=tmp.length-digits;return sign+tmp.slice(0,at)+'.'+tmp.slice(at);}return sign+'0.'+'0'.repeat(digits-tmp.length)+tmp;}
+  U.formatBytes=function(value,options){var n=Number(value)||0,opts=options&&typeof options==='object'?options:{},fixed=Number.isInteger(opts.fixedDecimals)?Math.max(0,Math.min(6,opts.fixedDecimals)):null;if(n<1024)return n+' B';var units=['KiB','MiB','GiB','TiB','PiB','EiB'],i=-1;do{n/=1024;i++;}while(n>=1024&&i<units.length-1);var digits=fixed===null?(i<=1?1:i===2?2:3):fixed;return formatFixedPoint(n,digits)+' '+units[i];};
   U.formatSpeed=function(value){return U.formatBytes(value)+'/s';};
   U.formatEta=function(value){var s=Number(value);if(!isFinite(s)||s<0||s>=8640000)return '∞';if(s===0)return '0s';var d=Math.floor(s/86400);s%=86400;var h=Math.floor(s/3600);s%=3600;var m=Math.floor(s/60);if(d)return d+'d '+h+'h';if(h)return h+'h '+m+'m';if(m)return m+'m';return Math.floor(s)+'s';};
   U.formatRatio=function(v){var n=Number(v);return isFinite(n)&&n>=0?n.toFixed(2):'—';};
