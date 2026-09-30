@@ -101,12 +101,16 @@
     options=options||{};
     var root=options.root,primary=options.primary,secondary=options.secondary,separator=options.separator;
     if(!root||!primary||!secondary||!separator)return null;
-    var minPrimary=Math.max(0,splitFinite(options.minPrimary,160)),minSecondary=Math.max(0,splitFinite(options.minSecondary,160)),defaultSecondary=Math.max(minSecondary,splitFinite(options.defaultSecondary,280)),step=Math.max(1,splitFinite(options.step,16)),storageKey=String(options.storageKey||''),open=false,dragging=false,startY=0,startSize=defaultSecondary,size=defaultSecondary;
-    function readStored(){if(!storageKey)return defaultSecondary;try{var n=Number(localStorage.getItem(storageKey));return Number.isFinite(n)&&n>0?n:defaultSecondary;}catch(_e){return defaultSecondary;}}
+    function bound(value,fallback){if(typeof value==='function')try{value=value();}catch(_e){value=fallback;}return Math.max(0,splitFinite(value,fallback));}
+    function minPrimary(){return bound(options.minPrimary,160);}
+    function minSecondary(){return bound(options.minSecondary,160);}
+    function trackSize(){var n=typeof options.trackSize==='function'?Number(options.trackSize()):Number.NaN;return Number.isFinite(n)&&n>=0?n:Math.max(0,Number(root.clientHeight)||0);}
+    var defaultSecondary=Math.max(minSecondary(),splitFinite(options.defaultSecondary,280)),step=Math.max(1,splitFinite(options.step,16)),storageKey=String(options.storageKey||''),open=false,dragging=false,startY=0,startSize=defaultSecondary,size=defaultSecondary;
+    function readStored(){if(!storageKey)return defaultSecondary;try{var n=Number(localStorage.getItem(storageKey));return Number.isFinite(n)&&n>=0?n:defaultSecondary;}catch(_e){return defaultSecondary;}}
     function writeStored(){if(!storageKey)return;try{localStorage.setItem(storageKey,String(Math.round(size)));}catch(_e){}}
-    function maxSecondary(){var n=typeof options.maxSecondary==='function'?Number(options.maxSecondary()):Number.NaN;if(!Number.isFinite(n)){var handle=Math.max(0,separator.getBoundingClientRect?separator.getBoundingClientRect().height:0);n=Math.max(minSecondary,(root.clientHeight||0)-minPrimary-handle);}return Math.max(minSecondary,n);}
-    function clamp(value){return Math.min(maxSecondary(),Math.max(minSecondary,splitFinite(value,defaultSecondary)));}
-    function apply(value,persist){size=clamp(value);secondary.style.flex='0 0 '+Math.round(size)+'px';secondary.style.height=Math.round(size)+'px';separator.setAttribute('aria-valuenow',String(Math.round(size)));separator.setAttribute('aria-valuemin',String(Math.round(minSecondary)));separator.setAttribute('aria-valuemax',String(Math.round(maxSecondary())));if(persist)writeStored();return size;}
+    function maxSecondary(){var minimum=minSecondary(),n=typeof options.maxSecondary==='function'?Number(options.maxSecondary()):Number.NaN;if(!Number.isFinite(n)){var handle=Math.max(0,separator.getBoundingClientRect?separator.getBoundingClientRect().height:0);n=trackSize()-minPrimary()-handle;}return Math.max(minimum,n);}
+    function clamp(value){return Math.min(maxSecondary(),Math.max(minSecondary(),splitFinite(value,defaultSecondary)));}
+    function apply(value,persist){size=clamp(value);secondary.style.flex='0 0 '+Math.round(size)+'px';secondary.style.height=Math.round(size)+'px';separator.setAttribute('aria-valuenow',String(Math.round(size)));separator.setAttribute('aria-valuemin',String(Math.round(minSecondary())));separator.setAttribute('aria-valuemax',String(Math.round(maxSecondary())));if(persist)writeStored();return size;}
     function setOpen(value){open=!!value;secondary.hidden=!open;separator.hidden=!open;root.classList.toggle('is-split-open',open);if(open)requestAnimationFrame(function(){apply(size,false);});return open;}
     function pointerDown(e){if(!open||e.button!==0)return;e.preventDefault();dragging=true;startY=e.clientY;startSize=size;separator.classList.add('is-dragging');if(separator.setPointerCapture)try{separator.setPointerCapture(e.pointerId);}catch(_e){}}
     function pointerMove(e){if(!dragging)return;e.preventDefault();apply(startSize-(e.clientY-startY),false);}
