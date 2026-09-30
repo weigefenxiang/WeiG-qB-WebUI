@@ -38,7 +38,7 @@ function canDeriveFilter(profile,filter){const req=derivedRequirements[canonical
 function expectedFilterMode(profile,filter){const value=canonicalFilter(filter);if(canonicalFilters(profile).includes(value))return'native';if(canDeriveFilter(profile,value))return'local';return'unavailable';}
 function expectedRenderedFilters(profile){const out=canonicalFilters(profile);for(const name of derivedOrder)if(canDeriveFilter(profile,name)&&!out.includes(name))out.push(name);return out;}
 function expectedModes(profile){return Object.fromEntries(expectedRenderedFilters(profile).map(name=>[name,expectedFilterMode(profile,name)]));}
-function observeBrowserErrors(page){const errors=[];errors.reset=()=>{errors.length=0;};page.on('pageerror',error=>errors.push(String(error)));page.on('console',msg=>{const text=msg.text();if(msg.type()==='error'&&!/favicon|Wei\.G\.ico/i.test(text)&&!/Failed to load resource:\s*the server responded with a status of 404/i.test(text))errors.push(text);});return errors;}
+function observeBrowserErrors(page){const errors=[];page.on('pageerror',error=>errors.push(String(error)));page.on('console',msg=>{const text=msg.text();if(msg.type()==='error'&&!/favicon|Wei\.G\.ico/i.test(text)&&!/Failed to load resource:\s*the server responded with a status of 404/i.test(text))errors.push(text);});return errors;}
 // Release identity becomes observable before the capabilities-ready render; live evidence owns final semantic/DOM convergence.
 async function waitForFilterView(page){await page.waitForFunction(()=>{const view=window.WeiG?.TorrentFilterView,semantic=view?.filters?.();if(!Array.isArray(semantic)||!semantic.length)return false;const visible=Array.from(document.querySelectorAll('#filter-nav [data-filter]')).filter(n=>!n.hidden&&getComputedStyle(n).display!=='none').map(n=>n.dataset.filter);return visible.length===semantic.length&&semantic.every((name,index)=>visible[index]===name);},null,{timeout:45000});}
 async function openSession(page,qb,lane,errors){
@@ -48,7 +48,7 @@ async function openSession(page,qb,lane,errors){
     label:`Pages release-profile ${lane} qB ${qb}`,
     qbVersion:qb,
     timeoutMs:sessionTimeoutMs,
-    onAttemptStart:()=>{if(errors&&typeof errors.reset==='function')errors.reset();},
+    onAttemptStart:()=>{if(Array.isArray(errors))errors.length=0;},
     navigate:async attempt=>{
       const attemptUrl=new URL(url);attemptUrl.searchParams.set('__weig_session_attempt',String(attempt));
       await page.goto(attemptUrl.toString(),{waitUntil:'domcontentloaded',timeout:sessionTimeoutMs});
