@@ -29,11 +29,12 @@ export async function waitForPageSessionEntry(page,{timeoutMs=20000}={}){
   return handle.jsonValue();
 }
 
-export async function recoverPageSession(page,{label='Pages session',qbVersion='',timeoutMs=20000,attempts=PAGE_SESSION_ATTEMPTS,navigate,onLogin}={}){
+export async function recoverPageSession(page,{label='Pages session',qbVersion='',timeoutMs=20000,attempts=PAGE_SESSION_ATTEMPTS,navigate,onLogin,onAttemptStart}={}){
   if(typeof navigate!=='function')throw new TypeError('recoverPageSession requires navigate(attempt)');
   let last=null;
   for(let attempt=1;attempt<=attempts;attempt++){
     try{
+      if(typeof onAttemptStart==='function')await onAttemptStart({attempt,previous:last});
       await navigate(attempt);
       const entry=await waitForPageSessionEntry(page,{timeoutMs});
       if(entry==='failed')throw new Error('WeiG bootstrap entered failed/fatal state before session authentication');
