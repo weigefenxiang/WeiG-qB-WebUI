@@ -70,8 +70,8 @@ const assert=(ok,msg)=>{if(!ok)throw new Error(msg);};
 async function waitDetailViewportIdle(page,expected){
   expected=expected||{};
   await page.waitForFunction(({top,left})=>{
-    const owner=window.WeiG&&WeiG.AppState&&WeiG.AppState.detailViewport,viewport=owner&&owner.el;
-    if(!owner||!viewport||owner._scrolling||owner._hasPendingItems||viewport.__weigDataViewportScrollIdleTimer)return false;
+    const owner=window.WeiG&&WeiG.AppState&&WeiG.AppState.detailViewport,viewport=owner&&owner.el,root=document.getElementById('detail-content');
+    if(!owner||!viewport||!viewport.isConnected||!root||!root.contains(viewport)||owner._scrolling||owner._hasPendingItems||viewport.__weigDataViewportScrollIdleTimer)return false;
     if(top!=null&&Math.abs(viewport.scrollTop-top)>.5)return false;
     if(left!=null&&Math.abs(viewport.scrollLeft-left)>.5)return false;
     return true;
@@ -80,8 +80,8 @@ async function waitDetailViewportIdle(page,expected){
 async function resetDetailViewport(page){
   await waitDetailViewportIdle(page);
   await page.evaluate(()=>{
-    const viewport=document.querySelector('.shared-table__viewport'),owner=window.WeiG&&WeiG.AppState&&WeiG.AppState.detailViewport;
-    if(!viewport||!owner||owner.el!==viewport||typeof owner.resetScroll!=='function')throw new Error('canonical Detail DataViewport reset owner unavailable');
+    const owner=window.WeiG&&WeiG.AppState&&WeiG.AppState.detailViewport,viewport=owner&&owner.el,root=document.getElementById('detail-content');
+    if(!viewport||!viewport.isConnected||!root||!root.contains(viewport)||typeof owner.resetScroll!=='function')throw new Error('canonical Detail DataViewport reset owner unavailable');
     owner.resetScroll();
     viewport.scrollLeft=0;
   });
@@ -89,8 +89,8 @@ async function resetDetailViewport(page){
 }
 async function visibleDetailBodyPoint(page){
   const handle=await page.waitForFunction(()=>{
-    const viewport=document.querySelector('.shared-table__viewport'),head=viewport&&viewport.querySelector('.shared-table__head');
-    if(!viewport)return false;
+    const owner=window.WeiG&&WeiG.AppState&&WeiG.AppState.detailViewport,viewport=owner&&owner.el,root=document.getElementById('detail-content'),head=viewport&&viewport.querySelector('.shared-table__head');
+    if(!viewport||!viewport.isConnected||!root||!root.contains(viewport))return false;
     const vr=viewport.getBoundingClientRect(),hr=head&&head.getBoundingClientRect(),bodyTop=Math.max(vr.top,hr?hr.bottom:vr.top)+2,bodyBottom=vr.bottom-2;
     const cells=[...viewport.querySelectorAll('.shared-table__row:not([hidden]) [data-column-key]')].filter(cell=>cell.dataset.columnKey!=='checked');
     for(const cell of cells){
