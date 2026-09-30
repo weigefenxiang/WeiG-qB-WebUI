@@ -68,8 +68,17 @@ async function verifyModern(){
     route:window.WeiG?.Router?.route?.().name
   }));
   assert.deepEqual(initial.keys,['overview','trackers','peers','webseeds','files'],'Dock tabs must preserve qB source order');
-  assert.equal(initial.disabled,true,'Dock tabs must be disabled without exactly one Torrent selection');
+  assert.equal(initial.disabled,false,'zero-selection Dock tabs must remain usable when the Torrent viewport has a visible subject');
   assert.equal(initial.dockHidden,true);assert.equal(initial.splitterHidden,true);assert.equal(initial.route,'home');
+
+  const zeroSubject=await page.evaluate(()=>{const viewport=document.getElementById('torrent-list')?.__weigTorrentDataViewport,item=viewport?.firstVisibleItem?.();return{selection:window.WeiG.Selection.count(),hash:item?.hash||''};});
+  assert.equal(zeroSubject.selection,0);assert.ok(zeroSubject.hash,'zero-selection regression needs a visible Torrent subject');
+  await page.locator('#torrent-detail-tabs .tab[data-tab="overview"]').click();
+  await page.waitForSelector('#torrent-detail-dock:not([hidden]) .general-detail',{state:'visible',timeout:30000});
+  const zeroOpened=await page.evaluate(()=>({hash:window.WeiG.AppState.detailDockHash,open:window.WeiG.AppState.detailDockOpen,selection:window.WeiG.Selection.count(),active:[...document.querySelectorAll('#torrent-detail-tabs .tab.is-active')].map(node=>node.dataset.tab)}));
+  assert.equal(zeroOpened.selection,0,'Detail preview must not mutate the explicit Selection owner');assert.equal(zeroOpened.hash,zeroSubject.hash);assert.equal(zeroOpened.open,true);assert.deepEqual(zeroOpened.active,['overview']);
+  await page.locator('#torrent-detail-tabs .tab[data-tab="overview"]').click();
+  await page.waitForFunction(()=>!window.WeiG.AppState.detailDockOpen,null,{timeout:10000});
 
   const firstHash=await selectOnlyByRow(page,0);
   await page.waitForFunction(()=>[...document.querySelectorAll('#torrent-detail-tabs .tab')].every(node=>!node.disabled),null,{timeout:10000});
@@ -147,7 +156,7 @@ async function verifyModern(){
   const third=page.locator('#torrent-list [data-hash]').nth(2),thirdBox=await third.boundingBox();
   assert.ok(thirdBox);
   await third.click({modifiers:['Control'],position:{x:Math.min(thirdBox.width-12,Math.max(70,thirdBox.width*.72)),y:Math.min(thirdBox.height-4,Math.max(8,thirdBox.height*.5))}});
-  await page.waitForFunction(()=>window.WeiG.Selection.count()===2&&!window.WeiG.AppState.detailDockOpen,null,{timeout:10000});
+  await page.waitForFunction(()=>window.WeiG.Selection.count()===2&&!window.WeiG.AppState.detailDockOpen&&[...document.querySelectorAll('#torrent-detail-tabs .tab')].every(node=>node.disabled),null,{timeout:10000});
 
   // Return to one selected Torrent, open General, exercise full-rail splitter drag/reset/persistence.
   const persistHash=await selectOnlyByRow(page,1);

@@ -8,6 +8,7 @@ const root=path.resolve(here,'..');
 const read=rel=>fs.readFileSync(path.join(root,rel),'utf8');
 const index=read('webui/private/index.html');
 const app=read('webui/private/scripts/app.js');
+const core=read('webui/private/scripts/core.js');
 const ui=read('webui/private/scripts/ui.js');
 const selection=read('webui/private/scripts/selection.js');
 const layout=read('webui/private/scripts/layout.js');
@@ -37,13 +38,13 @@ assert.match(app,/function activateTab\(tab,host\).*host\.querySelectorAll\('\.t
 assert.doesNotMatch(app,/U\.\$\$\('\.tab'\)/,'Dock and route must not share a global tab DOM mutation owner');
 
 assert.match(app,/function openDetailDockTab\(tab\).*app\.detailDockOpen&&app\.detailDockTab===tab\)\{closeDetailDock\(\);return false;\}/s,'clicking the active Dock tab must collapse it');
-assert.match(app,/function onDetailDockSelection\(e\).*hashes\.length!==1\)\{closeDetailDock\(\);return;\}.*hash!==app\.detailDockHash\)await renderDetailDock\(hash\)/s,'zero/multi selection must close the Dock while another single selection rebinds it');
+assert.match(core,/W\.DataViewport\.prototype\.firstVisibleItem=function\(\)/,'virtualized Torrent viewport must own exact first-visible item semantics instead of DOM scanning');assert.match(app,/function visibleDetailDockHash\(\).*app\.viewport\.firstVisibleItem/s,'zero-selection Detail subject must consume the shared DataViewport owner');assert.match(app,/function detailDockSubjectHash\(options\).*hashes\.length>1\)return'';.*hashes\.length===1.*captureVisible.*visibleDetailDockHash/s,'Detail subject policy must distinguish explicit single selection, multi-selection disablement and zero-selection visible fallback');assert.match(app,/function onDetailDockSelection\(e\).*hashes\.length>1\)\{closeDetailDock\(\);return;\}.*hashes\.length===1/s,'multi-selection must close the Dock while single selection rebinds and zero selection may retain a captured subject');
 assert.match(app,/global\.addEventListener\('weig:selection-change'.*onDetailDockSelection/s,'Dock must subscribe to the semantic Selection owner');
 assert.match(selection,/function apply\(\).*emitSelectionState\(\)/s,'all selection mutation paths, including silent clear, must publish semantic truth');
 assert.doesNotMatch(app,/MutationObserver/,'Dock must not infer selection from rendered rows');
 
 assert.match(ui,/function renderDetailTabs\(host,options\).*W\.QbUiEvidence\.detailTab/s,'route and Dock tabs must consume one source-derived tab presentation owner');
-assert.match(app,/W\.UiSystem\.renderDetailTabs\(host,\{active:app\.detailDockOpen\?app\.detailDockTab:'',disabled:!hash/s,'Dock must consume the shared tab renderer and disable it without exactly one selection');
+assert.match(app,/W\.UiSystem\.renderDetailTabs\(host,\{active:app\.detailDockOpen\?app\.detailDockTab:'',disabled:hashes\.length>1\|\|!hash/s,'Dock tabs must stay usable at zero selection when a visible Torrent exists, and disable only for multi-selection or no subject');
 assert.doesNotMatch(app,/textContent=['"](?:General|Overview|Trackers|Peers|HTTP Sources|Content)['"]/,'Dock must not hard-code qB-owned Detail tab copy');
 
 assert.ok(layout.includes("W.SplitPane={create:createSplitPane}"),'Dock must consume the shared SplitPane owner');
