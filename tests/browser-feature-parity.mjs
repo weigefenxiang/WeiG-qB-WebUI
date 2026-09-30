@@ -95,8 +95,8 @@ await page.locator('#filter-nav [data-filter="all"]').click();await page.waitFor
   const detailHash=torrents[0].hash;
   await page.locator('.torrent-row[data-hash="'+detailHash+'"] .torrent-title').click();
   await page.waitForSelector('#detail-view.is-active');
-  await page.locator('.detail-tabs [data-tab="files"]').click();
-  await page.waitForFunction(()=>document.querySelector('.detail-tabs [data-tab="files"]')?.classList.contains('is-active')&&document.querySelectorAll('.shared-table__row[data-file-kind="file"] [data-column-key="priority"] .ui-select__trigger').length>=4);
+  await page.locator('#detail-view .detail-tabs [data-tab="files"]').click();
+  await page.waitForFunction(()=>document.querySelector('#detail-view .detail-tabs [data-tab="files"]')?.classList.contains('is-active')&&document.querySelectorAll('.shared-table__row[data-file-kind="file"] [data-column-key="priority"] .ui-select__trigger').length>=4);
   const priorityAudit=await page.evaluate(()=>{
     const refs={
       'priority-0.bin':{source:'Do not download',context:'PropListDelegate'},

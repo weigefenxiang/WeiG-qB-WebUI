@@ -196,7 +196,7 @@ try{
   assert(general['Total Size']==='410.38 GiB','General total size must preserve fixed two-decimal qB friendlyUnit precision without rounding up: '+JSON.stringify(general));
   assert(general['Pieces']?.includes('52531 × 8.00 MiB')&&general['Pieces']?.includes('(have 52531)'),'General Pieces must consume source-proven pieces_num/piece_size/pieces_have: '+JSON.stringify(general));
   assert(general['Info Hash v2']==='N/A','Source-proven unavailable General values must preserve qB N/A semantics: '+JSON.stringify(general));
-  await page.locator('.detail-tabs [data-tab="trackers"]').click();
+  await page.locator('#detail-view .detail-tabs [data-tab="trackers"]').click();
   await page.waitForSelector('.shared-table__row');
   await assertDetailFrameGeometry(page,mainGridFrame,'Trackers');
   const trackerInitial=await page.evaluate(()=>Array.from(document.querySelectorAll('.shared-table__row')).map(row=>({kind:row.dataset.trackerKind||'',url:row.querySelector('[data-column-key="url"]')?.textContent||'',tier:row.querySelector('[data-column-key="tier"]')?.textContent||'',bt:row.querySelector('[data-column-key="btVersion"]')?.textContent||''})));
@@ -209,7 +209,7 @@ try{
   assert(trackerMenuGeometry.wrap==='0'&&trackerMenuGeometry.labels.every(item=>item.whiteSpace==='nowrap'&&(!item.lineHeight||item.height<item.lineHeight*1.6)), 'Context Menu must keep labels on one line whenever the viewport can fit the intrinsic width: '+JSON.stringify(trackerMenuGeometry));
   await page.keyboard.press('Escape');await page.waitForSelector('.ui-context-menu',{state:'detached'});
   assert(await page.locator('#detail-view.is-active').count()===1,'Closing a Context Menu with Escape must not bubble into Detail route navigation.');
-  await page.locator('.detail-tabs [data-tab="peers"]').click();await page.waitForFunction(()=>document.querySelector('.detail-tabs [data-tab="peers"]')?.classList.contains('is-active'));await assertDetailFrameGeometry(page,mainGridFrame,'Peers');await page.locator('[data-detail-back]').click();await page.waitForFunction(()=>WeiG.Router.route().name==='home'&&document.getElementById('list-view')?.classList.contains('is-active'));await page.waitForSelector(`.torrent-row[data-hash="${hash2}"] .torrent-title`);await page.locator(`.torrent-row[data-hash="${hash2}"] .torrent-title`).click();await page.waitForFunction(()=>document.querySelector('.detail-tabs [data-tab="peers"]')?.classList.contains('is-active')&&document.getElementById('detail-view')?.classList.contains('is-active'));assert(await page.locator('.detail-tabs [data-tab="peers"].is-active').count()===1,'Opening another Torrent after leaving the Users tab must preserve the last Detail tab');await page.locator('.detail-tabs [data-tab="trackers"]').click();await page.waitForSelector('.shared-table__row');
+  await page.locator('#detail-view .detail-tabs [data-tab="peers"]').click();await page.waitForFunction(()=>document.querySelector('#detail-view .detail-tabs [data-tab="peers"]')?.classList.contains('is-active'));await assertDetailFrameGeometry(page,mainGridFrame,'Peers');await page.locator('[data-detail-back]').click();await page.waitForFunction(()=>WeiG.Router.route().name==='home'&&document.getElementById('list-view')?.classList.contains('is-active'));await page.waitForSelector(`.torrent-row[data-hash="${hash2}"] .torrent-title`);await page.locator(`.torrent-row[data-hash="${hash2}"] .torrent-title`).click();await page.waitForFunction(()=>document.querySelector('#detail-view .detail-tabs [data-tab="peers"]')?.classList.contains('is-active')&&document.getElementById('detail-view')?.classList.contains('is-active'));assert(await page.locator('#detail-view .detail-tabs [data-tab="peers"].is-active').count()===1,'Opening another Torrent after leaving the Users tab must preserve the last Detail tab');await page.locator('#detail-view .detail-tabs [data-tab="trackers"]').click();await page.waitForSelector('.shared-table__row');
   const trackerUrlHead=page.locator('.shared-table__head .grid-head-cell[data-key="url"]');await trackerUrlHead.click();
   await page.waitForFunction(()=>document.querySelector('.shared-table__head .grid-head-cell[data-key="url"]')?.dataset.sortDirection==='asc');
   const trackerAsc=await page.evaluate(()=>Array.from(document.querySelectorAll('.shared-table__row')).map(row=>({kind:row.dataset.trackerKind||'',url:row.querySelector('[data-column-key="url"]')?.textContent||''})));
@@ -219,7 +219,7 @@ try{
   const trackerDesc=await page.evaluate(()=>Array.from(document.querySelectorAll('.shared-table__row')).map(row=>({kind:row.dataset.trackerKind||'',url:row.querySelector('[data-column-key="url"]')?.textContent||''})));
   const realDesc=trackerDesc.slice(3);assert(realDesc.map(row=>row.url).join('|')==='https://z-tracker.example/announce|z-endpoint.example:443|https://a-tracker.example/announce|z-child.example:443|a-child.example:443','Tracker descending sort detached endpoints from parents '+JSON.stringify(realDesc));
 
-  await page.locator('.detail-tabs [data-tab="webseeds"]').click();
+  await page.locator('#detail-view .detail-tabs [data-tab="webseeds"]').click();
   await page.waitForSelector('.shared-table__head .grid-head-cell[data-key="url"]');
   await assertDetailFrameGeometry(page,mainGridFrame,'Web Seeds');
   const webseedHead=page.locator('.shared-table__head .grid-head-cell[data-key="url"]');await webseedHead.click();
@@ -233,7 +233,7 @@ try{
   assert(JSON.stringify(webseedMenuLabels)===JSON.stringify(['Add web seeds...','Remove web seed','Copy web seed URL','Edit web seed URL...']),'HTTP Sources native context actions must preserve exact qB source order/capability: '+JSON.stringify(webseedMenuLabels));
   await page.keyboard.press('Escape');await page.waitForSelector('.ui-context-menu[data-context-level="0"]',{state:'detached'});
 
-  await page.locator('.detail-tabs [data-tab="files"]').click();
+  await page.locator('#detail-view .detail-tabs [data-tab="files"]').click();
   await page.waitForSelector('.shared-table__head .grid-head-cell[data-key="size"]');
   await assertDetailFrameGeometry(page,mainGridFrame,'Files');
   const fileSizeHead=page.locator('.shared-table__head .grid-head-cell[data-key="size"]');await fileSizeHead.click();
@@ -260,7 +260,7 @@ try{
   const seedLeafLabels=await page.locator('.ui-context-menu[data-context-level="0"] .ui-context-menu__label').allTextContents();
   assert(seedLeafLabels.includes('Download Priority'),'Completed/seed file row must retain source-proven Download Priority action: '+JSON.stringify(seedLeafLabels));
   await page.keyboard.press('Escape');await page.waitForSelector('.ui-context-menu[data-context-level="0"]',{state:'detached'});
-  await page.locator('.detail-tabs [data-tab="peers"]').click();
+  await page.locator('#detail-view .detail-tabs [data-tab="peers"]').click();
   await page.waitForSelector('.peer-country-code');
   const peerClientHead=page.locator('.shared-table__head .grid-head-cell[data-key="client"]');await peerClientHead.waitFor();await peerClientHead.click();
   await page.waitForFunction(()=>document.querySelector('.shared-table__head .grid-head-cell[data-key="client"]')?.dataset.sortDirection==='asc');
@@ -279,26 +279,26 @@ try{
   await page.locator('[data-detail-back]').click();
   await page.waitForFunction(()=>WeiG.Router.route().name==='home'&&document.getElementById('list-view')?.classList.contains('is-active'));
   await page.locator(`.torrent-row[data-hash="${hash}"] .torrent-title`).click();
-  await page.waitForFunction(()=>document.querySelector('.detail-tabs [data-tab="peers"]')?.classList.contains('is-active')&&document.getElementById('detail-view')?.classList.contains('is-active'));
+  await page.waitForFunction(()=>document.querySelector('#detail-view .detail-tabs [data-tab="peers"]')?.classList.contains('is-active')&&document.getElementById('detail-view')?.classList.contains('is-active'));
   await page.waitForFunction(()=>document.querySelector('.shared-table__head .grid-head-cell[data-key="client"]')?.dataset.sortDirection==='desc');
   const detailSortVisual=await page.evaluate(()=>{const cell=document.querySelector('.shared-table__head .grid-head-cell[data-key="client"]'),label=cell?.querySelector('.grid-head-label');return{direction:cell?.dataset.sortDirection||'',ariaSort:cell?.getAttribute('aria-sort')||'',marker:cell?.querySelector('.grid-head-sort')?.textContent||'',label:label?.textContent||'',fullLabel:label?.dataset.fullLabel||'',pseudo:getComputedStyle(cell,'::after').content};});
   assert(detailSortVisual.direction==='desc'&&detailSortVisual.ariaSort==='descending'&&detailSortVisual.marker==='↓'&&detailSortVisual.label===detailSortVisual.fullLabel&&!/[↑↓]/.test(detailSortVisual.fullLabel)&&['none','normal','""'].includes(detailSortVisual.pseudo),`Detail sort must share DataGridHeader semantic/visual owner without the retired CSS pseudo indicator: ${JSON.stringify(detailSortVisual)}`);
   const persistedPeer=await page.evaluate(()=>Array.from(document.querySelectorAll('.shared-table__row [data-column-key="client"]')).map(node=>node.textContent||''));
   assert(persistedPeer[0]==='fixture',`Peers sort did not persist across torrents: ${JSON.stringify(persistedPeer)}`);
 
-  await page.locator('.detail-tabs [data-tab="trackers"]').click();
+  await page.locator('#detail-view .detail-tabs [data-tab="trackers"]').click();
   await page.waitForFunction(()=>document.querySelector('.shared-table__head .grid-head-cell[data-key="url"]')?.dataset.sortDirection==='desc');
   const persistedTrackers=await page.evaluate(()=>Array.from(document.querySelectorAll('.shared-table__row')).map(row=>({kind:row.dataset.trackerKind||'',url:row.querySelector('[data-column-key="url"]')?.textContent||''})));
   assert(persistedTrackers.slice(0,3).every(row=>/^\*\* \[/.test(row.url))&&persistedTrackers[3]?.url==='https://z-tracker.example/announce','Tracker sort did not persist with pseudo rows/tree ownership: '+JSON.stringify(persistedTrackers));
 
-  await page.locator('.detail-tabs [data-tab="webseeds"]').click();
-  await page.waitForFunction(()=>document.querySelector('.detail-tabs [data-tab="webseeds"]')?.classList.contains('is-active')&&Array.from(document.querySelectorAll('.shared-table__row [data-column-key="url"]')).some(node=>String(node.textContent||'').includes('cdn.example')));
+  await page.locator('#detail-view .detail-tabs [data-tab="webseeds"]').click();
+  await page.waitForFunction(()=>document.querySelector('#detail-view .detail-tabs [data-tab="webseeds"]')?.classList.contains('is-active')&&Array.from(document.querySelectorAll('.shared-table__row [data-column-key="url"]')).some(node=>String(node.textContent||'').includes('cdn.example')));
   await page.waitForFunction(()=>document.querySelector('.shared-table__head .grid-head-cell[data-key="url"]')?.dataset.sortDirection==='desc');
   const persistedWebseeds=await page.evaluate(()=>Array.from(document.querySelectorAll('.shared-table__row [data-column-key="url"]')).map(node=>node.textContent||''));
   assert(persistedWebseeds[0]?.includes('z-cdn.example'),'HTTP Sources sort did not persist across torrents: '+JSON.stringify(persistedWebseeds));
 
-  await page.locator('.detail-tabs [data-tab="files"]').click();
-  await page.waitForFunction(()=>document.querySelector('.detail-tabs [data-tab="files"]')?.classList.contains('is-active')&&document.querySelector('.shared-table__row[data-file-kind]'));
+  await page.locator('#detail-view .detail-tabs [data-tab="files"]').click();
+  await page.waitForFunction(()=>document.querySelector('#detail-view .detail-tabs [data-tab="files"]')?.classList.contains('is-active')&&document.querySelector('.shared-table__row[data-file-kind]'));
   await page.waitForFunction(()=>document.querySelector('.shared-table__head .grid-head-cell[data-key="size"]')?.dataset.sortDirection==='asc');
   const persistedFiles=await page.evaluate(()=>({folders:Array.from(document.querySelectorAll('.shared-table__row[data-file-kind="folder"] .detail-file-label')).slice(0,2).map(node=>node.textContent),direction:document.querySelector('.shared-table__head .grid-head-cell[data-key="size"]')?.dataset.sortDirection||''}));
   assert(persistedFiles.direction==='asc'&&persistedFiles.folders.length>=2,'Content Total Size sort did not persist across torrents/tree rebuild: '+JSON.stringify(persistedFiles));
@@ -308,7 +308,7 @@ try{
 
   for(const key of ['checked','name','size','progress','remaining','priority','availability'])await setColumnVisible(page,key,true);
 
-  const geometry=await page.evaluate(()=>{const tabs=document.querySelector('.detail-tabs').getBoundingClientRect(),content=document.getElementById('detail-content').getBoundingClientRect(),status=document.querySelector('.statusbar').getBoundingClientRect(),viewport=document.querySelector('.shared-table__viewport').getBoundingClientRect(),style=getComputedStyle(document.getElementById('detail-content'));return{tabsBottom:tabs.bottom,contentTop:content.top,contentBottom:content.bottom,statusTop:status.top,contentHeight:content.height,viewportBottom:viewport.bottom,flexGrow:style.flexGrow,minHeight:style.minHeight};});
+  const geometry=await page.evaluate(()=>{const tabs=document.querySelector('#detail-view .detail-tabs').getBoundingClientRect(),content=document.getElementById('detail-content').getBoundingClientRect(),status=document.querySelector('.statusbar').getBoundingClientRect(),viewport=document.querySelector('.shared-table__viewport').getBoundingClientRect(),style=getComputedStyle(document.getElementById('detail-content'));return{tabsBottom:tabs.bottom,contentTop:content.top,contentBottom:content.bottom,statusTop:status.top,contentHeight:content.height,viewportBottom:viewport.bottom,flexGrow:style.flexGrow,minHeight:style.minHeight};});
   assert(geometry.contentTop>=geometry.tabsBottom-1,`Detail Content overlaps tabs: ${JSON.stringify(geometry)}`);
   assert(geometry.statusTop>=geometry.contentBottom&&geometry.statusTop-geometry.contentBottom<24,`Detail Content does not fill to Statusbar: ${JSON.stringify(geometry)}`);
   assert(geometry.contentHeight>250&&geometry.viewportBottom<=geometry.contentBottom+1&&Number(geometry.flexGrow)>0&&geometry.minHeight==='0px',`Detail flex ownership is not active: ${JSON.stringify(geometry)}`);
@@ -447,15 +447,15 @@ try{
 
   await page.setViewportSize({width:360,height:800});
   await page.waitForSelector('.shared-table__viewport .shared-table__row');
-  await page.locator('.detail-tabs [data-tab="peers"]').click();
-  await page.waitForFunction(()=>document.querySelector('.detail-tabs [data-tab="peers"]')?.classList.contains('is-active'));
+  await page.locator('#detail-view .detail-tabs [data-tab="peers"]').click();
+  await page.waitForFunction(()=>document.querySelector('#detail-view .detail-tabs [data-tab="peers"]')?.classList.contains('is-active'));
   await page.locator('#mobile-bottom-nav [data-route=""]').click();
   await page.waitForFunction(()=>WeiG.Router.route().name==='home'&&document.getElementById('list-view')?.classList.contains('is-active'));
   await page.waitForSelector(`.torrent-mobile-card[data-hash="${hash}"] .mobile-card-title`);
   await page.locator(`.torrent-mobile-card[data-hash="${hash}"] .mobile-card-title`).click();
-  await page.waitForFunction(()=>document.querySelector('.detail-tabs [data-tab="peers"]')?.classList.contains('is-active')&&document.getElementById('detail-view')?.classList.contains('is-active'));
-  assert(await page.locator('.detail-tabs [data-tab="peers"].is-active').count()===1,'Mobile Detail must preserve the last Users tab across Library navigation and another Torrent');
-  await page.locator('.detail-tabs [data-tab="files"]').click();
+  await page.waitForFunction(()=>document.querySelector('#detail-view .detail-tabs [data-tab="peers"]')?.classList.contains('is-active')&&document.getElementById('detail-view')?.classList.contains('is-active'));
+  assert(await page.locator('#detail-view .detail-tabs [data-tab="peers"].is-active').count()===1,'Mobile Detail must preserve the last Users tab across Library navigation and another Torrent');
+  await page.locator('#detail-view .detail-tabs [data-tab="files"]').click();
   await page.waitForSelector('.shared-table__viewport .shared-table__row');
   const mobileHero=await page.evaluate(()=>{const hero=document.querySelector('.detail-hero'),back=document.querySelector('[data-detail-back]'),state=document.getElementById('detail-state'),progress=document.querySelector('#detail-view .detail-progress'),track=progress&&progress.querySelector('.progress-track'),pct=document.getElementById('detail-progress-text'),title=document.getElementById('detail-title'),box=node=>{const r=node.getBoundingClientRect();return{x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height,cy:r.y+r.height/2};};const hs=getComputedStyle(hero);return{hero:box(hero),back:box(back),state:box(state),progress:box(progress),track:box(track),pct:box(pct),title:box(title),paddingLeft:parseFloat(hs.paddingLeft)||0,paddingRight:parseFloat(hs.paddingRight)||0,clipped:title.scrollWidth>title.clientWidth+1,titleText:String(title.textContent||'').trim()};});
   assert(Math.abs(mobileHero.back.cy-mobileHero.state.cy)<4&&Math.abs(mobileHero.state.cy-mobileHero.progress.cy)<4,'Mobile Detail Back/State/Progress must share the first row: '+JSON.stringify(mobileHero));
