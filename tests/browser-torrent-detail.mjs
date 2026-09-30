@@ -483,6 +483,26 @@ try{
   const titlePreview=await page.locator('.ui-floating-preview').textContent();assert(titlePreview===mobileHero.titleText,'Mobile Detail floating preview must expose the complete clipped Torrent title');
   await page.evaluate(()=>WeiG.Components.closeTextPreview());await page.waitForSelector('.ui-floating-preview',{state:'detached'});
   const cdp=await context.newCDPSession(page);await cdp.send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:5});
+
+  // Android/LAN acceptance: a real touch long-press must reach the Tracker context action,
+  // and copy must still succeed when Async Clipboard is unavailable on an insecure HTTP origin.
+  await page.locator('#detail-view .detail-tabs [data-tab="trackers"]').click();
+  await page.waitForSelector('.shared-table__viewport .shared-table__row');
+  const trackerCopyValue='https://a-tracker.example/announce';
+  const trackerCopyRow=page.locator('.shared-table__row').filter({hasText:trackerCopyValue}).first();
+  await trackerCopyRow.scrollIntoViewIfNeeded();
+  const trackerCopyBox=await trackerCopyRow.boundingBox();assert(trackerCopyBox,'Mobile Tracker long-press copy target is missing.');
+  await page.evaluate(()=>{window.__weigCopied='';window.__weigExecCommand=document.execCommand;window.__weigClipboardDescriptor=Object.getOwnPropertyDescriptor(navigator,'clipboard')||null;Object.defineProperty(navigator,'clipboard',{value:undefined,configurable:true});document.execCommand=function(command){if(command!=='copy')return false;var node=document.activeElement;window.__weigCopied=node&&typeof node.value==='string'?node.value:'';return true;};});
+  const tcx=trackerCopyBox.x+Math.min(Math.max(28,trackerCopyBox.width*.5),Math.max(28,trackerCopyBox.width-12)),tcy=trackerCopyBox.y+trackerCopyBox.height/2;
+  await touch(cdp,'touchStart',tcx,tcy);await page.waitForTimeout(720);await touch(cdp,'touchEnd',tcx,tcy);
+  await page.waitForSelector('.ui-context-menu',{state:'visible',timeout:5000});
+  const trackerCopyAction=page.locator('.ui-context-menu .ui-select__option').filter({hasText:'Copy tracker URL'}).first();
+  assert(await trackerCopyAction.count()===1,'Mobile Tracker long-press must expose the source-owned Copy tracker URL action.');
+  await trackerCopyAction.click();
+  await page.waitForFunction(expected=>window.__weigCopied===expected,trackerCopyValue,{timeout:5000});
+  await page.evaluate(()=>{document.execCommand=window.__weigExecCommand;delete window.__weigExecCommand;if(window.__weigClipboardDescriptor)Object.defineProperty(navigator,'clipboard',window.__weigClipboardDescriptor);else delete navigator.clipboard;delete window.__weigClipboardDescriptor;delete window.__weigCopied;});
+  await page.locator('#detail-view .detail-tabs [data-tab="files"]').click();
+  await page.waitForSelector('.shared-table__viewport .shared-table__row');
   await resetDetailViewport(page);
   const headerBefore=await page.evaluate(()=>({order:[...document.querySelectorAll('.shared-table__head .grid-head-cell')].map(node=>node.dataset.key),saved:JSON.stringify(window.WeiG.SharedColumns.read('torrent-detail-files'))}));
   const firstBox=await page.locator('.shared-table__head .grid-head-cell[data-key="name"]').boundingBox();assert(firstBox,'Mobile detail Name header is missing.');
@@ -511,7 +531,7 @@ try{
   assert(longAfter.saved.length?JSON.stringify(longAfter.saved)===JSON.stringify(longAfter.order):JSON.stringify(longAfter.order)===JSON.stringify(longAfter.source),`Mobile long-press reorder did not converge through canonical source/override ownership: ${JSON.stringify(longAfter)}`);
   assert(errors.length===0,`Torrent detail browser errors: ${errors.join(' | ')}`);
   await context.close();
-  console.log('Torrent detail browser gate passed: direct Detail-session exit, fresh Overview entry across Torrents, mobile Back/State/Progress geometry plus floating full-title preview, full-height Content workspace, source hierarchy, shared horizontal scroll, column settings, touch-scroll cancellation and long-press reorder are proven in hosted Chrome.');
+  console.log('Torrent detail browser gate passed: direct Detail-session exit, fresh Overview entry across Torrents, mobile Back/State/Progress geometry plus floating full-title preview, Android-style Tracker long-press copy with insecure-context clipboard fallback, full-height Content workspace, source hierarchy, shared horizontal scroll, column settings, touch-scroll cancellation and long-press reorder are proven in hosted Chrome.');
 }finally{
   await browser.close();
   await new Promise(resolve=>server.close(resolve));
