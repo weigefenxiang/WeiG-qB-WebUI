@@ -100,6 +100,8 @@ async function verifyModern(){
   assert.equal(opened.topBackHidden,true,'home header Back must stay hidden for inline Detail');
   assert.equal(opened.dockBack,0,'inline Detail must not create a Back-to-torrents control');
   assert.equal(opened.sharedRuntime,true);assert.deepEqual(opened.active,['overview']);
+  const activeTone=await page.evaluate(()=>{const active=document.querySelector('#torrent-detail-tabs .tab.is-active'),inactive=document.querySelector('#torrent-detail-tabs .tab:not(.is-active)'),style=node=>{const s=getComputedStyle(node);return{background:s.backgroundImage+'|'+s.backgroundColor,border:s.borderColor,color:s.color,shadow:s.boxShadow};};return{active:style(active),inactive:style(inactive)};});
+  assert.notDeepEqual(activeTone.active,activeTone.inactive,`active Detail tab must have a visible selected treatment distinct from inactive tabs: ${JSON.stringify(activeTone)}`);
 
   const geometry=await page.evaluate(()=>{
     const rect=node=>{const r=node.getBoundingClientRect();return{top:r.top,bottom:r.bottom,left:r.left,right:r.right,width:r.width,height:r.height};};
