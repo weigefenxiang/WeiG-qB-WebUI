@@ -22,7 +22,7 @@ assert.match(app,/function operationReceipt\(subject,label,value,kind\)/);
 assert.match(app,/var submitted=await executeDetailAction/);
 assert.match(app,/notice\.update\('',\s*'success',\{receipt:\{subject:addSubject/);
 assert.match(app,/receipt:\{subject:'RSS',results:\[\{label:tr\('rss\.addedTitle'/);
-assert.match(app,/var localResult=await executeDetailLocalAction\(localAction,rowValue,item,index,menuItem\)/);
+assert.match(app,/var localResult=await executeDetailLocalAction\(localAction,rowValue,item,index,menuItem,root\)/,'Detail local-action receipts must follow the active shared Detail runtime mount');
 assert.match(app,/if\(!localResult\.receiptOwned\)[\s\S]*operationReceipt\(localSubject,detailMenuLabel\(surface,menuItem\),localResult\.value,'success'\)/,'Detail local copy receipts must use the canonical menu label while local actions with their own verified receipt do not duplicate it');
 assert.ok(!app.includes('function promptAction('),'retired orphan generic prompt success owner must stay removed');
 assert.ok(!app.includes("W.toast(tr('common.copiedMessage'),'success'"),'Detail local copy must not bypass structured receipt owner');
