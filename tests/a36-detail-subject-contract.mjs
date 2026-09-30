@@ -4,6 +4,7 @@ import fs from 'node:fs';
 const read=path=>fs.readFileSync(path,'utf8');
 const selection=read('webui/private/scripts/selection.js');
 const app=read('webui/private/scripts/app.js');
+const components=read('webui/private/scripts/components.js');
 const layout=read('webui/private/css/layout.css');
 
 assert.match(selection,/primaryHash=''/,'Selection must own an explicit primary Torrent without overloading the selected Set');
