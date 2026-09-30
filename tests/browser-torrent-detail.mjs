@@ -180,6 +180,18 @@ try{
   const mainGridFrame=await dataGridFrameGeometry(page,{frame:'.torrent-panel',head:'#torrent-table-head',row:`.torrent-row[data-hash="${hash}"]`});
   assert(mainGridFrame&&mainGridFrame.headFrameInset>0&&Math.abs(mainGridFrame.headFrameInset-mainGridFrame.rowFrameInset)<=1.5&&mainGridFrame.headCellPaddingLeft==='0px'&&mainGridFrame.rowCellPaddingLeft==='0px','Main Torrent grid must expose one shared frame gutter outside zero-inline-padding cells: '+JSON.stringify(mainGridFrame));
 
+  // A37 regression: zero-selection Detail capture must skip a row that is only geometrically present beneath the sticky Torrent header.
+  const unobscuredSetup=await page.evaluate(()=>{const list=document.getElementById('torrent-list'),v=window.WeiG?.AppState?.viewport,head=document.getElementById('torrent-table-head');if(!list||!v||!head)throw new Error('Torrent DataViewport unavailable');list.style.setProperty('height','120px','important');list.style.setProperty('flex','0 0 120px');v.refreshGeometry();list.scrollTop=Math.min(Math.max(1,Math.floor(v.rowHeight/2)),Math.max(1,list.scrollHeight-list.clientHeight));list.dispatchEvent(new Event('scroll'));return{scrollTop:list.scrollTop,rowHeight:v.rowHeight};});
+  assert(unobscuredSetup.scrollTop>0,'A37 unobscured browser gate requires a partially scrolled Torrent row: '+JSON.stringify(unobscuredSetup));
+  await page.waitForTimeout(220);
+  const unobscured=await page.evaluate(()=>{const v=WeiG.AppState.viewport,head=document.getElementById('torrent-table-head'),partial=v.firstVisibleItem(),subject=v.firstUnobscuredItem(),partialRow=partial&&document.querySelector('#torrent-list [data-hash="'+partial.hash+'"]'),subjectRow=subject&&document.querySelector('#torrent-list [data-hash="'+subject.hash+'"]'),hr=head.getBoundingClientRect(),pr=partialRow&&partialRow.getBoundingClientRect(),sr=subjectRow&&subjectRow.getBoundingClientRect();return{partial:partial&&partial.hash,subject:subject&&subject.hash,headBottom:hr.bottom,partialTop:pr&&pr.top,subjectTop:sr&&sr.top,selection:WeiG.Selection.count()};});
+  assert(unobscured.selection===0&&unobscured.partial&&unobscured.subject&&unobscured.partial!==unobscured.subject&&unobscured.partialTop<unobscured.headBottom-0.5&&unobscured.subjectTop>=unobscured.headBottom-1,'firstUnobscuredItem must identify the first row below the sticky header rather than the partially covered row: '+JSON.stringify(unobscured));
+  await page.locator('#torrent-detail-tabs .tab[data-tab="trackers"]').click();
+  await page.waitForFunction(expected=>WeiG.Selection.count()===0&&WeiG.AppState.detailDockOpen&&WeiG.AppState.detailDockHash===expected,unobscured.subject);
+  await page.locator('#torrent-detail-tabs .tab[data-tab="trackers"]').click();
+  await page.waitForFunction(()=>!WeiG.AppState.detailDockOpen);
+  await page.evaluate(()=>{const list=document.getElementById('torrent-list'),v=WeiG.AppState.viewport;list.style.removeProperty('height');list.style.removeProperty('flex');v.resetScroll();v.refreshGeometry();});
+
   // A35 regression: the home-page inline Dock must use the same shared Detail DataGrid owner
   // before any full Detail route has had a chance to initialize route-specific state.
   const libraryRow=page.locator(`.torrent-row[data-hash="${hash}"]`),libraryBox=await libraryRow.boundingBox();
@@ -191,6 +203,23 @@ try{
   await page.waitForSelector('#torrent-detail-dock-content .shared-table__viewport .shared-table__row');
   const inlineDetail=await page.evaluate(()=>{const owner=window.WeiG?.AppState?.detailViewport,viewport=document.querySelector('#torrent-detail-dock-content .shared-table__viewport');return{route:window.WeiG?.Router?.route?.().name,tab:window.WeiG?.AppState?.detailDockTab,surface:owner?.__weigSharedDetail?.surface||'',owned:!!(owner&&viewport&&owner.el===viewport),mount:viewport?.closest('.detail-runtime-content')?.id||''};});
   assert(inlineDetail.route==='home'&&inlineDetail.tab==='trackers'&&inlineDetail.surface==='trackers'&&inlineDetail.owned&&inlineDetail.mount==='torrent-detail-dock-content','Inline Trackers Dock must consume the presentation-neutral shared Detail DataGrid owner before full-route navigation: '+JSON.stringify(inlineDetail));
+
+  // A37 SplitPane: the actual draggable track spans from the Torrent sticky-header bottom to the Detail tabs/pager top.
+  let splitBox=await page.locator('#torrent-detail-splitter').boundingBox();
+  assert(splitBox&&splitBox.height>0,'A37 SplitPane gate requires a visible separator');
+  await page.mouse.move(splitBox.x+splitBox.width/2,splitBox.y+splitBox.height/2);await page.mouse.down();await page.mouse.move(splitBox.x+splitBox.width/2,-500,{steps:6});await page.mouse.up();
+  const splitMax=await page.evaluate(()=>{const head=document.getElementById('torrent-table-head'),split=document.getElementById('torrent-detail-splitter'),dock=document.getElementById('torrent-detail-dock'),pager=document.querySelector('.torrent-pager'),box=n=>{const r=n.getBoundingClientRect();return{top:r.top,bottom:r.bottom,height:r.height};};return{head:box(head),split:box(split),dock:box(dock),pager:box(pager),now:Number(split.getAttribute('aria-valuenow')),max:Number(split.getAttribute('aria-valuemax'))};});
+  assert(Math.abs(splitMax.split.top-splitMax.head.bottom)<=2.5&&Math.abs(splitMax.dock.bottom-splitMax.pager.top)<=2.5&&Math.abs(splitMax.now-splitMax.max)<=1,'Detail maximum must consume the full track up to the Torrent sticky header: '+JSON.stringify(splitMax));
+  splitBox=await page.locator('#torrent-detail-splitter').boundingBox();await page.mouse.move(splitBox.x+splitBox.width/2,splitBox.y+splitBox.height/2);await page.mouse.down();await page.mouse.move(splitBox.x+splitBox.width/2,2000,{steps:6});await page.mouse.up();
+  const splitMin=await page.evaluate(()=>{const split=document.getElementById('torrent-detail-splitter'),dock=document.getElementById('torrent-detail-dock'),pager=document.querySelector('.torrent-pager'),sr=split.getBoundingClientRect(),dr=dock.getBoundingClientRect(),pr=pager.getBoundingClientRect();return{splitBottom:sr.bottom,dockHeight:dr.height,pagerTop:pr.top,now:Number(split.getAttribute('aria-valuenow')),min:Number(split.getAttribute('aria-valuemin'))};});
+  assert(splitMin.min===0&&splitMin.now===0&&splitMin.dockHeight<=2.5&&Math.abs(splitMin.splitBottom-splitMin.pagerTop)<=2.5,'Detail minimum must collapse to the tabs/pager boundary without the retired 160px reserve: '+JSON.stringify(splitMin));
+  await page.evaluate(()=>WeiG.AppState.detailSplitPane.setSize(9999,false));
+  await page.setViewportSize({width:1200,height:620});
+  await page.waitForFunction(()=>{const split=document.getElementById('torrent-detail-splitter');return Number(split.getAttribute('aria-valuenow'))<=Number(split.getAttribute('aria-valuemax'));});
+  const splitResize=await page.evaluate(()=>{const split=document.getElementById('torrent-detail-splitter');return{now:Number(split.getAttribute('aria-valuenow')),max:Number(split.getAttribute('aria-valuemax'))};});
+  assert(splitResize.now<=splitResize.max&&splitResize.max>0,'SplitPane resize refresh must reclamp persisted/current height to the latest dynamic geometry: '+JSON.stringify(splitResize));
+  await page.setViewportSize({width:1366,height:768});await page.evaluate(()=>WeiG.AppState.detailSplitPane.setSize(280,false));
+
   await page.locator('#torrent-detail-tabs .tab[data-tab="trackers"]').click();
   await page.waitForFunction(()=>!window.WeiG.AppState.detailDockOpen&&document.getElementById('torrent-detail-dock')?.hidden);
 
