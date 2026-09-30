@@ -5,6 +5,7 @@ import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {applyLocaleOverlay} from '../../tools/qb-locale-overlay.mjs';
 import {applyQbSettingsTranslationLkg} from '../../tools/qb-settings-translation-lkg.mjs';
+import {buildStableIndex} from './stable-index.mjs';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const projectRoot=path.resolve(here,'../..');
@@ -80,12 +81,12 @@ runNode(path.join(projectRoot,'tools/build-webui-dist.mjs'),[
   `--version=${devBranch.version}`
 ]);
 
-// Pages metadata is an audit/simulator surface and is not served by the real qB
-// Alternative WebUI server. Keep the full source-bound catalog here so live
-// acceptance can audit all 65 stable profiles. Dev WebUI runtime is self-contained
-// and consumes only checked-in compact contracts/copy assets; the full catalog stays simulator-only.
-const renderedCatalog=path.join(out,'metadata','qb-releases.json');
-await fs.copyFile(sourceCatalog,renderedCatalog);
+// Top-level Pages metadata is a navigation surface, not the full simulator evidence store.
+// Keep the full catalog inside each simulator build, but publish only a hash-bound stable
+// identity index for the Lab selector so opening /lab does not download the multi-megabyte catalog.
+const stableIndex=buildStableIndex(catalogData,{sourceCatalogSha256:baseCatalogSha256});
+const stableIndexBytes=Buffer.from(JSON.stringify(stableIndex)+'\n','utf8');
+await fs.writeFile(path.join(out,'metadata','qb-stable-index.json'),stableIndexBytes);
 await fs.rm(buildDir,{recursive:true,force:true});
 
 await fs.cp(path.join(projectRoot,'simulator/lab'),path.join(out,'lab'),{recursive:true,force:true});
@@ -99,7 +100,7 @@ const descriptorTotals=(Array.isArray(catalogData)?catalogData:[]).reduce((sum,i
 },{preferences:0,getterPresent:0,setterPresent:0,readTyped:0,writeTyped:0,exactAgreement:0,mismatched:0,safeFallback:0,semanticGetterEnriched:0,unresolvedRead:0,unresolvedWrite:0,structuredRead:0,structuredWrite:0,typed:0,highConfidence:0,unresolved:0});
 const latestProfile=Array.isArray(catalogData)&&catalogData.length?catalogData.at(-1):null;
 const preferenceCatalog={schemaVersion:3,profiles:Array.isArray(catalogData)?catalogData.length:0,...descriptorTotals,latest:latestProfile?{qbVersion:latestProfile.qbVersion,preferenceCount:latestProfile.preferenceDescriptorStats?.total||0,getterPresent:latestProfile.preferenceDescriptorStats?.getterPresent||0,setterPresent:latestProfile.preferenceDescriptorStats?.setterPresent||0,readTyped:latestProfile.preferenceDescriptorStats?.readTyped||0,writeTyped:latestProfile.preferenceDescriptorStats?.writeTyped||0,exactAgreement:latestProfile.preferenceDescriptorStats?.exactAgreement||0,mismatched:latestProfile.preferenceDescriptorStats?.mismatched||0,safeFallback:latestProfile.preferenceDescriptorStats?.safeFallback||0,semanticGetterEnriched:latestProfile.preferenceDescriptorStats?.semanticGetterEnriched||0,unresolvedRead:latestProfile.preferenceDescriptorStats?.unresolvedRead||0,unresolvedWrite:latestProfile.preferenceDescriptorStats?.unresolvedWrite||0,structuredRead:latestProfile.preferenceDescriptorStats?.structuredRead||0,structuredWrite:latestProfile.preferenceDescriptorStats?.structuredWrite||0,typed:latestProfile.preferenceDescriptorStats?.typed||0,unresolved:latestProfile.preferenceDescriptorStats?.unresolved||0}:null};
-const siteMeta={simulatorSha,builtAt:new Date().toISOString(),stableProfiles:Array.isArray(catalogData)?catalogData.length:0,preferenceCatalog,localeCatalog,settingsTranslationCatalog,devDistribution:{path:'downloads/dev/WeiG-qB-WebUI.zip',gitSha:devBranch.sha,version:devBranch.version,materialized:true},branches:Object.fromEntries(branches.map(x=>[x.name,{exactSha:x.sha,productVersion:x.version}]))};
+const siteMeta={simulatorSha,builtAt:new Date().toISOString(),stableProfiles:Array.isArray(catalogData)?catalogData.length:0,stableIndex:{path:'metadata/qb-stable-index.json',schemaVersion:stableIndex.schemaVersion,profileCount:stableIndex.profileCount,sourceCatalogSha256:stableIndex.sourceCatalogSha256,bytes:stableIndexBytes.length},preferenceCatalog,localeCatalog,settingsTranslationCatalog,devDistribution:{path:'downloads/dev/WeiG-qB-WebUI.zip',gitSha:devBranch.sha,version:devBranch.version,materialized:true},branches:Object.fromEntries(branches.map(x=>[x.name,{exactSha:x.sha,productVersion:x.version}]))};
 await fs.writeFile(path.join(out,'metadata','site.json'),JSON.stringify(siteMeta,null,2)+'\n','utf8');
 await fs.writeFile(path.join(out,'.nojekyll'),'','utf8');
 await fs.writeFile(path.join(out,'index.html'),labAliasHtml('dev','./lab/'),'utf8');

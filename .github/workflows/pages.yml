@@ -115,7 +115,8 @@ jobs:
           test -f "$RUNNER_TEMP/virtual-qb-site/lab/index.html"
           test -f "$RUNNER_TEMP/virtual-qb-site/dev/app/service-worker.js"
           test -f "$RUNNER_TEMP/virtual-qb-site/main/app/service-worker.js"
-          test -s "$RUNNER_TEMP/virtual-qb-site/metadata/qb-releases.json"
+          test -s "$RUNNER_TEMP/virtual-qb-site/metadata/qb-stable-index.json"
+          test ! -e "$RUNNER_TEMP/virtual-qb-site/metadata/qb-releases.json"
           test ! -e "$RUNNER_TEMP/virtual-qb-site/dev/app/__source/private/data/qb-releases.json"
           test ! -e "$RUNNER_TEMP/virtual-qb-site/dev/app/__source/private/data/qb-release-profiles"
           test ! -e "$RUNNER_TEMP/virtual-qb-site/dev/app/__source/private/scripts/release-profile.js"
@@ -127,10 +128,12 @@ jobs:
           const sha=process.env.WEIG_PAGES_SOURCE_SHA;
           const site=JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/virtual-qb-site/metadata/site.json`,'utf8'));
           const dev=JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/virtual-qb-site/dev/app/virtual-qb-build.json`,'utf8'));
-          const catalog=JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/virtual-qb-site/metadata/qb-releases.json`,'utf8'));
+          const stableIndex=JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/virtual-qb-site/metadata/qb-stable-index.json`,'utf8'));
+          const generatedCatalog=JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/virtual-qb-site/dev/app/__simulator/versions/catalog.generated.json`,'utf8'));
           const dist=JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/virtual-qb-site/downloads/dev/manifest.json`,'utf8'));
           if(site.simulatorSha!==sha||site.branches?.dev?.exactSha!==sha||dev.branch!=='dev'||dev.exactSha!==sha||dev.simulatorSha!==sha)throw new Error('Exact dev Pages identity mismatch before artifact upload.');
-          if(site.localeCatalog?.profiles!==65||!Array.isArray(catalog)||catalog.length!==65||catalog.some(profile=>!Array.isArray(profile.webuiLocales)||!profile.webuiLocales.length))throw new Error('Frozen Locale overlay was not applied to all 65 Pages profiles.');
+          if(site.localeCatalog?.profiles!==65||!Array.isArray(generatedCatalog)||generatedCatalog.length!==65||generatedCatalog.some(profile=>!Array.isArray(profile.webuiLocales)||!profile.webuiLocales.length))throw new Error('Frozen Locale overlay was not applied to all 65 simulator profiles.');
+          if(stableIndex.schemaVersion!==1||stableIndex.profileCount!==65||stableIndex.profiles?.length!==65||site.stableIndex?.sourceCatalogSha256!==stableIndex.sourceCatalogSha256||site.stableIndex?.bytes>=64*1024)throw new Error('Compact hash-bound Pages stable index identity/performance contract failed.');
           if(site.settingsTranslationCatalog?.profiles!==65||site.settingsTranslationCatalog?.mappedPreferences<1||site.settingsTranslationCatalog?.translationRoutes<1||site.settingsTranslationCatalog?.translationSets<1)throw new Error('Certified qB Settings translation LKG was not applied to all stable profiles.');
           if(dist.runtimeCompatibility!=='compact-contracts-only'||dist.legacyReleaseRuntime!==false||dist.ownedCopyRegistry!=='private/data/qb-settings-native.txt'||dist.legacySettingsAssets!==false||Number(dist.qmAssets)<1||!Number.isFinite(Number(dist.ownedCopyBytes))||Number(dist.ownedCopyBytes)<=0||Number(dist.ownedCopyBytes)>=5*1024*1024)throw new Error('Materialized dev installer payload is missing compact runtime/qB Settings assets or exceeds the project single-file target.');
           console.log(`Exact Pages identity PASS: ${sha}; Locale profiles=${site.localeCatalog.profiles}, Settings mappings=${site.settingsTranslationCatalog.mappedPreferences}, QM assets=${dist.qmAssets}`);
