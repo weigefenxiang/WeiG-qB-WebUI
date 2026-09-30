@@ -121,6 +121,18 @@ async function verifyModern(){
   assert.equal(trackerState.route,'home');assert.equal(trackerState.tab,'trackers');assert.deepEqual(trackerState.active,['trackers']);assert.equal(trackerState.detailViewport,true);
   if(scrollState.max>0)assert.equal(trackerState.mainLeft,scrollState.left,'switching Detail tabs must not reset Main Torrent horizontal scroll');
 
+  const sourceTabKeys=await page.locator('#torrent-detail-tabs .tab').evaluateAll(nodes=>nodes.map(node=>node.dataset.tab));
+  assert.deepEqual(sourceTabKeys,['overview','trackers','peers','webseeds','files'],'inline Dock must expose the complete source-driven qB Detail tab family in source order');
+  for(const tab of ['webseeds','files']){
+    await page.locator(`#torrent-detail-tabs .tab[data-tab="${tab}"]`).click();
+    await page.waitForSelector('#torrent-detail-dock-content .shared-table__viewport',{state:'visible',timeout:30000});
+    const state=await page.evaluate(()=>({route:window.WeiG.Router.route().name,tab:window.WeiG.AppState.detailDockTab,active:[...document.querySelectorAll('#torrent-detail-tabs .tab.is-active')].map(node=>node.dataset.tab)}));
+    assert.equal(state.route,'home',`${tab} Dock switch must stay on the Torrent Library route`);
+    assert.equal(state.tab,tab);assert.deepEqual(state.active,[tab]);
+  }
+  await page.locator('#torrent-detail-tabs .tab[data-tab="trackers"]').click();
+  await page.waitForFunction(()=>window.WeiG.AppState.detailDockOpen&&window.WeiG.AppState.detailDockTab==='trackers',null,{timeout:10000});
+
   await page.locator('#torrent-detail-tabs .tab[data-tab="trackers"]').click();
   await page.waitForFunction(()=>!window.WeiG.AppState.detailDockOpen&&document.getElementById('torrent-detail-dock').hidden&&document.getElementById('torrent-detail-splitter').hidden,null,{timeout:10000});
   assert.equal(await page.locator('#torrent-detail-tabs .tab.is-active').count(),0,'clicking the active tab must collapse and clear active presentation');
