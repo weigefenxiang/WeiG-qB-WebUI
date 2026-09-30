@@ -238,6 +238,7 @@ jobs:
           - {name: services-protocol, script: tests/pages-live-protocol.mjs, service_mode: none, pref_mode: none, pref_index: '0', pref_total: '1', release_mode: none}
           - {name: services-branch-alias, script: tests/pages-live-branch-alias.mjs, service_mode: none, pref_mode: none, pref_index: '0', pref_total: '1', release_mode: none}
           - {name: mobile-layout, script: tests/pages-live-mobile-layout.mjs, pref_mode: none, pref_index: '0', pref_total: '1', release_mode: none}
+          - {name: detail-dock, script: tests/pages-live-detail-dock.mjs, service_mode: none, pref_mode: none, pref_index: '0', pref_total: '1', release_mode: none}
           - {name: preferences-anchor, script: tests/pages-live-preferences.mjs, pref_mode: anchor, pref_index: '0', pref_total: '10', release_mode: none}
           - {name: preferences-0, script: tests/pages-live-preferences.mjs, pref_mode: shard, pref_index: '0', pref_total: '10', release_mode: none}
           - {name: preferences-1, script: tests/pages-live-preferences.mjs, pref_mode: shard, pref_index: '1', pref_total: '10', release_mode: none}
