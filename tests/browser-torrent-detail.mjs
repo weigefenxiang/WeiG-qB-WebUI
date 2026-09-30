@@ -491,6 +491,7 @@ try{
   const trackerCopyValue='https://a-tracker.example/announce';
   const trackerCopyRow=page.locator('.shared-table__row').filter({hasText:trackerCopyValue}).first();
   await trackerCopyRow.scrollIntoViewIfNeeded();
+  assert(await trackerCopyRow.getAttribute('data-ui-context-trigger')==='1','Mobile Tracker row must be bound to the shared Context Menu gesture owner before touch dispatch.');
   const trackerCopyBox=await trackerCopyRow.boundingBox();assert(trackerCopyBox,'Mobile Tracker long-press copy target is missing.');
   await page.evaluate(()=>{window.__weigCopied='';window.__weigExecCommand=document.execCommand;window.__weigClipboardDescriptor=Object.getOwnPropertyDescriptor(navigator,'clipboard')||null;Object.defineProperty(navigator,'clipboard',{value:undefined,configurable:true});document.execCommand=function(command){if(command!=='copy')return false;var node=document.activeElement;window.__weigCopied=node&&typeof node.value==='string'?node.value:'';return true;};});
   const tcx=trackerCopyBox.x+Math.min(Math.max(28,trackerCopyBox.width*.5),Math.max(28,trackerCopyBox.width-12)),tcy=trackerCopyBox.y+trackerCopyBox.height/2;

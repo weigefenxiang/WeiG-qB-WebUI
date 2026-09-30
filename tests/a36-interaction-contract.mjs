@@ -24,7 +24,7 @@ assert.match(components,/bindTorrentNamePreview.*C\.bindOverflowPreview/s,'Torre
 assert.match(responsive,/C\.bindOverflowPreview\(node/,'full Detail title must consume the same overflow preview binding');
 assert.match(controls,/\.ui-floating-preview\{[^}]*pointer-events:none[^}]*user-select:none/s,'transient hover previews must never intercept the underlying app pointer target');
 assert.match(controls,/\.ui-floating-preview\[data-persistent="1"\]\{[^}]*pointer-events:auto[^}]*user-select:text/s,'only explicit persistent previews may own pointer/text selection');
-assert.match(floating,/function bindContextMenuTrigger\(target,itemsProvider,opts\).*pointerType!=='touch'.*longpress.*contextmenu/s,'shared Context Menu owner must bridge right-click and touch long-press without assuming browser contextmenu synthesis');
+assert.match(floating,/function bindContextMenuTrigger\(target,itemsProvider,opts\).*longPressDelay\)\|\|320.*pointerType!=='touch'.*longpress.*contextmenu/s,'shared Context Menu owner must bridge right-click and an app-armed touch long-press before platform contextmenu cancellation');
 assert.match(floating,/Math\.hypot\(event\.clientX-press\.x,event\.clientY-press\.y\)>moveLimit\)clearPress\(\)/,'touch long-press must cancel on movement so native scrolling remains owned by the viewport');
 assert.match(floating,/suppressUntil=Date\.now\(\)\+1400.*Date\.now\(\)<suppressUntil/s,'shared Context Menu owner must suppress the duplicate native contextmenu after an app-owned long-press');
 assert.match(floating,/suppressClickUntil=Date\.now\(\)\+900.*addEventListener\('click'.*stopImmediatePropagation\(\)/s,'touch long-press must suppress only the synthesized row click that would immediately close the newly opened menu');

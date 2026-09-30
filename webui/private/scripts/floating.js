@@ -34,7 +34,7 @@
   function internalMenuScroll(e){return !!((active&&active.__uiMenu&&e&&e.target&&active.__uiMenu.contains(e.target))||contextMenuStack.some(function(entry){return entry&&entry.menu&&e&&e.target&&entry.menu.contains(e.target);}));}
   function bindContextMenuTrigger(target,itemsProvider,opts){
     opts=opts||{};if(!target||!target.addEventListener)return target;if(target.dataset&&target.dataset.uiContextTrigger==='1')return target;if(target.dataset)target.dataset.uiContextTrigger='1';
-    var press=null,timer=0,suppressUntil=0,suppressClickUntil=0,lastTouchUntil=0,delay=Math.max(350,Number(opts.longPressDelay)||560),moveLimit=Math.max(6,Number(opts.moveTolerance)||10);
+    var press=null,timer=0,suppressUntil=0,suppressClickUntil=0,lastTouchUntil=0,delay=Math.max(280,Number(opts.longPressDelay)||320),moveLimit=Math.max(6,Number(opts.moveTolerance)||10);
     function clearPress(){if(timer){clearTimeout(timer);timer=0;}press=null;}
     function items(event,source){var value=typeof itemsProvider==='function'?itemsProvider(event,source):itemsProvider;return contextMenuItems(value);}
     function openAt(x,y,event,source){var menuItems=items(event,source);if(!menuItems.length)return false;if(typeof opts.beforeOpen==='function')opts.beforeOpen(event,source);if(event){event.preventDefault();event.stopPropagation();}return C.openContextMenu({x:x,y:y,items:menuItems});}
