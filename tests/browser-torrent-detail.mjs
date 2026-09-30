@@ -78,13 +78,13 @@ async function waitDetailViewportIdle(page,expected){
   },{top:expected.top??null,left:expected.left??null},{timeout:3000});
 }
 async function resetDetailViewport(page){
-  await waitDetailViewportIdle(page);
-  await page.evaluate(()=>{
+  await page.waitForFunction(()=>{
     const owner=window.WeiG&&WeiG.AppState&&WeiG.AppState.detailViewport,viewport=owner&&owner.el,root=document.getElementById('detail-content');
-    if(!viewport||!viewport.isConnected||!root||!root.contains(viewport)||typeof owner.resetScroll!=='function')throw new Error('canonical Detail DataViewport reset owner unavailable');
+    if(!owner||!viewport||!viewport.isConnected||!root||!root.contains(viewport)||owner._scrolling||owner._hasPendingItems||viewport.__weigDataViewportScrollIdleTimer||typeof owner.resetScroll!=='function')return false;
     owner.resetScroll();
     viewport.scrollLeft=0;
-  });
+    return window.WeiG?.AppState?.detailViewport===owner&&owner.el===viewport&&viewport.isConnected&&root.contains(viewport);
+  },undefined,{timeout:3000});
   await waitDetailViewportIdle(page,{top:0,left:0});
 }
 async function visibleDetailBodyPoint(page){
