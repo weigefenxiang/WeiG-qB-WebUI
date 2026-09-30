@@ -19,6 +19,8 @@
 .col-resize{touch-action:none}
 .torrent-table-head>.grid-head-cell{min-width:0}
 .grid-head-label{display:block;flex:1 1 auto;min-width:0;max-width:100%;padding-right:12px;overflow:hidden;text-overflow:clip;white-space:nowrap;word-break:keep-all;overflow-wrap:normal;writing-mode:horizontal-tb}
+.grid-head-cell[data-sort-direction]>.grid-head-label{padding-right:3px}
+.grid-head-sort{display:inline-grid;place-items:center;flex:0 0 16px;width:16px;color:var(--accent-cyan);font-size:12px;font-weight:900;line-height:1}
 @media(pointer:coarse){.col-resize{right:-10px;width:20px}.col-resize:after{left:9px}.grid-head-cell{min-height:44px}}
 
 .shared-table{display:flex;flex:1 1 0;flex-direction:column;min-width:0;min-height:0;overflow:hidden}
@@ -30,7 +32,7 @@
 .shared-table__head,.shared-table__row{grid-template-columns:var(--weig-detail-grid-template)}
 .shared-table__head{position:sticky;top:0;z-index:5;isolation:isolate;min-height:42px;border-bottom:1px solid var(--border);background:var(--bg-surface);color:var(--text-muted);font-size:var(--text-table-header);font-weight:760;box-shadow:0 1px 0 var(--border),0 5px 14px rgba(0,0,0,.14)}
 .shared-table__head>.grid-head-cell,.shared-table__row>[data-column-key],.shared-table__sticky-folder>[data-column-key]{min-width:0;padding:7px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;justify-self:stretch}
-.shared-table__head>.grid-head-cell{display:flex;align-items:center;justify-content:flex-start}.shared-table__head>.grid-head-cell[data-sort-direction]::after{content:"↑";display:inline-grid;place-items:center;flex:0 0 16px;width:16px;margin-left:3px;color:var(--accent-cyan);font-size:12px;font-weight:900;line-height:1}.shared-table__head>.grid-head-cell[data-sort-direction="desc"]::after{content:"↓"}
+.shared-table__head>.grid-head-cell{display:flex;align-items:center;justify-content:flex-start}
 .shared-table__head>.grid-head-cell[data-key="checked"],.shared-table__row>[data-column-key="checked"]{text-align:center;justify-content:center;justify-self:stretch}
 .shared-table__row[data-context-menu=true]{cursor:context-menu}
 .shared-table__head .col-resize{right:0}

@@ -262,6 +262,8 @@ try{
     const nameHead=page.locator('#torrent-table-head .grid-head-cell[data-key="name"]');await nameHead.click();
     await page.waitForFunction(()=>WeiG.LibraryController.state().sort==='name');
     assert((await page.evaluate(()=>WeiG.LibraryController.state())).sort==='name',`${name}: desktop sort did not reach semantic owner`);
+    const mainSortVisual=await nameHead.evaluate(cell=>({direction:cell.dataset.sortDirection||'',ariaSort:cell.getAttribute('aria-sort')||'',marker:cell.querySelector('.grid-head-sort')?.textContent||'',label:cell.querySelector('.grid-head-label')?.textContent||'',fullLabel:cell.querySelector('.grid-head-label')?.dataset.fullLabel||''}));
+    assert(mainSortVisual.direction==='asc'&&mainSortVisual.ariaSort==='ascending'&&mainSortVisual.marker==='↑'&&mainSortVisual.label===mainSortVisual.fullLabel&&!/[↑↓]/.test(mainSortVisual.fullLabel),`${name}: Torrent main sort must use DataGridHeader semantic/visual owner without mutating header copy ${JSON.stringify(mainSortVisual)}`);
     await page.locator('#columns-btn').click();
     await page.waitForSelector('#column-configurator-dialog[open]');
     const totalSizeCheck=page.locator('#column-configurator-dialog [data-column-key="total_size"] input[type="checkbox"]');
@@ -270,6 +272,8 @@ try{
     const totalSizeHead=page.locator('#torrent-table-head .grid-head-cell[data-key="total_size"]');await totalSizeHead.waitFor();await totalSizeHead.click();
     await page.waitForFunction(()=>WeiG.LibraryController.state().sort==='total_size');
     assert((await page.evaluate(()=>WeiG.LibraryController.state())).sort==='total_size',`${name}: Total Size source column did not reach canonical sort owner`);
+    const switchedSortVisual=await page.evaluate(()=>({active:document.querySelector('#torrent-table-head .grid-head-cell[data-key="total_size"] .grid-head-sort')?.textContent||'',old:document.querySelector('#torrent-table-head .grid-head-cell[data-key="name"] .grid-head-sort')?.textContent||'',direction:document.querySelector('#torrent-table-head .grid-head-cell[data-key="total_size"]')?.dataset.sortDirection||''}));
+    assert(switchedSortVisual.active==='↑'&&switchedSortVisual.old===''&&switchedSortVisual.direction==='asc',`${name}: DataGridHeader must move the single active sort indicator with semantic sort state ${JSON.stringify(switchedSortVisual)}`);
     assert(await page.evaluate(()=>WeiG.TorrentFieldRegistry.availableColumnDefinitions().find(column=>column.key==='total_size')?.sort===null&&WeiG.TorrentFieldRegistry.availableColumnDefinitions().find(column=>column.key==='total_size')?.localSort==='total_size'),`${name}: Total Size must use local catalog sort without inventing server-side sort provenance`);
 
     // Facet action follows the exact qB source-owned Tracker surface.

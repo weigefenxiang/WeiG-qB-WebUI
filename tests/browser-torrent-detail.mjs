@@ -270,6 +270,8 @@ try{
   await page.locator(`.torrent-row[data-hash="${hash}"] .torrent-title`).click();
   await page.waitForFunction(()=>document.querySelector('.detail-tabs [data-tab="peers"]')?.classList.contains('is-active')&&document.getElementById('detail-view')?.classList.contains('is-active'));
   await page.waitForFunction(()=>document.querySelector('.shared-table__head .grid-head-cell[data-key="client"]')?.dataset.sortDirection==='desc');
+  const detailSortVisual=await page.evaluate(()=>{const cell=document.querySelector('.shared-table__head .grid-head-cell[data-key="client"]'),label=cell?.querySelector('.grid-head-label');return{direction:cell?.dataset.sortDirection||'',ariaSort:cell?.getAttribute('aria-sort')||'',marker:cell?.querySelector('.grid-head-sort')?.textContent||'',label:label?.textContent||'',fullLabel:label?.dataset.fullLabel||'',pseudo:getComputedStyle(cell,'::after').content};});
+  assert(detailSortVisual.direction==='desc'&&detailSortVisual.ariaSort==='descending'&&detailSortVisual.marker==='↓'&&detailSortVisual.label===detailSortVisual.fullLabel&&!/[↑↓]/.test(detailSortVisual.fullLabel)&&['none','normal','""'].includes(detailSortVisual.pseudo),`Detail sort must share DataGridHeader semantic/visual owner without the retired CSS pseudo indicator: ${JSON.stringify(detailSortVisual)}`);
   const persistedPeer=await page.evaluate(()=>Array.from(document.querySelectorAll('.shared-table__row [data-column-key="client"]')).map(node=>node.textContent||''));
   assert(persistedPeer[0]==='fixture',`Peers sort did not persist across torrents: ${JSON.stringify(persistedPeer)}`);
 
