@@ -73,14 +73,15 @@ try{
   assert.ok(card.overflow<=1,`stacked progress must fit the mobile torrent card height: ${JSON.stringify(card)}`);
 
   const pager=await page.locator('#list-view .pager').evaluate(node=>{
-    const nav=node.querySelector('.pager__nav'),actions=node.querySelector('#torrent-selection-toolbar');
-    if(!nav||!actions)throw new Error('mobile pager canonical navigation/action nodes are missing');
+    const tabs=node.querySelector('#torrent-detail-tabs'),nav=node.querySelector('.pager__nav'),actions=node.querySelector('#torrent-selection-toolbar');
+    if(!tabs||!nav||!actions)throw new Error('mobile pager canonical Detail/navigation/action nodes are missing');
     const buttons=[...actions.querySelectorAll('button')];
     const rect=n=>{const r=n.getBoundingClientRect();return{top:r.top,bottom:r.bottom,left:r.left,right:r.right,width:r.width,height:r.height};};
     const br=buttons.map(b=>({...rect(b),font:parseFloat(getComputedStyle(b).fontSize),text:(b.textContent||'').trim()}));
-    return{pager:rect(node),nav:rect(nav),actions:rect(actions),buttons:br,overflow:node.scrollWidth-node.clientWidth};
+    return{pager:rect(node),tabs:rect(tabs),nav:rect(nav),actions:rect(actions),buttons:br,overflow:node.scrollWidth-node.clientWidth};
   });
   assert.equal(pager.buttons.length,4,`mobile action rail must keep Start/Pause/More/Delete: ${JSON.stringify(pager)}`);
+  assert.ok(pager.tabs.bottom<=Math.min(pager.nav.top,pager.actions.top)+2,`Detail tabs must own the first mobile pager row while actions/navigation share the second: ${JSON.stringify(pager)}`);
   assert.ok(Math.abs(pager.nav.top-pager.actions.top)<=3&&pager.nav.bottom<=pager.pager.bottom+1&&pager.actions.bottom<=pager.pager.bottom+1,`pager and actions must stay on one physical row: ${JSON.stringify(pager)}`);
   assert.ok(pager.buttons.every(button=>button.font>=10.5),`mobile action labels must remain readable at 390px: ${JSON.stringify(pager.buttons)}`);
   assert.ok(pager.buttons.slice(1).every((button,index)=>button.left-pager.buttons[index].right>=2),`mobile action buttons must remain visually separated: ${JSON.stringify(pager.buttons)}`);
