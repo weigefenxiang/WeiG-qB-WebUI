@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {PAGES_FULL_CATALOG_PATH} from './pages-live-catalog.mjs';
 import {launchBrowser} from './browser-driver.mjs';
 import {recoverPageSession} from './pages-live-session.mjs';
 import {atLeast} from '../simulator/core/profiles.js';
@@ -77,12 +78,12 @@ async function setTimeControl(page,control,value){
 }
 
 const site=await waitForDeployedSha();
-const catalog=await fetchJson('metadata/qb-releases.json');
+const catalog=await fetchJson(PAGES_FULL_CATALOG_PATH);
 const matrix=catalog.filter(item=>item?.stable!==false&&/^(?:4|5)\.\d+\.\d+(?:\.\d+)?$/.test(String(item?.qbVersion||'')));
 assert.equal(matrix.length,65,`published stable qB 4.x/5.x matrix must contain 65 profiles, got ${matrix.length}`);
 assert.equal(matrix[0].qbVersion,'4.1.0','Virtual qB stable preference matrix must start at qB 4.1.0');
 assert.equal(site?.preferenceCatalog?.schemaVersion,3,'site metadata must expose Preference Descriptor quality schema v3');
-assert.equal(site?.preferenceCatalog?.profiles,matrix.length,'site metadata must publish the same stable preference profile count as qb-releases.json');
+assert.equal(site?.preferenceCatalog?.profiles,matrix.length,'site metadata must publish the same stable preference profile count as the internal simulator evidence catalog');
 assert.ok(Number(site?.preferenceCatalog?.readTyped)>0,'site metadata must expose source-derived getter/read type coverage');
 assert.ok(Number(site?.preferenceCatalog?.writeTyped)>0,'site metadata must expose source-derived setter/write type coverage');
 assert.ok(Number(site?.preferenceCatalog?.exactAgreement)>0,'site metadata must expose exact getter/setter type agreement coverage');

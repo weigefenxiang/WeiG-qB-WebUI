@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import {buildStableIndex,STABLE_INDEX_SCHEMA_VERSION} from '../simulator/build/stable-index.mjs';
+import {PAGES_FULL_CATALOG_PATH} from './pages-live-catalog.mjs';
 
 const read=rel=>fs.readFileSync(new URL(`../${rel}`,import.meta.url));
 const canonical=read('tests/fixtures/qb-release-catalog.lkg.json').toString('utf8').replace(/\r\n?/g,'\n');
@@ -34,6 +35,8 @@ const lab=read('simulator/lab/lab.js').toString('utf8');
 const build=read('simulator/build/build-site.mjs').toString('utf8');
 const pages=read('.github/workflows/pages.yml').toString('utf8');
 assert.ok(lab.includes("../metadata/qb-stable-index.json")&&!lab.includes("../metadata/qb-releases.json"),'Lab must consume only the compact stable index and retire the full metadata catalog fetch');
+assert.equal(PAGES_FULL_CATALOG_PATH,'dev/app/__simulator/versions/catalog.generated.json','Pages live full-catalog evidence must stay inside the deployed dev simulator artifact, not top-level Lab metadata');
+for(const rel of ['tests/pages-live-acceptance.mjs','tests/pages-live-preferences.mjs','tests/pages-live-release-profile.mjs']){const source=read(rel).toString('utf8');assert.ok(source.includes("from './pages-live-catalog.mjs'")&&source.includes('fetchJson(PAGES_FULL_CATALOG_PATH)')&&!source.includes("fetchJson('metadata/qb-releases.json')"),`${rel} must consume the shared internal simulator catalog path and keep the retired top-level catalog fetch absent`);}
 assert.ok(build.includes("buildStableIndex(catalogData,{sourceCatalogSha256:baseCatalogSha256})")&&build.includes("metadata','qb-stable-index.json")&&!build.includes("metadata','qb-releases.json"),'Pages site builder must publish the compact hash-bound index instead of duplicating full simulator evidence into top-level metadata');
 assert.ok(pages.includes('test -s "$RUNNER_TEMP/virtual-qb-site/metadata/qb-stable-index.json"')&&pages.includes('test ! -e "$RUNNER_TEMP/virtual-qb-site/metadata/qb-releases.json"')&&!pages.includes("const catalog=JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/virtual-qb-site/metadata/qb-releases.json`"),'Pages workflow must validate the compact top-level index, explicitly guard retirement of the full top-level catalog, and keep full evidence inside simulator artifacts only');
 

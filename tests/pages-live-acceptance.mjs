@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {PAGES_FULL_CATALOG_PATH} from './pages-live-catalog.mjs';
 import {launchBrowser} from './browser-driver.mjs';
 import {recoverPageSession} from './pages-live-session.mjs';
 
@@ -142,8 +143,8 @@ assert.equal(site.simulatorSha,expectedSha,'site metadata must belong to the exa
 assert.ok(site.branches?.dev?.exactSha,'site metadata must include dev exact SHA');
 assert.ok(site.branches?.main?.exactSha,'site metadata must include main exact SHA');
 
-const catalog=await fetchJson('metadata/qb-releases.json');
-assert.ok(Array.isArray(catalog)&&catalog.length>0,'stable release catalog must be published');
+const catalog=await fetchJson(PAGES_FULL_CATALOG_PATH);
+assert.ok(Array.isArray(catalog)&&catalog.length>0,'deployed dev simulator must publish the full stable release evidence catalog internally');
 assert.ok(catalog.some(item=>item.qbVersion==='4.1.9.1'),'catalog must retain the qB 4.1.9.1 compatibility floor');
 assert.ok(catalog.some(item=>item.qbVersion==='5.2.3'),'catalog must retain the qB 5.2.3 modern anchor');
 

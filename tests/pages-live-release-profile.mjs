@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {PAGES_FULL_CATALOG_PATH} from './pages-live-catalog.mjs';
 import {launchBrowser} from './browser-driver.mjs';
 import {recoverPageSession} from './pages-live-session.mjs';
 
@@ -62,7 +63,7 @@ async function inspect(page){return page.evaluate(()=>{const filters=Array.from(
 function withTimeout(label,promise){let timer;const timeout=new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(`release-profile ${label} lane exceeded ${laneTimeoutMs}ms`)),laneTimeoutMs);});return Promise.race([promise,timeout]).finally(()=>clearTimeout(timer));}
 
 await waitForDeployedSha();
-const catalog=await fetchJson('metadata/qb-releases.json');
+const catalog=await fetchJson(PAGES_FULL_CATALOG_PATH);
 assert.ok(Array.isArray(catalog)&&catalog.length>=30,'published exact stable qB catalog is unexpectedly small');
 assert.equal(catalog[0].qbVersion,'4.1.0','formal supported stable floor must be qB 4.1.0');
 const v461=catalog.find(item=>item.qbVersion==='4.6.1');assert.ok(v461&&v461.webApiVersion==='2.9.3','published source catalog must preserve qB 4.6.1 -> WebAPI 2.9.3');
