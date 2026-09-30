@@ -96,6 +96,30 @@
   function resetColumns(tableId){try{localStorage.removeItem(TABLE_COLUMN_KEY+String(tableId||''));}catch(_e){}}
   W.SharedColumns={resolve:resolveColumns,commit:commitColumns,readSort:readSort,commitSort:commitSort,reset:resetColumns,read:tableState,storagePrefix:TABLE_COLUMN_KEY};
 
+  function splitFinite(value,fallback){var n=Number(value);return Number.isFinite(n)?n:fallback;}
+  function createSplitPane(options){
+    options=options||{};
+    var root=options.root,primary=options.primary,secondary=options.secondary,separator=options.separator;
+    if(!root||!primary||!secondary||!separator)return null;
+    var minPrimary=Math.max(0,splitFinite(options.minPrimary,160)),minSecondary=Math.max(0,splitFinite(options.minSecondary,160)),defaultSecondary=Math.max(minSecondary,splitFinite(options.defaultSecondary,280)),step=Math.max(1,splitFinite(options.step,16)),storageKey=String(options.storageKey||''),open=false,dragging=false,startY=0,startSize=defaultSecondary,size=defaultSecondary;
+    function readStored(){if(!storageKey)return defaultSecondary;try{var n=Number(localStorage.getItem(storageKey));return Number.isFinite(n)&&n>0?n:defaultSecondary;}catch(_e){return defaultSecondary;}}
+    function writeStored(){if(!storageKey)return;try{localStorage.setItem(storageKey,String(Math.round(size)));}catch(_e){}}
+    function maxSecondary(){var n=typeof options.maxSecondary==='function'?Number(options.maxSecondary()):Number.NaN;if(!Number.isFinite(n)){var handle=Math.max(0,separator.getBoundingClientRect?separator.getBoundingClientRect().height:0);n=Math.max(minSecondary,(root.clientHeight||0)-minPrimary-handle);}return Math.max(minSecondary,n);}
+    function clamp(value){return Math.min(maxSecondary(),Math.max(minSecondary,splitFinite(value,defaultSecondary)));}
+    function apply(value,persist){size=clamp(value);secondary.style.flex='0 0 '+Math.round(size)+'px';secondary.style.height=Math.round(size)+'px';separator.setAttribute('aria-valuenow',String(Math.round(size)));separator.setAttribute('aria-valuemin',String(Math.round(minSecondary)));separator.setAttribute('aria-valuemax',String(Math.round(maxSecondary())));if(persist)writeStored();return size;}
+    function setOpen(value){open=!!value;secondary.hidden=!open;separator.hidden=!open;root.classList.toggle('is-split-open',open);if(open)requestAnimationFrame(function(){apply(size,false);});return open;}
+    function pointerDown(e){if(!open||e.button!==0)return;e.preventDefault();dragging=true;startY=e.clientY;startSize=size;separator.classList.add('is-dragging');if(separator.setPointerCapture)try{separator.setPointerCapture(e.pointerId);}catch(_e){}}
+    function pointerMove(e){if(!dragging)return;e.preventDefault();apply(startSize-(e.clientY-startY),false);}
+    function pointerEnd(e){if(!dragging)return;dragging=false;separator.classList.remove('is-dragging');if(separator.releasePointerCapture)try{separator.releasePointerCapture(e.pointerId);}catch(_e){}writeStored();}
+    function keyDown(e){if(!open)return;var next=null;if(e.key==='ArrowUp')next=size+step;else if(e.key==='ArrowDown')next=size-step;else if(e.key==='Home')next=defaultSecondary;if(next===null)return;e.preventDefault();apply(next,true);}
+    function reset(){if(!open)return;apply(defaultSecondary,true);}
+    function refresh(){if(open)apply(size,false);}
+    function destroy(){separator.removeEventListener('pointerdown',pointerDown);separator.removeEventListener('pointermove',pointerMove);separator.removeEventListener('pointerup',pointerEnd);separator.removeEventListener('pointercancel',pointerEnd);separator.removeEventListener('keydown',keyDown);separator.removeEventListener('dblclick',reset);global.removeEventListener('resize',refresh);}
+    size=readStored();separator.setAttribute('role','separator');separator.setAttribute('aria-orientation','horizontal');separator.tabIndex=0;separator.addEventListener('pointerdown',pointerDown);separator.addEventListener('pointermove',pointerMove);separator.addEventListener('pointerup',pointerEnd);separator.addEventListener('pointercancel',pointerEnd);separator.addEventListener('keydown',keyDown);separator.addEventListener('dblclick',reset);global.addEventListener('resize',refresh,{passive:true});setOpen(false);
+    return{open:setOpen,isOpen:function(){return open;},size:function(){return size;},setSize:function(value,persist){return apply(value,persist!==false);},reset:reset,refresh:refresh,destroy:destroy};
+  }
+  W.SplitPane={create:createSplitPane};
+
 
   function normalizeDialog(dialog){
     if(!dialog||dialog.dataset.adaptiveDialog==='1')return;
