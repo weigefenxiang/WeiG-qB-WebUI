@@ -22,7 +22,7 @@ for(const token of ["pointerdown',pointerDown","pointermove',pointerMove","keydo
   assert.ok(layout.includes(token),`SplitPane contract missing ${token}`);
 }
 assert.ok(layout.includes("startSize-(e.clientY-startY)"),'dragging upward must increase secondary/detail height');
-assert.ok(layout.includes('Math.max(minSecondary')&&layout.includes('maxSecondary()'),'SplitPane must clamp geometry instead of allowing either pane to disappear');
+assert.ok(layout.includes('Math.max(minSecondary()')&&layout.includes('maxSecondary()'),'SplitPane must clamp geometry through its current dynamic lower/upper bounds');
 
 assert.equal((ui.match(/function renderDetailTabs\(/g)||[]).length,1,'Detail tab button creation must have one shared renderer');
 assert.ok(ui.includes('syncDetailTabLabels')&&ui.includes('renderDetailTabs(host,{active:active,onSelect:function(key)'),'full Detail route must consume the shared tab renderer');
