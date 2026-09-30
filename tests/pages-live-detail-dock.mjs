@@ -75,8 +75,8 @@ async function verifyModern(){
   assert.equal(zeroSubject.selection,0);assert.ok(zeroSubject.hash,'zero-selection regression needs a visible Torrent subject');
   await page.locator('#torrent-detail-tabs .tab[data-tab="overview"]').click();
   await page.waitForSelector('#torrent-detail-dock:not([hidden]) .general-detail',{state:'visible',timeout:30000});
-  const zeroOpened=await page.evaluate(()=>({hash:window.WeiG.AppState.detailDockHash,open:window.WeiG.AppState.detailDockOpen,selection:window.WeiG.Selection.count(),active:[...document.querySelectorAll('#torrent-detail-tabs .tab.is-active')].map(node=>node.dataset.tab)}));
-  assert.equal(zeroOpened.selection,0,'Detail preview must not mutate the explicit Selection owner');assert.equal(zeroOpened.hash,zeroSubject.hash);assert.equal(zeroOpened.open,true);assert.deepEqual(zeroOpened.active,['overview']);
+  const zeroOpened=await page.evaluate(()=>({hash:window.WeiG.AppState.detailDockHash,open:window.WeiG.AppState.detailDockOpen,selection:window.WeiG.Selection.count(),active:[...document.querySelectorAll('#torrent-detail-tabs .tab.is-active')].map(node=>node.dataset.tab),preview:[...document.querySelectorAll('#torrent-list [data-hash].is-detail-subject')].map(node=>node.dataset.hash),previewChecked:[...document.querySelectorAll('#torrent-list [data-hash].is-detail-subject .torrent-select')].map(node=>node.checked)}));
+  assert.equal(zeroOpened.selection,0,'Detail preview must not mutate the explicit Selection owner');assert.equal(zeroOpened.hash,zeroSubject.hash);assert.equal(zeroOpened.open,true);assert.deepEqual(zeroOpened.active,['overview']);assert.deepEqual(zeroOpened.preview,[zeroSubject.hash],'zero-selection Detail subject must receive a presentation-only selected treatment');assert.ok(zeroOpened.previewChecked.every(value=>value===false),'presentation-only Detail subject must not check the real Selection input');
   await page.evaluate(()=>{const list=document.getElementById('torrent-list');list.scrollTop=Math.min(list.scrollHeight-list.clientHeight,list.scrollTop+Math.max(180,list.clientHeight*.55));list.dispatchEvent(new Event('scroll'));});await page.waitForTimeout(2400);
   const zeroAfterScroll=await page.evaluate(()=>({hash:window.WeiG.AppState.detailDockHash,selection:window.WeiG.Selection.count()}));
   assert.equal(zeroAfterScroll.selection,0);assert.equal(zeroAfterScroll.hash,zeroSubject.hash,'zero-selection Detail subject must stay captured while the Torrent list scrolls');
@@ -157,11 +157,11 @@ async function verifyModern(){
   await page.waitForFunction(expected=>window.WeiG.AppState.detailDockOpen&&window.WeiG.AppState.detailDockHash===expected&&window.WeiG.AppState.detailDockTab==='peers',secondHash,{timeout:30000});
   assert.notEqual(secondHash,firstHash,'selection rebind gate needs a second Torrent');
 
-  // Ctrl-select one more Torrent: multi-selection must close the Dock.
-  const third=page.locator('#torrent-list [data-hash]').nth(2),thirdBox=await third.boundingBox();
-  assert.ok(thirdBox);
+  // Ctrl-select one more Torrent: multi-selection keeps the Dock usable and follows the last interacted Torrent.
+  const third=page.locator('#torrent-list [data-hash]').nth(2),thirdHash=await third.getAttribute('data-hash'),thirdBox=await third.boundingBox();
+  assert.ok(thirdBox&&thirdHash);
   await third.click({modifiers:['Control'],position:{x:Math.min(thirdBox.width-12,Math.max(70,thirdBox.width*.72)),y:Math.min(thirdBox.height-4,Math.max(8,thirdBox.height*.5))}});
-  await page.waitForFunction(()=>window.WeiG.Selection.count()===2&&!window.WeiG.AppState.detailDockOpen&&[...document.querySelectorAll('#torrent-detail-tabs .tab')].every(node=>node.disabled),null,{timeout:10000});
+  await page.waitForFunction(expected=>window.WeiG.Selection.count()===2&&window.WeiG.Selection.primary()===expected&&window.WeiG.AppState.detailDockOpen&&window.WeiG.AppState.detailDockHash===expected&&[...document.querySelectorAll('#torrent-detail-tabs .tab')].every(node=>!node.disabled),thirdHash,{timeout:30000});
 
   // Return to one selected Torrent, open General, exercise full-rail splitter drag/reset/persistence.
   const persistHash=await selectOnlyByRow(page,1);
