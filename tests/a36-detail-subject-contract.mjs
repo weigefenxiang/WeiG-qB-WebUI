@@ -13,4 +13,7 @@ assert.match(app,/function detailDockSubjectHash\(options\).*if\(hashes\.length\
 assert.doesNotMatch(app,/hashes\.length>1\)\{closeDetailDock\(\)/,'multi-selection must not close the Detail Dock');
 assert.match(app,/function syncDetailDockSubjectPresentation\(\).*is-detail-subject/s,'zero-selection preview must be presentation-only');
 assert.ok(layout.includes('.torrent-row.is-detail-subject')&&layout.includes('.torrent-mobile-card.is-detail-subject'),'desktop and mobile Torrent presentations must expose the shared preview treatment');
+assert.match(app,/isPreview=function\(t\).*detailDockHash.*C\.mobileTorrentCard\(.*isPreview\(t\).*C\.torrentRow\(.*isPreview\(t\)/s,'virtualized row renderer must bind zero-selection preview identity during create, not only through DOM post-processing');
+assert.match(app,/C\.updateMobileTorrentCard\(.*isPreview\(t\).*C\.updateTorrentRow\(.*isPreview\(t\)/s,'recycled Torrent row shells must recompute preview identity on every rebind');
+assert.match(components,/function paintDetailSubject\(row,preview\).*is-detail-subject/s,'desktop and mobile rows must share one preview painter');
 console.log('A36 Detail subject contract passed: Selection owns primary identity, zero-selection preview stays semantic-free, and multi-selection keeps Detail usable.');
