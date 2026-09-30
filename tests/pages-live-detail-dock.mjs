@@ -108,7 +108,7 @@ async function verifyModern(){
   });
   assert.ok(geometry.separator.top>=geometry.list.bottom-1.5,`splitter must sit below the Torrent viewport/scrollbar: ${JSON.stringify(geometry)}`);
   assert.ok(geometry.dock.top>=geometry.separator.bottom-1.5,`Detail Dock must sit below the splitter: ${JSON.stringify(geometry)}`);
-  assert.ok(Math.abs((geometry.nav.left+geometry.nav.right)/2-(geometry.pager.left+geometry.pager.right)/2)<=2,`desktop pager must remain geometrically centered: ${JSON.stringify(geometry)}`);
+  assert.ok(Math.abs(geometry.nav.right-(geometry.pager.right-10))<=3,`desktop pager navigation must anchor to the pager's right padding: ${JSON.stringify(geometry)}`);
 
   // Main and Detail scroll owners must stay independent after the Dock is inserted.
   const scrollState=await page.evaluate(()=>{
@@ -205,6 +205,16 @@ async function verifyModern(){
   const restoredHeight=(await page.locator('#torrent-detail-dock').boundingBox()).height;
   assert.ok(Math.abs(restoredHeight-320)<=5,`Dock must restore the one persisted geometry value after reload: ${restoredHeight}`);
 
+  // Pager adapts by its own available width: compact navigation first, then a one-line horizontally scrollable tab rail.
+  await page.locator('#torrent-detail-tabs .tab[data-tab="overview"]').click();
+  await page.setViewportSize({width:360,height:760});await page.waitForTimeout(180);
+  const responsive=await page.evaluate(()=>{const pager=document.querySelector('#list-view .torrent-pager'),rail=document.getElementById('torrent-detail-tabs'),nav=pager.querySelector('.pager__nav'),tabs=[...rail.querySelectorAll('.tab')],full=document.querySelector('.pager-index-copy--full'),compact=document.querySelector('.pager-index-copy--compact'),rect=node=>node.getBoundingClientRect();return{pager:rect(pager),nav:rect(nav),tops:[...new Set(tabs.map(node=>Math.round(rect(node).top)))],railClient:rail.clientWidth,railScroll:rail.scrollWidth,full:getComputedStyle(full).display,compact:getComputedStyle(compact).display,prevCopy:getComputedStyle(nav.querySelector('.pager__copy')).display};});
+  assert.equal(responsive.tops.length,1,`Detail tabs must never wrap into multiple rows: ${JSON.stringify(responsive)}`);
+  assert.equal(responsive.full,'none');assert.notEqual(responsive.compact,'none');assert.equal(responsive.prevCopy,'none');
+  assert.ok(responsive.railScroll>responsive.railClient,`when compact pager still leaves insufficient width, only the Detail tab rail should scroll: ${JSON.stringify(responsive)}`);
+  assert.ok(responsive.nav.right<=responsive.pager.right+1&&responsive.nav.right>=responsive.pager.right-8,`compact pager must stay right-anchored: ${JSON.stringify(responsive)}`);
+  await page.setViewportSize({width:1200,height:850});await page.waitForTimeout(180);
+
   // Full Detail route remains available and owns its own Back affordance.
   await page.locator('#torrent-detail-tabs .tab[data-tab="overview"]').click();
   await page.locator('#torrent-list .torrent-title').first().click();
@@ -238,4 +248,4 @@ try{
   await verifyLegacy();
 }finally{await browser.close();}
 
-console.log(`A35 Pages Detail Dock acceptance passed for ${expectedSha}: shared source-driven tabs, inline route isolation, selection rebinding, full-width persisted SplitPane geometry, pager centering, reload persistence, full Detail route preservation, and qB 4.1.9.1 compatibility.`);
+console.log(`A35 Pages Detail Dock acceptance passed for ${expectedSha}: shared source-driven tabs, inline route isolation, selection rebinding, full-width persisted SplitPane geometry, right-anchored adaptive pager, no-wrap tab rail, reload persistence, full Detail route preservation, and qB 4.1.9.1 compatibility.`);
