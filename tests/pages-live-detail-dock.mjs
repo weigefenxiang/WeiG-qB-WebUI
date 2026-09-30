@@ -164,7 +164,7 @@ async function verifyModern(){
   await page.waitForTimeout(80);
   dockBox=await dock.boundingBox();
   assert.ok(dockBox.height>=beforeHeight+30,`dragging the splitter upward must increase Detail height: before=${beforeHeight}, after=${dockBox.height}`);
-  const persistedAfterDrag=await page.evaluate(()=>Number(localStorage.getItem('weig.torrentDetailDockHeight')));
+  const persistedAfterDrag=await page.evaluate(()=>Number(localStorage.getItem(window.WeiG.StorageKeys.torrentDetailDockHeight)));
   assert.ok(Number.isFinite(persistedAfterDrag)&&persistedAfterDrag>=dockBox.height-3,'pointer release must persist the shared Detail height');
 
   await splitter.dblclick();
@@ -176,7 +176,7 @@ async function verifyModern(){
   await page.waitForTimeout(60);
   const persistedHeight=(await dock.boundingBox()).height;
   assert.ok(persistedHeight>=315&&persistedHeight<=325,`keyboard resize must use the shared 20px step: ${persistedHeight}`);
-  assert.ok(Math.abs(await page.evaluate(()=>Number(localStorage.getItem('weig.torrentDetailDockHeight')))-persistedHeight)<=3,'keyboard resize must persist height');
+  assert.ok(Math.abs(await page.evaluate(()=>Number(localStorage.getItem(window.WeiG.StorageKeys.torrentDetailDockHeight)))-persistedHeight)<=3,'keyboard resize must persist height');
 
   // Extreme upward drag must preserve the primary Torrent pane min-height.
   sepBox=await splitter.boundingBox();

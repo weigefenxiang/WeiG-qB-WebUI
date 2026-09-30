@@ -14,6 +14,7 @@ const layout=read('webui/private/scripts/layout.js');
 const tableCss=read('webui/private/css/table.css');
 const layoutCss=read('webui/private/css/layout.css');
 const navigation=read('webui/private/scripts/navigation.js');
+const storage=read('webui/public/storage-migration.js');
 
 for(const id of ['torrent-detail-tabs','torrent-detail-splitter','torrent-detail-dock','torrent-detail-dock-content']){
   assert.equal((index.match(new RegExp(`id="${id}"`,'g'))||[]).length,1,`${id} must have exactly one mount owner`);
@@ -46,7 +47,7 @@ assert.match(app,/W\.UiSystem\.renderDetailTabs\(host,\{active:app\.detailDockOp
 assert.doesNotMatch(app,/textContent=['"](?:General|Overview|Trackers|Peers|HTTP Sources|Content)['"]/,'Dock must not hard-code qB-owned Detail tab copy');
 
 assert.ok(layout.includes("W.SplitPane={create:createSplitPane}"),'Dock must consume the shared SplitPane owner');
-assert.match(app,/W\.SplitPane\.create\(\{root:panel,primary:list,secondary:dock,separator:separator,minPrimary:180,minSecondary:160,defaultSecondary:280,step:20,storageKey:'weig\.torrentDetailDockHeight',maxSecondary:detailDockMaxHeight\}\)/,'Dock geometry must be bounded, persisted and delegated to SplitPane');
+assert.ok(storage.includes("torrentDetailDockHeight:'weig.torrentDetailDockHeight'"),'Dock height must be registered in the canonical StorageKeys owner');assert.match(app,/W\.SplitPane\.create\(\{root:panel,primary:list,secondary:dock,separator:separator,minPrimary:180,minSecondary:160,defaultSecondary:280,step:20,storageKey:\(W\.StorageKeys&&W\.StorageKeys\.torrentDetailDockHeight\)\|\|'weig\.torrentDetailDockHeight',maxSecondary:detailDockMaxHeight\}\)/,'Dock geometry must be bounded, persisted and consume the canonical StorageKeys owner');
 assert.match(app,/function detailDockInteracting\(\).*app\.detailViewport\.isInteracting/s,'Dock background refresh must yield to the active shared Detail DataViewport scroll owner');
 assert.match(app,/async function refreshDetailDock\(\).*if\(!app\.detailDockOpen\|\|detailDockInteracting\(\)\)return false;.*if\(surface==='files'\)\{await refreshDetailFiles\(\);return true;\}.*app\.detailViewport&&app\.detailViewport\.setItems/s,'one active Dock surface must refresh through existing Detail owners without rebuilding a second polling runtime');
 assert.match(app,/function schedulePoll\(\).*if\(r\.name==='home'&&app\.detailDockOpen\)await refreshDetailDock\(\);await loadTransfer\(\);schedulePoll\(\);/s,'inline Detail refresh must be scheduled by the existing app poll owner');
@@ -62,6 +63,6 @@ assert.ok(layoutCss.includes('.torrent-pager>.pager__nav{grid-column:2;justify-s
 
 assert.match(app,/async function openDetail\(hash\).*W\.Router\.detail\(hash,tab\)/s,'Torrent title/detail arrow must retain the full Detail route');
 assert.match(navigation,/function createBack\(\).*detail-context-back/s,'full Detail route must retain its Back presentation');
-assert.equal((app.match(/storageKey:'weig\.torrentDetailDockHeight'/g)||[]).length,1,'Dock height persistence must have one active key owner');
+assert.equal((storage.match(/torrentDetailDockHeight:'weig\.torrentDetailDockHeight'/g)||[]).length,1,'Dock height persistence must have one canonical StorageKeys entry');
 
 console.log('A35 inline Detail Dock contract passed: one source-driven Detail runtime, semantic Selection binding, shared persisted SplitPane geometry, route preservation and centered pager rail.');
