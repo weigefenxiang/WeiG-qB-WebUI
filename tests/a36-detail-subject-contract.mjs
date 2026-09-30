@@ -17,4 +17,8 @@ assert.ok(layout.includes('.torrent-row.is-detail-subject')&&layout.includes('.t
 assert.match(app,/isPreview=function\(t\).*detailDockHash.*C\.mobileTorrentCard\(.*isPreview\(t\).*C\.torrentRow\(.*isPreview\(t\)/s,'virtualized row renderer must bind zero-selection preview identity during create, not only through DOM post-processing');
 assert.match(app,/C\.updateMobileTorrentCard\(.*isPreview\(t\).*C\.updateTorrentRow\(.*isPreview\(t\)/s,'recycled Torrent row shells must recompute preview identity on every rebind');
 assert.match(components,/function paintDetailSubject\(row,preview\).*is-detail-subject/s,'desktop and mobile rows must share one preview painter');
+assert.match(components,/C\.paintTorrentDetailSubject=paintDetailSubject/,'the shared Detail-subject painter must be the only presentation owner exposed to app-level sync');
+assert.match(app,/function syncDetailDockSubjectPresentation\(\).*C\.paintTorrentDetailSubject\(row,active\)/s,'existing visible rows must consume the same shared Detail-subject painter as recycled row binds');
+const subjectSync=app.match(/function syncDetailDockSubjectPresentation\(\)[\s\S]*?return preview;\}/)?.[0]||'';
+assert.doesNotMatch(subjectSync,/classList\.toggle\('is-detail-subject'|setAttribute\('aria-current'|removeAttribute\('aria-current'/,'app-level sync must not duplicate Detail-subject class/ARIA presentation logic');
 console.log('A36 Detail subject contract passed: Selection owns primary identity, zero-selection preview stays semantic-free, and multi-selection keeps Detail usable.');
