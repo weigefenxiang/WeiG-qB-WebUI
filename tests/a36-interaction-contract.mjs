@@ -8,6 +8,7 @@ const components=read('webui/private/scripts/components.js');
 const responsive=read('webui/private/scripts/responsive.js');
 const selection=read('webui/private/scripts/selection.js');
 const app=read('webui/private/scripts/app.js');
+const ui=read('webui/private/scripts/ui.js');
 const controls=read('webui/private/css/controls.css');
 
 assert.match(core,/W\.Clipboard=\{writeText:async function/,'Clipboard transport must have one shared core owner');
@@ -23,4 +24,9 @@ assert.match(components,/bindTorrentNamePreview.*C\.bindOverflowPreview/s,'Torre
 assert.match(responsive,/C\.bindOverflowPreview\(node/,'full Detail title must consume the same overflow preview binding');
 assert.match(controls,/\.ui-floating-preview\{[^}]*pointer-events:none[^}]*user-select:none/s,'transient hover previews must never intercept the underlying app pointer target');
 assert.match(controls,/\.ui-floating-preview\[data-persistent="1"\]\{[^}]*pointer-events:auto[^}]*user-select:text/s,'only explicit persistent previews may own pointer/text selection');
+assert.match(floating,/function bindContextMenuTrigger\(target,itemsProvider,opts\).*pointerType!=='touch'.*longpress.*contextmenu/s,'shared Context Menu owner must bridge right-click and touch long-press without assuming browser contextmenu synthesis');
+assert.match(floating,/Math\.hypot\(event\.clientX-press\.x,event\.clientY-press\.y\)>moveLimit\)clearPress\(\)/,'touch long-press must cancel on movement so native scrolling remains owned by the viewport');
+assert.match(floating,/suppressUntil=Date\.now\(\)\+1400.*Date\.now\(\)<suppressUntil/s,'shared Context Menu owner must suppress the duplicate native contextmenu after an app-owned long-press');
+assert.match(ui,/C\.bindContextMenuTrigger\(row,function\(\).*detailContextItems\(ctx\.surface,item,ctx,index,1\).*beforeOpen:function\(\)\{selectDetailRow\(row,ctx\);\}/s,'all Detail row surfaces must consume the shared right-click/touch-long-press Context Menu gesture owner');
+assert.match(controls,/\[data-ui-context-trigger="1"\]\{-webkit-touch-callout:none\}/,'shared touch Context Menu targets must suppress competing platform callouts');
 console.log('A36 interaction contract passed: one Clipboard transport with legacy fallback and one bounded overflow-preview owner serve list and Detail titles.');
