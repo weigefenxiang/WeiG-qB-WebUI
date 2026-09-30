@@ -12,7 +12,7 @@ assert.match(selection,/primary:function\(\)\{return reconcilePrimary\(\);\}/,'S
 assert.match(selection,/primaryHash:primary/,'Selection change events must publish primaryHash');
 assert.match(app,/function detailDockSubjectHash\(options\).*if\(hashes\.length\)return detailDockPrimaryHash\(hashes\).*visibleDetailDockHash/s,'Detail Dock must resolve 1+ selections through primary and zero selection through first-visible fallback');
 assert.doesNotMatch(app,/hashes\.length>1\)\{closeDetailDock\(\)/,'multi-selection must not close the Detail Dock');
-assert.match(app,/function syncDetailDockSubjectPresentation\(\).*is-detail-subject/s,'zero-selection preview must be presentation-only');
+assert.match(app,/function syncDetailDockSubjectPresentation\(\).*C\.paintTorrentDetailSubject\(row,active\)/s,'zero-selection preview must stay presentation-only through the shared Torrent-row painter');
 assert.ok(layout.includes('.torrent-row.is-detail-subject')&&layout.includes('.torrent-mobile-card.is-detail-subject'),'desktop and mobile Torrent presentations must expose the shared preview treatment');
 assert.match(app,/isPreview=function\(t\).*detailDockHash.*C\.mobileTorrentCard\(.*isPreview\(t\).*C\.torrentRow\(.*isPreview\(t\)/s,'virtualized row renderer must bind zero-selection preview identity during create, not only through DOM post-processing');
 assert.match(app,/C\.updateMobileTorrentCard\(.*isPreview\(t\).*C\.updateTorrentRow\(.*isPreview\(t\)/s,'recycled Torrent row shells must recompute preview identity on every rebind');
