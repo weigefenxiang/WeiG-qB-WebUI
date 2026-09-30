@@ -75,13 +75,14 @@
 .general-detail__link{color:var(--accent-cyan);text-decoration:none}
 .general-detail__link:hover,.general-detail__link:focus-visible{text-decoration:underline}
 
+.torrent-detail-dock{display:flex;flex:0 0 auto;min-width:0;min-height:0;overflow:hidden;border-top:1px solid var(--border);background:var(--bg-surface)}.torrent-detail-dock[hidden]{display:none!important}.torrent-detail-dock>.detail-runtime-content{display:flex;flex:1 1 0;min-width:0;min-height:0;height:100%!important;max-height:none!important;overflow:hidden}.torrent-detail-dock>.detail-runtime-content>.loading-state{min-height:0;height:100%;padding:18px}.torrent-detail-dock>.detail-runtime-content>.section-note{margin:0;padding:6px var(--data-grid-frame-gutter-inline)}
 #detail-view.is-active{display:flex;flex:1 1 0;flex-direction:column;min-height:0;height:100%;max-height:100%;overflow:hidden}
 #detail-view>.detail-hero,#detail-view>.detail-tabs{flex:0 0 auto}
-#detail-content{display:flex;flex:1 1 0;flex-direction:column;min-height:0!important;height:auto!important;max-height:none!important;overflow:hidden;overscroll-behavior:contain}
-#detail-content>.data-viewport{flex:1 1 0;min-height:0;height:auto!important;max-height:none!important;overflow:auto}
-#detail-content>.general-detail{flex:1 1 0;min-height:0;overflow:auto;overscroll-behavior:contain;padding:18px}
-#detail-content>.text-description{padding:18px}
-#detail-content>.section-note{flex:0 0 auto}
+.detail-runtime-content{display:flex;flex:1 1 0;flex-direction:column;min-height:0!important;height:auto!important;max-height:none!important;overflow:hidden;overscroll-behavior:contain}
+.detail-runtime-content>.data-viewport{flex:1 1 0;min-height:0;height:auto!important;max-height:none!important;overflow:auto}
+.detail-runtime-content>.general-detail{flex:1 1 0;min-height:0;overflow:auto;overscroll-behavior:contain;padding:18px}
+.detail-runtime-content>.text-description{padding:18px}
+.detail-runtime-content>.section-note{flex:0 0 auto}
 
 #column-configurator-dialog.shared-column-dialog[open]{display:flex;flex-direction:column;width:min(var(--column-config-dialog-width,900px),calc(100vw - 24px));max-width:min(var(--column-config-dialog-width,900px),calc(100vw - 24px));max-height:min(86svh,760px);padding:0;overflow:hidden}
 #column-configurator-dialog .dialog__head{flex:0 0 auto;margin:0;padding:18px 18px 12px}
@@ -91,7 +92,7 @@
 #column-configurator-dialog .shared-column-settings__row{min-width:0;cursor:pointer;font-size:calc(var(--text-body) + 2px)}
 #column-configurator-dialog .shared-column-settings__label{min-width:0;font-weight:650;line-height:1.35}
 
-@media(max-width:820px){:root{--data-grid-frame-gutter-inline:8px}#column-configurator-dialog.shared-column-dialog[open]{width:calc(100vw - 14px);max-width:calc(100vw - 14px);max-height:90svh}#column-configurator-dialog .shared-column-settings{grid-template-columns:minmax(0,1fr)}#torrent-list>.torrent-table-head{display:none!important}#detail-content{padding-bottom:max(4px,env(safe-area-inset-bottom))}.shared-table__toolbar{flex-wrap:wrap;overflow-x:visible}#detail-content>.general-detail,#detail-content>.text-description{padding:13px}.general-detail{gap:10px}.general-detail__section{padding:8px 10px}.general-detail__grid{grid-template-columns:1fr}.general-detail__grid>.kv{grid-template-columns:minmax(100px,max-content) minmax(0,1fr)}}
+@media(max-width:820px){:root{--data-grid-frame-gutter-inline:8px}#column-configurator-dialog.shared-column-dialog[open]{width:calc(100vw - 14px);max-width:calc(100vw - 14px);max-height:90svh}#column-configurator-dialog .shared-column-settings{grid-template-columns:minmax(0,1fr)}#torrent-list>.torrent-table-head{display:none!important}.detail-runtime-content{padding-bottom:max(4px,env(safe-area-inset-bottom))}.shared-table__toolbar{flex-wrap:wrap;overflow-x:visible}.detail-runtime-content>.general-detail,.detail-runtime-content>.text-description{padding:13px}.general-detail{gap:10px}.general-detail__section{padding:8px 10px}.general-detail__grid{grid-template-columns:1fr}.general-detail__grid>.kv{grid-template-columns:minmax(100px,max-content) minmax(0,1fr)}}
 .state-icon-cell{display:flex;align-items:center;justify-content:center;overflow:visible}
 .torrent-state-icon{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--torrent-tone-muted);box-shadow:0 0 0 2px rgba(255,255,255,.05)}
 .torrent-state-icon[data-tone=download]{background:var(--torrent-tone-download)}
