@@ -180,6 +180,21 @@ try{
   await page.waitForSelector(`.torrent-row[data-hash="${hash}"] .torrent-title`);
   const mainGridFrame=await dataGridFrameGeometry(page,{frame:'.torrent-panel',head:'#torrent-table-head',row:`.torrent-row[data-hash="${hash}"]`});
   assert(mainGridFrame&&mainGridFrame.headFrameInset>0&&Math.abs(mainGridFrame.headFrameInset-mainGridFrame.rowFrameInset)<=1.5&&mainGridFrame.headCellPaddingLeft==='0px'&&mainGridFrame.rowCellPaddingLeft==='0px','Main Torrent grid must expose one shared frame gutter outside zero-inline-padding cells: '+JSON.stringify(mainGridFrame));
+
+  // A35 regression: the home-page inline Dock must use the same shared Detail DataGrid owner
+  // before any full Detail route has had a chance to initialize route-specific state.
+  const libraryRow=page.locator(`.torrent-row[data-hash="${hash}"]`),libraryBox=await libraryRow.boundingBox();
+  assert(libraryBox&&libraryBox.width>80&&libraryBox.height>10,'Inline Detail regression needs a selectable Torrent row');
+  await libraryRow.click({position:{x:Math.min(libraryBox.width-12,Math.max(70,libraryBox.width*.72)),y:Math.min(libraryBox.height-4,Math.max(8,libraryBox.height*.5))}});
+  await page.waitForFunction(expected=>window.WeiG?.Selection?.count?.()===1&&window.WeiG.Selection.hashes()[0]===expected,hash);
+  await page.waitForFunction(()=>[...document.querySelectorAll('#torrent-detail-tabs .tab')].every(node=>!node.disabled));
+  await page.locator('#torrent-detail-tabs .tab[data-tab="trackers"]').click();
+  await page.waitForSelector('#torrent-detail-dock-content .shared-table__viewport .shared-table__row');
+  const inlineDetail=await page.evaluate(()=>{const owner=window.WeiG?.AppState?.detailViewport,viewport=document.querySelector('#torrent-detail-dock-content .shared-table__viewport');return{route:window.WeiG?.Router?.route?.().name,tab:window.WeiG?.AppState?.detailDockTab,surface:owner?.__weigSharedDetail?.surface||'',owned:!!(owner&&viewport&&owner.el===viewport),mount:viewport?.closest('.detail-runtime-content')?.id||''};});
+  assert(inlineDetail.route==='home'&&inlineDetail.tab==='trackers'&&inlineDetail.surface==='trackers'&&inlineDetail.owned&&inlineDetail.mount==='torrent-detail-dock-content','Inline Trackers Dock must consume the presentation-neutral shared Detail DataGrid owner before full-route navigation: '+JSON.stringify(inlineDetail));
+  await page.locator('#torrent-detail-tabs .tab[data-tab="trackers"]').click();
+  await page.waitForFunction(()=>!window.WeiG.AppState.detailDockOpen&&document.getElementById('torrent-detail-dock')?.hidden);
+
   await page.locator(`.torrent-row[data-hash="${hash}"] .torrent-title`).click();
   await page.waitForSelector('#detail-view.is-active');
   const headerLayout=await page.evaluate(()=>{const hero=document.querySelector('.detail-hero'),eyebrow=hero&&hero.querySelector(':scope>.eyebrow'),state=document.getElementById('detail-state'),progress=hero&&hero.querySelector(':scope>.detail-progress'),track=progress&&progress.querySelector('.progress-track'),pct=document.getElementById('detail-progress-text'),title=document.getElementById('detail-title'),box=x=>{const r=x.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom,cy:r.y+r.height/2};};return{direct:!!(hero&&eyebrow&&state&&title&&progress&&eyebrow.parentElement===hero&&state.parentElement===hero&&title.parentElement===hero&&progress.parentElement===hero),hero:box(hero),eyebrow:box(eyebrow),state:box(state),progress:box(progress),track:box(track),pct:box(pct),pctAlign:getComputedStyle(pct).textAlign,title:box(title),text:pct.textContent,stateText:state.textContent,stateTone:state.dataset.tone,progressState:track.dataset.progressState,progressTone:track.dataset.progressTone,progressActive:track.dataset.progressActive};});
