@@ -12,7 +12,7 @@ const ui=read('webui/private/scripts/ui.js');
 const layoutCss=read('webui/private/css/layout.css');
 
 assert.equal((selection.match(/weig:selection-change/g)||[]).length,1,'Torrent selection must publish one semantic change event owner');
-assert.ok(selection.includes("detail:{count:hashes.length,hashes:hashes.slice()}"),'selection event must expose immutable count/hash snapshot');
+assert.ok(selection.includes("detail:{count:hashes.length,hashes:hashes.slice(),primaryHash:primary}"),'selection event must expose immutable count/hash snapshot plus the canonical primary subject');
 assert.match(selection,/function apply\(\).*syncToolbar\(\);emitSelectionState\(\);/s,'semantic selection truth must publish from apply(), including silent clear paths used by filters/search');
 assert.ok(!selection.includes('MutationObserver'),'selection consumers must not infer business state through DOM observation');
 

@@ -10,6 +10,7 @@ const index=read('webui/private/index.html');
 const app=read('webui/private/scripts/app.js');
 const core=read('webui/private/scripts/core.js');
 const ui=read('webui/private/scripts/ui.js');
+const components=read('webui/private/scripts/components.js');
 const selection=read('webui/private/scripts/selection.js');
 const layout=read('webui/private/scripts/layout.js');
 const tableCss=read('webui/private/css/table.css');
