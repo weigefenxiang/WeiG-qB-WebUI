@@ -28,6 +28,7 @@ for(const canonical of ['ui-select__trigger','ui-select__menu','ui-select__optio
 assert.ok(!/\.language-select\{/.test(indexSource)&&!/\.language-select\{/.test(loginSource),'public entry HTML must not regain a duplicate inline language Select skin');
 assert.ok(geometrySource.includes('global.WeiGSelectGeometry=')&&entrySource.includes('global.WeiGSelectGeometry')&&floatingSource.includes('global.WeiGSelectGeometry'),'Login and private Select must consume one shared geometry/sizing owner');
 assert.ok(!entrySource.includes('longest=0')&&!entrySource.includes('function triggerWidth()')&&!floatingSource.includes('function intrinsicMenuWidth('),'retired feature-local Select sizing owners must stay removed');
+assert.ok(!/\.entry-select\{[^}]*min-width:118px/.test(entryStyle),'Login wrapper must not restore the retired 118px collapsed-trigger floor; shared geometry owns current-value intrinsic width');
 assert.ok(indexSource.indexOf('scripts/select-geometry.js')<indexSource.indexOf('scripts/entry-select.js')&&loginSource.indexOf('scripts/select-geometry.js')<loginSource.indexOf('scripts/entry-select.js'),'public entry must load shared Select geometry before the entry adapter');
 assert.ok(privateIndexSource.indexOf('scripts/select-geometry.js')<privateIndexSource.indexOf('scripts/floating.js')&&!privateIndexSource.includes('../public/'),'private runtime must load shared Select geometry through the canonical private/public fallback namespace before floating Select');
 assert.ok(/languageRow\([^\n]+intrinsicValue:true/.test(settingsSource)&&/timezoneRow\([^\n]+intrinsicValue:true/.test(settingsSource),'Settings interface language/timezone must opt into shared current-value intrinsic trigger sizing');
@@ -114,13 +115,13 @@ try{
       await page.goto(new URL('login.html',base).toString(),{waitUntil:'domcontentloaded'});
       const entryTrigger=page.locator('.entry-select .ui-select__trigger');
       const shortTriggerWidth=await entryTrigger.evaluate(node=>node.getBoundingClientRect().width);
-      assert.ok(shortTriggerWidth>=117&&shortTriggerWidth<140,'Short login locale must stay on the canonical compact trigger width instead of reserving the longest option: '+shortTriggerWidth);
+      assert.ok(shortTriggerWidth>80&&shortTriggerWidth<117,'English login locale must use current-value intrinsic width instead of the retired 118px wrapper floor or longest-option width: '+shortTriggerWidth);
       await page.selectOption('#login-language','pt-PT');
       const longTriggerWidth=await entryTrigger.evaluate(node=>node.getBoundingClientRect().width);
       assert.ok(longTriggerWidth>shortTriggerWidth+2,'Longer current locale must grow the trigger from the current value instead of using one fixed width: '+JSON.stringify({shortTriggerWidth,longTriggerWidth}));
       await page.selectOption('#login-language','zh-CN');
       const zhTriggerWidth=await entryTrigger.evaluate(node=>node.getBoundingClientRect().width);
-      assert.ok(Math.abs(zhTriggerWidth-shortTriggerWidth)<=2,'Short current locale must return to the canonical compact trigger width: '+JSON.stringify({shortTriggerWidth,zhTriggerWidth}));
+      assert.ok(zhTriggerWidth>60&&zhTriggerWidth<shortTriggerWidth-2,'简中 must shrink below English to its own current-value intrinsic width instead of inheriting a fixed compact floor: '+JSON.stringify({shortTriggerWidth,zhTriggerWidth}));
       await entryTrigger.click();
       const entryMenu=page.locator('.ui-select__menu[data-entry-select-menu="1"]:not([hidden])');
       await entryMenu.waitFor();
