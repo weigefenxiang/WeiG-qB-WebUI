@@ -185,7 +185,7 @@ try{
   assert(headerLayout.title.right<headerLayout.progress.x,'Long Detail title overlaps the right progress owner: '+JSON.stringify(headerLayout));
   const general=await page.evaluate(()=>Object.fromEntries([...document.querySelectorAll('.general-detail .kv')].map(row=>{const nodes=row.children;return[String(nodes[0]?.textContent||'').trim().replace(/:$/,''),String(nodes[1]?.textContent||'').trim()];})));
   assert(general['Time Active']?.includes('176d 6h')&&!general['Time Active']?.includes('∞'),'Elapsed/seeding duration must render finite day/hour text instead of ETA infinity semantics: '+JSON.stringify(general));
-  assert(general['Total Size']==='410.39 GiB','General total size must preserve fixed two-decimal detail precision: '+JSON.stringify(general));
+  assert(general['Total Size']==='410.38 GiB','General total size must preserve fixed two-decimal qB friendlyUnit precision without rounding up: '+JSON.stringify(general));
   assert(general['Pieces']?.includes('52531 × 8.00 MiB')&&general['Pieces']?.includes('(have 52531)'),'General Pieces must consume source-proven pieces_num/piece_size/pieces_have: '+JSON.stringify(general));
   assert(general['Info Hash v2']==='N/A','Source-proven unavailable General values must preserve qB N/A semantics: '+JSON.stringify(general));
   await page.locator('.detail-tabs [data-tab="trackers"]').click();
