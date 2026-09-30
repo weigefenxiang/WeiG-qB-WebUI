@@ -78,7 +78,7 @@ async function verifyModern(){
   assert.equal(String(await page.locator('.ui-floating-preview').textContent()||'').trim(),listTitleText,'clipped Torrent list title hover must reuse the bounded floating preview owner');
   await page.mouse.move(4,4);await page.waitForTimeout(180);
 
-  const zeroSubject=await page.evaluate(()=>{const viewport=document.getElementById('torrent-list')?.__weigTorrentDataViewport,item=viewport?.firstVisibleItem?.();return{selection:window.WeiG.Selection.count(),hash:item?.hash||''};});
+  const zeroSubject=await page.evaluate(()=>{const viewport=document.getElementById('torrent-list')?.__weigTorrentDataViewport,item=viewport?.firstUnobscuredItem?.();return{selection:window.WeiG.Selection.count(),hash:item?.hash||''};});
   assert.equal(zeroSubject.selection,0);assert.ok(zeroSubject.hash,'zero-selection regression needs a visible Torrent subject');
   await page.locator('#torrent-detail-tabs .tab[data-tab="overview"]').click();
   await page.waitForSelector('#torrent-detail-dock:not([hidden]) .general-detail',{state:'visible',timeout:30000});
@@ -219,11 +219,15 @@ async function verifyModern(){
   assert.ok(persistedHeight>=315&&persistedHeight<=325,`keyboard resize must use the shared 20px step: ${persistedHeight}`);
   assert.ok(Math.abs(await page.evaluate(()=>Number(localStorage.getItem(window.WeiG.StorageKeys.torrentDetailDockHeight)))-persistedHeight)<=3,'keyboard resize must persist height');
 
-  // Extreme upward drag must preserve the primary Torrent pane min-height.
+  // Extreme upward/downward drags must expose the full semantic track: sticky Torrent header <-> Detail tabs/pager.
   sepBox=await splitter.boundingBox();
   await page.mouse.move(sepBox.x+sepBox.width/2,sepBox.y+sepBox.height/2);await page.mouse.down();await page.mouse.move(sepBox.x+sepBox.width/2,1,{steps:8});await page.mouse.up();
-  const clamped=await page.evaluate(()=>({list:document.getElementById('torrent-list').clientHeight,dock:document.getElementById('torrent-detail-dock').clientHeight}));
-  assert.ok(clamped.list>=175,`SplitPane max clamp must preserve the Torrent list minimum: ${JSON.stringify(clamped)}`);
+  const clamped=await page.evaluate(()=>{const list=document.getElementById('torrent-list'),head=document.getElementById('torrent-table-head'),split=document.getElementById('torrent-detail-splitter'),dock=document.getElementById('torrent-detail-dock'),pager=document.querySelector('#list-view .torrent-pager'),rect=node=>{const r=node.getBoundingClientRect();return{top:r.top,bottom:r.bottom,height:r.height};};return{list:rect(list),head:rect(head),split:rect(split),dock:rect(dock),pager:rect(pager),now:Number(split.getAttribute('aria-valuenow')),max:Number(split.getAttribute('aria-valuemax'))};});
+  assert.ok(clamped.list.height>=clamped.head.height-1&&Math.abs(clamped.split.top-clamped.head.bottom)<=3&&Math.abs(clamped.dock.bottom-clamped.pager.top)<=3&&Math.abs(clamped.now-clamped.max)<=1,`SplitPane max clamp must stop at the actual sticky Torrent header, not a fixed primary reserve: ${JSON.stringify(clamped)}`);
+  sepBox=await splitter.boundingBox();
+  await page.mouse.move(sepBox.x+sepBox.width/2,sepBox.y+sepBox.height/2);await page.mouse.down();await page.mouse.move(sepBox.x+sepBox.width/2,2000,{steps:8});await page.mouse.up();
+  const collapsed=await page.evaluate(()=>{const split=document.getElementById('torrent-detail-splitter'),dock=document.getElementById('torrent-detail-dock'),pager=document.querySelector('#list-view .torrent-pager'),sr=split.getBoundingClientRect(),dr=dock.getBoundingClientRect(),pr=pager.getBoundingClientRect();return{dockHeight:dr.height,splitBottom:sr.bottom,pagerTop:pr.top,now:Number(split.getAttribute('aria-valuenow')),min:Number(split.getAttribute('aria-valuemin'))};});
+  assert.ok(collapsed.min===0&&collapsed.now===0&&collapsed.dockHeight<=3&&Math.abs(collapsed.splitBottom-collapsed.pagerTop)<=3,`SplitPane minimum must collapse to the Detail tabs/pager boundary: ${JSON.stringify(collapsed)}`);
   await splitter.dblclick();await splitter.focus();await page.keyboard.press('ArrowUp');await page.keyboard.press('ArrowUp');
 
   // Reload keeps geometry but not ephemeral Selection; reopening the Dock restores the persisted size.
