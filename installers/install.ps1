@@ -44,6 +44,7 @@ Notes:
   Dev installs use the exact-SHA materialized WebUI payload published by Virtual qB Pages.
   -configure refuses ambiguous config discovery; use -qbconfig for custom/portable profiles.
   -purge is destructive and is only accepted together with -uninstall.
+  Backups prefer a verified compressed archive and retain the latest 3 per install target.
   PowerShell parameter names are case-insensitive; documentation uses lowercase.
 '@ | Write-Host
 }
@@ -590,14 +591,137 @@ function Purge-BackupsForDestination([string]$Target) {
     Remove-Item -LiteralPath $State -Force
   }
 }
+function Write-BackupArchiveManifest([string]$Backup,[string]$Format,[string]$File,[string]$Tool,[string]$Sha256,[long]$Bytes) {
+  @(
+    'schema=1'
+    "format=$Format"
+    "file=$File"
+    "tool=$Tool"
+    "sha256=$Sha256"
+    "bytes=$Bytes"
+  ) | Set-Content -Encoding UTF8 -LiteralPath (Join-Path $Backup 'archive-manifest')
+}
+
+function Read-BackupArchiveManifest([string]$Backup) {
+  $file=Join-Path $Backup 'archive-manifest'
+  if(!(Test-Path -LiteralPath $file -PathType Leaf)){return $null}
+  $values=@{}
+  foreach($line in @(Get-Content -LiteralPath $file)){
+    if($line -match '^([^=]+)=(.*)$'){$values[$Matches[1]]=$Matches[2]}
+  }
+  return $values
+}
+
+function Save-BackupArchiveManifest([string]$Backup,[string]$Archive,[string]$Format,[string]$Tool) {
+  if(!(Test-Path -LiteralPath $Archive -PathType Leaf)){return $false}
+  $hash=(Get-FileHash -Algorithm SHA256 -LiteralPath $Archive).Hash.ToLowerInvariant()
+  $bytes=(Get-Item -LiteralPath $Archive).Length
+  Write-BackupArchiveManifest $Backup $Format ([IO.Path]::GetFileName($Archive)) $Tool $hash $bytes
+  return $true
+}
+
+function New-WebUiBackupPayload([string]$Source,[string]$Backup) {
+  $archive=Join-Path $Backup 'webui.zip'
+  try {
+    Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction SilentlyContinue
+    if(Test-Path -LiteralPath $archive){Remove-Item -LiteralPath $archive -Force}
+    [IO.Compression.ZipFile]::CreateFromDirectory($Source,$archive,[IO.Compression.CompressionLevel]::Optimal,$false)
+    if(Save-BackupArchiveManifest $Backup $archive 'zip' '.NET ZipFile'){
+      Write-Host "Backup payload: compressed zip ($((Get-Item -LiteralPath $archive).Length) bytes)"
+      return $true
+    }
+  } catch {
+    if(Test-Path -LiteralPath $archive){Remove-Item -LiteralPath $archive -Force -ErrorAction SilentlyContinue}
+  }
+
+  $tar=Get-Command tar.exe,tar -ErrorAction SilentlyContinue | Select-Object -First 1
+  if($tar){
+    $archive=Join-Path $Backup 'webui.tar.gz'
+    try {
+      & $tar.Source -czf $archive -C $Source .
+      if($LASTEXITCODE -eq 0 -and (Save-BackupArchiveManifest $Backup $archive 'tar.gz' 'tar')){
+        Write-Host "Backup payload: compressed tar.gz ($((Get-Item -LiteralPath $archive).Length) bytes)"
+        return $true
+      }
+    } catch {}
+    if(Test-Path -LiteralPath $archive){Remove-Item -LiteralPath $archive -Force -ErrorAction SilentlyContinue}
+  }
+
+  $seven=Get-Command 7z.exe,7za.exe,7z,7za -ErrorAction SilentlyContinue | Select-Object -First 1
+  if($seven){
+    $archive=Join-Path $Backup 'webui.7z'
+    try {
+      Push-Location $Source
+      try { & $seven.Source a -bd -y -t7z -mx=5 $archive . | Out-Null }
+      finally { Pop-Location }
+      if($LASTEXITCODE -eq 0 -and (Save-BackupArchiveManifest $Backup $archive '7z' ([string]$seven.Name))){
+        Write-Host "Backup payload: compressed 7z ($((Get-Item -LiteralPath $archive).Length) bytes)"
+        return $true
+      }
+    } catch {}
+    if(Test-Path -LiteralPath $archive){Remove-Item -LiteralPath $archive -Force -ErrorAction SilentlyContinue}
+  }
+
+  Copy-Item -LiteralPath $Source -Destination (Join-Path $Backup 'webui') -Recurse -Force
+  Write-BackupArchiveManifest $Backup 'directory' 'webui' 'Copy-Item' '' 0
+  Write-Warning 'No verified compression backend was available; using the bounded legacy directory backup format.'
+  return $true
+}
+
+function Assert-BackupArchive([string]$Backup,[hashtable]$Manifest) {
+  if(!$Manifest){throw 'Backup archive manifest is missing.'}
+  $name=[string]$Manifest['file']
+  if($name -notin @('webui.zip','webui.tar.gz','webui.7z')){throw "Unsupported backup archive file: $name"}
+  $archive=Join-Path $Backup $name
+  if(!(Test-Path -LiteralPath $archive -PathType Leaf)){throw "Backup archive missing: $archive"}
+  $expected=([string]$Manifest['sha256']).ToLowerInvariant()
+  if($expected -notmatch '^[0-9a-f]{64}$'){throw 'Backup archive SHA-256 is missing or invalid.'}
+  $actual=(Get-FileHash -Algorithm SHA256 -LiteralPath $archive).Hash.ToLowerInvariant()
+  if($actual -ne $expected){throw "Backup archive checksum mismatch: $archive"}
+  return $archive
+}
+
+function Expand-WebUiBackupPayload([string]$Backup,[string]$Stage) {
+  $legacy=Join-Path $Backup 'webui'
+  if(Test-Path -LiteralPath $legacy -PathType Container){
+    Copy-Item -LiteralPath $legacy -Destination $Stage -Recurse -Force
+    return
+  }
+
+  $manifest=Read-BackupArchiveManifest $Backup
+  $archive=Assert-BackupArchive $Backup $manifest
+  New-Item -ItemType Directory -Path $Stage | Out-Null
+  switch([string]$manifest['format']){
+    'zip' {
+      Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction SilentlyContinue
+      [IO.Compression.ZipFile]::ExtractToDirectory($archive,$Stage)
+    }
+    'tar.gz' {
+      $tar=Get-Command tar.exe,tar -ErrorAction SilentlyContinue | Select-Object -First 1
+      if(!$tar){throw 'tar is required to restore this backup.'}
+      & $tar.Source -xzf $archive -C $Stage
+      if($LASTEXITCODE -ne 0){throw "tar failed to restore backup with exit code $LASTEXITCODE."}
+    }
+    '7z' {
+      $seven=Get-Command 7z.exe,7za.exe,7z,7za -ErrorAction SilentlyContinue | Select-Object -First 1
+      if(!$seven){throw '7z/7za is required to restore this backup.'}
+      & $seven.Source x -bd -y "-o$Stage" $archive | Out-Null
+      if($LASTEXITCODE -ne 0){throw "7z failed to restore backup with exit code $LASTEXITCODE."}
+    }
+    default { throw "Unsupported backup archive format: $($manifest['format'])" }
+  }
+  if(!(Get-ChildItem -LiteralPath $Stage -Force -ErrorAction SilentlyContinue | Select-Object -First 1)){throw 'Backup archive extracted no WebUI files.'}
+}
+
 function Backup-Current([string]$ConfigPath='') {
   $stamp=Get-Date -Format 'yyyyMMdd-HHmmss'
   $b=Join-Path $Backups $stamp
   New-Item -ItemType Directory -Force -Path $b | Out-Null
   if(Test-Path $Destination){
-    Copy-Item $Destination (Join-Path $b 'webui') -Recurse -Force
+    if(!(New-WebUiBackupPayload $Destination $b)){throw 'Unable to create a verified WebUI backup payload.'}
     Set-Content -Encoding ASCII -Path (Join-Path $b 'had-webui') -Value '1'
   } else {
+    Write-BackupArchiveManifest $b 'none' '' 'none' '' 0
     Set-Content -Encoding ASCII -Path (Join-Path $b 'had-webui') -Value '0'
   }
   if($ConfigPath){
@@ -644,13 +768,21 @@ function Restore-Last {
   $hadMarker=Join-Path $b 'had-webui'
   if(Test-Path $hadMarker){ $hadWebUi=((Get-Content $hadMarker -Raw).Trim() -eq '1') }
 
-  if(Test-Path $Destination){ Remove-Item $Destination -Recurse -Force }
   if($hadWebUi){
-    $web=Join-Path $b 'webui'
-    if(!(Test-Path $web)){ throw "Backup webui missing: $web" }
-    Copy-Item $web $Destination -Recurse -Force
+    $parent=Split-Path $Destination -Parent
+    if($parent){New-Item -ItemType Directory -Force -Path $parent | Out-Null}
+    $stage="$Destination.weig-restore-$PID-$([guid]::NewGuid().ToString('N'))"
+    if(Test-Path -LiteralPath $stage){throw "Restore staging path already exists: $stage"}
+    try {
+      Expand-WebUiBackupPayload $b $stage
+      if(Test-Path -LiteralPath $Destination){Remove-Item -LiteralPath $Destination -Recurse -Force}
+      Move-Item -LiteralPath $stage -Destination $Destination
+    } finally {
+      if(Test-Path -LiteralPath $stage){Remove-Item -LiteralPath $stage -Recurse -Force -ErrorAction SilentlyContinue}
+    }
     Write-Host "Restored previous WebUI: $Destination"
   } else {
+    if(Test-Path -LiteralPath $Destination){Remove-Item -LiteralPath $Destination -Recurse -Force}
     Write-Host "Removed WeiG qB WebUI from: $Destination"
   }
 

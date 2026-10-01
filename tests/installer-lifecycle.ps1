@@ -133,6 +133,31 @@ try {
     Assert-True (!(Test-Path -LiteralPath (Join-Path $Destination 'private\data\qb-releases.json'))) 'Retired qb-releases.json reappeared after install.'
   }
 
+  function Assert-ArchiveBackup([string]$Backup,[string]$ExpectedVersion='') {
+    $manifestPath=Join-Path $Backup 'archive-manifest'
+    Assert-True (Test-Path -LiteralPath $manifestPath -PathType Leaf) 'Backup archive manifest is missing.'
+    $manifest=@{}
+    foreach($line in @(Get-Content -LiteralPath $manifestPath)){if($line -match '^([^=]+)=(.*)$'){$manifest[$Matches[1]]=$Matches[2]}}
+    Assert-True ([string]$manifest['format'] -eq 'zip') "Windows CI backup should prefer built-in .NET zip; got $($manifest['format'])."
+    Assert-True ([string]$manifest['file'] -eq 'webui.zip') 'Windows backup archive filename mismatch.'
+    $archive=Join-Path $Backup ([string]$manifest['file'])
+    Assert-True (Test-Path -LiteralPath $archive -PathType Leaf) 'Windows compressed backup archive is missing.'
+    Assert-True (!(Test-Path -LiteralPath (Join-Path $Backup 'webui') -PathType Container)) 'New Windows backups must not retain an uncompressed webui directory when zip is available.'
+    $actual=(Get-FileHash -Algorithm SHA256 -LiteralPath $archive).Hash.ToLowerInvariant()
+    Assert-True ($actual -eq ([string]$manifest['sha256']).ToLowerInvariant()) 'Windows backup archive SHA-256 mismatch.'
+    if($ExpectedVersion){
+      Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction SilentlyContinue
+      $zip=[IO.Compression.ZipFile]::OpenRead($archive)
+      try {
+        $entry=$zip.GetEntry('VERSION')
+        Assert-True ($null -ne $entry) 'Windows backup archive VERSION entry is missing.'
+        $reader=[IO.StreamReader]::new($entry.Open())
+        try {$value=$reader.ReadToEnd().Trim()} finally {$reader.Dispose()}
+        Assert-True ($value -eq $ExpectedVersion) "Windows backup archive VERSION mismatch: $value."
+      } finally {$zip.Dispose()}
+    }
+  }
+
   & $Installer -Version $VersionOne -Configure -Destination $Destination
   Assert-Install $VersionOne $ShaOne 'release-one'
   $FirstBackup=(Get-Content (Join-Path $State 'last-backup') -Raw).Trim()
@@ -147,9 +172,7 @@ try {
   $SecondBackup=(Get-Content (Join-Path $State 'last-backup') -Raw).Trim()
   Assert-True ($SecondBackup -ne $FirstBackup) 'Upgrade backup reused the initial backup directory.'
   Assert-True (((Get-Content (Join-Path $SecondBackup 'had-webui') -Raw).Trim()) -eq '1') 'Upgrade backup should record previous WebUI.'
-  Assert-True (((Get-Content (Join-Path $SecondBackup 'webui\VERSION') -Raw).Trim()) -eq $VersionOne) 'Upgrade backup VERSION mismatch.'
-  Assert-True (((Get-Content (Join-Path $SecondBackup 'webui\GIT_SHA') -Raw).Trim()) -eq $ShaOne) 'Upgrade backup GIT_SHA mismatch.'
-  Assert-True (((Get-Content (Join-Path $SecondBackup 'webui\private\lifecycle-marker.txt') -Raw).Trim()) -eq 'release-one') 'Upgrade backup marker mismatch.'
+  Assert-ArchiveBackup $SecondBackup $VersionOne
   $secondCfg=Get-Content (Join-Path $SecondBackup 'qBittorrent.conf') -Raw
   Assert-True ($secondCfg.Contains('WebUI\AlternativeUIEnabled=true')) 'Upgrade backup lost configured AlternativeUIEnabled.'
   Assert-True ($secondCfg.Contains("WebUI\RootFolder=$Destination")) 'Upgrade backup lost configured RootFolder.'
@@ -172,6 +195,7 @@ try {
   Assert-True ($uninstallCfg.Contains("WebUI\RootFolder=$Destination")) 'Uninstall unexpectedly rewrote the remembered RootFolder.'
   $UninstallBackup=(Get-Content (Join-Path $State 'last-backup') -Raw).Trim()
   Assert-True (((Get-Content (Join-Path $UninstallBackup 'had-webui') -Raw).Trim()) -eq '1') 'Uninstall backup did not preserve the removed WebUI.'
+  Assert-ArchiveBackup $UninstallBackup $VersionOne
 
   & $pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Installer -Rollback
   if($LASTEXITCODE -ne 0){throw "Post-uninstall rollback subprocess failed with exit code $LASTEXITCODE."}

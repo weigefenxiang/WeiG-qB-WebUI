@@ -16,6 +16,13 @@ assert.ok(ps.indexOf("Set-Content -Encoding UTF8 -Path (Join-Path $State 'last-b
 assert.ok(ps.includes('function Purge-BackupsForDestination([string]$Target)')&&ps.includes('Get-OwnedBackupsForDestination $Target'), 'Windows purge must reuse the canonical exact-target backup owner.');
 assert.ok(ps.includes("if($Purge -and $Mode -ne 'Uninstall')")&&ps.includes('Purge-BackupsForDestination $Destination'), 'Windows -purge must be uninstall-only and target-scoped.');
 
+
+assert.ok(ps.includes('function New-WebUiBackupPayload([string]$Source,[string]$Backup)')&&ps.includes('[IO.Compression.ZipFile]::CreateFromDirectory'),'Windows backup payload must prefer the built-in compressed ZIP owner before external tools.');
+assert.ok(ps.includes("Get-Command tar.exe,tar")&&ps.includes("Get-Command 7z.exe,7za.exe,7z,7za"),'Windows archive owner must discover alternate local tar/7z backends without downloading tools.');
+assert.ok(ps.includes('function Save-BackupArchiveManifest')&&ps.includes('Get-FileHash -Algorithm SHA256'),'Windows compressed backups must publish a SHA-256-bound archive manifest.');
+assert.ok(ps.includes('function Expand-WebUiBackupPayload')&&ps.includes("Join-Path $Backup 'webui'"),'Windows restore must centralize archive extraction while retaining a bounded legacy directory reader.');
+assert.ok(ps.includes('$stage="$Destination.weig-restore-$PID-'),'Windows rollback must stage and verify the backup before replacing the live WebUI.');
+
 assert.ok(sh.includes('BACKUP_RETENTION=3'), 'Shell installer must define the three-backup retention policy explicitly.');
 assert.ok(sh.includes('prune_backups_for_dest() {'), 'Shell installer must own target-scoped backup retention.');
 assert.ok(sh.includes('owned_backups_for_dest() {')&&sh.includes('latest_backup_for_dest() {'), 'Shell backup lookup must centralize exact-target ownership before rollback/retention/purge.');
@@ -28,4 +35,10 @@ assert.ok(sh.indexOf("printf '%s\\n' \"$b\" > \"$STATE/last-backup\"")<sh.indexO
 assert.ok(sh.includes('purge_backups_for_dest() {')&&sh.includes('owned_backups_for_dest "$target"'), 'Shell purge must reuse the canonical exact-target backup owner.');
 assert.ok(sh.includes('[ "$PURGE_BACKUPS" -eq 1 ] && [ "$MODE" != "uninstall" ]')&&sh.includes('purge_backups_for_dest "$target"'), 'Shell -purge must be uninstall-only and target-scoped.');
 
-console.log('Installer backup lifecycle contract passed: Linux and Windows keep exact-target owned backups, share retention ownership with purge, and only permit destructive purge during uninstall.');
+assert.ok(sh.includes('create_webui_backup_payload() {')&&sh.includes('tar -C "$backup_source" -czf'),'Linux backup payload must prefer compressed tar.gz when supported.');
+assert.ok(sh.includes('for backup_tool in 7z 7za')&&sh.includes('command -v zip'),'Linux archive owner must discover alternate local 7z/zip backends without downloading tools.');
+assert.ok(sh.includes('record_backup_archive() {')&&sh.includes('backup_sha256() {')&&sh.includes('archive-manifest'),'Linux compressed backups must publish a SHA-256-bound archive manifest.');
+assert.ok(sh.includes('extract_webui_backup_payload() {')&&sh.includes('[ -d "$backup_extract_root/webui" ]'),'Linux restore must centralize archive extraction while retaining a bounded legacy directory reader.');
+assert.ok(sh.includes('restore_stage="$dest.weig-restore.$$"'),'Linux rollback must extract and verify into a target-adjacent staging directory before replacement.');
+
+console.log('Installer backup lifecycle contract passed: Linux and Windows keep exact-target ownership/retention, prefer SHA-256-bound compressed payloads, retain bounded legacy readers, and only permit destructive purge during uninstall.');

@@ -154,6 +154,25 @@ for(const name of compact){const file=path.join(dest,'private/data',name);if(!fs
 if(fs.existsSync(path.join(dest,'private/data/qb-releases.json')))throw new Error('retired qb-releases.json must not be restored by installer lifecycle fixtures');
 NODE
 }
+assert_archive_backup() {
+  backup=$1
+  expected_version=${2-}
+  test -f "$backup/archive-manifest"
+  format=$(sed -n 's/^format=//p' "$backup/archive-manifest")
+  file=$(sed -n 's/^file=//p' "$backup/archive-manifest")
+  expected_sha=$(sed -n 's/^sha256=//p' "$backup/archive-manifest")
+  test "$format" = "tar.gz"
+  test "$file" = "webui.tar.gz"
+  test -f "$backup/$file"
+  test ! -d "$backup/webui"
+  actual_sha=$(sha256sum "$backup/$file" | awk '{print tolower($1)}')
+  test "$actual_sha" = "$expected_sha"
+  if [ -n "$expected_version" ]; then
+    archived_version=$(tar -xOzf "$backup/$file" ./VERSION | tr -d '\r\n')
+    test "$archived_version" = "$expected_version"
+  fi
+}
+
 
 bash "$ROOT/installers/install.sh" --version "$VERSION_ONE" --configure -o "$DEST"
 assert_install "$VERSION_ONE" "$SHA_ONE" release-one
@@ -168,9 +187,7 @@ assert_install "$VERSION_TWO" "$SHA_TWO" release-two
 SECOND_BACKUP=$(cat "$STATE/last-backup")
 test "$SECOND_BACKUP" != "$FIRST_BACKUP"
 test "$(cat "$SECOND_BACKUP/had-webui")" = 1
-test "$(tr -d '\r\n' < "$SECOND_BACKUP/webui/VERSION")" = "$VERSION_ONE"
-test "$(tr -d '\r\n' < "$SECOND_BACKUP/webui/GIT_SHA")" = "$SHA_ONE"
-test "$(tr -d '\r\n' < "$SECOND_BACKUP/webui/private/lifecycle-marker.txt")" = release-one
+assert_archive_backup "$SECOND_BACKUP" "$VERSION_ONE"
 grep -Fx "WebUI\\AlternativeUIEnabled=true" "$SECOND_BACKUP/qBittorrent.conf" >/dev/null
 grep -Fx "WebUI\\RootFolder=$DEST" "$SECOND_BACKUP/qBittorrent.conf" >/dev/null
 
@@ -190,7 +207,7 @@ grep -Fx 'WebUI\AlternativeUIEnabled=false' "$CFG" >/dev/null
 grep -Fx "WebUI\\RootFolder=$DEST" "$CFG" >/dev/null
 UNINSTALL_BACKUP=$(cat "$STATE/last-backup")
 test "$(cat "$UNINSTALL_BACKUP/had-webui")" = 1
-test "$(tr -d '\r\n' < "$UNINSTALL_BACKUP/webui/VERSION")" = "$VERSION_ONE"
+assert_archive_backup "$UNINSTALL_BACKUP" "$VERSION_ONE"
 
 bash "$ROOT/installers/install.sh" -rollback
 assert_install "$VERSION_ONE" "$SHA_ONE" release-one

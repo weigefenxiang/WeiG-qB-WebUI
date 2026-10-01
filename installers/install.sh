@@ -57,7 +57,7 @@ Notes:
   - -dev and -version cannot be used together.
   - Multiple -o targets download and verify one payload, then update all targets transactionally.
   - Multiple -o targets cannot be combined with -configure, --container or --config-root.
-  - Installer backups stay under ~/.config/weig_qb-webui/backups/ and retain the latest 3 per target.
+  - Installer backups stay under ~/.config/weig_qb-webui/backups/, prefer verified compressed archives when supported, and retain the latest 3 per target.
   - -purge is destructive and is only accepted together with -uninstall.
   - A requested Release version never falls back to latest or dev.
 EOF_USAGE
@@ -881,6 +881,165 @@ qb_root_for_target() {
   fi
 }
 
+backup_sha256() {
+  backup_hash_file=$1
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$backup_hash_file" | awk '{print tolower($1)}'
+    return $?
+  fi
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$backup_hash_file" | awk '{print tolower($1)}'
+    return $?
+  fi
+  if command -v openssl >/dev/null 2>&1; then
+    openssl dgst -sha256 "$backup_hash_file" 2>/dev/null | awk '{print tolower($NF)}'
+    return $?
+  fi
+  return 1
+}
+
+write_backup_manifest() {
+  backup_manifest_root=$1
+  backup_manifest_format=$2
+  backup_manifest_file=$3
+  backup_manifest_tool=$4
+  backup_manifest_sha=$5
+  backup_manifest_bytes=$6
+  cat > "$backup_manifest_root/archive-manifest" <<EOF_ARCHIVE_MANIFEST
+schema=1
+format=$backup_manifest_format
+file=$backup_manifest_file
+tool=$backup_manifest_tool
+sha256=$backup_manifest_sha
+bytes=$backup_manifest_bytes
+EOF_ARCHIVE_MANIFEST
+}
+
+record_backup_archive() {
+  backup_record_root=$1
+  backup_record_path=$2
+  backup_record_format=$3
+  backup_record_tool=$4
+  backup_record_sha=$(backup_sha256 "$backup_record_path" 2>/dev/null || true)
+  [ -n "$backup_record_sha" ] || return 1
+  backup_record_bytes=$(wc -c < "$backup_record_path" | tr -d '[:space:]')
+  backup_record_name=$(basename "$backup_record_path")
+  write_backup_manifest "$backup_record_root" "$backup_record_format" "$backup_record_name" "$backup_record_tool" "$backup_record_sha" "$backup_record_bytes"
+  return 0
+}
+
+create_webui_backup_payload() {
+  backup_source=$1
+  backup_root=$2
+  backup_archive="$backup_root/webui.tar.gz"
+  if command -v tar >/dev/null 2>&1; then
+    rm -f -- "$backup_archive"
+    if tar -C "$backup_source" -czf "$backup_archive" . 2>/dev/null && record_backup_archive "$backup_root" "$backup_archive" "tar.gz" "tar"; then
+      echo "Backup payload: compressed tar.gz ($(cat "$backup_root/archive-manifest" | sed -n 's/^bytes=//p') bytes)"
+      return 0
+    fi
+    rm -f -- "$backup_archive"
+  fi
+
+  backup_7z=""
+  for backup_tool in 7z 7za; do
+    if command -v "$backup_tool" >/dev/null 2>&1; then backup_7z=$backup_tool; break; fi
+  done
+  if [ -n "$backup_7z" ]; then
+    backup_archive="$backup_root/webui.7z"
+    rm -f -- "$backup_archive"
+    if (cd "$backup_source" && "$backup_7z" a -bd -y -t7z -mx=5 "$backup_archive" . >/dev/null 2>&1) && record_backup_archive "$backup_root" "$backup_archive" "7z" "$backup_7z"; then
+      echo "Backup payload: compressed 7z ($(sed -n 's/^bytes=//p' "$backup_root/archive-manifest") bytes)"
+      return 0
+    fi
+    rm -f -- "$backup_archive"
+  fi
+
+  if command -v zip >/dev/null 2>&1; then
+    backup_archive="$backup_root/webui.zip"
+    rm -f -- "$backup_archive"
+    if (cd "$backup_source" && zip -qry "$backup_archive" .) && record_backup_archive "$backup_root" "$backup_archive" "zip" "zip"; then
+      echo "Backup payload: compressed zip ($(sed -n 's/^bytes=//p' "$backup_root/archive-manifest") bytes)"
+      return 0
+    fi
+    rm -f -- "$backup_archive"
+  fi
+
+  cp -a "$backup_source" "$backup_root/webui" || return 1
+  write_backup_manifest "$backup_root" "directory" "webui" "cp" "" "0"
+  echo "Backup payload: directory fallback (no verified compression tool available)"
+  return 0
+}
+
+backup_manifest_value() {
+  backup_manifest_root=$1
+  backup_manifest_key=$2
+  [ -f "$backup_manifest_root/archive-manifest" ] || return 1
+  sed -n "s/^$backup_manifest_key=//p" "$backup_manifest_root/archive-manifest" | sed -n '1p'
+}
+
+verify_backup_archive() {
+  backup_verify_root=$1
+  backup_verify_name=$(backup_manifest_value "$backup_verify_root" file 2>/dev/null || true)
+  backup_verify_expected=$(backup_manifest_value "$backup_verify_root" sha256 2>/dev/null || true)
+  case "$backup_verify_name" in
+    webui.tar.gz|webui.7z|webui.zip) ;;
+    *) echo "Backup archive manifest has an unsupported file: $backup_verify_name" >&2; return 1 ;;
+  esac
+  backup_verify_path="$backup_verify_root/$backup_verify_name"
+  [ -f "$backup_verify_path" ] || { echo "Backup archive missing: $backup_verify_path" >&2; return 1; }
+  [ -n "$backup_verify_expected" ] || { echo "Backup archive SHA-256 is missing." >&2; return 1; }
+  backup_verify_actual=$(backup_sha256 "$backup_verify_path" 2>/dev/null || true)
+  [ -n "$backup_verify_actual" ] || { echo "No SHA-256 tool is available to verify the backup archive." >&2; return 1; }
+  [ "$backup_verify_actual" = "$backup_verify_expected" ] || { echo "Backup archive checksum mismatch: $backup_verify_path" >&2; return 1; }
+  return 0
+}
+
+extract_webui_backup_payload() {
+  backup_extract_root=$1
+  backup_extract_stage=$2
+
+  # Bounded legacy reader for backups created before archive payloads existed.
+  if [ -d "$backup_extract_root/webui" ]; then
+    mkdir -p "$backup_extract_stage" || return 1
+    cp -a "$backup_extract_root/webui/." "$backup_extract_stage/" || return 1
+    return 0
+  fi
+
+  backup_extract_format=$(backup_manifest_value "$backup_extract_root" format 2>/dev/null || true)
+  verify_backup_archive "$backup_extract_root" || return 1
+  backup_extract_name=$(backup_manifest_value "$backup_extract_root" file)
+  backup_extract_archive="$backup_extract_root/$backup_extract_name"
+  mkdir -p "$backup_extract_stage" || return 1
+
+  case "$backup_extract_format" in
+    tar.gz)
+      command -v tar >/dev/null 2>&1 || { echo "tar is required to restore this backup." >&2; return 1; }
+      tar -xzf "$backup_extract_archive" -C "$backup_extract_stage" || return 1
+      ;;
+    7z)
+      backup_extract_7z=""
+      for backup_tool in 7z 7za; do
+        if command -v "$backup_tool" >/dev/null 2>&1; then backup_extract_7z=$backup_tool; break; fi
+      done
+      [ -n "$backup_extract_7z" ] || { echo "7z/7za is required to restore this backup." >&2; return 1; }
+      "$backup_extract_7z" x -bd -y "-o$backup_extract_stage" "$backup_extract_archive" >/dev/null || return 1
+      ;;
+    zip)
+      command -v unzip >/dev/null 2>&1 || { echo "unzip is required to restore this backup." >&2; return 1; }
+      unzip -q "$backup_extract_archive" -d "$backup_extract_stage" || return 1
+      ;;
+    *)
+      echo "Unsupported backup archive format: $backup_extract_format" >&2
+      return 1
+      ;;
+  esac
+
+  backup_extract_probe=$(find "$backup_extract_stage" -mindepth 1 -print -quit 2>/dev/null || true)
+  [ -n "$backup_extract_probe" ] || { echo "Backup archive extracted no WebUI files." >&2; return 1; }
+  return 0
+}
+
 backup_target() {
   dest=$1
   index=$2
@@ -896,9 +1055,10 @@ backup_target() {
     return 1
   fi
   if [ -d "$dest" ]; then
-    cp -a "$dest" "$b/webui"
+    create_webui_backup_payload "$dest" "$b" || { rm -rf "$b"; echo "Unable to create a verified WebUI backup payload." >&2; return 1; }
     printf '1\n' > "$b/had-webui"
   else
+    write_backup_manifest "$b" "none" "" "none" "" "0"
     printf '0\n' > "$b/had-webui"
   fi
 
@@ -925,13 +1085,25 @@ restore_webui_from_backup() {
   b=$2
   had_webui=0
   [ -s "$b/had-webui" ] && had_webui=$(cat "$b/had-webui")
-  rm -rf "$dest"
+
   if [ "$had_webui" = "1" ]; then
-    [ -d "$b/webui" ] || { echo "Backup WebUI missing: $b/webui" >&2; return 1; }
-    mkdir -p "$(dirname "$dest")"
-    cp -a "$b/webui" "$dest"
+    restore_parent=$(dirname "$dest")
+    mkdir -p "$restore_parent" || return 1
+    restore_stage="$dest.weig-restore.$$"
+    [ ! -e "$restore_stage" ] || { echo "Restore staging path already exists: $restore_stage" >&2; return 1; }
+    if ! extract_webui_backup_payload "$b" "$restore_stage"; then
+      rm -rf -- "$restore_stage"
+      return 1
+    fi
+    rm -rf -- "$dest"
+    if ! mv "$restore_stage" "$dest"; then
+      rm -rf -- "$restore_stage"
+      echo "Unable to switch verified backup into place: $dest" >&2
+      return 1
+    fi
     echo "Restored previous WebUI: $dest"
   else
+    rm -rf -- "$dest"
     echo "Removed WeiG qB WebUI from: $dest"
   fi
 }
