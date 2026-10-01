@@ -277,12 +277,14 @@ try{
     assert(await page.evaluate(()=>WeiG.TorrentFieldRegistry.availableColumnDefinitions().find(column=>column.key==='total_size')?.sort===null&&WeiG.TorrentFieldRegistry.availableColumnDefinitions().find(column=>column.key==='total_size')?.localSort==='total_size'),`${name}: Total Size must use local catalog sort without inventing server-side sort provenance`);
 
     // Facet action follows the exact qB source-owned Tracker surface.
-    const tracker=page.locator('.facet-control[data-facet="tracker"] .ui-select__trigger');await tracker.click();
-    await page.waitForSelector('#weig-floating-layer .ui-select__option');
-    const trackerOptions=await page.evaluate(()=>Array.from(document.querySelectorAll('#weig-floating-layer .ui-select__option')).map(node=>({value:node.dataset.value,text:node.textContent})));
+    const tracker=page.locator('.facet-control[data-facet="tracker"] .ui-select__trigger');
     const trackerSourceFacts=await page.evaluate(()=>WeiG.CapabilityRegistry.trackerFilters());
     const trackerFacetMode=await page.evaluate(()=>WeiG.CapabilityRegistry.trackerFacetMode());
     if(name==='modern'){
+      assert(!(await page.locator('.facet-control[data-facet="tracker"]').evaluate(node=>node.hidden||getComputedStyle(node).display==='none')),name+': source-owned Tracker surface must be visible');
+      await tracker.click();
+      await page.waitForSelector('#weig-floating-layer .ui-select__option');
+      const trackerOptions=await page.evaluate(()=>Array.from(document.querySelectorAll('#weig-floating-layer .ui-select__option')).map(node=>({value:node.dataset.value,text:node.textContent})));
       assert(trackerFacetMode==='hostname',name+': modern Tracker grouping mode is not source-proven '+trackerFacetMode);
       assert(JSON.stringify(trackerSourceFacts.map(item=>item.id))===JSON.stringify(['all','trackerless','error','otherError','warning']),name+': exact qB Tracker source-fact order drifted '+JSON.stringify(trackerSourceFacts));
       assert(trackerOptions[0]?.text.startsWith('All'),name+': Tracker All copy is not source-owned '+JSON.stringify(trackerOptions));
@@ -301,10 +303,12 @@ try{
       const toolbarFonts=await page.evaluate(()=>{const nodes=[document.querySelector('#selection-control .ui-select__value'),document.getElementById('selection-count'),document.querySelector('#list-view .grid-toolbar>div:first-child>label'),document.querySelector('#page-size-control .ui-select__value')];return nodes.map(node=>node?getComputedStyle(node).fontSize:null);});
       assert(toolbarFonts.every(value=>value===toolbarFonts[0]),name+': seed toolbar typography diverged '+JSON.stringify(toolbarFonts));
     }else{
+      const trackerHidden=await page.locator('.facet-control[data-facet="tracker"]').evaluate(node=>node.hidden||getComputedStyle(node).display==='none');
+      const trackerOptions=await page.evaluate(()=>WeiG.LibraryController.facetOptions('tracker'));
+      assert(trackerHidden,name+': qB 4.1 source-absent Tracker surface must stay hidden');
       assert(trackerFacetMode==='none',name+': qB 4.1 Tracker facet mode must fail closed '+trackerFacetMode);
       assert(trackerSourceFacts.length===0,name+': qB 4.1 must not expose later Tracker source facts '+JSON.stringify(trackerSourceFacts));
       assert(!trackerOptions.some(item=>String(item.value||'').startsWith('special:')||String(item.value||'').startsWith('host:')),name+': qB 4.1 must not invent later Tracker facet members '+JSON.stringify(trackerOptions));
-      await page.keyboard.press('Escape');
     }
 
     // Connection help uses existing TransferRuntime snapshot and no retired Network summary.

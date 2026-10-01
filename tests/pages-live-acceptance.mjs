@@ -553,6 +553,9 @@ try{
     });
     assert.ok(contextualExpected.privateCount>0&&contextualExpected.category.length>0,'contextual facet live fixture must include Private/PT rows and categories');
 
+    const nativeFacetCopy=await page.evaluate(async()=>{await window.WeiG?.I18n?.loadQbOwnedText?.();const owned=window.WeiG?.I18n?.qbOwnedText?.()||{};return{categories:Object.prototype.hasOwnProperty.call(owned,'sidebar.categories'),tags:Object.prototype.hasOwnProperty.call(owned,'sidebar.tags'),trackers:Object.prototype.hasOwnProperty.call(owned,'sidebar.trackers')};});
+    assert.deepEqual(nativeFacetCopy,{categories:true,tags:true,trackers:true},'qB5 contextual facet acceptance requires exact source-owned Category/Tags/Tracker copy');
+    await page.waitForFunction(()=>['category','tag','tracker'].every(kind=>{const node=document.querySelector('[data-facet="'+kind+'"]');return !!node&&!node.hidden&&getComputedStyle(node).display!=='none';}),null,{timeout:30000});
     await page.locator('[data-facet="tracker"] .ui-select__trigger').click();
     const privateOption=page.locator('#weig-floating-layer .ui-select__menu:not([hidden]) .ui-select__option[data-value="__weig_private__"]');
     await privateOption.waitFor({state:'visible',timeout:30000});
