@@ -27,6 +27,8 @@ assert(transfer.includes('if(windowSeconds>900)data=bucketSamples();else if(char
 assert(!transfer.includes('function averageSamples(data,seconds)'),'Transfer rendering must not restore full visible-history re-bucketing on every draw');
 assert(transfer.includes("setLegendTotal('download',downloaded)")&&transfer.includes("setLegendTotal('upload',uploaded)")&&transfer.includes('dl_info_data')&&transfer.includes('up_info_data'),'Full dialog legend totals must reuse canonical qB session traffic totals');
 assert(transfer.includes("setLegendRate('download',U.formatSpeed(info.dl_info_speed||0))")&&transfer.includes("setLegendRate('upload',U.formatSpeed(info.up_info_speed||0))"),'Full dialog legend must expose current download/upload rates from the canonical transfer snapshot');
+assert(transfer.includes('nativeStatisticsState')&&transfer.includes("format==='bytes'")&&transfer.includes("format==='percent'")&&transfer.includes("format==='milliseconds'"),'native qB Statistics must render exact source-derived format classes from the same Transfer runtime state');
+assert(transfer.includes("qbSourceText(group.translation")&&transfer.includes("qbSourceText(field.translation"),'native Statistics group/field copy must resolve through qB source/context translation facts');
 assert(transfer.includes("ctx.lineCap='round'")&&transfer.includes("ctx.lineJoin='round'")&&transfer.includes('ctx.quadraticCurveTo'),'Transfer chart smoothing must use the existing low-cost Canvas path interpolation without another polling owner');
 
 // Android Connected copy has exactly the same responsive type size as the transfer speed values.
