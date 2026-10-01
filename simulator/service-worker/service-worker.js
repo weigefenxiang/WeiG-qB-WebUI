@@ -13,10 +13,16 @@ import {adaptSessionContractSource} from './__simulator/core/session-contract-ad
 import {virtualCatalogTermination} from './__simulator/core/catalog-scan-adapter.js';
 import {consumePendingHandoffSession,durableSessionUrl,forgetPendingHandoffSession,hasHandoffSessionToken,rememberHandoffSession,rememberPendingHandoffSession,rememberSessionForEvent,sessionClientIds,sessionForEvent,sessionForHandoff,sessionForUrl} from './__simulator/core/session-identity.js';
 
+const WEIG_BUILD_SHA="__WEIG_GIT_SHA__";
 const SOURCE_PRIVATE='./__source/private/';
 const SOURCE_PUBLIC='./__source/public/';
-const CATALOG_URL='./__simulator/versions/catalog.generated.json';
+const LEGACY_CATALOG_URL='./__simulator/versions/catalog.generated.json';
+const RUNTIME_PROFILE_BASE='./__simulator/runtime/profiles/';
+const RUNTIME_COPY_BASE='./__simulator/runtime/copy/';
+const PRIVATE_PREWARM_URL='./__simulator/runtime/private-prewarm.json';
 const TRANSLATOR_BEHAVIOR_URL='./__simulator/versions/qb-translator-behavior-lkg.json';
+const STATIC_CACHE_PREFIX='weig-virtual-static-';
+const STATIC_CACHE=STATIC_CACHE_PREFIX+WEIG_BUILD_SHA;
 const DEFAULT_SESSION='default';
 const LAB_USERNAME='weigshare';
 const LAB_PASSWORD='weigshare';
@@ -26,32 +32,64 @@ const handoffSessions=new Map();
 const pendingHandoffSessions=new Map();
 const worlds=createWorldCache({load:loadWorld,save:saveWorld,remove:deleteWorld,maxEntries:6,readPersistMs:30000});
 let queue=Promise.resolve();
-let catalogPromise=null;
+const catalogPromises=new Map();
 let translatorBehaviorPromise=null;
+let prewarmManifestPromise=null;
+
+function versionedAssetUrl(relative){
+  const target=new URL(relative,self.registration.scope);
+  target.searchParams.set('v',WEIG_BUILD_SHA);
+  return target.toString();
+}
+
+async function immutableFetchUrl(url){
+  const cache=await caches.open(STATIC_CACHE),cached=await cache.match(url);
+  if(cached)return cached;
+  const response=await fetch(url,{cache:'no-store'});
+  if(response.ok)await cache.put(url,response.clone());
+  return response;
+}
+
+async function activateRuntime(){
+  const keys=await caches.keys();
+  await Promise.all(keys.filter(key=>key.startsWith(STATIC_CACHE_PREFIX)&&key!==STATIC_CACHE).map(key=>caches.delete(key)));
+  await self.clients.claim();
+}
 
 self.addEventListener('install',event=>event.waitUntil(self.skipWaiting()));
-self.addEventListener('activate',event=>event.waitUntil(self.clients.claim()));
+self.addEventListener('activate',event=>event.waitUntil(activateRuntime()));
 
-async function loadCatalog(){
-  if(catalogPromise)return catalogPromise;
-  catalogPromise=(async()=>{
+function safeProfileKey(value){const key=String(value||'5.2.3').trim();return /^[0-9A-Za-z._-]+$/.test(key)?key:'5.2.3';}
+
+async function loadCatalog(qbVersion){
+  const key=safeProfileKey(qbVersion);
+  if(catalogPromises.has(key))return catalogPromises.get(key);
+  const task=(async()=>{
     try{
-      const response=await fetch(CATALOG_URL,{cache:'no-store'});
+      const response=await immutableFetchUrl(versionedAssetUrl(RUNTIME_PROFILE_BASE+key+'.json'));
+      if(response.ok){
+        const profile=await response.json();
+        if(profile&&String(profile.qbVersion||'')===key)return[profile];
+      }
+    }catch(_e){}
+    try{
+      const response=await immutableFetchUrl(versionedAssetUrl(LEGACY_CATALOG_URL));
       if(response.ok){
         const data=await response.json();
         if(Array.isArray(data)&&data.length)return data;
       }
     }catch(_e){}
-    return BOOTSTRAP_RELEASES;
+    return[profileByVersion(BOOTSTRAP_RELEASES,key)];
   })();
-  return catalogPromise;
+  catalogPromises.set(key,task);
+  try{return await task;}catch(error){catalogPromises.delete(key);throw error;}
 }
 
 async function loadTranslatorBehavior(){
   if(translatorBehaviorPromise)return translatorBehaviorPromise;
   translatorBehaviorPromise=(async()=>{
     try{
-      const response=await fetch(TRANSLATOR_BEHAVIOR_URL,{cache:'no-store'});
+      const response=await immutableFetchUrl(versionedAssetUrl(TRANSLATOR_BEHAVIOR_URL));
       if(response.ok){
         const data=await response.json();
         if(data?.schemaVersion===1)return data;
@@ -60,6 +98,43 @@ async function loadTranslatorBehavior(){
     return null;
   })();
   return translatorBehaviorPromise;
+}
+
+async function loadPrivatePrewarmAssets(){
+  if(prewarmManifestPromise)return prewarmManifestPromise;
+  prewarmManifestPromise=(async()=>{
+    try{
+      const response=await immutableFetchUrl(versionedAssetUrl(PRIVATE_PREWARM_URL));
+      if(response.ok){
+        const data=await response.json(),assets=Array.isArray(data?.assets)?data.assets.map(String).filter(Boolean):[];
+        return Array.from(new Set(assets));
+      }
+    }catch(_e){}
+    return[];
+  })();
+  return prewarmManifestPromise;
+}
+
+async function fetchCopyProfileShard(world){
+  const key=safeProfileKey(world?.profile?.qbVersion);
+  try{
+    const response=await immutableFetchUrl(versionedAssetUrl(RUNTIME_COPY_BASE+key+'.txt'));
+    return response.ok?response:null;
+  }catch(_e){return null;}
+}
+
+async function prewarmPrivateSource(world){
+  const assets=await loadPrivatePrewarmAssets(),items=assets.slice();
+  let next=0;
+  async function worker(){
+    while(next<items.length){
+      const path=items[next++];
+      try{await immutableFetchUrl(sourceUrl('private',path));}catch(_e){}
+    }
+  }
+  const workers=[];for(let i=0;i<Math.min(6,items.length);i++)workers.push(worker());
+  await Promise.all(workers);
+  await fetchCopyProfileShard(world);
 }
 
 function configFromUrl(url){
@@ -182,7 +257,8 @@ async function ensureWorld(event,url){
   const cfg=configFromUrl(url),id=await sessionIdForEvent(event,url);
   if(cfg.reset)await worlds.reset(id);
   let world=cfg.reset?null:await worlds.get(id);
-  const catalog=await loadCatalog();
+  const requestedVersion=url.searchParams.has('qb')?cfg.qb:(world?.profile?.qbVersion||cfg.qb);
+  const catalog=await loadCatalog(requestedVersion);
   if(!world){
     const profile=profileByVersion(catalog,cfg.qb);
     const networkSeed=networkSeedFor(id,cfg.seed);
@@ -197,7 +273,6 @@ async function ensureWorld(event,url){
     let changed=false;
     const schemaMigration=upgradeWorldSchema(world,Date.now());
     changed=changed||schemaMigration.changed;
-    const requestedVersion=url.searchParams.has('qb')?cfg.qb:(world.profile?.qbVersion||cfg.qb);
     const migration=reconcileWorldProfile(world,catalog,requestedVersion);
     changed=changed||migration.changed;
     changed=upgradeNetworkEnvironment(world,id,cfg.seed)||changed;
@@ -210,8 +285,8 @@ async function ensureWorld(event,url){
 }
 
 function sourceUrl(kind,path='index.html'){
-  const safe=path.replace(/^\/+/,'').replace(/\.\.(?:\/|\\)/g,'');
-  return new URL((kind==='public'?SOURCE_PUBLIC:SOURCE_PRIVATE)+safe,self.registration.scope).toString();
+  const safe=path.replace(/^\/+/, '').replace(/\.\.(?:\/|\\)/g,'');
+  return versionedAssetUrl((kind==='public'?SOURCE_PUBLIC:SOURCE_PRIVATE)+safe);
 }
 
 function isQbtTextResponse(response,path){
@@ -224,7 +299,7 @@ async function emulateSourceTranslation(response,world,path){
   const text=await response.clone().text();
   const materializeLanguageOptions=path==='views/preferences.html';
   if(!text.includes('QBT_TR(')&&!(materializeLanguageOptions&&text.includes('${LANGUAGE_OPTIONS}')))return response;
-  const [catalog,behaviorEvidence]=await Promise.all([loadCatalog(),loadTranslatorBehavior()]);
+  const [catalog,behaviorEvidence]=await Promise.all([loadCatalog(world.profile?.qbVersion),loadTranslatorBehavior()]);
   const result=emulateQbtDocument(text,{catalog,behaviorEvidence,qbVersion:world.profile?.qbVersion,locale:world.preferences?.locale||'en',materializeLanguageOptions});
   const headers=new Headers();
   const contentType=response.headers.get('content-type');
@@ -235,8 +310,10 @@ async function emulateSourceTranslation(response,world,path){
 }
 
 async function fetchSource(kind,path,options={}){
-  let response=await fetch(sourceUrl(kind,path),{cache:'no-store'});
-  if(!response.ok&&kind==='private')response=await fetch(sourceUrl('public',path),{cache:'no-store'});
+  let response=null;
+  if(kind==='private'&&path==='data/qb-settings-native.txt'&&options.world)response=await fetchCopyProfileShard(options.world);
+  if(!response)response=await immutableFetchUrl(sourceUrl(kind,path));
+  if(!response.ok&&kind==='private')response=await immutableFetchUrl(sourceUrl('public',path));
   if(!response.ok)return response;
   if(path==='session-contract.js'){
     const original=await response.text(),adapted=adaptSessionContractSource(original,path);
@@ -263,13 +340,17 @@ function relativePath(url){
   return path.replace(/^\/+/,'');
 }
 
-async function handleNavigation(event,url){
-  const {id,world}=await ensureWorld(event,url);
-  if(event.clientId)clientSessions.set(event.clientId,id);
-  const durable=durableSessionUrl(url,id,DEFAULT_SESSION);
-  if(durable)return Response.redirect(durable,302);
-  if(world.authenticated)return fetchSource('private','index.html',{world});
-  return fetchSource('public','index.html',{injectLabCredentials:!world.lab?.clean,world});
+function handleNavigation(event,url){
+  const statePromise=ensureWorld(event,url);
+  const responsePromise=statePromise.then(async({id,world})=>{
+    if(event.clientId)clientSessions.set(event.clientId,id);
+    const durable=durableSessionUrl(url,id,DEFAULT_SESSION);
+    if(durable)return Response.redirect(durable,302);
+    if(world.authenticated)return fetchSource('private','index.html',{world});
+    return fetchSource('public','index.html',{injectLabCredentials:!world.lab?.clean,world});
+  });
+  event.waitUntil(responsePromise.then(()=>statePromise).then(({world})=>prewarmPrivateSource(world)).catch(()=>{}));
+  return responsePromise;
 }
 
 async function handleAsset(event,url){
