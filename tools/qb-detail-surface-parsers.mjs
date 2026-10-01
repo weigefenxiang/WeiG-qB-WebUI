@@ -46,6 +46,34 @@ function helperCallFields(source,expression,objectName){const text=String(source
 function nestedObjectRootFields(source,nestedName,objectName){const text=String(source||''),nested=escapeRe(nestedName),root=escapeRe(objectName),out=[];for(const match of text.matchAll(new RegExp(`\\b${nested}\\b\\s+of\\s+\\b${root}\\.([A-Za-z0-9_]+)\\b`,'g')))out.push(match[1]);for(const match of text.matchAll(new RegExp(`\\b${root}\\.([A-Za-z0-9_]+)\\b[^;\\n]*\\.(?:each|forEach)\\s*\\(\\s*\\(?\\s*${nested}\\b`,'g')))out.push(match[1]);return unique(out);}
 function objectRowBindings(script,objectName){const text=String(script||''),objectRe=escapeRe(objectName),out=new Map(),patterns=[/(?:\b(?:var|let|const)\s+)?\brow\s*=\s*\{/g,/\brows\.push\s*\(\s*\{/g];for(const pattern of patterns)for(const match of text.matchAll(pattern)){const open=text.indexOf('{',match.index),block=delimited(text,open,'{','}','row object'),prefix=text.slice(0,match.index);for(const entry of splitTopLevel(block.body)){const property=String(entry||'').match(/^\s*(?:([A-Za-z_$][A-Za-z0-9_$]*)|["']([^"']+)["'])\s*:\s*([\s\S]+)$/);if(!property)continue;const key=property[1]||property[2],expression=property[3];let fields=directObjectFields(expression,objectRe);const bare=String(expression||'').trim().match(/^([A-Za-z_$][A-Za-z0-9_$]*)$/);if(!fields.length&&bare)fields=bareVariableFields(prefix,bare[1],objectRe);fields.push(...helperCallFields(text,expression,objectName));for(const ref of String(expression||'').matchAll(/\b([A-Za-z_$][A-Za-z0-9_$]*)\s*\./g)){if(ref[1]===objectName)continue;fields.push(...nestedObjectRootFields(text,ref[1],objectName));}for(const call of String(expression||'').matchAll(/\b[A-Za-z_$][A-Za-z0-9_$]*\s*\(\s*([A-Za-z_$][A-Za-z0-9_$]*)\s*\)/g)){if(call[1]===objectName)continue;fields.push(...nestedObjectRootFields(text,call[1],objectName));}fields=unique(fields);if(!fields.length)continue;const previous=out.get(key)||[];out.set(key,unique([...previous,...fields]));}}return out;}
 function normalizeSourceProjectedColumns(columns,scriptSource,objectName){const relations=objectRowBindings(scriptSource,objectName);if(!relations.size)return columns;return (columns||[]).map(column=>{const fields=relations.get(column.key);return fields?.length?{...column,dataProperties:[...fields]}:column;});}
+function qbtFallbackRef(source,index,expression){
+  const direct=qbtRef(expression);if(direct)return direct;
+  const bare=String(expression||'').trim().match(/^([A-Za-z_$][A-Za-z0-9_$]*)$/);if(!bare)return null;
+  const prefix=String(source||'').slice(0,index),name=escapeRe(bare[1]),matches=[...prefix.matchAll(new RegExp(`\\b(?:const|let|var)\\s+${name}\\s*=\\s*([^;]+);`,'g'))];
+  return matches.length?qbtRef(matches.at(-1)[1]):null;
+}
+function trackerNegativeSentinelFacts(source,context){
+  const text=String(source||''),byField=new Map();
+  const re=/\b(tracker|endpoint)\.([A-Za-z0-9_]+)\s*>=\s*0\s*\)\s*\?\s*\1\.\2\s*:\s*([^,}\]\n\r;]+)/g;
+  for(const match of text.matchAll(re)){
+    const field=String(match[2]||''),ref=qbtFallbackRef(text,match.index,match[3]);
+    if(!ref||ref.source!=='N/A')continue;
+    const prior=byField.get(field);
+    if(prior&&(prior.source!==ref.source||prior.context!==ref.context))throw new Error(`${context}: conflicting negative Tracker sentinel copy for ${field}`);
+    byField.set(field,ref);
+  }
+  return byField;
+}
+function annotateTrackerNegativeSentinels(columns,source,context){
+  const facts=trackerNegativeSentinelFacts(source,context);
+  return (columns||[]).map(column=>{
+    const fields=(column?.dataProperties||[]).map(String).filter(field=>facts.has(field));
+    if(!fields.length)return column;
+    const refs=fields.map(field=>facts.get(field)),first=refs[0];
+    if(!refs.every(ref=>ref.source===first.source&&ref.context===first.context))throw new Error(`${context}: Tracker column ${column.key} has conflicting negative sentinel refs`);
+    return{...column,notApplicableWhenNegative:{dataProperties:fields,translation:{source:first.source,context:first.context}}};
+  });
+}
 function inferredKey(ref,fields,index){if(!ref&&fields.length===1&&fields[0]==='priority')return'checked';if(fields.length===1)return fields[0];const source=String(ref?.source||'').trim().toLowerCase();if(source.includes('remaining'))return'remaining';if(source.includes('priority'))return'priority';if(source.includes('progress'))return'progress';return fields[0]||`column_${index}`;}
 function legacyStaticColumns(contentSource,sectionId,scriptSource,objectName,context){const refs=headerRefs(section(contentSource,sectionId)),assignments=rowAssignments(scriptSource,objectName);if(!refs.length||!assignments.size)throw new Error(`${context}: legacy ${sectionId} table source is unresolved`);return refs.map((ref,index)=>{const dataProperties=assignments.get(index)||[];if(!dataProperties.length)throw new Error(`${context}: legacy ${sectionId} column ${index} has no source-proven row relation`);const key=inferredKey(ref,dataProperties,index);return{key,caption:ref?.source||'',...(ref?{translation:ref}:{}),dataProperties};});}
 function normalizedDynamicColumns(source,className,context){return extractDynamicTableColumns(source,className,context).map(column=>({key:column.key,caption:column.caption,defaultWidth:column.defaultWidth,defaultVisible:column.defaultVisible,...(column.translation?{translation:column.translation}:{}),dataProperties:[...column.dataProperties]}));}
@@ -59,7 +87,7 @@ export function extractTorrentDetailUi({toolbarSource='',contentSource='',genera
   const detailTabs=extractDetailTabs(toolbarSource,context),tabs=detailTabs.tabs,tabOrder=detailTabs.tabOrder,propertyLabels=extractPropertyLabels(contentSource,context),propertyGroups=extractPropertyGroups(contentSource,context),propertyLayout=extractPropertyLayout(contentSource,generalSource,context);
   const dynamic=String(dynamicTableSource||'');
   const files=normalizeSourceDerivedColumns(maybeDynamic(dynamic,'TorrentFilesTable',context)||legacyStaticColumns(contentSource,'prop_files',legacyFilesSource,'file',context),legacyFilesSource,'file');
-  const trackers=normalizeSourceProjectedColumns(maybeDynamic(dynamic,'TorrentTrackersTable',context)||legacyStaticColumns(contentSource,'prop_trackers',legacyTrackersSource,'tracker',context),legacyTrackersSource,'tracker');
+  const trackers=annotateTrackerNegativeSentinels(normalizeSourceProjectedColumns(maybeDynamic(dynamic,'TorrentTrackersTable',context)||legacyStaticColumns(contentSource,'prop_trackers',legacyTrackersSource,'tracker',context),legacyTrackersSource,'tracker'),legacyTrackersSource,context);
   const peers=maybeDynamic(dynamic,'TorrentPeersTable',context);
   const webseeds=maybeDynamic(dynamic,'TorrentWebseedsTable',context)||legacyStaticColumns(contentSource,'prop_webseeds',legacyWebseedsSource,'webseed',context);
   return{tabs,tabOrder,propertyGroups,propertyLabels,propertyLayout,tables:{files:requireColumns(files,'Files',context),trackers:requireColumns(trackers,'Trackers',context),peers:requireColumns(peers,'Peers',context),webseeds:requireColumns(webseeds,'Web Seeds',context)}};
@@ -69,6 +97,6 @@ export function torrentDetailTranslationRefs(detailUi){const out={};function add
   for(const [key,ref] of Object.entries(detailUi?.tabs||{}))add(`detail.tab.${key}`,ref);
   for(const [key,ref] of Object.entries(detailUi?.propertyGroups||{}))add(`detail.group.${key}`,ref);
   for(const [key,ref] of Object.entries(detailUi?.propertyLabels||{}))add(`detail.property.${key}`,ref);
-  for(const [surface,columns] of Object.entries(detailUi?.tables||{}))for(const column of columns||[])add(`detail.${surface}.${column.key}`,column.translation);
+  for(const [surface,columns] of Object.entries(detailUi?.tables||{}))for(const column of columns||[]){add(`detail.${surface}.${column.key}`,column.translation);add(`detail.${surface}.${column.key}.sentinel.negative`,column?.notApplicableWhenNegative?.translation);}
   return out;
 }
