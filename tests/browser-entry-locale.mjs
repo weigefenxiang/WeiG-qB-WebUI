@@ -72,12 +72,15 @@ async function verify(pathname,item){
     const page=await context.newPage(),errors=[];
     page.on('pageerror',error=>errors.push(String(error?.stack||error)));
     await page.goto(new URL(pathname,base).toString(),{waitUntil:'domcontentloaded',timeout:30000});
+    await page.waitForFunction(()=>document.querySelector('link[rel="icon"]')?.dataset.weigFavicon==='circular');
     const facts=await page.evaluate(()=>({
       lang:document.documentElement.lang,
       title:String(document.querySelector('#login-title')?.textContent||'').trim(),
       brand:String(document.querySelector('.brand strong')?.textContent||'').trim(),
       logo:String(document.querySelector('.mark img')?.getAttribute('src')||''),
       favicon:String(document.querySelector('link[rel="icon"]')?.getAttribute('href')||''),
+      faviconMode:String(document.querySelector('link[rel="icon"]')?.dataset.weigFavicon||''),
+      faviconSource:String(document.querySelector('link[rel="icon"]')?.dataset.weigFaviconSource||''),
       languages:[...(navigator.languages||[])],
       language:String(navigator.language||''),
       options:[...document.querySelectorAll('#login-language option')].map(option=>({value:option.value,label:option.textContent})),
@@ -93,7 +96,9 @@ async function verify(pathname,item){
     assert.equal(facts.title,item.title,`${pathname} ${item.locale}: entry copy mismatch ${JSON.stringify(facts)}`);
     assert.equal(facts.brand,'WeiG qB WebUI',`${pathname}: page brand must remain unchanged`);
     assert.equal(facts.logo,'assets/Wei.G.png',`${pathname}: page logo must remain on Wei.G.png`);
-    assert.equal(facts.favicon,'assets/Wei.G.png?v=__WEIG_GIT_SHA__',`${pathname}: browser favicon must use the canonical Wei.G.png asset`);
+    assert.equal(facts.faviconMode,'circular',`${pathname}: favicon presentation must be circular`);
+    assert.equal(facts.faviconSource,'assets/Wei.G.png?v=__WEIG_GIT_SHA__',`${pathname}: favicon derivation must keep the canonical Wei.G.png source`);
+    assert.ok(facts.favicon.startsWith('data:image/png;base64,'),`${pathname}: circular favicon must be derived in memory instead of a second physical asset`);
     assert.ok(facts.languages.length&&facts.language,`${pathname} ${item.locale}: browser language signals missing`);
     assert.deepEqual(facts.options.map(x=>x.label),['English','简中','繁中','日本語','한국어','Deutsch','Français','Español','Português','Русский'],`${pathname}: login language inventory drifted`);
     assert.equal(facts.versionPanel,0,`${pathname}: retired pre-auth qB/WebAPI/Wei.G version panel must stay absent`);
@@ -152,4 +157,4 @@ try{
   await browser.close();
   await new Promise(resolve=>server.close(resolve));
 }
-console.log('Entry locale browser acceptance passed: Login and Settings share one Select geometry owner; trigger width follows the current value, menu width follows the longest option, fitting menus avoid needless scrollbars, and locale persistence/typography remain canonical.');
+console.log('Entry locale browser acceptance passed: circular favicon keeps one canonical PNG source; Login and Settings share one Select geometry owner; trigger width follows the current value, menu width follows the longest option, fitting menus avoid needless scrollbars, and locale persistence/typography remain canonical.');
