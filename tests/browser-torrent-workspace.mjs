@@ -30,6 +30,7 @@ const torrents=Array.from({length:55},(_,i)=>{
 });
 const mime={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.ico':'image/x-icon'};
 const assert=(ok,msg)=>{if(!ok)throw new Error(msg);};
+function nativeQbtSource(value){return String(value||'').replace(/QBT_TR\(([\s\S]*?)\)QBT_TR\[CONTEXT=([^\]]+)\]/g,(_all,source)=>source);}
 async function waitForDataViewportIdle(page,settleMs=0){
   if(settleMs>0)await page.waitForTimeout(settleMs);
   await page.waitForFunction(()=>{const list=document.getElementById('torrent-list'),v=window.WeiG?.AppState?.viewport;return !!list&&!!v&&!v._scrolling&&!v._hasPendingItems&&!list.__weigDataViewportScrollIdleTimer;});
@@ -134,6 +135,7 @@ const server=http.createServer(async(req,res)=>{try{
   const url=new URL(req.url,`http://${host}:${port}`),m=url.pathname.match(/^\/(legacy|modern)(?:\/(.*))?$/);if(!m){res.writeHead(404);return res.end('not found');}
   const v=variants[m[1]],rel=m[2]||'';if(rel.startsWith('api/v2/'))return await api(req,res,v,rel.slice(7),url);
   if(rel==='data/qb-releases.json')return json(res,profiles);
+  if(rel==='data/qb-settings-native.txt'){const asset=await readWebuiStatic([root,publicRoot],rel);return text(res,nativeQbtSource(asset.body));}
   if(rel==='weigg-install.json')return json(res,{version:productVersion,gitSha:'workspace-fixture',qbPath:'/config/weigg-qb-webui',hostPath:'/srv/qb/config/weigg-qb-webui'});
   const requested=rel||'index.html',{file,body}=await readWebuiStatic([root,publicRoot],requested);res.writeHead(200,{'content-type':mime[path.extname(file).toLowerCase()]||'application/octet-stream','cache-control':'no-store'});res.end(body);
 }catch(e){res.writeHead(e?.code==='ENOENT'?404:500,{'content-type':'text/plain; charset=utf-8'});res.end(String(e));}});
