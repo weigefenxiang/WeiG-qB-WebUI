@@ -14,6 +14,19 @@ assert.deepEqual(addUi['add.files'],{source:'Add Torrent File...',context:'MainW
 assert.deepEqual(addUi['add.submit'],{source:'Add Torrent',context:'AddNewTorrentDialog'});
 assert.ok(Object.keys(addUi).some(key=>key.startsWith('add.copy.')),'Add Torrent source family must be retained in qB-owned runtime copy facts');
 
+const filterUi=extractQbOwnedUiFacts({
+  filtersSource:'<span>QBT_TR(Status)QBT_TR[CONTEXT=TransferListFiltersWidget]</span><span>QBT_TR(Categories)QBT_TR[CONTEXT=TransferListFiltersWidget]</span><li id="stalled_downloading_filter"><span>QBT_TR(Stalled Downloading (0))QBT_TR[CONTEXT=StatusFilterWidget]</span></li>',
+  clientSource:'updateFilter("stalled_downloading", "QBT_TR(Stalled Downloading (%1))QBT_TR[CONTEXT=StatusFilterWidget]"); QBT_TR(All)QBT_TR[CONTEXT=CategoryFilterModel] QBT_TR(Uncategorized)QBT_TR[CONTEXT=CategoryFilterModel] QBT_TR(All)QBT_TR[CONTEXT=TagFilterModel] QBT_TR(Untagged)QBT_TR[CONTEXT=TagFilterModel]',
+  dynamicTableSource:'this.columns["status"].updateTd = function() { switch(row.full_data.state) { case "moving": status = "QBT_TR(Moving)QBT_TR[CONTEXT=TransferListDelegate]"; } }; // priority'
+});
+assert.deepEqual(filterUi['filter.stalled_downloading'],{source:'Stalled Downloading (%1)',context:'StatusFilterWidget'},'visible status filter copy must come from the native runtime updater instead of static zero-count bootstrap markup');
+assert.deepEqual(filterUi['facet.category.all'],{source:'All',context:'CategoryFilterModel'});
+assert.deepEqual(filterUi['facet.category.uncategorized'],{source:'Uncategorized',context:'CategoryFilterModel'});
+assert.deepEqual(filterUi['facet.tag.all'],{source:'All',context:'TagFilterModel'});
+assert.deepEqual(filterUi['facet.tag.untagged'],{source:'Untagged',context:'TagFilterModel'});
+assert.equal(filterUi['sidebar.trackers'],undefined,'missing upstream Trackers surface must remain absent');
+assert.equal(filterUi['filter.moving'],undefined,'torrent state copy must not be promoted into a native filter when the release has no moving filter');
+
 const routeUi=extractQbOwnedUiFacts({indexSource:'<span>QBT_TR(RSS)QBT_TR[CONTEXT=MainWindow]</span><span>QBT_TR(Execution Log)QBT_TR[CONTEXT=MainWindow]</span><img title="QBT_TR(Options)QBT_TR[CONTEXT=OptionsDialog]">'});
 assert.deepEqual(routeUi['route.rss'],{source:'RSS',context:'MainWindow'});
 assert.deepEqual(routeUi['route.logs'],{source:'Execution Log',context:'MainWindow'});

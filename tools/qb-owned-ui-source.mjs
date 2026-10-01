@@ -53,6 +53,14 @@ function torrentStatusRefs(source){
   }
   return out;
 }
+function runtimeStatusFilterRefs(source){
+  const out={};
+  for(const match of String(source||'').matchAll(/updateFilter\s*\(\s*["']([^"']+)["']\s*,\s*["'](QBT_TR\([\s\S]*?\)QBT_TR\[CONTEXT=[^\]]+\])["']\s*\)/g)){
+    const name=String(match[1]||''),ref=qbtTr(match[2]);
+    if(name&&ref&&!out[name])out[name]=ref;
+  }
+  return out;
+}
 
 export function extractQbOwnedUiFacts({preferencesSource='',toolbarSource='',filtersSource='',dynamicTableSource='',clientSource='',addTorrentSource='',downloadSource='',indexSource=''}={}){
   const out={},toolbar=toolbarSource||preferencesSource;
@@ -63,18 +71,21 @@ export function extractQbOwnedUiFacts({preferencesSource='',toolbarSource='',fil
   add(out,'sidebar.categories',exactRef(filtersSource,'Categories','TransferListFiltersWidget'));
   add(out,'sidebar.tags',exactRef(filtersSource,'Tags','TransferListFiltersWidget'));
   add(out,'sidebar.trackers',exactRef(filtersSource,'Trackers','TransferListFiltersWidget'));
+  add(out,'facet.category.all',exactRef(clientSource,'All','CategoryFilterModel'));
+  add(out,'facet.category.uncategorized',exactRef(clientSource,'Uncategorized','CategoryFilterModel'));
+  add(out,'facet.tag.all',exactRef(clientSource,'All','TagFilterModel'));
+  add(out,'facet.tag.untagged',exactRef(clientSource,'Untagged','TagFilterModel'));
   add(out,'route.rss',firstSourceRef([indexSource],['RSS','RSS Reader']));
   add(out,'route.logs',firstSourceRef([indexSource],['Execution Log','Log']));
   add(out,'route.settings',firstSourceRef([indexSource],['Options','&Options...','Options...','&Options']));
-  const filters=['all','downloading','seeding','completed','resumed','paused','running','stopped','active','inactive','stalled','stalled_uploading','stalled_downloading','checking','moving','errored'];
-  for(const name of filters)add(out,`filter.${name}`,itemRef(filtersSource,`${name}_filter`));
+  const filters=['all','downloading','seeding','completed','resumed','paused','running','stopped','active','inactive','stalled','stalled_uploading','stalled_downloading','checking','moving','errored'],runtimeFilters=runtimeStatusFilterRefs(clientSource);
+  for(const name of filters)add(out,`filter.${name}`,runtimeFilters[name]||itemRef(filtersSource,`${name}_filter`));
   for(const item of extractTrackerFilterFacts(clientSource))add(out,`tracker.filter.${item.id}`,item.copy);
   addTorrentOwnedUiFacts(out,{addTorrentSource,downloadSource,indexSource});
   if(dynamicTableSource){
     for(const column of extractTorrentTableColumns(dynamicTableSource,'qB dynamicTable owned UI'))if(column.translation)add(out,`column.${column.key}`,column.translation);
     const states=torrentStatusRefs(dynamicTableSource);
     for(const [state,ref] of Object.entries(states))add(out,`state.${state}`,ref);
-    if(!out['filter.moving']&&states.moving)add(out,'filter.moving',states.moving);
   }
   return out;
 }
