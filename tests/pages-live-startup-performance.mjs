@@ -52,7 +52,7 @@ assert.equal(manifest.copyProfiles?.length,catalog.length,'runtime copy shard ma
 assert.ok(Buffer.byteLength(copyShard,'utf8')<2*1024*1024,'qB 5.2.3 runtime copy shard must stay below 2 MiB');
 assert.ok(Buffer.byteLength(copyShard,'utf8')<Buffer.byteLength(fullRegistry,'utf8')*.45,'selected qB copy shard must materially reduce the full registry payload');
 assert.equal((copyShard.match(/^@@PROFILE\t/gm)||[]).length,1,'selected runtime copy shard must contain exactly one qB profile');
-assert.ok(copyShard.includes(`@@PROFILE\t${catalogProfile.sourceSha}\t5.2.3\t`),'selected runtime copy shard must bind to exact source SHA');
+const deployedProfileLine=copyShard.split(/\r?\n/).find(line=>line.startsWith('@@PROFILE\t'));assert.ok(deployedProfileLine,'selected runtime copy shard must expose its profile identity row');const deployedProfileFields=deployedProfileLine.split('\t');assert.equal(deployedProfileFields[1],catalogProfile.sourceSha);assert.equal(deployedProfileFields[2],'5.2.3');
 
 const browser=await launchBrowser();
 try{
@@ -80,7 +80,7 @@ try{
   });
   assert.equal(runtimeCopy.status,200,'app-level qB copy request must succeed through the Service Worker');
   assert.equal((runtimeCopy.text.match(/^@@PROFILE\t/gm)||[]).length,1,'app-level qB copy request must receive the selected profile shard, not the full registry');
-  assert.ok(runtimeCopy.text.includes(`@@PROFILE\t${catalogProfile.sourceSha}\t5.2.3\t`),'app-level qB copy request must receive the exact qB 5.2.3 shard');
+  const runtimeProfileLine=runtimeCopy.text.split(/\r?\n/).find(line=>line.startsWith('@@PROFILE\t'));assert.ok(runtimeProfileLine,'app-level qB copy response must expose its selected profile identity row');const runtimeProfileFields=runtimeProfileLine.split('\t');assert.equal(runtimeProfileFields[1],catalogProfile.sourceSha);assert.equal(runtimeProfileFields[2],'5.2.3');
   assert.ok(Buffer.byteLength(runtimeCopy.text,'utf8')<Buffer.byteLength(fullRegistry,'utf8')*.45,'app-level qB copy response must remain materially smaller than the deployed full evidence registry');
 
   await page.waitForFunction(async sha=>{
