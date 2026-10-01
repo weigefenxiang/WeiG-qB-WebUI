@@ -153,6 +153,50 @@ try{
   const context=await browser.newContext({viewport:{width:1366,height:900},locale:'en-US'}),page=await context.newPage(),errors=[];
   page.on('pageerror',error=>errors.push(String(error)));page.on('console',message=>{if(message.type()==='error'&&!/favicon|Wei\.G\.ico/i.test(message.text()))errors.push(message.text());});
   await page.goto('http://'+host+':'+port+'/en/#/',{waitUntil:'networkidle'});await page.waitForSelector('#torrent-list');await openSettings(page);
+
+  // A38: exercise the visible Update Check surface with deterministic source/dev identities.
+  await selectTab(page,'about');
+  const aboutIdentity=await page.evaluate(()=>{const rows=[...document.querySelectorAll('#settings-content .fact-row')],row=rows.find(node=>String(node.querySelector('strong')?.textContent||'').trim()==='Git SHA');return{value:String(row?.querySelector('.fact-value')?.textContent||'').trim(),text:String(document.getElementById('settings-content')?.textContent||'')};});
+  assert(aboutIdentity.value==='—'&&!aboutIdentity.text.includes('__WEIG_GIT_SHA__'),'About must not expose the source Git SHA sentinel as a fake materialized build identity: '+JSON.stringify(aboutIdentity));
+  await page.evaluate(version=>{
+    window.__a38NativeFetch=window.fetch;
+    const nativeFetch=window.fetch.bind(window),devSha='0123456789abcdef0123456789abcdef01234567';
+    window.fetch=async function(input,init){
+      const raw=typeof input==='string'?input:String(input&&input.url||input||''),url=new URL(raw,location.href);
+      if(url.pathname.endsWith('/weig-install.json'))return new Response(JSON.stringify({version,gitSha:'__WEIG_GIT_SHA__',channel:'source',installer:'source'}),{status:200,headers:{'content-type':'application/json'}});
+      if(url.href==='https://api.github.com/repos/weigefenxiang/WeiG-qB-WebUI/releases/latest')return new Response(JSON.stringify({tag_name:'v'+version}),{status:200,headers:{'content-type':'application/json'}});
+      if(url.href==='https://weigefenxiang.github.io/WeiG-qB-WebUI/metadata/dev.json')return new Response(JSON.stringify({productVersion:version,exactSha:devSha}),{status:200,headers:{'content-type':'application/json'}});
+      return nativeFetch(input,init);
+    };
+  },productVersion);
+  const updateButton=page.locator('#settings-content [data-update-owner="canonical"] .fact-action');
+  assert(await updateButton.count()===1,'About must expose exactly one canonical Update Check action');
+  await updateButton.click();
+  const updateDialog=page.locator('dialog.update-check-dialog[open]');
+  await updateDialog.waitFor({state:'visible'});
+  await page.waitForFunction(()=>document.querySelectorAll('dialog.update-check-dialog[open] .update-check__summary .update-check__row').length===3);
+  const updateFacts=await updateDialog.evaluate(dialog=>({
+    rows:[...dialog.querySelectorAll('.update-check__summary .update-check__row')].map(row=>String(row.textContent||'').replace(/\s+/g,' ').trim()),
+    footer:[...dialog.querySelectorAll('.update-check__footer button')].map(button=>String(button.textContent||'').trim()),
+    text:String(dialog.textContent||'')
+  }));
+  assert(updateFacts.rows.length===3,'Update Check must render Current / Stable / Dev identity rows: '+JSON.stringify(updateFacts));
+  assert(updateFacts.rows[0].includes(productVersion)&&updateFacts.rows[0].includes('Source (unmaterialized)')&&!updateFacts.rows[0].includes('__WEIG_GIT_SHA__'),'Current Update identity must clearly expose unmaterialized source state without a sentinel SHA: '+JSON.stringify(updateFacts.rows));
+  assert(updateFacts.rows[1].includes('Stable')&&updateFacts.rows[1].includes(productVersion)&&updateFacts.rows[1].includes('Current'),'Stable row must compare against the canonical product version: '+JSON.stringify(updateFacts.rows));
+  assert(updateFacts.rows[2].includes('Dev')&&updateFacts.rows[2].includes(productVersion)&&updateFacts.rows[2].includes('01234567')&&updateFacts.rows[2].includes('Available'),'Dev row must expose exact short-SHA identity separately from Current: '+JSON.stringify(updateFacts.rows));
+  assert(updateFacts.footer.includes('Dev install')&&updateFacts.footer.includes('Rollback method'),'Update footer must use explicit Dev-install and rollback-method wording: '+JSON.stringify(updateFacts.footer));
+  const devInfo=updateDialog.locator('.update-check__summary .update-check__row').nth(2).locator('.icon-btn');
+  assert(await devInfo.count()===1,'Dev row must expose one risk/info affordance');
+  await devInfo.click();
+  const devWarning=String(await updateDialog.locator('.update-check__details').textContent()||'').replace(/\s+/g,' ').trim();
+  assert(devWarning.includes('Development build')&&devWarning.includes('latest changes')&&devWarning.includes('Stable'),'Dev info must explain latest-build instability and the Stable alternative: '+JSON.stringify(devWarning));
+  await updateDialog.locator('.update-check__footer button').filter({hasText:'Rollback method'}).click();
+  const rollbackCopy=String(await updateDialog.locator('.update-check__details').textContent()||'').replace(/\s+/g,' ').trim();
+  assert(rollbackCopy.includes('Rollback method (return to the previous version)')&&rollbackCopy.includes('Linux / NAS')&&rollbackCopy.includes('Windows'),'Rollback panel must describe returning to the previous version and expose both platform commands: '+JSON.stringify(rollbackCopy));
+  await updateDialog.locator('.update-check__footer .btn--primary').click();
+  await updateDialog.waitFor({state:'detached'});
+  await page.evaluate(()=>{if(window.__a38NativeFetch){window.fetch=window.__a38NativeFetch;delete window.__a38NativeFetch;}});
+  await selectTab(page,'weig');
   await page.waitForFunction(()=>{const language=document.querySelector('[data-setting-key="weig_language"] .ui-select[data-ui-select-intrinsic-value="1"]'),timezone=document.querySelector('[data-setting-key="weig_timezone"] .ui-select[data-ui-select-intrinsic-value="1"]');return !!language&&!!timezone&&parseFloat(language.style.width)>0&&parseFloat(timezone.style.width)>0;});
   const languageTrigger=page.locator('[data-setting-key="weig_language"] .ui-select__trigger');
   const timezoneTrigger=page.locator('[data-setting-key="weig_timezone"] .ui-select__trigger');
@@ -222,5 +266,5 @@ try{
   const zhFacts=await zhPage.evaluate(()=>{const S=WeiG.SettingsSchema,I=WeiG.I18n,all=[];for(const tab of S.nativeSurfaces()){const graph=S.controlGraph(tab);for(const field of graph&&graph.fieldsets||[])all.push(field.title,...(field.legendControls||[]).flatMap(item=>[item.label,item.adornment,item.suffix]));for(const row of graph&&graph.rows||[])for(const item of row.items||[])all.push(item.label,item.adornment,item.suffix,...(item.items||[]));}const refs=all.filter(ref=>ref&&ref.source),find=pattern=>refs.find(ref=>pattern.test(String(ref.source||'')));const resolve=ref=>ref?I.qbSourceText(ref,ref.source):null;const random=find(/^Random$/i),listening=find(/Listening Port/i),experimental=find(/I2P.*Experimental/i),i2pRefs=['I2P inbound quantity:','I2P outbound quantity:','I2P inbound length:','I2P outbound length:'].map(source=>refs.find(ref=>ref.source===source)).filter(Boolean);return{locale:I.getQbLocale(),randomSource:random&&random.source,random:resolve(random),listeningSource:listening&&listening.source,listening:resolve(listening),experimentalSource:experimental&&experimental.source,experimental:resolve(experimental),i2p:i2pRefs.map(ref=>({source:ref.source,value:resolve(ref)}))};});assert(zhFacts.locale==='zh_CN','zh_CN: qB locale owner drifted: '+JSON.stringify(zhFacts));assert(zhFacts.random&&zhFacts.random!==zhFacts.randomSource,'zh_CN: Random helper fell back to English: '+JSON.stringify(zhFacts));assert(zhFacts.listening&&zhFacts.listening!==zhFacts.listeningSource,'zh_CN: Listening Port fell back to English: '+JSON.stringify(zhFacts));if(zhFacts.experimentalSource)assert(zhFacts.experimental&&!/Experimental/i.test(zhFacts.experimental),'zh_CN: I2P structural title retained raw Experimental text: '+JSON.stringify(zhFacts));assert(zhFacts.i2p.length===4&&zhFacts.i2p.every(item=>item.value&&item.value!==item.source),'zh_CN: exact I2P labels did not resolve through official qB copy: '+JSON.stringify(zhFacts.i2p));
   await selectTab(zhPage,'connection');const visibleI2P=await zhPage.evaluate(()=>{const S=WeiG.SettingsSchema,g=S.controlGraph('connection'),field=(g&&g.fieldsets||[]).find(item=>String(item&&item.title&&item.title.source||'')==='I2P (Experimental)');const node=field&&[...document.querySelectorAll('[data-native-fieldset]')].find(item=>item.dataset.nativeFieldset===field.id);return String(node&&node.querySelector(':scope > .settings-section__header h2')?.textContent||'').trim();});assert(visibleI2P&&visibleI2P!=='I2P (Experimental)'&&!/Experimental/i.test(visibleI2P),'zh_CN: visible I2P fieldset did not use exact official translation: '+JSON.stringify(visibleI2P));const leakedEnglish=await zhPage.evaluate(()=>{const exact=['Behavior','Random','Listening Port'];const nodes=[...document.querySelectorAll('#settings-tabs button,.setting-title,.setting-inline-label,.setting-inline-action,.settings-section__header h2,.ui-select__value')].filter(node=>{const r=node.getBoundingClientRect(),s=getComputedStyle(node);return r.width>0&&r.height>0&&s.display!=='none'&&s.visibility!=='hidden';});return nodes.map(node=>String(node.textContent||'').trim()).filter(value=>exact.includes(value));});assert(leakedEnglish.length===0,'zh_CN: obvious source-owned English fallback remained visible: '+JSON.stringify(leakedEnglish));for(const tab of seeded.tabs){await selectTab(zhPage,tab);await auditTab(zhPage,tab);}assert(zhErrors.length===0,'zh_CN Settings browser errors: '+zhErrors.join(' | '));await zhContext.close();
 
-  console.log('A3 Settings browser fidelity passed: real pointer Selects, source-action RSS, write-only Password, dynamic network options, zero-padded Scheduler display, layout geometry, verified save/reread, official zh_CN copy, and exhaustive qB 5.2.3 graph audit.');
+  console.log('A3/A38 Settings browser fidelity passed: Update identity/Dev warning/rollback wording plus real pointer Selects, source-action RSS, write-only Password, dynamic network options, verified save/reread, official zh_CN copy, and exhaustive qB 5.2.3 graph audit.');
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}
