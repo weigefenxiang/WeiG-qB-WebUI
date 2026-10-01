@@ -313,10 +313,13 @@ try{
       assert(!trackerOptions.some(item=>String(item.value||'').startsWith('special:')||String(item.value||'').startsWith('host:')),name+': qB 4.1 must not invent later Tracker facet members '+JSON.stringify(trackerOptions));
     }
 
-    // Connection help uses existing TransferRuntime snapshot and no retired Network summary.
+    // Connection help consumes the canonical TransferRuntime metadata snapshot; refresh that owner explicitly
+    // instead of racing its background 30 s cadence.
     await page.waitForFunction(()=>document.getElementById('status-connection')?.dataset.connection==='firewalled');
+    await page.evaluate(()=>WeiG.TransferRuntime.refreshMetadata());
+    await page.waitForFunction(()=>{const s=WeiG.TransferRuntime.snapshot();return s.dhtNodes===12&&s.peers===4;},null,{timeout:5000});
     await page.locator('#status-connection').click();await page.waitForSelector('#connection-dialog[open]');
-    await page.waitForFunction(()=>{const t=document.querySelector('#connection-dialog')?.textContent||'';return t.includes('DHT 12')&&t.includes('Peers 4');},{timeout:5000});
+    await page.waitForFunction(()=>{const t=document.querySelector('#connection-dialog')?.textContent||'';return t.includes('DHT 12')&&t.includes('Peers 4');},null,{timeout:5000});
     await page.locator('#connection-dialog .connection-dialog__done').click();
 
     // Mobile: same Sidebar facets, same toolbar moved beside pager, compact controls, two-line cards, no summary leaves.
