@@ -271,6 +271,15 @@ try{
     page.on('pageerror',error=>pageErrors.push(error?.stack||error?.message||String(error)));
 
     const source=await openVirtualSession(page,{branch:'dev',qb:'5.2.3',count:120,scenario:'mixed',seed:'pages-live-persisted-migration-source',clean:true});
+    await page.waitForSelector('#transfer-capsule .transfer-runtime-capsule__stats');
+    const transferEntry=await page.evaluate(()=>{const cap=document.getElementById('transfer-capsule'),button=cap?.querySelector('.transfer-runtime-capsule__stats');return{duplicate:!!cap?.querySelector('.transfer-runtime-capsule__statistics'),text:String(button?.textContent||'').trim()};});
+    assert.equal(transferEntry.duplicate,false,'deployed dev statusbar must not restore a duplicate Statistics text entry');
+    await page.locator('#transfer-capsule .transfer-runtime-capsule__stats').click();
+    await page.waitForSelector('#transfer-stats-dialog[open]');
+    const deployedStatistics=await page.evaluate(()=>({actual:String(document.querySelector('#transfer-stats-dialog .dialog__head h2')?.textContent||'').trim(),expected:String(WeiG.I18n.t('transfer.statisticsTitle')||'').trim(),native:!!document.querySelector('#transfer-stats-dialog [data-native-statistics]')}));
+    assert.ok(deployedStatistics.expected&&deployedStatistics.actual===deployedStatistics.expected&&deployedStatistics.native,`deployed dev Statistics Dialog heading/native body ownership drifted: ${JSON.stringify(deployedStatistics)}`);
+    await page.locator('#transfer-stats-dialog .dialog__head .icon-btn').click();
+    await page.waitForFunction(()=>!document.getElementById('transfer-stats-dialog')?.open);
     const legacySim=`pages-live-persisted-realism-v1-${Date.now()}`;
     const seeded=await page.evaluate(async({sourceSim,legacySim})=>{
       const PT=['1+1DBits','nn-team','BeyondH1 Ɔ','RE1Ɔ','TheGeeks','B1tMe','PT1 Ɔ','Gaze11eGames','JP0psuk1'];
