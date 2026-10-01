@@ -27,7 +27,7 @@ for(const rel of ['webui/public/index.html','webui/public/login.html','webui/pri
 
 const brand=read('webui/private/scripts/brand.js'),css=read('webui/private/css/brand.css'),favicon=read(faviconOwnerPath),privateIndex=read('webui/private/index.html');
 assert.match(brand,/var ICON='assets\/Wei\.G\.png'/);
-assert.match(brand,/function ensureFavicon\(\)\{var owner=global\.WeiGBrandFavicon/,'private Brand must delegate favicon presentation instead of owning a second renderer');
+assert.doesNotMatch(brand,/ensureFavicon|WeiGBrandFavicon/,'private Brand must not keep a duplicate favicon bridge or apply caller');
 assert.match(brand,/function cloneMark\(size\)/,'Header/About marks must share one Brand owner');
 assert.doesNotMatch(brand,/shine|spark|orbit-spark/,'retired broad shine/spark motion vocabulary returned');
 assert.doesNotMatch(css,/ambientShine|ambientSpark|ambient-mark__shine|ambient-mark__spark|is-ambient-shine|is-ambient-spark/,'retired shine/spark CSS returned');
