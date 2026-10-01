@@ -24,6 +24,15 @@ await page.locator('#filter-nav [data-filter="all"]').click();await page.waitFor
   await page.goto(`http://${host}:${port}/legacy467/#/`,{waitUntil:'domcontentloaded'});
   await page.waitForSelector('#torrent-list [data-hash]');
   await page.waitForFunction(()=>WeiG.AppState?.catalogReady&&WeiG.CapabilityRegistry?.isCertified()&&WeiG.CapabilityRegistry.releaseIdentity().qbVersion==='4.6.7',{timeout:10000});
+  await page.waitForSelector('#transfer-capsule .transfer-runtime-capsule__stats');
+  const transferEntry=await page.evaluate(()=>{const cap=document.getElementById('transfer-capsule'),button=cap?.querySelector('.transfer-runtime-capsule__stats');return{labelNode:!!cap?.querySelector('.transfer-runtime-capsule__statistics'),text:String(cap?.textContent||'').trim(),buttonText:String(button?.textContent||'').trim()};});
+  assert(!transferEntry.labelNode&&!/Statistics|统计/.test(transferEntry.buttonText),'statusbar transfer capsule must contain realtime rates only, without a duplicate Statistics label: '+JSON.stringify(transferEntry));
+  await page.locator('#transfer-capsule .transfer-runtime-capsule__stats').click();
+  await page.waitForSelector('#transfer-stats-dialog[open]');
+  const statisticsDialog=await page.evaluate(()=>{const dialog=document.getElementById('transfer-stats-dialog'),title=dialog?.querySelector('.dialog__head h2'),native=dialog?.querySelector('[data-native-statistics]');return{title:String(title?.textContent||'').trim(),native:!!native,open:!!dialog?.open};});
+  assert(statisticsDialog.open&&statisticsDialog.title==='统计'&&statisticsDialog.native,'zh-CN Statistics must live in the Dialog header left of the close control and use localized WeiG-owned heading copy: '+JSON.stringify(statisticsDialog));
+  await page.locator('#transfer-stats-dialog .dialog__head .icon-btn').click();
+  await page.waitForFunction(()=>!document.getElementById('transfer-stats-dialog')?.open);
   await page.locator('#add-btn').click();
   await page.waitForSelector('#add-dialog[open]');
   const audit=await page.evaluate(()=>{
