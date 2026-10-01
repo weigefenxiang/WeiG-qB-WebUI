@@ -81,6 +81,7 @@ const detailUi=()=>({
     webseeds:[{key:'url',caption:'URL',defaultWidth:500,defaultVisible:true,translation:ref('URL','HttpServer'),dataProperties:['url']}]
   }
 });
+const statisticsUi=()=>({groups:[{key:'user-statistics',translation:ref('User statistics','StatsDialog'),fields:[{id:'AlltimeUL',dataProperty:'alltime_ul',format:'bytes',translation:ref('All-time upload:','StatsDialog')}]}]});
 
 const detailWithMixed=detailUi();
 detailWithMixed.controls={filePriority:{valueType:'integer',sourceKind:'upstream-createPriorityCombo',options:[{value:'1',translation:ref('Normal','PropListDelegate')},{value:'-1',translation:ref('Mixed','PropListDelegate'),disabled:true}]}};
@@ -88,7 +89,7 @@ assert.deepEqual(validateDetailUi(detailWithMixed,'5.2.3').controls.filePriority
 const badDisabled=structuredClone(detailWithMixed);badDisabled.controls.filePriority.options[1].disabled='true';
 assert.throws(()=>validateDetailUi(badDisabled,'5.2.3'),/disabled is invalid/,'Detail control disabled provenance must fail closed instead of coercing non-boolean values');
 const trackerFilters=[{id:'all',copy:ref('All (%1)','TrackerFiltersList')},{id:'trackerless',copy:ref('Trackerless (%1)','TrackerFiltersList')}];
-const sourceProfile=(qbVersion,sourceSha,sets)=>({qbVersion,sourceSha,webuiLocales:[{value:'en'},{value:'de'}],settingsUiSource:'qb-upstream-preferences-ui',settingsUiMappedPreferences:1,settingsUiTotalPreferences:1,settingsUi:{locale:{controlId:'locale_select',title:{source:'Language:',context:'OptionsDialog'}}},qbOwnedUiSource:'qb-upstream-webui-source-context',qbOwnedUi:{'column.name':{source:'Name',context:'TransferListModel'},'tracker.filter.all':ref('All (%1)','TrackerFiltersList'),'tracker.filter.trackerless':ref('Trackerless (%1)','TrackerFiltersList')},settingsTranslations:{en:hEn,de:hDe},settingsTranslationSets:sets,torrentTableColumns:[nativeColumn('name','Name'),nativeColumn('size','Size',false)],trackerFilters,trackerFacetMode:qbVersion==='4.1.0'?'none':'hostname',torrentDetailUi:detailUi()});
+const sourceProfile=(qbVersion,sourceSha,sets)=>({qbVersion,sourceSha,webuiLocales:[{value:'en'},{value:'de'}],settingsUiSource:'qb-upstream-preferences-ui',settingsUiMappedPreferences:1,settingsUiTotalPreferences:1,settingsUi:{locale:{controlId:'locale_select',title:{source:'Language:',context:'OptionsDialog'}}},qbOwnedUiSource:'qb-upstream-webui-source-context',qbOwnedUi:{'column.name':{source:'Name',context:'TransferListModel'},'tracker.filter.all':ref('All (%1)','TrackerFiltersList'),'tracker.filter.trackerless':ref('Trackerless (%1)','TrackerFiltersList')},settingsTranslations:{en:hEn,de:hDe},settingsTranslationSets:sets,torrentTableColumns:[nativeColumn('name','Name'),nativeColumn('size','Size',false)],trackerFilters,trackerFacetMode:qbVersion==='4.1.0'?'none':'hostname',torrentDetailUi:detailUi(),statisticsUi:statisticsUi()});
 const frozen=[{qbVersion:'4.1.0',sourceSha:shaA},{qbVersion:'5.2.3',sourceSha:shaB}];
 const enriched=[sourceProfile('4.1.0',shaA,{[hEn]:setEn,[hDe]:setDe}),sourceProfile('5.2.3',shaB,{})];
 const recoveryEvidence={schemaVersion:1,source:'qb-official-ts-full-recovery-votes',releases:[{qbVersion:'4.1.0',sourceSha:shaA,locale:'de',sourceLanguage:'de',translationSourceSha256:'1'.repeat(64)},{qbVersion:'5.2.3',sourceSha:shaB,locale:'de',sourceLanguage:'de',translationSourceSha256:'2'.repeat(64)}],locales:[{locale:'de',messages:[{context:'OptionsDialog',source:'Language:',candidates:[{translation:'Sprache:',numerus:false,count:2,latestQbVersion:'5.2.3'}]}]}]};
@@ -105,6 +106,7 @@ assert.equal(lkg.profiles[1].torrentDetailUi.tabs.webseeds.source,'HTTP Sources'
 assert.deepEqual(lkg.profiles[1].torrentDetailUi.tabOrder,['overview','trackers','peers','webseeds','files'],'LKG must preserve the source-proven Detail tab order');
 assert.deepEqual(lkg.profiles[1].torrentDetailUi.propertyLayout[0].fields,[{id:'eta',valueSource:'properties',dataProperties:['eta']}],'LKG must preserve source-proven General group/order/API bindings');
 assert.equal(lkg.profiles[1].torrentDetailUi.tables.files[0].defaultWidth,300,'LKG must preserve native detail column defaults when source provides them');
+assert.equal(lkg.profiles[1].statisticsUi.groups[0].fields[0].dataProperty,'alltime_ul','LKG must preserve source-derived Statistics server_state bindings');
 const materialized=applyQbSettingsTranslationLkg(frozen,lkg,{catalogSha256:'f'.repeat(64)});
 assert.deepEqual(materialized[0].torrentTableColumns.map(item=>item.key),['name','size'],'Frozen materialization must restore exact native columns before runtime packaging');
 assert.deepEqual(materialized[0].trackerFilters.map(item=>item.id),['all','trackerless'],'Frozen materialization must restore exact Tracker filter facts before compact runtime packaging');
@@ -113,6 +115,7 @@ assert.equal(materialized[1].trackerFacetMode,'hostname');
 assert.deepEqual(materialized[0].torrentDetailUi.tabOrder,['overview','trackers','peers','webseeds','files'],'Frozen materialization must restore exact source Detail tab order');
 assert.equal(materialized[0].torrentDetailUi.tables.trackers[0].key,'url','Frozen materialization must restore exact Torrent detail UI facts before runtime packaging');
 assert.deepEqual(materialized[0].torrentDetailUi.propertyLayout[0].fields,[{id:'eta',valueSource:'properties',dataProperties:['eta']}],'Frozen materialization must restore exact General layout facts before runtime packaging');
+assert.equal(materialized[0].statisticsUi.groups[0].fields[0].format,'bytes','Frozen materialization must restore exact Statistics formatting semantics before compact runtime packaging');
 assert.throws(()=>applyQbSettingsTranslationLkg(frozen,{...lkg,schemaVersion:1}),/schemaVersion 2/,'stale v1 Settings LKG must fail closed');
 const badTrackerFacetMode=structuredClone(enriched);badTrackerFacetMode[0].trackerFacetMode='guessed';
 assert.throws(()=>buildQbSettingsTranslationLkg(badTrackerFacetMode,frozen,{recoveryEvidence}),/Tracker facet mode is invalid/,'Tracker grouping behavior may not be guessed from version labels');

@@ -27,10 +27,11 @@ assert.deepEqual(filterUi['facet.tag.untagged'],{source:'Untagged',context:'TagF
 assert.equal(filterUi['sidebar.trackers'],undefined,'missing upstream Trackers surface must remain absent');
 assert.equal(filterUi['filter.moving'],undefined,'torrent state copy must not be promoted into a native filter when the release has no moving filter');
 
-const routeUi=extractQbOwnedUiFacts({indexSource:'<span>QBT_TR(RSS)QBT_TR[CONTEXT=MainWindow]</span><span>QBT_TR(Execution Log)QBT_TR[CONTEXT=MainWindow]</span><img title="QBT_TR(Options)QBT_TR[CONTEXT=OptionsDialog]">'});
+const routeUi=extractQbOwnedUiFacts({indexSource:'<span>QBT_TR(RSS)QBT_TR[CONTEXT=MainWindow]</span><span>QBT_TR(Execution Log)QBT_TR[CONTEXT=MainWindow]</span><span>QBT_TR(Statistics)QBT_TR[CONTEXT=MainWindow]</span><img title="QBT_TR(Options)QBT_TR[CONTEXT=OptionsDialog]">'});
 assert.deepEqual(routeUi['route.rss'],{source:'RSS',context:'MainWindow'});
 assert.deepEqual(routeUi['route.logs'],{source:'Execution Log',context:'MainWindow'});
 assert.deepEqual(routeUi['route.settings'],{source:'Options',context:'OptionsDialog'},'route header copy must be source-owned by exact qB index markup instead of a WeiG hand translation');
+assert.deepEqual(routeUi['transfer.statistics'],{source:'Statistics',context:'MainWindow'},'Statistics entry copy must be owned by exact qB index source');
 
 const legacyAddUi=extractQbOwnedUiFacts({
   downloadSource:'<title>QBT_TR(Download Torrents from their URLs or Magnet links)QBT_TR[CONTEXT=DownloadFromURLDialog]</title>',

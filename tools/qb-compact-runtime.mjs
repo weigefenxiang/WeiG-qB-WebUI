@@ -13,7 +13,7 @@ const clone=value=>value==null?value:structuredClone(value);
 const readJson=file=>JSON.parse(fs.readFileSync(file,'utf8'));
 const SETTINGS_RUNTIME_SOURCE='qb-upstream-preferences-native-surface-runtime';
 const SETTINGS_PAYLOAD_SOURCE='qb-upstream-preferences-native-surface-compact';
-export const TORRENT_FACTS=['torrentFilters','torrentInfoParameters','torrentInfoFields','trackerFilters','trackerFacetMode','torrentStates','torrentPropertiesFields','torrentTrackerFields','torrentFileFields','torrentWebSeedFields','torrentTableColumns','torrentContextMenu','webuiLocales'];
+export const TORRENT_FACTS=['torrentFilters','torrentInfoParameters','torrentInfoFields','trackerFilters','trackerFacetMode','torrentStates','torrentPropertiesFields','torrentTrackerFields','torrentFileFields','torrentWebSeedFields','torrentTableColumns','torrentContextMenu','statisticsUi','webuiLocales'];
 
 function releaseRows(catalog){return catalog.map(profile=>({qbVersion:String(profile.qbVersion||''),webApiVersion:String(profile.webApiVersion||''),sourceSha:String(profile.sourceSha||''),stable:profile.stable!==false,officialWeiGSupport:profile.officialWeiGSupport!==false}));}
 function compactTimeline(rows){const out=[];let prior,hasPrior=false;for(const row of rows){const value=clone(row.value),signature=JSON.stringify(value);if(!hasPrior||signature!==prior){out.push({from:String(row.from||''),value:value});prior=signature;hasPrior=true;}}return out;}function factTimeline(catalog,key){return compactTimeline(catalog.map(profile=>({from:String(profile.qbVersion||''),value:clone(Object.prototype.hasOwnProperty.call(profile,key)?profile[key]:null)})));}

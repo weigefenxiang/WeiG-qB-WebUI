@@ -12,6 +12,7 @@ import {extractTorrentTableColumns} from './qb-torrent-fields-parser.mjs';
 import {torrentDetailTranslationRefs} from './qb-detail-surface-parsers.mjs';
 import {detailControlTranslationRefs} from './qb-detail-control-parsers.mjs';
 import {rssSurfaceTranslationRefs} from './qb-rss-surface-source.mjs';
+import {statisticsTranslationRefs} from './qb-statistics-source.mjs';
 import {auditQbtSourceEntities,extractQbtSourceRefs,qbSourceRefKey} from './qb-source-text.mjs';
 
 function unique(values) {
@@ -170,7 +171,7 @@ export function buildQbSettingsTranslationOverlay(catalog, readReleaseSources, o
       downloadSource:releaseSources.downloadSource || '',
       indexSource:releaseSources.indexSource || ''
     });
-    Object.assign(ui,torrentDetailTranslationRefs(profile.torrentDetailUi),detailControlTranslationRefs(profile.torrentDetailUi));
+    Object.assign(ui,torrentDetailTranslationRefs(profile.torrentDetailUi),detailControlTranslationRefs(profile.torrentDetailUi),statisticsTranslationRefs(profile.statisticsUi));
     for(const ref of rssSurfaceTranslationRefs(profile.rssDownloaderUi))ui['rss.downloader.copy.'+contentHash([ref.context,ref.source]).slice(0,20)]=ref;
     const ownedIdentities=new Set([...refsFromPreferences(preferences),...refsFromOwnedUi(ui)].map(ref=>qbSourceRefKey(ref.context,ref.source)));
     for(const ref of refsFromPreferencesSource(releaseSources.preferencesSource || '')){

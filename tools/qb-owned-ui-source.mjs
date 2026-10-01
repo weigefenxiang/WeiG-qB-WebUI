@@ -67,6 +67,7 @@ export function extractQbOwnedUiFacts({preferencesSource='',toolbarSource='',fil
   for(const item of settingsTabRefs(toolbar))add(out,item.key,item.ref);
   add(out,'transfer.rate.global',exactRef(preferencesSource,'Global Rate Limits'));
   add(out,'transfer.rate.alternative',exactRef(preferencesSource,'Alternative Rate Limits'));
+  add(out,'transfer.statistics',firstSourceRef([indexSource],['Statistics','&Statistics']));
   add(out,'sidebar.status',exactRef(filtersSource,'Status','TransferListFiltersWidget'));
   add(out,'sidebar.categories',exactRef(filtersSource,'Categories','TransferListFiltersWidget'));
   add(out,'sidebar.tags',exactRef(filtersSource,'Tags','TransferListFiltersWidget'));
