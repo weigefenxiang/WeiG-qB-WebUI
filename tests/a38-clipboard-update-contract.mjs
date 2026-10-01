@@ -1,0 +1,20 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+
+const read=path=>fs.readFileSync(path,'utf8');
+const rootVersion=read('VERSION').trim(),webVersion=read('webui/VERSION').trim(),pkg=JSON.parse(read('package.json')),product=JSON.parse(read('webui/private/product-identity.json'));
+assert.equal(rootVersion,'1.1.7');assert.equal(webVersion,rootVersion);assert.equal(pkg.version,rootVersion);assert.equal(product.version,rootVersion);
+const core=read('webui/private/scripts/core.js'),selection=read('webui/private/scripts/selection.js'),responsive=read('webui/private/scripts/responsive.js'),app=read('webui/private/scripts/app.js'),update=read('webui/private/scripts/update-check.js'),settings=read('webui/private/scripts/settings.js');
+assert.match(core,/openManualClipboard.*W\.DialogRuntime\.create[\s\S]*clipboard-copy-dialog[\s\S]*area\.select\(\)/,'Clipboard owner must expose a canonical selectable manual fallback dialog.');
+assert.match(core,/copyText:async function\(value,options\).*W\.Clipboard\.writeText[\s\S]*openManualClipboard/s,'Clipboard user action must attempt automatic transport then fall back to manual copy.');
+for(const [name,source] of [['selection',selection],['responsive',responsive],['app',app],['update-check',update]])assert.doesNotMatch(source,/navigator\.clipboard|document\.execCommand/,name+' must not own browser clipboard transports');
+assert.match(selection,/W\.Clipboard\.copyText\(text\)/);assert.match(responsive,/W\.Clipboard&&W\.Clipboard\.copyText/);assert.match(app,/W\.Clipboard\.copyText\(String\(value\)\)/);assert.match(update,/W\.Clipboard\.copyText\(value/);
+assert.match(app,/receiptOwned:!\(copyResult&&copyResult\.copied\)/);assert.match(settings,/normalizeIdentity\(\{version:controller\.productVersion\|\|'',gitSha:rawSha\}/);assert.doesNotMatch(update,/settings\.update\.rollback['"]/);assert.match(update,/settings\.update\.rollbackMethod/);assert.match(update,/settings\.update\.rollbackTitle/);
+const sandbox={window:{WeiG:{t:()=>''}},console};vm.runInNewContext(update,sandbox,{filename:'update-check.js'});const U=sandbox.window.WeiG.UpdateCheck;
+assert.equal(U.isValidSha('__WEIG_GIT_SHA__'),false);const source=U.normalizeIdentity({version:'1.1.7',gitSha:'__WEIG_GIT_SHA__'},{installer:'source'});assert.equal(source.gitSha,'');assert.equal(source.channel,'source');assert.equal(U.identityText(source),'1.1.7 · Source (unmaterialized)');
+const devSha='0123456789abcdef0123456789abcdef01234567',dev=U.normalizeIdentity({version:'1.1.7',gitSha:devSha},{channel:'dev',installer:'linux'});assert.equal(dev.gitSha,devSha);assert.equal(dev.channel,'dev');assert.equal(U.identityText(dev),'1.1.7 · Dev · 01234567');
+function objectBounds(text,prefix){const p=text.indexOf(prefix),s=text.indexOf('{',p+prefix.length);let depth=0,q=false,esc=false;for(let i=s;i<text.length;i++){const ch=text[i];if(q){if(esc)esc=false;else if(ch==='\\')esc=true;else if(ch==='"')q=false;continue;}if(ch==='"'){q=true;continue;}if(ch==='{')depth++;else if(ch==='}'&&--depth===0)return{s,e:i+1};}throw new Error('runtime translation object is not closed');}
+const i18n=read('webui/private/scripts/i18n.js'),bounds=objectBounds(i18n,'var WEIG_RUNTIME='),runtime=JSON.parse(i18n.slice(bounds.s,bounds.e)),required=['common.copyManualTitle','common.copyManualHint','settings.update.channelDev','settings.update.channelStable','settings.update.sourceUnmaterialized','settings.update.devWarningTitle','settings.update.devWarning','settings.update.rollbackMethod','settings.update.rollbackTitle'];
+for(const [locale,dict] of Object.entries(runtime)){for(const key of required)assert.ok(String(dict[key]||'').trim(),locale+' missing '+key);assert.equal(Object.hasOwn(dict,'settings.update.rollback'),false,locale+' retained retired rollback key');}
+console.log('A38 Clipboard/Update contract passed: one clipboard transport owner plus bounded manual fallback; build identity rejects source sentinels and Update UI uses canonical copy, rollback and Dev-warning owners.');

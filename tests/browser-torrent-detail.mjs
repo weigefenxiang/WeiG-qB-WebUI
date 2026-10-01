@@ -525,7 +525,7 @@ try{
   const trackerCopyRow=page.locator('.shared-table__row[data-tracker-kind="parent"][data-context-menu="true"]').filter({hasText:trackerCopyValue}).first();
   assert(await trackerCopyRow.getAttribute('data-ui-context-trigger')==='1','Mobile Tracker row must be bound to the shared Context Menu gesture owner before touch dispatch.');
   await trackerCopyRow.evaluate(row=>{window.__weigLongPressEvents=[];['pointerdown','pointermove','pointerup','pointercancel','touchstart','touchmove','touchend','touchcancel','contextmenu','click'].forEach(type=>row.addEventListener(type,event=>{window.__weigLongPressEvents.push({type:type,pointerType:event.pointerType||'',button:event.button,buttons:event.buttons,clientX:event.clientX,clientY:event.clientY,time:Math.round(performance.now())});},true));});
-  await page.evaluate(()=>{window.__weigCopied='';window.__weigExecCommand=document.execCommand;window.__weigClipboardDescriptor=Object.getOwnPropertyDescriptor(navigator,'clipboard')||null;Object.defineProperty(navigator,'clipboard',{value:undefined,configurable:true});document.execCommand=function(command){if(command!=='copy')return false;var node=document.activeElement;window.__weigCopied=node&&typeof node.value==='string'?node.value:'';return true;};});
+  await page.evaluate(()=>{window.__weigExecCommand=document.execCommand;window.__weigClipboardDescriptor=Object.getOwnPropertyDescriptor(navigator,'clipboard')||null;Object.defineProperty(navigator,'clipboard',{value:undefined,configurable:true});document.execCommand=function(){return false;};});
   const tcx=trackerTarget.x,tcy=trackerTarget.y;
   await touch(cdp,'touchStart',tcx,tcy);await page.waitForTimeout(720);await touch(cdp,'touchEnd',tcx,tcy);await page.waitForTimeout(220);
   const longPressDiag=await page.evaluate(()=>({events:window.__weigLongPressEvents||[],menu:document.querySelectorAll('.ui-context-menu').length}));
@@ -533,8 +533,13 @@ try{
   const trackerCopyAction=page.locator('.ui-context-menu .ui-select__option').filter({hasText:'Copy tracker URL'}).first();
   assert(await trackerCopyAction.count()===1,'Mobile Tracker long-press must expose the source-owned Copy tracker URL action.');
   await trackerCopyAction.click();
-  await page.waitForFunction(expected=>window.__weigCopied===expected,trackerCopyValue,{timeout:5000});
-  await page.evaluate(()=>{document.execCommand=window.__weigExecCommand;delete window.__weigExecCommand;if(window.__weigClipboardDescriptor)Object.defineProperty(navigator,'clipboard',window.__weigClipboardDescriptor);else delete navigator.clipboard;delete window.__weigClipboardDescriptor;delete window.__weigCopied;delete window.__weigLongPressEvents;});
+  await page.waitForSelector('dialog.clipboard-copy-dialog[open] textarea.clipboard-copy-value');
+  await page.waitForFunction(expected=>{const area=document.querySelector('dialog.clipboard-copy-dialog[open] textarea.clipboard-copy-value');return !!(area&&area.value===expected&&area.selectionStart===0&&area.selectionEnd===area.value.length);},trackerCopyValue,{timeout:5000});
+  const manualCopy=await page.evaluate(()=>{const dialog=document.querySelector('dialog.clipboard-copy-dialog[open]'),area=dialog&&dialog.querySelector('textarea.clipboard-copy-value');return{value:area&&area.value||'',selected:!!(area&&area.selectionStart===0&&area.selectionEnd===area.value.length),detailFailure:[...document.querySelectorAll('.toast')].some(node=>/Detail action failed|详情操作失败/i.test(node.textContent||''))};});
+  assert(manualCopy.value===trackerCopyValue&&manualCopy.selected&&!manualCopy.detailFailure,'Android/LAN Tracker copy denial must fall back to a selectable canonical manual-copy dialog without a false Detail failure: '+JSON.stringify(manualCopy));
+  await page.locator('dialog.clipboard-copy-dialog[open] .dialog__actions button').click();
+  await page.waitForSelector('dialog.clipboard-copy-dialog[open]',{state:'detached'});
+  await page.evaluate(()=>{document.execCommand=window.__weigExecCommand;delete window.__weigExecCommand;if(window.__weigClipboardDescriptor)Object.defineProperty(navigator,'clipboard',window.__weigClipboardDescriptor);else delete navigator.clipboard;delete window.__weigClipboardDescriptor;delete window.__weigLongPressEvents;});
   await page.locator('#detail-view .detail-tabs [data-tab="files"]').click();
   await page.waitForSelector('.shared-table__viewport .shared-table__row');
   await resetDetailViewport(page);
