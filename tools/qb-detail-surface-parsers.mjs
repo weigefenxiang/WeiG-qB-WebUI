@@ -54,7 +54,7 @@ function qbtFallbackRef(source,index,expression){
 }
 function trackerNegativeSentinelFacts(source,context){
   const text=String(source||''),byField=new Map();
-  const re=/\b(tracker|endpoint)\.([A-Za-z0-9_]+)\s*>=\s*0\s*\)\s*\?\s*\1\.\2\s*:\s*([^,}\]\n\r;]+)/g;
+  const re=/\b(tracker|endpoint)\.([A-Za-z0-9_]+)\s*>=\s*0\s*\)\s*\?\s*\1\.\2\s*:\s*([^,}\n\r;]+)/g;
   for(const match of text.matchAll(re)){
     const field=String(match[2]||''),ref=qbtFallbackRef(text,match.index,match[3]);
     if(!ref||ref.source!=='N/A')continue;

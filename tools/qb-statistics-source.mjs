@@ -7,6 +7,7 @@ function assignmentMap(source){const out=new Map();for(const match of String(sou
 function sinkExpression(source,id){
   const text=String(source||''),name=escapeRe(id),patterns=[
     new RegExp("\\$\\(\\s*[\"']"+name+"[\"']\\s*\\)\\.set\\(\\s*[\"'](?:html|text)[\"']\\s*,\\s*([^;]+)\\);","i"),
+    new RegExp("\\$\\(\\s*[\"']"+name+"[\"']\\s*\\)\\.(?:textContent|innerHTML)\\s*=\\s*([^;]+);","i"),
     new RegExp("document\\.getElementById\\(\\s*[\"']"+name+"[\"']\\s*\\)\\.(?:textContent|innerHTML)\\s*=\\s*([^;]+);","i")
   ];
   for(const pattern of patterns){const match=pattern.exec(text);if(match)return String(match[1]||'').trim();}
