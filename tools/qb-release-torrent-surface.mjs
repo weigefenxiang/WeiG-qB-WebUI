@@ -4,6 +4,7 @@ import {extractTorrentDetailSurfaces,extractTorrentDetailUi} from './qb-detail-s
 import {extractDetailContextMenus,extractFilePriorityControl,extractTorrentContextMenu} from './qb-detail-control-parsers.mjs';
 import {enrichTorrentFileColumnProvenance} from './qb-release-catalog-detail-provenance.mjs';
 import {extractTrackerFacetMode,extractTrackerFilterFacts} from './qb-tracker-filter-source.mjs';
+import {extractQbStatisticsUi} from './qb-statistics-source.mjs';
 
 export function extractQbReleaseTorrentSurface({ref='',apiActions=[],apiActionParameters={},readSource,readOptionalSource,readFirstSource}={}){
   const context=String(ref||'qB release');
@@ -33,6 +34,10 @@ export function extractQbReleaseTorrentSurface({ref='',apiActions=[],apiActionPa
   const webseedSource=readOptionalSource('src/webui/www/private/scripts/prop-webseeds.js');
   const menuSource=readOptionalSource('src/webui/www/private/index.html');
   const fileProjectionSource=[propFilesSource,torrentContentSource,fileTreeSource].filter(Boolean).join('\n');
+  const statisticsMarkupSource=readFirstSource(['src/webui/www/private/views/statistics.html','src/webui/www/private/statistics.html']);
+  const statisticsScriptSource=readOptionalSource('src/webui/www/private/scripts/statistics.js');
+  if(!statisticsMarkupSource)throw new Error(`${context}: Statistics source markup is unresolved`);
+  const statisticsUi=extractQbStatisticsUi({markupSource:statisticsMarkupSource,runtimeSource:[statisticsScriptSource,clientSource].filter(Boolean).join('\n')},context);
 
   const detailSurfaces=extractTorrentDetailSurfaces(torrentsControllerSource,context,serializerHeaderSource);
   const torrentDetailUi=extractTorrentDetailUi({
@@ -78,6 +83,7 @@ export function extractQbReleaseTorrentSurface({ref='',apiActions=[],apiActionPa
     torrentTableColumns,
     torrentContextMenu,
     torrentDetailUi,
+    statisticsUi,
     ...detailSurfaces
   };
 }
