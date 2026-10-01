@@ -549,9 +549,17 @@ try{
         }
         return [...out].sort();
       };
-      return{privateCount:privateRows.length,category:values(privateRows,'category'),savePath:values(privateRows,'savePath'),tag:values(privateRows,'tag')};
+      return{
+        privateCount:privateRows.length,
+        category:values(privateRows,'category'),
+        savePath:values(privateRows,'savePath'),
+        tag:values(privateRows,'tag'),
+        nativeCategory:Object.keys(W.AppState?.nativeCategories||{}).map(String).filter(Boolean).sort(),
+        nativeTag:(W.AppState?.nativeTags||[]).map(String).filter(Boolean).sort()
+      };
     });
     assert.ok(contextualExpected.privateCount>0&&contextualExpected.category.length>0,'contextual facet live fixture must include Private/PT rows and categories');
+    assert.ok(contextualExpected.nativeCategory.length>0&&contextualExpected.nativeTag.length>0,'qB5 contextual facet fixture must expose native Category/Tags inventories independently of the active Private/PT context');
 
     const nativeFacetCopy=await page.evaluate(async()=>{await window.WeiG?.I18n?.loadQbOwnedText?.();const owned=window.WeiG?.I18n?.qbOwnedText?.()||{};return{categories:Object.prototype.hasOwnProperty.call(owned,'sidebar.categories'),tags:Object.prototype.hasOwnProperty.call(owned,'sidebar.tags'),trackers:Object.prototype.hasOwnProperty.call(owned,'sidebar.trackers')};});
     assert.deepEqual(nativeFacetCopy,{categories:true,tags:true,trackers:true},'qB5 contextual facet acceptance requires exact source-owned Category/Tags/Tracker copy');
@@ -565,7 +573,10 @@ try{
     for(const kind of ['category','tag','savePath']){
       await page.locator(`[data-facet="${kind}"] .ui-select__trigger`).click();
       const observed=await page.locator('#weig-floating-layer .ui-select__menu:not([hidden]) .ui-select__option').evaluateAll(nodes=>nodes.map(node=>String(node.dataset.value||'')).filter(Boolean).sort());
-      assert.deepEqual(observed,contextualExpected[kind],`Private/PT must contextually project only nonzero ${kind} options; got ${JSON.stringify(observed)}, expected ${JSON.stringify(contextualExpected[kind])}`);
+      let expected=contextualExpected[kind];
+      if(kind==='category')expected=[...new Set([...contextualExpected.nativeCategory,...contextualExpected.category,'__weig_uncategorized__'])].sort();
+      if(kind==='tag')expected=[...new Set([...contextualExpected.nativeTag,...contextualExpected.tag,'__weig_untagged__'])].sort();
+      assert.deepEqual(observed,expected,`Private/PT ${kind} facet must preserve source-native inventory/special rows while contextual counts and save-path values narrow; got ${JSON.stringify(observed)}, expected ${JSON.stringify(expected)}`);
       await page.keyboard.press('Escape');
     }
 
