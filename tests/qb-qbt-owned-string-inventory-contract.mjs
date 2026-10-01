@@ -17,7 +17,7 @@ assert.ok(Object.keys(addUi).some(key=>key.startsWith('add.copy.')),'Add Torrent
 const filterUi=extractQbOwnedUiFacts({
   filtersSource:'<span>QBT_TR(Status)QBT_TR[CONTEXT=TransferListFiltersWidget]</span><span>QBT_TR(Categories)QBT_TR[CONTEXT=TransferListFiltersWidget]</span><li id="stalled_downloading_filter"><span>QBT_TR(Stalled Downloading (0))QBT_TR[CONTEXT=StatusFilterWidget]</span></li>',
   clientSource:'updateFilter("stalled_downloading", "QBT_TR(Stalled Downloading (%1))QBT_TR[CONTEXT=StatusFilterWidget]"); QBT_TR(All)QBT_TR[CONTEXT=CategoryFilterModel] QBT_TR(Uncategorized)QBT_TR[CONTEXT=CategoryFilterModel] QBT_TR(All)QBT_TR[CONTEXT=TagFilterModel] QBT_TR(Untagged)QBT_TR[CONTEXT=TagFilterModel]',
-  dynamicTableSource:'this.columns["status"].updateTd = function() { switch(row.full_data.state) { case "moving": status = "QBT_TR(Moving)QBT_TR[CONTEXT=TransferListDelegate]"; } }; // priority'
+  dynamicTableSource:'var TorrentsTable=new Class({Extends:DynamicTable,initColumns:function(){this.newColumn("status","","QBT_TR(Status)QBT_TR[CONTEXT=TransferListWidget]",100,true);}}); this.columns["status"].updateTd = function() { switch(row.full_data.state) { case "moving": status = "QBT_TR(Moving)QBT_TR[CONTEXT=TransferListDelegate]"; } }; // priority'
 });
 assert.deepEqual(filterUi['filter.stalled_downloading'],{source:'Stalled Downloading (%1)',context:'StatusFilterWidget'},'visible status filter copy must come from the native runtime updater instead of static zero-count bootstrap markup');
 assert.deepEqual(filterUi['facet.category.all'],{source:'All',context:'CategoryFilterModel'});
