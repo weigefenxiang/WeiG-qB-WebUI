@@ -291,7 +291,7 @@ try{
       assert(JSON.stringify(trackerSourceFacts.map(item=>item.id))===JSON.stringify(['all','trackerless','error','otherError','warning']),name+': exact qB Tracker source-fact order drifted '+JSON.stringify(trackerSourceFacts));
       assert(trackerOptions[0]?.text.startsWith('All'),name+': Tracker All copy is not source-owned '+JSON.stringify(trackerOptions));
       assert(trackerOptions.some(item=>item.value==='host:tracker.one.example'&&item.text.includes('tracker.one.example')&&item.text.includes('28')),name+': Tracker facet did not merge same-host maindata memberships '+JSON.stringify(trackerOptions));
-      for(const value of ['special:trackerless','special:tracker-error','special:other-error','special:warning'])assert(trackerOptions.some(item=>item.value===value&&item.text.includes('· 1')),name+': source-proven special Tracker filter missing '+value+' '+JSON.stringify(trackerOptions));
+      for(const value of ['special:trackerless','special:tracker-error','special:other-error','special:warning'])assert(trackerOptions.some(item=>item.value===value&&/\(1\)$/.test(String(item.text||''))),name+': source-proven special Tracker filter/counter copy missing '+value+' '+JSON.stringify(trackerOptions));
       await page.locator('#weig-floating-layer .ui-select__option[data-value="special:trackerless"]').click();
       await page.waitForFunction(()=>WeiG.LibraryController.state().tracker==='special:trackerless'&&WeiG.AppState.torrents.length===1);
       await tracker.click();await page.waitForSelector('#weig-floating-layer .ui-select__option[data-value="host:tracker.one.example"]');
