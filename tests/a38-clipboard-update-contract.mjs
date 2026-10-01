@@ -4,7 +4,7 @@ import vm from 'node:vm';
 
 const read=path=>fs.readFileSync(path,'utf8');
 const rootVersion=read('VERSION').trim(),webVersion=read('webui/VERSION').trim(),pkg=JSON.parse(read('package.json')),product=JSON.parse(read('webui/private/product-identity.json'));
-assert.equal(rootVersion,'1.1.9');assert.equal(webVersion,rootVersion);assert.equal(pkg.version,rootVersion);assert.equal(product.version,rootVersion);
+assert.match(rootVersion,/^\d+\.\d+\.\d+$/,'canonical VERSION must be semver-shaped');assert.equal(webVersion,rootVersion);assert.equal(pkg.version,rootVersion);assert.equal(product.version,rootVersion);
 const core=read('webui/private/scripts/core.js'),selection=read('webui/private/scripts/selection.js'),responsive=read('webui/private/scripts/responsive.js'),app=read('webui/private/scripts/app.js'),update=read('webui/private/scripts/update-check.js'),settings=read('webui/private/scripts/settings.js');
 assert.match(core,/openManualClipboard.*W\.DialogRuntime\.create[\s\S]*clipboard-copy-dialog[\s\S]*area\.select\(\)/,'Clipboard owner must expose a canonical selectable manual fallback dialog.');
 assert.match(core,/copyText:async function\(value,options\).*W\.Clipboard\.writeText[\s\S]*openManualClipboard/s,'Clipboard user action must attempt automatic transport then fall back to manual copy.');
