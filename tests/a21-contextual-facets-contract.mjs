@@ -7,7 +7,8 @@ assert.ok(app.includes("tracker:kind==='tracker'?'':app.tracker")&&app.includes(
 assert.ok(app.includes('function facetBase(kind)')&&app.includes('return app.catalog.filter(function(t){return filterMatch(t,state);});'),'contextual facets must reuse the full local filter semantics over the existing catalog');
 assert.ok(app.includes('function facetValueCounts(kind,items)'),'category/tag/tracker/path must share one bounded count projection');
 assert.ok(app.includes('trackerValuesByHash:{}')&&app.includes('app.trackerValuesByHash=valuesByHash'),'tracker facets must keep a reverse membership index instead of rescanning every tracker set per option');
-assert.ok(app.includes("if(count>0)out.push")&&app.includes("filter(function(value){return counts[value]>0;})"),'zero-result contextual options must be hidden');
+assert.ok(app.includes('function emptyFacetCount(kind,items)')&&app.includes('nativeFacetValues(kind)')&&app.includes('trackerSpecialOptions(base)'),'source-proven special rows and native taxonomy inventory must remain distinct from contextual counts');
+assert.ok(!app.includes("if(count>0)out.push"),'source-proven Tracker special rows must not disappear merely because their current count is zero');
 assert.ok(!app.includes('facets:{tracker:[],savePath:[],category:[],tag:[]}')&&!app.includes('function rebuildCatalogFacets()')&&!app.includes('function mergeNativeFacet('),'retired global/native facet caches must not survive beside contextual projection');
 assert.ok(app.includes('app.nativeCategories=cats')&&app.includes('app.nativeTags=Array.isArray(tags)?tags.slice():[]'),'qB native taxonomy inventory must remain independent for Add Torrent and mutations');
 console.log('A21 B2 contextual facets contract passed.');
