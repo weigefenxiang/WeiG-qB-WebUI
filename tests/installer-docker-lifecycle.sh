@@ -249,6 +249,23 @@ if(fs.statSync(catalogPath).size>=10*1024*1024)throw new Error('packed release c
 NODE
 }
 
+assert_archive_backup() {
+  backup=$1
+  expected_version=$2
+  test -f "$backup/archive-manifest"
+  format=$(sed -n 's/^format=//p' "$backup/archive-manifest")
+  file=$(sed -n 's/^file=//p' "$backup/archive-manifest")
+  expected_sha=$(sed -n 's/^sha256=//p' "$backup/archive-manifest")
+  test "$format" = "tar.gz"
+  test "$file" = "webui.tar.gz"
+  test -f "$backup/$file"
+  test ! -d "$backup/webui"
+  actual_sha=$(sha256sum "$backup/$file" | awk '{print tolower($1)}')
+  test "$actual_sha" = "$expected_sha"
+  archived_version=$(tar -xOzf "$backup/$file" ./VERSION | tr -d '\r\n')
+  test "$archived_version" = "$expected_version"
+}
+
 bash "$ROOT/installers/install.sh" --version "$VERSION_ONE" --configure --container "$NAME"
 assert_install "$VERSION_ONE" "$SHA_ONE" release-one
 FIRST_BACKUP=$(cat "$STATE/last-backup")
@@ -265,9 +282,7 @@ assert_install "$VERSION_TWO" "$SHA_TWO" release-two
 SECOND_BACKUP=$(cat "$STATE/last-backup")
 test "$SECOND_BACKUP" != "$FIRST_BACKUP"
 test "$(cat "$SECOND_BACKUP/had-webui")" = 1
-test "$(tr -d '\r\n' < "$SECOND_BACKUP/webui/VERSION")" = "$VERSION_ONE"
-test "$(tr -d '\r\n' < "$SECOND_BACKUP/webui/GIT_SHA")" = "$SHA_ONE"
-test "$(tr -d '\r\n' < "$SECOND_BACKUP/webui/private/lifecycle-marker.txt")" = release-one
+assert_archive_backup "$SECOND_BACKUP" "$VERSION_ONE"
 grep -Fx 'WebUI\AlternativeUIEnabled=true' "$SECOND_BACKUP/qBittorrent.conf" >/dev/null
 grep -Fx "WebUI\\RootFolder=$QB_ROOT" "$SECOND_BACKUP/qBittorrent.conf" >/dev/null
 recreate_qb_and_assert_webui release-two "$SHA_TWO"
