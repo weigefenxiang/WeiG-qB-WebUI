@@ -132,9 +132,9 @@ Installer-owned backups are retained per target under:
 ~/.config/weig_qb-webui/backups/
 ```
 
-The current installer retains the latest three backups independently per install target. When a WebUI is already installed, new backups prefer a compressed archive and store a SHA-256 manifest beside it. Linux uses available local archive tools in a bounded fallback order; Windows prefers the built-in .NET ZIP implementation. The installer does not download a compression utility just to make a backup.
+The current installer retains the latest three backups independently per install target. When a WebUI is already installed, every newly written backup must be a compressed archive with a SHA-256 manifest beside it. Linux uses available local archive tools in a bounded fallback order; Windows prefers the built-in .NET ZIP implementation. The installer does not download a compression utility just to make a backup. If no local compressed-backup backend plus SHA-256 verification is available, backup creation fails closed instead of silently writing another uncompressed directory backup.
 
-Rollback verifies the archive checksum and expands it into a target-adjacent staging directory before replacing the live WebUI. Backups created by older installer versions as a `backup/webui/` directory remain readable through a compatibility path and age out naturally under the same per-target retention policy.
+Rollback verifies the archive checksum and expands it into a target-adjacent staging directory before replacing the live WebUI. Backups created by older installer versions as a `backup/webui/` directory remain readable through a bounded compatibility reader and age out naturally under the same per-target retention policy; current installers no longer create that legacy directory format.
 
 Normal uninstall keeps a rollback backup. To remove the selected installer-owned WebUI and then purge only that install target's installer backups:
 

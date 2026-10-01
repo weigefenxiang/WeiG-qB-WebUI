@@ -18,4 +18,8 @@ assert.match(ps,/\$stage="\$Destination\.weig-restore-\$PID-[^"]+"[\s\S]*Expand-
 
 assert.doesNotMatch(sh,/backup_target\(\)[\s\S]{0,900}cp -a "\$dest" "\$b\/webui"/,'Linux backup_target must no longer own an unconditional directory-copy writer.');
 assert.doesNotMatch(ps,/function Backup-Current[\s\S]{0,900}Copy-Item \$Destination \(Join-Path \$b 'webui'\)/,'Windows Backup-Current must no longer own an unconditional directory-copy writer.');
-console.log('A38 installer archive contract passed: compressed, checksummed payload owners wrap existing exact-target retention/rollback and preserve bounded legacy readers.');
+assert.doesNotMatch(sh,/cp -a "\$backup_source" "\$backup_root\/webui"/,'Linux current backup writer must never recreate the legacy backup/webui directory format.');
+assert.doesNotMatch(ps,/Copy-Item -LiteralPath \$Source -Destination \(Join-Path \$Backup 'webui'\)/,'Windows current backup writer must never recreate the legacy backup/webui directory format.');
+assert.match(sh,/refusing an unverified directory backup[\s\S]*return 1/,'Linux must fail closed when no verified compressed backup backend remains.');
+assert.match(ps,/refusing an unverified directory backup[\s\S]*return \$false/,'Windows must fail closed when no verified compressed backup backend remains.');
+console.log('A38 installer archive contract passed: new backups are compressed + checksummed or fail closed; exact-target retention/rollback preserve only bounded legacy directory readers.');

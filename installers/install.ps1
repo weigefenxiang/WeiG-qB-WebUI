@@ -662,10 +662,8 @@ function New-WebUiBackupPayload([string]$Source,[string]$Backup) {
     if(Test-Path -LiteralPath $archive){Remove-Item -LiteralPath $archive -Force -ErrorAction SilentlyContinue}
   }
 
-  Copy-Item -LiteralPath $Source -Destination (Join-Path $Backup 'webui') -Recurse -Force
-  Write-BackupArchiveManifest $Backup 'directory' 'webui' 'Copy-Item' '' 0
-  Write-Warning 'No verified compression backend was available; using the bounded legacy directory backup format.'
-  return $true
+  Write-Warning 'No verified compressed backup backend with SHA-256 support is available; refusing an unverified directory backup.'
+  return $false
 }
 
 function Assert-BackupArchive([string]$Backup,[hashtable]$Manifest) {

@@ -965,10 +965,8 @@ create_webui_backup_payload() {
     rm -f -- "$backup_archive"
   fi
 
-  cp -a "$backup_source" "$backup_root/webui" || return 1
-  write_backup_manifest "$backup_root" "directory" "webui" "cp" "" "0"
-  echo "Backup payload: directory fallback (no verified compression tool available)"
-  return 0
+  echo "No verified compressed backup backend with SHA-256 support is available; refusing an unverified directory backup." >&2
+  return 1
 }
 
 backup_manifest_value() {
