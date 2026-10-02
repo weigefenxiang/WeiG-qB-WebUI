@@ -27,9 +27,9 @@ assert.match(sh,/-version VERSION, --version VERSION/,'Linux installer must expo
 assert.match(sh,/-dev, --dev\s+Install\/update the current dev exact Git SHA/,'Linux installer must expose the documented single-dash dev option');
 assert.match(sh,/-o PATH, --output PATH\s+WebUI install path\. Repeat -o/,'Linux installer must expose repeatable output targets');
 assert.match(sh,/while \[ "\$target" != "\/" \] && \[ "\$\{target%\/\}" != "\$target" \]; do/,'Linux installer must normalize trailing slashes on explicit install targets');
-assert.match(sh,/old="\$target\.old"/,'Linux installer staging must keep the previous install as a sibling, not a child of the target');
+assert.match(sh,/deploy_staged_webui\(\)[\s\S]*mv -f -- "\$deploy_tmp" "\$deploy_dst"/s,'Linux installer must keep the active Alternative WebUI root present and atomically replace staged files in place.');
 assert.match(sh,/-configure, --configure\s+Enable qBittorrent Alternative WebUI and set Root Folder/,'Linux configure help must explain the qB config mutation');
-assert.match(sh,/-rollback, --rollback\s+Restore the previous installer backup/,'Linux installer must expose rollback');
+assert.match(sh,/-rollback, --rollback\s+Restore previous WeiG files\. Add -configure to restore a saved qB WebUI config snapshot\./,'Linux installer must expose file-only rollback with explicit qB config restore semantics');
 assert.match(sh,/-help, -h, --help\s+Show this help/,'Linux installer must expose the documented -help option');
 assert.match(sh,/-version and -dev cannot be used together/,'Linux installer must reject version/dev ambiguity');
 assert.match(sh,/CHANNEL="\$\{WEIG_QB_CHANNEL:-main\}"/,'Linux installer must default to the stable main channel');
@@ -115,7 +115,7 @@ assert.doesNotMatch(ps,/\$text=Get-Content \$cfg -Raw/,'Windows configure must n
 assert.doesNotMatch(ps,/Set-Content -Path \$cfg -Value \$text -Encoding UTF8/,'Windows configure must never transcode the entire qBittorrent config through Set-Content UTF8');
 assert.match(ps,/function Move-OutOfInstallTarget/,'Windows installer must protect self-hosted installs whose shell starts inside the destination directory');
 assert.match(ps,/Working directory moved outside install target before atomic swap/,'Windows installer must expose the self-hosted directory escape for diagnostics');
-assert.ok(ps.indexOf('Move-OutOfInstallTarget $Destination')<ps.indexOf('Move-Item $Destination $old'),'Windows installer must leave the destination working tree before renaming the destination during atomic swap');
+assert.ok(ps.indexOf('Move-OutOfInstallTarget $Destination')<ps.indexOf('Install-WebUiStage $new $Destination'),'Windows installer must leave a self-hosted working directory before the shared live deployment primitive mutates files in place');
 
 assert.match(live,/BACKUP_RETENTION=3/,'LIVE deploy must retain exactly three rollback backups');
 assert.match(live,/prune_target_backups/,'LIVE deploy must prune old sibling rollback backups');
