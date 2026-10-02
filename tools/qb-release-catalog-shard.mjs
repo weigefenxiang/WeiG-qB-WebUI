@@ -41,9 +41,16 @@ function preferenceSurface(ref){
   const source=show(ref,'src/webui/api/appcontroller.cpp');
   const sessionHeaderSource=show(ref,'src/base/bittorrent/session.h');
   const preferencesHeaderSource=show(ref,'src/base/preferences.h');
+  const applicationHeaderSource=firstSource(ref,['src/base/interfaces/iapplication.h','src/app/application.h','src/app/iapplication.h']);
+  const memberHeaderSources=[
+    showMaybe(ref,'src/base/net/proxyconfigurationmanager.h'),
+    showMaybe(ref,'src/base/net/portforwarder.h'),
+    showMaybe(ref,'src/base/rss/rss_session.h'),
+    showMaybe(ref,'src/base/rss/rss_autodownloader.h')
+  ].filter(Boolean);
   const preferenceKeys=extractPreferenceKeys(source,ref);
   const structuralDescriptors=extractPreferenceDescriptors(source,ref);
-  const preferenceDescriptors=enrichPreferenceDescriptorsFromGetter(source,structuralDescriptors,ref,{sessionHeaderSource,preferencesHeaderSource});
+  const preferenceDescriptors=enrichPreferenceDescriptorsFromGetter(source,structuralDescriptors,ref,{sessionHeaderSource,preferencesHeaderSource,applicationHeaderSource,memberHeaderSources});
   if(preferenceDescriptors.length!==preferenceKeys.length)throw new Error(`${ref}: descriptor/key count mismatch ${preferenceDescriptors.length}/${preferenceKeys.length}`);
   const expected=new Set(preferenceKeys),seen=new Set();
   for(const descriptor of preferenceDescriptors){
