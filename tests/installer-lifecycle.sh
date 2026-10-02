@@ -136,8 +136,6 @@ assert_install() {
   test "$(tr -d '\r\n' < "$DEST/VERSION")" = "$expected_version"
   test "$(tr -d '\r\n' < "$DEST/GIT_SHA")" = "$expected_sha"
   test "$(tr -d '\r\n' < "$DEST/private/lifecycle-marker.txt")" = "$expected_marker"
-  grep -Fx "WebUI\\AlternativeUIEnabled=true" "$CFG" >/dev/null
-  grep -Fx "WebUI\\RootFolder=$DEST" "$CFG" >/dev/null
   grep -Fx 'Lifecycle\Marker=preserve-me' "$CFG" >/dev/null
   node - "$DEST" "$expected_version" "$expected_sha" <<'NODE'
 const fs=require('node:fs');
@@ -154,6 +152,13 @@ for(const name of compact){const file=path.join(dest,'private/data',name);if(!fs
 if(fs.existsSync(path.join(dest,'private/data/qb-releases.json')))throw new Error('retired qb-releases.json must not be restored by installer lifecycle fixtures');
 NODE
 }
+
+assert_config_enabled() {
+  grep -Fx 'WebUI\AlternativeUIEnabled=true' "$CFG" >/dev/null
+  grep -Fx "WebUI\RootFolder=$DEST" "$CFG" >/dev/null
+  grep -Fx 'Lifecycle\Marker=preserve-me' "$CFG" >/dev/null
+}
+
 assert_archive_backup() {
   backup=$1
   expected_version=${2-}
@@ -176,26 +181,55 @@ assert_archive_backup() {
 
 bash "$ROOT/installers/install.sh" --version "$VERSION_ONE" --configure -o "$DEST"
 assert_install "$VERSION_ONE" "$SHA_ONE" release-one
+assert_config_enabled
 FIRST_BACKUP=$(cat "$STATE/last-backup")
 test "$(cat "$FIRST_BACKUP/had-webui")" = 0
 grep -Fx 'WebUI\AlternativeUIEnabled=false' "$FIRST_BACKUP/qBittorrent.conf" >/dev/null
 grep -Fx 'WebUI\RootFolder=/original/webui' "$FIRST_BACKUP/qBittorrent.conf" >/dev/null
 
+CFG_BEFORE_PLAIN_UPDATE=$(sha256sum "$CFG" | awk '{print $1}')
 sleep 1
-bash "$ROOT/installers/install.sh" --version "$VERSION_TWO" --configure -o "$DEST"
+bash "$ROOT/installers/install.sh" --version "$VERSION_TWO" -o "$DEST"
 assert_install "$VERSION_TWO" "$SHA_TWO" release-two
+assert_config_enabled
+CFG_AFTER_PLAIN_UPDATE=$(sha256sum "$CFG" | awk '{print $1}')
+test "$CFG_AFTER_PLAIN_UPDATE" = "$CFG_BEFORE_PLAIN_UPDATE"
 SECOND_BACKUP=$(cat "$STATE/last-backup")
 test "$SECOND_BACKUP" != "$FIRST_BACKUP"
 test "$(cat "$SECOND_BACKUP/had-webui")" = 1
 assert_archive_backup "$SECOND_BACKUP" "$VERSION_ONE"
-grep -Fx "WebUI\\AlternativeUIEnabled=true" "$SECOND_BACKUP/qBittorrent.conf" >/dev/null
-grep -Fx "WebUI\\RootFolder=$DEST" "$SECOND_BACKUP/qBittorrent.conf" >/dev/null
+test ! -e "$SECOND_BACKUP/qBittorrent.conf"
+test ! -e "$SECOND_BACKUP/config-path"
 
 sed -i 's#^WebUI\\AlternativeUIEnabled=.*#WebUI\\AlternativeUIEnabled=false#' "$CFG"
 sed -i 's#^WebUI\\RootFolder=.*#WebUI\\RootFolder=/post-upgrade-mutated#' "$CFG"
+CFG_BEFORE_PLAIN_ROLLBACK=$(sha256sum "$CFG" | awk '{print $1}')
 
 bash "$ROOT/installers/install.sh" --rollback
 assert_install "$VERSION_ONE" "$SHA_ONE" release-one
+CFG_AFTER_PLAIN_ROLLBACK=$(sha256sum "$CFG" | awk '{print $1}')
+test "$CFG_AFTER_PLAIN_ROLLBACK" = "$CFG_BEFORE_PLAIN_ROLLBACK"
+grep -Fx 'WebUI\AlternativeUIEnabled=false' "$CFG" >/dev/null
+grep -Fx 'WebUI\RootFolder=/post-upgrade-mutated' "$CFG" >/dev/null
+
+sleep 1
+bash "$ROOT/installers/install.sh" --version "$VERSION_TWO" --configure -o "$DEST"
+assert_install "$VERSION_TWO" "$SHA_TWO" release-two
+assert_config_enabled
+CONFIGURED_BACKUP=$(cat "$STATE/last-backup")
+assert_archive_backup "$CONFIGURED_BACKUP" "$VERSION_ONE"
+grep -Fx 'WebUI\AlternativeUIEnabled=false' "$CONFIGURED_BACKUP/qBittorrent.conf" >/dev/null
+grep -Fx 'WebUI\RootFolder=/post-upgrade-mutated' "$CONFIGURED_BACKUP/qBittorrent.conf" >/dev/null
+
+bash "$ROOT/installers/install.sh" --rollback --configure
+assert_install "$VERSION_ONE" "$SHA_ONE" release-one
+grep -Fx 'WebUI\AlternativeUIEnabled=false' "$CFG" >/dev/null
+grep -Fx 'WebUI\RootFolder=/post-upgrade-mutated' "$CFG" >/dev/null
+
+sleep 1
+bash "$ROOT/installers/install.sh" --version "$VERSION_ONE" --configure -o "$DEST"
+assert_install "$VERSION_ONE" "$SHA_ONE" release-one
+assert_config_enabled
 
 test "$(cat "$STATE/last-dest")" = "$DEST"
 test "$(cat "$STATE/last-qb-root-folder")" = "$DEST"
@@ -209,8 +243,9 @@ UNINSTALL_BACKUP=$(cat "$STATE/last-backup")
 test "$(cat "$UNINSTALL_BACKUP/had-webui")" = 1
 assert_archive_backup "$UNINSTALL_BACKUP" "$VERSION_ONE"
 
-bash "$ROOT/installers/install.sh" -rollback
+bash "$ROOT/installers/install.sh" -rollback -configure
 assert_install "$VERSION_ONE" "$SHA_ONE" release-one
+assert_config_enabled
 
 sleep 1
 bash "$ROOT/installers/install.sh" -uninstall -configure -purge -o "$DEST"

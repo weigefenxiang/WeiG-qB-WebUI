@@ -115,8 +115,6 @@ try {
     Assert-True (((Get-Content (Join-Path $Destination 'private\lifecycle-marker.txt') -Raw).Trim()) -eq $ExpectedMarker) 'Installed lifecycle marker mismatch.'
 
     $cfgText=Get-Content $Cfg -Raw
-    Assert-True ($cfgText.Contains('WebUI\AlternativeUIEnabled=true')) 'qB AlternativeUIEnabled was not configured.'
-    Assert-True ($cfgText.Contains("WebUI\RootFolder=$Destination")) 'qB RootFolder was not configured to isolated destination.'
     Assert-True ($cfgText.Contains('Lifecycle\Marker=preserve-me')) 'Unrelated qB config marker was not preserved.'
 
     $meta=Get-Content (Join-Path $Destination 'private\weig-install.json') -Raw | ConvertFrom-Json
@@ -131,6 +129,13 @@ try {
       Assert-True ((Test-Path -LiteralPath $file -PathType Leaf) -and (Get-Item -LiteralPath $file).Length -gt 0) "Installed compact runtime missing: $name"
     }
     Assert-True (!(Test-Path -LiteralPath (Join-Path $Destination 'private\data\qb-releases.json'))) 'Retired qb-releases.json reappeared after install.'
+  }
+
+  function Assert-ConfigEnabled {
+    $cfgText=Get-Content $Cfg -Raw
+    Assert-True ($cfgText.Contains('WebUI\AlternativeUIEnabled=true')) 'qB AlternativeUIEnabled was not configured.'
+    Assert-True ($cfgText.Contains("WebUI\RootFolder=$Destination")) 'qB RootFolder was not configured to isolated destination.'
+    Assert-True ($cfgText.Contains('Lifecycle\Marker=preserve-me')) 'Unrelated qB config marker was not preserved.'
   }
 
   function Assert-ArchiveBackup([string]$Backup,[string]$ExpectedVersion='') {
@@ -160,30 +165,62 @@ try {
 
   & $Installer -Version $VersionOne -Configure -Destination $Destination
   Assert-Install $VersionOne $ShaOne 'release-one'
+  Assert-ConfigEnabled
   $FirstBackup=(Get-Content (Join-Path $State 'last-backup') -Raw).Trim()
   Assert-True (((Get-Content (Join-Path $FirstBackup 'had-webui') -Raw).Trim()) -eq '0') 'First backup should record no previous WebUI.'
   $firstCfg=Get-Content (Join-Path $FirstBackup 'qBittorrent.conf') -Raw
   Assert-True ($firstCfg.Contains('WebUI\AlternativeUIEnabled=false')) 'First backup lost original AlternativeUIEnabled.'
   Assert-True ($firstCfg.Contains('WebUI\RootFolder=C:\original\webui')) 'First backup lost original RootFolder.'
 
+  $cfgBeforePlainUpdate=(Get-FileHash -Algorithm SHA256 -LiteralPath $Cfg).Hash
   Start-Sleep -Milliseconds 1100
-  & $Installer -Version $VersionTwo -Configure -Destination $Destination
+  & $Installer -Version $VersionTwo -Destination $Destination
   Assert-Install $VersionTwo $ShaTwo 'release-two'
+  Assert-ConfigEnabled
+  $cfgAfterPlainUpdate=(Get-FileHash -Algorithm SHA256 -LiteralPath $Cfg).Hash
+  Assert-True ($cfgAfterPlainUpdate -eq $cfgBeforePlainUpdate) 'Plain update changed qBittorrent config bytes.'
   $SecondBackup=(Get-Content (Join-Path $State 'last-backup') -Raw).Trim()
   Assert-True ($SecondBackup -ne $FirstBackup) 'Upgrade backup reused the initial backup directory.'
   Assert-True (((Get-Content (Join-Path $SecondBackup 'had-webui') -Raw).Trim()) -eq '1') 'Upgrade backup should record previous WebUI.'
   Assert-ArchiveBackup $SecondBackup $VersionOne
-  $secondCfg=Get-Content (Join-Path $SecondBackup 'qBittorrent.conf') -Raw
-  Assert-True ($secondCfg.Contains('WebUI\AlternativeUIEnabled=true')) 'Upgrade backup lost configured AlternativeUIEnabled.'
-  Assert-True ($secondCfg.Contains("WebUI\RootFolder=$Destination")) 'Upgrade backup lost configured RootFolder.'
+  Assert-True (!(Test-Path -LiteralPath (Join-Path $SecondBackup 'qBittorrent.conf'))) 'Plain update unexpectedly captured qBittorrent config.'
+  Assert-True (!(Test-Path -LiteralPath (Join-Path $SecondBackup 'config-path'))) 'Plain update unexpectedly published a qBittorrent config path.'
 
   $mutated=(Get-Content $Cfg -Raw).Replace('WebUI\AlternativeUIEnabled=true','WebUI\AlternativeUIEnabled=false').Replace("WebUI\RootFolder=$Destination",'WebUI\RootFolder=C:\post-upgrade-mutated')
   Write-Utf8NoBom $Cfg $mutated
+  $cfgBeforePlainRollback=(Get-FileHash -Algorithm SHA256 -LiteralPath $Cfg).Hash
 
   $pwsh=Join-Path $PSHOME 'pwsh.exe'
   & $pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Installer -Rollback
   if($LASTEXITCODE -ne 0){throw "Rollback subprocess failed with exit code $LASTEXITCODE."}
   Assert-Install $VersionOne $ShaOne 'release-one'
+  $cfgAfterPlainRollback=(Get-FileHash -Algorithm SHA256 -LiteralPath $Cfg).Hash
+  Assert-True ($cfgAfterPlainRollback -eq $cfgBeforePlainRollback) 'Plain rollback changed qBittorrent config bytes.'
+  $plainRollbackCfg=Get-Content $Cfg -Raw
+  Assert-True ($plainRollbackCfg.Contains('WebUI\AlternativeUIEnabled=false')) 'Plain rollback did not preserve the user AlternativeUIEnabled state.'
+  Assert-True ($plainRollbackCfg.Contains('WebUI\RootFolder=C:\post-upgrade-mutated')) 'Plain rollback did not preserve the user RootFolder.'
+
+  Start-Sleep -Milliseconds 1100
+  & $Installer -Version $VersionTwo -Configure -Destination $Destination
+  Assert-Install $VersionTwo $ShaTwo 'release-two'
+  Assert-ConfigEnabled
+  $ConfiguredBackup=(Get-Content (Join-Path $State 'last-backup') -Raw).Trim()
+  Assert-ArchiveBackup $ConfiguredBackup $VersionOne
+  $configuredSnapshot=Get-Content (Join-Path $ConfiguredBackup 'qBittorrent.conf') -Raw
+  Assert-True ($configuredSnapshot.Contains('WebUI\AlternativeUIEnabled=false')) 'Explicit configure backup lost the previous AlternativeUIEnabled state.'
+  Assert-True ($configuredSnapshot.Contains('WebUI\RootFolder=C:\post-upgrade-mutated')) 'Explicit configure backup lost the previous RootFolder.'
+
+  & $pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Installer -Rollback -Configure
+  if($LASTEXITCODE -ne 0){throw "Explicit config rollback subprocess failed with exit code $LASTEXITCODE."}
+  Assert-Install $VersionOne $ShaOne 'release-one'
+  $explicitRollbackCfg=Get-Content $Cfg -Raw
+  Assert-True ($explicitRollbackCfg.Contains('WebUI\AlternativeUIEnabled=false')) 'Explicit config rollback did not restore AlternativeUIEnabled.'
+  Assert-True ($explicitRollbackCfg.Contains('WebUI\RootFolder=C:\post-upgrade-mutated')) 'Explicit config rollback did not restore RootFolder.'
+
+  Start-Sleep -Milliseconds 1100
+  & $Installer -Version $VersionOne -Configure -Destination $Destination
+  Assert-Install $VersionOne $ShaOne 'release-one'
+  Assert-ConfigEnabled
   Assert-True (((Get-Content (Join-Path $State 'last-dest') -Raw).Trim()) -eq $Destination) 'Remembered destination mismatch.'
 
   Start-Sleep -Milliseconds 1100
@@ -197,9 +234,10 @@ try {
   Assert-True (((Get-Content (Join-Path $UninstallBackup 'had-webui') -Raw).Trim()) -eq '1') 'Uninstall backup did not preserve the removed WebUI.'
   Assert-ArchiveBackup $UninstallBackup $VersionOne
 
-  & $pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Installer -Rollback
+  & $pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Installer -Rollback -Configure
   if($LASTEXITCODE -ne 0){throw "Post-uninstall rollback subprocess failed with exit code $LASTEXITCODE."}
   Assert-Install $VersionOne $ShaOne 'release-one'
+  Assert-ConfigEnabled
 
   Start-Sleep -Milliseconds 1100
   & $pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Installer -Uninstall -Configure -Purge -Destination $Destination

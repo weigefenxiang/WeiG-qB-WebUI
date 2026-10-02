@@ -36,7 +36,7 @@ Main options:
   -dev, --dev               Install/update the current dev exact Git SHA.
   -o PATH, --output PATH    WebUI install path. Repeat -o to update multiple targets with one download.
   -configure, --configure   Enable qBittorrent Alternative WebUI and set Root Folder (single target only).
-  -rollback, --rollback     Restore the previous installer backup.
+  -rollback, --rollback     Restore previous WeiG files. Add -configure to restore a saved qB WebUI config snapshot.
   -uninstall, --uninstall   Remove an installer-owned WeiG WebUI. Add -configure to disable it in qBittorrent too.
   -purge, --purge           With -uninstall, also remove installer-owned backups for the selected target(s).
   -help, -h, --help         Show this help.
@@ -1061,7 +1061,7 @@ backup_target() {
   fi
 
   cfg=""
-  if [ "$TARGET_COUNT" -eq 1 ]; then
+  if [ "$CONFIGURE" -eq 1 ] && [ "$TARGET_COUNT" -eq 1 ]; then
     cfg=$(find_config || true)
   fi
   if [ -n "$cfg" ]; then
@@ -1076,6 +1076,71 @@ backup_target() {
   printf '%s\n' "$qb_root" > "$STATE/last-qb-root-folder"
   printf '%s|%s\n' "$dest" "$b" >> "$BACKUP_MAP_FILE"
   echo "Backup: $b"
+}
+
+deploy_staged_webui() {
+  deploy_dest=$1
+  deploy_stage=$2
+
+  [ -d "$deploy_stage" ] || { echo "Prepared WebUI stage is missing: $deploy_stage" >&2; return 1; }
+  for deploy_required in public/index.html public/login.html private/index.html VERSION GIT_SHA private/weig-install.json; do
+    [ -f "$deploy_stage/$deploy_required" ] || { echo "Prepared WebUI stage is missing $deploy_required." >&2; return 1; }
+  done
+  if find "$deploy_stage" -type l -print -quit | grep -q .; then
+    echo "Prepared WebUI stage contains a symlink; refusing a qBittorrent Alternative WebUI deployment." >&2
+    return 1
+  fi
+
+  if [ ! -e "$deploy_dest" ]; then
+    mv "$deploy_stage" "$deploy_dest" || { echo "Unable to install prepared WebUI: $deploy_dest" >&2; return 1; }
+    return 0
+  fi
+  [ -d "$deploy_dest" ] || { echo "Install target exists but is not a directory: $deploy_dest" >&2; return 1; }
+  [ -f "$deploy_dest/public/index.html" ] && [ -f "$deploy_dest/private/index.html" ] || {
+    echo "Existing WeiG WebUI is missing a live index entry; refusing an in-place update." >&2
+    return 1
+  }
+
+  while IFS= read -r -d '' deploy_dir; do
+    [ "$deploy_dir" = "$deploy_stage" ] && continue
+    deploy_rel=${deploy_dir#"$deploy_stage"/}
+    mkdir -p "$deploy_dest/$deploy_rel" || return 1
+  done < <(find "$deploy_stage" -type d -print0)
+
+  while IFS= read -r -d '' deploy_src; do
+    deploy_rel=${deploy_src#"$deploy_stage"/}
+    deploy_dst="$deploy_dest/$deploy_rel"
+    deploy_parent=$(dirname "$deploy_dst")
+    mkdir -p "$deploy_parent" || return 1
+    if [ -e "$deploy_dst" ] && [ ! -f "$deploy_dst" ] && [ ! -L "$deploy_dst" ]; then
+      echo "Live WebUI path type collision: $deploy_dst" >&2
+      return 1
+    fi
+    deploy_tmp="$deploy_parent/.weig-stage-$$"
+    while [ -e "$deploy_tmp" ]; do deploy_tmp="$deploy_tmp.x"; done
+    cp -p -- "$deploy_src" "$deploy_tmp" || { rm -f -- "$deploy_tmp"; return 1; }
+    mv -f -- "$deploy_tmp" "$deploy_dst" || { rm -f -- "$deploy_tmp"; return 1; }
+  done < <(find "$deploy_stage" -type f -print0)
+
+  while IFS= read -r -d '' deploy_path; do
+    deploy_rel=${deploy_path#"$deploy_dest"/}
+    [ -f "$deploy_stage/$deploy_rel" ] && continue
+    rm -f -- "$deploy_path" || return 1
+  done < <(find "$deploy_dest" \( -type f -o -type l \) -print0)
+
+  while IFS= read -r -d '' deploy_dir; do
+    [ "$deploy_dir" = "$deploy_dest" ] && continue
+    deploy_rel=${deploy_dir#"$deploy_dest"/}
+    [ -d "$deploy_stage/$deploy_rel" ] && continue
+    rmdir -- "$deploy_dir" 2>/dev/null || true
+  done < <(find "$deploy_dest" -depth -type d -print0)
+
+  rm -rf -- "$deploy_stage"
+  [ -f "$deploy_dest/public/index.html" ] && [ -f "$deploy_dest/public/login.html" ] && [ -f "$deploy_dest/private/index.html" ] || {
+    echo "Live WebUI verification failed after deployment: $deploy_dest" >&2
+    return 1
+  }
+  return 0
 }
 
 restore_webui_from_backup() {
@@ -1093,10 +1158,9 @@ restore_webui_from_backup() {
       rm -rf -- "$restore_stage"
       return 1
     fi
-    rm -rf -- "$dest"
-    if ! mv "$restore_stage" "$dest"; then
+    if ! deploy_staged_webui "$dest" "$restore_stage"; then
       rm -rf -- "$restore_stage"
-      echo "Unable to switch verified backup into place: $dest" >&2
+      echo "Unable to restore verified backup into the live WebUI: $dest" >&2
       return 1
     fi
     echo "Restored previous WebUI: $dest"
@@ -1109,14 +1173,21 @@ restore_webui_from_backup() {
 restore_full_backup() {
   dest=$1
   b=$2
-  restore_webui_from_backup "$dest" "$b" || return 1
-  if [ -s "$b/config-path" ] && [ -f "$b/qBittorrent.conf" ]; then
+  if [ "$CONFIGURE" -eq 1 ]; then
+    [ -s "$b/config-path" ] && [ -f "$b/qBittorrent.conf" ] || {
+      echo "This backup has no qBittorrent config snapshot; refusing -rollback -configure." >&2
+      return 1
+    }
     cfg=$(cat "$b/config-path")
-    if is_safe_config_path "$cfg"; then
-      mkdir -p "$(dirname "$cfg")"
-      cp -a "$b/qBittorrent.conf" "$cfg"
-      echo "Restored qBittorrent config: $cfg"
-    fi
+    is_safe_config_path "$cfg" || { echo "Backup qBittorrent config path is unsafe: $cfg" >&2; return 1; }
+  fi
+
+  restore_webui_from_backup "$dest" "$b" || return 1
+
+  if [ "$CONFIGURE" -eq 1 ]; then
+    mkdir -p "$(dirname "$cfg")"
+    cp -a "$b/qBittorrent.conf" "$cfg"
+    echo "Restored qBittorrent WebUI config by explicit -configure: $cfg"
   fi
 }
 
@@ -1386,13 +1457,7 @@ while IFS='|' read -r target new qb_root; do
   [ -n "$target" ] || continue
   b=$(backup_for_target "$target")
   [ -n "$b" ] || { echo "Backup map missing for target: $target" >&2; rollback_switched; exit 1; }
-  old="$target.old"
-  rm -rf "$old"
-  if [ -d "$target" ]; then
-    mv "$target" "$old" || { echo "Unable to stage previous install for switch: $target" >&2; rollback_switched; exit 1; }
-  fi
-  if mv "$new" "$target"; then
-    rm -rf "$old"
+  if deploy_staged_webui "$target" "$new"; then
     printf '%s|%s\n' "$target" "$b" >> "$SWITCHED_FILE"
     echo "Installed and verified: $target"
     echo "  Channel: $CHANNEL"
@@ -1400,8 +1465,8 @@ while IFS='|' read -r target new qb_root; do
     echo "  Git SHA: $(cat "$target/GIT_SHA")"
     echo "  Metadata: $target/private/weig-install.json"
   else
-    [ -d "$old" ] && mv "$old" "$target" || true
-    echo "Installation switch failed: $target" >&2
+    echo "Live WebUI deployment failed: $target" >&2
+    restore_webui_from_backup "$target" "$b" || true
     rollback_switched
     exit 1
   fi

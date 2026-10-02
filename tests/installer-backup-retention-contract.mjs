@@ -21,7 +21,7 @@ assert.ok(ps.includes('function New-WebUiBackupPayload([string]$Source,[string]$
 assert.ok(ps.includes("Get-Command tar.exe,tar")&&ps.includes("Get-Command 7z.exe,7za.exe,7z,7za"),'Windows archive owner must discover alternate local tar/7z backends without downloading tools.');
 assert.ok(ps.includes('function Save-BackupArchiveManifest')&&ps.includes('Get-FileHash -Algorithm SHA256'),'Windows compressed backups must publish a SHA-256-bound archive manifest.');
 assert.ok(ps.includes('function Expand-WebUiBackupPayload')&&ps.includes("Join-Path $Backup 'webui'"),'Windows restore must centralize archive extraction while retaining a bounded legacy directory reader.');
-assert.ok(ps.includes('$stage="$Destination.weig-restore-$PID-'),'Windows rollback must stage and verify the backup before replacing the live WebUI.');
+assert.ok(ps.includes('$stage="$Target.weig-restore-$PID-')&&ps.includes('Install-WebUiStage $stage $Target'),'Windows rollback must stage, verify, and restore through the shared live-safe deployment owner.');
 
 assert.ok(sh.includes('BACKUP_RETENTION=3'), 'Shell installer must define the three-backup retention policy explicitly.');
 assert.ok(sh.includes('prune_backups_for_dest() {'), 'Shell installer must own target-scoped backup retention.');
@@ -39,6 +39,6 @@ assert.ok(sh.includes('create_webui_backup_payload() {')&&sh.includes('tar -C "$
 assert.ok(sh.includes('for backup_tool in 7z 7za')&&sh.includes('command -v zip'),'Linux archive owner must discover alternate local 7z/zip backends without downloading tools.');
 assert.ok(sh.includes('record_backup_archive() {')&&sh.includes('backup_sha256() {')&&sh.includes('archive-manifest'),'Linux compressed backups must publish a SHA-256-bound archive manifest.');
 assert.ok(sh.includes('extract_webui_backup_payload() {')&&sh.includes('[ -d "$backup_extract_root/webui" ]'),'Linux restore must centralize archive extraction while retaining a bounded legacy directory reader.');
-assert.ok(sh.includes('restore_stage="$dest.weig-restore.$$"'),'Linux rollback must extract and verify into a target-adjacent staging directory before replacement.');
+assert.ok(sh.includes('restore_stage="$dest.weig-restore.$$"')&&sh.includes('deploy_staged_webui "$dest" "$restore_stage"'),'Linux rollback must extract, verify, and restore through the shared live-safe deployment owner.');
 
 console.log('Installer backup lifecycle contract passed: Linux and Windows keep exact-target ownership/retention, prefer SHA-256-bound compressed payloads, retain bounded legacy readers, and only permit destructive purge during uninstall.');

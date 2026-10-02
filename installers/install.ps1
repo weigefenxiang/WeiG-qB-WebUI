@@ -28,7 +28,7 @@ Options:
   -o PATH, -output PATH     WebUI install path.
   -qbconfig PATH            Exact qBittorrent config path for custom/portable profiles.
   -configure                Enable qBittorrent Alternative WebUI and set Root Folder.
-  -rollback                 Restore the previous installation and qBittorrent config.
+  -rollback                 Restore previous WeiG files. Add -configure to restore a saved qB WebUI config snapshot.
   -uninstall                Remove an installer-owned WeiG WebUI. Add -configure to disable it in qBittorrent too.
   -purge                    With -uninstall, also remove installer-owned backups for this install target.
   -help                     Show this help.
@@ -711,6 +711,97 @@ function Expand-WebUiBackupPayload([string]$Backup,[string]$Stage) {
   if(!(Get-ChildItem -LiteralPath $Stage -Force -ErrorAction SilentlyContinue | Select-Object -First 1)){throw 'Backup archive extracted no WebUI files.'}
 }
 
+function Install-WebUiStage([string]$Stage,[string]$Target) {
+  if(!(Test-Path -LiteralPath $Stage -PathType Container)){throw "Prepared WebUI stage is missing: $Stage"}
+  foreach($relative in @('public\index.html','public\login.html','private\index.html','VERSION','GIT_SHA','private\weig-install.json')){
+    if(!(Test-Path -LiteralPath (Join-Path $Stage $relative) -PathType Leaf)){throw "Prepared WebUI stage is missing $relative."}
+  }
+  $reparse=@(Get-ChildItem -LiteralPath $Stage -Recurse -Force -ErrorAction Stop | Where-Object { ($_.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 })
+  if($reparse.Count -gt 0){throw 'Prepared WebUI stage contains a reparse point/symlink; refusing a qBittorrent Alternative WebUI deployment.'}
+
+  if(!(Test-Path -LiteralPath $Target)){
+    Move-Item -LiteralPath $Stage -Destination $Target
+    return
+  }
+  if(!(Test-Path -LiteralPath $Target -PathType Container)){throw "Install target exists but is not a directory: $Target"}
+  if(!(Test-Path -LiteralPath (Join-Path $Target 'public\index.html') -PathType Leaf) -or !(Test-Path -LiteralPath (Join-Path $Target 'private\index.html') -PathType Leaf)){
+    throw 'Existing WeiG WebUI is missing a live index entry; refusing an in-place update.'
+  }
+
+  $stageRoot=[IO.Path]::GetFullPath($Stage).TrimEnd([IO.Path]::DirectorySeparatorChar,[IO.Path]::AltDirectorySeparatorChar)+[IO.Path]::DirectorySeparatorChar
+  $targetRoot=[IO.Path]::GetFullPath($Target).TrimEnd([IO.Path]::DirectorySeparatorChar,[IO.Path]::AltDirectorySeparatorChar)+[IO.Path]::DirectorySeparatorChar
+
+  foreach($dir in @(Get-ChildItem -LiteralPath $Stage -Directory -Recurse -Force -ErrorAction Stop)){
+    $relative=$dir.FullName.Substring($stageRoot.Length)
+    $destination=Join-Path $Target $relative
+    if((Test-Path -LiteralPath $destination) -and !(Test-Path -LiteralPath $destination -PathType Container)){throw "Live WebUI path type collision: $destination"}
+    New-Item -ItemType Directory -Force -Path $destination | Out-Null
+  }
+
+  foreach($file in @(Get-ChildItem -LiteralPath $Stage -File -Recurse -Force -ErrorAction Stop)){
+    $relative=$file.FullName.Substring($stageRoot.Length)
+    $destination=Join-Path $Target $relative
+    $parent=Split-Path $destination -Parent
+    New-Item -ItemType Directory -Force -Path $parent | Out-Null
+    if((Test-Path -LiteralPath $destination) -and !(Test-Path -LiteralPath $destination -PathType Leaf)){throw "Live WebUI path type collision: $destination"}
+    $temp=Join-Path $parent ('.weig-stage-'+[guid]::NewGuid().ToString('N')+'.tmp')
+    $replaceBackup=Join-Path $parent ('.weig-stage-backup-'+[guid]::NewGuid().ToString('N')+'.tmp')
+    try {
+      Copy-Item -LiteralPath $file.FullName -Destination $temp -Force
+      if(Test-Path -LiteralPath $destination -PathType Leaf){
+        [IO.File]::Replace($temp,$destination,$replaceBackup,$true)
+      } else {
+        Move-Item -LiteralPath $temp -Destination $destination
+      }
+    } finally {
+      if(Test-Path -LiteralPath $temp){Remove-Item -LiteralPath $temp -Force -ErrorAction SilentlyContinue}
+      if(Test-Path -LiteralPath $replaceBackup){Remove-Item -LiteralPath $replaceBackup -Force -ErrorAction SilentlyContinue}
+    }
+  }
+
+  foreach($file in @(Get-ChildItem -LiteralPath $Target -File -Recurse -Force -ErrorAction Stop)){
+    $relative=$file.FullName.Substring($targetRoot.Length)
+    if(!(Test-Path -LiteralPath (Join-Path $Stage $relative) -PathType Leaf)){
+      Remove-Item -LiteralPath $file.FullName -Force
+    }
+  }
+  foreach($dir in @(Get-ChildItem -LiteralPath $Target -Directory -Recurse -Force -ErrorAction Stop | Sort-Object { $_.FullName.Length } -Descending)){
+    $relative=$dir.FullName.Substring($targetRoot.Length)
+    if((Test-Path -LiteralPath (Join-Path $Stage $relative) -PathType Container)){continue}
+    if(!(Get-ChildItem -LiteralPath $dir.FullName -Force -ErrorAction SilentlyContinue | Select-Object -First 1)){
+      Remove-Item -LiteralPath $dir.FullName -Force
+    }
+  }
+
+  Remove-Item -LiteralPath $Stage -Recurse -Force
+  foreach($relative in @('public\index.html','public\login.html','private\index.html')){
+    if(!(Test-Path -LiteralPath (Join-Path $Target $relative) -PathType Leaf)){throw "Live WebUI verification failed after deployment: $relative"}
+  }
+}
+
+function Restore-WebUiBackup([string]$Backup,[string]$Target) {
+  $hadWebUi=$false
+  $hadMarker=Join-Path $Backup 'had-webui'
+  if(Test-Path $hadMarker){ $hadWebUi=((Get-Content $hadMarker -Raw).Trim() -eq '1') }
+
+  if($hadWebUi){
+    $parent=Split-Path $Target -Parent
+    if($parent){New-Item -ItemType Directory -Force -Path $parent | Out-Null}
+    $stage="$Target.weig-restore-$PID-$([guid]::NewGuid().ToString('N'))"
+    if(Test-Path -LiteralPath $stage){throw "Restore staging path already exists: $stage"}
+    try {
+      Expand-WebUiBackupPayload $Backup $stage
+      Install-WebUiStage $stage $Target
+    } finally {
+      if(Test-Path -LiteralPath $stage){Remove-Item -LiteralPath $stage -Recurse -Force -ErrorAction SilentlyContinue}
+    }
+    Write-Host "Restored previous WebUI: $Target"
+  } else {
+    if(Test-Path -LiteralPath $Target){Remove-Item -LiteralPath $Target -Recurse -Force}
+    Write-Host "Removed WeiG qB WebUI from: $Target"
+  }
+}
+
 function Backup-Current([string]$ConfigPath='') {
   $stamp=Get-Date -Format 'yyyyMMdd-HHmmss'
   $b=Join-Path $Backups $stamp
@@ -731,6 +822,7 @@ function Backup-Current([string]$ConfigPath='') {
   Set-Content -Encoding UTF8 -Path (Join-Path $State 'last-dest') -Value $Destination
   Prune-Backups $Destination 3
   Write-Host "Backup: $b"
+  return $b
 }
 
 function Restore-Last {
@@ -745,10 +837,13 @@ function Restore-Last {
     if($savedDest){ $script:Destination=$savedDest }
   }
 
-  $old=Join-Path $b 'qBittorrent.conf'
-  $configMarker=Join-Path $b 'config-path'
   $cfg=$null
-  if((Test-Path $old) -and (Test-Path $configMarker)){
+  if($Configure){
+    $old=Join-Path $b 'qBittorrent.conf'
+    $configMarker=Join-Path $b 'config-path'
+    if(!(Test-Path -LiteralPath $old -PathType Leaf) -or !(Test-Path -LiteralPath $configMarker -PathType Leaf)){
+      throw 'This backup has no qBittorrent config snapshot; refusing -Rollback -Configure.'
+    }
     $cfg=(Get-Content $configMarker -Raw).Trim()
     if($cfg){
       if(Test-QBittorrentRunning){throw 'qBittorrent is running. Exit qBittorrent completely before rollback restores its config.'}
@@ -762,32 +857,12 @@ function Restore-Last {
     }
   }
 
-  $hadWebUi=$false
-  $hadMarker=Join-Path $b 'had-webui'
-  if(Test-Path $hadMarker){ $hadWebUi=((Get-Content $hadMarker -Raw).Trim() -eq '1') }
-
-  if($hadWebUi){
-    $parent=Split-Path $Destination -Parent
-    if($parent){New-Item -ItemType Directory -Force -Path $parent | Out-Null}
-    $stage="$Destination.weig-restore-$PID-$([guid]::NewGuid().ToString('N'))"
-    if(Test-Path -LiteralPath $stage){throw "Restore staging path already exists: $stage"}
-    try {
-      Expand-WebUiBackupPayload $b $stage
-      if(Test-Path -LiteralPath $Destination){Remove-Item -LiteralPath $Destination -Recurse -Force}
-      Move-Item -LiteralPath $stage -Destination $Destination
-    } finally {
-      if(Test-Path -LiteralPath $stage){Remove-Item -LiteralPath $stage -Recurse -Force -ErrorAction SilentlyContinue}
-    }
-    Write-Host "Restored previous WebUI: $Destination"
-  } else {
-    if(Test-Path -LiteralPath $Destination){Remove-Item -LiteralPath $Destination -Recurse -Force}
-    Write-Host "Removed WeiG qB WebUI from: $Destination"
-  }
+  Restore-WebUiBackup $b $Destination
 
   if($cfg){
     New-Item -ItemType Directory -Force -Path (Split-Path $cfg -Parent) | Out-Null
-    Restore-QBConfigBackupAtomically $cfg $old
-    Write-Host "Restored qBittorrent config atomically: $cfg"
+    Restore-QBConfigBackupAtomically $cfg (Join-Path $b 'qBittorrent.conf')
+    Write-Host "Restored qBittorrent WebUI config by explicit -Configure: $cfg"
   }
 }
 
@@ -810,7 +885,7 @@ function Uninstall-Current {
     if(!$cfg){throw 'No unambiguous qBittorrent config was found; uninstall stopped before deleting files.'}
     $null=Assert-QBConfigMutationSafe $cfg
   }
-  Backup-Current $cfg
+  $null=Backup-Current $cfg
   if($Configure){
     Disable-QBWebUI $cfg $Destination
     Write-Host "Disabled qBittorrent Alternative WebUI: $cfg"
@@ -873,7 +948,7 @@ if($Configure){
   $null=Assert-QBConfigMutationSafe $cfg
 }
 
-Backup-Current $cfg
+$deploymentBackup=Backup-Current $cfg
 $tmp=Join-Path ([IO.Path]::GetTempPath()) ("weig-qb-"+[guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Force -Path $tmp | Out-Null
 try {
@@ -1019,17 +1094,18 @@ try {
   }
   $meta | ConvertTo-Json | Set-Content -Path (Join-Path $new 'private\weig-install.json') -Encoding UTF8
 
-  $old="$Destination.old"
-  if(Test-Path $old){Remove-Item $old -Recurse -Force}
   Move-OutOfInstallTarget $Destination
-  if(Test-Path $Destination){Move-Item $Destination $old}
   try {
-    Move-Item $new $Destination
+    Install-WebUiStage $new $Destination
   } catch {
-    if(Test-Path $old){Move-Item $old $Destination}
-    throw
+    $deploymentFailure=$_.Exception
+    try {
+      Restore-WebUiBackup $deploymentBackup $Destination
+    } catch {
+      throw "Live WebUI deployment failed and automatic file rollback also failed. Deployment error: $($deploymentFailure.Message) Rollback error: $($_.Exception.Message)"
+    }
+    throw $deploymentFailure
   }
-  if(Test-Path $old){Remove-Item $old -Recurse -Force}
 
   Write-Host "Installed: $Destination"
   Write-Host "Channel: $($Channel.ToLowerInvariant())"
