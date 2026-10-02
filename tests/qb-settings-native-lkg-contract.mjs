@@ -81,7 +81,7 @@ const detailUi=()=>({
     webseeds:[{key:'url',caption:'URL',defaultWidth:500,defaultVisible:true,translation:ref('URL','HttpServer'),dataProperties:['url']}]
   }
 });
-const statisticsUi=()=>({groups:[{key:'user-statistics',translation:ref('User statistics','StatsDialog'),fields:[{id:'AlltimeUL',dataProperty:'alltime_ul',format:'bytes',translation:ref('All-time upload:','StatsDialog')}]}]});
+const statisticsUi=()=>({title:ref('Statistics','MainWindow'),groups:[{key:'user-statistics',translation:ref('User statistics','StatsDialog'),fields:[{id:'AlltimeUL',dataProperty:'alltime_ul',format:'bytes',translation:ref('All-time upload:','StatsDialog')}]}]});
 
 const detailWithMixed=detailUi();
 detailWithMixed.controls={filePriority:{valueType:'integer',sourceKind:'upstream-createPriorityCombo',options:[{value:'1',translation:ref('Normal','PropListDelegate')},{value:'-1',translation:ref('Mixed','PropListDelegate'),disabled:true}]}};
