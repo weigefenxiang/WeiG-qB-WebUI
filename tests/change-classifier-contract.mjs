@@ -1,0 +1,52 @@
+import assert from 'node:assert/strict';
+import {
+  classifyChangedPaths,
+  isPagesPayloadPath,
+  isSettingsSourcePath
+} from '../tools/change-classifier.mjs';
+
+let result=classifyChangedPaths(['docs/guide.md','README.md']);
+assert.equal(result.docsOnly,true);
+assert.equal(result.ciRelevant,false);
+assert.equal(result.pagesRelevant,false);
+
+result=classifyChangedPaths(['installers/install.sh','tests/installer-lifecycle.sh']);
+assert.equal(result.installer,true);
+assert.equal(result.pagesPayload,true);
+assert.equal(result.settingsSource,false);
+assert.equal(result.settingsUi,false);
+
+result=classifyChangedPaths(['webui/private/scripts/app.js']);
+assert.equal(result.ui,true);
+assert.equal(result.pagesPayload,true);
+assert.equal(result.settingsSource,false);
+
+result=classifyChangedPaths(['webui/private/scripts/settings.js']);
+assert.equal(result.ui,true);
+assert.equal(result.settingsUi,true);
+assert.equal(result.settingsSource,false);
+
+result=classifyChangedPaths(['tools/qb-settings-translation-lkg.mjs']);
+assert.equal(result.settingsSource,true);
+assert.equal(result.pagesPayload,true);
+
+result=classifyChangedPaths(['tools/qb-detail-surface-parsers.mjs']);
+assert.equal(result.nativeSource,true);
+assert.equal(result.pagesPayload,true);
+assert.equal(result.settingsSource,false);
+
+result=classifyChangedPaths(['tests/pages-live-auth.mjs']);
+assert.equal(result.pagesLive,true);
+assert.equal(result.pagesPayload,false);
+assert.equal(result.pagesRelevant,true);
+
+result=classifyChangedPaths(['.github/workflows/ci.yml']);
+assert.equal(result.workflowPolicy,true);
+assert.equal(result.pagesPayload,true);
+assert.equal(result.ciRelevant,true);
+
+assert.equal(isPagesPayloadPath('simulator/lab/lab.js'),true);
+assert.equal(isSettingsSourcePath('tools/data/qb-stable-lkg.json'),true);
+assert.equal(isSettingsSourcePath('installers/install.sh'),false);
+
+console.log('Canonical change classifier contract passed: docs, installer, UI, Settings-source, native-source, live Pages and workflow-policy lanes have one repository-owned owner.');
