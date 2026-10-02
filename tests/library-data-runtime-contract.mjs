@@ -8,7 +8,7 @@ const source=fs.readFileSync(path.resolve(here,'../webui/private/scripts/library
 const assert=(ok,msg)=>{if(!ok)throw new Error(msg);};
 const requests=[];
 const rows=Array.from({length:740},(_,i)=>({hash:String(i+1).padStart(40,'0'),name:'T'+(i+1)}));
-const client={getTorrents:async opts=>{requests.push({...opts});const offset=Number(opts.offset||0),limit=Number(opts.limit||0);return rows.slice(offset,offset+limit);}};
+const syncRequests=[];const syncResponses=[{rid:7,full_update:true,torrents:{a:{name:'A',state:'downloading'},b:{name:'B'}},trackers:{'https://one/':['a','b']}},{rid:8,torrents:{a:{state:'uploading'},c:{name:'C'}},torrents_removed:['b'],trackers:{'https://one/':['a'],'https://two/':['c']}}];const client={getTorrents:async opts=>{requests.push({...opts});const offset=Number(opts.offset||0),limit=Number(opts.limit||0);return rows.slice(offset,offset+limit);},getMainData:async rid=>{syncRequests.push(rid);return syncResponses.shift();}};
 const window={WeiG:{},document:{hidden:false},setTimeout,clearTimeout,requestIdleCallback:cb=>setTimeout(()=>cb({didTimeout:false,timeRemaining:()=>50}),0)};
 window.window=window;
 vm.runInNewContext(source,{window,setTimeout,clearTimeout,Promise,Date,Map,Math,Number,Object,Array,String,encodeURIComponent,Error},{filename:'library-data.js'});
@@ -30,5 +30,5 @@ await runtime.fetchPage(query,0,1000,{remember:true});await runtime.schedulePref
 assert(requests.length===1&&!runtime.cachedPage(query,0,1000),'1000/page must neither neighbor-prefetch nor retain a duplicate page cache');
 requests.length=0;const catalog=await runtime.scanCatalog({priority:'background',batchSize:200});
 assert(catalog.length===740&&requests.map(r=>r.offset).join(',')==='0,200,400,600','background catalog scan must remain bounded and sequential');
-const stats=runtime.stats();assert(stats.catalogBusy===false&&stats.cacheRows===0,'runtime diagnostics drifted');
-console.log('LibraryDataRuntime contract passed: page-first cache, bounded adaptive neighbor prefetch, large-page cutoff, idle catalog scan.');
+const firstSync=await runtime.syncMainData(),secondSync=await runtime.syncMainData();assert(syncRequests.join(',')==='0,7','sync/maindata must advance its exact response id instead of repeatedly requesting rid=0');assert(firstSync.torrents.a.name==='A'&&secondSync.torrents.a.name==='A'&&secondSync.torrents.a.state==='uploading'&&!secondSync.torrents.b&&secondSync.torrents.c.name==='C','incremental Torrent snapshot merge/removal drifted');assert(secondSync.trackers['https://one/'].join(',')==='a'&&secondSync.trackers['https://two/'].join(',')==='c','incremental Tracker membership merge drifted');const stats=runtime.stats();assert(stats.catalogBusy===false&&stats.cacheRows===0&&stats.mainDataRid===8,'runtime diagnostics drifted');
+console.log('LibraryDataRuntime contract passed: page-first cache, bounded adaptive neighbor prefetch, large-page cutoff, idle catalog scan, incremental rid sync.');
