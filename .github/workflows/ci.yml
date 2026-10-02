@@ -339,7 +339,7 @@ jobs:
   installer_lifecycle_linux:
     name: Linux installer lifecycle
     needs: classify
-    if: ${{ always() && (github.event_name == 'workflow_dispatch' || needs.classify.outputs.relevant == 'true') }}
+    if: ${{ always() && (github.event_name == 'workflow_dispatch' || needs.classify.outputs.installer == 'true') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -353,7 +353,7 @@ jobs:
   installer_lifecycle_windows:
     name: Windows installer lifecycle
     needs: classify
-    if: ${{ always() && (github.event_name == 'workflow_dispatch' || needs.classify.outputs.relevant == 'true') }}
+    if: ${{ always() && (github.event_name == 'workflow_dispatch' || needs.classify.outputs.installer == 'true') }}
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
