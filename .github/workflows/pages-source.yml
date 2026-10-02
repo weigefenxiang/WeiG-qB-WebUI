@@ -14,6 +14,7 @@ on:
         type: choice
         options:
           - pages
+          - change-aware
           - settings-evidence
   push:
     branches:
@@ -44,6 +45,7 @@ jobs:
       native_source: ${{ steps.relevance.outputs.native_source }}
       pages_payload: ${{ steps.relevance.outputs.pages_payload }}
       pages_live: ${{ steps.relevance.outputs.pages_live }}
+      verification_profile: ${{ steps.relevance.outputs.verification_profile }}
     steps:
       - name: Checkout source history
         uses: actions/checkout@v6
@@ -116,6 +118,7 @@ jobs:
             local json field relevant
 
             json="$(classify_range "$from_sha" "$to_sha")"
+            SCANNED_CHANGE_JSON="$json"
             if [ "$include_live" = "true" ]; then
               field=pagesRelevant
             else
@@ -140,26 +143,57 @@ jobs:
 
           emit force_evidence false
           emit_defaults
+          SCANNED_CHANGE_JSON=""
 
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
-            emit relevant true
-            if [ "$REQUESTED_MODE" = "settings-evidence" ]; then
-              test "$GITHUB_REF_NAME" = "dev" || { echo "settings-evidence refresh must run on dev." >&2; exit 1; }
-              emit force_evidence true
-              emit settings_source true
-              emit pages_payload true
-              echo "Manual Settings evidence refresh requested on dev."
-            else
-              echo "Manual Pages dispatch explicitly requests a deployment owner run."
-            fi
+            case "$REQUESTED_MODE" in
+              settings-evidence)
+                emit relevant true
+                test "$GITHUB_REF_NAME" = "dev" || { echo "settings-evidence refresh must run on dev." >&2; exit 1; }
+                emit force_evidence true
+                emit settings_source true
+                emit pages_payload true
+                emit verification_profile full
+                echo "Manual Settings evidence refresh requested on dev."
+                ;;
+              change-aware)
+                PARENT_SHA="$(git rev-parse "$GITHUB_SHA^" 2>/dev/null || true)"
+                if [ -z "$PARENT_SHA" ] || ! git cat-file -e "$PARENT_SHA^{commit}" 2>/dev/null; then
+                  emit relevant true
+                  emit_fail_closed
+                  emit verification_profile full
+                  echo "Change-aware dispatch has no usable parent SHA; fail closed to full Pages validation."
+                else
+                  CHANGE_JSON="$(classify_range "$PARENT_SHA" "$GITHUB_SHA")"
+                  emit_classes "$CHANGE_JSON"
+                  relevant="$(jq -r '.pagesRelevant' <<<"$CHANGE_JSON")"
+                  emit relevant "$relevant"
+                  profile="$(printf '%s' "$CHANGE_JSON" | node tools/pages-verify-plan.mjs --classification)"
+                  emit verification_profile "$profile"
+                  echo "Change-aware manual Pages profile=$profile classes=$(jq -c '{installer,ui,settingsUi,settingsSource,nativeSource,pagesPayload,pagesLive,workflowPolicy}' <<<"$CHANGE_JSON")"
+                fi
+                ;;
+              pages|'')
+                emit relevant true
+                emit_fail_closed
+                emit verification_profile full
+                echo "Manual Pages dispatch explicitly requests the full deployment proof."
+                ;;
+              *)
+                echo "Unsupported Pages source mode: $REQUESTED_MODE" >&2
+                exit 1
+                ;;
+            esac
             exit 0
           fi
 
+          PROFILE_FAIL_CLOSED=false
           BEFORE="$BEFORE_SHA"
           case "$BEFORE" in
             ''|0000000000000000000000000000000000000000)
               emit relevant true
               emit_fail_closed
+              emit verification_profile full
               echo "Push has no usable before SHA; fail closed by requiring a Pages owner run."
               exit 0
               ;;
@@ -168,12 +202,12 @@ jobs:
           if ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
             emit relevant true
             emit_fail_closed
+            emit verification_profile full
             echo "Before SHA is unavailable locally; fail closed by requiring a Pages owner run."
             exit 0
           fi
 
           CHANGE_JSON="$(classify_range "$BEFORE" "$GITHUB_SHA")"
-          emit_classes "$CHANGE_JSON"
           relevant="$(jq -r '.pagesRelevant' <<<"$CHANGE_JSON")"
 
           # A docs-only follow-up can arrive after an earlier Pages-relevant build failed. In that
@@ -186,9 +220,11 @@ jobs:
             if ! PUBLISHED_SHA="$(curl -fsSL --retry 2 --connect-timeout 10 --max-time 20 -H 'Cache-Control: no-cache' "$PAGES_DEV_SHA_URL" | tr -d '\r\n')"; then
               echo "Unable to read published dev Pages payload SHA; fail closed by requiring a Pages owner run."
               relevant=true
+              PROFILE_FAIL_CLOSED=true
             elif [[ ! "$PUBLISHED_SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
               echo "Published dev Pages payload SHA is invalid: $PUBLISHED_SHA; fail closed by requiring a Pages owner run."
               relevant=true
+              PROFILE_FAIL_CLOSED=true
             else
               PUBLISHED_SHA="${PUBLISHED_SHA,,}"
               if [ "$PUBLISHED_SHA" = "$GITHUB_SHA" ]; then
@@ -196,19 +232,30 @@ jobs:
               elif ! git cat-file -e "$PUBLISHED_SHA^{commit}" 2>/dev/null; then
                 echo "Published dev Pages SHA $PUBLISHED_SHA is unavailable in source history; fail closed by requiring a Pages owner run."
                 relevant=true
+                PROFILE_FAIL_CLOSED=true
               elif ! git merge-base --is-ancestor "$PUBLISHED_SHA" "$GITHUB_SHA"; then
                 echo "Published dev Pages SHA is not an ancestor of current dev; fail closed by requiring a Pages owner run."
                 relevant=true
+                PROFILE_FAIL_CLOSED=true
               elif scan_pages_relevant_range "$PUBLISHED_SHA" "$GITHUB_SHA" "published dev payload" true; then
                 relevant=true
+                CHANGE_JSON="$SCANNED_CHANGE_JSON"
               else
                 echo "Published dev payload $PUBLISHED_SHA can represent current dev $GITHUB_SHA because only Pages-irrelevant changes are newer."
               fi
             fi
           fi
 
+          emit_classes "$CHANGE_JSON"
           emit relevant "$relevant"
-          echo "Current change classes: $(jq -c '{installer,ui,settingsUi,settingsSource,nativeSource,pagesPayload,pagesLive}' <<<"$CHANGE_JSON")"
+          if [ "$PROFILE_FAIL_CLOSED" = "true" ]; then
+            profile=full
+          else
+            profile="$(printf '%s' "$CHANGE_JSON" | node tools/pages-verify-plan.mjs --classification)"
+          fi
+          emit verification_profile "$profile"
+          echo "Current change classes: $(jq -c '{installer,ui,settingsUi,settingsSource,nativeSource,pagesPayload,pagesLive,workflowPolicy}' <<<"$CHANGE_JSON")"
+          echo "Pages verification profile: $profile"
           if [ "$relevant" != "true" ]; then
             echo "No public payload, materialization input, live verifier, or unpublished Pages-relevant dev change requires deployment."
           fi
@@ -613,6 +660,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           PREPARED_DEV_SHA: ${{ needs.settings_evidence_probe.outputs.dev_sha }}
+          VERIFY_PROFILE: ${{ needs.source.outputs.verification_profile }}
         run: |
           set -euo pipefail
           EVENT_BRANCH="$GITHUB_REF_NAME"
@@ -633,8 +681,8 @@ jobs:
             exit 0
           fi
 
-          gh api --method POST \
-            "/repos/$GITHUB_REPOSITORY/actions/workflows/pages.yml/dispatches" \
-            -f ref=dev >/dev/null
+          jq -n --arg ref dev --arg profile "$VERIFY_PROFILE" \
+            '{ref:$ref,inputs:{validation_profile:$profile}}' \
+            | gh api --method POST "/repos/$GITHUB_REPOSITORY/actions/workflows/pages.yml/dispatches" --input -
 
-          echo "Dispatched Virtual qB Pages on dev@$PREPARED_DEV_SHA after exact-SHA Settings evidence was ready. The build will refresh both /dev/app and /main/app from current branch snapshots."
+          echo "Dispatched Virtual qB Pages on dev@$PREPARED_DEV_SHA with validation profile $VERIFY_PROFILE after exact-SHA Settings evidence was ready."

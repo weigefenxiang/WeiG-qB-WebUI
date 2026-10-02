@@ -2,6 +2,19 @@ name: Virtual qB Pages
 
 on:
   workflow_dispatch:
+    inputs:
+      validation_profile:
+        description: Live validation profile
+        required: false
+        default: full
+        type: choice
+        options:
+          - full
+          - installer
+          - payload
+          - ui
+          - settings
+          - native
 
 permissions:
   actions: read
@@ -21,11 +34,14 @@ env:
   # and WeiG source identity are the same exact SHA. Do not restore workflow_run here.
   WEIG_PAGES_SOURCE_SHA: ${{ github.sha }}
   WEIG_PAGES_SOURCE_BRANCH: ${{ github.ref_name }}
+  WEIG_PAGES_VERIFY_PROFILE: ${{ inputs.validation_profile }}
 
 jobs:
   build:
     if: ${{ github.ref_name == 'dev' }}
     runs-on: ubuntu-latest
+    outputs:
+      verify_matrix: ${{ steps.verify_plan.outputs.matrix }}
     steps:
       - name: Checkout exact WeiG source
         uses: actions/checkout@v6
@@ -40,11 +56,32 @@ jobs:
           node-version: '22'
           cache: npm
 
-      - name: Install contract dependencies
-        run: npm ci
+      - name: Plan exact change-aware live verification
+        id: verify_plan
+        shell: bash
+        run: |
+          set -euo pipefail
+          matrix="$(node tools/pages-verify-plan.mjs --profile="$WEIG_PAGES_VERIFY_PROFILE")"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          echo "Pages verification profile: $WEIG_PAGES_VERIFY_PROFILE"
+          node -e 'const value=JSON.parse(process.argv[1]); console.log("Live lanes: "+value.include.map(item=>item.name).join(", "));' "$matrix"
 
-      - name: Validate current simulator contracts
+      - name: Install contract dependencies
+        run: npm ci --no-audit --no-fund --prefer-offline
+
+      - name: Validate full repository contracts
+        if: ${{ inputs.validation_profile == 'full' }}
         run: npm test
+
+      - name: Validate focused Pages build contracts
+        if: ${{ inputs.validation_profile != 'full' }}
+        run: |
+          node tests/dev-distribution-contract.mjs
+          node tests/pages-relevance-contract.mjs
+          node tests/pages-source-drain-contract.mjs
+          node tests/pages-cache-freshness-contract.mjs
+          node tests/pages-stable-index-contract.mjs
+          node tests/syntax-contract.mjs
 
       - name: Load prepared exact-SHA qB Settings translation evidence
         shell: bash
@@ -216,41 +253,13 @@ jobs:
   verify:
     name: verify ${{ matrix.name }}
     if: ${{ github.ref_name == 'dev' }}
-    needs: deploy
+    needs: [build, deploy]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     strategy:
       fail-fast: false
       max-parallel: 16
-      matrix:
-        include:
-          - {name: core, script: tests/pages-live-acceptance.mjs, pref_mode: none, pref_index: '0', pref_total: '1', release_mode: none}
-          - {name: startup-performance, script: tests/pages-live-startup-performance.mjs, pref_mode: none, pref_index: '0', pref_total: '1', release_mode: none}
-          - {name: locale-bootstrap, script: tests/pages-live-locale-bootstrap.mjs, pref_mode: none, pref_index: '0', pref_total: '1', release_mode: none}
-          - {name: release-profile-floor, script: tests/pages-live-release-profile.mjs, pref_mode: none, pref_index: '0', pref_total: '1', release_mode: floor}
-          - {name: release-profile-latest, script: tests/pages-live-release-profile.mjs, pref_mode: none, pref_index: '0', pref_total: '1', release_mode: latest}
-          - {name: release-profile-settings, script: tests/pages-live-release-profile.mjs, pref_mode: none, pref_index: '0', pref_total: '1', release_mode: settings}
-          - {name: services-auth, script: tests/pages-live-auth.mjs, service_mode: none, pref_mode: none, pref_index: '0', pref_total: '1', release_mode: none}
-          - {name: services-modern, script: tests/pages-live-services-core.mjs, service_mode: modern, pref_mode: none, pref_index: '0', pref_total: '1', release_mode: none}
-          - {name: services-owner-ui, script: tests/pages-live-services-core.mjs, service_mode: owner-ui, pref_mode: none, pref_index: '0', pref_total: '1', release_mode: none}
-          - {name: services-legacy, script: tests/pages-live-services-core.mjs, service_mode: legacy, pref_mode: none, pref_index: '0', pref_total: '1', release_mode: none}
-          - {name: services-isolation, script: tests/pages-live-services-core.mjs, service_mode: isolation, pref_mode: none, pref_index: '0', pref_total: '1', release_mode: none}
-          - {name: services-offline, script: tests/pages-live-services-core.mjs, service_mode: offline, pref_mode: none, pref_index: '0', pref_total: '1', release_mode: none}
-          - {name: services-protocol, script: tests/pages-live-protocol.mjs, service_mode: none, pref_mode: none, pref_index: '0', pref_total: '1', release_mode: none}
-          - {name: services-branch-alias, script: tests/pages-live-branch-alias.mjs, service_mode: none, pref_mode: none, pref_index: '0', pref_total: '1', release_mode: none}
-          - {name: mobile-layout, script: tests/pages-live-mobile-layout.mjs, pref_mode: none, pref_index: '0', pref_total: '1', release_mode: none}
-          - {name: detail-dock, script: tests/pages-live-detail-dock.mjs, service_mode: none, pref_mode: none, pref_index: '0', pref_total: '1', release_mode: none}
-          - {name: preferences-anchor, script: tests/pages-live-preferences.mjs, pref_mode: anchor, pref_index: '0', pref_total: '10', release_mode: none}
-          - {name: preferences-0, script: tests/pages-live-preferences.mjs, pref_mode: shard, pref_index: '0', pref_total: '10', release_mode: none}
-          - {name: preferences-1, script: tests/pages-live-preferences.mjs, pref_mode: shard, pref_index: '1', pref_total: '10', release_mode: none}
-          - {name: preferences-2, script: tests/pages-live-preferences.mjs, pref_mode: shard, pref_index: '2', pref_total: '10', release_mode: none}
-          - {name: preferences-3, script: tests/pages-live-preferences.mjs, pref_mode: shard, pref_index: '3', pref_total: '10', release_mode: none}
-          - {name: preferences-4, script: tests/pages-live-preferences.mjs, pref_mode: shard, pref_index: '4', pref_total: '10', release_mode: none}
-          - {name: preferences-5, script: tests/pages-live-preferences.mjs, pref_mode: shard, pref_index: '5', pref_total: '10', release_mode: none}
-          - {name: preferences-6, script: tests/pages-live-preferences.mjs, pref_mode: shard, pref_index: '6', pref_total: '10', release_mode: none}
-          - {name: preferences-7, script: tests/pages-live-preferences.mjs, pref_mode: shard, pref_index: '7', pref_total: '10', release_mode: none}
-          - {name: preferences-8, script: tests/pages-live-preferences.mjs, pref_mode: shard, pref_index: '8', pref_total: '10', release_mode: none}
-          - {name: preferences-9, script: tests/pages-live-preferences.mjs, pref_mode: shard, pref_index: '9', pref_total: '10', release_mode: none}
+      matrix: ${{ fromJSON(needs.build.outputs.verify_matrix) }}
     env:
       WEIG_BROWSER_CHANNEL: chrome
       WEIG_BROWSER_FETCH_TIMEOUT_MS: '15000'

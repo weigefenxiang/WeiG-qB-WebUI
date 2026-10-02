@@ -97,6 +97,7 @@ export function isPagesPayloadPath(path){
     'tests/pages-source-drain-contract.mjs',
     'tools/change-classifier.mjs',
     'tests/change-classifier-contract.mjs',
+    'tools/pages-verify-plan.mjs',
     'VERSION',
     'tools/build-webui-dist.mjs',
     'tools/product-identity.mjs'
@@ -123,7 +124,7 @@ export function classifyChangedPaths(values){
     settingsUi:any(paths,isSettingsUiPath),
     settingsSource:any(paths,isSettingsSourcePath),
     nativeSource:any(paths,isNativeSourcePath),
-    workflowPolicy:any(paths,path=>starts(path,'.github/workflows/')||path==='tools/change-classifier.mjs'||path==='tests/change-classifier-contract.mjs')
+    workflowPolicy:any(paths,path=>starts(path,'.github/workflows/')||['tools/change-classifier.mjs','tests/change-classifier-contract.mjs','tools/pages-verify-plan.mjs'].includes(path))
   };
   result.pagesRelevant=result.pagesPayload||result.pagesLive;
   result.fast=result.ciRelevant;

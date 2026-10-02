@@ -8,6 +8,7 @@ import {
 const read=rel=>fs.readFileSync(new URL(`../${rel}`,import.meta.url),'utf8').replace(/\r\n?/g,'\n');
 const source=read('.github/workflows/pages-source.yml');
 const pages=read('.github/workflows/pages.yml');
+const pagesPlan=read('tools/pages-verify-plan.mjs');
 
 assert.ok(source.includes('node tools/change-classifier.mjs --stdin0'),'Pages source relay must consume the canonical repository change classifier.');
 assert.ok(!source.includes('pages_materialization_relevant_path()'),'Pages source relay must retire its duplicate materialization path matcher.');
@@ -47,6 +48,9 @@ assert.equal(classification.installer,true);
 assert.equal(classification.settingsSource,false);
 
 assert.ok(pages.includes('node tools/change-classifier.mjs --stdin0'),'Pages stale-deploy guard must consume the same canonical classifier as Pages Source.');
+assert.ok(pages.includes('validation_profile:')&&pages.includes('node tools/pages-verify-plan.mjs --profile=')&&pages.includes('fromJSON(needs.build.outputs.verify_matrix)'),'Pages deployment must consume one repository-owned validation plan and expand only the selected live matrix.');
+assert.ok(pagesPlan.includes('FULL_PAGES_VERIFY_LANES')&&pagesPlan.includes("case'full'")&&pagesPlan.includes('preferenceShard(index,10)'),'final/full profile must retain the historical 27-lane proof owner.');
+assert.ok(pagesPlan.includes("case'settings'")&&pagesPlan.includes('preferenceShard(index,4)'),'ordinary Settings profile must cover the whole stable catalog with four shards instead of ten.');
 assert.ok(pages.includes("jq -r '.pagesPayload'")&&pages.includes('Non-payload advance classes:'),'Pages stale-deploy guard must block payload advances while allowing verifier-only/repository-only head advances.');
 assert.ok(!pages.includes('.github/workflows/pages-source.yml|.github/workflows/pages.yml|.github/workflows/ci.yml|'),'Pages workflow must not retain the legacy duplicated payload matcher.');
 

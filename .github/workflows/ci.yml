@@ -1435,5 +1435,5 @@ jobs:
             echo "Dispatched CI $mode for dev@$TARGET_SHA."
           done
 
-          jq -n --arg ref dev             '{ref:$ref,inputs:{mode:"pages"}}'             | gh api --method POST "/repos/$GITHUB_REPOSITORY/actions/workflows/pages-source.yml/dispatches" --input -
-          echo "Dispatched Virtual qB Pages Source for dev@$TARGET_SHA."
+          jq -n --arg ref dev             '{ref:$ref,inputs:{mode:"change-aware"}}'             | gh api --method POST "/repos/$GITHUB_REPOSITORY/actions/workflows/pages-source.yml/dispatches" --input -
+          echo "Dispatched change-aware Virtual qB Pages Source for dev@$TARGET_SHA."

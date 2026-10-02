@@ -40,5 +40,7 @@ assert(workflow.includes('node tools/change-classifier.mjs --stdin0'),
 const dispatch=workflow.slice(workflow.indexOf('\n  dispatch_pages:\n'));
 assert(dispatch.includes('admitted_copy_materialize')&&dispatch.includes("github.ref_name != 'dev' || needs.admitted_copy_materialize.result == 'success'"),
   'dev Pages deployment must wait for admitted product-copy materialization while main remains read-only');
+assert(dispatch.includes('VERIFY_PROFILE: ${{ needs.source.outputs.verification_profile }}')&&dispatch.includes('validation_profile:$profile'),
+  'Pages Source must pass one canonical change-aware validation profile to the exact dev deployment owner');
 
 console.log('Pages source drain contract passed: a docs-only follow-up cannot strand an older materialized dev payload behind unpublished Pages-relevant changes, and both ranges share one relevance owner.');
