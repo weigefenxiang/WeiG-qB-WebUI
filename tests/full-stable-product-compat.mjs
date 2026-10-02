@@ -13,7 +13,8 @@ const catalog=JSON.parse(fs.readFileSync(catalogPath,'utf8'));
 assert.ok(Array.isArray(catalog)&&catalog.length>0,'full-stable product matrix requires a non-empty canonical base catalog');
 assert.equal(catalog[0].qbVersion,'4.1.0','formal product matrix floor must be qB 4.1.0');
 assert.ok(catalog.every(x=>x.stable===true&&x.officialWeiGSupport!==false),'formal product matrix accepts official supported stable profiles only');
-const {W}=createCompactRuntime(catalog,{owners:['settings-schema.js','capabilities.js','torrent-fields.js','torrent-semantics.js','qb-client.js']});
+const {W,compact}=createCompactRuntime(catalog,{owners:['settings-schema.js','capabilities.js','torrent-fields.js','torrent-semantics.js','qb-client.js'],preserveMaterializedTorrentFacts:true});
+assert.ok(Array.isArray(compact.torrentData?.sourceFacts?.torrentVisibleFilters)&&compact.torrentData.sourceFacts.torrentVisibleFilters.length>0,'formal product matrix must consume the checked-in admitted current-parser visible Torrent runtime instead of rebuilding absent new facts from an older Frozen parser snapshot');
 const F=W.TorrentFieldRegistry,C=W.CapabilityRegistry,T=W.TorrentSemantics,S=W.SettingsSchema,Client=W.QBClient;
 assert.ok(F&&C&&T&&S&&Client,'formal compact product compatibility owners must load');
 

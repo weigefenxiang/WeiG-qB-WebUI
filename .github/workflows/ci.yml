@@ -1272,6 +1272,11 @@ jobs:
         env:
           QB_QBT_ENTITY_CENSUS_OUTPUT: qb-qbt-entity-census.json
         run: node tests/full-stable-qbt-entity-source-contract.mjs native-base/qb-releases.json upstream-qb
+      - name: Verify committed qB-owned copy runtime against admitted current source
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/qb-runtime-copy-materialization-contract.mjs native-base/qb-releases.json webui/private/data/qb-settings-native.txt
       - name: Collect exact native surface source artifacts
         shell: bash
         run: |

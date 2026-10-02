@@ -56,7 +56,7 @@ jobs:
 
           pages_materialization_relevant_path() {
             case "$1" in
-              .github/workflows/pages-source.yml|.github/workflows/pages.yml|.github/workflows/ci.yml|.github/workflows/session-handshake.yml|tests/real-qb-session-race.sh|tests/real-qb-full-runner.sh|tests/real-qb-full-provider-lib.sh|tests/ci-contract.mjs|webui/*|simulator/*|installers/*|VERSION|tools/build-webui-dist.mjs|tools/product-identity.mjs|tools/qb-settings-*.mjs|tools/qb-locale-*.mjs|tools/qb-native-qm-recovery.mjs|tools/qb-owned-ui-source.mjs|tools/qb-preference-semantics.mjs|tools/qb-qm-provisioning-source.mjs|tools/qb-release-catalog*.mjs|tools/qb-source-parsers.mjs|tools/qb-detail-surface-parsers.mjs|tools/qb-release-torrent-surface.mjs|tools/qb-statistics-source.mjs|tools/qb-torrent-fields-parser.mjs|tools/qb-translator-behavior-source.mjs|tools/qb-cpp-literals.mjs|tools/qb-webui-catalog.mjs|tools/data/qb-stable-lkg.json|tools/data/qb-locale-lkg.json|tools/data/qb-translator-behavior-lkg.json|tests/fixtures/qb-release-catalog.lkg.json)
+              .github/workflows/pages-source.yml|.github/workflows/pages.yml|.github/workflows/ci.yml|.github/workflows/session-handshake.yml|tests/real-qb-session-race.sh|tests/real-qb-full-runner.sh|tests/real-qb-full-provider-lib.sh|tests/ci-contract.mjs|tests/qb-runtime-copy-materialization-contract.mjs|webui/*|simulator/*|installers/*|VERSION|tools/build-webui-dist.mjs|tools/product-identity.mjs|tools/qb-settings-*.mjs|tools/qb-locale-*.mjs|tools/qb-native-qm-recovery.mjs|tools/qb-owned-ui-source.mjs|tools/qb-preference-semantics.mjs|tools/qb-qm-provisioning-source.mjs|tools/qb-release-catalog*.mjs|tools/qb-source-parsers.mjs|tools/qb-detail-surface-parsers.mjs|tools/qb-release-torrent-surface.mjs|tools/qb-statistics-source.mjs|tools/qb-torrent-fields-parser.mjs|tools/qb-translator-behavior-source.mjs|tools/qb-cpp-literals.mjs|tools/qb-webui-catalog.mjs|tools/data/qb-stable-lkg.json|tools/data/qb-locale-lkg.json|tools/data/qb-translator-behavior-lkg.json|tests/fixtures/qb-release-catalog.lkg.json)
                 return 0
                 ;;
               *)
@@ -414,10 +414,161 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
+  admitted_copy_materialize:
+    name: qB admitted Settings copy/QM product materialization
+    needs: [source, settings_evidence_probe, settings_evidence_lkg]
+    if: ${{ always() && github.ref == 'refs/heads/dev' && needs.source.outputs.relevant == 'true' && needs.settings_evidence_probe.result == 'success' && (needs.settings_evidence_probe.outputs.ready == 'true' || needs.settings_evidence_lkg.result == 'success') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    outputs:
+      materialized_sha: ${{ steps.materialize.outputs.materialized_sha }}
+    steps:
+      - name: Checkout exact admitted product owner
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.settings_evidence_probe.outputs.dev_sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Resolve certified exact-dev Settings/source evidence
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEV_SHA: ${{ needs.settings_evidence_probe.outputs.dev_sha }}
+        run: |
+          set -euo pipefail
+          node tools/qb-settings-translation-artifact.mjs \
+            --repo="$GITHUB_REPOSITORY" \
+            --branch=dev \
+            --source-sha="$DEV_SHA" \
+            --out="$RUNNER_TEMP/qb-settings-translation-lkg.json" \
+            --certified-only
+      - name: Generate admitted qB-owned copy/QM product assets
+        shell: bash
+        env:
+          LKG: ${{ runner.temp }}/qb-settings-translation-lkg.json
+          APPLIED_CATALOG: ${{ runner.temp }}/qb-admitted-copy-catalog.json
+          GENERATED: ${{ runner.temp }}/qb-admitted-copy-product
+        run: |
+          set -euo pipefail
+          rm -rf "$GENERATED"
+          mkdir -p "$GENERATED/private/data"
+          node --input-type=module <<'NODE'
+          import crypto from 'node:crypto';
+          import fs from 'node:fs';
+          import {applyQbSettingsTranslationLkg} from './tools/qb-settings-translation-lkg.mjs';
+          const frozenPath='tests/fixtures/qb-release-catalog.lkg.json';
+          const stable=JSON.parse(fs.readFileSync('tools/data/qb-stable-lkg.json','utf8'));
+          const frozenText=fs.readFileSync(frozenPath,'utf8').replace(/\r\n?/g,'\n');
+          const digest=crypto.createHash('sha256').update(Buffer.from(frozenText,'utf8')).digest('hex');
+          if(digest!==stable.catalogSha256)throw new Error('Admitted copy materializer Frozen catalog hash mismatch.');
+          const frozen=JSON.parse(frozenText),lkg=JSON.parse(fs.readFileSync(process.env.LKG,'utf8'));
+          const applied=applyQbSettingsTranslationLkg(frozen,lkg,{catalogSha256:digest});
+          fs.writeFileSync(process.env.APPLIED_CATALOG,JSON.stringify(applied)+'\n','utf8');
+          console.log('Applied certified Settings/source evidence to '+applied.length+' admitted exact profiles.');
+          NODE
+          node tools/qb-webui-catalog.mjs \
+            "$APPLIED_CATALOG" \
+            "$GENERATED/private/data/qb-releases.json" \
+            --settings-lkg="$LKG"
+          test -s "$GENERATED/private/data/qb-settings-native.txt"
+          find "$GENERATED/translations" -type f -name 'webui_*.qm' -print -quit | grep -q .
+          node tests/qb-runtime-copy-materialization-contract.mjs "$LKG" "$GENERATED/private/data/qb-settings-native.txt"
+      - name: Verify or materialize admitted product copy runtime
+        id: materialize
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEV_SHA: ${{ needs.settings_evidence_probe.outputs.dev_sha }}
+          GENERATED: ${{ runner.temp }}/qb-admitted-copy-product
+          REQUESTED_MODE: ${{ inputs.mode }}
+        run: |
+          set -euo pipefail
+
+          relay_mode() {
+            case "${REQUESTED_MODE:-pages}" in
+              settings-evidence) printf '%s' settings-evidence ;;
+              *) printf '%s' pages ;;
+            esac
+          }
+
+          handoff_latest_pages_source() {
+            local remote_sha="$1"
+            local mode
+            mode="$(relay_mode)"
+            echo "Admitted copy owner $DEV_SHA is stale; handing Pages source mode $mode to latest dev $remote_sha."
+            jq -n --arg ref dev --arg mode "$mode" '{ref:$ref,inputs:{mode:$mode}}' \
+              | gh api --method POST "/repos/$GITHUB_REPOSITORY/actions/workflows/pages-source.yml/dispatches" --input -
+          }
+
+          registry_equal=false
+          qm_equal=false
+          cmp -s "$GENERATED/private/data/qb-settings-native.txt" webui/private/data/qb-settings-native.txt && registry_equal=true
+          diff -qr "$GENERATED/translations" webui/translations >/dev/null && qm_equal=true
+          if [ "$registry_equal" = true ] && [ "$qm_equal" = true ]; then
+            node tests/qb-runtime-copy-materialization-contract.mjs "$RUNNER_TEMP/qb-settings-translation-lkg.json" webui/private/data/qb-settings-native.txt
+            echo "Committed qB-owned copy/QM assets exactly match admitted current-parser evidence."
+            echo "materialized_sha=$DEV_SHA" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git fetch --no-tags origin dev
+          REMOTE_DEV_SHA="$(git rev-parse origin/dev)"
+          if [ "$REMOTE_DEV_SHA" != "$DEV_SHA" ]; then
+            handoff_latest_pages_source "$REMOTE_DEV_SHA"
+            exit 0
+          fi
+
+          cp "$GENERATED/private/data/qb-settings-native.txt" webui/private/data/qb-settings-native.txt
+          rm -rf webui/translations
+          mkdir -p webui/translations
+          cp "$GENERATED"/translations/webui_*.qm webui/translations/
+
+          mapfile -t changed < <({ git diff --name-only; git ls-files --others --exclude-standard; } | sort -u)
+          test "${#changed[@]}" -gt 0
+          for path in "${changed[@]}"; do
+            case "$path" in
+              webui/private/data/qb-settings-native.txt|webui/translations/webui_*.qm) ;;
+              *) echo "Unexpected admitted copy materializer path: $path" >&2; exit 1 ;;
+            esac
+          done
+
+          node tests/qb-runtime-copy-materialization-contract.mjs "$RUNNER_TEMP/qb-settings-translation-lkg.json" webui/private/data/qb-settings-native.txt
+          git diff --check
+
+          git fetch --no-tags origin dev
+          REMOTE_DEV_SHA="$(git rev-parse origin/dev)"
+          if [ "$REMOTE_DEV_SHA" != "$DEV_SHA" ]; then
+            handoff_latest_pages_source "$REMOTE_DEV_SHA"
+            exit 0
+          fi
+
+          git config user.name "WeiG CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add webui/private/data/qb-settings-native.txt webui/translations
+          git commit -m "a42: materialize admitted qB copy runtime [native-surfaces] [ui]"
+          if ! git push origin HEAD:dev; then
+            git fetch --no-tags origin dev
+            handoff_latest_pages_source "$(git rev-parse origin/dev)"
+            exit 0
+          fi
+
+          MATERIALIZED_SHA="$(git rev-parse HEAD)"
+          echo "materialized_sha=$MATERIALIZED_SHA" >> "$GITHUB_OUTPUT"
+
+          for mode in ui native-surfaces; do
+            jq -n --arg ref dev --arg mode "$mode" '{ref:$ref,inputs:{validation_mode:$mode}}' \
+              | gh api --method POST "/repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/dispatches" --input -
+          done
+          handoff_latest_pages_source "$MATERIALIZED_SHA"
+
   dispatch_pages:
     name: Dispatch dev Pages owner after evidence
-    needs: [source, settings_evidence_probe, settings_evidence_lkg]
-    if: ${{ always() && needs.source.outputs.relevant == 'true' && needs.settings_evidence_probe.result == 'success' && (needs.settings_evidence_probe.outputs.ready == 'true' || needs.settings_evidence_lkg.result == 'success') && (github.event_name != 'workflow_dispatch' || inputs.mode != 'settings-evidence') }}
+    needs: [source, settings_evidence_probe, settings_evidence_lkg, admitted_copy_materialize]
+    if: ${{ always() && needs.source.outputs.relevant == 'true' && needs.settings_evidence_probe.result == 'success' && (needs.settings_evidence_probe.outputs.ready == 'true' || needs.settings_evidence_lkg.result == 'success') && (github.ref_name != 'dev' || needs.admitted_copy_materialize.result == 'success') && (github.event_name != 'workflow_dispatch' || inputs.mode != 'settings-evidence') }}
     runs-on: ubuntu-latest
     steps:
       - name: Dispatch fresh dev-only Pages owner

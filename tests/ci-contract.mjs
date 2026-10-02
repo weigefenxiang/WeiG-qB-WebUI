@@ -135,6 +135,7 @@ assert(release.includes('--verify-tag')&&release.includes('--latest')&&release.i
 assert(!release.includes('--generate-notes')&&!/\s--notes\s/.test(release)&&release.includes('--title "WeiG qB WebUI ${VERSION}"'),'Release presentation must keep one notes owner and a version title without the v-prefix');
 assert(!release.includes('qb-release-catalog.mjs')&&!release.includes('zip -r WeiG-qB-WebUI.zip'),'Release workflow must publish the certified artifact without rebuilding product/catalog');
 
+assert(nativeSource.includes('qb-runtime-copy-materialization-contract.mjs native-base/qb-releases.json webui/private/data/qb-settings-native.txt'),'native-surface admission must prove checked-in qB-owned copy bindings against the same admitted current-parser source catalog');
 const fullProduct=read('tests/full-stable-product-compat.mjs');
 for(const owner of ['torrent-fields.js','settings-schema.js','capabilities.js','torrent-semantics.js','qb-client.js'])assert(fullProduct.includes(`'${owner}'`),`full stable product matrix must execute formal owner ${owner}`);
 assert(fullProduct.includes("catalog[0].qbVersion,'4.1.0'")&&fullProduct.includes('every generated stable profile must enter the formal product matrix'),'full stable product matrix must protect floor and complete catalog coverage');

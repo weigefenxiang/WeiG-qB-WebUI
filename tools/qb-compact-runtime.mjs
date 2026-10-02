@@ -19,6 +19,7 @@ function releaseRows(catalog){return catalog.map(profile=>({qbVersion:String(pro
 function compactTimeline(rows){const out=[];let prior,hasPrior=false;for(const row of rows){const value=clone(row.value),signature=JSON.stringify(value);if(!hasPrior||signature!==prior){out.push({from:String(row.from||''),value:value});prior=signature;hasPrior=true;}}return out;}function factTimeline(catalog,key){return compactTimeline(catalog.map(profile=>({from:String(profile.qbVersion||''),value:clone(Object.prototype.hasOwnProperty.call(profile,key)?profile[key]:null)})));}
 function actionValue(profile,action){if(!Array.isArray(profile.apiActions)||!profile.apiActions.includes(action))return null;const raw=profile.apiActionParameters&&profile.apiActionParameters[action]||{};return{parameters:Array.isArray(raw.parameters)?raw.parameters.map(String):[],required:Array.isArray(raw.required)?raw.required.map(String):[],optional:Array.isArray(raw.optional)?raw.optional.map(String):[],parameterOptions:raw.parameterOptions&&typeof raw.parameterOptions==='object'?clone(raw.parameterOptions):{}};}
 function identityKey(value){value=value||{};return[String(value.supportFloor||''),String(value.latestAdmittedStable||''),Number(value.releaseCount)||0,String(value.releaseSetSha256||''),String(value.sourceCatalogSha256||'')].join('|');}
+function releaseSetIdentityKey(value){value=value||{};return[String(value.supportFloor||''),String(value.latestAdmittedStable||''),Number(value.releaseCount)||0,String(value.releaseSetSha256||'')].join('|');}
 function sha256(bytes){return createHash('sha256').update(bytes).digest('hex');}
 function crc32(bytes){let crc=0xffffffff;for(const byte of bytes){crc^=byte;for(let j=0;j<8;j++)crc=(crc>>>1)^((crc&1)?0xedb88320:0);}return('00000000'+((crc^0xffffffff)>>>0).toString(16)).slice(-8);}
 function exactSettingsReleaseSet(settingsData,catalog){if(!Array.isArray(settingsData?.releases)||settingsData.releases.length!==catalog.length)throw new Error('Settings source-native release set length mismatch.');for(let i=0;i<catalog.length;i++){const row=settingsData.releases[i],profile=catalog[i];if(!Array.isArray(row)||String(row[0])!==String(profile?.qbVersion||'')||String(row[1]||'').toLowerCase()!==String(profile?.sourceSha||'').toLowerCase())throw new Error('Settings source-native exact release identity mismatch at index '+i);}}
@@ -41,20 +42,21 @@ export function readSettingsRuntime(){
   return{manifest,settingsData,raw,compressed};
 }
 
-export function compileCompactRuntime(catalog,{includeSettings=true}={}){
+export function compileCompactRuntime(catalog,{includeSettings=true,preserveMaterializedTorrentFacts=false}={}){
   if(!Array.isArray(catalog)||!catalog.length)throw new Error('Compact runtime compiler requires a non-empty source catalog.');
   const identity=catalogIdentity(catalog),settingsRuntime=includeSettings?readSettingsRuntime():null,settingsManifest=settingsRuntime?.manifest||null,settingsData=settingsRuntime?.settingsData||null;
   const capabilityData=readJson(path.join(root,'webui/private/data/capabilities.json'));
   const torrentData=readJson(path.join(root,'webui/private/data/torrent-compat.json'));
   const detailData=readJson(path.join(root,'webui/private/data/detail-compat.json'));
   const actionData=readJson(path.join(root,'webui/private/data/source-actions.json'));
+  if(preserveMaterializedTorrentFacts&&releaseSetIdentityKey(torrentData.catalogIdentity)!==releaseSetIdentityKey(identity))throw new Error('Materialized Torrent runtime does not match the target admitted release set.');
   for(const data of [capabilityData,torrentData,detailData,actionData])data.catalogIdentity=clone(identity);
   if(includeSettings){
     if(identityKey(settingsManifest.catalogIdentity)!==identityKey(identity)||identityKey(settingsData.catalogIdentity)!==identityKey(identity))throw new Error('Settings runtime does not match the target Frozen catalog identity.');
     exactSettingsReleaseSet(settingsData,catalog);
   }
   capabilityData.releases=releaseRows(catalog);
-  torrentData.sourceFacts={};for(const key of TORRENT_FACTS)torrentData.sourceFacts[key]=factTimeline(catalog,key);
+  if(!preserveMaterializedTorrentFacts){torrentData.sourceFacts={};for(const key of TORRENT_FACTS)torrentData.sourceFacts[key]=factTimeline(catalog,key);}
   detailData.sourceFacts=clone(compileDetailRuntime(catalog).sourceFacts);
   const names=new Set(Object.keys(actionData.sourceActions||{}));for(const profile of catalog)for(const action of profile.apiActions||[])names.add(String(action));
   actionData.sourceActions={};for(const action of names)actionData.sourceActions[action]=compactTimeline(catalog.map(profile=>({from:String(profile.qbVersion||''),value:actionValue(profile,action)})));
@@ -64,8 +66,8 @@ export function compileCompactRuntime(catalog,{includeSettings=true}={}){
 function defaultDocument(){return{addEventListener(){},querySelectorAll(){return[];},createElement(){return{className:'',dataset:{},classList:{add(){},remove(){},toggle(){}},setAttribute(){},appendChild(){},querySelector(){return null;},querySelectorAll(){return[];},remove(){}};},body:{appendChild(){}}};}
 function TestFormData(){this.entries=[];}TestFormData.prototype.append=function(name,value,filename){this.entries.push({name,value,filename});};TestFormData.prototype.get=function(name){const hit=this.entries.find(item=>item.name===name);return hit?hit.value:null;};
 
-export function createCompactRuntime(catalog,{owners=['capabilities.js','torrent-semantics.js','torrent-fields.js'],W:providedW=null,document:providedDocument=null}={}){
-  const includeSettings=owners.includes('settings-schema.js'),compact=compileCompactRuntime(catalog,{includeSettings}),requests=[];
+export function createCompactRuntime(catalog,{owners=['capabilities.js','torrent-semantics.js','torrent-fields.js'],W:providedW=null,document:providedDocument=null,preserveMaterializedTorrentFacts=false}={}){
+  const includeSettings=owners.includes('settings-schema.js'),compact=compileCompactRuntime(catalog,{includeSettings,preserveMaterializedTorrentFacts}),requests=[];
   const W=providedW||{buildAssetUrl:x=>x,t:key=>key,util:{parseScalar:value=>value,normalizeTracker:value=>String(value||''),form(obj){const p=new URLSearchParams();for(const [k,v] of Object.entries(obj||{}))if(v!==undefined&&v!==null)p.append(k,String(v));return p.toString();}},I18n:{getLocale:()=> 'en-US'}};
   if(!W.buildAssetUrl)W.buildAssetUrl=x=>x;if(!W.t)W.t=key=>key;if(!W.util)W.util={};if(!W.util.parseScalar)W.util.parseScalar=value=>value;if(!W.util.normalizeTracker)W.util.normalizeTracker=value=>String(value||'');if(!W.util.form)W.util.form=obj=>{const p=new URLSearchParams();for(const [k,v] of Object.entries(obj||{}))if(v!==undefined&&v!==null)p.append(k,String(v));return p.toString();};if(!W.I18n)W.I18n={getLocale:()=> 'en-US'};
   const window={WeiG:W,window:null,dispatchEvent(){},addEventListener(){},requestAnimationFrame:fn=>fn(),atob:value=>Buffer.from(String(value),'base64').toString('binary')};window.window=window;
