@@ -265,7 +265,9 @@ export function buildQbSettingsTranslationLkg(enrichedCatalog,frozenCatalog,{bas
     assert(frozen,`${qbVersion}: release is not present in the admitted Frozen catalog.`);
     assert(String(frozen.sourceSha||'')===sourceSha,`${qbVersion}: Settings/source evidence source SHA drift.`);
 
-    const preferences=clone(source.settingsUi||{}),ui=clone(source.qbOwnedUi||{}),translations=clone(source.settingsTranslations||{}),torrentTableColumns=validateColumns(source.torrentTableColumns,qbVersion),trackerFilters=validateTrackerFilters(source.trackerFilters,qbVersion),trackerFacetMode=validateTrackerFacetMode(source.trackerFacetMode,qbVersion),torrentDetailUi=validateDetailUi(source.torrentDetailUi,qbVersion),statisticsUi=source.statisticsUi?validateQbStatisticsUi(source.statisticsUi,`${qbVersion} Statistics`):null;
+    const preferences=clone(source.settingsUi||{}),ui=clone(source.qbOwnedUi||{}),translations=clone(source.settingsTranslations||{}),sourceLocales=localeValues(source),torrentTableColumns=validateColumns(source.torrentTableColumns,qbVersion),trackerFilters=validateTrackerFilters(source.trackerFilters,qbVersion),trackerFacetMode=validateTrackerFacetMode(source.trackerFacetMode,qbVersion),torrentDetailUi=validateDetailUi(source.torrentDetailUi,qbVersion),statisticsUi=source.statisticsUi?validateQbStatisticsUi(source.statisticsUi,`${qbVersion} Statistics`):null;
+    assert(sourceLocales.length>0,`${qbVersion}: exact WebUI locale surface is missing before Settings/source freeze.`);
+    assert(stableJson([...sourceLocales].sort())===stableJson(Object.keys(translations).sort()),`${qbVersion}: Settings translation routes do not match the exact WebUI locale surface.`);
     const mapped=Number(source.settingsUiMappedPreferences)||0,total=Number(source.settingsUiTotalPreferences)||0;
     assert(mapped===Object.keys(preferences).length,`${qbVersion}: mapped Settings preference count drift.`);
     assert(mapped<=total,`${qbVersion}: mapped Settings preference count exceeds source preference surface.`);

@@ -134,6 +134,8 @@ assert.throws(()=>buildQbSettingsTranslationLkg(missingPropertyLayout,frozen,{re
 const duplicatePropertyLayout=structuredClone(enriched);duplicatePropertyLayout[0].torrentDetailUi.propertyLayout[0].fields.push(structuredClone(duplicatePropertyLayout[0].torrentDetailUi.propertyLayout[0].fields[0]));
 assert.throws(()=>buildQbSettingsTranslationLkg(duplicatePropertyLayout,frozen,{recoveryEvidence}),/duplicate Torrent General field ownership/,'General field ownership drift must fail closed');
 assert.throws(()=>buildQbSettingsTranslationLkg(enriched,frozen,{}),/requires deterministic full official-TS recovery evidence/,'LKG v2 cannot certify narrow Settings copy without full native recovery evidence');
+const missingLocaleRoute=structuredClone(enriched);delete missingLocaleRoute[0].settingsTranslations.de;
+assert.throws(()=>buildQbSettingsTranslationLkg(missingLocaleRoute,frozen,{recoveryEvidence}),/translation routes do not match the exact WebUI locale surface/,'LKG certification must fail before freeze when any exact source locale route is missing');
 const badSet=structuredClone(lkg);badSet.sets[hDe].messages[0].translation='Tampered';
 assert.throws(()=>applyQbSettingsTranslationLkg(frozen,badSet),/payload hash mismatch/,'narrow official-TS sets stay hash-bound after freezing');
 const badRecovery=structuredClone(lkg);badRecovery.recovery.union.locales.de[0].translation='Tampered';
