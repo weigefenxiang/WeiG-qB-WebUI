@@ -16,15 +16,19 @@ html[data-theme=light]{--transfer-stat-surface:linear-gradient(180deg,#fff,#f7fa
 .transfer-runtime-capsule__limits:hover,.transfer-runtime-capsule__limits:focus-visible{background:rgba(114,151,255,.11);color:var(--text-primary)}
 
 .transfer-panel-dialog{--dialog-width:720px;--dialog-max-width:720px;--dialog-max-height:min(86dvh,760px);--dialog-padding:0;grid-template-rows:auto minmax(0,1fr)}
+.transfer-statistics-dialog{--dialog-width:560px;--dialog-max-width:560px;--dialog-max-height:min(82dvh,720px);--dialog-padding:0;grid-template-rows:auto minmax(0,1fr)}
 .transfer-limit-dialog{--dialog-width:500px;--dialog-max-width:500px;--dialog-max-height:min(82dvh,620px);--dialog-padding:0;grid-template-rows:auto minmax(0,1fr) auto}
-.transfer-panel-dialog[open],.transfer-limit-dialog[open]{display:grid}
-.transfer-panel-dialog>.dialog__head,.transfer-limit-dialog>.dialog__head{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:16px;margin:0;min-width:0}
-.transfer-panel-dialog>.dialog__head{padding:22px 24px 16px}.transfer-limit-dialog>.dialog__head{padding:20px 22px 14px}
-.transfer-panel-dialog>.dialog__head>div,.transfer-limit-dialog>.dialog__head>div{min-width:0}
-.transfer-panel-dialog>.dialog__head h2,.transfer-limit-dialog>.dialog__head h2{margin:4px 0 0}
+.transfer-panel-dialog[open],.transfer-statistics-dialog[open],.transfer-limit-dialog[open]{display:grid}
+.transfer-panel-dialog>.dialog__head,.transfer-statistics-dialog>.dialog__head,.transfer-limit-dialog>.dialog__head{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:16px;margin:0;min-width:0}
+.transfer-panel-dialog>.dialog__head{padding:22px 24px 16px}.transfer-statistics-dialog>.dialog__head{padding:20px 22px 14px}.transfer-limit-dialog>.dialog__head{padding:20px 22px 14px}
+.transfer-panel-dialog>.dialog__head>div,.transfer-statistics-dialog>.dialog__head>div,.transfer-limit-dialog>.dialog__head>div{min-width:0}
+.transfer-panel-dialog>.dialog__head h2,.transfer-statistics-dialog>.dialog__head h2,.transfer-limit-dialog>.dialog__head h2{margin:4px 0 0}
+.transfer-dialog-head-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;min-width:0}
+.transfer-statistics-button{min-height:36px;padding-inline:12px;white-space:nowrap}
 .transfer-panel-dialog>.dialog__head p,.transfer-limit-dialog>.dialog__head p{margin:6px 0 0}
 .transfer-panel-dialog>.dialog__head p{max-width:580px}.transfer-limit-dialog>.dialog__head p{max-width:390px}
 .transfer-panel-dialog>.dialog__body{min-width:0;min-height:0;padding:0 24px 20px}
+.transfer-statistics-dialog>.dialog__body{min-width:0;min-height:0;padding:0 22px 20px;overflow:auto}
 .transfer-limit-dialog>.dialog__body{min-width:0;min-height:0;padding:0 22px 14px}
 .transfer-limit-dialog>.dialog__actions{margin:0;padding:0 22px 20px;gap:8px}
 
@@ -34,6 +38,7 @@ html[data-theme=light]{--transfer-stat-surface:linear-gradient(180deg,#fff,#f7fa
 .transfer-native-statistics__group h3{margin:0 0 8px;font-size:var(--text-label);font-weight:800}
 .transfer-native-statistics__row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:baseline;gap:9px;padding:4px 0;color:var(--text-muted);font-size:var(--text-caption)}
 .transfer-native-statistics__row span{min-width:0}.transfer-native-statistics__row strong{color:var(--text-primary);font-size:inherit;font-variant-numeric:tabular-nums;white-space:nowrap}
+.transfer-statistics-dialog .transfer-native-statistics{grid-template-columns:1fr;margin-bottom:0}
 .transfer-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-bottom:14px}
 .transfer-stat{min-width:0;padding:12px 13px;border:1px solid var(--border);border-radius:11px;background:var(--transfer-stat-surface);box-shadow:inset 0 1px rgba(255,255,255,.045)}
 .transfer-stat small{display:block;margin-bottom:6px;color:var(--text-muted);font-size:var(--text-caption)}
@@ -78,9 +83,10 @@ html[data-theme=light]{--transfer-stat-surface:linear-gradient(180deg,#fff,#f7fa
 @media(max-width:820px){
   .transfer-runtime-capsule{min-height:30px}.transfer-runtime-capsule__stats{flex:1 1 auto;gap:10px;padding-inline:8px;overflow:hidden}.transfer-runtime-capsule__limits{width:30px;min-width:30px;flex:0 0 30px}
   .transfer-runtime-capsule .status-speed{flex:1 1 0;gap:4px;overflow:hidden}.transfer-runtime-capsule .status-speed strong{width:auto;min-width:0;font-size:clamp(10px,3vw,13.5px);letter-spacing:-.03em}
-  .transfer-panel-dialog,.transfer-limit-dialog{--dialog-width:calc(100vw - 16px);--dialog-max-width:calc(100vw - 16px);--dialog-max-height:calc(100dvh - 16px);margin:auto;border-radius:18px}
-  .transfer-panel-dialog>.dialog__head,.transfer-limit-dialog>.dialog__head{padding:18px 18px 14px}
-  .transfer-panel-dialog>.dialog__body,.transfer-limit-dialog>.dialog__body{padding:0 18px 16px}
+  .transfer-panel-dialog,.transfer-statistics-dialog,.transfer-limit-dialog{--dialog-width:calc(100vw - 16px);--dialog-max-width:calc(100vw - 16px);--dialog-max-height:calc(100dvh - 16px);margin:auto;border-radius:18px}
+  .transfer-panel-dialog>.dialog__head,.transfer-statistics-dialog>.dialog__head,.transfer-limit-dialog>.dialog__head{padding:18px 18px 14px}
+  .transfer-panel-dialog>.dialog__body,.transfer-statistics-dialog>.dialog__body,.transfer-limit-dialog>.dialog__body{padding:0 18px 16px}
+  .transfer-dialog-head-actions{gap:6px}.transfer-statistics-button{min-height:40px;padding-inline:10px}
   .transfer-limit-dialog>.dialog__actions{padding:0 18px 18px}
   .transfer-native-statistics{grid-template-columns:1fr}
   .transfer-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
