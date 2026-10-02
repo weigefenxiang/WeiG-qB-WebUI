@@ -276,8 +276,14 @@ try{
     assert.equal(transferEntry.duplicate,false,'deployed dev statusbar must not restore a duplicate Statistics text entry');
     await page.locator('#transfer-capsule .transfer-runtime-capsule__stats').click();
     await page.waitForSelector('#transfer-stats-dialog[open]');
-    const deployedStatistics=await page.evaluate(()=>({actual:String(document.querySelector('#transfer-stats-dialog .dialog__head h2')?.textContent||'').trim(),expected:String(WeiG.I18n.t('transfer.statisticsTitle')||'').trim(),native:!!document.querySelector('#transfer-stats-dialog [data-native-statistics]')}));
-    assert.ok(deployedStatistics.expected&&deployedStatistics.actual===deployedStatistics.expected&&deployedStatistics.native,`deployed dev Statistics Dialog heading/native body ownership drifted: ${JSON.stringify(deployedStatistics)}`);
+    const deployedRealtime=await page.evaluate(()=>{const dialog=document.getElementById('transfer-stats-dialog'),button=dialog?.querySelector('[data-open-native-statistics]'),actions=dialog?.querySelector('.transfer-dialog-head-actions'),close=actions?.querySelector('.icon-btn');return{actual:String(dialog?.querySelector('.dialog__head h2')?.textContent||'').trim(),expected:String(WeiG.I18n.t('transfer.realtimeTitle')||'').trim(),native:!!dialog?.querySelector('[data-native-statistics]'),statisticsButton:!!button,buttonBeforeClose:!!(button&&close&&(button.compareDocumentPosition(close)&Node.DOCUMENT_POSITION_FOLLOWING))};});
+    assert.ok(deployedRealtime.expected&&deployedRealtime.actual===deployedRealtime.expected&&!deployedRealtime.native&&deployedRealtime.statisticsButton&&deployedRealtime.buttonBeforeClose,`deployed dev Realtime Transfer Dialog ownership drifted: ${JSON.stringify(deployedRealtime)}`);
+    await page.locator('#transfer-stats-dialog [data-open-native-statistics]').click();
+    await page.waitForSelector('#qbt-native-statistics-dialog[open]');
+    const deployedStatistics=await page.evaluate(()=>{const ref={source:'Statistics',context:'MainWindow'},dialog=document.getElementById('qbt-native-statistics-dialog');return{actual:String(dialog?.querySelector('.dialog__head h2')?.textContent||'').trim(),expected:String(WeiG.I18n.qbSourceText(ref,ref.source)||'').trim(),native:!!dialog?.querySelector('[data-native-statistics]')};});
+    assert.ok(deployedStatistics.expected&&deployedStatistics.actual===deployedStatistics.expected&&deployedStatistics.native,`deployed dev source-owned Statistics Dialog heading/native body ownership drifted: ${JSON.stringify(deployedStatistics)}`);
+    await page.locator('#qbt-native-statistics-dialog .dialog__head .icon-btn').click();
+    await page.waitForFunction(()=>!document.getElementById('qbt-native-statistics-dialog')?.open);
     await page.locator('#transfer-stats-dialog .dialog__head .icon-btn').click();
     await page.waitForFunction(()=>!document.getElementById('transfer-stats-dialog')?.open);
     const legacySim=`pages-live-persisted-realism-v1-${Date.now()}`;
