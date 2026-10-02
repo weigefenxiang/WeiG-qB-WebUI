@@ -92,6 +92,7 @@ const empty=(res,status=200)=>{res.writeHead(status,{'cache-control':'no-store'}
 const readForm=async req=>{let body='';for await(const chunk of req)body+=chunk;return new URLSearchParams(body);};
 const categoryInventory={Movies:{name:'Movies',savePath:'/downloads/movies'}};
 const tagInventory=new Set(['Fixture']);
+const torrentCountRequests={legacy:0,modern:0};
 
 function rows(v){return torrents.map(t=>{const x={...t};if(v===variants.legacy)delete x.private;return x;});}
 async function api(req,res,v,p,url){
@@ -102,6 +103,7 @@ async function api(req,res,v,p,url){
   if(p==='transfer/info')return json(res,{dl_info_speed:2048,up_info_speed:1024,connection_status:'firewalled',dht_nodes:999,total_peer_connections:999});
   if(p==='transfer/speedLimitsMode'||p==='transfer/downloadLimit'||p==='transfer/uploadLimit')return text(res,'0');
   if(p==='sync/maindata'){const trackerData=v===variants.modern?{'https://tracker.one.example/announce?passkey=a':torrents.filter((_,i)=>i%2===0&&i!==54).map(t=>t.hash),'https://tracker.one.example/announce?passkey=b':[torrents[1].hash],'udp://tracker.two.example:6969/announce':torrents.filter((_,i)=>i%2===1).map(t=>t.hash)}:{},syncTorrents={};if(v===variants.modern)torrents.forEach((t,i)=>{syncTorrents[t.hash]={trackers_count:i===54?0:1,has_tracker_error:i===0,has_other_announce_error:i===1,has_tracker_warning:i===2};});return json(res,{rid:1,full_update:true,torrents:syncTorrents,trackers:trackerData,categories:{},tags:[],server_state:{connection_status:'firewalled',dl_info_speed:2048,up_info_speed:1024,dht_nodes:12,total_peer_connections:4,free_space_on_disk:10737418240}});}
+  if(p==='torrents/count'){const key=v===variants.modern?'modern':'legacy';torrentCountRequests[key]++;return text(res,String(torrents.length));}
   if(p==='torrents/info'){
     let out=rows(v);const hashes=url.searchParams.get('hashes');if(hashes){const set=new Set(hashes.split('|'));out=out.filter(t=>set.has(t.hash));}
     const category=url.searchParams.get('category');if(category)out=out.filter(t=>t.category===category);
@@ -150,6 +152,7 @@ try{
     await page.goto(`http://${host}:${port}/${name}/#/`,{waitUntil:'domcontentloaded'});
     await page.waitForSelector('#torrent-list [data-hash]');
     await page.waitForFunction(()=>window.WeiG?.LibraryController&&document.querySelectorAll('#facet-controls .facet-control').length===4&&WeiG.AppState?.catalogReady===true,{timeout:10000});
+    if(name==='modern')assert(torrentCountRequests.modern>0,'modern source profile did not consume source-proven torrents/count');else assert(torrentCountRequests.legacy===0,'legacy source profile must not call unsupported torrents/count');
 
     const desktopPageJump=page.locator('#page-label [data-pager-page-jump]').first();await desktopPageJump.click();await page.locator('#page-label .pager-page-input').fill('2');await page.locator('#page-label .pager-page-input').press('Enter');await page.waitForFunction(()=>WeiG.LibraryController.state().page===1);assert((await page.locator('#page-label [data-pager-page-jump]').first().textContent()).trim()==='2',name+': shared Pager did not jump to desktop page 2');await page.locator('#page-label [data-pager-page-jump]').first().click();await page.locator('#page-label .pager-page-input').fill('3');await page.locator('#page-label .pager-page-input').press('Enter');await page.waitForTimeout(30);assert(await page.evaluate(()=>WeiG.LibraryController.state().page)===1,name+': out-of-range desktop page jump changed state');await page.locator('#page-label [data-pager-page-jump]').first().click();await page.locator('#page-label .pager-page-input').fill('1');await page.locator('#page-label .pager-page-input').press('Enter');await page.waitForFunction(()=>WeiG.LibraryController.state().page===0);
 
