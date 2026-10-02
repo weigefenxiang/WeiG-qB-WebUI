@@ -116,7 +116,7 @@ assert(candidate.includes('candidate-deployment-only.yml/dispatches')&&candidate
 
 const focusedDeployment=read('.github/workflows/candidate-deployment-only.yml');
 assert(focusedDeployment.includes('name: Candidate Deployment Only')&&focusedDeployment.includes('release-candidate-$CANDIDATE_SHA')&&focusedDeployment.includes('WEIG_CANDIDATE_EXPECTED_SHA')&&focusedDeployment.includes('candidate-deployment-${{ steps.resolve.outputs.candidate_sha }}'),'isolated deployment owner must reuse one exact candidate package and publish SHA-bound evidence');
-assert(focusedDeployment.includes('git rev-list --first-parent --max-count=40 HEAD^')&&focusedDeployment.includes('Candidate artifact reuse refused across product/runtime change'),'isolated deployment retries may walk validation-only descendants but must fail closed across product/runtime changes');
+assert(focusedDeployment.includes('INPUT_SHA: ${{ inputs.candidate_sha }}')&&focusedDeployment.includes('CANDIDATE_SHA="${INPUT_SHA,,}"')&&focusedDeployment.includes('git diff --name-only "$CANDIDATE_SHA" "$GITHUB_SHA"')&&focusedDeployment.includes('Candidate artifact reuse refused across product/runtime change'),'manual isolated deployment may explicitly target an ancestor candidate only when the descendant range is validation-only; retired push-time ancestor discovery must not return');
 assert(focusedDeployment.includes('run_rehearsal=1')&&focusedDeployment.includes('run_rehearsal=0'),'isolated deployment must rehearse promotion only for an exact-head candidate while allowing ancestor-package debug without stale-main failure');
 
 const candidateDeployment=read('tests/candidate-deployment.sh');
