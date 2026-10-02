@@ -470,8 +470,10 @@ jobs:
           const lkgByVersion=new Map((lkg.profiles||[]).map(profile=>[String(profile.qbVersion||''),profile]));
           for(const profile of applied){
             const fact=lkgByVersion.get(String(profile.qbVersion||''));
-            const locales=Array.isArray(fact?.recoveryLocales)?fact.recoveryLocales.map(String).filter(Boolean):[];
+            const locales=Object.keys(fact?.translations||{}).map(String).filter(Boolean);
+            const recovered=new Set((fact?.recoveryLocales||[]).map(String).filter(Boolean));
             if(!locales.length)throw new Error(profile.qbVersion+': certified Settings/source LKG has no exact WebUI locale routes.');
+            for(const locale of recovered)if(!locales.includes(locale))throw new Error(profile.qbVersion+' '+locale+': recovery locale escaped exact Settings translation routes.');
             profile.webuiLocales=locales;
           }
           fs.writeFileSync(process.env.APPLIED_CATALOG,JSON.stringify(applied)+'\n','utf8');
