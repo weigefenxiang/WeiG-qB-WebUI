@@ -1,5 +1,5 @@
 import {QT_STRING_SUFFIX_SOURCE} from './qb-cpp-literals.mjs';
-import {parseQbtSourceRef} from './qb-source-text.mjs';
+import {extractQbtSourceRefs,parseQbtSourceRef} from './qb-source-text.mjs';
 import {extractDynamicTableColumns} from './qb-torrent-fields-parser.mjs';
 
 function unique(values){return [...new Set(values.filter(Boolean))];}
@@ -31,10 +31,32 @@ function propertySinkBindings(generalSource){const source=String(generalSource||
   /document\.getElementById\(\s*["']([^"']+)["']\s*\)\.(?:textContent|innerHTML)\s*=\s*([^;]+);/g,
   /\$\(\s*["']([^"']+)["']\s*\)\.(?:textContent|innerHTML)\s*=\s*([^;]+);/g,
   /\$\(\s*["']([^"']+)["']\s*\)\.set\(\s*["'](?:html|text)["']\s*,\s*([^;]+)\);/g
-];for(const re of patterns)for(const match of source.matchAll(re)){const id=String(match[1]||'').trim(),binding=sinkBinding(source,match.index,match[2]);if(id&&binding)out[id]=binding;}return out;}
+];for(const re of patterns)for(const match of source.matchAll(re)){const id=String(match[1]||'').trim(),binding=sinkBinding(source,match.index,match[2]);if(id&&binding)out[id]={...binding,__sinkIndex:match.index,__expression:String(match[2]||'')};}return out;}
+function sourcePresentationRule(scope){
+  const text=String(scope||'');
+  if(/(?:\belse[\s\S]{0,120}?=\s*(?:""|'')|:\s*(?:""|'')\s*(?:[;,)]|$))/.test(text))return{kind:'literal',value:''};
+  const refs=extractQbtSourceRefs(text);if(refs.length)return{kind:'translation',translation:refs.at(-1)};
+  const ternary=[...text.matchAll(/:\s*(["'])([^"'\r\n]*)\1/g)];if(ternary.length)return{kind:'literal',value:ternary.at(-1)[2]};
+  const legacy=[...text.matchAll(/\belse[\s\S]{0,120}?=\s*(["'])([^"'\r\n]*)\1/g)];if(legacy.length)return{kind:'literal',value:legacy.at(-1)[2]};
+  return null;
+}
+function propertySinkScope(source,binding){if(!Number.isInteger(binding&&binding.__sinkIndex))return'';const prefix=String(source||'').slice(0,binding.__sinkIndex),boundary=lastSinkBoundary(prefix);return prefix.slice(boundary+1)+'\n'+String(binding.__expression||'');}
+function generalValuePresentation(generalSource,binding,context,id){
+  if(!binding||binding.valueSource!=='properties')return null;
+  const fields=(binding.dataProperties||[]).map(String),scope=propertySinkScope(generalSource,binding),presentation={kind:'source-field',empty:{kind:'literal',value:''}};
+  let conditional=false;
+  for(const field of fields){
+    const escaped=escapeRe(field),emptyRe=new RegExp('\\bdata\\.'+escaped+'\\s*(?:===|==|!==|!=)\\s*(?:""|\\'\\')'),negativeRe=new RegExp('\\bdata\\.'+escaped+'\\s*(?:>=\\s*0|>\\s*-1|!=\\s*-1|!==\\s*-1|<\\s*0|===?\\s*-1)');
+    if(emptyRe.test(scope)){const fallback=sourcePresentationRule(scope);if(!fallback)throw new Error(`${context}: Properties field ${id} empty-value presentation is unresolved`);presentation.empty=fallback;conditional=true;}
+    if(negativeRe.test(scope)){const fallback=sourcePresentationRule(scope);if(!fallback)throw new Error(`${context}: Properties field ${id} negative-value presentation is unresolved`);presentation.negative=fallback;conditional=true;}
+    if(new RegExp('new\\s+Date\\s*\\(\\s*data\\.'+escaped+'\\s*\\*\\s*1000').test(scope))presentation.format='date';
+  }
+  if(fields.includes('pieces_num')&&fields.includes('piece_size')&&/(?:%1|pieces_num)[\s\S]{0,500}(?:friendlyUnit|piece_size)/.test(scope))presentation.format='pieces';
+  return presentation;
+}
 function resolvePropertyBinding(id,generalSource,sinks,context){if(sinks[id])return sinks[id];const prefixed=Object.entries(sinks).filter(([sinkId])=>sinkId.startsWith(id)&&sinkId!==id);if(prefixed.length===1)return prefixed[0][1];if(new RegExp(`\\bdata\\.${escapeRe(id)}\\b`).test(String(generalSource||'')))return{valueSource:'properties',dataProperties:[id]};throw new Error(`${context}: Properties field ${id} has no source-proven WebAPI binding`);}
 function extractPropertyLayout(contentSource,generalSource,context){const general=balancedElementById(contentSource,['prop_general','propGeneral'],context),entries=propertyLabelEntries(general.body),sinks=propertySinkBindings(generalSource);if(!entries.length)throw new Error(`${context}: source-proven Properties layout is empty`);const ranges=[],seenGroups=new Set();let groupIndex=0;for(const match of general.body.matchAll(/<fieldset\b[^>]*>([\s\S]*?)<\/fieldset>/gi)){const inner=match[1],ref=qbtRef((inner.match(/<legend\b[^>]*>([\s\S]*?)<\/legend>/i)||[])[1]||''),key=ref?groupKey(ref,groupIndex++,seenGroups):`group-${groupIndex++ +1}`,start=match.index,end=match.index+match[0].length;ranges.push({start,end,key,translation:ref||null});}
-  const grouped=new Map(),root=[];for(const item of entries){const group=ranges.find(range=>item.index>=range.start&&item.index<range.end),binding=resolvePropertyBinding(item.id,generalSource,sinks,context),field={id:item.id,valueSource:binding.valueSource,dataProperties:binding.dataProperties};if(group){if(!grouped.has(group.key))grouped.set(group.key,{key:group.key,...(group.translation?{translation:group.translation}:{}),fields:[]});grouped.get(group.key).fields.push(field);}else root.push(field);}
+  const grouped=new Map(),root=[];for(const item of entries){const group=ranges.find(range=>item.index>=range.start&&item.index<range.end),binding=resolvePropertyBinding(item.id,generalSource,sinks,context),valuePresentation=generalValuePresentation(generalSource,binding,context,item.id),field={id:item.id,valueSource:binding.valueSource,dataProperties:binding.dataProperties,...(valuePresentation?{valuePresentation}: {})};if(group){if(!grouped.has(group.key))grouped.set(group.key,{key:group.key,...(group.translation?{translation:group.translation}:{}),fields:[]});grouped.get(group.key).fields.push(field);}else root.push(field);}
   const layout=[];if(root.length)layout.push({key:'root',fields:root});for(const range of ranges){const group=grouped.get(range.key);if(group&&group.fields.length)layout.push(group);}const assigned=layout.flatMap(group=>group.fields.map(field=>field.id));if(assigned.length!==entries.length||new Set(assigned).size!==entries.length)throw new Error(`${context}: Properties layout field ownership is ambiguous`);return layout;}
 function section(markup,id){const text=String(markup||''),re=new RegExp(`<div\\b[^>]*\\bid=["']${escapeRe(id)}["'][^>]*>`,'i'),match=re.exec(text);if(!match)return'';const start=match.index+match[0].length,tail=text.slice(start),next=tail.search(/<div\b[^>]*\bid=["']prop_[^"']+["'][^>]*>/i);return next>=0?tail.slice(0,next):tail;}
 function headerRefs(markup){const out=[];for(const match of String(markup||'').matchAll(/<th\b[^>]*>([\s\S]*?)<\/th>/gi)){const ref=qbtRef(match[1]);out.push(ref||null);}return out;}
@@ -100,6 +122,9 @@ function annotateTrackerValuePresentation(columns,source,context){
   const presentation=trackerStatusValuePresentation(source,context);if(!presentation)return columns;
   return (columns||[]).map(column=>(column?.dataProperties||[]).map(String).includes('status')?{...column,valuePresentation:presentation}:column);
 }
+function trackerNegativeEmptyFields(source){const out=new Set(),text=String(source||'');for(const match of text.matchAll(/\b(tracker|endpoint)\.([A-Za-z0-9_]+)\s*>=\s*0\s*\)\s*\?\s*\1\.\2\s*:\s*(?:""|'')/g))out.add(String(match[2]||''));return out;}
+function annotateTrackerScalarPresentation(columns,source){const negativeEmpty=trackerNegativeEmptyFields(source);return (columns||[]).map(column=>{if(column?.valuePresentation)return column;const fields=(column?.dataProperties||[]).map(String),presentation={kind:'source-scalar',empty:'preserve',number:'raw'};if(fields.some(field=>negativeEmpty.has(field)))presentation.negative={kind:'literal',value:''};return{...column,valuePresentation:presentation};});}
+function annotateFileValuePresentation(columns,dynamicSource,legacySource){const dynamic=String(dynamicSource||''),legacy=String(legacySource||''),dynamicPercent=/columns\s*\[\s*["']availability["']\s*\]\.updateTd\s*=\s*displayPercentage/.test(dynamic)&&/friendlyPercentage\s*\(\s*this\.getRowValue\(row\)\s*\)/.test(dynamic),legacyPercent=/friendlyPercentage\s*\(\s*file\.availability\s*\)/.test(legacy);if(!dynamicPercent&&!legacyPercent)return columns;return (columns||[]).map(column=>(column?.dataProperties||[]).map(String).includes('availability')?{...column,valuePresentation:{kind:'percentage',input:'ratio',decimals:1,clamp:true}}:column);}
 function inferredKey(ref,fields,index){if(!ref&&fields.length===1&&fields[0]==='priority')return'checked';if(fields.length===1)return fields[0];const source=String(ref?.source||'').trim().toLowerCase();if(source.includes('remaining'))return'remaining';if(source.includes('priority'))return'priority';if(source.includes('progress'))return'progress';return fields[0]||`column_${index}`;}
 function legacyStaticColumns(contentSource,sectionId,scriptSource,objectName,context){const refs=headerRefs(section(contentSource,sectionId)),assignments=rowAssignments(scriptSource,objectName);if(!refs.length||!assignments.size)throw new Error(`${context}: legacy ${sectionId} table source is unresolved`);return refs.map((ref,index)=>{const dataProperties=assignments.get(index)||[];if(!dataProperties.length)throw new Error(`${context}: legacy ${sectionId} column ${index} has no source-proven row relation`);const key=inferredKey(ref,dataProperties,index);return{key,caption:ref?.source||'',...(ref?{translation:ref}:{}),dataProperties};});}
 function normalizedDynamicColumns(source,className,context){return extractDynamicTableColumns(source,className,context).map(column=>({key:column.key,caption:column.caption,defaultWidth:column.defaultWidth,defaultVisible:column.defaultVisible,...(column.translation?{translation:column.translation}:{}),dataProperties:[...column.dataProperties]}));}
@@ -112,8 +137,8 @@ export function extractTorrentDetailUi({toolbarSource='',contentSource='',genera
   if(!generalSource)throw new Error(`${context}: Torrent General detail script is unresolved`);
   const detailTabs=extractDetailTabs(toolbarSource,context),tabs=detailTabs.tabs,tabOrder=detailTabs.tabOrder,propertyLabels=extractPropertyLabels(contentSource,context),propertyGroups=extractPropertyGroups(contentSource,context),propertyLayout=extractPropertyLayout(contentSource,generalSource,context);
   const dynamic=String(dynamicTableSource||'');
-  const files=normalizeSourceDerivedColumns(maybeDynamic(dynamic,'TorrentFilesTable',context)||legacyStaticColumns(contentSource,'prop_files',legacyFilesSource,'file',context),legacyFilesSource,'file');
-  const trackers=annotateTrackerValuePresentation(annotateTrackerNegativeSentinels(normalizeSourceProjectedColumns(maybeDynamic(dynamic,'TorrentTrackersTable',context)||legacyStaticColumns(contentSource,'prop_trackers',legacyTrackersSource,'tracker',context),legacyTrackersSource,'tracker'),legacyTrackersSource,context),legacyTrackersSource,context);
+  const files=annotateFileValuePresentation(normalizeSourceDerivedColumns(maybeDynamic(dynamic,'TorrentFilesTable',context)||legacyStaticColumns(contentSource,'prop_files',legacyFilesSource,'file',context),legacyFilesSource,'file'),dynamic,legacyFilesSource);
+  const trackers=annotateTrackerScalarPresentation(annotateTrackerValuePresentation(annotateTrackerNegativeSentinels(normalizeSourceProjectedColumns(maybeDynamic(dynamic,'TorrentTrackersTable',context)||legacyStaticColumns(contentSource,'prop_trackers',legacyTrackersSource,'tracker',context),legacyTrackersSource,'tracker'),legacyTrackersSource,context),legacyTrackersSource,context),legacyTrackersSource);
   const peers=maybeDynamic(dynamic,'TorrentPeersTable',context);
   const webseeds=maybeDynamic(dynamic,'TorrentWebseedsTable',context)||legacyStaticColumns(contentSource,'prop_webseeds',legacyWebseedsSource,'webseed',context);
   return{tabs,tabOrder,propertyGroups,propertyLabels,propertyLayout,tables:{files:requireColumns(files,'Files',context),trackers:requireColumns(trackers,'Trackers',context),peers:requireColumns(peers,'Peers',context),webseeds:requireColumns(webseeds,'Web Seeds',context)}};
@@ -123,6 +148,7 @@ export function torrentDetailTranslationRefs(detailUi){const out={};function add
   for(const [key,ref] of Object.entries(detailUi?.tabs||{}))add(`detail.tab.${key}`,ref);
   for(const [key,ref] of Object.entries(detailUi?.propertyGroups||{}))add(`detail.group.${key}`,ref);
   for(const [key,ref] of Object.entries(detailUi?.propertyLabels||{}))add(`detail.property.${key}`,ref);
+  for(const group of detailUi?.propertyLayout||[])for(const field of group?.fields||[]){const presentation=field?.valuePresentation;add(`detail.property.${field.id}.presentation.empty`,presentation?.empty?.translation);add(`detail.property.${field.id}.presentation.negative`,presentation?.negative?.translation);}
   for(const [surface,columns] of Object.entries(detailUi?.tables||{}))for(const column of columns||[]){add(`detail.${surface}.${column.key}`,column.translation);add(`detail.${surface}.${column.key}.sentinel.negative`,column?.notApplicableWhenNegative?.translation);const presentation=column?.valuePresentation;if(presentation?.kind==='translated-enum'){for(const [value,ref] of Object.entries(presentation.values||{}))add(`detail.${surface}.${column.key}.value.${value}`,ref);for(let i=0;i<(presentation.overrides||[]).length;i++)add(`detail.${surface}.${column.key}.override.${i}`,presentation.overrides[i]?.translation);}}
   return out;
 }
