@@ -11,9 +11,6 @@ on:
         description: Optional CI run id that owns release-candidate-<SHA>
         required: false
         type: string
-  push:
-    branches:
-      - dev
 
 permissions:
   contents: read
@@ -26,7 +23,6 @@ concurrency:
 jobs:
   deploy:
     name: Deploy exact candidate to official qB and Chrome
-    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[candidate-deployment-only]')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
@@ -53,25 +49,8 @@ jobs:
           INPUT_RUN: ${{ inputs.candidate_run_id }}
         run: |
           set -euo pipefail
-          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
-            CANDIDATE_SHA="${INPUT_SHA,,}"
-            RUN_ID="${INPUT_RUN:-}"
-          else
-            CANDIDATE_SHA=""
-            RUN_ID=""
-            while IFS= read -r ancestor; do
-              artifact="release-candidate-$ancestor"
-              while IFS= read -r id; do
-                [ -n "$id" ] || continue
-                found="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$id/artifacts?per_page=100" --jq ".artifacts[] | select(.name==\"$artifact\" and .expired==false) | .id" | head -n1)"
-                if [ -n "$found" ]; then
-                  CANDIDATE_SHA="$ancestor"
-                  RUN_ID="$id"
-                  break 2
-                fi
-              done < <(gh api --paginate "/repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?branch=dev&per_page=100" --jq ".workflow_runs[] | select(.head_sha==\"$ancestor\") | .id")
-            done < <(git rev-list --first-parent --max-count=40 HEAD^)
-          fi
+          CANDIDATE_SHA="${INPUT_SHA,,}"
+          RUN_ID="${INPUT_RUN:-}"
           [[ "$CANDIDATE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "No reusable ancestor candidate artifact was found." >&2; exit 2; }
           if [ "$CANDIDATE_SHA" != "$GITHUB_SHA" ]; then
             blocked=0

@@ -12,7 +12,7 @@ const full=read('.github/workflows/real-qb-full.yml');
 const locale=read('.github/workflows/real-qb-locale.yml');
 const verifier=read('tests/release-compat-evidence.mjs');
 
-assert(focused.includes('workflow_dispatch:')&&focused.includes('release-candidate-$CANDIDATE_SHA')&&focused.includes('candidate-deployment-${{ steps.resolve.outputs.candidate_sha }}'),'candidate deployment must be independently retryable against one exact candidate artifact');
+assert(focused.includes('workflow_dispatch:')&&!/\n\s*push:\s*/.test(focused)&&focused.includes('release-candidate-$CANDIDATE_SHA')&&focused.includes('candidate-deployment-${{ steps.resolve.outputs.candidate_sha }}'),'candidate deployment must be independently retryable against one exact candidate artifact without creating skipped runs on ordinary dev pushes');
 assert(focused.includes('WEIG_CANDIDATE_EXPECTED_SHA')&&focused.includes('run_rehearsal=1')&&focused.includes('run_rehearsal=0'),'focused deployment must distinguish final exact-head rehearsal from validation-only ancestor debugging');
 
 assert(promote.includes('release-candidate-${sha}')&&promote.includes("workflow_id: 'candidate-deployment-only.yml'")&&promote.includes('candidate-deployment-${sha}'),'promotion must resolve candidate package and isolated deployment evidence as independent SHA-bound owners');
