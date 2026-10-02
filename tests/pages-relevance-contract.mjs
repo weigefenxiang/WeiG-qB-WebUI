@@ -30,6 +30,8 @@ for(const required of [
   'tools/qb-statistics-source.mjs',
   'tools/qb-torrent-fields-parser.mjs',
   'tools/qb-webui-catalog.mjs',
+  'tools/qb-settings-native-bundle.mjs',
+  'tools/qb-settings-runtime-rebind.mjs',
   'tools/change-classifier.mjs',
   'tools/settings-evidence-compat.mjs',
   'tools/qb-settings-translation-artifact.mjs'

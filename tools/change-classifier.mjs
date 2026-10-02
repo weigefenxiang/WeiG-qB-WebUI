@@ -27,9 +27,18 @@ export function isSettingsEvidencePolicyPath(path){
   ].includes(path);
 }
 
+export function isSettingsEvidenceConsumerPath(path){
+  path=normalizePath(path);
+  return [
+    'tools/qb-settings-runtime-rebind.mjs',
+    'tools/qb-settings-native-bundle.mjs',
+    'tools/qb-webui-catalog.mjs'
+  ].includes(path);
+}
+
 export function isSettingsSourcePath(path){
   path=normalizePath(path);
-  if(isSettingsEvidencePolicyPath(path))return false;
+  if(isSettingsEvidencePolicyPath(path)||isSettingsEvidenceConsumerPath(path))return false;
   return /^tools\/qb-settings-.*\.mjs$/.test(path)
     || /^tools\/qb-locale-.*\.mjs$/.test(path)
     || /^tools\/qb-release-catalog.*\.mjs$/.test(path)
@@ -116,6 +125,7 @@ export function isPagesPayloadPath(path){
     || starts(path,'simulator/')
     || starts(path,'installers/')
     || isSettingsSourcePath(path)
+    || isSettingsEvidenceConsumerPath(path)
     || isNativeSourcePath(path);
 }
 

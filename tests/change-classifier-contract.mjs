@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {
   classifyChangedPaths,
   isPagesPayloadPath,
+  isSettingsEvidenceConsumerPath,
   isSettingsEvidencePolicyPath,
   isSettingsSourcePath
 } from '../tools/change-classifier.mjs';
@@ -56,6 +57,12 @@ for(const policy of ['tools/settings-evidence-compat.mjs','tools/qb-settings-tra
   assert.equal(isSettingsSourcePath(policy),false);
   const classified=classifyChangedPaths([policy]);
   assert.equal(classified.workflowPolicy,true);
+  assert.equal(classified.pagesPayload,true);
+  assert.equal(classified.settingsSource,false);
+}
+for(const consumer of ['tools/qb-settings-runtime-rebind.mjs','tools/qb-settings-native-bundle.mjs','tools/qb-webui-catalog.mjs']){
+  assert.equal(isSettingsEvidenceConsumerPath(consumer),true);
+  const classified=classifyChangedPaths([consumer]);
   assert.equal(classified.pagesPayload,true);
   assert.equal(classified.settingsSource,false);
 }

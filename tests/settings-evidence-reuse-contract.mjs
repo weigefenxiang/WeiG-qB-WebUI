@@ -4,7 +4,7 @@ import {
   artifactSourceSha,
   settingsEvidenceChangedPaths
 } from '../tools/settings-evidence-compat.mjs';
-import {isSettingsEvidencePolicyPath,isSettingsSourcePath} from '../tools/change-classifier.mjs';
+import {isSettingsEvidenceConsumerPath,isSettingsEvidencePolicyPath,isSettingsSourcePath} from '../tools/change-classifier.mjs';
 
 const resolver=fs.readFileSync(new URL('../tools/qb-settings-translation-artifact.mjs',import.meta.url),'utf8');
 const pagesSource=fs.readFileSync(new URL('../.github/workflows/pages-source.yml',import.meta.url),'utf8');
@@ -34,17 +34,24 @@ for(const policy of [
   assert.equal(isSettingsEvidencePolicyPath(policy),true,`Settings evidence policy owner missing ${policy}`);
   assert.equal(isSettingsSourcePath(policy),false,`Policy-only change must not invalidate certified Settings source bytes: ${policy}`);
 }
+for(const consumer of ['tools/qb-settings-runtime-rebind.mjs','tools/qb-settings-native-bundle.mjs','tools/qb-webui-catalog.mjs']){
+  assert.equal(isSettingsEvidenceConsumerPath(consumer),true,`Settings evidence downstream consumer missing ${consumer}`);
+  assert.equal(isSettingsSourcePath(consumer),false,`Downstream consumer change must reuse certified Settings source bytes: ${consumer}`);
+}
 for(const unrelated of ['installers/install.sh','webui/private/scripts/app.js','tests/browser-feature-parity.mjs'])assert.equal(isSettingsSourcePath(unrelated),false,`Unrelated change must not invalidate Settings evidence: ${unrelated}`);
 assert.deepEqual(settingsEvidenceChangedPaths([
   'tools/change-classifier.mjs',
   'tools/settings-evidence-compat.mjs',
   'tools/qb-settings-translation-artifact.mjs',
+  'tools/qb-settings-runtime-rebind.mjs',
+  'tools/qb-settings-native-bundle.mjs',
+  'tools/qb-webui-catalog.mjs',
   'tools/qb-settings-translation-lkg.mjs'
-]),['tools/qb-settings-translation-lkg.mjs'],'reuse-policy changes must not force qB source extraction while actual LKG generation changes still do');
+]),['tools/qb-settings-translation-lkg.mjs'],'policy/runtime-consumer changes must not force qB source extraction while actual LKG generation changes still do');
 
 assert.ok(resolver.includes("compatibleArtifactCandidates(artifacts,'qb-settings-translation-lkg-')"),'resolver must search certified ancestor artifacts after exact SHA');
 assert.ok(resolver.includes('localSettingsEvidenceCompatibility({ancestorSha:artifactSha,currentSha:sourceSha,cwd:projectRoot})'),'resolver must prove repository-history equivalence before reuse');
 assert.ok(resolver.includes("compatibility.reason==='settings-source-changed'"),'resolver must explain the exact Settings-source owner that invalidated reuse');
 assert.ok(pagesSource.includes('Probe exact-dev-SHA Settings evidence')&&pagesSource.includes('fetch-depth: 0'),'Pages evidence probe must have full history for ancestor compatibility proof');
 
-console.log('Settings evidence reuse contract passed: certified source bytes are invalidated only by real Settings evidence inputs; classifier/resolver/reuse-policy changes remain Pages/workflow policy without forcing 16-shard re-extraction.');
+console.log('Settings evidence reuse contract passed: certified source bytes are invalidated only by real Settings evidence inputs; classifier/resolver/reuse-policy and downstream runtime-consumer changes reuse certified evidence without forcing 16-shard re-extraction.');
