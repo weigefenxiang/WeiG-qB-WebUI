@@ -70,7 +70,7 @@ try{
   assert(await page.evaluate(()=>window.WeiG.CapabilityRegistry.supports('tagFacet'))===true,'qB4.1.0 may expose a locally usable tags field without owning a native Tags sidebar surface');
   await assertNativeFacetVisibility(page,{category:true,tag:false,tracker:false,savePath:true},'Desktop qB4');await assertPrivateTrackerOwnership(page,false,'Desktop qB4 Private/PT');
   const q4Filters=await page.locator('#filter-nav [data-filter]').evaluateAll(nodes=>nodes.map(n=>n.dataset.filter));
-  assert(JSON.stringify(q4Filters)===JSON.stringify(['all','downloading','seeding','completed','stopped','running','active','inactive','errored']),`qB4 filter view must expose only the exact native source inventory, canonicalizing paused/resumed internally without inventing derived rows ${JSON.stringify(q4Filters)}`);
+  assert(JSON.stringify(q4Filters)===JSON.stringify(['all','downloading','seeding','completed','running','stopped','active','inactive','errored']),`qB4 filter view must expose only the exact native source inventory, canonicalizing paused/resumed internally without inventing derived rows ${JSON.stringify(q4Filters)}`);
   await assertOnlyHeaderHints(page,'Home qB4');
   await page.setViewportSize({width:390,height:844});await page.locator('#menu-btn').click();await page.waitForFunction(()=>document.getElementById('sidebar')?.classList.contains('is-open'));await assertNativeFacetVisibility(page,{category:true,tag:false,tracker:false,savePath:true},'Mobile qB4');await assertPrivateTrackerOwnership(page,false,'Mobile qB4 Private/PT');
   assert(errors.length===0,`qB4 browser errors: ${errors.join(' | ')}`);await context.close();context=null;
