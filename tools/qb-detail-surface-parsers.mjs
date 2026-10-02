@@ -40,6 +40,16 @@ function sourcePresentationRule(scope){
   const legacy=[...text.matchAll(/\belse[\s\S]{0,120}?=\s*(["'])([^"'\r\n]*)\1/g)];if(legacy.length)return{kind:'literal',value:legacy.at(-1)[2]};
   return null;
 }
+function expressionPresentationRule(expression){
+  const text=String(expression||'').trim(),refs=extractQbtSourceRefs(text);if(refs.length)return{kind:'translation',translation:refs.at(-1)};
+  const literal=text.match(/^\s*\(*\s*(["'])([^"'\r\n]*)\1\s*\)*\s*$/);return literal?{kind:'literal',value:literal[2]}:null;
+}
+function compareSentinel(left,operator,right){if(operator==='==='||operator==='==')return left===right;if(operator==='!=='||operator==='!=')return left!==right;if(operator==='>=')return left>=right;if(operator==='<=')return left<=right;if(operator==='>')return left>right;if(operator==='<')return left<right;return false;}
+function sentinelPresentationRule(scope,field,kind){
+  const text=String(scope||''),escaped=escapeRe(field),re=new RegExp('\\bdata\\.'+escaped+'\\s*(===|==|!==|!=|>=|<=|>|<)\\s*(-?\\d+(?:\\.\\d+)?|""|\\'\\')\\s*\\?\\s*([^:;]+?)\\s*:\\s*([^;]+)','g'),left=kind==='empty'?'':-1;
+  for(const match of text.matchAll(re)){const token=match[2],right=token==='""'||token==="''"?'':Number(token),branch=compareSentinel(left,match[1],right)?match[3]:match[4],rule=expressionPresentationRule(branch);if(rule)return rule;}
+  return sourcePresentationRule(text);
+}
 function propertySinkScope(source,binding){if(!Number.isInteger(binding&&binding.__sinkIndex))return'';const prefix=String(source||'').slice(0,binding.__sinkIndex),boundary=lastSinkBoundary(prefix);return prefix.slice(boundary+1)+'\n'+String(binding.__expression||'');}
 function generalValuePresentation(generalSource,binding,context,id){
   if(!binding||binding.valueSource!=='properties')return null;
@@ -47,8 +57,8 @@ function generalValuePresentation(generalSource,binding,context,id){
   let conditional=false;
   for(const field of fields){
     const escaped=escapeRe(field),emptyRe=new RegExp("\\bdata\\."+escaped+"\\s*(?:===|==|!==|!=)\\s*(?:\"\"|'')"),negativeRe=new RegExp("\\bdata\\."+escaped+"\\s*(?:>=\\s*0|>\\s*-1|!=\\s*-1|!==\\s*-1|<\\s*0|===?\\s*-1)");
-    if(emptyRe.test(scope)){const fallback=sourcePresentationRule(scope);if(!fallback)throw new Error(`${context}: Properties field ${id} empty-value presentation is unresolved`);presentation.empty=fallback;conditional=true;}
-    if(negativeRe.test(scope)){const fallback=sourcePresentationRule(scope);if(!fallback)throw new Error(`${context}: Properties field ${id} negative-value presentation is unresolved`);presentation.negative=fallback;conditional=true;}
+    if(emptyRe.test(scope)){const fallback=sentinelPresentationRule(scope,field,'empty');if(!fallback)throw new Error(`${context}: Properties field ${id} empty-value presentation is unresolved`);presentation.empty=fallback;conditional=true;}
+    if(negativeRe.test(scope)){const fallback=sentinelPresentationRule(scope,field,'negative');if(!fallback)throw new Error(`${context}: Properties field ${id} negative-value presentation is unresolved`);presentation.negative=fallback;conditional=true;}
     if(new RegExp('new\\s+Date\\s*\\(\\s*data\\.'+escaped+'\\s*\\*\\s*1000').test(scope))presentation.format='date';
   }
   if(fields.includes('pieces_num')&&fields.includes('piece_size')&&/(?:%1|pieces_num)[\s\S]{0,500}(?:friendlyUnit|piece_size)/.test(scope))presentation.format='pieces';
