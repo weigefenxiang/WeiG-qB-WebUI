@@ -69,6 +69,7 @@ for(const profile of catalog){
   assert.equal(C.isCertified(),true,`${profile.qbVersion}: official stable profile must certify`);
 
   const productFilters=T.statusFilters();
+  const exactFilters=[];for(const raw of profile.torrentFilters||[]){const canonical=T.canonicalFilter(String(raw||''));if(canonical&&!exactFilters.includes(canonical))exactFilters.push(canonical);}assert.deepEqual(Array.from(productFilters),exactFilters,`${profile.qbVersion}: Status visible inventory must equal the exact WebAPI-supported filter set after canonical alias normalization`);assert.deepEqual(Array.from(T.statusFilterDescriptors(),item=>item.name),exactFilters,`${profile.qbVersion}: Status descriptor inventory must never hide or invent an exact WebAPI filter`);
   for(const required of baselineFilters)assert.ok(productFilters.includes(required),`${profile.qbVersion}: baseline product filter ${required} unavailable`);
   assert.equal(productFilters.includes('paused')||productFilters.includes('resumed'),false,`${profile.qbVersion}: raw historical filter aliases leaked into product semantics`);
   let nativeFilters=0,derivedFilters=0;
@@ -151,5 +152,11 @@ for(const profile of catalog){
 assert.equal(rows.length,catalog.length,'every generated stable profile must enter the formal product matrix');
 assert.equal(rows.at(-1)?.qbVersion,'5.2.3','formal product matrix current-stable Settings surface lock must remain qB 5.2.3');
 assert.equal(rows[0].qbVersion,'4.1.0','formal product matrix minimum drifted');
+const filterProfile=version=>catalog.find(item=>item.qbVersion===version),canon=profile=>{const out=[];for(const raw of profile?.torrentFilters||[]){const value=T.canonicalFilter(String(raw||''));if(value&&!out.includes(value))out.push(value);}return out;};
+assert.ok(!canon(filterProfile('4.1.0')).includes('stalled')&&!canon(filterProfile('4.1.0')).includes('checking')&&!canon(filterProfile('4.1.0')).includes('moving'),'4.1.0 must not inherit later Status filters');
+assert.ok(canon(filterProfile('4.2.2')).includes('stalled')&&canon(filterProfile('4.2.2')).includes('stalled_uploading')&&canon(filterProfile('4.2.2')).includes('stalled_downloading')&&!canon(filterProfile('4.2.2')).includes('checking'),'4.2.2 must introduce only its source-proven stalled family');
+assert.ok(canon(filterProfile('4.4.0')).includes('checking')&&!canon(filterProfile('4.4.0')).includes('moving'),'4.4.0 must introduce Checking without borrowing later Moving');
+assert.ok(canon(filterProfile('4.5.0')).includes('moving'),'4.5.0+ exact WebAPI source must expose Moving even when a native WebUI view omitted it');
+assert.ok(canon(filterProfile('5.0.0')).includes('stopped')&&canon(filterProfile('5.0.0')).includes('running')&&!canon(filterProfile('5.0.0')).includes('paused')&&!canon(filterProfile('5.0.0')).includes('resumed'),'5.0.0 must follow source rename to stopped/running through canonical semantics');
 const latest=rows.at(-1),derivedReleases=rows.filter(x=>x.derivedFilters>0).length,readOnlyTags=rows.filter(x=>x.tagFacet&&!x.nativeTags).length;
 console.log(`Full stable PRODUCT compatibility matrix passed: ${rows.length} official stable releases ${rows[0].qbVersion} -> ${latest.qbVersion}; all ${currentColumnFields.length} current Torrent fields resolve NATIVE through TorrentFieldRegistry; ${surfaceActions.size} Settings/Search/RSS/Logs action capabilities follow exact source provenance; ${derivedReleases} releases use at least one reliable local filter derivation; ${readOnlyTags} releases expose Tags read/facet before native taxonomy; latest has ${latest.actions} resolved Torrent actions and ${latest.writableSettings}/${latest.settings} writable source-proven Preferences.`);

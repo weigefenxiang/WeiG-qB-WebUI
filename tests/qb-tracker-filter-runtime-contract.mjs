@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {compactTrackerFacetModeTimeline,compactTrackerFilterTimeline,materializeTrackerRuntime} from '../tools/qb-tracker-filter-runtime.mjs';
+import fs from 'node:fs';
 const sha=n=>String(n).repeat(40),ref=source=>({source,context:'TrackerFiltersList'});
 const catalog=[
   {qbVersion:'4.1.0',sourceSha:sha(1),trackerFilters:[],trackerFacetMode:'none'},
@@ -16,4 +17,5 @@ const template={schemaVersion:1,sourceFacts:{torrentFilters:[{from:'4.1.0',value
 assert.equal(out.sentinel,'preserve');assert.deepEqual(out.sourceFacts.torrentFilters,template.sourceFacts.torrentFilters);assert.equal(out.sourceFacts.trackerFacetMode.at(-1).value,'hostname');assert.equal(template.sourceFacts.trackerFilters,undefined);
 assert.throws(()=>compactTrackerFilterTimeline([{qbVersion:'4.1.0',sourceSha:sha(1)}]),/trackerFilters are missing/);
 assert.throws(()=>compactTrackerFacetModeTimeline([{qbVersion:'4.1.0',sourceSha:sha(1),trackerFacetMode:'guessed'}]),/trackerFacetMode is invalid/);
+const app=fs.readFileSync('webui/private/scripts/app.js','utf8'),facetBlock=app.match(/async function refreshTrackerFacet\(\)\{[\s\S]*?\n\s*function capabilitySupported/);assert.ok(facetBlock,'Tracker facet refresh owner missing');assert.match(facetBlock[0],/app\.client\.getMainData\(0\)/,'Tracker facet must consume one sync\/maindata aggregate read');assert.doesNotMatch(facetBlock[0],/app\.client\.(?:trackers|torrentTrackers)\s*\(/,'Tracker facet must never fan out per-torrent tracker requests to simulate unavailable aggregate flags');assert.match(app,/function trackerSpecialOptions\(items\).*trackerFilterFacts\(\)\.forEach/s,'Tracker Error\/Other error\/Warning visibility must be driven only by exact source-derived tracker filter facts');
 console.log('Tracker runtime materialization contract passed: exact source facts compact into filter and grouping-mode change points without rewriting unrelated owners.');
