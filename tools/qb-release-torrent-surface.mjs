@@ -38,7 +38,7 @@ export function extractQbReleaseTorrentSurface({ref='',apiActions=[],apiActionPa
   const statisticsMarkupSource=readFirstSource(['src/webui/www/private/views/statistics.html','src/webui/www/private/statistics.html']);
   const statisticsScriptSource=readOptionalSource('src/webui/www/private/scripts/statistics.js');
   if(!statisticsMarkupSource)throw new Error(`${context}: Statistics source markup is unresolved`);
-  const statisticsUi=extractQbStatisticsUi({markupSource:statisticsMarkupSource,runtimeSource:[statisticsScriptSource,clientSource].filter(Boolean).join('\n')},context);
+  const statisticsUi=extractQbStatisticsUi({markupSource:statisticsMarkupSource,runtimeSource:[statisticsScriptSource,clientSource].filter(Boolean).join('\n'),titleSource:menuSource},context);
 
   const detailSurfaces=extractTorrentDetailSurfaces(torrentsControllerSource,context,serializerHeaderSource);
   const torrentDetailUi=extractTorrentDetailUi({

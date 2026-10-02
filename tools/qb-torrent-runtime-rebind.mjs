@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
 import path from 'node:path';
-import crypto from 'node:crypto';
 import {compileCompactRuntime} from './qb-compact-runtime.mjs';
-import {applyLocaleOverlay} from './qb-locale-overlay.mjs';
+import {applyLocaleOverlaySubset} from './qb-locale-overlay.mjs';
 
 const args=process.argv.slice(2);
 const check=args.includes('--check');
@@ -19,8 +18,8 @@ const catalogText=fs.readFileSync(catalogPath,'utf8').replace(/\r\n?/g,'\n');
 const catalog=JSON.parse(catalogText);
 if(!Array.isArray(catalog)||!catalog.length)throw new Error('Torrent runtime rebind requires a non-empty exact source catalog.');
 const localeOverlay=JSON.parse(fs.readFileSync(localeOverlayPath,'utf8'));
-const catalogSha256=crypto.createHash('sha256').update(Buffer.from(catalogText,'utf8')).digest('hex');
-const localeCatalog=applyLocaleOverlay(catalog,localeOverlay,{catalogSha256});
+if(Number(localeOverlay?.profileCount)!==catalog.length||String(localeOverlay?.supportFloor||'')!==String(catalog[0]?.qbVersion||'')||String(localeOverlay?.latestAdmittedStable||'')!==String(catalog.at(-1)?.qbVersion||''))throw new Error('Torrent runtime Locale overlay release boundary mismatch.');
+const localeCatalog=applyLocaleOverlaySubset(catalog,localeOverlay);
 const hasTorrentMenuFact=catalog.every(profile=>Object.prototype.hasOwnProperty.call(profile,'torrentContextMenu'));
 const {torrentData,actionData}=compileCompactRuntime(catalog,{includeSettings:false});
 function compactTimeline(rows){const out=[];let prior=null,hasPrior=false;for(const row of rows){const signature=JSON.stringify(row.value);if(!hasPrior||signature!==prior){out.push({from:String(row.from||''),value:structuredClone(row.value)});prior=signature;hasPrior=true;}}return out;}

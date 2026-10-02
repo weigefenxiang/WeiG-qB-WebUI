@@ -68,7 +68,6 @@ export function extractQbOwnedUiFacts({preferencesSource='',toolbarSource='',fil
   add(out,'route.rss',firstSourceRef([indexSource],['RSS','RSS Reader']));
   add(out,'route.logs',firstSourceRef([indexSource],['Execution Log','Log']));
   add(out,'route.settings',firstSourceRef([indexSource],['Options','&Options...','Options...','&Options']));
-  add(out,'transfer.statistics',firstSourceRef([indexSource],['Statistics']));
   for(const item of extractTorrentVisibleFilters({clientSource,filtersSource},'qB-owned UI'))add(out,`filter.${item.name}`,item.translation);
   for(const item of extractTrackerFilterFacts(clientSource))add(out,`tracker.filter.${item.id}`,item.copy);
   addTorrentOwnedUiFacts(out,{addTorrentSource,downloadSource,indexSource});

@@ -117,12 +117,27 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-      - name: Materialize Torrent/Action compact runtime from Frozen exact source catalog
+      - name: Checkout qBittorrent upstream with admitted stable tags
+        uses: actions/checkout@v7
+        with:
+          repository: qbittorrent/qBittorrent
+          path: upstream-qb
+          fetch-depth: 0
+          fetch-tags: true
+          filter: blob:none
+          persist-credentials: false
+      - name: Materialize Torrent/Action compact runtime from current parser over admitted exact sources
         shell: bash
         run: |
           set -euo pipefail
-          node tools/qb-torrent-runtime-rebind.mjs tests/fixtures/qb-release-catalog.lkg.json
-          node tools/qb-torrent-runtime-rebind.mjs tests/fixtures/qb-release-catalog.lkg.json --check
+          node tools/qb-release-catalog-shard.mjs upstream-qb \
+            --shard-index=0 \
+            --shard-count=1 \
+            --admitted-catalog=tests/fixtures/qb-release-catalog.lkg.json \
+            --output="$RUNNER_TEMP/qb-admitted-torrent-source.json" \
+            --manifest="$RUNNER_TEMP/qb-admitted-torrent-source.meta.json"
+          node tools/qb-torrent-runtime-rebind.mjs "$RUNNER_TEMP/qb-admitted-torrent-source.json"
+          node tools/qb-torrent-runtime-rebind.mjs "$RUNNER_TEMP/qb-admitted-torrent-source.json" --check
       - name: Commit canonical Torrent/Action compact runtime if changed
         id: commit
         shell: bash
@@ -1055,7 +1070,15 @@ jobs:
           fetch-tags: true
           persist-credentials: false
       - name: Build exact admitted source catalog once
-        run: node tools/qb-release-catalog.mjs upstream-qb --output=qb-releases.json
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/qb-release-catalog-shard.mjs upstream-qb \
+            --shard-index=0 \
+            --shard-count=1 \
+            --admitted-catalog=tests/fixtures/qb-release-catalog.lkg.json \
+            --output=qb-releases.json \
+            --manifest=qb-releases.meta.json
       - name: Extract and verify exact RSS native surface facts
         shell: bash
         run: |
@@ -1069,6 +1092,7 @@ jobs:
           name: native-surface-base-${{ github.sha }}
           path: |
             qb-releases.json
+            qb-releases.meta.json
             qb-rss-source-catalog.json
             rss-compat.json
           if-no-files-found: error

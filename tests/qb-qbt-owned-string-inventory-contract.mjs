@@ -31,7 +31,7 @@ const routeUi=extractQbOwnedUiFacts({indexSource:'<span>QBT_TR(RSS)QBT_TR[CONTEX
 assert.deepEqual(routeUi['route.rss'],{source:'RSS',context:'MainWindow'});
 assert.deepEqual(routeUi['route.logs'],{source:'Execution Log',context:'MainWindow'});
 assert.deepEqual(routeUi['route.settings'],{source:'Options',context:'OptionsDialog'},'route header copy must be source-owned by exact qB index markup instead of a WeiG hand translation');
-assert.deepEqual(routeUi['transfer.statistics'],{source:'Statistics',context:'MainWindow'},'Statistics entry/title copy must be source-owned by exact qB MainWindow markup while WeiG owns only placement and dialog chrome');
+assert.equal(routeUi['transfer.statistics'],undefined,'Statistics title must be owned by the Statistics source descriptor, not duplicated in the generic qB-owned copy registry');
 
 const legacyAddUi=extractQbOwnedUiFacts({
   downloadSource:'<title>QBT_TR(Download Torrents from their URLs or Magnet links)QBT_TR[CONTEXT=DownloadFromURLDialog]</title>',

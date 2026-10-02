@@ -1,4 +1,4 @@
-import {parseQbtSourceRef} from './qb-source-text.mjs';
+import {extractQbtSourceRefs,parseQbtSourceRef} from './qb-source-text.mjs';
 
 function escapeRe(value){return String(value||'').replace(/[.*+?^()|[\]\\$]/g,'\\$&');}
 function ref(value){return parseQbtSourceRef(String(value||''));}
@@ -29,6 +29,7 @@ function formatKind(expression){
 }
 export function validateQbStatisticsUi(value,context='qB Statistics'){
   if(!value||typeof value!=='object'||Array.isArray(value)||!Array.isArray(value.groups)||!value.groups.length)throw new Error(`${context}: Statistics UI groups are unresolved`);
+  const title=value.title;if(!title?.source||!title?.context)throw new Error(`${context}: Statistics title translation ref is unresolved`);
   const seenGroups=new Set(),seenFields=new Set(),groups=value.groups.map((group,index)=>{
     const key=String(group?.key||'').trim();
     if(!key||seenGroups.has(key))throw new Error(`${context}: invalid/duplicate Statistics group ${key||index}`);seenGroups.add(key);
@@ -45,11 +46,13 @@ export function validateQbStatisticsUi(value,context='qB Statistics'){
     });
     return{key,translation:{source:String(translation.source),context:String(translation.context)},fields};
   });
-  return{groups};
+  return{title:{source:String(title.source),context:String(title.context)},groups};
 }
 export function statisticsUiBindingCount(value){return (value?.groups||[]).reduce((sum,group)=>sum+1+(group?.fields||[]).length,0);}
-export function extractQbStatisticsUi({markupSource='',runtimeSource=''}={},context='qB source'){
+export function extractQbStatisticsUi({markupSource='',runtimeSource='',titleSource=''}={},context='qB source'){
   const markup=String(markupSource||''),runtime=String(runtimeSource||''),assignments=assignmentMap(runtime),groups=[],seenKeys=new Set();
+  const title=extractQbtSourceRefs(String(titleSource||'')).find(item=>item&&item.context==='MainWindow'&&(item.source==='Statistics'||item.source==='&Statistics'))||null;
+  if(!title)throw new Error(`${context}: Statistics title source/context is unresolved`);
   const groupRe=/<h3\b[^>]*>([\s\S]*?)<\/h3>\s*<table\b[^>]*>([\s\S]*?)<\/table>/gi;
   for(const groupMatch of markup.matchAll(groupRe)){
     const translation=ref(groupMatch[1]);
@@ -66,6 +69,6 @@ export function extractQbStatisticsUi({markupSource='',runtimeSource=''}={},cont
     if(!fields.length)throw new Error(`${context}: Statistics group ${translation.source} has no source-proven rows`);
     groups.push({key,translation,fields});
   }
-  return validateQbStatisticsUi({groups},context);
+  return validateQbStatisticsUi({title,groups},context);
 }
-export function statisticsTranslationRefs(ui){const out={};for(const group of ui?.groups||[]){out[`statistics.group.${group.key}`]=group.translation;for(const field of group.fields||[])out[`statistics.field.${field.id}`]=field.translation;}return out;}
+export function statisticsTranslationRefs(ui){const out={};if(ui?.title)out['statistics.title']=ui.title;for(const group of ui?.groups||[]){out[`statistics.group.${group.key}`]=group.translation;for(const field of group.fields||[])out[`statistics.field.${field.id}`]=field.translation;}return out;}

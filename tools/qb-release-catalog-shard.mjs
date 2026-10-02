@@ -89,10 +89,11 @@ function apiActionSurface(ref,actions){
   return Object.fromEntries(Object.entries(result).sort(([a],[b])=>a.localeCompare(b)));
 }
 
-function torrentSurface(ref,actions){
+function torrentSurface(ref,actions,actionParameters){
   return extractQbReleaseTorrentSurface({
     ref,
     apiActions:actions,
+    apiActionParameters:actionParameters||{},
     readSource:file=>show(ref,file),
     readOptionalSource:file=>showMaybe(ref,file),
     readFirstSource:files=>firstSource(ref,files)
@@ -137,13 +138,14 @@ for(const tag of tags){
   if(expectedSourceSha&&sourceSha.toLowerCase()!==expectedSourceSha)throw new Error(`${tag}: admitted source identity mismatch ${expectedSourceSha} -> ${sourceSha.toLowerCase()}`);
   const preferences=preferenceSurface(tag);
   const actions=apiActions(tag);
+  const actionParameters=apiActionSurface(tag,actions);
   profiles.push({
     qbVersion,webApiVersion,tag,sourceSha,stable:true,officialWeiGSupport:true,
     protocolGeneration:`webapi-v${parts(webApiVersion)[0]||'unknown'}`,
     ...preferences,
     apiActions:actions,
-    apiActionParameters:apiActionSurface(tag,actions),
-    ...torrentSurface(tag,actions)
+    apiActionParameters:actionParameters,
+    ...torrentSurface(tag,actions,actionParameters)
   });
 }
 validateCatalogQuality(profiles);
