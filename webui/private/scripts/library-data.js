@@ -1,0 +1,29 @@
+(function(global){
+  'use strict';
+  var W=global.WeiG=global.WeiG||{};
+  function int(value,fallback){var n=Number(value);return Number.isSafeInteger(n)&&n>=0?n:fallback;}
+  function idle(){return new Promise(function(resolve){if(typeof global.requestIdleCallback==='function')global.requestIdleCallback(function(){resolve();},{timeout:180});else global.setTimeout(resolve,36);});}
+  function normalizedQuery(query){var out={};Object.keys(query||{}).sort().forEach(function(key){if(key==='limit'||key==='offset'||key==='hashes')return;var value=query[key];if(value===undefined||value===null||value==='')return;out[key]=String(value);});return out;}
+  function signature(query,pageSize){var normalized=normalizedQuery(query),keys=Object.keys(normalized);return String(pageSize)+'|'+keys.map(function(key){return encodeURIComponent(key)+'='+encodeURIComponent(normalized[key]);}).join('&');}
+  function prefetchRadius(pageSize,rowBudget){pageSize=int(pageSize,0);rowBudget=int(rowBudget,600);if(pageSize<=0||pageSize>=500)return 0;return Math.max(0,Math.min(3,Math.floor(rowBudget/(pageSize*2))));}
+  function create(client,options){
+    options=options||{};if(!client||typeof client.getTorrents!=='function')throw new Error('LibraryDataRuntime requires QBClient.getTorrents');
+    var cache=new Map(),tick=0,prefetchGeneration=0,catalogTask=null,catalogPriority='background',cacheRows=0;
+    var maxCacheRows=Math.max(200,int(options.pageCacheRows,900)),ttl=Math.max(1000,int(options.pageTtlMs,10000)),rowBudget=Math.max(100,int(options.prefetchRowBudget,600)),catalogBatch=Math.max(50,int(options.catalogBatchSize,200));
+    function cacheKey(query,page,pageSize){return signature(query,pageSize)+'|p='+String(page);}
+    function cacheAllowed(pageSize){return int(pageSize,0)>0&&int(pageSize,0)<500;}
+    function drop(key){var entry=cache.get(key);if(!entry)return;cacheRows-=entry.items.length;cache.delete(key);}
+    function trim(){if(cacheRows<=maxCacheRows)return;Array.from(cache.entries()).sort(function(a,b){return a[1].used-b[1].used;}).forEach(function(pair){if(cacheRows>maxCacheRows)drop(pair[0]);});}
+    function rememberPage(query,page,pageSize,value){if(!cacheAllowed(pageSize)||!value)return value;var key=cacheKey(query,page,pageSize),prior=cache.get(key);if(prior)cacheRows-=prior.items.length;var entry={items:Array.isArray(value.items)?value.items.slice():[],hasNext:!!value.hasNext,time:Date.now(),used:++tick};cache.set(key,entry);cacheRows+=entry.items.length;trim();return entry;}
+    function cachedPage(query,page,pageSize){if(!cacheAllowed(pageSize))return null;var key=cacheKey(query,page,pageSize),entry=cache.get(key);if(!entry)return null;if(Date.now()-entry.time>ttl){drop(key);return null;}entry.used=++tick;return{items:entry.items.slice(),hasNext:entry.hasNext,cached:true};}
+    async function fetchPage(query,page,pageSize,opts){page=Math.max(0,int(page,0));pageSize=Math.max(1,int(pageSize,50));opts=opts||{};var next=Object.assign({},normalizedQuery(query),{limit:pageSize+1,offset:page*pageSize}),raw=await client.getTorrents(next);raw=Array.isArray(raw)?raw:[];var value={items:raw.slice(0,pageSize),hasNext:raw.length>pageSize,cached:false};if(opts.remember!==false)rememberPage(query,page,pageSize,value);return value;}
+    function cancelPrefetch(){prefetchGeneration++;return prefetchGeneration;}
+    function clearPages(){cancelPrefetch();cache.clear();cacheRows=0;}
+    function schedulePrefetch(query,currentPage,pageSize,currentHasNext){var radius=prefetchRadius(pageSize,rowBudget),generation=cancelPrefetch();if(!radius||global.document&&global.document.hidden)return Promise.resolve(false);var task=(async function(){var forward=!!currentHasNext;for(var distance=1;distance<=radius;distance++){if(generation!==prefetchGeneration)return false;var back=currentPage-distance;if(back>=0&&!cachedPage(query,back,pageSize)){await idle();if(generation!==prefetchGeneration)return false;await fetchPage(query,back,pageSize,{remember:true});}if(generation!==prefetchGeneration)return false;if(forward){var nextPage=currentPage+distance,cached=cachedPage(query,nextPage,pageSize);if(!cached){await idle();if(generation!==prefetchGeneration)return false;cached=await fetchPage(query,nextPage,pageSize,{remember:true});}forward=!!cached.hasNext;}}return true;})();task.catch(function(){});return task;}
+    function promoteCatalog(){catalogPriority='foreground';}
+    function scanCatalog(opts){opts=opts||{};if(catalogTask){if(opts.priority==='foreground')promoteCatalog();return catalogTask;}catalogPriority=opts.priority==='background'?'background':'foreground';var batch=Math.max(50,int(opts.batchSize,catalogBatch));catalogTask=(async function(){var all=[],offset=0;while(true){if(catalogPriority==='background')await idle();var part=await client.getTorrents({sort:'added_on',reverse:'true',limit:batch,offset:offset});part=Array.isArray(part)?part:[];all=all.concat(part);if(typeof opts.onBatch==='function')opts.onBatch(part.slice(),all.length);if(part.length<batch)break;offset+=batch;if(catalogPriority!=='background')await Promise.resolve();}return all;})();catalogTask.finally(function(){catalogTask=null;catalogPriority='background';}).catch(function(){});return catalogTask;}
+    function stats(){return{cacheEntries:cache.size,cacheRows:cacheRows,prefetchRadius:function(pageSize){return prefetchRadius(pageSize,rowBudget);},catalogBusy:!!catalogTask,catalogPriority:catalogPriority};}
+    return{signature:signature,cachedPage:cachedPage,fetchPage:fetchPage,rememberPage:rememberPage,schedulePrefetch:schedulePrefetch,cancelPrefetch:cancelPrefetch,clearPages:clearPages,scanCatalog:scanCatalog,promoteCatalog:promoteCatalog,stats:stats};
+  }
+  W.LibraryDataRuntime={create:create,prefetchRadius:function(pageSize,rowBudget){return prefetchRadius(pageSize,rowBudget==null?600:rowBudget);},signature:signature};
+})(window);
