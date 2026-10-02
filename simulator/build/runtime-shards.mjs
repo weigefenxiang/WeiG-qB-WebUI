@@ -46,7 +46,7 @@ export function buildOwnedCopyProfileShard(registryText,qbVersion){
     if(resolvedSets.has(id))return new Set(resolvedSets.get(id));
     if(trail.has(id))throw new Error(`Cyclic qB-owned bridge set ${id}`);
     const def=sets.get(id);if(!def)throw new Error(`Missing qB-owned bridge set ${id} for ${wanted}`);
-    const next=new Set(trail);next.add(id),active=def.parent?resolveSet(def.parent,next):new Set();
+    const next=new Set(trail);next.add(id);const active=def.parent?resolveSet(def.parent,next):new Set();
     for(const token of def.remove)active.delete(token);
     for(const token of def.add)active.add(token);
     const resolved=[...active].sort((a,b)=>parseInt(a,36)-parseInt(b,36));
