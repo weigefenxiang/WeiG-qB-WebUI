@@ -25,6 +25,7 @@ const compactSource=fs.readFileSync(path.join(root,'tools/qb-compact-runtime.mjs
 const ciSource=fs.readFileSync(path.join(root,'.github/workflows/ci.yml'),'utf8');
 assert.match(compactSource,/compileDetailRuntime\(catalog\)\.sourceFacts/,'compact runtime must delegate Detail compression to the canonical Detail materializer');
 assert.match(ciSource,/detail_runtime_materialize:/,'CI must own exact-source Detail runtime materialization');
+assert.ok(ciSource.includes("inputs.validation_mode == 'native-surfaces'")&&ciSource.includes("contains(github.event.head_commit.message, '[detail-runtime-materialize]')"),'Detail runtime owner must run both on explicit materialization pushes and exact native-surfaces validation dispatches so parser-derived runtime drift cannot remain stale');
 assert.match(ciSource,/qb-detail-runtime-rebind\.mjs webui\/private\/data\/detail-compat\.json native-base\/qb-releases\.json/,'Detail materializer must consume the exact native source catalog');
 assert.match(ciSource,/cmp -s detail-runtime-materialized\.json webui\/private\/data\/detail-compat\.json/,'native-surface gate must detect committed Detail runtime drift');
 

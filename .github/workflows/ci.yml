@@ -1100,7 +1100,7 @@ jobs:
 
   detail_runtime_materialize:
     name: qB Detail source runtime materialization
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[detail-runtime-materialize]') }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'native-surfaces' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[detail-runtime-materialize]')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 8
     needs: native_surface_source_base
