@@ -27,7 +27,7 @@ assert(css.includes('.sidebar-transfer-rate--down{color:var(--accent-primary)}')
 assert(!css.includes('#status-connection')&&!css.includes('#status-torrents'),'Desktop Torrent sidebar must not duplicate connection/Torrent status telemetry');
 assert(css.includes('@media(prefers-reduced-motion:reduce)')&&css.includes('html[data-motion="reduced"]'),'Sidebar motion must honor System and WeiG Reduced Motion');
 
-assert(filterView.includes('W.TorrentSemantics.statusFilters'),'Two-column desktop filters must remain a presentation of canonical TorrentSemantics');
+assert(filterView.includes('W.TorrentSemantics.statusFilterDescriptors'),'Two-column desktop filters must remain a presentation of canonical source-derived TorrentSemantics descriptors');
 for(const kind of ["kind:'tracker'","kind:'savePath'","kind:'category'","kind:'tag'"])assert(spatial.includes(kind),`Desktop facets must reuse canonical SpatialRuntime control: ${kind}`);
 assert(i18n.includes('qbOwnedText:qbOwnedText')&&spatial.includes("W.I18n&&W.I18n.qbOwnedText?W.I18n.qbOwnedText():{}"),'Native sidebar surface presence must consume the resolved qB-owned copy registry through the exported I18n owner');
 assert(transfer.includes('mountCompactChart:mountCompactChart')&&transfer.includes('drawRateChart:drawRateChart'),'Sidebar chart must consume the existing Transfer owner instead of creating another chart runtime');
