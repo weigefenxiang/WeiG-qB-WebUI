@@ -34,14 +34,15 @@ await page.locator('#filter-nav [data-filter="all"]').click();await page.waitFor
       filters,
       expectedStalled:strip(WeiG.I18n.qbSourceText(stalledRef,stalledRef.source)),
       stalled:filters.find(item=>item.id==='stalled_downloading')?.text||'',
-      moving:filters.some(item=>item.id==='moving'),
+      expectedMoving:WeiG.I18n.qbText('state.moving','Moving'),
+      moving:filters.find(item=>item.id==='moving')?.text||'',
       expectedUncategorized:WeiG.I18n.qbSourceText(uncategorizedRef,uncategorizedRef.source),
       uncategorized:categories.find(item=>item.value==='__weig_uncategorized__')?.label||'',
       expectedUntagged:WeiG.I18n.qbSourceText(untaggedRef,untaggedRef.source),
       untagged:tags.find(item=>item.value==='__weig_untagged__')?.label||''
     };
   });
-  assert(!nativePresentation.moving&&nativePresentation.stalled===nativePresentation.expectedStalled&&nativePresentation.expectedStalled!=='Stalled Downloading','qB 4.6.7 zh-CN Status must use exact visible source inventory/copy and omit backend-only Moving: '+JSON.stringify(nativePresentation));
+  assert(nativePresentation.moving===nativePresentation.expectedMoving&&nativePresentation.expectedMoving!=='Moving'&&nativePresentation.stalled===nativePresentation.expectedStalled&&nativePresentation.expectedStalled!=='Stalled Downloading','qB 4.6.7 zh-CN Status must expose exact WebAPI-supported Moving and reuse exact qB-owned localized copy while preserving native visible-filter copy: '+JSON.stringify(nativePresentation));
   assert(nativePresentation.expectedUncategorized!=='Uncategorized'&&nativePresentation.uncategorized.startsWith(nativePresentation.expectedUncategorized)&&nativePresentation.expectedUntagged!=='Untagged'&&nativePresentation.untagged.startsWith(nativePresentation.expectedUntagged),'qB 4.6.7 zh-CN Category/Tag special rows must resolve exact official source/context copy: '+JSON.stringify(nativePresentation));
   await page.waitForSelector('#transfer-capsule .transfer-runtime-capsule__stats');
   const transferEntry=await page.evaluate(()=>{const cap=document.getElementById('transfer-capsule'),button=cap?.querySelector('.transfer-runtime-capsule__stats');return{labelNode:!!cap?.querySelector('.transfer-runtime-capsule__statistics'),text:String(cap?.textContent||'').trim(),buttonText:String(button?.textContent||'').trim()};});
