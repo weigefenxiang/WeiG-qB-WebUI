@@ -65,6 +65,7 @@ const torrent2=Object.assign({},torrent,{hash:hash2,name:'Detail second torrent 
 const iconFixtures=['clip.mp4','photo.jpg','installer.exe','notes.txt','archive.zip','report.pdf','script.js','song.flac'];
 const files=Array.from({length:40},(_,index)=>({index,name:`${index<2?'folder-a':'folder-b'}/${iconFixtures[index]||('file-'+String(index).padStart(2,'0')+'.bin')}`,size:1048576,progress:index<2?.25:Math.min(.95,.1+(index%9)/10),priority:index===0?0:1,is_seed:index===0,piece_range:[index,index+1],availability:index===0?-1:index===1?0:.8}));
 const filePrioWrites=[];
+let propertiesReads=0;
 const properties={save_path:'/downloads',total_size:torrent.size,time_elapsed:176*86400+6*3600,seeding_time:176*86400+6*3600,eta:900,nb_connections:4,nb_connections_limit:100,total_downloaded:16*1024*1024,total_downloaded_session:4*1024*1024,total_uploaded:2*1024*1024,total_uploaded_session:512*1024,dl_speed:65536,dl_speed_avg:60000,up_speed:2048,up_speed_avg:1800,dl_limit:-1,up_limit:-1,total_wasted:0,seeds:5,seeds_total:12,peers:2,peers_total:9,share_ratio:.5,popularity:1,reannounce:120,pieces_num:52531,piece_size:8*1024*1024,pieces_have:52531,infohash_v1:hash,infohash_v2:'',created_by:'',last_seen:1700000100,addition_date:-1,completion_date:-1,creation_date:-1,download_path:'/downloads',comment:'',private:false,has_metadata:true,progress:.25};
 const assert=(ok,msg)=>{if(!ok)throw new Error(msg);};
 async function waitDetailViewportIdle(page,expected){
@@ -127,7 +128,7 @@ async function api(req,res,p,url){
     const offset=Number(url.searchParams.get('offset')||0),limit=Number(url.searchParams.get('limit')||0);
     return json(res,limit?out.slice(offset,offset+limit):out.slice(offset));
   }
-  if(p==='torrents/properties')return json(res,properties);
+  if(p==='torrents/properties'){propertiesReads++;return json(res,properties);}
   if(p==='torrents/files')return json(res,files);
   if(p==='torrents/filePrio'&&req.method==='POST'){const form=await readForm(req),ids=String(form.get('id')||'').split('|').map(Number).filter(Number.isFinite),priority=Number(form.get('priority'));filePrioWrites.push({ids:ids.slice(),priority});ids.forEach(id=>{if(files[id])files[id].priority=priority;});return empty(res);}
   if(p==='torrents/trackers')return json(res,[{url:'** [DHT] **',status:0,tier:-1,msg:'',num_peers:-1,num_seeds:-1,num_leeches:-1,num_downloaded:-1,next_announce:0,min_announce:0,endpoints:[]},{url:'** [PeX] **',status:0,tier:-1,msg:'',num_peers:-1,num_seeds:-1,num_leeches:-1,num_downloaded:-1,next_announce:0,min_announce:0,endpoints:[]},{url:'** [LSD] **',status:0,tier:-1,msg:'',num_peers:-1,num_seeds:-1,num_leeches:-1,num_downloaded:-1,next_announce:0,min_announce:0,endpoints:[]},{url:'https://z-tracker.example/announce',status:2,tier:2,msg:'Z parent',num_peers:3,num_seeds:7,num_leeches:1,num_downloaded:9,next_announce:120,min_announce:60,endpoints:[{name:'z-endpoint.example:443',bt_version:2,status:2,msg:'Z endpoint',num_peers:3,num_seeds:7,num_leeches:1,num_downloaded:9,next_announce:90,min_announce:45}]},{url:'https://a-tracker.example/announce',status:2,tier:0,msg:'A parent',num_peers:4,num_seeds:8,num_leeches:2,num_downloaded:12,next_announce:120,min_announce:60,endpoints:[{name:'z-child.example:443',bt_version:2,status:2,msg:'Z child',num_peers:2,num_seeds:4,num_leeches:1,num_downloaded:6,next_announce:80,min_announce:40},{name:'a-child.example:443',bt_version:1,status:2,msg:'A child',num_peers:1,num_seeds:3,num_leeches:0,num_downloaded:5,next_announce:70,min_announce:35}]}]);
@@ -205,6 +206,19 @@ try{
   assert(inlineDetail.route==='home'&&inlineDetail.tab==='trackers'&&inlineDetail.surface==='trackers'&&inlineDetail.owned&&inlineDetail.mount==='torrent-detail-dock-content','Inline Trackers Dock must consume the presentation-neutral shared Detail DataGrid owner before full-route navigation: '+JSON.stringify(inlineDetail));
   const freshSplit=await page.evaluate(()=>{const split=document.getElementById('torrent-detail-splitter'),dock=document.getElementById('torrent-detail-dock'),key=window.WeiG?.StorageKeys?.torrentDetailDockHeight;return{stored:key?localStorage.getItem(key):null,now:Number(split?.getAttribute('aria-valuenow')),height:dock?.getBoundingClientRect().height||0};});
   assert(freshSplit.stored===null&&freshSplit.now>0&&freshSplit.height>0,'A37 fresh storage must open the Detail Dock at the nonzero default instead of coercing missing localStorage to persisted zero: '+JSON.stringify(freshSplit));
+
+  // A43 regression: General refresh must update the existing source-derived DOM in place so a background poll cannot reset user scroll.
+  await page.locator('#torrent-detail-tabs .tab[data-tab="overview"]').click();
+  await page.waitForSelector('#torrent-detail-dock-content > .general-detail');
+  const generalScrollBefore=await page.evaluate(()=>{const general=document.querySelector('#torrent-detail-dock-content > .general-detail');if(!general)throw new Error('Inline General scroll owner missing');const max=Math.max(0,general.scrollHeight-general.clientHeight);general.scrollTop=max;window.__weigGeneralPollIdentity=general;return{top:general.scrollTop,max,fieldCount:general.querySelectorAll('.kv').length};});
+  assert(generalScrollBefore.max>0&&generalScrollBefore.top>=generalScrollBefore.max-2&&generalScrollBefore.fieldCount>10,'A43 General poll gate requires a genuinely scrollable source-derived overview: '+JSON.stringify(generalScrollBefore));
+  const propertiesBeforePoll=propertiesReads;
+  await page.evaluate(()=>WeiG.LibraryController.applyRuntimeConfig('refresh',80));
+  await waitFixture(()=>propertiesReads>=propertiesBeforePoll+2,'A43 General poll gate did not observe two background Properties refreshes',4000);
+  const generalScrollAfter=await page.evaluate(()=>{WeiG.LibraryController.applyRuntimeConfig('refresh',2000);const general=document.querySelector('#torrent-detail-dock-content > .general-detail');if(!general)return null;return{same:general===window.__weigGeneralPollIdentity,top:general.scrollTop,max:Math.max(0,general.scrollHeight-general.clientHeight),fieldCount:general.querySelectorAll('.kv').length};});
+  assert(generalScrollAfter&&generalScrollAfter.same&&generalScrollAfter.top>=generalScrollAfter.max-2&&generalScrollAfter.fieldCount===generalScrollBefore.fieldCount,'A43 background poll must preserve General DOM identity and scroll position instead of rebuilding to the top: '+JSON.stringify({generalScrollBefore,generalScrollAfter,propertiesBeforePoll,propertiesReads}));
+  await page.locator('#torrent-detail-tabs .tab[data-tab="trackers"]').click();
+  await page.waitForSelector('#torrent-detail-dock-content .shared-table__viewport .shared-table__row');
 
   // A37 SplitPane: the actual draggable track spans from the Torrent sticky-header bottom to the Detail tabs/pager top.
   let splitBox=await page.locator('#torrent-detail-splitter').boundingBox();
