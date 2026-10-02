@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {extractWebuiLocaleFacts,localeCodesFromPaths,mergeEnrichedCatalogShards,parseExplicitLocaleOptions,selectCatalogShard} from '../tools/qb-locale-source.mjs';
 import {extractQbPreferenceUiFacts,extractQbSettingsTranslationFacts,indexQbSettingsTranslationFacts,parseQtTsTranslationSource,translationSourcesForPreferenceUi} from '../tools/qb-settings-translation-source.mjs';
-import {applyQbSettingsTranslationOverlay,buildQbSettingsTranslationOverlay,resolveQbTranslationResourcePath} from '../tools/qb-settings-translation-overlay.mjs';
+import {applyQbSettingsTranslationOverlay,buildQbSettingsTranslationOverlay,resolveQbTranslationResourcePath,resolveQbTranslationResourcePathForKind} from '../tools/qb-settings-translation-overlay.mjs';
 import {auditQbEntityText,canonicalQbDisplayText,canonicalQbSourceText,qbSourceRefKey} from '../tools/qb-source-text.mjs';
 
 // qB 4.6.7 real entity shape: HTML QBT_TR is one layer; official WebUI TS is XML-over-HTML and therefore two layers.
@@ -79,6 +79,8 @@ assert.equal(resolveQbTranslationResourcePath('zh_TW',legacyTranslationPaths),'s
 assert.equal(resolveQbTranslationResourcePath('uz@latin',legacyTranslationPaths),'src/lang/qbittorrent_uz@Latn.ts','Qt latin/Latn modifier spelling is the same script identity');
 assert.equal(resolveQbTranslationResourcePath('sr@latin',legacyTranslationPaths),null,'script-bearing locale must never fall back to a different-script base resource');
 assert.equal(resolveQbTranslationResourcePath('de_DE',['src/lang/qbittorrent_de.ts','src/webui/www/translations/webui_de.ts']),'src/webui/www/translations/webui_de.ts','WebUI-specific official TS wins when both exact-release resource families contain the locale');
+assert.equal(resolveQbTranslationResourcePathForKind('de_DE',['src/lang/qbittorrent_de.ts','src/webui/www/translations/webui_de.ts'],'webui'),'src/webui/www/translations/webui_de.ts');
+assert.equal(resolveQbTranslationResourcePathForKind('de_DE',['src/lang/qbittorrent_de.ts','src/webui/www/translations/webui_de.ts'],'app'),'src/lang/qbittorrent_de.ts','native-client copy domains must be able to select the exact app TS even when WebUI TS also exists');
 assert.throws(()=>resolveQbTranslationResourcePath('eo_EO',['src/lang/qbittorrent_eo_EO.ts','src/lang/qbittorrent_eo-EO.ts']),/Ambiguous official qB translation source/,'ambiguous source identities fail closed instead of guessing');
 
 const transitionalZhPaths=[
@@ -172,7 +174,7 @@ const catalog=[
 const sourceByLocale={en:enTs,de:qtTs,de_DE:deOld};
 const overlay=buildQbSettingsTranslationOverlay(catalog,()=>({preferencesSource,translationSource:locale=>sourceByLocale[locale]}));
 assert.equal(overlay.schemaVersion,1);
-assert.equal(overlay.source,'qb-upstream-preferences-ui+webui-ts');
+assert.equal(overlay.source,'qb-upstream-preferences-ui+official-ts-context-policy');
 assert.equal(overlay.profiles.length,2);
 assert.equal(overlay.profiles[0].mappedPreferences,2);
 assert.equal(overlay.profiles[0].preferences.save_path.title.source,'Default Save Path:');
@@ -191,6 +193,50 @@ assert.equal(enriched[0].settingsUiSource,'qb-upstream-preferences-ui');
 assert.equal(enriched[0].settingsUiMappedPreferences,2);
 assert.ok(enriched.some(item=>item.settingsTranslationSets&&Object.keys(item.settingsTranslationSets).length),'deduplicated translation sets must remain embedded in the canonical catalog');
 assert.throws(()=>buildQbSettingsTranslationOverlay([{qbVersion:'5.2.3',sourceSha:'sha',tag:'release-5.2.3',webuiLocales:[{value:'fr'}],preferenceDescriptors:[{key:'save_path'}]}],()=>({preferencesSource,translationSource:()=>''})),/missing official WebUI translation source/);
+
+const nativeClientCatalog=[{
+  qbVersion:'4.6.7',sourceSha:'8'.repeat(40),tag:'release-4.6.7',webuiLocales:[{value:'zh_CN'}],preferenceDescriptors:[],
+  torrentDetailUi:{
+    tabs:{trackers:{source:'Trackers',context:'PropTabBar'}},
+    tables:{trackers:[{
+      key:'status',caption:'Status',translation:{source:'Status',context:'TrackerListWidget'},dataProperties:['status'],
+      valuePresentation:{kind:'translated-enum',dataProperty:'status',values:{'2':{source:'Working',context:'TrackerListWidget'}},overrides:[{dataProperty:'updating',equals:true,translation:{source:'Updating...',context:'TrackerListWidget'}}]}
+    }]}
+  },
+  statisticsUi:{title:{source:'Statistics',context:'MainWindow'},groups:[{key:'user-statistics',translation:{source:'User statistics',context:'StatsDialog'},fields:[{id:'AlltimeUL',dataProperty:'alltime_ul',format:'bytes',translation:{source:'All-time upload:',context:'StatsDialog'}}]}]}
+}];
+const nativeClientWebTs=`<TS version="2.1" language="zh_CN">
+<context><name>PropTabBar</name><message><source>Trackers</source><translation>Web 跟踪器</translation></message></context>
+<context><name>TrackerListWidget</name>
+<message><source>Status</source><translation>状态</translation></message>
+<message><source>Working</source><translation>工作</translation></message>
+<message><source>Updating...</source><translation>更新...</translation></message>
+</context>
+<context><name>MainWindow</name><message><source>Statistics</source><translation>统计</translation></message></context>
+<context><name>StatsDialog</name>
+<message><source>User statistics</source><translation>用户统计</translation></message>
+<message><source>All-time upload:</source><translation>历史上传：</translation></message>
+</context></TS>`;
+const nativeClientAppTs=`<TS version="2.1" language="zh_CN">
+<context><name>TrackerListWidget</name>
+<message><source>Status</source><translation>状态</translation></message>
+<message><source>Working</source><translation>工作中</translation></message>
+<message><source>Updating...</source><translation>更新中...</translation></message>
+</context>
+<context><name>StatsDialog</name>
+<message><source>User statistics</source><translation>用户统计</translation></message>
+<message><source>All-time upload:</source><translation>全局上传：</translation></message>
+</context></TS>`;
+const nativeClientOverlay=buildQbSettingsTranslationOverlay(nativeClientCatalog,()=>({
+  preferencesSource:'',
+  translationSources:()=>({webui:nativeClientWebTs,app:nativeClientAppTs})
+}));
+const nativeClientProfile=nativeClientOverlay.profiles[0],nativeClientSet=nativeClientOverlay.sets[nativeClientProfile.translations.zh_CN],nativeClientMap=new Map(nativeClientSet.messages.map(item=>[qbSourceRefKey(item.context,item.source),item.translation]));
+assert.equal(nativeClientMap.get(qbSourceRefKey('TrackerListWidget','Working')),'工作中','Tracker Detail must use exact-version official native-client TrackerListWidget copy when app/WebUI TS differ');
+assert.equal(nativeClientMap.get(qbSourceRefKey('TrackerListWidget','Updating...')),'更新中...','Tracker status override copy must follow the same native-client context authority automatically');
+assert.equal(nativeClientMap.get(qbSourceRefKey('StatsDialog','All-time upload:')),'全局上传：','Statistics fields mirrored from the native qB dialog must use exact-version official StatsDialog app copy');
+assert.equal(nativeClientMap.get(qbSourceRefKey('PropTabBar','Trackers')),'Web 跟踪器','non-native-client copy contexts must retain the official WebUI TS authority');
+assert.equal(nativeClientMap.get(qbSourceRefKey('MainWindow','Statistics')),'统计','Statistics title falls back to exact WebUI source/context when the app TS has no exact non-mnemonic ref');
 
 
 const shard0Catalog=selectCatalogShard(catalog,0,2),shard1Catalog=selectCatalogShard(catalog,1,2);

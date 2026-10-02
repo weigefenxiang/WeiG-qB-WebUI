@@ -108,25 +108,53 @@ function resolveDeclaredResourcePath(locale,family,readSource) {
   return matches[0].path;
 }
 
-export function resolveQbTranslationResourcePath(locale, paths = [], readSource = null) {
-  const resources=(paths || []).map(translationResource).filter(Boolean);
-  for (const kind of ['webui','app']) {
-    const family=resources.filter((item)=>item.kind === kind);
-    const scored=family
-      .map((item)=>({...item,score:resourceMatchScore(locale,item.locale)}))
-      .filter((item)=>item.score > 0);
-    if (scored.length) {
-      const best=Math.max(...scored.map((item)=>item.score));
-      const matches=scored.filter((item)=>item.score === best);
-      if (matches.length === 1) return matches[0].path;
-      const declared=resolveDeclaredResourcePath(locale,family,readSource);
-      if (declared) return declared;
-      throw new Error(`Ambiguous official qB translation source for ${locale}: ${matches.map((item)=>item.path).join(', ')}`);
-    }
+export function resolveQbTranslationResourcePathForKind(locale, paths = [], kind = 'webui', readSource = null) {
+  kind=String(kind||'').trim();
+  if(!['webui','app'].includes(kind))throw new Error(`Unsupported qB translation resource family: ${kind||'(empty)'}`);
+  const resources=(paths || []).map(translationResource).filter(Boolean),family=resources.filter((item)=>item.kind === kind);
+  const scored=family
+    .map((item)=>({...item,score:resourceMatchScore(locale,item.locale)}))
+    .filter((item)=>item.score > 0);
+  if (scored.length) {
+    const best=Math.max(...scored.map((item)=>item.score));
+    const matches=scored.filter((item)=>item.score === best);
+    if (matches.length === 1) return matches[0].path;
     const declared=resolveDeclaredResourcePath(locale,family,readSource);
     if (declared) return declared;
+    throw new Error(`Ambiguous official qB translation source for ${locale}: ${matches.map((item)=>item.path).join(', ')}`);
+  }
+  return resolveDeclaredResourcePath(locale,family,readSource);
+}
+
+export function resolveQbTranslationResourcePath(locale, paths = [], readSource = null) {
+  for (const kind of ['webui','app']) {
+    const resolved=resolveQbTranslationResourcePathForKind(locale,paths,kind,readSource);
+    if(resolved)return resolved;
   }
   return null;
+}
+
+const NATIVE_CLIENT_COPY_CONTEXTS=new Set(['TrackerListWidget','StatsDialog']);
+function nativeClientPreferredRefs(ui){
+  const out=[],seen=new Set();
+  for(const ref of Object.values(ui||{})){
+    if(!ref?.source||!ref?.context||!NATIVE_CLIENT_COPY_CONTEXTS.has(String(ref.context)))continue;
+    const identity=qbSourceRefKey(ref.context,ref.source);
+    if(!seen.has(identity)){seen.add(identity);out.push({context:String(ref.context),source:String(ref.source)});}
+  }
+  return out;
+}
+function overlayPreferredOfficialMessages(baseMessages,preferredMessages,preferredRefs){
+  const preferred=new Set((preferredRefs||[]).map(ref=>qbSourceRefKey(ref.context,ref.source)));
+  if(!preferred.size)return baseMessages;
+  const out=(baseMessages||[]).map(item=>({...item})),index=new Map(out.map((item,i)=>[qbSourceRefKey(item.context,item.source),i]));
+  for(const item of preferredMessages||[]){
+    const identity=qbSourceRefKey(item.context,item.source);
+    if(!preferred.has(identity))continue;
+    if(index.has(identity))out[index.get(identity)]={...item};
+    else{index.set(identity,out.length);out.push({...item});}
+  }
+  return out;
 }
 
 export function buildQbSettingsTranslationOverlay(catalog, readReleaseSources, options = {}) {
@@ -182,7 +210,7 @@ export function buildQbSettingsTranslationOverlay(catalog, readReleaseSources, o
     const torrentTableColumns=ownsDynamicTableSource
       ? extractTorrentTableColumns(releaseSources.dynamicTableSource || '',`${qbVersion} dynamicTable owned UI`)
       : null;
-    const sourceStrings=unique([...translationSourcesForPreferenceUi(preferences),...translationSourcesForQbOwnedUi(ui)]);
+    const sourceStrings=unique([...translationSourcesForPreferenceUi(preferences),...translationSourcesForQbOwnedUi(ui)]),nativeClientRefs=nativeClientPreferredRefs(ui);
     const contexts=unique([
       ...Object.values(preferences).flatMap((item) => [item?.title?.context,item?.description?.context]).filter(Boolean),
       ...translationContextsForQbOwnedUi(ui)
@@ -193,7 +221,9 @@ export function buildQbSettingsTranslationOverlay(catalog, readReleaseSources, o
     if (ownsFullUiSource&&!Object.keys(ui).length) throw new Error(`${qbVersion}: source-derived qB-owned UI copy is unresolved.`);
     const translations={};
     for (const locale of locales) {
-      const source=typeof releaseSources.translationSource === 'function' ? releaseSources.translationSource(locale) : '';
+      const sourceFamilies=typeof releaseSources.translationSources === 'function' ? (releaseSources.translationSources(locale)||{}) : null;
+      const source=String(sourceFamilies?.webui || (typeof releaseSources.translationSource === 'function' ? releaseSources.translationSource(locale) : '') || sourceFamilies?.app || '');
+      const appSource=String(sourceFamilies?.app||'');
       let payload;
       if (!source && languageBase(locale) === 'en') {
         payload={messages:englishSourceMessages(preferences,ui)};
@@ -202,7 +232,13 @@ export function buildQbSettingsTranslationOverlay(catalog, readReleaseSources, o
         if (!source) throw new Error(`${qbVersion}: missing official WebUI translation source for ${locale}.`);
         if (recoveryEnabled) recoveryEntries.push({qbVersion,sourceSha,locale,translationSource:source});
         const facts=extractQbSettingsTranslationFacts({qbVersion,sourceSha,locale,translationSource:source,contexts,sources:sourceStrings});
-        payload={messages:facts.messages};
+        let messages=facts.messages;
+        if(appSource&&nativeClientRefs.length){
+          const appContexts=unique(nativeClientRefs.map(ref=>ref.context)),appSources=unique(nativeClientRefs.map(ref=>ref.source));
+          const appFacts=extractQbSettingsTranslationFacts({qbVersion,sourceSha,locale,translationSource:appSource,contexts:appContexts,sources:appSources});
+          messages=overlayPreferredOfficialMessages(messages,appFacts.messages,nativeClientRefs);
+        }
+        payload={messages};
       }
       const hash=contentHash(payload);
       if (!sets[hash]) sets[hash]=payload;
@@ -212,7 +248,7 @@ export function buildQbSettingsTranslationOverlay(catalog, readReleaseSources, o
     profiles.push({qbVersion,sourceSha,source:'qb-upstream-preferences-ui',ownedUiSource:'qb-upstream-webui-source-context',mappedPreferences:Object.keys(preferences).length,totalPreferences:preferenceKeys.length,sourceTextAudit,preferences,ui,translations,...(torrentTableColumns?{torrentTableColumns}:{})});
   }
   const recoveryEvidence=recoveryEnabled?buildQbNativeQmRecoveryEvidence(recoveryEntries):null;
-  return {schemaVersion:1,source:'qb-upstream-preferences-ui+webui-ts',profiles,sets,recoveryEvidence};
+  return {schemaVersion:1,source:'qb-upstream-preferences-ui+official-ts-context-policy',profiles,sets,recoveryEvidence};
 }
 
 export function applyQbSettingsTranslationOverlay(catalog, overlay) {
@@ -283,6 +319,10 @@ export function buildQbSettingsTranslationOverlayFromClone(catalog,qbRoot) {
       translationSource:(locale)=>{
         const resourcePath=resolveQbTranslationResourcePath(locale,paths,sourceOf);
         return resourcePath ? sourceOf(resourcePath) : '';
+      },
+      translationSources:(locale)=>{
+        const webuiPath=resolveQbTranslationResourcePathForKind(locale,paths,'webui',sourceOf),appPath=resolveQbTranslationResourcePathForKind(locale,paths,'app',sourceOf);
+        return{webui:webuiPath?sourceOf(webuiPath):'',app:appPath?sourceOf(appPath):''};
       }
     };
   },{recoveryEvidence:true});
