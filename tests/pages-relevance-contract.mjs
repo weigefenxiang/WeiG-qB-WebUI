@@ -46,8 +46,8 @@ assert.equal(classification.pagesPayload,true);
 assert.equal(classification.installer,true);
 assert.equal(classification.settingsSource,false);
 
-// B2b2b retires the remaining deploy-job matcher in pages.yml. Until then this assertion
-// prevents accidentally claiming the cutover is complete.
-assert.ok(pages.includes('Pages-relevant public payload/materialization head advance blocks stale deployment:'),'Pages stale-deploy guard must remain fail-closed until it consumes the canonical classifier in the next coherent batch.');
+assert.ok(pages.includes('node tools/change-classifier.mjs --stdin0'),'Pages stale-deploy guard must consume the same canonical classifier as Pages Source.');
+assert.ok(pages.includes("jq -r '.pagesPayload'")&&pages.includes('Non-payload advance classes:'),'Pages stale-deploy guard must block payload advances while allowing verifier-only/repository-only head advances.');
+assert.ok(!pages.includes('.github/workflows/pages-source.yml|.github/workflows/pages.yml|.github/workflows/ci.yml|'),'Pages workflow must not retain the legacy duplicated payload matcher.');
 
-console.log('Pages relevance contract passed: Pages Source consumes one canonical change owner, live verifiers stay distinct from payload changes, and the remaining deploy guard is explicitly bounded for the next cutover.');
+console.log('Pages relevance contract passed: CI, Pages Source and Pages deploy consume one canonical change owner; live verifiers stay distinct from deployed payload changes.');
