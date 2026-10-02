@@ -134,6 +134,30 @@ function validateDetailContextMenus(value,qbVersion){
   assert(Object.keys(menus).length>0,`${qbVersion}: Torrent detail context menus are empty.`);
   return menus;
 }
+function validateDetailPresentationRule(value,label){
+  assert(value&&typeof value==='object'&&!Array.isArray(value),`${label}: presentation rule is invalid.`);
+  const kind=String(value.kind||'');
+  if(kind==='literal'){
+    const allowed=new Set(['kind','value']);for(const key of Object.keys(value))assert(allowed.has(key),`${label}: unsupported literal presentation fact ${key}.`);
+    assert(typeof value.value==='string',`${label}: literal presentation value must be a string.`);
+    return{kind:'literal',value:value.value};
+  }
+  if(kind==='translation'){
+    const allowed=new Set(['kind','translation']);for(const key of Object.keys(value))assert(allowed.has(key),`${label}: unsupported translation presentation fact ${key}.`);
+    return{kind:'translation',translation:validateRef(value.translation,`${label} translation`)};
+  }
+  throw new Error(`${label}: unsupported presentation rule kind ${kind||'(empty)'}.`);
+}
+function validateDetailValuePresentation(value,label){
+  assert(value&&typeof value==='object'&&!Array.isArray(value),`${label}: valuePresentation is invalid.`);
+  const allowed=new Set(['kind','empty','negative','format']);for(const key of Object.keys(value))assert(allowed.has(key),`${label}: unsupported valuePresentation fact ${key}.`);
+  assert(String(value.kind||'')==='source-field',`${label}: unsupported valuePresentation kind ${String(value.kind||'(empty)')}.`);
+  const out={kind:'source-field'};
+  if(value.empty!==undefined)out.empty=validateDetailPresentationRule(value.empty,`${label} empty`);
+  if(value.negative!==undefined)out.negative=validateDetailPresentationRule(value.negative,`${label} negative`);
+  if(value.format!==undefined){const format=String(value.format||'');assert(format==='date'||format==='pieces',`${label}: unsupported valuePresentation format ${format||'(empty)'}.`);out.format=format;}
+  return out;
+}
 export function validateDetailUi(value,qbVersion){
   assert(value&&typeof value==='object'&&!Array.isArray(value),`${qbVersion}: source-derived Torrent detail UI is missing.`);
   const tabs={};
@@ -170,7 +194,8 @@ export function validateDetailUi(value,qbVersion){
       assert(new Set(dataProperties).size===dataProperties.length,`${qbVersion} detail property ${id}: duplicate dataProperties.`);
       if(valueSource==='properties')assert(dataProperties.length>0,`${qbVersion} detail property ${id}: Properties binding is missing.`);
       else assert(dataProperties.length===0,`${qbVersion} detail property ${id}: torrentHash binding must not claim Properties fields.`);
-      return{id,valueSource,dataProperties};
+      const valuePresentation=field?.valuePresentation===undefined?undefined:validateDetailValuePresentation(field.valuePresentation,`${qbVersion} detail property ${id}`);
+      return{id,valueSource,dataProperties,...(valuePresentation?{valuePresentation}: {})};
     });
     propertyLayout.push({key,...(translation?{translation}:{}),fields:normalizedFields});
   }

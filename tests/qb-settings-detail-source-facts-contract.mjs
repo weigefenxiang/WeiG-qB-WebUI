@@ -7,7 +7,7 @@ const detailUi={
   tabOrder:['overview','trackers','peers','webseeds','files'],
   propertyGroups:{transfer:ref('Transfer','PropertiesWidget')},
   propertyLabels:{eta:ref('ETA:','PropertiesWidget')},
-  propertyLayout:[{key:'transfer',translation:ref('Transfer','PropertiesWidget'),fields:[{id:'eta',valueSource:'properties',dataProperties:['eta']}]}],
+  propertyLayout:[{key:'transfer',translation:ref('Transfer','PropertiesWidget'),fields:[{id:'eta',valueSource:'properties',dataProperties:['eta'],valuePresentation:{kind:'source-field',empty:{kind:'literal',value:''},negative:{kind:'translation',translation:ref('Unknown','HttpServer')},format:'date'}}]}],
   tables:{
     files:[{key:'name',caption:'Name',defaultWidth:300,defaultVisible:true,translation:ref('Name','TrackerListWidget'),dataProperties:['name']}],
     trackers:[{key:'url',caption:'URL',defaultWidth:250,defaultVisible:true,translation:ref('URL','TrackerListWidget'),dataProperties:['url']}],
@@ -38,5 +38,7 @@ const unsupportedMenuFact=structuredClone(detailUi);unsupportedMenuFact.contextM
 assert.throws(()=>validateDetailUi(unsupportedMenuFact,'unsupported menu synthetic'),/unsupported context-menu fact parameters/,'new unowned context-menu descriptor semantics must stop at the provenance boundary until the canonical owner validates them');
 const unsupportedSemantic=structuredClone(detailUi);unsupportedSemantic.contextMenus.files[0].semantic='future-unknown';
 assert.throws(()=>validateDetailUi(unsupportedSemantic,'unsupported nested semantic'),/unsupported semantic future-unknown/,'unknown nested context-menu semantics must fail closed at the LKG boundary');
+const unsupportedPresentation=structuredClone(detailUi);unsupportedPresentation.propertyLayout[0].fields[0].valuePresentation.future='guess';
+assert.throws(()=>validateDetailUi(unsupportedPresentation,'unsupported presentation synthetic'),/unsupported valuePresentation fact future/,'unknown General value-presentation semantics must fail closed instead of being silently dropped at the LKG boundary');
 
 console.log('qB Settings Detail source-facts contract passed: exact tab order, controls/options and nested Content/Tracker/Peer context-menu provenance survive the LKG boundary, contribute to binding evidence, and unknown semantics fail closed.');
