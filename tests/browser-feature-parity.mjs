@@ -52,8 +52,8 @@ await page.locator('#filter-nav [data-filter="all"]').click();await page.waitFor
   assert(realtimeDialog.open&&realtimeDialog.title==='实时上传 / 下载'&&!realtimeDialog.native&&realtimeDialog.statistics==='统计'&&realtimeDialog.buttonBeforeClose,'zh-CN Realtime Transfer must keep its own dialog title and expose the source-owned Statistics button immediately left of Close: '+JSON.stringify(realtimeDialog));
   await page.locator('#transfer-stats-dialog [data-open-native-statistics]').click();
   await page.waitForSelector('#qbt-native-statistics-dialog[open]');
-  const statisticsDialog=await page.evaluate(()=>{const dialog=document.getElementById('qbt-native-statistics-dialog'),title=dialog?.querySelector('.dialog__head h2'),native=dialog?.querySelector('[data-native-statistics]');return{title:String(title?.textContent||'').trim(),native:!!native,open:!!dialog?.open};});
-  assert(statisticsDialog.open&&statisticsDialog.title==='统计'&&statisticsDialog.native,'zh-CN Statistics must open as its separate source-owned Dialog: '+JSON.stringify(statisticsDialog));
+  const statisticsDialog=await page.evaluate(()=>{const dialog=document.getElementById('qbt-native-statistics-dialog'),title=dialog?.querySelector('.dialog__head h2'),native=dialog?.querySelector('[data-native-statistics]'),alltimeUpload=dialog?.querySelector('[data-native-stat-field="AlltimeUL"]');return{title:String(title?.textContent||'').trim(),native:!!native,open:!!dialog?.open,alltimeUploadLabel:String(alltimeUpload?.previousElementSibling?.textContent||'').trim()};});
+  assert(statisticsDialog.open&&statisticsDialog.title==='统计'&&statisticsDialog.native&&statisticsDialog.alltimeUploadLabel==='全局上传：','qB 4.6.7 zh-CN Statistics must use the separate source-derived dialog plus exact native-client StatsDialog copy: '+JSON.stringify(statisticsDialog));
   await page.locator('#qbt-native-statistics-dialog .dialog__head .icon-btn').click();
   await page.waitForFunction(()=>!document.getElementById('qbt-native-statistics-dialog')?.open);
   await page.locator('#transfer-stats-dialog .dialog__head .icon-btn').click();
@@ -64,17 +64,18 @@ await page.locator('#filter-nav [data-filter="all"]').click();await page.waitFor
   await page.waitForSelector('#detail-view .shared-table__row [data-column-key="status"]');
   const trackerPresentation=await page.evaluate(()=>{
     const row=document.querySelector('#detail-view .shared-table__row');
-    const workingRef={source:'Working',context:'TrackerListWidget'};
+    const workingRef={source:'Working',context:'TrackerListWidget'},updatingRef={source:'Updating...',context:'TrackerListWidget'};
     return{
       status:String(row?.querySelector('[data-column-key="status"]')?.textContent||'').trim(),
       expectedStatus:WeiG.I18n.qbSourceText(workingRef,workingRef.source),
+      expectedUpdating:WeiG.I18n.qbSourceText(updatingRef,updatingRef.source),
       peers:String(row?.querySelector('[data-column-key="peers"]')?.textContent||'').trim(),
       seeds:String(row?.querySelector('[data-column-key="seeds"]')?.textContent||'').trim(),
       leeches:String(row?.querySelector('[data-column-key="leeches"]')?.textContent||'').trim(),
       downloaded:String(row?.querySelector('[data-column-key="downloaded"]')?.textContent||'').trim()
     };
   });
-  assert(trackerPresentation.expectedStatus!=='Working'&&trackerPresentation.status===trackerPresentation.expectedStatus,'qB 4.6.7 Tracker status must render official zh-CN source/context copy instead of the raw numeric enum: '+JSON.stringify(trackerPresentation));
+  assert(trackerPresentation.status==='工作中'&&trackerPresentation.expectedStatus==='工作中'&&trackerPresentation.expectedUpdating==='更新中...','qB 4.6.7 Tracker status must render the exact native-client TrackerListWidget terminology rather than raw enum or weaker WebUI-only copy: '+JSON.stringify(trackerPresentation));
   assert(['peers','seeds','leeches','downloaded'].every(key=>trackerPresentation[key]==='N/A'),'qB 4.6.7 negative Tracker counters must render the source-owned N/A sentinel: '+JSON.stringify(trackerPresentation));
   await page.locator('#detail-view [data-detail-back]').click();
   await page.waitForFunction(()=>document.getElementById('list-view')?.classList.contains('is-active'));
