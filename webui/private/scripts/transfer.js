@@ -12,8 +12,8 @@
   function qbText(key,fallback){return W.I18n&&W.I18n.qbText?W.I18n.qbText(key,fallback):String(fallback||key);}
   function qbSourceText(ref,fallback){return W.I18n&&W.I18n.qbSourceText?W.I18n.qbSourceText(ref,fallback||ref&&ref.source||''):String(fallback||ref&&ref.source||'');}
   function statisticsUi(){var R=W.CapabilityRegistry;return R&&typeof R.statisticsUi==='function'?R.statisticsUi():null;}
-  function statisticsDialogTitle(){var ui=statisticsUi(),ref=ui&&ui.title;return ref?qbSourceText(ref,tr('transfer.statisticsTitle')):tr('transfer.statisticsTitle');}
-  function statisticsAvailable(){var ui=statisticsUi();return !!(ui&&Array.isArray(ui.groups)&&ui.groups.length);}
+  function statisticsDialogTitle(){var ui=statisticsUi(),ref=ui&&ui.title,fallback=String(ref&&ref.source||'').replace(/^&/,'');return ref?qbSourceText(ref,fallback):'';}
+  function statisticsAvailable(){var ui=statisticsUi();return !!(ui&&ui.title&&Array.isArray(ui.groups)&&ui.groups.length);}
   function formatStatisticsValue(field,value){if(value===undefined||value===null||value==='')return'—';var format=String(field&&field.format||'plain');if(format==='bytes')return Number.isFinite(Number(value))?U.formatBytes(Number(value)):String(value);if(format==='percent')return String(value)+'%';if(format==='milliseconds')return String(value)+' ms';return String(value);}
   function mergeStatisticsState(state){state=state&&typeof state==='object'?state:{};Object.keys(state).forEach(function(key){nativeStatisticsState[key]=state[key];});if(nativeStatisticsDialog&&nativeStatisticsDialog.open)renderNativeStatistics();return Object.assign({},nativeStatisticsState);}
   function statisticsPresentation(){var ui=statisticsUi(),groups=ui&&Array.isArray(ui.groups)?ui.groups:[];return groups.map(function(group){return{key:String(group.key||''),label:qbSourceText(group.translation,group.translation&&group.translation.source||''),fields:(group.fields||[]).map(function(field){return{id:String(field.id||''),dataProperty:String(field.dataProperty||''),format:String(field.format||'plain'),label:qbSourceText(field.translation,field.translation&&field.translation.source||'')};})};});}
