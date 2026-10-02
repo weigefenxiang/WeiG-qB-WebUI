@@ -2,12 +2,12 @@
 import crypto from 'node:crypto';
 import {extractTorrentTableColumns} from './qb-torrent-fields-parser.mjs';
 import {canonicalQbHtmlText,extractQbtSourceRefs,parseQbtSourceRef,qbSourceRefKey} from './qb-source-text.mjs';
+import {extractFacetSpecialRows,extractTorrentVisibleFilters} from './qb-torrent-surface-parsers.mjs';
 import {extractTrackerFilterFacts} from './qb-tracker-filter-source.mjs';
 
 function decodeHtml(value){return canonicalQbHtmlText(value);}
 function qbtTr(value){return parseQbtSourceRef(value);}
 function add(out,key,ref){if(key&&ref&&ref.source&&ref.context)out[key]={source:String(ref.source),context:String(ref.context)};}
-function itemRef(markup,id){const escaped=String(id).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');const hit=String(markup||'').match(new RegExp(`<li\\b[^>]*\\bid=["']${escaped}["'][^>]*>([\\s\\S]*?)<\\/li>`,'i'));return hit?qbtTr(hit[1]):null;}
 function exactRef(markup,source,context='OptionsDialog'){const escaped=String(source).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),escapedContext=String(context).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');const match=String(markup||'').match(new RegExp(`QBT_TR\\(${escaped}\\)QBT_TR\\[CONTEXT=${escapedContext}\\]`));return match?{source,context}:null;}
 function settingsTabIdentity(linkId){const match=String(linkId||'').match(/^Pref(.+?)Link$/i);if(!match)return null;const tab=String(match[1]||'').replace(/[^A-Za-z0-9]+/g,'').toLowerCase();return tab||null;}
 export function settingsTabRefs(markup){
@@ -53,14 +53,6 @@ function torrentStatusRefs(source){
   }
   return out;
 }
-function runtimeStatusFilterRefs(source){
-  const out={};
-  for(const match of String(source||'').matchAll(/updateFilter\s*\(\s*["']([^"']+)["']\s*,\s*["'](QBT_TR\([\s\S]*?\)QBT_TR\[CONTEXT=[^\]]+\])["']\s*\)/g)){
-    const name=String(match[1]||''),ref=qbtTr(match[2]);
-    if(name&&ref&&!out[name])out[name]=ref;
-  }
-  return out;
-}
 
 export function extractQbOwnedUiFacts({preferencesSource='',toolbarSource='',filtersSource='',dynamicTableSource='',clientSource='',addTorrentSource='',downloadSource='',indexSource=''}={}){
   const out={},toolbar=toolbarSource||preferencesSource;
@@ -71,15 +63,12 @@ export function extractQbOwnedUiFacts({preferencesSource='',toolbarSource='',fil
   add(out,'sidebar.categories',exactRef(filtersSource,'Categories','TransferListFiltersWidget'));
   add(out,'sidebar.tags',exactRef(filtersSource,'Tags','TransferListFiltersWidget'));
   add(out,'sidebar.trackers',exactRef(filtersSource,'Trackers','TransferListFiltersWidget'));
-  add(out,'facet.category.all',exactRef(clientSource,'All','CategoryFilterModel'));
-  add(out,'facet.category.uncategorized',exactRef(clientSource,'Uncategorized','CategoryFilterModel'));
-  add(out,'facet.tag.all',exactRef(clientSource,'All','TagFilterModel'));
-  add(out,'facet.tag.untagged',exactRef(clientSource,'Untagged','TagFilterModel'));
+  const facets=extractFacetSpecialRows(clientSource,'qB-owned UI');
+  for(const [kind,items] of Object.entries(facets))for(const [id,ref] of Object.entries(items||{}))add(out,`facet.${kind}.${id}`,ref);
   add(out,'route.rss',firstSourceRef([indexSource],['RSS','RSS Reader']));
   add(out,'route.logs',firstSourceRef([indexSource],['Execution Log','Log']));
   add(out,'route.settings',firstSourceRef([indexSource],['Options','&Options...','Options...','&Options']));
-  const filters=['all','downloading','seeding','completed','resumed','paused','running','stopped','active','inactive','stalled','stalled_uploading','stalled_downloading','checking','moving','errored'],runtimeFilters=runtimeStatusFilterRefs(clientSource);
-  for(const name of filters)add(out,`filter.${name}`,runtimeFilters[name]||itemRef(filtersSource,`${name}_filter`));
+  for(const item of extractTorrentVisibleFilters({clientSource,filtersSource},'qB-owned UI'))add(out,`filter.${item.name}`,item.translation);
   for(const item of extractTrackerFilterFacts(clientSource))add(out,`tracker.filter.${item.id}`,item.copy);
   addTorrentOwnedUiFacts(out,{addTorrentSource,downloadSource,indexSource});
   if(dynamicTableSource){

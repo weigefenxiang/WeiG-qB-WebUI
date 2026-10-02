@@ -74,6 +74,32 @@ function annotateTrackerNegativeSentinels(columns,source,context){
     return{...column,notApplicableWhenNegative:{dataProperties:fields,translation:{source:first.source,context:first.context}}};
   });
 }
+function trackerStatusValuePresentation(source,context){
+  const text=String(source||''),values={},overrides=[],objectNames=new Set();
+  for(const match of text.matchAll(/\bswitch\s*\(\s*([A-Za-z_$][A-Za-z0-9_$]*)\.status\s*\)/g)){
+    const objectName=String(match[1]||'');objectNames.add(objectName);
+    let open=match.index+match[0].length;while(/\s/.test(text[open]||''))open++;if(text[open]!=='{')continue;
+    const block=delimited(text,open,'{','}',context+': Tracker status switch'),cases=[...block.body.matchAll(/\bcase\s+(-?\d+)\s*:/g)];
+    for(let i=0;i<cases.length;i++){
+      const code=String(cases[i][1]),segment=block.body.slice(cases[i].index+cases[i][0].length,i+1<cases.length?cases[i+1].index:block.body.length),translation=qbtRef(segment);
+      if(!translation)continue;
+      const prior=values[code];if(prior&&(prior.source!==translation.source||prior.context!==translation.context))throw new Error(context+': conflicting Tracker status copy for '+code);
+      values[code]={source:String(translation.source),context:String(translation.context)};
+    }
+  }
+  for(const objectName of objectNames){
+    const escaped=escapeRe(objectName),guard=new RegExp('if\\s*\\(\\s*'+escaped+'\\.updating\\s*\\)\\s*(?:\\{\\s*)?return\\s+([^;]+);','g');
+    for(const match of text.matchAll(guard)){
+      const translation=qbtRef(match[1]);
+      if(translation&&!overrides.some(item=>item.dataProperty==='updating'&&item.translation.source===translation.source&&item.translation.context===translation.context))overrides.push({dataProperty:'updating',equals:true,translation:{source:String(translation.source),context:String(translation.context)}});
+    }
+  }
+  return Object.keys(values).length?{kind:'translated-enum',dataProperty:'status',values,...(overrides.length?{overrides}:{})}:null;
+}
+function annotateTrackerValuePresentation(columns,source,context){
+  const presentation=trackerStatusValuePresentation(source,context);if(!presentation)return columns;
+  return (columns||[]).map(column=>(column?.dataProperties||[]).map(String).includes('status')?{...column,valuePresentation:presentation}:column);
+}
 function inferredKey(ref,fields,index){if(!ref&&fields.length===1&&fields[0]==='priority')return'checked';if(fields.length===1)return fields[0];const source=String(ref?.source||'').trim().toLowerCase();if(source.includes('remaining'))return'remaining';if(source.includes('priority'))return'priority';if(source.includes('progress'))return'progress';return fields[0]||`column_${index}`;}
 function legacyStaticColumns(contentSource,sectionId,scriptSource,objectName,context){const refs=headerRefs(section(contentSource,sectionId)),assignments=rowAssignments(scriptSource,objectName);if(!refs.length||!assignments.size)throw new Error(`${context}: legacy ${sectionId} table source is unresolved`);return refs.map((ref,index)=>{const dataProperties=assignments.get(index)||[];if(!dataProperties.length)throw new Error(`${context}: legacy ${sectionId} column ${index} has no source-proven row relation`);const key=inferredKey(ref,dataProperties,index);return{key,caption:ref?.source||'',...(ref?{translation:ref}:{}),dataProperties};});}
 function normalizedDynamicColumns(source,className,context){return extractDynamicTableColumns(source,className,context).map(column=>({key:column.key,caption:column.caption,defaultWidth:column.defaultWidth,defaultVisible:column.defaultVisible,...(column.translation?{translation:column.translation}:{}),dataProperties:[...column.dataProperties]}));}
@@ -87,7 +113,7 @@ export function extractTorrentDetailUi({toolbarSource='',contentSource='',genera
   const detailTabs=extractDetailTabs(toolbarSource,context),tabs=detailTabs.tabs,tabOrder=detailTabs.tabOrder,propertyLabels=extractPropertyLabels(contentSource,context),propertyGroups=extractPropertyGroups(contentSource,context),propertyLayout=extractPropertyLayout(contentSource,generalSource,context);
   const dynamic=String(dynamicTableSource||'');
   const files=normalizeSourceDerivedColumns(maybeDynamic(dynamic,'TorrentFilesTable',context)||legacyStaticColumns(contentSource,'prop_files',legacyFilesSource,'file',context),legacyFilesSource,'file');
-  const trackers=annotateTrackerNegativeSentinels(normalizeSourceProjectedColumns(maybeDynamic(dynamic,'TorrentTrackersTable',context)||legacyStaticColumns(contentSource,'prop_trackers',legacyTrackersSource,'tracker',context),legacyTrackersSource,'tracker'),legacyTrackersSource,context);
+  const trackers=annotateTrackerValuePresentation(annotateTrackerNegativeSentinels(normalizeSourceProjectedColumns(maybeDynamic(dynamic,'TorrentTrackersTable',context)||legacyStaticColumns(contentSource,'prop_trackers',legacyTrackersSource,'tracker',context),legacyTrackersSource,'tracker'),legacyTrackersSource,context),legacyTrackersSource,context);
   const peers=maybeDynamic(dynamic,'TorrentPeersTable',context);
   const webseeds=maybeDynamic(dynamic,'TorrentWebseedsTable',context)||legacyStaticColumns(contentSource,'prop_webseeds',legacyWebseedsSource,'webseed',context);
   return{tabs,tabOrder,propertyGroups,propertyLabels,propertyLayout,tables:{files:requireColumns(files,'Files',context),trackers:requireColumns(trackers,'Trackers',context),peers:requireColumns(peers,'Peers',context),webseeds:requireColumns(webseeds,'Web Seeds',context)}};
@@ -97,6 +123,6 @@ export function torrentDetailTranslationRefs(detailUi){const out={};function add
   for(const [key,ref] of Object.entries(detailUi?.tabs||{}))add(`detail.tab.${key}`,ref);
   for(const [key,ref] of Object.entries(detailUi?.propertyGroups||{}))add(`detail.group.${key}`,ref);
   for(const [key,ref] of Object.entries(detailUi?.propertyLabels||{}))add(`detail.property.${key}`,ref);
-  for(const [surface,columns] of Object.entries(detailUi?.tables||{}))for(const column of columns||[]){add(`detail.${surface}.${column.key}`,column.translation);add(`detail.${surface}.${column.key}.sentinel.negative`,column?.notApplicableWhenNegative?.translation);}
+  for(const [surface,columns] of Object.entries(detailUi?.tables||{}))for(const column of columns||[]){add(`detail.${surface}.${column.key}`,column.translation);add(`detail.${surface}.${column.key}.sentinel.negative`,column?.notApplicableWhenNegative?.translation);const presentation=column?.valuePresentation;if(presentation?.kind==='translated-enum'){for(const [value,ref] of Object.entries(presentation.values||{}))add(`detail.${surface}.${column.key}.value.${value}`,ref);for(let i=0;i<(presentation.overrides||[]).length;i++)add(`detail.${surface}.${column.key}.override.${i}`,presentation.overrides[i]?.translation);}}
   return out;
 }

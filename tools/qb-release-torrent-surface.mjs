@@ -1,4 +1,4 @@
-import {extractTorrentFilters,extractTorrentInfoParameters} from './qb-torrent-surface-parsers.mjs';
+import {extractFacetSpecialRows,extractTorrentFilters,extractTorrentInfoParameters,extractTorrentVisibleFilters} from './qb-torrent-surface-parsers.mjs';
 import {extractTorrentInfoFields,extractTorrentStates,extractTorrentTableColumns} from './qb-torrent-fields-parser.mjs';
 import {extractTorrentDetailSurfaces,extractTorrentDetailUi} from './qb-detail-surface-parsers.mjs';
 import {extractDetailContextMenus,extractFilePriorityControl,extractTorrentContextMenu} from './qb-detail-control-parsers.mjs';
@@ -15,6 +15,7 @@ export function extractQbReleaseTorrentSurface({ref='',apiActions=[],apiActionPa
   const serializerHeaderSource=readSource('src/webui/api/serialize/serialize_torrent.h');
   const dynamicTableSource=readSource('src/webui/www/private/scripts/dynamicTable.js');
   const clientSource=readOptionalSource('src/webui/www/private/scripts/client.js');
+  const filtersSource=readFirstSource(['src/webui/www/private/views/filters.html','src/webui/www/private/filters.html'])||'';
   const transferListSource=readOptionalSource('src/webui/www/private/views/transferlist.html');
   const mochaInitSource=readOptionalSource('src/webui/www/private/scripts/mocha-init.js');
   const torrentMenuHandlerSource=[transferListSource,mochaInitSource,clientSource].filter(Boolean).join('\n');
@@ -75,6 +76,8 @@ export function extractQbReleaseTorrentSurface({ref='',apiActions=[],apiActionPa
 
   return{
     torrentFilters:extractTorrentFilters({torrentFilterSource,torrentsControllerSource},context),
+    torrentVisibleFilters:extractTorrentVisibleFilters({clientSource,filtersSource},context),
+    facetSpecialRows:extractFacetSpecialRows(clientSource,context),
     torrentInfoParameters:extractTorrentInfoParameters(torrentsControllerSource,context),
     torrentInfoFields:extractTorrentInfoFields({headerSource:serializerHeaderSource,serializerSource},context),
     trackerFilters:extractTrackerFilterFacts(clientSource,context),

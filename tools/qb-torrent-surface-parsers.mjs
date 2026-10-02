@@ -1,3 +1,5 @@
+import {extractQbtSourceRefs,parseQbtSourceRef} from './qb-source-text.mjs';
+
 function extractFunctionBody(source,signature,label){
   const text=String(source||''),start=text.search(signature);
   if(start<0)throw new Error(`${label}: missing expected function`);
@@ -13,6 +15,7 @@ function extractFunctionBody(source,signature,label){
 }
 function literals(text){return [...String(text||'').matchAll(/(?:u|QLatin1String\s*\(|QStringLiteral\s*\()?\s*"([A-Za-z0-9_]+)"(?:_s)?\s*\)?/g)].map(m=>m[1]);}
 function unique(values){return [...new Set(values.filter(Boolean))];}
+function qbtRef(value){return parseQbtSourceRef(String(value||''));}
 export function canonicalTorrentFilters(values){return unique((values||[]).map(value=>value==='paused'?'stopped':value==='resumed'?'running':String(value)));}
 export function extractTorrentFilters({torrentFilterSource='',torrentsControllerSource=''}={},context='qB source'){
   let names=[];
@@ -22,6 +25,35 @@ export function extractTorrentFilters({torrentFilterSource='',torrentsController
   names=unique(names.filter(name=>known.has(name)));
   if(!names.length)throw new Error(`${context}: unable to extract Torrent filter surface`);
   return ['all',...names.filter(name=>name!=='all')];
+}
+export function extractTorrentVisibleFilters({clientSource='',filtersSource=''}={},context='qB source'){
+  const client=String(clientSource||''),markup=String(filtersSource||''),out=[],seen=new Set();
+  const push=(name,translation)=>{
+    name=String(name||'').trim();
+    if(!name||seen.has(name)||!translation?.source||!translation?.context)return;
+    seen.add(name);
+    out.push({name,translation:{source:String(translation.source),context:String(translation.context)}});
+  };
+  for(const match of client.matchAll(/updateFilter\s*\(\s*["']([^"']+)["']\s*,\s*["'](QBT_TR\([\s\S]*?\)QBT_TR\[CONTEXT=[^\]]+\])["']\s*\)/g))
+    push(match[1],qbtRef(match[2]));
+  if(!out.length){
+    for(const match of markup.matchAll(/<li\b[^>]*\bid=["']([A-Za-z0-9_]+)_filter["'][^>]*>([\s\S]*?)<\/li>/gi))
+      push(match[1],qbtRef(match[2]));
+  }
+  if(!out.length&&(client.trim()||markup.trim()))
+    throw new Error(context+': unable to extract native visible Torrent filter surface');
+  return out;
+}
+export function extractFacetSpecialRows(clientSource='',context='qB source'){
+  const refs=extractQbtSourceRefs(String(clientSource||'')),out={};
+  const find=(source,ctx)=>refs.find(ref=>String(ref.source)===source&&String(ref.context)===ctx)||null;
+  const category={all:find('All','CategoryFilterModel'),uncategorized:find('Uncategorized','CategoryFilterModel')};
+  const tag={all:find('All','TagFilterModel'),untagged:find('Untagged','TagFilterModel')};
+  const compact=value=>Object.fromEntries(Object.entries(value).filter(([,ref])=>ref).map(([key,ref])=>[key,{source:String(ref.source),context:String(ref.context)}]));
+  const categoryFacts=compact(category),tagFacts=compact(tag);
+  if(Object.keys(categoryFacts).length)out.category=categoryFacts;
+  if(Object.keys(tagFacts).length)out.tag=tagFacts;
+  return out;
 }
 export function extractTorrentInfoParameters(source,context='qB source'){
   let body;try{body=extractFunctionBody(source,/\bTorrentsController::infoAction\s*\(/,`${context}: TorrentsController::infoAction`);}catch(_error){throw new Error(`${context}: missing TorrentsController::infoAction`);}
