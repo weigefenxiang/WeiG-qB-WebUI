@@ -257,6 +257,19 @@ try {
   $global:LASTEXITCODE=0
   & $Installer -Version $VersionOne -Configure -Destination $Destination
   Assert-Install $VersionOne $ShaOne 'release-one'
+  Assert-ConfigEnabled
+
+  $disabledCfg=(Get-Content $Cfg -Raw).Replace('WebUI\AlternativeUIEnabled=true','WebUI\AlternativeUIEnabled=false').Replace("WebUI\RootFolder=$Destination",'WebUI\RootFolder=C:\disabled-user-root')
+  Write-Utf8NoBom $Cfg $disabledCfg
+  $disabledCfgBeforePlainUpdate=(Get-FileHash -Algorithm SHA256 -LiteralPath $Cfg).Hash
+  Start-Sleep -Milliseconds 1100
+  & $Installer -Version $VersionTwo -Destination $Destination
+  Assert-Install $VersionTwo $ShaTwo 'release-two'
+  $disabledCfgAfterPlainUpdate=(Get-FileHash -Algorithm SHA256 -LiteralPath $Cfg).Hash
+  Assert-True ($disabledCfgAfterPlainUpdate -eq $disabledCfgBeforePlainUpdate) 'Plain update changed a disabled user qBittorrent config.'
+  $disabledCfgAfter=Get-Content $Cfg -Raw
+  Assert-True ($disabledCfgAfter.Contains('WebUI\AlternativeUIEnabled=false')) 'Plain update unexpectedly enabled Alternative WebUI for a disabled user.'
+  Assert-True ($disabledCfgAfter.Contains('WebUI\RootFolder=C:\disabled-user-root')) 'Plain update unexpectedly rewrote a disabled user RootFolder.'
 
   $artifactDir=Join-Path $Root 'artifacts\install-lifecycle'
   New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
@@ -282,6 +295,8 @@ try {
       qbConfigWrite=$true
       upgradeBackup=$true
       upgrade=$true
+      plainUpdatePreservesEnabledConfig=$true
+      plainUpdatePreservesDisabledConfig=$true
       rollbackWebui=$true
       rollbackQbConfig=$true
       uninstall=$true
@@ -300,7 +315,7 @@ try {
   }
   Write-Utf8NoBom (Join-Path $artifactDir 'windows.json') (($evidence | ConvertTo-Json -Depth 8)+"`n")
 
-  Write-Host "Windows installer lifecycle passed: install $VersionOne -> upgrade $VersionTwo -> rollback $VersionOne -> uninstall -> rollback -> purge uninstall -> clean reinstall"
+  Write-Host "Windows installer lifecycle passed: install $VersionOne -> upgrade $VersionTwo -> rollback $VersionOne -> uninstall -> rollback -> purge uninstall -> clean reinstall -> disabled-state plain update"
 }
 finally {
   Remove-Item Env:WEIGG_INSTALLER_FIXTURE_ROOT -ErrorAction SilentlyContinue

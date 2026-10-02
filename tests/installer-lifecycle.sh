@@ -274,6 +274,18 @@ if bash "$ROOT/installers/install.sh" -rollback >/dev/null 2>&1; then
 fi
 bash "$ROOT/installers/install.sh" --version "$VERSION_ONE" --configure -o "$DEST"
 assert_install "$VERSION_ONE" "$SHA_ONE" release-one
+assert_config_enabled
+
+sed -i 's#^WebUI\\AlternativeUIEnabled=.*#WebUI\\AlternativeUIEnabled=false#' "$CFG"
+sed -i 's#^WebUI\\RootFolder=.*#WebUI\\RootFolder=/disabled-user-root#' "$CFG"
+DISABLED_CFG_BEFORE_PLAIN_UPDATE=$(sha256sum "$CFG" | awk '{print $1}')
+sleep 1
+bash "$ROOT/installers/install.sh" --version "$VERSION_TWO" -o "$DEST"
+assert_install "$VERSION_TWO" "$SHA_TWO" release-two
+DISABLED_CFG_AFTER_PLAIN_UPDATE=$(sha256sum "$CFG" | awk '{print $1}')
+test "$DISABLED_CFG_AFTER_PLAIN_UPDATE" = "$DISABLED_CFG_BEFORE_PLAIN_UPDATE"
+grep -Fx 'WebUI\AlternativeUIEnabled=false' "$CFG" >/dev/null
+grep -Fx 'WebUI\RootFolder=/disabled-user-root' "$CFG" >/dev/null
 
 mkdir -p "$ROOT/artifacts/install-lifecycle"
 REPO_SHA=${GITHUB_SHA:-$(git -C "$ROOT" rev-parse HEAD)}
@@ -303,6 +315,8 @@ const evidence={
     qbConfigWrite:true,
     upgradeBackup:true,
     upgrade:true,
+    plainUpdatePreservesEnabledConfig:true,
+    plainUpdatePreservesDisabledConfig:true,
     rollbackWebui:true,
     rollbackQbConfig:true,
     uninstall:true,
@@ -322,5 +336,5 @@ const evidence={
 fs.writeFileSync(path.join(root,'artifacts/install-lifecycle/linux.json'),JSON.stringify(evidence,null,2)+'\n');
 NODE
 
-printf 'Linux installer lifecycle passed: install %s -> upgrade %s -> rollback %s -> uninstall -> rollback -> purge uninstall -> clean reinstall\n' \
+printf 'Linux installer lifecycle passed: install %s -> upgrade %s -> rollback %s -> uninstall -> rollback -> purge uninstall -> clean reinstall -> disabled-state plain update\n' \
   "$VERSION_ONE" "$VERSION_TWO" "$VERSION_ONE"
