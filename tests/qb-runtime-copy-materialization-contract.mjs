@@ -11,7 +11,7 @@ const decode=value=>{try{return decodeURIComponent(String(value||''));}catch{ret
 const refs=new Map();
 for(const match of registry.matchAll(/^@@REF\t([0-9a-f]{24})\t([^\t\r\n]*)\t([^\t\r\n]*)$/gm))refs.set(match[1],{context:decode(match[2]),source:decode(match[3])});
 const profiles=new Map();
-for(const match of registry.matchAll(/^@@PROFILE\t([0-9a-f]{40})\t([^\t\r\n]*)\t[^\t\r\n]*\t(b[0-9a-f]{20})\t/gm))profiles.set(match[1],{version:decode(match[2]),binding:match[3]});
+for(const match of registry.matchAll(/^@@PROFILE\t([0-9a-f]{40})\t([^\t\r\n]*)\t[^\t\r\n]*\t(b[0-9a-f]{20})\t([^\t\r\n]*)\t([^\t\r\n]*)\s*$/gm))profiles.set(match[1],{version:decode(match[2]),binding:match[3],nativeLocales:decode(match[4]).split(',').filter(Boolean),bridgeLocales:decode(match[5]).split(',').filter(Boolean)});
 const uiByBinding=new Map();
 for(const match of registry.matchAll(/^@@UI\t(b[0-9a-f]{20})\t([^\t\r\n]*)\t([0-9a-f]{24})$/gm)){const rows=uiByBinding.get(match[1])||new Map();rows.set(decode(match[2]),match[3]);uiByBinding.set(match[1],rows);}
 
@@ -58,12 +58,20 @@ function assertUiRef(version,ui,key,expected){
   assert.deepEqual(refs.get(id),expected,version+' generated copy ref disagrees with exact source/context for '+key);
 }
 
-let priorityProfiles=0,priorityBindings=0,routeBindings=0,routeExpected=0,exactOwnedUiProfiles=0,focusedProfiles=0,focusedBindings=0;
+let priorityProfiles=0,priorityBindings=0,routeBindings=0,routeExpected=0,exactOwnedUiProfiles=0,focusedProfiles=0,focusedBindings=0,localeRouteProfiles=0,localeRouteExpected=0,localeRouteMaterialized=0;
 for(const profile of catalog){
   const sha=String(profile?.sourceSha||''),version=String(profile?.qbVersion||''),runtime=profiles.get(sha);
   assert.match(sha,/^[0-9a-f]{40}$/,version+' source profile lacks exact source SHA');
   assert.ok(runtime,version+' generated copy registry is missing exact profile '+sha);
   assert.equal(runtime.version,version,sha+' generated copy registry version mismatch');
+  const expectedLocales=Object.keys(profile?.translations||profile?.settingsTranslations||{}).map(String).filter(Boolean).sort();
+  if(expectedLocales.length){
+    localeRouteProfiles++;localeRouteExpected+=expectedLocales.length;
+    const native=runtime.nativeLocales.slice().sort(),bridge=runtime.bridgeLocales.slice().sort(),materialized=[...native,...bridge].sort();
+    assert.equal(new Set(materialized).size,materialized.length,version+' generated copy registry assigns one locale to multiple routing modes');
+    assert.deepEqual(materialized,expectedLocales,version+' generated copy registry locale routes drift from exact source-certified translation routes');
+    localeRouteMaterialized+=materialized.length;
+  }
   const ui=uiByBinding.get(runtime.binding)||new Map();
 
   const owned=sourceOwnedUi(profile,version);
@@ -106,4 +114,5 @@ assert.ok(priorityProfiles>0&&priorityBindings>0,'generated runtime copy coheren
 if(routeExpected)assert.equal(routeBindings,routeExpected,'generated runtime copy coherence must cover every source-derived qB route ref');
 assert.ok(exactOwnedUiProfiles>0||focusedProfiles>0,'generated runtime copy coherence requires exact owned-UI evidence or focused native-presentation source facts');
 if(!exactOwnedUiProfiles)assert.ok(focusedBindings>0,'focused native-presentation copy coherence must cover source-derived bindings');
-console.log('qB runtime copy materialization contract passed: exact-profile registry bindings match current source-owned UI, Detail Priority, native presentation and route refs with no stale same-family keys.');
+if(localeRouteProfiles){assert.ok(localeRouteExpected>0,'source-certified locale route coverage must be non-empty');assert.equal(localeRouteMaterialized,localeRouteExpected,'generated copy registry must materialize every exact source-certified locale route exactly once');}
+console.log('qB runtime copy materialization contract passed: exact-profile registry bindings match current source-owned UI, Detail Priority, native presentation and locale routes with no stale same-family keys.');
