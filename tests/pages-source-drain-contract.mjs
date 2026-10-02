@@ -15,8 +15,8 @@ assert(workflow.includes('git merge-base --is-ancestor "$PUBLISHED_SHA" "$GITHUB
   'Pages source relay must require the published dev payload SHA to be an ancestor of current dev before reuse');
 assert(workflow.includes('scan_pages_relevant_range "$PUBLISHED_SHA" "$GITHUB_SHA" "published dev payload" true'),
   'Pages source relay must scan the entire published-payload-to-current-dev range through the canonical relevance scanner');
-assert(workflow.includes('Published dev Pages payload is stale across Pages-relevant change:'),
-  'Pages source relay must dispatch when an older failed Pages build left a relevant product/materialization change unpublished');
+assert(workflow.includes('Published dev Pages payload is stale across Pages-relevant change:')&&workflow.includes('field=pagesRelevant'),
+  'Pages source relay must dispatch when an older failed Pages build left a canonical Pages-relevant product/materialization or live-verifier change unpublished');
 assert(workflow.includes('Unable to read published dev Pages payload SHA; fail closed by requiring a Pages owner run.')&&workflow.includes('Published dev Pages SHA is not an ancestor of current dev; fail closed by requiring a Pages owner run.'),
   'published payload reconciliation must fail closed when live identity cannot be trusted');
 
@@ -35,8 +35,8 @@ assert(materializer.includes('for mode in ui native-surfaces')&&materializer.inc
   'a generated admitted copy commit must dispatch semantic UI and native-source validation on its exact new head');
 assert(!materializer.includes('[candidate]')&&!materializer.includes('parts[2]+=1')&&!materializer.includes('Materialized Product VERSION'),
   'admitted copy materialization must not create candidate semantics or a second VERSION owner');
-assert(workflow.includes('tests/qb-runtime-copy-materialization-contract.mjs|webui/*'),
-  'copy materialization contract changes must stay inside the Pages evidence relevance boundary');
+assert(workflow.includes('node tools/change-classifier.mjs --stdin0'),
+  'Pages source relevance must consume the canonical repository classifier instead of duplicating a path matcher');
 const dispatch=workflow.slice(workflow.indexOf('\n  dispatch_pages:\n'));
 assert(dispatch.includes('admitted_copy_materialize')&&dispatch.includes("github.ref_name != 'dev' || needs.admitted_copy_materialize.result == 'success'"),
   'dev Pages deployment must wait for admitted product-copy materialization while main remains read-only');

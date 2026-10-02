@@ -88,6 +88,10 @@ export function isPagesPayloadPath(path){
     'tests/real-qb-full-provider-lib.sh',
     'tests/ci-contract.mjs',
     'tests/qb-runtime-copy-materialization-contract.mjs',
+    'tests/pages-relevance-contract.mjs',
+    'tests/pages-source-drain-contract.mjs',
+    'tools/change-classifier.mjs',
+    'tests/change-classifier-contract.mjs',
     'VERSION',
     'tools/build-webui-dist.mjs',
     'tools/product-identity.mjs'

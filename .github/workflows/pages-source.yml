@@ -37,12 +37,24 @@ jobs:
     outputs:
       relevant: ${{ steps.relevance.outputs.relevant }}
       force_evidence: ${{ steps.relevance.outputs.force_evidence }}
+      installer: ${{ steps.relevance.outputs.installer }}
+      ui: ${{ steps.relevance.outputs.ui }}
+      settings_ui: ${{ steps.relevance.outputs.settings_ui }}
+      settings_source: ${{ steps.relevance.outputs.settings_source }}
+      native_source: ${{ steps.relevance.outputs.native_source }}
+      pages_payload: ${{ steps.relevance.outputs.pages_payload }}
+      pages_live: ${{ steps.relevance.outputs.pages_live }}
     steps:
       - name: Checkout source history
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
+
+      - name: Set up Node.js for canonical change classification
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
 
       - name: Detect Pages-relevant source changes
         id: relevance
@@ -54,15 +66,46 @@ jobs:
         run: |
           set -euo pipefail
 
-          pages_materialization_relevant_path() {
-            case "$1" in
-              .github/workflows/pages-source.yml|.github/workflows/pages.yml|.github/workflows/ci.yml|.github/workflows/session-handshake.yml|tests/real-qb-session-race.sh|tests/real-qb-full-runner.sh|tests/real-qb-full-provider-lib.sh|tests/ci-contract.mjs|tests/qb-runtime-copy-materialization-contract.mjs|webui/*|simulator/*|installers/*|VERSION|tools/build-webui-dist.mjs|tools/product-identity.mjs|tools/qb-settings-*.mjs|tools/qb-locale-*.mjs|tools/qb-native-qm-recovery.mjs|tools/qb-owned-ui-source.mjs|tools/qb-preference-semantics.mjs|tools/qb-qm-provisioning-source.mjs|tools/qb-release-catalog*.mjs|tools/qb-source-parsers.mjs|tools/qb-detail-surface-parsers.mjs|tools/qb-release-torrent-surface.mjs|tools/qb-statistics-source.mjs|tools/qb-torrent-fields-parser.mjs|tools/qb-translator-behavior-source.mjs|tools/qb-cpp-literals.mjs|tools/qb-webui-catalog.mjs|tools/data/qb-stable-lkg.json|tools/data/qb-locale-lkg.json|tools/data/qb-translator-behavior-lkg.json|tests/fixtures/qb-release-catalog.lkg.json)
-                return 0
-                ;;
-              *)
-                return 1
-                ;;
-            esac
+          emit() {
+            local key="$1" value="$2"
+            printf '%s=%s\n' "$key" "$value" >> "$GITHUB_OUTPUT"
+          }
+
+          emit_classes() {
+            local json="$1"
+            emit installer "$(jq -r '.installer' <<<"$json")"
+            emit ui "$(jq -r '.ui' <<<"$json")"
+            emit settings_ui "$(jq -r '.settingsUi' <<<"$json")"
+            emit settings_source "$(jq -r '.settingsSource' <<<"$json")"
+            emit native_source "$(jq -r '.nativeSource' <<<"$json")"
+            emit pages_payload "$(jq -r '.pagesPayload' <<<"$json")"
+            emit pages_live "$(jq -r '.pagesLive' <<<"$json")"
+          }
+
+          emit_defaults() {
+            emit installer false
+            emit ui false
+            emit settings_ui false
+            emit settings_source false
+            emit native_source false
+            emit pages_payload false
+            emit pages_live false
+          }
+
+          emit_fail_closed() {
+            emit installer true
+            emit ui true
+            emit settings_ui true
+            emit settings_source true
+            emit native_source true
+            emit pages_payload true
+            emit pages_live true
+          }
+
+          classify_range() {
+            local from_sha="$1"
+            local to_sha="$2"
+            git -c core.quotePath=false diff --name-only -z "$from_sha" "$to_sha"               | node tools/change-classifier.mjs --stdin0
           }
 
           scan_pages_relevant_range() {
@@ -70,49 +113,41 @@ jobs:
             local to_sha="$2"
             local label="$3"
             local include_live="$4"
-            local path=""
+            local json field relevant
 
-            while IFS= read -r -d '' path; do
-              [ -n "$path" ] || continue
-
-              if [ "$include_live" = "true" ]; then
-                case "$path" in
-                  tests/pages-live-*.mjs)
-                    if [ "$label" = "published dev payload" ]; then
-                      echo "Published dev Pages payload is stale across Pages-relevant change: $path"
-                    else
-                      echo "Pages-relevant live verification change: $path"
-                    fi
-                    return 0
-                    ;;
-                esac
-              fi
-
-              if pages_materialization_relevant_path "$path"; then
-                if [ "$label" = "published dev payload" ]; then
-                  echo "Published dev Pages payload is stale across Pages-relevant change: $path"
-                else
-                  echo "Pages-relevant payload/materialization change: $path"
-                fi
-                return 0
-              fi
-
+            json="$(classify_range "$from_sha" "$to_sha")"
+            if [ "$include_live" = "true" ]; then
+              field=pagesRelevant
+            else
+              field=pagesPayload
+            fi
+            relevant="$(jq -r --arg field "$field" '.[$field]' <<<"$json")"
+            if [ "$relevant" = "true" ]; then
               if [ "$label" = "published dev payload" ]; then
-                echo "Published-to-current Pages-irrelevant change: $path"
+                echo "Published dev Pages payload is stale across Pages-relevant change: $(jq -r '.paths | join(", ")' <<<"$json")"
               else
-                echo "Pages-irrelevant development/repository change: $path"
+                echo "Pages-relevant change classes: $(jq -c '{installer,ui,settingsUi,settingsSource,nativeSource,pagesPayload,pagesLive}' <<<"$json")"
               fi
-            done < <(git -c core.quotePath=false diff --name-only -z "$from_sha" "$to_sha")
-
+              return 0
+            fi
+            if [ "$label" = "published dev payload" ]; then
+              echo "Published-to-current range is Pages-irrelevant: $(jq -r '.paths | join(", ")' <<<"$json")"
+            else
+              echo "Current push is Pages-irrelevant: $(jq -r '.paths | join(", ")' <<<"$json")"
+            fi
             return 1
           }
 
-          echo "force_evidence=false" >> "$GITHUB_OUTPUT"
+          emit force_evidence false
+          emit_defaults
+
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
-            echo "relevant=true" >> "$GITHUB_OUTPUT"
+            emit relevant true
             if [ "$REQUESTED_MODE" = "settings-evidence" ]; then
               test "$GITHUB_REF_NAME" = "dev" || { echo "settings-evidence refresh must run on dev." >&2; exit 1; }
-              echo "force_evidence=true" >> "$GITHUB_OUTPUT"
+              emit force_evidence true
+              emit settings_source true
+              emit pages_payload true
               echo "Manual Settings evidence refresh requested on dev."
             else
               echo "Manual Pages dispatch explicitly requests a deployment owner run."
@@ -123,22 +158,23 @@ jobs:
           BEFORE="$BEFORE_SHA"
           case "$BEFORE" in
             ''|0000000000000000000000000000000000000000)
-              echo "relevant=true" >> "$GITHUB_OUTPUT"
+              emit relevant true
+              emit_fail_closed
               echo "Push has no usable before SHA; fail closed by requiring a Pages owner run."
               exit 0
               ;;
           esac
 
           if ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
-            echo "relevant=true" >> "$GITHUB_OUTPUT"
+            emit relevant true
+            emit_fail_closed
             echo "Before SHA is unavailable locally; fail closed by requiring a Pages owner run."
             exit 0
           fi
 
-          relevant=false
-          if scan_pages_relevant_range "$BEFORE" "$GITHUB_SHA" "current push" true; then
-            relevant=true
-          fi
+          CHANGE_JSON="$(classify_range "$BEFORE" "$GITHUB_SHA")"
+          emit_classes "$CHANGE_JSON"
+          relevant="$(jq -r '.pagesRelevant' <<<"$CHANGE_JSON")"
 
           # A docs-only follow-up can arrive after an earlier Pages-relevant build failed. In that
           # case BEFORE..HEAD is irrelevant even though the public materialized dev payload is still
@@ -171,7 +207,8 @@ jobs:
             fi
           fi
 
-          echo "relevant=$relevant" >> "$GITHUB_OUTPUT"
+          emit relevant "$relevant"
+          echo "Current change classes: $(jq -c '{installer,ui,settingsUi,settingsSource,nativeSource,pagesPayload,pagesLive}' <<<"$CHANGE_JSON")"
           if [ "$relevant" != "true" ]; then
             echo "No public payload, materialization input, live verifier, or unpublished Pages-relevant dev change requires deployment."
           fi
