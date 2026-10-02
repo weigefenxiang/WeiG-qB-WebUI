@@ -30,7 +30,9 @@ for(const required of [
   'tools/qb-statistics-source.mjs',
   'tools/qb-torrent-fields-parser.mjs',
   'tools/qb-webui-catalog.mjs',
-  'tools/change-classifier.mjs'
+  'tools/change-classifier.mjs',
+  'tools/settings-evidence-compat.mjs',
+  'tools/qb-settings-translation-artifact.mjs'
 ])assert.equal(isPagesPayloadPath(required),true,`Pages payload boundary missing ${required}`);
 
 let classification=classifyChangedPaths(['tests/pages-live-auth.mjs']);

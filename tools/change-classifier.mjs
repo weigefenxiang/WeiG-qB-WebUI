@@ -16,14 +16,20 @@ export function isPagesLiveVerifierPath(path){
   return /^tests\/pages-live-.*\.mjs$/.test(path);
 }
 
-export function isSettingsSourcePath(path){
+export function isSettingsEvidencePolicyPath(path){
   path=normalizePath(path);
   return [
-      'tools/change-classifier.mjs',
-      'tools/settings-evidence-compat.mjs',
-      'tools/qb-settings-translation-artifact.mjs'
-    ].includes(path)
-    || /^tools\/qb-settings-.*\.mjs$/.test(path)
+    'tools/change-classifier.mjs',
+    'tools/settings-evidence-compat.mjs',
+    'tools/qb-settings-translation-artifact.mjs',
+    'tests/settings-evidence-reuse-contract.mjs',
+    'tests/change-classifier-contract.mjs'
+  ].includes(path);
+}
+
+export function isSettingsSourcePath(path){
+  path=normalizePath(path);
+  return /^tools\/qb-settings-.*\.mjs$/.test(path)
     || /^tools\/qb-locale-.*\.mjs$/.test(path)
     || /^tools\/qb-release-catalog.*\.mjs$/.test(path)
     || [
@@ -98,6 +104,9 @@ export function isPagesPayloadPath(path){
     'tools/change-classifier.mjs',
     'tests/change-classifier-contract.mjs',
     'tools/pages-verify-plan.mjs',
+    'tools/settings-evidence-compat.mjs',
+    'tools/qb-settings-translation-artifact.mjs',
+    'tests/settings-evidence-reuse-contract.mjs',
     'VERSION',
     'tools/build-webui-dist.mjs',
     'tools/product-identity.mjs'
@@ -124,7 +133,7 @@ export function classifyChangedPaths(values){
     settingsUi:any(paths,isSettingsUiPath),
     settingsSource:any(paths,isSettingsSourcePath),
     nativeSource:any(paths,isNativeSourcePath),
-    workflowPolicy:any(paths,path=>starts(path,'.github/workflows/')||['tools/change-classifier.mjs','tests/change-classifier-contract.mjs','tools/pages-verify-plan.mjs'].includes(path))
+    workflowPolicy:any(paths,path=>starts(path,'.github/workflows/')||isSettingsEvidencePolicyPath(path)||['tools/pages-verify-plan.mjs'].includes(path))
   };
   result.pagesRelevant=result.pagesPayload||result.pagesLive;
   result.fast=result.ciRelevant;

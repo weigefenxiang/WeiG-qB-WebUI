@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {
   classifyChangedPaths,
   isPagesPayloadPath,
+  isSettingsEvidencePolicyPath,
   isSettingsSourcePath
 } from '../tools/change-classifier.mjs';
 
@@ -44,6 +45,20 @@ result=classifyChangedPaths(['.github/workflows/ci.yml']);
 assert.equal(result.workflowPolicy,true);
 assert.equal(result.pagesPayload,true);
 assert.equal(result.ciRelevant,true);
+
+result=classifyChangedPaths(['tools/change-classifier.mjs']);
+assert.equal(result.workflowPolicy,true);
+assert.equal(result.pagesPayload,true);
+assert.equal(result.settingsSource,false);
+
+for(const policy of ['tools/settings-evidence-compat.mjs','tools/qb-settings-translation-artifact.mjs']){
+  assert.equal(isSettingsEvidencePolicyPath(policy),true);
+  assert.equal(isSettingsSourcePath(policy),false);
+  const classified=classifyChangedPaths([policy]);
+  assert.equal(classified.workflowPolicy,true);
+  assert.equal(classified.pagesPayload,true);
+  assert.equal(classified.settingsSource,false);
+}
 
 assert.equal(isPagesPayloadPath('simulator/lab/lab.js'),true);
 assert.equal(isSettingsSourcePath('tools/data/qb-stable-lkg.json'),true);
