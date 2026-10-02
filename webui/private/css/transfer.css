@@ -36,8 +36,8 @@ html[data-theme=light]{--transfer-stat-surface:linear-gradient(180deg,#fff,#f7fa
 .transfer-native-statistics[hidden]{display:none}
 .transfer-native-statistics__group{min-width:0;padding:12px 13px;border:1px solid var(--border);border-radius:11px;background:var(--transfer-stat-surface);box-shadow:inset 0 1px rgba(255,255,255,.045)}
 .transfer-native-statistics__group h3{margin:0 0 8px;font-size:var(--text-label);font-weight:800}
-.transfer-native-statistics__row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:baseline;gap:9px;padding:4px 0;color:var(--text-muted);font-size:var(--text-caption)}
-.transfer-native-statistics__row span{min-width:0}.transfer-native-statistics__row strong{color:var(--text-primary);font-size:inherit;font-variant-numeric:tabular-nums;white-space:nowrap}
+.transfer-native-statistics__row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:baseline;gap:9px;padding:4px 0;color:var(--text-muted);font-size:var(--text-label)}
+.transfer-native-statistics__row span{min-width:0}.transfer-native-statistics__row strong{color:var(--text-primary);font-size:var(--text-item-primary);font-weight:760;font-variant-numeric:tabular-nums;white-space:nowrap}
 .transfer-statistics-dialog .transfer-native-statistics{grid-template-columns:1fr;margin-bottom:0}
 .transfer-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-bottom:14px}
 .transfer-stat{min-width:0;padding:12px 13px;border:1px solid var(--border);border-radius:11px;background:var(--transfer-stat-surface);box-shadow:inset 0 1px rgba(255,255,255,.045)}
