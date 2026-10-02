@@ -32,11 +32,22 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       relevant: ${{ steps.relevance.outputs.relevant }}
+      installer: ${{ steps.relevance.outputs.installer }}
+      ui: ${{ steps.relevance.outputs.ui }}
+      settings_ui: ${{ steps.relevance.outputs.settings_ui }}
+      settings_source: ${{ steps.relevance.outputs.settings_source }}
+      native_source: ${{ steps.relevance.outputs.native_source }}
+      pages_payload: ${{ steps.relevance.outputs.pages_payload }}
+      pages_live: ${{ steps.relevance.outputs.pages_live }}
+      workflow_policy: ${{ steps.relevance.outputs.workflow_policy }}
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
       - name: Detect CI-relevant source changes
         id: relevance
         shell: bash
@@ -44,11 +55,47 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           BEFORE_SHA: ${{ github.event.before }}
           HEAD_MESSAGE: ${{ github.event.head_commit.message }}
+          VALIDATION_MODE: ${{ inputs.validation_mode }}
         run: |
           set -euo pipefail
 
+          emit() {
+            local key="$1" value="$2"
+            printf '%s=%s\n' "$key" "$value" >> "$GITHUB_OUTPUT"
+          }
+          emit_defaults() {
+            emit installer false
+            emit ui false
+            emit settings_ui false
+            emit settings_source false
+            emit native_source false
+            emit pages_payload false
+            emit pages_live false
+            emit workflow_policy false
+          }
+          emit_all_true() {
+            emit installer true
+            emit ui true
+            emit settings_ui true
+            emit settings_source true
+            emit native_source true
+            emit pages_payload true
+            emit pages_live true
+            emit workflow_policy true
+          }
+
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
-            echo "relevant=true" >> "$GITHUB_OUTPUT"
+            emit relevant true
+            emit_defaults
+            case "${VALIDATION_MODE:-smoke}" in
+              ui) emit ui true ;;
+              settings-matrix) emit ui true; emit settings_ui true ;;
+              settings-evidence) emit ui true; emit settings_ui true; emit settings_source true; emit native_source true; emit pages_payload true ;;
+              native-surfaces) emit ui true; emit native_source true; emit pages_payload true ;;
+              candidate) emit_all_true ;;
+              smoke) ;;
+              *) echo "Unknown validation mode: ${VALIDATION_MODE:-}" >&2; exit 1 ;;
+            esac
             echo "Explicit validation dispatch is CI-relevant; keep the downstream dependency chain runnable."
             exit 0
           fi
@@ -57,45 +104,60 @@ jobs:
             exit 1
           fi
 
-          case "$HEAD_MESSAGE" in
-            *'[ui]'*|*'[settings-matrix]'*|*'[candidate]'*|*'[native-surfaces]'*|*'[settings-evidence]'*|*'[settings-evidence-verify]'*)
-              echo "relevant=true" >> "$GITHUB_OUTPUT"
-              echo "Commit message explicitly requests an extended CI gate."
-              exit 0
-              ;;
-          esac
-
           BEFORE="$BEFORE_SHA"
           case "$BEFORE" in
             ''|0000000000000000000000000000000000000000)
-              echo "relevant=true" >> "$GITHUB_OUTPUT"
-              echo "Push has no usable before SHA; fail closed by requiring CI smoke."
+              emit relevant true
+              emit_all_true
+              echo "Push has no usable before SHA; fail closed by requiring every change-aware lane."
               exit 0
               ;;
           esac
-
           if ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
-            echo "relevant=true" >> "$GITHUB_OUTPUT"
-            echo "Before SHA is unavailable locally; fail closed by requiring CI smoke."
+            emit relevant true
+            emit_all_true
+            echo "Before SHA is unavailable locally; fail closed by requiring every change-aware lane."
             exit 0
           fi
 
-          relevant=false
-          while IFS= read -r -d '' path; do
-            [ -n "$path" ] || continue
-            case "$path" in
-              docs/*|*.md|LICENSE)
-                echo "CI-irrelevant documentation change: $path"
-                ;;
-              *)
-                echo "CI-relevant change: $path"
-                relevant=true
-                break
-                ;;
-            esac
-          done < <(git -c core.quotePath=false diff --name-only -z "$BEFORE" "$GITHUB_SHA")
+          CHANGE_JSON="$(git -c core.quotePath=false diff --name-only -z "$BEFORE" "$GITHUB_SHA" | node tools/change-classifier.mjs --stdin0)"
+          relevant="$(jq -r '.ciRelevant' <<<"$CHANGE_JSON")"
+          installer="$(jq -r '.installer' <<<"$CHANGE_JSON")"
+          ui="$(jq -r '.ui' <<<"$CHANGE_JSON")"
+          settings_ui="$(jq -r '.settingsUi' <<<"$CHANGE_JSON")"
+          settings_source="$(jq -r '.settingsSource' <<<"$CHANGE_JSON")"
+          native_source="$(jq -r '.nativeSource' <<<"$CHANGE_JSON")"
+          pages_payload="$(jq -r '.pagesPayload' <<<"$CHANGE_JSON")"
+          pages_live="$(jq -r '.pagesLive' <<<"$CHANGE_JSON")"
+          workflow_policy="$(jq -r '.workflowPolicy' <<<"$CHANGE_JSON")"
 
-          echo "relevant=$relevant" >> "$GITHUB_OUTPUT"
+          case "$HEAD_MESSAGE" in
+            *'[ui]'*) relevant=true; ui=true ;;
+          esac
+          case "$HEAD_MESSAGE" in
+            *'[settings-matrix]'*) relevant=true; ui=true; settings_ui=true ;;
+          esac
+          case "$HEAD_MESSAGE" in
+            *'[native-surfaces]'*) relevant=true; ui=true; native_source=true; pages_payload=true ;;
+          esac
+          case "$HEAD_MESSAGE" in
+            *'[settings-evidence]'*|*'[settings-evidence-verify]'*) relevant=true; ui=true; settings_ui=true; settings_source=true; native_source=true; pages_payload=true ;;
+          esac
+          case "$HEAD_MESSAGE" in
+            *'[candidate]'*) relevant=true ;;
+          esac
+
+          emit relevant "$relevant"
+          emit installer "$installer"
+          emit ui "$ui"
+          emit settings_ui "$settings_ui"
+          emit settings_source "$settings_source"
+          emit native_source "$native_source"
+          emit pages_payload "$pages_payload"
+          emit pages_live "$pages_live"
+          emit workflow_policy "$workflow_policy"
+
+          jq -r '"Change classes: installer=\(.installer) ui=\(.ui) settings-ui=\(.settingsUi) settings-source=\(.settingsSource) native-source=\(.nativeSource) pages-payload=\(.pagesPayload) pages-live=\(.pagesLive) workflow-policy=\(.workflowPolicy)"' <<<"$CHANGE_JSON"
           if [ "$relevant" != "true" ]; then
             echo "Only documentation paths changed; heavy CI smoke is skipped."
           fi
