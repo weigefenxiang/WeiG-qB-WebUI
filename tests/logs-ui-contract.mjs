@@ -39,7 +39,7 @@ for(const file of walk(path.join(root,'webui')).filter(p=>/\.(?:html|js|css)$/i.
 
 assert(logs.includes('if(state.types.has(type))state.types.delete(type);else state.types.add(type);'),'Each log level must be independently toggleable');
 assert(!logs.includes('state.types.size>1'),'Logs must allow all four levels to be disabled');
-for(const tone of ['normal','info','warning','danger'])assert(logs.includes('b.dataset.tone=typeTone(type)')&&css.includes(`--logs-tone-${tone}`),`Missing canonical ${tone} log tone`);
+for(const tone of ['normal','info','warning','danger'])assert(logs.includes('b.dataset.tone=typeTone(type)')&&css.includes(`--logs-tone-${tone}`),`Missing canonical ${tone} log tone`);assert(css.includes('color:var(--text-secondary);border-color:var(--control-border);background:var(--control-subtle)')&&css.includes('transform:translateY(-1px);font-weight:760'),'Inactive log chips must stay neutral while aria-pressed/active chips alone receive the raised semantic tone');
 assert(logs.includes('expandedId:null')&&logs.includes("row.setAttribute('aria-expanded',expanded?'true':'false')"),'Log rows must expose one shared expand/collapse state');
 assert(logs.includes('variableHeight:true')&&logs.includes('itemKey:rowKey'),'Logs must reuse the canonical DataViewport in variable-height mode');
 assert(components.includes('C.pagerControl=function(opts)'),'Pager must have one canonical shared Components owner');

@@ -151,6 +151,8 @@ try{
     await page.waitForSelector('#torrent-list [data-hash]');
     await page.waitForFunction(()=>window.WeiG?.LibraryController&&document.querySelectorAll('#facet-controls .facet-control').length===4&&WeiG.AppState?.catalogReady===true,{timeout:10000});
 
+    const desktopPageJump=page.locator('#page-label [data-pager-page-jump]').first();await desktopPageJump.click();await page.locator('#page-label .pager-page-input').fill('2');await page.locator('#page-label .pager-page-input').press('Enter');await page.waitForFunction(()=>WeiG.LibraryController.state().page===1);assert((await page.locator('#page-label [data-pager-page-jump]').first().textContent()).trim()==='2',name+': shared Pager did not jump to desktop page 2');await page.locator('#page-label [data-pager-page-jump]').first().click();await page.locator('#page-label .pager-page-input').fill('3');await page.locator('#page-label .pager-page-input').press('Enter');await page.waitForTimeout(30);assert(await page.evaluate(()=>WeiG.LibraryController.state().page)===1,name+': out-of-range desktop page jump changed state');await page.locator('#page-label [data-pager-page-jump]').first().click();await page.locator('#page-label .pager-page-input').fill('1');await page.locator('#page-label .pager-page-input').press('Enter');await page.waitForFunction(()=>WeiG.LibraryController.state().page===0);
+
     // Desktop: facets remain in Sidebar and the retired four-card summary does not exist at all.
     assert(await page.locator('#facet-controls').count()===1,`${name}: duplicate facet host`);
     assert(await page.locator('#sidebar-facet-slot>#facet-controls').count()===1,`${name}: facets not below Sidebar filters`);
@@ -324,6 +326,7 @@ try{
 
     // Mobile: same Sidebar facets, same toolbar moved beside pager, compact controls, two-line cards, no summary leaves.
     await page.setViewportSize({width:390,height:844});await page.waitForTimeout(120);
+    const mobilePageJump=page.locator('#page-label [data-pager-page-jump]').last();await mobilePageJump.click();await page.locator('#page-label .pager-page-input').fill('2');await page.locator('#page-label .pager-page-input').press('Enter');await page.waitForFunction(()=>WeiG.LibraryController.state().page===1);await page.locator('#page-label [data-pager-page-jump]').last().click();await page.locator('#page-label .pager-page-input').fill('1');await page.locator('#page-label .pager-page-input').press('Enter');await page.waitForFunction(()=>WeiG.LibraryController.state().page===0);
     assert(await page.locator('#sidebar-facet-slot>#facet-controls').count()===1,`${name}: Mobile moved/duplicated facets instead of keeping Sidebar owner`);
     assert(await page.locator('#mobile-pager-actions-slot>#torrent-selection-toolbar').count()===1,`${name}: Mobile pager did not receive canonical action toolbar`);
     assert(await page.locator('.statusbar').evaluate(n=>getComputedStyle(n).display)==='none',`${name}: desktop Statusbar leaked into Mobile`);
