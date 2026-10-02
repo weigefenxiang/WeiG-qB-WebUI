@@ -328,6 +328,8 @@ try{
     await page.waitForFunction(()=>{const t=document.querySelector('#connection-dialog')?.textContent||'';return t.includes('DHT 12')&&t.includes('Peers 4');},null,{timeout:5000});
     await page.locator('#connection-dialog .connection-dialog__done').click();
 
+    // Restore the unfiltered library through the canonical controller so page 2 exists before Mobile pager acceptance.
+    await page.evaluate(()=>WeiG.LibraryController.setTracker(''));await page.waitForFunction(()=>WeiG.LibraryController.state().tracker===''&&WeiG.LibraryController.total()>=51);
     // Mobile: same Sidebar facets, same toolbar moved beside pager, compact controls, two-line cards, no summary leaves.
     await page.setViewportSize({width:390,height:844});await page.waitForTimeout(120);
     const mobilePageJump=page.locator('#page-label [data-pager-page-jump]').last();await mobilePageJump.click();await page.locator('#page-label .pager-page-input').fill('2');await page.locator('#page-label .pager-page-input').press('Enter');await page.waitForFunction(()=>WeiG.LibraryController.state().page===1);await page.locator('#page-label [data-pager-page-jump]').last().click();await page.locator('#page-label .pager-page-input').fill('1');await page.locator('#page-label .pager-page-input').press('Enter');await page.waitForFunction(()=>WeiG.LibraryController.state().page===0);
