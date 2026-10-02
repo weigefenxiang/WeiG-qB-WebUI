@@ -13,7 +13,7 @@ let fixtureMode='q4';
 const torrent={hash:'0000000000000000000000000000000000000001',name:'Sidebar capability visual fixture',size:1048576,progress:.5,dlspeed:1024,upspeed:0,eta:600,state:'downloading',ratio:.1,tracker:'https://tracker.example/announce',category:'',tags:'Fixture',added_on:1000,save_path:'/downloads',private:false,num_seeds:4,num_leechs:2,priority:1};
 function assert(ok,msg){if(!ok)throw new Error(msg);}
 function nativeQbtSource(value){return String(value||'').replace(/QBT_TR\(([\s\S]*?)\)QBT_TR\[CONTEXT=([^\]]+)\]/g,(_all,source)=>source);}
-function versions(){return fixtureMode==='q5'?{qb:'v5.2.0',api:'2.15.1'}:{qb:'v4.1.0',api:'2.0.0'};}
+function versions(){if(fixtureMode==='q5')return{qb:'v5.2.0',api:'2.15.1'};if(fixtureMode==='q467')return{qb:'v4.6.7',api:'2.9.3'};return{qb:'v4.1.0',api:'2.0.0'};}
 function releaseCatalog(){
   const q4={qbVersion:'4.1.0',webApiVersion:'2.0.0',officialWeiGSupport:true,fallback:false,apiActions:['appcontroller.h:preferencesAction','torrentscontroller.h:resumeAction','torrentscontroller.h:pauseAction','torrentscontroller.h:webseedsAction'],torrentFilters:['all','downloading','seeding','completed','paused','resumed','active','inactive','errored'],torrentInfoParameters:['filter','category','sort','reverse','limit','offset'],torrentInfoFields:['hash','name','state','progress','dlspeed','upspeed','category','tags','tracker','save_path'],torrentStates:['error','missingFiles','uploading','pausedUP','queuedUP','stalledUP','checkingUP','forcedUP','allocating','downloading','metaDL','pausedDL','queuedDL','stalledDL','checkingDL','forcedDL','checkingResumeData'],preferenceDescriptors:[]};
   const q5={qbVersion:'5.2.0',webApiVersion:'2.15.1',officialWeiGSupport:true,fallback:false,apiActions:['appcontroller.h:preferencesAction','torrentscontroller.h:categoriesAction','torrentscontroller.h:tagsAction','torrentscontroller.h:startAction','torrentscontroller.h:stopAction','torrentscontroller.h:webseedsAction'],torrentFilters:['all','downloading','seeding','completed','stopped','running','active','inactive','stalled','stalled_uploading','stalled_downloading','checking','moving','errored'],torrentInfoParameters:['filter','category','tag','sort','reverse','limit','offset','hashes','private'],torrentInfoFields:['hash','name','state','progress','dlspeed','upspeed','category','tags','tracker','save_path','private'],torrentStates:['error','missingFiles','uploading','stoppedUP','queuedUP','stalledUP','checkingUP','forcedUP','allocating','downloading','metaDL','stoppedDL','queuedDL','stalledDL','checkingDL','forcedDL','checkingResumeData','moving'],preferenceDescriptors:[]};
@@ -74,6 +74,16 @@ try{
   await assertOnlyHeaderHints(page,'Home qB4');
   await page.setViewportSize({width:390,height:844});await page.locator('#menu-btn').click();await page.waitForFunction(()=>document.getElementById('sidebar')?.classList.contains('is-open'));await assertNativeFacetVisibility(page,{category:true,tag:false,tracker:false,savePath:true},'Mobile qB4');await assertPrivateTrackerOwnership(page,false,'Mobile qB4 Private/PT');
   assert(errors.length===0,`qB4 browser errors: ${errors.join(' | ')}`);await context.close();context=null;
+
+  fixtureMode='q467';
+  context=await browser.newContext({viewport:{width:1366,height:768},locale:'zh-CN'});page=await context.newPage();errors=[];page.on('pageerror',e=>errors.push(String(e)));page.on('console',m=>{if(m.type()==='error'&&!/favicon|Wei\\.G\\.ico/i.test(m.text()))errors.push(m.text());});
+  await page.goto(`http://${host}:${port}/#/`,{waitUntil:'domcontentloaded'});await waitReady(page);
+  assert(await page.evaluate(()=>window.WeiG.CapabilityRegistry.releaseIdentity().qbVersion)==='4.6.7','qB4.6.7 browser fixture must bind exact release profile');
+  const q467Filters=await page.locator('#filter-nav [data-filter]').evaluateAll(nodes=>nodes.map(n=>n.dataset.filter));
+  assert(q467Filters.includes('moving')&&q467Filters.includes('checking')&&q467Filters.includes('stalled')&&q467Filters.includes('stalled_uploading')&&q467Filters.includes('stalled_downloading'),`qB4.6.7 Status must expose all exact WebAPI-supported filters, including native-WebUI-omitted Moving: ${JSON.stringify(q467Filters)}`);
+  const q467Moving=await page.locator('#filter-nav [data-filter="moving"]').textContent(),q467Official=await page.evaluate(()=>window.WeiG.I18n.qbText('state.moving','Moving'));
+  assert(q467Moving===q467Official&&q467Moving!=='Moving',`qB4.6.7 Moving must reuse exact qB official localized state copy when the native WebUI filter row is absent: ${JSON.stringify({q467Moving,q467Official})}`);
+  assert(errors.length===0,`qB4.6.7 browser errors: ${errors.join(' | ')}`);await context.close();context=null;
 
   fixtureMode='q5';
   context=await browser.newContext({viewport:{width:1366,height:768},locale:'zh-CN'});page=await context.newPage();errors=[];page.on('pageerror',e=>errors.push(String(e)));page.on('console',m=>{if(m.type()==='error'&&!/favicon|Wei\.G\.ico/i.test(m.text()))errors.push(m.text());});
