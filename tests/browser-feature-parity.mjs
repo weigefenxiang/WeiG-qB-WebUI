@@ -48,8 +48,14 @@ await page.locator('#filter-nav [data-filter="all"]').click();await page.waitFor
   assert(!transferEntry.labelNode&&!/Statistics|统计/.test(transferEntry.buttonText),'statusbar transfer capsule must contain realtime rates only, without a duplicate Statistics label: '+JSON.stringify(transferEntry));
   await page.locator('#transfer-capsule .transfer-runtime-capsule__stats').click();
   await page.waitForSelector('#transfer-stats-dialog[open]');
-  const statisticsDialog=await page.evaluate(()=>{const dialog=document.getElementById('transfer-stats-dialog'),title=dialog?.querySelector('.dialog__head h2'),native=dialog?.querySelector('[data-native-statistics]');return{title:String(title?.textContent||'').trim(),native:!!native,open:!!dialog?.open};});
-  assert(statisticsDialog.open&&statisticsDialog.title==='统计'&&statisticsDialog.native,'zh-CN Statistics must live in its separate Dialog and resolve the exact qB MainWindow source-owned title: '+JSON.stringify(statisticsDialog));
+  const realtimeDialog=await page.evaluate(()=>{const dialog=document.getElementById('transfer-stats-dialog'),title=dialog?.querySelector('.dialog__head h2'),button=dialog?.querySelector('[data-open-native-statistics]'),actions=dialog?.querySelector('.transfer-dialog-head-actions'),close=actions?.querySelector('.icon-btn');return{title:String(title?.textContent||'').trim(),statistics:String(button?.textContent||'').trim(),buttonBeforeClose:!!(button&&close&&button.compareDocumentPosition(close)&Node.DOCUMENT_POSITION_FOLLOWING),native:!!dialog?.querySelector('[data-native-statistics]'),open:!!dialog?.open};});
+  assert(realtimeDialog.open&&realtimeDialog.title==='实时上传 / 下载'&&!realtimeDialog.native&&realtimeDialog.statistics==='统计'&&realtimeDialog.buttonBeforeClose,'zh-CN Realtime Transfer must keep its own dialog title and expose the source-owned Statistics button immediately left of Close: '+JSON.stringify(realtimeDialog));
+  await page.locator('#transfer-stats-dialog [data-open-native-statistics]').click();
+  await page.waitForSelector('#qbt-native-statistics-dialog[open]');
+  const statisticsDialog=await page.evaluate(()=>{const dialog=document.getElementById('qbt-native-statistics-dialog'),title=dialog?.querySelector('.dialog__head h2'),native=dialog?.querySelector('[data-native-statistics]');return{title:String(title?.textContent||'').trim(),native:!!native,open:!!dialog?.open};});
+  assert(statisticsDialog.open&&statisticsDialog.title==='统计'&&statisticsDialog.native,'zh-CN Statistics must open as its separate source-owned Dialog: '+JSON.stringify(statisticsDialog));
+  await page.locator('#qbt-native-statistics-dialog .dialog__head .icon-btn').click();
+  await page.waitForFunction(()=>!document.getElementById('qbt-native-statistics-dialog')?.open);
   await page.locator('#transfer-stats-dialog .dialog__head .icon-btn').click();
   await page.waitForFunction(()=>!document.getElementById('transfer-stats-dialog')?.open);
   await page.locator('#torrent-list [data-hash]').first().locator('.torrent-title').click();
