@@ -1101,12 +1101,16 @@ deploy_staged_webui() {
     return 1
   }
 
+  deploy_list="$TMP/deploy-dirs.$$"
+  find "$deploy_stage" -type d -print0 > "$deploy_list" || return 1
   while IFS= read -r -d '' deploy_dir; do
     [ "$deploy_dir" = "$deploy_stage" ] && continue
     deploy_rel=${deploy_dir#"$deploy_stage"/}
     mkdir -p "$deploy_dest/$deploy_rel" || return 1
-  done < <(find "$deploy_stage" -type d -print0)
+  done < "$deploy_list"
 
+  deploy_list="$TMP/deploy-files.$$"
+  find "$deploy_stage" -type f -print0 > "$deploy_list" || return 1
   while IFS= read -r -d '' deploy_src; do
     deploy_rel=${deploy_src#"$deploy_stage"/}
     deploy_dst="$deploy_dest/$deploy_rel"
@@ -1120,20 +1124,25 @@ deploy_staged_webui() {
     while [ -e "$deploy_tmp" ]; do deploy_tmp="$deploy_tmp.x"; done
     cp -p -- "$deploy_src" "$deploy_tmp" || { rm -f -- "$deploy_tmp"; return 1; }
     mv -f -- "$deploy_tmp" "$deploy_dst" || { rm -f -- "$deploy_tmp"; return 1; }
-  done < <(find "$deploy_stage" -type f -print0)
+  done < "$deploy_list"
 
+  deploy_list="$TMP/deploy-stale-files.$$"
+  find "$deploy_dest" \( -type f -o -type l \) -print0 > "$deploy_list" || return 1
   while IFS= read -r -d '' deploy_path; do
     deploy_rel=${deploy_path#"$deploy_dest"/}
     [ -f "$deploy_stage/$deploy_rel" ] && continue
     rm -f -- "$deploy_path" || return 1
-  done < <(find "$deploy_dest" \( -type f -o -type l \) -print0)
+  done < "$deploy_list"
 
+  deploy_list="$TMP/deploy-stale-dirs.$$"
+  find "$deploy_dest" -depth -type d -print0 > "$deploy_list" || return 1
   while IFS= read -r -d '' deploy_dir; do
     [ "$deploy_dir" = "$deploy_dest" ] && continue
     deploy_rel=${deploy_dir#"$deploy_dest"/}
     [ -d "$deploy_stage/$deploy_rel" ] && continue
     rmdir -- "$deploy_dir" 2>/dev/null || true
-  done < <(find "$deploy_dest" -depth -type d -print0)
+  done < "$deploy_list"
+  rm -f -- "$TMP"/deploy-*-$$
 
   rm -rf -- "$deploy_stage"
   [ -f "$deploy_dest/public/index.html" ] && [ -f "$deploy_dest/public/login.html" ] && [ -f "$deploy_dest/private/index.html" ] || {
