@@ -46,7 +46,7 @@ function generalValuePresentation(generalSource,binding,context,id){
   const fields=(binding.dataProperties||[]).map(String),scope=propertySinkScope(generalSource,binding),presentation={kind:'source-field',empty:{kind:'literal',value:''}};
   let conditional=false;
   for(const field of fields){
-    const escaped=escapeRe(field),emptyRe=new RegExp('\\bdata\\.'+escaped+'\\s*(?:===|==|!==|!=)\\s*(?:""|\\'\\')'),negativeRe=new RegExp('\\bdata\\.'+escaped+'\\s*(?:>=\\s*0|>\\s*-1|!=\\s*-1|!==\\s*-1|<\\s*0|===?\\s*-1)');
+    const escaped=escapeRe(field),emptyRe=new RegExp("\\bdata\\."+escaped+"\\s*(?:===|==|!==|!=)\\s*(?:\"\"|'')"),negativeRe=new RegExp("\\bdata\\."+escaped+"\\s*(?:>=\\s*0|>\\s*-1|!=\\s*-1|!==\\s*-1|<\\s*0|===?\\s*-1)");
     if(emptyRe.test(scope)){const fallback=sourcePresentationRule(scope);if(!fallback)throw new Error(`${context}: Properties field ${id} empty-value presentation is unresolved`);presentation.empty=fallback;conditional=true;}
     if(negativeRe.test(scope)){const fallback=sourcePresentationRule(scope);if(!fallback)throw new Error(`${context}: Properties field ${id} negative-value presentation is unresolved`);presentation.negative=fallback;conditional=true;}
     if(new RegExp('new\\s+Date\\s*\\(\\s*data\\.'+escaped+'\\s*\\*\\s*1000').test(scope))presentation.format='date';
