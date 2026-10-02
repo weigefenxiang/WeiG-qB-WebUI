@@ -29,6 +29,7 @@ export function isSettingsEvidencePolicyPath(path){
 
 export function isSettingsSourcePath(path){
   path=normalizePath(path);
+  if(isSettingsEvidencePolicyPath(path))return false;
   return /^tools\/qb-settings-.*\.mjs$/.test(path)
     || /^tools\/qb-locale-.*\.mjs$/.test(path)
     || /^tools\/qb-release-catalog.*\.mjs$/.test(path)
