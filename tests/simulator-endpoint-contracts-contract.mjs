@@ -3,14 +3,6 @@ import {resolveEndpointContract,resolveMissingEndpointContract} from '../simulat
 
 const profile=webApiVersion=>({webApiVersion});
 
-{
-  const before=resolveEndpointContract(profile('2.9.2'),'torrents/count');
-  const introduced=resolveEndpointContract(profile('2.9.3'),'torrents/count');
-  assert.equal(before.available,false,'torrents/count must not exist before WebAPI 2.9.3');
-  assert.equal(introduced.available,true,'torrents/count must appear at WebAPI 2.9.3');
-  assert.equal(introduced.responseShape,'plain-integer');
-}
-
 
 {
   const before=resolveEndpointContract(profile('2.11.8'),'torrents/addTrackers');

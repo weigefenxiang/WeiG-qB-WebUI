@@ -94,8 +94,6 @@ function editTrackerContract(version){
   };
 }
 
-function torrentCountContract(version){return{available:atLeast(version,'2.9.3'),responseShape:'plain-integer'};}
-
 function mainDataContract(version){
   return{
     categoriesShape:atLeast(version,'2.1.0')?'details-map':'name-list',
@@ -129,7 +127,6 @@ const RESOLVERS=new Map([
   ['torrents/removeTrackers',(version,path)=>trackerCollectionContract(version,path)],
   ['torrents/trackers',version=>trackersContract(version)],
   ['torrents/properties',version=>({availabilityField:atLeast(version,'2.15.1')})],
-  ['torrents/count',version=>torrentCountContract(version)],
   ['sync/maindata',version=>mainDataContract(version)],
   ['sync/torrentPeers',version=>torrentPeersContract(version)],
   ['torrents/editCategory',version=>editCategoryContract(version)],

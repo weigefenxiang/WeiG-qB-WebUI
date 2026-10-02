@@ -276,11 +276,6 @@ export async function handleApi(world,request,url=new URL(request.url)){
 
   if(path==='sync/maindata'&&method==='GET')return json(enrichMainData(world,mainDataSnapshot(world,url.searchParams.get('rid')||0,now,contract)));
 
-  if(path==='torrents/count'&&method==='GET'){
-    const countContract=resolveEndpointContract(world.profile,'torrents/count');
-    if(!countContract||countContract.semanticRevision!=='classified'||countContract.available!==true)return notFound();
-    return text(String(Array.isArray(world.torrents)?world.torrents.length:0));
-  }
   if(path==='torrents/info'&&method==='GET'){
     try{return json(torrentInfoRows(world,url,now));}
     catch(error){
