@@ -517,7 +517,8 @@ try{
   // Android/LAN acceptance: a real touch long-press must reach the Tracker context action,
   // and copy must still succeed when Async Clipboard is unavailable on an insecure HTTP origin.
   await page.locator('#detail-view .detail-tabs [data-tab="trackers"]').click();
-  await page.waitForSelector('.shared-table__viewport .shared-table__row');
+  await page.waitForSelector('#detail-content .shared-table__head .grid-head-cell[data-key="url"]');
+  await page.waitForSelector('#detail-content .shared-table__viewport .shared-table__row');
   const trackerTargetHandle=await page.waitForFunction(()=>{const viewport=document.querySelector('#detail-content .shared-table__viewport'),head=viewport&&viewport.querySelector('.shared-table__head');if(!viewport)return null;viewport.scrollTop=0;const vr=viewport.getBoundingClientRect(),hr=head&&head.getBoundingClientRect(),rows=[...viewport.querySelectorAll('.shared-table__row[data-tracker-kind="parent"][data-context-menu="true"]')];for(const row of rows){const url=String(row.querySelector('[data-column-key="url"]')?.textContent||'').trim();if(!/^https?:\/\//i.test(url))continue;const rr=row.getBoundingClientRect(),left=Math.max(vr.left+8,rr.left+8),right=Math.min(vr.right-8,rr.right-8),top=Math.max(vr.top+8,rr.top+8,hr?hr.bottom+4:vr.top+8),bottom=Math.min(vr.bottom-8,rr.bottom-8);if(right<=left||bottom<=top)continue;for(const fraction of [.5,.25,.75]){const x=left+(right-left)*fraction,y=top+(bottom-top)/2,node=document.elementFromPoint(x,y);if(node&&row.contains(node))return{url:url,x:x,y:y,tag:node.tagName,className:String(node.className||'')};}}return null;});
   const trackerTarget=await trackerTargetHandle.jsonValue();await trackerTargetHandle.dispose();
   assert(trackerTarget&&trackerTarget.url,'Mobile Tracker long-press must resolve an actually visible source-owned Tracker row inside the active viewport.');
@@ -541,13 +542,14 @@ try{
   await page.waitForSelector('dialog.clipboard-copy-dialog[open]',{state:'detached'});
   await page.evaluate(()=>{document.execCommand=window.__weigExecCommand;delete window.__weigExecCommand;if(window.__weigClipboardDescriptor)Object.defineProperty(navigator,'clipboard',window.__weigClipboardDescriptor);else delete navigator.clipboard;delete window.__weigClipboardDescriptor;delete window.__weigLongPressEvents;});
   await page.locator('#detail-view .detail-tabs [data-tab="files"]').click();
-  await page.waitForSelector('.shared-table__viewport .shared-table__row');
+  await page.waitForSelector('#detail-content .shared-table__head .grid-head-cell[data-key="name"]');
+  await page.waitForSelector('#detail-content .shared-table__viewport .shared-table__row');
   await resetDetailViewport(page);
-  const headerBefore=await page.evaluate(()=>({order:[...document.querySelectorAll('.shared-table__head .grid-head-cell')].map(node=>node.dataset.key),saved:JSON.stringify(window.WeiG.SharedColumns.read('torrent-detail-files'))}));
+  const headerBefore=await page.evaluate(()=>({order:[...document.querySelectorAll('#detail-content .shared-table__head .grid-head-cell')].map(node=>node.dataset.key),saved:JSON.stringify(window.WeiG.SharedColumns.read('torrent-detail-files'))}));
   const firstBox=await page.locator('.shared-table__head .grid-head-cell[data-key="name"]').boundingBox();assert(firstBox,'Mobile detail Name header is missing.');
   const tx=firstBox.x+Math.min(24,firstBox.width/2),ty=firstBox.y+firstBox.height/2;
   await touch(cdp,'touchStart',tx,ty);await touch(cdp,'touchMove',tx,ty-45);await touch(cdp,'touchMove',tx,ty-95);await touch(cdp,'touchEnd',tx,ty-95);await page.waitForTimeout(120);
-  const headerAfter=await page.evaluate(()=>({order:[...document.querySelectorAll('.shared-table__head .grid-head-cell')].map(node=>node.dataset.key),saved:JSON.stringify(window.WeiG.SharedColumns.read('torrent-detail-files'))}));
+  const headerAfter=await page.evaluate(()=>({order:[...document.querySelectorAll('#detail-content .shared-table__head .grid-head-cell')].map(node=>node.dataset.key),saved:JSON.stringify(window.WeiG.SharedColumns.read('torrent-detail-files'))}));
   assert(JSON.stringify(headerAfter.order)===JSON.stringify(headerBefore.order)&&headerAfter.saved===headerBefore.saved,`Quick mobile header drag accidentally reordered columns instead of cancelling before long-press arm: ${JSON.stringify({headerBefore,headerAfter})}`);
 
   await resetDetailViewport(page);
