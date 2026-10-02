@@ -13,6 +13,7 @@ on:
         type: choice
         options:
           - smoke
+          - change-aware
           - ui
           - settings-matrix
           - candidate
@@ -83,17 +84,40 @@ jobs:
             emit pages_live true
             emit workflow_policy true
           }
+          emit_classification() {
+            local json="$1"
+            emit relevant "$(jq -r '.ciRelevant' <<<"$json")"
+            emit installer "$(jq -r '.installer' <<<"$json")"
+            emit ui "$(jq -r '.ui' <<<"$json")"
+            emit settings_ui "$(jq -r '.settingsUi' <<<"$json")"
+            emit settings_source "$(jq -r '.settingsSource' <<<"$json")"
+            emit native_source "$(jq -r '.nativeSource' <<<"$json")"
+            emit pages_payload "$(jq -r '.pagesPayload' <<<"$json")"
+            emit pages_live "$(jq -r '.pagesLive' <<<"$json")"
+            emit workflow_policy "$(jq -r '.workflowPolicy' <<<"$json")"
+          }
 
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
-            emit relevant true
             emit_defaults
             case "${VALIDATION_MODE:-smoke}" in
-              ui) emit ui true ;;
-              settings-matrix) emit ui true; emit settings_ui true ;;
-              settings-evidence) emit ui true; emit settings_ui true; emit settings_source true; emit native_source true; emit pages_payload true ;;
-              native-surfaces) emit ui true; emit native_source true; emit pages_payload true ;;
-              candidate) emit_all_true ;;
-              smoke) ;;
+              change-aware)
+                PARENT_SHA="$(git rev-parse "$GITHUB_SHA^" 2>/dev/null || true)"
+                if [ -z "$PARENT_SHA" ] || ! git cat-file -e "$PARENT_SHA^{commit}" 2>/dev/null; then
+                  emit relevant true
+                  emit_all_true
+                  echo "Change-aware CI has no usable parent SHA; fail closed by enabling every change class."
+                else
+                  CHANGE_JSON="$(git -c core.quotePath=false diff --name-only -z "$PARENT_SHA" "$GITHUB_SHA" | node tools/change-classifier.mjs --stdin0)"
+                  emit_classification "$CHANGE_JSON"
+                  echo "Change-aware CI: $(jq -c '{installer,ui,settingsUi,settingsSource,nativeSource,pagesPayload,pagesLive,workflowPolicy}' <<<"$CHANGE_JSON")"
+                fi
+                ;;
+              ui) emit relevant true; emit ui true ;;
+              settings-matrix) emit relevant true; emit ui true; emit settings_ui true ;;
+              settings-evidence) emit relevant true; emit ui true; emit settings_ui true; emit settings_source true; emit native_source true; emit pages_payload true ;;
+              native-surfaces) emit relevant true; emit ui true; emit native_source true; emit pages_payload true ;;
+              candidate) emit relevant true; emit_all_true ;;
+              smoke) emit relevant true ;;
               *) echo "Unknown validation mode: ${VALIDATION_MODE:-}" >&2; exit 1 ;;
             esac
             echo "Explicit validation dispatch is CI-relevant; keep the downstream dependency chain runnable."
@@ -339,7 +363,7 @@ jobs:
   installer_lifecycle_linux:
     name: Linux installer lifecycle
     needs: classify
-    if: ${{ always() && (github.event_name == 'workflow_dispatch' || needs.classify.outputs.installer == 'true') }}
+    if: ${{ always() && ((github.event_name == 'push' && needs.classify.outputs.installer == 'true') || (github.event_name == 'workflow_dispatch' && (inputs.validation_mode == 'smoke' || inputs.validation_mode == 'candidate' || (inputs.validation_mode == 'change-aware' && needs.classify.outputs.installer == 'true')))) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -353,7 +377,7 @@ jobs:
   installer_lifecycle_windows:
     name: Windows installer lifecycle
     needs: classify
-    if: ${{ always() && (github.event_name == 'workflow_dispatch' || needs.classify.outputs.installer == 'true') }}
+    if: ${{ always() && ((github.event_name == 'push' && needs.classify.outputs.installer == 'true') || (github.event_name == 'workflow_dispatch' && (inputs.validation_mode == 'smoke' || inputs.validation_mode == 'candidate' || (inputs.validation_mode == 'change-aware' && needs.classify.outputs.installer == 'true')))) }}
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
@@ -366,9 +390,9 @@ jobs:
 
   ui_browser:
     name: Linux semantic UI · ${{ matrix.suite.name }}
-    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'ui' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[ui]')) }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/dev' && (inputs.validation_mode == 'ui' || (inputs.validation_mode == 'change-aware' && needs.classify.outputs.ui == 'true'))) || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[ui]')) }}
     runs-on: ubuntu-24.04
-    needs: smoke
+    needs: [classify, smoke]
     strategy:
       fail-fast: false
       max-parallel: 8
@@ -423,10 +447,10 @@ jobs:
 
   settings_browser_matrix:
     name: qB admitted Settings browser shard ${{ matrix.shard }}
-    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'settings-matrix' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[settings-matrix]')) }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/dev' && (inputs.validation_mode == 'settings-matrix' || (inputs.validation_mode == 'change-aware' && needs.classify.outputs.settings_ui == 'true'))) || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[settings-matrix]')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    needs: smoke
+    needs: [classify, smoke]
     strategy:
       fail-fast: false
       max-parallel: 16
@@ -466,7 +490,7 @@ jobs:
 
   settings_browser_matrix_aggregate:
     name: qB admitted Settings browser aggregate
-    if: ${{ always() && ((github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'settings-matrix' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[settings-matrix]'))) }}
+    if: ${{ always() && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/dev' && inputs.validation_mode == 'settings-matrix') || (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'change-aware' && needs.settings_browser_matrix.result == 'success') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[settings-matrix]'))) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     needs:
@@ -1112,7 +1136,7 @@ jobs:
 
   native_surface_source_base:
     name: qB native surface source base
-    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'native-surfaces' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && (contains(github.event.head_commit.message, '[native-surfaces]') || contains(github.event.head_commit.message, '[detail-runtime-materialize]'))) }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/dev' && (inputs.validation_mode == 'native-surfaces' || (inputs.validation_mode == 'change-aware' && needs.classify.outputs.native_source == 'true'))) || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && (contains(github.event.head_commit.message, '[native-surfaces]') || contains(github.event.head_commit.message, '[detail-runtime-materialize]'))) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     needs: classify
@@ -1215,7 +1239,7 @@ jobs:
 
   native_surface_preferences:
     name: qB Preferences source shard ${{ matrix.shard }}
-    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'native-surfaces' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[native-surfaces]')) }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/dev' && (inputs.validation_mode == 'native-surfaces' || inputs.validation_mode == 'change-aware')) || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[native-surfaces]')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     needs: native_surface_source_base
@@ -1260,7 +1284,7 @@ jobs:
 
   native_surface_source:
     name: qB native surface source admission
-    if: ${{ always() && ((github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'native-surfaces' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[native-surfaces]'))) }}
+    if: ${{ always() && ((github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'native-surfaces' && github.ref == 'refs/heads/dev') || (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'change-aware' && needs.native_surface_source_base.result == 'success' && needs.native_surface_preferences.result == 'success') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[native-surfaces]'))) }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs:
@@ -1430,10 +1454,15 @@ jobs:
             exit 0
           fi
 
-          for mode in ui settings-matrix settings-evidence native-surfaces; do
-            jq -n --arg ref dev --arg mode "$mode"               '{ref:$ref,inputs:{validation_mode:$mode}}'               | gh api --method POST "/repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/dispatches" --input -
-            echo "Dispatched CI $mode for dev@$TARGET_SHA."
-          done
+          jq -n --arg ref dev '{ref:$ref,inputs:{validation_mode:"change-aware"}}' \
+            | gh api --method POST "/repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/dispatches" --input -
+          echo "Dispatched one change-aware CI owner for generated dev@$TARGET_SHA."
+
+          if [ -n "$STABLE_RUNTIME_SHA" ]; then
+            jq -n --arg ref dev '{ref:$ref,inputs:{validation_mode:"settings-evidence"}}' \
+              | gh api --method POST "/repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/dispatches" --input -
+            echo "Frozen LKG changed on $TARGET_SHA; retained the dedicated Settings source-evidence owner."
+          fi
 
           jq -n --arg ref dev             '{ref:$ref,inputs:{mode:"change-aware"}}'             | gh api --method POST "/repos/$GITHUB_REPOSITORY/actions/workflows/pages-source.yml/dispatches" --input -
           echo "Dispatched change-aware Virtual qB Pages Source for dev@$TARGET_SHA."
