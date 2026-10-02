@@ -40,24 +40,37 @@ export function buildOwnedCopyProfileShard(registryText,qbVersion){
   const selectedBindings=bindingLines.filter(line=>line.split('\t')[1]===bindingId);
   if(!selectedBindings.length)throw new Error(`qB-owned copy registry has no binding ${bindingId} for ${wanted}`);
 
-  const neededSets=new Set(),neededTokens=new Set();
-  function visitSet(id,trail=new Set()){
-    if(!id||id==='-'||neededSets.has(id))return;
+  const resolvedSets=new Map();
+  function resolveSet(id,trail=new Set()){
+    if(!id||id==='-')return new Set();
+    if(resolvedSets.has(id))return new Set(resolvedSets.get(id));
     if(trail.has(id))throw new Error(`Cyclic qB-owned bridge set ${id}`);
     const def=sets.get(id);if(!def)throw new Error(`Missing qB-owned bridge set ${id} for ${wanted}`);
-    const next=new Set(trail);next.add(id);
-    if(def.parent)visitSet(def.parent,next);
-    neededSets.add(id);
-    for(const token of [...def.add,...def.remove])neededTokens.add(token);
+    const next=new Set(trail);next.add(id),active=def.parent?resolveSet(def.parent,next):new Set();
+    for(const token of def.remove)active.delete(token);
+    for(const token of def.add)active.add(token);
+    const resolved=[...active].sort((a,b)=>parseInt(a,36)-parseInt(b,36));
+    resolvedSets.set(id,resolved);
+    return new Set(resolved);
   }
-  for(const line of selectedBridges){const setId=line.split('\t')[3];if(setId&&setId!=='-')visitSet(setId);}
+
+  const selectedSetIds=new Set(),neededTokens=new Set();
+  for(const line of selectedBridges){
+    const setId=line.split('\t')[3];
+    if(!setId||setId==='-')continue;
+    selectedSetIds.add(setId);
+    for(const token of resolveSet(setId))neededTokens.add(token);
+  }
 
   const valueLines=[];
   for(const token of [...neededTokens].sort((a,b)=>parseInt(a,36)-parseInt(b,36))){
     const line=values.get(token);if(!line)throw new Error(`Missing qB-owned bridge value ${token} for ${wanted}`);
     valueLines.push(line);
   }
-  const setLines=[...neededSets].sort().map(id=>sets.get(id).line);
+  const setLines=[...selectedSetIds].sort().map((id)=>{
+    const tokens=[...resolveSet(id)].sort((a,b)=>parseInt(a,36)-parseInt(b,36));
+    return `@@SET\t${id}\t-\t${tokens.join(',')}\t`;
+  });
   return [
     '# WeiG qB-owned copy runtime IR v3 profile shard',
     profileLine,
