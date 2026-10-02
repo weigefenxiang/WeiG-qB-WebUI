@@ -46,7 +46,7 @@ function expressionPresentationRule(expression){
 }
 function compareSentinel(left,operator,right){if(operator==='==='||operator==='==')return left===right;if(operator==='!=='||operator==='!=')return left!==right;if(operator==='>=')return left>=right;if(operator==='<=')return left<=right;if(operator==='>')return left>right;if(operator==='<')return left<right;return false;}
 function sentinelPresentationRule(scope,field,kind){
-  const text=String(scope||''),escaped=escapeRe(field),re=new RegExp(`\\bdata\\.${escaped}\\s*(===|==|!==|!=|>=|<=|>|<)\\s*(-?\\d+(?:\\.\\d+)?|\"\"|'')\\s*\\?\\s*([^:;]+?)\\s*:\\s*([^;]+)`,'g'),left=kind==='empty'?'':-1;
+  const text=String(scope||''),escaped=escapeRe(field),re=new RegExp(`\\bdata\\.${escaped}\\s*(===|==|!==|!=|>=|<=|>|<)\\s*(-?\\d+(?:\\.\\d+)?|\"\"|'')\\s*\\)*\\s*\\?\\s*([^:;]+?)\\s*:\\s*([^;]+)`,'g'),left=kind==='empty'?'':-1;
   for(const match of text.matchAll(re)){const token=match[2],right=token==='""'||token==="''"?'':Number(token),branch=compareSentinel(left,match[1],right)?match[3]:match[4],rule=expressionPresentationRule(branch);if(rule)return rule;}
   return sourcePresentationRule(text);
 }
