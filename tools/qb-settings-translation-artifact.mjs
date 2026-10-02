@@ -6,6 +6,7 @@ import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {applyQbSettingsTranslationLkg,buildQbSettingsTranslationLkg} from './qb-settings-translation-lkg.mjs';
+import {artifactSourceSha,localSettingsEvidenceCompatibility} from './settings-evidence-compat.mjs';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const projectRoot=path.resolve(here,'..');
@@ -84,9 +85,26 @@ function saveLkg(lkg,source){
   console.log(`Resolved certified qB Settings/source v2 evidence from ${source}: ${lkg.profileCount} releases, ${stats.mapped} mappings, ${stats.columns} native columns, ${stats.trackerFilters} Tracker filter bindings, ${stats.detailUiBindings} detail UI bindings, ${stats.routes} narrow locale routes, ${stats.sets} translation sets, ${stats.recoveryRoutes} recovery routes / ${stats.recoveryLocales} locales -> ${output}`);
   return true;
 }
+function compatibleArtifactCandidates(artifacts,prefix){
+  const named=artifacts.filter(item=>String(item.name).startsWith(prefix)&&!incompatibleArtifactIds.has(item.id));
+  if(!sourceSha)return named;
+  const exactName=prefix+sourceSha,exact=named.filter(item=>String(item.name)===exactName),equivalent=[];
+  for(const artifact of named){
+    if(String(artifact.name)===exactName)continue;
+    const artifactSha=artifactSourceSha(artifact.name,prefix);
+    if(!artifactSha)continue;
+    const compatibility=localSettingsEvidenceCompatibility({ancestorSha:artifactSha,currentSha:sourceSha,cwd:projectRoot});
+    if(compatibility.compatible){
+      console.log(`Settings/source evidence reuse admitted: ${artifactSha} -> ${sourceSha} (${compatibility.reason}).`);
+      equivalent.push(artifact);
+    }else if(compatibility.reason==='settings-source-changed'){
+      console.log(`Settings/source evidence reuse rejected: ${artifactSha} -> ${sourceSha}; changed owner(s): ${compatibility.changedPaths.join(', ')}`);
+    }
+  }
+  return[...exact,...equivalent];
+}
 async function tryCertifiedArtifact(artifacts){
-  const expected=sourceSha?`qb-settings-translation-lkg-${sourceSha}`:'';
-  for(const artifact of artifacts.filter(item=>(expected?String(item.name)===expected:String(item.name).startsWith('qb-settings-translation-lkg-'))&&!incompatibleArtifactIds.has(item.id))){
+  for(const artifact of compatibleArtifactCandidates(artifacts,'qb-settings-translation-lkg-')){
     try{
       const dir=await downloadArtifact(artifact);
       const file=path.join(dir,'qb-settings-translation-lkg.json');
@@ -101,8 +119,7 @@ async function tryCertifiedArtifact(artifacts){
   return null;
 }
 async function tryBootstrapCatalog(artifacts){
-  const expected=sourceSha?`qb-release-catalog-${sourceSha}`:'';
-  for(const artifact of artifacts.filter(item=>(expected?String(item.name)===expected:String(item.name).startsWith('qb-release-catalog-'))&&!incompatibleArtifactIds.has(item.id))){
+  for(const artifact of compatibleArtifactCandidates(artifacts,'qb-release-catalog-')){
     try{
       const dir=await downloadArtifact(artifact);
       const file=path.join(dir,'qb-releases.json'),recoveryFile=path.join(dir,'qb-releases.recovery.json');
@@ -123,9 +140,9 @@ async function tryBootstrapCatalog(artifacts){
   }
   return null;
 }
-console.log(`Scanning up to ${ARTIFACT_MAX_PAGES*ARTIFACT_PAGE_SIZE} recent artifacts for ${sourceSha?`exact ${sourceSha} `:''}qB Settings/source v2 evidence.`);
+console.log(`Scanning up to ${ARTIFACT_MAX_PAGES*ARTIFACT_PAGE_SIZE} recent artifacts for ${sourceSha?`exact or Settings-source-equivalent ${sourceSha} `:''}qB Settings/source v2 evidence.`);
 const artifacts=await listArtifacts({maxPages:ARTIFACT_MAX_PAGES});
 if(await tryCertifiedArtifact(artifacts))process.exit(0);
 if(!certifiedOnly&&await tryBootstrapCatalog(artifacts))process.exit(0);
-const identity=sourceSha?` for exact source SHA ${sourceSha}`:'';
+const identity=sourceSha?` for exact or Settings-source-equivalent source SHA ${sourceSha}`:'';
 throw new Error(`No compatible certified Settings/source v2 LKG${certifiedOnly?'': ' or source-enriched bootstrap artifact'} is available${identity}. Evidence must be prepared before this resolver runs.`);

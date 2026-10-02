@@ -280,7 +280,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           ref: ${{ steps.dev.outputs.dev_sha }}
-          fetch-depth: 1
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Set up Node.js
@@ -311,10 +311,10 @@ jobs:
             --certified-only
           then
             echo "ready=true" >> "$GITHUB_OUTPUT"
-            echo "Exact-dev certified Settings evidence already exists for $DEV_SHA."
+            echo "Exact or Settings-source-equivalent certified Settings evidence is ready for $DEV_SHA."
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "Exact-dev certified Settings evidence is missing for $DEV_SHA; fan out 16 independent runners."
+            echo "No exact or Settings-source-equivalent certified Settings evidence exists for $DEV_SHA; fan out 16 independent runners."
           fi
 
   settings_evidence_shard:

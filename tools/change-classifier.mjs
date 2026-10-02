@@ -18,7 +18,12 @@ export function isPagesLiveVerifierPath(path){
 
 export function isSettingsSourcePath(path){
   path=normalizePath(path);
-  return /^tools\/qb-settings-.*\.mjs$/.test(path)
+  return [
+      'tools/change-classifier.mjs',
+      'tools/settings-evidence-compat.mjs',
+      'tools/qb-settings-translation-artifact.mjs'
+    ].includes(path)
+    || /^tools\/qb-settings-.*\.mjs$/.test(path)
     || /^tools\/qb-locale-.*\.mjs$/.test(path)
     || /^tools\/qb-release-catalog.*\.mjs$/.test(path)
     || [
