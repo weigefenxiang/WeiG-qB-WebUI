@@ -116,6 +116,8 @@ assert.deepEqual(materialized[0].torrentDetailUi.tabOrder,['overview','trackers'
 assert.equal(materialized[0].torrentDetailUi.tables.trackers[0].key,'url','Frozen materialization must restore exact Torrent detail UI facts before runtime packaging');
 assert.deepEqual(materialized[0].torrentDetailUi.propertyLayout[0].fields,[{id:'eta',valueSource:'properties',dataProperties:['eta']}],'Frozen materialization must restore exact General layout facts before runtime packaging');
 assert.equal(materialized[0].statisticsUi.groups[0].fields[0].format,'bytes','Frozen materialization must restore exact Statistics formatting semantics before compact runtime packaging');
+assert.deepEqual(materialized[0].webuiLocales,['en','de'],'Frozen materialization must restore the complete exact WebUI locale route set from certified translation routes');
+assert.deepEqual(materialized[1].webuiLocales,['en','de'],'every admitted profile must carry its exact locale routes into copy/QM packaging');
 assert.throws(()=>applyQbSettingsTranslationLkg(frozen,{...lkg,schemaVersion:1}),/schemaVersion 2/,'stale v1 Settings LKG must fail closed');
 const badTrackerFacetMode=structuredClone(enriched);badTrackerFacetMode[0].trackerFacetMode='guessed';
 assert.throws(()=>buildQbSettingsTranslationLkg(badTrackerFacetMode,frozen,{recoveryEvidence}),/Tracker facet mode is invalid/,'Tracker grouping behavior may not be guessed from version labels');

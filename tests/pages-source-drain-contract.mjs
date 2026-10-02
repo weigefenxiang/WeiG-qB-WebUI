@@ -25,8 +25,8 @@ assert(materializer.includes('name: qB admitted Settings copy/QM product materia
   'Pages source must own one narrowly scoped admitted current-product copy/QM materializer');
 assert(materializer.includes('qb-settings-translation-artifact.mjs')&&materializer.includes('--certified-only')&&materializer.includes('applyQbSettingsTranslationLkg')&&materializer.includes('qb-webui-catalog.mjs'),
   'admitted copy materializer must consume certified exact-dev source evidence and reuse canonical Settings/LKG packaging owners');
-assert(materializer.includes("Object.keys(fact?.translations||{})")&&materializer.includes('recoveryLocales')&&materializer.includes('recovery locale escaped exact Settings translation routes')&&materializer.includes('profile.webuiLocales=locales'),
-  'admitted copy materializer must restore the complete source-certified WebUI locale route set from frozen translation routes and keep recovery locales a checked subset');
+assert(!materializer.includes('profile.webuiLocales=')&&!materializer.includes('lkgByVersion=new Map'),
+  'Pages workflow must not duplicate exact locale-route reconstruction; applyQbSettingsTranslationLkg owns that materialization closure');
 assert(materializer.includes('qb-runtime-copy-materialization-contract.mjs')&&materializer.includes('webui/private/data/qb-settings-native.txt|webui/translations/webui_*.qm')&&materializer.includes('Unexpected admitted copy materializer path:'),
   'admitted copy materializer must prove source-to-runtime copy coherence and restrict writes to registry/QM product assets');
 assert(materializer.includes('git fetch --no-tags origin dev')&&materializer.includes('REMOTE_DEV_SHA')&&materializer.includes('handoff_latest_pages_source')&&materializer.includes('pages-source.yml/dispatches')&&materializer.includes('git push origin HEAD:dev'),

@@ -467,17 +467,8 @@ jobs:
           if(digest!==stable.catalogSha256)throw new Error('Admitted copy materializer Frozen catalog hash mismatch.');
           const frozen=JSON.parse(frozenText),lkg=JSON.parse(fs.readFileSync(process.env.LKG,'utf8'));
           const applied=applyQbSettingsTranslationLkg(frozen,lkg,{catalogSha256:digest});
-          const lkgByVersion=new Map((lkg.profiles||[]).map(profile=>[String(profile.qbVersion||''),profile]));
-          for(const profile of applied){
-            const fact=lkgByVersion.get(String(profile.qbVersion||''));
-            const locales=Object.keys(fact?.translations||{}).map(String).filter(Boolean);
-            const recovered=new Set((fact?.recoveryLocales||[]).map(String).filter(Boolean));
-            if(!locales.length)throw new Error(profile.qbVersion+': certified Settings/source LKG has no exact WebUI locale routes.');
-            for(const locale of recovered)if(!locales.includes(locale))throw new Error(profile.qbVersion+' '+locale+': recovery locale escaped exact Settings translation routes.');
-            profile.webuiLocales=locales;
-          }
           fs.writeFileSync(process.env.APPLIED_CATALOG,JSON.stringify(applied)+'\n','utf8');
-          console.log('Applied certified Settings/source evidence plus exact locale routes to '+applied.length+' admitted profiles.');
+          console.log('Applied certified Settings/source evidence to '+applied.length+' admitted exact profiles, including canonical locale routes.');
           NODE
           node tools/qb-webui-catalog.mjs \
             "$APPLIED_CATALOG" \
