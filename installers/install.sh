@@ -313,7 +313,7 @@ portable_mktemp_dir() {
   pm_i=0
   umask 077
   while [ "$pm_i" -lt 100 ]; do
-    pm_candidate="$pm_base/weig-qb-webui-$pm_i"
+    pm_candidate="$pm_base/weig-qb-webui-$$-$pm_i"
     if mkdir "$pm_candidate" 2>/dev/null; then
       printf '%s\n' "$pm_candidate"
       return 0
@@ -336,7 +336,7 @@ portable_mktemp_file() {
   pm_i=0
   umask 077
   while [ "$pm_i" -lt 100 ]; do
-    pm_candidate="$pm_dir/$pm_prefix-$pm_i"
+    pm_candidate="$pm_dir/$pm_prefix-$$-$pm_i"
     pm_lock="$pm_candidate.lock"
     if mkdir "$pm_lock" 2>/dev/null; then
       if : > "$pm_candidate"; then
