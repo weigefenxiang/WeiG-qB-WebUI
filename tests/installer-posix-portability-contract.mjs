@@ -12,9 +12,10 @@ for(const [label,re] of [
 ]) assert.doesNotMatch(sh,re,label);
 assert.match(sh,/portable_mktemp_dir\(\)[\s\S]*command -v mktemp[\s\S]*has_busybox_applet mktemp[\s\S]*pm_candidate="\$pm_base\/weig-qb-webui-\$\$-\$pm_i"[\s\S]*mkdir "\$pm_candidate"/,'fallback temp directories must include the process id to avoid cross-process collisions');
 assert.match(sh,/portable_mktemp_file\(\)[\s\S]*command -v mktemp[\s\S]*has_busybox_applet mktemp[\s\S]*pm_candidate="\$pm_dir\/\$pm_prefix-\$\$-\$pm_i"[\s\S]*mkdir "\$pm_lock"/,'fallback temp files must include the process id before the lock claim');
-assert.match(sh,/download_file\(\)[\s\S]*command -v curl[\s\S]*command -v wget[\s\S]*has_busybox_applet wget[\s\S]*command -v python3/s);
-assert.match(sh,/extract_zip\(\)[\s\S]*command -v unzip[\s\S]*has_busybox_applet unzip[\s\S]*command -v bsdtar[\s\S]*command -v python3/s);
+assert.match(sh,/download_file\(\)[\s\S]*if curl -fL[\s\S]*rm -f "\$out"[\s\S]*if wget -q[\s\S]*has_busybox_applet wget[\s\S]*command -v python3/s,'download owner must fail over across available providers and clear partial output');
+assert.match(sh,/extract_zip\(\)[\s\S]*if unzip -q[\s\S]*rm -rf "\$target"[\s\S]*has_busybox_applet unzip[\s\S]*command -v bsdtar[\s\S]*command -v python3/s,'ZIP owner must fail over after an incompatible extractor without retaining a partial tree');
 assert.match(sh,/sha256_file\(\)[\s\S]*sha256sum[\s\S]*has_busybox_applet sha256sum[\s\S]*shasum[\s\S]*openssl[\s\S]*python3/s);
+assert.match(sh,/backup_sha256\(\)[\s\S]*sha256_file "\$backup_hash_file"/s,'backup integrity must reuse the same capability-driven SHA-256 owner instead of maintaining a second provider chain');
 assert.match(sh,/owned_backups_for_dest\(\)[\s\S]*for backup in "\$BACKUPS"\/\*/s);
 assert.match(sh,/inject_build_sha\(\)[\s\S]*sed "s\/__WEIG_GIT_SHA__[\s\S]*mv "\$inject_tmp" "\$inject_file"/s);
 console.log('Installer POSIX portability contract passed.');

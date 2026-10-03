@@ -356,27 +356,30 @@ download_file() {
   url=$1
   out=$2
   if command -v curl >/dev/null 2>&1; then
-    curl -fL "$url" -o "$out"
-    return
+    if curl -fL "$url" -o "$out"; then return 0; fi
+    rm -f "$out"
   fi
   if command -v wget >/dev/null 2>&1; then
-    wget -q "$url" -O "$out"
-    return
+    if wget -q "$url" -O "$out"; then return 0; fi
+    rm -f "$out"
   fi
   if has_busybox_applet wget; then
-    busybox wget -O "$out" "$url" >/dev/null
-    return
+    if busybox wget -O "$out" "$url" >/dev/null 2>&1; then return 0; fi
+    rm -f "$out"
   fi
   if command -v python3 >/dev/null 2>&1; then
-    python3 - "$url" "$out" <<'PY'
+    if python3 - "$url" "$out" <<'PY'
 import shutil, sys, urllib.request
 req=urllib.request.Request(sys.argv[1], headers={'User-Agent':'WeiG-qB-WebUI-installer'})
 with urllib.request.urlopen(req, timeout=60) as src, open(sys.argv[2], 'wb') as dst:
     shutil.copyfileobj(src, dst)
 PY
-    return
+    then
+      return 0
+    fi
+    rm -f "$out"
   fi
-  echo "No supported downloader found. Install curl/wget, use BusyBox/Python, or download the package in a browser." >&2
+  echo "No supported downloader succeeded. Install curl/wget, use BusyBox/Python, or download the package in a browser." >&2
   return 127
 }
 
@@ -385,33 +388,46 @@ extract_zip() {
   target=$2
   mkdir -p "$target"
   if command -v unzip >/dev/null 2>&1; then
-    unzip -q "$archive" -d "$target"
-    return
+    if unzip -q "$archive" -d "$target"; then return 0; fi
+    rm -rf "$target"; mkdir -p "$target"
   fi
   if has_busybox_applet unzip; then
-    busybox unzip "$archive" -d "$target" >/dev/null
-    return
+    if busybox unzip "$archive" -d "$target" >/dev/null 2>&1; then return 0; fi
+    rm -rf "$target"; mkdir -p "$target"
   fi
   if command -v bsdtar >/dev/null 2>&1; then
-    bsdtar -xf "$archive" -C "$target"
-    return
+    if bsdtar -xf "$archive" -C "$target"; then return 0; fi
+    rm -rf "$target"; mkdir -p "$target"
   fi
   if command -v python3 >/dev/null 2>&1; then
-    python3 -m zipfile -e "$archive" "$target"
-    return
+    if python3 -m zipfile -e "$archive" "$target"; then return 0; fi
+    rm -rf "$target"; mkdir -p "$target"
   fi
-  echo "No supported ZIP extractor found. Install unzip, use BusyBox/Python/bsdtar, or extract the package manually." >&2
+  echo "No supported ZIP extractor succeeded. Install unzip, use BusyBox/Python/bsdtar, or extract the package manually." >&2
   return 127
 }
 
 sha256_file() {
   file=$1
-  if command -v sha256sum >/dev/null 2>&1; then sha256sum "$file" | awk '{print $1}'; return; fi
-  if has_busybox_applet sha256sum; then busybox sha256sum "$file" | awk '{print $1}'; return; fi
-  if command -v shasum >/dev/null 2>&1; then shasum -a 256 "$file" | awk '{print $1}'; return; fi
-  if command -v openssl >/dev/null 2>&1; then openssl dgst -sha256 "$file" | awk '{print $NF}'; return; fi
+  digest=""
+  if command -v sha256sum >/dev/null 2>&1; then
+    digest=$(sha256sum "$file" 2>/dev/null | awk 'NR==1{print $1}' || true)
+    if printf '%s' "$digest" | grep -Eq '^[0-9a-fA-F]{64}$'; then printf '%s\n' "$digest"; return 0; fi
+  fi
+  if has_busybox_applet sha256sum; then
+    digest=$(busybox sha256sum "$file" 2>/dev/null | awk 'NR==1{print $1}' || true)
+    if printf '%s' "$digest" | grep -Eq '^[0-9a-fA-F]{64}$'; then printf '%s\n' "$digest"; return 0; fi
+  fi
+  if command -v shasum >/dev/null 2>&1; then
+    digest=$(shasum -a 256 "$file" 2>/dev/null | awk 'NR==1{print $1}' || true)
+    if printf '%s' "$digest" | grep -Eq '^[0-9a-fA-F]{64}$'; then printf '%s\n' "$digest"; return 0; fi
+  fi
+  if command -v openssl >/dev/null 2>&1; then
+    digest=$(openssl dgst -sha256 "$file" 2>/dev/null | awk 'NR==1{print $NF}' || true)
+    if printf '%s' "$digest" | grep -Eq '^[0-9a-fA-F]{64}$'; then printf '%s\n' "$digest"; return 0; fi
+  fi
   if command -v python3 >/dev/null 2>&1; then
-    python3 - "$file" <<'PY'
+    digest=$(python3 - "$file" <<'PY' 2>/dev/null || true
 import hashlib, sys
 h=hashlib.sha256()
 with open(sys.argv[1], 'rb') as f:
@@ -419,12 +435,12 @@ with open(sys.argv[1], 'rb') as f:
         h.update(chunk)
 print(h.hexdigest())
 PY
-    return
+)
+    if printf '%s' "$digest" | grep -Eq '^[0-9a-fA-F]{64}$'; then printf '%s\n' "$digest"; return 0; fi
   fi
-  echo "No SHA256 implementation found; refusing an unverified Release installation." >&2
+  echo "No SHA256 implementation succeeded; refusing an unverified Release installation." >&2
   return 127
 }
-
 verify_release_checksum() {
   sums=$1
   package=$2
@@ -1034,21 +1050,9 @@ qb_root_for_target() {
 
 backup_sha256() {
   backup_hash_file=$1
-  if command -v sha256sum >/dev/null 2>&1; then
-    sha256sum "$backup_hash_file" | awk '{print tolower($1)}'
-    return $?
-  fi
-  if command -v shasum >/dev/null 2>&1; then
-    shasum -a 256 "$backup_hash_file" | awk '{print tolower($1)}'
-    return $?
-  fi
-  if command -v openssl >/dev/null 2>&1; then
-    openssl dgst -sha256 "$backup_hash_file" 2>/dev/null | awk '{print tolower($NF)}'
-    return $?
-  fi
-  return 1
+  backup_hash=$(sha256_file "$backup_hash_file") || return 1
+  printf '%s\n' "$backup_hash" | tr 'A-F' 'a-f'
 }
-
 write_backup_manifest() {
   backup_manifest_root=$1
   backup_manifest_format=$2
