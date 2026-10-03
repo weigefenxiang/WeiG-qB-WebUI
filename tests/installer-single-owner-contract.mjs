@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const sh=fs.readFileSync(new URL('../installers/install.sh',import.meta.url),'utf8');
+const count=s=>sh.split(s).length-1;
+assert.equal(count('map_docker_destination()'),1,'Docker destination must have one active owner.');
+assert.equal(count('STATE="${HOME}/.config/weig_qb-webui"'),1,'installer state root must be initialized once.');
+assert.equal(count('PACKAGE=""'),1,'payload lifecycle must not be duplicated.');
+assert.ok(sh.split(/\r?\n/).length<1750,'installer source unexpectedly contains a duplicated lifecycle tail.');
+assert.match(sh,/docker_canonical="\$DOCKER_CONFIG_ROOT\/weig-qb-webui"[\s\S]*docker_legacy="\$DOCKER_CONFIG_ROOT\/weig_qb-webui"[\s\S]*Using existing legacy Docker install directory/);
+assert.match(sh,/QBT_ROOT_FOLDER="\/config\/weig-qb-webui"/,'new Docker installs must use canonical lowercase hyphen root.');
+console.log('Installer single-owner contract passed: duplicated lifecycle tail retired and Docker defaults migrate safely.');
