@@ -33,8 +33,8 @@ const unzip=entry=>{
   return result.stdout.replace(/[\r\n]+$/g,'');
 };
 const packageSha256=crypto.createHash('sha256').update(fs.readFileSync(packageFile)).digest('hex');
-const packageGitSha=unzip('WeiG-qB-WebUI/GIT_SHA').toLowerCase();
-const packageVersion=unzip('WeiG-qB-WebUI/VERSION');
+const packageGitSha=unzip('weig-qb-webui/GIT_SHA').toLowerCase();
+const packageVersion=unzip('weig-qb-webui/VERSION');
 assert(packageGitSha===sha,'candidate package GIT_SHA does not match exact SHA');
 assert(packageVersion===version,'candidate package VERSION does not match repository VERSION');
 
@@ -46,7 +46,7 @@ assert(evidence.candidate?.version===version,'candidate deployment evidence VERS
 assert(String(evidence.candidate?.packageSha256||'').toLowerCase()===packageSha256,'candidate deployment evidence package SHA256 mismatch');
 
 const deploymentChecks=[
-  'candidateSha','packageGitSha','packageSha256','installerReleasePath','exactCandidateInstallers','officialDockerConfig',
+  'candidateSha','packageGitSha','packageSha256','artifactSetSha256','installerReleasePath','exactCandidateInstallers','officialDockerConfig',
   'compactRuntimeFiles','frozenCatalogIdentity','sourceProvenPreferences','installMetadata','qbConfigWrite','realWebuiServe','exactBuildSha',
   'browserLogin','canonicalSettings','localeRoundTrip','alternativeWebuiPath'
 ];

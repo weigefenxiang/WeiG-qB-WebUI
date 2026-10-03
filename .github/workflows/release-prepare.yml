@@ -183,7 +183,9 @@ jobs:
           set -euo pipefail
           test "$(tr -d '\r\n' < candidate/CANDIDATE_SHA)" = "$SHA"
           (cd candidate && sha256sum -c SHA256SUMS)
-          PACKAGE_SHA="$(sha256sum candidate/WeiG-qB-WebUI.zip | awk '{print $1}')"
+          PACKAGE_SHA="$(sha256sum candidate/weig-qb-webui.zip | awk '{print $1}')"
+          TAR_SHA="$(sha256sum candidate/weig-qb-webui.tar.gz | awk '{print $1}')"
+          MANIFEST_SHA="$(sha256sum candidate/manifest.json | awk '{print $1}')"
           node tools/release-notes.mjs \
             --to "$SHA" \
             --repository "$GITHUB_REPOSITORY" \
@@ -193,7 +195,9 @@ jobs:
             echo "# WeiG qB WebUI $VERSION · Release Preview"
             echo
             echo "- FINAL_DEV_SHA: \`$SHA\`"
-            echo "- Candidate SHA256: \`$PACKAGE_SHA\`"
+            echo "- Candidate ZIP SHA256: \`$PACKAGE_SHA\`"
+            echo "- Candidate tar.gz SHA256: \`$TAR_SHA\`"
+            echo "- Candidate manifest SHA256: \`$MANIFEST_SHA\`"
             echo "- CI / Pages / Candidate / Deployment / Session / Full Frozen 65 / Locale 61: PASS"
             echo
             cat release-notes-preview.md

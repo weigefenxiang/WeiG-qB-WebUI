@@ -6,18 +6,20 @@ CANDIDATE_DIR=${1:?candidate artifact directory is required}
 EVIDENCE_FILE=${2:?candidate deployment evidence file is required}
 CANDIDATE_DIR=$(cd "$CANDIDATE_DIR" && pwd)
 EVIDENCE_FILE=$(cd "$(dirname "$EVIDENCE_FILE")" && pwd)/$(basename "$EVIDENCE_FILE")
-PACKAGE="$CANDIDATE_DIR/WeiG-qB-WebUI.zip"
+PACKAGE="$CANDIDATE_DIR/weig-qb-webui.zip"
+TAR_PACKAGE="$CANDIDATE_DIR/weig-qb-webui.tar.gz"
+MANIFEST="$CANDIDATE_DIR/manifest.json"
 SUMS="$CANDIDATE_DIR/SHA256SUMS"
 CANDIDATE_SHA_FILE="$CANDIDATE_DIR/CANDIDATE_SHA"
-LINUX_INSTALLER="$CANDIDATE_DIR/weig-install.sh"
-WINDOWS_INSTALLER="$CANDIDATE_DIR/weig-install.ps1"
+LINUX_INSTALLER="$CANDIDATE_DIR/install.sh"
+WINDOWS_INSTALLER="$CANDIDATE_DIR/install.ps1"
 
 command -v git >/dev/null || { echo 'git is required' >&2; exit 2; }
 command -v node >/dev/null || { echo 'node is required' >&2; exit 2; }
 command -v unzip >/dev/null || { echo 'unzip is required' >&2; exit 2; }
 command -v sha256sum >/dev/null || { echo 'sha256sum is required' >&2; exit 2; }
 command -v cmp >/dev/null || { echo 'cmp is required' >&2; exit 2; }
-[[ -s "$PACKAGE" && -s "$SUMS" && -s "$CANDIDATE_SHA_FILE" && -s "$LINUX_INSTALLER" && -s "$WINDOWS_INSTALLER" && -s "$EVIDENCE_FILE" ]] || { echo 'Promotion rehearsal inputs are incomplete.' >&2; exit 2; }
+[[ -s "$PACKAGE" && -s "$TAR_PACKAGE" && -s "$MANIFEST" && -s "$SUMS" && -s "$CANDIDATE_SHA_FILE" && -s "$LINUX_INSTALLER" && -s "$WINDOWS_INSTALLER" && -s "$EVIDENCE_FILE" ]] || { echo 'Promotion rehearsal inputs are incomplete.' >&2; exit 2; }
 
 CANDIDATE_SHA=$(tr -d '\r\n' < "$CANDIDATE_SHA_FILE" | tr 'A-F' 'a-f')
 EXPECTED_SHA=${GITHUB_SHA:-$CANDIDATE_SHA}
@@ -27,10 +29,12 @@ EXPECTED_SHA=$(printf '%s' "$EXPECTED_SHA" | tr 'A-F' 'a-f')
 cmp -s "$LINUX_INSTALLER" "$ROOT/installers/install.sh" || { echo 'Promotion rehearsal Linux installer does not match exact candidate source.' >&2; exit 1; }
 cmp -s "$WINDOWS_INSTALLER" "$ROOT/installers/install.ps1" || { echo 'Promotion rehearsal Windows installer does not match exact candidate source.' >&2; exit 1; }
 
-VERSION=$(unzip -p "$PACKAGE" WeiG-qB-WebUI/VERSION 2>/dev/null | tr -d '\r\n')
-PACKAGE_GIT_SHA=$(unzip -p "$PACKAGE" WeiG-qB-WebUI/GIT_SHA 2>/dev/null | tr -d '\r\n' | tr 'A-F' 'a-f')
+VERSION=$(unzip -p "$PACKAGE" weig-qb-webui/VERSION 2>/dev/null | tr -d '\r\n')
+PACKAGE_GIT_SHA=$(unzip -p "$PACKAGE" weig-qb-webui/GIT_SHA 2>/dev/null | tr -d '\r\n' | tr 'A-F' 'a-f')
 PACKAGE_SUM=$(sha256sum "$PACKAGE" | awk '{print $1}' | tr 'A-F' 'a-f')
-EXPECTED_SUM=$(awk '$2=="WeiG-qB-WebUI.zip" || $2=="*WeiG-qB-WebUI.zip" {print $1; exit}' "$SUMS" | tr 'A-F' 'a-f')
+EXPECTED_SUM=$(awk '$2=="weig-qb-webui.zip" || $2=="*weig-qb-webui.zip" {print $1; exit}' "$SUMS" | tr 'A-F' 'a-f')
+TAR_SUM=$(sha256sum "$TAR_PACKAGE" | awk '{print $1}' | tr 'A-F' 'a-f')
+MANIFEST_SUM=$(sha256sum "$MANIFEST" | awk '{print $1}' | tr 'A-F' 'a-f')
 [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Promotion rehearsal VERSION is invalid.' >&2; exit 1; }
 [[ "$PACKAGE_GIT_SHA" == "$CANDIDATE_SHA" ]] || { echo 'Promotion rehearsal package GIT_SHA mismatch.' >&2; exit 1; }
 [[ "$EXPECTED_SUM" =~ ^[0-9a-f]{64}$ && "$PACKAGE_SUM" == "$EXPECTED_SUM" ]] || { echo 'Promotion rehearsal candidate SHA256 mismatch.' >&2; exit 1; }
@@ -90,17 +94,21 @@ SIM_TAG=$(git -C "$SIM_REPO" rev-parse "refs/tags/v$VERSION" | tr 'A-F' 'a-f')
 
 # A release must publish byte-identical candidate files, never rebuild them.
 mkdir -p "$PUBLISHED"
-cp "$PACKAGE" "$PUBLISHED/WeiG-qB-WebUI.zip"
+cp "$PACKAGE" "$PUBLISHED/weig-qb-webui.zip"
+cp "$TAR_PACKAGE" "$PUBLISHED/weig-qb-webui.tar.gz"
+cp "$MANIFEST" "$PUBLISHED/manifest.json"
 cp "$SUMS" "$PUBLISHED/SHA256SUMS"
 cp "$CANDIDATE_SHA_FILE" "$PUBLISHED/CANDIDATE_SHA"
-cp "$LINUX_INSTALLER" "$PUBLISHED/weig-install.sh"
-cp "$WINDOWS_INSTALLER" "$PUBLISHED/weig-install.ps1"
-cmp -s "$PACKAGE" "$PUBLISHED/WeiG-qB-WebUI.zip"
+cp "$LINUX_INSTALLER" "$PUBLISHED/install.sh"
+cp "$WINDOWS_INSTALLER" "$PUBLISHED/install.ps1"
+cmp -s "$PACKAGE" "$PUBLISHED/weig-qb-webui.zip"
+cmp -s "$TAR_PACKAGE" "$PUBLISHED/weig-qb-webui.tar.gz"
+cmp -s "$MANIFEST" "$PUBLISHED/manifest.json"
 cmp -s "$SUMS" "$PUBLISHED/SHA256SUMS"
 cmp -s "$CANDIDATE_SHA_FILE" "$PUBLISHED/CANDIDATE_SHA"
-cmp -s "$LINUX_INSTALLER" "$PUBLISHED/weig-install.sh"
-cmp -s "$WINDOWS_INSTALLER" "$PUBLISHED/weig-install.ps1"
-PUBLISHED_SUM=$(sha256sum "$PUBLISHED/WeiG-qB-WebUI.zip" | awk '{print $1}' | tr 'A-F' 'a-f')
+cmp -s "$LINUX_INSTALLER" "$PUBLISHED/install.sh"
+cmp -s "$WINDOWS_INSTALLER" "$PUBLISHED/install.ps1"
+PUBLISHED_SUM=$(sha256sum "$PUBLISHED/weig-qb-webui.zip" | awk '{print $1}' | tr 'A-F' 'a-f')
 [[ "$PUBLISHED_SUM" == "$PACKAGE_SUM" ]] || { echo 'Simulated release artifact bytes changed.' >&2; exit 1; }
 
 # Rehearse rollback only inside the temporary bare repository.
@@ -117,7 +125,7 @@ REMOTE_TAG_AFTER=$(git ls-remote origin "refs/tags/v$VERSION" | awk 'NR==1{print
 [[ "$REMOTE_DEV_AFTER" == "$REMOTE_DEV_BEFORE" ]] || { echo 'Remote dev changed during isolated rehearsal.' >&2; exit 1; }
 [[ "$REMOTE_TAG_AFTER" == "$REMOTE_TAG_BEFORE" ]] || { echo 'Remote stable tag state changed during isolated rehearsal.' >&2; exit 1; }
 
-export EVIDENCE_FILE CANDIDATE_SHA VERSION PACKAGE_SUM MAIN_BEFORE DEV_BEFORE SIM_MAIN_PROMOTED SIM_TAG SIM_MAIN_ROLLED_BACK REMOTE_MAIN_AFTER REMOTE_DEV_AFTER
+export EVIDENCE_FILE CANDIDATE_SHA VERSION PACKAGE_SUM TAR_SUM MANIFEST_SUM MAIN_BEFORE DEV_BEFORE SIM_MAIN_PROMOTED SIM_TAG SIM_MAIN_ROLLED_BACK REMOTE_MAIN_AFTER REMOTE_DEV_AFTER
 node <<'NODE'
 const fs=require('node:fs');
 const file=process.env.EVIDENCE_FILE;
@@ -128,6 +136,8 @@ evidence.promotionReleaseRehearsal={
   candidateSha:process.env.CANDIDATE_SHA,
   version:process.env.VERSION,
   packageSha256:process.env.PACKAGE_SUM,
+  tarGzSha256:process.env.TAR_SUM,
+  manifestSha256:process.env.MANIFEST_SUM,
   mainBefore:process.env.MAIN_BEFORE,
   devBefore:process.env.DEV_BEFORE,
   simulatedMainAfterPromotion:process.env.SIM_MAIN_PROMOTED,

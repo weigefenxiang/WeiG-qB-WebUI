@@ -265,23 +265,25 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="$(tr -d '\r\n' < VERSION)"
-          test -f candidate/WeiG-qB-WebUI.zip
+          test -f candidate/weig-qb-webui.zip
+          test -f candidate/weig-qb-webui.tar.gz
+          test -f candidate/manifest.json
           test -f candidate/SHA256SUMS
           test -f candidate/CANDIDATE_SHA
-          test -f candidate/weig-install.sh
-          test -f candidate/weig-install.ps1
+          test -f candidate/install.sh
+          test -f candidate/install.ps1
           test -f evidence/candidate.json
           test "$(tr -d '\r\n' < candidate/CANDIDATE_SHA)" = "$CANDIDATE_SHA"
           (cd candidate && sha256sum -c SHA256SUMS)
-          cmp -s candidate/weig-install.sh installers/install.sh
-          cmp -s candidate/weig-install.ps1 installers/install.ps1
-          bash -n candidate/weig-install.sh
-          test "$(unzip -p candidate/WeiG-qB-WebUI.zip WeiG-qB-WebUI/GIT_SHA | tr -d '\r\n')" = "$CANDIDATE_SHA"
-          test "$(unzip -p candidate/WeiG-qB-WebUI.zip WeiG-qB-WebUI/VERSION | tr -d '\r\n')" = "$VERSION"
+          cmp -s candidate/install.sh installers/install.sh
+          cmp -s candidate/install.ps1 installers/install.ps1
+          bash -n candidate/install.sh
+          test "$(unzip -p candidate/weig-qb-webui.zip weig-qb-webui/GIT_SHA | tr -d '\r\n')" = "$CANDIDATE_SHA"
+          test "$(unzip -p candidate/weig-qb-webui.zip weig-qb-webui/VERSION | tr -d '\r\n')" = "$VERSION"
           node tests/release-candidate-evidence.mjs \
             --mode=promotion \
             --evidence=evidence/candidate.json \
-            --package=candidate/WeiG-qB-WebUI.zip \
+            --package=candidate/weig-qb-webui.zip \
             --sha="$CANDIDATE_SHA" \
             --version="$VERSION" \
             --main-before="$MAIN_BEFORE"
@@ -312,7 +314,7 @@ jobs:
           const sha=process.env.CANDIDATE_SHA,compat=process.env.COMPAT_SHA;
           if(!/^[0-9a-f]{40}$/.test(sha)||!/^[0-9a-f]{40}$/.test(compat))throw new Error('Certification SHA identity is invalid.');
           const certification={
-            schemaVersion:1,
+            schemaVersion:2,
             kind:'weig-release-certification',
             candidateSha:sha,
             compatEvidenceSha:compat,
@@ -322,7 +324,10 @@ jobs:
             candidate:{
               runId:Number(process.env.CANDIDATE_RUN_ID),
               artifact:process.env.CANDIDATE_ARTIFACT,
-              packageSha256:hash('candidate/WeiG-qB-WebUI.zip')
+              packageSha256:hash('candidate/weig-qb-webui.zip'),
+              tarGzSha256:hash('candidate/weig-qb-webui.tar.gz'),
+              manifestSha256:hash('candidate/manifest.json'),
+              sumsSha256:hash('candidate/SHA256SUMS')
             },
             deployment:{
               runId:Number(process.env.DEPLOYMENT_RUN_ID),
@@ -340,7 +345,7 @@ jobs:
               evidenceSha256:hash(`locale/${compat}.json`)
             }
           };
-          for(const value of [certification.candidate.packageSha256,certification.deployment.evidenceSha256,certification.fullFrozen.evidenceSha256,certification.locale.evidenceSha256]){
+          for(const value of [certification.candidate.packageSha256,certification.candidate.tarGzSha256,certification.candidate.manifestSha256,certification.candidate.sumsSha256,certification.deployment.evidenceSha256,certification.fullFrozen.evidenceSha256,certification.locale.evidenceSha256]){
             if(!/^[0-9a-f]{64}$/.test(value))throw new Error('Certification evidence digest is invalid.');
           }
           fs.writeFileSync('certification/release-certification.json',JSON.stringify(certification,null,2)+'\n');

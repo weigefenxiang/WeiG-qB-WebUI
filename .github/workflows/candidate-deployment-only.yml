@@ -101,7 +101,7 @@ jobs:
       - name: Candidate deployment syntax
         run: |
           bash -n tests/candidate-deployment.sh
-          bash -n candidate-artifact/weig-install.sh
+          bash -n candidate-artifact/install.sh
           node --check tests/installer-lifecycle-browser.mjs
       - name: Deploy exact candidate to official qB and Chrome
         shell: bash
