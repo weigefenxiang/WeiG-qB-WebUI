@@ -16,6 +16,6 @@ assert.match(sh,/download_file\(\)[\s\S]*if curl -fL[\s\S]*rm -f "\$out"[\s\S]*i
 assert.match(sh,/extract_zip\(\)[\s\S]*if unzip -q[\s\S]*rm -rf "\$target"[\s\S]*has_busybox_applet unzip[\s\S]*command -v bsdtar[\s\S]*command -v python3/s,'ZIP owner must fail over after an incompatible extractor without retaining a partial tree');
 assert.match(sh,/sha256_file\(\)[\s\S]*sha256sum[\s\S]*has_busybox_applet sha256sum[\s\S]*shasum[\s\S]*openssl[\s\S]*python3/s);
 assert.match(sh,/backup_sha256\(\)[\s\S]*sha256_file "\$backup_hash_file"/s,'backup integrity must reuse the same capability-driven SHA-256 owner instead of maintaining a second provider chain');
-assert.match(sh,/owned_backups_for_dest\(\)[\s\S]*for backup in "\$BACKUPS"\/\*/s);
+assert.match(sh,/owned_backups_for_dest\(\)[\s\S]*for backup_root in "\$BACKUPS" "\$LEGACY_BACKUPS"[\s\S]*for backup in "\$backup_root"\/\*/s,'backup inventory must share one owner across canonical and bounded legacy roots');
 assert.match(sh,/inject_build_sha\(\)[\s\S]*sed "s\/__WEIG_GIT_SHA__[\s\S]*mv "\$inject_tmp" "\$inject_file"/s);
 console.log('Installer POSIX portability contract passed.');

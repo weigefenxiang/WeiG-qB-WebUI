@@ -556,7 +556,20 @@ function Get-OwnedBackupsForDestination([string]$Target) {
   foreach($backupRoot in @($Backups,$LegacyBackups)){
     if(!(Test-Path -LiteralPath $backupRoot -PathType Container)){continue}
     foreach($item in @(Get-ChildItem -LiteralPath $backupRoot -Directory -ErrorAction SilentlyContinue)){
-      if($item.Name -notmatch '^\d{8}-\d{6}(?:-\d+)?
+      if($item.Name -notmatch '^\d{8}-\d{6}(?:-\d+)?$'){continue}
+      $had=Join-Path $item.FullName 'had-webui'
+      $destMarker=Join-Path $item.FullName 'dest-path'
+      if(!(Test-Path -LiteralPath $had -PathType Leaf) -or !(Test-Path -LiteralPath $destMarker -PathType Leaf)){continue}
+      try {
+        $saved=(Get-Content $destMarker -Raw).Trim()
+        $savedFull=[IO.Path]::GetFullPath($saved).TrimEnd([IO.Path]::DirectorySeparatorChar,[IO.Path]::AltDirectorySeparatorChar)
+      } catch { continue }
+      if($savedFull.Equals($targetFull,[StringComparison]::OrdinalIgnoreCase)){$owned += $item}
+    }
+  }
+  return @($owned | Sort-Object Name -Descending)
+}
+
 function Prune-Backups([string]$Target,[int]$Keep=3) {
   if($Keep -lt 1){throw 'Backup retention must keep at least one backup.'}
   $owned=@(Get-OwnedBackupsForDestination $Target)
