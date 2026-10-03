@@ -179,7 +179,7 @@ assert_archive_backup() {
 }
 
 
-bash "$ROOT/installers/install.sh" --version "$VERSION_ONE" --configure -o "$DEST"
+sh "$ROOT/installers/install.sh" --version "$VERSION_ONE" --configure -o "$DEST"
 assert_install "$VERSION_ONE" "$SHA_ONE" release-one
 assert_config_enabled
 FIRST_BACKUP=$(cat "$STATE/last-backup")
@@ -189,7 +189,7 @@ grep -Fx 'WebUI\RootFolder=/original/webui' "$FIRST_BACKUP/qBittorrent.conf" >/d
 
 CFG_BEFORE_PLAIN_UPDATE=$(sha256sum "$CFG" | awk '{print $1}')
 sleep 1
-bash "$ROOT/installers/install.sh" --version "$VERSION_TWO" -o "$DEST"
+sh "$ROOT/installers/install.sh" --version "$VERSION_TWO" -o "$DEST"
 assert_install "$VERSION_TWO" "$SHA_TWO" release-two
 assert_config_enabled
 CFG_AFTER_PLAIN_UPDATE=$(sha256sum "$CFG" | awk '{print $1}')
@@ -205,7 +205,7 @@ sed -i 's#^WebUI\\AlternativeUIEnabled=.*#WebUI\\AlternativeUIEnabled=false#' "$
 sed -i 's#^WebUI\\RootFolder=.*#WebUI\\RootFolder=/post-upgrade-mutated#' "$CFG"
 CFG_BEFORE_PLAIN_ROLLBACK=$(sha256sum "$CFG" | awk '{print $1}')
 
-bash "$ROOT/installers/install.sh" --rollback
+sh "$ROOT/installers/install.sh" --rollback
 assert_install "$VERSION_ONE" "$SHA_ONE" release-one
 CFG_AFTER_PLAIN_ROLLBACK=$(sha256sum "$CFG" | awk '{print $1}')
 test "$CFG_AFTER_PLAIN_ROLLBACK" = "$CFG_BEFORE_PLAIN_ROLLBACK"
@@ -213,7 +213,7 @@ grep -Fx 'WebUI\AlternativeUIEnabled=false' "$CFG" >/dev/null
 grep -Fx 'WebUI\RootFolder=/post-upgrade-mutated' "$CFG" >/dev/null
 
 sleep 1
-bash "$ROOT/installers/install.sh" --version "$VERSION_TWO" --configure -o "$DEST"
+sh "$ROOT/installers/install.sh" --version "$VERSION_TWO" --configure -o "$DEST"
 assert_install "$VERSION_TWO" "$SHA_TWO" release-two
 assert_config_enabled
 CONFIGURED_BACKUP=$(cat "$STATE/last-backup")
@@ -221,13 +221,13 @@ assert_archive_backup "$CONFIGURED_BACKUP" "$VERSION_ONE"
 grep -Fx 'WebUI\AlternativeUIEnabled=false' "$CONFIGURED_BACKUP/qBittorrent.conf" >/dev/null
 grep -Fx 'WebUI\RootFolder=/post-upgrade-mutated' "$CONFIGURED_BACKUP/qBittorrent.conf" >/dev/null
 
-bash "$ROOT/installers/install.sh" --rollback --configure
+sh "$ROOT/installers/install.sh" --rollback --configure
 assert_install "$VERSION_ONE" "$SHA_ONE" release-one
 grep -Fx 'WebUI\AlternativeUIEnabled=false' "$CFG" >/dev/null
 grep -Fx 'WebUI\RootFolder=/post-upgrade-mutated' "$CFG" >/dev/null
 
 sleep 1
-bash "$ROOT/installers/install.sh" --version "$VERSION_ONE" --configure -o "$DEST"
+sh "$ROOT/installers/install.sh" --version "$VERSION_ONE" --configure -o "$DEST"
 assert_install "$VERSION_ONE" "$SHA_ONE" release-one
 assert_config_enabled
 
@@ -235,7 +235,7 @@ test "$(cat "$STATE/last-dest")" = "$DEST"
 test "$(cat "$STATE/last-qb-root-folder")" = "$DEST"
 
 sleep 1
-bash "$ROOT/installers/install.sh" -uninstall -configure -o "$DEST"
+sh "$ROOT/installers/install.sh" -uninstall -configure -o "$DEST"
 test ! -e "$DEST"
 grep -Fx 'WebUI\AlternativeUIEnabled=false' "$CFG" >/dev/null
 grep -Fx "WebUI\\RootFolder=$DEST" "$CFG" >/dev/null
@@ -243,12 +243,12 @@ UNINSTALL_BACKUP=$(cat "$STATE/last-backup")
 test "$(cat "$UNINSTALL_BACKUP/had-webui")" = 1
 assert_archive_backup "$UNINSTALL_BACKUP" "$VERSION_ONE"
 
-bash "$ROOT/installers/install.sh" -rollback -configure
+sh "$ROOT/installers/install.sh" -rollback -configure
 assert_install "$VERSION_ONE" "$SHA_ONE" release-one
 assert_config_enabled
 
 sleep 1
-bash "$ROOT/installers/install.sh" -uninstall -configure -purge -o "$DEST"
+sh "$ROOT/installers/install.sh" -uninstall -configure -purge -o "$DEST"
 test ! -e "$DEST"
 test ! -e "$STATE/last-backup"
 test ! -e "$STATE/last-dest"
@@ -268,11 +268,11 @@ if [ -n "$remaining_backup" ]; then
   echo "Purge left an installer-owned backup for $DEST: $remaining_backup" >&2
   exit 1
 fi
-if bash "$ROOT/installers/install.sh" -rollback >/dev/null 2>&1; then
+if sh "$ROOT/installers/install.sh" -rollback >/dev/null 2>&1; then
   echo "Rollback unexpectedly succeeded after target backup purge." >&2
   exit 1
 fi
-bash "$ROOT/installers/install.sh" --version "$VERSION_ONE" --configure -o "$DEST"
+sh "$ROOT/installers/install.sh" --version "$VERSION_ONE" --configure -o "$DEST"
 assert_install "$VERSION_ONE" "$SHA_ONE" release-one
 assert_config_enabled
 
@@ -280,7 +280,7 @@ sed -i 's#^WebUI\\AlternativeUIEnabled=.*#WebUI\\AlternativeUIEnabled=false#' "$
 sed -i 's#^WebUI\\RootFolder=.*#WebUI\\RootFolder=/disabled-user-root#' "$CFG"
 DISABLED_CFG_BEFORE_PLAIN_UPDATE=$(sha256sum "$CFG" | awk '{print $1}')
 sleep 1
-bash "$ROOT/installers/install.sh" --version "$VERSION_TWO" -o "$DEST"
+sh "$ROOT/installers/install.sh" --version "$VERSION_TWO" -o "$DEST"
 assert_install "$VERSION_TWO" "$SHA_TWO" release-two
 DISABLED_CFG_AFTER_PLAIN_UPDATE=$(sha256sum "$CFG" | awk '{print $1}')
 test "$DISABLED_CFG_AFTER_PLAIN_UPDATE" = "$DISABLED_CFG_BEFORE_PLAIN_UPDATE"
