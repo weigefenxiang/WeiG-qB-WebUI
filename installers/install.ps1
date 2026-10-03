@@ -550,24 +550,93 @@ function Disable-QBWebUI([string]$Path,[string]$RootFolder) {
   }
 }
 
+function Read-BackupRecordText([string]$Backup,[string]$Name) {
+  if(Test-Path -LiteralPath $Backup -PathType Container){
+    $path=Join-Path $Backup $Name
+    if(Test-Path -LiteralPath $path -PathType Leaf){return (Get-Content -LiteralPath $path -Raw).Trim()}
+    return $null
+  }
+  if(!(Test-Path -LiteralPath $Backup -PathType Leaf) -or [IO.Path]::GetExtension($Backup).ToLowerInvariant() -ne '.zip'){return $null}
+  try {
+    Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction SilentlyContinue
+    $zip=[IO.Compression.ZipFile]::OpenRead($Backup)
+    try {
+      $entry=$zip.GetEntry($Name)
+      if($null -eq $entry){return $null}
+      $reader=[IO.StreamReader]::new($entry.Open())
+      try {return $reader.ReadToEnd().Trim()} finally {$reader.Dispose()}
+    } finally {$zip.Dispose()}
+  } catch {return $null}
+}
+
+function Copy-BackupRecordFile([string]$Backup,[string]$Name,[string]$Destination) {
+  if(Test-Path -LiteralPath $Backup -PathType Container){
+    $path=Join-Path $Backup $Name
+    if(!(Test-Path -LiteralPath $path -PathType Leaf)){return $false}
+    Copy-Item -LiteralPath $path -Destination $Destination -Force
+    return $true
+  }
+  if(!(Test-Path -LiteralPath $Backup -PathType Leaf)){return $false}
+  Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction SilentlyContinue
+  $zip=[IO.Compression.ZipFile]::OpenRead($Backup)
+  try {
+    $entry=$zip.GetEntry($Name)
+    if($null -eq $entry){return $false}
+    $input=$entry.Open()
+    $output=[IO.File]::Open($Destination,[IO.FileMode]::Create,[IO.FileAccess]::Write,[IO.FileShare]::None)
+    try {$input.CopyTo($output)} finally {$output.Dispose();$input.Dispose()}
+    return $true
+  } finally {$zip.Dispose()}
+}
+
+function Test-BackupOwned([string]$Backup) {
+  $had=Read-BackupRecordText $Backup 'had-webui'
+  $dest=Read-BackupRecordText $Backup 'dest-path'
+  return (![string]::IsNullOrWhiteSpace($dest) -and $had -in @('0','1'))
+}
+
+function New-BackupArchivePath {
+  $stamp=Get-Date -Format 'yyyyMMdd-HHmm'
+  for($i=1;$i -le 99;$i++){
+    $name=if($i -eq 1){"$stamp.zip"}else{"$stamp-$($i.ToString('00')).zip"}
+    $candidate=Join-Path $Backups $name
+    $lock="$candidate.lock"
+    if(Test-Path -LiteralPath $candidate){continue}
+    try {
+      $null=New-Item -ItemType Directory -Path $lock -ErrorAction Stop
+      if(!(Test-Path -LiteralPath $candidate)){return $candidate}
+      Remove-Item -LiteralPath $lock -Force -ErrorAction SilentlyContinue
+    } catch {}
+  }
+  throw "Unable to reserve a unique backup archive name for $stamp."
+}
+
+function New-BackupRecordArchive([string]$Record,[string]$Archive) {
+  Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction SilentlyContinue
+  $temp="$Archive.tmp-$PID-$([guid]::NewGuid().ToString('N'))"
+  try {
+    [IO.Compression.ZipFile]::CreateFromDirectory($Record,$temp,[IO.Compression.CompressionLevel]::Optimal,$false)
+    Move-Item -LiteralPath $temp -Destination $Archive
+  } finally {
+    if(Test-Path -LiteralPath $temp){Remove-Item -LiteralPath $temp -Force -ErrorAction SilentlyContinue}
+  }
+}
+
 function Get-OwnedBackupsForDestination([string]$Target) {
   $targetFull=[IO.Path]::GetFullPath($Target).TrimEnd([IO.Path]::DirectorySeparatorChar,[IO.Path]::AltDirectorySeparatorChar)
   $owned=@()
   foreach($backupRoot in @($Backups,$LegacyBackups)){
     if(!(Test-Path -LiteralPath $backupRoot -PathType Container)){continue}
-    foreach($item in @(Get-ChildItem -LiteralPath $backupRoot -Directory -ErrorAction SilentlyContinue)){
-      if($item.Name -notmatch '^\d{8}-\d{6}(?:-\d+)?$'){continue}
-      $had=Join-Path $item.FullName 'had-webui'
-      $destMarker=Join-Path $item.FullName 'dest-path'
-      if(!(Test-Path -LiteralPath $had -PathType Leaf) -or !(Test-Path -LiteralPath $destMarker -PathType Leaf)){continue}
+    foreach($item in @(Get-ChildItem -LiteralPath $backupRoot -Force -ErrorAction SilentlyContinue)){
+      if(!(Test-BackupOwned $item.FullName)){continue}
       try {
-        $saved=(Get-Content $destMarker -Raw).Trim()
+        $saved=Read-BackupRecordText $item.FullName 'dest-path'
         $savedFull=[IO.Path]::GetFullPath($saved).TrimEnd([IO.Path]::DirectorySeparatorChar,[IO.Path]::AltDirectorySeparatorChar)
-      } catch { continue }
+      } catch {continue}
       if($savedFull.Equals($targetFull,[StringComparison]::OrdinalIgnoreCase)){$owned += $item}
     }
   }
-  return @($owned | Sort-Object Name -Descending)
+  return @($owned | Sort-Object LastWriteTimeUtc,Name -Descending)
 }
 
 function Prune-Backups([string]$Target,[int]$Keep=3) {
@@ -603,6 +672,12 @@ function Purge-BackupsForDestination([string]$Target) {
     if(Test-Path -LiteralPath $lastBackupMarker -PathType Leaf){
       $lastBackup=(Get-Content $lastBackupMarker -Raw).Trim()
       if($lastBackup -and $deleted.ContainsKey($lastBackup.ToLowerInvariant())){$stateMatchesTarget=$true}
+      elseif($lastBackup){
+        $lastBackupDest=Read-BackupRecordText $lastBackup 'dest-path'
+        if($lastBackupDest){
+          try {$stateMatchesTarget=([IO.Path]::GetFullPath($lastBackupDest).TrimEnd([IO.Path]::DirectorySeparatorChar,[IO.Path]::AltDirectorySeparatorChar)).Equals($targetFull,[StringComparison]::OrdinalIgnoreCase)} catch {}
+        }
+      }
     }
 
     if($stateMatchesTarget){
@@ -712,6 +787,18 @@ function Assert-BackupArchive([string]$Backup,[hashtable]$Manifest) {
 }
 
 function Expand-WebUiBackupPayload([string]$Backup,[string]$Stage) {
+  if(Test-Path -LiteralPath $Backup -PathType Leaf){
+    Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction SilentlyContinue
+    $record=Join-Path ([IO.Path]::GetTempPath()) ("weig-qb-backup-record-"+[guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path $record | Out-Null
+    try {
+      [IO.Compression.ZipFile]::ExtractToDirectory($Backup,$record)
+      Expand-WebUiBackupPayload $record $Stage
+    } finally {
+      if(Test-Path -LiteralPath $record){Remove-Item -LiteralPath $record -Recurse -Force -ErrorAction SilentlyContinue}
+    }
+    return
+  }
   $legacy=Join-Path $Backup 'webui'
   if(Test-Path -LiteralPath $legacy -PathType Container){
     Copy-Item -LiteralPath $legacy -Destination $Stage -Recurse -Force
@@ -812,9 +899,9 @@ function Install-WebUiStage([string]$Stage,[string]$Target) {
 }
 
 function Restore-WebUiBackup([string]$Backup,[string]$Target) {
-  $hadWebUi=$false
-  $hadMarker=Join-Path $Backup 'had-webui'
-  if(Test-Path $hadMarker){ $hadWebUi=((Get-Content $hadMarker -Raw).Trim() -eq '1') }
+  $hadValue=Read-BackupRecordText $Backup 'had-webui'
+  if($hadValue -notin @('0','1')){throw "Backup had-webui marker is missing or invalid: $Backup"}
+  $hadWebUi=($hadValue -eq '1')
 
   if($hadWebUi){
     $parent=Split-Path $Target -Parent
@@ -835,21 +922,32 @@ function Restore-WebUiBackup([string]$Backup,[string]$Target) {
 }
 
 function Backup-Current([string]$ConfigPath='') {
-  $stamp=Get-Date -Format 'yyyyMMdd-HHmmss'
-  $b=Join-Path $Backups $stamp
-  New-Item -ItemType Directory -Force -Path $b | Out-Null
-  if(Test-Path $Destination){
-    if(!(New-WebUiBackupPayload $Destination $b)){throw 'Unable to create a verified WebUI backup payload.'}
-    Set-Content -Encoding ASCII -Path (Join-Path $b 'had-webui') -Value '1'
-  } else {
-    Write-BackupArchiveManifest $b 'none' '' 'none' '' 0
-    Set-Content -Encoding ASCII -Path (Join-Path $b 'had-webui') -Value '0'
+  $b=New-BackupArchivePath
+  $lock="$b.lock"
+  $record=Join-Path ([IO.Path]::GetTempPath()) ("weig-qb-backup-record-"+[guid]::NewGuid().ToString('N'))
+  New-Item -ItemType Directory -Path $record | Out-Null
+  try {
+    if(Test-Path $Destination){
+      if(!(New-WebUiBackupPayload $Destination $record)){throw 'Unable to create a verified WebUI backup payload.'}
+      Set-Content -Encoding ASCII -Path (Join-Path $record 'had-webui') -Value '1'
+    } else {
+      Write-BackupArchiveManifest $record 'none' '' 'none' '' 0
+      Set-Content -Encoding ASCII -Path (Join-Path $record 'had-webui') -Value '0'
+    }
+    if($ConfigPath){
+      Copy-Item -LiteralPath $ConfigPath (Join-Path $record 'qBittorrent.conf') -Force
+      Set-Content -Encoding UTF8 -Path (Join-Path $record 'config-path') -Value $ConfigPath
+    }
+    Set-Content -Encoding UTF8 -Path (Join-Path $record 'dest-path') -Value $Destination
+    New-BackupRecordArchive $record $b
+  } catch {
+    if(Test-Path -LiteralPath $b){Remove-Item -LiteralPath $b -Force -ErrorAction SilentlyContinue}
+    throw
+  } finally {
+    if(Test-Path -LiteralPath $record){Remove-Item -LiteralPath $record -Recurse -Force -ErrorAction SilentlyContinue}
+    if(Test-Path -LiteralPath $lock){Remove-Item -LiteralPath $lock -Force -ErrorAction SilentlyContinue}
   }
-  if($ConfigPath){
-    Copy-Item -LiteralPath $ConfigPath (Join-Path $b 'qBittorrent.conf') -Force
-    Set-Content -Encoding UTF8 -Path (Join-Path $b 'config-path') -Value $ConfigPath
-  }
-  Set-Content -Encoding UTF8 -Path (Join-Path $b 'dest-path') -Value $Destination
+  if(!(Test-BackupOwned $b)){Remove-Item -LiteralPath $b -Force -ErrorAction SilentlyContinue;throw "Backup bundle verification failed: $b"}
   Set-Content -Encoding UTF8 -Path (Join-Path $State 'last-backup') -Value $b
   Set-Content -Encoding UTF8 -Path (Join-Path $State 'last-dest') -Value $Destination
   Prune-Backups $Destination 3
@@ -859,41 +957,41 @@ function Backup-Current([string]$ConfigPath='') {
 
 function Restore-Last {
   $b=Get-InstallerStateMarker 'last-backup'
-  if(!$b){ throw 'No backup found.' }
-  if(!(Test-Path $b)){ throw "Backup directory missing: $b" }
+  if(!$b){throw 'No backup found.'}
+  if(!(Test-BackupOwned $b)){throw "Backup record missing or invalid: $b"}
 
-  $destMarker=Join-Path $b 'dest-path'
-  if(!$DestinationExplicit -and (Test-Path $destMarker)){
-    $savedDest=(Get-Content $destMarker -Raw).Trim()
-    if($savedDest){ $script:Destination=$savedDest }
+  if(!$DestinationExplicit){
+    $savedDest=Read-BackupRecordText $b 'dest-path'
+    if($savedDest){$script:Destination=$savedDest}
   }
 
   $cfg=$null
+  $old=$null
   if($Configure){
-    $old=Join-Path $b 'qBittorrent.conf'
-    $configMarker=Join-Path $b 'config-path'
-    if(!(Test-Path -LiteralPath $old -PathType Leaf) -or !(Test-Path -LiteralPath $configMarker -PathType Leaf)){
-      throw 'This backup has no qBittorrent config snapshot; refusing -Rollback -Configure.'
-    }
-    $cfg=(Get-Content $configMarker -Raw).Trim()
-    if($cfg){
-      if(Test-QBittorrentRunning){throw 'qBittorrent is running. Exit qBittorrent completely before rollback restores its config.'}
-      foreach($pending in @(Get-QBPendingConfigPaths $cfg)){
-        if((Test-Path -LiteralPath $pending -PathType Leaf) -and (Get-Item -LiteralPath $pending).Length -gt 0){
-          throw "qBittorrent recovery file is non-empty; refusing rollback config mutation: $pending"
-        }
+    $cfg=Read-BackupRecordText $b 'config-path'
+    if(!$cfg){throw 'This backup has no qBittorrent config snapshot; refusing -Rollback -Configure.'}
+    $old=Join-Path ([IO.Path]::GetTempPath()) ("weig-qb-rollback-config-"+[guid]::NewGuid().ToString('N'))
+    if(!(Copy-BackupRecordFile $b 'qBittorrent.conf' $old)){throw 'This backup has no qBittorrent config snapshot; refusing -Rollback -Configure.'}
+    if(Test-QBittorrentRunning){Remove-Item -LiteralPath $old -Force -ErrorAction SilentlyContinue;throw 'qBittorrent is running. Exit qBittorrent completely before rollback restores its config.'}
+    foreach($pending in @(Get-QBPendingConfigPaths $cfg)){
+      if((Test-Path -LiteralPath $pending -PathType Leaf) -and (Get-Item -LiteralPath $pending).Length -gt 0){
+        Remove-Item -LiteralPath $old -Force -ErrorAction SilentlyContinue
+        throw "qBittorrent recovery file is non-empty; refusing rollback config mutation: $pending"
       }
-      $backupState=Read-QBConfigText $old
-      Assert-QBConfigTextLooksSafe $old $backupState (Get-Item -LiteralPath $old).Length
     }
+    $backupState=Read-QBConfigText $old
+    Assert-QBConfigTextLooksSafe $old $backupState (Get-Item -LiteralPath $old).Length
   }
 
-  Restore-WebUiBackup $b $Destination
-
-  if($cfg){
-    New-Item -ItemType Directory -Force -Path (Split-Path $cfg -Parent) | Out-Null
-    Restore-QBConfigBackupAtomically $cfg (Join-Path $b 'qBittorrent.conf')
-    Write-Host "Restored qBittorrent WebUI config by explicit -Configure: $cfg"
+  try {
+    Restore-WebUiBackup $b $Destination
+    if($cfg){
+      New-Item -ItemType Directory -Force -Path (Split-Path $cfg -Parent) | Out-Null
+      Restore-QBConfigBackupAtomically $cfg $old
+      Write-Host "Restored qBittorrent WebUI config by explicit -Configure: $cfg"
+    }
+  } finally {
+    if($old -and (Test-Path -LiteralPath $old)){Remove-Item -LiteralPath $old -Force -ErrorAction SilentlyContinue}
   }
 }
 

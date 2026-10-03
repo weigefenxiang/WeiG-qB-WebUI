@@ -261,22 +261,37 @@ assert_config_enabled() {
   grep -Fx 'Lifecycle\Marker=preserve-me' "$CFG" >/dev/null
 }
 
+backup_record_read() {
+  tar -xOzf "$1" "./$2"
+}
+
 assert_archive_backup() {
   backup=$1
   expected_version=${2-}
-  test -f "$backup/archive-manifest"
-  format=$(sed -n 's/^format=//p' "$backup/archive-manifest")
-  file=$(sed -n 's/^file=//p' "$backup/archive-manifest")
-  expected_sha=$(sed -n 's/^sha256=//p' "$backup/archive-manifest")
-  test "$format" = "tar.gz"
-  test "$file" = "webui.tar.gz"
-  test -f "$backup/$file"
-  test ! -d "$backup/webui"
-  actual_sha=$(sha256sum "$backup/$file" | awk '{print tolower($1)}')
-  test "$actual_sha" = "$expected_sha"
-  if [ -n "$expected_version" ]; then
-    archived_version=$(tar -xOzf "$backup/$file" ./VERSION | tr -d '\r\n')
-    test "$archived_version" = "$expected_version"
+  test -f "$backup"
+  case "$(basename "$backup")" in
+    ????????-????.tar.gz|????????-????-[0-9][0-9].tar.gz) ;;
+    *) echo "Unexpected current backup filename: $backup" >&2; return 1 ;;
+  esac
+  record="$TMP/backup-record-check"
+  rm -rf "$record"
+  mkdir -p "$record"
+  tar -xzf "$backup" -C "$record"
+  test -f "$record/archive-manifest"
+  format=$(sed -n 's/^format=//p' "$record/archive-manifest")
+  file=$(sed -n 's/^file=//p' "$record/archive-manifest")
+  expected_sha=$(sed -n 's/^sha256=//p' "$record/archive-manifest")
+  if [ "$(cat "$record/had-webui")" = 1 ]; then
+    test "$format" = "tar.gz"
+    test "$file" = "webui.tar.gz"
+    test -f "$record/$file"
+    test ! -d "$record/webui"
+    actual_sha=$(sha256sum "$record/$file" | awk '{print tolower($1)}')
+    test "$actual_sha" = "$expected_sha"
+    if [ -n "$expected_version" ]; then
+      archived_version=$(tar -xOzf "$record/$file" ./VERSION | tr -d '\r\n')
+      test "$archived_version" = "$expected_version"
+    fi
   fi
 }
 
@@ -285,9 +300,9 @@ run_installer --version "$VERSION_ONE" --configure -o "$DEST"
 assert_install "$VERSION_ONE" "$SHA_ONE" release-one
 assert_config_enabled
 FIRST_BACKUP=$(cat "$STATE/last-backup")
-test "$(cat "$FIRST_BACKUP/had-webui")" = 0
-grep -Fx 'WebUI\AlternativeUIEnabled=false' "$FIRST_BACKUP/qBittorrent.conf" >/dev/null
-grep -Fx 'WebUI\RootFolder=/original/webui' "$FIRST_BACKUP/qBittorrent.conf" >/dev/null
+test "$(backup_record_read "$FIRST_BACKUP" had-webui)" = 0
+backup_record_read "$FIRST_BACKUP" qBittorrent.conf | grep -Fx 'WebUI\AlternativeUIEnabled=false' >/dev/null
+backup_record_read "$FIRST_BACKUP" qBittorrent.conf | grep -Fx 'WebUI\RootFolder=/original/webui' >/dev/null
 
 CFG_BEFORE_PLAIN_UPDATE=$(sha256sum "$CFG" | awk '{print $1}')
 sleep 1
@@ -305,10 +320,16 @@ CFG_AFTER_PLAIN_UPDATE=$(sha256sum "$CFG" | awk '{print $1}')
 test "$CFG_AFTER_PLAIN_UPDATE" = "$CFG_BEFORE_PLAIN_UPDATE"
 SECOND_BACKUP=$(cat "$STATE/last-backup")
 test "$SECOND_BACKUP" != "$FIRST_BACKUP"
-test "$(cat "$SECOND_BACKUP/had-webui")" = 1
+test "$(backup_record_read "$SECOND_BACKUP" had-webui)" = 1
 assert_archive_backup "$SECOND_BACKUP" "$VERSION_ONE"
-test ! -e "$SECOND_BACKUP/qBittorrent.conf"
-test ! -e "$SECOND_BACKUP/config-path"
+if tar -tzf "$SECOND_BACKUP" | grep -Fx './qBittorrent.conf' >/dev/null; then
+  echo "Plain update unexpectedly captured qBittorrent config." >&2
+  exit 1
+fi
+if tar -tzf "$SECOND_BACKUP" | grep -Fx './config-path' >/dev/null; then
+  echo "Plain update unexpectedly published qBittorrent config path." >&2
+  exit 1
+fi
 
 sed -i 's#^WebUI\\AlternativeUIEnabled=.*#WebUI\\AlternativeUIEnabled=false#' "$CFG"
 sed -i 's#^WebUI\\RootFolder=.*#WebUI\\RootFolder=/post-upgrade-mutated#' "$CFG"
@@ -334,8 +355,8 @@ assert_install "$VERSION_TWO" "$SHA_TWO" release-two
 assert_config_enabled
 CONFIGURED_BACKUP=$(cat "$STATE/last-backup")
 assert_archive_backup "$CONFIGURED_BACKUP" "$VERSION_ONE"
-grep -Fx 'WebUI\AlternativeUIEnabled=false' "$CONFIGURED_BACKUP/qBittorrent.conf" >/dev/null
-grep -Fx 'WebUI\RootFolder=/post-upgrade-mutated' "$CONFIGURED_BACKUP/qBittorrent.conf" >/dev/null
+backup_record_read "$CONFIGURED_BACKUP" qBittorrent.conf | grep -Fx 'WebUI\AlternativeUIEnabled=false' >/dev/null
+backup_record_read "$CONFIGURED_BACKUP" qBittorrent.conf | grep -Fx 'WebUI\RootFolder=/post-upgrade-mutated' >/dev/null
 
 run_installer --rollback --configure
 assert_install "$VERSION_ONE" "$SHA_ONE" release-one
@@ -356,7 +377,7 @@ test ! -e "$DEST"
 grep -Fx 'WebUI\AlternativeUIEnabled=false' "$CFG" >/dev/null
 grep -Fx "WebUI\\RootFolder=$DEST" "$CFG" >/dev/null
 UNINSTALL_BACKUP=$(cat "$STATE/last-backup")
-test "$(cat "$UNINSTALL_BACKUP/had-webui")" = 1
+test "$(backup_record_read "$UNINSTALL_BACKUP" had-webui)" = 1
 assert_archive_backup "$UNINSTALL_BACKUP" "$VERSION_ONE"
 
 run_installer -rollback -configure
@@ -372,19 +393,14 @@ test ! -e "$STATE/last-qb-root-folder"
 remaining_backup=$(
   for backup_root in "$STATE/backups" "$LEGACY_STATE/backups"; do
     [ -d "$backup_root" ] || continue
-    find "$backup_root" -mindepth 1 -maxdepth 1 -type d -print 2>/dev/null | while IFS= read -r backup; do
-      test -f "$backup/dest-path" || continue
-      if [ "$(cat "$backup/dest-path")" = "$DEST" ]; then
-        printf '%s\n' "$backup"
-        break
-      fi
-    done
+    find "$backup_root" -mindepth 1 -maxdepth 1 -print 2>/dev/null
   done | sed -n '1p'
 )
 if [ -n "$remaining_backup" ]; then
   echo "Purge left an installer-owned backup for $DEST: $remaining_backup" >&2
   exit 1
 fi
+
 if run_installer -rollback >/dev/null 2>&1; then
   echo "Rollback unexpectedly succeeded after target backup purge." >&2
   exit 1

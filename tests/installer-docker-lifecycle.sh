@@ -249,31 +249,43 @@ if(fs.statSync(catalogPath).size>=10*1024*1024)throw new Error('packed release c
 NODE
 }
 
+backup_record_read() {
+  tar -xOzf "$1" "./$2"
+}
+
+backup_record_config_to() {
+  tar -xOzf "$1" ./qBittorrent.conf > "$2"
+}
+
 assert_archive_backup() {
   backup=$1
   expected_version=$2
-  test -f "$backup/archive-manifest"
-  format=$(sed -n 's/^format=//p' "$backup/archive-manifest")
-  file=$(sed -n 's/^file=//p' "$backup/archive-manifest")
-  expected_sha=$(sed -n 's/^sha256=//p' "$backup/archive-manifest")
+  test -f "$backup"
+  record="$TMP/docker-backup-record-check"
+  rm -rf "$record"
+  mkdir -p "$record"
+  tar -xzf "$backup" -C "$record"
+  format=$(sed -n 's/^format=//p' "$record/archive-manifest")
+  file=$(sed -n 's/^file=//p' "$record/archive-manifest")
+  expected_sha=$(sed -n 's/^sha256=//p' "$record/archive-manifest")
   test "$format" = "tar.gz"
   test "$file" = "webui.tar.gz"
-  test -f "$backup/$file"
-  test ! -d "$backup/webui"
-  actual_sha=$(sha256sum "$backup/$file" | awk '{print tolower($1)}')
+  actual_sha=$(sha256sum "$record/$file" | awk '{print tolower($1)}')
   test "$actual_sha" = "$expected_sha"
-  archived_version=$(tar -xOzf "$backup/$file" ./VERSION | tr -d '\r\n')
+  archived_version=$(tar -xOzf "$record/$file" ./VERSION | tr -d '\r\n')
   test "$archived_version" = "$expected_version"
 }
+
 
 bash "$ROOT/installers/install.sh" --version "$VERSION_ONE" --configure --container "$NAME"
 assert_install "$VERSION_ONE" "$SHA_ONE" release-one
 FIRST_BACKUP=$(cat "$STATE/last-backup")
-test "$(cat "$FIRST_BACKUP/had-webui")" = 0
-cmp "$FIRST_BACKUP/qBittorrent.conf" "$TMP/original-qbittorrent.conf"
-test "$(cat "$FIRST_BACKUP/config-path")" = "$QBT_CONFIG"
-test "$(cat "$FIRST_BACKUP/dest-path")" = "$DEST"
-test "$(cat "$FIRST_BACKUP/qb-root-folder")" = "$QB_ROOT"
+test "$(backup_record_read "$FIRST_BACKUP" had-webui)" = 0
+backup_record_config_to "$FIRST_BACKUP" "$TMP/first-qbittorrent.conf"
+cmp "$TMP/first-qbittorrent.conf" "$TMP/original-qbittorrent.conf"
+test "$(backup_record_read "$FIRST_BACKUP" config-path)" = "$QBT_CONFIG"
+test "$(backup_record_read "$FIRST_BACKUP" dest-path)" = "$DEST"
+test "$(backup_record_read "$FIRST_BACKUP" qb-root-folder)" = "$QB_ROOT"
 recreate_qb_and_assert_webui release-one "$SHA_ONE"
 
 sleep 1
@@ -281,10 +293,11 @@ bash "$ROOT/installers/install.sh" --version "$VERSION_TWO" --configure --contai
 assert_install "$VERSION_TWO" "$SHA_TWO" release-two
 SECOND_BACKUP=$(cat "$STATE/last-backup")
 test "$SECOND_BACKUP" != "$FIRST_BACKUP"
-test "$(cat "$SECOND_BACKUP/had-webui")" = 1
+test "$(backup_record_read "$SECOND_BACKUP" had-webui)" = 1
 assert_archive_backup "$SECOND_BACKUP" "$VERSION_ONE"
-grep -Fx 'WebUI\AlternativeUIEnabled=true' "$SECOND_BACKUP/qBittorrent.conf" >/dev/null
-grep -Fx "WebUI\\RootFolder=$QB_ROOT" "$SECOND_BACKUP/qBittorrent.conf" >/dev/null
+backup_record_config_to "$SECOND_BACKUP" "$TMP/second-qbittorrent.conf"
+grep -Fx 'WebUI\AlternativeUIEnabled=true' "$TMP/second-qbittorrent.conf" >/dev/null
+grep -Fx "WebUI\\RootFolder=$QB_ROOT" "$TMP/second-qbittorrent.conf" >/dev/null
 recreate_qb_and_assert_webui release-two "$SHA_TWO"
 
 sed -i 's#^WebUI\\AlternativeUIEnabled=.*#WebUI\\AlternativeUIEnabled=false#' "$QBT_CONFIG"
@@ -292,7 +305,7 @@ sed -i 's#^WebUI\\RootFolder=.*#WebUI\\RootFolder=/config/post-upgrade-mutated#'
 
 bash "$ROOT/installers/install.sh" --rollback
 assert_install "$VERSION_ONE" "$SHA_ONE" release-one
-cmp "$QBT_CONFIG" "$SECOND_BACKUP/qBittorrent.conf"
+cmp "$QBT_CONFIG" "$TMP/second-qbittorrent.conf"
 recreate_qb_and_assert_webui release-one "$SHA_ONE"
 
 test "$(cat "$STATE/last-dest")" = "$DEST"

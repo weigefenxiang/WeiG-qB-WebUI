@@ -139,28 +139,47 @@ try {
     Assert-True ($cfgText.Contains('Lifecycle\Marker=preserve-me')) 'Unrelated qB config marker was not preserved.'
   }
 
+  function Get-BackupRecordText([string]$Backup,[string]$Name) {
+    Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction SilentlyContinue
+    $zip=[IO.Compression.ZipFile]::OpenRead($Backup)
+    try {
+      $entry=$zip.GetEntry($Name)
+      if($null -eq $entry){return $null}
+      $reader=[IO.StreamReader]::new($entry.Open())
+      try {return $reader.ReadToEnd().Trim()} finally {$reader.Dispose()}
+    } finally {$zip.Dispose()}
+  }
+
   function Assert-ArchiveBackup([string]$Backup,[string]$ExpectedVersion='') {
-    $manifestPath=Join-Path $Backup 'archive-manifest'
+    Assert-True (Test-Path -LiteralPath $Backup -PathType Leaf) 'Current Windows backup must be one ZIP file.'
+    Assert-True ([IO.Path]::GetExtension($Backup).ToLowerInvariant() -eq '.zip') 'Current Windows backup extension mismatch.'
+    Assert-True ((Split-Path $Backup -Leaf) -match '^\d{8}-\d{4}(?:-\d{2})?\.zip$') 'Current Windows backup filename must use minute timestamp plus optional collision suffix.'
+    $record=Join-Path $Tmp 'windows-backup-record-check'
+    if(Test-Path -LiteralPath $record){Remove-Item -LiteralPath $record -Recurse -Force}
+    New-Item -ItemType Directory -Path $record | Out-Null
+    Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction SilentlyContinue
+    [IO.Compression.ZipFile]::ExtractToDirectory($Backup,$record)
+    $manifestPath=Join-Path $record 'archive-manifest'
     Assert-True (Test-Path -LiteralPath $manifestPath -PathType Leaf) 'Backup archive manifest is missing.'
     $manifest=@{}
     foreach($line in @(Get-Content -LiteralPath $manifestPath)){if($line -match '^([^=]+)=(.*)$'){$manifest[$Matches[1]]=$Matches[2]}}
-    Assert-True ([string]$manifest['format'] -eq 'zip') "Windows CI backup should prefer built-in .NET zip; got $($manifest['format'])."
-    Assert-True ([string]$manifest['file'] -eq 'webui.zip') 'Windows backup archive filename mismatch.'
-    $archive=Join-Path $Backup ([string]$manifest['file'])
-    Assert-True (Test-Path -LiteralPath $archive -PathType Leaf) 'Windows compressed backup archive is missing.'
-    Assert-True (!(Test-Path -LiteralPath (Join-Path $Backup 'webui') -PathType Container)) 'New Windows backups must not retain an uncompressed webui directory when zip is available.'
-    $actual=(Get-FileHash -Algorithm SHA256 -LiteralPath $archive).Hash.ToLowerInvariant()
-    Assert-True ($actual -eq ([string]$manifest['sha256']).ToLowerInvariant()) 'Windows backup archive SHA-256 mismatch.'
-    if($ExpectedVersion){
-      Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction SilentlyContinue
-      $zip=[IO.Compression.ZipFile]::OpenRead($archive)
-      try {
-        $entry=$zip.GetEntry('VERSION')
-        Assert-True ($null -ne $entry) 'Windows backup archive VERSION entry is missing.'
-        $reader=[IO.StreamReader]::new($entry.Open())
-        try {$value=$reader.ReadToEnd().Trim()} finally {$reader.Dispose()}
-        Assert-True ($value -eq $ExpectedVersion) "Windows backup archive VERSION mismatch: $value."
-      } finally {$zip.Dispose()}
+    if(((Get-Content (Join-Path $record 'had-webui') -Raw).Trim()) -eq '1'){
+      Assert-True ([string]$manifest['format'] -eq 'zip') "Windows CI inner payload should prefer built-in .NET zip; got $($manifest['format'])."
+      Assert-True ([string]$manifest['file'] -eq 'webui.zip') 'Windows inner payload filename mismatch.'
+      $archive=Join-Path $record ([string]$manifest['file'])
+      Assert-True (Test-Path -LiteralPath $archive -PathType Leaf) 'Windows inner backup payload is missing.'
+      $actual=(Get-FileHash -Algorithm SHA256 -LiteralPath $archive).Hash.ToLowerInvariant()
+      Assert-True ($actual -eq ([string]$manifest['sha256']).ToLowerInvariant()) 'Windows inner payload SHA-256 mismatch.'
+      if($ExpectedVersion){
+        $zip=[IO.Compression.ZipFile]::OpenRead($archive)
+        try {
+          $entry=$zip.GetEntry('VERSION')
+          Assert-True ($null -ne $entry) 'Windows backup payload VERSION entry is missing.'
+          $reader=[IO.StreamReader]::new($entry.Open())
+          try {$value=$reader.ReadToEnd().Trim()} finally {$reader.Dispose()}
+          Assert-True ($value -eq $ExpectedVersion) "Windows backup payload VERSION mismatch: $value."
+        } finally {$zip.Dispose()}
+      }
     }
   }
 
@@ -168,8 +187,8 @@ try {
   Assert-Install $VersionOne $ShaOne 'release-one'
   Assert-ConfigEnabled
   $FirstBackup=(Get-Content (Join-Path $State 'last-backup') -Raw).Trim()
-  Assert-True (((Get-Content (Join-Path $FirstBackup 'had-webui') -Raw).Trim()) -eq '0') 'First backup should record no previous WebUI.'
-  $firstCfg=Get-Content (Join-Path $FirstBackup 'qBittorrent.conf') -Raw
+  Assert-True ((Get-BackupRecordText $FirstBackup 'had-webui') -eq '0') 'First backup should record no previous WebUI.'
+  $firstCfg=Get-BackupRecordText $FirstBackup 'qBittorrent.conf'
   Assert-True ($firstCfg.Contains('WebUI\AlternativeUIEnabled=false')) 'First backup lost original AlternativeUIEnabled.'
   Assert-True ($firstCfg.Contains('WebUI\RootFolder=C:\original\webui')) 'First backup lost original RootFolder.'
 
@@ -182,10 +201,10 @@ try {
   Assert-True ($cfgAfterPlainUpdate -eq $cfgBeforePlainUpdate) 'Plain update changed qBittorrent config bytes.'
   $SecondBackup=(Get-Content (Join-Path $State 'last-backup') -Raw).Trim()
   Assert-True ($SecondBackup -ne $FirstBackup) 'Upgrade backup reused the initial backup directory.'
-  Assert-True (((Get-Content (Join-Path $SecondBackup 'had-webui') -Raw).Trim()) -eq '1') 'Upgrade backup should record previous WebUI.'
+  Assert-True ((Get-BackupRecordText $SecondBackup 'had-webui') -eq '1') 'Upgrade backup should record previous WebUI.'
   Assert-ArchiveBackup $SecondBackup $VersionOne
-  Assert-True (!(Test-Path -LiteralPath (Join-Path $SecondBackup 'qBittorrent.conf'))) 'Plain update unexpectedly captured qBittorrent config.'
-  Assert-True (!(Test-Path -LiteralPath (Join-Path $SecondBackup 'config-path'))) 'Plain update unexpectedly published a qBittorrent config path.'
+  Assert-True ($null -eq (Get-BackupRecordText $SecondBackup 'qBittorrent.conf')) 'Plain update unexpectedly captured qBittorrent config.'
+  Assert-True ($null -eq (Get-BackupRecordText $SecondBackup 'config-path')) 'Plain update unexpectedly published a qBittorrent config path.'
 
   $mutated=(Get-Content $Cfg -Raw).Replace('WebUI\AlternativeUIEnabled=true','WebUI\AlternativeUIEnabled=false').Replace("WebUI\RootFolder=$Destination",'WebUI\RootFolder=C:\post-upgrade-mutated')
   Write-Utf8NoBom $Cfg $mutated
@@ -214,7 +233,7 @@ try {
   Assert-ConfigEnabled
   $ConfiguredBackup=(Get-Content (Join-Path $State 'last-backup') -Raw).Trim()
   Assert-ArchiveBackup $ConfiguredBackup $VersionOne
-  $configuredSnapshot=Get-Content (Join-Path $ConfiguredBackup 'qBittorrent.conf') -Raw
+  $configuredSnapshot=Get-BackupRecordText $ConfiguredBackup 'qBittorrent.conf'
   Assert-True ($configuredSnapshot.Contains('WebUI\AlternativeUIEnabled=false')) 'Explicit configure backup lost the previous AlternativeUIEnabled state.'
   Assert-True ($configuredSnapshot.Contains('WebUI\RootFolder=C:\post-upgrade-mutated')) 'Explicit configure backup lost the previous RootFolder.'
 
@@ -239,7 +258,7 @@ try {
   Assert-True ($uninstallCfg.Contains('WebUI\AlternativeUIEnabled=false')) 'Uninstall did not disable Alternative WebUI.'
   Assert-True ($uninstallCfg.Contains("WebUI\RootFolder=$Destination")) 'Uninstall unexpectedly rewrote the remembered RootFolder.'
   $UninstallBackup=(Get-Content (Join-Path $State 'last-backup') -Raw).Trim()
-  Assert-True (((Get-Content (Join-Path $UninstallBackup 'had-webui') -Raw).Trim()) -eq '1') 'Uninstall backup did not preserve the removed WebUI.'
+  Assert-True ((Get-BackupRecordText $UninstallBackup 'had-webui') -eq '1') 'Uninstall backup did not preserve the removed WebUI.'
   Assert-ArchiveBackup $UninstallBackup $VersionOne
 
   & $pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Installer -Rollback -Configure
@@ -257,11 +276,8 @@ try {
   }
   $remaining=@()
   foreach($stateRoot in @($State,$LegacyState)){
-    $remaining += @(Get-ChildItem -LiteralPath (Join-Path $stateRoot 'backups') -Directory -ErrorAction SilentlyContinue | Where-Object {
-      $marker=Join-Path $_.FullName 'dest-path'
-      if(!(Test-Path -LiteralPath $marker -PathType Leaf)){return $false}
-      ((Get-Content $marker -Raw).Trim()).Equals($Destination,[StringComparison]::OrdinalIgnoreCase)
-    })
+    $backupRoot=Join-Path $stateRoot 'backups'
+    if(Test-Path -LiteralPath $backupRoot -PathType Container){$remaining += @(Get-ChildItem -LiteralPath $backupRoot -Force -ErrorAction SilentlyContinue)}
   }
   Assert-True ($remaining.Count -eq 0) 'Purge uninstall left installer-owned backups for the selected destination.'
   & $pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Installer -Rollback

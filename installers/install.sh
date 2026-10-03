@@ -992,9 +992,98 @@ find_config() {
   return 1
 }
 
+backup_record_read() {
+  backup=$1
+  member=$2
+  if [ -d "$backup" ]; then
+    [ -f "$backup/$member" ] || return 1
+    cat "$backup/$member"
+    return 0
+  fi
+  [ -f "$backup" ] || return 1
+  case "$backup" in *.tar.gz) ;; *) return 1 ;; esac
+  if command -v tar >/dev/null 2>&1; then
+    tar -xOzf "$backup" "./$member" 2>/dev/null && return 0
+  fi
+  if has_busybox_applet tar; then
+    busybox tar -xOzf "$backup" "./$member" 2>/dev/null && return 0
+  fi
+  return 1
+}
+
+backup_record_copy() {
+  backup=$1
+  member=$2
+  output=$3
+  if [ -d "$backup" ]; then
+    [ -f "$backup/$member" ] || return 1
+    cp -p "$backup/$member" "$output" 2>/dev/null || cp "$backup/$member" "$output"
+    return $?
+  fi
+  backup_record_read "$backup" "$member" > "$output" || { rm -f "$output"; return 1; }
+}
+
+backup_record_unpack() {
+  backup=$1
+  target=$2
+  [ -f "$backup" ] || return 1
+  mkdir -p "$target" || return 1
+  if command -v tar >/dev/null 2>&1 && tar -xzf "$backup" -C "$target" 2>/dev/null; then return 0; fi
+  rm -rf "$target"; mkdir -p "$target"
+  if has_busybox_applet tar && busybox tar -xzf "$backup" -C "$target" >/dev/null 2>&1; then return 0; fi
+  rm -rf "$target"
+  return 1
+}
+
+backup_record_pack() {
+  record=$1
+  output=$2
+  tmp="$output.tmp.$$"
+  rm -f "$tmp"
+  if command -v tar >/dev/null 2>&1 && tar -C "$record" -czf "$tmp" . 2>/dev/null; then mv "$tmp" "$output"; return 0; fi
+  rm -f "$tmp"
+  if has_busybox_applet tar && busybox tar -C "$record" -czf "$tmp" . >/dev/null 2>&1; then mv "$tmp" "$output"; return 0; fi
+  rm -f "$tmp"
+  echo "No tar+gzip provider can create the canonical single-file backup bundle." >&2
+  return 1
+}
+
+reserve_backup_path() {
+  stamp=$1
+  n=1
+  while [ "$n" -le 99 ]; do
+    if [ "$n" -eq 1 ]; then name="$stamp.tar.gz"; else suffix=$(printf '%02d' "$n"); name="$stamp-$suffix.tar.gz"; fi
+    candidate="$BACKUPS/$name"
+    lock="$candidate.lock"
+    if [ ! -e "$candidate" ] && mkdir "$lock" 2>/dev/null; then
+      if [ ! -e "$candidate" ]; then printf '%s\n' "$candidate"; return 0; fi
+      rmdir "$lock" 2>/dev/null || true
+    fi
+    n=$((n+1))
+  done
+  echo "Unable to reserve a unique backup name for $stamp." >&2
+  return 1
+}
+
+backup_sort_key() {
+  name=$(basename "$1")
+  case "$name" in
+    ????????-????.tar.gz) printf '%s-99-01\n' "${name%.tar.gz}" ;;
+    ????????-????-[0-9][0-9].tar.gz)
+      stem=${name%.tar.gz}
+      suffix=${stem##*-}
+      minute=${stem%-*}
+      printf '%s-99-%s\n' "$minute" "$suffix"
+      ;;
+    *) printf '%s\n' "$name" ;;
+  esac
+}
+
 backup_is_owned() {
   backup=$1
-  [ -d "$backup" ] && [ -f "$backup/had-webui" ] && [ -f "$backup/dest-path" ]
+  had=$(backup_record_read "$backup" had-webui 2>/dev/null || true)
+  dest=$(backup_record_read "$backup" dest-path 2>/dev/null || true)
+  [ -n "$dest" ] && { [ "$had" = "0" ] || [ "$had" = "1" ]; }
 }
 
 owned_backups_for_dest() {
@@ -1002,13 +1091,13 @@ owned_backups_for_dest() {
   for backup_root in "$BACKUPS" "$LEGACY_BACKUPS"; do
     [ -d "$backup_root" ] || continue
     for backup in "$backup_root"/*; do
-      [ -d "$backup" ] || continue
+      [ -e "$backup" ] || continue
       backup_is_owned "$backup" || continue
-      saved_dest=$(cat "$backup/dest-path" 2>/dev/null || true)
+      saved_dest=$(backup_record_read "$backup" dest-path 2>/dev/null || true)
       [ "$saved_dest" = "$target" ] || continue
-      printf '%s\n' "$backup"
+      printf '%s|%s\n' "$(backup_sort_key "$backup")" "$backup"
     done
-  done | sort -r
+  done | sort -r | sed 's/^[^|]*|//'
 }
 
 latest_backup_for_dest() {
@@ -1032,13 +1121,6 @@ prune_backups_for_dest() {
 
 purge_backups_for_dest() {
   target=$1
-  last_backup_for_target=""
-  candidate=$(state_marker_value last-backup 2>/dev/null || true)
-  if [ -n "$candidate" ] && backup_is_owned "$candidate"; then
-    candidate_dest=$(cat "$candidate/dest-path" 2>/dev/null || true)
-    [ "$candidate_dest" = "$target" ] && last_backup_for_target=$candidate
-  fi
-
   owned_backups_for_dest "$target" | while IFS= read -r backup; do
     [ -n "$backup" ] || continue
     rm -rf "$backup"
@@ -1052,10 +1134,8 @@ purge_backups_for_dest() {
     fi
     if [ -s "$marker_root/last-backup" ]; then
       marker_backup=$(cat "$marker_root/last-backup" 2>/dev/null || true)
-      if [ -n "$marker_backup" ] && backup_is_owned "$marker_backup"; then
-        marker_backup_dest=$(cat "$marker_backup/dest-path" 2>/dev/null || true)
-        [ "$marker_backup_dest" = "$target" ] && marker_matches_target=1
-      fi
+      marker_backup_dest=$(backup_record_read "$marker_backup" dest-path 2>/dev/null || true)
+      [ "$marker_backup_dest" = "$target" ] && marker_matches_target=1
     fi
     if [ "$marker_matches_target" -eq 1 ]; then
       rm -f "$marker_root/last-backup" "$marker_root/last-dest" "$marker_root/last-qb-root-folder"
@@ -1181,6 +1261,21 @@ extract_webui_backup_payload() {
   backup_extract_root=$1
   backup_extract_stage=$2
 
+  if [ -f "$backup_extract_root" ]; then
+    backup_record_stage=$(portable_mktemp_dir) || return 1
+    if ! backup_record_unpack "$backup_extract_root" "$backup_record_stage"; then
+      rm -rf "$backup_record_stage"
+      echo "Unable to unpack backup bundle: $backup_extract_root" >&2
+      return 1
+    fi
+    if ! extract_webui_backup_payload "$backup_record_stage" "$backup_extract_stage"; then
+      rm -rf "$backup_record_stage"
+      return 1
+    fi
+    rm -rf "$backup_record_stage"
+    return 0
+  fi
+
   # Bounded legacy reader for backups created before archive payloads existed.
   if [ -d "$backup_extract_root/webui" ]; then
     mkdir -p "$backup_extract_stage" || return 1
@@ -1226,22 +1321,22 @@ backup_target() {
   dest=$1
   index=$2
   qb_root=$3
-  suffix=$(printf '%02d' "$index")
-  b="$BACKUPS/$BACKUP_STAMP-$suffix-$$"
-  [ ! -e "$b" ] || { echo "Backup path already exists: $b" >&2; return 1; }
-  mkdir -p "$b"
+  b=$(reserve_backup_path "$BACKUP_STAMP") || return 1
+  lock="$b.lock"
+  record=$(portable_mktemp_dir) || { rmdir "$lock" 2>/dev/null || true; return 1; }
 
   if [ -e "$dest" ] && [ ! -d "$dest" ]; then
     echo "Install target exists but is not a directory: $dest" >&2
-    rm -rf "$b"
+    rm -rf "$record"
+    rmdir "$lock" 2>/dev/null || true
     return 1
   fi
   if [ -d "$dest" ]; then
-    create_webui_backup_payload "$dest" "$b" || { rm -rf "$b"; echo "Unable to create a verified WebUI backup payload." >&2; return 1; }
-    printf '1\n' > "$b/had-webui"
+    create_webui_backup_payload "$dest" "$record" || { rm -rf "$record"; rmdir "$lock" 2>/dev/null || true; echo "Unable to create a verified WebUI backup payload." >&2; return 1; }
+    printf '1\n' > "$record/had-webui"
   else
-    write_backup_manifest "$b" "none" "" "none" "" "0"
-    printf '0\n' > "$b/had-webui"
+    write_backup_manifest "$record" "none" "" "none" "" "0"
+    printf '0\n' > "$record/had-webui"
   fi
 
   cfg=""
@@ -1249,12 +1344,22 @@ backup_target() {
     cfg=$(find_config || true)
   fi
   if [ -n "$cfg" ]; then
-    cp -p "$cfg" "$b/qBittorrent.conf" 2>/dev/null || cp "$cfg" "$b/qBittorrent.conf"
-    printf '%s\n' "$cfg" > "$b/config-path"
+    cp -p "$cfg" "$record/qBittorrent.conf" 2>/dev/null || cp "$cfg" "$record/qBittorrent.conf"
+    printf '%s\n' "$cfg" > "$record/config-path"
   fi
 
-  printf '%s\n' "$dest" > "$b/dest-path"
-  printf '%s\n' "$qb_root" > "$b/qb-root-folder"
+  printf '%s\n' "$dest" > "$record/dest-path"
+  printf '%s\n' "$qb_root" > "$record/qb-root-folder"
+  if ! backup_record_pack "$record" "$b"; then
+    rm -rf "$record"
+    rm -f "$b"
+    rmdir "$lock" 2>/dev/null || true
+    return 1
+  fi
+  rm -rf "$record"
+  rmdir "$lock" 2>/dev/null || true
+  backup_is_owned "$b" || { rm -f "$b"; echo "Backup bundle verification failed: $b" >&2; return 1; }
+
   printf '%s\n' "$b" > "$STATE/last-backup"
   printf '%s\n' "$dest" > "$STATE/last-dest"
   printf '%s\n' "$qb_root" > "$STATE/last-qb-root-folder"
@@ -1348,8 +1453,8 @@ deploy_staged_webui() {
 restore_webui_from_backup() {
   dest=$1
   b=$2
-  had_webui=0
-  [ -s "$b/had-webui" ] && had_webui=$(cat "$b/had-webui")
+  had_webui=$(backup_record_read "$b" had-webui 2>/dev/null || true)
+  case "$had_webui" in 0|1) ;; *) echo "Backup had-webui marker is missing or invalid: $b" >&2; return 1 ;; esac
 
   if [ "$had_webui" = "1" ]; then
     restore_parent=$(dirname "$dest")
@@ -1375,20 +1480,21 @@ restore_webui_from_backup() {
 restore_full_backup() {
   dest=$1
   b=$2
+  cfg_tmp=""
   if [ "$CONFIGURE" -eq 1 ]; then
-    [ -s "$b/config-path" ] && [ -f "$b/qBittorrent.conf" ] || {
-      echo "This backup has no qBittorrent config snapshot; refusing -rollback -configure." >&2
-      return 1
-    }
-    cfg=$(cat "$b/config-path")
+    cfg=$(backup_record_read "$b" config-path 2>/dev/null || true)
+    [ -n "$cfg" ] || { echo "This backup has no qBittorrent config snapshot; refusing -rollback -configure." >&2; return 1; }
     is_safe_config_path "$cfg" || { echo "Backup qBittorrent config path is unsafe: $cfg" >&2; return 1; }
+    cfg_tmp=$(portable_mktemp_file "$TMP" "rollback-qb-config") || return 1
+    backup_record_copy "$b" qBittorrent.conf "$cfg_tmp" || { rm -f "$cfg_tmp"; echo "This backup has no qBittorrent config snapshot; refusing -rollback -configure." >&2; return 1; }
   fi
 
-  restore_webui_from_backup "$dest" "$b" || return 1
+  restore_webui_from_backup "$dest" "$b" || { [ -n "$cfg_tmp" ] && rm -f "$cfg_tmp"; return 1; }
 
   if [ "$CONFIGURE" -eq 1 ]; then
     mkdir -p "$(dirname "$cfg")"
-    cp -p "$b/qBittorrent.conf" "$cfg" 2>/dev/null || cp "$b/qBittorrent.conf" "$cfg"
+    cp -p "$cfg_tmp" "$cfg" 2>/dev/null || cp "$cfg_tmp" "$cfg"
+    rm -f "$cfg_tmp"
     echo "Restored qBittorrent WebUI config by explicit -configure: $cfg"
   fi
 }
@@ -1408,9 +1514,9 @@ EOF_TARGETS
   else
     b=$(state_marker_value last-backup 2>/dev/null || true)
     [ -n "$b" ] || { echo "No backup found." >&2; return 1; }
-    [ -d "$b" ] || { echo "Backup directory missing: $b" >&2; return 1; }
-    [ -s "$b/dest-path" ] || { echo "Backup destination marker missing: $b/dest-path" >&2; return 1; }
-    target=$(cat "$b/dest-path")
+    backup_is_owned "$b" || { echo "Backup record missing or invalid: $b" >&2; return 1; }
+    target=$(backup_record_read "$b" dest-path 2>/dev/null || true)
+    [ -n "$target" ] || { echo "Backup destination metadata missing: $b" >&2; return 1; }
     printf '%s|%s\n' "$target" "$b" >> "$plan"
   fi
   while IFS='|' read -r target b; do
@@ -1425,7 +1531,7 @@ trap 'rm -rf "$TMP"' EXIT INT TERM
 if [ "$MODE" = "uninstall" ]; then
   BACKUP_MAP_FILE="$TMP/backup-map"
   : > "$BACKUP_MAP_FILE"
-  BACKUP_STAMP=$(date '+%Y%m%d-%H%M%S')
+  BACKUP_STAMP=$(date '+%Y%m%d-%H%M')
   index=0
   while IFS= read -r target; do
     [ -n "$target" ] || continue
@@ -1581,7 +1687,7 @@ while IFS= read -r target; do
   prepare_target "$target" "$(qb_root_for_target "$target")" || exit 1
 done < "$TARGET_FILE"
 
-BACKUP_STAMP=$(date '+%Y%m%d-%H%M%S')
+BACKUP_STAMP=$(date '+%Y%m%d-%H%M')
 index=0
 while IFS='|' read -r target new qb_root; do
   [ -n "$target" ] || continue

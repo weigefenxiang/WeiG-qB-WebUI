@@ -11,14 +11,14 @@ assert.ok(!shellDeploy.includes('rm -rf -- "$deploy_dest"')&&!shellDeploy.includ
 assert.ok(!/read\s+-r\s+-d\b/.test(shellDeploy)&&!shellDeploy.includes('-print0 > "$deploy_list"'),'Linux live update must remain executable by its declared POSIX sh interpreter; Bash-only read -d loops are forbidden.');
 assert.ok(shellDeploy.includes('deploy_expected_version=')&&shellDeploy.includes('deploy_expected_sha=')&&shellDeploy.includes('deploy_actual_version=')&&shellDeploy.includes('deploy_actual_sha='),'Linux live update must verify deployed VERSION/GIT_SHA against the prepared staging payload instead of checking existence only.');
 assert.ok(sh.includes('if [ "$CONFIGURE" -eq 1 ] && [ "$TARGET_COUNT" -eq 1 ]; then\n    cfg=$(find_config || true)'),'Linux ordinary Install/Update backups must not capture qBittorrent config unless Configure is explicit.');
-assert.ok(sh.includes('if [ "$CONFIGURE" -eq 1 ]; then\n    [ -s "$b/config-path" ]'),'Linux rollback must make qB config restore an explicit Configure operation.');
+assert.ok(sh.includes('if [ "$CONFIGURE" -eq 1 ]; then\n    cfg=$(backup_record_read "$b" config-path')&&sh.includes('backup_record_copy "$b" qBittorrent.conf'),'Linux rollback must read the archive record only when Configure is explicit.');
 assert.ok(!sh.includes('mv "$target" "$old"'),'Linux current deployment must retire the whole-directory live switch.');
 
 const psDeploy=ps.slice(ps.indexOf('function Install-WebUiStage'),ps.indexOf('function Restore-WebUiBackup'));
 assert.ok(psDeploy.includes("Join-Path $Target 'public\\index.html'")&&psDeploy.includes("Join-Path $Target 'private\\index.html'"),'Windows live update must require both existing Alternative WebUI entry files before mutation.');
 assert.ok(psDeploy.includes('[IO.File]::Replace($temp,$destination,$replaceBackup,$true)'),'Windows live update must atomically replace existing files from same-directory temporary files.');
 assert.ok(!psDeploy.includes('Remove-Item -LiteralPath $Target -Recurse')&&!psDeploy.includes('Move-Item -LiteralPath $Target'),'Windows live update must never remove or rename the active Root Folder.');
-assert.ok(ps.includes("if($Configure){\n    $old=Join-Path $b 'qBittorrent.conf'"),'Windows rollback must make qB config restore an explicit Configure operation.');
+assert.ok(ps.includes("if($Configure){\n    $cfg=Read-BackupRecordText $b 'config-path'")&&ps.includes("Copy-BackupRecordFile $b 'qBittorrent.conf'"),'Windows rollback must read the archive record only when Configure is explicit.');
 assert.ok(!ps.includes('Move-Item $Destination $old'),'Windows current deployment must retire the whole-directory live switch.');
 
 const windowsMain=ps.slice(ps.indexOf('$cfg=$null\nif($Configure){'),ps.indexOf('$tmp=Join-Path'));
