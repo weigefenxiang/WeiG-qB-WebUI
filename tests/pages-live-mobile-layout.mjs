@@ -96,9 +96,9 @@ try{
   const collapsedPager=await page.locator('#list-view .pager').evaluate(node=>{
     const rail=node.querySelector('#mobile-detail-rail'),nav=node.querySelector('.pager__nav'),actions=node.querySelector('#torrent-selection-toolbar'),expand=node.querySelector('#mobile-detail-expand'),label=node.querySelector('#page-label');
     const rect=n=>{const r=n.getBoundingClientRect();return{top:r.top,bottom:r.bottom,left:r.left,right:r.right,width:r.width,height:r.height};};
-    return{pager:rect(node),nav:rect(nav),actions:rect(actions),railHidden:rail.hidden,expandHidden:expand.hidden,expand:rect(expand),labelFont:parseFloat(getComputedStyle(label).fontSize),overflow:node.scrollWidth-node.clientWidth};
+    return{pager:rect(node),nav:rect(nav),actions:rect(actions),railHidden:rail.hidden,railDisplay:getComputedStyle(rail).display,railRects:rail.getClientRects().length,railHeight:rail.getBoundingClientRect().height,expandHidden:expand.hidden,expand:rect(expand),labelFont:parseFloat(getComputedStyle(label).fontSize),overflow:node.scrollWidth-node.clientWidth};
   });
-  assert.equal(collapsedPager.railHidden,true,`collapse arrow must remove the Detail rail after its shared transition: ${JSON.stringify(collapsedPager)}`);
+  assert.equal(collapsedPager.railHidden,true,`collapse arrow must set semantic hidden after its shared transition: ${JSON.stringify(collapsedPager)}`);assert.equal(collapsedPager.railDisplay,'none',`hidden Detail rail must be physically absent instead of being repainted by feature CSS: ${JSON.stringify(collapsedPager)}`);assert.equal(collapsedPager.railRects,0,`hidden Detail rail must own zero layout boxes: ${JSON.stringify(collapsedPager)}`);assert.equal(collapsedPager.railHeight,0,`hidden Detail rail must consume zero vertical geometry: ${JSON.stringify(collapsedPager)}`);
   assert.equal(collapsedPager.expandHidden,false,`collapsed Detail rail must expose the up-arrow between actions and pager: ${JSON.stringify(collapsedPager)}`);
   assert.ok(Math.abs(collapsedPager.nav.top-collapsedPager.actions.top)<=3&&collapsedPager.expand.left>=collapsedPager.actions.right-2,`collapsed actions/up-arrow/pager must share one lower row in visual order: ${JSON.stringify(collapsedPager)}`);
   assert.ok(collapsedPager.labelFont>=12&&collapsedPager.overflow<=1,`collapsed pager must stay readable and non-overflowing: ${JSON.stringify(collapsedPager)}`);
@@ -108,6 +108,20 @@ try{
   const restoredRail=await page.locator('#mobile-detail-rail').evaluate(node=>({height:node.getBoundingClientRect().height,hidden:node.hidden}));
   assert.equal(restoredRail.hidden,false,'up-arrow must restore the same Detail rail');
   assert.ok(restoredRail.height>=34,`restored Detail rail must return to its usable height: ${JSON.stringify(restoredRail)}`);
+
+  // A52: Inline Detail and full Detail are two hosts for one semantic tab/session.
+  const trackerTab=page.locator('#torrent-detail-tabs [data-tab="trackers"]');
+  await trackerTab.click();
+  await page.waitForFunction(()=>document.querySelector('#torrent-detail-tabs [data-tab="trackers"]')?.classList.contains('is-active')&&WeiG.AppState?.detailDockOpen===true,null,{timeout:10000});
+  const preview=page.locator('.torrent-mobile-card.is-detail-subject').first();
+  await preview.waitFor({state:'visible',timeout:10000});
+  const previewSelection=await preview.locator('.torrent-select').evaluate(input=>({checked:input.checked,aria:input.getAttribute('aria-label')}));
+  assert.equal(previewSelection.checked,false,`zero-selection Detail preview must not impersonate Selection: ${JSON.stringify(previewSelection)}`);
+  await preview.locator('.mobile-card-title').click();
+  await page.waitForFunction(()=>location.hash.includes('/torrent/')&&document.querySelector('#detail-tabs [data-tab="trackers"]')?.classList.contains('is-active'),null,{timeout:15000});
+  await page.locator('[data-detail-back]').click();
+  await page.waitForFunction(()=>WeiG.Router?.route?.().name==='home'&&WeiG.AppState?.detailDockOpen===true&&document.querySelector('#torrent-detail-tabs [data-tab="trackers"]')?.classList.contains('is-active'),null,{timeout:15000});
+  assert.equal(await page.locator('#torrent-detail-dock').evaluate(node=>node.hidden),false,'returning from full Detail must remount the shared inline Detail host');
 
   // A51: prove the real browser file-input -> FormData -> Virtual qB Add path, not only static ownership.
   const addName='A51-browser-file.torrent',rememberedPath='/virtual/a51-remembered';
