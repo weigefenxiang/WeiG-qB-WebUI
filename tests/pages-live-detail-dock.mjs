@@ -140,7 +140,7 @@ async function verifyModern(){
   const opened=await page.evaluate(expected=>({
     route:window.WeiG.Router.route().name,
     hash:window.WeiG.AppState.detailDockHash,
-    tab:window.WeiG.AppState.detailDockTab,
+    tab:window.WeiG.AppState.detailTab,
     open:window.WeiG.AppState.detailDockOpen,
     topBackHidden:document.getElementById('back-btn')?.classList.contains('is-hidden'),
     dockBack:document.querySelectorAll('#torrent-detail-dock [data-detail-back],#torrent-detail-dock #back-btn').length,
@@ -184,7 +184,7 @@ async function verifyModern(){
   await page.waitForSelector('#torrent-detail-dock-content .shared-table__viewport',{state:'visible',timeout:30000});
   const trackerState=await page.evaluate(()=>({
     route:window.WeiG.Router.route().name,
-    tab:window.WeiG.AppState.detailDockTab,
+    tab:window.WeiG.AppState.detailTab,
     active:[...document.querySelectorAll('#torrent-detail-tabs .tab.is-active')].map(node=>node.dataset.tab),
     mainLeft:document.getElementById('torrent-list').scrollLeft,
     detailViewport:!!document.querySelector('#torrent-detail-dock-content .shared-table__viewport'),
@@ -213,12 +213,12 @@ async function verifyModern(){
   for(const tab of ['webseeds','files']){
     await page.locator(`#torrent-detail-tabs .tab[data-tab="${tab}"]`).click();
     await page.waitForSelector('#torrent-detail-dock-content .shared-table__viewport',{state:'visible',timeout:30000});
-    const state=await page.evaluate(()=>({route:window.WeiG.Router.route().name,tab:window.WeiG.AppState.detailDockTab,active:[...document.querySelectorAll('#torrent-detail-tabs .tab.is-active')].map(node=>node.dataset.tab)}));
+    const state=await page.evaluate(()=>({route:window.WeiG.Router.route().name,tab:window.WeiG.AppState.detailTab,active:[...document.querySelectorAll('#torrent-detail-tabs .tab.is-active')].map(node=>node.dataset.tab)}));
     assert.equal(state.route,'home',`${tab} Dock switch must stay on the Torrent Library route`);
     assert.equal(state.tab,tab);assert.deepEqual(state.active,[tab]);
   }
   await page.locator('#torrent-detail-tabs .tab[data-tab="trackers"]').click();
-  await page.waitForFunction(()=>window.WeiG.AppState.detailDockOpen&&window.WeiG.AppState.detailDockTab==='trackers',null,{timeout:10000});
+  await page.waitForFunction(()=>window.WeiG.AppState.detailDockOpen&&window.WeiG.AppState.detailTab==='trackers',null,{timeout:10000});
 
   await page.locator('#torrent-detail-tabs .tab[data-tab="trackers"]').click();
   await page.waitForFunction(()=>!window.WeiG.AppState.detailDockOpen&&document.getElementById('torrent-detail-dock').hidden&&document.getElementById('torrent-detail-splitter').hidden,null,{timeout:10000});
@@ -234,7 +234,7 @@ async function verifyModern(){
   assert.equal(reducedEnter?.ghosts?.length,0,'reduced Dock entry must not create a transition ghost');
   await setMotion(page,'system');
   const secondHash=await selectOnlyByRow(page,1);
-  await page.waitForFunction(expected=>window.WeiG.AppState.detailDockOpen&&window.WeiG.AppState.detailDockHash===expected&&window.WeiG.AppState.detailDockTab==='peers',secondHash,{timeout:30000});
+  await page.waitForFunction(expected=>window.WeiG.AppState.detailDockOpen&&window.WeiG.AppState.detailDockHash===expected&&window.WeiG.AppState.detailTab==='peers',secondHash,{timeout:30000});
   assert.notEqual(secondHash,firstHash,'selection rebind gate needs a second Torrent');
 
   // Ctrl-select one more Torrent: multi-selection keeps the Dock usable and follows the last interacted Torrent.
@@ -343,7 +343,7 @@ async function verifyLegacy(){
   await selectOnlyByRow(page,0);
   await page.locator('#torrent-detail-tabs .tab[data-tab="trackers"]').click();
   await page.waitForSelector('#torrent-detail-dock-content .shared-table__viewport',{state:'visible',timeout:30000});
-  const state=await page.evaluate(()=>({route:window.WeiG.Router.route().name,tab:window.WeiG.AppState.detailDockTab,profile:document.getElementById('qb-version')?.textContent||''}));
+  const state=await page.evaluate(()=>({route:window.WeiG.Router.route().name,tab:window.WeiG.AppState.detailTab,profile:document.getElementById('qb-version')?.textContent||''}));
   assert.equal(state.route,'home');assert.equal(state.tab,'trackers');assert.ok(state.profile.includes('4.1.9.1'),'legacy gate must run against qB 4.1.9.1');
   assert.deepEqual(errors,[],`A35 legacy Detail Dock emitted page errors:\n${errors.join('\n')}`);
   await context.close();
