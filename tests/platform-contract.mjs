@@ -27,7 +27,7 @@ assert.match(sh,/-version VERSION, --version VERSION/,'Linux installer must expo
 assert.match(sh,/-dev, --dev\s+Install\/update the current dev exact Git SHA/,'Linux installer must expose the documented single-dash dev option');
 assert.match(sh,/-o PATH, --output PATH\s+WebUI install path\. Repeat -o/,'Linux installer must expose repeatable output targets');
 assert.match(sh,/while \[ "\$target" != "\/" \] && \[ "\$\{target%\/\}" != "\$target" \]; do/,'Linux installer must normalize trailing slashes on explicit install targets');
-assert.match(sh,/deploy_staged_webui\(\)[\s\S]*mv -f -- "\$deploy_tmp" "\$deploy_dst"/s,'Linux installer must keep the active Alternative WebUI root present and atomically replace staged files in place.');
+assert.match(sh,/deploy_staged_webui\(\)[\s\S]*mv -f "\$deploy_tmp" "\$deploy_dst"/s,'Linux installer must keep the active Alternative WebUI root present and atomically replace staged files in place with POSIX fileutils syntax.');
 assert.match(sh,/-configure, --configure\s+Enable qBittorrent Alternative WebUI and set Root Folder/,'Linux configure help must explain the qB config mutation');
 assert.match(sh,/-rollback, --rollback\s+Restore previous WeiG files\. Add -configure to restore a saved qB WebUI config snapshot\./,'Linux installer must expose file-only rollback with explicit qB config restore semantics');
 assert.match(sh,/-help, -h, --help\s+Show this help/,'Linux installer must expose the documented -help option');
@@ -61,7 +61,8 @@ assert.doesNotMatch(sh,/archive\/refs\/heads\/main\.zip/,'Linux Release channel 
 assert.doesNotMatch(sh,/resolve_main_sha/,'Linux Release channel must not resolve main as a payload source');
 
 assert.match(ps,/public\\index\.html/,'Windows installer must validate public/index.html');
-assert.match(ps,/\$env:LOCALAPPDATA\\WeiG_qB-WebUI/,'Windows installer must use a user-writable default destination');
+assert.match(ps,/Destination="\$env:LOCALAPPDATA\\weig-qb-webui"/,'Windows installer must use the canonical user-writable default destination');
+assert.match(ps,/LegacyDefaultDestination="\$env:LOCALAPPDATA\\WeiG_qB-WebUI"/,'Windows installer must keep the previous default path only as a bounded in-place migration reader');
 assert.match(ps,/APPDATA 'qBittorrent\\qBittorrent\.ini'/,'Windows installer must search the canonical roaming qBittorrent config path');
 assert.match(ps,/WebUI\\AlternativeUIEnabled=true/,'Windows installer must persist Alternative WebUI enabled state');
 assert.match(ps,/WebUI\\RootFolder=/,'Windows installer must persist the native Windows RootFolder');
