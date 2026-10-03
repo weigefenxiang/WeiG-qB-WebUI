@@ -109,6 +109,37 @@ try{
   assert.equal(restoredRail.hidden,false,'up-arrow must restore the same Detail rail');
   assert.ok(restoredRail.height>=34,`restored Detail rail must return to its usable height: ${JSON.stringify(restoredRail)}`);
 
+  // A51: prove the real browser file-input -> FormData -> Virtual qB Add path, not only static ownership.
+  const addName='A51-browser-file.torrent',rememberedPath='/virtual/a51-remembered';
+  await page.locator('#add-btn').click();
+  await page.waitForSelector('#add-dialog[open] #torrent-files',{state:'attached',timeout:5000});
+  await page.locator('#torrent-files').setInputFiles({name:addName,mimeType:'application/x-bittorrent',buffer:Buffer.from('d4:infod4:name16:A51-browser-file6:lengthi1eee')});
+  await page.waitForFunction(name=>{const node=document.getElementById('add-files-status');return node&&!node.hidden&&String(node.textContent||'').includes(name);},addName,{timeout:5000});
+  const selectedFileState=await page.locator('#add-files-status').evaluate(node=>({text:(node.textContent||'').trim(),hidden:node.hidden}));
+  assert.equal(selectedFileState.hidden,false,`selected .torrent filename must become visible before submit: ${JSON.stringify(selectedFileState)}`);
+  assert.ok(selectedFileState.text.includes(addName),`selected .torrent filename presentation drifted: ${JSON.stringify(selectedFileState)}`);
+  const savePath=page.locator('#save-path'),remember=page.locator('#add-remember-settings');
+  if(await savePath.count()&&await remember.count()){
+    assert.equal(await savePath.isDisabled(),false,'5.2.3 manual Add save path unexpectedly disabled');
+    await savePath.fill(rememberedPath);
+    await remember.check();
+  }
+  await page.locator('#add-submit').click();
+  await page.waitForFunction(()=>!document.getElementById('add-dialog')?.open,null,{timeout:10000});
+  await page.waitForFunction(name=>Array.isArray(WeiG.AppState?.catalog)&&WeiG.AppState.catalog.some(t=>String(t?.name||'')===name),addName,{timeout:15000});
+  assert.ok(await page.locator('.torrent-mobile-card').filter({hasText:addName}).count()>=1,'browser-uploaded .torrent did not materialize in the first mobile library page');
+
+  if(await savePath.count()&&await remember.count()){
+    await page.locator('#add-btn').click();
+    await page.waitForSelector('#add-dialog[open] #save-path',{state:'visible',timeout:5000});
+    assert.equal(await page.locator('#add-remember-settings').isChecked(),true,'remember Add settings did not survive reopening the canonical dialog');
+    assert.equal(await page.locator('#save-path').inputValue(),rememberedPath,'remembered qB server save path was not restored');
+    assert.equal(await page.locator('#torrent-files').inputValue(),'','file object must never be restored with remembered Add settings');
+    assert.equal(await page.locator('#torrent-urls').inputValue(),'','URL/magnet source must never be restored with remembered Add settings');
+    await page.locator('#add-dialog .dialog__head .icon-btn').click();
+    await page.waitForFunction(()=>!document.getElementById('add-dialog')?.open,null,{timeout:5000});
+  }
+
   await page.locator('#mobile-bottom-nav [data-route="rss"]').click();
   await page.waitForFunction(()=>document.getElementById('rss-view')?.classList.contains('is-active')&&document.querySelector('#rss-view .rss-header-actions')&&document.getElementById('rss-add-open-btn')&&document.getElementById('rss-refresh-btn'));
   const rss=await page.evaluate(()=>{
