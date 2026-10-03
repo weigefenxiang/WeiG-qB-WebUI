@@ -12,6 +12,8 @@ assert.ok(promote.includes("github.rest.actions.createWorkflowDispatch")&&promot
 assert.ok(!promote.includes('EXISTING="$(gh api'),'retired stdout/empty-string tag probing must not remain active');
 assert.ok(release.includes('workflow_dispatch:'),'Release must support explicit Bot dispatch on stable tag');
 assert.ok(release.includes('--latest')&&release.includes('github.rest.repos.getLatestRelease'),'Release must explicitly publish and authoritative-reread GitHub Latest');
+assert.ok(release.includes('release/weig-qb-webui.zip')&&release.includes('release/weig-qb-webui.tar.gz')&&release.includes('release/manifest.json')&&release.includes('release/install.sh')&&release.includes('release/install.ps1'),'new stable Releases must publish the canonical lowercase multi-archive artifact set');
+assert.ok(release.includes("const canonical = ['weig-qb-webui.zip','weig-qb-webui.tar.gz','manifest.json','install.sh','install.ps1','SHA256SUMS']")&&release.includes("const legacy = ['WeiG-qB-WebUI.zip','weig-install.sh','weig-install.ps1','SHA256SUMS']"),'metadata refresh must keep one bounded historical asset reader without making legacy names current');
 assert.ok(release.includes('github.rest.repos.listReleases')&&release.includes('Repository Release list is not headed by canonical Latest Release'),'Release must verify the canonical Latest Release also heads the repository Release list');
 assert.ok(release.includes("Published Release body does not equal the canonical generated release notes."),'Release must verify GitHub published the exact canonical generated body');
 assert.ok(release.includes("- 'release-refresh-v*'")&&release.includes("refresh_public_copy:"),'existing stable Release refresh must remain inside the canonical Release workflow');
