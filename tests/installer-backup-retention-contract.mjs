@@ -28,7 +28,7 @@ assert.ok(sh.includes('prune_backups_for_dest() {'), 'Shell installer must own t
 assert.ok(sh.includes('owned_backups_for_dest() {')&&sh.includes('latest_backup_for_dest() {'), 'Shell backup lookup must centralize exact-target ownership before rollback/retention/purge.');
 assert.ok(sh.includes('backup_is_owned() {')&&sh.includes('[ -f "$backup/had-webui" ]')&&sh.includes('[ -f "$backup/dest-path" ]'), 'Shell backup ownership must require installer markers before deletion.');
 assert.ok(sh.includes('saved_dest=$(cat "$backup/dest-path"')&&sh.includes('[ "$saved_dest" = "$target" ] || continue'), 'Shell canonical backup inventory must isolate ownership by exact install target.');
-assert.ok(sh.includes('sort -r | while IFS= read -r backup'), 'Shell backup inventory must retain newest-first ordering without whitespace-unsafe word splitting.');
+assert.match(sh,/owned_backups_for_dest\(\) \{[\s\S]*for backup in "\$BACKUPS"\/\*; do[\s\S]*done \| sort -r/s, 'Shell backup inventory must retain newest-first ordering while iterating quoted glob results instead of whitespace-splitting command output.');
 assert.match(sh,/b="\$BACKUPS\/\$BACKUP_STAMP-\$suffix-\$\$"/, 'Shell multi-target backups must be uniquely timestamped under the shared backup root.');
 assert.ok(sh.includes('prune_backups_for_dest "$target" "$BACKUP_RETENTION"'), 'Shell successful deployment must cap each target independently at three backups.');
 assert.ok(sh.indexOf("printf '%s\\n' \"$b\" > \"$STATE/last-backup\"")<sh.indexOf('prune_backups_for_dest "$target" "$BACKUP_RETENTION"'), 'Shell must publish rollback pointers before pruning older target backups.');
