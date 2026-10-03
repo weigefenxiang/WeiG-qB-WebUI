@@ -50,7 +50,7 @@ assert(/W\.FontScalePolicy=Object\.freeze\(/.test(core),'Font px range must have
 assert(/W\.PageSizePolicy=Object\.freeze\([\s\S]*controlSpec:pageSizeControlSpec/.test(core),'Page Size Settings and Torrent toolbar must share one control spec');
 assert(/W\.RefreshIntervalPolicy=Object\.freeze\(/.test(core),'Refresh interval must have one canonical numeric policy owner');
 assert(!/data-font-size=(?:standard|large|xlarge)/.test(appCss),'retired font enum CSS owner must not survive px migration');
-assert(/numericInputNumber\(spec\)[\s\S]*spec&&spec\.signed[\s\S]*spec&&spec\.suffix/.test(floating),'canonical numeric Select input must accept bounded signed/suffix values');
+assert(floating.includes('function numericInputNumber(spec)')&&floating.includes('spec&&spec.signed')&&floating.includes('spec&&spec.suffix')&&floating.includes("typeof spec.toValue==='function'"),'canonical numeric Select input must accept bounded signed/suffix values and map display input to semantic values');
 assert(/function beginInterfacePreview\(\)[\s\S]*function rollbackInterfacePreview\(\)/.test(settings),'WeiG Interface must own one bounded transient preview session');
 assert(/previous==='weig'&&next!=='weig'\)rollbackInterfacePreview\(\)/.test(settings),'leaving WeiG Interface must roll back unsaved preview');
 assert(/weig:route-state[\s\S]*rollbackInterfacePreview\(\)/.test(settings),'leaving Settings route must roll back unsaved Interface preview');
