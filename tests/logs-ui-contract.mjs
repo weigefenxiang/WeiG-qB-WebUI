@@ -15,6 +15,7 @@ const logs=read('webui/private/scripts/logs.js');
 const components=read('webui/private/scripts/components.js');
 const app=read('webui/private/scripts/app.js');
 const css=read('webui/private/css/logs.css');
+const controlsCss=read('webui/private/css/controls.css');
 const appCss=read('webui/private/css/app.css');
 const tableCss=read('webui/private/css/table.css');
 const core=read('webui/private/scripts/core.js');
@@ -39,7 +40,7 @@ for(const file of walk(path.join(root,'webui')).filter(p=>/\.(?:html|js|css)$/i.
 
 assert(logs.includes('if(state.types.has(type))state.types.delete(type);else state.types.add(type);'),'Each log level must be independently toggleable');
 assert(!logs.includes('state.types.size>1'),'Logs must allow all four levels to be disabled');
-for(const tone of ['normal','info','warning','danger'])assert(logs.includes('b.dataset.tone=typeTone(type)')&&css.includes(`--logs-tone-${tone}`),`Missing canonical ${tone} log tone`);assert(css.includes('color:var(--text-secondary);border-color:var(--control-border);background:var(--control-subtle)')&&css.includes('transform:translateY(-1px);font-weight:760'),'Inactive log chips must stay neutral while aria-pressed/active chips alone receive the raised semantic tone');
+assert(components.includes('C.severityChip=function(label,tone,options)')&&logs.includes('C.severityChip(typeLabel(type),typeTone(type),{active:state.types.has(type)})')&&logs.includes('C.severityChip(typeLabel(Number(x.type)),tone,{interactive:false})'),'Logs filters and row levels must share one canonical severity-chip primitive');for(const tone of ['info','warning','danger'])assert(controlsCss.includes(`.ui-severity[data-tone=${tone}]`),`Missing canonical ${tone} severity tone`);assert(!css.includes('--logs-tone-')&&!css.includes('var(--logs-tone)'),'Logs feature CSS must not retain a second severity palette/skin owner');
 assert(logs.includes('expandedId:null')&&logs.includes("row.setAttribute('aria-expanded',expanded?'true':'false')"),'Log rows must expose one shared expand/collapse state');
 assert(logs.includes('variableHeight:true')&&logs.includes('itemKey:rowKey'),'Logs must reuse the canonical DataViewport in variable-height mode');
 assert(components.includes('C.pagerControl=function(opts)'),'Pager must have one canonical shared Components owner');
@@ -70,11 +71,11 @@ assert(!appCss.includes('#detail-content .data-viewport .data-viewport__row>:nth
 assert(!tableCss.includes('.shared-table__row>:nth-child(3){display:none}'),'Shared Detail mobile layout must not discard source columns by positional nth-child rules');
 
 assert(logs.includes("head.className='logs-head data-grid__head'")&&logs.includes("row.className='logs-row data-grid__row'")&&logs.includes('W.DataGridHeader.render(head,columns)')&&logs.includes("reorderable:false"),'Logs must consume the canonical DataGridHeader/DataGrid row primitives while keeping resize-only header semantics');
-assert(logs.includes("W.SharedColumns.resolve?W.SharedColumns.resolve(LOG_TABLE_ID,source)")&&logs.includes('W.SharedColumns.commit(LOG_TABLE_ID,source,next)'),'Logs column widths must persist through the same SharedColumns state owner as reusable tables');
+assert(logs.includes("W.SharedColumns.resolve?W.SharedColumns.resolve(LOG_TABLE_ID,source)")&&logs.includes('W.SharedColumns.commit(LOG_TABLE_ID,source,next)'),'Logs column widths must persist through the same SharedColumns state owner as reusable tables');assert(core.includes('function gridTemplateForColumns(columns,head,viewport,fit)')&&logs.includes("fitToViewport:{shrinkKeys:['message','time']}"),'Oversized persisted Logs widths must be visually fit by the shared DataGrid owner so the Level column remains visible');
 assert(logs.includes('staticHead:state.head')&&css.includes('.logs-head{position:sticky;top:0')&&css.includes('.logs-list>.data-viewport__spacer{width:max-content;min-width:100%}'),'Logs header must live inside the canonical DataViewport scroll owner so horizontal resize/scroll geometry stays aligned');
 assert(!css.includes('--logs-log-min')&&!css.includes('--logs-time-col')&&!css.includes('--logs-level-col'),'retired Logs fixed-width CSS variables must stay absent');
 assert(css.includes('.logs-row .logs-level{justify-self:center;text-align:center'),'Desktop Level pills must retain centered semantic presentation inside the shared grid');
-assert(!/\.logs-row \.logs-level\{[^}]*\b(?:width|min-width|max-width)\s*:/.test(css),'Log level labels must use the canonical status-pill intrinsic width instead of fixed-width padding');
+assert(!/\.logs-row \.logs-level\{[^}]*\b(?:width|min-width|max-width)\s*:/.test(css),'Log level labels must use the canonical severity-chip intrinsic width instead of fixed-width padding');
 assert(css.includes('.logs-row{min-width:100%;min-height:72px;grid-template-columns:max-content minmax(0,1fr)!important;grid-template-rows:auto auto;column-gap:8px;row-gap:5px'),'Mobile log metadata must override only responsive presentation while retaining one compact left-aligned level/time group');
 assert(css.includes('.logs-row .logs-level{grid-column:1;grid-row:2;justify-self:start}')&&css.includes('.logs-time{grid-column:2;grid-row:2;justify-self:start;align-self:center'),'Mobile metadata must place the visible colored level immediately before date/time');
 
