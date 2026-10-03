@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {PAGES_FULL_CATALOG_PATH} from './pages-live-catalog.mjs';
-import {launchBrowser} from './browser-driver.mjs';
+import {fetchJsonEvidence,launchBrowser} from './browser-driver.mjs';
 import {recoverPageSession} from './pages-live-session.mjs';
 import {atLeast} from '../simulator/core/profiles.js';
 
@@ -22,9 +22,7 @@ const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 async function fetchJson(relative){
   const url=new URL(String(relative).replace(/^\/+/,''),base);
   url.searchParams.set('__live_sha',expectedSha);
-  const response=await fetch(url,{headers:{'cache-control':'no-cache','pragma':'no-cache'}});
-  if(!response.ok)throw new Error(`${url} returned HTTP ${response.status}`);
-  return response.json();
+  return fetchJsonEvidence(url,{init:{headers:{'cache-control':'no-cache','pragma':'no-cache'}}});
 }
 async function waitForDeployedSha(){
   let last='not fetched';
