@@ -23,7 +23,7 @@ html[data-theme=light]{--logs-toolbar-surface:var(--surface-raised);--logs-toolb
 .logs-row[data-tone=warning]{background:var(--logs-warning-surface)}
 .logs-row[data-tone=danger]{background:var(--logs-danger-surface)}
 .logs-row:focus-visible{outline:2px solid color-mix(in srgb,var(--accent-primary) 68%,var(--border-strong));outline-offset:-2px;z-index:2}
-.logs-row.is-expanded{align-items:start;padding-top:12px;padding-bottom:12px;background:var(--surface-raised);box-shadow:inset 3px 0 color-mix(in srgb,var(--logs-tone) 72%,transparent)}
+.logs-row.is-expanded{align-items:start;padding-top:12px;padding-bottom:12px;background:var(--surface-raised);box-shadow:inset 3px 0 color-mix(in srgb,var(--accent-primary) 48%,transparent)}
 .logs-message{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-primary)}
 .logs-row.is-expanded .logs-message{white-space:pre-wrap;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;word-break:break-word;line-height:1.55}
 .logs-time{color:var(--text-secondary);font-variant-numeric:tabular-nums;white-space:nowrap}
