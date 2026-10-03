@@ -172,7 +172,7 @@ try{
     const emptyGeometry=await page.evaluate(()=>{const panel=document.querySelector('#list-view>.torrent-panel'),stage=document.getElementById('torrent-content-stage'),pager=document.querySelector('#list-view .torrent-pager'),empty=document.getElementById('list-empty'),tabs=document.getElementById('torrent-detail-tabs'),rect=n=>{const r=n.getBoundingClientRect();return{top:r.top,bottom:r.bottom,height:r.height};};return{panel:rect(panel),stage:rect(stage),pager:rect(pager),empty:rect(empty),tabsDisplay:getComputedStyle(tabs).display};});
     assert(Math.abs(emptyGeometry.pager.top-populatedGeometry.pager.top)<=2&&Math.abs(emptyGeometry.pager.bottom-populatedGeometry.pager.bottom)<=2&&Math.abs(emptyGeometry.stage.top-populatedGeometry.stage.top)<=2&&Math.abs(emptyGeometry.stage.height-populatedGeometry.stage.height)<=2&&Math.abs(emptyGeometry.empty.top-emptyGeometry.stage.top)<=2&&Math.abs(emptyGeometry.empty.bottom-emptyGeometry.stage.bottom)<=2&&emptyGeometry.tabsDisplay!=='none',name+': zero-result state moved/collapsed the persistent Detail/Pager rail '+JSON.stringify({populatedGeometry,emptyGeometry}));
     await page.locator('#search-input').fill('');
-    await page.waitForFunction(()=>WeiG.LibraryController.state().search===''&&WeiG.LibraryController.total()>0&&!document.getElementById('list-empty')?.classList.contains('is-hidden'));
+    await page.waitForFunction(()=>WeiG.LibraryController.state().search===''&&WeiG.LibraryController.total()>0&&document.getElementById('list-empty')?.classList.contains('is-hidden'));
 
     // Desktop: facets remain in Sidebar and the retired four-card summary does not exist at all.
     assert(await page.locator('#facet-controls').count()===1,`${name}: duplicate facet host`);
