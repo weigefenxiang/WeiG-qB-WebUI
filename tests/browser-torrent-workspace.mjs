@@ -110,7 +110,7 @@ async function api(req,res,v,p,url){
     const tag=url.searchParams.get('tag');if(tag)out=out.filter(t=>String(t.tags||'').split(',').includes(tag));
     const sort=url.searchParams.get('sort');if(sort)out.sort((a,b)=>String(a[sort]??'').localeCompare(String(b[sort]??''),undefined,{numeric:true}));
     if(url.searchParams.get('reverse')==='true')out.reverse();
-    const offset=Number(url.searchParams.get('offset')||0),limit=Number(url.searchParams.get('limit')||0);return json(res,limit?out.slice(offset,offset+limit):out.slice(offset));
+    const offset=Number(url.searchParams.get('offset')||0),limit=Number(url.searchParams.get('limit')||0);if(v===variants.legacy&&limit===200)await new Promise(resolve=>setTimeout(resolve,900));return json(res,limit?out.slice(offset,offset+limit):out.slice(offset));
   }
   if(p==='torrents/categories')return json(res,categoryInventory);
   if(p==='torrents/tags')return json(res,Array.from(tagInventory));
@@ -151,10 +151,19 @@ try{
     page.on('console',m=>{if(m.type()==='error'&&!/favicon|Wei\.G\.ico/i.test(m.text()))errors.push(m.text());});
     await page.goto(`http://${host}:${port}/${name}/#/`,{waitUntil:'domcontentloaded'});
     await page.waitForSelector('#torrent-list [data-hash]');
+    if(name==='legacy'){
+      await page.waitForSelector('#page-label .pager-index-copy--full [data-pager-total] .pager-index-spinner');
+      const pendingPager=await page.evaluate(()=>{const full=document.querySelector('#page-label .pager-index-copy--full'),current=full?.querySelector('[data-pager-current]'),total=full?.querySelector('[data-pager-total]');return{current:current?.textContent||'',totalSpinner:!!total?.querySelector('.pager-index-spinner'),currentBeforeTotal:!!(current&&total&&(current.compareDocumentPosition(total)&Node.DOCUMENT_POSITION_FOLLOWING))};});
+      assert(pendingPager.current==='1'&&pendingPager.totalSpinner&&pendingPager.currentBeforeTotal,'legacy: pending total must render as current / spinner token '+JSON.stringify(pendingPager));
+      await page.locator('#next-btn').click();await page.waitForFunction(()=>WeiG.LibraryController.state().page===1);await page.waitForFunction(()=>!document.getElementById('prev-btn').disabled&&!document.getElementById('next-btn').disabled);
+      await page.locator('#prev-btn').click();await page.waitForFunction(()=>WeiG.LibraryController.state().page===0);await page.waitForFunction(()=>!document.getElementById('next-btn').disabled);
+      await page.locator('#next-btn').click();await page.waitForFunction(()=>WeiG.LibraryController.state().page===1);await page.waitForFunction(()=>!document.getElementById('prev-btn').disabled&&!document.getElementById('next-btn').disabled);await page.locator('#prev-btn').click();await page.waitForFunction(()=>WeiG.LibraryController.state().page===0);
+    }
     await page.waitForFunction(()=>window.WeiG?.LibraryController&&document.querySelectorAll('#facet-controls .facet-control').length===4&&WeiG.AppState?.catalogReady===true,{timeout:10000});
     const pageWindowPolicy=await page.evaluate(()=>{const stats=WeiG.AppState?.libraryData?.stats?.();return stats?{p50:stats.prefetchRadius(50),p200:stats.prefetchRadius(200),p1000:stats.prefetchRadius(1000)}:null;});assert(pageWindowPolicy&&pageWindowPolicy.p50===3&&pageWindowPolicy.p200===1&&pageWindowPolicy.p1000===0,`${name}: browser runtime did not retain bounded adaptive page prefetch policy ${JSON.stringify(pageWindowPolicy)}`);
     if(name==='modern')assert(torrentCountRequests.modern>0,'modern source profile did not consume source-proven torrents/count');else assert(torrentCountRequests.legacy===0,'legacy source profile must not call unsupported torrents/count');
 
+    const pagerFontParity=await page.evaluate(()=>{const button=document.querySelector('#page-label .pager-index-copy--full [data-pager-page-jump]'),copy=button?.closest('.pager-index-copy--full');if(!button||!copy)return null;const a=getComputedStyle(button),b=getComputedStyle(copy);return{button:[a.fontFamily,a.fontSize,a.fontWeight,a.lineHeight,a.fontVariantNumeric],copy:[b.fontFamily,b.fontSize,b.fontWeight,b.lineHeight,b.fontVariantNumeric]};});assert(pagerFontParity&&JSON.stringify(pagerFontParity.button)===JSON.stringify(pagerFontParity.copy),name+': current-page token typography must inherit the surrounding Pager copy '+JSON.stringify(pagerFontParity));
     const desktopPageJump=page.locator('#page-label [data-pager-page-jump]').first();await desktopPageJump.click();await page.locator('#page-label .pager-page-input').fill('2');await page.locator('#page-label .pager-page-input').press('Enter');await page.waitForFunction(()=>WeiG.LibraryController.state().page===1);assert((await page.locator('#page-label [data-pager-page-jump]').first().textContent()).trim()==='2',name+': shared Pager did not jump to desktop page 2');await page.locator('#page-label [data-pager-page-jump]').first().click();await page.locator('#page-label .pager-page-input').fill('3');await page.locator('#page-label .pager-page-input').press('Enter');await page.waitForTimeout(30);assert(await page.evaluate(()=>WeiG.LibraryController.state().page)===1,name+': out-of-range desktop page jump changed state');await page.locator('#page-label [data-pager-page-jump]').first().click();await page.locator('#page-label .pager-page-input').fill('1');await page.locator('#page-label .pager-page-input').press('Enter');await page.waitForFunction(()=>WeiG.LibraryController.state().page===0);
 
     // Desktop: facets remain in Sidebar and the retired four-card summary does not exist at all.
