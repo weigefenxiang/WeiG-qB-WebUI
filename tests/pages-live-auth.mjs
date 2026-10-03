@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {launchBrowser} from './browser-driver.mjs';
+import {recoverPageSession} from './pages-live-session.mjs';
 
 const rawBase=(process.env.WEIG_PAGES_URL||process.argv[2]||'').trim();
 const expectedSha=(process.env.WEIG_EXPECTED_SIMULATOR_SHA||process.argv[3]||'').trim();
@@ -8,6 +9,7 @@ assert.ok(expectedSha,'WEIG_EXPECTED_SIMULATOR_SHA or argv[3] is required');
 
 const base=new URL(rawBase.endsWith('/')?rawBase:`${rawBase}/`);
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+const sessionTimeoutMs=Math.max(5000,Number(process.env.WEIG_PAGES_SESSION_TIMEOUT_MS||20000)||20000);
 
 async function waitForDeployedSha(){
   let last='not fetched';
@@ -56,13 +58,18 @@ async function openSession(page,{qb='5.2.3',clean=false,label='modern'}={}){
   return sim;
 }
 
-async function waitForPrivate(page,qbVersion){
-  await page.waitForSelector('#torrent-list',{state:'attached',timeout:60000});
-  await page.waitForFunction(
-    version=>String(document.querySelector('#qb-version')?.textContent||'').includes(version),
+async function recoverPrivate(page,qbVersion,{label='Pages auth private session',onLogin}={}){
+  const recovered=await recoverPageSession(page,{
+    label,
     qbVersion,
-    {timeout:60000}
-  );
+    timeoutMs:sessionTimeoutMs,
+    navigate:async attempt=>{
+      if(attempt>1)await page.reload({waitUntil:'domcontentloaded',timeout:sessionTimeoutMs});
+    },
+    onLogin:onLogin||async()=>{await page.locator('#login-btn').click();}
+  });
+  if(recovered.attempt>1)console.log(`Recovered ${label} on bootstrap attempt ${recovered.attempt}.`);
+  return recovered;
 }
 
 await waitForDeployedSha();
@@ -86,8 +93,7 @@ try{
     response=await api(page,'app/preferences');
     assert.equal(response.status,403,'wrong password must not create an authenticated session');
 
-    await page.locator('#login-btn').click();
-    await waitForPrivate(page,'5.2.3');
+    await recoverPrivate(page,'5.2.3',{label:'Pages auth fixed-credential login'});
     response=await api(page,'app/preferences');
     assert.equal(response.status,200,'fixed weigshare credentials must authenticate the Lab');
     assert.equal(response.json?.web_ui_username,'weigshare','Virtual qB preferences must expose the fixed username');
@@ -110,8 +116,10 @@ try{
 
     response=await api(page,'auth/login',{method:'POST',form:{username:'weigshare',password:'weigshare2'}});
     assert.equal(response.status,204,'changed password must authenticate modern Virtual qB');
-    await page.reload({waitUntil:'domcontentloaded',timeout:60000});
-    await waitForPrivate(page,'5.2.3');
+    await recoverPrivate(page,'5.2.3',{
+      label:'Pages auth changed-password login',
+      onLogin:async()=>{await page.reload({waitUntil:'domcontentloaded',timeout:sessionTimeoutMs});}
+    });
     response=await api(page,'app/version');
     assert.equal(response.status,200);assert.equal(response.text,'v5.2.3','changed-password session must continue into real virtual API behavior');
 
