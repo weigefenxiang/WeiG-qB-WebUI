@@ -182,21 +182,28 @@ try{
 
   await page.locator('#mobile-bottom-nav [data-route="logs"]').click();
   await page.waitForFunction(()=>document.getElementById('logs-view')?.classList.contains('is-active')&&document.querySelector('.logs-toolbar')&&document.getElementById('mobile-search-btn')&&document.getElementById('search-input'));
-  await page.waitForFunction(()=>{const value=String(document.querySelector('.logs-pager [data-pager-meta]')?.textContent||'').trim(),parts=value.split('/').map(part=>part.trim());return parts.length===2&&parts.every(part=>/^\d+$/.test(part));},null,{timeout:30000});
+  await page.waitForFunction(()=>document.querySelector('.logs-pager [data-pager-page-jump]')&&/^\d+\s*\/\s*\d+$/.test(String(document.querySelector('.logs-pager [data-pager-label]')?.textContent||'').trim()),null,{timeout:30000});
   const logs=await page.evaluate(()=>{
-    const toolbar=document.querySelector('.logs-toolbar'),filters=document.querySelector('.logs-filters'),actions=document.querySelector('.logs-actions'),searchButton=document.getElementById('mobile-search-btn'),searchInput=document.getElementById('search-input'),chips=filters?[...filters.querySelectorAll('[data-log-type]')]:[];
-    if(!toolbar||!filters||!actions||!searchButton||!searchInput)throw new Error('Logs canonical toolbar/Header Search controls are missing');
+    const toolbar=document.querySelector('.logs-toolbar'),filters=document.querySelector('.logs-filters'),actions=document.querySelector('.logs-actions'),searchButton=document.getElementById('mobile-search-btn'),searchInput=document.getElementById('search-input'),chips=filters?[...filters.querySelectorAll('[data-log-type]')]:[],pager=document.querySelector('.logs-pager');
+    if(!toolbar||!filters||!actions||!searchButton||!searchInput||!pager)throw new Error('Logs canonical toolbar/Header Search/Pager controls are missing');
     const rect=n=>{const r=n.getBoundingClientRect();return{top:r.top,bottom:r.bottom,left:r.left,right:r.right,width:r.width,height:r.height,display:getComputedStyle(n).display};};
-    const pagerMeta=document.querySelector('.logs-pager [data-pager-meta]');
-    return{toolbar:rect(toolbar),filters:rect(filters),actions:rect(actions),searchButton:rect(searchButton),chips:chips.length,sizeMode:!!document.getElementById('logs-size-mode'),refresh:!!document.querySelector('.logs-refresh'),searchOpen:document.querySelector('.topbar')?.classList.contains('search-open')||false,placeholder:searchInput.placeholder,overflow:toolbar.scrollWidth-toolbar.clientWidth,pagerMeta:String(pagerMeta?.textContent||'').trim()};
+    const pagerMeta=pager.querySelector('[data-pager-meta]'),pagerAux=pager.querySelector('.pager__aux'),label=pager.querySelector('[data-pager-label]'),jump=pager.querySelector('[data-pager-page-jump]'),copies=[...pager.querySelectorAll('.pager__copy')],chipRects=chips.map(rect),chipRadii=chips.map(node=>getComputedStyle(node).borderRadius);
+    return{toolbar:rect(toolbar),filters:rect(filters),actions:rect(actions),searchButton:rect(searchButton),chips:chips.length,chipRects,chipRadii,sizeMode:!!document.getElementById('logs-size-mode'),refresh:!!document.querySelector('.logs-refresh'),searchOpen:document.querySelector('.topbar')?.classList.contains('search-open')||false,placeholder:searchInput.placeholder,overflow:toolbar.scrollWidth-toolbar.clientWidth,pagerLabel:String(label?.textContent||'').trim(),pagerMetaDisplay:pagerMeta?getComputedStyle(pagerMeta).display:'missing',pagerAuxDisplay:pagerAux?getComputedStyle(pagerAux).display:'missing',copyDisplays:copies.map(node=>getComputedStyle(node).display),jumpText:String(jump?.textContent||'').trim()};
   });
   assert.equal(logs.chips,4,`Logs toolbar must keep Normal/Info/Warning/Critical filters: ${JSON.stringify(logs)}`);
+  assert.ok(logs.chipRadii.every(value=>parseFloat(value)>0)&&logs.chipRects.slice(1).every((item,index)=>item.left>=logs.chipRects[index].right-0.5),`Logs severity filters must use separate rounded canonical chips without overlap: ${JSON.stringify(logs)}`);
   assert.ok(logs.sizeMode&&logs.refresh,`Logs toolbar must keep size mode and Refresh controls: ${JSON.stringify(logs)}`);
   assert.notEqual(logs.searchButton.display,'none','phone Logs must expose the canonical Header Search button');
   assert.equal(logs.searchOpen,false,'phone Logs Header Search must start collapsed');
   assert.match(logs.placeholder,/日志|logs/i,`Logs Header Search must expose the route-specific placeholder: ${JSON.stringify(logs)}`);
   assert.ok(logs.overflow<=1,`Logs mobile toolbar must not overflow: ${JSON.stringify(logs)}`);
-  assert.match(logs.pagerMeta,/^\d+\s*\/\s*\d+$/,`phone Logs pager meta must expose only shown / filtered total: ${JSON.stringify(logs)}`);
+  assert.match(logs.pagerLabel,/^\d+\s*\/\s*\d+$/,`phone Logs pager must expose only editable current / total pages: ${JSON.stringify(logs)}`);
+  assert.equal(logs.pagerMetaDisplay,'none',`phone Logs pager must hide retained-history meta: ${JSON.stringify(logs)}`);assert.equal(logs.pagerAuxDisplay,'none',`phone Logs pager must hide page-size auxiliary control: ${JSON.stringify(logs)}`);assert.ok(logs.copyDisplays.every(display=>display==='none'),`phone Logs pager must hide Previous/Next copy and keep arrows only: ${JSON.stringify(logs)}`);
+  await page.locator('.logs-pager [data-pager-page-jump]').click();
+  await page.waitForSelector('.logs-pager .pager-page-input',{state:'visible',timeout:5000});
+  const pagerEditor=page.locator('.logs-pager .pager-page-input'),pagerMax=Number(await pagerEditor.getAttribute('aria-valuemax')||1),pagerTarget=pagerMax>1?2:1;
+  await pagerEditor.fill(String(pagerTarget));await pagerEditor.press('Enter');
+  await page.waitForFunction(target=>String(document.querySelector('.logs-pager [data-pager-page-jump]')?.textContent||'').trim()===String(target),pagerTarget,{timeout:5000});
 
   await page.locator('#mobile-search-btn').click();
   await page.waitForFunction(()=>document.querySelector('.topbar')?.classList.contains('search-open')&&getComputedStyle(document.getElementById('search-input')).display!=='none');
