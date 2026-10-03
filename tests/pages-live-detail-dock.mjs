@@ -213,6 +213,7 @@ async function verifyModern(){
   await page.locator('#torrent-detail-tabs .tab[data-tab="trackers"]').click();
   await page.waitForFunction(()=>!window.WeiG.AppState.detailDockOpen&&document.getElementById('torrent-detail-dock').hidden&&document.getElementById('torrent-detail-splitter').hidden,null,{timeout:10000});
   assert.equal(await page.locator('#torrent-detail-tabs .tab.is-active').count(),0,'clicking the active tab must collapse and clear active presentation');
+  await page.waitForFunction(()=>document.querySelectorAll('.surface-transition-ghost').length===0,null,{timeout:5000});
 
   await setMotion(page,'reduced');await clearMotionProbe(page);
   await page.locator('#torrent-detail-tabs .tab[data-tab="peers"]').click();
