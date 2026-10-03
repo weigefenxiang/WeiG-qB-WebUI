@@ -21,6 +21,7 @@ const appCss=read('webui/private/css/app.css');
 const settings=read('webui/private/scripts/settings.js');
 const header=read('webui/private/scripts/header.js');
 const theme=read('webui/private/scripts/theme.js');
+const surfaceTransition=read('webui/private/scripts/surface-transition.js');
 const spatial=read('webui/private/css/spatial.css');
 const controls=read('webui/private/css/controls.css');
 const ui=read('webui/private/css/ui.css');
@@ -54,6 +55,22 @@ assert(!settings.includes("if(key==='theme'){W.Theme.setMode(value)"),'Settings 
 assert(header.includes("C.selectControl({id:'theme-control'")&&header.includes('W.Theme.setMode(value)'),'Header does not reuse canonical Select/W.Theme');
 assert(header.includes('.setOptions(')&&header.includes('.setValue('),'Header Theme presentation is not synchronized through canonical Select API');
 assert(!header.includes('toggleTheme'),'Header contains a second Theme policy');
+assert(surfaceTransition.includes('root.dataset.motion')&&surfaceTransition.includes("setting==='reduced'")&&surfaceTransition.includes("setting!=='full'&&systemReduced()")&&surfaceTransition.includes("full=setting==='full'"),'SurfaceTransition must consume the canonical motion setting and OS reduced-motion signal without a second persistent motion owner');
+{
+  const motionDocument={documentElement:{dataset:{motion:'system'}}};
+  let prefersReduced=false;
+  const motionSandbox={window:null,document:motionDocument,WeakMap,Set,Promise,Math,Date,globalThis:null,matchMedia(){return{matches:prefersReduced};},getComputedStyle(){return{};}};
+  motionSandbox.window=motionSandbox;motionSandbox.globalThis=motionSandbox;
+  vm.runInNewContext(surfaceTransition,motionSandbox,{filename:'surface-transition.js'});
+  const policy=motionSandbox.WeiG.SurfaceTransition.policy,system=policy('detail');
+  assert(system.mode==='system'&&system.duration>0,'system motion must retain a bounded visible transition when OS reduced motion is not requested');
+  motionDocument.documentElement.dataset.motion='full';const full=policy('detail');
+  assert(full.mode==='full'&&full.duration>system.duration&&full.offset>system.offset&&full.blur>system.blur,'full motion must be visibly richer than system motion without changing semantic state');
+  motionDocument.documentElement.dataset.motion='reduced';const reduced=policy('detail');
+  assert(reduced.mode==='reduced'&&reduced.duration===0&&reduced.fade===0,'explicit reduced motion must disable shared surface animation');
+  motionDocument.documentElement.dataset.motion='system';prefersReduced=true;const osReduced=policy('detail');
+  assert(osReduced.mode==='reduced'&&osReduced.duration===0,'system motion must honor prefers-reduced-motion');
+}
 
 // Exact-checkout repo-wide caller/owner audit. GitHub Code Search is not used as proof.
 assert((runtimeJsText.match(/W\.Theme=\{/g)||[]).length===1,'Runtime contains more than one W.Theme definition');

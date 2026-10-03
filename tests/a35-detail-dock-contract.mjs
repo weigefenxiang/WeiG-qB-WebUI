@@ -16,6 +16,7 @@ const layout=read('webui/private/scripts/layout.js');
 const tableCss=read('webui/private/css/table.css');
 const layoutCss=read('webui/private/css/layout.css');
 const navigation=read('webui/private/scripts/navigation.js');
+const transition=read('webui/private/scripts/surface-transition.js');
 const storage=read('webui/public/storage-migration.js');
 
 for(const id of ['torrent-detail-tabs','torrent-detail-splitter','torrent-detail-dock','torrent-detail-dock-content']){
@@ -63,7 +64,12 @@ assert.ok(!tableCss.includes('#detail-content>'),'route-only Detail child geomet
 assert.ok(layoutCss.includes('container-type:inline-size;container-name:torrent-pager'),'Torrent pager must own responsive geometry through its actual container width');assert.ok(components.includes('--torrent-pager-nav-left')&&components.includes('--torrent-pager-tabs-max'),'shared Pager owner must publish collision-aware centered geometry variables');assert.ok(layoutCss.includes('left:var(--torrent-pager-nav-left,50%)'),'desktop pager navigation must consume the shared centered/clamped geometry owner');assert.ok(layoutCss.includes('flex-wrap:nowrap')&&layoutCss.includes('overflow-x:auto'),'Detail tabs must never wrap; after pager compaction the tab rail becomes horizontally scrollable');assert.ok(layoutCss.includes('@container torrent-pager (max-width:800px)')&&layoutCss.includes('.pager-index-copy--compact{display:inline}'),'pager must compact by its own container width, not by global mobile state');assert.match(app,/function renderPageLabel\(host,model\).*pager-index-copy--full.*pager-index-copy--compact/s,'pager copy owner must render full and compact variants once');assert.doesNotMatch(app.slice(app.indexOf('function renderPageLabel'),app.indexOf('function installPagerControl')),/U\.isMobile\(\)/,'pager copy must not use screen/mobile classification as its density owner');
 
 assert.match(app,/async function openDetail\(hash\).*W\.Router\.detail\(hash,tab\)/s,'Torrent title/detail arrow must retain the full Detail route');
+assert.match(app,/pendingDetailTransition=\{hash:hash,snapshot:W\.SurfaceTransition\.capture\(U\.\$\('torrent-detail-dock'\)\)\};closeDetailDock\(\{silent:true\}\)/,'Dock to full Detail must capture presentation geometry before the shared route closes the Dock');
+assert.match(app,/W\.SurfaceTransition\.morph\(pending\.snapshot,U\.\$\('detail-content'\),'detail'\)/,'full Detail route must consume the pending Dock snapshot only after the canonical Detail renderer has mounted its target');
+assert.match(app,/function closeDetailDock\(options\).*W\.SurfaceTransition\.exitSnapshot\(snapshot,'dock'\)/s,'ordinary Dock close must delegate exit presentation to SurfaceTransition without delaying semantic close');
+assert.match(app,/openDetailDockTab\(tab\).*W\.SurfaceTransition\.enter\(U\.\$\('torrent-detail-dock'\),'dock'\)/s,'first Dock open must delegate entry presentation to SurfaceTransition');
+assert.match(transition,/function morph\(snapshot,target,kind\)/,'Dock/full Detail morph must stay presentation-neutral inside the shared SurfaceTransition owner');
 assert.match(navigation,/function createBack\(\).*detail-context-back/s,'full Detail route must retain its Back presentation');
 assert.equal((storage.match(/torrentDetailDockHeight:'weig\.torrentDetailDockHeight'/g)||[]).length,1,'Dock height persistence must have one canonical StorageKeys entry');
 
-console.log('A35 inline Detail Dock contract passed: one source-driven Detail runtime, semantic Selection binding, shared persisted SplitPane geometry, route preservation and centered pager rail.');
+console.log('A35 inline Detail Dock contract passed: one source-driven Detail runtime, semantic Selection binding, shared persisted SplitPane geometry, route preservation, centered pager rail and presentation-only shared morph.');
