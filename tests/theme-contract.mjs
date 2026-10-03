@@ -17,6 +17,7 @@ assert(version===webVersion&&version===pkg.version,`Version sources diverged: ${
 const index=read('webui/private/index.html');
 const core=read('webui/private/scripts/core.js');
 const app=read('webui/private/scripts/app.js');
+const appCss=read('webui/private/css/app.css');
 const settings=read('webui/private/scripts/settings.js');
 const header=read('webui/private/scripts/header.js');
 const theme=read('webui/private/scripts/theme.js');
@@ -48,6 +49,7 @@ assert(/if\(W\.Theme&&W\.Theme\.applyConfig\)W\.Theme\.applyConfig\(cfg\)/.test(
 assert(!/prefers-color-scheme/.test(core),'Config still owns system theme resolution');
 assert(!/function\s+toggleTheme|theme-btn'\)\.onclick|theme-btn"\)\.onclick/.test(app),'Legacy app Theme owner/caller survived');
 assert(settings.includes('W.Theme.options()')&&settings.includes('weigDraft')&&settings.includes('W.Config.apply(nextConfig)'),'Settings is not a draft-based W.Theme presentation caller');
+assert(appCss.includes('html[data-starfield=off] .stars,html[data-starfield=off] .nebula{display:none}')&&appCss.includes('html[data-starfield=subtle] .stars-a{opacity:.055}')&&appCss.includes('html[data-starfield=subtle] .stars-b{opacity:.025}')&&appCss.includes('html[data-starfield=subtle] .nebula{opacity:.10}')&&appCss.includes('html[data-starfield=full] .stars-a{opacity:.16}')&&appCss.includes('html[data-starfield=full] .stars-b{opacity:.09}')&&appCss.includes('html[data-starfield=full] .nebula{opacity:.26}'),'Starfield off/subtle/full must be explicit shared presentation levels with visibly distinct density while retaining one owner');
 assert(!settings.includes("if(key==='theme'){W.Theme.setMode(value)"),'Settings must not bypass shared Save with immediate Theme persistence');
 assert(header.includes("C.selectControl({id:'theme-control'")&&header.includes('W.Theme.setMode(value)'),'Header does not reuse canonical Select/W.Theme');
 assert(header.includes('.setOptions(')&&header.includes('.setValue('),'Header Theme presentation is not synchronized through canonical Select API');
