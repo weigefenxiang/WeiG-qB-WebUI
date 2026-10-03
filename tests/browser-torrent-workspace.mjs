@@ -159,7 +159,7 @@ try{
       await page.locator('#prev-btn').click();await page.waitForFunction(()=>WeiG.LibraryController.state().page===0);await page.waitForFunction(()=>!document.getElementById('next-btn').disabled);
       await page.locator('#next-btn').click();await page.waitForFunction(()=>WeiG.LibraryController.state().page===1);await page.waitForFunction(()=>!document.getElementById('prev-btn').disabled&&document.getElementById('next-btn').disabled);await page.locator('#prev-btn').click();await page.waitForFunction(()=>WeiG.LibraryController.state().page===0);
     }
-    await page.waitForFunction(()=>window.WeiG?.LibraryController&&document.querySelectorAll('#facet-controls .facet-control').length===4&&WeiG.AppState?.catalogReady===true,{timeout:10000});
+    await page.waitForFunction(()=>window.WeiG?.LibraryController&&document.querySelectorAll('#facet-controls .facet-control').length===4,{timeout:10000});await page.evaluate(()=>WeiG.LibraryController.ensureFacetOptions('tracker'));await page.waitForFunction(()=>WeiG.AppState?.catalogReady===true,{timeout:10000});
     const pageWindowPolicy=await page.evaluate(()=>{const stats=WeiG.AppState?.libraryData?.stats?.();return stats?{p50:stats.prefetchRadius(50),p200:stats.prefetchRadius(200),p1000:stats.prefetchRadius(1000)}:null;});assert(pageWindowPolicy&&pageWindowPolicy.p50===3&&pageWindowPolicy.p200===1&&pageWindowPolicy.p1000===0,`${name}: browser runtime did not retain bounded adaptive page prefetch policy ${JSON.stringify(pageWindowPolicy)}`);
     if(name==='modern')assert(torrentCountRequests.modern>0,'modern source profile did not consume source-proven torrents/count');else assert(torrentCountRequests.legacy===0,'legacy source profile must not call unsupported torrents/count');
 
