@@ -59,6 +59,7 @@ async function setVerifiedLocale(page,target){
   });
   assert.equal(before.disabled,false,`${target}: Language UI control must be enabled`);
   assert.equal(before.writable,true,`${target}: Locale must be writable through SettingsSchema before user interaction`);
+  const previewLoads=await page.evaluate(key=>Number(sessionStorage.getItem(key)||0),DOC_LOAD_KEY);
   const trigger=page.locator('[data-setting-key="weig_language"] .ui-select__trigger');
   await trigger.click();
   const option=page.locator(`.ui-select__menu:not([hidden]) .ui-select__option[data-value="${target}"]`);
@@ -67,7 +68,9 @@ async function setVerifiedLocale(page,target){
   const drafted=await page.evaluate(()=>{const row=document.querySelector('[data-setting-key="weig_language"]'),control=row?.querySelector('.ui-select');return{value:control?.getValue?.()||'',draft:window.WeiG?.SettingsState?.draft?.locale||''};});
   assert.equal(drafted.value,target,`${target}: user-selected Language control value must update before save`);
   assert.equal(drafted.draft,target,`${target}: user-selected Language control must update the qB locale draft`);
-  const documentLoads=await page.evaluate(key=>Number(sessionStorage.getItem(key)||0),DOC_LOAD_KEY);
+  const previewLoadsAfter=await page.evaluate(key=>Number(sessionStorage.getItem(key)||0),DOC_LOAD_KEY);
+  assert.equal(previewLoadsAfter,previewLoads,`${target}: transient Interface locale preview must not navigate or reload before Save`);
+  const documentLoads=previewLoadsAfter;
   const writePromise=page.waitForResponse(response=>{const request=response.request();return request.method()==='POST'&&new URL(response.url()).pathname.endsWith('/api/v2/app/setPreferences');},{timeout:30000});
   const verifyReadPromise=page.waitForResponse(response=>{const request=response.request();return request.method()==='GET'&&new URL(response.url()).pathname.endsWith('/api/v2/app/preferences');},{timeout:30000});
   await page.locator('#save-settings-btn').click();
