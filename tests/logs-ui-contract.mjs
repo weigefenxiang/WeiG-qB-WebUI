@@ -69,10 +69,13 @@ assert(!appCss.includes('.data-viewport .data-viewport__row:not(.torrent-mobile-
 assert(!appCss.includes('#detail-content .data-viewport .data-viewport__row>:nth-child(3){display:none}'),'Legacy mobile Detail third-column hiding must stay retired with the old virtual-row layout owner');
 assert(!tableCss.includes('.shared-table__row>:nth-child(3){display:none}'),'Shared Detail mobile layout must not discard source columns by positional nth-child rules');
 
-assert(css.includes('.logs-head,.logs-row{display:grid;grid-template-columns:'),'Desktop log header and rows must share one column geometry');
-assert(css.includes('.logs-head>span:nth-child(3){justify-self:center;text-align:center}')&&css.includes('.logs-row .logs-level{justify-self:center;text-align:center'),'Desktop Level header and level pills must share the same center anchor');
+assert(logs.includes("head.className='logs-head data-grid__head'")&&logs.includes("row.className='logs-row data-grid__row'")&&logs.includes('W.DataGridHeader.render(head,columns)')&&logs.includes("reorderable:false"),'Logs must consume the canonical DataGridHeader/DataGrid row primitives while keeping resize-only header semantics');
+assert(logs.includes("W.SharedColumns.resolve?W.SharedColumns.resolve(LOG_TABLE_ID,source)")&&logs.includes('W.SharedColumns.commit(LOG_TABLE_ID,source,next)'),'Logs column widths must persist through the same SharedColumns state owner as reusable tables');
+assert(logs.includes('staticHead:state.head')&&css.includes('.logs-head{position:sticky;top:0')&&css.includes('.logs-list>.data-viewport__spacer{width:max-content;min-width:100%}'),'Logs header must live inside the canonical DataViewport scroll owner so horizontal resize/scroll geometry stays aligned');
+assert(!css.includes('--logs-log-min')&&!css.includes('--logs-time-col')&&!css.includes('--logs-level-col'),'retired Logs fixed-width CSS variables must stay absent');
+assert(css.includes('.logs-row .logs-level{justify-self:center;text-align:center'),'Desktop Level pills must retain centered semantic presentation inside the shared grid');
 assert(!/\.logs-row \.logs-level\{[^}]*\b(?:width|min-width|max-width)\s*:/.test(css),'Log level labels must use the canonical status-pill intrinsic width instead of fixed-width padding');
 assert(css.includes('.logs-row{min-height:72px;grid-template-columns:max-content minmax(0,1fr);grid-template-rows:auto auto;gap:5px 8px'),'Mobile log metadata must form one compact left-aligned level/time group');
 assert(css.includes('.logs-row .logs-level{grid-column:1;grid-row:2;justify-self:start}')&&css.includes('.logs-time{grid-column:2;grid-row:2;justify-self:start;align-self:center'),'Mobile metadata must place the visible colored level immediately before date/time');
 
-console.log('Logs UI contract passed: shared bounded Pager + DataViewport history projection, canonical tones, Shared Detail isolation, responsive metadata, and click expansion.');
+console.log('Logs UI contract passed: shared DataGridHeader/SharedColumns widths, bounded Pager + DataViewport history projection, canonical tones, responsive metadata, and click expansion.');
