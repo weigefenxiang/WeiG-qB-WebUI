@@ -84,7 +84,7 @@
 .detail-runtime-content>.text-description{padding:18px}
 .detail-runtime-content>.section-note{flex:0 0 auto}
 
-#column-configurator-dialog.shared-column-dialog[open]{display:flex;flex-direction:column;width:min(var(--column-config-dialog-width,900px),calc(100vw - 24px));max-width:min(var(--column-config-dialog-width,900px),calc(100vw - 24px));max-height:min(86svh,760px);padding:0;overflow:hidden}
+#column-configurator-dialog.shared-column-dialog[open]{display:flex;flex-direction:column;padding:0;overflow:hidden}@media(min-width:821px){#column-configurator-dialog.shared-column-dialog[open]{width:min(var(--column-config-dialog-width,900px),calc(100vw - 24px));max-width:min(var(--column-config-dialog-width,900px),calc(100vw - 24px));max-height:min(86svh,760px)}}
 #column-configurator-dialog .dialog__head{flex:0 0 auto;margin:0;padding:18px 18px 12px}
 #column-configurator-dialog .dialog__body{flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;padding:0 18px 12px}
 #column-configurator-dialog .dialog__actions{flex:0 0 auto;margin:0;padding:12px 18px 18px;border-top:1px solid var(--border);background:var(--surface-floating)}
@@ -92,7 +92,7 @@
 #column-configurator-dialog .shared-column-settings__row{min-width:0;cursor:pointer;font-size:calc(var(--text-body) + 2px)}
 #column-configurator-dialog .shared-column-settings__label{min-width:0;font-weight:650;line-height:1.35}
 
-@media(max-width:820px){:root{--data-grid-frame-gutter-inline:8px}#column-configurator-dialog.shared-column-dialog[open]{width:calc(100vw - 14px);max-width:calc(100vw - 14px);max-height:90svh}#column-configurator-dialog .shared-column-settings{grid-template-columns:minmax(0,1fr)}#torrent-list>.torrent-table-head{display:none!important}.detail-runtime-content{padding-bottom:max(4px,env(safe-area-inset-bottom))}.shared-table__toolbar{flex-wrap:wrap;overflow-x:visible}.detail-runtime-content>.general-detail,.detail-runtime-content>.text-description{padding:13px}.general-detail{gap:10px}.general-detail__section{padding:8px 10px}.general-detail__grid{grid-template-columns:1fr}.general-detail__grid>.kv{grid-template-columns:minmax(100px,max-content) minmax(0,1fr)}}
+@media(max-width:820px){:root{--data-grid-frame-gutter-inline:8px}#column-configurator-dialog .shared-column-settings{grid-template-columns:minmax(0,1fr)}#torrent-list>.torrent-table-head{display:none!important}.detail-runtime-content{padding-bottom:max(4px,env(safe-area-inset-bottom))}.shared-table__toolbar{flex-wrap:wrap;overflow-x:visible}.detail-runtime-content>.general-detail,.detail-runtime-content>.text-description{padding:13px}.general-detail{gap:10px}.general-detail__section{padding:8px 10px}.general-detail__grid{grid-template-columns:1fr}.general-detail__grid>.kv{grid-template-columns:minmax(100px,max-content) minmax(0,1fr)}}
 .state-icon-cell{display:flex;align-items:center;justify-content:center;overflow:visible}
 .torrent-state-icon{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--torrent-tone-muted);box-shadow:0 0 0 2px rgba(255,255,255,.05)}
 .torrent-state-icon[data-tone=download]{background:var(--torrent-tone-download)}

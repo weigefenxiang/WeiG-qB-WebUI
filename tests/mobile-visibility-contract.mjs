@@ -22,6 +22,9 @@ const uiJs=read('webui/private/scripts/ui.js');
 const header=read('webui/private/scripts/header.js');
 const logs=read('webui/private/scripts/logs.js');
 const rss=read('webui/private/scripts/rss.js');
+const columnConfigurator=read('webui/private/scripts/column-configurator.js');
+const dialogRuntime=read('webui/private/scripts/dialog-runtime.js');
+const i18n=read('webui/private/scripts/i18n.js');
 const transferJs=read('webui/private/scripts/transfer.js');
 
 assert(!ui.includes('grid-template-rows:44px 20px!important'),'ui.css must not force the mobile torrent card back to a two-row progress layout');
@@ -47,7 +50,11 @@ assert(uiJs.includes('W.RSS={setQuery:setRSSQuery')&&uiJs.includes('function app
 assert(uiJs.includes("W.DialogRuntime.create({id:'rss-add-dialog'")&&uiJs.includes("rssOpenButton.id='rss-add-open-btn'")&&uiJs.includes('header.appendChild(actions)'),'RSS Add Feed and Refresh must move to the page header while Feed URL lives in canonical DialogRuntime');
 assert(layout.includes('.rss-header-actions')&&layout.includes('#rss-view>.workspace__header{display:grid;grid-template-columns:minmax(0,1fr) auto'),'RSS title and page actions must share the mobile header row');
 assert(rss.includes("dialog.dataset.dialogMobile='compact'"),'RSS Downloader must opt into the canonical compact-mobile Dialog variant');
-assert(ui.includes('dialog.dialog[data-dialog-mobile="compact"]')&&ui.includes('--dialog-max-height:min(720px,calc(100dvh - 72px))')&&ui.includes('calc(100vw - 32px)'),'shared compact Dialog owner must retain visible mobile viewport margins and bounded RSS-like height');
+assert(columnConfigurator.includes("dialog.dataset.dialogMobile='compact'"),'ColumnConfigurator must consume the same canonical compact-mobile Dialog geometry as RSS rather than own a mobile height formula');
+assert(ui.includes('dialog.dialog[data-dialog-mobile="compact"]')&&ui.includes('--dialog-mobile-block-gap:calc(max(16px,env(safe-area-inset-top)) + max(16px,env(safe-area-inset-bottom)))')&&ui.includes('--dialog-max-height:calc(var(--dialog-visual-viewport-height,100dvh) - var(--dialog-mobile-block-gap))')&&!ui.includes('min(720px,calc(100dvh - 72px))','shared compact Dialog geometry must scale with the live mobile visual viewport and safe areas instead of a fixed pixel cap');
+assert(dialogRuntime.includes("--dialog-visual-viewport-height")&&dialogRuntime.includes("--dialog-visual-viewport-width")&&dialogRuntime.includes('syncViewportBudget(dialog)'),'DialogRuntime must project live VisualViewport dimensions into the shared mobile Dialog geometry on open and resize');
+assert(uiJs.includes("W.ColumnConfigurator.register('torrent-mobile'")&&uiJs.includes("W.ColumnConfigurator.open('torrent-mobile')"),'mobile Torrent field configuration must consume the same ColumnConfigurator owner as desktop/detail tables');
+assert(!uiJs.includes('mobile-columns-dialog')&&!ui.includes('.mobile-field-dialog')&&!ui.includes('.mobile-field-row')&&!i18n.includes('columns.mobileTitle'),'the retired feature-local mobile columns Dialog, CSS and copy family must be removed rather than hidden');
 assert(!layout.includes('.rss-rules-dialog{height:min(720px,calc(100dvh - 40px))'),'RSS Downloader must not restore a second mobile height owner after adopting the shared compact Dialog variant');
 
 assert(header.includes('function routeSearchInput(event)')&&header.includes("W.RSS.setQuery(input.value)")&&header.includes("W.Logs.setQuery(input.value)"),'Header Search must dispatch to current RSS/Logs semantic owners');
@@ -69,4 +76,4 @@ assert(!transferJs.includes('data-mini-rate')&&!transfer.includes('transfer-mini
 assert(transferJs.includes('drawRateChart(canvas,chartWindow,180,100)')&&transferJs.includes("windowText.textContent=windowLabel(chartWindow)")&&transferJs.includes('renderCompactChart();'),'compact transfer chart must share the full dialog time-window state and renderer');
 assert(transfer.includes('.transfer-runtime-capsule__limits{width:30px;min-width:30px;flex:0 0 30px}')&&transfer.includes('font-size:clamp(10px,3vw,13.5px)'),'mobile transfer speeds must be larger while the rate-limit affordance keeps reserved width');
 
-console.log('Mobile visibility contract passed: two-column Drawer filters, reordered/larger telemetry, route-aware Search, two-column actions, and single-rail segmented Logs all reuse canonical owners.');
+console.log('Mobile visibility contract passed: adaptive shared Dialog geometry, canonical mobile Columns, two-column Drawer filters, route-aware Search and segmented Logs all reuse shared owners.');
