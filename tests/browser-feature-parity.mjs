@@ -23,7 +23,9 @@ await page.locator('#filter-nav [data-filter="all"]').click();await page.waitFor
   page.on('console',m=>{if(m.type()==='error'&&!/favicon|Wei\.G\.ico/i.test(m.text()))errors.push(m.text());});
   await page.goto(`http://${host}:${port}/legacy467/#/`,{waitUntil:'domcontentloaded'});
   await page.waitForSelector('#torrent-list [data-hash]');
-  await page.waitForFunction(()=>WeiG.AppState?.catalogReady&&WeiG.CapabilityRegistry?.isCertified()&&WeiG.CapabilityRegistry.releaseIdentity().qbVersion==='4.6.7',{timeout:10000});
+  await page.waitForFunction(()=>WeiG.CapabilityRegistry?.isCertified()&&WeiG.CapabilityRegistry.releaseIdentity().qbVersion==='4.6.7',{timeout:10000});
+  await page.evaluate(()=>WeiG.LibraryController.ensureFacetOptions('tracker'));
+  await page.waitForFunction(()=>WeiG.AppState?.catalogReady===true,{timeout:10000});
   await page.evaluate(async()=>{await WeiG.I18n.loadQbOwnedText();});
   const nativePresentation=await page.evaluate(()=>{
     const strip=value=>String(value||'').replace(/\s*[\(（]\s*(?:0|%1)\s*[\)）]\s*$/,'').trim();
