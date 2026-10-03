@@ -205,7 +205,21 @@ fi
 
 if [ -n "$RELEASE_VERSION" ]; then
   case "$RELEASE_VERSION" in v*) RELEASE_VERSION=${RELEASE_VERSION#v} ;; esac
-  printf '%s' "$RELEASE_VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+if [ "$TARGET_COUNT" -gt 0 ]; then
+  printf '%s' "$RELEASE_VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || {
+    echo "Invalid Release version: $RELEASE_VERSION. Expected a version such as 1.0.0." >&2
+    exit 2
+  }
+  RELEASE_TAG="v$RELEASE_VERSION"
+fi
+
+if [ "$TARGET_COUNT" -eq 0 ] && [ -z "${WEIG_QB_WEBUI_DIR:-}" ] && { [ "$MODE" = "install" ] || [ "$MODE" = "update" ]; } && [ ! -e "$DEFAULT_DEST" ] && [ -d "$LEGACY_DEFAULT_DEST" ]; then
+  DEST="$LEGACY_DEFAULT_DEST"
+  REQUESTED_DEST="$DEST"
+  QBT_ROOT_FOLDER="$DEST"
+  echo "Using existing legacy install directory: $DEST"
+fi
+
+if [ "$TARGET_COUNT" -gt 0 ]; then
   DEST=$(printf '%s\n' "$TARGETS" | sed -n '1p')
   REQUESTED_DEST="$DEST"
   QBT_ROOT_FOLDER="$DEST"

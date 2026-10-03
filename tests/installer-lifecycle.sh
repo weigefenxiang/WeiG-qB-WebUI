@@ -146,13 +146,13 @@ run_installer() {
   case "$INSTALLER_PROFILE" in
     dash)
       command -v dash >/dev/null 2>&1 || { echo "dash profile requested but dash is unavailable." >&2; return 2; }
-      darun_installer "$@"
+      dash "$ROOT/installers/install.sh" "$@"
       ;;
     busybox-ash)
-      PATH="$MOCK_BIN:$BUSYBOX_BIN:/usr/bin:/bin" "$BUSYBOX_CMD" arun_installer "$@"
+      PATH="$MOCK_BIN:$BUSYBOX_BIN:/usr/bin:/bin" "$BUSYBOX_CMD" ash "$ROOT/installers/install.sh" "$@"
       ;;
     sh)
-      run_installer "$@"
+      sh "$ROOT/installers/install.sh" "$@"
       ;;
     *)
       echo "Unsupported WEIG_INSTALLER_SHELL profile: $INSTALLER_PROFILE" >&2
