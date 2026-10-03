@@ -66,7 +66,7 @@ async function recoverPrivate(page,qbVersion,{label='Pages auth private session'
     navigate:async attempt=>{
       if(attempt>1)await page.reload({waitUntil:'domcontentloaded',timeout:sessionTimeoutMs});
     },
-    onLogin:onLogin||async()=>{await page.locator('#login-btn').click();}
+    onLogin:onLogin||(async()=>{await page.locator('#login-btn').click();})
   });
   if(recovered.attempt>1)console.log(`Recovered ${label} on bootstrap attempt ${recovered.attempt}.`);
   return recovered;
