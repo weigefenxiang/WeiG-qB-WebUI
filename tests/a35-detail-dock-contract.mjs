@@ -28,7 +28,7 @@ assert.ok(dockMarkup.includes('detail-runtime-content'),'inline Dock must mount 
 assert.ok(!/detail-context-back|data-detail-back|back-btn/.test(dockMarkup),'inline Dock must never create or hide a route Back control');
 
 assert.ok(index.includes('<div id="detail-content" class="detail-content detail-runtime-content surface surface--panel surface--scroll"></div>'),'full Detail route must consume the same runtime geometry class');
-assert.ok(index.includes('<div class="pager torrent-pager"><div id="torrent-detail-tabs"'),'Detail tabs must live in the Torrent pager rail, not in a copied detail page');assert.ok(index.includes('<div id="torrent-content-stage" class="torrent-content-stage"><div id="torrent-table-head"'),'Torrent list/header/empty/loading must share one stable content-stage owner above the persistent pager');
+assert.ok(index.includes('<div class="pager torrent-pager"><div id="mobile-detail-rail" class="mobile-detail-rail"><div id="torrent-detail-tabs"'),'Detail tabs must remain the one semantic owner inside the Torrent pager presentation rail, not in a copied detail page');assert.ok(index.includes('<div id="torrent-content-stage" class="torrent-content-stage"><div id="torrent-table-head"'),'Torrent list/header/empty/loading must share one stable content-stage owner above the persistent pager');
 assert.ok(index.includes('<div class="pager__tail"><div id="mobile-pager-actions-slot"'),'pager must retain a third balance/action rail');
 
 assert.equal((app.match(/W\.DetailRuntime=/g)||[]).length,1,'Detail runtime must have one active owner');
