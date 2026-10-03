@@ -157,19 +157,25 @@ try{
   await openBootstrapSession();
   async function openEntitySession(qbVersion,lane,{requireZh=true}={}){
     // This verifier switches between independent Virtual qB sims directly instead
-    // of going through Lab. Do not let the previous sim's browser-locale bootstrap
-    // record suppress initialization for the next daemon world. Clear once per new
-    // world; session retries keep that same sim and must not reset locale ownership.
-    await page.evaluate(()=>{
-      const key=window.WeiG?.StorageKeys?.localeBootstrap||'weig.localeBootstrap';
-      localStorage.removeItem(key);
-    });
+    // of going through Lab. qB-owned copy is the target evidence here; the one-time
+    // browser-locale lifecycle has its own dedicated Pages gate. Re-arm only this
+    // verifier's locale precondition before every bounded recovery attempt so a
+    // navigation interrupted after a verified locale write cannot leave attempt 2
+    // short-circuited by attempt 1's local bootstrap record.
+    async function resetVerifierLocaleBootstrap(){
+      await page.evaluate(()=>{
+        const key=window.WeiG?.StorageKeys?.localeBootstrap||'weig.localeBootstrap';
+        localStorage.removeItem(key);
+        window.WeiG?.SessionContract?.clearLocaleIntent?.();
+      });
+    }
     const url=new URL('dev/app/',base);
     url.search=new URLSearchParams({sim:`pages-live-preferences-${lane}-${shardIndex}-${Date.now()}`,qb:qbVersion,count:'24',scenario:'mixed',seed:'pages-live-preferences-entity',clean:'0'}).toString();
     const recovered=await recoverPageSession(page,{
       label:`Pages Preferences ${lane} qB ${qbVersion}`,
       qbVersion,
       timeoutMs:sessionTimeoutMs,
+      onAttemptStart:resetVerifierLocaleBootstrap,
       navigate:async attempt=>{
         const attemptUrl=new URL(url);attemptUrl.searchParams.set('__weig_session_attempt',String(attempt));
         await page.goto(attemptUrl.toString(),{waitUntil:'domcontentloaded',timeout:sessionTimeoutMs});
