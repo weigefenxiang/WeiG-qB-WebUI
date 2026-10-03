@@ -305,7 +305,7 @@ portable_mktemp_dir() {
   pm_i=0
   umask 077
   while [ "$pm_i" -lt 100 ]; do
-    pm_candidate="$pm_base/weig-qb-webui.$.$pm_i"
+    pm_candidate="$pm_base/weig-qb-webui-$pm_i"
     if mkdir "$pm_candidate" 2>/dev/null; then
       printf '%s\n' "$pm_candidate"
       return 0
@@ -328,7 +328,7 @@ portable_mktemp_file() {
   pm_i=0
   umask 077
   while [ "$pm_i" -lt 100 ]; do
-    pm_candidate="$pm_dir/$pm_prefix.$.$pm_i"
+    pm_candidate="$pm_dir/$pm_prefix-$pm_i"
     pm_lock="$pm_candidate.lock"
     if mkdir "$pm_lock" 2>/dev/null; then
       if : > "$pm_candidate"; then
@@ -420,13 +420,77 @@ PY
 verify_release_checksum() {
   sums=$1
   package=$2
-  expected=$(awk '$2=="WeiG-qB-WebUI.zip" || $2=="*WeiG-qB-WebUI.zip" {print $1; exit}' "$sums")
-  printf '%s' "$expected" | grep -Eq '^[0-9a-fA-F]{64}$' || { echo "SHA256SUMS does not contain a valid WeiG-qB-WebUI.zip checksum." >&2; return 1; }
+  package_name=$3
+  expected=$(awk -v name="$package_name" '$2==name || $2=="*" name {print $1; exit}' "$sums")
+  printf '%s' "$expected" | grep -Eq '^[0-9a-fA-F]{64}$' || { echo "SHA256SUMS does not contain a valid checksum for $package_name." >&2; return 1; }
   actual=$(sha256_file "$package") || return 1
   expected=$(printf '%s' "$expected" | tr 'A-F' 'a-f')
   actual=$(printf '%s' "$actual" | tr 'A-F' 'a-f')
-  [ "$expected" = "$actual" ] || { echo "SHA256 verification failed." >&2; return 1; }
-  echo "SHA256 verified: $actual"
+  [ "$expected" = "$actual" ] || { echo "SHA256 verification failed for $package_name." >&2; return 1; }
+  echo "SHA256 verified: $package_name $actual"
+}
+
+manifest_string_field() {
+  manifest=$1
+  key=$2
+  sed -n 's/^[[:space:]]*"'"$key"'":[[:space:]]*"\([^"]*\)".*/\1/p' "$manifest" | sed -n '1p'
+}
+
+extract_tar_gz() {
+  archive=$1
+  target=$2
+  mkdir -p "$target"
+  if command -v tar >/dev/null 2>&1 && tar -xzf "$archive" -C "$target" 2>/dev/null; then return 0; fi
+  if has_busybox_applet tar && busybox tar -xzf "$archive" -C "$target" >/dev/null 2>&1; then return 0; fi
+  return 127
+}
+
+extract_dist_archive() {
+  archive=$1
+  target=$2
+  case "$archive" in
+    *.tar.gz) extract_tar_gz "$archive" "$target" ;;
+    *.zip) extract_zip "$archive" "$target" ;;
+    *) return 127 ;;
+  esac
+}
+
+prepare_manifest_dist() {
+  dist_base=$1
+  dist_manifest=$2
+  dist_sums=$3
+  dist_target=$4
+  dist_root=$(manifest_string_field "$dist_manifest" rootFolder)
+  dist_tar=$(manifest_string_field "$dist_manifest" unixArchive)
+  dist_zip=$(manifest_string_field "$dist_manifest" zipArchive)
+  [ "$dist_root" = "weig-qb-webui" ] || { echo "Distribution manifest has an unsupported rootFolder: $dist_root" >&2; return 1; }
+  [ "$dist_tar" = "weig-qb-webui.tar.gz" ] || { echo "Distribution manifest has an unsupported unixArchive: $dist_tar" >&2; return 1; }
+  [ "$dist_zip" = "weig-qb-webui.zip" ] || { echo "Distribution manifest has an unsupported zipArchive: $dist_zip" >&2; return 1; }
+
+  dist_candidates="$dist_zip"
+  if command -v tar >/dev/null 2>&1 || has_busybox_applet tar; then
+    dist_candidates="$dist_tar
+$dist_zip"
+  fi
+  while IFS= read -r dist_name; do
+    [ -n "$dist_name" ] || continue
+    dist_package="$TMP/$dist_name"
+    download_file "$dist_base/$dist_name" "$dist_package" || continue
+    verify_release_checksum "$dist_sums" "$dist_package" "$dist_name" || return 1
+    rm -rf "$dist_target"
+    mkdir -p "$dist_target"
+    if extract_dist_archive "$dist_package" "$dist_target"; then
+      [ -d "$dist_target/$dist_root" ] || { echo "Distribution archive $dist_name is missing root folder $dist_root." >&2; return 1; }
+      PACKAGE="$dist_package"
+      PACKAGE_NAME="$dist_name"
+      SRC="$dist_target/$dist_root"
+      return 0
+    fi
+  done <<EOF_DIST_CANDIDATES
+$dist_candidates
+EOF_DIST_CANDIDATES
+  echo "No supported verified distribution archive could be extracted. Install tar+gzip or unzip/BusyBox unzip." >&2
+  return 1
 }
 
 assert_materialized_webui() {
@@ -1367,117 +1431,63 @@ if [ "$TARGET_COUNT" -eq 1 ] && [ "$DEST" != "$REQUESTED_DEST" ]; then
   echo "qBittorrent Root Folder: $QBT_ROOT_FOLDER"
 fi
 
-PACKAGE="$TMP/WeiG-qB-WebUI.zip"
+PACKAGE=""
+PACKAGE_NAME=""
+SRC=""
 
 if [ "$CHANNEL" = "main" ]; then
   REQUESTED_RELEASE_VERSION="$RELEASE_VERSION"
   REQUESTED_RELEASE_TAG="$RELEASE_TAG"
   RELEASE_META="$TMP/release.json"
-  if [ -n "$REQUESTED_RELEASE_VERSION" ]; then
-    RELEASE_META_URL="https://api.github.com/repos/$REPO/releases/tags/$REQUESTED_RELEASE_TAG"
-  else
-    RELEASE_META_URL="https://api.github.com/repos/$REPO/releases/latest"
-  fi
-
-  download_file "$RELEASE_META_URL" "$RELEASE_META" || {
-    if [ -n "$REQUESTED_RELEASE_VERSION" ]; then
-      echo "Release $REQUESTED_RELEASE_TAG was not found. Refusing to fall back to latest or dev." >&2
-    else
-      echo "No published stable GitHub Release is available. Release installation will not fall back to a branch archive." >&2
-    fi
-    exit 1
-  }
+  if [ -n "$REQUESTED_RELEASE_VERSION" ]; then RELEASE_META_URL="https://api.github.com/repos/$REPO/releases/tags/$REQUESTED_RELEASE_TAG"; else RELEASE_META_URL="https://api.github.com/repos/$REPO/releases/latest"; fi
+  download_file "$RELEASE_META_URL" "$RELEASE_META" || { if [ -n "$REQUESTED_RELEASE_VERSION" ]; then echo "Release $REQUESTED_RELEASE_TAG was not found. Refusing to fall back to latest or dev." >&2; else echo "No published stable GitHub Release is available. Release installation will not fall back to a branch archive." >&2; fi; exit 1; }
   RESOLVED_RELEASE_TAG=$(sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$RELEASE_META" | head -n 1)
-  printf '%s' "$RESOLVED_RELEASE_TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$' || {
-    echo "GitHub Release metadata returned an invalid tag: ${RESOLVED_RELEASE_TAG:-<empty>}." >&2
-    exit 1
-  }
-  if [ -n "$REQUESTED_RELEASE_TAG" ] && [ "$RESOLVED_RELEASE_TAG" != "$REQUESTED_RELEASE_TAG" ]; then
-    echo "Requested $REQUESTED_RELEASE_TAG but GitHub Release metadata resolved $RESOLVED_RELEASE_TAG; refusing mismatched Release identity." >&2
-    exit 1
-  fi
+  printf '%s' "$RESOLVED_RELEASE_TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$' || { echo "GitHub Release metadata returned an invalid tag: ${RESOLVED_RELEASE_TAG:-<empty>}." >&2; exit 1; }
+  [ -z "$REQUESTED_RELEASE_TAG" ] || [ "$RESOLVED_RELEASE_TAG" = "$REQUESTED_RELEASE_TAG" ] || { echo "Requested $REQUESTED_RELEASE_TAG but GitHub Release metadata resolved $RESOLVED_RELEASE_TAG; refusing mismatched Release identity." >&2; exit 1; }
   RESOLVED_RELEASE_VERSION=${RESOLVED_RELEASE_TAG#v}
-
   RELEASE_COMMIT_META="$TMP/release-commit.json"
-  download_file "https://api.github.com/repos/$REPO/commits/$RESOLVED_RELEASE_TAG" "$RELEASE_COMMIT_META" || {
-    echo "Unable to resolve commit identity for Release $RESOLVED_RELEASE_TAG." >&2
-    exit 1
-  }
+  download_file "https://api.github.com/repos/$REPO/commits/$RESOLVED_RELEASE_TAG" "$RELEASE_COMMIT_META" || { echo "Unable to resolve commit identity for Release $RESOLVED_RELEASE_TAG." >&2; exit 1; }
   RELEASE_EXPECTED_SHA=$(sed -n 's/^[[:space:]]*"sha"[[:space:]]*:[[:space:]]*"\([0-9a-fA-F]\{40\}\)".*/\1/p' "$RELEASE_COMMIT_META" | head -n 1 | tr 'A-F' 'a-f')
   valid_sha "$RELEASE_EXPECTED_SHA" || { echo "Release $RESOLVED_RELEASE_TAG did not resolve to a valid commit SHA." >&2; exit 1; }
-
-  RELEASE_TAG="$RESOLVED_RELEASE_TAG"
-  RELEASE_VERSION="$RESOLVED_RELEASE_VERSION"
-  RELEASE_BASE="https://github.com/$REPO/releases/download/$RELEASE_TAG"
-  RELEASE_LABEL="Release $RELEASE_TAG"
-  RELEASE_URL="$RELEASE_BASE/WeiG-qB-WebUI.zip"
-  SUM_URL="$RELEASE_BASE/SHA256SUMS"
-
-  download_file "$RELEASE_URL" "$PACKAGE" || {
-    echo "$RELEASE_LABEL does not contain WeiG-qB-WebUI.zip. Refusing to fall back to another Release or branch." >&2
-    exit 1
-  }
-  download_file "$SUM_URL" "$TMP/SHA256SUMS" || {
-    echo "$RELEASE_LABEL is missing SHA256SUMS; refusing an unverified installation." >&2
-    exit 1
-  }
+  RELEASE_TAG="$RESOLVED_RELEASE_TAG"; RELEASE_VERSION="$RESOLVED_RELEASE_VERSION"; RELEASE_BASE="https://github.com/$REPO/releases/download/$RELEASE_TAG"; RELEASE_LABEL="Release $RELEASE_TAG"
+  download_file "$RELEASE_BASE/SHA256SUMS" "$TMP/SHA256SUMS" || { echo "$RELEASE_LABEL is missing SHA256SUMS; refusing an unverified installation." >&2; exit 1; }
   [ -s "$TMP/SHA256SUMS" ] || { echo "SHA256SUMS is empty; refusing installation." >&2; exit 1; }
-  verify_release_checksum "$TMP/SHA256SUMS" "$PACKAGE"
-  extract_zip "$PACKAGE" "$TMP/release"
-  SRC="$TMP/release/WeiG-qB-WebUI"
+  if download_file "$RELEASE_BASE/manifest.json" "$TMP/manifest.json"; then
+    prepare_manifest_dist "$RELEASE_BASE" "$TMP/manifest.json" "$TMP/SHA256SUMS" "$TMP/release" || exit 1
+  else
+    PACKAGE_NAME="WeiG-qB-WebUI.zip"; PACKAGE="$TMP/$PACKAGE_NAME"
+    download_file "$RELEASE_BASE/$PACKAGE_NAME" "$PACKAGE" || { echo "$RELEASE_LABEL has neither the canonical manifest artifact set nor legacy $PACKAGE_NAME." >&2; exit 1; }
+    verify_release_checksum "$TMP/SHA256SUMS" "$PACKAGE" "$PACKAGE_NAME" || exit 1
+    extract_zip "$PACKAGE" "$TMP/release"
+    SRC="$TMP/release/WeiG-qB-WebUI"
+    [ -d "$SRC" ] || { echo "Legacy Release archive does not contain WeiG-qB-WebUI." >&2; exit 1; }
+  fi
   SOURCE_SHA=$(cat "$SRC/GIT_SHA" 2>/dev/null | tr -d '\r\n' | tr 'A-F' 'a-f' || true)
   valid_sha "$SOURCE_SHA" || { echo "$RELEASE_LABEL does not contain a valid GIT_SHA; refusing an unversioned asset deployment." >&2; exit 1; }
   PACKAGE_VERSION=$(cat "$SRC/VERSION" 2>/dev/null | tr -d '\r\n' || true)
-  [ "$PACKAGE_VERSION" = "$RELEASE_VERSION" ] || {
-    echo "$RELEASE_LABEL maps to VERSION=$RELEASE_VERSION but the package reports VERSION=$PACKAGE_VERSION; refusing mismatched Release content." >&2
-    exit 1
-  }
-  [ "$SOURCE_SHA" = "$RELEASE_EXPECTED_SHA" ] || {
-    echo "$RELEASE_LABEL points to Git SHA $RELEASE_EXPECTED_SHA but the package reports GIT_SHA=$SOURCE_SHA; refusing mismatched Release content." >&2
-    exit 1
-  }
-  echo "Source: $RELEASE_LABEL at $RELEASE_EXPECTED_SHA (checksum and Release identity verified)"
+  [ "$PACKAGE_VERSION" = "$RELEASE_VERSION" ] || { echo "$RELEASE_LABEL maps to VERSION=$RELEASE_VERSION but the package reports VERSION=$PACKAGE_VERSION; refusing mismatched Release content." >&2; exit 1; }
+  [ "$SOURCE_SHA" = "$RELEASE_EXPECTED_SHA" ] || { echo "$RELEASE_LABEL points to Git SHA $RELEASE_EXPECTED_SHA but the package reports GIT_SHA=$SOURCE_SHA; refusing mismatched Release content." >&2; exit 1; }
+  echo "Source: $RELEASE_LABEL at $RELEASE_EXPECTED_SHA ($PACKAGE_NAME; checksum and Release identity verified)"
 else
   DEV_META="$TMP/dev-commit.json"
   download_file "https://api.github.com/repos/$REPO/commits/dev" "$DEV_META" || { echo "Unable to resolve the current dev commit." >&2; exit 1; }
   DEV_HEAD_SHA=$(sed -n 's/^[[:space:]]*"sha":[[:space:]]*"\([0-9a-fA-F]\{40\}\)".*/\1/p' "$DEV_META" | head -n 1)
   valid_sha "$DEV_HEAD_SHA" || { echo "GitHub did not return a valid dev commit SHA." >&2; exit 1; }
-
   PUBLISHED_SHA_FILE="$TMP/DEV_GIT_SHA"
-  download_file "$DEV_DIST_BASE/GIT_SHA" "$PUBLISHED_SHA_FILE" || {
-    echo "The materialized dev WebUI payload is not published yet. Wait for Virtual qB Pages to finish and retry." >&2
-    exit 1
-  }
-  PUBLISHED_SHA=$(tr -d '\r\n' < "$PUBLISHED_SHA_FILE")
-  valid_sha "$PUBLISHED_SHA" || { echo "The materialized dev payload does not publish a valid GIT_SHA." >&2; exit 1; }
-
+  download_file "$DEV_DIST_BASE/GIT_SHA" "$PUBLISHED_SHA_FILE" || { echo "The materialized dev WebUI payload is not published yet. Wait for Virtual qB Pages to finish and retry." >&2; exit 1; }
+  PUBLISHED_SHA=$(tr -d '\r\n' < "$PUBLISHED_SHA_FILE"); valid_sha "$PUBLISHED_SHA" || { echo "The materialized dev payload does not publish a valid GIT_SHA." >&2; exit 1; }
   SOURCE_SHA="$PUBLISHED_SHA"
   if [ "$PUBLISHED_SHA" != "$DEV_HEAD_SHA" ]; then
-    if dev_payload_can_represent_head "$PUBLISHED_SHA" "$DEV_HEAD_SHA" "$TMP/dev-compare.json"; then
-      echo "Current dev HEAD $DEV_HEAD_SHA differs from materialized SHA $PUBLISHED_SHA only by Pages-irrelevant changes; reusing the verified payload."
-    else
-      echo "The materialized dev payload is still at $PUBLISHED_SHA while dev is $DEV_HEAD_SHA, and at least one Pages-relevant change is not published. Wait for the exact Pages build and retry; refusing raw-source fallback." >&2
-      exit 1
-    fi
+    if dev_payload_can_represent_head "$PUBLISHED_SHA" "$DEV_HEAD_SHA" "$TMP/dev-compare.json"; then echo "Current dev HEAD $DEV_HEAD_SHA differs from materialized SHA $PUBLISHED_SHA only by Pages-irrelevant changes; reusing the verified payload."; else echo "The materialized dev payload is still at $PUBLISHED_SHA while dev is $DEV_HEAD_SHA, and at least one Pages-relevant change is not published. Wait for the exact Pages build and retry; refusing raw-source fallback." >&2; exit 1; fi
   fi
-
-  download_file "$DEV_DIST_BASE/WeiG-qB-WebUI.zip" "$PACKAGE" || { echo "Unable to download the materialized dev payload for exact SHA $SOURCE_SHA." >&2; exit 1; }
+  download_file "$DEV_DIST_BASE/manifest.json" "$TMP/manifest.json" || { echo "Materialized dev payload is missing manifest.json; refusing legacy/raw fallback." >&2; exit 1; }
   download_file "$DEV_DIST_BASE/SHA256SUMS" "$TMP/SHA256SUMS" || { echo "Materialized dev payload is missing SHA256SUMS; refusing installation." >&2; exit 1; }
-  [ -s "$TMP/SHA256SUMS" ] || { echo "Materialized dev SHA256SUMS is empty; refusing installation." >&2; exit 1; }
-  verify_release_checksum "$TMP/SHA256SUMS" "$PACKAGE"
-  extract_zip "$PACKAGE" "$TMP/dev"
-  SRC="$TMP/dev/WeiG-qB-WebUI"
-  [ -d "$SRC" ] || { echo "Materialized dev payload does not contain WeiG-qB-WebUI." >&2; exit 1; }
+  prepare_manifest_dist "$DEV_DIST_BASE" "$TMP/manifest.json" "$TMP/SHA256SUMS" "$TMP/dev" || exit 1
   PACKAGE_SHA=$(tr -d '\r\n' < "$SRC/GIT_SHA" 2>/dev/null || true)
   [ "$PACKAGE_SHA" = "$SOURCE_SHA" ] || { echo "Dev package Git SHA $PACKAGE_SHA does not match materialized dev SHA $SOURCE_SHA." >&2; exit 1; }
   assert_materialized_webui "$SRC" || exit 1
-  if [ "$SOURCE_SHA" = "$DEV_HEAD_SHA" ]; then
-    echo "Source: dev exact SHA $SOURCE_SHA (materialized Pages payload; checksum verified)"
-  else
-    echo "Source: dev materialized SHA $SOURCE_SHA for current HEAD $DEV_HEAD_SHA (only Pages-irrelevant changes are newer; checksum verified)"
-  fi
+  if [ "$SOURCE_SHA" = "$DEV_HEAD_SHA" ]; then echo "Source: dev exact SHA $SOURCE_SHA ($PACKAGE_NAME; materialized Pages payload; checksum verified)"; else echo "Source: dev materialized SHA $SOURCE_SHA for current HEAD $DEV_HEAD_SHA ($PACKAGE_NAME; only Pages-irrelevant changes are newer; checksum verified)"; fi
 fi
-
 [ -n "$SRC" ] && [ -d "$SRC" ] || { echo "WebUI payload not found." >&2; exit 1; }
 [ -f "$SRC/public/index.html" ] && [ -f "$SRC/public/login.html" ] && [ -f "$SRC/private/index.html" ] || { echo "Source package is not a valid qBittorrent Alternate WebUI." >&2; exit 1; }
 
