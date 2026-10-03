@@ -233,14 +233,30 @@ if [ "$TARGET_COUNT" -gt 1 ]; then
   [ -z "$CONFIG_ROOT_REQUESTED" ] || { echo "Multiple -o targets cannot be combined with --config-root." >&2; exit 2; }
 fi
 
-STATE="${HOME}/.config/weig_qb-webui"
+STATE="${HOME}/.config/weig-qb-webui"
+LEGACY_STATE="${HOME}/.config/weig_qb-webui"
 BACKUPS="$STATE/backups"
+LEGACY_BACKUPS="$LEGACY_STATE/backups"
 mkdir -p "$BACKUPS"
 
-if { [ "$MODE" = "rollback" ] || [ "$MODE" = "uninstall" ]; } && [ "$DEST_EXPLICIT" -eq 0 ] && [ -s "$STATE/last-dest" ]; then
-  DEST=$(cat "$STATE/last-dest")
-  REQUESTED_DEST="$DEST"
-  QBT_ROOT_FOLDER="$DEST"
+state_marker_value() {
+  marker_name=$1
+  for marker_root in "$STATE" "$LEGACY_STATE"; do
+    marker_path="$marker_root/$marker_name"
+    [ -s "$marker_path" ] || continue
+    cat "$marker_path"
+    return 0
+  done
+  return 1
+}
+
+if { [ "$MODE" = "rollback" ] || [ "$MODE" = "uninstall" ]; } && [ "$DEST_EXPLICIT" -eq 0 ]; then
+  remembered_dest=$(state_marker_value last-dest 2>/dev/null || true)
+  if [ -n "$remembered_dest" ]; then
+    DEST=$remembered_dest
+    REQUESTED_DEST="$DEST"
+    QBT_ROOT_FOLDER="$DEST"
+  fi
 fi
 
 is_safe_config_path() {
@@ -983,12 +999,15 @@ backup_is_owned() {
 
 owned_backups_for_dest() {
   target=$1
-  for backup in "$BACKUPS"/*; do
-    [ -d "$backup" ] || continue
-    backup_is_owned "$backup" || continue
-    saved_dest=$(cat "$backup/dest-path" 2>/dev/null || true)
-    [ "$saved_dest" = "$target" ] || continue
-    printf '%s\n' "$backup"
+  for backup_root in "$BACKUPS" "$LEGACY_BACKUPS"; do
+    [ -d "$backup_root" ] || continue
+    for backup in "$backup_root"/*; do
+      [ -d "$backup" ] || continue
+      backup_is_owned "$backup" || continue
+      saved_dest=$(cat "$backup/dest-path" 2>/dev/null || true)
+      [ "$saved_dest" = "$target" ] || continue
+      printf '%s\n' "$backup"
+    done
   done | sort -r
 }
 
@@ -1014,12 +1033,10 @@ prune_backups_for_dest() {
 purge_backups_for_dest() {
   target=$1
   last_backup_for_target=""
-  if [ -s "$STATE/last-backup" ]; then
-    candidate=$(cat "$STATE/last-backup" 2>/dev/null || true)
-    if backup_is_owned "$candidate"; then
-      candidate_dest=$(cat "$candidate/dest-path" 2>/dev/null || true)
-      [ "$candidate_dest" = "$target" ] && last_backup_for_target=$candidate
-    fi
+  candidate=$(state_marker_value last-backup 2>/dev/null || true)
+  if [ -n "$candidate" ] && backup_is_owned "$candidate"; then
+    candidate_dest=$(cat "$candidate/dest-path" 2>/dev/null || true)
+    [ "$candidate_dest" = "$target" ] && last_backup_for_target=$candidate
   fi
 
   owned_backups_for_dest "$target" | while IFS= read -r backup; do
@@ -1029,13 +1046,17 @@ purge_backups_for_dest() {
   done
 
   if [ -n "$last_backup_for_target" ]; then
-    rm -f "$STATE/last-backup"
+    rm -f "$STATE/last-backup" "$LEGACY_STATE/last-backup"
   fi
-  if [ -s "$STATE/last-dest" ] && [ "$(cat "$STATE/last-dest" 2>/dev/null || true)" = "$target" ]; then
-    rm -f "$STATE/last-dest" "$STATE/last-qb-root-folder"
-  fi
+  for marker_root in "$STATE" "$LEGACY_STATE"; do
+    if [ -s "$marker_root/last-dest" ] && [ "$(cat "$marker_root/last-dest" 2>/dev/null || true)" = "$target" ]; then
+      rm -f "$marker_root/last-dest" "$marker_root/last-qb-root-folder"
+    fi
+  done
   rmdir "$BACKUPS" 2>/dev/null || true
+  rmdir "$LEGACY_BACKUPS" 2>/dev/null || true
   rmdir "$STATE" 2>/dev/null || true
+  rmdir "$LEGACY_STATE" 2>/dev/null || true
 }
 
 qb_root_for_target() {
@@ -1377,8 +1398,8 @@ rollback() {
 $TARGETS
 EOF_TARGETS
   else
-    [ -f "$STATE/last-backup" ] || { echo "No backup found." >&2; return 1; }
-    b=$(cat "$STATE/last-backup")
+    b=$(state_marker_value last-backup 2>/dev/null || true)
+    [ -n "$b" ] || { echo "No backup found." >&2; return 1; }
     [ -d "$b" ] || { echo "Backup directory missing: $b" >&2; return 1; }
     [ -s "$b/dest-path" ] || { echo "Backup destination marker missing: $b/dest-path" >&2; return 1; }
     target=$(cat "$b/dest-path")

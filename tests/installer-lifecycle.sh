@@ -12,9 +12,9 @@ trap cleanup EXIT INT TERM
 FIXTURES="$TMP/releases"
 MOCK_BIN="$TMP/mock-bin"
 HOME_DIR="$TMP/home"
-DEST="$TMP/install/weig_qb-webui"
+DEST="$TMP/install/weig-qb-webui"
 CFG="$HOME_DIR/.config/qBittorrent/qBittorrent.conf"
-STATE="$HOME_DIR/.config/weig_qb-webui"
+STATE="$HOME_DIR/.config/weig-qb-webui"
 VERSION_ONE=9.9.90
 VERSION_TWO=9.9.91
 SHA_ONE=1111111111111111111111111111111111111111

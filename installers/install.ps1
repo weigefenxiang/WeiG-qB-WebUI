@@ -124,16 +124,26 @@ if($releaseVersion){
   $releaseTag="v$releaseVersion"
 }
 
-$State=Join-Path $env:APPDATA 'WeiG_qB-WebUI'
+$State=Join-Path $env:APPDATA 'weig-qb-webui'
+$LegacyState=Join-Path $env:APPDATA 'WeiG_qB-WebUI'
 $Backups=Join-Path $State 'backups'
+$LegacyBackups=Join-Path $LegacyState 'backups'
 New-Item -ItemType Directory -Force -Path $Backups | Out-Null
 
-if(($Mode -eq 'Rollback' -or $Mode -eq 'Uninstall') -and !$DestinationExplicit){
-  $lastDest=Join-Path $State 'last-dest'
-  if(Test-Path $lastDest){
-    $remembered=(Get-Content $lastDest -Raw).Trim()
-    if($remembered){ $Destination=$remembered }
+function Get-InstallerStateMarker([string]$Name) {
+  foreach($root in @($State,$LegacyState)){
+    $marker=Join-Path $root $Name
+    if(Test-Path -LiteralPath $marker -PathType Leaf){
+      $value=(Get-Content $marker -Raw).Trim()
+      if($value){return $value}
+    }
   }
+  return $null
+}
+
+if(($Mode -eq 'Rollback' -or $Mode -eq 'Uninstall') -and !$DestinationExplicit){
+  $remembered=Get-InstallerStateMarker 'last-dest'
+  if($remembered){ $Destination=$remembered }
 }
 
 function Move-OutOfInstallTarget([string]$Path) {
@@ -543,16 +553,584 @@ function Disable-QBWebUI([string]$Path,[string]$RootFolder) {
 function Get-OwnedBackupsForDestination([string]$Target) {
   $targetFull=[IO.Path]::GetFullPath($Target).TrimEnd([IO.Path]::DirectorySeparatorChar,[IO.Path]::AltDirectorySeparatorChar)
   $owned=@()
-  foreach($item in @(Get-ChildItem -LiteralPath $Backups -Directory -ErrorAction SilentlyContinue)){
-    if($item.Name -notmatch '^\d{8}-\d{6}$'){continue}
-    $had=Join-Path $item.FullName 'had-webui'
-    $destMarker=Join-Path $item.FullName 'dest-path'
-    if(!(Test-Path -LiteralPath $had -PathType Leaf) -or !(Test-Path -LiteralPath $destMarker -PathType Leaf)){continue}
-    try{
-      $saved=(Get-Content $destMarker -Raw).Trim()
-      $savedFull=[IO.Path]::GetFullPath($saved).TrimEnd([IO.Path]::DirectorySeparatorChar,[IO.Path]::AltDirectorySeparatorChar)
-    }catch{continue}
-    if($savedFull.Equals($targetFull,[StringComparison]::OrdinalIgnoreCase)){$owned += $item}
+  foreach($backupRoot in @($Backups,$LegacyBackups)){
+    if(!(Test-Path -LiteralPath $backupRoot -PathType Container)){continue}
+    foreach($item in @(Get-ChildItem -LiteralPath $backupRoot -Directory -ErrorAction SilentlyContinue)){
+      if($item.Name -notmatch '^\d{8}-\d{6}(?:-\d+)?
+function Prune-Backups([string]$Target,[int]$Keep=3) {
+  if($Keep -lt 1){throw 'Backup retention must keep at least one backup.'}
+  $owned=@(Get-OwnedBackupsForDestination $Target)
+  foreach($item in @($owned | Select-Object -Skip $Keep)){
+    Remove-Item -LiteralPath $item.FullName -Recurse -Force
+  }
+}
+
+function Purge-BackupsForDestination([string]$Target) {
+  $owned=@(Get-OwnedBackupsForDestination $Target)
+  $deleted=@{}
+  foreach($item in $owned){
+    $deleted[$item.FullName.ToLowerInvariant()]=$true
+    Remove-Item -LiteralPath $item.FullName -Recurse -Force
+    Write-Host "Purged installer backup: $($item.FullName)"
+  }
+
+  foreach($stateRoot in @($State,$LegacyState)){
+    $lastBackupMarker=Join-Path $stateRoot 'last-backup'
+    if(Test-Path -LiteralPath $lastBackupMarker -PathType Leaf){
+      $lastBackup=(Get-Content $lastBackupMarker -Raw).Trim()
+      if($lastBackup -and $deleted.ContainsKey($lastBackup.ToLowerInvariant())){
+        Remove-Item -LiteralPath $lastBackupMarker -Force
+      }
+    }
+
+    $lastDestMarker=Join-Path $stateRoot 'last-dest'
+    if(Test-Path -LiteralPath $lastDestMarker -PathType Leaf){
+      $saved=(Get-Content $lastDestMarker -Raw).Trim()
+      try{
+        $savedFull=[IO.Path]::GetFullPath($saved).TrimEnd([IO.Path]::DirectorySeparatorChar,[IO.Path]::AltDirectorySeparatorChar)
+        $targetFull=[IO.Path]::GetFullPath($Target).TrimEnd([IO.Path]::DirectorySeparatorChar,[IO.Path]::AltDirectorySeparatorChar)
+        if($savedFull.Equals($targetFull,[StringComparison]::OrdinalIgnoreCase)){
+          Remove-Item -LiteralPath $lastDestMarker -Force
+        }
+      }catch{}
+    }
+  }
+
+  foreach($backupRoot in @($Backups,$LegacyBackups)){
+    if((Test-Path -LiteralPath $backupRoot -PathType Container) -and -not (Get-ChildItem -LiteralPath $backupRoot -Force -ErrorAction SilentlyContinue | Select-Object -First 1)){
+      Remove-Item -LiteralPath $backupRoot -Force
+    }
+  }
+  foreach($stateRoot in @($State,$LegacyState)){
+    if((Test-Path -LiteralPath $stateRoot -PathType Container) -and -not (Get-ChildItem -LiteralPath $stateRoot -Force -ErrorAction SilentlyContinue | Select-Object -First 1)){
+      Remove-Item -LiteralPath $stateRoot -Force
+    }
+  }
+}
+function Write-BackupArchiveManifest([string]$Backup,[string]$Format,[string]$File,[string]$Tool,[string]$Sha256,[long]$Bytes) {
+  @(
+    'schema=1'
+    "format=$Format"
+    "file=$File"
+    "tool=$Tool"
+    "sha256=$Sha256"
+    "bytes=$Bytes"
+  ) | Set-Content -Encoding UTF8 -LiteralPath (Join-Path $Backup 'archive-manifest')
+}
+
+function Read-BackupArchiveManifest([string]$Backup) {
+  $file=Join-Path $Backup 'archive-manifest'
+  if(!(Test-Path -LiteralPath $file -PathType Leaf)){return $null}
+  $values=@{}
+  foreach($line in @(Get-Content -LiteralPath $file)){
+    if($line -match '^([^=]+)=(.*)$'){$values[$Matches[1]]=$Matches[2]}
+  }
+  return $values
+}
+
+function Save-BackupArchiveManifest([string]$Backup,[string]$Archive,[string]$Format,[string]$Tool) {
+  if(!(Test-Path -LiteralPath $Archive -PathType Leaf)){return $false}
+  $hash=(Get-FileHash -Algorithm SHA256 -LiteralPath $Archive).Hash.ToLowerInvariant()
+  $bytes=(Get-Item -LiteralPath $Archive).Length
+  Write-BackupArchiveManifest $Backup $Format ([IO.Path]::GetFileName($Archive)) $Tool $hash $bytes
+  return $true
+}
+
+function New-WebUiBackupPayload([string]$Source,[string]$Backup) {
+  $archive=Join-Path $Backup 'webui.zip'
+  try {
+    Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction SilentlyContinue
+    if(Test-Path -LiteralPath $archive){Remove-Item -LiteralPath $archive -Force}
+    [IO.Compression.ZipFile]::CreateFromDirectory($Source,$archive,[IO.Compression.CompressionLevel]::Optimal,$false)
+    if(Save-BackupArchiveManifest $Backup $archive 'zip' '.NET ZipFile'){
+      Write-Host "Backup payload: compressed zip ($((Get-Item -LiteralPath $archive).Length) bytes)"
+      return $true
+    }
+  } catch {
+    if(Test-Path -LiteralPath $archive){Remove-Item -LiteralPath $archive -Force -ErrorAction SilentlyContinue}
+  }
+
+  $tar=Get-Command tar.exe,tar -ErrorAction SilentlyContinue | Select-Object -First 1
+  if($tar){
+    $archive=Join-Path $Backup 'webui.tar.gz'
+    try {
+      & $tar.Source -czf $archive -C $Source .
+      if($LASTEXITCODE -eq 0 -and (Save-BackupArchiveManifest $Backup $archive 'tar.gz' 'tar')){
+        Write-Host "Backup payload: compressed tar.gz ($((Get-Item -LiteralPath $archive).Length) bytes)"
+        return $true
+      }
+    } catch {}
+    if(Test-Path -LiteralPath $archive){Remove-Item -LiteralPath $archive -Force -ErrorAction SilentlyContinue}
+  }
+
+  $seven=Get-Command 7z.exe,7za.exe,7z,7za -ErrorAction SilentlyContinue | Select-Object -First 1
+  if($seven){
+    $archive=Join-Path $Backup 'webui.7z'
+    try {
+      Push-Location $Source
+      try { & $seven.Source a -bd -y -t7z -mx=5 $archive . | Out-Null }
+      finally { Pop-Location }
+      if($LASTEXITCODE -eq 0 -and (Save-BackupArchiveManifest $Backup $archive '7z' ([string]$seven.Name))){
+        Write-Host "Backup payload: compressed 7z ($((Get-Item -LiteralPath $archive).Length) bytes)"
+        return $true
+      }
+    } catch {}
+    if(Test-Path -LiteralPath $archive){Remove-Item -LiteralPath $archive -Force -ErrorAction SilentlyContinue}
+  }
+
+  Write-Warning 'No verified compressed backup backend with SHA-256 support is available; refusing an unverified directory backup.'
+  return $false
+}
+
+function Assert-BackupArchive([string]$Backup,[hashtable]$Manifest) {
+  if(!$Manifest){throw 'Backup archive manifest is missing.'}
+  $name=[string]$Manifest['file']
+  if($name -notin @('webui.zip','webui.tar.gz','webui.7z')){throw "Unsupported backup archive file: $name"}
+  $archive=Join-Path $Backup $name
+  if(!(Test-Path -LiteralPath $archive -PathType Leaf)){throw "Backup archive missing: $archive"}
+  $expected=([string]$Manifest['sha256']).ToLowerInvariant()
+  if($expected -notmatch '^[0-9a-f]{64}$'){throw 'Backup archive SHA-256 is missing or invalid.'}
+  $actual=(Get-FileHash -Algorithm SHA256 -LiteralPath $archive).Hash.ToLowerInvariant()
+  if($actual -ne $expected){throw "Backup archive checksum mismatch: $archive"}
+  return $archive
+}
+
+function Expand-WebUiBackupPayload([string]$Backup,[string]$Stage) {
+  $legacy=Join-Path $Backup 'webui'
+  if(Test-Path -LiteralPath $legacy -PathType Container){
+    Copy-Item -LiteralPath $legacy -Destination $Stage -Recurse -Force
+    return
+  }
+
+  $manifest=Read-BackupArchiveManifest $Backup
+  $archive=Assert-BackupArchive $Backup $manifest
+  New-Item -ItemType Directory -Path $Stage | Out-Null
+  switch([string]$manifest['format']){
+    'zip' {
+      Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction SilentlyContinue
+      [IO.Compression.ZipFile]::ExtractToDirectory($archive,$Stage)
+    }
+    'tar.gz' {
+      $tar=Get-Command tar.exe,tar -ErrorAction SilentlyContinue | Select-Object -First 1
+      if(!$tar){throw 'tar is required to restore this backup.'}
+      & $tar.Source -xzf $archive -C $Stage
+      if($LASTEXITCODE -ne 0){throw "tar failed to restore backup with exit code $LASTEXITCODE."}
+    }
+    '7z' {
+      $seven=Get-Command 7z.exe,7za.exe,7z,7za -ErrorAction SilentlyContinue | Select-Object -First 1
+      if(!$seven){throw '7z/7za is required to restore this backup.'}
+      & $seven.Source x -bd -y "-o$Stage" $archive | Out-Null
+      if($LASTEXITCODE -ne 0){throw "7z failed to restore backup with exit code $LASTEXITCODE."}
+    }
+    default { throw "Unsupported backup archive format: $($manifest['format'])" }
+  }
+  if(!(Get-ChildItem -LiteralPath $Stage -Force -ErrorAction SilentlyContinue | Select-Object -First 1)){throw 'Backup archive extracted no WebUI files.'}
+}
+
+function Install-WebUiStage([string]$Stage,[string]$Target) {
+  if(!(Test-Path -LiteralPath $Stage -PathType Container)){throw "Prepared WebUI stage is missing: $Stage"}
+  foreach($relative in @('public\index.html','public\login.html','private\index.html','VERSION','GIT_SHA','private\weig-install.json')){
+    if(!(Test-Path -LiteralPath (Join-Path $Stage $relative) -PathType Leaf)){throw "Prepared WebUI stage is missing $relative."}
+  }
+  $reparse=@(Get-ChildItem -LiteralPath $Stage -Recurse -Force -ErrorAction Stop | Where-Object { ($_.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 })
+  if($reparse.Count -gt 0){throw 'Prepared WebUI stage contains a reparse point/symlink; refusing a qBittorrent Alternative WebUI deployment.'}
+
+  if(!(Test-Path -LiteralPath $Target)){
+    Move-Item -LiteralPath $Stage -Destination $Target
+    return
+  }
+  if(!(Test-Path -LiteralPath $Target -PathType Container)){throw "Install target exists but is not a directory: $Target"}
+  if(!(Test-Path -LiteralPath (Join-Path $Target 'public\index.html') -PathType Leaf) -or !(Test-Path -LiteralPath (Join-Path $Target 'private\index.html') -PathType Leaf)){
+    throw 'Existing WeiG WebUI is missing a live index entry; refusing an in-place update.'
+  }
+
+  $stageRoot=[IO.Path]::GetFullPath($Stage).TrimEnd([IO.Path]::DirectorySeparatorChar,[IO.Path]::AltDirectorySeparatorChar)+[IO.Path]::DirectorySeparatorChar
+  $targetRoot=[IO.Path]::GetFullPath($Target).TrimEnd([IO.Path]::DirectorySeparatorChar,[IO.Path]::AltDirectorySeparatorChar)+[IO.Path]::DirectorySeparatorChar
+
+  foreach($dir in @(Get-ChildItem -LiteralPath $Stage -Directory -Recurse -Force -ErrorAction Stop)){
+    $relative=$dir.FullName.Substring($stageRoot.Length)
+    $destination=Join-Path $Target $relative
+    if((Test-Path -LiteralPath $destination) -and !(Test-Path -LiteralPath $destination -PathType Container)){throw "Live WebUI path type collision: $destination"}
+    New-Item -ItemType Directory -Force -Path $destination | Out-Null
+  }
+
+  foreach($file in @(Get-ChildItem -LiteralPath $Stage -File -Recurse -Force -ErrorAction Stop)){
+    $relative=$file.FullName.Substring($stageRoot.Length)
+    $destination=Join-Path $Target $relative
+    $parent=Split-Path $destination -Parent
+    New-Item -ItemType Directory -Force -Path $parent | Out-Null
+    if((Test-Path -LiteralPath $destination) -and !(Test-Path -LiteralPath $destination -PathType Leaf)){throw "Live WebUI path type collision: $destination"}
+    $temp=Join-Path $parent ('.weig-stage-'+[guid]::NewGuid().ToString('N')+'.tmp')
+    $replaceBackup=Join-Path $parent ('.weig-stage-backup-'+[guid]::NewGuid().ToString('N')+'.tmp')
+    try {
+      Copy-Item -LiteralPath $file.FullName -Destination $temp -Force
+      if(Test-Path -LiteralPath $destination -PathType Leaf){
+        [IO.File]::Replace($temp,$destination,$replaceBackup,$true)
+      } else {
+        Move-Item -LiteralPath $temp -Destination $destination
+      }
+    } finally {
+      if(Test-Path -LiteralPath $temp){Remove-Item -LiteralPath $temp -Force -ErrorAction SilentlyContinue}
+      if(Test-Path -LiteralPath $replaceBackup){Remove-Item -LiteralPath $replaceBackup -Force -ErrorAction SilentlyContinue}
+    }
+  }
+
+  foreach($file in @(Get-ChildItem -LiteralPath $Target -File -Recurse -Force -ErrorAction Stop)){
+    $relative=$file.FullName.Substring($targetRoot.Length)
+    if(!(Test-Path -LiteralPath (Join-Path $Stage $relative) -PathType Leaf)){
+      Remove-Item -LiteralPath $file.FullName -Force
+    }
+  }
+  foreach($dir in @(Get-ChildItem -LiteralPath $Target -Directory -Recurse -Force -ErrorAction Stop | Sort-Object { $_.FullName.Length } -Descending)){
+    $relative=$dir.FullName.Substring($targetRoot.Length)
+    if((Test-Path -LiteralPath (Join-Path $Stage $relative) -PathType Container)){continue}
+    if(!(Get-ChildItem -LiteralPath $dir.FullName -Force -ErrorAction SilentlyContinue | Select-Object -First 1)){
+      Remove-Item -LiteralPath $dir.FullName -Force
+    }
+  }
+
+  Remove-Item -LiteralPath $Stage -Recurse -Force
+  foreach($relative in @('public\index.html','public\login.html','private\index.html')){
+    if(!(Test-Path -LiteralPath (Join-Path $Target $relative) -PathType Leaf)){throw "Live WebUI verification failed after deployment: $relative"}
+  }
+}
+
+function Restore-WebUiBackup([string]$Backup,[string]$Target) {
+  $hadWebUi=$false
+  $hadMarker=Join-Path $Backup 'had-webui'
+  if(Test-Path $hadMarker){ $hadWebUi=((Get-Content $hadMarker -Raw).Trim() -eq '1') }
+
+  if($hadWebUi){
+    $parent=Split-Path $Target -Parent
+    if($parent){New-Item -ItemType Directory -Force -Path $parent | Out-Null}
+    $stage="$Target.weig-restore-$PID-$([guid]::NewGuid().ToString('N'))"
+    if(Test-Path -LiteralPath $stage){throw "Restore staging path already exists: $stage"}
+    try {
+      Expand-WebUiBackupPayload $Backup $stage
+      Install-WebUiStage $stage $Target
+    } finally {
+      if(Test-Path -LiteralPath $stage){Remove-Item -LiteralPath $stage -Recurse -Force -ErrorAction SilentlyContinue}
+    }
+    Write-Host "Restored previous WebUI: $Target"
+  } else {
+    if(Test-Path -LiteralPath $Target){Remove-Item -LiteralPath $Target -Recurse -Force}
+    Write-Host "Removed WeiG qB WebUI from: $Target"
+  }
+}
+
+function Backup-Current([string]$ConfigPath='') {
+  $stamp=Get-Date -Format 'yyyyMMdd-HHmmss'
+  $b=Join-Path $Backups $stamp
+  New-Item -ItemType Directory -Force -Path $b | Out-Null
+  if(Test-Path $Destination){
+    if(!(New-WebUiBackupPayload $Destination $b)){throw 'Unable to create a verified WebUI backup payload.'}
+    Set-Content -Encoding ASCII -Path (Join-Path $b 'had-webui') -Value '1'
+  } else {
+    Write-BackupArchiveManifest $b 'none' '' 'none' '' 0
+    Set-Content -Encoding ASCII -Path (Join-Path $b 'had-webui') -Value '0'
+  }
+  if($ConfigPath){
+    Copy-Item -LiteralPath $ConfigPath (Join-Path $b 'qBittorrent.conf') -Force
+    Set-Content -Encoding UTF8 -Path (Join-Path $b 'config-path') -Value $ConfigPath
+  }
+  Set-Content -Encoding UTF8 -Path (Join-Path $b 'dest-path') -Value $Destination
+  Set-Content -Encoding UTF8 -Path (Join-Path $State 'last-backup') -Value $b
+  Set-Content -Encoding UTF8 -Path (Join-Path $State 'last-dest') -Value $Destination
+  Prune-Backups $Destination 3
+  Write-Host "Backup: $b"
+  return $b
+}
+
+function Restore-Last {
+  $b=Get-InstallerStateMarker 'last-backup'
+  if(!$b){ throw 'No backup found.' }
+  if(!(Test-Path $b)){ throw "Backup directory missing: $b" }
+
+  $destMarker=Join-Path $b 'dest-path'
+  if(!$DestinationExplicit -and (Test-Path $destMarker)){
+    $savedDest=(Get-Content $destMarker -Raw).Trim()
+    if($savedDest){ $script:Destination=$savedDest }
+  }
+
+  $cfg=$null
+  if($Configure){
+    $old=Join-Path $b 'qBittorrent.conf'
+    $configMarker=Join-Path $b 'config-path'
+    if(!(Test-Path -LiteralPath $old -PathType Leaf) -or !(Test-Path -LiteralPath $configMarker -PathType Leaf)){
+      throw 'This backup has no qBittorrent config snapshot; refusing -Rollback -Configure.'
+    }
+    $cfg=(Get-Content $configMarker -Raw).Trim()
+    if($cfg){
+      if(Test-QBittorrentRunning){throw 'qBittorrent is running. Exit qBittorrent completely before rollback restores its config.'}
+      foreach($pending in @(Get-QBPendingConfigPaths $cfg)){
+        if((Test-Path -LiteralPath $pending -PathType Leaf) -and (Get-Item -LiteralPath $pending).Length -gt 0){
+          throw "qBittorrent recovery file is non-empty; refusing rollback config mutation: $pending"
+        }
+      }
+      $backupState=Read-QBConfigText $old
+      Assert-QBConfigTextLooksSafe $old $backupState (Get-Item -LiteralPath $old).Length
+    }
+  }
+
+  Restore-WebUiBackup $b $Destination
+
+  if($cfg){
+    New-Item -ItemType Directory -Force -Path (Split-Path $cfg -Parent) | Out-Null
+    Restore-QBConfigBackupAtomically $cfg (Join-Path $b 'qBittorrent.conf')
+    Write-Host "Restored qBittorrent WebUI config by explicit -Configure: $cfg"
+  }
+}
+
+function Assert-WeiGInstallTarget([string]$Path) {
+  if([string]::IsNullOrWhiteSpace($Path)){throw 'Refusing an empty uninstall target.'}
+  $full=[IO.Path]::GetFullPath($Path).TrimEnd([IO.Path]::DirectorySeparatorChar,[IO.Path]::AltDirectorySeparatorChar)
+  $root=[IO.Path]::GetPathRoot($full).TrimEnd([IO.Path]::DirectorySeparatorChar,[IO.Path]::AltDirectorySeparatorChar)
+  if($full.Equals($root,[StringComparison]::OrdinalIgnoreCase)){throw "Refusing unsafe uninstall target: $full"}
+  foreach($relative in @('public\index.html','private\index.html','VERSION','GIT_SHA','private\weig-install.json')){
+    if(!(Test-Path -LiteralPath (Join-Path $full $relative) -PathType Leaf)){throw "Refusing to uninstall a directory that is not an installer-owned WeiG qB WebUI: $full"}
+  }
+  return $full
+}
+
+function Uninstall-Current {
+  $script:Destination=Assert-WeiGInstallTarget $Destination
+  $cfg=$null
+  if($Configure){
+    $cfg=Find-QBConfig $QBConfig
+    if(!$cfg){throw 'No unambiguous qBittorrent config was found; uninstall stopped before deleting files.'}
+    $null=Assert-QBConfigMutationSafe $cfg
+  }
+  $null=Backup-Current $cfg
+  if($Configure){
+    Disable-QBWebUI $cfg $Destination
+    Write-Host "Disabled qBittorrent Alternative WebUI: $cfg"
+  }
+  Move-OutOfInstallTarget $Destination
+  Remove-Item -LiteralPath $Destination -Recurse -Force
+  if(Test-Path -LiteralPath $Destination){throw "Failed to remove WeiG qB WebUI: $Destination"}
+  Write-Host "Uninstalled WeiG qB WebUI: $Destination"
+  if($Purge){
+    Purge-BackupsForDestination $Destination
+    Write-Host 'Installer backups for this uninstall target were purged; installer rollback is no longer available for it.'
+  } else {
+    Write-Host 'Rollback is available with: powershell -ExecutionPolicy Bypass -File .\install.ps1 -rollback'
+  }
+}
+
+function Inject-BuildSha([string]$Root,[string]$Sha) {
+  if($Sha -notmatch '^[0-9a-fA-F]{40}$'){throw 'Invalid Git SHA for asset versioning.'}
+  $utf8=New-Object System.Text.UTF8Encoding($false)
+  Get-ChildItem $Root -Recurse -File | Where-Object { $_.Extension -in @('.html','.js','.css','.json') -or $_.Name -eq 'GIT_SHA' } | ForEach-Object {
+    $text=[IO.File]::ReadAllText($_.FullName)
+    if($text.Contains('__WEIG_GIT_SHA__')){[IO.File]::WriteAllText($_.FullName,$text.Replace('__WEIG_GIT_SHA__',$Sha),$utf8)}
+  }
+  [IO.File]::WriteAllText((Join-Path $Root 'GIT_SHA'),$Sha+"`n",$utf8)
+}
+
+function Verify-PackageChecksum([string]$Archive,[string]$SumFile,[string]$ArchiveName) {
+  $escaped=[regex]::Escape($ArchiveName)
+  $sumLine=Get-Content $SumFile | Where-Object { $_ -match ("\s+\*?"+$escaped+"$") } | Select-Object -First 1
+  if(!$sumLine){throw "SHA256SUMS does not contain $ArchiveName; refusing installation."}
+  $expected=(($sumLine -split '\s+')[0]).ToLowerInvariant()
+  $actual=(Get-FileHash $Archive -Algorithm SHA256).Hash.ToLowerInvariant()
+  if($expected -notmatch '^[0-9a-f]{64}$' -or $expected -ne $actual){throw "SHA256 verification failed for $ArchiveName."}
+}
+
+function Assert-MaterializedWebUI([string]$Root) {
+  $registryFile=Join-Path $Root 'private\data\qb-settings-native.txt'
+  $translations=Join-Path $Root 'translations'
+  foreach($contract in @('capabilities.json','torrent-compat.json','detail-compat.json','settings-compat.json','source-actions.json')){
+    if(!(Test-Path (Join-Path $Root ("private\data\"+$contract)))){throw "Materialized WebUI is missing compact runtime contract $contract."}
+  }
+  foreach($legacy in @('private\scripts\release-profile.js','private\data\qb-releases.json','private\data\qb-release-profiles')){if(Test-Path (Join-Path $Root $legacy)){throw "Materialized WebUI retained retired runtime path $legacy."}}
+  if(!(Test-Path $registryFile)){throw 'Materialized WebUI is missing the native Settings QBT_TR registry.'}
+  if((Get-Content $registryFile -Raw) -notmatch '(?m)^@@(P|SET|VAL|REF|META|S)(\s|$)'){throw 'Materialized WebUI qB-owned copy registry is a placeholder or malformed.'}
+  if(!(Test-Path $translations) -or !(Get-ChildItem $translations -Filter 'webui_*.qm' -File -ErrorAction SilentlyContinue | Select-Object -First 1)){throw 'Materialized WebUI is missing official qB WebUI translation QM assets.'}
+}
+
+if($Mode -eq 'Rollback'){
+  Restore-Last
+  exit 0
+}
+if($Mode -eq 'Uninstall'){
+  Uninstall-Current
+  exit 0
+}
+
+$cfg=$null
+if($Configure){
+  $cfg=Find-QBConfig $QBConfig
+  if(!$cfg){throw 'No unambiguous qBittorrent config was found. Use -qbconfig with the exact config path for custom/portable profiles.'}
+  $null=Assert-QBConfigMutationSafe $cfg
+}
+
+$deploymentBackup=Backup-Current $cfg
+$tmp=Join-Path ([IO.Path]::GetTempPath()) ("weig-qb-"+[guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Force -Path $tmp | Out-Null
+try {
+  $archive=$null
+  $archiveName=$null
+  $sourceSha=$null
+  $web=$null
+
+  if($Channel -eq 'Release'){
+    $requestedReleaseVersion=$releaseVersion
+    $requestedReleaseTag=$releaseTag
+    $apiHeaders=@{'User-Agent'='WeiG-qB-WebUI-installer'}
+    try {
+      if($requestedReleaseVersion){$releaseMeta=Invoke-RestMethod -UseBasicParsing -Headers $apiHeaders "https://api.github.com/repos/$Repo/releases/tags/$requestedReleaseTag"}
+      else {$releaseMeta=Invoke-RestMethod -UseBasicParsing -Headers $apiHeaders "https://api.github.com/repos/$Repo/releases/latest"}
+    } catch {
+      if($requestedReleaseVersion){throw "Release $requestedReleaseTag was not found. Refusing to fall back to latest or dev."}
+      throw 'No published stable GitHub Release is available. Release installation will not fall back to a branch archive.'
+    }
+    $resolvedReleaseTag=[string]$releaseMeta.tag_name
+    if($resolvedReleaseTag -notmatch '^v(\d+\.\d+\.\d+)$'){throw "GitHub Release metadata returned an invalid tag: $resolvedReleaseTag"}
+    $resolvedReleaseVersion=$Matches[1]
+    if($requestedReleaseTag -and $resolvedReleaseTag -ne $requestedReleaseTag){throw "Requested $requestedReleaseTag but GitHub Release metadata resolved $resolvedReleaseTag; refusing mismatched Release identity."}
+    try {$releaseCommit=Invoke-RestMethod -UseBasicParsing -Headers $apiHeaders "https://api.github.com/repos/$Repo/commits/$resolvedReleaseTag"} catch {throw "Unable to resolve commit identity for Release $resolvedReleaseTag."}
+    $releaseExpectedSha=([string]$releaseCommit.sha).ToLowerInvariant()
+    if($releaseExpectedSha -notmatch '^[0-9a-f]{40}$'){throw "Release $resolvedReleaseTag did not resolve to a valid commit SHA."}
+    $releaseTag=$resolvedReleaseTag; $releaseVersion=$resolvedReleaseVersion
+    $releaseBase="https://github.com/$Repo/releases/download/$releaseTag"
+    $releaseLabel="Release $releaseTag"
+    $sumFile=Join-Path $tmp 'SHA256SUMS'
+    try {Invoke-WebRequest -UseBasicParsing "$releaseBase/SHA256SUMS" -OutFile $sumFile} catch {throw "$releaseLabel is missing SHA256SUMS; refusing an unverified installation."}
+
+    $manifestFile=Join-Path $tmp 'manifest.json'
+    $manifestDownloaded=$false
+    try {Invoke-WebRequest -UseBasicParsing "$releaseBase/manifest.json" -OutFile $manifestFile; $manifestDownloaded=$true} catch {}
+    $root=Join-Path $tmp 'release'
+    if($manifestDownloaded){
+      Verify-PackageChecksum $manifestFile $sumFile 'manifest.json'
+      try {$manifest=Get-Content $manifestFile -Raw | ConvertFrom-Json} catch {throw "$releaseLabel contains an invalid manifest.json."}
+      if([string]$manifest.rootFolder -ne 'weig-qb-webui' -or [string]$manifest.zipArchive -ne 'weig-qb-webui.zip'){throw "$releaseLabel contains an unsupported distribution manifest."}
+      $archiveName=[string]$manifest.zipArchive
+      $archive=Join-Path $tmp $archiveName
+      try {Invoke-WebRequest -UseBasicParsing "$releaseBase/$archiveName" -OutFile $archive} catch {throw "$releaseLabel is missing canonical archive $archiveName."}
+      Verify-PackageChecksum $archive $sumFile $archiveName
+      Expand-Archive $archive $root -Force
+      $web=Join-Path $root ([string]$manifest.rootFolder)
+    } else {
+      $archiveName='WeiG-qB-WebUI.zip'
+      $archive=Join-Path $tmp $archiveName
+      try {Invoke-WebRequest -UseBasicParsing "$releaseBase/$archiveName" -OutFile $archive} catch {throw "$releaseLabel has neither the canonical manifest artifact set nor legacy $archiveName."}
+      Verify-PackageChecksum $archive $sumFile $archiveName
+      Expand-Archive $archive $root -Force
+      $web=Join-Path $root 'WeiG-qB-WebUI'
+    }
+
+    $shaFile=Join-Path $web 'GIT_SHA'
+    if(!(Test-Path $shaFile)){throw "$releaseLabel does not contain GIT_SHA; refusing an unversioned asset deployment."}
+    $sourceSha=(Get-Content $shaFile -Raw).Trim().ToLowerInvariant()
+    if($sourceSha -notmatch '^[0-9a-f]{40}$'){throw "$releaseLabel contains an invalid GIT_SHA."}
+    $versionFile=Join-Path $web 'VERSION'
+    if(!(Test-Path $versionFile)){throw "$releaseLabel does not contain VERSION; refusing an unversioned asset deployment."}
+    $packageVersion=(Get-Content $versionFile -Raw).Trim()
+    if($packageVersion -ne $releaseVersion){throw "$releaseLabel maps to VERSION=$releaseVersion but the package reports VERSION=$packageVersion; refusing mismatched Release content."}
+    if($sourceSha -ne $releaseExpectedSha){throw "$releaseLabel points to Git SHA $releaseExpectedSha but the package reports GIT_SHA=$sourceSha; refusing mismatched Release content."}
+    Write-Host "Source: $releaseLabel at $releaseExpectedSha ($archiveName; checksum and Release identity verified)"
+  } else {
+    try {$commit=Invoke-RestMethod -UseBasicParsing -Headers @{'User-Agent'='WeiG-qB-WebUI-installer'} "https://api.github.com/repos/$Repo/commits/dev"} catch {throw 'Unable to resolve the current dev commit.'}
+    $devHeadSha=([string]$commit.sha).ToLowerInvariant()
+    if($devHeadSha -notmatch '^[0-9a-f]{40}$'){throw 'GitHub did not return a valid dev commit SHA.'}
+    $publishedShaFile=Join-Path $tmp 'DEV_GIT_SHA'
+    try {Invoke-WebRequest -UseBasicParsing "$DevDistBase/GIT_SHA" -OutFile $publishedShaFile} catch {throw 'The materialized dev WebUI payload is not published yet. Wait for Virtual qB Pages to finish and retry.'}
+    $publishedSha=(Get-Content $publishedShaFile -Raw).Trim().ToLowerInvariant()
+    if($publishedSha -notmatch '^[0-9a-f]{40}$'){throw 'The materialized dev payload does not publish a valid GIT_SHA.'}
+    $sourceSha=$publishedSha
+    if($publishedSha -ne $devHeadSha){
+      if(Test-DevPayloadCanRepresentHead $publishedSha $devHeadSha){Write-Host "Current dev HEAD $devHeadSha differs from materialized SHA $publishedSha only by Pages-irrelevant changes; reusing the verified payload."}
+      else {throw "The materialized dev payload is still at $publishedSha while dev is $devHeadSha, and at least one Pages-relevant change is not published. Wait for the exact Pages build and retry; refusing raw-source fallback."}
+    }
+    $manifestFile=Join-Path $tmp 'manifest.json'
+    $sumFile=Join-Path $tmp 'SHA256SUMS'
+    try {
+      Invoke-WebRequest -UseBasicParsing "$DevDistBase/manifest.json" -OutFile $manifestFile
+      Invoke-WebRequest -UseBasicParsing "$DevDistBase/SHA256SUMS" -OutFile $sumFile
+    } catch {throw "Unable to download the canonical materialized dev manifest for exact SHA $sourceSha."}
+    Verify-PackageChecksum $manifestFile $sumFile 'manifest.json'
+    try {$manifest=Get-Content $manifestFile -Raw | ConvertFrom-Json} catch {throw 'Materialized dev manifest.json is invalid.'}
+    if([string]$manifest.rootFolder -ne 'weig-qb-webui' -or [string]$manifest.zipArchive -ne 'weig-qb-webui.zip'){throw 'Materialized dev distribution manifest is unsupported.'}
+    $archiveName=[string]$manifest.zipArchive
+    $archive=Join-Path $tmp $archiveName
+    try {Invoke-WebRequest -UseBasicParsing "$DevDistBase/$archiveName" -OutFile $archive} catch {throw "Unable to download the materialized dev archive $archiveName for exact SHA $sourceSha."}
+    Verify-PackageChecksum $archive $sumFile $archiveName
+    $root=Join-Path $tmp 'dev'
+    Expand-Archive $archive $root -Force
+    $web=Join-Path $root ([string]$manifest.rootFolder)
+    $packageSha=(Get-Content (Join-Path $web 'GIT_SHA') -Raw).Trim().ToLowerInvariant()
+    if($packageSha -ne $sourceSha){throw "Dev package Git SHA $packageSha does not match materialized dev SHA $sourceSha."}
+    Assert-MaterializedWebUI $web
+    if($sourceSha -eq $devHeadSha){Write-Host "Source: dev exact SHA $sourceSha ($archiveName; materialized Pages payload; checksum verified)"}
+    else {Write-Host "Source: dev materialized SHA $sourceSha for current HEAD $devHeadSha ($archiveName; only Pages-irrelevant changes are newer; checksum verified)"}
+  }
+  if(!$web -or !(Test-Path $web)){ throw 'WebUI payload not found.' }
+  if(!(Test-Path (Join-Path $web 'public\index.html')) -or !(Test-Path (Join-Path $web 'public\login.html')) -or !(Test-Path (Join-Path $web 'private\index.html'))){ throw 'Source package is not a valid qBittorrent Alternate WebUI.' }
+
+  $new="$Destination.new"
+  if(Test-Path $new){Remove-Item $new -Recurse -Force}
+  New-Item -ItemType Directory -Force -Path $new | Out-Null
+  Copy-Item (Join-Path $web '*') $new -Recurse -Force
+  Inject-BuildSha $new $sourceSha
+  if($Channel -eq 'Dev'){ Assert-MaterializedWebUI $new }
+  if(!(Test-Path (Join-Path $new 'public\index.html')) -or !(Test-Path (Join-Path $new 'public\login.html')) -or !(Test-Path (Join-Path $new 'private\index.html')) -or !(Test-Path (Join-Path $new 'VERSION')) -or !(Test-Path (Join-Path $new 'GIT_SHA'))){ throw 'Invalid WebUI package.' }
+
+  $version=(Get-Content (Join-Path $new 'VERSION') -Raw).Trim()
+  $meta=[ordered]@{
+    version=$version
+    gitSha=$sourceSha
+    channel=$Channel.ToLowerInvariant()
+    container=$null
+    qbPath=$Destination
+    hostPath=$Destination
+    installedAt=[DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')
+    installer='windows'
+    materialized=$true
+  }
+  $meta | ConvertTo-Json | Set-Content -Path (Join-Path $new 'private\weig-install.json') -Encoding UTF8
+
+  Move-OutOfInstallTarget $Destination
+  try {
+    Install-WebUiStage $new $Destination
+  } catch {
+    $deploymentFailure=$_.Exception
+    try {
+      Restore-WebUiBackup $deploymentBackup $Destination
+    } catch {
+      throw "Live WebUI deployment failed and automatic file rollback also failed. Deployment error: $($deploymentFailure.Message) Rollback error: $($_.Exception.Message)"
+    }
+    throw $deploymentFailure
+  }
+
+  Write-Host "Installed: $Destination"
+  Write-Host "Channel: $($Channel.ToLowerInvariant())"
+  Write-Host "Installed version: $version"
+  Write-Host "Installed Git SHA: $sourceSha"
+  Write-Host "Install metadata: $(Join-Path $Destination 'private\weig-install.json')"
+
+  if($Configure){
+    Configure-QBWebUI $cfg $Destination
+    Write-Host "Configured: $cfg"
+    Write-Host "qBittorrent Root Folder: $Destination"
+  } else {
+    Write-Host 'qBittorrent -> Tools -> Preferences -> Web UI -> Use alternative WebUI'
+    Write-Host "WebUI Root Folder: $Destination"
+  }
+  Write-Host 'Rollback: powershell -ExecutionPolicy Bypass -File .\install.ps1 -rollback'
+} finally {
+  if(Test-Path $tmp){Remove-Item $tmp -Recurse -Force}
+}
+){continue}
+      $had=Join-Path $item.FullName 'had-webui'
+      $destMarker=Join-Path $item.FullName 'dest-path'
+      if(!(Test-Path -LiteralPath $had -PathType Leaf) -or !(Test-Path -LiteralPath $destMarker -PathType Leaf)){continue}
+      try{
+        $saved=(Get-Content $destMarker -Raw).Trim()
+        $savedFull=[IO.Path]::GetFullPath($saved).TrimEnd([IO.Path]::DirectorySeparatorChar,[IO.Path]::AltDirectorySeparatorChar)
+      }catch{continue}
+      if($savedFull.Equals($targetFull,[StringComparison]::OrdinalIgnoreCase)){$owned += $item}
+    }
   }
   return @($owned | Sort-Object Name -Descending)
 }

@@ -9,3 +9,6 @@ assert.match(ps,/Destination="\$env:LOCALAPPDATA\\weig-qb-webui"/);
 assert.match(ps,/LegacyDefaultDestination="\$env:LOCALAPPDATA\\WeiG_qB-WebUI"/);
 assert.match(ps,/!\$DestinationExplicit[\s\S]*Mode -eq 'Install'[\s\S]*LegacyDefaultDestination[\s\S]*private\\weig-install\.json[\s\S]*\$Destination=\$LegacyDefaultDestination/,'Windows may reuse the old default only when it is an installer-owned WeiG target');
 console.log('Canonical install-path migration contract passed: new defaults use lowercase hyphen slug while existing legacy default directories remain updateable in place.');
+
+assert.match(sh,/^STATE="\$\{HOME\}\/\.config\/weig-qb-webui"$/m,'Linux current state root must use canonical slug.');
+assert.match(ps,/^\$State=Join-Path \$env:APPDATA 'weig-qb-webui'$/m,'Windows current state root must use canonical slug.');
