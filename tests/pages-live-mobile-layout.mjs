@@ -201,11 +201,11 @@ try{
   assert.ok(logs.overflow<=1,`Logs mobile toolbar must not overflow: ${JSON.stringify(logs)}`);
   assert.match(logs.pagerLabel,/^\d+\s*\/\s*\d+$/,`phone Logs pager must expose only editable current / total pages: ${JSON.stringify(logs)}`);assert.notEqual(logs.pagerCompactDisplay,'none',`phone Logs pager compact copy must be the visible presentation owner: ${JSON.stringify(logs)}`);
   assert.equal(logs.pagerMetaDisplay,'none',`phone Logs pager must hide retained-history meta: ${JSON.stringify(logs)}`);assert.equal(logs.pagerAuxDisplay,'none',`phone Logs pager must hide page-size auxiliary control: ${JSON.stringify(logs)}`);assert.ok(logs.copyDisplays.every(display=>display==='none'),`phone Logs pager must hide Previous/Next copy and keep arrows only: ${JSON.stringify(logs)}`);
-  await page.locator('.logs-pager [data-pager-page-jump]').click();
-  await page.waitForSelector('.logs-pager .pager-page-input',{state:'visible',timeout:5000});
-  const pagerEditor=page.locator('.logs-pager .pager-page-input'),pagerMax=Number(await pagerEditor.getAttribute('aria-valuemax')||1),pagerTarget=pagerMax>1?2:1;
+  await page.locator('.logs-pager .pager-index-copy--compact [data-pager-page-jump]').click();
+  await page.waitForSelector('.logs-pager .pager-index-copy--compact .pager-page-input',{state:'visible',timeout:5000});
+  const pagerEditor=page.locator('.logs-pager .pager-index-copy--compact .pager-page-input'),pagerMax=Number(await pagerEditor.getAttribute('aria-valuemax')||1),pagerTarget=pagerMax>1?2:1;
   await pagerEditor.fill(String(pagerTarget));await pagerEditor.press('Enter');
-  await page.waitForFunction(target=>String(document.querySelector('.logs-pager [data-pager-page-jump]')?.textContent||'').trim()===String(target),pagerTarget,{timeout:5000});
+  await page.waitForFunction(target=>String(document.querySelector('.logs-pager .pager-index-copy--compact [data-pager-page-jump]')?.textContent||'').trim()===String(target),pagerTarget,{timeout:5000});
 
   await page.locator('#mobile-search-btn').click();
   await page.waitForFunction(()=>document.querySelector('.topbar')?.classList.contains('search-open')&&getComputedStyle(document.getElementById('search-input')).display!=='none');
