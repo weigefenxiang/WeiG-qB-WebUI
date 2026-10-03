@@ -15,6 +15,7 @@ HOME_DIR="$TMP/home"
 DEST="$TMP/install/weig-qb-webui"
 CFG="$HOME_DIR/.config/qBittorrent/qBittorrent.conf"
 STATE="$HOME_DIR/.config/weig-qb-webui"
+LEGACY_STATE="$HOME_DIR/.config/weig_qb-webui"
 VERSION_ONE=9.9.90
 VERSION_TWO=9.9.91
 SHA_ONE=1111111111111111111111111111111111111111
@@ -313,7 +314,14 @@ sed -i 's#^WebUI\\AlternativeUIEnabled=.*#WebUI\\AlternativeUIEnabled=false#' "$
 sed -i 's#^WebUI\\RootFolder=.*#WebUI\\RootFolder=/post-upgrade-mutated#' "$CFG"
 CFG_BEFORE_PLAIN_ROLLBACK=$(sha256sum "$CFG" | awk '{print $1}')
 
+LEGACY_SECOND_BACKUP="$LEGACY_STATE/backups/$(basename "$SECOND_BACKUP")"
+rm -rf "$LEGACY_STATE"
+mv "$STATE" "$LEGACY_STATE"
+printf '%s\n' "$LEGACY_SECOND_BACKUP" > "$LEGACY_STATE/last-backup"
+test ! -e "$STATE"
+
 run_installer --rollback
+test -d "$STATE/backups"
 assert_install "$VERSION_ONE" "$SHA_ONE" release-one
 CFG_AFTER_PLAIN_ROLLBACK=$(sha256sum "$CFG" | awk '{print $1}')
 test "$CFG_AFTER_PLAIN_ROLLBACK" = "$CFG_BEFORE_PLAIN_ROLLBACK"
@@ -362,15 +370,16 @@ test ! -e "$STATE/last-backup"
 test ! -e "$STATE/last-dest"
 test ! -e "$STATE/last-qb-root-folder"
 remaining_backup=$(
-  if [ -d "$STATE/backups" ]; then
-    find "$STATE/backups" -mindepth 1 -maxdepth 1 -type d -print 2>/dev/null | while IFS= read -r backup; do
+  for backup_root in "$STATE/backups" "$LEGACY_STATE/backups"; do
+    [ -d "$backup_root" ] || continue
+    find "$backup_root" -mindepth 1 -maxdepth 1 -type d -print 2>/dev/null | while IFS= read -r backup; do
       test -f "$backup/dest-path" || continue
       if [ "$(cat "$backup/dest-path")" = "$DEST" ]; then
         printf '%s\n' "$backup"
         break
       fi
     done
-  fi
+  done | sed -n '1p'
 )
 if [ -n "$remaining_backup" ]; then
   echo "Purge left an installer-owned backup for $DEST: $remaining_backup" >&2

@@ -4,7 +4,7 @@ $Root=(Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $Tmp=Join-Path ([IO.Path]::GetTempPath()) ('weigg-installer-lifecycle-'+[guid]::NewGuid().ToString('N'))
 $Fixtures=Join-Path $Tmp 'releases'
 $HomeDir=Join-Path $Tmp 'home'
-$Destination=Join-Path $Tmp 'install\weigg-qb-webui'
+$Destination=Join-Path $Tmp 'install\weig-qb-webui'
 $VersionOne='9.9.90'
 $VersionTwo='9.9.91'
 $ShaOne='1111111111111111111111111111111111111111'
@@ -104,7 +104,8 @@ try {
   }
 
   $Installer=Join-Path $Root 'installers\install.ps1'
-  $State=Join-Path $env:APPDATA 'WeiG_qB-WebUI'
+  $State=Join-Path $env:APPDATA 'weig-qb-webui'
+  $LegacyState=Join-Path $env:APPDATA 'WeiG_qB-WebUI'
 
   function Assert-Install([string]$ExpectedVersion,[string]$ExpectedSha,[string]$ExpectedMarker){
     Assert-True (Test-Path (Join-Path $Destination 'public\index.html')) 'public/index.html missing after install.'
@@ -190,8 +191,15 @@ try {
   Write-Utf8NoBom $Cfg $mutated
   $cfgBeforePlainRollback=(Get-FileHash -Algorithm SHA256 -LiteralPath $Cfg).Hash
 
+  $legacySecondBackup=Join-Path (Join-Path $LegacyState 'backups') (Split-Path $SecondBackup -Leaf)
+  if(Test-Path -LiteralPath $LegacyState){Remove-Item -LiteralPath $LegacyState -Recurse -Force}
+  Move-Item -LiteralPath $State -Destination $LegacyState
+  Set-Content -Encoding UTF8 -LiteralPath (Join-Path $LegacyState 'last-backup') -Value $legacySecondBackup
+  Assert-True (!(Test-Path -LiteralPath $State)) 'Canonical state root should be absent before legacy-state rollback probe.'
+
   $pwsh=Join-Path $PSHOME 'pwsh.exe'
   & $pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Installer -Rollback
+  Assert-True (Test-Path -LiteralPath (Join-Path $State 'backups') -PathType Container) 'Rollback should recreate the canonical state root while reading historical state.'
   if($LASTEXITCODE -ne 0){throw "Rollback subprocess failed with exit code $LASTEXITCODE."}
   Assert-Install $VersionOne $ShaOne 'release-one'
   $cfgAfterPlainRollback=(Get-FileHash -Algorithm SHA256 -LiteralPath $Cfg).Hash
@@ -243,13 +251,18 @@ try {
   & $pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Installer -Uninstall -Configure -Purge -Destination $Destination
   if($LASTEXITCODE -ne 0){throw "Purge uninstall subprocess failed with exit code $LASTEXITCODE."}
   Assert-True (!(Test-Path -LiteralPath $Destination)) 'Purge uninstall did not remove the installer-owned WebUI directory.'
-  Assert-True (!(Test-Path -LiteralPath (Join-Path $State 'last-backup'))) 'Purge uninstall left the last-backup pointer behind.'
-  Assert-True (!(Test-Path -LiteralPath (Join-Path $State 'last-dest'))) 'Purge uninstall left the last-dest pointer behind.'
-  $remaining=@(Get-ChildItem -LiteralPath (Join-Path $State 'backups') -Directory -ErrorAction SilentlyContinue | Where-Object {
-    $marker=Join-Path $_.FullName 'dest-path'
-    if(!(Test-Path -LiteralPath $marker -PathType Leaf)){return $false}
-    ((Get-Content $marker -Raw).Trim()).Equals($Destination,[StringComparison]::OrdinalIgnoreCase)
-  })
+  foreach($stateRoot in @($State,$LegacyState)){
+    Assert-True (!(Test-Path -LiteralPath (Join-Path $stateRoot 'last-backup'))) "Purge uninstall left last-backup behind in $stateRoot."
+    Assert-True (!(Test-Path -LiteralPath (Join-Path $stateRoot 'last-dest'))) "Purge uninstall left last-dest behind in $stateRoot."
+  }
+  $remaining=@()
+  foreach($stateRoot in @($State,$LegacyState)){
+    $remaining += @(Get-ChildItem -LiteralPath (Join-Path $stateRoot 'backups') -Directory -ErrorAction SilentlyContinue | Where-Object {
+      $marker=Join-Path $_.FullName 'dest-path'
+      if(!(Test-Path -LiteralPath $marker -PathType Leaf)){return $false}
+      ((Get-Content $marker -Raw).Trim()).Equals($Destination,[StringComparison]::OrdinalIgnoreCase)
+    })
+  }
   Assert-True ($remaining.Count -eq 0) 'Purge uninstall left installer-owned backups for the selected destination.'
   & $pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Installer -Rollback
   $purgeRollbackExit=$LASTEXITCODE
