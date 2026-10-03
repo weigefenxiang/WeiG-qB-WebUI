@@ -10,6 +10,8 @@ assert.match(ps,/rootFolder[^\n]*weig-qb-webui/);
 assert.match(ps,/zipArchive[^\n]*weig-qb-webui\.zip/);
 assert.match(ps,/archiveName='WeiG-qB-WebUI\.zip'/,'historical Release compatibility must remain bounded');
 assert.match(ps,/DevDistBase\/manifest\.json/);
+assert.match(ps,/Usage: install\.ps1 \[options\]/);
+assert.doesNotMatch(ps,/weig_qb-webui_install\.ps1/,'current PowerShell help/rollback copy must use the canonical installer asset name');
 assert.match(candidate,/PACKAGE="\$CANDIDATE_DIR\/weig-qb-webui\.zip"/);
 assert.match(candidate,/TAR_PACKAGE="\$CANDIDATE_DIR\/weig-qb-webui\.tar\.gz"/);
 assert.match(candidate,/MANIFEST="\$CANDIDATE_DIR\/manifest\.json"/);

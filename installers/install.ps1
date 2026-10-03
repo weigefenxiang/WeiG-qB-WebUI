@@ -18,7 +18,7 @@ $DevDistBase='https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev'
 
 function Show-Usage {
 @'
-Usage: weig_qb-webui_install.ps1 [options]
+Usage: install.ps1 [options]
 
 Default: install the latest stable GitHub Release.
 
@@ -908,7 +908,7 @@ function Uninstall-Current {
     Purge-BackupsForDestination $Destination
     Write-Host 'Installer backups for this uninstall target were purged; installer rollback is no longer available for it.'
   } else {
-    Write-Host 'Rollback is available with: powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -rollback'
+    Write-Host 'Rollback is available with: powershell -ExecutionPolicy Bypass -File .\install.ps1 -rollback'
   }
 }
 
@@ -1112,7 +1112,7 @@ try {
     Write-Host 'qBittorrent -> Tools -> Preferences -> Web UI -> Use alternative WebUI'
     Write-Host "WebUI Root Folder: $Destination"
   }
-  Write-Host 'Rollback: powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -rollback'
+  Write-Host 'Rollback: powershell -ExecutionPolicy Bypass -File .\install.ps1 -rollback'
 } finally {
   if(Test-Path $tmp){Remove-Item $tmp -Recurse -Force}
 }
