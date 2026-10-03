@@ -14,6 +14,7 @@ assert.match(sh,/backup_target\(\)[\s\S]*record=\$\(portable_mktemp_dir\)[\s\S]*
 assert.doesNotMatch(sh,/b="\$BACKUPS\/\$BACKUP_STAMP-\$suffix-\$\$"/,'Linux must retire PID/ordinal directory names as the current writer.');
 assert.match(sh,/backup_is_owned\(\)[\s\S]*backup_record_read "\$backup" had-webui[\s\S]*backup_record_read "\$backup" dest-path/s,'Linux ownership must consume the same record reader for current archives and legacy directories.');
 assert.match(sh,/owned_backups_for_dest\(\)[\s\S]*for backup_root in "\$BACKUPS" "\$LEGACY_BACKUPS"[\s\S]*backup_record_read "\$backup" dest-path/s,'Linux inventory must span canonical and bounded legacy roots without a second owner.');
+assert.match(sh,/backup_sort_key\(\)[\s\S]*printf '%sZ01\\n'[\s\S]*printf '%sZ%s\\n'/s,'Linux current minute-stamped archives must sort after an older seconds-stamped legacy record from the same minute while preserving -02/-03 collision order.');
 assert.ok(sh.indexOf("printf '%s\\n' \"$b\" > \"$STATE/last-backup\"")<sh.indexOf('prune_backups_for_dest "$target" "$BACKUP_RETENTION"'),'Linux must publish rollback identity before retention pruning.');
 assert.match(sh,/extract_webui_backup_payload\(\)[\s\S]*if \[ -f "\$backup_extract_root" \][\s\S]*backup_record_unpack[\s\S]*if \[ -d "\$backup_extract_root\/webui" \]/s,'Linux restore must unwrap current bundles then retain the bounded legacy payload reader.');
 

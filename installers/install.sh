@@ -1068,12 +1068,12 @@ reserve_backup_path() {
 backup_sort_key() {
   name=$(basename "$1")
   case "$name" in
-    ????????-????.tar.gz) printf '%s-99-01\n' "${name%.tar.gz}" ;;
+    ????????-????.tar.gz) printf '%sZ01\n' "${name%.tar.gz}" ;;
     ????????-????-[0-9][0-9].tar.gz)
       stem=${name%.tar.gz}
       suffix=${stem##*-}
       minute=${stem%-*}
-      printf '%s-99-%s\n' "$minute" "$suffix"
+      printf '%sZ%s\n' "$minute" "$suffix"
       ;;
     *) printf '%s\n' "$name" ;;
   esac
