@@ -58,7 +58,7 @@ Notes:
   - -dev and -version cannot be used together.
   - Multiple -o targets download and verify one payload, then update all targets transactionally.
   - Multiple -o targets cannot be combined with -configure, --container or --config-root.
-  - Installer backups stay under ~/.config/weig_qb-webui/backups/, prefer verified compressed archives when supported, and retain the latest 3 per target.
+  - Installer backups stay under ~/.config/weig-qb-webui/backups/, prefer verified compressed archives when supported, and retain the latest 3 per target.
   - -purge is destructive and is only accepted together with -uninstall.
   - A requested Release version never falls back to latest or dev.
 EOF_USAGE

@@ -592,7 +592,8 @@ The Release archive already contains the canonical top-level folder `weig-qb-web
 ### Linux with wget
 
 ```sh
-wget https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/weig-qb-webui.zip -O weig-qb-webui.zip
+# Open https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest
+# Download the Release ZIP asset and save it locally as weig-qb-webui.zip
 wget https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/SHA256SUMS -O SHA256SUMS
 sha256sum -c SHA256SUMS
 unzip weig-qb-webui.zip
