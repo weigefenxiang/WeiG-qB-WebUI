@@ -597,7 +597,18 @@ function Test-BackupOwned([string]$Backup) {
 
 function New-BackupArchivePath {
   $stamp=Get-Date -Format 'yyyyMMdd-HHmm'
-  for($i=1;$i -le 99;$i++){
+  $next=1
+  $escaped=[regex]::Escape($stamp)
+  foreach($backupRoot in @($Backups,$LegacyBackups)){
+    if(!(Test-Path -LiteralPath $backupRoot -PathType Container)){continue}
+    foreach($item in @(Get-ChildItem -LiteralPath $backupRoot -File -Filter "$stamp*.zip" -ErrorAction SilentlyContinue)){
+      $ordinal=$null
+      if($item.Name -eq "$stamp.zip"){$ordinal=1}
+      elseif($item.Name -match "^$escaped-(\d{2})\.zip$"){$ordinal=[int]$Matches[1]}
+      if($null -ne $ordinal -and $ordinal -ge $next){$next=$ordinal+1}
+    }
+  }
+  for($i=$next;$i -le 99;$i++){
     $name=if($i -eq 1){"$stamp.zip"}else{"$stamp-$($i.ToString('00')).zip"}
     $candidate=Join-Path $Backups $name
     $lock="$candidate.lock"

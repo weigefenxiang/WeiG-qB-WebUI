@@ -9,6 +9,7 @@ const sh=fs.readFileSync(path.join(root,'installers/install.sh'),'utf8');
 
 assert.ok(sh.includes('BACKUP_RETENTION=3')&&sh.includes('owned_backups_for_dest() {')&&sh.includes('prune_backups_for_dest() {')&&sh.includes('purge_backups_for_dest() {'),'Linux must keep one exact-target inventory owner for rollback, retention and purge.');
 assert.match(sh,/reserve_backup_path\(\)[\s\S]*name="\$stamp\.tar\.gz"[\s\S]*name="\$stamp-\$suffix\.tar\.gz"/s,'Linux current backups must use a readable minute stamp and add a suffix only on collision.');
+assert.match(sh,/reserve_backup_path\(\)[\s\S]*for reserve_root in "\$BACKUPS" "\$LEGACY_BACKUPS"[\s\S]*existing_n[\s\S]*n=\$\(\(existing_n\+1\)\)/s,'Linux collision numbering must advance from the highest same-minute archive across canonical and legacy roots instead of reusing a pruned lower name.');
 assert.match(sh,/BACKUP_STAMP=\$\(date '\+%Y%m%d-%H%M'\)/,'Linux current timestamps must be minute-readable instead of exposing seconds/target/PID.');
 assert.match(sh,/backup_target\(\)[\s\S]*record=\$\(portable_mktemp_dir\)[\s\S]*create_webui_backup_payload "\$dest" "\$record"[\s\S]*backup_record_pack "\$record" "\$b"/s,'Linux must stage the compatible record privately and publish one outer tar.gz only.');
 assert.doesNotMatch(sh,/b="\$BACKUPS\/\$BACKUP_STAMP-\$suffix-\$\$"/,'Linux must retire PID/ordinal directory names as the current writer.');
@@ -21,6 +22,7 @@ assert.match(sh,/extract_webui_backup_payload\(\)[\s\S]*if \[ -f "\$backup_extra
 
 assert.ok(ps.includes('function Get-OwnedBackupsForDestination([string]$Target)')&&ps.includes('function Prune-Backups([string]$Target,[int]$Keep=3)')&&ps.includes('function Purge-BackupsForDestination([string]$Target)'),'Windows must keep one exact-target inventory owner for rollback, retention and purge.');
 assert.match(ps,/function New-BackupArchivePath[\s\S]*yyyyMMdd-HHmm[\s\S]*"\$stamp\.zip"[\s\S]*ToString\('00'\)[\s\S]*\.zip/s,'Windows current backups must use readable minute ZIP names with collision suffixes.');
+assert.match(ps,/function New-BackupArchivePath[\s\S]*foreach\(\$backupRoot in @\(\$Backups,\$LegacyBackups\)\)[\s\S]*\$next=\$ordinal\+1/s,'Windows collision numbering must advance from the highest same-minute archive across canonical and legacy roots.');
 assert.match(ps,/function Backup-Current[\s\S]*New-BackupArchivePath[\s\S]*New-WebUiBackupPayload \$Destination \$record[\s\S]*New-BackupRecordArchive \$record \$b/s,'Windows must stage the compatible record privately and publish one outer ZIP only.');
 assert.match(ps,/function Test-BackupOwned[\s\S]*Read-BackupRecordText \$Backup 'had-webui'[\s\S]*Read-BackupRecordText \$Backup 'dest-path'/s,'Windows ownership must consume one record reader for current archives and legacy directories.');
 assert.match(ps,/function Get-OwnedBackupsForDestination[\s\S]*@\(\$Backups,\$LegacyBackups\)[\s\S]*Test-BackupOwned/s,'Windows inventory must span canonical and bounded legacy roots.');

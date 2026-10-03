@@ -1051,6 +1051,23 @@ backup_record_pack() {
 reserve_backup_path() {
   stamp=$1
   n=1
+  for reserve_root in "$BACKUPS" "$LEGACY_BACKUPS"; do
+    [ -d "$reserve_root" ] || continue
+    for existing in "$reserve_root/$stamp.tar.gz" "$reserve_root/$stamp-"[0-9][0-9].tar.gz; do
+      [ -e "$existing" ] || continue
+      existing_name=$(basename "$existing")
+      case "$existing_name" in
+        "$stamp.tar.gz") existing_n=1 ;;
+        "$stamp-"[0-9][0-9].tar.gz)
+          existing_suffix=${existing_name#"$stamp-"}
+          existing_suffix=${existing_suffix%.tar.gz}
+          case "$existing_suffix" in 0?) existing_n=${existing_suffix#0} ;; ??) existing_n=$existing_suffix ;; *) continue ;; esac
+          ;;
+        *) continue ;;
+      esac
+      [ "$existing_n" -ge "$n" ] && n=$((existing_n+1))
+    done
+  done
   while [ "$n" -le 99 ]; do
     if [ "$n" -eq 1 ]; then name="$stamp.tar.gz"; else suffix=$(printf '%02d' "$n"); name="$stamp-$suffix.tar.gz"; fi
     candidate="$BACKUPS/$name"
