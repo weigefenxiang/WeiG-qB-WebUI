@@ -48,16 +48,17 @@ try{
   await page.waitForSelector('#torrent-list [data-hash]',{state:'visible',timeout:60000});
   await page.waitForFunction(()=>window.WeiG?.AppState?.libraryData&&window.WeiG?.AppState?.viewport,null,{timeout:30000});
 
-  const startup=await page.evaluate(()=>({
+  const startup=await page.evaluate(()=>{const stats=WeiG.AppState.libraryData.stats();return{
     catalogReady:WeiG.AppState.catalogReady===true,
     catalogBusy:!!WeiG.AppState.catalogTask,
     pageSize:WeiG.LibraryController.state().pageSize,
-    stats:WeiG.AppState.libraryData.stats()
-  }));
+    prefetch50:stats.prefetchRadius(50),
+    stats:{cacheEntries:stats.cacheEntries,cacheRows:stats.cacheRows,inflightPages:stats.inflightPages,pageTraffic:stats.pageTraffic,prefetchDemand:stats.prefetchDemand,catalogBusy:stats.catalogBusy,catalogPriority:stats.catalogPriority}
+  };});
   assert.equal(startup.catalogReady,false,`1600-Torrent startup must not materialize a full catalog: ${JSON.stringify(startup)}`);
   assert.equal(startup.catalogBusy,false,`1600-Torrent startup must not leave full-catalog background work running: ${JSON.stringify(startup)}`);
   assert.equal(startup.pageSize,50,'stress fixture must exercise the canonical 50-row page');
-  assert.equal(startup.stats.prefetchRadius(50),3,'50/page must retain the bounded ±3 neighbor window');
+  assert.equal(startup.prefetch50,3,'50/page must retain the bounded ±3 neighbor window');
 
   const baseline=await page.evaluate(()=>{
     const list=document.getElementById('torrent-list'),viewport=WeiG.AppState.viewport;

@@ -321,7 +321,12 @@ async function verifyModern(){
   await page.waitForFunction(()=>document.querySelectorAll('.surface-transition-ghost--morph').length===0,null,{timeout:5000});
   await setMotion(page,'system');
   assert.equal(await page.locator('#detail-view [data-detail-back]').count(),1,'full Detail route must retain Back to torrents');
-  assert.equal(await page.locator('#torrent-detail-dock:not([hidden])').count(),0,'full Detail route must not leave the inline Dock open');
+  const fullHostState=await page.evaluate(()=>({semanticOpen:WeiG.AppState?.detailDockOpen===true,tab:WeiG.AppState?.detailTab||'',hash:WeiG.AppState?.detailDockHash||'',listActive:document.getElementById('list-view')?.classList.contains('is-active')||false,dockChildren:document.getElementById('torrent-detail-dock-content')?.childElementCount??-1,routeChildren:document.getElementById('detail-content')?.childElementCount??-1}));
+  assert.equal(fullHostState.semanticOpen,true,`full Detail must preserve the shared inline semantic session: ${JSON.stringify(fullHostState)}`);
+  assert.equal(fullHostState.tab,'peers',`full Detail handoff must preserve the active tab: ${JSON.stringify(fullHostState)}`);
+  assert.equal(fullHostState.listActive,false,`full Detail route must deactivate the Library presentation: ${JSON.stringify(fullHostState)}`);
+  assert.equal(fullHostState.dockChildren,0,`inactive inline Detail host must release stale DOM while full Detail owns presentation: ${JSON.stringify(fullHostState)}`);
+  assert.ok(fullHostState.routeChildren>0,`full Detail host must own the live presentation DOM: ${JSON.stringify(fullHostState)}`);
   const detailTitle=page.locator('#detail-title'),detailTitleText=String(await detailTitle.textContent()||'').trim();
   await forceOverflowPreviewTarget(page,'#detail-title',150);
   assert.equal(String(await page.locator('.ui-floating-preview').textContent()||'').trim(),detailTitleText,'clipped full Detail title hover must expose the complete Torrent name within the shared bounded preview');

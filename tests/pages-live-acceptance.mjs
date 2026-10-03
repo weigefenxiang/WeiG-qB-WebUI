@@ -428,6 +428,7 @@ try{
     const pageErrors=[];
     page.on('pageerror',error=>pageErrors.push(error?.stack||error?.message||String(error)));
     await openVirtualSession(page,{branch:'dev',qb:'4.1.9.1',count:5000,scenario:'mixed',seed:'pages-live-qb4-catalog-5000',clean:true});
+    await page.evaluate(()=>WeiG.LibraryController.ensureFacetOptions('tracker'));
     const qB4CatalogState=await waitForCatalog(page,{count:5000,timeout:30000});
     assert.equal(qB4CatalogState.ready,true,'qB4 5000-torrent catalog must finish instead of leaving the pager spinner active');
     assert.ok(qB4CatalogState.elapsedMs<30000,`qB4 5000-torrent catalog must finish within the bounded live gate; observed ${qB4CatalogState.elapsedMs} ms`);
