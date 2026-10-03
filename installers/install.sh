@@ -1469,6 +1469,7 @@ if [ "$CHANNEL" = "main" ]; then
   download_file "$RELEASE_BASE/SHA256SUMS" "$TMP/SHA256SUMS" || { echo "$RELEASE_LABEL is missing SHA256SUMS; refusing an unverified installation." >&2; exit 1; }
   [ -s "$TMP/SHA256SUMS" ] || { echo "SHA256SUMS is empty; refusing installation." >&2; exit 1; }
   if download_file "$RELEASE_BASE/manifest.json" "$TMP/manifest.json"; then
+    verify_release_checksum "$TMP/SHA256SUMS" "$TMP/manifest.json" "manifest.json" || exit 1
     prepare_manifest_dist "$RELEASE_BASE" "$TMP/manifest.json" "$TMP/SHA256SUMS" "$TMP/release" || exit 1
   else
     PACKAGE_NAME="WeiG-qB-WebUI.zip"; PACKAGE="$TMP/$PACKAGE_NAME"
@@ -1498,6 +1499,7 @@ else
   fi
   download_file "$DEV_DIST_BASE/manifest.json" "$TMP/manifest.json" || { echo "Materialized dev payload is missing manifest.json; refusing legacy/raw fallback." >&2; exit 1; }
   download_file "$DEV_DIST_BASE/SHA256SUMS" "$TMP/SHA256SUMS" || { echo "Materialized dev payload is missing SHA256SUMS; refusing installation." >&2; exit 1; }
+  verify_release_checksum "$TMP/SHA256SUMS" "$TMP/manifest.json" "manifest.json" || exit 1
   prepare_manifest_dist "$DEV_DIST_BASE" "$TMP/manifest.json" "$TMP/SHA256SUMS" "$TMP/dev" || exit 1
   PACKAGE_SHA=$(tr -d '\r\n' < "$SRC/GIT_SHA" 2>/dev/null || true)
   [ "$PACKAGE_SHA" = "$SOURCE_SHA" ] || { echo "Dev package Git SHA $PACKAGE_SHA does not match materialized dev SHA $SOURCE_SHA." >&2; exit 1; }

@@ -5,6 +5,7 @@ const candidate=fs.readFileSync(new URL('./candidate-deployment.sh',import.meta.
 assert.match(ps,/Destination="\$env:LOCALAPPDATA\\weig-qb-webui"/);
 assert.match(ps,/function Verify-PackageChecksum[\s\S]*ArchiveName/);
 assert.match(ps,/manifest\.json[\s\S]*ConvertFrom-Json/);
+assert.equal((ps.match(/Verify-PackageChecksum \$manifestFile \$sumFile 'manifest\.json'/g)||[]).length,2,'stable canonical and dev Windows manifest consumers must verify manifest.json before ConvertFrom-Json');
 assert.match(ps,/rootFolder[^\n]*weig-qb-webui/);
 assert.match(ps,/zipArchive[^\n]*weig-qb-webui\.zip/);
 assert.match(ps,/archiveName='WeiG-qB-WebUI\.zip'/,'historical Release compatibility must remain bounded');

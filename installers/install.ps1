@@ -997,6 +997,7 @@ try {
     try {Invoke-WebRequest -UseBasicParsing "$releaseBase/manifest.json" -OutFile $manifestFile; $manifestDownloaded=$true} catch {}
     $root=Join-Path $tmp 'release'
     if($manifestDownloaded){
+      Verify-PackageChecksum $manifestFile $sumFile 'manifest.json'
       try {$manifest=Get-Content $manifestFile -Raw | ConvertFrom-Json} catch {throw "$releaseLabel contains an invalid manifest.json."}
       if([string]$manifest.rootFolder -ne 'weig-qb-webui' -or [string]$manifest.zipArchive -ne 'weig-qb-webui.zip'){throw "$releaseLabel contains an unsupported distribution manifest."}
       $archiveName=[string]$manifest.zipArchive
@@ -1043,6 +1044,7 @@ try {
       Invoke-WebRequest -UseBasicParsing "$DevDistBase/manifest.json" -OutFile $manifestFile
       Invoke-WebRequest -UseBasicParsing "$DevDistBase/SHA256SUMS" -OutFile $sumFile
     } catch {throw "Unable to download the canonical materialized dev manifest for exact SHA $sourceSha."}
+    Verify-PackageChecksum $manifestFile $sumFile 'manifest.json'
     try {$manifest=Get-Content $manifestFile -Raw | ConvertFrom-Json} catch {throw 'Materialized dev manifest.json is invalid.'}
     if([string]$manifest.rootFolder -ne 'weig-qb-webui' -or [string]$manifest.zipArchive -ne 'weig-qb-webui.zip'){throw 'Materialized dev distribution manifest is unsupported.'}
     $archiveName=[string]$manifest.zipArchive
