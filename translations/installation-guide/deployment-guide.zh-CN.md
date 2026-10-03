@@ -434,7 +434,7 @@ Release 压缩包已经包含统一的顶层目录 `weig-qb-webui`；解压后�
 curl -fL https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/SHA256SUMS -o SHA256SUMS
 sha256sum -c SHA256SUMS
 unzip weig-qb-webui.zip
-Release 压缩包已经包含统一的顶层目录 `weig-qb-webui`；解压后直接把这个目录作为 qBittorrent 的 WebUI 根目录，不需要再重命名。
+# Release 压缩包已经包含统一的顶层目录 `weig-qb-webui`；解压后直接把这个目录作为 qBittorrent 的 WebUI 根目录，不需要再重命名。
 ```
 
 ### Windows
@@ -442,7 +442,7 @@ Release 压缩包已经包含统一的顶层目录 `weig-qb-webui`；解压后�
 ```powershell
 # Download the ZIP asset from https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest
 Expand-Archive .\weig-qb-webui.zip . -Force
-Release 压缩包已经包含统一的顶层目录 `weig-qb-webui`；解压后直接把这个目录作为 qBittorrent 的 WebUI 根目录，不需要再重命名。
+# Release 压缩包已经包含统一的顶层目录 `weig-qb-webui`；解压后直接把这个目录作为 qBittorrent 的 WebUI 根目录，不需要再重命名。
 ```
 
 手动计算 SHA-256：

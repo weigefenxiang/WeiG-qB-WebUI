@@ -18,14 +18,29 @@ const forbidden=[
 ];
 for(const rel of [...readmes,...guides]){
   const source=read(rel);
-  for(const [re,label] of forbidden)assert.doesNotMatch(source,re,`${rel}: public current docs must not expose ${label}`);
+  for(const [re,label] of forbidden)assert.doesNotMatch(source,re,rel+': public current docs must not expose '+label);
 }
 for(const rel of guides){
   const source=read(rel);
   for(const token of ['install.sh','install.ps1','weig-qb-webui','weig-qb-webui.zip']){
-    assert.ok(source.includes(token),`${rel}: missing canonical deployment token ${token}`);
+    assert.ok(source.includes(token),rel+': missing canonical deployment token '+token);
   }
-  assert.ok(source.includes('.config/weig-qb-webui'),`${rel}: installer state examples must use canonical Linux state root`);
-  assert.doesNotMatch(source,/releases\/latest\/download\/weig-qb-webui\.zip/,`${rel}: do not hard-code a canonical asset URL against a historical Latest Release that may still expose legacy asset names`);
+  assert.ok(source.includes('.config/weig-qb-webui'),rel+': installer state examples must use canonical Linux state root');
+  assert.doesNotMatch(source,/releases\/latest\/download\/weig-qb-webui\.zip/,rel+': do not hard-code a canonical asset URL against a historical Latest Release that may still expose legacy asset names');
+
+  const rows=source.split(/\r?\n/);
+  let inFence=false;
+  let fenceLanguage='';
+  for(let i=0;i<rows.length;i++){
+    const trimmed=rows[i].trim();
+    if(trimmed.startsWith('```')){
+      if(!inFence){inFence=true;fenceLanguage=trimmed.slice(3).trim().toLowerCase();}
+      else {inFence=false;fenceLanguage='';}
+      continue;
+    }
+    if(inFence&&['sh','bash','shell','powershell'].includes(fenceLanguage)&&rows[i].includes('`weig-qb-webui`')){
+      assert.match(rows[i],/^\s*#/,rel+':'+(i+1)+': explanatory canonical-folder prose inside executable fences must be a comment');
+    }
+  }
 }
-console.log(`Deployment naming contract passed for ${readmes.length} README-family docs and ${guides.length} localized deployment guides.`);
+console.log('Deployment naming contract passed for '+readmes.length+' README-family docs and '+guides.length+' localized deployment guides, including executable-fence copy safety.');

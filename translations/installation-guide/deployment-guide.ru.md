@@ -500,7 +500,7 @@ Linux:
 curl -fL https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/SHA256SUMS -o SHA256SUMS
 sha256sum -c SHA256SUMS
 unzip weig-qb-webui.zip
-Архив Release уже содержит канонический верхний каталог `weig-qb-webui`; распакуйте его и используйте напрямую как корень WebUI qBittorrent. Переименование не требуется.
+# Архив Release уже содержит канонический верхний каталог `weig-qb-webui`; распакуйте его и используйте напрямую как корень WebUI qBittorrent. Переименование не требуется.
 ```
 
 Windows:
@@ -508,7 +508,7 @@ Windows:
 ```powershell
 # Download the ZIP asset from https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest
 Expand-Archive .\weig-qb-webui.zip . -Force
-Архив Release уже содержит канонический верхний каталог `weig-qb-webui`; распакуйте его и используйте напрямую как корень WebUI qBittorrent. Переименование не требуется.
+# Архив Release уже содержит канонический верхний каталог `weig-qb-webui`; распакуйте его и используйте напрямую как корень WebUI qBittorrent. Переименование не требуется.
 ```
 
 Вычислить SHA-256:

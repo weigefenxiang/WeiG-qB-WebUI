@@ -518,7 +518,7 @@ Linux：
 curl -fL https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/SHA256SUMS -o SHA256SUMS
 sha256sum -c SHA256SUMS
 unzip weig-qb-webui.zip
-Release 壓縮檔已經包含統一的最上層目錄 `weig-qb-webui`；解壓後直接把這個目錄作為 qBittorrent 的 WebUI 根目錄，不需要再重新命名。
+# Release 壓縮檔已經包含統一的最上層目錄 `weig-qb-webui`；解壓後直接把這個目錄作為 qBittorrent 的 WebUI 根目錄，不需要再重新命名。
 ```
 
 Windows：
@@ -526,7 +526,7 @@ Windows：
 ```powershell
 # Download the ZIP asset from https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest
 Expand-Archive .\weig-qb-webui.zip . -Force
-Release 壓縮檔已經包含統一的最上層目錄 `weig-qb-webui`；解壓後直接把這個目錄作為 qBittorrent 的 WebUI 根目錄，不需要再重新命名。
+# Release 壓縮檔已經包含統一的最上層目錄 `weig-qb-webui`；解壓後直接把這個目錄作為 qBittorrent 的 WebUI 根目錄，不需要再重新命名。
 ```
 
 手動計算 SHA-256：

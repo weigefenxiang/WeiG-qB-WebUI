@@ -506,7 +506,7 @@ Linux:
 curl -fL https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/SHA256SUMS -o SHA256SUMS
 sha256sum -c SHA256SUMS
 unzip weig-qb-webui.zip
-Release アーカイブには標準の最上位フォルダー `weig-qb-webui` がすでに含まれています。展開後は名前を変更せず、そのまま qBittorrent の WebUI ルートとして使用します。
+# Release アーカイブには標準の最上位フォルダー `weig-qb-webui` がすでに含まれています。展開後は名前を変更せず、そのまま qBittorrent の WebUI ルートとして使用します。
 ```
 
 Windows:
@@ -514,7 +514,7 @@ Windows:
 ```powershell
 # Download the ZIP asset from https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest
 Expand-Archive .\weig-qb-webui.zip . -Force
-Release アーカイブには標準の最上位フォルダー `weig-qb-webui` がすでに含まれています。展開後は名前を変更せず、そのまま qBittorrent の WebUI ルートとして使用します。
+# Release アーカイブには標準の最上位フォルダー `weig-qb-webui` がすでに含まれています。展開後は名前を変更せず、そのまま qBittorrent の WebUI ルートとして使用します。
 ```
 
 SHA-256 計算:

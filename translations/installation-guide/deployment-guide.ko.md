@@ -504,7 +504,7 @@ Linux:
 curl -fL https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/SHA256SUMS -o SHA256SUMS
 sha256sum -c SHA256SUMS
 unzip weig-qb-webui.zip
-Release 압축 파일에는 표준 최상위 폴더 `weig-qb-webui`가 이미 포함되어 있습니다. 압축을 푼 뒤 이름을 바꾸지 않고 qBittorrent WebUI 루트로 그대로 사용합니다.
+# Release 압축 파일에는 표준 최상위 폴더 `weig-qb-webui`가 이미 포함되어 있습니다. 압축을 푼 뒤 이름을 바꾸지 않고 qBittorrent WebUI 루트로 그대로 사용합니다.
 ```
 
 Windows:
@@ -512,7 +512,7 @@ Windows:
 ```powershell
 # Download the ZIP asset from https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest
 Expand-Archive .\weig-qb-webui.zip . -Force
-Release 압축 파일에는 표준 최상위 폴더 `weig-qb-webui`가 이미 포함되어 있습니다. 압축을 푼 뒤 이름을 바꾸지 않고 qBittorrent WebUI 루트로 그대로 사용합니다.
+# Release 압축 파일에는 표준 최상위 폴더 `weig-qb-webui`가 이미 포함되어 있습니다. 압축을 푼 뒤 이름을 바꾸지 않고 qBittorrent WebUI 루트로 그대로 사용합니다.
 ```
 
 SHA-256 계산:
