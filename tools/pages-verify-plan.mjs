@@ -28,6 +28,7 @@ const fixed=[
   baseLane('services-protocol','tests/pages-live-protocol.mjs'),
   baseLane('services-branch-alias','tests/pages-live-branch-alias.mjs'),
   baseLane('mobile-layout','tests/pages-live-mobile-layout.mjs'),
+  baseLane('torrent-scroll-stress','tests/pages-live-torrent-scroll-stress.mjs'),
   baseLane('detail-dock','tests/pages-live-detail-dock.mjs')
 ];
 const byName=new Map(fixed.map(item=>[item.name,item]));
@@ -60,7 +61,7 @@ export function pagesVerifyLanes(profile='full'){
   switch(profile){
     case'installer': return pick(['core']);
     case'payload': return pick(['core','startup-performance']);
-    case'ui': return pick(['core','startup-performance','services-owner-ui','mobile-layout','detail-dock']);
+    case'ui': return pick(['core','startup-performance','services-owner-ui','mobile-layout','torrent-scroll-stress','detail-dock']);
     case'native': return pick(['core','release-profile-floor','release-profile-latest','detail-dock']);
     case'settings':
       return[
