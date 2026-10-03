@@ -30,33 +30,6 @@ if(typeof globalThis.fetch==='function'&&!globalThis.__weigTimedFetchInstalled){
   Object.defineProperty(globalThis,'__weigTimedFetchInstalled',{value:true,configurable:false,enumerable:false,writable:false});
 }
 
-function retryableEvidenceStatus(status){status=Number(status)||0;return status===408||status===429||status>=500;}
-export async function fetchJsonEvidence(input,options={}){
-  const attempts=Math.max(1,Math.min(5,Number(options.attempts)||3)),delayMs=Math.max(0,Number(options.delayMs)==null?250:Number(options.delayMs)),init={...(options.init||{})},method=String(init.method||'GET').toUpperCase(),fetchImpl=options.fetchImpl||globalThis.fetch;
-  if(method!=='GET')throw new Error('fetchJsonEvidence is restricted to idempotent GET evidence reads.');
-  if(typeof fetchImpl!=='function')throw new Error('fetchJsonEvidence requires a fetch implementation.');
-  let last=null;
-  for(let attempt=1;attempt<=attempts;attempt++){
-    try{
-      const response=await fetchImpl(input,init);
-      if(!response||typeof response.ok!=='boolean')throw new Error('fetchJsonEvidence received an invalid Response.');
-      if(!response.ok){
-        const error=new Error(`${String(input)} returned HTTP ${response.status}`);error.status=Number(response.status)||0;
-        if(!retryableEvidenceStatus(error.status))throw error;
-        last=error;
-      }else{
-        try{return await response.json();}
-        catch(error){last=error;}
-      }
-    }catch(error){
-      if(error&&Number(error.status)&&!retryableEvidenceStatus(error.status))throw error;
-      last=error;
-    }
-    if(attempt<attempts&&delayMs>0)await new Promise(resolve=>setTimeout(resolve,delayMs*attempt));
-  }
-  throw last||new Error(`Unable to fetch JSON evidence from ${String(input)}`);
-}
-
 export async function readWebuiStatic(roots,requested='index.html'){
   const targets=Array.isArray(roots)?roots:[roots],name=String(requested||'index.html').replace(/^\/+/, '');
   for(const rootValue of targets){

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {fetchJsonEvidence} from './browser-driver.mjs';
+import {fetchJsonEvidence} from './pages-node-evidence-fetch.mjs';
 
 function response(status,payload){
   return{ok:status>=200&&status<300,status,async json(){if(payload instanceof Error)throw payload;return payload;}};

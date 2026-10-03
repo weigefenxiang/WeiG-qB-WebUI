@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {PAGES_FULL_CATALOG_PATH} from './pages-live-catalog.mjs';
-import {fetchJsonEvidence,launchBrowser} from './browser-driver.mjs';
+import {launchBrowser} from './browser-driver.mjs';
+import {fetchJsonEvidence} from './pages-node-evidence-fetch.mjs';
 import {recoverPageSession} from './pages-live-session.mjs';
 
 const rawBase=(process.env.WEIG_PAGES_URL||process.argv[2]||'').trim();
