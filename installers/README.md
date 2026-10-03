@@ -22,25 +22,25 @@ An unavailable exact version fails closed; it does not fall back to another chan
 Download:
 
 ```sh
-curl -fsSL https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.sh -o weig_qb-webui_install.sh
+curl -fsSL https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.sh -o install.sh
 ```
 
 Install and configure qBittorrent:
 
 ```sh
-sh weig_qb-webui_install.sh -configure
+sh install.sh -configure
 ```
 
 Development build:
 
 ```sh
-sh weig_qb-webui_install.sh -dev -configure
+sh install.sh -dev -configure
 ```
 
 Custom install directory:
 
 ```sh
-sh weig_qb-webui_install.sh -o /opt/weig_qb-webui -configure
+sh install.sh -o /opt/weig-qb-webui -configure
 ```
 
 ## 3. Windows PowerShell
@@ -48,19 +48,19 @@ sh weig_qb-webui_install.sh -o /opt/weig_qb-webui -configure
 Download:
 
 ```powershell
-Invoke-WebRequest https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.ps1 -OutFile .\weig_qb-webui_install.ps1
+Invoke-WebRequest https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.ps1 -OutFile .\install.ps1
 ```
 
 Install and configure:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -configure
 ```
 
 Development build:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -dev -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -dev -configure
 ```
 
 ## 4. Docker
@@ -77,31 +77,31 @@ Container: /config
 If the WebUI is physically installed at:
 
 ```text
-/root/qbittorrent/config/weig_qb-webui
+/root/qbittorrent/config/weig-qb-webui
 ```
 
 then qBittorrent should use:
 
 ```text
-/config/weig_qb-webui
+/config/weig-qb-webui
 ```
 
 List detected qBittorrent containers:
 
 ```sh
-sh weig_qb-webui_install.sh --list-containers
+sh install.sh --list-containers
 ```
 
 Select one explicitly:
 
 ```sh
-sh weig_qb-webui_install.sh --container=qbittorrent -configure
+sh install.sh --container=qbittorrent -configure
 ```
 
 If you already know the host directory mounted as `/config`:
 
 ```sh
-sh weig_qb-webui_install.sh --config-root=/root/qbittorrent/config -configure
+sh install.sh --config-root=/root/qbittorrent/config -configure
 ```
 
 The installer does not silently choose between multiple qBittorrent containers.
@@ -111,9 +111,9 @@ The installer does not silently choose between multiple qBittorrent containers.
 Linux supports repeated `-o` arguments so one verified payload can update multiple existing WebUI directories:
 
 ```sh
-sh weig_qb-webui_install.sh -dev \
-  -o /root/qbittorrent/config/weig_qb-webui \
-  -o /root/qbittorrent3/config/weig_qb-webui
+sh install.sh -dev \
+  -o /root/qbittorrent/config/weig-qb-webui \
+  -o /root/qbittorrent3/config/weig-qb-webui
 ```
 
 Configuration mutation is intentionally separate. Do not use `-configure` for a multi-target update.
@@ -141,13 +141,13 @@ Normal uninstall keeps a rollback backup. To remove the selected installer-owned
 Linux:
 
 ```sh
-sh weig_qb-webui_install.sh -uninstall -configure -purge
+sh install.sh -uninstall -configure -purge
 ```
 
 Windows:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -uninstall -configure -purge
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -uninstall -configure -purge
 ```
 
 `-purge` is uninstall-only and destructive. Backup ownership is resolved by the existing destination markers; shared backup roots are never purged wholesale, and other install targets remain untouched. Matching rollback pointers are removed with the purged backups.
@@ -157,20 +157,20 @@ Rollback:
 Linux:
 
 ```sh
-sh weig_qb-webui_install.sh -rollback
+sh install.sh -rollback
 ```
 
 Windows:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -rollback
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -rollback
 ```
 
 ## 8. Payload Integrity
 
 Development payloads are materialized by Virtual qB Pages and include:
 
-- `WeiG-qB-WebUI.zip`
+- `weig-qb-webui.zip`
 - `SHA256SUMS`
 - `GIT_SHA`
 - `VERSION`
@@ -188,7 +188,7 @@ A newer repository commit may reuse an older materialized development payload on
 Show current Linux syntax:
 
 ```sh
-sh weig_qb-webui_install.sh -help
+sh install.sh -help
 ```
 
 PowerShell parameter names are case-insensitive. Linux also accepts supported long-form compatibility aliases where documented by the script.

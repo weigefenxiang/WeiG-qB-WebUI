@@ -35,7 +35,9 @@ Virtual qB Pages publishes the development installer payload under `downloads/de
 
 The payload includes:
 
-- `WeiG-qB-WebUI.zip`
+- `weig-qb-webui.zip`
+- `weig-qb-webui.tar.gz`
+- `manifest.json`
 - `SHA256SUMS`
 - `GIT_SHA`
 - `VERSION`

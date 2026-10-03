@@ -12,15 +12,15 @@
   <img src="https://img.shields.io/badge/-Shell-8A2BE2?logo=gnubash&logoColor=white" alt="Shell">
 </p>
 
-**[🌐 在线预览](https://weigefenxiang.github.io/WeiG-qB-WebUI/)** · **[⬇️ 下载最新正式版](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/WeiG-qB-WebUI.zip)**
+**[🌐 在线预览](https://weigefenxiang.github.io/WeiG-qB-WebUI/)** · **[⬇️ 下载最新正式版](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/weig-qb-webui.zip)**
 
 **语言**：[English](../README.md) · **简中** · [繁中](README.zh-TW.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Deutsch](README.de.md) · [Français](README.fr.md) · [Español](README.es.md) · [Português](README.pt.md) · [Русский](README.ru.md)
 
 ## 直接下载
 
-下载最新正式版 **[WeiG-qB-WebUI.zip](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/WeiG-qB-WebUI.zip)**。
+下载最新正式版 **[weig-qb-webui.zip](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/weig-qb-webui.zip)**。Linux / NAS 也可以直接使用同一 Release 中的 **`weig-qb-webui.tar.gz`**。
 
-压缩包内的顶层目录名仍为 `WeiG-qB-WebUI`；解压后请将本地目录重命名为 **`WeiG_qB-WebUI`**，这个文件夹就是 qBittorrent 要使用的 WebUI 目录。
+压缩包内已经使用统一的顶层目录 **`weig-qb-webui`**；解压后直接使用这个文件夹作为 qBittorrent 的 WebUI 目录，不需要再重命名。
 
 ## 界面预览
 
@@ -44,25 +44,25 @@
 
 ### 1. 解压
 
-下载并解压 `WeiG-qB-WebUI.zip`，再将解压得到的 `WeiG-qB-WebUI` 重命名为 `WeiG_qB-WebUI`，最终得到：
+下载并解压 `weig-qb-webui.zip`，压缩包会直接得到统一目录：
 
 ```text
-WeiG_qB-WebUI/
+weig-qb-webui/
 ├── public/
 ├── private/
 ├── VERSION
 └── GIT_SHA
 ```
 
-整个 **`WeiG_qB-WebUI` 文件夹**就是 WebUI 根目录，不要只复制 `public` 或 `private`。
+整个 **`weig-qb-webui` 文件夹**就是 WebUI 根目录，不要只复制 `public` 或 `private`。
 
 ### 2. 放到一个固定位置
 
-把整个 `WeiG_qB-WebUI` 文件夹移动到一个以后不会随便删除的位置，例如：
+把整个 `weig-qb-webui` 文件夹移动到一个以后不会随便删除的位置，例如：
 
 ```text
-Windows：D:\WeiG_qB-WebUI
-Linux：  /opt/WeiG_qB-WebUI
+Windows：D:\weig-qb-webui
+Linux：  /opt/weig-qb-webui
 ```
 
 后面 qBittorrent 要填写的就是这个目录。
@@ -77,24 +77,24 @@ Linux：  /opt/WeiG_qB-WebUI
 
 1. 勾选 **使用备选 WebUI**。
 2. 找到 **文件位置：**。
-3. 填入刚才保存的 `WeiG_qB-WebUI` 文件夹路径。
+3. 填入刚才保存的 `weig-qb-webui` 文件夹路径。
 
 Windows 示例：
 
 ```text
-D:\WeiG_qB-WebUI
+D:\weig-qb-webui
 ```
 
 普通 Linux 示例：
 
 ```text
-/opt/WeiG_qB-WebUI
+/opt/weig-qb-webui
 ```
 
 4. 点击 **确定** 保存设置。
 5. 刷新 qBittorrent WebUI 页面。如果浏览器仍显示旧页面，可再按一次 `Ctrl + F5` 强制刷新。
 
-> **怎么判断路径填对了？** 你填写的目录里面应该能直接看到 `public`、`private`、`VERSION` 等文件/目录。如果还要再进入一层 `WeiG_qB-WebUI` 才能看到这些内容，说明路径多填或少填了一层。
+> **怎么判断路径填对了？** 你填写的目录里面应该能直接看到 `public`、`private`、`VERSION` 等文件/目录。如果还要再进入一层 `weig-qb-webui` 才能看到这些内容，说明路径多填或少填了一层。
 
 > **Docker 用户注意：** qBittorrent 运行在容器里面，因此这里通常不能填写宿主机上的真实路径。Docker 的“宿主机 / 容器”区别和正确路径写法见下面 **Docker** 折叠教程。
 
@@ -107,26 +107,26 @@ Linux / NAS 一键脚本统一从下面的 Dev Pages 固定入口下载。**脚�
 ### Linux / NAS
 
 ```sh
-curl -fsSL https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.sh -o weig_qb-webui_install.sh && sh weig_qb-webui_install.sh -configure
+curl -fsSL https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.sh -o install.sh && sh install.sh -configure
 ```
 
 <details>
 <summary><b>查看脚本位置和 WebUI 默认安装目录</b></summary>
 
 ```text
-./weig_qb-webui_install.sh
+./install.sh
 ```
 
 WebUI 本体默认安装到：
 
 ```text
-~/.local/share/weig_qb-webui
+~/.local/share/weig-qb-webui
 ```
 
 例如使用 `root` 用户运行时，通常就是：
 
 ```text
-/root/.local/share/weig_qb-webui
+/root/.local/share/weig-qb-webui
 ```
 
 </details>
@@ -163,23 +163,23 @@ volumes:
 如果 WeiG qB WebUI 实际安装到了：
 
 ```text
-宿主机：/root/qbittorrent/config/weig_qb-webui
+宿主机：/root/qbittorrent/config/weig-qb-webui
 ```
 
 那么 qBittorrent 的 **文件位置：** 应填写：
 
 ```text
-/config/weig_qb-webui
+/config/weig-qb-webui
 ```
 
-**不要填写 `/root/qbittorrent/config/weig_qb-webui`**，因为 qBittorrent 容器通常看不到这个宿主机路径。
+**不要填写 `/root/qbittorrent/config/weig-qb-webui`**，因为 qBittorrent 容器通常看不到这个宿主机路径。
 
 #### 情况 1：只有一个 qBittorrent Docker 容器
 
 最简单，直接运行：
 
 ```sh
-curl -fsSL https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.sh -o weig_qb-webui_install.sh && sh weig_qb-webui_install.sh -configure
+curl -fsSL https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.sh -o install.sh && sh install.sh -configure
 ```
 
 安装器会尝试自动找到正在运行的 qBittorrent 容器、识别它的 `/config` 映射，把 WebUI 安装到合适的位置，并自动设置 qBittorrent。
@@ -189,7 +189,7 @@ curl -fsSL https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.s
 如果不确定容器叫什么：
 
 ```sh
-sh weig_qb-webui_install.sh --list-containers
+sh install.sh --list-containers
 ```
 
 也可以先用 Docker 自己的命令查看正在运行的容器：
@@ -207,7 +207,7 @@ qbittorrent
 就可以明确指定它：
 
 ```sh
-sh weig_qb-webui_install.sh --container=qbittorrent -configure
+sh install.sh --container=qbittorrent -configure
 ```
 
 #### 情况 3：机器上有多个 qBittorrent 容器
@@ -222,19 +222,19 @@ qbittorrent-test
 先运行：
 
 ```sh
-sh weig_qb-webui_install.sh --list-containers
+sh install.sh --list-containers
 ```
 
 安装正式使用的 `qbittorrent`：
 
 ```sh
-sh weig_qb-webui_install.sh --container=qbittorrent -configure
+sh install.sh --container=qbittorrent -configure
 ```
 
 安装测试容器 `qbittorrent-test`：
 
 ```sh
-sh weig_qb-webui_install.sh --container=qbittorrent-test -configure
+sh install.sh --container=qbittorrent-test -configure
 ```
 
 安装器不会在多个 qBittorrent 容器之间随便猜一个。
@@ -250,19 +250,19 @@ sh weig_qb-webui_install.sh --container=qbittorrent-test -configure
 可以直接指定：
 
 ```sh
-sh weig_qb-webui_install.sh --config-root=/root/qbittorrent/config -configure
+sh install.sh --config-root=/root/qbittorrent/config -configure
 ```
 
 群晖上可能类似：
 
 ```sh
-sh weig_qb-webui_install.sh --config-root=/volume1/docker/qbittorrent -configure
+sh install.sh --config-root=/volume1/docker/qbittorrent -configure
 ```
 
 其他 NAS 可能类似：
 
 ```sh
-sh weig_qb-webui_install.sh --config-root=/share/Container/qbittorrent -configure
+sh install.sh --config-root=/share/Container/qbittorrent -configure
 ```
 
 这些只是示例，**请换成你自己的真实 qBittorrent `/config` 宿主机目录**。
@@ -272,7 +272,7 @@ sh weig_qb-webui_install.sh --config-root=/share/Container/qbittorrent -configur
 已经指定容器时，也可以指定容器里希望使用的 WebUI 路径：
 
 ```sh
-sh weig_qb-webui_install.sh --container=qbittorrent -o /config/weig_qb-webui -configure
+sh install.sh --container=qbittorrent -o /config/weig-qb-webui -configure
 ```
 
 安装器会根据 Docker `/config` 映射换算成宿主机上的实际安装目录。
@@ -282,20 +282,20 @@ sh weig_qb-webui_install.sh --container=qbittorrent -o /config/weig_qb-webui -co
 有多个 qBittorrent 实例时，可以重复写 `-o`。安装包只下载和校验一次，全部目标准备完成后才开始切换；每个目标都在 `~/.config/weig_qb-webui/backups/` 下独立保留最近 3 份备份。
 
 ```sh
-sh weig_qb-webui_install.sh -dev \
-  -o /root/qbittorrent/config/weig_qb-webui \
-  -o /root/qbittorrent3/config/weig_qb-webui
+sh install.sh -dev \
+  -o /root/qbittorrent/config/weig-qb-webui \
+  -o /root/qbittorrent3/config/weig-qb-webui
 ```
 
-多目标模式不要加 `-configure`，各个 qBittorrent 实例继续使用自己已经配置好的备选 WebUI 路径。查看当前参数可运行 `sh weig_qb-webui_install.sh -help`。
+多目标模式不要加 `-configure`，各个 qBittorrent 实例继续使用自己已经配置好的备选 WebUI 路径。查看当前参数可运行 `sh install.sh -help`。
 
 #### 安装后应该看到什么
 
 安装成功时脚本会输出类似：
 
 ```text
-Host install path: /root/qbittorrent/config/weig_qb-webui
-qBittorrent Root Folder: /config/weig_qb-webui
+Host install path: /root/qbittorrent/config/weig-qb-webui
+qBittorrent Root Folder: /config/weig-qb-webui
 ```
 
 含义是：
@@ -310,14 +310,14 @@ qBittorrent Root Folder: /config/weig_qb-webui
 ### Windows PowerShell
 
 ```powershell
-Invoke-WebRequest https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.ps1 -OutFile .\weig_qb-webui_install.ps1; powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -configure
+Invoke-WebRequest https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.ps1 -OutFile .\install.ps1; powershell -ExecutionPolicy Bypass -File .\install.ps1 -configure
 ```
 
 <details>
 <summary><b>查看安装目录</b></summary>
 
 ```text
-C:\Users\<你的用户名>\AppData\Local\WeiG_qB-WebUI
+C:\Users\<你的用户名>\AppData\Local\weig-qb-webui
 ```
 
 </details>
@@ -359,13 +359,13 @@ Linux 和 Windows 使用相同的参数名称，文档统一使用小写；Power
 Linux：
 
 ```sh
-sh weig_qb-webui_install.sh -version 1.0.0 -o /opt/weig_qb-webui -configure
+sh install.sh -version 1.0.0 -o /opt/weig-qb-webui -configure
 ```
 
 Windows：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 1.0.0 -o D:\WeiG_qB-WebUI -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.0.0 -o D:\weig-qb-webui -configure
 ```
 
 ### 回滚
@@ -373,13 +373,13 @@ powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 1.
 Linux：
 
 ```sh
-sh weig_qb-webui_install.sh -rollback
+sh install.sh -rollback
 ```
 
 Windows：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -rollback
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -rollback
 ```
 
 </details>
@@ -394,38 +394,38 @@ powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -rollback
 ### Linux / NAS
 
 ```sh
-sh weig_qb-webui_install.sh -uninstall -configure -purge && rm -f -- ./weig_qb-webui_install.sh
+sh install.sh -uninstall -configure -purge && rm -f -- ./install.sh
 ```
 
-自定义安装目录继续加 `-o /你的/weig_qb-webui`。
+自定义安装目录继续加 `-o /你的/weig-qb-webui`。
 
 ### Docker
 
 单容器自动识别：
 
 ```sh
-sh weig_qb-webui_install.sh -uninstall -configure -purge && rm -f -- ./weig_qb-webui_install.sh
+sh install.sh -uninstall -configure -purge && rm -f -- ./install.sh
 ```
 
 多容器：
 
 ```sh
-sh weig_qb-webui_install.sh -uninstall -configure -purge --container=qbittorrent && rm -f -- ./weig_qb-webui_install.sh
+sh install.sh -uninstall -configure -purge --container=qbittorrent && rm -f -- ./install.sh
 ```
 
 使用 `--config-root` 时：
 
 ```sh
-sh weig_qb-webui_install.sh -uninstall -configure -purge --config-root=/path/to/qbittorrent/config && rm -f -- ./weig_qb-webui_install.sh
+sh install.sh -uninstall -configure -purge --config-root=/path/to/qbittorrent/config && rm -f -- ./install.sh
 ```
 
 ### Windows PowerShell
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -uninstall -configure -purge; if ($LASTEXITCODE -eq 0) { Remove-Item .\weig_qb-webui_install.ps1 -Force }
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -uninstall -configure -purge; if ($LASTEXITCODE -eq 0) { Remove-Item .\install.ps1 -Force }
 ```
 
-自定义安装目录继续加 `-o D:\WeiG_qB-WebUI`。
+自定义安装目录继续加 `-o D:\weig-qb-webui`。
 
 `-purge` 只清当前卸载目标的备份，不会误删其它安装实例。共享状态目录没有其它内容时，Linux 的 `~/.config/weig_qb-webui`（root 即 `/root/.config/weig_qb-webui`）或 Windows 的 `%APPDATA%\WeiG_qB-WebUI` 也会随之清空。
 
