@@ -16,9 +16,9 @@ IMAGE='qbittorrentofficial/qbittorrent-nox@sha256:9ebb534fe30bab98622cb84a8c3ace
 NAME="weigg-installer-qb-${GITHUB_RUN_ID:-$$}-${RANDOM}"
 NET="weigg-installer-net-${GITHUB_RUN_ID:-$$}-${RANDOM}"
 QBT_CONFIG="$CONFIG_ROOT/qBittorrent/config/qBittorrent.conf"
-DEST="$CONFIG_ROOT/weig_qb-webui"
-QB_ROOT='/config/weig_qb-webui'
-STATE="$HOME_DIR/.config/weig_qb-webui"
+DEST="$CONFIG_ROOT/weig-qb-webui"
+QB_ROOT='/config/weig-qb-webui'
+STATE="$HOME_DIR/.config/weig-qb-webui"
 PAUSED=0
 REAL_CURL=$(command -v curl)
 
@@ -240,7 +240,7 @@ if(meta.gitSha!==sha)throw new Error(`metadata gitSha ${meta.gitSha} != ${sha}`)
 if(meta.channel!=='release')throw new Error(`metadata channel ${meta.channel} != release`);
 if(meta.installer!=='linux')throw new Error(`metadata installer ${meta.installer} != linux`);
 if(meta.container!==container)throw new Error('metadata container mismatch');
-if(meta.hostPath!==path.join(hostConfigRoot,'weig_qb-webui'))throw new Error('metadata hostPath mismatch');
+if(meta.hostPath!==path.join(hostConfigRoot,'weig-qb-webui'))throw new Error('metadata hostPath mismatch');
 if(meta.qbPath!==qbRoot)throw new Error('metadata qbPath mismatch');
 const catalogPath=path.join(dest,'private/data/qb-releases.json');
 const catalog=JSON.parse(fs.readFileSync(catalogPath,'utf8'));

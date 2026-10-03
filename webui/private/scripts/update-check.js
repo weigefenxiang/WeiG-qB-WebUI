@@ -25,12 +25,12 @@
   function devWarningPanel(){var wrap=document.createElement('section'),title=document.createElement('strong'),copy=document.createElement('p');wrap.className='update-check__commands';title.textContent=tr('settings.update.devWarningTitle','Development build');copy.className='text-description update-check__note';copy.textContent=tr('settings.update.devWarning','Development builds contain the latest changes and may include undiscovered bugs or unstable behavior. Use Stable when long-term reliability is more important than the newest changes.');wrap.append(title,copy);return wrap;}
   function devInfoButton(details){var info=button('?','icon-btn update-check__info',function(){setPanel(details,devWarningPanel());});info.setAttribute('aria-label',tr('settings.update.devWarningTitle','Development build'));info.title=tr('settings.update.devWarningTitle','Development build');return info;}
   function devCommands(){return[
-    {label:'Linux / NAS',command:'curl -fsSL '+INSTALL_SH+' -o weig_qb-webui_install.sh && sh weig_qb-webui_install.sh -dev'},
-    {label:'Windows',command:'Invoke-WebRequest '+INSTALL_PS1+' -OutFile .\\weig_qb-webui_install.ps1; powershell -ExecutionPolicy Bypass -File .\\weig_qb-webui_install.ps1 -dev'}
+    {label:'Linux / NAS',command:'curl -fsSL '+INSTALL_SH+' -o install.sh && sh install.sh -dev'},
+    {label:'Windows',command:'Invoke-WebRequest '+INSTALL_PS1+' -OutFile .\\install.ps1; powershell -ExecutionPolicy Bypass -File .\\install.ps1 -dev'}
   ];}
   function rollbackCommands(){return[
-    {label:'Linux / NAS',command:'sh weig_qb-webui_install.sh -rollback'},
-    {label:'Windows',command:'powershell -ExecutionPolicy Bypass -File .\\weig_qb-webui_install.ps1 -rollback'}
+    {label:'Linux / NAS',command:'sh install.sh -rollback'},
+    {label:'Windows',command:'powershell -ExecutionPolicy Bypass -File .\\install.ps1 -rollback'}
   ];}
   function setPanel(host,node){host.textContent='';if(node)host.appendChild(node);}
   function stableState(current,latest){if(!latest)return tr('settings.update.unavailable','Unavailable');if(!current)return tr('settings.update.available','Available');var cmp=compare(current,latest);return cmp<0?tr('settings.update.newVersion','New version'):cmp===0?tr('settings.update.current','Current'):tr('settings.update.ahead','Ahead');}

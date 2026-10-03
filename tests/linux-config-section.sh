@@ -4,7 +4,7 @@ ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 mkdir -p "$TMP/home"
-ROOT_FOLDER='/config/weig_qb-webui'
+ROOT_FOLDER='/config/weig-qb-webui'
 
 run_configure() {
   HOME="$TMP/home" \

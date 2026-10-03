@@ -69,7 +69,7 @@ function Test-QBittorrentRunning { return $false }
 $temp=Join-Path ([IO.Path]::GetTempPath()) ('weigg-config-safety-'+[guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Force -Path $temp | Out-Null
 try {
-  $rootFolder='D:\软件\下载工具\qbittorrent\WeiG_qB-WebUI'
+  $rootFolder='D:\软件\下载工具\qbittorrent\weig-qb-webui'
   $original=@"
 [General]
 Locale=zh_CN
