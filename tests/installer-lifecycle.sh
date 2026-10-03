@@ -36,7 +36,7 @@ for required in capabilities.json detail-compat.json settings-compat.json torren
 done
 test ! -e "$BASE/private/data/qb-releases.json"
 
-build_release() {
+build_legacy_release() {
   version=$1
   source_sha=$2
   marker=$3
@@ -48,9 +48,6 @@ build_release() {
   printf '%s\n' "$version" > "$work/WeiG-qB-WebUI/VERSION"
   printf '%s\n' "$source_sha" > "$work/WeiG-qB-WebUI/GIT_SHA"
   printf '%s\n' "$marker" > "$work/WeiG-qB-WebUI/private/lifecycle-marker.txt"
-  find "$work/WeiG-qB-WebUI" -type f \
-    \( -name '*.html' -o -name '*.js' -o -name '*.css' -o -name '*.json' -o -name 'GIT_SHA' \) \
-    -exec sed -i "s/__WEIGG_GIT_SHA__/$source_sha/g" {} +
   (
     cd "$work"
     zip -qr "$out/WeiG-qB-WebUI.zip" WeiG-qB-WebUI
@@ -63,8 +60,67 @@ build_release() {
   printf '{\n  "sha": "%s"\n}\n' "$source_sha" > "$out/commit.json"
 }
 
-build_release "$VERSION_ONE" "$SHA_ONE" release-one
-build_release "$VERSION_TWO" "$SHA_TWO" release-two
+build_canonical_release() {
+  version=$1
+  source_sha=$2
+  marker=$3
+  work="$TMP/build-$version"
+  out="$FIXTURES/v$version"
+  root=weig-qb-webui
+  rm -rf "$work"
+  mkdir -p "$work" "$out"
+  cp -a "$BASE" "$work/$root"
+  printf '%s\n' "$version" > "$work/$root/VERSION"
+  printf '%s\n' "$source_sha" > "$work/$root/GIT_SHA"
+  printf '%s\n' "$marker" > "$work/$root/private/lifecycle-marker.txt"
+  (
+    cd "$work"
+    zip -qr "$out/weig-qb-webui.zip" "$root"
+    tar -czf "$out/weig-qb-webui.tar.gz" "$root"
+  )
+  zip_sha=$(sha256sum "$out/weig-qb-webui.zip" | awk '{print $1}')
+  tar_sha=$(sha256sum "$out/weig-qb-webui.tar.gz" | awk '{print $1}')
+  zip_bytes=$(wc -c < "$out/weig-qb-webui.zip" | tr -d '[:space:]')
+  tar_bytes=$(wc -c < "$out/weig-qb-webui.tar.gz" | tr -d '[:space:]')
+  cat > "$out/manifest.json" <<EOF_MANIFEST
+{
+  "schemaVersion": 5,
+  "kind": "materialized-webui-dist",
+  "gitSha": "$source_sha",
+  "version": "$version",
+  "rootFolder": "weig-qb-webui",
+  "unixArchive": "weig-qb-webui.tar.gz",
+  "zipArchive": "weig-qb-webui.zip",
+  "preferred": {
+    "unix": "tar.gz",
+    "windows": "zip"
+  },
+  "artifacts": {
+    "tarGz": {
+      "file": "weig-qb-webui.tar.gz",
+      "format": "tar.gz",
+      "sha256": "$tar_sha",
+      "bytes": $tar_bytes
+    },
+    "zip": {
+      "file": "weig-qb-webui.zip",
+      "format": "zip",
+      "sha256": "$zip_sha",
+      "bytes": $zip_bytes
+    }
+  }
+}
+EOF_MANIFEST
+  (
+    cd "$out"
+    sha256sum weig-qb-webui.tar.gz weig-qb-webui.zip manifest.json > SHA256SUMS
+  )
+  printf '{"tag_name":"v%s"}\n' "$version" > "$out/release.json"
+  printf '{\n  "sha": "%s"\n}\n' "$source_sha" > "$out/commit.json"
+}
+
+build_legacy_release "$VERSION_ONE" "$SHA_ONE" release-one
+build_canonical_release "$VERSION_TWO" "$SHA_TWO" release-two
 
 cat > "$MOCK_BIN/curl" <<'EOF_CURL'
 #!/bin/sh
@@ -87,6 +143,7 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 [ -n "$url" ] && [ -n "$out" ] || { echo 'mock curl: missing URL or output path' >&2; exit 2; }
+printf '%s\n' "$url" >> "$WEIGG_INSTALLER_DOWNLOAD_LOG"
 case "$url" in
   */releases/tags/v9.9.90)
     src="$WEIGG_INSTALLER_FIXTURE_ROOT/v9.9.90/release.json"
@@ -106,8 +163,14 @@ case "$url" in
   */releases/download/v9.9.90/SHA256SUMS)
     src="$WEIGG_INSTALLER_FIXTURE_ROOT/v9.9.90/SHA256SUMS"
     ;;
-  */releases/download/v9.9.91/WeiG-qB-WebUI.zip)
-    src="$WEIGG_INSTALLER_FIXTURE_ROOT/v9.9.91/WeiG-qB-WebUI.zip"
+  */releases/download/v9.9.91/manifest.json)
+    src="$WEIGG_INSTALLER_FIXTURE_ROOT/v9.9.91/manifest.json"
+    ;;
+  */releases/download/v9.9.91/weig-qb-webui.tar.gz)
+    src="$WEIGG_INSTALLER_FIXTURE_ROOT/v9.9.91/weig-qb-webui.tar.gz"
+    ;;
+  */releases/download/v9.9.91/weig-qb-webui.zip)
+    src="$WEIGG_INSTALLER_FIXTURE_ROOT/v9.9.91/weig-qb-webui.zip"
     ;;
   */releases/download/v9.9.91/SHA256SUMS)
     src="$WEIGG_INSTALLER_FIXTURE_ROOT/v9.9.91/SHA256SUMS"
@@ -123,7 +186,10 @@ chmod +x "$MOCK_BIN/curl"
 
 export HOME="$HOME_DIR"
 export XDG_CONFIG_HOME="$HOME_DIR/.config"
+DOWNLOAD_LOG="$TMP/download.log"
+: > "$DOWNLOAD_LOG"
 export WEIGG_INSTALLER_FIXTURE_ROOT="$FIXTURES"
+export WEIGG_INSTALLER_DOWNLOAD_LOG="$DOWNLOAD_LOG"
 export PATH="$MOCK_BIN:$PATH"
 
 INSTALLER_PROFILE=${WEIG_INSTALLER_SHELL:-dash}
@@ -226,6 +292,13 @@ CFG_BEFORE_PLAIN_UPDATE=$(sha256sum "$CFG" | awk '{print $1}')
 sleep 1
 run_installer --version "$VERSION_TWO" -o "$DEST"
 assert_install "$VERSION_TWO" "$SHA_TWO" release-two
+grep -F '/releases/download/v9.9.90/WeiG-qB-WebUI.zip' "$DOWNLOAD_LOG" >/dev/null
+grep -F '/releases/download/v9.9.91/manifest.json' "$DOWNLOAD_LOG" >/dev/null
+grep -F '/releases/download/v9.9.91/weig-qb-webui.tar.gz' "$DOWNLOAD_LOG" >/dev/null
+if grep -F '/releases/download/v9.9.91/weig-qb-webui.zip' "$DOWNLOAD_LOG" >/dev/null; then
+  echo "Unix installer downloaded canonical ZIP even though tar.gz extraction was available." >&2
+  exit 1
+fi
 assert_config_enabled
 CFG_AFTER_PLAIN_UPDATE=$(sha256sum "$CFG" | awk '{print $1}')
 test "$CFG_AFTER_PLAIN_UPDATE" = "$CFG_BEFORE_PLAIN_UPDATE"
@@ -340,7 +413,8 @@ const evidence={
   target:'REDACTED',
   fixture:{
     versions:[process.env.VERSION_ONE,process.env.VERSION_TWO],
-    sourceShas:[process.env.SHA_ONE,process.env.SHA_TWO]
+    sourceShas:[process.env.SHA_ONE,process.env.SHA_TWO],
+    releaseFormats:['bounded-legacy-zip','canonical-manifest-tar-gz']
   },
   checks:{
     initialInstall:true,
