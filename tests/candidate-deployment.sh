@@ -261,7 +261,7 @@ if(meta.gitSha!==sha)throw new Error('candidate metadata Git SHA mismatch');
 if(meta.channel!=='main')throw new Error(`candidate metadata channel mismatch: expected normalized main, got ${meta.channel}`);
 if(meta.installer!=='linux')throw new Error('candidate metadata installer mismatch');
 if(meta.container!==container)throw new Error('candidate metadata container mismatch');
-if(meta.hostPath!==path.join(hostConfigRoot,'weig_qb-webui'))throw new Error('candidate metadata host path mismatch');
+if(meta.hostPath!==path.join(hostConfigRoot,'weig-qb-webui'))throw new Error('candidate metadata host path mismatch');
 if(meta.qbPath!==qbRoot)throw new Error('candidate metadata qB path mismatch');
 const dataDir=path.join(dest,'private/data');
 const requiredCompactFiles=['capabilities.json','settings-compat.json','source-actions.json','detail-compat.json','rss-compat.json','torrent-compat.json','qb-settings-native.txt'];

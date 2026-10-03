@@ -16,4 +16,8 @@ assert.match(candidate,/MANIFEST="\$CANDIDATE_DIR\/manifest\.json"/);
 assert.match(candidate,/LINUX_INSTALLER="\$CANDIDATE_DIR\/install\.sh"/);
 assert.match(candidate,/releases\/download\/v"\$WEIG_CANDIDATE_VERSION"\/manifest\.json/);
 assert.match(candidate,/artifactSetSha256:true/);
+assert.match(candidate,/DEST="\$CONFIG_ROOT\/weig-qb-webui"/);
+assert.match(candidate,/QB_ROOT='\/config\/weig-qb-webui'/);
+assert.match(candidate,/path\.join\(hostConfigRoot,'weig-qb-webui'\)/,'candidate install metadata must use the same canonical Docker path as the installer invocation');
+assert.doesNotMatch(candidate,/weig_qb-webui|WeiG_qB-WebUI/,'candidate deployment must not retain legacy filesystem names as current expectations');
 console.log('Windows/candidate artifact consumption contract passed.');
