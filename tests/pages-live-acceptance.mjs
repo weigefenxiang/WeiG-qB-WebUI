@@ -528,6 +528,7 @@ try{
 
     await openVirtualSession(page,{branch:'dev',qb:'5.2.3',count:80,scenario:'mixed',seed:'pages-live-android'});
     await page.waitForSelector('.torrent-mobile-card--two-line',{state:'visible',timeout:60000});
+    await page.evaluate(()=>WeiG.LibraryController.ensureFacetOptions('tracker'));
     const androidCatalog=await waitForCatalog(page,{count:80,timeout:30000});
     assert.equal(androidCatalog.ready,true,'contextual facet live fixture must wait for the complete 80-Torrent catalog before deriving expected options');
 
