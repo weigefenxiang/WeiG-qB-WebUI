@@ -74,6 +74,17 @@ async function setMotion(page,value){
 }
 async function clearMotionProbe(page){await page.evaluate(()=>{if(Array.isArray(window.__weigMotionProbe))window.__weigMotionProbe.length=0;});}
 async function lastMotionProbe(page,method){return page.evaluate(name=>[...(window.__weigMotionProbe||[])].reverse().find(item=>item.method===name)||null,method);}
+async function forceOverflowPreviewTarget(page,selector,width){
+  await page.waitForFunction(({selector,width})=>{
+    const node=document.querySelector(selector);if(!node)return false;
+    node.style.width=width+'px';node.style.maxWidth=width+'px';
+    return node.dataset.uiOverflowPreview==='1'&&node.clientWidth>0&&node.scrollWidth>node.clientWidth+1;
+  },{selector,width},{timeout:5000});
+  const node=page.locator(selector).first();
+  await node.hover();
+  await page.waitForSelector('.ui-floating-preview',{state:'visible',timeout:5000});
+  return node;
+}
 
 async function verifyModern(){
   const context=await browser.newContext({viewport:{width:1200,height:850},locale:'zh-CN'});
@@ -96,8 +107,7 @@ async function verifyModern(){
 
   const listTitle=page.locator('#torrent-list .torrent-title').first();
   const listTitleText=String(await listTitle.textContent()||'').trim();
-  await listTitle.evaluate(node=>{node.style.width='96px';node.style.maxWidth='96px';});
-  await listTitle.hover();await page.waitForSelector('.ui-floating-preview',{state:'visible',timeout:5000});
+  await forceOverflowPreviewTarget(page,'#torrent-list .torrent-title',96);
   assert.equal(String(await page.locator('.ui-floating-preview').textContent()||'').trim(),listTitleText,'clipped Torrent list title hover must reuse the bounded floating preview owner');
   await page.mouse.move(4,4);await page.waitForTimeout(180);
 
@@ -313,8 +323,7 @@ async function verifyModern(){
   assert.equal(await page.locator('#detail-view [data-detail-back]').count(),1,'full Detail route must retain Back to torrents');
   assert.equal(await page.locator('#torrent-detail-dock:not([hidden])').count(),0,'full Detail route must not leave the inline Dock open');
   const detailTitle=page.locator('#detail-title'),detailTitleText=String(await detailTitle.textContent()||'').trim();
-  await detailTitle.evaluate(node=>{node.style.width='150px';node.style.maxWidth='150px';});
-  await detailTitle.hover();await page.waitForSelector('.ui-floating-preview',{state:'visible',timeout:5000});
+  await forceOverflowPreviewTarget(page,'#detail-title',150);
   assert.equal(String(await page.locator('.ui-floating-preview').textContent()||'').trim(),detailTitleText,'clipped full Detail title hover must expose the complete Torrent name within the shared bounded preview');
   await page.mouse.move(4,4);await page.waitForTimeout(180);
   await page.locator('#detail-view .detail-tabs .tab[data-tab="trackers"]').click();
