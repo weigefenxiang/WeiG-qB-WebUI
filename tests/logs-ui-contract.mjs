@@ -75,7 +75,7 @@ assert(logs.includes('staticHead:state.head')&&css.includes('.logs-head{position
 assert(!css.includes('--logs-log-min')&&!css.includes('--logs-time-col')&&!css.includes('--logs-level-col'),'retired Logs fixed-width CSS variables must stay absent');
 assert(css.includes('.logs-row .logs-level{justify-self:center;text-align:center'),'Desktop Level pills must retain centered semantic presentation inside the shared grid');
 assert(!/\.logs-row \.logs-level\{[^}]*\b(?:width|min-width|max-width)\s*:/.test(css),'Log level labels must use the canonical status-pill intrinsic width instead of fixed-width padding');
-assert(css.includes('.logs-row{min-height:72px;grid-template-columns:max-content minmax(0,1fr);grid-template-rows:auto auto;gap:5px 8px'),'Mobile log metadata must form one compact left-aligned level/time group');
+assert(css.includes('.logs-row{min-width:100%;min-height:72px;grid-template-columns:max-content minmax(0,1fr)!important;grid-template-rows:auto auto;column-gap:8px;row-gap:5px'),'Mobile log metadata must override only responsive presentation while retaining one compact left-aligned level/time group');
 assert(css.includes('.logs-row .logs-level{grid-column:1;grid-row:2;justify-self:start}')&&css.includes('.logs-time{grid-column:2;grid-row:2;justify-self:start;align-self:center'),'Mobile metadata must place the visible colored level immediately before date/time');
 
 console.log('Logs UI contract passed: shared DataGridHeader/SharedColumns widths, bounded Pager + DataViewport history projection, canonical tones, responsive metadata, and click expansion.');
