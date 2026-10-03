@@ -370,8 +370,29 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-      - name: Install lifecycle · install -> upgrade -> rollback -> uninstall -> rollback
+      - name: Install lifecycle · dash · install -> upgrade -> rollback -> uninstall -> rollback
         shell: bash
+        env:
+          WEIG_INSTALLER_SHELL: dash
+        run: bash tests/installer-lifecycle.sh
+
+  installer_lifecycle_busybox:
+    name: Linux installer lifecycle · BusyBox ash/userland
+    needs: classify
+    if: ${{ always() && ((github.event_name == 'push' && needs.classify.outputs.installer == 'true') || (github.event_name == 'workflow_dispatch' && (inputs.validation_mode == 'smoke' || inputs.validation_mode == 'candidate' || (inputs.validation_mode == 'change-aware' && needs.classify.outputs.installer == 'true')))) }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Ensure BusyBox tool profile
+        shell: bash
+        run: command -v busybox >/dev/null 2>&1 || { sudo apt-get update -qq && sudo apt-get install -y busybox; }
+      - name: Install lifecycle · BusyBox ash + BusyBox userland · no Python dependency
+        shell: bash
+        env:
+          WEIG_INSTALLER_SHELL: busybox-ash
         run: bash tests/installer-lifecycle.sh
 
   installer_lifecycle_windows:

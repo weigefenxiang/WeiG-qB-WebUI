@@ -126,6 +126,41 @@ export XDG_CONFIG_HOME="$HOME_DIR/.config"
 export WEIGG_INSTALLER_FIXTURE_ROOT="$FIXTURES"
 export PATH="$MOCK_BIN:$PATH"
 
+INSTALLER_PROFILE=${WEIG_INSTALLER_SHELL:-dash}
+BUSYBOX_CMD=""
+BUSYBOX_BIN="$TMP/busybox-bin"
+if [ "$INSTALLER_PROFILE" = "busybox-ash" ]; then
+  BUSYBOX_CMD=$(command -v busybox || true)
+  [ -n "$BUSYBOX_CMD" ] || { echo "BusyBox profile requested but busybox is unavailable." >&2; exit 2; }
+  mkdir -p "$BUSYBOX_BIN"
+  "$BUSYBOX_CMD" --install -s "$BUSYBOX_BIN"
+  cat > "$MOCK_BIN/python3" <<'EOF_PYTHON_GUARD'
+#!/bin/sh
+echo "python3 fallback was unexpectedly required by the BusyBox installer profile." >&2
+exit 99
+EOF_PYTHON_GUARD
+  chmod +x "$MOCK_BIN/python3"
+fi
+
+run_installer() {
+  case "$INSTALLER_PROFILE" in
+    dash)
+      command -v dash >/dev/null 2>&1 || { echo "dash profile requested but dash is unavailable." >&2; return 2; }
+      darun_installer "$@"
+      ;;
+    busybox-ash)
+      PATH="$MOCK_BIN:$BUSYBOX_BIN:/usr/bin:/bin" "$BUSYBOX_CMD" arun_installer "$@"
+      ;;
+    sh)
+      run_installer "$@"
+      ;;
+    *)
+      echo "Unsupported WEIG_INSTALLER_SHELL profile: $INSTALLER_PROFILE" >&2
+      return 2
+      ;;
+  esac
+}
+
 assert_install() {
   expected_version=$1
   expected_sha=$2
@@ -179,7 +214,7 @@ assert_archive_backup() {
 }
 
 
-sh "$ROOT/installers/install.sh" --version "$VERSION_ONE" --configure -o "$DEST"
+run_installer --version "$VERSION_ONE" --configure -o "$DEST"
 assert_install "$VERSION_ONE" "$SHA_ONE" release-one
 assert_config_enabled
 FIRST_BACKUP=$(cat "$STATE/last-backup")
@@ -189,7 +224,7 @@ grep -Fx 'WebUI\RootFolder=/original/webui' "$FIRST_BACKUP/qBittorrent.conf" >/d
 
 CFG_BEFORE_PLAIN_UPDATE=$(sha256sum "$CFG" | awk '{print $1}')
 sleep 1
-sh "$ROOT/installers/install.sh" --version "$VERSION_TWO" -o "$DEST"
+run_installer --version "$VERSION_TWO" -o "$DEST"
 assert_install "$VERSION_TWO" "$SHA_TWO" release-two
 assert_config_enabled
 CFG_AFTER_PLAIN_UPDATE=$(sha256sum "$CFG" | awk '{print $1}')
@@ -205,7 +240,7 @@ sed -i 's#^WebUI\\AlternativeUIEnabled=.*#WebUI\\AlternativeUIEnabled=false#' "$
 sed -i 's#^WebUI\\RootFolder=.*#WebUI\\RootFolder=/post-upgrade-mutated#' "$CFG"
 CFG_BEFORE_PLAIN_ROLLBACK=$(sha256sum "$CFG" | awk '{print $1}')
 
-sh "$ROOT/installers/install.sh" --rollback
+run_installer --rollback
 assert_install "$VERSION_ONE" "$SHA_ONE" release-one
 CFG_AFTER_PLAIN_ROLLBACK=$(sha256sum "$CFG" | awk '{print $1}')
 test "$CFG_AFTER_PLAIN_ROLLBACK" = "$CFG_BEFORE_PLAIN_ROLLBACK"
@@ -213,7 +248,7 @@ grep -Fx 'WebUI\AlternativeUIEnabled=false' "$CFG" >/dev/null
 grep -Fx 'WebUI\RootFolder=/post-upgrade-mutated' "$CFG" >/dev/null
 
 sleep 1
-sh "$ROOT/installers/install.sh" --version "$VERSION_TWO" --configure -o "$DEST"
+run_installer --version "$VERSION_TWO" --configure -o "$DEST"
 assert_install "$VERSION_TWO" "$SHA_TWO" release-two
 assert_config_enabled
 CONFIGURED_BACKUP=$(cat "$STATE/last-backup")
@@ -221,13 +256,13 @@ assert_archive_backup "$CONFIGURED_BACKUP" "$VERSION_ONE"
 grep -Fx 'WebUI\AlternativeUIEnabled=false' "$CONFIGURED_BACKUP/qBittorrent.conf" >/dev/null
 grep -Fx 'WebUI\RootFolder=/post-upgrade-mutated' "$CONFIGURED_BACKUP/qBittorrent.conf" >/dev/null
 
-sh "$ROOT/installers/install.sh" --rollback --configure
+run_installer --rollback --configure
 assert_install "$VERSION_ONE" "$SHA_ONE" release-one
 grep -Fx 'WebUI\AlternativeUIEnabled=false' "$CFG" >/dev/null
 grep -Fx 'WebUI\RootFolder=/post-upgrade-mutated' "$CFG" >/dev/null
 
 sleep 1
-sh "$ROOT/installers/install.sh" --version "$VERSION_ONE" --configure -o "$DEST"
+run_installer --version "$VERSION_ONE" --configure -o "$DEST"
 assert_install "$VERSION_ONE" "$SHA_ONE" release-one
 assert_config_enabled
 
@@ -235,7 +270,7 @@ test "$(cat "$STATE/last-dest")" = "$DEST"
 test "$(cat "$STATE/last-qb-root-folder")" = "$DEST"
 
 sleep 1
-sh "$ROOT/installers/install.sh" -uninstall -configure -o "$DEST"
+run_installer -uninstall -configure -o "$DEST"
 test ! -e "$DEST"
 grep -Fx 'WebUI\AlternativeUIEnabled=false' "$CFG" >/dev/null
 grep -Fx "WebUI\\RootFolder=$DEST" "$CFG" >/dev/null
@@ -243,12 +278,12 @@ UNINSTALL_BACKUP=$(cat "$STATE/last-backup")
 test "$(cat "$UNINSTALL_BACKUP/had-webui")" = 1
 assert_archive_backup "$UNINSTALL_BACKUP" "$VERSION_ONE"
 
-sh "$ROOT/installers/install.sh" -rollback -configure
+run_installer -rollback -configure
 assert_install "$VERSION_ONE" "$SHA_ONE" release-one
 assert_config_enabled
 
 sleep 1
-sh "$ROOT/installers/install.sh" -uninstall -configure -purge -o "$DEST"
+run_installer -uninstall -configure -purge -o "$DEST"
 test ! -e "$DEST"
 test ! -e "$STATE/last-backup"
 test ! -e "$STATE/last-dest"
@@ -268,11 +303,11 @@ if [ -n "$remaining_backup" ]; then
   echo "Purge left an installer-owned backup for $DEST: $remaining_backup" >&2
   exit 1
 fi
-if sh "$ROOT/installers/install.sh" -rollback >/dev/null 2>&1; then
+if run_installer -rollback >/dev/null 2>&1; then
   echo "Rollback unexpectedly succeeded after target backup purge." >&2
   exit 1
 fi
-sh "$ROOT/installers/install.sh" --version "$VERSION_ONE" --configure -o "$DEST"
+run_installer --version "$VERSION_ONE" --configure -o "$DEST"
 assert_install "$VERSION_ONE" "$SHA_ONE" release-one
 assert_config_enabled
 
@@ -280,7 +315,7 @@ sed -i 's#^WebUI\\AlternativeUIEnabled=.*#WebUI\\AlternativeUIEnabled=false#' "$
 sed -i 's#^WebUI\\RootFolder=.*#WebUI\\RootFolder=/disabled-user-root#' "$CFG"
 DISABLED_CFG_BEFORE_PLAIN_UPDATE=$(sha256sum "$CFG" | awk '{print $1}')
 sleep 1
-sh "$ROOT/installers/install.sh" --version "$VERSION_TWO" -o "$DEST"
+run_installer --version "$VERSION_TWO" -o "$DEST"
 assert_install "$VERSION_TWO" "$SHA_TWO" release-two
 DISABLED_CFG_AFTER_PLAIN_UPDATE=$(sha256sum "$CFG" | awk '{print $1}')
 test "$DISABLED_CFG_AFTER_PLAIN_UPDATE" = "$DISABLED_CFG_BEFORE_PLAIN_UPDATE"
@@ -336,5 +371,5 @@ const evidence={
 fs.writeFileSync(path.join(root,'artifacts/install-lifecycle/linux.json'),JSON.stringify(evidence,null,2)+'\n');
 NODE
 
-printf 'Linux installer lifecycle passed: install %s -> upgrade %s -> rollback %s -> uninstall -> rollback -> purge uninstall -> clean reinstall -> disabled-state plain update\n' \
-  "$VERSION_ONE" "$VERSION_TWO" "$VERSION_ONE"
+printf 'Linux installer lifecycle (%s) passed: install %s -> upgrade %s -> rollback %s -> uninstall -> rollback -> purge uninstall -> clean reinstall -> disabled-state plain update\n' \
+  "$INSTALLER_PROFILE" "$VERSION_ONE" "$VERSION_TWO" "$VERSION_ONE"
