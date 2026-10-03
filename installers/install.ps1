@@ -92,6 +92,7 @@ function Test-DevPayloadCanRepresentHead([string]$PublishedSha,[string]$DevHeadS
 if($Help){ Show-Usage; exit 0 }
 
 $DestinationExplicit=$PSBoundParameters.ContainsKey('Destination')
+$LegacyDefaultDestination="$env:LOCALAPPDATA\WeiG_qB-WebUI"
 $ChannelExplicit=$PSBoundParameters.ContainsKey('Channel')
 if($Rollback){ $Mode='Rollback' }
 if($Uninstall){ $Mode='Uninstall' }
@@ -99,6 +100,11 @@ if($Purge -and $Mode -ne 'Uninstall'){ throw '-purge can only be used together w
 if($Dev){
   if($ChannelExplicit -and $Channel -eq 'Release'){ throw '-dev conflicts with -Channel Release.' }
   $Channel='Dev'
+}
+
+if(!$DestinationExplicit -and ($Mode -eq 'Install' -or $Mode -eq 'Update') -and !(Test-Path -LiteralPath $Destination) -and (Test-Path -LiteralPath $LegacyDefaultDestination -PathType Container)){
+  $Destination=$LegacyDefaultDestination
+  Write-Host "Using existing legacy install directory: $Destination"
 }
 
 $releaseVersion=$Version.Trim()
