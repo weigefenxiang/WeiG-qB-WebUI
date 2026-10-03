@@ -218,7 +218,7 @@ if [ "$TARGET_COUNT" -gt 0 ]; then
 fi
 
 if [ "$TARGET_COUNT" -gt 1 ]; then
-  duplicate=$(printf '%s\n' "$TARGETS" | sort | uniq -d | head -n1 || true)
+  duplicate=$(printf '%s\n' "$TARGETS" | sort | uniq -d | head -n 1 || true)
   [ -z "$duplicate" ] || { echo "Duplicate -o target: $duplicate" >&2; exit 2; }
   [ "$CONFIGURE" -eq 0 ] || { echo "Multiple -o targets cannot be combined with -configure; configure each qBittorrent instance separately." >&2; exit 2; }
   [ -z "$CONTAINER_REQUESTED" ] || { echo "Multiple -o targets cannot be combined with --container." >&2; exit 2; }
@@ -294,11 +294,61 @@ has_busybox_applet() {
   busybox --list 2>/dev/null | grep -qx "$1"
 }
 
+portable_mktemp_dir() {
+  pm_base=${TMPDIR:-/tmp}
+  if command -v mktemp >/dev/null 2>&1; then
+    mktemp -d "$pm_base/weig-qb-webui.XXXXXX" 2>/dev/null && return 0
+  fi
+  if has_busybox_applet mktemp; then
+    busybox mktemp -d "$pm_base/weig-qb-webui.XXXXXX" 2>/dev/null && return 0
+  fi
+  pm_i=0
+  umask 077
+  while [ "$pm_i" -lt 100 ]; do
+    pm_candidate="$pm_base/weig-qb-webui.$.$pm_i"
+    if mkdir "$pm_candidate" 2>/dev/null; then
+      printf '%s\n' "$pm_candidate"
+      return 0
+    fi
+    pm_i=$((pm_i+1))
+  done
+  echo "Unable to create a private temporary directory under $pm_base." >&2
+  return 1
+}
+
+portable_mktemp_file() {
+  pm_dir=$1
+  pm_prefix=$2
+  if command -v mktemp >/dev/null 2>&1; then
+    mktemp "$pm_dir/$pm_prefix.XXXXXX" 2>/dev/null && return 0
+  fi
+  if has_busybox_applet mktemp; then
+    busybox mktemp "$pm_dir/$pm_prefix.XXXXXX" 2>/dev/null && return 0
+  fi
+  pm_i=0
+  umask 077
+  while [ "$pm_i" -lt 100 ]; do
+    pm_candidate="$pm_dir/$pm_prefix.$.$pm_i"
+    pm_lock="$pm_candidate.lock"
+    if mkdir "$pm_lock" 2>/dev/null; then
+      if : > "$pm_candidate"; then
+        rmdir "$pm_lock" 2>/dev/null || true
+        printf '%s\n' "$pm_candidate"
+        return 0
+      fi
+      rmdir "$pm_lock" 2>/dev/null || true
+    fi
+    pm_i=$((pm_i+1))
+  done
+  echo "Unable to create a temporary file in $pm_dir." >&2
+  return 1
+}
+
 download_file() {
   url=$1
   out=$2
   if command -v curl >/dev/null 2>&1; then
-    curl -fL --retry 2 --connect-timeout 15 "$url" -o "$out"
+    curl -fL "$url" -o "$out"
     return
   fi
   if command -v wget >/dev/null 2>&1; then
@@ -334,12 +384,12 @@ extract_zip() {
     busybox unzip "$archive" -d "$target" >/dev/null
     return
   fi
-  if command -v python3 >/dev/null 2>&1; then
-    python3 -m zipfile -e "$archive" "$target"
-    return
-  fi
   if command -v bsdtar >/dev/null 2>&1; then
     bsdtar -xf "$archive" -C "$target"
+    return
+  fi
+  if command -v python3 >/dev/null 2>&1; then
+    python3 -m zipfile -e "$archive" "$target"
     return
   fi
   echo "No supported ZIP extractor found. Install unzip, use BusyBox/Python/bsdtar, or extract the package manually." >&2
@@ -390,12 +440,26 @@ assert_materialized_webui() {
   [ -s "$registry" ] || { echo "Materialized WebUI is missing the native Settings QBT_TR registry." >&2; return 1; }
   grep -Eq '^@@(P|SET|VAL|REF|META|S)([[:space:]]|$)' "$registry" || { echo "Materialized WebUI qB-owned copy registry is a placeholder or malformed." >&2; return 1; }
   [ -d "$translations" ] || { echo "Materialized WebUI is missing the translations directory." >&2; return 1; }
-  find "$translations" -maxdepth 1 -type f -name 'webui_*.qm' -print -quit | grep -q . || { echo "Materialized WebUI is missing official qB WebUI translation QM assets." >&2; return 1; }
+  qm_found=0
+  for qm_file in "$translations"/webui_*.qm; do
+    [ -f "$qm_file" ] || continue
+    qm_found=1
+    break
+  done
+  [ "$qm_found" -eq 1 ] || { echo "Materialized WebUI is missing official qB WebUI translation QM assets." >&2; return 1; }
 }
 
 inject_build_sha() {
   valid_sha "$SOURCE_SHA" || { echo "Unable to resolve a valid 40-character Git SHA for this payload." >&2; exit 1; }
-  find "$DEST.new" -type f \( -name '*.html' -o -name '*.js' -o -name '*.css' -o -name '*.json' -o -name 'GIT_SHA' \) -exec sed -i "s/__WEIG_GIT_SHA__/$SOURCE_SHA/g" {} +
+  INJECT_SHA="$SOURCE_SHA" find "$DEST.new" -type f \( -name '*.html' -o -name '*.js' -o -name '*.css' -o -name '*.json' -o -name 'GIT_SHA' \) -exec sh -c '
+    for inject_file do
+      inject_tmp="$inject_file.weig.$"
+      if ! sed "s/__WEIG_GIT_SHA__/$INJECT_SHA/g" "$inject_file" > "$inject_tmp"; then
+        rm -f "$inject_tmp"; exit 1
+      fi
+      mv "$inject_tmp" "$inject_file" || { rm -f "$inject_tmp"; exit 1; }
+    done
+  ' sh {} + || { echo "Unable to materialize build identity with portable sed." >&2; exit 1; }
   printf '%s\n' "$SOURCE_SHA" > "$DEST.new/GIT_SHA"
 }
 
@@ -461,7 +525,7 @@ select_qb_docker() {
         if [ "$source" = "$DOCKER_CONFIG_ROOT" ]; then
           printf '%s|%s\n' "$name" "$image"
         fi
-      done | head -n1)
+      done | head -n 1)
       if [ -n "$match" ]; then
         DOCKER_CONTAINER=${match%%|*}
         image=${match#*|}
@@ -489,7 +553,7 @@ select_qb_docker() {
       echo "Re-run with --container <name> or --config-root <host /config path>." >&2
       exit 3
     fi
-    line=$(printf '%s\n' "$lines" | head -n1)
+    line=$(printf '%s\n' "$lines" | head -n 1)
   fi
 
   id=${line%%|*}
@@ -587,11 +651,11 @@ configure_qb_webui_file() {
   validate_qb_webui_config_file "$cfg" "$qb_root" 0 || return 1
 
   backup="$cfg.weig.bak"
-  cp -a "$cfg" "$backup"
+  cp -p "$cfg" "$backup" 2>/dev/null || cp "$cfg" "$backup"
   cmp -s "$cfg" "$backup" || { echo "qBittorrent safety backup is not byte-identical; refusing mutation." >&2; return 1; }
 
   cfg_dir=$(dirname "$cfg")
-  tmp_cfg=$(mktemp "$cfg_dir/.weig-qb-config.XXXXXX")
+  tmp_cfg=$(portable_mktemp_file "$cfg_dir" ".weig-qb-config") || return 1
   tmp_body="$tmp_cfg.body"
   cleanup_qb_tmp() { rm -f "$tmp_cfg" "$tmp_body"; }
   cp -p "$cfg" "$tmp_cfg" 2>/dev/null || cp "$cfg" "$tmp_cfg"
@@ -639,12 +703,12 @@ configure_qb_webui_file() {
   fi
   if ! mv "$tmp_cfg" "$cfg"; then
     cleanup_qb_tmp
-    cp -a "$backup" "$cfg"
+    cp -p "$backup" "$cfg" 2>/dev/null || cp "$backup" "$cfg"
     echo "Failed to atomically replace qBittorrent config; original restored." >&2
     return 1
   fi
   if ! validate_qb_webui_config_file "$cfg" "$qb_root" 1; then
-    cp -a "$backup" "$cfg"
+    cp -p "$backup" "$cfg" 2>/dev/null || cp "$backup" "$cfg"
     echo "qBittorrent config post-write verification failed; original restored." >&2
     return 1
   fi
@@ -671,11 +735,11 @@ disable_qb_webui_file() {
   qb_config_has_exact_line "$cfg" "WebUI\\RootFolder=$qb_root" || { echo "qBittorrent Root Folder does not match the uninstall target; refusing config mutation." >&2; return 1; }
 
   backup="$cfg.weig.bak"
-  cp -a "$cfg" "$backup"
+  cp -p "$cfg" "$backup" 2>/dev/null || cp "$cfg" "$backup"
   cmp -s "$cfg" "$backup" || { echo "qBittorrent safety backup is not byte-identical; refusing mutation." >&2; return 1; }
 
   cfg_dir=$(dirname "$cfg")
-  tmp_cfg=$(mktemp "$cfg_dir/.weig-qb-uninstall.XXXXXX")
+  tmp_cfg=$(portable_mktemp_file "$cfg_dir" ".weig-qb-uninstall") || return 1
   tmp_body="$tmp_cfg.body"
   cleanup_qb_uninstall_tmp() { rm -f "$tmp_cfg" "$tmp_body"; }
   cp -p "$cfg" "$tmp_cfg" 2>/dev/null || cp "$cfg" "$tmp_cfg"
@@ -710,14 +774,14 @@ disable_qb_webui_file() {
 
   if ! mv "$tmp_cfg" "$cfg"; then
     cleanup_qb_uninstall_tmp
-    cp -a "$backup" "$cfg"
+    cp -p "$backup" "$cfg" 2>/dev/null || cp "$backup" "$cfg"
     echo "Failed to atomically replace qBittorrent config during uninstall; original restored." >&2
     return 1
   fi
   if ! validate_qb_webui_config_file "$cfg" "$qb_root" 0 \
     || ! qb_config_has_exact_line "$cfg" "WebUI\\RootFolder=$qb_root" \
     || ! qb_config_has_exact_line "$cfg" "WebUI\\AlternativeUIEnabled=false"; then
-    cp -a "$backup" "$cfg"
+    cp -p "$backup" "$cfg" 2>/dev/null || cp "$backup" "$cfg"
     echo "qBittorrent uninstall config post-write verification failed; original restored." >&2
     return 1
   fi
@@ -798,9 +862,15 @@ find_config() {
     if [ "$root" = "/var/lib" ]; then
       found=$(find "$root" \
         \( -path '/var/lib/docker' -o -path '/var/lib/docker/*' \) -prune -o \
-        -maxdepth 6 -type f \( -name qBittorrent.conf -o -name qBittorrent.ini \) -print 2>/dev/null | head -n1 || true)
+        -type f \( -name qBittorrent.conf -o -name qBittorrent.ini \) -print 2>/dev/null | awk -v root="$root" '
+          BEGIN { prefix=root "/"; limit=6 }
+          index($0,prefix)==1 { rel=substr($0,length(prefix)+1); depth=gsub(/\//,"/",rel)+1; if(depth<=limit){print; exit} }
+        ' || true)
     else
-      found=$(find "$root" -maxdepth 6 -type f \( -name qBittorrent.conf -o -name qBittorrent.ini \) 2>/dev/null | head -n1 || true)
+      found=$(find "$root" -type f \( -name qBittorrent.conf -o -name qBittorrent.ini \) -print 2>/dev/null | awk -v root="$root" '
+        BEGIN { prefix=root "/"; limit=6 }
+        index($0,prefix)==1 { rel=substr($0,length(prefix)+1); depth=gsub(/\//,"/",rel)+1; if(depth<=limit){print; exit} }
+      ' || true)
     fi
     if [ -n "$found" ] && is_safe_config_path "$found"; then
       printf '%s\n' "$found"
@@ -817,12 +887,13 @@ backup_is_owned() {
 
 owned_backups_for_dest() {
   target=$1
-  find "$BACKUPS" -mindepth 1 -maxdepth 1 -type d -print 2>/dev/null | sort -r | while IFS= read -r backup; do
+  for backup in "$BACKUPS"/*; do
+    [ -d "$backup" ] || continue
     backup_is_owned "$backup" || continue
     saved_dest=$(cat "$backup/dest-path" 2>/dev/null || true)
     [ "$saved_dest" = "$target" ] || continue
     printf '%s\n' "$backup"
-  done
+  done | sort -r
 }
 
 latest_backup_for_dest() {
@@ -838,7 +909,7 @@ prune_backups_for_dest() {
     [ -n "$backup" ] || continue
     count=$((count+1))
     if [ "$count" -gt "$keep" ]; then
-      rm -rf -- "$backup"
+      rm -rf "$backup"
       echo "Pruned old installer backup: $backup"
     fi
   done
@@ -857,15 +928,15 @@ purge_backups_for_dest() {
 
   owned_backups_for_dest "$target" | while IFS= read -r backup; do
     [ -n "$backup" ] || continue
-    rm -rf -- "$backup"
+    rm -rf "$backup"
     echo "Purged installer backup: $backup"
   done
 
   if [ -n "$last_backup_for_target" ]; then
-    rm -f -- "$STATE/last-backup"
+    rm -f "$STATE/last-backup"
   fi
   if [ -s "$STATE/last-dest" ] && [ "$(cat "$STATE/last-dest" 2>/dev/null || true)" = "$target" ]; then
-    rm -f -- "$STATE/last-dest" "$STATE/last-qb-root-folder"
+    rm -f "$STATE/last-dest" "$STATE/last-qb-root-folder"
   fi
   rmdir "$BACKUPS" 2>/dev/null || true
   rmdir "$STATE" 2>/dev/null || true
@@ -933,12 +1004,12 @@ create_webui_backup_payload() {
   backup_root=$2
   backup_archive="$backup_root/webui.tar.gz"
   if command -v tar >/dev/null 2>&1; then
-    rm -f -- "$backup_archive"
+    rm -f "$backup_archive"
     if tar -C "$backup_source" -czf "$backup_archive" . 2>/dev/null && record_backup_archive "$backup_root" "$backup_archive" "tar.gz" "tar"; then
       echo "Backup payload: compressed tar.gz ($(cat "$backup_root/archive-manifest" | sed -n 's/^bytes=//p') bytes)"
       return 0
     fi
-    rm -f -- "$backup_archive"
+    rm -f "$backup_archive"
   fi
 
   backup_7z=""
@@ -947,22 +1018,22 @@ create_webui_backup_payload() {
   done
   if [ -n "$backup_7z" ]; then
     backup_archive="$backup_root/webui.7z"
-    rm -f -- "$backup_archive"
+    rm -f "$backup_archive"
     if (cd "$backup_source" && "$backup_7z" a -bd -y -t7z -mx=5 "$backup_archive" . >/dev/null 2>&1) && record_backup_archive "$backup_root" "$backup_archive" "7z" "$backup_7z"; then
       echo "Backup payload: compressed 7z ($(sed -n 's/^bytes=//p' "$backup_root/archive-manifest") bytes)"
       return 0
     fi
-    rm -f -- "$backup_archive"
+    rm -f "$backup_archive"
   fi
 
   if command -v zip >/dev/null 2>&1; then
     backup_archive="$backup_root/webui.zip"
-    rm -f -- "$backup_archive"
+    rm -f "$backup_archive"
     if (cd "$backup_source" && zip -qry "$backup_archive" .) && record_backup_archive "$backup_root" "$backup_archive" "zip" "zip"; then
       echo "Backup payload: compressed zip ($(sed -n 's/^bytes=//p' "$backup_root/archive-manifest") bytes)"
       return 0
     fi
-    rm -f -- "$backup_archive"
+    rm -f "$backup_archive"
   fi
 
   echo "No verified compressed backup backend with SHA-256 support is available; refusing an unverified directory backup." >&2
@@ -1000,7 +1071,7 @@ extract_webui_backup_payload() {
   # Bounded legacy reader for backups created before archive payloads existed.
   if [ -d "$backup_extract_root/webui" ]; then
     mkdir -p "$backup_extract_stage" || return 1
-    cp -a "$backup_extract_root/webui/." "$backup_extract_stage/" || return 1
+    cp -Rp "$backup_extract_root/webui/." "$backup_extract_stage/" || return 1
     return 0
   fi
 
@@ -1033,7 +1104,7 @@ extract_webui_backup_payload() {
       ;;
   esac
 
-  backup_extract_probe=$(find "$backup_extract_stage" -mindepth 1 -print -quit 2>/dev/null || true)
+  backup_extract_probe=$(find "$backup_extract_stage" ! -path "$backup_extract_stage" -print 2>/dev/null | sed -n '1p' || true)
   [ -n "$backup_extract_probe" ] || { echo "Backup archive extracted no WebUI files." >&2; return 1; }
   return 0
 }
@@ -1065,7 +1136,7 @@ backup_target() {
     cfg=$(find_config || true)
   fi
   if [ -n "$cfg" ]; then
-    cp -a "$cfg" "$b/qBittorrent.conf"
+    cp -p "$cfg" "$b/qBittorrent.conf" 2>/dev/null || cp "$cfg" "$b/qBittorrent.conf"
     printf '%s\n' "$cfg" > "$b/config-path"
   fi
 
@@ -1086,7 +1157,7 @@ deploy_staged_webui() {
   for deploy_required in public/index.html public/login.html private/index.html VERSION GIT_SHA private/weig-install.json; do
     [ -f "$deploy_stage/$deploy_required" ] || { echo "Prepared WebUI stage is missing $deploy_required." >&2; return 1; }
   done
-  if find "$deploy_stage" -type l -print -quit | grep -q .; then
+  if find "$deploy_stage" -type l -print 2>/dev/null | sed -n '1p' | grep -q .; then
     echo "Prepared WebUI stage contains a symlink; refusing a qBittorrent Alternative WebUI deployment." >&2
     return 1
   fi
@@ -1124,8 +1195,8 @@ deploy_staged_webui() {
       fi
       deploy_tmp="$deploy_parent/.weig-stage-$"
       while [ -e "$deploy_tmp" ]; do deploy_tmp="$deploy_tmp.x"; done
-      cp -p -- "$deploy_src" "$deploy_tmp" || { rm -f -- "$deploy_tmp"; exit 1; }
-      mv -f -- "$deploy_tmp" "$deploy_dst" || { rm -f -- "$deploy_tmp"; exit 1; }
+      cp -p "$deploy_src" "$deploy_tmp" || { rm -f "$deploy_tmp"; exit 1; }
+      mv -f "$deploy_tmp" "$deploy_dst" || { rm -f "$deploy_tmp"; exit 1; }
     done
   ' sh {} + || return 1
 
@@ -1133,7 +1204,7 @@ deploy_staged_webui() {
     for deploy_path do
       deploy_rel=${deploy_path#"$DEPLOY_DEST"/}
       [ -f "$DEPLOY_STAGE/$deploy_rel" ] && continue
-      rm -f -- "$deploy_path" || exit 1
+      rm -f "$deploy_path" || exit 1
     done
   ' sh {} + || return 1
 
@@ -1142,7 +1213,7 @@ deploy_staged_webui() {
       [ "$deploy_dir" = "$DEPLOY_DEST" ] && continue
       deploy_rel=${deploy_dir#"$DEPLOY_DEST"/}
       [ -d "$DEPLOY_STAGE/$deploy_rel" ] && continue
-      rmdir -- "$deploy_dir" 2>/dev/null || true
+      rmdir "$deploy_dir" 2>/dev/null || true
     done
   ' sh {} + || return 1
 
@@ -1153,7 +1224,7 @@ deploy_staged_webui() {
     return 1
   fi
 
-  rm -rf -- "$deploy_stage"
+  rm -rf "$deploy_stage"
   [ -f "$deploy_dest/public/index.html" ] && [ -f "$deploy_dest/public/login.html" ] && [ -f "$deploy_dest/private/index.html" ] || {
     echo "Live WebUI verification failed after deployment: $deploy_dest" >&2
     return 1
@@ -1173,17 +1244,17 @@ restore_webui_from_backup() {
     restore_stage="$dest.weig-restore.$$"
     [ ! -e "$restore_stage" ] || { echo "Restore staging path already exists: $restore_stage" >&2; return 1; }
     if ! extract_webui_backup_payload "$b" "$restore_stage"; then
-      rm -rf -- "$restore_stage"
+      rm -rf "$restore_stage"
       return 1
     fi
     if ! deploy_staged_webui "$dest" "$restore_stage"; then
-      rm -rf -- "$restore_stage"
+      rm -rf "$restore_stage"
       echo "Unable to restore verified backup into the live WebUI: $dest" >&2
       return 1
     fi
     echo "Restored previous WebUI: $dest"
   else
-    rm -rf -- "$dest"
+    rm -rf "$dest"
     echo "Removed WeiG qB WebUI from: $dest"
   fi
 }
@@ -1204,7 +1275,7 @@ restore_full_backup() {
 
   if [ "$CONFIGURE" -eq 1 ]; then
     mkdir -p "$(dirname "$cfg")"
-    cp -a "$b/qBittorrent.conf" "$cfg"
+    cp -p "$b/qBittorrent.conf" "$cfg" 2>/dev/null || cp "$b/qBittorrent.conf" "$cfg"
     echo "Restored qBittorrent WebUI config by explicit -configure: $cfg"
   fi
 }
@@ -1235,7 +1306,7 @@ EOF_TARGETS
   done < "$plan"
 }
 
-TMP=$(mktemp -d)
+TMP=$(portable_mktemp_dir) || exit 1
 trap 'rm -rf "$TMP"' EXIT INT TERM
 
 if [ "$MODE" = "uninstall" ]; then
@@ -1266,7 +1337,7 @@ EOF_UNINSTALL_TARGETS
 
   while IFS= read -r target; do
     [ -n "$target" ] || continue
-    rm -rf -- "$target"
+    rm -rf "$target"
     [ ! -e "$target" ] || { echo "Failed to remove WeiG qB WebUI: $target" >&2; exit 1; }
     echo "Uninstalled WeiG qB WebUI: $target"
   done <<EOF_UNINSTALL_REMOVE
@@ -1316,7 +1387,7 @@ if [ "$CHANNEL" = "main" ]; then
     fi
     exit 1
   }
-  RESOLVED_RELEASE_TAG=$(sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$RELEASE_META" | head -n1)
+  RESOLVED_RELEASE_TAG=$(sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$RELEASE_META" | head -n 1)
   printf '%s' "$RESOLVED_RELEASE_TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$' || {
     echo "GitHub Release metadata returned an invalid tag: ${RESOLVED_RELEASE_TAG:-<empty>}." >&2
     exit 1
@@ -1332,7 +1403,7 @@ if [ "$CHANNEL" = "main" ]; then
     echo "Unable to resolve commit identity for Release $RESOLVED_RELEASE_TAG." >&2
     exit 1
   }
-  RELEASE_EXPECTED_SHA=$(sed -n 's/^[[:space:]]*"sha"[[:space:]]*:[[:space:]]*"\([0-9a-fA-F]\{40\}\)".*/\1/p' "$RELEASE_COMMIT_META" | head -n1 | tr 'A-F' 'a-f')
+  RELEASE_EXPECTED_SHA=$(sed -n 's/^[[:space:]]*"sha"[[:space:]]*:[[:space:]]*"\([0-9a-fA-F]\{40\}\)".*/\1/p' "$RELEASE_COMMIT_META" | head -n 1 | tr 'A-F' 'a-f')
   valid_sha "$RELEASE_EXPECTED_SHA" || { echo "Release $RESOLVED_RELEASE_TAG did not resolve to a valid commit SHA." >&2; exit 1; }
 
   RELEASE_TAG="$RESOLVED_RELEASE_TAG"
@@ -1369,7 +1440,7 @@ if [ "$CHANNEL" = "main" ]; then
 else
   DEV_META="$TMP/dev-commit.json"
   download_file "https://api.github.com/repos/$REPO/commits/dev" "$DEV_META" || { echo "Unable to resolve the current dev commit." >&2; exit 1; }
-  DEV_HEAD_SHA=$(sed -n 's/^[[:space:]]*"sha":[[:space:]]*"\([0-9a-fA-F]\{40\}\)".*/\1/p' "$DEV_META" | head -n1)
+  DEV_HEAD_SHA=$(sed -n 's/^[[:space:]]*"sha":[[:space:]]*"\([0-9a-fA-F]\{40\}\)".*/\1/p' "$DEV_META" | head -n 1)
   valid_sha "$DEV_HEAD_SHA" || { echo "GitHub did not return a valid dev commit SHA." >&2; exit 1; }
 
   PUBLISHED_SHA_FILE="$TMP/DEV_GIT_SHA"
@@ -1432,7 +1503,7 @@ prepare_target() {
   QBT_ROOT_FOLDER="$qb_root"
   rm -rf "$DEST.new"
   mkdir -p "$DEST.new"
-  cp -a "$SRC"/. "$DEST.new"/
+  cp -Rp "$SRC"/. "$DEST.new"/
   inject_build_sha
   write_install_metadata
   if [ "$CHANNEL" = "dev" ]; then
