@@ -100,7 +100,7 @@ await page.locator('#filter-nav [data-filter="all"]').click();await page.waitFor
       ['add-up-limit','Limit upload rate','HttpServer']
     ];
     const row=spec=>{
-      const [id,source,context]=spec,node=document.getElementById(id),field=node&&node.closest('.add-option-field'),copy=field&&field.querySelector(':scope > span, :scope > label'),actual=String(copy?.textContent||'').trim(),expected=String(WeiG.I18n.qbSourceText({source,context},source)||'').trim();
+      const [id,source,context]=spec,node=document.getElementById(id),field=node&&node.closest('.add-option-field,.add-option-check'),copy=field&&field.querySelector(':scope > span, :scope > label'),actual=String(copy?.textContent||'').trim(),expected=String(WeiG.I18n.qbSourceText({source,context},source)||'').trim();
       return{id,source,context,present:!!node,actual,expected,localized:expected!==source};
     };
     return{
