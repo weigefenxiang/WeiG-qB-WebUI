@@ -1,7 +1,7 @@
 param(
   [ValidateSet('Install','Update','Rollback','Uninstall')][string]$Mode='Install',
   [ValidateSet('Release','Dev')][string]$Channel='Release',
-  [Alias('o','output')][string]$Destination="$env:LOCALAPPDATA\WeiG_qB-WebUI",
+  [Alias('o','output')][string]$Destination="$env:LOCALAPPDATA\weig-qb-webui",
   [string]$QBConfig='',
   [string]$Version='',
   [switch]$Dev,
@@ -912,12 +912,13 @@ function Inject-BuildSha([string]$Root,[string]$Sha) {
   [IO.File]::WriteAllText((Join-Path $Root 'GIT_SHA'),$Sha+"`n",$utf8)
 }
 
-function Verify-PackageChecksum([string]$Archive,[string]$SumFile) {
-  $sumLine=Get-Content $SumFile | Where-Object { $_ -match '\s+\*?WeiG-qB-WebUI\.zip$' } | Select-Object -First 1
-  if(!$sumLine){throw 'SHA256SUMS does not contain WeiG-qB-WebUI.zip; refusing installation.'}
+function Verify-PackageChecksum([string]$Archive,[string]$SumFile,[string]$ArchiveName) {
+  $escaped=[regex]::Escape($ArchiveName)
+  $sumLine=Get-Content $SumFile | Where-Object { $_ -match ("\s+\*?"+$escaped+"$") } | Select-Object -First 1
+  if(!$sumLine){throw "SHA256SUMS does not contain $ArchiveName; refusing installation."}
   $expected=(($sumLine -split '\s+')[0]).ToLowerInvariant()
   $actual=(Get-FileHash $Archive -Algorithm SHA256).Hash.ToLowerInvariant()
-  if($expected -notmatch '^[0-9a-f]{64}$' -or $expected -ne $actual){throw 'SHA256 verification failed.'}
+  if($expected -notmatch '^[0-9a-f]{64}$' -or $expected -ne $actual){throw "SHA256 verification failed for $ArchiveName."}
 }
 
 function Assert-MaterializedWebUI([string]$Root) {
@@ -952,7 +953,8 @@ $deploymentBackup=Backup-Current $cfg
 $tmp=Join-Path ([IO.Path]::GetTempPath()) ("weig-qb-"+[guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Force -Path $tmp | Out-Null
 try {
-  $archive=Join-Path $tmp 'WeiG-qB-WebUI.zip'
+  $archive=$null
+  $archiveName=$null
   $sourceSha=$null
   $web=$null
 
@@ -961,52 +963,47 @@ try {
     $requestedReleaseTag=$releaseTag
     $apiHeaders=@{'User-Agent'='WeiG-qB-WebUI-installer'}
     try {
-      if($requestedReleaseVersion){
-        $releaseMeta=Invoke-RestMethod -UseBasicParsing -Headers $apiHeaders "https://api.github.com/repos/$Repo/releases/tags/$requestedReleaseTag"
-      } else {
-        $releaseMeta=Invoke-RestMethod -UseBasicParsing -Headers $apiHeaders "https://api.github.com/repos/$Repo/releases/latest"
-      }
+      if($requestedReleaseVersion){$releaseMeta=Invoke-RestMethod -UseBasicParsing -Headers $apiHeaders "https://api.github.com/repos/$Repo/releases/tags/$requestedReleaseTag"}
+      else {$releaseMeta=Invoke-RestMethod -UseBasicParsing -Headers $apiHeaders "https://api.github.com/repos/$Repo/releases/latest"}
     } catch {
       if($requestedReleaseVersion){throw "Release $requestedReleaseTag was not found. Refusing to fall back to latest or dev."}
       throw 'No published stable GitHub Release is available. Release installation will not fall back to a branch archive.'
     }
-
     $resolvedReleaseTag=[string]$releaseMeta.tag_name
     if($resolvedReleaseTag -notmatch '^v(\d+\.\d+\.\d+)$'){throw "GitHub Release metadata returned an invalid tag: $resolvedReleaseTag"}
     $resolvedReleaseVersion=$Matches[1]
-    if($requestedReleaseTag -and $resolvedReleaseTag -ne $requestedReleaseTag){
-      throw "Requested $requestedReleaseTag but GitHub Release metadata resolved $resolvedReleaseTag; refusing mismatched Release identity."
-    }
-    try {
-      $releaseCommit=Invoke-RestMethod -UseBasicParsing -Headers $apiHeaders "https://api.github.com/repos/$Repo/commits/$resolvedReleaseTag"
-    } catch {
-      throw "Unable to resolve commit identity for Release $resolvedReleaseTag."
-    }
+    if($requestedReleaseTag -and $resolvedReleaseTag -ne $requestedReleaseTag){throw "Requested $requestedReleaseTag but GitHub Release metadata resolved $resolvedReleaseTag; refusing mismatched Release identity."}
+    try {$releaseCommit=Invoke-RestMethod -UseBasicParsing -Headers $apiHeaders "https://api.github.com/repos/$Repo/commits/$resolvedReleaseTag"} catch {throw "Unable to resolve commit identity for Release $resolvedReleaseTag."}
     $releaseExpectedSha=([string]$releaseCommit.sha).ToLowerInvariant()
     if($releaseExpectedSha -notmatch '^[0-9a-f]{40}$'){throw "Release $resolvedReleaseTag did not resolve to a valid commit SHA."}
-
-    $releaseTag=$resolvedReleaseTag
-    $releaseVersion=$resolvedReleaseVersion
+    $releaseTag=$resolvedReleaseTag; $releaseVersion=$resolvedReleaseVersion
     $releaseBase="https://github.com/$Repo/releases/download/$releaseTag"
     $releaseLabel="Release $releaseTag"
-
-    try {
-      Invoke-WebRequest -UseBasicParsing "$releaseBase/WeiG-qB-WebUI.zip" -OutFile $archive
-    } catch {
-      throw "$releaseLabel does not contain WeiG-qB-WebUI.zip. Refusing to fall back to another Release or branch."
-    }
-
     $sumFile=Join-Path $tmp 'SHA256SUMS'
-    try {
-      Invoke-WebRequest -UseBasicParsing "$releaseBase/SHA256SUMS" -OutFile $sumFile
-    } catch {
-      throw "$releaseLabel is missing SHA256SUMS; refusing an unverified installation."
-    }
-    Verify-PackageChecksum $archive $sumFile
+    try {Invoke-WebRequest -UseBasicParsing "$releaseBase/SHA256SUMS" -OutFile $sumFile} catch {throw "$releaseLabel is missing SHA256SUMS; refusing an unverified installation."}
 
+    $manifestFile=Join-Path $tmp 'manifest.json'
+    $manifestDownloaded=$false
+    try {Invoke-WebRequest -UseBasicParsing "$releaseBase/manifest.json" -OutFile $manifestFile; $manifestDownloaded=$true} catch {}
     $root=Join-Path $tmp 'release'
-    Expand-Archive $archive $root -Force
-    $web=Join-Path $root 'WeiG-qB-WebUI'
+    if($manifestDownloaded){
+      try {$manifest=Get-Content $manifestFile -Raw | ConvertFrom-Json} catch {throw "$releaseLabel contains an invalid manifest.json."}
+      if([string]$manifest.rootFolder -ne 'weig-qb-webui' -or [string]$manifest.zipArchive -ne 'weig-qb-webui.zip'){throw "$releaseLabel contains an unsupported distribution manifest."}
+      $archiveName=[string]$manifest.zipArchive
+      $archive=Join-Path $tmp $archiveName
+      try {Invoke-WebRequest -UseBasicParsing "$releaseBase/$archiveName" -OutFile $archive} catch {throw "$releaseLabel is missing canonical archive $archiveName."}
+      Verify-PackageChecksum $archive $sumFile $archiveName
+      Expand-Archive $archive $root -Force
+      $web=Join-Path $root ([string]$manifest.rootFolder)
+    } else {
+      $archiveName='WeiG-qB-WebUI.zip'
+      $archive=Join-Path $tmp $archiveName
+      try {Invoke-WebRequest -UseBasicParsing "$releaseBase/$archiveName" -OutFile $archive} catch {throw "$releaseLabel has neither the canonical manifest artifact set nor legacy $archiveName."}
+      Verify-PackageChecksum $archive $sumFile $archiveName
+      Expand-Archive $archive $root -Force
+      $web=Join-Path $root 'WeiG-qB-WebUI'
+    }
+
     $shaFile=Join-Path $web 'GIT_SHA'
     if(!(Test-Path $shaFile)){throw "$releaseLabel does not contain GIT_SHA; refusing an unversioned asset deployment."}
     $sourceSha=(Get-Content $shaFile -Raw).Trim().ToLowerInvariant()
@@ -1014,61 +1011,43 @@ try {
     $versionFile=Join-Path $web 'VERSION'
     if(!(Test-Path $versionFile)){throw "$releaseLabel does not contain VERSION; refusing an unversioned asset deployment."}
     $packageVersion=(Get-Content $versionFile -Raw).Trim()
-    if($packageVersion -ne $releaseVersion){
-      throw "$releaseLabel maps to VERSION=$releaseVersion but the package reports VERSION=$packageVersion; refusing mismatched Release content."
-    }
-    if($sourceSha -ne $releaseExpectedSha){
-      throw "$releaseLabel points to Git SHA $releaseExpectedSha but the package reports GIT_SHA=$sourceSha; refusing mismatched Release content."
-    }
-    Write-Host "Source: $releaseLabel at $releaseExpectedSha (checksum and Release identity verified)"
+    if($packageVersion -ne $releaseVersion){throw "$releaseLabel maps to VERSION=$releaseVersion but the package reports VERSION=$packageVersion; refusing mismatched Release content."}
+    if($sourceSha -ne $releaseExpectedSha){throw "$releaseLabel points to Git SHA $releaseExpectedSha but the package reports GIT_SHA=$sourceSha; refusing mismatched Release content."}
+    Write-Host "Source: $releaseLabel at $releaseExpectedSha ($archiveName; checksum and Release identity verified)"
   } else {
-    try {
-      $commit=Invoke-RestMethod -UseBasicParsing -Headers @{'User-Agent'='WeiG-qB-WebUI-installer'} "https://api.github.com/repos/$Repo/commits/dev"
-    } catch {
-      throw 'Unable to resolve the current dev commit.'
-    }
+    try {$commit=Invoke-RestMethod -UseBasicParsing -Headers @{'User-Agent'='WeiG-qB-WebUI-installer'} "https://api.github.com/repos/$Repo/commits/dev"} catch {throw 'Unable to resolve the current dev commit.'}
     $devHeadSha=([string]$commit.sha).ToLowerInvariant()
     if($devHeadSha -notmatch '^[0-9a-f]{40}$'){throw 'GitHub did not return a valid dev commit SHA.'}
-
     $publishedShaFile=Join-Path $tmp 'DEV_GIT_SHA'
-    try {
-      Invoke-WebRequest -UseBasicParsing "$DevDistBase/GIT_SHA" -OutFile $publishedShaFile
-    } catch {
-      throw 'The materialized dev WebUI payload is not published yet. Wait for Virtual qB Pages to finish and retry.'
-    }
+    try {Invoke-WebRequest -UseBasicParsing "$DevDistBase/GIT_SHA" -OutFile $publishedShaFile} catch {throw 'The materialized dev WebUI payload is not published yet. Wait for Virtual qB Pages to finish and retry.'}
     $publishedSha=(Get-Content $publishedShaFile -Raw).Trim().ToLowerInvariant()
     if($publishedSha -notmatch '^[0-9a-f]{40}$'){throw 'The materialized dev payload does not publish a valid GIT_SHA.'}
-
     $sourceSha=$publishedSha
     if($publishedSha -ne $devHeadSha){
-      if(Test-DevPayloadCanRepresentHead $publishedSha $devHeadSha){
-        Write-Host "Current dev HEAD $devHeadSha differs from materialized SHA $publishedSha only by Pages-irrelevant changes; reusing the verified payload."
-      } else {
-        throw "The materialized dev payload is still at $publishedSha while dev is $devHeadSha, and at least one Pages-relevant change is not published. Wait for the exact Pages build and retry; refusing raw-source fallback."
-      }
+      if(Test-DevPayloadCanRepresentHead $publishedSha $devHeadSha){Write-Host "Current dev HEAD $devHeadSha differs from materialized SHA $publishedSha only by Pages-irrelevant changes; reusing the verified payload."}
+      else {throw "The materialized dev payload is still at $publishedSha while dev is $devHeadSha, and at least one Pages-relevant change is not published. Wait for the exact Pages build and retry; refusing raw-source fallback."}
     }
-
+    $manifestFile=Join-Path $tmp 'manifest.json'
     $sumFile=Join-Path $tmp 'SHA256SUMS'
     try {
-      Invoke-WebRequest -UseBasicParsing "$DevDistBase/WeiG-qB-WebUI.zip" -OutFile $archive
+      Invoke-WebRequest -UseBasicParsing "$DevDistBase/manifest.json" -OutFile $manifestFile
       Invoke-WebRequest -UseBasicParsing "$DevDistBase/SHA256SUMS" -OutFile $sumFile
-    } catch {
-      throw "Unable to download the materialized dev payload for exact SHA $sourceSha."
-    }
-    Verify-PackageChecksum $archive $sumFile
+    } catch {throw "Unable to download the canonical materialized dev manifest for exact SHA $sourceSha."}
+    try {$manifest=Get-Content $manifestFile -Raw | ConvertFrom-Json} catch {throw 'Materialized dev manifest.json is invalid.'}
+    if([string]$manifest.rootFolder -ne 'weig-qb-webui' -or [string]$manifest.zipArchive -ne 'weig-qb-webui.zip'){throw 'Materialized dev distribution manifest is unsupported.'}
+    $archiveName=[string]$manifest.zipArchive
+    $archive=Join-Path $tmp $archiveName
+    try {Invoke-WebRequest -UseBasicParsing "$DevDistBase/$archiveName" -OutFile $archive} catch {throw "Unable to download the materialized dev archive $archiveName for exact SHA $sourceSha."}
+    Verify-PackageChecksum $archive $sumFile $archiveName
     $root=Join-Path $tmp 'dev'
     Expand-Archive $archive $root -Force
-    $web=Join-Path $root 'WeiG-qB-WebUI'
+    $web=Join-Path $root ([string]$manifest.rootFolder)
     $packageSha=(Get-Content (Join-Path $web 'GIT_SHA') -Raw).Trim().ToLowerInvariant()
     if($packageSha -ne $sourceSha){throw "Dev package Git SHA $packageSha does not match materialized dev SHA $sourceSha."}
     Assert-MaterializedWebUI $web
-    if($sourceSha -eq $devHeadSha){
-      Write-Host "Source: dev exact SHA $sourceSha (materialized Pages payload; checksum verified)"
-    } else {
-      Write-Host "Source: dev materialized SHA $sourceSha for current HEAD $devHeadSha (only Pages-irrelevant changes are newer; checksum verified)"
-    }
+    if($sourceSha -eq $devHeadSha){Write-Host "Source: dev exact SHA $sourceSha ($archiveName; materialized Pages payload; checksum verified)"}
+    else {Write-Host "Source: dev materialized SHA $sourceSha for current HEAD $devHeadSha ($archiveName; only Pages-irrelevant changes are newer; checksum verified)"}
   }
-
   if(!$web -or !(Test-Path $web)){ throw 'WebUI payload not found.' }
   if(!(Test-Path (Join-Path $web 'public\index.html')) -or !(Test-Path (Join-Path $web 'public\login.html')) -or !(Test-Path (Join-Path $web 'private\index.html'))){ throw 'Source package is not a valid qBittorrent Alternate WebUI.' }
 

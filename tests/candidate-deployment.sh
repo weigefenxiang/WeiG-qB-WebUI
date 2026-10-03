@@ -31,11 +31,13 @@ if [[ "${WEIG_CANDIDATE_MATRIX_CHILD:-0}" != 1 && -z "${WEIG_QB_IMAGE:-}" && -z 
   exit 0
 fi
 
-PACKAGE="$CANDIDATE_DIR/WeiG-qB-WebUI.zip"
+PACKAGE="$CANDIDATE_DIR/weig-qb-webui.zip"
+TAR_PACKAGE="$CANDIDATE_DIR/weig-qb-webui.tar.gz"
+MANIFEST="$CANDIDATE_DIR/manifest.json"
 SUMS="$CANDIDATE_DIR/SHA256SUMS"
 CANDIDATE_SHA_FILE="$CANDIDATE_DIR/CANDIDATE_SHA"
-LINUX_INSTALLER="$CANDIDATE_DIR/weig-install.sh"
-WINDOWS_INSTALLER="$CANDIDATE_DIR/weig-install.ps1"
+LINUX_INSTALLER="$CANDIDATE_DIR/install.sh"
+WINDOWS_INSTALLER="$CANDIDATE_DIR/install.ps1"
 IMAGE=${WEIG_QB_IMAGE:-'qbittorrentofficial/qbittorrent-nox@sha256:9ebb534fe30bab98622cb84a8c3acecfd88319b2d540f52ecdec7b9f866374d7'}
 EXPECTED_QB_VERSION=${WEIG_QB_EXPECTED_VERSION:-'5.2.3'}
 LOCALE_TARGET=${WEIG_QB_LOCALE_TARGET:-'zh_CN'}
@@ -52,7 +54,7 @@ command -v unzip >/dev/null || { echo 'unzip is required' >&2; exit 2; }
 command -v sha256sum >/dev/null || { echo 'sha256sum is required' >&2; exit 2; }
 command -v cmp >/dev/null || { echo 'cmp is required' >&2; exit 2; }
 command -v google-chrome >/dev/null || { echo 'Google Chrome Stable is required' >&2; exit 2; }
-[[ -s "$PACKAGE" && -s "$SUMS" && -s "$CANDIDATE_SHA_FILE" && -s "$LINUX_INSTALLER" && -s "$WINDOWS_INSTALLER" ]] || { echo 'Candidate artifact is incomplete.' >&2; exit 2; }
+[[ -s "$PACKAGE" && -s "$TAR_PACKAGE" && -s "$MANIFEST" && -s "$SUMS" && -s "$CANDIDATE_SHA_FILE" && -s "$LINUX_INSTALLER" && -s "$WINDOWS_INSTALLER" ]] || { echo 'Candidate artifact is incomplete.' >&2; exit 2; }
 
 CANDIDATE_SHA=$(tr -d '\r\n' < "$CANDIDATE_SHA_FILE")
 [[ "$CANDIDATE_SHA" =~ ^[0-9a-fA-F]{40}$ ]] || { echo 'CANDIDATE_SHA is not an exact Git SHA.' >&2; exit 1; }
@@ -64,21 +66,27 @@ cmp -s "$LINUX_INSTALLER" "$ROOT/installers/install.sh" || { echo 'Candidate Lin
 cmp -s "$WINDOWS_INSTALLER" "$ROOT/installers/install.ps1" || { echo 'Candidate Windows installer is not byte-identical to the exact-SHA source.' >&2; exit 1; }
 bash -n "$LINUX_INSTALLER"
 
-VERSION=$(unzip -p "$PACKAGE" WeiG-qB-WebUI/VERSION 2>/dev/null | tr -d '\r\n')
+VERSION=$(unzip -p "$PACKAGE" weig-qb-webui/VERSION 2>/dev/null | tr -d '\r\n')
 [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Candidate VERSION is invalid.' >&2; exit 1; }
-PACKAGE_GIT_SHA=$(unzip -p "$PACKAGE" WeiG-qB-WebUI/GIT_SHA 2>/dev/null | tr -d '\r\n')
+PACKAGE_GIT_SHA=$(unzip -p "$PACKAGE" weig-qb-webui/GIT_SHA 2>/dev/null | tr -d '\r\n')
 [[ "$PACKAGE_GIT_SHA" == "$EXPECTED_SHA" ]] || { echo 'Candidate package GIT_SHA does not match expected candidate SHA.' >&2; exit 1; }
-EXPECTED_SUM=$(awk '$2=="WeiG-qB-WebUI.zip" || $2=="*WeiG-qB-WebUI.zip" {print $1; exit}' "$SUMS" | tr 'A-F' 'a-f')
+EXPECTED_SUM=$(awk '$2=="weig-qb-webui.zip" || $2=="*weig-qb-webui.zip" {print $1; exit}' "$SUMS" | tr 'A-F' 'a-f')
+EXPECTED_TAR_SUM=$(awk '$2=="weig-qb-webui.tar.gz" || $2=="*weig-qb-webui.tar.gz" {print $1; exit}' "$SUMS" | tr 'A-F' 'a-f')
+EXPECTED_MANIFEST_SUM=$(awk '$2=="manifest.json" || $2=="*manifest.json" {print $1; exit}' "$SUMS" | tr 'A-F' 'a-f')
 ACTUAL_SUM=$(sha256sum "$PACKAGE" | awk '{print $1}' | tr 'A-F' 'a-f')
-[[ "$EXPECTED_SUM" =~ ^[0-9a-f]{64}$ && "$EXPECTED_SUM" == "$ACTUAL_SUM" ]] || { echo 'Candidate artifact SHA256 verification failed.' >&2; exit 1; }
+ACTUAL_TAR_SUM=$(sha256sum "$TAR_PACKAGE" | awk '{print $1}' | tr 'A-F' 'a-f')
+ACTUAL_MANIFEST_SUM=$(sha256sum "$MANIFEST" | awk '{print $1}' | tr 'A-F' 'a-f')
+[[ "$EXPECTED_SUM" =~ ^[0-9a-f]{64}$ && "$EXPECTED_SUM" == "$ACTUAL_SUM" ]] || { echo 'Candidate ZIP SHA256 verification failed.' >&2; exit 1; }
+[[ "$EXPECTED_TAR_SUM" =~ ^[0-9a-f]{64}$ && "$EXPECTED_TAR_SUM" == "$ACTUAL_TAR_SUM" ]] || { echo 'Candidate tar.gz SHA256 verification failed.' >&2; exit 1; }
+[[ "$EXPECTED_MANIFEST_SUM" =~ ^[0-9a-f]{64}$ && "$EXPECTED_MANIFEST_SUM" == "$ACTUAL_MANIFEST_SUM" ]] || { echo 'Candidate manifest SHA256 verification failed.' >&2; exit 1; }
 
 TMP=$(mktemp -d)
 HOME_DIR="$TMP/home"
 CONFIG_ROOT="$TMP/qb-config"
 DOWNLOADS="$TMP/downloads"
 MOCK_BIN="$TMP/mock-bin"
-DEST="$CONFIG_ROOT/weig_qb-webui"
-QB_ROOT='/config/weig_qb-webui'
+DEST="$CONFIG_ROOT/weig-qb-webui"
+QB_ROOT='/config/weig-qb-webui'
 QBT_CONFIG="$CONFIG_ROOT/qBittorrent/config/qBittorrent.conf"
 NAME="weigg-candidate-qb-${GITHUB_RUN_ID:-$$}-${RANDOM}"
 NET="weigg-candidate-net-${GITHUB_RUN_ID:-$$}-${RANDOM}"
@@ -116,7 +124,13 @@ case "$url" in
     printf '{\n  "sha": "%s"\n}\n' "$WEIG_CANDIDATE_SHA" > "$out"
     exit 0
     ;;
-  */releases/download/v"$WEIG_CANDIDATE_VERSION"/WeiG-qB-WebUI.zip)
+  */releases/download/v"$WEIG_CANDIDATE_VERSION"/manifest.json)
+    src="$WEIG_CANDIDATE_MANIFEST"
+    ;;
+  */releases/download/v"$WEIG_CANDIDATE_VERSION"/weig-qb-webui.tar.gz)
+    src="$WEIG_CANDIDATE_TAR_PACKAGE"
+    ;;
+  */releases/download/v"$WEIG_CANDIDATE_VERSION"/weig-qb-webui.zip)
     src="$WEIG_CANDIDATE_PACKAGE"
     ;;
   */releases/download/v"$WEIG_CANDIDATE_VERSION"/SHA256SUMS)
@@ -136,6 +150,8 @@ export XDG_CONFIG_HOME="$HOME_DIR/.config"
 export WEIG_CANDIDATE_VERSION="$VERSION"
 export WEIG_CANDIDATE_SHA="$EXPECTED_SHA"
 export WEIG_CANDIDATE_PACKAGE="$PACKAGE"
+export WEIG_CANDIDATE_TAR_PACKAGE="$TAR_PACKAGE"
+export WEIG_CANDIDATE_MANIFEST="$MANIFEST"
 export WEIG_CANDIDATE_SUMS="$SUMS"
 export PATH="$MOCK_BIN:$PATH"
 
@@ -306,7 +322,7 @@ WEIG_QB_ALT_WEBUI_PATH="$QB_ROOT" \
 
 mkdir -p "$ROOT/artifacts/candidate-deployment"
 EVIDENCE_PATH="$ROOT/artifacts/candidate-deployment/$EVIDENCE_BASENAME"
-export ROOT VERSION EXPECTED_SHA ACTUAL_SUM IMAGE RUNTIME_VERSION EXPECTED_QB_VERSION LOCALE_TARGET EVIDENCE_PATH
+export ROOT VERSION EXPECTED_SHA ACTUAL_SUM ACTUAL_TAR_SUM ACTUAL_MANIFEST_SUM IMAGE RUNTIME_VERSION EXPECTED_QB_VERSION LOCALE_TARGET EVIDENCE_PATH
 node <<'NODE'
 const fs=require('node:fs');
 const path=require('node:path');
@@ -314,7 +330,7 @@ const evidence={
   schemaVersion:2,
   kind:'release-candidate-deployment-acceptance',
   gitSha:process.env.EXPECTED_SHA,
-  candidate:{version:process.env.VERSION,packageSha256:process.env.ACTUAL_SUM},
+  candidate:{version:process.env.VERSION,packageSha256:process.env.ACTUAL_SUM,tarGzSha256:process.env.ACTUAL_TAR_SUM,manifestSha256:process.env.ACTUAL_MANIFEST_SUM},
   qB:{
     expectedVersion:process.env.EXPECTED_QB_VERSION,
     image:process.env.IMAGE,
@@ -327,6 +343,7 @@ const evidence={
     candidateSha:true,
     packageGitSha:true,
     packageSha256:true,
+    artifactSetSha256:true,
     installerReleasePath:true,
     exactCandidateInstallers:true,
     officialDockerConfig:true,
