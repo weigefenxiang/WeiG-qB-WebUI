@@ -371,7 +371,7 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1 -uninstall -configure -pu
 
 カスタムインストール先では `-o D:\weig-qb-webui` を追加してください。
 
-`-purge` は現在のアンインストール対象に属するバックアップだけを削除し、他のインストールには触れません。共有状態ディレクトリが空になれば、Linux の `~/.config/weig_qb-webui`（root は `/root/.config/weig_qb-webui`）または Windows の `%APPDATA%\WeiG_qB-WebUI` も削除されます。
+`-purge` は現在のアンインストール対象に属するバックアップだけを削除し、他のインストールには触れません。共有状態ディレクトリが空になれば、Linux の `~/.config/weig-qb-webui`（root は `/root/.config/weig-qb-webui`）または Windows の `%APPDATA%\weig-qb-webui` も削除されます。
 
 後で `-rollback` できるようバックアップを残す場合は、`-purge` を外してください。
 

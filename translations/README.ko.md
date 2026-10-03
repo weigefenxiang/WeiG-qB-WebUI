@@ -335,7 +335,7 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1 -uninstall -configure -pu
 
 사용자 지정 설치 경로라면 `-o D:\weig-qb-webui`를 추가하세요.
 
-`-purge`는 현재 제거 대상이 소유한 백업만 삭제하며 다른 설치의 백업은 건드리지 않습니다. 공유 상태 디렉터리가 비면 Linux의 `~/.config/weig_qb-webui`(root는 `/root/.config/weig_qb-webui`) 또는 Windows의 `%APPDATA%\WeiG_qB-WebUI`도 함께 제거됩니다.
+`-purge`는 현재 제거 대상이 소유한 백업만 삭제하며 다른 설치의 백업은 건드리지 않습니다. 공유 상태 디렉터리가 비면 Linux의 `~/.config/weig-qb-webui`(root는 `/root/.config/weig-qb-webui`) 또는 Windows의 `%APPDATA%\weig-qb-webui`도 함께 제거됩니다.
 
 나중에 `-rollback`을 위해 백업을 남기려면 `-purge`만 빼면 됩니다.
 

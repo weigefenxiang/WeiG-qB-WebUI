@@ -13,7 +13,7 @@
 最常用的一鍵安裝：
 
 ```sh
-curl -fsSL https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.sh -o weig_qb-webui_install.sh && sh weig_qb-webui_install.sh -configure
+curl -fsSL https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.sh -o install.sh && sh install.sh -configure
 ```
 
 <details>
@@ -24,37 +24,37 @@ curl -fsSL https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.s
 一般使用者：
 
 ```text
-~/.local/share/weig_qb-webui
+~/.local/share/weig-qb-webui
 ```
 
 例如：
 
 ```text
-/home/alex/.local/share/weig_qb-webui
+/home/alex/.local/share/weig-qb-webui
 ```
 
 使用 `root` 時通常是：
 
 ```text
-/root/.local/share/weig_qb-webui
+/root/.local/share/weig-qb-webui
 ```
 
 安裝腳本本身保留在目前目錄：
 
 ```text
-./weig_qb-webui_install.sh
+./install.sh
 ```
 
 ### 案例 1：最新正式版 + 自動設定
 
 ```sh
-sh weig_qb-webui_install.sh -configure
+sh install.sh -configure
 ```
 
 ### 案例 2：只安裝檔案
 
 ```sh
-sh weig_qb-webui_install.sh
+sh install.sh
 ```
 
 之後手動開啟 qBittorrent：
@@ -68,55 +68,55 @@ sh weig_qb-webui_install.sh
 ### 案例 3：指定版本
 
 ```sh
-sh weig_qb-webui_install.sh -version 1.0.0 -configure
+sh install.sh -version 1.0.0 -configure
 ```
 
 ### 案例 4：指定安裝目錄
 
 ```sh
-sh weig_qb-webui_install.sh -o /opt/weig_qb-webui -configure
+sh install.sh -o /opt/weig-qb-webui -configure
 ```
 
 或：
 
 ```sh
-sh weig_qb-webui_install.sh -o /opt/weig_qb-webui -configure
+sh install.sh -o /opt/weig-qb-webui -configure
 ```
 
 ### 案例 5：版本 + 目錄
 
 ```sh
-sh weig_qb-webui_install.sh -version 1.0.0 -o /opt/weig_qb-webui -configure
+sh install.sh -version 1.0.0 -o /opt/weig-qb-webui -configure
 ```
 
 ### 案例 6：測試 dev
 
 ```sh
-sh weig_qb-webui_install.sh -dev -configure
+sh install.sh -dev -configure
 ```
 
 ### 案例 7：升級 latest
 
 ```sh
-sh weig_qb-webui_install.sh -configure
+sh install.sh -configure
 ```
 
 升級到指定版本：
 
 ```sh
-sh weig_qb-webui_install.sh -version 0.1.1 -configure
+sh install.sh -version 0.1.1 -configure
 ```
 
 ### 案例 8：回滾
 
 ```sh
-sh weig_qb-webui_install.sh -rollback
+sh install.sh -rollback
 ```
 
 ### 案例 9：查看說明
 
 ```sh
-sh weig_qb-webui_install.sh -help
+sh install.sh -help
 ```
 
 Linux 安裝器會依序尋找可用的下載、解壓與 SHA-256 工具。若找不到任何可用的 SHA-256 工具，正式 Release 會拒絕在未驗證狀態下安裝。
@@ -130,7 +130,7 @@ Linux 安裝器會依序尋找可用的下載、解壓與 SHA-256 工具。若�
 先試最簡單的一鍵命令：
 
 ```sh
-curl -fsSL https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.sh -o weig_qb-webui_install.sh && sh weig_qb-webui_install.sh -configure
+curl -fsSL https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.sh -o install.sh && sh install.sh -configure
 ```
 
 <details>
@@ -157,13 +157,13 @@ volumes:
 如果 WebUI 實際儲存在宿主機：
 
 ```text
-/root/qbittorrent/config/weig_qb-webui
+/root/qbittorrent/config/weig-qb-webui
 ```
 
 qBittorrent 的 **檔案位置：** 通常要填：
 
 ```text
-/config/weig_qb-webui
+/config/weig-qb-webui
 ```
 
 而不是宿主機完整路徑。
@@ -179,20 +179,20 @@ Container /config -> Host /root/qbittorrent/config
 且沒有指定 `-o`，會使用：
 
 ```text
-Host install path: /root/qbittorrent/config/weig_qb-webui
-qBittorrent Root Folder: /config/weig_qb-webui
+Host install path: /root/qbittorrent/config/weig-qb-webui
+qBittorrent Root Folder: /config/weig-qb-webui
 ```
 
 ### 案例 1：只有一個 qBittorrent 容器
 
 ```sh
-sh weig_qb-webui_install.sh -configure
+sh install.sh -configure
 ```
 
 ### 案例 2：列出容器
 
 ```sh
-sh weig_qb-webui_install.sh --list-containers
+sh install.sh --list-containers
 ```
 
 也可查看：
@@ -204,7 +204,7 @@ docker ps
 ### 案例 3：指定容器
 
 ```sh
-sh weig_qb-webui_install.sh --container=qbittorrent -configure
+sh install.sh --container=qbittorrent -configure
 ```
 
 ### 案例 4：多個 qBittorrent 容器
@@ -212,19 +212,19 @@ sh weig_qb-webui_install.sh --container=qbittorrent -configure
 先列出：
 
 ```sh
-sh weig_qb-webui_install.sh --list-containers
+sh install.sh --list-containers
 ```
 
 再指定：
 
 ```sh
-sh weig_qb-webui_install.sh --container=qbittorrent -configure
+sh install.sh --container=qbittorrent -configure
 ```
 
 或測試容器：
 
 ```sh
-sh weig_qb-webui_install.sh --container=qbittorrent-test -configure
+sh install.sh --container=qbittorrent-test -configure
 ```
 
 安裝器不會在多個 qBittorrent 容器之間隨便猜。
@@ -232,19 +232,19 @@ sh weig_qb-webui_install.sh --container=qbittorrent-test -configure
 ### 案例 5：已知道宿主機 `/config` 目錄
 
 ```sh
-sh weig_qb-webui_install.sh --config-root=/root/qbittorrent/config -configure
+sh install.sh --config-root=/root/qbittorrent/config -configure
 ```
 
 ### 案例 6：Synology
 
 ```sh
-sh weig_qb-webui_install.sh --config-root=/volume1/docker/qbittorrent -configure
+sh install.sh --config-root=/volume1/docker/qbittorrent -configure
 ```
 
 ### 案例 7：其他 NAS
 
 ```sh
-sh weig_qb-webui_install.sh --config-root=/share/Container/qbittorrent -configure
+sh install.sh --config-root=/share/Container/qbittorrent -configure
 ```
 
 請改成自己真正掛載到容器 `/config` 的宿主機路徑。
@@ -252,33 +252,33 @@ sh weig_qb-webui_install.sh --config-root=/share/Container/qbittorrent -configur
 ### 案例 8：指定容器可見的 WebUI 路徑
 
 ```sh
-sh weig_qb-webui_install.sh --container=qbittorrent -o /config/weig_qb-webui -configure
+sh install.sh --container=qbittorrent -o /config/weig-qb-webui -configure
 ```
 
 若 `/config` 對應 `/root/qbittorrent/config`，安裝器會換算為：
 
 ```text
-/config/weig_qb-webui
+/config/weig-qb-webui
         ↓
-/root/qbittorrent/config/weig_qb-webui
+/root/qbittorrent/config/weig-qb-webui
 ```
 
 ### 案例 9：指定正式版本
 
 ```sh
-sh weig_qb-webui_install.sh --container=qbittorrent -version 1.0.0 -configure
+sh install.sh --container=qbittorrent -version 1.0.0 -configure
 ```
 
 ### 案例 10：dev
 
 ```sh
-sh weig_qb-webui_install.sh --container=qbittorrent -dev -configure
+sh install.sh --container=qbittorrent -dev -configure
 ```
 
 ### 案例 11：回滾
 
 ```sh
-sh weig_qb-webui_install.sh -rollback
+sh install.sh -rollback
 ```
 
 ### 最常見錯誤
@@ -286,7 +286,7 @@ sh weig_qb-webui_install.sh -rollback
 把宿主機路徑填到 qBittorrent 裡。容器裡的 qBittorrent 通常應使用：
 
 ```text
-/config/weig_qb-webui
+/config/weig-qb-webui
 ```
 
 如果容器沒有可用 `/config` 掛載，請先檢查 Docker Compose 或 `docker run` 的 volume 設定。
@@ -300,7 +300,7 @@ sh weig_qb-webui_install.sh -rollback
 最常用的一鍵安裝：
 
 ```powershell
-Invoke-WebRequest https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.ps1 -OutFile .\weig_qb-webui_install.ps1; powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -configure
+Invoke-WebRequest https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.ps1 -OutFile .\install.ps1; powershell -ExecutionPolicy Bypass -File .\install.ps1 -configure
 ```
 
 <details>
@@ -309,25 +309,25 @@ Invoke-WebRequest https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/in
 ### 預設安裝目錄
 
 ```text
-C:\Users\<你的使用者名稱>\AppData\Local\WeiG_qB-WebUI
+C:\Users\<你的使用者名稱>\AppData\Local\weig-qb-webui
 ```
 
 對應：
 
 ```text
-%LOCALAPPDATA%\WeiG_qB-WebUI
+%LOCALAPPDATA%\weig-qb-webui
 ```
 
 ### 案例 1：latest + 自動設定
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -configure
 ```
 
 ### 案例 2：只安裝檔案
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1
+powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
 之後進入：
@@ -339,43 +339,43 @@ powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1
 ### 案例 3：指定版本
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 1.0.0 -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.0.0 -configure
 ```
 
 ### 案例 4：安裝到 D 槽
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -o D:\WeiG_qB-WebUI -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -o D:\weig-qb-webui -configure
 ```
 
 ### 案例 5：版本 + 目錄
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 1.0.0 -o D:\WeiG_qB-WebUI -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.0.0 -o D:\weig-qb-webui -configure
 ```
 
 ### 案例 6：dev
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -dev -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -dev -configure
 ```
 
 ### 案例 7：升級
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -configure
 ```
 
 ### 案例 8：回滾
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -rollback
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -rollback
 ```
 
 ### 案例 9：說明
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -help
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -help
 ```
 
 PowerShell 參數大小寫不敏感。`-ExecutionPolicy Bypass` 只套用於這次啟動的 PowerShell 程序，不是永久修改整台系統的執行原則。
@@ -396,13 +396,13 @@ PowerShell 參數大小寫不敏感。`-ExecutionPolicy Bypass` 只套用於這�
 Linux / NAS / Docker:
 
 ```sh
-sh weig_qb-webui_install.sh -configure
+sh install.sh -configure
 ```
 
 Windows:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -configure
 ```
 
 ### 回滾上一次安裝
@@ -410,13 +410,13 @@ powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -configure
 Linux / NAS / Docker:
 
 ```sh
-sh weig_qb-webui_install.sh -rollback
+sh install.sh -rollback
 ```
 
 Windows:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -rollback
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -rollback
 ```
 
 ### 一鍵解除安裝
@@ -426,34 +426,34 @@ powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -rollback
 Linux / NAS:
 
 ```sh
-sh weig_qb-webui_install.sh -uninstall -configure -purge && rm -f -- ./weig_qb-webui_install.sh
+sh install.sh -uninstall -configure -purge && rm -f -- ./install.sh
 ```
 
 Docker (single container / automatic detection):
 
 ```sh
-sh weig_qb-webui_install.sh -uninstall -configure -purge && rm -f -- ./weig_qb-webui_install.sh
+sh install.sh -uninstall -configure -purge && rm -f -- ./install.sh
 ```
 
 Docker (multiple containers, explicit selection):
 
 ```sh
-sh weig_qb-webui_install.sh -uninstall -configure -purge --container=qbittorrent && rm -f -- ./weig_qb-webui_install.sh
+sh install.sh -uninstall -configure -purge --container=qbittorrent && rm -f -- ./install.sh
 ```
 
 Windows:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -uninstall -configure -purge; if ($LASTEXITCODE -eq 0) { Remove-Item .\weig_qb-webui_install.ps1 -Force }
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -uninstall -configure -purge; if ($LASTEXITCODE -eq 0) { Remove-Item .\install.ps1 -Force }
 ```
 
 自訂安裝路徑時繼續加上 `-o /path` 或 `-o D:\path`；如果不需要修改 qBittorrent 設定，可省略 `-configure`。
 
-`-purge` 只清理目前的解除安裝目標。共享狀態目錄沒有其他內容時，Linux 的 `~/.config/weig_qb-webui`（root 為 `/root/.config/weig_qb-webui`）或 Windows 的 `%APPDATA%\WeiG_qB-WebUI` 也會一併清除。
+`-purge` 只清理目前的解除安裝目標。共享狀態目錄沒有其他內容時，Linux 的 `~/.config/weig-qb-webui`（root 為 `/root/.config/weig-qb-webui`）或 Windows 的 `%APPDATA%\weig-qb-webui` 也會一併清除。
 
 若要保留備份以便之後使用 `-rollback`，移除 `-purge` 即可。
 
-Linux 安裝器備份位於 `~/.config/weig_qb-webui/backups/`，每個安裝目標各自保留最近 3 份。
+Linux 安裝器備份位於 `~/.config/weig-qb-webui/backups/`，每個安裝目標各自保留最近 3 份。
 
 如果只想暫時回到 qBittorrent 原生 WebUI，請在 **工具 → 選項… → WebUI** 中取消 **使用備選 WebUI**。
 
@@ -504,7 +504,7 @@ https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest
 下載：
 
 ```text
-WeiG-qB-WebUI.zip
+weig-qb-webui.zip
 SHA256SUMS
 ```
 
@@ -514,31 +514,31 @@ SHA256SUMS
 Linux：
 
 ```sh
-curl -fL https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/WeiG-qB-WebUI.zip -o WeiG-qB-WebUI.zip
+# Download the ZIP asset from https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest
 curl -fL https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/SHA256SUMS -o SHA256SUMS
 sha256sum -c SHA256SUMS
-unzip WeiG-qB-WebUI.zip
-mv WeiG-qB-WebUI WeiG_qB-WebUI
+unzip weig-qb-webui.zip
+Release 壓縮檔已經包含統一的最上層目錄 `weig-qb-webui`；解壓後直接把這個目錄作為 qBittorrent 的 WebUI 根目錄，不需要再重新命名。
 ```
 
 Windows：
 
 ```powershell
-Invoke-WebRequest https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/WeiG-qB-WebUI.zip -OutFile .\WeiG-qB-WebUI.zip
-Expand-Archive .\WeiG-qB-WebUI.zip . -Force
-Rename-Item .\WeiG-qB-WebUI WeiG_qB-WebUI
+# Download the ZIP asset from https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest
+Expand-Archive .\weig-qb-webui.zip . -Force
+Release 壓縮檔已經包含統一的最上層目錄 `weig-qb-webui`；解壓後直接把這個目錄作為 qBittorrent 的 WebUI 根目錄，不需要再重新命名。
 ```
 
 手動計算 SHA-256：
 
 ```powershell
-Get-FileHash .\WeiG-qB-WebUI.zip -Algorithm SHA256
+Get-FileHash .\weig-qb-webui.zip -Algorithm SHA256
 ```
 
 解壓後應看到：
 
 ```text
-WeiG_qB-WebUI/
+weig-qb-webui/
 ├── public/
 ├── private/
 ├── VERSION
@@ -549,7 +549,7 @@ WeiG_qB-WebUI/
 
 **工具 → 選項… → WebUI**
 
-啟用 **使用替補 WebUI**，把 **檔案位置：** 指向 `WeiG_qB-WebUI` 根目錄。
+啟用 **使用替補 WebUI**，把 **檔案位置：** 指向 `weig-qb-webui` 根目錄。
 
 </details>
 
@@ -580,14 +580,14 @@ GIT_SHA
 通常是把宿主機路徑填進 qBittorrent。常見正確容器路徑是：
 
 ```text
-/config/weig_qb-webui
+/config/weig-qb-webui
 ```
 
 ### 多個 qBittorrent 容器
 
 ```sh
-sh weig_qb-webui_install.sh --list-containers
-sh weig_qb-webui_install.sh --container=qbittorrent -configure
+sh install.sh --list-containers
+sh install.sh --container=qbittorrent -configure
 ```
 
 ### checksum 失敗
@@ -632,7 +632,7 @@ qBittorrent 4.1.x → 5.2.x
 正式 Release 應提供：
 
 ```text
-WeiG-qB-WebUI.zip
+weig-qb-webui.zip
 SHA256SUMS
 ```
 

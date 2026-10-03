@@ -13,7 +13,7 @@
 권장 원클릭 명령:
 
 ```sh
-curl -fsSL https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.sh -o weig_qb-webui_install.sh && sh weig_qb-webui_install.sh -configure
+curl -fsSL https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.sh -o install.sh && sh install.sh -configure
 ```
 
 <details>
@@ -22,37 +22,37 @@ curl -fsSL https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.s
 ### 기본 설치 경로
 
 ```text
-~/.local/share/weig_qb-webui
+~/.local/share/weig-qb-webui
 ```
 
 예:
 
 ```text
-/home/alex/.local/share/weig_qb-webui
+/home/alex/.local/share/weig-qb-webui
 ```
 
 `root` 사용 시:
 
 ```text
-/root/.local/share/weig_qb-webui
+/root/.local/share/weig-qb-webui
 ```
 
 설치 스크립트는 현재 디렉터리에 남습니다.
 
 ```text
-./weig_qb-webui_install.sh
+./install.sh
 ```
 
 ### 예시 1: 최신 Release + 자동 설정
 
 ```sh
-sh weig_qb-webui_install.sh -configure
+sh install.sh -configure
 ```
 
 ### 예시 2: 파일만 설치
 
 ```sh
-sh weig_qb-webui_install.sh
+sh install.sh
 ```
 
 그다음 qBittorrent에서 직접 설정합니다.
@@ -66,55 +66,55 @@ sh weig_qb-webui_install.sh
 ### 예시 3: 특정 버전
 
 ```sh
-sh weig_qb-webui_install.sh -version 1.0.0 -configure
+sh install.sh -version 1.0.0 -configure
 ```
 
 ### 예시 4: 사용자 지정 경로
 
 ```sh
-sh weig_qb-webui_install.sh -o /opt/weig_qb-webui -configure
+sh install.sh -o /opt/weig-qb-webui -configure
 ```
 
 또는:
 
 ```sh
-sh weig_qb-webui_install.sh -o /opt/weig_qb-webui -configure
+sh install.sh -o /opt/weig-qb-webui -configure
 ```
 
 ### 예시 5: 버전 + 경로
 
 ```sh
-sh weig_qb-webui_install.sh -version 1.0.0 -o /opt/weig_qb-webui -configure
+sh install.sh -version 1.0.0 -o /opt/weig-qb-webui -configure
 ```
 
 ### 예시 6: dev
 
 ```sh
-sh weig_qb-webui_install.sh -dev -configure
+sh install.sh -dev -configure
 ```
 
 ### 예시 7: 최신 Release로 업그레이드
 
 ```sh
-sh weig_qb-webui_install.sh -configure
+sh install.sh -configure
 ```
 
 특정 버전으로 이동:
 
 ```sh
-sh weig_qb-webui_install.sh -version 0.1.1 -configure
+sh install.sh -version 0.1.1 -configure
 ```
 
 ### 예시 8: 롤백
 
 ```sh
-sh weig_qb-webui_install.sh -rollback
+sh install.sh -rollback
 ```
 
 ### 예시 9: 도움말
 
 ```sh
-sh weig_qb-webui_install.sh -help
+sh install.sh -help
 ```
 
 Linux 설치기는 `curl`, `wget`, BusyBox, Python 3 등 사용 가능한 도구를 자동 탐색합니다. SHA-256 검증 수단이 하나도 없으면 Release를 검증 없이 설치하지 않고 중단합니다.
@@ -128,7 +128,7 @@ Linux 설치기는 `curl`, `wget`, BusyBox, Python 3 등 사용 가능한 도구
 먼저 기본 원클릭 명령을 실행해 보세요.
 
 ```sh
-curl -fsSL https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.sh -o weig_qb-webui_install.sh && sh weig_qb-webui_install.sh -configure
+curl -fsSL https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.sh -o install.sh && sh install.sh -configure
 ```
 
 <details>
@@ -155,13 +155,13 @@ volumes:
 WebUI가 호스트의 다음 위치에 있다면:
 
 ```text
-/root/qbittorrent/config/weig_qb-webui
+/root/qbittorrent/config/weig-qb-webui
 ```
 
 qBittorrent의 **파일 위치:**에는 일반적으로 다음을 입력합니다.
 
 ```text
-/config/weig_qb-webui
+/config/weig-qb-webui
 ```
 
 ### 기본 Docker 경로 변환
@@ -175,8 +175,8 @@ Container /config -> Host /root/qbittorrent/config
 `-o`를 지정하지 않았으면:
 
 ```text
-Host install path: /root/qbittorrent/config/weig_qb-webui
-qBittorrent Root Folder: /config/weig_qb-webui
+Host install path: /root/qbittorrent/config/weig-qb-webui
+qBittorrent Root Folder: /config/weig-qb-webui
 ```
 
 를 사용합니다.
@@ -184,13 +184,13 @@ qBittorrent Root Folder: /config/weig_qb-webui
 ### 예시 1: qBittorrent 컨테이너 하나
 
 ```sh
-sh weig_qb-webui_install.sh -configure
+sh install.sh -configure
 ```
 
 ### 예시 2: 컨테이너 목록
 
 ```sh
-sh weig_qb-webui_install.sh --list-containers
+sh install.sh --list-containers
 ```
 
 또는:
@@ -202,20 +202,20 @@ docker ps
 ### 예시 3: 컨테이너 지정
 
 ```sh
-sh weig_qb-webui_install.sh --container=qbittorrent -configure
+sh install.sh --container=qbittorrent -configure
 ```
 
 ### 예시 4: 여러 qBittorrent 컨테이너
 
 ```sh
-sh weig_qb-webui_install.sh --list-containers
-sh weig_qb-webui_install.sh --container=qbittorrent -configure
+sh install.sh --list-containers
+sh install.sh --container=qbittorrent -configure
 ```
 
 테스트 컨테이너:
 
 ```sh
-sh weig_qb-webui_install.sh --container=qbittorrent-test -configure
+sh install.sh --container=qbittorrent-test -configure
 ```
 
 여러 후보가 있으면 설치기는 임의로 선택하지 않습니다.
@@ -223,19 +223,19 @@ sh weig_qb-webui_install.sh --container=qbittorrent-test -configure
 ### 예시 5: 호스트 `/config` 경로를 알고 있음
 
 ```sh
-sh weig_qb-webui_install.sh --config-root=/root/qbittorrent/config -configure
+sh install.sh --config-root=/root/qbittorrent/config -configure
 ```
 
 ### 예시 6: Synology
 
 ```sh
-sh weig_qb-webui_install.sh --config-root=/volume1/docker/qbittorrent -configure
+sh install.sh --config-root=/volume1/docker/qbittorrent -configure
 ```
 
 ### 예시 7: 기타 NAS
 
 ```sh
-sh weig_qb-webui_install.sh --config-root=/share/Container/qbittorrent -configure
+sh install.sh --config-root=/share/Container/qbittorrent -configure
 ```
 
 실제로 `/config`에 마운트한 호스트 경로로 바꾸세요.
@@ -243,15 +243,15 @@ sh weig_qb-webui_install.sh --config-root=/share/Container/qbittorrent -configur
 ### 예시 8: 컨테이너에서 보이는 WebUI 경로 지정
 
 ```sh
-sh weig_qb-webui_install.sh --container=qbittorrent -o /config/weig_qb-webui -configure
+sh install.sh --container=qbittorrent -o /config/weig-qb-webui -configure
 ```
 
 `/config`가 `/root/qbittorrent/config`에 대응하면:
 
 ```text
-/config/weig_qb-webui
+/config/weig-qb-webui
         ↓
-/root/qbittorrent/config/weig_qb-webui
+/root/qbittorrent/config/weig-qb-webui
 ```
 
 로 변환됩니다.
@@ -259,19 +259,19 @@ sh weig_qb-webui_install.sh --container=qbittorrent -o /config/weig_qb-webui -co
 ### 예시 9: 특정 Release
 
 ```sh
-sh weig_qb-webui_install.sh --container=qbittorrent -version 1.0.0 -configure
+sh install.sh --container=qbittorrent -version 1.0.0 -configure
 ```
 
 ### 예시 10: dev
 
 ```sh
-sh weig_qb-webui_install.sh --container=qbittorrent -dev -configure
+sh install.sh --container=qbittorrent -dev -configure
 ```
 
 ### 예시 11: 롤백
 
 ```sh
-sh weig_qb-webui_install.sh -rollback
+sh install.sh -rollback
 ```
 
 ### 가장 흔한 실수
@@ -279,7 +279,7 @@ sh weig_qb-webui_install.sh -rollback
 qBittorrent에 호스트 경로를 입력하는 것입니다. 컨테이너 내부 qBittorrent는 보통 다음 경로를 사용해야 합니다.
 
 ```text
-/config/weig_qb-webui
+/config/weig-qb-webui
 ```
 
 </details>
@@ -291,7 +291,7 @@ qBittorrent에 호스트 경로를 입력하는 것입니다. 컨테이너 내�
 권장 원클릭 명령:
 
 ```powershell
-Invoke-WebRequest https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.ps1 -OutFile .\weig_qb-webui_install.ps1; powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -configure
+Invoke-WebRequest https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.ps1 -OutFile .\install.ps1; powershell -ExecutionPolicy Bypass -File .\install.ps1 -configure
 ```
 
 <details>
@@ -300,25 +300,25 @@ Invoke-WebRequest https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/in
 ### 기본 설치 경로
 
 ```text
-C:\Users\<사용자 이름>\AppData\Local\WeiG_qB-WebUI
+C:\Users\<사용자 이름>\AppData\Local\weig-qb-webui
 ```
 
 환경 변수 형태:
 
 ```text
-%LOCALAPPDATA%\WeiG_qB-WebUI
+%LOCALAPPDATA%\weig-qb-webui
 ```
 
 ### 예시 1: latest + 자동 설정
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -configure
 ```
 
 ### 예시 2: 파일만 설치
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1
+powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
 그다음 **도구 → 옵션… → WebUI**에서 **대체 WebUI 사용**을 켜고 **파일 위치:**에 설치 경로를 입력합니다.
@@ -326,43 +326,43 @@ powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1
 ### 예시 3: 특정 Release
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 1.0.0 -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.0.0 -configure
 ```
 
 ### 예시 4: D 드라이브
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -o D:\WeiG_qB-WebUI -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -o D:\weig-qb-webui -configure
 ```
 
 ### 예시 5: 버전 + 경로
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 1.0.0 -o D:\WeiG_qB-WebUI -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.0.0 -o D:\weig-qb-webui -configure
 ```
 
 ### 예시 6: dev
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -dev -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -dev -configure
 ```
 
 ### 예시 7: 업그레이드
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -configure
 ```
 
 ### 예시 8: 롤백
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -rollback
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -rollback
 ```
 
 ### 예시 9: 도움말
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -help
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -help
 ```
 
 PowerShell 매개변수는 대소문자를 구분하지 않습니다. `-ExecutionPolicy Bypass`는 해당 PowerShell 프로세스에만 적용되며 시스템 전체 정책을 영구 변경하지 않습니다.
@@ -383,13 +383,13 @@ PowerShell 매개변수는 대소문자를 구분하지 않습니다. `-Executio
 Linux / NAS / Docker:
 
 ```sh
-sh weig_qb-webui_install.sh -configure
+sh install.sh -configure
 ```
 
 Windows:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -configure
 ```
 
 ### 이전 설치로 롤백
@@ -397,13 +397,13 @@ powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -configure
 Linux / NAS / Docker:
 
 ```sh
-sh weig_qb-webui_install.sh -rollback
+sh install.sh -rollback
 ```
 
 Windows:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -rollback
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -rollback
 ```
 
 ### 원클릭 제거
@@ -413,34 +413,34 @@ powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -rollback
 Linux / NAS:
 
 ```sh
-sh weig_qb-webui_install.sh -uninstall -configure -purge && rm -f -- ./weig_qb-webui_install.sh
+sh install.sh -uninstall -configure -purge && rm -f -- ./install.sh
 ```
 
 Docker (single container / automatic detection):
 
 ```sh
-sh weig_qb-webui_install.sh -uninstall -configure -purge && rm -f -- ./weig_qb-webui_install.sh
+sh install.sh -uninstall -configure -purge && rm -f -- ./install.sh
 ```
 
 Docker (multiple containers, explicit selection):
 
 ```sh
-sh weig_qb-webui_install.sh -uninstall -configure -purge --container=qbittorrent && rm -f -- ./weig_qb-webui_install.sh
+sh install.sh -uninstall -configure -purge --container=qbittorrent && rm -f -- ./install.sh
 ```
 
 Windows:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -uninstall -configure -purge; if ($LASTEXITCODE -eq 0) { Remove-Item .\weig_qb-webui_install.ps1 -Force }
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -uninstall -configure -purge; if ($LASTEXITCODE -eq 0) { Remove-Item .\install.ps1 -Force }
 ```
 
 사용자 지정 경로라면 `-o /path` 또는 `-o D:\path`를 추가하세요. qBittorrent 설정을 수정하지 않으려면 `-configure`를 생략할 수 있습니다.
 
-`-purge`는 현재 제거 대상만 정리합니다. 공유 상태 디렉터리가 비면 Linux의 `~/.config/weig_qb-webui`(root는 `/root/.config/weig_qb-webui`) 또는 Windows의 `%APPDATA%\WeiG_qB-WebUI`도 제거됩니다.
+`-purge`는 현재 제거 대상만 정리합니다. 공유 상태 디렉터리가 비면 Linux의 `~/.config/weig-qb-webui`(root는 `/root/.config/weig-qb-webui`) 또는 Windows의 `%APPDATA%\weig-qb-webui`도 제거됩니다.
 
 나중에 `-rollback`을 위해 백업을 남기려면 `-purge`를 빼세요.
 
-Linux 설치 프로그램 백업은 `~/.config/weig_qb-webui/backups/`에 저장되며 설치 대상마다 최근 3개를 유지합니다.
+Linux 설치 프로그램 백업은 `~/.config/weig-qb-webui/backups/`에 저장되며 설치 대상마다 최근 3개를 유지합니다.
 
 잠시 qBittorrent 기본 WebUI로 돌아가기만 하려면 **도구 → 옵션… → WebUI**에서 **대체 WebUI 사용**을 해제하세요.
 
@@ -490,7 +490,7 @@ https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest
 다운로드할 파일:
 
 ```text
-WeiG-qB-WebUI.zip
+weig-qb-webui.zip
 SHA256SUMS
 ```
 
@@ -500,38 +500,38 @@ SHA256SUMS
 Linux:
 
 ```sh
-curl -fL https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/WeiG-qB-WebUI.zip -o WeiG-qB-WebUI.zip
+# Download the ZIP asset from https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest
 curl -fL https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/SHA256SUMS -o SHA256SUMS
 sha256sum -c SHA256SUMS
-unzip WeiG-qB-WebUI.zip
-mv WeiG-qB-WebUI WeiG_qB-WebUI
+unzip weig-qb-webui.zip
+Release 압축 파일에는 표준 최상위 폴더 `weig-qb-webui`가 이미 포함되어 있습니다. 압축을 푼 뒤 이름을 바꾸지 않고 qBittorrent WebUI 루트로 그대로 사용합니다.
 ```
 
 Windows:
 
 ```powershell
-Invoke-WebRequest https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/WeiG-qB-WebUI.zip -OutFile .\WeiG-qB-WebUI.zip
-Expand-Archive .\WeiG-qB-WebUI.zip . -Force
-Rename-Item .\WeiG-qB-WebUI WeiG_qB-WebUI
+# Download the ZIP asset from https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest
+Expand-Archive .\weig-qb-webui.zip . -Force
+Release 압축 파일에는 표준 최상위 폴더 `weig-qb-webui`가 이미 포함되어 있습니다. 압축을 푼 뒤 이름을 바꾸지 않고 qBittorrent WebUI 루트로 그대로 사용합니다.
 ```
 
 SHA-256 계산:
 
 ```powershell
-Get-FileHash .\WeiG-qB-WebUI.zip -Algorithm SHA256
+Get-FileHash .\weig-qb-webui.zip -Algorithm SHA256
 ```
 
 압축 해제 후:
 
 ```text
-WeiG_qB-WebUI/
+weig-qb-webui/
 ├── public/
 ├── private/
 ├── VERSION
 └── GIT_SHA
 ```
 
-qBittorrent에서 **도구 → 옵션… → WebUI**를 열고 **대체 WebUI 사용**을 활성화한 뒤 **파일 위치:**를 `WeiG_qB-WebUI` 루트 디렉터리로 지정하세요.
+qBittorrent에서 **도구 → 옵션… → WebUI**를 열고 **대체 WebUI 사용**을 활성화한 뒤 **파일 위치:**를 `weig-qb-webui` 루트 디렉터리로 지정하세요.
 
 </details>
 
@@ -562,14 +562,14 @@ GIT_SHA
 호스트 경로 대신 일반적으로 다음 컨테이너 경로를 사용합니다.
 
 ```text
-/config/weig_qb-webui
+/config/weig-qb-webui
 ```
 
 ### 여러 컨테이너
 
 ```sh
-sh weig_qb-webui_install.sh --list-containers
-sh weig_qb-webui_install.sh --container=qbittorrent -configure
+sh install.sh --list-containers
+sh install.sh --container=qbittorrent -configure
 ```
 
 ### checksum 오류
@@ -612,7 +612,7 @@ qBittorrent 4.1.x → 5.2.x
 정식 Release는 일반적으로 다음을 제공합니다.
 
 ```text
-WeiG-qB-WebUI.zip
+weig-qb-webui.zip
 SHA256SUMS
 ```
 

@@ -129,7 +129,7 @@ A normal file refresh without `-configure` does not rewrite qBittorrent configur
 Installer-owned backups are retained per target under:
 
 ```text
-~/.config/weig_qb-webui/backups/
+~/.config/weig-qb-webui/backups/
 ```
 
 The current installer retains the latest three backups independently per install target. When a WebUI is already installed, every newly written backup must be a compressed archive with a SHA-256 manifest beside it. Linux uses available local archive tools in a bounded fallback order; Windows prefers the built-in .NET ZIP implementation. The installer does not download a compression utility just to make a backup. If no local compressed-backup backend plus SHA-256 verification is available, backup creation fails closed instead of silently writing another uncompressed directory backup.

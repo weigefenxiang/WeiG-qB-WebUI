@@ -333,7 +333,7 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1 -uninstall -configure -pu
 
 Для собственного пути установки добавьте `-o D:\weig-qb-webui`.
 
-`-purge` удаляет только резервные копии текущей цели и не затрагивает другие установки. Если общий каталог состояния становится пустым, также удаляется `~/.config/weig_qb-webui` в Linux (для root: `/root/.config/weig_qb-webui`) или `%APPDATA%\WeiG_qB-WebUI` в Windows.
+`-purge` удаляет только резервные копии текущей цели и не затрагивает другие установки. Если общий каталог состояния становится пустым, также удаляется `~/.config/weig-qb-webui` в Linux (для root: `/root/.config/weig-qb-webui`) или `%APPDATA%\weig-qb-webui` в Windows.
 
 Чтобы сохранить резервные копии для последующего `-rollback`, просто уберите `-purge`.
 

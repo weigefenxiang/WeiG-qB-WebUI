@@ -414,7 +414,7 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1 -uninstall -configure -pu
 
 自訂安裝目錄請再加上 `-o D:\weig-qb-webui`。
 
-`-purge` 只會清理目前解除安裝目標的備份，不會刪除其他安裝實例。共享狀態目錄沒有其他內容時，Linux 的 `~/.config/weig_qb-webui`（root 為 `/root/.config/weig_qb-webui`）或 Windows 的 `%APPDATA%\WeiG_qB-WebUI` 也會一併清除。
+`-purge` 只會清理目前解除安裝目標的備份，不會刪除其他安裝實例。共享狀態目錄沒有其他內容時，Linux 的 `~/.config/weig-qb-webui`（root 為 `/root/.config/weig-qb-webui`）或 Windows 的 `%APPDATA%\weig-qb-webui` 也會一併清除。
 
 若要保留備份以便之後使用 `-rollback`，只需移除 `-purge`。
 

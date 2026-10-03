@@ -331,7 +331,7 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1 -uninstall -configure -pu
 
 Para um caminho personalizado, acrescente `-o D:\weig-qb-webui`.
 
-`-purge` elimina apenas as cópias pertencentes ao destino que está a ser desinstalado e não afeta outras instalações. Se o diretório de estado partilhado ficar vazio, `~/.config/weig_qb-webui` no Linux (root: `/root/.config/weig_qb-webui`) ou `%APPDATA%\WeiG_qB-WebUI` no Windows também é removido.
+`-purge` elimina apenas as cópias pertencentes ao destino que está a ser desinstalado e não afeta outras instalações. Se o diretório de estado partilhado ficar vazio, `~/.config/weig-qb-webui` no Linux (root: `/root/.config/weig-qb-webui`) ou `%APPDATA%\weig-qb-webui` no Windows também é removido.
 
 Para manter as cópias e poder usar `-rollback` mais tarde, basta omitir `-purge`.
 

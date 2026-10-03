@@ -281,7 +281,7 @@ The installer converts the `/config/...` container path to the corresponding hos
 
 #### Case 6: update multiple existing WebUI directories with one download
 
-For multiple qBittorrent instances, repeat `-o`. The payload is downloaded and verified once, all targets are prepared before switching, and each target keeps its own latest three backups under `~/.config/weig_qb-webui/backups/`.
+For multiple qBittorrent instances, repeat `-o`. The payload is downloaded and verified once, all targets are prepared before switching, and each target keeps its own latest three backups under `~/.config/weig-qb-webui/backups/`.
 
 ```sh
 sh install.sh -dev \
@@ -348,7 +348,7 @@ Notes:
 
 - No `-dev` option means stable `main`; `-dev` selects the current development exact Git SHA.
 - `-o` means **output** and selects the WeiG qB WebUI install directory. On Linux it may be repeated to update multiple existing targets with one verified download.
-- Installer backups stay under `~/.config/weig_qb-webui/backups/` and the latest **3 backups are retained independently per install target**.
+- Installer backups stay under `~/.config/weig-qb-webui/backups/` and the latest **3 backups are retained independently per install target**.
 - `-configure` enables qBittorrent **Use alternative WebUI** and sets **Files location** after installation. It is intentionally single-target only.
 - `-rollback` restores the newest installer-owned backup for the selected target; repeat `-o` to roll back multiple explicit targets.
 - `-version` installs an exact GitHub Release such as `1.0.0`. If the requested version does not exist, installation fails and **never falls back to latest or dev**.
@@ -428,7 +428,7 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1 -uninstall -configure -pu
 
 For a custom install directory, add `-o D:\weig-qb-webui`.
 
-`-purge` only removes backups owned by the current uninstall target; it does not touch backups for other installations. When the shared state directory becomes empty, Linux `~/.config/weig_qb-webui` (for root: `/root/.config/weig_qb-webui`) or Windows `%APPDATA%\WeiG_qB-WebUI` is removed as well.
+`-purge` only removes backups owned by the current uninstall target; it does not touch backups for other installations. When the shared state directory becomes empty, Linux `~/.config/weig-qb-webui` (for root: `/root/.config/weig-qb-webui`) or Windows `%APPDATA%\weig-qb-webui` is removed as well.
 
 To keep installer backups for a later `-rollback`, simply omit `-purge`.
 

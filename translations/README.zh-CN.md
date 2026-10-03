@@ -281,7 +281,7 @@ sh install.sh --container=qbittorrent -o /config/weig-qb-webui -configure
 
 #### 情况 6：一次更新多个现有 WebUI 目录
 
-有多个 qBittorrent 实例时，可以重复写 `-o`。安装包只下载和校验一次，全部目标准备完成后才开始切换；每个目标都在 `~/.config/weig_qb-webui/backups/` 下独立保留最近 3 份备份。
+有多个 qBittorrent 实例时，可以重复写 `-o`。安装包只下载和校验一次，全部目标准备完成后才开始切换；每个目标都在 `~/.config/weig-qb-webui/backups/` 下独立保留最近 3 份备份。
 
 ```sh
 sh install.sh -dev \
@@ -347,10 +347,10 @@ Linux 和 Windows 使用相同的参数名称，文档统一使用小写；Power
 
 - 不加 `-dev` 就是稳定 `main`；加 `-dev` 才使用当前开发版 exact Git SHA。
 - `-o` 中的 `o` 表示 **output**。Linux 可以重复写多个 `-o`，一次下载并更新多个现有 WebUI 目录。
-- 安装器备份始终放在 `~/.config/weig_qb-webui/backups/`，并且**每个安装目标独立只保留最近 3 份**。
+- 安装器备份始终放在 `~/.config/weig-qb-webui/backups/`，并且**每个安装目标独立只保留最近 3 份**。
 - `-configure` 会在安装后自动启用 qBittorrent 的 **使用备选 WebUI / Use alternative WebUI** 并设置 **文件位置 / Files location**；它只允许单目标使用。
 - `-rollback` 会恢复所选目标最近一次由安装器创建的备份；也可以重复 `-o` 一次回滚多个明确目标。
-- 推荐卸载使用 `-uninstall -purge`：按 installer-owned 安全流程卸载 WebUI 后，清理**当前目标所属的安装器备份和 rollback 状态**；不会删除其它安装目标的备份。共享状态目录为空时，Linux 的 `~/.config/weig_qb-webui`（root 即 `/root/.config/weig_qb-webui`）或 Windows 的 `%APPDATA%\\WeiG_qB-WebUI` 也会自动清空。
+- 推荐卸载使用 `-uninstall -purge`：按 installer-owned 安全流程卸载 WebUI 后，清理**当前目标所属的安装器备份和 rollback 状态**；不会删除其它安装目标的备份。共享状态目录为空时，Linux 的 `~/.config/weig-qb-webui`（root 即 `/root/.config/weig-qb-webui`）或 Windows 的 `%APPDATA%\\WeiG_qB-WebUI` 也会自动清空。
 - 如果希望保留安装器备份以后使用 `-rollback`，卸载时去掉 `-purge` 即可。
 - `-version` 安装指定 GitHub Release，例如 `1.0.0`；指定版本不存在时直接报错，**不会自动退回 latest 或 dev**。
 - `-help` 显示当前 Linux 参数；旧的 `--...` 长参数继续作为兼容别名保留。
@@ -429,7 +429,7 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1 -uninstall -configure -pu
 
 自定义安装目录继续加 `-o D:\weig-qb-webui`。
 
-`-purge` 只清当前卸载目标的备份，不会误删其它安装实例。共享状态目录没有其它内容时，Linux 的 `~/.config/weig_qb-webui`（root 即 `/root/.config/weig_qb-webui`）或 Windows 的 `%APPDATA%\WeiG_qB-WebUI` 也会随之清空。
+`-purge` 只清当前卸载目标的备份，不会误删其它安装实例。共享状态目录没有其它内容时，Linux 的 `~/.config/weig-qb-webui`（root 即 `/root/.config/weig-qb-webui`）或 Windows 的 `%APPDATA%\weig-qb-webui` 也会随之清空。
 
 如需保留备份以后 `-rollback`，只要去掉 `-purge`。
 

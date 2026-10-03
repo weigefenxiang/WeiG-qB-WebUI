@@ -13,50 +13,50 @@ Supported qBittorrent range: **4.1.x → 5.2.x**.
 Recommended one-click command:
 
 ```sh
-curl -fsSL https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.sh -o weig_qb-webui_install.sh && sh weig_qb-webui_install.sh -configure
+curl -fsSL https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.sh -o install.sh && sh install.sh -configure
 ```
 
 <details>
 <summary><b>Show script location, default install directory, and more (click to expand)</b></summary>
 
-This saves `weig_qb-webui_install.sh` in the current directory, installs the latest stable Release, and tries to configure qBittorrent automatically.
+This saves `install.sh` in the current directory, installs the latest stable Release, and tries to configure qBittorrent automatically.
 
 ### Default install directory
 
 Normal user:
 
 ```text
-~/.local/share/weig_qb-webui
+~/.local/share/weig-qb-webui
 ```
 
 Example:
 
 ```text
-/home/alex/.local/share/weig_qb-webui
+/home/alex/.local/share/weig-qb-webui
 ```
 
 When running as `root`:
 
 ```text
-/root/.local/share/weig_qb-webui
+/root/.local/share/weig-qb-webui
 ```
 
 The installer script itself remains in the current directory:
 
 ```text
-./weig_qb-webui_install.sh
+./install.sh
 ```
 
 ### Example 1: latest Release + automatic qBittorrent configuration
 
 ```sh
-sh weig_qb-webui_install.sh -configure
+sh install.sh -configure
 ```
 
 ### Example 2: install files only
 
 ```sh
-sh weig_qb-webui_install.sh
+sh install.sh
 ```
 
 Then configure qBittorrent manually:
@@ -70,31 +70,31 @@ Then configure qBittorrent manually:
 ### Example 3: install a specific Release
 
 ```sh
-sh weig_qb-webui_install.sh -version 1.0.0 -configure
+sh install.sh -version 1.0.0 -configure
 ```
 
 ### Example 4: custom directory
 
 ```sh
-sh weig_qb-webui_install.sh -o /opt/weig_qb-webui -configure
+sh install.sh -o /opt/weig-qb-webui -configure
 ```
 
 Equivalent long form:
 
 ```sh
-sh weig_qb-webui_install.sh -o /opt/weig_qb-webui -configure
+sh install.sh -o /opt/weig-qb-webui -configure
 ```
 
 ### Example 5: specific version + custom directory
 
 ```sh
-sh weig_qb-webui_install.sh -version 1.0.0 -o /opt/weig_qb-webui -configure
+sh install.sh -version 1.0.0 -o /opt/weig-qb-webui -configure
 ```
 
 ### Example 6: test dev
 
 ```sh
-sh weig_qb-webui_install.sh -dev -configure
+sh install.sh -dev -configure
 ```
 
 ### Example 7: upgrade to the latest Release
@@ -102,13 +102,13 @@ sh weig_qb-webui_install.sh -dev -configure
 Run the installer again:
 
 ```sh
-sh weig_qb-webui_install.sh -configure
+sh install.sh -configure
 ```
 
 To move to another pinned version:
 
 ```sh
-sh weig_qb-webui_install.sh -version 0.1.1 -configure
+sh install.sh -version 0.1.1 -configure
 ```
 
 Remove `-version` to return to latest.
@@ -116,7 +116,7 @@ Remove `-version` to return to latest.
 ### Example 8: rollback
 
 ```sh
-sh weig_qb-webui_install.sh -rollback
+sh install.sh -rollback
 ```
 
 The installer remembers the previous destination when possible and restores the previous WebUI/config backup.
@@ -124,7 +124,7 @@ The installer remembers the previous destination when possible and restores the 
 ### Example 9: help
 
 ```sh
-sh weig_qb-webui_install.sh -help
+sh install.sh -help
 ```
 
 ### What tools does Linux need?
@@ -142,7 +142,7 @@ For Release verification it looks for a SHA-256 implementation such as `sha256su
 If qBittorrent runs in Docker, try the same one-click command first:
 
 ```sh
-curl -fsSL https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.sh -o weig_qb-webui_install.sh && sh weig_qb-webui_install.sh -configure
+curl -fsSL https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.sh -o install.sh && sh install.sh -configure
 ```
 
 <details>
@@ -169,13 +169,13 @@ Container: /config
 If WeiG qB WebUI is physically stored at:
 
 ```text
-/root/qbittorrent/config/weig_qb-webui
+/root/qbittorrent/config/weig-qb-webui
 ```
 
 then qBittorrent **Files location:** should normally be:
 
 ```text
-/config/weig_qb-webui
+/config/weig-qb-webui
 ```
 
 Do not enter the host path in qBittorrent unless the container can actually see that host path.
@@ -191,20 +191,20 @@ Container /config -> Host /root/qbittorrent/config
 and you did not provide `-o`, it uses:
 
 ```text
-Host install path: /root/qbittorrent/config/weig_qb-webui
-qBittorrent Root Folder: /config/weig_qb-webui
+Host install path: /root/qbittorrent/config/weig-qb-webui
+qBittorrent Root Folder: /config/weig-qb-webui
 ```
 
 ### Example 1: one qBittorrent container
 
 ```sh
-sh weig_qb-webui_install.sh -configure
+sh install.sh -configure
 ```
 
 ### Example 2: list detected containers
 
 ```sh
-sh weig_qb-webui_install.sh --list-containers
+sh install.sh --list-containers
 ```
 
 You can also inspect Docker directly:
@@ -216,13 +216,13 @@ docker ps
 ### Example 3: select a container explicitly
 
 ```sh
-sh weig_qb-webui_install.sh --container=qbittorrent -configure
+sh install.sh --container=qbittorrent -configure
 ```
 
 Also valid:
 
 ```sh
-sh weig_qb-webui_install.sh --container qbittorrent -configure
+sh install.sh --container qbittorrent -configure
 ```
 
 ### Example 4: multiple qBittorrent containers
@@ -236,19 +236,19 @@ qbittorrent-old
 List them:
 
 ```sh
-sh weig_qb-webui_install.sh --list-containers
+sh install.sh --list-containers
 ```
 
 Install for the main container:
 
 ```sh
-sh weig_qb-webui_install.sh --container=qbittorrent -configure
+sh install.sh --container=qbittorrent -configure
 ```
 
 Install for the test container:
 
 ```sh
-sh weig_qb-webui_install.sh --container=qbittorrent-test -configure
+sh install.sh --container=qbittorrent-test -configure
 ```
 
 The installer refuses to guess when multiple qBittorrent containers are detected.
@@ -256,19 +256,19 @@ The installer refuses to guess when multiple qBittorrent containers are detected
 ### Example 5: specify the host directory mounted as `/config`
 
 ```sh
-sh weig_qb-webui_install.sh --config-root=/root/qbittorrent/config -configure
+sh install.sh --config-root=/root/qbittorrent/config -configure
 ```
 
 ### Example 6: Synology example
 
 ```sh
-sh weig_qb-webui_install.sh --config-root=/volume1/docker/qbittorrent -configure
+sh install.sh --config-root=/volume1/docker/qbittorrent -configure
 ```
 
 ### Example 7: another NAS example
 
 ```sh
-sh weig_qb-webui_install.sh --config-root=/share/Container/qbittorrent -configure
+sh install.sh --config-root=/share/Container/qbittorrent -configure
 ```
 
 Replace these sample paths with the real host directory mounted as `/config` on your system.
@@ -276,41 +276,41 @@ Replace these sample paths with the real host directory mounted as `/config` on 
 ### Example 8: choose a container-visible WebUI path
 
 ```sh
-sh weig_qb-webui_install.sh --container=qbittorrent -o /config/weig_qb-webui -configure
+sh install.sh --container=qbittorrent -o /config/weig-qb-webui -configure
 ```
 
 If `/config` maps to `/root/qbittorrent/config`, the installer maps the destination to:
 
 ```text
-/config/weig_qb-webui
+/config/weig-qb-webui
         ↓
-/root/qbittorrent/config/weig_qb-webui
+/root/qbittorrent/config/weig-qb-webui
 ```
 
 ### Example 9: choose a host-side WebUI path
 
 ```sh
-sh weig_qb-webui_install.sh --config-root=/root/qbittorrent/config -o /root/qbittorrent/config/weig_qb-webui -configure
+sh install.sh --config-root=/root/qbittorrent/config -o /root/qbittorrent/config/weig-qb-webui -configure
 ```
 
-The corresponding qBittorrent path becomes `/config/weig_qb-webui`.
+The corresponding qBittorrent path becomes `/config/weig-qb-webui`.
 
 ### Example 10: specific Release
 
 ```sh
-sh weig_qb-webui_install.sh --container=qbittorrent -version 1.0.0 -configure
+sh install.sh --container=qbittorrent -version 1.0.0 -configure
 ```
 
 ### Example 11: dev
 
 ```sh
-sh weig_qb-webui_install.sh --container=qbittorrent -dev -configure
+sh install.sh --container=qbittorrent -dev -configure
 ```
 
 ### Example 12: rollback
 
 ```sh
-sh weig_qb-webui_install.sh -rollback
+sh install.sh -rollback
 ```
 
 ### Most common Docker mistake
@@ -318,13 +318,13 @@ sh weig_qb-webui_install.sh -rollback
 Entering this host path in qBittorrent:
 
 ```text
-/root/qbittorrent/config/weig_qb-webui
+/root/qbittorrent/config/weig-qb-webui
 ```
 
 when qBittorrent runs inside the container. Usually qBittorrent needs:
 
 ```text
-/config/weig_qb-webui
+/config/weig-qb-webui
 ```
 
 ### No `/config` mount?
@@ -340,36 +340,36 @@ Automatic Docker configuration relies on a usable `/config` mount. If the contai
 Recommended one-click command:
 
 ```powershell
-Invoke-WebRequest https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.ps1 -OutFile .\weig_qb-webui_install.ps1; powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -configure
+Invoke-WebRequest https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.ps1 -OutFile .\install.ps1; powershell -ExecutionPolicy Bypass -File .\install.ps1 -configure
 ```
 
 <details>
 <summary><b>Show default install directory and more Windows usage (click to expand)</b></summary>
 
-This saves `weig_qb-webui_install.ps1` in the current PowerShell directory, installs the latest stable Release, and tries to configure qBittorrent automatically.
+This saves `install.ps1` in the current PowerShell directory, installs the latest stable Release, and tries to configure qBittorrent automatically.
 
 ### Default install directory
 
 ```text
-C:\Users\<your-username>\AppData\Local\WeiG_qB-WebUI
+C:\Users\<your-username>\AppData\Local\weig-qb-webui
 ```
 
 Equivalent environment variable form:
 
 ```text
-%LOCALAPPDATA%\WeiG_qB-WebUI
+%LOCALAPPDATA%\weig-qb-webui
 ```
 
 ### Example 1: latest Release + automatic configuration
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -configure
 ```
 
 ### Example 2: install files only
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1
+powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
 Then use qBittorrent:
@@ -381,55 +381,55 @@ Enable **Use alternative WebUI** and set **Files location:** to the install dire
 ### Example 3: specific Release
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 1.0.0 -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.0.0 -configure
 ```
 
 ### Example 4: install on D:\
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -o D:\WeiG_qB-WebUI -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -o D:\weig-qb-webui -configure
 ```
 
 Equivalent:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -output D:\WeiG_qB-WebUI -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -output D:\weig-qb-webui -configure
 ```
 
 ### Example 5: version + custom directory
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 1.0.0 -o D:\WeiG_qB-WebUI -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.0.0 -o D:\weig-qb-webui -configure
 ```
 
 ### Example 6: dev
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -dev -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -dev -configure
 ```
 
 ### Example 7: upgrade
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -configure
 ```
 
 Or pin a newer Release:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -version 0.1.1 -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 0.1.1 -configure
 ```
 
 ### Example 8: rollback
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -rollback
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -rollback
 ```
 
 ### Example 9: help
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -help
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -help
 ```
 
 ### PowerShell option casing
@@ -462,13 +462,13 @@ Windows may block local scripts under the current execution policy. This flag ap
 Linux / NAS / Docker:
 
 ```sh
-sh weig_qb-webui_install.sh -configure
+sh install.sh -configure
 ```
 
 Windows:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -configure
 ```
 
 ### Roll back the previous installation
@@ -476,13 +476,13 @@ powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -configure
 Linux / NAS / Docker:
 
 ```sh
-sh weig_qb-webui_install.sh -rollback
+sh install.sh -rollback
 ```
 
 Windows:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -rollback
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -rollback
 ```
 
 ### One-click uninstall
@@ -492,34 +492,34 @@ The recommended uninstall **does not keep installer backups**. It safely removes
 Linux / NAS:
 
 ```sh
-sh weig_qb-webui_install.sh -uninstall -configure -purge && rm -f -- ./weig_qb-webui_install.sh
+sh install.sh -uninstall -configure -purge && rm -f -- ./install.sh
 ```
 
 Docker (single container / automatic detection):
 
 ```sh
-sh weig_qb-webui_install.sh -uninstall -configure -purge && rm -f -- ./weig_qb-webui_install.sh
+sh install.sh -uninstall -configure -purge && rm -f -- ./install.sh
 ```
 
 Docker (multiple containers, explicit selection):
 
 ```sh
-sh weig_qb-webui_install.sh -uninstall -configure -purge --container=qbittorrent && rm -f -- ./weig_qb-webui_install.sh
+sh install.sh -uninstall -configure -purge --container=qbittorrent && rm -f -- ./install.sh
 ```
 
 Windows:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\weig_qb-webui_install.ps1 -uninstall -configure -purge; if ($LASTEXITCODE -eq 0) { Remove-Item .\weig_qb-webui_install.ps1 -Force }
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -uninstall -configure -purge; if ($LASTEXITCODE -eq 0) { Remove-Item .\install.ps1 -Force }
 ```
 
 For a custom install path, add `-o /path` or `-o D:\path`. If you do not want to modify qBittorrent configuration, omit `-configure`.
 
-`-purge` only cleans the current uninstall target. If the shared state directory becomes empty, Linux `~/.config/weig_qb-webui` (root: `/root/.config/weig_qb-webui`) or Windows `%APPDATA%\WeiG_qB-WebUI` is removed too.
+`-purge` only cleans the current uninstall target. If the shared state directory becomes empty, Linux `~/.config/weig-qb-webui` (root: `/root/.config/weig-qb-webui`) or Windows `%APPDATA%\weig-qb-webui` is removed too.
 
 To keep backups for a later `-rollback`, omit `-purge`.
 
-Linux installer backups are stored under `~/.config/weig_qb-webui/backups/`, with the latest three kept independently per install target.
+Linux installer backups are stored under `~/.config/weig-qb-webui/backups/`, with the latest three kept independently per install target.
 
 If you only want to temporarily return to qBittorrent's native WebUI, disable **Use alternative WebUI** under **Tools → Options… → WebUI**.
 
@@ -572,7 +572,7 @@ https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest
 Download:
 
 ```text
-WeiG-qB-WebUI.zip
+weig-qb-webui.zip
 SHA256SUMS
 ```
 
@@ -582,42 +582,42 @@ SHA256SUMS
 ### Linux with curl
 
 ```sh
-curl -fL https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/WeiG-qB-WebUI.zip -o WeiG-qB-WebUI.zip
+# Download the ZIP asset from https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest
 curl -fL https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/SHA256SUMS -o SHA256SUMS
 sha256sum -c SHA256SUMS
-unzip WeiG-qB-WebUI.zip
-mv WeiG-qB-WebUI WeiG_qB-WebUI
+unzip weig-qb-webui.zip
+The Release archive already contains the canonical top-level folder `weig-qb-webui`; extract it and use that folder directly as the qBittorrent WebUI root. No rename is required.
 ```
 
 ### Linux with wget
 
 ```sh
-wget https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/WeiG-qB-WebUI.zip -O WeiG-qB-WebUI.zip
+wget https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/weig-qb-webui.zip -O weig-qb-webui.zip
 wget https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/SHA256SUMS -O SHA256SUMS
 sha256sum -c SHA256SUMS
-unzip WeiG-qB-WebUI.zip
+unzip weig-qb-webui.zip
 ```
 
 ### Windows
 
 ```powershell
-Invoke-WebRequest https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/WeiG-qB-WebUI.zip -OutFile .\WeiG-qB-WebUI.zip
-Expand-Archive .\WeiG-qB-WebUI.zip . -Force
-Rename-Item .\WeiG-qB-WebUI WeiG_qB-WebUI
+# Download the ZIP asset from https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest
+Expand-Archive .\weig-qb-webui.zip . -Force
+The Release archive already contains the canonical top-level folder `weig-qb-webui`; extract it and use that folder directly as the qBittorrent WebUI root. No rename is required.
 ```
 
 To calculate SHA-256 manually:
 
 ```powershell
-Get-FileHash .\WeiG-qB-WebUI.zip -Algorithm SHA256
+Get-FileHash .\weig-qb-webui.zip -Algorithm SHA256
 ```
 
-Compare it with the `WeiG-qB-WebUI.zip` entry in `SHA256SUMS`.
+Compare it with the `weig-qb-webui.zip` entry in `SHA256SUMS`.
 
 ### Expected extracted structure
 
 ```text
-WeiG_qB-WebUI/
+weig-qb-webui/
 ├── public/
 ├── private/
 ├── VERSION
@@ -630,24 +630,24 @@ Open qBittorrent:
 
 **Tools → Options... → WebUI**
 
-Enable **Use alternative WebUI** and set **Files location:** to the `WeiG_qB-WebUI` root directory.
+Enable **Use alternative WebUI** and set **Files location:** to the `weig-qb-webui` root directory.
 
 Windows example:
 
 ```text
-D:\WeiG_qB-WebUI
+D:\weig-qb-webui
 ```
 
 Linux example:
 
 ```text
-/opt/WeiG_qB-WebUI
+/opt/weig-qb-webui
 ```
 
 Docker example:
 
 ```text
-/config/weig_qb-webui
+/config/weig-qb-webui
 ```
 
 </details>
@@ -680,26 +680,26 @@ VERSION
 GIT_SHA
 ```
 
-If you must enter another `WeiG_qB-WebUI` directory before seeing those files, the configured path is one level too high or too low.
+If you must enter another `weig-qb-webui` directory before seeing those files, the configured path is one level too high or too low.
 
 ### Docker cannot find the installed files
 
 You may have entered a host path instead of the container-visible path. Typical container path:
 
 ```text
-/config/weig_qb-webui
+/config/weig-qb-webui
 ```
 
 ### Multiple qBittorrent containers detected
 
 ```sh
-sh weig_qb-webui_install.sh --list-containers
+sh install.sh --list-containers
 ```
 
 Then choose one explicitly:
 
 ```sh
-sh weig_qb-webui_install.sh --container=qbittorrent -configure
+sh install.sh --container=qbittorrent -configure
 ```
 
 ### `-configure` did not configure qBittorrent
@@ -708,14 +708,14 @@ The WebUI files may still be installed successfully. Configure qBittorrent manua
 
 ### Release checksum verification failed
 
-Do not bypass it. Re-download and retry. The installer intentionally fails closed if `WeiG-qB-WebUI.zip` and `SHA256SUMS` do not match.
+Do not bypass it. Re-download and retry. The installer intentionally fails closed if `weig-qb-webui.zip` and `SHA256SUMS` do not match.
 
 ### Requested version does not exist
 
 For example:
 
 ```sh
-sh weig_qb-webui_install.sh -version 9.9.9
+sh install.sh -version 9.9.9
 ```
 
 The installer stops and does not switch to latest or dev.
@@ -766,7 +766,7 @@ A `dev` install first resolves the current `dev` branch to a 40-character Git SH
 A normal Release must provide:
 
 ```text
-WeiG-qB-WebUI.zip
+weig-qb-webui.zip
 SHA256SUMS
 ```
 
