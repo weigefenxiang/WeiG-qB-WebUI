@@ -67,11 +67,11 @@ build_release "$VERSION_ONE" "$SHA_ONE" release-one
 build_release "$VERSION_TWO" "$SHA_TWO" release-two
 
 cat > "$MOCK_BIN/curl" <<'EOF_CURL'
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/sh
+set -eu
 url=''
 out=''
-while [[ $# -gt 0 ]]; do
+while [ "$#" -gt 0 ]; do
   case "$1" in
     -o)
       out=${2-}
@@ -86,7 +86,7 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
-[[ -n "$url" && -n "$out" ]] || { echo 'mock curl: missing URL or output path' >&2; exit 2; }
+[ -n "$url" ] && [ -n "$out" ] || { echo 'mock curl: missing URL or output path' >&2; exit 2; }
 case "$url" in
   */releases/tags/v9.9.90)
     src="$WEIGG_INSTALLER_FIXTURE_ROOT/v9.9.90/release.json"
@@ -149,7 +149,7 @@ run_installer() {
       dash "$ROOT/installers/install.sh" "$@"
       ;;
     busybox-ash)
-      PATH="$MOCK_BIN:$BUSYBOX_BIN:/usr/bin:/bin" "$BUSYBOX_CMD" ash "$ROOT/installers/install.sh" "$@"
+      PATH="$MOCK_BIN:$BUSYBOX_BIN" "$BUSYBOX_CMD" ash "$ROOT/installers/install.sh" "$@"
       ;;
     sh)
       sh "$ROOT/installers/install.sh" "$@"
