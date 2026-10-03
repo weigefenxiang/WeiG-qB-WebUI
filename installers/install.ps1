@@ -588,24 +588,27 @@ function Purge-BackupsForDestination([string]$Target) {
   }
 
   foreach($stateRoot in @($State,$LegacyState)){
-    $lastBackupMarker=Join-Path $stateRoot 'last-backup'
-    if(Test-Path -LiteralPath $lastBackupMarker -PathType Leaf){
-      $lastBackup=(Get-Content $lastBackupMarker -Raw).Trim()
-      if($lastBackup -and $deleted.ContainsKey($lastBackup.ToLowerInvariant())){
-        Remove-Item -LiteralPath $lastBackupMarker -Force
-      }
-    }
-
+    $stateMatchesTarget=$false
     $lastDestMarker=Join-Path $stateRoot 'last-dest'
     if(Test-Path -LiteralPath $lastDestMarker -PathType Leaf){
       $saved=(Get-Content $lastDestMarker -Raw).Trim()
-      try{
+      try {
         $savedFull=[IO.Path]::GetFullPath($saved).TrimEnd([IO.Path]::DirectorySeparatorChar,[IO.Path]::AltDirectorySeparatorChar)
         $targetFull=[IO.Path]::GetFullPath($Target).TrimEnd([IO.Path]::DirectorySeparatorChar,[IO.Path]::AltDirectorySeparatorChar)
-        if($savedFull.Equals($targetFull,[StringComparison]::OrdinalIgnoreCase)){
-          Remove-Item -LiteralPath $lastDestMarker -Force
-        }
-      }catch{}
+        $stateMatchesTarget=$savedFull.Equals($targetFull,[StringComparison]::OrdinalIgnoreCase)
+      } catch {}
+    }
+
+    $lastBackupMarker=Join-Path $stateRoot 'last-backup'
+    if(Test-Path -LiteralPath $lastBackupMarker -PathType Leaf){
+      $lastBackup=(Get-Content $lastBackupMarker -Raw).Trim()
+      if($lastBackup -and $deleted.ContainsKey($lastBackup.ToLowerInvariant())){$stateMatchesTarget=$true}
+    }
+
+    if($stateMatchesTarget){
+      Remove-Item -LiteralPath $lastBackupMarker -Force -ErrorAction SilentlyContinue
+      Remove-Item -LiteralPath $lastDestMarker -Force -ErrorAction SilentlyContinue
+      Remove-Item -LiteralPath (Join-Path $stateRoot 'last-qb-root-folder') -Force -ErrorAction SilentlyContinue
     }
   }
 

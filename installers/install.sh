@@ -1045,12 +1045,20 @@ purge_backups_for_dest() {
     echo "Purged installer backup: $backup"
   done
 
-  if [ -n "$last_backup_for_target" ]; then
-    rm -f "$STATE/last-backup" "$LEGACY_STATE/last-backup"
-  fi
   for marker_root in "$STATE" "$LEGACY_STATE"; do
+    marker_matches_target=0
     if [ -s "$marker_root/last-dest" ] && [ "$(cat "$marker_root/last-dest" 2>/dev/null || true)" = "$target" ]; then
-      rm -f "$marker_root/last-dest" "$marker_root/last-qb-root-folder"
+      marker_matches_target=1
+    fi
+    if [ -s "$marker_root/last-backup" ]; then
+      marker_backup=$(cat "$marker_root/last-backup" 2>/dev/null || true)
+      if [ -n "$marker_backup" ] && backup_is_owned "$marker_backup"; then
+        marker_backup_dest=$(cat "$marker_backup/dest-path" 2>/dev/null || true)
+        [ "$marker_backup_dest" = "$target" ] && marker_matches_target=1
+      fi
+    fi
+    if [ "$marker_matches_target" -eq 1 ]; then
+      rm -f "$marker_root/last-backup" "$marker_root/last-dest" "$marker_root/last-qb-root-folder"
     fi
   done
   rmdir "$BACKUPS" 2>/dev/null || true
