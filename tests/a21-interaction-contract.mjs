@@ -6,7 +6,7 @@ const floating=read('webui/private/scripts/floating.js');
 const settings=read('webui/private/scripts/settings.js');
 const transfer=read('webui/private/scripts/transfer.js');
 const css=read('webui/private/css/transfer.css');
-assert.ok(logs.includes("meta:(U.isMobile&&U.isMobile()?items.length+' / '+all.length:tr('logs.ui.showing'"),'mobile Logs meta must be shown / filtered total only');
+assert.ok(logs.includes("compactMobile:true")&&logs.includes("meta:tr('logs.ui.showing'"),'Logs must keep desktop retained-history meta while delegating mobile compaction to the shared Pager owner');
 assert.ok(floating.includes("addEventListener('weig:route-state',function(){C.closeSelects(false);closePreview(true);})"),'route change must close floating selects');
 assert.ok(settings.includes("async function openOwned(tab){if(C&&C.closeSelects)C.closeSelects(false);"),'Settings tab open must close any portaled select synchronously');
 assert.ok(transfer.includes('data-mini-series="download"')&&transfer.includes('data-mini-series="upload"')&&transfer.includes("tr('detail.downloaded')")&&transfer.includes("tr('detail.uploaded')"),'mini transfer legend must use cumulative Downloaded/Uploaded semantics');
