@@ -991,6 +991,7 @@ export function addVirtualTorrent(world,options={},now=Date.now()){
   t.hash=makeHash(`${world.seed}:add:${now}`,index);
   t.name=String(options.name||options.url||'Added Virtual Torrent').slice(0,180);
   t.size=Math.max(1,Number(options.size)||int(createRng(t.hash),700,45000)*MiB);
+  t.addedOn=Math.floor(now/1000);
   t.downloaded=0;t.uploaded=0;t.completed=false;t.canonicalState=world.preferences.start_paused_enabled?CANONICAL.DOWNLOAD_PAUSED:CANONICAL.DOWNLOAD_QUEUED;
   t.queuePosition=world.torrents.length+1;t.priority=t.queuePosition;
   t.autoManagement=String(options.autoTMM??'').toLowerCase()==='true'||options.autoTMM===1;

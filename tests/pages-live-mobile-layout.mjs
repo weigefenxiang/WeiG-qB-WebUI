@@ -143,6 +143,7 @@ try{
   await page.locator('#add-submit').click();
   await page.waitForFunction(()=>!document.getElementById('add-dialog')?.open,null,{timeout:10000});
   await page.waitForFunction(name=>Array.isArray(WeiG.AppState?.torrents)&&WeiG.AppState.torrents.some(t=>String(t?.name||'')===name),addName,{timeout:15000});
+  await page.evaluate(()=>{const list=document.getElementById('torrent-list');if(list){list.scrollTop=0;list.dispatchEvent(new Event('scroll'));}});
   await page.locator('.torrent-mobile-card').filter({hasText:addName}).first().waitFor({state:'visible',timeout:15000});
   assert.equal(await page.evaluate(()=>WeiG.AppState?.catalogReady===true),false,'Add Torrent must not force a full catalog when no facet/local view has demanded one');
 

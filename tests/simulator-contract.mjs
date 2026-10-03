@@ -128,7 +128,7 @@ function formRequest(url,body){
   const w=world();authenticate(w,'demo','demo');
   const before=w.torrents.length;
   const added=addVirtualTorrent(w,{name:'Contract Magnet'},1700000010000);
-  assert.equal(w.torrents.length,before+1);assert.ok(added.hash);
+  assert.equal(w.torrents.length,before+1);assert.ok(added.hash);assert.equal(added.addedOn,1700000010,'newly added virtual torrent must expose the real add time as added_on ordering truth');
   const data=mainData(w,0,1700000010000);assert.equal(data.full_update,true);assert.ok(data.torrents[added.hash]);
   deleteTorrents(w,added.hash,1700000011000);assert.equal(w.torrents.length,before);
 }

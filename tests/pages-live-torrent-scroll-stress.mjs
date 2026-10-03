@@ -30,7 +30,8 @@ try{
   const context=await browser.newContext({viewport:{width:1180,height:820},locale:'zh-CN'});
   const page=await context.newPage(),errors=[];
   page.on('pageerror',error=>errors.push(error?.stack||error?.message||String(error)));
-  page.on('console',message=>{if(message.type()==='error'){const value=message.text();if(!/favicon(?:\.ico)?|Wei\.G\.ico/i.test(value))errors.push(value);}});
+  page.on('response',response=>{if(response.status()<400)return;const value=response.url();if(/favicon(?:\.ico)?|Wei\.G\.ico/i.test(value))return;errors.push(`HTTP ${response.status()} ${value}`);});
+  page.on('console',message=>{if(message.type()!=='error')return;const value=message.text(),source=String(message.location()?.url||'');if(/^Failed to load resource:/i.test(value))return;if(/favicon(?:\.ico)?|Wei\.G\.ico/i.test(`${source} ${value}`))return;errors.push(source?`${value} (${source})`:value);});
 
   const sessionId=`a52-scroll-${Date.now()}`;
   const url=new URL('dev/app/',base);
