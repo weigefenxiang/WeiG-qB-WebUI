@@ -6,7 +6,7 @@ const ps=fs.readFileSync('installers/install.ps1','utf8');
 
 const shellDeploy=sh.slice(sh.indexOf('deploy_staged_webui() {'),sh.indexOf('restore_webui_from_backup() {'));
 assert.ok(shellDeploy.includes('[ -f "$deploy_dest/public/index.html" ]')&&shellDeploy.includes('[ -f "$deploy_dest/private/index.html" ]'),'Linux live update must require both existing Alternative WebUI entry files before mutation.');
-assert.ok(shellDeploy.includes('cp -p -- "$deploy_src" "$deploy_tmp"')&&shellDeploy.includes('mv -f -- "$deploy_tmp" "$deploy_dst"'),'Linux live update must stage each replacement in the destination directory and atomically rename it into place.');
+assert.ok(shellDeploy.includes('cp -p "$deploy_src" "$deploy_tmp"')&&shellDeploy.includes('mv -f "$deploy_tmp" "$deploy_dst"'),'Linux live update must stage each replacement in the destination directory and atomically rename it into place with POSIX fileutils syntax.');
 assert.ok(!shellDeploy.includes('rm -rf -- "$deploy_dest"')&&!shellDeploy.includes('mv "$deploy_dest"'),'Linux live update must never remove or rename the active Root Folder.');
 assert.ok(!/read\s+-r\s+-d\b/.test(shellDeploy)&&!shellDeploy.includes('-print0 > "$deploy_list"'),'Linux live update must remain executable by its declared POSIX sh interpreter; Bash-only read -d loops are forbidden.');
 assert.ok(shellDeploy.includes('deploy_expected_version=')&&shellDeploy.includes('deploy_expected_sha=')&&shellDeploy.includes('deploy_actual_version=')&&shellDeploy.includes('deploy_actual_sha='),'Linux live update must verify deployed VERSION/GIT_SHA against the prepared staging payload instead of checking existence only.');
