@@ -208,7 +208,10 @@ try{
     // Native scrollbar-thumb mouse drag remains a mandatory final human acceptance item because hosted Chrome/Xvfb
     // does not expose native scrollbar chrome to DevTools/XTest pointer injection reliably.
     await page.setViewportSize({width:900,height:768});
-    await waitForDataViewportIdle(page,180);
+    // app.js owns a 120 ms debounced resize -> renderList projection. Let that owner settle
+    // before zeroing DataViewport metrics so the probe measures horizontal input only.
+    await waitForDataViewportIdle(page,280);
+    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
     await resetScrollProbe(page);
     const initialRecyclerVisibility=await page.evaluate(()=>{const v=WeiG.AppState.viewport,idle=v._rowPool.filter(slot=>!slot.bound).map(slot=>slot.node),active=v._rowPool.filter(slot=>slot.bound).map(slot=>slot.node),paintedIdle=idle.filter(node=>{const style=getComputedStyle(node),rect=node.getBoundingClientRect();return style.display!=='none'&&style.visibility!=='hidden'&&rect.width>0&&rect.height>0;});return{overscan:v.overscan,idleCount:idle.length,idlePainted:paintedIdle.length,activeCount:active.length,activeTops:active.map(node=>Math.round(node.getBoundingClientRect().top*10)/10)};});
     assert(initialRecyclerVisibility.overscan===3,`${name}: desktop Torrent recycler kept the retired oversized scroll buffer ${JSON.stringify(initialRecyclerVisibility)}`);
