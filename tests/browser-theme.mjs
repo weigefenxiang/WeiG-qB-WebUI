@@ -75,7 +75,7 @@ try{
     await choose(page,'[data-setting-key="weig_density"]','compact');
     const routePreview=await page.evaluate(()=>({draft:WeiG.SettingsState.weigDraft.density,saved:WeiG.Config.load().density,runtime:document.documentElement.dataset.density}));
     assert(routePreview.draft==='compact'&&routePreview.saved===savedBeforePreview.density&&routePreview.runtime==='compact',`${name}: Settings-route preview did not stay transient before navigation: ${JSON.stringify(routePreview)}`);
-    await page.locator('#app-nav [data-route="home"]').click();await page.waitForFunction(()=>document.getElementById('list-view')?.classList.contains('is-active'));
+    await page.locator('#app-nav [data-route=""]').click();await page.waitForFunction(()=>document.getElementById('list-view')?.classList.contains('is-active'));
     await page.waitForFunction(expected=>Object.keys(WeiG.SettingsState.weigDraft||{}).length===0&&WeiG.Config.load().density===expected.density&&document.documentElement.dataset.density===expected.density,savedBeforePreview);
     await openSettings(page);await page.waitForSelector('[data-setting-key="weig_theme"]');
     await choose(page,'[data-setting-key="weig_theme"]','time');
