@@ -93,14 +93,16 @@ function detailSortFlat(ctx,items){var list=Array.isArray(items)?items.slice():[
   function detailTabKeys(){var ui=W.QbUiEvidence&&W.QbUiEvidence.detailUi&&W.QbUiEvidence.detailUi(),tabs=ui&&ui.tabs||{},raw=Array.isArray(ui&&ui.tabOrder)?ui.tabOrder:Object.keys(tabs);return raw.map(String).filter(function(key,index,list){return tabs[key]&&list.indexOf(key)===index;});}
   function renderDetailTabs(host,options){
     options=options||{};if(!host)return[];
-    var keys=detailTabKeys(),active=String(options.active||''),disabled=options.disabled===true;
-    host.textContent='';
+    var keys=detailTabKeys(),active=String(options.active||''),disabled=options.disabled===true,existing={};
+    Array.from(host.children).forEach(function(node){if(node.classList&&node.classList.contains('tab')&&node.dataset&&node.dataset.tab)existing[String(node.dataset.tab)]=node;});
     keys.forEach(function(key){
-      var tab=document.createElement('button'),value=W.QbUiEvidence&&W.QbUiEvidence.detailTab?W.QbUiEvidence.detailTab(key):key;
-      tab.type='button';tab.className='tab';tab.dataset.tab=key;tab.setAttribute('role','tab');tab.setAttribute('aria-selected',active===key?'true':'false');tab.classList.toggle('is-active',active===key);tab.disabled=disabled;tab.textContent=value&&value!==key?value:key;
+      var tab=existing[key],value=W.QbUiEvidence&&W.QbUiEvidence.detailTab?W.QbUiEvidence.detailTab(key):key,label=value&&value!==key?value:key;
+      if(!tab){tab=document.createElement('button');tab.className='tab';tab.dataset.tab=key;host.appendChild(tab);}
+      delete existing[key];tab.type='button';tab.setAttribute('role','tab');tab.setAttribute('aria-selected',active===key?'true':'false');tab.classList.toggle('is-active',active===key);tab.disabled=disabled;if(tab.textContent!==label)tab.textContent=label;
       tab.onclick=function(){if(tab.disabled)return;if(typeof options.onSelect==='function')options.onSelect(key,tab);};
       host.appendChild(tab);
     });
+    Object.keys(existing).forEach(function(key){var node=existing[key];if(node&&node.parentElement===host)node.remove();});
     return keys;
   }
   function syncDetailTabLabels(){

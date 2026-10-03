@@ -236,11 +236,16 @@ try{
   assert(splitResize.now<=splitResize.max&&splitResize.max>0&&splitResize.pager.bottom<=splitResize.panel.bottom+2.5&&splitResize.list.height>=splitResize.head.height-1&&Math.abs(splitResize.split.top-splitResize.head.bottom)<=2.5&&Math.abs(splitResize.dock.bottom-splitResize.pager.top)<=2.5,'SplitPane resize refresh must settle against the latest root geometry and preserve the runtime header minimum: '+JSON.stringify(splitResize));
   await page.setViewportSize({width:1366,height:768});await page.evaluate(()=>WeiG.AppState.detailSplitPane.setSize(280,false));
 
-  await page.locator('#torrent-detail-tabs .tab[data-tab="trackers"]').click();
-  await page.waitForFunction(()=>!window.WeiG.AppState.detailDockOpen&&document.getElementById('torrent-detail-dock')?.hidden);
-
+  // A50: Dock and full Detail must share one active-tab semantic owner.
+  await page.locator('#torrent-detail-tabs .tab[data-tab="peers"]').click();
+  await page.waitForFunction(()=>window.WeiG.AppState.detailDockOpen&&window.WeiG.AppState.detailTab==='peers');
   await page.locator(`.torrent-row[data-hash="${hash}"] .torrent-title`).click();
-  await page.waitForSelector('#detail-view.is-active');
+  await page.waitForFunction(()=>WeiG.Router.route().name==='torrent'&&WeiG.Router.route().tab==='peers'&&document.querySelector('#detail-view .detail-tabs [data-tab="peers"]')?.classList.contains('is-active'));
+  await page.evaluate(()=>{window.__a50DetailTabNodes=Object.fromEntries([...document.querySelectorAll('#detail-view .detail-tabs .tab[data-tab]')].map(node=>[node.dataset.tab,node]));});
+  await page.locator('#detail-view .detail-tabs [data-tab="overview"]').click();
+  await page.waitForSelector('#detail-content > .general-detail');
+  const stableDetailTabs=await page.evaluate(()=>[...document.querySelectorAll('#detail-view .detail-tabs .tab[data-tab]')].every(node=>window.__a50DetailTabNodes?.[node.dataset.tab]===node));
+  assert(stableDetailTabs,'A50 full Detail tab selection must update stable keyed buttons in place instead of rebuilding the whole tab row.');
   const headerLayout=await page.evaluate(()=>{const hero=document.querySelector('.detail-hero'),eyebrow=hero&&hero.querySelector(':scope>.eyebrow'),state=document.getElementById('detail-state'),progress=hero&&hero.querySelector(':scope>.detail-progress'),track=progress&&progress.querySelector('.progress-track'),pct=document.getElementById('detail-progress-text'),title=document.getElementById('detail-title'),box=x=>{const r=x.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom,cy:r.y+r.height/2};};return{direct:!!(hero&&eyebrow&&state&&title&&progress&&eyebrow.parentElement===hero&&state.parentElement===hero&&title.parentElement===hero&&progress.parentElement===hero),hero:box(hero),eyebrow:box(eyebrow),state:box(state),progress:box(progress),track:box(track),pct:box(pct),pctAlign:getComputedStyle(pct).textAlign,title:box(title),text:pct.textContent,stateText:state.textContent,stateTone:state.dataset.tone,progressState:track.dataset.progressState,progressTone:track.dataset.progressTone,progressActive:track.dataset.progressActive};});
   assert(headerLayout.direct,'Detail four-corner nodes must be direct children of the canonical detail-hero geometry owner.');
   assert(Math.abs(headerLayout.eyebrow.cy-headerLayout.state.cy)<3,'Torrent Detail and state must share the top row: '+JSON.stringify(headerLayout));
