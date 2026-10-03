@@ -53,12 +53,35 @@ async function selectOnlyByRow(page,index){
   await page.waitForFunction(expected=>window.WeiG?.Selection?.count?.()===1&&window.WeiG.Selection.hashes()[0]===expected,hash,{timeout:10000});
   return hash;
 }
+async function installMotionProbe(page){
+  await page.evaluate(()=>{
+    const S=window.WeiG?.SurfaceTransition;if(!S||window.__weigMotionProbeInstalled)return;
+    const facts=node=>node&&typeof node.getAnimations==='function'?node.getAnimations().map(animation=>({duration:Number(animation.effect?.getTiming?.().duration)||0,playState:String(animation.playState||'')})):[];
+    const log=[];window.__weigMotionProbe=log;window.__weigMotionProbeInstalled=true;
+    for(const method of ['enter','exitSnapshot','morph']){
+      const original=S[method];if(typeof original!=='function')continue;
+      S[method]=function(...args){
+        const kind=String(method==='morph'?args[2]:args[1]||'surface'),result=original.apply(this,args),target=method==='enter'?args[0]:(method==='morph'?args[1]:null);
+        log.push({method,kind,policy:S.policy(kind),targetAnimations:facts(target),ghosts:[...document.querySelectorAll('.surface-transition-ghost')].map(node=>({className:node.className,animations:facts(node)}))});
+        return result;
+      };
+    }
+  });
+}
+async function setMotion(page,value){
+  await page.evaluate(next=>{const cfg=window.WeiG.Config.load();cfg.motion=next;window.WeiG.Config.save(cfg);window.WeiG.Config.apply(cfg);},value);
+  await page.waitForFunction(next=>document.documentElement.dataset.motion===next,value,{timeout:5000});
+}
+async function clearMotionProbe(page){await page.evaluate(()=>{if(Array.isArray(window.__weigMotionProbe))window.__weigMotionProbe.length=0;});}
+async function lastMotionProbe(page,method){return page.evaluate(name=>[...(window.__weigMotionProbe||[])].reverse().find(item=>item.method===name)||null,method);}
 
 async function verifyModern(){
   const context=await browser.newContext({viewport:{width:1200,height:850},locale:'zh-CN'});
   const page=await context.newPage(),errors=[];
   page.on('pageerror',error=>errors.push(error?.stack||error?.message||String(error)));
   await openSession(page);
+  await installMotionProbe(page);
+  await setMotion(page,'system');
 
   const initial=await page.evaluate(()=>({
     keys:[...document.querySelectorAll('#torrent-detail-tabs .tab')].map(node=>node.dataset.tab),
@@ -84,6 +107,12 @@ async function verifyModern(){
   await page.waitForSelector('#torrent-detail-dock:not([hidden]) .general-detail',{state:'visible',timeout:30000});
   const zeroOpened=await page.evaluate(()=>({hash:window.WeiG.AppState.detailDockHash,open:window.WeiG.AppState.detailDockOpen,selection:window.WeiG.Selection.count(),active:[...document.querySelectorAll('#torrent-detail-tabs .tab.is-active')].map(node=>node.dataset.tab),preview:[...document.querySelectorAll('#torrent-list [data-hash].is-detail-subject')].map(node=>node.dataset.hash),previewChecked:[...document.querySelectorAll('#torrent-list [data-hash].is-detail-subject .torrent-select')].map(node=>node.checked)}));
   assert.equal(zeroOpened.selection,0,'Detail preview must not mutate the explicit Selection owner');assert.equal(zeroOpened.hash,zeroSubject.hash);assert.equal(zeroOpened.open,true);assert.deepEqual(zeroOpened.active,['overview']);assert.deepEqual(zeroOpened.preview,[zeroSubject.hash],'zero-selection Detail subject must receive a presentation-only selected treatment');assert.ok(zeroOpened.previewChecked.every(value=>value===false),'presentation-only Detail subject must not check the real Selection input');
+  const osReduced=await page.evaluate(()=>matchMedia('(prefers-reduced-motion: reduce)').matches),systemEnter=await lastMotionProbe(page,'enter');
+  assert.equal(systemEnter?.kind,'dock','system motion must enter the inline Dock through the canonical SurfaceTransition owner');
+  assert.equal(systemEnter?.policy?.mode,osReduced?'reduced':'system','system motion must follow the browser reduced-motion preference');
+  if(osReduced)assert.equal(systemEnter.policy.duration,0,'system motion must reduce to zero when the OS requests reduced motion');
+  else assert.ok(systemEnter.policy.duration>0&&systemEnter.targetAnimations.some(item=>item.duration>=systemEnter.policy.duration-1),`system Dock entry must own a real bounded WAAPI animation: ${JSON.stringify(systemEnter)}`);
+  await page.waitForFunction(()=>!document.getElementById('torrent-detail-dock')?.dataset.surfaceTransition,null,{timeout:5000});
   await page.evaluate(()=>{const list=document.getElementById('torrent-list');list.scrollTop=Math.min(list.scrollHeight-list.clientHeight,list.scrollTop+Math.max(180,list.clientHeight*.55));list.dispatchEvent(new Event('scroll'));});await page.waitForTimeout(2400);
   const zeroAfterScroll=await page.evaluate(()=>({hash:window.WeiG.AppState.detailDockHash,selection:window.WeiG.Selection.count(),visiblePreview:[...document.querySelectorAll('#torrent-list [data-hash].is-detail-subject')].map(node=>node.dataset.hash)}));
   assert.equal(zeroAfterScroll.selection,0);assert.equal(zeroAfterScroll.hash,zeroSubject.hash,'zero-selection Detail subject must stay captured while the Torrent list scrolls');assert.ok(zeroAfterScroll.visiblePreview.every(hash=>hash===zeroSubject.hash),'recycled row shells must never leak Detail preview styling onto a different Torrent');
@@ -94,6 +123,7 @@ async function verifyModern(){
 
   const firstHash=await selectOnlyByRow(page,0);
   await page.waitForFunction(()=>[...document.querySelectorAll('#torrent-detail-tabs .tab')].every(node=>!node.disabled),null,{timeout:10000});
+  await setMotion(page,'full');await clearMotionProbe(page);
 
   await page.locator('#torrent-detail-tabs .tab[data-tab="overview"]').click();
   await page.waitForSelector('#torrent-detail-dock:not([hidden]) .general-detail',{state:'visible',timeout:30000});
@@ -112,6 +142,12 @@ async function verifyModern(){
   assert.equal(opened.topBackHidden,true,'home header Back must stay hidden for inline Detail');
   assert.equal(opened.dockBack,0,'inline Detail must not create a Back-to-torrents control');
   assert.equal(opened.sharedRuntime,true);assert.deepEqual(opened.active,['overview']);
+  const fullEnter=await lastMotionProbe(page,'enter');
+  assert.equal(fullEnter?.kind,'dock');assert.equal(fullEnter?.policy?.mode,'full','explicit full motion must not be downgraded by the OS preference');
+  assert.ok(fullEnter.policy.duration>Number(systemEnter?.policy?.duration||0)&&fullEnter.policy.offset>Number(systemEnter?.policy?.offset||0)&&fullEnter.policy.blur>Number(systemEnter?.policy?.blur||0),`full motion must be visibly richer than system/reduced motion: system=${JSON.stringify(systemEnter?.policy)} full=${JSON.stringify(fullEnter?.policy)}`);
+  assert.ok(fullEnter.targetAnimations.some(item=>item.duration>=fullEnter.policy.duration-1),`full Dock entry must execute the canonical WAAPI animation: ${JSON.stringify(fullEnter)}`);
+  await page.waitForFunction(()=>!document.getElementById('torrent-detail-dock')?.dataset.surfaceTransition,null,{timeout:5000});
+  await setMotion(page,'system');
   const activeTone=await page.evaluate(()=>{const active=document.querySelector('#torrent-detail-tabs .tab.is-active'),inactive=document.querySelector('#torrent-detail-tabs .tab:not(.is-active)'),style=node=>{const s=getComputedStyle(node);return{background:s.backgroundImage+'|'+s.backgroundColor,border:s.borderColor,color:s.color,shadow:s.boxShadow};};return{active:style(active),inactive:style(inactive)};});
   assert.notDeepEqual(activeTone.active,activeTone.inactive,`active Detail tab must have a visible selected treatment distinct from inactive tabs: ${JSON.stringify(activeTone)}`);
 
@@ -178,8 +214,14 @@ async function verifyModern(){
   await page.waitForFunction(()=>!window.WeiG.AppState.detailDockOpen&&document.getElementById('torrent-detail-dock').hidden&&document.getElementById('torrent-detail-splitter').hidden,null,{timeout:10000});
   assert.equal(await page.locator('#torrent-detail-tabs .tab.is-active').count(),0,'clicking the active tab must collapse and clear active presentation');
 
+  await setMotion(page,'reduced');await clearMotionProbe(page);
   await page.locator('#torrent-detail-tabs .tab[data-tab="peers"]').click();
   await page.waitForSelector('#torrent-detail-dock-content .shared-table__viewport',{state:'visible',timeout:30000});
+  const reducedEnter=await lastMotionProbe(page,'enter');
+  assert.equal(reducedEnter?.policy?.mode,'reduced');assert.equal(reducedEnter?.policy?.duration,0,'explicit reduced motion must suppress shared surface animation');
+  assert.equal(reducedEnter?.targetAnimations?.length,0,`reduced Dock entry must not create a WAAPI animation: ${JSON.stringify(reducedEnter)}`);
+  assert.equal(reducedEnter?.ghosts?.length,0,'reduced Dock entry must not create a transition ghost');
+  await setMotion(page,'system');
   const secondHash=await selectOnlyByRow(page,1);
   await page.waitForFunction(expected=>window.WeiG.AppState.detailDockOpen&&window.WeiG.AppState.detailDockHash===expected&&window.WeiG.AppState.detailDockTab==='peers',secondHash,{timeout:30000});
   assert.notEqual(secondHash,firstHash,'selection rebind gate needs a second Torrent');
@@ -234,6 +276,7 @@ async function verifyModern(){
   await page.reload({waitUntil:'domcontentloaded',timeout:60000});
   await page.waitForSelector('#torrent-list [data-hash]',{state:'visible',timeout:60000});
   await page.waitForFunction(()=>document.querySelectorAll('#torrent-detail-tabs .tab').length===5,null,{timeout:30000});
+  await installMotionProbe(page);await setMotion(page,'system');
   assert.equal(await page.evaluate(()=>window.WeiG.Selection.count()),0,'Torrent Selection must remain ephemeral across reload');
   await selectOnlyByRow(page,0);
   await page.locator('#torrent-detail-tabs .tab[data-tab="overview"]').click();
@@ -253,9 +296,19 @@ async function verifyModern(){
   await page.setViewportSize({width:1200,height:850});await page.waitForTimeout(180);
 
   // Full Detail route remains available and owns its own Back affordance.
+  await setMotion(page,'full');await clearMotionProbe(page);
   await page.locator('#torrent-detail-tabs .tab[data-tab="overview"]').click();
+  await page.waitForSelector('#torrent-detail-dock:not([hidden]) .general-detail',{state:'visible',timeout:30000});
+  await page.waitForFunction(()=>!document.getElementById('torrent-detail-dock')?.dataset.surfaceTransition,null,{timeout:5000});
+  await clearMotionProbe(page);
   await page.locator('#torrent-list .torrent-title').first().click();
   await page.waitForFunction(()=>window.WeiG.Router.route().name==='torrent'&&document.getElementById('detail-view')?.classList.contains('is-active'),null,{timeout:30000});
+  await page.waitForFunction(()=>Array.isArray(window.__weigMotionProbe)&&window.__weigMotionProbe.some(item=>item.method==='morph'),null,{timeout:10000});
+  const detailMorph=await lastMotionProbe(page,'morph');
+  assert.equal(detailMorph?.kind,'detail');assert.equal(detailMorph?.policy?.mode,'full');assert.ok(detailMorph.policy.duration>0,'Dock-to-full-Detail must execute a real shared-element morph in full motion');
+  assert.ok(detailMorph.ghosts.some(item=>String(item.className).includes('surface-transition-ghost--morph')&&item.animations.some(animation=>animation.duration>=detailMorph.policy.duration-1)),`Dock-to-full-Detail morph must animate the canonical presentation ghost: ${JSON.stringify(detailMorph)}`);
+  await page.waitForFunction(()=>document.querySelectorAll('.surface-transition-ghost--morph').length===0,null,{timeout:5000});
+  await setMotion(page,'system');
   assert.equal(await page.locator('#detail-view [data-detail-back]').count(),1,'full Detail route must retain Back to torrents');
   assert.equal(await page.locator('#torrent-detail-dock:not([hidden])').count(),0,'full Detail route must not leave the inline Dock open');
   const detailTitle=page.locator('#detail-title'),detailTitleText=String(await detailTitle.textContent()||'').trim();
