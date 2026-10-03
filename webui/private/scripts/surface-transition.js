@@ -10,7 +10,7 @@
     kind=String(kind||'surface');
     var setting=motionSetting(),reduced=setting==='reduced'||(setting!=='full'&&systemReduced()),full=setting==='full';
     if(reduced)return{mode:'reduced',duration:0,fade:0,offset:0,scale:1,blur:0};
-    var base=kind==='detail'?220:kind==='dock'?160:150;
+    var base=kind==='detail'?220:kind==='rail'?240:kind==='dock'?160:150;
     return{mode:full?'full':'system',duration:full?Math.round(base*1.55):base,fade:full?140:90,offset:full?14:7,scale:full?.955:.982,blur:full?5:2};
   }
   function animate(node,frames,timing){if(!node||typeof node.animate!=='function')return null;try{return node.animate(frames,timing);}catch(_e){return null;}}
@@ -29,7 +29,20 @@
     if(snapshot.background)node.style.background=snapshot.background;if(snapshot.borderColor)node.style.borderColor=snapshot.borderColor;if(snapshot.borderWidth)node.style.borderWidth=snapshot.borderWidth;if(snapshot.borderRadius)node.style.borderRadius=snapshot.borderRadius;if(snapshot.boxShadow&&snapshot.boxShadow!=='none')node.style.boxShadow=snapshot.boxShadow;
     return node;
   }
-  function cancel(node){var animation=node&&active.get(node);if(!animation)return false;active.delete(node);stop(animation);if(node&&node.dataset)delete node.dataset.surfaceTransition;return true;}
+  function cancel(node){var entry=node&&active.get(node);if(!entry)return false;active.delete(node);var animation=entry&&entry.animation?entry.animation:entry;stop(animation);if(entry&&typeof entry.cleanup==='function')entry.cleanup(false);if(node&&node.dataset)delete node.dataset.surfaceTransition;return true;}
+  function clearSlideStyles(node){if(!node||!node.style)return;['height','overflow','opacity','transform','willChange'].forEach(function(name){node.style.removeProperty(name.replace(/[A-Z]/g,function(ch){return'-'+ch.toLowerCase();}));});}
+  function slide(node,open,kind){
+    kind=String(kind||'rail');var p=policy(kind),wantOpen=!!open;cancel(node);if(!node)return Promise.resolve(false);if(wantOpen)node.hidden=false;
+    if(p.duration<=0){clearSlideStyles(node);node.hidden=!wantOpen;return Promise.resolve(true);}
+    var startHeight=wantOpen?0:Math.max(0,node.getBoundingClientRect().height),targetHeight;
+    if(wantOpen){node.style.height='auto';targetHeight=Math.max(0,node.scrollHeight||node.getBoundingClientRect().height);node.style.height='0px';}else targetHeight=0;
+    if(!wantOpen&&startHeight<=0){clearSlideStyles(node);node.hidden=true;return Promise.resolve(true);}
+    node.style.overflow='hidden';node.style.willChange='height, opacity, transform';if(node.dataset)node.dataset.surfaceTransition=wantOpen?'slide-in':'slide-out';
+    var offset=Math.max(5,p.offset),frames=wantOpen?[{height:'0px',opacity:0,transform:'translateY('+offset+'px)'},{height:targetHeight+'px',opacity:1,transform:'translateY(0)'}]:[{height:startHeight+'px',opacity:1,transform:'translateY(0)'},{height:'0px',opacity:0,transform:'translateY('+offset+'px)'}],animation=animate(node,frames,{duration:p.duration,easing:'cubic-bezier(.2,.8,.2,1)',fill:'both'});
+    if(!animation){clearSlideStyles(node);node.hidden=!wantOpen;if(node.dataset)delete node.dataset.surfaceTransition;return Promise.resolve(false);}
+    var entry={animation:animation,cleanup:function(finalize){clearSlideStyles(node);if(finalize)node.hidden=!wantOpen;}};
+    active.set(node,entry);return settled(animation).then(function(){if(active.get(node)!==entry)return false;active.delete(node);stop(animation);entry.cleanup(true);if(node.dataset)delete node.dataset.surfaceTransition;return true;});
+  }
   function enter(node,kind){
     var p=policy(kind);cancel(node);if(!node||p.duration<=0)return Promise.resolve(false);
     if(node.dataset)node.dataset.surfaceTransition='enter';
@@ -59,5 +72,5 @@
     }).catch(function(){stop(move);if(previousOpacity)target.style.opacity=previousOpacity;else target.style.removeProperty('opacity');removeGhost(node);return false;});
   }
   function clear(){Array.from(ghosts).forEach(removeGhost);}
-  W.SurfaceTransition={policy:policy,capture:capture,enter:enter,exitSnapshot:exitSnapshot,morph:morph,cancel:cancel,clear:clear};
+  W.SurfaceTransition={policy:policy,capture:capture,enter:enter,slide:slide,exitSnapshot:exitSnapshot,morph:morph,cancel:cancel,clear:clear};
 })(window);

@@ -73,19 +73,41 @@ try{
   assert.ok(card.overflow<=1,`stacked progress must fit the mobile torrent card height: ${JSON.stringify(card)}`);
 
   const pager=await page.locator('#list-view .pager').evaluate(node=>{
-    const tabs=node.querySelector('#torrent-detail-tabs'),nav=node.querySelector('.pager__nav'),actions=node.querySelector('#torrent-selection-toolbar');
-    if(!tabs||!nav||!actions)throw new Error('mobile pager canonical Detail/navigation/action nodes are missing');
+    const rail=node.querySelector('#mobile-detail-rail'),tabs=node.querySelector('#torrent-detail-tabs'),nav=node.querySelector('.pager__nav'),actions=node.querySelector('#torrent-selection-toolbar'),collapse=node.querySelector('#mobile-detail-collapse'),expand=node.querySelector('#mobile-detail-expand'),label=node.querySelector('#page-label');
+    if(!rail||!tabs||!nav||!actions||!collapse||!expand||!label)throw new Error('mobile pager canonical Detail/navigation/action/toggle nodes are missing');
     const buttons=[...actions.querySelectorAll('button')];
     const rect=n=>{const r=n.getBoundingClientRect();return{top:r.top,bottom:r.bottom,left:r.left,right:r.right,width:r.width,height:r.height};};
     const br=buttons.map(b=>({...rect(b),font:parseFloat(getComputedStyle(b).fontSize),text:(b.textContent||'').trim()}));
-    return{pager:rect(node),tabs:rect(tabs),nav:rect(nav),actions:rect(actions),buttons:br,overflow:node.scrollWidth-node.clientWidth};
+    const tabButtons=[...tabs.querySelectorAll('.tab')];
+    return{pager:rect(node),rail:rect(rail),tabs:rect(tabs),nav:rect(nav),actions:rect(actions),collapse:rect(collapse),buttons:br,labelFont:parseFloat(getComputedStyle(label).fontSize),tabGap:tabButtons.length>1?tabButtons[1].getBoundingClientRect().left-tabButtons[0].getBoundingClientRect().right:null,expandHidden:expand.hidden,overflow:node.scrollWidth-node.clientWidth};
   });
   assert.equal(pager.buttons.length,4,`mobile action rail must keep Start/Pause/More/Delete: ${JSON.stringify(pager)}`);
-  assert.ok(pager.tabs.bottom<=Math.min(pager.nav.top,pager.actions.top)+2,`Detail tabs must own the first mobile pager row while actions/navigation share the second: ${JSON.stringify(pager)}`);
+  assert.ok(pager.rail.bottom<=Math.min(pager.nav.top,pager.actions.top)+2,`Detail rail must own the first mobile pager row while actions/navigation share the second: ${JSON.stringify(pager)}`);
   assert.ok(Math.abs(pager.nav.top-pager.actions.top)<=3&&pager.nav.bottom<=pager.pager.bottom+1&&pager.actions.bottom<=pager.pager.bottom+1,`pager and actions must stay on one physical row: ${JSON.stringify(pager)}`);
   assert.ok(pager.buttons.every(button=>button.font>=10.5),`mobile action labels must remain readable at 390px: ${JSON.stringify(pager.buttons)}`);
+  assert.ok(pager.labelFont>=12,`mobile page current/total copy must remain readable: ${JSON.stringify(pager)}`);
+  assert.ok(pager.tabGap==null||pager.tabGap<=3,`Detail tabs must use the compact mobile rail gap: ${JSON.stringify(pager)}`);
+  assert.equal(pager.expandHidden,true,`expanded Detail rail must reserve the lower-row position for pager navigation: ${JSON.stringify(pager)}`);
   assert.ok(pager.buttons.slice(1).every((button,index)=>button.left-pager.buttons[index].right>=2),`mobile action buttons must remain visually separated: ${JSON.stringify(pager.buttons)}`);
   assert.ok(pager.overflow<=1,`single-line pager/action rail must not overflow: ${JSON.stringify(pager)}`);
+
+  await page.locator('#mobile-detail-collapse').click();
+  await page.waitForFunction(()=>document.getElementById('mobile-detail-rail')?.hidden===true&&document.querySelector('#list-view .torrent-pager')?.dataset.detailRailCollapsed==='true',null,{timeout:5000});
+  const collapsedPager=await page.locator('#list-view .pager').evaluate(node=>{
+    const rail=node.querySelector('#mobile-detail-rail'),nav=node.querySelector('.pager__nav'),actions=node.querySelector('#torrent-selection-toolbar'),expand=node.querySelector('#mobile-detail-expand'),label=node.querySelector('#page-label');
+    const rect=n=>{const r=n.getBoundingClientRect();return{top:r.top,bottom:r.bottom,left:r.left,right:r.right,width:r.width,height:r.height};};
+    return{pager:rect(node),nav:rect(nav),actions:rect(actions),railHidden:rail.hidden,expandHidden:expand.hidden,expand:rect(expand),labelFont:parseFloat(getComputedStyle(label).fontSize),overflow:node.scrollWidth-node.clientWidth};
+  });
+  assert.equal(collapsedPager.railHidden,true,`collapse arrow must remove the Detail rail after its shared transition: ${JSON.stringify(collapsedPager)}`);
+  assert.equal(collapsedPager.expandHidden,false,`collapsed Detail rail must expose the up-arrow between actions and pager: ${JSON.stringify(collapsedPager)}`);
+  assert.ok(Math.abs(collapsedPager.nav.top-collapsedPager.actions.top)<=3&&collapsedPager.expand.left>=collapsedPager.actions.right-2,`collapsed actions/up-arrow/pager must share one lower row in visual order: ${JSON.stringify(collapsedPager)}`);
+  assert.ok(collapsedPager.labelFont>=12&&collapsedPager.overflow<=1,`collapsed pager must stay readable and non-overflowing: ${JSON.stringify(collapsedPager)}`);
+
+  await page.locator('#mobile-detail-expand').click();
+  await page.waitForFunction(()=>document.getElementById('mobile-detail-rail')?.hidden===false&&document.getElementById('mobile-detail-expand')?.hidden===true,null,{timeout:5000});
+  const restoredRail=await page.locator('#mobile-detail-rail').evaluate(node=>({height:node.getBoundingClientRect().height,hidden:node.hidden}));
+  assert.equal(restoredRail.hidden,false,'up-arrow must restore the same Detail rail');
+  assert.ok(restoredRail.height>=34,`restored Detail rail must return to its usable height: ${JSON.stringify(restoredRail)}`);
 
   await page.locator('#mobile-bottom-nav [data-route="rss"]').click();
   await page.waitForFunction(()=>document.getElementById('rss-view')?.classList.contains('is-active')&&document.querySelector('#rss-view .rss-header-actions')&&document.getElementById('rss-add-open-btn')&&document.getElementById('rss-refresh-btn'));
