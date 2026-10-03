@@ -31,7 +31,7 @@ function api(req,res,v,p,url){
 const server=http.createServer(async(req,res)=>{try{const url=new URL(req.url,`http://${host}:${port}`),m=url.pathname.match(/^\/(legacy|modern)(?:\/(.*))?$/);if(!m){res.writeHead(404);return res.end('not found');}const v=variants[m[1]],rel=m[2]||'';if(rel.startsWith('api/v2/'))return api(req,res,v,rel.slice(7),url);if(rel==='data/qb-releases.json')return json(res,exactProfiles);if(rel==='weigg-install.json')return json(res,{version:productVersion,gitSha:'theme-fixture',qbPath:'/config/weigg-qb-webui',hostPath:'/srv/qb/config/weigg-qb-webui'});const requested=rel||'index.html',{file,body}=await readWebuiStatic([privateRoot,publicRoot],requested);res.writeHead(200,{'content-type':mime[path.extname(file).toLowerCase()]||'application/octet-stream','cache-control':'no-store'});res.end(body);}catch(e){res.writeHead(e?.code==='ENOENT'?404:500,{'content-type':'text/plain; charset=utf-8'});res.end(String(e));}});
 await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(port,host,resolve);});
 
-async function choose(page,root,value){const trigger=page.locator(`${root} .ui-select__trigger`);await trigger.click();const option=page.locator(`#weig-floating-layer .ui-select__option[data-value="${value}"]`);await option.waitFor();await option.click();}
+async function choose(page,root,value){const trigger=page.locator(`${root} .ui-select__trigger`);await trigger.click();const option=page.locator(`#weig-floating-layer .ui-select__option[data-value="${value}"]`);await option.waitFor();await option.click();}\nasync function inputNumeric(page,root,value){const trigger=page.locator(`${root} .ui-select__trigger`);await trigger.click();const input=page.locator('#weig-floating-layer .ui-select__numeric-input');await input.waitFor();await input.fill(String(value));await input.press('Enter');}
 async function surface(page,selector){return page.locator(selector).first().evaluate(n=>{const s=getComputedStyle(n);return{image:s.backgroundImage,color:s.backgroundColor,text:s.color,display:s.display,opacity:s.opacity};});}
 function whiteBased(s){return [...`${s.image} ${s.color}`.matchAll(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/g)].some(([,r,g,b])=>Number(r)>=250&&Number(g)>=250&&Number(b)>=250);}
 async function openSettings(page){await page.locator('#app-nav [data-route="settings"]').click();await page.waitForFunction(()=>document.getElementById('settings-view')?.classList.contains('is-active'));await page.waitForSelector('#settings-content[data-settings-renderer="canonical"]');}
@@ -56,13 +56,24 @@ try{
     await page.locator('#theme-control .ui-select__trigger').click();await page.waitForSelector('#weig-floating-layer .ui-select__menu');
     const menuLight=await surface(page,'#weig-floating-layer .ui-select__menu');assert(whiteBased(menuLight),`${name}: Light Select menu remained Dark: ${JSON.stringify(menuLight)}`);await page.keyboard.press('Escape');
 
-    // Settings is a draft presentation caller of the same owner; Theme changes only when shared Save commits the draft.
+    // A50 Interface Preview is transient: runtime changes immediately, persistence waits for Save, leaving Interface rolls back.
     await openSettings(page);
     const settingsSurface=await surface(page,'#settings-content'),sectionSurface=await surface(page,'#settings-content .settings-section'),searchSurface=await surface(page,'.settings-search-box');
     assert(whiteBased(settingsSurface)&&whiteBased(sectionSurface)&&whiteBased(searchSurface),`${name}: Light Settings surfaces are not white-based`);
-    const themeRow=page.locator('[data-setting-key="weig_theme"]');await themeRow.waitFor();await choose(page,'[data-setting-key="weig_theme"]','time');
+    const savedBeforePreview=await page.evaluate(()=>WeiG.Config.load());
+    await inputNumeric(page,'[data-setting-key="weig_fontSize"]','+8px');
+    await inputNumeric(page,'[data-setting-key="weig_pageSize"]','37');
+    await inputNumeric(page,'[data-setting-key="weig_refresh"]','3');
+    const numericPreview=await page.evaluate(()=>({draft:JSON.parse(JSON.stringify(WeiG.SettingsState.weigDraft)),saved:WeiG.Config.load(),font:getComputedStyle(document.documentElement).getPropertyValue('--font-scale-offset').trim(),pageSize:WeiG.AppState.pageSize}));
+    assert(numericPreview.draft.fontSize===8&&numericPreview.draft.pageSize===37&&numericPreview.draft.refresh===3000&&numericPreview.font==='8px'&&numericPreview.pageSize===37&&numericPreview.saved.fontSize===savedBeforePreview.fontSize&&numericPreview.saved.pageSize===savedBeforePreview.pageSize&&numericPreview.saved.refresh===savedBeforePreview.refresh,`${name}: Interface numeric preview did not stay transient/shared: ${JSON.stringify(numericPreview)}`);
+    await page.locator('#settings-tabs [data-settings-tab="about"]').click();
+    await page.waitForFunction(expected=>Object.keys(WeiG.SettingsState.weigDraft||{}).length===0&&WeiG.AppState.pageSize===expected.pageSize&&getComputedStyle(document.documentElement).getPropertyValue('--font-scale-offset').trim()===WeiG.FontScalePolicy.format(expected.fontSize),savedBeforePreview);
+    const rolledNumeric=await page.evaluate(()=>({saved:WeiG.Config.load(),font:getComputedStyle(document.documentElement).getPropertyValue('--font-scale-offset').trim(),pageSize:WeiG.AppState.pageSize}));
+    assert(rolledNumeric.saved.fontSize===savedBeforePreview.fontSize&&rolledNumeric.saved.pageSize===savedBeforePreview.pageSize&&rolledNumeric.saved.refresh===savedBeforePreview.refresh&&rolledNumeric.pageSize===savedBeforePreview.pageSize,`${name}: leaving WeiG Interface did not roll back unsaved preview: ${JSON.stringify(rolledNumeric)}`);
+    await page.locator('#settings-tabs [data-settings-tab="weig"]').click();await page.waitForSelector('[data-setting-key="weig_theme"]');
+    await choose(page,'[data-setting-key="weig_theme"]','time');
     const beforeSave=await page.evaluate(()=>({draft:WeiG.SettingsState.weigDraft.theme,state:WeiG.Theme.state(),saved:WeiG.Config.load().theme,header:document.getElementById('theme-control')?.getValue?.()}));
-    assert(beforeSave.draft==='time'&&beforeSave.state.mode==='light'&&beforeSave.saved==='light'&&beforeSave.header==='light',`${name}: Settings Theme draft changed canonical Theme before Save: ${JSON.stringify(beforeSave)}`);
+    assert(beforeSave.draft==='time'&&beforeSave.state.mode==='time'&&beforeSave.saved==='light'&&beforeSave.header==='time',`${name}: Settings Theme did not preview immediately without persistence: ${JSON.stringify(beforeSave)}`);
     assert((await page.locator('#save-settings-btn').textContent()).trim()==='Save',`${name}: shared Settings Save label is not compact`);
     await page.locator('#save-settings-btn').click();
     await page.waitForFunction(()=>WeiG.Theme.state().mode==='time'&&WeiG.Config.load().theme==='time'&&document.getElementById('theme-control')?.getValue?.()==='time');
@@ -97,5 +108,5 @@ try{
     await page.waitForSelector('#transfer-capsule');await page.locator('.transfer-runtime-capsule__stats').click();await page.waitForSelector('#transfer-stats-dialog[open]');const transferStat=await surface(page,'.transfer-stat'),chart=await surface(page,'.transfer-chart-shell');assert(whiteBased(transferStat)&&whiteBased(chart),`modern: Light Transfer surfaces remained Dark`);await page.locator('#transfer-stats-dialog .icon-btn').click().catch(()=>page.evaluate(()=>document.getElementById('transfer-stats-dialog')?.close()));
     await page.locator('#app-nav [data-route="logs"]').click();await page.waitForFunction(()=>document.getElementById('logs-view')?.classList.contains('is-active'));await page.waitForSelector('.logs-toolbar');await page.waitForSelector('.logs-panel');const logsToolbar=await surface(page,'.logs-toolbar'),logsPanel=await surface(page,'.logs-panel');assert(whiteBased(logsToolbar)&&whiteBased(logsPanel),`modern: Light Logs surfaces remained Dark`);await context.close();
   }
-  console.log('Theme browser regression passed: qB 4.1.9.1/5.2.0, four modes, draft-based shared Save, live system, Smart Auto, Light surfaces, Mobile and Reduced Motion.');
+  console.log('Theme browser regression passed: qB 4.1.9.1/5.2.0, four modes, Interface preview + shared Save, live system, Smart Auto, Light surfaces, Mobile and Reduced Motion.');
 }finally{await browser.close();await new Promise(r=>server.close(r));}
