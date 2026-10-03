@@ -308,12 +308,12 @@ async function verifyModern(){
 
   // Full Detail route remains available and owns its own Back affordance.
   await setMotion(page,'full');await clearMotionProbe(page);
-  await page.locator('#torrent-detail-tabs .tab[data-tab="overview"]').click();
-  await page.waitForSelector('#torrent-detail-dock:not([hidden]) .general-detail',{state:'visible',timeout:30000});
+  await page.locator('#torrent-detail-tabs .tab[data-tab="peers"]').click();
+  await page.waitForSelector('#torrent-detail-dock-content .shared-table__viewport',{state:'visible',timeout:30000});
   await page.waitForFunction(()=>!document.getElementById('torrent-detail-dock')?.dataset.surfaceTransition,null,{timeout:5000});
   await clearMotionProbe(page);
   await page.locator('#torrent-list .torrent-title').first().click();
-  await page.waitForFunction(()=>window.WeiG.Router.route().name==='torrent'&&document.getElementById('detail-view')?.classList.contains('is-active'),null,{timeout:30000});
+  await page.waitForFunction(()=>window.WeiG.Router.route().name==='torrent'&&window.WeiG.Router.route().tab==='peers'&&document.getElementById('detail-view')?.classList.contains('is-active')&&document.querySelector('#detail-view .detail-tabs .tab[data-tab="peers"]')?.classList.contains('is-active'),null,{timeout:30000});
   await page.waitForFunction(()=>Array.isArray(window.__weigMotionProbe)&&window.__weigMotionProbe.some(item=>item.method==='morph'),null,{timeout:10000});
   const detailMorph=await lastMotionProbe(page,'morph');
   assert.equal(detailMorph?.kind,'detail');assert.equal(detailMorph?.policy?.mode,'full');assert.ok(detailMorph.policy.duration>0,'Dock-to-full-Detail must execute a real shared-element morph in full motion');

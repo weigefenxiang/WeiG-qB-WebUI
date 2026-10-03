@@ -72,6 +72,12 @@ try{
     const rolledNumeric=await page.evaluate(()=>({saved:WeiG.Config.load(),font:getComputedStyle(document.documentElement).getPropertyValue('--font-scale-offset').trim(),pageSize:WeiG.AppState.pageSize}));
     assert(rolledNumeric.saved.fontSize===savedBeforePreview.fontSize&&rolledNumeric.saved.pageSize===savedBeforePreview.pageSize&&rolledNumeric.saved.refresh===savedBeforePreview.refresh&&rolledNumeric.pageSize===savedBeforePreview.pageSize,`${name}: leaving WeiG Interface did not roll back unsaved preview: ${JSON.stringify(rolledNumeric)}`);
     await page.locator('#settings-tabs [data-settings-tab="weig"]').click();await page.waitForSelector('[data-setting-key="weig_theme"]');
+    await choose(page,'[data-setting-key="weig_density"]','compact');
+    const routePreview=await page.evaluate(()=>({draft:WeiG.SettingsState.weigDraft.density,saved:WeiG.Config.load().density,runtime:document.documentElement.dataset.density}));
+    assert(routePreview.draft==='compact'&&routePreview.saved===savedBeforePreview.density&&routePreview.runtime==='compact',`${name}: Settings-route preview did not stay transient before navigation: ${JSON.stringify(routePreview)}`);
+    await page.locator('#app-nav [data-route="home"]').click();await page.waitForFunction(()=>document.getElementById('list-view')?.classList.contains('is-active'));
+    await page.waitForFunction(expected=>Object.keys(WeiG.SettingsState.weigDraft||{}).length===0&&WeiG.Config.load().density===expected.density&&document.documentElement.dataset.density===expected.density,savedBeforePreview);
+    await openSettings(page);await page.waitForSelector('[data-setting-key="weig_theme"]');
     await choose(page,'[data-setting-key="weig_theme"]','time');
     const beforeSave=await page.evaluate(()=>({draft:WeiG.SettingsState.weigDraft.theme,state:WeiG.Theme.state(),saved:WeiG.Config.load().theme,header:document.getElementById('theme-control')?.getValue?.()}));
     assert(beforeSave.draft==='time'&&beforeSave.state.mode==='time'&&beforeSave.saved==='light'&&beforeSave.header==='time',`${name}: Settings Theme did not preview immediately without persistence: ${JSON.stringify(beforeSave)}`);
