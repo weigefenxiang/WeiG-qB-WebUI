@@ -1571,6 +1571,12 @@ $TARGETS
 EOF_UNINSTALL_PURGE
     echo "Installer backups for the uninstalled target(s) were purged; installer rollback is no longer available for them."
   else
+    while IFS= read -r target; do
+      [ -n "$target" ] || continue
+      prune_backups_for_dest "$target" "$BACKUP_RETENTION" || exit 1
+    done <<EOF_UNINSTALL_RETENTION
+$TARGETS
+EOF_UNINSTALL_RETENTION
     echo "Rollback is available with: sh $0 -rollback"
   fi
   exit 0

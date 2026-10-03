@@ -379,6 +379,15 @@ grep -Fx "WebUI\\RootFolder=$DEST" "$CFG" >/dev/null
 UNINSTALL_BACKUP=$(cat "$STATE/last-backup")
 test "$(backup_record_read "$UNINSTALL_BACKUP" had-webui)" = 1
 assert_archive_backup "$UNINSTALL_BACKUP" "$VERSION_ONE"
+retained_backups=0
+for backup_root in "$STATE/backups" "$LEGACY_STATE/backups"; do
+  [ -d "$backup_root" ] || continue
+  for backup in "$backup_root"/*; do
+    [ -e "$backup" ] || continue
+    retained_backups=$((retained_backups+1))
+  done
+done
+test "$retained_backups" -le 3
 
 run_installer -rollback -configure
 assert_install "$VERSION_ONE" "$SHA_ONE" release-one
