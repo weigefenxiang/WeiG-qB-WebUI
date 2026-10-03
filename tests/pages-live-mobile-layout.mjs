@@ -58,6 +58,8 @@ try{
   await page.waitForTimeout(1800);
   await page.waitForFunction(()=>window.WeiG?.I18n?.getQbLocale?.()==='zh_CN',null,{timeout:30000});
   await page.waitForSelector('.torrent-mobile-card--two-line',{state:'visible',timeout:60000});
+  const startupCatalog=await page.evaluate(()=>({ready:WeiG.AppState?.catalogReady===true,busy:!!WeiG.AppState?.catalogTask,stats:WeiG.AppState?.libraryData?.stats?.()}));
+  assert.equal(startupCatalog.ready,false,`ordinary Torrent startup must not materialize the full catalog: ${JSON.stringify(startupCatalog)}`);assert.equal(startupCatalog.busy,false,`ordinary Torrent startup must not leave a background full-catalog task running: ${JSON.stringify(startupCatalog)}`);
   await page.evaluate(()=>{if(window.WeiG?.I18n?.setLocale)WeiG.I18n.setLocale('zh-CN');WeiG.TorrentFieldRegistry?.saveMobileFields?.(['state','size','dlspeed','upspeed','eta','progress']);WeiG.AppState?.viewport?.render?.();WeiG.UiSystem?.enforceMobileHeight?.();});
   await page.waitForTimeout(150);
 
