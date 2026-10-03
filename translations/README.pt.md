@@ -12,13 +12,15 @@ Uma Alternate WebUI moderna e responsiva para qBittorrent, otimizada para comput
   <img src="https://img.shields.io/badge/-Shell-8A2BE2?logo=gnubash&logoColor=white" alt="Shell">
 </p>
 
-**[🌐 Pré-visualização online](https://weigefenxiang.github.io/WeiG-qB-WebUI/)** · **[⬇️ Transferir a versão estável mais recente](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/weig-qb-webui.zip)**
+**[🌐 Pré-visualização online](https://weigefenxiang.github.io/WeiG-qB-WebUI/)** · **[⬇️ Transferir a versão estável mais recente](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest)**
 
 **Idioma**: [English](../README.md) · [简中](README.zh-CN.md) · [繁中](README.zh-TW.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Deutsch](README.de.md) · [Français](README.fr.md) · [Español](README.es.md) · **Português** · [Русский](README.ru.md)
 
 ## Transferência direta
 
-Transfira a versão estável mais recente **[weig-qb-webui.zip](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/weig-qb-webui.zip)**.
+Transfira a versão estável mais recente **[weig-qb-webui.zip](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest)**.
+
+As Releases históricas e imutáveis mantêm os nomes de ficheiro usados na publicação; o instalador só lê esses nomes antigos através de um caminho de compatibilidade claramente limitado.
 
 O ZIP já contém a pasta superior canónica **`weig-qb-webui`**. Extraia-a e utilize diretamente essa pasta como diretório WebUI do qBittorrent; não é necessário mudar o nome.
 

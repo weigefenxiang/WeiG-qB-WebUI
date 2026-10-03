@@ -12,13 +12,15 @@
   <img src="https://img.shields.io/badge/-Shell-8A2BE2?logo=gnubash&logoColor=white" alt="Shell">
 </p>
 
-**[🌐 線上預覽](https://weigefenxiang.github.io/WeiG-qB-WebUI/)** · **[⬇️ 下載最新正式版](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/weig-qb-webui.zip)**
+**[🌐 線上預覽](https://weigefenxiang.github.io/WeiG-qB-WebUI/)** · **[⬇️ 下載最新正式版](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest)**
 
 **語言**：[English](../README.md) · [簡中](README.zh-CN.md) · **繁中** · [日本語](README.ja.md) · [한국어](README.ko.md) · [Deutsch](README.de.md) · [Français](README.fr.md) · [Español](README.es.md) · [Português](README.pt.md) · [Русский](README.ru.md)
 
 ## 直接下載
 
-下載最新穩定版 **[weig-qb-webui.zip](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/weig-qb-webui.zip)**。
+下載最新穩定版 **[weig-qb-webui.zip](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest)**。
+
+歷史不可變 Release 會保留發佈時的原始資產名稱；安裝器只在明確的相容邊界內繼續讀取這些舊名稱。
 
 ZIP 內已經使用統一的最上層資料夾 **`weig-qb-webui`**。解壓縮後直接使用這個資料夾作為 qBittorrent 的 WebUI 目錄，不需要再重新命名。
 

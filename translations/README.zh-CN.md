@@ -12,13 +12,15 @@
   <img src="https://img.shields.io/badge/-Shell-8A2BE2?logo=gnubash&logoColor=white" alt="Shell">
 </p>
 
-**[🌐 在线预览](https://weigefenxiang.github.io/WeiG-qB-WebUI/)** · **[⬇️ 下载最新正式版](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/weig-qb-webui.zip)**
+**[🌐 在线预览](https://weigefenxiang.github.io/WeiG-qB-WebUI/)** · **[⬇️ 下载最新正式版](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest)**
 
 **语言**：[English](../README.md) · **简中** · [繁中](README.zh-TW.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Deutsch](README.de.md) · [Français](README.fr.md) · [Español](README.es.md) · [Português](README.pt.md) · [Русский](README.ru.md)
 
 ## 直接下载
 
-下载最新正式版 **[weig-qb-webui.zip](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/weig-qb-webui.zip)**。Linux / NAS 也可以直接使用同一 Release 中的 **`weig-qb-webui.tar.gz`**。
+下载最新正式版 **[weig-qb-webui.zip](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest)**。Linux / NAS 也可以直接使用同一 Release 中的 **`weig-qb-webui.tar.gz`**。
+
+历史不可变 Release 会保留其发布时的原始资产名；安装器只在明确的兼容边界内继续读取这些旧名称。
 
 压缩包内已经使用统一的顶层目录 **`weig-qb-webui`**；解压后直接使用这个文件夹作为 qBittorrent 的 WebUI 目录，不需要再重命名。
 

@@ -12,13 +12,15 @@
   <img src="https://img.shields.io/badge/-Shell-8A2BE2?logo=gnubash&logoColor=white" alt="Shell">
 </p>
 
-**[🌐 온라인 미리보기](https://weigefenxiang.github.io/WeiG-qB-WebUI/)** · **[⬇️ 최신 정식 버전 다운로드](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/weig-qb-webui.zip)**
+**[🌐 온라인 미리보기](https://weigefenxiang.github.io/WeiG-qB-WebUI/)** · **[⬇️ 최신 정식 버전 다운로드](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest)**
 
 **언어**: [English](../README.md) · [简中](README.zh-CN.md) · [繁中](README.zh-TW.md) · [日本語](README.ja.md) · **한국어** · [Deutsch](README.de.md) · [Français](README.fr.md) · [Español](README.es.md) · [Português](README.pt.md) · [Русский](README.ru.md)
 
 ## 직접 다운로드
 
-최신 안정 버전 **[weig-qb-webui.zip](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/weig-qb-webui.zip)** 을 내려받습니다.
+최신 안정 버전 **[weig-qb-webui.zip](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest)** 을 내려받습니다.
+
+과거 immutable Release는 게시 당시의 원래 자산 이름을 그대로 유지합니다. 설치 프로그램은 명확히 제한된 호환 경로에서만 이러한 이전 이름을 읽습니다.
 
 ZIP에는 표준 최상위 폴더 **`weig-qb-webui`** 가 이미 들어 있습니다. 압축을 푼 뒤 이름을 바꾸지 않고 이 폴더를 그대로 qBittorrent WebUI 디렉터리로 사용하면 됩니다.
 
