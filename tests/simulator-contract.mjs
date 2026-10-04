@@ -61,7 +61,7 @@ function formRequest(url,body){
   let r=await handleApi(w,formRequest('https://example.invalid/api/v2/clientdata/load',{keys:JSON.stringify(['qbt_date_format'])}));
   assert.equal(r.status,200);assert.deepEqual(await r.json(),{},'empty ClientData storage must return an empty keyed object');
   r=await handleApi(w,formRequest('https://example.invalid/api/v2/clientdata/store',{data:JSON.stringify({qbt_date_format:'yyyy-MM-dd HH:mm:ss',qbt_hide_zero_status_filters:true})}));
-  assert.equal(r.status,200);assert.deepEqual(w.clientData,{qbt_date_format:'yyyy-MM-dd HH:mm:ss',qbt_hide_zero_status_filters:true},'ClientData store must persist native qbt_ keys in the virtual world');
+  assert.equal(r.status,204,'qB 5.2.x ClientData store success must preserve the source-native No Content response');assert.equal(await r.text(),'');assert.deepEqual(w.clientData,{qbt_date_format:'yyyy-MM-dd HH:mm:ss',qbt_hide_zero_status_filters:true},'ClientData store must persist native qbt_ keys in the virtual world');
   r=await handleApi(w,formRequest('https://example.invalid/api/v2/clientdata/load',{keys:JSON.stringify(['qbt_date_format','qbt_missing'])}));
   assert.deepEqual(await r.json(),{qbt_date_format:'yyyy-MM-dd HH:mm:ss'},'ClientData keyed load must return only stored requested keys');
   r=await handleApi(w,formRequest('https://example.invalid/api/v2/clientdata/load',{}));
