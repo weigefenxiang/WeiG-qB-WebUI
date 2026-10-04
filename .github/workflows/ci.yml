@@ -1413,29 +1413,97 @@ jobs:
             settings-runtime-materialized.json
           if-no-files-found: error
           retention-days: 7
-      - name: Compare canonical runtimes to committed product runtime
+      - name: Verify canonical runtimes and delegate Settings materialization
         shell: bash
         run: |
           set -euo pipefail
-          mismatch=0
+          blocking_mismatch=0
+          settings_runtime_stale=0
           node tools/qb-detail-runtime-rebind.mjs detail-runtime-materialized.json native-base/qb-releases.json
           cmp -s settings-runtime-materialized.json webui/private/data/settings-compat.json || {
-            echo 'Committed Settings runtime does not match the exact-SHA canonical materialization.' >&2
-            sha256sum settings-runtime-materialized.json webui/private/data/settings-compat.json >&2
-            mismatch=1
+            echo 'Committed Settings runtime is stale against the exact-SHA canonical materialization; the dedicated Settings source-runtime owner will materialize it.'
+            sha256sum settings-runtime-materialized.json webui/private/data/settings-compat.json
+            settings_runtime_stale=1
           }
           cmp -s native-base/rss-compat.json webui/private/data/rss-compat.json || {
             echo 'Committed RSS runtime does not match the exact-SHA canonical materialization.' >&2
             sha256sum native-base/rss-compat.json webui/private/data/rss-compat.json >&2
-            mismatch=1
+            blocking_mismatch=1
           }
           cmp -s detail-runtime-materialized.json webui/private/data/detail-compat.json || {
             echo 'Committed Detail runtime does not match the exact-SHA canonical materialization.' >&2
             sha256sum detail-runtime-materialized.json webui/private/data/detail-compat.json >&2
-            mismatch=1
+            blocking_mismatch=1
           }
-          test "$mismatch" -eq 0
+          test "$blocking_mismatch" -eq 0
+          if [ "$settings_runtime_stale" -eq 0 ]; then echo 'Committed Settings runtime already matches the exact-SHA canonical materialization.'; fi
           sha256sum settings-runtime-materialized.json native-base/rss-compat.json detail-runtime-materialized.json
+
+
+  native_settings_runtime_materialize:
+    name: qB Settings exact source runtime materialization
+    if: ${{ always() && needs.native_surface_source.result == 'success' && github.ref == 'refs/heads/dev' }}
+    runs-on: ubuntu-latest
+    needs:
+      - native_surface_source
+    permissions:
+      contents: write
+      actions: write
+    outputs:
+      materialized_sha: ${{ steps.commit.outputs.materialized_sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Download exact native Settings source runtime
+        uses: actions/download-artifact@v8
+        with:
+          name: native-surface-source-${{ github.sha }}
+          path: native-source
+      - name: Stage and verify canonical Settings source runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          GENERATED="native-source/settings-runtime-materialized.json"
+          TARGET="webui/private/data/settings-compat.json"
+          test -s "$GENERATED"
+          if cmp -s "$GENERATED" "$TARGET"; then echo "Committed Settings source runtime already matches exact source generation."; exit 0; fi
+          cp "$GENERATED" "$TARGET"
+          node tests/settings-contract.mjs
+          node tests/qb-preferences-surface-source-contract.mjs
+          git diff --check
+          mapfile -t changed < <(git diff --name-only)
+          test "${#changed[@]}" -eq 1
+          test "${changed[0]}" = "$TARGET"
+      - name: Commit canonical Settings source runtime if changed
+        id: commit
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TARGET="webui/private/data/settings-compat.json"
+          git diff --quiet -- "$TARGET" && exit 0
+          handoff_latest_native_surface() {
+            local remote_sha="$1"
+            echo "Settings source-runtime owner $GITHUB_SHA is stale; handing native-surface validation to latest dev $remote_sha."
+            jq -n --arg ref dev '{ref:$ref,inputs:{validation_mode:"native-surfaces"}}' | gh api --method POST "/repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/dispatches" --input -
+          }
+          git fetch --no-tags origin dev
+          REMOTE_DEV_SHA="$(git rev-parse origin/dev)"
+          if [ "$REMOTE_DEV_SHA" != "$GITHUB_SHA" ]; then handoff_latest_native_surface "$REMOTE_DEV_SHA"; exit 0; fi
+          git config user.name "WeiG CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add "$TARGET"
+          git commit -m "a57: materialize exact Settings source runtime [ui]"
+          git fetch --no-tags origin dev
+          REMOTE_DEV_SHA="$(git rev-parse origin/dev)"
+          if [ "$REMOTE_DEV_SHA" != "$GITHUB_SHA" ]; then handoff_latest_native_surface "$REMOTE_DEV_SHA"; exit 0; fi
+          git push origin HEAD:dev
+          echo "materialized_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
   materialized_validation_dispatch:
     name: Dispatch materialized exact-SHA validation
@@ -1447,6 +1515,7 @@ jobs:
       - settings_bundle_materialize
       - stable_lkg_refresh
       - detail_runtime_materialize
+      - native_settings_runtime_materialize
     permissions:
       actions: write
       contents: read
@@ -1460,10 +1529,11 @@ jobs:
           SETTINGS_BUNDLE_SHA: ${{ needs.settings_bundle_materialize.outputs.materialized_sha }}
           STABLE_RUNTIME_SHA: ${{ needs.stable_lkg_refresh.outputs.materialized_sha }}
           DETAIL_RUNTIME_SHA: ${{ needs.detail_runtime_materialize.outputs.materialized_sha }}
+          NATIVE_SETTINGS_RUNTIME_SHA: ${{ needs.native_settings_runtime_materialize.outputs.materialized_sha }}
         run: |
           set -euo pipefail
           shas=()
-          for value in "$TORRENT_RUNTIME_SHA" "$SETTINGS_RUNTIME_SHA" "$SETTINGS_BUNDLE_SHA" "$STABLE_RUNTIME_SHA" "$DETAIL_RUNTIME_SHA"; do
+          for value in "$TORRENT_RUNTIME_SHA" "$SETTINGS_RUNTIME_SHA" "$SETTINGS_BUNDLE_SHA" "$STABLE_RUNTIME_SHA" "$DETAIL_RUNTIME_SHA" "$NATIVE_SETTINGS_RUNTIME_SHA"; do
             [ -n "$value" ] && shas+=("$value")
           done
           if [ "${#shas[@]}" -eq 0 ]; then
