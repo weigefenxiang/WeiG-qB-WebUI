@@ -1,6 +1,6 @@
 (function(global){
   'use strict';
-  var W=global.WeiG=global.WeiG||{},S=W.SettingsSchema,state={client:null,values:{},ready:false,loading:null,revision:0};
+  var W=global.WeiG=global.WeiG||{},S=W.SettingsSchema,state={client:null,values:{},ready:false,loading:null,revision:0},viewports=new Set();
   function own(obj,key){return Object.prototype.hasOwnProperty.call(obj||{},key);}
   function meta(key){return S&&typeof S.clientDataForKey==='function'?S.clientDataForKey(String(key||'')):null;}
   function supports(key){return !!meta(key);}
@@ -22,7 +22,10 @@
     var def=defaultValue(item);return def===undefined?fallback:def;
   }
   function snapshot(){return Object.assign({},state.values);}
+  function syncViewport(viewport){if(!viewport)return;try{if(viewport._sourceManagedVirtualize===true&&typeof viewport.setVirtualize==='function')viewport.setVirtualize(virtualizeTables());if(typeof viewport.refreshRenderedRows==='function')viewport.refreshRenderedRows();}catch(_e){}}
+  function syncViewports(){viewports.forEach(syncViewport);}
   function emit(changed){
+    syncViewports();
     try{global.dispatchEvent(new CustomEvent('weig:clientdatachange',{detail:{values:snapshot(),keys:(changed||[]).slice(),revision:state.revision,ready:state.ready}}));}catch(_e){}
   }
   function apply(data,replace){
@@ -50,5 +53,6 @@
   function virtualizeTables(){return supports('use_virtual_list')&&state.ready?value('use_virtual_list',false)===true:true;}
   function actionEnabled(key){return supports(key)&&state.ready&&String(value(key,'1'))==='1';}
   function hideZeroStatusFilters(){return supports('hide_zero_status_filters')&&state.ready&&value('hide_zero_status_filters',false)===true;}
-  W.ClientDataRuntime={bind:bind,merge:merge,ready:function(){return state.ready;},supports:supports,keys:keys,get:value,snapshot:snapshot,revision:function(){return state.revision;},dateFormat:dateFormat,trackerText:trackerText,virtualizeTables:virtualizeTables,actionEnabled:actionEnabled,hideZeroStatusFilters:hideZeroStatusFilters};
+  function registerViewport(viewport){if(!viewport)return function(){};viewports.add(viewport);syncViewport(viewport);return function(){viewports.delete(viewport);};}
+  W.ClientDataRuntime={bind:bind,merge:merge,ready:function(){return state.ready;},supports:supports,keys:keys,get:value,snapshot:snapshot,revision:function(){return state.revision;},dateFormat:dateFormat,trackerText:trackerText,virtualizeTables:virtualizeTables,actionEnabled:actionEnabled,hideZeroStatusFilters:hideZeroStatusFilters,registerViewport:registerViewport};
 })(window);
