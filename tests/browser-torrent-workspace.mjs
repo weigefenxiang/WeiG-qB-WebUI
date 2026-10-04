@@ -93,7 +93,7 @@ const readForm=async req=>{let body='';for await(const chunk of req)body+=chunk;
 const categoryInventory={Movies:{name:'Movies',savePath:'/downloads/movies'}};
 const tagInventory=new Set(['Fixture']);
 const torrentCountRequests={legacy:0,modern:0};
-let releaseLegacyCatalogProbe=null;const legacyCatalogProbe=new Promise(resolve=>{releaseLegacyCatalogProbe=resolve;});let legacyCatalogProbeStarted=false;
+let releaseLegacyTotalProbe=null;const legacyTotalProbe=new Promise(resolve=>{releaseLegacyTotalProbe=resolve;});let legacyTotalProbeStarted=false;
 
 function rows(v){return torrents.map(t=>{const x={...t};if(v===variants.legacy)delete x.private;return x;});}
 async function api(req,res,v,p,url){
@@ -111,7 +111,7 @@ async function api(req,res,v,p,url){
     const tag=url.searchParams.get('tag');if(tag)out=out.filter(t=>String(t.tags||'').split(',').includes(tag));
     const sort=url.searchParams.get('sort');if(sort)out.sort((a,b)=>String(a[sort]??'').localeCompare(String(b[sort]??''),undefined,{numeric:true}));
     if(url.searchParams.get('reverse')==='true')out.reverse();
-    const offset=Number(url.searchParams.get('offset')||0),limit=Number(url.searchParams.get('limit')||0);if(v===variants.legacy&&limit===200){legacyCatalogProbeStarted=true;await legacyCatalogProbe;}return json(res,limit?out.slice(offset,offset+limit):out.slice(offset));
+    const offset=Number(url.searchParams.get('offset')||0),limit=Number(url.searchParams.get('limit')||0),isHeldLegacyTotalProbe=v===variants.legacy&&limit===1&&offset===0&&!hashes&&url.searchParams.get('sort')==='added_on'&&url.searchParams.get('reverse')==='true';if(isHeldLegacyTotalProbe){legacyTotalProbeStarted=true;await legacyTotalProbe;}return json(res,limit?out.slice(offset,offset+limit):out.slice(offset));
   }
   if(p==='torrents/categories')return json(res,categoryInventory);
   if(p==='torrents/tags')return json(res,Array.from(tagInventory));
@@ -155,7 +155,7 @@ try{
     if(name==='legacy'){
       await page.waitForSelector('#page-label .pager-index-copy--full [data-pager-total] .pager-index-spinner');
       const pendingPager=await page.evaluate(()=>{const full=document.querySelector('#page-label .pager-index-copy--full'),current=full?.querySelector('[data-pager-current]'),total=full?.querySelector('[data-pager-total]');return{current:current?.textContent||'',totalSpinner:!!total?.querySelector('.pager-index-spinner'),currentBeforeTotal:!!(current&&total&&(current.compareDocumentPosition(total)&Node.DOCUMENT_POSITION_FOLLOWING))};});
-      assert(pendingPager.current==='1'&&pendingPager.totalSpinner&&pendingPager.currentBeforeTotal,'legacy: pending total must render as current / spinner token '+JSON.stringify(pendingPager));assert(legacyCatalogProbeStarted,'legacy: deterministic pending-total fixture never entered the held background catalog probe');releaseLegacyCatalogProbe();
+      assert(pendingPager.current==='1'&&pendingPager.totalSpinner&&pendingPager.currentBeforeTotal,'legacy: pending total must render as current / spinner token '+JSON.stringify(pendingPager));assert(legacyTotalProbeStarted,'legacy: deterministic pending-total fixture never entered the held source total probe');releaseLegacyTotalProbe();
       await page.locator('#next-btn').click();await page.waitForFunction(()=>WeiG.LibraryController.state().page===1);await page.waitForFunction(()=>!document.getElementById('prev-btn').disabled&&document.getElementById('next-btn').disabled);
       await page.locator('#prev-btn').click();await page.waitForFunction(()=>WeiG.LibraryController.state().page===0);await page.waitForFunction(()=>!document.getElementById('next-btn').disabled);
       await page.locator('#next-btn').click();await page.waitForFunction(()=>WeiG.LibraryController.state().page===1);await page.waitForFunction(()=>!document.getElementById('prev-btn').disabled&&document.getElementById('next-btn').disabled);await page.locator('#prev-btn').click();await page.waitForFunction(()=>WeiG.LibraryController.state().page===0);
