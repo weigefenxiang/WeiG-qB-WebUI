@@ -170,16 +170,16 @@ try{
       await page.evaluate(async()=>{await WeiG.LibraryController.setFilter('all');});
       await page.waitForFunction(expected=>WeiG.LibraryController.state().filter==='all'&&WeiG.LibraryController.total()===expected,torrents.length,{timeout:10000});
       const revisitPager=await page.evaluate(()=>({total:WeiG.LibraryController.total(),totalSpinner:!!document.querySelector('#page-label [data-pager-total] .pager-index-spinner')}));
-      assert.equal(revisitPager.total,torrents.length,'returning to a cached native predicate must restore its exact total immediately');assert.equal(revisitPager.totalSpinner,false,'cached predicate revisit must not put the total-page token back into discovery spinner state');
+      assert(revisitPager.total===torrents.length,'returning to a cached native predicate must restore its exact total immediately');assert(revisitPager.totalSpinner===false,'cached predicate revisit must not put the total-page token back into discovery spinner state');
       await page.waitForFunction(()=>!WeiG.AppState.busy,null,{timeout:10000});
-      assert.equal(torrentCountRequests.modern,countBeforeRevisit,'returning to an unchanged cached All predicate must not re-read source-proven torrents/count');
+      assert(torrentCountRequests.modern===countBeforeRevisit,'returning to an unchanged cached All predicate must not re-read source-proven torrents/count');
       const countBeforeStaleRevalidate=torrentCountRequests.modern;
       await page.evaluate(async()=>{WeiG.AppState.libraryData.markTotalsStale();await WeiG.LibraryController.setFilter('all');});
       await page.waitForFunction(expected=>WeiG.LibraryController.state().filter==='all'&&WeiG.LibraryController.total()===expected,torrents.length,{timeout:10000});
       const staleProjection=await page.evaluate(()=>({total:WeiG.LibraryController.total(),fresh:WeiG.AppState.knownTotalFresh,totalSpinner:!!document.querySelector('#page-label [data-pager-total] .pager-index-spinner')}));
-      assert.equal(staleProjection.total,torrents.length,'stale exact total must remain immediately projectable while validation is pending');assert.equal(staleProjection.totalSpinner,false,'stale-while-revalidate must never regress the known total-pages token to discovery spinner');
+      assert(staleProjection.total===torrents.length,'stale exact total must remain immediately projectable while validation is pending');assert(staleProjection.totalSpinner===false,'stale-while-revalidate must never regress the known total-pages token to discovery spinner');
       await page.waitForFunction(()=>WeiG.AppState.knownTotalFresh===true,null,{timeout:10000});
-      assert.equal(torrentCountRequests.modern,countBeforeStaleRevalidate+1,'stale global total must coalesce to exactly one bounded torrents/count revalidation');
+      assert(torrentCountRequests.modern===countBeforeStaleRevalidate+1,'stale global total must coalesce to exactly one bounded torrents/count revalidation');
     }
 
     const pagerFontParity=await page.evaluate(()=>{const button=document.querySelector('#page-label .pager-index-copy--full [data-pager-page-jump]'),copy=button?.closest('.pager-index-copy--full');if(!button||!copy)return null;const a=getComputedStyle(button),b=getComputedStyle(copy);return{button:[a.fontFamily,a.fontSize,a.fontWeight,a.lineHeight,a.fontVariantNumeric],copy:[b.fontFamily,b.fontSize,b.fontWeight,b.lineHeight,b.fontVariantNumeric]};});assert(pagerFontParity&&JSON.stringify(pagerFontParity.button)===JSON.stringify(pagerFontParity.copy),name+': current-page token typography must inherit the surrounding Pager copy '+JSON.stringify(pagerFontParity));
