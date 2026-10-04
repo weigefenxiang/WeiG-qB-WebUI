@@ -29,6 +29,7 @@
   };
   U.normalizeTracker=function(raw){var value=String(raw||'').trim();if(!value)return '';try{var url=new URL(value);var port=url.port&&url.port!==((url.protocol==='https:')?'443':(url.protocol==='http:'?'80':''))?':'+url.port:'';return url.protocol+'//'+url.hostname+port+(url.pathname||'/');}catch(_e){return value.split('?')[0].split('#')[0];}};
   U.trackerLabel=function(raw){var value=U.normalizeTracker(raw);if(!value)return T('tracker.none');try{var u=new URL(value),h=u.hostname.replace(/^tracker\./i,'');return h.split('.')[0].replace(/[-_]+/g,' ').replace(/\b\w/g,function(c){return c.toUpperCase();})||u.hostname;}catch(_e){return value;}};
+  U.trackerColumnLabel=function(raw){var R=W.ClientDataRuntime;return R&&typeof R.trackerText==='function'?R.trackerText(raw):U.trackerLabel(raw);};
   var CONFIG_KEY=(W.StorageKeys&&W.StorageKeys.config)||'weig.preferences';
   var PAGE_SIZE_MIN=10,PAGE_SIZE_MAX=5000,PAGE_SIZE_DEFAULT=50,PAGE_SIZE_PRESETS=Object.freeze([20,50,100,200]);
   function parsePageSize(value){var raw=String(value==null?'':value).trim();if(!/^\d+$/.test(raw))return null;var number=Number(raw);return Number.isSafeInteger(number)&&number>=PAGE_SIZE_MIN&&number<=PAGE_SIZE_MAX?number:null;}
