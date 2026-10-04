@@ -96,8 +96,9 @@ try{
     await page.emulateMedia({colorScheme:'light'});await page.waitForFunction(()=>WeiG.Theme.state().resolved==='light');
 
     // Dialog is the existing canonical primitive and must resolve to the Light floating surface.
-    await page.evaluate(()=>WeiG.Theme.setMode('light'));await page.evaluate(()=>WeiG.Router.home());await page.waitForFunction(()=>document.getElementById('list-view')?.classList.contains('is-active'));
-    await page.locator('#columns-btn').click();await page.waitForSelector('#column-configurator-dialog[open]');const dialogLight=await surface(page,'#column-configurator-dialog');assert(whiteBased(dialogLight),`${name}: Light Dialog remained Dark: ${JSON.stringify(dialogLight)}`);await page.locator('#column-configurator-dialog .column-configurator__close').click();
+    await page.evaluate(()=>WeiG.Router.home());await page.waitForFunction(()=>document.getElementById('list-view')?.classList.contains('is-active'));
+    await page.evaluate(()=>WeiG.Theme.setMode('light'));await page.waitForFunction(()=>WeiG.Theme.state().mode==='light'&&WeiG.Theme.state().resolved==='light'&&document.documentElement.dataset.theme==='light');
+    await page.locator('#columns-btn').click();await page.waitForSelector('#column-configurator-dialog[open]');await page.waitForFunction(()=>{const dialog=document.getElementById('column-configurator-dialog');return !!(dialog?.open&&!dialog.dataset.surfaceTransition&&getComputedStyle(dialog).opacity==='1');});const dialogLight=await surface(page,'#column-configurator-dialog');assert(whiteBased(dialogLight),`${name}: Light Dialog remained Dark: ${JSON.stringify(dialogLight)}`);await page.locator('#column-configurator-dialog .column-configurator__close').click();
 
     // Reduced Motion never changes Theme truth and introduces no Theme animation owner.
     await page.emulateMedia({reducedMotion:'reduce'});await page.evaluate(()=>{document.documentElement.dataset.motion='reduced';WeiG.Theme.setMode('dark');});await page.waitForFunction(()=>WeiG.Theme.state().resolved==='dark');
