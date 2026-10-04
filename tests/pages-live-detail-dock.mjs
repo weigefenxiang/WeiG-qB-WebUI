@@ -219,6 +219,9 @@ async function verifyModern(){
   }
   await page.locator('#torrent-detail-tabs .tab[data-tab="trackers"]').click();
   await page.waitForFunction(()=>window.WeiG.AppState.detailDockOpen&&window.WeiG.AppState.detailTab==='trackers',null,{timeout:10000});
+  const rememberedPreviewHash=await selectOnlyByRow(page,4);
+  await page.locator(`#torrent-list [data-hash="${rememberedPreviewHash}"] .torrent-select`).click();
+  await page.waitForFunction(expected=>window.WeiG.Selection.count()===0&&window.WeiG.AppState.detailDockHash===expected,rememberedPreviewHash,{timeout:10000});
 
   await page.locator('#torrent-detail-tabs .tab[data-tab="trackers"]').click();
   await page.waitForFunction(()=>!window.WeiG.AppState.detailDockOpen&&document.getElementById('torrent-detail-dock').hidden&&document.getElementById('torrent-detail-splitter').hidden,null,{timeout:10000});
@@ -228,6 +231,8 @@ async function verifyModern(){
   await setMotion(page,'reduced');await clearMotionProbe(page);
   await page.locator('#torrent-detail-tabs .tab[data-tab="peers"]').click();
   await page.waitForSelector('#torrent-detail-dock-content .shared-table__viewport',{state:'visible',timeout:30000});
+  const reopenedPreview=await page.evaluate(()=>({selection:window.WeiG.Selection.count(),hash:window.WeiG.AppState.detailDockHash,preview:[...document.querySelectorAll('#torrent-list [data-hash].is-detail-subject')].map(node=>node.dataset.hash)}));
+  assert.equal(reopenedPreview.selection,0,'reopening a Detail tab must not convert remembered preview into Selection');assert.equal(reopenedPreview.hash,rememberedPreviewHash,'reopening a Detail tab must preserve the prior zero-selection shared subject instead of recapturing the first visible Torrent');assert.deepEqual(reopenedPreview.preview,[rememberedPreviewHash]);
   const reducedEnter=await lastMotionProbe(page,'enter');
   assert.equal(reducedEnter?.policy?.mode,'reduced');assert.equal(reducedEnter?.policy?.duration,0,'explicit reduced motion must suppress shared surface animation');
   assert.equal(reducedEnter?.targetAnimations?.length,0,`reduced Dock entry must not create a WAAPI animation: ${JSON.stringify(reducedEnter)}`);
@@ -307,6 +312,7 @@ async function verifyModern(){
   await page.setViewportSize({width:1200,height:850});await page.waitForTimeout(180);
 
   // Full Detail route remains available and owns its own Back affordance.
+  const preRouteDockHeight=(await page.locator('#torrent-detail-dock').boundingBox()).height;
   await setMotion(page,'full');await clearMotionProbe(page);
   await page.locator('#torrent-detail-tabs .tab[data-tab="peers"]').click();
   await page.waitForSelector('#torrent-detail-dock-content .shared-table__viewport',{state:'visible',timeout:30000});
@@ -334,6 +340,10 @@ async function verifyModern(){
   await page.locator('#detail-view .detail-tabs .tab[data-tab="trackers"]').click();
   await page.waitForSelector('#detail-content>.shared-table__toolbar [data-detail-columns]',{state:'visible',timeout:30000});
   assert.equal(await page.locator('#detail-content>.shared-table__toolbar [data-detail-columns]').count(),1,'full Detail route must retain Column settings chrome');
+  await page.locator('#detail-view [data-detail-back]').click();
+  await page.waitForFunction(()=>window.WeiG.Router.route().name==='home'&&window.WeiG.AppState.detailDockOpen&&window.WeiG.AppState.detailTab==='trackers'&&!document.getElementById('torrent-detail-dock').hidden,null,{timeout:30000});
+  const postRouteDockHeight=(await page.locator('#torrent-detail-dock').boundingBox()).height;
+  assert.ok(Math.abs(postRouteDockHeight-preRouteDockHeight)<=4,`returning from Full Detail must restore the preferred inline Dock height instead of preserving a transient hidden-root clamp: before=${preRouteDockHeight}, after=${postRouteDockHeight}`);
 
   assert.deepEqual(errors,[],`A35 modern Detail Dock emitted page errors:\n${errors.join('\n')}`);
   await context.close();
