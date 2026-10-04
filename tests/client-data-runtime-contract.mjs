@@ -6,10 +6,16 @@ const index=fs.readFileSync(new URL('../webui/private/index.html',import.meta.ur
 const time=fs.readFileSync(new URL('../webui/private/scripts/time.js',import.meta.url),'utf8');
 const settings=fs.readFileSync(new URL('../webui/private/scripts/settings.js',import.meta.url),'utf8');
 const core=fs.readFileSync(new URL('../webui/private/scripts/core.js',import.meta.url),'utf8');
+const schemaSource=fs.readFileSync(new URL('../webui/private/scripts/settings-schema.js',import.meta.url),'utf8');
 assert(index.includes('"scripts/client-data-runtime.js"')&&index.indexOf('"scripts/client-data-runtime.js"')<index.indexOf('"scripts/components.js"'));
 assert(time.includes('W.ClientDataRuntime.dateFormat')&&time.includes('sourcePatternDate'));
 assert(settings.includes('W.ClientDataRuntime&&W.ClientDataRuntime.merge')&&settings.includes('runtime.ready&&runtime.ready()'));
 assert(core.includes("W.ClientDataRuntime.registerViewport(this)")&&core.includes("if(this._clientDataUnbind){try{this._clientDataUnbind();}"),'DataViewport must register with the shared ClientData runtime and unregister on destroy');
+const schemaWindow={WeiG:{}};schemaWindow.window=schemaWindow;
+vm.runInNewContext(schemaSource,{window:schemaWindow,console,Number,Object,Array,String,Promise,Map,Set},{filename:'settings-schema.js'});
+assert.equal(schemaWindow.WeiG.SettingsSchema.clientDataForKey('hide_zero_status_filters'),null,'unbound or unsupported ClientData source facts must fail closed without throwing');
+assert.equal(schemaWindow.WeiG.SettingsSchema.clientDataForControl('missing'),null);
+assert.deepEqual(Array.from(schemaWindow.WeiG.SettingsSchema.clientDataKeys()),[],'unbound or unsupported ClientData key inventory must be empty rather than throwing');
 const metas={
  date_format:{key:'date_format',type:'string',defaultValue:'default',options:[{value:'default'},{value:'yyyy-MM-dd HH:mm:ss'}]},
  full_url_tracker_column:{key:'full_url_tracker_column',type:'boolean',defaultValue:false},
