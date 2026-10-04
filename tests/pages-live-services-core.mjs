@@ -178,7 +178,7 @@ try{
     response=await api(page,'app/networkInterfaceAddressList?iface=eth0');assert.equal(response.status,200);assert.ok(response.json.includes('192.0.2.10'));
     response=await api(page,'app/processInfo');assert.equal(response.status,200);assert.ok(Number.isInteger(response.json.launch_time));
     response=await api(page,'app/rotateAPIKey',{method:'POST',form:{}});assert.equal(response.status,200);assert.match(response.json.apiKey,/^qbt_[23456789ABCDEFGHIJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz]{28}$/);
-    response=await api(page,'app/deleteAPIKey',{method:'POST',form:{}});assert.equal(response.status,200);
+    response=await api(page,'app/deleteAPIKey',{method:'POST',form:{}});assert.equal(response.status,204,'deployed deleteAPIKey must preserve qB No Content semantics');
     response=await api(page,'app/sendTestEmail',{method:'POST',form:{}});assert.equal(response.status,200);
     response=await api(page,'clientdata/store',{method:'POST',form:{data:JSON.stringify({pages_acceptance:'ok'})}});assert.equal(response.status,204);
     response=await api(page,`clientdata/load?keys=${encodeURIComponent(JSON.stringify(['pages_acceptance']))}`);assert.deepEqual(response.json,{pages_acceptance:'ok'});

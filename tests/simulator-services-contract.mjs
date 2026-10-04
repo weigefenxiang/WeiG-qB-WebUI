@@ -172,7 +172,7 @@ function getRequest(path){return new Request(`https://example.invalid/api/v2/${p
   assert.match(first,/^qbt_[23456789ABCDEFGHIJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz]{28}$/,'Virtual API key must match qB source prefix, length and Password::generate alphabet');
   assert.equal(atBoundary.preferences.web_ui_api_key,first,'rotateAPIKey must authoritative-write web_ui_api_key');
   response=await handleApi(atBoundary,formRequest('app/rotateAPIKey',{}));const second=(await response.json()).apiKey;assert.notEqual(second,first,'repeated API key rotation must generate a new deterministic sequence value');
-  response=await handleApi(atBoundary,formRequest('app/deleteAPIKey',{}));assert.equal(response.status,200);assert.equal(atBoundary.preferences.web_ui_api_key,'','deleteAPIKey must authoritative-clear web_ui_api_key');
+  response=await handleApi(atBoundary,formRequest('app/deleteAPIKey',{}));assert.equal(response.status,204,'deleteAPIKey must preserve qB No Content semantics');assert.equal(atBoundary.preferences.web_ui_api_key,'','deleteAPIKey must authoritative-clear web_ui_api_key');
 }
 
 {
