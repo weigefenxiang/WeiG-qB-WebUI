@@ -17,15 +17,16 @@ function contentId(prefix,value){return `${prefix}${crypto.createHash('sha256').
 function isPlainEnglish(locale){return String(locale||'').trim().replace('-','_').toLowerCase()==='en';}
 function encodeField(value){return encodeURIComponent(String(value??''));}
 function qbtTranslation(value){if(Array.isArray(value))return value.length?canonicalQbDisplayText(value[0]):null;const text=canonicalQbDisplayText(value);return text||null;}
+const RUNTIME_SOURCE_REFS=[{context:'HttpServer',source:'External IP: %1%2'},{context:'HttpServer',source:'External IPs: %1, %2'},{context:'HttpServer',source:'External IP: N/A'},{context:'HttpServer',source:'Free space: %1'}];
 function collectSets(catalog){const out={};for(const profile of catalog||[])Object.assign(out,profile?.settingsTranslationSets||{});return out;}
 function exactBehavior(evidence,profile){const hit=(evidence?.profiles||[]).find(item=>String(item?.qbVersion||'')===String(profile?.qbVersion||''));if(!hit||String(hit.sourceSha||'')!==String(profile?.sourceSha||''))return null;const family=evidence?.families?.[hit.family];return family?{family:hit.family,...family}:null;}
 function messageMap(set){const out=new Map();for(const item of set?.messages||[]){if(!item?.context||!item?.source)continue;const value=qbtTranslation(item.translation);if(value!==null)out.set(refKey(item.context,item.source),value);}return out;}
-function refsForProfile(profile){const out=[];const seen=new Set();const add=(ref)=>{if(!ref?.source||!ref?.context)return;const identity=refKey(ref.context,ref.source);if(!seen.has(identity)){seen.add(identity);out.push({context:String(ref.context),source:String(ref.source)});}};for(const entry of Object.values(profile?.settingsUi||{}))for(const role of ['title','description'])add(entry?.[role]);for(const ref of Object.values(profile?.qbOwnedUi||{}))add(ref);return out;}
+function refsForProfile(profile){const out=[];const seen=new Set();const add=(ref)=>{if(!ref?.source||!ref?.context)return;const identity=refKey(ref.context,ref.source);if(!seen.has(identity)){seen.add(identity);out.push({context:String(ref.context),source:String(ref.source)});}};for(const entry of Object.values(profile?.settingsUi||{}))for(const role of ['title','description'])add(entry?.[role]);for(const ref of Object.values(profile?.qbOwnedUi||{}))add(ref);for(const ref of RUNTIME_SOURCE_REFS)add(ref);return out;}
 function translationSet(profile,locale,allSets){const hash=profile?.settingsTranslations?.[locale];return hash?allSets[hash]||null:null;}
 function assertRecoveryUnion(union){return validateQbNativeQmRecoveryUnion(union);}
 function recoveryLocaleMap(union,locale){return new Map((union?.locales?.[locale]||[]).map(item=>[refKey(item.context,item.source),item]));}
-function expectedOutput(ref,exactMap){return exactMap.get(refKey(ref.context,ref.source))||ref.source;}
-function dedicatedLocaleCompatible(profile,locale,behavior,recoveryMap,allSets){if(isPlainEnglish(locale))return true;const exact=messageMap(translationSet(profile,locale,allSets));const refs=refsForProfile(profile);if(!refs.length)return false;for(const ref of refs){const identity=refKey(ref.context,ref.source);const exactValue=expectedOutput(ref,exact);const recoveryItem=recoveryMap.get(identity);const recoveryValue=recoveryItem?qbtTranslation(recoveryItem.translation):ref.source;if(behavior.missingTranslationFallback==='none-explicit'&&!exact.has(identity))return false;if(recoveryValue!==exactValue)return false;}return true;}
+function officialOutput(ref,exactMap,recoveryMap){const identity=refKey(ref.context,ref.source);if(exactMap.has(identity))return exactMap.get(identity);const item=recoveryMap&&recoveryMap.get(identity),value=item?qbtTranslation(item.translation):null;return value!==null?value:ref.source;}
+function dedicatedLocaleCompatible(profile,locale,behavior,recoveryMap,allSets){if(isPlainEnglish(locale))return true;const exact=messageMap(translationSet(profile,locale,allSets));const refs=refsForProfile(profile);if(!refs.length)return false;for(const ref of refs){const identity=refKey(ref.context,ref.source),officialValue=officialOutput(ref,exact,recoveryMap),recoveryItem=recoveryMap.get(identity),recoveryValue=recoveryItem?qbtTranslation(recoveryItem.translation):ref.source;if(behavior.missingTranslationFallback==='none-explicit'&&!exact.has(identity)&&!recoveryMap.has(identity))return false;if(recoveryValue!==officialValue)return false;}return true;}
 function canonicalBinding(profile,rememberRef){
   const preferences={};
   for(const key of Object.keys(profile?.settingsUi||{}).sort()){
@@ -39,10 +40,10 @@ function canonicalBinding(profile,rememberRef){
   }
   return{preferences,ui};
 }
-function canonicalBridgeSet(profile,locale,allSets,rememberRef){
+function canonicalBridgeSet(profile,locale,allSets,recoveryMap,rememberRef){
   const exact=messageMap(translationSet(profile,locale,allSets)),out={};
   for(const ref of refsForProfile(profile)){
-    const id=rememberRef(ref),value=exact.get(refKey(ref.context,ref.source));
+    const id=rememberRef(ref),value=officialOutput(ref,exact,recoveryMap);
     if(id&&value!==undefined&&String(value)!==String(ref.source))out[id]=String(value);
   }
   return out;
@@ -82,7 +83,7 @@ export function buildNativeSettingsBundle(catalog,behaviorEvidence,{recoveryUnio
           }
         }else{
           bridgeLocales.push(locale);
-          const bridge=canonicalBridgeSet(profile,locale,allSets,rememberRef),normalized=stableObject(bridge),setId=contentId('t',normalized);
+          const bridge=canonicalBridgeSet(profile,locale,allSets,recoveryLocaleMap(union,locale),rememberRef),normalized=stableObject(bridge),setId=contentId('t',normalized);
           if(Object.keys(bridge).length){if(!bridgeSets[setId])bridgeSets[setId]=normalized;bridges[locale]=setId;}else bridges[locale]=null;
         }
       }

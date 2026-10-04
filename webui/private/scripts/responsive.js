@@ -1,8 +1,9 @@
 (function(global){
   'use strict';
-  var W=global.WeiG,C=W&&W.Components;
-  if(!W||!C)return;
+  var W=global.WeiG,C=W&&W.Components,U=W&&W.util;
+  if(!W||!C||!U)return;
   function tr(key,vars){return W.I18n&&W.I18n.t?W.I18n.t(key,vars):String(key||'');}
+  function qbSourceText(ref,fallback){var I=W.I18n;return I&&I.qbSourceText?I.qbSourceText(ref,fallback||ref&&ref.source||''):String(fallback||ref&&ref.source||'');}
   function trList(keys){return (keys||[]).map(function(key){return tr(key);});}
   function isMobile(){return !!(global.matchMedia&&global.matchMedia('(max-width: 820px)').matches);}
 
@@ -54,10 +55,11 @@
   }
 
   var lastFree=null,lastConnection='unknown',connectionDialog=null;
-  function trimFixed(value,decimals){return Number(value).toFixed(decimals).replace(/\.0+$/,'').replace(/(\.\d*?[1-9])0+$/,'$1');}
-  function formatFreeSpace(bytes){var n=Number(bytes);if(!Number.isFinite(n)||n<0)return'—';if(n<1024)return Math.round(n)+' B';var units=[['TiB',1099511627776],['GiB',1073741824],['MiB',1048576],['KiB',1024]];for(var i=0;i<units.length;i++)if(n>=units[i][1]){var value=n/units[i][1],decimals=value<10?2:(value<100?1:0);return trimFixed(value,decimals)+' '+units[i][0];}return Math.round(n)+' B';}
-  function localizeStorage(node){if(!node)return;var label=node.querySelector('.status-storage__label'),value=node.querySelector('strong'),shown=value?value.textContent:'—';if(label)label.textContent=tr('status.storage.free');var bytes=(lastFree!=null&&Number.isFinite(Number(lastFree)))?Math.round(Number(lastFree)).toLocaleString():'—',description=tr('status.storage.tooltip',{value:shown,bytes:bytes});node.removeAttribute('title');node.setAttribute('aria-label',description);}
-  function installStorageStatus(){var bar=document.querySelector('.statusbar');if(!bar)return null;var node=document.getElementById('status-free-space');if(!node){node=document.createElement('span');node.id='status-free-space';node.className='status-storage';node.dataset.tone='neutral';var icon=document.createElement('span');icon.className='status-storage__icon';icon.textContent='◫';icon.setAttribute('aria-hidden','true');var label=document.createElement('span');label.className='status-storage__label';var value=document.createElement('strong');value.textContent='—';node.append(icon,label,value);var connection=document.getElementById('status-connection'),message=document.getElementById('status-message');bar.insertBefore(node,connection||message||null);}localizeStorage(node);return node;}
+  function storageSourceCopy(value){var ref={source:'Free space: %1',context:'HttpServer'},template=qbSourceText(ref,ref.source);return template.replace('%1',String(value==null?'—':value));}
+  function storageSourceParts(){var marker='__WEIG_STORAGE_VALUE__',text=storageSourceCopy(marker),at=text.indexOf(marker);return at<0?{before:text?text+' ':'',after:''}:{before:text.slice(0,at),after:text.slice(at+marker.length)};}
+  function formatFreeSpace(bytes){var n=Number(bytes);return Number.isFinite(n)&&n>=0?U.formatBytes(n):'—';}
+  function localizeStorage(node){if(!node)return;var label=node.querySelector('.status-storage__label'),suffix=node.querySelector('.status-storage__suffix'),value=node.querySelector('strong'),shown=value?value.textContent:'—';if(isMobile()){if(label)label.textContent=tr('status.storage.free');if(suffix)suffix.textContent='';}else{var parts=storageSourceParts();if(label)label.textContent=parts.before;if(suffix)suffix.textContent=parts.after;}node.removeAttribute('title');node.setAttribute('aria-label',storageSourceCopy(shown));}
+  function installStorageStatus(){var bar=document.querySelector('.statusbar');if(!bar)return null;var node=document.getElementById('status-free-space');if(!node){node=document.createElement('span');node.id='status-free-space';node.className='status-storage';node.dataset.tone='neutral';var icon=document.createElement('span');icon.className='status-storage__icon';icon.textContent='◫';icon.setAttribute('aria-hidden','true');var label=document.createElement('span');label.className='status-storage__label';var value=document.createElement('strong');value.textContent='—';var suffix=document.createElement('span');suffix.className='status-storage__suffix';node.append(icon,label,value,suffix);var connection=document.getElementById('status-connection'),message=document.getElementById('status-message');bar.insertBefore(node,connection||message||null);}else if(!node.querySelector('.status-storage__suffix')){var suffixNode=document.createElement('span');suffixNode.className='status-storage__suffix';node.appendChild(suffixNode);}localizeStorage(node);return node;}
   function paintStorage(bytes){var node=installStorageStatus();if(!node)return;lastFree=Number(bytes);node.hidden=false;var strong=node.querySelector('strong');var next=formatFreeSpace(lastFree);if(strong&&strong.textContent!==next)strong.textContent=next;localizeStorage(node);mountStatusTelemetry();}
   function refreshStorage(){var snap=W.TransferRuntime&&W.TransferRuntime.snapshot?W.TransferRuntime.snapshot():{};if(snap.freeSpace!=null&&Number.isFinite(Number(snap.freeSpace)))paintStorage(snap.freeSpace);else{var node=installStorageStatus();if(node&&lastFree==null)node.hidden=true;}}
   function normalizeConnection(status){var value=String(status||'unknown').toLowerCase();return value==='connected'||value==='firewalled'||value==='disconnected'||value==='error'?value:'unknown';}
@@ -82,6 +84,7 @@
   global.addEventListener('weig:status-state',function(event){paintConnection(event.detail&&event.detail.connection||'unknown');});
   global.addEventListener('weig:maindata',function(event){var state=event.detail&&event.detail.serverState||{},free=state.free_space_on_disk;if(free!=null&&Number.isFinite(Number(free)))paintStorage(free);else refreshStorage();if(connectionDialog&&connectionDialog.open)requestAnimationFrame(openConnectionDialog);});
   global.addEventListener('weig:languagechange',function(){localizeStorage(document.getElementById('status-free-space'));paintConnection(lastConnection);syncPagerCopy();mountStatusTelemetry();if(connectionDialog&&connectionDialog.open)openConnectionDialog();});
+  global.addEventListener('weig:qbcopychange',function(){localizeStorage(document.getElementById('status-free-space'));});
 
   W.MobileAdaptive={formatFreeSpace:formatFreeSpace,mobileRowHeight:mobileRowHeight,fitMobileMeta:fitMobileMeta,refreshStorage:refreshStorage,paintConnection:paintConnection,openConnectionDialog:openConnectionDialog,installPageContracts:installPageContracts,primaryScrollOwners:primaryScrollOwners,syncDetailPrimaryScrollOwner:syncDetailPrimaryScrollOwner,mountSelectionToolbar:mountSelectionToolbar,installMobileDetailRail:installMobileDetailRail,setDetailRailCollapsed:setMobileDetailRailCollapsed,mountStatusTelemetry:mountStatusTelemetry,syncPagerCopy:syncPagerCopy,installDetailTitleInteraction:installDetailTitleInteraction};
 })(window);
