@@ -49,6 +49,7 @@ const PREF_READ='appcontroller.h:preferencesAction';
 const PREF_WRITE='appcontroller.h:setPreferencesAction';
 const CLIENT_DATA_LOAD='clientdatacontroller.h:loadAction';
 const CLIENT_DATA_STORE='clientdatacontroller.h:storeAction';
+const ROTATE_API_KEY='appcontroller.h:rotateAPIKeyAction';
 const EDIT='torrentscontroller.h:editTrackerAction';
 const ADD='torrentscontroller.h:addAction';
 const DETAIL_PROPERTIES='torrentscontroller.h:propertiesAction';
@@ -91,6 +92,10 @@ assert.equal(clientDataCall.url,'api/v2/clientdata/load');assert.deepEqual(JSON.
 await client.setClientData({date_format:'default',hide_zero_status_filters:false});
 clientDataCall=calls.at(-1);clientDataForm=new URLSearchParams(String(clientDataCall.init.body||''));assert.equal(clientDataCall.url,'api/v2/clientdata/store');assert.deepEqual(JSON.parse(clientDataForm.get('data')),{qbt_date_format:'default',qbt_hide_zero_status_filters:false},'ClientData store must use the native qbt_ storage prefix');
 assert.equal(calls.length,before+2,'ClientData load/store must issue exactly their source-proven requests');
+profile={qbVersion:'5.2.3',webApiVersion:'2.15.1',fallback:false,apiActions:[ROTATE_API_KEY],apiActionParameters:{[ROTATE_API_KEY]:{parameters:[],required:[],optional:[]}}};
+before=calls.length;await client.runSettingsSourceAction(ROTATE_API_KEY,'app/rotateAPIKey');assert.equal(calls.at(-1).url,'api/v2/app/rotateAPIKey');assert.equal(calls.at(-1).init.method,'POST');assert.equal(calls.length,before+1,'source-proven Settings action must issue exactly one guarded POST');
+before=calls.length;await assert.rejects(client.runSettingsSourceAction('appcontroller.h:deleteAPIKeyAction','app/deleteAPIKey'),/source-proven/);assert.equal(calls.length,before,'unproven Settings source action must fail before HTTP');
+
 before=calls.length;profile={qbVersion:'5.2.3',webApiVersion:'2.15.0',fallback:false,apiActions:[CLIENT_DATA_LOAD],apiActionParameters:{}};
 await assert.rejects(client.setClientData({date_format:'default'}),/source-proven/,'ClientData store must fail closed when its exact source action is absent');assert.equal(calls.length,before,'unproven ClientData write must make zero HTTP requests');
 
