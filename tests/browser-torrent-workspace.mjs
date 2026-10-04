@@ -226,6 +226,10 @@ try{
     // Browser input verifies the active scroll path separately from the bounded quiet-period snapshot commit.
     // Native scrollbar-thumb mouse drag remains a mandatory final human acceptance item because hosted Chrome/Xvfb
     // does not expose native scrollbar chrome to DevTools/XTest pointer injection reliably.
+    // Isolate the scroll-performance probe from the normal app-level refresh timer. A background
+    // loadPage(true) -> renderList() can otherwise land after resetMetrics() and look like a scroll render.
+    await page.evaluate(()=>WeiG.LibraryController.applyRuntimeConfig('refresh',60000));
+    await page.waitForFunction(()=>!WeiG.AppState.busy);
     await page.setViewportSize({width:900,height:768});
     // app.js owns a 120 ms debounced resize -> renderList projection. Let that owner settle
     // before zeroing DataViewport metrics so the probe measures horizontal input only.
