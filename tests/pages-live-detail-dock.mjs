@@ -346,8 +346,9 @@ async function verifyModern(){
   assert.equal(await page.locator('#detail-content>.shared-table__toolbar [data-detail-columns]').count(),1,'full Detail route must retain Column settings chrome');
   await page.locator('#detail-view [data-detail-back]').click();
   await page.waitForFunction(()=>window.WeiG.Router.route().name==='home'&&window.WeiG.AppState.detailDockOpen&&window.WeiG.AppState.detailTab==='trackers'&&!document.getElementById('torrent-detail-dock').hidden,null,{timeout:30000});
+  await page.waitForFunction(expected=>{const dock=document.getElementById('torrent-detail-dock');return !!dock&&Math.abs(dock.getBoundingClientRect().height-expected)<=4;},preRouteDockHeight,{timeout:5000});
   const postRouteDockHeight=(await page.locator('#torrent-detail-dock').boundingBox()).height;
-  assert.ok(Math.abs(postRouteDockHeight-preRouteDockHeight)<=4,`returning from Full Detail must restore the preferred inline Dock height instead of preserving a transient hidden-root clamp: before=${preRouteDockHeight}, after=${postRouteDockHeight}`);
+  assert.ok(Math.abs(postRouteDockHeight-preRouteDockHeight)<=4,`returning from Full Detail must restore the preferred inline Dock height through the shared post-layout reprojection: before=${preRouteDockHeight}, after=${postRouteDockHeight}`);
 
   assert.deepEqual(errors,[],`A35 modern Detail Dock emitted page errors:\n${errors.join('\n')}`);
   await context.close();
