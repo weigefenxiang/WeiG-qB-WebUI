@@ -143,7 +143,8 @@ try{
   await page.locator('#add-submit').click();
   await page.waitForFunction(()=>!document.getElementById('add-dialog')?.open,null,{timeout:10000});
   await page.waitForFunction(name=>Array.isArray(WeiG.AppState?.torrents)&&WeiG.AppState.torrents.some(t=>String(t?.name||'')===name),addName,{timeout:15000});
-  await page.evaluate(()=>{const list=document.getElementById('torrent-list');if(list){list.scrollTop=0;list.dispatchEvent(new Event('scroll'));}});
+  const addedIndex=await page.evaluate(name=>{const items=WeiG.AppState?.torrents||[],index=items.findIndex(t=>String(t?.name||'')===name),list=document.getElementById('torrent-list'),viewport=WeiG.AppState?.viewport;if(index<0||!list||!viewport)return index;const rowHeight=Math.max(1,Number(viewport.rowHeight)||1),header=viewport.headerHeight?Math.max(0,Number(viewport.headerHeight())||0):0;list.scrollTop=Math.max(0,index*rowHeight+header);list.dispatchEvent(new Event('scroll'));return index;},addName);
+  assert.ok(addedIndex>=0,'newly added Torrent must be present on the freshly loaded current page before the viewport proof');
   await page.locator('.torrent-mobile-card').filter({hasText:addName}).first().waitFor({state:'visible',timeout:15000});
   assert.equal(await page.evaluate(()=>WeiG.AppState?.catalogReady===true),false,'Add Torrent must not force a full catalog when no facet/local view has demanded one');
 

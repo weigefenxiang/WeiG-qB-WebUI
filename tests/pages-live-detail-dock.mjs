@@ -312,10 +312,14 @@ async function verifyModern(){
   await page.setViewportSize({width:1200,height:850});await page.waitForTimeout(180);
 
   // Full Detail route remains available and owns its own Back affordance.
-  const preRouteDockHeight=(await page.locator('#torrent-detail-dock').boundingBox()).height;
+  // The responsive probe above intentionally toggled Overview closed; reopen a real
+  // inline surface first, then snapshot its effective height for the route-return proof.
   await setMotion(page,'full');await clearMotionProbe(page);
   await page.locator('#torrent-detail-tabs .tab[data-tab="peers"]').click();
   await page.waitForSelector('#torrent-detail-dock-content .shared-table__viewport',{state:'visible',timeout:30000});
+  const preRouteDockBox=await page.locator('#torrent-detail-dock').boundingBox();
+  assert.ok(preRouteDockBox&&preRouteDockBox.height>0,'route-return height proof requires an open inline Detail Dock');
+  const preRouteDockHeight=preRouteDockBox.height;
   await page.waitForFunction(()=>!document.getElementById('torrent-detail-dock')?.dataset.surfaceTransition,null,{timeout:5000});
   await clearMotionProbe(page);
   await page.locator('#torrent-list .torrent-title').first().click();
