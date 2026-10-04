@@ -219,8 +219,8 @@ function resolveCanonicalPreferenceFacts(keys,directCandidates,legacyUi,suppleme
 function helperRanges(markup){
   const text=String(markup||''),out=[];
   for(const match of text.matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/gi)){
-    const attrs=match[1]||'',start=match.index??0,end=start+match[0].length,onclick=attrText(attrs,'onclick')||'',id=attrText(attrs,'id')||('button@'+start);
-    out.push({id,start,end,attrs,onclick,label:qbtOrLiteral(match[2]),sourceTag:'button'});
+    const attrs=match[1]||'',start=match.index??0,end=start+match[0].length,onclick=attrText(attrs,'onclick')||'',id=attrText(attrs,'id')||('button@'+start),ariaLabel=attrText(attrs,'aria-label')||'';
+    out.push({id,start,end,attrs,onclick,label:qbtOrLiteral(ariaLabel)||qbtOrLiteral(match[2]),sourceTag:'button'});
   }
   for(const match of text.matchAll(/<input\b([^>]*)>/gi)){
     const attrs=match[1]||'',type=String(attrText(attrs,'type')||'text').toLowerCase();if(!['button','submit','reset'].includes(type))continue;
@@ -272,6 +272,45 @@ function labelRefForControl(markup,id){
   return null;
 }
 function balancedBlock(text,start){text=String(text||'');const open=text.indexOf('{',start);if(open<0)return'';let depth=0,quote='',escape=false,lineComment=false,blockComment=false;for(let i=open;i<text.length;i++){const ch=text[i],next=text[i+1];if(lineComment){if(ch==='\n')lineComment=false;continue;}if(blockComment){if(ch==='*'&&next==='/'){blockComment=false;i++;}continue;}if(quote){if(escape){escape=false;continue;}if(ch==='\\'){escape=true;continue;}if(ch===quote)quote='';continue;}if(ch==='/'&&next==='/'){lineComment=true;i++;continue;}if(ch==='/'&&next==='*'){blockComment=true;i++;continue;}if(ch==='"'||ch==="'"){quote=ch;continue;}if(ch==='{')depth++;else if(ch==='}'){depth--;if(depth===0)return text.slice(open+1,i);}}return'';}
+function sourceClickListenerBody(markup,controlId){
+  const text=String(markup||''),escaped=escapeRegex(controlId),re=new RegExp('document\\.getElementById\\(\\s*["\\\']'+escaped+'["\\\']\\s*\\)\\.addEventListener\\(\\s*["\\\']click["\\\']\\s*,','g'),hit=re.exec(text);
+  if(!hit)return'';
+  const start=hit.index+hit[0].length,tail=text.slice(start,start+320),arrow=tail.indexOf('=>'),fn=tail.search(/function\\s*\\(/),relative=arrow>=0?arrow:fn;
+  if(relative<0)return'';
+  return balancedBlock(text,start+relative);
+}
+function datasetPreferenceKey(markup,controlId,dataKey){
+  const text=String(markup||''),cid=escapeRegex(controlId),key=escapeRegex(dataKey),re=new RegExp('document\\.getElementById\\(\\s*["\\\']'+cid+'["\\\']\\s*\\)\\.dataset\\.'+key+'\\s*=\\s*pref\\.([A-Za-z_$][\\w$]*)','g'),match=re.exec(text);
+  return match?String(match[1]||''):null;
+}
+function sourceStatePreferenceForHelper(markup,helperId,dataKey){
+  const text=String(markup||''),re=/if\s*\(\s*pref\.([A-Za-z_$][\w$]*)\.length\s*>\s*0\s*\)\s*\{/g;let match;
+  while((match=re.exec(text))){const body=balancedBlock(text,match.index);if(body&&body.includes(String(helperId||''))&&body.includes('.dataset.'+String(dataKey||'')))return String(match[1]||'');}
+  return null;
+}
+function sourceFetchActionByToken(markup,token){
+  const text=String(markup||''),wanted=String(token||'').toLowerCase(),re=/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:\(\s*\)\s*=>|function\s*\(\s*\))\s*\{/g,candidates=[];let match;
+  while((match=re.exec(text))){const name=String(match[1]||''),body=balancedBlock(text,match.index),fetch=body&&body.match(/fetch\(\s*["']api\/v2\/([A-Za-z0-9_-]+)\/([A-Za-z0-9_]+)["']/);if(!fetch||!/method\s*:\s*["']POST["']/i.test(body))continue;const action=String(fetch[2]||'');if(wanted&&action.toLowerCase().indexOf(wanted)!==0)continue;candidates.push({functionName:name,endpoint:String(fetch[1])+'/'+action,sourceAction:String(fetch[1]).toLowerCase()+'controller.h:'+action+'Action'});}
+  return candidates.length===1?candidates[0]:null;
+}
+function sourcePostDomHelperAction(helper,markup){
+  if(!helper||helper.onclick)return null;
+  const body=sourceClickListenerBody(markup,helper.id);if(!body)return null;
+  const copy=body.match(/clipboardCopy\(\s*(?:document\.)?getElementById\(\s*["']([^"']+)["']\s*\)\.dataset\.([A-Za-z_$][\w$]*)\s*\)/);
+  if(copy){const preferenceKey=datasetPreferenceKey(markup,copy[1],copy[2]);if(preferenceKey)return{kind:'clipboard-preference',preferenceKey};}
+  const modalAction=body.match(/\baction\s*:\s*["']([A-Za-z_$][\w$]*)["']/),resolved=modalAction&&sourceFetchActionByToken(markup,modalAction[1]);
+  if(resolved){
+    const refs=qbtRefs(body),statePreferenceKey=sourceStatePreferenceForHelper(markup,helper.id,'hasKey'),action={kind:'confirm-source-action',sourceAction:resolved.sourceAction,endpoint:resolved.endpoint};
+    if(statePreferenceKey)action.statePreferenceKey=statePreferenceKey;
+    if(statePreferenceKey&&refs.length>=4){action.presentTitle=refs[0];action.emptyTitle=refs[1];action.presentMessage=refs[2];action.emptyMessage=refs[3];}
+    else{if(refs[0])action.title=refs[0];if(refs[1])action.message=refs[1];}
+    return action;
+  }
+  return{kind:'unknown'};
+}
+function sourceHelperActionFor(helper,markup){
+  const postDom=sourcePostDomHelperAction(helper,markup);return postDom||sourceHelperAction(helper&&helper.onclick||'',markup);
+}
 function sourceHelperAction(handler,markup){
   const value=String(handler||'').trim(),qualified=value.match(/^(?:window\.)?qBittorrent\.([A-Za-z_$][\w$]*)\.([A-Za-z_$][\w$]*)\(\s*\)\s*;?$/);
   if(qualified&&qualified[1]!=='Preferences')return{kind:'source-action',owner:qualified[1],name:qualified[2]};

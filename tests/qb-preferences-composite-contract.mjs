@@ -405,6 +405,29 @@ assert.equal(rssGraphItems.find(item=>item.id==='optionalIPAddressToBind').dynam
 assert.equal(rssGraphItems.find(item=>item.id==='optionalIPAddressToBind').dynamicOptions.queryParam,'iface');
 assert.equal(rssGraphItems.find(item=>item.id==='optionalIPAddressToBind').dynamicOptions.dependsOnControlId,'networkInterface');
 
+const apiKeyToolbar='<li id="PrefWebUILink">QBT_TR(Web UI)QBT_TR[CONTEXT=OptionsDialog]</li>';
+const apiKeyMarkup=`
+<div id="WebUITab" class="PrefTab"><fieldset class="settings"><legend>QBT_TR(API Key)QBT_TR[CONTEXT=OptionsDialog]</legend><table><tbody><tr>
+<td><label for="WebUIAPIKeyText">QBT_TR(Key:)QBT_TR[CONTEXT=OptionsDialog]</label></td><td><input type="text" disabled id="WebUIAPIKeyText"></td>
+<td><button type="button" disabled id="webUIAPIKeyCopyButton" aria-label="QBT_TR(Copy API key)QBT_TR[CONTEXT=OptionsDialog]"><img alt="copy"></button></td>
+<td><button type="button" id="webUIAPIKeyRotateButton" data-has-key="false" aria-label="QBT_TR(Generate API key)QBT_TR[CONTEXT=OptionsDialog]"><img alt="rotate"></button></td>
+<td><button type="button" disabled id="webUIAPIKeyDeleteButton" aria-label="QBT_TR(Delete API key)QBT_TR[CONTEXT=OptionsDialog]"><img alt="delete"></button></td>
+</tr></tbody></table></fieldset></div><script>
+if (pref.web_ui_api_key.length > 0) { document.getElementById("WebUIAPIKeyText").dataset.apiKey = pref.web_ui_api_key; document.getElementById("webUIAPIKeyRotateButton").dataset.hasKey = "true"; }
+const rotateAPIKey=()=>{fetch("api/v2/app/rotateAPIKey",{method:"POST"});};
+const deleteAPIKey=()=>{fetch("api/v2/app/deleteAPIKey",{method:"POST"});};
+document.getElementById("webUIAPIKeyCopyButton").addEventListener("click",async()=>{const apiKey=document.getElementById("WebUIAPIKeyText").dataset.apiKey;await clipboardCopy(apiKey);});
+document.getElementById("webUIAPIKeyRotateButton").addEventListener("click",(e)=>{const hasKey=e.target.parentElement.dataset.hasKey==="true";const title=hasKey?"QBT_TR(Rotate API key)QBT_TR[CONTEXT=OptionsDialog]":"QBT_TR(Generate API key)QBT_TR[CONTEXT=OptionsDialog]";const message=hasKey?"QBT_TR(Rotate this API key? The current key will immediately stop working and a new key will be generated.)QBT_TR[CONTEXT=confirmRotateAPIKeyDialog]":"QBT_TR(Generate an API key? This key can be used to interact with qBittorrent's API.)QBT_TR[CONTEXT=confirmRotateAPIKeyDialog]";new MochaUI.Modal({data:{action:"rotate",message}});});
+document.getElementById("webUIAPIKeyDeleteButton").addEventListener("click",()=>{const title="QBT_TR(Delete API key)QBT_TR[CONTEXT=OptionsDialog]";const message="QBT_TR(Delete this API key? The current key will immediately stop working.)QBT_TR[CONTEXT=confirmRotateAPIKeyDialog]";new MochaUI.Modal({data:{action:"delete",message}});});
+</script>`;
+const apiKeyFacts=extractQbPreferencesNativeSurface({preferencesSource:apiKeyMarkup,toolbarSource:apiKeyToolbar,preferenceDescriptors:[]}),apiKeyItems=apiKeyFacts.controlGraph.tabs.webui.rows.flatMap(row=>row.items),copyApiKey=apiKeyItems.find(item=>item.id==='webUIAPIKeyCopyButton'),rotateApiKey=apiKeyItems.find(item=>item.id==='webUIAPIKeyRotateButton'),deleteApiKey=apiKeyItems.find(item=>item.id==='webUIAPIKeyDeleteButton');
+assert.deepEqual(copyApiKey?.label,{source:'Copy API key',context:'OptionsDialog'},'icon-only Settings helper must use its exact native aria-label copy');
+assert.deepEqual(copyApiKey?.action,{kind:'clipboard-preference',preferenceKey:'web_ui_api_key'},'post-DOM clipboard helper must source-bind the native preference value instead of disappearing');
+assert.equal(rotateApiKey?.action?.kind,'confirm-source-action');assert.equal(rotateApiKey.action.sourceAction,'appcontroller.h:rotateAPIKeyAction');assert.equal(rotateApiKey.action.endpoint,'app/rotateAPIKey');assert.equal(rotateApiKey.action.statePreferenceKey,'web_ui_api_key');assert.deepEqual(rotateApiKey.action.presentTitle,{source:'Rotate API key',context:'OptionsDialog'});assert.deepEqual(rotateApiKey.action.emptyTitle,{source:'Generate API key',context:'OptionsDialog'});assert.equal(rotateApiKey.action.presentMessage?.context,'confirmRotateAPIKeyDialog');assert.equal(rotateApiKey.action.emptyMessage?.context,'confirmRotateAPIKeyDialog');
+assert.deepEqual(deleteApiKey?.action,{kind:'confirm-source-action',sourceAction:'appcontroller.h:deleteAPIKeyAction',endpoint:'app/deleteAPIKey',title:{source:'Delete API key',context:'OptionsDialog'},message:{source:'Delete this API key? The current key will immediately stop working.',context:'confirmRotateAPIKeyDialog'}},'delete helper must compile exact source action plus official confirmation copy');
+const apiKeyCompact=compileQbPreferencesCompact({schemaVersion:1,profiles:[{qbVersion:'9.9.9',sourceSha:'9999999999999999999999999999999999999999',manifest:apiKeyFacts}]}),apiKeyExpanded=expandQbPreferencesCompact(apiKeyCompact,'9.9.9'),apiKeyRoundtrip=apiKeyExpanded.controlGraph.tabs.webui.rows.flatMap(row=>row.items);
+assert.deepEqual(apiKeyRoundtrip.find(item=>item.id==='webUIAPIKeyRotateButton')?.action,rotateApiKey.action,'API-key post-DOM action metadata must survive compact transport losslessly');
+
 const clientDataToolbar='<li id="PrefBehaviorLink">QBT_TR(Behavior)QBT_TR[CONTEXT=OptionsDialog]</li>';
 const clientDataMarkup=[
   '<div id="BehaviorTab" class="PrefTab"><fieldset class="settings"><legend>QBT_TR(Localization)QBT_TR[CONTEXT=OptionsDialog]</legend>',
