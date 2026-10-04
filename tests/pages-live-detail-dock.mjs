@@ -304,8 +304,9 @@ async function verifyModern(){
   await selectOnlyByRow(page,0);
   await page.locator('#torrent-detail-tabs .tab[data-tab="overview"]').click();
   await page.waitForSelector('#torrent-detail-dock:not([hidden]) .general-detail',{state:'visible',timeout:30000});
-  const restoredHeight=(await page.locator('#torrent-detail-dock').boundingBox()).height;
-  assert.ok(Math.abs(restoredHeight-320)<=5,`Dock must restore the one persisted geometry value after reload: ${restoredHeight}`);
+  const restoredGeometry=await page.evaluate(()=>{const dock=document.getElementById('torrent-detail-dock'),split=document.getElementById('torrent-detail-splitter'),stored=Number(localStorage.getItem(window.WeiG.StorageKeys.torrentDetailDockHeight)),min=Number(split?.getAttribute('aria-valuemin')),max=Number(split?.getAttribute('aria-valuemax')),height=dock?.getBoundingClientRect().height||0;return{stored,min,max,height,expected:Math.min(max,Math.max(min,stored))};});
+  assert.ok(Number.isFinite(restoredGeometry.stored)&&Number.isFinite(restoredGeometry.max),'reload geometry gate requires persisted size and live SplitPane bounds');
+  assert.ok(Math.abs(restoredGeometry.height-restoredGeometry.expected)<=5,`Dock reload must restore the persisted preferred size clamped by the live semantic track: ${JSON.stringify(restoredGeometry)}`);
 
   // Pager adapts by its own available width: compact navigation first, then a one-line horizontally scrollable tab rail.
   await page.locator('#torrent-detail-tabs .tab[data-tab="overview"]').click();

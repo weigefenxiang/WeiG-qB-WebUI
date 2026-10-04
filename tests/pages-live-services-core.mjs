@@ -89,15 +89,43 @@ try{
     response=await api(page,`torrents/webseeds?hash=${encodeURIComponent(privateTorrent.hash)}`);
     assert.deepEqual(response.json,[],'private/PT torrent must not expose fabricated public web seeds');
 
-    response=await api(page,'torrents/info?filter=active&limit=20&offset=0');
-    const peerTarget=response.json.find(t=>t.dlspeed>0||t.upspeed>0)||publicTorrent;
-    response=await api(page,`sync/torrentPeers?rid=0&hash=${encodeURIComponent(peerTarget.hash)}`);
-    const peerKey=Object.keys(response.json?.peers||{})[0];
+
+    response=await api(page,'torrents/info?filter=active&limit=100&offset=0');
+    const peerCandidates=response.json.filter(t=>Number(t.dlspeed)>0&&Number(t.upspeed)>0);
+    let peerTarget=null,peerSnapshot=null;
+    for(const torrent of peerCandidates.slice(0,24)){
+      const probe=await api(page,'sync/torrentPeers?rid=0&hash='+encodeURIComponent(torrent.hash));
+      const rows=Object.values(probe.json?.peers||{});
+      if(rows.length>=3){peerTarget=torrent;peerSnapshot=probe.json;break;}
+    }
+    assert.ok(peerTarget&&peerSnapshot,'deployed mixed world must expose a duplex Torrent with at least three generated peers');
+    const peerRows=Object.values(peerSnapshot.peers);
+    assert.ok(new Set(peerRows.map(row=>Number(row.dl_speed))).size>1,'generated peer download speeds must vary instead of cloning one equal share across every row');
+    assert.ok(new Set(peerRows.map(row=>Number(row.up_speed))).size>1,'generated peer upload speeds must vary independently across rows');
+    assert.equal(peerRows.reduce((sum,row)=>sum+Number(row.dl_speed||0),0),Math.floor(Number(peerTarget.dlspeed)||0),'varied peer download projections must conserve the Torrent aggregate');
+    assert.equal(peerRows.reduce((sum,row)=>sum+Number(row.up_speed||0),0),Math.floor(Number(peerTarget.upspeed)||0),'varied peer upload projections must conserve the Torrent aggregate');
+    const peerKey=Object.keys(peerSnapshot.peers)[0];
     if(peerKey){
       response=await api(page,'transfer/banPeers',{method:'POST',form:{peers:peerKey}});assert.equal(response.status,200);
       response=await api(page,'log/peers?last_known_id=-1');
       assert.ok(response.json.some(item=>item.blocked===true),'peer ban must appear in deployed peer log');
     }
+
+    const contentSamples=[];
+    for(const torrent of publicTorrents.slice(0,24)){
+      const files=await api(page,'torrents/files?hash='+encodeURIComponent(torrent.hash));
+      assert.equal(files.status,200);contentSamples.push(...(files.json||[]));
+    }
+    assert.ok(contentSamples.length>=24*4,'deployed generated torrents must expose multi-file content trees rather than content.bin placeholders');
+    assert.ok(contentSamples.some(file=>String(file.name||'').split('/').length>=4),'deployed Content API must expose multi-level folder paths');
+    const contentExtensions=new Set(contentSamples.map(file=>(String(file.name||'').match(/\.([^.\/]+)$/)||[])[1]?.toLowerCase()).filter(Boolean));
+    for(const family of [['jpg','jpeg','png','webp'],['mp3','flac','m4a'],['mkv','mp4','mov'],['txt','md','nfo','srt'],['exe','sh','7z','zip']])assert.ok(family.some(ext=>contentExtensions.has(ext)),'deployed Content API must include '+family.join('/')+' examples');
+
+    const beforeState=(await api(page,'sync/maindata?rid=0')).json?.server_state||{};
+    for(const field of ['alltime_ul','alltime_dl','global_ratio','total_wasted_session','total_peer_connections','read_cache_hits','total_buffers_size','write_cache_overload','read_cache_overload','queued_io_jobs','average_time_queue','total_queued_size'])assert.ok(Number.isFinite(Number(beforeState[field])),'deployed Statistics field '+field+' must be numeric instead of missing/placeholder');
+    await sleep(2500);await api(page,'transfer/info');
+    const afterState=(await api(page,'sync/maindata?rid=0')).json?.server_state||{};
+    assert.ok(Number(afterState.alltime_dl)>Number(beforeState.alltime_dl)||Number(afterState.alltime_ul)>Number(beforeState.alltime_ul),'deployed Statistics cumulative transfer records must advance in real time');
 
     response=await api(page,'torrents/setDownloadLimit',{method:'POST',form:{hashes:publicTorrent.hash,limit:1024*1024}});assert.equal(response.status,200);
     response=await api(page,`torrents/properties?hash=${encodeURIComponent(publicTorrent.hash)}`);
@@ -230,7 +258,29 @@ try{
     await trackerRow.waitFor({state:'visible',timeout:30000});await trackerRow.click({button:'right'});
     await page.waitForSelector('#weig-floating-layer .ui-context-menu .ui-select__option',{state:'visible',timeout:30000});
     assert.ok(await page.locator('#weig-floating-layer .ui-context-menu .ui-select__option').count()>=2,'Tracker row context menu actions must remain available after retiring the duplicate toolbar');
+
     await page.keyboard.press('Escape');
+
+    await page.locator('#detail-view .detail-tabs .tab[data-tab="files"]').click();
+    await page.waitForSelector('#detail-content .shared-table__row[data-file-kind="folder"]',{state:'visible',timeout:30000});
+    const treeBefore=await page.evaluate(()=>({folders:[...document.querySelectorAll('#detail-content .shared-table__row[data-file-kind="folder"] .detail-file-name')].map(node=>({label:String(node.textContent||'').trim(),depth:Number(getComputedStyle(node).getPropertyValue('--file-depth'))||0,expanded:node.querySelector('.detail-file-toggle')?.getAttribute('aria-expanded')})),types:[...document.querySelectorAll('#detail-content .detail-file-icon[data-file-type]')].map(node=>node.dataset.fileType)}));
+    assert.ok(treeBefore.folders.length>=2,'Content UI must render folder rows from generated multi-level paths: '+JSON.stringify(treeBefore));
+    const closedFolder=page.locator('#detail-content .shared-table__row[data-file-kind="folder"] .detail-file-toggle[aria-expanded="false"]').first();
+    if(await closedFolder.count()){await closedFolder.click();await page.waitForTimeout(120);}
+    const treeAfter=await page.evaluate(()=>({folders:[...document.querySelectorAll('#detail-content .shared-table__row[data-file-kind="folder"] .detail-file-name')].map(node=>Number(getComputedStyle(node).getPropertyValue('--file-depth'))||0),types:[...document.querySelectorAll('#detail-content .detail-file-icon[data-file-type]')].map(node=>node.dataset.fileType).filter(Boolean)}));
+    assert.ok(treeAfter.folders.some(depth=>depth>=1),'Content UI must expose nested folder depth, not a flat single-file list');
+    assert.ok(new Set(treeAfter.types).size>=2,'Content UI must visibly classify multiple file families: '+JSON.stringify(treeAfter.types));
+
+    await page.locator('#detail-view [data-detail-back]').click();
+    await page.waitForFunction(()=>WeiG.Router?.route?.().name==='home',null,{timeout:30000});
+    await page.locator('#transfer-capsule .transfer-runtime-capsule__stats').click();
+    await page.waitForSelector('#transfer-stats-dialog[open]',{state:'visible',timeout:30000});
+    await page.locator('#transfer-stats-dialog [data-open-native-statistics="1"]').click();
+    await page.waitForSelector('#qbt-native-statistics-dialog[open] .transfer-native-statistics__row strong',{state:'visible',timeout:30000});
+    const nativeStats=await page.locator('#qbt-native-statistics-dialog .transfer-native-statistics__row strong').allTextContents();
+    assert.ok(nativeStats.length>=12,'native Statistics must render the complete source-derived field set: '+JSON.stringify(nativeStats));
+    assert.ok(nativeStats.every(value=>String(value||'').trim()&&String(value||'').trim()!=='—'),'Virtual qB native Statistics must not leave cache/performance fields as placeholders: '+JSON.stringify(nativeStats));
+
     assert.deepEqual(errors,[],`owner UI gate page errors:\n${errors.join('\n')}`);
     await context.close();
   }

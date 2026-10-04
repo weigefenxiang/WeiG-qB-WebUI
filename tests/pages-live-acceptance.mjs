@@ -3,6 +3,7 @@ import {PAGES_FULL_CATALOG_PATH} from './pages-live-catalog.mjs';
 import {launchBrowser} from './browser-driver.mjs';
 import {fetchJsonEvidence} from './pages-node-evidence-fetch.mjs';
 import {recoverPageSession} from './pages-live-session.mjs';
+import {CURRENT_WORLD_SCHEMA_VERSION} from '../simulator/core/engine.js';
 
 const rawBase=(process.env.WEIG_PAGES_URL||process.argv[2]||'').trim();
 const expectedSha=(process.env.WEIG_EXPECTED_SIMULATOR_SHA||process.argv[3]||'').trim();
@@ -394,8 +395,8 @@ try{
     const generated=response.json.find(item=>item.hash===seeded.generatedHash),userAdded=response.json.find(item=>item.hash===seeded.userHash);
     assert.ok(generated&&userAdded,'schema3 migrated generated/user-added rows must both survive');
     assert.notEqual(generated.name,'Order by Category','persisted schema3 generated page-caption noise must be cleaned on reopen');
-    assert.equal(userAdded.name,seeded.userName,'persisted user-added Torrent name must survive schema3->4 migration');
-    assert.equal(userAdded.category,seeded.userCategory,'persisted user-added PT category must survive schema3->4 migration');
+    assert.equal(userAdded.name,seeded.userName,'persisted user-added Torrent name must survive schema3 migration to the current schema');
+    assert.equal(userAdded.category,seeded.userCategory,'persisted user-added PT category must survive schema3 migration to the current schema');
 
     const persisted=await page.evaluate(async legacySim=>{
       const db=await new Promise((resolve,reject)=>{
@@ -411,14 +412,14 @@ try{
       db.close();
       return row?.world||null;
     },legacySim);
-    assert.equal(persisted?.schemaVersion,4,'schema3 persisted world must checkpoint the current schema4 after migration');
+    assert.equal(persisted?.schemaVersion,CURRENT_WORLD_SCHEMA_VERSION,'schema3 persisted world must checkpoint the current simulator schema after migration');
     const persistedGenerated=persisted?.torrents?.find(item=>item.hash===seeded.generatedHash);
     const persistedUser=persisted?.torrents?.find(item=>item.hash===seeded.userHash);
     assert.ok(persistedGenerated?.contentPath?.endsWith(String(persistedGenerated.name||'').replace(/[\\/]+/g,'_')),'schema3 generated contentPath must follow the cleaned display name');
-    assert.equal(persistedUser?.name,seeded.userName,'schema4 checkpoint must retain user-added name');
-    assert.equal(persistedUser?.category,seeded.userCategory,'schema4 checkpoint must retain user-added PT category');
-    assert.deepEqual(pageErrors,[],`schema3->4 persisted-world migration emitted browser errors:\n${pageErrors.join('\n')}`);
-    console.log('Persisted Virtual world v3 migrated in-place to schema4: generated page-caption name noise retired while user-added name/category remained unchanged.');
+    assert.equal(persistedUser?.name,seeded.userName,'current-schema checkpoint must retain user-added name');
+    assert.equal(persistedUser?.category,seeded.userCategory,'current-schema checkpoint must retain user-added PT category');
+    assert.deepEqual(pageErrors,[],`schema3->current persisted-world migration emitted browser errors:\n${pageErrors.join('\n')}`);
+    console.log(`Persisted Virtual world v3 migrated in-place to schema${CURRENT_WORLD_SCHEMA_VERSION}: generated page-caption name noise retired while user-added name/category remained unchanged.`);
     await context.close();
   }
 

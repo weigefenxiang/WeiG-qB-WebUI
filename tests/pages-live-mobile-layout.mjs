@@ -115,6 +115,20 @@ try{
   const trackerTab=page.locator('#torrent-detail-tabs [data-tab="trackers"]');
   await trackerTab.click();
   await page.waitForFunction(()=>document.querySelector('#torrent-detail-tabs [data-tab="trackers"]')?.classList.contains('is-active')&&WeiG.AppState?.detailDockOpen===true,null,{timeout:10000});
+  await page.waitForSelector('#torrent-detail-dock:not([hidden]) .shared-table__viewport',{state:'visible',timeout:30000});
+  await page.locator('#mobile-detail-collapse').click();
+  await page.waitForFunction(()=>{
+    const list=document.getElementById('list-view'),rail=document.getElementById('mobile-detail-rail'),dock=document.getElementById('torrent-detail-dock'),splitter=document.getElementById('torrent-detail-splitter');
+    return list?.dataset.mobileDetailCollapsed==='true'&&rail?.hidden===true&&getComputedStyle(dock).display==='none'&&getComputedStyle(splitter).display==='none'&&WeiG.AppState?.detailDockOpen===true&&WeiG.AppState?.detailTab==='trackers';
+  },null,{timeout:10000});
+  const collapsedDetail=await page.evaluate(()=>({semanticOpen:WeiG.AppState.detailDockOpen,tab:WeiG.AppState.detailTab,dockDisplay:getComputedStyle(document.getElementById('torrent-detail-dock')).display,splitterDisplay:getComputedStyle(document.getElementById('torrent-detail-splitter')).display,railHidden:document.getElementById('mobile-detail-rail').hidden}));
+  assert.equal(collapsedDetail.semanticOpen,true,'mobile down-arrow must preserve the semantic Detail session');
+  assert.equal(collapsedDetail.tab,'trackers','mobile presentation collapse must preserve the active Tracker tab');
+  assert.equal(collapsedDetail.dockDisplay,'none','mobile down-arrow must hide the complete Detail content host');
+  assert.equal(collapsedDetail.splitterDisplay,'none','mobile down-arrow must remove the Detail splitter from layout');
+  await page.locator('#mobile-detail-expand').click();
+  await page.waitForFunction(()=>document.getElementById('list-view')?.dataset.mobileDetailCollapsed==='false'&&document.getElementById('mobile-detail-rail')?.hidden===false&&getComputedStyle(document.getElementById('torrent-detail-dock')).display!=='none'&&WeiG.AppState?.detailDockOpen===true&&WeiG.AppState?.detailTab==='trackers',null,{timeout:10000});
+  await page.waitForSelector('#torrent-detail-dock .shared-table__viewport',{state:'visible',timeout:30000});
   const preview=page.locator('.torrent-mobile-card.is-detail-subject').first();
   await preview.waitFor({state:'visible',timeout:10000});
   const previewSelection=await preview.locator('.torrent-select').evaluate(input=>({checked:input.checked,aria:input.getAttribute('aria-label')}));
@@ -351,6 +365,29 @@ try{
   assert.ok(drawer.legendBefore.every(value=>value&&value!=='none'&&value!=='normal'),`mini-chart cumulative totals must expose the circular series pseudo marker: ${JSON.stringify(drawer.legendBefore)}`);
   assert.ok(drawer.metaDisplay==='none'||(drawer.meta.width===0&&drawer.meta.height===0),`mobile Drawer must hide qBittorrent/WebAPI/version metadata: ${JSON.stringify(drawer)}`);
   assert.ok(drawer.telemetry.top>=drawer.sidebar.top&&drawer.telemetry.bottom<=drawer.sidebar.bottom+1&&drawer.sidebar.bottom-drawer.telemetry.bottom<=12,`Drawer telemetry/chart must use the released bottom space: ${JSON.stringify(drawer)}`);
+  const tagFacet=page.locator('.facet-control[data-facet="tag"] .ui-select');
+  await tagFacet.locator('.ui-select__trigger').click();
+  await page.waitForSelector('#weig-floating-layer .ui-select__option[data-value="__weig_untagged__"]',{state:'visible',timeout:30000});
+  const untaggedOption=page.locator('#weig-floating-layer .ui-select__option[data-value="__weig_untagged__"]');
+  const untaggedLabel=String(await untaggedOption.textContent()||'').trim();
+  assert.match(untaggedLabel,/\(\d+\)$/,'Untagged source option must include its contextual count');
+  await untaggedOption.click();
+  await page.waitForFunction(expected=>String(document.querySelector('.facet-control[data-facet="tag"] .ui-select__prefix')?.textContent||'').trim()===expected,untaggedLabel,{timeout:10000});
+  assert.equal(String(await tagFacet.locator('.ui-select__prefix').textContent()||'').trim(),untaggedLabel,'selected Tag trigger must show the counted selected option instead of the static Tag title');
+
+  const trackerFacet=page.locator('.facet-control[data-facet="tracker"] .ui-select');
+  await trackerFacet.locator('.ui-select__trigger').click();
+  await page.waitForFunction(()=>[...document.querySelectorAll('#weig-floating-layer .ui-select__option')].some(node=>String(node.dataset.value||'').length>8&&String(node.textContent||'').includes('(')),null,{timeout:30000});
+  const trackerChoice=await page.evaluate(()=>{
+    const rows=[...document.querySelectorAll('#weig-floating-layer .ui-select__option')].filter(node=>String(node.dataset.value||'').length>8&&String(node.textContent||'').includes('(')).sort((a,b)=>String(b.textContent||'').length-String(a.textContent||'').length);
+    const row=rows[0];if(!row)return null;const result={value:String(row.dataset.value||''),label:String(row.textContent||'').trim()};row.click();return result;
+  });
+  assert.ok(trackerChoice&&trackerChoice.label,'Tracker facet needs a counted long-option fixture');
+  await page.waitForFunction(expected=>String(document.querySelector('.facet-control[data-facet="tracker"] .ui-select__prefix')?.textContent||'').trim()===expected,trackerChoice.label,{timeout:10000});
+  const trackerEllipsis=await trackerFacet.evaluate(node=>{node.closest('.facet-control').style.width='112px';const prefix=node.querySelector('.ui-select__prefix'),style=getComputedStyle(prefix);return{text:String(prefix.textContent||'').trim(),overflow:style.overflow,textOverflow:style.textOverflow,whiteSpace:style.whiteSpace,client:prefix.clientWidth,scroll:prefix.scrollWidth};});
+  assert.match(trackerEllipsis.text,/\(\d+\)$/,'selected Tracker trigger must retain its contextual count');
+  assert.equal(trackerEllipsis.overflow,'hidden');assert.equal(trackerEllipsis.textOverflow,'ellipsis');assert.equal(trackerEllipsis.whiteSpace,'nowrap');
+  assert.ok(trackerEllipsis.scroll>trackerEllipsis.client,'long selected Tracker labels must visibly ellipsize within the mobile facet cell: '+JSON.stringify(trackerEllipsis));
 
   assert.deepEqual(errors,[],`deployed mobile layout produced browser errors: ${errors.join('\n')}`);
   await context.close();
