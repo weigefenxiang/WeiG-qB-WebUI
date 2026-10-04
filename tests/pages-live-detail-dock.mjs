@@ -317,10 +317,10 @@ async function verifyModern(){
   await setMotion(page,'full');await clearMotionProbe(page);
   await page.locator('#torrent-detail-tabs .tab[data-tab="peers"]').click();
   await page.waitForSelector('#torrent-detail-dock-content .shared-table__viewport',{state:'visible',timeout:30000});
-  const preRouteDockBox=await page.locator('#torrent-detail-dock').boundingBox();
-  assert.ok(preRouteDockBox&&preRouteDockBox.height>0,'route-return height proof requires an open inline Detail Dock');
-  const preRouteDockHeight=preRouteDockBox.height;
   await page.waitForFunction(()=>!document.getElementById('torrent-detail-dock')?.dataset.surfaceTransition,null,{timeout:5000});
+  const preRouteDockBox=await page.locator('#torrent-detail-dock').boundingBox();
+  assert.ok(preRouteDockBox&&preRouteDockBox.height>0,'route-return height proof requires the settled inline Detail Dock, not an in-flight shared transition frame');
+  const preRouteDockHeight=preRouteDockBox.height;
   await clearMotionProbe(page);
   await page.locator('#torrent-list .torrent-title').first().click();
   await page.waitForFunction(()=>window.WeiG.Router.route().name==='torrent'&&window.WeiG.Router.route().tab==='peers'&&document.getElementById('detail-view')?.classList.contains('is-active')&&document.querySelector('#detail-view .detail-tabs .tab[data-tab="peers"]')?.classList.contains('is-active'),null,{timeout:30000});
