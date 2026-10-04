@@ -129,8 +129,19 @@ try{
   assert.equal(catalogDone.ready,true,`facet demand must eventually materialize the 1600-Torrent catalog after interaction becomes idle: ${JSON.stringify(catalogDone)}`);
   assert.equal(catalogDone.busy,false,`catalog task must settle after the stress scan: ${JSON.stringify(catalogDone)}`);
   assert.deepEqual(errors,[],`A52 scroll stress emitted browser errors: ${errors.join('\n')}`);
-  console.log('A53 Pages Torrent scroll/total stress passed: 1600-Torrent startup stays page-bounded, native-filter total uses bounded sparse probes without restart on Next, distant virtual jumps remain hole-free, horizontal motion stays compositor-only, and demand catalog yields to active scrolling.');
   await context.close();
+
+  const legacyContext=await browser.newContext({viewport:{width:1180,height:820},locale:'zh-CN'}),legacyPage=await legacyContext.newPage(),legacyErrors=[];
+  legacyPage.on('pageerror',error=>legacyErrors.push(error?.stack||error?.message||String(error)));
+  const legacySessionId=`a53-total-qb4-${Date.now()}`,legacyUrl=new URL('dev/app/',base);legacyUrl.search=new URLSearchParams({sim:legacySessionId,qb:'4.1.9.1',count:'320',scenario:'mixed',seed:'a53-total-qb4'}).toString();
+  await recoverPageSession(legacyPage,{label:`A53 legacy total ${legacySessionId}`,qbVersion:'4.1.9.1',timeoutMs,navigate:async attempt=>{const target=new URL(legacyUrl);target.searchParams.set('__weig_session_attempt',String(attempt));await legacyPage.goto(target.toString(),{waitUntil:'domcontentloaded',timeout:timeoutMs});},onLogin:async()=>{await legacyPage.locator('#login-btn').click();}});
+  await legacyPage.waitForSelector('#torrent-list [data-hash]',{state:'visible',timeout:60000});
+  await legacyPage.evaluate(()=>{const client=WeiG.AppState.client;window.__a53LegacyTotalCalls=[];const original=client.getTorrents.bind(client);client.getTorrents=async function(opts){window.__a53LegacyTotalCalls.push({...opts});return original(opts);};});
+  await legacyPage.locator('#filter-nav [data-filter="inactive"]').click();
+  await legacyPage.waitForFunction(()=>WeiG.LibraryController.state().filter==='inactive'&&Number.isSafeInteger(WeiG.LibraryController.total()),null,{timeout:20000});
+  const legacyTotal=await legacyPage.evaluate(()=>{const calls=window.__a53LegacyTotalCalls||[],probes=calls.filter(call=>Number(call.limit)===1);return{total:WeiG.LibraryController.total(),probes:probes.length,maxOffset:Math.max(0,...probes.map(call=>Number(call.offset)||0)),catalogReady:WeiG.AppState.catalogReady===true};});
+  assert.ok(legacyTotal.total>=0&&legacyTotal.probes>0&&legacyTotal.probes<32&&legacyTotal.maxOffset>=legacyTotal.total,`qB4 legacy offset-wrap total must converge through bounded sparse probes: ${JSON.stringify(legacyTotal)}`);assert.equal(legacyTotal.catalogReady,false,`qB4 exact total must not fall back to full catalog: ${JSON.stringify(legacyTotal)}`);assert.deepEqual(legacyErrors,[],`A53 qB4 total regression emitted browser errors: ${legacyErrors.join('\n')}`);await legacyContext.close();
+  console.log('A53 Pages Torrent scroll/total stress passed: qB5 native totals and qB4 legacy offset-wrap totals converge without full catalog scans; scroll recycler behavior remains bounded.');
 } finally {
   await browser.close();
 }
