@@ -99,6 +99,7 @@ before=calls.length;assert.throws(()=>client.runSettingsSourceAction('appcontrol
 before=calls.length;profile={qbVersion:'5.2.3',webApiVersion:'2.15.0',fallback:false,apiActions:[CLIENT_DATA_LOAD],apiActionParameters:{}};
 assert.throws(()=>client.setClientData({date_format:'default'}),/source-proven/,'ClientData store must fail closed when its exact source action is absent');assert.equal(calls.length,before,'unproven ClientData write must make zero HTTP requests');
 
+profile={qbVersion:'6.0.0',webApiVersion:'3.0.0',fallback:false,apiActions:[EDIT],apiActionParameters:{[EDIT]:{parameters:['hash','url','newUrl','tier'],required:['hash','url'],optional:['newUrl','tier']}}};
 await client.editTracker('abc','https://old.invalid/announce','https://new.invalid/announce');
 let editCall=calls.at(-1),editForm=new URLSearchParams(String(editCall.init.body||''));
 assert.equal(editCall.url,'api/v2/torrents/editTracker');
