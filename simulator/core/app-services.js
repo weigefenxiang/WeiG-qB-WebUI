@@ -56,13 +56,13 @@ export function sendTestEmail(world,now=Date.now()){
 
 export function rotateApiKey(world){
   world.apiKeySequence=(Number(world.apiKeySequence)||0)+1;
-  const a=hash32(`${world.seed}:api-key:${world.apiKeySequence}:a`).toString(16).padStart(8,'0');
-  const b=hash32(`${world.seed}:api-key:${world.apiKeySequence}:b`).toString(16).padStart(8,'0');
-  const c=hash32(`${world.seed}:api-key:${world.apiKeySequence}:c`).toString(16).padStart(8,'0');
-  const d=hash32(`${world.seed}:api-key:${world.apiKeySequence}:d`).toString(16).padStart(8,'0');
-  world.webApiKey=`${a}${b}${c}${d}`;return{apiKey:world.webApiKey};
+  const parts=[];
+  for(let i=0;i<4;i++)parts.push(hash32(`${world.seed}:api-key:${world.apiKeySequence}:${i}`).toString(36).padStart(7,'0'));
+  const apiKey='qbt_'+parts.join('').slice(0,28);
+  if(!world.preferences||typeof world.preferences!=='object'||Array.isArray(world.preferences))world.preferences={};
+  world.preferences.web_ui_api_key=apiKey;return{apiKey};
 }
-export function deleteApiKey(world){world.webApiKey='';return true;}
+export function deleteApiKey(world){if(!world.preferences||typeof world.preferences!=='object'||Array.isArray(world.preferences))world.preferences={};world.preferences.web_ui_api_key='';return true;}
 
 export function networkInterfaces(){
   return[{name:'Virtual Ethernet',value:'eth0'},{name:'Virtual Loopback',value:'lo'}];

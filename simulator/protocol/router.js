@@ -15,7 +15,6 @@ import {
 } from '../core/torrent-content.js';
 import {hasTorrentMetadata,propertiesForTorrent,torrentExists,trackersForTorrent} from '../core/torrent-metadata.js';
 import {atLeast} from '../core/profiles.js';
-import {hash32} from '../core/random.js';
 import {torrentIndex} from '../core/runtime-index.js';
 import {
   clearRuntimeSnapshot,listTorrentsSnapshot,mainDataSnapshot,runtimeSnapshotStats,transferSnapshot
@@ -247,12 +246,6 @@ export async function handleApi(world,request,url=new URL(request.url)){
     createPreferenceRuntime(world).write(patch,now);
     return empty();
   }
-  if(path==='app/rotateAPIKey'&&method==='POST'){
-    const previous=String(world.preferences?.web_ui_api_key||''),seed=String(world.seed||'virtual')+':api-key:'+previous,parts=[];
-    for(let i=0;i<4;i++)parts.push(hash32(seed+':'+i).toString(36).padStart(7,'0'));
-    const apiKey='qbt_'+parts.join('').slice(0,28);world.preferences.web_ui_api_key=apiKey;return json({apiKey});
-  }
-  if(path==='app/deleteAPIKey'&&method==='POST'){world.preferences.web_ui_api_key='';return empty();}
   if(path==='clientdata/load'&&method==='POST'){
     const form=await formObject(request),source=world.clientData&&typeof world.clientData==='object'&&!Array.isArray(world.clientData)?world.clientData:{};
     if(!String(form.keys||'').trim())return json(source);
