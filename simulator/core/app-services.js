@@ -1,4 +1,4 @@
-import {hash32} from './random.js';
+import {createRng,pick} from './random.js';
 
 function normalizePath(value){
   const raw=String(value||'').trim().replace(/\\/g,'/').replace(/\/{2,}/g,'/');
@@ -54,11 +54,12 @@ export function sendTestEmail(world,now=Date.now()){
   world.lastTestEmailAt=Math.floor(now/1000);log(world,'Virtual test email accepted (no external email was sent).',1,now);return true;
 }
 
+const API_KEY_PREFIX='qbt_',API_KEY_ALPHABET='23456789ABCDEFGHIJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz',API_KEY_LENGTH=28;
 export function rotateApiKey(world){
   world.apiKeySequence=(Number(world.apiKeySequence)||0)+1;
-  const parts=[];
-  for(let i=0;i<4;i++)parts.push(hash32(`${world.seed}:api-key:${world.apiKeySequence}:${i}`).toString(36).padStart(7,'0'));
-  const apiKey='qbt_'+parts.join('').slice(0,28);
+  const rng=createRng(`${world.seed}:api-key:${world.apiKeySequence}`);
+  let body='';for(let i=0;i<API_KEY_LENGTH;i++)body+=pick(rng,API_KEY_ALPHABET);
+  const apiKey=API_KEY_PREFIX+body;
   if(!world.preferences||typeof world.preferences!=='object'||Array.isArray(world.preferences))world.preferences={};
   world.preferences.web_ui_api_key=apiKey;return{apiKey};
 }

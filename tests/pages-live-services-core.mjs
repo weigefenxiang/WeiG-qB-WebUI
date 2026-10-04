@@ -177,7 +177,7 @@ try{
     response=await api(page,'app/networkInterfaceList');assert.equal(response.status,200);assert.ok(response.json.some(item=>item.value==='eth0'));
     response=await api(page,'app/networkInterfaceAddressList?iface=eth0');assert.equal(response.status,200);assert.ok(response.json.includes('192.0.2.10'));
     response=await api(page,'app/processInfo');assert.equal(response.status,200);assert.ok(Number.isInteger(response.json.launch_time));
-    response=await api(page,'app/rotateAPIKey',{method:'POST',form:{}});assert.equal(response.status,200);assert.match(response.json.apiKey,/^[0-9a-f]{32}$/);
+    response=await api(page,'app/rotateAPIKey',{method:'POST',form:{}});assert.equal(response.status,200);assert.match(response.json.apiKey,/^qbt_[23456789A-HJ-NP-Za-hjkmnp-z]{28}$/);
     response=await api(page,'app/deleteAPIKey',{method:'POST',form:{}});assert.equal(response.status,200);
     response=await api(page,'app/sendTestEmail',{method:'POST',form:{}});assert.equal(response.status,200);
     response=await api(page,'clientdata/store',{method:'POST',form:{data:JSON.stringify({pages_acceptance:'ok'})}});assert.equal(response.status,204);

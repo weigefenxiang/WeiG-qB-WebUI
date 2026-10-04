@@ -3,7 +3,7 @@ import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {compileCompactRuntime} from '../tools/qb-compact-runtime.mjs';
+import {compileCompactRuntime,readSettingsRuntime,packSettingsRuntime} from '../tools/qb-compact-runtime.mjs';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(here,'../webui/private');
@@ -38,7 +38,7 @@ const profiles=[
   {...commonProfile,qbVersion:'6.0.0',sourceSha:'6'.repeat(40),torrentInfoFields:['hash','num_complete','num_incomplete',...productFields.filter(key=>key!=='ratio')],torrentTableColumns:sourceColumns(productFields.filter(key=>key!=='ratio'))},
   {...commonProfile,qbVersion:'6.0.1',sourceSha:'7'.repeat(40),torrentInfoFields:['hash','num_complete','num_incomplete',...productFields],torrentTableColumns:sourceColumns(productFields)}
 ];
-const compact=compileCompactRuntime(profiles,{includeSettings:false});const compactByName=new Map([['capabilities.json',compact.capabilityData],['torrent-compat.json',compact.torrentData],['detail-compat.json',compact.detailData],['source-actions.json',compact.actionData],['settings-compat.json',compact.settingsData]]);
+const compact=compileCompactRuntime(profiles,{includeSettings:false});const syntheticSettings=structuredClone(readSettingsRuntime().settingsData);syntheticSettings.catalogIdentity=structuredClone(compact.catalogIdentity);syntheticSettings.releases=profiles.map(profile=>[String(profile.qbVersion),String(profile.sourceSha)]);const syntheticSettingsManifest=packSettingsRuntime(syntheticSettings,compact.catalogIdentity).manifest;const compactByName=new Map([['capabilities.json',compact.capabilityData],['torrent-compat.json',compact.torrentData],['detail-compat.json',compact.detailData],['source-actions.json',compact.actionData],['settings-compat.json',syntheticSettingsManifest]]);
 const torrent={
   hash:'f'.repeat(40),
   name:'Field provenance fixture',

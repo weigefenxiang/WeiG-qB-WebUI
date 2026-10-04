@@ -46,7 +46,7 @@ async function waitReady(page){await page.waitForSelector('#logout-btn');await p
 async function assertPrivateTrackerOwnership(page,supported,label){
   const options=await page.evaluate(()=>window.WeiG.LibraryController.facetOptions('tracker'));
   const privateOptions=options.filter(x=>x.value==='__weig_private__');
-  if(supported){const privateIndex=options.findIndex(x=>x.value==='__weig_private__');assert(options[0]?.value===''&&privateOptions.length===1&&privateIndex>0&&privateOptions[0]?.label==='Private / PT',`${label}: source-proven Private / PT must remain a single Tracker extension without displacing native Tracker specials ${JSON.stringify(options)}`);}
+  if(supported){const privateIndex=options.findIndex(x=>x.value==='__weig_private__'),specialIndexes=['special:trackerless','special:tracker-error','special:other-error','special:warning'].map(value=>options.findIndex(x=>x.value===value)).filter(index=>index>=0),lastSpecial=specialIndexes.length?Math.max(...specialIndexes):0;assert(options[0]?.value===''&&privateOptions.length===1&&privateIndex>lastSpecial&&/^Private \/ PT \(\d+\)$/.test(String(privateOptions[0]?.label||'')),`${label}: source-proven Private / PT must remain one counted Tracker extension after every native Tracker special ${JSON.stringify(options)}`);}
   else assert(privateOptions.length===0,`${label}: source-unproven Private / PT must be absent from Tracker facet ${JSON.stringify(options)}`);
 }
 async function assertSupportedTags(page,label){
