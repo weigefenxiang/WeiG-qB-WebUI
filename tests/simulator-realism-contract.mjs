@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {
   CANONICAL,addTags,createCategory,createTags,createWorld,deleteTags,effectiveAltSpeedMode,listTorrents,mainData,removeCategories,
-  logs,setCategory,setForceStart,setPreferences,transferInfo,VIRTUAL_PT_CATEGORIES
+  logs,setCategory,setForceStart,setPreferences,statisticsState,transferInfo,VIRTUAL_PT_CATEGORIES
 } from '../simulator/core/engine.js';
 import {applyRuntimePolicies,movePriority,peerLogItems,setAutoManagement} from '../simulator/core/torrent-actions.js';
 import {applyScenario} from '../simulator/core/scenarios.js';
@@ -319,6 +319,15 @@ const baseNow=1700000000000;
   const transfer=transferInfo(w,baseNow+1000);
   assert.ok(duplex.uploaded>uploadedBefore,'elapsed runtime must account upload bytes while a Torrent is still incomplete');
   assert.ok(transfer.dl_info_speed>0&&transfer.up_info_speed>0,'global transfer projection must expose simultaneous download and upload');
+  const stats=statisticsState(w,baseNow+1000);
+  for(const field of ['alltime_ul','alltime_dl','global_ratio','total_wasted_session','total_peer_connections','read_cache_hits','total_buffers_size','write_cache_overload','read_cache_overload','queued_io_jobs','average_time_queue','total_queued_size']){
+    assert.ok(Number.isFinite(Number(stats[field])),`Statistics server_state field ${field} must always be numeric in the Virtual qB runtime`);
+  }
+  assert.ok(stats.alltime_dl>0&&stats.alltime_ul>0,'Virtual qB Statistics must accumulate live all-time transfer bytes');
+  assert.ok(stats.total_buffers_size>0&&stats.read_cache_hits>0,'Virtual qB cache statistics must expose live simulated values instead of placeholders');
+  const later=transferInfo(w,baseNow+12000),laterStats=statisticsState(w,baseNow+12000);
+  assert.ok(laterStats.alltime_dl>stats.alltime_dl&&laterStats.alltime_ul>stats.alltime_ul,'Statistics cumulative transfer records must advance with simulated time');
+  assert.ok(later.dl_info_speed!==later.up_info_speed,'global download/upload channels must remain independently simulated');
 }
 
 

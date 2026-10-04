@@ -106,7 +106,7 @@ export const DEFAULT_ENVIRONMENT={
 };
 
 const PUBLIC_CATEGORIES=['Linux','Movies','TV','Music','Archive','Games','Books','Software'];
-export const CURRENT_WORLD_SCHEMA_VERSION=4;
+export const CURRENT_WORLD_SCHEMA_VERSION=5;
 export const VIRTUAL_PT_CATEGORIES=['1+1DBits','nn-team','BeyondH1 Ɔ','RE1Ɔ','TheGeeks','B1tMe','PT1 Ɔ','Gaze11eGames','JP0psuk1'];
 const CATEGORIES=[...PUBLIC_CATEGORIES,...VIRTUAL_PT_CATEGORIES];
 const TAGS=['fast','archive','public','favorite','seedbox','large','small'];
@@ -125,6 +125,58 @@ function makeHash(seed,index){
   const d=hash32(`${seed}:${index}:d`).toString(16).padStart(8,'0');
   const e=hash32(`${seed}:${index}:e`).toString(16).padStart(8,'0');
   return (a+b+c+d+e).slice(0,40);
+}
+
+function safeContentRoot(name){
+  return String(name||'Virtual Torrent').replace(/[\\/:*?"<>|]+/g,'_').trim().slice(0,96)||'Virtual Torrent';
+}
+function virtualFileSpecs(seed,hash,name){
+  const root=safeContentRoot(name),serial=String(hash32(`${seed}:${hash}:content-serial`)%9000+1000),kind=hash32(`${seed}:${hash}:content-template-v1`)%6;
+  if(kind===0)return[
+    [`${root}/Video/${root}.mkv`,72],[`${root}/Video/Subtitles/${root}.zh-CN.srt`,1],[`${root}/Artwork/poster.jpg`,8],[`${root}/README.nfo`,2],[`${root}/Extras/behind-the-scenes.mp4`,17]
+  ];
+  if(kind===1)return[
+    [`${root}/Photos/2026/IMG_${serial}.JPG`,24],[`${root}/Photos/2026/IMG_${Number(serial)+1}.jpeg`,22],[`${root}/Photos/Edited/cover.png`,18],[`${root}/Photos/Edited/preview.webp`,16],[`${root}/notes.txt`,20]
+  ];
+  if(kind===2)return[
+    [`${root}/Music/Album/01 - Opening.flac`,28],[`${root}/Music/Album/02 - Theme.mp3`,24],[`${root}/Music/Album/03 - Live.m4a`,22],[`${root}/Music/Album/cover.png`,8],[`${root}/Music/Album/booklet.pdf`,18]
+  ];
+  if(kind===3)return[
+    [`${root}/Software/bin/setup.exe`,42],[`${root}/Software/scripts/install.sh`,4],[`${root}/Software/docs/README.md`,7],[`${root}/Software/data/resources.7z`,39],[`${root}/Software/config/default.json`,8]
+  ];
+  if(kind===4)return[
+    [`${root}/Documents/Guide.md`,8],[`${root}/Documents/Notes.txt`,5],[`${root}/Media/clips/sample.mp4`,36],[`${root}/Media/clips/source.mov`,34],[`${root}/Pictures/screenshots/screen.png`,7],[`${root}/Archive/source.zip`,10]
+  ];
+  return[
+    [`${root}/Series/Season 01/E01.mkv`,30],[`${root}/Series/Season 01/E02.mkv`,29],[`${root}/Series/Season 01/E03.mp4`,25],[`${root}/Series/Subtitles/E01.srt`,2],[`${root}/Series/Subtitles/E02.srt`,2],[`${root}/Series/Extras/cover.jpeg`,12]
+  ];
+}
+function buildVirtualTorrentFiles(seed,hash,name,size,downloaded){
+  const total=Math.max(1,Math.floor(Number(size)||1)),specs=virtualFileSpecs(seed,hash,name),weightTotal=specs.reduce((sum,item)=>sum+item[1],0);
+  let offset=0;
+  const files=specs.map((item,index)=>{
+    const remainingFiles=specs.length-index-1,maxForThis=Math.max(1,total-offset-remainingFiles);
+    const fileSize=index===specs.length-1?Math.max(1,total-offset):Math.max(1,Math.min(maxForThis,Math.floor(total*item[1]/weightTotal)));
+    const start=Math.floor(offset/(4*MiB)),end=Math.floor((offset+fileSize-1)/(4*MiB));
+    offset+=fileSize;
+    return{index,name:item[0],size:fileSize,progress:0,priority:1,is_seed:false,piece_range:[start,Math.max(start,end)]};
+  });
+  const torrent={size:total,downloaded:Math.max(0,Math.min(total,Number(downloaded)||0)),files};
+  syncTorrentFileProgress(torrent);
+  return files;
+}
+function syncTorrentFileProgress(torrent){
+  const files=Array.isArray(torrent&&torrent.files)?torrent.files:[];let remaining=Math.max(0,Math.min(Number(torrent&&torrent.size)||0,Number(torrent&&torrent.downloaded)||0));
+  for(const file of files){
+    const size=Math.max(0,Number(file&&file.size)||0),owned=Math.min(size,remaining),progress=size>0?owned/size:1;
+    file.progress=Math.max(0,Math.min(1,progress));file.is_seed=file.progress>=1;remaining=Math.max(0,remaining-owned);
+  }
+  return files;
+}
+export function refreshGeneratedTorrentFiles(world,torrent){
+  if(!torrent||!String(torrent.hash||''))return false;
+  torrent.files=buildVirtualTorrentFiles(String(world&&world.seed||'20260905'),String(torrent.hash),torrent.name,torrent.size,torrent.downloaded);
+  return true;
 }
 
 function initialState(bucket){
@@ -173,9 +225,10 @@ function makeTorrent(seed,index,now){
     const url=trackerIndex===0?trackerUrl:(privateFlag?`https://pt${trackerIndex+1}.example/announce`:`https://tracker-${1+(hash32(`${seed}:${index}:${trackerIndex}`)%24)}.example.invalid/announce`);
     return{url,status:trackerIndex===0?trackerStatus:2,tier:trackerIndex,num_peers:Math.max(0,baseLeechers-trackerIndex),num_seeds:Math.max(0,baseSeeders-trackerIndex),num_leeches:Math.max(0,baseLeechers-trackerIndex),num_downloaded:int(rng,0,5000),msg:trackerIndex===0?trackerMessage:''};
   });
-  const name=pick(rng,TORRENT_NAME_POOL);
+  const name=pick(rng,TORRENT_NAME_POOL),hash=makeHash(seed,index);
+  const files=buildVirtualTorrentFiles(seed,hash,name,size,downloaded);
   return {
-    hash:makeHash(seed,index),
+    hash,
     name,
     size,
     downloaded,
@@ -216,9 +269,7 @@ function makeTorrent(seed,index,now){
     queueSlow:false,
     lastStateChange:Math.floor(now/1000),
     error:state===CANONICAL.ERROR?'Virtual disk I/O error':'',
-    files:[
-      {index:0,name:'content.bin',size,progress,priority:1,is_seed:complete,piece_range:[0,Math.max(0,Math.ceil(size/(4*MiB))-1)]}
-    ],
+    files,
     trackers:trackerRows
   };
 }
@@ -303,7 +354,7 @@ export function createWorld(options={}){
     journal:[],
     removedHashes:[],
     lastTick:now,
-    stats:{alltime_dl:0,alltime_ul:0,total_peer_connections:0,dht_nodes:286}
+    stats:createStatisticsState()
   };
   schedule(world,now,0);
   appendLog(world,'Virtual qBittorrent session initialized.',1,now);
@@ -311,6 +362,44 @@ export function createWorld(options={}){
   appendLog(world,'Virtual tracker latency warning sample.',4,now+2000);
   appendLog(world,'Virtual critical diagnostic sample (non-destructive).',8,now+3000);
   return world;
+}
+
+function createStatisticsState(){
+  return{alltime_dl:0,alltime_ul:0,total_peer_connections:0,dht_nodes:286,total_wasted_session:0,read_cache_hits:92,total_buffers_size:32*MiB,write_cache_overload:0,read_cache_overload:0,queued_io_jobs:0,average_time_queue:0,total_queued_size:0};
+}
+function statsOf(world){
+  const base=createStatisticsState(),stats=world.stats&&typeof world.stats==='object'?world.stats:(world.stats={});
+  for(const [key,value] of Object.entries(base))if(!Number.isFinite(Number(stats[key])))stats[key]=value;
+  return stats;
+}
+function updateStatistics(world,elapsedSeconds,totalDl,totalUl,totalConnections,now){
+  const stats=statsOf(world),env=world.environment||{},traffic=Math.max(0,Number(totalDl)||0)+Math.max(0,Number(totalUl)||0),elapsed=Math.max(0,Number(elapsedSeconds)||0);
+  if(elapsed>0)stats.total_wasted_session+=traffic*elapsed*Math.max(0,Number(env.packetLoss)||0)*0.18;
+  const writeLoad=(Number(totalDl)||0)/Math.max(1,Number(env.diskWriteCapacity)||1),readLoad=(Number(totalUl)||0)/Math.max(1,Number(env.diskReadCapacity)||1);
+  const cacheWave=deterministicUnit(world.seed,`stats-cache:${Math.floor(Number(now||0)/10000)}`);
+  stats.read_cache_hits=Math.max(55,Math.min(99.9,88+cacheWave*9-writeLoad*4));
+  stats.total_buffers_size=Math.max(8*MiB,Math.min(512*MiB,16*MiB+Math.max(0,Number(totalConnections)||0)*192*1024+traffic*.18));
+  stats.write_cache_overload=Math.max(0,Math.min(100,(writeLoad-.68)*145));
+  stats.read_cache_overload=Math.max(0,Math.min(100,(readLoad-.74)*135));
+  stats.queued_io_jobs=Math.max(0,Math.round((stats.write_cache_overload+stats.read_cache_overload)/16));
+  stats.average_time_queue=stats.queued_io_jobs?Math.max(1,Math.round((Number(env.latencyMs)||0)*.18+stats.queued_io_jobs*2.4)):0;
+  stats.total_queued_size=Math.round(stats.queued_io_jobs*Math.max(64*1024,traffic*.035));
+  return stats;
+}
+export function statisticsState(world,now=Date.now()){
+  const stats=statsOf(world),dl=Math.max(0,Number(stats.alltime_dl)||0),ul=Math.max(0,Number(stats.alltime_ul)||0);
+  return{
+    alltime_dl:Math.floor(dl),alltime_ul:Math.floor(ul),global_ratio:dl>0?Number((ul/dl).toFixed(3)):0,
+    total_wasted_session:Math.floor(Math.max(0,Number(stats.total_wasted_session)||0)),
+    total_peer_connections:Math.max(0,Math.floor(Number(stats.total_peer_connections)||0)),
+    read_cache_hits:Number(Math.max(0,Math.min(100,Number(stats.read_cache_hits)||0)).toFixed(1)),
+    total_buffers_size:Math.floor(Math.max(0,Number(stats.total_buffers_size)||0)),
+    write_cache_overload:Number(Math.max(0,Math.min(100,Number(stats.write_cache_overload)||0)).toFixed(1)),
+    read_cache_overload:Number(Math.max(0,Math.min(100,Number(stats.read_cache_overload)||0)).toFixed(1)),
+    queued_io_jobs:Math.max(0,Math.floor(Number(stats.queued_io_jobs)||0)),
+    average_time_queue:Math.max(0,Math.floor(Number(stats.average_time_queue)||0)),
+    total_queued_size:Math.floor(Math.max(0,Number(stats.total_queued_size)||0))
+  };
 }
 
 function appendLog(world,message,type=1,now=Date.now()){
@@ -649,7 +738,7 @@ export function schedule(world,now=Date.now(),elapsedSeconds=0){
       }
       if(t.effectiveDownloadRate>0||t.effectiveUploadRate>0)t.activeTime+=elapsedSeconds;
       if(oldDownloaded!==t.downloaded||oldUploaded!==t.uploaded)changed.add(t.hash);
-      if(t.files?.[0])t.files[0].progress=t.size?Math.min(1,t.downloaded/t.size):0;
+      syncTorrentFileProgress(t);
     }
   }
   for(const t of world.torrents){
@@ -658,6 +747,7 @@ export function schedule(world,now=Date.now(),elapsedSeconds=0){
     totalConnections+=t.connectedPeers;
   }
   world.stats.total_peer_connections=totalConnections;
+  updateStatistics(world,elapsedSeconds,totalDl,totalUl,totalConnections,now);
   return{changed,totalDl,totalUl,dlBudget,ulBudget};
 }
 
@@ -794,8 +884,7 @@ export function serverState(world,now=Date.now()){
   const transfer=transferInfo(world,now);
   return{
     ...transfer,
-    alltime_dl:Math.floor(world.stats.alltime_dl),
-    alltime_ul:Math.floor(world.stats.alltime_ul),
+    ...statisticsState(world,now),
     free_space_on_disk:Math.floor(world.environment.freeSpace),
     use_alt_speed_limits:effectiveAltSpeedMode(world,now),
     queueing:!!world.preferences.queueing_enabled

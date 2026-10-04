@@ -1,6 +1,6 @@
 import {hash32} from './random.js';
 import {TORRENT_NAME_POOL} from '../data/torrent-name-pool.js';
-import {CURRENT_WORLD_SCHEMA_VERSION,VIRTUAL_PT_CATEGORIES} from './engine.js';
+import {CURRENT_WORLD_SCHEMA_VERSION,VIRTUAL_PT_CATEGORIES,refreshGeneratedTorrentFiles} from './engine.js';
 
 const LEGACY_PRIVATE_CATEGORY='Private';
 const LEGACY_GENERATED_CATEGORIES=new Set(['','Private','Linux','Movies','TV','Music','Archive','Games','Books','Software']);
@@ -121,19 +121,20 @@ export function upgradeWorldSchema(world,now=Date.now()){
   const from=Math.max(0,Number(world.schemaVersion)||0);
   if(from>=CURRENT_WORLD_SCHEMA_VERSION)return{changed:false,from,to:CURRENT_WORLD_SCHEMA_VERSION,privateRemapped:0,logTypesAdded:0,namesRemapped:0};
 
-  let changed=false,privateRemapped=0,namesRemapped=0;
+  let changed=false,privateRemapped=0,namesRemapped=0,contentRemapped=0;
   const beforeLogTypes=new Set((Array.isArray(world.logs)?world.logs:[]).map(item=>Number(item?.type)));
   changed=ensureLogTypes(world,now)||changed;
   changed=ensurePtCategories(world)||changed;
 
   for(const torrent of Array.isArray(world.torrents)?world.torrents:[]){
     if(migrateSyntheticName(world,torrent)||migrateLegacySnapshotNoise(world,torrent)){namesRemapped++;changed=true;}
+    if(from<5&&!userAddedTorrent(torrent)&&refreshGeneratedTorrentFiles(world,torrent)){contentRemapped++;changed=true;}
     if(!privateLike(torrent))continue;
     if(torrent.private!==true){torrent.private=true;changed=true;}
     const tags=tagList(torrent);
     if(!tags.some(tag=>tag.toLowerCase()==='pt')){tags.push('pt');torrent.tags=tags;changed=true;}
     const category=String(torrent.category||'');
-    const legacyGeneratedCategory=!userAddedTorrent(torrent)&&from<CURRENT_WORLD_SCHEMA_VERSION&&LEGACY_GENERATED_CATEGORIES.has(category);
+    const legacyGeneratedCategory=!userAddedTorrent(torrent)&&from<4&&LEGACY_GENERATED_CATEGORIES.has(category);
     if(!category||category===LEGACY_PRIVATE_CATEGORY||legacyGeneratedCategory){
       torrent.category=deterministicPtCategory(world,torrent);
       privateRemapped++;changed=true;
@@ -148,5 +149,5 @@ export function upgradeWorldSchema(world,now=Date.now()){
   changed=true;
   const afterLogTypes=new Set(world.logs.map(item=>Number(item?.type)));
   const logTypesAdded=[1,2,4,8].filter(type=>!beforeLogTypes.has(type)&&afterLogTypes.has(type)).length;
-  return{changed,from,to:CURRENT_WORLD_SCHEMA_VERSION,privateRemapped,logTypesAdded,namesRemapped};
+  return{changed,from,to:CURRENT_WORLD_SCHEMA_VERSION,privateRemapped,logTypesAdded,namesRemapped,contentRemapped};
 }

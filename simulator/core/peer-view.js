@@ -43,7 +43,9 @@ function templateRow(world,torrent,i){
       client:pick(identityRng,CLIENTS),country_code:country[0],country:country[1],downloaded:0,uploaded:0,
       progress:deterministicUnit(world.seed,`${torrent.hash}:peer-progress:${i}`),connection:identityRng()>.28?'µTP':'TCP',
       flags:'D U',flags_desc:'Interested; Unchoked',ip,port,relevance:.9,files:''
-    }
+    },
+    downloadWeight:.35+deterministicUnit(world.seed,`${torrent.hash}:peer-dl-weight:${i}`)*1.65,
+    uploadWeight:.25+deterministicUnit(world.seed,`${torrent.hash}:peer-ul-weight:${i}`)*1.75
   };
 }
 function templatesFor(world,torrent,count){
@@ -74,9 +76,16 @@ export function generatedPeers(world,hash){
   const count=peerCountForTorrent(world,torrent.hash),out={};
   if(count===0)return out;
   const templates=templatesFor(world,torrent,count);
-  const dlSpeed=Math.floor(torrent.effectiveDownloadRate/Math.max(1,count));
-  const upSpeed=Math.floor(torrent.effectiveUploadRate/Math.max(1,count));
-  for(let i=0;i<count;i++){const template=templates[i];out[template.key]={...template.value,dl_speed:dlSpeed,up_speed:upSpeed};}
+  const totalDl=Math.max(0,Math.floor(Number(torrent.effectiveDownloadRate)||0)),totalUl=Math.max(0,Math.floor(Number(torrent.effectiveUploadRate)||0));
+  const dlWeight=templates.reduce((sum,row)=>sum+row.downloadWeight,0)||1,ulWeight=templates.reduce((sum,row)=>sum+row.uploadWeight,0)||1;
+  let dlLeft=totalDl,ulLeft=totalUl;
+  for(let i=0;i<count;i++){
+    const template=templates[i],last=i===count-1;
+    const dlSpeed=last?dlLeft:Math.min(dlLeft,Math.floor(totalDl*template.downloadWeight/dlWeight));
+    const upSpeed=last?ulLeft:Math.min(ulLeft,Math.floor(totalUl*template.uploadWeight/ulWeight));
+    dlLeft-=dlSpeed;ulLeft-=upSpeed;
+    out[template.key]={...template.value,dl_speed:dlSpeed,up_speed:upSpeed};
+  }
   return out;
 }
 export function peerViewStats(world){return{...diagnosticsFor(world),maxGeneratedPeers:MAX_GENERATED_PEERS};}

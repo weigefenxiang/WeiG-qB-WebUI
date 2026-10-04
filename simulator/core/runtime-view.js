@@ -1,4 +1,4 @@
-import {capabilityAvailable,effectiveAltSpeedMode,recordTorrentChanges,schedule,torrentView} from './engine.js';
+import {capabilityAvailable,effectiveAltSpeedMode,recordTorrentChanges,schedule,statisticsState,torrentView} from './engine.js';
 import {clearRuntimeIndexes,primeTransferAggregate,runtimeIndexStats,torrentIndex,torrentsByHashes,transferAggregate} from './runtime-index.js';
 import {snapshotIntervalForWorld} from './low-power-policy.js';
 import {expandTorrentInfoRows} from './torrent-info-options.js';
@@ -108,8 +108,7 @@ function serverStateSnapshotRaw(world,contract,now=Date.now()){
   const transfer=transferSnapshotRaw(world);
   const state={
     ...transfer,
-    alltime_dl:Math.floor(world.stats.alltime_dl),
-    alltime_ul:Math.floor(world.stats.alltime_ul),
+    ...statisticsState(world,now),
     use_alt_speed_limits:effectiveAltSpeedMode(world,now),
     queueing:!!world.preferences.queueing_enabled
   };

@@ -15,7 +15,7 @@ const countClasses=new Map();
 for(const torrent of world.torrents){const count=peerCountForTorrent(world,torrent.hash);if(!countClasses.has(count))countClasses.set(count,torrent);}
 for(const expected of [0,3,50,100])assert.ok(countClasses.has(expected),`5000-torrent world must include a seeded ${expected}-peer detail example`);
 assert.equal(peerViewStats(world).templateRows,0,'scanning seeded peer counts must not materialize any peer templates');
-const target=[...countClasses.entries()].find(([count])=>count>0)?.[1];
+const target=[...countClasses.entries()].find(([count])=>count>=3)?.[1];
 assert.ok(target,'peer detail fixture needs one non-empty target');
 const peerPath=`sync/torrentPeers?hash=${target.hash}`;
 
@@ -79,6 +79,11 @@ const afterRatePeers=generatedPeers(world,target.hash);
 assert.deepEqual(peerIdentityMap(afterRatePeers),beforeRateIdentity,'rate changes must not alter deterministic peer identity metadata');
 assert.notEqual(afterRatePeers[ratePeerKey].dl_speed,beforeRatePeers[ratePeerKey].dl_speed,'peer download rate must project live torrent rate changes');
 assert.notEqual(afterRatePeers[ratePeerKey].up_speed,beforeRatePeers[ratePeerKey].up_speed,'peer upload rate must project live torrent rate changes');
+const projectedRates=Object.values(afterRatePeers);
+assert.ok(new Set(projectedRates.map(row=>row.dl_speed)).size>1,'generated peers must not all receive the same download speed');
+assert.ok(new Set(projectedRates.map(row=>row.up_speed)).size>1,'generated peers must not all receive the same upload speed');
+assert.equal(projectedRates.reduce((sum,row)=>sum+row.dl_speed,0),Math.floor(target.effectiveDownloadRate),'varied peer download rates must conserve the torrent aggregate');
+assert.equal(projectedRates.reduce((sum,row)=>sum+row.up_speed,0),Math.floor(target.effectiveUploadRate),'varied peer upload rates must conserve the torrent aggregate');
 peerStats=peerViewStats(world);
 assert.equal(peerStats.templateBuilds,1,'rate changes must not invalidate static peer identity metadata');
 assert.equal(peerStats.templateRows,initialGeneratedPeers,'rate changes must not expand static peer templates');

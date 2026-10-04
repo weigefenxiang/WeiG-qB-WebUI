@@ -9,6 +9,20 @@ import {
 const MiB=1024*1024;
 const now=1700000000000;
 
+{
+  const w=world('5.2.3','2.15.1',120),all=w.torrents.flatMap(t=>t.files||[]);
+  assert.ok(w.torrents.every(t=>Array.isArray(t.files)&&t.files.length>=4),'generated Virtual qB torrents must expose realistic multi-file content instead of one content.bin placeholder');
+  assert.ok(all.some(file=>String(file.name).split('/').length>=4),'generated content must include multi-level folder trees');
+  const extensions=new Set(all.map(file=>(String(file.name).match(/\.([^.\/]+)$/)||[])[1]?.toLowerCase()).filter(Boolean));
+  for(const family of [['jpg','jpeg','png','webp'],['mp3','flac','m4a'],['mkv','mp4','mov'],['txt','md','nfo','srt'],['exe','sh','7z','zip']]){
+    assert.ok(family.some(ext=>extensions.has(ext)),`generated content must include at least one ${family.join('/')} example`);
+  }
+  for(const t of w.torrents.slice(0,20)){
+    assert.equal((t.files||[]).reduce((sum,file)=>sum+Number(file.size||0),0),t.size,'generated file sizes must conserve the torrent total size');
+    assert.equal(new Set((t.files||[]).map(file=>file.index)).size,t.files.length,'generated file indexes must remain stable and unique');
+  }
+}
+
 function world(qb='5.2.3',api='2.15.1',count=80){
   const w=createWorld({profile:{qbVersion:qb,webApiVersion:api,stable:true},count,seed:`content-${qb}-${api}`,now});
   w.authenticated=true;
@@ -48,11 +62,12 @@ function metadataTorrent(w){
   const files=filesForTorrent(w,t.hash);
   assert.equal(files[0].index,0,'modern WebAPI must expose stable file indexes');
   assert.ok(files[0].availability>=0&&files[0].availability<=1,'file availability must be a bounded deterministic ratio');
-  assert.ok(renameFile(w,t.hash,'content.bin','folder/content.bin'),'renameFile must mutate a valid relative torrent path');
-  assert.equal(t.files[0].name,'folder/content.bin');
+  const original=t.files[0].name,leaf=original.split('/').at(-1);
+  assert.ok(renameFile(w,t.hash,original,`folder/${leaf}`),'renameFile must mutate a valid relative torrent path');
+  assert.equal(t.files[0].name,`folder/${leaf}`);
   assert.ok(renameFolder(w,t.hash,'folder','archive'),'renameFolder must mutate descendants by prefix');
-  assert.equal(t.files[0].name,'archive/content.bin');
-  assert.equal(renameFile(w,t.hash,'archive/content.bin','../escape.bin'),false,'content rename must reject traversal paths');
+  assert.equal(t.files[0].name,`archive/${leaf}`);
+  assert.equal(renameFile(w,t.hash,`archive/${leaf}`,'../escape.bin'),false,'content rename must reject traversal paths');
 }
 
 {
@@ -62,12 +77,12 @@ function metadataTorrent(w){
   assert.equal(response.status,404,'renameFile must stay unavailable before WebAPI 2.4.0');
 
   const modern=world('5.2.3','2.15.1');
-  const mt=metadataTorrent(modern);
-  response=await handleApi(modern,formRequest('torrents/renameFile',{hash:mt.hash,oldPath:'content.bin',newPath:'folder/content.bin'}));
+  const mt=metadataTorrent(modern),original=mt.files[0].name,leaf=original.split('/').at(-1);
+  response=await handleApi(modern,formRequest('torrents/renameFile',{hash:mt.hash,oldPath:original,newPath:`folder/${leaf}`}));
   assert.equal(response.status,200,'modern WebAPI must expose renameFile');
   response=await handleApi(modern,formRequest('torrents/renameFolder',{hash:mt.hash,oldPath:'folder',newPath:'renamed'}));
   assert.equal(response.status,200,'modern WebAPI must expose renameFolder');
-  assert.equal(mt.files[0].name,'renamed/content.bin');
+  assert.equal(mt.files[0].name,`renamed/${leaf}`);
 
   const special=world('4.3.3','2.7.0');
   const st=metadataTorrent(special);st.files[0].name='folder/content.bin';
