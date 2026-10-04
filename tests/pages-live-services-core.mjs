@@ -265,11 +265,18 @@ try{
     await page.waitForSelector('#detail-content .shared-table__row[data-file-kind="folder"]',{state:'visible',timeout:30000});
     const treeBefore=await page.evaluate(()=>({folders:[...document.querySelectorAll('#detail-content .shared-table__row[data-file-kind="folder"] .detail-file-name')].map(node=>({label:String(node.textContent||'').trim(),depth:Number(getComputedStyle(node).getPropertyValue('--file-depth'))||0,expanded:node.querySelector('.detail-file-toggle')?.getAttribute('aria-expanded')})),types:[...document.querySelectorAll('#detail-content .detail-file-icon[data-file-type]')].map(node=>node.dataset.fileType)}));
     assert.ok(treeBefore.folders.length>=2,'Content UI must render folder rows from generated multi-level paths: '+JSON.stringify(treeBefore));
-    const closedFolder=page.locator('#detail-content .shared-table__row[data-file-kind="folder"] .detail-file-toggle[aria-expanded="false"]').first();
-    if(await closedFolder.count()){await closedFolder.click();await page.waitForTimeout(120);}
+    for(let attempt=0;attempt<16;attempt++){
+      const closedFolder=page.locator('#detail-content .shared-table__row[data-file-kind="folder"] .detail-file-toggle[aria-expanded="false"]').first();
+      if(!await closedFolder.count())break;
+      await closedFolder.click();
+      await page.waitForFunction(()=>document.querySelector('#detail-content .shared-table__row[data-file-kind="file"]')||!document.querySelector('#detail-content .detail-file-toggle[aria-expanded="false"]'),null,{timeout:3000}).catch(()=>{});
+      await page.waitForTimeout(40);
+    }
+    await page.waitForSelector('#detail-content .shared-table__row[data-file-kind="file"]',{state:'visible',timeout:10000});
     const treeAfter=await page.evaluate(()=>({folders:[...document.querySelectorAll('#detail-content .shared-table__row[data-file-kind="folder"] .detail-file-name')].map(node=>Number(getComputedStyle(node).getPropertyValue('--file-depth'))||0),types:[...document.querySelectorAll('#detail-content .detail-file-icon[data-file-type]')].map(node=>node.dataset.fileType).filter(Boolean)}));
     assert.ok(treeAfter.folders.some(depth=>depth>=1),'Content UI must expose nested folder depth, not a flat single-file list');
-    assert.ok(new Set(treeAfter.types).size>=2,'Content UI must visibly classify multiple file families: '+JSON.stringify(treeAfter.types));
+    const visibleFileTypes=new Set(treeAfter.types.filter(type=>type&&type!=='folder'));
+    assert.ok(visibleFileTypes.size>=2,'Content UI must visibly classify multiple expanded file families: '+JSON.stringify(treeAfter.types));
 
     await page.locator('#detail-view [data-detail-back]').click();
     await page.waitForFunction(()=>WeiG.Router?.route?.().name==='home',null,{timeout:30000});
