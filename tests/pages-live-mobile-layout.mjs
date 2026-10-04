@@ -214,6 +214,14 @@ try{
   assert.equal(logSearch.visible,true,'Logs Header Search input must be visible when opened');
   assert.match(logSearch.placeholder,/日志|logs/i,'opened Header Search must retain the Logs-specific placeholder');
 
+  await page.setViewportSize({width:1200,height:850});await page.waitForTimeout(180);
+  await page.waitForSelector('.logs-row .logs-level',{state:'visible',timeout:10000});
+  const desktopLogs=await page.evaluate(()=>{const list=document.querySelector('.logs-list'),head=document.querySelector('.logs-head'),timeHead=head?.querySelector('[data-key="time"]'),levelHead=head?.querySelector('[data-key="level"]'),filter=document.querySelector('.logs-filters [data-log-type="1"]'),chip=document.querySelector('.logs-row .logs-level'),cell=chip?.closest('[data-column-key="level"]');if(!list||!timeHead||!levelHead||!filter||!chip||!cell)throw new Error('Desktop Logs canonical grid/chip geometry is missing');const rect=n=>{const r=n.getBoundingClientRect();return{left:r.left,right:r.right,width:r.width,height:r.height};};return{list:rect(list),time:rect(timeHead),level:rect(levelHead),filter:rect(filter),chip:rect(chip),cell:rect(cell),filterRadius:getComputedStyle(filter).borderRadius,chipRadius:getComputedStyle(chip).borderRadius};});
+  assert.ok(Math.abs(desktopLogs.chip.height-desktopLogs.filter.height)<=1.5&&desktopLogs.chipRadius===desktopLogs.filterRadius,`row Normal badge must keep the same canonical height/radius family as the toolbar chip: ${JSON.stringify(desktopLogs)}`);
+  assert.ok(desktopLogs.level.right>=desktopLogs.list.right-26&&desktopLogs.level.width<=150&&desktopLogs.time.width<=230&&desktopLogs.time.right<=desktopLogs.level.left+2,`desktop Logs Time/Level must occupy compact deterministic columns at the right edge: ${JSON.stringify(desktopLogs)}`);
+  assert.ok(desktopLogs.cell.height>=desktopLogs.chip.height&&desktopLogs.chip.width<desktopLogs.cell.width+1,`DataGrid cell may stretch but the nested severity chip must remain intrinsic: ${JSON.stringify(desktopLogs)}`);
+  await page.setViewportSize({width:360,height:844});await page.waitForTimeout(180);
+
   await page.locator('#mobile-bottom-nav [data-route="settings"]').click();
   await page.waitForFunction(()=>document.getElementById('settings-view')?.classList.contains('is-active')&&document.querySelectorAll('#settings-tabs [data-settings-tab]').length>2&&window.WeiG?.SettingsSchema?.nativeSurfaces?.().length>0,null,{timeout:30000});
   const settingsWidths=[320,360,390,430];
