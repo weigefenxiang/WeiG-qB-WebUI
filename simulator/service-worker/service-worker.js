@@ -46,7 +46,7 @@ async function immutableFetchUrl(url){
   const cache=await caches.open(STATIC_CACHE),cached=await cache.match(url);
   if(cached)return cached;
   const response=await fetch(url,{cache:'no-store'});
-  if(response.ok)await cache.put(url,response.clone());
+  if(response.ok){try{await cache.put(url,response.clone());}catch(_e){}}
   return response;
 }
 
@@ -59,27 +59,31 @@ async function activateRuntime(){
 self.addEventListener('install',event=>event.waitUntil(self.skipWaiting()));
 self.addEventListener('activate',event=>event.waitUntil(activateRuntime()));
 
-function safeProfileKey(value){const key=String(value||'5.2.3').trim();return /^[0-9A-Za-z._-]+$/.test(key)?key:'5.2.3';}
+function safeProfileKey(value){const key=String(value||'').trim();if(!key||!/^[0-9A-Za-z._-]+$/.test(key))throw new Error(`Unsafe Virtual qB profile key: ${value}`);return key;}
 
 async function loadCatalog(qbVersion){
   const key=safeProfileKey(qbVersion);
   if(catalogPromises.has(key))return catalogPromises.get(key);
   const task=(async()=>{
-    try{
-      const response=await immutableFetchUrl(versionedAssetUrl(RUNTIME_PROFILE_BASE+key+'.json'));
-      if(response.ok){
-        const profile=await response.json();
-        if(profile&&String(profile.qbVersion||'')===key)return[profile];
-      }
-    }catch(_e){}
+    for(let attempt=0;attempt<2;attempt++){
+      try{
+        const response=await immutableFetchUrl(versionedAssetUrl(RUNTIME_PROFILE_BASE+key+'.json'));
+        if(response.ok){
+          const profile=await response.json();
+          if(profile&&String(profile.qbVersion||'')===key)return[profile];
+        }
+      }catch(_e){}
+    }
     try{
       const response=await immutableFetchUrl(versionedAssetUrl(LEGACY_CATALOG_URL));
       if(response.ok){
-        const data=await response.json();
-        if(Array.isArray(data)&&data.length)return data;
+        const data=await response.json(),profile=profileByVersion(data,key);
+        if(profile)return[profile];
       }
     }catch(_e){}
-    return[profileByVersion(BOOTSTRAP_RELEASES,key)];
+    const bootstrap=profileByVersion(BOOTSTRAP_RELEASES,key);
+    if(bootstrap)return[bootstrap];
+    throw new Error(`Exact Virtual qB profile unavailable: ${key}`);
   })();
   catalogPromises.set(key,task);
   try{return await task;}catch(error){catalogPromises.delete(key);throw error;}
@@ -261,6 +265,7 @@ async function ensureWorld(event,url){
   const catalog=await loadCatalog(requestedVersion);
   if(!world){
     const profile=profileByVersion(catalog,cfg.qb);
+    if(!profile||String(profile.qbVersion)!==String(cfg.qb))throw new Error(`Exact Virtual qB profile unavailable: ${cfg.qb}`);
     const networkSeed=networkSeedFor(id,cfg.seed);
     const environment=networkEnvironmentForSeed(networkSeed);
     world=createWorld({profile,count:cfg.count,seed:cfg.seed,scenario:cfg.scenario,environment});

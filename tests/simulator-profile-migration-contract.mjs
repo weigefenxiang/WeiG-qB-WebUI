@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {reconcileWorldProfile} from '../simulator/core/world-profile.js';
+import {profileByVersion} from '../simulator/core/profiles.js';
 import {CURRENT_WORLD_SCHEMA_VERSION,VIRTUAL_PT_CATEGORIES,createWorld,logs,listTorrents} from '../simulator/core/engine.js';
 import {upgradeWorldSchema} from '../simulator/core/world-schema.js';
 import {TORRENT_NAME_POOL,TORRENT_NAME_POOL_PROVENANCE} from '../simulator/data/torrent-name-pool.js';
@@ -44,6 +45,12 @@ const catalog=[
     apiActions:['app/preferences','app/setPreferences','torrents/start','torrents/stop']
   }
 ];
+
+{
+  assert.equal(profileByVersion(catalog,'4.6.7')?.qbVersion,'4.6.7','explicit profile lookup must resolve only the exact requested qB release');
+  assert.equal(profileByVersion(catalog,'4.6.6'),null,'explicit missing qB releases must fail closed instead of aliasing to the newest profile');
+  assert.equal(profileByVersion(catalog)?.qbVersion,'5.2.3','omitting a requested version may retain the catalog latest default for non-evidence callers');
+}
 
 {
   const preferences={scheduler_enabled:true,schedule_from_hour:9,limit_utp_rate:true};

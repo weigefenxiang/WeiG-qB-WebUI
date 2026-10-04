@@ -109,6 +109,10 @@ function basic(value){return `Basic ${btoa(value)}`;}
 }
 
 const sw=fs.readFileSync(new URL('../simulator/service-worker/service-worker.js',import.meta.url),'utf8');
+assert.match(sw,/if\(response\.ok\)\{try\{await cache\.put\(url,response\.clone\(\)\);\}catch\(_e\)\{\}\}/,'successful exact-source fetches must survive best-effort CacheStorage write failures');
+assert.doesNotMatch(sw,/return\[profileByVersion\(BOOTSTRAP_RELEASES,key\)\]/,'missing exact runtime profiles must never alias to the newest bootstrap release');
+assert.match(sw,/const bootstrap=profileByVersion\(BOOTSTRAP_RELEASES,key\);[\s\S]*if\(bootstrap\)return\[bootstrap\];[\s\S]*Exact Virtual qB profile unavailable/,'bootstrap fallback must be exact-only and fail closed when the requested qB release is absent');
+assert.match(sw,/if\(!profile\|\|String\(profile\.qbVersion\)!==String\(cfg\.qb\)\)throw new Error/,'new virtual worlds must reject missing or mismatched exact qB profiles before createWorld can apply defaults');
 assert.match(sw,/applyTransportPolicy\(world,event\.request\)/,'Service Worker must run the canonical transport policy before routing WebAPI requests');
 assert.match(sw,/if\(transport\.rejected\)/,'Service Worker must enforce transport rejection outcomes');
 assert.match(sw,/sessionForEvent\(clientSessions,event\)/,'Service Worker must inherit the virtual world across canonical navigation client replacement');
