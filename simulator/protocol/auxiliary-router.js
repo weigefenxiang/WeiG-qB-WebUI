@@ -139,8 +139,8 @@ export async function handleAuxiliaryApi(world,request,path,method,url,contract=
   }
   if(path==='app/shutdown'&&method==='POST'){requestShutdown(world);return empty();}
 
-  if(path==='clientdata/load'&&method==='GET'){
-    const raw=url.searchParams.get('keys');
+  if(path==='clientdata/load'&&(method==='GET'||method==='POST')){
+    const raw=method==='POST'?String((await formObject(request)).keys||''):url.searchParams.get('keys');
     if(raw==null||raw==='')return json(loadClientData(world));
     let keys;
     try{keys=JSON.parse(raw);}catch{return badRequest('Invalid `keys` JSON');}

@@ -33,6 +33,9 @@ assert.match(auxiliary,/handleAuxiliaryApi\(world,request,path,method,url,contra
 assert.match(auxiliary,/contract\?\.responseShape==='structured-result'/,'torrents/add must consume Endpoint Contract response/status semantics');
 assert.match(auxiliary,/contract\?\.responseShape==='ordered-array'/,'parseMetadata must consume Endpoint Contract response-shape semantics');
 assert.match(auxiliary,/projectPeerHostNames\(world,merged,contract\)/,'sync/torrentPeers must consume the router-resolved hostname contract');
+assert.match(auxiliary,/path==='clientdata\/load'&&\(method==='GET'\|\|method==='POST'\)/,'ClientData load GET/POST compatibility must live in the auxiliary endpoint owner');
+assert.match(auxiliary,/path==='clientdata\/store'&&method==='POST'/,'ClientData store must live in the auxiliary endpoint owner');
+assert.doesNotMatch(router,/path==='clientdata\/(?:load|store)'/,'router must not retain a second ClientData endpoint implementation after auxiliary ownership cutover');
 assert.equal(auxiliary.includes("'2.13.0'"),false,'auxiliary router must not retain the migrated parseMetadata 2.13.0 semantic boundary');
 assert.equal(auxiliary.includes("'2.14.0'"),false,'auxiliary router must not retain the migrated torrents/add 2.14.0 semantic boundary');
 assert.equal(authPolicy.includes("'2.14.0'"),false,'credential acceptance policy must not own WebAPI response-version boundaries');
