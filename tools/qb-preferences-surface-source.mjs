@@ -555,7 +555,7 @@ function buildControlGraph(markup,tabs,fieldsets,caches,preferences,writeOnlyByC
       if(!controls.length&&!rowHelpers.length&&!rowContents.length)continue;
       const items=[];
       for(const control of controls){assignedControls.add(control.id);representedControls.add(control.id);sourceControls.add(control.id);items.push({kind:'control',...graphControl(control,preferenceById,behavior,markup,null,row.endStart,writeOnlyByControl,clientDataByControl)});}
-      for(const helper of rowHelpers){assignedHelpers.add(helper.id);representedHelpers.add(helper.id);sourceHelpers.add(helper.id);items.push({kind:'helper',id:helper.id,role:'helper',label:helper.label,action:sourceHelperAction(helper.onclick,markup),condition:behavior.predicates?.[helper.id]||null});}
+      for(const helper of rowHelpers){assignedHelpers.add(helper.id);representedHelpers.add(helper.id);sourceHelpers.add(helper.id);items.push({kind:'helper',id:helper.id,role:'helper',label:helper.label,action:sourceHelperActionFor(helper,markup),condition:behavior.predicates?.[helper.id]||null});}
       for(const content of rowContents){assignedContents.add(content.id);representedContents.add(content.id);sourceContents.add(content.id);items.push(graphContentItem(content));}
       const mapped=items.filter(item=>item.kind==='control'&&item.preferenceKey).length,auxCheckbox=items.some(item=>item.kind==='control'&&!item.preferenceKey&&item.semantic==='checkbox'),hasHelper=items.some(item=>item.kind==='helper'),hasContent=items.some(item=>item.kind==='content');
       const template=hasContent&&!mapped&&!hasHelper?'content-only':hasHelper?(mapped>1?'inline-multi-helper':'control-helper'):(auxCheckbox&&mapped?'gated-sentinel':mapped>1?'inline-multi-control':'single-row'),family=sourceRowFamily(template,items);
@@ -569,7 +569,7 @@ function buildControlGraph(markup,tabs,fieldsets,caches,preferences,writeOnlyByC
     for(const helper of helpers){
       if(!inside(tab.range,helper.start))continue;
       sourceHelpers.add(helper.id);if(assignedHelpers.has(helper.id))continue;representedHelpers.add(helper.id);const parent=nearestContaining(tabFields,helper.start);
-      rows.push({id:tab.id+':row:'+rows.length,parentFieldsetId:parent?fieldIds.get(parent):null,order:rows.length,sourceOrder:0,_sourcePos:helper.start,template:'helper-only',items:[{kind:'helper',id:helper.id,role:'helper',label:helper.label,action:sourceHelperAction(helper.onclick,markup),condition:behavior.predicates?.[helper.id]||null}]});
+      rows.push({id:tab.id+':row:'+rows.length,parentFieldsetId:parent?fieldIds.get(parent):null,order:rows.length,sourceOrder:0,_sourcePos:helper.start,template:'helper-only',items:[{kind:'helper',id:helper.id,role:'helper',label:helper.label,action:sourceHelperActionFor(helper,markup),condition:behavior.predicates?.[helper.id]||null}]});
     }
     for(const content of tabContents){
       sourceContents.add(content.id);if(assignedContents.has(content.id))continue;representedContents.add(content.id);const parent=nearestContaining(tabFields,content.start);
