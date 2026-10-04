@@ -177,7 +177,7 @@ try{
       await page.waitForFunction(expected=>WeiG.LibraryController.state().filter==='all'&&WeiG.LibraryController.total()===expected,torrents.length,{timeout:10000});
       const staleProjection=await page.evaluate(()=>({total:WeiG.LibraryController.total(),fresh:WeiG.AppState.knownTotalFresh,totalSpinner:!!document.querySelector('#page-label [data-pager-total] .pager-index-spinner')}));
       assert.equal(staleProjection.total,torrents.length,'stale exact total must remain immediately projectable while validation is pending');assert.equal(staleProjection.totalSpinner,false,'stale-while-revalidate must never regress the known total-pages token to discovery spinner');
-      await page.waitForFunction(expected=>torrentCountRequests.modern===expected&&WeiG.AppState.knownTotalFresh===true,countBeforeStaleRevalidate+1,{timeout:10000});
+      await page.waitForFunction(()=>WeiG.AppState.knownTotalFresh===true,null,{timeout:10000});
       assert.equal(torrentCountRequests.modern,countBeforeStaleRevalidate+1,'stale global total must coalesce to exactly one bounded torrents/count revalidation');
     }
 
