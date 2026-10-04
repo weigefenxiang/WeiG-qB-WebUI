@@ -46,6 +46,17 @@ function formRequest(url,body){
 
 {
   const w=world();authenticate(w,'demo','demo',1700000000000);
+  w.profile.apiActions=['appcontroller.h:preferencesAction','appcontroller.h:rotateAPIKeyAction','appcontroller.h:deleteAPIKeyAction'];
+  w.preferences.web_ui_api_key='';
+  let r=await handleApi(w,formRequest('https://example.invalid/api/v2/app/rotateAPIKey',{}));assert.equal(r.status,200);const first=await r.json();assert.match(first.apiKey,/^qbt_.{28}$/,'Virtual qB API key must retain the source prefix and exact key length');assert.equal(w.preferences.web_ui_api_key,first.apiKey,'rotateAPIKey must persist through the canonical preference world');
+  r=await handleApi(w,formRequest('https://example.invalid/api/v2/app/rotateAPIKey',{}));const second=await r.json();assert.notEqual(second.apiKey,first.apiKey,'repeated rotateAPIKey must replace the current key instead of replaying a fixture constant');
+  r=await handleApi(w,formRequest('https://example.invalid/api/v2/app/deleteAPIKey',{}));assert.equal(r.status,200);assert.equal(w.preferences.web_ui_api_key,'','deleteAPIKey must clear the same canonical preference field');
+  const unavailable=world();authenticate(unavailable,'demo','demo',1700000000000);unavailable.profile.apiActions=['appcontroller.h:preferencesAction'];
+  r=await handleApi(unavailable,formRequest('https://example.invalid/api/v2/app/rotateAPIKey',{}));assert.equal(r.status,404,'Virtual qB must not invent API-key actions before exact source admission');
+}
+
+{
+  const w=world();authenticate(w,'demo','demo',1700000000000);
   w.profile.apiActions=['clientdatacontroller.h:loadAction','clientdatacontroller.h:storeAction'];
   let r=await handleApi(w,formRequest('https://example.invalid/api/v2/clientdata/load',{keys:JSON.stringify(['qbt_date_format'])}));
   assert.equal(r.status,200);assert.deepEqual(await r.json(),{},'empty ClientData storage must return an empty keyed object');
