@@ -346,7 +346,19 @@ async function verifyModern(){
   assert.equal(await page.locator('#detail-content>.shared-table__toolbar [data-detail-columns]').count(),1,'full Detail route must retain Column settings chrome');
   await page.locator('#detail-view [data-detail-back]').click();
   await page.waitForFunction(()=>window.WeiG.Router.route().name==='home'&&window.WeiG.AppState.detailDockOpen&&window.WeiG.AppState.detailTab==='trackers'&&!document.getElementById('torrent-detail-dock').hidden,null,{timeout:30000});
-  await page.waitForFunction(expected=>{const dock=document.getElementById('torrent-detail-dock'),root=document.getElementById('torrent-detail-dock-content');return !!dock&&!!root&&root.childElementCount>0&&Math.abs(dock.getBoundingClientRect().height-expected)<=4;},preRouteDockHeight,{timeout:5000});
+  const captureRouteReturnGeometry=()=>page.evaluate(()=>{
+    const W=window.WeiG,split=W.AppState?.detailSplitPane,panel=document.querySelector('#list-view>.torrent-panel'),stage=document.getElementById('torrent-content-stage'),dock=document.getElementById('torrent-detail-dock'),separator=document.getElementById('torrent-detail-splitter'),pager=document.querySelector('#list-view .torrent-pager'),root=document.getElementById('torrent-detail-dock-content'),head=document.getElementById('torrent-table-head'),listView=document.getElementById('list-view'),rect=node=>{if(!node)return null;const r=node.getBoundingClientRect();return{top:r.top,bottom:r.bottom,left:r.left,right:r.right,width:r.width,height:r.height};},style=node=>{if(!node)return null;const s=getComputedStyle(node);return{display:s.display,height:s.height,flex:s.flex,flexBasis:s.flexBasis,minHeight:s.minHeight,maxHeight:s.maxHeight};};
+    const panelRect=rect(panel),stageRect=rect(stage),pagerRect=rect(pager),track=panel&&stage&&pager?Math.max(0,(panelRect.top+Math.max(0,Number(panel.clientTop)||0)+Math.max(0,Number(panel.clientHeight)||0))-pagerRect.height-stageRect.top):null;
+    return{route:W.Router?.route?.(),semanticOpen:W.AppState?.detailDockOpen===true,tab:W.AppState?.detailTab||'',hash:W.AppState?.detailDockHash||'',split:{isOpen:split?.isOpen?.(),size:split?.size?.(),preferred:split?.preferredSize?.()},stored:Number(localStorage.getItem(W.StorageKeys.torrentDetailDockHeight)),aria:{now:Number(separator?.getAttribute('aria-valuenow')),min:Number(separator?.getAttribute('aria-valuemin')),max:Number(separator?.getAttribute('aria-valuemax'))},children:root?.childElementCount??-1,track,headerHeight:head?.getBoundingClientRect().height??null,rects:{listView:rect(listView),panel:panelRect,stage:stageRect,dock:rect(dock),separator:rect(separator),pager:pagerRect},styles:{listView:style(listView),panel:style(panel),stage:style(stage),dock:style(dock),separator:style(separator)}};});
+  try{
+    await page.waitForFunction(expected=>{const dock=document.getElementById('torrent-detail-dock'),root=document.getElementById('torrent-detail-dock-content');return !!dock&&!!root&&root.childElementCount>0&&Math.abs(dock.getBoundingClientRect().height-expected)<=4;},preRouteDockHeight,{timeout:5000});
+  }catch(error){
+    const beforeManualRefresh=await captureRouteReturnGeometry();
+    await page.evaluate(()=>window.WeiG?.AppState?.detailSplitPane?.refresh?.());
+    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+    const afterManualRefresh=await captureRouteReturnGeometry();
+    assert.fail(`Full Detail route-return geometry did not converge after canonical remount; expected=${preRouteDockHeight}; beforeManualRefresh=${JSON.stringify(beforeManualRefresh)}; afterManualRefresh=${JSON.stringify(afterManualRefresh)}; wait=${error.message}`);
+  }
   const postRouteDockHeight=(await page.locator('#torrent-detail-dock').boundingBox()).height;
   assert.ok(Math.abs(postRouteDockHeight-preRouteDockHeight)<=4,`returning from Full Detail must restore the preferred inline Dock height through the shared post-layout reprojection: before=${preRouteDockHeight}, after=${postRouteDockHeight}`);
 
