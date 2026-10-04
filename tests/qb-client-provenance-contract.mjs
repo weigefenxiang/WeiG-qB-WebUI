@@ -83,7 +83,7 @@ await client.setPreferences({save_path:'/future'});
 assert.equal(calls.at(-1).url,'api/v2/app/setPreferences');
 assert.match(String(calls.at(-1).init.body),/(^|&)json=/,'setPreferences must preserve the canonical JSON form field');
 profile={qbVersion:'5.2.3',webApiVersion:'2.15.0',fallback:false,apiActions:[CLIENT_DATA_LOAD,CLIENT_DATA_STORE],apiActionParameters:{[CLIENT_DATA_LOAD]:{parameters:['keys'],required:[],optional:['keys']},[CLIENT_DATA_STORE]:{parameters:['data'],required:['data'],optional:[]}}};
-before=calls.length;
+let before=calls.length;
 const clientData=await client.getClientData(['date_format','hide_zero_status_filters']);
 assert.deepEqual(clientData,{date_format:'yyyy-MM-dd HH:mm:ss',hide_zero_status_filters:true},'ClientData read must strip qB source prefix without inventing product-local keys');
 let clientDataCall=calls.at(-1),clientDataForm=new URLSearchParams(String(clientDataCall.init.body||''));
@@ -102,7 +102,7 @@ assert.equal(editForm.get('url'),'https://old.invalid/announce','modern exact de
 assert.equal(editForm.get('newUrl'),'https://new.invalid/announce');
 assert.equal(editForm.has('origUrl'),false,'modern exact descriptor must not leak the legacy origUrl parameter');
 
-let before=calls.length;
+before=calls.length;
 profile={qbVersion:'6.0.0',webApiVersion:'3.0.0',fallback:false,apiActions:[PREF_READ],apiActionParameters:{}};
 await assert.rejects(client.setPreferences({save_path:'/blocked'}),/source-proven/,'missing future setPreferences action must fail closed');
 assert.equal(calls.length,before,'unknown dangerous Settings write must fail before HTTP');

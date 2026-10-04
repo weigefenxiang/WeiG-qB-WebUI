@@ -246,6 +246,22 @@ export async function handleApi(world,request,url=new URL(request.url)){
     createPreferenceRuntime(world).write(patch,now);
     return empty();
   }
+  if(path==='clientdata/load'&&method==='POST'){
+    const form=await formObject(request),source=world.clientData&&typeof world.clientData==='object'&&!Array.isArray(world.clientData)?world.clientData:{};
+    if(!String(form.keys||'').trim())return json(source);
+    let keys;
+    try{keys=JSON.parse(String(form.keys));}catch{return text('Invalid JSON',400);}
+    if(!Array.isArray(keys)||keys.some(key=>typeof key!=='string'))return text('Invalid keys',400);
+    const out={};for(const key of keys)if(owns(source,key))out[key]=source[key];return json(out);
+  }
+  if(path==='clientdata/store'&&method==='POST'){
+    const form=await formObject(request);if(!String(form.data||'').trim())return text('Missing data',400);
+    let data;
+    try{data=JSON.parse(String(form.data));}catch{return text('Invalid JSON',400);}
+    if(!data||typeof data!=='object'||Array.isArray(data))return text('Invalid data',400);
+    const target=world.clientData&&typeof world.clientData==='object'&&!Array.isArray(world.clientData)?world.clientData:(world.clientData={});
+    Object.assign(target,data);return empty();
+  }
   if(path==='app/cookies'&&method==='GET'){
     if(!ensureCapability(world,'cookies'))return notFound();
     return json(world.cookies||[]);

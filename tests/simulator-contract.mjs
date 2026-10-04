@@ -45,6 +45,22 @@ function formRequest(url,body){
 }
 
 {
+  const w=world();authenticate(w,'demo','demo',1700000000000);
+  w.profile.apiActions=['clientdatacontroller.h:loadAction','clientdatacontroller.h:storeAction'];
+  let r=await handleApi(w,formRequest('https://example.invalid/api/v2/clientdata/load',{keys:JSON.stringify(['qbt_date_format'])}));
+  assert.equal(r.status,200);assert.deepEqual(await r.json(),{},'empty ClientData storage must return an empty keyed object');
+  r=await handleApi(w,formRequest('https://example.invalid/api/v2/clientdata/store',{data:JSON.stringify({qbt_date_format:'yyyy-MM-dd HH:mm:ss',qbt_hide_zero_status_filters:true})}));
+  assert.equal(r.status,200);assert.deepEqual(w.clientData,{qbt_date_format:'yyyy-MM-dd HH:mm:ss',qbt_hide_zero_status_filters:true},'ClientData store must persist native qbt_ keys in the virtual world');
+  r=await handleApi(w,formRequest('https://example.invalid/api/v2/clientdata/load',{keys:JSON.stringify(['qbt_date_format','qbt_missing'])}));
+  assert.deepEqual(await r.json(),{qbt_date_format:'yyyy-MM-dd HH:mm:ss'},'ClientData keyed load must return only stored requested keys');
+  r=await handleApi(w,formRequest('https://example.invalid/api/v2/clientdata/load',{}));
+  assert.deepEqual(await r.json(),{qbt_date_format:'yyyy-MM-dd HH:mm:ss',qbt_hide_zero_status_filters:true},'ClientData load without keys must return the complete native store');
+  const readonly=world();authenticate(readonly,'demo','demo',1700000000000);readonly.profile.apiActions=['clientdatacontroller.h:loadAction'];
+  r=await handleApi(readonly,formRequest('https://example.invalid/api/v2/clientdata/store',{data:JSON.stringify({qbt_date_format:'blocked'})}));
+  assert.equal(r.status,404,'Virtual qB must not expose ClientData store when exact source actions omit it');
+}
+
+{
   const legacy=world('5.1.4','2.11.4');
   legacy.authenticationPolicy={acceptAny:false,username:'demo',password:'demo'};
   let r=await handleApi(legacy,formRequest('https://example.invalid/api/v2/auth/login',{username:'wrong',password:'wrong'}));
