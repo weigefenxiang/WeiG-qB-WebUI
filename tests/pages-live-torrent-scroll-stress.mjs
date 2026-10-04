@@ -61,6 +61,14 @@ try{
   assert.equal(startup.pageSize,50,'stress fixture must exercise the canonical 50-row page');
   assert.equal(startup.prefetch50,3,'50/page must retain the bounded ±3 neighbor window');
 
+  await page.evaluate(()=>{const client=WeiG.AppState.client;window.__a53OriginalGetTorrents=client.getTorrents;window.__a53TotalCalls=[];client.getTorrents=async function(opts){window.__a53TotalCalls.push({...opts});return window.__a53OriginalGetTorrents.call(client,opts);};});
+  await page.locator('#filter-nav [data-filter="inactive"]').click();
+  await page.waitForFunction(()=>WeiG.LibraryController.state().filter==='inactive'&&Number.isSafeInteger(WeiG.LibraryController.total()),null,{timeout:30000});
+  const nativeTotal=await page.evaluate(()=>{const total=WeiG.LibraryController.total(),size=WeiG.LibraryController.state().pageSize,calls=window.__a53TotalCalls||[],probes=calls.filter(call=>Number(call.limit)===1),catalog=calls.filter(call=>Number(call.limit)===200);return{total,pages:Math.max(1,Math.ceil(total/size)),probes:probes.length,catalog:catalog.length,catalogReady:WeiG.AppState.catalogReady===true,totalSignature:WeiG.AppState.knownTotalSignature,stats:WeiG.AppState.libraryData.stats()};});
+  assert.ok(nativeTotal.total>=0&&nativeTotal.probes>0&&nativeTotal.probes<32,`native filtered total must converge through bounded sparse probes: ${JSON.stringify(nativeTotal)}`);assert.equal(nativeTotal.catalog,0,`native filtered total must not launch a sequential full catalog: ${JSON.stringify(nativeTotal)}`);assert.equal(nativeTotal.catalogReady,false,`native filtered total must not materialize catalog state: ${JSON.stringify(nativeTotal)}`);assert.ok(nativeTotal.totalSignature,`native filtered total must publish a predicate-scoped signature: ${JSON.stringify(nativeTotal)}`);
+  if(nativeTotal.pages>1){const beforeProbes=nativeTotal.probes;await page.locator('#next-btn').click();await page.waitForFunction(()=>WeiG.LibraryController.state().page===1,null,{timeout:10000});await page.waitForTimeout(220);const afterProbes=await page.evaluate(()=>(window.__a53TotalCalls||[]).filter(call=>Number(call.limit)===1).length);assert.equal(afterProbes,beforeProbes,'Next page must reuse the resolved total extent instead of restarting sparse probes');}
+  await page.locator('#filter-nav [data-filter="all"]').click();await page.waitForFunction(()=>WeiG.LibraryController.state().filter==='all'&&WeiG.LibraryController.state().page===0,null,{timeout:10000});await page.evaluate(()=>{const client=WeiG.AppState.client;if(window.__a53OriginalGetTorrents)client.getTorrents=window.__a53OriginalGetTorrents;delete window.__a53OriginalGetTorrents;delete window.__a53TotalCalls;});
+
   const baseline=await page.evaluate(()=>{
     const list=document.getElementById('torrent-list'),viewport=WeiG.AppState.viewport;
     window.__a52Pool=viewport._rowPool.map(slot=>slot.node);
@@ -121,7 +129,7 @@ try{
   assert.equal(catalogDone.ready,true,`facet demand must eventually materialize the 1600-Torrent catalog after interaction becomes idle: ${JSON.stringify(catalogDone)}`);
   assert.equal(catalogDone.busy,false,`catalog task must settle after the stress scan: ${JSON.stringify(catalogDone)}`);
   assert.deepEqual(errors,[],`A52 scroll stress emitted browser errors: ${errors.join('\n')}`);
-  console.log('A52 Pages Torrent scroll stress passed: 1600-Torrent startup stays page-bounded, distant virtual jumps remain hole-free, horizontal motion stays compositor-only, and demand catalog yields to active scrolling.');
+  console.log('A53 Pages Torrent scroll/total stress passed: 1600-Torrent startup stays page-bounded, native-filter total uses bounded sparse probes without restart on Next, distant virtual jumps remain hole-free, horizontal motion stays compositor-only, and demand catalog yields to active scrolling.');
   await context.close();
 } finally {
   await browser.close();
