@@ -14,7 +14,8 @@ import {canonicalQbHtmlText,parseQbtSourceRef,qbSourceRefKey} from './qb-source-
 const PREFERENCES_SOURCE_PATHS=['src/webui/www/private/views/preferences.html','src/webui/www/private/preferences_content.html','src/webui/www/private/preferences.html'];
 const TOOLBAR_SOURCE_PATHS=['src/webui/www/private/views/preferencesToolbar.html','src/webui/www/private/preferences.html'];
 const APP_CONTROLLER_PATH='src/webui/api/appcontroller.cpp';
-const SOURCE_BLOB_PATHS=[...new Set([...PREFERENCES_SOURCE_PATHS,...TOOLBAR_SOURCE_PATHS,APP_CONTROLLER_PATH])];
+const MISC_SOURCE_PATH='src/webui/www/private/scripts/misc.js';
+const SOURCE_BLOB_PATHS=[...new Set([...PREFERENCES_SOURCE_PATHS,...TOOLBAR_SOURCE_PATHS,APP_CONTROLLER_PATH,MISC_SOURCE_PATH])];
 
 function decodeHtml(value){return canonicalQbHtmlText(value);}
 function qbtTr(value){return parseQbtSourceRef(value);}
@@ -298,6 +299,76 @@ function sourceHelperAction(handler,markup){
   }
   return{kind:'source-helper',name};
 }
+function scalarLiteral(value){
+  const text=String(value||'').trim();
+  if(/^["'][\s\S]*["']$/.test(text))return text.slice(1,-1);
+  if(text==='true')return true;if(text==='false')return false;if(text==='null')return null;
+  if(/^-?\d+(?:\.\d+)?$/.test(text))return Number(text);
+  return undefined;
+}
+function clientDataReadDefault(markup,key){
+  const escaped=escapeRegex(key),match=String(markup||'').match(new RegExp('\\bclientData\\.get\\(\\s*["\\\']'+escaped+'["\\\']\\s*\\)\\s*\\?\\?\\s*([^;\\n]+)'));
+  return match?scalarLiteral(match[1]):undefined;
+}
+function selectDefaultValue(markup,control){
+  if(!control||control.tag!=='select'||!control.range)return undefined;
+  const body=String(markup||'').slice(control.range.openEnd,control.range.endStart),options=[...body.matchAll(/<option\b([^>]*)>([\s\S]*?)<\/option>/gi)];
+  if(!options.length)return undefined;
+  const selected=options.find(match=>hasAttr(match[1]||'','selected'))||options[0],value=attrText(selected[1]||'','value');
+  return value===null?decodeHtml(selected[2]):value;
+}
+function objectFreezeKeys(source,name){
+  const text=String(source||''),escaped=escapeRegex(name),match=new RegExp('\\bconst\\s+'+escaped+'\\s*=\\s*Object\\.freeze\\s*\\(\\s*\\{').exec(text);
+  if(!match)return[];
+  const open=text.indexOf('{',match.index),keys=[];let depth=0,quote='',escape=false,expectKey=true;
+  for(let i=open;i<text.length;i++){
+    const ch=text[i];
+    if(quote){if(escape){escape=false;continue;}if(ch==='\\\\'){escape=true;continue;}if(ch===quote)quote='';continue;}
+    if(ch==='"'||ch==="'"){
+      if(depth===1&&expectKey){
+        const q=ch;let j=i+1,out='',esc=false;
+        for(;j<text.length;j++){const c=text[j];if(esc){out+=c;esc=false;continue;}if(c==='\\\\'){esc=true;continue;}if(c===q)break;out+=c;}
+        let k=j+1;while(/\s/.test(text[k]||''))k++;
+        if(text[k]===':'){keys.push(out);expectKey=false;i=j;continue;}
+      }
+      quote=ch;continue;
+    }
+    if(ch==='{'){depth++;if(depth===1)expectKey=true;continue;}
+    if(ch==='}'){depth--;if(depth===0)break;continue;}
+    if(depth===1&&ch===',')expectKey=true;
+  }
+  return keys;
+}
+function clientDataDynamicOptions(markup,controlId,miscSource){
+  const text=String(markup||''),id=escapeRegex(controlId),variableMatch=text.match(new RegExp('\\b(?:const|let|var)\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*document\\.getElementById\\(\\s*["\\\']'+id+'["\\\']\\s*\\)\\s*;')),variable=variableMatch&&variableMatch[1];
+  for(const match of text.matchAll(/for\s*\(\s*const\s+([A-Za-z_$][\w$]*)\s+of\s+Object\.keys\(\s*window\.qBittorrent\.([A-Za-z_$][\w$]*)\.([A-Za-z_$][\w$]*)\s*\)\s*\)\s*\{/g)){
+    const body=balancedBlock(text,match.index||0),targetsId=new RegExp('getElementById\\(\\s*["\\\']'+id+'["\\\']').test(body),targetsVariable=!!(variable&&new RegExp('\\b'+escapeRegex(variable)+'\\b').test(body));
+    if(!targetsId&&!targetsVariable)continue;
+    const keys=objectFreezeKeys(miscSource,match[3]);if(!keys.length)continue;
+    return keys.map(value=>({value,label:{literal:value}}));
+  }
+  return[];
+}
+function clientDataBindings(markup,caches,miscSource){
+  const text=String(markup||''),out=new Map(),assign=/\bclientData(?:\.([A-Za-z_$][\w$]*)|\[\s*["']([^"']+)["']\s*\])\s*=\s*([^;\n]+);/g;
+  for(const match of text.matchAll(assign)){
+    const key=String(match[1]||match[2]||''),expression=String(match[3]||'').trim();if(!key)continue;
+    let controlId=null,type=null;
+    let hit=expression.match(/^document\.getElementById\(\s*["']([^"']+)["']\s*\)\.checked$/);
+    if(hit){controlId=hit[1];type='boolean';}
+    if(!hit){hit=expression.match(/^document\.getElementById\(\s*["']([^"']+)["']\s*\)\.(?:value|getSelected\(\)\[0\]\.value)$/);if(hit){controlId=hit[1];type='string';}}
+    if(!hit){hit=expression.match(/^Number\(\s*document\.getElementById\(\s*["']([^"']+)["']\s*\)\.(?:value|getSelected\(\)\[0\]\.value)\s*\)$/);if(hit){controlId=hit[1];type='number';}}
+    const control=controlId&&caches.controls.get(controlId);if(!control||out.has(controlId))continue;
+    if(type==='boolean'&&control.semantic!=='checkbox')continue;
+    if(type==='number'&&!['number','text','select'].includes(control.semantic))continue;
+    if(type==='string'&&!['text','password','textarea','select'].includes(control.semantic))continue;
+    const options=control.semantic==='select'?[...selectOptions(text,control),...clientDataDynamicOptions(text,controlId,miscSource)]:[];
+    const unique=[];for(const option of options){if(!unique.some(item=>String(item.value)===String(option.value)))unique.push(option);}
+    let defaultValue=clientDataReadDefault(text,key);if(defaultValue===undefined){if(control.semantic==='checkbox')defaultValue=hasAttr(control.sourceAttrs,'checked');else if(control.semantic==='select')defaultValue=selectDefaultValue(text,control);}
+    out.set(controlId,{key,type,safeWrite:true,...(defaultValue!==undefined?{defaultValue}:{}),...(unique.length?{options:unique}:{})});
+  }
+  return out;
+}
 function directValueControlId(expression){
   const text=String(expression||'').trim(),patterns=[
     /document\.getElementById\(\s*["']([^"']+)["']\s*\)\s*\.\s*value$/,
@@ -395,10 +466,10 @@ function sourcePresentedPreferenceKey(markup,control,binding,displayFormat){
   const projection=extractQbPreferenceValueProjection(markup,binding.preferenceKey,control.id);
   return projection&&projection.safeWrite===true?String(binding.preferenceKey):null;
 }
-function graphControl(control,preferencesByControl,behavior,markup,role,rowEnd,writeOnlyByControl){
-  const directKey=preferencesByControl.get(control.id)||null,presentation=sourceDisplayBinding(markup,control.id),displayFormat=sourceDisplayFormat(markup,control.id,presentation),presentedKey=!directKey?sourcePresentedPreferenceKey(markup,control,presentation,displayFormat):null,key=directKey||presentedKey,preference=key&&preferencesByControl.preferences?.[key]||null,writeOnly=!key&&writeOnlyByControl&&writeOnlyByControl.get(control.id)||null;
+function graphControl(control,preferencesByControl,behavior,markup,role,rowEnd,writeOnlyByControl,clientDataByControl){
+  const directKey=preferencesByControl.get(control.id)||null,presentation=sourceDisplayBinding(markup,control.id),displayFormat=sourceDisplayFormat(markup,control.id,presentation),presentedKey=!directKey?sourcePresentedPreferenceKey(markup,control,presentation,displayFormat):null,key=directKey||presentedKey,preference=key&&preferencesByControl.preferences?.[key]||null,writeOnly=!key&&writeOnlyByControl&&writeOnlyByControl.get(control.id)||null,clientData=!key&&!writeOnly&&clientDataByControl&&clientDataByControl.get(control.id)||null;
   const condition=behavior.predicates?.[control.id]||gatePredicate(preference),adornment=(preference&&preference.control&&preference.control.unit)||immediateUnit(markup,control,null,null),dynamicOptions=control.semantic==='select'?sourceDynamicOptions(markup,control.id):null;
-  return{id:control.id,preferenceKey:key,role:role||(key?'preference':'auxiliary'),semantic:control.semantic,staticDisabled:control.staticDisabled===true,label:(preference&&preference.title)||labelRefForControl(markup,control.id),adornment:adornment||null,suffix:immediateSuffix(markup,control,rowEnd),condition:condition||null,...(dynamicOptions?{dynamicOptions}:{}),...(writeOnly&&['text','password','textarea','select'].includes(control.semantic)?{writeOnly}:{}),...(displayFormat?{displayFormat}:{})};
+  return{id:control.id,preferenceKey:key,role:role||(key?'preference':clientData?'client-data':'auxiliary'),semantic:control.semantic,staticDisabled:control.staticDisabled===true,label:(preference&&preference.title)||labelRefForControl(markup,control.id),adornment:adornment||null,suffix:immediateSuffix(markup,control,rowEnd),condition:condition||null,...(dynamicOptions?{dynamicOptions}:{}),...(writeOnly&&['text','password','textarea','select'].includes(control.semantic)?{writeOnly}:{}),...(clientData?{clientData}:{}),...(displayFormat?{displayFormat}:{})};
 }
 
 function sameGraphLabel(a,b){
@@ -419,7 +490,7 @@ function sourceRowFamily(template,items){
   if(controls[2].label&&controls[3].label&&!sameGraphLabel(controls[2].label,controls[3].label))return null;
   return{kind:'time-range',display:'HH:mm',from:{label:from,hourPreference:controls[0].preferenceKey,minutePreference:controls[1].preferenceKey},to:{label:to,hourPreference:controls[2].preferenceKey,minutePreference:controls[3].preferenceKey}};
 }
-function buildControlGraph(markup,tabs,fieldsets,caches,preferences,writeOnlyByControl){
+function buildControlGraph(markup,tabs,fieldsets,caches,preferences,writeOnlyByControl,clientDataByControl){
   const preferenceById=new Map(),preferenceObject={};
   for(const [key,item] of Object.entries(preferences||{})){const id=String(item?.control?.id||'');if(id&&!preferenceById.has(id))preferenceById.set(id,key);preferenceObject[key]=item;}
   preferenceById.preferences=preferenceObject;
@@ -434,7 +505,7 @@ function buildControlGraph(markup,tabs,fieldsets,caches,preferences,writeOnlyByC
     const tabFields=fieldsets.filter(item=>inside(tab.range,item.start)).sort((a,b)=>a.start-b.start),fieldIds=new Map(tabFields.map((item,index)=>[item,tab.id+':fieldset:'+index]));
     const graphFields=tabFields.map((item,index)=>{
       const parent=nearestContaining(tabFields.filter(candidate=>candidate!==item),item.start),legend=legends.find(value=>value.start>=item.openEnd&&value.end<=item.endStart),legendControls=[];
-      if(legend){for(const control of caches.controls.values())if(inside(legend,control.start)){sourceControls.add(control.id);representedControls.add(control.id);legendControlIds.add(control.id);legendControls.push(graphControl(control,preferenceById,behavior,markup,'gate',legend.endStart,writeOnlyByControl));}}
+      if(legend){for(const control of caches.controls.values())if(inside(legend,control.start)){sourceControls.add(control.id);representedControls.add(control.id);legendControlIds.add(control.id);legendControls.push(graphControl(control,preferenceById,behavior,markup,'gate',legend.endStart,writeOnlyByControl,clientDataByControl));}}
       return{id:tab.id+':fieldset:'+index,parentId:parent?fieldIds.get(parent):null,title:directLegend(markup,item),template:legendControls.length?'nested-gated-fieldset':'fieldset',legendControls,sourceOrder:0,_sourcePos:item.start};
     });
     const rows=[],assignedControls=new Set(),assignedHelpers=new Set(),assignedContents=new Set(),tabRows=allRows.filter(row=>inside(tab.range,row.start)),tabContents=contents.filter(content=>inside(tab.range,content.start));
@@ -443,7 +514,7 @@ function buildControlGraph(markup,tabs,fieldsets,caches,preferences,writeOnlyByC
       const controls=[...caches.controls.values()].filter(control=>inside(row,control.start)&&!legendControlIds.has(control.id)&&sameField(control.start)),rowHelpers=helpers.filter(helper=>inside(row,helper.start)&&sameField(helper.start)),rowContents=tabContents.filter(content=>inside(row,content.start)&&sameField(content.start));
       if(!controls.length&&!rowHelpers.length&&!rowContents.length)continue;
       const items=[];
-      for(const control of controls){assignedControls.add(control.id);representedControls.add(control.id);sourceControls.add(control.id);items.push({kind:'control',...graphControl(control,preferenceById,behavior,markup,null,row.endStart,writeOnlyByControl)});}
+      for(const control of controls){assignedControls.add(control.id);representedControls.add(control.id);sourceControls.add(control.id);items.push({kind:'control',...graphControl(control,preferenceById,behavior,markup,null,row.endStart,writeOnlyByControl,clientDataByControl)});}
       for(const helper of rowHelpers){assignedHelpers.add(helper.id);representedHelpers.add(helper.id);sourceHelpers.add(helper.id);items.push({kind:'helper',id:helper.id,role:'helper',label:helper.label,action:sourceHelperAction(helper.onclick,markup),condition:behavior.predicates?.[helper.id]||null});}
       for(const content of rowContents){assignedContents.add(content.id);representedContents.add(content.id);sourceContents.add(content.id);items.push(graphContentItem(content));}
       const mapped=items.filter(item=>item.kind==='control'&&item.preferenceKey).length,auxCheckbox=items.some(item=>item.kind==='control'&&!item.preferenceKey&&item.semantic==='checkbox'),hasHelper=items.some(item=>item.kind==='helper'),hasContent=items.some(item=>item.kind==='content');
@@ -453,7 +524,7 @@ function buildControlGraph(markup,tabs,fieldsets,caches,preferences,writeOnlyByC
     for(const control of caches.controls.values()){
       if(!inside(tab.range,control.start))continue;
       sourceControls.add(control.id);if(legendControlIds.has(control.id)||assignedControls.has(control.id))continue;representedControls.add(control.id);const parent=nearestContaining(tabFields,control.start);
-      rows.push({id:tab.id+':row:'+rows.length,parentFieldsetId:parent?fieldIds.get(parent):null,order:rows.length,sourceOrder:0,_sourcePos:control.start,template:'single-row',items:[{kind:'control',...graphControl(control,preferenceById,behavior,markup,null,null,writeOnlyByControl)}]});
+      rows.push({id:tab.id+':row:'+rows.length,parentFieldsetId:parent?fieldIds.get(parent):null,order:rows.length,sourceOrder:0,_sourcePos:control.start,template:'single-row',items:[{kind:'control',...graphControl(control,preferenceById,behavior,markup,null,null,writeOnlyByControl,clientDataByControl)}]});
     }
     for(const helper of helpers){
       if(!inside(tab.range,helper.start))continue;
@@ -481,7 +552,7 @@ function buildControlGraph(markup,tabs,fieldsets,caches,preferences,writeOnlyByC
 
 function timedTrace(trace,label,fn){const start=Date.now();trace?.(`${label} START`);const value=fn();trace?.(`${label} DONE ${Date.now()-start}ms`);return value;}
 
-export function extractQbPreferencesNativeSurface({preferencesSource='',toolbarSource='',preferenceDescriptors=[],writeOnlyDescriptors=[],trace=null}={}){
+export function extractQbPreferencesNativeSurface({preferencesSource='',toolbarSource='',miscSource='',preferenceDescriptors=[],writeOnlyDescriptors=[],trace=null}={}){
   const descriptors=new Map((preferenceDescriptors||[]).map(item=>[String(item?.key||''),item])),writeOnlyByControl=writeOnlyControlFacts(preferencesSource,writeOnlyDescriptors);
   const keys=[...descriptors.keys()].filter(Boolean);
   const indexes=timedTrace(trace,'structural-indexes',()=>{
@@ -518,7 +589,8 @@ export function extractQbPreferencesNativeSurface({preferencesSource='',toolbarS
     tabRows.push({id:tab.id,nativeId:tab.nativeId,title:tab.title||null,order:tabOrder,sections,preferences:rows.map(row=>row.key)});
     trace?.(`tab:${tab.id} DONE ${Date.now()-tabStarted}ms rows=${rows.length}`);
   });
-  const controlGraph=timedTrace(trace,'control-graph',()=>buildControlGraph(preferencesSource,tabs,fieldsets,caches,preferences,writeOnlyByControl));
+  const clientDataByControl=timedTrace(trace,'client-data-bindings',()=>clientDataBindings(preferencesSource,caches,miscSource));
+  const controlGraph=timedTrace(trace,'control-graph',()=>buildControlGraph(preferencesSource,tabs,fieldsets,caches,preferences,writeOnlyByControl,clientDataByControl));
   const graphLocations=new Map();
   for(const [tabId,graphTab] of Object.entries(controlGraph.tabs||{})){
     for(const field of graphTab.fieldsets||[])for(const item of field.legendControls||[])if(item.preferenceKey)graphLocations.set(item.preferenceKey,{tabId,fieldsetId:field.id,item});
@@ -575,6 +647,7 @@ function showMaybe(root,tag,file){try{return git(root,'show',`${tag}:${file}`);}
 function preferencesSource(root,tag){for(const file of PREFERENCES_SOURCE_PATHS){const source=showMaybe(root,tag,file);if(source)return source;}return'';}
 function toolbarSource(root,tag){for(const file of TOOLBAR_SOURCE_PATHS){const source=showMaybe(root,tag,file);if(source)return source;}return'';}
 function appControllerSource(root,tag){return showMaybe(root,tag,APP_CONTROLLER_PATH);}
+function miscSource(root,tag){return showMaybe(root,tag,MISC_SOURCE_PATH);}
 function isPartialClone(root){try{return git(root,'config','--get','remote.origin.promisor')==='true';}catch{return false;}}
 function sourceBlobOid(root,tag,file){try{const oid=git(root,'rev-parse','--verify',`${tag}:${file}`);return /^[0-9a-f]{40}$/i.test(oid)?oid:'';}catch{return'';}}
 function prefetchSourceBlobs(root,catalog){
@@ -634,11 +707,11 @@ export function buildQbPreferencesSourceCatalog(catalog,qbRoot,{trace=false,full
     if(!qbVersion||!/^[0-9a-f]{40}$/i.test(sourceSha)||!tag)throw new Error('Each qB Preferences profile requires exact qbVersion + sourceSha + tag.');
     const prefix=`[Preferences ${index+1}/${catalog.length} qB ${qbVersion}]`,detail=message=>{if(trace)console.log(`${prefix} ${message}`);},started=Date.now();
     console.log(`${prefix} release START`);
-    const sourceStarted=Date.now(),source=preferencesSource(qbRoot,tag),toolbar=toolbarSource(qbRoot,tag),appSource=appControllerSource(qbRoot,tag);
-    detail(`source-read DONE ${Date.now()-sourceStarted}ms sourceBytes=${source.length} toolbarBytes=${toolbar.length} appBytes=${appSource.length}`);
+    const sourceStarted=Date.now(),source=preferencesSource(qbRoot,tag),toolbar=toolbarSource(qbRoot,tag),appSource=appControllerSource(qbRoot,tag),misc=miscSource(qbRoot,tag);
+    detail(`source-read DONE ${Date.now()-sourceStarted}ms sourceBytes=${source.length} toolbarBytes=${toolbar.length} appBytes=${appSource.length} miscBytes=${misc.length}`);
     if(!source||!appSource)throw new Error(`${qbVersion}: qB Preferences source is unavailable.`);
     const readable=new Set((profile.preferenceKeys||[]).map(String)),setterHints=extractPreferenceSetterHints(appSource,tag),writeOnlyDescriptors=[...setterHints.values()].filter(item=>item?.setterPresent===true&&item?.writeType&&!readable.has(String(item.key))).map(item=>({...item,getterPresent:false,readType:null,typeAgreement:'WRITE_ONLY',writable:true}));
-    const manifest=extractQbPreferencesNativeSurface({preferencesSource:source,toolbarSource:toolbar,preferenceDescriptors:profile.preferenceDescriptors||[],writeOnlyDescriptors,trace:trace?(message=>detail(message)):null});
+    const manifest=extractQbPreferencesNativeSurface({preferencesSource:source,toolbarSource:toolbar,miscSource:misc,preferenceDescriptors:profile.preferenceDescriptors||[],writeOnlyDescriptors,trace:trace?(message=>detail(message)):null});
     if(!manifest.tabs.length)throw new Error(`${qbVersion}: qB Preferences native tabs are unresolved.`);
     profiles.push({qbVersion,sourceSha,tag,manifest});
     console.log(`${prefix} release DONE ${Date.now()-started}ms mapped=${manifest.mappedPreferences}/${manifest.totalPreferences} tabs=${manifest.tabs.length}`);

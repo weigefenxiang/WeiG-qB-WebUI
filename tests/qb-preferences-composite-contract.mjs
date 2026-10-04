@@ -405,6 +405,35 @@ assert.equal(rssGraphItems.find(item=>item.id==='optionalIPAddressToBind').dynam
 assert.equal(rssGraphItems.find(item=>item.id==='optionalIPAddressToBind').dynamicOptions.queryParam,'iface');
 assert.equal(rssGraphItems.find(item=>item.id==='optionalIPAddressToBind').dynamicOptions.dependsOnControlId,'networkInterface');
 
+const clientDataToolbar='<li id="PrefBehaviorLink">QBT_TR(Behavior)QBT_TR[CONTEXT=OptionsDialog]</li>';
+const clientDataMarkup=[
+  '<div id="BehaviorTab" class="PrefTab"><fieldset class="settings"><legend>QBT_TR(Localization)QBT_TR[CONTEXT=OptionsDialog]</legend>',
+  '<label for="dateFormatSelect">QBT_TR(Date format:)QBT_TR[CONTEXT=OptionsDialog]</label><select id="dateFormatSelect"><option value="default" selected>QBT_TR(Browser default)QBT_TR[CONTEXT=OptionsDialog]</option></select>',
+  '<label for="hideZeroFiltersCheckbox">QBT_TR(Auto hide zero status filters)QBT_TR[CONTEXT=OptionsDialog]</label><input id="hideZeroFiltersCheckbox" type="checkbox">',
+  '<label for="dblclickDownloadSelect">QBT_TR(Downloading torrents:)QBT_TR[CONTEXT=OptionsDialog]</label><select id="dblclickDownloadSelect"><option value="1" selected>QBT_TR(Start / stop torrent)QBT_TR[CONTEXT=OptionsDialog]</option><option value="0">QBT_TR(No action)QBT_TR[CONTEXT=OptionsDialog]</option></select>',
+  '<label for="colorSchemeSelect">QBT_TR(Color scheme:)QBT_TR[CONTEXT=OptionsDialog]</label><select id="colorSchemeSelect"><option value="0">QBT_TR(Auto)QBT_TR[CONTEXT=OptionsDialog]</option></select>',
+  '</fieldset></div><script>',
+  'const storedClientData=window.parent.qBittorrent.ClientData; const dateFormat=storedClientData.get("date_format"); const dblclickDownload=storedClientData.get("dblclick_download") ?? "1";',
+  'const dateFormatSelect=document.getElementById("dateFormatSelect"); for (const format of Object.keys(window.qBittorrent.Misc.DateFormatOptions)) { const option=document.createElement("option"); option.value=format; option.textContent=format; dateFormatSelect.appendChild(option); }',
+  'const clientData={}; clientData.date_format = document.getElementById("dateFormatSelect").getSelected()[0].value;',
+  'clientData.hide_zero_status_filters = document.getElementById("hideZeroFiltersCheckbox").checked;',
+  'clientData.dblclick_download = document.getElementById("dblclickDownloadSelect").value;',
+  'const colorScheme=Number(document.getElementById("colorSchemeSelect").value); if(colorScheme===0)clientData.color_scheme=null; else clientData.color_scheme="dark";',
+  '</script>'
+].join('\n');
+const clientMisc='const DateFormatOptions = Object.freeze({"MM/dd/yyyy, HH:mm:ss":{locale:"en-US",options:{}}, "yyyy-MM-dd HH:mm:ss":{locale:"sv-SE",options:{}}});';
+const clientFacts=extractQbPreferencesNativeSurface({preferencesSource:clientDataMarkup,toolbarSource:clientDataToolbar,miscSource:clientMisc,preferenceDescriptors:[]});
+const clientItems=clientFacts.controlGraph.tabs.behavior.rows.flatMap(row=>row.items).filter(item=>item.kind==='control');
+const dateClient=clientItems.find(item=>item.id==='dateFormatSelect'),hideClient=clientItems.find(item=>item.id==='hideZeroFiltersCheckbox'),dblClient=clientItems.find(item=>item.id==='dblclickDownloadSelect'),colorClient=clientItems.find(item=>item.id==='colorSchemeSelect');
+assert.equal(dateClient?.role,'client-data','direct ClientData settings must enter the native Control Graph without pretending to be app/preferences');
+assert.deepEqual(dateClient?.clientData,{key:'date_format',type:'string',safeWrite:true,defaultValue:'default',options:[{value:'default',label:{source:'Browser default',context:'OptionsDialog'}},{value:'MM/dd/yyyy, HH:mm:ss',label:{literal:'MM/dd/yyyy, HH:mm:ss'}},{value:'yyyy-MM-dd HH:mm:ss',label:{literal:'yyyy-MM-dd HH:mm:ss'}}]},'ClientData date-format binding must combine exact native copy with source-derived misc.js options');
+assert.deepEqual(hideClient?.clientData,{key:'hide_zero_status_filters',type:'boolean',safeWrite:true,defaultValue:false},'direct ClientData checkbox must carry exact typed write metadata');
+assert.equal(dblClient?.clientData?.defaultValue,'1','source-side nullish default must survive as ClientData fallback');
+assert.equal(colorClient?.clientData,undefined,'transformed ClientData expressions must fail closed instead of inventing an inverse projection');
+const clientCompact=compileQbPreferencesCompact({schemaVersion:1,profiles:[{qbVersion:'9.9.9',sourceSha:'9999999999999999999999999999999999999999',manifest:clientFacts}]});
+const clientExpanded=expandQbPreferencesCompact(clientCompact,'9.9.9'),roundtripClient=clientExpanded.controlGraph.tabs.behavior.rows.flatMap(row=>row.items).find(item=>item.id==='dateFormatSelect');
+assert.deepEqual(roundtripClient?.clientData,dateClient.clientData,'ClientData binding metadata must survive compact transport losslessly');
+
 const templateOptionsMarkup='<div id="WebUITab" class="PrefTab"><label for="locale_select">QBT_TR(User Interface Language:)QBT_TR[CONTEXT=OptionsDialog]</label><select id="locale_select">${LANGUAGE_OPTIONS}</select></div><script>document.getElementById("locale_select").value = pref.locale;</script>';
 const templateOptionsFacts=extractQbPreferencesNativeSurface({preferencesSource:templateOptionsMarkup,toolbarSource:'<li id="PrefWebUILink">Web UI</li>',preferenceDescriptors:[{key:'locale',getterPresent:true,setterPresent:true,readType:'string',writeType:'string',typeAgreement:'EXACT',writable:true}]});
 const templateOptionsItem=templateOptionsFacts.controlGraph.tabs.webui.rows.flatMap(row=>row.items).find(item=>item.id==='locale_select');
