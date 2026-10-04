@@ -131,7 +131,7 @@ export async function handleAuxiliaryApi(world,request,path,method,url,contract=
     return result===null?badRequest('Invalid directory query'):json(result);
   }
   if(path==='app/rotateAPIKey'&&method==='POST')return json(rotateApiKey(world));
-  if(path==='app/deleteAPIKey'&&method==='POST'){deleteApiKey(world);return empty();}
+  if(path==='app/deleteAPIKey'&&method==='POST'){deleteApiKey(world);return empty(204);}
   if(path==='app/networkInterfaceList'&&method==='GET')return json(networkInterfaces());
   if(path==='app/networkInterfaceAddressList'&&method==='GET'){
     if(!url.searchParams.has('iface'))return badRequest('Missing `iface`');

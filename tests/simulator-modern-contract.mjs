@@ -150,9 +150,9 @@ function post(path,body){return new Request(`https://example.invalid/api/v2/${pa
   const dirs=await r.json();assert.ok(dirs.length>0);assert.ok(dirs.every(item=>item.type==='dir'&&typeof item.name==='string'));
   r=await handleApi(w,post('app/sendTestEmail',{}));assert.equal(r.status,200);assert.ok(w.lastTestEmailAt>0);assert.ok(w.logs.some(item=>item.message.includes('test email')));
 
-  r=await handleApi(w,post('app/rotateAPIKey',{}));assert.equal(r.status,200);const key1=(await r.json()).apiKey;assert.match(key1,/^[0-9a-f]{32}$/);
-  r=await handleApi(w,post('app/rotateAPIKey',{}));const key2=(await r.json()).apiKey;assert.notEqual(key2,key1,'API-key rotation must replace the current key');
-  r=await handleApi(w,post('app/deleteAPIKey',{}));assert.equal(r.status,200);assert.equal(w.webApiKey,'');
+  r=await handleApi(w,post('app/rotateAPIKey',{}));assert.equal(r.status,200);const key1=(await r.json()).apiKey;assert.match(key1,/^qbt_.{28}$/,'source-native API keys must retain the qbt_ prefix and 28-character payload');assert.equal(w.preferences.web_ui_api_key,key1,'API-key rotation must persist through the canonical Preferences owner');
+  r=await handleApi(w,post('app/rotateAPIKey',{}));const key2=(await r.json()).apiKey;assert.notEqual(key2,key1,'API-key rotation must replace the current key');assert.equal(w.preferences.web_ui_api_key,key2,'repeated rotation must replace the same canonical Preference value');
+  r=await handleApi(w,post('app/deleteAPIKey',{}));assert.equal(r.status,204,'source-native API-key deletion must return No Content');assert.equal(await r.text(),'');assert.equal(w.preferences.web_ui_api_key,'','API-key deletion must clear the canonical Preference value');
 
   r=await handleApi(w,get('app/networkInterfaceList'));assert.equal(r.status,200);const ifaces=await r.json();assert.ok(ifaces.some(item=>item.value==='eth0'));
   r=await handleApi(w,get('app/networkInterfaceAddressList?iface=eth0'));assert.equal(r.status,200);const addresses=await r.json();assert.ok(addresses.includes('192.0.2.10'));
