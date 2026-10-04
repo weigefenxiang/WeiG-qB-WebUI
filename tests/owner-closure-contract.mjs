@@ -21,4 +21,9 @@ assert.ok(!index.includes('data-i18n="rss.description"')&&!index.includes('data-
 assert.ok(ui.includes("url.id='rss-url'")&&ui.includes("W.DialogRuntime.create({id:'rss-add-dialog'"),'RSS Add Feed must be created only inside the canonical Dialog path.');
 assert.ok(floating.includes('C.timeControl=function(opts)')&&settings.includes('C.timeControl({')&&!settings.includes("input.type='time'"),'Scheduler time-range must consume canonical TimeControl; platform-native input may exist only inside that shared owner.');
 assert.ok(!theme.includes('v037')&&!i18n.includes('v036.logs.'),'active versioned UI selectors/copy namespaces must stay retired.');
-console.log('Owner closure contract passed: PreferenceTransaction, ActionRegistry, DialogRuntime, ColumnConfigurator and canonical Select have one active owner path.');
+const transfer=read('webui/private/scripts/transfer.js'),responsive=read('webui/private/scripts/responsive.js'),header=read('webui/private/scripts/header.js'),logs=read('webui/private/scripts/logs.js');
+assert.equal((transfer.match(/source:'Free space: %1'/g)||[]).length,1,'Free-space upstream source copy must have one active runtime owner');
+assert.equal(responsive.includes("source:'Free space: %1'"),false,'Responsive presentation must not own a second Free-space source contract');assert.equal(responsive.includes('function formatFreeSpace('),false,'Responsive presentation must not own a second Free-space formatter');
+assert.ok(header.includes("input.addEventListener('input',routeSearchInput,true)")&&!app.includes("U.$('search-input').addEventListener('input'"),'top search input must have one DOM event owner with route adapters');
+assert.ok(logs.includes('searchableText(x)'),'Logs local retained-history search must keep one matcher owner for message + displayed time');
+console.log('Owner closure contract passed: PreferenceTransaction, ActionRegistry, DialogRuntime, ColumnConfigurator, canonical Select, status presentation and route search each have one active owner path.');
