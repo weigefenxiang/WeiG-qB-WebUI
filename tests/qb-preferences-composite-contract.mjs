@@ -413,7 +413,7 @@ const clientDataMarkup=[
   '<label for="dblclickDownloadSelect">QBT_TR(Downloading torrents:)QBT_TR[CONTEXT=OptionsDialog]</label><select id="dblclickDownloadSelect"><option value="1" selected>QBT_TR(Start / stop torrent)QBT_TR[CONTEXT=OptionsDialog]</option><option value="0">QBT_TR(No action)QBT_TR[CONTEXT=OptionsDialog]</option></select>',
   '<label for="colorSchemeSelect">QBT_TR(Color scheme:)QBT_TR[CONTEXT=OptionsDialog]</label><select id="colorSchemeSelect"><option value="0">QBT_TR(Auto)QBT_TR[CONTEXT=OptionsDialog]</option></select>',
   '</fieldset></div><script>',
-  'const storedClientData=window.parent.qBittorrent.ClientData; const dateFormat=storedClientData.get("date_format"); const dblclickDownload=storedClientData.get("dblclick_download") ?? "1";',
+  'const loadPreferences=()=>{ const clientData=window.parent.qBittorrent.ClientData; const dateFormat=clientData.get("date_format"); const dblclickDownload=clientData.get("dblclick_download") ?? "1"; return [dateFormat,dblclickDownload]; };',
   'const dateFormatSelect=document.getElementById("dateFormatSelect"); for (const format of Object.keys(window.qBittorrent.Misc.DateFormatOptions)) { const option=document.createElement("option"); option.value=format; option.textContent=format; dateFormatSelect.appendChild(option); }',
   'const clientData={}; clientData.date_format = document.getElementById("dateFormatSelect").getSelected()[0].value;',
   'clientData.hide_zero_status_filters = document.getElementById("hideZeroFiltersCheckbox").checked;',

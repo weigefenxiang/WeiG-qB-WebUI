@@ -36,6 +36,7 @@ const window={WeiG};
 const fetchMock=async(url,init={})=>{
   calls.push({url:String(url),init});
   if(String(url).endsWith('api/v2/app/preferences'))return new Response(JSON.stringify({save_path:'/downloads'}),{status:200,headers:{'content-type':'application/json'}});
+  if(String(url).endsWith('api/v2/clientdata/load'))return new Response(JSON.stringify({qbt_date_format:'yyyy-MM-dd HH:mm:ss',qbt_hide_zero_status_filters:true}),{status:200,headers:{'content-type':'application/json'}});
   return new Response('',{status:200});
 };
 const context={window,fetch:fetchMock,URLSearchParams,FormData,Response,Blob,console};
@@ -46,6 +47,8 @@ client.qbVersion='6.0.0';client.webApiVersion='3.0.0';client.major=6;
 
 const PREF_READ='appcontroller.h:preferencesAction';
 const PREF_WRITE='appcontroller.h:setPreferencesAction';
+const CLIENT_DATA_LOAD='clientdatacontroller.h:loadAction';
+const CLIENT_DATA_STORE='clientdatacontroller.h:storeAction';
 const EDIT='torrentscontroller.h:editTrackerAction';
 const ADD='torrentscontroller.h:addAction';
 const DETAIL_PROPERTIES='torrentscontroller.h:propertiesAction';
@@ -79,6 +82,18 @@ assert.equal(calls.at(-1).url,'api/v2/app/preferences');
 await client.setPreferences({save_path:'/future'});
 assert.equal(calls.at(-1).url,'api/v2/app/setPreferences');
 assert.match(String(calls.at(-1).init.body),/(^|&)json=/,'setPreferences must preserve the canonical JSON form field');
+profile={qbVersion:'5.2.3',webApiVersion:'2.15.0',fallback:false,apiActions:[CLIENT_DATA_LOAD,CLIENT_DATA_STORE],apiActionParameters:{[CLIENT_DATA_LOAD]:{parameters:['keys'],required:[],optional:['keys']},[CLIENT_DATA_STORE]:{parameters:['data'],required:['data'],optional:[]}}};
+before=calls.length;
+const clientData=await client.getClientData(['date_format','hide_zero_status_filters']);
+assert.deepEqual(clientData,{date_format:'yyyy-MM-dd HH:mm:ss',hide_zero_status_filters:true},'ClientData read must strip qB source prefix without inventing product-local keys');
+let clientDataCall=calls.at(-1),clientDataForm=new URLSearchParams(String(clientDataCall.init.body||''));
+assert.equal(clientDataCall.url,'api/v2/clientdata/load');assert.deepEqual(JSON.parse(clientDataForm.get('keys')),['qbt_date_format','qbt_hide_zero_status_filters'],'ClientData load must use the native qbt_ storage prefix');
+await client.setClientData({date_format:'default',hide_zero_status_filters:false});
+clientDataCall=calls.at(-1);clientDataForm=new URLSearchParams(String(clientDataCall.init.body||''));assert.equal(clientDataCall.url,'api/v2/clientdata/store');assert.deepEqual(JSON.parse(clientDataForm.get('data')),{qbt_date_format:'default',qbt_hide_zero_status_filters:false},'ClientData store must use the native qbt_ storage prefix');
+assert.equal(calls.length,before+2,'ClientData load/store must issue exactly their source-proven requests');
+before=calls.length;profile={qbVersion:'5.2.3',webApiVersion:'2.15.0',fallback:false,apiActions:[CLIENT_DATA_LOAD],apiActionParameters:{}};
+await assert.rejects(client.setClientData({date_format:'default'}),/source-proven/,'ClientData store must fail closed when its exact source action is absent');assert.equal(calls.length,before,'unproven ClientData write must make zero HTTP requests');
+
 await client.editTracker('abc','https://old.invalid/announce','https://new.invalid/announce');
 let editCall=calls.at(-1),editForm=new URLSearchParams(String(editCall.init.body||''));
 assert.equal(editCall.url,'api/v2/torrents/editTracker');
