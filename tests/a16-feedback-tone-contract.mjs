@@ -12,7 +12,7 @@ const progress=read('webui/private/css/progress.css');
 
 assert(settings.includes('function verifiedSettingValue(key,prefs)'),'Settings feedback must have one verified-value formatter');
 assert(settings.includes('function qBChangeSummaries(pending,before,verified)'),'Settings feedback must build change summaries instead of label-only feedback');
-assert(settings.includes('labels=qBChangeSummaries(pending,before,controller.prefs)'),'qB Settings success feedback must be generated after the verified server reread');
+assert(settings.includes('labels.push.apply(labels,qBChangeSummaries(pending,before,controller.prefs))'),'qB Settings success feedback must be generated after the verified app/preferences server reread');assert(settings.includes('labels.push.apply(labels,clientDataChangeSummaries(clientDataPlan))'),'ClientData Settings success feedback must be generated only after the verified ClientData reread');
 assert(settings.includes("tr(display?'common.yes':'common.no')"),'boolean Settings feedback must use localized state text');
 assert(settings.includes('Array.isArray(info.meta.enum)')&&settings.includes('option.label'),'enum Settings feedback must use the source-derived localized option label');
 assert(settings.includes("String(display)+(unit?' '+unit:'')"),'numeric Settings feedback must retain the source-derived unit when available');
