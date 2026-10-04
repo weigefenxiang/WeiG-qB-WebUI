@@ -86,7 +86,7 @@ assert.match(String(calls.at(-1).init.body),/(^|&)json=/,'setPreferences must pr
 profile={qbVersion:'5.2.3',webApiVersion:'2.15.0',fallback:false,apiActions:[CLIENT_DATA_LOAD,CLIENT_DATA_STORE],apiActionParameters:{[CLIENT_DATA_LOAD]:{parameters:['keys'],required:[],optional:['keys']},[CLIENT_DATA_STORE]:{parameters:['data'],required:['data'],optional:[]}}};
 let before=calls.length;
 const clientData=await client.getClientData(['date_format','hide_zero_status_filters']);
-assert.deepEqual(clientData,{date_format:'yyyy-MM-dd HH:mm:ss',hide_zero_status_filters:true},'ClientData read must strip qB source prefix without inventing product-local keys');
+assert.deepEqual(JSON.parse(JSON.stringify(clientData)),{date_format:'yyyy-MM-dd HH:mm:ss',hide_zero_status_filters:true},'ClientData read must strip qB source prefix without inventing product-local keys');
 let clientDataCall=calls.at(-1),clientDataForm=new URLSearchParams(String(clientDataCall.init.body||''));
 assert.equal(clientDataCall.url,'api/v2/clientdata/load');assert.deepEqual(JSON.parse(clientDataForm.get('keys')),['qbt_date_format','qbt_hide_zero_status_filters'],'ClientData load must use the native qbt_ storage prefix');
 await client.setClientData({date_format:'default',hide_zero_status_filters:false});

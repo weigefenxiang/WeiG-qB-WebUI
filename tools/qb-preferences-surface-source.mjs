@@ -275,7 +275,7 @@ function balancedBlock(text,start){text=String(text||'');const open=text.indexOf
 function sourceClickListenerBody(markup,controlId){
   const text=String(markup||''),escaped=escapeRegex(controlId),re=new RegExp('document\\.getElementById\\(\\s*["\\\']'+escaped+'["\\\']\\s*\\)\\.addEventListener\\(\\s*["\\\']click["\\\']\\s*,','g'),hit=re.exec(text);
   if(!hit)return'';
-  const start=hit.index+hit[0].length,tail=text.slice(start,start+320),arrow=tail.indexOf('=>'),fn=tail.search(/function\\s*\\(/),relative=arrow>=0?arrow:fn;
+  const start=hit.index+hit[0].length,tail=text.slice(start,start+320),arrow=tail.indexOf('=>'),fn=tail.search(/function\s*\(/),relative=arrow>=0?arrow:fn;
   if(relative<0)return'';
   return balancedBlock(text,start+relative);
 }
@@ -296,7 +296,8 @@ function sourceFetchActionByToken(markup,token){
 function sourcePostDomHelperAction(helper,markup){
   if(!helper||helper.onclick)return null;
   const body=sourceClickListenerBody(markup,helper.id);if(!body)return null;
-  const copy=body.match(/clipboardCopy\(\s*(?:document\.)?getElementById\(\s*["']([^"']+)["']\s*\)\.dataset\.([A-Za-z_$][\w$]*)\s*\)/);
+  let copy=body.match(/clipboardCopy\(\s*(?:document\.)?getElementById\(\s*["']([^"']+)["']\s*\)\.dataset\.([A-Za-z_$][\w$]*)\s*\)/);
+  if(!copy){const source=body.match(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:document\.)?getElementById\(\s*["']([^"']+)["']\s*\)\.dataset\.([A-Za-z_$][\w$]*)\s*;/);if(source&&new RegExp('\\bclipboardCopy\\(\\s*'+escapeRegex(source[1])+'\\s*\\)').test(body))copy=[source[0],source[2],source[3]];}
   if(copy){const preferenceKey=datasetPreferenceKey(markup,copy[1],copy[2]);if(preferenceKey)return{kind:'clipboard-preference',preferenceKey};}
   const modalAction=body.match(/\baction\s*:\s*["']([A-Za-z_$][\w$]*)["']/),resolved=modalAction&&sourceFetchActionByToken(markup,modalAction[1]);
   if(resolved){
