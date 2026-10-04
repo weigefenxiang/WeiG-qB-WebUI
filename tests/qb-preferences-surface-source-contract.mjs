@@ -288,6 +288,57 @@ assert.deepEqual(mergedShardCatalog.profiles.map(item=>item.qbVersion),shardBase
 assert.throws(()=>mergeQbPreferencesSourceCatalogShards(shardBase,[shardCatalog(shard0,0)]),/missing=\[5\.0\.1,5\.0\.3\]/,'Preferences shard aggregate must fail closed on missing releases');
 assert.throws(()=>mergeQbPreferencesSourceCatalogShards(shardBase,[shardCatalog(shard0,0),shardCatalog(shard0,0),shardCatalog(shard1,1)]),/duplicate=\[/,'Preferences shard aggregate must fail closed on duplicate releases');
 
+
+const apiKeyToolbar='<menu><li id="PrefWebUILink">QBT_TR(WebUI)QBT_TR[CONTEXT=OptionsDialog]</li></menu>';
+const apiKeyPreferences=`
+<div id="WebUITab" class="PrefTab">
+  <fieldset class="settings"><legend>QBT_TR(Authentication)QBT_TR[CONTEXT=OptionsDialog]</legend>
+    <table><tbody><tr>
+      <td><label for="WebUIAPIKeyText">QBT_TR(Key:)QBT_TR[CONTEXT=OptionsDialog]</label></td>
+      <td><input type="text" disabled id="WebUIAPIKeyText" placeholder="QBT_TR(Generate a key)QBT_TR[CONTEXT=OptionsDialog]"></td>
+      <td><button type="button" disabled id="webUIAPIKeyCopyButton" aria-label="QBT_TR(Copy API key)QBT_TR[CONTEXT=OptionsDialog]"></button></td>
+      <td><button type="button" id="webUIAPIKeyRotateButton" data-has-key="false" aria-label="QBT_TR(Generate API key)QBT_TR[CONTEXT=OptionsDialog]"></button></td>
+      <td><button type="button" disabled id="webUIAPIKeyDeleteButton" data-has-key="false" aria-label="QBT_TR(Delete API key)QBT_TR[CONTEXT=OptionsDialog]"></button></td>
+    </tr></tbody></table>
+  </fieldset>
+</div>
+<script>
+if (pref.web_ui_api_key.length > 0) {
+  document.getElementById("WebUIAPIKeyText").value = maskAPIKey(pref.web_ui_api_key);
+  document.getElementById("WebUIAPIKeyText").dataset.apiKey = pref.web_ui_api_key;
+  document.getElementById("webUIAPIKeyCopyButton").disabled = false;
+  document.getElementById("webUIAPIKeyRotateButton").dataset.hasKey = "true";
+  document.getElementById("webUIAPIKeyDeleteButton").disabled = false;
+}
+const rotateAPIKey = () => { fetch("api/v2/app/rotateAPIKey", {method: "POST"}); };
+const deleteAPIKey = () => { fetch("api/v2/app/deleteAPIKey", {method: "POST"}); };
+document.getElementById("webUIAPIKeyCopyButton").addEventListener("click", async (e) => {
+  const apiKey = document.getElementById("WebUIAPIKeyText").dataset.apiKey;
+  await clipboardCopy(apiKey);
+});
+document.getElementById("webUIAPIKeyRotateButton").addEventListener("click", (e) => {
+  const hasKey = e.target.parentElement.dataset.hasKey === "true";
+  const title = hasKey ? "QBT_TR(Rotate API key)QBT_TR[CONTEXT=OptionsDialog]" : "QBT_TR(Generate API key)QBT_TR[CONTEXT=OptionsDialog]";
+  const message = hasKey ? "QBT_TR(Rotate this API key? The current key will immediately stop working and a new key will be generated.)QBT_TR[CONTEXT=confirmRotateAPIKeyDialog]" : "QBT_TR(Generate an API key? This key can be used to interact with qBittorrent's API.)QBT_TR[CONTEXT=confirmRotateAPIKeyDialog]";
+  new MochaUI.Modal({title, data:{action:"rotate",message}});
+});
+document.getElementById("webUIAPIKeyDeleteButton").addEventListener("click", (e) => {
+  const title = "QBT_TR(Delete API key)QBT_TR[CONTEXT=OptionsDialog]";
+  const message = "QBT_TR(Delete this API key? The current key will immediately stop working.)QBT_TR[CONTEXT=confirmRotateAPIKeyDialog]";
+  new MochaUI.Modal({title, data:{action:"delete",message}});
+});
+</script>`;
+const apiKeyManifest=extractQbPreferencesNativeSurface({preferencesSource:apiKeyPreferences,toolbarSource:apiKeyToolbar,preferenceDescriptors:[{key:'web_ui_api_key',getterPresent:true,setterPresent:false,readType:'string',writeType:null,typeAgreement:'READ_ONLY',writable:false}]});
+const apiKeyItems=apiKeyManifest.controlGraph.tabs.webui.rows.flatMap(row=>row.items);
+const apiCopy=apiKeyItems.find(item=>item.id==='webUIAPIKeyCopyButton'),apiRotate=apiKeyItems.find(item=>item.id==='webUIAPIKeyRotateButton'),apiDelete=apiKeyItems.find(item=>item.id==='webUIAPIKeyDeleteButton');
+assert.deepEqual(apiCopy.action,{kind:'clipboard-preference',preferenceKey:'web_ui_api_key'},'API key Copy helper must stay source-derived from the authoritative preference dataset binding');
+assert.equal(apiRotate.action.kind,'confirm-source-action');assert.equal(apiRotate.action.sourceAction,'appcontroller.h:rotateAPIKeyAction');assert.equal(apiRotate.action.endpoint,'app/rotateAPIKey');assert.equal(apiRotate.action.statePreferenceKey,'web_ui_api_key');assert.equal(apiRotate.action.requiresStatePresent,undefined,'Generate/Rotate remains available with an empty key because upstream can generate one');assert.equal(apiRotate.action.presentTitle.source,'Rotate API key');assert.equal(apiRotate.action.emptyTitle.source,'Generate API key');
+assert.equal(apiDelete.action.kind,'confirm-source-action');assert.equal(apiDelete.action.sourceAction,'appcontroller.h:deleteAPIKeyAction');assert.equal(apiDelete.action.endpoint,'app/deleteAPIKey');assert.equal(apiDelete.action.statePreferenceKey,'web_ui_api_key');assert.equal(apiDelete.action.requiresStatePresent,true,'source-disabled destructive helper must require the source state to be present instead of becoming a permanent static disable');
+const apiCompact=compileQbPreferencesCompact({schemaVersion:1,profiles:[{qbVersion:'5.2.3',sourceSha:'a'.repeat(40),manifest:apiKeyManifest}]});
+const apiExpanded=expandQbPreferencesCompact(apiCompact,'5.2.3'),apiExpandedItems=apiExpanded.controlGraph.tabs.webui.rows.flatMap(row=>row.items);
+assert.equal(apiExpandedItems.find(item=>item.id==='webUIAPIKeyDeleteButton').action.requiresStatePresent,true,'compact Settings IR must preserve source-derived helper availability semantics');
+assert.equal(apiExpandedItems.find(item=>item.id==='webUIAPIKeyRotateButton').action.emptyTitle.source,'Generate API key','compact Settings IR must preserve dynamic Generate/Rotate official copy');
+
 const sourceCatalog={schemaVersion:1,profiles:[
   {qbVersion:'5.2.3',sourceSha:'1111111111111111111111111111111111111111',manifest},
   {qbVersion:'5.2.4',sourceSha:'2222222222222222222222222222222222222222',manifest}

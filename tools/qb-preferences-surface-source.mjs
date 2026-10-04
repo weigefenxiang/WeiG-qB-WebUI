@@ -303,6 +303,7 @@ function sourcePostDomHelperAction(helper,markup){
   if(resolved){
     const refs=qbtRefs(body),statePreferenceKey=sourceStatePreferenceForHelper(markup,helper.id,'hasKey'),action={kind:'confirm-source-action',sourceAction:resolved.sourceAction,endpoint:resolved.endpoint};
     if(statePreferenceKey)action.statePreferenceKey=statePreferenceKey;
+    if(statePreferenceKey&&hasAttr(helper.attrs,'disabled'))action.requiresStatePresent=true;
     if(statePreferenceKey&&refs.length>=4){action.presentTitle=refs[0];action.emptyTitle=refs[1];action.presentMessage=refs[2];action.emptyMessage=refs[3];}
     else{if(refs[0])action.title=refs[0];if(refs[1])action.message=refs[1];}
     return action;
