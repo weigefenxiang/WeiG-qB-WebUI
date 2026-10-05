@@ -53,7 +53,8 @@ function makeRuntime(client){
         hasExactLocale(){return true;},
         applyLocale(value){appliedLocale=value;}
       },
-      SettingsSchema:{isWritable(key){return key==='locale';}}
+      SettingsSchema:{isWritable(key){return key==='locale';}},
+      StorageRuntime:{local:{get(key,fallback=null){const value=localStorage.getItem(key);return value===null?fallback:value;},set(key,value){localStorage.setItem(key,value);return true;},remove(key){localStorage.removeItem(key);return true;}}}
     },
     navigator:{languages:['zh-CN'],language:'zh-CN'},
     location,

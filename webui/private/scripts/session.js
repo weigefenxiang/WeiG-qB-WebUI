@@ -1,6 +1,6 @@
 (function(global){
   'use strict';
-  var W=global.WeiG=global.WeiG||{};
+  var W=global.WeiG=global.WeiG||{},LOCAL_STORE=W.StorageRuntime&&W.StorageRuntime.local;
   if(!W.QBClient)return;
   var state='idle',busy=false,entryTask=null;
   function setState(next){state=next;global.dispatchEvent(new CustomEvent('weig:sessionstate',{detail:{state:state}}));}
@@ -76,9 +76,9 @@
   var BOOTSTRAP_KEY=(W.StorageKeys&&W.StorageKeys.localeBootstrap)||'weig.localeBootstrap';
   function cleanLocale(value){return String(value==null?'':value).trim();}
   function readBootstrap(){
-    try{var value=JSON.parse(localStorage.getItem(BOOTSTRAP_KEY)||'null');return value&&value.schemaVersion===2&&value.initialized===true?value:null;}catch(_e){return null;}
+    try{var value=JSON.parse((LOCAL_STORE?LOCAL_STORE.get(BOOTSTRAP_KEY,null):null)||'null');return value&&value.schemaVersion===2&&value.initialized===true?value:null;}catch(_e){return null;}
   }
-  function saveBootstrap(value){try{localStorage.setItem(BOOTSTRAP_KEY,JSON.stringify(value));return true;}catch(_e){return false;}}
+  function saveBootstrap(value){return !!(LOCAL_STORE&&LOCAL_STORE.set(BOOTSTRAP_KEY,JSON.stringify(value)));}
   function i18nReady(){return !!(W.I18n&&W.I18n.localeOptions&&W.I18n.matchBrowserLocale&&W.I18n.sameQbLocale&&W.I18n.hasExactLocale);}
   function sameLocale(a,b){return !!(W.I18n&&W.I18n.sameQbLocale&&W.I18n.sameQbLocale(a,b));}
   function localeWritable(value,prefs,state){return !!(W.SettingsSchema&&W.SettingsSchema.isWritable&&W.SettingsSchema.isWritable('locale',value,prefs||{},state||prefs||{}));}
