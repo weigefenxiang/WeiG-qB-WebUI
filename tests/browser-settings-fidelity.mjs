@@ -204,7 +204,7 @@ try{
   const bugReportUrl=await page.evaluate(()=>window.__a59IssueUrl);
   const bugReportFacts=(()=>{const url=new URL(bugReportUrl);return{host:url.host,path:url.pathname,template:url.searchParams.get('template'),surface:url.searchParams.get('surface'),weig:url.searchParams.get('weig_version'),qb:url.searchParams.get('qb_version'),browser:url.searchParams.get('browser_os'),raw:url.toString()};})();
   assert(bugReportFacts.host==='github.com'&&bugReportFacts.path==='/weigefenxiang/WeiG-qB-WebUI/issues/new'&&bugReportFacts.template==='bug_report.yml','About Bug feedback must open the canonical GitHub Issue Form: '+JSON.stringify(bugReportFacts));
-  assert(bugReportFacts.surface==='Desktop'&&bugReportFacts.weig===productVersion&&bugReportFacts.qb==='5.2.3'&&bugReportFacts.browser,'About Bug feedback must prefill current surface/product/qB/browser without asking the reporter to retype them: '+JSON.stringify(bugReportFacts));
+  assert(bugReportFacts.surface==='Desktop'&&bugReportFacts.weig===productVersion&&bugReportFacts.qb==='v'+exactProfile.qbVersion&&bugReportFacts.browser,'About Bug feedback must prefill current surface/product/qB/browser without asking the reporter to retype them: '+JSON.stringify(bugReportFacts));
   assert(!bugReportFacts.raw.includes('127.0.0.1')&&!bugReportFacts.raw.includes('localhost')&&!bugReportFacts.raw.includes('web_ui_password'),'Bug feedback URL must not leak current qB origin or credentials: '+bugReportFacts.raw);
   await page.evaluate(()=>{window.open=window.__a59NativeOpen;delete window.__a59NativeOpen;});
   await page.evaluate(version=>{
