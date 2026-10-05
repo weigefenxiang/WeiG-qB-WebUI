@@ -1,11 +1,11 @@
 (function(global){
   'use strict';
-  var W=global.WeiG=global.WeiG||{};
+  var W=global.WeiG=global.WeiG||{},SESSION_STORE=W.StorageRuntime&&W.StorageRuntime.session;
   var KEY=(W.StorageKeys&&W.StorageKeys.torrentListContext)||'weig.torrentListContext',routeModules={};
   function route(){return W.Router&&W.Router.route?W.Router.route():{name:'home'};}
   function isMobile(){return !!(global.matchMedia&&global.matchMedia('(max-width: 820px)').matches);}
-  function read(){try{return JSON.parse(sessionStorage.getItem(KEY)||'null');}catch(_e){return null;}}
-  function write(v){try{sessionStorage.setItem(KEY,JSON.stringify(v));}catch(_e){}}
+  function read(){try{return JSON.parse((SESSION_STORE?SESSION_STORE.get(KEY,null):null)||'null');}catch(_e){return null;}}
+  function write(v){if(SESSION_STORE)SESSION_STORE.set(KEY,JSON.stringify(v));}
   function capture(){var list=document.getElementById('torrent-list');write({hash:location.hash||'#/',scrollTop:list?list.scrollTop:0,savedAt:Date.now(),restore:false});}
   function restore(){var c=read();if(!c||!c.restore||route().name!=='home')return;var list=document.getElementById('torrent-list'),tries=0,target=Math.max(0,Number(c.scrollTop)||0);function apply(){list=document.getElementById('torrent-list');if(!list||route().name!=='home')return;if(list.scrollHeight<=list.clientHeight&&tries++<12)return setTimeout(apply,40);list.__weigDataViewportScrollTop=target;list.scrollTop=target;if(list.__weigDataViewportScrollHandler)list.__weigDataViewportScrollHandler();if(Math.abs(list.scrollTop-target)>4&&tries++<12)return setTimeout(apply,40);c.restore=false;write(c);}requestAnimationFrame(function(){requestAnimationFrame(apply);});}
   function back(){if(route().name!=='torrent')return false;var c=read();if(c){c.restore=true;write(c);}if(W.Router)W.Router.home();return true;}
