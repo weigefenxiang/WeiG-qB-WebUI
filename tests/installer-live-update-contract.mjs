@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-const sh=fs.readFileSync('installers/install.sh','utf8');
-const ps=fs.readFileSync('installers/install.ps1','utf8');
+const normalizeNewlines=value=>value.replace(/\r\n?/g,'\n');
+const sh=normalizeNewlines(fs.readFileSync('installers/install.sh','utf8'));
+const ps=normalizeNewlines(fs.readFileSync('installers/install.ps1','utf8'));
 
 const shellDeploy=sh.slice(sh.indexOf('deploy_staged_webui() {'),sh.indexOf('restore_webui_from_backup() {'));
 assert.ok(shellDeploy.includes('[ -f "$deploy_dest/public/index.html" ]')&&shellDeploy.includes('[ -f "$deploy_dest/private/index.html" ]'),'Linux live update must require both existing Alternative WebUI entry files before mutation.');
