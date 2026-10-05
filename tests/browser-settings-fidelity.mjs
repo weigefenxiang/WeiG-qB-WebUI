@@ -195,6 +195,16 @@ try{
   // A39: exercise the visible Update Check surface with deterministic source/dev identities.
   const aboutIdentity=await page.evaluate(()=>{const rows=[...document.querySelectorAll('#settings-content .fact-row')],row=rows.find(node=>String(node.querySelector('strong')?.textContent||'').trim()==='Git SHA');return{value:String(row?.querySelector('.fact-value')?.textContent||'').trim(),text:String(document.getElementById('settings-content')?.textContent||'')};});
   assert(aboutIdentity.value==='—'&&!aboutIdentity.text.includes('__WEIG_GIT_SHA__'),'About must not expose the source Git SHA sentinel as a fake materialized build identity: '+JSON.stringify(aboutIdentity));
+  await page.evaluate(()=>{window.__a59NativeOpen=window.open;window.__a59IssueUrl='';window.open=function(url){window.__a59IssueUrl=String(url||'');return null;};});
+  const bugReportButton=page.locator('#settings-content [data-bug-report-owner="canonical"] .fact-action');
+  assert(await bugReportButton.count()===1,'About must expose exactly one canonical Bug feedback action');
+  await bugReportButton.click();
+  const bugReportUrl=await page.evaluate(()=>window.__a59IssueUrl);
+  const bugReportFacts=(()=>{const url=new URL(bugReportUrl);return{host:url.host,path:url.pathname,template:url.searchParams.get('template'),surface:url.searchParams.get('surface'),weig:url.searchParams.get('weig_version'),qb:url.searchParams.get('qb_version'),browser:url.searchParams.get('browser_os'),raw:url.toString()};})();
+  assert(bugReportFacts.host==='github.com'&&bugReportFacts.path==='/weigefenxiang/WeiG-qB-WebUI/issues/new'&&bugReportFacts.template==='bug_report.yml','About Bug feedback must open the canonical GitHub Issue Form: '+JSON.stringify(bugReportFacts));
+  assert(bugReportFacts.surface==='Desktop / 桌面端'&&bugReportFacts.weig===productVersion&&bugReportFacts.qb==='5.2.3'&&bugReportFacts.browser,'About Bug feedback must prefill current surface/product/qB/browser without asking the reporter to retype them: '+JSON.stringify(bugReportFacts));
+  assert(!bugReportFacts.raw.includes('127.0.0.1')&&!bugReportFacts.raw.includes('localhost')&&!bugReportFacts.raw.includes('web_ui_password'),'Bug feedback URL must not leak current qB origin or credentials: '+bugReportFacts.raw);
+  await page.evaluate(()=>{window.open=window.__a59NativeOpen;delete window.__a59NativeOpen;});
   await page.evaluate(version=>{
     window.__a38NativeFetch=window.fetch;
     const nativeFetch=window.fetch.bind(window),devSha='0123456789abcdef0123456789abcdef01234567';
