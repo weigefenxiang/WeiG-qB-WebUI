@@ -97,7 +97,9 @@ try{
     assert(await page.locator('#app').count()===1,'Storage-denied reproduction fixture must retain the static private shell');
     assert(await page.locator('.torrent-list .data-grid__row,.torrent-list .torrent-mobile-card').count()===0,'Storage-denied current bootstrap must fail before Torrent data presentation');
     const beforeHash=await page.evaluate(()=>location.hash);
-    await page.locator('#app-nav [data-route="settings"]').click();
+    const routeButtonExists=await page.evaluate(()=>!!document.querySelector('#app-nav [data-route="settings"]'));
+    assert(routeButtonExists,'Storage-denied reproduction requires the static Settings route button');
+    await page.evaluate(()=>document.querySelector('#app-nav [data-route="settings"]').click());
     await page.waitForTimeout(60);
     const afterHash=await page.evaluate(()=>location.hash);
     assert(afterHash===beforeHash&&await page.locator('#settings-content[data-settings-renderer="canonical"]').count()===0,'Storage-denied current bootstrap must reproduce unbound route buttons');

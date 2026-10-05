@@ -43,6 +43,9 @@ async function openSession(page,{qb='5.2.3',count=80,seed='a35-detail-dock'}={})
   return{sessionId,url:url.toString()};
 }
 
+async function waitForDockSettled(page){
+  await waitForDockSettled(page);
+}
 async function selectOnlyByRow(page,index){
   const row=page.locator('#torrent-list [data-hash]').nth(index);
   await row.waitFor({state:'visible',timeout:30000});
@@ -122,7 +125,7 @@ async function verifyModern(){
   assert.equal(systemEnter?.policy?.mode,osReduced?'reduced':'system','system motion must follow the browser reduced-motion preference');
   if(osReduced)assert.equal(systemEnter.policy.duration,0,'system motion must reduce to zero when the OS requests reduced motion');
   else assert.ok(systemEnter.policy.duration>0&&systemEnter.targetAnimations.some(item=>item.duration>=systemEnter.policy.duration-1),`system Dock entry must own a real bounded WAAPI animation: ${JSON.stringify(systemEnter)}`);
-  await page.waitForFunction(()=>!document.getElementById('torrent-detail-dock')?.dataset.surfaceTransition,null,{timeout:5000});
+  await waitForDockSettled(page);
   await page.evaluate(()=>{const list=document.getElementById('torrent-list');list.scrollTop=Math.min(list.scrollHeight-list.clientHeight,list.scrollTop+Math.max(180,list.clientHeight*.55));list.dispatchEvent(new Event('scroll'));});await page.waitForTimeout(2400);
   const zeroAfterScroll=await page.evaluate(()=>({hash:window.WeiG.AppState.detailDockHash,selection:window.WeiG.Selection.count(),visiblePreview:[...document.querySelectorAll('#torrent-list [data-hash].is-detail-subject')].map(node=>node.dataset.hash)}));
   assert.equal(zeroAfterScroll.selection,0);assert.equal(zeroAfterScroll.hash,zeroSubject.hash,'zero-selection Detail subject must stay captured while the Torrent list scrolls');assert.ok(zeroAfterScroll.visiblePreview.every(hash=>hash===zeroSubject.hash),'recycled row shells must never leak Detail preview styling onto a different Torrent');
@@ -156,7 +159,7 @@ async function verifyModern(){
   assert.equal(fullEnter?.kind,'dock');assert.equal(fullEnter?.policy?.mode,'full','explicit full motion must not be downgraded by the OS preference');
   assert.ok(fullEnter.policy.duration>Number(systemEnter?.policy?.duration||0)&&fullEnter.policy.offset>Number(systemEnter?.policy?.offset||0)&&fullEnter.policy.blur>Number(systemEnter?.policy?.blur||0),`full motion must be visibly richer than system/reduced motion: system=${JSON.stringify(systemEnter?.policy)} full=${JSON.stringify(fullEnter?.policy)}`);
   assert.ok(fullEnter.targetAnimations.some(item=>item.duration>=fullEnter.policy.duration-1),`full Dock entry must execute the canonical WAAPI animation: ${JSON.stringify(fullEnter)}`);
-  await page.waitForFunction(()=>!document.getElementById('torrent-detail-dock')?.dataset.surfaceTransition,null,{timeout:5000});
+  await waitForDockSettled(page);
   await setMotion(page,'system');
   const activeTone=await page.evaluate(()=>{const active=document.querySelector('#torrent-detail-tabs .tab.is-active'),inactive=document.querySelector('#torrent-detail-tabs .tab:not(.is-active)'),style=node=>{const s=getComputedStyle(node);return{background:s.backgroundImage+'|'+s.backgroundColor,border:s.borderColor,color:s.color,shadow:s.boxShadow};};return{active:style(active),inactive:style(inactive)};});
   assert.notDeepEqual(activeTone.active,activeTone.inactive,`active Detail tab must have a visible selected treatment distinct from inactive tabs: ${JSON.stringify(activeTone)}`);
@@ -304,6 +307,7 @@ async function verifyModern(){
   await selectOnlyByRow(page,0);
   await page.locator('#torrent-detail-tabs .tab[data-tab="overview"]').click();
   await page.waitForSelector('#torrent-detail-dock:not([hidden]) .general-detail',{state:'visible',timeout:30000});
+  await waitForDockSettled(page);
   const restoredGeometry=await page.evaluate(()=>{const dock=document.getElementById('torrent-detail-dock'),split=document.getElementById('torrent-detail-splitter'),stored=Number(localStorage.getItem(window.WeiG.StorageKeys.torrentDetailDockHeight)),min=Number(split?.getAttribute('aria-valuemin')),max=Number(split?.getAttribute('aria-valuemax')),height=dock?.getBoundingClientRect().height||0;return{stored,min,max,height,expected:Math.min(max,Math.max(min,stored))};});
   assert.ok(Number.isFinite(restoredGeometry.stored)&&Number.isFinite(restoredGeometry.max),'reload geometry gate requires persisted size and live SplitPane bounds');
   assert.ok(Math.abs(restoredGeometry.height-restoredGeometry.expected)<=5,`Dock reload must restore the persisted preferred size clamped by the live semantic track: ${JSON.stringify(restoredGeometry)}`);
@@ -325,7 +329,7 @@ async function verifyModern(){
   await setMotion(page,'full');await clearMotionProbe(page);
   await page.locator('#torrent-detail-tabs .tab[data-tab="peers"]').click();
   await page.waitForSelector('#torrent-detail-dock-content .shared-table__viewport',{state:'visible',timeout:30000});
-  await page.waitForFunction(()=>!document.getElementById('torrent-detail-dock')?.dataset.surfaceTransition,null,{timeout:5000});
+  await waitForDockSettled(page);
   const preRouteDockBox=await page.locator('#torrent-detail-dock').boundingBox();
   assert.ok(preRouteDockBox&&preRouteDockBox.height>0,'route-return height proof requires the settled inline Detail Dock, not an in-flight shared transition frame');
   const preRouteDockHeight=preRouteDockBox.height;
