@@ -121,21 +121,20 @@ jobs:
           const cert=JSON.parse(fs.readFileSync('certification/release-certification.json','utf8'));
           const sha=String(process.env.GITHUB_SHA||'').toLowerCase(),version=process.env.VERSION;
           const fail=msg=>{throw new Error(msg);};
-          if(cert.schemaVersion!==2||cert.kind!=='weig-release-certification')fail('Unsupported release certification.');
+          if(cert.schemaVersion!==3||cert.kind!=='weig-release-certification')fail('Unsupported release certification.');
           if(String(cert.candidateSha||'').toLowerCase()!==sha)fail('Certification candidate SHA mismatch.');
           if(cert.version!==version)fail('Certification VERSION mismatch.');
-          if(!/^[0-9a-f]{40}$/.test(String(cert.compatEvidenceSha||'')))fail('Certification compatibility SHA is invalid.');
+          if(!/^[0-9a-f]{40}$/.test(String(cert.mainBefore||'')))fail('Certification main-before SHA is invalid.');
+          if(!Number.isInteger(cert.promotionRunId)||cert.promotionRunId<1)fail('Certification promotion run id is invalid.');
           if(!Number.isInteger(cert.candidate?.runId)||cert.candidate.runId<1)fail('Certification candidate run id is invalid.');
           if(cert.candidate.artifact!==`release-candidate-${sha}`)fail('Certification candidate artifact name mismatch.');
           for(const key of ['packageSha256','tarGzSha256','manifestSha256','sumsSha256']){
             if(!/^[0-9a-f]{64}$/.test(String(cert.candidate?.[key]||'')))fail('Certification candidate '+key+' digest is invalid.');
           }
           if(!Number.isInteger(cert.deployment?.runId)||cert.deployment.artifact!==`candidate-deployment-${sha}`)fail('Certification deployment evidence identity mismatch.');
-          for(const owner of ['deployment','fullFrozen','locale']){
-            if(!/^[0-9a-f]{64}$/.test(String(cert[owner]?.evidenceSha256||'')))fail(`Certification ${owner} digest is invalid.`);
-          }
+          if(!/^[0-9a-f]{64}$/.test(String(cert.deployment?.evidenceSha256||'')))fail('Certification deployment evidence digest is invalid.');
           fs.appendFileSync(process.env.GITHUB_OUTPUT,`candidate_run_id=${cert.candidate.runId}\nartifact_name=${cert.candidate.artifact}\npackage_sha256=${cert.candidate.packageSha256}\ntar_gz_sha256=${cert.candidate.tarGzSha256}\nmanifest_sha256=${cert.candidate.manifestSha256}\nsums_sha256=${cert.candidate.sumsSha256}\n`);
-          console.log(`Certification PASS: candidate ${sha}, compat ${cert.compatEvidenceSha}, promotion run ${cert.promotionRunId}`);
+          console.log(`Certification PASS: candidate ${sha}, deployment run ${cert.deployment.runId}, promotion run ${cert.promotionRunId}`);
           NODE
 
       - name: Download certified release candidate

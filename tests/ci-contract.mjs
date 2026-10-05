@@ -25,6 +25,7 @@ const core=scriptsOf(pkg.scripts['test:core']);
 const compat=scriptsOf(pkg.scripts['test:compat']);
 const simulator=scriptsOf(pkg.scripts['test:simulator']);
 assert(core.length>=30&&core.length<=40,`test:core must stay in the 30-40 command budget, got ${core.length}`);
+assert(core.includes('audit-integrity-contract.mjs'),'Core must prove audits remain executable after moving them out of the routine surface');
 assert(simulator.length>=6&&simulator.length<=10,`test:simulator must stay in the 6-10 owner budget, got ${simulator.length}`);
 for(const name of core){
   assert(!/^a\d+-/.test(name),`milestone test leaked into core: ${name}`);
@@ -37,11 +38,15 @@ assert(simulator.every(name=>/^simulator-/.test(name)),'test:simulator must cont
 
 const driver=read('tests/browser-driver.mjs');
 assert(/from\s*['"]playwright['"]/.test(driver)&&driver.includes("DEFAULT_CHANNEL='chrome'"),'browser-driver must remain the sole hosted Chrome owner');
-const testFiles=fs.readdirSync(path.join(root,'tests')).filter(n=>n.endsWith('.mjs'));
-const direct=testFiles.filter(n=>n!=='browser-driver.mjs'&&/from\s*['"]playwright['"]/.test(read(`tests/${n}`)));
+const playwrightFiles=[
+  ...fs.readdirSync(path.join(root,'tests')).filter(n=>n.endsWith('.mjs')).map(n=>`tests/${n}`),
+  ...fs.readdirSync(path.join(root,'audits')).filter(n=>n.endsWith('.mjs')).map(n=>`audits/${n}`)
+];
+const direct=playwrightFiles.filter(rel=>rel!=='tests/browser-driver.mjs'&&/from\s*['"]playwright['"]/.test(read(rel)));
 assert(direct.length===0,`Playwright ownership duplicated: ${direct.join(', ')}`);
 
 const ci=read('.github/workflows/ci.yml');
+assert(!ci.includes('[candidate]'),'Candidate must be workflow_dispatch-only; retired commit-message marker must not return');
 const smoke=jobSection(ci,'smoke','installer_lifecycle_linux');
 assert(smoke.includes('run: npm test'),'ordinary CI must run Core');
 assert(!smoke.includes('full-stable-product-compat'),'ordinary CI must not run Full Frozen compatibility');
@@ -72,6 +77,7 @@ for(const need of ['smoke','browser','windows_browser','installer_lifecycle_linu
   assert(candidate.includes(`- ${need}`),`release candidate must wait for ${need}`);
 }
 assert(candidate.includes('release-candidate-${{ github.sha }}')&&candidate.includes('candidate-deployment-only.yml'),'Candidate must produce exact-SHA artifact and dispatch isolated deployment acceptance');
+assert(candidate.includes("github.event_name == 'workflow_dispatch'")&&candidate.includes("inputs.validation_mode == 'candidate'"),'Candidate packaging must have one explicit manual validation-mode trigger');
 
 const deployment=read('.github/workflows/candidate-deployment-only.yml');
 assert(deployment.includes('tests/candidate-deployment.sh candidate-artifact'),'Candidate Deployment must retain real qB + Chrome behavior owner');

@@ -65,8 +65,6 @@ jobs:
               'pages-source.yml',
               'pages.yml',
               'session-handshake.yml',
-              'real-qb-full.yml',
-              'real-qb-locale.yml',
               'candidate-deployment-only.yml',
               'release-prepare.yml'
             ];
@@ -83,7 +81,7 @@ jobs:
               }
             }
 
-      - name: Dispatch exact-SHA release-grade validation
+      - name: Dispatch exact-SHA release preparation evidence
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -98,8 +96,6 @@ jobs:
           dispatch ci.yml "$(jq -n --arg ref dev '{ref:$ref,inputs:{validation_mode:"candidate"}}')"
           dispatch pages-source.yml "$(jq -n --arg ref dev '{ref:$ref,inputs:{mode:"pages"}}')"
           dispatch session-handshake.yml "$(jq -n --arg ref dev '{ref:$ref}')"
-          dispatch real-qb-full.yml "$(jq -n --arg ref dev --arg sha "$SHA" '{ref:$ref,inputs:{candidate_sha:$sha,confirmation:"RUN-FULL-FROZEN-65"}}')"
-          dispatch real-qb-locale.yml "$(jq -n --arg ref dev '{ref:$ref}')"
 
       - name: Wait for exact-SHA release evidence
         id: evidence
@@ -117,8 +113,6 @@ jobs:
               {key:'pages_source',workflow:'pages-source.yml',event:'workflow_dispatch'},
               {key:'pages',workflow:'pages.yml',event:'workflow_dispatch'},
               {key:'session',workflow:'session-handshake.yml',event:'workflow_dispatch'},
-              {key:'full',workflow:'real-qb-full.yml',event:'workflow_dispatch',artifact:`real-qb-full-aggregate-${sha}`},
-              {key:'locale',workflow:'real-qb-locale.yml',event:'workflow_dispatch',artifact:`real-qb-current-locale-aggregate-${sha}`},
               {key:'deployment',workflow:'candidate-deployment-only.yml',event:'workflow_dispatch',artifact:`candidate-deployment-${sha}`}
             ];
             async function runsFor(spec){
@@ -198,7 +192,8 @@ jobs:
             echo "- Candidate ZIP SHA256: \`$PACKAGE_SHA\`"
             echo "- Candidate tar.gz SHA256: \`$TAR_SHA\`"
             echo "- Candidate manifest SHA256: \`$MANIFEST_SHA\`"
-            echo "- CI / Pages / Candidate / Deployment / Session / Full Frozen 65 / Locale 61: PASS"
+            echo "- CI / Pages / Candidate / Deployment / Session: PASS"
+            echo "- Compatibility Audits (Full Frozen / Locale): independent, manual, not required by Release Prepare or Promotion"
             echo
             cat release-notes-preview.md
           } > release-preview.md

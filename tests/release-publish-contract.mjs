@@ -5,10 +5,14 @@ const promote=fs.readFileSync(new URL('../.github/workflows/promote.yml',import.
 const release=fs.readFileSync(new URL('../.github/workflows/release.yml',import.meta.url),'utf8');
 assert.ok(publish.includes("- 'publish-v*'")&&publish.includes('release-preview-${sha}'),'publish command must be tag-driven and exact-preview-gated');
 assert.ok(publish.includes('publish_after:"true"')&&publish.includes('/actions/workflows/promote.yml/dispatches'),'publish command must delegate to Promotion owner');
+assert.ok(!publish.includes('compat_evidence_sha'),'publish command must not send the retired Compatibility Audit input to lean Promotion');
 assert.ok(publish.includes('Retire one-shot publish command tag'),'command tag must be temporary');
 assert.ok(promote.includes('publish_after:')&&promote.includes('Create stable release tag after certified Promotion'),'Promotion must optionally create the stable tag');
 assert.ok(promote.includes('github.rest.git.getRef')&&promote.includes('error?.status !== 404')&&promote.includes('github.rest.git.createRef'),'Promotion stable-tag lifecycle must distinguish existing, missing, and API-error states through GitHub REST');
 assert.ok(promote.includes("github.rest.actions.createWorkflowDispatch")&&promote.includes("workflow_id: 'release.yml'"),'Promotion must explicitly dispatch the canonical Release workflow');
+assert.ok(promote.includes('schemaVersion:3')&&!promote.includes('compatEvidenceSha'),'Promotion certification must be schema v3 Candidate + Deployment only');
+assert.ok(release.includes('cert.schemaVersion!==3')&&!release.includes('compatEvidenceSha')&&!release.includes('fullFrozen'),'Release must consume lean schema v3 certification without reviving Compatibility Audit prerequisites');
+assert.ok(release.includes("cert.deployment?.evidenceSha256"),'Release must verify the certified Candidate Deployment evidence digest');
 assert.ok(!promote.includes('EXISTING="$(gh api'),'retired stdout/empty-string tag probing must not remain active');
 assert.ok(release.includes('workflow_dispatch:'),'Release must support explicit Bot dispatch on stable tag');
 assert.ok(release.includes('--latest')&&release.includes('github.rest.repos.getLatestRelease'),'Release must explicitly publish and authoritative-reread GitHub Latest');

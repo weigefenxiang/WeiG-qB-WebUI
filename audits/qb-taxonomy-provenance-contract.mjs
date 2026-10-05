@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import vm from 'node:vm';
-import {qbClientTestI18n} from './qb-client-test-i18n.mjs';
+import {qbClientTestI18n} from '../tests/qb-client-test-i18n.mjs';
 
 const source=await fs.readFile(new URL('../webui/private/scripts/qb-client.js',import.meta.url),'utf8');
 let profile=null,calls=[];

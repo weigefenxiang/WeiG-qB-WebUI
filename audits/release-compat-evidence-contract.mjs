@@ -27,7 +27,7 @@ assert.equal(frozenDigest,manifest.catalogSha256,'LF-canonical Frozen catalog di
 const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'weigg-release-compat-'));
 const gfmPath=path.join(tmp,'gfm.json');
 const localePath=path.join(tmp,'locale.json');
-const verifier=path.join(root,'tests/release-compat-evidence.mjs');
+const verifier=path.join(root,'audits/release-compat-evidence.mjs');
 const clone=value=>JSON.parse(JSON.stringify(value));
 
 const validGfm={

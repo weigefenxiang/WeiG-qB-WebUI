@@ -16,10 +16,12 @@ Current workflow responsibilities:
 - `ci.yml` — repository contracts and requested validation modes.
 - `pages-source.yml` — detects Pages-relevant source changes and dispatches Pages materialization.
 - `pages.yml` — builds and publishes Virtual qB Pages/development payloads.
-- `real-qb-full.yml` — broad frozen real-qB release validation.
-- `real-qb-locale.yml` — current stable locale validation.
-- `promote.yml` — validates evidence and fast-forwards the stable branch.
-- `release.yml` — publishes tagged stable artifacts from the validated stable commit.
+- `candidate-deployment-only.yml` — exact candidate real-qB + Chrome behavior acceptance.
+- `release-prepare.yml` — optional exact-SHA Candidate/Deployment/Pages/Session preview orchestration; it does not own Compatibility Audits.
+- `real-qb-full.yml` — manual 65-version Full Frozen Compatibility Audit.
+- `real-qb-locale.yml` — manual current-stable locale Compatibility Audit.
+- `promote.yml` — validates exact Candidate + Candidate Deployment evidence and safe-fast-forwards the stable branch.
+- `release.yml` — publishes tagged stable artifacts from the lean schema-v3 Promotion certification.
 
 ## Exact-SHA Rule
 
@@ -58,7 +60,9 @@ Unknown compare state should remain fail closed.
 
 Promotion is a controlled fast-forward from a validated `dev` commit to `main`.
 
-The promotion workflow verifies the requested exact SHA and required validation artifacts before moving the stable branch.
+The promotion workflow verifies that the requested SHA is still current `dev`, that `main` can safely fast-forward to it, and that the exact-SHA Candidate artifact plus Candidate Deployment evidence both exist and pass before moving the stable branch.
+
+Full Frozen and current-stable locale matrices are independent manual Compatibility Audits. They remain available for source/catalog/locale/compatibility changes or an explicitly requested large-release audit, but are not default Release Prepare, Promotion, or Release prerequisites.
 
 ## Tag and Release
 
@@ -66,7 +70,7 @@ A release tag must point to the current `main` commit.
 
 `promote.yml` owns the stable-tag lifecycle. It resolves the tag through the GitHub REST API: an exact existing tag is accepted, a real 404 may create the tag, and every other API error fails closed. The retired stdout/empty-string probe is not a valid existence check.
 
-`release.yml` is the only GitHub Release mutation owner. It reuses the certified candidate bytes, publishes the stable Release explicitly as GitHub `Latest`, then authoritative-rereads GitHub state. Publication is successful only when the exact tag is Latest, the canonical Release is first in the published Release list, title/body match the generated result, and the tag still points to the exact release SHA.
+`release.yml` is the only GitHub Release mutation owner. It consumes Promotion certification schema v3 (Candidate + Candidate Deployment), reuses the certified candidate bytes, publishes the stable Release explicitly as GitHub `Latest`, then authoritative-rereads GitHub state. Publication is successful only when the exact tag is Latest, the canonical Release is first in the published Release list, title/body match the generated result, and the tag still points to the exact release SHA.
 
 For an already-published stable Release whose certified bytes and tag must remain unchanged, the same workflow owns a bounded metadata-only refresh command. It derives the presentation from authoritative GitHub Latest identity, updates only the existing Release title/body/Latest metadata from the canonical generator, fingerprints the Release id and every asset id/name/size/digest before and after mutation, verifies the stable tag still equals current `main`, then retires the one-shot command branch. It must never delete/recreate the Release or re-upload certified assets merely to change public copy.
 

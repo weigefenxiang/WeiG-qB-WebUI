@@ -167,9 +167,6 @@ jobs:
           case "$HEAD_MESSAGE" in
             *'[settings-evidence]'*|*'[settings-evidence-verify]'*) relevant=true; ui=true; settings_ui=true; settings_source=true; native_source=true; pages_payload=true ;;
           esac
-          case "$HEAD_MESSAGE" in
-            *'[candidate]'*) relevant=true ;;
-          esac
 
           emit relevant "$relevant"
           emit installer "$installer"
@@ -982,7 +979,7 @@ jobs:
 
   browser:
     name: Linux browser candidate
-    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[candidate]')) }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' && github.ref == 'refs/heads/dev' }}
     runs-on: ubuntu-24.04
     needs: smoke
     env:
@@ -1014,7 +1011,7 @@ jobs:
 
   windows_browser:
     name: Windows browser candidate
-    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[candidate]')) }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' && github.ref == 'refs/heads/dev' }}
     runs-on: windows-2025
     needs: smoke
     env:
@@ -1070,7 +1067,7 @@ jobs:
 
   release_candidate:
     name: release candidate
-    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[candidate]')) }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' && github.ref == 'refs/heads/dev' }}
     runs-on: ubuntu-latest
     needs:
       - smoke

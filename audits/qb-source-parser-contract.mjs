@@ -1,4 +1,4 @@
-import '../tests/qb-preferences-inventory-contract.mjs';
+import './qb-preferences-inventory-contract.mjs';
 import assert from 'node:assert/strict';
 import {
   extractPreferenceDescriptors,

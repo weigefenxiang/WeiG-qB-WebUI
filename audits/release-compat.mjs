@@ -4,7 +4,7 @@ import path from 'node:path';
 import vm from 'node:vm';
 import {fileURLToPath} from 'node:url';
 
-const here=path.dirname(fileURLToPath(import.meta.url));const root=path.resolve(here,'..');const matrix=JSON.parse(fs.readFileSync(path.join(here,'fixtures/qb-compat-matrix.json'),'utf8'));const source=fs.readFileSync(path.join(root,'webui/private/scripts/qb-client.js'),'utf8');
+const here=path.dirname(fileURLToPath(import.meta.url));const root=path.resolve(here,'..');const matrix=JSON.parse(fs.readFileSync(path.join(root,'tests/fixtures/qb-compat-matrix.json'),'utf8'));const source=fs.readFileSync(path.join(root,'webui/private/scripts/qb-client.js'),'utf8');
 class TestFormData{constructor(){this.entries=[];}append(name,value,filename){this.entries.push({name,value,filename});}}
 let activeFixture=null;
 function versionAtLeast(actual,required){const a=String(actual).split('.').map(x=>Number.parseInt(x,10)||0),b=String(required).split('.').map(x=>Number.parseInt(x,10)||0),n=Math.max(a.length,b.length);for(let i=0;i<n;i++){if((a[i]||0)>(b[i]||0))return true;if((a[i]||0)<(b[i]||0))return false;}return true;}

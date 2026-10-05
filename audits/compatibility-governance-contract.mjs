@@ -25,23 +25,29 @@ const pkg=JSON.parse(read('package.json'));
 const manifest=JSON.parse(read('tools/data/qb-stable-lkg.json'));
 const catalogPath=path.join(root,manifest.catalogPath);
 const gfm=read('.github/workflows/real-qb-full.yml');
+const locale=read('.github/workflows/real-qb-locale.yml');
 const promote=read('.github/workflows/promote.yml');
-const compatVerifier=read('tests/release-compat-evidence.mjs');
 
-assert(gfm.includes('workflow_dispatch:'),'real qB Full Frozen Matrix must remain manually runnable for release-grade Exhaustive evidence');
-assert(!/\n\s*push:\s*/.test(gfm),'ordinary dev pushes must not fan out to the 65-version real qB matrix');
-assert(gfm.includes('mode=exhaustive')&&gfm.includes('node tests/real-qb-capability-plan.mjs --matrix "$mode"'),'G-FM final-candidate workflow must route only to Exhaustive through the Frozen planner');
-assert(/max-parallel:\s*16/.test(gfm),'real qB Full Frozen Matrix must keep the 16-way concurrency cap for the intentional final run');
-assert(!gfm.includes('real-qb-fast-aggregate-${{ github.sha }}'),'ordinary Fast evidence must stay outside the final-only workflow');
-assert(gfm.includes('real-qb-full-aggregate-${{ github.sha }}'),'Exhaustive G-FM must publish exact-SHA release-grade aggregate evidence');
-assert(promote.includes("resolveManualAggregate('real-qb-full.yml', gfmArtifactName")&&promote.includes('workflow_id: workflowId'),'promotion must require the real qB Full Frozen Matrix through the shared manual evidence resolver');
-assert(promote.includes("run.event === 'workflow_dispatch'"),'promotion must require a manually dispatched Exhaustive matrix run');
-assert(promote.includes('real-qb-full-aggregate-${compatSha}')&&promote.includes('compat_evidence_sha')&&promote.includes('Compatibility evidence reuse refused'),'promotion must bind Exhaustive G-FM to one explicitly guarded compatibility evidence SHA');
-assert(!promote.includes('real-qb-fast-aggregate-${sha}'),'promotion must not accept Fast G-FM aggregate evidence');
-assert(promote.includes('node tests/release-compat-evidence.mjs'),'promotion must revalidate release-grade G-FM evidence before main moves');
-assert(compatVerifier.includes('gfm.expected_stable_count!==65||gfm.executed_runtime_count!==65'),'central compatibility verifier must require an exact 65-version Exhaustive matrix');
-assert(compatVerifier.includes('gfm.PASS!==65||gfm.FAIL!==0||gfm.BLOCKED!==0'),'central compatibility verifier must fail closed unless Exhaustive G-FM is 65/65 PASS');
-assert(compatVerifier.includes("qb!==String(result.runtime_version||'')"),'central compatibility verifier must reject inexact qB runtime identity');
+assert(pkg.scripts.test==='npm run test:core','ordinary npm test must stay on the bounded Core owner');
+for(const owner of ['audits/compat-architecture-contract.mjs','audits/compatibility-governance-contract.mjs','audits/qb-stable-admission-contract.mjs','audits/qb-product-capability-diff-contract.mjs','audits/real-qb-full-matrix-contract.mjs']){
+  assert(String(pkg.scripts['test:compat']||'').includes(owner),`Compatibility Audit entry point missing ${owner}`);
+}
+
+for(const [name,workflow] of [['Full Frozen',gfm],['Locale',locale]]){
+  assert(workflow.includes('workflow_dispatch:'),`${name} Compatibility Audit must remain manually runnable`);
+  assert(!/\n\s*push:\s*/.test(workflow),`${name} Compatibility Audit must not run on ordinary pushes`);
+  assert(workflow.startsWith('name: Compatibility Audit'),`${name} workflow must remain visibly labeled as a Compatibility Audit`);
+}
+assert(gfm.includes('real-qb-full-aggregate-${{ github.sha }}'),'Full Frozen audit must retain exact-SHA aggregate evidence');
+assert(locale.includes('real-qb-current-locale-aggregate-${{ github.sha }}'),'Locale audit must retain exact-SHA aggregate evidence');
+
+for(const retired of ['real-qb-full.yml','real-qb-locale.yml','compat_evidence_sha','release-compat-evidence.mjs','real-qb-full-aggregate-','real-qb-current-locale-aggregate-']){
+  assert(!promote.includes(retired),`Promotion must not depend on Compatibility Audit owner ${retired}`);
+}
+assert(promote.includes("workflow_id: 'ci.yml'")&&promote.includes('release-candidate-${sha}'),'Promotion must require exact-SHA Candidate CI artifact evidence');
+assert(promote.includes("workflow_id: 'candidate-deployment-only.yml'")&&promote.includes('candidate-deployment-${sha}'),'Promotion must require exact-SHA Candidate Deployment evidence');
+assert(promote.includes('devSha !== sha')&&promote.includes('compare.data.behind_by !== 0'),'Promotion must fresh-check current dev identity and safe fast-forward ancestry');
+assert(promote.includes('Compatibility Audits are independent and are not Promotion prerequisites.'),'Promotion summary must state the independent Compatibility Audit boundary');
 
 assert(manifest.schemaVersion===1&&manifest.supportFloor==='4.1.0','LKG manifest schema/floor drifted');
 assert(fs.existsSync(catalogPath),'committed single-file LKG catalog is missing');
@@ -51,11 +57,10 @@ assert(digest===manifest.catalogSha256,`committed LKG SHA-256 mismatch: ${digest
 const catalog=JSON.parse(catalogBlob.toString('utf8'));
 assert(catalog.length===manifest.profileCount&&catalog.at(-1)?.qbVersion===manifest.latestAdmittedStable,'LKG manifest does not describe committed catalog exactly');
 
-for(const test of ['tests/compat-architecture-contract.mjs','tests/qb-stable-admission-contract.mjs','tests/qb-product-capability-diff-contract.mjs','tests/compatibility-governance-contract.mjs'])assert(pkg.scripts.test.includes(test),`npm test must include compatibility governance guard ${test}`);
 const catalogTool=read('tools/qb-release-catalog.mjs');
-assert(catalogTool.includes('--base-catalog=')&&catalogTool.includes('Incremental extraction must not re-parse frozen stable tag')&&catalogTool.includes('Incremental annotation mutated frozen LKG profile'),'catalog generator must protect source and byte-level frozen history during incremental admission');
+assert(catalogTool.includes('--base-catalog=')&&catalogTool.includes('Incremental extraction must not re-parse frozen stable tag')&&catalogTool.includes('Incremental annotation mutated frozen LKG profile'),'catalog generator must protect frozen history during incremental admission');
 const productDiff=read('tools/qb-product-capability-diff.mjs');
 for(const owner of ['capabilities.js','torrent-semantics.js','torrent-fields.js'])assert(productDiff.includes(`'${owner}'`),`product capability diff must execute compact formal owner ${owner}`);
 assert(!productDiff.includes("'release-profile.js'"),'product capability diff must not execute retired ReleaseProfile runtime owner');
 
-console.log(`Compatibility governance contract passed: retired legacy workflows stay removed; frozen LKG ${catalog.length} profiles ${catalog[0].qbVersion} -> ${catalog.at(-1)?.qbVersion} remains hash-bound; ordinary dev pushes stay lightweight while manual exact-evidence-SHA Exhaustive G-FM may cross only a guarded validation-only descendant boundary.`);
+console.log(`Compatibility governance contract passed: Frozen LKG ${catalog.length} profiles ${catalog[0].qbVersion} -> ${catalog.at(-1)?.qbVersion} stays hash-bound; Full Frozen/Locale remain explicit manual audits, while Promotion is Candidate + Deployment + current-dev/safe-FF only.`);

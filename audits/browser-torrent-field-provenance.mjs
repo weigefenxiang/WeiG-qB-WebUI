@@ -1,4 +1,4 @@
-import {launchBrowser,readWebuiStatic} from './browser-driver.mjs';
+import {launchBrowser,readWebuiStatic} from '../tests/browser-driver.mjs';
 import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';

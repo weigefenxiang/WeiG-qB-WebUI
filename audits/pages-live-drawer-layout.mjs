@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import {launchBrowser} from './browser-driver.mjs';
-import {recoverPageSession} from './pages-live-session.mjs';
+import {launchBrowser} from '../tests/browser-driver.mjs';
+import {recoverPageSession} from '../tests/pages-live-session.mjs';
 
 const rawBase=(process.env.WEIG_PAGES_URL||process.argv[2]||'').trim();
 const expectedSha=(process.env.WEIG_EXPECTED_SIMULATOR_SHA||process.argv[3]||'').trim();

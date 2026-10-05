@@ -3,7 +3,7 @@ import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {launchBrowser} from './browser-driver.mjs';
+import {launchBrowser} from '../tests/browser-driver.mjs';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const publicRoot=path.resolve(here,'../webui/public');

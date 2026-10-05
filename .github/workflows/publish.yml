@@ -64,7 +64,7 @@ jobs:
         run: |
           set -euo pipefail
           jq -n --arg ref dev --arg sha "$SHA" \
-            '{ref:$ref,inputs:{candidate_sha:$sha,compat_evidence_sha:"",confirmation:"PROMOTE-VALIDATED-DEV",publish_after:"true"}}' \
+            '{ref:$ref,inputs:{candidate_sha:$sha,confirmation:"PROMOTE-VALIDATED-DEV",publish_after:"true"}}' \
             | gh api --method POST "/repos/$GITHUB_REPOSITORY/actions/workflows/promote.yml/dispatches" --input -
 
       - name: Retire one-shot publish command tag

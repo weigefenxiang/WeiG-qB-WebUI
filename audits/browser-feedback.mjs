@@ -1,4 +1,4 @@
-import {launchBrowser,readWebuiStatic} from './browser-driver.mjs';
+import {launchBrowser,readWebuiStatic} from '../tests/browser-driver.mjs';
 import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -16,7 +16,7 @@ let prefs={
 };
 let feeds={},lastAddBody='';
 const torrent={hash:'f'.repeat(40),name:'Feedback Fixture',size:1048576,progress:.4,dlspeed:1000,upspeed:200,eta:3600,state:'downloading',ratio:.2,tracker:'https://tracker.example/announce',category:'',tags:'',added_on:1000,save_path:'/downloads',private:false};
-const frozenCatalog=JSON.parse(await fs.readFile(path.resolve(here,'fixtures/qb-release-catalog.lkg.json'),'utf8'));
+const frozenCatalog=JSON.parse(await fs.readFile(path.resolve(here,'../tests/fixtures/qb-release-catalog.lkg.json'),'utf8'));
 const releaseProfile=frozenCatalog.find(item=>String(item&&item.qbVersion||'')==='5.2.0');
 if(!releaseProfile||!/^[0-9a-f]{40}$/.test(String(releaseProfile.sourceSha||'')))throw new Error('Feedback browser gate requires frozen exact qB 5.2.0 source identity.');
 const mime={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.ico':'image/x-icon'};

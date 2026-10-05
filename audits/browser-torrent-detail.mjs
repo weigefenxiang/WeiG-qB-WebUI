@@ -1,4 +1,4 @@
-import {launchBrowser,readWebuiStatic} from './browser-driver.mjs';
+import {launchBrowser,readWebuiStatic} from '../tests/browser-driver.mjs';
 import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -8,7 +8,7 @@ const here=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(here,'../webui/private');
 const publicRoot=path.resolve(here,'../webui/public');
 const productVersion=(await fs.readFile(path.resolve(here,'../VERSION'),'utf8')).trim();
-const frozen=JSON.parse(await fs.readFile(path.resolve(here,'fixtures/qb-release-catalog.lkg.json'),'utf8'));
+const frozen=JSON.parse(await fs.readFile(path.resolve(here,'../tests/fixtures/qb-release-catalog.lkg.json'),'utf8'));
 const frozenProfile=frozen.find(item=>item.qbVersion==='5.2.0');
 if(!frozenProfile)throw new Error('Torrent detail browser gate requires frozen qB 5.2.0 profile.');
 // Browser evidence consumes the current exact 5.2.0 Detail source surface without mutating the

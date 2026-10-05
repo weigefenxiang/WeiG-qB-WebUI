@@ -16,7 +16,7 @@ Run the default repository contract suite:
 npm test
 ```
 
-This suite covers production ownership, compatibility contracts, Settings/locale behavior, simulator invariants, installer/release contracts and other static/deterministic checks.
+This is the bounded Core suite: deterministic, high-value routine owners for runtime/bootstrap, Settings/session/capability safety, architecture/ownership, distribution identity, change classification and CI policy. Heavy compatibility, specialty UI/browser, stress/soak and historical release checks live in explicit audit suites instead of silently joining every `npm test` run.
 
 ## 2. Simulator Contracts
 
@@ -32,16 +32,16 @@ These contracts cover endpoint routing, preference behavior, storage, runtime pr
 
 Browser tests use the shared `tests/browser-driver.mjs` owner.
 
-Representative suites include:
+Routine browser owners are:
 
 - `browser-runtime.mjs`
-- `browser-theme.mjs`
-- `browser-feedback.mjs`
 - `browser-feature-parity.mjs`
 - `browser-torrent-workspace.mjs`
 - `browser-adaptive-ui.mjs`
 - `browser-settings-admitted.mjs`
 - `browser-settings-fidelity.mjs`
+
+Theme, Feedback, Sidebar visual, deep Detail, field-provenance and entry-locale browser regressions remain preserved under `audits/` and are not duplicate Candidate blockers.
 
 A browser test should perform the real user action and assert the semantic result plus final visible/computed state. DOM existence alone is not sufficient for critical interaction acceptance.
 
@@ -59,7 +59,7 @@ Source-derived compatibility is guarded by dedicated contracts for:
 - RSS surfaces,
 - compact runtime identity.
 
-When changing a parser/compiler, run both the tool-specific source contract and the runtime contract that consumes its output.
+Run `npm run test:compat` for the grouped source/Frozen compatibility audit. When changing a parser/compiler, run the relevant source audit plus the runtime owner that consumes its output; do not add the entire compatibility set back to Core.
 
 ## 5. Real qBittorrent Validation
 
@@ -149,3 +149,11 @@ Milestone or implementation-layout tests must not re-enter Core merely to preser
 Compatibility and specialty audits moved out of the routine `tests/` ownership surface live in root `audits/`. They keep exact assertions available without silently re-entering ordinary CI or Promotion.
 
 Pages full live verification is intentionally bounded to six durable owners (core, startup performance, auth/session, modern services, protocol, mobile layout). Settings-only source/UI changes keep the dedicated locale/release-profile/preferences shard profile.
+
+After A61, `tests/` is the routine/blocking owner surface; specialty compatibility, source, UI, Pages, browser and historical release checks belong in `audits/`. Moving a check never exempts it from syntax validation.
+
+Core includes `audit-integrity-contract.mjs` so moving specialty checks out of routine CI never exempts their import graph or package entry points from deterministic validation.
+
+Candidate is entered only through explicit `workflow_dispatch` with `validation_mode=candidate`; the historical `[candidate]` commit-message trigger is retired and must not return.
+
+Release Prepare and publication follow the same A61 boundary: preview/orchestration may require Candidate, Deployment, Pages and Session, but Full Frozen/Locale remain independent manual Compatibility Audits. Promotion certification schema v3 and Release both certify Candidate + Deployment without retired compatibility fields.

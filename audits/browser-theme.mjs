@@ -1,4 +1,4 @@
-import {launchBrowser,readWebuiStatic} from './browser-driver.mjs';
+import {launchBrowser,readWebuiStatic} from '../tests/browser-driver.mjs';
 import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -8,7 +8,7 @@ const here=path.dirname(fileURLToPath(import.meta.url));
 const privateRoot=path.resolve(here,'../webui/private');
 const publicRoot=path.resolve(here,'../webui/public');
 const productVersion=(await fs.readFile(path.resolve(here,'../VERSION'),'utf8')).trim();
-const frozenCatalog=JSON.parse(await fs.readFile(path.resolve(here,'fixtures/qb-release-catalog.lkg.json'),'utf8'));
+const frozenCatalog=JSON.parse(await fs.readFile(path.resolve(here,'../tests/fixtures/qb-release-catalog.lkg.json'),'utf8'));
 const exactProfiles=['4.1.9.1','5.2.0'].map(qb=>frozenCatalog.find(item=>String(item&&item.qbVersion||'')===qb));
 if(exactProfiles.some(profile=>!profile))throw new Error('Theme browser fixture requires frozen exact qB 4.1.9.1 and 5.2.0 release profiles.');
 const host='127.0.0.1',port=8782;

@@ -58,7 +58,7 @@ jobs:
           printf 'mode=%s\n' "$mode" >> "$GITHUB_OUTPUT"
           printf 'matrix=%s\n' "$matrix" >> "$GITHUB_OUTPUT"
           printf 'evidence_prefix=%s\n' "$evidence_prefix" >> "$GITHUB_OUTPUT"
-          echo "G-FM final-candidate mode=$mode with 65 exact Frozen runtimes"
+          echo "Compatibility Audit G-FM mode=$mode with 65 exact Frozen runtimes"
       - name: Build source-backed historical runtime index
         run: node tests/real-qb-full-runtime-index.mjs artifacts/real-qb-full-index/linuxserver-tags.json
       - name: Upload same-run historical runtime index
