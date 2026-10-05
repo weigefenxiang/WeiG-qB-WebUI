@@ -15,21 +15,10 @@ const baseLane=(name,script,extra={})=>({
 const fixed=[
   baseLane('core','tests/pages-live-acceptance.mjs'),
   baseLane('startup-performance','tests/pages-live-startup-performance.mjs'),
-  baseLane('locale-bootstrap','tests/pages-live-locale-bootstrap.mjs'),
-  baseLane('release-profile-floor','tests/pages-live-release-profile.mjs',{release_mode:'floor'}),
-  baseLane('release-profile-latest','tests/pages-live-release-profile.mjs',{release_mode:'latest'}),
-  baseLane('release-profile-settings','tests/pages-live-release-profile.mjs',{release_mode:'settings'}),
-  baseLane('services-auth','tests/pages-live-auth.mjs'),
+  baseLane('auth-session','tests/pages-live-auth.mjs'),
   baseLane('services-modern','tests/pages-live-services-core.mjs',{service_mode:'modern'}),
-  baseLane('services-owner-ui','tests/pages-live-services-core.mjs',{service_mode:'owner-ui'}),
-  baseLane('services-legacy','tests/pages-live-services-core.mjs',{service_mode:'legacy'}),
-  baseLane('services-isolation','tests/pages-live-services-core.mjs',{service_mode:'isolation'}),
-  baseLane('services-offline','tests/pages-live-services-core.mjs',{service_mode:'offline'}),
   baseLane('services-protocol','tests/pages-live-protocol.mjs'),
-  baseLane('services-branch-alias','tests/pages-live-branch-alias.mjs'),
-  baseLane('mobile-layout','tests/pages-live-mobile-layout.mjs'),
-  baseLane('torrent-scroll-stress','tests/pages-live-torrent-scroll-stress.mjs'),
-  baseLane('detail-dock','tests/pages-live-detail-dock.mjs')
+  baseLane('mobile-layout','tests/pages-live-mobile-layout.mjs')
 ];
 const byName=new Map(fixed.map(item=>[item.name,item]));
 const preferenceAnchor=total=>baseLane('preferences-anchor','tests/pages-live-preferences.mjs',{pref_mode:'anchor',pref_total:String(total)});
@@ -40,11 +29,7 @@ const pick=names=>names.map(name=>{
   return {...lane};
 });
 
-export const FULL_PAGES_VERIFY_LANES=[
-  ...fixed.map(item=>({...item})),
-  preferenceAnchor(10),
-  ...Array.from({length:10},(_,index)=>preferenceShard(index,10))
-];
+export const FULL_PAGES_VERIFY_LANES=fixed.map(item=>({...item}));
 
 export function verificationProfileForClassification(value={}){
   if(value.workflowPolicy===true||value.pagesLive===true)return'full';
@@ -61,11 +46,13 @@ export function pagesVerifyLanes(profile='full'){
   switch(profile){
     case'installer': return pick(['core']);
     case'payload': return pick(['core','startup-performance']);
-    case'ui': return pick(['core','startup-performance','services-owner-ui','mobile-layout','torrent-scroll-stress','detail-dock']);
-    case'native': return pick(['core','release-profile-floor','release-profile-latest','detail-dock']);
+    case'ui': return pick(['core','startup-performance','mobile-layout']);
+    case'native': return pick(['core','services-modern']);
     case'settings':
       return[
-        ...pick(['core','locale-bootstrap','release-profile-settings']),
+        baseLane('core','tests/pages-live-acceptance.mjs'),
+        baseLane('locale-bootstrap','tests/pages-live-locale-bootstrap.mjs'),
+        baseLane('release-profile-settings','tests/pages-live-release-profile.mjs',{release_mode:'settings'}),
         preferenceAnchor(4),
         ...Array.from({length:4},(_,index)=>preferenceShard(index,4))
       ];

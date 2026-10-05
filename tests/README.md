@@ -147,3 +147,5 @@ The repository validation owner is risk-tiered:
 Milestone or implementation-layout tests must not re-enter Core merely to preserve historical workflow shape. Unique safety assertions must move to the current owner before an obsolete file is deleted.
 
 Compatibility and specialty audits moved out of the routine `tests/` ownership surface live in root `audits/`. They keep exact assertions available without silently re-entering ordinary CI or Promotion.
+
+Pages full live verification is intentionally bounded to six durable owners (core, startup performance, auth/session, modern services, protocol, mobile layout). Settings-only source/UI changes keep the dedicated locale/release-profile/preferences shard profile.
