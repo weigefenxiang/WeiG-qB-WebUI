@@ -18,9 +18,10 @@ assert.ok(!selection.includes('MutationObserver'),'selection consumers must not 
 
 assert.ok(layout.includes('function createSplitPane(options)'),'shared layout runtime must own one SplitPane primitive');
 assert.ok(layout.includes("W.SplitPane={create:createSplitPane}"),'SplitPane must be exported through the shared layout owner');
-for(const token of ["pointerdown',pointerDown","pointermove',pointerMove","keydown',keyDown","dblclick',reset","aria-orientation','horizontal'","localStorage.setItem(storageKey"]){
+for(const token of ["pointerdown',pointerDown","pointermove',pointerMove","keydown',keyDown","dblclick',reset","aria-orientation','horizontal'","LOCAL_STORE.set(storageKey"]){
   assert.ok(layout.includes(token),`SplitPane contract missing ${token}`);
 }
+assert.ok(!layout.includes('localStorage.setItem(storageKey'),'SplitPane must not bypass the shared optional StorageRuntime owner');
 assert.ok(layout.includes("startSize-(e.clientY-startY)"),'dragging upward must increase secondary/detail height');
 assert.ok(layout.includes('Math.max(minSecondary()')&&layout.includes('maxSecondary()'),'SplitPane must clamp geometry through its current dynamic lower/upper bounds');
 
