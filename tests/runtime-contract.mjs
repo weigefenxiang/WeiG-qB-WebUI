@@ -44,6 +44,7 @@ for(const rel of runtimeFiles){
   const source=read('webui/private/'+rel);
   assert(!source.includes('MutationObserver'),`${rel} contains observer-driven runtime repair/ownership`);
   assert(!/(?:window|globalThis|global)\.fetch\s*=|\.prototype\.(?:open|send|fetch)\s*=/.test(source),`${rel} contains fetch/prototype monkey patching`);
+  assert(!source.includes('local'+'Storage')&&!source.includes('session'+'Storage'),`${rel} must use the shared optional persistence owner`);
   if(noNativeHoverOwners.has(rel))assert(!/\.title\s*=|setAttribute\(\s*['\"]title['\"]|\.dataset\.tooltip\s*=|setAttribute\(\s*['\"]data-tooltip['\"]/.test(source),`${rel} recreates retired native title/data-tooltip hover metadata`);
   assert(!/(?:scripts|css)\/[A-Za-z0-9._-]*-[vV]\d+\.(?:js|css)/.test(source),`${rel} contains a hidden version-labelled runtime loader`);
   const count=(source.match(/new W\.QBClient\s*\(/g)||[]).length;
@@ -55,7 +56,7 @@ assert(qbClientCreators.length===1&&qbClientCreators[0][0]==='scripts/app.js'&&q
 const timeSource=read('webui/private/scripts/time.js');
 assert(!timeSource.includes('System / Browser'),'Timezone presentation must not expose the retired System / Browser copy');
 assert(timeSource.includes("if(zone==='system')return Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC'"),'Timezone system sentinel must continue resolving from the browser/system IANA zone');
-assert(timeSource.includes('localStorage.setItem(KEY,zone)'),'Timezone explicit selection must remain persisted by the canonical Time owner');
+assert(timeSource.includes('LOCAL_STORE.set(KEY,zone)'),'Timezone explicit selection must remain persisted through the shared optional persistence owner');
 assert(timeSource.includes("return off+' · '+r;"),'Timezone labels must present only UTC offset plus resolved IANA zone');
 
 // Browser fixtures may read VERSION but must not pin a WeiG 0.3.x product version.
