@@ -1,13 +1,13 @@
 (function(global){
   'use strict';
-  var W=global.WeiG=global.WeiG||{};
+  var W=global.WeiG=global.WeiG||{},LOCAL_STORE=W.StorageRuntime&&W.StorageRuntime.local;
   var KEY=(W.StorageKeys&&W.StorageKeys.displayTimeZone)||'weig.displayTimeZone',previewZone=null;
   var FALLBACK=['UTC','Asia/Shanghai','Asia/Hong_Kong','Asia/Singapore','Asia/Tokyo','Asia/Seoul','Europe/London','Europe/Paris','Europe/Berlin','America/New_York','America/Chicago','America/Denver','America/Los_Angeles','Australia/Sydney'];
   function zones(){var list=[];try{if(Intl.supportedValuesOf)list=Intl.supportedValuesOf('timeZone');}catch(_e){}if(!list.length)list=FALLBACK.slice();return [{value:'system',label:'system'}].concat(list.map(function(x){return{value:x,label:x};}));}
-  function storedZone(){try{return localStorage.getItem(KEY)||'system';}catch(_e){return'system';}}
+  function storedZone(){return LOCAL_STORE?LOCAL_STORE.get(KEY,'system'):'system';}
   function getZone(){return previewZone||storedZone();}
   function emitZone(zone,transient){global.dispatchEvent(new CustomEvent('weig:timezonechange',{detail:{zone:zone,transient:!!transient}}));return zone;}
-  function setZone(zone){zone=zone||'system';previewZone=null;try{localStorage.setItem(KEY,zone);}catch(_e){}return emitZone(zone,false);}
+  function setZone(zone){zone=zone||'system';previewZone=null;if(LOCAL_STORE)LOCAL_STORE.set(KEY,zone);return emitZone(zone,false);}
   function preview(zone){previewZone=zone||'system';return emitZone(previewZone,true);}
   function clearPreview(){previewZone=null;return emitZone(storedZone(),true);}
   function resolved(zone){zone=zone||getZone();if(zone==='system')return Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';return zone;}

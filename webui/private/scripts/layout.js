@@ -1,6 +1,6 @@
 (function(global){
   'use strict';
-  var W=global.WeiG=global.WeiG||{},U=W.util;
+  var W=global.WeiG=global.WeiG||{},U=W.util,LOCAL_STORE=W.StorageRuntime&&W.StorageRuntime.local;
   if(W.LayoutRuntime)return;
   var initialized=false,sidebarCollapsed=false,resizeFrame=0;
   var SIDEBAR_KEY=(W.StorageKeys&&W.StorageKeys.sidebar)||'weig.sidebarCollapsed';
@@ -90,8 +90,8 @@
   W.QbUiEvidence={profile:exactProfile,detailUi:exactDetailUi,detailColumns:detailColumns,detailTab:detailTab,detailPropertyLabel:detailPropertyLabel,detailGroupLabel:detailGroupLabel,renderGeneral:renderGeneral,text:officialText};
 
   function safeParse(value){try{var parsed=JSON.parse(value);return parsed&&typeof parsed==='object'&&!Array.isArray(parsed)?parsed:{};}catch(_e){return{};}}
-  function tableState(tableId){try{return safeParse(localStorage.getItem(TABLE_COLUMN_KEY+String(tableId||''))||'{}');}catch(_e){return{};}}
-  function writeTableState(tableId,state){state=state&&typeof state==='object'&&!Array.isArray(state)?state:{};try{var key=TABLE_COLUMN_KEY+String(tableId||''),keys=Object.keys(state);if(!keys.length||(keys.length===1&&keys[0]==='schemaVersion'))localStorage.removeItem(key);else localStorage.setItem(key,JSON.stringify(state));}catch(_e){}return state;}
+  function tableState(tableId){return safeParse((LOCAL_STORE?LOCAL_STORE.get(TABLE_COLUMN_KEY+String(tableId||''),null):null)||'{}');}
+  function writeTableState(tableId,state){state=state&&typeof state==='object'&&!Array.isArray(state)?state:{};var key=TABLE_COLUMN_KEY+String(tableId||''),keys=Object.keys(state);if(LOCAL_STORE){if(!keys.length||(keys.length===1&&keys[0]==='schemaVersion'))LOCAL_STORE.remove(key);else LOCAL_STORE.set(key,JSON.stringify(state));}return state;}
   function sourceColumn(column,defaultWidth){var out=cloneColumn(column),width=Number(out.defaultWidth);if(!Number.isFinite(width)||width<=0)width=Number(out.width);if(!Number.isFinite(width)||width<=0)width=defaultWidth;out.key=String(out.key||'');out.defaultWidth=Math.max(Number(out.min)||24,width||defaultWidth);out.defaultVisible=out.defaultVisible!==false;return out;}
   function normalizeSource(columns,options){var width=Math.max(24,Number(options&&options.defaultWidth)||140),seen=new Set(),out=[];(columns||[]).forEach(function(column){var item=sourceColumn(column,width);if(!item.key||seen.has(item.key))return;seen.add(item.key);out.push(item);});return out;}
   function insertMissingOfficialKeys(order,official){var out=(order||[]).filter(function(key,index,list){return official.indexOf(key)>=0&&list.indexOf(key)===index;});official.forEach(function(key,index){if(out.indexOf(key)>=0)return;var inserted=false;for(var p=index-1;p>=0;p--){var before=out.indexOf(official[p]);if(before>=0){out.splice(before+1,0,key);inserted=true;break;}}if(inserted)return;for(var n=index+1;n<official.length;n++){var after=out.indexOf(official[n]);if(after>=0){out.splice(after,0,key);inserted=true;break;}}if(!inserted)out.push(key);});return out;}
@@ -101,7 +101,7 @@
   function readSort(tableId,sourceColumns,options){var source=normalizeSource(sourceColumns,options),state=tableState(tableId),sort=validSort(source,state);if(state.sort&&sort.key===''){delete state.sort;writeTableState(tableId,state);}return sort;}
   function commitColumns(tableId,sourceColumns,resolved,options){var source=normalizeSource(sourceColumns,options),official=source.map(function(column){return column.key;}),sourceOrder=!!(options&&options.sourceOrder),byKey={};source.forEach(function(column){byKey[column.key]=column;});var rows=(resolved||[]).filter(function(column){return column&&byKey[column.key];}),order=rows.map(function(column){return column.key;}),priorSort=validSort(source,tableState(tableId)),state={schemaVersion:1},visibility={},widths={};if(priorSort.key)state.sort=priorSort;if(!sourceOrder&&!sameOrder(order,official))state.order=order;rows.forEach(function(column){var base=byKey[column.key];if(!!column.visible!==!!base.defaultVisible)visibility[column.key]=!!column.visible;var width=Number(column.width),defaultWidth=Number(base.defaultWidth);if(Number.isFinite(width)&&Math.abs(width-defaultWidth)>.5)widths[column.key]=Math.max(Number(base.min)||24,width);});if(Object.keys(visibility).length)state.visibility=visibility;if(Object.keys(widths).length)state.widths=widths;return writeTableState(tableId,state);}
   function commitSort(tableId,sourceColumns,key,reverse,options){var source=normalizeSource(sourceColumns,options),state=tableState(tableId);state.schemaVersion=1;key=String(key||'');if(key&&key!=='checked'&&source.some(function(column){return column.key===key;}))state.sort={key:key,reverse:reverse===true};else delete state.sort;return writeTableState(tableId,state);}
-  function resetColumns(tableId){try{localStorage.removeItem(TABLE_COLUMN_KEY+String(tableId||''));}catch(_e){}}
+  function resetColumns(tableId){if(LOCAL_STORE)LOCAL_STORE.remove(TABLE_COLUMN_KEY+String(tableId||''));}
   W.SharedColumns={resolve:resolveColumns,commit:commitColumns,readSort:readSort,commitSort:commitSort,reset:resetColumns,read:tableState,storagePrefix:TABLE_COLUMN_KEY};
 
   function splitFinite(value,fallback){var n=Number(value);return Number.isFinite(n)?n:fallback;}
@@ -114,8 +114,8 @@
     function minSecondary(){return bound(options.minSecondary,160);}
     function trackSize(){var n=typeof options.trackSize==='function'?Number(options.trackSize()):Number.NaN;return Number.isFinite(n)&&n>=0?n:Math.max(0,Number(root.clientHeight)||0);}
     var defaultSecondary=Math.max(minSecondary(),splitFinite(options.defaultSecondary,280)),step=Math.max(1,splitFinite(options.step,16)),storageKey=String(options.storageKey||''),open=false,dragging=false,startY=0,startSize=defaultSecondary,size=defaultSecondary,preferredSize=defaultSecondary,geometryFrame=0,rootResizeObserver=null;
-    function readStored(){if(!storageKey)return defaultSecondary;try{var raw=localStorage.getItem(storageKey);if(raw===null||raw==='')return defaultSecondary;var n=Number(raw);return Number.isFinite(n)&&n>=0?n:defaultSecondary;}catch(_e){return defaultSecondary;}}
-    function writeStored(){if(!storageKey)return;try{localStorage.setItem(storageKey,String(Math.round(preferredSize)));}catch(_e){}}
+    function readStored(){if(!storageKey)return defaultSecondary;var raw=LOCAL_STORE?LOCAL_STORE.get(storageKey,null):null;if(raw===null||raw==='')return defaultSecondary;var n=Number(raw);return Number.isFinite(n)&&n>=0?n:defaultSecondary;}
+    function writeStored(){if(storageKey&&LOCAL_STORE)LOCAL_STORE.set(storageKey,String(Math.round(preferredSize)));}
     function maxSecondary(minimum){if(minimum===undefined)minimum=minSecondary();var n=typeof options.maxSecondary==='function'?Number(options.maxSecondary()):Number.NaN;if(!Number.isFinite(n)){var handle=Math.max(0,separator.getBoundingClientRect?separator.getBoundingClientRect().height:0);n=trackSize()-minPrimary()-handle;}return Math.max(minimum,n);}
     function bounds(){var minimum=minSecondary(),maximum=maxSecondary(minimum);return{min:minimum,max:Math.max(minimum,maximum)};}
     function clamp(value,limits){limits=limits||bounds();return Math.min(limits.max,Math.max(limits.min,splitFinite(value,defaultSecondary)));}
@@ -159,8 +159,8 @@
     var suffix=layoutAssetSuffix();
     if(!document.getElementById('weig-sidebar-layout-css')){var link=document.createElement('link');link.id='weig-sidebar-layout-css';link.rel='stylesheet';link.href='css/sidebar.css'+suffix;document.head.appendChild(link);}
   }
-  function readSidebarPreference(){try{return localStorage.getItem(SIDEBAR_KEY)==='1';}catch(_e){return false;}}
-  function writeSidebarPreference(value){try{localStorage.setItem(SIDEBAR_KEY,value?'1':'0');}catch(_e){}}
+  function readSidebarPreference(){return !!(LOCAL_STORE&&LOCAL_STORE.get(SIDEBAR_KEY,'0')==='1');}
+  function writeSidebarPreference(value){if(LOCAL_STORE)LOCAL_STORE.set(SIDEBAR_KEY,value?'1':'0');}
   function ensureSidebarToggle(){
     var app=document.getElementById('app');if(!app)return null;var button=document.getElementById('sidebar-toggle');if(button)return button;
     button=document.createElement('button');button.id='sidebar-toggle';button.type='button';button.setAttribute('aria-controls','sidebar');button.addEventListener('click',function(){setSidebarCollapsed(!sidebarCollapsed,true);});app.appendChild(button);return button;
