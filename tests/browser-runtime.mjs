@@ -85,6 +85,25 @@ try{
     variants.bypass.session=true;variants.bypass.logout=0;variants.bypass.probeAfterLogout=0;
     const context=await browser.newContext({viewport:{width:1366,height:768}}),page=await context.newPage();await page.goto(`http://${host}:${port}/bypass/#/`,{waitUntil:'networkidle'});await page.waitForSelector('#logout-btn');await page.locator('#logout-btn').click();await page.waitForFunction(()=>!document.getElementById('fatal')?.classList.contains('is-hidden'));assert(variants.bypass.logout===1,'Auth-bypass case did not issue logout');assert(variants.bypass.session===true,'Auth-bypass fixture unexpectedly lost access');await context.close();
   }
+  {
+    variants.modern.session=true;
+    const context=await browser.newContext({viewport:{width:390,height:844}}),page=await context.newPage(),storageErrors=[];
+    page.on('pageerror',error=>storageErrors.push(String(error&&error.name||'')+': '+String(error&&error.message||error)));
+    await page.addInitScript(()=>{Object.defineProperty(window,'localStorage',{configurable:true,get(){throw new DOMException('WeiG storage-denied fixture','SecurityError');}});});
+    await page.goto(`http://${host}:${port}/modern/#/`,{waitUntil:'domcontentloaded'});
+    await page.waitForTimeout(250);
+    const apiVersion=await page.evaluate(()=>fetch('api/v2/app/version').then(r=>r.text()));
+    assert(String(apiVersion).trim()==='v5.2.0','Storage-denied reproduction fixture must prove qB WebAPI remains reachable while app bootstrap fails');
+    assert(await page.locator('#app').count()===1,'Storage-denied reproduction fixture must retain the static private shell');
+    assert(await page.locator('.torrent-list .data-grid__row,.torrent-list .torrent-mobile-card').count()===0,'Storage-denied current bootstrap must fail before Torrent data presentation');
+    const beforeHash=await page.evaluate(()=>location.hash);
+    await page.locator('#app-nav [data-route="settings"]').click();
+    await page.waitForTimeout(60);
+    const afterHash=await page.evaluate(()=>location.hash);
+    assert(afterHash===beforeHash&&await page.locator('#settings-content[data-settings-renderer="canonical"]').count()===0,'Storage-denied current bootstrap must reproduce unbound route buttons');
+    assert(storageErrors.some(value=>/SecurityError|storage-denied/i.test(value)),`Storage-denied reproduction must capture the bootstrap exception, got ${JSON.stringify(storageErrors)}`);
+    await context.close();
+  }
   console.log('Semantic runtime browser regression passed: exact-source Control Graph composition (Random, sentinel, I2P, scheduler, Proxy, adornments), canonical Product Identity, deep link, qB 4.1.9.1/5.2.0, verified logout, Back/BFCache guard and auth bypass.');
 }finally{await browser.close();await new Promise(r=>server.close(r));}
 
