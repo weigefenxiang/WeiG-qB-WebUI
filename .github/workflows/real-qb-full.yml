@@ -1,14 +1,14 @@
-name: Real qB Full Frozen Matrix
+name: Compatibility Audit · 65-version Full Frozen
 
 on:
   workflow_dispatch:
     inputs:
       candidate_sha:
-        description: Final dev exact SHA (40 hex) to certify with the 65-version Full Frozen Matrix
+        description: Exact dev SHA (40 hex) to audit against the 65-version Frozen compatibility set
         required: true
         type: string
       confirmation:
-        description: Type RUN-FULL-FROZEN-65 to confirm this is final validation / release preparation
+        description: Type RUN-FULL-FROZEN-65 to confirm this manual compatibility audit
         required: true
         type: string
 

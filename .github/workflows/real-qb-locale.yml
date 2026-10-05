@@ -1,8 +1,8 @@
-name: Real qB Current Stable Locale Matrix
+name: Compatibility Audit · 61-locale Current Stable
 
 # Historical trigger marker retained only for contract migration context:
 # contains(github.event.head_commit.message, '[locale-matrix]')
-# The heavy 61-locale matrix is now manual-only.
+# Heavy 61-locale coverage is a manual Compatibility Audit and never a Promotion prerequisite.
 on:
   workflow_dispatch:
 

@@ -130,3 +130,18 @@ The repository uses several evidence layers with different purposes:
 6. release/promotion checks.
 
 Passing one layer does not automatically replace another when the change affects a different boundary.
+
+
+## A61 Validation Tiers
+
+The repository validation owner is risk-tiered:
+
+- `npm test` -> `test:core`: 30–40 deterministic, high-value contracts for every CI-relevant dev push.
+- `npm run test:simulator`: 6–10 Virtual qB owner contracts; granular stress/soak checks are not routine blockers.
+- `npm run test:compat`: source/Frozen compatibility audit contracts; heavy 65-version and 61-locale workflows are manual Compatibility Audits.
+- Candidate Linux Chrome: runtime, Settings fidelity, feature parity, torrent workspace and adaptive UI.
+- Candidate Windows: installer/platform checks plus runtime and Settings browser smoke.
+- Candidate Deployment remains the real qB + real Chrome behavior owner.
+- Promotion requires exact Candidate CI artifact + exact Candidate Deployment evidence + safe fast-forward. Compatibility Audits are not per-promotion prerequisites.
+
+Milestone or implementation-layout tests must not re-enter Core merely to preserve historical workflow shape. Unique safety assertions must move to the current owner before an obsolete file is deleted.

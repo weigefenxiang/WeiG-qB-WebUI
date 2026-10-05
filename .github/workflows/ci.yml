@@ -342,8 +342,6 @@ jobs:
           node-version: 22
       - name: Semantic runtime, qB baselines and JavaScript syntax
         run: npm test
-      - name: Full Frozen product compatibility contract
-        run: node tests/full-stable-product-compat.mjs tests/fixtures/qb-release-catalog.lkg.json
       - name: Linux installer syntax and qB [Preferences] contract
         run: |
           sh -n installers/install.sh
@@ -421,26 +419,14 @@ jobs:
         suite:
           - name: runtime
             script: tests/browser-runtime.mjs
-          - name: theme
-            script: tests/browser-theme.mjs
-          - name: feedback
-            script: tests/browser-feedback.mjs
+          - name: settings-fidelity
+            script: tests/browser-settings-fidelity.mjs
           - name: feature-parity
             script: tests/browser-feature-parity.mjs
           - name: torrent-workspace
             script: tests/browser-torrent-workspace.mjs
-          - name: torrent-detail
-            script: tests/browser-torrent-detail.mjs
-          - name: entry-locale
-            script: tests/browser-entry-locale.mjs
           - name: adaptive-ui
             script: tests/browser-adaptive-ui.mjs
-          - name: torrent-field-provenance
-            script: tests/browser-torrent-field-provenance.mjs
-          - name: sidebar-capability
-            script: tests/browser-sidebar-capability-visual.mjs
-          - name: settings-fidelity
-            script: tests/browser-settings-fidelity.mjs
     env:
       WEIG_BROWSER_CHANNEL: chrome
     steps:
@@ -1018,16 +1004,13 @@ jobs:
           google-chrome --version
           node -p "require('playwright/package.json').version"
           printf 'Git SHA: %s\n' "$GITHUB_SHA"
-      - name: Representative qB4/qB5 semantic browser matrix
+      - name: Linux owner browser acceptance
         run: |
           node tests/browser-runtime.mjs
-          node tests/browser-theme.mjs
-          node tests/browser-feedback.mjs
+          node tests/browser-settings-fidelity.mjs
           node tests/browser-feature-parity.mjs
           node tests/browser-torrent-workspace.mjs
           node tests/browser-adaptive-ui.mjs
-          node tests/browser-torrent-field-provenance.mjs
-          node tests/browser-sidebar-capability-visual.mjs
 
   windows_browser:
     name: Windows browser candidate
@@ -1062,27 +1045,23 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Write-Host "Runner image: $env:ImageOS $env:ImageVersion"
           Write-Host "Git SHA: $env:GITHUB_SHA"
-      - name: Windows contracts, qB config encoding and installer syntax
+      - name: Windows platform, qB config encoding and installer syntax
         shell: pwsh
         run: |
-          npm test
+          node tests/platform-contract.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node tests/windows-distribution-artifact-contract.mjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $null = [scriptblock]::Create((Get-Content 'installers/install.ps1' -Raw))
           powershell -NoProfile -ExecutionPolicy Bypass -File tests/windows-config-encoding.ps1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          Write-Host 'Windows contracts passed.'
+          Write-Host 'Windows platform contracts passed.'
       - name: Representative qB4/qB5 semantic browser matrix on Windows
         shell: pwsh
         run: |
           $tests = @(
             'tests/browser-runtime.mjs',
-            'tests/browser-theme.mjs',
-            'tests/browser-feedback.mjs',
-            'tests/browser-feature-parity.mjs',
-            'tests/browser-torrent-workspace.mjs',
-            'tests/browser-adaptive-ui.mjs',
-            'tests/browser-torrent-field-provenance.mjs',
-            'tests/browser-sidebar-capability-visual.mjs'
+            'tests/browser-settings-fidelity.mjs'
           )
           foreach ($test in $tests) {
             node $test
@@ -1097,6 +1076,9 @@ jobs:
       - smoke
       - browser
       - windows_browser
+      - installer_lifecycle_linux
+      - installer_lifecycle_busybox
+      - installer_lifecycle_windows
     permissions:
       contents: read
       actions: write
