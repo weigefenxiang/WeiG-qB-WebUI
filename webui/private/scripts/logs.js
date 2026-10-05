@@ -3,7 +3,7 @@
   var W=global.WeiG,U=W&&W.util,C=W&&W.Components;
   if(!W||!U||!W.QBClient||!W.DataViewport||!C||!W.PageSizePolicy)return;
 
-  var pageSizePolicy=W.PageSizePolicy,state={items:[],lastId:-1,types:new Set([1,2,4,8]),query:'',follow:true,page:0,pageSize:W.PageSizePolicy.defaultValue,pager:null,pageSizeControl:null,viewport:null,head:null,columns:null,timer:null,loading:false,active:false,root:null,sizeMode:localStorage.getItem((W.StorageKeys&&W.StorageKeys.logsSizeMode)||'weig.logs.sizeMode')||'auto',programmaticScroll:false};
+  var pageSizePolicy=W.PageSizePolicy,LOCAL_STORE=W.StorageRuntime&&W.StorageRuntime.local,LOG_SIZE_KEY=(W.StorageKeys&&W.StorageKeys.logsSizeMode)||'weig.logs.sizeMode',state={items:[],lastId:-1,types:new Set([1,2,4,8]),query:'',follow:true,page:0,pageSize:W.PageSizePolicy.defaultValue,pager:null,pageSizeControl:null,viewport:null,head:null,columns:null,timer:null,loading:false,active:false,root:null,sizeMode:LOCAL_STORE?LOCAL_STORE.get(LOG_SIZE_KEY,'auto'):'auto',programmaticScroll:false};
   var MAX_ITEMS=5000,LOG_TABLE_ID='logs-main';
   function tr(key,vars,fallback){var I=W.I18n,value=I&&I.t?I.t(key,vars):key;return value===key?(fallback||key):value;}
   function receipt(label,value){if(W.Feedback&&W.Feedback.receipt)W.Feedback.receipt({subject:tr('nav.logs',null,'Logs'),results:[{label:String(label||''),value:value==null?'':String(value)}]},'success');}
@@ -23,7 +23,7 @@
   function schedulePoll(){stopPoll();if(!state.active||!onLogsRoute())return;var cfg=W.Config&&W.Config.load?W.Config.load():{};var delay=document.hidden?10000:Math.max(1500,Number(cfg.refresh)||2500);state.timer=setTimeout(fetchIncremental,delay);}
 
   function makeButton(label,cls){var b=document.createElement('button');b.type='button';b.className=cls||'btn btn--ghost';b.textContent=label;return b;}
-  function applySizeMode(){var view=U.$('logs-view');if(!view)return;['auto','compact','max'].forEach(function(m){view.classList.toggle('logs-size-'+m,state.sizeMode===m);});localStorage.setItem((W.StorageKeys&&W.StorageKeys.logsSizeMode)||'weig.logs.sizeMode',state.sizeMode);var sel=U.$('logs-size-mode');if(sel&&sel.setValue)sel.setValue(state.sizeMode);}
+  function applySizeMode(){var view=U.$('logs-view');if(!view)return;['auto','compact','max'].forEach(function(m){view.classList.toggle('logs-size-'+m,state.sizeMode===m);});if(LOCAL_STORE)LOCAL_STORE.set(LOG_SIZE_KEY,state.sizeMode);var sel=U.$('logs-size-mode');if(sel&&sel.setValue)sel.setValue(state.sizeMode);}
   function syncFollowControl(){var wrap=state.root&&state.root.querySelector('[data-logs-follow]');if(wrap&&wrap.input)wrap.input.checked=state.follow;}
 
   function buildShell(root){
