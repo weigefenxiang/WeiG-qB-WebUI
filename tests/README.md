@@ -145,3 +145,5 @@ The repository validation owner is risk-tiered:
 - Promotion requires exact Candidate CI artifact + exact Candidate Deployment evidence + safe fast-forward. Compatibility Audits are not per-promotion prerequisites.
 
 Milestone or implementation-layout tests must not re-enter Core merely to preserve historical workflow shape. Unique safety assertions must move to the current owner before an obsolete file is deleted.
+
+Compatibility and specialty audits moved out of the routine `tests/` ownership surface live in root `audits/`. They keep exact assertions available without silently re-entering ordinary CI or Promotion.

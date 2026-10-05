@@ -576,7 +576,7 @@ jobs:
       - name: Merge and validate canonical qB 4.1.0 to latest stable catalog
         run: node tools/qb-release-catalog.mjs --merge-shards=base-shards --expected-shards=15 --output=qb-releases.json
       - name: Require source-proven Torrent action surface across all stable profiles
-        run: node tests/full-stable-torrent-menu-source-contract.mjs qb-releases.json
+        run: node audits/full-stable-torrent-menu-source-contract.mjs qb-releases.json
       - name: Upload base stable catalog
         uses: actions/upload-artifact@v7
         with:
@@ -684,7 +684,7 @@ jobs:
           cp release-catalog/qb-releases.recovery.json qb-releases.recovery.json
           node tools/qb-settings-translation-lkg.mjs qb-releases.json tests/fixtures/qb-release-catalog.lkg.json qb-settings-translation-lkg.json qb-releases.recovery.json
           sha256sum qb-settings-translation-lkg.json > qb-settings-translation-lkg.SHA256
-          node tests/full-stable-locale-routing-contract.mjs qb-releases.json --require-mapped
+          node audits/full-stable-locale-routing-contract.mjs qb-releases.json --require-mapped
           rm -rf "$RUNNER_TEMP/qb-materialized"
           mkdir -p "$RUNNER_TEMP/qb-materialized/private/data"
           node tools/qb-webui-catalog.mjs qb-releases.json "$RUNNER_TEMP/qb-materialized/private/data/qb-releases.json" --settings-lkg=qb-settings-translation-lkg.json
@@ -1181,7 +1181,7 @@ jobs:
           set -euo pipefail
           node tools/qb-rss-source-overlay.mjs upstream-qb qb-releases.json qb-rss-source-catalog.json
           node tools/qb-rss-compact.mjs qb-rss-source-catalog.json rss-compat.json
-          node tests/full-stable-rss-source-contract.mjs qb-rss-source-catalog.json
+          node audits/full-stable-rss-source-contract.mjs qb-rss-source-catalog.json
       - name: Upload shared native surface base
         uses: actions/upload-artifact@v7
         with:
@@ -1363,11 +1363,11 @@ jobs:
       - name: Verify every admitted stable Preferences source profile and independent census
         env:
           QB_PREFERENCES_CENSUS_OUTPUT: qb-preferences-census.json
-        run: node tests/full-stable-preferences-source-contract.mjs qb-preferences-source-catalog.json native-base/qb-releases.json upstream-qb
+        run: node audits/full-stable-preferences-source-contract.mjs qb-preferences-source-catalog.json native-base/qb-releases.json upstream-qb
       - name: Census qB WebUI QBT_TR entities across every admitted source SHA
         env:
           QB_QBT_ENTITY_CENSUS_OUTPUT: qb-qbt-entity-census.json
-        run: node tests/full-stable-qbt-entity-source-contract.mjs native-base/qb-releases.json upstream-qb
+        run: node audits/full-stable-qbt-entity-source-contract.mjs native-base/qb-releases.json upstream-qb
       - name: Verify committed qB-owned copy runtime against admitted current source
         shell: bash
         run: |

@@ -46,7 +46,7 @@ jobs:
       - name: Verify exact workflow SHA checkout
         run: test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
       - name: Validate Frozen Matrix contract
-        run: node tests/real-qb-full-matrix-contract.mjs
+        run: node audits/real-qb-full-matrix-contract.mjs
       - name: Resolve Exhaustive mode and all Frozen stable versions
         id: matrix
         run: |

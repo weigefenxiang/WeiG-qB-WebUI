@@ -482,7 +482,7 @@ jobs:
           cp release-catalog/qb-releases.recovery.json qb-releases.recovery.json
           node tools/qb-settings-translation-lkg.mjs qb-releases.json tests/fixtures/qb-release-catalog.lkg.json qb-settings-translation-lkg.json qb-releases.recovery.json
           sha256sum qb-settings-translation-lkg.json > qb-settings-translation-lkg.SHA256
-          node tests/full-stable-locale-routing-contract.mjs qb-releases.json --require-mapped
+          node audits/full-stable-locale-routing-contract.mjs qb-releases.json --require-mapped
           rm -rf "$RUNNER_TEMP/qb-materialized"
           mkdir -p "$RUNNER_TEMP/qb-materialized/private/data"
           node tools/qb-webui-catalog.mjs qb-releases.json "$RUNNER_TEMP/qb-materialized/private/data/qb-releases.json"

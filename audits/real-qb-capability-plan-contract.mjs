@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {buildCapabilityPlan,matrixForMode} from './real-qb-capability-plan.mjs';
-import {aggregateSchemaForMode} from './real-qb-gfm-aggregate-schema.mjs';
+import {buildCapabilityPlan,matrixForMode} from '../tests/real-qb-capability-plan.mjs';
+import {aggregateSchemaForMode} from '../tests/real-qb-gfm-aggregate-schema.mjs';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(here,'..');

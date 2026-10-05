@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {SAFE_READ_ACTIONS,buildCapabilityWitnessSpec,runCapabilitySmoke} from './real-qb-capability-smoke.mjs';
+import {SAFE_READ_ACTIONS,buildCapabilityWitnessSpec,runCapabilitySmoke} from '../tests/real-qb-capability-smoke.mjs';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(here,'..');

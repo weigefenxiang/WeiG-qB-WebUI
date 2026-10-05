@@ -5,7 +5,7 @@ const root=path.resolve(path.dirname(new URL(import.meta.url).pathname),'..');
 const read=rel=>fs.readFileSync(path.join(root,rel),'utf8').replace(/\r\n?/g,'\n');
 const assert=(ok,msg)=>{if(!ok)throw new Error(msg);};
 const commands=s=>String(s||'').split('&&').map(x=>x.trim()).filter(Boolean);
-const scriptsOf=s=>commands(s).map(x=>x.match(/node\s+tests\/([^\s]+)/)?.[1]).filter(Boolean);
+const scriptsOf=s=>commands(s).map(x=>x.match(/node\s+(?:tests|audits)\/([^\s]+)/)?.[1]).filter(Boolean);
 const jobSection=(src,name,next)=>{
   const marker=`\n  ${name}:\n`;
   const start=src.indexOf(marker);

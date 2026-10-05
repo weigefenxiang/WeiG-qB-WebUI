@@ -1,5 +1,5 @@
 import './real-qb-capability-smoke-contract.mjs';
-import './real-qb-fast-aggregate-contract.mjs';
+import '../tests/real-qb-fast-aggregate-contract.mjs';
 import fs from 'node:fs';
 const read=p=>fs.readFileSync(p,'utf8').replace(/\r\n?/g,'\n');
 const assert=(ok,msg)=>{if(!ok)throw new Error(msg);};

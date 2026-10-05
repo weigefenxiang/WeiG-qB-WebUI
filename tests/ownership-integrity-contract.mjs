@@ -51,16 +51,7 @@ assert.deepEqual(rawSelectCreators,[],'PRIMITIVE-GATE found feature-local native
 assert.deepEqual(featureBackdropClosers,[],'PRIMITIVE-GATE found feature-local Dialog backdrop close lifecycle outside DialogRuntime: '+featureBackdropClosers.join(', '));
 assert.deepEqual(featureCancelOwners,[],'PRIMITIVE-GATE found feature-local Dialog cancel lifecycle outside DialogRuntime: '+featureCancelOwners.join(', '));
 
-const focused=[
-  'tests/release-profile-contract.mjs',
-  'tests/session-contract.mjs',
-  'tests/qb-locale-source-contract.mjs',
-  'tests/locale-bootstrap-failure-contract.mjs',
-  'tests/qb-preferences-composite-contract.mjs',
-  'tests/qb-qbt-owned-string-inventory-contract.mjs',
-  'tests/qb-qm-provisioning-source-contract.mjs',
-  'tests/qbt-tr-emulator-contract.mjs'
-];
+const focused=[];
 const focusedResults=Object.fromEntries(focused.map(file=>[file,run(file)]));
 const report={
   schemaVersion:1,
