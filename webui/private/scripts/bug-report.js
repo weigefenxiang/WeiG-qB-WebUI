@@ -3,7 +3,7 @@
   var W=global.WeiG=global.WeiG||{},U=W.util||{};
   if(W.BugReport)return;
   var REPOSITORY='weigefenxiang/WeiG-qB-WebUI',TEMPLATE='bug_report.yml';
-  var SURFACE_MOBILE='Mobile / 移动端',SURFACE_DESKTOP='Desktop / 桌面端';
+  var SURFACE_MOBILE='Mobile',SURFACE_DESKTOP='Desktop';
   function clean(value,max){value=String(value==null?'':value).replace(/\s+/g,' ').trim();return max&&value.length>max?value.slice(0,max):value;}
   function currentSurface(){return U&&typeof U.isMobile==='function'&&U.isMobile()?SURFACE_MOBILE:SURFACE_DESKTOP;}
   function browserOS(){var navigator=global.navigator||{};return clean(navigator.userAgent||'',220);}

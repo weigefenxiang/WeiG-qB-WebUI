@@ -10,7 +10,6 @@ body:
       placeholder: "Example / 示例：点击生成 API 密钥后页面向下跳；预期页面保持原位。"
     validations:
       required: true
-      min_length: 8
 
   - type: dropdown
     id: surface
@@ -18,9 +17,9 @@ body:
       label: Interface / 界面类型
       description: Choose the layout where you saw the problem.
       options:
-        - Mobile / 移动端
-        - Desktop / 桌面端
-        - Other or unsure / 其它或不确定
+        - Mobile
+        - Desktop
+        - Other or unsure
     validations:
       required: true
 
