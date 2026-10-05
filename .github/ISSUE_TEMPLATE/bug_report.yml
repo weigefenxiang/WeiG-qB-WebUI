@@ -1,0 +1,64 @@
+name: Bug feedback / Bug 反馈
+description: Report a WeiG qB WebUI problem with only the details we need.
+title: "[Bug] "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened? / 发生了什么？
+      description: Briefly describe the problem, what you expected, and how to trigger it if known.
+      placeholder: "Example / 示例：点击生成 API 密钥后页面向下跳；预期页面保持原位。"
+    validations:
+      required: true
+      min_length: 8
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Interface / 界面类型
+      description: Choose the layout where you saw the problem.
+      options:
+        - Mobile / 移动端
+        - Desktop / 桌面端
+        - Other or unsure / 其它或不确定
+    validations:
+      required: true
+
+  - type: input
+    id: other_environment
+    attributes:
+      label: Other environment / 其它环境（可选）
+      description: Only fill this when “Other or unsure” needs a short explanation.
+      placeholder: "Example / 示例：TV browser, tablet, embedded browser"
+
+  - type: input
+    id: weig_version
+    attributes:
+      label: WeiG WebUI version / WeiG WebUI 版本
+      description: From Settings → About when possible.
+      placeholder: "Example / 示例：1.1.25 · dev · abcdef12"
+    validations:
+      required: true
+
+  - type: input
+    id: qb_version
+    attributes:
+      label: qBittorrent version / qBittorrent 版本
+      placeholder: "Example / 示例：5.2.3"
+    validations:
+      required: true
+
+  - type: input
+    id: browser_os
+    attributes:
+      label: Browser and OS / 浏览器与系统（可选）
+      placeholder: "Example / 示例：Chrome 154 · Windows 11"
+
+  - type: upload
+    id: attachments
+    attributes:
+      label: Screenshot or log / 截图或日志（可选）
+      description: Add a screenshot or a small log only when it helps explain the problem.
+    validations:
+      required: false
+      accept: ".png,.jpg,.jpeg,.gif,.webp,.log,.txt,.json,.zip"
