@@ -10,7 +10,6 @@ const ignored=new Set(['.git','node_modules','release']);
 const guardOwners=new Set([
   'tests/legacy-identifier-boundary-contract.mjs',
   'tests/deployment-naming-contract.mjs',
-  'tests/ci-contract.mjs',
   'tests/windows-distribution-artifact-contract.mjs'
 ]);
 
