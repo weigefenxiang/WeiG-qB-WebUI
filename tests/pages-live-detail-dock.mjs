@@ -44,7 +44,7 @@ async function openSession(page,{qb='5.2.3',count=80,seed='a35-detail-dock'}={})
 }
 
 async function waitForDockSettled(page){
-  await waitForDockSettled(page);
+  await page.waitForFunction(()=>!document.getElementById('torrent-detail-dock')?.dataset.surfaceTransition,null,{timeout:5000});
 }
 async function selectOnlyByRow(page,index){
   const row=page.locator('#torrent-list [data-hash]').nth(index);
