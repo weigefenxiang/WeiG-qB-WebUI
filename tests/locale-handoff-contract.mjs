@@ -82,6 +82,8 @@ async function makeRuntime(browserLanguages,prefs={locale:'ja',alternative_webui
   if(Array.isArray(options.sourceLocales))WeiG.CapabilityRegistry={webuiLocales:()=>options.sourceLocales.map(value=>({value,label:value})),domainResolution:()=>({domain:'locale',detectedQbVersion:options.qbVersion||'4.1.9.1',catalogQbVersion:options.qbVersion||'4.1.9.1',qbVersion:options.compatQbVersion||options.qbVersion||'4.1.9.1',resolutionMode:options.resolutionMode||'EXACT',fallback:false,certified:true})};
   const window={
     WeiG,
+    localStorage,
+    sessionStorage,
     navigator:{languages:[...browserLanguages],language:browserLanguages[0]||''},
     location,
     addEventListener(type,fn){events[`window:${type}`]=fn;},
@@ -89,6 +91,8 @@ async function makeRuntime(browserLanguages,prefs={locale:'ja',alternative_webui
     console,setTimeout,clearTimeout
   };
   window.window=window;
+  assert.equal(window.localStorage,localStorage,'locale VM must expose native localStorage on window for StorageRuntime parity with browsers');
+  assert.equal(window.sessionStorage,sessionStorage,'locale VM must expose native sessionStorage on window for StorageRuntime parity with browsers');
   const fetch=async()=>{if(options.localeProbeError)throw new Error('simulated locale probe failure');var body=Object.hasOwn(options,'localeHtml')?options.localeHtml:localeHtml;return{ok:true,status:200,text:async()=>body,json:async()=>({})};};
   class CustomEvent{constructor(type,init){this.type=type;this.detail=init?.detail;}}
   const context={window,document,localStorage,sessionStorage,location,CustomEvent,Intl,JSON,Promise,Date,setTimeout,clearTimeout,console,fetch};
