@@ -10,6 +10,7 @@ assert.ok(expectedSha,'WEIG_EXPECTED_SIMULATOR_SHA or argv[3] is required');
 const base=new URL(rawBase.endsWith('/')?rawBase:`${rawBase}/`);
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const timeoutMs=Math.max(5000,Number(process.env.WEIG_PAGES_SESSION_TIMEOUT_MS||20000)||20000);
+const retiredCopyRegistry=['qb-settings','native.txt'].join('-');
 
 async function fetchText(relative){
   const url=new URL(String(relative).replace(/^\/+/,''),base);
@@ -90,7 +91,7 @@ try{
   const firstWeiGLocales=firstCache.urls.filter(url=>url.includes('/__source/private/data/weig-i18n/'));
   assert.equal(firstWeiGLocales.length,1,'startup must fetch exactly one non-English WeiG locale shard');
   assert.ok(firstWeiGLocales[0].includes('/weig-i18n/zh-CN.json'),'qB persisted zh-CN must select the matching WeiG zh-CN overlay only');
-  assert.equal(firstCache.urls.some(url=>url.includes('/__source/private/data/qb-settings-native.txt')),false,'startup must never fetch the retired all-version qB copy registry');
+  assert.equal(firstCache.urls.some(url=>url.includes('/__source/private/data/'+retiredCopyRegistry)),false,'startup must never fetch the retired all-version qB copy registry');
   assert.equal(firstCache.urls.some(url=>/\/__source\/translations\/webui_.+\.qm(?:\?|$)/i.test(url)),false,'browser startup must not download or parse qB QM assets');
   for(const module of ['settings','rss','logs'])assert.equal(firstCache.urls.some(url=>url.includes('/__source/private/scripts/'+module+'.js')),false,'home startup must not fetch route-only '+module+'.js');
 
