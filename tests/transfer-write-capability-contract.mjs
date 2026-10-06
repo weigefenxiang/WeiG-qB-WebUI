@@ -2,13 +2,14 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import vm from 'node:vm';
 
-const [registry,torrentCompat,detailCompat,sourceActions,capabilitySource,transferSource]=await Promise.all([
+const [registry,torrentCompat,detailCompat,sourceActions,capabilitySource,transferSource,runtimeAssetsSource]=await Promise.all([
   fs.readFile(new URL('../webui/private/data/capabilities.json',import.meta.url),'utf8').then(JSON.parse),
   fs.readFile(new URL('../webui/private/data/torrent-compat.json',import.meta.url),'utf8').then(JSON.parse),
   fs.readFile(new URL('../webui/private/data/detail-compat.json',import.meta.url),'utf8').then(JSON.parse),
   fs.readFile(new URL('../webui/private/data/source-actions.json',import.meta.url),'utf8').then(JSON.parse),
   fs.readFile(new URL('../webui/private/scripts/capabilities.js',import.meta.url),'utf8'),
-  fs.readFile(new URL('../webui/private/scripts/transfer.js',import.meta.url),'utf8')
+  fs.readFile(new URL('../webui/private/scripts/transfer.js',import.meta.url),'utf8'),
+  fs.readFile(new URL('../webui/private/scripts/runtime-assets.js',import.meta.url),'utf8')
 ]);
 const TOGGLE='transfercontroller.h:toggleSpeedLimitsModeAction';
 const SET_DL='transfercontroller.h:setDownloadLimitAction';
@@ -37,7 +38,9 @@ syntheticActions.sourceActions[SET_PREFS]=[{from:'4.1.0',value:firstDescriptor(S
 const document={addEventListener(){},querySelectorAll(){return[];},createElement(){return{children:[],classList:{contains(){return false;},toggle(){},remove(){}},dataset:{},setAttribute(){},appendChild(){},querySelector(){return null;},querySelectorAll(){return[];}};},body:{appendChild(){}}};
 const window={WeiG:{buildAssetUrl:x=>x,I18n:{getLocale:()=> 'en-US'}},addEventListener(){},dispatchEvent(){},requestAnimationFrame:fn=>fn()};
 const byUrl=url=>{url=String(url);if(url.includes('torrent-compat.json'))return torrentCompat;if(url.includes('detail-compat.json'))return detailCompat;if(url.includes('source-actions.json'))return syntheticActions;if(url.includes('capabilities.json'))return registry;throw new Error(`Unexpected fetch ${url}`);};
-const context={window,document,fetch:async url=>({ok:true,json:async()=>byUrl(url)}),requestAnimationFrame:fn=>fn(),console,CustomEvent:class{}};
+const fetch=async url=>{const value=byUrl(url),text=JSON.stringify(value);return{ok:true,status:200,json:async()=>value,text:async()=>text};};window.fetch=fetch;
+const context={window,document,fetch,requestAnimationFrame:fn=>fn(),console,CustomEvent:class{},URL,Map,Promise,Date,JSON};
+vm.runInNewContext(runtimeAssetsSource,context,{filename:'runtime-assets.js'});
 vm.runInNewContext(capabilitySource,context,{filename:'capabilities.js'});
 const R=window.WeiG.CapabilityRegistry;await R.load();
 async function bind(qbVersion,webApiVersion){await R.bind({qbVersion,webApiVersion,capabilities:{certified:false}});}
