@@ -2,7 +2,7 @@
   'use strict';
   var W=global.WeiG=global.WeiG||{};
   if(W.RuntimeAssets)return;
-  var SCHEMA=1,DB_NAME='weig-runtime-assets',STORE='assets',memory=new Map(),inflight=new Map(),dbTask=null,upstreamAssetBuilder=typeof W.buildAssetUrl==='function'?W.buildAssetUrl:null;
+  var SCHEMA=1,DB_NAME='weig-runtime-assets',STORE='assets',memory=new Map(),inflight=new Map(),scriptInflight=new Map(),scriptLoaded=new Set(),dbTask=null,upstreamAssetBuilder=typeof W.buildAssetUrl==='function'?W.buildAssetUrl:null;
   function buildId(){var meta=global.document&&document.querySelector&&document.querySelector('meta[name="weig-build-sha"]'),value=meta&&meta.getAttribute('content');value=String(value||'dev').trim()||'dev';return value;}
   var BUILD=buildId();
   function namespace(options){return String(options&&options.namespace||'runtime').trim()||'runtime';}
@@ -17,8 +17,9 @@
   function fetchText(path){return global.fetch(assetUrl(path),{credentials:'same-origin',cache:'no-store'}).then(function(res){if(!res.ok)throw new Error('Runtime asset '+path+' HTTP '+res.status);return res.text();});}
   function readText(path,options){path=String(path||'');var key=cacheKey(path,options);if(memory.has(key))return Promise.resolve(memory.get(key));if(inflight.has(key))return inflight.get(key);var task=readStored(key).then(function(record){if(record&&record.schemaVersion===SCHEMA&&record.build===BUILD&&typeof record.value==='string'){memory.set(key,record.value);return record.value;}return fetchText(path).then(function(value){memory.set(key,value);writeStored({key:key,schemaVersion:SCHEMA,build:BUILD,namespace:namespace(options),identity:identity(options),path:path,value:value,savedAt:Date.now()});return value;});}).finally(function(){inflight.delete(key);});inflight.set(key,task);return task;}
   function readJson(path,options){return readText(path,options).then(function(text){try{return JSON.parse(text);}catch(error){throw new Error('Runtime asset '+path+' JSON parse failed: '+error.message);}});}
+  function loadScript(path,options){path=String(path||'');var key=[BUILD,namespace(options),identity(options),path].join('\u0001');if(scriptLoaded.has(key))return Promise.resolve(path);if(scriptInflight.has(key))return scriptInflight.get(key);var task=new Promise(function(resolve,reject){var node=global.document&&document.createElement?document.createElement('script'):null;if(!node){reject(new Error('Runtime script document unavailable: '+path));return;}node.async=false;node.src=assetUrl(path);node.dataset.weigRuntimeModule=path;node.onload=function(){scriptLoaded.add(key);resolve(path);};node.onerror=function(){try{node.remove();}catch(_e){}reject(new Error('Runtime script '+path+' failed'));};document.head.appendChild(node);}).finally(function(){scriptInflight.delete(key);});scriptInflight.set(key,task);return task;}
   function invalidate(path,options){var key=cacheKey(path,options);memory.delete(key);inflight.delete(key);return deleteStored(key);}
   function clearMemory(){memory.clear();inflight.clear();}
   W.buildAssetUrl=W.buildAssetUrl||assetUrl;
-  W.RuntimeAssets=Object.freeze({schemaVersion:SCHEMA,build:BUILD,url:assetUrl,key:cacheKey,readText:readText,readJson:readJson,invalidate:invalidate,clearMemory:clearMemory});
+  W.RuntimeAssets=Object.freeze({schemaVersion:SCHEMA,build:BUILD,url:assetUrl,key:cacheKey,readText:readText,readJson:readJson,loadScript:loadScript,invalidate:invalidate,clearMemory:clearMemory});
 })(window);
