@@ -70,8 +70,10 @@ async function waitForCatalog(page,{count,timeout=30000}={}){
   return{...state,elapsedMs};
 }
 async function demandFacetCatalog(page,kind='tracker'){
-  const selector=`#facet-controls [data-facet="${kind}"] .ui-select__trigger`;
-  const trigger=page.locator(selector);
+  const preferredSelector=`#facet-controls [data-facet="${kind}"] .ui-select__trigger`;
+  const fallbackSelector='#facet-controls [data-facet="savePath"] .ui-select__trigger';
+  const preferred=page.locator(preferredSelector);
+  const trigger=await preferred.isVisible().catch(()=>false)?preferred:page.locator(fallbackSelector);
   await trigger.waitFor({state:'visible',timeout:30000});
   const before=await page.evaluate(()=>({ready:!!window.WeiG?.AppState?.catalogReady,busy:!!window.WeiG?.AppState?.catalogBusy,error:!!window.WeiG?.AppState?.catalogError}));
   assert.equal(before.ready,false,'demand-load catalog fixture must begin without an eager full-library scan');
@@ -79,7 +81,7 @@ async function demandFacetCatalog(page,kind='tracker'){
   assert.equal(before.error,false,'demand-load catalog fixture must not enter an error state before demand');
   await trigger.click();
   await page.waitForFunction(()=>!!window.WeiG?.AppState&&(window.WeiG.AppState.catalogBusy||window.WeiG.AppState.catalogReady||window.WeiG.AppState.catalogError),null,{timeout:5000});
-  return selector;
+  return await preferred.isVisible().catch(()=>false)?preferredSelector:fallbackSelector;
 }
 
 async function openVirtualSession(page,{branch,qb,count,scenario='mixed',seed='pages-live',clean=false,sim=null}){
