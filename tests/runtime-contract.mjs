@@ -17,7 +17,8 @@ function walk(abs,rel=''){
 const version=read('VERSION').trim();
 const webVersion=read('webui/VERSION').trim();
 const packageVersion=JSON.parse(read('package.json')).version;
-assert(version===webVersion&&version===packageVersion,`Version sources diverged: VERSION=${version}, webui/VERSION=${webVersion}, package.json=${packageVersion}`);
+const productIdentity=JSON.parse(read('webui/private/product-identity.json'));
+assert(version===webVersion&&version===packageVersion&&productIdentity?.version===version,`Version sources diverged: VERSION=${version}, webui/VERSION=${webVersion}, package.json=${packageVersion}, productIdentity=${productIdentity?.version||'missing'}`);
 
 const required=[
   'webui/public/scripts/select-geometry.js',
