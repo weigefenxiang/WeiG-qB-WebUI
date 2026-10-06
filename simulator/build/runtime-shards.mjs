@@ -5,7 +5,7 @@ export const RUNTIME_SHARD_SCHEMA_VERSION=1;
 
 export function runtimeProfileKey(value){
   const key=String(value||'').trim();
-  if(!key||!/^[0-9A-Za-z._-]+$/.test(key))throw new Error(\`Unsafe runtime profile key: \${value}\`);
+  if(!key||!/^[0-9A-Za-z._-]+$/.test(key))throw new Error(`Unsafe runtime profile key: ${value}`);
   return key;
 }
 
@@ -16,7 +16,7 @@ export async function writeSimulatorRuntimeShards({catalog,out}={}){
   const profileStats=[];
   for(const profile of catalog){
     const qbVersion=runtimeProfileKey(profile?.qbVersion),profileText=JSON.stringify(profile)+'\\n';
-    await fs.writeFile(path.join(profilesDir,\`\${qbVersion}.json\`),profileText,'utf8');
+    await fs.writeFile(path.join(profilesDir,`${qbVersion}.json`),profileText,'utf8');
     profileStats.push({qbVersion,bytes:Buffer.byteLength(profileText,'utf8'),sourceSha:String(profile?.sourceSha||'')});
   }
   const manifest={schemaVersion:RUNTIME_SHARD_SCHEMA_VERSION,profiles:profileStats,copyRuntime:'product-source/qb-copy-profiles+bindings+fallback'};

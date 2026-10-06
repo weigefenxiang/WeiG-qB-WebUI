@@ -124,8 +124,8 @@ export function renderLocaleQm(messages){
 export function writeNativeSettingsArtifacts(catalog,behaviorEvidence,{dataDir,qmSourceDir,qmOutputDir,recoveryUnion}={}){
   const bundle=buildNativeSettingsBundle(catalog,behaviorEvidence,{recoveryUnion});
   if(dataDir)materializeRuntimeCopyShards(bundle,path.resolve(dataDir));
-  if(qmSourceDir){fs.rmSync(qmSourceDir,{recursive:true,force:true});fs.mkdirSync(qmSourceDir,{recursive:true});for(const [locale,messages] of Object.entries(bundle.localeMessages))fs.writeFileSync(path.join(qmSourceDir,\`webui_\${locale}.ts\`),renderLocaleTs(locale,messages),'utf8');}
-  if(qmOutputDir){fs.rmSync(qmOutputDir,{recursive:true,force:true});fs.mkdirSync(qmOutputDir,{recursive:true});for(const [locale,messages] of Object.entries(bundle.localeMessages))fs.writeFileSync(path.join(qmOutputDir,\`webui_\${locale}.qm\`),renderLocaleQm(messages));}
+  if(qmSourceDir){fs.rmSync(qmSourceDir,{recursive:true,force:true});fs.mkdirSync(qmSourceDir,{recursive:true});for(const [locale,messages] of Object.entries(bundle.localeMessages))fs.writeFileSync(path.join(qmSourceDir,`webui_${locale}.ts`),renderLocaleTs(locale,messages),'utf8');}
+  if(qmOutputDir){fs.rmSync(qmOutputDir,{recursive:true,force:true});fs.mkdirSync(qmOutputDir,{recursive:true});for(const [locale,messages] of Object.entries(bundle.localeMessages))fs.writeFileSync(path.join(qmOutputDir,`webui_${locale}.qm`),renderLocaleQm(messages));}
   return bundle;
 }
 
