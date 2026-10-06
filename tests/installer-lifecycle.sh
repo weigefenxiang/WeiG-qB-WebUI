@@ -441,8 +441,11 @@ const fs=require('node:fs');
 const path=require('node:path');
 const root=process.env.ROOT;
 const dest=process.env.DEST;
-const compact=['capabilities.json','detail-compat.json','settings-compat.json','torrent-compat.json','source-actions.json','rss-compat.json','qb-settings-native.txt'];
-const compactBytes=compact.reduce((sum,name)=>sum+fs.statSync(path.join(dest,'private/data',name)).size,0);
+const compact=['capabilities.json','detail-compat.json','settings-compat.json','torrent-compat.json','source-actions.json','rss-compat.json'];
+function walk(dir){return fs.readdirSync(dir,{withFileTypes:true}).flatMap(entry=>{const file=path.join(dir,entry.name);return entry.isDirectory()?walk(file):entry.isFile()?[file]:[];});}
+const dataRoot=path.join(dest,'private/data'),copyFiles=['qb-copy-profiles','qb-copy-bindings','qb-copy-fallback'].flatMap(name=>walk(path.join(dataRoot,name)));
+const runtimeFiles=compact.map(name=>path.join(dataRoot,name)).concat(copyFiles);
+const compactBytes=runtimeFiles.reduce((sum,file)=>sum+fs.statSync(file).size,0);
 const meta=JSON.parse(fs.readFileSync(path.join(dest,'private/weig-install.json'),'utf8'));
 const evidence={
   schemaVersion:1,
@@ -476,7 +479,7 @@ const evidence={
   rollbackState:{
     version:meta.version,
     gitSha:meta.gitSha,
-    compactRuntimeFiles:compact.length,
+    compactRuntimeFiles:runtimeFiles.length,
     compactRuntimeBytes:compactBytes
   }
 };

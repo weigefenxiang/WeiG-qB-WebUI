@@ -82,9 +82,11 @@ export function isSettingsUiPath(path){
     'webui/private/scripts/settings-schema.js',
     'webui/private/scripts/session.js',
     'webui/private/scripts/i18n.js',
-    'webui/private/data/settings-compat.json',
-    'webui/private/data/qb-settings-native.txt'
+    'webui/private/data/settings-compat.json'
   ].includes(path)
+    || starts(path,'webui/private/data/qb-copy-profiles/')
+    || starts(path,'webui/private/data/qb-copy-bindings/')
+    || starts(path,'webui/private/data/qb-copy-fallback/')
     || starts(path,'webui/translations/')
     || /^tests\/(?:settings|native-webui-return|locale|qb-preference|browser-settings)-.*\.mjs$/.test(path);
 }

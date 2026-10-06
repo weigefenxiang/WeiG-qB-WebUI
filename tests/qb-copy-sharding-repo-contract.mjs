@@ -67,6 +67,14 @@ const allowedLegacy={
   'tests/qb-runtime-copy-materialization-contract.mjs':['existsSync'],
   'audits/qb-webui-catalog-contract.mjs':['existsSync'],
   'tests/qb-locale-pipeline-contract.mjs':['fs.rmSync','runtimeI18n.includes'],
+  'installers/install.ps1':['Test-Path'],
+  'installers/install.sh':['! -e'],
+  'simulator/build/build-pages.mjs':['exists('],
+  'tests/candidate-deployment.sh':['existsSync'],
+  'tests/i18n-runtime-owner-contract.mjs':['i18n.includes','fs.rmSync'],
+  'tests/installer-lifecycle.ps1':['Test-Path'],
+  'tests/installer-lifecycle.sh':['test ! -e','fs.existsSync'],
+  'tools/build-webui-dist.mjs':['fs.existsSync','redundantBytes'],
 };
 const legacyHits=[];
 for(const file of walk(root)){
