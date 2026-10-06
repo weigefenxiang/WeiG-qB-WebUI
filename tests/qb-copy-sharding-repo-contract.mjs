@@ -7,6 +7,7 @@ const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const dataDir=path.join(root,'webui/private/data');
 const textExt=new Set(['.js','.mjs','.json','.yml','.yaml','.sh','.ps1','.md','.html','.css','.txt']);
 const skipped=new Set(['node_modules','.git','artifacts','dist']);
+const legacyRegistry=['qb-settings','native.txt'].join('-');
 
 function walk(dir){
   const out=[];
@@ -22,7 +23,7 @@ function rel(file){return path.relative(root,file).replaceAll('\\','/');}
 function filesIn(dir,ext){return fs.readdirSync(dir,{withFileTypes:true}).filter(x=>x.isFile()&&x.name.endsWith(ext)).map(x=>x.name).sort();}
 function recursiveFiles(dir,ext){return walk(dir).filter(file=>file.endsWith(ext)).sort();}
 
-assert.equal(fs.existsSync(path.join(dataDir,'qb-settings-native.txt')),false,'retired all-version qB copy registry must stay absent');
+assert.equal(fs.existsSync(path.join(dataDir,legacyRegistry)),false,'retired all-version qB copy registry must stay absent');
 const profiles=filesIn(path.join(dataDir,'qb-copy-profiles'),'.json');
 const bindings=filesIn(path.join(dataDir,'qb-copy-bindings'),'.txt');
 const fallback4=filesIn(path.join(dataDir,'qb-copy-fallback/4'),'.json');
@@ -64,30 +65,29 @@ const allowedLegacy={
   'tools/qb-webui-catalog.mjs':['rmSync'],
   'tools/qb-runtime-copy-product.mjs':['existsSync','rmSync'],
   'tests/qb-runtime-copy-materialization-contract.mjs':['existsSync'],
-  'tests/qb-copy-sharding-repo-contract.mjs':['existsSync']
 };
 const legacyHits=[];
 for(const file of walk(root)){
   if(!textExt.has(path.extname(file)))continue;
   const body=fs.readFileSync(file,'utf8');
-  if(!body.includes('qb-settings-native.txt'))continue;
+  if(!body.includes(legacyRegistry))continue;
   const name=rel(file),allowed=allowedLegacy[name];
   if(!allowed){legacyHits.push(name);continue;}
-  const lines=body.split(/\r?\n/).filter(line=>line.includes('qb-settings-native.txt'));
+  const lines=body.split(/\r?\n/).filter(line=>line.includes(legacyRegistry));
   for(const line of lines)assert.ok(allowed.some(token=>line.includes(token)),name+' contains a non-retirement use of the legacy qB copy registry: '+line.trim());
 }
 assert.deepEqual(legacyHits,[],'retired all-version qB copy registry still has active repository callers');
 
 const i18n=fs.readFileSync(path.join(root,'webui/private/scripts/i18n.js'),'utf8');
 for(const token of ['data/qb-copy-profiles/','data/qb-copy-bindings/','data/qb-copy-fallback/'])assert.ok(i18n.includes(token),'runtime i18n is missing '+token);
-assert.equal(i18n.includes('qb-settings-native.txt'),false);
+assert.equal(i18n.includes(legacyRegistry),false);
 
 const simulator=fs.readFileSync(path.join(root,'simulator/service-worker/service-worker.js'),'utf8');
 assert.equal(simulator.includes('RUNTIME_COPY_BASE'),false,'Virtual qB must not generate or consume a second copy-shard format');
-assert.equal(simulator.includes('qb-settings-native.txt'),false);
+assert.equal(simulator.includes(legacyRegistry),false);
 
 for(const workflow of ['.github/workflows/a62-focused.yml','.github/workflows/ci.yml','.github/workflows/pages-source.yml','.github/workflows/pages.yml']){
-  assert.equal(fs.readFileSync(path.join(root,workflow),'utf8').includes('qb-settings-native.txt'),false,workflow+' still treats the retired registry as an active workflow asset');
+  assert.equal(fs.readFileSync(path.join(root,workflow),'utf8').includes(legacyRegistry),false,workflow+' still treats the retired registry as an active workflow asset');
 }
 const dist=fs.readFileSync(path.join(root,'tools/build-webui-dist.mjs'),'utf8');
 assert.ok(dist.includes('schemaVersion:6')&&dist.includes("ownedCopyLayout:'private/data/qb-copy-{profiles,bindings,fallback}'"));
