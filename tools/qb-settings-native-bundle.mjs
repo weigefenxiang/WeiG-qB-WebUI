@@ -5,6 +5,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {canonicalQbDisplayText,canonicalQbRef,qbSourceRefKey} from './qb-source-text.mjs';
 import {validateQbNativeQmRecoveryUnion} from './qb-native-qm-recovery.mjs';
+import {materializeRuntimeCopyShards} from './qb-runtime-copy-shards.mjs';
 
 const QM_MAGIC=Buffer.from([0x3c,0xb8,0x64,0x18,0xca,0xef,0x9c,0x95,0xcd,0x21,0x1c,0xbf,0x60,0xa1,0xbd,0xdd]);
 const QM_HASHES=0x42,QM_MESSAGES=0x69;
@@ -15,7 +16,6 @@ const refKey=qbSourceRefKey;
 function refId(context,source){return crypto.createHash('sha256').update(refKey(context,source)).digest('hex').slice(0,24);}
 function contentId(prefix,value){return `${prefix}${crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex').slice(0,20)}`;}
 function isPlainEnglish(locale){return String(locale||'').trim().replace('-','_').toLowerCase()==='en';}
-function encodeField(value){return encodeURIComponent(String(value??''));}
 function qbtTranslation(value){if(Array.isArray(value))return value.length?canonicalQbDisplayText(value[0]):null;const text=canonicalQbDisplayText(value);return text||null;}
 const RUNTIME_SOURCE_REFS=[{context:'HttpServer',source:'External IP: %1%2'},{context:'HttpServer',source:'External IPs: %1, %2'},{context:'HttpServer',source:'External IP: N/A'},{context:'HttpServer',source:'Free space: %1'}];
 function collectSets(catalog){const out={};for(const profile of catalog||[])Object.assign(out,profile?.settingsTranslationSets||{});return out;}
@@ -102,60 +102,6 @@ export function buildNativeSettingsBundle(catalog,behaviorEvidence,{recoveryUnio
   return{schemaVersion:3,source:'qB-source-context-runtime-copy-ir+minimal-official-qm',profileCount:profiles.length,profiles,refs:Object.fromEntries([...refs.values()].sort((a,b)=>a.id.localeCompare(b.id)).map(item=>[item.id,{context:item.context,source:item.source}])),bindings:stableObject(bindings),bridgeSets:stableObject(bridgeSets),localeMessages};
 }
 
-function tokenOrder(a,b){return Number.parseInt(a,36)-Number.parseInt(b,36);}
-function compactBridgeTables(bridgeSets,profiles){
-  const pairKeys=new Set();
-  for(const setId of Object.keys(bridgeSets||{}).sort())for(const ref of Object.keys(bridgeSets[setId]||{}).sort())pairKeys.add(JSON.stringify([ref,String(bridgeSets[setId][ref])]));
-  const values={},tokens=new Map(),ordered=[...pairKeys].sort();
-  ordered.forEach((key,index)=>{const [ref,value]=JSON.parse(key),token=index.toString(36);tokens.set(key,token);values[token]={ref,value};});
-  const fullSets={};
-  for(const setId of Object.keys(bridgeSets||{}).sort())fullSets[setId]=Object.keys(bridgeSets[setId]||{}).sort().map(ref=>tokens.get(JSON.stringify([ref,String(bridgeSets[setId][ref])])));
-  const sets={},previousByLocale=new Map();
-  const fullPlan=setId=>({parent:null,add:[...(fullSets[setId]||[])],remove:[]});
-  for(const profile of profiles||[]){
-    for(const locale of Object.keys(profile?.bridges||{}).sort()){
-      const setId=profile.bridges[locale];
-      if(!setId||!fullSets[setId]){previousByLocale.delete(locale);continue;}
-      if(!sets[setId]){
-        let plan=fullPlan(setId),parent=previousByLocale.get(locale);
-        if(parent&&parent!==setId&&sets[parent]&&fullSets[parent]){
-          const current=new Set(fullSets[setId]),previous=new Set(fullSets[parent]);
-          const add=[...current].filter(token=>!previous.has(token)).sort(tokenOrder),remove=[...previous].filter(token=>!current.has(token)).sort(tokenOrder);
-          const fullCost=plan.add.join(',').length,deltaCost=parent.length+add.join(',').length+remove.join(',').length+2;
-          if(deltaCost<fullCost)plan={parent,add,remove};
-        }
-        sets[setId]=plan;
-      }
-      previousByLocale.set(locale,setId);
-    }
-  }
-  for(const setId of Object.keys(fullSets).sort())if(!sets[setId])sets[setId]=fullPlan(setId);
-  return{values,sets};
-}
-
-export function renderOwnedCopyRegistry(bundle){
-  if(!bundle||bundle.schemaVersion!==3)throw new Error('Owned copy registry requires runtime copy bundle schemaVersion 3.');
-  const compact=compactBridgeTables(bundle.bridgeSets,bundle.profiles),lines=['# WeiG qB-owned copy runtime IR v3'];
-  for(const profile of [...bundle.profiles].sort((a,b)=>a.sourceSha.localeCompare(b.sourceSha))){
-    lines.push(`@@PROFILE\t${profile.sourceSha}\t${encodeField(profile.qbVersion)}\t${encodeField(profile.family)}\t${profile.bindingId}\t${encodeField(profile.nativeLocales.join(','))}\t${encodeField(profile.bridgeLocales.join(','))}`);
-    for(const locale of Object.keys(profile.bridges||{}).sort())lines.push(`@@BRIDGE\t${profile.sourceSha}\t${encodeField(locale)}\t${profile.bridges[locale]||'-'}`);
-  }
-  for(const bindingId of Object.keys(bundle.bindings||{}).sort()){
-    const binding=bundle.bindings[bindingId];
-    for(const key of Object.keys(binding.preferences||{}).sort()){
-      const entry=binding.preferences[key];
-      lines.push(`@@PREF\t${bindingId}\t${encodeField(key)}\t${encodeField(entry.controlId||'')}\t${entry.title}\t${entry.description||'-'}`);
-    }
-    for(const key of Object.keys(binding.ui||{}).sort())lines.push(`@@UI\t${bindingId}\t${encodeField(key)}\t${binding.ui[key]}`);
-  }
-  for(const token of Object.keys(compact.values).sort(tokenOrder)){const item=compact.values[token];lines.push(`@@VAL\t${token}\t${item.ref}\t${JSON.stringify(item.value)}`);}
-  for(const setId of Object.keys(compact.sets).sort()){const set=compact.sets[setId];lines.push(`@@SET\t${setId}\t${set.parent||'-'}\t${set.add.join(',')}\t${set.remove.join(',')}`);}
-  for(const id of Object.keys(bundle.refs||{}).sort()){
-    const item=bundle.refs[id];lines.push(`@@REF\t${id}\t${encodeField(item.context)}\t${encodeField(item.source)}`);lines.push(`QBT_TR(${item.source})QBT_TR[CONTEXT=${item.context}]`);lines.push('@@END');
-  }
-  return `${lines.join('\n')}\n`;
-}
-
 export function renderLocaleTs(locale,messages){
   const byContext=new Map();
   for(const item of messages||[]){if(!item?.context||!item?.source||!translationForms(item).length)continue;const list=byContext.get(item.context)||[];list.push(item);byContext.set(item.context,list);}
@@ -175,21 +121,21 @@ export function renderLocaleQm(messages){
   offsets.sort((a,b)=>a.hash-b.hash||a.offset-b.offset);const hashData=Buffer.concat(offsets.flatMap(item=>[u32(item.hash),u32(item.offset)])),messageData=Buffer.concat(messageParts);return Buffer.concat([QM_MAGIC,qmBlock(QM_HASHES,hashData),qmBlock(QM_MESSAGES,messageData)]);
 }
 
-export function writeNativeSettingsArtifacts(catalog,behaviorEvidence,{registryPath,qmSourceDir,qmOutputDir,recoveryUnion}={}){
+export function writeNativeSettingsArtifacts(catalog,behaviorEvidence,{dataDir,qmSourceDir,qmOutputDir,recoveryUnion}={}){
   const bundle=buildNativeSettingsBundle(catalog,behaviorEvidence,{recoveryUnion});
-  if(registryPath){fs.mkdirSync(path.dirname(registryPath),{recursive:true});fs.writeFileSync(registryPath,renderOwnedCopyRegistry(bundle),'utf8');}
-  if(qmSourceDir){fs.rmSync(qmSourceDir,{recursive:true,force:true});fs.mkdirSync(qmSourceDir,{recursive:true});for(const [locale,messages] of Object.entries(bundle.localeMessages))fs.writeFileSync(path.join(qmSourceDir,`webui_${locale}.ts`),renderLocaleTs(locale,messages),'utf8');}
-  if(qmOutputDir){fs.rmSync(qmOutputDir,{recursive:true,force:true});fs.mkdirSync(qmOutputDir,{recursive:true});for(const [locale,messages] of Object.entries(bundle.localeMessages))fs.writeFileSync(path.join(qmOutputDir,`webui_${locale}.qm`),renderLocaleQm(messages));}
+  if(dataDir)materializeRuntimeCopyShards(bundle,path.resolve(dataDir));
+  if(qmSourceDir){fs.rmSync(qmSourceDir,{recursive:true,force:true});fs.mkdirSync(qmSourceDir,{recursive:true});for(const [locale,messages] of Object.entries(bundle.localeMessages))fs.writeFileSync(path.join(qmSourceDir,\`webui_\${locale}.ts\`),renderLocaleTs(locale,messages),'utf8');}
+  if(qmOutputDir){fs.rmSync(qmOutputDir,{recursive:true,force:true});fs.mkdirSync(qmOutputDir,{recursive:true});for(const [locale,messages] of Object.entries(bundle.localeMessages))fs.writeFileSync(path.join(qmOutputDir,\`webui_\${locale}.qm\`),renderLocaleQm(messages));}
   return bundle;
 }
 
 const isMain=process.argv[1]&&path.resolve(process.argv[1])===path.resolve(fileURLToPath(import.meta.url));
 if(isMain){
   try{
-    const catalogPath=path.resolve(process.argv[2]||''),behaviorPath=path.resolve(process.argv[3]||'tools/data/qb-translator-behavior-lkg.json'),registryPath=path.resolve(process.argv[4]||'qb-settings-native.txt'),qmSourceDir=path.resolve(process.argv[5]||'qb-settings-qm-src'),qmOutputDir=path.resolve(process.argv[6]||'qb-settings-qm'),settingsLkgArg=process.argv.find(value=>value.startsWith('--settings-lkg=')),settingsLkgPath=settingsLkgArg?path.resolve(settingsLkgArg.slice('--settings-lkg='.length)):'';
-    if(!catalogPath||!fs.existsSync(catalogPath)||!fs.existsSync(behaviorPath)||!settingsLkgPath||!fs.existsSync(settingsLkgPath))throw new Error('Usage: node tools/qb-settings-native-bundle.mjs <enriched-catalog.json> [behavior.json] [registry.txt] [qm-source-dir] [qm-output-dir] --settings-lkg=path');
-    const catalog=JSON.parse(fs.readFileSync(catalogPath,'utf8')),behavior=JSON.parse(fs.readFileSync(behaviorPath,'utf8')),settingsLkg=JSON.parse(fs.readFileSync(settingsLkgPath,'utf8')),bundle=writeNativeSettingsArtifacts(catalog,behavior,{registryPath,qmSourceDir,qmOutputDir,recoveryUnion:settingsLkg?.recovery?.union});
+    const catalogPath=path.resolve(process.argv[2]||''),behaviorPath=path.resolve(process.argv[3]||'tools/data/qb-translator-behavior-lkg.json'),dataDir=path.resolve(process.argv[4]||'webui/private/data'),qmSourceDir=path.resolve(process.argv[5]||'qb-settings-qm-src'),qmOutputDir=path.resolve(process.argv[6]||'qb-settings-qm'),settingsLkgArg=process.argv.find(value=>value.startsWith('--settings-lkg=')),settingsLkgPath=settingsLkgArg?path.resolve(settingsLkgArg.slice('--settings-lkg='.length)):'';
+    if(!catalogPath||!fs.existsSync(catalogPath)||!fs.existsSync(behaviorPath)||!settingsLkgPath||!fs.existsSync(settingsLkgPath))throw new Error('Usage: node tools/qb-settings-native-bundle.mjs <enriched-catalog.json> [behavior.json] [data-dir] [qm-source-dir] [qm-output-dir] --settings-lkg=path');
+    const catalog=JSON.parse(fs.readFileSync(catalogPath,'utf8')),behavior=JSON.parse(fs.readFileSync(behaviorPath,'utf8')),settingsLkg=JSON.parse(fs.readFileSync(settingsLkgPath,'utf8')),bundle=writeNativeSettingsArtifacts(catalog,behavior,{dataDir,qmSourceDir,qmOutputDir,recoveryUnion:settingsLkg?.recovery?.union});
     const native=bundle.profiles.reduce((sum,item)=>sum+item.nativeLocales.length,0),bridge=bundle.profiles.reduce((sum,item)=>sum+item.bridgeLocales.length,0),ui=bundle.profiles.reduce((sum,item)=>sum+item.mappedUi,0);
-    console.log(`Built qB runtime copy bundle: ${bundle.profileCount} profiles, ${ui} qB-owned UI bindings, ${Object.keys(bundle.bindings).length} deduplicated binding sets, ${Object.keys(bundle.bridgeSets).length} compact bridge sets, ${Object.keys(bundle.localeMessages).length} minimal QM assets, native locale routes ${native}, bridge locale routes ${bridge}.`);
+    console.log(`Built sharded qB runtime copy bundle: ${bundle.profileCount} profiles, ${ui} qB-owned UI bindings, ${Object.keys(bundle.bindings).length} deduplicated binding sets, ${Object.keys(bundle.bridgeSets).length} compact bridge sets, ${Object.keys(bundle.localeMessages).length} minimal QM assets, native locale routes ${native}, bridge locale routes ${bridge}.`);
   }catch(error){console.error(error?.message||error);process.exitCode=1;}
 }

@@ -1,0 +1,1211 @@
+# WeiG qB-owned binding runtime v1
+@@BINDING	bc0fd6c029988ab9869aa
+@@PREF	add_trackers	add_trackers_textarea	923223da4549d92faae622f2	-
+@@PREF	add_trackers_enabled	add_trackers_checkbox	923223da4549d92faae622f2	-
+@@PREF	alt_dl_limit	alt_dl_limit_value	196876a2705f66d794edd384	-
+@@PREF	alt_up_limit	alt_up_limit_value	d0663c1b12cdd5e9e65cdc3b	-
+@@PREF	anonymous_mode	anonymous_mode_checkbox	8125dbf4fd6a474fd107a489	-
+@@PREF	autorun_enabled	autorun_checkbox	87779bf21a70f9f22c2f7e09	-
+@@PREF	autorun_program	autorunProg_txt	87779bf21a70f9f22c2f7e09	-
+@@PREF	banned_IPs	banned_IPs_textarea	0e9be03a55fb7cabf2952f99	-
+@@PREF	bittorrent_protocol	enable_protocol_combobox	e3d326a6f0ce8e02aaffb31e	-
+@@PREF	bypass_auth_subnet_whitelist	bypass_auth_subnet_whitelist_textarea	a830b6efc09b04dde505a880	-
+@@PREF	bypass_auth_subnet_whitelist_enabled	bypass_auth_subnet_whitelist_checkbox	a830b6efc09b04dde505a880	-
+@@PREF	bypass_local_auth	bypass_local_auth_checkbox	012567cc60cee5a67d085085	-
+@@PREF	dht	dht_checkbox	9bf2b65cb82e72e9403d3aa0	-
+@@PREF	dl_limit	dl_limit_value	196876a2705f66d794edd384	-
+@@PREF	dont_count_slow_torrents	dont_count_slow_torrents_checkbox	819a6981f4605025a4a3ef42	-
+@@PREF	dyndns_domain	dyndns_domain_text	d797e26f0158f014494296be	-
+@@PREF	dyndns_enabled	use_dyndns_checkbox	97ebcdfcfe9b20d60a4da1d9	-
+@@PREF	dyndns_password	dyndns_password_text	90c0a16124052e66a913a0d3	-
+@@PREF	dyndns_service	dyndns_select	97ebcdfcfe9b20d60a4da1d9	-
+@@PREF	dyndns_username	dyndns_username_text	7f50b1f488bd9531408e62c4	-
+@@PREF	encryption	encryption_select	a1087d4f4d22c217c77f3061	-
+@@PREF	export_dir	exportdir_text	02a21ac628c49e289c22ade9	-
+@@PREF	export_dir_fin	exportdirfin_text	f4493762427e6f1a57c78a1b	-
+@@PREF	force_proxy	force_proxy_checkbox	2e2bfc87cde2de69a1ff5324	-
+@@PREF	incomplete_files_ext	appendext_checkbox	4774cc57c1dca3d3245b8095	-
+@@PREF	ip_filter_enabled	ipfilter_enabled_checkbox	ca3c4685f71e48552b79dbfc	-
+@@PREF	ip_filter_path	ipfilter_text	3b245f161b29f5268216722b	-
+@@PREF	ip_filter_trackers	ipfilter_trackers_checkbox	0d86423356498c8a32605e85	-
+@@PREF	limit_tcp_overhead	limit_tcp_overhead_checkbox	674896440db0dc91f44d6a1f	-
+@@PREF	limit_utp_rate	limit_utp_rate_checkbox	d569eb8c57c72922d43e56d2	-
+@@PREF	listen_port	port_value	a7faa15bb604952286b89929	-
+@@PREF	locale	locale_select	8657208f85e77c7ec84c2c44	-
+@@PREF	lsd	lsd_checkbox	8480d5ef24e492a2fe1a0416	-
+@@PREF	mail_notification_auth_enabled	mail_auth_checkbox	de27b0f2894bb9519050ed7e	-
+@@PREF	mail_notification_email	dest_email_txt	7f1a79317163a6219c7bd1fc	-
+@@PREF	mail_notification_enabled	mail_notification_checkbox	8fb1db57e345ff1585350c70	-
+@@PREF	mail_notification_password	mail_password_text	90c0a16124052e66a913a0d3	-
+@@PREF	mail_notification_smtp	smtp_server_txt	b39b4f2b3415d844835e9675	-
+@@PREF	mail_notification_ssl_enabled	mail_ssl_checkbox	f288cd0e1c92264a4a23ba2e	-
+@@PREF	mail_notification_username	mail_username_text	7f50b1f488bd9531408e62c4	-
+@@PREF	max_active_downloads	max_active_dl_value	212847f1309a7d04b093e222	-
+@@PREF	max_active_torrents	max_active_to_value	3f229578b1631940874ae2d6	-
+@@PREF	max_active_uploads	max_active_up_value	d42c8ed9d9911cc4c975f7b8	-
+@@PREF	max_connec	max_connec_value	42712c10a2083e9180c456c2	-
+@@PREF	max_connec_per_torrent	max_connec_per_torrent_value	a3adc436d213daa6ce917d48	-
+@@PREF	max_ratio	max_ratio_value	a205a0cc7b9be600804839b1	-
+@@PREF	max_ratio_act	max_ratio_act	ae3b1b71ce6783e7768330a3	-
+@@PREF	max_ratio_enabled	max_ratio_checkbox	a205a0cc7b9be600804839b1	-
+@@PREF	max_seeding_time	max_seeding_time_value	072ecc4c3878986b302f379a	-
+@@PREF	max_seeding_time_enabled	max_seeding_time_checkbox	072ecc4c3878986b302f379a	-
+@@PREF	max_uploads	max_uploads_value	cc213631572101472e3e0195	-
+@@PREF	max_uploads_per_torrent	max_uploads_per_torrent_value	a1bad0ab54ff09655d28a1f0	-
+@@PREF	pex	pex_checkbox	6e2c98e51a4bbce12f0d1412	-
+@@PREF	preallocate_all	preallocateall_checkbox	c6c658cf65227626ce9e54dd	-
+@@PREF	proxy_auth_enabled	peer_proxy_auth_checkbox	de27b0f2894bb9519050ed7e	-
+@@PREF	proxy_ip	peer_proxy_host_text	329537a561c3eddf5db40e3c	-
+@@PREF	proxy_password	peer_proxy_password_text	90c0a16124052e66a913a0d3	-
+@@PREF	proxy_peer_connections	use_peer_proxy_checkbox	8cf22833083a66af633cf804	-
+@@PREF	proxy_port	peer_proxy_port_value	029592caa306fe020bcdae19	-
+@@PREF	proxy_torrents_only	proxy_only_for_torrents_checkbox	5ba768327151e1e472ffe0f8	-
+@@PREF	proxy_type	peer_proxy_type_select	40a78f8739a8f757c63a6c59	-
+@@PREF	proxy_username	peer_proxy_username_text	7f50b1f488bd9531408e62c4	-
+@@PREF	queueing_enabled	queueing_checkbox	6191488a8230eeec9c1e1e06	-
+@@PREF	random_port	random_port_checkbox	690390de3526946591c274ba	-
+@@PREF	save_path	savepath_text	b66b6e4a5f52979f45f920dc	-
+@@PREF	scan_dirs	watched_folders_tab	d14e6c1e2e56b204bc0c1099	-
+@@PREF	schedule_from_hour	schedule_from_hour	ab3103107ebc743c6113dd8d	-
+@@PREF	schedule_from_min	schedule_from_min	ab3103107ebc743c6113dd8d	-
+@@PREF	schedule_to_hour	schedule_to_hour	ab3103107ebc743c6113dd8d	-
+@@PREF	schedule_to_min	schedule_to_min	ab3103107ebc743c6113dd8d	-
+@@PREF	scheduler_days	schedule_freq_select	ab3103107ebc743c6113dd8d	-
+@@PREF	scheduler_enabled	limit_sheduling_checkbox	ab3103107ebc743c6113dd8d	-
+@@PREF	ssl_cert	ssl_cert_textarea	b7a19b9ba354b3bfe1cc3dc6	-
+@@PREF	ssl_key	ssl_key_textarea	ac423f98b0711fa35ce71748	-
+@@PREF	temp_path	temppath_text	96b08f6366d596e8da480bf5	-
+@@PREF	temp_path_enabled	temppath_checkbox	96b08f6366d596e8da480bf5	-
+@@PREF	up_limit	up_limit_value	d0663c1b12cdd5e9e65cdc3b	-
+@@PREF	upnp	upnp_checkbox	2e78e76a47f594bbb38d3278	-
+@@PREF	use_https	use_https_checkbox	d2c0c569af0c5f709ed69579	-
+@@PREF	web_ui_address	webui_address_value	b0c950d29962bbc1b09b61b6	-
+@@PREF	web_ui_domain_list	webui_domain_textarea	fe29e76f4ae40d7bcb53f883	-
+@@PREF	web_ui_password	webui_password_text	90c0a16124052e66a913a0d3	-
+@@PREF	web_ui_port	webui_port_value	029592caa306fe020bcdae19	-
+@@PREF	web_ui_upnp	webui_upnp_checkbox	0ddd2ad1579f0d42016daab2	-
+@@PREF	web_ui_username	webui_username_text	7f50b1f488bd9531408e62c4	-
+@@UI	add.copy.18ed5ace3080901d	18ed5ace3080901d69573b1b
+@@UI	add.copy.2669da49afb6b6db	2669da49afb6b6db6eba5dbf
+@@UI	add.copy.2d2f7a01890a0d44	2d2f7a01890a0d447b31beb6
+@@UI	add.copy.3b16b44fce8d9e27	3b16b44fce8d9e277d5824c0
+@@UI	add.copy.4756f4727430b3de	4756f4727430b3dead09a27e
+@@UI	add.copy.5ac1dcebbf9f7575	5ac1dcebbf9f7575784244c6
+@@UI	add.copy.6e9e2268aae6107e	6e9e2268aae6107eb7c8ae93
+@@UI	add.copy.8df30f78ef964365	8df30f78ef964365e277ffd3
+@@UI	add.copy.b4c1ff59734a1c42	b4c1ff59734a1c425c692457
+@@UI	add.copy.b6310c4ce6dbf71b	b6310c4ce6dbf71b98b81b7a
+@@UI	add.copy.b66b6e4a5f52979f	b66b6e4a5f52979f45f920dc
+@@UI	add.copy.b6b04ecf9c819e31	b6b04ecf9c819e31eca6801e
+@@UI	add.copy.e18f0b0f09704c5a	e18f0b0f09704c5a5346fcd8
+@@UI	add.copy.f100fd6b7135754d	f100fd6b7135754d9da6f127
+@@UI	add.copy.f516a8d2eba488e6	f516a8d2eba488e648516473
+@@UI	add.files	d4d87e1cba76133261d70c9e
+@@UI	add.links	6e9e2268aae6107eb7c8ae93
+@@UI	add.submit	18ed5ace3080901d69573b1b
+@@UI	add.title	6e9e2268aae6107eb7c8ae93
+@@UI	column.added_on	1cd73c600f4bc787d2df957b
+@@UI	column.amount_left	455e9421c85a79371938e9d6
+@@UI	column.category	c55975138056ab2c802e7214
+@@UI	column.completed	c3776b18e7735bfb4fe391ed
+@@UI	column.completion_on	538f48ae0083577760741d30
+@@UI	column.dl_limit	776411f978907a6531b135a2
+@@UI	column.dlspeed	9a9259ee0a017d71f5df6221
+@@UI	column.downloaded	812980b0e8c14529d1f21226
+@@UI	column.downloaded_session	1f5117adcac4e4b31c953fae
+@@UI	column.eta	e8dc38d3f1170a9527100bf9
+@@UI	column.last_activity	293330e80f52039e5ed010ac
+@@UI	column.max_ratio	a537e4fcfbca9e938e444c04
+@@UI	column.name	d5f2bc21ab8c43c0fb924af5
+@@UI	column.num_leechs	f93150c86bcd2ae7daf5fdc5
+@@UI	column.num_seeds	548a1575ce5ff7ac46631c41
+@@UI	column.progress	1c70be877c0fde225d1fd435
+@@UI	column.ratio	74b3808cfe9f26fb889479e3
+@@UI	column.save_path	7eff6dfba5f7ce346a70e94a
+@@UI	column.seen_complete	f94ff870e58e606ed5859612
+@@UI	column.size	2156a99f1267c2d6b3ae6dfb
+@@UI	column.status	a65584c0ca6ddde218caab4d
+@@UI	column.tags	7368aedc68157b456594416c
+@@UI	column.time_active	13a9a9039dc38710e3e1a429
+@@UI	column.total_size	53d5b63f62b6a12c8d18624f
+@@UI	column.tracker	9adc44535ac3a1a862193c82
+@@UI	column.up_limit	6fc3b2183aafbf99ca3df178
+@@UI	column.uploaded	e5c4c8f86004c33d249f77c1
+@@UI	column.uploaded_session	9518df053380933d6ab4453e
+@@UI	column.upspeed	2580ae4d9da127e0116b489b
+@@UI	detail.control.filePriority.1	8ad9babe12283400b5312608
+@@UI	detail.control.filePriority.2	6fb6382515ce39ad0c10059f
+@@UI	detail.control.filePriority.7	75a8207dd08f679e88d0dac3
+@@UI	detail.files.availability	a7be27a6cb93ed1149b0b998
+@@UI	detail.files.name	211de5f9b7e59cdbdf1196bf
+@@UI	detail.files.priority	988cba1df69c37048e9f4edd
+@@UI	detail.files.progress	8b1fd26da6cc91af09dcda71
+@@UI	detail.files.remaining	28cc470422ce5182edf5790e
+@@UI	detail.files.size	58030147e36c930a589baf13
+@@UI	detail.group.information	83574432c5e29667efdeb77e
+@@UI	detail.group.transfer	699a547c8dc38317b7ffa1c6
+@@UI	detail.peers.client	ca4e3b637a6379a34ad1483b
+@@UI	detail.peers.connection	5dd476dd149b981e590e8a91
+@@UI	detail.peers.country	8611e75849f5273b84c4eb05
+@@UI	detail.peers.dl_speed	93d0b6891e5613897e74ff8d
+@@UI	detail.peers.downloaded	3068c64aa1b9a8a378b4f1f4
+@@UI	detail.peers.files	15eb116bc8fba09258410cfd
+@@UI	detail.peers.flags	bf297b265ffa99f79f101df8
+@@UI	detail.peers.ip	6b5347d074b70daa5b2cd44d
+@@UI	detail.peers.port	8f80a17fecc964c518f7350b
+@@UI	detail.peers.progress	8d194c0f317faa0d9d74e6b6
+@@UI	detail.peers.relevance	0af2047d8d9a64f76e844f8c
+@@UI	detail.peers.up_speed	8486d6bfd50bb4d3b507651d
+@@UI	detail.peers.uploaded	c194cd7297d4476ccfa546a3
+@@UI	detail.property.addition_date	b09c0a256fd81b0d227d7a7d
+@@UI	detail.property.addition_date.presentation.negative	851415309f02d5705f358986
+@@UI	detail.property.comment	86f5765d94ca9e2292c4a19a
+@@UI	detail.property.completion_date	ee68510032f44c8f634a14a3
+@@UI	detail.property.created_by	26ed68fb1e1d847206249384
+@@UI	detail.property.creation_date	8b6415d53e75496e8e56d614
+@@UI	detail.property.creation_date.presentation.negative	851415309f02d5705f358986
+@@UI	detail.property.dl_limit	29f7e610f466685fc18e3294
+@@UI	detail.property.dl_speed	f29c94ea141e763af8167f4d
+@@UI	detail.property.eta	817de6d5f1c60e86f04a2eaf
+@@UI	detail.property.last_seen	5e65433c2a5379c9ff9fba4c
+@@UI	detail.property.last_seen.presentation.negative	b9ab7649672651be84aab8ca
+@@UI	detail.property.nb_connections	9146db4fdbe867a086095bd1
+@@UI	detail.property.peers	64abac8b7311b95036221510
+@@UI	detail.property.pieces	220a9e8be52049a7ed06ccdd
+@@UI	detail.property.pieces.presentation.negative	851415309f02d5705f358986
+@@UI	detail.property.reannounce	bf7c5737e3bbb316851c3d28
+@@UI	detail.property.save_path	235dc8b28803c7eca101653a
+@@UI	detail.property.seeds	809b9d89d72cc6672f28c888
+@@UI	detail.property.share_ratio	a01cc97c330696b2d39cf4df
+@@UI	detail.property.time_elapsed	6753539b6bf4ad3979a26e01
+@@UI	detail.property.torrent_hash	632a80b00571849f82ab8a72
+@@UI	detail.property.total_downloaded	a4a236310db90f1ba780c17f
+@@UI	detail.property.total_size	d473dbf3ddd52b460b38b18c
+@@UI	detail.property.total_uploaded	01340ce3596a5c734ba014f2
+@@UI	detail.property.total_wasted	f3f064485d3b2268128a8b64
+@@UI	detail.property.up_limit	ef9007cc2c3827c9104173a0
+@@UI	detail.property.up_speed	6ef2719e12e3a3fd44690e10
+@@UI	detail.tab.files	c23a81fa16b0baa4bad2fb73
+@@UI	detail.tab.overview	bb1fe273ef5f58847b051b0c
+@@UI	detail.tab.peers	0fc059a5d6b78a03e5bf2880
+@@UI	detail.tab.trackers	ab4732f4181691c17387fc15
+@@UI	detail.tab.webseeds	9530001de8f45dbbc99f89af
+@@UI	detail.trackers.msg	820e61271a3600f7f453fcd2
+@@UI	detail.trackers.num_peers	06caa6f9cf9909cacbc747f2
+@@UI	detail.trackers.status	fa8d5f36a600db4e008d4095
+@@UI	detail.trackers.url	6c9c3c22f28e75013b36108e
+@@UI	detail.webseeds.url	6c9c3c22f28e75013b36108e
+@@UI	facet.category.all	fa16c1a562c0cb8dcce77ea3
+@@UI	facet.category.uncategorized	725721ef558edb2385e8d392
+@@UI	filter.active	6843b84103d19b480f6e20b4
+@@UI	filter.all	62481df3aa34dec52d6aadb7
+@@UI	filter.completed	e9a23e62888f3d6903e9b650
+@@UI	filter.downloading	6fca148d32eba2390cf1a886
+@@UI	filter.errored	68922a9e075eca0701325ac6
+@@UI	filter.inactive	c79a8c5810f84e2a3ac9b020
+@@UI	filter.paused	6e731911d1d06943d7e5f8d7
+@@UI	filter.resumed	9f48221096b460fd5f616418
+@@UI	filter.seeding	4b2c90d9bbc00bfc3120e4a8
+@@UI	route.settings	094548fb0f98aa28a3f17490
+@@UI	rss.downloader.copy.0e5f77fbf912b1e94e4d	ce6e912729e21e98be2d14b9
+@@UI	rss.downloader.copy.1aeb64d9fc6583ee1682	ab2b212feb700410d71ebe51
+@@UI	rss.downloader.copy.411d9515d04409b23087	9a9c77243dbc506236d0a6ee
+@@UI	rss.downloader.copy.6f7b8c9ff524612f6fb8	a2b79176c1f5b6da51f15a6d
+@@UI	rss.downloader.copy.71aa5457fc98b9917914	39a3865894a76ae3a54f0d9c
+@@UI	rss.downloader.copy.724fe8702705c6715587	b4df6ba1b6fa58a77412393b
+@@UI	rss.downloader.copy.8a6cfb277474e74d8563	12a3d0c291c71bdaf5fcf9fb
+@@UI	rss.downloader.copy.9118ddab95e8adec12a0	fb4bbdb2e785381859970db5
+@@UI	rss.downloader.copy.91adfed895f864e3b467	ebb5218426c924b8695c6758
+@@UI	rss.downloader.copy.b1c38f3fd007681966c3	c415c7844e5d4e3a2fdfc675
+@@UI	rss.downloader.copy.bbd06ea036431a3bf20a	476aeeb93fca7f00bbf0ac64
+@@UI	rss.downloader.copy.be6d1d50fb95822311d8	e948953759538c7a5b48d11a
+@@UI	rss.downloader.copy.c0b991b64b72933ab378	877e9f04680a93b90d9770bc
+@@UI	rss.downloader.copy.cb9d44b1101ee7da330f	ed366381ee8e49b1851d73aa
+@@UI	rss.downloader.copy.d8006b5176aae693cf4c	b192059ae53f62e030b4915e
+@@UI	rss.downloader.copy.f2b618e6d3c693380293	fe5c42473211a3e02a36b987
+@@UI	settings.preferences.copy.02e0303e1c4845d0679f	2fa7dba2809f3e32aa036685
+@@UI	settings.preferences.copy.05019e1d3b328777e8c9	b550306b5173473bc7e7004a
+@@UI	settings.preferences.copy.055c985008da675c390b	b953ca85a0d3e399ca8a8fd8
+@@UI	settings.preferences.copy.17cba728df2b41fcf476	cc7ae6d45aea487e32b67f33
+@@UI	settings.preferences.copy.19ecc914aa65f51a3de4	96d69663043966d34e472964
+@@UI	settings.preferences.copy.1d15121b1ae63e62f274	beb41e1b397ce3145b60a595
+@@UI	settings.preferences.copy.20c1917dbff676a390c8	b5b6b941a568f8da250654ad
+@@UI	settings.preferences.copy.21a07288c73ecf39ee53	3a3111781218d251ba89e53c
+@@UI	settings.preferences.copy.25bcb7041bc8cc653f99	71f7ea50a85dfaafcb9fc5ff
+@@UI	settings.preferences.copy.26fc52a27fcb4b25339d	d9924e3c4dc70ffb3e3c410c
+@@UI	settings.preferences.copy.273f10b4e80c96ba19ed	b1182fdda00e0535fd8ab41b
+@@UI	settings.preferences.copy.2766108c6f048b2f1223	089a74d09def67e0c0bbc39b
+@@UI	settings.preferences.copy.2a477ba05bdcf92836c9	aac4a22e113cc17a5c12154a
+@@UI	settings.preferences.copy.2d5732533c622e6b2a05	9fe8729595c57011b94153cb
+@@UI	settings.preferences.copy.34c21cff1bd88bbc4dde	47b461421cdd57dc30dad427
+@@UI	settings.preferences.copy.3507a28eae4e7d3ae53e	26274fc2c8bcb1ef314a194d
+@@UI	settings.preferences.copy.350dea4a8941c95fabfd	8bcb0e5995dc045b39cc93ab
+@@UI	settings.preferences.copy.357753575766b0c857eb	eac3db8c1f0de932c66eb883
+@@UI	settings.preferences.copy.3d47344e70b07e8904ed	7093cd84bafdab7c37fdf933
+@@UI	settings.preferences.copy.44968abf473bd03c0a94	8a7e1d961d9b30da7c689872
+@@UI	settings.preferences.copy.466be6e1fd7a23f645b3	16199d68df70146c9a8e344e
+@@UI	settings.preferences.copy.4d28c8fca970432ba378	6dfe049e77c0505f72359c74
+@@UI	settings.preferences.copy.4dca24e4a402d5e8b9b6	297cd30014c1e65308c8e029
+@@UI	settings.preferences.copy.4e8015e22abc76b4e61f	5299a5d5ff0556393f06b8f8
+@@UI	settings.preferences.copy.517fdb15fe23828075e2	c925c7fee36a8258dea113bb
+@@UI	settings.preferences.copy.51e3f3b4dc2a4d0bc790	97f32b54607b6b9a948415ba
+@@UI	settings.preferences.copy.64567521edc9ce40dd1f	357b3ba4ad2d78aff64332ec
+@@UI	settings.preferences.copy.67efd6d49830a2692e37	f04e9f6cb5b00ddefca2fe05
+@@UI	settings.preferences.copy.69467905706f68817c42	1c4016e6b0ca949847ab9214
+@@UI	settings.preferences.copy.6fdeeca31d9c26606505	c1676ccd81be378180a88f4e
+@@UI	settings.preferences.copy.70b5579f9cfdfc0f9c90	b008bf7b546716ad4d7d0a81
+@@UI	settings.preferences.copy.744b4a2606d5387c8f54	f83958b11d14876808d76224
+@@UI	settings.preferences.copy.749920a928f49c7a3d8b	1c322d736b494d1eef31ddf4
+@@UI	settings.preferences.copy.75292405df43c9bc4930	1d822d9c6d3e30452c25cee1
+@@UI	settings.preferences.copy.80948a36c567b0584497	2aa99126bf992d744d6cba4e
+@@UI	settings.preferences.copy.8191ec3870d8e0ec2501	baea049d83b218b20cf3d6d9
+@@UI	settings.preferences.copy.82bb97ae20b3329ddbfc	472e5222e62d1e10ed6e878b
+@@UI	settings.preferences.copy.89cf21e2438460c19fa2	b58f78f681af01537d0ba325
+@@UI	settings.preferences.copy.8bf45f425db751d1377b	eb2fb42cde26a2c29d077d4d
+@@UI	settings.preferences.copy.8e8aedd2e21e2231b13c	2011b90fa59750894a3c71cf
+@@UI	settings.preferences.copy.8fd3042f1b31b2c26c68	a04d341c0f281120dfafbce4
+@@UI	settings.preferences.copy.939c05e37afc48ef114e	28577c6f8918cd408e651f2a
+@@UI	settings.preferences.copy.967ffd527f0cb0498fa7	7f0d1905b2e6c36c5330ac05
+@@UI	settings.preferences.copy.96a20f6daf398ec3cdcc	b5cff6b525e7c3b0bb4d226f
+@@UI	settings.preferences.copy.9ac9951c21ddc8d4502c	2c00a5c66eeb3342b2fb5c92
+@@UI	settings.preferences.copy.9c820ab1c5f144eeadc4	7d731aab4ab57a00ac844b34
+@@UI	settings.preferences.copy.9db5f8aaba87de0c2968	85f28236f06255239b0c4e35
+@@UI	settings.preferences.copy.9ecf08bb019a098a3c01	c156cda705ab9b5046afb99e
+@@UI	settings.preferences.copy.9fb4e4c35c0e0803a762	81eefe534ab69eb44adf7e80
+@@UI	settings.preferences.copy.a20d225451d20a8751aa	d50eb11c98718d5bc935c0ab
+@@UI	settings.preferences.copy.a27f7a7511f897ef44f5	86d4ba90044925618704a1e5
+@@UI	settings.preferences.copy.a59a43d7daab3c32dc41	220bc229cd6c9a7f651121ca
+@@UI	settings.preferences.copy.a8d4d714a626b10916dc	7c0246d392043cad1a82c49c
+@@UI	settings.preferences.copy.b7120296e6909c624479	c354e73f00268d15a8f36bfb
+@@UI	settings.preferences.copy.bd2b692b06e3c0f259c6	b849ba2672700df82f6f158a
+@@UI	settings.preferences.copy.c767c636013cb8e122dd	0d176addee40c036738409dc
+@@UI	settings.preferences.copy.c9ff7ccba0754a68d190	e5cbeb70833f5d34e62ba935
+@@UI	settings.preferences.copy.caccfd502610b3ebe65d	942dbcc9218448466e6af26a
+@@UI	settings.preferences.copy.ce0376d4282d0786ff35	3dfeb00954eedef8933821d0
+@@UI	settings.preferences.copy.d16609d4b7e3c3fdb09a	3861bddecb3096331a6c4864
+@@UI	settings.preferences.copy.d33968754d98c15092e9	43ea2df218bc557ece4a7406
+@@UI	settings.preferences.copy.d3560e56fb0188947b7d	1c0b4767e01f6e7813b7af0a
+@@UI	settings.preferences.copy.d50de94b5c35f88e15e3	8f076e3cf1ca45d94aed3673
+@@UI	settings.preferences.copy.db062dcefdf6e36cc6a1	1f0533405f0e44bd0875a106
+@@UI	settings.preferences.copy.ded6f44c7016a2a5111f	70d3e3ac4b28fe788bc88049
+@@UI	settings.preferences.copy.e1c4518b61c1d97ae04a	4351a24c39cc69be05a2ae3c
+@@UI	settings.preferences.copy.e302219f160cf47daa66	88431bc4d92d7ab13512d970
+@@UI	settings.preferences.copy.ea8f3fd08d0cc59e2631	788517e378d035be4666a5c5
+@@UI	settings.preferences.copy.eccd7d4c5c3198f2e652	0a08152b0804330db10f0a23
+@@UI	settings.preferences.copy.f241b39e512e04400268	40da02f68ce8eaf9939a5095
+@@UI	settings.preferences.copy.f27177c7627e0446055e	fe0beac6a6695a7eb58ae3cf
+@@UI	settings.preferences.copy.f7ea330f46a5e44b92fd	3151cbabcbf2ed32a40ad37c
+@@UI	settings.preferences.copy.ffab59b473cc9a01fe57	ecc1a2e8dd35ddd408095d3a
+@@UI	settings.tab.bittorrent	fffc120e916faa4fc4f9021d
+@@UI	settings.tab.connection	f63825c20d70cde902e273f3
+@@UI	settings.tab.downloads	18a56df0281a5374ff71636b
+@@UI	settings.tab.speed	d064c8f29175dda83682fbd3
+@@UI	settings.tab.webui	bc9682650a33d8d765131d80
+@@UI	sidebar.categories	cb2adc56c4361995d20af9b2
+@@UI	sidebar.status	313813ff2dfc2dd21a8de84f
+@@UI	statistics.field.AlltimeDL	590a2f7e74ad2675caeb520f
+@@UI	statistics.field.AlltimeUL	4db664bb33d2850935105d8d
+@@UI	statistics.field.AverageTimeInQueue	9303b715f42e3afaa5bf0092
+@@UI	statistics.field.GlobalRatio	acd565b7530da962d832154c
+@@UI	statistics.field.QueuedIOJobs	1253ccb50d1c3ae4ea6da3b9
+@@UI	statistics.field.ReadCacheHits	853e4f3727f3155c242737a0
+@@UI	statistics.field.ReadCacheOverload	873578dbdcf2443fd4f8ff2c
+@@UI	statistics.field.TotalBuffersSize	41403e8afaf139d610a29c5f
+@@UI	statistics.field.TotalPeerConnections	5f21333e86f0f13da83b4b49
+@@UI	statistics.field.TotalQueuedSize	ea2b632d587fa06184d1a0f3
+@@UI	statistics.field.TotalWastedSession	18e0808f0055252bd2043ea1
+@@UI	statistics.field.WriteCacheOverload	146f5b18300b4cb4cb470a45
+@@UI	statistics.group.cache-statistics	2caa02a21e57f71bc82d7c65
+@@UI	statistics.group.performance-statistics	68e644b127c9d8c16979977f
+@@UI	statistics.group.user-statistics	82f93704929976d232fb3e4c
+@@UI	statistics.title	549c1f9717a84fe420dfbaac
+@@UI	transfer.rate.alternative	29315e4d6571e63f0a4d4b54
+@@UI	transfer.rate.global	49f5feb658b8db42758b29fe
+@@REF	012567cc60cee5a67d085085	OptionsDialog	Bypass%20authentication%20for%20clients%20on%20localhost
+QBT_TR(Bypass authentication for clients on localhost)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	01340ce3596a5c734ba014f2	PropertiesWidget	Uploaded%3A
+QBT_TR(Uploaded:)QBT_TR[CONTEXT=PropertiesWidget]
+@@END
+@@REF	029592caa306fe020bcdae19	OptionsDialog	Port%3A
+QBT_TR(Port:)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	02a21ac628c49e289c22ade9	OptionsDialog	Copy%20.torrent%20files%20to%3A
+QBT_TR(Copy .torrent files to:)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	06caa6f9cf9909cacbc747f2	TrackerList	Peers
+QBT_TR(Peers)QBT_TR[CONTEXT=TrackerList]
+@@END
+@@REF	072ecc4c3878986b302f379a	OptionsDialog	Seed%20torrents%20until%20their%20seeding%20time%20reaches
+QBT_TR(Seed torrents until their seeding time reaches)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	089a74d09def67e0c0bbc39b	HttpServer	Thursday
+QBT_TR(Thursday)QBT_TR[CONTEXT=HttpServer]
+@@END
+@@REF	094548fb0f98aa28a3f17490	OptionsDialog	Options
+QBT_TR(Options)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	0a08152b0804330db10f0a23	OptionsDialog	Remove%20them
+QBT_TR(Remove them)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	0af2047d8d9a64f76e844f8c	PeerListWidget	Relevance
+QBT_TR(Relevance)QBT_TR[CONTEXT=PeerListWidget]
+@@END
+@@REF	0d176addee40c036738409dc	HttpServer	Saturday
+QBT_TR(Saturday)QBT_TR[CONTEXT=HttpServer]
+@@END
+@@REF	0d86423356498c8a32605e85	OptionsDialog	Apply%20to%20trackers
+QBT_TR(Apply to trackers)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	0ddd2ad1579f0d42016daab2	OptionsDialog	Use%20UPnP%20%2F%20NAT-PMP%20to%20forward%20the%20port%20from%20my%20router
+QBT_TR(Use UPnP / NAT-PMP to forward the port from my router)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	0e9be03a55fb7cabf2952f99	OptionsDialog	Manually%20banned%20IP%20addresses...
+QBT_TR(Manually banned IP addresses...)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	0fc059a5d6b78a03e5bf2880	PropTabBar	Peers
+QBT_TR(Peers)QBT_TR[CONTEXT=PropTabBar]
+@@END
+@@REF	1253ccb50d1c3ae4ea6da3b9	StatsDialog	Queued%20I%2FO%20jobs%3A
+QBT_TR(Queued I/O jobs:)QBT_TR[CONTEXT=StatsDialog]
+@@END
+@@REF	12a3d0c291c71bdaf5fcf9fb	AutomatedRssDownloader	Save%20to%3A
+QBT_TR(Save to:)QBT_TR[CONTEXT=AutomatedRssDownloader]
+@@END
+@@REF	13a9a9039dc38710e3e1a429	TorrentModel	Time%20Active
+QBT_TR(Time Active)QBT_TR[CONTEXT=TorrentModel]
+@@END
+@@REF	146f5b18300b4cb4cb470a45	StatsDialog	Write%20cache%20overload%3A
+QBT_TR(Write cache overload:)QBT_TR[CONTEXT=StatsDialog]
+@@END
+@@REF	15eb116bc8fba09258410cfd	PeerListWidget	Files
+QBT_TR(Files)QBT_TR[CONTEXT=PeerListWidget]
+@@END
+@@REF	16199d68df70146c9a8e344e	OptionsDialog	%25N%3A%20Torrent%20name
+QBT_TR(%N: Torrent name)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	18a56df0281a5374ff71636b	OptionsDialog	Downloads
+QBT_TR(Downloads)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	18e0808f0055252bd2043ea1	StatsDialog	Session%20waste%3A
+QBT_TR(Session waste:)QBT_TR[CONTEXT=StatsDialog]
+@@END
+@@REF	18ed5ace3080901d69573b1b	downloadFromURL	Download
+QBT_TR(Download)QBT_TR[CONTEXT=downloadFromURL]
+@@END
+@@REF	196876a2705f66d794edd384	OptionsDialog	Download%3A
+QBT_TR(Download:)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	1c0b4767e01f6e7813b7af0a	HttpServer	Global%20number%20of%20upload%20slots%20limit%20must%20be%20greater%20than%200%20or%20disabled.
+QBT_TR(Global number of upload slots limit must be greater than 0 or disabled.)QBT_TR[CONTEXT=HttpServer]
+@@END
+@@REF	1c322d736b494d1eef31ddf4	OptionsDialog	Supported%20parameters%20(case%20sensitive)%3A
+QBT_TR(Supported parameters (case sensitive):)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	1c4016e6b0ca949847ab9214	HttpServer	Maximum%20active%20downloads%20must%20be%20greater%20than%20-1.
+QBT_TR(Maximum active downloads must be greater than -1.)QBT_TR[CONTEXT=HttpServer]
+@@END
+@@REF	1c70be877c0fde225d1fd435	TorrentModel	Done
+QBT_TR(Done)QBT_TR[CONTEXT=TorrentModel]
+@@END
+@@REF	1cd73c600f4bc787d2df957b	TorrentModel	Added%20On
+QBT_TR(Added On)QBT_TR[CONTEXT=TorrentModel]
+@@END
+@@REF	1d822d9c6d3e30452c25cee1	OptionsDialog	Rate%20Limits%20Settings
+QBT_TR(Rate Limits Settings)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	1f0533405f0e44bd0875a106	OptionsDialog	Pause%20them
+QBT_TR(Pause them)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	1f5117adcac4e4b31c953fae	TorrentModel	Session%20Download
+QBT_TR(Session Download)QBT_TR[CONTEXT=TorrentModel]
+@@END
+@@REF	2011b90fa59750894a3c71cf	ScanFoldersModel	Default%20save%20location
+QBT_TR(Default save location)QBT_TR[CONTEXT=ScanFoldersModel]
+@@END
+@@REF	211de5f9b7e59cdbdf1196bf	TorrentContentModel	Name
+QBT_TR(Name)QBT_TR[CONTEXT=TorrentContentModel]
+@@END
+@@REF	212847f1309a7d04b093e222	OptionsDialog	Maximum%20active%20downloads%3A
+QBT_TR(Maximum active downloads:)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	2156a99f1267c2d6b3ae6dfb	TorrentModel	Size
+QBT_TR(Size)QBT_TR[CONTEXT=TorrentModel]
+@@END
+@@REF	220a9e8be52049a7ed06ccdd	PropertiesWidget	Pieces%3A
+QBT_TR(Pieces:)QBT_TR[CONTEXT=PropertiesWidget]
+@@END
+@@REF	220bc229cd6c9a7f651121ca	OptionsDialog	TCP%20and%20%CE%BCTP
+QBT_TR(TCP and μTP)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	235dc8b28803c7eca101653a	PropertiesWidget	Save%20Path%3A
+QBT_TR(Save Path:)QBT_TR[CONTEXT=PropertiesWidget]
+@@END
+@@REF	2580ae4d9da127e0116b489b	TorrentModel	Up%20Speed
+QBT_TR(Up Speed)QBT_TR[CONTEXT=TorrentModel]
+@@END
+@@REF	26274fc2c8bcb1ef314a194d	OptionsDialog	%25L%3A%20Category
+QBT_TR(%L: Category)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	2669da49afb6b6db6eba5dbf	HttpServer	Cookie%3A
+QBT_TR(Cookie:)QBT_TR[CONTEXT=HttpServer]
+@@END
+@@REF	26ed68fb1e1d847206249384	PropertiesWidget	Created%20By%3A
+QBT_TR(Created By:)QBT_TR[CONTEXT=PropertiesWidget]
+@@END
+@@REF	28577c6f8918cd408e651f2a	OptionsDialog	Tip%3A%20Encapsulate%20parameter%20with%20quotation%20marks%20to%20avoid%20text%20being%20cut%20off%20at%20whitespace%20(e.g.%2C%20%22%25N%22)
+QBT_TR(Tip: Encapsulate parameter with quotation marks to avoid text being cut off at whitespace (e.g., "%N"))QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	28cc470422ce5182edf5790e	TorrentContentModel	Remaining
+QBT_TR(Remaining)QBT_TR[CONTEXT=TorrentContentModel]
+@@END
+@@REF	29315e4d6571e63f0a4d4b54	OptionsDialog	Alternative%20Rate%20Limits
+QBT_TR(Alternative Rate Limits)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	293330e80f52039e5ed010ac	TorrentModel	Last%20Activity
+QBT_TR(Last Activity)QBT_TR[CONTEXT=TorrentModel]
+@@END
+@@REF	297cd30014c1e65308c8e029	HttpServer	Alternative%20upload%20rate%20limit%20must%20be%20greater%20than%200%20or%20disabled.
+QBT_TR(Alternative upload rate limit must be greater than 0 or disabled.)QBT_TR[CONTEXT=HttpServer]
+@@END
+@@REF	29f7e610f466685fc18e3294	PropertiesWidget	Download%20Limit%3A
+QBT_TR(Download Limit:)QBT_TR[CONTEXT=PropertiesWidget]
+@@END
+@@REF	2aa99126bf992d744d6cba4e	HttpServer	Global%20upload%20rate%20limit%20must%20be%20greater%20than%200%20or%20disabled.
+QBT_TR(Global upload rate limit must be greater than 0 or disabled.)QBT_TR[CONTEXT=HttpServer]
+@@END
+@@REF	2c00a5c66eeb3342b2fb5c92	ScanFoldersModel	Monitored%20Folder
+QBT_TR(Monitored Folder)QBT_TR[CONTEXT=ScanFoldersModel]
+@@END
+@@REF	2caa02a21e57f71bc82d7c65	StatsDialog	Cache%20statistics
+QBT_TR(Cache statistics)QBT_TR[CONTEXT=StatsDialog]
+@@END
+@@REF	2d2f7a01890a0d447b31beb6	AddNewTorrentDialog	Create%20subfolder
+QBT_TR(Create subfolder)QBT_TR[CONTEXT=AddNewTorrentDialog]
+@@END
+@@REF	2e2bfc87cde2de69a1ff5324	OptionsDialog	Disable%20connections%20not%20supported%20by%20proxies
+QBT_TR(Disable connections not supported by proxies)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	2e78e76a47f594bbb38d3278	OptionsDialog	Use%20UPnP%20%2F%20NAT-PMP%20port%20forwarding%20from%20my%20router
+QBT_TR(Use UPnP / NAT-PMP port forwarding from my router)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	2fa7dba2809f3e32aa036685	OptionsDialog	Register
+QBT_TR(Register)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	3068c64aa1b9a8a378b4f1f4	PeerListWidget	Downloaded
+QBT_TR(Downloaded)QBT_TR[CONTEXT=PeerListWidget]
+@@END
+@@REF	313813ff2dfc2dd21a8de84f	TransferListFiltersWidget	Status
+QBT_TR(Status)QBT_TR[CONTEXT=TransferListFiltersWidget]
+@@END
+@@REF	3151cbabcbf2ed32a40ad37c	ScanFoldersModel	Monitored%20folder
+QBT_TR(Monitored folder)QBT_TR[CONTEXT=ScanFoldersModel]
+@@END
+@@REF	329537a561c3eddf5db40e3c	OptionsDialog	Host%3A
+QBT_TR(Host:)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	357b3ba4ad2d78aff64332ec	OptionsDialog	SOCKS4
+QBT_TR(SOCKS4)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	3861bddecb3096331a6c4864	OptionsDialog	%25F%3A%20Content%20path%20(same%20as%20root%20path%20for%20multifile%20torrent)
+QBT_TR(%F: Content path (same as root path for multifile torrent))QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	39a3865894a76ae3a54f0d9c	AutomatedRssDownloader	Use%20Smart%20Episode%20Filter
+QBT_TR(Use Smart Episode Filter)QBT_TR[CONTEXT=AutomatedRssDownloader]
+@@END
+@@REF	3a3111781218d251ba89e53c	HttpServer	The%20port%20used%20for%20incoming%20connections%20must%20be%20between%201%20and%2065535.
+QBT_TR(The port used for incoming connections must be between 1 and 65535.)QBT_TR[CONTEXT=HttpServer]
+@@END
+@@REF	3b16b44fce8d9e277d5824c0	HttpServer	Download%20Torrents%20from%20their%20URLs%20or%20Magnet%20links
+QBT_TR(Download Torrents from their URLs or Magnet links)QBT_TR[CONTEXT=HttpServer]
+@@END
+@@REF	3b245f161b29f5268216722b	OptionsDialog	Filter%20path%20(.dat%2C%20.p2p%2C%20.p2b)%3A
+QBT_TR(Filter path (.dat, .p2p, .p2b):)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	3dfeb00954eedef8933821d0	OptionsDialog	Weekdays
+QBT_TR(Weekdays)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	3f229578b1631940874ae2d6	OptionsDialog	Maximum%20active%20torrents%3A
+QBT_TR(Maximum active torrents:)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	40a78f8739a8f757c63a6c59	OptionsDialog	Type%3A
+QBT_TR(Type:)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	40da02f68ce8eaf9939a5095	OptionsDialog	%25I%3A%20Info%20hash
+QBT_TR(%I: Info hash)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	41403e8afaf139d610a29c5f	StatsDialog	Total%20buffer%20size%3A
+QBT_TR(Total buffer size:)QBT_TR[CONTEXT=StatsDialog]
+@@END
+@@REF	424491852ebb3aa2c3e22f35	HttpServer	External%20IP%3A%20%251%252
+QBT_TR(External IP: %1%2)QBT_TR[CONTEXT=HttpServer]
+@@END
+@@REF	42712c10a2083e9180c456c2	OptionsDialog	Global%20maximum%20number%20of%20connections%3A
+QBT_TR(Global maximum number of connections:)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	4351a24c39cc69be05a2ae3c	OptionsDialog	HTTP
+QBT_TR(HTTP)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	43ea2df218bc557ece4a7406	OptionsDialog	Web%20User%20Interface%20(Remote%20control)
+QBT_TR(Web User Interface (Remote control))QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	455e9421c85a79371938e9d6	TorrentModel	Remaining
+QBT_TR(Remaining)QBT_TR[CONTEXT=TorrentModel]
+@@END
+@@REF	472e5222e62d1e10ed6e878b	ScanFoldersModel	Override%20Save%20Location
+QBT_TR(Override Save Location)QBT_TR[CONTEXT=ScanFoldersModel]
+@@END
+@@REF	4756f4727430b3dead09a27e	HttpServer	Only%20one%20link%20per%20line
+QBT_TR(Only one link per line)QBT_TR[CONTEXT=HttpServer]
+@@END
+@@REF	476aeeb93fca7f00bbf0ac64	AutomatedRssDownloader	Matching%20RSS%20Articles
+QBT_TR(Matching RSS Articles)QBT_TR[CONTEXT=AutomatedRssDownloader]
+@@END
+@@REF	4774cc57c1dca3d3245b8095	OptionsDialog	Append%20.!qB%20extension%20to%20incomplete%20files
+QBT_TR(Append .!qB extension to incomplete files)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	47b461421cdd57dc30dad427	HttpServer	Hard%20Disk
+QBT_TR(Hard Disk)QBT_TR[CONTEXT=HttpServer]
+@@END
+@@REF	4984d70b6cf4d63623a469fd	HttpServer	External%20IP%3A%20N%2FA
+QBT_TR(External IP: N/A)QBT_TR[CONTEXT=HttpServer]
+@@END
+@@REF	49f5feb658b8db42758b29fe	OptionsDialog	Global%20Rate%20Limits
+QBT_TR(Global Rate Limits)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	4b2c90d9bbc00bfc3120e4a8	StatusFiltersWidget	Seeding%20(%251)
+QBT_TR(Seeding (%1))QBT_TR[CONTEXT=StatusFiltersWidget]
+@@END
+@@REF	4db664bb33d2850935105d8d	StatsDialog	All-time%20upload%3A
+QBT_TR(All-time upload:)QBT_TR[CONTEXT=StatsDialog]
+@@END
+@@REF	5299a5d5ff0556393f06b8f8	HttpServer	Type%20folder%20here
+QBT_TR(Type folder here)QBT_TR[CONTEXT=HttpServer]
+@@END
+@@REF	538f48ae0083577760741d30	TorrentModel	Completed%20On
+QBT_TR(Completed On)QBT_TR[CONTEXT=TorrentModel]
+@@END
+@@REF	53d5b63f62b6a12c8d18624f	TorrentModel	Total%20Size
+QBT_TR(Total Size)QBT_TR[CONTEXT=TorrentModel]
+@@END
+@@REF	548a1575ce5ff7ac46631c41	TorrentModel	Seeds
+QBT_TR(Seeds)QBT_TR[CONTEXT=TorrentModel]
+@@END
+@@REF	549c1f9717a84fe420dfbaac	MainWindow	%26Statistics
+QBT_TR(&Statistics)QBT_TR[CONTEXT=MainWindow]
+@@END
+@@REF	58030147e36c930a589baf13	TorrentContentModel	Size
+QBT_TR(Size)QBT_TR[CONTEXT=TorrentContentModel]
+@@END
+@@REF	58d258d55ad7bd0696ae6604	HttpServer	External%20IPs%3A%20%251%2C%20%252
+QBT_TR(External IPs: %1, %2)QBT_TR[CONTEXT=HttpServer]
+@@END
+@@REF	590a2f7e74ad2675caeb520f	StatsDialog	All-time%20download%3A
+QBT_TR(All-time download:)QBT_TR[CONTEXT=StatsDialog]
+@@END
+@@REF	5ac1dcebbf9f7575784244c6	TransferListWidget	Download%20in%20sequential%20order
+QBT_TR(Download in sequential order)QBT_TR[CONTEXT=TransferListWidget]
+@@END
+@@REF	5ba768327151e1e472ffe0f8	OptionsDialog	Use%20proxy%20only%20for%20torrents
+QBT_TR(Use proxy only for torrents)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	5dd476dd149b981e590e8a91	PeerListWidget	Connection
+QBT_TR(Connection)QBT_TR[CONTEXT=PeerListWidget]
+@@END
+@@REF	5e65433c2a5379c9ff9fba4c	PropertiesWidget	Last%20Seen%20Complete%3A
+QBT_TR(Last Seen Complete:)QBT_TR[CONTEXT=PropertiesWidget]
+@@END
+@@REF	5f21333e86f0f13da83b4b49	StatsDialog	Connected%20peers%3A
+QBT_TR(Connected peers:)QBT_TR[CONTEXT=StatsDialog]
+@@END
+@@REF	6191488a8230eeec9c1e1e06	OptionsDialog	%26Torrent%20Queueing
+QBT_TR(&Torrent Queueing)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	62481df3aa34dec52d6aadb7	StatusFiltersWidget	All%20(%251)
+QBT_TR(All (%1))QBT_TR[CONTEXT=StatusFiltersWidget]
+@@END
+@@REF	632a80b00571849f82ab8a72	PropertiesWidget	Torrent%20Hash%3A
+QBT_TR(Torrent Hash:)QBT_TR[CONTEXT=PropertiesWidget]
+@@END
+@@REF	64abac8b7311b95036221510	PropertiesWidget	Peers%3A
+QBT_TR(Peers:)QBT_TR[CONTEXT=PropertiesWidget]
+@@END
+@@REF	674896440db0dc91f44d6a1f	OptionsDialog	Apply%20rate%20limit%20to%20transport%20overhead
+QBT_TR(Apply rate limit to transport overhead)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	6753539b6bf4ad3979a26e01	PropertiesWidget	Time%20Active%3A
+QBT_TR(Time Active:)QBT_TR[CONTEXT=PropertiesWidget]
+@@END
+@@REF	6843b84103d19b480f6e20b4	StatusFiltersWidget	Active%20(%251)
+QBT_TR(Active (%1))QBT_TR[CONTEXT=StatusFiltersWidget]
+@@END
+@@REF	68922a9e075eca0701325ac6	StatusFiltersWidget	Errored%20(%251)
+QBT_TR(Errored (%1))QBT_TR[CONTEXT=StatusFiltersWidget]
+@@END
+@@REF	68e644b127c9d8c16979977f	StatsDialog	Performance%20statistics
+QBT_TR(Performance statistics)QBT_TR[CONTEXT=StatsDialog]
+@@END
+@@REF	690390de3526946591c274ba	OptionsDialog	Use%20different%20port%20on%20each%20startup
+QBT_TR(Use different port on each startup)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	699a547c8dc38317b7ffa1c6	PropertiesWidget	Transfer
+QBT_TR(Transfer)QBT_TR[CONTEXT=PropertiesWidget]
+@@END
+@@REF	6b5347d074b70daa5b2cd44d	PeerListWidget	IP
+QBT_TR(IP)QBT_TR[CONTEXT=PeerListWidget]
+@@END
+@@REF	6c9c3c22f28e75013b36108e	TrackerList	URL
+QBT_TR(URL)QBT_TR[CONTEXT=TrackerList]
+@@END
+@@REF	6dfe049e77c0505f72359c74	OptionsDialog	Proxy%20Server
+QBT_TR(Proxy Server)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	6e2c98e51a4bbce12f0d1412	OptionsDialog	Enable%20Peer%20Exchange%20(PeX)%20to%20find%20more%20peers
+QBT_TR(Enable Peer Exchange (PeX) to find more peers)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	6e731911d1d06943d7e5f8d7	StatusFiltersWidget	Paused%20(%251)
+QBT_TR(Paused (%1))QBT_TR[CONTEXT=StatusFiltersWidget]
+@@END
+@@REF	6e9e2268aae6107eb7c8ae93	downloadFromURL	Add%20Torrent%20Links
+QBT_TR(Add Torrent Links)QBT_TR[CONTEXT=downloadFromURL]
+@@END
+@@REF	6ef2719e12e3a3fd44690e10	PropertiesWidget	Upload%20Speed%3A
+QBT_TR(Upload Speed:)QBT_TR[CONTEXT=PropertiesWidget]
+@@END
+@@REF	6fb6382515ce39ad0c10059f	PropListDelegate	High
+QBT_TR(High)QBT_TR[CONTEXT=PropListDelegate]
+@@END
+@@REF	6fc3b2183aafbf99ca3df178	TorrentModel	Up%20Limit
+QBT_TR(Up Limit)QBT_TR[CONTEXT=TorrentModel]
+@@END
+@@REF	6fca148d32eba2390cf1a886	StatusFiltersWidget	Downloading%20(%251)
+QBT_TR(Downloading (%1))QBT_TR[CONTEXT=StatusFiltersWidget]
+@@END
+@@REF	7093cd84bafdab7c37fdf933	OptionsDialog	Share%20Ratio%20Limiting
+QBT_TR(Share Ratio Limiting)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	70d3e3ac4b28fe788bc88049	HttpServer	Information%20about%20certificates
+QBT_TR(Information about certificates)QBT_TR[CONTEXT=HttpServer]
+@@END
+@@REF	71f7ea50a85dfaafcb9fc5ff	HttpServer	Save
+QBT_TR(Save)QBT_TR[CONTEXT=HttpServer]
+@@END
+@@REF	725721ef558edb2385e8d392	CategoryFilterModel	Uncategorized
+QBT_TR(Uncategorized)QBT_TR[CONTEXT=CategoryFilterModel]
+@@END
+@@REF	7368aedc68157b456594416c	TorrentModel	Tags
+QBT_TR(Tags)QBT_TR[CONTEXT=TorrentModel]
+@@END
+@@REF	74b3808cfe9f26fb889479e3	TorrentModel	Ratio
+QBT_TR(Ratio)QBT_TR[CONTEXT=TorrentModel]
+@@END
+@@REF	75a8207dd08f679e88d0dac3	PropListDelegate	Maximum
+QBT_TR(Maximum)QBT_TR[CONTEXT=PropListDelegate]
+@@END
+@@REF	776411f978907a6531b135a2	TorrentModel	Down%20Limit
+QBT_TR(Down Limit)QBT_TR[CONTEXT=TorrentModel]
+@@END
+@@REF	788517e378d035be4666a5c5	OptionsDialog	%25Z%3A%20Torrent%20size%20(bytes)
+QBT_TR(%Z: Torrent size (bytes))QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	7c0246d392043cad1a82c49c	OptionsDialog	The%20Web%20UI%20password%20must%20be%20at%20least%206%20characters%20long.
+QBT_TR(The Web UI password must be at least 6 characters long.)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	7d731aab4ab57a00ac844b34	OptionsDialog	Every%20day
+QBT_TR(Every day)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	7eff6dfba5f7ce346a70e94a	TorrentModel	Save%20path
+QBT_TR(Save path)QBT_TR[CONTEXT=TorrentModel]
+@@END
+@@REF	7f0d1905b2e6c36c5330ac05	HttpServer	Maximum%20active%20uploads%20must%20be%20greater%20than%20-1.
+QBT_TR(Maximum active uploads must be greater than -1.)QBT_TR[CONTEXT=HttpServer]
+@@END
+@@REF	7f1a79317163a6219c7bd1fc	OptionsDialog	To%3A
+QBT_TR(To:)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	7f50b1f488bd9531408e62c4	OptionsDialog	Username%3A
+QBT_TR(Username:)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	809b9d89d72cc6672f28c888	PropertiesWidget	Seeds%3A
+QBT_TR(Seeds:)QBT_TR[CONTEXT=PropertiesWidget]
+@@END
+@@REF	8125dbf4fd6a474fd107a489	OptionsDialog	Enable%20anonymous%20mode
+QBT_TR(Enable anonymous mode)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	812980b0e8c14529d1f21226	TorrentModel	Downloaded
+QBT_TR(Downloaded)QBT_TR[CONTEXT=TorrentModel]
+@@END
+@@REF	817de6d5f1c60e86f04a2eaf	PropertiesWidget	ETA%3A
+QBT_TR(ETA:)QBT_TR[CONTEXT=PropertiesWidget]
+@@END
+@@REF	819a6981f4605025a4a3ef42	OptionsDialog	Do%20not%20count%20slow%20torrents%20in%20these%20limits
+QBT_TR(Do not count slow torrents in these limits)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	81eefe534ab69eb44adf7e80	OptionsDialog	%25R%3A%20Root%20path%20(first%20torrent%20subdirectory%20path)
+QBT_TR(%R: Root path (first torrent subdirectory path))QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	820e61271a3600f7f453fcd2	TrackerList	Message
+QBT_TR(Message)QBT_TR[CONTEXT=TrackerList]
+@@END
+@@REF	82f93704929976d232fb3e4c	StatsDialog	User%20statistics
+QBT_TR(User statistics)QBT_TR[CONTEXT=StatsDialog]
+@@END
+@@REF	83574432c5e29667efdeb77e	PropertiesWidget	Information
+QBT_TR(Information)QBT_TR[CONTEXT=PropertiesWidget]
+@@END
+@@REF	8480d5ef24e492a2fe1a0416	OptionsDialog	Enable%20Local%20Peer%20Discovery%20to%20find%20more%20peers
+QBT_TR(Enable Local Peer Discovery to find more peers)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	8486d6bfd50bb4d3b507651d	PeerListWidget	Up%20Speed
+QBT_TR(Up Speed)QBT_TR[CONTEXT=PeerListWidget]
+@@END
+@@REF	851415309f02d5705f358986	HttpServer	Unknown
+QBT_TR(Unknown)QBT_TR[CONTEXT=HttpServer]
+@@END
+@@REF	853e4f3727f3155c242737a0	StatsDialog	Read%20cache%20hits%3A
+QBT_TR(Read cache hits:)QBT_TR[CONTEXT=StatsDialog]
+@@END
+@@REF	85f28236f06255239b0c4e35	HttpServer	The%20port%20used%20for%20the%20Web%20UI%20must%20be%20between%201%20and%2065535.
+QBT_TR(The port used for the Web UI must be between 1 and 65535.)QBT_TR[CONTEXT=HttpServer]
+@@END
+@@REF	8611e75849f5273b84c4eb05	PeerListWidget	Country
+QBT_TR(Country)QBT_TR[CONTEXT=PeerListWidget]
+@@END
+@@REF	8657208f85e77c7ec84c2c44	OptionsDialog	User%20Interface%20Language%3A
+QBT_TR(User Interface Language:)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	86d4ba90044925618704a1e5	OptionsDialog	%25G%3A%20Tags%20(seperated%20by%20comma)
+QBT_TR(%G: Tags (seperated by comma))QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	86f5765d94ca9e2292c4a19a	PropertiesWidget	Comment%3A
+QBT_TR(Comment:)QBT_TR[CONTEXT=PropertiesWidget]
+@@END
+@@REF	873578dbdcf2443fd4f8ff2c	StatsDialog	Read%20cache%20overload%3A
+QBT_TR(Read cache overload:)QBT_TR[CONTEXT=StatsDialog]
+@@END
+@@REF	87779bf21a70f9f22c2f7e09	OptionsDialog	Run%20e%26xternal%20program%20on%20torrent%20completion
+QBT_TR(Run e&xternal program on torrent completion)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	877e9f04680a93b90d9770bc	AutomatedRssDownloader	Never
+QBT_TR(Never)QBT_TR[CONTEXT=AutomatedRssDownloader]
+@@END
+@@REF	88431bc4d92d7ab13512d970	HttpServer	More%20information
+QBT_TR(More information)QBT_TR[CONTEXT=HttpServer]
+@@END
+@@REF	8a7e1d961d9b30da7c689872	OptionsDialog	Listening%20Port
+QBT_TR(Listening Port)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	8ad9babe12283400b5312608	PropListDelegate	Normal
+QBT_TR(Normal)QBT_TR[CONTEXT=PropListDelegate]
+@@END
+@@REF	8b1fd26da6cc91af09dcda71	TorrentContentModel	Progress
+QBT_TR(Progress)QBT_TR[CONTEXT=TorrentContentModel]
+@@END
+@@REF	8b6415d53e75496e8e56d614	PropertiesWidget	Created%20On%3A
+QBT_TR(Created On:)QBT_TR[CONTEXT=PropertiesWidget]
+@@END
+@@REF	8bcb0e5995dc045b39cc93ab	HttpServer	Sunday
+QBT_TR(Sunday)QBT_TR[CONTEXT=HttpServer]
+@@END
+@@REF	8cf22833083a66af633cf804	OptionsDialog	Use%20proxy%20for%20peer%20connections
+QBT_TR(Use proxy for peer connections)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	8d194c0f317faa0d9d74e6b6	PeerListWidget	Progress
+QBT_TR(Progress)QBT_TR[CONTEXT=PeerListWidget]
+@@END
+@@REF	8df30f78ef964365e277ffd3	HttpServer	Limit%20upload%20rate
+QBT_TR(Limit upload rate)QBT_TR[CONTEXT=HttpServer]
+@@END
+@@REF	8f076e3cf1ca45d94aed3673	OptionsDialog	Connections%20Limits
+QBT_TR(Connections Limits)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	8f80a17fecc964c518f7350b	PeerListWidget	Port
+QBT_TR(Port)QBT_TR[CONTEXT=PeerListWidget]
+@@END
+@@REF	8fb1db57e345ff1585350c70	OptionsDialog	Email%20notification%20%26upon%20download%20completion
+QBT_TR(Email notification &upon download completion)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	90c0a16124052e66a913a0d3	OptionsDialog	Password%3A
+QBT_TR(Password:)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	9146db4fdbe867a086095bd1	PropertiesWidget	Connections%3A
+QBT_TR(Connections:)QBT_TR[CONTEXT=PropertiesWidget]
+@@END
+@@REF	923223da4549d92faae622f2	OptionsDialog	A%26utomatically%20add%20these%20trackers%20to%20new%20downloads%3A
+QBT_TR(A&utomatically add these trackers to new downloads:)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	9303b715f42e3afaa5bf0092	StatsDialog	Average%20time%20in%20queue%3A
+QBT_TR(Average time in queue:)QBT_TR[CONTEXT=StatsDialog]
+@@END
+@@REF	93d0b6891e5613897e74ff8d	PeerListWidget	Down%20Speed
+QBT_TR(Down Speed)QBT_TR[CONTEXT=PeerListWidget]
+@@END
+@@REF	942dbcc9218448466e6af26a	HttpServer	Other...
+QBT_TR(Other...)QBT_TR[CONTEXT=HttpServer]
+@@END
+@@REF	9518df053380933d6ab4453e	TorrentModel	Session%20Upload
+QBT_TR(Session Upload)QBT_TR[CONTEXT=TorrentModel]
+@@END
+@@REF	9530001de8f45dbbc99f89af	PropTabBar	HTTP%20Sources
+QBT_TR(HTTP Sources)QBT_TR[CONTEXT=PropTabBar]
+@@END
+@@REF	96b08f6366d596e8da480bf5	OptionsDialog	Keep%20incomplete%20torrents%20in%3A
+QBT_TR(Keep incomplete torrents in:)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	96d69663043966d34e472964	OptionsDialog	SOCKS5
+QBT_TR(SOCKS5)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	97ebcdfcfe9b20d60a4da1d9	OptionsDialog	Upda%26te%20my%20dynamic%20domain%20name
+QBT_TR(Upda&te my dynamic domain name)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	97f32b54607b6b9a948415ba	OptionsDialog	Require%20encryption
+QBT_TR(Require encryption)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	988cba1df69c37048e9f4edd	TorrentContentModel	Download%20Priority
+QBT_TR(Download Priority)QBT_TR[CONTEXT=TorrentContentModel]
+@@END
+@@REF	9a9259ee0a017d71f5df6221	TorrentModel	Down%20Speed
+QBT_TR(Down Speed)QBT_TR[CONTEXT=TorrentModel]
+@@END
+@@REF	9a9c77243dbc506236d0a6ee	AutomatedRssDownloader	Use%20Regular%20Expressions
+QBT_TR(Use Regular Expressions)QBT_TR[CONTEXT=AutomatedRssDownloader]
+@@END
+@@REF	9adc44535ac3a1a862193c82	TorrentModel	Tracker
+QBT_TR(Tracker)QBT_TR[CONTEXT=TorrentModel]
+@@END
+@@REF	9bf2b65cb82e72e9403d3aa0	OptionsDialog	Enable%20DHT%20(decentralized%20network)%20to%20find%20more%20peers
+QBT_TR(Enable DHT (decentralized network) to find more peers)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	9f48221096b460fd5f616418	StatusFiltersWidget	Resumed%20(%251)
+QBT_TR(Resumed (%1))QBT_TR[CONTEXT=StatusFiltersWidget]
+@@END
+@@REF	9fe8729595c57011b94153cb	HttpServer	Alternative%20download%20rate%20limit%20must%20be%20greater%20than%200%20or%20disabled.
+QBT_TR(Alternative download rate limit must be greater than 0 or disabled.)QBT_TR[CONTEXT=HttpServer]
+@@END
+@@REF	a01cc97c330696b2d39cf4df	PropertiesWidget	Share%20Ratio%3A
+QBT_TR(Share Ratio:)QBT_TR[CONTEXT=PropertiesWidget]
+@@END
+@@REF	a04d341c0f281120dfafbce4	OptionsDialog	The%20Web%20UI%20username%20must%20be%20at%20least%203%20characters%20long.
+QBT_TR(The Web UI username must be at least 3 characters long.)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	a1087d4f4d22c217c77f3061	OptionsDialog	Encryption%20mode%3A
+QBT_TR(Encryption mode:)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	a1bad0ab54ff09655d28a1f0	OptionsDialog	Maximum%20number%20of%20upload%20slots%20per%20torrent%3A
+QBT_TR(Maximum number of upload slots per torrent:)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	a205a0cc7b9be600804839b1	OptionsDialog	Seed%20torrents%20until%20their%20ratio%20reaches
+QBT_TR(Seed torrents until their ratio reaches)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	a2b79176c1f5b6da51f15a6d	AutomatedRssDownloader	Episode%20Filter%3A
+QBT_TR(Episode Filter:)QBT_TR[CONTEXT=AutomatedRssDownloader]
+@@END
+@@REF	a3adc436d213daa6ce917d48	OptionsDialog	Maximum%20number%20of%20connections%20per%20torrent%3A
+QBT_TR(Maximum number of connections per torrent:)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	a4a236310db90f1ba780c17f	PropertiesWidget	Downloaded%3A
+QBT_TR(Downloaded:)QBT_TR[CONTEXT=PropertiesWidget]
+@@END
+@@REF	a537e4fcfbca9e938e444c04	TorrentModel	Ratio%20Limit
+QBT_TR(Ratio Limit)QBT_TR[CONTEXT=TorrentModel]
+@@END
+@@REF	a65584c0ca6ddde218caab4d	TorrentModel	Status
+QBT_TR(Status)QBT_TR[CONTEXT=TorrentModel]
+@@END
+@@REF	a7be27a6cb93ed1149b0b998	TorrentContentModel	Availability
+QBT_TR(Availability)QBT_TR[CONTEXT=TorrentContentModel]
+@@END
+@@REF	a7faa15bb604952286b89929	OptionsDialog	Port%20used%20for%20incoming%20connections%3A
+QBT_TR(Port used for incoming connections:)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	a830b6efc09b04dde505a880	OptionsDialog	Bypass%20authentication%20for%20clients%20in%20whitelisted%20IP%20subnets
+QBT_TR(Bypass authentication for clients in whitelisted IP subnets)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	aac4a22e113cc17a5c12154a	HttpServer	Share%20ratio%20limit%20must%20be%20between%200%20and%209998.
+QBT_TR(Share ratio limit must be between 0 and 9998.)QBT_TR[CONTEXT=HttpServer]
+@@END
+@@REF	ab2b212feb700410d71ebe51	AutomatedRssDownloader	Ignore%20Subsequent%20Matches%20for%20(0%20to%20Disable)
+QBT_TR(Ignore Subsequent Matches for (0 to Disable))QBT_TR[CONTEXT=AutomatedRssDownloader]
+@@END
+@@REF	ab3103107ebc743c6113dd8d	OptionsDialog	Schedule%20%26the%20use%20of%20alternative%20rate%20limits
+QBT_TR(Schedule &the use of alternative rate limits)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	ab4732f4181691c17387fc15	PropTabBar	Trackers
+QBT_TR(Trackers)QBT_TR[CONTEXT=PropTabBar]
+@@END
+@@REF	ac423f98b0711fa35ce71748	OptionsDialog	Key%3A
+QBT_TR(Key:)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	acd565b7530da962d832154c	StatsDialog	All-time%20share%20ratio%3A
+QBT_TR(All-time share ratio:)QBT_TR[CONTEXT=StatsDialog]
+@@END
+@@REF	ae3b1b71ce6783e7768330a3	OptionsDialog	then
+QBT_TR(then)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	b008bf7b546716ad4d7d0a81	HttpServer	Maximum%20active%20torrents%20must%20be%20greater%20than%20-1.
+QBT_TR(Maximum active torrents must be greater than -1.)QBT_TR[CONTEXT=HttpServer]
+@@END
+@@REF	b09c0a256fd81b0d227d7a7d	PropertiesWidget	Added%20On%3A
+QBT_TR(Added On:)QBT_TR[CONTEXT=PropertiesWidget]
+@@END
+@@REF	b0c950d29962bbc1b09b61b6	OptionsDialog	IP%20address%3A
+QBT_TR(IP address:)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	b1182fdda00e0535fd8ab41b	OptionsDialog	minutes
+QBT_TR(minutes)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	b192059ae53f62e030b4915e	AutomatedRssDownloader	Assign%20Category%3A
+QBT_TR(Assign Category:)QBT_TR[CONTEXT=AutomatedRssDownloader]
+@@END
+@@REF	b39b4f2b3415d844835e9675	OptionsDialog	SMTP%20server%3A
+QBT_TR(SMTP server:)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	b4c1ff59734a1c425c692457	AddNewTorrentDialog	Skip%20hash%20check
+QBT_TR(Skip hash check)QBT_TR[CONTEXT=AddNewTorrentDialog]
+@@END
+@@REF	b4df6ba1b6fa58a77412393b	AutomatedRssDownloader	Must%20Contain%3A
+QBT_TR(Must Contain:)QBT_TR[CONTEXT=AutomatedRssDownloader]
+@@END
+@@REF	b51a9b45a9588180e4f9841f	HttpServer	Free%20space%3A%20%251
+QBT_TR(Free space: %1)QBT_TR[CONTEXT=HttpServer]
+@@END
+@@REF	b550306b5173473bc7e7004a	OptionsDialog	Privacy
+QBT_TR(Privacy)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	b58f78f681af01537d0ba325	OptionsDialog	Weekends
+QBT_TR(Weekends)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	b5b6b941a568f8da250654ad	OptionsDialog	Language
+QBT_TR(Language)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	b5cff6b525e7c3b0bb4d226f	OptionsDialog	When%3A
+QBT_TR(When:)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	b6310c4ce6dbf71b98b81b7a	TransferListWidget	Download%20first%20and%20last%20pieces%20first
+QBT_TR(Download first and last pieces first)QBT_TR[CONTEXT=TransferListWidget]
+@@END
+@@REF	b66b6e4a5f52979f45f920dc	HttpServer	Save%20files%20to%20location%3A
+QBT_TR(Save files to location:)QBT_TR[CONTEXT=HttpServer]
+@@END
+@@REF	b6b04ecf9c819e31eca6801e	AddNewTorrentDialog	Category%3A
+QBT_TR(Category:)QBT_TR[CONTEXT=AddNewTorrentDialog]
+@@END
+@@REF	b7a19b9ba354b3bfe1cc3dc6	OptionsDialog	Certificate%3A
+QBT_TR(Certificate:)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	b849ba2672700df82f6f158a	HttpServer	Maximum%20number%20of%20connections%20per%20torrent%20limit%20must%20be%20greater%20than%200%20or%20disabled.
+QBT_TR(Maximum number of connections per torrent limit must be greater than 0 or disabled.)QBT_TR[CONTEXT=HttpServer]
+@@END
+@@REF	b953ca85a0d3e399ca8a8fd8	HttpServer	Wednesday
+QBT_TR(Wednesday)QBT_TR[CONTEXT=HttpServer]
+@@END
+@@REF	b9ab7649672651be84aab8ca	PropertiesWidget	Never
+QBT_TR(Never)QBT_TR[CONTEXT=PropertiesWidget]
+@@END
+@@REF	baea049d83b218b20cf3d6d9	OptionsDialog	KiB%2Fs
+QBT_TR(KiB/s)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	bb1fe273ef5f58847b051b0c	PropTabBar	General
+QBT_TR(General)QBT_TR[CONTEXT=PropTabBar]
+@@END
+@@REF	bc9682650a33d8d765131d80	OptionsDialog	Web%20UI
+QBT_TR(Web UI)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	beb41e1b397ce3145b60a595	OptionsDialog	%25D%3A%20Save%20path
+QBT_TR(%D: Save path)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	bf297b265ffa99f79f101df8	PeerListWidget	Flags
+QBT_TR(Flags)QBT_TR[CONTEXT=PeerListWidget]
+@@END
+@@REF	bf7c5737e3bbb316851c3d28	PropertiesWidget	Reannounce%20In%3A
+QBT_TR(Reannounce In:)QBT_TR[CONTEXT=PropertiesWidget]
+@@END
+@@REF	c156cda705ab9b5046afb99e	OptionsDialog	%25T%3A%20Current%20tracker
+QBT_TR(%T: Current tracker)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	c1676ccd81be378180a88f4e	HttpServer	Global%20download%20rate%20limit%20must%20be%20greater%20than%200%20or%20disabled.
+QBT_TR(Global download rate limit must be greater than 0 or disabled.)QBT_TR[CONTEXT=HttpServer]
+@@END
+@@REF	c194cd7297d4476ccfa546a3	PeerListWidget	Uploaded
+QBT_TR(Uploaded)QBT_TR[CONTEXT=PeerListWidget]
+@@END
+@@REF	c23a81fa16b0baa4bad2fb73	PropTabBar	Content
+QBT_TR(Content)QBT_TR[CONTEXT=PropTabBar]
+@@END
+@@REF	c354e73f00268d15a8f36bfb	OptionsDialog	Prefer%20encryption
+QBT_TR(Prefer encryption)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	c3776b18e7735bfb4fe391ed	TorrentModel	Completed
+QBT_TR(Completed)QBT_TR[CONTEXT=TorrentModel]
+@@END
+@@REF	c415c7844e5d4e3a2fdfc675	AutomatedRssDownloader	Add%20Paused%3A
+QBT_TR(Add Paused:)QBT_TR[CONTEXT=AutomatedRssDownloader]
+@@END
+@@REF	c55975138056ab2c802e7214	TorrentModel	Category
+QBT_TR(Category)QBT_TR[CONTEXT=TorrentModel]
+@@END
+@@REF	c6c658cf65227626ce9e54dd	OptionsDialog	Pre-allocate%20disk%20space%20for%20all%20files
+QBT_TR(Pre-allocate disk space for all files)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	c79a8c5810f84e2a3ac9b020	StatusFiltersWidget	Inactive%20(%251)
+QBT_TR(Inactive (%1))QBT_TR[CONTEXT=StatusFiltersWidget]
+@@END
+@@REF	c925c7fee36a8258dea113bb	HttpServer	Tuesday
+QBT_TR(Tuesday)QBT_TR[CONTEXT=HttpServer]
+@@END
+@@REF	ca3c4685f71e48552b79dbfc	OptionsDialog	IP%20Fi%26ltering
+QBT_TR(IP Fi&ltering)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	ca4e3b637a6379a34ad1483b	PeerListWidget	Client
+QBT_TR(Client)QBT_TR[CONTEXT=PeerListWidget]
+@@END
+@@REF	cb2adc56c4361995d20af9b2	TransferListFiltersWidget	Categories
+QBT_TR(Categories)QBT_TR[CONTEXT=TransferListFiltersWidget]
+@@END
+@@REF	cc213631572101472e3e0195	OptionsDialog	Global%20maximum%20number%20of%20upload%20slots%3A
+QBT_TR(Global maximum number of upload slots:)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	cc7ae6d45aea487e32b67f33	OptionsDialog	Disable%20encryption
+QBT_TR(Disable encryption)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	ce6e912729e21e98be2d14b9	AutomatedRssDownloader	Rule%20Definition
+QBT_TR(Rule Definition)QBT_TR[CONTEXT=AutomatedRssDownloader]
+@@END
+@@REF	d064c8f29175dda83682fbd3	OptionsDialog	Speed
+QBT_TR(Speed)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	d0663c1b12cdd5e9e65cdc3b	OptionsDialog	Upload%3A
+QBT_TR(Upload:)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	d14e6c1e2e56b204bc0c1099	OptionsDialog	Automatically%20add%20torrents%20from%3A
+QBT_TR(Automatically add torrents from:)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	d2c0c569af0c5f709ed69579	OptionsDialog	%26Use%20HTTPS%20instead%20of%20HTTP
+QBT_TR(&Use HTTPS instead of HTTP)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	d42c8ed9d9911cc4c975f7b8	OptionsDialog	Maximum%20active%20uploads%3A
+QBT_TR(Maximum active uploads:)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	d473dbf3ddd52b460b38b18c	PropertiesWidget	Total%20Size%3A
+QBT_TR(Total Size:)QBT_TR[CONTEXT=PropertiesWidget]
+@@END
+@@REF	d4d87e1cba76133261d70c9e	MainWindow	%26Add%20Torrent%20File...
+QBT_TR(&Add Torrent File...)QBT_TR[CONTEXT=MainWindow]
+@@END
+@@REF	d50eb11c98718d5bc935c0ab	HttpServer	Seeding%20time%20limit%20must%20be%20between%200%20and%20525600%20minutes.
+QBT_TR(Seeding time limit must be between 0 and 525600 minutes.)QBT_TR[CONTEXT=HttpServer]
+@@END
+@@REF	d569eb8c57c72922d43e56d2	OptionsDialog	Apply%20rate%20limit%20to%20%C2%B5TP%20protocol
+QBT_TR(Apply rate limit to µTP protocol)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	d5f2bc21ab8c43c0fb924af5	TorrentModel	Name
+QBT_TR(Name)QBT_TR[CONTEXT=TorrentModel]
+@@END
+@@REF	d797e26f0158f014494296be	OptionsDialog	Domain%20name%3A
+QBT_TR(Domain name:)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	d9924e3c4dc70ffb3e3c410c	HttpServer	Unable%20to%20save%20program%20preferences%2C%20qBittorrent%20is%20probably%20unreachable.
+QBT_TR(Unable to save program preferences, qBittorrent is probably unreachable.)QBT_TR[CONTEXT=HttpServer]
+@@END
+@@REF	de27b0f2894bb9519050ed7e	OptionsDialog	Authentication
+QBT_TR(Authentication)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	e18f0b0f09704c5a5346fcd8	HttpServer	Limit%20download%20rate
+QBT_TR(Limit download rate)QBT_TR[CONTEXT=HttpServer]
+@@END
+@@REF	e3d326a6f0ce8e02aaffb31e	OptionsDialog	Enabled%20protocol%3A
+QBT_TR(Enabled protocol:)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	e5c4c8f86004c33d249f77c1	TorrentModel	Uploaded
+QBT_TR(Uploaded)QBT_TR[CONTEXT=TorrentModel]
+@@END
+@@REF	e5cbeb70833f5d34e62ba935	HttpServer	Friday
+QBT_TR(Friday)QBT_TR[CONTEXT=HttpServer]
+@@END
+@@REF	e8dc38d3f1170a9527100bf9	TorrentModel	ETA
+QBT_TR(ETA)QBT_TR[CONTEXT=TorrentModel]
+@@END
+@@REF	e948953759538c7a5b48d11a	AutomatedRssDownloader	Apply%20Rule%20to%20Feeds%3A
+QBT_TR(Apply Rule to Feeds:)QBT_TR[CONTEXT=AutomatedRssDownloader]
+@@END
+@@REF	e9a23e62888f3d6903e9b650	StatusFiltersWidget	Completed%20(%251)
+QBT_TR(Completed (%1))QBT_TR[CONTEXT=StatusFiltersWidget]
+@@END
+@@REF	ea2b632d587fa06184d1a0f3	StatsDialog	Total%20queued%20size%3A
+QBT_TR(Total queued size:)QBT_TR[CONTEXT=StatsDialog]
+@@END
+@@REF	eac3db8c1f0de932c66eb883	OptionsDialog	%25C%3A%20Number%20of%20files
+QBT_TR(%C: Number of files)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	eb2fb42cde26a2c29d077d4d	HttpServer	Maximum%20number%20of%20connections%20limit%20must%20be%20greater%20than%200%20or%20disabled.
+QBT_TR(Maximum number of connections limit must be greater than 0 or disabled.)QBT_TR[CONTEXT=HttpServer]
+@@END
+@@REF	ebb5218426c924b8695c6758	AutomatedRssDownloader	Download%20Rules
+QBT_TR(Download Rules)QBT_TR[CONTEXT=AutomatedRssDownloader]
+@@END
+@@REF	ecc1a2e8dd35ddd408095d3a	HttpServer	Maximum%20number%20of%20upload%20slots%20per%20torrent%20limit%20must%20be%20greater%20than%200%20or%20disabled.
+QBT_TR(Maximum number of upload slots per torrent limit must be greater than 0 or disabled.)QBT_TR[CONTEXT=HttpServer]
+@@END
+@@REF	ed366381ee8e49b1851d73aa	AutomatedRssDownloader	Always
+QBT_TR(Always)QBT_TR[CONTEXT=AutomatedRssDownloader]
+@@END
+@@REF	ee68510032f44c8f634a14a3	PropertiesWidget	Completed%20On%3A
+QBT_TR(Completed On:)QBT_TR[CONTEXT=PropertiesWidget]
+@@END
+@@REF	ef9007cc2c3827c9104173a0	PropertiesWidget	Upload%20Limit%3A
+QBT_TR(Upload Limit:)QBT_TR[CONTEXT=PropertiesWidget]
+@@END
+@@REF	f04e9f6cb5b00ddefca2fe05	HttpServer	Monday
+QBT_TR(Monday)QBT_TR[CONTEXT=HttpServer]
+@@END
+@@REF	f100fd6b7135754d9da6f127	HttpServer	Rename%20torrent
+QBT_TR(Rename torrent)QBT_TR[CONTEXT=HttpServer]
+@@END
+@@REF	f288cd0e1c92264a4a23ba2e	OptionsDialog	This%20server%20requires%20a%20secure%20connection%20(SSL)
+QBT_TR(This server requires a secure connection (SSL))QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	f29c94ea141e763af8167f4d	PropertiesWidget	Download%20Speed%3A
+QBT_TR(Download Speed:)QBT_TR[CONTEXT=PropertiesWidget]
+@@END
+@@REF	f3f064485d3b2268128a8b64	PropertiesWidget	Wasted%3A
+QBT_TR(Wasted:)QBT_TR[CONTEXT=PropertiesWidget]
+@@END
+@@REF	f4493762427e6f1a57c78a1b	OptionsDialog	Copy%20.torrent%20files%20for%20finished%20downloads%20to%3A
+QBT_TR(Copy .torrent files for finished downloads to:)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	f516a8d2eba488e648516473	AddNewTorrentDialog	Start%20torrent
+QBT_TR(Start torrent)QBT_TR[CONTEXT=AddNewTorrentDialog]
+@@END
+@@REF	f63825c20d70cde902e273f3	OptionsDialog	Connection
+QBT_TR(Connection)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	f83958b11d14876808d76224	OptionsDialog	From%3A
+QBT_TR(From:)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	f93150c86bcd2ae7daf5fdc5	TorrentModel	Peers
+QBT_TR(Peers)QBT_TR[CONTEXT=TorrentModel]
+@@END
+@@REF	f94ff870e58e606ed5859612	TorrentModel	Last%20Seen%20Complete
+QBT_TR(Last Seen Complete)QBT_TR[CONTEXT=TorrentModel]
+@@END
+@@REF	fa16c1a562c0cb8dcce77ea3	CategoryFilterModel	All
+QBT_TR(All)QBT_TR[CONTEXT=CategoryFilterModel]
+@@END
+@@REF	fa8d5f36a600db4e008d4095	TrackerList	Status
+QBT_TR(Status)QBT_TR[CONTEXT=TrackerList]
+@@END
+@@REF	fb4bbdb2e785381859970db5	AutomatedRssDownloader	Must%20Not%20Contain%3A
+QBT_TR(Must Not Contain:)QBT_TR[CONTEXT=AutomatedRssDownloader]
+@@END
+@@REF	fe0beac6a6695a7eb58ae3cf	OptionsDialog	(None)
+QBT_TR((None))QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	fe29e76f4ae40d7bcb53f883	OptionsDialog	Server%20domains%3A
+QBT_TR(Server domains:)QBT_TR[CONTEXT=OptionsDialog]
+@@END
+@@REF	fe5c42473211a3e02a36b987	AutomatedRssDownloader	Use%20global%20settings
+QBT_TR(Use global settings)QBT_TR[CONTEXT=AutomatedRssDownloader]
+@@END
+@@REF	fffc120e916faa4fc4f9021d	OptionsDialog	BitTorrent
+QBT_TR(BitTorrent)QBT_TR[CONTEXT=OptionsDialog]
+@@END

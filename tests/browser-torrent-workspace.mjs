@@ -138,7 +138,7 @@ const server=http.createServer(async(req,res)=>{try{
   const url=new URL(req.url,`http://${host}:${port}`),m=url.pathname.match(/^\/(legacy|modern)(?:\/(.*))?$/);if(!m){res.writeHead(404);return res.end('not found');}
   const v=variants[m[1]],rel=m[2]||'';if(rel.startsWith('api/v2/'))return await api(req,res,v,rel.slice(7),url);
   if(rel==='data/qb-releases.json')return json(res,profiles);
-  if(rel==='data/qb-settings-native.txt'){const asset=await readWebuiStatic([root,publicRoot],rel);return text(res,nativeQbtSource(asset.body));}
+  if(/^data\/qb-copy-bindings\/b[0-9a-f]{20}\.txt$/.test(rel)){const asset=await readWebuiStatic([root,publicRoot],rel);return text(res,nativeQbtSource(asset.body));}
   if(rel==='weigg-install.json')return json(res,{version:productVersion,gitSha:'workspace-fixture',qbPath:'/config/weigg-qb-webui',hostPath:'/srv/qb/config/weigg-qb-webui'});
   const requested=rel||'index.html',{file,body}=await readWebuiStatic([root,publicRoot],requested);res.writeHead(200,{'content-type':mime[path.extname(file).toLowerCase()]||'application/octet-stream','cache-control':'no-store'});res.end(body);
 }catch(e){res.writeHead(e?.code==='ENOENT'?404:500,{'content-type':'text/plain; charset=utf-8'});res.end(String(e));}});

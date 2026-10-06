@@ -5,7 +5,7 @@ const sh=fs.readFileSync(new URL('../installers/install.sh',import.meta.url),'ut
 const site=fs.readFileSync(new URL('../simulator/build/build-site.mjs',import.meta.url),'utf8');
 assert.ok(builder.includes("rootFolder='weig-qb-webui'"));
 assert.ok(builder.includes("${rootFolder}.zip")&&builder.includes("${rootFolder}.tar.gz"));
-assert.ok(builder.includes("schemaVersion:5")&&builder.includes("unixArchive:")&&builder.includes("zipArchive:")&&builder.includes("preferred:{unix:'tar.gz',windows:'zip'}"));
+assert.ok(builder.includes("schemaVersion:6")&&builder.includes("unixArchive:")&&builder.includes("zipArchive:")&&builder.includes("preferred:{unix:'tar.gz',windows:'zip'}"));
 assert.ok(builder.includes("artifacts:{tarGz:")&&builder.includes("manifest.json")&&builder.includes("SHA256SUMS"));
 assert.ok(sh.includes("prepare_manifest_dist()")&&sh.includes('dist_root" = "weig-qb-webui"')&&sh.includes('dist_tar" = "weig-qb-webui.tar.gz"')&&sh.includes('dist_zip" = "weig-qb-webui.zip"'));
 assert.ok(sh.includes("command -v tar")&&sh.includes("has_busybox_applet tar"));

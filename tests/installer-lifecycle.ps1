@@ -35,12 +35,14 @@ try {
   $Base=Join-Path $Tmp 'base\WeiG-qB-WebUI'
   New-Item -ItemType Directory -Force -Path $Base | Out-Null
   Copy-Item (Join-Path $Root 'webui\*') $Base -Recurse -Force
-  $CompactRuntime=@('capabilities.json','detail-compat.json','settings-compat.json','torrent-compat.json','source-actions.json','rss-compat.json','qb-settings-native.txt')
+  $CompactRuntime=@('capabilities.json','detail-compat.json','settings-compat.json','torrent-compat.json','source-actions.json','rss-compat.json')
   foreach($name in $CompactRuntime){
     $file=Join-Path $Base ('private\data\'+$name)
     Assert-True ((Test-Path -LiteralPath $file -PathType Leaf) -and (Get-Item -LiteralPath $file).Length -gt 0) "Missing current compact runtime fixture: $name"
   }
   Assert-True (!(Test-Path -LiteralPath (Join-Path $Base 'private\data\qb-releases.json'))) 'Retired qb-releases.json must not be recreated for lifecycle fixtures.'
+  foreach($dir in @('qb-copy-profiles','qb-copy-bindings','qb-copy-fallback')){Assert-True (Test-Path -LiteralPath (Join-Path $Base ('private\data\'+$dir)) -PathType Container) "Missing current qB copy shard fixture: $dir"}
+  Assert-True (!(Test-Path -LiteralPath (Join-Path $Base 'private\data\qb-settings-native.txt'))) 'Retired all-version qB copy registry must stay absent.'
 
   function Build-Release([string]$Version,[string]$SourceSha,[string]$Marker){
     $work=Join-Path $Tmp "build-$Version"
@@ -130,6 +132,8 @@ try {
       Assert-True ((Test-Path -LiteralPath $file -PathType Leaf) -and (Get-Item -LiteralPath $file).Length -gt 0) "Installed compact runtime missing: $name"
     }
     Assert-True (!(Test-Path -LiteralPath (Join-Path $Destination 'private\data\qb-releases.json'))) 'Retired qb-releases.json reappeared after install.'
+    foreach($dir in @('qb-copy-profiles','qb-copy-bindings','qb-copy-fallback')){Assert-True (Test-Path -LiteralPath (Join-Path $Destination ('private\data\'+$dir)) -PathType Container) "Installed qB copy shard directory missing: $dir"}
+    Assert-True (!(Test-Path -LiteralPath (Join-Path $Destination 'private\data\qb-settings-native.txt'))) 'Retired all-version qB copy registry reappeared after install.'
   }
 
   function Assert-ConfigEnabled {

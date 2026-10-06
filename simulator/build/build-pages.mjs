@@ -63,17 +63,16 @@ if(!(await exists(privateRoot))||!(await exists(publicRoot)))throw new Error(`Mi
 if(!(await exists(translatorBehaviorPath)))throw new Error(`Missing translator behavior evidence: ${translatorBehaviorPath}`);
 await copyDir(privateRoot,path.join(out,'__source/private'));
 await copyDir(publicRoot,path.join(out,'__source/public'));
-let runtimeRegistryPath='';
 if(branch==='main'){
   await fs.mkdir(path.join(out,'__source/private/data'),{recursive:true});
   packCatalog(catalogPath,path.join(out,'__source/private/data/qb-releases.json'));
 }else{
-  const registry=path.join(webuiRoot,'private/data/qb-settings-native.txt'),translations=path.join(webuiRoot,'translations');
-  if(!(await exists(registry)))throw new Error('Dev WebUI source is missing the checked-in compact qB-owned copy registry.');
-  if(!(await exists(translations)))throw new Error('Dev WebUI source is missing checked-in minimal official qB WebUI QM assets.');
+  const dataRoot=path.join(webuiRoot,'private/data'),translations=path.join(webuiRoot,'translations');
+  for(const name of ['qb-copy-profiles','qb-copy-bindings','qb-copy-fallback'])if(!(await exists(path.join(dataRoot,name))))throw new Error('Dev WebUI source is missing sharded qB-owned copy runtime: '+name);
+  if(await exists(path.join(dataRoot,'qb-settings-native.txt')))throw new Error('Dev WebUI source retained retired all-version qB copy registry.');
+  if(!(await exists(translations)))throw new Error('Dev WebUI source is missing checked-in official qB WebUI QM assets.');
   if(await exists(path.join(webuiRoot,'private/scripts/release-profile.js')))throw new Error('Dev WebUI source retained retired release-profile.js.');
-  if(await exists(path.join(webuiRoot,'private/data/qb-releases.json'))||await exists(path.join(webuiRoot,'private/data/qb-release-profiles')))throw new Error('Dev WebUI source retained retired release-profile runtime data.');
-  runtimeRegistryPath=registry;
+  if(await exists(path.join(dataRoot,'qb-releases.json'))||await exists(path.join(dataRoot,'qb-release-profiles')))throw new Error('Dev WebUI source retained retired release-profile runtime data.');
   await copyDir(translations,path.join(out,'__source/translations'));
 }
 await prepareIndex(path.join(out,'__source/private/index.html'));
@@ -84,13 +83,13 @@ await fs.copyFile(translatorBehaviorPath,path.join(out,'__simulator/versions/qb-
 await fs.copyFile(catalogPath,path.join(out,'__simulator/versions/catalog.source.json'));
 const simulatorCatalog=await simulatorCatalogWithLocaleFacts();
 await fs.writeFile(path.join(out,'__simulator/versions/catalog.generated.json'),JSON.stringify(simulatorCatalog,null,2)+'\n','utf8');
-const runtimeShardMeta=await writeSimulatorRuntimeShards({catalog:simulatorCatalog,registryPath:runtimeRegistryPath,out:path.join(out,'__simulator/runtime')});
+const runtimeShardMeta=await writeSimulatorRuntimeShards({catalog:simulatorCatalog,out:path.join(out,'__simulator/runtime')});
 const privateIndexText=await fs.readFile(path.join(out,'__source/private/index.html'),'utf8'),prewarmAssets=bootstrapAssets(privateIndexText);
 if(branch==='dev'&&!prewarmAssets.length)throw new Error('Unable to derive private bootstrap prewarm assets from the canonical WebUI bootstrap.');
 await fs.writeFile(path.join(out,'__simulator/runtime/private-prewarm.json'),JSON.stringify({schemaVersion:1,assets:prewarmAssets})+'\n','utf8');
 await writeVersionedServiceWorker();
 const bootstrap=`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark light"><title>WeiG Virtual qB Lab</title><style>body{margin:0;min-height:100svh;display:grid;place-items:center;background:#05070d;color:#e8edf7;font:15px/1.5 system-ui,sans-serif}main{max-width:560px;padding:24px;text-align:center}small{display:block;color:#8d99b4;margin-top:8px}</style></head><body><main><strong>Starting WeiG Virtual qB Lab…</strong><small>Branch: ${branch}. Installing the local Virtual qB Service Worker.</small></main><script>(async()=>{if(!('serviceWorker'in navigator)){document.body.textContent='Service Worker is required.';return}await navigator.serviceWorker.register('./service-worker.js',{scope:'./',type:'module'});await navigator.serviceWorker.ready;if(!navigator.serviceWorker.controller)await new Promise(resolve=>navigator.serviceWorker.addEventListener('controllerchange',resolve,{once:true}));location.reload()})().catch(error=>{document.body.textContent='Virtual qB startup failed: '+error})</script></body></html>`;
 await fs.writeFile(path.join(out,'index.html'),bootstrap,'utf8');
-const meta={branch,exactSha,productVersion,simulatorSha,builtAt:new Date().toISOString(),catalog:path.relative(projectRoot,catalogPath).replaceAll('\\','/'),localeOverlay:path.relative(projectRoot,localeOverlayPath).replaceAll('\\','/'),translatorBehavior:path.relative(projectRoot,translatorBehaviorPath).replaceAll('\\','/'),qbtEmulation:'validation-only/source-derived',settingsTranslationRouting:'single-compact-qb-settings-native-ir/native-minimal-QM/exact-bridge',runtimeShards:{schemaVersion:runtimeShardMeta.schemaVersion,profiles:runtimeShardMeta.profiles.length,copyProfiles:runtimeShardMeta.copyProfiles.length,prewarmAssets:prewarmAssets.length},productSource:branch==='dev'?'webui/** copied as the self-contained compact runtime; the full 65-release source catalog remains simulator-only evidence':'historical main preview materializes its legacy release-profile runtime from simulator-only source evidence',webuiModified:false,pagesAdapted:true};
+const meta={branch,exactSha,productVersion,simulatorSha,builtAt:new Date().toISOString(),catalog:path.relative(projectRoot,catalogPath).replaceAll('\\','/'),localeOverlay:path.relative(projectRoot,localeOverlayPath).replaceAll('\\','/'),translatorBehavior:path.relative(projectRoot,translatorBehaviorPath).replaceAll('\\','/'),qbtEmulation:'validation-only/source-derived',settingsTranslationRouting:'exact-profile-binding-major-locale/native-QM/exact-fallback',runtimeShards:{schemaVersion:runtimeShardMeta.schemaVersion,profiles:runtimeShardMeta.profiles.length,prewarmAssets:prewarmAssets.length},productSource:branch==='dev'?'webui/** copied as the self-contained compact runtime; the full 65-release source catalog remains simulator-only evidence':'historical main preview materializes its legacy release-profile runtime from simulator-only source evidence',webuiModified:false,pagesAdapted:true};
 await fs.writeFile(path.join(out,'virtual-qb-build.json'),JSON.stringify(meta,null,2)+'\n','utf8');
 console.log(`Built WeiG Virtual qB app: ${branch}@${exactSha} -> ${out}`);

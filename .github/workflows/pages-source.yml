@@ -486,7 +486,7 @@ jobs:
           rm -rf "$RUNNER_TEMP/qb-materialized"
           mkdir -p "$RUNNER_TEMP/qb-materialized/private/data"
           node tools/qb-webui-catalog.mjs qb-releases.json "$RUNNER_TEMP/qb-materialized/private/data/qb-releases.json"
-          test -s "$RUNNER_TEMP/qb-materialized/private/data/qb-settings-native.txt"
+          node tools/qb-runtime-copy-product.mjs validate "$RUNNER_TEMP/qb-materialized/private/data" >/dev/null
           find "$RUNNER_TEMP/qb-materialized/translations" -type f -name 'webui_*.qm' -print -quit | grep -q .
       - name: Upload certified exact-dev qB Settings translation LKG
         uses: actions/upload-artifact@v7
@@ -558,9 +558,9 @@ jobs:
             "$APPLIED_CATALOG" \
             "$GENERATED/private/data/qb-releases.json" \
             --settings-lkg="$LKG"
-          test -s "$GENERATED/private/data/qb-settings-native.txt"
+          node tools/qb-runtime-copy-product.mjs validate "$GENERATED/private/data" >/dev/null
           find "$GENERATED/translations" -type f -name 'webui_*.qm' -print -quit | grep -q .
-          node tests/qb-runtime-copy-materialization-contract.mjs "$LKG" "$GENERATED/private/data/qb-settings-native.txt"
+          node tests/qb-runtime-copy-materialization-contract.mjs "$LKG" "$GENERATED/private/data"
       - name: Verify or materialize admitted product copy runtime
         id: materialize
         shell: bash
@@ -588,12 +588,12 @@ jobs:
               | gh api --method POST "/repos/$GITHUB_REPOSITORY/actions/workflows/pages-source.yml/dispatches" --input -
           }
 
-          registry_equal=false
+          copy_equal=false
           qm_equal=false
-          cmp -s "$GENERATED/private/data/qb-settings-native.txt" webui/private/data/qb-settings-native.txt && registry_equal=true
+          node tools/qb-runtime-copy-product.mjs compare "$GENERATED/private/data" webui/private/data >/dev/null && copy_equal=true
           diff -qr "$GENERATED/translations" webui/translations >/dev/null && qm_equal=true
-          if [ "$registry_equal" = true ] && [ "$qm_equal" = true ]; then
-            node tests/qb-runtime-copy-materialization-contract.mjs "$RUNNER_TEMP/qb-settings-translation-lkg.json" webui/private/data/qb-settings-native.txt
+          if [ "$copy_equal" = true ] && [ "$qm_equal" = true ]; then
+            node tests/qb-runtime-copy-materialization-contract.mjs "$RUNNER_TEMP/qb-settings-translation-lkg.json" webui/private/data
             echo "Committed qB-owned copy/QM assets exactly match admitted current-parser evidence."
             echo "materialized_sha=$DEV_SHA" >> "$GITHUB_OUTPUT"
             exit 0
@@ -606,7 +606,7 @@ jobs:
             exit 0
           fi
 
-          cp "$GENERATED/private/data/qb-settings-native.txt" webui/private/data/qb-settings-native.txt
+          node tools/qb-runtime-copy-product.mjs sync "$GENERATED/private/data" webui/private/data >/dev/null
           rm -rf webui/translations
           mkdir -p webui/translations
           cp "$GENERATED"/translations/webui_*.qm webui/translations/
@@ -615,12 +615,12 @@ jobs:
           test "${#changed[@]}" -gt 0
           for path in "${changed[@]}"; do
             case "$path" in
-              webui/private/data/qb-settings-native.txt|webui/translations/webui_*.qm) ;;
+              webui/private/data/qb-copy-profiles/*|webui/private/data/qb-copy-bindings/*|webui/private/data/qb-copy-fallback/*|webui/translations/webui_*.qm) ;;
               *) echo "Unexpected admitted copy materializer path: $path" >&2; exit 1 ;;
             esac
           done
 
-          node tests/qb-runtime-copy-materialization-contract.mjs "$RUNNER_TEMP/qb-settings-translation-lkg.json" webui/private/data/qb-settings-native.txt
+          node tests/qb-runtime-copy-materialization-contract.mjs "$RUNNER_TEMP/qb-settings-translation-lkg.json" webui/private/data
           git diff --check
 
           git fetch --no-tags origin dev
@@ -632,7 +632,7 @@ jobs:
 
           git config user.name "WeiG CI"
           git config user.email "actions@users.noreply.github.com"
-          git add webui/private/data/qb-settings-native.txt webui/translations
+          git add -A webui/private/data webui/translations
           git commit -m "a42: materialize admitted qB copy runtime [native-surfaces] [ui]"
           if ! git push origin HEAD:dev; then
             git fetch --no-tags origin dev

@@ -1062,14 +1062,22 @@ function Verify-PackageChecksum([string]$Archive,[string]$SumFile,[string]$Archi
 }
 
 function Assert-MaterializedWebUI([string]$Root) {
-  $registryFile=Join-Path $Root 'private\data\qb-settings-native.txt'
+  $data=Join-Path $Root 'private\data'
   $translations=Join-Path $Root 'translations'
-  foreach($contract in @('capabilities.json','torrent-compat.json','detail-compat.json','settings-compat.json','source-actions.json')){
-    if(!(Test-Path (Join-Path $Root ("private\data\"+$contract)))){throw "Materialized WebUI is missing compact runtime contract $contract."}
+  foreach($contract in @('capabilities.json','torrent-compat.json','detail-compat.json','settings-compat.json','source-actions.json','rss-compat.json')){
+    $file=Join-Path $data $contract
+    if(!(Test-Path $file -PathType Leaf) -or (Get-Item $file).Length -le 0){throw "Materialized WebUI is missing compact runtime contract $contract."}
   }
-  foreach($legacy in @('private\scripts\release-profile.js','private\data\qb-releases.json','private\data\qb-release-profiles')){if(Test-Path (Join-Path $Root $legacy)){throw "Materialized WebUI retained retired runtime path $legacy."}}
-  if(!(Test-Path $registryFile)){throw 'Materialized WebUI is missing the native Settings QBT_TR registry.'}
-  if((Get-Content $registryFile -Raw) -notmatch '(?m)^@@(P|SET|VAL|REF|META|S)(\s|$)'){throw 'Materialized WebUI qB-owned copy registry is a placeholder or malformed.'}
+  foreach($legacy in @('private\scripts\release-profile.js','private\data\qb-releases.json','private\data\qb-release-profiles','private\data\qb-settings-native.txt')){if(Test-Path (Join-Path $Root $legacy)){throw "Materialized WebUI retained retired runtime path $legacy."}}
+  foreach($spec in @(@('qb-copy-profiles','*.json'),@('qb-copy-bindings','*.txt'),@('qb-copy-fallback','*.json'))){
+    $dir=Join-Path $data $spec[0]
+    if(!(Test-Path $dir -PathType Container)){throw "Materialized WebUI is missing qB copy shard directory $($spec[0])."}
+    $files=Get-ChildItem $dir -Filter $spec[1] -File -Recurse -ErrorAction SilentlyContinue
+    if(!($files | Select-Object -First 1)){throw "Materialized WebUI qB copy shard directory $($spec[0]) is empty."}
+    if($files | Where-Object {$_.Length -le 0} | Select-Object -First 1){throw "Materialized WebUI contains an empty qB copy shard in $($spec[0])."}
+  }
+  $binding=Get-ChildItem (Join-Path $data 'qb-copy-bindings') -Filter '*.txt' -File | Select-Object -First 1
+  if(!$binding -or (Get-Content $binding.FullName -Raw) -notmatch '(?m)^@@BINDING\tb[0-9a-f]{20}$'){throw 'Materialized WebUI qB copy binding shard is malformed.'}
   if(!(Test-Path $translations) -or !(Get-ChildItem $translations -Filter 'webui_*.qm' -File -ErrorAction SilentlyContinue | Select-Object -First 1)){throw 'Materialized WebUI is missing official qB WebUI translation QM assets.'}
 }
 

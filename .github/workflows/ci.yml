@@ -685,7 +685,7 @@ jobs:
           rm -rf "$RUNNER_TEMP/qb-materialized"
           mkdir -p "$RUNNER_TEMP/qb-materialized/private/data"
           node tools/qb-webui-catalog.mjs qb-releases.json "$RUNNER_TEMP/qb-materialized/private/data/qb-releases.json" --settings-lkg=qb-settings-translation-lkg.json
-          test -s "$RUNNER_TEMP/qb-materialized/private/data/qb-settings-native.txt"
+          node tools/qb-runtime-copy-product.mjs validate "$RUNNER_TEMP/qb-materialized/private/data" >/dev/null
           find "$RUNNER_TEMP/qb-materialized/translations" -type f -name 'webui_*.qm' -print -quit | grep -q .
       - name: Upload certified qB Settings/source LKG v2
         uses: actions/upload-artifact@v7
@@ -733,9 +733,9 @@ jobs:
           rm -rf "$RUNNER_TEMP/qb-settings-materialized"
           mkdir -p "$RUNNER_TEMP/qb-settings-materialized/private/data"
           node tools/qb-webui-catalog.mjs             release-catalog/qb-releases.json             "$RUNNER_TEMP/qb-settings-materialized/private/data/qb-releases.json"             --settings-lkg=settings-lkg/qb-settings-translation-lkg.json
-          test -s "$RUNNER_TEMP/qb-settings-materialized/private/data/qb-settings-native.txt"
+          node tools/qb-runtime-copy-product.mjs validate "$RUNNER_TEMP/qb-settings-materialized/private/data" >/dev/null
           find "$RUNNER_TEMP/qb-settings-materialized/translations" -type f -name 'webui_*.qm' -print -quit | grep -q .
-          node tests/qb-runtime-copy-materialization-contract.mjs release-catalog/qb-releases.json "$RUNNER_TEMP/qb-settings-materialized/private/data/qb-settings-native.txt"
+          node tests/qb-runtime-copy-materialization-contract.mjs release-catalog/qb-releases.json "$RUNNER_TEMP/qb-settings-materialized/private/data"
       - name: Verify or materialize exact product assets
         id: materialize
         shell: bash
@@ -745,18 +745,18 @@ jobs:
         run: |
           set -euo pipefail
           GENERATED="$RUNNER_TEMP/qb-settings-materialized"
-          registry_equal=false
+          copy_equal=false
           qm_equal=false
-          cmp -s "$GENERATED/private/data/qb-settings-native.txt" webui/private/data/qb-settings-native.txt && registry_equal=true
+          node tools/qb-runtime-copy-product.mjs compare "$GENERATED/private/data" webui/private/data >/dev/null && copy_equal=true
           diff -qr "$GENERATED/translations" webui/translations >/dev/null && qm_equal=true
-          if [ "$registry_equal" = true ] && [ "$qm_equal" = true ]; then
+          if [ "$copy_equal" = true ] && [ "$qm_equal" = true ]; then
             echo "Committed qB Settings copy/QM assets exactly match current-SHA canonical generation."
             exit 0
           fi
 
           if [[ "$HEAD_MESSAGE" == *"[settings-evidence-verify]"* ]]; then
             echo "Verification SHA still differs from canonical qB Settings copy/QM generation." >&2
-            sha256sum "$GENERATED/private/data/qb-settings-native.txt" webui/private/data/qb-settings-native.txt >&2 || true
+            node tools/qb-runtime-copy-product.mjs compare "$GENERATED/private/data" webui/private/data >&2 || true
             diff -qr "$GENERATED/translations" webui/translations >&2 || true
             exit 1
           fi
@@ -775,7 +775,7 @@ jobs:
             exit 0
           fi
 
-          cp "$GENERATED/private/data/qb-settings-native.txt" webui/private/data/qb-settings-native.txt
+          node tools/qb-runtime-copy-product.mjs sync "$GENERATED/private/data" webui/private/data >/dev/null
           rm -rf webui/translations
           mkdir -p webui/translations
           cp "$GENERATED"/translations/webui_*.qm webui/translations/
@@ -788,14 +788,14 @@ jobs:
           test "${#changed[@]}" -gt 0
           for path in "${changed[@]}"; do
             case "$path" in
-              webui/private/data/qb-settings-native.txt|webui/translations/webui_*.qm) ;;
+              webui/private/data/qb-copy-profiles/*|webui/private/data/qb-copy-bindings/*|webui/private/data/qb-copy-fallback/*|webui/translations/webui_*.qm) ;;
               *) echo "Unexpected materializer path: $path" >&2; exit 1 ;;
             esac
           done
 
           git config user.name "WeiG CI"
           git config user.email "actions@users.noreply.github.com"
-          git add webui/private/data/qb-settings-native.txt webui/translations
+          git add -A webui/private/data webui/translations
           git commit -m "a2: materialize exact qB settings copy bundle [settings-evidence-verify] [native-surfaces] [settings-matrix] [ui]"
 
           git fetch --no-tags origin dev
@@ -811,7 +811,9 @@ jobs:
         with:
           name: qb-settings-runtime-materialized-${{ github.sha }}
           path: |
-            ${{ runner.temp }}/qb-settings-materialized/private/data/qb-settings-native.txt
+            ${{ runner.temp }}/qb-settings-materialized/private/data/qb-copy-profiles
+            ${{ runner.temp }}/qb-settings-materialized/private/data/qb-copy-bindings
+            ${{ runner.temp }}/qb-settings-materialized/private/data/qb-copy-fallback
             ${{ runner.temp }}/qb-settings-materialized/translations
           if-no-files-found: error
           retention-days: 7
@@ -1109,7 +1111,9 @@ jobs:
           test "$(unzip -p release/weig-qb-webui.zip weig-qb-webui/VERSION | tr -d '\r\n')" = "$VERSION"
           test "$(tar -xOzf release/weig-qb-webui.tar.gz weig-qb-webui/GIT_SHA | tr -d '\r\n')" = "$GITHUB_SHA"
           test "$(tar -xOzf release/weig-qb-webui.tar.gz weig-qb-webui/VERSION | tr -d '\r\n')" = "$VERSION"
-          unzip -t release/weig-qb-webui.zip 'weig-qb-webui/private/data/qb-settings-native.txt' >/dev/null
+          unzip -Z1 release/weig-qb-webui.zip | grep -q '^weig-qb-webui/private/data/qb-copy-profiles/.*\.json$'
+          unzip -Z1 release/weig-qb-webui.zip | grep -q '^weig-qb-webui/private/data/qb-copy-bindings/.*\.txt$'
+          unzip -Z1 release/weig-qb-webui.zip | grep -q '^weig-qb-webui/private/data/qb-copy-fallback/.*/.*\.json$'
           unzip -t release/weig-qb-webui.zip 'weig-qb-webui/translations/webui_*.qm' >/dev/null
           if unzip -Z1 release/weig-qb-webui.zip | grep -E '^weig-qb-webui/private/(scripts/release-profile\.js|data/qb-releases\.json|data/qb-release-profiles/)' > "$RUNNER_TEMP/retired-runtime-paths.txt"; then
             cat "$RUNNER_TEMP/retired-runtime-paths.txt" >&2
@@ -1369,7 +1373,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node tests/qb-runtime-copy-materialization-contract.mjs native-base/qb-releases.json webui/private/data/qb-settings-native.txt
+          node tests/qb-runtime-copy-materialization-contract.mjs native-base/qb-releases.json webui/private/data
       - name: Collect exact native surface source artifacts
         shell: bash
         run: |

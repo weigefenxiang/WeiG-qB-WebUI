@@ -66,6 +66,8 @@ These tools compile RSS source facts into bounded runtime compatibility data.
 
 - `qb-compact-runtime.mjs` compiles bounded runtime contracts.
 - `qb-webui-catalog.mjs` materializes WebUI compatibility assets.
+- `qb-runtime-copy-shards.mjs` owns exact qB copy profile/binding/major-locale fallback generation.
+- `qb-runtime-copy-product.mjs` validates, compares and synchronizes the generated shard tree into the product runtime.
 - `build-webui-dist.mjs` creates the self-contained WebUI ZIP and identity/checksum files.
 - `product-identity.mjs` validates canonical product identity.
 

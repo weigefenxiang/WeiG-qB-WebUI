@@ -89,39 +89,41 @@
   function currentProfile(){var R=W.CapabilityRegistry;return R&&typeof R.domainResolution==='function'?R.domainResolution('copy'):null;}
   function decodeField(value){try{return decodeURIComponent(String(value||''));}catch(_e){return String(value||'');}}
   function routeLocale(list){if(!Array.isArray(list))return null;for(var i=0;i<list.length;i++)if(sameQbLocale(list[i],qbLocale))return list[i];var wanted=normalize(qbLocale);for(var j=0;j<list.length;j++)if(normalize(list[j])===wanted)return list[j];return null;}
-  function parseOwnedCopyRegistry(text,expectedSha,expectedVersion){
-    var source=String(text||''),refs={},bindings={},values={},setDefs={},sets={},bridges={},profile=null,match;
+  function resolveFallbackSet(data,id){
+    if(!data||data.schemaVersion!==1||!id)return{};var sets={},defMap=data.sets||{},values=data.values||{};
+    function tokens(setId,trail){if(!setId)return[];if(sets[setId])return sets[setId].slice();var def=defMap[setId];if(!def)return null;trail=trail||{};if(trail[setId])return null;trail[setId]=true;var base=def.parent?tokens(def.parent,trail):[];if(base===null)return null;var active={};for(var i=0;i<base.length;i++)active[base[i]]=true;for(var j=0;j<(def.remove||[]).length;j++)delete active[def.remove[j]];for(var k=0;k<(def.add||[]).length;k++)active[def.add[k]]=true;delete trail[setId];var out=Object.keys(active).sort(function(a,b){return parseInt(a,36)-parseInt(b,36);});sets[setId]=out;return out.slice();}
+    var list=tokens(id,{});if(list===null)return null;var out={};for(var i=0;i<list.length;i++){var item=values[list[i]];if(!item||!item.ref||typeof item.value!=='string')return null;if(out[item.ref]!==undefined&&out[item.ref]!==item.value)return null;out[item.ref]=item.value;}return out;
+  }
+  function parseOwnedCopyBinding(text,profile,fallbackData){
+    var source=String(text||''),refs={},binding={preferences:{},ui:{}},match,bindingMatch=source.match(/^@@BINDING\t(b[0-9a-f]{20})\s*$/m);
+    if(!profile||!bindingMatch||bindingMatch[1]!==profile.bindingId)return null;
     var refRe=/^@@REF\t([0-9a-f]{24})\t([^\t\r\n]*)\t([^\t\r\n]*)\r?\n([\s\S]*?)\r?\n@@END\s*$/gm;
     while((match=refRe.exec(source))){var raw=String(match[4]||'').trim();refs[match[1]]={context:decodeField(match[2]),source:decodeField(match[3]),text:raw&&raw.indexOf('QBT_'+'TR(')<0?raw:null};}
-    var profileRe=/^@@PROFILE\t([0-9a-f]{40})\t([^\t\r\n]*)\t([^\t\r\n]*)\t(b[0-9a-f]{20})\t([^\t\r\n]*)\t([^\t\r\n]*)\s*$/gm;
-    while((match=profileRe.exec(source))){if(match[1]!==expectedSha)continue;var version=decodeField(match[2]);if(String(version)!==String(expectedVersion))continue;profile={sourceSha:match[1],qbVersion:version,family:decodeField(match[3]),bindingId:match[4],nativeLocales:decodeField(match[5]).split(',').filter(Boolean),bridgeLocales:decodeField(match[6]).split(',').filter(Boolean)};break;}
-    if(!profile)return null;
-    var prefRe=/^@@PREF\t(b[0-9a-f]{20})\t([^\t\r\n]*)\t([^\t\r\n]*)\t([0-9a-f]{24})\t([0-9a-f]{24}|-)\s*$/gm;
-    while((match=prefRe.exec(source))){var bind=bindings[match[1]]||(bindings[match[1]]={preferences:{},ui:{}});bind.preferences[decodeField(match[2])]={controlId:decodeField(match[3])||null,title:match[4],description:match[5]==='-'?null:match[5]};}
-    var uiRe=/^@@UI\t(b[0-9a-f]{20})\t([^\t\r\n]*)\t([0-9a-f]{24})\s*$/gm;
-    while((match=uiRe.exec(source))){var uiBind=bindings[match[1]]||(bindings[match[1]]={preferences:{},ui:{}});uiBind.ui[decodeField(match[2])]=match[3];}
-    var valueRe=/^@@VAL\t([0-9a-z]+)\t([0-9a-f]{24})\t([^\t\r\n]*)\s*$/gm;
-    while((match=valueRe.exec(source))){var decodedValue;try{decodedValue=JSON.parse(match[3]);}catch(_e){return null;}if(typeof decodedValue!=='string')return null;values[match[1]]={ref:match[2],value:decodedValue};}
-    var setRe=/^@@SET\t(t[0-9a-f]{20})\t(t[0-9a-f]{20}|-)\t([0-9a-z,]*)\t([0-9a-z,]*)\s*$/gm;
-    while((match=setRe.exec(source)))setDefs[match[1]]={parent:match[2]==='-'?null:match[2],add:match[3]?match[3].split(','):[],remove:match[4]?match[4].split(','):[]};
-    function resolveBridgeTokens(id,trail){if(!id)return[];if(sets[id])return sets[id].slice();var def=setDefs[id];if(!def)return null;trail=trail||{};if(trail[id])return null;trail[id]=true;var base=def.parent?resolveBridgeTokens(def.parent,trail):[];if(base===null)return null;var active={};for(var i=0;i<base.length;i++)active[base[i]]=true;for(var j=0;j<def.remove.length;j++)delete active[def.remove[j]];for(var k=0;k<def.add.length;k++)active[def.add[k]]=true;delete trail[id];var resolved=Object.keys(active).sort(function(a,b){return parseInt(a,36)-parseInt(b,36);});sets[id]=resolved;return resolved.slice();}
-    var bridgeRe=/^@@BRIDGE\t([0-9a-f]{40})\t([^\t\r\n]*)\t(t[0-9a-f]{20}|-)\s*$/gm;
-    while((match=bridgeRe.exec(source))){if(match[1]===expectedSha)bridges[decodeField(match[2])]=match[3]==='-'?null:match[3];}
-    var binding=bindings[profile.bindingId];if(!binding)return null;var addRefs={};Object.keys(binding.ui||{}).forEach(function(key){if(key.indexOf('add.copy.')!==0)return;var ref=refs[binding.ui[key]];if(ref)addRefs[ref.context+'\u0000'+ref.source]=true;});
-    var nativeLocale=routeLocale(profile.nativeLocales),bridgeLocale=nativeLocale?null:routeLocale(profile.bridgeLocales),mode=nativeLocale?'native':(bridgeLocale?'bridge':null);if(!mode)return null;
-    var bridgeSet={};if(mode==='bridge'&&bridges[bridgeLocale]){var tokens=resolveBridgeTokens(bridges[bridgeLocale],{});if(!tokens)return null;for(var i=0;i<tokens.length;i++){var item=values[tokens[i]];if(!item)return null;if(bridgeSet[item.ref]!==undefined&&bridgeSet[item.ref]!==item.value)return null;bridgeSet[item.ref]=item.value;}}
-    function resolve(id){var ref=refs[id];if(!ref)return null;if(mode==='bridge')return String(bridgeSet[id]!==undefined?bridgeSet[id]:ref.source);return ref.text===null?null:String(ref.text);}
-    var preferences={},ui={},resolvedRefs={},unresolved=false;
-    Object.keys(refs).forEach(function(id){var value=resolve(id);if(value!==null)resolvedRefs[refs[id].context+'\u0000'+refs[id].source]=value;});
+    var prefRe=/^@@PREF\t([^\t\r\n]*)\t([^\t\r\n]*)\t([0-9a-f]{24})\t([0-9a-f]{24}|-)\s*$/gm;
+    while((match=prefRe.exec(source)))binding.preferences[decodeField(match[1])]={controlId:decodeField(match[2])||null,title:match[3],description:match[4]==='-'?null:match[4]};
+    var uiRe=/^@@UI\t([^\t\r\n]*)\t([0-9a-f]{24})\s*$/gm;
+    while((match=uiRe.exec(source)))binding.ui[decodeField(match[1])]=match[2];
+    var nativeLocale=routeLocale(profile.nativeLocales),fallbackLocale=nativeLocale?null:routeLocale(profile.fallbackLocales),mode=nativeLocale?'native':(fallbackLocale?'fallback':null);if(!mode)return null;
+    var fallbackSet={};if(mode==='fallback'){var setId=profile.fallbackSets&&profile.fallbackSets[fallbackLocale];if(setId){fallbackSet=resolveFallbackSet(fallbackData,setId);if(fallbackSet===null)return null;}}
+    function resolve(id){var ref=refs[id];if(!ref)return null;if(mode==='fallback')return String(fallbackSet[id]!==undefined?fallbackSet[id]:ref.source);return ref.text===null?null:String(ref.text);}
+    var preferences={},ui={},resolvedRefs={},addRefs={},unresolved=false;
+    Object.keys(refs).forEach(function(id){var value=resolve(id),ref=refs[id];if(value!==null)resolvedRefs[ref.context+'\u0000'+ref.source]=value;});
     Object.keys(binding.preferences).forEach(function(key){var entry=binding.preferences[key],title=resolve(entry.title),description=entry.description?resolve(entry.description):'';if(title===null||description===null){unresolved=true;return;}preferences[key]={title:title,description:description||'',controlId:entry.controlId||null};});
-    Object.keys(binding.ui).forEach(function(key){var value=resolve(binding.ui[key]);if(value===null){unresolved=true;return;}ui[key]=value;});
+    Object.keys(binding.ui).forEach(function(key){var ref=refs[binding.ui[key]],value=resolve(binding.ui[key]);if(value===null){unresolved=true;return;}ui[key]=value;if(key.indexOf('add.copy.')===0&&ref)addRefs[ref.context+'\u0000'+ref.source]=true;});
     if(mode==='native'&&unresolved)return null;
-    return{schemaVersion:2,source:mode==='native'?'qb-native-QBT_TR+minimal-official-QM':'qb-exact-official-TS-compact-bridge',sourceSha:expectedSha,qbVersion:expectedVersion,locale:qbLocale,mode:mode,preferences:preferences,ui:ui,resolvedRefs:resolvedRefs,addRefs:addRefs};
+    return{schemaVersion:3,source:mode==='native'?'qb-native-QBT_TR+official-QM':'qb-exact-official-fallback-shard',sourceSha:profile.sourceSha,qbVersion:profile.qbVersion,locale:qbLocale,mode:mode,preferences:preferences,ui:ui,resolvedRefs:resolvedRefs,addRefs:addRefs};
   }
   function loadQbOwnedCopy(){
-    var current=currentProfile();if(!current||current.fallback)return Promise.resolve(null);var expectedSha=String(current.sourceSha||''),expectedVersion=String(current.qbVersion||'');if(!/^[0-9a-f]{40}$/.test(expectedSha)||!expectedVersion)return Promise.resolve(null);
+    var current=currentProfile();if(!current||current.fallback)return Promise.resolve(null);var expectedSha=String(current.sourceSha||''),expectedVersion=String(current.qbVersion||''),loader=W.RuntimeAssets;if(!/^[0-9a-f]{40}$/.test(expectedSha)||!expectedVersion||!loader)return Promise.resolve(null);
     if(qbCopyData&&qbCopyData.sourceSha===expectedSha&&qbCopyData.qbVersion===expectedVersion&&qbCopyLocale===qbLocale)return Promise.resolve(qbCopyData);if(qbCopyTask)return qbCopyTask;qbCopyLocale=qbLocale;
-    qbCopyTask=fetch(asset('data/qb-settings-native.txt'),{credentials:'same-origin',cache:'no-store'}).then(function(res){if(!res.ok)throw new Error('qB-owned copy registry HTTP '+res.status);return res.text();}).then(function(text){var value=parseOwnedCopyRegistry(text,expectedSha,expectedVersion);if(!value)throw new Error('qB-owned copy registry is unresolved for '+expectedVersion+'@'+expectedSha);qbCopyData=value;applyQbOwned(document);try{global.dispatchEvent(new CustomEvent('weig:qbcopychange',{detail:{locale:qbLocale,qbVersion:expectedVersion,sourceSha:expectedSha}}));}catch(_e){}return value;}).catch(function(){qbCopyData=null;return null;}).finally(function(){qbCopyTask=null;});return qbCopyTask;
+    var profilePath='data/qb-copy-profiles/'+expectedSha+'.json',profileIdentity=expectedSha+'@'+expectedVersion;
+    qbCopyTask=loader.readJson(profilePath,{namespace:'qb-copy-profile',identity:profileIdentity}).then(function(profile){
+      if(!profile||profile.schemaVersion!==1||profile.source!=='qB-source-context-runtime-copy-profile'||String(profile.sourceSha)!==expectedSha||String(profile.qbVersion)!==expectedVersion||!/^b[0-9a-f]{20}$/.test(String(profile.bindingId||'')))throw new Error('qB-owned copy profile identity mismatch');
+      var nativeLocale=routeLocale(profile.nativeLocales),fallbackLocale=nativeLocale?null:routeLocale(profile.fallbackLocales);if(!nativeLocale&&!fallbackLocale)throw new Error('qB-owned copy locale route unavailable');
+      var route=nativeLocale||fallbackLocale,bindingTask=loader.readText('data/qb-copy-bindings/'+profile.bindingId+'.txt',{namespace:'qb-copy-binding',identity:expectedSha+'@'+route}),fallbackTask=Promise.resolve(null),setId=fallbackLocale&&profile.fallbackSets&&profile.fallbackSets[fallbackLocale];
+      if(fallbackLocale&&setId){var major=expectedVersion.split('.')[0];fallbackTask=loader.readJson('data/qb-copy-fallback/'+major+'/'+fallbackLocale+'.json',{namespace:'qb-copy-fallback',identity:major+'@'+fallbackLocale});}
+      return Promise.all([bindingTask,fallbackTask]).then(function(parts){var value=parseOwnedCopyBinding(parts[0],profile,parts[1]);if(!value)throw new Error('qB-owned copy shard is unresolved');return value;});
+    }).then(function(value){qbCopyData=value;applyQbOwned(document);try{global.dispatchEvent(new CustomEvent('weig:qbcopychange',{detail:{locale:qbLocale,qbVersion:expectedVersion,sourceSha:expectedSha}}));}catch(_e){}return value;}).catch(function(){qbCopyData=null;return null;}).finally(function(){qbCopyTask=null;});return qbCopyTask;
   }
   function resolvedQbCopy(){var current=currentProfile();if(!qbCopyData||!current||current.fallback||qbCopyLocale!==qbLocale)return null;if(String(qbCopyData.qbVersion)!==String(current.qbVersion)||String(qbCopyData.sourceSha)!==String(current.sourceSha))return null;return qbCopyData;}
   function qbSetting(key){var data=resolvedQbCopy(),entry=data&&data.preferences&&data.preferences[key];if(!entry)return null;return{title:entry.title,description:entry.description||'',source:data.source,controlId:entry.controlId||null};}
@@ -158,6 +160,6 @@
   function qbAddSourceGroup(key,fallback){var refs={save:[['Save at','AddNewTorrentDialog']],settings:[['Torrent settings','AddNewTorrentDialog']]}[String(key||'')]||[];return qbAddSourceCopy(refs,fallback);}
   function loadQbOwnedText(){return loadQbOwnedCopy().then(function(){return qbOwnedText();});}
   function ready(){return Promise.all([loadLocaleOptions(),loadQbOwnedCopy()]).then(function(){return api;});}
-  var api={t:t,apply:apply,applyQbOwned:applyQbOwned,applyLocale:applyLocale,getLocale:function(){return locale;},getQbLocale:function(){return qbLocale;},normalize:normalize,canonicalQbTag:canonicalQbTag,sameQbLocale:sameQbLocale,hasExactLocale:hasExactLocale,matchBrowserLocale:matchBrowserLocale,parseLocaleOptions:parseLocaleOptions,parseOwnedCopyRegistry:parseOwnedCopyRegistry,loadLocaleOptions:loadLocaleOptions,localeOptions:function(){return localeOptions.slice();},settingOptions:settingOptions,settingOptionsState:settingOptionsState,localeInventoryEvidence:localeInventoryEvidence,loadQbOwnedCopy:loadQbOwnedCopy,loadQbOwnedText:loadQbOwnedText,qbOwnedText:qbOwnedText,qbSetting:qbSetting,qbSourceText:qbSourceText,qbAddSourceHas:qbAddSourceHas,qbAddSourceField:qbAddSourceField,qbAddSourceCopy:qbAddSourceCopy,qbAddSourceGroup:qbAddSourceGroup,qbText:qbText,ready:ready,supported:Object.keys(dicts),english:EN};
+  var api={t:t,apply:apply,applyQbOwned:applyQbOwned,applyLocale:applyLocale,getLocale:function(){return locale;},getQbLocale:function(){return qbLocale;},normalize:normalize,canonicalQbTag:canonicalQbTag,sameQbLocale:sameQbLocale,hasExactLocale:hasExactLocale,matchBrowserLocale:matchBrowserLocale,parseLocaleOptions:parseLocaleOptions,parseOwnedCopyBinding:parseOwnedCopyBinding,loadLocaleOptions:loadLocaleOptions,localeOptions:function(){return localeOptions.slice();},settingOptions:settingOptions,settingOptionsState:settingOptionsState,localeInventoryEvidence:localeInventoryEvidence,loadQbOwnedCopy:loadQbOwnedCopy,loadQbOwnedText:loadQbOwnedText,qbOwnedText:qbOwnedText,qbSetting:qbSetting,qbSourceText:qbSourceText,qbAddSourceHas:qbAddSourceHas,qbAddSourceField:qbAddSourceField,qbAddSourceCopy:qbAddSourceCopy,qbAddSourceGroup:qbAddSourceGroup,qbText:qbText,ready:ready,supported:Object.keys(dicts),english:EN};
   W.I18n=api;W.t=t;
 })(window);

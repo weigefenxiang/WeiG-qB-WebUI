@@ -535,21 +535,23 @@ EOF_DIST_CANDIDATES
 
 assert_materialized_webui() {
   root=$1
-  registry="$root/private/data/qb-settings-native.txt"
+  data="$root/private/data"
   translations="$root/translations"
-  for contract in capabilities.json torrent-compat.json detail-compat.json settings-compat.json source-actions.json; do
-    [ -s "$root/private/data/$contract" ] || { echo "Materialized WebUI is missing compact runtime contract $contract." >&2; return 1; }
+  for contract in capabilities.json torrent-compat.json detail-compat.json settings-compat.json source-actions.json rss-compat.json; do
+    [ -s "$data/$contract" ] || { echo "Materialized WebUI is missing compact runtime contract $contract." >&2; return 1; }
   done
-  [ ! -e "$root/private/scripts/release-profile.js" ] && [ ! -e "$root/private/data/qb-releases.json" ] && [ ! -e "$root/private/data/qb-release-profiles" ] || { echo "Materialized WebUI retained retired release-profile runtime assets." >&2; return 1; }
-  [ -s "$registry" ] || { echo "Materialized WebUI is missing the native Settings QBT_TR registry." >&2; return 1; }
-  grep -Eq '^@@(P|SET|VAL|REF|META|S)([[:space:]]|$)' "$registry" || { echo "Materialized WebUI qB-owned copy registry is a placeholder or malformed." >&2; return 1; }
+  [ ! -e "$root/private/scripts/release-profile.js" ] && [ ! -e "$data/qb-releases.json" ] && [ ! -e "$data/qb-release-profiles" ] && [ ! -e "$data/qb-settings-native.txt" ] || { echo "Materialized WebUI retained a retired runtime owner." >&2; return 1; }
+  for spec in 'qb-copy-profiles/*.json' 'qb-copy-bindings/*.txt' 'qb-copy-fallback/*/*.json'; do
+    shard_found=0
+    for shard in "$data"/$spec; do [ -f "$shard" ] || continue; [ -s "$shard" ] || { echo "Materialized WebUI contains an empty qB copy shard: $shard" >&2; return 1; }; shard_found=1; break; done
+    [ "$shard_found" -eq 1 ] || { echo "Materialized WebUI is missing qB copy shards for $spec." >&2; return 1; }
+  done
+  binding_found=0
+  for binding in "$data"/qb-copy-bindings/*.txt; do [ -f "$binding" ] || continue; grep -Eq '^@@BINDING[[:space:]]+b[0-9a-f]{20}$' "$binding" || { echo "Malformed qB copy binding shard: $binding" >&2; return 1; }; binding_found=1; break; done
+  [ "$binding_found" -eq 1 ] || return 1
   [ -d "$translations" ] || { echo "Materialized WebUI is missing the translations directory." >&2; return 1; }
   qm_found=0
-  for qm_file in "$translations"/webui_*.qm; do
-    [ -f "$qm_file" ] || continue
-    qm_found=1
-    break
-  done
+  for qm_file in "$translations"/webui_*.qm; do [ -f "$qm_file" ] || continue; qm_found=1; break; done
   [ "$qm_found" -eq 1 ] || { echo "Materialized WebUI is missing official qB WebUI translation QM assets." >&2; return 1; }
 }
 

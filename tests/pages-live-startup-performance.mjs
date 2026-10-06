@@ -35,24 +35,22 @@ async function waitForSha(){
 const site=await waitForSha();
 assert.equal(site.branches?.dev?.exactSha,expectedSha,'startup-performance gate must run against the exact deployed dev snapshot');
 
-const [catalog,manifest,profile,fullRegistry,copyShard]=await Promise.all([
+const [catalog,manifest,profile]=await Promise.all([
   fetchJson('dev/app/__simulator/versions/catalog.generated.json'),
   fetchJson('dev/app/__simulator/runtime/manifest.json'),
-  fetchJson('dev/app/__simulator/runtime/profiles/5.2.3.json'),
-  fetchText('dev/app/__source/private/data/qb-settings-native.txt'),
-  fetchText('dev/app/__simulator/runtime/copy/5.2.3.txt')
+  fetchJson('dev/app/__simulator/runtime/profiles/5.2.3.json')
 ]);
 const catalogProfile=catalog.find(item=>String(item?.qbVersion||'')==='5.2.3');
+const copyProfile=await fetchJson('dev/app/__source/private/data/qb-copy-profiles/'+catalogProfile.sourceSha+'.json');
+const copyBinding=await fetchText('dev/app/__source/private/data/qb-copy-bindings/'+copyProfile.bindingId+'.txt');
 assert.ok(catalogProfile,'deployed full evidence catalog must retain qB 5.2.3');
 assert.equal(profile.qbVersion,'5.2.3');
 assert.equal(profile.sourceSha,catalogProfile.sourceSha,'profile shard must preserve exact qB source identity');
 assert.equal(manifest.schemaVersion,1);
 assert.equal(manifest.profiles?.length,catalog.length,'runtime profile shard manifest must cover every admitted simulator profile');
-assert.equal(manifest.copyProfiles?.length,catalog.length,'runtime copy shard manifest must cover every admitted simulator profile');
-assert.ok(Buffer.byteLength(copyShard,'utf8')<2*1024*1024,'qB 5.2.3 runtime copy shard must stay below 2 MiB');
-assert.ok(Buffer.byteLength(copyShard,'utf8')<Buffer.byteLength(fullRegistry,'utf8')*.45,'selected qB copy shard must materially reduce the full registry payload');
-assert.equal((copyShard.match(/^@@PROFILE\t/gm)||[]).length,1,'selected runtime copy shard must contain exactly one qB profile');
-const deployedProfileLine=copyShard.split(/\r?\n/).find(line=>line.startsWith('@@PROFILE\t'));assert.ok(deployedProfileLine,'selected runtime copy shard must expose its profile identity row');const deployedProfileFields=deployedProfileLine.split('\t');assert.equal(deployedProfileFields[1],catalogProfile.sourceSha);assert.equal(deployedProfileFields[2],'5.2.3');
+assert.equal(manifest.copyRuntime,'product-source/qb-copy-profiles+bindings+fallback');assert.equal(copyProfile.sourceSha,catalogProfile.sourceSha);assert.ok(/^b[0-9a-f]{20}$/.test(copyProfile.bindingId));assert.ok(copyBinding.includes('@@BINDING\\t'+copyProfile.bindingId));
+assert.ok(Buffer.byteLength(copyBinding,'utf8')<512*1024,'deduplicated qB binding shard must stay bounded');
+assert.equal(copyProfile.sourceSha,catalogProfile.sourceSha,'copy profile must preserve exact qB source identity');
 
 const browser=await launchBrowser();
 try{
@@ -74,24 +72,9 @@ try{
     onLogin:async()=>{await page.locator('#login-btn').click();}
   });
 
-  const runtimeCopy=await page.evaluate(async()=>{
-    const response=await fetch('data/qb-settings-native.txt',{cache:'no-store'});
-    return{status:response.status,text:await response.text()};
-  });
-  assert.equal(runtimeCopy.status,200,'app-level qB copy request must succeed through the Service Worker');
-  assert.equal((runtimeCopy.text.match(/^@@PROFILE\t/gm)||[]).length,1,'app-level qB copy request must receive the selected profile shard, not the full registry');
-  const runtimeProfileLine=runtimeCopy.text.split(/\r?\n/).find(line=>line.startsWith('@@PROFILE\t'));assert.ok(runtimeProfileLine,'app-level qB copy response must expose its selected profile identity row');const runtimeProfileFields=runtimeProfileLine.split('\t');assert.equal(runtimeProfileFields[1],catalogProfile.sourceSha);assert.equal(runtimeProfileFields[2],'5.2.3');
-  assert.ok(Buffer.byteLength(runtimeCopy.text,'utf8')<Buffer.byteLength(fullRegistry,'utf8')*.45,'app-level qB copy response must remain materially smaller than the deployed full evidence registry');
-
-  await page.waitForFunction(async sha=>{
-    const name='weig-virtual-static-'+sha,keys=await caches.keys();
-    if(!keys.includes(name))return false;
-    const cache=await caches.open(name),urls=(await cache.keys()).map(request=>request.url);
-    return urls.some(url=>url.includes('/__simulator/runtime/profiles/5.2.3.json'))&&
-      urls.some(url=>url.includes('/__simulator/runtime/copy/5.2.3.txt'))&&
-      urls.some(url=>url.includes('/__source/private/scripts/app.js'))&&
-      urls.some(url=>url.includes('/__source/private/scripts/i18n.js'));
-  },expectedSha,{timeout:20000});
+  const runtimeCopy=await page.evaluate(async()=>{const value=await window.WeiG?.I18n?.loadQbOwnedCopy?.();return value?{sourceSha:value.sourceSha,qbVersion:value.qbVersion,mode:value.mode}:null;});
+  assert.ok(runtimeCopy&&runtimeCopy.sourceSha===catalogProfile.sourceSha&&runtimeCopy.qbVersion==='5.2.3');
+  assert.equal(runtimeCopy.mode,'native');
 
   const firstCache=await page.evaluate(async sha=>{
     const name='weig-virtual-static-'+sha,keys=await caches.keys(),cache=await caches.open(name),urls=(await cache.keys()).map(request=>request.url);
@@ -100,7 +83,8 @@ try{
   assert.deepEqual(firstCache.keys.filter(key=>key.startsWith('weig-virtual-static-')),[`weig-virtual-static-${expectedSha}`],'fresh browser context must keep only the exact-SHA immutable Virtual cache');
   assert.ok(firstCache.urls.every(url=>new URL(url).searchParams.get('v')===expectedSha),'every immutable Virtual cache entry must be exact-SHA keyed');
   assert.equal(firstCache.urls.some(url=>url.includes('/__simulator/versions/catalog.generated.json')),false,'normal qB 5.2.3 startup must not cache/fetch the full multi-release catalog fallback');
-  assert.equal(firstCache.urls.some(url=>url.includes('/__source/private/data/qb-settings-native.txt')),false,'normal qB 5.2.3 startup must not cache/fetch the full multi-profile qB copy registry');
+  assert.equal(firstCache.urls.some(url=>url.includes('/__source/private/data/qb-copy-fallback/4/')),false,'normal qB 5.2.3 startup must not cache/fetch qB 4.x fallback payload');
+  assert.equal(firstCache.urls.some(url=>url.includes('/__source/private/data/qb-copy-fallback/5/zh_CN.json')),false,'native qB 5.2.3 zh-CN must not fetch a fallback shard');
 
   const firstCount=firstCache.urls.length;
   await page.reload({waitUntil:'domcontentloaded',timeout:60000});
@@ -113,11 +97,11 @@ try{
   assert.ok(secondCache.urls.length>=firstCount,'reload must reuse the existing exact-SHA cache rather than replacing it with a new build cache');
   assert.deepEqual(secondCache.keys.filter(key=>key.startsWith('weig-virtual-static-')),[`weig-virtual-static-${expectedSha}`],'reload must preserve one exact-SHA Virtual cache owner');
   assert.equal(secondCache.urls.some(url=>url.includes('/__simulator/versions/catalog.generated.json')),false,'reload must not fall back to the full catalog');
-  assert.equal(secondCache.urls.some(url=>url.includes('/__source/private/data/qb-settings-native.txt')),false,'reload must not fall back to the full registry');
+  assert.equal(secondCache.urls.some(url=>url.includes('/__source/private/data/qb-copy-fallback/4/')),false,'reload must not fetch qB 4.x fallback payload');
   assert.deepEqual(errors,[],`startup-performance session emitted page errors:\n${errors.join('\n')}`);
   await context.close();
 
-  console.log(`A38 Pages startup performance passed for ${expectedSha}: full copy registry ${Buffer.byteLength(fullRegistry,'utf8')} bytes -> qB 5.2.3 shard ${Buffer.byteLength(copyShard,'utf8')} bytes; exact-SHA cache reused across reload without full catalog/registry cold-path fallback.`);
+  console.log(`A62 Pages startup performance passed for ${expectedSha}: exact qB profile ${copyProfile.sourceSha} + binding ${copyProfile.bindingId} are reused from the immutable cache without qB 4.x fallback payloads.`);
 }finally{
   await browser.close();
 }

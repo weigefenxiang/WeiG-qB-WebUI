@@ -46,7 +46,9 @@ The browser consumes bounded domain data under `webui/private/data/`:
 | `settings-compat.json` | Settings structure, preference semantics and write projections. |
 | `rss-compat.json` | RSS compatibility. |
 | `source-actions.json` | Source-proven action availability. |
-| `qb-settings-native.txt` | Compact qB-owned copy/translation registry. |
+| `qb-copy-profiles/<sourceSha>.json` | Exact qB source identity and locale routing for qB-owned copy. |
+| `qb-copy-bindings/<bindingId>.txt` | Deduplicated source/context bindings shared by exact profiles. |
+| `qb-copy-fallback/<major>/<locale>.json` | Exact-official fallback set for one qB major and locale, loaded only when native QBT_TR/QM is unavailable. |
 
 The complete historical source catalog remains outside the production runtime.
 

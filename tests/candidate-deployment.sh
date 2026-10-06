@@ -264,11 +264,17 @@ if(meta.container!==container)throw new Error('candidate metadata container mism
 if(meta.hostPath!==path.join(hostConfigRoot,'weig-qb-webui'))throw new Error('candidate metadata host path mismatch');
 if(meta.qbPath!==qbRoot)throw new Error('candidate metadata qB path mismatch');
 const dataDir=path.join(dest,'private/data');
-const requiredCompactFiles=['capabilities.json','settings-compat.json','source-actions.json','detail-compat.json','rss-compat.json','torrent-compat.json','qb-settings-native.txt'];
+const requiredCompactFiles=['capabilities.json','settings-compat.json','source-actions.json','detail-compat.json','rss-compat.json','torrent-compat.json'];
 for(const file of requiredCompactFiles){
   const full=path.join(dataDir,file);
   if(!fs.existsSync(full)||fs.statSync(full).size===0)throw new Error(`candidate compact runtime asset is missing or empty: ${file}`);
 }
+for(const dir of ['qb-copy-profiles','qb-copy-bindings','qb-copy-fallback']){
+  const full=path.join(dataDir,dir);
+  if(!fs.existsSync(full)||!fs.statSync(full).isDirectory())throw new Error(`candidate qB copy shard directory is missing: ${dir}`);
+  const stack=[full];let files=0;while(stack.length){const current=stack.pop();for(const entry of fs.readdirSync(current,{withFileTypes:true})){const next=path.join(current,entry.name);if(entry.isDirectory())stack.push(next);else if(entry.isFile()){if(fs.statSync(next).size<=0)throw new Error(`candidate qB copy shard is empty: ${next}`);files++;}}}if(!files)throw new Error(`candidate qB copy shard directory is empty: ${dir}`);
+}
+if(fs.existsSync(path.join(dataDir,'qb-settings-native.txt')))throw new Error('retired all-version qB copy registry reappeared in candidate');
 for(const retired of ['qb-releases.json','qb-release-profiles']){
   if(fs.existsSync(path.join(dataDir,retired)))throw new Error(`retired release-profile runtime reappeared: ${retired}`);
 }
@@ -285,7 +291,7 @@ const actions=JSON.parse(fs.readFileSync(path.join(dataDir,'source-actions.json'
 for(const action of ['appcontroller.h:preferencesAction','appcontroller.h:setPreferencesAction']){
   if(!Array.isArray(actions[action])||actions[action].length===0)throw new Error(`candidate compact action catalog does not source-prove ${action}`);
 }
-if(fs.statSync(path.join(dataDir,'qb-settings-native.txt')).size>=5*1024*1024)throw new Error('candidate compact Settings copy IR exceeds project static-file budget');
+for(const dir of ['qb-copy-profiles','qb-copy-bindings','qb-copy-fallback']){const root=path.join(dataDir,dir),stack=[root];while(stack.length){const current=stack.pop();for(const entry of fs.readdirSync(current,{withFileTypes:true})){const next=path.join(current,entry.name);if(entry.isDirectory())stack.push(next);else if(entry.isFile()&&fs.statSync(next).size>=5*1024*1024)throw new Error(`candidate qB copy shard exceeds project static-file budget: ${next}`);}}}
 // Do not require one physical QM per exercised locale here: the current distribution intentionally ships a minimal qB-owned QM set. The real qB + Chrome locale write/reload + localized Settings checks below are the authoritative acceptance owner.
 NODE
 

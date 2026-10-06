@@ -32,10 +32,12 @@ EOF_CFG
 BASE="$TMP/base/WeiG-qB-WebUI"
 mkdir -p "$(dirname "$BASE")"
 cp -a "$ROOT/webui" "$BASE"
-for required in capabilities.json detail-compat.json settings-compat.json torrent-compat.json source-actions.json rss-compat.json qb-settings-native.txt; do
+for required in capabilities.json detail-compat.json settings-compat.json torrent-compat.json source-actions.json rss-compat.json; do
   test -s "$BASE/private/data/$required" || { echo "Missing current compact runtime fixture: $required" >&2; exit 1; }
 done
 test ! -e "$BASE/private/data/qb-releases.json"
+for shard in qb-copy-profiles qb-copy-bindings qb-copy-fallback; do test -d "$BASE/private/data/$shard" || { echo "Missing current qB copy shard fixture: $shard" >&2; exit 1; }; done
+test ! -e "$BASE/private/data/qb-settings-native.txt"
 
 build_legacy_release() {
   version=$1
@@ -249,8 +251,10 @@ if(meta.gitSha!==sha)throw new Error(`metadata gitSha ${meta.gitSha} != ${sha}`)
 if(meta.channel!=='main')throw new Error(`metadata channel ${meta.channel} != main`);
 if(meta.installer!=='linux')throw new Error(`metadata installer ${meta.installer} != linux`);
 if(meta.hostPath!==dest||meta.qbPath!==dest)throw new Error('metadata install paths do not match isolated destination');
-const compact=['capabilities.json','detail-compat.json','settings-compat.json','torrent-compat.json','source-actions.json','rss-compat.json','qb-settings-native.txt'];
+const compact=['capabilities.json','detail-compat.json','settings-compat.json','torrent-compat.json','source-actions.json','rss-compat.json'];
 for(const name of compact){const file=path.join(dest,'private/data',name);if(!fs.existsSync(file)||fs.statSync(file).size<=0)throw new Error('missing compact runtime '+name);}
+for(const dir of ['qb-copy-profiles','qb-copy-bindings','qb-copy-fallback']){const full=path.join(dest,'private/data',dir);if(!fs.existsSync(full)||!fs.statSync(full).isDirectory())throw new Error('missing qB copy shard directory '+dir);}
+if(fs.existsSync(path.join(dest,'private/data/qb-settings-native.txt')))throw new Error('retired all-version qB copy registry reappeared');
 if(fs.existsSync(path.join(dest,'private/data/qb-releases.json')))throw new Error('retired qb-releases.json must not be restored by installer lifecycle fixtures');
 NODE
 }

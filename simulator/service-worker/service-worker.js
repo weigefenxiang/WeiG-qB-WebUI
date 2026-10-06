@@ -18,7 +18,6 @@ const SOURCE_PRIVATE='./__source/private/';
 const SOURCE_PUBLIC='./__source/public/';
 const LEGACY_CATALOG_URL='./__simulator/versions/catalog.generated.json';
 const RUNTIME_PROFILE_BASE='./__simulator/runtime/profiles/';
-const RUNTIME_COPY_BASE='./__simulator/runtime/copy/';
 const PRIVATE_PREWARM_URL='./__simulator/runtime/private-prewarm.json';
 const TRANSLATOR_BEHAVIOR_URL='./__simulator/versions/qb-translator-behavior-lkg.json';
 const STATIC_CACHE_PREFIX='weig-virtual-static-';
@@ -119,15 +118,7 @@ async function loadPrivatePrewarmAssets(){
   return prewarmManifestPromise;
 }
 
-async function fetchCopyProfileShard(world){
-  const key=safeProfileKey(world?.profile?.qbVersion);
-  try{
-    const response=await immutableFetchUrl(versionedAssetUrl(RUNTIME_COPY_BASE+key+'.txt'));
-    return response.ok?response:null;
-  }catch(_e){return null;}
-}
-
-async function prewarmPrivateSource(world){
+async function prewarmPrivateSource(){
   const assets=await loadPrivatePrewarmAssets(),items=assets.slice();
   let next=0;
   async function worker(){
@@ -138,7 +129,6 @@ async function prewarmPrivateSource(world){
   }
   const workers=[];for(let i=0;i<Math.min(6,items.length);i++)workers.push(worker());
   await Promise.all(workers);
-  await fetchCopyProfileShard(world);
 }
 
 function configFromUrl(url){
@@ -315,9 +305,7 @@ async function emulateSourceTranslation(response,world,path){
 }
 
 async function fetchSource(kind,path,options={}){
-  let response=null;
-  if(kind==='private'&&path==='data/qb-settings-native.txt'&&options.world)response=await fetchCopyProfileShard(options.world);
-  if(!response)response=await immutableFetchUrl(sourceUrl(kind,path));
+  let response=await immutableFetchUrl(sourceUrl(kind,path));
   if(!response.ok&&kind==='private')response=await immutableFetchUrl(sourceUrl('public',path));
   if(!response.ok)return response;
   if(path==='session-contract.js'){
@@ -354,7 +342,7 @@ function handleNavigation(event,url){
     if(world.authenticated)return fetchSource('private','index.html',{world});
     return fetchSource('public','index.html',{injectLabCredentials:!world.lab?.clean,world});
   });
-  event.waitUntil(responsePromise.then(()=>statePromise).then(({world})=>prewarmPrivateSource(world)).catch(()=>{}));
+  event.waitUntil(responsePromise.then(()=>statePromise).then(({world})=>prewarmPrivateSource()).catch(()=>{}));
   return responsePromise;
 }
 
