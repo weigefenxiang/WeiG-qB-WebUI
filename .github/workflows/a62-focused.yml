@@ -28,6 +28,7 @@ jobs:
           node tests/runtime-contract.mjs
           node tests/private-bootstrap-contract.mjs
           node tests/route-module-loading-contract.mjs
+          node tests/a62-runtime-asset-budget-contract.mjs
           node tests/i18n-runtime-owner-contract.mjs
           node tests/qb-weig-locale-sharding-contract.mjs
           node tests/qb-runtime-copy-materialization-contract.mjs tests/fixtures/qb-release-catalog.lkg.json webui/private/data
@@ -40,3 +41,45 @@ jobs:
           node tests/dev-distribution-contract.mjs
           node tests/change-classifier-contract.mjs
           node tests/pages-cache-freshness-contract.mjs
+
+  browser:
+    name: browser · ${{ matrix.suite.name }}
+    needs: focused
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        suite:
+          - name: route-modules
+            script: tests/browser-route-module-loading.mjs
+          - name: runtime
+            script: tests/browser-runtime.mjs
+          - name: settings-fidelity
+            script: tests/browser-settings-fidelity.mjs
+          - name: feature-parity
+            script: tests/browser-feature-parity.mjs
+          - name: torrent-workspace
+            script: tests/browser-torrent-workspace.mjs
+          - name: adaptive-ui
+            script: tests/browser-adaptive-ui.mjs
+    env:
+      WEIG_BROWSER_CHANNEL: chrome
+      WEIG_BROWSER_FETCH_TIMEOUT_MS: '15000'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund --prefer-offline
+      - name: Verify hosted Chrome
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v google-chrome >/dev/null
+          google-chrome --version
+          node -p "require('playwright/package.json').version"
+      - name: A62 representative browser acceptance
+        run: node "${{ matrix.suite.script }}"

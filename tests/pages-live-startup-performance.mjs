@@ -90,6 +90,9 @@ try{
   const firstWeiGLocales=firstCache.urls.filter(url=>url.includes('/__source/private/data/weig-i18n/'));
   assert.equal(firstWeiGLocales.length,1,'startup must fetch exactly one non-English WeiG locale shard');
   assert.ok(firstWeiGLocales[0].includes('/weig-i18n/zh-CN.json'),'qB persisted zh-CN must select the matching WeiG zh-CN overlay only');
+  assert.equal(firstCache.urls.some(url=>url.includes('/__source/private/data/qb-settings-native.txt')),false,'startup must never fetch the retired all-version qB copy registry');
+  assert.equal(firstCache.urls.some(url=>/\/__source\/translations\/webui_.+\.qm(?:\?|$)/i.test(url)),false,'browser startup must not download or parse qB QM assets');
+  for(const module of ['settings','rss','logs'])assert.equal(firstCache.urls.some(url=>url.includes('/__source/private/scripts/'+module+'.js')),false,'home startup must not fetch route-only '+module+'.js');
 
   const firstCount=firstCache.urls.length;
   await page.reload({waitUntil:'domcontentloaded',timeout:60000});
@@ -105,6 +108,7 @@ try{
   assert.equal(secondCache.urls.some(url=>url.includes('/__source/private/data/qb-copy-fallback/4/')),false,'reload must not fetch qB 4.x fallback payload');
   assert.equal(secondCache.urls.filter(url=>url.includes('/__source/private/data/qb-copy-fallback/5/')).length,1,'reload must retain only the one current qB 5.x locale fallback shard');
   assert.equal(secondCache.urls.filter(url=>url.includes('/__source/private/data/weig-i18n/')).length,1,'reload must retain only the one current WeiG locale shard');
+  for(const module of ['settings','rss','logs'])assert.equal(secondCache.urls.some(url=>url.includes('/__source/private/scripts/'+module+'.js')),false,'warm home reload must not prefetch route-only '+module+'.js');
   assert.deepEqual(errors,[],`startup-performance session emitted page errors:\n${errors.join('\n')}`);
   await context.close();
 
