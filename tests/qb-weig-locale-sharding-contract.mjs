@@ -11,7 +11,7 @@ const supported=['en','zh-CN','zh-TW','zh-HK','ja','ko','de','fr','es','pt','ru'
 const overlays=supported.filter(locale=>locale!=='en');
 
 assert.ok(source.length<80000,'A62.4 i18n core must stay bounded; non-English WeiG copy belongs in locale shards');
-for(const legacy of ['var WEIG_SETTINGS=','var WEIG_CORE=','var WEIG_RUNTIME=','var ZHT=','var ZHHK=','var JA=','var KO=','var DE=','var FR=','var ES=','var PT=','var RU='])assert.equal(source.includes(legacy),false,'embedded multi-locale owner must stay retired: '+legacy);
+for(const legacy of ['var WEIG_SETTINGS=','var WEIG_CORE=','var WEIG_RUNTIME=','var ZH=','var ZHT=','var ZHHK=','var JA=','var KO=','var DE=','var FR=','var ES=','var PT=','var RU='])assert.equal(source.includes(legacy),false,'embedded multi-locale owner must stay retired: '+legacy);
 assert.ok(source.includes('var SUPPORTED_LOCALES=')&&source.includes("data/weig-i18n/'+target+'.json")&&source.includes("namespace:'weig-i18n'")&&source.includes('identity:target'),'W.I18n must route one normalized current locale through RuntimeAssets');
 assert.ok(source.includes('loadWeiGLocale(locale)'),'W.I18n.ready must wait for the current WeiG locale shard');
 assert.ok(fs.existsSync(localeDir)&&fs.statSync(localeDir).isDirectory(),'WeiG locale shard directory missing');
