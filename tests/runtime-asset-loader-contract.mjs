@@ -1,0 +1,22 @@
+import fs from 'node:fs';import path from 'node:path';import vm from 'node:vm';import {fileURLToPath} from 'node:url';
+const here=path.dirname(fileURLToPath(import.meta.url)),root=path.resolve(here,'..'),read=rel=>fs.readFileSync(path.join(root,rel),'utf8'),assert=(ok,msg)=>{if(!ok)throw new Error(msg);};
+const index=read('webui/private/index.html'),source=read('webui/private/scripts/runtime-assets.js'),capabilities=read('webui/private/scripts/capabilities.js');
+assert(index.includes('"scripts/runtime-assets.js"'),'private bootstrap must load the shared runtime asset owner');
+assert(index.indexOf('"scripts/runtime-assets.js"')<index.indexOf('"scripts/i18n.js"'),'RuntimeAssets must load before i18n');
+assert(index.indexOf('"scripts/runtime-assets.js"')<index.indexOf('"scripts/capabilities.js"'),'RuntimeAssets must load before capability consumers');
+assert(source.includes("DB_NAME='weig-runtime-assets'")&&source.includes('global.indexedDB'),'runtime asset persistence must use one IndexedDB owner');
+assert(source.includes('SCHEMA,BUILD,namespace(options),identity(options)'),'runtime asset cache identity must include schema/build/namespace/exact caller identity');
+assert(source.includes("cache:'no-store'"),'network miss must bypass qB no-store ambiguity because RuntimeAssets owns persistence explicitly');
+assert(!source.includes('local'+'Storage')&&!source.includes('session'+'Storage')&&!source.includes('serviceWorker'),'runtime asset owner must not create a second StorageRuntime or Service Worker path');
+assert(capabilities.includes('W.RuntimeAssets')&&capabilities.includes('.readJson('),'capability contracts must consume the shared runtime asset owner');
+assert(!capabilities.includes("fetch(asset(path),{credentials:'same-origin',cache:'no-store'})"),'capabilities must retire its feature-local no-store loader');
+
+let fetches=0;
+const document={querySelector(sel){return sel==='meta[name="weig-build-sha"]'?{getAttribute(){return'abc123';}}:null;}};
+const window={WeiG:{},document,location:{href:'http://nas.local/private/index.html'},URL,Map,Promise,Date,fetch(url){fetches++;return Promise.resolve({ok:true,text:()=>Promise.resolve('{"value":7}')});}};
+const context=vm.createContext({window,document,URL,Map,Promise,Date,JSON,setTimeout,clearTimeout});vm.runInContext(source,context,{filename:'runtime-assets.js'});
+const A=window.WeiG.RuntimeAssets;assert(A&&A.build==='abc123','RuntimeAssets must bind cache identity to injected exact BUILD');
+const first=await A.readJson('data/example.json',{namespace:'test',identity:'qB@sha'}),second=await A.readJson('data/example.json',{namespace:'test',identity:'qB@sha'});
+assert(first.value===7&&second.value===7&&fetches===1,'same-page duplicate runtime asset reads must coalesce/cache without a second network request');
+await A.invalidate('data/example.json',{namespace:'test',identity:'qB@sha'});await A.readJson('data/example.json',{namespace:'test',identity:'qB@sha'});assert(fetches===2,'explicit invalidation must force one fresh network read');
+console.log('Runtime asset loader contract passed: one BUILD/exact-identity loader owns memory de-duplication, IndexedDB persistence, and network misses.');

@@ -13,7 +13,7 @@
   function rawVersion(value){return String(value||'0').trim().replace(/^v/i,'');}
   function normalizedVersion(value){return rawVersion(value).split(/[+-]/)[0];}
   function sameSeries(a,b){var x=parts(a),y=parts(b);return(x[0]||0)===(y[0]||0)&&(x[1]||0)===(y[1]||0);}
-  function request(path,label,type){return fetch(asset(path),{credentials:'same-origin',cache:'no-store'}).then(function(res){if(!res.ok)throw new Error(label+' HTTP '+res.status);return type==='text'?res.text():res.json();});}
+  function request(path,label,type){var loader=W.RuntimeAssets;if(!loader)return Promise.reject(new Error('RuntimeAssets unavailable for '+label));var options={namespace:'compat',identity:'build'};return(type==='text'?loader.readText(path,options):loader.readJson(path,options)).catch(function(error){throw new Error(label+': '+String(error&&error.message||error));});}
   function fetchJson(path,label){return request(path,label,'json');}
   function identityKey(value){value=value||{};return[String(value.supportFloor||''),String(value.latestAdmittedStable||''),Number(value.releaseCount)||0,String(value.releaseSetSha256||''),String(value.sourceCatalogSha256||'')].join('|');}
   function sameCatalogIdentity(a,b){return !!(a&&b&&identityKey(a)===identityKey(b));}
