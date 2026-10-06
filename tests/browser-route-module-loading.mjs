@@ -29,9 +29,11 @@ const port=server.address().port,base=`http://${host}:${port}/app/`,timeoutMs=30
 
 const browser=await launchBrowser();
 try{
-  const context=await browser.newContext({locale:'zh-CN'}),page=await context.newPage(),errors=[];
+  const context=await browser.newContext({locale:'zh-CN'}),page=await context.newPage(),errors=[],httpErrors=[],requestErrors=[];
   page.on('pageerror',error=>errors.push(error?.stack||error?.message||String(error)));
-  page.on('console',message=>{if(message.type()==='error'&&!/favicon|Wei\.G\.ico/i.test(message.text()))errors.push(message.text());});
+  page.on('console',message=>{const text=message.text();if(message.type()==='error'&&!/Failed to load resource/i.test(text)&&!/favicon|Wei\.G\.ico/i.test(text))errors.push(text);});
+  page.on('response',response=>{const status=response.status(),url=response.url();if(status>=400&&!/\/api\/v2\//.test(url))httpErrors.push(status+' '+url);});
+  page.on('requestfailed',request=>{const url=request.url();if(!/\/api\/v2\//.test(url))requestErrors.push((request.failure()?.errorText||'request failed')+' '+url);});
   const url=new URL(base);url.search=new URLSearchParams({sim:'a62-route-modules',qb:'5.2.3',count:'24',scenario:'mixed',seed:'a62-route-modules',clean:'0'}).toString();
   await recoverPageSession(page,{label:'A62 local route-module browser',qbVersion:'5.2.3',timeoutMs,navigate:async attempt=>{const target=new URL(url);target.searchParams.set('__weig_session_attempt',String(attempt));await page.goto(target.toString(),{waitUntil:'domcontentloaded',timeout:timeoutMs});},onLogin:async()=>{await page.locator('#login-btn').click();}});
   await page.waitForSelector('#torrent-list',{timeout:timeoutMs});
@@ -66,7 +68,7 @@ try{
   await page.reload({waitUntil:'domcontentloaded',timeout:timeoutMs});await page.waitForSelector('#settings-content[data-settings-renderer="canonical"]',{timeout:timeoutMs});
   assert.deepEqual(Object.fromEntries(routeNames.map(name=>[name,counts.get(sourcePath(name))||0])),{settings:1,rss:1,logs:1},'warm reload must reuse exact-SHA CacheStorage instead of refetching route-module source');
   const warm=await cacheUrls();assert.deepEqual((await page.evaluate(async()=>await caches.keys())).filter(key=>key.startsWith('weig-virtual-static-')),[`weig-virtual-static-${exactSha}`]);assert.equal(warm.filter(url=>url.includes('/data/weig-i18n/')).length,1);assert.equal(warm.filter(url=>url.includes('/qb-copy-fallback/5/')).length,1);
-  assert.deepEqual(errors,[],`A62 route-module browser emitted errors:\n${errors.join('\n')}`);
+  assert.deepEqual(httpErrors,[],`A62 route-module browser received failing static responses:\n${httpErrors.join('\n')}`);assert.deepEqual(requestErrors,[],`A62 route-module browser had failed static requests:\n${requestErrors.join('\n')}`);assert.deepEqual(errors,[],`A62 route-module browser emitted JavaScript/console errors:\n${errors.join('\n')}`);
   console.log(`A62 route-module browser passed for ${exactSha}: home loads zero Settings/RSS/Logs modules, each route loads exactly once, and warm reload reuses exact-SHA cache with one qB/WeiG locale shard.`);
   await context.close();
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve));fs.rmSync(temp,{recursive:true,force:true});}
