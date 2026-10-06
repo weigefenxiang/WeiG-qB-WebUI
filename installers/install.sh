@@ -546,6 +546,12 @@ assert_materialized_webui() {
     for shard in "$data"/$spec; do [ -f "$shard" ] || continue; [ -s "$shard" ] || { echo "Materialized WebUI contains an empty qB copy shard: $shard" >&2; return 1; }; shard_found=1; break; done
     [ "$shard_found" -eq 1 ] || { echo "Materialized WebUI is missing qB copy shards for $spec." >&2; return 1; }
   done
+  weig_locale_dir="$data/weig-i18n"
+  [ -d "$weig_locale_dir" ] || { echo "Materialized WebUI is missing WeiG locale shard directory." >&2; return 1; }
+  weig_locale_count=0
+  for locale_file in "$weig_locale_dir"/*.json; do [ -f "$locale_file" ] || continue; [ -s "$locale_file" ] || { echo "Materialized WebUI contains an empty WeiG locale shard: $locale_file" >&2; return 1; }; weig_locale_count=$((weig_locale_count+1)); done
+  [ "$weig_locale_count" -eq 10 ] || { echo "Materialized WebUI WeiG locale shard count mismatch: $weig_locale_count != 10." >&2; return 1; }
+  for locale in de es fr ja ko pt ru zh-CN zh-HK zh-TW; do [ -s "$weig_locale_dir/$locale.json" ] || { echo "Materialized WebUI is missing WeiG locale shard $locale.json." >&2; return 1; }; done
   binding_found=0
   for binding in "$data"/qb-copy-bindings/*.txt; do [ -f "$binding" ] || continue; grep -Eq '^@@BINDING[[:space:]]+b[0-9a-f]{20}$' "$binding" || { echo "Malformed qB copy binding shard: $binding" >&2; return 1; }; binding_found=1; break; done
   [ "$binding_found" -eq 1 ] || return 1

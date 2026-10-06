@@ -74,7 +74,7 @@ try{
 
   const runtimeCopy=await page.evaluate(async()=>{const value=await window.WeiG?.I18n?.loadQbOwnedCopy?.();return value?{sourceSha:value.sourceSha,qbVersion:value.qbVersion,mode:value.mode}:null;});
   assert.ok(runtimeCopy&&runtimeCopy.sourceSha===catalogProfile.sourceSha&&runtimeCopy.qbVersion==='5.2.3');
-  assert.equal(runtimeCopy.mode,'native');
+  assert.equal(runtimeCopy.mode,'fallback','5.2.3 zh-CN must use the exact official fallback shard when the shared root QM is not exact-source compatible');
 
   const firstCache=await page.evaluate(async sha=>{
     const name='weig-virtual-static-'+sha,keys=await caches.keys(),cache=await caches.open(name),urls=(await cache.keys()).map(request=>request.url);
@@ -84,7 +84,12 @@ try{
   assert.ok(firstCache.urls.every(url=>new URL(url).searchParams.get('v')===expectedSha),'every immutable Virtual cache entry must be exact-SHA keyed');
   assert.equal(firstCache.urls.some(url=>url.includes('/__simulator/versions/catalog.generated.json')),false,'normal qB 5.2.3 startup must not cache/fetch the full multi-release catalog fallback');
   assert.equal(firstCache.urls.some(url=>url.includes('/__source/private/data/qb-copy-fallback/4/')),false,'normal qB 5.2.3 startup must not cache/fetch qB 4.x fallback payload');
-  assert.equal(firstCache.urls.some(url=>url.includes('/__source/private/data/qb-copy-fallback/5/zh_CN.json')),false,'native qB 5.2.3 zh-CN must not fetch a fallback shard');
+  const firstFallback=firstCache.urls.filter(url=>url.includes('/__source/private/data/qb-copy-fallback/5/'));
+  assert.deepEqual(firstFallback.map(url=>new URL(url).pathname).filter(path=>path.endsWith('/zh_CN.json')).length,[1].length,'qB 5.2.3 zh-CN must fetch its one exact current-major/current-locale fallback shard');
+  assert.equal(firstFallback.length,1,'qB 5.2.3 zh-CN startup must not fetch other qB 5.x locale fallback shards');
+  const firstWeiGLocales=firstCache.urls.filter(url=>url.includes('/__source/private/data/weig-i18n/'));
+  assert.equal(firstWeiGLocales.length,1,'startup must fetch exactly one non-English WeiG locale shard');
+  assert.ok(firstWeiGLocales[0].includes('/weig-i18n/zh-CN.json'),'qB persisted zh-CN must select the matching WeiG zh-CN overlay only');
 
   const firstCount=firstCache.urls.length;
   await page.reload({waitUntil:'domcontentloaded',timeout:60000});
@@ -98,10 +103,12 @@ try{
   assert.deepEqual(secondCache.keys.filter(key=>key.startsWith('weig-virtual-static-')),[`weig-virtual-static-${expectedSha}`],'reload must preserve one exact-SHA Virtual cache owner');
   assert.equal(secondCache.urls.some(url=>url.includes('/__simulator/versions/catalog.generated.json')),false,'reload must not fall back to the full catalog');
   assert.equal(secondCache.urls.some(url=>url.includes('/__source/private/data/qb-copy-fallback/4/')),false,'reload must not fetch qB 4.x fallback payload');
+  assert.equal(secondCache.urls.filter(url=>url.includes('/__source/private/data/qb-copy-fallback/5/')).length,1,'reload must retain only the one current qB 5.x locale fallback shard');
+  assert.equal(secondCache.urls.filter(url=>url.includes('/__source/private/data/weig-i18n/')).length,1,'reload must retain only the one current WeiG locale shard');
   assert.deepEqual(errors,[],`startup-performance session emitted page errors:\n${errors.join('\n')}`);
   await context.close();
 
-  console.log(`A62 Pages startup performance passed for ${expectedSha}: exact qB profile ${copyProfile.sourceSha} + binding ${copyProfile.bindingId} are reused from the immutable cache without qB 4.x fallback payloads.`);
+  console.log(`A62 Pages startup performance passed for ${expectedSha}: exact qB profile ${copyProfile.sourceSha}, binding ${copyProfile.bindingId}, current qB fallback locale and current WeiG locale are bounded and reused without 4.x/non-current locale payloads.`);
 }finally{
   await browser.close();
 }

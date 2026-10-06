@@ -1076,6 +1076,12 @@ function Assert-MaterializedWebUI([string]$Root) {
     if(!($files | Select-Object -First 1)){throw "Materialized WebUI qB copy shard directory $($spec[0]) is empty."}
     if($files | Where-Object {$_.Length -le 0} | Select-Object -First 1){throw "Materialized WebUI contains an empty qB copy shard in $($spec[0])."}
   }
+  $weigLocaleDir=Join-Path $data 'weig-i18n'
+  $expectedWeiGLocaleShards=@('de','es','fr','ja','ko','pt','ru','zh-CN','zh-HK','zh-TW')
+  if(!(Test-Path $weigLocaleDir -PathType Container)){throw 'Materialized WebUI is missing WeiG locale shard directory.'}
+  $actualWeiGLocaleShards=@(Get-ChildItem $weigLocaleDir -Filter '*.json' -File -ErrorAction SilentlyContinue)
+  if($actualWeiGLocaleShards.Count -ne $expectedWeiGLocaleShards.Count){throw "Materialized WebUI WeiG locale shard count mismatch: $($actualWeiGLocaleShards.Count) != $($expectedWeiGLocaleShards.Count)."}
+  foreach($locale in $expectedWeiGLocaleShards){$file=Join-Path $weigLocaleDir ($locale+'.json');if(!(Test-Path $file -PathType Leaf) -or (Get-Item $file).Length -le 0){throw "Materialized WebUI is missing WeiG locale shard $locale.json."}}
   $binding=Get-ChildItem (Join-Path $data 'qb-copy-bindings') -Filter '*.txt' -File | Select-Object -First 1
   if(!$binding -or (Get-Content $binding.FullName -Raw) -notmatch '(?m)^@@BINDING\tb[0-9a-f]{20}$'){throw 'Materialized WebUI qB copy binding shard is malformed.'}
   if(!(Test-Path $translations) -or !(Get-ChildItem $translations -Filter 'webui_*.qm' -File -ErrorAction SilentlyContinue | Select-Object -First 1)){throw 'Materialized WebUI is missing official qB WebUI translation QM assets.'}
