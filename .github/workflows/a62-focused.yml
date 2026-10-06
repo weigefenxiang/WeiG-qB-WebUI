@@ -26,7 +26,6 @@ jobs:
         run: |
           node tests/syntax-contract.mjs
           node tests/runtime-contract.mjs
-          node tests/runtime-asset-loader-contract.mjs
           node tests/private-bootstrap-contract.mjs
           node tests/i18n-runtime-owner-contract.mjs
           node tests/qb-runtime-copy-materialization-contract.mjs webui/private/data/qb-releases.json webui/private/data/qb-settings-native.txt

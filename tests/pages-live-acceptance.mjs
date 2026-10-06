@@ -69,6 +69,39 @@ async function waitForCatalog(page,{count,timeout=30000}={}){
   if(Number.isFinite(count))assert.equal(state.count,count,`catalog must contain all ${count} torrents`);
   return{...state,elapsedMs};
 }
+async function demandFacetCatalog(page,kind='tracker'){
+  const preferredSelector=`#facet-controls [data-facet="${kind}"] .ui-select__trigger`;
+  const fallbackSelector='#facet-controls [data-facet="savePath"] .ui-select__trigger';
+  const preferred=page.locator(preferredSelector);
+  const preferredVisible=await preferred.isVisible().catch(()=>false);
+  const selector=preferredVisible?preferredSelector:fallbackSelector;
+  const trigger=page.locator(selector);
+  await trigger.waitFor({state:'visible',timeout:30000});
+  const outsideViewport=await trigger.evaluate(node=>{
+    const rect=node.getBoundingClientRect();
+    return rect.right<=0||rect.bottom<=0||rect.left>=innerWidth||rect.top>=innerHeight;
+  });
+  let openedDrawer=false;
+  if(outsideViewport){
+    const menu=page.locator('#menu-btn');
+    if(await menu.isVisible().catch(()=>false)){
+      await menu.click();
+      await page.waitForFunction(()=>document.getElementById('sidebar')?.classList.contains('is-open'));
+      openedDrawer=true;
+    }
+  }
+  const before=await page.evaluate(()=>({ready:!!window.WeiG?.AppState?.catalogReady,busy:!!window.WeiG?.AppState?.catalogBusy,error:!!window.WeiG?.AppState?.catalogError}));
+  assert.equal(before.ready,false,'demand-load catalog fixture must begin without an eager full-library scan');
+  assert.equal(before.busy,false,'demand-load catalog fixture must remain idle until a facet is opened');
+  assert.equal(before.error,false,'demand-load catalog fixture must not enter an error state before demand');
+  await trigger.click();
+  await page.waitForFunction(()=>!!window.WeiG?.AppState&&(window.WeiG.AppState.catalogBusy||window.WeiG.AppState.catalogReady||window.WeiG.AppState.catalogError),null,{timeout:5000});
+  if(openedDrawer){
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(()=>!document.getElementById('sidebar')?.classList.contains('is-open'));
+  }
+  return selector;
+}
 
 async function openVirtualSession(page,{branch,qb,count,scenario='mixed',seed='pages-live',clean=false,sim=null}){
   const sessionId=sim||`pages-live-${branch}-${qb}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -166,7 +199,9 @@ try{
 
     await openVirtualSession(page,{branch:'main',qb:'5.2.3',count:5000,scenario:'mixed',seed:'pages-live-5000'});
 
+    await demandFacetCatalog(page,'tracker');
     const catalogState=await waitForCatalog(page,{count:5000,timeout:30000});
+    await page.keyboard.press('Escape');
     const pagerPattern=catalogState.locale==='zh-CN'?/第\s*1\s*\/\s*100\s*页\s*·\s*每页\s*50/:/Page\s*1\s*\/\s*100\s*·\s*50\s*per page/i;
     assert.match(catalogState.pageLabel,pagerPattern,`5000-Torrent pager must match applied qB locale ${catalogState.locale||'(unknown)'} after indexing; got ${catalogState.pageLabel}`);
     console.log(`5000-Torrent full-library catalog ready in ${catalogState.elapsedMs} ms.`);
@@ -429,8 +464,9 @@ try{
     const pageErrors=[];
     page.on('pageerror',error=>pageErrors.push(error?.stack||error?.message||String(error)));
     await openVirtualSession(page,{branch:'dev',qb:'4.1.9.1',count:5000,scenario:'mixed',seed:'pages-live-qb4-catalog-5000',clean:true});
-    await page.evaluate(()=>WeiG.LibraryController.ensureFacetOptions('tracker'));
+    await demandFacetCatalog(page,'tracker');
     const qB4CatalogState=await waitForCatalog(page,{count:5000,timeout:30000});
+    await page.keyboard.press('Escape');
     assert.equal(qB4CatalogState.ready,true,'qB4 5000-torrent catalog must finish instead of leaving the pager spinner active');
     assert.ok(qB4CatalogState.elapsedMs<30000,`qB4 5000-torrent catalog must finish within the bounded live gate; observed ${qB4CatalogState.elapsedMs} ms`);
     assert.deepEqual(pageErrors,[],`qB4 5000 catalog session emitted page errors:\n${pageErrors.join('\n')}`);
@@ -529,8 +565,9 @@ try{
 
     await openVirtualSession(page,{branch:'dev',qb:'5.2.3',count:80,scenario:'mixed',seed:'pages-live-android'});
     await page.waitForSelector('.torrent-mobile-card--two-line',{state:'visible',timeout:60000});
-    await page.evaluate(()=>WeiG.LibraryController.ensureFacetOptions('tracker'));
+    await demandFacetCatalog(page,'tracker');
     const androidCatalog=await waitForCatalog(page,{count:80,timeout:30000});
+    await page.keyboard.press('Escape');
     assert.equal(androidCatalog.ready,true,'contextual facet live fixture must wait for the complete 80-Torrent catalog before deriving expected options');
 
     await page.locator('#menu-btn').click();
