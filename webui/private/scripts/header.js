@@ -35,6 +35,6 @@
   W.HeaderUtilities={installDesktop:installDesktop,installMobile:installMobile,installTheme:installTheme,installSearch:installSearch,installDrawerToggle:installDrawerToggle,setDrawer:setDrawer,toggleDrawer:toggleDrawer,setSearchOpen:setSearchOpen,syncSearchContext:syncSearchContext,syncText:syncText};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
   global.addEventListener('weig:languagechange',syncText);
-  global.addEventListener('weig:route-state',function(){setSearchOpen(false);setDrawer(false);requestAnimationFrame(syncSearchContext);});
+  global.addEventListener('weig:route-state',function(){setSearchOpen(false);setDrawer(false);syncSearchContext();requestAnimationFrame(syncSearchContext);});
   document.addEventListener('keydown',function(e){if(e.key==='Escape'){if(document.querySelector('.topbar.search-open'))setSearchOpen(false);var sidebar=document.getElementById('sidebar');if(sidebar&&sidebar.classList.contains('is-open'))setDrawer(false);}});
 })(window);

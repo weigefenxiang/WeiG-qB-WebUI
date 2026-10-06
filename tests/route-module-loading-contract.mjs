@@ -5,7 +5,7 @@ import {fileURLToPath} from 'node:url';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const read=relative=>fs.readFileSync(path.join(root,relative),'utf8');
-const index=read('webui/private/index.html'),runtime=read('webui/private/scripts/runtime-assets.js'),navigation=read('webui/private/scripts/navigation.js'),app=read('webui/private/scripts/app.js');
+const index=read('webui/private/index.html'),runtime=read('webui/private/scripts/runtime-assets.js'),navigation=read('webui/private/scripts/navigation.js'),app=read('webui/private/scripts/app.js'),header=read('webui/private/scripts/header.js');
 const match=index.match(/var scripts=(\[[^;]+\]);/);assert.ok(match,'private bootstrap scripts array missing');const startup=JSON.parse(match[1]);
 const routes={settings:'scripts/settings.js',rss:'scripts/rss.js',logs:'scripts/logs.js'};
 for(const [route,module] of Object.entries(routes)){
@@ -20,6 +20,8 @@ assert.ok(navigation.includes("namespace:'route-module'")&&navigation.includes('
 assert.ok(app.includes('await W.Navigation.loadRouteModule(r.name)')&&app.indexOf('await W.Navigation.loadRouteModule(r.name)')<app.indexOf("if(r.name==='torrent'"),'App must await route ownership before any route-specific caller');
 const settings=read('webui/private/scripts/settings.js'),rss=read('webui/private/scripts/rss.js'),logs=read('webui/private/scripts/logs.js');
 assert.ok(settings.includes('if(app&&app.preferences){controller.prefs=app.preferences;return controller.prefs;}'),'lazy Settings must hydrate from canonical AppState instead of requiring startup execution');
+assert.ok(settings.includes("ensureSettingsModuleDependencies(tab)")&&settings.includes("String(tab||'')==='rss'")&&settings.includes("await W.Navigation.loadRouteModule('rss')"),'Settings RSS source actions must demand-load the canonical RSS module before rendering the RSS tab, without restoring RSS to Home bootstrap');
+assert.ok(header.includes("global.addEventListener('weig:route-state',function(){setSearchOpen(false);setDrawer(false);syncSearchContext();requestAnimationFrame(syncSearchContext);});"),'Header must synchronously project route search semantics at the route-state boundary and keep one-frame reconciliation for late presentation changes');
 assert.ok(rss.includes('W.AppState')&&rss.includes('client'),'lazy RSS must resolve the canonical current client at use time');
 assert.ok(logs.includes('var app=W.AppState;if(app&&app.client)return app.client'),'lazy Logs must resolve the canonical current client at use time');
 for(const source of [settings,rss,logs])assert.ok(source.includes("document.readyState==='loading'"),'route module must self-initialize correctly when injected after DOMContentLoaded');
