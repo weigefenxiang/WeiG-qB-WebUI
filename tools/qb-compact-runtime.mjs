@@ -74,6 +74,8 @@ export function createCompactRuntime(catalog,{owners=['capabilities.js','torrent
   const document=providedDocument||defaultDocument(),responseEntries=[['capabilities.json',compact.capabilityData],['torrent-compat.json',compact.torrentData],['detail-compat.json',compact.detailData],['source-actions.json',compact.actionData]];if(compact.settingsManifest)responseEntries.push(['settings-compat.json',compact.settingsManifest]);const responses=new Map(responseEntries);
   const fetch=async url=>{const value=String(url);requests.push(value);for(const [name,data] of responses)if(value.includes(name))return{ok:true,status:200,json:async()=>clone(data),text:async()=>JSON.stringify(data)};throw new Error(`Unexpected compact-runtime fetch ${value}`);};
   const context={window,document,console,URL,URLSearchParams,FormData:globalThis.FormData||TestFormData,Blob:globalThis.Blob,TextDecoder:globalThis.TextDecoder,CustomEvent:class{},requestAnimationFrame:fn=>fn(),fetch};
-  for(const name of owners){const owner=fs.readFileSync(path.join(root,'webui/private/scripts',name),'utf8');vm.runInNewContext(owner,context,{filename:name});}
+  const runtimeOwners=[...owners];
+  if(runtimeOwners.includes('capabilities.js')&&!runtimeOwners.includes('runtime-assets.js'))runtimeOwners.splice(runtimeOwners.indexOf('capabilities.js'),0,'runtime-assets.js');
+  for(const name of runtimeOwners){const owner=fs.readFileSync(path.join(root,'webui/private/scripts',name),'utf8');vm.runInNewContext(owner,context,{filename:name});}
   return{W,window,document,context,compact,requests};
 }
