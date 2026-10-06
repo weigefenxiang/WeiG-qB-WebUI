@@ -65,6 +65,8 @@ const allowedLegacy={
   'tools/qb-webui-catalog.mjs':['rmSync'],
   'tools/qb-runtime-copy-product.mjs':['existsSync','rmSync'],
   'tests/qb-runtime-copy-materialization-contract.mjs':['existsSync'],
+  'audits/qb-webui-catalog-contract.mjs':['existsSync'],
+  'tests/qb-locale-pipeline-contract.mjs':['fs.rmSync','runtimeI18n.includes'],
 };
 const legacyHits=[];
 for(const file of walk(root)){
