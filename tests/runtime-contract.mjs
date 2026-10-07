@@ -36,15 +36,19 @@ const required=[
 for(const rel of required)assert(fs.existsSync(path.join(root,rel)),`Missing global runtime asset ${rel}`);
 
 const index=read('webui/private/index.html');
+const bootstrapPlan=JSON.parse(read('webui/private/bootstrap-plan.json'));
+const startupScripts=bootstrapPlan.phases.flatMap(phase=>phase.scripts);
+const startupIndex=path=>startupScripts.indexOf(path);
 assert(!/(?:src|href)=["'][^"']*(?:\/v\d+|-[vV]\d+\.)/i.test(index),'Private index references a version-labelled runtime asset');
-assert(index.indexOf('scripts/core.js')<index.indexOf('scripts/app.js'),'core.js must load before app.js');
-assert(index.indexOf('scripts/qb-client.js')<index.indexOf('scripts/app.js'),'qb-client.js must load before app.js');
-assert(index.indexOf('scripts/rss.js')<index.indexOf('scripts/app.js'),'rss.js must load before app.js because App delegates RSS routes to W.RSSWorkspace');
+assert(index.includes("SEED='scripts/runtime-assets.js'")&&index.includes("PLAN='bootstrap-plan.json'"),'Private index must seed RuntimeAssets then hand off to the canonical bootstrap plan');
+assert(!startupScripts.includes('scripts/runtime-assets.js'),'RuntimeAssets seed must not duplicate itself inside the bootstrap plan');
+assert(startupIndex('scripts/core.js')>=0&&startupIndex('scripts/core.js')<startupIndex('scripts/app.js'),'core.js must load before app.js');
+assert(startupIndex('scripts/qb-client.js')>=0&&startupIndex('scripts/qb-client.js')<startupIndex('scripts/app.js'),'qb-client.js must load before app.js');
+for(const deferred of ['scripts/settings.js','scripts/rss.js','scripts/logs.js'])assert(!startupScripts.includes(deferred),deferred+' must remain route-demand loaded instead of leaking into startup');
+assert(startupIndex('scripts/i18n.js')>=0&&startupIndex('scripts/capabilities.js')>=0,'i18n and capability consumers must remain inside the RuntimeAssets-owned startup plan');
 
 const runtimeAssetSource=read('webui/private/scripts/runtime-assets.js');
 const capabilitiesSource=read('webui/private/scripts/capabilities.js');
-assert(index.indexOf('scripts/runtime-assets.js')<index.indexOf('scripts/i18n.js'),'RuntimeAssets must load before i18n');
-assert(index.indexOf('scripts/runtime-assets.js')<index.indexOf('scripts/capabilities.js'),'RuntimeAssets must load before capability consumers');
 assert(runtimeAssetSource.includes("DB_NAME='weig-runtime-assets'")&&runtimeAssetSource.includes('global.indexedDB'),'runtime asset persistence must use one IndexedDB owner');
 assert(runtimeAssetSource.includes('readBytes:readBytes')&&runtimeAssetSource.includes('readGzipJson:readGzipJson')&&runtimeAssetSource.includes('decodeDeflateJson:decodeDeflateJson'),'RuntimeAssets must be the binary/gzip/deflate transport owner');
 assert(runtimeAssetSource.includes('SCHEMA,BUILD,namespace(options),identity(options)'),'runtime asset cache identity must include schema/build/namespace/exact caller identity');
