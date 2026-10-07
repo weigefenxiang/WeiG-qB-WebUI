@@ -6,15 +6,16 @@ import {fileURLToPath} from 'node:url';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const read=relative=>fs.readFileSync(path.join(root,relative),'utf8');
 const index=read('webui/private/index.html'),runtime=read('webui/private/scripts/runtime-assets.js'),navigation=read('webui/private/scripts/navigation.js'),app=read('webui/private/scripts/app.js'),header=read('webui/private/scripts/header.js');
-const match=index.match(/var scripts=(\[[^;]+\]);/);assert.ok(match,'private bootstrap scripts array missing');const startup=JSON.parse(match[1]);
+const plan=JSON.parse(read('webui/private/bootstrap-plan.json')),startup=['scripts/runtime-assets.js',...plan.phases.flatMap(phase=>phase.scripts)];
 const routes={settings:'scripts/settings.js',rss:'scripts/rss.js',logs:'scripts/logs.js'};
 for(const [route,module] of Object.entries(routes)){
   assert.equal(startup.includes(module),false,route+' module must not be in ordered initial bootstrap');
   assert.ok(navigation.includes(route+':['+"'"+module+"'"+']')||navigation.includes("'"+route+"':['"+module+"']"),route+' must be owned by the route-module map');
   assert.ok(fs.existsSync(path.join(root,'webui/private',module)),route+' module file missing');
 }
-assert.ok(startup.includes('scripts/runtime-assets.js')&&startup.includes('scripts/navigation.js')&&startup.includes('scripts/app.js'),'startup must retain RuntimeAssets -> Navigation -> App owners');
-assert.ok(startup.indexOf('scripts/runtime-assets.js')<startup.indexOf('scripts/navigation.js')&&startup.indexOf('scripts/navigation.js')<startup.indexOf('scripts/app.js'),'route loading owners must precede App');
+assert.ok(index.includes("SEED='scripts/runtime-assets.js'")&&index.includes("PLAN='bootstrap-plan.json'"),'private bootstrap must seed RuntimeAssets then hand off to the declarative plan');
+assert.ok(startup.includes('scripts/navigation.js')&&startup.includes('scripts/app.js'),'bootstrap plan must retain Navigation and App owners');
+assert.ok(startup.indexOf('scripts/navigation.js')<startup.indexOf('scripts/app.js'),'route loading owner must precede App');
 assert.ok(runtime.includes('scriptInflight=new Map()')&&runtime.includes('scriptLoaded=new Set()')&&runtime.includes('function loadScript(path,options)')&&runtime.includes('node.src=assetUrl(path)')&&runtime.includes('node.async=false')&&runtime.includes('loadScript:loadScript'),'RuntimeAssets must own build-keyed same-page de-duplicated script transport');
 assert.ok(navigation.includes("namespace:'route-module'")&&navigation.includes('identity:name')&&navigation.includes('routeModules[name]=task')&&navigation.includes('delete routeModules[name]'),'Navigation must de-duplicate each route load and allow retry after failure');
 assert.ok(app.includes('await W.Navigation.loadRouteModule(r.name)')&&app.indexOf('await W.Navigation.loadRouteModule(r.name)')<app.indexOf("if(r.name==='torrent'"),'App must await route ownership before any route-specific caller');

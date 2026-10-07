@@ -7,9 +7,8 @@ import {buildWebuiDist} from '../tools/build-webui-dist.mjs';
 import {pagesVerifyLanes} from '../tools/pages-verify-plan.mjs';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..'),privateRoot=path.join(root,'webui/private'),publicRoot=path.join(root,'webui/public');
-const index=fs.readFileSync(path.join(privateRoot,'index.html'),'utf8'),match=index.match(/var scripts=(\[[^;]+\]);/);
-assert.ok(match,'private bootstrap scripts array missing');
-const startup=JSON.parse(match[1]),deferred=['scripts/settings.js','scripts/rss.js','scripts/logs.js'];
+const plan=JSON.parse(fs.readFileSync(path.join(privateRoot,'bootstrap-plan.json'),'utf8'));
+const startup=['scripts/runtime-assets.js',...plan.phases.flatMap(phase=>phase.scripts)],deferred=['scripts/settings.js','scripts/rss.js','scripts/logs.js'];
 const assetFile=relative=>{for(const base of [privateRoot,publicRoot]){const file=path.join(base,relative);if(fs.existsSync(file)&&fs.statSync(file).isFile())return file;}throw new Error('Bootstrap asset missing from private/public qB namespace: '+relative);};
 const bytes=relative=>fs.statSync(assetFile(relative)).size;
 const startupBytes=startup.reduce((sum,file)=>sum+bytes(file),0),deferredBytes=deferred.reduce((sum,file)=>sum+bytes(file),0),i18nBytes=bytes('scripts/i18n.js');

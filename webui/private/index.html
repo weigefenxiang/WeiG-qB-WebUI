@@ -70,21 +70,15 @@
   <script id="weig-private-bootstrap">
   (function(global){
     'use strict';
-    var BUILD='__WEIG_GIT_SHA__';
-    var STYLE_CONCURRENCY=2,MAX_ATTEMPTS=3;
-    var styles=["css/app.css","css/base.css","css/spatial.css","css/transfer.css","css/progress.css","css/controls.css","css/layout.css","css/table.css","css/theme.css","css/ui.css","css/polish.css","css/logs.css","css/brand.css","css/header.css","css/session.css","css/settings.css","css/feedback.css","css/action-editor.css"];
-    var scripts=["scripts/brand-favicon.js","storage-migration.js","session-contract.js","scripts/runtime-assets.js","scripts/i18n.js","scripts/core.js","scripts/dialog-runtime.js","scripts/surface-transition.js","scripts/action-registry.js","scripts/feedback.js","scripts/torrent-semantics.js","scripts/settings-schema.js","scripts/qb-client.js","scripts/library-data.js","scripts/capabilities.js","scripts/client-data-runtime.js","scripts/components.js","scripts/torrent-fields.js","scripts/select-geometry.js","scripts/floating.js","scripts/theme.js","scripts/time.js","scripts/brand.js","scripts/session.js","scripts/update-check.js","scripts/bug-report.js","scripts/navigation.js","scripts/spatial.js","scripts/rate-value.js","scripts/transfer.js","scripts/responsive.js","scripts/torrent-action-editor.js","scripts/selection.js","scripts/torrent-filter-view.js","scripts/layout.js","scripts/column-configurator.js","scripts/ui.js","scripts/polish.js","scripts/ux.js","scripts/header.js","scripts/app.js"];
-    var failed=false;
+    var BUILD='__WEIG_GIT_SHA__',SEED='scripts/runtime-assets.js',PLAN='bootstrap-plan.json',MAX_ATTEMPTS=3,failed=false;
     function byId(id){return document.getElementById(id);}
     function assetUrl(path,attempt){var url=new URL(path,global.location.href);url.searchParams.set('v',BUILD);if(attempt>0)url.searchParams.set('__weig_retry',String(attempt));return url.href;}
     function delay(ms){return new Promise(function(resolve){setTimeout(resolve,ms);});}
-    function loadOne(kind,path,attempt){return new Promise(function(resolve,reject){var node;if(kind==='style'){node=document.createElement('link');node.rel='stylesheet';node.href=assetUrl(path,attempt);}else{node=document.createElement('script');node.async=false;node.src=assetUrl(path,attempt);}node.dataset.weigBootstrapAsset=path;node.onload=function(){resolve(node);};node.onerror=function(){node.remove();reject(new Error('asset-load-failed:'+path));};document.head.appendChild(node);});}
-    async function loadWithRetry(kind,path){var last=null;for(var attempt=0;attempt<MAX_ATTEMPTS;attempt++){try{return await loadOne(kind,path,attempt);}catch(error){last=error;if(attempt+1<MAX_ATTEMPTS)await delay(attempt===0?250:700);}}throw last||new Error('asset-load-failed:'+path);}
-    async function loadStyles(){var next=0;async function worker(){while(true){var index=next++;if(index>=styles.length)return;await loadWithRetry('style',styles[index]);}}var workers=[];for(var i=0;i<Math.min(STYLE_CONCURRENCY,styles.length);i++)workers.push(worker());await Promise.all(workers);}
-    async function loadScripts(){for(var i=0;i<scripts.length;i++)await loadWithRetry('script',scripts[i]);}
+    function loadSeed(attempt){return new Promise(function(resolve,reject){var node=document.createElement('script');node.async=false;node.src=assetUrl(SEED,attempt);node.dataset.weigBootstrapSeed=SEED;node.onload=function(){resolve(node);};node.onerror=function(){node.remove();reject(new Error('asset-load-failed:'+SEED));};document.head.appendChild(node);});}
+    async function seedRuntime(){var last=null;for(var attempt=0;attempt<MAX_ATTEMPTS;attempt++){try{await loadSeed(attempt);if(!global.WeiG||!global.WeiG.RuntimeAssets)throw new Error('runtime-assets-owner-missing');return global.WeiG.RuntimeAssets;}catch(error){last=error;if(attempt+1<MAX_ATTEMPTS)await delay(attempt===0?250:700);}}throw last||new Error('asset-load-failed:'+SEED);}
     function success(){document.documentElement.dataset.weigBootstrap='ready';var status=byId('weig-bootstrap-status');if(status)status.hidden=true;}
     function failure(error){if(failed)return;failed=true;document.documentElement.dataset.weigBootstrap='failed';var raw=String(error&&error.message||error||'unknown'),path=raw.indexOf('asset-load-failed:')===0?raw.slice(18):raw;var title=byId('weig-bootstrap-title'),copy=byId('weig-bootstrap-copy'),retry=byId('weig-bootstrap-retry');if(title)title.textContent='WeiG WebUI 启动资源加载失败';if(copy)copy.textContent='资源：'+path+'。已进行有限重试。若浏览器 Network 显示 5xx/502，请检查反向代理到 qBittorrent 的上游连接与 qBittorrent 进程日志。';if(retry){retry.hidden=false;retry.onclick=function(){global.location.reload();};}try{console.error('[WeiG bootstrap]',path,error);}catch(_e){}}
-    Promise.resolve().then(loadStyles).then(loadScripts).then(success).catch(failure);
+    Promise.resolve().then(seedRuntime).then(function(runtime){return runtime.executePlanFile(PLAN);}).then(success).catch(failure);
   })(window);
   </script>
 </body>
