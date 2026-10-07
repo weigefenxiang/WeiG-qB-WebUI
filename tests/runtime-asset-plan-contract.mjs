@@ -7,8 +7,8 @@ import {fileURLToPath} from 'node:url';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const source=fs.readFileSync(path.join(root,'webui/private/scripts/runtime-assets.js'),'utf8');
 
-function harness({failOnce=new Set(),failAlways=new Set(),delays={}}={}){
-  const events=[],attempts=new Map();
+function harness({failOnce=new Set(),failAlways=new Set(),delays={},fetchBodies=[]}={}){
+  const events=[],attempts=new Map(),fetchUrls=[];let fetchIndex=0;
   const meta={getAttribute(){return 'a'.repeat(40);}};
   const document={
     querySelector(selector){return selector==='meta[name="weig-build-sha"]'?meta:null;},
@@ -23,11 +23,11 @@ function harness({failOnce=new Set(),failAlways=new Set(),delays={}}={}){
       },delay);
     }}
   };
-  const window={document,location:{href:'http://example.test/app/index.html'},setTimeout,URL,indexedDB:null,WeiG:{}};
+  const window={document,location:{href:'http://example.test/app/index.html'},setTimeout,URL,indexedDB:null,WeiG:{},fetch(url){fetchUrls.push(String(url));const body=fetchBodies.length?fetchBodies[Math.min(fetchIndex++,fetchBodies.length-1)]:'';return Promise.resolve({ok:true,status:200,text(){return Promise.resolve(String(body));},arrayBuffer(){return Promise.resolve(new TextEncoder().encode(String(body)).buffer);}});}};
   window.window=window;
-  const context=vm.createContext({window,document,URL,setTimeout,Promise,Map,Set,Uint8Array,Uint32Array,ArrayBuffer,TextDecoder,console,Number,String,Object,Math,Date});
+  const context=vm.createContext({window,document,URL,setTimeout,Promise,Map,Set,Uint8Array,Uint32Array,ArrayBuffer,TextDecoder,TextEncoder,console,Number,String,Object,Math,Date});
   vm.runInContext(source,context,{filename:'runtime-assets.js'});
-  return{RuntimeAssets:window.WeiG.RuntimeAssets,events,attempts};
+  return{RuntimeAssets:window.WeiG.RuntimeAssets,events,attempts,fetchUrls};
 }
 
 const plan={schemaVersion:1,styleConcurrency:2,maxAttempts:2,retryDelays:[0],styles:['a.css','b.css','c.css'],phases:[
@@ -55,5 +55,14 @@ const plan={schemaVersion:1,styleConcurrency:2,maxAttempts:2,retryDelays:[0],sty
 {
   const h=harness();
   assert.throws(()=>h.RuntimeAssets.executePlan({schemaVersion:1,phases:[{name:'one',scripts:['dup.js']},{name:'two',scripts:['dup.js']}]}),/multiple phases/);
+}
+{
+  const h=harness({fetchBodies:['{broken',JSON.stringify({schemaVersion:1,styleConcurrency:1,maxAttempts:1,styles:[],phases:[{name:'app',scripts:['app.js']}]})]});
+  const result=await h.RuntimeAssets.executePlanFile('bootstrap-plan.json');
+  assert.deepEqual(Array.from(result.phases,x=>String(x.name)),['app']);
+  assert.equal(h.fetchUrls.length,2,'bootstrap plan descriptor must bounded-retry after a transient malformed response');
+  const first=new URL(h.fetchUrls[0]),second=new URL(h.fetchUrls[1]);
+  assert.equal(first.searchParams.get('v'),'a'.repeat(40));assert.equal(first.searchParams.has('__weig_retry'),false);
+  assert.equal(second.searchParams.get('v'),'a'.repeat(40));assert.equal(second.searchParams.get('__weig_retry'),'1','descriptor retry must preserve exact build identity and cache-bust only the retry attempt');
 }
 console.log('Runtime asset plan contract passed: one owner provides bounded style concurrency, parallel independent script phases, deterministic dependency barriers, retry, dedupe and fail-closed execution.');
