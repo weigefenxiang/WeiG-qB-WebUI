@@ -1,0 +1,1154 @@
+import {createRng,int,pick,range,deterministicUnit,hash32} from './random.js';
+import {normalizeProfile,atLeast} from './profiles.js';
+import {TORRENT_NAME_POOL} from '../data/torrent-name-pool.js';
+
+export const CANONICAL={
+  DOWNLOAD_ACTIVE:'DOWNLOAD_ACTIVE',
+  DOWNLOAD_STALLED:'DOWNLOAD_STALLED',
+  DOWNLOAD_PAUSED:'DOWNLOAD_PAUSED',
+  DOWNLOAD_QUEUED:'DOWNLOAD_QUEUED',
+  SEED_ACTIVE:'SEED_ACTIVE',
+  SEED_STALLED:'SEED_STALLED',
+  SEED_PAUSED:'SEED_PAUSED',
+  SEED_QUEUED:'SEED_QUEUED',
+  CHECKING:'CHECKING',
+  METADATA:'METADATA',
+  MOVING:'MOVING',
+  ERROR:'ERROR'
+};
+
+const MiB=1024*1024;
+const GiB=1024*MiB;
+
+export const DEFAULT_PREFERENCES={
+  save_path:'/downloads',
+  temp_path:'/downloads/incomplete',
+  temp_path_enabled:true,
+  preallocate_all:false,
+  create_subfolder_enabled:true,
+  start_paused_enabled:false,
+  auto_tmm_enabled:false,
+  torrent_content_layout:'Original',
+  listen_port:6881,
+  upnp:false,
+  random_port:false,
+  max_connec:500,
+  max_connec_per_torrent:100,
+  max_uploads:20,
+  max_uploads_per_torrent:4,
+  proxy_type:0,
+  proxy_ip:'',
+  proxy_port:8080,
+  proxy_username:'',
+  dl_limit:0,
+  up_limit:0,
+  alt_dl_limit:10240,
+  alt_up_limit:2048,
+  scheduler_enabled:false,
+  schedule_from_hour:8,
+  schedule_from_min:0,
+  schedule_to_hour:20,
+  schedule_to_min:0,
+  scheduler_days:0,
+  limit_utp_rate:true,
+  limit_tcp_overhead:false,
+  dht:true,
+  pex:true,
+  lsd:true,
+  encryption:0,
+  queueing_enabled:true,
+  max_active_downloads:8,
+  max_active_uploads:24,
+  max_active_torrents:30,
+  max_active_checking_torrents:1,
+  dont_count_slow_torrents:false,
+  slow_torrent_dl_rate_threshold:2,
+  slow_torrent_ul_rate_threshold:2,
+  slow_torrent_inactive_timer:60,
+  max_ratio:2,
+  max_ratio_enabled:false,
+  max_seeding_time:1440,
+  max_seeding_time_enabled:false,
+  max_inactive_seeding_time:-1,
+  max_inactive_seeding_time_enabled:false,
+  max_ratio_act:0,
+  web_ui_domain_list:'*',
+  web_ui_address:'*',
+  web_ui_port:8080,
+  web_ui_upnp:false,
+  web_ui_username:'demo',
+  web_ui_csrf_protection_enabled:true,
+  web_ui_clickjacking_protection_enabled:true,
+  web_ui_host_header_validation_enabled:true,
+  web_ui_localhost_auth_enabled:false,
+  web_ui_max_auth_fail_count:5,
+  web_ui_ban_duration:3600,
+  alternative_webui_enabled:true,
+  alternative_webui_path:'/config/weig-qb-webui',
+  socket_receive_buffer_size:0,
+  torrent_file_size_limit:104857600,
+  upload_choking_algorithm:1
+};
+
+export const DEFAULT_ENVIRONMENT={
+  profile:'seedbox',
+  downCapacity:320*MiB,
+  upCapacity:96*MiB,
+  diskWriteCapacity:180*MiB,
+  diskReadCapacity:260*MiB,
+  freeSpace:4*1024*GiB,
+  latencyMs:28,
+  jitterMs:12,
+  packetLoss:0.001,
+  trackerFailureRate:0.015,
+  peerAvailability:0.92,
+  online:true
+};
+
+const PUBLIC_CATEGORIES=['Linux','Movies','TV','Music','Archive','Games','Books','Software'];
+export const CURRENT_WORLD_SCHEMA_VERSION=5;
+export const VIRTUAL_PT_CATEGORIES=['1+1DBits','nn-team','BeyondH1 Ɔ','RE1Ɔ','TheGeeks','B1tMe','PT1 Ɔ','Gaze11eGames','JP0psuk1'];
+const CATEGORIES=[...PUBLIC_CATEGORIES,...VIRTUAL_PT_CATEGORIES];
+const TAGS=['fast','archive','public','favorite','seedbox','large','small'];
+const TRACKERS=[
+  'https://tracker.example/announce',
+  'https://tracker2.example/announce',
+  'udp://tracker.example:6969/announce',
+  'https://announce.example.net/tracker'
+];
+const PT_TRACKER='https://pt.example/announce';
+
+function makeHash(seed,index){
+  const a=hash32(`${seed}:${index}:a`).toString(16).padStart(8,'0');
+  const b=hash32(`${seed}:${index}:b`).toString(16).padStart(8,'0');
+  const c=hash32(`${seed}:${index}:c`).toString(16).padStart(8,'0');
+  const d=hash32(`${seed}:${index}:d`).toString(16).padStart(8,'0');
+  const e=hash32(`${seed}:${index}:e`).toString(16).padStart(8,'0');
+  return (a+b+c+d+e).slice(0,40);
+}
+
+function safeContentRoot(name){
+  return String(name||'Virtual Torrent').replace(/[\\/:*?"<>|]+/g,'_').trim().slice(0,96)||'Virtual Torrent';
+}
+function virtualFileSpecs(seed,hash,name){
+  const root=safeContentRoot(name),serial=String(hash32(`${seed}:${hash}:content-serial`)%9000+1000),kind=hash32(`${seed}:${hash}:content-template-v1`)%6;
+  if(kind===0)return[
+    [`${root}/Video/${root}.mkv`,72],[`${root}/Video/Subtitles/${root}.zh-CN.srt`,1],[`${root}/Artwork/poster.jpg`,8],[`${root}/README.nfo`,2],[`${root}/Extras/behind-the-scenes.mp4`,17]
+  ];
+  if(kind===1)return[
+    [`${root}/Photos/2026/IMG_${serial}.JPG`,24],[`${root}/Photos/2026/IMG_${Number(serial)+1}.jpeg`,22],[`${root}/Photos/Edited/cover.png`,18],[`${root}/Photos/Edited/preview.webp`,16],[`${root}/notes.txt`,20]
+  ];
+  if(kind===2)return[
+    [`${root}/Music/Album/01 - Opening.flac`,28],[`${root}/Music/Album/02 - Theme.mp3`,24],[`${root}/Music/Album/03 - Live.m4a`,22],[`${root}/Music/Album/cover.png`,8],[`${root}/Music/Album/booklet.pdf`,18]
+  ];
+  if(kind===3)return[
+    [`${root}/Software/bin/setup.exe`,42],[`${root}/Software/scripts/install.sh`,4],[`${root}/Software/docs/README.md`,7],[`${root}/Software/data/resources.7z`,39],[`${root}/Software/config/default.json`,8]
+  ];
+  if(kind===4)return[
+    [`${root}/Documents/Guide.md`,8],[`${root}/Documents/Notes.txt`,5],[`${root}/Media/clips/sample.mp4`,36],[`${root}/Media/clips/source.mov`,34],[`${root}/Pictures/screenshots/screen.png`,7],[`${root}/Archive/source.zip`,10]
+  ];
+  return[
+    [`${root}/Series/Season 01/E01.mkv`,30],[`${root}/Series/Season 01/E02.mkv`,29],[`${root}/Series/Season 01/E03.mp4`,25],[`${root}/Series/Subtitles/E01.srt`,2],[`${root}/Series/Subtitles/E02.srt`,2],[`${root}/Series/Extras/cover.jpeg`,12]
+  ];
+}
+function buildVirtualTorrentFiles(seed,hash,name,size,downloaded){
+  const total=Math.max(1,Math.floor(Number(size)||1)),specs=virtualFileSpecs(seed,hash,name),weightTotal=specs.reduce((sum,item)=>sum+item[1],0);
+  let offset=0;
+  const files=specs.map((item,index)=>{
+    const remainingFiles=specs.length-index-1,maxForThis=Math.max(1,total-offset-remainingFiles);
+    const fileSize=index===specs.length-1?Math.max(1,total-offset):Math.max(1,Math.min(maxForThis,Math.floor(total*item[1]/weightTotal)));
+    const start=Math.floor(offset/(4*MiB)),end=Math.floor((offset+fileSize-1)/(4*MiB));
+    offset+=fileSize;
+    return{index,name:item[0],size:fileSize,progress:0,priority:1,is_seed:false,piece_range:[start,Math.max(start,end)]};
+  });
+  const torrent={size:total,downloaded:Math.max(0,Math.min(total,Number(downloaded)||0)),files};
+  syncTorrentFileProgress(torrent);
+  return files;
+}
+function syncTorrentFileProgress(torrent){
+  const files=Array.isArray(torrent&&torrent.files)?torrent.files:[];let remaining=Math.max(0,Math.min(Number(torrent&&torrent.size)||0,Number(torrent&&torrent.downloaded)||0));
+  for(const file of files){
+    const size=Math.max(0,Number(file&&file.size)||0),owned=Math.min(size,remaining),progress=size>0?owned/size:1;
+    file.progress=Math.max(0,Math.min(1,progress));file.is_seed=file.progress>=1;remaining=Math.max(0,remaining-owned);
+  }
+  return files;
+}
+export function refreshGeneratedTorrentFiles(world,torrent){
+  if(!torrent||!String(torrent.hash||''))return false;
+  torrent.files=buildVirtualTorrentFiles(String(world&&world.seed||'20260905'),String(torrent.hash),torrent.name,torrent.size,torrent.downloaded);
+  return true;
+}
+
+function initialState(bucket){
+  if(bucket<18)return CANONICAL.DOWNLOAD_ACTIVE;
+  if(bucket<30)return CANONICAL.DOWNLOAD_STALLED;
+  if(bucket<37)return CANONICAL.DOWNLOAD_QUEUED;
+  if(bucket<42)return CANONICAL.DOWNLOAD_PAUSED;
+  if(bucket<62)return CANONICAL.SEED_ACTIVE;
+  if(bucket<77)return CANONICAL.SEED_STALLED;
+  if(bucket<85)return CANONICAL.SEED_QUEUED;
+  if(bucket<90)return CANONICAL.SEED_PAUSED;
+  if(bucket<93)return CANONICAL.CHECKING;
+  if(bucket<95)return CANONICAL.METADATA;
+  if(bucket<97)return CANONICAL.ERROR;
+  if(bucket<98)return CANONICAL.MOVING;
+  return CANONICAL.SEED_ACTIVE;
+}
+
+function isCompleteState(state){
+  return [CANONICAL.SEED_ACTIVE,CANONICAL.SEED_STALLED,CANONICAL.SEED_PAUSED,CANONICAL.SEED_QUEUED].includes(state);
+}
+
+function makeTorrent(seed,index,now){
+  const rng=createRng(`${seed}:${index}`);
+  const state=initialState(index%100);
+  const complete=isCompleteState(state);
+  const size=Math.round(range(rng,350*MiB,140*GiB));
+  const progress=complete?1:range(rng,0.015,0.985);
+  const downloaded=Math.round(size*progress);
+  const uploaded=complete?Math.round(size*range(rng,0,3.4)):Math.round(downloaded*range(rng,0,0.35));
+  const baseSeeders=state===CANONICAL.DOWNLOAD_STALLED?0:int(rng,0,180);
+  const downloadOnlySample=!complete&&(index%100===1);
+  const baseLeechers=(state===CANONICAL.SEED_STALLED||downloadOnlySample)?0:int(rng,0,120);
+  const privateFlag=rng()<.18;
+  const category=privateFlag?pick(rng,VIRTUAL_PT_CATEGORIES):pick(rng,PUBLIC_CATEGORIES);
+  const tags=[pick(rng,TAGS)];
+  if(rng()>.72)tags.push(pick(rng,TAGS));
+  if(privateFlag)tags.push('pt');
+  const facetBucket=index%32;
+  const trackerFacetKind=!privateFlag&&facetBucket===0?'trackerless':facetBucket===1?'tracker-error':facetBucket===2?'other-error':facetBucket===3?'warning':'working';
+  const trackerUrl=privateFlag?PT_TRACKER:pick(rng,TRACKERS);
+  const trackerStatus=trackerFacetKind==='tracker-error'?5:trackerFacetKind==='other-error'?4:2;
+  const trackerMessage=trackerFacetKind==='tracker-error'?'Virtual tracker error':trackerFacetKind==='other-error'?'Virtual announce failure':trackerFacetKind==='warning'?'Virtual tracker warning':'';
+  const trackerCount=trackerFacetKind==='trackerless'?0:int(rng,1,5);
+  const trackerRows=Array.from({length:trackerCount},(_,trackerIndex)=>{
+    const url=trackerIndex===0?trackerUrl:(privateFlag?`https://pt${trackerIndex+1}.example/announce`:`https://tracker-${1+(hash32(`${seed}:${index}:${trackerIndex}`)%24)}.example.invalid/announce`);
+    return{url,status:trackerIndex===0?trackerStatus:2,tier:trackerIndex,num_peers:Math.max(0,baseLeechers-trackerIndex),num_seeds:Math.max(0,baseSeeders-trackerIndex),num_leeches:Math.max(0,baseLeechers-trackerIndex),num_downloaded:int(rng,0,5000),msg:trackerIndex===0?trackerMessage:''};
+  });
+  const name=pick(rng,TORRENT_NAME_POOL),hash=makeHash(seed,index);
+  const files=buildVirtualTorrentFiles(seed,hash,name,size,downloaded);
+  return {
+    hash,
+    name,
+    size,
+    downloaded,
+    uploaded,
+    completed:complete,
+    canonicalState:state,
+    resumeState:state,
+    naturalDownloadRate:Math.round(range(rng,0.4*MiB,58*MiB)),
+    naturalUploadRate:Math.round(range(rng,0.1*MiB,14*MiB)),
+    downloadLimit:0,
+    uploadLimit:0,
+    effectiveDownloadRate:0,
+    effectiveUploadRate:0,
+    queuePosition:index+1,
+    forceStart:false,
+    autoManagement:false,
+    sequential:false,
+    firstLastPriority:false,
+    priority:index+1,
+    category,
+    tags:Array.from(new Set(tags)),
+    tracker:trackerFacetKind==='trackerless'?'':trackerUrl,
+    trackerFacetKind,
+    trackerWarning:trackerFacetKind==='warning',
+    private:privateFlag,
+    has_metadata:state!==CANONICAL.METADATA,
+    savePath:`/downloads/${category.toLowerCase()}`,
+    contentPath:`/downloads/${category.toLowerCase()}/${name.replace(/[\\/]+/g,'_')}`,
+    addedOn:Math.floor(now/1000)-int(rng,30,365*86400),
+    completionOn:complete?Math.floor(now/1000)-int(rng,0,60*86400):-1,
+    activeTime:int(rng,0,30*86400),
+    seedTime:complete?int(rng,0,20*86400):0,
+    seeders:baseSeeders,
+    leechers:baseLeechers,
+    connectedPeers:0,
+    uploadSlots:0,
+    slowTorrentSince:0,
+    queueSlow:false,
+    lastStateChange:Math.floor(now/1000),
+    error:state===CANONICAL.ERROR?'Virtual disk I/O error':'',
+    files,
+    trackers:trackerRows
+  };
+}
+
+function serializableClone(value){
+  return JSON.parse(JSON.stringify(value));
+}
+
+function cleanPath(path){
+  const value=String(path||'').trim();
+  if(!value)return'';
+  return value==='/'?'/':value.replace(/\/+$/,'');
+}
+
+function contentPathFor(savePath,name){
+  const base=cleanPath(savePath)||'/downloads';
+  const leaf=String(name||'torrent').replace(/[\\/]+/g,'_');
+  return base==='/'?`/${leaf}`:`${base}/${leaf}`;
+}
+
+export function normalizeQueuePositions(world){
+  const ordered=[...(world.torrents||[])].sort((a,b)=>{
+    const av=Number(a.queuePosition),bv=Number(b.queuePosition);
+    const ap=Number.isFinite(av)?av:Number.MAX_SAFE_INTEGER;
+    const bp=Number.isFinite(bv)?bv:Number.MAX_SAFE_INTEGER;
+    return ap-bp||String(a.hash).localeCompare(String(b.hash));
+  });
+  const changed=[];
+  for(let i=0;i<ordered.length;i++){
+    const position=i+1,t=ordered[i];
+    if(t.queuePosition!==position||t.priority!==position)changed.push(t.hash);
+    t.queuePosition=position;
+    t.priority=position;
+  }
+  return changed;
+}
+
+export function reconcileManagedPaths(world,hashes='all'){
+  const text=String(hashes??'all');
+  const wanted=text==='all'?null:new Set(text.split('|').filter(Boolean));
+  const changed=[];
+  for(const t of world.torrents||[]){
+    if(wanted&&!wanted.has(t.hash))continue;
+    if(!t.autoManagement)continue;
+    const category=world.categories?.[t.category];
+    const desired=cleanPath(category?.savePath)||cleanPath(world.preferences?.save_path)||'/downloads';
+    const content=contentPathFor(desired,t.name);
+    if(t.savePath!==desired||t.contentPath!==content){
+      t.savePath=desired;
+      t.contentPath=content;
+      changed.push(t.hash);
+    }
+  }
+  return changed;
+}
+
+export function createWorld(options={}){
+  const profile=normalizeProfile(options.profile||{});
+  const count=Math.max(1,Math.min(20000,Number(options.count)||5000));
+  const seed=String(options.seed||'20260905');
+  const now=Number(options.now)||Date.now();
+  const torrents=[];
+  for(let i=0;i<count;i++)torrents.push(makeTorrent(seed,i,now));
+  const world={
+    schemaVersion:CURRENT_WORLD_SCHEMA_VERSION,
+    simulatorVersion:'0.1.0',
+    profile,
+    seed,
+    scenario:String(options.scenario||'mixed'),
+    authenticated:false,
+    virtualSid:null,
+    preferences:{...DEFAULT_PREFERENCES,...(options.preferences||{})},
+    environment:{...DEFAULT_ENVIRONMENT,...(options.environment||{})},
+    altSpeedMode:false,
+    globalDownloadLimit:0,
+    globalUploadLimit:0,
+    torrents,
+    categories:Object.fromEntries(CATEGORIES.map(name=>[name,{name,savePath:`/downloads/${name.toLowerCase()}`}])) ,
+    tags:Array.from(new Set(torrents.flatMap(t=>t.tags))).sort(),
+    logs:[],
+    rid:1,
+    journal:[],
+    removedHashes:[],
+    lastTick:now,
+    stats:createStatisticsState()
+  };
+  schedule(world,now,0);
+  appendLog(world,'Virtual qBittorrent session initialized.',1,now);
+  appendLog(world,'Virtual network and discovery services are ready.',2,now+1000);
+  appendLog(world,'Virtual tracker latency warning sample.',4,now+2000);
+  appendLog(world,'Virtual critical diagnostic sample (non-destructive).',8,now+3000);
+  return world;
+}
+
+function createStatisticsState(){
+  return{alltime_dl:0,alltime_ul:0,total_peer_connections:0,dht_nodes:286,total_wasted_session:0,read_cache_hits:92,total_buffers_size:32*MiB,write_cache_overload:0,read_cache_overload:0,queued_io_jobs:0,average_time_queue:0,total_queued_size:0};
+}
+function statsOf(world){
+  const base=createStatisticsState(),stats=world.stats&&typeof world.stats==='object'?world.stats:(world.stats={});
+  for(const [key,value] of Object.entries(base))if(!Number.isFinite(Number(stats[key])))stats[key]=value;
+  return stats;
+}
+function updateStatistics(world,elapsedSeconds,totalDl,totalUl,totalConnections,now){
+  const stats=statsOf(world),env=world.environment||{},traffic=Math.max(0,Number(totalDl)||0)+Math.max(0,Number(totalUl)||0),elapsed=Math.max(0,Number(elapsedSeconds)||0);
+  if(elapsed>0)stats.total_wasted_session+=traffic*elapsed*Math.max(0,Number(env.packetLoss)||0)*0.18;
+  const writeLoad=(Number(totalDl)||0)/Math.max(1,Number(env.diskWriteCapacity)||1),readLoad=(Number(totalUl)||0)/Math.max(1,Number(env.diskReadCapacity)||1);
+  const cacheWave=deterministicUnit(world.seed,`stats-cache:${Math.floor(Number(now||0)/10000)}`);
+  stats.read_cache_hits=Math.max(55,Math.min(99.9,88+cacheWave*9-writeLoad*4));
+  stats.total_buffers_size=Math.max(8*MiB,Math.min(512*MiB,16*MiB+Math.max(0,Number(totalConnections)||0)*192*1024+traffic*.18));
+  stats.write_cache_overload=Math.max(0,Math.min(100,(writeLoad-.68)*145));
+  stats.read_cache_overload=Math.max(0,Math.min(100,(readLoad-.74)*135));
+  stats.queued_io_jobs=Math.max(0,Math.round((stats.write_cache_overload+stats.read_cache_overload)/16));
+  stats.average_time_queue=stats.queued_io_jobs?Math.max(1,Math.round((Number(env.latencyMs)||0)*.18+stats.queued_io_jobs*2.4)):0;
+  stats.total_queued_size=Math.round(stats.queued_io_jobs*Math.max(64*1024,traffic*.035));
+  return stats;
+}
+export function statisticsState(world,now=Date.now()){
+  const stats=statsOf(world),dl=Math.max(0,Number(stats.alltime_dl)||0),ul=Math.max(0,Number(stats.alltime_ul)||0);
+  return{
+    alltime_dl:Math.floor(dl),alltime_ul:Math.floor(ul),global_ratio:dl>0?Number((ul/dl).toFixed(3)):0,
+    total_wasted_session:Math.floor(Math.max(0,Number(stats.total_wasted_session)||0)),
+    total_peer_connections:Math.max(0,Math.floor(Number(stats.total_peer_connections)||0)),
+    read_cache_hits:Number(Math.max(0,Math.min(100,Number(stats.read_cache_hits)||0)).toFixed(1)),
+    total_buffers_size:Math.floor(Math.max(0,Number(stats.total_buffers_size)||0)),
+    write_cache_overload:Number(Math.max(0,Math.min(100,Number(stats.write_cache_overload)||0)).toFixed(1)),
+    read_cache_overload:Number(Math.max(0,Math.min(100,Number(stats.read_cache_overload)||0)).toFixed(1)),
+    queued_io_jobs:Math.max(0,Math.floor(Number(stats.queued_io_jobs)||0)),
+    average_time_queue:Math.max(0,Math.floor(Number(stats.average_time_queue)||0)),
+    total_queued_size:Math.floor(Math.max(0,Number(stats.total_queued_size)||0))
+  };
+}
+
+function appendLog(world,message,type=1,now=Date.now()){
+  const id=(world.logs.at(-1)?.id||0)+1;
+  world.logs.push({id,message,type,timestamp:Math.floor(now/1000)});
+  if(world.logs.length>1000)world.logs.splice(0,world.logs.length-1000);
+}
+
+function allowedActive(world,torrent,direction){
+  if(!world.preferences.queueing_enabled||torrent.forceStart)return true;
+  if(direction==='download')return true;
+  return true;
+}
+
+function queueCapacity(value){
+  const number=Math.round(Number(value));
+  if(!Number.isFinite(number)||number<0)return Infinity;
+  return Math.max(0,number);
+}
+
+function transferPeerCapacity(world,torrent,direction){
+  const env=world.environment,prefs=world.preferences;
+  const encryptionFactor=encryptionPeerFactor(world,torrent);
+  const population=direction==='download'?(Number(torrent.seeders)||0)+(Number(torrent.leechers)||0):(Number(torrent.leechers)||0);
+  if(direction==='download'&&(Number(torrent.seeders)||0)<=0)return 0;
+  const possible=Math.max(0,Math.round(population*env.peerAvailability*encryptionFactor));
+  const perTorrent=queueCapacity(prefs.max_connec_per_torrent);
+  return Math.max(0,Math.min(possible,perTorrent));
+}
+
+function uploadSlotCapacity(world,torrent,connectedPeers){
+  const prefs=world.preferences,env=world.environment;
+  const shareable=torrent.completed?1:(torrent.size>0?Math.min(1,Math.max(0,torrent.downloaded/torrent.size)):0);
+  if(shareable<=0)return 0;
+  const encryptionFactor=encryptionPeerFactor(world,torrent);
+  const interested=Math.max(0,Math.round((Number(torrent.leechers)||0)*env.peerAvailability*encryptionFactor*shareable));
+  const perTorrent=queueCapacity(prefs.max_uploads_per_torrent);
+  return Math.max(0,Math.min(Number(connectedPeers)||0,interested,perTorrent));
+}
+
+function allocateFair(items,globalLimit,capacityFor){
+  const result=new Map(),capacities=items.map(item=>Math.max(0,Math.floor(Number(capacityFor(item))||0)));
+  let remaining=queueCapacity(globalLimit);
+  if(!Number.isFinite(remaining)){
+    items.forEach((item,index)=>result.set(item.hash,capacities[index]));
+    return result;
+  }
+  for(let index=0;index<items.length&&remaining>0;index++){
+    if(capacities[index]<=0)continue;
+    result.set(items[index].hash,1);remaining--;
+  }
+  let progressed=true;
+  while(remaining>0&&progressed){
+    progressed=false;
+    for(let index=0;index<items.length&&remaining>0;index++){
+      const capacity=capacities[index],current=result.get(items[index].hash)||0;
+      if(current>=capacity)continue;
+      result.set(items[index].hash,current+1);remaining--;progressed=true;
+    }
+  }
+  return result;
+}
+
+function interleaveTransferKinds(downloads,uploads){
+  const result=[],count=Math.max(downloads.length,uploads.length);
+  for(let index=0;index<count;index++){
+    if(index<downloads.length)result.push(downloads[index]);
+    if(index<uploads.length)result.push(uploads[index]);
+  }
+  return result;
+}
+
+function schedulerDayMatches(dayCode,day){
+  const code=Math.max(0,Math.min(9,Math.round(Number(dayCode)||0)));
+  if(code===0)return true;
+  if(code===1)return day>=1&&day<=5;
+  if(code===2)return day===0||day===6;
+  return day===((code-2)%7);
+}
+
+export function scheduledAltSpeedActive(world,now=Date.now()){
+  const prefs=world?.preferences||{};
+  if(!prefs.scheduler_enabled)return false;
+  const date=new Date(now),day=date.getDay(),minute=date.getHours()*60+date.getMinutes();
+  const fromHour=Math.max(0,Math.min(23,Math.round(Number(prefs.schedule_from_hour)||0)));
+  const toHour=Math.max(0,Math.min(23,Math.round(Number(prefs.schedule_to_hour)||0)));
+  const fromMin=Math.max(0,Math.min(59,Math.round(Number(prefs.schedule_from_min)||0)));
+  const toMin=Math.max(0,Math.min(59,Math.round(Number(prefs.schedule_to_min)||0)));
+  const from=fromHour*60+fromMin,to=toHour*60+toMin;
+  if(from===to)return schedulerDayMatches(prefs.scheduler_days,day);
+  if(from<to)return schedulerDayMatches(prefs.scheduler_days,day)&&minute>=from&&minute<to;
+  if(minute>=from)return schedulerDayMatches(prefs.scheduler_days,day);
+  const previous=(day+6)%7;
+  return minute<to&&schedulerDayMatches(prefs.scheduler_days,previous);
+}
+
+export function effectiveAltSpeedMode(world,now=Date.now()){
+  return !!world?.altSpeedMode||scheduledAltSpeedActive(world,now);
+}
+
+function updateSlowQueueState(world,torrent,now){
+  const prefs=world.preferences||{};
+  const active=[CANONICAL.DOWNLOAD_ACTIVE,CANONICAL.DOWNLOAD_STALLED,CANONICAL.SEED_ACTIVE,CANONICAL.SEED_STALLED].includes(torrent.canonicalState);
+  if(!active||torrent.forceStart){
+    torrent.slowTorrentSince=0;torrent.queueSlow=false;return false;
+  }
+  const dlThreshold=Math.max(0,Number(prefs.slow_torrent_dl_rate_threshold)||0)*1024;
+  const ulThreshold=Math.max(0,Number(prefs.slow_torrent_ul_rate_threshold)||0)*1024;
+  const below=dlThreshold>0&&ulThreshold>0
+    &&(Number(torrent.effectiveDownloadRate)||0)<dlThreshold
+    &&(Number(torrent.effectiveUploadRate)||0)<ulThreshold;
+  if(!below){torrent.slowTorrentSince=0;torrent.queueSlow=false;return false;}
+  if(!Number.isFinite(Number(torrent.slowTorrentSince))||Number(torrent.slowTorrentSince)<=0)torrent.slowTorrentSince=now;
+  const wait=Math.max(0,Number(prefs.slow_torrent_inactive_timer)||0)*1000;
+  torrent.queueSlow=(now-Number(torrent.slowTorrentSince))>=wait;
+  return torrent.queueSlow;
+}
+
+function cap(value,limit){
+  return limit>0?Math.min(value,limit):value;
+}
+
+function encryptionPeerFactor(world,torrent){
+  const mode=Math.max(0,Math.min(2,Math.round(Number(world.preferences?.encryption)||0)));
+  if(mode===0)return 1;
+  if(!Number.isFinite(torrent.encryptedPeerShare)){
+    torrent.encryptedPeerShare=.35+deterministicUnit(String(world.seed||'virtual'),`${torrent.hash}:encrypted-peer-share`)*.45;
+  }
+  return mode===1?torrent.encryptedPeerShare:1-torrent.encryptedPeerShare;
+}
+
+function applyBudget(items,budget,key){
+  const total=items.reduce((sum,x)=>sum+x.demand,0);
+  const factor=total>0?Math.min(1,budget/total):0;
+  for(const item of items)item.torrent[key]=Math.max(0,Math.floor(item.demand*factor));
+}
+
+function aggregateUtilizationFactor(world,now,direction){
+  const seed=String(world.seed||'virtual');
+  const period=direction==='dl'?43000:53000;
+  const bucket=Math.floor(now/period),phase=(now-bucket*period)/period,smooth=phase*phase*(3-2*phase);
+  const a=deterministicUnit(seed,`transfer:${direction}:aggregate:${bucket}:a`);
+  const b=deterministicUnit(seed,`transfer:${direction}:aggregate:${bucket+1}:b`);
+  const main=a+(b-a)*smooth;
+  const pulsePeriod=direction==='dl'?17000:23000,pulseBucket=Math.floor(now/pulsePeriod),pulsePhase=(now-pulseBucket*pulsePeriod)/pulsePeriod;
+  const pulseSmooth=pulsePhase*pulsePhase*(3-2*pulsePhase);
+  const pa=deterministicUnit(seed,`transfer:${direction}:pulse:${pulseBucket}:a`);
+  const pb=deterministicUnit(seed,`transfer:${direction}:pulse:${pulseBucket+1}:b`);
+  const pulse=pa+(pb-pa)*pulseSmooth;
+  return Math.max(.42,Math.min(.98,.44+main*.34+pulse*.22));
+}
+
+function naturalJitter(world,torrent,now,direction){
+  const seed=String(world.seed||'virtual');
+  const period=5000+(hash32(`${torrent.hash}:${direction}:period`)%7000);
+  const bucket=Math.floor(now/period),phase=(now-bucket*period)/period,smooth=phase*phase*(3-2*phase);
+  const a=deterministicUnit(seed,`${torrent.hash}:${direction}:local:${bucket}:a`);
+  const b=deterministicUnit(seed,`${torrent.hash}:${direction}:local:${bucket+1}:b`);
+  const local=a+(b-a)*smooth;
+  const sharedPeriod=19000+(direction==='dl'?0:7000);
+  const sharedBucket=Math.floor(now/sharedPeriod),sharedPhase=(now-sharedBucket*sharedPeriod)/sharedPeriod;
+  const sharedSmooth=sharedPhase*sharedPhase*(3-2*sharedPhase);
+  const sa=deterministicUnit(seed,`transfer:${direction}:shared:${sharedBucket}:a`);
+  const sb=deterministicUnit(seed,`transfer:${direction}:shared:${sharedBucket+1}:b`);
+  const shared=sa+(sb-sa)*sharedSmooth;
+  const swellPeriod=61000+(direction==='dl'?0:17000),swellBucket=Math.floor(now/swellPeriod),swellPhase=(now-swellBucket*swellPeriod)/swellPeriod;
+  const swellSmooth=swellPhase*swellPhase*(3-2*swellPhase);
+  const wa=deterministicUnit(seed,`transfer:${direction}:swell:${swellBucket}:a`);
+  const wb=deterministicUnit(seed,`transfer:${direction}:swell:${swellBucket+1}:b`);
+  const swell=wa+(wb-wa)*swellSmooth;
+  return Math.max(.42,Math.min(1.20,.46+local*.18+shared*.42+swell*.20));
+}
+
+export function checkingConcurrencyLimit(world){
+  const raw=Math.round(Number(world.preferences?.max_active_checking_torrents));
+  if(!Number.isFinite(raw))return 1;
+  return raw<0?Infinity:raw;
+}
+
+function queueCandidates(world,now){
+  const downloads=[],uploads=[],checking=[],normalizedChecking=[];
+  const checkingLimit=checkingConcurrencyLimit(world);
+  const enqueue=t=>{
+    if([CANONICAL.ERROR,CANONICAL.METADATA,CANONICAL.MOVING,CANONICAL.DOWNLOAD_PAUSED,CANONICAL.SEED_PAUSED].includes(t.canonicalState))return;
+    if(t.completed)uploads.push(t);else downloads.push(t);
+  };
+  for(const t of world.torrents){
+    updateSlowQueueState(world,t,now);
+    if(t.canonicalState===CANONICAL.CHECKING){checking.push(t);continue;}
+    enqueue(t);
+  }
+  checking.sort((a,b)=>{
+    const aActive=Number(a.checkingUntil)>now?0:1,bActive=Number(b.checkingUntil)>now?0:1;
+    return aActive-bActive||(Number(a.queuePosition)||Number.MAX_SAFE_INTEGER)-(Number(b.queuePosition)||Number.MAX_SAFE_INTEGER)||String(a.hash).localeCompare(String(b.hash));
+  });
+  for(const t of checking.slice(checkingLimit)){
+    const fallback=t.maintenanceResumeState||(t.completed?CANONICAL.SEED_QUEUED:CANONICAL.DOWNLOAD_QUEUED);
+    t.canonicalState=fallback;
+    if(t.resumeState===CANONICAL.CHECKING)t.resumeState=fallback;
+    t.checkingUntil=0;
+    t.maintenanceResumeState='';
+    t.lastStateChange=Math.floor(now/1000);
+    normalizedChecking.push(t.hash);
+    enqueue(t);
+  }
+  const sort=(a,b)=>(b.forceStart-a.forceStart)||(a.queuePosition-b.queuePosition)||a.hash.localeCompare(b.hash);
+  downloads.sort(sort);uploads.sort(sort);
+  return{downloads,uploads,normalizedChecking};
+}
+
+export function schedule(world,now=Date.now(),elapsedSeconds=0){
+  const prefs=world.preferences,env=world.environment;
+  const {downloads,uploads,normalizedChecking}=queueCandidates(world,now);
+  const activeDownloads=new Set(),activeUploads=new Set();
+  let totalSlots=prefs.queueing_enabled?queueCapacity(prefs.max_active_torrents):Infinity;
+  let dlSlots=prefs.queueing_enabled?queueCapacity(prefs.max_active_downloads):Infinity;
+  let ulSlots=prefs.queueing_enabled?queueCapacity(prefs.max_active_uploads):Infinity;
+  let admissionConnections=queueCapacity(prefs.max_connec);
+  let admissionUploadSlots=queueCapacity(prefs.max_uploads);
+
+  for(const t of interleaveTransferKinds(downloads,uploads)){
+    const upload=!!t.completed,direction=upload?'upload':'download';
+    const exempt=!!prefs.dont_count_slow_torrents&&t.queueSlow===true;
+    const forced=t.forceStart||exempt;
+    if(!forced&&!allowedActive(world,t,direction))continue;
+    const peerCapacity=transferPeerCapacity(world,t,direction);
+    const slotCapacity=upload?uploadSlotCapacity(world,t,peerCapacity):Infinity;
+    if(peerCapacity<=0||(upload&&slotCapacity<=0)){
+      if(forced)(upload?activeUploads:activeDownloads).add(t.hash);
+      continue;
+    }
+    if(!forced){
+      if(totalSlots<=0||admissionConnections<=0)continue;
+      if(upload&&(ulSlots<=0||admissionUploadSlots<=0))continue;
+      if(!upload&&dlSlots<=0)continue;
+    }
+    (upload?activeUploads:activeDownloads).add(t.hash);
+    if(!forced){
+      if(upload&&Number.isFinite(ulSlots))ulSlots--;
+      if(!upload&&Number.isFinite(dlSlots))dlSlots--;
+      if(Number.isFinite(totalSlots))totalSlots--;
+      if(Number.isFinite(admissionConnections))admissionConnections--;
+      if(upload&&Number.isFinite(admissionUploadSlots))admissionUploadSlots--;
+    }
+  }
+
+  const activeDownloadList=downloads.filter(t=>activeDownloads.has(t.hash));
+  const activeUploadList=uploads.filter(t=>activeUploads.has(t.hash));
+  const connectionOrder=interleaveTransferKinds(activeDownloadList,activeUploadList);
+  const connectionAllocations=allocateFair(connectionOrder,prefs.max_connec,t=>transferPeerCapacity(world,t,t.completed?'upload':'download'));
+  const uploadAllocationOrder=interleaveTransferKinds(activeDownloadList,activeUploadList);
+  const uploadAllocations=allocateFair(uploadAllocationOrder,prefs.max_uploads,t=>uploadSlotCapacity(world,t,connectionAllocations.get(t.hash)||0));
+  const dlItems=[],ulItems=[],changed=new Set(normalizedChecking);
+
+  for(const t of world.torrents){
+    const before=t.canonicalState;
+    t.effectiveDownloadRate=0;
+    t.effectiveUploadRate=0;
+    t.connectedPeers=0;
+    t.uploadSlots=0;
+
+    if(!env.online){
+      if(activeDownloads.has(t.hash)&&!t.completed)t.canonicalState=CANONICAL.DOWNLOAD_STALLED;
+      else if(activeUploads.has(t.hash)&&t.completed)t.canonicalState=CANONICAL.SEED_STALLED;
+    }else if(!t.completed&&![CANONICAL.DOWNLOAD_PAUSED,CANONICAL.ERROR,CANONICAL.CHECKING,CANONICAL.METADATA,CANONICAL.MOVING].includes(t.canonicalState)){
+      if(!activeDownloads.has(t.hash))t.canonicalState=transferPeerCapacity(world,t,'download')>0?CANONICAL.DOWNLOAD_QUEUED:CANONICAL.DOWNLOAD_STALLED;
+      else{
+        t.connectedPeers=connectionAllocations.get(t.hash)||0;
+        if(t.seeders<=0||t.connectedPeers<=0)t.canonicalState=CANONICAL.DOWNLOAD_STALLED;
+        else{
+          t.canonicalState=CANONICAL.DOWNLOAD_ACTIVE;
+          const peerFactor=Math.min(1,Math.max(.08,t.connectedPeers/10));
+          let demand=t.naturalDownloadRate*naturalJitter(world,t,now,'dl')*peerFactor;
+          demand=cap(demand,Number(t.downloadLimit)||0);
+          dlItems.push({torrent:t,demand});
+          const shareable=t.size>0?Math.min(1,Math.max(0,t.downloaded/t.size)):0;
+          t.uploadSlots=uploadAllocations.get(t.hash)||0;
+          if(t.uploadSlots>0){
+            const uploadPeerFactor=Math.min(1,Math.max(.08,t.uploadSlots/4));
+            const pieceFactor=Math.min(1,Math.max(.12,shareable));
+            let uploadDemand=t.naturalUploadRate*naturalJitter(world,t,now,'ul')*uploadPeerFactor*pieceFactor;
+            uploadDemand=cap(uploadDemand,Number(t.uploadLimit)||0);
+            ulItems.push({torrent:t,demand:uploadDemand});
+          }
+        }
+      }
+    }else if(t.completed&&![CANONICAL.SEED_PAUSED,CANONICAL.ERROR,CANONICAL.CHECKING,CANONICAL.MOVING].includes(t.canonicalState)){
+      if(!activeUploads.has(t.hash)){var idlePeerCapacity=transferPeerCapacity(world,t,'upload');t.canonicalState=(idlePeerCapacity>0&&uploadSlotCapacity(world,t,idlePeerCapacity)>0)?CANONICAL.SEED_QUEUED:CANONICAL.SEED_STALLED;}
+      else{
+        t.connectedPeers=connectionAllocations.get(t.hash)||0;
+        t.uploadSlots=uploadAllocations.get(t.hash)||0;
+        if(t.leechers<=0||t.connectedPeers<=0||t.uploadSlots<=0)t.canonicalState=CANONICAL.SEED_STALLED;
+        else{
+          t.canonicalState=CANONICAL.SEED_ACTIVE;
+          const peerFactor=Math.min(1,Math.max(.08,t.uploadSlots/4));
+          let demand=t.naturalUploadRate*naturalJitter(world,t,now,'ul')*peerFactor;
+          demand=cap(demand,Number(t.uploadLimit)||0);
+          ulItems.push({torrent:t,demand});
+        }
+      }
+    }
+    if(before!==t.canonicalState){t.lastStateChange=Math.floor(now/1000);changed.add(t.hash);}
+  }
+
+  let dlBudget=Math.min(env.downCapacity,env.diskWriteCapacity);
+  let ulBudget=Math.min(env.upCapacity,env.diskReadCapacity);
+  if(effectiveAltSpeedMode(world,now)){
+    const altDl=(Number(prefs.alt_dl_limit)||0)*1024;
+    const altUl=(Number(prefs.alt_up_limit)||0)*1024;
+    if(altDl>0)dlBudget=Math.min(dlBudget,altDl);
+    if(altUl>0)ulBudget=Math.min(ulBudget,altUl);
+  }else{
+    if(world.globalDownloadLimit>0)dlBudget=Math.min(dlBudget,world.globalDownloadLimit);
+    if(world.globalUploadLimit>0)ulBudget=Math.min(ulBudget,world.globalUploadLimit);
+  }
+  dlBudget=Math.floor(dlBudget*aggregateUtilizationFactor(world,now,'dl'));
+  ulBudget=Math.floor(ulBudget*aggregateUtilizationFactor(world,now,'ul'));
+  applyBudget(dlItems,dlBudget,'effectiveDownloadRate');
+  applyBudget(ulItems,ulBudget,'effectiveUploadRate');
+
+  let totalDl=0,totalUl=0,totalConnections=0;
+  if(elapsedSeconds>0){
+    for(const t of world.torrents){
+      const oldDownloaded=t.downloaded,oldUploaded=t.uploaded;
+      if(t.effectiveDownloadRate>0&&!t.completed){
+        const amount=Math.min(t.size-t.downloaded,t.effectiveDownloadRate*elapsedSeconds);
+        t.downloaded+=amount;world.stats.alltime_dl+=amount;
+        if(t.downloaded>=t.size-1){
+          t.downloaded=t.size;t.completed=true;t.completionOn=Math.floor(now/1000);t.canonicalState=CANONICAL.SEED_ACTIVE;
+          appendLog(world,`Torrent completed: ${t.name}`,1,now);
+        }
+      }
+      if(t.effectiveUploadRate>0){
+        const amount=t.effectiveUploadRate*elapsedSeconds;
+        t.uploaded+=amount;world.stats.alltime_ul+=amount;if(t.completed)t.seedTime+=elapsedSeconds;
+      }
+      if(t.effectiveDownloadRate>0||t.effectiveUploadRate>0)t.activeTime+=elapsedSeconds;
+      if(oldDownloaded!==t.downloaded||oldUploaded!==t.uploaded)changed.add(t.hash);
+      syncTorrentFileProgress(t);
+    }
+  }
+  for(const t of world.torrents){
+    totalDl+=t.effectiveDownloadRate;
+    totalUl+=t.effectiveUploadRate;
+    totalConnections+=t.connectedPeers;
+  }
+  world.stats.total_peer_connections=totalConnections;
+  updateStatistics(world,elapsedSeconds,totalDl,totalUl,totalConnections,now);
+  return{changed,totalDl,totalUl,dlBudget,ulBudget};
+}
+
+export function recordTorrentChanges(world,hashes=[],removed=[],facets={}){
+  const unique=Array.from(new Set((hashes||[]).filter(Boolean)));
+  const rem=Array.from(new Set((removed||[]).filter(Boolean)));
+  const categoryNames=Array.from(new Set((facets.categories||[]).map(String).filter(Boolean)));
+  const tagNames=Array.from(new Set((facets.tags||[]).map(String).filter(Boolean)));
+  if(!unique.length&&!rem.length&&!categoryNames.length&&!tagNames.length)return;
+  world.rid=(Number(world.rid)||0)+1;
+  world.journal=Array.isArray(world.journal)?world.journal:[];
+  world.journal.push({rid:world.rid,changedHashes:unique,removedHashes:rem,categoryNames,tagNames});
+  if(world.journal.length>128)world.journal.splice(0,world.journal.length-128);
+}
+
+export function advanceWorld(world,now=Date.now()){
+  const managedChanged=reconcileManagedPaths(world);
+  const elapsed=Math.max(0,Math.min(3600,(now-world.lastTick)/1000));
+  if(elapsed<=0){
+    if(managedChanged.length)recordTorrentChanges(world,managedChanged,[]);
+    return{changed:new Set(managedChanged),totalDl:0,totalUl:0};
+  }
+  const result=schedule(world,now,elapsed);
+  world.lastTick=now;
+  const changed=new Set([...managedChanged,...result.changed]);
+  recordTorrentChanges(world,[...changed],[]);
+  return{...result,changed};
+}
+
+export function encodeState(t,profileInput){
+  const profile=normalizeProfile(profileInput);
+  if(t.forceStart&&![CANONICAL.DOWNLOAD_PAUSED,CANONICAL.SEED_PAUSED,CANONICAL.CHECKING,CANONICAL.METADATA,CANONICAL.MOVING,CANONICAL.ERROR].includes(t.canonicalState)){
+    return t.completed?'forcedUP':'forcedDL';
+  }
+  switch(t.canonicalState){
+    case CANONICAL.DOWNLOAD_ACTIVE:return'downloading';
+    case CANONICAL.DOWNLOAD_STALLED:return'stalledDL';
+    case CANONICAL.DOWNLOAD_QUEUED:return'queuedDL';
+    case CANONICAL.DOWNLOAD_PAUSED:return profile.major>=5?'stoppedDL':'pausedDL';
+    case CANONICAL.SEED_ACTIVE:return'uploading';
+    case CANONICAL.SEED_STALLED:return'stalledUP';
+    case CANONICAL.SEED_QUEUED:return'queuedUP';
+    case CANONICAL.SEED_PAUSED:return profile.major>=5?'stoppedUP':'pausedUP';
+    case CANONICAL.CHECKING:return t.completed?'checkingUP':'checkingDL';
+    case CANONICAL.METADATA:return'metaDL';
+    case CANONICAL.MOVING:return'moving';
+    case CANONICAL.ERROR:return'error';
+    default:return'unknown';
+  }
+}
+
+export function torrentView(t,profileInput){
+  const profile=normalizeProfile(profileInput);
+  const progress=t.size?Math.min(1,t.downloaded/t.size):0;
+  const left=Math.max(0,t.size-t.downloaded);
+  const eta=t.effectiveDownloadRate>0?Math.ceil(left/t.effectiveDownloadRate):8640000;
+  const view={
+    hash:t.hash,name:t.name,size:t.size,progress,
+    dlspeed:Math.floor(t.effectiveDownloadRate),upspeed:Math.floor(t.effectiveUploadRate),
+    downloaded:Math.floor(t.downloaded),uploaded:Math.floor(t.uploaded),amount_left:Math.floor(left),
+    eta,state:encodeState(t,profile),ratio:t.downloaded>0?t.uploaded/t.downloaded:0,
+    tracker:t.tracker,category:t.category,tags:t.tags.join(', '),added_on:t.addedOn,
+    completion_on:t.completionOn,save_path:t.savePath,content_path:t.contentPath,
+    num_seeds:t.seeders,num_leechs:t.leechers,num_complete:t.seeders,num_incomplete:t.leechers,
+    seen_complete:t.completionOn,force_start:t.forceStart,auto_tmm:!!t.autoManagement,seq_dl:t.sequential,
+    f_l_piece_prio:t.firstLastPriority,priority:Math.max(1,Number(t.queuePosition)||1)
+  };
+  if(atLeast(profile.qbVersion,'4.3.0'))view.trackers_count=Array.isArray(t.trackers)?t.trackers.length:0;
+  if(profile.major>=5)view.private=!!t.private;
+  const trackerRows=Array.isArray(t.trackers)?t.trackers:[];
+  view.has_tracker_error=trackerRows.some(item=>Number(item.status)===5);
+  view.has_other_announce_error=trackerRows.some(item=>[4,6].includes(Number(item.status)));
+  view.has_tracker_warning=!!t.trackerWarning||trackerRows.some(item=>/warning/i.test(String(item.msg||'')));
+  return view;
+}
+
+function matchesFilter(t,filter,profile){
+  const state=encodeState(t,profile);
+  switch(String(filter||'all')){
+    case'all':return true;
+    case'downloading':return ['downloading','stalledDL','forcedDL','metaDL'].includes(state);
+    case'seeding':return ['uploading','stalledUP','forcedUP'].includes(state);
+    case'completed':return t.completed;
+    case'paused':case'stopped':return /paused|stopped/.test(state);
+    case'active':return t.effectiveDownloadRate>0||t.effectiveUploadRate>0;
+    case'inactive':return t.effectiveDownloadRate<=0&&t.effectiveUploadRate<=0;
+    case'stalled':return state==='stalledDL'||state==='stalledUP';
+    case'stalled_uploading':return state==='stalledUP';
+    case'stalled_downloading':return state==='stalledDL';
+    case'errored':return state==='error'||state==='missingFiles';
+    default:return true;
+  }
+}
+
+export function listTorrents(world,query={}){
+  advanceWorld(world,Number(query.now)||Date.now());
+  const profile=world.profile;
+  let list=world.torrents.filter(t=>matchesFilter(t,query.filter,profile));
+  if(query.category&&query.category!=='all')list=list.filter(t=>t.category===query.category);
+  if(query.tag&&query.tag!=='all')list=list.filter(t=>t.tags.includes(query.tag));
+  if(query.hashes){
+    const wanted=new Set(String(query.hashes).split('|'));
+    list=list.filter(t=>wanted.has(t.hash));
+  }
+  const sort=query.sort;
+  if(sort){
+    const direction=String(query.reverse)==='true'?-1:1;
+    list=[...list].sort((a,b)=>{
+      const av=torrentView(a,profile)[sort]??a[sort]??0,bv=torrentView(b,profile)[sort]??b[sort]??0;
+      return av<bv?-direction:av>bv?direction:0;
+    });
+  }
+  const offset=Math.max(0,Number(query.offset)||0);
+  const limit=Number(query.limit);
+  if(Number.isFinite(limit)&&limit>0)list=list.slice(offset,offset+limit);else if(offset)list=list.slice(offset);
+  return list.map(t=>torrentView(t,profile));
+}
+
+export function transferInfo(world,now=Date.now()){
+  advanceWorld(world,now);
+  let dl=0,ul=0;
+  for(const t of world.torrents){dl+=t.effectiveDownloadRate;ul+=t.effectiveUploadRate;}
+  return{
+    dl_info_speed:Math.floor(dl),up_info_speed:Math.floor(ul),
+    dl_info_data:Math.floor(world.stats.alltime_dl),up_info_data:Math.floor(world.stats.alltime_ul),
+    dl_rate_limit:world.globalDownloadLimit,up_rate_limit:world.globalUploadLimit,
+    dht_nodes:world.preferences.dht?world.stats.dht_nodes:0,
+    connection_status:world.environment.online?'connected':'disconnected',
+    total_peer_connections:world.stats.total_peer_connections
+  };
+}
+
+export function serverState(world,now=Date.now()){
+  const transfer=transferInfo(world,now);
+  return{
+    ...transfer,
+    ...statisticsState(world,now),
+    free_space_on_disk:Math.floor(world.environment.freeSpace),
+    use_alt_speed_limits:effectiveAltSpeedMode(world,now),
+    queueing:!!world.preferences.queueing_enabled
+  };
+}
+
+export function mainData(world,clientRid=0,now=Date.now()){
+  advanceWorld(world,now);
+  const rid=Number(clientRid)||0;
+  const common={rid:world.rid,server_state:serverState(world,now)};
+  if(rid<=0||!world.journal.length||rid<world.journal[0].rid-1){
+    return{
+      ...common,full_update:true,
+      torrents:Object.fromEntries(world.torrents.map(t=>[t.hash,torrentView(t,world.profile)])),
+      categories:serializableClone(world.categories),
+      ...(capabilityAvailable(world,'tags')?{tags:[...world.tags]}:{})
+    };
+  }
+  if(rid>=world.rid)return{...common,full_update:false};
+  const changes=world.journal.filter(x=>x.rid>rid);
+  const changed=new Set(changes.flatMap(x=>x.changedHashes||[]));
+  const removed=new Set(changes.flatMap(x=>x.removedHashes||[]));
+  const categoryNames=new Set(changes.flatMap(x=>x.categoryNames||[]));
+  const tagNames=new Set(changes.flatMap(x=>x.tagNames||[]));
+  const torrents={};
+  for(const hash of changed){
+    const t=world.torrents.find(x=>x.hash===hash);
+    if(t)torrents[hash]=torrentView(t,world.profile);
+  }
+  const categories={},categoriesRemoved=[];
+  for(const name of categoryNames){
+    if(world.categories?.[name])categories[name]=serializableClone(world.categories[name]);
+    else categoriesRemoved.push(name);
+  }
+  const currentTags=new Set(world.tags||[]),tags=[],tagsRemoved=[];
+  for(const name of tagNames){
+    if(currentTags.has(name))tags.push(name);else tagsRemoved.push(name);
+  }
+  return{
+    ...common,full_update:false,
+    ...(Object.keys(torrents).length?{torrents}:{}),
+    ...(removed.size?{torrents_removed:[...removed]}:{}),
+    ...(Object.keys(categories).length?{categories}:{}),
+    ...(categoriesRemoved.length?{categories_removed:categoriesRemoved}:{}),
+    ...(capabilityAvailable(world,'tags')&&tags.length?{tags}:{}),
+    ...(capabilityAvailable(world,'tags')&&tagsRemoved.length?{tags_removed:tagsRemoved}:{})
+  };
+}
+
+function selected(world,hashes){
+  const text=String(hashes||'');
+  if(text==='all')return world.torrents;
+  const wanted=new Set(text.split('|').filter(Boolean));
+  return world.torrents.filter(t=>wanted.has(t.hash));
+}
+
+export function setPaused(world,hashes,paused,now=Date.now()){
+  const changed=[];
+  for(const t of selected(world,hashes)){
+    if(paused){
+      t.canonicalState=t.completed?CANONICAL.SEED_PAUSED:CANONICAL.DOWNLOAD_PAUSED;
+    }else if([CANONICAL.SEED_PAUSED,CANONICAL.DOWNLOAD_PAUSED].includes(t.canonicalState)){
+      t.canonicalState=t.completed?CANONICAL.SEED_QUEUED:CANONICAL.DOWNLOAD_QUEUED;
+    }
+    t.lastStateChange=Math.floor(now/1000);changed.push(t.hash);
+  }
+  const scheduled=schedule(world,now,0);
+  recordTorrentChanges(world,[...changed,...scheduled.changed],[]);
+  return changed.length;
+}
+
+export function setForceStart(world,hashes,value,now=Date.now()){
+  const changed=[];
+  for(const t of selected(world,hashes)){t.forceStart=!!value;changed.push(t.hash);}
+  const scheduled=schedule(world,now,0);
+  recordTorrentChanges(world,[...changed,...scheduled.changed],[]);
+  return changed.length;
+}
+
+export function setTorrentLimit(world,hashes,kind,limit,now=Date.now()){
+  const field=kind==='upload'?'uploadLimit':'downloadLimit',changed=[];
+  for(const t of selected(world,hashes)){t[field]=Math.max(0,Math.round(Number(limit)||0));changed.push(t.hash);}
+  const scheduled=schedule(world,now,0);
+  recordTorrentChanges(world,[...changed,...scheduled.changed],[]);
+}
+
+export function renameTorrent(world,hash,name){
+  const t=world.torrents.find(x=>x.hash===hash);if(!t)return false;
+  t.name=String(name||t.name);
+  const managed=reconcileManagedPaths(world,t.hash);
+  recordTorrentChanges(world,[t.hash,...managed],[]);return true;
+}
+
+export function setCategory(world,hashes,category){
+  const changed=[];
+  for(const t of selected(world,hashes)){t.category=String(category||'');changed.push(t.hash);}
+  const managed=reconcileManagedPaths(world,hashes);
+  recordTorrentChanges(world,[...changed,...managed],[]);
+  return changed.length;
+}
+
+export function addTags(world,hashes,tags){
+  const values=String(tags||'').split(',').map(x=>x.trim()).filter(Boolean),changed=[];
+  const before=new Set(world.tags||[]);
+  for(const t of selected(world,hashes)){t.tags=Array.from(new Set([...t.tags,...values]));changed.push(t.hash);}
+  world.tags=Array.from(new Set([...(world.tags||[]),...values])).sort();
+  const added=world.tags.filter(x=>!before.has(x));
+  recordTorrentChanges(world,changed,[],{tags:added});
+}
+
+export function removeTags(world,hashes,tags){
+  const values=new Set(String(tags||'').split(',').map(x=>x.trim()).filter(Boolean)),changed=[];
+  for(const t of selected(world,hashes)){
+    const before=t.tags.length;
+    t.tags=t.tags.filter(x=>!values.has(x));
+    if(t.tags.length!==before)changed.push(t.hash);
+  }
+  recordTorrentChanges(world,changed,[]);
+}
+
+function parseNames(value){
+  if(Array.isArray(value))return value.map(String).map(x=>x.trim()).filter(Boolean);
+  return String(value||'').split(/[\n|,]+/).map(x=>x.trim()).filter(Boolean);
+}
+
+export function createCategory(world,name,savePath=''){
+  const key=String(name||'').trim();
+  if(!key)return false;
+  const next={name:key,savePath:String(savePath||'')};
+  const previous=world.categories?.[key];
+  world.categories=world.categories||{};
+  world.categories[key]=next;
+  const targets=(world.torrents||[]).filter(t=>t.autoManagement&&t.category===key).map(t=>t.hash);
+  const managed=targets.length?reconcileManagedPaths(world,targets.join('|')):[];
+  if(!previous||previous.name!==next.name||previous.savePath!==next.savePath||managed.length){
+    recordTorrentChanges(world,managed,[],{categories:[key]});
+  }
+  return true;
+}
+
+export function removeCategories(world,names){
+  const doomed=new Set(parseNames(names));
+  if(!doomed.size)return 0;
+  const removed=[];
+  for(const name of doomed){
+    if(world.categories?.[name]){delete world.categories[name];removed.push(name);}
+  }
+  const changed=[];
+  for(const t of world.torrents||[]){
+    if(doomed.has(t.category)){t.category='';changed.push(t.hash);}
+  }
+  const managed=reconcileManagedPaths(world,'all');
+  recordTorrentChanges(world,[...changed,...managed],[],{categories:removed});
+  return removed.length;
+}
+
+export function createTags(world,tags){
+  const values=parseNames(tags),before=new Set(world.tags||[]);
+  world.tags=Array.from(new Set([...(world.tags||[]),...values])).sort();
+  const added=world.tags.filter(x=>!before.has(x));
+  recordTorrentChanges(world,[],[],{tags:added});
+  return added.length;
+}
+
+export function deleteTags(world,tags){
+  const doomed=new Set(parseNames(tags));
+  if(!doomed.size)return 0;
+  const removed=(world.tags||[]).filter(x=>doomed.has(x));
+  world.tags=(world.tags||[]).filter(x=>!doomed.has(x));
+  const changed=[];
+  for(const t of world.torrents||[]){
+    const before=t.tags.length;
+    t.tags=t.tags.filter(x=>!doomed.has(x));
+    if(t.tags.length!==before)changed.push(t.hash);
+  }
+  recordTorrentChanges(world,changed,[],{tags:removed});
+  return removed.length;
+}
+
+export function deleteTorrents(world,hashes,now=Date.now()){
+  const doomed=new Set(selected(world,hashes).map(t=>t.hash));
+  world.torrents=world.torrents.filter(t=>!doomed.has(t.hash));
+  const reordered=normalizeQueuePositions(world);
+  const scheduled=schedule(world,now,0);
+  if(doomed.size)appendLog(world,`Deleted ${doomed.size} virtual torrent(s).`,1,now);
+  recordTorrentChanges(world,[...reordered,...scheduled.changed],[...doomed]);
+  return doomed.size;
+}
+
+export function addVirtualTorrent(world,options={},now=Date.now()){
+  const index=world.torrents.length+int(createRng(`${world.seed}:${now}`),1,1000000);
+  const t=makeTorrent(`${world.seed}:add:${now}`,index,now);
+  t.hash=makeHash(`${world.seed}:add:${now}`,index);
+  t.name=String(options.name||options.url||'Added Virtual Torrent').slice(0,180);
+  t.size=Math.max(1,Number(options.size)||int(createRng(t.hash),700,45000)*MiB);
+  t.addedOn=Math.floor(now/1000);
+  t.downloaded=0;t.uploaded=0;t.completed=false;t.canonicalState=world.preferences.start_paused_enabled?CANONICAL.DOWNLOAD_PAUSED:CANONICAL.DOWNLOAD_QUEUED;
+  t.queuePosition=world.torrents.length+1;t.priority=t.queuePosition;
+  t.autoManagement=String(options.autoTMM??'').toLowerCase()==='true'||options.autoTMM===1;
+  if(options.savepath)t.savePath=String(options.savepath);
+  if(options.category)t.category=String(options.category);
+  if(options.tags)t.tags=String(options.tags).split(',').map(x=>x.trim()).filter(Boolean);
+  const beforeTags=new Set(world.tags||[]);
+  world.torrents.push(t);world.tags=Array.from(new Set([...(world.tags||[]),...t.tags])).sort();
+  const addedTags=world.tags.filter(x=>!beforeTags.has(x));
+  const managed=reconcileManagedPaths(world,t.hash);
+  const scheduled=schedule(world,now,0);
+  recordTorrentChanges(world,[t.hash,...managed,...scheduled.changed],[],{tags:addedTags});
+  appendLog(world,`Torrent added: ${t.name}`,1,now);
+  return t;
+}
+
+export function setPreferences(world,patch,now=Date.now()){
+  const allowed=patch&&typeof patch==='object'?patch:{};
+  Object.assign(world.preferences,allowed);
+  if(Object.prototype.hasOwnProperty.call(allowed,'dl_limit'))world.globalDownloadLimit=Math.max(0,Math.round(Number(allowed.dl_limit)||0));
+  if(Object.prototype.hasOwnProperty.call(allowed,'up_limit'))world.globalUploadLimit=Math.max(0,Math.round(Number(allowed.up_limit)||0));
+  const managed=Object.prototype.hasOwnProperty.call(allowed,'save_path')?reconcileManagedPaths(world):[];
+  const scheduled=schedule(world,now,0);
+  recordTorrentChanges(world,[...managed,...scheduled.changed],[]);
+  appendLog(world,'Preferences updated.',1,now);
+}
+
+export function authenticate(world,username,password,now=Date.now()){
+  world.authenticated=true;
+  world.virtualSid=`VIRTUAL-${hash32(`${username}:${password}:${now}`).toString(16)}`;
+  appendLog(world,'Virtual WebUI login accepted.',1,now);
+  return world.virtualSid;
+}
+
+export function logout(world,now=Date.now()){
+  world.authenticated=false;world.virtualSid=null;
+  appendLog(world,'Virtual WebUI session logged out.',1,now);
+}
+
+export function properties(world,hash){
+  const t=world.torrents.find(x=>x.hash===hash);if(!t)return null;
+  return{
+    save_path:t.savePath,creation_date:t.addedOn,piece_size:4*MiB,comment:'WeiG Virtual qB Lab',
+    total_wasted:0,total_uploaded:Math.floor(t.uploaded),total_uploaded_session:Math.floor(t.uploaded),
+    total_downloaded:Math.floor(t.downloaded),total_downloaded_session:Math.floor(t.downloaded),
+    up_limit:t.uploadLimit,dl_limit:t.downloadLimit,time_elapsed:t.activeTime,seeding_time:t.seedTime,
+    nb_connections:t.connectedPeers,share_ratio:t.downloaded>0?t.uploaded/t.downloaded:0,
+    addition_date:t.addedOn,completion_date:t.completionOn,created_by:'WeiG Virtual qB Lab',
+    dl_speed_avg:Math.floor(t.effectiveDownloadRate),dl_speed:Math.floor(t.effectiveDownloadRate),
+    eta:t.effectiveDownloadRate>0?Math.ceil((t.size-t.downloaded)/t.effectiveDownloadRate):8640000,
+    last_seen:Math.floor(Date.now()/1000),peers:t.leechers,peers_total:t.leechers,
+    pieces_have:Math.floor((t.downloaded/t.size)*Math.ceil(t.size/(4*MiB))),
+    pieces_num:Math.ceil(t.size/(4*MiB)),reannounce:900,seeds:t.seeders,seeds_total:t.seeders,
+    total_size:t.size,up_speed_avg:Math.floor(t.effectiveUploadRate),up_speed:Math.floor(t.effectiveUploadRate)
+  };
+}
+
+export function logs(world,lastId=-1){
+  return world.logs.filter(x=>x.id>Number(lastId||-1));
+}
+
+export function capabilityAvailable(world,name){
+  const api=world.profile.webApiVersion,qb=world.profile.qbVersion;
+  const table={
+    tags:atLeast(api,'2.3.0'),renameFile:atLeast(api,'2.4.0'),stalledFilter:atLeast(api,'2.4.1'),
+    addTags:atLeast(api,'2.3.0'),fileIndexes:atLeast(api,'2.8.2'),tagFilter:atLeast(api,'2.8.3'),
+    cookies:atLeast(api,'2.11.3'),structuredTorrentAdd:atLeast(api,'2.14.0'),privateFlag:world.profile.major>=5,
+    logs:atLeast(qb,'4.1.0')
+  };
+  return table[name]!==false;
+}

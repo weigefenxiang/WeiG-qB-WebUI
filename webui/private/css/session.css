@@ -1,0 +1,4 @@
+html[data-session-locked] #app,
+html[data-session-locked] .starfield,
+html[data-session-locked] .skip-link{visibility:hidden!important}
+html[data-session-locked] body{background:var(--surface-void,#05070d)}

@@ -1,0 +1,1369 @@
+{
+  "schemaVersion": 1,
+  "kind": "qb-official-peer-flags-snapshot",
+  "upstream": {
+    "repository": "qbittorrent/qBittorrent",
+    "tag": "release-5.2.3",
+    "commit": "0b63c3d17373f6132ea211c9dcd4241284ccdfaf",
+    "sourcePath": "src/webui/www/private/images/flags"
+  },
+  "provenance": {
+    "qBAuthorsAttribution": "src/icons/flags/*.svg -> lipis/flag-icons",
+    "sourceProject": "lipis/flag-icons",
+    "license": "MIT"
+  },
+  "fileCount": 270,
+  "totalBytes": 2138035,
+  "files": [
+    {
+      "path": "ad.svg",
+      "bytes": 33675,
+      "upstreamBlobSha": "067ab772f61a6f2aea4e1d5187d78bcb8f7923b7"
+    },
+    {
+      "path": "ae.svg",
+      "bytes": 266,
+      "upstreamBlobSha": "651ac8523d3d933827ccfbdf5dfd598e65bad442"
+    },
+    {
+      "path": "af.svg",
+      "bytes": 21056,
+      "upstreamBlobSha": "521ac4cfd88093eac962b171180ff3b22ed3ce4c"
+    },
+    {
+      "path": "ag.svg",
+      "bytes": 743,
+      "upstreamBlobSha": "243c3d8f9e7896433ad3795af3c43dcd1cf531ae"
+    },
+    {
+      "path": "ai.svg",
+      "bytes": 2336,
+      "upstreamBlobSha": "628ad9be9389eb49d22481decf526f9b19ebaef5"
+    },
+    {
+      "path": "al.svg",
+      "bytes": 3231,
+      "upstreamBlobSha": "1135b4b80a74f6ccec7a20df410d46a57caab3b3"
+    },
+    {
+      "path": "am.svg",
+      "bytes": 228,
+      "upstreamBlobSha": "99fa4dc5979a45b249ca805c2a43d3a8c74841d2"
+    },
+    {
+      "path": "ao.svg",
+      "bytes": 1606,
+      "upstreamBlobSha": "b1863bd0f6871f14b9e4327a2577c5378227cdd9"
+    },
+    {
+      "path": "aq.svg",
+      "bytes": 2823,
+      "upstreamBlobSha": "53840cccb06cf8a4064796d331a7555269757993"
+    },
+    {
+      "path": "ar.svg",
+      "bytes": 3558,
+      "upstreamBlobSha": "d20cbbdcdcc6eac9230b28558ceff61a77a18db0"
+    },
+    {
+      "path": "arab.svg",
+      "bytes": 26340,
+      "upstreamBlobSha": "96d27157e9f741238ac7926216af104ceafb7151"
+    },
+    {
+      "path": "as.svg",
+      "bytes": 32249,
+      "upstreamBlobSha": "3543556725d8c0f3a5e5da4be9a1f2bc00d9f601"
+    },
+    {
+      "path": "at.svg",
+      "bytes": 195,
+      "upstreamBlobSha": "9d2775c083280e98bcaa0fc8e136ebaef5984bf8"
+    },
+    {
+      "path": "au.svg",
+      "bytes": 1296,
+      "upstreamBlobSha": "96e80768bb7084e490fd34ad626f40d5cea1ac7b"
+    },
+    {
+      "path": "aw.svg",
+      "bytes": 9003,
+      "upstreamBlobSha": "413b7c45b60d7f575323933856e7adb6fb10661a"
+    },
+    {
+      "path": "ax.svg",
+      "bytes": 556,
+      "upstreamBlobSha": "0584d713b54305c0b331fd9fe87ad6f6c2ae696b"
+    },
+    {
+      "path": "az.svg",
+      "bytes": 501,
+      "upstreamBlobSha": "35575221104fccb01c19318bdb15b6247a4108d4"
+    },
+    {
+      "path": "ba.svg",
+      "bytes": 1240,
+      "upstreamBlobSha": "93bd9cf9378475a443d6f29b0708e932a685ae22"
+    },
+    {
+      "path": "bb.svg",
+      "bytes": 628,
+      "upstreamBlobSha": "cecd5cc33439f864474458956b5efb1dcc0fe6d3"
+    },
+    {
+      "path": "bd.svg",
+      "bytes": 187,
+      "upstreamBlobSha": "16b794debd08294403b4e61c61a17ae02bfa0a44"
+    },
+    {
+      "path": "be.svg",
+      "bytes": 302,
+      "upstreamBlobSha": "ac706a0b5a148cb20a1bdecb79bb709d20455fa3"
+    },
+    {
+      "path": "bf.svg",
+      "bytes": 353,
+      "upstreamBlobSha": "471382258410ebcce7b5de4243c6fcc3dfe783b9"
+    },
+    {
+      "path": "bg.svg",
+      "bytes": 225,
+      "upstreamBlobSha": "af2d0d07c31e24fabc76bc7df026cfa046ac682e"
+    },
+    {
+      "path": "bh.svg",
+      "bytes": 252,
+      "upstreamBlobSha": "7a2ea549b63f576052adc45e20e5970921c5b870"
+    },
+    {
+      "path": "bi.svg",
+      "bytes": 1078,
+      "upstreamBlobSha": "a4434a955fbcdb15e1b297cc46d884bc85cdec6c"
+    },
+    {
+      "path": "bj.svg",
+      "bytes": 499,
+      "upstreamBlobSha": "0846724d179abc3f815246236d220f6f43b9bd1a"
+    },
+    {
+      "path": "bl.svg",
+      "bytes": 231,
+      "upstreamBlobSha": "f84cbbaeb1940e1ab5853545b4f4c3ff9591639c"
+    },
+    {
+      "path": "bm.svg",
+      "bytes": 22811,
+      "upstreamBlobSha": "bab3e0abe025f6c14095f589d1f5c1175fa15ad0"
+    },
+    {
+      "path": "bn.svg",
+      "bytes": 14316,
+      "upstreamBlobSha": "4b416ebb73f974d1957c0567ad3f72a4eca36221"
+    },
+    {
+      "path": "bo.svg",
+      "bytes": 112084,
+      "upstreamBlobSha": "46dc76735eaa2533ffa03904a0ec01d129c238a9"
+    },
+    {
+      "path": "bq.svg",
+      "bytes": 221,
+      "upstreamBlobSha": "0e6bc76e6284722974b8a8727f4c95602245b3a2"
+    },
+    {
+      "path": "br.svg",
+      "bytes": 8096,
+      "upstreamBlobSha": "22c908e7e34c8617ebca2322fb798e24802f5e15"
+    },
+    {
+      "path": "bs.svg",
+      "bytes": 557,
+      "upstreamBlobSha": "5cc918e5ad40ee0af8f8d819ca3666f0e7026530"
+    },
+    {
+      "path": "bt.svg",
+      "bytes": 25115,
+      "upstreamBlobSha": "798c79b381dd89ccba44a817ec07071c63270ec0"
+    },
+    {
+      "path": "bv.svg",
+      "bytes": 582,
+      "upstreamBlobSha": "40e16d9482fbd3d732d3b43061d3cae8bbea3a5e"
+    },
+    {
+      "path": "bw.svg",
+      "bytes": 264,
+      "upstreamBlobSha": "3435608d6c0daa48ae4a042eee336f58b9886bb9"
+    },
+    {
+      "path": "by.svg",
+      "bytes": 2124,
+      "upstreamBlobSha": "7e90ff255c353187d5687417c7566fbd90a55c61"
+    },
+    {
+      "path": "bz.svg",
+      "bytes": 46671,
+      "upstreamBlobSha": "25386a51a455994aba5a02e22d007cdd439a5c73"
+    },
+    {
+      "path": "ca.svg",
+      "bytes": 642,
+      "upstreamBlobSha": "89da5b7b556ebc15fc9c4abdc27ad2f1e04a028a"
+    },
+    {
+      "path": "cc.svg",
+      "bytes": 3150,
+      "upstreamBlobSha": "ddfd1803820b7328ca5e1303d47e3530dac12558"
+    },
+    {
+      "path": "cd.svg",
+      "bytes": 334,
+      "upstreamBlobSha": "b9cf528941371b9cc973bdc5de2bb02425fefad1"
+    },
+    {
+      "path": "cefta.svg",
+      "bytes": 910,
+      "upstreamBlobSha": "f748d08a120248f2a0f47da4ad5e72d856a5a9cd"
+    },
+    {
+      "path": "cf.svg",
+      "bytes": 687,
+      "upstreamBlobSha": "a6cd3670f27279db2138f14ab185f1ac44ed3c64"
+    },
+    {
+      "path": "cg.svg",
+      "bytes": 470,
+      "upstreamBlobSha": "f5a0e42d4595ffca08ac64ab1188221cf01f5ee7"
+    },
+    {
+      "path": "ch.svg",
+      "bytes": 290,
+      "upstreamBlobSha": "b42d6709cfaf22e773bc7aa5da7095eff742873e"
+    },
+    {
+      "path": "ci.svg",
+      "bytes": 277,
+      "upstreamBlobSha": "e400f0c1cd408e21b0f09efd8bcb98b5e0866536"
+    },
+    {
+      "path": "ck.svg",
+      "bytes": 1898,
+      "upstreamBlobSha": "18e547b17daa8d8d1a93c991d1a22ed89e849521"
+    },
+    {
+      "path": "cl.svg",
+      "bytes": 552,
+      "upstreamBlobSha": "5b3c72fa7c26f80593b0757227deb9c4b77bdf34"
+    },
+    {
+      "path": "cm.svg",
+      "bytes": 840,
+      "upstreamBlobSha": "70adc8b6818f844e2015f0b76953d4519de585fa"
+    },
+    {
+      "path": "cn.svg",
+      "bytes": 813,
+      "upstreamBlobSha": "10d3489a0e60176c4db839ad958facf76717cbd1"
+    },
+    {
+      "path": "co.svg",
+      "bytes": 286,
+      "upstreamBlobSha": "ebd0a0fb2d4b374a6e3f6722436bd54ea89e0520"
+    },
+    {
+      "path": "cp.svg",
+      "bytes": 289,
+      "upstreamBlobSha": "b8aa9cfd693ddfc924a4e78360be6d065801004e"
+    },
+    {
+      "path": "cr.svg",
+      "bytes": 290,
+      "upstreamBlobSha": "5a409eebb25d8b72ff39b435bda8c22b6c0115e1"
+    },
+    {
+      "path": "cu.svg",
+      "bytes": 610,
+      "upstreamBlobSha": "053c9ee3a0296e8594867aaea12b229ad609d0ee"
+    },
+    {
+      "path": "cv.svg",
+      "bytes": 1411,
+      "upstreamBlobSha": "aec8994902cc9f6db819856d61d54d2ff4c9cc93"
+    },
+    {
+      "path": "cw.svg",
+      "bytes": 687,
+      "upstreamBlobSha": "bb0ece22e49cedf52861e7b390d17ac3f6aa9084"
+    },
+    {
+      "path": "cx.svg",
+      "bytes": 2462,
+      "upstreamBlobSha": "374ff2dab5118f3669e2ed8894b22c0871d983a6"
+    },
+    {
+      "path": "cy.svg",
+      "bytes": 5914,
+      "upstreamBlobSha": "7e3d883da8173b9467746769103b59c503a23fcb"
+    },
+    {
+      "path": "cz.svg",
+      "bytes": 225,
+      "upstreamBlobSha": "7913de3895e8c149a00419187aa0fee16fd0325e"
+    },
+    {
+      "path": "de.svg",
+      "bytes": 221,
+      "upstreamBlobSha": "71aa2d2c30f576d3577b5c93c7cc2cc9de740da7"
+    },
+    {
+      "path": "dg.svg",
+      "bytes": 23163,
+      "upstreamBlobSha": "f163caf947504403ebef233654f833da835e4f0d"
+    },
+    {
+      "path": "dj.svg",
+      "bytes": 585,
+      "upstreamBlobSha": "9b00a82056625e86235dc988080d3c142f9dbcca"
+    },
+    {
+      "path": "dk.svg",
+      "bytes": 236,
+      "upstreamBlobSha": "563277f81d904ddf48573466c018c914d693bf6a"
+    },
+    {
+      "path": "dm.svg",
+      "bytes": 15822,
+      "upstreamBlobSha": "f692094ddb14170c1c9321fd7cda4106c415858f"
+    },
+    {
+      "path": "do.svg",
+      "bytes": 50066,
+      "upstreamBlobSha": "b1be393ed1eb0a199cc724bf7e9ba513394beb51"
+    },
+    {
+      "path": "dz.svg",
+      "bytes": 294,
+      "upstreamBlobSha": "5ff29a74a00be5f65b5219b35ca6caaa6399e87f"
+    },
+    {
+      "path": "eac.svg",
+      "bytes": 14220,
+      "upstreamBlobSha": "aaf8133f35a04a9049757da117404f28c738789c"
+    },
+    {
+      "path": "ec.svg",
+      "bytes": 28973,
+      "upstreamBlobSha": "397bfd9822512abd8f8d64b398051bafea79999c"
+    },
+    {
+      "path": "ee.svg",
+      "bytes": 225,
+      "upstreamBlobSha": "8b98c2c429bc94f6adca7aa099a18b8ab1b8fdd3"
+    },
+    {
+      "path": "eg.svg",
+      "bytes": 9854,
+      "upstreamBlobSha": "00d1fa59eedc558d9b300061c4952d4e4c220ae4"
+    },
+    {
+      "path": "eh.svg",
+      "bytes": 804,
+      "upstreamBlobSha": "6aec72883c46ed59be2dd120e2397c439fe20eae"
+    },
+    {
+      "path": "er.svg",
+      "bytes": 3188,
+      "upstreamBlobSha": "3f4f3f292143127a9f0519ae7a6cda76f4b7bb73"
+    },
+    {
+      "path": "es-ct.svg",
+      "bytes": 255,
+      "upstreamBlobSha": "4d85911402e448090b373c2d359b71de7c257f1b"
+    },
+    {
+      "path": "es-ga.svg",
+      "bytes": 28628,
+      "upstreamBlobSha": "31657813ea87adda606289d8c441a08fb86b1428"
+    },
+    {
+      "path": "es-pv.svg",
+      "bytes": 446,
+      "upstreamBlobSha": "21c8759ec02f8368cb484d8af9b15ddf001d7386"
+    },
+    {
+      "path": "es.svg",
+      "bytes": 91011,
+      "upstreamBlobSha": "acdf927f235a3d97dcab8a3cb9a5c798f47c2d49"
+    },
+    {
+      "path": "et.svg",
+      "bytes": 1145,
+      "upstreamBlobSha": "3f99be486098d390a8a93ff6ffc05697baef4d15"
+    },
+    {
+      "path": "eu.svg",
+      "bytes": 1295,
+      "upstreamBlobSha": "b0874c1ed497e8607e472592e381573c9c6544f8"
+    },
+    {
+      "path": "fi.svg",
+      "bytes": 234,
+      "upstreamBlobSha": "470be2d07c9df2cbedfde2f27fa42cb3a59d3657"
+    },
+    {
+      "path": "fj.svg",
+      "bytes": 25686,
+      "upstreamBlobSha": "23fbe57a8db2e532ca264ff4b5b3bb43000ff567"
+    },
+    {
+      "path": "fk.svg",
+      "bytes": 30044,
+      "upstreamBlobSha": "c65bf96de941a5d36754002635c3a9496318ff9d"
+    },
+    {
+      "path": "fm.svg",
+      "bytes": 771,
+      "upstreamBlobSha": "c1b7c9778436ae1880c0f7a6123a723e20297d2d"
+    },
+    {
+      "path": "fo.svg",
+      "bytes": 555,
+      "upstreamBlobSha": "f802d285ac7bc5684cec527da5381336fa7099ef"
+    },
+    {
+      "path": "fr.svg",
+      "bytes": 231,
+      "upstreamBlobSha": "4110e59e4ca59a4c8710f60ff8a0afbabfdc44b6"
+    },
+    {
+      "path": "ga.svg",
+      "bytes": 271,
+      "upstreamBlobSha": "76edab429c29ee1818c8451da065df5cdd822cb1"
+    },
+    {
+      "path": "gb-eng.svg",
+      "bytes": 239,
+      "upstreamBlobSha": "12e3b67d56ee0db67b02a3fbd26925d5f9cb16c6"
+    },
+    {
+      "path": "gb-nir.svg",
+      "bytes": 23593,
+      "upstreamBlobSha": "e6be8dbc2d794cd61b6e2100bcabb92a506641ce"
+    },
+    {
+      "path": "gb-sct.svg",
+      "bytes": 228,
+      "upstreamBlobSha": "f50cd322ac5207ca162812bc97a53521ee1f058d"
+    },
+    {
+      "path": "gb-wls.svg",
+      "bytes": 9178,
+      "upstreamBlobSha": "6e15fd0158f4a9544c69ef93222a7618a53bb6e7"
+    },
+    {
+      "path": "gb.svg",
+      "bytes": 504,
+      "upstreamBlobSha": "799138319d8446a6407a3448185559f20b9e3415"
+    },
+    {
+      "path": "gd.svg",
+      "bytes": 1720,
+      "upstreamBlobSha": "cb51e9618e4679c34fa2809d4ba8a0cdbff64eb9"
+    },
+    {
+      "path": "ge.svg",
+      "bytes": 1362,
+      "upstreamBlobSha": "d8126ec8d8c332376df238e50e4fb2d0dd9263f2"
+    },
+    {
+      "path": "gf.svg",
+      "bytes": 231,
+      "upstreamBlobSha": "f8fe94c6597c6572e940a6a7e4393517fad42807"
+    },
+    {
+      "path": "gg.svg",
+      "bytes": 604,
+      "upstreamBlobSha": "f8216c8bc151db8358353e88581b1c13bb6df76b"
+    },
+    {
+      "path": "gh.svg",
+      "bytes": 293,
+      "upstreamBlobSha": "5c3e3e69abef991bccb41ccb60a9e1a3023dc574"
+    },
+    {
+      "path": "gi.svg",
+      "bytes": 2948,
+      "upstreamBlobSha": "e2b590afefb519f2c02ef417df5fd9d3cd1f1a78"
+    },
+    {
+      "path": "gl.svg",
+      "bytes": 223,
+      "upstreamBlobSha": "eb5a52e9e486139468f67fc71221a33b57f95844"
+    },
+    {
+      "path": "gm.svg",
+      "bytes": 543,
+      "upstreamBlobSha": "8fe9d669204c288298d69d08ab52e3739632fbeb"
+    },
+    {
+      "path": "gn.svg",
+      "bytes": 292,
+      "upstreamBlobSha": "40d6ad4f03dbd66bd713bad8595fb88dc0d55d73"
+    },
+    {
+      "path": "gp.svg",
+      "bytes": 231,
+      "upstreamBlobSha": "ee55c4bcd3723a006ca16b87a3583e0ba12dde05"
+    },
+    {
+      "path": "gq.svg",
+      "bytes": 5072,
+      "upstreamBlobSha": "134e442173109850abc92c16914fb95c1cc27e28"
+    },
+    {
+      "path": "gr.svg",
+      "bytes": 868,
+      "upstreamBlobSha": "599741eec82f5c8729cfa503f552c9f781f5625b"
+    },
+    {
+      "path": "gs.svg",
+      "bytes": 32525,
+      "upstreamBlobSha": "1536e073ec0de5682f3563213814f6e0b1363173"
+    },
+    {
+      "path": "gt.svg",
+      "bytes": 35091,
+      "upstreamBlobSha": "f7cffbdc7abc00ea95428a4ef88f953f3382fc55"
+    },
+    {
+      "path": "gu.svg",
+      "bytes": 5096,
+      "upstreamBlobSha": "0d66e1bfa8090e2f2046368c11308cab698fe79d"
+    },
+    {
+      "path": "gw.svg",
+      "bytes": 846,
+      "upstreamBlobSha": "d470bac9f71b82867e76cdb528c0c2808307df94"
+    },
+    {
+      "path": "gy.svg",
+      "bytes": 493,
+      "upstreamBlobSha": "569fb562759edd11a7ba270c83c752f03be5c042"
+    },
+    {
+      "path": "hk.svg",
+      "bytes": 727,
+      "upstreamBlobSha": "4fd55bc14b064e5c0359389c644716f69fe5a0c9"
+    },
+    {
+      "path": "hm.svg",
+      "bytes": 1296,
+      "upstreamBlobSha": "815c4820850776edc81d8746c0dded7ec7d4185b"
+    },
+    {
+      "path": "hn.svg",
+      "bytes": 1144,
+      "upstreamBlobSha": "11fde67db930e5cfeae9fc1ba2865b1e91a825e5"
+    },
+    {
+      "path": "hr.svg",
+      "bytes": 41177,
+      "upstreamBlobSha": "44fed27d54e1318459e8c863bfb47677b7250b7d"
+    },
+    {
+      "path": "ht.svg",
+      "bytes": 14570,
+      "upstreamBlobSha": "5d48eb93b2e5ecec7b529284e936ff1efb563f30"
+    },
+    {
+      "path": "hu.svg",
+      "bytes": 271,
+      "upstreamBlobSha": "baddf7f5ea1027eb3addaa5a6fdf4498d2c5966b"
+    },
+    {
+      "path": "ic.svg",
+      "bytes": 286,
+      "upstreamBlobSha": "81e6ee2e13724de87ee79f8738f2e0bbd7263414"
+    },
+    {
+      "path": "id.svg",
+      "bytes": 178,
+      "upstreamBlobSha": "3b7c8fcfd96578480474bf942e1a0adb604dde0f"
+    },
+    {
+      "path": "ie.svg",
+      "bytes": 289,
+      "upstreamBlobSha": "049be14de14f4f67419f3c5e2f0c5d022b74ca39"
+    },
+    {
+      "path": "il.svg",
+      "bytes": 834,
+      "upstreamBlobSha": "f43be7e8ed7ae29d324f7f1aa0d46528e2a5c3af"
+    },
+    {
+      "path": "im.svg",
+      "bytes": 9896,
+      "upstreamBlobSha": "f06f3d6fe1a5ef227281e8b0df98878f5578d611"
+    },
+    {
+      "path": "in.svg",
+      "bytes": 1090,
+      "upstreamBlobSha": "bc47d74911bb32886aa9c611feb36e6fc54ff850"
+    },
+    {
+      "path": "io.svg",
+      "bytes": 23163,
+      "upstreamBlobSha": "77016679ef7dacbe0e64c676c4de682ef6ab48fd"
+    },
+    {
+      "path": "iq.svg",
+      "bytes": 1466,
+      "upstreamBlobSha": "259da9adc58d7a9f2a01c865259cbc08af370c53"
+    },
+    {
+      "path": "ir.svg",
+      "bytes": 15397,
+      "upstreamBlobSha": "8c6d516216991dea851ae9c2be9e65cd86d8783a"
+    },
+    {
+      "path": "is.svg",
+      "bytes": 509,
+      "upstreamBlobSha": "a6588afaefd01855a9e5587e0fb52737e03c50bd"
+    },
+    {
+      "path": "it.svg",
+      "bytes": 289,
+      "upstreamBlobSha": "20a8bfdcc802296c682866e18c41a74fbaa702fd"
+    },
+    {
+      "path": "je.svg",
+      "bytes": 46069,
+      "upstreamBlobSha": "611180d42a872b974171e01aa76f7fe8a39a98aa"
+    },
+    {
+      "path": "jm.svg",
+      "bytes": 401,
+      "upstreamBlobSha": "269df03836848d552789f9ea6a35ef0993694778"
+    },
+    {
+      "path": "jo.svg",
+      "bytes": 727,
+      "upstreamBlobSha": "d6f927d44f21a21f3c6c23e67fbe144541d5ba66"
+    },
+    {
+      "path": "jp.svg",
+      "bytes": 470,
+      "upstreamBlobSha": "cc1c181ce9b2c22b5d29d04d7858d4d6ed0c878c"
+    },
+    {
+      "path": "ke.svg",
+      "bytes": 1421,
+      "upstreamBlobSha": "3a67ca3ccd48b1e0fe01fd4741711d462395006d"
+    },
+    {
+      "path": "kg.svg",
+      "bytes": 3371,
+      "upstreamBlobSha": "68c210b1cfdf30ca6cd784a5ef0882845b56c748"
+    },
+    {
+      "path": "kh.svg",
+      "bytes": 7277,
+      "upstreamBlobSha": "c658838f4e3c524bdbaf24e3e5ac706b43a1044f"
+    },
+    {
+      "path": "ki.svg",
+      "bytes": 5637,
+      "upstreamBlobSha": "0c8032807138867631f1b372b9f10789bdf52271"
+    },
+    {
+      "path": "km.svg",
+      "bytes": 1053,
+      "upstreamBlobSha": "414d65e47fd1c921cb6cbf9c352c3b655a148576"
+    },
+    {
+      "path": "kn.svg",
+      "bytes": 796,
+      "upstreamBlobSha": "47fe64d617abeab2d89d61568b8504a6e6dd6102"
+    },
+    {
+      "path": "kp.svg",
+      "bytes": 790,
+      "upstreamBlobSha": "4d1dbab246760dfc2b84287564968488bfc934f3"
+    },
+    {
+      "path": "kr.svg",
+      "bytes": 1061,
+      "upstreamBlobSha": "6947eab2b3902872175f81d84f6966e170083c0d"
+    },
+    {
+      "path": "kw.svg",
+      "bytes": 517,
+      "upstreamBlobSha": "3dd89e9962e65164e4ed41a305f71a1afe027085"
+    },
+    {
+      "path": "ky.svg",
+      "bytes": 24005,
+      "upstreamBlobSha": "74a2fea2a1d94d115abf30dacc933c35f07c781c"
+    },
+    {
+      "path": "kz.svg",
+      "bytes": 7289,
+      "upstreamBlobSha": "04a47f53e82d8a5ff85fdb4960dd16ab7c026fb2"
+    },
+    {
+      "path": "la.svg",
+      "bytes": 456,
+      "upstreamBlobSha": "6aea6b72b4050a3e7bf89f4dd545fdb67ef334f4"
+    },
+    {
+      "path": "lb.svg",
+      "bytes": 2803,
+      "upstreamBlobSha": "8619f2410e149c981b68e0b61914959f67b3515a"
+    },
+    {
+      "path": "lc.svg",
+      "bytes": 352,
+      "upstreamBlobSha": "bb256541c6ed49b0a8d242f323360130a690c2bd"
+    },
+    {
+      "path": "li.svg",
+      "bytes": 8245,
+      "upstreamBlobSha": "68ea26fa30e85511cfdb8b92e915589ae6e4061d"
+    },
+    {
+      "path": "lk.svg",
+      "bytes": 11338,
+      "upstreamBlobSha": "2c5cdbe09dc1cbbbeab0bed0f9249c11674f0250"
+    },
+    {
+      "path": "lr.svg",
+      "bytes": 713,
+      "upstreamBlobSha": "e482ab9d749d63d64cdf337158a2ead10a235d0a"
+    },
+    {
+      "path": "ls.svg",
+      "bytes": 1133,
+      "upstreamBlobSha": "a7c01a98ffc7cac85a3db0ca42fc8297d7642273"
+    },
+    {
+      "path": "lt.svg",
+      "bytes": 439,
+      "upstreamBlobSha": "90ec5d240e5e324254b093c8ce70f8d046db16f9"
+    },
+    {
+      "path": "lu.svg",
+      "bytes": 225,
+      "upstreamBlobSha": "cc122068125c02693dee300ebec3909459ac50f7"
+    },
+    {
+      "path": "lv.svg",
+      "bytes": 230,
+      "upstreamBlobSha": "6a9e75ec971b9cb4654095133f3e1f4c7653cebc"
+    },
+    {
+      "path": "ly.svg",
+      "bytes": 549,
+      "upstreamBlobSha": "1eaa51e468b7ed416ae8c332d8310feda761fa41"
+    },
+    {
+      "path": "ma.svg",
+      "bytes": 247,
+      "upstreamBlobSha": "7ce56eff707c288edbe3071bd8cb495c74dd307c"
+    },
+    {
+      "path": "mc.svg",
+      "bytes": 234,
+      "upstreamBlobSha": "9cb6c9e8a0ea73661dd9c0659a475851d1eec291"
+    },
+    {
+      "path": "md.svg",
+      "bytes": 11203,
+      "upstreamBlobSha": "6dc441e177656670ec6125fb2ee0e532724fb430"
+    },
+    {
+      "path": "me.svg",
+      "bytes": 62566,
+      "upstreamBlobSha": "d8918907460b4085d458be3dd00478901c2ffb21"
+    },
+    {
+      "path": "mf.svg",
+      "bytes": 231,
+      "upstreamBlobSha": "6305edc1c2390024944d5ddf740e915480d8826a"
+    },
+    {
+      "path": "mg.svg",
+      "bytes": 299,
+      "upstreamBlobSha": "5fa2d2440d5bfc07bf7863c6c8cbb9648053cc0a"
+    },
+    {
+      "path": "mh.svg",
+      "bytes": 729,
+      "upstreamBlobSha": "7b9f49075518c2ce18925c1a0e4de1b499dfe28b"
+    },
+    {
+      "path": "mk.svg",
+      "bytes": 379,
+      "upstreamBlobSha": "4f5cae77ed60b6128d062ab55055290295359b77"
+    },
+    {
+      "path": "ml.svg",
+      "bytes": 273,
+      "upstreamBlobSha": "6f6b71695cbb3cb3f00e74d825faf95999fe768e"
+    },
+    {
+      "path": "mm.svg",
+      "bytes": 710,
+      "upstreamBlobSha": "42b4dee2b8ccb00e6dc5817cae1e73e18d1ab46a"
+    },
+    {
+      "path": "mn.svg",
+      "bytes": 1437,
+      "upstreamBlobSha": "152c2fcb0f93c71b64ef538871835af2f3a564a9"
+    },
+    {
+      "path": "mo.svg",
+      "bytes": 1509,
+      "upstreamBlobSha": "d39985d05fbfc44aecdd552aecf706f35ef21d90"
+    },
+    {
+      "path": "mp.svg",
+      "bytes": 23332,
+      "upstreamBlobSha": "ff59ebf87b12cf12fac41838f9abac8f41e3a23d"
+    },
+    {
+      "path": "mq.svg",
+      "bytes": 228,
+      "upstreamBlobSha": "b221951e360d8bb3d9053555f53325baa3011ac3"
+    },
+    {
+      "path": "mr.svg",
+      "bytes": 445,
+      "upstreamBlobSha": "7558234cbff8e43ecf5d3c49cc864c194107d676"
+    },
+    {
+      "path": "ms.svg",
+      "bytes": 6066,
+      "upstreamBlobSha": "faf07b07fd2e63dec85941bd91ea4ef35890659e"
+    },
+    {
+      "path": "mt.svg",
+      "bytes": 14638,
+      "upstreamBlobSha": "c597266c3692d16ba49aa0fc7f580acfd77e6cc9"
+    },
+    {
+      "path": "mu.svg",
+      "bytes": 316,
+      "upstreamBlobSha": "82d7a3bec553cee4d3bb428569c2417a99fb4da7"
+    },
+    {
+      "path": "mv.svg",
+      "bytes": 286,
+      "upstreamBlobSha": "10450f984585a423ef7cac54c9a3dd2c9d739730"
+    },
+    {
+      "path": "mw.svg",
+      "bytes": 3692,
+      "upstreamBlobSha": "d83ddb21787685b97390994f7abccca650c8fb05"
+    },
+    {
+      "path": "mx.svg",
+      "bytes": 93451,
+      "upstreamBlobSha": "f98a89e17335dca2ca7f248ac904f3ecff47d835"
+    },
+    {
+      "path": "my.svg",
+      "bytes": 1386,
+      "upstreamBlobSha": "89576f69eae83d8001ea4208bb9b00880fd7f798"
+    },
+    {
+      "path": "mz.svg",
+      "bytes": 2609,
+      "upstreamBlobSha": "2ee6ec14b47768b5b5d493788fa3be728725ffe9"
+    },
+    {
+      "path": "na.svg",
+      "bytes": 993,
+      "upstreamBlobSha": "35b9f783e155a4e380086dc7a8f34ad46f47963d"
+    },
+    {
+      "path": "nc.svg",
+      "bytes": 1345,
+      "upstreamBlobSha": "068f0c69aac489c12c8f65b7983e43a5d9cf7cf4"
+    },
+    {
+      "path": "ne.svg",
+      "bytes": 273,
+      "upstreamBlobSha": "39a82b827744d08b7013215ba2f139c9180d1bf7"
+    },
+    {
+      "path": "nf.svg",
+      "bytes": 5812,
+      "upstreamBlobSha": "c8b30938d778d3ac7a7a6236d76fbaea8b7a5a58"
+    },
+    {
+      "path": "ng.svg",
+      "bytes": 257,
+      "upstreamBlobSha": "81eb35f78eb16c26e25ffcb36f9f65720d062b6a"
+    },
+    {
+      "path": "ni.svg",
+      "bytes": 18435,
+      "upstreamBlobSha": "6dcdc9a806e038314d5be5966e5b5fe9709a60b1"
+    },
+    {
+      "path": "nl.svg",
+      "bytes": 225,
+      "upstreamBlobSha": "e90f5b03511fe47d56930eea41341521579dc8fc"
+    },
+    {
+      "path": "no.svg",
+      "bytes": 318,
+      "upstreamBlobSha": "a5f2a152a932b85e30cfc1921325da0e300a75bb"
+    },
+    {
+      "path": "np.svg",
+      "bytes": 1009,
+      "upstreamBlobSha": "8d71d106bbbbc405d6e05ba7c2683616966bede2"
+    },
+    {
+      "path": "nr.svg",
+      "bytes": 646,
+      "upstreamBlobSha": "ff394c411211b0739c3c0f4bb19a1ea2a369ee36"
+    },
+    {
+      "path": "nu.svg",
+      "bytes": 864,
+      "upstreamBlobSha": "4067bafff00a49b9cda26951e711f1ac9bce8981"
+    },
+    {
+      "path": "nz.svg",
+      "bytes": 2172,
+      "upstreamBlobSha": "935d8a749d943341ee885010bf1c31bd59809ab3"
+    },
+    {
+      "path": "om.svg",
+      "bytes": 22623,
+      "upstreamBlobSha": "c003f86e467a2bd83272efba6ae50528644de407"
+    },
+    {
+      "path": "pa.svg",
+      "bytes": 744,
+      "upstreamBlobSha": "8dc03bc61b82b9dddd4bba27cdeedb4485bae240"
+    },
+    {
+      "path": "pc.svg",
+      "bytes": 3874,
+      "upstreamBlobSha": "882197da676ded867cb3bbfd731522e97d2a4ea3"
+    },
+    {
+      "path": "pe.svg",
+      "bytes": 186,
+      "upstreamBlobSha": "33e6cfd417813982f050488d6256c160185adeaf"
+    },
+    {
+      "path": "pf.svg",
+      "bytes": 4152,
+      "upstreamBlobSha": "e06b236e82bc3e295ae9543deb3ee0dcd7463cf7"
+    },
+    {
+      "path": "pg.svg",
+      "bytes": 1656,
+      "upstreamBlobSha": "237cb6eeedd79ca69b93a7da7d4832307edeab08"
+    },
+    {
+      "path": "ph.svg",
+      "bytes": 1501,
+      "upstreamBlobSha": "65489e1cb2ce04481159ebb9709eda419cf53ad0"
+    },
+    {
+      "path": "pk.svg",
+      "bytes": 741,
+      "upstreamBlobSha": "491e58ab1624b96ab2924c3a5b042f98f473ef8d"
+    },
+    {
+      "path": "pl.svg",
+      "bytes": 219,
+      "upstreamBlobSha": "0fa5145241bd3e768773d91e501151fb9a43eadb"
+    },
+    {
+      "path": "pm.svg",
+      "bytes": 231,
+      "upstreamBlobSha": "19a9330a31b69da257a312ccc67b4250ac360de0"
+    },
+    {
+      "path": "pn.svg",
+      "bytes": 13880,
+      "upstreamBlobSha": "07958aca12fadc3b070ae534b71ce3a18607a8ca"
+    },
+    {
+      "path": "pr.svg",
+      "bytes": 625,
+      "upstreamBlobSha": "ec51831dcd801eb1e12b1b0df500007b99801582"
+    },
+    {
+      "path": "ps.svg",
+      "bytes": 568,
+      "upstreamBlobSha": "b33824a5dd7493fda4bf9f2e0bb5682ba0eb04fb"
+    },
+    {
+      "path": "pt.svg",
+      "bytes": 8316,
+      "upstreamBlobSha": "445cf7f536950b1de5fcda5e60917822b42ba872"
+    },
+    {
+      "path": "pw.svg",
+      "bytes": 466,
+      "upstreamBlobSha": "9f89c5f1483ca787a33689352bb9ffdc1f612522"
+    },
+    {
+      "path": "py.svg",
+      "bytes": 17194,
+      "upstreamBlobSha": "38e2051eb284954103127d18dabf0726f38e7a9c"
+    },
+    {
+      "path": "qa.svg",
+      "bytes": 354,
+      "upstreamBlobSha": "901f3fa761a3b90598f952e7a321ad71ca7e793d"
+    },
+    {
+      "path": "re.svg",
+      "bytes": 231,
+      "upstreamBlobSha": "64e788e011b6e24538aae3d0950db080ba1c3afc"
+    },
+    {
+      "path": "ro.svg",
+      "bytes": 302,
+      "upstreamBlobSha": "fda0f7bec91d8e31052993b16b794edea4de2f95"
+    },
+    {
+      "path": "rs.svg",
+      "bytes": 184172,
+      "upstreamBlobSha": "2f971025b8745489f3f8847f8db62f0e3beca5da"
+    },
+    {
+      "path": "ru.svg",
+      "bytes": 225,
+      "upstreamBlobSha": "cf243011ae99e45cb43edf4ca6b7c51e08419c4c"
+    },
+    {
+      "path": "rw.svg",
+      "bytes": 755,
+      "upstreamBlobSha": "06e26ae44e4ef16948b32f246c5aafded2982635"
+    },
+    {
+      "path": "sa.svg",
+      "bytes": 10237,
+      "upstreamBlobSha": "c0a148663b6cb1d15811d50481b0b95649f452a3"
+    },
+    {
+      "path": "sb.svg",
+      "bytes": 940,
+      "upstreamBlobSha": "6066f94cd1170ea93e50e657c649e1ae75dbeea1"
+    },
+    {
+      "path": "sc.svg",
+      "bytes": 317,
+      "upstreamBlobSha": "9a46b369b3ff609b538df0a211e87878b2b92780"
+    },
+    {
+      "path": "sd.svg",
+      "bytes": 505,
+      "upstreamBlobSha": "12818b4110dbe25327131f9ec898aa2e73b85fc6"
+    },
+    {
+      "path": "se.svg",
+      "bytes": 209,
+      "upstreamBlobSha": "8ba745acaf2231a519e658852e8ef874dbeb8dc7"
+    },
+    {
+      "path": "sg.svg",
+      "bytes": 889,
+      "upstreamBlobSha": "c4dd4ac9ebe6171235ea7636444265cd2611b9ce"
+    },
+    {
+      "path": "sh-ac.svg",
+      "bytes": 156128,
+      "upstreamBlobSha": "22b365832eed72abd92cb87d1f7322b669f2c0be"
+    },
+    {
+      "path": "sh-hl.svg",
+      "bytes": 38827,
+      "upstreamBlobSha": "b92e703f2768b6a60c9bd4184220b730af7564de"
+    },
+    {
+      "path": "sh-ta.svg",
+      "bytes": 30834,
+      "upstreamBlobSha": "a103aac05fc62e4163d22d78e51471cbde0152fc"
+    },
+    {
+      "path": "sh.svg",
+      "bytes": 504,
+      "upstreamBlobSha": "7aba0aec8a074707808eaf6c1cf3bc1d89b80493"
+    },
+    {
+      "path": "si.svg",
+      "bytes": 2017,
+      "upstreamBlobSha": "66a390dcd2168f1cf6fda5703d10d81315604f0d"
+    },
+    {
+      "path": "sj.svg",
+      "bytes": 318,
+      "upstreamBlobSha": "bb2799ce73cdc27c4c6349f4908d8ce10305dcb1"
+    },
+    {
+      "path": "sk.svg",
+      "bytes": 1197,
+      "upstreamBlobSha": "81476940eb2a73b144386fba8ea00c18e0aaf0a6"
+    },
+    {
+      "path": "sl.svg",
+      "bytes": 272,
+      "upstreamBlobSha": "a07baf75b40f2cbd4fc060ecf2043590c63146d1"
+    },
+    {
+      "path": "sm.svg",
+      "bytes": 15774,
+      "upstreamBlobSha": "00e9286c44547a508f0b2d307767040b694ff56d"
+    },
+    {
+      "path": "sn.svg",
+      "bytes": 421,
+      "upstreamBlobSha": "7c0673d6d66d4260fd768deb8807b2ac72de7370"
+    },
+    {
+      "path": "so.svg",
+      "bytes": 483,
+      "upstreamBlobSha": "a581ac63cfaf2f58a7b5c685f620188d2c7ce826"
+    },
+    {
+      "path": "sr.svg",
+      "bytes": 312,
+      "upstreamBlobSha": "5e71c400262bac42b8f8fdd36c9a789e78c5a13b"
+    },
+    {
+      "path": "ss.svg",
+      "bytes": 398,
+      "upstreamBlobSha": "b257aa0b3e505f31f93446067b59bef8a033c58c"
+    },
+    {
+      "path": "st.svg",
+      "bytes": 954,
+      "upstreamBlobSha": "1294bcb70e87ea10a22743d512bce2fa90af3173"
+    },
+    {
+      "path": "sv.svg",
+      "bytes": 82815,
+      "upstreamBlobSha": "c811e912f04103958ed4b6d15a757d1ccad5a34e"
+    },
+    {
+      "path": "sx.svg",
+      "bytes": 13144,
+      "upstreamBlobSha": "18f7a1397b0ee2148a74c2959ae12d7a2e5c7cb1"
+    },
+    {
+      "path": "sy.svg",
+      "bytes": 321,
+      "upstreamBlobSha": "5225550525045d456070fe3c86778677146d88b2"
+    },
+    {
+      "path": "sz.svg",
+      "bytes": 4803,
+      "upstreamBlobSha": "294a2cc1a88499796bc65f61b4ba07551b488d1c"
+    },
+    {
+      "path": "tc.svg",
+      "bytes": 7150,
+      "upstreamBlobSha": "63f13c359bfe9d04a6536740be086e3184f6b153"
+    },
+    {
+      "path": "td.svg",
+      "bytes": 271,
+      "upstreamBlobSha": "fa3bd927c1580108677d5936898ebd9d87737d09"
+    },
+    {
+      "path": "tf.svg",
+      "bytes": 1099,
+      "upstreamBlobSha": "fba233563fea8f0e6099205c7f55adb7a0d3831c"
+    },
+    {
+      "path": "tg.svg",
+      "bytes": 717,
+      "upstreamBlobSha": "c63a6d1a948386ac8640c036d24332b7b39d38af"
+    },
+    {
+      "path": "th.svg",
+      "bytes": 284,
+      "upstreamBlobSha": "1e93a61e95bfe4bd0494ffa27d24dc4fd798eb95"
+    },
+    {
+      "path": "tj.svg",
+      "bytes": 1855,
+      "upstreamBlobSha": "9fba246cde0c4367b250e35f72ea7830bbffe7ae"
+    },
+    {
+      "path": "tk.svg",
+      "bytes": 761,
+      "upstreamBlobSha": "05d3e86ce6375352f6372d1dc36fdd54a562ecc2"
+    },
+    {
+      "path": "tl.svg",
+      "bytes": 611,
+      "upstreamBlobSha": "3d0701a2c8c8da8ee7b7736c49aa6a551c0d5a93"
+    },
+    {
+      "path": "tm.svg",
+      "bytes": 38497,
+      "upstreamBlobSha": "8b656cc2b8b2c271ea28a4858e1a33c615c209dc"
+    },
+    {
+      "path": "tn.svg",
+      "bytes": 343,
+      "upstreamBlobSha": "5735c1984de39c02488cafaebbd34d91f79c93bf"
+    },
+    {
+      "path": "to.svg",
+      "bytes": 352,
+      "upstreamBlobSha": "d0723370668d1322a85a574da2458891c91357ca"
+    },
+    {
+      "path": "tr.svg",
+      "bytes": 549,
+      "upstreamBlobSha": "b96da21f0e98bfaeee3312cf938417bdc4ec2639"
+    },
+    {
+      "path": "tt.svg",
+      "bytes": 304,
+      "upstreamBlobSha": "bc24938cf8ead7002e283b29f70b8d34ff5e8607"
+    },
+    {
+      "path": "tv.svg",
+      "bytes": 1427,
+      "upstreamBlobSha": "675210ec5524a97eb206b674556543d0f37f3c97"
+    },
+    {
+      "path": "tw.svg",
+      "bytes": 2499,
+      "upstreamBlobSha": "57fd98b4333c71cc6a84f733a0ae03db264cf72b"
+    },
+    {
+      "path": "tz.svg",
+      "bytes": 548,
+      "upstreamBlobSha": "a2cfbca42aa2695c6a539fef2c4ee5c44f4f2114"
+    },
+    {
+      "path": "ua.svg",
+      "bytes": 232,
+      "upstreamBlobSha": "a339eb1b9c5934ba0519655c485238fb57b039fc"
+    },
+    {
+      "path": "ug.svg",
+      "bytes": 3950,
+      "upstreamBlobSha": "737eb2ce1a70dc680305684688a1f1b23faeecd6"
+    },
+    {
+      "path": "um.svg",
+      "bytes": 648,
+      "upstreamBlobSha": "9e9eddaa4a71766c3b736e525634946dd81e599e"
+    },
+    {
+      "path": "un.svg",
+      "bytes": 20050,
+      "upstreamBlobSha": "e57793bc79a365788d2a65f9b153224ae230e8a6"
+    },
+    {
+      "path": "us.svg",
+      "bytes": 648,
+      "upstreamBlobSha": "9cfd0c927f975b7afff364179c2b850e525236c3"
+    },
+    {
+      "path": "uy.svg",
+      "bytes": 1724,
+      "upstreamBlobSha": "62c36f8e5e68e03d24497629b1dc34a2955d9985"
+    },
+    {
+      "path": "uz.svg",
+      "bytes": 1498,
+      "upstreamBlobSha": "0ccca1b1b4aa9cfaf14911a49e5a89dfac314d14"
+    },
+    {
+      "path": "va.svg",
+      "bytes": 29461,
+      "upstreamBlobSha": "87e0fbbdcce53d2b6425411aa67be52fd07fb294"
+    },
+    {
+      "path": "vc.svg",
+      "bytes": 429,
+      "upstreamBlobSha": "f26c2d8da992ebd682254ad797e99e5501f148e9"
+    },
+    {
+      "path": "ve.svg",
+      "bytes": 1206,
+      "upstreamBlobSha": "314e7f5f7f53c3f069830afd15ec278b820f00b9"
+    },
+    {
+      "path": "vg.svg",
+      "bytes": 10413,
+      "upstreamBlobSha": "0ee90fb28c3cda89b392e1ac09c81771a5b428b0"
+    },
+    {
+      "path": "vi.svg",
+      "bytes": 8682,
+      "upstreamBlobSha": "4270257799af7d52d3b4dfdf70cdab25ebed2e94"
+    },
+    {
+      "path": "vn.svg",
+      "bytes": 490,
+      "upstreamBlobSha": "7e4bac8f4acf3a8dc4cda58e9a3696ca65f8e91e"
+    },
+    {
+      "path": "vu.svg",
+      "bytes": 2127,
+      "upstreamBlobSha": "91e1236a0a9a57fceb859a2bfe0bfc4d99abb747"
+    },
+    {
+      "path": "wf.svg",
+      "bytes": 231,
+      "upstreamBlobSha": "054c57df9972cd5b0c7a0684c7ed4a28eb8bdb40"
+    },
+    {
+      "path": "ws.svg",
+      "bytes": 687,
+      "upstreamBlobSha": "0e758a7a95c09924056d2b08da60bdb0a25b7b09"
+    },
+    {
+      "path": "xk.svg",
+      "bytes": 9311,
+      "upstreamBlobSha": "551e7a4145498ab5b3fa6ee5f1a34fa7d6783dd7"
+    },
+    {
+      "path": "xx.svg",
+      "bytes": 283,
+      "upstreamBlobSha": "9333be36355510d91c37086d090608e92d3c822a"
+    },
+    {
+      "path": "ye.svg",
+      "bytes": 287,
+      "upstreamBlobSha": "1c9e6d6392f8e8824b2822e8a5d1a8a33150c16e"
+    },
+    {
+      "path": "yt.svg",
+      "bytes": 231,
+      "upstreamBlobSha": "e7776b307879a9d83eac363f7a728eab9b5d6f20"
+    },
+    {
+      "path": "za.svg",
+      "bytes": 860,
+      "upstreamBlobSha": "d563adb90c0c20b32d666b9903b8ad88722f1372"
+    },
+    {
+      "path": "zm.svg",
+      "bytes": 5512,
+      "upstreamBlobSha": "13239f5e23f7cef245b4b0c4e2b6acc24fb03c3f"
+    },
+    {
+      "path": "zw.svg",
+      "bytes": 6672,
+      "upstreamBlobSha": "6399ab4ab3ee0dceb4ff9866dedaaf1a7d89f82c"
+    }
+  ]
+}

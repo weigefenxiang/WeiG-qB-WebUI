@@ -1,0 +1,80 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+
+const here=path.dirname(fileURLToPath(import.meta.url));
+const root=path.resolve(here,'..');
+const read=rel=>fs.readFileSync(path.join(root,rel),'utf8');
+const assert=(ok,msg)=>{if(!ok)throw new Error(msg);};
+
+const index=read('webui/private/index.html');
+const ui=read('webui/private/css/ui.css');
+const spatial=read('webui/private/css/spatial.css');
+const layout=read('webui/private/css/layout.css');
+const baseCss=read('webui/private/css/base.css');
+const appCss=read('webui/private/css/app.css');
+const progress=read('webui/private/css/progress.css');
+const transfer=read('webui/private/css/transfer.css');
+const logsCss=read('webui/private/css/logs.css');
+const responsive=read('webui/private/scripts/responsive.js');
+const appJs=read('webui/private/scripts/app.js');
+const components=read('webui/private/scripts/components.js');
+const uiJs=read('webui/private/scripts/ui.js');
+const header=read('webui/private/scripts/header.js');
+const logs=read('webui/private/scripts/logs.js');
+const rss=read('webui/private/scripts/rss.js');
+const columnConfigurator=read('webui/private/scripts/column-configurator.js');
+const dialogRuntime=read('webui/private/scripts/dialog-runtime.js');
+const i18n=read('webui/private/scripts/i18n.js');
+const transferJs=read('webui/private/scripts/transfer.js');
+
+assert(!ui.includes('grid-template-rows:44px 20px!important'),'ui.css must not force the mobile torrent card back to a two-row progress layout');
+assert(!ui.includes('.mobile-card-meta--rail{display:flex!important'),'ui.css must not override the canonical stacked mobile progress rail');
+assert(layout.includes('.torrent-mobile-card--two-line{display:grid!important')&&layout.includes('grid-template-rows:44px minmax(0,1fr)!important'),'layout.css must own mobile card title + metadata/progress structure');
+assert(progress.includes('.mobile-card-meta--rail{display:grid!important')&&progress.includes('grid-template-rows:auto auto!important'),'progress.css must stack metadata over the progress row on mobile');
+assert(progress.includes('.mobile-card-progress{width:100%;max-width:none')&&progress.includes('grid-template-columns:minmax(0,1fr) max-content'),'mobile progress must use full-width bar + right-side percentage');
+assert(responsive.includes("if(density==='compact')return 94")&&responsive.includes("if(density==='comfortable')return 104")&&responsive.includes('return 98'),'mobile row-height owner must reserve enough height for the third progress line');
+
+assert(baseCss.includes('.app-shell{grid-template-rows:var(--topbar-h) minmax(0,1fr) 66px}')&&baseCss.includes('.statusbar{display:none!important}')&&baseCss.includes('.mobile-bottom-nav{display:grid!important;grid-column:1/-1;grid-row:3;'),'mobile shell must not reserve a hidden statusbar track below the workspace');
+assert(appJs.includes('C.renderPagerLabel')&&components.includes('pager-index-copy--full')&&components.includes('pager-index-copy--compact')&&!/C\.renderPagerLabel=function[\s\S]*?U\.isMobile\(\)/.test(components.slice(components.indexOf('C.renderPagerLabel=function'),components.indexOf('C.pagerControl=function'))),'Torrent pager must consume the shared full + compact copy owner without screen/mobile branching');assert(layout.includes('@container torrent-pager (max-width:800px)')&&layout.includes('.pager-index-copy--full{display:none}')&&layout.includes('.pager-index-copy--compact{display:inline}'),'compact pager copy must be selected by the Torrent pager container, including mobile widths');
+assert(layout.includes('container-name:torrent-pager')&&layout.includes('grid-template-columns:minmax(0,1fr) auto'),'Torrent pager must allocate remaining width to Detail tabs and keep pagination right-anchored by its own container');assert(layout.includes('.mobile-detail-rail>.torrent-detail-tabs')&&layout.includes('flex-wrap:nowrap')&&layout.includes('overflow-x:auto'),'mobile/narrow Detail tabs must stay on one compact physical rail and scroll horizontally instead of wrapping');assert(index.includes('id="mobile-detail-rail"')&&index.includes('id="mobile-detail-collapse"')&&index.includes('id="mobile-detail-expand"')&&responsive.includes("W.SurfaceTransition.slide(nodes.rail,!collapsed,'rail')"),'Detail rail arrows must reuse the same semantic tabs and the shared reduced-motion-aware transition primitive');assert(responsive.includes("dataset.mobileDetailCollapsed")&&responsive.includes("aria-controls','torrent-detail-dock torrent-detail-tabs")&&layout.includes('#list-view[data-mobile-detail-collapsed=true] .torrent-detail-dock'),'mobile Detail collapse must hide the whole Detail presentation (Dock + tabs) without closing its semantic session');assert(layout.includes('gap:2px')&&layout.includes('padding-inline:7px'),'Mobile Detail tabs must use the compact pager-rail density');
+assert(layout.includes('.mobile-pager-actions-slot #torrent-selection-toolbar{display:flex')&&layout.includes('gap:5px'),'mobile Start/Pause/More/Delete must have visible separation');
+assert(layout.includes('font-size:clamp(11px,2.95vw,13px)'),'mobile batch actions must use readable text before narrow-screen shrinking');
+assert(layout.includes('#actions-dialog .action-grid{grid-template-columns:repeat(2,minmax(0,1fr))'),'mobile More Actions must preserve the canonical two-column action layout');
+assert(layout.includes('#actions-dialog .action-grid .btn')&&layout.includes('font-size:clamp(12px,3.35vw,15px)')&&layout.includes('overflow-wrap:anywhere'),'mobile More Actions labels must stay readable and contained');
+assert(!appCss.includes('#actions-dialog[open]{position:fixed;inset:auto 7px 7px 7px'),'mobile More Actions must use canonical centered DialogRuntime geometry instead of a feature-local bottom sheet');
+
+
+assert((index.match(/id="search-input"/g)||[]).length===1,'Header Search input must remain unique');
+assert(!uiJs.includes('rss-search-input')&&!uiJs.includes('installRSSSearch'),'retired page-local RSS Search must leave runtime');
+assert(uiJs.includes('W.RSS={setQuery:setRSSQuery')&&uiJs.includes('function applyRSSQuery(root)'),'RSS filtering must consume one route query without another API poller');
+assert(uiJs.includes("W.DialogRuntime.create({id:'rss-add-dialog'")&&uiJs.includes("rssOpenButton.id='rss-add-open-btn'")&&uiJs.includes('header.appendChild(actions)'),'RSS Add Feed and Refresh must move to the page header while Feed URL lives in canonical DialogRuntime');
+assert(layout.includes('.rss-header-actions')&&layout.includes('#rss-view>.workspace__header{display:grid;grid-template-columns:minmax(0,1fr) auto'),'RSS title and page actions must share the mobile header row');
+assert(rss.includes("dialog.dataset.dialogMobile='compact'"),'RSS Downloader must opt into the canonical compact-mobile Dialog variant');
+assert(columnConfigurator.includes("dialog.dataset.dialogMobile='compact'"),'ColumnConfigurator must consume the same canonical compact-mobile Dialog geometry as RSS rather than own a mobile height formula');
+assert(ui.includes('dialog.dialog[data-dialog-mobile="compact"]')&&ui.includes('--dialog-mobile-block-gap:calc(max(16px,env(safe-area-inset-top)) + max(16px,env(safe-area-inset-bottom)))')&&ui.includes('--dialog-max-height:calc(var(--dialog-visual-viewport-height,100dvh) - var(--dialog-mobile-block-gap))')&&!ui.includes('min(720px,calc(100dvh - 72px))'),'shared compact Dialog geometry must scale with the live mobile visual viewport and safe areas instead of a fixed pixel cap');
+assert(dialogRuntime.includes("--dialog-visual-viewport-height")&&dialogRuntime.includes("--dialog-visual-viewport-width")&&dialogRuntime.includes('syncViewportBudget(dialog)'),'DialogRuntime must project live VisualViewport dimensions into the shared mobile Dialog geometry on open and resize');
+assert(uiJs.includes("W.ColumnConfigurator.register('torrent-mobile'")&&uiJs.includes("W.ColumnConfigurator.open('torrent-mobile')"),'mobile Torrent field configuration must consume the same ColumnConfigurator owner as desktop/detail tables');
+assert(!uiJs.includes('mobile-columns-dialog')&&!ui.includes('.mobile-field-dialog')&&!ui.includes('.mobile-field-row')&&!i18n.includes('columns.mobileTitle'),'the retired feature-local mobile columns Dialog, CSS and copy family must be removed rather than hidden');
+assert(!layout.includes('.rss-rules-dialog{height:min(720px,calc(100dvh - 40px))'),'RSS Downloader must not restore a second mobile height owner after adopting the shared compact Dialog variant');
+
+assert(header.includes('function routeSearchInput(event)')&&header.includes("W.RSS.setQuery(input.value)")&&header.includes("W.Logs.setQuery(input.value)"),'Header Search must dispatch to current RSS/Logs semantic owners');
+
+assert(!logs.includes('logs-search-toggle')&&!logs.includes('logs-search-input')&&!logsCss.includes('.logs-search-toggle')&&!logsCss.includes('.logs-search{'),'Logs page-local Search icon/input must be retired completely');
+assert(logs.includes("W.Logs={setQuery:setQuery,query:function(){return state.query;}")&&logs.includes("C.selectControl({id:'logs-size-mode'"),'Logs must expose its query to Header Search and keep canonical size Select');
+assert(logsCss.includes('.logs-filters>[data-log-type]')&&!logsCss.includes('.logs-filters>[data-log-type]+[data-log-type]'),'Mobile log levels must remain separate controls and must not restore the retired segmented adjacency skin');
+assert(logsCss.includes('.logs-toolbar{display:flex;flex-direction:row;flex-wrap:nowrap;justify-content:flex-start')&&logsCss.includes('.logs-toolbar>.logs-filters{')&&/\.logs-toolbar>\.logs-filters\{[^}]*gap:[1-9]/.test(logsCss)&&logsCss.includes('overflow-x:auto')&&logsCss.includes('.logs-refresh::before{content:"↻"'),'Mobile Logs controls must defeat the generic mobile grid-toolbar column cascade, preserve positive spacing between canonical severity chips, and collapse Refresh to its icon when narrow');
+assert(logsCss.includes('.logs-actions .logs-size-mode{--ui-select-width:max-content')&&!logsCss.includes('.logs-size-mode{border:'),'Logs size mode may own geometry but not duplicate canonical Select skin');
+assert(ui.includes('#list-view .grid-toolbar .ui-select__trigger::before')&&!/(^|})\.grid-toolbar \.ui-select__trigger::before/.test(ui),'Mobile inset Select shell must be scoped to the Torrent toolbar so Logs keeps one canonical Select border');
+
+assert(responsive.includes('function ensureDrawerTelemetry()')&&responsive.includes("host.id='mobile-drawer-telemetry'"),'mobile Drawer telemetry must have one responsive presentation host');
+assert(responsive.includes('host.append(chart,transfer,primary)'),'mobile Drawer telemetry DOM order must be chart, transfer/connection, then Torrent/storage at the physical bottom');
+assert(transfer.includes('#sidebar{display:grid!important;grid-template-rows:minmax(0,1fr) auto!important')&&transfer.includes('.mobile-drawer-telemetry{display:grid!important;grid-row:2!important'),'mobile Drawer must reserve vertical space for filters plus canonical telemetry only');
+assert(transfer.includes('.sidebar__meta{display:none!important}'),'qBittorrent/WebAPI/compat metadata must not consume Mobile Drawer space');
+assert(spatial.includes('#filter-nav{grid-template-columns:repeat(2,minmax(0,1fr))')&&spatial.includes('.facet-controls{grid-template-columns:repeat(2,minmax(0,1fr))'),'Android Drawer state filters and facets must both use the canonical two-column responsive grid');
+assert(!transfer.includes('@container mobile-drawer (max-height:650px)'),'Facet two-column ownership must not remain duplicated in Transfer CSS');
+assert(!transferJs.includes('data-mini-rate')&&!transfer.includes('transfer-mini-chart__rates'),'compact transfer chart must not repeat rates already shown by the transfer capsule');
+assert(transferJs.includes('drawRateChart(canvas,chartWindow,180,100)')&&transferJs.includes("windowText.textContent=windowLabel(chartWindow)")&&transferJs.includes('renderCompactChart();'),'compact transfer chart must share the full dialog time-window state and renderer');
+assert(transfer.includes('.transfer-runtime-capsule__limits{width:30px;min-width:30px;flex:0 0 30px}')&&transfer.includes('font-size:clamp(10px,3vw,13.5px)'),'mobile transfer speeds must be larger while the rate-limit affordance keeps reserved width');
+
+console.log('Mobile visibility contract passed: adaptive shared Dialog geometry, canonical mobile Columns, two-column Drawer filters, route-aware Search and segmented Logs all reuse shared owners.');

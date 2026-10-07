@@ -1,0 +1,142 @@
+{
+  "schemaVersion": 1,
+  "styleConcurrency": 4,
+  "maxAttempts": 3,
+  "retryDelays": [
+    250,
+    700
+  ],
+  "styles": [
+    "css/app.css",
+    "css/base.css",
+    "css/spatial.css",
+    "css/transfer.css",
+    "css/progress.css",
+    "css/controls.css",
+    "css/layout.css",
+    "css/table.css",
+    "css/theme.css",
+    "css/ui.css",
+    "css/polish.css",
+    "css/logs.css",
+    "css/brand.css",
+    "css/header.css",
+    "css/session.css",
+    "css/settings.css",
+    "css/feedback.css",
+    "css/action-editor.css",
+    "css/sidebar.css"
+  ],
+  "phases": [
+    {
+      "name": "foundation",
+      "scripts": [
+        "scripts/brand-favicon.js",
+        "storage-migration.js"
+      ]
+    },
+    {
+      "name": "platform",
+      "scripts": [
+        "session-contract.js",
+        "scripts/i18n.js",
+        "scripts/select-geometry.js",
+        "scripts/surface-transition.js",
+        "scripts/action-registry.js",
+        "scripts/library-data.js",
+        "scripts/rate-value.js"
+      ]
+    },
+    {
+      "name": "core",
+      "scripts": [
+        "scripts/core.js"
+      ]
+    },
+    {
+      "name": "semantic-primitives",
+      "scripts": [
+        "scripts/dialog-runtime.js",
+        "scripts/feedback.js",
+        "scripts/torrent-semantics.js",
+        "scripts/settings-schema.js"
+      ]
+    },
+    {
+      "name": "transport",
+      "scripts": [
+        "scripts/qb-client.js"
+      ]
+    },
+    {
+      "name": "capability-data",
+      "scripts": [
+        "scripts/capabilities.js",
+        "scripts/client-data-runtime.js"
+      ]
+    },
+    {
+      "name": "shared-ui",
+      "scripts": [
+        "scripts/components.js",
+        "scripts/theme.js",
+        "scripts/time.js",
+        "scripts/brand.js",
+        "scripts/session.js",
+        "scripts/update-check.js",
+        "scripts/navigation.js"
+      ]
+    },
+    {
+      "name": "field-ui",
+      "scripts": [
+        "scripts/bug-report.js",
+        "scripts/torrent-fields.js"
+      ]
+    },
+    {
+      "name": "interactive-primitives",
+      "scripts": [
+        "scripts/floating.js",
+        "scripts/spatial.js",
+        "scripts/transfer.js",
+        "scripts/torrent-action-editor.js"
+      ]
+    },
+    {
+      "name": "workspace",
+      "scripts": [
+        "scripts/responsive.js",
+        "scripts/selection.js",
+        "scripts/torrent-filter-view.js",
+        "scripts/layout.js"
+      ]
+    },
+    {
+      "name": "columns",
+      "scripts": [
+        "scripts/column-configurator.js"
+      ]
+    },
+    {
+      "name": "presentation",
+      "scripts": [
+        "scripts/ui.js",
+        "scripts/polish.js"
+      ]
+    },
+    {
+      "name": "shell",
+      "scripts": [
+        "scripts/ux.js",
+        "scripts/header.js"
+      ]
+    },
+    {
+      "name": "application",
+      "scripts": [
+        "scripts/app.js"
+      ]
+    }
+  ]
+}

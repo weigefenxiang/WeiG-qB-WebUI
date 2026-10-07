@@ -1,0 +1,693 @@
+name: Virtual qB Pages Source
+
+# Source relay owns normal Pages trigger choreography. Ordinary development pushes only deploy
+# when public WebUI/simulator/installer payload or Pages materialization inputs changed. Heavy
+# Settings evidence is demand-driven; manual settings-evidence forces a refresh without deploying Pages.
+# Keep this relevance boundary symmetric with pages.yml; repository contracts lock the pair.
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Relay mode
+        required: false
+        default: pages
+        type: choice
+        options:
+          - pages
+          - change-aware
+          - settings-evidence
+  push:
+    branches:
+      - dev
+      - main
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: pages-source-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'settings-evidence' && 'settings-evidence' || 'pages' }}
+  cancel-in-progress: true
+
+jobs:
+  source:
+    # Small incremental dev commits may opt out of the expensive Pages evidence/deploy chain.
+    # Manual dispatch always runs, and the final validation commit intentionally omits [skip-pages].
+    if: ${{ github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, '[skip-pages]') }}
+    runs-on: ubuntu-latest
+    outputs:
+      relevant: ${{ steps.relevance.outputs.relevant }}
+      force_evidence: ${{ steps.relevance.outputs.force_evidence }}
+      installer: ${{ steps.relevance.outputs.installer }}
+      ui: ${{ steps.relevance.outputs.ui }}
+      settings_ui: ${{ steps.relevance.outputs.settings_ui }}
+      settings_source: ${{ steps.relevance.outputs.settings_source }}
+      native_source: ${{ steps.relevance.outputs.native_source }}
+      pages_payload: ${{ steps.relevance.outputs.pages_payload }}
+      pages_live: ${{ steps.relevance.outputs.pages_live }}
+      verification_profile: ${{ steps.relevance.outputs.verification_profile }}
+    steps:
+      - name: Checkout source history
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js for canonical change classification
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Detect Pages-relevant source changes
+        id: relevance
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+          REQUESTED_MODE: ${{ inputs.mode }}
+        run: |
+          set -euo pipefail
+
+          emit() {
+            local key="$1" value="$2"
+            printf '%s=%s\n' "$key" "$value" >> "$GITHUB_OUTPUT"
+          }
+
+          emit_classes() {
+            local json="$1"
+            emit installer "$(jq -r '.installer' <<<"$json")"
+            emit ui "$(jq -r '.ui' <<<"$json")"
+            emit settings_ui "$(jq -r '.settingsUi' <<<"$json")"
+            emit settings_source "$(jq -r '.settingsSource' <<<"$json")"
+            emit native_source "$(jq -r '.nativeSource' <<<"$json")"
+            emit pages_payload "$(jq -r '.pagesPayload' <<<"$json")"
+            emit pages_live "$(jq -r '.pagesLive' <<<"$json")"
+          }
+
+          emit_defaults() {
+            emit installer false
+            emit ui false
+            emit settings_ui false
+            emit settings_source false
+            emit native_source false
+            emit pages_payload false
+            emit pages_live false
+          }
+
+          emit_fail_closed() {
+            emit installer true
+            emit ui true
+            emit settings_ui true
+            emit settings_source true
+            emit native_source true
+            emit pages_payload true
+            emit pages_live true
+          }
+
+          classify_range() {
+            local from_sha="$1"
+            local to_sha="$2"
+            git -c core.quotePath=false diff --name-only -z "$from_sha" "$to_sha"               | node tools/change-classifier.mjs --stdin0
+          }
+
+          scan_pages_relevant_range() {
+            local from_sha="$1"
+            local to_sha="$2"
+            local label="$3"
+            local include_live="$4"
+            local json field relevant
+
+            json="$(classify_range "$from_sha" "$to_sha")"
+            SCANNED_CHANGE_JSON="$json"
+            if [ "$include_live" = "true" ]; then
+              field=pagesRelevant
+            else
+              field=pagesPayload
+            fi
+            relevant="$(jq -r --arg field "$field" '.[$field]' <<<"$json")"
+            if [ "$relevant" = "true" ]; then
+              if [ "$label" = "published dev payload" ]; then
+                echo "Published dev Pages payload is stale across Pages-relevant change: $(jq -r '.paths | join(", ")' <<<"$json")"
+              else
+                echo "Pages-relevant change classes: $(jq -c '{installer,ui,settingsUi,settingsSource,nativeSource,pagesPayload,pagesLive}' <<<"$json")"
+              fi
+              return 0
+            fi
+            if [ "$label" = "published dev payload" ]; then
+              echo "Published-to-current range is Pages-irrelevant: $(jq -r '.paths | join(", ")' <<<"$json")"
+            else
+              echo "Current push is Pages-irrelevant: $(jq -r '.paths | join(", ")' <<<"$json")"
+            fi
+            return 1
+          }
+
+          emit force_evidence false
+          emit_defaults
+          SCANNED_CHANGE_JSON=""
+
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            case "$REQUESTED_MODE" in
+              settings-evidence)
+                emit relevant true
+                test "$GITHUB_REF_NAME" = "dev" || { echo "settings-evidence refresh must run on dev." >&2; exit 1; }
+                emit force_evidence true
+                emit settings_source true
+                emit pages_payload true
+                emit verification_profile full
+                echo "Manual Settings evidence refresh requested on dev."
+                ;;
+              change-aware)
+                PARENT_SHA="$(git rev-parse "$GITHUB_SHA^" 2>/dev/null || true)"
+                if [ -z "$PARENT_SHA" ] || ! git cat-file -e "$PARENT_SHA^{commit}" 2>/dev/null; then
+                  emit relevant true
+                  emit_fail_closed
+                  emit verification_profile full
+                  echo "Change-aware dispatch has no usable parent SHA; fail closed to full Pages validation."
+                else
+                  CHANGE_JSON="$(classify_range "$PARENT_SHA" "$GITHUB_SHA")"
+                  emit_classes "$CHANGE_JSON"
+                  relevant="$(jq -r '.pagesRelevant' <<<"$CHANGE_JSON")"
+                  emit relevant "$relevant"
+                  profile="$(printf '%s' "$CHANGE_JSON" | node tools/pages-verify-plan.mjs --classification)"
+                  emit verification_profile "$profile"
+                  echo "Change-aware manual Pages profile=$profile classes=$(jq -c '{installer,ui,settingsUi,settingsSource,nativeSource,pagesPayload,pagesLive,workflowPolicy}' <<<"$CHANGE_JSON")"
+                fi
+                ;;
+              pages|'')
+                emit relevant true
+                emit_fail_closed
+                emit verification_profile full
+                echo "Manual Pages dispatch explicitly requests the full deployment proof."
+                ;;
+              *)
+                echo "Unsupported Pages source mode: $REQUESTED_MODE" >&2
+                exit 1
+                ;;
+            esac
+            exit 0
+          fi
+
+          PROFILE_FAIL_CLOSED=false
+          BEFORE="$BEFORE_SHA"
+          case "$BEFORE" in
+            ''|0000000000000000000000000000000000000000)
+              emit relevant true
+              emit_fail_closed
+              emit verification_profile full
+              echo "Push has no usable before SHA; fail closed by requiring a Pages owner run."
+              exit 0
+              ;;
+          esac
+
+          if ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            emit relevant true
+            emit_fail_closed
+            emit verification_profile full
+            echo "Before SHA is unavailable locally; fail closed by requiring a Pages owner run."
+            exit 0
+          fi
+
+          CHANGE_JSON="$(classify_range "$BEFORE" "$GITHUB_SHA")"
+          relevant="$(jq -r '.pagesRelevant' <<<"$CHANGE_JSON")"
+
+          # A docs-only follow-up can arrive after an earlier Pages-relevant build failed. In that
+          # case BEFORE..HEAD is irrelevant even though the public materialized dev payload is still
+          # behind an unpublished product/materialization change. Reconcile the live payload identity
+          # against the whole published-payload..current-dev range before deciding to skip Pages.
+          if [ "$relevant" != "true" ] && [ "$GITHUB_REF_NAME" = "dev" ]; then
+            PAGES_DEV_SHA_URL="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/downloads/dev/GIT_SHA?relay=$GITHUB_RUN_ID-$GITHUB_SHA"
+            PUBLISHED_SHA=""
+            if ! PUBLISHED_SHA="$(curl -fsSL --retry 2 --connect-timeout 10 --max-time 20 -H 'Cache-Control: no-cache' "$PAGES_DEV_SHA_URL" | tr -d '\r\n')"; then
+              echo "Unable to read published dev Pages payload SHA; fail closed by requiring a Pages owner run."
+              relevant=true
+              PROFILE_FAIL_CLOSED=true
+            elif [[ ! "$PUBLISHED_SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
+              echo "Published dev Pages payload SHA is invalid: $PUBLISHED_SHA; fail closed by requiring a Pages owner run."
+              relevant=true
+              PROFILE_FAIL_CLOSED=true
+            else
+              PUBLISHED_SHA="${PUBLISHED_SHA,,}"
+              if [ "$PUBLISHED_SHA" = "$GITHUB_SHA" ]; then
+                echo "Published dev Pages payload already matches current dev: $GITHUB_SHA"
+              elif ! git cat-file -e "$PUBLISHED_SHA^{commit}" 2>/dev/null; then
+                echo "Published dev Pages SHA $PUBLISHED_SHA is unavailable in source history; fail closed by requiring a Pages owner run."
+                relevant=true
+                PROFILE_FAIL_CLOSED=true
+              elif ! git merge-base --is-ancestor "$PUBLISHED_SHA" "$GITHUB_SHA"; then
+                echo "Published dev Pages SHA is not an ancestor of current dev; fail closed by requiring a Pages owner run."
+                relevant=true
+                PROFILE_FAIL_CLOSED=true
+              elif scan_pages_relevant_range "$PUBLISHED_SHA" "$GITHUB_SHA" "published dev payload" true; then
+                relevant=true
+                CHANGE_JSON="$SCANNED_CHANGE_JSON"
+              else
+                echo "Published dev payload $PUBLISHED_SHA can represent current dev $GITHUB_SHA because only Pages-irrelevant changes are newer."
+              fi
+            fi
+          fi
+
+          emit_classes "$CHANGE_JSON"
+          emit relevant "$relevant"
+          if [ "$PROFILE_FAIL_CLOSED" = "true" ]; then
+            profile=full
+          else
+            profile="$(printf '%s' "$CHANGE_JSON" | node tools/pages-verify-plan.mjs --classification)"
+          fi
+          emit verification_profile "$profile"
+          echo "Current change classes: $(jq -c '{installer,ui,settingsUi,settingsSource,nativeSource,pagesPayload,pagesLive,workflowPolicy}' <<<"$CHANGE_JSON")"
+          echo "Pages verification profile: $profile"
+          if [ "$relevant" != "true" ]; then
+            echo "No public payload, materialization input, live verifier, or unpublished Pages-relevant dev change requires deployment."
+          fi
+
+      - name: Recover stale Pages browser verification
+        if: ${{ steps.relevance.outputs.relevant == 'true' && github.ref_name == 'dev' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          NOW="$(date -u +%s)"
+          mapfile -t RUNS < <(gh api \
+            "/repos/$GITHUB_REPOSITORY/actions/workflows/pages.yml/runs?branch=dev&event=workflow_dispatch&status=in_progress&per_page=20" \
+            --jq '.workflow_runs[] | [.id, .head_sha, .created_at] | @tsv')
+
+          for ROW in "${RUNS[@]}"; do
+            IFS=$'\t' read -r RUN_ID RUN_SHA CREATED_AT <<< "$ROW"
+            [ -n "$RUN_ID" ] || continue
+            [ "$RUN_SHA" != "$GITHUB_SHA" ] || continue
+
+            CREATED_EPOCH="$(date -u -d "$CREATED_AT" +%s)"
+            AGE_SECONDS="$((NOW - CREATED_EPOCH))"
+            if [ "$AGE_SECONDS" -lt 900 ]; then
+              echo "Pages run $RUN_ID ($RUN_SHA) is only ${AGE_SECONDS}s old; preserving it."
+              continue
+            fi
+
+            JOBS_JSON="$RUNNER_TEMP/pages-jobs-$RUN_ID.json"
+            gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/jobs?per_page=100" > "$JOBS_JSON"
+            DEPLOY_OK="$(jq '[.jobs[] | select(.name == "deploy" and .status == "completed" and .conclusion == "success")] | length' "$JOBS_JSON")"
+            VERIFY_ACTIVE="$(jq '[.jobs[] | select((.name == "verify" or (.name | startswith("verify "))) and .status == "in_progress")] | length' "$JOBS_JSON")"
+
+            if [ "$DEPLOY_OK" -eq 1 ] && [ "$VERIFY_ACTIVE" -ge 1 ]; then
+              echo "Canceling stale Pages run $RUN_ID ($RUN_SHA): deploy already succeeded, $VERIFY_ACTIVE verify job(s) have remained active for ${AGE_SECONDS}s."
+              gh api --method POST "/repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/cancel" >/dev/null
+            else
+              echo "Preserving Pages run $RUN_ID ($RUN_SHA): it is not a post-deploy stale verify (deploy_ok=$DEPLOY_OK verify_active=$VERIFY_ACTIVE)."
+            fi
+          done
+
+      - name: Defer Pages owner until exact-dev Settings evidence is ready
+        if: ${{ steps.relevance.outputs.relevant == 'true' }}
+        run: echo "Pages owner dispatch is gated by the exact-dev Settings evidence DAG below."
+
+  settings_evidence_probe:
+    name: Probe exact-dev-SHA Settings evidence
+    needs: source
+    if: ${{ needs.source.outputs.relevant == 'true' }}
+    runs-on: ubuntu-latest
+    outputs:
+      dev_sha: ${{ steps.dev.outputs.dev_sha }}
+      ready: ${{ steps.probe.outputs.ready }}
+    steps:
+      - name: Resolve current dev Pages owner SHA
+        id: dev
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          DEV_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/commits/dev" --jq '.sha')"
+          test "${#DEV_SHA}" -eq 40
+          echo "dev_sha=$DEV_SHA" >> "$GITHUB_OUTPUT"
+          echo "Exact dev Pages owner: $DEV_SHA"
+
+      - name: Checkout exact dev evidence source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.dev.outputs.dev_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Probe prepared certified Settings/source LKG
+        id: probe
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEV_SHA: ${{ steps.dev.outputs.dev_sha }}
+          FORCE_EVIDENCE: ${{ needs.source.outputs.force_evidence }}
+        run: |
+          set -euo pipefail
+          if [ "$FORCE_EVIDENCE" = "true" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "Forced evidence refresh requested for $DEV_SHA."
+            exit 0
+          fi
+
+          if node tools/qb-settings-translation-artifact.mjs \
+            --repo="$GITHUB_REPOSITORY" \
+            --branch=dev \
+            --source-sha="$DEV_SHA" \
+            --out="$RUNNER_TEMP/qb-settings-translation-lkg.json" \
+            --certified-only
+          then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "Exact or Settings-source-equivalent certified Settings evidence is ready for $DEV_SHA."
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "No exact or Settings-source-equivalent certified Settings evidence exists for $DEV_SHA; fan out 16 independent runners."
+          fi
+
+  settings_evidence_shard:
+    name: Settings source shard ${{ matrix.shard }}
+    needs: settings_evidence_probe
+    if: ${{ needs.settings_evidence_probe.outputs.ready != 'true' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 16
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+    steps:
+      - name: Checkout exact dev evidence source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.settings_evidence_probe.outputs.dev_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Checkout qBittorrent upstream with all stable release tags
+        uses: actions/checkout@v7
+        with:
+          repository: qbittorrent/qBittorrent
+          path: upstream-qb
+          fetch-depth: 0
+          fetch-tags: true
+          filter: blob:none
+      - name: Extract and enrich one exact source shard
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/qb-release-catalog-shard.mjs upstream-qb \
+            --shard-index="${{ matrix.shard }}" \
+            --shard-count=16 \
+            --admitted-catalog=tests/fixtures/qb-release-catalog.lkg.json \
+            --output="qb-releases-shard-${{ matrix.shard }}.raw.json" \
+            --manifest="qb-releases-shard-${{ matrix.shard }}.meta.json"
+          node tools/qb-locale-source.mjs upstream-qb \
+            "qb-releases-shard-${{ matrix.shard }}.raw.json" \
+            "qb-releases-shard-${{ matrix.shard }}.json"
+          rm "qb-releases-shard-${{ matrix.shard }}.raw.json"
+      - name: Upload exact source shard
+        uses: actions/upload-artifact@v7
+        with:
+          name: qb-settings-source-shard-${{ needs.settings_evidence_probe.outputs.dev_sha }}-${{ matrix.shard }}
+          path: |
+            qb-releases-shard-${{ matrix.shard }}.json
+            qb-releases-shard-${{ matrix.shard }}.meta.json
+            qb-releases-shard-${{ matrix.shard }}.recovery.json
+          if-no-files-found: error
+          retention-days: 1
+
+  settings_evidence_merge:
+    name: Merge 16 Settings source shards
+    needs: [settings_evidence_probe, settings_evidence_shard]
+    if: ${{ always() && needs.settings_evidence_probe.result == 'success' && needs.settings_evidence_probe.outputs.ready != 'true' && needs.settings_evidence_shard.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact dev evidence source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.settings_evidence_probe.outputs.dev_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Download all 16 exact source shards
+        uses: actions/download-artifact@v8
+        with:
+          pattern: qb-settings-source-shard-${{ needs.settings_evidence_probe.outputs.dev_sha }}-*
+          path: settings-shards
+          merge-multiple: true
+      - name: Merge exact source-derived catalog and recovery evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(find settings-shards -maxdepth 1 -name 'qb-releases-shard-*.json' ! -name 'qb-releases-shard-*.meta.json' ! -name 'qb-releases-shard-*.recovery.json' | wc -l)" -eq 16
+          test "$(find settings-shards -maxdepth 1 -name 'qb-releases-shard-*.meta.json' | wc -l)" -eq 16
+          test "$(find settings-shards -maxdepth 1 -name 'qb-releases-shard-*.recovery.json' | wc -l)" -eq 16
+          node tools/qb-release-catalog-shard-merge.mjs settings-shards qb-releases.json
+          test -s qb-releases.recovery.json
+      - name: Upload exact source-enriched bootstrap catalog
+        uses: actions/upload-artifact@v7
+        with:
+          name: qb-release-catalog-${{ needs.settings_evidence_probe.outputs.dev_sha }}
+          path: |
+            qb-releases.json
+            qb-releases.recovery.json
+          if-no-files-found: error
+          retention-days: 1
+
+  settings_evidence_lkg:
+    name: Freeze certified Settings/source LKG v2
+    needs: [settings_evidence_probe, settings_evidence_merge]
+    if: ${{ always() && needs.settings_evidence_probe.result == 'success' && needs.settings_evidence_probe.outputs.ready != 'true' && needs.settings_evidence_merge.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact dev evidence source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.settings_evidence_probe.outputs.dev_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Download exact merged catalog
+        uses: actions/download-artifact@v8
+        with:
+          name: qb-release-catalog-${{ needs.settings_evidence_probe.outputs.dev_sha }}
+          path: release-catalog
+      - name: Freeze and validate exact-dev reusable Settings/source evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp release-catalog/qb-releases.json qb-releases.json
+          cp release-catalog/qb-releases.recovery.json qb-releases.recovery.json
+          node tools/qb-settings-translation-lkg.mjs qb-releases.json tests/fixtures/qb-release-catalog.lkg.json qb-settings-translation-lkg.json qb-releases.recovery.json
+          sha256sum qb-settings-translation-lkg.json > qb-settings-translation-lkg.SHA256
+          node audits/full-stable-locale-routing-contract.mjs qb-releases.json --require-mapped
+          rm -rf "$RUNNER_TEMP/qb-materialized"
+          mkdir -p "$RUNNER_TEMP/qb-materialized/private/data"
+          node tools/qb-webui-catalog.mjs qb-releases.json "$RUNNER_TEMP/qb-materialized/private/data/qb-releases.json"
+          node tools/qb-runtime-copy-product.mjs validate "$RUNNER_TEMP/qb-materialized/private/data" >/dev/null
+          find "$RUNNER_TEMP/qb-materialized/translations" -type f -name 'webui_*.qm' -print -quit | grep -q .
+      - name: Upload certified exact-dev qB Settings translation LKG
+        uses: actions/upload-artifact@v7
+        with:
+          name: qb-settings-translation-lkg-${{ needs.settings_evidence_probe.outputs.dev_sha }}
+          path: |
+            qb-settings-translation-lkg.json
+            qb-settings-translation-lkg.SHA256
+          if-no-files-found: error
+          retention-days: 90
+
+  admitted_copy_materialize:
+    name: qB admitted Settings copy/QM product materialization
+    needs: [source, settings_evidence_probe, settings_evidence_lkg]
+    if: ${{ always() && github.ref == 'refs/heads/dev' && needs.source.outputs.relevant == 'true' && needs.settings_evidence_probe.result == 'success' && (needs.settings_evidence_probe.outputs.ready == 'true' || needs.settings_evidence_lkg.result == 'success') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    outputs:
+      materialized_sha: ${{ steps.materialize.outputs.materialized_sha }}
+    steps:
+      - name: Checkout exact admitted product owner
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.settings_evidence_probe.outputs.dev_sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Resolve certified exact-dev Settings/source evidence
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEV_SHA: ${{ needs.settings_evidence_probe.outputs.dev_sha }}
+        run: |
+          set -euo pipefail
+          node tools/qb-settings-translation-artifact.mjs \
+            --repo="$GITHUB_REPOSITORY" \
+            --branch=dev \
+            --source-sha="$DEV_SHA" \
+            --out="$RUNNER_TEMP/qb-settings-translation-lkg.json" \
+            --certified-only
+      - name: Generate admitted qB-owned copy/QM product assets
+        shell: bash
+        env:
+          LKG: ${{ runner.temp }}/qb-settings-translation-lkg.json
+          APPLIED_CATALOG: ${{ runner.temp }}/qb-admitted-copy-catalog.json
+          GENERATED: ${{ runner.temp }}/qb-admitted-copy-product
+        run: |
+          set -euo pipefail
+          rm -rf "$GENERATED"
+          mkdir -p "$GENERATED/private/data"
+          node --input-type=module <<'NODE'
+          import crypto from 'node:crypto';
+          import fs from 'node:fs';
+          import {applyQbSettingsTranslationLkg} from './tools/qb-settings-translation-lkg.mjs';
+          const frozenPath='tests/fixtures/qb-release-catalog.lkg.json';
+          const stable=JSON.parse(fs.readFileSync('tools/data/qb-stable-lkg.json','utf8'));
+          const frozenText=fs.readFileSync(frozenPath,'utf8').replace(/\r\n?/g,'\n');
+          const digest=crypto.createHash('sha256').update(Buffer.from(frozenText,'utf8')).digest('hex');
+          if(digest!==stable.catalogSha256)throw new Error('Admitted copy materializer Frozen catalog hash mismatch.');
+          const frozen=JSON.parse(frozenText),lkg=JSON.parse(fs.readFileSync(process.env.LKG,'utf8'));
+          const applied=applyQbSettingsTranslationLkg(frozen,lkg,{catalogSha256:digest});
+          fs.writeFileSync(process.env.APPLIED_CATALOG,JSON.stringify(applied)+'\n','utf8');
+          console.log('Applied certified Settings/source evidence to '+applied.length+' admitted exact profiles, including canonical locale routes.');
+          NODE
+          node tools/qb-webui-catalog.mjs \
+            "$APPLIED_CATALOG" \
+            "$GENERATED/private/data/qb-releases.json" \
+            --settings-lkg="$LKG"
+          cp webui/private/data/capabilities.json "$GENERATED/private/data/capabilities.json"
+          node tools/qb-copy-route-control-plane.mjs "$GENERATED/private/data/qb-releases.json" "$GENERATED/private/data/capabilities.json" --write >/dev/null
+          node tools/qb-runtime-copy-product.mjs validate "$GENERATED/private/data" >/dev/null
+          find "$GENERATED/translations" -type f -name 'webui_*.qm' -print -quit | grep -q .
+          node tests/qb-runtime-copy-materialization-contract.mjs "$LKG" "$GENERATED/private/data"
+      - name: Verify or materialize admitted product copy runtime
+        id: materialize
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEV_SHA: ${{ needs.settings_evidence_probe.outputs.dev_sha }}
+          GENERATED: ${{ runner.temp }}/qb-admitted-copy-product
+          REQUESTED_MODE: ${{ inputs.mode }}
+        run: |
+          set -euo pipefail
+
+          relay_mode() {
+            case "${REQUESTED_MODE:-pages}" in
+              settings-evidence) printf '%s' settings-evidence ;;
+              *) printf '%s' pages ;;
+            esac
+          }
+
+          handoff_latest_pages_source() {
+            local remote_sha="$1"
+            local mode
+            mode="$(relay_mode)"
+            echo "Admitted copy owner $DEV_SHA is stale; handing Pages source mode $mode to latest dev $remote_sha."
+            jq -n --arg ref dev --arg mode "$mode" '{ref:$ref,inputs:{mode:$mode}}' \
+              | gh api --method POST "/repos/$GITHUB_REPOSITORY/actions/workflows/pages-source.yml/dispatches" --input -
+          }
+
+          copy_equal=false
+          qm_equal=false
+          route_equal=false
+          node tools/qb-runtime-copy-product.mjs compare "$GENERATED/private/data" webui/private/data >/dev/null && copy_equal=true
+          diff -qr "$GENERATED/translations" webui/translations >/dev/null && qm_equal=true
+          node tools/qb-copy-route-control-plane.mjs "$GENERATED/private/data/qb-releases.json" webui/private/data/capabilities.json >/dev/null && route_equal=true
+          if [ "$copy_equal" = true ] && [ "$qm_equal" = true ] && [ "$route_equal" = true ]; then
+            node tests/qb-runtime-copy-materialization-contract.mjs "$RUNNER_TEMP/qb-settings-translation-lkg.json" webui/private/data
+            echo "Committed qB-owned copy/QM assets exactly match admitted current-parser evidence."
+            echo "materialized_sha=$DEV_SHA" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git fetch --no-tags origin dev
+          REMOTE_DEV_SHA="$(git rev-parse origin/dev)"
+          if [ "$REMOTE_DEV_SHA" != "$DEV_SHA" ]; then
+            handoff_latest_pages_source "$REMOTE_DEV_SHA"
+            exit 0
+          fi
+
+          node tools/qb-runtime-copy-product.mjs sync "$GENERATED/private/data" webui/private/data >/dev/null
+          node tools/qb-copy-route-control-plane.mjs "$GENERATED/private/data/qb-releases.json" webui/private/data/capabilities.json --write >/dev/null
+          rm -rf webui/translations
+          mkdir -p webui/translations
+          cp "$GENERATED"/translations/webui_*.qm webui/translations/
+
+          mapfile -t changed < <({ git diff --name-only; git ls-files --others --exclude-standard; } | sort -u)
+          test "${#changed[@]}" -gt 0
+          for path in "${changed[@]}"; do
+            case "$path" in
+              webui/private/data/qb-copy-routes/*|webui/private/data/qb-copy-bindings/*|webui/private/data/qb-copy-fallback/*|webui/private/data/capabilities.json|webui/translations/webui_*.qm) ;;
+              *) echo "Unexpected admitted copy materializer path: $path" >&2; exit 1 ;;
+            esac
+          done
+
+          node tests/qb-runtime-copy-materialization-contract.mjs "$RUNNER_TEMP/qb-settings-translation-lkg.json" webui/private/data
+          git diff --check
+
+          git fetch --no-tags origin dev
+          REMOTE_DEV_SHA="$(git rev-parse origin/dev)"
+          if [ "$REMOTE_DEV_SHA" != "$DEV_SHA" ]; then
+            handoff_latest_pages_source "$REMOTE_DEV_SHA"
+            exit 0
+          fi
+
+          git config user.name "WeiG CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A webui/private/data webui/translations
+          git commit -m "a42: materialize admitted qB copy runtime [native-surfaces] [ui]"
+          if ! git push origin HEAD:dev; then
+            git fetch --no-tags origin dev
+            handoff_latest_pages_source "$(git rev-parse origin/dev)"
+            exit 0
+          fi
+
+          MATERIALIZED_SHA="$(git rev-parse HEAD)"
+          echo "materialized_sha=$MATERIALIZED_SHA" >> "$GITHUB_OUTPUT"
+
+          for mode in ui native-surfaces; do
+            jq -n --arg ref dev --arg mode "$mode" '{ref:$ref,inputs:{validation_mode:$mode}}' \
+              | gh api --method POST "/repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/dispatches" --input -
+          done
+          handoff_latest_pages_source "$MATERIALIZED_SHA"
+
+  dispatch_pages:
+    name: Dispatch dev Pages owner after evidence
+    needs: [source, settings_evidence_probe, settings_evidence_lkg, admitted_copy_materialize]
+    if: ${{ always() && needs.source.outputs.relevant == 'true' && needs.settings_evidence_probe.result == 'success' && (needs.settings_evidence_probe.outputs.ready == 'true' || needs.settings_evidence_lkg.result == 'success') && (github.ref_name != 'dev' || needs.admitted_copy_materialize.result == 'success') && (github.event_name != 'workflow_dispatch' || inputs.mode != 'settings-evidence') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch fresh dev-only Pages owner
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREPARED_DEV_SHA: ${{ needs.settings_evidence_probe.outputs.dev_sha }}
+          VERIFY_PROFILE: ${{ needs.source.outputs.verification_profile }}
+        run: |
+          set -euo pipefail
+          EVENT_BRANCH="$GITHUB_REF_NAME"
+          case "$EVENT_BRANCH" in
+            dev|main) ;;
+            *) echo "Unsupported Pages source branch: $EVENT_BRANCH" >&2; exit 1 ;;
+          esac
+
+          REMOTE_EVENT_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/commits/$EVENT_BRANCH" --jq '.sha')"
+          if [ "$REMOTE_EVENT_SHA" != "$GITHUB_SHA" ]; then
+            echo "Pages source $EVENT_BRANCH@$GITHUB_SHA is stale; current head is $REMOTE_EVENT_SHA. A newer source run owns deployment."
+            exit 0
+          fi
+
+          REMOTE_DEV_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/commits/dev" --jq '.sha')"
+          if [ "$REMOTE_DEV_SHA" != "$PREPARED_DEV_SHA" ]; then
+            echo "Prepared dev evidence $PREPARED_DEV_SHA is stale; current dev is $REMOTE_DEV_SHA. A newer source run owns deployment."
+            exit 0
+          fi
+
+          jq -n --arg ref dev --arg profile "$VERIFY_PROFILE" \
+            '{ref:$ref,inputs:{validation_profile:$profile}}' \
+            | gh api --method POST "/repos/$GITHUB_REPOSITORY/actions/workflows/pages.yml/dispatches" --input -
+
+          echo "Dispatched Virtual qB Pages on dev@$PREPARED_DEV_SHA with validation profile $VERIFY_PROFILE after exact-SHA Settings evidence was ready."

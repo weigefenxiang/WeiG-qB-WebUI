@@ -1,0 +1,124 @@
+import fs from 'node:fs/promises';
+import crypto from 'node:crypto';
+import path from 'node:path';
+import {spawnSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
+import {applyLocaleOverlay} from '../../tools/qb-locale-overlay.mjs';
+import {applyQbSettingsTranslationLkg} from '../../tools/qb-settings-translation-lkg.mjs';
+import {buildStableIndex} from './stable-index.mjs';
+
+const here=path.dirname(fileURLToPath(import.meta.url));
+const projectRoot=path.resolve(here,'../..');
+function arg(name,fallback=''){const prefix=`--${name}=`;const hit=process.argv.find(x=>x.startsWith(prefix));return hit?hit.slice(prefix.length):fallback}
+function required(name){const value=arg(name);if(!value)throw new Error(`Missing --${name}=...`);return value}
+function runNode(file,args){const result=spawnSync(process.execPath,[file,...args],{cwd:projectRoot,stdio:'inherit'});if(result.status!==0)throw new Error(`${path.basename(file)} failed with status ${result.status}`)}
+function digest(bytes){return crypto.createHash('sha256').update(bytes).digest('hex')}
+function labAliasHtml(branch,relativeLab){
+  const title=`WeiG Virtual qB Lab — ${branch}`;
+  const labPath=`${relativeLab}?branch=${encodeURIComponent(branch)}`;
+  return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${title}</title><script>(()=>{const target=new URL('${labPath}',window.location.href);for(const [key,value] of new URLSearchParams(window.location.search))if(key!=='branch')target.searchParams.set(key,value);target.hash=window.location.hash;window.location.replace(target.href)})();</script><noscript><meta http-equiv="refresh" content="0;url=${labPath}"></noscript></head><body><p><a href="${labPath}">进入 WeiG Virtual qB Lab (${branch})</a></p></body></html>`;
+}
+
+const out=path.resolve(required('out'));
+const catalog=path.resolve(required('catalog'));
+const localeOverlayPath=path.resolve(arg('locale-overlay',path.join(projectRoot,'tools/data/qb-locale-lkg.json')));
+const settingsLkgPath=path.resolve(required('settings-translation-lkg'));
+process.env.WEIG_SETTINGS_LKG_PATH=settingsLkgPath;
+const simulatorSha=required('simulator-sha');
+const branches=[
+  {name:'dev',webuiRoot:path.resolve(required('dev-webui')),sha:required('dev-sha'),version:required('dev-version')},
+  {name:'main',webuiRoot:path.resolve(required('main-webui')),sha:required('main-sha'),version:required('main-version')}
+];
+
+await fs.rm(out,{recursive:true,force:true});
+await fs.mkdir(path.join(out,'metadata'),{recursive:true});
+const buildDir=path.join(out,'.build');
+await fs.mkdir(buildDir,{recursive:true});
+const catalogBytes=await fs.readFile(catalog);
+const canonicalCatalogBytes=Buffer.from(catalogBytes.toString('utf8').replace(/\r\n?/g,'\n'),'utf8');
+const baseCatalogSha256=digest(canonicalCatalogBytes);
+const baseCatalog=JSON.parse(canonicalCatalogBytes.toString('utf8'));
+const overlay=JSON.parse(await fs.readFile(localeOverlayPath,'utf8'));
+const localeData=applyLocaleOverlay(baseCatalog,overlay,{catalogSha256:baseCatalogSha256});
+const localeCatalog={schemaVersion:overlay.schemaVersion,profiles:overlay.profileCount,localeSets:Object.keys(overlay.localeSets||{}).length,baseCatalogSha256,sourceEvidence:overlay.sourceEvidence||null};
+
+const settingsLkg=JSON.parse(await fs.readFile(settingsLkgPath,'utf8'));
+const catalogData=applyQbSettingsTranslationLkg(localeData,settingsLkg,{catalogSha256:baseCatalogSha256});
+const settingsTranslationCatalog={
+  schemaVersion:settingsLkg.schemaVersion,
+  profiles:settingsLkg.profileCount,
+  mappedPreferences:(settingsLkg.profiles||[]).reduce((sum,item)=>sum+(Number(item.mappedPreferences)||0),0),
+  translationRoutes:(settingsLkg.profiles||[]).reduce((sum,item)=>sum+Object.keys(item.translations||{}).length,0),
+  translationSets:Object.keys(settingsLkg.sets||{}).length,
+  nativeTorrentColumns:Number(settingsLkg.torrentColumnBindings)||0,
+  recoveryRoutes:Number(settingsLkg.recovery?.routeCount)||0,
+  recoveryLocales:Number(settingsLkg.recovery?.localeCount)||0,
+  baseCatalogSha256,
+  sourceEvidence:settingsLkg.sourceEvidence||null
+};
+const sourceCatalog=path.join(buildDir,'qb-releases.source.json');
+await fs.writeFile(sourceCatalog,JSON.stringify(catalogData)+'\n','utf8');
+
+const buildPages=path.join(here,'build-pages.mjs');
+for(const branch of branches){
+  runNode(buildPages,[
+    `--branch=${branch.name}`,
+    `--webui-root=${branch.webuiRoot}`,
+    `--out=${path.join(out,branch.name,'app')}`,
+    `--catalog=${sourceCatalog}`,
+    `--exact-sha=${branch.sha}`,
+    `--product-version=${branch.version}`,
+    `--simulator-sha=${simulatorSha}`
+  ]);
+  await fs.writeFile(path.join(out,branch.name,'index.html'),labAliasHtml(branch.name,'../lab/'),'utf8');
+}
+
+// Pages is a live runtime surface, not the offline evidence archive. Keep the dev generated
+// catalog because live verification consumes it, but retire source-only catalogs from the
+// deployment and avoid duplicating the generated full catalog in main. Main remains complete
+// for every admitted selector identity through its per-release runtime profile shards.
+const mainProfileRoot=path.join(out,'main','app','__simulator','runtime','profiles');
+for(const profile of catalogData){
+  const qbVersion=String(profile?.qbVersion||'').trim();
+  if(!qbVersion)throw new Error('Pages deployment catalog contains an empty qB version');
+  try{await fs.access(path.join(mainProfileRoot,`${qbVersion}.json`));}
+  catch{throw new Error(`Main Pages preview is missing runtime profile shard for qB ${qbVersion}`);}
+}
+await Promise.all([
+  path.join(out,'dev','app','__simulator','versions','catalog.source.json'),
+  path.join(out,'main','app','__simulator','versions','catalog.source.json'),
+  path.join(out,'main','app','__simulator','versions','catalog.generated.json')
+].map(file=>fs.rm(file,{force:true})));
+
+const devBranch=branches.find(item=>item.name==='dev');
+runNode(path.join(projectRoot,'tools/build-webui-dist.mjs'),[
+  `--webui-root=${devBranch.webuiRoot}`,
+  `--out=${path.join(out,'downloads','dev')}`,
+  `--sha=${devBranch.sha}`,
+  `--version=${devBranch.version}`
+]);
+
+// Top-level Pages metadata is a navigation surface, not the full simulator evidence store.
+// Keep the full catalog inside each simulator build, but publish only a hash-bound stable
+// identity index for the Lab selector so opening /lab does not download the multi-megabyte catalog.
+const stableIndex=buildStableIndex(catalogData,{sourceCatalogSha256:baseCatalogSha256});
+const stableIndexBytes=Buffer.from(JSON.stringify(stableIndex)+'\n','utf8');
+await fs.writeFile(path.join(out,'metadata','qb-stable-index.json'),stableIndexBytes);
+await fs.rm(buildDir,{recursive:true,force:true});
+
+await fs.cp(path.join(projectRoot,'simulator/lab'),path.join(out,'lab'),{recursive:true,force:true});
+for(const branch of branches){
+  const meta={branch:branch.name,exactSha:branch.sha,productVersion:branch.version,simulatorSha,webuiSource:`refs/heads/${branch.name}:webui/**`};
+  await fs.writeFile(path.join(out,'metadata',`${branch.name}.json`),JSON.stringify(meta,null,2)+'\n','utf8');
+}
+const descriptorTotals=(Array.isArray(catalogData)?catalogData:[]).reduce((sum,item)=>{
+  const stats=item?.preferenceDescriptorStats||{};
+  sum.preferences+=Number(stats.total)||0;sum.getterPresent+=Number(stats.getterPresent)||0;sum.setterPresent+=Number(stats.setterPresent)||0;sum.readTyped+=Number(stats.readTyped)||0;sum.writeTyped+=Number(stats.writeTyped)||0;sum.exactAgreement+=Number(stats.exactAgreement)||0;sum.mismatched+=Number(stats.mismatched)||0;sum.safeFallback+=Number(stats.safeFallback)||0;sum.semanticGetterEnriched+=Number(stats.semanticGetterEnriched)||0;sum.unresolvedRead+=Number(stats.unresolvedRead)||0;sum.unresolvedWrite+=Number(stats.unresolvedWrite)||0;sum.structuredRead+=Number(stats.structuredRead)||0;sum.structuredWrite+=Number(stats.structuredWrite)||0;sum.typed+=Number(stats.typed)||0;sum.highConfidence+=Number(stats.highConfidence)||0;sum.unresolved+=Number(stats.unresolved)||0;return sum;
+},{preferences:0,getterPresent:0,setterPresent:0,readTyped:0,writeTyped:0,exactAgreement:0,mismatched:0,safeFallback:0,semanticGetterEnriched:0,unresolvedRead:0,unresolvedWrite:0,structuredRead:0,structuredWrite:0,typed:0,highConfidence:0,unresolved:0});
+const latestProfile=Array.isArray(catalogData)&&catalogData.length?catalogData.at(-1):null;
+const preferenceCatalog={schemaVersion:3,profiles:Array.isArray(catalogData)?catalogData.length:0,...descriptorTotals,latest:latestProfile?{qbVersion:latestProfile.qbVersion,preferenceCount:latestProfile.preferenceDescriptorStats?.total||0,getterPresent:latestProfile.preferenceDescriptorStats?.getterPresent||0,setterPresent:latestProfile.preferenceDescriptorStats?.setterPresent||0,readTyped:latestProfile.preferenceDescriptorStats?.readTyped||0,writeTyped:latestProfile.preferenceDescriptorStats?.writeTyped||0,exactAgreement:latestProfile.preferenceDescriptorStats?.exactAgreement||0,mismatched:latestProfile.preferenceDescriptorStats?.mismatched||0,safeFallback:latestProfile.preferenceDescriptorStats?.safeFallback||0,semanticGetterEnriched:latestProfile.preferenceDescriptorStats?.semanticGetterEnriched||0,unresolvedRead:latestProfile.preferenceDescriptorStats?.unresolvedRead||0,unresolvedWrite:latestProfile.preferenceDescriptorStats?.unresolvedWrite||0,structuredRead:latestProfile.preferenceDescriptorStats?.structuredRead||0,structuredWrite:latestProfile.preferenceDescriptorStats?.structuredWrite||0,typed:latestProfile.preferenceDescriptorStats?.typed||0,unresolved:latestProfile.preferenceDescriptorStats?.unresolved||0}:null};
+const siteMeta={simulatorSha,builtAt:new Date().toISOString(),stableProfiles:Array.isArray(catalogData)?catalogData.length:0,stableIndex:{path:'metadata/qb-stable-index.json',schemaVersion:stableIndex.schemaVersion,profileCount:stableIndex.profileCount,sourceCatalogSha256:stableIndex.sourceCatalogSha256,bytes:stableIndexBytes.length},preferenceCatalog,localeCatalog,settingsTranslationCatalog,devDistribution:{path:'downloads/dev/manifest.json',primaryUnixArchive:'downloads/dev/weig-qb-webui.tar.gz',primaryWindowsArchive:'downloads/dev/weig-qb-webui.zip',gitSha:devBranch.sha,version:devBranch.version,materialized:true},branches:Object.fromEntries(branches.map(x=>[x.name,{exactSha:x.sha,productVersion:x.version}]))};
+await fs.writeFile(path.join(out,'metadata','site.json'),JSON.stringify(siteMeta,null,2)+'\n','utf8');
+await fs.writeFile(path.join(out,'.nojekyll'),'','utf8');
+await fs.writeFile(path.join(out,'index.html'),labAliasHtml('dev','./lab/'),'utf8');
+console.log(`Assembled WeiG Virtual qB Pages artifact: ${out} with ${localeCatalog.profiles} exact locale profiles / ${localeCatalog.localeSets} sets, ${settingsTranslationCatalog.mappedPreferences} official Settings mappings, ${settingsTranslationCatalog.nativeTorrentColumns} native Torrent columns and ${settingsTranslationCatalog.recoveryLocales} recovery QM locales`);

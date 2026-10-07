@@ -1,0 +1,54 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+
+const here=path.dirname(fileURLToPath(import.meta.url));
+const root=path.resolve(here,'..');
+const read=rel=>fs.readFileSync(path.join(root,rel),'utf8');
+const assert=(ok,msg)=>{if(!ok)throw new Error(msg);};
+
+const layout=read('webui/private/css/layout.css');
+const transferCss=read('webui/private/css/transfer.css');
+const transfer=read('webui/private/scripts/transfer.js');
+
+// Transfer speed text and both chart presentations share the existing canonical series colors.
+assert(transfer.includes("getPropertyValue('--accent-primary')")&&transfer.includes("getPropertyValue('--accent-cyan')"),'Transfer canvas renderer must retain the canonical download/upload accent pair');
+assert(transferCss.includes('.status-speed--dl{color:var(--accent-primary)}.status-speed--up{color:var(--accent-cyan)}'),'Transfer speed typography must use the exact chart series colors');
+assert(transferCss.includes('.transfer-chart-legend__side--download{justify-content:flex-end;color:var(--accent-primary)}.transfer-chart-legend__side--upload{justify-content:flex-start;color:var(--accent-cyan)}'),'Full transfer legend semantic sides must expose the same download/upload series colors');
+assert(transferCss.includes('.transfer-mini-chart__legend span:first-child{color:var(--accent-primary)}.transfer-mini-chart__legend span+span{color:var(--accent-cyan)}'),'Compact transfer legend must expose the same download/upload series colors');
+assert(transferCss.includes('background:currentColor'),'Transfer legend dots must inherit their semantic series color instead of maintaining a second color map');
+
+// Display smoothing incrementally freezes completed absolute-time buckets instead of re-bucketing the visible window on every redraw.
+assert(transfer.includes('DISPLAY_BUCKET_MAX=900,displayAggregate={seconds:0,completed:[],active:null}')&&transfer.includes('function appendDisplaySample(sample)')&&transfer.includes('displayAggregate.completed.push(frozenBucket(active))'),'Transfer smoothing must keep one bounded incremental display aggregation cache and freeze completed buckets');
+assert(transfer.includes('function rebuildDisplayAggregate(seconds)')&&transfer.includes('samples.forEach(appendDisplaySample)'),'Changing the display smoothing window may rebuild once from the canonical bounded raw history');
+assert(transfer.includes('function displayAggregates(seconds)')&&transfer.includes('if(displayAggregate.seconds!==seconds)rebuildDisplayAggregate(seconds)'),'Display aggregation must reuse the selected window cache after it is built');
+assert(transfer.includes("{value:'3',label:'3 s'}")&&transfer.includes("{value:'5',label:'5 s'}")&&transfer.includes("{value:'10',label:'10 s'}")&&transfer.includes("{value:'15',label:'15 s'}")&&transfer.includes("{value:'20',label:'20 s'}")&&transfer.includes("{value:'30',label:'30 s'}")&&transfer.includes("{value:'60',label:'60 s'}")&&transfer.includes("{value:'120',label:'120 s'}")&&transfer.includes('chartAverage=15'),'Transfer smoothing must retain canonical presets through 120s with default 15s while arbitrary 1–120s values use the shared numeric input');
+assert(transfer.includes('if(windowSeconds>900)data=bucketSamples();else if(chartAverage>0)data=displayAggregates(chartAverage);else data=samples'),'Short windows must consume incremental display buckets while long windows keep the canonical minute buckets');
+assert(!transfer.includes('function averageSamples(data,seconds)'),'Transfer rendering must not restore full visible-history re-bucketing on every draw');
+assert(transfer.includes("setLegendTotal('download',downloaded)")&&transfer.includes("setLegendTotal('upload',uploaded)")&&transfer.includes('dl_info_data')&&transfer.includes('up_info_data'),'Full dialog legend totals must reuse canonical qB session traffic totals');
+assert(transfer.includes("setLegendRate('download',U.formatSpeed(info.dl_info_speed||0))")&&transfer.includes("setLegendRate('upload',U.formatSpeed(info.up_info_speed||0))"),'Full dialog legend must expose current download/upload rates from the canonical transfer snapshot');
+assert(transfer.includes('nativeStatisticsState')&&transfer.includes("format==='bytes'")&&transfer.includes("format==='percent'")&&transfer.includes("format==='milliseconds'"),'native qB Statistics must render exact source-derived format classes from the same Transfer runtime state');
+assert(transfer.includes("qbSourceText(group.translation")&&transfer.includes("qbSourceText(field.translation"),'native Statistics group/field copy must resolve through qB source/context translation facts');
+assert(transfer.includes("ctx.lineCap='round'")&&transfer.includes("ctx.lineJoin='round'")&&transfer.includes('ctx.quadraticCurveTo'),'Transfer chart smoothing must use the existing low-cost Canvas path interpolation without another polling owner');
+
+// Android Connected copy has exactly the same responsive type size as the transfer speed values.
+const speedFont=transferCss.match(/\.transfer-runtime-capsule \.status-speed strong\{[^}]*font-size:([^;}]*)/)?.[1]?.trim();
+const connectionFont=transferCss.match(/\.mobile-drawer-telemetry__row--transfer>#status-connection\{[^}]*font-size:([^;}]*)/)?.[1]?.trim();
+assert(speedFont&&connectionFont&&speedFont===connectionFont,`Android Connected text must match transfer speed font size: speed=${speedFont} connection=${connectionFont}`);
+assert(speedFont==='clamp(10px,3vw,13.5px)','Android transfer/connection typography must retain the approved responsive clamp');
+assert(transferCss.includes('.transfer-runtime-capsule__limits{width:30px;min-width:30px;flex:0 0 30px}'),'Rate-limit control must retain its reserved Mobile hit region');
+
+// Connected status breathes at half the old frequency while Reduced Motion remains authoritative.
+assert(layout.includes('weig-indicator-pulse 3.8s ease-in-out infinite'),'Connected marker must use the shared slower 3.8s indicator breathing period');
+assert(layout.includes('weig-indicator-pulse 2.6s ease-in-out infinite'),'Firewalled warning timing must remain protected on the shared indicator pulse');
+assert(layout.includes('@media(prefers-reduced-motion:reduce)')&&layout.includes('html[data-motion="reduced"]')&&layout.includes('.connection-indicator[data-connection="connected"] .connection-indicator__dot'),'System and WeiG Reduced Motion must still target the canonical Connected marker');
+assert((layout.match(/connection-indicator\[data-connection="connected"\] \.connection-indicator__dot/g)||[]).length>=3,'Connected marker must have base plus both Reduced Motion protections');
+
+const progressCss=read('webui/private/css/progress.css');
+assert(progressCss.includes('--progress-flow-duration:4.6s;--progress-sweep-duration:6.2s')&&progressCss.includes('[data-progress-state=seed]{--progress-flow-duration:5.2s;--progress-sweep-duration:6.8s}')&&progressCss.includes('[data-progress-state=checking]{--progress-flow-duration:4.2s;--progress-sweep-duration:5.8s}'),'Active torrent progress motion must use the slower canonical cadence across download/seed/checking states');
+assert(progressCss.includes('--progress-body-start:color-mix(in srgb,var(--progress-accent) 82%,var(--bg-deep) 18%)')&&progressCss.includes('--progress-body-end:color-mix(in srgb,var(--progress-end) 84%,var(--bg-deep) 16%)')&&!progressCss.includes('var(--text-primary) 48%,transparent'),'Progress body must deepen semantic tones instead of washing them toward white');
+assert(progressCss.includes('width:28%')&&progressCss.includes('color-mix(in srgb,var(--text-primary) 26%,var(--progress-end) 74%)')&&progressCss.includes('filter:drop-shadow(0 0 4px color-mix(in srgb,var(--progress-accent) 38%,transparent))'),'Active sweep must be a narrow semantic specular streak with visible depth instead of the retired broad flash');
+assert(progressCss.includes('@keyframes weig-progress-sweep{0%,28%{left:-34%;opacity:0}42%{opacity:.32}55%{opacity:.82}68%{opacity:.34}82%,100%{left:120%;opacity:0}}'),'Active sweep must retain the slow left-to-right pass while increasing peak visibility');
+assert(progressCss.includes('@media(prefers-reduced-motion:reduce)')&&progressCss.includes('html[data-motion="reduced"] .progress-fill::before')&&progressCss.includes('animation:none!important;opacity:0!important'),'Reduced Motion must remain authoritative over progress motion');
+
+console.log('Telemetry visual contract passed: completed smoothing buckets freeze incrementally, realtime/session semantics stay separated, Android transfer typography matches Connected, and Reduced Motion remains protected.');

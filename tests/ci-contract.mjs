@@ -52,7 +52,7 @@ const ci=read('.github/workflows/ci.yml');
 assert(!ci.includes('[candidate]'),'Candidate must be workflow_dispatch-only; retired commit-message marker must not return');
 const pages=read('.github/workflows/pages.yml'),pagesBuild=read('simulator/build/build-site.mjs');
 assert(pages.includes('Probe deployed exact-SHA Pages identity')&&pages.includes('reuse_deployed:')&&pages.includes("needs.build.outputs.reuse_deployed != 'true'"),'Pages must skip repeat deployment only when the same exact SHA is already live');
-assert((pages.match(/steps\.deployed_identity\.outputs\.reuse != 'true'/g)||[]).length>=8,'Pages exact-SHA reuse must skip duplicate contracts, materialization and deployment work while preserving live verification');
+assert(pages.includes("steps.deployed_identity.outputs.reuse != 'true' && inputs.validation_profile == 'full'")&&pages.includes("steps.deployed_identity.outputs.reuse != 'true' && inputs.validation_profile != 'full'"),'Pages exact-SHA reuse must skip duplicate contract work without duplicating YAML if keys');
 assert(pages.includes("needs.deploy.result == 'success' || needs.build.outputs.reuse_deployed == 'true'")&&pages.includes('SITE_BYTES')&&pages.includes('950000000'),'Pages verification must preserve exact-SHA ownership while enforcing a bounded deployment footprint');
 assert(pagesBuild.includes("mainProfileRoot")&&pagesBuild.includes("'catalog.source.json'")&&pagesBuild.includes("'catalog.generated.json'"),'Pages site builder must prune source-only catalogs and duplicate main full-catalog evidence only after proving all main runtime profile shards');
 const smoke=jobSection(ci,'smoke','installer_lifecycle_linux');

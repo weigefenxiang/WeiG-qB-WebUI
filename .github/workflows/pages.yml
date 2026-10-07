@@ -110,13 +110,11 @@ jobs:
         run: npm ci --no-audit --no-fund --prefer-offline
 
       - name: Validate full repository contracts
-        if: ${{ steps.deployed_identity.outputs.reuse != 'true' }}
-        if: ${{ inputs.validation_profile == 'full' }}
+        if: ${{ steps.deployed_identity.outputs.reuse != 'true' && inputs.validation_profile == 'full' }}
         run: npm test
 
       - name: Validate focused Pages build contracts
-        if: ${{ steps.deployed_identity.outputs.reuse != 'true' }}
-        if: ${{ inputs.validation_profile != 'full' }}
+        if: ${{ steps.deployed_identity.outputs.reuse != 'true' && inputs.validation_profile != 'full' }}
         run: |
           node tests/dev-distribution-contract.mjs
           node tests/pages-relevance-contract.mjs

@@ -1,0 +1,131 @@
+name: Session Handshake
+
+on:
+  push:
+    branches:
+      - dev
+    paths:
+      - 'webui/public/**'
+      - 'webui/private/index.html'
+      - 'webui/private/scripts/session.js'
+      - 'webui/private/scripts/core.js'
+      - 'webui/private/scripts/qb-client.js'
+      - 'tools/build-webui-dist.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: session-handshake-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'push' }}
+
+jobs:
+  plan:
+    name: Session runtime plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Build shared historical runtime index
+        run: |
+          set -euo pipefail
+          mkdir -p runtime-index
+          node tests/real-qb-full-runtime-index.mjs runtime-index/linuxserver-tags.json
+      - name: Upload focused runtime index
+        uses: actions/upload-artifact@v7
+        with:
+          name: session-runtime-index-${{ github.sha }}
+          path: runtime-index/linuxserver-tags.json
+          if-no-files-found: error
+          retention-days: 1
+
+  handshake:
+    name: qB ${{ matrix.qb }} provider race
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    needs: plan
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        qb: ['4.1.9', '4.1.9.1']
+    env:
+      WEIG_BROWSER_CHANNEL: chrome
+      WEIG_GFM_RUNTIME_INDEX: runtime-index/linuxserver-tags.json
+      WEIG_SESSION_RACE_DIR: artifacts/session-handshake-race
+      WEIG_GFM_SOURCE_CACHE_SCOPE: session-source-v1-${{ matrix.qb }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Restore exact qB source runtime image
+        id: source-runtime-cache
+        uses: actions/cache@v6
+        with:
+          path: runtime-cache/qb-${{ matrix.qb }}.tar
+          key: session-source-image-v1-${{ runner.os }}-${{ matrix.qb }}-${{ hashFiles('tests/real-qb-full-provider-lib.sh', 'tools/data/qb-stable-lkg.json', 'tests/fixtures/qb-release-catalog.lkg.json') }}
+      - name: Install browser test dependency
+        run: npm ci --no-audit --no-fund --prefer-offline
+      - name: Verify hosted Chrome and race harness
+        run: |
+          set -euo pipefail
+          command -v google-chrome >/dev/null
+          google-chrome --version
+          docker buildx version
+          node -p "require('playwright/package.json').version"
+          bash -n tests/real-qb-full-runner.sh
+          bash -n tests/real-qb-full-provider-lib.sh
+          bash -n tests/real-qb-session-race.sh
+          node --check tests/real-qb-session-handshake.mjs
+      - name: Download shared historical runtime index
+        uses: actions/download-artifact@v8
+        with:
+          name: session-runtime-index-${{ github.sha }}
+          path: runtime-index
+      - name: Load cached exact qB source runtime image
+        if: steps.source-runtime-cache.outputs.cache-hit == 'true'
+        env:
+          QB_VERSION: ${{ matrix.qb }}
+        run: |
+          set -euo pipefail
+          test -s "runtime-cache/qb-${QB_VERSION}.tar"
+          docker load -i "runtime-cache/qb-${QB_VERSION}.tar"
+      - name: Race approved runtime providers and capture session evidence
+        env:
+          QB_VERSION: ${{ matrix.qb }}
+        run: |
+          set -euo pipefail
+          bash tests/real-qb-session-race.sh --version "$QB_VERSION"
+      - name: Stage exact qB source runtime image for reuse
+        if: success() && steps.source-runtime-cache.outputs.cache-hit != 'true'
+        env:
+          QB_VERSION: ${{ matrix.qb }}
+        run: |
+          set -euo pipefail
+          mkdir -p runtime-cache
+          source_tag="$(docker images --format '{{.Repository}}:{{.Tag}}' | grep -E "^weig-gfm-source:${QB_VERSION//./\\.}-[0-9a-f]{12}$" | head -n 1 || true)"
+          if [[ -n "$source_tag" ]]; then
+            docker save -o "runtime-cache/qb-${QB_VERSION}.tar" "$source_tag"
+            echo "Staged reusable exact source runtime: $source_tag"
+          else
+            echo "No exact source image was materialized; cache remains empty."
+          fi
+      - name: Upload exact-SHA provider-race evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: session-handshake-race-${{ matrix.qb }}-${{ github.sha }}
+          path: artifacts/session-handshake-race/**
+          if-no-files-found: error
+          retention-days: 14

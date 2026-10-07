@@ -1,0 +1,21 @@
+(function(global){
+  'use strict';
+  var W=global.WeiG=global.WeiG||{},LOCAL_STORE=W.StorageRuntime&&W.StorageRuntime.local;
+  var KEY=(W.StorageKeys&&W.StorageKeys.displayTimeZone)||'weig.displayTimeZone',previewZone=null;
+  var FALLBACK=['UTC','Asia/Shanghai','Asia/Hong_Kong','Asia/Singapore','Asia/Tokyo','Asia/Seoul','Europe/London','Europe/Paris','Europe/Berlin','America/New_York','America/Chicago','America/Denver','America/Los_Angeles','Australia/Sydney'];
+  function zones(){var list=[];try{if(Intl.supportedValuesOf)list=Intl.supportedValuesOf('timeZone');}catch(_e){}if(!list.length)list=FALLBACK.slice();return [{value:'system',label:'system'}].concat(list.map(function(x){return{value:x,label:x};}));}
+  function storedZone(){return LOCAL_STORE?LOCAL_STORE.get(KEY,'system'):'system';}
+  function getZone(){return previewZone||storedZone();}
+  function emitZone(zone,transient){global.dispatchEvent(new CustomEvent('weig:timezonechange',{detail:{zone:zone,transient:!!transient}}));return zone;}
+  function setZone(zone){zone=zone||'system';previewZone=null;if(LOCAL_STORE)LOCAL_STORE.set(KEY,zone);return emitZone(zone,false);}
+  function preview(zone){previewZone=zone||'system';return emitZone(previewZone,true);}
+  function clearPreview(){previewZone=null;return emitZone(storedZone(),true);}
+  function resolved(zone){zone=zone||getZone();if(zone==='system')return Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';return zone;}
+  function offsetMinutes(zone,date){date=date||new Date();zone=resolved(zone);if(zone==='UTC')return 0;try{var parts=new Intl.DateTimeFormat('en-CA',{timeZone:zone,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).formatToParts(date),bag={};parts.forEach(function(p){if(p.type!=='literal')bag[p.type]=p.value;});var asUTC=Date.UTC(+bag.year,+bag.month-1,+bag.day,+bag.hour,+bag.minute,+bag.second);return Math.round((asUTC-date.getTime())/60000);}catch(_e){return 0;}}
+  function offsetLabel(zone,date){var m=offsetMinutes(zone,date),sign=m>=0?'+':'-',n=Math.abs(m),h=String(Math.floor(n/60)).padStart(2,'0'),mm=String(n%60).padStart(2,'0');return'UTC'+sign+h+':'+mm;}
+  function displayLabel(zone){zone=zone||getZone();var r=resolved(zone),off=offsetLabel(zone);return off+' · '+r;}
+  function pad2(value){return String(value).padStart(2,'0');}
+  function sourcePatternDate(d,pattern){var zone=resolved(getZone()),parts={};try{new Intl.DateTimeFormat('en-US',{timeZone:zone,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).formatToParts(d).forEach(function(part){if(part.type!=='literal')parts[part.type]=part.value;});}catch(_e){return'';}var hour=Number(parts.hour)||0,month=Number(parts.month)||1,monthShort=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][Math.max(0,Math.min(11,month-1))],tokens={yyyy:parts.year,MMM:monthShort,MM:pad2(month),dd:pad2(Number(parts.day)||1),HH:pad2(hour),h:String((hour%12)||12),mm:pad2(Number(parts.minute)||0),ss:pad2(Number(parts.second)||0),'AM/PM':hour<12?'AM':'PM'};return String(pattern||'').replace(/yyyy|MMM|MM|dd|HH|h|mm|ss|AM\/PM/g,function(token){return tokens[token]===undefined?token:tokens[token];});}
+  function format(value,options){var d=value instanceof Date?value:new Date(value);if(Number.isNaN(d.getTime()))return'';var sourcePattern=!options&&W.ClientDataRuntime&&typeof W.ClientDataRuntime.dateFormat==='function'?W.ClientDataRuntime.dateFormat():null;if(sourcePattern==='default'){try{return d.toLocaleString(undefined,{timeZone:resolved(getZone())});}catch(_sourceDefault){return d.toLocaleString();}}if(sourcePattern){var nativeText=sourcePatternDate(d,sourcePattern);if(nativeText)return nativeText;}var o=Object.assign({year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'},options||{}, {timeZone:resolved(getZone())});try{return new Intl.DateTimeFormat(undefined,o).format(d);}catch(_e){return d.toLocaleString();}}
+  W.Time={zones:zones,getZone:getZone,setZone:setZone,previewZone:preview,clearPreview:clearPreview,storedZone:storedZone,resolvedZone:resolved,offsetMinutes:offsetMinutes,offsetLabel:offsetLabel,displayLabel:displayLabel,format:format};
+})(window);

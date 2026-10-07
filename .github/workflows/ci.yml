@@ -1,0 +1,1560 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - dev
+  workflow_dispatch:
+    inputs:
+      validation_mode:
+        description: Validation depth
+        required: true
+        default: smoke
+        type: choice
+        options:
+          - smoke
+          - change-aware
+          - ui
+          - settings-matrix
+          - candidate
+          - settings-evidence
+          - native-surfaces
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}-${{ (github.event_name == 'workflow_dispatch' && (inputs.validation_mode == 'ui' || inputs.validation_mode == 'settings-evidence' || inputs.validation_mode == 'native-surfaces' || inputs.validation_mode == 'settings-matrix') && inputs.validation_mode) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[settings-evidence-verify]') && 'settings-evidence-verify') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[settings-matrix]') && 'settings-matrix') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[native-surfaces]') && 'native-surfaces') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[settings-evidence]') && 'settings-evidence') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[detail-runtime-materialize]') && 'detail-runtime-materialize') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[torrent-runtime-materialize]') && 'torrent-runtime-materialize') || 'default' }}
+  cancel-in-progress: true
+
+jobs:
+  classify:
+    name: Classify CI request
+    runs-on: ubuntu-latest
+    outputs:
+      relevant: ${{ steps.relevance.outputs.relevant }}
+      installer: ${{ steps.relevance.outputs.installer }}
+      ui: ${{ steps.relevance.outputs.ui }}
+      settings_ui: ${{ steps.relevance.outputs.settings_ui }}
+      settings_source: ${{ steps.relevance.outputs.settings_source }}
+      native_source: ${{ steps.relevance.outputs.native_source }}
+      pages_payload: ${{ steps.relevance.outputs.pages_payload }}
+      pages_live: ${{ steps.relevance.outputs.pages_live }}
+      workflow_policy: ${{ steps.relevance.outputs.workflow_policy }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Detect CI-relevant source changes
+        id: relevance
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+          HEAD_MESSAGE: ${{ github.event.head_commit.message }}
+          VALIDATION_MODE: ${{ inputs.validation_mode }}
+        run: |
+          set -euo pipefail
+
+          emit() {
+            local key="$1" value="$2"
+            printf '%s=%s\n' "$key" "$value" >> "$GITHUB_OUTPUT"
+          }
+          emit_defaults() {
+            emit installer false
+            emit ui false
+            emit settings_ui false
+            emit settings_source false
+            emit native_source false
+            emit pages_payload false
+            emit pages_live false
+            emit workflow_policy false
+          }
+          emit_all_true() {
+            emit installer true
+            emit ui true
+            emit settings_ui true
+            emit settings_source true
+            emit native_source true
+            emit pages_payload true
+            emit pages_live true
+            emit workflow_policy true
+          }
+          emit_classification() {
+            local json="$1"
+            emit relevant "$(jq -r '.ciRelevant' <<<"$json")"
+            emit installer "$(jq -r '.installer' <<<"$json")"
+            emit ui "$(jq -r '.ui' <<<"$json")"
+            emit settings_ui "$(jq -r '.settingsUi' <<<"$json")"
+            emit settings_source "$(jq -r '.settingsSource' <<<"$json")"
+            emit native_source "$(jq -r '.nativeSource' <<<"$json")"
+            emit pages_payload "$(jq -r '.pagesPayload' <<<"$json")"
+            emit pages_live "$(jq -r '.pagesLive' <<<"$json")"
+            emit workflow_policy "$(jq -r '.workflowPolicy' <<<"$json")"
+          }
+
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            emit_defaults
+            case "${VALIDATION_MODE:-smoke}" in
+              change-aware)
+                PARENT_SHA="$(git rev-parse "$GITHUB_SHA^" 2>/dev/null || true)"
+                if [ -z "$PARENT_SHA" ] || ! git cat-file -e "$PARENT_SHA^{commit}" 2>/dev/null; then
+                  emit relevant true
+                  emit_all_true
+                  echo "Change-aware CI has no usable parent SHA; fail closed by enabling every change class."
+                else
+                  CHANGE_JSON="$(git -c core.quotePath=false diff --name-only -z "$PARENT_SHA" "$GITHUB_SHA" | node tools/change-classifier.mjs --stdin0)"
+                  emit_classification "$CHANGE_JSON"
+                  echo "Change-aware CI: $(jq -c '{installer,ui,settingsUi,settingsSource,nativeSource,pagesPayload,pagesLive,workflowPolicy}' <<<"$CHANGE_JSON")"
+                fi
+                ;;
+              ui) emit relevant true; emit ui true ;;
+              settings-matrix) emit relevant true; emit ui true; emit settings_ui true ;;
+              settings-evidence) emit relevant true; emit ui true; emit settings_ui true; emit settings_source true; emit native_source true; emit pages_payload true ;;
+              native-surfaces) emit relevant true; emit ui true; emit native_source true; emit pages_payload true ;;
+              candidate) emit relevant true; emit_all_true ;;
+              smoke) emit relevant true ;;
+              *) echo "Unknown validation mode: ${VALIDATION_MODE:-}" >&2; exit 1 ;;
+            esac
+            echo "Explicit validation dispatch is CI-relevant; keep the downstream dependency chain runnable."
+            exit 0
+          fi
+          if [ "$EVENT_NAME" != "push" ]; then
+            echo "Unsupported CI event: $EVENT_NAME" >&2
+            exit 1
+          fi
+
+          BEFORE="$BEFORE_SHA"
+          case "$BEFORE" in
+            ''|0000000000000000000000000000000000000000)
+              emit relevant true
+              emit_all_true
+              echo "Push has no usable before SHA; fail closed by requiring every change-aware lane."
+              exit 0
+              ;;
+          esac
+          if ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            emit relevant true
+            emit_all_true
+            echo "Before SHA is unavailable locally; fail closed by requiring every change-aware lane."
+            exit 0
+          fi
+
+          CHANGE_JSON="$(git -c core.quotePath=false diff --name-only -z "$BEFORE" "$GITHUB_SHA" | node tools/change-classifier.mjs --stdin0)"
+          relevant="$(jq -r '.ciRelevant' <<<"$CHANGE_JSON")"
+          installer="$(jq -r '.installer' <<<"$CHANGE_JSON")"
+          ui="$(jq -r '.ui' <<<"$CHANGE_JSON")"
+          settings_ui="$(jq -r '.settingsUi' <<<"$CHANGE_JSON")"
+          settings_source="$(jq -r '.settingsSource' <<<"$CHANGE_JSON")"
+          native_source="$(jq -r '.nativeSource' <<<"$CHANGE_JSON")"
+          pages_payload="$(jq -r '.pagesPayload' <<<"$CHANGE_JSON")"
+          pages_live="$(jq -r '.pagesLive' <<<"$CHANGE_JSON")"
+          workflow_policy="$(jq -r '.workflowPolicy' <<<"$CHANGE_JSON")"
+
+          case "$HEAD_MESSAGE" in
+            *'[ui]'*) relevant=true; ui=true ;;
+          esac
+          case "$HEAD_MESSAGE" in
+            *'[settings-matrix]'*) relevant=true; ui=true; settings_ui=true ;;
+          esac
+          case "$HEAD_MESSAGE" in
+            *'[native-surfaces]'*) relevant=true; ui=true; native_source=true; pages_payload=true ;;
+          esac
+          case "$HEAD_MESSAGE" in
+            *'[settings-evidence]'*|*'[settings-evidence-verify]'*) relevant=true; ui=true; settings_ui=true; settings_source=true; native_source=true; pages_payload=true ;;
+          esac
+
+          emit relevant "$relevant"
+          emit installer "$installer"
+          emit ui "$ui"
+          emit settings_ui "$settings_ui"
+          emit settings_source "$settings_source"
+          emit native_source "$native_source"
+          emit pages_payload "$pages_payload"
+          emit pages_live "$pages_live"
+          emit workflow_policy "$workflow_policy"
+
+          jq -r '"Change classes: installer=\(.installer) ui=\(.ui) settings-ui=\(.settingsUi) settings-source=\(.settingsSource) native-source=\(.nativeSource) pages-payload=\(.pagesPayload) pages-live=\(.pagesLive) workflow-policy=\(.workflowPolicy)"' <<<"$CHANGE_JSON"
+          if [ "$relevant" != "true" ]; then
+            echo "Only documentation paths changed; heavy CI smoke is skipped."
+          fi
+
+  torrent_runtime_materialize:
+    name: qB Torrent/Action compact runtime materialization
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'settings-evidence' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[torrent-runtime-materialize]')) }}
+    runs-on: ubuntu-latest
+    needs: classify
+    permissions:
+      contents: write
+      actions: write
+    outputs:
+      materialized_sha: ${{ steps.commit.outputs.materialized_sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Checkout qBittorrent upstream with admitted stable tags
+        uses: actions/checkout@v7
+        with:
+          repository: qbittorrent/qBittorrent
+          path: upstream-qb
+          fetch-depth: 0
+          fetch-tags: true
+          filter: blob:none
+          persist-credentials: false
+      - name: Materialize Torrent/Action compact runtime from current parser over admitted exact sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/qb-release-catalog-shard.mjs upstream-qb \
+            --shard-index=0 \
+            --shard-count=1 \
+            --admitted-catalog=tests/fixtures/qb-release-catalog.lkg.json \
+            --output="$RUNNER_TEMP/qb-admitted-torrent-source.json" \
+            --manifest="$RUNNER_TEMP/qb-admitted-torrent-source.meta.json"
+          node tools/qb-torrent-runtime-rebind.mjs "$RUNNER_TEMP/qb-admitted-torrent-source.json"
+          node tools/qb-torrent-runtime-rebind.mjs "$RUNNER_TEMP/qb-admitted-torrent-source.json" --check
+      - name: Commit canonical Torrent/Action compact runtime if changed
+        id: commit
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- webui/private/data/torrent-compat.json webui/private/data/source-actions.json; then
+            echo "Torrent/Action compact runtime already matches Frozen exact source catalog."
+            exit 0
+          fi
+
+          handoff_latest_settings_evidence() {
+            local remote_sha="$1"
+            echo "Torrent runtime owner $GITHUB_SHA is stale; handing settings-evidence to latest dev $remote_sha."
+            jq -n --arg ref dev '{ref:$ref,inputs:{validation_mode:"settings-evidence"}}' \
+              | gh api --method POST "/repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/dispatches" --input -
+          }
+
+          git fetch --no-tags origin dev
+          REMOTE_DEV_SHA="$(git rev-parse origin/dev)"
+          if [ "$REMOTE_DEV_SHA" != "$GITHUB_SHA" ]; then
+            handoff_latest_settings_evidence "$REMOTE_DEV_SHA"
+            exit 0
+          fi
+
+          mapfile -t changed < <(git diff --name-only)
+          for path in "${changed[@]}"; do
+            case "$path" in
+              webui/private/data/torrent-compat.json|webui/private/data/source-actions.json) ;;
+              *) echo "Unexpected Torrent/Action materializer path: $path" >&2; exit 1 ;;
+            esac
+          done
+
+          git config user.name "WeiG CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add webui/private/data/torrent-compat.json webui/private/data/source-actions.json
+          git commit -m "a25: materialize Torrent Action source runtime [settings-evidence] [ui]"
+
+          git fetch --no-tags origin dev
+          REMOTE_DEV_SHA="$(git rev-parse origin/dev)"
+          if [ "$REMOTE_DEV_SHA" != "$GITHUB_SHA" ]; then
+            handoff_latest_settings_evidence "$REMOTE_DEV_SHA"
+            exit 0
+          fi
+          git push origin HEAD:dev
+          echo "materialized_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  settings_runtime_materialize:
+    name: qB compact runtime Frozen identity materialization
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[settings-runtime-materialize]') }}
+    runs-on: ubuntu-latest
+    needs: classify
+    permissions:
+      contents: write
+    outputs:
+      materialized_sha: ${{ steps.commit.outputs.materialized_sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Materialize Settings and capability control plane against canonical Frozen identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/qb-settings-runtime-rebind.mjs "$RUNNER_TEMP/settings-compat.json" tests/fixtures/qb-release-catalog.lkg.json
+          cp "$RUNNER_TEMP/settings-compat.json" webui/private/data/settings-compat.json
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import {admittedCatalogRows,catalogIdentity} from './tools/qb-catalog-identity.mjs';
+          const catalog=JSON.parse(fs.readFileSync('tests/fixtures/qb-release-catalog.lkg.json','utf8'));
+          const expected=admittedCatalogRows(catalog);
+          const file='webui/private/data/capabilities.json';
+          const capability=JSON.parse(fs.readFileSync(file,'utf8'));
+          if(!Array.isArray(capability.releases)||capability.releases.length!==expected.length)throw new Error('Capability/Frozen release-set length mismatch.');
+          for(let i=0;i<expected.length;i++){
+            const actual=capability.releases[i],row=expected[i];
+            if(String(actual?.qbVersion||'')!==row.qbVersion||String(actual?.sourceSha||'').toLowerCase()!==row.sourceSha)throw new Error('Capability/Frozen exact release identity mismatch at index '+i);
+          }
+          const identity=catalogIdentity(catalog);
+          capability.catalogIdentity=identity;
+          fs.writeFileSync(file,JSON.stringify(capability,null,2)+'\n','utf8');
+          console.log('Materialized capability control plane Frozen identity '+identity.sourceCatalogSha256.slice(0,12)+'.');
+          NODE
+          if git diff --quiet -- webui/private/data/capabilities.json webui/private/data/settings-compat.json; then
+            echo "Committed Settings/capability runtime already has canonical Frozen identity."
+            exit 0
+          fi
+          npm test
+      - name: Commit canonical compact runtime if changed
+        id: commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --quiet -- webui/private/data/capabilities.json webui/private/data/settings-compat.json && exit 0
+          git fetch --no-tags origin dev
+          test "$(git rev-parse origin/dev)" = "$GITHUB_SHA" || { echo "SAFE-REF abort before compact runtime materialization push." >&2; exit 1; }
+          git config user.name "WeiG CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add webui/private/data/capabilities.json webui/private/data/settings-compat.json
+          git commit -m "a3: materialize Settings Frozen identity [settings-evidence] [ui]"
+          git push origin HEAD:dev
+          echo "materialized_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  smoke:
+    needs: classify
+    if: ${{ always() && (github.event_name == 'workflow_dispatch' || needs.classify.outputs.relevant == 'true') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Semantic runtime, qB baselines and JavaScript syntax
+        run: npm test
+      - name: Linux installer syntax and qB [Preferences] contract
+        run: |
+          sh -n installers/install.sh
+          bash tests/linux-config-section.sh
+      - name: Live regression script syntax
+        run: |
+          sh -n tests/live.sh
+          bash -n tests/live-api.sh
+          bash -n tests/real-qb-session-race.sh
+      - name: PowerShell installer syntax
+        shell: pwsh
+        run: |
+          $null = [scriptblock]::Create((Get-Content 'installers/install.ps1' -Raw))
+          Write-Host 'PowerShell installer syntax parsed.'
+
+
+  installer_lifecycle_linux:
+    name: Linux installer lifecycle
+    needs: classify
+    if: ${{ always() && ((github.event_name == 'push' && needs.classify.outputs.installer == 'true') || (github.event_name == 'workflow_dispatch' && (inputs.validation_mode == 'smoke' || inputs.validation_mode == 'candidate' || (inputs.validation_mode == 'change-aware' && needs.classify.outputs.installer == 'true')))) }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Install lifecycle · dash · install -> upgrade -> rollback -> uninstall -> rollback
+        shell: bash
+        env:
+          WEIG_INSTALLER_SHELL: dash
+        run: bash tests/installer-lifecycle.sh
+
+  installer_lifecycle_busybox:
+    name: Linux installer lifecycle · BusyBox ash/userland
+    needs: classify
+    if: ${{ always() && ((github.event_name == 'push' && needs.classify.outputs.installer == 'true') || (github.event_name == 'workflow_dispatch' && (inputs.validation_mode == 'smoke' || inputs.validation_mode == 'candidate' || (inputs.validation_mode == 'change-aware' && needs.classify.outputs.installer == 'true')))) }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Ensure BusyBox tool profile
+        shell: bash
+        run: command -v busybox >/dev/null 2>&1 || { sudo apt-get update -qq && sudo apt-get install -y busybox; }
+      - name: Install lifecycle · BusyBox ash + BusyBox userland · no Python dependency
+        shell: bash
+        env:
+          WEIG_INSTALLER_SHELL: busybox-ash
+        run: bash tests/installer-lifecycle.sh
+
+  installer_lifecycle_windows:
+    name: Windows installer lifecycle
+    needs: classify
+    if: ${{ always() && ((github.event_name == 'push' && needs.classify.outputs.installer == 'true') || (github.event_name == 'workflow_dispatch' && (inputs.validation_mode == 'smoke' || inputs.validation_mode == 'candidate' || (inputs.validation_mode == 'change-aware' && needs.classify.outputs.installer == 'true')))) }}
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Install lifecycle · install -> upgrade -> rollback -> uninstall -> rollback
+        shell: pwsh
+        run: ./tests/installer-lifecycle.ps1
+
+  ui_browser:
+    name: Linux semantic UI · ${{ matrix.suite.name }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/dev' && (inputs.validation_mode == 'ui' || (inputs.validation_mode == 'change-aware' && needs.classify.outputs.ui == 'true'))) || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[ui]')) }}
+    runs-on: ubuntu-24.04
+    needs: [classify, smoke]
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        suite:
+          - name: route-modules
+            script: tests/browser-route-module-loading.mjs
+          - name: runtime
+            script: tests/browser-runtime.mjs
+          - name: settings-fidelity
+            script: tests/browser-settings-fidelity.mjs
+          - name: feature-parity
+            script: tests/browser-feature-parity.mjs
+          - name: torrent-workspace
+            script: tests/browser-torrent-workspace.mjs
+          - name: adaptive-ui
+            script: tests/browser-adaptive-ui.mjs
+    env:
+      WEIG_BROWSER_CHANNEL: chrome
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install browser test dependency
+        run: npm ci --no-audit --no-fund --prefer-offline
+      - name: Verify hosted Chrome runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v google-chrome >/dev/null || { echo 'Hosted Google Chrome Stable is missing.' >&2; exit 1; }
+          google-chrome --version
+          node -p "require('playwright/package.json').version"
+          printf 'Runner image: %s %s\n' "${ImageOS:-unknown}" "${ImageVersion:-unknown}"
+          printf 'Git SHA: %s\n' "$GITHUB_SHA"
+          printf 'UI suite: %s\n' "${{ matrix.suite.name }}"
+      - name: Representative qB4/qB5 semantic UI · ${{ matrix.suite.name }}
+        run: node "${{ matrix.suite.script }}"
+
+
+  settings_browser_matrix:
+    name: qB admitted Settings browser shard ${{ matrix.shard }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/dev' && (inputs.validation_mode == 'settings-matrix' || (inputs.validation_mode == 'change-aware' && needs.classify.outputs.settings_ui == 'true'))) || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[settings-matrix]')) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    needs: [classify, smoke]
+    strategy:
+      fail-fast: false
+      max-parallel: 16
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+    env:
+      WEIG_BROWSER_CHANNEL: chrome
+      WEIG_SETTINGS_SHARD_COUNT: '16'
+      WEIG_SETTINGS_SHARD_INDEX: ${{ matrix.shard }}
+      WEIG_SETTINGS_MATRIX_OUTPUT: settings-browser-shard-${{ matrix.shard }}.json
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install browser test dependency
+        run: npm ci --no-audit --no-fund --prefer-offline
+      - name: Verify hosted Chrome runtime
+        run: |
+          set -euo pipefail
+          command -v google-chrome >/dev/null
+          google-chrome --version
+          node -p "require('playwright/package.json').version"
+      - name: Execute admitted Settings browser shard
+        run: node tests/browser-settings-admitted.mjs
+      - name: Upload admitted Settings browser shard
+        uses: actions/upload-artifact@v7
+        with:
+          name: settings-browser-${{ github.sha }}-${{ matrix.shard }}
+          path: settings-browser-shard-${{ matrix.shard }}.json
+          if-no-files-found: error
+          retention-days: 1
+
+  settings_browser_matrix_aggregate:
+    name: qB admitted Settings browser aggregate
+    if: ${{ always() && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/dev' && inputs.validation_mode == 'settings-matrix') || (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'change-aware' && needs.settings_browser_matrix.result == 'success') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[settings-matrix]'))) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs:
+      - settings_browser_matrix
+    steps:
+      - name: Require all admitted Settings browser shards
+        env:
+          SHARDS_RESULT: ${{ needs.settings_browser_matrix.result }}
+        run: |
+          set -euo pipefail
+          test "$SHARDS_RESULT" = success
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Download all admitted Settings browser shards
+        uses: actions/download-artifact@v8
+        with:
+          pattern: settings-browser-${{ github.sha }}-*
+          path: settings-browser-shards
+          merge-multiple: true
+      - name: Aggregate admitted Settings browser evidence
+        run: node tests/browser-settings-admitted.mjs --aggregate settings-browser-shards
+
+  release_catalog_extract:
+    name: qB exact stable source catalog shard ${{ matrix.shard }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'settings-evidence' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && (contains(github.event.head_commit.message, '[settings-evidence]') || contains(github.event.head_commit.message, '[settings-evidence-verify]'))) }}
+    runs-on: ubuntu-latest
+    needs: smoke
+    strategy:
+      fail-fast: false
+      max-parallel: 15
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Checkout qBittorrent upstream with all stable release tags
+        uses: actions/checkout@v7
+        with:
+          repository: qbittorrent/qBittorrent
+          path: upstream-qb
+          fetch-depth: 0
+          fetch-tags: true
+          filter: blob:none
+      - name: Extract exact qB stable source catalog shard
+        run: node tools/qb-release-catalog.mjs upstream-qb --output=qb-release-catalog-shard-${{ matrix.shard }}.json --shard-index=${{ matrix.shard }} --shard-count=15
+      - name: Upload exact source catalog shard
+        uses: actions/upload-artifact@v7
+        with:
+          name: qb-release-catalog-base-shard-${{ github.sha }}-${{ matrix.shard }}
+          path: qb-release-catalog-shard-${{ matrix.shard }}.json
+          if-no-files-found: error
+          retention-days: 1
+
+  release_catalog_base:
+    name: Merge qB exact stable source catalog
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'settings-evidence' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && (contains(github.event.head_commit.message, '[settings-evidence]') || contains(github.event.head_commit.message, '[settings-evidence-verify]'))) }}
+    runs-on: ubuntu-latest
+    needs: release_catalog_extract
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Download all exact source catalog shards
+        uses: actions/download-artifact@v8
+        with:
+          pattern: qb-release-catalog-base-shard-${{ github.sha }}-*
+          path: base-shards
+          merge-multiple: true
+      - name: Merge and validate canonical qB 4.1.0 to latest stable catalog
+        run: node tools/qb-release-catalog.mjs --merge-shards=base-shards --expected-shards=15 --output=qb-releases.json
+      - name: Require source-proven Torrent action surface across all stable profiles
+        run: node audits/full-stable-torrent-menu-source-contract.mjs qb-releases.json
+      - name: Upload base stable catalog
+        uses: actions/upload-artifact@v7
+        with:
+          name: qb-release-catalog-base-${{ github.sha }}
+          path: qb-releases.json
+          if-no-files-found: error
+          retention-days: 1
+
+  release_locale_enrich:
+    name: qB locale/source enrich shard ${{ matrix.shard }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'settings-evidence' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && (contains(github.event.head_commit.message, '[settings-evidence]') || contains(github.event.head_commit.message, '[settings-evidence-verify]'))) }}
+    runs-on: ubuntu-latest
+    needs: release_catalog_base
+    strategy:
+      fail-fast: false
+      max-parallel: 16
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Checkout qBittorrent upstream with all stable release tags
+        uses: actions/checkout@v7
+        with:
+          repository: qbittorrent/qBittorrent
+          path: upstream-qb
+          fetch-depth: 0
+          fetch-tags: true
+          filter: blob:none
+      - name: Download base stable catalog
+        uses: actions/download-artifact@v8
+        with:
+          name: qb-release-catalog-base-${{ github.sha }}
+          path: base-catalog
+      - name: Enrich exact qB WebUI locale and Settings source facts for shard
+        run: node tools/qb-locale-source.mjs upstream-qb base-catalog/qb-releases.json qb-releases-shard-${{ matrix.shard }}.json --shard-index=${{ matrix.shard }} --shard-count=16
+      - name: Upload enriched shard and full-TS recovery evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: qb-release-enriched-${{ github.sha }}-${{ matrix.shard }}
+          path: |
+            qb-releases-shard-${{ matrix.shard }}.json
+            qb-releases-shard-${{ matrix.shard }}.recovery.json
+          if-no-files-found: error
+          retention-days: 1
+
+  release_catalog_merge:
+    name: Merge exact qB locale/source catalog
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'settings-evidence' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && (contains(github.event.head_commit.message, '[settings-evidence]') || contains(github.event.head_commit.message, '[settings-evidence-verify]'))) }}
+    runs-on: ubuntu-latest
+    needs: release_locale_enrich
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Download base stable catalog
+        uses: actions/download-artifact@v8
+        with:
+          name: qb-release-catalog-base-${{ github.sha }}
+          path: base-catalog
+      - name: Download all enriched qB shards
+        uses: actions/download-artifact@v8
+        with:
+          pattern: qb-release-enriched-${{ github.sha }}-*
+          path: enriched-shards
+          merge-multiple: true
+      - name: Merge enriched shards and deterministic recovery evidence in canonical release order
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/qb-locale-source.mjs --merge base-catalog/qb-releases.json enriched-shards qb-releases.json
+          test -s qb-releases.recovery.json
+      - name: Upload exact stable release catalog and recovery evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: qb-release-catalog-${{ github.sha }}
+          path: |
+            qb-releases.json
+            qb-releases.recovery.json
+          if-no-files-found: error
+          retention-days: 1
+
+  release_lkg:
+    name: qB Settings/source LKG v2
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'settings-evidence' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && (contains(github.event.head_commit.message, '[settings-evidence]') || contains(github.event.head_commit.message, '[settings-evidence-verify]'))) }}
+    runs-on: ubuntu-latest
+    needs: release_catalog_merge
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Download exact stable release catalog
+        uses: actions/download-artifact@v8
+        with:
+          name: qb-release-catalog-${{ github.sha }}
+          path: release-catalog
+      - name: Freeze reusable official qB Settings/source LKG v2
+        run: |
+          set -euo pipefail
+          cp release-catalog/qb-releases.json qb-releases.json
+          cp release-catalog/qb-releases.recovery.json qb-releases.recovery.json
+          node tools/qb-settings-translation-lkg.mjs qb-releases.json tests/fixtures/qb-release-catalog.lkg.json qb-settings-translation-lkg.json qb-releases.recovery.json
+          sha256sum qb-settings-translation-lkg.json > qb-settings-translation-lkg.SHA256
+          node audits/full-stable-locale-routing-contract.mjs qb-releases.json --require-mapped
+          rm -rf "$RUNNER_TEMP/qb-materialized"
+          mkdir -p "$RUNNER_TEMP/qb-materialized/private/data"
+          node tools/qb-webui-catalog.mjs qb-releases.json "$RUNNER_TEMP/qb-materialized/private/data/qb-releases.json" --settings-lkg=qb-settings-translation-lkg.json
+          node tools/qb-runtime-copy-product.mjs validate "$RUNNER_TEMP/qb-materialized/private/data" >/dev/null
+          find "$RUNNER_TEMP/qb-materialized/translations" -type f -name 'webui_*.qm' -print -quit | grep -q .
+      - name: Upload certified qB Settings/source LKG v2
+        uses: actions/upload-artifact@v7
+        with:
+          name: qb-settings-translation-lkg-${{ github.sha }}
+          path: |
+            qb-settings-translation-lkg.json
+            qb-settings-translation-lkg.SHA256
+          if-no-files-found: error
+          retention-days: 90
+
+  settings_bundle_materialize:
+    name: qB Settings copy/QM exact materialization
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'settings-evidence' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && (contains(github.event.head_commit.message, '[settings-evidence]') || contains(github.event.head_commit.message, '[settings-evidence-verify]'))) }}
+    runs-on: ubuntu-latest
+    needs:
+      - release_catalog_merge
+      - release_lkg
+    permissions:
+      contents: write
+      actions: write
+    outputs:
+      materialized_sha: ${{ steps.materialize.outputs.materialized_sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Download exact enriched catalog
+        uses: actions/download-artifact@v8
+        with:
+          name: qb-release-catalog-${{ github.sha }}
+          path: release-catalog
+      - name: Download exact Settings/source LKG
+        uses: actions/download-artifact@v8
+        with:
+          name: qb-settings-translation-lkg-${{ github.sha }}
+          path: settings-lkg
+      - name: Generate canonical qB-owned Settings copy and QM assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf "$RUNNER_TEMP/qb-settings-materialized"
+          mkdir -p "$RUNNER_TEMP/qb-settings-materialized/private/data"
+          node tools/qb-webui-catalog.mjs             release-catalog/qb-releases.json             "$RUNNER_TEMP/qb-settings-materialized/private/data/qb-releases.json"             --settings-lkg=settings-lkg/qb-settings-translation-lkg.json
+          node tools/qb-runtime-copy-product.mjs validate "$RUNNER_TEMP/qb-settings-materialized/private/data" >/dev/null
+          find "$RUNNER_TEMP/qb-settings-materialized/translations" -type f -name 'webui_*.qm' -print -quit | grep -q .
+          node tests/qb-runtime-copy-materialization-contract.mjs release-catalog/qb-releases.json "$RUNNER_TEMP/qb-settings-materialized/private/data"
+      - name: Verify or materialize exact product assets
+        id: materialize
+        shell: bash
+        env:
+          HEAD_MESSAGE: ${{ github.event.head_commit.message }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          GENERATED="$RUNNER_TEMP/qb-settings-materialized"
+          copy_equal=false
+          qm_equal=false
+          route_equal=false
+          node tools/qb-runtime-copy-product.mjs compare "$GENERATED/private/data" webui/private/data >/dev/null && copy_equal=true
+          diff -qr "$GENERATED/translations" webui/translations >/dev/null && qm_equal=true
+          node tools/qb-copy-route-control-plane.mjs "$GENERATED/private/data/qb-releases.json" webui/private/data/capabilities.json >/dev/null && route_equal=true
+          if [ "$copy_equal" = true ] && [ "$qm_equal" = true ] && [ "$route_equal" = true ]; then
+            echo "Committed qB Settings copy/QM assets exactly match current-SHA canonical generation."
+            exit 0
+          fi
+
+          if [[ "$HEAD_MESSAGE" == *"[settings-evidence-verify]"* ]]; then
+            echo "Verification SHA still differs from canonical qB Settings copy/QM generation." >&2
+            node tools/qb-runtime-copy-product.mjs compare "$GENERATED/private/data" webui/private/data >&2 || true
+            diff -qr "$GENERATED/translations" webui/translations >&2 || true
+            node tools/qb-copy-route-control-plane.mjs "$GENERATED/private/data/qb-releases.json" webui/private/data/capabilities.json >&2 || true
+            exit 1
+          fi
+
+          handoff_latest_settings_evidence() {
+            local remote_sha="$1"
+            echo "Settings source owner $GITHUB_SHA is stale; handing settings-evidence to latest dev $remote_sha."
+            jq -n --arg ref dev '{ref:$ref,inputs:{validation_mode:"settings-evidence"}}' \
+              | gh api --method POST "/repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/dispatches" --input -
+          }
+
+          git fetch --no-tags origin dev
+          REMOTE_DEV_SHA="$(git rev-parse origin/dev)"
+          if [ "$REMOTE_DEV_SHA" != "$GITHUB_SHA" ]; then
+            handoff_latest_settings_evidence "$REMOTE_DEV_SHA"
+            exit 0
+          fi
+
+          node tools/qb-runtime-copy-product.mjs sync "$GENERATED/private/data" webui/private/data >/dev/null
+          node tools/qb-copy-route-control-plane.mjs "$GENERATED/private/data/qb-releases.json" webui/private/data/capabilities.json --write >/dev/null
+          rm -rf webui/translations
+          mkdir -p webui/translations
+          cp "$GENERATED"/translations/webui_*.qm webui/translations/
+
+          # Downloaded exact-SHA evidence lives in the checkout only for generation.
+          # Remove it before auditing mutations so the allowlist sees product changes only.
+          rm -rf release-catalog settings-lkg
+
+          mapfile -t changed < <({ git diff --name-only; git ls-files --others --exclude-standard; } | sort -u)
+          test "${#changed[@]}" -gt 0
+          for path in "${changed[@]}"; do
+            case "$path" in
+              webui/private/data/qb-copy-routes/*|webui/private/data/qb-copy-bindings/*|webui/private/data/qb-copy-fallback/*|webui/private/data/capabilities.json|webui/translations/webui_*.qm) ;;
+              *) echo "Unexpected materializer path: $path" >&2; exit 1 ;;
+            esac
+          done
+
+          git config user.name "WeiG CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A webui/private/data webui/translations
+          git commit -m "a2: materialize exact qB settings copy bundle [settings-evidence-verify] [native-surfaces] [settings-matrix] [ui]"
+
+          git fetch --no-tags origin dev
+          REMOTE_DEV_SHA="$(git rev-parse origin/dev)"
+          if [ "$REMOTE_DEV_SHA" != "$GITHUB_SHA" ]; then
+            handoff_latest_settings_evidence "$REMOTE_DEV_SHA"
+            exit 0
+          fi
+          git push origin HEAD:dev
+          echo "materialized_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Upload exact generated qB Settings copy/QM evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: qb-settings-runtime-materialized-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/qb-settings-materialized/private/data/qb-copy-routes
+            ${{ runner.temp }}/qb-settings-materialized/private/data/qb-copy-bindings
+            ${{ runner.temp }}/qb-settings-materialized/private/data/qb-copy-fallback
+            ${{ runner.temp }}/qb-settings-materialized/translations
+          if-no-files-found: error
+          retention-days: 7
+
+  stable_lkg_refresh:
+    name: qB same-stable Frozen LKG refresh
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'settings-evidence' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && (contains(github.event.head_commit.message, '[settings-evidence]') || contains(github.event.head_commit.message, '[settings-evidence-verify]'))) }}
+    runs-on: ubuntu-latest
+    needs:
+      - release_catalog_base
+      - settings_bundle_materialize
+    permissions:
+      contents: write
+      actions: write
+    outputs:
+      materialized_sha: ${{ steps.materialize.outputs.materialized_sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Download exact stable base catalog
+        uses: actions/download-artifact@v8
+        with:
+          name: qb-release-catalog-base-${{ github.sha }}
+          path: exact-base
+      - name: Verify or refresh same-stable Frozen source evidence
+        id: materialize
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          GENERATED="exact-base/qb-releases.json"
+          FROZEN="tests/fixtures/qb-release-catalog.lkg.json"
+          test -s "$GENERATED"
+          test -s "$FROZEN"
+
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const generated=JSON.parse(fs.readFileSync('exact-base/qb-releases.json','utf8'));
+          const frozen=JSON.parse(fs.readFileSync('tests/fixtures/qb-release-catalog.lkg.json','utf8'));
+          const fail=message=>{throw new Error(message);};
+          if(!Array.isArray(generated)||!Array.isArray(frozen)||generated.length!==frozen.length)fail('Same-stable refresh requires identical Frozen profile count.');
+          for(let i=0;i<frozen.length;i++){
+            const a=frozen[i],b=generated[i];
+            for(const key of ['qbVersion','tag','sourceSha','webApiVersion']){
+              if(String(a?.[key]??'')!==String(b?.[key]??''))fail('Same-stable refresh identity mismatch at ordinal '+i+' '+key+': '+a?.[key]+' -> '+b?.[key]);
+            }
+            if(a?.stable!==true||b?.stable!==true||a?.officialWeiGSupport===false||b?.officialWeiGSupport===false)fail('Same-stable refresh encountered non-admitted profile '+(b?.qbVersion||i)+'.');
+          }
+          console.log('Same-stable identity PASS: '+generated.length+' exact profiles '+generated[0].qbVersion+' -> '+generated.at(-1).qbVersion+'.');
+          NODE
+
+          if cmp -s "$GENERATED" "$FROZEN"; then
+            echo "Frozen stable catalog already matches current exact source extraction."
+            exit 0
+          fi
+
+          handoff_latest_settings_evidence() {
+            local remote_sha="$1"
+            echo "Source evidence owner $GITHUB_SHA is stale; handing settings-evidence to latest dev $remote_sha."
+            jq -n --arg ref dev '{ref:$ref,inputs:{validation_mode:"settings-evidence"}}' \
+              | gh api --method POST "/repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/dispatches" --input -
+          }
+
+          git fetch --no-tags origin dev
+          REMOTE_DEV_SHA="$(git rev-parse origin/dev)"
+          if [ "$REMOTE_DEV_SHA" != "$GITHUB_SHA" ]; then
+            handoff_latest_settings_evidence "$REMOTE_DEV_SHA"
+            exit 0
+          fi
+
+          cp "$GENERATED" "$FROZEN"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import crypto from 'node:crypto';
+          const frozenPath='tests/fixtures/qb-release-catalog.lkg.json';
+          const stablePath='tools/data/qb-stable-lkg.json';
+          const localePath='tools/data/qb-locale-lkg.json';
+          const bytes=fs.readFileSync(frozenPath);
+          const digest=crypto.createHash('sha256').update(bytes).digest('hex');
+          const frozen=JSON.parse(bytes);
+          const stable=JSON.parse(fs.readFileSync(stablePath,'utf8'));
+          const locale=JSON.parse(fs.readFileSync(localePath,'utf8'));
+          if(frozen.length!==stable.profileCount||frozen[0]?.qbVersion!==stable.supportFloor||frozen.at(-1)?.qbVersion!==stable.latestAdmittedStable)throw new Error('Refreshed Frozen catalog boundaries diverged from admitted manifest.');
+          stable.catalogSha256=digest;
+          stable.seedEvidence={
+            weiGCommit:process.env.GITHUB_SHA,
+            ciRunId:Number(process.env.GITHUB_RUN_ID),
+            artifactName:'qb-release-catalog-base-'+process.env.GITHUB_SHA,
+            verifiedDate:new Date().toISOString().slice(0,10),
+            mode:'same-stable-source-refresh'
+          };
+          if(locale.profileCount!==stable.profileCount||locale.supportFloor!==stable.supportFloor||locale.latestAdmittedStable!==stable.latestAdmittedStable)throw new Error('Locale LKG boundaries diverged from stable manifest.');
+          locale.baseCatalogSha256=digest;
+          fs.writeFileSync(stablePath,JSON.stringify(stable,null,2)+'\n','utf8');
+          fs.writeFileSync(localePath,JSON.stringify(locale)+'\n','utf8');
+          console.log('Rebound Frozen stable + Locale LKG to sha256:'+digest+'.');
+          NODE
+
+          # Reuse the canonical compact Settings runtime rebind owner. Frozen evidence
+          # and formal runtime identity must land in one coherent product commit.
+          node tools/qb-settings-runtime-rebind.mjs "$RUNNER_TEMP/settings-compat.json" "$FROZEN"
+          cp "$RUNNER_TEMP/settings-compat.json" webui/private/data/settings-compat.json
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import {admittedCatalogRows,catalogIdentity} from './tools/qb-catalog-identity.mjs';
+          const catalog=JSON.parse(fs.readFileSync('tests/fixtures/qb-release-catalog.lkg.json','utf8'));
+          const expected=admittedCatalogRows(catalog);
+          const file='webui/private/data/capabilities.json';
+          const capability=JSON.parse(fs.readFileSync(file,'utf8'));
+          if(!Array.isArray(capability.releases)||capability.releases.length!==expected.length)throw new Error('Capability/Frozen release-set length mismatch.');
+          for(let i=0;i<expected.length;i++){
+            const actual=capability.releases[i],row=expected[i];
+            if(String(actual?.qbVersion||'')!==row.qbVersion||String(actual?.sourceSha||'').toLowerCase()!==row.sourceSha)throw new Error('Capability/Frozen exact release identity mismatch at index '+i);
+          }
+          const identity=catalogIdentity(catalog);
+          capability.catalogIdentity=identity;
+          fs.writeFileSync(file,JSON.stringify(capability,null,2)+'\n','utf8');
+          console.log('Rebound capability control plane to Frozen identity '+identity.sourceCatalogSha256.slice(0,12)+'.');
+          NODE
+
+          if git diff --quiet -- webui/private/data/capabilities.json webui/private/data/settings-compat.json; then
+            echo "Frozen bytes changed without changing the formal compact runtime identity; refusing an evidence-only product divergence." >&2
+            exit 1
+          fi
+
+
+          rm -rf exact-base
+          mapfile -t changed < <({ git diff --name-only; git ls-files --others --exclude-standard; } | sort -u)
+          test "${#changed[@]}" -gt 0
+          for path in "${changed[@]}"; do
+            case "$path" in
+              tests/fixtures/qb-release-catalog.lkg.json|tools/data/qb-stable-lkg.json|tools/data/qb-locale-lkg.json|webui/private/data/capabilities.json|webui/private/data/settings-compat.json) ;;
+              *) echo "Unexpected Frozen/runtime refresh path: $path" >&2; exit 1 ;;
+            esac
+          done
+
+          git config user.name "WeiG CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add tests/fixtures/qb-release-catalog.lkg.json tools/data/qb-stable-lkg.json tools/data/qb-locale-lkg.json webui/private/data/capabilities.json webui/private/data/settings-compat.json
+          git commit -m "a3: refresh same-stable Frozen runtime [settings-evidence-verify] [native-surfaces] [settings-matrix] [torrent-runtime-materialize] [ui]"
+
+          # Repository contracts that prove committed Git blob identity must inspect the
+          # exact local materialized commit that will be pushed, not the stale external HEAD.
+          npm test
+          test -z "$(git status --porcelain)" || {
+            echo "Frozen/runtime materialization changed after local validation commit." >&2
+            git status --short >&2
+            exit 1
+          }
+
+          git fetch --no-tags origin dev
+          REMOTE_DEV_SHA="$(git rev-parse origin/dev)"
+          if [ "$REMOTE_DEV_SHA" != "$GITHUB_SHA" ]; then
+            handoff_latest_settings_evidence "$REMOTE_DEV_SHA"
+            exit 0
+          fi
+          git push origin HEAD:dev
+          echo "materialized_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+
+  browser:
+    name: Linux browser candidate
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' && github.ref == 'refs/heads/dev' }}
+    runs-on: ubuntu-24.04
+    needs: smoke
+    env:
+      WEIG_BROWSER_CHANNEL: chrome
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install browser test dependency
+        run: npm ci --no-audit --no-fund --prefer-offline
+      - name: Verify hosted Chrome runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v google-chrome >/dev/null || { echo 'Hosted Google Chrome Stable is missing.' >&2; exit 1; }
+          google-chrome --version
+          node -p "require('playwright/package.json').version"
+          printf 'Git SHA: %s\n' "$GITHUB_SHA"
+      - name: Linux owner browser acceptance
+        run: |
+          node tests/browser-route-module-loading.mjs
+          node tests/browser-runtime.mjs
+          node tests/browser-settings-fidelity.mjs
+          node tests/browser-feature-parity.mjs
+          node tests/browser-torrent-workspace.mjs
+          node tests/browser-adaptive-ui.mjs
+
+  windows_browser:
+    name: Windows browser candidate
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' && github.ref == 'refs/heads/dev' }}
+    runs-on: windows-2025
+    needs: smoke
+    env:
+      WEIG_BROWSER_CHANNEL: chrome
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install browser test dependency
+        shell: pwsh
+        run: npm ci --no-audit --no-fund --prefer-offline
+      - name: Verify hosted Chrome runtime
+        shell: pwsh
+        run: |
+          $candidates = @(
+            "$env:ProgramFiles\Google\Chrome\Application\chrome.exe"
+            "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe"
+          )
+          $chrome = $candidates | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+          if (-not $chrome) { throw 'Hosted Google Chrome Stable is missing.' }
+          $chromeVersion = (Get-Item $chrome).VersionInfo.ProductVersion
+          if ([string]::IsNullOrWhiteSpace($chromeVersion)) { throw 'Hosted Google Chrome Stable version is unavailable.' }
+          Write-Host "Google Chrome $chromeVersion"
+          node -p "require('playwright/package.json').version"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Write-Host "Runner image: $env:ImageOS $env:ImageVersion"
+          Write-Host "Git SHA: $env:GITHUB_SHA"
+      - name: Windows platform, qB config encoding and installer syntax
+        shell: pwsh
+        run: |
+          node tests/platform-contract.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node tests/windows-distribution-artifact-contract.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $null = [scriptblock]::Create((Get-Content 'installers/install.ps1' -Raw))
+          powershell -NoProfile -ExecutionPolicy Bypass -File tests/windows-config-encoding.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Write-Host 'Windows platform contracts passed.'
+      - name: Representative qB4/qB5 semantic browser matrix on Windows
+        shell: pwsh
+        run: |
+          $tests = @(
+            'tests/browser-runtime.mjs',
+            'tests/browser-settings-fidelity.mjs'
+          )
+          foreach ($test in $tests) {
+            node $test
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+
+  release_candidate:
+    name: release candidate
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' && github.ref == 'refs/heads/dev' }}
+    runs-on: ubuntu-latest
+    needs:
+      - smoke
+      - browser
+      - windows_browser
+      - installer_lifecycle_linux
+      - installer_lifecycle_busybox
+      - installer_lifecycle_windows
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Package exact-SHA self-contained release candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(tr -d '\r\n' < VERSION)"
+          rm -rf "$RUNNER_TEMP/candidate-dist" release
+          node tools/build-webui-dist.mjs \
+            --webui-root=webui \
+            --out="$RUNNER_TEMP/candidate-dist" \
+            --sha="$GITHUB_SHA" \
+            --version="$VERSION"
+          mkdir -p release
+          cp "$RUNNER_TEMP/candidate-dist/weig-qb-webui.zip" release/weig-qb-webui.zip
+          cp "$RUNNER_TEMP/candidate-dist/weig-qb-webui.tar.gz" release/weig-qb-webui.tar.gz
+          cp "$RUNNER_TEMP/candidate-dist/manifest.json" release/manifest.json
+          cp "$RUNNER_TEMP/candidate-dist/SHA256SUMS" release/SHA256SUMS
+          cp "$RUNNER_TEMP/candidate-dist/install.sh" release/install.sh
+          cp "$RUNNER_TEMP/candidate-dist/install.ps1" release/install.ps1
+          chmod 0755 release/install.sh
+          printf '%s\n' "$GITHUB_SHA" > release/CANDIDATE_SHA
+          (cd release && sha256sum -c SHA256SUMS)
+          test "$(unzip -p release/weig-qb-webui.zip weig-qb-webui/GIT_SHA | tr -d '\r\n')" = "$GITHUB_SHA"
+          test "$(unzip -p release/weig-qb-webui.zip weig-qb-webui/VERSION | tr -d '\r\n')" = "$VERSION"
+          test "$(tar -xOzf release/weig-qb-webui.tar.gz weig-qb-webui/GIT_SHA | tr -d '\r\n')" = "$GITHUB_SHA"
+          test "$(tar -xOzf release/weig-qb-webui.tar.gz weig-qb-webui/VERSION | tr -d '\r\n')" = "$VERSION"
+          unzip -Z1 release/weig-qb-webui.zip | grep -qE '^weig-qb-webui/private/data/qb-copy-routes/r[0-9a-f]{20}\.json\.gz$'
+          unzip -Z1 release/weig-qb-webui.zip | grep -qE '^weig-qb-webui/private/data/qb-copy-bindings/b[0-9a-f]{20}\.txt$'
+          unzip -Z1 release/weig-qb-webui.zip | grep -qE '^weig-qb-webui/private/data/qb-copy-fallback/p[0-9a-f]{20}\.json\.gz$'
+          if unzip -Z1 release/weig-qb-webui.zip | grep -q '^weig-qb-webui/private/data/qb-copy-profiles/'; then
+            echo 'Retired qB copy profile owner reappeared in candidate package.' >&2
+            exit 1
+          fi
+          unzip -t release/weig-qb-webui.zip 'weig-qb-webui/translations/webui_*.qm' >/dev/null
+          if unzip -Z1 release/weig-qb-webui.zip | grep -E '^weig-qb-webui/private/(scripts/release-profile\.js|data/qb-releases\.json|data/qb-release-profiles/)' > "$RUNNER_TEMP/retired-runtime-paths.txt"; then
+            cat "$RUNNER_TEMP/retired-runtime-paths.txt" >&2
+            echo 'Retired release-profile runtime reappeared in candidate package.' >&2
+            exit 1
+          fi
+      - name: Upload reusable release candidate
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-candidate-${{ github.sha }}
+          path: |
+            release/weig-qb-webui.zip
+            release/weig-qb-webui.tar.gz
+            release/manifest.json
+            release/SHA256SUMS
+            release/CANDIDATE_SHA
+            release/install.sh
+            release/install.ps1
+          if-no-files-found: error
+          retention-days: 90
+      - name: Dispatch isolated candidate deployment acceptance
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          jq -n --arg ref dev --arg sha "$GITHUB_SHA" --arg run "$GITHUB_RUN_ID" \
+            '{ref:$ref,inputs:{candidate_sha:$sha,candidate_run_id:$run}}' \
+            | gh api --method POST "/repos/$GITHUB_REPOSITORY/actions/workflows/candidate-deployment-only.yml/dispatches" --input -
+          echo "Dispatched isolated deployment acceptance for candidate $GITHUB_SHA from CI run $GITHUB_RUN_ID."
+
+  native_surface_source_base:
+    name: qB native surface source base
+    if: ${{ (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/dev' && (inputs.validation_mode == 'native-surfaces' || (inputs.validation_mode == 'change-aware' && needs.classify.outputs.native_source == 'true'))) || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && (contains(github.event.head_commit.message, '[native-surfaces]') || contains(github.event.head_commit.message, '[detail-runtime-materialize]'))) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: classify
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Checkout qBittorrent upstream with stable tags
+        uses: actions/checkout@v7
+        with:
+          repository: qbittorrent/qBittorrent
+          path: upstream-qb
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+      - name: Build exact admitted source catalog once
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/qb-release-catalog-shard.mjs upstream-qb \
+            --shard-index=0 \
+            --shard-count=1 \
+            --admitted-catalog=tests/fixtures/qb-release-catalog.lkg.json \
+            --output=qb-releases.json \
+            --manifest=qb-releases.meta.json
+      - name: Extract and verify exact RSS native surface facts
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/qb-rss-source-overlay.mjs upstream-qb qb-releases.json qb-rss-source-catalog.json
+          node tools/qb-rss-compact.mjs qb-rss-source-catalog.json rss-compat.json
+          node audits/full-stable-rss-source-contract.mjs qb-rss-source-catalog.json
+      - name: Upload shared native surface base
+        uses: actions/upload-artifact@v7
+        with:
+          name: native-surface-base-${{ github.sha }}
+          path: |
+            qb-releases.json
+            qb-releases.meta.json
+            qb-rss-source-catalog.json
+            rss-compat.json
+          if-no-files-found: error
+          retention-days: 1
+
+  detail_runtime_materialize:
+    name: qB Detail source runtime materialization
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'native-surfaces' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[detail-runtime-materialize]')) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    needs: native_surface_source_base
+    permissions:
+      contents: write
+    outputs:
+      materialized_sha: ${{ steps.commit.outputs.materialized_sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Download exact native surface source base
+        uses: actions/download-artifact@v8
+        with:
+          name: native-surface-base-${{ github.sha }}
+          path: native-base
+      - name: Materialize exact Detail runtime from source catalog
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/qb-detail-runtime-rebind.mjs webui/private/data/detail-compat.json native-base/qb-releases.json
+          node tests/qb-detail-runtime-rebind-contract.mjs
+          node tests/qb-detail-control-source-contract.mjs
+          node tests/detail-runtime-contract.mjs
+          git diff --check
+          test -z "$(git diff --name-only -- webui/translations)"
+      - name: Commit canonical Detail runtime if changed
+        id: commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --quiet -- webui/private/data/detail-compat.json && {
+            echo "Committed Detail runtime already matches exact native source catalog."
+            exit 0
+          }
+          git fetch --no-tags origin dev
+          test "$(git rev-parse origin/dev)" = "$GITHUB_SHA" || {
+            echo "SAFE-REF abort before Detail runtime materialization push." >&2
+            exit 1
+          }
+          git config user.name "WeiG CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add webui/private/data/detail-compat.json
+          git commit -m "a16: materialize exact Detail runtime [ui]"
+          git push origin HEAD:dev
+          echo "materialized_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  native_surface_preferences:
+    name: qB Preferences source shard ${{ matrix.shard }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/dev' && (inputs.validation_mode == 'native-surfaces' || inputs.validation_mode == 'change-aware')) || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[native-surfaces]')) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: native_surface_source_base
+    strategy:
+      fail-fast: false
+      max-parallel: 16
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Checkout qBittorrent upstream with stable tags
+        uses: actions/checkout@v7
+        with:
+          repository: qbittorrent/qBittorrent
+          path: upstream-qb
+          fetch-depth: 0
+          fetch-tags: true
+          filter: blob:none
+          persist-credentials: false
+      - name: Download shared exact release catalog
+        uses: actions/download-artifact@v8
+        with:
+          name: native-surface-base-${{ github.sha }}
+          path: native-base
+      - name: Extract exact Preferences native surface shard
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/qb-preferences-surface-source.mjs upstream-qb native-base/qb-releases.json qb-preferences-source-shard-${{ matrix.shard }}.json --shard-index=${{ matrix.shard }} --shard-count=16
+      - name: Upload exact Preferences source shard
+        uses: actions/upload-artifact@v7
+        with:
+          name: native-surface-preferences-${{ github.sha }}-${{ matrix.shard }}
+          path: qb-preferences-source-shard-${{ matrix.shard }}.json
+          if-no-files-found: error
+          retention-days: 1
+
+  native_surface_source:
+    name: qB native surface source admission
+    if: ${{ always() && ((github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'native-surfaces' && github.ref == 'refs/heads/dev') || (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'change-aware' && needs.native_surface_source_base.result == 'success' && needs.native_surface_preferences.result == 'success') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[native-surfaces]'))) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs:
+      - native_surface_source_base
+      - native_surface_preferences
+    steps:
+      - name: Require base and every Preferences shard
+        env:
+          BASE_RESULT: ${{ needs.native_surface_source_base.result }}
+          SHARDS_RESULT: ${{ needs.native_surface_preferences.result }}
+        run: |
+          set -euo pipefail
+          test "$BASE_RESULT" = success
+          test "$SHARDS_RESULT" = success
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Checkout qBittorrent upstream for independent census
+        uses: actions/checkout@v7
+        with:
+          repository: qbittorrent/qBittorrent
+          path: upstream-qb
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+      - name: Download shared native surface base
+        uses: actions/download-artifact@v8
+        with:
+          name: native-surface-base-${{ github.sha }}
+          path: native-base
+      - name: Download all exact Preferences source shards
+        uses: actions/download-artifact@v8
+        with:
+          pattern: native-surface-preferences-${{ github.sha }}-*
+          path: preferences-shards
+          merge-multiple: true
+      - name: Aggregate exact Preferences shards
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/qb-preferences-surface-source.mjs --merge native-base/qb-releases.json preferences-shards qb-preferences-source-catalog.json
+      - name: Compile Preferences compact contract
+        run: node tools/qb-preferences-compact.mjs qb-preferences-source-catalog.json settings-native-compat.json tests/fixtures/qb-release-catalog.lkg.json
+      - name: Emit canonical Settings runtime materialization evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import crypto from 'node:crypto';
+          import {packSettingsRuntime} from './tools/qb-compact-runtime.mjs';
+          const source=JSON.parse(fs.readFileSync('settings-native-compat.json','utf8'));
+          const rendered=JSON.stringify(packSettingsRuntime(source,source.catalogIdentity).manifest)+'\n';
+          fs.writeFileSync('settings-runtime-materialized.json',rendered,'utf8');
+          const encoded=Buffer.from(rendered,'utf8').toString('base64');
+          console.log('@@SETTINGS_RUNTIME_META\t'+Buffer.byteLength(rendered)+'\t'+crypto.createHash('sha256').update(rendered).digest('hex')+'\t'+encoded.length);
+          for(let offset=0,index=0;offset<encoded.length;offset+=4000,index++)console.log('@@SETTINGS_RUNTIME_B64\t'+index+'\t'+encoded.slice(offset,offset+4000));
+          const rss=fs.readFileSync('native-base/rss-compat.json','utf8');
+          const rssEncoded=Buffer.from(rss,'utf8').toString('base64');
+          console.log('@@RSS_RUNTIME_META\t'+Buffer.byteLength(rss)+'\t'+crypto.createHash('sha256').update(rss).digest('hex')+'\t'+rssEncoded.length);
+          for(let offset=0,index=0;offset<rssEncoded.length;offset+=4000,index++)console.log('@@RSS_RUNTIME_B64\t'+index+'\t'+rssEncoded.slice(offset,offset+4000));
+          NODE
+      - name: Verify every admitted stable Preferences source profile and independent census
+        env:
+          QB_PREFERENCES_CENSUS_OUTPUT: qb-preferences-census.json
+        run: node audits/full-stable-preferences-source-contract.mjs qb-preferences-source-catalog.json native-base/qb-releases.json upstream-qb
+      - name: Census qB WebUI QBT_TR entities across every admitted source SHA
+        env:
+          QB_QBT_ENTITY_CENSUS_OUTPUT: qb-qbt-entity-census.json
+        run: node audits/full-stable-qbt-entity-source-contract.mjs native-base/qb-releases.json upstream-qb
+      - name: Verify committed qB-owned copy runtime against admitted current source
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/qb-runtime-copy-materialization-contract.mjs native-base/qb-releases.json webui/private/data
+      - name: Collect exact native surface source artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp native-base/qb-releases.json qb-releases.json
+          cp native-base/qb-rss-source-catalog.json qb-rss-source-catalog.json
+          cp native-base/rss-compat.json rss-compat.json
+      - name: Upload exact native surface source artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: native-surface-source-${{ github.sha }}
+          path: |
+            qb-releases.json
+            qb-rss-source-catalog.json
+            rss-compat.json
+            qb-preferences-source-catalog.json
+            qb-preferences-census.json
+            qb-qbt-entity-census.json
+            settings-native-compat.json
+            settings-runtime-materialized.json
+          if-no-files-found: error
+          retention-days: 7
+      - name: Verify canonical runtimes and delegate Settings materialization
+        shell: bash
+        run: |
+          set -euo pipefail
+          blocking_mismatch=0
+          settings_runtime_stale=0
+          node tools/qb-detail-runtime-rebind.mjs detail-runtime-materialized.json native-base/qb-releases.json
+          cmp -s settings-runtime-materialized.json webui/private/data/settings-compat.json || {
+            echo 'Committed Settings runtime is stale against the exact-SHA canonical materialization; the dedicated Settings source-runtime owner will materialize it.'
+            sha256sum settings-runtime-materialized.json webui/private/data/settings-compat.json
+            settings_runtime_stale=1
+          }
+          cmp -s native-base/rss-compat.json webui/private/data/rss-compat.json || {
+            echo 'Committed RSS runtime does not match the exact-SHA canonical materialization.' >&2
+            sha256sum native-base/rss-compat.json webui/private/data/rss-compat.json >&2
+            blocking_mismatch=1
+          }
+          cmp -s detail-runtime-materialized.json webui/private/data/detail-compat.json || {
+            echo 'Committed Detail runtime does not match the exact-SHA canonical materialization.' >&2
+            sha256sum detail-runtime-materialized.json webui/private/data/detail-compat.json >&2
+            blocking_mismatch=1
+          }
+          test "$blocking_mismatch" -eq 0
+          if [ "$settings_runtime_stale" -eq 0 ]; then echo 'Committed Settings runtime already matches the exact-SHA canonical materialization.'; fi
+          sha256sum settings-runtime-materialized.json native-base/rss-compat.json detail-runtime-materialized.json
+
+
+  native_settings_runtime_materialize:
+    name: qB Settings exact source runtime materialization
+    if: ${{ always() && needs.native_surface_source.result == 'success' && github.ref == 'refs/heads/dev' }}
+    runs-on: ubuntu-latest
+    needs:
+      - native_surface_source
+    permissions:
+      contents: write
+      actions: write
+    outputs:
+      materialized_sha: ${{ steps.commit.outputs.materialized_sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Download exact native Settings source runtime
+        uses: actions/download-artifact@v8
+        with:
+          name: native-surface-source-${{ github.sha }}
+          path: native-source
+      - name: Stage and verify canonical Settings source runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          GENERATED="native-source/settings-runtime-materialized.json"
+          TARGET="webui/private/data/settings-compat.json"
+          test -s "$GENERATED"
+          if cmp -s "$GENERATED" "$TARGET"; then echo "Committed Settings source runtime already matches exact source generation."; exit 0; fi
+          cp "$GENERATED" "$TARGET"
+          node tests/settings-contract.mjs
+          node tests/qb-preferences-surface-source-contract.mjs
+          git diff --check
+          mapfile -t changed < <(git diff --name-only)
+          test "${#changed[@]}" -eq 1
+          test "${changed[0]}" = "$TARGET"
+      - name: Commit canonical Settings source runtime if changed
+        id: commit
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TARGET="webui/private/data/settings-compat.json"
+          git diff --quiet -- "$TARGET" && exit 0
+          handoff_latest_native_surface() {
+            local remote_sha="$1"
+            echo "Settings source-runtime owner $GITHUB_SHA is stale; handing native-surface validation to latest dev $remote_sha."
+            jq -n --arg ref dev '{ref:$ref,inputs:{validation_mode:"native-surfaces"}}' | gh api --method POST "/repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/dispatches" --input -
+          }
+          git fetch --no-tags origin dev
+          REMOTE_DEV_SHA="$(git rev-parse origin/dev)"
+          if [ "$REMOTE_DEV_SHA" != "$GITHUB_SHA" ]; then handoff_latest_native_surface "$REMOTE_DEV_SHA"; exit 0; fi
+          git config user.name "WeiG CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add "$TARGET"
+          git commit -m "a57: materialize exact Settings source runtime [ui]"
+          git fetch --no-tags origin dev
+          REMOTE_DEV_SHA="$(git rev-parse origin/dev)"
+          if [ "$REMOTE_DEV_SHA" != "$GITHUB_SHA" ]; then handoff_latest_native_surface "$REMOTE_DEV_SHA"; exit 0; fi
+          git push origin HEAD:dev
+          echo "materialized_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  materialized_validation_dispatch:
+    name: Dispatch materialized exact-SHA validation
+    if: ${{ always() && github.ref == 'refs/heads/dev' }}
+    runs-on: ubuntu-latest
+    needs:
+      - torrent_runtime_materialize
+      - settings_runtime_materialize
+      - settings_bundle_materialize
+      - stable_lkg_refresh
+      - detail_runtime_materialize
+      - native_settings_runtime_materialize
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Dispatch validation owners for generated dev head
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TORRENT_RUNTIME_SHA: ${{ needs.torrent_runtime_materialize.outputs.materialized_sha }}
+          SETTINGS_RUNTIME_SHA: ${{ needs.settings_runtime_materialize.outputs.materialized_sha }}
+          SETTINGS_BUNDLE_SHA: ${{ needs.settings_bundle_materialize.outputs.materialized_sha }}
+          STABLE_RUNTIME_SHA: ${{ needs.stable_lkg_refresh.outputs.materialized_sha }}
+          DETAIL_RUNTIME_SHA: ${{ needs.detail_runtime_materialize.outputs.materialized_sha }}
+          NATIVE_SETTINGS_RUNTIME_SHA: ${{ needs.native_settings_runtime_materialize.outputs.materialized_sha }}
+        run: |
+          set -euo pipefail
+          shas=()
+          for value in "$TORRENT_RUNTIME_SHA" "$SETTINGS_RUNTIME_SHA" "$SETTINGS_BUNDLE_SHA" "$STABLE_RUNTIME_SHA" "$DETAIL_RUNTIME_SHA" "$NATIVE_SETTINGS_RUNTIME_SHA"; do
+            [ -n "$value" ] && shas+=("$value")
+          done
+          if [ "${#shas[@]}" -eq 0 ]; then
+            echo "No generated dev commit was published; no materialized validation dispatch is needed."
+            exit 0
+          fi
+          mapfile -t unique_shas < <(printf '%s\n' "${shas[@]}" | sort -u)
+          if [ "${#unique_shas[@]}" -ne 1 ]; then
+            echo "Multiple generated dev SHAs escaped one CI run: ${unique_shas[*]}" >&2
+            exit 1
+          fi
+          TARGET_SHA="${unique_shas[0]}"
+          REMOTE_DEV_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/commits/dev" --jq '.sha')"
+          if [ "$REMOTE_DEV_SHA" != "$TARGET_SHA" ]; then
+            echo "Generated checkpoint $TARGET_SHA is stale; current dev is $REMOTE_DEV_SHA. A newer owner must dispatch validation."
+            exit 0
+          fi
+
+          jq -n --arg ref dev '{ref:$ref,inputs:{validation_mode:"change-aware"}}' \
+            | gh api --method POST "/repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/dispatches" --input -
+          echo "Dispatched one change-aware CI owner for generated dev@$TARGET_SHA."
+
+          if [ -n "$STABLE_RUNTIME_SHA" ]; then
+            jq -n --arg ref dev '{ref:$ref,inputs:{validation_mode:"settings-evidence"}}' \
+              | gh api --method POST "/repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/dispatches" --input -
+            echo "Frozen LKG changed on $TARGET_SHA; retained the dedicated Settings source-evidence owner."
+          fi
+
+          jq -n --arg ref dev             '{ref:$ref,inputs:{mode:"change-aware"}}'             | gh api --method POST "/repos/$GITHUB_REPOSITORY/actions/workflows/pages-source.yml/dispatches" --input -
+          echo "Dispatched change-aware Virtual qB Pages Source for dev@$TARGET_SHA."

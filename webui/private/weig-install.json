@@ -1,0 +1,9 @@
+{
+  "version": "1.0.1",
+  "gitSha": "__WEIG_GIT_SHA__",
+  "container": null,
+  "qbPath": null,
+  "hostPath": null,
+  "installedAt": null,
+  "installer": "source"
+}
