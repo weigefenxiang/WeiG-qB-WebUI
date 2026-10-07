@@ -269,7 +269,7 @@ for(const file of requiredCompactFiles){
   const full=path.join(dataDir,file);
   if(!fs.existsSync(full)||fs.statSync(full).size===0)throw new Error(`candidate compact runtime asset is missing or empty: ${file}`);
 }
-for(const dir of ['qb-copy-profiles','qb-copy-bindings','qb-copy-fallback']){
+for(const dir of ['qb-copy-routes','qb-copy-bindings','qb-copy-fallback']){
   const full=path.join(dataDir,dir);
   if(!fs.existsSync(full)||!fs.statSync(full).isDirectory())throw new Error(`candidate qB copy shard directory is missing: ${dir}`);
   const stack=[full];let files=0;while(stack.length){const current=stack.pop();for(const entry of fs.readdirSync(current,{withFileTypes:true})){const next=path.join(current,entry.name);if(entry.isDirectory())stack.push(next);else if(entry.isFile()){if(fs.statSync(next).size<=0)throw new Error(`candidate qB copy shard is empty: ${next}`);files++;}}}if(!files)throw new Error(`candidate qB copy shard directory is empty: ${dir}`);
@@ -291,7 +291,7 @@ const actions=JSON.parse(fs.readFileSync(path.join(dataDir,'source-actions.json'
 for(const action of ['appcontroller.h:preferencesAction','appcontroller.h:setPreferencesAction']){
   if(!Array.isArray(actions[action])||actions[action].length===0)throw new Error(`candidate compact action catalog does not source-prove ${action}`);
 }
-for(const dir of ['qb-copy-profiles','qb-copy-bindings','qb-copy-fallback']){const root=path.join(dataDir,dir),stack=[root];while(stack.length){const current=stack.pop();for(const entry of fs.readdirSync(current,{withFileTypes:true})){const next=path.join(current,entry.name);if(entry.isDirectory())stack.push(next);else if(entry.isFile()&&fs.statSync(next).size>=5*1024*1024)throw new Error(`candidate qB copy shard exceeds project static-file budget: ${next}`);}}}
+for(const dir of ['qb-copy-routes','qb-copy-bindings','qb-copy-fallback']){const root=path.join(dataDir,dir),stack=[root];while(stack.length){const current=stack.pop();for(const entry of fs.readdirSync(current,{withFileTypes:true})){const next=path.join(current,entry.name);if(entry.isDirectory())stack.push(next);else if(entry.isFile()&&fs.statSync(next).size>=5*1024*1024)throw new Error(`candidate qB copy shard exceeds project static-file budget: ${next}`);}}}
 // Do not require one physical QM per exercised locale here: the current distribution intentionally ships a minimal qB-owned QM set. The real qB + Chrome locale write/reload + localized Settings checks below are the authoritative acceptance owner.
 NODE
 

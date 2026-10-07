@@ -42,7 +42,7 @@ try {
     Assert-True ((Test-Path -LiteralPath $file -PathType Leaf) -and (Get-Item -LiteralPath $file).Length -gt 0) "Missing current compact runtime fixture: $name"
   }
   Assert-True (!(Test-Path -LiteralPath (Join-Path $Base 'private\data\qb-releases.json'))) 'Retired qb-releases.json must not be recreated for lifecycle fixtures.'
-  foreach($dir in @('qb-copy-profiles','qb-copy-bindings','qb-copy-fallback')){Assert-True (Test-Path -LiteralPath (Join-Path $Base ('private\data\'+$dir)) -PathType Container) "Missing current qB copy shard fixture: $dir"}
+  foreach($dir in @('qb-copy-routes','qb-copy-bindings','qb-copy-fallback')){Assert-True (Test-Path -LiteralPath (Join-Path $Base ('private\data\'+$dir)) -PathType Container) "Missing current qB copy shard fixture: $dir"}
   $baseWeiGLocaleDir=Join-Path $Base 'private\data\weig-i18n';Assert-True (Test-Path -LiteralPath $baseWeiGLocaleDir -PathType Container) 'Missing current WeiG locale shard fixture directory.';Assert-True (@(Get-ChildItem $baseWeiGLocaleDir -Filter '*.json' -File).Count -eq $WeiGLocaleOverlays.Count) 'Current WeiG locale shard fixture count mismatch.';foreach($locale in $WeiGLocaleOverlays){Assert-True (Test-Path -LiteralPath (Join-Path $baseWeiGLocaleDir ($locale+'.json')) -PathType Leaf) "Missing current WeiG locale shard fixture: $locale"}
   Assert-True (!(Test-Path -LiteralPath (Join-Path $Base 'private\data\qb-settings-native.txt'))) 'Retired all-version qB copy registry must stay absent.'
 
@@ -134,7 +134,7 @@ try {
       Assert-True ((Test-Path -LiteralPath $file -PathType Leaf) -and (Get-Item -LiteralPath $file).Length -gt 0) "Installed compact runtime missing: $name"
     }
     Assert-True (!(Test-Path -LiteralPath (Join-Path $Destination 'private\data\qb-releases.json'))) 'Retired qb-releases.json reappeared after install.'
-    foreach($dir in @('qb-copy-profiles','qb-copy-bindings','qb-copy-fallback')){Assert-True (Test-Path -LiteralPath (Join-Path $Destination ('private\data\'+$dir)) -PathType Container) "Installed qB copy shard directory missing: $dir"}
+    foreach($dir in @('qb-copy-routes','qb-copy-bindings','qb-copy-fallback')){Assert-True (Test-Path -LiteralPath (Join-Path $Destination ('private\data\'+$dir)) -PathType Container) "Installed qB copy shard directory missing: $dir"}
     $installedWeiGLocaleDir=Join-Path $Destination 'private\data\weig-i18n';Assert-True (Test-Path -LiteralPath $installedWeiGLocaleDir -PathType Container) 'Installed WeiG locale shard directory missing.';Assert-True (@(Get-ChildItem $installedWeiGLocaleDir -Filter '*.json' -File).Count -eq $WeiGLocaleOverlays.Count) 'Installed WeiG locale shard count mismatch.';foreach($locale in $WeiGLocaleOverlays){$file=Join-Path $installedWeiGLocaleDir ($locale+'.json');Assert-True ((Test-Path -LiteralPath $file -PathType Leaf) -and (Get-Item -LiteralPath $file).Length -gt 0) "Installed WeiG locale shard missing: $locale"}
     Assert-True (!(Test-Path -LiteralPath (Join-Path $Destination 'private\data\qb-settings-native.txt'))) 'Retired all-version qB copy registry reappeared after install.'
   }

@@ -59,36 +59,36 @@
     function tokens(setId,trail){if(!setId)return[];if(sets[setId])return sets[setId].slice();var def=defMap[setId];if(!Array.isArray(def)||def.length!==3)return null;trail=trail||{};if(trail[setId])return null;trail[setId]=true;var base=def[0]?tokens(def[0],trail):[];if(base===null)return null;var active={};for(var i=0;i<base.length;i++)active[base[i]]=true;for(var j=0;j<(def[2]||[]).length;j++)delete active[def[2][j]];for(var k=0;k<(def[1]||[]).length;k++)active[def[1][k]]=true;delete trail[setId];var out=Object.keys(active).sort(function(a,b){return parseInt(a,36)-parseInt(b,36);});sets[setId]=out;return out.slice();}
     var list=tokens(id,{});if(list===null)return null;var out={};for(var i=0;i<list.length;i++){var index=parseInt(list[i],36),ref=valueRefs[index],value=values[index];if(!ref||typeof value!=='string')return null;if(out[ref]!==undefined&&out[ref]!==value)return null;out[ref]=value;}return out;
   }
-  function parseOwnedCopyBinding(text,profile,fallbackData){
+  function parseOwnedCopyBinding(text,route,fallbackData){
     var source=String(text||''),refs={},binding={preferences:{},ui:{}},match,bindingMatch=source.match(/^@@BINDING\t(b[0-9a-f]{20})\s*$/m);
-    if(!profile||!bindingMatch||bindingMatch[1]!==profile.bindingId)return null;
+    if(!route||!bindingMatch||bindingMatch[1]!==route.bindingId)return null;
     var refRe=/^@@REF\t([0-9a-f]{24})\t([^\t\r\n]*)\t([^\t\r\n]*)\r?\n([\s\S]*?)\r?\n@@END\s*$/gm;
     while((match=refRe.exec(source))){var raw=String(match[4]||'').trim();refs[match[1]]={context:decodeField(match[2]),source:decodeField(match[3]),text:raw&&raw.indexOf('QBT_'+'TR(')<0?raw:null};}
     var prefRe=/^@@PREF\t([^\t\r\n]*)\t([^\t\r\n]*)\t([0-9a-f]{24})\t([0-9a-f]{24}|-)\s*$/gm;
     while((match=prefRe.exec(source)))binding.preferences[decodeField(match[1])]={controlId:decodeField(match[2])||null,title:match[3],description:match[4]==='-'?null:match[4]};
     var uiRe=/^@@UI\t([^\t\r\n]*)\t([0-9a-f]{24})\s*$/gm;
     while((match=uiRe.exec(source)))binding.ui[decodeField(match[1])]=match[2];
-    var nativeLocale=routeLocale(profile.nativeLocales),fallbackLocale=nativeLocale?null:routeLocale(profile.fallbackLocales),mode=nativeLocale?'native':(fallbackLocale?'fallback':null);if(!mode)return null;
-    var fallbackSet={};if(mode==='fallback'){var setId=profile.fallbackSets&&profile.fallbackSets[fallbackLocale];if(setId){fallbackSet=resolveFallbackSet(fallbackData,setId);if(fallbackSet===null)return null;}}
+    var nativeLocale=routeLocale(route.nativeLocales),fallbackLocale=nativeLocale?null:routeLocale(Object.keys(route.fallback||{})),mode=nativeLocale?'native':(fallbackLocale?'fallback':null);if(!mode)return null;
+    var fallbackSet={};if(mode==='fallback'){var fallbackRoute=route.fallback&&route.fallback[fallbackLocale],setId=Array.isArray(fallbackRoute)?fallbackRoute[0]:null;if(setId){fallbackSet=resolveFallbackSet(fallbackData,setId);if(fallbackSet===null)return null;}}
     function resolve(id){var ref=refs[id];if(!ref)return null;if(mode==='fallback')return String(fallbackSet[id]!==undefined?fallbackSet[id]:ref.source);return ref.text===null?null:String(ref.text);}
     var preferences={},ui={},resolvedRefs={},addRefs={},unresolved=false;
     Object.keys(refs).forEach(function(id){var value=resolve(id),ref=refs[id];if(value!==null)resolvedRefs[ref.context+'\u0000'+ref.source]=value;});
     Object.keys(binding.preferences).forEach(function(key){var entry=binding.preferences[key],title=resolve(entry.title),description=entry.description?resolve(entry.description):'';if(title===null||description===null){unresolved=true;return;}preferences[key]={title:title,description:description||'',controlId:entry.controlId||null};});
     Object.keys(binding.ui).forEach(function(key){var ref=refs[binding.ui[key]],value=resolve(binding.ui[key]);if(value===null){unresolved=true;return;}ui[key]=value;if(key.indexOf('add.copy.')===0&&ref)addRefs[ref.context+'\u0000'+ref.source]=true;});
     if(mode==='native'&&unresolved)return null;
-    return{schemaVersion:3,source:mode==='native'?'qb-native-QBT_TR+official-QM':'qb-exact-official-fallback-shard',sourceSha:profile.sourceSha,qbVersion:profile.qbVersion,locale:qbLocale,mode:mode,preferences:preferences,ui:ui,resolvedRefs:resolvedRefs,addRefs:addRefs};
+    return{schemaVersion:3,source:mode==='native'?'qb-native-QBT_TR+official-QM':'qb-exact-official-fallback-shard',routeId:route.routeId,locale:qbLocale,mode:mode,preferences:preferences,ui:ui,resolvedRefs:resolvedRefs,addRefs:addRefs};
   }
   function loadQbOwnedCopy(){
-    var current=currentProfile();if(!current||current.fallback)return Promise.resolve(null);var expectedSha=String(current.sourceSha||''),expectedVersion=String(current.qbVersion||''),loader=W.RuntimeAssets;if(!/^[0-9a-f]{40}$/.test(expectedSha)||!expectedVersion||!loader||typeof loader.readGzipJson!=='function')return Promise.resolve(null);
-    if(qbCopyData&&qbCopyData.sourceSha===expectedSha&&qbCopyData.qbVersion===expectedVersion&&qbCopyLocale===qbLocale)return Promise.resolve(qbCopyData);if(qbCopyTask)return qbCopyTask;qbCopyLocale=qbLocale;
-    var profilePath='data/qb-copy-profiles/'+expectedSha+'.json',profileIdentity=expectedSha+'@'+expectedVersion;
-    qbCopyTask=loader.readJson(profilePath,{namespace:'qb-copy-profile',identity:profileIdentity}).then(function(profile){
-      if(!profile||profile.schemaVersion!==1||profile.source!=='qB-source-context-runtime-copy-profile'||String(profile.sourceSha)!==expectedSha||String(profile.qbVersion)!==expectedVersion||!/^b[0-9a-f]{20}$/.test(String(profile.bindingId||'')))throw new Error('qB-owned copy profile identity mismatch');
-      var nativeLocale=routeLocale(profile.nativeLocales),fallbackLocale=nativeLocale?null:routeLocale(profile.fallbackLocales);if(!nativeLocale&&!fallbackLocale)throw new Error('qB-owned copy locale route unavailable');
-      var route=nativeLocale||fallbackLocale,bindingTask=loader.readText('data/qb-copy-bindings/'+profile.bindingId+'.txt',{namespace:'qb-copy-binding',identity:expectedSha+'@'+route}),fallbackTask=Promise.resolve(null),setId=fallbackLocale&&profile.fallbackSets&&profile.fallbackSets[fallbackLocale];
-      if(fallbackLocale&&setId){var major=expectedVersion.split('.')[0];fallbackTask=loader.readGzipJson('data/qb-copy-fallback/'+major+'/'+fallbackLocale+'.json.gz',{namespace:'qb-copy-fallback',identity:major+'@'+fallbackLocale});}
-      return Promise.all([bindingTask,fallbackTask]).then(function(parts){var value=parseOwnedCopyBinding(parts[0],profile,parts[1]);if(!value)throw new Error('qB-owned copy shard is unresolved');return value;});
-    }).then(function(value){qbCopyData=value;applyQbOwned(document);try{global.dispatchEvent(new CustomEvent('weig:qbcopychange',{detail:{locale:qbLocale,qbVersion:expectedVersion,sourceSha:expectedSha}}));}catch(_e){}return value;}).catch(function(){qbCopyData=null;return null;}).finally(function(){qbCopyTask=null;});return qbCopyTask;
+    var current=currentProfile();if(!current||current.fallback)return Promise.resolve(null);var expectedSha=String(current.sourceSha||''),expectedVersion=String(current.qbVersion||''),expectedRouteId=String(current.copyRouteId||''),loader=W.RuntimeAssets;if(!/^[0-9a-f]{40}$/.test(expectedSha)||!expectedVersion||!/^r[0-9a-f]{20}$/.test(expectedRouteId)||!loader||typeof loader.readGzipJson!=='function')return Promise.resolve(null);
+    if(qbCopyData&&qbCopyData.sourceSha===expectedSha&&qbCopyData.qbVersion===expectedVersion&&qbCopyData.routeId===expectedRouteId&&qbCopyLocale===qbLocale)return Promise.resolve(qbCopyData);if(qbCopyTask)return qbCopyTask;qbCopyLocale=qbLocale;
+    var routePath='data/qb-copy-routes/'+expectedRouteId+'.json.gz';
+    qbCopyTask=loader.readGzipJson(routePath,{namespace:'qb-copy-route',identity:expectedRouteId}).then(function(route){
+      if(!route||route.schemaVersion!==2||route.source!=='qB-copy-semantic-runtime-route'||String(route.routeId)!==expectedRouteId||!/^b[0-9a-f]{20}$/.test(String(route.bindingId||''))||!route.fallback||typeof route.fallback!=='object')throw new Error('qB-owned copy route identity mismatch');
+      var nativeLocale=routeLocale(route.nativeLocales),fallbackLocale=nativeLocale?null:routeLocale(Object.keys(route.fallback||{}));if(!nativeLocale&&!fallbackLocale)throw new Error('qB-owned copy locale route unavailable');
+      var localeRoute=nativeLocale||fallbackLocale,bindingTask=loader.readText('data/qb-copy-bindings/'+route.bindingId+'.txt',{namespace:'qb-copy-binding',identity:expectedRouteId+'@'+localeRoute}),fallbackTask=Promise.resolve(null),fallbackRoute=fallbackLocale&&route.fallback&&route.fallback[fallbackLocale],setId=Array.isArray(fallbackRoute)?fallbackRoute[0]:null,packId=Array.isArray(fallbackRoute)?fallbackRoute[1]:null;
+      if(fallbackLocale&&setId){if(!/^p[0-9a-f]{20}$/.test(String(packId||'')))throw new Error('qB-owned copy fallback pack identity missing');fallbackTask=loader.readGzipJson('data/qb-copy-fallback/'+packId+'.json.gz',{namespace:'qb-copy-fallback',identity:packId});}
+      return Promise.all([bindingTask,fallbackTask]).then(function(parts){var value=parseOwnedCopyBinding(parts[0],route,parts[1]);if(!value)throw new Error('qB-owned copy shard is unresolved');value.sourceSha=expectedSha;value.qbVersion=expectedVersion;value.routeId=expectedRouteId;return value;});
+    }).then(function(value){qbCopyData=value;applyQbOwned(document);try{global.dispatchEvent(new CustomEvent('weig:qbcopychange',{detail:{locale:qbLocale,qbVersion:expectedVersion,sourceSha:expectedSha,routeId:expectedRouteId}}));}catch(_e){}return value;}).catch(function(){qbCopyData=null;return null;}).finally(function(){qbCopyTask=null;});return qbCopyTask;
   }
   function resolvedQbCopy(){var current=currentProfile();if(!qbCopyData||!current||current.fallback||qbCopyLocale!==qbLocale)return null;if(String(qbCopyData.qbVersion)!==String(current.qbVersion)||String(qbCopyData.sourceSha)!==String(current.sourceSha))return null;return qbCopyData;}
   function qbSetting(key){var data=resolvedQbCopy(),entry=data&&data.preferences&&data.preferences[key];if(!entry)return null;return{title:entry.title,description:entry.description||'',source:data.source,controlId:entry.controlId||null};}

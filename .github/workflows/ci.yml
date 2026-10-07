@@ -747,9 +747,11 @@ jobs:
           GENERATED="$RUNNER_TEMP/qb-settings-materialized"
           copy_equal=false
           qm_equal=false
+          route_equal=false
           node tools/qb-runtime-copy-product.mjs compare "$GENERATED/private/data" webui/private/data >/dev/null && copy_equal=true
           diff -qr "$GENERATED/translations" webui/translations >/dev/null && qm_equal=true
-          if [ "$copy_equal" = true ] && [ "$qm_equal" = true ]; then
+          node tools/qb-copy-route-control-plane.mjs "$GENERATED/private/data/qb-releases.json" webui/private/data/capabilities.json >/dev/null && route_equal=true
+          if [ "$copy_equal" = true ] && [ "$qm_equal" = true ] && [ "$route_equal" = true ]; then
             echo "Committed qB Settings copy/QM assets exactly match current-SHA canonical generation."
             exit 0
           fi
@@ -758,6 +760,7 @@ jobs:
             echo "Verification SHA still differs from canonical qB Settings copy/QM generation." >&2
             node tools/qb-runtime-copy-product.mjs compare "$GENERATED/private/data" webui/private/data >&2 || true
             diff -qr "$GENERATED/translations" webui/translations >&2 || true
+            node tools/qb-copy-route-control-plane.mjs "$GENERATED/private/data/qb-releases.json" webui/private/data/capabilities.json >&2 || true
             exit 1
           fi
 
@@ -776,6 +779,7 @@ jobs:
           fi
 
           node tools/qb-runtime-copy-product.mjs sync "$GENERATED/private/data" webui/private/data >/dev/null
+          node tools/qb-copy-route-control-plane.mjs "$GENERATED/private/data/qb-releases.json" webui/private/data/capabilities.json --write >/dev/null
           rm -rf webui/translations
           mkdir -p webui/translations
           cp "$GENERATED"/translations/webui_*.qm webui/translations/
@@ -788,7 +792,7 @@ jobs:
           test "${#changed[@]}" -gt 0
           for path in "${changed[@]}"; do
             case "$path" in
-              webui/private/data/qb-copy-profiles/*|webui/private/data/qb-copy-bindings/*|webui/private/data/qb-copy-fallback/*|webui/translations/webui_*.qm) ;;
+              webui/private/data/qb-copy-routes/*|webui/private/data/qb-copy-bindings/*|webui/private/data/qb-copy-fallback/*|webui/private/data/capabilities.json|webui/translations/webui_*.qm) ;;
               *) echo "Unexpected materializer path: $path" >&2; exit 1 ;;
             esac
           done
@@ -811,7 +815,7 @@ jobs:
         with:
           name: qb-settings-runtime-materialized-${{ github.sha }}
           path: |
-            ${{ runner.temp }}/qb-settings-materialized/private/data/qb-copy-profiles
+            ${{ runner.temp }}/qb-settings-materialized/private/data/qb-copy-routes
             ${{ runner.temp }}/qb-settings-materialized/private/data/qb-copy-bindings
             ${{ runner.temp }}/qb-settings-materialized/private/data/qb-copy-fallback
             ${{ runner.temp }}/qb-settings-materialized/translations
@@ -1111,9 +1115,13 @@ jobs:
           test "$(unzip -p release/weig-qb-webui.zip weig-qb-webui/VERSION | tr -d '\r\n')" = "$VERSION"
           test "$(tar -xOzf release/weig-qb-webui.tar.gz weig-qb-webui/GIT_SHA | tr -d '\r\n')" = "$GITHUB_SHA"
           test "$(tar -xOzf release/weig-qb-webui.tar.gz weig-qb-webui/VERSION | tr -d '\r\n')" = "$VERSION"
-          unzip -Z1 release/weig-qb-webui.zip | grep -q '^weig-qb-webui/private/data/qb-copy-profiles/.*\.json$'
-          unzip -Z1 release/weig-qb-webui.zip | grep -q '^weig-qb-webui/private/data/qb-copy-bindings/.*\.txt$'
-          unzip -Z1 release/weig-qb-webui.zip | grep -q '^weig-qb-webui/private/data/qb-copy-fallback/.*/.*\.json$'
+          unzip -Z1 release/weig-qb-webui.zip | grep -qE '^weig-qb-webui/private/data/qb-copy-routes/r[0-9a-f]{20}\.json\.gz$'
+          unzip -Z1 release/weig-qb-webui.zip | grep -qE '^weig-qb-webui/private/data/qb-copy-bindings/b[0-9a-f]{20}\.txt$'
+          unzip -Z1 release/weig-qb-webui.zip | grep -qE '^weig-qb-webui/private/data/qb-copy-fallback/p[0-9a-f]{20}\.json\.gz$'
+          if unzip -Z1 release/weig-qb-webui.zip | grep -q '^weig-qb-webui/private/data/qb-copy-profiles/'; then
+            echo 'Retired qB copy profile owner reappeared in candidate package.' >&2
+            exit 1
+          fi
           unzip -t release/weig-qb-webui.zip 'weig-qb-webui/translations/webui_*.qm' >/dev/null
           if unzip -Z1 release/weig-qb-webui.zip | grep -E '^weig-qb-webui/private/(scripts/release-profile\.js|data/qb-releases\.json|data/qb-release-profiles/)' > "$RUNNER_TEMP/retired-runtime-paths.txt"; then
             cat "$RUNNER_TEMP/retired-runtime-paths.txt" >&2

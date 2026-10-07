@@ -84,7 +84,7 @@ export function isSettingsUiPath(path){
     'webui/private/scripts/i18n.js',
     'webui/private/data/settings-compat.json'
   ].includes(path)
-    || starts(path,'webui/private/data/qb-copy-profiles/')
+    || starts(path,'webui/private/data/qb-copy-routes/')
     || starts(path,'webui/private/data/qb-copy-bindings/')
     || starts(path,'webui/private/data/qb-copy-fallback/')
     || starts(path,'webui/translations/')

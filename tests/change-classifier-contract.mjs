@@ -28,7 +28,7 @@ assert.equal(result.ui,true);
 assert.equal(result.settingsUi,true);
 assert.equal(result.settingsSource,false);
 
-for(const shard of ['webui/private/data/qb-copy-profiles/0123456789abcdef0123456789abcdef01234567.json','webui/private/data/qb-copy-bindings/b0123456789abcdef0123.txt','webui/private/data/qb-copy-fallback/5/zh_CN.json']){
+for(const shard of ['webui/private/data/qb-copy-routes/r0123456789abcdef0123.json.gz','webui/private/data/qb-copy-bindings/b0123456789abcdef0123.txt','webui/private/data/qb-copy-fallback/p0123456789abcdef0123.json.gz']){
   const classified=classifyChangedPaths([shard]);
   assert.equal(classified.ui,true);
   assert.equal(classified.settingsUi,true);

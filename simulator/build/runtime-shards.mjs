@@ -19,7 +19,7 @@ export async function writeSimulatorRuntimeShards({catalog,out}={}){
     await fs.writeFile(path.join(profilesDir,`${qbVersion}.json`),profileText,'utf8');
     profileStats.push({qbVersion,bytes:Buffer.byteLength(profileText,'utf8'),sourceSha:String(profile?.sourceSha||'')});
   }
-  const manifest={schemaVersion:RUNTIME_SHARD_SCHEMA_VERSION,profiles:profileStats,copyRuntime:'product-source/qb-copy-profiles+bindings+fallback'};
+  const manifest={schemaVersion:RUNTIME_SHARD_SCHEMA_VERSION,profiles:profileStats,copyRuntime:'product-source/qb-copy-routes+bindings+fallback'};
   await fs.writeFile(path.join(root,'manifest.json'),JSON.stringify(manifest,null,2)+'\n','utf8');
   return manifest;
 }

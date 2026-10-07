@@ -36,7 +36,7 @@ for required in capabilities.json detail-compat.json settings-compat.json torren
   test -s "$BASE/private/data/$required" || { echo "Missing current compact runtime fixture: $required" >&2; exit 1; }
 done
 test ! -e "$BASE/private/data/qb-releases.json"
-for shard in qb-copy-profiles qb-copy-bindings qb-copy-fallback; do test -d "$BASE/private/data/$shard" || { echo "Missing current qB copy shard fixture: $shard" >&2; exit 1; }; done
+for shard in qb-copy-routes qb-copy-bindings qb-copy-fallback; do test -d "$BASE/private/data/$shard" || { echo "Missing current qB copy shard fixture: $shard" >&2; exit 1; }; done
 for locale in de es fr ja ko pt ru zh-CN zh-HK zh-TW; do test -s "$BASE/private/data/weig-i18n/$locale.json" || { echo "Missing current WeiG locale shard fixture: $locale" >&2; exit 1; }; done
 test "$(find "$BASE/private/data/weig-i18n" -maxdepth 1 -type f -name '*.json' | wc -l | tr -d ' ')" = 10
 test ! -e "$BASE/private/data/qb-settings-native.txt"
@@ -255,7 +255,7 @@ if(meta.installer!=='linux')throw new Error(`metadata installer ${meta.installer
 if(meta.hostPath!==dest||meta.qbPath!==dest)throw new Error('metadata install paths do not match isolated destination');
 const compact=['capabilities.json','detail-compat.json','settings-compat.json','torrent-compat.json','source-actions.json','rss-compat.json'];
 for(const name of compact){const file=path.join(dest,'private/data',name);if(!fs.existsSync(file)||fs.statSync(file).size<=0)throw new Error('missing compact runtime '+name);}
-for(const dir of ['qb-copy-profiles','qb-copy-bindings','qb-copy-fallback']){const full=path.join(dest,'private/data',dir);if(!fs.existsSync(full)||!fs.statSync(full).isDirectory())throw new Error('missing qB copy shard directory '+dir);}
+for(const dir of ['qb-copy-routes','qb-copy-bindings','qb-copy-fallback']){const full=path.join(dest,'private/data',dir);if(!fs.existsSync(full)||!fs.statSync(full).isDirectory())throw new Error('missing qB copy shard directory '+dir);}
 const weigLocales=['de','es','fr','ja','ko','pt','ru','zh-CN','zh-HK','zh-TW'],weigLocaleDir=path.join(dest,'private/data/weig-i18n'),actualWeiGLocaleFiles=fs.readdirSync(weigLocaleDir).filter(name=>name.endsWith('.json')).sort();if(actualWeiGLocaleFiles.length!==weigLocales.length)throw new Error('WeiG locale shard count mismatch');for(const locale of weigLocales){const file=path.join(weigLocaleDir,locale+'.json');if(!fs.existsSync(file)||fs.statSync(file).size<=0)throw new Error('missing WeiG locale shard '+locale);}
 if(fs.existsSync(path.join(dest,'private/data/qb-settings-native.txt')))throw new Error('retired all-version qB copy registry reappeared');
 if(fs.existsSync(path.join(dest,'private/data/qb-releases.json')))throw new Error('retired qb-releases.json must not be restored by installer lifecycle fixtures');
@@ -446,7 +446,7 @@ const root=process.env.ROOT;
 const dest=process.env.DEST;
 const compact=['capabilities.json','detail-compat.json','settings-compat.json','torrent-compat.json','source-actions.json','rss-compat.json'];
 function walk(dir){return fs.readdirSync(dir,{withFileTypes:true}).flatMap(entry=>{const file=path.join(dir,entry.name);return entry.isDirectory()?walk(file):entry.isFile()?[file]:[];});}
-const dataRoot=path.join(dest,'private/data'),copyFiles=['qb-copy-profiles','qb-copy-bindings','qb-copy-fallback'].flatMap(name=>walk(path.join(dataRoot,name))),localeFiles=walk(path.join(dataRoot,'weig-i18n')).filter(file=>file.endsWith('.json'));
+const dataRoot=path.join(dest,'private/data'),copyFiles=['qb-copy-routes','qb-copy-bindings','qb-copy-fallback'].flatMap(name=>walk(path.join(dataRoot,name))),localeFiles=walk(path.join(dataRoot,'weig-i18n')).filter(file=>file.endsWith('.json'));
 const runtimeFiles=compact.map(name=>path.join(dataRoot,name)).concat(copyFiles,localeFiles);
 const compactBytes=runtimeFiles.reduce((sum,file)=>sum+fs.statSync(file).size,0);
 const meta=JSON.parse(fs.readFileSync(path.join(dest,'private/weig-install.json'),'utf8'));

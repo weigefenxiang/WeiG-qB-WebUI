@@ -6,7 +6,7 @@ import {fileURLToPath} from 'node:url';
 import {gunzipSync} from 'node:zlib';
 
 export const COPY_SHARD_SPECS=[
-  {name:'qb-copy-profiles',ext:'.json'},
+  {name:'qb-copy-routes',ext:'.json.gz'},
   {name:'qb-copy-bindings',ext:'.txt'},
   {name:'qb-copy-fallback',ext:'.json.gz'}
 ];
@@ -18,6 +18,7 @@ function normalizedRoot(value){return path.resolve(String(value||''));}
 export function runtimeCopySnapshot(dataDir){
   const root=normalizedRoot(dataDir);
   if(fs.existsSync(path.join(root,'qb-settings-native.txt')))throw new Error('Retired all-version qB copy registry reappeared.');
+  if(fs.existsSync(path.join(root,'qb-copy-profiles')))throw new Error('Retired sourceSha qB copy profile owner reappeared.');
   const files=[];
   for(const spec of COPY_SHARD_SPECS){
     const dir=path.join(root,spec.name);
@@ -27,8 +28,7 @@ export function runtimeCopySnapshot(dataDir){
     for(const file of selected){
       const body=fs.readFileSync(file),relative=path.relative(root,file).replaceAll('\\','/'),bytes=body.length;
       if(bytes<=0)throw new Error(`Empty qB copy shard: ${relative}`);
-      if(spec.name==='qb-copy-fallback')JSON.parse(gunzipSync(body).toString('utf8'));
-      else if(spec.ext==='.json')JSON.parse(body.toString('utf8'));
+      if(spec.name==='qb-copy-routes'||spec.name==='qb-copy-fallback')JSON.parse(gunzipSync(body).toString('utf8'));else if(spec.ext==='.json')JSON.parse(body.toString('utf8'));
       else {
         const text=body.toString('utf8');
         if(!/^@@BINDING\tb[0-9a-f]{20}$/m.test(text))throw new Error(`Malformed qB binding identity: ${relative}`);
@@ -51,6 +51,7 @@ export function syncRuntimeCopyTree(sourceDir,targetDir){
   const before=runtimeCopySnapshot(source);
   fs.mkdirSync(target,{recursive:true});
   fs.rmSync(path.join(target,'qb-settings-native.txt'),{force:true});
+  fs.rmSync(path.join(target,'qb-copy-profiles'),{recursive:true,force:true});
   for(const spec of COPY_SHARD_SPECS){
     const from=path.join(source,spec.name),to=path.join(target,spec.name);
     fs.rmSync(to,{recursive:true,force:true});

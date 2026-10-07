@@ -22,8 +22,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Materialize deterministic gzip fallback owner
-        run: node tools/a62-copy-gzip-prototype.mjs --in-place
+      - name: Materialize semantic copy route owner
+        run: node tools/a62-copy-route-materialize.mjs
       - name: A62 focused contracts
         run: |
           node tests/syntax-contract.mjs
@@ -46,11 +46,11 @@ jobs:
           node tests/change-classifier-contract.mjs
           node tests/pages-cache-freshness-contract.mjs
 
-      - name: SAFE-REF materialize gzip outputs
+      - name: SAFE-REF materialize semantic copy owner
         shell: bash
         run: |
           set -euo pipefail
-          git add -A webui/private/data/qb-copy-fallback
+          git add -A webui/private/data/qb-copy-profiles webui/private/data/qb-copy-routes webui/private/data/qb-copy-fallback webui/private/data/capabilities.json
           if git diff --cached --quiet; then
             exit 0
           fi
@@ -58,7 +58,7 @@ jobs:
           test "$remote_sha" = "$GITHUB_SHA"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "a62.7: materialize gzip fallback owner"
+          git commit -m "a62.7: materialize semantic copy route owner"
           git push origin HEAD:fix-A62
 
   browser:
@@ -93,8 +93,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci --no-audit --no-fund --prefer-offline
-      - name: Materialize deterministic gzip fallback owner
-        run: node tools/a62-copy-gzip-prototype.mjs --in-place
+      - name: Materialize semantic copy route owner
+        run: node tools/a62-copy-route-materialize.mjs
       - name: Verify hosted Chrome
         shell: bash
         run: |

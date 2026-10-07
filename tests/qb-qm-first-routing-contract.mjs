@@ -1,40 +1,12 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import {gunzipSync} from 'node:zlib';
 import {fileURLToPath} from 'node:url';
-
-const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-const data=path.join(root,'webui/private/data');
-const i18n=fs.readFileSync(path.join(root,'webui/private/scripts/i18n.js'),'utf8');
-const profiles={
-  '4.6.4':'785320e7f6a5e228caf817b01dca69da0b83a012',
-  '4.6.5':'5e81347933adec219dab27a503f8dc9c4a1c522d',
-  '5.2.3':'0b63c3d17373f6132ea211c9dcd4241284ccdfaf'
-};
-const readProfile=version=>JSON.parse(fs.readFileSync(path.join(data,'qb-copy-profiles',profiles[version]+'.json'),'utf8'));
-const has=(profile,field,locale)=>Array.isArray(profile[field])&&profile[field].includes(locale);
-const p464=readProfile('4.6.4'),p465=readProfile('4.6.5'),p523=readProfile('5.2.3');
-
-assert.equal(p464.family,'dedicated-alt-disabled');
-assert.equal(p464.nativeLocales.length,0,'qB 4.6.4 Alternative WebUI translation is source-proven disabled and must not be promoted to native QM');
-for(const locale of ['zh_CN','zh_HK','zh_TW','ja'])assert.equal(has(p464,'fallbackLocales',locale),true,`qB 4.6.4 ${locale} must stay on exact official fallback`);
-
-assert.equal(p465.family,'dedicated-native-explicit-fallback');
-assert.equal(has(p465,'nativeLocales','da'),true,'qB 4.6.5 must preserve source-proven native-QM routes');
-for(const locale of ['zh_CN','zh_HK','zh_TW','ja'])assert.equal(has(p465,'fallbackLocales',locale),true,`qB 4.6.5 ${locale} must stay exact fallback when its active-root QM route is not source-proven`);
-
-assert.equal(p523.family,'dedicated-native-explicit-fallback');
-assert.equal(has(p523,'nativeLocales','zh_HK'),true,'qB 5.2.3 zh_HK is source-proven native through QBT_TR + active-root official QM');
-for(const locale of ['zh_CN','zh_TW','ja']){
-  assert.equal(has(p523,'nativeLocales',locale),false,`qB 5.2.3 ${locale} must not be inferred native from version alone`);
-  assert.equal(has(p523,'fallbackLocales',locale),true,`qB 5.2.3 ${locale} must use its exact official fallback shard`);
-}
-
-assert.ok(i18n.includes("var nativeLocale=routeLocale(profile.nativeLocales),fallbackLocale=nativeLocale?null:routeLocale(profile.fallbackLocales)"),'runtime must select translation ownership from exact profile locale routes');
-assert.ok(i18n.includes("source:mode==='native'?'qb-native-QBT_TR+official-QM':'qb-exact-official-fallback-shard'"),'runtime must expose native-QM vs exact-fallback ownership');
-assert.ok(i18n.includes("if(fallbackLocale&&setId){var major=expectedVersion.split('.')[0];fallbackTask=loader.readGzipJson('data/qb-copy-fallback/'+major+'/'+fallbackLocale+'.json.gz'"),'only fallback routes may fetch one current major/locale gzip fallback shard');
-assert.ok(i18n.includes("bindingTask=loader.readText('data/qb-copy-bindings/'+profile.bindingId+'.txt'"),'native and fallback routes must share the exact source/context binding');
-assert.equal(/(?:>=|>|startsWith\(|indexOf\()[^\n]{0,80}4\.6\.5/.test(i18n),false,'browser runtime must not infer native translation from a 4.6.5+ version threshold');
-assert.equal(i18n.includes('translations/webui_'),false,'browser JavaScript must not fetch or parse qB QM files; native QBT_TR translation stays server-owned');
-
-console.log('A62.3 QM-first routing contract passed: exact source profiles choose native QBT_TR/QM per locale, source-proven gaps load only one current major/locale gzip fallback shard, and version thresholds do not invent native routes.');
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..'),data=path.join(root,'webui/private/data'),i18n=fs.readFileSync(path.join(root,'webui/private/scripts/i18n.js'),'utf8'),core=JSON.parse(fs.readFileSync(path.join(data,'capabilities.json'),'utf8')),byVersion=new Map(core.releases.map(row=>[row.qbVersion,row]));
+const readRoute=version=>{const row=byVersion.get(version);assert.ok(row&&row.copyRouteId);return JSON.parse(gunzipSync(fs.readFileSync(path.join(data,'qb-copy-routes',row.copyRouteId+'.json.gz'))).toString('utf8'));},hasNative=(route,locale)=>(route.nativeLocales||[]).includes(locale),hasFallback=(route,locale)=>Object.hasOwn(route.fallback||{},locale);
+const p464=readRoute('4.6.4'),p465=readRoute('4.6.5'),p523=readRoute('5.2.3');
+assert.equal(p464.family,'dedicated-alt-disabled');assert.equal(p464.nativeLocales.length,0);for(const locale of ['zh_CN','zh_HK','zh_TW','ja'])assert.equal(hasFallback(p464,locale),true);
+assert.equal(p465.family,'dedicated-native-explicit-fallback');assert.equal(hasNative(p465,'da'),true);for(const locale of ['zh_CN','zh_HK','zh_TW','ja'])assert.equal(hasFallback(p465,locale),true);
+assert.equal(p523.family,'dedicated-native-explicit-fallback');assert.equal(hasNative(p523,'zh_HK'),true);for(const locale of ['zh_CN','zh_TW','ja']){assert.equal(hasNative(p523,locale),false);assert.equal(hasFallback(p523,locale),true);}
+assert.ok(i18n.includes("routeLocale(route.nativeLocales)")&&i18n.includes("routeLocale(Object.keys(route.fallback||{}))"),'runtime must select ownership from semantic route locale facts');assert.ok(i18n.includes("data/qb-copy-routes/'+expectedRouteId+'.json.gz")&&i18n.includes("readGzipJson(routePath"),'runtime must fetch one gzip semantic route');assert.ok(i18n.includes("data/qb-copy-fallback/'+packId+'.json.gz"),'fallback must fetch one content-addressed gzip pack');assert.ok(i18n.includes("data/qb-copy-bindings/'+route.bindingId+'.txt"),'native/fallback routes share deduplicated source binding');assert.equal(i18n.includes("expectedVersion.split('.')[0]"),false);assert.equal(/(?:>=|>|startsWith\(|indexOf\()[^\n]{0,80}4\.6\.5/.test(i18n),false);assert.equal(i18n.includes('translations/webui_'),false);console.log('A62.7 QM-first routing contract passed: semantic copyRouteId preserves source-proven native/fallback ownership while current-locale fallback uses one content-addressed gzip pack and no major/version heuristic.');

@@ -1069,7 +1069,7 @@ function Assert-MaterializedWebUI([string]$Root) {
     if(!(Test-Path $file -PathType Leaf) -or (Get-Item $file).Length -le 0){throw "Materialized WebUI is missing compact runtime contract $contract."}
   }
   foreach($legacy in @('private\scripts\release-profile.js','private\data\qb-releases.json','private\data\qb-release-profiles','private\data\qb-settings-native.txt')){if(Test-Path (Join-Path $Root $legacy)){throw "Materialized WebUI retained retired runtime path $legacy."}}
-  foreach($spec in @(@('qb-copy-profiles','*.json'),@('qb-copy-bindings','*.txt'),@('qb-copy-fallback','*.json.gz'))){
+  foreach($spec in @(@('qb-copy-routes','*.json.gz'),@('qb-copy-bindings','*.txt'),@('qb-copy-fallback','*.json.gz'))){
     $dir=Join-Path $data $spec[0]
     if(!(Test-Path $dir -PathType Container)){throw "Materialized WebUI is missing qB copy shard directory $($spec[0])."}
     $files=Get-ChildItem $dir -Filter $spec[1] -File -Recurse -ErrorAction SilentlyContinue
