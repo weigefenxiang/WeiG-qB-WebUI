@@ -91,8 +91,23 @@ try{
   // descriptor cache entry invalidated. A DOM transport probe proves scheduler concurrency
   // independently from Service Worker/cache response duration.
   await page.addInitScript(()=>{
-    const transport={styles:[],scripts:[]};
+    const transport={styles:[],scripts:[]},tracked=new WeakMap();
     Object.defineProperty(window,'__weigStartupTransportProbe',{value:transport,configurable:false});
+
+    // RuntimeAssets assigns node.onload before appendChild(). Install the probe listener at
+    // createElement() time so it is registered first. Otherwise resolving RuntimeAssets'
+    // onload promise may run the next-wave microtask before a later probe listener records
+    // loadTime, which would make a correct bounded scheduler look like it crossed waves.
+    const createElement=Document.prototype.createElement;
+    Document.prototype.createElement=function(name,...args){
+      const node=createElement.call(this,name,...args),tag=String(name||'').toLowerCase();
+      if(tag==='link'||tag==='script')node.addEventListener('load',()=>{
+        const item=tracked.get(node);
+        if(item&&item.loadTime===null)item.loadTime=performance.now();
+      },{once:true});
+      return node;
+    };
+
     const appendChild=Node.prototype.appendChild;
     Node.prototype.appendChild=function(node){
       const dataset=node&&node.dataset;
@@ -102,7 +117,7 @@ try{
       if(bucket){
         const item={path:style||script,appendTime:performance.now(),loadTime:null};
         bucket.push(item);
-        node.addEventListener('load',()=>{item.loadTime=performance.now();},{once:true});
+        tracked.set(node,item);
       }
       return appendChild.call(this,node);
     };
