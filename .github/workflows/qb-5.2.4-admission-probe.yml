@@ -1,0 +1,70 @@
+name: qB 5.2.4 Admission Probe
+
+on:
+  push:
+    branches: [dev]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qb-5-2-4-admission-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  exact-source:
+    name: qB 5.2.4 exact source / WebAPI
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - uses: actions/checkout@v7
+        with:
+          repository: qbittorrent/qBittorrent
+          ref: release-5.2.4
+          path: upstream-qb
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+      - name: Verify exact release identity and WebAPI
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C upstream-qb describe --tags --exact-match HEAD)" = "release-5.2.4"
+          grep -Eq 'API_VERSION[[:space:]]*\{[[:space:]]*2[[:space:]]*,[[:space:]]*15[[:space:]]*,[[:space:]]*1[[:space:]]*\}' upstream-qb/src/webui/webapplication.h
+          git -C upstream-qb fetch --force origin refs/tags/release-4.1.0:refs/tags/release-4.1.0
+          node tests/upstream-release-audit.mjs upstream-qb --refs=release-4.1.0,release-5.2.4
+
+  real-webapi:
+    name: qB 5.2.4 real daemon identity / WebAPI
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe official qB 5.2.4 container
+        shell: bash
+        run: |
+          set -euo pipefail
+          image='qbittorrentofficial/qbittorrent-nox:5.2.4-1'
+          docker pull "$image"
+          net="weig-qb-524-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          name="weig-qb-524-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          cleanup(){ docker rm -f "$name" >/dev/null 2>&1 || true; docker network rm "$net" >/dev/null 2>&1 || true; }
+          trap cleanup EXIT INT TERM
+          docker network create --internal "$net" >/dev/null
+          docker run -d --name "$name" --network "$net" -e QBT_LEGAL_NOTICE=confirm "$image" --webui-port=8080 >/dev/null
+          ip="$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$name")"
+          test -n "$ip"
+          ready=0
+          for i in $(seq 1 60); do
+            if curl -fsS --max-time 2 "http://$ip:8080/api/v2/app/version" >/dev/null 2>&1; then ready=1; break; fi
+            sleep 1
+          done
+          if [ "$ready" != 1 ]; then docker logs "$name"; exit 1; fi
+          qb="$(curl -fsS --max-time 5 "http://$ip:8080/api/v2/app/version" | tr -d '\r\n')"
+          api="$(curl -fsS --max-time 5 "http://$ip:8080/api/v2/app/webapiVersion" | tr -d '\r\n')"
+          case "$qb" in 5.2.4|v5.2.4) ;; *) echo "unexpected qB identity: $qb" >&2; exit 1;; esac
+          test "$api" = "2.15.1"
+          printf 'QB_5_2_4_REAL_WEBAPI_PASS qb=%s webapi=%s image=%s\n' "$qb" "$api" "$image"
