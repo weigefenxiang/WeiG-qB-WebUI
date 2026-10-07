@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {gunzipSync} from 'node:zlib';
 import {launchBrowser} from './browser-driver.mjs';
 import {recoverPageSession} from './pages-live-session.mjs';
 
@@ -12,13 +13,14 @@ const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const timeoutMs=Math.max(5000,Number(process.env.WEIG_PAGES_SESSION_TIMEOUT_MS||20000)||20000);
 const retiredCopyRegistry=['qb-settings','native.txt'].join('-');
 
-async function fetchText(relative){
+async function fetchBytes(relative){
   const url=new URL(String(relative).replace(/^\/+/,''),base);
   url.searchParams.set('__startup_sha',expectedSha);
   const response=await fetch(url,{headers:{'cache-control':'no-cache','pragma':'no-cache'}});
   if(!response.ok)throw new Error(`${url} returned HTTP ${response.status}`);
-  return response.text();
+  return Buffer.from(await response.arrayBuffer());
 }
+async function fetchText(relative){return (await fetchBytes(relative)).toString('utf8');}
 async function fetchJson(relative){return JSON.parse(await fetchText(relative));}
 async function waitForSha(){
   let last='';
@@ -36,22 +38,24 @@ async function waitForSha(){
 const site=await waitForSha();
 assert.equal(site.branches?.dev?.exactSha,expectedSha,'startup-performance gate must run against the exact deployed dev snapshot');
 
-const [catalog,manifest,profile]=await Promise.all([
+const [catalog,manifest,profile,capabilities]=await Promise.all([
   fetchJson('dev/app/__simulator/versions/catalog.generated.json'),
   fetchJson('dev/app/__simulator/runtime/manifest.json'),
-  fetchJson('dev/app/__simulator/runtime/profiles/5.2.3.json')
+  fetchJson('dev/app/__simulator/runtime/profiles/5.2.3.json'),
+  fetchJson('dev/app/__source/private/data/capabilities.json')
 ]);
 const catalogProfile=catalog.find(item=>String(item?.qbVersion||'')==='5.2.3');
-const copyProfile=await fetchJson('dev/app/__source/private/data/qb-copy-profiles/'+catalogProfile.sourceSha+'.json');
-const copyBinding=await fetchText('dev/app/__source/private/data/qb-copy-bindings/'+copyProfile.bindingId+'.txt');
 assert.ok(catalogProfile,'deployed full evidence catalog must retain qB 5.2.3');
+const copyRelease=(capabilities.releases||[]).find(item=>String(item?.sourceSha||'')===String(catalogProfile.sourceSha||''));
+assert.ok(copyRelease&&copyRelease.qbVersion==='5.2.3'&&/^r[0-9a-f]{20}$/.test(String(copyRelease.copyRouteId||'')),'deployed capabilities must bind exact qB 5.2.3 provenance to one semantic copy route');
+const copyRoute=JSON.parse(gunzipSync(await fetchBytes('dev/app/__source/private/data/qb-copy-routes/'+copyRelease.copyRouteId+'.json.gz')).toString('utf8'));
+const copyBinding=await fetchText('dev/app/__source/private/data/qb-copy-bindings/'+copyRoute.bindingId+'.txt');
 assert.equal(profile.qbVersion,'5.2.3');
 assert.equal(profile.sourceSha,catalogProfile.sourceSha,'profile shard must preserve exact qB source identity');
 assert.equal(manifest.schemaVersion,1);
 assert.equal(manifest.profiles?.length,catalog.length,'runtime profile shard manifest must cover every admitted simulator profile');
-assert.equal(manifest.copyRuntime,'product-source/qb-copy-profiles+bindings+fallback');assert.equal(copyProfile.sourceSha,catalogProfile.sourceSha);assert.ok(/^b[0-9a-f]{20}$/.test(copyProfile.bindingId));assert.ok(copyBinding.includes('@@BINDING\\t'+copyProfile.bindingId));
+assert.equal(manifest.copyRuntime,'product-source/qb-copy-routes+bindings+fallback');assert.equal(copyRoute.routeId,copyRelease.copyRouteId);assert.equal(copyRoute.schemaVersion,2);assert.ok(/^b[0-9a-f]{20}$/.test(copyRoute.bindingId));assert.ok(copyBinding.includes('@@BINDING\\t'+copyRoute.bindingId));
 assert.ok(Buffer.byteLength(copyBinding,'utf8')<512*1024,'deduplicated qB binding shard must stay bounded');
-assert.equal(copyProfile.sourceSha,catalogProfile.sourceSha,'copy profile must preserve exact qB source identity');
 
 const browser=await launchBrowser();
 try{
@@ -73,8 +77,9 @@ try{
     onLogin:async()=>{await page.locator('#login-btn').click();}
   });
 
-  const runtimeCopy=await page.evaluate(async()=>{const value=await window.WeiG?.I18n?.loadQbOwnedCopy?.();return value?{sourceSha:value.sourceSha,qbVersion:value.qbVersion,mode:value.mode}:null;});
+  const runtimeCopy=await page.evaluate(async()=>{const value=await window.WeiG?.I18n?.loadQbOwnedCopy?.();return value?{sourceSha:value.sourceSha,qbVersion:value.qbVersion,routeId:value.routeId,mode:value.mode}:null;});
   assert.ok(runtimeCopy&&runtimeCopy.sourceSha===catalogProfile.sourceSha&&runtimeCopy.qbVersion==='5.2.3');
+  assert.equal(runtimeCopy.routeId,copyRelease.copyRouteId,'browser copy runtime must use the route already selected by the exact capabilities control plane');
   assert.equal(runtimeCopy.mode,'fallback','5.2.3 zh-CN must use the exact official fallback shard when the shared root QM is not exact-source compatible');
 
   const firstCache=await page.evaluate(async sha=>{
@@ -84,10 +89,12 @@ try{
   assert.deepEqual(firstCache.keys.filter(key=>key.startsWith('weig-virtual-static-')),[`weig-virtual-static-${expectedSha}`],'fresh browser context must keep only the exact-SHA immutable Virtual cache');
   assert.ok(firstCache.urls.every(url=>new URL(url).searchParams.get('v')===expectedSha),'every immutable Virtual cache entry must be exact-SHA keyed');
   assert.equal(firstCache.urls.some(url=>url.includes('/__simulator/versions/catalog.generated.json')),false,'normal qB 5.2.3 startup must not cache/fetch the full multi-release catalog fallback');
-  assert.equal(firstCache.urls.some(url=>url.includes('/__source/private/data/qb-copy-fallback/4/')),false,'normal qB 5.2.3 startup must not cache/fetch qB 4.x fallback payload');
-  const firstFallback=firstCache.urls.filter(url=>url.includes('/__source/private/data/qb-copy-fallback/5/'));
-  assert.deepEqual(firstFallback.map(url=>new URL(url).pathname).filter(path=>path.endsWith('/zh_CN.json')).length,[1].length,'qB 5.2.3 zh-CN must fetch its one exact current-major/current-locale fallback shard');
-  assert.equal(firstFallback.length,1,'qB 5.2.3 zh-CN startup must not fetch other qB 5.x locale fallback shards');
+  assert.equal(firstCache.urls.some(url=>url.includes('/__source/private/data/qb-copy-profiles/')),false,'normal startup must not fetch the retired sourceSha copy-profile pointer');
+  const firstRoutes=firstCache.urls.filter(url=>url.includes('/__source/private/data/qb-copy-routes/')),firstBindings=firstCache.urls.filter(url=>url.includes('/__source/private/data/qb-copy-bindings/')),firstFallback=firstCache.urls.filter(url=>url.includes('/__source/private/data/qb-copy-fallback/'));
+  assert.equal(firstRoutes.length,1,'qB 5.2.3 startup must fetch exactly one semantic copy route');assert.match(new URL(firstRoutes[0]).pathname,/\/__source\/private\/data\/qb-copy-routes\/r[0-9a-f]{20}\.json\.gz$/);
+  assert.equal(firstBindings.length,1,'qB 5.2.3 startup must fetch exactly one deduplicated copy binding');assert.match(new URL(firstBindings[0]).pathname,/\/__source\/private\/data\/qb-copy-bindings\/b[0-9a-f]{20}\.txt$/);
+  assert.equal(firstFallback.length,1,'qB 5.2.3 zh-CN startup must fetch exactly one current-locale fallback pack');assert.match(new URL(firstFallback[0]).pathname,/\/__source\/private\/data\/qb-copy-fallback\/p[0-9a-f]{20}\.json\.gz$/);
+  assert.equal(firstFallback.some(url=>url.includes('/qb-copy-fallback/4/')||url.includes('/qb-copy-fallback/5/')),false,'physical qB major fallback ownership must stay retired');
   const firstWeiGLocales=firstCache.urls.filter(url=>url.includes('/__source/private/data/weig-i18n/'));
   assert.equal(firstWeiGLocales.length,1,'startup must fetch exactly one non-English WeiG locale shard');
   assert.ok(firstWeiGLocales[0].includes('/weig-i18n/zh-CN.json'),'qB persisted zh-CN must select the matching WeiG zh-CN overlay only');
@@ -106,14 +113,14 @@ try{
   assert.ok(secondCache.urls.length>=firstCount,'reload must reuse the existing exact-SHA cache rather than replacing it with a new build cache');
   assert.deepEqual(secondCache.keys.filter(key=>key.startsWith('weig-virtual-static-')),[`weig-virtual-static-${expectedSha}`],'reload must preserve one exact-SHA Virtual cache owner');
   assert.equal(secondCache.urls.some(url=>url.includes('/__simulator/versions/catalog.generated.json')),false,'reload must not fall back to the full catalog');
-  assert.equal(secondCache.urls.some(url=>url.includes('/__source/private/data/qb-copy-fallback/4/')),false,'reload must not fetch qB 4.x fallback payload');
-  assert.equal(secondCache.urls.filter(url=>url.includes('/__source/private/data/qb-copy-fallback/5/')).length,1,'reload must retain only the one current qB 5.x locale fallback shard');
+  assert.equal(secondCache.urls.some(url=>url.includes('/__source/private/data/qb-copy-profiles/')),false,'reload must not restore the retired sourceSha copy-profile pointer');
+  const secondFallback=secondCache.urls.filter(url=>url.includes('/__source/private/data/qb-copy-fallback/'));assert.equal(secondFallback.length,1,'reload must retain only one current-locale content-addressed fallback pack');assert.match(new URL(secondFallback[0]).pathname,/\/__source\/private\/data\/qb-copy-fallback\/p[0-9a-f]{20}\.json\.gz$/);
   assert.equal(secondCache.urls.filter(url=>url.includes('/__source/private/data/weig-i18n/')).length,1,'reload must retain only the one current WeiG locale shard');
   for(const module of ['settings','rss','logs'])assert.equal(secondCache.urls.some(url=>url.includes('/__source/private/scripts/'+module+'.js')),false,'warm home reload must not prefetch route-only '+module+'.js');
   assert.deepEqual(errors,[],`startup-performance session emitted page errors:\n${errors.join('\n')}`);
   await context.close();
 
-  console.log(`A62 Pages startup performance passed for ${expectedSha}: exact qB profile ${copyProfile.sourceSha}, binding ${copyProfile.bindingId}, current qB fallback locale and current WeiG locale are bounded and reused without 4.x/non-current locale payloads.`);
+  console.log(`A62 Pages startup performance passed for ${expectedSha}: exact qB provenance ${catalogProfile.sourceSha} -> route ${copyRelease.copyRouteId} -> binding ${copyRoute.bindingId}, with one current-locale content-addressed fallback pack and one WeiG locale shard.`);
 }finally{
   await browser.close();
 }
