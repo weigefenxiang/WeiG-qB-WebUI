@@ -20,6 +20,9 @@ const lock=JSON.parse(read('package-lock.json'));
 const version=read('VERSION').trim();
 assert(version===pkg.version&&version===lock.version&&version===lock.packages?.['']?.version,'Version sources diverged');
 assert(pkg.scripts.test==='npm run test:core','npm test must delegate only to test:core');
+assert(pkg.scripts['test:core'].includes('node tests/runtime-asset-contracts.mjs'),'Core must invoke the grouped Runtime Asset owner.');
+const runtimeAssetGroup=read('tests/runtime-asset-contracts.mjs');
+for(const name of ['runtime-asset-plan-contract.mjs','private-bootstrap-contract.mjs'])assert(runtimeAssetGroup.includes(name),'Runtime Asset grouped owner missing '+name);
 
 const core=scriptsOf(pkg.scripts['test:core']);
 const compat=scriptsOf(pkg.scripts['test:compat']);
