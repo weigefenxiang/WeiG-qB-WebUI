@@ -50,18 +50,27 @@ for(const name of bindings){
   assert.equal(body.includes('@@SET\t'),false);
   assert.equal(body.includes('@@BRIDGE\t'),false);
 }
+let fallbackBytes=0;
 for(const major of ['4','5']){
   for(const file of recursiveFiles(path.join(dataDir,'qb-copy-fallback',major),'.json')){
     const group=JSON.parse(fs.readFileSync(file,'utf8')),locale=path.basename(file,'.json');
-    assert.equal(group.schemaVersion,2);
+    fallbackBytes+=fs.statSync(file).size;
+    assert.equal(group.schemaVersion,3);
     assert.equal(group.source,'qB-exact-official-fallback-pack');
-    assert.ok(Array.isArray(group.values),'fallback pack values must be a dense tuple array');
+    assert.equal(typeof group.refs,'string','fallback pack refs must use compact concatenated ref ids');
+    assert.equal(group.refs.length%24,0,'fallback compact ref stream must be 24-hex aligned');
+    assert.equal(typeof group.runs,'string','fallback pack ref runs must use compact base36 run lengths');
+    assert.ok(Array.isArray(group.values)&&group.values.every(value=>typeof value==='string'),'fallback pack values must be a dense string array');
+    const refs=group.refs.length/24,runs=group.runs?group.runs.split(',').map(value=>Number.parseInt(value,36)):[];
+    assert.equal(runs.length,refs,'fallback ref/run cardinality mismatch');
+    assert.equal(runs.reduce((sum,value)=>sum+value,0),group.values.length,'fallback run lengths must reconstruct every value row');
     for(const def of Object.values(group.sets||{}))assert.ok(Array.isArray(def)&&def.length===3,'fallback set delta must use [parent,add,remove] compact form');
     assert.equal(group.major,major);
     assert.equal(group.locale,locale);
     assert.ok(Object.keys(group.sets||{}).length>0,'fallback shard must own at least one exact set: '+rel(file));
   }
 }
+assert.ok(fallbackBytes<5050735,'A62.7 fallback storage budget regressed: '+fallbackBytes+' >= 5050735');
 
 const allowedLegacy={
   'tools/qb-webui-catalog.mjs':['rmSync'],
@@ -108,4 +117,4 @@ for(const installer of ['installers/install.sh','installers/install.ps1']){
   for(const dir of ['qb-copy-profiles','qb-copy-bindings','qb-copy-fallback'])assert.ok(body.includes(dir),installer+' must validate '+dir);
 }
 
-console.log('A62.7 qB copy sharding repository contract passed: exact profiles/bindings keep provenance while 133 fallback shards use compact tuple packs and no legacy active caller.');
+console.log('A62.7 qB copy sharding repository contract passed: exact profiles/bindings keep provenance while 133 fallback shards use compact ref-run packs below the previous green storage budget and no legacy active caller.');
