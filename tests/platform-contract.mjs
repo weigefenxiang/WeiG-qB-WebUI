@@ -13,6 +13,7 @@ const publicIndex=fs.readFileSync(path.join(root,'webui/public/index.html'),'utf
 const publicLogin=fs.readFileSync(path.join(root,'webui/public/login.html'),'utf8');
 const sessionContract=fs.readFileSync(path.join(root,'webui/public/session-contract.js'),'utf8');
 const privateIndex=fs.readFileSync(path.join(root,'webui/private/index.html'),'utf8');
+const bootstrapPlan=JSON.parse(fs.readFileSync(path.join(root,'webui/private/bootstrap-plan.json'),'utf8')),startup=bootstrapPlan.phases.flatMap(phase=>phase.scripts);
 
 for(const rel of ['webui/public/index.html','webui/public/login.html','webui/private/index.html']){
   assert.ok(fs.statSync(path.join(root,rel)).isFile(),`${rel} must be a regular file`);
@@ -132,7 +133,7 @@ assert.equal(publicIndex,publicLogin,'both qB public login entry filenames must 
 assert.match(sessionContract,/status===204/,'shared Session Contract must accept modern qB 5.x 204 login');
 assert.match(sessionContract,/status===401/,'shared Session Contract must handle modern bad credentials');
 assert.match(sessionContract,/text==='Ok\.'/,'shared Session Contract must accept legacy qB 4.x Ok. login');
-assert.match(privateIndex,/scripts\/qb-client\.js/,'private WebUI must load the shared API compatibility client');
+assert.ok(privateIndex.includes("PLAN='bootstrap-plan.json'")&&startup.includes('scripts/qb-client.js'),'private WebUI bootstrap plan must load the shared API compatibility client');
 
 assert.match(ps,/function Disable-QBWebUI[\s\S]*\$candidateBytes=\$null[\s\S]*Compare-QBBytes \$candidateBytes \$currentBytes[\s\S]*config changed unexpectedly during uninstall mutation/s,'Windows uninstall config mutation must only auto-restore bytes it wrote and must not overwrite a concurrent qB config change');
 console.log('Platform contract passed: Linux/Windows Release installs pin one concrete tag and require tag/VERSION/GIT_SHA identity; Dev consumes one materialized qB-aware payload, permits newer docs-only heads only after compare verification, fails closed on Pages-relevant lag, and forbids raw-source fallback; Windows qB config mutation preserves original text encoding; installer compatibility and LIVE rollback retention remain guarded.');
