@@ -46,6 +46,11 @@ const plan={schemaVersion:1,styleConcurrency:2,maxAttempts:2,retryDelays:[0],sty
   assert.ok(append('app.js')>load('c.js'),'app phase must remain behind its prerequisite phase');
 }
 {
+  const h=harness({failOnce:new Set(['route.js'])});
+  await h.RuntimeAssets.loadScript('route.js',{namespace:'route-module',identity:'settings',retryDelays:[0]});
+  assert.equal(h.attempts.get('route.js'),2,'RuntimeAssets default policy must recover a transient route-module failure without feature-local retry code');
+}
+{
   const h=harness({failAlways:new Set(['b.js'])});
   await assert.rejects(()=>h.RuntimeAssets.executePlan(plan),/Runtime script b\.js failed/);
   assert.equal(h.attempts.get('b.js'),2,'permanent failure must stop after bounded retries');
