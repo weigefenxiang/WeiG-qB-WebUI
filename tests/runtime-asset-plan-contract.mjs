@@ -38,7 +38,7 @@ const plan={schemaVersion:1,styleConcurrency:2,maxAttempts:2,retryDelays:[0],sty
 {
   const h=harness({failOnce:new Set(['b.js']),delays:{'a.js':8,'b.js':1}});
   const result=await h.RuntimeAssets.executePlan(plan);
-  assert.equal(result.styles,3);assert.deepEqual(result.phases.map(x=>x.name),['foundation','feature','app']);
+  assert.equal(result.styles,3);assert.deepEqual(Array.from(result.phases,x=>String(x.name)),['foundation','feature','app']);
   assert.equal(h.attempts.get('b.js'),2,'transient script failure must retry inside RuntimeAssets');
   const append=x=>h.events.findIndex(e=>e[0]==='append'&&e[2]===x),load=x=>h.events.findIndex(e=>e[0]==='load'&&e[2]===x);
   assert.ok(append('a.js')>=0&&append('b.js')>=0&&append('a.js')<load('a.js')&&append('b.js')<load('a.js'),'independent scripts in one dependency phase must start before the slow sibling completes');
