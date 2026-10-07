@@ -27,6 +27,7 @@ jobs:
           node tests/syntax-contract.mjs
           node tests/runtime-contract.mjs
           node tests/capability-contract.mjs
+          node tools/a62-copy-gzip-prototype.mjs --out=artifacts/a62-copy-gzip
           node tests/private-bootstrap-contract.mjs
           node tests/route-module-loading-contract.mjs
           node tests/a62-runtime-asset-budget-contract.mjs
@@ -43,6 +44,15 @@ jobs:
           node tests/dev-distribution-contract.mjs
           node tests/change-classifier-contract.mjs
           node tests/pages-cache-freshness-contract.mjs
+
+      - name: Upload A62 gzip prototype
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a62-copy-gzip-${{ github.sha }}
+          path: artifacts/a62-copy-gzip
+          if-no-files-found: error
+          retention-days: 7
 
   browser:
     name: browser · ${{ matrix.suite.name }}
