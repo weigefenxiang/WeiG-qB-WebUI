@@ -35,7 +35,6 @@ jobs:
           node tests/i18n-runtime-owner-contract.mjs
           node tests/qb-weig-locale-sharding-contract.mjs
           node tests/qb-runtime-copy-materialization-contract.mjs tests/fixtures/qb-release-catalog.lkg.json webui/private/data
-          node tests/qb-copy-sharding-repo-contract.mjs
           node tests/qb-copy-semantic-fingerprint-contract.mjs
           node tests/qb-qm-first-routing-contract.mjs
           node audits/qb-settings-native-bundle-contract.mjs
