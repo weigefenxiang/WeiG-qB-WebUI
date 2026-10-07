@@ -45,6 +45,7 @@ jobs:
           node tests/dev-distribution-contract.mjs
           node tests/change-classifier-contract.mjs
           node tests/pages-cache-freshness-contract.mjs
+          node tests/pages-source-drain-contract.mjs
 
       - name: SAFE-REF materialize semantic copy owner
         shell: bash
