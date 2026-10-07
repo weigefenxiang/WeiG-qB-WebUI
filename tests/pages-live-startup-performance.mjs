@@ -74,7 +74,7 @@ try{
   const url=new URL('dev/app/',base);
   url.search=new URLSearchParams({sim:session,qb:'5.2.3',count:'120',scenario:'mixed',seed:'a38-startup',clean:'0'}).toString();
 
-  await recoverPageSession(page,{
+  const recovery=await recoverPageSession(page,{
     label:'A63 Virtual startup performance',
     qbVersion:'5.2.3',
     timeoutMs,
@@ -84,6 +84,22 @@ try{
     },
     onLogin:async()=>{await page.locator('#login-btn').click();}
   });
+
+  // Session recovery may span multiple private navigations. RuntimeAssets persists the
+  // bootstrap descriptor in IndexedDB, while Resource Timing is scoped to one document.
+  // Measure request topology on one deliberate authenticated navigation with only the
+  // descriptor cache entry invalidated; keep every ordering/overlap assertion strict.
+  await page.evaluate(async()=>{
+    const runtime=window.WeiG?.RuntimeAssets;
+    if(!runtime)throw new Error('RuntimeAssets is unavailable before topology sampling');
+    await runtime.invalidate('bootstrap-plan.json',{namespace:'bootstrap-plan',identity:'startup'});
+  });
+  const topologyUrl=new URL(url);
+  topologyUrl.searchParams.set('__weig_topology_sample','1');
+  await page.goto(topologyUrl.toString(),{waitUntil:'domcontentloaded',timeout:timeoutMs});
+  await page.waitForFunction(()=>document.documentElement.dataset.weigBootstrap==='ready',null,{timeout:timeoutMs});
+  await page.waitForFunction(()=>String(document.querySelector('#qb-version')?.textContent||'').includes('5.2.3'),null,{timeout:timeoutMs});
+  console.log(`A63 topology sample prepared after session recovery attempt ${recovery.attempt}.`);
 
   const bootstrapEvidence=await page.evaluate(()=>({
     state:document.documentElement.dataset.weigBootstrap||'',
