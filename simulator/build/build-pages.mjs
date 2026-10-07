@@ -13,7 +13,17 @@ async function exists(file){try{await fs.access(file);return true;}catch{return 
 async function copyDir(from,to){await fs.mkdir(path.dirname(to),{recursive:true});await fs.cp(from,to,{recursive:true,force:true});}
 const workerRefreshScript=`<script data-weig-virtual-sw-refresh>(function(){if(!('serviceWorker'in navigator))return;var reloading=false;navigator.serviceWorker.addEventListener('controllerchange',function(){if(reloading)return;reloading=true;location.reload();});navigator.serviceWorker.getRegistration().then(function(registration){if(registration)return registration.update();}).catch(function(){});})();</script>`;
 async function prepareIndex(file){let html=await fs.readFile(file,'utf8');html=html.replaceAll('__WEIG_GIT_SHA__',exactSha);if(!html.includes('data-weig-virtual-sw-refresh')){if(!html.includes('</body>'))throw new Error(`Unable to install Virtual Pages worker refresh hook in ${file}`);html=html.replace('</body>',`${workerRefreshScript}</body>`);}await fs.writeFile(file,html,'utf8');}
-function bootstrapAssets(html){
+async function bootstrapAssets(privateRoot,html,{allowLegacy=false}={}){
+  const planPath=path.join(privateRoot,'bootstrap-plan.json');
+  if(await exists(planPath)){
+    const plan=JSON.parse(await fs.readFile(planPath,'utf8'));
+    if(plan?.schemaVersion!==1||!Array.isArray(plan.styles)||!Array.isArray(plan.phases))throw new Error('Invalid canonical private bootstrap plan.');
+    const out=['scripts/runtime-assets.js'];
+    for(const item of plan.styles){const value=String(item||'').trim();if(value&&!out.includes(value))out.push(value);}
+    for(const phase of plan.phases||[]){if(!phase||!Array.isArray(phase.scripts))throw new Error('Invalid bootstrap dependency phase.');for(const item of phase.scripts){const value=String(item||'').trim();if(value&&!out.includes(value))out.push(value);}}
+    return out;
+  }
+  if(!allowLegacy)throw new Error('Canonical private bootstrap plan is required.');
   const out=[];
   for(const name of ['styles','scripts']){
     const match=String(html||'').match(new RegExp(`var ${name}=(\\[[^;]+\\])`));
@@ -84,7 +94,7 @@ await fs.copyFile(catalogPath,path.join(out,'__simulator/versions/catalog.source
 const simulatorCatalog=await simulatorCatalogWithLocaleFacts();
 await fs.writeFile(path.join(out,'__simulator/versions/catalog.generated.json'),JSON.stringify(simulatorCatalog,null,2)+'\n','utf8');
 const runtimeShardMeta=await writeSimulatorRuntimeShards({catalog:simulatorCatalog,out:path.join(out,'__simulator/runtime')});
-const privateIndexText=await fs.readFile(path.join(out,'__source/private/index.html'),'utf8'),prewarmAssets=bootstrapAssets(privateIndexText);
+const privateIndexText=await fs.readFile(path.join(out,'__source/private/index.html'),'utf8'),prewarmAssets=await bootstrapAssets(privateRoot,privateIndexText,{allowLegacy:branch==='main'});
 if(branch==='dev'&&!prewarmAssets.length)throw new Error('Unable to derive private bootstrap prewarm assets from the canonical WebUI bootstrap.');
 await fs.writeFile(path.join(out,'__simulator/runtime/private-prewarm.json'),JSON.stringify({schemaVersion:1,assets:prewarmAssets})+'\n','utf8');
 await writeVersionedServiceWorker();

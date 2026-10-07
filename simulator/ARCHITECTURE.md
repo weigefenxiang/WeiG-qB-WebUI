@@ -108,3 +108,7 @@ The simulator is useful for:
 It does not replace real-qB validation for behaviors that depend on qB's real static-file server, authentication lifecycle, native translation behavior or daemon implementation details.
 
 See [../tests/README.md](../tests/README.md) for test layers and [../docs/COMPATIBILITY.md](../docs/COMPATIBILITY.md) for the compatibility model.
+
+## Bootstrap Prewarm Ownership
+
+Dev Pages derives private prewarm assets from `webui/private/bootstrap-plan.json` plus the RuntimeAssets seed. The simulator does not own a parallel startup inventory. Historical main may use the legacy inline-array fallback only at that explicit compatibility boundary.
