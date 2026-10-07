@@ -47,6 +47,8 @@ See the subsystem documents for implementation details:
 
 The browser-side runtime follows a small number of explicit ownership boundaries:
 
+`W.RuntimeAssets` owns authenticated runtime script/style transport: the private shell seeds it once, `webui/private/bootstrap-plan.json` declares startup dependency phases, and route-only modules reuse the same owner on semantic demand. Feature modules do not create parallel asset loaders.
+
 ```text
 qB WebAPI
   │

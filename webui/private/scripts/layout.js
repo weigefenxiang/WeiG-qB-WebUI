@@ -150,15 +150,6 @@
     if(head)head.insertAdjacentElement('afterend',body);else root.insertBefore(body,actions||root.firstChild);
   }
   function normalizeDialogs(){Array.from(document.querySelectorAll('dialog.dialog')).forEach(normalizeDialog);}
-  function layoutAssetSuffix(){
-    var script=Array.from(document.scripts).find(function(node){return /(?:^|\/)layout\.js(?:\?|$)/.test(node.src||'');}),suffix='';
-    if(script){try{var parsed=new URL(script.src,global.location&&global.location.href||undefined),version=parsed.searchParams.get('v');if(version)suffix='?v='+encodeURIComponent(version);}catch(_e){}}
-    return suffix;
-  }
-  function ensureSidebarStyles(){
-    var suffix=layoutAssetSuffix();
-    if(!document.getElementById('weig-sidebar-layout-css')){var link=document.createElement('link');link.id='weig-sidebar-layout-css';link.rel='stylesheet';link.href='css/sidebar.css'+suffix;document.head.appendChild(link);}
-  }
   function readSidebarPreference(){return !!(LOCAL_STORE&&LOCAL_STORE.get(SIDEBAR_KEY,'0')==='1');}
   function writeSidebarPreference(value){if(LOCAL_STORE)LOCAL_STORE.set(SIDEBAR_KEY,value?'1':'0');}
   function ensureSidebarToggle(){
@@ -199,12 +190,12 @@
     sidebarCollapsed=!!value;if(persist!==false)writeSidebarPreference(sidebarCollapsed);projectSidebarState();requestLayoutRefresh();return sidebarCollapsed;
   }
   function syncSidebar(){
-    ensureSidebarStyles();ensureSidebarToggle();projectSidebarState();
+    ensureSidebarToggle();projectSidebarState();
     if(isDesktop())mountDesktopTransfer();else{var chartHost=document.getElementById('desktop-sidebar-transfer-chart');if(chartHost)chartHost.textContent='';}
     paintSidebarRates();
   }
   function scheduleSidebarSync(){if(resizeFrame)return;resizeFrame=requestAnimationFrame(function(){resizeFrame=0;syncSidebar();});}
-  function init(){if(initialized)return;initialized=true;sidebarCollapsed=readSidebarPreference();ensureSidebarStyles();normalizeDialogs();syncSidebar();}
+  function init(){if(initialized)return;initialized=true;sidebarCollapsed=readSidebarPreference();normalizeDialogs();syncSidebar();}
   W.LayoutRuntime={init:init,normalizeDialogs:normalizeDialogs,syncSidebar:syncSidebar,setSidebarCollapsed:setSidebarCollapsed,sidebarCollapsed:function(){return sidebarCollapsed;}};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
   global.addEventListener('resize',scheduleSidebarSync,{passive:true});

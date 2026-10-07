@@ -24,11 +24,11 @@ The distribution builder replaces the source SHA placeholder and emits the exact
 
 ## 2. Bootstrap Boundary
 
-`private/index.html` owns the initial private-shell asset transport order.
+`private/index.html` owns only the bootstrap shell, failure presentation and the bounded seed of `W.RuntimeAssets`. `private/bootstrap-plan.json` is the declarative startup inventory.
 
-Dependency-bearing scripts load in a deterministic order. A failed prerequisite must stop later execution and surface a deterministic bootstrap failure instead of allowing a partially initialized application.
+`W.RuntimeAssets` is the single script/style transport owner for the authenticated application. It provides exact-build URLs, in-flight/loaded de-duplication, bounded retry, ordered stylesheet waves and dependency-phased startup scripts. A failed prerequisite phase blocks later phases instead of allowing a partially initialized application. Settings / RSS / Logs reuse the same loader when their routes are first demanded.
 
-Bootstrap owns initial asset transport only. Authentication, qB API semantics and feature state stay with their semantic modules.
+Feature modules must not create independent script or stylesheet transport. Authentication, qB API semantics and feature state stay with their semantic modules.
 
 ## 3. Transport and Runtime Identity
 

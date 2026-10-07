@@ -35,11 +35,13 @@ Shared DataGrid presentation owns column configuration, header gestures, resizin
 
 ## 3. Bootstrap Transport
 
-### PRIVATE-BOOTSTRAP — ordered initial asset transport is one owner
+### PRIVATE-BOOTSTRAP — RuntimeAssets is the single asset transport owner
 
-`webui/private/index.html` owns the initial private-shell asset transport plan. Styles may use bounded concurrency, while dependency-bearing scripts load in one explicit order with bounded retry.
+`webui/private/index.html` owns only the visible bootstrap shell, deterministic failure UI and the bounded seed of `W.RuntimeAssets`. The startup inventory lives in `webui/private/bootstrap-plan.json`; feature modules do not create a second script/style loader.
 
-A permanently failed prerequisite stops later script execution and renders a deterministic bootstrap transport error instead of allowing a partially initialized application or black screen.
+`W.RuntimeAssets` owns exact-build URLs, bounded retry, in-flight/loaded dedupe and bootstrap plan execution. Styles load in bounded ordered waves. Startup scripts are grouped into explicit dependency phases: scripts inside one phase may load together, while the next phase cannot start until the previous phase succeeds.
+
+A permanently failed prerequisite stops later phases and renders a deterministic bootstrap transport error instead of allowing a partially initialized application or black screen. Route-only Settings / RSS / Logs reuse the same RuntimeAssets owner on first semantic demand.
 
 Bootstrap transport does not own authentication, qB API semantics or feature state; those responsibilities remain with their canonical runtime owners.
 

@@ -24,7 +24,8 @@
     "css/session.css",
     "css/settings.css",
     "css/feedback.css",
-    "css/action-editor.css"
+    "css/action-editor.css",
+    "css/sidebar.css"
   ],
   "phases": [
     {
