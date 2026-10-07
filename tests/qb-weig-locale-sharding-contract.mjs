@@ -10,7 +10,7 @@ const localeDir=path.join(root,'webui/private/data/weig-i18n');
 const supported=['en','zh-CN','zh-TW','zh-HK','ja','ko','de','fr','es','pt','ru'];
 const overlays=supported.filter(locale=>locale!=='en');
 
-assert.ok(source.length<80000,'A62.4 i18n core must stay bounded; non-English WeiG copy belongs in locale shards');
+assert.ok(source.length<80000,'I18n core must stay bounded; non-English WeiG copy belongs in locale shards');
 for(const legacy of ['var WEIG_SETTINGS=','var WEIG_CORE=','var WEIG_RUNTIME=','var ZH=','var ZHT=','var ZHHK=','var JA=','var KO=','var DE=','var FR=','var ES=','var PT=','var RU='])assert.equal(source.includes(legacy),false,'embedded multi-locale owner must stay retired: '+legacy);
 assert.ok(source.includes('var SUPPORTED_LOCALES=')&&source.includes("data/weig-i18n/'+target+'.json")&&source.includes("namespace:'weig-i18n'")&&source.includes('identity:target'),'W.I18n must route one normalized current locale through RuntimeAssets');
 assert.ok(source.includes('loadWeiGLocale(locale)'),'W.I18n.ready must wait for the current WeiG locale shard');
@@ -53,4 +53,4 @@ I.applyLocale('en',{reload:false});assert.equal(runtime.reads.length,1,'English 
 I.applyLocale('ja',{reload:false});await I.loadWeiGLocale('ja');assert.deepEqual(runtime.reads.map(item=>item.asset),['data/weig-i18n/zh-CN.json','data/weig-i18n/ja.json']);
 assert.notEqual(I.t('settings.title'),en['settings.title']);
 
-console.log('A62.4 WeiG locale sharding contract passed: English stays synchronous; exactly one non-English current-locale overlay is loaded through RuntimeAssets and all overlays preserve the canonical key/placeholder contract.');
+console.log('WeiG locale sharding contract passed: English stays synchronous; exactly one non-English current-locale overlay is loaded through RuntimeAssets and all overlays preserve the canonical key/placeholder contract.');

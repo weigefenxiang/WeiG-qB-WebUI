@@ -20,9 +20,9 @@ const lock=JSON.parse(read('package-lock.json'));
 const version=read('VERSION').trim();
 assert(version===pkg.version&&version===lock.version&&version===lock.packages?.['']?.version,'Version sources diverged');
 assert(pkg.scripts.test==='npm run test:core','npm test must delegate only to test:core');
-assert(pkg.scripts['test:core'].includes('node tests/runtime-asset-contracts.mjs'),'Core must invoke the grouped Runtime Asset owner.');
+assert(pkg.scripts['test:core'].includes('node tests/runtime-asset-contracts.mjs'),'Core must invoke the grouped Runtime Asset owner instead of flattening milestone-era contracts.');
 const runtimeAssetGroup=read('tests/runtime-asset-contracts.mjs');
-for(const name of ['runtime-asset-plan-contract.mjs','private-bootstrap-contract.mjs','bootstrap-inventory-contract.mjs','bootstrap-topology-contract.mjs'])assert(runtimeAssetGroup.includes(name),'Runtime Asset grouped owner missing '+name);
+for(const name of ["runtime-asset-plan-contract.mjs","route-module-loading-contract.mjs","runtime-asset-budget-contract.mjs","qb-weig-locale-sharding-contract.mjs","qb-copy-semantic-fingerprint-contract.mjs","qb-qm-first-routing-contract.mjs","bootstrap-inventory-contract.mjs","bootstrap-topology-contract.mjs","private-bootstrap-contract.mjs"])assert(runtimeAssetGroup.includes(name),'Runtime Asset grouped owner missing '+name);
 
 const core=scriptsOf(pkg.scripts['test:core']);
 const compat=scriptsOf(pkg.scripts['test:compat']);
@@ -55,7 +55,7 @@ assert(smoke.includes('run: npm test'),'ordinary CI must run Core');
 assert(!smoke.includes('full-stable-product-compat'),'ordinary CI must not run Full Frozen compatibility');
 
 const focused=jobSection(ci,'ui_browser','settings_browser_matrix');
-for(const name of ['browser-runtime.mjs','browser-settings-fidelity.mjs','browser-feature-parity.mjs','browser-torrent-workspace.mjs','browser-adaptive-ui.mjs']) {
+for(const name of ['browser-route-module-loading.mjs','browser-runtime.mjs','browser-settings-fidelity.mjs','browser-feature-parity.mjs','browser-torrent-workspace.mjs','browser-adaptive-ui.mjs']) {
   assert(focused.includes(name),`focused Linux UI owner missing ${name}`);
 }
 for(const retired of ['browser-theme.mjs','browser-feedback.mjs','browser-torrent-detail.mjs','browser-torrent-field-provenance.mjs','browser-sidebar-capability-visual.mjs']) {
@@ -64,7 +64,7 @@ for(const retired of ['browser-theme.mjs','browser-feedback.mjs','browser-torren
 
 const linux=jobSection(ci,'browser','windows_browser');
 const windows=jobSection(ci,'windows_browser','release_candidate');
-for(const name of ['browser-runtime.mjs','browser-settings-fidelity.mjs','browser-feature-parity.mjs','browser-torrent-workspace.mjs','browser-adaptive-ui.mjs']) {
+for(const name of ['browser-route-module-loading.mjs','browser-runtime.mjs','browser-settings-fidelity.mjs','browser-feature-parity.mjs','browser-torrent-workspace.mjs','browser-adaptive-ui.mjs']) {
   assert(linux.includes(name),`Linux Candidate missing owner scenario ${name}`);
 }
 for(const retired of ['browser-theme.mjs','browser-feedback.mjs','browser-torrent-detail.mjs','browser-torrent-field-provenance.mjs','browser-sidebar-capability-visual.mjs']) {

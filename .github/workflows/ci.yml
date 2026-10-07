@@ -414,6 +414,8 @@ jobs:
       max-parallel: 8
       matrix:
         suite:
+          - name: route-modules
+            script: tests/browser-route-module-loading.mjs
           - name: runtime
             script: tests/browser-runtime.mjs
           - name: settings-fidelity
@@ -1009,6 +1011,7 @@ jobs:
           printf 'Git SHA: %s\n' "$GITHUB_SHA"
       - name: Linux owner browser acceptance
         run: |
+          node tests/browser-route-module-loading.mjs
           node tests/browser-runtime.mjs
           node tests/browser-settings-fidelity.mjs
           node tests/browser-feature-parity.mjs

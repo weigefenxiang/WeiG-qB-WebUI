@@ -28,5 +28,5 @@ assert.ok(rss.includes('W.AppState')&&rss.includes('client'),'lazy RSS must reso
 assert.ok(logs.includes('var app=W.AppState;if(app&&app.client)return app.client'),'lazy Logs must resolve the canonical current client at use time');
 for(const source of [settings,rss,logs])assert.ok(source.includes("document.readyState==='loading'"),'route module must self-initialize correctly when injected after DOMContentLoaded');
 const deferredBytes=Object.values(routes).reduce((sum,module)=>sum+fs.statSync(path.join(root,'webui/private',module)).size,0);
-assert.ok(deferredBytes>140000,'A62.5 must defer a material amount of route-only JavaScript from home startup');
-console.log('A62.5 route-module contract passed: Settings/RSS/Logs are removed from ordered home bootstrap, loaded once through RuntimeAssets on route demand, and recover canonical AppState/client ownership when injected late.');
+assert.ok(deferredBytes>140000,'route sharding must defer a material amount of route-only JavaScript from home startup');
+console.log('Route-module contract passed: Settings/RSS/Logs are removed from ordered home bootstrap, loaded once through RuntimeAssets on route demand, and recover canonical AppState/client ownership when injected late.');
