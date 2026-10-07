@@ -154,8 +154,8 @@ The primary compact runtime files are under `webui/private/data/`:
 - `settings-compat.json` — bounded Settings structure and preference semantics.
 - `rss-compat.json` — RSS runtime compatibility.
 - `source-actions.json` — source-proven action availability.
-- `qb-copy-profiles/<sourceSha>.json` + `qb-copy-bindings/<bindingId>.txt` — exact qB source/context copy identity and deduplicated bindings.
-- `qb-copy-fallback/<major>/<locale>.json` — bounded exact-official fallback translations used only when the native QBT_TR/QM route is unavailable.
+- `qb-copy-routes/<routeId>.json.gz` + `qb-copy-bindings/<bindingId>.txt` — semantic qB source/context copy routing and deduplicated bindings selected from exact release provenance.
+- `qb-copy-fallback/<packId>.json.gz` — content-addressed, current-locale exact-official fallback packs used only when the source-proven native QBT_TR/QM route is unavailable.
 
 Official qB WebUI translation assets required by the runtime live under `webui/translations/`.
 
