@@ -43,8 +43,11 @@ try{
   const initial=await cacheUrls();
   for(const name of routeNames){assert.equal(initial.some(url=>new URL(url).pathname===sourcePath(name)),false,`home startup must not cache/fetch route-only ${name}.js`);assert.equal(counts.get(sourcePath(name))||0,0,`home startup reached network for route-only ${name}.js`);}
   assert.equal(initial.some(url=>/\/private\/data\/qb-settings-native\.txt(?:\?|$)/.test(url)),false,'retired all-version qB copy registry must never be fetched');
-  assert.equal(initial.some(url=>url.includes('/qb-copy-fallback/4/')),false,'qB 5.2.3 startup must not fetch qB 4.x copy fallback');
-  const fallback5=initial.filter(url=>url.includes('/qb-copy-fallback/5/'));assert.equal(fallback5.length,1);assert.ok(fallback5[0].includes('/zh_CN.json'),'qB 5.2.3 zh-CN must fetch only current major/current locale fallback');
+  assert.equal(initial.some(url=>url.includes('/qb-copy-profiles/')),false,'retired sourceSha copy-profile pointer must never be fetched');
+  const copyRoutes=initial.filter(url=>url.includes('/qb-copy-routes/')),copyBindings=initial.filter(url=>url.includes('/qb-copy-bindings/')),fallbackPacks=initial.filter(url=>url.includes('/qb-copy-fallback/'));
+  assert.equal(copyRoutes.length,1,'startup must fetch exactly one semantic qB copy route');assert.match(new URL(copyRoutes[0]).pathname,/\/private\/data\/qb-copy-routes\/r[0-9a-f]{20}\.json\.gz$/);
+  assert.equal(copyBindings.length,1,'startup must fetch exactly one deduplicated qB copy binding');assert.match(new URL(copyBindings[0]).pathname,/\/private\/data\/qb-copy-bindings\/b[0-9a-f]{20}\.txt$/);
+  assert.equal(fallbackPacks.length,1,'qB 5.2.3 zh-CN must fetch at most one current-locale fallback pack');assert.match(new URL(fallbackPacks[0]).pathname,/\/private\/data\/qb-copy-fallback\/p[0-9a-f]{20}\.json\.gz$/);assert.equal(fallbackPacks.some(url=>url.includes('/qb-copy-fallback/4/')||url.includes('/qb-copy-fallback/5/')),false,'physical qB major fallback ownership must stay retired');
   const weigLocales=initial.filter(url=>url.includes('/data/weig-i18n/'));assert.equal(weigLocales.length,1);assert.ok(weigLocales[0].includes('/zh-CN.json'),'startup must fetch only current WeiG locale overlay');
   assert.equal(initial.some(url=>/\/translations\/webui_.+\.qm(?:\?|$)/i.test(url)),false,'browser must not download/parse qB QM assets');
 
