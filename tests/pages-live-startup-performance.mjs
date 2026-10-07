@@ -88,7 +88,25 @@ try{
   // Session recovery may span multiple private navigations. RuntimeAssets persists the
   // bootstrap descriptor in IndexedDB, while Resource Timing is scoped to one document.
   // Measure request topology on one deliberate authenticated navigation with only the
-  // descriptor cache entry invalidated; keep every ordering/overlap assertion strict.
+  // descriptor cache entry invalidated. A DOM transport probe proves scheduler concurrency
+  // independently from Service Worker/cache response duration.
+  await page.addInitScript(()=>{
+    const transport={styles:[],scripts:[]};
+    Object.defineProperty(window,'__weigStartupTransportProbe',{value:transport,configurable:false});
+    const appendChild=Node.prototype.appendChild;
+    Node.prototype.appendChild=function(node){
+      const dataset=node&&node.dataset;
+      const style=dataset&&dataset.weigRuntimeStyle||'';
+      const script=dataset&&dataset.weigRuntimeModule||'';
+      const bucket=style?transport.styles:script?transport.scripts:null;
+      if(bucket){
+        const item={path:style||script,appendTime:performance.now(),loadTime:null};
+        bucket.push(item);
+        node.addEventListener('load',()=>{item.loadTime=performance.now();},{once:true});
+      }
+      return appendChild.call(this,node);
+    };
+  });
   await page.evaluate(async()=>{
     const runtime=window.WeiG?.RuntimeAssets;
     if(!runtime)throw new Error('RuntimeAssets is unavailable before topology sampling');
@@ -106,6 +124,7 @@ try{
     seeds:[...document.querySelectorAll('script[data-weig-bootstrap-seed]')].map(node=>node.dataset.weigBootstrapSeed||''),
     scripts:[...document.querySelectorAll('script[data-weig-runtime-module]')].map(node=>node.dataset.weigRuntimeModule||''),
     styles:[...document.querySelectorAll('link[data-weig-runtime-style]')].map(node=>node.dataset.weigRuntimeStyle||''),
+    transport:window.__weigStartupTransportProbe||{styles:[],scripts:[]},
     resources:performance.getEntriesByType('resource').map(entry=>({name:entry.name,startTime:entry.startTime,responseEnd:entry.responseEnd,initiatorType:entry.initiatorType}))
   }));
   assert.equal(bootstrapEvidence.state,'ready','deployed private bootstrap must reach ready before product acceptance');
@@ -119,17 +138,35 @@ try{
   assert.ok(planTiming.startTime>=seedTiming.responseEnd,'bootstrap-plan request must begin only after the RuntimeAssets seed is available');
   const styleTimings=bootstrapPlan.styles.map(resourceFor);assert.ok(styleTimings.every(Boolean),'every planned stylesheet must have one browser resource timing entry');
   assert.ok(Math.min(...styleTimings.map(entry=>entry.startTime))>=planTiming.responseEnd,'stylesheet transport must begin after the canonical plan descriptor is available');
-  const firstStyleWave=styleTimings.slice(0,Math.min(bootstrapPlan.styleConcurrency,styleTimings.length));
-  assert.ok(firstStyleWave.length>=2&&firstStyleWave[1].startTime<firstStyleWave[0].responseEnd,'first stylesheet wave must expose actual request overlap instead of serial loading');
+
+  const assertWaveScheduling=(wave,label)=>{
+    assert.ok(wave.length&&wave.every(entry=>Number.isFinite(entry.appendTime)&&Number.isFinite(entry.loadTime)),label+' must expose append/load timing for every member');
+    assert.ok(Math.max(...wave.map(entry=>entry.appendTime))<=Math.min(...wave.map(entry=>entry.loadTime)),label+' must enqueue every member before any member finishes loading');
+  };
+  const styleTransport=bootstrapEvidence.transport.styles;
+  assert.deepEqual(styleTransport.map(entry=>entry.path),bootstrapPlan.styles,'RuntimeAssets must enqueue styles in canonical plan order');
+  let previousStyleWave=null;
+  for(let start=0;start<styleTransport.length;start+=bootstrapPlan.styleConcurrency){
+    const wave=styleTransport.slice(start,start+bootstrapPlan.styleConcurrency),label='stylesheet wave '+(Math.floor(start/bootstrapPlan.styleConcurrency)+1);
+    assertWaveScheduling(wave,label);
+    if(previousStyleWave)assert.ok(Math.min(...wave.map(entry=>entry.appendTime))>=Math.max(...previousStyleWave.map(entry=>entry.loadTime)),label+' must wait for the previous bounded wave to finish');
+    previousStyleWave=wave;
+  }
 
   const scriptTiming=new Map(bootstrapScripts.map(path=>[path,resourceFor(path)]));assert.ok([...scriptTiming.values()].every(Boolean),'every startup script must have one browser resource timing entry');
+  const scriptTransport=bootstrapEvidence.transport.scripts;
+  assert.deepEqual(scriptTransport.map(entry=>entry.path),bootstrapScripts,'RuntimeAssets must enqueue startup scripts in canonical phase order');
+  let scriptOffset=0,previousScriptPhase=null;
   for(let i=0;i<bootstrapPlan.phases.length;i++){
-    const phase=bootstrapPlan.phases[i],entries=phase.scripts.map(path=>scriptTiming.get(path));
-    if(entries.length>1)assert.ok(entries[1].startTime<entries[0].responseEnd,'multi-script phase '+phase.name+' must expose actual request overlap');
+    const phase=bootstrapPlan.phases[i],entries=phase.scripts.map(path=>scriptTiming.get(path)),transport=scriptTransport.slice(scriptOffset,scriptOffset+phase.scripts.length);
+    assert.deepEqual(transport.map(entry=>entry.path),phase.scripts,'transport probe drifted from script phase '+phase.name);
+    assertWaveScheduling(transport,'script phase '+phase.name);
+    if(previousScriptPhase)assert.ok(Math.min(...transport.map(entry=>entry.appendTime))>=Math.max(...previousScriptPhase.map(entry=>entry.loadTime)),'script phase '+phase.name+' must wait for the previous dependency phase to finish');
     if(i>0){
       const previous=bootstrapPlan.phases[i-1].scripts.map(path=>scriptTiming.get(path));
       assert.ok(Math.min(...entries.map(entry=>entry.startTime))>=Math.max(...previous.map(entry=>entry.responseEnd)),'phase '+phase.name+' started before the previous dependency phase completed');
     }
+    previousScriptPhase=transport;scriptOffset+=phase.scripts.length;
   }
 
   const runtimeCopy=await page.evaluate(async()=>{const value=await window.WeiG?.I18n?.loadQbOwnedCopy?.();return value?{sourceSha:value.sourceSha,qbVersion:value.qbVersion,routeId:value.routeId,mode:value.mode}:null;});
