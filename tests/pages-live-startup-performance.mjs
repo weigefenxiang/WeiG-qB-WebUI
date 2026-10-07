@@ -38,11 +38,12 @@ async function waitForSha(){
 const site=await waitForSha();
 assert.equal(site.branches?.dev?.exactSha,expectedSha,'startup-performance gate must run against the exact deployed dev snapshot');
 
-const [catalog,manifest,profile,capabilities]=await Promise.all([
+const [catalog,manifest,profile,capabilities,bootstrapPlan]=await Promise.all([
   fetchJson('dev/app/__simulator/versions/catalog.generated.json'),
   fetchJson('dev/app/__simulator/runtime/manifest.json'),
   fetchJson('dev/app/__simulator/runtime/profiles/5.2.3.json'),
-  fetchJson('dev/app/__source/private/data/capabilities.json')
+  fetchJson('dev/app/__source/private/data/capabilities.json'),
+  fetchJson('dev/app/__source/private/bootstrap-plan.json')
 ]);
 const catalogProfile=catalog.find(item=>String(item?.qbVersion||'')==='5.2.3');
 assert.ok(catalogProfile,'deployed full evidence catalog must retain qB 5.2.3');
@@ -56,6 +57,13 @@ assert.equal(manifest.schemaVersion,1);
 assert.equal(manifest.profiles?.length,catalog.length,'runtime profile shard manifest must cover every admitted simulator profile');
 assert.equal(manifest.copyRuntime,'product-source/qb-copy-routes+bindings+fallback');assert.equal(copyRoute.routeId,copyRelease.copyRouteId);assert.equal(copyRoute.schemaVersion,2);assert.ok(/^b[0-9a-f]{20}$/.test(copyRoute.bindingId));assert.ok(copyBinding.includes('@@BINDING\t'+copyRoute.bindingId));
 assert.ok(Buffer.byteLength(copyBinding,'utf8')<512*1024,'deduplicated qB binding shard must stay bounded');
+assert.equal(bootstrapPlan.schemaVersion,1,'deployed private bootstrap plan schema drifted');
+assert.equal(bootstrapPlan.styles.length,19,'deployed bootstrap plan must own all private stylesheets');
+const bootstrapScripts=bootstrapPlan.phases.flatMap(phase=>phase.scripts);
+assert.equal(bootstrapScripts.length,40,'deployed bootstrap plan must own exactly the 40 non-seed startup scripts');
+assert.equal(new Set(bootstrapScripts).size,40,'deployed bootstrap plan contains duplicate startup scripts');
+for(const module of ['scripts/settings.js','scripts/rss.js','scripts/logs.js'])assert.equal(bootstrapScripts.includes(module),false,'route-only module leaked into deployed bootstrap plan: '+module);
+assert.deepEqual(bootstrapPlan.phases.at(-1),{name:'application',scripts:['scripts/app.js']},'deployed App must remain the final dependency phase');
 
 const browser=await launchBrowser();
 try{
@@ -67,7 +75,7 @@ try{
   url.search=new URLSearchParams({sim:session,qb:'5.2.3',count:'120',scenario:'mixed',seed:'a38-startup',clean:'0'}).toString();
 
   await recoverPageSession(page,{
-    label:'A38 Virtual startup performance',
+    label:'A63 Virtual startup performance',
     qbVersion:'5.2.3',
     timeoutMs,
     navigate:async attempt=>{
@@ -76,6 +84,37 @@ try{
     },
     onLogin:async()=>{await page.locator('#login-btn').click();}
   });
+
+  const bootstrapEvidence=await page.evaluate(()=>({
+    state:document.documentElement.dataset.weigBootstrap||'',
+    seeds:[...document.querySelectorAll('script[data-weig-bootstrap-seed]')].map(node=>node.dataset.weigBootstrapSeed||''),
+    scripts:[...document.querySelectorAll('script[data-weig-runtime-module]')].map(node=>node.dataset.weigRuntimeModule||''),
+    styles:[...document.querySelectorAll('link[data-weig-runtime-style]')].map(node=>node.dataset.weigRuntimeStyle||''),
+    resources:performance.getEntriesByType('resource').map(entry=>({name:entry.name,startTime:entry.startTime,responseEnd:entry.responseEnd,initiatorType:entry.initiatorType}))
+  }));
+  assert.equal(bootstrapEvidence.state,'ready','deployed private bootstrap must reach ready before product acceptance');
+  assert.deepEqual(bootstrapEvidence.seeds,['scripts/runtime-assets.js'],'private index must own exactly one RuntimeAssets seed');
+  assert.deepEqual([...bootstrapEvidence.scripts].sort(),[...bootstrapScripts].sort(),'RuntimeAssets DOM script ownership must exactly match the deployed bootstrap plan');
+  assert.deepEqual([...bootstrapEvidence.styles].sort(),[...bootstrapPlan.styles].sort(),'RuntimeAssets DOM stylesheet ownership must exactly match the deployed bootstrap plan');
+
+  const resourceFor=relative=>bootstrapEvidence.resources.find(entry=>{try{return new URL(entry.name).pathname.endsWith('/dev/app/'+relative);}catch{return false;}});
+  const seedTiming=resourceFor('scripts/runtime-assets.js'),planTiming=resourceFor('bootstrap-plan.json');
+  assert.ok(seedTiming&&planTiming,'Resource Timing must expose both RuntimeAssets seed and bootstrap-plan descriptor');
+  assert.ok(planTiming.startTime>=seedTiming.responseEnd,'bootstrap-plan request must begin only after the RuntimeAssets seed is available');
+  const styleTimings=bootstrapPlan.styles.map(resourceFor);assert.ok(styleTimings.every(Boolean),'every planned stylesheet must have one browser resource timing entry');
+  assert.ok(Math.min(...styleTimings.map(entry=>entry.startTime))>=planTiming.responseEnd,'stylesheet transport must begin after the canonical plan descriptor is available');
+  const firstStyleWave=styleTimings.slice(0,Math.min(bootstrapPlan.styleConcurrency,styleTimings.length));
+  assert.ok(firstStyleWave.length>=2&&firstStyleWave[1].startTime<firstStyleWave[0].responseEnd,'first stylesheet wave must expose actual request overlap instead of serial loading');
+
+  const scriptTiming=new Map(bootstrapScripts.map(path=>[path,resourceFor(path)]));assert.ok([...scriptTiming.values()].every(Boolean),'every startup script must have one browser resource timing entry');
+  for(let i=0;i<bootstrapPlan.phases.length;i++){
+    const phase=bootstrapPlan.phases[i],entries=phase.scripts.map(path=>scriptTiming.get(path));
+    if(entries.length>1)assert.ok(entries[1].startTime<entries[0].responseEnd,'multi-script phase '+phase.name+' must expose actual request overlap');
+    if(i>0){
+      const previous=bootstrapPlan.phases[i-1].scripts.map(path=>scriptTiming.get(path));
+      assert.ok(Math.min(...entries.map(entry=>entry.startTime))>=Math.max(...previous.map(entry=>entry.responseEnd)),'phase '+phase.name+' started before the previous dependency phase completed');
+    }
+  }
 
   const runtimeCopy=await page.evaluate(async()=>{const value=await window.WeiG?.I18n?.loadQbOwnedCopy?.();return value?{sourceSha:value.sourceSha,qbVersion:value.qbVersion,routeId:value.routeId,mode:value.mode}:null;});
   assert.ok(runtimeCopy&&runtimeCopy.sourceSha===catalogProfile.sourceSha&&runtimeCopy.qbVersion==='5.2.3');
@@ -120,7 +159,7 @@ try{
   assert.deepEqual(errors,[],`startup-performance session emitted page errors:\n${errors.join('\n')}`);
   await context.close();
 
-  console.log(`A62 Pages startup performance passed for ${expectedSha}: exact qB provenance ${catalogProfile.sourceSha} -> route ${copyRelease.copyRouteId} -> binding ${copyRoute.bindingId}, with one current-locale content-addressed fallback pack and one WeiG locale shard.`);
+  console.log(`A63 Pages startup performance passed for ${expectedSha}: exact qB provenance ${catalogProfile.sourceSha} -> route ${copyRelease.copyRouteId} -> binding ${copyRoute.bindingId}, with one current-locale content-addressed fallback pack and one WeiG locale shard.`);
 }finally{
   await browser.close();
 }
