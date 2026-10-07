@@ -26,6 +26,7 @@ jobs:
         run: |
           node tests/syntax-contract.mjs
           node tests/runtime-contract.mjs
+          node tests/capability-contract.mjs
           node tests/private-bootstrap-contract.mjs
           node tests/route-module-loading-contract.mjs
           node tests/a62-runtime-asset-budget-contract.mjs

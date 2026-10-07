@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import vm from 'node:vm';
+import {gzipSync} from 'node:zlib';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(here,'..');
@@ -45,16 +46,18 @@ const capabilitiesSource=read('webui/private/scripts/capabilities.js');
 assert(index.indexOf('scripts/runtime-assets.js')<index.indexOf('scripts/i18n.js'),'RuntimeAssets must load before i18n');
 assert(index.indexOf('scripts/runtime-assets.js')<index.indexOf('scripts/capabilities.js'),'RuntimeAssets must load before capability consumers');
 assert(runtimeAssetSource.includes("DB_NAME='weig-runtime-assets'")&&runtimeAssetSource.includes('global.indexedDB'),'runtime asset persistence must use one IndexedDB owner');
+assert(runtimeAssetSource.includes('readBytes:readBytes')&&runtimeAssetSource.includes('readGzipJson:readGzipJson')&&runtimeAssetSource.includes('decodeDeflateJson:decodeDeflateJson'),'RuntimeAssets must be the binary/gzip/deflate transport owner');
 assert(runtimeAssetSource.includes('SCHEMA,BUILD,namespace(options),identity(options)'),'runtime asset cache identity must include schema/build/namespace/exact caller identity');
 assert(runtimeAssetSource.includes("cache:'no-store'"),'network miss must bypass qB no-store ambiguity because RuntimeAssets owns persistence explicitly');
 assert(!runtimeAssetSource.includes('local'+'Storage')&&!runtimeAssetSource.includes('session'+'Storage')&&!runtimeAssetSource.includes('serviceWorker'),'runtime asset owner must not create a second StorageRuntime or Service Worker path');
 assert(capabilitiesSource.includes('W.RuntimeAssets')&&capabilitiesSource.includes('.readJson('),'capability contracts must consume the shared runtime asset owner');
+assert(capabilitiesSource.includes('decodeDeflateJson')&&!capabilitiesSource.includes('function inflateRaw')&&!capabilitiesSource.includes('function base64Bytes'),'CapabilityRegistry must consume RuntimeAssets compression decoding instead of owning a second inflater');
 assert(!capabilitiesSource.includes("fetch(asset(path),{credentials:'same-origin',cache:'no-store'})"),'capabilities must retire its feature-local no-store loader');
 
 let runtimeAssetFetches=0;
 const runtimeAssetDocument={querySelector(sel){return sel==='meta[name="weig-build-sha"]'?{getAttribute(){return'abc123';}}:null;}};
-const runtimeAssetWindow={WeiG:{},document:runtimeAssetDocument,location:{href:'http://nas.local/private/index.html'},URL,Map,Promise,Date,fetch(){runtimeAssetFetches++;return Promise.resolve({ok:true,text:()=>Promise.resolve('{"value":7}')});}};
-const runtimeAssetContext=vm.createContext({window:runtimeAssetWindow,document:runtimeAssetDocument,URL,Map,Promise,Date,JSON,setTimeout,clearTimeout});
+const runtimeAssetGzip=gzipSync(Buffer.from('{"gzip":9}','utf8'));const runtimeAssetWindow={WeiG:{},document:runtimeAssetDocument,location:{href:'http://nas.local/private/index.html'},URL,Map,Promise,Date,atob:value=>Buffer.from(String(value),'base64').toString('binary'),fetch(input){runtimeAssetFetches++;if(String(input).includes('example.json.gz')){const bytes=runtimeAssetGzip;return Promise.resolve({ok:true,status:200,arrayBuffer:()=>Promise.resolve(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength))});}return Promise.resolve({ok:true,status:200,text:()=>Promise.resolve('{"value":7}')});}};
+const runtimeAssetContext=vm.createContext({window:runtimeAssetWindow,document:runtimeAssetDocument,URL,Map,Promise,Date,JSON,TextDecoder,Uint8Array,ArrayBuffer,setTimeout,clearTimeout});
 vm.runInContext(runtimeAssetSource,runtimeAssetContext,{filename:'runtime-assets.js'});
 const RuntimeAssets=runtimeAssetWindow.WeiG.RuntimeAssets;
 assert(RuntimeAssets&&RuntimeAssets.build==='abc123','RuntimeAssets must bind cache identity to injected exact BUILD');
@@ -64,6 +67,8 @@ assert(runtimeAssetFirst.value===7&&runtimeAssetSecond.value===7&&runtimeAssetFe
 await RuntimeAssets.invalidate('data/example.json',{namespace:'test',identity:'qB@sha'});
 await RuntimeAssets.readJson('data/example.json',{namespace:'test',identity:'qB@sha'});
 assert(runtimeAssetFetches===2,'explicit RuntimeAssets invalidation must force one fresh network read');
+const runtimeGzipFirst=await RuntimeAssets.readGzipJson('data/example.json.gz',{namespace:'test-gzip',identity:'qB@route'});const runtimeGzipSecond=await RuntimeAssets.readGzipJson('data/example.json.gz',{namespace:'test-gzip',identity:'qB@route'});
+assert(runtimeGzipFirst.gzip===9&&runtimeGzipSecond.gzip===9&&runtimeAssetFetches===3,'same-page gzip JSON reads must decode once and reuse the RuntimeAssets binary cache');
 
 const runtimeFiles=walk(runtimeBase).filter(rel=>rel.startsWith('scripts/')&&rel.endsWith('.js'));
 const qbClientCreators=[];
