@@ -23,9 +23,9 @@ for(const rel of ['webui/public/index.html','webui/public/login.html','webui/pri
   assert.match(read(rel),/assets\/Wei\.G\.png/,rel+' must consume the canonical Wei.G PNG path');
   assert.doesNotMatch(read(rel),/assets\/Wei\.G\.ico/,rel+' must not consume retired ICO bytes');
 }
-for(const rel of ['webui/public/index.html','webui/public/login.html','webui/private/index.html'])assert.match(read(rel),/scripts\/brand-favicon\.js/,rel+' must consume the shared favicon presentation owner');
+for(const rel of ['webui/public/index.html','webui/public/login.html'])assert.match(read(rel),/scripts\/brand-favicon\.js/,rel+' must consume the shared favicon presentation owner');
 
-const brand=read('webui/private/scripts/brand.js'),css=read('webui/private/css/brand.css'),favicon=read(faviconOwnerPath),privateIndex=read('webui/private/index.html');
+const brand=read('webui/private/scripts/brand.js'),css=read('webui/private/css/brand.css'),favicon=read(faviconOwnerPath),privateIndex=read('webui/private/index.html'),bootstrapPlan=JSON.parse(read('webui/private/bootstrap-plan.json')),startup=bootstrapPlan.phases.flatMap(phase=>phase.scripts);
 assert.match(brand,/var ICON='assets\/Wei\.G\.png'/);
 assert.doesNotMatch(brand,/ensureFavicon|WeiGBrandFavicon/,'private Brand must not keep a duplicate favicon bridge or apply caller');
 assert.match(brand,/function cloneMark\(size\)/,'Header/About marks must share one Brand owner');
@@ -37,6 +37,6 @@ assert.match(css,/rgba\(57,217,138,\.92\)/,'canonical rim orbit must include the
 assert.match(css,/@keyframes ambientOrbit/);
 assert.match(favicon,/ctx\.arc\(SIZE\/2,SIZE\/2,RADIUS/,'favicon owner must circular-clip the canonical PNG');
 assert.match(favicon,/canvas\.toDataURL\('image\/png'\)/,'favicon owner must derive an in-memory PNG without another physical logo asset');
-assert.ok(privateIndex.indexOf('"scripts/brand-favicon.js"')<privateIndex.indexOf('"scripts/brand.js"'),'private bootstrap must load favicon owner before Brand consumer');
+assert.ok(privateIndex.includes("PLAN='bootstrap-plan.json'")&&startup.includes('scripts/brand-favicon.js')&&startup.includes('scripts/brand.js')&&startup.indexOf('scripts/brand-favicon.js')<startup.indexOf('scripts/brand.js'),'canonical bootstrap plan must load favicon owner before Brand consumer');
 
 console.log('A39 Brand contract passed: one canonical PNG, one circular favicon presentation owner, unified Header/About motion, retired broad shine/spark and no outer Header hover frame.');
