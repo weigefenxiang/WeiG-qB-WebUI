@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -13,6 +14,15 @@ const majorOf=value=>String(value||'').replace(/^v/i,'').split('.')[0]||'0';
 function versionParts(value){return String(value||'0').replace(/^v/i,'').split(/[+-]/)[0].split('.').map(x=>Number.parseInt(x,10)||0);}
 function compareVersion(a,b){const x=versionParts(a),y=versionParts(b),n=Math.max(x.length,y.length);for(let i=0;i<n;i++){const av=x[i]||0,bv=y[i]||0;if(av!==bv)return av-bv;}return 0;}
 function tokenOrder(a,b){return Number.parseInt(a,36)-Number.parseInt(b,36);}
+function stableObject(value){if(Array.isArray(value))return value.map(stableObject);if(value&&typeof value==='object'){const out={};for(const key of Object.keys(value).sort())out[key]=stableObject(value[key]);return out;}return value;}
+function contentId(prefix,value){return prefix+crypto.createHash('sha256').update(JSON.stringify(stableObject(value))).digest('hex').slice(0,20);}
+function normalizedLocales(value){return [...new Set((value||[]).map(item=>String(item||'').trim()).filter(Boolean))].sort();}
+export function copyRouteDescriptor(profile){
+  const fallbackSets=profile?.bridges||profile?.fallbackSets||{};
+  return stableObject({schemaVersion:1,source:'qB-copy-semantic-route',family:String(profile?.family||''),bindingId:String(profile?.bindingId||''),nativeLocales:normalizedLocales(profile?.nativeLocales),fallbackLocales:normalizedLocales(profile?.bridgeLocales||profile?.fallbackLocales),fallbackSets});
+}
+export function copyRouteId(profile){return contentId('r',copyRouteDescriptor(profile));}
+
 function runtimeRefIds(bundle,binding){
   const ids=new Set();
   for(const entry of Object.values(binding?.preferences||{})){if(entry?.title)ids.add(entry.title);if(entry?.description)ids.add(entry.description);}
@@ -21,7 +31,7 @@ function runtimeRefIds(bundle,binding){
   return [...ids].sort();
 }
 export function ownedCopyProfileManifest(profile){
-  return{schemaVersion:1,source:'qB-source-context-runtime-copy-profile',sourceSha:String(profile?.sourceSha||''),qbVersion:String(profile?.qbVersion||''),family:String(profile?.family||''),bindingId:String(profile?.bindingId||''),nativeLocales:[...(profile?.nativeLocales||[])],fallbackLocales:[...(profile?.bridgeLocales||[])],fallbackSets:{...(profile?.bridges||{})}};
+  return{schemaVersion:1,source:'qB-source-context-runtime-copy-profile',sourceSha:String(profile?.sourceSha||''),qbVersion:String(profile?.qbVersion||''),routeId:copyRouteId(profile),family:String(profile?.family||''),bindingId:String(profile?.bindingId||''),nativeLocales:[...(profile?.nativeLocales||[])],fallbackLocales:[...(profile?.bridgeLocales||[])],fallbackSets:{...(profile?.bridges||{})}};
 }
 export function renderOwnedCopyBinding(bundle,bindingId){
   const binding=bundle?.bindings?.[bindingId];if(!binding)throw new Error('Unknown qB copy binding '+bindingId);
