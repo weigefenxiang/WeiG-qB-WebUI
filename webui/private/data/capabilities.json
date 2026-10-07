@@ -836,455 +836,520 @@
       "webApiVersion": "2.0.0",
       "sourceSha": "e9ed621178af841114a045887c5ce1e6b50cb366",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "rb41b2344727c8a63815c"
     },
     {
       "qbVersion": "4.1.1",
       "webApiVersion": "2.0.1",
       "sourceSha": "ea5a29018fba738223d0f1143ac97722e3ee9b5f",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "rbbfe531589449760704a"
     },
     {
       "qbVersion": "4.1.2",
       "webApiVersion": "2.0.2",
       "sourceSha": "d1ebbcb35d8833dabcb5130609f2d37dec1b4f66",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "r2d11a98e16e4a80a113c"
     },
     {
       "qbVersion": "4.1.3",
       "webApiVersion": "2.1.0",
       "sourceSha": "a574c4a70a5a3293d2f6135952c301d930d23627",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "r2d11a98e16e4a80a113c"
     },
     {
       "qbVersion": "4.1.4",
       "webApiVersion": "2.1.1",
       "sourceSha": "0061b752001e2d5c60b88f736e46685a64ea6bb9",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "r899a6c300a730c6ae7c8"
     },
     {
       "qbVersion": "4.1.5",
       "webApiVersion": "2.2.0",
       "sourceSha": "3f0e0a319a6f4833b238842744ed1f37104fcd4c",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "r9ca99af60471d688a3b0"
     },
     {
       "qbVersion": "4.1.6",
       "webApiVersion": "2.2.0",
       "sourceSha": "ea7e47d11328f408ba435bafaf618b483851c651",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "r589116d9dbd04b6c2509"
     },
     {
       "qbVersion": "4.1.7",
       "webApiVersion": "2.2.0",
       "sourceSha": "05a82afeb6c927bfc0cda4fe8fb25ecc3faecd86",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "rca149e34b0a327beedf9"
     },
     {
       "qbVersion": "4.1.8",
       "webApiVersion": "2.2.0",
       "sourceSha": "359b4649583564407628ebdac234a71c2f25e4dc",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "r354b2a1052ff1c7a4e07"
     },
     {
       "qbVersion": "4.1.9",
       "webApiVersion": "2.2.1",
       "sourceSha": "7825d8627f8be4682167bbe091870edad9dc33b6",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "r354b2a1052ff1c7a4e07"
     },
     {
       "qbVersion": "4.1.9.1",
       "webApiVersion": "2.2.1",
       "sourceSha": "eea38e7c9ecb1e1df5e889cb42fc93d3f79d429f",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "r354b2a1052ff1c7a4e07"
     },
     {
       "qbVersion": "4.2.0",
       "webApiVersion": "2.3.0",
       "sourceSha": "912b0767071f564646e9ced06a8382b0d67423b8",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "rbaeca72cf953da41a3df"
     },
     {
       "qbVersion": "4.2.1",
       "webApiVersion": "2.4.0",
       "sourceSha": "118af03534e5ded6d3c8323b5dbeeff57b177193",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "r9c4eb3804d99d3c9f43c"
     },
     {
       "qbVersion": "4.2.2",
       "webApiVersion": "2.4.1",
       "sourceSha": "3c17ad566c94a92b6beefae119db3da5cb26456e",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "r0c401abbde677d4741b9"
     },
     {
       "qbVersion": "4.2.3",
       "webApiVersion": "2.4.1",
       "sourceSha": "29e9594859151b774ee5f2f18a989a91d541b6f2",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "rdcfca50930c80f1ce4f0"
     },
     {
       "qbVersion": "4.2.4",
       "webApiVersion": "2.5.0",
       "sourceSha": "50f676c30507ece9fca6cc2bf61cf5fe79cf46c2",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "rb4c28e6192ceab733504"
     },
     {
       "qbVersion": "4.2.5",
       "webApiVersion": "2.5.1",
       "sourceSha": "2c65b796401f924d6889aadde958de3d2846bb4b",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "r347d47dbc18d033a18b1"
     },
     {
       "qbVersion": "4.3.0",
       "webApiVersion": "2.6.0",
       "sourceSha": "b925cffddb386b2ca10e58fc9c55d99721cfa2ff",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "rd0a1280c759751ef8ed5"
     },
     {
       "qbVersion": "4.3.0.1",
       "webApiVersion": "2.6.0",
       "sourceSha": "f09ee1b3986e51b9e0a63cefd361e9702a108a24",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "rd0a1280c759751ef8ed5"
     },
     {
       "qbVersion": "4.3.1",
       "webApiVersion": "2.6.1",
       "sourceSha": "587688634561b17229a6f5951478cbdd5ae0c128",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "r11828fdf09ce7837c338"
     },
     {
       "qbVersion": "4.3.2",
       "webApiVersion": "2.7.0",
       "sourceSha": "abb854a1e6309bec8ddbcccd7c550cd07c13c16e",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "rcd81459e223cf933a429"
     },
     {
       "qbVersion": "4.3.3",
       "webApiVersion": "2.7.0",
       "sourceSha": "da0b276d5fc4582f40e6fc8f17883083d2662316",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "r6f12a1bf38ebd1f7997c"
     },
     {
       "qbVersion": "4.3.4",
       "webApiVersion": "2.8.1",
       "sourceSha": "f7e6b964931c305c4a341c75e4b32e4e7b1443ce",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "r0bd82ae710c7146f002c"
     },
     {
       "qbVersion": "4.3.4.1",
       "webApiVersion": "2.8.1",
       "sourceSha": "332b173e080aa2deb2933eb848298fd98b71514b",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "r0bd82ae710c7146f002c"
     },
     {
       "qbVersion": "4.3.5",
       "webApiVersion": "2.8.2",
       "sourceSha": "063844ed44bffd3fbf2ac2792590ba47bf3fb78e",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "rf24da30915c387a13d72"
     },
     {
       "qbVersion": "4.3.6",
       "webApiVersion": "2.8.2",
       "sourceSha": "ac8105c304b84c77b7b72fbf4547e7ad977d44fc",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "r99e93e15c6e6c0f6eee8"
     },
     {
       "qbVersion": "4.3.7",
       "webApiVersion": "2.8.2",
       "sourceSha": "0415c0c6f87d0093811f03c99d0e8cefe6945347",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "r8e095c77cc9add15e878"
     },
     {
       "qbVersion": "4.3.8",
       "webApiVersion": "2.8.2",
       "sourceSha": "9392ce436db5e9ed4e5ce68d9fe1f279f0b89b9f",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "r78a6a1a60544cd7a57b7"
     },
     {
       "qbVersion": "4.3.9",
       "webApiVersion": "2.8.2",
       "sourceSha": "01519b5e77d2a1e577ebc0c4291611fc37df0d4a",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "r8741a58bfd822e32073f"
     },
     {
       "qbVersion": "4.4.0",
       "webApiVersion": "2.8.4",
       "sourceSha": "b9164adb7ae933e81c278cd40d2c529848494e22",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "r4a9cb10d973d4786e208"
     },
     {
       "qbVersion": "4.4.1",
       "webApiVersion": "2.8.5",
       "sourceSha": "4cb386af35bc81ff911c78a5b612857703f4af81",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "r5cba903a301fd46418aa"
     },
     {
       "qbVersion": "4.4.2",
       "webApiVersion": "2.8.5",
       "sourceSha": "ede7c8acbb79c1c6627fa03e8402b89f47711f70",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "r3706887e9f17fcc1daf5"
     },
     {
       "qbVersion": "4.4.3",
       "webApiVersion": "2.8.5",
       "sourceSha": "9ed9ffcaf22f281b426cf0ccc524218631bf9bf1",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "rc39dba7409eaa7b72e54"
     },
     {
       "qbVersion": "4.4.3.1",
       "webApiVersion": "2.8.5",
       "sourceSha": "6c546df70bbbb5602ddb91fbbd0e3762e75472c3",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "r20ecd5a705100f14127b"
     },
     {
       "qbVersion": "4.4.4",
       "webApiVersion": "2.8.5",
       "sourceSha": "4a56c3f5df344c4984900352a800deefb504ae67",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "r20ecd5a705100f14127b"
     },
     {
       "qbVersion": "4.4.5",
       "webApiVersion": "2.8.5",
       "sourceSha": "f9811ec3b0f727562c6fa5376e8a43ca8c8c8fa3",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "r20ecd5a705100f14127b"
     },
     {
       "qbVersion": "4.5.0",
       "webApiVersion": "2.8.18",
       "sourceSha": "480e3f02cae0ad7b2463e7e188867d747487c0bb",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "ra5374982a0e9fb2af4e9"
     },
     {
       "qbVersion": "4.5.1",
       "webApiVersion": "2.8.19",
       "sourceSha": "927732f1900efcc7a6102c605c513e9f4b7f6454",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "r52a30c8e315f7b9f207a"
     },
     {
       "qbVersion": "4.5.2",
       "webApiVersion": "2.8.19",
       "sourceSha": "97853f31f25bd427b7f821f16c8b1d7131842db8",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "rb81040dc4fee925cb4c0"
     },
     {
       "qbVersion": "4.5.3",
       "webApiVersion": "2.8.19",
       "sourceSha": "04bd33e5b3754c7e070a9fa0cb5df294ac57b219",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "re31885130a093b6d752e"
     },
     {
       "qbVersion": "4.5.4",
       "webApiVersion": "2.8.19",
       "sourceSha": "c8763f08da080cd9a9ea22caafff999ee54cbaa2",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "r7d81bff2e00255a49cd1"
     },
     {
       "qbVersion": "4.5.5",
       "webApiVersion": "2.8.19",
       "sourceSha": "7d7097b024788814cf74b05ca6857d074467285e",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "r8622603c4aa262d8776a"
     },
     {
       "qbVersion": "4.6.0",
       "webApiVersion": "2.9.2",
       "sourceSha": "7bc49423c7e6a69554a27b75fdc2f4ea7606ad84",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "r2405b61cc45f9356225f"
     },
     {
       "qbVersion": "4.6.1",
       "webApiVersion": "2.9.3",
       "sourceSha": "92f810873a2ae2387ddcd82e657c7ba1741b0efe",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "r23dccc261f1c2cf70dac"
     },
     {
       "qbVersion": "4.6.2",
       "webApiVersion": "2.9.3",
       "sourceSha": "1773b1ea05d60ccdb2c5185e48410267c5245632",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "r5a63c7151f53d89ef794"
     },
     {
       "qbVersion": "4.6.3",
       "webApiVersion": "2.9.3",
       "sourceSha": "cfa7a6db46e8376273ec9ae833cf637fe7670b4e",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "r1a50558e9aa85e29d9ba"
     },
     {
       "qbVersion": "4.6.4",
       "webApiVersion": "2.9.3",
       "sourceSha": "785320e7f6a5e228caf817b01dca69da0b83a012",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "r1723b39508666230abc8"
     },
     {
       "qbVersion": "4.6.5",
       "webApiVersion": "2.9.3",
       "sourceSha": "5e81347933adec219dab27a503f8dc9c4a1c522d",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "r60a5eac68cd2c203d724"
     },
     {
       "qbVersion": "4.6.6",
       "webApiVersion": "2.9.3",
       "sourceSha": "c01265c4cffe98db2ee2fba651f7f254ca8afbec",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "r21342b08c884fdb760c1"
     },
     {
       "qbVersion": "4.6.7",
       "webApiVersion": "2.9.3",
       "sourceSha": "839bc696d066aca34ebd994ee1673c4b2d5afd7b",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "r9ab5beaa3c68cf1ba582"
     },
     {
       "qbVersion": "5.0.0",
       "webApiVersion": "2.11.2",
       "sourceSha": "cce295faeb27ebf9d57498ac5e35490c845b9d4f",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "red42156eaa80201c6092"
     },
     {
       "qbVersion": "5.0.1",
       "webApiVersion": "2.11.2",
       "sourceSha": "94136262a84293da0d8504724e7143df0d0baa12",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "r3331ba3e323ad90786ff"
     },
     {
       "qbVersion": "5.0.2",
       "webApiVersion": "2.11.2",
       "sourceSha": "15b60912610d5a1e6712013079d3b2db4b78b85d",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "rf8c39077594764dc7a12"
     },
     {
       "qbVersion": "5.0.3",
       "webApiVersion": "2.11.2",
       "sourceSha": "0188e11dd7ece1ee8b6004145c4437d7455745d4",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "r7d2df4786effc85e6ec6"
     },
     {
       "qbVersion": "5.0.4",
       "webApiVersion": "2.11.2",
       "sourceSha": "100ee5dbe0eacfff30147ad1ee666d5c5eb35eb5",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "r87a07091bdfa45ebf33f"
     },
     {
       "qbVersion": "5.0.5",
       "webApiVersion": "2.11.2",
       "sourceSha": "4b794a9930435a8c011601365667b9f7de9d1e64",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "rd947c45e4dd659a57e07"
     },
     {
       "qbVersion": "5.1.0",
       "webApiVersion": "2.11.4",
       "sourceSha": "da87be2b12893dfb769df8124afeb064f099dc71",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "rcc971e625e2e28c625c1"
     },
     {
       "qbVersion": "5.1.1",
       "webApiVersion": "2.11.4",
       "sourceSha": "ea9f3800ce70ded6db66b2c9f0d2f0513399e969",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "r9e628ef95f03965fb6ec"
     },
     {
       "qbVersion": "5.1.2",
       "webApiVersion": "2.11.4",
       "sourceSha": "202ff8a099cfc1ca9421e7d30944b3c58a4a47cd",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "rd930611c746261684312"
     },
     {
       "qbVersion": "5.1.3",
       "webApiVersion": "2.11.4",
       "sourceSha": "6ede4e49ff1432ade8a75d37daf076b6000e2a57",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "r0b01deae6a00f0be0c65"
     },
     {
       "qbVersion": "5.1.4",
       "webApiVersion": "2.11.4",
       "sourceSha": "33e5e772200b5e2f9d23af8870ce7436ec216faa",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "rc48e477e7f7482d145aa"
     },
     {
       "qbVersion": "5.2.0",
       "webApiVersion": "2.15.1",
       "sourceSha": "b2270f7f6fec1b10117564f642b961621ae0058a",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "ra344c612d20a7f56c9ab"
     },
     {
       "qbVersion": "5.2.1",
       "webApiVersion": "2.15.1",
       "sourceSha": "7e8db603f207fec1ee5dc192cacf44fed264452c",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "rbf9484734596f94f1b57"
     },
     {
       "qbVersion": "5.2.2",
       "webApiVersion": "2.15.1",
       "sourceSha": "89aad1aad9fc7d819a28db3dc01f19c6b1f1be8c",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "rc33dacbe7ba3ef31cd67"
     },
     {
       "qbVersion": "5.2.3",
       "webApiVersion": "2.15.1",
       "sourceSha": "0b63c3d17373f6132ea211c9dcd4241284ccdfaf",
       "stable": true,
-      "officialWeiGSupport": true
+      "officialWeiGSupport": true,
+      "copyRouteId": "r579b75a553046c8288db"
     }
   ],
   "compatFiles": {
