@@ -32,9 +32,9 @@ for(const locale of ['zh_CN','zh_TW','ja']){
 
 assert.ok(i18n.includes("var nativeLocale=routeLocale(profile.nativeLocales),fallbackLocale=nativeLocale?null:routeLocale(profile.fallbackLocales)"),'runtime must select translation ownership from exact profile locale routes');
 assert.ok(i18n.includes("source:mode==='native'?'qb-native-QBT_TR+official-QM':'qb-exact-official-fallback-shard'"),'runtime must expose native-QM vs exact-fallback ownership');
-assert.ok(i18n.includes("if(fallbackLocale&&setId){var major=expectedVersion.split('.')[0];fallbackTask=loader.readJson('data/qb-copy-fallback/'+major+'/'+fallbackLocale+'.json'"),'only fallback routes may fetch one current major/locale JSON fallback shard');
+assert.ok(i18n.includes("if(fallbackLocale&&setId){var major=expectedVersion.split('.')[0];fallbackTask=loader.readGzipJson('data/qb-copy-fallback/'+major+'/'+fallbackLocale+'.json.gz'"),'only fallback routes may fetch one current major/locale gzip fallback shard');
 assert.ok(i18n.includes("bindingTask=loader.readText('data/qb-copy-bindings/'+profile.bindingId+'.txt'"),'native and fallback routes must share the exact source/context binding');
 assert.equal(/(?:>=|>|startsWith\(|indexOf\()[^\n]{0,80}4\.6\.5/.test(i18n),false,'browser runtime must not infer native translation from a 4.6.5+ version threshold');
 assert.equal(i18n.includes('translations/webui_'),false,'browser JavaScript must not fetch or parse qB QM files; native QBT_TR translation stays server-owned');
 
-console.log('A62.3 QM-first routing contract passed: exact source profiles choose native QBT_TR/QM per locale, source-proven gaps load only the current major/locale official fallback shard, and version thresholds do not invent native routes.');
+console.log('A62.3 QM-first routing contract passed: exact source profiles choose native QBT_TR/QM per locale, source-proven gaps load only one current major/locale gzip fallback shard, and version thresholds do not invent native routes.');
