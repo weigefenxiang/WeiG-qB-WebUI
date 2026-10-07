@@ -58,7 +58,7 @@ jobs:
           ip="$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$name")"
           test -n "$ip"
           ready=0
-          for i in $(seq 1 60); do
+          for i in $(seq 1 120); do
             if curl -fsS --max-time 2 "http://$ip:8080/api/v2/app/version" >/dev/null 2>&1; then ready=1; break; fi
             sleep 1
           done
