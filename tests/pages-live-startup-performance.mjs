@@ -13,31 +13,15 @@ const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const timeoutMs=Math.max(5000,Number(process.env.WEIG_PAGES_SESSION_TIMEOUT_MS||20000)||20000);
 const retiredCopyRegistry=['qb-settings','native.txt'].join('-');
 
-async function fetchBytes(relative,{attempt=null}={}){
-  const url=new URL(String(relative).replace(/^\\/+/,''),base);
+async function fetchBytes(relative){
+  const url=new URL(String(relative).replace(/^\/+/,''),base);
   url.searchParams.set('__startup_sha',expectedSha);
-  if(attempt!==null)url.searchParams.set('__startup_asset_attempt',String(attempt));
   const response=await fetch(url,{headers:{'cache-control':'no-cache','pragma':'no-cache'}});
   if(!response.ok)throw new Error(`${url} returned HTTP ${response.status}`);
   return Buffer.from(await response.arrayBuffer());
 }
-async function fetchText(relative,options){return (await fetchBytes(relative,options)).toString('utf8');}
-async function fetchJson(relative,options){return JSON.parse(await fetchText(relative,options));}
-async function fetchExactCopyPair(copyRelease){
-  let last='unresolved';
-  for(let attempt=0;attempt<20;attempt++){
-    try{
-      const route=JSON.parse(gunzipSync(await fetchBytes(`dev/app/__source/private/data/qb-copy-routes/${copyRelease.copyRouteId}.json.gz`,{attempt})).toString('utf8'));
-      const bindingId=String(route?.bindingId||'');
-      const binding=await fetchText(`dev/app/__source/private/data/qb-copy-bindings/${bindingId}.txt`,{attempt});
-      const marker='@@BINDING\\t'+bindingId;
-      if(route?.routeId===copyRelease.copyRouteId&&route?.schemaVersion===2&&/^b[0-9a-f]{20}$/.test(bindingId)&&binding.includes(marker))return{route,binding};
-      last=`routeId=${String(route?.routeId||'')} schema=${String(route?.schemaVersion||'')} bindingId=${bindingId} bindingBytes=${Buffer.byteLength(binding,'utf8')} marker=${binding.includes(marker)} prefix=${JSON.stringify(binding.slice(0,80))}`;
-    }catch(error){last=error?.message||String(error);}
-    await sleep(500);
-  }
-  throw new Error(`Pages exact route/binding assets did not converge for ${copyRelease.copyRouteId}; last=${last}`);
-}
+async function fetchText(relative){return (await fetchBytes(relative)).toString('utf8');}
+async function fetchJson(relative){return JSON.parse(await fetchText(relative));}
 async function waitForSha(){
   let last='';
   for(let attempt=0;attempt<40;attempt++){
@@ -64,12 +48,13 @@ const catalogProfile=catalog.find(item=>String(item?.qbVersion||'')==='5.2.3');
 assert.ok(catalogProfile,'deployed full evidence catalog must retain qB 5.2.3');
 const copyRelease=(capabilities.releases||[]).find(item=>String(item?.sourceSha||'')===String(catalogProfile.sourceSha||''));
 assert.ok(copyRelease&&copyRelease.qbVersion==='5.2.3'&&/^r[0-9a-f]{20}$/.test(String(copyRelease.copyRouteId||'')),'deployed capabilities must bind exact qB 5.2.3 provenance to one semantic copy route');
-const {route:copyRoute,binding:copyBinding}=await fetchExactCopyPair(copyRelease);
+const copyRoute=JSON.parse(gunzipSync(await fetchBytes('dev/app/__source/private/data/qb-copy-routes/'+copyRelease.copyRouteId+'.json.gz')).toString('utf8'));
+const copyBinding=await fetchText('dev/app/__source/private/data/qb-copy-bindings/'+copyRoute.bindingId+'.txt');
 assert.equal(profile.qbVersion,'5.2.3');
 assert.equal(profile.sourceSha,catalogProfile.sourceSha,'profile shard must preserve exact qB source identity');
 assert.equal(manifest.schemaVersion,1);
 assert.equal(manifest.profiles?.length,catalog.length,'runtime profile shard manifest must cover every admitted simulator profile');
-assert.equal(manifest.copyRuntime,'product-source/qb-copy-routes+bindings+fallback');assert.equal(copyRoute.routeId,copyRelease.copyRouteId);assert.equal(copyRoute.schemaVersion,2);assert.ok(/^b[0-9a-f]{20}$/.test(copyRoute.bindingId));assert.ok(copyBinding.includes('@@BINDING\\t'+copyRoute.bindingId));
+assert.equal(manifest.copyRuntime,'product-source/qb-copy-routes+bindings+fallback');assert.equal(copyRoute.routeId,copyRelease.copyRouteId);assert.equal(copyRoute.schemaVersion,2);assert.ok(/^b[0-9a-f]{20}$/.test(copyRoute.bindingId));assert.ok(copyBinding.includes('@@BINDING\t'+copyRoute.bindingId));
 assert.ok(Buffer.byteLength(copyBinding,'utf8')<512*1024,'deduplicated qB binding shard must stay bounded');
 
 const browser=await launchBrowser();
