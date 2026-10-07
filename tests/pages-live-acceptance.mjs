@@ -546,13 +546,16 @@ try{
 
     await openVirtualSession(page,{branch:'dev',qb:'5.2.3',count:80,scenario:'mixed',seed:'pages-live-android'});
     await page.waitForSelector('.torrent-mobile-card--two-line',{state:'visible',timeout:60000});
+    await page.locator('#menu-btn').click();
+    await page.waitForFunction(()=>document.getElementById('sidebar')?.classList.contains('is-open'));
     await demandFacetCatalog(page,'tracker');
     const androidCatalog=await waitForCatalog(page,{count:80,timeout:30000});
     await page.keyboard.press('Escape');
     assert.equal(androidCatalog.ready,true,'contextual facet live fixture must wait for the complete 80-Torrent catalog before deriving expected options');
-
-    await page.locator('#menu-btn').click();
-    await page.waitForFunction(()=>document.getElementById('sidebar')?.classList.contains('is-open'));
+    if(!(await page.evaluate(()=>document.getElementById('sidebar')?.classList.contains('is-open')))){
+      await page.locator('#menu-btn').click();
+      await page.waitForFunction(()=>document.getElementById('sidebar')?.classList.contains('is-open'));
+    }
     await page.waitForFunction(()=>document.querySelector('#mobile-drawer-telemetry #status-torrents')&&document.querySelector('#mobile-drawer-telemetry #transfer-capsule')&&document.querySelector('#mobile-drawer-transfer-chart .transfer-mini-chart'));
     const drawer=await page.evaluate(()=>{
       const sidebar=document.getElementById('sidebar'),filterNav=document.getElementById('filter-nav'),facets=document.getElementById('facet-controls'),telemetry=document.getElementById('mobile-drawer-telemetry');
