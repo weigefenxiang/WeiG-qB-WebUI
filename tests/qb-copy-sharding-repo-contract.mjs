@@ -53,8 +53,10 @@ for(const name of bindings){
 for(const major of ['4','5']){
   for(const file of recursiveFiles(path.join(dataDir,'qb-copy-fallback',major),'.json')){
     const group=JSON.parse(fs.readFileSync(file,'utf8')),locale=path.basename(file,'.json');
-    assert.equal(group.schemaVersion,1);
-    assert.equal(group.source,'qB-exact-official-fallback-major-locale');
+    assert.equal(group.schemaVersion,2);
+    assert.equal(group.source,'qB-exact-official-fallback-pack');
+    assert.ok(Array.isArray(group.values),'fallback pack values must be a dense tuple array');
+    for(const def of Object.values(group.sets||{}))assert.ok(Array.isArray(def)&&def.length===3,'fallback set delta must use [parent,add,remove] compact form');
     assert.equal(group.major,major);
     assert.equal(group.locale,locale);
     assert.ok(Object.keys(group.sets||{}).length>0,'fallback shard must own at least one exact set: '+rel(file));
@@ -106,4 +108,4 @@ for(const installer of ['installers/install.sh','installers/install.ps1']){
   for(const dir of ['qb-copy-profiles','qb-copy-bindings','qb-copy-fallback'])assert.ok(body.includes(dir),installer+' must validate '+dir);
 }
 
-console.log('A62.2 qB copy sharding repository contract passed: 65 exact profiles, 33 bindings, 91 qB 4.x fallback shards, 42 qB 5.x fallback shards, and no legacy active caller.');
+console.log('A62.7 qB copy sharding repository contract passed: exact profiles/bindings keep provenance while 133 fallback shards use compact tuple packs and no legacy active caller.');

@@ -46,11 +46,11 @@ export function buildOwnedCopyFallbackGroup(bundle,major,locale){
   const profiles=(bundle?.profiles||[]).filter(p=>majorOf(p.qbVersion)===major&&(p.bridgeLocales||[]).includes(locale)&&p.bridges&&p.bridges[locale]).sort((a,b)=>compareVersion(a.qbVersion,b.qbVersion));
   const pairKeys=new Set(),setMaps=new Map();
   for(const profile of profiles){const setId=profile.bridges[locale],map=bundle.bridgeSets?.[setId];if(!map)continue;setMaps.set(setId,map);for(const [ref,value] of Object.entries(map))pairKeys.add(JSON.stringify([ref,String(value)]));}
-  const values={},tokens=new Map();[...pairKeys].sort().forEach((key,index)=>{const [ref,value]=JSON.parse(key),token=index.toString(36);tokens.set(key,token);values[token]={ref,value};});
+  const values=[],tokens=new Map();[...pairKeys].sort().forEach((key,index)=>{const [ref,value]=JSON.parse(key),token=index.toString(36);tokens.set(key,token);values.push([ref,value]);});
   const full={};for(const [setId,map] of setMaps)full[setId]=Object.keys(map).sort().map(ref=>tokens.get(JSON.stringify([ref,String(map[ref])])));
   const sets={},seen=new Set();let previous=null;
-  for(const profile of profiles){const setId=profile.bridges[locale];if(!setId||seen.has(setId)||!full[setId])continue;seen.add(setId);let plan={parent:null,add:[...full[setId]],remove:[]};if(previous&&full[previous]){const current=new Set(full[setId]),prior=new Set(full[previous]),add=[...current].filter(t=>!prior.has(t)).sort(tokenOrder),remove=[...prior].filter(t=>!current.has(t)).sort(tokenOrder),fullCost=plan.add.join(',').length,deltaCost=previous.length+add.join(',').length+remove.join(',').length+2;if(deltaCost<fullCost)plan={parent:previous,add,remove};}sets[setId]=plan;previous=setId;}
-  return{schemaVersion:1,source:'qB-exact-official-fallback-major-locale',major,locale,values,sets};
+  for(const profile of profiles){const setId=profile.bridges[locale];if(!setId||seen.has(setId)||!full[setId])continue;seen.add(setId);let plan=[null,[...full[setId]],[]];if(previous&&full[previous]){const current=new Set(full[setId]),prior=new Set(full[previous]),add=[...current].filter(t=>!prior.has(t)).sort(tokenOrder),remove=[...prior].filter(t=>!current.has(t)).sort(tokenOrder),fullCost=plan[1].join(',').length,deltaCost=previous.length+add.join(',').length+remove.join(',').length+2;if(deltaCost<fullCost)plan=[previous,add,remove];}sets[setId]=plan;previous=setId;}
+  return{schemaVersion:2,source:'qB-exact-official-fallback-pack',major,locale,values,sets};
 }
 export function runtimeCopyFallbackGroups(bundle){
   const keys=new Set();for(const profile of bundle?.profiles||[]){const major=majorOf(profile.qbVersion);for(const locale of profile.bridgeLocales||[])if(profile.bridges&&profile.bridges[locale])keys.add(major+'\u0000'+safeLocale(locale));}
