@@ -558,6 +558,8 @@ jobs:
             "$APPLIED_CATALOG" \
             "$GENERATED/private/data/qb-releases.json" \
             --settings-lkg="$LKG"
+          cp webui/private/data/capabilities.json "$GENERATED/private/data/capabilities.json"
+          node tools/qb-copy-route-control-plane.mjs "$GENERATED/private/data/qb-releases.json" "$GENERATED/private/data/capabilities.json" --write >/dev/null
           node tools/qb-runtime-copy-product.mjs validate "$GENERATED/private/data" >/dev/null
           find "$GENERATED/translations" -type f -name 'webui_*.qm' -print -quit | grep -q .
           node tests/qb-runtime-copy-materialization-contract.mjs "$LKG" "$GENERATED/private/data"
