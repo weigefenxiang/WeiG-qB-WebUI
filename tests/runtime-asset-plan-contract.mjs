@@ -54,6 +54,6 @@ const plan={schemaVersion:1,styleConcurrency:2,maxAttempts:2,retryDelays:[0],sty
 }
 {
   const h=harness();
-  await assert.rejects(()=>h.RuntimeAssets.executePlan({schemaVersion:1,phases:[{name:'one',scripts:['dup.js']},{name:'two',scripts:['dup.js']}]}),/multiple phases/);
+  assert.throws(()=>h.RuntimeAssets.executePlan({schemaVersion:1,phases:[{name:'one',scripts:['dup.js']},{name:'two',scripts:['dup.js']}]}),/multiple phases/);
 }
 console.log('Runtime asset plan contract passed: one owner provides bounded style concurrency, parallel independent script phases, deterministic dependency barriers, retry, dedupe and fail-closed execution.');
