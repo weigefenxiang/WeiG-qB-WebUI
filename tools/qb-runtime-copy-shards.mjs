@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import {gzipSync} from 'node:zlib';
 
 const RUNTIME_SOURCE_REFS=[
   ['HttpServer','External IP: %1%2'],
@@ -64,6 +65,6 @@ export function materializeRuntimeCopyShards(bundle,dataDir){
   let profileBytes=0,bindingBytes=0,fallbackBytes=0,maxProfileBytes=0,maxBindingBytes=0,maxFallbackBytes=0;
   for(const profile of bundle.profiles||[]){const body=JSON.stringify(ownedCopyProfileManifest(profile))+'\n',bytes=Buffer.byteLength(body);fs.writeFileSync(path.join(profileDir,`${profile.sourceSha}.json`),body);profileBytes+=bytes;maxProfileBytes=Math.max(maxProfileBytes,bytes);}
   for(const bindingId of Object.keys(bundle.bindings||{}).sort()){const body=renderOwnedCopyBinding(bundle,bindingId),bytes=Buffer.byteLength(body);fs.writeFileSync(path.join(bindingDir,`${bindingId}.txt`),body);bindingBytes+=bytes;maxBindingBytes=Math.max(maxBindingBytes,bytes);}
-  const groups=runtimeCopyFallbackGroups(bundle);for(const [relative,value] of Object.entries(groups)){const target=path.join(fallbackDir,relative),body=JSON.stringify(value)+'\n',bytes=Buffer.byteLength(body);fs.mkdirSync(path.dirname(target),{recursive:true});fs.writeFileSync(target,body);fallbackBytes+=bytes;maxFallbackBytes=Math.max(maxFallbackBytes,bytes);}
+  const groups=runtimeCopyFallbackGroups(bundle);for(const [relative,value] of Object.entries(groups)){const target=path.join(fallbackDir,relative+'.gz'),raw=Buffer.from(JSON.stringify(value)+'\n','utf8'),body=gzipSync(raw,{level:9,mtime:0}),bytes=body.length;fs.mkdirSync(path.dirname(target),{recursive:true});fs.writeFileSync(target,body);fallbackBytes+=bytes;maxFallbackBytes=Math.max(maxFallbackBytes,bytes);}
   return{profileShardCount:(bundle.profiles||[]).length,bindingShardCount:Object.keys(bundle.bindings||{}).length,fallbackShardCount:Object.keys(groups).length,profileBytes,bindingBytes,fallbackBytes,totalBytes:profileBytes+bindingBytes+fallbackBytes,maxProfileBytes,maxBindingBytes,maxFallbackBytes};
 }

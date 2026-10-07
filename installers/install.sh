@@ -541,7 +541,7 @@ assert_materialized_webui() {
     [ -s "$data/$contract" ] || { echo "Materialized WebUI is missing compact runtime contract $contract." >&2; return 1; }
   done
   [ ! -e "$root/private/scripts/release-profile.js" ] && [ ! -e "$data/qb-releases.json" ] && [ ! -e "$data/qb-release-profiles" ] && [ ! -e "$data/qb-settings-native.txt" ] || { echo "Materialized WebUI retained a retired runtime owner." >&2; return 1; }
-  for spec in 'qb-copy-profiles/*.json' 'qb-copy-bindings/*.txt' 'qb-copy-fallback/*/*.json'; do
+  for spec in 'qb-copy-profiles/*.json' 'qb-copy-bindings/*.txt' 'qb-copy-fallback/*/*.json.gz'; do
     shard_found=0
     for shard in "$data"/$spec; do [ -f "$shard" ] || continue; [ -s "$shard" ] || { echo "Materialized WebUI contains an empty qB copy shard: $shard" >&2; return 1; }; shard_found=1; break; done
     [ "$shard_found" -eq 1 ] || { echo "Materialized WebUI is missing qB copy shards for $spec." >&2; return 1; }

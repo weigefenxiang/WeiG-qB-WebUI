@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {gunzipSync} from 'node:zlib';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const dataDir=path.join(root,'webui/private/data');
@@ -26,8 +27,8 @@ function recursiveFiles(dir,ext){return walk(dir).filter(file=>file.endsWith(ext
 assert.equal(fs.existsSync(path.join(dataDir,legacyRegistry)),false,'retired all-version qB copy registry must stay absent');
 const profiles=filesIn(path.join(dataDir,'qb-copy-profiles'),'.json');
 const bindings=filesIn(path.join(dataDir,'qb-copy-bindings'),'.txt');
-const fallback4=filesIn(path.join(dataDir,'qb-copy-fallback/4'),'.json');
-const fallback5=filesIn(path.join(dataDir,'qb-copy-fallback/5'),'.json');
+const fallback4=filesIn(path.join(dataDir,'qb-copy-fallback/4'),'.json.gz');
+const fallback5=filesIn(path.join(dataDir,'qb-copy-fallback/5'),'.json.gz');
 assert.equal(profiles.length,65,'A62.2 must materialize one exact copy profile for every admitted qB release');
 assert.equal(bindings.length,33,'A62.2 binding deduplication count drifted');
 assert.equal(fallback4.length,91,'A62.2 qB 4.x locale fallback inventory is incomplete');
@@ -52,8 +53,8 @@ for(const name of bindings){
 }
 let fallbackBytes=0;
 for(const major of ['4','5']){
-  for(const file of recursiveFiles(path.join(dataDir,'qb-copy-fallback',major),'.json')){
-    const group=JSON.parse(fs.readFileSync(file,'utf8')),locale=path.basename(file,'.json');
+  for(const file of recursiveFiles(path.join(dataDir,'qb-copy-fallback',major),'.json.gz')){
+    const group=JSON.parse(gunzipSync(fs.readFileSync(file)).toString('utf8')),locale=path.basename(file,'.json.gz');
     fallbackBytes+=fs.statSync(file).size;
     assert.equal(group.schemaVersion,3);
     assert.equal(group.source,'qB-exact-official-fallback-pack');
@@ -70,7 +71,8 @@ for(const major of ['4','5']){
     assert.ok(Object.keys(group.sets||{}).length>0,'fallback shard must own at least one exact set: '+rel(file));
   }
 }
-assert.ok(fallbackBytes<5050735,'A62.7 fallback storage budget regressed: '+fallbackBytes+' >= 5050735');
+assert.equal(fallbackBytes,1978408,'A62.7 gzip fallback storage budget drifted');
+assert.ok(fallbackBytes<4733945,'A62.7 gzip fallback must remain below the previous green storage budget');
 
 const allowedLegacy={
   'tools/qb-webui-catalog.mjs':['rmSync'],
@@ -100,7 +102,7 @@ for(const file of walk(root)){
 assert.deepEqual(legacyHits,[],'retired all-version qB copy registry still has active repository callers');
 
 const i18n=fs.readFileSync(path.join(root,'webui/private/scripts/i18n.js'),'utf8');
-for(const token of ['data/qb-copy-profiles/','data/qb-copy-bindings/','data/qb-copy-fallback/'])assert.ok(i18n.includes(token),'runtime i18n is missing '+token);
+for(const token of ['data/qb-copy-profiles/','data/qb-copy-bindings/','data/qb-copy-fallback/'])assert.ok(i18n.includes(token),'runtime i18n is missing '+token);assert.ok(i18n.includes('.json.gz')&&i18n.includes('readGzipJson'),'runtime fallback copy must use the single-request gzip transport owner');
 assert.equal(i18n.includes(legacyRegistry),false);
 
 const simulator=fs.readFileSync(path.join(root,'simulator/service-worker/service-worker.js'),'utf8');
@@ -117,4 +119,4 @@ for(const installer of ['installers/install.sh','installers/install.ps1']){
   for(const dir of ['qb-copy-profiles','qb-copy-bindings','qb-copy-fallback'])assert.ok(body.includes(dir),installer+' must validate '+dir);
 }
 
-console.log('A62.7 qB copy sharding repository contract passed: exact profiles/bindings keep provenance while 133 fallback shards use compact ref-run packs below the previous green storage budget and no legacy active caller.');
+console.log('A62.7 qB copy sharding repository contract passed: exact profiles/bindings keep provenance while 133 fallback shards use deterministic gzip compact packs below the previous green storage budget and no legacy active caller.');

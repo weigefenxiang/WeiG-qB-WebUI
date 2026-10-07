@@ -79,14 +79,14 @@
     return{schemaVersion:3,source:mode==='native'?'qb-native-QBT_TR+official-QM':'qb-exact-official-fallback-shard',sourceSha:profile.sourceSha,qbVersion:profile.qbVersion,locale:qbLocale,mode:mode,preferences:preferences,ui:ui,resolvedRefs:resolvedRefs,addRefs:addRefs};
   }
   function loadQbOwnedCopy(){
-    var current=currentProfile();if(!current||current.fallback)return Promise.resolve(null);var expectedSha=String(current.sourceSha||''),expectedVersion=String(current.qbVersion||''),loader=W.RuntimeAssets;if(!/^[0-9a-f]{40}$/.test(expectedSha)||!expectedVersion||!loader)return Promise.resolve(null);
+    var current=currentProfile();if(!current||current.fallback)return Promise.resolve(null);var expectedSha=String(current.sourceSha||''),expectedVersion=String(current.qbVersion||''),loader=W.RuntimeAssets;if(!/^[0-9a-f]{40}$/.test(expectedSha)||!expectedVersion||!loader||typeof loader.readGzipJson!=='function')return Promise.resolve(null);
     if(qbCopyData&&qbCopyData.sourceSha===expectedSha&&qbCopyData.qbVersion===expectedVersion&&qbCopyLocale===qbLocale)return Promise.resolve(qbCopyData);if(qbCopyTask)return qbCopyTask;qbCopyLocale=qbLocale;
     var profilePath='data/qb-copy-profiles/'+expectedSha+'.json',profileIdentity=expectedSha+'@'+expectedVersion;
     qbCopyTask=loader.readJson(profilePath,{namespace:'qb-copy-profile',identity:profileIdentity}).then(function(profile){
       if(!profile||profile.schemaVersion!==1||profile.source!=='qB-source-context-runtime-copy-profile'||String(profile.sourceSha)!==expectedSha||String(profile.qbVersion)!==expectedVersion||!/^b[0-9a-f]{20}$/.test(String(profile.bindingId||'')))throw new Error('qB-owned copy profile identity mismatch');
       var nativeLocale=routeLocale(profile.nativeLocales),fallbackLocale=nativeLocale?null:routeLocale(profile.fallbackLocales);if(!nativeLocale&&!fallbackLocale)throw new Error('qB-owned copy locale route unavailable');
       var route=nativeLocale||fallbackLocale,bindingTask=loader.readText('data/qb-copy-bindings/'+profile.bindingId+'.txt',{namespace:'qb-copy-binding',identity:expectedSha+'@'+route}),fallbackTask=Promise.resolve(null),setId=fallbackLocale&&profile.fallbackSets&&profile.fallbackSets[fallbackLocale];
-      if(fallbackLocale&&setId){var major=expectedVersion.split('.')[0];fallbackTask=loader.readJson('data/qb-copy-fallback/'+major+'/'+fallbackLocale+'.json',{namespace:'qb-copy-fallback',identity:major+'@'+fallbackLocale});}
+      if(fallbackLocale&&setId){var major=expectedVersion.split('.')[0];fallbackTask=loader.readGzipJson('data/qb-copy-fallback/'+major+'/'+fallbackLocale+'.json.gz',{namespace:'qb-copy-fallback',identity:major+'@'+fallbackLocale});}
       return Promise.all([bindingTask,fallbackTask]).then(function(parts){var value=parseOwnedCopyBinding(parts[0],profile,parts[1]);if(!value)throw new Error('qB-owned copy shard is unresolved');return value;});
     }).then(function(value){qbCopyData=value;applyQbOwned(document);try{global.dispatchEvent(new CustomEvent('weig:qbcopychange',{detail:{locale:qbLocale,qbVersion:expectedVersion,sourceSha:expectedSha}}));}catch(_e){}return value;}).catch(function(){qbCopyData=null;return null;}).finally(function(){qbCopyTask=null;});return qbCopyTask;
   }

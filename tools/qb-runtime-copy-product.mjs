@@ -3,11 +3,12 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {gunzipSync} from 'node:zlib';
 
 export const COPY_SHARD_SPECS=[
   {name:'qb-copy-profiles',ext:'.json'},
   {name:'qb-copy-bindings',ext:'.txt'},
-  {name:'qb-copy-fallback',ext:'.json'}
+  {name:'qb-copy-fallback',ext:'.json.gz'}
 ];
 
 function sha256(file){return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');}
@@ -26,7 +27,8 @@ export function runtimeCopySnapshot(dataDir){
     for(const file of selected){
       const body=fs.readFileSync(file),relative=path.relative(root,file).replaceAll('\\','/'),bytes=body.length;
       if(bytes<=0)throw new Error(`Empty qB copy shard: ${relative}`);
-      if(spec.ext==='.json')JSON.parse(body.toString('utf8'));
+      if(spec.name==='qb-copy-fallback')JSON.parse(gunzipSync(body).toString('utf8'));
+      else if(spec.ext==='.json')JSON.parse(body.toString('utf8'));
       else {
         const text=body.toString('utf8');
         if(!/^@@BINDING\tb[0-9a-f]{20}$/m.test(text))throw new Error(`Malformed qB binding identity: ${relative}`);

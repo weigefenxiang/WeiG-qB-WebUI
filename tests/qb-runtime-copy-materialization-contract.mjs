@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import {gunzipSync} from 'node:zlib';
 
 const [catalogArg,dataArg]=process.argv.slice(2),dataDir=path.resolve(dataArg||'webui/private/data'),catalogPath=path.resolve(catalogArg||path.join(dataDir,'qb-releases.json'));
 const source=JSON.parse(fs.readFileSync(catalogPath,'utf8')),catalog=Array.isArray(source)?source:(Array.isArray(source?.profiles)?source.profiles:null);
@@ -13,7 +14,7 @@ function focusedSourceUi(profile,version){const expected=new Map();for(const ite
 function sourceOwnedUi(profile,version){const raw=profile?.qbOwnedUi&&typeof profile.qbOwnedUi==='object'?profile.qbOwnedUi:(profile?.ui&&typeof profile.ui==='object'?profile.ui:null);if(!raw)return null;const expected=new Map();for(const [key,ref] of Object.entries(raw))remember(expected,key,ref,version);return expected;}
 function parseBinding(file){const text=fs.readFileSync(file,'utf8'),id=(text.match(/^@@BINDING\t(b[0-9a-f]{20})\s*$/m)||[])[1];assert.ok(id,'binding shard lacks identity: '+file);const refs=new Map(),ui=new Map();for(const m of text.matchAll(/^@@REF\t([0-9a-f]{24})\t([^\t\r\n]*)\t([^\t\r\n]*)/gm))refs.set(m[1],{context:decode(m[2]),source:decode(m[3])});for(const m of text.matchAll(/^@@UI\t([^\t\r\n]*)\t([0-9a-f]{24})$/gm))ui.set(decode(m[1]),m[2]);return{id,refs,ui,text};}
 function assertUiRef(version,binding,key,expected){const id=binding.ui.get(key);assert.ok(id,version+' generated binding shard is missing '+key);assert.deepEqual(binding.refs.get(id),expected,version+' generated copy ref disagrees with exact source/context for '+key);}
-function fallbackGroup(major,locale){const file=path.join(dataDir,'qb-copy-fallback',major,locale+'.json');assert.ok(fs.existsSync(file),'missing fallback group '+major+'/'+locale);return JSON.parse(fs.readFileSync(file,'utf8'));}
+function fallbackGroup(major,locale){const file=path.join(dataDir,'qb-copy-fallback',major,locale+'.json.gz');assert.ok(fs.existsSync(file),'missing fallback group '+major+'/'+locale);return JSON.parse(gunzipSync(fs.readFileSync(file)).toString('utf8'));}
 function fallbackValue(group,index){assert.equal(group.schemaVersion,3);assert.equal(typeof group.refs,'string');assert.equal(group.refs.length%24,0);const refs=[];for(let i=0;i<group.refs.length;i+=24)refs.push(group.refs.slice(i,i+24));const runs=group.runs?String(group.runs).split(',').map(value=>Number.parseInt(value,36)):[];assert.equal(refs.length,runs.length);let cursor=0;for(let i=0;i<refs.length;i++){const next=cursor+runs[i];if(index<next)return[refs[i],group.values[index]];cursor=next;}return null;}
 function resolveSet(group,id,cache={},trail={}){if(cache[id])return cache[id];const def=group?.sets?.[id];assert.ok(Array.isArray(def)&&def.length===3,'fallback group missing compact set '+id);assert.equal(trail[id],undefined,'cyclic fallback set '+id);trail[id]=true;const active=new Set(def[0]?resolveSet(group,def[0],cache,trail):[]);for(const token of def[2]||[])active.delete(token);for(const token of def[1]||[])active.add(token);delete trail[id];return cache[id]=[...active];}
 let sourceChecked=0,localeRoutes=0,fallbackRoutes=0;
@@ -26,4 +27,4 @@ for(const profile of catalog){const sha=String(profile?.sourceSha||''),version=S
 assert.ok(sourceChecked>0||catalog.every(item=>!item.qbOwnedUi&&!item.torrentDetailUi),'source-rich catalog must verify at least one exact UI binding');
 assert.ok(localeRoutes>=0&&fallbackRoutes>=0);
 assert.equal(fs.existsSync(path.join(dataDir,'qb-settings-native.txt')),false,'retired all-version qb-settings-native.txt must not return to product runtime');
-console.log('qB runtime copy materialization contract passed: exact profile manifests select one deduplicated source/context binding shard and one compact current major/locale fallback pack; the all-version translation registry is retired.');
+console.log('qB runtime copy materialization contract passed: exact profile manifests select one deduplicated source/context binding shard and one gzip-compressed current major/locale fallback pack; the all-version translation registry is retired.');
