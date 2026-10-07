@@ -56,6 +56,9 @@ assert.ok(pages.includes('validation_profile:')&&pages.includes('node tools/page
 assert.ok(pagesPlan.includes('FULL_PAGES_VERIFY_LANES')&&pagesPlan.includes("case'full'")&&!pagesPlan.includes('preferenceShard(index,10)'),'full Pages verification must stay on the six durable live owners instead of restoring the historical 27/28-lane matrix.');
 assert.ok(pagesPlan.includes("case'settings'")&&pagesPlan.includes('preferenceShard(index,4)'),'Settings-focused Pages verification must retain four bounded preference shards while full Pages stays lean.');
 assert.ok(pages.includes("jq -r '.pagesPayload'")&&pages.includes('Non-payload advance classes:'),'Pages stale-deploy guard must block payload advances while allowing verifier-only/repository-only head advances.');
+assert.ok(pages.includes('Probe deployed exact-SHA Pages identity')&&pages.includes('reuse_deployed:')&&pages.includes("needs.build.outputs.reuse_deployed != 'true'"),'Pages must reuse only an already-live identical SHA instead of repeating the multi-minute deployment.');
+assert.ok(pages.includes("needs.deploy.result == 'success' || needs.build.outputs.reuse_deployed == 'true'")&&pages.includes('WEIG_PAGES_URL: ${{ needs.build.outputs.page_url }}'),'Pages verify lanes must accept either one successful fresh deploy or a proven exact-SHA live deployment.');
+assert.ok(pages.includes('SITE_BYTES')&&pages.includes('950000000')&&pages.includes('main/app/__simulator/versions/catalog.generated.json'),'Pages deployment must enforce a sub-1GB footprint and retire duplicate main/source-only full catalogs.');
 assert.ok(!pages.includes('.github/workflows/pages-source.yml|.github/workflows/pages.yml|.github/workflows/ci.yml|'),'Pages workflow must not retain the legacy duplicated payload matcher.');
 
 console.log('Pages relevance contract passed: CI/Pages share one change owner; full live verification is six durable lanes while Settings retains bounded source-specific shards.');

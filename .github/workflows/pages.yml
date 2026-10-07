@@ -15,6 +15,11 @@ on:
           - ui
           - settings
           - native
+      force_deploy:
+        description: Force a fresh Pages deployment even when this exact SHA is already live
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   actions: read
@@ -42,6 +47,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       verify_matrix: ${{ steps.verify_plan.outputs.matrix }}
+      reuse_deployed: ${{ steps.deployed_identity.outputs.reuse }}
+      page_url: ${{ steps.deployed_identity.outputs.page_url }}
     steps:
       - name: Checkout exact WeiG source
         uses: actions/checkout@v6
@@ -66,6 +73,38 @@ jobs:
           echo "Pages verification profile: $WEIG_PAGES_VERIFY_PROFILE"
           node -e 'const value=JSON.parse(process.argv[1]); console.log("Live lanes: "+value.include.map(item=>item.name).join(", "));' "$matrix"
 
+      - name: Probe deployed exact-SHA Pages identity
+        id: deployed_identity
+        shell: bash
+        env:
+          FORCE_DEPLOY: ${{ inputs.force_deploy }}
+        run: |
+          set -euo pipefail
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          PAGE_URL="https://${GITHUB_REPOSITORY_OWNER}.github.io/${REPO_NAME}/"
+          echo "page_url=$PAGE_URL" >> "$GITHUB_OUTPUT"
+          if [ "$FORCE_DEPLOY" = "true" ]; then
+            echo "reuse=false" >> "$GITHUB_OUTPUT"
+            echo "Forced fresh Pages deployment for $WEIG_PAGES_SOURCE_SHA"
+            exit 0
+          fi
+
+          SITE_JSON="$RUNNER_TEMP/deployed-site.json"
+          PROBE_URL="${PAGE_URL}metadata/site.json?reuse=${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${WEIG_PAGES_SOURCE_SHA}"
+          if curl -fsSL --retry 2 --retry-delay 1 -H 'Cache-Control: no-cache' -H 'Pragma: no-cache' "$PROBE_URL" -o "$SITE_JSON"; then
+            LIVE_SHA="$(jq -r '.simulatorSha // empty' "$SITE_JSON")"
+            LIVE_DEV_SHA="$(jq -r '.branches.dev.exactSha // empty' "$SITE_JSON")"
+            if [ "$LIVE_SHA" = "$WEIG_PAGES_SOURCE_SHA" ] && [ "$LIVE_DEV_SHA" = "$WEIG_PAGES_SOURCE_SHA" ]; then
+              echo "reuse=true" >> "$GITHUB_OUTPUT"
+              echo "Reusing already deployed exact-SHA Pages site: $WEIG_PAGES_SOURCE_SHA"
+              exit 0
+            fi
+            echo "Live Pages identity differs: simulatorSha=$LIVE_SHA dev=$LIVE_DEV_SHA expected=$WEIG_PAGES_SOURCE_SHA"
+          else
+            echo "Live Pages identity probe unavailable; a fresh deploy remains required."
+          fi
+          echo "reuse=false" >> "$GITHUB_OUTPUT"
+
       - name: Install contract dependencies
         run: npm ci --no-audit --no-fund --prefer-offline
 
@@ -84,6 +123,7 @@ jobs:
           node tests/syntax-contract.mjs
 
       - name: Load prepared exact-SHA qB Settings translation evidence
+        if: ${{ steps.deployed_identity.outputs.reuse != 'true' }}
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -98,6 +138,7 @@ jobs:
           test -s "$RUNNER_TEMP/qb-settings-translation-lkg.json"
 
       - name: Build exact dev/main Virtual qB site from Frozen LKG
+        if: ${{ steps.deployed_identity.outputs.reuse != 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -157,6 +198,15 @@ jobs:
           test ! -e "$RUNNER_TEMP/virtual-qb-site/dev/app/__source/private/data/qb-releases.json"
           test ! -e "$RUNNER_TEMP/virtual-qb-site/dev/app/__source/private/data/qb-release-profiles"
           test ! -e "$RUNNER_TEMP/virtual-qb-site/dev/app/__source/private/scripts/release-profile.js"
+          test ! -e "$RUNNER_TEMP/virtual-qb-site/dev/app/__simulator/versions/catalog.source.json"
+          test ! -e "$RUNNER_TEMP/virtual-qb-site/main/app/__simulator/versions/catalog.source.json"
+          test ! -e "$RUNNER_TEMP/virtual-qb-site/main/app/__simulator/versions/catalog.generated.json"
+          SITE_BYTES="$(du -sb "$RUNNER_TEMP/virtual-qb-site" | cut -f1)"
+          if [ "$SITE_BYTES" -ge 950000000 ]; then
+            echo "Virtual qB Pages site exceeds 950 MB deployment budget: $SITE_BYTES bytes" >&2
+            exit 1
+          fi
+          echo "Virtual qB Pages deployment footprint: $SITE_BYTES bytes"
           node tools/qb-runtime-copy-product.mjs validate "$RUNNER_TEMP/virtual-qb-site/dev/app/__source/private/data" >/dev/null
           find "$RUNNER_TEMP/virtual-qb-site/dev/app/__source/translations" -type f -name 'webui_*.qm' -print -quit | grep -q .
 
@@ -177,6 +227,7 @@ jobs:
           NODE
 
       - name: Publish exact reusable dev Pages site
+        if: ${{ steps.deployed_identity.outputs.reuse != 'true' }}
         uses: actions/upload-artifact@v6
         with:
           name: virtual-qb-pages-site-${{ env.WEIG_PAGES_SOURCE_SHA }}
@@ -185,15 +236,17 @@ jobs:
           retention-days: 14
 
       - name: Configure GitHub Pages
+        if: ${{ steps.deployed_identity.outputs.reuse != 'true' }}
         uses: actions/configure-pages@v6
 
       - name: Upload GitHub Pages artifact
+        if: ${{ steps.deployed_identity.outputs.reuse != 'true' }}
         uses: actions/upload-pages-artifact@v5
         with:
           path: ${{ runner.temp }}/virtual-qb-site
 
   deploy:
-    if: ${{ github.ref_name == 'dev' }}
+    if: ${{ github.ref_name == 'dev' && needs.build.outputs.reuse_deployed != 'true' }}
     needs: build
     runs-on: ubuntu-latest
     environment:
@@ -252,7 +305,7 @@ jobs:
 
   verify:
     name: verify ${{ matrix.name }}
-    if: ${{ github.ref_name == 'dev' }}
+    if: ${{ always() && github.ref_name == 'dev' && needs.build.result == 'success' && (needs.deploy.result == 'success' || needs.build.outputs.reuse_deployed == 'true') }}
     needs: [build, deploy]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -265,7 +318,7 @@ jobs:
       WEIG_BROWSER_FETCH_TIMEOUT_MS: '15000'
       WEIG_PAGES_PROFILE_TIMEOUT_MS: '45000'
       WEIG_RELEASE_PROFILE_LANE_TIMEOUT_MS: '210000'
-      WEIG_PAGES_URL: ${{ needs.deploy.outputs.page_url }}
+      WEIG_PAGES_URL: ${{ needs.build.outputs.page_url }}
       WEIG_EXPECTED_SIMULATOR_SHA: ${{ github.sha }}
       WEIG_VERIFY_SCRIPT: ${{ matrix.script }}
       WEIG_RELEASE_PROFILE_MODE: ${{ matrix.release_mode }}

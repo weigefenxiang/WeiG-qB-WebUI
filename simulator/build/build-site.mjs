@@ -73,6 +73,23 @@ for(const branch of branches){
   await fs.writeFile(path.join(out,branch.name,'index.html'),labAliasHtml(branch.name,'../lab/'),'utf8');
 }
 
+// Pages is a live runtime surface, not the offline evidence archive. Keep the dev generated
+// catalog because live verification consumes it, but retire source-only catalogs from the
+// deployment and avoid duplicating the generated full catalog in main. Main remains complete
+// for every admitted selector identity through its per-release runtime profile shards.
+const mainProfileRoot=path.join(out,'main','app','__simulator','runtime','profiles');
+for(const profile of catalogData){
+  const qbVersion=String(profile?.qbVersion||'').trim();
+  if(!qbVersion)throw new Error('Pages deployment catalog contains an empty qB version');
+  try{await fs.access(path.join(mainProfileRoot,`${qbVersion}.json`));}
+  catch{throw new Error(`Main Pages preview is missing runtime profile shard for qB ${qbVersion}`);}
+}
+await Promise.all([
+  path.join(out,'dev','app','__simulator','versions','catalog.source.json'),
+  path.join(out,'main','app','__simulator','versions','catalog.source.json'),
+  path.join(out,'main','app','__simulator','versions','catalog.generated.json')
+].map(file=>fs.rm(file,{force:true})));
+
 const devBranch=branches.find(item=>item.name==='dev');
 runNode(path.join(projectRoot,'tools/build-webui-dist.mjs'),[
   `--webui-root=${devBranch.webuiRoot}`,
