@@ -1350,6 +1350,14 @@
       "stable": true,
       "officialWeiGSupport": true,
       "copyRouteId": "r579b75a553046c8288db"
+    },
+    {
+      "qbVersion": "5.2.4",
+      "webApiVersion": "2.15.1",
+      "sourceSha": "a1e4649cb8ae581925acc161dbab5cbc6584c542",
+      "stable": true,
+      "officialWeiGSupport": true,
+      "copyRouteId": "rf252d62c5d68bde0602b"
     }
   ],
   "compatFiles": {
@@ -1361,10 +1369,10 @@
   },
   "catalogIdentity": {
     "supportFloor": "4.1.0",
-    "latestAdmittedStable": "5.2.3",
-    "releaseCount": 65,
-    "releaseSetSha256": "67abde3a4649d1142d798d5d3c14eb53b1f1eaf7fba4cf14d5cdebeb03161888",
-    "sourceCatalogSha256": "7dacd7753de691fa3d887e8ac24315b7746722bf7f2eb3dc5557d5082055ef93"
+    "latestAdmittedStable": "5.2.4",
+    "releaseCount": 66,
+    "releaseSetSha256": "eeb46091fbc94b833a4b76535f7065c85c6799a0e5b1c92d6f7ea89e93fd1809",
+    "sourceCatalogSha256": "da3ffe543f8ae53f93f736d95c4159a7c7c372be4a3c8349e05be28748bd00d8"
   },
   "domainRelations": {
     "schemaVersion": 1,

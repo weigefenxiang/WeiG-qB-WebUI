@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "source": "qb-upstream-rss-downloader",
   "releaseSet": {
-    "count": 65,
+    "count": 66,
     "first": "4.1.0",
-    "last": "5.2.3",
-    "identitySha256": "5755c4c8f3e2098dee0fa9febfe27a37e74bf38b23806da88abc941ca098d545"
+    "last": "5.2.4",
+    "identitySha256": "1dce4e39ac9795079fca783686b3fcc41355e1f419890a5e714c894ea7b272b9"
   },
   "sourceFacts": {
     "rssDownloaderUi": [

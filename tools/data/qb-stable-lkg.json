@@ -1,15 +1,25 @@
 {
   "schemaVersion": 1,
   "supportFloor": "4.1.0",
-  "latestAdmittedStable": "5.2.3",
-  "profileCount": 65,
+  "latestAdmittedStable": "5.2.4",
+  "profileCount": 66,
   "catalogPath": "tests/fixtures/qb-release-catalog.lkg.json",
-  "catalogSha256": "3986594b401a7b6e46dc1a731592591a843f4e6605ea3c6637207c4b9fa38f0c",
+  "catalogSha256": "9fbd7b5ce0a849cd16132f43a19431f6418c6491e565b8c794e31c556bfb88f3",
   "seedEvidence": {
-    "weiGCommit": "d94d13ccb373540e0996bc6649eb176d0d31cbd8",
-    "ciRunId": 36260651678,
-    "artifactName": "qb-release-catalog-base-d94d13ccb373540e0996bc6649eb176d0d31cbd8",
-    "verifiedDate": "2026-09-26",
-    "mode": "same-stable-source-refresh"
+    "weiGCommit": "0449fed9d6be082891285236c3635b50784925cd",
+    "ciRunId": 37717659549,
+    "artifactName": "qb-stable-canonical-source-evidence-85e9935e02850740439e575567a1cb5c8a959892",
+    "verifiedDate": "2026-10-08",
+    "mode": "official-new-stable-source-admission"
+  },
+  "lastAdmission": {
+    "validationCommit": "0449fed9d6be082891285236c3635b50784925cd",
+    "admittedAt": "2026-10-08T04:54:53.942Z",
+    "tags": [
+      "release-5.2.4"
+    ],
+    "sourceShas": {
+      "release-5.2.4": "a1e4649cb8ae581925acc161dbab5cbc6584c542"
+    }
   }
 }
