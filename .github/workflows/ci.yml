@@ -221,6 +221,7 @@ jobs:
             --manifest="$RUNNER_TEMP/qb-admitted-torrent-source.meta.json"
           node tools/qb-torrent-runtime-rebind.mjs "$RUNNER_TEMP/qb-admitted-torrent-source.json"
           node tools/qb-torrent-runtime-rebind.mjs "$RUNNER_TEMP/qb-admitted-torrent-source.json" --check
+          node tests/qb-torrent-native-source-contract.mjs
       - name: Commit canonical Torrent/Action compact runtime if changed
         id: commit
         shell: bash

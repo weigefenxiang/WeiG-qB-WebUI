@@ -49,6 +49,7 @@ const direct=playwrightFiles.filter(rel=>rel!=='tests/browser-driver.mjs'&&/from
 assert(direct.length===0,`Playwright ownership duplicated: ${direct.join(', ')}`);
 
 const ci=read('.github/workflows/ci.yml');
+assert(ci.includes('node tests/qb-torrent-native-source-contract.mjs'),'Canonical Torrent/Action materializer must gate old qB native UI and locale facts');
 assert(!ci.includes('[candidate]'),'Candidate must be workflow_dispatch-only; retired commit-message marker must not return');
 const pages=read('.github/workflows/pages.yml'),pagesBuild=read('simulator/build/build-site.mjs');
 assert(pages.includes('Probe deployed exact-SHA Pages identity')&&pages.includes('reuse_deployed:')&&pages.includes("needs.build.outputs.reuse_deployed != 'true'"),'Pages must skip repeat deployment only when the same exact SHA is already live');
