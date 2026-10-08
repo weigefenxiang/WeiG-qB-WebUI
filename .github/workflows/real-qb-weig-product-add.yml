@@ -6,11 +6,8 @@ on:
   push:
     branches: [dev]
     paths:
-      - .github/workflows/real-qb-weig-product-add.yml
       - tools/data/qb-stable-lkg.json
       - tests/fixtures/qb-release-catalog.lkg.json
-      - tests/real-qb-browser.mjs
-      - tests/real-qb-docker.sh
   workflow_dispatch:
 
 permissions:

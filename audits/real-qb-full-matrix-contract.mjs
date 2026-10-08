@@ -12,6 +12,7 @@ const binder=read('tests/real-qb-gfm-bind-runtime.mjs');
 const preload=read('tests/real-qb-gfm-mode-preload.mjs');
 const productBrowser=read('tests/real-qb-browser.mjs');
 const representativeDocker=read('tests/real-qb-docker.sh');
+assert(representativeDocker.includes('qb-runtime-copy-product.mjs validate "$STAGE/private/data"')&&!representativeDocker.includes('qb-webui-catalog.mjs'),'Real qB browser must stage the exact committed product materialization, never attempt an uncertified Frozen-only catalog repack');
 assert(representativeDocker.includes('CERTIFIED_LATEST=')&&representativeDocker.includes('latestAdmittedStable')&&!representativeDocker.includes('latest stable qB 5.2.3'),'Real browser Add Torrent test must target manifest-owned newest admitted version rather than hard-coded prior release');
 
 assert(productBrowser.includes('ephemeral real-qB Docker; outbound network denied')&&representativeDocker.includes('WEIG_REAL_QB_REQUIRE_ADD_TORRENT:-0')&&representativeDocker.includes('! ALLOW_WRITES'),'Synthetic magnet write gate must require a disposable, network-isolated qB and explicit runner write authorization');

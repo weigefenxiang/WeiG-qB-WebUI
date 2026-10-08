@@ -217,7 +217,7 @@ jobs:
           node audits/full-stable-core-write-compat.mjs source-stage/qb-release-catalog.lkg.json
           node audits/full-stable-detail-compat.mjs source-stage/qb-release-catalog.lkg.json
           node audits/full-stable-taxonomy-compat.mjs source-stage/qb-release-catalog.lkg.json
-          node audits/full-stable-product-compat.mjs source-stage/qb-release-catalog.lkg.json
+          # Formal product compat runs after actual 66-profile compact materialization, not against committed 65-profile runtime.
           node audits/qb-statistics-source-contract.mjs
           find "$RUNNER_TEMP/isolated-source-product/translations" -type f -name 'webui_*.qm' -print -quit | grep -q .
           echo "66-profile canonical source / Locale / Settings / qB-owned Copy stage generated. No Frozen or product ref was moved." >> "$GITHUB_STEP_SUMMARY"

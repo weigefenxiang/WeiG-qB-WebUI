@@ -32,9 +32,9 @@ if ((BROWSER_SMOKE)); then
   command -v google-chrome >/dev/null || { echo "Google Chrome Stable is required for --browser-smoke" >&2; exit 2; }
   STAGE="$(mktemp -d)"
   cp -a webui/. "$STAGE/"
-  node tools/qb-webui-catalog.mjs \
-    tests/fixtures/qb-release-catalog.lkg.json \
-    "$STAGE/private/data/qb-releases.json"
+  # Stage the exact materialized product from dev, not a raw Frozen source archive.
+  # Repacking Frozen here loses the certified Settings/Locale/Copy source ownership.
+  node tools/qb-runtime-copy-product.mjs validate "$STAGE/private/data"
   if find "$STAGE" -type l -print -quit | grep -q .; then
     echo "Alternative WebUI staging contains a symlink; qB rejects symlinks" >&2
     exit 1
