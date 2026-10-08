@@ -66,7 +66,11 @@ try{
       assert.match(String(route.bindingId||''),/^b[0-9a-f]{20}$/);
       requireAsset('qb-copy-bindings/'+route.bindingId+'.txt');
       for(const pair of Object.values(route.fallback||{})){
-        assert.ok(Array.isArray(pair)&&/^p[0-9a-f]{20}$/.test(String(pair[1]||'')),'Official Copy fallback pack identity is invalid');
+        assert.ok(Array.isArray(pair)&&pair.length===2,'Official Copy fallback entry must have source-set and pack slots');
+        // The canonical generator intentionally uses [null,null] for a
+        // locale without a source-proven fallback set. It requires no pack.
+        if(pair[0]===null&&pair[1]===null)continue;
+        assert.ok(/^t[0-9a-f]{20}$/.test(String(pair[0]||''))&&/^p[0-9a-f]{20}$/.test(String(pair[1]||'')),'Official Copy fallback dependency is incomplete');
         requireAsset('qb-copy-fallback/'+pair[1]+'.json.gz');
       }
     }
