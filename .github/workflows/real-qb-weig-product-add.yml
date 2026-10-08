@@ -1,0 +1,64 @@
+name: Real qB WeiG Product Add Torrent
+
+# Automatic product-level proof on exact dev SHA; never touches a user's qB.
+# This is an automated gate, not the later required human acceptance.
+on:
+  push:
+    branches: [dev]
+    paths:
+      - .github/workflows/real-qb-weig-product-add.yml
+      - tools/data/qb-stable-lkg.json
+      - tests/fixtures/qb-release-catalog.lkg.json
+      - tests/real-qb-browser.mjs
+      - tests/real-qb-docker.sh
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: real-qb-weig-product-add-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  add_torrent:
+    name: WeiG UI Add Torrent on newest Frozen-admitted real qB
+    if: ${{ github.ref == 'refs/heads/dev' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout exact dev
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - name: Verify exact source SHA and isolated runners
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          command -v docker
+          command -v google-chrome
+          node audits/real-qb-full-matrix-contract.mjs
+      - name: Real WeiG dialog -> HTTP POST -> persisted torrent
+        shell: bash
+        env:
+          WEIG_REAL_QB_REQUIRE_ADD_TORRENT: '1'
+          WEIG_REAL_QB_EVIDENCE_DIR: artifacts/real-qb-weig-add
+        run: |
+          set -euo pipefail
+          qb_version="$(node -p "require('./tools/data/qb-stable-lkg.json').latestAdmittedStable")"
+          bash tests/real-qb-docker.sh --version "$qb_version" --browser-smoke --allow-writes
+          echo "Real qB ${qb_version}: verified WeiG UI Add Torrent with exact SHA ${GITHUB_SHA}; human acceptance remains outstanding." >> "$GITHUB_STEP_SUMMARY"
+      - name: Retain product evidence even on failure
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: real-qb-weig-add-${{ github.sha }}
+          path: artifacts/real-qb-weig-add/
+          if-no-files-found: warn
+          retention-days: 14

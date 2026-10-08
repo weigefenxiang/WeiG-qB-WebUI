@@ -11,7 +11,10 @@ const matrix=read('tests/real-qb-full-matrix.mjs');
 const binder=read('tests/real-qb-gfm-bind-runtime.mjs');
 const preload=read('tests/real-qb-gfm-mode-preload.mjs');
 const productBrowser=read('tests/real-qb-browser.mjs');
+const representativeDocker=read('tests/real-qb-docker.sh');
+assert(representativeDocker.includes('CERTIFIED_LATEST=')&&representativeDocker.includes('latestAdmittedStable')&&!representativeDocker.includes('latest stable qB 5.2.3'),'Real browser Add Torrent test must target manifest-owned newest admitted version rather than hard-coded prior release');
 
+assert(productBrowser.includes('ephemeral real-qB Docker; outbound network denied')&&representativeDocker.includes('WEIG_REAL_QB_REQUIRE_ADD_TORRENT:-0')&&representativeDocker.includes('! ALLOW_WRITES'),'Synthetic magnet write gate must require a disposable, network-isolated qB and explicit runner write authorization');
 assert(productBrowser.includes("WEIG_REAL_QB_REQUIRE_ADD_TORRENT==='1'")&&productBrowser.includes("'#add-btn'")&&productBrowser.includes("'#torrent-urls'")&&productBrowser.includes("'/api/v2/torrents/add'")&&productBrowser.includes("real_qb_torrent_visible:true"),'Real-qB WeiG Add Torrent smoke must be opt-in, use WeiG UI and require daemon confirmation.');
 assert(workflow.startsWith('name: Compatibility Audit · Full Frozen\n'),'G-FM workflow name must identify the Full Frozen Matrix owner.');
 assert(workflow.includes('workflow_dispatch:'),'G-FM must remain explicitly dispatchable for release-grade Exhaustive evidence.');

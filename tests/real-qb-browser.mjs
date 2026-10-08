@@ -218,6 +218,7 @@ async function main(){
 
     // Explicit opt-in real qB product gate: native WebAPI success alone is insufficient.
     if(process.env.WEIG_REAL_QB_REQUIRE_ADD_TORRENT==='1'){
+      assert(String(process.env.WEIG_QB_DEPLOYMENT_MODE||'').includes('ephemeral real-qB Docker; outbound network denied'),'WeiG product Add Torrent must target a disposable qB Docker with network egress denied.');
       const syntheticHash=sha256(weigSha+':'+qb+':weig-product-add-smoke').slice(0,40);
       const magnet='magnet:?xt=urn:btih:'+syntheticHash+'&dn=WeiG-Product-Verification';
       await page.locator('#add-btn').click();

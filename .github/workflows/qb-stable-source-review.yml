@@ -214,6 +214,11 @@ jobs:
           node tools/qb-runtime-copy-product.mjs validate "$RUNNER_TEMP/isolated-source-product/private/data"
           node audits/full-stable-locale-routing-contract.mjs source-stage/qb-releases.enriched.json --require-mapped --recovery=source-stage/qb-releases.enriched.recovery.json --behavior=source-stage/qb-translator-behavior.json
           node tools/qb-stable-stage-compact.mjs source-stage "$RUNNER_TEMP/source-compact-staged"
+          node audits/full-stable-core-write-compat.mjs source-stage/qb-release-catalog.lkg.json
+          node audits/full-stable-detail-compat.mjs source-stage/qb-release-catalog.lkg.json
+          node audits/full-stable-taxonomy-compat.mjs source-stage/qb-release-catalog.lkg.json
+          node audits/full-stable-product-compat.mjs source-stage/qb-release-catalog.lkg.json
+          node audits/qb-statistics-source-contract.mjs
           find "$RUNNER_TEMP/isolated-source-product/translations" -type f -name 'webui_*.qm' -print -quit | grep -q .
           echo "66-profile canonical source / Locale / Settings / qB-owned Copy stage generated. No Frozen or product ref was moved." >> "$GITHUB_STEP_SUMMARY"
           echo "Per-domain independent census, compact runtime and real-qB WeiG Add Torrent: **PENDING**" >> "$GITHUB_STEP_SUMMARY"
@@ -230,3 +235,160 @@ jobs:
             ${{ runner.temp }}/source-compact-staged/
           if-no-files-found: warn
           retention-days: 7
+
+
+  latest_preferences_census:
+    name: Independent newest stable Preferences source census (not admitted)
+    needs: review
+    if: ${{ needs.review.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - uses: actions/checkout@v7
+        with:
+          repository: qbittorrent/qBittorrent
+          path: upstream-qb
+          fetch-depth: 0
+          fetch-tags: true
+          filter: blob:none
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        with:
+          name: qb-stable-source-staged-${{ github.sha }}
+          path: source-stage
+      - name: Independent canonical Preferences manifest and native inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s source-stage/latest-source-only.json
+          mkdir -p preferences-source
+          node tools/qb-preferences-surface-source.mjs upstream-qb source-stage/latest-source-only.json preferences-source/latest-preferences.json
+          node tools/qb-preferences-census-source.mjs upstream-qb source-stage/latest-source-only.json preferences-source/latest-preferences.json preferences-source/latest-census.json
+          node audits/full-stable-qbt-entity-source-contract.mjs source-stage/latest-source-only.json upstream-qb preferences-source/latest-qbt-entity-census.json
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import {assertCatalogIdentity,catalogIdentity} from './tools/qb-catalog-identity.mjs';
+          const release=JSON.parse(fs.readFileSync('source-stage/latest-source-only.json','utf8'));
+          const generated=JSON.parse(fs.readFileSync('preferences-source/latest-preferences.json','utf8'));
+          const census=JSON.parse(fs.readFileSync('preferences-source/latest-census.json','utf8'));
+          if(release.length!==1||generated.profiles?.length!==1||census.profiles?.length!==1)throw new Error('Newest stable Preferences source evidence must cover exactly the discovered new profile.');
+          const expected=catalogIdentity(release);
+          assertCatalogIdentity(generated.catalogIdentity,expected,'New stable native Preferences source');
+          assertCatalogIdentity(census.catalogIdentity,expected,'Independent new stable Preferences census');
+          const row=census.profiles[0];
+          if(row.qbVersion!==release[0].qbVersion||row.sourceSha!==release[0].sourceSha)throw new Error('Independent native Preferences source SHA mismatch.');
+          for(const domain of ['tabs','preferences','bindings']){
+            if(!row.census?.[domain]?.complete)throw new Error('Independent new stable Preferences census incomplete in '+domain);
+          }
+          fs.writeFileSync('preferences-source/verification.json',JSON.stringify({status:'SOURCE_ONLY_NOT_PRODUCT_ADMITTED',qbVersion:row.qbVersion,sourceSha:row.sourceSha,domains:['tabs','preferences','bindings'],complete:true},null,2)+'\n');
+          NODE
+          echo 'Independent newest qB Preferences source census: **PASSED; PRODUCT ADMISSION STILL PENDING**' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        if: ${{ always() }}
+        with:
+          name: qb-stable-preferences-source-${{ github.sha }}
+          path: preferences-source/
+          if-no-files-found: warn
+          retention-days: 7
+
+
+  full_preferences_shard:
+    name: Source-owned 66-profile native Preferences shard ${{ matrix.shard }}
+    needs: review
+    if: ${{ needs.review.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - uses: actions/checkout@v7
+        with:
+          repository: qbittorrent/qBittorrent
+          path: upstream-qb
+          fetch-depth: 0
+          fetch-tags: true
+          filter: blob:none
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        with:
+          name: qb-stable-source-staged-${{ github.sha }}
+          path: source-stage
+      - name: Extract canonical Preferences owner from exact official source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p preferences-shard
+          node tools/qb-preferences-surface-source.mjs upstream-qb source-stage/qb-release-catalog.lkg.json preferences-shard/qb-preferences-source-shard-${{ matrix.shard }}.json --shard-index=${{ matrix.shard }} --shard-count=16
+      - uses: actions/upload-artifact@v7
+        with:
+          name: qb-stable-preferences-shard-${{ github.sha }}-${{ matrix.shard }}
+          path: preferences-shard/
+          if-no-files-found: error
+          retention-days: 7
+
+  full_preferences_census:
+    name: 66-profile independent native Preferences source and compact census
+    needs: [review, full_preferences_shard]
+    if: ${{ needs.review.result == 'success' && needs.full_preferences_shard.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - uses: actions/checkout@v7
+        with:
+          repository: qbittorrent/qBittorrent
+          path: upstream-qb
+          fetch-depth: 0
+          fetch-tags: true
+          filter: blob:none
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        with:
+          name: qb-stable-source-staged-${{ github.sha }}
+          path: source-stage
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: qb-stable-preferences-shard-${{ github.sha }}-*
+          path: preferences-shards
+          merge-multiple: true
+      - name: Merge exact 66 profiles, independent inventory and compact runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p preferences-full
+          node tools/qb-preferences-surface-source.mjs --merge source-stage/qb-release-catalog.lkg.json preferences-shards preferences-full/source.json
+          QB_PREFERENCES_CENSUS_OUTPUT=preferences-full/independent-census.json node audits/full-stable-preferences-source-contract.mjs preferences-full/source.json source-stage/qb-release-catalog.lkg.json upstream-qb
+          node tools/qb-preferences-compact.mjs preferences-full/source.json preferences-full/settings-compact.json source-stage/qb-release-catalog.lkg.json
+          test -s preferences-full/settings-compact.json
+          test -s preferences-full/independent-census.json
+          echo 'All 66 native Settings source profiles passed independent Preferences census; product admission remains **PENDING**.' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        if: ${{ always() }}
+        with:
+          name: qb-stable-preferences-complete-${{ github.sha }}
+          path: preferences-full/
+          if-no-files-found: warn
+          retention-days: 14

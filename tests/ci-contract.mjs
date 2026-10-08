@@ -103,6 +103,12 @@ for(const rel of ['.github/workflows/real-qb-full.yml','.github/workflows/real-q
   assert(src.startsWith('name: Compatibility Audit'),`${rel} must be labeled Compatibility Audit`);
 }
 
+const realProductAdd=read('.github/workflows/real-qb-weig-product-add.yml');
+assert(realProductAdd.startsWith('name: Real qB WeiG Product Add Torrent\n'),'Real qB Add Torrent product verification must have an independent CI workflow owner');
+assert(realProductAdd.includes('contents: read')&&!realProductAdd.includes('contents: write'),'Real product Add Torrent workflow must be read-only');
+assert(realProductAdd.includes("WEIG_REAL_QB_REQUIRE_ADD_TORRENT: '1'")&&realProductAdd.includes('--browser-smoke --allow-writes'),'Product Add Torrent must use explicit disposable Docker write consent and actual WeiG browser dialog');
+assert(realProductAdd.includes('qb-stable-lkg.json')&&realProductAdd.includes('latestAdmittedStable'),'Real product acceptance must track newest source-admitted Frozen version automatically');
+assert(realProductAdd.includes('github.sha')&&realProductAdd.includes('persist-credentials: false'),'Product real-qB evidence must be exact-SHA isolated without repo write credentials');
 const stableSourceReview=read('.github/workflows/qb-stable-source-review.yml');
 assert(stableSourceReview.startsWith('name: qB Stable Source Admission Review\n'),'Official source staging must have one independently auditable workflow owner');
 assert(stableSourceReview.includes('contents: read')&&stableSourceReview.includes('actions: read'),'Source staging must have read-only GitHub permissions');
@@ -114,6 +120,12 @@ assert(stableSourceReview.includes('max-parallel: 8')&&stableSourceReview.includ
 assert(stableSourceReview.includes('node audits/qb-translator-behavior-append-contract.mjs'),'Source review must execute translator append positive/negative regression before all-source materialization');
 assert(stableSourceReview.includes('node tools/qb-translator-behavior-append.mjs upstream-qb')&&stableSourceReview.includes('--behavior=source-stage/qb-translator-behavior.json'),'Candidate translator semantics must append only exact new tag evidence onto the unchanged certified historical prefix.');
 assert(stableSourceReview.includes('Translator behavior exact-source proof')&&stableSourceReview.includes('row.sourceSha!==behavior.sourceSha'),'Source-staged translator families must be matched to every exact profile before Copy/QM materialization.');
+assert(stableSourceReview.includes('node audits/full-stable-taxonomy-compat.mjs source-stage/qb-release-catalog.lkg.json')&&stableSourceReview.includes('node audits/full-stable-product-compat.mjs source-stage/qb-release-catalog.lkg.json'),'Full 66 profile source candidate must verify category/tag and product domain compatibility before certification');
+assert(stableSourceReview.includes('full_preferences_shard:')&&stableSourceReview.includes('full_preferences_census:')&&stableSourceReview.includes('max-parallel: 8'),'Full native Settings source admission must use the shared bounded shard extraction architecture');
+assert(stableSourceReview.includes('qb-preferences-surface-source.mjs --merge source-stage/qb-release-catalog.lkg.json')&&stableSourceReview.includes('full-stable-preferences-source-contract.mjs preferences-full/source.json'),'66-profile Preferences native Settings must be independently enumerated and proven from official source');
+assert(stableSourceReview.includes('qb-preferences-compact.mjs preferences-full/source.json preferences-full/settings-compact.json'),'Admitted native Settings compact must consume the identical 66-profile Frozen source identity');
+assert(stableSourceReview.includes('node audits/full-stable-qbt-entity-source-contract.mjs source-stage/latest-source-only.json'),'Latest qB WebUI copy source entities must undergo independent QBT_TR census before admission');
+assert(stableSourceReview.includes('node audits/full-stable-core-write-compat.mjs source-stage/qb-release-catalog.lkg.json')&&stableSourceReview.includes('node audits/full-stable-detail-compat.mjs source-stage/qb-release-catalog.lkg.json'),'Candidate Torrent writes and Detail must pass product-compatible source-proven compact audits before admission');
 assert(stableSourceReview.includes('node tools/qb-stable-stage-compact.mjs')&&stableSourceReview.includes('qb-stable-canonical-source-evidence-'),'Compact staged domains and source artifact must use the same exact run identity');
 assert(stableSourceReview.includes('PENDING')&&!stableSourceReview.includes('PRODUCT_CERTIFIED'),'Source staging cannot silently admit new versions as product-verified');
 

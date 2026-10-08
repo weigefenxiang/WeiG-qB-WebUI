@@ -6,7 +6,7 @@ import path from 'node:path';
 import {catalogIdentity,assertCatalogIdentity} from '../tools/qb-catalog-identity.mjs';
 import {accountSourceInventory,assertCompleteSourceCensus} from '../tools/qb-source-census.mjs';
 import {verifyStagedCompactSourceIdentity} from '../tools/qb-stable-stage-compact.mjs';
-import {assertFrozenPrefix,stableAdmissionDelta,admissionProductCatalog,verifyLkg,renderAdmissionReport,semanticFieldReview,verifyCandidateSourceIdentity,classifyUpstreamChangedPaths,assertEnrichedCatalogBinding,stageFrozenCandidate,promotedManifest} from '../tools/qb-stable-admission.mjs';
+import {assertFrozenPrefix,stableAdmissionDelta,admissionProductCatalog,verifyLkg,renderAdmissionReport,semanticFieldReview,verifyCandidateSourceIdentity,classifyUpstreamChangedPaths,classifyDomainSourceDrift,assertEnrichedCatalogBinding,stageFrozenCandidate,promotedManifest} from '../tools/qb-stable-admission.mjs';
 
 const sampleCatalog=[{qbVersion:'4.1.0',sourceSha:'a'.repeat(40)},{qbVersion:'5.2.4',sourceSha:'b'.repeat(40)}];
 const sampleIdentity=catalogIdentity(sampleCatalog);
@@ -47,6 +47,14 @@ const duplicate=accountSourceInventory({inventory:['behavior','behavior'],mapped
 const dir=fs.mkdtempSync(path.join(os.tmpdir(),'weigg-lkg-')),file=path.join(dir,'catalog.json');fs.writeFileSync(file,JSON.stringify(base));const hash=crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 verifyLkg({catalog:base,manifest:{schemaVersion:1,supportFloor:'4.1.0',latestAdmittedStable:'5.2.3',profileCount:2,catalogSha256:hash},catalogPath:file});
 const report=renderAdmissionReport(base,candidate);for(const token of ['qB 6.0.0','added actions','removed actions','new_pref'])assert.ok(report.includes(token),`upstream admission report missing ${token}`);
+const sourceOwners=classifyDomainSourceDrift(['src/webui/www/private/scripts/addtorrent.js','src/base/rss/rss_autodownloader.cpp','src/base/addtorrentmanager.cpp']);
+assert.equal(sourceOwners.apiController.sourcePathStatus,'NO_CHANGED_FILES','No changed API controller does not mean product writes are certified');
+assert.equal(sourceOwners.apiController.semanticCertified,false);
+assert.equal(sourceOwners.torrentCore.sourcePathStatus,'CHANGED');
+assert.equal(sourceOwners.rss.changedCount,1);
+assert.equal(sourceOwners.webuiNative.changedCount,1);
+assert.deepEqual(sourceOwners.webuiTranslations.changedFiles,[]);
+
 const inventory=classifyUpstreamChangedPaths(['src/webui/www/private/scripts/addtorrent.js','src/webui/www/private/confirmaddtorrents.html','src/base/rss/rss_autodownloader.cpp','src/lang/qbittorrent_zh_CN.ts','dist/windows/config.nsh','new-future-upstream-owner.txt']);
 assert.equal(inventory.fileCount,6,'Upstream raw changed-file inventory must retain each source file exactly once');
 assert.deepEqual(inventory.domains.WEBUI_NATIVE,['src/webui/www/private/confirmaddtorrents.html','src/webui/www/private/scripts/addtorrent.js']);

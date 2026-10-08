@@ -147,6 +147,24 @@ export function promotedManifest(oldManifest,base,candidate,{validationCommit=nu
   assert(fresh.length>0,'Promotion requires at least one new stable profile.');
   return{...oldManifest,latestAdmittedStable:candidate.at(-1).qbVersion,profileCount:candidate.length,catalogSha256:null,lastAdmission:{validationCommit,admittedAt,tags:fresh.map(x=>x.tag),sourceShas:Object.fromEntries(fresh.map(x=>[x.tag,x.sourceSha]))}};
 }
+// Review paths are source-owner boundaries, not release aliases or capability guesses.
+export const OFFICIAL_SOURCE_DOMAINS=Object.freeze({
+  apiController:['src/webui/api/'],
+  torrentCore:['src/base/bittorrent/','src/base/addtorrentmanager','src/base/path.'],
+  rss:['src/base/rss/'],
+  webuiNative:['src/webui/www/private/','src/webui/www/public/','src/webui/www/webui.qrc'],
+  webuiTranslations:['src/webui/www/translations/'],
+  appPreferences:['src/base/preferences.','src/webui/api/appcontroller.','src/webui/www/private/views/preferences.']
+});
+export function classifyDomainSourceDrift(changedPaths){
+  if(!Array.isArray(changedPaths))throw new Error('Upstream source path census requires an array of paths.');
+  const files=[...new Set(changedPaths.map(String))];
+  return Object.fromEntries(Object.entries(OFFICIAL_SOURCE_DOMAINS).map(([domain,paths])=>{
+    const changed=files.filter(file=>paths.some(prefix=>file.startsWith(prefix)));
+    return [domain,{changedFiles:changed,changedCount:changed.length,sourcePathStatus:changed.length?'CHANGED':'NO_CHANGED_FILES',semanticCertified:false}];
+  }));
+}
+
 export function classifyUpstreamChangedPaths(paths){
   if(!Array.isArray(paths))throw new Error('Official upstream file inventory must be an array.');
   const seen=new Set(),domains=new Map();
@@ -220,7 +238,8 @@ function main(){
     const reviews=releases.map((item,index)=>{
       const previous=index?releases[index-1].tag:catalog.at(-1).tag;
       const stdout=execFileSync('git',['-C',source,'diff','--name-only','--no-renames',previous,item.tag],{encoding:'utf8',stdio:['ignore','pipe','pipe']});
-      return {from:previous,to:item.tag,sourceSha:item.sourceSha,...classifyUpstreamChangedPaths(stdout.split(/\r?\n/).filter(Boolean))};
+      const paths=stdout.split(/\r?\n/).filter(Boolean);
+      return {from:previous,to:item.tag,sourceSha:item.sourceSha,...classifyUpstreamChangedPaths(paths),domainSourceDrift:classifyDomainSourceDrift(paths)};
     });
     const result={source:'official-qb-git-diff',releases:reviews,independentSemanticCensusComplete:false,status:'PENDING_REVIEW'};
     const output=getArg('--output',args);if(output)writeJson(path.resolve(output),result);

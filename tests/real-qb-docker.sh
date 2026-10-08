@@ -26,7 +26,8 @@ if ((FULL_MATRIX)); then
   node tests/real-qb-full-matrix.mjs --assert-version "$VERSION" >/dev/null
 fi
 if ((BROWSER_SMOKE)); then
-  [[ "$VERSION" == "5.2.3" ]] || { echo "--browser-smoke currently admits only latest stable qB 5.2.3" >&2; exit 2; }
+  CERTIFIED_LATEST="$(node -e "const m=require('./tools/data/qb-stable-lkg.json');if(!/^[0-9]+(?:\\.[0-9]+){2,3}$/.test(m.latestAdmittedStable))process.exit(1);process.stdout.write(m.latestAdmittedStable)")"
+  [[ "$VERSION" == "$CERTIFIED_LATEST" ]] || { echo "--browser-smoke requires exactly the highest Frozen-admitted qB $CERTIFIED_LATEST" >&2; exit 2; }
   ((ALLOW_WRITES)) || { echo "--browser-smoke requires --allow-writes on the isolated target" >&2; exit 2; }
   command -v google-chrome >/dev/null || { echo "Google Chrome Stable is required for --browser-smoke" >&2; exit 2; }
   STAGE="$(mktemp -d)"
@@ -333,6 +334,10 @@ run_evidence() {
 run_evidence node tests/real-qb-harness.mjs "${ARGS[@]}"
 run_evidence node tests/real-qb-search.mjs
 if ((BROWSER_SMOKE)); then
+  if [[ "${WEIG_REAL_QB_REQUIRE_ADD_TORRENT:-0}" = '1' ]] && (( ! ALLOW_WRITES )); then
+    echo 'WeiG product Add Torrent requires explicit --allow-writes in a disposable Docker lab.' >&2
+    exit 1
+  fi
   WEIG_QB_ALT_WEBUI_PATH='/weig-webui' run_evidence node tests/real-qb-browser.mjs
 fi
 if ((FULL_MATRIX)); then
