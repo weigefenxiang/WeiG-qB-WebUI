@@ -9,6 +9,7 @@ on:
       - .github/workflows/qb-stable-admit-to-dev.yml
       - tests/qb-copy-sharding-repo-contract.mjs
       - tests/qb-runtime-copy-materialization-contract.mjs
+      - tests/locale-handoff-contract.mjs
   workflow_dispatch:
     inputs:
       target_sha:
