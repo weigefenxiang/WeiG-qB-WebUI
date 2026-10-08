@@ -36,6 +36,8 @@ const realQbWorkflow=fs.readFileSync(path.join(root,'.github/workflows/real-qb-w
 assert.ok(realQbStage.includes('node tools/build-webui-dist.mjs --webui-root=webui')
   &&realQbStage.includes('tar -xzf "$STAGE/.dist/weig-qb-webui.tar.gz"')
   &&realQbStage.includes('--strip-components=1')
+  &&realQbStage.includes('chmod 0755 "$STAGE"')
+  &&realQbStage.includes('-v "$STAGE:/weig-webui:ro"')
   &&!realQbStage.includes('cp -a webui/. "$STAGE/"'),
   'Real-qB browser must mount the canonical materialized distribution rather than raw source');
 assert.ok(realQbBrowser.includes("real-qb-materialized-assets")

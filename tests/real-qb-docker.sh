@@ -38,6 +38,9 @@ if ((BROWSER_SMOKE)); then
   node tools/build-webui-dist.mjs --webui-root=webui --out="$STAGE/.dist" \
     --sha="$WEIG_SHA" --version="$(tr -d '\r\n' < webui/VERSION)"
   tar -xzf "$STAGE/.dist/weig-qb-webui.tar.gz" -C "$STAGE" --strip-components=1
+  # GNU tar --strip-components does not apply the archive root's directory mode.
+  # mktemp -d leaves 0700; the isolated qB container user needs traversal.
+  chmod 0755 "$STAGE"
   rm -rf "$STAGE/.dist"
   [[ "$(tr -d '\r\n' < "$STAGE/GIT_SHA")" == "$WEIG_SHA" ]] || {
     echo "Real-qB materialized staging Git SHA mismatch" >&2; exit 1;
