@@ -21,6 +21,10 @@ const admissionWorkflow=read('.github/workflows/qb-stable-admit-to-dev.yml');
 assert(admissionWorkflow.includes('GH_TOKEN: ${{ github.token }}')&&admissionWorkflow.includes('gh api "/repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$TARGET_SHA&per_page=100"'),'Stable admission final SAFE-REF must authenticate GH CLI status checks with workflow-scoped action-read token.');
 
 const realProductWorkflow=read('.github/workflows/real-qb-weig-product-add.yml');
+for(const runtimePath of ['webui/private/data/capabilities.json','webui/private/data/torrent-compat.json','webui/private/data/source-actions.json','webui/private/data/settings-compat.json','webui/private/data/detail-compat.json','webui/private/data/qb-copy-routes/**','webui/private/data/qb-copy-fallback/**','webui/private/data/qb-copy-bindings/**','webui/translations/webui_*.qm','webui/private/scripts/capabilities.js','webui/private/scripts/qb-client.js','webui/private/scripts/app.js','webui/private/scripts/torrent-semantics.js','webui/private/scripts/transfer.js','webui/private/scripts/rss.js','webui/private/scripts/logs.js','tests/real-qb-browser.mjs','VERSION']){
+  assert(realProductWorkflow.includes('      - '+runtimePath),'Real qB browser gate must follow actual product capability, source transport, browser witness and version identity changes: '+runtimePath);
+}
+
 for(const [name,body] of [['stable-admission',admissionWorkflow],['real-product',realProductWorkflow]]){
   assert(body.includes('npm ci --no-audit --no-fund --prefer-offline')&&body.includes("require('playwright/package.json')")&&body.indexOf('npm ci --no-audit --no-fund --prefer-offline')<body.indexOf('bash tests/real-qb-docker.sh'),'Real-qB '+name+' must install locked Playwright dependencies before headless browser smoke.');
 }

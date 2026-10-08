@@ -8,6 +8,29 @@ on:
     paths:
       - tools/data/qb-stable-lkg.json
       - tests/fixtures/qb-release-catalog.lkg.json
+      - .github/workflows/real-qb-weig-product-add.yml
+      - webui/private/data/capabilities.json
+      - webui/private/data/torrent-compat.json
+      - webui/private/data/source-actions.json
+      - webui/private/data/settings-compat.json
+      - webui/private/data/detail-compat.json
+      - webui/private/data/qb-copy-routes/**
+      - webui/private/data/qb-copy-fallback/**
+      - webui/private/data/qb-copy-bindings/**
+      - webui/translations/webui_*.qm
+      - webui/private/scripts/capabilities.js
+      - webui/private/scripts/qb-client.js
+      - webui/private/scripts/app.js
+      - webui/private/scripts/torrent-semantics.js
+      - webui/private/scripts/transfer.js
+      - webui/private/scripts/rss.js
+      - webui/private/scripts/logs.js
+      - webui/private/scripts/settings.js
+      - webui/private/scripts/i18n.js
+      - tests/real-qb-docker.sh
+      - tests/real-qb-browser.mjs
+      - VERSION
+      - webui/VERSION
   workflow_dispatch:
 
 permissions:
