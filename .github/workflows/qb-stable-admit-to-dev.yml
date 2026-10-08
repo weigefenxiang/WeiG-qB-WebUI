@@ -110,6 +110,7 @@ jobs:
           compact="$(dirname "$compact_proof")"
           data_dir="$(dirname "$generated_index")"
           qm_dir="$(dirname "$generated_qm")"
+          node --check tools/qb-runtime-copy-admission.mjs
           node audits/qb-stable-admission-materialize-contract.mjs
           node tools/qb-stable-admission-materialize.mjs "$stage" "$pref_compact" "$data_dir" "$qm_dir" "$compact"
           node tools/qb-runtime-copy-product.mjs validate webui/private/data

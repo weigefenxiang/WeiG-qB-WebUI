@@ -8,7 +8,7 @@ import {fileURLToPath} from 'node:url';
 import {assertFrozenPrefix,verifyLkg,promotedManifest} from './qb-stable-admission.mjs';
 import {catalogIdentity,assertCatalogIdentity} from './qb-catalog-identity.mjs';
 import {packSettingsRuntime,compileCompactRuntime} from './qb-compact-runtime.mjs';
-import {appendRuntimeCopyRelease} from './qb-runtime-copy-product.mjs';
+import {appendRuntimeCopyRelease} from './qb-runtime-copy-admission.mjs';
 import {rebindCopyRoutes} from './qb-copy-route-control-plane.mjs';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
