@@ -84,6 +84,7 @@ assert.ok(Number.isSafeInteger(stableLkg.profileCount)&&stableLkg.profileCount>0
 assert.ok(stableLkg.supportFloor&&stableLkg.latestAdmittedStable,'Frozen Stable LKG must declare the admitted support floor and latest stable release');
 const matrix=catalog.filter(item=>item?.stable!==false&&/^\d+\.\d+\.\d+(?:\.\d+)?$/.test(String(item?.qbVersion||''))&&atLeast(item.qbVersion,stableLkg.supportFloor));
 assert.equal(matrix.length,stableLkg.profileCount,`published stable qB matrix must match Frozen LKG admitted ${stableLkg.profileCount} profiles, got ${matrix.length}`);
+assert.equal(new Set(matrix.map(item=>item.qbVersion)).size,matrix.length,'Published admitted qB preference matrix must contain unique release identities');
 assert.equal(matrix[0]?.qbVersion,stableLkg.supportFloor,'Virtual qB stable preference matrix must start at the admitted support floor');
 assert.equal(matrix.at(-1)?.qbVersion,stableLkg.latestAdmittedStable,'Virtual qB stable preference matrix must end at the latest admitted stable release');
 assert.equal(site?.preferenceCatalog?.schemaVersion,3,'site metadata must expose Preference Descriptor quality schema v3');

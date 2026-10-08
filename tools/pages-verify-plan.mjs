@@ -31,7 +31,14 @@ const pick=names=>names.map(name=>{
 
 export const FULL_PAGES_VERIFY_LANES=fixed.map(item=>({...item}));
 
+const SETTINGS_PAGES_LIVE_VERIFIERS=new Set([
+  'tests/pages-live-preferences.mjs',
+  'tests/pages-live-locale-bootstrap.mjs',
+  'tests/pages-live-release-profile.mjs'
+]);
+
 export function verificationProfileForClassification(value={}){
+  if(Array.isArray(value.paths)&&value.paths.some(path=>SETTINGS_PAGES_LIVE_VERIFIERS.has(path)))return'settings';
   if(value.workflowPolicy===true||value.pagesLive===true)return'full';
   if(value.settingsSource===true||value.settingsUi===true)return'settings';
   if(value.nativeSource===true)return'native';

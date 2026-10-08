@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import {verificationProfileForClassification,pagesVerifyLanes} from '../tools/pages-verify-plan.mjs';
 import {
   classifyChangedPaths,
   isPagesPayloadPath
@@ -41,6 +42,22 @@ let classification=classifyChangedPaths(['tests/pages-live-auth.mjs']);
 assert.equal(classification.pagesLive,true);
 assert.equal(classification.pagesPayload,false);
 assert.equal(classification.pagesRelevant,true);
+
+/* A66 Pages Preferences regression: matching live verifier paths must select
+   existing Settings browser lanes, without expanding every full Pages run. */
+for(const verifier of [
+  'tests/pages-live-preferences.mjs',
+  'tests/pages-live-locale-bootstrap.mjs',
+  'tests/pages-live-release-profile.mjs'
+]){
+  const classified=classifyChangedPaths([verifier]);
+  assert.equal(verificationProfileForClassification(classified),'settings',verifier+' must use Settings Pages lanes');
+  const lanes=pagesVerifyLanes(verificationProfileForClassification(classified));
+  assert.equal(lanes.filter(lane=>lane.pref_mode==='shard').length,4,'Settings must verify every Preferences shard');
+  assert.equal(lanes.filter(lane=>lane.pref_mode==='anchor').length,1,'Settings must verify Preferences anchor');
+}
+assert.equal(verificationProfileForClassification(classifyChangedPaths(['tests/pages-live-auth.mjs'])),'full','general live verifier stays on durable full lanes');
+assert.equal(verificationProfileForClassification(classifyChangedPaths(['tests/pages-live-preferences.mjs','tools/pages-verify-plan.mjs'])),'settings','coherent plan+Preferences repair must preserve Settings lane owner');
 
 classification=classifyChangedPaths(['docs/guide.md']);
 assert.equal(classification.pagesRelevant,false);
