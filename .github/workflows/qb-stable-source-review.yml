@@ -77,6 +77,7 @@ jobs:
           node audits/qb-stable-admission-contract.mjs
           node tools/qb-stable-admission.mjs verify-candidate-source upstream-qb --candidate="$SOURCE" --output="$RUNNER_TEMP/source-identity.json"
           node tools/qb-stable-admission.mjs stage-candidate upstream-qb --candidate="$SOURCE" --out="$RUNNER_TEMP/admission-stage"
+          node tools/qb-translator-behavior-source.mjs upstream-qb "$RUNNER_TEMP/admission-stage/qb-release-catalog.lkg.json" "$RUNNER_TEMP/admission-stage/qb-translator-behavior.json"
           node tools/qb-stable-admission.mjs review-upstream upstream-qb --candidate="$SOURCE" --output="$RUNNER_TEMP/admission-stage/upstream-inventory.json"
           node tools/qb-stable-admission.mjs report --candidate="$SOURCE" --output="$RUNNER_TEMP/admission-stage/source-diff.md"
           cp "$RUNNER_TEMP/source-identity.json" "$RUNNER_TEMP/admission-stage/source-identity.json"
@@ -191,16 +192,33 @@ jobs:
           set -euo pipefail
           node tools/qb-locale-source.mjs --merge source-stage/qb-release-catalog.lkg.json enriched-shards source-stage/qb-releases.enriched.json
           node tools/qb-stable-admission.mjs verify-enriched --stage=source-stage --enriched=source-stage/qb-releases.enriched.json --output=source-stage/enriched-identity.json
+          node audits/full-stable-torrent-menu-source-contract.mjs source-stage/qb-release-catalog.lkg.json
+          node audits/full-stable-rss-source-contract.mjs source-stage/qb-releases.enriched.json
           test -s source-stage/qb-releases.enriched.recovery.json
+          test -s source-stage/qb-translator-behavior.json
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const catalog=JSON.parse(fs.readFileSync('source-stage/qb-release-catalog.lkg.json','utf8'));
+          const evidence=JSON.parse(fs.readFileSync('source-stage/qb-translator-behavior.json','utf8'));
+          if(!Array.isArray(evidence.profiles)||evidence.profileCount!==catalog.length)throw new Error('Translator behavior release count does not match source-staged Frozen.');
+          for(let i=0;i<catalog.length;i++){
+            const row=catalog[i],behavior=evidence.profiles[i];
+            if(row.qbVersion!==behavior.qbVersion||row.sourceSha!==behavior.sourceSha||!evidence.families?.[behavior.family])throw new Error('Translator behavior exact-source or certified family mismatch at '+i);
+          }
+          console.log('Translator behavior exact-source proof: '+evidence.profileCount+' released profiles.');
+          NODE
           node tools/qb-settings-translation-lkg.mjs source-stage/qb-releases.enriched.json source-stage/qb-release-catalog.lkg.json source-stage/qb-settings-translation-lkg.json source-stage/qb-releases.enriched.recovery.json
           mkdir -p "$RUNNER_TEMP/isolated-source-product/private/data"
-          node tools/qb-webui-catalog.mjs source-stage/qb-releases.enriched.json "$RUNNER_TEMP/isolated-source-product/private/data/qb-releases.json" --settings-lkg=source-stage/qb-settings-translation-lkg.json
+          node tools/qb-webui-catalog.mjs source-stage/qb-releases.enriched.json "$RUNNER_TEMP/isolated-source-product/private/data/qb-releases.json" --settings-lkg=source-stage/qb-settings-translation-lkg.json --behavior=source-stage/qb-translator-behavior.json
           node tools/qb-runtime-copy-product.mjs validate "$RUNNER_TEMP/isolated-source-product/private/data"
+          node audits/full-stable-locale-routing-contract.mjs source-stage/qb-releases.enriched.json --require-mapped --recovery=source-stage/qb-releases.enriched.recovery.json --behavior=source-stage/qb-translator-behavior.json
           node tools/qb-stable-stage-compact.mjs source-stage "$RUNNER_TEMP/source-compact-staged"
           find "$RUNNER_TEMP/isolated-source-product/translations" -type f -name 'webui_*.qm' -print -quit | grep -q .
           echo "66-profile canonical source / Locale / Settings / qB-owned Copy stage generated. No Frozen or product ref was moved." >> "$GITHUB_STEP_SUMMARY"
           echo "Per-domain independent census, compact runtime and real-qB WeiG Add Torrent: **PENDING**" >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@v7
+      - name: Preserve successful or failed source stage evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
         with:
           name: qb-stable-canonical-source-evidence-${{ github.sha }}
           path: |
@@ -209,5 +227,5 @@ jobs:
             ${{ runner.temp }}/isolated-source-product/translations/
 
             ${{ runner.temp }}/source-compact-staged/
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 7

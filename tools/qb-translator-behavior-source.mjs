@@ -50,7 +50,7 @@ export function extractTranslatorBehaviorFacts(source=''){
   if(translationCall==='qApp->translate'){
     missingTranslationFallback='qt-application-translator';
   }else if(translationCall==='m_translator.translate'){
-    if(/loadedText\.isEmpty\(\)\s*\?\s*sourceText\s*:\s*loadedText/.test(text)){
+    if(/loadedText\.isEmpty\(\)\s*\?\s*sourceText(?:\.toString\(\))?\s*:\s*loadedText/.test(text)){
       missingTranslationFallback='explicit-source';
     }else{
       missingTranslationFallback='none-explicit';

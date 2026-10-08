@@ -59,6 +59,11 @@ void WebApplication::sendFile(const Path &path)
   if (isTranslatable) translateDocument(data);
 }`;
 
+const qtStringViewFallback=dedicatedFallback.replace('sourceText : loadedText','sourceText.toString() : loadedText');
+const viewFacts=extractTranslatorBehaviorFacts(qtStringViewFallback);
+assert.equal(viewFacts.missingTranslationFallback,'explicit-source','Qt QStringView sourceText.toString() requires source-derived fallback semantics');
+assert.equal(translatorBehaviorFamily(viewFacts),'dedicated-native-explicit-fallback');
+
 const dedicatedAltDisabled=dedicatedFallback.replace(
   'const bool isTranslatable = mimeType.inherits(u"text/plain"_s);',
   'const bool isTranslatable = !m_isAltUIUsed && mimeType.inherits(u"text/plain"_s);'
