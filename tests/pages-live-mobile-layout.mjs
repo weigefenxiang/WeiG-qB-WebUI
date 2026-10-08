@@ -367,7 +367,7 @@ try{
   assert.ok(drawer.telemetry.top>=drawer.sidebar.top&&drawer.telemetry.bottom<=drawer.sidebar.bottom+1&&drawer.sidebar.bottom-drawer.telemetry.bottom<=12,`Drawer telemetry/chart must use the released bottom space: ${JSON.stringify(drawer)}`);
   const nativeTag=await page.evaluate(()=>{
     const R=window.WeiG?.CapabilityRegistry;
-    return{qb:String(window.WeiG?.AppState?.client?.qbVersion||''),release:String(R?.domainResolution?.('torrent')?.resolvedFrom||''),ref:R?.facetSpecialRows?.('tag')?.untagged||null};
+    return{qb:String(window.WeiG?.AppState?.client?.qbVersion||'').replace(/^v/i,''),release:String(R?.domainResolution?.('torrent')?.resolvedFrom||''),ref:R?.facetSpecialRows?.('tag')?.untagged||null};
   });
   assert.equal(nativeTag.qb,'5.2.3','Mobile Untagged regression must cover native qB 5.2.3, not newer fallback');
   assert.equal(nativeTag.release,'5.2.3','Mobile Untagged must resolve exact official source release');

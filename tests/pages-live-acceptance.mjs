@@ -296,7 +296,7 @@ try{
     assert.ok(deployedRealtime.expected&&deployedRealtime.actual===deployedRealtime.expected&&!deployedRealtime.native&&deployedRealtime.statisticsButton&&deployedRealtime.buttonBeforeClose,`deployed dev Realtime Transfer Dialog ownership drifted: ${JSON.stringify(deployedRealtime)}`);
     const officialStatistics=await page.evaluate(()=>{
       const R=window.WeiG?.CapabilityRegistry,source=R?.domainResolution?.('torrent'),value=R?.statisticsUi?.();
-      return{runtime:String(window.WeiG?.AppState?.client?.qbVersion||''),sourceVersion:String(source?.resolvedFrom||''),title:value?.title||null,groups:value?.groups?.length||0,fields:value?.groups?.reduce((sum,g)=>sum+(g.fields||[]).length,0)||0};
+      return{runtime:String(window.WeiG?.AppState?.client?.qbVersion||'').replace(/^v/i,''),sourceVersion:String(source?.resolvedFrom||''),title:value?.title||null,groups:value?.groups?.length||0,fields:value?.groups?.reduce((sum,g)=>sum+(g.fields||[]).length,0)||0};
     });
     assert.equal(officialStatistics.runtime,'5.2.3','Core Statistics must continue to cover actual qB 5.2.3');
     assert.equal(officialStatistics.sourceVersion,'5.2.3','Statistics must come from its exact upstream release');
