@@ -9,6 +9,7 @@ import {assertFrozenPrefix,verifyLkg,promotedManifest} from './qb-stable-admissi
 import {catalogIdentity,assertCatalogIdentity} from './qb-catalog-identity.mjs';
 import {packSettingsRuntime,compileCompactRuntime} from './qb-compact-runtime.mjs';
 import {syncRuntimeCopyTree} from './qb-runtime-copy-product.mjs';
+import {rebindCopyRoutes} from './qb-copy-route-control-plane.mjs';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const read=file=>JSON.parse(fs.readFileSync(file,'utf8'));
@@ -72,6 +73,7 @@ function materialize(stage,prefCompactPath,generatedDataDir,generatedQmDir,stage
   write(path.join(root,'tools/data/qb-locale-lkg.json'),locale,0);
   write(path.join(root,'tools/data/qb-translator-behavior-lkg.json'),behavior);
   const dataDir=path.join(root,'webui/private/data');
+  const historicalCopyReleases=read(path.join(dataDir,'capabilities.json')).releases;
   write(path.join(dataDir,'settings-compat.json'),settings,0);
   const compact=compileCompactRuntime(candidate,{includeSettings:true});
   for(const [filename,value] of Object.entries({'capabilities.json':compact.capabilityData,'torrent-compat.json':compact.torrentData,
@@ -85,6 +87,8 @@ function materialize(stage,prefCompactPath,generatedDataDir,generatedQmDir,stage
   const copy=syncRuntimeCopyTree(generatedDataDir,dataDir);
   const index=path.join(generatedDataDir,'qb-releases.json');
   ensure(fs.existsSync(index),'Source-packaged Copy index must exist.');
+  const boundCopy=rebindCopyRoutes(read(index),read(path.join(dataDir,'capabilities.json')),{write:true,capabilityPath:path.join(dataDir,'capabilities.json'),historicalReleases:historicalCopyReleases});
+  ensure(boundCopy.releaseCount===candidate.length,'Materialized Copy control plane does not cover every stable release.');
   // The source catalog is offline provenance only; runtime uses compact
   // Frozen-derived contracts and content-addressed qB Copy shards.
   ensure(fs.existsSync(generatedQmDir),'Source-owned qB QM directory is missing.');
@@ -94,7 +98,7 @@ function materialize(stage,prefCompactPath,generatedDataDir,generatedQmDir,stage
   fs.mkdirSync(qmDestination,{recursive:true});
   for(const name of qms)fs.copyFileSync(path.join(generatedQmDir,name),path.join(qmDestination,name));
   return {source:'exact-official-stable-source-materializer',admitted:candidate.at(-1).qbVersion,profileCount:candidate.length,
-    frozenSha256:admitted.catalogSha256,catalogIdentity:identity,settingsPayload:settings.payload.sha256,qmCount:qms.length,copyCounts:copy.target.counts,
+    frozenSha256:admitted.catalogSha256,catalogIdentity:identity,settingsPayload:settings.payload.sha256,qmCount:qms.length,copyCounts:copy.target.counts,copyRoutes:boundCopy.routeCount,
     status:'MATERIALIZED_PENDING_EXACT_SHA_REAL_QB_AND_CI'};
 }
 

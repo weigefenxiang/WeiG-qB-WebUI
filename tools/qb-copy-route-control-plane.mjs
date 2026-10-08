@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
-export function rebindCopyRoutes(index,capability,{write=false,capabilityPath=''}={}){
+export function rebindCopyRoutes(index,capability,{write=false,capabilityPath='',historicalReleases=[]}={}){
   if(!Array.isArray(index)||!index.length)throw new Error('Copy route control-plane rebind requires a non-empty generated release index.');
   if(!capability||capability.schemaVersion!==2||!Array.isArray(capability.releases)||!capability.releases.length)throw new Error('Copy route control-plane rebind requires capabilities schemaVersion 2 with releases.');
   if(index.length!==capability.releases.length)throw new Error('Copy route release-set length mismatch.');
@@ -14,6 +14,15 @@ export function rebindCopyRoutes(index,capability,{write=false,capabilityPath=''
     if(bySource.has(sourceSha))throw new Error('Generated copy route index contains duplicate sourceSha '+sourceSha);
     bySource.set(sourceSha,row);
   }
+  if(historicalReleases.length>index.length)throw new Error('Immutable historical Copy release prefix is longer than the source index.');
+  for(let ordinal=0;ordinal<index.length;ordinal++){
+    const exact=index[ordinal]||{},admitted=capability.releases[ordinal]||{};
+    if(exact.qbVersion!==admitted.qbVersion||String(exact.sourceSha||'').toLowerCase()!==String(admitted.sourceSha||'').toLowerCase()||exact.webApiVersion!==admitted.webApiVersion)throw new Error('Generated Copy index release order/identity differs from canonical Frozen at '+ordinal);
+  }
+  for(let ordinal=0;ordinal<historicalReleases.length;ordinal++){
+    const existing=historicalReleases[ordinal]||{},exact=index[ordinal]||{};
+    if(existing.qbVersion!==exact.qbVersion||String(existing.sourceSha||'').toLowerCase()!==String(exact.sourceSha||'').toLowerCase()||String(existing.copyRouteId||'')!==String(exact.copyRouteId||''))throw new Error('Immutable historical Copy route identity changed at '+ordinal);
+  }
   let changed=0;
   for(const row of capability.releases){
     const sourceSha=String(row?.sourceSha||'').toLowerCase(),generated=bySource.get(sourceSha);
@@ -22,9 +31,10 @@ export function rebindCopyRoutes(index,capability,{write=false,capabilityPath=''
     const next=String(generated.copyRouteId||'');
     if(String(row.copyRouteId||'')!==next){changed++;if(write)row.copyRouteId=next;}
   }
-  if(new Set(capability.releases.map(row=>String(write?row.copyRouteId:(bySource.get(String(row.sourceSha||'').toLowerCase())?.copyRouteId||'')))).size!==58)throw new Error('65 admitted releases must resolve to exactly 58 semantic copy routes.');
+  const sourceRouteIds=new Set(index.map(row=>String(row.copyRouteId||''))),resolvedRouteIds=new Set(capability.releases.map(row=>String(write?row.copyRouteId:(bySource.get(String(row.sourceSha||'').toLowerCase())?.copyRouteId||''))));
+  if(!sourceRouteIds.size||sourceRouteIds.has('')||sourceRouteIds.size!==resolvedRouteIds.size||Array.from(sourceRouteIds).some(id=>!resolvedRouteIds.has(id)))throw new Error('Generated Copy semantic route set is incomplete or diverged from canonical source.');
   if(write&&changed){if(!capabilityPath)throw new Error('Capability path is required for write mode.');fs.writeFileSync(capabilityPath,JSON.stringify(capability,null,2)+'\n','utf8');}
-  return{releaseCount:capability.releases.length,routeCount:58,changed};
+  return{releaseCount:capability.releases.length,routeCount:sourceRouteIds.size,changed};
 }
 
 const isMain=process.argv[1]&&path.resolve(process.argv[1])===path.resolve(fileURLToPath(import.meta.url));

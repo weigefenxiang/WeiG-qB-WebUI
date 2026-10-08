@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {appendExactLocaleOverlay} from '../tools/qb-stable-admission-materialize.mjs';
+import {rebindCopyRoutes} from '../tools/qb-copy-route-control-plane.mjs';
 const historical=[{qbVersion:'5.2.3',sourceSha:'a'.repeat(40)}],newProfile={qbVersion:'5.2.4',sourceSha:'b'.repeat(40)};
 const before={schemaVersion:1,supportFloor:'5.2.3',profileCount:1,latestAdmittedStable:'5.2.3',baseCatalogSha256:'f'.repeat(64),
   localeSets:{s1:['en','zh']},profiles:[{qbVersion:'5.2.3',sourceSha:'a'.repeat(40),source:'preferences-html',localeSet:'s1'}]};
@@ -17,3 +18,14 @@ assert.equal(unchanged.profiles[1].localeSet,'s1','Exact same official inventory
 assert.throws(()=>appendExactLocaleOverlay(before,[...historical,newProfile],[official[0],{...official[1],sourceSha:'c'.repeat(40)}],'e'.repeat(64),{}),/identity changed/);
 assert.throws(()=>appendExactLocaleOverlay(before,[...historical,newProfile],[official[0],{...official[1],webuiLocales:[]}],'e'.repeat(64),{}),/incomplete/);
 console.log('Canonical stable admission Locale overlay contract passed: immutable certified history and exact newly extracted official source.');
+
+const proofOld={qbVersion:'5.2.3',webApiVersion:'2.15.1',sourceSha:'a'.repeat(40),copyRouteId:'r'+'a'.repeat(20)};
+const proofNew={qbVersion:'5.2.4',webApiVersion:'2.15.1',sourceSha:'b'.repeat(40),copyRouteId:'r'+'b'.repeat(20)};
+const proofCaps={schemaVersion:2,releases:[{...proofOld,copyRouteId:''},{...proofNew,copyRouteId:''}]};
+const routeProof=rebindCopyRoutes([proofOld,proofNew],proofCaps,{historicalReleases:[proofOld]});
+assert.equal(routeProof.releaseCount,2);
+assert.equal(routeProof.routeCount,2,'New source-owned routes must not be limited by frozen historical count');
+assert.equal(routeProof.changed,2);
+assert.throws(()=>rebindCopyRoutes([proofOld,{...proofNew,copyRouteId:''}],proofCaps,{historicalReleases:[proofOld]}),/missing exact/);
+assert.throws(()=>rebindCopyRoutes([proofOld,proofNew],proofCaps,{historicalReleases:[{...proofOld,copyRouteId:'r'+'c'.repeat(20)}]}),/Immutable historical Copy/);
+console.log('Canonical Copy route control-plane proof passed: exact source identity, immutable historical mapping, dynamic new routes.');
