@@ -206,6 +206,21 @@ async function main(){
     await page.locator('#app-nav [data-route="settings"]').click();
     await page.waitForFunction(()=>location.hash.includes('settings'));
     await page.waitForSelector('#settings-content[data-settings-renderer="canonical"]',{timeout:10000});
+    // The real qB Alternative WebUI must decode the canonical UTF-8 CSS.
+    // Verify an actual selected option; test fixtures and stylesheet source text
+    // alone cannot establish the browser-computed glyph on qB's static server.
+    const languageControl=page.locator('[data-setting-key="weig_language"] .ui-select__trigger');
+    await languageControl.waitFor({timeout:10000});
+    await languageControl.click();
+    await page.waitForSelector('#weig-floating-layer .ui-select__option[aria-selected="true"]',{timeout:10000});
+    const selectedGlyph=await page.evaluate(()=>{
+      const option=document.querySelector('#weig-floating-layer .ui-select__option[aria-selected="true"]');
+      return option?getComputedStyle(option,'::before').content:'';
+    });
+    assert(selectedGlyph.includes('✓')&&!selectedGlyph.includes('â'),`Real qB CSS selected glyph was not decoded as UTF-8: ${selectedGlyph}`);
+    await page.keyboard.press('Escape');
+    ev.push('PASS','real-qb-utf8-shared-select',{computed_selected_glyph:selectedGlyph,hosting:'real qB Alternative WebUI CSS'});
+
     const webUiTab=page.locator('#settings-tabs [data-settings-tab="webui"]');
     assert(await webUiTab.count()===1,'Canonical Settings lost the Web UI tab.');
     await webUiTab.click();
@@ -283,6 +298,14 @@ async function main(){
       assert(logsResponse.status()===200,'WeiG Logs did not read real qB execution logs successfully.');
       await page.waitForSelector('#logs-content [data-weig-log-shell="1"]',{timeout:15000});
       ev.push('PASS','real-qb-weig-logs-read',{response:{endpoint:'/api/v2/log/main',status:logsResponse.status()}});
+      // Assert the canonical Log Follow checkbox on the actual qB-hosted CSS.
+      await page.waitForSelector('#logs-content [data-logs-follow] input:checked + .ui-check__mark',{timeout:15000});
+      const followGlyph=await page.evaluate(()=>{
+        const mark=document.querySelector('#logs-content [data-logs-follow] input:checked + .ui-check__mark');
+        return mark?getComputedStyle(mark,'::after').content:'';
+      });
+      assert(followGlyph.includes('✓')&&!followGlyph.includes('â'),`Real qB Logs Follow checkbox glyph was mis-decoded: ${followGlyph}`);
+      ev.push('PASS','real-qb-utf8-shared-checkbox',{computed_checked_glyph:followGlyph,hosting:'real qB Alternative WebUI CSS'});
 
       await page.locator('#app-nav [data-route="settings"]').click();
       await page.waitForFunction(()=>location.hash.includes('settings'));

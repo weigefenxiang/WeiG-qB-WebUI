@@ -18,6 +18,8 @@ on:
       - webui/private/data/qb-copy-fallback/**
       - webui/private/data/qb-copy-bindings/**
       - webui/translations/webui_*.qm
+      - webui/private/css/**
+      - webui/public/styles/**
       - webui/private/scripts/capabilities.js
       - webui/private/scripts/qb-client.js
       - webui/private/scripts/app.js
