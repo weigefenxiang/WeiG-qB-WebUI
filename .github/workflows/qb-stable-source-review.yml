@@ -1,0 +1,86 @@
+name: qB Stable Source Admission Review
+
+# Source-only admission staging. This workflow never promotes Frozen/Product assets
+# and never writes Git refs; semantic census and real-qB product gates remain separate.
+on:
+  push:
+    branches:
+      - dev
+    paths:
+      - .github/workflows/qb-stable-source-review.yml
+  workflow_dispatch:
+    inputs:
+      candidate_run_id:
+        description: Run containing a source-only stable candidate artifact
+        required: true
+        default: '37708522138'
+        type: string
+      candidate_artifact:
+        description: Exact source-only candidate artifact name
+        required: true
+        default: qb-5.2.4-source-candidate-c661820919ac5f401a9b4390dcf304b9e5372805
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: qb-stable-source-review-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  review:
+    name: Stage exact official source candidate without admission
+    if: ${{ github.ref == 'refs/heads/dev' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout exact public dev source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - name: Checkout official qB release tags
+        uses: actions/checkout@v7
+        with:
+          repository: qbittorrent/qBittorrent
+          path: upstream-qb
+          fetch-depth: 0
+          fetch-tags: true
+          filter: blob:none
+          persist-credentials: false
+      - name: Reuse existing source-only candidate evidence
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ inputs.candidate_artifact || 'qb-5.2.4-source-candidate-c661820919ac5f401a9b4390dcf304b9e5372805' }}
+          run-id: ${{ inputs.candidate_run_id || '37708522138' }}
+          repository: ${{ github.repository }}
+          github-token: ${{ github.token }}
+          path: source-candidate
+      - name: Verify and stage only official-source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE="source-candidate/qb-5.2.4-admission-candidate.json"
+          test -s "$SOURCE"
+          node tools/qb-stable-admission.mjs verify
+          node audits/qb-stable-admission-contract.mjs
+          node tools/qb-stable-admission.mjs verify-candidate-source upstream-qb --candidate="$SOURCE" --output="$RUNNER_TEMP/source-identity.json"
+          node tools/qb-stable-admission.mjs stage-candidate upstream-qb --candidate="$SOURCE" --out="$RUNNER_TEMP/admission-stage"
+          node tools/qb-stable-admission.mjs review-upstream upstream-qb --candidate="$SOURCE" --output="$RUNNER_TEMP/admission-stage/upstream-inventory.json"
+          node tools/qb-stable-admission.mjs report --candidate="$SOURCE" --output="$RUNNER_TEMP/admission-stage/source-diff.md"
+          cp "$RUNNER_TEMP/source-identity.json" "$RUNNER_TEMP/admission-stage/source-identity.json"
+          echo "### Official source identity: verified" >> "$GITHUB_STEP_SUMMARY"
+          echo "Frozen/Locale/Settings/Action/Torrent/Detail/RSS/Copy and real-qB WeiG product admission: **PENDING**" >> "$GITHUB_STEP_SUMMARY"
+      - name: Preserve source-only staging evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: qb-stable-source-staged-${{ github.sha }}
+          path: ${{ runner.temp }}/admission-stage
+          if-no-files-found: error
+          retention-days: 7
