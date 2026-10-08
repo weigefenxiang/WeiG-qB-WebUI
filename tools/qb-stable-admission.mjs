@@ -109,6 +109,28 @@ export function renderAdmissionReport(base,candidate){
   }
   return lines.join('\n')+'\n';
 }
+export function assertEnrichedCatalogBinding(staged,enriched){
+  assert(Array.isArray(staged)&&staged.length>0&&Array.isArray(enriched),'Source enrichment requires an exact staged catalog and source-enriched catalog.');
+  assert(staged.length===enriched.length,'Source enrichment changed the staged stable profile count.');
+  let locales=0,settingsProfiles=0,copyProfiles=0;
+  for(let index=0;index<staged.length;index++){
+    const a=staged[index],b=enriched[index],label=String(a?.qbVersion||index);
+    for(const field of ['qbVersion','webApiVersion','tag','sourceSha']){
+      assert(String(a?.[field]||'')===String(b?.[field]||''),label+': source enrichment changed the exact '+field+' identity.');
+    }
+    const available=Array.isArray(b.webuiLocales)?b.webuiLocales:[];
+    assert(available.length>0,label+': exact upstream WebUI locale inventory is missing.');
+    assert(b.settingsUi&&typeof b.settingsUi==='object'&&!Array.isArray(b.settingsUi),label+': source-enriched Settings owner is missing.');
+    assert(b.qbOwnedUi&&typeof b.qbOwnedUi==='object'&&!Array.isArray(b.qbOwnedUi),label+': qB-owned UI source/copy owner is missing.');
+    assert(b.settingsTranslations&&typeof b.settingsTranslations==='object'&&!Array.isArray(b.settingsTranslations),label+': official Settings translation source is missing.');
+    locales+=available.length;
+    if(Object.keys(b.settingsUi).length)settingsProfiles++;
+    if(Object.keys(b.qbOwnedUi).length)copyProfiles++;
+  }
+  assert(settingsProfiles>0&&copyProfiles>0,'No Settings/qB-owned UI source facts were enriched.');
+  return{profileCount:staged.length,webuiLocaleRoutes:locales,settingsProfiles,copyProfiles,status:'SOURCE_ENRICHED_PENDING_DOMAIN_ADMISSION'};
+}
+
 export function stageFrozenCandidate(oldManifest,base,candidate){
   const fresh=assertFrozenPrefix(base,candidate,'Staged Frozen source candidate');
   assert(fresh.length>0,'Staging requires at least one newly verified official stable profile.');
@@ -161,6 +183,18 @@ function main(){
     const source=path.resolve(args[1]||'');assert(source&&fs.existsSync(source),command==='discover'?'Usage: node tools/qb-stable-admission.mjs discover <qB-clone> [--output=...]':'Usage: node tools/qb-stable-admission.mjs discover-tags <tag-file> [--output=...]');
     const result=discoveryResult(catalog,manifest,command==='discover'?gitTags(source):readTagsFile(source)),output=getArg('--output',args);if(output)writeJson(path.resolve(output),result);console.log(JSON.stringify(result));return;
   }
+  if(command==='verify-enriched'){
+    const stageArg=getArg('--stage',args),enrichedArg=getArg('--enriched',args);
+    assert(stageArg&&enrichedArg,'verify-enriched requires --stage=directory and --enriched=source-catalog.json');
+    const dir=path.resolve(stageArg),enrichedPath=path.resolve(enrichedArg),catalogPath=path.join(dir,'qb-release-catalog.lkg.json'),stageManifest=path.join(dir,'qb-stable-lkg.json');
+    assert(fs.existsSync(catalogPath)&&fs.existsSync(stageManifest)&&fs.existsSync(enrichedPath),'Source enrichment evidence is missing.');
+    const staged=readJson(catalogPath),manifest=readJson(stageManifest);
+    verifyLkg({catalog:staged,manifest,catalogPath});
+    assert(manifest.lastAdmission?.status==='PENDING_DOMAIN_ADMISSION','Expected an isolated, unadmitted Frozen candidate manifest.');
+    const result=assertEnrichedCatalogBinding(staged,readJson(enrichedPath));
+    const output=getArg('--output',args);if(output)writeJson(path.resolve(output),result);
+    console.log(JSON.stringify(result));return;
+  }
   if(command==='stage-candidate'){
     const sourceArg=args[1],candidateArg=getArg('--candidate',args),outArg=getArg('--out',args);
     assert(sourceArg&&fs.existsSync(sourceArg),'stage-candidate requires an upstream qBittorrent Git clone.');
@@ -210,6 +244,6 @@ function main(){
   if(command==='promote-manifest'){
     const candidatePath=path.resolve(getArg('--candidate',args)||''),outputPath=path.resolve(getArg('--output',args)||'');assert(candidatePath&&fs.existsSync(candidatePath),'promote-manifest requires --candidate=path');assert(outputPath,'promote-manifest requires --output=path');const candidate=readJson(candidatePath),next=promotedManifest(manifest,catalog,candidate,{validationCommit:process.env.WEIG_VALIDATION_SHA||process.env.GITHUB_SHA||null,admittedAt:new Date().toISOString()});next.catalogSha256=sha256File(candidatePath);writeJson(outputPath,next);console.log(`Prepared LKG manifest for ${next.latestAdmittedStable}; ${next.profileCount} profiles; sha256 ${next.catalogSha256}.`);return;
   }
-  throw new Error('Usage: node tools/qb-stable-admission.mjs <verify|discover|discover-tags|verify-candidate-source|review-upstream|stage-candidate|product-catalog|report|promote-manifest> ...');
+  throw new Error('Usage: node tools/qb-stable-admission.mjs <verify|discover|discover-tags|verify-candidate-source|review-upstream|stage-candidate|verify-enriched|product-catalog|report|promote-manifest> ...');
 }
 const isMain=process.argv[1]&&pathToFileURL(path.resolve(process.argv[1])).href===import.meta.url;if(isMain){try{main();}catch(error){console.error(error?.stack||error);process.exit(1);}}

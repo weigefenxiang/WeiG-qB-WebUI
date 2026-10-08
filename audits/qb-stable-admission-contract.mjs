@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {catalogIdentity,assertCatalogIdentity} from '../tools/qb-catalog-identity.mjs';
 import {accountSourceInventory,assertCompleteSourceCensus} from '../tools/qb-source-census.mjs';
-import {assertFrozenPrefix,stableAdmissionDelta,admissionProductCatalog,verifyLkg,renderAdmissionReport,semanticFieldReview,verifyCandidateSourceIdentity,classifyUpstreamChangedPaths,stageFrozenCandidate,promotedManifest} from '../tools/qb-stable-admission.mjs';
+import {assertFrozenPrefix,stableAdmissionDelta,admissionProductCatalog,verifyLkg,renderAdmissionReport,semanticFieldReview,verifyCandidateSourceIdentity,classifyUpstreamChangedPaths,assertEnrichedCatalogBinding,stageFrozenCandidate,promotedManifest} from '../tools/qb-stable-admission.mjs';
 
 const base=[
   {qbVersion:'4.1.0',tag:'release-4.1.0',stable:true,officialWeiGSupport:true},
@@ -44,6 +44,13 @@ assert.deepEqual(inventory.domains.RSS,['src/base/rss/rss_autodownloader.cpp']);
 assert.deepEqual(inventory.unclassified,['new-future-upstream-owner.txt'],'Unknown upstream files must be surfaced for review, never silently ignored');
 assert.equal(inventory.independentSemanticCensusComplete,false,'Changed-file inventory is not independent semantic census completion');
 assert.throws(()=>classifyUpstreamChangedPaths(['src/base/rss/a.cpp','src/base/rss/a.cpp']),/duplicate/);
+
+const minimalStage=[{qbVersion:'4.1.0',webApiVersion:'2.0.0',tag:'release-4.1.0',sourceSha:'a'.repeat(40)}];
+const minimalEnriched=[{...minimalStage[0],webuiLocales:['en'],settingsUi:{lang:{}},qbOwnedUi:{title:{}},settingsTranslations:{en:'sha'}}];
+assert.equal(assertEnrichedCatalogBinding(minimalStage,minimalEnriched).status,'SOURCE_ENRICHED_PENDING_DOMAIN_ADMISSION');
+assert.throws(()=>assertEnrichedCatalogBinding(minimalStage,[{...minimalEnriched[0],sourceSha:'b'.repeat(40)}]),/exact sourceSha identity/);
+assert.throws(()=>assertEnrichedCatalogBinding(minimalStage,[{...minimalEnriched[0],webuiLocales:[]}]),/locale inventory is missing/);
+assert.throws(()=>assertEnrichedCatalogBinding(minimalStage,[]),/profile count/);
 
 const staged=stageFrozenCandidate({schemaVersion:1,supportFloor:'4.1.0',latestAdmittedStable:'5.2.3',profileCount:2},base,[...structuredClone(base),{...future,sourceSha:'a'.repeat(40)}]);
 assert.equal(staged.manifest.profileCount,3,'Staging must derive release count from the full candidate without mutating Frozen LKG');
