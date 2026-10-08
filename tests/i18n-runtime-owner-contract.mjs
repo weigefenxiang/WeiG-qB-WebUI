@@ -52,6 +52,7 @@ assert.equal(read('webui/private/scripts/rss.js').includes('function zh()'),fals
   ].join('\n')+'\n';
   const runtime={document:doc,Intl,console,dispatchEvent:event=>events.push(event),CustomEvent:class{constructor(type,options){this.type=type;this.detail=options?.detail||{};}},setTimeout:()=>{},location:{reload:()=>{throw new Error('preview must not reload');}}};
   runtime.WeiG={
+    AppState:{preferences:{locale:'zh_CN'}},
     CapabilityRegistry:{domainResolution:domain=>domain==='copy'?{qbVersion:'5.2.4',sourceSha:'a'.repeat(40),copyRouteId:routeId,fallback:false}:null},
     RuntimeAssets:{
       readGzipJson:async()=>route,
@@ -67,6 +68,7 @@ assert.equal(read('webui/private/scripts/rss.js').includes('function zh()'),fals
   await flush();
   assert.equal(pending.length,1,'A66: W.I18n must begin loading official Chinese qB copy without depending on any feature listener');
   assert.ok(pending[0].identity.endsWith('@zh_CN'),'A66: requested Chinese runtime shard must use its own identity');
+  runtime.WeiG.AppState.preferences.locale='en';
   I.applyLocale('en',{reload:false});
   await flush();
   assert.equal(pending.length,2,'A66: switching to English must start an independent current-locale qB copy task');
@@ -82,6 +84,10 @@ assert.equal(read('webui/private/scripts/rss.js').includes('function zh()'),fals
   assert.equal(I.qbText('settings.tab.behavior',''),'Behavior','A66: stale Chinese result must not overwrite Settings English');
   assert.equal(I.qbText('filter.all',''),'All (%1)','A66: stale Chinese result must not overwrite Status English');
   assert.equal(events.filter(event=>event.type==='weig:qbcopychange').length,1,'A66: stale completion must not emit a second copy-ready notification');
+  I.applyLocale('zh_CN',{reload:false});
+  await flush();
+  assert.equal(pending.length,2,'A68: preview locale must not trigger native qB Copy load against different persisted locale');
+  assert.equal(I.qbText('settings.tab.behavior',''),'','A68: uncommitted native preview must not claim official translation');
 }
 const a66Settings=read('webui/private/scripts/settings.js'),a66Filter=read('webui/private/scripts/torrent-filter-view.js');
 assert.ok(i18n.includes('if(changed){resetQbCopy();loadQbOwnedCopy();}'),'A66: W.I18n owns native copy hydration on every locale transition');

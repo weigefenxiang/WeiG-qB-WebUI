@@ -315,23 +315,13 @@ async function main(){
       assert(actualCopy.data?.sourceSha===profile.sourceSha&&actualCopy.data.qbVersion===qb,'qB copy was not loaded from the exact official release.');
       ev.push('PASS','real-qb-official-copy-source',{response:{source_sha:profile.sourceSha,mode:actualCopy.data.mode,route_id:actualCopy.data.routeId,locale:actualCopy.data.locale}});
 
-      // A68-3: real qB Alternative WebUI must honor exact upstream qB 5.2.4
-      // OptionsDialog and StatusFilterWidget zh_HK/zh_TW source translations.
-      const verifiedLocales=[];
+      // A68-6: qB-native QBT_TR is server-side and must not be misattributed to a client-only preview.
       for(const targetLocale of ['zh_HK','zh_TW']){
-        const actual=await page.evaluate(async target=>{
-          const I=window.WeiG.I18n;
-          I.applyLocale(target,{reload:false});
-          const data=await I.loadQbOwnedCopy();
-          return{locale:I.getQbLocale(),tab:I.qbText('settings.tab.downloads',''),status:I.qbText('filter.all',''),source:data?.source||null,mode:data?.mode||null,routeId:data?.routeId||null};
-        },targetLocale);
-        assert(actual.locale===targetLocale&&actual.source&&/^r[0-9a-f]{20}$/.test(actual.routeId||''),`Real qB ${targetLocale} official Copy not ready: ${JSON.stringify(actual)}`);
-        assert(actual.tab==='下載',`Official qB ${targetLocale} Downloads tab translation missing: ${JSON.stringify(actual)}`);
-        assert.ok(actual.status.startsWith('全部')&&!actual.status.includes('All'),`Official qB ${targetLocale} Status All translation missing: ${JSON.stringify(actual)}`);
-        verifiedLocales.push(actual);
+        const preview=await page.evaluate(async target=>{const I=window.WeiG.I18n;I.applyLocale(target,{reload:false});return{locale:I.getQbLocale(),copy:await I.loadQbOwnedCopy()};},targetLocale);
+        assert(preview.locale===targetLocale&&!preview.copy,'Uncommitted native qB preview must not cache the old server language as '+targetLocale);
       }
-      await page.evaluate(async previous=>{window.WeiG.I18n.applyLocale(previous,{reload:false});await window.WeiG.I18n.loadQbOwnedCopy();},String(prefJson.locale||'en'));
-      ev.push('PASS','real-qb-official-copy-zh-hk-tw',{response:{locales:verifiedLocales,hosting:'real qB Alternative WebUI',source:'official 5.2.4 webui TS'}});
+      await page.evaluate(async value=>{const I=window.WeiG.I18n;I.applyLocale(value,{reload:false});await I.loadQbOwnedCopy();},String(prefJson.locale||'en'));
+      ev.push('PASS','real-qb-native-copy-preview-guard',{response:{locales:['zh_HK','zh_TW'],backend_locale_unchanged:true}});
 
       const rssTask=page.waitForResponse(res=>{
         try{const u=new URL(res.url());return u.origin===base.origin&&u.pathname==='/api/v2/rss/items';}catch{return false;}
