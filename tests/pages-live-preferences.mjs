@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import {PAGES_FULL_CATALOG_PATH} from './pages-live-catalog.mjs';
 import {launchBrowser} from './browser-driver.mjs';
 import {fetchJsonEvidence} from './pages-node-evidence-fetch.mjs';
@@ -78,9 +79,13 @@ async function setTimeControl(page,control,value){
 
 const site=await waitForDeployedSha();
 const catalog=await fetchJson(PAGES_FULL_CATALOG_PATH);
-const matrix=catalog.filter(item=>item?.stable!==false&&/^(?:4|5)\.\d+\.\d+(?:\.\d+)?$/.test(String(item?.qbVersion||'')));
-assert.equal(matrix.length,65,`published stable qB 4.x/5.x matrix must contain 65 profiles, got ${matrix.length}`);
-assert.equal(matrix[0].qbVersion,'4.1.0','Virtual qB stable preference matrix must start at qB 4.1.0');
+const stableLkg=JSON.parse(fs.readFileSync(new URL('../tools/data/qb-stable-lkg.json',import.meta.url),'utf8'));
+assert.ok(Number.isSafeInteger(stableLkg.profileCount)&&stableLkg.profileCount>0,'Frozen Stable LKG must declare a positive admitted profile count');
+assert.ok(stableLkg.supportFloor&&stableLkg.latestAdmittedStable,'Frozen Stable LKG must declare the admitted support floor and latest stable release');
+const matrix=catalog.filter(item=>item?.stable!==false&&/^\d+\.\d+\.\d+(?:\.\d+)?$/.test(String(item?.qbVersion||''))&&atLeast(item.qbVersion,stableLkg.supportFloor));
+assert.equal(matrix.length,stableLkg.profileCount,`published stable qB matrix must match Frozen LKG admitted ${stableLkg.profileCount} profiles, got ${matrix.length}`);
+assert.equal(matrix[0]?.qbVersion,stableLkg.supportFloor,'Virtual qB stable preference matrix must start at the admitted support floor');
+assert.equal(matrix.at(-1)?.qbVersion,stableLkg.latestAdmittedStable,'Virtual qB stable preference matrix must end at the latest admitted stable release');
 assert.equal(site?.preferenceCatalog?.schemaVersion,3,'site metadata must expose Preference Descriptor quality schema v3');
 assert.equal(site?.preferenceCatalog?.profiles,matrix.length,'site metadata must publish the same stable preference profile count as the internal simulator evidence catalog');
 assert.ok(Number(site?.preferenceCatalog?.readTyped)>0,'site metadata must expose source-derived getter/read type coverage');
@@ -121,8 +126,8 @@ for(let index=0;index<matrix.length;index++){
   }
 }
 
-const anchor=catalog.find(item=>item.qbVersion==='5.2.3')||matrix.filter(item=>String(item.qbVersion).startsWith('5.')).at(-1);
-assert.ok(anchor,'published upstream catalog must contain a qB 5.x anchor');
+const anchor=matrix.at(-1);
+assert.ok(anchor&&anchor.qbVersion===stableLkg.latestAdmittedStable,'published upstream catalog must provide the current admitted stable anchor');
 assert.ok(anchor.preferenceKeys.length>100,`${anchor.qbVersion} upstream preference surface unexpectedly small: ${anchor.preferenceKeys.length}`);
 
 const browser=await launchBrowser();
@@ -285,7 +290,7 @@ try{
     const latestCopy=await inspectZhOwnedCopy('Coalesce reads & writes:');
     assert.ok(latestCopy.options.length>1&&latestCopy.options.includes('en')&&latestCopy.options.includes('zh_CN'),`Locale option owner collapsed to current-only: ${JSON.stringify(latestCopy)}`);
     assert.ok(Number(latestCopy.evidence?.sourceCount)>1&&latestCopy.evidence?.selectedOwner!=='current-only',`Locale inventory trust resolver did not preserve source baseline: ${JSON.stringify(latestCopy.evidence)}`);
-    assertOfficialZhCopy(latestCopy,'Coalesce reads & writes:','qB 5.2.3 entity copy');
+    assertOfficialZhCopy(latestCopy,'Coalesce reads & writes:',`qB ${anchor.qbVersion} entity copy`);
 
     // Real 0.3.156 human regression: qB 4.6.7 Behavior Locale visibly collapsed to zh_CN.
     // Validate the actual rendered Select menu, not only the internal provider array.
