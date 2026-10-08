@@ -3,6 +3,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {gunzipSync} from 'node:zlib';
+import {runtimeCopySnapshot} from '../tools/qb-runtime-copy-product.mjs';
 import {buildWebuiDist} from '../tools/build-webui-dist.mjs';
 import {pagesVerifyLanes} from '../tools/pages-verify-plan.mjs';
 
@@ -39,6 +41,47 @@ try{
     assert.ok(files.length>0,'No source Copy assets found in '+name);
     return files.length;
   });
-  assert.equal(manifest.ownedCopyFiles,sourceCopyCounts.reduce((sum,value)=>sum+value,0),'Distribution Copy count must match canonical source-owned content-addressed shards');assert.ok(manifest.ownedCopyBytes<5331818,'semantic route owner must improve the previous gzip profile-owner total-copy budget');
+  assert.equal(manifest.ownedCopyFiles,sourceCopyCounts.reduce((sum,value)=>sum+value,0),'Distribution Copy count must match canonical source-owned content-addressed shards');
+  // Budget the immutable certified prefix separately from official new-release
+  // dependencies. A source-proven appended route may need new bindings/packs;
+  // it must not invalidate the former 65-release performance guarantee.
+  const copyDir=path.join(privateRoot,'data'),copyInventory=runtimeCopySnapshot(copyDir);
+  const copyFilesByPath=new Map(copyInventory.files.map(file=>[file.path,file]));
+  const caps=JSON.parse(fs.readFileSync(path.join(copyDir,'capabilities.json'),'utf8'));
+  const baselineCount=65,certifiedBaselineBytes=5281916;
+  assert.ok(caps.releases.length>=baselineCount,'Certified Copy baseline was truncated');
+  function copyReferences(profiles){
+    const needed=new Set();
+    function requireAsset(name){
+      assert.ok(copyFilesByPath.has(name),'Missing source-proven Copy dependency '+name);
+      needed.add(name);
+    }
+    for(const profile of profiles){
+      const routeId=String(profile.copyRouteId||'');
+      assert.match(routeId,/^r[0-9a-f]{20}$/,'Every admitted release must have a source-proven Copy route');
+      const routeName='qb-copy-routes/'+routeId+'.json.gz';
+      requireAsset(routeName);
+      const route=JSON.parse(gunzipSync(fs.readFileSync(path.join(copyDir,routeName))).toString('utf8'));
+      assert.equal(route.routeId,routeId,'Copy route descriptor must match the admitted source route ID');
+      assert.match(String(route.bindingId||''),/^b[0-9a-f]{20}$/);
+      requireAsset('qb-copy-bindings/'+route.bindingId+'.txt');
+      for(const pair of Object.values(route.fallback||{})){
+        assert.ok(Array.isArray(pair)&&/^p[0-9a-f]{20}$/.test(String(pair[1]||'')),'Official Copy fallback pack identity is invalid');
+        requireAsset('qb-copy-fallback/'+pair[1]+'.json.gz');
+      }
+    }
+    return needed;
+  }
+  const historicalCopy=copyReferences(caps.releases.slice(0,baselineCount));
+  const allCopy=copyReferences(caps.releases);
+  assert.equal(allCopy.size,copyInventory.files.length,'Distribution must not carry unreferenced or duplicate Copy shards');
+  const bytesFor=names=>[...names].reduce((total,name)=>total+copyFilesByPath.get(name).bytes,0);
+  const historicalBytes=bytesFor(historicalCopy);
+  const newlyRequired=[...allCopy].filter(name=>!historicalCopy.has(name));
+  const addedBytes=bytesFor(newlyRequired),newReleases=caps.releases.length-baselineCount;
+  assert.equal(historicalBytes,certifiedBaselineBytes,'Immutable historical Copy owner changed size');
+  assert.ok(historicalBytes<5331818,'Original 65-release Copy performance budget regressed');
+  assert.equal(manifest.ownedCopyBytes,historicalBytes+addedBytes,'Distribution Copy bytes must be fully explained by old plus official new source dependencies');
+  assert.ok(addedBytes<=certifiedBaselineBytes*0.2*newReleases,'New official Copy dependencies exceeded the bounded per-release growth budget');
   console.log(JSON.stringify({kind:'RUNTIME_ASSET_BUDGET',baseline,startup:{files:startup.length,bytes:startupBytes,reductionBytes:baseline.initialJsBytes-startupBytes,reductionPct:Number(((baseline.initialJsBytes-startupBytes)*100/baseline.initialJsBytes).toFixed(1))},i18n:{bytes:i18nBytes,reductionBytes:baseline.i18nBytes-i18nBytes},deferredRouteBytes:deferredBytes,locale:{files:localeFiles.length,totalBytes:localeBytes,maxBytes:maxLocaleBytes},distribution:{files:manifest.sizeReport.fileCount,uncompressedBytes:manifest.sizeReport.totalUncompressedBytes,zipBytes:manifest.sizeReport.zipBytes,tarGzBytes:manifest.sizeReport.tarGzBytes,qmAssets:manifest.qmAssets,qbCopyFiles:manifest.ownedCopyFiles,qbCopyBytes:manifest.ownedCopyBytes,qbCopyCompression:manifest.ownedCopyCompression}},null,2));
 }finally{fs.rmSync(out,{recursive:true,force:true});}
