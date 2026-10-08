@@ -57,15 +57,27 @@ jobs:
           docker run -d --name "$name" --network "$net" -e QBT_LEGAL_NOTICE=confirm "$image" --webui-port=8080 >/dev/null
           ip="$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$name")"
           test -n "$ip"
-          ready=0
+          # The official container generates its temporary password asynchronously.
+          # A 403/404 response does not prove the authenticated daemon is ready.
+          password=''
           for i in $(seq 1 120); do
-            code="$(curl -sS --max-time 2 -o /dev/null -w '%{http_code}' -H 'Host: localhost' "http://$ip:8080/api/v2/app/version" || true)"
-            if [ "$code" != 000 ]; then ready=1; break; fi
+            if [ "$(docker inspect -f '{{.State.Running}}' "$name")" != true ]; then
+              echo 'qB container exited during initialization' >&2
+              docker logs "$name" 2>&1 | sed -E 's/(temporary password is provided for this session: ).*/\\1[REDACTED]/' >&2
+              exit 1
+            fi
+            password="$(docker logs "$name" 2>&1 | sed -n 's/.*temporary password is provided for this session: //p' | tail -n 1 | tr -d '\r')"
+            if [ -n "$password" ]; then
+              code="$(curl -sS --max-time 2 -o /dev/null -w '%{http_code}' -H 'Host: localhost' "http://$ip:8080/api/v2/app/version" 2>/dev/null || true)"
+              if [ "$code" != 000 ] && [ -n "$code" ]; then break; fi
+            fi
             sleep 1
           done
-          if [ "$ready" != 1 ]; then docker logs "$name"; exit 1; fi
-          password="$(docker logs "$name" 2>&1 | sed -n 's/.*temporary password is provided for this session: //p' | tail -n 1 | tr -d '\r')"
-          test -n "$password"
+          if [ -z "$password" ] || [ -z "${code:-}" ] || [ "$code" = 000 ]; then
+            echo 'qB 5.2.4 did not reach password-and-HTTP readiness' >&2
+            docker logs "$name" 2>&1 | sed -E 's/(temporary password is provided for this session: ).*/\\1[REDACTED]/' >&2
+            exit 1
+          fi
           headers="$(mktemp)"
           body="$(mktemp)"
           code="$(curl -sS --max-time 5 -D "$headers" -o "$body" -w '%{http_code}' -H 'Host: localhost' -X POST --data-urlencode 'username=admin' --data-urlencode "password=$password" "http://$ip:8080/api/v2/auth/login")"
