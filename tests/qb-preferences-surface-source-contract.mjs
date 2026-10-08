@@ -371,8 +371,8 @@ assert.equal(compactChanged.preferences.locale.length,1,'unrelated native prefer
 const runtimeSettings=readSettingsRuntime();
 assert.equal(runtimeSettings.settingsData.schemaVersion,2,'formal Settings runtime must consume the source-native compact schema');
 assert.equal(runtimeSettings.settingsData.source,'qb-upstream-preferences-native-surface-compact','formal Settings runtime must not rebuild a legacy descriptor/nativeTabs shape');
-assert.equal(runtimeSettings.settingsData.catalogIdentity.releaseCount,65,'formal Settings runtime must remain bound to the admitted Frozen release set');
-const frozenCatalog=JSON.parse(fs.readFileSync(new URL('./fixtures/qb-release-catalog.lkg.json',import.meta.url),'utf8')),frozenIdentity=catalogIdentity(frozenCatalog);assert.deepEqual(runtimeSettings.manifest.catalogIdentity,frozenIdentity,'formal Settings runtime must bind the accepted source-native IR to the canonical Frozen catalog identity');
+const frozenCatalog=JSON.parse(fs.readFileSync(new URL('./fixtures/qb-release-catalog.lkg.json',import.meta.url),'utf8')),frozenIdentity=catalogIdentity(frozenCatalog);
+assert.equal(runtimeSettings.settingsData.catalogIdentity.releaseCount,frozenCatalog.length,'formal Settings runtime must remain bound to the exact admitted Frozen release set');assert.deepEqual(runtimeSettings.manifest.catalogIdentity,frozenIdentity,'formal Settings runtime must bind the accepted source-native IR to the canonical Frozen catalog identity');
 assert.equal(Object.prototype.hasOwnProperty.call(runtimeSettings.settingsData,'nativeTabs'),false,'legacy runtime-generated nativeTabs truth must stay retired');
 
 const transportManifest=structuredClone(manifest);

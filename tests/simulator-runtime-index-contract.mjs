@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
 import {createWorld,deleteTorrents,renameTorrent} from '../simulator/core/engine.js';
+import {profileByVersion} from '../simulator/core/profiles.js';
+import {buildStableIndex} from '../simulator/build/stable-index.mjs';
 import {filesForTorrent,pieceHashes,pieceStates,setShareLimits,setSuperSeeding} from '../simulator/core/torrent-content.js';
 import {propertiesForTorrent,trackersForTorrent} from '../simulator/core/torrent-metadata.js';
 import {runtimeIndexStats} from '../simulator/core/runtime-index.js';
@@ -9,6 +12,23 @@ import {
 } from '../simulator/core/runtime-view.js';
 import {setVirtualSpeedLimitsMode} from '../simulator/core/transfer-controls.js';
 
+// Lab's selector must be fully source-generated; a stale hardcoded fallback
+// must never disguise failed Pages metadata or omit newly admitted versions.
+const labSource=await fs.readFile(new URL('../simulator/lab/lab.js',import.meta.url),'utf8');
+assert(!labSource.includes('const fallback=['),'Lab must not ship a second hand-maintained version list');
+assert(labSource.includes("../metadata/qb-stable-index.json"),'Lab release selector must come from generated official index');
+assert(labSource.includes("catalogState='unavailable'"),'missing source index must show unavailable rather than fabricated stable versions');
+assert(labSource.includes("versionSelect.disabled=!catalog.length"),'Lab cannot launch without a verified version index');
+
+const futureCatalog=[
+  {qbVersion:'4.6.1',webApiVersion:'2.9.3',sourceSha:'a'.repeat(40),officialWeiGSupport:true},
+  {qbVersion:'6.7.8',webApiVersion:'8.9.0',sourceSha:'b'.repeat(40),officialWeiGSupport:true}
+];
+const futureIndex=buildStableIndex(futureCatalog,{sourceCatalogSha256:'c'.repeat(64)});
+assert.equal(futureIndex.profileCount,futureCatalog.length,'Lab metadata count follows official source release records');
+assert.equal(futureIndex.latestAdmittedStable,'6.7.8','Future source becomes newest Lab choice without version patch');
+assert.equal(profileByVersion(futureCatalog,'6.7.8')?.webApiVersion,'8.9.0','Virtual daemon uses exact generated profile');
+assert.equal(profileByVersion(futureCatalog,'5.2.3'),null,'Absent requested version must not silently fall back to bootstrap');
 const baseNow=1700000000000;
 const profile={qbVersion:'5.2.3',webApiVersion:'2.15.1'};
 function make(seed){return createWorld({profile,count:5000,seed,now:baseNow});}
