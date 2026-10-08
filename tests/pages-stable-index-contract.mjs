@@ -44,4 +44,7 @@ assert.ok(pages.includes("const admittedProfiles=manifest.profileCount;")&&pages
 assert.ok(pages.includes("stableIndex.sourceCatalogSha256!==manifest.catalogSha256")&&pages.includes("stableIndex.latestAdmittedStable!==manifest.latestAdmittedStable"),'Pages stable index must bind to the same admitted hash and highest stable as Frozen manifest');
 assert.ok(!/(?:!==|===)\s*65\b/.test(pages),'Pages source must not hard-code the previous release count');
 
+assert.ok(lab.includes("||catalog[0]")&&!lab.includes("catalog.at(-1)"),'Lab facts should use the highest certified profile whenever a stale selection disappears');
+assert.ok(lab.includes("data.get('qb')||catalog[0]?.qbVersion||''")&&!lab.includes("data.get('qb')||'5.2.3'"),'Lab launch must fall back to the catalog highest certified release, not a release-specific version');
+
 console.log(`Pages stable index contract passed: ${index.profileCount} exact qB identities preserve Frozen LKG order/source facts in ${indexBytes} bytes vs ${sourceBytes} source bytes (>100x smaller Lab bootstrap).`);
