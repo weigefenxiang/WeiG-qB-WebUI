@@ -56,7 +56,13 @@ jobs:
           docker network create --internal "$net" >/dev/null
           docker run -d --name "$name" --network "$net" -e QBT_LEGAL_NOTICE=confirm "$image" --webui-port=8080 >/dev/null
           ip="$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$name")"
-          test -n "$ip"
+          if [ -z "$ip" ]; then
+            echo 'Container has no assigned internal Docker IP' >&2
+            docker inspect -f 'state={{.State.Status}} exit={{.State.ExitCode}} networks={{json .NetworkSettings.Networks}}' "$name" >&2
+            docker logs "$name" 2>&1 | sed -E 's/(temporary password is provided for this session: ).*/\\1[REDACTED]/' >&2 || true
+            exit 1
+          fi
+          echo "qB internal-network IP assigned; starting readiness checks"
           # The official container generates its temporary password asynchronously.
           # A 403/404 response does not prove the authenticated daemon is ready.
           password=''
