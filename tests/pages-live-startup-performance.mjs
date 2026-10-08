@@ -184,6 +184,29 @@ try{
     previousScriptPhase=transport;scriptOffset+=phase.scripts.length;
   }
 
+  // A67 B0: emit measured transport evidence; do not infer elapsed time from asset count.
+  // The authenticated navigation intentionally uses existing service-worker caches.
+  // This is a Virtual-qB topology sample, NOT a real-qB cold-start benchmark.
+  const roundMs=value=>Number.isFinite(value)?Math.round(value*10)/10:null;
+  const spanMs=(items,start,end)=>items.length?roundMs(Math.max(...items.map(item=>item[end]))-Math.min(...items.map(item=>item[start]))):null;
+  const waveTimings=bootstrapPlan.phases.map(phase=>{
+    const values=scriptTransport.filter(item=>phase.scripts.includes(item.path));
+    return{name:phase.name,assets:values.length,elapsedMs:spanMs(values,'appendTime','loadTime')};
+  });
+  const responseDurations=bootstrapEvidence.resources.filter(entry=>bootstrapPlan.styles.some(p=>entry.name.includes('/'+p+'?'))||bootstrapScripts.some(p=>entry.name.includes('/'+p+'?')))
+    .map(entry=>({path:new URL(entry.name).pathname.split('/').slice(-2).join('/'),responseMs:roundMs(entry.responseEnd-entry.startTime)}))
+    .sort((a,b)=>b.responseMs-a.responseMs);
+  const timingReport={
+    kind:'A67_BOOTSTRAP_TIMINGS',source:'Virtual-qB/authenticated-navigation',exactSha:expectedSha,
+    css:{assets:styleTransport.length,loadingWaves:Math.ceil(styleTransport.length/bootstrapPlan.styleConcurrency),elapsedMs:spanMs(styleTransport,'appendTime','loadTime')},
+    js:{assets:scriptTransport.length,dependencyPhases:bootstrapPlan.phases.length,elapsedMs:spanMs(scriptTransport,'appendTime','loadTime'),phases:waveTimings},
+    slowestResponses:responseDurations.slice(0,8),
+    note:'Descriptive transport timing only; not a production qB p50/p95 or JavaScript CPU benchmark'
+  };
+  assert.equal(timingReport.js.phases.reduce((n,phase)=>n+phase.assets,0),bootstrapScripts.length,'every JS asset must be represented in A67 timing evidence');
+  assert.ok(timingReport.css.elapsedMs>=0&&timingReport.js.elapsedMs>=0,'A67 transport timing evidence must be monotonic');
+  console.log(JSON.stringify(timingReport));
+
   const runtimeCopy=await page.evaluate(async()=>{const value=await window.WeiG?.I18n?.loadQbOwnedCopy?.();return value?{sourceSha:value.sourceSha,qbVersion:value.qbVersion,routeId:value.routeId,mode:value.mode}:null;});
   assert.ok(runtimeCopy&&runtimeCopy.sourceSha===catalogProfile.sourceSha&&runtimeCopy.qbVersion==='5.2.3');
   assert.equal(runtimeCopy.routeId,copyRelease.copyRouteId,'browser copy runtime must use the route already selected by the exact capabilities control plane');
