@@ -381,6 +381,28 @@ async function main(){
         request:{route:'settings',entry:'weig_language',endpoint:'/api/v2/app/setPreferences',field:'locale'},
         response:{write_status:saveResponse.status(),reread_status:authoritative.status(),persisted_locale:targetLocale,official_inventory:true}
       });
+      // A68-7: verify qB-native translated text only AFTER real Settings UI Save
+      // and authoritative app/preferences reread; preview cannot change server QBT_TR.
+      const officialLocaleEvidence=[];
+      for(const qbLocale of ['zh_HK','zh_TW']){
+        assert(available.includes(qbLocale),`qB source inventory missing ${qbLocale}`);
+        await page.waitForSelector('[data-setting-key="weig_language"] .ui-select__trigger',{timeout:20000});
+        await page.locator('[data-setting-key="weig_language"] .ui-select__trigger').click();
+        await page.locator('.ui-select__option[data-value="'+qbLocale+'"]').last().click();
+        const localeReload=page.waitForEvent('load',{timeout:20000});
+        const nativeSave=page.waitForResponse(res=>{try{const u=new URL(res.url());return u.origin===base.origin&&u.pathname==='/api/v2/app/setPreferences'&&res.request().method()==='POST';}catch{return false;}},{timeout:15000});
+        await page.locator('#save-settings-btn').click();
+        const written=await nativeSave;assert([200,204].includes(written.status()),`Real qB ${qbLocale} Save failed: ${written.status()}`);
+        const check=await context.request.get(new URL('api/v2/app/preferences',base).toString());
+        assert(check.status()===200&&String((await check.json()).locale)===qbLocale,`Real qB ${qbLocale} authoritative reread failed`);
+        await localeReload;
+        await page.waitForFunction(loc=>window.WeiG?.I18n?.getQbLocale?.()===loc&&window.WeiG?.AppState?.preferences?.locale===loc,qbLocale,{timeout:20000});
+        const actual=await page.evaluate(async()=>{const I=window.WeiG.I18n,data=await I.loadQbOwnedCopy();return{locale:I.getQbLocale(),tab:I.qbText('settings.tab.downloads',''),status:I.qbText('filter.all',''),mode:data?.mode||'',routeId:data?.routeId||''};});
+        assert(actual.mode==='native'&&actual.tab==='下載'&&actual.status.startsWith('全部'),`qB ${qbLocale} persisted native Copy failed: ${JSON.stringify(actual)}`);
+        officialLocaleEvidence.push(actual);
+      }
+      ev.push('PASS','real-qb-official-hk-tw-after-save',{response:{locales:officialLocaleEvidence,verified_ui_write:true,authoritative_reread:true,source:'qB 5.2.4 official TS/QM'}});
+
     }
 
     for(const required of ['/api/v2/app/version','/api/v2/app/webapiVersion','/api/v2/app/preferences']){
