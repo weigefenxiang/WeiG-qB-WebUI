@@ -58,7 +58,8 @@ assert.equal(manifest.profiles?.length,catalog.length,'runtime profile shard man
 assert.equal(manifest.copyRuntime,'product-source/qb-copy-routes+bindings+fallback');assert.equal(copyRoute.routeId,copyRelease.copyRouteId);assert.equal(copyRoute.schemaVersion,2);assert.ok(/^b[0-9a-f]{20}$/.test(copyRoute.bindingId));assert.ok(copyBinding.includes('@@BINDING\t'+copyRoute.bindingId));
 assert.ok(Buffer.byteLength(copyBinding,'utf8')<512*1024,'deduplicated qB binding shard must stay bounded');
 assert.equal(bootstrapPlan.schemaVersion,1,'deployed private bootstrap plan schema drifted');
-assert.equal(bootstrapPlan.styles.length,19,'deployed bootstrap plan must own all private stylesheets');
+assert.ok(bootstrapPlan.styles.length>=2&&bootstrapPlan.styles.length<=5,'deployed bootstrap plan must use bounded CSS bundles');
+assert.ok(bootstrapPlan.styles.every(name=>/^css\/startup-[0-9]+\.css$/.test(name)),'deployed CSS must come from the canonical materializer');
 const bootstrapScripts=bootstrapPlan.phases.flatMap(phase=>phase.scripts);
 assert.equal(bootstrapScripts.length,40,'deployed bootstrap plan must own exactly the 40 non-seed startup scripts');
 assert.equal(new Set(bootstrapScripts).size,40,'deployed bootstrap plan contains duplicate startup scripts');

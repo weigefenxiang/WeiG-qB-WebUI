@@ -9,6 +9,7 @@ const files=[
   './qb-torrent-native-source-contract.mjs',
   './qb-qm-first-routing-contract.mjs',
   './bootstrap-inventory-contract.mjs',
+  './css-bundle-materializer-contract.mjs',
   './bootstrap-topology-contract.mjs',
   './private-bootstrap-contract.mjs',
 ];

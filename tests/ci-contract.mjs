@@ -22,7 +22,7 @@ assert(version===pkg.version&&version===lock.version&&version===lock.packages?.[
 assert(pkg.scripts.test==='npm run test:core','npm test must delegate only to test:core');
 assert(pkg.scripts['test:core'].includes('node tests/runtime-asset-contracts.mjs'),'Core must invoke the grouped Runtime Asset owner instead of flattening milestone-era contracts.');
 const runtimeAssetGroup=read('tests/runtime-asset-contracts.mjs');
-for(const name of ["runtime-asset-plan-contract.mjs","route-module-loading-contract.mjs","runtime-asset-budget-contract.mjs","qb-weig-locale-sharding-contract.mjs","qb-copy-semantic-fingerprint-contract.mjs","qb-qm-first-routing-contract.mjs","bootstrap-inventory-contract.mjs","bootstrap-topology-contract.mjs","private-bootstrap-contract.mjs"])assert(runtimeAssetGroup.includes(name),'Runtime Asset grouped owner missing '+name);
+for(const name of ["runtime-asset-plan-contract.mjs","route-module-loading-contract.mjs","runtime-asset-budget-contract.mjs","qb-weig-locale-sharding-contract.mjs","qb-copy-semantic-fingerprint-contract.mjs","qb-qm-first-routing-contract.mjs","bootstrap-inventory-contract.mjs","css-bundle-materializer-contract.mjs","bootstrap-topology-contract.mjs","private-bootstrap-contract.mjs"])assert(runtimeAssetGroup.includes(name),'Runtime Asset grouped owner missing '+name);
 
 const core=scriptsOf(pkg.scripts['test:core']);
 const compat=scriptsOf(pkg.scripts['test:compat']);

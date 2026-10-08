@@ -5,6 +5,7 @@ import {fileURLToPath} from 'node:url';
 import {packCatalog} from '../../tools/qb-webui-catalog.mjs';
 import {applyLocaleOverlay,applyLocaleOverlaySubset} from '../../tools/qb-locale-overlay.mjs';
 import {writeSimulatorRuntimeShards} from './runtime-shards.mjs';
+import {materializeCssBundles} from '../../tools/css-bundle-materializer.mjs';
 const here=path.dirname(fileURLToPath(import.meta.url));
 const projectRoot=path.resolve(here,'../..');
 function arg(name,fallback){const prefix=`--${name}=`;const hit=process.argv.find(x=>x.startsWith(prefix));return hit?hit.slice(prefix.length):fallback;}
@@ -86,6 +87,7 @@ if(branch==='main'){
   await copyDir(translations,path.join(out,'__source/translations'));
 }
 await prepareIndex(path.join(out,'__source/private/index.html'));
+if(branch==='dev')materializeCssBundles(path.join(out,'__source/private'));
 await prepareIndex(path.join(out,'__source/public/index.html'));
 for(const dir of ['core','data','preferences','protocol','storage','versions'])await copyDir(path.join(projectRoot,'simulator',dir),path.join(out,'__simulator',dir));
 await prepareQbtEmulator();
@@ -94,7 +96,7 @@ await fs.copyFile(catalogPath,path.join(out,'__simulator/versions/catalog.source
 const simulatorCatalog=await simulatorCatalogWithLocaleFacts();
 await fs.writeFile(path.join(out,'__simulator/versions/catalog.generated.json'),JSON.stringify(simulatorCatalog,null,2)+'\n','utf8');
 const runtimeShardMeta=await writeSimulatorRuntimeShards({catalog:simulatorCatalog,out:path.join(out,'__simulator/runtime')});
-const privateIndexText=await fs.readFile(path.join(out,'__source/private/index.html'),'utf8'),prewarmAssets=await bootstrapAssets(privateRoot,privateIndexText,{allowLegacy:branch==='main'});
+const privateIndexText=await fs.readFile(path.join(out,'__source/private/index.html'),'utf8'),prewarmAssets=await bootstrapAssets(path.join(out,'__source/private'),privateIndexText,{allowLegacy:branch==='main'});
 if(branch==='dev'&&!prewarmAssets.length)throw new Error('Unable to derive private bootstrap prewarm assets from the canonical WebUI bootstrap.');
 await fs.writeFile(path.join(out,'__simulator/runtime/private-prewarm.json'),JSON.stringify({schemaVersion:1,assets:prewarmAssets})+'\n','utf8');
 await writeVersionedServiceWorker();
