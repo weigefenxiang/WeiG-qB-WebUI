@@ -750,19 +750,19 @@ jobs:
           copy_equal=false
           qm_equal=false
           route_equal=false
-          node tools/qb-runtime-copy-product.mjs compare "$GENERATED/private/data" webui/private/data >/dev/null && copy_equal=true
+          node tools/qb-runtime-copy-admission.mjs check "$GENERATED/private/data" webui/private/data "$GENERATED/private/data/qb-releases.json" webui/private/data/capabilities.json >/dev/null && copy_equal=true
           diff -qr "$GENERATED/translations" webui/translations >/dev/null && qm_equal=true
-          node tools/qb-copy-route-control-plane.mjs "$GENERATED/private/data/qb-releases.json" webui/private/data/capabilities.json >/dev/null && route_equal=true
+          node tools/qb-copy-route-control-plane.mjs "$GENERATED/private/data/qb-releases.json" webui/private/data/capabilities.json --historical=webui/private/data/capabilities.json >/dev/null && route_equal=true
           if [ "$copy_equal" = true ] && [ "$qm_equal" = true ] && [ "$route_equal" = true ]; then
-            echo "Committed qB Settings copy/QM assets exactly match current-SHA canonical generation."
+            echo "Certified Copy source identities and dependencies are intact; canonical official QM assets match."
             exit 0
           fi
 
           if [[ "$HEAD_MESSAGE" == *"[settings-evidence-verify]"* ]]; then
-            echo "Verification SHA still differs from canonical qB Settings copy/QM generation." >&2
-            node tools/qb-runtime-copy-product.mjs compare "$GENERATED/private/data" webui/private/data >&2 || true
+            echo "Verification SHA has missing Copy dependencies or differences in official QM generation." >&2
+            node tools/qb-runtime-copy-admission.mjs check "$GENERATED/private/data" webui/private/data "$GENERATED/private/data/qb-releases.json" webui/private/data/capabilities.json >&2 || true
             diff -qr "$GENERATED/translations" webui/translations >&2 || true
-            node tools/qb-copy-route-control-plane.mjs "$GENERATED/private/data/qb-releases.json" webui/private/data/capabilities.json >&2 || true
+            node tools/qb-copy-route-control-plane.mjs "$GENERATED/private/data/qb-releases.json" webui/private/data/capabilities.json --historical=webui/private/data/capabilities.json >&2 || true
             exit 1
           fi
 
@@ -780,8 +780,8 @@ jobs:
             exit 0
           fi
 
-          node tools/qb-runtime-copy-product.mjs sync "$GENERATED/private/data" webui/private/data >/dev/null
-          node tools/qb-copy-route-control-plane.mjs "$GENERATED/private/data/qb-releases.json" webui/private/data/capabilities.json --write >/dev/null
+          node tools/qb-runtime-copy-admission.mjs admit "$GENERATED/private/data" webui/private/data "$GENERATED/private/data/qb-releases.json" webui/private/data/capabilities.json >/dev/null
+          node tools/qb-copy-route-control-plane.mjs "$GENERATED/private/data/qb-releases.json" webui/private/data/capabilities.json --historical=webui/private/data/capabilities.json --write >/dev/null
           rm -rf webui/translations
           mkdir -p webui/translations
           cp "$GENERATED"/translations/webui_*.qm webui/translations/
