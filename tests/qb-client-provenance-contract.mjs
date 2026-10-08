@@ -42,6 +42,13 @@ const fetchMock=async(url,init={})=>{
 const context={window,fetch:fetchMock,URLSearchParams,FormData,Response,Blob,console};
 vm.runInNewContext(source,context,{filename:'qb-client.js'});
 const Client=window.WeiG.QBClient;
+const detected524=new Client();
+detected524.request=async path=>path==='app/version'?'v5.2.4':path==='app/webapiVersion'?'2.15.1':Promise.reject(new Error('unexpected detection path '+path));
+await detected524.detect();
+assert.equal(detected524.qbVersion,'v5.2.4','detected identity must preserve the daemon-reported qB version');
+assert.equal(detected524.webApiVersion,'2.15.1','WebAPI identity must come from app/webapiVersion instead of qB version inference');
+assert.equal(detected524.major,5,'v-prefixed qB 5.2.4 identity must normalize for structural major detection');
+
 const client=new Client();
 client.qbVersion='6.0.0';client.webApiVersion='3.0.0';client.major=6;
 
