@@ -109,6 +109,17 @@ export function renderAdmissionReport(base,candidate){
   }
   return lines.join('\n')+'\n';
 }
+export function stageFrozenCandidate(oldManifest,base,candidate){
+  const fresh=assertFrozenPrefix(base,candidate,'Staged Frozen source candidate');
+  assert(fresh.length>0,'Staging requires at least one newly verified official stable profile.');
+  const text=JSON.stringify(candidate,null,2)+'\n';
+  const bytes=Buffer.from(text,'utf8');
+  const manifest=promotedManifest(oldManifest,base,candidate,{validationCommit:null,admittedAt:null});
+  manifest.catalogSha256=crypto.createHash('sha256').update(bytes).digest('hex');
+  manifest.lastAdmission={...manifest.lastAdmission,status:'PENDING_DOMAIN_ADMISSION'};
+  return {catalogBytes:bytes,manifest,stage:{schemaVersion:1,status:'PENDING_DOMAIN_ADMISSION',candidateProfileCount:candidate.length,latestCandidateStable:candidate.at(-1).qbVersion,catalogSha256:manifest.catalogSha256,requiredBeforeProductAdmission:['independent-domain-census','locale-and-settings-and-action-and-torrent-and-detail-and-rss-and-copy-materialization','exact-sha-ci','pages','real-qb-weig-add-torrent','human-verification']}};
+}
+
 export function promotedManifest(oldManifest,base,candidate,{validationCommit=null,admittedAt=null}={}){
   const fresh=assertFrozenPrefix(base,candidate,'Promotion candidate');
   assert(fresh.length>0,'Promotion requires at least one new stable profile.');
@@ -150,6 +161,22 @@ function main(){
     const source=path.resolve(args[1]||'');assert(source&&fs.existsSync(source),command==='discover'?'Usage: node tools/qb-stable-admission.mjs discover <qB-clone> [--output=...]':'Usage: node tools/qb-stable-admission.mjs discover-tags <tag-file> [--output=...]');
     const result=discoveryResult(catalog,manifest,command==='discover'?gitTags(source):readTagsFile(source)),output=getArg('--output',args);if(output)writeJson(path.resolve(output),result);console.log(JSON.stringify(result));return;
   }
+  if(command==='stage-candidate'){
+    const sourceArg=args[1],candidateArg=getArg('--candidate',args),outArg=getArg('--out',args);
+    assert(sourceArg&&fs.existsSync(sourceArg),'stage-candidate requires an upstream qBittorrent Git clone.');
+    assert(candidateArg&&fs.existsSync(candidateArg),'stage-candidate requires --candidate=path');
+    assert(outArg,'stage-candidate requires a new empty --out=directory');
+    const source=path.resolve(sourceArg),out=path.resolve(outArg);
+    assert(!fs.existsSync(out),'stage-candidate refuses to overwrite a pre-existing output directory.');
+    const candidate=readJson(path.resolve(candidateArg));
+    const proofs=verifyCandidateSourceIdentity(catalog,candidate,gitTags(source),tag=>execFileSync('git',['-C',source,'rev-parse',tag+'^{commit}'],{encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim());
+    const stage=stageFrozenCandidate(manifest,catalog,candidate);
+    fs.mkdirSync(out);
+    fs.writeFileSync(path.join(out,'qb-release-catalog.lkg.json'),stage.catalogBytes);
+    writeJson(path.join(out,'qb-stable-lkg.json'),stage.manifest);
+    writeJson(path.join(out,'admission-stage.json'),{...stage.stage,officialSourceIdentities:proofs,sourceEvidenceLevel:'TAG_COMMIT_ONLY'});
+    console.log(JSON.stringify({...stage.stage,out,officialNew:proofs.length}));return;
+  }
   if(command==='review-upstream'){
     const source=path.resolve(args[1]||''),candidatePath=path.resolve(getArg('--candidate',args)||'');
     assert(fs.existsSync(source),'review-upstream requires an upstream qBittorrent Git clone.');
@@ -183,6 +210,6 @@ function main(){
   if(command==='promote-manifest'){
     const candidatePath=path.resolve(getArg('--candidate',args)||''),outputPath=path.resolve(getArg('--output',args)||'');assert(candidatePath&&fs.existsSync(candidatePath),'promote-manifest requires --candidate=path');assert(outputPath,'promote-manifest requires --output=path');const candidate=readJson(candidatePath),next=promotedManifest(manifest,catalog,candidate,{validationCommit:process.env.WEIG_VALIDATION_SHA||process.env.GITHUB_SHA||null,admittedAt:new Date().toISOString()});next.catalogSha256=sha256File(candidatePath);writeJson(outputPath,next);console.log(`Prepared LKG manifest for ${next.latestAdmittedStable}; ${next.profileCount} profiles; sha256 ${next.catalogSha256}.`);return;
   }
-  throw new Error('Usage: node tools/qb-stable-admission.mjs <verify|discover|discover-tags|verify-candidate-source|review-upstream|product-catalog|report|promote-manifest> ...');
+  throw new Error('Usage: node tools/qb-stable-admission.mjs <verify|discover|discover-tags|verify-candidate-source|review-upstream|stage-candidate|product-catalog|report|promote-manifest> ...');
 }
 const isMain=process.argv[1]&&pathToFileURL(path.resolve(process.argv[1])).href===import.meta.url;if(isMain){try{main();}catch(error){console.error(error?.stack||error);process.exit(1);}}
