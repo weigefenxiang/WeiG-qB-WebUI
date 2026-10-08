@@ -62,6 +62,10 @@ assert.ok(bootstrapPlan.styles.length>=2&&bootstrapPlan.styles.length<=5,'deploy
 assert.ok(bootstrapPlan.styles.every(name=>/^css\/startup-[0-9]+\.css$/.test(name)),'deployed CSS must come from the canonical materializer');
 const bootstrapScripts=bootstrapPlan.phases.flatMap(phase=>phase.scripts);
 assert.ok(bootstrapScripts.length>=14&&bootstrapScripts.length<=28,'deployed bootstrap must use bounded JS groups while preserving independent phase owners');
+const requestBudget=1+bootstrapPlan.styles.length+bootstrapScripts.length;
+assert.ok(requestBudget<=26,'A67 deployed source must not regress to an excessive number of startup CSS/JS requests');
+console.log(JSON.stringify({kind:'A67_BUNDLE_REQUEST_BUDGET',exactSha:expectedSha,baseline:{styles:19,scripts:41,total:60},deployed:{styles:bootstrapPlan.styles.length,scripts:bootstrapScripts.length+1,total:requestBudget},savedRequests:60-requestBudget}));
+
 assert.equal(new Set(bootstrapScripts).size,bootstrapScripts.length,'deployed bootstrap plan contains duplicate startup scripts');
 for(const module of ['scripts/settings.js','scripts/rss.js','scripts/logs.js'])assert.equal(bootstrapScripts.includes(module),false,'route-only module leaked into deployed bootstrap plan: '+module);
 assert.deepEqual(bootstrapPlan.phases.at(-1),{name:'application',scripts:['scripts/app.js']},'deployed App must remain the final dependency phase');
