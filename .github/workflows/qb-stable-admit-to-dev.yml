@@ -123,6 +123,8 @@ jobs:
           node audits/full-stable-product-compat.mjs tests/fixtures/qb-release-catalog.lkg.json
           node audits/full-stable-rss-source-contract.mjs "$stage/qb-releases.enriched.json"
           node audits/full-stable-locale-routing-contract.mjs "$stage/qb-releases.enriched.json" --require-mapped --recovery="$stage/qb-releases.enriched.recovery.json" --behavior="$stage/qb-translator-behavior.json"
+          # Catch bounded runtime asset regressions immediately after source materialization.
+          node tests/runtime-asset-budget-contract.mjs
           npm test
           mapfile -t modified < <({ git diff --name-only; git ls-files --others --exclude-standard; } | sort -u)
           for entry in "${modified[@]}"; do
