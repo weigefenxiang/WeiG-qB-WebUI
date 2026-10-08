@@ -21,6 +21,10 @@ assert(representativeDocker.includes('if ! resolve_full_matrix_image; then')&&!r
 assert(representativeDocker.includes('ghcr.io/qbittorrent/docker-qbittorrent-nox:${VERSION}')&&representativeDocker.includes("docker image inspect \"$ref\""),'Official DockerHub/GHCR exact tags must resolve to an audited immutable RepoDigest before execution.');
 
 const admissionWorkflow=read('.github/workflows/qb-stable-admit-to-dev.yml');
+assert(admissionWorkflow.includes('workflow_dispatch:')&&!admissionWorkflow.includes('\n  push:'),'Already-completed one-use stable source admission must be strictly manual on exact dev SHA');
+assert(admissionWorkflow.includes("github.event_name == 'workflow_dispatch'")&&admissionWorkflow.includes('TARGET_SHA: ${{ inputs.target_sha }}')&&admissionWorkflow.includes('SOURCE_RUN_ID: ${{ inputs.source_run_id }}'),'Stable admission must require explicit source evidence and source SHA; no stale default source run');
+assert(!admissionWorkflow.includes('37717659549'),'Retired initial source-admission run must not be implicitly replayed');
+
 assert(admissionWorkflow.includes('GH_TOKEN: ${{ github.token }}')&&admissionWorkflow.includes('gh api "/repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$TARGET_SHA&per_page=100"'),'Stable admission final SAFE-REF must authenticate GH CLI status checks with workflow-scoped action-read token.');
 
 const realProductWorkflow=read('.github/workflows/real-qb-weig-product-add.yml');

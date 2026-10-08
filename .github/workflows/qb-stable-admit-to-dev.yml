@@ -2,17 +2,8 @@ name: qB Stable Admission - SAFE-REF Dev Materialize
 
 # Explicit source-certified admission. Never touches main, Tag, Release or fix branches.
 on:
-  # A64 single-use automatic materialization after this workflow is safely added to dev.
-  push:
-    branches: [dev]
-    paths:
-      - .github/workflows/qb-stable-admit-to-dev.yml
-      - tests/qb-copy-sharding-repo-contract.mjs
-      - tests/qb-runtime-copy-materialization-contract.mjs
-      - tests/locale-handoff-contract.mjs
-      - tests/qb-locale-pipeline-contract.mjs
-      - tests/rss-rule-contract.mjs
-      - tests/real-qb-docker.sh
+  # A64 single-use automatic admission is complete. Future source admission
+  # requires an explicitly supplied exact dev SHA and successful source Run.
   workflow_dispatch:
     inputs:
       target_sha:
@@ -35,7 +26,7 @@ concurrency:
 jobs:
   materialize:
     name: Verify canonical sources, test actual qB, then fast-forward dev
-    if: ${{ github.ref == 'refs/heads/dev' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/dev' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 65
     steps:
@@ -49,8 +40,8 @@ jobs:
       - name: Validate exact dev parent and successful source run
         shell: bash
         env:
-          TARGET_SHA: ${{ inputs.target_sha || github.sha }}
-          SOURCE_RUN_ID: ${{ inputs.source_run_id || '37717659549' }}
+          TARGET_SHA: ${{ inputs.target_sha }}
+          SOURCE_RUN_ID: ${{ inputs.source_run_id }}
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
@@ -82,14 +73,14 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: qb-stable-canonical-source-evidence-${{ inputs.source_sha || '85e9935e02850740439e575567a1cb5c8a959892' }}
-          run-id: ${{ inputs.source_run_id || '37717659549' }}
+          run-id: ${{ inputs.source_run_id }}
           repository: ${{ github.repository }}
           github-token: ${{ github.token }}
           path: .a64-source-stage
       - uses: actions/download-artifact@v8
         with:
           name: qb-stable-preferences-complete-${{ inputs.source_sha || '85e9935e02850740439e575567a1cb5c8a959892' }}
-          run-id: ${{ inputs.source_run_id || '37717659549' }}
+          run-id: ${{ inputs.source_run_id }}
           repository: ${{ github.repository }}
           github-token: ${{ github.token }}
           path: .a64-preferences-stage
@@ -97,7 +88,7 @@ jobs:
         id: build
         shell: bash
         env:
-          WEIG_SOURCE_RUN_ID: ${{ inputs.source_run_id || '37717659549' }}
+          WEIG_SOURCE_RUN_ID: ${{ inputs.source_run_id }}
           WEIG_SOURCE_ARTIFACT: qb-stable-canonical-source-evidence-${{ inputs.source_sha || '85e9935e02850740439e575567a1cb5c8a959892' }}
         run: |
           set -euo pipefail
