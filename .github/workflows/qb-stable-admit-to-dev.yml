@@ -150,7 +150,7 @@ jobs:
           set -euo pipefail
           qb_version="$(node -p "require('./tools/data/qb-stable-lkg.json').latestAdmittedStable")"
           GITHUB_SHA="${{ steps.build.outputs.materialized_sha }}" bash tests/real-qb-docker.sh --version "$qb_version" --browser-smoke --allow-writes
-          echo "New stable qB $qb_version: real WeiG Add Torrent automatic acceptance PASSED; human verification is still pending." >> "$GITHUB_STEP_SUMMARY"
+          echo "New stable qB $qb_version: WeiG Add Torrent, official Copy, RSS, Logs and Settings Locale Save/reread product acceptance PASSED; human verification is still pending." >> "$GITHUB_STEP_SUMMARY"
       - name: Final SAFE-REF fast-forward exclusively to public dev
         shell: bash
         env:

@@ -251,6 +251,69 @@ async function main(){
       });
     }
 
+    // Full A64 product gate: actual WeiG UI against an isolated no-egress qB daemon.
+    if(process.env.WEIG_REAL_QB_REQUIRE_ADD_TORRENT==='1'){
+      const actualCopy=await page.evaluate(async()=>{
+        const W=window.WeiG,profile=W?.CapabilityRegistry?.domainResolution?.('copy');
+        const data=await W?.I18n?.loadQbOwnedCopy?.();
+        return{profile,data:data?{sourceSha:data.sourceSha,qbVersion:data.qbVersion,routeId:data.routeId,locale:data.locale,mode:data.mode}:null};
+      });
+      assert(actualCopy.profile?.resolutionMode==='EXACT'&&actualCopy.profile.sourceSha===profile.sourceSha,'Real qB copy must resolve from exact admitted source SHA.');
+      assert(actualCopy.data?.sourceSha===profile.sourceSha&&actualCopy.data.qbVersion===qb,'qB copy was not loaded from the exact official release.');
+      ev.push('PASS','real-qb-official-copy-source',{response:{source_sha:profile.sourceSha,mode:actualCopy.data.mode,route_id:actualCopy.data.routeId,locale:actualCopy.data.locale}});
+
+      const rssTask=page.waitForResponse(res=>{
+        try{const u=new URL(res.url());return u.origin===base.origin&&u.pathname==='/api/v2/rss/items';}catch{return false;}
+      },{timeout:15000});
+      await page.locator('#app-nav [data-route="rss"]').click();
+      await page.waitForFunction(()=>location.hash.includes('rss'));
+      const rssResponse=await rssTask;
+      assert(rssResponse.status()===200,'WeiG RSS did not read the real qB subscriptions successfully.');
+      await page.waitForFunction(()=>{const state=document.getElementById('rss-content')?.dataset.rssState;return state&&state!=='IDLE'&&state!=='LOADING';},null,{timeout:15000});
+      const rssState=await page.locator('#rss-content').getAttribute('data-rss-state');
+      assert(rssState==='READY'||rssState==='EMPTY','WeiG RSS workspace failed: '+rssState);
+      ev.push('PASS','real-qb-weig-rss-read',{response:{state:rssState,endpoint:'/api/v2/rss/items',status:rssResponse.status()}});
+
+      const logsTask=page.waitForResponse(res=>{
+        try{const u=new URL(res.url());return u.origin===base.origin&&u.pathname==='/api/v2/log/main';}catch{return false;}
+      },{timeout:15000});
+      await page.locator('#app-nav [data-route="logs"]').click();
+      await page.waitForFunction(()=>location.hash.includes('logs'));
+      const logsResponse=await logsTask;
+      assert(logsResponse.status()===200,'WeiG Logs did not read real qB execution logs successfully.');
+      await page.waitForSelector('#logs-content [data-weig-log-shell="1"]',{timeout:15000});
+      ev.push('PASS','real-qb-weig-logs-read',{response:{endpoint:'/api/v2/log/main',status:logsResponse.status()}});
+
+      await page.locator('#app-nav [data-route="settings"]').click();
+      await page.waitForFunction(()=>location.hash.includes('settings'));
+      await page.locator('#settings-tabs [data-settings-tab="weig"]').click();
+      await page.waitForSelector('[data-setting-key="weig_language"] .ui-select__trigger',{timeout:15000});
+      const language=page.locator('[data-setting-key="weig_language"] .ui-select__trigger');
+      assert(await language.isEnabled(),'Source-proven Settings language control must be editable on the admitted real qB.');
+      const inventory=await page.evaluate(()=>window.WeiG.I18n.settingOptions('locale')||[]);
+      const previousLocale=String(prefJson.locale||'en'),available=inventory.map(item=>String(item.value||''));
+      const chinese=available.find(value=>value.toLowerCase().replace('_','-')==='zh-cn');
+      assert(chinese,'Exact official qB locale inventory does not include Simplified Chinese.');
+      const targetLocale=chinese===previousLocale?(available.find(value=>value!==previousLocale)||''):chinese;
+      assert(targetLocale&&targetLocale!==previousLocale,'Cannot select a different source-owned qB locale.');
+      await language.click();
+      await page.locator('.ui-select__option[data-value="'+targetLocale+'"]').last().click();
+      const saveTask=page.waitForResponse(res=>{
+        try{const u=new URL(res.url());return u.origin===base.origin&&u.pathname==='/api/v2/app/setPreferences'&&res.request().method()==='POST';}catch{return false;}
+      },{timeout:15000});
+      await page.locator('#save-settings-btn').click();
+      const saveResponse=await saveTask;
+      assert([200,204].includes(saveResponse.status()),'WeiG language Save returned HTTP '+saveResponse.status());
+      const authoritative=await context.request.get(new URL('api/v2/app/preferences',base).toString());
+      assert(authoritative.status()===200,'Real qB Settings authoritative reread failed after WeiG save.');
+      const confirmed=await authoritative.json();
+      assert(String(confirmed.locale)===targetLocale,'WeiG language write did not persist in real qB.');
+      ev.push('PASS','real-qb-weig-settings-locale-save',{
+        request:{route:'settings',entry:'weig_language',endpoint:'/api/v2/app/setPreferences',field:'locale'},
+        response:{write_status:saveResponse.status(),reread_status:authoritative.status(),persisted_locale:targetLocale,official_inventory:true}
+      });
+    }
+
     for(const required of ['/api/v2/app/version','/api/v2/app/webapiVersion','/api/v2/app/preferences']){
       assert((requestFacts.get(required)||0)>=200&&(requestFacts.get(required)||0)<300,`Chrome did not complete required real qB API request ${required}.`);
     }
