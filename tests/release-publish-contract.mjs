@@ -1,12 +1,8 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-const publish=fs.readFileSync(new URL('../.github/workflows/publish.yml',import.meta.url),'utf8');
+assert.equal(fs.existsSync(new URL('../.github/workflows/publish.yml',import.meta.url)),false,'retired Publish Command must not recreate a tag-driven second promotion entry');
 const promote=fs.readFileSync(new URL('../.github/workflows/promote.yml',import.meta.url),'utf8');
 const release=fs.readFileSync(new URL('../.github/workflows/release.yml',import.meta.url),'utf8');
-assert.ok(publish.includes("- 'publish-v*'")&&publish.includes('release-preview-${sha}'),'publish command must be tag-driven and exact-preview-gated');
-assert.ok(publish.includes('publish_after:"true"')&&publish.includes('/actions/workflows/promote.yml/dispatches'),'publish command must delegate to Promotion owner');
-assert.ok(!publish.includes('compat_evidence_sha'),'publish command must not send the retired Compatibility Audit input to lean Promotion');
-assert.ok(publish.includes('Retire one-shot publish command tag'),'command tag must be temporary');
 assert.ok(promote.includes('publish_after:')&&promote.includes('Create stable release tag after certified Promotion'),'Promotion must optionally create the stable tag');
 assert.ok(promote.includes('github.rest.git.getRef')&&promote.includes('error?.status !== 404')&&promote.includes('github.rest.git.createRef'),'Promotion stable-tag lifecycle must distinguish existing, missing, and API-error states through GitHub REST');
 assert.ok(promote.includes("github.rest.actions.createWorkflowDispatch")&&promote.includes("workflow_id: 'release.yml'"),'Promotion must explicitly dispatch the canonical Release workflow');
@@ -29,4 +25,4 @@ assert.ok(release.includes("Snapshot previous Latest presentation")&&release.inc
 assert.ok(release.includes("--presentation latest")&&release.includes("--presentation archive"),'canonical Release workflow must explicitly request latest/archive presentation from one generator');
 assert.ok(release.includes("Archive previous Latest presentation")&&release.includes("Previous Latest certified assets changed during archive refresh."),'publishing a new Latest must automatically archive the previous Latest while preserving certified assets');
 assert.ok(release.includes("presentation = authoritativeLatest.data.id === release.data.id ? 'latest' : 'archive'"),'manual metadata refresh must derive presentation from authoritative GitHub Latest identity');
-console.log('Release publish contract passed: command -> Promotion -> stable tag -> canonical Release; bounded metadata refresh reuses the same owner and preserves tag/assets.');
+console.log('Release publish contract passed: explicit Promotion -> stable tag -> canonical Release; bounded metadata refresh reuses the same owner and preserves tag/assets.');

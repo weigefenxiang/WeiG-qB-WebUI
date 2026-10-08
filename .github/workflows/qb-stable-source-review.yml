@@ -3,22 +3,15 @@ name: qB Stable Source Admission Review
 # Source-only admission staging. This workflow never promotes Frozen/Product assets
 # and never writes Git refs; semantic census and real-qB product gates remain separate.
 on:
-  push:
-    branches:
-      - dev
-    paths:
-      - .github/workflows/qb-stable-source-review.yml
   workflow_dispatch:
     inputs:
       candidate_run_id:
         description: Run containing a source-only stable candidate artifact
         required: true
-        default: '37708522138'
         type: string
       candidate_artifact:
         description: Exact source-only candidate artifact name
         required: true
-        default: qb-5.2.4-source-candidate-c661820919ac5f401a9b4390dcf304b9e5372805
         type: string
 
 permissions:
@@ -57,8 +50,8 @@ jobs:
       - name: Reuse existing source-only candidate evidence
         uses: actions/download-artifact@v8
         with:
-          name: ${{ inputs.candidate_artifact || 'qb-5.2.4-source-candidate-c661820919ac5f401a9b4390dcf304b9e5372805' }}
-          run-id: ${{ inputs.candidate_run_id || '37708522138' }}
+          name: ${{ inputs.candidate_artifact }}
+          run-id: ${{ inputs.candidate_run_id }}
           repository: ${{ github.repository }}
           github-token: ${{ github.token }}
           path: source-candidate

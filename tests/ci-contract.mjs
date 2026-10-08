@@ -104,6 +104,10 @@ for(const rel of ['.github/workflows/real-qb-full.yml','.github/workflows/real-q
   assert(src.startsWith('name: Compatibility Audit'),`${rel} must be labeled Compatibility Audit`);
 }
 
+const stableReview=read('.github/workflows/qb-stable-source-review.yml');
+assert(stableReview.includes('workflow_dispatch:')&&!stableReview.includes('\n  push:'),'New stable source review must be explicit/manual only');
+assert(stableReview.includes('candidate_run_id:')&&stableReview.includes('candidate_artifact:')&&!stableReview.includes('qb-5.2.4-source-candidate-')&&!stableReview.includes('37708522138'),'Source review must require fresh exact candidate evidence instead of replaying A64 defaults');
+
 const realProductAdd=read('.github/workflows/real-qb-weig-product-add.yml');
 // The real product smoke runs on certified Frozen changes, not on merely editing the workflow or tests.
 
