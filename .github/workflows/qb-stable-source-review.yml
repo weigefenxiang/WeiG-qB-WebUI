@@ -75,9 +75,10 @@ jobs:
           test -s "$SOURCE"
           node tools/qb-stable-admission.mjs verify
           node audits/qb-stable-admission-contract.mjs
+          node audits/qb-translator-behavior-append-contract.mjs
           node tools/qb-stable-admission.mjs verify-candidate-source upstream-qb --candidate="$SOURCE" --output="$RUNNER_TEMP/source-identity.json"
           node tools/qb-stable-admission.mjs stage-candidate upstream-qb --candidate="$SOURCE" --out="$RUNNER_TEMP/admission-stage"
-          node tools/qb-translator-behavior-source.mjs upstream-qb "$RUNNER_TEMP/admission-stage/qb-release-catalog.lkg.json" "$RUNNER_TEMP/admission-stage/qb-translator-behavior.json"
+          node tools/qb-translator-behavior-append.mjs upstream-qb tests/fixtures/qb-release-catalog.lkg.json "$RUNNER_TEMP/admission-stage/qb-release-catalog.lkg.json" "$RUNNER_TEMP/admission-stage/qb-translator-behavior.json"
           node tools/qb-stable-admission.mjs review-upstream upstream-qb --candidate="$SOURCE" --output="$RUNNER_TEMP/admission-stage/upstream-inventory.json"
           node tools/qb-stable-admission.mjs report --candidate="$SOURCE" --output="$RUNNER_TEMP/admission-stage/source-diff.md"
           cp "$RUNNER_TEMP/source-identity.json" "$RUNNER_TEMP/admission-stage/source-identity.json"

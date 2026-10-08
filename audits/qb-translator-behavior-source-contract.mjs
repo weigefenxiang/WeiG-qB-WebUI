@@ -133,14 +133,18 @@ assert.throws(
 );
 
 const lkg=JSON.parse(fs.readFileSync(new URL('../tools/data/qb-translator-behavior-lkg.json',import.meta.url),'utf8'));
+const admitted=JSON.parse(fs.readFileSync(new URL('../tools/data/qb-stable-lkg.json',import.meta.url),'utf8'));
+const catalog=JSON.parse(fs.readFileSync(new URL('../tests/fixtures/qb-release-catalog.lkg.json',import.meta.url),'utf8'));
 assert.equal(lkg.schemaVersion,1);
 assert.equal(lkg.source,'qB-upstream-src/webui/webapplication.cpp');
 assert.equal(lkg.supportFloor,'4.1.0');
-assert.equal(lkg.latestAdmittedStable,'5.2.3');
-assert.equal(lkg.profileCount,65);
-assert.equal(lkg.profiles.length,65);
-assert.equal(new Set(lkg.profiles.map(item=>item.qbVersion)).size,65);
-assert.equal(new Set(lkg.profiles.map(item=>item.sourceSha)).size,65);
+assert.equal(lkg.latestAdmittedStable,admitted.latestAdmittedStable);
+assert.equal(lkg.profileCount,admitted.profileCount);
+assert.equal(lkg.profiles.length,admitted.profileCount);
+assert.equal(new Set(lkg.profiles.map(item=>item.qbVersion)).size,admitted.profileCount);
+assert.equal(new Set(lkg.profiles.map(item=>item.sourceSha)).size,admitted.profileCount);
+assert.equal(catalog.length,admitted.profileCount,'Translator LKG must have one exact source family for every admitted Frozen release');
+for(let i=0;i<catalog.length;i++)assert.equal(lkg.profiles[i].qbVersion+'@'+lkg.profiles[i].sourceSha,catalog[i].qbVersion+'@'+catalog[i].sourceSha,'Translator source profile is not the canonical Frozen release '+i);
 for(const profile of lkg.profiles){
   assert.match(profile.sourceSha,/^[0-9a-f]{40}$/);
   assert.deepEqual(
@@ -171,15 +175,18 @@ assert.equal(behavior('4.6.5').altWebuiTranslation,true);
 assert.equal(byVersion.get('5.0.0').family,'dedicated-native-explicit-fallback');
 assert.equal(byVersion.get('5.2.3').family,'dedicated-native-explicit-fallback');
 
-const familyCounts=lkg.profiles.reduce((counts,item)=>{
-  counts[item.family]=(counts[item.family]||0)+1;
-  return counts;
-},{});
-assert.deepEqual(familyCounts,{
+const historical=lkg.profiles.filter(item=>{
+  const row=item.qbVersion.split('.').map(Number),anchor=[5,2,3];
+  for(let i=0;i<Math.max(row.length,anchor.length);i++){if((row[i]||0)!==(anchor[i]||0))return (row[i]||0)<(anchor[i]||0);}
+  return true;
+});
+const historicalFamilies=historical.reduce((counts,item)=>{counts[item.family]=(counts[item.family]||0)+1;return counts;},{});
+assert.deepEqual(historicalFamilies,{
   'qapp-native':4,
   'dedicated-native-no-explicit-fallback':1,
   'dedicated-native-explicit-fallback':49,
   'dedicated-alt-disabled':11
-});
+},'The originally certified 65-release translator behavior prefix must never be silently reclassified');
+for(const row of lkg.profiles.slice(historical.length))assert.ok(lkg.families[row.family],'Every later admitted source must reference a reviewed translator family');
 
-console.log('qB translator behavior source contract passed: 65 admitted stable releases are source-SHA-bound to four source-derived translator families with the 4.5.0-4.6.4 Alternative WebUI gap locked.');
+console.log(`qB translator behavior source contract passed: ${lkg.profileCount} exact admitted releases; the historical 65-source prefix remains certified and future source families are manifest-bound.`);

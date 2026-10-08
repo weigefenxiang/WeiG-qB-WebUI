@@ -12,18 +12,25 @@ for(const profile of catalog){
   assert.ok(Object.prototype.hasOwnProperty.call(profile||{},'torrentContextMenu'),version+': exact source profile lost torrentContextMenu fact');
   assert.ok(Array.isArray(profile.torrentContextMenu)&&profile.torrentContextMenu.length>0,version+': Torrent context menu source inventory is empty');
   const ids=new Set();
-  for(const item of profile.torrentContextMenu){
-    const id=String(item?.id||'');
-    assert.ok(id,version+': Torrent context-menu item is missing an id');
-    assert.ok(!ids.has(id),version+': duplicate Torrent context-menu id '+id);
-    ids.add(id);
-    if(item?.sourceAction||item?.endpoint){
-      assert.ok(item.sourceAction&&item.endpoint,version+': partially proven Torrent action '+id+' must not expose only one of sourceAction/endpoint');
-      provenActions++;
+  let profileProven=false;
+  const visit=(items,parent='')=>{
+    assert.ok(Array.isArray(items),version+': nested Torrent menu inventory is not an array at '+parent);
+    for(const item of items){
+      const id=String(item?.id||''),address=parent?parent+'/'+id:id;
+      assert.ok(id,version+': Torrent context-menu item is missing an id under '+parent);
+      assert.ok(!ids.has(id),version+': duplicate Torrent context-menu id '+address);
+      ids.add(id);
+      if(item?.sourceAction||item?.endpoint){
+        assert.ok(item.sourceAction&&item.endpoint,version+': partially proven Torrent action '+address+' must not expose only one of sourceAction/endpoint');
+        provenActions++;
+        profileProven=true;
+      }
+      if(Object.prototype.hasOwnProperty.call(item,'children'))visit(item.children,address);
     }
-  }
-  if(profile.torrentContextMenu.some(item=>item?.sourceAction&&item?.endpoint))provenProfiles++;
+  };
+  visit(profile.torrentContextMenu);
+  if(profileProven)provenProfiles++;
 }
 assert.ok(provenProfiles>0,'no stable profile exposes a source-proven Torrent action endpoint');
 assert.ok(provenActions>0,'exact source catalog contains no source-proven Torrent action');
-console.log('Full stable Torrent menu source contract passed: '+catalog.length+' profiles, '+provenProfiles+' with proven endpoints, '+provenActions+' proven action facts.');
+console.log('Full stable recursive Torrent menu source contract passed: '+catalog.length+' profiles, '+provenProfiles+' with proven endpoints, '+provenActions+' proven action facts.');
