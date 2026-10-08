@@ -14,7 +14,7 @@ const build=spawnSync(process.execPath,[path.join(root,'simulator/build/build-pa
 if(build.status!==0)throw new Error(`A62 route browser fixture build failed:\n${build.stdout}\n${build.stderr}`);
 
 const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.ico':'image/x-icon','.txt':'text/plain; charset=utf-8'};
-const host='127.0.0.1',counts=new Map();
+const host='127.0.0.1',counts=new Map();let stallSettingsOnce=false;
 const server=http.createServer((req,res)=>{try{
   const url=new URL(req.url,`http://${host}`),pathname=decodeURIComponent(url.pathname);counts.set(pathname,(counts.get(pathname)||0)+1);
   if(!pathname.startsWith('/app/')){res.writeHead(404);res.end('not found');return;}
@@ -22,7 +22,8 @@ const server=http.createServer((req,res)=>{try{
   if(!(file===appRoot||file.startsWith(appRoot+path.sep))){res.writeHead(403);res.end('forbidden');return;}
   if(!fs.existsSync(file)||!fs.statSync(file).isFile()){res.writeHead(404);res.end('not found');return;}
   res.writeHead(200,{'content-type':mime[path.extname(file).toLowerCase()]||'application/octet-stream','cache-control':'no-cache'});
-  res.end(fs.readFileSync(file));
+  const body=fs.readFileSync(file);
+  if(relative==='__source/private/scripts/settings.js'&&stallSettingsOnce){stallSettingsOnce=false;setTimeout(()=>res.end(body),500);}else res.end(body);
 }catch(error){res.writeHead(500,{'content-type':'text/plain'});res.end(String(error));}});
 await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(0,host,resolve);});
 const port=server.address().port,base=`http://${host}:${port}/app/`,timeoutMs=30000;
@@ -51,6 +52,14 @@ try{
   const weigLocales=initial.filter(url=>url.includes('/data/weig-i18n/'));assert.equal(weigLocales.length,1);assert.ok(weigLocales[0].includes('/zh-CN.json'),'startup must fetch only current WeiG locale overlay');
   assert.equal(initial.some(url=>/\/translations\/webui_.+\.qm(?:\?|$)/i.test(url)),false,'browser must not download/parse qB QM assets');
 
+  stallSettingsOnce=true;
+  await page.locator('#app-nav [data-route="settings"]').click();
+  await page.evaluate(()=>window.WeiG.Router.home());
+  await page.waitForFunction(()=>document.getElementById('list-view')?.classList.contains('is-active'));
+  await page.waitForTimeout(650);
+  assert.equal(await page.evaluate(()=>location.hash),'#/','stale Settings load must not move the browser back from Home');
+  assert.equal(await page.evaluate(()=>document.getElementById('settings-view')?.classList.contains('is-active')),false,'stale Settings must never become visible after Home navigation');
+  assert.equal(await page.evaluate(()=>document.getElementById('fatal')?.classList.contains('is-hidden')),true,'stale route loading must not open Fatal');
   await page.locator('#app-nav [data-route="settings"]').click();
   await page.waitForSelector('#settings-content[data-settings-renderer="canonical"]',{timeout:timeoutMs});
   let urls=await cacheUrls();assert.equal(urls.filter(url=>new URL(url).pathname===sourcePath('settings')).length,1);assert.equal(counts.get(sourcePath('settings')),1);for(const name of ['rss','logs'])assert.equal(counts.get(sourcePath(name))||0,0);
