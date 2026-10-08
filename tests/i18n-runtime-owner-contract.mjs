@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import vm from 'node:vm';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -24,10 +25,66 @@ const settings=read('webui/private/scripts/settings.js');assert.ok(settings.incl
 const transfer=read('webui/private/scripts/transfer.js');assert.ok(transfer.includes('transfer.rate.global')&&transfer.includes('transfer.rate.alternative')&&transfer.includes('W.I18n.qbText'));
 const session=read('webui/private/scripts/session.js');assert.ok(session.includes('W.I18n.matchBrowserLocale')&&session.includes('W.I18n.sameQbLocale')&&session.includes('W.I18n.hasExactLocale'));assert.ok(session.includes('await client.setPreferences({locale:target})')&&session.includes('var verified=await client.getPreferences()'));assert.ok(session.includes("W.SettingsSchema.isWritable('locale',value,prefs||{},state||prefs||{})"),'locale writes must re-check current app/preferences against the source-native gate');
 assert.ok(i18n.includes("return'zh-HK'"),'Hong Kong Traditional Chinese must remain a distinct runtime locale.');assert.ok(i18n.includes('supported:SUPPORTED_LOCALES.slice()')&&i18n.includes('loadWeiGLocale:loadWeiGLocale'),'W.I18n must expose the canonical supported inventory and current-locale loader without a second locale owner');assert.equal(i18n.includes('settings.weigg'),false,'new UI i18n namespace must stay settings.weig.*');for(const file of ['webui/private/scripts/app.js','webui/private/scripts/capabilities.js','webui/private/scripts/feedback.js','webui/private/scripts/logs.js','webui/private/scripts/session.js','webui/private/scripts/qb-client.js']){const source=read(file);assert.equal(source.includes("getLocale()==='zh-CN'"),false,`${file} must not branch runtime copy on zh-CN`);}assert.equal(read('webui/private/scripts/capabilities.js').includes('f.copy'),false,'CapabilityRegistry must not consume feature-local bilingual copy');
-console.log('I18n runtime owner contract passed: app/preferences.locale remains the single language truth; W.I18n loads one current WeiG locale shard plus one semantic qB route/binding and at most one content-addressed gzip official fallback pack.');
 await import('./qb-copy-sharding-repo-contract.mjs');
 
 
 assert.equal(read('webui/private/scripts/qb-client.js').includes('localeText('),false,'QBClient must use W.I18n keys instead of an en/zh error-text owner');
 assert.equal(read('webui/private/scripts/rss.js').includes('function text(en,cn)'),false,'RSS runtime must use W.I18n keys instead of an en/zh presentation owner');
 assert.equal(read('webui/private/scripts/rss.js').includes('function zh()'),false,'RSS runtime must not branch copy on zh-CN');
+
+/* A66 native copy async transition: one locale owner, old request must never repaint newer locale. */
+{
+  const events=[],pending=[],doc={documentElement:{lang:'en'},querySelectorAll:()=>[]};
+  const routeId='r'+'a'.repeat(20),bindingId='b'+'b'.repeat(20);
+  const tabRef='c'.repeat(24),filterRef='d'.repeat(24);
+  const src=read('webui/private/scripts/i18n.js');
+  const route={schemaVersion:2,source:'qB-copy-semantic-runtime-route',routeId,bindingId,nativeLocales:['zh_CN','en'],fallback:{}};
+  const localeBinding=loc=>[
+    '@@BINDING\t'+bindingId,
+    '@@REF\t'+tabRef+'\tPreferencesDialog\tBehavior',
+    loc==='en'?'Behavior':'行为',
+    '@@END',
+    '@@REF\t'+filterRef+'\tStatusFiltersWidget\tAll%20(%251)',
+    loc==='en'?'All (%1)':'全部 (%1)',
+    '@@END',
+    '@@UI\tsettings.tab.behavior\t'+tabRef,
+    '@@UI\tfilter.all\t'+filterRef
+  ].join('\n')+'\n';
+  const runtime={document:doc,Intl,console,dispatchEvent:event=>events.push(event),CustomEvent:class{constructor(type,options){this.type=type;this.detail=options?.detail||{};}},setTimeout:()=>{},location:{reload:()=>{throw new Error('preview must not reload');}}};
+  runtime.WeiG={
+    CapabilityRegistry:{domainResolution:domain=>domain==='copy'?{qbVersion:'5.2.4',sourceSha:'a'.repeat(40),copyRouteId:routeId,fallback:false}:null},
+    RuntimeAssets:{
+      readGzipJson:async()=>route,
+      readText:(path,opts)=>new Promise(resolve=>pending.push({identity:opts.identity,resolve})),
+      readJson:async(path,opts)=>({schemaVersion:1,source:'WeiG-runtime-locale-overlay',locale:opts.identity,messages:{}})
+    }
+  };
+  runtime.window=runtime;
+  vm.runInNewContext(src,runtime,{filename:'webui/private/scripts/i18n.js'});
+  const I=runtime.WeiG.I18n;
+  const flush=async()=>{for(let n=0;n<16;n++)await Promise.resolve();};
+  I.applyLocale('zh_CN',{reload:false});
+  await flush();
+  assert.equal(pending.length,1,'A66: W.I18n must begin loading official Chinese qB copy without depending on any feature listener');
+  assert.ok(pending[0].identity.endsWith('@zh_CN'),'A66: requested Chinese runtime shard must use its own identity');
+  I.applyLocale('en',{reload:false});
+  await flush();
+  assert.equal(pending.length,2,'A66: switching to English must start an independent current-locale qB copy task');
+  assert.ok(pending[1].identity.endsWith('@en'),'A66: English official shard must use exact current locale identity');
+  pending[1].resolve(localeBinding('en'));
+  await flush();
+  assert.equal(I.getQbLocale(),'en');
+  assert.equal(I.qbText('settings.tab.behavior',''), 'Behavior','A66: native Settings tab must converge to English');
+  assert.equal(I.qbText('filter.all',''), 'All (%1)','A66: native Status filter must converge to English');
+  assert.equal(events.filter(event=>event.type==='weig:qbcopychange').length,1,'A66: current qB copy completion should notify consumers exactly once');
+  pending[0].resolve(localeBinding('zh_CN'));
+  await flush();
+  assert.equal(I.qbText('settings.tab.behavior',''),'Behavior','A66: stale Chinese result must not overwrite Settings English');
+  assert.equal(I.qbText('filter.all',''),'All (%1)','A66: stale Chinese result must not overwrite Status English');
+  assert.equal(events.filter(event=>event.type==='weig:qbcopychange').length,1,'A66: stale completion must not emit a second copy-ready notification');
+}
+const a66Settings=read('webui/private/scripts/settings.js'),a66Filter=read('webui/private/scripts/torrent-filter-view.js');
+assert.ok(i18n.includes('if(changed){resetQbCopy();loadQbOwnedCopy();}'),'A66: W.I18n owns native copy hydration on every locale transition');
+assert.ok(a66Settings.includes("global.addEventListener('weig:qbcopychange',refreshCopyPresentation)")&&a66Settings.includes("global.addEventListener('weig:languagechange',refreshCopyPresentation)"),'A66: Settings native tabs must consume both immediate locale and delayed official copy projections');
+assert.ok(a66Filter.includes("global.addEventListener('weig:languagechange',render)")&&a66Filter.includes("global.addEventListener('weig:qbcopychange',render)"),'A66: Status filter consumes locale presentation and copy-ready events, never owns the only native copy loader');
+console.log('A66 native copy locale lifecycle PASS: English wins concurrent stale Chinese load, Settings and Status share qB copy-ready owner.');
