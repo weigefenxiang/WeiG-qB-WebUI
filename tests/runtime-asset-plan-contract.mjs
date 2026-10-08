@@ -32,16 +32,18 @@ function harness({failOnce=new Set(),failAlways=new Set(),delays={},fetchBodies=
 
 const plan={schemaVersion:1,styleConcurrency:2,maxAttempts:2,retryDelays:[0],styles:['a.css','b.css','c.css'],phases:[
   {name:'foundation',scripts:['a.js','b.js']},
-  {name:'feature',scripts:['c.js']},
+  {name:'feature',scripts:['c.js'],requiresStyles:true},
   {name:'app',scripts:['app.js']}
 ]};
 {
-  const h=harness({failOnce:new Set(['b.js']),delays:{'a.js':8,'b.js':1}});
+  const h=harness({failOnce:new Set(['b.js']),delays:{'a.css':12,'a.js':8,'b.js':1}});
   const result=await h.RuntimeAssets.executePlan(plan);
   assert.equal(result.styles,3);assert.deepEqual(Array.from(result.phases,x=>String(x.name)),['foundation','feature','app']);
   assert.equal(h.attempts.get('b.js'),2,'transient script failure must retry inside RuntimeAssets');
   const append=x=>h.events.findIndex(e=>e[0]==='append'&&e[2]===x),load=x=>h.events.findIndex(e=>e[0]==='load'&&e[2]===x);
   assert.ok(append('a.js')>=0&&append('b.js')>=0&&append('a.js')<load('a.js')&&append('b.js')<load('a.js'),'independent scripts in one dependency phase must start before the slow sibling completes');
+  assert.ok(append('a.js')<load('a.css'),'foundation scripts must overlap independent stylesheet transport');
+  assert.ok(append('c.js')>load('a.css')&&append('c.js')>load('b.css')&&append('c.js')>load('c.css'),'style-gated phase must wait for every required stylesheet');
   assert.ok(append('c.js')>load('a.js')&&append('c.js')>load('b.js'),'next dependency phase must not start before all prior scripts succeed');
   assert.ok(append('app.js')>load('c.js'),'app phase must remain behind its prerequisite phase');
 }

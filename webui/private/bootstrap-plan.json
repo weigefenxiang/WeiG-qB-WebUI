@@ -85,7 +85,8 @@
         "scripts/session.js",
         "scripts/update-check.js",
         "scripts/navigation.js"
-      ]
+      ],
+      "requiresStyles": true
     },
     {
       "name": "field-ui",

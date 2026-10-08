@@ -15,9 +15,11 @@ assert.deepEqual(plan.phases.at(-1),{name:'application',scripts:['scripts/app.js
 
 const legacy={seedBarriers:0,manifestBarriers:0,styleConcurrency:2,styles:18,scriptBarriers:41};
 legacy.rttUnits=legacy.seedBarriers+legacy.manifestBarriers+Math.ceil(legacy.styles/legacy.styleConcurrency)+legacy.scriptBarriers;
-const current={seedBarriers:1,manifestBarriers:1,styleConcurrency:plan.styleConcurrency,styles:plan.styles.length,scriptBarriers:plan.phases.length};
-current.rttUnits=current.seedBarriers+current.manifestBarriers+Math.ceil(current.styles/current.styleConcurrency)+current.scriptBarriers;
+const styleGateIndex=plan.phases.findIndex(phase=>phase.requiresStyles===true);
+assert.equal(styleGateIndex,6,'A67 CSS style gate must guard the first geometry-sensitive shared UI phase');
+const current={seedBarriers:1,manifestBarriers:1,styleConcurrency:plan.styleConcurrency,styles:plan.styles.length,scriptBarriers:plan.phases.length,styleGateIndex};
+current.rttUnits=current.seedBarriers+current.manifestBarriers+Math.max(Math.ceil(current.styles/current.styleConcurrency),styleGateIndex)+current.scriptBarriers-styleGateIndex;
 assert.ok(current.rttUnits<=Math.floor(legacy.rttUnits*0.5),`controlled-RTT topology regressed: ${current.rttUnits} exposed RTT units > 50% of legacy ${legacy.rttUnits}`);
 const controlledRttMs=80,legacyExposureMs=legacy.rttUnits*controlledRttMs,currentExposureMs=current.rttUnits*controlledRttMs;
-assert.equal(legacy.rttUnits,50);assert.equal(current.rttUnits,21,'topology budget must count the RuntimeAssets seed and bootstrap-plan manifest barriers');
+assert.equal(legacy.rttUnits,50);assert.equal(current.rttUnits,16,'A67 overlapped topology must count the CSS gate once, not serially after independent phases');
 console.log(JSON.stringify({kind:'A63_BOOTSTRAP_TOPOLOGY',controlledRttMs,legacy:{...legacy,exposureMs:legacyExposureMs},current:{...current,exposureMs:currentExposureMs},reductionPct:Number(((legacyExposureMs-currentExposureMs)*100/legacyExposureMs).toFixed(1)),phaseWidths:widths},null,2));

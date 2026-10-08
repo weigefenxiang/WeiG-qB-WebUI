@@ -207,6 +207,13 @@ try{
   assert.ok(timingReport.css.elapsedMs>=0&&timingReport.js.elapsedMs>=0,'A67 transport timing evidence must be monotonic');
   console.log(JSON.stringify(timingReport));
 
+  const styleGateIndex=bootstrapPlan.phases.findIndex(phase=>phase.requiresStyles===true);
+  assert.equal(styleGateIndex,6,'the shared UI phase must remain the sole CSS dependency gate');
+  const gatedPhase=bootstrapPlan.phases[styleGateIndex];
+  const gatedScripts=scriptTransport.filter(item=>gatedPhase.scripts.includes(item.path));
+  assert.ok(gatedScripts.length>0&&Math.min(...gatedScripts.map(item=>item.appendTime))>=Math.max(...styleTransport.map(item=>item.loadTime)),
+    'shared UI must not begin until every stylesheet has completed');
+
   const runtimeCopy=await page.evaluate(async()=>{const value=await window.WeiG?.I18n?.loadQbOwnedCopy?.();return value?{sourceSha:value.sourceSha,qbVersion:value.qbVersion,routeId:value.routeId,mode:value.mode}:null;});
   assert.ok(runtimeCopy&&runtimeCopy.sourceSha===catalogProfile.sourceSha&&runtimeCopy.qbVersion==='5.2.3');
   assert.equal(runtimeCopy.routeId,copyRelease.copyRouteId,'browser copy runtime must use the route already selected by the exact capabilities control plane');
