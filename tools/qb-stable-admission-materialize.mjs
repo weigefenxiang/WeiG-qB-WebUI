@@ -8,7 +8,7 @@ import {fileURLToPath} from 'node:url';
 import {assertFrozenPrefix,verifyLkg,promotedManifest} from './qb-stable-admission.mjs';
 import {catalogIdentity,assertCatalogIdentity} from './qb-catalog-identity.mjs';
 import {packSettingsRuntime,compileCompactRuntime} from './qb-compact-runtime.mjs';
-import {syncRuntimeCopyTree} from './qb-runtime-copy-product.mjs';
+import {appendRuntimeCopyRelease} from './qb-runtime-copy-product.mjs';
 import {rebindCopyRoutes} from './qb-copy-route-control-plane.mjs';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
@@ -84,9 +84,11 @@ function materialize(stage,prefCompactPath,generatedDataDir,generatedQmDir,stage
   const rss=read(path.join(stagedCompactDir,'rss.json'));
   ensure(rss.releaseSet?.count===candidate.length&&rss.releaseSet.last===candidate.at(-1).qbVersion,'Staged RSS release boundary mismatch.');
   write(path.join(dataDir,'rss-compat.json'),rss);
-  const copy=syncRuntimeCopyTree(generatedDataDir,dataDir);
   const index=path.join(generatedDataDir,'qb-releases.json');
   ensure(fs.existsSync(index),'Source-packaged Copy index must exist.');
+  const newestExact=read(index).at(-1);
+  ensure(newestExact?.qbVersion===candidate.at(-1).qbVersion&&newestExact?.sourceSha===candidate.at(-1).sourceSha,'New Copy source identity differs from the official newest Frozen release.');
+  const copy=appendRuntimeCopyRelease(generatedDataDir,dataDir,newestExact.copyRouteId);
   const boundCopy=rebindCopyRoutes(read(index),read(path.join(dataDir,'capabilities.json')),{write:true,capabilityPath:path.join(dataDir,'capabilities.json'),historicalReleases:historicalCopyReleases});
   ensure(boundCopy.releaseCount===candidate.length,'Materialized Copy control plane does not cover every stable release.');
   // The source catalog is offline provenance only; runtime uses compact
@@ -98,7 +100,7 @@ function materialize(stage,prefCompactPath,generatedDataDir,generatedQmDir,stage
   fs.mkdirSync(qmDestination,{recursive:true});
   for(const name of qms)fs.copyFileSync(path.join(generatedQmDir,name),path.join(qmDestination,name));
   return {source:'exact-official-stable-source-materializer',admitted:candidate.at(-1).qbVersion,profileCount:candidate.length,
-    frozenSha256:admitted.catalogSha256,catalogIdentity:identity,settingsPayload:settings.payload.sha256,qmCount:qms.length,copyCounts:copy.target.counts,copyRoutes:boundCopy.routeCount,
+    frozenSha256:admitted.catalogSha256,catalogIdentity:identity,settingsPayload:settings.payload.sha256,qmCount:qms.length,copyCounts:copy.target.counts,copyRoutes:boundCopy.routeCount,copyFilesAdded:copy.appendedFiles,historicalSourceDrift:boundCopy.historicalSourceDrift,
     status:'MATERIALIZED_PENDING_EXACT_SHA_REAL_QB_AND_CI'};
 }
 

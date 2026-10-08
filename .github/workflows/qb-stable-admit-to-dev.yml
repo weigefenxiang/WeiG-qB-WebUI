@@ -113,7 +113,8 @@ jobs:
           node audits/qb-stable-admission-materialize-contract.mjs
           node tools/qb-stable-admission-materialize.mjs "$stage" "$pref_compact" "$data_dir" "$qm_dir" "$compact"
           node tools/qb-runtime-copy-product.mjs validate webui/private/data
-          node tools/qb-copy-route-control-plane.mjs "$generated_index" webui/private/data/capabilities.json
+          git show HEAD:webui/private/data/capabilities.json > "$RUNNER_TEMP/a64-previous-copy-capabilities.json"
+          node tools/qb-copy-route-control-plane.mjs "$generated_index" webui/private/data/capabilities.json --historical="$RUNNER_TEMP/a64-previous-copy-capabilities.json"
           node audits/full-stable-torrent-menu-source-contract.mjs tests/fixtures/qb-release-catalog.lkg.json
           node audits/full-stable-core-write-compat.mjs tests/fixtures/qb-release-catalog.lkg.json
           node audits/full-stable-detail-compat.mjs tests/fixtures/qb-release-catalog.lkg.json
