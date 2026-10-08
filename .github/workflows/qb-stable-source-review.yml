@@ -82,6 +82,32 @@ jobs:
           cp "$RUNNER_TEMP/source-identity.json" "$RUNNER_TEMP/admission-stage/source-identity.json"
           echo "### Official source identity: verified" >> "$GITHUB_STEP_SUMMARY"
           echo "Frozen/Locale/Settings/Action/Torrent/Detail/RSS/Copy and real-qB WeiG product admission: **PENDING**" >> "$GITHUB_STEP_SUMMARY"
+      - name: Enrich only newly discovered official release source facts
+        shell: bash
+        run: |
+          set -euo pipefail
+          STAGE="$RUNNER_TEMP/admission-stage"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          const stage=path.join(process.env.RUNNER_TEMP,'admission-stage');
+          const catalog=JSON.parse(fs.readFileSync(path.join(stage,'qb-release-catalog.lkg.json'),'utf8'));
+          if(!Array.isArray(catalog)||!catalog.length)throw new Error('Candidate stage has no exact official release profile.');
+          fs.writeFileSync(path.join(stage,'latest-source-only.json'),JSON.stringify([catalog.at(-1)],null,2)+'\n');
+          NODE
+          node tools/qb-locale-source.mjs upstream-qb "$STAGE/latest-source-only.json" "$STAGE/latest-enriched.json"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import {assertEnrichedCatalogBinding} from './tools/qb-stable-admission.mjs';
+          const stage=path.join(process.env.RUNNER_TEMP,'admission-stage');
+          const source=JSON.parse(fs.readFileSync(path.join(stage,'latest-source-only.json'),'utf8'));
+          const enriched=JSON.parse(fs.readFileSync(path.join(stage,'latest-enriched.json'),'utf8'));
+          const verified=assertEnrichedCatalogBinding(source,enriched);
+          fs.writeFileSync(path.join(stage,'latest-enriched-verification.json'),JSON.stringify(verified,null,2)+'\n');
+          console.log(JSON.stringify(verified));
+          NODE
+          echo "Latest stable official Locale/Settings/qB-owned Copy source enrichment: **SOURCE VERIFIED; NOT YET ADMITTED**" >> "$GITHUB_STEP_SUMMARY"
       - name: Preserve source-only staging evidence
         uses: actions/upload-artifact@v7
         with:
