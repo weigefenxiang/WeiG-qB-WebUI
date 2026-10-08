@@ -11,6 +11,7 @@ on:
       - tests/qb-runtime-copy-materialization-contract.mjs
       - tests/locale-handoff-contract.mjs
       - tests/qb-locale-pipeline-contract.mjs
+      - tests/rss-rule-contract.mjs
   workflow_dispatch:
     inputs:
       target_sha:

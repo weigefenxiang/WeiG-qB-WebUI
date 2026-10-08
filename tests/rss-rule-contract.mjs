@@ -14,10 +14,10 @@ const capabilities=JSON.parse(fs.readFileSync(path.join(root,'webui/private/data
 assert.equal(capabilities.compatFiles.rss,'data/rss-compat.json','RSS compatibility domain must be registered in the compact control plane.');
 assert.equal(compat.schemaVersion,1);
 assert.equal(compat.source,'qb-upstream-rss-downloader');
-assert.deepEqual({count:compat.releaseSet.count,first:compat.releaseSet.first,last:compat.releaseSet.last},{count:65,first:'4.1.0',last:'5.2.3'});
+assert.deepEqual({count:compat.releaseSet.count,first:compat.releaseSet.first,last:compat.releaseSet.last},{count:capabilities.releases.length,first:capabilities.releases[0]?.qbVersion,last:capabilities.releases.at(-1)?.qbVersion},'RSS release set must follow exactly the admitted canonical capability inventory');
 assert.match(compat.releaseSet.identitySha256,/^[0-9a-f]{64}$/);
 const changes=compat.sourceFacts.rssDownloaderUi;
-assert.deepEqual(changes.map(x=>x.from),['4.1.0','4.1.1','4.3.0','4.3.2','4.6.0','5.0.0'],'RSS runtime contract must contain only exact source-derived native RSS surface change points, including the qB 4.1.1 GUI control-order change.');
+assert.deepEqual(changes.slice(0,6).map(x=>x.from),['4.1.0','4.1.1','4.3.0','4.3.2','4.6.0','5.0.0'],'RSS must retain the six historical native source change points; later source-certified changes may append');
 const at=v=>changes.find(x=>x.from===v).value;
 assert.equal(at('4.1.0').available,true,'qB 4.1/4.2 GUI + RSS WebAPI source dialect must project the existing RSS Downloader rule surface.');
 assert.deepEqual(at('4.1.0').collection,{listControlId:'listRules',addControlId:'addRuleBtn',removeControlId:'removeRuleBtn'});
