@@ -126,6 +126,7 @@ jobs:
           # Catch bounded runtime asset regressions immediately after source materialization.
           node tests/qb-copy-semantic-fingerprint-contract.mjs
           node tests/runtime-asset-budget-contract.mjs
+          node tests/capability-contract.mjs
           npm test
           mapfile -t modified < <({ git diff --name-only; git ls-files --others --exclude-standard; } | sort -u)
           for entry in "${modified[@]}"; do
