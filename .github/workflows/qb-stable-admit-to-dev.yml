@@ -105,7 +105,7 @@ jobs:
           compact_proof="$(unique_path '*/source-compact-staged/source-only-proof.json' .a64-source-stage)"
           generated_index="$(unique_path '*/isolated-source-product/private/data/qb-releases.json' .a64-source-stage)"
           generated_qm="$(unique_path '*/isolated-source-product/translations/webui_zh_HK.qm' .a64-source-stage)"
-          pref_compact="$(unique_path '*/preferences-full/settings-compact.json' .a64-preferences-stage)"
+          pref_compact="$(unique_path '*/settings-compact.json' .a64-preferences-stage)"
           stage="$(dirname "$stage_manifest")"
           compact="$(dirname "$compact_proof")"
           data_dir="$(dirname "$generated_index")"
