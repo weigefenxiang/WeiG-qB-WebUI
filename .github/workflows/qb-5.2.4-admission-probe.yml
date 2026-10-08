@@ -59,12 +59,12 @@ jobs:
           test -n "$ip"
           ready=0
           for i in $(seq 1 120); do
-            if curl -fsS --max-time 2 "http://$ip:8080/api/v2/app/version" >/dev/null 2>&1; then ready=1; break; fi
+            if curl -fsS --max-time 2 -H 'Host: localhost' "http://$ip:8080/api/v2/app/version" >/dev/null 2>&1; then ready=1; break; fi
             sleep 1
           done
           if [ "$ready" != 1 ]; then docker logs "$name"; exit 1; fi
-          qb="$(curl -fsS --max-time 5 "http://$ip:8080/api/v2/app/version" | tr -d '\r\n')"
-          api="$(curl -fsS --max-time 5 "http://$ip:8080/api/v2/app/webapiVersion" | tr -d '\r\n')"
+          qb="$(curl -fsS --max-time 5 -H 'Host: localhost' "http://$ip:8080/api/v2/app/version" | tr -d '\r\n')"
+          api="$(curl -fsS --max-time 5 -H 'Host: localhost' "http://$ip:8080/api/v2/app/webapiVersion" | tr -d '\r\n')"
           case "$qb" in 5.2.4|v5.2.4) ;; *) echo "unexpected qB identity: $qb" >&2; exit 1;; esac
           test "$api" = "2.15.1"
           printf 'QB_5_2_4_REAL_WEBAPI_PASS qb=%s webapi=%s image=%s\n' "$qb" "$api" "$image"
