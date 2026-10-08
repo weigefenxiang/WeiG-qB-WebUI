@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {launchBrowser} from './browser-driver.mjs';
-import {recoverPageSession} from './pages-live-session.mjs';
+import {recoverPageSession,waitForPageSessionEntry,pageSessionDiagnostics,PAGE_SESSION_ATTEMPTS} from './pages-live-session.mjs';
 
 const rawBase=(process.env.WEIG_PAGES_URL||process.argv[2]||'').trim();
 const expectedSha=(process.env.WEIG_EXPECTED_SIMULATOR_SHA||process.argv[3]||'').trim();
@@ -53,9 +53,23 @@ async function openSession(page,{qb='5.2.3',clean=false,label='modern'}={}){
   const sim=`pages-live-auth-${label}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   const url=new URL('dev/app/',base);
   url.search=new URLSearchParams({sim,qb,count:'24',scenario:'mixed',seed:`pages-live-auth-${label}`,clean:clean?'1':'0'}).toString();
-  await page.goto(url.toString(),{waitUntil:'domcontentloaded',timeout:60000});
-  await page.waitForSelector('#login-form',{state:'visible',timeout:60000});
-  return sim;
+  let last=null;
+  for(let attempt=1;attempt<=PAGE_SESSION_ATTEMPTS;attempt++){
+    try{
+      const target=new URL(url);
+      target.searchParams.set('__weig_auth_entry_attempt',String(attempt));
+      await page.goto(target.toString(),{waitUntil:'domcontentloaded',timeout:60000});
+      const entry=await waitForPageSessionEntry(page,{timeoutMs:sessionTimeoutMs});
+      if(entry!=='login')throw new Error('Expected unauthenticated login entry, observed '+entry);
+      await page.waitForSelector('#login-form',{state:'visible',timeout:sessionTimeoutMs});
+      if(attempt>1)console.log('Recovered Virtual qB login entry after '+attempt+' attempts');
+      return sim;
+    }catch(error){
+      last={attempt,error:error?.message||String(error),state:await pageSessionDiagnostics(page)};
+      if(attempt<PAGE_SESSION_ATTEMPTS)await sleep(500*attempt);
+    }
+  }
+  throw new Error('Virtual qB unauthenticated login entry failed after '+PAGE_SESSION_ATTEMPTS+' attempts: '+JSON.stringify(last));
 }
 
 async function recoverPrivate(page,qbVersion,{label='Pages auth private session',onLogin}={}){
