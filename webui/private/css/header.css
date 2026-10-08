@@ -1,3 +1,4 @@
+@charset "UTF-8";
 /* Canonical one-line desktop header geometry and adaptive Search presentation. */
 .topbar__rail{display:contents}
 .topbar{flex-wrap:nowrap!important;min-width:0;overflow:visible}.topbar__start{flex:0 0 auto;min-width:0!important}.app-nav{flex:0 0 auto;white-space:nowrap}.topbar__search{flex:0 1 320px!important;width:320px;min-width:180px!important;max-width:320px!important;justify-content:stretch!important}.topbar__search .search-box{width:100%;min-width:0;max-width:320px}.topbar__actions{display:flex;flex:0 0 auto;align-items:center;gap:8px;margin-left:auto;white-space:nowrap;min-width:max-content}.topbar__actions>*{flex-shrink:0}

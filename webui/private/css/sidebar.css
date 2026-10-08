@@ -1,3 +1,4 @@
+@charset "UTF-8";
 /* Desktop Torrent sidebar presentation. Filter/facet/transfer semantics remain owned by their canonical runtimes. */
 @media(min-width:821px){
   :root{--sidebar-w:clamp(290px,20vw,320px)}

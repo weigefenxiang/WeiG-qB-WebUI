@@ -1,3 +1,4 @@
+@charset "UTF-8";
 .torrent-action-editor{--dialog-width:560px;--dialog-max-width:560px}
 .torrent-action-editor__body{overflow:visible}
 .torrent-action-editor__field{display:block;margin:2px 0 0}

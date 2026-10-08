@@ -1,3 +1,4 @@
+@charset "UTF-8";
 /* Canonical responsive shell and interaction theme. Settings rules live in settings.css. */
 :root{--mobile-nav-gap:4px;--mobile-nav-font:clamp(12px,3.2vw,13px);--mobile-nav-icon:15px;--mobile-shell-gap:5px;--scrollbar-track:rgba(8,16,30,.42);--scrollbar-thumb:rgba(132,157,202,.36);--scrollbar-thumb-hover:rgba(151,178,226,.52);--scrollbar-thumb-active:rgba(114,151,255,.68)}
 html[data-theme="light"]{--scrollbar-track:rgba(225,232,243,.78);--scrollbar-thumb:rgba(96,117,148,.34);--scrollbar-thumb-hover:rgba(76,101,139,.48);--scrollbar-thumb-active:rgba(70,105,190,.62)}

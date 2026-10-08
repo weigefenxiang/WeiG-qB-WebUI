@@ -1,3 +1,4 @@
+@charset "UTF-8";
 /* Canonical torrent presentation palette. Dot, progress, percentage and Detail consume the same semantic tone. */
 :root{--torrent-tone-download:var(--accent-cyan);--torrent-tone-seed:var(--success);--torrent-tone-stalled-down:var(--warning);--torrent-tone-stalled-up:#79d9ad;--torrent-tone-stopped-incomplete:color-mix(in srgb,var(--accent-cyan) 42%,var(--text-muted) 58%);--torrent-tone-stopped-complete:#a88cff;--torrent-tone-queued:var(--accent-primary);--torrent-tone-checking:#ffe09b;--torrent-tone-danger:var(--danger);--torrent-tone-muted:var(--text-muted)}
 .progress-cell{display:grid;grid-template-columns:minmax(50px,1fr) 48px;gap:8px;align-items:center;align-self:stretch;width:100%;min-width:0}

@@ -1,3 +1,4 @@
+@charset "UTF-8";
 :root{--feedback-gap:8px;--feedback-width:392px}
 .feedback-stack{position:fixed;right:18px;bottom:70px;z-index:700;display:flex;flex-direction:column;gap:var(--feedback-gap);width:min(var(--feedback-width),calc(100vw - 36px));pointer-events:none;transition:transform var(--motion-normal) var(--ease)}
 .feedback-toast{--feedback-accent:var(--accent-primary);--feedback-accent-soft:color-mix(in srgb,var(--feedback-accent) 13%,transparent);position:relative;pointer-events:auto;transition:transform var(--motion-normal) var(--ease)}
