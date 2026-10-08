@@ -154,6 +154,11 @@ jobs:
           printf '%s\n' "$candidate_sha" > artifacts/a64-product/materialized-sha.txt
           printf 'materialized_sha=%s\n' "$candidate_sha" >> "$GITHUB_OUTPUT"
           echo "Materialized exact SHA $candidate_sha: all static/canonical tests passed" >> "$GITHUB_STEP_SUMMARY"
+      - name: Install repository-locked browser dependencies for exact real-qB smoke
+        run: |
+          npm ci --no-audit --no-fund --prefer-offline
+          node -e "console.log('Playwright ' + require('playwright/package.json').version)"
+          command -v google-chrome
       - name: Real isolated qB WeiG UI Add Torrent acceptance BEFORE publication
         shell: bash
         env:

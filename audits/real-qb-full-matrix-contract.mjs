@@ -17,6 +17,11 @@ assert(representativeDocker.includes('CERTIFIED_LATEST=')&&representativeDocker.
 assert(representativeDocker.includes('if ! resolve_full_matrix_image; then')&&!representativeDocker.includes('Unsupported Phase G representative version'),'Real Add Torrent must inherit the exact-version immutable image resolver for newly admitted Frozen stable releases, never a static Phase G allowlist.');
 assert(representativeDocker.includes('ghcr.io/qbittorrent/docker-qbittorrent-nox:${VERSION}')&&representativeDocker.includes("docker image inspect \"$ref\""),'Official DockerHub/GHCR exact tags must resolve to an audited immutable RepoDigest before execution.');
 
+const admissionWorkflow=read('.github/workflows/qb-stable-admit-to-dev.yml');
+const realProductWorkflow=read('.github/workflows/real-qb-weig-product-add.yml');
+for(const [name,body] of [['stable-admission',admissionWorkflow],['real-product',realProductWorkflow]]){
+  assert(body.includes('npm ci --no-audit --no-fund --prefer-offline')&&body.includes("require('playwright/package.json')")&&body.indexOf('npm ci --no-audit --no-fund --prefer-offline')<body.indexOf('bash tests/real-qb-docker.sh'),'Real-qB '+name+' must install locked Playwright dependencies before headless browser smoke.');
+}
 assert(productBrowser.includes('ephemeral real-qB Docker; outbound network denied')&&representativeDocker.includes('WEIG_REAL_QB_REQUIRE_ADD_TORRENT:-0')&&representativeDocker.includes('! ALLOW_WRITES'),'Synthetic magnet write gate must require a disposable, network-isolated qB and explicit runner write authorization');
 assert(productBrowser.includes("WEIG_REAL_QB_REQUIRE_ADD_TORRENT==='1'")&&productBrowser.includes("'#add-btn'")&&productBrowser.includes("'#torrent-urls'")&&productBrowser.includes("'/api/v2/torrents/add'")&&productBrowser.includes("real_qb_torrent_visible:true"),'Real-qB WeiG Add Torrent smoke must be opt-in, use WeiG UI and require daemon confirmation.');
 assert(workflow.startsWith('name: Compatibility Audit · Full Frozen\n'),'G-FM workflow name must identify the Full Frozen Matrix owner.');

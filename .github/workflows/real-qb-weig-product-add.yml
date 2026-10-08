@@ -41,6 +41,10 @@ jobs:
           command -v docker
           command -v google-chrome
           node audits/real-qb-full-matrix-contract.mjs
+      - name: Install repository-locked browser dependencies
+        run: |
+          npm ci --no-audit --no-fund --prefer-offline
+          node -e "console.log('Playwright ' + require('playwright/package.json').version)"
       - name: Real WeiG dialog -> HTTP POST -> persisted torrent
         shell: bash
         env:
