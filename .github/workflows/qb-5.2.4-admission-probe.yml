@@ -66,13 +66,14 @@ jobs:
           # The official container generates its temporary password asynchronously.
           # A 403/404 response does not prove the authenticated daemon is ready.
           password=''
+          code=''
           for i in $(seq 1 120); do
             if [ "$(docker inspect -f '{{.State.Running}}' "$name")" != true ]; then
               echo 'qB container exited during initialization' >&2
               docker logs "$name" 2>&1 | sed -E 's/(temporary password is provided for this session: ).*/\\1[REDACTED]/' >&2
               exit 1
             fi
-            password="$(docker logs "$name" 2>&1 | sed -n 's/.*temporary password is provided for this session: //p' | tail -n 1 | tr -d '\r')"
+            password="$({ docker logs "$name" 2>&1 || true; } | sed -n 's/.*temporary password is provided for this session: //p' | tail -n 1 | tr -d '\r')"
             if [ -n "$password" ]; then
               code="$(curl -sS --max-time 2 -o /dev/null -w '%{http_code}' -H 'Host: localhost' "http://$ip:8080/api/v2/app/version" 2>/dev/null || true)"
               if [ "$code" != 000 ] && [ -n "$code" ]; then break; fi
@@ -87,7 +88,7 @@ jobs:
           headers="$(mktemp)"
           body="$(mktemp)"
           code="$(curl -sS --max-time 5 -D "$headers" -o "$body" -w '%{http_code}' -H 'Host: localhost' -X POST --data-urlencode 'username=admin' --data-urlencode "password=$password" "http://$ip:8080/api/v2/auth/login")"
-          test "$code" = 200
+          if [ "$code" != 200 ]; then echo "qB login HTTP $code" >&2; exit 1; fi
           sid="$(awk 'BEGIN{IGNORECASE=1} /^Set-Cookie:/ {gsub("\\r",""); if (match($0,/SID=[^; ]+/)) {print substr($0,RSTART,RLENGTH); exit}}' "$headers")"
           test -n "$sid"
           qb="$(curl -fsS --max-time 5 -H 'Host: localhost' -H "Cookie: $sid" "http://$ip:8080/api/v2/app/version" | tr -d '\r\n')"
