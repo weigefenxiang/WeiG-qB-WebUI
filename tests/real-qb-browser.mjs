@@ -399,6 +399,18 @@ async function main(){
         await page.waitForFunction(loc=>window.WeiG?.I18n?.getQbLocale?.()===loc&&window.WeiG?.AppState?.preferences?.locale===loc,qbLocale,{timeout:20000});
         const actual=await page.evaluate(async()=>{const I=window.WeiG.I18n,data=await I.loadQbOwnedCopy();return{locale:I.getQbLocale(),tab:I.qbText('settings.tab.downloads',''),status:I.qbText('filter.all',''),mode:data?.mode||'',routeId:data?.routeId||''};});
         assert(['native','fallback'].includes(actual.mode)&&actual.tab==='下載'&&actual.status.startsWith('全部'),`qB ${qbLocale} persisted source-owned Copy failed: ${JSON.stringify(actual)}`);
+        // Real sidebar projection, not merely resolved translation keys.
+        await page.waitForSelector('#settings-qb-tabs [data-settings-tab="downloads"]',{timeout:15000});
+        const projected=await page.evaluate(()=>{
+          const settings=Object.fromEntries([...document.querySelectorAll('#settings-qb-tabs [data-settings-tab]')].map(node=>[node.dataset.settingsTab,String(node.textContent||'').trim()]));
+          const statuses=Object.fromEntries([...document.querySelectorAll('#filter-nav [data-filter]')].map(node=>[node.dataset.filter,String(node.textContent||'').trim()]));
+          return{settings,statuses};
+        });
+        const expectedCategories=qbLocale==='zh_HK'?{downloads:'下載',connection:'連接',speed:'速度',advanced:'進階'}:{downloads:'下載',connection:'連線',speed:'速率',advanced:'進階'};
+        for(const [tab,expected] of Object.entries(expectedCategories))assert(projected.settings[tab]===expected,`Real qB ${qbLocale} Settings left rail ${tab} mismatch: ${JSON.stringify(projected)}`);
+        assert(String(projected.statuses.all||'').startsWith('全部'),`Real qB ${qbLocale} Torrent Status left rail All remained untranslated: ${JSON.stringify(projected)}`);
+        assert(String(projected.statuses.downloading||'').startsWith('下載中'),`Real qB ${qbLocale} Torrent Status left rail Downloading remained untranslated: ${JSON.stringify(projected)}`);
+        actual.sidebar=projected;
         officialLocaleEvidence.push(actual);
       }
       ev.push('PASS','real-qb-official-hk-tw-after-save',{response:{locales:officialLocaleEvidence,verified_ui_write:true,authoritative_reread:true,source:'qB 5.2.4 official TS/QM'}});
