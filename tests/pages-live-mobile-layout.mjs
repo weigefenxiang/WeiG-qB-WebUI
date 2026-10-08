@@ -365,6 +365,13 @@ try{
   assert.ok(drawer.legendBefore.every(value=>value&&value!=='none'&&value!=='normal'),`mini-chart cumulative totals must expose the circular series pseudo marker: ${JSON.stringify(drawer.legendBefore)}`);
   assert.ok(drawer.metaDisplay==='none'||(drawer.meta.width===0&&drawer.meta.height===0),`mobile Drawer must hide qBittorrent/WebAPI/version metadata: ${JSON.stringify(drawer)}`);
   assert.ok(drawer.telemetry.top>=drawer.sidebar.top&&drawer.telemetry.bottom<=drawer.sidebar.bottom+1&&drawer.sidebar.bottom-drawer.telemetry.bottom<=12,`Drawer telemetry/chart must use the released bottom space: ${JSON.stringify(drawer)}`);
+  const nativeTag=await page.evaluate(()=>{
+    const R=window.WeiG?.CapabilityRegistry;
+    return{qb:String(window.WeiG?.AppState?.client?.qbVersion||''),release:String(R?.domainResolution?.('torrent')?.resolvedFrom||''),ref:R?.facetSpecialRows?.('tag')?.untagged||null};
+  });
+  assert.equal(nativeTag.qb,'5.2.3','Mobile Untagged regression must cover native qB 5.2.3, not newer fallback');
+  assert.equal(nativeTag.release,'5.2.3','Mobile Untagged must resolve exact official source release');
+  assert.deepEqual(nativeTag.ref,{source:'Untagged',context:'TagFilterModel'},'Mobile Untagged exact source provenance is incomplete');
   const tagFacet=page.locator('.facet-control[data-facet="tag"] .ui-select');
   await tagFacet.locator('.ui-select__trigger').click();
   await page.waitForSelector('#weig-floating-layer .ui-select__option[data-value="__weig_untagged__"]',{state:'visible',timeout:30000});

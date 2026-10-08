@@ -6,6 +6,7 @@ const files=[
   './runtime-asset-budget-contract.mjs',
   './qb-weig-locale-sharding-contract.mjs',
   './qb-copy-semantic-fingerprint-contract.mjs',
+  './qb-torrent-native-source-contract.mjs',
   './qb-qm-first-routing-contract.mjs',
   './bootstrap-inventory-contract.mjs',
   './bootstrap-topology-contract.mjs',

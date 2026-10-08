@@ -294,6 +294,13 @@ try{
     await page.waitForSelector('#transfer-stats-dialog[open]');
     const deployedRealtime=await page.evaluate(()=>{const dialog=document.getElementById('transfer-stats-dialog'),button=dialog?.querySelector('[data-open-native-statistics]'),actions=dialog?.querySelector('.transfer-dialog-head-actions'),close=actions?.querySelector('.icon-btn');return{actual:String(dialog?.querySelector('.dialog__head h2')?.textContent||'').trim(),expected:String(WeiG.I18n.t('transfer.realtimeTitle')||'').trim(),native:!!dialog?.querySelector('[data-native-statistics]'),statisticsButton:!!button,buttonBeforeClose:!!(button&&close&&(button.compareDocumentPosition(close)&Node.DOCUMENT_POSITION_FOLLOWING))};});
     assert.ok(deployedRealtime.expected&&deployedRealtime.actual===deployedRealtime.expected&&!deployedRealtime.native&&deployedRealtime.statisticsButton&&deployedRealtime.buttonBeforeClose,`deployed dev Realtime Transfer Dialog ownership drifted: ${JSON.stringify(deployedRealtime)}`);
+    const officialStatistics=await page.evaluate(()=>{
+      const R=window.WeiG?.CapabilityRegistry,source=R?.domainResolution?.('torrent'),value=R?.statisticsUi?.();
+      return{runtime:String(window.WeiG?.AppState?.client?.qbVersion||''),sourceVersion:String(source?.resolvedFrom||''),title:value?.title||null,groups:value?.groups?.length||0,fields:value?.groups?.reduce((sum,g)=>sum+(g.fields||[]).length,0)||0};
+    });
+    assert.equal(officialStatistics.runtime,'5.2.3','Core Statistics must continue to cover actual qB 5.2.3');
+    assert.equal(officialStatistics.sourceVersion,'5.2.3','Statistics must come from its exact upstream release');
+    assert.ok(officialStatistics.title?.source&&officialStatistics.title.context==='MainWindow'&&officialStatistics.groups===3&&officialStatistics.fields===12,'Source-owned qB 5.2.3 Statistics missing: '+JSON.stringify(officialStatistics));
     await page.locator('#transfer-stats-dialog [data-open-native-statistics]').click();
     await page.waitForSelector('#qbt-native-statistics-dialog[open]');
     const deployedStatistics=await page.evaluate(()=>{const ref={source:'Statistics',context:'MainWindow'},dialog=document.getElementById('qbt-native-statistics-dialog');return{actual:String(dialog?.querySelector('.dialog__head h2')?.textContent||'').trim(),expected:String(WeiG.I18n.qbSourceText(ref,ref.source)||'').trim(),native:!!dialog?.querySelector('[data-native-statistics]')};});
