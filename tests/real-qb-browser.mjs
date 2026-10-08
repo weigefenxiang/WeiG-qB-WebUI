@@ -326,7 +326,7 @@ async function main(){
           return{locale:I.getQbLocale(),tab:I.qbText('settings.tab.downloads',''),status:I.qbText('filter.all',''),source:data?.source||null,mode:data?.mode||null,routeId:data?.routeId||null};
         },targetLocale);
         assert(actual.locale===targetLocale&&actual.source&&/^r[0-9a-f]{20}$/.test(actual.routeId||''),`Real qB ${targetLocale} official Copy not ready: ${JSON.stringify(actual)}`);
-        assert.equal(actual.tab,'下載',`Official qB ${targetLocale} Downloads tab translation missing: ${JSON.stringify(actual)}`);
+        assert(actual.tab==='下載',`Official qB ${targetLocale} Downloads tab translation missing: ${JSON.stringify(actual)}`);
         assert.ok(actual.status.startsWith('全部')&&!actual.status.includes('All'),`Official qB ${targetLocale} Status All translation missing: ${JSON.stringify(actual)}`);
         verifiedLocales.push(actual);
       }
