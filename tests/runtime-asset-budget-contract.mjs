@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {gunzipSync} from 'node:zlib';
+import {spawnSync} from 'node:child_process';
 import {runtimeCopySnapshot} from '../tools/qb-runtime-copy-product.mjs';
 import {buildWebuiDist} from '../tools/build-webui-dist.mjs';
 import {pagesVerifyLanes} from '../tools/pages-verify-plan.mjs';
@@ -31,6 +32,25 @@ const version=fs.readFileSync(path.join(root,'VERSION'),'utf8').trim(),out=fs.mk
 try{
   const result=buildWebuiDist({webuiRoot:path.join(root,'webui'),outDir:out,sha:'f'.repeat(40),version});
   const manifest=JSON.parse(fs.readFileSync(path.join(out,'manifest.json'),'utf8'));
+  const tar=rel=>{
+    const result=spawnSync('tar',['-xOzf',path.join(out,'weig-qb-webui.tar.gz'),'weig-qb-webui/'+rel],{encoding:'utf8'});
+    assert.equal(result.status,0,'Materialized tar must contain '+rel+': '+result.stderr);
+    return result.stdout;
+  };
+  const builtPlan=JSON.parse(tar('private/bootstrap-plan.json'));
+  assert.ok(builtPlan.styles.length>=2&&builtPlan.styles.length<=5,'Installed artifact must use CSS bundles, not 19 source files');
+  assert.ok(builtPlan.styles.every(name=>/^css\/startup-[0-9]+\.css$/.test(name)),'Installed stylesheet paths must be materialized');
+  const groupedScripts=builtPlan.phases.flatMap(phase=>phase.scripts);
+  assert.ok(groupedScripts.length>=14&&groupedScripts.length<=28,'Installed runtime must preserve bounded dependency-grouped JavaScript');
+  assert.deepEqual(builtPlan.phases.map(x=>x.name),plan.phases.map(x=>x.name),'bundling must not alter logical phase ownership');
+  for(const name of builtPlan.styles){
+    const body=tar('private/'+name);
+    assert.ok(body.startsWith('@charset "UTF-8";\n')&&(body.match(/@charset/g)||[]).length===1,'Bundled UTF-8 stylesheet must retain one first-byte charset');
+  }
+  const packageEntries=spawnSync('tar',['-tzf',path.join(out,'weig-qb-webui.tar.gz')],{encoding:'utf8'});
+  assert.equal(packageEntries.status,0);
+  for(const old of plan.styles)assert.equal(packageEntries.stdout.split('\n').includes('weig-qb-webui/private/'+old),false,'Source CSS must be retired from materialized ZIP/TAR runtime: '+old);
+
   assert.equal(manifest.weigLocaleFiles,10);assert.equal(manifest.weigLocaleBytes,localeBytes);assert.equal(manifest.sizeReport.weigLocaleFiles,10);assert.equal(manifest.sizeReport.weigLocaleBytes,localeBytes);
   assert.equal(manifest.sizeReport.redundantBytes,0);assert.ok(manifest.sizeReport.zipBytes>0&&manifest.sizeReport.tarGzBytes>0);
   assert.equal(manifest.ownedCopyLayout,'private/data/qb-copy-{routes,bindings,fallback}');assert.equal(manifest.ownedCopyCompression,'gzip-routes+fallback');const sourceCopyGroups=[['qb-copy-routes',/\.json\.gz$/],['qb-copy-bindings',/\.txt$/],['qb-copy-fallback',/\.json\.gz$/]];
