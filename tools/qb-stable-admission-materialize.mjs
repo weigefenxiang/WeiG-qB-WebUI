@@ -85,7 +85,8 @@ function materialize(stage,prefCompactPath,generatedDataDir,generatedQmDir,stage
   const copy=syncRuntimeCopyTree(generatedDataDir,dataDir);
   const index=path.join(generatedDataDir,'qb-releases.json');
   ensure(fs.existsSync(index),'Source-packaged Copy index must exist.');
-  fs.copyFileSync(index,path.join(dataDir,'qb-releases.json'));
+  // The source catalog is offline provenance only; runtime uses compact
+  // Frozen-derived contracts and content-addressed qB Copy shards.
   ensure(fs.existsSync(generatedQmDir),'Source-owned qB QM directory is missing.');
   const qms=fs.readdirSync(generatedQmDir).filter(name=>/^webui_[^/]+\.qm$/.test(name));
   ensure(qms.length>0,'No source-derived native QM translations were materialized.');
