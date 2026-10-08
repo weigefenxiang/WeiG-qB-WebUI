@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {catalogIdentity,assertCatalogIdentity} from '../tools/qb-catalog-identity.mjs';
 import {accountSourceInventory,assertCompleteSourceCensus} from '../tools/qb-source-census.mjs';
-import {assertFrozenPrefix,stableAdmissionDelta,admissionProductCatalog,verifyLkg,renderAdmissionReport,promotedManifest} from '../tools/qb-stable-admission.mjs';
+import {assertFrozenPrefix,stableAdmissionDelta,admissionProductCatalog,verifyLkg,renderAdmissionReport,semanticFieldReview,promotedManifest} from '../tools/qb-stable-admission.mjs';
 
 const base=[
   {qbVersion:'4.1.0',tag:'release-4.1.0',stable:true,officialWeiGSupport:true},
@@ -37,6 +37,16 @@ const duplicate=accountSourceInventory({inventory:['behavior','behavior'],mapped
 const dir=fs.mkdtempSync(path.join(os.tmpdir(),'weigg-lkg-')),file=path.join(dir,'catalog.json');fs.writeFileSync(file,JSON.stringify(base));const hash=crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 verifyLkg({catalog:base,manifest:{schemaVersion:1,supportFloor:'4.1.0',latestAdmittedStable:'5.2.3',profileCount:2,catalogSha256:hash},catalogPath:file});
 const report=renderAdmissionReport(base,candidate);for(const token of ['qB 6.0.0','added actions','removed actions','new_pref'])assert.ok(report.includes(token),`upstream admission report missing ${token}`);
+const previousUi={torrentContextMenu:[{id:'queue'}],statisticsUi:null};
+const currentUi={torrentContextMenu:[{id:'queue',children:[{id:'queueTop'}]}],statisticsUi:{title:'Statistics',groups:[]}};
+const reviewUi=semanticFieldReview(previousUi,currentUi);
+assert.ok(reviewUi.some(item=>item.field==='torrentContextMenu'&&item.sample.some(path=>path.includes('children[0].id'))),'Admission semantic review must surface a menu item moved into a nested source menu');
+assert.ok(reviewUi.some(item=>item.field==='statisticsUi'&&item.count>0),'Admission semantic review must surface added source-native statistics');
+assert.deepEqual(semanticFieldReview(currentUi,structuredClone(currentUi)),[],'Unchanged UI facts must not generate false-positive semantic review');
+const admissionWithUi=renderAdmissionReport(base,[...structuredClone(base),{...future,...currentUi}]);
+assert.ok(admissionWithUi.includes('Source UI/domain review')&&admissionWithUi.includes('torrentContextMenu')&&admissionWithUi.includes('statisticsUi'),'Admission report must expose source-UI changes absent from API-only delta');
+assert.ok(admissionWithUi.includes('independent upstream census still required'),'Candidate semantic diff must not claim independent upstream completeness');
+
 const old={schemaVersion:1,supportFloor:'4.1.0',latestAdmittedStable:'5.2.3',profileCount:2,catalogSha256:'old'},next=promotedManifest(old,base,candidate,{validationCommit:'sha',admittedAt:'date'});assert.equal(next.latestAdmittedStable,'6.0.0');assert.equal(next.profileCount,3);assert.equal(old.latestAdmittedStable,'5.2.3','manifest promotion must not mutate prior LKG state in memory');
 fs.rmSync(dir,{recursive:true,force:true});
 console.log('Stable admission contract passed: old profiles are immutable, only future official stable tags append, common catalog identity detects mixed source sets, census accounting requires mapped or explicitly reviewed inventory with no duplicates, and LKG promotion is prepared only from a validated candidate.');

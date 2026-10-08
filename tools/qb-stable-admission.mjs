@@ -46,11 +46,30 @@ export function verifyLkg({catalog,manifest,catalogPath}){
   if(catalogPath)assert(sha256File(catalogPath)===manifest.catalogSha256,`LKG catalog SHA-256 mismatch for ${catalogPath}.`);
   return true;
 }
+const leafMap=function leafMap(value,path="",out=new Map()){
+  if(Array.isArray(value)&&value.length){value.forEach((entry,i)=>leafMap(entry,`${path}[${i}]`,out));return out;}
+  if(value&&typeof value==="object"&&Object.keys(value).length){for(const key of Object.keys(value).sort())leafMap(value[key],path?`${path}.${key}`:key,out);return out;}
+  out.set(path||"(root)",JSON.stringify(value??null));
+  return out;
+};
+export const semanticFieldReview=function semanticFieldReview(previous,current){
+  const names=["torrentVisibleFilters","facetSpecialRows","torrentContextMenu","torrentDetailUi","statisticsUi","torrentTableColumns","trackerFilters","trackerFacetMode"];
+  const result=[];
+  for(const name of names){
+    const lhs=leafMap(previous?.[name]),rhs=leafMap(current?.[name]),paths=[...new Set([...lhs.keys(),...rhs.keys()])].sort();
+    const changed=paths.filter(path=>lhs.get(path)!==rhs.get(path));
+    if(changed.length)result.push({field:name,count:changed.length,previousPresent:Object.prototype.hasOwnProperty.call(previous||{},name),currentPresent:Object.prototype.hasOwnProperty.call(current||{},name),sample:changed.slice(0,16)});
+  }
+  return result;
+};
+
 export function renderAdmissionReport(base,candidate){
   const fresh=assertFrozenPrefix(base,candidate,'Admission candidate');
   if(!fresh.length)return '# qB Stable Admission\n\nNo new official stable tags were discovered. Frozen LKG remains unchanged.\n';
   const lines=['# qB Stable Admission','',`Frozen LKG: qB ${base.at(-1).qbVersion} (${base.length} profiles)`,`Candidate: qB ${candidate.at(-1).qbVersion} (${candidate.length} profiles)`,`New stable profiles: ${fresh.map(x=>x.qbVersion).join(', ')}`,''];
-  for(const profile of fresh){
+  for(const [index,profile] of fresh.entries()){
+    const previous=candidate[base.length+index-1];
+    const review=semanticFieldReview(previous,profile);
     lines.push(`## qB ${profile.qbVersion} / WebAPI ${profile.webApiVersion}`,'',`- tag: \`${profile.tag}\``,`- source SHA: \`${profile.sourceSha}\``);
     const action=profile.apiActionChanges||{added:[],removed:[]},params=profile.apiActionParameterChanges?.changed||[],prefs=profile.preferenceChanges||{added:[],removed:[]};
     lines.push(`- API actions: +${action.added?.length||0} / -${action.removed?.length||0}; parameter changes: ${params.length}`);
@@ -61,6 +80,14 @@ export function renderAdmissionReport(base,candidate){
     if(prefs.removed?.length)lines.push(`  - removed Preferences: ${prefs.removed.map(x=>`\`${x}\``).join(', ')}`);
     for(const field of SURFACES){const change=profile.surfaceChanges?.[field]||{added:[],removed:[]};if(change.added?.length||change.removed?.length){lines.push(`- ${field}: +${change.added?.length||0} / -${change.removed?.length||0}`);if(change.added?.length)lines.push(`  - added: ${change.added.map(x=>`\`${x}\``).join(', ')}`);if(change.removed?.length)lines.push(`  - removed: ${change.removed.map(x=>`\`${x}\``).join(', ')}`);}}
     if(params.length){lines.push('- action parameter changes:');for(const item of params)lines.push(`  - \`${item.action}\`: ${JSON.stringify(item.from)} -> ${JSON.stringify(item.to)}`);}
+    if(review.length){
+      lines.push('- Source UI/domain review (candidate extraction; independent upstream census still required):');
+      for(const change of review){
+        lines.push(`  - \`${change.field}\`: ${change.count} changed leaf paths; presence ${change.previousPresent?'present':'absent'} -> ${change.currentPresent?'present':'absent'}`);
+        for(const key of change.sample)lines.push(`    - \`${key}\``);
+        if(change.count>change.sample.length)lines.push(`    - ... and ${change.count-change.sample.length} additional changed leaf paths`);
+      }
+    }
     lines.push('');
   }
   return lines.join('\n')+'\n';
