@@ -12,9 +12,9 @@ function harness({failOnce=new Set(),failAlways=new Set(),delays={},fetchBodies=
   const meta={getAttribute(){return 'a'.repeat(40);}};
   const document={
     querySelector(selector){return selector==='meta[name="weig-build-sha"]'?meta:null;},
-    createElement(tag){return{tagName:String(tag).toUpperCase(),dataset:{},remove(){events.push(['remove',this.dataset.weigRuntimeModule||this.dataset.weigRuntimeStyle||'']);}};},
+    createElement(tag){return{tagName:String(tag).toUpperCase(),dataset:{},relList:{supports:rel=>rel==='prefetch'},remove(){events.push(['remove',this.dataset.weigRuntimeModule||this.dataset.weigRuntimeStyle||'']);}};},
     head:{appendChild(node){
-      const name=node.dataset.weigRuntimeModule||node.dataset.weigRuntimeStyle||'',kind=node.tagName==='SCRIPT'?'script':'style';
+      const name=node.dataset.weigRuntimeModule||node.dataset.weigRuntimeStyle||node.dataset.weigRuntimePrefetch||'',kind=node.dataset.weigRuntimePrefetch?'prefetch':node.tagName==='SCRIPT'?'script':'style';
       attempts.set(name,(attempts.get(name)||0)+1);events.push(['append',kind,name]);
       const attempt=attempts.get(name),delay=Number(delays[name]||0);
       setTimeout(()=>{
@@ -71,5 +71,13 @@ const plan={schemaVersion:1,styleConcurrency:2,maxAttempts:2,retryDelays:[0],sty
   const first=new URL(h.fetchUrls[0]),second=new URL(h.fetchUrls[1]);
   assert.equal(first.searchParams.get('v'),'a'.repeat(40));assert.equal(first.searchParams.has('__weig_retry'),false);
   assert.equal(second.searchParams.get('v'),'a'.repeat(40));assert.equal(second.searchParams.get('__weig_retry'),'1','descriptor retry must preserve exact build identity and cache-bust only the retry attempt');
+}
+{
+  const h=harness();
+  assert.equal(h.RuntimeAssets.prefetchScript('scripts/settings.js',{namespace:'route-module',identity:'settings'}),true,'inert prefetch should queue a static script hint');
+  assert.equal(h.RuntimeAssets.prefetchScript('scripts/settings.js',{namespace:'route-module',identity:'settings'}),false,'identical exact-build hints must dedupe');
+  assert.equal(h.events.filter(e=>e[0]==='append'&&e[1]==='prefetch'&&e[2]==='scripts/settings.js').length,1);
+  await h.RuntimeAssets.loadScript('scripts/settings.js',{namespace:'route-module',identity:'settings'});
+  assert.equal(h.events.filter(e=>e[0]==='append'&&e[1]==='script'&&e[2]==='scripts/settings.js').length,1,'prefetch must never pretend that the feature has executed');
 }
 console.log('Runtime asset plan contract passed: one owner provides bounded style concurrency, parallel independent script phases, deterministic dependency barriers, retry, dedupe and fail-closed execution.');

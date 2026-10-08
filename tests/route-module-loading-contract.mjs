@@ -30,4 +30,7 @@ assert.ok(logs.includes('var app=W.AppState;if(app&&app.client)return app.client
 for(const source of [settings,rss,logs])assert.ok(source.includes("document.readyState==='loading'"),'route module must self-initialize correctly when injected after DOMContentLoaded');
 const deferredBytes=Object.values(routes).reduce((sum,module)=>sum+fs.statSync(path.join(root,'webui/private',module)).size,0);
 assert.ok(deferredBytes>140000,'route sharding must defer a material amount of route-only JavaScript from home startup');
+assert.ok(runtime.includes('function prefetchScript(path,options)')&&runtime.includes("node.rel='prefetch'")&&runtime.includes('prefetchScript:prefetchScript'),'Shared RuntimeAssets must own inert script hints without pretending they are loaded modules');
+assert.ok(navigation.includes('function warmRouteModules()')&&navigation.includes('loader.prefetchScript(path,')&&navigation.includes('warmRouteModules:warmRouteModules'),'Navigation must own idle route inventory prefetch rather than feature-local hints');
+assert.ok(app.includes('warmRoutesAfterPagePaint()')&&app.includes('if(loaded&&!silent)warmRoutesAfterPagePaint()'),'Only a committed first Torrent page may schedule idle route prefetch');
 console.log('Route-module contract passed: Settings/RSS/Logs are removed from ordered home bootstrap, loaded once through RuntimeAssets on route demand, and recover canonical AppState/client ownership when injected late.');

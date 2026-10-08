@@ -237,7 +237,7 @@ try{
   assert.ok(firstWeiGLocales[0].includes('/weig-i18n/zh-CN.json'),'qB persisted zh-CN must select the matching WeiG zh-CN overlay only');
   assert.equal(firstCache.urls.some(url=>url.includes('/__source/private/data/'+retiredCopyRegistry)),false,'startup must never fetch the retired all-version qB copy registry');
   assert.equal(firstCache.urls.some(url=>/\/__source\/translations\/webui_.+\.qm(?:\?|$)/i.test(url)),false,'browser startup must not download or parse qB QM assets');
-  for(const module of ['settings','rss','logs'])assert.equal(firstCache.urls.some(url=>url.includes('/__source/private/scripts/'+module+'.js')),false,'home startup must not fetch route-only '+module+'.js');
+  assert.equal(await page.evaluate(()=>['settings','rss','logs'].some(name=>document.querySelector('script[data-weig-runtime-module="scripts/'+name+'.js"]'))),false,'Home prefetch must not execute route modules');
 
   const firstCount=firstCache.urls.length;
   await page.reload({waitUntil:'domcontentloaded',timeout:60000});
@@ -253,7 +253,7 @@ try{
   assert.equal(secondCache.urls.some(url=>url.includes('/__source/private/data/qb-copy-profiles/')),false,'reload must not restore the retired sourceSha copy-profile pointer');
   const secondFallback=secondCache.urls.filter(url=>url.includes('/__source/private/data/qb-copy-fallback/'));assert.equal(secondFallback.length,1,'reload must retain only one current-locale content-addressed fallback pack');assert.match(new URL(secondFallback[0]).pathname,/\/__source\/private\/data\/qb-copy-fallback\/p[0-9a-f]{20}\.json\.gz$/);
   assert.equal(secondCache.urls.filter(url=>url.includes('/__source/private/data/weig-i18n/')).length,1,'reload must retain only the one current WeiG locale shard');
-  for(const module of ['settings','rss','logs'])assert.equal(secondCache.urls.some(url=>url.includes('/__source/private/scripts/'+module+'.js')),false,'warm home reload must not prefetch route-only '+module+'.js');
+  assert.equal(await page.evaluate(()=>['settings','rss','logs'].some(name=>document.querySelector('script[data-weig-runtime-module="scripts/'+name+'.js"]'))),false,'warm Home prefetch must not execute route modules');
   assert.deepEqual(errors,[],`startup-performance session emitted page errors:\n${errors.join('\n')}`);
   await context.close();
 
