@@ -174,6 +174,11 @@ resolve_full_matrix_image() {
     'qbittorrentofficial' "qBittorrent official Docker image ${VERSION}-1" 1 0 && return 0
   resolve_mutable_image "qbittorrentofficial/qbittorrent-nox:${VERSION}" \
     'qbittorrentofficial' "qBittorrent official Docker image ${VERSION}" 1 0 && return 0
+  # The upstream project also publishes its exact-version images on GHCR.
+  resolve_mutable_image "ghcr.io/qbittorrent/docker-qbittorrent-nox:${VERSION}-1" \
+    'qbittorrentofficial-ghcr' "qBittorrent official GHCR image ${VERSION}-1" 1 0 && return 0
+  resolve_mutable_image "ghcr.io/qbittorrent/docker-qbittorrent-nox:${VERSION}" \
+    'qbittorrentofficial-ghcr' "qBittorrent official GHCR image ${VERSION}" 1 0 && return 0
   for ref in \
     "linuxserver/qbittorrent:${VERSION}" \
     "linuxserver/qbittorrent:amd64-${VERSION}" \
@@ -193,33 +198,13 @@ if ((FULL_MATRIX)); then
     exit 3
   fi
 else
-  case "$VERSION" in
-    4.1.0)
-      [[ "$(uname -m)" == "x86_64" ]] || { echo "qB 4.1.0 historical image is amd64-only" >&2; exit 2; }
-      IMAGE='wernight/qbittorrent@sha256:f4504b29dce8f4cddcc3e0fe2e6a3410269a41e6843ffc8cb99e0c923f3dee4a'
-      PACKAGE_ID='wernight source-built historical qB 4.1.0 image (non-official container wrapper)'
-      RUNTIME_PROVIDER='wernight'
-      ;;
-    4.6.7)
-      IMAGE='qbittorrentofficial/qbittorrent-nox@sha256:4f8059f1ec56f404fca04193b1134563e3aed3179428b1bc659cfe69bfedb951'
-      PACKAGE_ID='qBittorrent official Docker image 4.6.7-1'
-      RUNTIME_PROVIDER='qbittorrentofficial'
-      OFFICIAL_IMAGE=1
-      ;;
-    5.0.0)
-      IMAGE='qbittorrentofficial/qbittorrent-nox@sha256:03c968cd9d82c92a90b6ddde6c9a7a4093cf072c329090815c355dabeadd1fc9'
-      PACKAGE_ID='qBittorrent official Docker image 5.0.0-1'
-      RUNTIME_PROVIDER='qbittorrentofficial'
-      OFFICIAL_IMAGE=1
-      ;;
-    5.2.3)
-      IMAGE='qbittorrentofficial/qbittorrent-nox@sha256:9ebb534fe30bab98622cb84a8c3acecfd88319b2d540f52ecdec7b9f866374d7'
-      PACKAGE_ID='qBittorrent official Docker image 5.2.3-1'
-      RUNTIME_PROVIDER='qbittorrentofficial'
-      OFFICIAL_IMAGE=1
-      ;;
-    *) echo "Unsupported Phase G representative version: $VERSION" >&2; exit 2 ;;
-  esac
+  # Use the same approved exact-version provider chain as Full Frozen. Historic
+  # representatives keep their immutable pins; every new Frozen version resolves
+  # a version-qualified tag to an immutable RepoDigest, never latest or aliases.
+  if ! resolve_full_matrix_image; then
+    echo "BLOCKED: no approved exact-version Docker runtime found for Frozen qB $VERSION" >&2
+    exit 3
+  fi
 fi
 
 SAFE_VERSION="${VERSION//./-}"
