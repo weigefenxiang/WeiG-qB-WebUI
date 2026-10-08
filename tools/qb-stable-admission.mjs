@@ -114,6 +114,32 @@ export function promotedManifest(oldManifest,base,candidate,{validationCommit=nu
   assert(fresh.length>0,'Promotion requires at least one new stable profile.');
   return{...oldManifest,latestAdmittedStable:candidate.at(-1).qbVersion,profileCount:candidate.length,catalogSha256:null,lastAdmission:{validationCommit,admittedAt,tags:fresh.map(x=>x.tag),sourceShas:Object.fromEntries(fresh.map(x=>[x.tag,x.sourceSha]))}};
 }
+export function classifyUpstreamChangedPaths(paths){
+  if(!Array.isArray(paths))throw new Error('Official upstream file inventory must be an array.');
+  const seen=new Set(),domains=new Map();
+  const classify=path=>{
+    if(path.startsWith('src/webui/www/translations/'))return 'WEBUI_COPY';
+    if(path.startsWith('src/webui/www/'))return 'WEBUI_NATIVE';
+    if(path.startsWith('src/base/rss/'))return 'RSS';
+    if(path.startsWith('src/base/bittorrent/'))return 'TORRENT_CORE';
+    if(path.startsWith('src/lang/'))return 'APP_COPY';
+    if(path.startsWith('src/gui/'))return 'NATIVE_GUI';
+    if(path.startsWith('src/base/'))return 'SHARED_BASE';
+    if(path.startsWith('src/app/'))return 'APP_CORE';
+    if(path.startsWith('dist/')||path.startsWith('cmake/')||path.startsWith('.github/'))return 'BUILD_DISTRIBUTION';
+    return 'UNCLASSIFIED';
+  };
+  for(const raw of paths){
+    const file=String(raw||'').trim();
+    if(!file||file.startsWith('/')||file.includes('..')||seen.has(file))throw new Error('Invalid/duplicate official upstream changed-file inventory entry: '+file);
+    seen.add(file);
+    const group=classify(file);if(!domains.has(group))domains.set(group,[]);
+    domains.get(group).push(file);
+  }
+  const grouped=Object.fromEntries([...domains].sort(([a],[b])=>a.localeCompare(b)).map(([domain,files])=>[domain,files.sort()]));
+  return {fileCount:seen.size,domains:grouped,unclassified:grouped.UNCLASSIFIED||[],rawInventoryComplete:true,independentSemanticCensusComplete:false,reviewStatus:'PENDING_REVIEW'};
+}
+
 function gitTags(qbRoot){return execFileSync('git',['-C',qbRoot,'tag','--list','release-*'],{encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim().split(/\r?\n/).filter(Boolean);}
 function discoveryResult(catalog,manifest,tags){const newTags=stableAdmissionDelta(catalog,tags);return{supportFloor:manifest.supportFloor,latestAdmittedStable:manifest.latestAdmittedStable,profileCount:manifest.profileCount,newTags,newVersions:newTags.map(x=>x.replace(/^release-/,'')),hasNew:newTags.length>0};}
 function main(){
@@ -123,6 +149,21 @@ function main(){
   if(command==='discover'||command==='discover-tags'){
     const source=path.resolve(args[1]||'');assert(source&&fs.existsSync(source),command==='discover'?'Usage: node tools/qb-stable-admission.mjs discover <qB-clone> [--output=...]':'Usage: node tools/qb-stable-admission.mjs discover-tags <tag-file> [--output=...]');
     const result=discoveryResult(catalog,manifest,command==='discover'?gitTags(source):readTagsFile(source)),output=getArg('--output',args);if(output)writeJson(path.resolve(output),result);console.log(JSON.stringify(result));return;
+  }
+  if(command==='review-upstream'){
+    const source=path.resolve(args[1]||''),candidatePath=path.resolve(getArg('--candidate',args)||'');
+    assert(fs.existsSync(source),'review-upstream requires an upstream qBittorrent Git clone.');
+    assert(candidatePath&&fs.existsSync(candidatePath),'review-upstream requires --candidate=path');
+    const candidate=readJson(candidatePath);
+    const releases=verifyCandidateSourceIdentity(catalog,candidate,gitTags(source),tag=>execFileSync('git',['-C',source,'rev-parse',tag+'^{commit}'],{encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim());
+    const reviews=releases.map((item,index)=>{
+      const previous=index?releases[index-1].tag:catalog.at(-1).tag;
+      const stdout=execFileSync('git',['-C',source,'diff','--name-only','--no-renames',previous,item.tag],{encoding:'utf8',stdio:['ignore','pipe','pipe']});
+      return {from:previous,to:item.tag,sourceSha:item.sourceSha,...classifyUpstreamChangedPaths(stdout.split(/\r?\n/).filter(Boolean))};
+    });
+    const result={source:'official-qb-git-diff',releases:reviews,independentSemanticCensusComplete:false,status:'PENDING_REVIEW'};
+    const output=getArg('--output',args);if(output)writeJson(path.resolve(output),result);
+    console.log(JSON.stringify(result));return;
   }
   if(command==='verify-candidate-source'){
     const source=path.resolve(args[1]||''),candidatePath=path.resolve(getArg('--candidate',args)||'');
@@ -142,6 +183,6 @@ function main(){
   if(command==='promote-manifest'){
     const candidatePath=path.resolve(getArg('--candidate',args)||''),outputPath=path.resolve(getArg('--output',args)||'');assert(candidatePath&&fs.existsSync(candidatePath),'promote-manifest requires --candidate=path');assert(outputPath,'promote-manifest requires --output=path');const candidate=readJson(candidatePath),next=promotedManifest(manifest,catalog,candidate,{validationCommit:process.env.WEIG_VALIDATION_SHA||process.env.GITHUB_SHA||null,admittedAt:new Date().toISOString()});next.catalogSha256=sha256File(candidatePath);writeJson(outputPath,next);console.log(`Prepared LKG manifest for ${next.latestAdmittedStable}; ${next.profileCount} profiles; sha256 ${next.catalogSha256}.`);return;
   }
-  throw new Error('Usage: node tools/qb-stable-admission.mjs <verify|discover|discover-tags|verify-candidate-source|product-catalog|report|promote-manifest> ...');
+  throw new Error('Usage: node tools/qb-stable-admission.mjs <verify|discover|discover-tags|verify-candidate-source|review-upstream|product-catalog|report|promote-manifest> ...');
 }
 const isMain=process.argv[1]&&pathToFileURL(path.resolve(process.argv[1])).href===import.meta.url;if(isMain){try{main();}catch(error){console.error(error?.stack||error);process.exit(1);}}

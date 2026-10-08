@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {catalogIdentity,assertCatalogIdentity} from '../tools/qb-catalog-identity.mjs';
 import {accountSourceInventory,assertCompleteSourceCensus} from '../tools/qb-source-census.mjs';
-import {assertFrozenPrefix,stableAdmissionDelta,admissionProductCatalog,verifyLkg,renderAdmissionReport,semanticFieldReview,verifyCandidateSourceIdentity,promotedManifest} from '../tools/qb-stable-admission.mjs';
+import {assertFrozenPrefix,stableAdmissionDelta,admissionProductCatalog,verifyLkg,renderAdmissionReport,semanticFieldReview,verifyCandidateSourceIdentity,classifyUpstreamChangedPaths,promotedManifest} from '../tools/qb-stable-admission.mjs';
 
 const base=[
   {qbVersion:'4.1.0',tag:'release-4.1.0',stable:true,officialWeiGSupport:true},
@@ -37,6 +37,14 @@ const duplicate=accountSourceInventory({inventory:['behavior','behavior'],mapped
 const dir=fs.mkdtempSync(path.join(os.tmpdir(),'weigg-lkg-')),file=path.join(dir,'catalog.json');fs.writeFileSync(file,JSON.stringify(base));const hash=crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 verifyLkg({catalog:base,manifest:{schemaVersion:1,supportFloor:'4.1.0',latestAdmittedStable:'5.2.3',profileCount:2,catalogSha256:hash},catalogPath:file});
 const report=renderAdmissionReport(base,candidate);for(const token of ['qB 6.0.0','added actions','removed actions','new_pref'])assert.ok(report.includes(token),`upstream admission report missing ${token}`);
+const inventory=classifyUpstreamChangedPaths(['src/webui/www/private/scripts/addtorrent.js','src/webui/www/private/confirmaddtorrents.html','src/base/rss/rss_autodownloader.cpp','src/lang/qbittorrent_zh_CN.ts','dist/windows/config.nsh','new-future-upstream-owner.txt']);
+assert.equal(inventory.fileCount,6,'Upstream raw changed-file inventory must retain each source file exactly once');
+assert.deepEqual(inventory.domains.WEBUI_NATIVE,['src/webui/www/private/confirmaddtorrents.html','src/webui/www/private/scripts/addtorrent.js']);
+assert.deepEqual(inventory.domains.RSS,['src/base/rss/rss_autodownloader.cpp']);
+assert.deepEqual(inventory.unclassified,['new-future-upstream-owner.txt'],'Unknown upstream files must be surfaced for review, never silently ignored');
+assert.equal(inventory.independentSemanticCensusComplete,false,'Changed-file inventory is not independent semantic census completion');
+assert.throws(()=>classifyUpstreamChangedPaths(['src/base/rss/a.cpp','src/base/rss/a.cpp']),/duplicate/);
+
 const officialTag='release-6.0.0',officialSha='a'.repeat(40);
 const exactFuture={...future,sourceSha:officialSha},officialCandidate=[...structuredClone(base),exactFuture];
 const resolveOfficialTag=tag=>tag===officialTag?officialSha:'';
