@@ -18,8 +18,10 @@ Current workflow responsibilities:
 - `pages.yml` — builds and publishes Virtual qB Pages/development payloads.
 - `candidate-deployment-only.yml` — exact candidate real-qB + Chrome behavior acceptance.
 - `release-prepare.yml` — optional exact-SHA Candidate/Deployment/Pages/Session preview orchestration; it does not own Compatibility Audits.
-- `real-qb-full.yml` — manual 65-version Full Frozen Compatibility Audit.
+- `real-qb-full.yml` — manual Full Frozen Compatibility Audit of the release set declared by the current manifest (no fixed count).
 - `real-qb-locale.yml` — manual current-stable locale Compatibility Audit.
+- `real-qb-weig-product-add.yml` — exact-SHA, isolated real-qB Alternative WebUI/Add Torrent product gate for relevant source, Copy/QM, UI, workflow and version changes; uploaded evidence is required.
+- `qb-stable-admit-to-dev.yml` — **manual** stable-source admission. Its explicit `target_sha` and `source_run_id` are verified against a completed source run; the retired one-shot automatic push trigger must not be restored.
 - `promote.yml` — validates exact Candidate + Candidate Deployment evidence and safe-fast-forwards the stable branch.
 - `release.yml` — publishes tagged stable artifacts from the lean schema-v3 Promotion certification.
 
@@ -55,6 +57,12 @@ Repository-only documentation changes do not require rebuilding product bytes.
 Pages materialization is triggered when relevant inputs change, including product, simulator, installer, version or compatibility-materialization inputs.
 
 Unknown compare state should remain fail closed.
+
+## Development Acceptance and Evidence
+
+Development is complete only after applicable exact-SHA CI, Pages Source, Virtual Pages, and real-qB gates pass and required human acceptance is explicitly confirmed. `AUTOMATION_DONE` does not equal `VERIFIED_DONE`. A successful dev milestone does not authorize moving `main`, creating a candidate, or publishing a Tag/Release.
+
+The real-qB browser gate must write its evidence to the same artifact directory the workflow uploads; missing evidence must fail closed. The Fast real-qB aggregate derives all positive and single-tamper negative witness counts from the frozen manifest, not a fixed number of profiles.
 
 ## Promotion
 
@@ -97,6 +105,7 @@ Product version files must agree before release:
 
 - `VERSION`
 - `webui/VERSION`
+- `webui/private/product-identity.json`
 - `package.json`
 - `package-lock.json`
 

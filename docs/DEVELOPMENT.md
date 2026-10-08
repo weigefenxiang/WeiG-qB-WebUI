@@ -116,6 +116,14 @@ Examples:
 
 See [../tests/README.md](../tests/README.md).
 
+## Historical Source and Materialization Regressions
+
+The historical UI / locale regression source contract is `tests/qb-torrent-native-source-contract.mjs`; routine `tests/runtime-asset-contracts.mjs` and the canonical CI materializer gate reuse it. It checks original qB releases such as 4.1.0 and 5.2.3, instead of changing the tested version to avoid missing Statistics or Untagged source facts.
+
+Keep `tools/qb-torrent-runtime-rebind.mjs` and `tools/qb-detail-runtime-rebind.mjs` on the one Frozen release identity even when their source inputs contain enriched evidence. A generator or Pages workflow which mutates historical Copy/QM/Detail assets without source admission is a regression, regardless of whether its generated files parse.
+
+For an exact product change, use the appropriate CI, Pages Source, Virtual Pages, and isolated real-qB workflows. GitHub runs must agree on the exact product SHA; preserve the real-qB upload artifact as evidence. Routine docs-only commits do not justify a second product version bump.
+
 ## Generated Files
 
 Do not treat generated runtime data as hand-maintained configuration.
@@ -128,6 +136,7 @@ The product version is mirrored in:
 
 - `VERSION`
 - `webui/VERSION`
+- `webui/private/product-identity.json`
 - `package.json`
 - `package-lock.json`
 

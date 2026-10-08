@@ -6,7 +6,7 @@ WeiG qB WebUI uses source-derived compatibility rather than maintaining a large 
 
 The frozen stable catalog starts at qBittorrent `4.1.0`.
 
-The current repository snapshot admits stable profiles through `5.2.3` with 65 frozen stable profiles. The authoritative current values live in:
+The verified 1.1.29 development baseline admits **66 frozen stable profiles through qBittorrent `5.2.4`**. The source-of-truth for the current count and latest release is **not this prose**; always read `profileCount` and `latestAdmittedStable` from:
 
 - `tools/data/qb-stable-lkg.json`
 - `tools/data/qb-locale-lkg.json`
@@ -46,11 +46,19 @@ The browser consumes bounded domain data under `webui/private/data/`:
 | `settings-compat.json` | Settings structure, preference semantics and write projections. |
 | `rss-compat.json` | RSS compatibility. |
 | `source-actions.json` | Source-proven action availability. |
-| `qb-copy-profiles/<sourceSha>.json` | Exact qB source identity and locale routing for qB-owned copy. |
-| `qb-copy-bindings/<bindingId>.txt` | Deduplicated source/context bindings shared by exact profiles. |
-| `qb-copy-fallback/<major>/<locale>.json` | Exact-official fallback set for one qB major and locale, loaded only when native QBT_TR/QM is unavailable. |
+| `qb-copy-routes/<routeId>.json.gz` | Source-certified semantic Copy route selected by the exact release `copyRouteId`. |
+| `qb-copy-bindings/<bindingId>.txt` | Shared deduplicated source/context bindings. |
+| `qb-copy-fallback/<packId>.json.gz` | Optional content-addressed fallback pack for the selected current locale, only when native QBT_TR/QM is unavailable. |
 
 The complete historical source catalog remains outside the production runtime.
+
+## Certified Source Materialization and Frozen Identity
+
+The admitted `qbVersion + sourceSha` inventory is immutable for historical releases. Enriched extraction may add source facts, but it must not relabel a different JSON hash as a different certified release set. `tools/qb-catalog-identity.mjs` and the frozen manifest provide one canonical `catalogIdentity` for `capabilities.json`, Torrent/Action, and Detail runtime facts.
+
+Both CI and Pages Source materializers must preserve certified historical Copy routes, bindings and fallback packs. The Copy admission owner (`tools/qb-runtime-copy-admission.mjs`) checks or appends certified assets; it must not delete and regenerate the historical tree. Detail source facts and compiled identity are verified together.
+
+The exact upstream source can support historical UI features even if an older compact snapshot omitted their descriptors. Official Statistics, status filters, special Tag rows (including Untagged), and locale inventories are source-extracted and consumed by the product's existing capability/UI owners. Do not silence an absent UI by moving a regression fixture to a newer qB version.
 
 ## Read and Write Policy
 

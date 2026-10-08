@@ -41,6 +41,14 @@ When qB upstream changes an API surface:
 
 Do not add a feature-local patch-number branch when the change belongs to the shared compatibility model.
 
+## Safe Evolution Across Versions
+
+Exact runtime qB version and WebAPI version are distinct from per-domain compatibility. Unknown future releases must not be globally aliased to a nearby version. A previously proven compatible WebAPI operation can be inherited only when the exact source action, parameters, semantics, dependencies and runtime identity permit it.
+
+Read-only operations (including source-proven read-semantic POST such as `clientdata/load`) must not be blocked merely because the HTTP method is POST. Previously proven `torrents/add` may be admitted through a bounded operation-specific compatibility relation; destructive actions and unknown writes remain fail-closed. A matching WebAPI version alone does not prove equivalent native UI labels, Copy/QM, Detail, RSS or Settings semantics.
+
+When admitting a new stable qB release, build fresh official-source evidence, require explicit exact SHA and successful source run in the manual stable-admission workflow, and preserve all previously certified historical assets.
+
 ## Relationship to Runtime Compatibility
 
 WebAPI milestones are one source of compatibility evidence, but they do not replace exact source-derived feature facts.
