@@ -61,8 +61,8 @@ assert.equal(bootstrapPlan.schemaVersion,1,'deployed private bootstrap plan sche
 assert.ok(bootstrapPlan.styles.length>=2&&bootstrapPlan.styles.length<=5,'deployed bootstrap plan must use bounded CSS bundles');
 assert.ok(bootstrapPlan.styles.every(name=>/^css\/startup-[0-9]+\.css$/.test(name)),'deployed CSS must come from the canonical materializer');
 const bootstrapScripts=bootstrapPlan.phases.flatMap(phase=>phase.scripts);
-assert.equal(bootstrapScripts.length,40,'deployed bootstrap plan must own exactly the 40 non-seed startup scripts');
-assert.equal(new Set(bootstrapScripts).size,40,'deployed bootstrap plan contains duplicate startup scripts');
+assert.ok(bootstrapScripts.length>=14&&bootstrapScripts.length<=28,'deployed bootstrap must use bounded JS groups while preserving independent phase owners');
+assert.equal(new Set(bootstrapScripts).size,bootstrapScripts.length,'deployed bootstrap plan contains duplicate startup scripts');
 for(const module of ['scripts/settings.js','scripts/rss.js','scripts/logs.js'])assert.equal(bootstrapScripts.includes(module),false,'route-only module leaked into deployed bootstrap plan: '+module);
 assert.deepEqual(bootstrapPlan.phases.at(-1),{name:'application',scripts:['scripts/app.js']},'deployed App must remain the final dependency phase');
 

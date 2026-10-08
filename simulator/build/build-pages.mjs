@@ -6,6 +6,7 @@ import {packCatalog} from '../../tools/qb-webui-catalog.mjs';
 import {applyLocaleOverlay,applyLocaleOverlaySubset} from '../../tools/qb-locale-overlay.mjs';
 import {writeSimulatorRuntimeShards} from './runtime-shards.mjs';
 import {materializeCssBundles} from '../../tools/css-bundle-materializer.mjs';
+import {materializeScriptBundles} from '../../tools/js-bundle-materializer.mjs';
 const here=path.dirname(fileURLToPath(import.meta.url));
 const projectRoot=path.resolve(here,'../..');
 function arg(name,fallback){const prefix=`--${name}=`;const hit=process.argv.find(x=>x.startsWith(prefix));return hit?hit.slice(prefix.length):fallback;}
@@ -87,7 +88,7 @@ if(branch==='main'){
   await copyDir(translations,path.join(out,'__source/translations'));
 }
 await prepareIndex(path.join(out,'__source/private/index.html'));
-if(branch==='dev')materializeCssBundles(path.join(out,'__source/private'));
+if(branch==='dev'){materializeCssBundles(path.join(out,'__source/private'));materializeScriptBundles(path.join(out,'__source/private'),path.join(out,'__source/public'));}
 await prepareIndex(path.join(out,'__source/public/index.html'));
 for(const dir of ['core','data','preferences','protocol','storage','versions'])await copyDir(path.join(projectRoot,'simulator',dir),path.join(out,'__simulator',dir));
 await prepareQbtEmulator();

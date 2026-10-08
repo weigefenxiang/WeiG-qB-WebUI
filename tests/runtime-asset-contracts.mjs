@@ -10,6 +10,7 @@ const files=[
   './qb-qm-first-routing-contract.mjs',
   './bootstrap-inventory-contract.mjs',
   './css-bundle-materializer-contract.mjs',
+  './js-bundle-materializer-contract.mjs',
   './bootstrap-topology-contract.mjs',
   './private-bootstrap-contract.mjs',
 ];
