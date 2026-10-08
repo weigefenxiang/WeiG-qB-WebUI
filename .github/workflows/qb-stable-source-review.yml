@@ -66,7 +66,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          SOURCE="source-candidate/qb-5.2.4-admission-candidate.json"
+          mapfile -t source_files < <(find source-candidate -maxdepth 1 -type f -name 'qb-*-admission-candidate.json' -print | sort)
+          if [ "${#source_files[@]}" -ne 1 ]; then
+            echo "Expected exactly one official source candidate in the downloaded artifact." >&2
+            exit 1
+          fi
+          SOURCE="${source_files[0]}"
           test -s "$SOURCE"
           node tools/qb-stable-admission.mjs verify
           node audits/qb-stable-admission-contract.mjs
