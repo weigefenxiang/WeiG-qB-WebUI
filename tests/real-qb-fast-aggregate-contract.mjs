@@ -140,8 +140,8 @@ try{
   fs.writeFileSync(runtimeFile,`${JSON.stringify(witnessTampered,null,2)}\n`);
   const witnessFailed=aggregateFast(temp,{root,expectedSha:sha,write:false});
   assert.equal(witnessFailed.status,'FAIL','Fast G-FM aggregate must independently reject a forged/tampered runtime capability witness even when runtime_smoke_result still says PASS');
-  assert.equal(witnessFailed.versions.capabilityWitnessPass,64);
-  assert.equal(witnessFailed.versions.realSmokePass,64);
+  assert.equal(witnessFailed.versions.capabilityWitnessPass,manifest.profileCount-1);
+  assert.equal(witnessFailed.versions.realSmokePass,manifest.profileCount-1);
   fs.writeFileSync(runtimeFile,`${JSON.stringify(firstRuntime,null,2)}\n`);
 
   const fingerprintTampered=JSON.parse(fs.readFileSync(runtimeFile,'utf8'));
@@ -149,8 +149,8 @@ try{
   fs.writeFileSync(runtimeFile,`${JSON.stringify(fingerprintTampered,null,2)}\n`);
   const failed=aggregateFast(temp,{root,expectedSha:sha,write:false});
   assert.equal(failed.status,'FAIL','Fast G-FM must fail closed when runtime source-family fingerprint binding drifts from the Frozen planner');
-  assert.equal(failed.versions.fingerprintBindingPass,64,'exactly the tampered version must lose source-family fingerprint binding PASS');
-  assert.equal(failed.versions.PASS,64,'tampered fingerprint binding must make that version fail aggregate evidence');
+  assert.equal(failed.versions.fingerprintBindingPass,manifest.profileCount-1,'exactly the tampered version must lose source-family fingerprint binding PASS');
+  assert.equal(failed.versions.PASS,manifest.profileCount-1,'tampered fingerprint binding must make that version fail aggregate evidence');
 }finally{
   fs.rmSync(temp,{recursive:true,force:true});
 }
