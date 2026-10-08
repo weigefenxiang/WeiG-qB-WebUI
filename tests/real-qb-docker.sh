@@ -5,12 +5,14 @@ VERSION=""
 ALLOW_WRITES=0
 BROWSER_SMOKE=0
 FULL_MATRIX=0
+RESOLVE_IMAGE_ONLY=0
 while (($#)); do
   case "$1" in
     --version) VERSION="${2:-}"; shift 2 ;;
     --allow-writes) ALLOW_WRITES=1; shift ;;
     --browser-smoke) BROWSER_SMOKE=1; shift ;;
     --full-matrix) FULL_MATRIX=1; shift ;;
+    --resolve-image-only) RESOLVE_IMAGE_ONLY=1; shift ;;
     *) echo "Unknown argument: $1" >&2; exit 2 ;;
   esac
 done
@@ -205,6 +207,14 @@ else
     echo "BLOCKED: no approved exact-version Docker runtime found for Frozen qB $VERSION" >&2
     exit 3
   fi
+fi
+
+if ((RESOLVE_IMAGE_ONLY)); then
+  # Locale Matrix consumes the same admitted exact-version provider resolver.
+  # The caller freezes/persists this immutable digest for all locale shards.
+  [[ "$IMAGE" == *@sha256:* ]] || { echo 'Resolved real-qB runtime has no immutable digest.' >&2; exit 3; }
+  printf '%s\n' "$IMAGE"
+  exit 0
 fi
 
 SAFE_VERSION="${VERSION//./-}"

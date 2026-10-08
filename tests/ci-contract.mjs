@@ -108,6 +108,16 @@ const stableReview=read('.github/workflows/qb-stable-source-review.yml');
 assert(stableReview.includes('workflow_dispatch:')&&!stableReview.includes('\n  push:'),'New stable source review must be explicit/manual only');
 assert(stableReview.includes('candidate_run_id:')&&stableReview.includes('candidate_artifact:')&&!stableReview.includes('qb-5.2.4-source-candidate-')&&!stableReview.includes('37708522138'),'Source review must require fresh exact candidate evidence instead of replaying A64 defaults');
 
+const localeWorkflow=read('.github/workflows/real-qb-locale.yml');
+const localeRunner=read('tests/real-qb-locale-runner.sh');
+const imageResolver=read('tests/real-qb-docker.sh');
+const localeAggregate=read('tests/real-qb-locale-aggregate.mjs');
+assert(localeWorkflow.includes('tools/data/qb-stable-lkg.json')&&localeWorkflow.includes('tools/data/qb-locale-lkg.json')&&!localeWorkflow.includes('profileCount!==65')&&!localeWorkflow.includes("latestAdmittedStable!=='5.2.3'"),'Locale plan must derive exact current stable from both certified LKGs');
+assert(localeWorkflow.includes('--resolve-image-only')&&localeWorkflow.includes('WEIG_QB_RUNTIME_DIGEST=$pin')&&!localeWorkflow.includes('case "$QB_VERSION" in'),'Locale workflow must reuse canonical exact-version Docker resolver, not own a second version/pin table');
+assert(localeWorkflow.includes('Verify checkout before invoking the shared resolver')&&localeWorkflow.includes('ref: ${{ github.sha }}'),'Locale runtime resolver job must checkout exact source SHA before executing the shared provider script');
+assert(localeRunner.includes('WEIG_QB_RUNTIME_DIGEST')&&localeRunner.includes('--resolve-image-only')&&!localeRunner.includes('IMAGE_PIN='),'Locale runner must consume immutable runtime provenance instead of hardcoding an earlier stable');
+assert(imageResolver.includes('--resolve-image-only')&&localeAggregate.includes('imageDigests'),'Locale evidence must share one exact immutable runtime across all locales');
+
 const realProductAdd=read('.github/workflows/real-qb-weig-product-add.yml');
 // The real product smoke runs on certified Frozen changes, not on merely editing the workflow or tests.
 

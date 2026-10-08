@@ -1,8 +1,7 @@
-name: Compatibility Audit · 61-locale Current Stable
+name: Compatibility Audit · Current Stable Locale Matrix
 
-# Historical trigger marker retained only for contract migration context:
-# contains(github.event.head_commit.message, '[locale-matrix]')
-# Heavy 61-locale coverage is a manual Compatibility Audit and never a Promotion prerequisite.
+# Locale set and current stable are derived from the admitted Frozen LKG.
+# Manual Compatibility Audit; never an implicit Promotion prerequisite.
 on:
   workflow_dispatch:
 
@@ -38,10 +37,12 @@ jobs:
           result="$(node --input-type=module <<'NODE'
           import fs from 'node:fs';
           const lkg=JSON.parse(fs.readFileSync('tools/data/qb-locale-lkg.json','utf8'));
-          if(lkg.supportFloor!=='4.1.0'||lkg.profileCount!==65||lkg.latestAdmittedStable!=='5.2.3')throw new Error('Frozen stable identity drift.');
-          const profile=lkg.profiles.find(item=>item.qbVersion===lkg.latestAdmittedStable);
+          const stable=JSON.parse(fs.readFileSync('tools/data/qb-stable-lkg.json','utf8'));
+          if(lkg.supportFloor!==stable.supportFloor||lkg.profileCount!==stable.profileCount||lkg.latestAdmittedStable!==stable.latestAdmittedStable)throw new Error('Locale and Frozen admitted identity diverged.');
+          if(!Array.isArray(lkg.profiles)||lkg.profiles.length!==stable.profileCount)throw new Error('Locale LKG release inventory differs from Frozen.');
+          const profile=lkg.profiles.find(item=>item.qbVersion===stable.latestAdmittedStable);
           const locales=lkg.localeSets[profile?.localeSet]||[];
-          if(locales.length!==61)throw new Error(`Expected 61 qB 5.2.3 locales, got ${locales.length}.`);
+          if(!Array.isArray(locales)||locales.length===0||new Set(locales).size!==locales.length)throw new Error('Current-stable locale inventory missing, empty or duplicate.');
           process.stdout.write(`${lkg.latestAdmittedStable}\t${JSON.stringify(locales)}`);
           NODE
           )"
@@ -56,19 +57,25 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - name: Verify checkout before invoking the shared resolver
+        run: test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
       - name: Pull exact immutable qB runtime once
         shell: bash
         env:
           QB_VERSION: ${{ needs.plan.outputs.qb_version }}
         run: |
           set -euo pipefail
-          case "$QB_VERSION" in
-            5.2.3)
-              tag='qbittorrentofficial/qbittorrent-nox:5.2.3-1'
-              pin='qbittorrentofficial/qbittorrent-nox@sha256:9ebb534fe30bab98622cb84a8c3acecfd88319b2d540f52ecdec7b9f866374d7'
-              ;;
-            *) echo "No immutable current-stable qB provider pin is admitted for $QB_VERSION." >&2; exit 3 ;;
-          esac
+          # Reuse the real-qB resolver: exact admitted version -> immutable digest.
+          pin="$(bash tests/real-qb-docker.sh --version "$QB_VERSION" --resolve-image-only)"
+          [[ "$pin" == *@sha256:* ]] || { echo 'No immutable qB runtime image resolved.' >&2; exit 3; }
+          tag="weig-current-stable:${QB_VERSION}"
           mkdir -p runtime-image
           pulled=0
           for attempt in 1 2 3; do
@@ -127,9 +134,12 @@ jobs:
         run: |
           set -euo pipefail
           test "$(cat runtime-image/qb-version.txt)" = "$QB_VERSION"
-          test "$(cat runtime-image/qb-image-pin.txt)" = 'qbittorrentofficial/qbittorrent-nox@sha256:9ebb534fe30bab98622cb84a8c3acecfd88319b2d540f52ecdec7b9f866374d7'
+          pin="$(cat runtime-image/qb-image-pin.txt)"
+          [[ "$pin" == *@sha256:* ]] || { echo 'Missing immutable qB runtime image identity.' >&2; exit 1; }
           gzip -dc runtime-image/qb-current-stable.tar.gz | docker load
-          docker image inspect "qbittorrentofficial/qbittorrent-nox:${QB_VERSION}-1" >/dev/null
+          docker image inspect "weig-current-stable:${QB_VERSION}" >/dev/null
+          echo "WEIG_QB_RUNTIME_IMAGE_TAG=weig-current-stable:${QB_VERSION}" >> "$GITHUB_ENV"
+          echo "WEIG_QB_RUNTIME_DIGEST=$pin" >> "$GITHUB_ENV"
       - name: Run exact current-stable qB locale write/read/restore evidence
         env:
           WEIG_QB_LOCALE: ${{ matrix.locale }}

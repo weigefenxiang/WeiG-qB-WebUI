@@ -5,26 +5,17 @@ VERSION="${WEIG_QB_EXPECTED_VERSION:-}"
 [[ -n "$LOCALE" ]] || { echo 'locale argument is required' >&2; exit 2; }
 [[ "$VERSION" =~ ^[0-9]+(\.[0-9]+){2,3}$ ]] || { echo 'WEIG_QB_EXPECTED_VERSION must be an exact qB stable version' >&2; exit 2; }
 for cmd in docker node curl; do command -v "$cmd" >/dev/null || { echo "$cmd is required" >&2; exit 2; }; done
-case "$VERSION" in
-  5.2.3)
-    IMAGE_PIN='qbittorrentofficial/qbittorrent-nox@sha256:9ebb534fe30bab98622cb84a8c3acecfd88319b2d540f52ecdec7b9f866374d7'
-    IMAGE_TAG='qbittorrentofficial/qbittorrent-nox:5.2.3-1'
-    ;;
-  *) echo "No immutable current-stable qB provider pin is admitted for $VERSION." >&2; exit 3 ;;
-esac
+# Runtime identity is selected only by the canonical real-qB provider owner.
+# A preloaded matrix shard is pinned to the digest recorded by its source job.
 if [[ "${WEIG_QB_RUNTIME_PRELOADED:-0}" == 1 ]]; then
-  docker image inspect "$IMAGE_TAG" >/dev/null 2>&1 || { echo "Pre-materialized exact qB image is missing: $IMAGE_TAG" >&2; exit 1; }
-  IMAGE="$IMAGE_TAG"
+  IMAGE="${WEIG_QB_RUNTIME_IMAGE_TAG:-}"
+  [[ "${WEIG_QB_RUNTIME_DIGEST:-}" == *@sha256:* ]] || { echo 'Preloaded real-qB locale image has no immutable digest evidence.' >&2; exit 3; }
+  [[ -n "$IMAGE" ]] && docker image inspect "$IMAGE" >/dev/null 2>&1 || { echo 'Preloaded exact qB image is missing.' >&2; exit 1; }
 else
-  pulled=0
-  for attempt in 1 2 3; do
-    if docker pull "$IMAGE_PIN"; then pulled=1; break; fi
-    [[ "$attempt" == 3 ]] || sleep $((attempt*5))
-  done
-  [[ "$pulled" == 1 ]] || { echo "Unable to pull exact qB runtime $IMAGE_PIN after 3 attempts." >&2; exit 1; }
-  resolved="$(docker image inspect "$IMAGE_PIN" --format '{{index .RepoDigests 0}}' 2>/dev/null || true)"
-  [[ "$resolved" == *@sha256:* ]] || { echo 'Pinned qB image has no immutable RepoDigest.' >&2; exit 1; }
-  IMAGE="$IMAGE_PIN"
+  IMAGE="$(bash tests/real-qb-docker.sh --version "$VERSION" --resolve-image-only)"
+  [[ "$IMAGE" == *@sha256:* ]] || { echo 'Approved real-qB resolver returned no immutable digest.' >&2; exit 3; }
+  docker pull "$IMAGE" >/dev/null
+  export WEIG_QB_RUNTIME_DIGEST="$IMAGE"
 fi
 PASSWORD='Wei.G'
 TMP_ROOT="$(mktemp -d)"

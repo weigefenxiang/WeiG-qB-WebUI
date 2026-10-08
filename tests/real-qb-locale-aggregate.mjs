@@ -5,11 +5,13 @@ import path from 'node:path';
 const root=process.cwd(),input=process.argv[2]||'full-evidence',sha=process.env.GITHUB_SHA||'';
 if(!/^[0-9a-f]{40}$/i.test(sha))throw new Error('Exact GITHUB_SHA is required.');
 const lkg=JSON.parse(fs.readFileSync(path.join(root,'tools/data/qb-locale-lkg.json'),'utf8'));
-const version=String(lkg.latestAdmittedStable||'');
+const stable=JSON.parse(fs.readFileSync(path.join(root,'tools/data/qb-stable-lkg.json'),'utf8'));
+if(lkg.latestAdmittedStable!==stable.latestAdmittedStable||lkg.profileCount!==stable.profileCount||lkg.supportFloor!==stable.supportFloor)throw new Error('Locale evidence LKG and Frozen identity mismatch');
+const version=String(stable.latestAdmittedStable||'');
 const profile=lkg.profiles.find(item=>item.qbVersion===version);
 if(!profile)throw new Error(`Frozen latest stable profile is missing: ${version}`);
 const expected=[...(lkg.localeSets[profile.localeSet]||[])];
-if(version==='5.2.3'&&expected.length!==61)throw new Error(`Expected 61 qB 5.2.3 locales, got ${expected.length}.`);
+if(!expected.length||new Set(expected).size!==expected.length)throw new Error('Current-stable locale inventory is missing or duplicated.');
 function walk(dir,out=[]){for(const entry of fs.readdirSync(dir,{withFileTypes:true})){const p=path.join(dir,entry.name);if(entry.isDirectory())walk(p,out);else if(entry.name.endsWith('.json'))out.push(p);}return out;}
 const evidence=walk(path.resolve(input)).map(file=>JSON.parse(fs.readFileSync(file,'utf8'))).filter(item=>item.module==='real-qb-current-locale'&&item.qbVersion===version&&item.weigSha===sha);
 const byLocale=new Map();
@@ -18,6 +20,8 @@ for(const item of evidence){
   byLocale.set(item.locale,item);
 }
 const failures=[];
+const imageDigests=new Set([...byLocale.values()].map(item=>String(item.runtimeImageDigest||'')));
+if(imageDigests.size!==1||![...imageDigests][0]?.includes('@sha256:'))failures.push('Real qB runtime digest missing or not shared across all locale evidence');
 for(const locale of expected){
   const item=byLocale.get(locale);
   if(!item)failures.push(`${locale}: missing`);

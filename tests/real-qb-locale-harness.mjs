@@ -85,7 +85,7 @@ try{
     }catch(error){status='FAIL';reason=reason||`Restore failed: ${error&&error.message||error}`;}
   }
   try{if(cookie)await request('POST','/api/v2/auth/logout');}catch{}
-  const out={schemaVersion:1,module:'real-qb-current-locale',status,reason,qbVersion:expectedVersion,locale,initialLocale:original,restored,liveLocaleCount:options.length,liveLocalePresent:options.some(item=>item.value===locale),weigSha:sha,testTime:new Date().toISOString()};
+  const out={schemaVersion:1,module:'real-qb-current-locale',status,reason,qbVersion:expectedVersion,locale,initialLocale:original,restored,liveLocaleCount:options.length,liveLocalePresent:options.some(item=>item.value===locale),runtimeImageDigest:process.env.WEIG_QB_RUNTIME_DIGEST||null,weigSha:sha,testTime:new Date().toISOString()};
   fs.writeFileSync(evidencePath,`${JSON.stringify(out,null,2)}\n`);
 }
 if(status!=='PASS')throw new Error(reason||`qB ${expectedVersion} locale ${locale} failed.`);
