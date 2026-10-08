@@ -2,6 +2,8 @@
 
 The repository separates development, validation, promotion and release.
 
+The former one-shot `Publish Command` (`publish-v*`) was retired from `dev`: explicit Promotion and canonical Release are the only stable-publication owners. Historical workflow Runs and the unpromoted `main` baseline are not changed by ordinary `dev` maintenance.
+
 ## Branch Roles
 
 - `dev` — active development and validation.
@@ -19,8 +21,9 @@ Current workflow responsibilities:
 - `candidate-deployment-only.yml` — exact candidate real-qB + Chrome behavior acceptance.
 - `release-prepare.yml` — optional exact-SHA Candidate/Deployment/Pages/Session preview orchestration; it does not own Compatibility Audits.
 - `real-qb-full.yml` — manual Full Frozen Compatibility Audit of the release set declared by the current manifest (no fixed count).
-- `real-qb-locale.yml` — manual current-stable locale Compatibility Audit.
+- `real-qb-locale.yml` — manual current-stable locale Compatibility Audit; derives its version/locale inventory from the admitted Frozen LKG, and reuses the exact-version real-qB runtime resolver and immutable image digest across shards.
 - `real-qb-weig-product-add.yml` — exact-SHA, isolated real-qB Alternative WebUI/Add Torrent product gate for relevant source, Copy/QM, UI, workflow and version changes; uploaded evidence is required.
+- `qb-stable-source-review.yml` — manual-only exact official source review, requiring explicitly supplied candidate artifact and source run ID (no retired 5.2.4 defaults).
 - `qb-stable-admit-to-dev.yml` — **manual** stable-source admission. Its explicit `target_sha` and `source_run_id` are verified against a completed source run; the retired one-shot automatic push trigger must not be restored.
 - `promote.yml` — validates exact Candidate + Candidate Deployment evidence and safe-fast-forwards the stable branch.
 - `release.yml` — publishes tagged stable artifacts from the lean schema-v3 Promotion certification.

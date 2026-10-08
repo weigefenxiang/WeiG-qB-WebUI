@@ -43,6 +43,10 @@ Important entry points:
 
 Read [../webui/ARCHITECTURE.md](../webui/ARCHITECTURE.md) before changing ownership boundaries.
 
+## UTF-8 Static Assets
+
+All shipped WebUI CSS is UTF-8 without BOM and begins with the literal first-byte declaration `@charset "UTF-8";`. HTML entry documents declare UTF-8, while JavaScript and locale assets remain UTF-8 with readable native Unicode; do not replace international glyphs with feature-local ASCII workarounds or duplicate Select/Checkbox markers. The existing bootstrap inventory contract verifies CSS encoding and one selected-glyph owner. For Alternative WebUI hosting changes, validate **computed CSS content on real qB** in addition to file bytes: host HTTP charset can override stylesheet declarations.
+
 ## Working on Compatibility
 
 Do not add product-version conditionals to presentation code when the behavior is source-derived.
