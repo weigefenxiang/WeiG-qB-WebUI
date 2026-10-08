@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {isDeepStrictEqual} from 'node:util';
 import {fileURLToPath} from 'node:url';
+import {catalogIdentity} from './qb-catalog-identity.mjs';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(here,'..');
@@ -81,7 +82,7 @@ export function compileDetailRuntime(catalog){
     }
     previous=clone(value);initialized=true;
   }
-  const runtime={schemaVersion:1,sourceFacts:{torrentDetailUi:{mode:'merge',changes}}};
+  const runtime={schemaVersion:1,catalogIdentity:catalogIdentity(catalog),sourceFacts:{torrentDetailUi:{mode:'merge',changes}}};
   for(const profile of catalog){
     const expected=own(profile,'torrentDetailUi')?profile.torrentDetailUi:null;
     const actual=resolveDetailRuntime(runtime,profile.qbVersion);
