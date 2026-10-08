@@ -150,7 +150,10 @@ for(const profile of catalog){
 }
 
 assert.equal(rows.length,catalog.length,'every generated stable profile must enter the formal product matrix');
-assert.equal(rows.at(-1)?.qbVersion,'5.2.3','formal product matrix current-stable Settings surface lock must remain qB 5.2.3');
+if(!process.argv[2]){
+  const manifest=JSON.parse(fs.readFileSync(path.join(root,'tools/data/qb-stable-lkg.json'),'utf8'));
+  assert.equal(rows.at(-1)?.qbVersion,manifest.latestAdmittedStable,'formal product matrix latest Settings surface must match the admitted Frozen manifest');
+}
 assert.equal(rows[0].qbVersion,'4.1.0','formal product matrix minimum drifted');
 const filterProfile=version=>catalog.find(item=>item.qbVersion===version),canon=profile=>{const out=[];for(const raw of profile?.torrentFilters||[]){const value=T.canonicalFilter(String(raw||''));if(value&&!out.includes(value))out.push(value);}return out;};
 assert.ok(!canon(filterProfile('4.1.0')).includes('stalled')&&!canon(filterProfile('4.1.0')).includes('checking')&&!canon(filterProfile('4.1.0')).includes('moving'),'4.1.0 must not inherit later Status filters');
