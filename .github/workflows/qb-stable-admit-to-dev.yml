@@ -12,6 +12,7 @@ on:
       - tests/locale-handoff-contract.mjs
       - tests/qb-locale-pipeline-contract.mjs
       - tests/rss-rule-contract.mjs
+      - tests/real-qb-docker.sh
   workflow_dispatch:
     inputs:
       target_sha:
