@@ -19,6 +19,12 @@ on:
       - webui/private/data/qb-copy-bindings/**
       - webui/translations/webui_*.qm
       - webui/private/css/**
+      - webui/private/bootstrap-plan.json
+      - webui/private/scripts/runtime-assets.js
+      - webui/private/scripts/navigation.js
+      - tools/build-webui-dist.mjs
+      - tools/css-bundle-materializer.mjs
+      - tools/js-bundle-materializer.mjs
       - webui/public/styles/**
       - webui/private/scripts/capabilities.js
       - webui/private/scripts/qb-client.js

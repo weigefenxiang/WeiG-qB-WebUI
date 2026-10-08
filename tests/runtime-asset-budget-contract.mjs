@@ -28,6 +28,29 @@ assert.ok(maxLocaleBytes<64*1024,'one WeiG locale overlay became too large');
 assert.ok(localeBytes<baseline.i18nBytes,'all non-English WeiG locale overlays combined should stay below the old monolithic i18n.js baseline');
 for(const profile of ['payload','ui','full'])assert.ok(pagesVerifyLanes(profile).some(lane=>lane.name==='startup-performance'&&lane.script==='tests/pages-live-startup-performance.mjs'),profile+' Pages verification must retain the deployed startup-performance owner');
 
+// Real-qB automated hosting must consume the SAME installer archive as Pages/dist.
+// A raw webui/ stage would pass browser smoke while bypassing A67 physical bundling.
+const realQbStage=fs.readFileSync(path.join(root,'tests/real-qb-docker.sh'),'utf8');
+const realQbBrowser=fs.readFileSync(path.join(root,'tests/real-qb-browser.mjs'),'utf8');
+const realQbWorkflow=fs.readFileSync(path.join(root,'.github/workflows/real-qb-weig-product-add.yml'),'utf8');
+assert.ok(realQbStage.includes('node tools/build-webui-dist.mjs --webui-root=webui')
+  &&realQbStage.includes('tar -xzf "$STAGE/.dist/weig-qb-webui.tar.gz"')
+  &&realQbStage.includes('--strip-components=1')
+  &&!realQbStage.includes('cp -a webui/. "$STAGE/"'),
+  'Real-qB browser must mount the canonical materialized distribution rather than raw source');
+assert.ok(realQbBrowser.includes("real-qb-materialized-assets")
+  &&realQbBrowser.includes("data-weig-runtime-style")
+  &&realQbBrowser.includes("data-weig-runtime-module")
+  &&realQbBrowser.includes("resource.exactSha===weigSha")
+  &&realQbBrowser.includes("resource.status===200"),
+  'Real-qB browser must prove exact-SHA materialized JS/CSS and static hosting status');
+for(const owner of ['webui/private/bootstrap-plan.json','tools/build-webui-dist.mjs',
+  'tools/css-bundle-materializer.mjs','tools/js-bundle-materializer.mjs',
+  'webui/private/scripts/runtime-assets.js'])
+  assert.ok(realQbWorkflow.includes('- '+owner),
+    'Real-qB product smoke must rerun when canonical bundle owner changes: '+owner);
+
+
 const version=fs.readFileSync(path.join(root,'VERSION'),'utf8').trim(),out=fs.mkdtempSync(path.join(os.tmpdir(),'weig-runtime-dist-'));
 try{
   const result=buildWebuiDist({webuiRoot:path.join(root,'webui'),outDir:out,sha:'f'.repeat(40),version});

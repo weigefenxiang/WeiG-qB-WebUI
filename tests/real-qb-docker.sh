@@ -33,17 +33,20 @@ if ((BROWSER_SMOKE)); then
   ((ALLOW_WRITES)) || { echo "--browser-smoke requires --allow-writes on the isolated target" >&2; exit 2; }
   command -v google-chrome >/dev/null || { echo "Google Chrome Stable is required for --browser-smoke" >&2; exit 2; }
   STAGE="$(mktemp -d)"
-  cp -a webui/. "$STAGE/"
-  # Stage the exact materialized product from dev, not a raw Frozen source archive.
-  # Repacking Frozen here loses the certified Settings/Locale/Copy source ownership.
+  # Mount exactly the installer distribution, not raw modular webui/ source.
+  # This verifies A67 bundles under the real qB Alternative WebUI static server.
+  node tools/build-webui-dist.mjs --webui-root=webui --out="$STAGE/.dist" \
+    --sha="$WEIG_SHA" --version="$(tr -d '\r\n' < webui/VERSION)"
+  tar -xzf "$STAGE/.dist/weig-qb-webui.tar.gz" -C "$STAGE" --strip-components=1
+  rm -rf "$STAGE/.dist"
+  [[ "$(tr -d '\r\n' < "$STAGE/GIT_SHA")" == "$WEIG_SHA" ]] || {
+    echo "Real-qB materialized staging Git SHA mismatch" >&2; exit 1;
+  }
   node tools/qb-runtime-copy-product.mjs validate "$STAGE/private/data"
   if find "$STAGE" -type l -print -quit | grep -q .; then
     echo "Alternative WebUI staging contains a symlink; qB rejects symlinks" >&2
     exit 1
   fi
-  find "$STAGE" -type f \( -name '*.html' -o -name '*.js' -o -name '*.css' -o -name '*.json' -o -name 'GIT_SHA' \) \
-    -exec sed -i "s/__WEIG_GIT_SHA__/${WEIG_SHA}/g" {} +
-  printf '%s\n' "$WEIG_SHA" > "$STAGE/GIT_SHA"
   cat > "$STAGE/private/weigg-install.json" <<EOF_META
 {
   "version": "$(tr -d '\r\n' < "$STAGE/VERSION")",

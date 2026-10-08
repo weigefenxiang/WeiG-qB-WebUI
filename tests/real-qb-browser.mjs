@@ -116,7 +116,7 @@ async function main(){
       frozen_catalog_sha256:f.digest,
       alternative_webui_path:altPath,
       staged_release_transform:{
-        source_tree:'webui/** at exact weig_sha',
+        source_tree:'canonical build-webui-dist.mjs materialized webui/** at exact weig_sha',
         sha_placeholder_replaced:true,
         installer_metadata_generated:true,
         bundled_catalog_source:'webui/private/data/qb-releases.json',
@@ -202,6 +202,44 @@ async function main(){
     assert(privateSha===weigSha,`Chrome private build SHA mismatch: ${privateSha}`);
     assert(uiQb===qb,`Chrome qB identity mismatch: expected ${qb}, actual ${uiQb}`);
     assert(uiApi===api,`Chrome WebAPI identity mismatch: expected ${api}, actual ${uiApi}`);
+
+    // Verify the actual installer-built CSS/JS in real qB hosting, not raw source.
+    const stagedAssets=await page.evaluate(async()=>{
+      const descriptor=await fetch(new URL('bootstrap-plan.json',location.href),{cache:'no-store'});
+      if(!descriptor.ok)throw new Error('qB static bootstrap-plan HTTP '+descriptor.status);
+      const plan=await descriptor.json();
+      const css=[...document.querySelectorAll('link[data-weig-runtime-style]')];
+      const js=[...document.querySelectorAll('script[data-weig-runtime-module]')]
+        .filter(node=>node.dataset.weigRuntimeModule!=='scripts/settings.js'&&node.dataset.weigRuntimeModule!=='scripts/rss.js'&&node.dataset.weigRuntimeModule!=='scripts/logs.js');
+      const resources=await Promise.all([...css,...js].map(async node=>{
+        const kind=node.tagName==='LINK'?'css':'js';
+        const relative=kind==='css'?node.dataset.weigRuntimeStyle:node.dataset.weigRuntimeModule;
+        const url=kind==='css'?node.href:node.src;
+        const response=await fetch(url,{cache:'force-cache'});
+        return{kind,relative,status:response.status,mime:response.headers.get('content-type')||'',exactSha:new URL(url).searchParams.get('v')};
+      }));
+      return{plan,css:css.map(x=>x.dataset.weigRuntimeStyle),js:js.map(x=>x.dataset.weigRuntimeModule),resources};
+    });
+    const scriptsInPlan=stagedAssets.plan.phases.flatMap(phase=>phase.scripts);
+    assert(stagedAssets.plan.styles.length>=2&&stagedAssets.plan.styles.length<=5,'Real qB must serve bounded materialized CSS groups');
+    assert(scriptsInPlan.length>=14&&scriptsInPlan.length<=28,'Real qB must serve bounded materialized JS groups');
+    assert(stagedAssets.plan.styles.every(p=>/^css\/startup-\d+\.css$/.test(p)),'Real qB must serve distribution CSS bundles, not 19 raw CSS files');
+    assert(scriptsInPlan.some(p=>/^scripts\/startup-[a-z0-9-]+\.js$/.test(p)),'Real qB must execute distribution JS bundles');
+    assert(JSON.stringify(stagedAssets.css)===JSON.stringify(stagedAssets.plan.styles),'Real qB CSS DOM order diverges from installed canonical bootstrap');
+    assert(JSON.stringify(stagedAssets.js)===JSON.stringify(scriptsInPlan),'Real qB JS DOM order diverges from installed canonical bootstrap');
+    for(const resource of stagedAssets.resources){
+      assert(resource.status===200,'Real qB static file '+resource.relative+' returned HTTP '+resource.status);
+      assert(resource.exactSha===weigSha,'Real qB static file '+resource.relative+' lost exact-SHA cache identity');
+      assert(resource.kind==='css'?/text\/css/i.test(resource.mime):/(?:java|ecma)script/i.test(resource.mime),
+        'Real qB static file '+resource.relative+' has invalid '+resource.kind+' MIME: '+resource.mime);
+    }
+    ev.push('PASS','real-qb-materialized-assets',{
+      build_sha:weigSha,css:stagedAssets.css.length,js:stagedAssets.js.length+1,
+      total_css_js_requests:stagedAssets.css.length+stagedAssets.js.length+1,
+      verified_mime_and_status:stagedAssets.resources.length,
+      hosting:'real qB Alternative WebUI serving installer materialized distribution'
+    });
+
 
     await page.locator('#app-nav [data-route="settings"]').click();
     await page.waitForFunction(()=>location.hash.includes('settings'));
