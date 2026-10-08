@@ -115,3 +115,99 @@ jobs:
           path: ${{ runner.temp }}/admission-stage
           if-no-files-found: error
           retention-days: 7
+
+  source_enrich_shard:
+    name: Canonical 66-profile source enrichment shard ${{ matrix.shard }}
+    needs: review
+    if: ${{ needs.review.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - uses: actions/checkout@v7
+        with:
+          repository: qbittorrent/qBittorrent
+          path: upstream-qb
+          fetch-depth: 0
+          fetch-tags: true
+          filter: blob:none
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        with:
+          name: qb-stable-source-staged-${{ github.sha }}
+          path: source-stage
+      - name: Enrich the exact Frozen candidate shard from official qB source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p enriched-shards
+          test -s source-stage/qb-release-catalog.lkg.json
+          node tools/qb-locale-source.mjs upstream-qb source-stage/qb-release-catalog.lkg.json enriched-shards/qb-releases-shard-${{ matrix.shard }}.json --shard-index=${{ matrix.shard }} --shard-count=16
+          test -s enriched-shards/qb-releases-shard-${{ matrix.shard }}.recovery.json
+      - uses: actions/upload-artifact@v7
+        with:
+          name: qb-stable-enriched-shard-${{ github.sha }}-${{ matrix.shard }}
+          path: enriched-shards/
+          if-no-files-found: error
+          retention-days: 7
+
+  materialize_source_evidence:
+    name: Assemble 66-profile Locale / Settings / Copy source evidence without promotion
+    needs: [review, source_enrich_shard]
+    if: ${{ needs.review.result == 'success' && needs.source_enrich_shard.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v8
+        with:
+          name: qb-stable-source-staged-${{ github.sha }}
+          path: source-stage
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: qb-stable-enriched-shard-${{ github.sha }}-*
+          path: enriched-shards
+          merge-multiple: true
+      - name: Assemble exact candidate enrichment and source-owned assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/qb-locale-source.mjs --merge source-stage/qb-release-catalog.lkg.json enriched-shards source-stage/qb-releases.enriched.json
+          node tools/qb-stable-admission.mjs verify-enriched --stage=source-stage --enriched=source-stage/qb-releases.enriched.json --output=source-stage/enriched-identity.json
+          test -s source-stage/qb-releases.enriched.recovery.json
+          node tools/qb-settings-translation-lkg.mjs source-stage/qb-releases.enriched.json source-stage/qb-release-catalog.lkg.json source-stage/qb-settings-translation-lkg.json source-stage/qb-releases.enriched.recovery.json
+          mkdir -p "$RUNNER_TEMP/isolated-source-product/private/data"
+          node tools/qb-webui-catalog.mjs source-stage/qb-releases.enriched.json "$RUNNER_TEMP/isolated-source-product/private/data/qb-releases.json" --settings-lkg=source-stage/qb-settings-translation-lkg.json
+          node tools/qb-runtime-copy-product.mjs validate "$RUNNER_TEMP/isolated-source-product/private/data"
+          node tools/qb-stable-stage-compact.mjs source-stage "$RUNNER_TEMP/source-compact-staged"
+          find "$RUNNER_TEMP/isolated-source-product/translations" -type f -name 'webui_*.qm' -print -quit | grep -q .
+          echo "66-profile canonical source / Locale / Settings / qB-owned Copy stage generated. No Frozen or product ref was moved." >> "$GITHUB_STEP_SUMMARY"
+          echo "Per-domain independent census, compact runtime and real-qB WeiG Add Torrent: **PENDING**" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: qb-stable-canonical-source-evidence-${{ github.sha }}
+          path: |
+            source-stage/
+            ${{ runner.temp }}/isolated-source-product/private/data/
+            ${{ runner.temp }}/isolated-source-product/translations/
+
+            ${{ runner.temp }}/source-compact-staged/
+          if-no-files-found: error
+          retention-days: 7

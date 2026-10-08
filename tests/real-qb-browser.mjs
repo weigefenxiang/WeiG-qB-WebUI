@@ -216,6 +216,40 @@ async function main(){
     const altValue=await altPathControl.locator('input,textarea').first().inputValue().catch(()=>null);
     assert(altValue===altPath,`Canonical Settings Alternative WebUI path mismatch: ${altValue}`);
 
+    // Explicit opt-in real qB product gate: native WebAPI success alone is insufficient.
+    if(process.env.WEIG_REAL_QB_REQUIRE_ADD_TORRENT==='1'){
+      const syntheticHash=sha256(weigSha+':'+qb+':weig-product-add-smoke').slice(0,40);
+      const magnet='magnet:?xt=urn:btih:'+syntheticHash+'&dn=WeiG-Product-Verification';
+      await page.locator('#add-btn').click();
+      await page.waitForSelector('#add-dialog[open]',{timeout:10000});
+      await page.locator('#torrent-urls').fill(magnet);
+      const responseTask=page.waitForResponse(res=>{
+        try{const url=new URL(res.url());return url.origin===base.origin&&url.pathname==='/api/v2/torrents/add'&&res.request().method()==='POST';}
+        catch{return false;}
+      },{timeout:15000});
+      await page.locator('#add-submit').click();
+      const addResponse=await responseTask;
+      assert(addResponse.status()===200,'WeiG Add Torrent UI returned HTTP '+addResponse.status()+' instead of accepted HTTP 200.');
+      await page.waitForFunction(()=>!document.querySelector('#add-dialog')?.open,null,{timeout:10000});
+      let persisted=false,lastStatus=0;
+      for(let attempt=0;attempt<12&&!persisted;attempt++){
+        const infoUrl=new URL('api/v2/torrents/info?hashes='+syntheticHash,base);
+        const read=await context.request.get(infoUrl.toString());
+        lastStatus=read.status();
+        if(lastStatus===200){
+          const torrents=await read.json();
+          persisted=Array.isArray(torrents)&&torrents.some(row=>String(row?.hash||'').toLowerCase()===syntheticHash);
+        }
+        if(!persisted)await page.waitForTimeout(250);
+      }
+      assert(persisted,'qB did not expose the torrent added by WeiG after the accepted POST (last GET '+lastStatus+').');
+      ev.push('PASS','weig-add-torrent-through-real-qb',{
+        request:{entry:'#add-btn',source:'#torrent-urls',submit:'#add-submit',endpoint:'/api/v2/torrents/add',method:'POST',synthetic_magnet_no_external_trackers:true},
+        response:{post_status:addResponse.status(),real_qb_torrent_visible:true,dialog_closed:true},
+        validation:'real WeiG product UI and qB daemon, not native WebAPI-only probe'
+      });
+    }
+
     for(const required of ['/api/v2/app/version','/api/v2/app/webapiVersion','/api/v2/app/preferences']){
       assert((requestFacts.get(required)||0)>=200&&(requestFacts.get(required)||0)<300,`Chrome did not complete required real qB API request ${required}.`);
     }

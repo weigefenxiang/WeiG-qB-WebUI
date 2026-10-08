@@ -5,7 +5,17 @@ import os from 'node:os';
 import path from 'node:path';
 import {catalogIdentity,assertCatalogIdentity} from '../tools/qb-catalog-identity.mjs';
 import {accountSourceInventory,assertCompleteSourceCensus} from '../tools/qb-source-census.mjs';
+import {verifyStagedCompactSourceIdentity} from '../tools/qb-stable-stage-compact.mjs';
 import {assertFrozenPrefix,stableAdmissionDelta,admissionProductCatalog,verifyLkg,renderAdmissionReport,semanticFieldReview,verifyCandidateSourceIdentity,classifyUpstreamChangedPaths,assertEnrichedCatalogBinding,stageFrozenCandidate,promotedManifest} from '../tools/qb-stable-admission.mjs';
+
+const sampleCatalog=[{qbVersion:'4.1.0',sourceSha:'a'.repeat(40)},{qbVersion:'5.2.4',sourceSha:'b'.repeat(40)}];
+const sampleIdentity=catalogIdentity(sampleCatalog);
+const sampleCore={catalogIdentity:sampleIdentity,capabilityData:{catalogIdentity:sampleIdentity,releases:sampleCatalog},torrentData:{catalogIdentity:sampleIdentity},detailData:{catalogIdentity:sampleIdentity},actionData:{catalogIdentity:sampleIdentity}};
+const sampleManifest={supportFloor:'4.1.0',latestAdmittedStable:'5.2.4'};
+const sampleRss={releaseSet:{count:2,last:'5.2.4'}};
+assert.equal(verifyStagedCompactSourceIdentity(sampleManifest,sampleCatalog,sampleCore,sampleRss).status,'SOURCE_COMPACT_STAGED_NOT_PRODUCT_ADMITTED');
+assert.throws(()=>verifyStagedCompactSourceIdentity(sampleManifest,sampleCatalog,{...sampleCore,detailData:{catalogIdentity:{...sampleIdentity,latestAdmittedStable:'5.2.3'}}},sampleRss),/diverged/);
+assert.throws(()=>verifyStagedCompactSourceIdentity(sampleManifest,sampleCatalog,sampleCore,{releaseSet:{count:1,last:'5.2.4'}}),/Staged RSS/);
 
 const base=[
   {qbVersion:'4.1.0',tag:'release-4.1.0',stable:true,officialWeiGSupport:true},

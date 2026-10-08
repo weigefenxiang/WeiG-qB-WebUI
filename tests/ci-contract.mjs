@@ -103,4 +103,15 @@ for(const rel of ['.github/workflows/real-qb-full.yml','.github/workflows/real-q
   assert(src.startsWith('name: Compatibility Audit'),`${rel} must be labeled Compatibility Audit`);
 }
 
+const stableSourceReview=read('.github/workflows/qb-stable-source-review.yml');
+assert(stableSourceReview.startsWith('name: qB Stable Source Admission Review\n'),'Official source staging must have one independently auditable workflow owner');
+assert(stableSourceReview.includes('contents: read')&&stableSourceReview.includes('actions: read'),'Source staging must have read-only GitHub permissions');
+for(const forbidden of ['contents: write','actions: write','git push','git commit','update-ref','refs/heads/main'])assert(!stableSourceReview.includes(forbidden),'Source-only admission workflow must not contain ref-write capability: '+forbidden);
+assert(stableSourceReview.includes('persist-credentials: false'),'Official source checkout must not keep write credentials');
+assert(stableSourceReview.includes('qb-stable-admission.mjs verify-candidate-source')&&stableSourceReview.includes('qb-stable-admission.mjs stage-candidate'),'Staging must prove official SHA and Frozen append-only identity before generation');
+assert(stableSourceReview.includes('node tools/qb-locale-source.mjs')&&stableSourceReview.includes('--merge source-stage/qb-release-catalog.lkg.json'),'Staging must consume existing qB Locale/Settings/QM generators');
+assert(stableSourceReview.includes('max-parallel: 8')&&stableSourceReview.includes('shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]'),'Canonical source enrichment may use 16 shards but only eight parallel workers');
+assert(stableSourceReview.includes('node tools/qb-stable-stage-compact.mjs')&&stableSourceReview.includes('qb-stable-canonical-source-evidence-'),'Compact staged domains and source artifact must use the same exact run identity');
+assert(stableSourceReview.includes('PENDING')&&!stableSourceReview.includes('PRODUCT_CERTIFIED'),'Source staging cannot silently admit new versions as product-verified');
+
 console.log(`A61 CI contract passed: core=${core.length}, simulator=${simulator.length}, compatibility=${compat.length}; Candidate and Promotion are risk-tiered.`);
