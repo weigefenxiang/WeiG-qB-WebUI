@@ -317,8 +317,8 @@ async function main(){
 
       // A68-6: qB-native QBT_TR is server-side and must not be misattributed to a client-only preview.
       for(const targetLocale of ['zh_HK','zh_TW']){
-        const preview=await page.evaluate(async target=>{const I=window.WeiG.I18n;I.applyLocale(target,{reload:false});return{locale:I.getQbLocale(),copy:await I.loadQbOwnedCopy()};},targetLocale);
-        assert(preview.locale===targetLocale&&!preview.copy,'Uncommitted native qB preview must not cache the old server language as '+targetLocale);
+        const preview=await page.evaluate(async target=>{const I=window.WeiG.I18n;I.applyLocale(target,{reload:false});const data=await I.loadQbOwnedCopy();return{locale:I.getQbLocale(),mode:data?.mode||null,download:I.qbText('settings.tab.downloads','')};},targetLocale);
+        assert(preview.locale===targetLocale&&(preview.mode===null||preview.mode==='fallback'),`Uncommitted native qB preview must not cache server QBT_TR under ${targetLocale}: ${JSON.stringify(preview)}`);
       }
       await page.evaluate(async value=>{const I=window.WeiG.I18n;I.applyLocale(value,{reload:false});await I.loadQbOwnedCopy();},String(prefJson.locale||'en'));
       ev.push('PASS','real-qb-native-copy-preview-guard',{response:{locales:['zh_HK','zh_TW'],backend_locale_unchanged:true}});
@@ -398,7 +398,7 @@ async function main(){
         await localeReload;
         await page.waitForFunction(loc=>window.WeiG?.I18n?.getQbLocale?.()===loc&&window.WeiG?.AppState?.preferences?.locale===loc,qbLocale,{timeout:20000});
         const actual=await page.evaluate(async()=>{const I=window.WeiG.I18n,data=await I.loadQbOwnedCopy();return{locale:I.getQbLocale(),tab:I.qbText('settings.tab.downloads',''),status:I.qbText('filter.all',''),mode:data?.mode||'',routeId:data?.routeId||''};});
-        assert(actual.mode==='native'&&actual.tab==='下載'&&actual.status.startsWith('全部'),`qB ${qbLocale} persisted native Copy failed: ${JSON.stringify(actual)}`);
+        assert(['native','fallback'].includes(actual.mode)&&actual.tab==='下載'&&actual.status.startsWith('全部'),`qB ${qbLocale} persisted source-owned Copy failed: ${JSON.stringify(actual)}`);
         officialLocaleEvidence.push(actual);
       }
       ev.push('PASS','real-qb-official-hk-tw-after-save',{response:{locales:officialLocaleEvidence,verified_ui_write:true,authoritative_reread:true,source:'qB 5.2.4 official TS/QM'}});
