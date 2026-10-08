@@ -300,7 +300,11 @@ ARGS=()
 ((ALLOW_WRITES)) && ARGS+=(--allow-writes)
 run_evidence() {
   local evidence_dir='artifacts/real-qb'
-  ((FULL_MATRIX)) && evidence_dir="$FULL_EVIDENCE_DIR"
+  if ((FULL_MATRIX)); then
+    evidence_dir="$FULL_EVIDENCE_DIR"
+  elif ((BROWSER_SMOKE)); then
+    evidence_dir="${WEIG_REAL_QB_EVIDENCE_DIR:-artifacts/real-qb}"
+  fi
   WEIG_QB_URL="$TARGET" \
   WEIG_QB_USER="$USERNAME" \
   WEIG_QB_PASS="$PASSWORD" \
