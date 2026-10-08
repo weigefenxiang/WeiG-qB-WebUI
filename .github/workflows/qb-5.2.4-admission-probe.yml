@@ -89,7 +89,7 @@ jobs:
           body="$(mktemp)"
           code="$(curl -sS --max-time 5 -D "$headers" -o "$body" -w '%{http_code}' -H 'Host: localhost' -X POST --data-urlencode 'username=admin' --data-urlencode "password=$password" "http://$ip:8080/api/v2/auth/login")"
           case "$code" in 200|204) ;; *) echo "qB login HTTP $code" >&2; exit 1;; esac
-          sid="$(tr -d '\r' < "$headers" | grep -i '^set-cookie:' | grep -oiE 'SID=[^;[:space:]]+' | head -n 1 || true)"
+          sid="$(tr -d '\r' < "$headers" | grep -i '^set-cookie:' | grep -oiE '(QBT_SID_[0-9]+|SID)=[^;[:space:]]+' | head -n 1 || true)"
           if [ -z "$sid" ]; then
             echo "qB login HTTP $code returned no SID cookie" >&2
             echo "Set-Cookie header count: $(grep -ic '^Set-Cookie:' "$headers" || true)" >&2
