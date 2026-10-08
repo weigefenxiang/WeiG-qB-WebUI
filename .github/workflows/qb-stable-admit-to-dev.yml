@@ -10,6 +10,7 @@ on:
       - tests/qb-copy-sharding-repo-contract.mjs
       - tests/qb-runtime-copy-materialization-contract.mjs
       - tests/locale-handoff-contract.mjs
+      - tests/qb-locale-pipeline-contract.mjs
   workflow_dispatch:
     inputs:
       target_sha:
