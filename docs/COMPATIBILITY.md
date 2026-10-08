@@ -105,6 +105,12 @@ WeiG-owned presentation copy has one runtime owner: `W.I18n` in `webui/private/s
 
 qB-owned visible copy remains a separate source-truth path: exact source text / compact qB-owned copy evidence and official QM assets stay authoritative for native qB labels. WeiG presentation translations must not replace or guess native qB copy.
 
+## Official Copy Readiness and Locale Transitions
+
+`W.I18n` owns both the visible WeiG locale projection and the **loading lifecycle** of qB-owned Copy. A committed or previewed language transition invalidates the prior official Copy result; a pending response can commit only when its generation, locale and source identity still match the current request. Ready notifications such as `weig:qbcopychange` let Settings' official left-hand categories and Torrent status projections refresh without each feature creating a second loader or translation table.
+
+The qB persisted `app/preferences.locale` remains the only authoritative committed language value. Preview/cancel must roll back without an accidental persisted write; Save verifies the persisted result and reload behavior. Tests must cover rapid English/Chinese switching, stale results and missing/partial source Copy. These rules do not imply that source-owned labels can be translated by WeiG keys or inferred from a nearby qB release.
+
 ## Source Text and Translation Identity
 
 qB source text may pass through HTML, XML, CDATA or entity encoding layers.

@@ -67,6 +67,14 @@ Development is complete only after applicable exact-SHA CI, Pages Source, Virtua
 
 The real-qB browser gate must write its evidence to the same artifact directory the workflow uploads; missing evidence must fail closed. The Fast real-qB aggregate derives all positive and single-tamper negative witness counts from the frozen manifest, not a fixed number of profiles.
 
+## Materialized Development Evidence
+
+The development archive and Virtual Pages must share the canonical CSS/JS materialization owners (`tools/css-bundle-materializer.mjs`, `tools/js-bundle-materializer.mjs`) rather than running separate runtime packers. Source files remain independently editable; the physical `startup-*.css/js` bundles are distribution artifacts. `tests/pages-live-startup-performance.mjs` checks the deployed plan and resource request budget, while `tests/runtime-asset-budget-contract.mjs` checks installer archive membership and source retirement.
+
+Real-qB Alternative WebUI tests must install the same build artifact as users, **not** the raw modular `webui/` tree. The isolated real-qB browser suite checks the exact build SHA, CSS/JS HTTP status, content type and expected physical module inventory, along with real product actions. The qB Docker volume remains read-only. An HTTP 500 from a changed test staging path should first be diagnosed at the archive extraction / mounted directory traversal boundary instead of masked with extra UI retries.
+
+Passing development tests and user acceptance closes a *development proposal*, not a release. A documentation-only closure keeps `VERSION` unchanged, stays on `dev`, and does not authorize `main`, Candidate, Tag, or Release.
+
 ## Promotion
 
 Promotion is a controlled fast-forward from a validated `dev` commit to `main`.

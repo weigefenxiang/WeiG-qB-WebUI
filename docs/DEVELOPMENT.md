@@ -104,6 +104,20 @@ tools/build-webui-dist.mjs
 
 It verifies that the WebUI is self-contained, embeds the exact Git SHA, writes checksums and rejects retired runtime paths.
 
+## Browser Resource Lifecycle and Build-time Bundles
+
+Production source under `webui/private/css/` and `webui/private/scripts/` remains modular. `webui/private/bootstrap-plan.json` is the canonical **source** dependency inventory; do not edit it to point to generated `startup-*.css/js` files. `W.RuntimeAssets` owns network loading, ordered execution, retry, identity and cache keys, while `W.Navigation` owns the route module inventory and `App` determines when the first Torrent view is usable.
+
+The self-contained installer distribution and the dev Virtual Pages source both run the same build-only `tools/css-bundle-materializer.mjs` and `tools/js-bundle-materializer.mjs`. CSS preserves order and UTF-8 declarations; JS groups only safe IIFEs within dependency phases. Files with special execution context (including `document.currentScript`) and selected large modules remain independent. Bundles have a 96-KiB bound, and no custom browser decompression or mandatory minification is added. Generated bundles and retired duplicate source CSS/JS belong to the **distribution**, not the canonical source tree.
+
+Once the first valid Torrent view renders, route code for Settings/RSS/Logs may be offered as a browser-native, inert/low-priority prefetch under visibility/network safeguards. Prefetch does **not** execute the module, mark it loaded, or make the route ready. On navigation, the canonical loader performs actual execution; stale asynchronous navigation results cannot overwrite the active route.
+
+The initial CSS/JS request budget is exercised by `tests/pages-live-startup-performance.mjs` against the *materialized* Virtual Pages output. The verified bundle layout reduced initial requests from 60 to 24 (19 to 3 CSS, 41 to 21 JS including the seed loader). These are asset-count observations, not promises about every client's cold-start timing.
+
+For a qB Alternative WebUI regression, do not substitute `cp -a webui/.` for installer output. `tests/real-qb-docker.sh` now mounts the actual archive built by `tools/build-webui-dist.mjs` read-only, and `tests/real-qb-browser.mjs` verifies CSS/JS inventory, HTTP status, MIME and exact-SHA asset identity on real qB. The isolated temporary extraction root needs traversal permission for the qB container user; the mount itself remains read-only.
+
+For source/build/runtime changes, use the existing `tests/runtime-asset-contracts.mjs`, `tests/runtime-asset-budget-contract.mjs`, Virtual Pages and applicable real-qB evidence, instead of creating another packer, load scheduler or gate.
+
 ## Testing Strategy
 
 Use the smallest relevant test while iterating, then expand to the affected integration boundary.
