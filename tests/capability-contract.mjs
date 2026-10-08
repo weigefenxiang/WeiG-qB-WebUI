@@ -20,9 +20,16 @@ const newest=core.releases.at(-1),v=newest.qbVersion.split('.'),future=v.slice(0
 await C.bind({qbVersion:future,webApiVersion:newest.webApiVersion,capabilities:{}});
 assert(C.releaseIdentity().resolutionMode==='INHERITED',future+': expected inherited release');
 assert(C.allowsReadOperation('clientdata/load','POST'),future+': POST read should inherit');
+
+const allowedTorrentFields={keys:()=>['urls','category'].values()},unsafeTorrentFields={keys:()=>['urls','futureUnsafe'].values()};
+assert(C.allowsWriteOperation('torrents/add','POST','torrentscontroller.h:addAction',allowedTorrentFields),future+': exact WebAPI and source-proven additive torrent operation should inherit');
+assert(!C.allowsWriteOperation('torrents/add','POST','torrentscontroller.h:addAction',unsafeTorrentFields),future+': unrecognized multipart fields must fail closed');
+assert(!C.allowsWriteOperation('torrents/delete','POST','torrentscontroller.h:deleteAction',allowedTorrentFields),future+': destructive operation must stay blocked');
+assert(!C.allowsWriteOperation('torrents/add','POST','torrentscontroller.h:deleteAction',allowedTorrentFields),future+': mismatched source-action proof denied');
 assert(!C.allowsReadOperation('clientdata/store','POST'),future+': writes must not inherit');
 assert(!C.allowsReadOperation('app/setPreferences','POST'),future+': Settings write must not inherit');
 assert(!C.allowsReadOperation('clientdata/load','GET'),future+': only POST semantics apply');
 await C.bind({qbVersion:future,webApiVersion:'2.15.9',capabilities:{}});
 assert(!C.allowsReadOperation('clientdata/load','POST'),future+': changed WebAPI must not inherit POST read');
+assert(!C.allowsWriteOperation('torrents/add','POST','torrentscontroller.h:addAction',allowedTorrentFields),future+': changed WebAPI must revoke additive write compatibility');
 console.log('Capability compact-contract test passed: detected/catalog identity stays separate from per-domain EXACT/EQUIVALENT/INHERITED/FALLBACK bases, source-proven special stables resolve per domain, bounded inherited reads remain available, and dangerous writes fail closed outside exact/equivalent provenance.');

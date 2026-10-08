@@ -69,14 +69,27 @@
   // HTTP method does not define the semantics of the operation. The source
   // action is required in addition to exact inherited WebAPI identity.
   var POST_READ_ACTIONS=Object.freeze({'clientdata/load':'clientdatacontroller.h:loadAction'});
+  function inheritedActionProof(){
+    if(!domains.actions)return false;
+    var release=domainResolution('actions');
+    return !!(release&&!release.fallback&&release.resolutionMode==='INHERITED'&&release.sourceSha&&normalizedVersion(release.detectedWebApiVersion)===normalizedVersion(release.webApiVersion));
+  }
   function allowsReadOperation(path,method){
     if(String(method||'').toUpperCase()!=='POST')return false;
     var endpoint=String(path||'').replace(/^[/]+/,'').split('?')[0],action=POST_READ_ACTIONS[endpoint];
-    if(!action||!domains.actions)return false;
-    var release=domainResolution('actions');
-    if(!release||release.fallback||release.resolutionMode!=='INHERITED'||!release.sourceSha)return false;
-    if(normalizedVersion(release.detectedWebApiVersion)!==normalizedVersion(release.webApiVersion))return false;
+    if(!action||!inheritedActionProof())return false;
     return !!actionDescriptor(action);
+  }
+  // Only bounded additive operations inherit; the HTTP verb and WebAPI alone
+  // are never sufficient evidence of an unknown version's mutation safety.
+  var INHERITED_ADDITIVE_ACTIONS=Object.freeze({'torrents/add':'torrentscontroller.h:addAction'});
+  function allowsWriteOperation(path,method,sourceAction,body){
+    if(String(method||'').toUpperCase()!=='POST')return false;
+    var endpoint=String(path||'').replace(/^[/]+/,'').split('?')[0],action=INHERITED_ADDITIVE_ACTIONS[endpoint];
+    if(!action||action!==String(sourceAction||'')||!body||typeof body.keys!=='function'||!inheritedActionProof())return false;
+    var desc=actionDescriptor(action),fields=Array.from(body.keys());
+    if(!desc||!Array.isArray(desc.parameters)||desc.parameters.indexOf('urls')<0||!fields.length)return false;
+    return fields.some(function(key){return key==='urls'||key==='torrents';})&&fields.every(function(key){return key==='torrents'||desc.parameters.indexOf(key)>=0;});
   }
   function hasWriteProvenance(domainName){return isCertified(domainName||'actions');}
   function supportsWriteAction(action){return !!(action&&hasWriteProvenance('actions')&&hasAction(action));}
@@ -110,6 +123,6 @@
   function intercept(event){var node=event.target&&event.target.closest&&event.target.closest('[data-capability-id]');if(!node||node.getAttribute('aria-disabled')!=='true')return;event.preventDefault();event.stopImmediatePropagation();open(node.dataset.capabilityId);}
   function interceptKey(event){if(['Enter',' ','ArrowDown','ArrowUp'].indexOf(event.key)<0)return;intercept(event);}
   document.addEventListener('click',intercept,true);document.addEventListener('keydown',interceptKey,true);global.addEventListener('weig:library-state',function(){requestAnimationFrame(sync);});global.addEventListener('weig:languagechange',function(){requestAnimationFrame(sync);if(dialog&&dialog.open&&dialog.dataset.dialogCapability)open(dialog.dataset.dialogCapability);});
-  var api={load:load,ready:load,ensure:ensure,domain:domain,bind:bind,supports:supports,state:state,open:open,sync:sync,decorate:decorate,decorateMatching:decorateMatching,compareVersions:compare,matchRange:matchRange,matchRule:matchRule,badgeFor:badgeFor,formatVersion:formatVersion,requirementFacts:requirementFacts,ruleLines:ruleLines,releaseIdentity:releaseIdentity,domainResolution:domainResolution,domainResolutions:domainResolutions,webuiLocales:webuiLocales,hasExactSourceFacts:hasExactSourceFacts,torrentFilters:torrentFilters,torrentVisibleFilters:torrentVisibleFilters,facetSpecialRows:facetSpecialRows,supportsTorrentFilter:supportsTorrentFilter,hasTorrentInfoParameter:hasTorrentInfoParameter,hasTorrentInfoField:hasTorrentInfoField,trackerFilters:trackerFilters,trackerFacetMode:trackerFacetMode,torrentStates:torrentStates,torrentContextMenu:torrentContextMenu,statisticsUi:statisticsUi,torrentFieldFacts:torrentFieldFacts,torrentDetailUi:torrentDetailUi,hasTorrentDetailField:hasTorrentDetailField,actionDescriptor:actionDescriptor,hasWriteProvenance:hasWriteProvenance,allowsReadOperation:allowsReadOperation,hasAction:hasAction,supportsWriteAction:supportsWriteAction,isCertified:isCertified,sourceActionDescriptor:sourceActionDescriptor,upstreamTorrentFilter:upstreamTorrentFilter,resolveTorrentActionDescriptor:resolveTorrentActionDescriptor,supportsTorrentAction:supportsTorrentAction,torrentActionSurface:torrentActionSurface,torrentSourceActionInventory:torrentSourceActionInventory};
+  var api={load:load,ready:load,ensure:ensure,domain:domain,bind:bind,supports:supports,state:state,open:open,sync:sync,decorate:decorate,decorateMatching:decorateMatching,compareVersions:compare,matchRange:matchRange,matchRule:matchRule,badgeFor:badgeFor,formatVersion:formatVersion,requirementFacts:requirementFacts,ruleLines:ruleLines,releaseIdentity:releaseIdentity,domainResolution:domainResolution,domainResolutions:domainResolutions,webuiLocales:webuiLocales,hasExactSourceFacts:hasExactSourceFacts,torrentFilters:torrentFilters,torrentVisibleFilters:torrentVisibleFilters,facetSpecialRows:facetSpecialRows,supportsTorrentFilter:supportsTorrentFilter,hasTorrentInfoParameter:hasTorrentInfoParameter,hasTorrentInfoField:hasTorrentInfoField,trackerFilters:trackerFilters,trackerFacetMode:trackerFacetMode,torrentStates:torrentStates,torrentContextMenu:torrentContextMenu,statisticsUi:statisticsUi,torrentFieldFacts:torrentFieldFacts,torrentDetailUi:torrentDetailUi,hasTorrentDetailField:hasTorrentDetailField,actionDescriptor:actionDescriptor,hasWriteProvenance:hasWriteProvenance,allowsReadOperation:allowsReadOperation,allowsWriteOperation:allowsWriteOperation,hasAction:hasAction,supportsWriteAction:supportsWriteAction,isCertified:isCertified,sourceActionDescriptor:sourceActionDescriptor,upstreamTorrentFilter:upstreamTorrentFilter,resolveTorrentActionDescriptor:resolveTorrentActionDescriptor,supportsTorrentAction:supportsTorrentAction,torrentActionSurface:torrentActionSurface,torrentSourceActionInventory:torrentSourceActionInventory};
   W.CapabilityRegistry=api;W.CapabilityDialog={open:function(value){return typeof value==='string'?open(value):null;},close:function(){if(dialog)W.DialogRuntime.close(dialog);}};
 })(window);
