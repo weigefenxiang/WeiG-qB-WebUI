@@ -40,7 +40,7 @@ if ((BROWSER_SMOKE)); then
     exit 1
   fi
   find "$STAGE" -type f \( -name '*.html' -o -name '*.js' -o -name '*.css' -o -name '*.json' -o -name 'GIT_SHA' \) \
-    -exec sed -i "s/__WEIGG_GIT_SHA__/${WEIG_SHA}/g" {} +
+    -exec sed -i "s/__WEIG_GIT_SHA__/${WEIG_SHA}/g" {} +
   printf '%s\n' "$WEIG_SHA" > "$STAGE/GIT_SHA"
   cat > "$STAGE/private/weigg-install.json" <<EOF_META
 {
@@ -55,7 +55,7 @@ if ((BROWSER_SMOKE)); then
 }
 EOF_META
   if grep -R -l --include='*.html' --include='*.js' --include='*.css' --include='*.json' --include='GIT_SHA' \
-      '__WEIGG_GIT_SHA__' "$STAGE" | grep -q .; then
+      '__WEIG_GIT_SHA__' "$STAGE" | grep -q .; then
     echo "Alternative WebUI staging still contains an unresolved Git SHA placeholder" >&2
     exit 1
   fi

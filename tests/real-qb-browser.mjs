@@ -150,7 +150,7 @@ async function main(){
     assert(publicRoot.status===200,`Alternative WebUI public root: HTTP ${publicRoot.status}`);
     const publicHtml=await publicRoot.text();
     assert(publicHtml.includes('id="login-form"'),'Alternative WebUI public root is not WeiG login UI.');
-    assert(publicHtml.includes(`name="weigg-build-sha" content="${weigSha}"`),'Public Alternative WebUI build SHA is not exact current SHA.');
+    assert(publicHtml.includes(`name="weig-build-sha" content="${weigSha}"`),'Public Alternative WebUI build SHA is not exact current SHA.');
     ev.push('PASS','public-root-served-by-real-qb',{
       response:{status:publicRoot.status,login_form:true,build_sha:weigSha},
       qB_static_owner:'real qBittorrent WebApplication'
@@ -185,7 +185,7 @@ async function main(){
 
     await page.goto(base.href,{waitUntil:'domcontentloaded'});
     await page.waitForSelector('#login-form');
-    const publicSha=await page.locator('meta[name="weigg-build-sha"]').getAttribute('content');
+    const publicSha=await page.locator('meta[name="weig-build-sha"]').getAttribute('content');
     assert(publicSha===weigSha,`Chrome public build SHA mismatch: ${publicSha}`);
 
     await page.locator('#username').fill(user);
@@ -196,7 +196,7 @@ async function main(){
     await page.waitForFunction(()=>document.querySelector('#qb-version')?.textContent?.trim()&&!['—','Detecting…'].includes(document.querySelector('#qb-version').textContent.trim()),null,{timeout:10000});
     await page.waitForFunction(()=>document.querySelector('#api-version')?.textContent?.trim()&&!['—','Detecting…'].includes(document.querySelector('#api-version').textContent.trim()),null,{timeout:10000});
 
-    const privateSha=await page.locator('meta[name="weigg-build-sha"]').getAttribute('content');
+    const privateSha=await page.locator('meta[name="weig-build-sha"]').getAttribute('content');
     const uiQb=norm(await page.locator('#qb-version').textContent());
     const uiApi=norm(await page.locator('#api-version').textContent());
     assert(privateSha===weigSha,`Chrome private build SHA mismatch: ${privateSha}`);
