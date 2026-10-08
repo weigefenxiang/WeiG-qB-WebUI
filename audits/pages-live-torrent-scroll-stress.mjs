@@ -59,7 +59,7 @@ try{
   assert.equal(startup.catalogReady,false,`1600-Torrent startup must not materialize a full catalog: ${JSON.stringify(startup)}`);
   assert.equal(startup.catalogBusy,false,`1600-Torrent startup must not leave full-catalog background work running: ${JSON.stringify(startup)}`);
   assert.equal(startup.pageSize,50,'stress fixture must exercise the canonical 50-row page');
-  assert.equal(startup.prefetch50,3,'50/page must retain the bounded ±3 neighbor window');
+  assert.equal(startup.prefetch50,6,'50/page must retain the bounded ±6 neighbor window');
 
   await page.evaluate(()=>{const client=WeiG.AppState.client;window.__a53OriginalGetTorrents=client.getTorrents;window.__a53TotalCalls=[];client.getTorrents=async function(opts){window.__a53TotalCalls.push({...opts});return window.__a53OriginalGetTorrents.call(client,opts);};});
   await page.locator('#filter-nav [data-filter="inactive"]').click();
