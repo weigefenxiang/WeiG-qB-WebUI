@@ -24,7 +24,7 @@
         setState('login-handoff-failed');contract.navigatePublicFailure();return false;
       }
       var result=await contract.probe();
-      if(result&&result.kind==='authenticated'){contract.completeHandoff();setState('authenticated');unlock();return true;}
+      if(result&&result.kind==='authenticated'){if(W.StorageRuntime&&W.StorageRuntime.session)W.StorageRuntime.session.remove((W.StorageKeys&&W.StorageKeys.torrentTotalCache)||'weig.torrentTotalCache');contract.completeHandoff();setState('authenticated');unlock();return true;}
       contract.clearHandoff();contract.recordFailure(result&&result.kind||'offline',result&&result.status||0,'post-navigation');
       setState('login-handoff-failed');contract.navigatePublicFailure();return false;
     }catch(_error){
@@ -50,7 +50,7 @@
       client=sharedClient(client);await client.request('auth/logout',{method:'POST',type:'void'});setState('verifying');
       var active=await probeSession(client);
       if(active){setState('auth-bypass');explainBypass();return false;}
-      setState('logged-out');guardSet();clearPrivateState();lock();navigatePublic();return true;
+      setState('logged-out');guardSet();if(W.AppState&&W.AppState.libraryData&&W.AppState.libraryData.clearPersistedTotals)W.AppState.libraryData.clearPersistedTotals();clearPrivateState();lock();navigatePublic();return true;
     }catch(e){setState('failed');if(W.toast)W.toast((e&&e.message)||String(e),'error');return false;}
     finally{busy=false;}
   }

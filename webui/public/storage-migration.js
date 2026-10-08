@@ -2,7 +2,7 @@
   'use strict';
   var W=global.WeiG=global.WeiG||{};
   if(W.StorageKeys&&W.StorageRuntime)return;
-  var K=W.StorageKeys||Object.freeze({config:'weig.preferences',sidebar:'weig.sidebarCollapsed',tableColumnsPrefix:'weig.tableColumns:',logsSizeMode:'weig.logs.sizeMode',displayTimeZone:'weig.displayTimeZone',transferUnit:'weig.transferUnit',torrentListContext:'weig.torrentListContext',torrentDetailDockHeight:'weig.torrentDetailDockHeight',addTorrentDraft:'weig.addTorrentDraft',localeBootstrap:'weig.localeBootstrap',loginLocaleIntent:'weig.loginLocaleIntent',loginHandshake:'weig.loginHandshake',loginFailure:'weig.loginFailure',logoutGuard:'weig.logoutGuard',handoffParam:'__weig_handoff',authFailureParam:'__weig_auth_failure',retryParam:'__weig_retry'});
+  var K=W.StorageKeys||Object.freeze({config:'weig.preferences',sidebar:'weig.sidebarCollapsed',tableColumnsPrefix:'weig.tableColumns:',logsSizeMode:'weig.logs.sizeMode',displayTimeZone:'weig.displayTimeZone',transferUnit:'weig.transferUnit',torrentListContext:'weig.torrentListContext',torrentTotalCache:'weig.torrentTotalCache',torrentDetailDockHeight:'weig.torrentDetailDockHeight',addTorrentDraft:'weig.addTorrentDraft',localeBootstrap:'weig.localeBootstrap',loginLocaleIntent:'weig.loginLocaleIntent',loginHandshake:'weig.loginHandshake',loginFailure:'weig.loginFailure',logoutGuard:'weig.logoutGuard',handoffParam:'__weig_handoff',authFailureParam:'__weig_auth_failure',retryParam:'__weig_retry'});
   function safeDefault(value){return value===undefined?null:value;}
   function createSafeStore(name){
     var memory=Object.create(null),removed=Object.create(null),owns=Object.prototype.hasOwnProperty;
