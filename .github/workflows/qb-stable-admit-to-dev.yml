@@ -1,0 +1,184 @@
+name: qB Stable Admission - SAFE-REF Dev Materialize
+
+# Explicit source-certified admission. Never touches main, Tag, Release or fix branches.
+on:
+  # A64 single-use automatic materialization after this workflow is safely added to dev.
+  push:
+    branches: [dev]
+    paths:
+      - .github/workflows/qb-stable-admit-to-dev.yml
+  workflow_dispatch:
+    inputs:
+      target_sha:
+        description: Exact current dev SHA carrying the verified admission tooling
+        required: true
+        type: string
+      source_run_id:
+        description: Completed successful exact-SHA Stable Source Admission Review Run ID
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: qb-stable-dev-admission
+  cancel-in-progress: false
+
+jobs:
+  materialize:
+    name: Verify canonical sources, test actual qB, then fast-forward dev
+    if: ${{ github.ref == 'refs/heads/dev' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 65
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - name: Validate exact dev parent and successful source run
+        shell: bash
+        env:
+          TARGET_SHA: ${{ inputs.target_sha || github.sha }}
+          SOURCE_RUN_ID: ${{ inputs.source_run_id || '37717659549' }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          [[ "$TARGET_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$SOURCE_RUN_ID" =~ ^[0-9]+$ ]]
+          test "$GITHUB_REF" = refs/heads/dev
+          test "$GITHUB_SHA" = "$TARGET_SHA"
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain)"
+          details="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN_ID")"
+          source_sha="$(jq -r .head_sha <<< "$details")"
+          [[ "$source_sha" =~ ^[0-9a-f]{40}$ ]]
+          git merge-base --is-ancestor "$source_sha" "$TARGET_SHA"
+          # Reuse immutable source evidence only when its canonical generators
+          # and already-admitted Frozen baseline have not changed since that run.
+          git diff --quiet "$source_sha" "$TARGET_SHA" -- \
+            tools/qb-stable-admission.mjs tools/qb-stable-stage-compact.mjs \
+            tools/qb-compact-runtime.mjs tools/qb-locale-overlay.mjs \
+            tools/qb-webui-catalog.mjs tools/qb-runtime-copy-product.mjs \
+            tests/fixtures/qb-release-catalog.lkg.json \
+            tools/data/qb-stable-lkg.json tools/data/qb-locale-lkg.json \
+            webui/private/data
+          test "$(jq -r .status <<< "$details")" = completed
+          test "$(jq -r .conclusion <<< "$details")" = success
+          test "$(jq -r .name <<< "$details")" = 'qB Stable Source Admission Review'
+          git fetch --no-tags origin dev
+          test "$(git rev-parse origin/dev)" = "$TARGET_SHA"
+      - name: Download exact successful source and Preferences evidence
+        uses: actions/download-artifact@v8
+        with:
+          name: qb-stable-canonical-source-evidence-${{ inputs.source_sha || '85e9935e02850740439e575567a1cb5c8a959892' }}
+          run-id: ${{ inputs.source_run_id || '37717659549' }}
+          repository: ${{ github.repository }}
+          github-token: ${{ github.token }}
+          path: .a64-source-stage
+      - uses: actions/download-artifact@v8
+        with:
+          name: qb-stable-preferences-complete-${{ inputs.source_sha || '85e9935e02850740439e575567a1cb5c8a959892' }}
+          run-id: ${{ inputs.source_run_id || '37717659549' }}
+          repository: ${{ github.repository }}
+          github-token: ${{ github.token }}
+          path: .a64-preferences-stage
+      - name: Materialize all source-proven domains in the isolated worktree
+        id: build
+        shell: bash
+        env:
+          WEIG_SOURCE_RUN_ID: ${{ inputs.source_run_id || '37717659549' }}
+          WEIG_SOURCE_ARTIFACT: qb-stable-canonical-source-evidence-${{ inputs.source_sha || '85e9935e02850740439e575567a1cb5c8a959892' }}
+        run: |
+          set -euo pipefail
+          unique_path() {
+            local pattern="$1" found
+            mapfile -t found < <(find "$2" -type f -path "$pattern" -print | sort)
+            test "${#found[@]}" -eq 1 || { echo "Expected one canonical source $pattern, got ${#found[@]}" >&2; return 1; }
+            printf '%s' "${found[0]}"
+          }
+          stage_manifest="$(unique_path '*/source-stage/qb-stable-lkg.json' .a64-source-stage)"
+          compact_proof="$(unique_path '*/source-compact-staged/source-only-proof.json' .a64-source-stage)"
+          generated_index="$(unique_path '*/isolated-source-product/private/data/qb-releases.json' .a64-source-stage)"
+          generated_qm="$(unique_path '*/isolated-source-product/translations/webui_zh_HK.qm' .a64-source-stage)"
+          pref_compact="$(unique_path '*/preferences-full/settings-compact.json' .a64-preferences-stage)"
+          stage="$(dirname "$stage_manifest")"
+          compact="$(dirname "$compact_proof")"
+          data_dir="$(dirname "$generated_index")"
+          qm_dir="$(dirname "$generated_qm")"
+          node audits/qb-stable-admission-materialize-contract.mjs
+          node tools/qb-stable-admission-materialize.mjs "$stage" "$pref_compact" "$data_dir" "$qm_dir" "$compact"
+          node tools/qb-runtime-copy-product.mjs validate webui/private/data
+          node audits/full-stable-torrent-menu-source-contract.mjs tests/fixtures/qb-release-catalog.lkg.json
+          node audits/full-stable-core-write-compat.mjs tests/fixtures/qb-release-catalog.lkg.json
+          node audits/full-stable-detail-compat.mjs tests/fixtures/qb-release-catalog.lkg.json
+          node audits/full-stable-taxonomy-compat.mjs tests/fixtures/qb-release-catalog.lkg.json
+          node audits/full-stable-product-compat.mjs tests/fixtures/qb-release-catalog.lkg.json
+          node audits/full-stable-rss-source-contract.mjs "$stage/qb-releases.enriched.json"
+          node audits/full-stable-locale-routing-contract.mjs "$stage/qb-releases.enriched.json" --require-mapped --recovery="$stage/qb-releases.enriched.recovery.json" --behavior="$stage/qb-translator-behavior.json"
+          npm test
+          mapfile -t modified < <({ git diff --name-only; git ls-files --others --exclude-standard; } | sort -u)
+          for entry in "${modified[@]}"; do
+            case "$entry" in
+              tests/fixtures/qb-release-catalog.lkg.json|tools/data/qb-stable-lkg.json|tools/data/qb-locale-lkg.json|tools/data/qb-translator-behavior-lkg.json|webui/private/data/*|webui/translations/*) ;;
+              .a64-source-stage/*|.a64-preferences-stage/*|artifacts/*) ;;
+              *) echo "Unexpected generated path outside canonical stable materializers: $entry" >&2; exit 1 ;;
+            esac
+          done
+          git config user.name 'WeiG Source Admission'
+          git config user.email 'actions@users.noreply.github.com'
+          git add tests/fixtures/qb-release-catalog.lkg.json tools/data/qb-stable-lkg.json tools/data/qb-locale-lkg.json tools/data/qb-translator-behavior-lkg.json
+          git add -A -- webui/private/data webui/translations
+          git add -f webui/private/data/qb-releases.json
+          git diff --cached --quiet && { echo 'No changed admitted source materialization.' >&2; exit 1; }
+          git commit -m 'a64: admit 66 official stable source profiles and canonical product domains'
+          candidate_sha="$(git rev-parse HEAD)"
+          mkdir -p artifacts/a64-product
+          git bundle create "artifacts/a64-product/${candidate_sha}.bundle" HEAD ^"${GITHUB_SHA}"
+          printf '%s\n' "$candidate_sha" > artifacts/a64-product/materialized-sha.txt
+          printf 'materialized_sha=%s\n' "$candidate_sha" >> "$GITHUB_OUTPUT"
+          echo "Materialized exact SHA $candidate_sha: all static/canonical tests passed" >> "$GITHUB_STEP_SUMMARY"
+      - name: Real isolated qB WeiG UI Add Torrent acceptance BEFORE publication
+        shell: bash
+        env:
+          WEIG_REAL_QB_REQUIRE_ADD_TORRENT: '1'
+          WEIG_REAL_QB_EVIDENCE_DIR: artifacts/real-qb-a64-admission
+        run: |
+          set -euo pipefail
+          qb_version="$(node -p "require('./tools/data/qb-stable-lkg.json').latestAdmittedStable")"
+          GITHUB_SHA="${{ steps.build.outputs.materialized_sha }}" bash tests/real-qb-docker.sh --version "$qb_version" --browser-smoke --allow-writes
+          echo "New stable qB $qb_version: real WeiG Add Torrent automatic acceptance PASSED; human verification is still pending." >> "$GITHUB_STEP_SUMMARY"
+      - name: Final SAFE-REF fast-forward exclusively to public dev
+        shell: bash
+        env:
+          TARGET_SHA: ${{ inputs.target_sha || github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ steps.build.outputs.materialized_sha }}"
+          git fetch --no-tags origin dev
+          test "$(git rev-parse origin/dev)" = "$TARGET_SHA"
+          # Never move dev while the previous exact-SHA CI or Pages Source gate
+          # is unresolved; no in-run sleeps or speculative green status.
+          statuses="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$TARGET_SHA&per_page=100")"
+          for workflow in 'CI' 'Virtual qB Pages Source'; do
+            state="$(jq -r --arg name "$workflow" '[.workflow_runs[] | select(.name==$name)] | first | if . == null then "MISSING" else (.status + ":" + (.conclusion // "PENDING")) end' <<< "$statuses")"
+            if [ "$state" != 'completed:success' ]; then
+              echo "BLOCKED_PENDING_GATE: $workflow $state. Materialized commit saved as artifact; dev unchanged." >&2
+              exit 1
+            fi
+          done
+          git push origin HEAD:refs/heads/dev
+          echo "SAFE-REF dev published at $(git rev-parse HEAD); main / Tag / Release untouched." >> "$GITHUB_STEP_SUMMARY"
+      - name: Preserve automated qB evidence on PASS or FAIL
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: qb-stable-product-acceptance-${{ inputs.target_sha || github.sha }}
+          path: |
+            artifacts/real-qb-a64-admission/
+            artifacts/a64-product/
+          if-no-files-found: warn
+          retention-days: 14
