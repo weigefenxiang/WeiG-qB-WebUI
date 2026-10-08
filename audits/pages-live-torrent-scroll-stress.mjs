@@ -69,6 +69,36 @@ try{
   if(nativeTotal.pages>1){const beforeProbes=nativeTotal.probes;await page.locator('#next-btn').click();await page.waitForFunction(()=>WeiG.LibraryController.state().page===1,null,{timeout:10000});await page.waitForTimeout(220);const afterProbes=await page.evaluate(()=>(window.__a53TotalCalls||[]).filter(call=>Number(call.limit)===1).length);assert.equal(afterProbes,beforeProbes,'Next page must reuse the resolved total extent instead of restarting sparse probes');}
   await page.locator('#filter-nav [data-filter="all"]').click();await page.waitForFunction(()=>WeiG.LibraryController.state().filter==='all'&&WeiG.LibraryController.state().page===0,null,{timeout:10000});await page.evaluate(()=>{const client=WeiG.AppState.client;if(window.__a53OriginalGetTorrents)client.getTorrents=window.__a53OriginalGetTorrents;delete window.__a53OriginalGetTorrents;delete window.__a53TotalCalls;});
 
+  // A68-20: authenticated F5 must restore a bounded session-scoped exact total.
+  await page.waitForFunction(()=>Number.isSafeInteger(WeiG.LibraryController.total())&&WeiG.LibraryController.total()>50,null,{timeout:30000});
+  const beforeF5=await page.evaluate(()=>{
+    const total=WeiG.LibraryController.total(),saved=JSON.parse(sessionStorage.getItem('weig.torrentTotalCache')||'null');
+    return{total,saved,expectedPages:Math.ceil(total/WeiG.LibraryController.state().pageSize)};
+  });
+  assert.ok(beforeF5.saved?.schemaVersion===1&&beforeF5.saved.entries.some(item=>item[1]===beforeF5.total),`F5 requires a trusted session total snapshot: ${JSON.stringify(beforeF5)}`);
+  await page.reload({waitUntil:'domcontentloaded',timeout:timeoutMs});
+  await page.waitForSelector('#torrent-list [data-hash]',{state:'visible',timeout:60000});
+  await page.waitForFunction(expected=>WeiG.LibraryController.total()===expected,beforeF5.total,{timeout:30000});
+  const afterF5=await page.evaluate(()=>{
+    const state=WeiG.LibraryController.state(),total=WeiG.LibraryController.total(),view=document.querySelector('#page-label');
+    return{total,pages:Number(view?.querySelector('[data-pager-total]')?.textContent||-1),spinner:!!view?.querySelector('.pager-index-spinner'),cachedTotal:WeiG.AppState.libraryData.cachedTotal({filter:'all'})};
+  });
+  assert.equal(afterF5.total,beforeF5.total,`F5 must preserve total instead of losing it: ${JSON.stringify(afterF5)}`);
+  assert.equal(afterF5.pages,beforeF5.expectedPages,`F5 must render the restored total page count: ${JSON.stringify(afterF5)}`);
+  assert.equal(afterF5.spinner,false,'Known F5 total must not show a pending spinner');
+  await page.waitForFunction(()=>{
+    const app=WeiG.AppState,state=WeiG.LibraryController.state(),q={filter:'all',sort:state.sort,reverse:String(state.reverse)};
+    return !!app.libraryData?.cachedPage(q,1,state.pageSize);
+  },null,{timeout:30000});
+  await page.evaluate(()=>{const client=WeiG.AppState.client,original=client.getTorrents.bind(client);window.__a68ForegroundRequests=[];client.getTorrents=async function(opts){window.__a68ForegroundRequests.push({...opts});return original(opts);};});
+  await page.locator('#next-btn').click();
+  await page.waitForFunction(()=>WeiG.LibraryController.state().page===1&&WeiG.AppState.torrents.length>0,null,{timeout:10000});
+  const nextPageRequests=await page.evaluate(()=>(window.__a68ForegroundRequests||[]).filter(q=>Number(q.offset)===50&&Number(q.limit)===51).length);
+  assert.equal(nextPageRequests,0,'Clicking an already-warmed next page must not duplicate the foreground page fetch');
+  await page.locator('#prev-btn').click();
+  await page.waitForFunction(()=>WeiG.LibraryController.state().page===0,null,{timeout:10000});
+  console.log('A68-20 real Pages F5 exact-total and cached next-page navigation passed: '+JSON.stringify({total:afterF5.total,pages:afterF5.pages,nextPageRequests}));
+  
   const baseline=await page.evaluate(()=>{
     const list=document.getElementById('torrent-list'),viewport=WeiG.AppState.viewport;
     window.__a52Pool=viewport._rowPool.map(slot=>slot.node);
