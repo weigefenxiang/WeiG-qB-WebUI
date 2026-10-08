@@ -14,4 +14,14 @@ for(const qb of ['4.3.4.1','4.4.3.1']){await C.bind({qbVersion:qb,webApiVersion:
 await C.bind({qbVersion:'4.1.0',webApiVersion:'2.0.0',capabilities:{}});assert(C.trackerFilters().length===0,'qB 4.1 must not invent later Tracker filter source facts');assert(C.trackerFacetMode()==='none','qB 4.1 must preserve source-proven absence of Tracker facet sync');
 for(const row of [['4.1.0','2.0.0','EXACT',true],['5.2.3+custom','2.15.1','INHERITED',false],['5.2.4','2.15.1','INHERITED',false],['6.0.0','3.0.0','FALLBACK',false]]){const qb=row[0],api=row[1],mode=row[2],cert=row[3];await C.bind({qbVersion:qb,webApiVersion:api,capabilities:{}});const resolved=C.releaseIdentity();assert(resolved.resolutionMode===mode&&resolved.certified===cert,qb+': wrong release resolution');const actions=C.domainResolution('actions'),settings=C.domainResolution('settings');assert(actions.resolutionMode===mode&&settings.resolutionMode===mode,qb+': bounded domain relation drift');if(!cert){assert(!C.hasWriteProvenance(),qb+': non-certified release must fail closed for action writes');assert(!S.isWritable('locale','en-US',{locale:'en-US'},{locale:'en-US'}),qb+': non-certified Settings domain must fail closed for writes');}}
 await C.bind({qbVersion:'5.2.4',webApiVersion:'2.15.1',capabilities:{}});assert(C.torrentDetailUi()&&typeof C.torrentDetailUi()==='object','bounded INHERITED Detail read/shape facts must remain available');assert(C.domainResolutions().copy.resolutionMode==='INHERITED','copy domain must expose bounded inheritance independently');
+// Future releases not in Frozen should inherit only proven POST reads.
+const newest=core.releases.at(-1),v=newest.qbVersion.split('.'),future=v.slice(0,-1).concat(String(Number(v.at(-1))+2)).join('.');
+await C.bind({qbVersion:future,webApiVersion:newest.webApiVersion,capabilities:{}});
+assert(C.releaseIdentity().resolutionMode==='INHERITED',future+': expected inherited release');
+assert(C.allowsReadOperation('clientdata/load','POST'),future+': POST read should inherit');
+assert(!C.allowsReadOperation('clientdata/store','POST'),future+': writes must not inherit');
+assert(!C.allowsReadOperation('app/setPreferences','POST'),future+': Settings write must not inherit');
+assert(!C.allowsReadOperation('clientdata/load','GET'),future+': only POST semantics apply');
+await C.bind({qbVersion:future,webApiVersion:'2.15.9',capabilities:{}});
+assert(!C.allowsReadOperation('clientdata/load','POST'),future+': changed WebAPI must not inherit POST read');
 console.log('Capability compact-contract test passed: detected/catalog identity stays separate from per-domain EXACT/EQUIVALENT/INHERITED/FALLBACK bases, source-proven special stables resolve per domain, bounded inherited reads remain available, and dangerous writes fail closed outside exact/equivalent provenance.');
