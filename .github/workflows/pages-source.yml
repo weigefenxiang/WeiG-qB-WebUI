@@ -593,12 +593,12 @@ jobs:
           copy_equal=false
           qm_equal=false
           route_equal=false
-          node tools/qb-runtime-copy-product.mjs compare "$GENERATED/private/data" webui/private/data >/dev/null && copy_equal=true
+          node tools/qb-runtime-copy-admission.mjs check "$GENERATED/private/data" webui/private/data "$GENERATED/private/data/qb-releases.json" webui/private/data/capabilities.json >/dev/null && copy_equal=true
           diff -qr "$GENERATED/translations" webui/translations >/dev/null && qm_equal=true
-          node tools/qb-copy-route-control-plane.mjs "$GENERATED/private/data/qb-releases.json" webui/private/data/capabilities.json >/dev/null && route_equal=true
+          node tools/qb-copy-route-control-plane.mjs "$GENERATED/private/data/qb-releases.json" webui/private/data/capabilities.json --historical=webui/private/data/capabilities.json >/dev/null && route_equal=true
           if [ "$copy_equal" = true ] && [ "$qm_equal" = true ] && [ "$route_equal" = true ]; then
             node tests/qb-runtime-copy-materialization-contract.mjs "$RUNNER_TEMP/qb-settings-translation-lkg.json" webui/private/data
-            echo "Committed qB-owned copy/QM assets exactly match admitted current-parser evidence."
+            echo "Certified historical Copy routes and dependencies remain immutable; official generated QM matches."
             echo "materialized_sha=$DEV_SHA" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -610,8 +610,8 @@ jobs:
             exit 0
           fi
 
-          node tools/qb-runtime-copy-product.mjs sync "$GENERATED/private/data" webui/private/data >/dev/null
-          node tools/qb-copy-route-control-plane.mjs "$GENERATED/private/data/qb-releases.json" webui/private/data/capabilities.json --write >/dev/null
+          node tools/qb-runtime-copy-admission.mjs admit "$GENERATED/private/data" webui/private/data "$GENERATED/private/data/qb-releases.json" webui/private/data/capabilities.json >/dev/null
+          node tools/qb-copy-route-control-plane.mjs "$GENERATED/private/data/qb-releases.json" webui/private/data/capabilities.json --historical=webui/private/data/capabilities.json --write >/dev/null
           rm -rf webui/translations
           mkdir -p webui/translations
           cp "$GENERATED"/translations/webui_*.qm webui/translations/

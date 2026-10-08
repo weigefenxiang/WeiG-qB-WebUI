@@ -62,7 +62,7 @@ export function resolveDetailRuntime(runtime,qbVersion){
   }
   return value;
 }
-export function compileDetailRuntime(catalog){
+export function compileDetailRuntime(catalog,{frozenCatalog=catalog}={}){
   if(!Array.isArray(catalog)||!catalog.length)throw new Error('Detail runtime compiler requires a non-empty exact release catalog.');
   const changes=[];
   let previous,initialized=false,lastVersion='';
@@ -82,7 +82,9 @@ export function compileDetailRuntime(catalog){
     }
     previous=clone(value);initialized=true;
   }
-  const runtime={schemaVersion:1,catalogIdentity:catalogIdentity(catalog),sourceFacts:{torrentDetailUi:{mode:'merge',changes}}};
+  const liveIdentity=catalogIdentity(catalog),frozenIdentity=catalogIdentity(frozenCatalog);
+  if(liveIdentity.releaseCount!==frozenIdentity.releaseCount||liveIdentity.releaseSetSha256!==frozenIdentity.releaseSetSha256)throw new Error('Detail source catalog does not match exact Frozen release/version/sourceSha inventory.');
+  const runtime={schemaVersion:1,catalogIdentity:frozenIdentity,sourceFacts:{torrentDetailUi:{mode:'merge',changes}}};
   for(const profile of catalog){
     const expected=own(profile,'torrentDetailUi')?profile.torrentDetailUi:null;
     const actual=resolveDetailRuntime(runtime,profile.qbVersion);
@@ -90,8 +92,8 @@ export function compileDetailRuntime(catalog){
   }
   return runtime;
 }
-export function writeDetailRuntime(catalog,output){
-  const runtime=compileDetailRuntime(catalog);
+export function writeDetailRuntime(catalog,output,{frozenCatalog=catalog}={}){
+  const runtime=compileDetailRuntime(catalog,{frozenCatalog});
   fs.mkdirSync(path.dirname(output),{recursive:true});
   fs.writeFileSync(output,JSON.stringify(runtime)+'\n','utf8');
   return runtime;
@@ -103,7 +105,9 @@ if(isMain){
     const output=path.resolve(process.argv[2]||path.join(root,'webui/private/data/detail-compat.json'));
     const catalogPath=path.resolve(process.argv[3]||path.join(root,'tests/fixtures/qb-release-catalog.lkg.json'));
     const catalog=JSON.parse(fs.readFileSync(catalogPath,'utf8'));
-    const runtime=writeDetailRuntime(catalog,output);
+    const frozenPath=path.resolve(process.argv[4]||path.join(root,'tests/fixtures/qb-release-catalog.lkg.json'));
+    const frozenCatalog=JSON.parse(fs.readFileSync(frozenPath,'utf8'));
+    const runtime=writeDetailRuntime(catalog,output,{frozenCatalog});
     console.log(`Materialized Detail runtime: ${runtime.sourceFacts.torrentDetailUi.changes.length} source change points from ${catalog.length} exact releases.`);
   }catch(error){console.error(error?.stack||error);process.exitCode=1;}
 }

@@ -15,6 +15,9 @@ const catalog=[
 const runtime=compileDetailRuntime(catalog);
 assert.equal(runtime.schemaVersion,1);
 assert.deepEqual(runtime.catalogIdentity,catalogIdentity(catalog),'Detail runtime must retain identity from the same exact source catalog');
+const enriched=catalog.map(profile=>({...profile,sourceCollectionMetadata:'native evidence for existing sourceSha'}));
+assert.deepEqual(compileDetailRuntime(enriched,{frozenCatalog:catalog}).catalogIdentity,catalogIdentity(catalog),'Enriched Detail content must retain immutable Frozen sourceCatalog identity');
+assert.throws(()=>compileDetailRuntime(enriched,{frozenCatalog:catalog.slice(0,-1)}),/exact Frozen release/,'Detail must reject missing canonical Frozen release ownership');
 assert.equal(runtime.sourceFacts.torrentDetailUi.mode,'merge');
 assert.deepEqual(runtime.sourceFacts.torrentDetailUi.changes.map(change=>change.from),['4.1.0','4.1.5','4.2.0','5.0.0']);
 assert.ok(Object.prototype.hasOwnProperty.call(runtime.sourceFacts.torrentDetailUi.changes[1],'patch'),'ordinary object deltas should use merge patches');
