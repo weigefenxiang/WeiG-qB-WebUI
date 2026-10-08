@@ -59,12 +59,21 @@ jobs:
           test -n "$ip"
           ready=0
           for i in $(seq 1 120); do
-            if curl -fsS --max-time 2 -H 'Host: localhost' "http://$ip:8080/api/v2/app/version" >/dev/null 2>&1; then ready=1; break; fi
+            code="$(curl -sS --max-time 2 -o /dev/null -w '%{http_code}' -H 'Host: localhost' "http://$ip:8080/api/v2/app/version" || true)"
+            if [ "$code" != 000 ]; then ready=1; break; fi
             sleep 1
           done
           if [ "$ready" != 1 ]; then docker logs "$name"; exit 1; fi
-          qb="$(curl -fsS --max-time 5 -H 'Host: localhost' "http://$ip:8080/api/v2/app/version" | tr -d '\r\n')"
-          api="$(curl -fsS --max-time 5 -H 'Host: localhost' "http://$ip:8080/api/v2/app/webapiVersion" | tr -d '\r\n')"
+          password="$(docker logs "$name" 2>&1 | sed -n 's/.*temporary password is provided for this session: //p' | tail -n 1 | tr -d '\r')"
+          test -n "$password"
+          headers="$(mktemp)"
+          body="$(mktemp)"
+          code="$(curl -sS --max-time 5 -D "$headers" -o "$body" -w '%{http_code}' -H 'Host: localhost' -X POST --data-urlencode 'username=admin' --data-urlencode "password=$password" "http://$ip:8080/api/v2/auth/login")"
+          test "$code" = 200
+          sid="$(awk 'BEGIN{IGNORECASE=1} /^Set-Cookie:/ {gsub("\\r",""); if (match($0,/SID=[^; ]+/)) {print substr($0,RSTART,RLENGTH); exit}}' "$headers")"
+          test -n "$sid"
+          qb="$(curl -fsS --max-time 5 -H 'Host: localhost' -H "Cookie: $sid" "http://$ip:8080/api/v2/app/version" | tr -d '\r\n')"
+          api="$(curl -fsS --max-time 5 -H 'Host: localhost' -H "Cookie: $sid" "http://$ip:8080/api/v2/app/webapiVersion" | tr -d '\r\n')"
           case "$qb" in 5.2.4|v5.2.4) ;; *) echo "unexpected qB identity: $qb" >&2; exit 1;; esac
           test "$api" = "2.15.1"
           printf 'QB_5_2_4_REAL_WEBAPI_PASS qb=%s webapi=%s image=%s\n' "$qb" "$api" "$image"
