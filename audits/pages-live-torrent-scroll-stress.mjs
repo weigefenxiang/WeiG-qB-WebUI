@@ -77,6 +77,27 @@ try{
   });
   assert.ok(baseline.pool>0&&baseline.scrollHeight>baseline.clientHeight,'stress page must own a real virtualized vertical scroll range');
 
+  // A68-2: physical page mouse-wheel input, NOT the browser-chrome native thumb.
+  // Programmatic thumb-like jumps below retain their separate coverage contract.
+  const scrollBox=await page.locator('#torrent-list').boundingBox();
+  assert.ok(scrollBox&&scrollBox.width>200&&scrollBox.height>200,'physical wheel target must be visible');
+  await page.mouse.move(scrollBox.x+scrollBox.width/2,scrollBox.y+scrollBox.height/2);
+  const wheelBefore=await page.evaluate(()=>document.getElementById('torrent-list').scrollTop);
+  await page.mouse.wheel(0,420);
+  await page.waitForFunction(before=>document.getElementById('torrent-list').scrollTop>before,wheelBefore,{timeout:5000});
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  const wheelFrame=await page.evaluate(()=>{
+    const list=document.getElementById('torrent-list'),head=document.getElementById('torrent-table-head'),viewport=WeiG.AppState.viewport;
+    const lr=list.getBoundingClientRect(),top=head.getBoundingClientRect().bottom,visible=[...list.querySelectorAll('.data-viewport__row:not([hidden])')].map(node=>node.getBoundingClientRect()).filter(rect=>rect.bottom>top&&rect.top<lr.bottom).sort((a,b)=>a.top-b.top);
+    const gaps=visible.slice(1).map((rect,i)=>rect.top-visible[i].bottom);
+    return{scrollTop:list.scrollTop,top,first:visible[0]?.top,last:visible.at(-1)?.bottom,bottom:lr.bottom,maxGap:Math.max(0,...gaps),visible:visible.length,metrics:viewport.metrics()};
+  });
+  assert.ok(wheelFrame.scrollTop>wheelBefore&&wheelFrame.visible>2&&wheelFrame.first<=wheelFrame.top+2&&wheelFrame.last>=wheelFrame.bottom-2&&wheelFrame.maxGap<=2,`physical vertical wheel left a visible row hole: ${JSON.stringify(wheelFrame)}`);
+  assert.equal(wheelFrame.metrics.created,0,`physical vertical wheel allocated new recycler shells: ${JSON.stringify(wheelFrame)}`);
+  assert.equal(wheelFrame.metrics.removed,0,`physical vertical wheel dropped recycler shells: ${JSON.stringify(wheelFrame)}`);
+  console.log('A68-2 physical vertical wheel frame (not native thumb): '+JSON.stringify(wheelFrame));
+  await page.evaluate(()=>WeiG.AppState.viewport.resetMetrics());
+
   for(const ratio of [.08,.72,.24,.94,.41,.63,.02,.88]){
     await page.evaluate(value=>new Promise(resolve=>{
       const list=document.getElementById('torrent-list'),max=Math.max(0,list.scrollHeight-list.clientHeight);
@@ -111,6 +132,16 @@ try{
   assert.ok(horizontal.max>0,`desktop stress fixture must expose a horizontal scroll range: ${JSON.stringify(horizontal)}`);
   assert.equal(horizontal.metrics.renders,0,`pure horizontal scrollbar motion must remain compositor-only: ${JSON.stringify(horizontal)}`);
 
+  // Horizontal browser input uses the native scroll pipeline; no scripted scrollLeft writes.
+  const xBefore=await page.evaluate(()=>document.getElementById('torrent-list').scrollLeft);
+  await page.mouse.move(scrollBox.x+scrollBox.width/2,scrollBox.y+scrollBox.height/2);
+  await page.evaluate(()=>WeiG.AppState.viewport.resetMetrics());
+  await page.mouse.wheel(xBefore>horizontal.max/2?-420:420,0);
+  await page.waitForFunction(before=>document.getElementById('torrent-list').scrollLeft!==before,xBefore,{timeout:5000});
+  const wheelHorizontal=await page.evaluate(()=>({left:document.getElementById('torrent-list').scrollLeft,metrics:WeiG.AppState.viewport.metrics()}));
+  assert.equal(wheelHorizontal.metrics.renders,0,`physical horizontal wheel must not repaint the DataViewport: ${JSON.stringify(wheelHorizontal)}`);
+  console.log('A68-2 physical horizontal wheel (not native thumb): '+JSON.stringify(wheelHorizontal));
+
   const blocked=await page.evaluate(async()=>{
     const list=document.getElementById('torrent-list'),client=WeiG.AppState.client,original=client.getTorrents.bind(client);
     let catalogCalls=0;
@@ -141,7 +172,7 @@ try{
   await legacyPage.waitForFunction(()=>WeiG.LibraryController.state().filter==='inactive'&&Number.isSafeInteger(WeiG.LibraryController.total()),null,{timeout:20000});
   const legacyTotal=await legacyPage.evaluate(()=>{const calls=window.__a53LegacyTotalCalls||[],probes=calls.filter(call=>Number(call.limit)===1);return{total:WeiG.LibraryController.total(),probes:probes.length,maxOffset:Math.max(0,...probes.map(call=>Number(call.offset)||0)),catalogReady:WeiG.AppState.catalogReady===true};});
   assert.ok(legacyTotal.total>=0&&legacyTotal.probes>0&&legacyTotal.probes<32&&legacyTotal.maxOffset>=legacyTotal.total,`qB4 legacy offset-wrap total must converge through bounded sparse probes: ${JSON.stringify(legacyTotal)}`);assert.equal(legacyTotal.catalogReady,false,`qB4 exact total must not fall back to full catalog: ${JSON.stringify(legacyTotal)}`);assert.deepEqual(legacyErrors,[],`A53 qB4 total regression emitted browser errors: ${legacyErrors.join('\n')}`);await legacyContext.close();
-  console.log('A53 Pages Torrent scroll/total stress passed: qB5 native totals and qB4 legacy offset-wrap totals converge without full catalog scans; scroll recycler behavior remains bounded.');
+  console.log('A68 Pages Torrent wheel/scroll/total stress passed: qB5 native totals and qB4 legacy offset-wrap totals converge without full catalog scans; scroll recycler behavior remains bounded.');
 } finally {
   await browser.close();
 }
