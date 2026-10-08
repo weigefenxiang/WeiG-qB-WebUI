@@ -31,6 +31,14 @@ try{
   const manifest=JSON.parse(fs.readFileSync(path.join(out,'manifest.json'),'utf8'));
   assert.equal(manifest.weigLocaleFiles,10);assert.equal(manifest.weigLocaleBytes,localeBytes);assert.equal(manifest.sizeReport.weigLocaleFiles,10);assert.equal(manifest.sizeReport.weigLocaleBytes,localeBytes);
   assert.equal(manifest.sizeReport.redundantBytes,0);assert.ok(manifest.sizeReport.zipBytes>0&&manifest.sizeReport.tarGzBytes>0);
-  assert.equal(manifest.ownedCopyLayout,'private/data/qb-copy-{routes,bindings,fallback}');assert.equal(manifest.ownedCopyCompression,'gzip-routes+fallback');assert.equal(manifest.ownedCopyFiles,224,'materialized qB copy inventory must be 58 routes + 33 bindings + 133 packs');assert.ok(manifest.ownedCopyBytes<5331818,'semantic route owner must improve the previous gzip profile-owner total-copy budget');
+  assert.equal(manifest.ownedCopyLayout,'private/data/qb-copy-{routes,bindings,fallback}');assert.equal(manifest.ownedCopyCompression,'gzip-routes+fallback');const sourceCopyGroups=[['qb-copy-routes',/\.json\.gz$/],['qb-copy-bindings',/\.txt$/],['qb-copy-fallback',/\.json\.gz$/]];
+  const sourceCopyCounts=sourceCopyGroups.map(([name,extension])=>{
+    const folder=path.join(privateRoot,'data',name);
+    const files=fs.readdirSync(folder).filter(file=>extension.test(file));
+    assert.equal(files.length,fs.readdirSync(folder).length,'Source Copy shard directory must contain only recognized runtime assets: '+name);
+    assert.ok(files.length>0,'No source Copy assets found in '+name);
+    return files.length;
+  });
+  assert.equal(manifest.ownedCopyFiles,sourceCopyCounts.reduce((sum,value)=>sum+value,0),'Distribution Copy count must match canonical source-owned content-addressed shards');assert.ok(manifest.ownedCopyBytes<5331818,'semantic route owner must improve the previous gzip profile-owner total-copy budget');
   console.log(JSON.stringify({kind:'RUNTIME_ASSET_BUDGET',baseline,startup:{files:startup.length,bytes:startupBytes,reductionBytes:baseline.initialJsBytes-startupBytes,reductionPct:Number(((baseline.initialJsBytes-startupBytes)*100/baseline.initialJsBytes).toFixed(1))},i18n:{bytes:i18nBytes,reductionBytes:baseline.i18nBytes-i18nBytes},deferredRouteBytes:deferredBytes,locale:{files:localeFiles.length,totalBytes:localeBytes,maxBytes:maxLocaleBytes},distribution:{files:manifest.sizeReport.fileCount,uncompressedBytes:manifest.sizeReport.totalUncompressedBytes,zipBytes:manifest.sizeReport.zipBytes,tarGzBytes:manifest.sizeReport.tarGzBytes,qmAssets:manifest.qmAssets,qbCopyFiles:manifest.ownedCopyFiles,qbCopyBytes:manifest.ownedCopyBytes,qbCopyCompression:manifest.ownedCopyCompression}},null,2));
 }finally{fs.rmSync(out,{recursive:true,force:true});}
