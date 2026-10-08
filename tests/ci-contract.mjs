@@ -15,6 +15,8 @@ const jobSection=(src,name,next)=>{
   return src.slice(start,end);
 };
 
+const pagesPlan=read('tools/pages-verify-plan.mjs');
+assert(pagesPlan.includes("baseLane('torrent-scroll-stress','audits/pages-live-torrent-scroll-stress.mjs')")&&pagesPlan.includes("case'ui': return pick(['core','startup-performance','torrent-scroll-stress','mobile-layout'])"),'A68-21: existing Pages verifier owner must execute F5/prefetch browser stress in both UI and full lanes');
 const pkg=JSON.parse(read('package.json'));
 const lock=JSON.parse(read('package-lock.json'));
 const version=read('VERSION').trim();

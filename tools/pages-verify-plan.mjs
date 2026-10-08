@@ -15,6 +15,7 @@ const baseLane=(name,script,extra={})=>({
 const fixed=[
   baseLane('core','tests/pages-live-acceptance.mjs'),
   baseLane('startup-performance','tests/pages-live-startup-performance.mjs'),
+  baseLane('torrent-scroll-stress','audits/pages-live-torrent-scroll-stress.mjs'),
   baseLane('auth-session','tests/pages-live-auth.mjs'),
   baseLane('services-modern','tests/pages-live-services-core.mjs',{service_mode:'modern'}),
   baseLane('services-protocol','tests/pages-live-protocol.mjs'),
@@ -53,7 +54,7 @@ export function pagesVerifyLanes(profile='full'){
   switch(profile){
     case'installer': return pick(['core']);
     case'payload': return pick(['core','startup-performance']);
-    case'ui': return pick(['core','startup-performance','mobile-layout']);
+    case'ui': return pick(['core','startup-performance','torrent-scroll-stress','mobile-layout']);
     case'native': return pick(['core','services-modern']);
     case'settings':
       return[
