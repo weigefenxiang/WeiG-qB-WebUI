@@ -12,6 +12,7 @@
   function createBack(){var b=document.createElement('button');b.type='button';b.className='btn btn--ghost detail-context-back';b.dataset.detailBack='1';b.innerHTML='<b aria-hidden="true">←</b><span></span>';b.addEventListener('click',back);return b;}
   function routeModuleReady(name){return name==='settings'?!!W.SettingsRenderer:name==='rss'?!!W.RSSWorkspace:name==='logs'?!!W.Logs:false;}function loadRouteModule(name){name=String(name||'');var paths=ROUTE_MODULES[name]||[];if(!paths.length||routeModuleReady(name))return Promise.resolve(paths.slice());if(routeModules[name])return routeModules[name];var loader=W.RuntimeAssets&&W.RuntimeAssets.loadScript;if(typeof loader!=='function')return Promise.reject(new Error('Route module loader unavailable for '+name));var task=paths.reduce(function(chain,path){return chain.then(function(){return loader(path,{namespace:'route-module',identity:name});});},Promise.resolve()).then(function(){if(!routeModuleReady(name))throw new Error('Route module '+name+' loaded without registering its owner');return paths.slice();}).catch(function(error){delete routeModules[name];throw error;});routeModules[name]=task;return task;}
   var warmStarted=false,warmIndex=0,warmQueued=false;
+  function routePrefetchBusy(){var app=W.AppState,viewport=app&&app.viewport,library=app&&app.libraryData;if(viewport&&typeof viewport.isInteracting==='function'&&viewport.isInteracting())return true;var state=library&&typeof library.stats==='function'?library.stats():null;return !!(state&&(state.pageTraffic>0||state.totalDemand>0||state.prefetchDemand>0||state.catalogBusy===true));}
   function warmRouteModules(){
     warmStarted=true;
     if(warmQueued||document.hidden||route().name!=='home')return;
@@ -22,6 +23,7 @@
     warmQueued=true;
     var run=function(){
       warmQueued=false;if(document.hidden||route().name!=='home')return;
+      if(routePrefetchBusy()){global.setTimeout(warmRouteModules,350);return;}
       var name=names[warmIndex++],paths=ROUTE_MODULES[name]||[];
       paths.forEach(function(path){loader.prefetchScript(path,{namespace:'route-module',identity:name});});
       if(warmIndex<names.length)global.setTimeout(warmRouteModules,500);
