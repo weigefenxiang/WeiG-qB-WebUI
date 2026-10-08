@@ -18,6 +18,8 @@ assert(representativeDocker.includes('if ! resolve_full_matrix_image; then')&&!r
 assert(representativeDocker.includes('ghcr.io/qbittorrent/docker-qbittorrent-nox:${VERSION}')&&representativeDocker.includes("docker image inspect \"$ref\""),'Official DockerHub/GHCR exact tags must resolve to an audited immutable RepoDigest before execution.');
 
 const admissionWorkflow=read('.github/workflows/qb-stable-admit-to-dev.yml');
+assert(admissionWorkflow.includes('GH_TOKEN: ${{ github.token }}')&&admissionWorkflow.includes('gh api "/repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$TARGET_SHA&per_page=100"'),'Stable admission final SAFE-REF must authenticate GH CLI status checks with workflow-scoped action-read token.');
+
 const realProductWorkflow=read('.github/workflows/real-qb-weig-product-add.yml');
 for(const [name,body] of [['stable-admission',admissionWorkflow],['real-product',realProductWorkflow]]){
   assert(body.includes('npm ci --no-audit --no-fund --prefer-offline')&&body.includes("require('playwright/package.json')")&&body.indexOf('npm ci --no-audit --no-fund --prefer-offline')<body.indexOf('bash tests/real-qb-docker.sh'),'Real-qB '+name+' must install locked Playwright dependencies before headless browser smoke.');

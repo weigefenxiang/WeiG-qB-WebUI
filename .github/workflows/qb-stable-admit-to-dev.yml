@@ -173,6 +173,7 @@ jobs:
         shell: bash
         env:
           TARGET_SHA: ${{ inputs.target_sha || github.sha }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "${{ steps.build.outputs.materialized_sha }}"
