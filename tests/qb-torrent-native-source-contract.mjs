@@ -8,6 +8,8 @@ const locale=load('tools/data/qb-locale-lkg.json');
 const torrent=load('webui/private/data/torrent-compat.json');
 const capabilities=load('webui/private/data/capabilities.json');
 assertCatalogIdentity(torrent.catalogIdentity,catalogIdentity(frozen),'Torrent source materialization');
+const actions=load('webui/private/data/source-actions.json');
+assertCatalogIdentity(actions.catalogIdentity,torrent.catalogIdentity,'Torrent/Action exact Frozen source identity');
 assertCatalogIdentity(torrent.catalogIdentity,capabilities.catalogIdentity,'Single Frozen registry identity');
 assert.equal(locale.profileCount,frozen.length);
 assert.equal(locale.profiles.length,frozen.length);

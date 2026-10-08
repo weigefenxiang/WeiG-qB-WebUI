@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {compileCompactRuntime} from './qb-compact-runtime.mjs';
+import {admittedCatalogRows,catalogIdentity} from './qb-catalog-identity.mjs';
 import {applyLocaleOverlaySubset} from './qb-locale-overlay.mjs';
 
 const args=process.argv.slice(2);
@@ -17,11 +18,19 @@ if(!fs.existsSync(localeOverlayPath))throw new Error('Torrent runtime locale ove
 const catalogText=fs.readFileSync(catalogPath,'utf8').replace(/\r\n?/g,'\n');
 const catalog=JSON.parse(catalogText);
 if(!Array.isArray(catalog)||!catalog.length)throw new Error('Torrent runtime rebind requires a non-empty exact source catalog.');
+// Rich source extraction is used for facts, but Frozen is the single admitted
+// release-set and exact catalog identity. Never label enriched JSON as Frozen.
+const frozen=JSON.parse(fs.readFileSync(path.resolve('tests/fixtures/qb-release-catalog.lkg.json'),'utf8'));
+const sourceRows=admittedCatalogRows(catalog),frozenRows=admittedCatalogRows(frozen);
+if(sourceRows.length!==frozenRows.length||sourceRows.some((row,index)=>row.qbVersion!==frozenRows[index].qbVersion||row.sourceSha!==frozenRows[index].sourceSha))throw new Error('Torrent source enrichment diverged from immutable Frozen sourceSha/release inventory.');
+const frozenIdentity=catalogIdentity(frozen);
 const localeOverlay=JSON.parse(fs.readFileSync(localeOverlayPath,'utf8'));
 if(Number(localeOverlay?.profileCount)!==catalog.length||String(localeOverlay?.supportFloor||'')!==String(catalog[0]?.qbVersion||'')||String(localeOverlay?.latestAdmittedStable||'')!==String(catalog.at(-1)?.qbVersion||''))throw new Error('Torrent runtime Locale overlay release boundary mismatch.');
 const localeCatalog=applyLocaleOverlaySubset(catalog,localeOverlay);
 const hasTorrentMenuFact=catalog.every(profile=>Object.prototype.hasOwnProperty.call(profile,'torrentContextMenu'));
 const {torrentData,actionData}=compileCompactRuntime(catalog,{includeSettings:false});
+torrentData.catalogIdentity=frozenIdentity;
+actionData.catalogIdentity=frozenIdentity;
 function compactTimeline(rows){const out=[];let prior=null,hasPrior=false;for(const row of rows){const signature=JSON.stringify(row.value);if(!hasPrior||signature!==prior){out.push({from:String(row.from||''),value:structuredClone(row.value)});prior=signature;hasPrior=true;}}return out;}
 torrentData.sourceFacts.webuiLocales=compactTimeline(localeCatalog.map(profile=>({from:String(profile.qbVersion||''),value:Array.isArray(profile.webuiLocales)?profile.webuiLocales:[]})));
 if(!hasTorrentMenuFact)delete torrentData.sourceFacts.torrentContextMenu;
