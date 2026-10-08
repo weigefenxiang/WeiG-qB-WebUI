@@ -21,6 +21,9 @@ const matrixByVersion=new Map(matrix.map(row=>[row.qb,row]));
 const manifest=JSON.parse(fs.readFileSync(path.join(root,'tools/data/qb-stable-lkg.json'),'utf8'));
 const catalog=JSON.parse(fs.readFileSync(path.join(root,manifest.catalogPath),'utf8'));
 const profileByVersion=new Map(catalog.map(profile=>[String(profile.qbVersion),profile]));
+assert.equal(catalog.length,manifest.profileCount,'Frozen real-qB Fast matrix profile count must match certified manifest');
+assert.equal(plan.versions.length,manifest.profileCount,'Fast G-FM planner must cover all admitted Frozen versions');
+assert.ok(profileByVersion.has(manifest.latestAdmittedStable),'Fast G-FM must include latest source-admitted qB release');
 const profile410=profileByVersion.get('4.1.0');
 assert.equal(buildCapabilityWitnessSpec(profile410).webApiVersion,'2.0','qB 4.1.0 Frozen WebAPI 2.0.0 must canonicalize to the runtime 2.0 representation');
 const preload=fs.readFileSync(path.join(root,'tests/real-qb-gfm-mode-preload.mjs'),'utf8');
@@ -111,14 +114,14 @@ try{
   assert.equal(pass.mode,'fast');
   assert.equal(pass.evidenceClass,'gfm-fast');
   assert.equal(pass.status,'PASS');
-  assert.equal(pass.versions.expected,65);
-  assert.equal(pass.versions.executedRuntimeEvidence,65);
-  assert.equal(pass.versions.realSmokePass,65);
-  assert.equal(pass.versions.exactIdentityPass,65);
-  assert.equal(pass.versions.capabilityWitnessPass,65);
-  assert.equal(pass.versions.fingerprintBindingPass,65);
-  assert.equal(pass.versions.cleanupPass,65);
-  assert.equal(pass.versions.PASS,65);
+  assert.equal(pass.versions.expected,manifest.profileCount);
+  assert.equal(pass.versions.executedRuntimeEvidence,manifest.profileCount);
+  assert.equal(pass.versions.realSmokePass,manifest.profileCount);
+  assert.equal(pass.versions.exactIdentityPass,manifest.profileCount);
+  assert.equal(pass.versions.capabilityWitnessPass,manifest.profileCount);
+  assert.equal(pass.versions.fingerprintBindingPass,manifest.profileCount);
+  assert.equal(pass.versions.cleanupPass,manifest.profileCount);
+  assert.equal(pass.versions.PASS,manifest.profileCount);
   assert.equal(pass.versions.FAIL,0);
   assert.equal(pass.semantics.core.expected,plan.summary.fast.coreFullCount);
   assert.equal(pass.semantics.core.PASS,plan.summary.fast.coreFullCount);
@@ -152,4 +155,4 @@ try{
   fs.rmSync(temp,{recursive:true,force:true});
 }
 
-console.log(`Fast G-FM aggregate contract passed: 65/65 real runtime capability witnesses, ${plan.summary.fast.coreFullCount} core Full reps, ${plan.summary.fast.searchFullCount} Search Full reps, exact Frozen family binding, WebAPI version representations canonicalized, mode preload and runtime binder fail closed.`);
+console.log(`Fast G-FM aggregate contract passed: ${manifest.profileCount}/${manifest.profileCount} real runtime capability witnesses, ${plan.summary.fast.coreFullCount} core Full reps, ${plan.summary.fast.searchFullCount} Search Full reps, exact Frozen family binding, WebAPI version representations canonicalized, mode preload and runtime binder fail closed.`);

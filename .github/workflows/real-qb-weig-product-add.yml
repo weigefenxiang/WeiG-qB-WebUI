@@ -29,6 +29,8 @@ on:
       - webui/private/scripts/i18n.js
       - tests/real-qb-docker.sh
       - tests/real-qb-browser.mjs
+      - audits/real-qb-full-matrix-contract.mjs
+      - tests/real-qb-fast-aggregate-contract.mjs
       - VERSION
       - webui/VERSION
   workflow_dispatch:
