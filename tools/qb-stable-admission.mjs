@@ -27,6 +27,23 @@ export function stableAdmissionDelta(frozenCatalog,upstreamTags){
   for(let i=0;i<frozen.length;i++)assert(upstream[i]===frozen[i],`Upstream stable history changed before LKG boundary at ordinal ${i}: ${frozen[i]} -> ${upstream[i]||'missing'}.`);
   return upstream.slice(frozen.length);
 }
+export function verifyCandidateSourceIdentity(frozen,candidate,upstreamTags,resolveTagCommit){
+  if(typeof resolveTagCommit!=='function')throw new Error('Candidate source identity requires an independent official Git tag resolver.');
+  const newTags=stableAdmissionDelta(frozen,upstreamTags),fresh=assertFrozenPrefix(frozen,candidate,'Official source candidate');
+  assert(newTags.length>0,'Official source candidate has no new upstream stable tag.');
+  assert(fresh.length===newTags.length,'Official source candidate count does not match newly discovered stable tags.');
+  return fresh.map((profile,index)=>{
+    const tag=newTags[index],sha=String(profile?.sourceSha||'').toLowerCase(),actual=String(resolveTagCommit(tag)||'').trim().toLowerCase();
+    assert(profile?.tag===tag&&profile?.qbVersion===tag.replace(/^release-/,''),'Candidate tag/version identity is not the official upstream stable sequence: '+tag);
+    assert(profile?.stable===true&&profile?.officialWeiGSupport===true,'Candidate release must be marked official stable: '+tag);
+    assert(/^[0-9a-f]{40}$/.test(sha),'Candidate source commit must be exact 40-hex SHA: '+tag);
+    assert(/^[0-9a-f]{40}$/.test(actual),'Official upstream tag resolver returned no exact commit SHA: '+tag);
+    assert(actual===sha,'Candidate source SHA diverges from the peeled official upstream release tag '+tag+': '+sha+' != '+actual);
+    assert(/^\d+\.\d+(?:\.\d+){0,2}$/.test(String(profile?.webApiVersion||'')),'Candidate is missing a valid source WebAPI identity: '+tag);
+    return {tag,qbVersion:profile.qbVersion,webApiVersion:profile.webApiVersion,sourceSha:sha,identity:'OFFICIAL_TAG_COMMIT_EXACT'};
+  });
+}
+
 export function admissionProductCatalog(base,candidate){
   const fresh=assertFrozenPrefix(base,candidate,'Admission candidate');
   assert(fresh.length>0,'Admission product catalog requires at least one new stable profile.');
@@ -107,6 +124,15 @@ function main(){
     const source=path.resolve(args[1]||'');assert(source&&fs.existsSync(source),command==='discover'?'Usage: node tools/qb-stable-admission.mjs discover <qB-clone> [--output=...]':'Usage: node tools/qb-stable-admission.mjs discover-tags <tag-file> [--output=...]');
     const result=discoveryResult(catalog,manifest,command==='discover'?gitTags(source):readTagsFile(source)),output=getArg('--output',args);if(output)writeJson(path.resolve(output),result);console.log(JSON.stringify(result));return;
   }
+  if(command==='verify-candidate-source'){
+    const source=path.resolve(args[1]||''),candidatePath=path.resolve(getArg('--candidate',args)||'');
+    assert(fs.existsSync(source),'verify-candidate-source requires an upstream qBittorrent Git clone.');
+    assert(candidatePath&&fs.existsSync(candidatePath),'verify-candidate-source requires --candidate=path');
+    const rows=verifyCandidateSourceIdentity(catalog,readJson(candidatePath),gitTags(source),tag=>execFileSync('git',['-C',source,'rev-parse',tag+'^{commit}'],{encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim());
+    const result={source:'official-qb-tag-commit',frozenProfiles:catalog.length,verifiedNew:rows.length,releases:rows,independentDomainCensusComplete:false};
+    const output=getArg('--output',args);if(output)writeJson(path.resolve(output),result);
+    console.log(JSON.stringify(result));return;
+  }
   if(command==='product-catalog'){
     const candidatePath=path.resolve(getArg('--candidate',args)||''),outputPath=path.resolve(getArg('--output',args)||'');assert(candidatePath&&fs.existsSync(candidatePath),'product-catalog requires --candidate=path');assert(outputPath,'product-catalog requires --output=path');const selected=admissionProductCatalog(catalog,readJson(candidatePath));writeJson(outputPath,selected);console.log(`Prepared focused admission product catalog: ${selected.map(x=>x.qbVersion).join(', ')}.`);return;
   }
@@ -116,6 +142,6 @@ function main(){
   if(command==='promote-manifest'){
     const candidatePath=path.resolve(getArg('--candidate',args)||''),outputPath=path.resolve(getArg('--output',args)||'');assert(candidatePath&&fs.existsSync(candidatePath),'promote-manifest requires --candidate=path');assert(outputPath,'promote-manifest requires --output=path');const candidate=readJson(candidatePath),next=promotedManifest(manifest,catalog,candidate,{validationCommit:process.env.WEIG_VALIDATION_SHA||process.env.GITHUB_SHA||null,admittedAt:new Date().toISOString()});next.catalogSha256=sha256File(candidatePath);writeJson(outputPath,next);console.log(`Prepared LKG manifest for ${next.latestAdmittedStable}; ${next.profileCount} profiles; sha256 ${next.catalogSha256}.`);return;
   }
-  throw new Error('Usage: node tools/qb-stable-admission.mjs <verify|discover|discover-tags|product-catalog|report|promote-manifest> ...');
+  throw new Error('Usage: node tools/qb-stable-admission.mjs <verify|discover|discover-tags|verify-candidate-source|product-catalog|report|promote-manifest> ...');
 }
 const isMain=process.argv[1]&&pathToFileURL(path.resolve(process.argv[1])).href===import.meta.url;if(isMain){try{main();}catch(error){console.error(error?.stack||error);process.exit(1);}}

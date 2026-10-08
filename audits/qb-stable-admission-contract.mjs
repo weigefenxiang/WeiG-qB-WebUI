@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {catalogIdentity,assertCatalogIdentity} from '../tools/qb-catalog-identity.mjs';
 import {accountSourceInventory,assertCompleteSourceCensus} from '../tools/qb-source-census.mjs';
-import {assertFrozenPrefix,stableAdmissionDelta,admissionProductCatalog,verifyLkg,renderAdmissionReport,semanticFieldReview,promotedManifest} from '../tools/qb-stable-admission.mjs';
+import {assertFrozenPrefix,stableAdmissionDelta,admissionProductCatalog,verifyLkg,renderAdmissionReport,semanticFieldReview,verifyCandidateSourceIdentity,promotedManifest} from '../tools/qb-stable-admission.mjs';
 
 const base=[
   {qbVersion:'4.1.0',tag:'release-4.1.0',stable:true,officialWeiGSupport:true},
@@ -37,6 +37,14 @@ const duplicate=accountSourceInventory({inventory:['behavior','behavior'],mapped
 const dir=fs.mkdtempSync(path.join(os.tmpdir(),'weigg-lkg-')),file=path.join(dir,'catalog.json');fs.writeFileSync(file,JSON.stringify(base));const hash=crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 verifyLkg({catalog:base,manifest:{schemaVersion:1,supportFloor:'4.1.0',latestAdmittedStable:'5.2.3',profileCount:2,catalogSha256:hash},catalogPath:file});
 const report=renderAdmissionReport(base,candidate);for(const token of ['qB 6.0.0','added actions','removed actions','new_pref'])assert.ok(report.includes(token),`upstream admission report missing ${token}`);
+const officialTag='release-6.0.0',officialSha='a'.repeat(40);
+const exactFuture={...future,sourceSha:officialSha},officialCandidate=[...structuredClone(base),exactFuture];
+const resolveOfficialTag=tag=>tag===officialTag?officialSha:'';
+assert.deepEqual(verifyCandidateSourceIdentity(base,officialCandidate,['release-4.1.0','release-5.2.3',officialTag],resolveOfficialTag),[{tag:officialTag,qbVersion:'6.0.0',webApiVersion:'3.0.0',sourceSha:officialSha,identity:'OFFICIAL_TAG_COMMIT_EXACT'}]);
+assert.throws(()=>verifyCandidateSourceIdentity(base,officialCandidate,['release-4.1.0','release-5.2.3',officialTag],()=> 'b'.repeat(40)),/diverges from the peeled official/);
+assert.throws(()=>verifyCandidateSourceIdentity(base,officialCandidate,['release-4.1.0','release-5.2.3',officialTag],null),/independent official Git tag resolver/);
+assert.throws(()=>verifyCandidateSourceIdentity(base,officialCandidate,['release-4.1.0','release-5.2.3',officialTag,'release-6.1.0'],resolveOfficialTag),/count does not match/);
+
 const previousUi={torrentContextMenu:[{id:'queue'}],statisticsUi:null};
 const currentUi={torrentContextMenu:[{id:'queue',children:[{id:'queueTop'}]}],statisticsUi:{title:'Statistics',groups:[]}};
 const reviewUi=semanticFieldReview(previousUi,currentUi);
