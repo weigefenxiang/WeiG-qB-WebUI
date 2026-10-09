@@ -113,9 +113,6 @@ while [ "$#" -gt 0 ]; do
     -purge)
       PURGE_BACKUPS=1
       ;;
-    -update|--update)
-      MODE="update"
-      ;;
     --container)
       [ "$#" -ge 2 ] || { echo "--container requires a name or ID." >&2; exit 2; }
       shift
