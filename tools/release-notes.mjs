@@ -116,13 +116,28 @@ function dedupe(items){
   }
   return out;
 }
-export function buildReleaseNotes({commits=[],fromTag='',toSha='',maxHighlights=8,maxDetails=24,imageUrl='',presentation='latest',repository=''}={}){
+export function readReleaseCuration({cwd=process.cwd(),version=''}={}){
+  const filename=path.join(cwd,'tools/data/release-notes-curation.json');
+  if(!fs.existsSync(filename))return null;
+  const value=JSON.parse(fs.readFileSync(filename,'utf8'));
+  if(value?.schemaVersion!==1||!/^\d+\.\d+\.\d+$/.test(String(value.version||'')))throw new Error('Release curation schema/version is invalid.');
+  if(value.version!==version)return null;
+  if(!Array.isArray(value.highlights)||value.highlights.length<5||value.highlights.length>8||!Array.isArray(value.details)||value.details.length>24)throw new Error('Release curation limits are invalid.');
+  const texts=[...value.highlights,...value.details.map(row=>row?.text)];
+  if(texts.some(item=>typeof item!=='string'||!item.trim()||item.length>240||containsNonLatinLetter(item)))throw new Error('Release curation requires bounded English public copy.');
+  if(value.details.some(row=>!row||!CATEGORY_ORDER.includes(row.category)))throw new Error('Release curation has an unknown detail category.');
+  if(new Set(value.highlights.map(text=>text.trim().toLowerCase())).size!==value.highlights.length)throw new Error('Release curation highlights must be unique.');
+  return value;
+}
+export function buildReleaseNotes({commits=[],fromTag='',toSha='',maxHighlights=8,maxDetails=24,imageUrl='',presentation='latest',repository='',curation=null}={}){
   const mode=normalizePresentation(presentation);
   const normalized=dedupe(commits.map(normalizeCommit).filter(Boolean));
   const ranked=normalized.map((item,index)=>({item,index,score:(item.explicit?100:0)+(CATEGORY_SCORE[item.category]||0)}))
     .sort((a,b)=>b.score-a.score||a.index-b.index);
-  const highlights=ranked.slice(0,Math.max(0,Number(maxHighlights)||8)).map(row=>row.item);
-  const details=normalized.slice(0,Math.max(0,Number(maxDetails)||24));
+  const highlights=curation?curation.highlights.map(text=>({text})):ranked.slice(0,Math.max(0,Number(maxHighlights)||8)).map(row=>row.item);
+  const reviewed=(curation?.details||[]).map(row=>({...row,hash:''}));
+  const folded=dedupe([...reviewed,...normalized]);
+  const details=folded.slice(0,Math.max(0,Number(maxDetails)||24));
   const grouped=Object.fromEntries(CATEGORY_ORDER.map(key=>[key,[]]));
   details.forEach(item=>(grouped[item.category]||grouped.feature).push(item));
   const lines=[];
@@ -130,7 +145,7 @@ export function buildReleaseNotes({commits=[],fromTag='',toSha='',maxHighlights=
   lines.push('## Highlights','');
   if(highlights.length)highlights.forEach(item=>lines.push(`- ${issueLinks(item.text,repository)}`));
   else lines.push('- No user-visible WebUI changes are available for this release range.');
-  lines.push('','<details>',`<summary>View WebUI changes (showing ${details.length} of ${normalized.length})</summary>`,'');
+  lines.push('','<details>',`<summary>View WebUI changes (showing ${details.length} of ${folded.length})</summary>`,'');
   for(const category of CATEGORY_ORDER){
     const items=grouped[category];
     if(!items.length)continue;
@@ -141,7 +156,7 @@ export function buildReleaseNotes({commits=[],fromTag='',toSha='',maxHighlights=
     }
     lines.push('');
   }
-  if(normalized.length>details.length)lines.push(`${normalized.length-details.length} additional WebUI changes are omitted to keep this release page concise.`,'');
+  if(folded.length>details.length)lines.push(`${folded.length-details.length} additional WebUI changes are omitted to keep this release page concise.`,'');
   lines.push('</details>','');
   if(fromTag||toSha)lines.push(`_Range: ${fromTag||'repository start'} → ${toSha||'current release'}_`,'');
   const markdown=lines.join('\n');
@@ -188,7 +203,9 @@ export function generateFromGit({to,currentTag='',out='',cwd=process.cwd(),repos
   if(mode==='latest'){
     imageUrl=releaseImage({cwd,repository});
   }
-  const result=buildReleaseNotes({commits,fromTag,toSha:to,imageUrl,presentation:mode,repository});
+  const version=SEMVER_TAG.test(currentTag)?currentTag.slice(1):fs.readFileSync(path.join(cwd,'VERSION'),'utf8').trim();
+  const curation=readReleaseCuration({cwd,version});
+  const result=buildReleaseNotes({commits,fromTag,toSha:to,imageUrl,presentation:mode,repository,curation});
   if(out)fs.writeFileSync(out,result.markdown,'utf8');
   return{...result,fromTag,toSha:to,imageUrl};
 }

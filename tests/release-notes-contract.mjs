@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
-import {buildReleaseNotes,readGitCommits,resolvePreviousStableTag,isReleaseVisiblePath,containsNonLatinLetter,normalizePresentation,generateFromGit} from '../tools/release-notes.mjs';
+import {buildReleaseNotes,readGitCommits,resolvePreviousStableTag,isReleaseVisiblePath,containsNonLatinLetter,normalizePresentation,generateFromGit,readReleaseCuration} from '../tools/release-notes.mjs';
 
 const visible='webui/private/scripts/app.js';
 const excluded='webui/VERSION';
@@ -37,6 +37,15 @@ const linkedHash='0123456789abcdef0123456789abcdef01234567';
 const linkedNotes=buildReleaseNotes({commits:[{hash:linkedHash,subject:'fix: Correct qB version gating (#2)',body:'',paths:[visible]}],repository:'weigefenxiang/WeiG-qB-WebUI'});
 assert.ok(linkedNotes.markdown.includes('[`0123456`](https://github.com/weigefenxiang/WeiG-qB-WebUI/commit/'+linkedHash+')'),'Commit link must use full SHA');
 assert.ok(linkedNotes.markdown.includes('[#2](https://github.com/weigefenxiang/WeiG-qB-WebUI/issues/2)'),'Issue link must be reusable');
+const reviewedCuration={
+  highlights:['Selected compatibility fix (#2)','Selected paging improvement','Selected mobile improvements','Selected Settings changes','Selected RSS changes','Selected Logs changes'],
+  details:[{category:'performance',text:'Reviewed runtime startup improvements'}]
+};
+const reviewed=buildReleaseNotes({commits,repository:'weigefenxiang/WeiG-qB-WebUI',curation:reviewedCuration,maxDetails:3});
+assert.equal(reviewed.highlights.length,6);
+assert.ok(reviewed.markdown.includes('- Selected compatibility fix ([#2](https://github.com/weigefenxiang/WeiG-qB-WebUI/issues/2))'));
+assert.ok(reviewed.markdown.includes('### Performance\n\n- Reviewed runtime startup improvements'));
+assert.equal(reviewed.details.length,3,'Curated detail rows count against the bounded 24-row budget');
 const archived=buildReleaseNotes({commits,fromTag:'v1.0.0',toSha:'0123456789abcdef0123456789abcdef01234567',imageUrl:'https://example.invalid/demo.gif',presentation:'archive'});
 assert.equal(archived.presentation,'archive');
 assert.ok(archived.markdown.startsWith('## Highlights\n'),'Archived Release must start with Highlights');
@@ -80,6 +89,14 @@ try{
  const identityCommit=history.find(x=>x.subject.includes('identity only'));
  assert.ok(visibleCommit.paths.includes('webui/private/scripts/app.js'));
  assert.ok(identityCommit.paths.includes('webui/VERSION'));
+ fs.mkdirSync(path.join(temp,'tools/data'),{recursive:true});
+ fs.writeFileSync(path.join(temp,'tools/data/release-notes-curation.json'),JSON.stringify({schemaVersion:1,version:'1.1.0',highlights:reviewedCuration.highlights,details:reviewedCuration.details}));
+ const input=readReleaseCuration({cwd:temp,version:'1.1.0'});
+ assert.equal(input.highlights.length,6);
+ assert.equal(readReleaseCuration({cwd:temp,version:'1.0.0'}),null,'Historical archive must not inherit a newer version curation');
+ const selectedPreview=generateFromGit({to:target,currentTag:'v1.1.0',cwd:temp,repository:'weigefenxiang/WeiG-qB-WebUI',presentation:'latest'});
+ assert.ok(selectedPreview.markdown.includes('Selected RSS changes'),'Exact release must consume reviewed highlights from the shared generator');
+ assert.ok(!generateFromGit({to:target,currentTag:'v1.0.0',cwd:temp,repository:'weigefenxiang/WeiG-qB-WebUI',presentation:'archive'}).markdown.includes('Selected RSS changes'),'Previous release archive cannot inherit current curation');
  const filtered=buildReleaseNotes({commits:history});
  assert.equal(filtered.items.length,1,'identity-only webui commit must not enter release notes');
 }finally{fs.rmSync(temp,{recursive:true,force:true});}

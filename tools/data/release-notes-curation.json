@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "version": "1.2.0",
+  "highlights": [
+    "Fixed an incorrect qBittorrent version check that could block adding torrents on v5.2.4 in some environments (#2).",
+    "Preserved accurate torrent totals across page reloads, reducing repeated counting and wait times.",
+    "Refined mobile torrent detail views, configurable list columns, and navigation.",
+    "Improved source-backed qBittorrent Settings with safer saving and preservation of in-progress edits.",
+    "Enhanced RSS subscriptions and downloader controls while preserving navigation context.",
+    "Improved Logs with severity filtering, pagination, scrolling, and selectable text."
+  ],
+  "details": [
+    {
+      "category": "feature",
+      "text": "Improved installation and upgrade workflows across Windows, Linux, Docker, and NAS, including backup and rollback."
+    },
+    {
+      "category": "performance",
+      "text": "Reduced initial CSS and JavaScript requests through bounded bundles and lazy-loaded modules."
+    },
+    {
+      "category": "performance",
+      "text": "Improved large torrent libraries with smoother scrolling, paging, and neighboring-page prefetch."
+    },
+    {
+      "category": "feature",
+      "text": "Refined torrent detail panels, file priority actions, and resizable data tables."
+    },
+    {
+      "category": "compatibility",
+      "text": "Expanded official qBittorrent copy support and refined Traditional Chinese locale differences."
+    },
+    {
+      "category": "feature",
+      "text": "Unified sorting, resizing, and column configuration across torrent tables."
+    },
+    {
+      "category": "feature",
+      "text": "Improved Add Torrent controls, dialogs, and operation feedback."
+    },
+    {
+      "category": "fix",
+      "text": "Separated live transfer rates from accumulated totals and improved status presentation."
+    },
+    {
+      "category": "fix",
+      "text": "Bounded WebAPI requests and improved recovery from stalled assets, polling, and route changes."
+    },
+    {
+      "category": "feature",
+      "text": "Polished responsive dialogs, selectors, and shared interaction controls."
+    }
+  ]
+}
