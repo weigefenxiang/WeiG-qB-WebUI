@@ -96,10 +96,6 @@ while [ "$#" -gt 0 ]; do
       shift
       RELEASE_VERSION=$1
       ;;
-    --version=*)
-      RELEASE_VERSION=${1#--version=}
-      need_value --version "$RELEASE_VERSION"
-      ;;
     -o)
       [ "$#" -ge 2 ] || { echo "$1 requires a path." >&2; exit 2; }
       shift
