@@ -18,25 +18,20 @@ Eine moderne, responsive qBittorrent Alternate WebUI, optimiert für Desktop und
 
 ## Direkt herunterladen
 
-Lade die neueste stabile **[weig-qb-webui.zip](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest)** herunter.
-
-Historische unveränderliche Releases behalten ihre ursprünglich veröffentlichten Asset-Namen; der Installer liest diese alten Namen nur über einen klar begrenzten Kompatibilitätspfad.
-
-Das ZIP enthält bereits den kanonischen obersten Ordner **`weig-qb-webui`**. Entpacke ihn und verwende diesen Ordner direkt als WebUI-Verzeichnis für qBittorrent; ein Umbenennen ist nicht nötig.
+Lade die aktuelle stabile Version [**weig-qb-webui.zip**](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest) herunter. Dieselbe ZIP-Datei lässt sich auch unter Linux und auf NAS-Systemen verwenden.
 
 ## Oberflächenvorschau
 
 ### Desktop
 
 <p align="center">
-  <img src="../assets/screenshots/weig-qb-webui-desktop-overview-v1.1.0.png" alt="WeiG qB WebUI Desktop-Oberfläche" width="800">
+  <img src="../assets/screenshots/weig-qb-webui-desktop-overview.png" alt="WeiG qB WebUI Desktop-Oberfläche" width="800">
 </p>
 
 ### Mobil
 
 <p align="center">
-  <img src="../assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.gif" alt="WeiG qB WebUI Mobil-Animation" height="341">
-  <img src="../assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.png" alt="WeiG qB WebUI Mobil-Oberfläche" height="341">
+  <img src="../assets/screenshots/weig-qb-webui-mobile-overview.gif" alt="WeiG qB WebUI Mobil-Animation" height="341"><img src="../assets/screenshots/weig-qb-webui-mobile-overview.png" alt="WeiG qB WebUI Mobil-Oberfläche" height="341">
 </p>
 
 ## Installation für Einsteiger
@@ -245,7 +240,7 @@ PowerShell-Parameternamen unterscheiden nicht zwischen Groß- und Kleinschreibun
 | Zweck | Linux / Docker / NAS | Windows PowerShell |
 |---|---|---|
 | Neuester stabiler Release | Standard | Standard |
-| Bestimmter Release | `-version 1.0.0` | `-version 1.0.0` |
+| Bestimmter Release | `-version 1.2.0` | `-version 1.2.0` |
 | Entwicklungsstand | `-dev` | `-dev` |
 | Zielordner | `-o /path` oder `-o /path` | `-o D:\path` oder `-output D:\path` |
 | qBittorrent automatisch konfigurieren | `-configure` | `-configure` |
@@ -267,13 +262,13 @@ PowerShell-Parameternamen unterscheiden nicht zwischen Groß- und Kleinschreibun
 Linux-Beispiel:
 
 ```sh
-sh install.sh -version 1.0.0 -o /opt/weig-qb-webui -configure
+sh install.sh -version 1.2.0 -o /opt/weig-qb-webui -configure
 ```
 
 Windows-Beispiel:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.0.0 -o D:\weig-qb-webui -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.2.0 -o D:\weig-qb-webui -configure
 ```
 
 ### Rollback

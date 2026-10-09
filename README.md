@@ -18,25 +18,20 @@ A modern, responsive qBittorrent Alternate WebUI optimized for desktop and mobil
 
 ## Direct Download
 
-Download the latest stable **[weig-qb-webui.zip](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest)**. Linux/NAS users can also use **`weig-qb-webui.tar.gz`** from the same Release.
-
-Historical immutable Releases keep the asset names they were originally published with; the installer retains a bounded compatibility reader for those old names.
-
-The ZIP already contains the canonical top-level folder **`weig-qb-webui`**. Extract it and use that folder directly as qBittorrent's WebUI directory; no rename is required.
+Download the latest stable release [**weig-qb-webui.zip**](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest). The same ZIP works on Linux and NAS systems.
 
 ## Interface Preview
 
 ### Desktop
 
 <p align="center">
-  <img src="assets/screenshots/weig-qb-webui-desktop-overview-v1.1.0.png" alt="WeiG qB WebUI desktop interface" width="800">
+  <img src="assets/screenshots/weig-qb-webui-desktop-overview.png" alt="WeiG qB WebUI desktop interface" width="800">
 </p>
 
 ### Mobile
 
 <p align="center">
-  <img src="assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.gif" alt="WeiG qB WebUI mobile animation" height="341">
-  <img src="assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.png" alt="WeiG qB WebUI mobile interface" height="341">
+  <img src="assets/screenshots/weig-qb-webui-mobile-overview.gif" alt="WeiG qB WebUI mobile animation" height="341"><img src="assets/screenshots/weig-qb-webui-mobile-overview.png" alt="WeiG qB WebUI mobile interface" height="341">
 </p>
 
 ## New User Installation
@@ -330,7 +325,7 @@ Linux and Windows use the same public option names where practical. Documentatio
 | Purpose | Linux / Docker / NAS | Windows PowerShell |
 |---|---|---|
 | Stable main | Default, no option | Default, no option |
-| Specific Release | `-version 1.0.0` | `-version 1.0.0` |
+| Specific Release | `-version 1.2.0` | `-version 1.2.0` |
 | Development build | `-dev` | `-dev` |
 | Custom install directory | `-o /path` (repeatable on Linux) | `-o D:\path` or `-output D:\path` |
 | Configure qBittorrent automatically | `-configure` | `-configure` |
@@ -360,13 +355,13 @@ Notes:
 Linux:
 
 ```sh
-sh install.sh -version 1.0.0 -o /opt/weig-qb-webui -configure
+sh install.sh -version 1.2.0 -o /opt/weig-qb-webui -configure
 ```
 
 Windows:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.0.0 -o D:\weig-qb-webui -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.2.0 -o D:\weig-qb-webui -configure
 ```
 
 ### Rollback

@@ -18,25 +18,20 @@
 
 ## Прямая загрузка
 
-Скачайте последнюю стабильную версию **[weig-qb-webui.zip](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest)**.
-
-Исторические неизменяемые Releases сохраняют имена файлов, с которыми они были опубликованы; установщик читает эти старые имена только через явно ограниченный путь совместимости.
-
-ZIP уже содержит каноническую верхнюю папку **`weig-qb-webui`**. Распакуйте архив и используйте эту папку напрямую как каталог WebUI в qBittorrent; переименование не требуется.
+Скачайте последнюю стабильную версию [**weig-qb-webui.zip**](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest). Этот же ZIP-архив подходит для Linux и NAS.
 
 ## Предпросмотр интерфейса
 
 ### Настольная версия
 
 <p align="center">
-  <img src="../assets/screenshots/weig-qb-webui-desktop-overview-v1.1.0.png" alt="Настольный интерфейс WeiG qB WebUI" width="800">
+  <img src="../assets/screenshots/weig-qb-webui-desktop-overview.png" alt="Настольный интерфейс WeiG qB WebUI" width="800">
 </p>
 
 ### Мобильная версия
 
 <p align="center">
-  <img src="../assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.gif" alt="Анимация мобильного интерфейса WeiG qB WebUI" height="341">
-  <img src="../assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.png" alt="Мобильный интерфейс WeiG qB WebUI" height="341">
+  <img src="../assets/screenshots/weig-qb-webui-mobile-overview.gif" alt="Анимация мобильного интерфейса WeiG qB WebUI" height="341"><img src="../assets/screenshots/weig-qb-webui-mobile-overview.png" alt="Мобильный интерфейс WeiG qB WebUI" height="341">
 </p>
 
 ## Установка для начинающих
@@ -245,7 +240,7 @@ C:\Users\<имя-пользователя>\AppData\Local\weig-qb-webui
 | Назначение | Linux / Docker / NAS | Windows PowerShell |
 |---|---|---|
 | Последний стабильный Release | По умолчанию | По умолчанию |
-| Конкретный Release | `-version 1.0.0` | `-version 1.0.0` |
+| Конкретный Release | `-version 1.2.0` | `-version 1.2.0` |
 | Версия разработки | `-dev` | `-dev` |
 | Каталог установки | `-o /path` или `-o /path` | `-o D:\path` или `-output D:\path` |
 | Автоматически настроить qBittorrent | `-configure` | `-configure` |
@@ -267,13 +262,13 @@ C:\Users\<имя-пользователя>\AppData\Local\weig-qb-webui
 Linux:
 
 ```sh
-sh install.sh -version 1.0.0 -o /opt/weig-qb-webui -configure
+sh install.sh -version 1.2.0 -o /opt/weig-qb-webui -configure
 ```
 
 Windows:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.0.0 -o D:\weig-qb-webui -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.2.0 -o D:\weig-qb-webui -configure
 ```
 
 ### Откат

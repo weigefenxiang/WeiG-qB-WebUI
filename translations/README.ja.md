@@ -18,25 +18,20 @@
 
 ## 直接ダウンロード
 
-最新の安定版 **[weig-qb-webui.zip](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest)** をダウンロードします。
-
-過去の immutable Release は公開時のアセット名をそのまま保持します。インストーラーは明確に限定された互換パスでのみ旧名称を読み取ります。
-
-ZIP には最初から標準の最上位フォルダー **`weig-qb-webui`** が入っています。展開後は名前を変更せず、そのフォルダーをそのまま qBittorrent の WebUI ディレクトリとして使用できます。
+最新の安定版 [**weig-qb-webui.zip**](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest) をダウンロードしてください。Linux や NAS でも同じ ZIP ファイルを使えます。
 
 ## 画面プレビュー
 
 ### デスクトップ
 
 <p align="center">
-  <img src="../assets/screenshots/weig-qb-webui-desktop-overview-v1.1.0.png" alt="WeiG qB WebUI デスクトップ画面" width="800">
+  <img src="../assets/screenshots/weig-qb-webui-desktop-overview.png" alt="WeiG qB WebUI デスクトップ画面" width="800">
 </p>
 
 ### モバイル
 
 <p align="center">
-  <img src="../assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.gif" alt="WeiG qB WebUI モバイル動画" height="341">
-  <img src="../assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.png" alt="WeiG qB WebUI モバイル画面" height="341">
+  <img src="../assets/screenshots/weig-qb-webui-mobile-overview.gif" alt="WeiG qB WebUI モバイル動画" height="341"><img src="../assets/screenshots/weig-qb-webui-mobile-overview.png" alt="WeiG qB WebUI モバイル画面" height="341">
 </p>
 
 ## 初心者向けインストール
@@ -280,7 +275,7 @@ PowerShell のパラメーター名は大文字・小文字を区別しません
 | 用途 | Linux / Docker / NAS | Windows PowerShell |
 |---|---|---|
 | 最新正式版 | 既定、引数不要 | 既定、引数不要 |
-| 正式版を指定 | `-version 1.0.0` | `-version 1.0.0` |
+| 正式版を指定 | `-version 1.2.0` | `-version 1.2.0` |
 | 開発版 | `-dev` | `-dev` |
 | インストール先を指定 | `-o /path` または `-o /path` | `-o D:\path` または `-output D:\path` |
 | qBittorrent を自動設定 | `-configure` | `-configure` |
@@ -303,13 +298,13 @@ PowerShell のパラメーター名は大文字・小文字を区別しません
 Linux：
 
 ```sh
-sh install.sh -version 1.0.0 -o /opt/weig-qb-webui -configure
+sh install.sh -version 1.2.0 -o /opt/weig-qb-webui -configure
 ```
 
 Windows：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.0.0 -o D:\weig-qb-webui -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.2.0 -o D:\weig-qb-webui -configure
 ```
 
 ### ロールバック

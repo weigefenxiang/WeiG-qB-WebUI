@@ -18,25 +18,20 @@
 
 ## 직접 다운로드
 
-최신 안정 버전 **[weig-qb-webui.zip](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest)** 을 내려받습니다.
-
-과거 immutable Release는 게시 당시의 원래 자산 이름을 그대로 유지합니다. 설치 프로그램은 명확히 제한된 호환 경로에서만 이러한 이전 이름을 읽습니다.
-
-ZIP에는 표준 최상위 폴더 **`weig-qb-webui`** 가 이미 들어 있습니다. 압축을 푼 뒤 이름을 바꾸지 않고 이 폴더를 그대로 qBittorrent WebUI 디렉터리로 사용하면 됩니다.
+최신 안정 버전 [**weig-qb-webui.zip**](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest)을 다운로드하세요. Linux나 NAS에서도 같은 ZIP 파일을 사용할 수 있습니다.
 
 ## 인터페이스 미리보기
 
 ### 데스크톱
 
 <p align="center">
-  <img src="../assets/screenshots/weig-qb-webui-desktop-overview-v1.1.0.png" alt="WeiG qB WebUI 데스크톱 화면" width="800">
+  <img src="../assets/screenshots/weig-qb-webui-desktop-overview.png" alt="WeiG qB WebUI 데스크톱 화면" width="800">
 </p>
 
 ### 모바일
 
 <p align="center">
-  <img src="../assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.gif" alt="WeiG qB WebUI 모바일 애니메이션" height="341">
-  <img src="../assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.png" alt="WeiG qB WebUI 모바일 화면" height="341">
+  <img src="../assets/screenshots/weig-qb-webui-mobile-overview.gif" alt="WeiG qB WebUI 모바일 애니메이션" height="341"><img src="../assets/screenshots/weig-qb-webui-mobile-overview.png" alt="WeiG qB WebUI 모바일 화면" height="341">
 </p>
 
 ## 초보자 설치
@@ -247,7 +242,7 @@ PowerShell 매개변수 이름은 대소문자를 구분하지 않습니다.
 | 용도 | Linux / Docker / NAS | Windows PowerShell |
 |---|---|---|
 | 최신 정식 버전 | 기본값 | 기본값 |
-| 특정 Release | `-version 1.0.0` | `-version 1.0.0` |
+| 특정 Release | `-version 1.2.0` | `-version 1.2.0` |
 | 개발 버전 | `-dev` | `-dev` |
 | 설치 경로 지정 | `-o /path` 또는 `-o /path` | `-o D:\path` 또는 `-output D:\path` |
 | qBittorrent 자동 설정 | `-configure` | `-configure` |
@@ -269,13 +264,13 @@ PowerShell 매개변수 이름은 대소문자를 구분하지 않습니다.
 Linux 예시:
 
 ```sh
-sh install.sh -version 1.0.0 -o /opt/weig-qb-webui -configure
+sh install.sh -version 1.2.0 -o /opt/weig-qb-webui -configure
 ```
 
 Windows 예시:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.0.0 -o D:\weig-qb-webui -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.2.0 -o D:\weig-qb-webui -configure
 ```
 
 ### 롤백

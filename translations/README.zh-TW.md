@@ -18,25 +18,20 @@
 
 ## 直接下載
 
-下載最新穩定版 **[weig-qb-webui.zip](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest)**。
-
-歷史不可變 Release 會保留發佈時的原始資產名稱；安裝器只在明確的相容邊界內繼續讀取這些舊名稱。
-
-ZIP 內已經使用統一的最上層資料夾 **`weig-qb-webui`**。解壓縮後直接使用這個資料夾作為 qBittorrent 的 WebUI 目錄，不需要再重新命名。
+下載最新正式版 [**weig-qb-webui.zip**](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest)；Linux 和 NAS 也可使用相同的 ZIP 檔。
 
 ## 介面預覽
 
 ### 桌面端
 
 <p align="center">
-  <img src="../assets/screenshots/weig-qb-webui-desktop-overview-v1.1.0.png" alt="WeiG qB WebUI 桌面端介面" width="800">
+  <img src="../assets/screenshots/weig-qb-webui-desktop-overview.png" alt="WeiG qB WebUI 桌面端介面" width="800">
 </p>
 
 ### 手機端
 
 <p align="center">
-  <img src="../assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.gif" alt="WeiG qB WebUI 手機端動態示範" height="341">
-  <img src="../assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.png" alt="WeiG qB WebUI 手機端介面" height="341">
+  <img src="../assets/screenshots/weig-qb-webui-mobile-overview.gif" alt="WeiG qB WebUI 手機端動態示範" height="341"><img src="../assets/screenshots/weig-qb-webui-mobile-overview.png" alt="WeiG qB WebUI 手機端介面" height="341">
 </p>
 
 ## 新手安裝
@@ -318,7 +313,7 @@ Linux 與 Windows 盡量使用相同的公開參數名稱；文件統一使用�
 | 用途 | Linux / Docker / NAS | Windows PowerShell |
 |---|---|---|
 | 最新穩定版 | 預設，不需參數 | 預設，不需參數 |
-| 指定正式版本 | `-version 1.0.0` | `-version 1.0.0` |
+| 指定正式版本 | `-version 1.2.0` | `-version 1.2.0` |
 | 開發版 | `-dev` | `-dev` |
 | 指定安裝目錄 | `-o /path` 或 `-o /path` | `-o D:\path` 或 `-output D:\path` |
 | 自動設定 qBittorrent | `-configure` | `-configure` |
@@ -346,13 +341,13 @@ Linux 與 Windows 盡量使用相同的公開參數名稱；文件統一使用�
 Linux：
 
 ```sh
-sh install.sh -version 1.0.0 -o /opt/weig-qb-webui -configure
+sh install.sh -version 1.2.0 -o /opt/weig-qb-webui -configure
 ```
 
 Windows：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.0.0 -o D:\weig-qb-webui -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.2.0 -o D:\weig-qb-webui -configure
 ```
 
 ### 回滾

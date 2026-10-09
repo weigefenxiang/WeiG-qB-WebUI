@@ -349,7 +349,6 @@ Linux 和 Windows 使用相同的参数名称，文档统一使用小写；Power
 - 推荐卸载使用 `-uninstall -purge`：按 installer-owned 安全流程卸载 WebUI 后，清理**当前目标所属的安装器备份和 rollback 状态**；不会删除其它安装目标的备份。共享状态目录为空时，Linux 的 `~/.config/weig-qb-webui`（root 即 `/root/.config/weig-qb-webui`）或 Windows 的 `%APPDATA%\\weig-qb-webui` 也会自动清空。
 - 如果希望保留安装器备份以后使用 `-rollback`，卸载时去掉 `-purge` 即可。
 - `-version` 安装指定 GitHub Release，例如 `1.2.0`；指定版本不存在时直接报错，**不会自动退回 latest 或 dev**。
-- `-help` 显示当前 Linux 参数；旧的 `--...` 长参数继续作为兼容别名保留。
 - Docker 有多个 qBittorrent 容器时，用 `--list-containers` 查看，再用 `--container=NAME` 明确指定；也可以用 `--config-root=/path` 直接指定宿主机上的 qBittorrent 配置目录。
 
 ### 指定版本和安装目录
