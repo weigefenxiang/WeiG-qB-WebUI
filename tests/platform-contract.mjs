@@ -24,14 +24,14 @@ assert.match(sh,/\$DEST\.new\/public\/index\.html/,'Linux installer must validat
 assert.match(sh,/QBT_ROOT_FOLDER="\/config\/\$rel"/,'Linux Docker install must map host paths to qB-visible /config paths');
 assert.match(sh,/WebUI\\\\AlternativeUIEnabled=true/,'Linux installer must enable Alternative WebUI only when configured');
 assert.match(sh,/WebUI\\\\RootFolder=/,'Linux installer must persist qB-visible RootFolder');
-assert.match(sh,/-version VERSION, --version VERSION/,'Linux installer must expose a specific Release version option');
-assert.match(sh,/-dev, --dev\s+Install\/update the current dev exact Git SHA/,'Linux installer must expose the documented single-dash dev option');
-assert.match(sh,/-o PATH, --output PATH\s+WebUI install path\. Repeat -o/,'Linux installer must expose repeatable output targets');
+assert.match(sh,/-version VERSION\s+Install a specific verified Release/,'Linux installer must expose the canonical Release version option');
+assert.match(sh,/-dev\s+Install\/update the current dev exact Git SHA/,'Linux installer must expose the canonical dev option');
+assert.match(sh,/-o PATH\s+WebUI install path\. Repeat -o/,'Linux installer must expose the canonical repeatable output option');
 assert.match(sh,/while \[ "\$target" != "\/" \] && \[ "\$\{target%\/\}" != "\$target" \]; do/,'Linux installer must normalize trailing slashes on explicit install targets');
 assert.match(sh,/deploy_staged_webui\(\)[\s\S]*mv -f "\$deploy_tmp" "\$deploy_dst"/s,'Linux installer must keep the active Alternative WebUI root present and atomically replace staged files in place with POSIX fileutils syntax.');
-assert.match(sh,/-configure, --configure\s+Enable qBittorrent Alternative WebUI and set Root Folder/,'Linux configure help must explain the qB config mutation');
-assert.match(sh,/-rollback, --rollback\s+Restore previous WeiG files\. Add -configure to restore a saved qB WebUI config snapshot\./,'Linux installer must expose file-only rollback with explicit qB config restore semantics');
-assert.match(sh,/-help, -h, --help\s+Show this help/,'Linux installer must expose the documented -help option');
+assert.match(sh,/-configure\s+Enable qBittorrent Alternative WebUI and set Root Folder/,'Linux configure help must explain qB config mutation');
+assert.match(sh,/-rollback\s+Restore previous WeiG files\. Add -configure to restore a saved qB WebUI config snapshot\./,'Linux rollback must retain explicit qB config restore semantics');
+assert.match(sh,/-help\s+Show this help/,'Linux installer must expose canonical -help');
 assert.match(sh,/-version and -dev cannot be used together/,'Linux installer must reject version/dev ambiguity');
 assert.match(sh,/CHANNEL="\$\{WEIG_QB_CHANNEL:-main\}"/,'Linux installer must default to the stable main channel');
 assert.match(sh,/BACKUP_RETENTION=3/,'Linux installer must retain exactly three installer backups per target');
@@ -46,8 +46,8 @@ assert.match(sh,/api\.github\.com\/repos\/\$REPO\/commits\/\$RESOLVED_RELEASE_TA
 assert.match(sh,/PACKAGE_VERSION.*RELEASE_VERSION|RELEASE_VERSION.*PACKAGE_VERSION/s,'Linux Release install must bind package VERSION to the resolved tag version');
 assert.match(sh,/SOURCE_SHA.*RELEASE_EXPECTED_SHA|RELEASE_EXPECTED_SHA.*SOURCE_SHA/s,'Linux Release install must bind package GIT_SHA to the resolved tag commit');
 assert.match(sh,/SHA256SUMS/,'Linux Release installs must remain checksum-verified');
-assert.match(sh,/--channel=main\|release\|dev/,'Linux installer must keep release/dev compatibility while naming main explicitly');
-assert.match(sh,/--dir=\/path/,'Linux installer must keep the old path syntax as a compatibility alias');
+assert.doesNotMatch(sh,/--channel=/,'Linux CLI must not revive retired --channel');
+assert.doesNotMatch(sh,/--dir=/,'Linux CLI must not revive retired --dir');
 assert.match(sh,/api\.github\.com\/repos\/\$REPO\/commits\/dev/,'Linux dev channel must resolve the current dev exact SHA');
 assert.match(sh,/DEV_DIST_BASE="https:\/\/weigefenxiang\.github\.io\/WeiG-qB-WebUI\/downloads\/dev"/,'Linux Dev channel must consume the canonical public materialized payload');
 assert.match(sh,/dev_payload_can_represent_head/,'Linux Dev channel must explicitly verify whether a materialized payload may represent a newer non-payload dev HEAD');
@@ -62,19 +62,19 @@ assert.doesNotMatch(sh,/archive\/refs\/heads\/main\.zip/,'Linux Release channel 
 assert.doesNotMatch(sh,/resolve_main_sha/,'Linux Release channel must not resolve main as a payload source');
 
 assert.match(ps,/public\\index\.html/,'Windows installer must validate public/index.html');
-assert.match(ps,/Destination="\$env:LOCALAPPDATA\\weig-qb-webui"/,'Windows installer must use the canonical user-writable default destination');
+assert.match(ps,/\[Alias\('output'\)\]\[string\]\$o="\$env:LOCALAPPDATA\\weig-qb-webui"/,'Windows must default the canonical -o argument to a user-writable path');
 assert.match(ps,/LegacyDefaultDestination="\$env:LOCALAPPDATA\\WeiG_qB-WebUI"/,'Windows installer must keep the previous default path only as a bounded in-place migration reader');
 assert.match(ps,/APPDATA 'qBittorrent\\qBittorrent\.ini'/,'Windows installer must search the canonical roaming qBittorrent config path');
 assert.match(ps,/WebUI\\AlternativeUIEnabled=true/,'Windows installer must persist Alternative WebUI enabled state');
 assert.match(ps,/WebUI\\RootFolder=/,'Windows installer must persist the native Windows RootFolder');
-assert.match(ps,/Alias\('o','output'\)/,'Windows installer must expose the same short output option');
+assert.match(ps,/\[Alias\('output'\)\]\[string\]\$o=/,'Windows must expose -o with the advertised -output alias');
 assert.match(ps,/\[string\]\$Version=''/,'Windows installer must expose a specific Release version option');
 assert.match(ps,/\[switch\]\$Dev/,'Windows installer must expose the simplified dev option');
 assert.match(ps,/\[switch\]\$Configure/,'Windows installer must expose configure');
 assert.match(ps,/\[switch\]\$Rollback/,'Windows installer must expose rollback');
 assert.match(ps,/-version VERSION/,'Windows help must document lowercase version syntax');
 assert.match(ps,/-configure\s+Enable qBittorrent Alternative WebUI and set Root Folder/,'Windows help must document lowercase configure syntax');
-assert.match(ps,/-version and -dev\/-Channel Dev cannot be used together/,'Windows installer must reject version/dev ambiguity');
+assert.match(ps,/-version and -dev cannot be used together/,'Windows installer must reject version/dev ambiguity');
 assert.match(ps,/api\.github\.com\/repos\/\$Repo\/releases\/latest/,'Windows latest install must resolve one concrete GitHub Release tag before downloading assets');
 assert.match(ps,/api\.github\.com\/repos\/\$Repo\/releases\/tags\/\$requestedReleaseTag/,'Windows exact version install must resolve Release metadata for the requested tag');
 assert.match(ps,/releases\/download\/\$releaseTag/,'Windows installer must pin asset downloads to the resolved exact Release tag');
@@ -82,10 +82,10 @@ assert.match(ps,/api\.github\.com\/repos\/\$Repo\/commits\/\$resolvedReleaseTag/
 assert.match(ps,/packageVersion.*releaseVersion|releaseVersion.*packageVersion/s,'Windows Release install must bind package VERSION to the resolved tag version');
 assert.match(ps,/sourceSha.*releaseExpectedSha|releaseExpectedSha.*sourceSha/s,'Windows Release install must bind package GIT_SHA to the resolved tag commit');
 assert.match(ps,/SHA256SUMS/,'Windows Release installs must remain checksum-verified');
-assert.match(ps,/ValidateSet\('Release','Dev'\)/,'Windows installer must retain legacy Release/Dev channel compatibility');
-assert.match(sh,/-uninstall, --uninstall/,'Linux installer help must expose the canonical uninstall mode');
+assert.doesNotMatch(ps,/ValidateSet\('Release','Dev'\)/,'Windows must not expose legacy channel parameter');
+assert.match(sh,/-uninstall\s+Remove an installer-owned WeiG WebUI/,'Linux installer help must expose canonical uninstall');
 assert.match(ps,/-uninstall\s+Remove an installer-owned WeiG WebUI/,'Windows installer help must expose the canonical uninstall mode');
-assert.match(ps,/ValidateSet\('Install','Update','Rollback','Uninstall'\)/,'Windows installer must retain legacy mode compatibility while admitting the canonical uninstall mode');
+assert.doesNotMatch(ps,/ValidateSet\('Install','Update','Rollback','Uninstall'\)/,'Windows must not expose legacy mode parameter');
 assert.match(ps,/api\.github\.com\/repos\/\$Repo\/commits\/dev/,'Windows Dev channel must resolve the current dev exact SHA');
 assert.match(ps,/DevDistBase='https:\/\/weigefenxiang\.github\.io\/WeiG-qB-WebUI\/downloads\/dev'/,'Windows Dev channel must consume the canonical public materialized payload');
 assert.match(ps,/function Test-DevPayloadCanRepresentHead/,'Windows Dev channel must verify whether a materialized payload may represent a newer non-payload dev HEAD');
@@ -136,4 +136,4 @@ assert.match(sessionContract,/text==='Ok\.'/,'shared Session Contract must accep
 assert.ok(privateIndex.includes("PLAN='bootstrap-plan.json'")&&startup.includes('scripts/qb-client.js'),'private WebUI bootstrap plan must load the shared API compatibility client');
 
 assert.match(ps,/function Disable-QBWebUI[\s\S]*\$candidateBytes=\$null[\s\S]*Compare-QBBytes \$candidateBytes \$currentBytes[\s\S]*config changed unexpectedly during uninstall mutation/s,'Windows uninstall config mutation must only auto-restore bytes it wrote and must not overwrite a concurrent qB config change');
-console.log('Platform contract passed: Linux/Windows Release installs pin one concrete tag and require tag/VERSION/GIT_SHA identity; Dev consumes one materialized qB-aware payload, permits newer docs-only heads only after compare verification, fails closed on Pages-relevant lag, and forbids raw-source fallback; Windows qB config mutation preserves original text encoding; installer compatibility and LIVE rollback retention remain guarded.');
+console.log('Platform contract passed: Linux/Windows Release installs pin one concrete tag and require tag/VERSION/GIT_SHA identity; Dev consumes one materialized qB-aware payload, permits newer docs-only heads only after compare verification, fails closed on Pages-relevant lag, and forbids raw-source fallback; Windows qB config mutation preserves original text encoding; canonical installer arguments and LIVE rollback retention remain guarded.');
