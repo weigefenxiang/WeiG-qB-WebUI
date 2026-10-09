@@ -37,6 +37,13 @@ for(const locale of locales){
     assert(a.includes(src),locale+' screenshot reference mismatch: '+src);
     assert(fs.existsSync(path.resolve(root,path.dirname(readme),src)),locale+' screenshot not found: '+src);
   }
+  const dockerStart=a.indexOf('### Docker'),dockerEnd=a.indexOf('### Windows PowerShell',dockerStart);
+  assert(dockerStart>=0&&dockerEnd>dockerStart,locale+' Docker instructions missing');
+  const docker=a.slice(dockerStart,dockerEnd);
+  for(const example of ['sh install.sh --list-containers','sh install.sh --container=qbittorrent-test -configure',
+    'Host install path:','qBittorrent Root Folder:','/config/weig-qb-webui']){
+    assert(docker.includes(example),locale+' Docker guide lost an executable example or path: '+example);
+  }
   assert(!a.includes('-overview-v1.1.0.'),locale+' stale screenshot alias');
   assert(a.includes('width="800"')&&a.includes('height="341"'),locale+' screenshot dimensions drift');
   const images=a.split('\n').filter(line=>line.includes('<img ')&&line.includes('mobile-overview.'));
