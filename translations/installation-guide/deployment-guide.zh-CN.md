@@ -57,16 +57,16 @@ sh install.sh
 
 之后打开 qBittorrent：
 
-**工具 → 选项… → WebUI**
+**工具 → 选项... → WebUI**
 
 1. 勾选 **使用备选 WebUI**。
-2. 在 **文件位置：** 填入 WebUI 安装目录。
+2. 在 **文件位置：** 填入 qBittorrent 备用 WebUI 安装目录。
 3. 点击 **确定**。
 
 ### 指定正式版本
 
 ```sh
-sh install.sh -version 1.0.0 -configure
+sh install.sh -version 1.2.0 -configure
 ```
 
 ### 指定安装目录
@@ -205,7 +205,7 @@ sh install.sh --container=qbittorrent -o /config/weig-qb-webui -configure
 ### 指定正式版本
 
 ```sh
-sh install.sh --container=qbittorrent -version 1.0.0 -configure
+sh install.sh --container=qbittorrent -version 1.2.0 -configure
 ```
 
 ### 测试 dev
@@ -263,14 +263,14 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1
 
 之后进入：
 
-**工具 → 选项… → WebUI**
+**工具 → 选项... → WebUI**
 
-勾选 **使用备选 WebUI**，并在 **文件位置：** 填入安装目录。
+勾选 **使用备选 WebUI**，并在 **文件位置：** 填入 qBittorrent 备用 WebUI 安装目录。
 
 ### 指定正式版本
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.0.0 -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.2.0 -configure
 ```
 
 ### 安装到 D 盘
@@ -370,7 +370,7 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1 -uninstall -configure -pu
 
 Linux 安装器备份保存在 `~/.config/weig-qb-webui/backups/`，每个安装目标独立保留最近 3 份。
 
-如果只是想临时回到 qBittorrent 原生 WebUI，可以进入 **工具 → 选项… → WebUI**，取消 **使用备选 WebUI**。
+如果只是想临时回到 qBittorrent 原生 WebUI，可以进入 **工具 → 选项... → WebUI**，取消 **使用备选 WebUI**。
 
 </details>
 
@@ -379,7 +379,7 @@ Linux 安装器备份保存在 `~/.config/weig-qb-webui/backups/`，每个安装
 | 用途 | Linux / Docker / NAS | Windows PowerShell | 说明 |
 |---|---|---|---|
 | 最新稳定版 | 默认，无需参数 | 默认，无需参数 | 推荐一般用户 |
-| 指定正式版本 | `-version 1.0.0` | `-version 1.0.0` | 只安装指定版本 |
+| 指定正式版本 | `-version 1.2.0` | `-version 1.2.0` | 只安装指定版本 |
 | 开发测试版 | `-dev` | `-dev` | 只有测试开发版时使用 |
 | 指定安装目录 | `-o /path` | `-o D:\path` 或 `-output D:\path` | `o` = output |
 | 自动配置 qBittorrent | `-configure` | `-configure` | 启用备选 WebUI 并设置路径 |
@@ -409,11 +409,9 @@ Linux 安装器备份保存在 `~/.config/weig-qb-webui/backups/`，每个安装
 
 ## 6. 手动安装
 
-如果一键安装不适合你的环境，也可以手动下载最新正式版：
+如果一键安装不适合你的环境，可以手动安装。
 
-```text
-https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest
-```
+下载最新正式版 [**weig-qb-webui.zip**](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest)，Linux / NAS 也可以直接使用。
 
 正式版通常提供：
 
@@ -422,7 +420,7 @@ weig-qb-webui.zip
 SHA256SUMS
 ```
 
-Release 压缩包已经包含统一的顶层目录 `weig-qb-webui`；解压后直接把这个目录作为 qBittorrent 的 WebUI 根目录，不需要再重命名。
+压缩包解压后，直接使用 `weig-qb-webui` 文件夹作为 qBittorrent 备用 WebUI 目录，无需重命名。
 
 <details>
 <summary><b>手动下载、校验和设置（点击展开）</b></summary>
@@ -434,7 +432,6 @@ Release 压缩包已经包含统一的顶层目录 `weig-qb-webui`；解压后�
 curl -fL https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/SHA256SUMS -o SHA256SUMS
 sha256sum -c SHA256SUMS
 unzip weig-qb-webui.zip
-# Release 压缩包已经包含统一的顶层目录 `weig-qb-webui`；解压后直接把这个目录作为 qBittorrent 的 WebUI 根目录，不需要再重命名。
 ```
 
 ### Windows
@@ -442,7 +439,6 @@ unzip weig-qb-webui.zip
 ```powershell
 # Download the ZIP asset from https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest
 Expand-Archive .\weig-qb-webui.zip . -Force
-# Release 压缩包已经包含统一的顶层目录 `weig-qb-webui`；解压后直接把这个目录作为 qBittorrent 的 WebUI 根目录，不需要再重命名。
 ```
 
 手动计算 SHA-256：
@@ -451,7 +447,7 @@ Expand-Archive .\weig-qb-webui.zip . -Force
 Get-FileHash .\weig-qb-webui.zip -Algorithm SHA256
 ```
 
-解压并重命名后，WebUI 根目录中应直接看到：
+解压后，WebUI 根目录中应直接看到：
 
 ```text
 weig-qb-webui/
@@ -463,7 +459,7 @@ weig-qb-webui/
 
 然后打开 qBittorrent：
 
-**工具 → 选项… → WebUI**
+**工具 → 选项... → WebUI**
 
 启用 **使用备选 WebUI**，把 **文件位置：** 指向 `weig-qb-webui` 根目录。
 
@@ -581,10 +577,10 @@ qBittorrent 4.0.x 使用旧 WebAPI v1，不在当前主线支持范围内。
 指定：
 
 ```text
--version 1.0.0
+-version 1.2.0
 ```
 
-时，只安装对应的 `v1.0.0` Release；如果指定版本不存在，会直接停止，不会自动换成其他来源。
+时，只安装对应的 `v1.2.0` Release；如果指定版本不存在，会直接停止，不会自动换成其他来源。
 
 ### 开发版
 
