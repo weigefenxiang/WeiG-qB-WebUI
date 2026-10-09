@@ -40,7 +40,7 @@ const fetchMock=async(url,init={})=>{
   if(String(url).endsWith('api/v2/clientdata/load'))return new Response(JSON.stringify({qbt_date_format:'yyyy-MM-dd HH:mm:ss',qbt_hide_zero_status_filters:true}),{status:200,headers:{'content-type':'application/json'}});
   return new Response('',{status:200});
 };
-const context={window,fetch:fetchMock,URLSearchParams,FormData,Response,Blob,console};
+const context={window,fetch:fetchMock,URLSearchParams,FormData,Response,Blob,AbortController,setTimeout,clearTimeout,console};
 vm.runInNewContext(source,context,{filename:'qb-client.js'});
 const Client=window.WeiG.QBClient;
 const detected524=new Client();

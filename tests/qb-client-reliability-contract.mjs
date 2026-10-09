@@ -1,0 +1,35 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import vm from 'node:vm';
+// Production QBClient is tested without browser-driver's fetch wrapper.
+const source=await fs.readFile(new URL('../webui/private/scripts/qb-client.js',import.meta.url),'utf8');
+let handler=()=>new Response('{}',{status:200}),sends=0;
+const window={WeiG:{util:{form:form=>new URLSearchParams(Object.entries(form||{}).map(([key,value])=>[key,String(value)])).toString()},I18n:{t:key=>key},CapabilityRegistry:{isCertified:()=>true,allowsReadOperation:()=>true,allowsWriteOperation:()=>true}}};
+const sandbox={window,fetch:(url,init)=>{sends++;return handler(url,init);},AbortController,setTimeout,clearTimeout,URLSearchParams,FormData,Response,Blob,console};
+vm.runInNewContext(source,sandbox,{filename:'qb-client.js'});
+const client=new window.WeiG.QBClient();
+async function code(task,expected){await assert.rejects(task,error=>error?.name==='ApiError'&&error?.code===expected,'Expected ApiError '+expected);}
+handler=()=>new Promise(()=>{});let before=sends;
+await code(client.request('torrents/info',{timeoutMs:30}),'TIMEOUT');
+assert.equal(sends,before+1,'Hung fetch must settle after exactly one send');
+handler=()=>new Response('{"ok":true}',{status:200});
+assert.equal((await client.request('torrents/info',{timeoutMs:1000})).ok,true);
+handler=()=>new Promise(()=>{});
+const controller=new AbortController();
+const pending=client.request('torrents/info',{timeoutMs:5000,signal:controller.signal});
+controller.abort();await code(pending,'ABORTED');
+before=sends;await code(client.request('torrents/info',{signal:controller.signal}),'ABORTED');
+assert.equal(sends,before,'Pre-aborted request cannot reach fetch');
+handler=()=>new Response('',{status:403});await code(client.request('torrents/info',{timeoutMs:1000}),'SESSION_EXPIRED');
+handler=()=>new Response('Unavailable',{status:503});await code(client.request('torrents/info',{timeoutMs:1000}),'HTTP');
+handler=()=>new Response('not JSON',{status:200});await code(client.request('torrents/info',{timeoutMs:1000}),'PARSE');
+handler=()=>Promise.reject(new TypeError('Network disconnected'));await code(client.request('torrents/info',{timeoutMs:1000}),'NETWORK');
+handler=()=>new Response(new ReadableStream({start(){}}),{status:200});
+await code(client.request('torrents/info',{timeoutMs:30}),'TIMEOUT');
+handler=()=>new Promise(()=>{});before=sends;
+await code(client.request('app/setPreferences',{method:'POST',form:{json:'{}'},type:'void',timeoutMs:30}),'TIMEOUT');
+assert.equal(sends,before+1,'Dangerous POST must not be automatically retried');
+handler=()=>new Response('',{status:200});
+await client.request('app/setPreferences',{method:'POST',form:{json:'{}'},type:'void',timeoutMs:1000});
+assert.equal(sends,before+2,'Explicit later action remains possible');
+console.log('QBClient reliability contract passed.');

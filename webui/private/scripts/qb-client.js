@@ -1,7 +1,7 @@
 (function(global){
   'use strict';
   var W=global.WeiG, U=W.util;
-  function ApiError(message,status,path){this.name='ApiError';this.message=message;this.status=status||0;this.path=path||'';}ApiError.prototype=Object.create(Error.prototype);
+  function ApiError(message,status,path,code){this.name='ApiError';this.message=message;this.status=status||0;this.path=path||'';this.code=code||(this.status===403?'SESSION_EXPIRED':this.status?'HTTP':'UNKNOWN');}ApiError.prototype=Object.create(Error.prototype);
   function versionParts(v){return String(v||'0').replace(/^v/i,'').split('.').map(function(x){return parseInt(x,10)||0;});}
   function tr(key,vars){return W.I18n&&W.I18n.t?W.I18n.t(key,vars):String(key||'');}
   function contractUnavailable(path){return new ApiError(tr('api.contractUnavailable'),400,path);}
@@ -30,7 +30,58 @@
   function normalizeLogItems(items){return (Array.isArray(items)?items:[]).map(function(item){var x=Object.assign({},item),ts=Number(x.timestamp);if(Number.isFinite(ts)&&ts>=1e12)x.timestamp=Math.floor(ts/1000);return x;});}
   function normalizeCategories(items,path){if(Array.isArray(items)){var out={};items.forEach(function(item){var name=String(item||'').trim();if(name)out[name]={name:name,savePath:''};});return out;}if(items&&typeof items==='object')return items;throw new ApiError(tr('api.categoriesUnexpected'),200,path||'torrents/categories');}
   function Client(){this.qbVersion='0.0.0';this.webApiVersion='0.0.0';this.major=0;this.capabilities={};}
-  Client.prototype.request=async function(path,options){options=options||{};var method=String(options.method||'GET').toUpperCase(),R=W.CapabilityRegistry;var endpoint=String(path||'').replace(/^[/]+/,'').split('?')[0],certified=!!(R&&typeof R.isCertified==='function'&&R.isCertified()),readOperation=!!(R&&typeof R.allowsReadOperation==='function'&&R.allowsReadOperation(endpoint,method)),additiveOperation=!!(R&&typeof R.allowsWriteOperation==='function'&&R.allowsWriteOperation(endpoint,method,options.sourceAction,options.body));if(method!=='GET'&&!/^auth\//.test(endpoint)&&!certified&&!readOperation&&!additiveOperation)throw new ApiError(tr('api.writeBlocked'),400,path);var init={method:method,credentials:'same-origin',headers:options.headers||{}};if(options.form){init.headers['Content-Type']='application/x-www-form-urlencoded; charset=UTF-8';init.body=U.form(options.form);}else if(options.json!==undefined){init.headers['Content-Type']='application/json; charset=UTF-8';init.body=JSON.stringify(options.json);}else if(options.body){init.body=options.body;}var res=await fetch('api/v2/'+path.replace(/^\//,''),init);if(res.status===403){throw new ApiError(tr('api.sessionExpired'),403,path);}if(!res.ok){var txt='';try{txt=await res.text();}catch(_e){}throw new ApiError(txt||('HTTP '+res.status),res.status,path);}if(options.type==='text')return res.text();if(options.type==='blob')return res.blob();if(options.type==='void')return null;var text=await res.text();if(!text)return null;try{return JSON.parse(text);}catch(e){throw new ApiError(tr('api.parseFailed'),res.status,path);}};
+  Client.prototype.request=async function(path,options){
+    options=options||{};
+    var method=String(options.method||'GET').toUpperCase(),R=W.CapabilityRegistry;
+    var endpoint=String(path||'').replace(/^[/]+/,'').split('?')[0];
+    var certified=!!(R&&typeof R.isCertified==='function'&&R.isCertified());
+    var readOperation=!!(R&&typeof R.allowsReadOperation==='function'&&R.allowsReadOperation(endpoint,method));
+    var additiveOperation=!!(R&&typeof R.allowsWriteOperation==='function'&&R.allowsWriteOperation(endpoint,method,options.sourceAction,options.body));
+    if(method!=='GET'&&!/^auth\//.test(endpoint)&&!certified&&!readOperation&&!additiveOperation)throw new ApiError(tr('api.writeBlocked'),400,path);
+    if(options.signal&&options.signal.aborted)throw new ApiError('Request cancelled',0,path,'ABORTED');
+    var init={method:method,credentials:'same-origin',headers:options.headers||{}};
+    if(options.form){init.headers['Content-Type']='application/x-www-form-urlencoded; charset=UTF-8';init.body=U.form(options.form);}
+    else if(options.json!==undefined){init.headers['Content-Type']='application/json; charset=UTF-8';init.body=JSON.stringify(options.json);}
+    else if(options.body){init.body=options.body;}
+    var controller=new AbortController(),external=options.signal,listener=null,timer=null,interruptReject,reason='';
+    var requestedMs=Number(options.timeoutMs),timeoutMs=Number.isFinite(requestedMs)&&requestedMs>0?Math.min(Math.max(1,requestedMs),120000):15000;
+    var interrupted=new Promise(function(_resolve,reject){interruptReject=reject;});
+    function stop(code){
+      if(reason)return;
+      reason=code;
+      interruptReject(new ApiError(code==='TIMEOUT'?'Request timed out':'Request cancelled',0,path,code));
+      try{controller.abort();}catch(_e){}
+    }
+    init.signal=controller.signal;
+    if(external){
+      listener=function(){stop('ABORTED');};
+      external.addEventListener('abort',listener,{once:true});
+      if(external.aborted)stop('ABORTED');
+    }
+    if(!reason)timer=setTimeout(function(){stop('TIMEOUT');},timeoutMs);
+    try{
+      var operation=(async function(){
+        var res=await fetch('api/v2/'+path.replace(/^\//,''),init);
+        if(res.status===403)throw new ApiError(tr('api.sessionExpired'),403,path,'SESSION_EXPIRED');
+        if(!res.ok){var failureText=await res.text();throw new ApiError(failureText||('HTTP '+res.status),res.status,path,'HTTP');}
+        if(options.type==='void')return null;
+        if(options.type==='text')return res.text();
+        if(options.type==='blob')return res.blob();
+        var body=await res.text();
+        if(!body)return null;
+        try{return JSON.parse(body);}catch(_e){throw new ApiError(tr('api.parseFailed'),res.status,path,'PARSE');}
+      })();
+      return await Promise.race([operation,interrupted]);
+    }catch(error){
+      if(error instanceof ApiError)throw error;
+      if(reason)throw new ApiError(reason==='TIMEOUT'?'Request timed out':'Request cancelled',0,path,reason);
+      if(error&&error.name==='AbortError')throw new ApiError('Request cancelled',0,path,'ABORTED');
+      throw new ApiError(error&&error.message?error.message:'Network request failed',0,path,'NETWORK');
+    }finally{
+      if(timer!==null)clearTimeout(timer);
+      if(external&&listener)external.removeEventListener('abort',listener);
+    }
+  };
   Client.prototype.detect=async function(){var results=await Promise.all([this.request('app/version',{type:'text'}),this.request('app/webapiVersion',{type:'text'}).catch(function(){return '2.0';})]);this.qbVersion=(results[0]||'0').trim();this.webApiVersion=(results[1]||'0').trim();this.major=versionParts(this.qbVersion)[0]||0;this.capabilities={certified:false};return this;};
   Client.prototype.getTorrents=function(opts){opts=opts||{};var q=new URLSearchParams(),R=W.CapabilityRegistry,next=Object.assign({},opts);if(next.filter!==undefined&&next.filter!==null&&next.filter!==''){if(!R||typeof R.upstreamTorrentFilter!=='function')return Promise.reject(contractUnavailable('torrents/info'));var mapped=R.upstreamTorrentFilter(next.filter);if(mapped===undefined)return Promise.reject(contractUnavailable('torrents/info'));if(mapped===null)return Promise.reject(new ApiError(tr('api.filterUnsupported'),400,'torrents/info'));next.filter=mapped;}['filter','category','tag','sort','reverse','limit','offset','hashes'].forEach(function(k){if(next[k]===undefined||next[k]===null||next[k]==='')return;q.set(k,String(next[k]));});return this.request('torrents/info?'+q.toString());};
   Client.prototype.torrentCount=async function(){requireSourceAction('torrentscontroller.h:countAction','torrents/count');var value=await this.request('torrents/count',{type:'text'}),count=Number(String(value==null?'':value).trim());if(!Number.isSafeInteger(count)||count<0)throw new ApiError(tr('api.parseFailed'),200,'torrents/count');return count;};
