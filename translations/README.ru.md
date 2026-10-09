@@ -217,6 +217,14 @@ sh install.sh --config-root=/share/Container/qbittorrent -configure
 sh install.sh --container=qbittorrent -o /config/weig-qb-webui -configure
 ```
 
+#### Обновление нескольких установок WebUI за один запуск
+
+В Linux и на NAS можно повторить параметр `-o` и обновить несколько существующих установок после одной загрузки. В этом режиме нельзя одновременно использовать `-configure`, `--container` и `--config-root`.
+
+```sh
+sh install.sh -o /opt/weig-qb-webui -o /srv/qb/weig-qb-webui
+```
+
 </details>
 
 ### Windows PowerShell
@@ -243,6 +251,7 @@ C:\Users\<имя-пользователя>\AppData\Local\weig-qb-webui
 | Конкретный Release | `-version 1.2.0` | `-version 1.2.0` |
 | Версия разработки | `-dev` | `-dev` |
 | Каталог установки | `-o /path` или `-o /path` | `-o D:\path` или `-output D:\path` |
+| Указать файл настроек qBittorrent | — | `-qbconfig D:\path\qBittorrent.ini` |
 | Автоматически настроить qBittorrent | `-configure` | `-configure` |
 | Откатить предыдущую установку | `-rollback` | `-rollback` |
 | Полное удаление (не сохранять резервные копии установщика) | `-uninstall -purge` | `-uninstall -purge` |

@@ -252,6 +252,14 @@ sh install.sh --container=qbittorrent -o /config/weig-qb-webui -configure
 
 インストーラーが `/config/...` を対応するホスト側パスへ変換します。
 
+#### 既存の WebUI を複数まとめて更新
+
+Linux / NAS では `-o` を繰り返して、既存の複数の WebUI を一度のダウンロードで更新できます。複数指定時は `-configure`、`--container`、`--config-root` を併用できません。
+
+```sh
+sh install.sh -o /opt/weig-qb-webui -o /srv/qb/weig-qb-webui
+```
+
 </details>
 
 ### Windows PowerShell
@@ -278,6 +286,7 @@ PowerShell のパラメーター名は大文字・小文字を区別しません
 | 正式版を指定 | `-version 1.2.0` | `-version 1.2.0` |
 | 開発版 | `-dev` | `-dev` |
 | インストール先を指定 | `-o /path` または `-o /path` | `-o D:\path` または `-output D:\path` |
+| qBittorrent 設定ファイルを指定 | — | `-qbconfig D:\path\qBittorrent.ini` |
 | qBittorrent を自動設定 | `-configure` | `-configure` |
 | 前回のインストールへ戻す | `-rollback` | `-rollback` |
 | 完全アンインストール（バックアップを残さない） | `-uninstall -purge` | `-uninstall -purge` |

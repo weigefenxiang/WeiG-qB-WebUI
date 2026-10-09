@@ -215,6 +215,14 @@ sh install.sh --config-root=/share/Container/qbittorrent -configure
 sh install.sh --container=qbittorrent -o /config/weig-qb-webui -configure
 ```
 
+#### Actualizar varias instalaciones WebUI de una sola vez
+
+En Linux o NAS puedes repetir `-o` para actualizar varias instalaciones existentes con una sola descarga. No combines esta opción con `-configure`, `--container` ni `--config-root`.
+
+```sh
+sh install.sh -o /opt/weig-qb-webui -o /srv/qb/weig-qb-webui
+```
+
 </details>
 
 ### Windows PowerShell
@@ -241,6 +249,7 @@ Los nombres de parámetros de PowerShell no distinguen mayúsculas y minúsculas
 | Release específica | `-version 1.2.0` | `-version 1.2.0` |
 | Versión de desarrollo | `-dev` | `-dev` |
 | Directorio de instalación | `-o /path` o `-o /path` | `-o D:\path` o `-output D:\path` |
+| Archivo de configuración qBittorrent personalizado | — | `-qbconfig D:\path\qBittorrent.ini` |
 | Configurar qBittorrent | `-configure` | `-configure` |
 | Restaurar instalación anterior | `-rollback` | `-rollback` |
 | Desinstalación completa (sin copias del instalador) | `-uninstall -purge` | `-uninstall -purge` |

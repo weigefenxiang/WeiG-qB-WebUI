@@ -290,6 +290,14 @@ qBittorrent Root Folder: /config/weig-qb-webui
 
 如果使用 `-configure` 並成功找到 qBittorrent 設定，安裝器會自動啟用 **使用替補 WebUI** 並設定路徑；否則請依照上面的「新手安裝 → 在 qBittorrent 中啟用」手動填寫。
 
+#### 一次更新多個既有 WebUI 目錄
+
+在 Linux / NAS 上可以重複指定 `-o`，一次下載並更新多個已存在的 WebUI 安裝位置。多目標模式不可同時使用 `-configure`、`--container` 或 `--config-root`。
+
+```sh
+sh install.sh -o /opt/weig-qb-webui -o /srv/qb/weig-qb-webui
+```
+
 </details>
 
 ### Windows PowerShell
@@ -316,6 +324,7 @@ Linux 與 Windows 盡量使用相同的公開參數名稱；文件統一使用�
 | 指定正式版本 | `-version 1.2.0` | `-version 1.2.0` |
 | 開發版 | `-dev` | `-dev` |
 | 指定安裝目錄 | `-o /path` 或 `-o /path` | `-o D:\path` 或 `-output D:\path` |
+| 自訂 qBittorrent 設定檔 | — | `-qbconfig D:\path\qBittorrent.ini` |
 | 自動設定 qBittorrent | `-configure` | `-configure` |
 | 回滾上一次安裝 | `-rollback` | `-rollback` |
 | 完整解除安裝（不保留安裝器備份） | `-uninstall -purge` | `-uninstall -purge` |

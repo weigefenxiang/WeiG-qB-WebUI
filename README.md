@@ -328,6 +328,7 @@ Linux and Windows use the same public option names where practical. Documentatio
 | Specific Release | `-version 1.2.0` | `-version 1.2.0` |
 | Development build | `-dev` | `-dev` |
 | Custom install directory | `-o /path` (repeatable on Linux) | `-o D:\path` or `-output D:\path` |
+| Custom qBittorrent configuration file | — | `-qbconfig D:\path\qBittorrent.ini` |
 | Configure qBittorrent automatically | `-configure` | `-configure` |
 | Roll back the previous install | `-rollback` | `-rollback` |
 | Complete uninstall (do not keep installer backups) | `-uninstall -purge` | `-uninstall -purge` |

@@ -219,6 +219,14 @@ sh install.sh --config-root=/share/Container/qbittorrent -configure
 sh install.sh --container=qbittorrent -o /config/weig-qb-webui -configure
 ```
 
+#### 여러 WebUI 설치 위치를 한 번에 업데이트
+
+Linux / NAS에서는 `-o` 옵션을 반복해 기존 WebUI 설치 경로 여러 곳을 한 번의 다운로드로 업데이트할 수 있습니다. 여러 경로를 지정할 때는 `-configure`, `--container`, `--config-root`를 함께 사용할 수 없습니다.
+
+```sh
+sh install.sh -o /opt/weig-qb-webui -o /srv/qb/weig-qb-webui
+```
+
 </details>
 
 ### Windows PowerShell
@@ -245,6 +253,7 @@ PowerShell 매개변수 이름은 대소문자를 구분하지 않습니다.
 | 특정 Release | `-version 1.2.0` | `-version 1.2.0` |
 | 개발 버전 | `-dev` | `-dev` |
 | 설치 경로 지정 | `-o /path` 또는 `-o /path` | `-o D:\path` 또는 `-output D:\path` |
+| qBittorrent 설정 파일 지정 | — | `-qbconfig D:\path\qBittorrent.ini` |
 | qBittorrent 자동 설정 | `-configure` | `-configure` |
 | 이전 설치로 롤백 | `-rollback` | `-rollback` |
 | 완전 제거(설치 프로그램 백업 미보관) | `-uninstall -purge` | `-uninstall -purge` |
