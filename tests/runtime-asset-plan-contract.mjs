@@ -23,9 +23,9 @@ function harness({failOnce=new Set(),failAlways=new Set(),delays={},fetchBodies=
       },delay);
     }}
   };
-  const window={document,location:{href:'http://example.test/app/index.html'},setTimeout,URL,indexedDB:null,WeiG:{},fetch(url){fetchUrls.push(String(url));const body=fetchBodies.length?fetchBodies[Math.min(fetchIndex++,fetchBodies.length-1)]:'';return Promise.resolve({ok:true,status:200,text(){return Promise.resolve(String(body));},arrayBuffer(){return Promise.resolve(new TextEncoder().encode(String(body)).buffer);}});}};
+  const window={document,location:{href:'http://example.test/app/index.html'},setTimeout,clearTimeout,AbortController,URL,indexedDB:null,WeiG:{},fetch(url){fetchUrls.push(String(url));const body=fetchBodies.length?fetchBodies[Math.min(fetchIndex++,fetchBodies.length-1)]:'';return Promise.resolve({ok:true,status:200,text(){return Promise.resolve(String(body));},arrayBuffer(){return Promise.resolve(new TextEncoder().encode(String(body)).buffer);}});}};
   window.window=window;
-  const context=vm.createContext({window,document,URL,setTimeout,Promise,Map,Set,Uint8Array,Uint32Array,ArrayBuffer,TextDecoder,TextEncoder,console,Number,String,Object,Math,Date});
+  const context=vm.createContext({window,document,URL,setTimeout,clearTimeout,AbortController,Promise,Map,Set,Uint8Array,Uint32Array,ArrayBuffer,TextDecoder,TextEncoder,console,Number,String,Object,Math,Date});
   vm.runInContext(source,context,{filename:'runtime-assets.js'});
   return{RuntimeAssets:window.WeiG.RuntimeAssets,events,attempts,fetchUrls};
 }
