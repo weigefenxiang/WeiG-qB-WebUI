@@ -233,7 +233,8 @@ try {
     Assert-True (!$accepted) "Retired PowerShell argument was accepted: $retired"
   }
   foreach($supported in @('-o','-output','-version','-dev','-qbconfig','-configure','-rollback','-uninstall','-purge','-help')){
-    & $pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Installer $supported -Help *> $null
+    $cliArgs=if($supported -in @('-o','-output','-version','-qbconfig')){@($supported,'1.2.0')}else{@($supported)}
+    & $pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Installer @cliArgs -Help *> $null
     Assert-True ($LASTEXITCODE -eq 0) "Current PowerShell argument was rejected: $supported"
   }
   & $pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Installer -Rollback
