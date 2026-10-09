@@ -89,7 +89,10 @@ function Test-DevPayloadCanRepresentHead([string]$PublishedSha,[string]$DevHeadS
 
 if($Help){ Show-Usage; exit 0 }
 
-$DestinationExplicit=$PSBoundParameters.ContainsKey('Destination')
+$Destination=$o
+$Mode='Install'
+$Channel='Release'
+$DestinationExplicit=$PSBoundParameters.ContainsKey('o')
 $LegacyDefaultDestination="$env:LOCALAPPDATA\WeiG_qB-WebUI"
 $ChannelExplicit=$PSBoundParameters.ContainsKey('Channel')
 if($Rollback){ $Mode='Rollback' }
