@@ -18,7 +18,7 @@
 
 ## 直接下载
 
-下载最新正式版 [**weig-qb-webui.zip**](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest)。Linux / NAS 也可以直接使用。
+下载最新正式版 [**weig-qb-webui.zip**](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest)，Linux / NAS 也可以直接使用。
 
 ## 界面预览
 
@@ -62,7 +62,7 @@ Windows：D:\weig-qb-webui
 Linux：  /opt/weig-qb-webui
 ```
 
-后面 qBittorrent 要填写的就是这个目录。
+后面 qBittorrent 备用 WebUI 要填写的就是这个目录。
 
 ### 3. 在 qBittorrent 中启用
 
