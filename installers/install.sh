@@ -154,9 +154,6 @@ case "$CHANNEL" in
 esac
 
 if [ "$REQUEST_DEV" -eq 1 ]; then
-  case "$CHANNEL_EXPLICIT" in
-    main|release) echo "-dev conflicts with an explicit main/release channel." >&2; exit 2 ;;
-  esac
   CHANNEL="dev"
 fi
 
