@@ -91,7 +91,7 @@ while [ "$#" -gt 0 ]; do
     -dev)
       REQUEST_DEV=1
       ;;
-    -version|--version)
+    -version)
       [ "$#" -ge 2 ] || { echo "$1 requires a value, for example -version 1.0.0." >&2; exit 2; }
       shift
       RELEASE_VERSION=$1
