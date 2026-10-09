@@ -104,7 +104,7 @@ while [ "$#" -gt 0 ]; do
     -configure)
       CONFIGURE=1
       ;;
-    -rollback|--rollback)
+    -rollback)
       MODE="rollback"
       ;;
     -uninstall|--uninstall)
