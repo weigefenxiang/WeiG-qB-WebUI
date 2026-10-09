@@ -44,6 +44,12 @@ for(const locale of overlays){
     assert.deepEqual(placeholders(value),placeholders(en[key]),locale+' placeholder contract drifted for '+key);
   }
 }
+const surfaceKeys=['library.prev','library.next','library.page','logs.ui.follow','logs.ui.showing','logs.ui.refresh','logs.ui.time'];
+for(const locale of overlays.filter(value=>value!=='zh-HK')){
+  const messages=JSON.parse(fs.readFileSync(path.join(localeDir,locale+'.json'),'utf8')).messages;
+  for(const key of surfaceKeys)assert.ok(Object.hasOwn(messages,key),locale+' must translate essential Logs/Pager copy: '+key);
+}
+
 I.applyLocale('zh_CN',{reload:false});
 await I.loadWeiGLocale('zh-CN');
 assert.equal(runtime.reads.length,1);assert.equal(runtime.reads[0].asset,'data/weig-i18n/zh-CN.json');assert.equal(runtime.reads[0].options.namespace,'weig-i18n');assert.equal(runtime.reads[0].options.identity,'zh-CN');
@@ -70,6 +76,7 @@ assert.ok(Object.keys(hkMessages).length<80,'Hong Kong locale must remain an act
   assert.equal(hkI.t('file.priorityUpdatedTitle'),'優先次序已更新');
 
   assert.equal(hkI.t('nav.logs'),twMessages['nav.logs']);
+  for(const key of surfaceKeys)assert.equal(hkI.t(key),twMessages[key],'Hong Kong must inherit Taiwan copy for '+key);
   assert.equal(hkI.t('logs.ui.follow'),twMessages['logs.ui.follow']);
   await hkI.loadWeiGLocale('zh-HK');
   assert.equal(hkRuntime.reads.length,2,'Fully loaded HK shard must reuse both cached source layers');
@@ -81,4 +88,4 @@ for(const failed of [['zh-HK'],['zh-TW'],['zh-TW','zh-HK']]){
   assert.equal(i18n.t('transfer.upload'),failed.includes('zh-HK')?(failed.includes('zh-TW')?en['transfer.upload']:twMessages['transfer.upload']):'上載');
 }
 
-console.log('WeiG locale sharding contract passed: English stays synchronous; exactly one non-English current-locale overlay is loaded through RuntimeAssets and all overlays preserve the canonical key/placeholder contract.');
+console.log('WeiG locale sharding and shared Logs/Pager coverage contract passed: English stays synchronous; exactly one non-English current-locale overlay is loaded through RuntimeAssets and all overlays preserve the canonical key/placeholder contract.');
