@@ -191,6 +191,16 @@ sh install.sh --container=qbittorrent -configure
 
 Se existirem vários contentores qBittorrent, o instalador não escolhe um ao acaso.
 
+#### Escolher o contentor certo quando existem vários
+
+O instalador não escolhe arbitrariamente entre vários contentores qBittorrent. Consulte a lista e execute a instalação para cada contentor pretendido:
+
+```sh
+sh install.sh --list-containers
+sh install.sh --container=qbittorrent -configure
+sh install.sh --container=qbittorrent-test -configure
+```
+
 #### Indicar a pasta do anfitrião montada como `/config`
 
 ```sh
@@ -222,6 +232,17 @@ Em Linux ou NAS, repita `-o` para atualizar várias instalações existentes com
 ```sh
 sh install.sh -o /opt/weig-qb-webui -o /srv/qb/weig-qb-webui
 ```
+
+#### Confirmar os caminhos depois da instalação
+
+A saída distingue o caminho no anfitrião daquele que o qBittorrent consegue utilizar:
+
+```text
+Host install path: /root/qbittorrent/config/weig-qb-webui
+qBittorrent Root Folder: /config/weig-qb-webui
+```
+
+No qBittorrent, o campo **Files location** deve usar o segundo caminho. A opção `-configure` trata dessa definição quando a configuração automática é bem-sucedida.
 
 </details>
 

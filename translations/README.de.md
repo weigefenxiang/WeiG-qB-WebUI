@@ -193,6 +193,16 @@ sh install.sh --container=qbittorrent -configure
 
 Bei mehreren qBittorrent-Containern wählt der Installer nicht automatisch einen aus.
 
+#### Mehrere qBittorrent-Container gezielt auswählen
+
+Wenn mehrere Container laufen, entscheidet der Installer nicht selbst, welchen er ändern soll. Liste sie auf und führe den Befehl jeweils für den gewünschten Container aus:
+
+```sh
+sh install.sh --list-containers
+sh install.sh --container=qbittorrent -configure
+sh install.sh --container=qbittorrent-test -configure
+```
+
 #### Host-Pfad für `/config` angeben
 
 ```sh
@@ -224,6 +234,17 @@ Unter Linux und auf NAS-Systemen kannst du `-o` mehrfach angeben, um mehrere bes
 ```sh
 sh install.sh -o /opt/weig-qb-webui -o /srv/qb/weig-qb-webui
 ```
+
+#### Installationspfade nach dem Setup prüfen
+
+Die Ausgabe zeigt zwei unterschiedliche Pfade:
+
+```text
+Host install path: /root/qbittorrent/config/weig-qb-webui
+qBittorrent Root Folder: /config/weig-qb-webui
+```
+
+Der erste Pfad bezeichnet den Speicherort auf dem Host. **Der zweite gehört in qBittorrents „Speicherort der Dateien“**. Mit `-configure` wird er nach erfolgreicher Konfiguration automatisch übernommen.
 
 </details>
 

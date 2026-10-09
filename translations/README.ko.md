@@ -195,6 +195,16 @@ sh install.sh --container=qbittorrent -configure
 
 여러 컨테이너가 있으면 설치기는 임의로 선택하지 않습니다.
 
+#### qBittorrent 컨테이너가 여러 개인 경우
+
+설치 프로그램은 여러 컨테이너 중 하나를 임의로 선택하지 않습니다. 목록을 확인한 뒤 설정할 컨테이너를 각각 명시해 실행하세요.
+
+```sh
+sh install.sh --list-containers
+sh install.sh --container=qbittorrent -configure
+sh install.sh --container=qbittorrent-test -configure
+```
+
 #### 호스트의 `/config` 경로를 알고 있는 경우
 
 ```sh
@@ -226,6 +236,17 @@ Linux / NAS에서는 `-o` 옵션을 반복해 기존 WebUI 설치 경로 여러 
 ```sh
 sh install.sh -o /opt/weig-qb-webui -o /srv/qb/weig-qb-webui
 ```
+
+#### 설치 후 경로 확인
+
+출력에는 호스트에 저장되는 위치와 qBittorrent가 사용할 수 있는 컨테이너 내부 경로가 따로 표시됩니다.
+
+```text
+Host install path: /root/qbittorrent/config/weig-qb-webui
+qBittorrent Root Folder: /config/weig-qb-webui
+```
+
+qBittorrent의 **파일 위치(Files location)**에는 두 번째 경로를 사용하세요. `-configure`가 정상적으로 완료되면 설치 프로그램이 자동으로 설정합니다.
 
 </details>
 

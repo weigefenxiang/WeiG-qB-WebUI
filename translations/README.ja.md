@@ -260,6 +260,17 @@ Linux / NAS では `-o` を繰り返して、既存の複数の WebUI を一度�
 sh install.sh -o /opt/weig-qb-webui -o /srv/qb/weig-qb-webui
 ```
 
+#### インストール後のパスを確認する
+
+インストーラーはホスト上の保存先と、qBittorrent が使うコンテナー内のパスを別々に表示します。
+
+```text
+Host install path: /root/qbittorrent/config/weig-qb-webui
+qBittorrent Root Folder: /config/weig-qb-webui
+```
+
+qBittorrent の **ファイルの場所（Files location）** には 2 行目のパスを指定します。`-configure` が成功した場合は、インストーラーが自動的に設定します。
+
 </details>
 
 ### Windows PowerShell

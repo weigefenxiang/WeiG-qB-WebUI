@@ -193,6 +193,16 @@ sh install.sh --container=qbittorrent -configure
 
 Если найдено несколько контейнеров qBittorrent, установщик не выбирает один случайно.
 
+#### Если запущено несколько контейнеров qBittorrent
+
+Установщик не выбирает контейнер случайным образом. Посмотрите список и укажите нужный контейнер явно — каждую команду установки запускайте отдельно:
+
+```sh
+sh install.sh --list-containers
+sh install.sh --container=qbittorrent -configure
+sh install.sh --container=qbittorrent-test -configure
+```
+
 #### Указать путь хоста, смонтированный как `/config`
 
 ```sh
@@ -224,6 +234,17 @@ sh install.sh --container=qbittorrent -o /config/weig-qb-webui -configure
 ```sh
 sh install.sh -o /opt/weig-qb-webui -o /srv/qb/weig-qb-webui
 ```
+
+#### Как проверить пути после установки
+
+Установщик показывает путь на хосте и путь, доступный самому qBittorrent:
+
+```text
+Host install path: /root/qbittorrent/config/weig-qb-webui
+qBittorrent Root Folder: /config/weig-qb-webui
+```
+
+В настройке qBittorrent **Files location** следует использовать второй путь — внутри контейнера. При успешном выполнении `-configure` установщик задаёт его автоматически.
 
 </details>
 
