@@ -31,11 +31,6 @@ Options:
   -purge                    With -uninstall, also remove installer-owned backups for this install target.
   -help                     Show this help.
 
-Compatibility parameters kept for existing users:
-  -Channel Release|Dev
-  -Destination PATH
-  -Mode Install|Update|Rollback|Uninstall
-
 Notes:
   -dev and -version cannot be used together.
   A requested Release version never falls back to latest or dev.
