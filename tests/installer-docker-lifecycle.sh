@@ -277,7 +277,7 @@ assert_archive_backup() {
 }
 
 
-bash "$ROOT/installers/install.sh"" -version "$VERSION_ONE" -configure --container "$NAME"
+bash "$ROOT/installers/install.sh" -version "$VERSION_ONE" -configure --container "$NAME"
 assert_install "$VERSION_ONE" "$SHA_ONE" release-one
 FIRST_BACKUP=$(cat "$STATE/last-backup")
 test "$(backup_record_read "$FIRST_BACKUP" had-webui)" = 0
@@ -289,7 +289,7 @@ test "$(backup_record_read "$FIRST_BACKUP" qb-root-folder)" = "$QB_ROOT"
 recreate_qb_and_assert_webui release-one "$SHA_ONE"
 
 sleep 1
-bash "$ROOT/installers/install.sh"" -version "$VERSION_TWO" -configure --container "$NAME"
+bash "$ROOT/installers/install.sh" -version "$VERSION_TWO" -configure --container "$NAME"
 assert_install "$VERSION_TWO" "$SHA_TWO" release-two
 SECOND_BACKUP=$(cat "$STATE/last-backup")
 test "$SECOND_BACKUP" != "$FIRST_BACKUP"

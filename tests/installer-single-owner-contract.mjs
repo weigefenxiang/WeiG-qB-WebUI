@@ -32,4 +32,24 @@ for(const args of [
   assert.equal(result.status,0,'current CLI option must parse: '+args.join(' ')+' / '+result.stderr);
 }
 }
+// Consumers must follow the canonical POSIX installer CLI, not retired long-form flags.
+// Scope to direct shell installer invocations: other tools and qBittorrent itself use --version legitimately.
+import path from 'node:path';
+const testsDir=new URL('./',import.meta.url);
+const allowedLong=new Set(['--container','--config-root','--list-containers']);
+let installerCalls=0;
+for(const name of fs.readdirSync(testsDir).filter(name=>name.endsWith('.sh'))){
+  const body=fs.readFileSync(new URL(name,testsDir),'utf8');
+  for(const line of body.split(/\r?\n/)){
+    if(!/^\s*(?:bash|sh|dash)\s+/.test(line)||!/(?:installers\/install\.sh|\$LINUX_INSTALLER)/.test(line))continue;
+    installerCalls++;
+    assert.doesNotMatch(line,/install\.sh""/,'A shell installer caller must not join its path and arguments by an extra quote: '+name);
+    for(const option of line.match(/--[a-z][\w-]*/g)||[])assert.ok(allowedLong.has(option),'Retired POSIX installer option '+option+' in '+name+': '+line.trim());
+  }
+}
+assert.ok(installerCalls>=4,'Installer CLI acceptance must cover candidate and Docker integration callers');
+const candidate=fs.readFileSync(new URL('candidate-deployment.sh',testsDir),'utf8');
+assert.ok(candidate.includes('bash "$LINUX_INSTALLER" -version "$VERSION" -configure --config-root "$CONFIG_ROOT"'),'Candidate deployment must consume canonical installer flags');
+assert.ok(candidate.includes('"$ROOT/tools/data/qb-stable-lkg.json"'),'Candidate catalog assertion must consume the authoritative exact-SHA admitted source identity');
+assert.doesNotMatch(candidate,/identity\.latestAdmittedStable!=='5\.2\.3'|identity\.releaseCount!==65/,'Release evidence must not pin obsolete admitted-source counts');
 console.log('Installer single-owner contract passed: duplicated lifecycle tail retired and Docker defaults migrate safely.');

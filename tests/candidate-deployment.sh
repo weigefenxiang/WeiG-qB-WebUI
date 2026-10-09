@@ -238,7 +238,7 @@ awk '
   END { exit !(preferences==1 && root==1 && !wrong) }
 ' "$QBT_CONFIG" || { echo 'qB-owned seed did not flush one exact [Preferences] WebUI\\RootFolder=/config value.' >&2; exit 1; }
 
-bash "$LINUX_INSTALLER" --version "$VERSION" --configure --config-root "$CONFIG_ROOT"
+bash "$LINUX_INSTALLER" -version "$VERSION" -configure --config-root "$CONFIG_ROOT"
 [[ -f "$DEST/public/index.html" && -f "$DEST/private/index.html" ]] || { echo 'Candidate install payload is incomplete.' >&2; exit 1; }
 [[ "$(tr -d '\r\n' < "$DEST/VERSION")" == "$VERSION" ]] || { echo 'Installed VERSION mismatch.' >&2; exit 1; }
 [[ "$(tr -d '\r\n' < "$DEST/GIT_SHA")" == "$EXPECTED_SHA" ]] || { echo 'Installed GIT_SHA mismatch.' >&2; exit 1; }
@@ -251,10 +251,10 @@ awk -v want="$QB_ROOT" '
   END { exit !(alt==1 && root==1) }
 ' "$QBT_CONFIG" || { echo 'Candidate installer did not write exact managed WebUI keys under [Preferences].' >&2; exit 1; }
 
-node - "$DEST" "$VERSION" "$EXPECTED_SHA" "" "$CONFIG_ROOT" "$QB_ROOT" "$EXPECTED_QB_VERSION" "$LOCALE_TARGET" <<'NODE'
+node - "$DEST" "$VERSION" "$EXPECTED_SHA" "" "$CONFIG_ROOT" "$QB_ROOT" "$EXPECTED_QB_VERSION" "$LOCALE_TARGET" "$ROOT/tools/data/qb-stable-lkg.json" <<'NODE'
 const fs=require('node:fs');
 const path=require('node:path');
-const [dest,version,sha,container,hostConfigRoot,qbRoot,expectedQb,localeTarget]=process.argv.slice(2);
+const [dest,version,sha,container,hostConfigRoot,qbRoot,expectedQb,localeTarget,catalogLkgPath]=process.argv.slice(2);
 const meta=JSON.parse(fs.readFileSync(path.join(dest,'private/weig-install.json'),'utf8'));
 if(meta.version!==version)throw new Error('candidate metadata version mismatch');
 if(meta.gitSha!==sha)throw new Error('candidate metadata Git SHA mismatch');
@@ -282,7 +282,9 @@ if(fs.existsSync(path.join(dest,'private/scripts/release-profile.js')))throw new
 const capabilities=JSON.parse(fs.readFileSync(path.join(dataDir,'capabilities.json'),'utf8'));
 if(capabilities.schemaVersion!==2)throw new Error('candidate capabilities schemaVersion mismatch');
 const identity=capabilities.catalogIdentity||{};
-if(identity.supportFloor!=='4.1.0'||identity.latestAdmittedStable!=='5.2.3'||identity.releaseCount!==65)throw new Error('candidate Frozen catalog identity mismatch');
+const admitted=JSON.parse(fs.readFileSync(catalogLkgPath,'utf8'));
+if(identity.supportFloor!==admitted.supportFloor||identity.latestAdmittedStable!==admitted.latestAdmittedStable||identity.releaseCount!==admitted.profileCount)throw new Error('Candidate compact catalog identity differs from the exact-SHA admitted stable LKG.');
+if(!Array.isArray(capabilities.releases)||capabilities.releases.length!==admitted.profileCount||!capabilities.releases.some(item=>String(item?.qbVersion||'')===admitted.latestAdmittedStable))throw new Error('Candidate compact releases do not include the full admitted stable source set.');
 const release=Array.isArray(capabilities.releases)?capabilities.releases.find(item=>String(item?.qbVersion||'')===expectedQb):null;
 if(!release||!/^[0-9a-f]{40}$/.test(String(release.sourceSha||'')))throw new Error(`candidate compact capabilities are missing exact qB ${expectedQb} source identity`);
 const settings=JSON.parse(fs.readFileSync(path.join(dataDir,'settings-compat.json'),'utf8'));
