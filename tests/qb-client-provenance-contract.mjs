@@ -1,4 +1,5 @@
 import './qb-operation-semantics-contract.mjs';
+import './qb-client-reliability-contract.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import vm from 'node:vm';

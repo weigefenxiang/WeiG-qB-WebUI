@@ -4,6 +4,7 @@ const files=[
   './runtime-asset-plan-contract.mjs',
   './runtime-assets-reliability-contract.mjs',
   './route-module-loading-contract.mjs',
+  './app-async-reliability-contract.mjs',
   './runtime-asset-budget-contract.mjs',
   './qb-weig-locale-sharding-contract.mjs',
   './qb-copy-semantic-fingerprint-contract.mjs',
