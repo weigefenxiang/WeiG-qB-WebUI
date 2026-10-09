@@ -134,22 +134,6 @@ while [ "$#" -gt 0 ]; do
     --list-containers)
       LIST_CONTAINERS=1
       ;;
-    --channel=main)
-      CHANNEL="main"
-      CHANNEL_EXPLICIT="main"
-      ;;
-    --channel=release)
-      CHANNEL="main"
-      CHANNEL_EXPLICIT="release"
-      ;;
-    --channel=dev)
-      CHANNEL="dev"
-      CHANNEL_EXPLICIT="dev"
-      ;;
-    --channel=*)
-      echo "Unsupported channel: ${1#--channel=}. Use main or dev." >&2
-      exit 2
-      ;;
     --dir=*)
       target=${1#--dir=}
       need_value --dir "$target"
