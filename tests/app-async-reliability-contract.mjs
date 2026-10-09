@@ -27,14 +27,15 @@ assert.equal(transferCalls,2,'Successful refresh must recover after a prior fail
 
 const routeSrc=extract('  async function route(){','  function showUnsupported(');
 const location={hash:'#/settings',reload(){throw Error('unexpected reload');}};
-let settingsReject,toastCount=0,homeCalls=0;const rendered=[];
+let settingsReject,settingsEntered,toastCount=0,homeCalls=0;const rendered=[];
+const settingsReady=new Promise(resolve=>{settingsEntered=resolve;});
 const W={Router:{route(){return{ name:location.hash==='#/settings'?'settings':location.hash==='#/rss'?'rss':'home'};},home(){homeCalls++;location.hash='#/';}},
- Navigation:{loadRouteModule:async()=>{}},SettingsRenderer:{open:()=>new Promise((_resolve,reject)=>{settingsReject=reject;})},
+ Navigation:{loadRouteModule:async()=>{}},SettingsRenderer:{open:()=>new Promise((_resolve,reject)=>{settingsReject=reject;settingsEntered();})},
  toast(){toastCount++;}};
 const routeContext={location,W,console:{error(){}},setView:v=>rendered.push(v),app:{torrents:[{}],detailDockOpen:false,client:{capabilities:{rss:true}}},
  capabilitySupported:()=>true,loadRSS:async()=>{throw new Error('RSS failed');},tr:k=>k};
 vm.runInNewContext('var routeGeneration=0;'+routeSrc+';globalThis.runRoute=route;',routeContext);
-const stale=routeContext.runRoute();await Promise.resolve();await Promise.resolve();
+const stale=routeContext.runRoute();await settingsReady;
 location.hash='#/';await routeContext.runRoute();settingsReject(new Error('stale Settings failure'));await stale;
 assert.equal(toastCount,0,'Stale route failure must remain invisible');
 assert.equal(homeCalls,0,'Stale route must not navigate away from current home');
