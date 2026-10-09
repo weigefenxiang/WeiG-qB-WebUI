@@ -31,16 +31,15 @@
 <p align="center">
   <img src="../assets/screenshots/weig-qb-webui-desktop-overview.png" alt="WeiG qB WebUI 桌面端界面" width="800">
 </p>
-<p align="center">
-  <a href="../assets/screenshots/weig-qb-webui-desktop-overview.gif">查看桌面端动态演示（GIF）</a>
-</p>
 
 ### 手机端
 
-<p align="center">
-  <img src="../assets/screenshots/weig-qb-webui-mobile-overview.gif" alt="WeiG qB WebUI 手机端动态演示" height="341">
-  <img src="../assets/screenshots/weig-qb-webui-mobile-overview.png" alt="WeiG qB WebUI 手机端多画面预览" height="341">
-</p>
+<table align="center">
+  <tr>
+    <td align="center"><img src="../assets/screenshots/weig-qb-webui-mobile-overview.gif" alt="WeiG qB WebUI 手机端动态演示" height="341"></td>
+    <td align="center"><img src="../assets/screenshots/weig-qb-webui-mobile-overview.png" alt="WeiG qB WebUI 手机端多画面预览" height="341"></td>
+  </tr>
+</table>
 
 ## 新手安装
 
@@ -331,10 +330,12 @@ C:\Users\<你的用户名>\AppData\Local\weig-qb-webui
 
 Linux 和 Windows 使用相同的参数名称，文档统一使用小写；PowerShell 参数本身不区分大小写。
 
+> `1.2.0` 是指定版本参数的写法示例，不代表该版本已经发布。执行前请先确认 GitHub Release 中存在对应版本；安装最新正式版时无需指定 `-version`。
+
 | 用途 | Linux / Docker / NAS | Windows PowerShell |
 |---|---|---|
 | 稳定 main | 默认，无需参数 | 默认，无需参数 |
-| 指定正式版本 | `-version 1.0.0` | `-version 1.0.0` |
+| 指定正式版本 | `-version 1.2.0` | `-version 1.2.0` |
 | 开发版 | `-dev` | `-dev` |
 | 指定安装目录 | `-o /path`（Linux 可重复） | `-o D:\path` 或 `-output D:\path` |
 | 自动配置 qBittorrent | `-configure` | `-configure` |
@@ -355,7 +356,7 @@ Linux 和 Windows 使用相同的参数名称，文档统一使用小写；Power
 - `-rollback` 会恢复所选目标最近一次由安装器创建的备份；也可以重复 `-o` 一次回滚多个明确目标。
 - 推荐卸载使用 `-uninstall -purge`：按 installer-owned 安全流程卸载 WebUI 后，清理**当前目标所属的安装器备份和 rollback 状态**；不会删除其它安装目标的备份。共享状态目录为空时，Linux 的 `~/.config/weig-qb-webui`（root 即 `/root/.config/weig-qb-webui`）或 Windows 的 `%APPDATA%\\weig-qb-webui` 也会自动清空。
 - 如果希望保留安装器备份以后使用 `-rollback`，卸载时去掉 `-purge` 即可。
-- `-version` 安装指定 GitHub Release，例如 `1.0.0`；指定版本不存在时直接报错，**不会自动退回 latest 或 dev**。
+- `-version` 安装指定 GitHub Release，例如 `1.2.0`；指定版本不存在时直接报错，**不会自动退回 latest 或 dev**。
 - `-help` 显示当前 Linux 参数；旧的 `--...` 长参数继续作为兼容别名保留。
 - Docker 有多个 qBittorrent 容器时，用 `--list-containers` 查看，再用 `--container=NAME` 明确指定；也可以用 `--config-root=/path` 直接指定宿主机上的 qBittorrent 配置目录。
 
@@ -364,13 +365,13 @@ Linux 和 Windows 使用相同的参数名称，文档统一使用小写；Power
 Linux：
 
 ```sh
-sh install.sh -version 1.0.0 -o /opt/weig-qb-webui -configure
+sh install.sh -version 1.2.0 -o /opt/weig-qb-webui -configure
 ```
 
 Windows：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.0.0 -o D:\weig-qb-webui -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.2.0 -o D:\weig-qb-webui -configure
 ```
 
 ### 回滚
