@@ -3,6 +3,8 @@ import fs from 'node:fs/promises';
 import vm from 'node:vm';
 // Production QBClient is tested without browser-driver's fetch wrapper.
 const source=await fs.readFile(new URL('../webui/private/scripts/qb-client.js',import.meta.url),'utf8');
+const browserDriver=await fs.readFile(new URL('./browser-driver.mjs',import.meta.url),'utf8');
+assert(!/globalThis\.fetch\s*=|browser\.newContext\s*=|__weigTimedFetchInstalled/.test(browserDriver),'Canonical browser-driver must never install an implicit fetch shim');
 let handler=()=>new Response('{}',{status:200}),sends=0;
 const window={WeiG:{util:{form:form=>new URLSearchParams(Object.entries(form||{}).map(([key,value])=>[key,String(value)])).toString()},I18n:{t:key=>key},CapabilityRegistry:{isCertified:()=>true,allowsReadOperation:()=>true,allowsWriteOperation:()=>true}}};
 const sandbox={window,fetch:(url,init)=>{sends++;return handler(url,init);},AbortController,setTimeout,clearTimeout,URLSearchParams,FormData,Response,Blob,console};
