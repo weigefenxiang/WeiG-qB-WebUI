@@ -134,11 +134,6 @@ while [ "$#" -gt 0 ]; do
     --list-containers)
       LIST_CONTAINERS=1
       ;;
-    --dir=*)
-      target=${1#--dir=}
-      need_value --dir "$target"
-      append_target "$target"
-      ;;
     -help)
       usage
       exit 0
