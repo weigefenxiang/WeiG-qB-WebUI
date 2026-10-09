@@ -16,7 +16,7 @@ const assets=window.WeiG.RuntimeAssets;
 async function rejectSoon(task,fragment){await assert.rejects(task,error=>String(error).includes(fragment),'Expected '+fragment);}
 await rejectSoon(assets.readText('fixtures/a.json',{timeoutMs:30}),'timed out');
 assert.equal(opened,1,'Hung IndexedDB open must fall back without restarting pending opens');
-fetchHandler=()=>new Response('{"ok":1}',{status:200});
+fetchHandler=()=>Promise.resolve(new Response('{"ok":1}',{status:200}));
 assert.equal(await assets.readText('fixtures/a.json',{timeoutMs:1000}),'{"ok":1}','Fetch should recover after IDB fallback');
 fetchHandler=()=>new Promise(()=>{});
 await rejectSoon(assets.readBytes('fixtures/b.gz',{timeoutMs:30}),'timed out');
