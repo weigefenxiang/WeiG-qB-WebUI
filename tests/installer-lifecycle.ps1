@@ -234,7 +234,8 @@ try {
   }
   foreach($supported in @('-o','-output','-version','-dev','-qbconfig','-configure','-rollback','-uninstall','-purge','-help')){
     $cliArgs=if($supported -in @('-o','-output','-version','-qbconfig')){@($supported,'1.2.0')}else{@($supported)}
-    & $pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Installer @cliArgs -Help *> $null
+    if($supported -ne '-help'){$cliArgs+= '-Help'}
+    & $pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Installer @cliArgs *> $null
     Assert-True ($LASTEXITCODE -eq 0) "Current PowerShell argument was rejected: $supported"
   }
   & $pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Installer -Rollback
