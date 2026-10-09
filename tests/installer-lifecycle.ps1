@@ -224,6 +224,18 @@ try {
   Assert-True (!(Test-Path -LiteralPath $State)) 'Canonical state root should be absent before legacy-state rollback probe.'
 
   $pwsh=Join-Path $PSHOME 'pwsh.exe'
+  foreach($retired in @('-Channel','-Mode','-Destination')){
+    $accepted=$false
+    try {
+      & $pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Installer $retired 'old' -Help *> $null
+      $accepted=($LASTEXITCODE -eq 0)
+    } catch { $accepted=$false }
+    Assert-True (!$accepted) "Retired PowerShell argument was accepted: $retired"
+  }
+  foreach($supported in @('-o','-output','-version','-dev','-qbconfig','-configure','-rollback','-uninstall','-purge','-help')){
+    & $pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Installer $supported -Help *> $null
+    Assert-True ($LASTEXITCODE -eq 0) "Current PowerShell argument was rejected: $supported"
+  }
   & $pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Installer -Rollback
   Assert-True (Test-Path -LiteralPath (Join-Path $State 'backups') -PathType Container) 'Rollback should recreate the canonical state root while reading historical state.'
   if($LASTEXITCODE -ne 0){throw "Rollback subprocess failed with exit code $LASTEXITCODE."}
