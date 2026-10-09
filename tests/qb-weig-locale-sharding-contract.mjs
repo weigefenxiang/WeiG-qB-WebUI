@@ -63,8 +63,14 @@ assert.ok(Object.keys(hkMessages).length<80,'Hong Kong locale must remain an act
   hkI.applyLocale('zh_HK',{reload:false});await hkI.loadWeiGLocale('zh-HK');
   assert.deepEqual(hkRuntime.reads.map(item=>item.asset).sort(),['data/weig-i18n/zh-TW.json','data/weig-i18n/zh-HK.json'].sort());
   assert.equal(hkI.t('transfer.upload'),'上載');
+  assert.equal(hkI.t('stats.network'),'網絡');
+  assert.equal(hkI.t('stats.globalUpload'),'全域上載速率');
+  assert.equal(hkI.t('torrent.upload'),'上載');
+  assert.equal(hkI.t('settings.fontSize'),'字體大小');
+  assert.equal(hkI.t('file.priorityUpdatedTitle'),'優先次序已更新');
+
   assert.equal(hkI.t('nav.logs'),twMessages['nav.logs']);
-  assert.equal(hkI.t('logs.ui.follow'),en['logs.ui.follow']);
+  assert.equal(hkI.t('logs.ui.follow'),twMessages['logs.ui.follow']);
   await hkI.loadWeiGLocale('zh-HK');
   assert.equal(hkRuntime.reads.length,2,'Fully loaded HK shard must reuse both cached source layers');
 }

@@ -19,10 +19,10 @@
     "connection.reason.disconnected": "qBittorrent 目前未建立有效網絡連線。",
     "connection.title": "網絡連線狀態",
     "connection.environment.network": "網絡：{value}",
-    "connection.step.disconnected.1": "檢查主机網絡連線。",
+    "connection.step.disconnected.1": "檢查主機網絡連線。",
     "connection.step.disconnected.2": "檢查 VPN / 代理網絡介面。",
     "connection.step.disconnected.3": "檢查 Docker 網絡與 qBittorrent 網絡介面設定。",
-    "runtime.clientNotReady": "qBittorrent 客戶端尚未就绪。",
+    "runtime.clientNotReady": "qBittorrent 客戶端尚未就緒。",
     "session.logoutBypass": "qBittorrent 目前允許此客戶端略過驗證。Session 已結束，但伺服器立即建立了新的 Session，因此無法維持真正登出。請停用本機免驗證或將目前位址移出驗證子網絡白名單。",
     "settings.update.rollbackTitle": "回退方式（回到上一個版本）",
     "selection.action.uploadLimit": "上載限速",
@@ -33,6 +33,19 @@
     "transfer.speedHistory": "下載及上載速度歷史曲線",
     "transfer.altUploadLimit": "替代上載限速",
     "transfer.uploadLimit": "上載限速",
-    "transfer.limitsTitle": "全域上載／下載限速"
+    "transfer.limitsTitle": "全域上載／下載限速",
+    "settings.interfaceDesc": "字體、顯示密度、語言、分頁及視覺效果共用一致的設計設定。",
+    "settings.fontSize": "字體大小",
+    "settings.pageData": "目前頁面數據",
+    "stats.upload": "上載速度",
+    "stats.globalUpload": "全域上載速率",
+    "stats.network": "網絡",
+    "torrent.upload": "上載",
+    "torrent.uploadLimit": "上載限速（KiB/s）",
+    "detail.uploaded": "已上載",
+    "file.priorityUpdatedMessage": "檔案優先次序已更新",
+    "file.priorityUpdatedTitle": "優先次序已更新",
+    "file.priorityFailedTitle": "更新優先次序失敗",
+    "api.editTrackerParameterUnsupported": "目前 editTracker 原始碼契約需要此客戶端無法安全提供的參數。"
   }
 }
