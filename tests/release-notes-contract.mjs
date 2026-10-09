@@ -51,6 +51,18 @@ const withoutCompatibility=buildReleaseNotes({commits,repository:'weigefenxiang/
 assert.ok(!withoutCompatibility.markdown.includes('### Compatibility'),'A reviewed release may omit a whole detail category, including inferred Git commits');
 assert.ok(!withoutCompatibility.markdown.includes('preserve old qB scheduler semantics'),'Excluded category commits must not reappear as autofilled detail lines');
 assert.ok(withoutCompatibility.markdown.includes('### Performance'),'Selected categories must remain visible');
+const omitSha='0123456789abcdef0123456789abcdef01234567';
+const curatedOmission=buildReleaseNotes({
+  commits:[
+    {hash:omitSha,subject:'feat: deliberately excluded change',body:'',paths:[visible]},
+    {hash:'abcdefabcdefabcdefabcdefabcdefabcdefabcd',subject:'feat: retained visible change',body:'',paths:[visible]}
+  ],
+  repository:'weigefenxiang/WeiG-qB-WebUI',
+  curation:{...reviewedCuration,detailCategories:['feature','fix','performance'],excludeCommitShas:[omitSha]}
+});
+assert.ok(!curatedOmission.markdown.includes('deliberately excluded change'),'Curated full-SHA exclusion removes the unwanted Feature');
+assert.equal(curatedOmission.items.length,1,'Excluded change is absent from public change items');
+assert.ok(curatedOmission.markdown.includes('retained visible change'),'Unrelated change remains');
 const archived=buildReleaseNotes({commits,fromTag:'v1.0.0',toSha:'0123456789abcdef0123456789abcdef01234567',imageUrl:'https://example.invalid/demo.gif',presentation:'archive'});
 assert.equal(archived.presentation,'archive');
 assert.ok(archived.markdown.startsWith('## Highlights\n'),'Archived Release must start with Highlights');
@@ -77,6 +89,7 @@ if(currentReview){
  assert.equal(currentReview.highlights.length>=5&&currentReview.highlights.length<=8,true,'Reviewed release needs 5 to 8 Highlights');
  const currentDraft=buildReleaseNotes({commits,repository:'weigefenxiang/WeiG-qB-WebUI',curation:currentReview,imageUrl:'https://example.invalid/demo.gif',presentation:'latest'});
  for(const text of currentReview.highlights)assert.ok(currentDraft.markdown.includes(text.includes('#2')?text.replace('#2','[#2](https://github.com/weigefenxiang/WeiG-qB-WebUI/issues/2)'):text),'Current reviewed Highlight must survive canonical renderer');
+ for(const hash of currentReview.excludeCommitShas||[])assert.ok(!currentDraft.markdown.includes('/commit/'+hash),'Excluded current-version commit must not be linked');
  assert.ok(currentDraft.markdown.includes('### Performance'),'Reviewed details must preserve approved performance section');
  if(currentReview.detailCategories){
    const titles={feature:'Features / UI',fix:'Fixes',performance:'Performance',compatibility:'Compatibility'};

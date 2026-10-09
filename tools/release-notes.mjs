@@ -130,12 +130,16 @@ export function readReleaseCuration({cwd=process.cwd(),version=''}={}){
     if(!Array.isArray(value.detailCategories)||!value.detailCategories.length||value.detailCategories.some(category=>!CATEGORY_ORDER.includes(category))||new Set(value.detailCategories).size!==value.detailCategories.length)throw new Error('Release curation detail category selection is invalid.');
     if(value.details.some(row=>!value.detailCategories.includes(row.category)))throw new Error('Release curation detail category excludes a reviewed item.');
   }
+  if(value.excludeCommitShas!==undefined){
+    if(!Array.isArray(value.excludeCommitShas)||value.excludeCommitShas.length>50||value.excludeCommitShas.some(hash=>typeof hash!=='string'||!/^[0-9a-f]{40}$/.test(hash))||new Set(value.excludeCommitShas).size!==value.excludeCommitShas.length)throw new Error('Reviewed exclusions must be unique exact lowercase 40-character SHA values.');
+  }
   if(new Set(value.highlights.map(text=>text.trim().toLowerCase())).size!==value.highlights.length)throw new Error('Release curation highlights must be unique.');
   return value;
 }
 export function buildReleaseNotes({commits=[],fromTag='',toSha='',maxHighlights=8,maxDetails=24,imageUrl='',presentation='latest',repository='',curation=null}={}){
   const mode=normalizePresentation(presentation);
-  const normalized=dedupe(commits.map(normalizeCommit).filter(Boolean));
+  const excluded=new Set(curation?.excludeCommitShas||[]);
+  const normalized=dedupe(commits.map(normalizeCommit).filter(Boolean)).filter(item=>!excluded.has(item.hash.toLowerCase()));
   const ranked=normalized.map((item,index)=>({item,index,score:(item.explicit?100:0)+(CATEGORY_SCORE[item.category]||0)}))
     .sort((a,b)=>b.score-a.score||a.index-b.index);
   const highlights=curation?curation.highlights.map(text=>({text})):ranked.slice(0,Math.max(0,Number(maxHighlights)||8)).map(row=>row.item);

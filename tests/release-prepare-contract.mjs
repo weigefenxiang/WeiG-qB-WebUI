@@ -14,7 +14,9 @@ assert.ok(!workflow.includes('real-qb-full.yml')&&!workflow.includes('real-qb-lo
 assert.ok(workflow.includes('cancelWorkflowRun')&&workflow.includes("if(run.event!=='workflow_dispatch')continue;")&&workflow.includes("run.head_sha?.toLowerCase()===sha"),'prepare must cancel only superseded explicitly dispatched release-preparation runs while preserving the current exact SHA');
 assert.ok(workflow.includes('dev moved from frozen ${sha}'),'prepare must fail closed if dev moves');
 assert.ok(workflow.includes('--to "$SHA"')&&workflow.includes('release-preview-${{ steps.freeze.outputs.sha }}'),'preview must bind notes range and artifact to exact frozen SHA; image comes only from the canonical main GIF owner');
-assert.ok(workflow.includes('candidate/weig-qb-webui.zip')&&workflow.includes('candidate/weig-qb-webui.tar.gz')&&workflow.includes('candidate/manifest.json'),'release preview must fingerprint the canonical ZIP, tar.gz and manifest from one exact candidate artifact');
+assert.ok(workflow.includes('(cd candidate && sha256sum -c SHA256SUMS)')&&workflow.includes('candidate/CANDIDATE_SHA')&&workflow.includes('candidate/SHA256SUMS'),'Release Prepare must verify and retain exact certified candidate evidence');
+assert.ok(workflow.includes('cp release-notes-preview.md release-preview.md'),'Human-facing preview must mirror public Release Notes');
+for(const retired of ['FINAL_DEV_SHA:','Candidate ZIP SHA256:','Candidate tar.gz SHA256:','Candidate manifest SHA256:','CI / Pages / Candidate / Deployment / Session: PASS','Compatibility Audits (Full Frozen / Locale): independent, manual'])assert.ok(!workflow.includes(retired),'Technical certification must not enter public Preview: '+retired);
 assert.ok(workflow.includes('No main, tag, or GitHub Release was changed'),'prepare must stop before publication');
 assert.ok(!workflow.includes('git push origin')&&!workflow.includes('gh release create'),'prepare must not promote or publish');
 console.log('Release prepare contract passed: exact-dev Candidate/Deployment/Pages/Session evidence generates preview; Compatibility Audits stay independent and prepare cannot mutate main/tag/release.');

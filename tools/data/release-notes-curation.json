@@ -51,5 +51,8 @@
     "feature",
     "fix",
     "performance"
+  ],
+  "excludeCommitShas": [
+    "656053ef2fef57384a3680a974688e189cf103bb"
   ]
 }

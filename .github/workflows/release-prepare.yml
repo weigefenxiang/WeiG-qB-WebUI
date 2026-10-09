@@ -172,30 +172,16 @@ jobs:
         shell: bash
         env:
           SHA: ${{ steps.freeze.outputs.sha }}
-          VERSION: ${{ steps.freeze.outputs.version }}
         run: |
           set -euo pipefail
           test "$(tr -d '\r\n' < candidate/CANDIDATE_SHA)" = "$SHA"
           (cd candidate && sha256sum -c SHA256SUMS)
-          PACKAGE_SHA="$(sha256sum candidate/weig-qb-webui.zip | awk '{print $1}')"
-          TAR_SHA="$(sha256sum candidate/weig-qb-webui.tar.gz | awk '{print $1}')"
-          MANIFEST_SHA="$(sha256sum candidate/manifest.json | awk '{print $1}')"
           node tools/release-notes.mjs \
             --to "$SHA" \
             --repository "$GITHUB_REPOSITORY" \
             --out release-notes-preview.md
-          {
-            echo "# WeiG qB WebUI $VERSION · Release Preview"
-            echo
-            echo "- FINAL_DEV_SHA: \`$SHA\`"
-            echo "- Candidate ZIP SHA256: \`$PACKAGE_SHA\`"
-            echo "- Candidate tar.gz SHA256: \`$TAR_SHA\`"
-            echo "- Candidate manifest SHA256: \`$MANIFEST_SHA\`"
-            echo "- CI / Pages / Candidate / Deployment / Session: PASS"
-            echo "- Compatibility Audits (Full Frozen / Locale): independent, manual, not required by Release Prepare or Promotion"
-            echo
-            cat release-notes-preview.md
-          } > release-preview.md
+          # Human preview mirrors canonical public notes; certification stays in the artifact evidence.
+          cp release-notes-preview.md release-preview.md
 
       - name: Upload release preview
         uses: actions/upload-artifact@v7
