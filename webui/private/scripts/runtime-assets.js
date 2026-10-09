@@ -2,7 +2,7 @@
   'use strict';
   var W=global.WeiG=global.WeiG||{};
   if(W.RuntimeAssets)return;
-  var SCHEMA=2,DB_NAME='weig-runtime-assets',STORE='assets',memory=new Map(),inflight=new Map(),scriptInflight=new Map(),scriptLoaded=new Set(),styleInflight=new Map(),styleLoaded=new Set(),prefetchRequested=new Set(),dbTask=null,upstreamAssetBuilder=typeof W.buildAssetUrl==='function'?W.buildAssetUrl:null;
+  var SCHEMA=2,DB_NAME='weig-runtime-assets',STORE='assets',memory=new Map(),inflight=new Map(),scriptInflight=new Map(),scriptLoaded=new Set(),scriptUncertain=new Set(),styleInflight=new Map(),styleLoaded=new Set(),prefetchRequested=new Set(),dbTask=null,upstreamAssetBuilder=typeof W.buildAssetUrl==='function'?W.buildAssetUrl:null;
   function buildId(){var meta=global.document&&document.querySelector&&document.querySelector('meta[name="weig-build-sha"]'),value=meta&&meta.getAttribute('content');value=String(value||'dev').trim()||'dev';return value;}
   var BUILD=buildId();
   function namespace(options){return String(options&&options.namespace||'runtime').trim()||'runtime';}
@@ -10,13 +10,53 @@
   function cacheKey(path,options,kind){return[SCHEMA,BUILD,namespace(options),identity(options),String(kind||'text'),String(path||'')].join('\u0001');}
   function assetUrl(path){if(upstreamAssetBuilder)return upstreamAssetBuilder(path);var url=new URL(String(path||''),global.location.href);if(BUILD&&BUILD.indexOf('__WEIG_')!==0)url.searchParams.set('v',BUILD);return url.href;}
   function retryUrl(path,attempt){var url=new URL(assetUrl(path),global.location.href);if(Number(attempt)>0)url.searchParams.set('__weig_retry',String(attempt));return url.href;}
-  function openDb(){if(dbTask)return dbTask;if(!global.indexedDB)return Promise.resolve(null);dbTask=new Promise(function(resolve){var request;try{request=global.indexedDB.open(DB_NAME,SCHEMA);}catch(_e){resolve(null);return;}request.onupgradeneeded=function(){var db=request.result;if(!db.objectStoreNames.contains(STORE))db.createObjectStore(STORE,{keyPath:'key'});};request.onsuccess=function(){resolve(request.result);};request.onerror=function(){resolve(null);};request.onblocked=function(){resolve(null);};});return dbTask;}
-  function transaction(mode,run){return openDb().then(function(db){if(!db)return null;return new Promise(function(resolve){var tx,store,req;try{tx=db.transaction(STORE,mode);store=tx.objectStore(STORE);req=run(store);}catch(_e){resolve(null);return;}if(!req){resolve(null);return;}req.onsuccess=function(){resolve(req.result===undefined?null:req.result);};req.onerror=function(){resolve(null);};});});}
+  function openDb(){
+    if(dbTask)return dbTask;
+    if(!global.indexedDB)return Promise.resolve(null);
+    dbTask=new Promise(function(resolve){
+      var request,done=false,timer=null;
+      function finish(value){if(done){if(value&&value.close)value.close();return;}done=true;if(timer!==null)global.clearTimeout(timer);resolve(value);}
+      try{request=global.indexedDB.open(DB_NAME,SCHEMA);}catch(_e){finish(null);return;}
+      timer=global.setTimeout(function(){finish(null);},800);
+      request.onupgradeneeded=function(){if(done)return;try{var db=request.result;if(!db.objectStoreNames.contains(STORE))db.createObjectStore(STORE,{keyPath:'key'});}catch(_e){finish(null);}};
+      request.onsuccess=function(){finish(request.result);};
+      request.onerror=function(){finish(null);};
+      request.onblocked=function(){finish(null);};
+    });
+    return dbTask;
+  }
+  function transaction(mode,run){
+    return openDb().then(function(db){
+      if(!db)return null;
+      return new Promise(function(resolve){
+        var tx,store,req,done=false,timer=null;
+        function finish(value){if(done)return;done=true;if(timer!==null)global.clearTimeout(timer);resolve(value);}
+        try{tx=db.transaction(STORE,mode);store=tx.objectStore(STORE);req=run(store);}catch(_e){finish(null);return;}
+        if(!req){finish(null);return;}
+        timer=global.setTimeout(function(){finish(null);try{tx.abort();}catch(_e){}},800);
+        req.onsuccess=function(){finish(req.result===undefined?null:req.result);};
+        req.onerror=function(){finish(null);};
+        tx.onabort=function(){finish(null);};
+        tx.onerror=function(){finish(null);};
+      });
+    });
+  }
   function readStored(key){return transaction('readonly',function(store){return store.get(key);});}
   function writeStored(record){return transaction('readwrite',function(store){return store.put(record);});}
   function deleteStored(key){return transaction('readwrite',function(store){return store.delete(key);});}
-  function fetchText(path,options){return global.fetch(retryUrl(path,options&&options.retryAttempt),{credentials:'same-origin',cache:'no-store'}).then(function(res){if(!res.ok)throw new Error('Runtime asset '+path+' HTTP '+res.status);return res.text();});}
-  function fetchBytes(path,options){return global.fetch(retryUrl(path,options&&options.retryAttempt),{credentials:'same-origin',cache:'no-store'}).then(function(res){if(!res.ok)throw new Error('Runtime asset '+path+' HTTP '+res.status);return res.arrayBuffer();}).then(function(value){return new Uint8Array(value);});}
+  function fetchAsset(path,options,kind){
+    var requested=Number(options&&options.timeoutMs),limit=Number.isFinite(requested)&&requested>0?Math.min(requested,120000):12000;
+    var controller=new AbortController(),timer=null,rejectDeadline;
+    var deadline=new Promise(function(_resolve,reject){rejectDeadline=reject;});
+    timer=global.setTimeout(function(){rejectDeadline(new Error('Runtime asset '+path+' timed out'));try{controller.abort();}catch(_e){}},limit);
+    var task=global.fetch(retryUrl(path,options&&options.retryAttempt),{credentials:'same-origin',cache:'no-store',signal:controller.signal}).then(function(res){
+      if(!res.ok)throw new Error('Runtime asset '+path+' HTTP '+res.status);
+      return kind==='bytes'?res.arrayBuffer():res.text();
+    });
+    return Promise.race([task,deadline]).then(function(value){return kind==='bytes'?new Uint8Array(value):value;}).finally(function(){if(timer!==null)global.clearTimeout(timer);});
+  }
+  function fetchText(path,options){return fetchAsset(path,options,'text');}
+  function fetchBytes(path,options){return fetchAsset(path,options,'bytes');}
   function storedValue(record,kind){if(!record||record.schemaVersion!==SCHEMA||record.build!==BUILD||record.kind!==kind)return null;if(kind==='text')return typeof record.value==='string'?record.value:null;var value=record.value;if(value instanceof Uint8Array)return value;if(value&&value.buffer instanceof ArrayBuffer)return new Uint8Array(value.buffer,value.byteOffset||0,value.byteLength);if(value instanceof ArrayBuffer)return new Uint8Array(value);return null;}
   function readAsset(path,options,kind){path=String(path||'');kind=kind==='bytes'?'bytes':'text';var key=cacheKey(path,options,kind);if(memory.has(key))return Promise.resolve(memory.get(key));if(inflight.has(key))return inflight.get(key);var task=readStored(key).then(function(record){var stored=storedValue(record,kind);if(stored!==null){memory.set(key,stored);return stored;}var fetcher=kind==='bytes'?fetchBytes:fetchText;return fetcher(path,options).then(function(value){memory.set(key,value);writeStored({key:key,schemaVersion:SCHEMA,build:BUILD,namespace:namespace(options),identity:identity(options),kind:kind,path:path,value:value,savedAt:Date.now()});return value;});}).finally(function(){inflight.delete(key);});inflight.set(key,task);return task;}
   function readText(path,options){return readAsset(path,options,'text');}
@@ -50,10 +90,63 @@
   function retryAttempts(options){var value=Number(options&&options.maxAttempts);return Number.isFinite(value)?Math.max(1,Math.min(5,Math.floor(value))):3;}
   function retryDelay(attempt,options){var delays=options&&Array.isArray(options.retryDelays)?options.retryDelays:null,value=delays&&delays.length?Number(delays[Math.min(attempt,delays.length-1)]):attempt===0?250:700;return Number.isFinite(value)?Math.max(0,Math.min(5000,value)):0;}
   function wait(ms){return new Promise(function(resolve){global.setTimeout(resolve,ms);});}
-  function withRetry(factory,options){var attempts=retryAttempts(options);function run(attempt){return Promise.resolve().then(function(){return factory(attempt);}).catch(function(error){if(attempt+1>=attempts)throw error;return wait(retryDelay(attempt,options)).then(function(){return run(attempt+1);});});}return run(0);}
-  function loadScript(path,options){path=String(path||'');var key=[BUILD,namespace(options),identity(options),path].join('\u0001');if(scriptLoaded.has(key))return Promise.resolve(path);if(scriptInflight.has(key))return scriptInflight.get(key);function once(attempt){return new Promise(function(resolve,reject){var node=global.document&&document.createElement?document.createElement('script'):null;if(!node){reject(new Error('Runtime script document unavailable: '+path));return;}node.async=false;node.src=retryUrl(path,attempt);node.dataset.weigRuntimeModule=path;node.onload=function(){scriptLoaded.add(key);resolve(path);};node.onerror=function(){try{node.remove();}catch(_e){}reject(new Error('Runtime script '+path+' failed'));};document.head.appendChild(node);});}var task=withRetry(once,options).finally(function(){scriptInflight.delete(key);});scriptInflight.set(key,task);return task;}
+  function withRetry(factory,options){
+    var attempts=retryAttempts(options);
+    function run(attempt){return Promise.resolve().then(function(){return factory(attempt);}).catch(function(error){
+      if(error&&error.noRetry===true||attempt+1>=attempts)throw error;
+      return wait(retryDelay(attempt,options)).then(function(){return run(attempt+1);});
+    });}
+    return run(0);
+  }
+  function loadScript(path,options){
+    path=String(path||'');
+    var key=[BUILD,namespace(options),identity(options),path].join('\u0001');
+    if(scriptLoaded.has(key))return Promise.resolve(path);
+    if(scriptUncertain.has(key))return Promise.reject(new Error('Runtime script execution state is uncertain; reload required: '+path));
+    if(scriptInflight.has(key))return scriptInflight.get(key);
+    function once(attempt){return new Promise(function(resolve,reject){
+      if(scriptUncertain.has(key)){var previous=new Error('Runtime script uncertain: '+path);previous.noRetry=true;reject(previous);return;}
+      var node=global.document&&document.createElement?document.createElement('script'):null;
+      if(!node){reject(new Error('Runtime script document unavailable: '+path));return;}
+      var done=false,timer=null;
+      function finish(error){if(done)return;done=true;if(timer!==null)global.clearTimeout(timer);if(error)reject(error);else{scriptLoaded.add(key);resolve(path);}}
+      var ms=Number(options&&options.timeoutMs);ms=Number.isFinite(ms)&&ms>0?Math.min(ms,120000):12000;
+      node.async=false;node.src=retryUrl(path,attempt);node.dataset.weigRuntimeModule=path;
+      node.onload=function(){finish(null);};
+      node.onerror=function(){try{node.remove();}catch(_e){}finish(new Error('Runtime script '+path+' failed'));};
+      timer=global.setTimeout(function(){
+        scriptUncertain.add(key);
+        var error=new Error('Runtime script timed out; execution state uncertain: '+path);
+        error.noRetry=true;finish(error);
+      },ms);
+      try{document.head.appendChild(node);}catch(error){finish(error);}
+    });}
+    var task=withRetry(once,options).finally(function(){scriptInflight.delete(key);});
+    scriptInflight.set(key,task);
+    return task;
+  }
   function prefetchScript(path,options){path=String(path||'');var key=[BUILD,namespace(options),identity(options),path].join(String.fromCharCode(1));if(!path||scriptLoaded.has(key)||scriptInflight.has(key)||prefetchRequested.has(key)||!document.createElement)return false;var node=document.createElement('link');if(!node.relList||!node.relList.supports||!node.relList.supports('prefetch'))return false;node.rel='prefetch';node.as='script';node.href=retryUrl(path,0);node.dataset.weigRuntimePrefetch=path;node.onerror=function(){prefetchRequested.delete(key);try{node.remove();}catch(_e){}};prefetchRequested.add(key);document.head.appendChild(node);return true;}
-  function loadStyle(path,options){path=String(path||'');var key=[BUILD,namespace(options),identity(options),path].join('\u0001');if(styleLoaded.has(key))return Promise.resolve(path);if(styleInflight.has(key))return styleInflight.get(key);function once(attempt){return new Promise(function(resolve,reject){var node=global.document&&document.createElement?document.createElement('link'):null;if(!node){reject(new Error('Runtime style document unavailable: '+path));return;}node.rel='stylesheet';node.href=retryUrl(path,attempt);node.dataset.weigRuntimeStyle=path;node.onload=function(){styleLoaded.add(key);resolve(path);};node.onerror=function(){try{node.remove();}catch(_e){}reject(new Error('Runtime style '+path+' failed'));};document.head.appendChild(node);});}var task=withRetry(once,options).finally(function(){styleInflight.delete(key);});styleInflight.set(key,task);return task;}
+  function loadStyle(path,options){
+    path=String(path||'');
+    var key=[BUILD,namespace(options),identity(options),path].join('\u0001');
+    if(styleLoaded.has(key))return Promise.resolve(path);
+    if(styleInflight.has(key))return styleInflight.get(key);
+    function once(attempt){return new Promise(function(resolve,reject){
+      var node=global.document&&document.createElement?document.createElement('link'):null;
+      if(!node){reject(new Error('Runtime style document unavailable: '+path));return;}
+      var done=false,timer=null,ms=Number(options&&options.timeoutMs);
+      ms=Number.isFinite(ms)&&ms>0?Math.min(ms,120000):12000;
+      function finish(error){if(done)return;done=true;if(timer!==null)global.clearTimeout(timer);if(error)reject(error);else{styleLoaded.add(key);resolve(path);}}
+      node.rel='stylesheet';node.href=retryUrl(path,attempt);node.dataset.weigRuntimeStyle=path;
+      node.onload=function(){finish(null);};
+      node.onerror=function(){try{node.remove();}catch(_e){}finish(new Error('Runtime style '+path+' failed'));};
+      timer=global.setTimeout(function(){try{node.remove();}catch(_e){}finish(new Error('Runtime style '+path+' timed out'));},ms);
+      try{document.head.appendChild(node);}catch(error){finish(error);}
+    });}
+    var task=withRetry(once,options).finally(function(){styleInflight.delete(key);});
+    styleInflight.set(key,task);
+    return task;
+  }
   function runPool(items,limit,worker){items=Array.isArray(items)?items.slice():[];if(!items.length)return Promise.resolve([]);limit=Math.max(1,Math.min(items.length,Math.floor(Number(limit)||1)));var results=new Array(items.length),chain=Promise.resolve();for(let start=0;start<items.length;start+=limit){(function(offset){chain=chain.then(function(){var batch=items.slice(offset,offset+limit);return Promise.all(batch.map(function(item,index){return Promise.resolve(worker(item,offset+index)).then(function(value){results[offset+index]=value;return value;});}));});})(start);}return chain.then(function(){return results;});}
   function normalizeBootstrapPlan(plan){if(!plan||plan.schemaVersion!==1)throw new Error('Bootstrap plan schemaVersion 1 required');var styles=Array.isArray(plan.styles)?plan.styles.map(String):[],phases=Array.isArray(plan.phases)?plan.phases:[],seen=new Set(),normalized=[];for(var i=0;i<phases.length;i++){var phase=phases[i]||{},name=String(phase.name||('phase-'+(i+1))).trim(),scripts=Array.isArray(phase.scripts)?phase.scripts.map(String):[];if(!name||!scripts.length)throw new Error('Bootstrap phase '+(i+1)+' must have name and scripts');for(var j=0;j<scripts.length;j++){var script=scripts[j].trim();if(!script)throw new Error('Bootstrap phase '+name+' contains empty script');if(seen.has(script))throw new Error('Bootstrap script appears in multiple phases: '+script);seen.add(script);scripts[j]=script;}normalized.push({name:name,scripts:scripts,requiresStyles:phase.requiresStyles===true});}return{schemaVersion:1,styles:styles,phases:normalized,styleConcurrency:Math.max(1,Math.min(8,Math.floor(Number(plan.styleConcurrency)||2))),maxAttempts:Math.max(1,Math.min(5,Math.floor(Number(plan.maxAttempts)||3))),retryDelays:Array.isArray(plan.retryDelays)?plan.retryDelays.slice():[250,700]};}
   function executePlan(plan,options){var normalized=normalizeBootstrapPlan(plan),base={maxAttempts:normalized.maxAttempts,retryDelays:normalized.retryDelays},stylesTask=runPool(normalized.styles,normalized.styleConcurrency,function(path){return loadStyle(path,{namespace:'bootstrap-style',identity:'startup',maxAttempts:base.maxAttempts,retryDelays:base.retryDelays});}),chain=Promise.resolve();normalized.phases.forEach(function(phase){chain=chain.then(function(){return phase.requiresStyles?stylesTask:null;}).then(function(){return Promise.all(phase.scripts.map(function(path){return loadScript(path,{namespace:'bootstrap-script',identity:phase.name,maxAttempts:base.maxAttempts,retryDelays:base.retryDelays});}));});});return Promise.all([stylesTask,chain]).then(function(){return{styles:normalized.styles.length,phases:normalized.phases.map(function(phase){return{name:phase.name,scripts:phase.scripts.length};})};});}
