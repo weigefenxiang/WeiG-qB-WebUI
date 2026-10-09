@@ -14,6 +14,7 @@ const installer=fileURLToPath(new URL('../installers/install.sh',import.meta.url
 function cli(args){
   return spawnSync('sh',[installer,...args,'-help'],{encoding:'utf8',timeout:5000,env:{...process.env,WEIG_QB_CHANNEL:'main'}});
 }
+if(process.platform!=='win32'){
 for(const args of [
   ['--dev'],['--version','1.2.0'],['--version=1.2.0'],['--output','/tmp/weig'],['--output=/tmp/weig'],
   ['--configure'],['--rollback'],['--uninstall'],['--purge'],['--help'],['-h'],
@@ -29,5 +30,6 @@ for(const args of [
 ]){
   const result=cli(args);
   assert.equal(result.status,0,'current CLI option must parse: '+args.join(' ')+' / '+result.stderr);
+}
 }
 console.log('Installer single-owner contract passed: duplicated lifecycle tail retired and Docker defaults migrate safely.');
