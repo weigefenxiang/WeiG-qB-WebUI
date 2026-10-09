@@ -16,7 +16,7 @@ const W={
 };
 const window={WeiG:W};
 const fetchMock=async(url,init)=>{calls.push({url:String(url),method:init.method,body:String(init.body||''),fields:init.body&&typeof init.body.keys==='function'?[...init.body.keys()]:[]});return new Response(String(url).endsWith('/torrents/add')?'Ok.':JSON.stringify({qbt_date_format:'yyyy-MM-dd'}),{status:200});};
-vm.runInNewContext(source,{window,fetch:fetchMock,URLSearchParams,FormData,Response,Blob,console});
+vm.runInNewContext(source,{window,fetch:fetchMock,URLSearchParams,FormData,Response,Blob,AbortController,setTimeout,clearTimeout,console});
 const c=new W.QBClient();
 await c.request('app/preferences');
 assert.equal(calls.at(-1).method,'GET');
