@@ -84,7 +84,7 @@ while [ "$#" -gt 0 ]; do
       REQUEST_DEV=1
       ;;
     -version)
-      [ "$#" -ge 2 ] || { echo "$1 requires a value, for example -version 1.0.0." >&2; exit 2; }
+      [ "$#" -ge 2 ] || { echo "$1 requires a value, for example -version 1.2.0." >&2; exit 2; }
       shift
       RELEASE_VERSION=$1
       ;;
@@ -162,7 +162,7 @@ fi
 if [ -n "$RELEASE_VERSION" ]; then
   case "$RELEASE_VERSION" in v*) RELEASE_VERSION=${RELEASE_VERSION#v} ;; esac
   printf '%s' "$RELEASE_VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || {
-    echo "Invalid Release version: $RELEASE_VERSION. Expected a version such as 1.0.0." >&2
+    echo "Invalid Release version: $RELEASE_VERSION. Expected a version such as 1.2.0." >&2
     exit 2
   }
   RELEASE_TAG="v$RELEASE_VERSION"
