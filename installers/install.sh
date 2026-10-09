@@ -101,11 +101,6 @@ while [ "$#" -gt 0 ]; do
       shift
       append_target "$1"
       ;;
-    --output=*)
-      target=${1#--output=}
-      need_value --output "$target"
-      append_target "$target"
-      ;;
     -configure|--configure)
       CONFIGURE=1
       ;;
