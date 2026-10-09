@@ -94,7 +94,6 @@ $Mode='Install'
 $Channel='Release'
 $DestinationExplicit=$PSBoundParameters.ContainsKey('o')
 $LegacyDefaultDestination="$env:LOCALAPPDATA\WeiG_qB-WebUI"
-$ChannelExplicit=$PSBoundParameters.ContainsKey('Channel')
 if($Rollback){ $Mode='Rollback' }
 if($Uninstall){ $Mode='Uninstall' }
 if($Purge -and $Mode -ne 'Uninstall'){ throw '-purge can only be used together with -uninstall.' }
