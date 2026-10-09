@@ -29,14 +29,17 @@
 ### 桌面端
 
 <p align="center">
-  <img src="../assets/screenshots/weig-qb-webui-desktop-overview-v1.1.0.png" alt="WeiG qB WebUI 桌面端界面" width="800">
+  <img src="../assets/screenshots/weig-qb-webui-desktop-overview.png" alt="WeiG qB WebUI 桌面端界面" width="800">
+</p>
+<p align="center">
+  <a href="../assets/screenshots/weig-qb-webui-desktop-overview.gif">查看桌面端动态演示（GIF）</a>
 </p>
 
 ### 手机端
 
 <p align="center">
-  <img src="../assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.gif" alt="WeiG qB WebUI 手机端动态演示" height="341">
-  <img src="../assets/screenshots/weig-qb-webui-mobile-overview-v1.1.0.png" alt="WeiG qB WebUI 手机端界面" height="341">
+  <img src="../assets/screenshots/weig-qb-webui-mobile-overview.gif" alt="WeiG qB WebUI 手机端动态演示" height="341">
+  <img src="../assets/screenshots/weig-qb-webui-mobile-overview.png" alt="WeiG qB WebUI 手机端多画面预览" height="341">
 </p>
 
 ## 新手安装
