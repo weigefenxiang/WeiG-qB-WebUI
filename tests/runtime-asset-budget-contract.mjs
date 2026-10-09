@@ -25,6 +25,7 @@ const localeDir=path.join(privateRoot,'data/weig-i18n'),localeFiles=fs.readdirSy
 assert.deepEqual(localeFiles,expected);
 const localeBytes=localeFiles.reduce((sum,name)=>sum+fs.statSync(path.join(localeDir,name)).size,0),maxLocaleBytes=Math.max(...localeFiles.map(name=>fs.statSync(path.join(localeDir,name)).size));
 assert.ok(maxLocaleBytes<64*1024,'one WeiG locale overlay became too large');
+assert.ok(fs.statSync(path.join(localeDir,'zh-HK.json')).size<8*1024,'Hong Kong differences must remain sparse; never duplicate the Taiwan locale');
 assert.ok(localeBytes<baseline.i18nBytes,'all non-English WeiG locale overlays combined should stay below the old monolithic i18n.js baseline');
 for(const profile of ['payload','ui','full'])assert.ok(pagesVerifyLanes(profile).some(lane=>lane.name==='startup-performance'&&lane.script==='tests/pages-live-startup-performance.mjs'),profile+' Pages verification must retain the deployed startup-performance owner');
 
