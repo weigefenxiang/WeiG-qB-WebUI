@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import {fileURLToPath} from 'node:url';
 import {execFileSync} from 'node:child_process';
 import {buildReleaseNotes,readGitCommits,resolvePreviousStableTag,isReleaseVisiblePath,containsNonLatinLetter,normalizePresentation,generateFromGit,readReleaseCuration} from '../tools/release-notes.mjs';
 
@@ -67,7 +68,7 @@ assert.ok(!built.markdown.includes('中文发布说明'));
 for(const heading of ['### Features / UI','### Fixes','### Performance','### Compatibility'])assert.ok(built.markdown.includes(heading),`missing ${heading}`);
 
 const activeVersion=fs.readFileSync(new URL('../VERSION',import.meta.url),'utf8').trim();
-const currentReview=readReleaseCuration({cwd:path.resolve(new URL('..',import.meta.url).pathname),version:activeVersion});
+const currentReview=readReleaseCuration({cwd:fileURLToPath(new URL('..',import.meta.url)),version:activeVersion});
 if(currentReview){
  assert.equal(currentReview.highlights.length>=5&&currentReview.highlights.length<=8,true,'Reviewed release needs 5 to 8 Highlights');
  const currentDraft=buildReleaseNotes({commits,repository:'weigefenxiang/WeiG-qB-WebUI',curation:currentReview,imageUrl:'https://example.invalid/demo.gif',presentation:'latest'});
