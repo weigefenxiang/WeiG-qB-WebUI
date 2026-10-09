@@ -18,7 +18,7 @@
 
 ## 直接ダウンロード
 
-最新の安定版 [**weig-qb-webui.zip**](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest) をダウンロードしてください。Linux や NAS でも同じ ZIP ファイルを使えます。
+最新の安定版 [**weig-qb-webui.zip**](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/weig-qb-webui.zip) をダウンロードしてください。Linux や NAS でも同じ ZIP ファイルを使えます。
 
 ## 画面プレビュー
 

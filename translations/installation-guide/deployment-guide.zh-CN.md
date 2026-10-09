@@ -411,7 +411,7 @@ Linux 安装器备份保存在 `~/.config/weig-qb-webui/backups/`，每个安装
 
 如果一键安装不适合你的环境，可以手动安装。
 
-下载最新正式版 [**weig-qb-webui.zip**](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest)，Linux / NAS 也可以直接使用。
+下载最新正式版 [**weig-qb-webui.zip**](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/weig-qb-webui.zip)，Linux / NAS 也可以直接使用。
 
 正式版通常提供：
 

@@ -27,7 +27,12 @@ for(const locale of locales){
   const readme=locale==='en'?'README.md':'translations/README.'+locale+'.md';
   const guide='translations/installation-guide/deployment-guide.'+locale+'.md';
   const a=read(readme),b=read(guide),prefix=locale==='en'?'assets/screenshots/':'../assets/screenshots/';
-  assert(a.includes(latest)&&a.includes('weig-qb-webui.zip'),locale+' README release link missing');
+  const zipLink='[**weig-qb-webui.zip**]('+latest+'/download/weig-qb-webui.zip)';
+  const oldZipLink='[**weig-qb-webui.zip**]('+latest+')';
+  assert(a.includes(zipLink)&&!a.includes(oldZipLink),locale+' README ZIP must link directly to Latest ZIP asset');
+  const top=a.split('\n').find(line=>line.includes('⬇️'));
+  assert(top?.includes(']('+latest+')'),locale+' README top action must retain the Release landing page');
+  if(locale==='zh-CN')assert(b.includes(zipLink)&&!b.includes(oldZipLink),'Chinese deployment guide must directly link ZIP');
   assert(a.includes('-version 1.2.0')&&b.includes('-version 1.2.0'),locale+' version example drift');
   assert(a.includes('-qbconfig')&&b.includes('-qbconfig'),locale+' Windows custom config option missing');
   assert(!a.includes('weig-qb-webui.tar.gz'),locale+' retired tar.gz recommendation');

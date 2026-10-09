@@ -18,7 +18,7 @@ Una Alternate WebUI moderna y adaptable para qBittorrent, optimizada para escrit
 
 ## Descarga directa
 
-Descarga la última versión estable [**weig-qb-webui.zip**](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest). El mismo ZIP sirve también para Linux y NAS.
+Descarga la última versión estable [**weig-qb-webui.zip**](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest/download/weig-qb-webui.zip). El mismo ZIP sirve también para Linux y NAS.
 
 ## Vista previa de la interfaz
 
