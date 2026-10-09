@@ -70,7 +70,7 @@ Then configure qBittorrent manually:
 ### Example 3: install a specific Release
 
 ```sh
-sh install.sh -version 1.0.0 -configure
+sh install.sh -version 1.2.0 -configure
 ```
 
 ### Example 4: custom directory
@@ -88,7 +88,7 @@ sh install.sh -o /opt/weig-qb-webui -configure
 ### Example 5: specific version + custom directory
 
 ```sh
-sh install.sh -version 1.0.0 -o /opt/weig-qb-webui -configure
+sh install.sh -version 1.2.0 -o /opt/weig-qb-webui -configure
 ```
 
 ### Example 6: test dev
@@ -108,7 +108,7 @@ sh install.sh -configure
 To move to another pinned version:
 
 ```sh
-sh install.sh -version 0.1.1 -configure
+sh install.sh -version 1.2.0 -configure
 ```
 
 Remove `-version` to return to latest.
@@ -298,7 +298,7 @@ The corresponding qBittorrent path becomes `/config/weig-qb-webui`.
 ### Example 10: specific Release
 
 ```sh
-sh install.sh --container=qbittorrent -version 1.0.0 -configure
+sh install.sh --container=qbittorrent -version 1.2.0 -configure
 ```
 
 ### Example 11: dev
@@ -381,7 +381,7 @@ Enable **Use alternative WebUI** and set **Files location:** to the install dire
 ### Example 3: specific Release
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.0.0 -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.2.0 -configure
 ```
 
 ### Example 4: install on D:\
@@ -399,7 +399,7 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1 -output D:\weig-qb-webui 
 ### Example 5: version + custom directory
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.0.0 -o D:\weig-qb-webui -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.2.0 -o D:\weig-qb-webui -configure
 ```
 
 ### Example 6: dev
@@ -417,7 +417,7 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1 -configure
 Or pin a newer Release:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 0.1.1 -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.2.0 -configure
 ```
 
 ### Example 8: rollback
@@ -532,9 +532,10 @@ Linux / Docker / NAS use `install.sh`; Windows uses `install.ps1`. PowerShell op
 | Purpose | Linux / Docker / NAS | Windows PowerShell | Notes |
 |---|---|---|---|
 | Latest stable Release | Default, no option | Default, no option | Recommended |
-| Specific Release | `-version 1.0.0` | `-version 1.0.0` | Install only that Release |
+| Specific Release | `-version 1.2.0` | `-version 1.2.0` | Install only that Release |
 | Development build | `-dev` | `-dev` | Current `dev` exact Git SHA |
-| Install directory | `-o /path` or `-o /path` | `-o D:\path` or `-output D:\path` | `o` = output |
+| Install directory | `-o /path` | `-o D:\path` or `-output D:\path` | `o` = output |
+| Custom qBittorrent configuration file | — | `-qbconfig D:\path\qBittorrent.ini` | Windows portable installation |
 | Configure qBittorrent automatically | `-configure` | `-configure` | Enable alternative WebUI and set the path |
 | Roll back | `-rollback` | `-rollback` | Restore the previous install and qB config |
 | Complete uninstall (recommended; do not keep installer backups) | `-uninstall -purge` | `-uninstall -purge` | Purges this target's installer-owned backups / rollback state |
@@ -553,7 +554,6 @@ Important rules:
 - `-dev` and `-version` cannot be used together.
 - `-configure` backs up qBittorrent configuration before changing it.
 - `-rollback` restores the previous WebUI and matching qBittorrent configuration when a backup is available.
-- Legacy options such as Linux `--channel=release|dev`, `--dir=...`, `--update` and Windows `-Channel`, `-Destination`, `-Mode` remain for compatibility, but new deployments should use the options above.
 
 </details>
 
@@ -756,7 +756,7 @@ The minimum mainline WebAPI v2 target is **qBittorrent 4.1.0**. qBittorrent 4.0.
 ## 10. Advanced / maintainer notes
 
 <details>
-<summary><b>Expand: exact SHA, Release identity and legacy options</b></summary>
+<summary><b>Expand: exact Git SHA and Release integrity</b></summary>
 
 ### exact SHA
 
@@ -772,29 +772,5 @@ SHA256SUMS
 ```
 
 The installer validates checksum, `VERSION`, and a valid `GIT_SHA`. A specifically requested Release never falls back automatically.
-
-### Legacy compatibility
-
-Linux still accepts:
-
-```text
---channel=release
---channel=dev
---dir=/path
---update
-```
-
-Windows still accepts:
-
-```text
--Channel Release
--Channel Dev
--Destination PATH
--Mode Install
--Mode Update
--Mode Rollback
-```
-
-These exist for older users and automation. Prefer the current options at the top of this guide for new deployments.
 
 </details>

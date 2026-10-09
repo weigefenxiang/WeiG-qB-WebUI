@@ -66,7 +66,7 @@ sh install.sh
 ### Пример 3: конкретный Release
 
 ```sh
-sh install.sh -version 1.0.0 -configure
+sh install.sh -version 1.2.0 -configure
 ```
 
 ### Пример 4: пользовательский каталог
@@ -84,7 +84,7 @@ sh install.sh -o /opt/weig-qb-webui -configure
 ### Пример 5: версия + каталог
 
 ```sh
-sh install.sh -version 1.0.0 -o /opt/weig-qb-webui -configure
+sh install.sh -version 1.2.0 -o /opt/weig-qb-webui -configure
 ```
 
 ### Пример 6: dev
@@ -102,7 +102,7 @@ sh install.sh -configure
 Переход на конкретную версию:
 
 ```sh
-sh install.sh -version 0.1.1 -configure
+sh install.sh -version 1.2.0 -configure
 ```
 
 ### Пример 8: откат
@@ -255,7 +255,7 @@ sh install.sh --container=qbittorrent -o /config/weig-qb-webui -configure
 ### Пример 9: конкретный Release
 
 ```sh
-sh install.sh --container=qbittorrent -version 1.0.0 -configure
+sh install.sh --container=qbittorrent -version 1.2.0 -configure
 ```
 
 ### Пример 10: dev
@@ -322,7 +322,7 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1
 ### Пример 3: конкретный Release
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.0.0 -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.2.0 -configure
 ```
 
 ### Пример 4: установка на D:\
@@ -334,7 +334,7 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1 -o D:\weig-qb-webui -conf
 ### Пример 5: версия + каталог
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.0.0 -o D:\weig-qb-webui -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.2.0 -o D:\weig-qb-webui -configure
 ```
 
 ### Пример 6: dev
@@ -449,9 +449,10 @@ Linux / Docker / NAS используют `install.sh`, Windows использу
 | Назначение | Linux / Docker / NAS | Windows PowerShell | Примечание |
 |---|---|---|---|
 | Последний стабильный Release | По умолчанию | По умолчанию | Рекомендуется |
-| Конкретный Release | `-version 1.0.0` | `-version 1.0.0` | Установить только эту версию |
+| Конкретный Release | `-version 1.2.0` | `-version 1.2.0` | Установить только эту версию |
 | Версия разработки | `-dev` | `-dev` | Точный Git SHA текущего `dev` |
 | Каталог установки | `-o /path` / `-o /path` | `-o D:\path` / `-output D:\path` | `o` = output |
+| Указать файл настроек qBittorrent | — | `-qbconfig D:\path\qBittorrent.ini` | Портативная версия для Windows |
 | Автонастройка qBittorrent | `-configure` | `-configure` | Включить альтернативный веб-интерфейс и задать путь |
 | Откат | `-rollback` | `-rollback` | Восстановить предыдущую установку и конфигурацию qB |
 | Полное удаление (рекомендуется, без резервных копий установщика) | `-uninstall -purge` | `-uninstall -purge` | Очищает резервные копии / состояние rollback этой цели |
@@ -601,7 +602,7 @@ qBittorrent 4.1.x → 5.2.x
 ## 10. Дополнительно / для сопровождающих
 
 <details>
-<summary><b>Развернуть: exact SHA, идентичность Release и старые параметры</b></summary>
+<summary><b>Развернуть: точный Git SHA и проверка выпуска</b></summary>
 
 Установка `dev` сначала разрешает текущий `dev` в 40-символьный Git SHA, устанавливает именно этот commit и записывает его в `GIT_SHA`.
 
@@ -612,6 +613,5 @@ weig-qb-webui.zip
 SHA256SUMS
 ```
 
-Linux по-прежнему принимает `--channel=release|dev`, `--dir=/path`, `--update`, а Windows — `-Channel`, `-Destination`, `-Mode` для обратной совместимости. Для новых установок используйте актуальные параметры в начале страницы.
 
 </details>

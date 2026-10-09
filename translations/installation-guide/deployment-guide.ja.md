@@ -66,7 +66,7 @@ sh install.sh
 ### 例 3: 特定バージョン
 
 ```sh
-sh install.sh -version 1.0.0 -configure
+sh install.sh -version 1.2.0 -configure
 ```
 
 ### 例 4: `/opt/weig-qb-webui` にインストール
@@ -84,7 +84,7 @@ sh install.sh -o /opt/weig-qb-webui -configure
 ### 例 5: バージョン + パス
 
 ```sh
-sh install.sh -version 1.0.0 -o /opt/weig-qb-webui -configure
+sh install.sh -version 1.2.0 -o /opt/weig-qb-webui -configure
 ```
 
 ### 例 6: dev
@@ -102,7 +102,7 @@ sh install.sh -configure
 固定バージョンへ移動:
 
 ```sh
-sh install.sh -version 0.1.1 -configure
+sh install.sh -version 1.2.0 -configure
 ```
 
 ### 例 8: ロールバック
@@ -255,7 +255,7 @@ sh install.sh --container=qbittorrent -o /config/weig-qb-webui -configure
 ### 例 9: 特定 Release
 
 ```sh
-sh install.sh --container=qbittorrent -version 1.0.0 -configure
+sh install.sh --container=qbittorrent -version 1.2.0 -configure
 ```
 
 ### 例 10: dev
@@ -328,7 +328,7 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1
 ### 例 3: 特定 Release
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.0.0 -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.2.0 -configure
 ```
 
 ### 例 4: D ドライブ
@@ -340,7 +340,7 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1 -o D:\weig-qb-webui -conf
 ### 例 5: バージョン + D ドライブ
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.0.0 -o D:\weig-qb-webui -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.2.0 -o D:\weig-qb-webui -configure
 ```
 
 ### 例 6: dev
@@ -455,9 +455,10 @@ Linux / Docker / NAS は `install.sh`、Windows は `install.ps1` を使用し�
 | 用途 | Linux / Docker / NAS | Windows PowerShell | 説明 |
 |---|---|---|---|
 | 最新安定版 | 既定、指定不要 | 既定、指定不要 | 推奨 |
-| 特定 Release | `-version 1.0.0` | `-version 1.0.0` | 指定した Release のみ |
+| 特定 Release | `-version 1.2.0` | `-version 1.2.0` | 指定した Release のみ |
 | 開発版 | `-dev` | `-dev` | 現在の `dev` exact Git SHA |
 | インストール先 | `-o /path` / `-o /path` | `-o D:\path` / `-output D:\path` | `o` = output |
+| qBittorrent 設定ファイルを指定 | — | `-qbconfig D:\path\qBittorrent.ini` | Windows ポータブル版 |
 | qBittorrent を自動設定 | `-configure` | `-configure` | 代替 WebUI を有効化しパスを設定 |
 | ロールバック | `-rollback` | `-rollback` | 前回の WebUI / qB 設定を復元 |
 | 完全アンインストール（推奨、バックアップを残さない） | `-uninstall -purge` | `-uninstall -purge` | 対象の installer-owned backups / rollback 状態も削除 |
@@ -607,7 +608,7 @@ qBittorrent 4.1.x → 5.2.x
 ## 10. 高度な説明 / メンテナー向け
 
 <details>
-<summary><b>展開: exact SHA、Release identity、旧オプション</b></summary>
+<summary><b>展開：Git SHA と Release の検証</b></summary>
 
 `dev` は現在の `dev` を 40 文字 Git SHA に解決し、その正確なコミットを配置して `GIT_SHA` に記録します。
 
@@ -618,6 +619,5 @@ weig-qb-webui.zip
 SHA256SUMS
 ```
 
-Linux の旧 `--channel=release|dev`、`--dir=/path`、`--update`、Windows の `-Channel`、`-Destination`、`-Mode` は互換用に残っています。新規導入では本ページ冒頭の新しいオプションを使用してください。
 
 </details>

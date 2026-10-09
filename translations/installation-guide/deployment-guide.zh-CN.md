@@ -568,7 +568,7 @@ qBittorrent 4.0.x 使用旧 WebAPI v1，不在当前主线支持范围内。
 ## 10. 高级说明 / 维护者
 
 <details>
-<summary><b>版本来源、exact SHA、校验与旧参数（点击展开）</b></summary>
+<summary><b>版本来源、exact SHA 与校验（点击展开）</b></summary>
 
 ### 稳定正式版
 

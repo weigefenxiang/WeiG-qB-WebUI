@@ -66,7 +66,7 @@ sh install.sh
 ### 예시 3: 특정 버전
 
 ```sh
-sh install.sh -version 1.0.0 -configure
+sh install.sh -version 1.2.0 -configure
 ```
 
 ### 예시 4: 사용자 지정 경로
@@ -84,7 +84,7 @@ sh install.sh -o /opt/weig-qb-webui -configure
 ### 예시 5: 버전 + 경로
 
 ```sh
-sh install.sh -version 1.0.0 -o /opt/weig-qb-webui -configure
+sh install.sh -version 1.2.0 -o /opt/weig-qb-webui -configure
 ```
 
 ### 예시 6: dev
@@ -102,7 +102,7 @@ sh install.sh -configure
 특정 버전으로 이동:
 
 ```sh
-sh install.sh -version 0.1.1 -configure
+sh install.sh -version 1.2.0 -configure
 ```
 
 ### 예시 8: 롤백
@@ -259,7 +259,7 @@ sh install.sh --container=qbittorrent -o /config/weig-qb-webui -configure
 ### 예시 9: 특정 Release
 
 ```sh
-sh install.sh --container=qbittorrent -version 1.0.0 -configure
+sh install.sh --container=qbittorrent -version 1.2.0 -configure
 ```
 
 ### 예시 10: dev
@@ -326,7 +326,7 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1
 ### 예시 3: 특정 Release
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.0.0 -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.2.0 -configure
 ```
 
 ### 예시 4: D 드라이브
@@ -338,7 +338,7 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1 -o D:\weig-qb-webui -conf
 ### 예시 5: 버전 + 경로
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.0.0 -o D:\weig-qb-webui -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.2.0 -o D:\weig-qb-webui -configure
 ```
 
 ### 예시 6: dev
@@ -453,9 +453,10 @@ Linux / Docker / NAS는 `install.sh`, Windows는 `install.ps1`을 사용합니�
 | 용도 | Linux / Docker / NAS | Windows PowerShell | 설명 |
 |---|---|---|---|
 | 최신 안정 Release | 기본값 | 기본값 | 권장 |
-| 특정 Release | `-version 1.0.0` | `-version 1.0.0` | 지정한 버전만 설치 |
+| 특정 Release | `-version 1.2.0` | `-version 1.2.0` | 지정한 버전만 설치 |
 | 개발 버전 | `-dev` | `-dev` | 현재 `dev` exact Git SHA |
 | 설치 경로 | `-o /path` / `-o /path` | `-o D:\path` / `-output D:\path` | `o` = output |
+| qBittorrent 설정 파일 지정 | — | `-qbconfig D:\path\qBittorrent.ini` | Windows 포터블 버전 |
 | qBittorrent 자동 설정 | `-configure` | `-configure` | 대체 WebUI 활성화 및 경로 설정 |
 | 롤백 | `-rollback` | `-rollback` | 이전 설치와 qB 설정 복원 |
 | 완전 제거(권장, 설치 프로그램 백업 미보관) | `-uninstall -purge` | `-uninstall -purge` | 현재 대상의 installer-owned backups / rollback 상태도 정리 |
@@ -605,7 +606,7 @@ qBittorrent 4.1.x → 5.2.x
 ## 10. 고급 설명 / 관리자
 
 <details>
-<summary><b>펼치기: exact SHA, Release identity, 레거시 옵션</b></summary>
+<summary><b>펼치기: 정확한 Git SHA와 릴리스 검증</b></summary>
 
 `dev`는 현재 `dev`를 40자리 Git SHA로 해석하고 해당 정확한 커밋을 배포한 뒤 `GIT_SHA`에 기록합니다.
 
@@ -616,6 +617,5 @@ weig-qb-webui.zip
 SHA256SUMS
 ```
 
-Linux의 `--channel=release|dev`, `--dir=/path`, `--update`와 Windows의 `-Channel`, `-Destination`, `-Mode`는 기존 사용자를 위해 호환됩니다. 신규 배포는 문서 상단의 새 옵션을 사용하세요.
 
 </details>

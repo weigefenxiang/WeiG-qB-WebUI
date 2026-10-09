@@ -66,7 +66,7 @@ Depois configure o qBittorrent manualmente:
 ### Exemplo 3: Release específica
 
 ```sh
-sh install.sh -version 1.0.0 -configure
+sh install.sh -version 1.2.0 -configure
 ```
 
 ### Exemplo 4: diretório personalizado
@@ -84,7 +84,7 @@ sh install.sh -o /opt/weig-qb-webui -configure
 ### Exemplo 5: versão + diretório
 
 ```sh
-sh install.sh -version 1.0.0 -o /opt/weig-qb-webui -configure
+sh install.sh -version 1.2.0 -o /opt/weig-qb-webui -configure
 ```
 
 ### Exemplo 6: dev
@@ -102,7 +102,7 @@ sh install.sh -configure
 Para uma versão específica:
 
 ```sh
-sh install.sh -version 0.1.1 -configure
+sh install.sh -version 1.2.0 -configure
 ```
 
 ### Exemplo 8: rollback
@@ -255,7 +255,7 @@ Se `/config` corresponder a `/root/qbittorrent/config`:
 ### Exemplo 9: Release específica
 
 ```sh
-sh install.sh --container=qbittorrent -version 1.0.0 -configure
+sh install.sh --container=qbittorrent -version 1.2.0 -configure
 ```
 
 ### Exemplo 10: dev
@@ -322,7 +322,7 @@ Depois abra **Ferramentas → Opções... → WebUI**, ative **Usar interface we
 ### Exemplo 3: Release específica
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.0.0 -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.2.0 -configure
 ```
 
 ### Exemplo 4: instalar em D:\
@@ -334,7 +334,7 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1 -o D:\weig-qb-webui -conf
 ### Exemplo 5: versão + diretório
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.0.0 -o D:\weig-qb-webui -configure
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -version 1.2.0 -o D:\weig-qb-webui -configure
 ```
 
 ### Exemplo 6: dev
@@ -449,9 +449,10 @@ Linux / Docker / NAS usam `install.sh`; Windows usa `install.ps1`. Os parâmetro
 | Finalidade | Linux / Docker / NAS | Windows PowerShell | Nota |
 |---|---|---|---|
 | Última Release estável | Predefinição | Predefinição | Recomendado |
-| Release específica | `-version 1.0.0` | `-version 1.0.0` | Instala apenas essa Release |
+| Release específica | `-version 1.2.0` | `-version 1.2.0` | Instala apenas essa Release |
 | Versão de desenvolvimento | `-dev` | `-dev` | SHA Git exato do `dev` atual |
 | Diretório de instalação | `-o /path` / `-o /path` | `-o D:\path` / `-output D:\path` | `o` = output |
+| Ficheiro de configuração do qBittorrent | — | `-qbconfig D:\path\qBittorrent.ini` | Versão portátil para Windows |
 | Configurar qBittorrent | `-configure` | `-configure` | Ativa a interface web alternativa e define o caminho |
 | Reverter | `-rollback` | `-rollback` | Restaura a instalação e configuração qB anteriores |
 | Desinstalação completa (recomendada, sem cópias do instalador) | `-uninstall -purge` | `-uninstall -purge` | Elimina as cópias / estado de rollback deste destino |
@@ -601,7 +602,7 @@ O alvo mínimo principal para WebAPI v2 é **qBittorrent 4.1.0**. qBittorrent 4.
 ## 10. Avançado / manutenção
 
 <details>
-<summary><b>Expandir: exact SHA, identidade da Release e opções antigas</b></summary>
+<summary><b>Expandir: SHA Git exato e verificação da versão</b></summary>
 
 Uma instalação `dev` resolve primeiro o `dev` atual para um SHA Git de 40 caracteres, instala exatamente esse commit e escreve-o em `GIT_SHA`.
 
@@ -612,6 +613,5 @@ weig-qb-webui.zip
 SHA256SUMS
 ```
 
-Linux mantém `--channel=release|dev`, `--dir=/path`, `--update` e Windows mantém `-Channel`, `-Destination`, `-Mode` por compatibilidade. Para instalações novas use as opções atuais no início desta página.
 
 </details>
