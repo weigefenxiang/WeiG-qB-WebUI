@@ -13,7 +13,7 @@ assert.ok(workflow.includes('release-candidate-${sha}')&&workflow.includes('cand
 assert.ok(!workflow.includes('real-qb-full.yml')&&!workflow.includes('real-qb-locale.yml')&&!workflow.includes('real-qb-full-aggregate-')&&!workflow.includes('real-qb-current-locale-aggregate-'),'Compatibility Audits must remain independent manual workflows, not Release Prepare prerequisites');
 assert.ok(workflow.includes('cancelWorkflowRun')&&workflow.includes("if(run.event!=='workflow_dispatch')continue;")&&workflow.includes("run.head_sha?.toLowerCase()===sha"),'prepare must cancel only superseded explicitly dispatched release-preparation runs while preserving the current exact SHA');
 assert.ok(workflow.includes('dev moved from frozen ${sha}'),'prepare must fail closed if dev moves');
-assert.ok(workflow.includes('--image-ref "$SHA"')&&workflow.includes('release-preview-${{ steps.freeze.outputs.sha }}'),'preview must bind image and artifact to exact frozen SHA');
+assert.ok(workflow.includes('--to "$SHA"')&&workflow.includes('release-preview-${{ steps.freeze.outputs.sha }}'),'preview must bind notes range and artifact to exact frozen SHA; image comes only from the canonical main GIF owner');
 assert.ok(workflow.includes('candidate/weig-qb-webui.zip')&&workflow.includes('candidate/weig-qb-webui.tar.gz')&&workflow.includes('candidate/manifest.json'),'release preview must fingerprint the canonical ZIP, tar.gz and manifest from one exact candidate artifact');
 assert.ok(workflow.includes('No main, tag, or GitHub Release was changed'),'prepare must stop before publication');
 assert.ok(!workflow.includes('git push origin')&&!workflow.includes('gh release create'),'prepare must not promote or publish');

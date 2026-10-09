@@ -196,7 +196,7 @@ function arg(name,fallback=''){
   const index=process.argv.indexOf(`--${name}`);
   return index>=0&&process.argv[index+1]!==undefined?process.argv[index+1]:fallback;
 }
-export function generateFromGit({to,currentTag='',out='',cwd=process.cwd(),repository=process.env.GITHUB_REPOSITORY||'',imageRef='',presentation='latest'}={}){
+export function generateFromGit({to,currentTag='',out='',cwd=process.cwd(),repository=process.env.GITHUB_REPOSITORY||'',presentation='latest'}={}){
   const mode=normalizePresentation(presentation);
   const fromTag=resolvePreviousStableTag({to,currentTag,cwd}),commits=readGitCommits({fromTag,to,cwd});
   let imageUrl='';
@@ -215,9 +215,8 @@ if(isCli){
   const currentTag=String(arg('current-tag',process.env.GITHUB_REF_NAME||'')).trim();
   const out=String(arg('out','')).trim();
   const repository=String(arg('repository',process.env.GITHUB_REPOSITORY||'')).trim();
-  const imageRef=String(arg('image-ref','')).trim();
   const presentation=String(arg('presentation','latest')).trim();
-  const result=generateFromGit({to,currentTag,out,repository,imageRef,presentation});
+  const result=generateFromGit({to,currentTag,out,repository,presentation});
   if(!out)process.stdout.write(result.markdown);
   else console.log(`Release notes: ${result.fromTag||'repository start'} -> ${result.toSha}; ${result.items.length} WebUI entries; ${result.highlights.length} highlights; image=${result.imageUrl||'none'}; wrote ${out}`);
 }

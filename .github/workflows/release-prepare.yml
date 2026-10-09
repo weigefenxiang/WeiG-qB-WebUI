@@ -183,7 +183,6 @@ jobs:
           node tools/release-notes.mjs \
             --to "$SHA" \
             --repository "$GITHUB_REPOSITORY" \
-            --image-ref "$SHA" \
             --out release-notes-preview.md
           {
             echo "# WeiG qB WebUI $VERSION · Release Preview"
