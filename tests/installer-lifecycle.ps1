@@ -190,7 +190,7 @@ try {
     }
   }
 
-  & $Installer -Version $VersionOne -Configure -Destination $Destination
+  & $Installer -Version $VersionOne -Configure -o $Destination
   Assert-Install $VersionOne $ShaOne 'release-one'
   Assert-ConfigEnabled
   $FirstBackup=(Get-Content (Join-Path $State 'last-backup') -Raw).Trim()
@@ -201,7 +201,7 @@ try {
 
   $cfgBeforePlainUpdate=(Get-FileHash -Algorithm SHA256 -LiteralPath $Cfg).Hash
   Start-Sleep -Milliseconds 1100
-  & $Installer -Version $VersionTwo -Destination $Destination
+  & $Installer -Version $VersionTwo -o $Destination
   Assert-Install $VersionTwo $ShaTwo 'release-two'
   Assert-ConfigEnabled
   $cfgAfterPlainUpdate=(Get-FileHash -Algorithm SHA256 -LiteralPath $Cfg).Hash
@@ -235,7 +235,7 @@ try {
   Assert-True ($plainRollbackCfg.Contains('WebUI\RootFolder=C:\post-upgrade-mutated')) 'Plain rollback did not preserve the user RootFolder.'
 
   Start-Sleep -Milliseconds 1100
-  & $Installer -Version $VersionTwo -Configure -Destination $Destination
+  & $Installer -Version $VersionTwo -Configure -o $Destination
   Assert-Install $VersionTwo $ShaTwo 'release-two'
   Assert-ConfigEnabled
   $ConfiguredBackup=(Get-Content (Join-Path $State 'last-backup') -Raw).Trim()
@@ -252,13 +252,13 @@ try {
   Assert-True ($explicitRollbackCfg.Contains('WebUI\RootFolder=C:\post-upgrade-mutated')) 'Explicit config rollback did not restore RootFolder.'
 
   Start-Sleep -Milliseconds 1100
-  & $Installer -Version $VersionOne -Configure -Destination $Destination
+  & $Installer -Version $VersionOne -Configure -o $Destination
   Assert-Install $VersionOne $ShaOne 'release-one'
   Assert-ConfigEnabled
   Assert-True (((Get-Content (Join-Path $State 'last-dest') -Raw).Trim()) -eq $Destination) 'Remembered destination mismatch.'
 
   Start-Sleep -Milliseconds 1100
-  & $pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Installer -Uninstall -Configure -Destination $Destination
+  & $pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Installer -Uninstall -Configure -o $Destination
   if($LASTEXITCODE -ne 0){throw "Uninstall subprocess failed with exit code $LASTEXITCODE."}
   Assert-True (!(Test-Path -LiteralPath $Destination)) 'Uninstall did not remove the installer-owned WebUI directory.'
   $uninstallCfg=Get-Content $Cfg -Raw
@@ -274,7 +274,7 @@ try {
   Assert-ConfigEnabled
 
   Start-Sleep -Milliseconds 1100
-  & $pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Installer -Uninstall -Configure -Purge -Destination $Destination
+  & $pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Installer -Uninstall -Configure -Purge -o $Destination
   if($LASTEXITCODE -ne 0){throw "Purge uninstall subprocess failed with exit code $LASTEXITCODE."}
   Assert-True (!(Test-Path -LiteralPath $Destination)) 'Purge uninstall did not remove the installer-owned WebUI directory.'
   foreach($stateRoot in @($State,$LegacyState)){
@@ -291,7 +291,7 @@ try {
   $purgeRollbackExit=$LASTEXITCODE
   Assert-True ($purgeRollbackExit -ne 0) 'Rollback unexpectedly succeeded after target backup purge.'
   $global:LASTEXITCODE=0
-  & $Installer -Version $VersionOne -Configure -Destination $Destination
+  & $Installer -Version $VersionOne -Configure -o $Destination
   Assert-Install $VersionOne $ShaOne 'release-one'
   Assert-ConfigEnabled
 
@@ -299,7 +299,7 @@ try {
   Write-Utf8NoBom $Cfg $disabledCfg
   $disabledCfgBeforePlainUpdate=(Get-FileHash -Algorithm SHA256 -LiteralPath $Cfg).Hash
   Start-Sleep -Milliseconds 1100
-  & $Installer -Version $VersionTwo -Destination $Destination
+  & $Installer -Version $VersionTwo -o $Destination
   Assert-Install $VersionTwo $ShaTwo 'release-two'
   $disabledCfgAfterPlainUpdate=(Get-FileHash -Algorithm SHA256 -LiteralPath $Cfg).Hash
   Assert-True ($disabledCfgAfterPlainUpdate -eq $disabledCfgBeforePlainUpdate) 'Plain update changed a disabled user qBittorrent config.'
