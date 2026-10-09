@@ -158,7 +158,7 @@ while [ "$#" -gt 0 ]; do
       need_value --dir "$target"
       append_target "$target"
       ;;
-    -help|-h|--help)
+    -help)
       usage
       exit 0
       ;;
