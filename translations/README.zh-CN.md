@@ -329,6 +329,7 @@ Linux 和 Windows 使用相同的参数名称，文档统一使用小写；Power
 | 指定正式版本 | `-version 1.2.0` | `-version 1.2.0` |
 | 开发版 | `-dev` | `-dev` |
 | 指定安装目录 | `-o /path`（Linux 可重复） | `-o D:\path` 或 `-output D:\path` |
+| 指定自定义 qBittorrent 配置文件 | — | `-qbconfig D:\path\qBittorrent.ini` |
 | 自动配置 qBittorrent | `-configure` | `-configure` |
 | 回滚上一次安装 | `-rollback` | `-rollback` |
 | 彻底卸载（不保留安装器备份） | `-uninstall -purge` | `-uninstall -purge` |
