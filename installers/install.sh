@@ -107,7 +107,7 @@ while [ "$#" -gt 0 ]; do
     -rollback)
       MODE="rollback"
       ;;
-    -uninstall|--uninstall)
+    -uninstall)
       MODE="uninstall"
       ;;
     -purge|--purge)
