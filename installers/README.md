@@ -191,4 +191,4 @@ Show current Linux syntax:
 sh install.sh -help
 ```
 
-PowerShell parameter names are case-insensitive. Linux also accepts supported long-form compatibility aliases where documented by the script.
+PowerShell parameter names are case-insensitive. Linux accepts double-hyphen options only for the documented Docker selectors.
