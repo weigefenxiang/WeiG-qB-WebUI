@@ -1,7 +1,5 @@
 param(
-  [ValidateSet('Install','Update','Rollback','Uninstall')][string]$Mode='Install',
-  [ValidateSet('Release','Dev')][string]$Channel='Release',
-  [Alias('o','output')][string]$Destination="$env:LOCALAPPDATA\weig-qb-webui",
+  [Alias('output')][string]$o="$env:LOCALAPPDATA\weig-qb-webui",
   [string]$QBConfig='',
   [string]$Version='',
   [switch]$Dev,
