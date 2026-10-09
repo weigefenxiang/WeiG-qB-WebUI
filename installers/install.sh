@@ -32,25 +32,18 @@ Usage: install.sh [options]
 
 Default: install/update the stable main version using the latest verified GitHub Release.
 
-Main options:
-  -dev, --dev               Install/update the current dev exact Git SHA.
-  -o PATH, --output PATH    WebUI install path. Repeat -o to update multiple targets with one download.
-  -configure, --configure   Enable qBittorrent Alternative WebUI and set Root Folder (single target only).
-  -rollback, --rollback     Restore previous WeiG files. Add -configure to restore a saved qB WebUI config snapshot.
-  -uninstall, --uninstall   Remove an installer-owned WeiG WebUI. Add -configure to disable it in qBittorrent too.
-  -purge, --purge           With -uninstall, also remove installer-owned backups for the selected target(s).
-  -help, -h, --help         Show this help.
-
-Advanced / compatibility:
-  -version VERSION, --version VERSION
-                            Install a specific verified Release, for example 1.0.0.
-  -update, --update         Reinstall/update the selected source (legacy-compatible).
+Options:
+  -dev                      Install/update the current dev exact Git SHA.
+  -version VERSION          Install a specific verified Release, for example 1.2.0.
+  -o PATH                   WebUI install path. Repeat -o to update multiple targets with one download.
+  -configure                Enable qBittorrent Alternative WebUI and set Root Folder (single target only).
+  -rollback                 Restore previous WeiG files. Add -configure to restore a saved qB WebUI config snapshot.
+  -uninstall                Remove an installer-owned WeiG WebUI. Add -configure to disable it in qBittorrent too.
+  -purge                    With -uninstall, also remove installer-owned backups for the selected target(s).
+  -help                     Show this help.
   --container NAME_OR_ID    Select one qBittorrent Docker container explicitly.
   --config-root HOST_PATH   Host path mounted as qBittorrent container /config.
   --list-containers         List detected qBittorrent Docker containers and exit.
-  --channel=main|release|dev
-                            Legacy channel syntax; release is an alias of main.
-  --dir=/path               Legacy single install-path syntax.
 
 Notes:
   - No -dev option means main/stable.
