@@ -20,6 +20,8 @@ assert.ok(release.includes("- 'release-refresh-v*'")&&release.includes("refresh_
 assert.ok(release.includes("update.make_latest='true'")&&release.includes("github.rest.repos.updateRelease"),'metadata-only refresh must reuse GitHub Release API and set Latest only for authoritative latest presentation');
 assert.ok(release.includes("release-refresh-before.json")&&release.includes("Certified Release assets changed during public-copy refresh."),'refresh must fingerprint and preserve certified assets');
 assert.ok(release.includes("Stable tag moved during refresh")&&release.includes("github.rest.git.deleteRef"),'refresh must preserve stable tag identity and retire its one-shot command branch');
+assert.ok(release.includes('Verify existing publication before safe resumption')&&release.includes('asset.digest!==digest')&&release.includes('error?.status!==404')&&release.includes("steps.existing_publication.outputs.exists != 'true'"),'A partial post-publication failure must never recreate an existing Release without byte verification');
+assert.ok(release.includes('latest.tag_name===newTag')&&release.includes('listReleases({owner,repo,per_page:100,page:1})'),'Rerun must retain previous Release archive ownership');
 assert.ok(release.includes("group: release-publication"),'new publication and metadata refresh must share one mutation concurrency owner');
 assert.ok(release.includes("Snapshot previous Latest presentation")&&release.includes("previous-latest.json"),'new publication must snapshot the authoritative previous Latest before mutation');
 assert.ok(release.includes("--presentation latest")&&release.includes("--presentation archive"),'canonical Release workflow must explicitly request latest/archive presentation from one generator');

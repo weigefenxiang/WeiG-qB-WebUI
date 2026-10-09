@@ -78,6 +78,12 @@ jobs:
             }catch(error){
               if(error?.status!==404)throw error;
             }
+            // On a rerun after publication the new tag may already be Latest.
+            // Recover the preceding stable Release before finishing archive work.
+            if(latest&&latest.tag_name===newTag){
+              const listing=await github.rest.repos.listReleases({owner,repo,per_page:100,page:1});
+              latest=listing.data.find(item=>item.tag_name!==newTag&&!item.draft&&!item.prerelease)||null;
+            }
             const snapshot={exists:false};
             if(latest&&latest.tag_name!==newTag){
               const tagRef=await github.rest.git.getRef({owner,repo,ref:`tags/${latest.tag_name}`});
@@ -204,7 +210,43 @@ jobs:
           test -s previous-release-notes.md
           ! grep -Fq '![WeiG qB WebUI preview]' previous-release-notes.md
 
+      - name: Verify existing publication before safe resumption
+        id: existing_publication
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs=require('node:fs'),crypto=require('node:crypto');
+            const {owner,repo}=context.repo,tag=context.ref.replace('refs/tags/','');
+            let published=null;
+            try{published=(await github.rest.repos.getReleaseByTag({owner,repo,tag})).data;}
+            catch(error){if(error?.status!==404)throw error;}
+            if(!published){core.setOutput('exists','false');return;}
+            if(published.draft||published.prerelease||published.tag_name!==tag){
+              core.setFailed('Existing publication is not the expected stable tag.');return;
+            }
+            const names=['weig-qb-webui.zip','weig-qb-webui.tar.gz','manifest.json','install.sh','install.ps1','SHA256SUMS'];
+            const observed=(published.assets||[]).map(asset=>asset.name).sort();
+            if(JSON.stringify(observed)!==JSON.stringify(names.slice().sort())){
+              core.setFailed('Existing Release asset inventory differs from certified canonical set.');return;
+            }
+            for(const name of names){
+              const asset=published.assets.find(item=>item.name===name);
+              const bytes=fs.readFileSync('release/'+name);
+              const digest='sha256:'+crypto.createHash('sha256').update(bytes).digest('hex');
+              if(asset.size!==bytes.length||asset.digest!==digest){
+                core.setFailed('Existing Release asset does not match certified bytes: '+name);return;
+              }
+            }
+            const title='WeiG qB WebUI '+fs.readFileSync('VERSION','utf8').trim();
+            const body=fs.readFileSync('release-notes.md','utf8').trim();
+            if(published.name!==title||String(published.body||'').trim()!==body){
+              core.setFailed('Existing Release public copy differs; require bounded metadata-only repair.');return;
+            }
+            core.setOutput('exists','true');
+            core.info('Exact certified Release already exists; skip duplicate create.');
+
       - name: Publish GitHub Release
+        if: ${{ steps.existing_publication.outputs.exists != 'true' }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
