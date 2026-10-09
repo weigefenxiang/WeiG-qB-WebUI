@@ -98,7 +98,6 @@ if($Rollback){ $Mode='Rollback' }
 if($Uninstall){ $Mode='Uninstall' }
 if($Purge -and $Mode -ne 'Uninstall'){ throw '-purge can only be used together with -uninstall.' }
 if($Dev){
-  if($ChannelExplicit -and $Channel -eq 'Release'){ throw '-dev conflicts with -Channel Release.' }
   $Channel='Dev'
 }
 
