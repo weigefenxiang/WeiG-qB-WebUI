@@ -27,10 +27,6 @@
       "text": "Refined torrent detail panels, file priority actions, and resizable data tables."
     },
     {
-      "category": "compatibility",
-      "text": "Expanded official qBittorrent copy support and refined Traditional Chinese locale differences."
-    },
-    {
       "category": "feature",
       "text": "Unified sorting, resizing, and column configuration across torrent tables."
     },
@@ -50,5 +46,10 @@
       "category": "feature",
       "text": "Polished responsive dialogs, selectors, and shared interaction controls."
     }
+  ],
+  "detailCategories": [
+    "feature",
+    "fix",
+    "performance"
   ]
 }

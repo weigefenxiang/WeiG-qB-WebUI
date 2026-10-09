@@ -126,6 +126,10 @@ export function readReleaseCuration({cwd=process.cwd(),version=''}={}){
   const texts=[...value.highlights,...value.details.map(row=>row?.text)];
   if(texts.some(item=>typeof item!=='string'||!item.trim()||item.length>240||containsNonLatinLetter(item)))throw new Error('Release curation requires bounded English public copy.');
   if(value.details.some(row=>!row||!CATEGORY_ORDER.includes(row.category)))throw new Error('Release curation has an unknown detail category.');
+  if(value.detailCategories!==undefined){
+    if(!Array.isArray(value.detailCategories)||!value.detailCategories.length||value.detailCategories.some(category=>!CATEGORY_ORDER.includes(category))||new Set(value.detailCategories).size!==value.detailCategories.length)throw new Error('Release curation detail category selection is invalid.');
+    if(value.details.some(row=>!value.detailCategories.includes(row.category)))throw new Error('Release curation detail category excludes a reviewed item.');
+  }
   if(new Set(value.highlights.map(text=>text.trim().toLowerCase())).size!==value.highlights.length)throw new Error('Release curation highlights must be unique.');
   return value;
 }
@@ -136,7 +140,8 @@ export function buildReleaseNotes({commits=[],fromTag='',toSha='',maxHighlights=
     .sort((a,b)=>b.score-a.score||a.index-b.index);
   const highlights=curation?curation.highlights.map(text=>({text})):ranked.slice(0,Math.max(0,Number(maxHighlights)||8)).map(row=>row.item);
   const reviewed=(curation?.details||[]).map(row=>({...row,hash:''}));
-  const folded=dedupe([...reviewed,...normalized]);
+  const selectedCategories=curation?.detailCategories?new Set(curation.detailCategories):null;
+  const folded=dedupe([...reviewed,...normalized]).filter(item=>!selectedCategories||selectedCategories.has(item.category));
   const details=folded.slice(0,Math.max(0,Number(maxDetails)||24));
   const grouped=Object.fromEntries(CATEGORY_ORDER.map(key=>[key,[]]));
   details.forEach(item=>(grouped[item.category]||grouped.feature).push(item));

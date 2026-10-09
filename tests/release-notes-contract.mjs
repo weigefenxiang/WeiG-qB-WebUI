@@ -47,6 +47,10 @@ assert.equal(reviewed.highlights.length,6);
 assert.ok(reviewed.markdown.includes('- Selected compatibility fix ([#2](https://github.com/weigefenxiang/WeiG-qB-WebUI/issues/2))'));
 assert.ok(reviewed.markdown.includes('### Performance\n\n- Reviewed runtime startup improvements'));
 assert.equal(reviewed.details.length,3,'Curated detail rows count against the bounded 24-row budget');
+const withoutCompatibility=buildReleaseNotes({commits,repository:'weigefenxiang/WeiG-qB-WebUI',curation:{...reviewedCuration,detailCategories:['feature','fix','performance']}});
+assert.ok(!withoutCompatibility.markdown.includes('### Compatibility'),'A reviewed release may omit a whole detail category, including inferred Git commits');
+assert.ok(!withoutCompatibility.markdown.includes('preserve old qB scheduler semantics'),'Excluded category commits must not reappear as autofilled detail lines');
+assert.ok(withoutCompatibility.markdown.includes('### Performance'),'Selected categories must remain visible');
 const archived=buildReleaseNotes({commits,fromTag:'v1.0.0',toSha:'0123456789abcdef0123456789abcdef01234567',imageUrl:'https://example.invalid/demo.gif',presentation:'archive'});
 assert.equal(archived.presentation,'archive');
 assert.ok(archived.markdown.startsWith('## Highlights\n'),'Archived Release must start with Highlights');
@@ -73,7 +77,13 @@ if(currentReview){
  assert.equal(currentReview.highlights.length>=5&&currentReview.highlights.length<=8,true,'Reviewed release needs 5 to 8 Highlights');
  const currentDraft=buildReleaseNotes({commits,repository:'weigefenxiang/WeiG-qB-WebUI',curation:currentReview,imageUrl:'https://example.invalid/demo.gif',presentation:'latest'});
  for(const text of currentReview.highlights)assert.ok(currentDraft.markdown.includes(text.includes('#2')?text.replace('#2','[#2](https://github.com/weigefenxiang/WeiG-qB-WebUI/issues/2)'):text),'Current reviewed Highlight must survive canonical renderer');
- assert.ok(currentDraft.markdown.includes('### Performance')&&currentDraft.markdown.includes('### Compatibility'),'Reviewed details must preserve category grouping');
+ assert.ok(currentDraft.markdown.includes('### Performance'),'Reviewed details must preserve approved performance section');
+ if(currentReview.detailCategories){
+   const titles={feature:'Features / UI',fix:'Fixes',performance:'Performance',compatibility:'Compatibility'};
+   for(const [category,title] of Object.entries(titles)){
+     if(!currentReview.detailCategories.includes(category))assert.ok(!currentDraft.markdown.includes('### '+title),'User-excluded detail category must not be regenerated: '+category);
+   }
+ }
 }
 const temp=fs.mkdtempSync(path.join(os.tmpdir(),'weig-release-notes-'));
 try{
