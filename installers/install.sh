@@ -110,7 +110,7 @@ while [ "$#" -gt 0 ]; do
     -uninstall)
       MODE="uninstall"
       ;;
-    -purge|--purge)
+    -purge)
       PURGE_BACKUPS=1
       ;;
     -update|--update)
