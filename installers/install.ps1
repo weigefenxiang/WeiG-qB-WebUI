@@ -21,7 +21,7 @@ Usage: install.ps1 [options]
 Default: install the latest stable GitHub Release.
 
 Options:
-  -version VERSION          Install a specific Release, for example 1.0.0.
+  -version VERSION          Install a specific Release, for example 1.2.0.
   -dev                      Install the current dev exact Git SHA.
   -o PATH, -output PATH     WebUI install path.
   -qbconfig PATH            Exact qBittorrent config path for custom/portable profiles.
@@ -108,12 +108,12 @@ if(!$DestinationExplicit -and ($Mode -eq 'Install' -or $Mode -eq 'Update') -and 
 $releaseVersion=$Version.Trim()
 $releaseTag=$null
 if($releaseVersion){
-  if($Channel -eq 'Dev'){ throw '-version and -dev/-Channel Dev cannot be used together.' }
+  if($Channel -eq 'Dev'){ throw '-version and -dev cannot be used together.' }
   if($releaseVersion.StartsWith('v',[System.StringComparison]::OrdinalIgnoreCase)){
     $releaseVersion=$releaseVersion.Substring(1)
   }
   if($releaseVersion -notmatch '^\d+\.\d+\.\d+$'){
-    throw "Invalid Release version: $Version. Expected a version such as 1.0.0."
+    throw "Invalid Release version: $Version. Expected a version such as 1.2.0."
   }
   $releaseTag="v$releaseVersion"
 }
