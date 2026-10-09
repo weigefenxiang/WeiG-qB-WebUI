@@ -66,6 +66,14 @@ assert.ok(built.markdown.includes('English fallback for localized note'));
 assert.ok(!built.markdown.includes('中文发布说明'));
 for(const heading of ['### Features / UI','### Fixes','### Performance','### Compatibility'])assert.ok(built.markdown.includes(heading),`missing ${heading}`);
 
+const activeVersion=fs.readFileSync(new URL('../VERSION',import.meta.url),'utf8').trim();
+const currentReview=readReleaseCuration({cwd:path.resolve(new URL('..',import.meta.url).pathname),version:activeVersion});
+if(currentReview){
+ assert.equal(currentReview.highlights.length>=5&&currentReview.highlights.length<=8,true,'Reviewed release needs 5 to 8 Highlights');
+ const currentDraft=buildReleaseNotes({commits,repository:'weigefenxiang/WeiG-qB-WebUI',curation:currentReview,imageUrl:'https://example.invalid/demo.gif',presentation:'latest'});
+ for(const text of currentReview.highlights)assert.ok(currentDraft.markdown.includes(text.includes('#2')?text.replace('#2','[#2](https://github.com/weigefenxiang/WeiG-qB-WebUI/issues/2)'):text),'Current reviewed Highlight must survive canonical renderer');
+ assert.ok(currentDraft.markdown.includes('### Performance')&&currentDraft.markdown.includes('### Compatibility'),'Reviewed details must preserve category grouping');
+}
 const temp=fs.mkdtempSync(path.join(os.tmpdir(),'weig-release-notes-'));
 try{
  const git=(...args)=>execFileSync('git',args,{cwd:temp,encoding:'utf8'}).trim();

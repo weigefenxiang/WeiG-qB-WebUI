@@ -1,3 +1,4 @@
+import './release-notes-contract.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 const workflow=fs.readFileSync(new URL('../.github/workflows/release-prepare.yml',import.meta.url),'utf8');
