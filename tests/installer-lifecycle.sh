@@ -303,7 +303,7 @@ assert_archive_backup() {
 }
 
 
-run_installer -version "$VERSION_ONE" --configure -o "$DEST"
+run_installer -version "$VERSION_ONE" -configure -o "$DEST"
 assert_install "$VERSION_ONE" "$SHA_ONE" release-one
 assert_config_enabled
 FIRST_BACKUP=$(cat "$STATE/last-backup")
@@ -357,7 +357,7 @@ grep -Fx 'WebUI\AlternativeUIEnabled=false' "$CFG" >/dev/null
 grep -Fx 'WebUI\RootFolder=/post-upgrade-mutated' "$CFG" >/dev/null
 
 sleep 1
-run_installer -version "$VERSION_TWO" --configure -o "$DEST"
+run_installer -version "$VERSION_TWO" -configure -o "$DEST"
 assert_install "$VERSION_TWO" "$SHA_TWO" release-two
 assert_config_enabled
 CONFIGURED_BACKUP=$(cat "$STATE/last-backup")
@@ -365,13 +365,13 @@ assert_archive_backup "$CONFIGURED_BACKUP" "$VERSION_ONE"
 backup_record_read "$CONFIGURED_BACKUP" qBittorrent.conf | grep -Fx 'WebUI\AlternativeUIEnabled=false' >/dev/null
 backup_record_read "$CONFIGURED_BACKUP" qBittorrent.conf | grep -Fx 'WebUI\RootFolder=/post-upgrade-mutated' >/dev/null
 
-run_installer -rollback --configure
+run_installer -rollback -configure
 assert_install "$VERSION_ONE" "$SHA_ONE" release-one
 grep -Fx 'WebUI\AlternativeUIEnabled=false' "$CFG" >/dev/null
 grep -Fx 'WebUI\RootFolder=/post-upgrade-mutated' "$CFG" >/dev/null
 
 sleep 1
-run_installer -version "$VERSION_ONE" --configure -o "$DEST"
+run_installer -version "$VERSION_ONE" -configure -o "$DEST"
 assert_install "$VERSION_ONE" "$SHA_ONE" release-one
 assert_config_enabled
 
@@ -421,7 +421,7 @@ if run_installer -rollback >/dev/null 2>&1; then
   echo "Rollback unexpectedly succeeded after target backup purge." >&2
   exit 1
 fi
-run_installer -version "$VERSION_ONE" --configure -o "$DEST"
+run_installer -version "$VERSION_ONE" -configure -o "$DEST"
 assert_install "$VERSION_ONE" "$SHA_ONE" release-one
 assert_config_enabled
 
