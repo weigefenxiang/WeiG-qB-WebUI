@@ -44,6 +44,16 @@ for(const locale of overlays){
     assert.deepEqual(placeholders(value),placeholders(en[key]),locale+' placeholder contract drifted for '+key);
   }
 }
+const canonicalEnglishLabels=['nav.rss','rss.title','capability.rss.title','settings.weig.title','capability.privateFilter.title','torrent.eta','torrent.tracker','detail.trackers','detail.peers','detail.peersCount','stats.dhtPeers','transfer.dhtPeers','settings.update.channelVirtual','settings.about.version','torrent.ratio','detail.seeds'];
+const confirmedCopy=['rss.feedUrl','language.zh-TW','language.zh-HK','library.range','dialog.add.eyebrow','dialog.delete.eyebrow','dialog.action.eyebrow'];
+for(const locale of overlays){
+  const messages=JSON.parse(fs.readFileSync(path.join(localeDir,locale+'.json'),'utf8')).messages;
+  for(const key of canonicalEnglishLabels)assert.equal(Object.hasOwn(messages,key),false,locale+' must defer technical labels to English baseline: '+key);
+}
+for(const locale of ['zh-CN','zh-TW']){
+  const messages=JSON.parse(fs.readFileSync(path.join(localeDir,locale+'.json'),'utf8')).messages;
+  for(const key of confirmedCopy)assert.ok(Object.hasOwn(messages,key),locale+' must preserve user-approved copy: '+key);
+}
 const surfaceKeys=['library.prev','library.next','library.page','logs.ui.follow','logs.ui.showing','logs.ui.refresh','logs.ui.time'];
 for(const locale of overlays.filter(value=>value!=='zh-HK')){
   const messages=JSON.parse(fs.readFileSync(path.join(localeDir,locale+'.json'),'utf8')).messages;

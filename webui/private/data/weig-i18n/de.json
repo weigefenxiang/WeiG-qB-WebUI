@@ -385,7 +385,6 @@
     "common.copyManualTitle": "Manuell kopieren",
     "common.copyManualHint": "Der Browser kann nicht automatisch in die Zwischenablage schreiben. Text unten lange drücken oder markieren und kopieren.",
     "settings.update.channelDev": "Entwicklung",
-    "settings.update.channelVirtual": "Virtuell",
     "settings.update.devWarningTitle": "Entwicklungsversion",
     "settings.update.devWarning": "Entwicklungsversionen enthalten die neuesten Änderungen und können unentdeckte Fehler oder instabiles Verhalten enthalten. Für langfristige Zuverlässigkeit Stable verwenden.",
     "settings.update.rollbackMethod": "Rollback-Methode",

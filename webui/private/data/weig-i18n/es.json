@@ -257,7 +257,6 @@
     "settings.emptyGroup": "Esta versión de qBittorrent no devolvió ajustes verificados en el código fuente para este grupo.",
     "settings.about.title": "Acerca de",
     "settings.about.description": "Información de WeiG qB WebUI, qBittorrent y compilación.",
-    "settings.about.version": "Versión",
     "settings.about.license": "Licencia",
     "settings.update.check": "Buscar actualizaciones",
     "settings.update.title": "Buscar actualizaciones",

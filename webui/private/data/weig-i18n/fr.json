@@ -386,7 +386,6 @@
     "common.copyManualTitle": "Copier manuellement",
     "common.copyManualHint": "Le navigateur ne peut pas écrire automatiquement dans le presse-papiers. Appuyez longuement ou sélectionnez le texte ci-dessous pour le copier.",
     "settings.update.channelDev": "Développement",
-    "settings.update.channelVirtual": "Virtuel",
     "settings.update.devWarningTitle": "Version de développement",
     "settings.update.devWarning": "Les versions de développement contiennent les derniers changements et peuvent inclure des bugs non découverts ou un comportement instable. Utilisez Stable si la fiabilité à long terme est prioritaire.",
     "settings.update.rollbackMethod": "Méthode de retour",
