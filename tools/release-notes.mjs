@@ -66,6 +66,19 @@ export function containsNonLatinLetter(value=''){
 function markdownText(value=''){
   return String(value).replace(/\\/g,'\\\\').replace(/([\`*_\[\]<>])/g,'\\$1');
 }
+function repositoryUrl(repository=''){
+  return /^[\w.-]+\/[\w.-]+$/.test(repository)?'https://github.com/'+repository:'';
+}
+function issueLinks(value,repository){
+  const base=repositoryUrl(repository),text=markdownText(value);
+  return base?text.replace(/(^|[\s(])#([1-9]\d*)\b/g,(_all,prefix,id)=>prefix+'[#'+id+']('+base+'/issues/'+id+')'):text;
+}
+function commitReference(hash,repository){
+  const tick=String.fromCharCode(96);
+  if(!/^[0-9a-f]{7,40}$/i.test(hash))return'';
+  const label=tick+hash.slice(0,7)+tick,base=repositoryUrl(repository);
+  return hash.length===40&&base?'['+label+']('+base+'/commit/'+hash+')':label;
+}
 function releaseNoteMetadata(body=''){
   const match=String(body).match(/^Release-Note:\s*(.+)$/im);
   if(!match)return null;
@@ -103,7 +116,7 @@ function dedupe(items){
   }
   return out;
 }
-export function buildReleaseNotes({commits=[],fromTag='',toSha='',maxHighlights=8,maxDetails=24,imageUrl='',presentation='latest'}={}){
+export function buildReleaseNotes({commits=[],fromTag='',toSha='',maxHighlights=8,maxDetails=24,imageUrl='',presentation='latest',repository=''}={}){
   const mode=normalizePresentation(presentation);
   const normalized=dedupe(commits.map(normalizeCommit).filter(Boolean));
   const ranked=normalized.map((item,index)=>({item,index,score:(item.explicit?100:0)+(CATEGORY_SCORE[item.category]||0)}))
@@ -115,7 +128,7 @@ export function buildReleaseNotes({commits=[],fromTag='',toSha='',maxHighlights=
   const lines=[];
   if(mode==='latest'&&imageUrl)lines.push(`![WeiG qB WebUI preview](${imageUrl})`,'');
   lines.push('## Highlights','');
-  if(highlights.length)highlights.forEach(item=>lines.push(`- ${markdownText(item.text)}`));
+  if(highlights.length)highlights.forEach(item=>lines.push(`- ${issueLinks(item.text,repository)}`));
   else lines.push('- No user-visible WebUI changes are available for this release range.');
   lines.push('','<details>',`<summary>View WebUI changes (showing ${details.length} of ${normalized.length})</summary>`,'');
   for(const category of CATEGORY_ORDER){
@@ -123,8 +136,8 @@ export function buildReleaseNotes({commits=[],fromTag='',toSha='',maxHighlights=
     if(!items.length)continue;
     lines.push(`### ${CATEGORY_TITLES[category]}`,'');
     for(const item of items){
-      const short=/^[0-9a-f]{7,40}$/i.test(item.hash)?item.hash.slice(0,7):'';
-      lines.push(`- ${markdownText(item.text)}${short?` (\`${short}\`)`:''}`);
+      const reference=commitReference(item.hash,repository);
+      lines.push(`- ${issueLinks(item.text,repository)}${reference?` (${reference})`:''}`);
     }
     lines.push('');
   }
@@ -157,11 +170,10 @@ export function readGitCommits({fromTag='',to,cwd=process.cwd()}={}){
     return{hash:cleanHash,subject:subject.trim(),body:body.join('\x1f').trim(),paths:changedPaths(cleanHash,cwd)};
   });
 }
-function releaseImage({cwd,version,ref,repository}){
-  const rel=`assets/screenshots/weig-qb-webui-desktop-overview-v${version}.gif`;
-  if(!fs.existsSync(path.join(cwd,rel)))return'';
-  if(!/^[\w.-]+\/[\w.-]+$/.test(repository)||!ref)return'';
-  return `https://raw.githubusercontent.com/${repository}/${ref}/${rel}`;
+function releaseImage({cwd,repository}){
+  const rel='assets/screenshots/weig-qb-webui-desktop-overview.gif';
+  if(!fs.existsSync(path.join(cwd,rel))||!repositoryUrl(repository))return'';
+  return 'https://raw.githubusercontent.com/'+repository+'/main/'+rel;
 }
 function arg(name,fallback=''){
   const prefix=`--${name}=`,inline=process.argv.find(value=>value.startsWith(prefix));
@@ -174,12 +186,9 @@ export function generateFromGit({to,currentTag='',out='',cwd=process.cwd(),repos
   const fromTag=resolvePreviousStableTag({to,currentTag,cwd}),commits=readGitCommits({fromTag,to,cwd});
   let imageUrl='';
   if(mode==='latest'){
-    const taggedVersion=SEMVER_TAG.test(currentTag)?currentTag.slice(1):'';
-    const version=taggedVersion||fs.readFileSync(path.join(cwd,'VERSION'),'utf8').trim();
-    const ref=imageRef||currentTag||to;
-    imageUrl=releaseImage({cwd,version,ref,repository});
+    imageUrl=releaseImage({cwd,repository});
   }
-  const result=buildReleaseNotes({commits,fromTag,toSha:to,imageUrl,presentation:mode});
+  const result=buildReleaseNotes({commits,fromTag,toSha:to,imageUrl,presentation:mode,repository});
   if(out)fs.writeFileSync(out,result.markdown,'utf8');
   return{...result,fromTag,toSha:to,imageUrl};
 }
