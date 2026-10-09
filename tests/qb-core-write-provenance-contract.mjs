@@ -36,7 +36,7 @@ const WeiG={
   CapabilityRegistry:{isCertified:certified,resolveTorrentActionDescriptor:kind=>{if(!profile)return undefined;return resolve(kind);}}
 };
 const window={WeiG};
-const context={window,URLSearchParams,FormData,Blob,Response,console,fetch:async(url,init={})=>{calls.push({url:String(url),init});return new Response('',{status:200});}};
+const context={window,URLSearchParams,FormData,Blob,Response,AbortController,setTimeout,clearTimeout,console,fetch:async(url,init={})=>{calls.push({url:String(url),init});return new Response('',{status:200});}};
 vm.runInNewContext(source,context,{filename:'qb-client.js'});
 const client=new window.WeiG.QBClient();
 client.qbVersion='6.0.0';client.webApiVersion='3.0.0';client.major=6;

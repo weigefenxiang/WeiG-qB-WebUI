@@ -23,7 +23,7 @@ const WeiG={
   CapabilityRegistry:{isCertified:certified,sourceActionDescriptor:action=>{if(!profile)return undefined;if(profile.fallback===true)return null;return descriptor(action);}}
 };
 const window={WeiG};
-const context={window,URLSearchParams,FormData,Blob,console,fetch:async(url,init={})=>{calls.push({url:String(url),init});return new Response('',{status:200});},Response};
+const context={window,URLSearchParams,FormData,Blob,AbortController,setTimeout,clearTimeout,console,fetch:async(url,init={})=>{calls.push({url:String(url),init});return new Response('',{status:200});},Response};
 vm.runInNewContext(source,context,{filename:'qb-client.js'});
 const client=new window.WeiG.QBClient();
 client.qbVersion='6.0.0';client.webApiVersion='3.0.0';client.major=6;
