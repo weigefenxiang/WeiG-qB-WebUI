@@ -175,7 +175,7 @@ if [ -n "$RELEASE_VERSION" ]; then
   RELEASE_TAG="v$RELEASE_VERSION"
 fi
 
-if [ "$TARGET_COUNT" -eq 0 ] && [ -z "${WEIG_QB_WEBUI_DIR:-}" ] && { [ "$MODE" = "install" ] || [ "$MODE" = "update" ]; } && [ ! -e "$DEFAULT_DEST" ] && [ -d "$LEGACY_DEFAULT_DEST" ] && [ -f "$LEGACY_DEFAULT_DEST/public/index.html" ] && [ -f "$LEGACY_DEFAULT_DEST/private/index.html" ] && [ -f "$LEGACY_DEFAULT_DEST/private/weig-install.json" ]; then
+if [ "$TARGET_COUNT" -eq 0 ] && [ -z "${WEIG_QB_WEBUI_DIR:-}" ] && [ "$MODE" = "install" ] && [ ! -e "$DEFAULT_DEST" ] && [ -d "$LEGACY_DEFAULT_DEST" ] && [ -f "$LEGACY_DEFAULT_DEST/public/index.html" ] && [ -f "$LEGACY_DEFAULT_DEST/private/index.html" ] && [ -f "$LEGACY_DEFAULT_DEST/private/weig-install.json" ]; then
   DEST="$LEGACY_DEFAULT_DEST"
   REQUESTED_DEST="$DEST"
   QBT_ROOT_FOLDER="$DEST"
