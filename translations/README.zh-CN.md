@@ -34,12 +34,9 @@
 
 ### 手机端
 
-<table align="center">
-  <tr>
-    <td align="center"><img src="../assets/screenshots/weig-qb-webui-mobile-overview.gif" alt="WeiG qB WebUI 手机端动态演示" height="341"></td>
-    <td align="center"><img src="../assets/screenshots/weig-qb-webui-mobile-overview.png" alt="WeiG qB WebUI 手机端多画面预览" height="341"></td>
-  </tr>
-</table>
+<p align="center">
+  <img src="../assets/screenshots/weig-qb-webui-mobile-overview.gif" alt="WeiG qB WebUI 手机端动态演示" height="341"><img src="../assets/screenshots/weig-qb-webui-mobile-overview.png" alt="WeiG qB WebUI 手机端多画面预览" height="341">
+</p>
 
 ## 新手安装
 
@@ -329,8 +326,6 @@ C:\Users\<你的用户名>\AppData\Local\weig-qb-webui
 ## 常用参数
 
 Linux 和 Windows 使用相同的参数名称，文档统一使用小写；PowerShell 参数本身不区分大小写。
-
-> `1.2.0` 是指定版本参数的写法示例，不代表该版本已经发布。执行前请先确认 GitHub Release 中存在对应版本；安装最新正式版时无需指定 `-version`。
 
 | 用途 | Linux / Docker / NAS | Windows PowerShell |
 |---|---|---|
