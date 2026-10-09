@@ -101,7 +101,7 @@ while [ "$#" -gt 0 ]; do
       shift
       append_target "$1"
       ;;
-    -configure|--configure)
+    -configure)
       CONFIGURE=1
       ;;
     -rollback|--rollback)
