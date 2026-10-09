@@ -88,7 +88,7 @@ $target"
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    -dev|--dev)
+    -dev)
       REQUEST_DEV=1
       ;;
     -version|--version)
