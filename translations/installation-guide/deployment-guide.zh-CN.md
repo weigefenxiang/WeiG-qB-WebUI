@@ -382,6 +382,7 @@ Linux 安装器备份保存在 `~/.config/weig-qb-webui/backups/`，每个安装
 | 指定正式版本 | `-version 1.2.0` | `-version 1.2.0` | 只安装指定版本 |
 | 开发测试版 | `-dev` | `-dev` | 只有测试开发版时使用 |
 | 指定安装目录 | `-o /path` | `-o D:\path` 或 `-output D:\path` | `o` = output |
+| 指定自定义 qBittorrent 配置文件 | — | `-qbconfig D:\path\qBittorrent.ini` | Windows 便携版或自定义配置路径 |
 | 自动配置 qBittorrent | `-configure` | `-configure` | 启用备选 WebUI 并设置路径 |
 | 回滚 | `-rollback` | `-rollback` | 恢复上一次安装 |
 | 彻底卸载（默认推荐，不保留安装器备份） | `-uninstall -purge` | `-uninstall -purge` | 卸载 WebUI并清理当前目标的 installer-owned backups / rollback 状态 |
@@ -401,7 +402,6 @@ Linux 安装器备份保存在 `~/.config/weig-qb-webui/backups/`，每个安装
 - 如需保留备份以后 `-rollback`，卸载时去掉 `-purge` 即可。
 - Linux 的 `-o` 可以重复使用，一次下载和验证后更新多个明确目标；多目标模式不能同时使用 `-configure`、`--container` 或 `--config-root`。
 - Docker 专用的 `--container`、`--list-containers`、`--config-root` 保持双横线写法。
-- 旧的 Linux 长参数仍保留兼容性，但新安装建议优先使用上表中的单横线参数。
 
 </details>
 
@@ -598,36 +598,5 @@ SHA256SUMS
 ```
 
 安装器会验证下载内容，校验失败时停止安装。
-
-### Linux 旧参数兼容
-
-旧长参数仍兼容，例如：
-
-```text
---dev
---version
---output
---configure
---rollback
---uninstall
---help
---channel=release|dev
---dir=/path
---update
-```
-
-新安装建议优先使用本文中的：
-
-```text
--dev
--version
--o
--configure
--rollback
--uninstall
--help
-```
-
-Windows 仍兼容 `-Channel`、`-Destination`、`-Mode` 等历史参数。
 
 </details>
