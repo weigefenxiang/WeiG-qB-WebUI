@@ -96,7 +96,7 @@ if($Dev){
   $Channel='Dev'
 }
 
-if(!$DestinationExplicit -and ($Mode -eq 'Install' -or $Mode -eq 'Update') -and !(Test-Path -LiteralPath $Destination) -and
+if(!$DestinationExplicit -and ($Mode -eq 'Install') -and !(Test-Path -LiteralPath $Destination) -and
   (Test-Path -LiteralPath $LegacyDefaultDestination -PathType Container) -and
   (Test-Path -LiteralPath (Join-Path $LegacyDefaultDestination 'public\index.html') -PathType Leaf) -and
   (Test-Path -LiteralPath (Join-Path $LegacyDefaultDestination 'private\index.html') -PathType Leaf) -and
