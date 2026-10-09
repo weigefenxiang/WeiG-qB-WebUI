@@ -46,6 +46,14 @@ assert.deepEqual(Array.from(defs,x=>x.key),profile.torrentTableColumns.map(x=>x.
 assert.ok(defs.every(x=>x.min===24),'all exact-native columns must share the compact user-resize floor without changing upstream default widths');
 assert.equal(defs.find(x=>x.key==='priority').width,30,'qB exact default width must remain the initial width even though the user may shrink further');
 assert.equal(defs.find(x=>x.key==='selected_size').label,'选定大小','native source columns must receive bounded WeiG presentation labels without owning the schema');
+const missingSourceProfile=structuredClone(profile);
+missingSourceProfile.torrentTableColumns.push({key:'state_icon',caption:'',defaultWidth:32,defaultVisible:false,dataProperties:['state']});
+assert.equal(F.availableColumnDefinitions(missingSourceProfile).find(x=>x.key==='state_icon').configLabel,'state_icon','missing qB official copy must preserve the raw column identifier, not substitute WeiG translation');
+const previousOfficialText=W.I18n.qbText;
+W.I18n.qbText=(key,fallback)=>key==='column.state_icon'?'官方状态图标':previousOfficialText(key,fallback);
+assert.equal(F.availableColumnDefinitions(missingSourceProfile).find(x=>x.key==='state_icon').configLabel,'官方状态图标','official qB column translation must be the exclusive locale source');
+W.I18n.qbText=previousOfficialText;
+assert.equal(source.includes("I.t('columns.aux.stateIcon')"),false,'qB native column labels must not use WeiG-owned translation fallbacks');
 assert.equal(defs.find(x=>x.key==='selected_size').sort,null,'source-only native columns must not infer server-side sort support from field presence');
 assert.equal(defs.find(x=>x.key==='status').sort,'state','native columns may reuse an already-proven canonical WeiG sort semantic through dataProperties');
 assert.equal(F.get('selected_size').format({selected_size:2048}),'B2048','source-only native columns must render their runtime torrentInfo value rather than a placeholder');
