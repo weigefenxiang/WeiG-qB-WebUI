@@ -11,6 +11,7 @@ param(
 )
 
 $ErrorActionPreference='Stop'
+if($args.Count -gt 0){throw "Unknown installer argument(s): $($args -join ' ')"}
 $Repo='weigefenxiang/WeiG-qB-WebUI'
 $DevDistBase='https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev'
 
