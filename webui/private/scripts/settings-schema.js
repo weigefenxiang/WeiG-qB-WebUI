@@ -73,6 +73,17 @@
   function controlGraph(tab){var graph=expanded().controlGraph.tabs[String(tab||'')];return graph?clone(graph):null;}
   function preferenceKeyForControl(controlId){return expanded().controlToPreference[String(controlId||'')]||null;}
 
-  var api={nativeSurfaces:nativeSurfaces,tabTitle:tabTitle,tabTitleRef:tabTitleRef,describeValue:describeValue,toDisplay:toDisplay,toRaw:toRaw,group:group,keysFor:keysFor,humanize:humanize,bindRelease:bindRelease,loadCompatibility:loadCompatibility,isWritable:isWritable,writableDraft:writableDraft,sourcePreference:sourcePreference,controlGraph:controlGraph,preferenceKeyForControl:preferenceKeyForControl,writeOnlyForControl:writeOnlyForControl,writeOnlyForKey:writeOnlyForKey,writeOnlyEnabled:writeOnlyEnabled,clientDataForControl:clientDataForControl,clientDataForKey:clientDataForKey,clientDataKeys:clientDataKeys,clientDataWritable:clientDataWritable,predicateSatisfied:predicateSatisfied,controlEnabled:controlEnabled,gateForControl:gateForControl,gateValue:gateValue,projectionAuxForControl:projectionAuxForControl,projectionAuxValue:projectionAuxValue};
+  // Runtime preference inventory is deliberately read-only. Unknown keys do not
+  // prove a setter, a control type, or a safe display value. Keep secret-like
+  // identifiers out of generic presentation until source evidence supplies UI semantics.
+  function unmappedPreferences(prefs){
+    if(!prefs||typeof prefs!=='object'||Array.isArray(prefs))return[];
+    var known=expanded().preferences||{},blocked=/(password|passwd|secret|token|api[_-]?key|private[_-]?key|credential|auth|certificate|cert[_-]?key)/i;
+    return Object.keys(prefs).filter(function(key){return /^[a-zA-Z][\w.-]{0,127}$/.test(key)&&!blocked.test(key)&&!own(known,key);}).sort().slice(0,96).map(function(key){
+      var value=prefs[key],type=Array.isArray(value)?'array':value===null?'null':typeof value,scalar=type==='boolean'||type==='number'&&Number.isFinite(value);
+      return{key:key,type:type,value:scalar?String(value):null,editable:false,source:'runtime-only'};
+    });
+  }
+  var api={unmappedPreferences:unmappedPreferences,nativeSurfaces:nativeSurfaces,tabTitle:tabTitle,tabTitleRef:tabTitleRef,describeValue:describeValue,toDisplay:toDisplay,toRaw:toRaw,group:group,keysFor:keysFor,humanize:humanize,bindRelease:bindRelease,loadCompatibility:loadCompatibility,isWritable:isWritable,writableDraft:writableDraft,sourcePreference:sourcePreference,controlGraph:controlGraph,preferenceKeyForControl:preferenceKeyForControl,writeOnlyForControl:writeOnlyForControl,writeOnlyForKey:writeOnlyForKey,writeOnlyEnabled:writeOnlyEnabled,clientDataForControl:clientDataForControl,clientDataForKey:clientDataForKey,clientDataKeys:clientDataKeys,clientDataWritable:clientDataWritable,predicateSatisfied:predicateSatisfied,controlEnabled:controlEnabled,gateForControl:gateForControl,gateValue:gateValue,projectionAuxForControl:projectionAuxForControl,projectionAuxValue:projectionAuxValue};
   W.SettingsSchema=api;
 })(window);
