@@ -1,0 +1,72 @@
+name: A72 Test Prerelease
+
+on:
+  push:
+    branches:
+      - test/A72
+
+permissions:
+  contents: write
+
+concurrency:
+  group: a72-test-publication
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: ${{ contains(github.event.head_commit.message, '[A72-publish]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact test-branch SHA
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Verify final complete A72 test source
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+          npm test
+          npm run test:compat
+          npm run test:simulator
+          test "$(cat VERSION)" = "1.2.1"
+          test "$(cat webui/VERSION)" = "1.2.1"
+      - name: Materialize exact-SHA WebUI archive with canonical builder
+        run: |
+          set -euo pipefail
+          node tools/build-webui-dist.mjs --webui-root=webui --out=release --sha="$GITHUB_SHA" --version=1.2.1
+          cp release/weig-qb-webui.zip release/A72.zip
+          (cd release && sha256sum A72.zip >> SHA256SUMS && sha256sum -c SHA256SUMS)
+          test "$(unzip -p release/A72.zip weig-qb-webui/GIT_SHA | tr -d '\r\n')" = "$GITHUB_SHA"
+          test "$(unzip -p release/A72.zip weig-qb-webui/VERSION | tr -d '\r\n')" = '1.2.1'
+          test "$(jq -r .gitSha release/manifest.json)" = "$GITHUB_SHA"
+      - name: Publish immutable A72 Prerelease only at final verified SHA
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          actual="$(gh api "repos/$GITHUB_REPOSITORY/branches/test/A72" --jq '.commit.sha')"
+          test "$actual" = "$GITHUB_SHA" || { echo 'test/A72 advanced; refusing stale publication' >&2; exit 1; }
+          if gh release view test-A72 >/dev/null 2>&1; then
+            echo 'test-A72 Prerelease exists; refusing to replace immutable test assets' >&2
+            exit 1
+          fi
+          gh release create test-A72 \
+            release/A72.zip \
+            release/weig-qb-webui.zip \
+            release/weig-qb-webui.tar.gz \
+            release/manifest.json \
+            release/SHA256SUMS \
+            release/install.sh \
+            release/install.ps1 \
+            --target "$GITHUB_SHA" \
+            --title "WeiG WebUI A72 (1.2.1 test)" \
+            --notes "A72 isolated test build, exact Git SHA $GITHUB_SHA. This is not a stable release." \
+            --prerelease --latest=false
+          echo "A72: https://github.com/$GITHUB_REPOSITORY/releases/download/test-A72/A72.zip"
