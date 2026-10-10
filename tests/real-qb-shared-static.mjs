@@ -18,14 +18,16 @@ async function ready(base){
  throw Error('Real qB listener unavailable');
 }
 async function getPassword(name){
- for(let i=0;i<30;i++){const logs=spawnSync('docker',['logs',name],{encoding:'utf8'});assert(logs.status===0,'Cannot inspect disposable qB startup logs');const m=(String(logs.stdout||'')+'\n'+String(logs.stderr||'')).match(/temporary password is provided for this session:\s*(\S+)/i);if(m)return m[1];await sleep(1000);}
+ for(let i=0;i<30;i++){const logs=spawnSync('docker',['logs',name],{encoding:'utf8'});assert(logs.status===0,'Cannot inspect disposable qB startup logs');const found=Array.from((String(logs.stdout||'')+'\n'+String(logs.stderr||'')).matchAll(/temporary password is provided for this session:\s*(\S+)/gi));if(found.length)return found[found.length-1][1];await sleep(1000);}
  return 'adminadmin';
 }
 async function configure(q){
  const login=await fetch(q.url+'api/v2/auth/login',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({username:'admin',password:q.password})});
- assert(login.ok,'Real qB login rejected');
+ assert(login.status===200,'Real qB '+q.version+' login HTTP '+login.status);
+ const loginReply=(await login.text()).trim();
+ assert(loginReply==='Ok.','Real qB '+q.version+' login did not accept disposable credentials');
  q.sid=(login.headers.get('set-cookie')||'').split(';')[0];
- assert(/^SID=[^;]+/.test(q.sid),'Real qB SID missing');
+ assert(/^SID=[^;]+/.test(q.sid),'Real qB '+q.version+' successful login returned no SID');
  const set=await fetch(q.url+'api/v2/app/setPreferences',{method:'POST',headers:{Cookie:q.sid,'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({json:JSON.stringify({alternative_webui_enabled:true,alternative_webui_path:'/weig-webui'})})});
  assert(set.ok,'Real qB Alternative WebUI setting failed');await set.text();
 }
