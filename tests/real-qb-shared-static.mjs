@@ -59,6 +59,26 @@ async function enter(context,q){
  assert((await page.locator('#qb-version').innerText()).includes(q.version),'Browser qB version mismatch');
  return page;
 }
+// Fetch private materialized bytes in the authenticated browser, never with
+// a pre-Alternative-WebUI bootstrap SID that qB 4.x may have invalidated.
+async function browserPrivateAssetDigests(page,q){
+ const paths=['bootstrap-plan.json','scripts/runtime-assets.js','scripts/capabilities.js'];
+ const responses=await page.evaluate(async assets=>{
+   const out=[];
+   for(const asset of assets){
+     const response=await fetch(asset,{credentials:'same-origin',cache:'no-store'});
+     out.push({path:asset,status:response.status,body:response.status===200?await response.text():''});
+   }
+   return out;
+ },paths);
+ const result={};
+ for(const row of responses){
+   assert(row.status===200,'Authenticated real qB '+q.version+' private asset '+row.path+' HTTP '+row.status);
+   assert(row.body.length>100,'Real qB '+q.version+' private asset truncated: '+row.path);
+   result[row.path]=crypto.createHash('sha256').update(Buffer.from(row.body)).digest('hex');
+ }
+ return result;
+}
 async function verifyInstanceSettings(page,q){
  await page.locator('#app-nav [data-route="settings"]').click();
  await page.waitForFunction(()=>location.hash.includes('settings'),null,{timeout:20000});
@@ -118,24 +138,20 @@ async function test(){
    assert(sh('docker',['exec',q.name,'cat','/weig-webui/GIT_SHA'])===sha,'Container-mounted SHA drift');
    const response=await fetch(q.url);assert(response.ok,'Real Alternative WebUI hosting failed');
    const html=await response.text();assert(html.includes('name="weig-build-sha" content="'+sha+'"'),'Real qB served wrong build');
-   // HTML alone is insufficient: prove each qB serves the SAME private
-   // bootstrap and capability owner bytes from the shared read-only mount.
-   const assets={};
-   for(const asset of ['bootstrap-plan.json','scripts/runtime-assets.js','scripts/capabilities.js']){
-     const response=await fetch(q.url+asset,{headers:{Cookie:q.sid}});
-     assert(response.status===200,'Real qB '+q.version+' shared private asset '+asset+' HTTP '+response.status);
-     const bytes=Buffer.from(await response.arrayBuffer());
-     assert(bytes.length>100,'Real qB '+q.version+' shared private asset is truncated: '+asset);
-     assets[asset]=crypto.createHash('sha256').update(bytes).digest('hex');
-   }
-   checks.push({qb_version:q.version,sha256:crypto.createHash('sha256').update(html).digest('hex'),readonly_mount:true,private_asset_sha256:assets});
+   checks.push({qb_version:q.version,sha256:crypto.createHash('sha256').update(html).digest('hex'),readonly_mount:true});
  }));
  assert(checks.length===2&&checks[0].sha256===checks[1].sha256,'Different static HTML served');
- assert(JSON.stringify(checks[0].private_asset_sha256)===JSON.stringify(checks[1].private_asset_sha256),'Two real qB instances did not serve identical private bootstrap/capability bytes');
+
  browser=await launchBrowser();const context=await browser.newContext({viewport:{width:1280,height:800},locale:'en-US'});
  const first=await enter(context,qbs[0]);
  assert((await context.cookies(qbs[1].url)).every(c=>c.name!==qbs[0].sessionCookieName),'First instance session cookie leaked to second qB host');
  const second=await enter(context,qbs[1]);
+ for(const [i,q] of qbs.entries()){
+   const row=checks.find(item=>item.qb_version===q.version);
+   assert(!!row,'Missing real qB distribution fact for '+q.version);
+   row.private_asset_sha256=await browserPrivateAssetDigests(i===0?first:second,q);
+ }
+ assert(JSON.stringify(checks[0].private_asset_sha256)===JSON.stringify(checks[1].private_asset_sha256),'Real authenticated browsers served nonidentical private bootstrap/capability bytes');
  const settingsChecks=await Promise.all([verifyInstanceSettings(first,qbs[0]),verifyInstanceSettings(second,qbs[1])]);
  const sidA=(await context.cookies(qbs[0].url)).find(c=>c.name===qbs[0].sessionCookieName)?.value;
  const sidB=(await context.cookies(qbs[1].url)).find(c=>c.name===qbs[1].sessionCookieName)?.value;
