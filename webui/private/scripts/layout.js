@@ -74,16 +74,31 @@
         var field=fields[j],id=String(field&&field.id||''),props=Array.isArray(field&&field.dataProperties)?field.dataProperties.map(String):[];
         if(id==='progress'||id==='availability'||props.indexOf('progress')>=0||props.indexOf('availability')>=0)continue;
         var value=sourceGeneralFieldValue(field,data,hash);
-        if(!id||value===null)return false;
+        if(!id)return false;
+        if(value===null)continue;
         var href=(id==='comment'||props.indexOf('comment')>=0)&&/^https?:\/\/[^\s]+$/i.test(String(value||''))?String(value):'';
         rows.push({id:id,value:value,href:href});
       }
       if(rows.length)prepared.push({group:group,rows:rows});
     }
+    // Project genuinely new runtime scalar facts without inventing source-owned
+    // labels, units, grouping or write actions. Known source fields keep their
+    // canonical layout; unknown types and potentially sensitive keys stay hidden.
+    var mapped=new Set();
+    layout.forEach(function(group){(group&&group.fields||[]).forEach(function(field){(field&&field.dataProperties||[]).forEach(function(key){mapped.add(String(key));});});});
+    var extras=Object.keys(data).sort().filter(function(key){
+      return /^[A-Za-z][A-Za-z0-9_.-]{0,127}$/.test(key)&&!mapped.has(key)&&!/(password|passwd|token|secret|credential|cookie|api[_-]?key|private[_-]?key)/i.test(key);
+    }).slice(0,64).map(function(key){
+      var value=data[key],type=typeof value;
+      if(type==='number'&&!Number.isFinite(value))return null;
+      if(type!=='string'&&type!=='number'&&type!=='boolean')return null;
+      return{id:key,value:type==='string'?value.slice(0,256):String(value),href:''};
+    }).filter(Boolean);
+    if(extras.length)prepared.push({group:{key:'WebAPI',collapsible:true},rows:extras});
     if(!prepared.length)return false;
     var structure=prepared.map(function(item){return String(item.group&&item.group.key||'')+':'+item.rows.map(function(row){return row.id;}).join(',');}).join('|'),profile=exactProfile(),host=root.firstElementChild,reuse=!!(host&&host.classList&&host.classList.contains('general-detail')&&host.dataset.qbSourceDriven==='true'&&host.dataset.structure===structure);
     function updateValue(kv,row){var name=kv.children[0],value=kv.children[1],wantLink=!!row.href,correct=value&&((wantLink&&value.tagName==='A')||(!wantLink&&value.tagName==='STRONG'));if(!correct){var next=wantLink?document.createElement('a'):document.createElement('strong');if(value)kv.replaceChild(next,value);else kv.appendChild(next);value=next;}name.textContent=detailPropertyLabel(row.id);value.textContent=row.value==null?'—':String(row.value);value.dataset.generalValue='true';if(wantLink){value.className='general-detail__link';value.href=row.href;value.target='_blank';value.rel='noopener noreferrer';}else value.className='';}
-    if(!reuse){host=document.createElement('div');host.className='general-detail';host.dataset.qbSourceDriven='true';host.dataset.structure=structure;prepared.forEach(function(item){var group=item.group,key=String(group&&group.key||''),section=document.createElement('section');section.className='general-detail__section'+(key==='root'?' general-detail__section--root':'');section.dataset.generalGroup=key;if(key!=='root'){var title=document.createElement('h3');title.className='general-detail__title';section.appendChild(title);}var grid=document.createElement('div');grid.className='general-detail__grid';item.rows.forEach(function(row){var kv=document.createElement('div');kv.className='kv';kv.dataset.generalField=row.id;kv.append(document.createElement('span'),document.createElement('strong'));grid.appendChild(kv);});section.appendChild(grid);host.appendChild(section);});root.replaceChildren(host);}
+    if(!reuse){host=document.createElement('div');host.className='general-detail';host.dataset.qbSourceDriven='true';host.dataset.structure=structure;prepared.forEach(function(item){var group=item.group,key=String(group&&group.key||''),section=document.createElement(group&&group.collapsible===true?'details':'section');section.className='general-detail__section'+(key==='root'?' general-detail__section--root':'')+(group&&group.collapsible===true?' general-detail__section--runtime':'');section.dataset.generalGroup=key;if(key!=='root'){var title=document.createElement(group&&group.collapsible===true?'summary':'h3');title.className='general-detail__title';section.appendChild(title);}var grid=document.createElement('div');grid.className='general-detail__grid';item.rows.forEach(function(row){var kv=document.createElement('div');kv.className='kv';kv.dataset.generalField=row.id;kv.append(document.createElement('span'),document.createElement('strong'));grid.appendChild(kv);});section.appendChild(grid);host.appendChild(section);});root.replaceChildren(host);}
     if(profile)host.dataset.qbVersion=String(profile.qbVersion||profile.detectedQbVersion||'');else delete host.dataset.qbVersion;
     prepared.forEach(function(item,groupIndex){var section=host.children[groupIndex],key=String(item.group&&item.group.key||''),title=key==='root'?null:section.querySelector('.general-detail__title'),grid=section.querySelector('.general-detail__grid');if(title)title.textContent=detailGroupLabel(key);item.rows.forEach(function(row,rowIndex){updateValue(grid.children[rowIndex],row);});});return true;
   }

@@ -108,3 +108,6 @@
 .torrent-state-icon[data-tone=danger]{background:var(--torrent-tone-danger)}
 .torrent-state-icon[data-active=true]{animation:weig-indicator-pulse 3.8s ease-in-out infinite;box-shadow:0 0 0 2px rgba(255,255,255,.06),0 0 10px color-mix(in srgb,var(--text-primary) 12%,transparent)}
 .data-viewport.is-scroll-interacting .torrent-state-icon[data-active=true]{animation-play-state:paused!important;filter:none!important}
+
+/* Source-unknown WebAPI properties stay read-only and collapsed beneath native Detail. */
+.general-detail__section--runtime>.general-detail__title{cursor:pointer;user-select:none}.general-detail__section--runtime>.general-detail__title:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:3px}
