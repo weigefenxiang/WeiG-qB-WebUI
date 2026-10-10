@@ -141,7 +141,7 @@
   function renderRuntimePreferences(root,prefs){
     var facts=S.unmappedPreferences&&S.unmappedPreferences(prefs)||[];
     if(!facts.length)return;
-    var surface=section('WebAPI',tr('settings.runtime.structuredReadOnly'),'weig-webapi');
+    var surface=section('WebAPI',tr('settings.runtime.unmappedReadOnly'),'weig-webapi');
     facts.forEach(function(item){
       var display=document.createElement('output');display.className='setting-runtime-value';
       display.textContent=item.value===null?item.type:String(item.value);

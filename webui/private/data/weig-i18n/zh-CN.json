@@ -625,6 +625,14 @@
     "dialog.delete.eyebrow": "危险操作",
     "dialog.action.eyebrow": "操作",
     "language.zh-TW": "繁体中文（台湾）",
-    "language.zh-HK": "繁体中文（香港）"
+    "language.zh-HK": "繁体中文（香港）",
+    "header.instance.title": "实例",
+    "header.instance.name": "实例名称",
+    "header.instance.url": "实例地址",
+    "header.instance.add": "添加实例",
+    "header.instance.remove": "移除",
+    "header.instance.empty": "此地址尚未保存实例。",
+    "header.instance.hint": "实例列表仅保存在当前 WebUI 地址中。切换后会重新加载页面，并使用目标实例各自的登录会话。",
+    "settings.runtime.unmappedReadOnly": "未识别的 WebAPI 选项会以只读方式显示，直到其控件和写入规则得到源码验证。"
   }
 }
