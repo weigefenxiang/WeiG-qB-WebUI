@@ -32,4 +32,10 @@ assert(!C.allowsReadOperation('clientdata/load','GET'),future+': only POST seman
 await C.bind({qbVersion:future,webApiVersion:'2.15.9',capabilities:{}});
 assert(!C.allowsReadOperation('clientdata/load','POST'),future+': changed WebAPI must not inherit POST read');
 assert(!C.allowsWriteOperation('torrents/add','POST','torrentscontroller.h:addAction',allowedTorrentFields),future+': changed WebAPI must revoke additive write compatibility');
+await C.bind({qbVersion:newest.qbVersion,webApiVersion:'0',capabilities:{}});
+assert(!C.isCertified(),'known qB with UNKNOWN WebAPI must not certify dangerous operations');
+await C.bind({qbVersion:'5.2.4-rc1',webApiVersion:newest.webApiVersion,capabilities:{}});
+assert(C.releaseIdentity().resolutionMode==='INHERITED'&&C.releaseIdentity().resolvedFrom==='5.2.3','RC before 5.2.4 must not inherit 5.2.4 stable contract');
+await C.bind({qbVersion:'5.3.0-rc1',webApiVersion:newest.webApiVersion,capabilities:{}});
+assert(C.releaseIdentity().resolutionMode==='INHERITED'&&!C.isCertified(),'future minor release with matching API may inherit read facts but not certified writes');
 console.log('Capability compact-contract test passed: detected/catalog identity stays separate from per-domain EXACT/EQUIVALENT/INHERITED/FALLBACK bases, source-proven special stables resolve per domain, bounded inherited reads remain available, and dangerous writes fail closed outside exact/equivalent provenance.');

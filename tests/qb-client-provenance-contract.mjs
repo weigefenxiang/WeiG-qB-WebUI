@@ -27,7 +27,7 @@ const releaseProfile={
 };
 const capabilityRegistry={
   isCertified:()=>releaseProfile.isCertified(),
-  sourceActionDescriptor:action=>{if(!profile)return undefined;if(profile.fallback===true)return null;return descriptor(action);}
+  sourceActionDescriptor:action=>{if(!profile)return undefined;if(profile.fallback===true)return null;return descriptor(action);},releaseIdentity:()=>profile
 };
 const WeiG={
   util:{form:obj=>new URLSearchParams(Object.entries(obj||{}).map(([key,value])=>[key,String(value)])).toString()},
@@ -50,6 +50,8 @@ await detected524.detect();
 assert.equal(detected524.qbVersion,'v5.2.4','detected identity must preserve the daemon-reported qB version');
 assert.equal(detected524.webApiVersion,'2.15.1','WebAPI identity must come from app/webapiVersion instead of qB version inference');
 assert.equal(detected524.major,5,'v-prefixed qB 5.2.4 identity must normalize for structural major detection');
+const missingApi=new Client();missingApi.request=async path=>{if(path==='app/version')return'6.0.0-rc1';throw new Error('unsupported WebAPI identity');};await missingApi.detect();
+assert.equal(missingApi.webApiVersion,'0','missing WebAPI version must remain UNKNOWN instead of fabricating an older certified version');
 
 const client=new Client();
 client.qbVersion='6.0.0';client.webApiVersion='3.0.0';client.major=6;
@@ -131,6 +133,8 @@ before=calls.length;
 profile={qbVersion:'6.0.0',webApiVersion:'99.0.0',fallback:true,apiActions:[],apiActionParameters:{}};
 await assert.rejects(client.setPreferences({save_path:'/blocked-by-fallback'}),/source-proven/,'high future version alone must not inherit the latest known write semantics');
 assert.equal(calls.length,before,'future fallback dangerous Settings write must make zero HTTP requests');
+const fallbackPrefs=await client.getPreferences();
+assert.equal(fallbackPrefs.save_path,'/downloads','unknown future version must retain harmless GET preferences for partial startup');
 
 profile={
   qbVersion:'5.1.4',webApiVersion:'2.11.4',fallback:false,apiActions:[EDIT],
