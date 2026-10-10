@@ -47,6 +47,14 @@ await C.bind({qbVersion:'5.2.4-rc1',webApiVersion:newest.webApiVersion,capabilit
 assert(C.releaseIdentity().resolutionMode==='INHERITED'&&C.releaseIdentity().resolvedFrom==='5.2.3','RC before 5.2.4 must not inherit 5.2.4 stable contract');
 await C.bind({qbVersion:'5.3.0-rc1',webApiVersion:newest.webApiVersion,capabilities:{}});
 assert(C.releaseIdentity().resolutionMode==='INHERITED'&&!C.isCertified(),'future minor release with matching API may inherit read facts but not certified writes');
+for(const channel of ['5.3.0beta1','5.3.0rc1']){
+  await C.bind({qbVersion:channel,webApiVersion:'2.16.2',capabilities:{}});
+  assert(C.releaseIdentity().resolutionMode==='INHERITED'&&!C.isCertified()&&C.releaseIdentity().detectedWebApiVersion==='2.16.2',channel+': official upstream prerelease WebAPI 2.16.2 may inherit bounded reads only, never certified stable writes');
+  assert(!C.hasWriteProvenance()&&!S.isWritable('locale','en-US',{locale:'en-US'},{locale:'en-US'}),channel+': newer official prerelease identity must not authorize source-unknown Settings writes');
+  for(const action of ['appcontroller.h:getFreeSpaceAtPathAction','torrentscontroller.h:downloadFileAction','rsscontroller.h:cloneRuleAction','rsscontroller.h:exportRulesAction','rsscontroller.h:importRulesAction']){
+    assert(!C.hasAction(action),channel+': newly observed upstream action must not be auto-admitted from the stable compatibility catalog: '+action);
+  }
+}
 await C.bind({qbVersion:'5.3.0-rc1',webApiVersion:'3.0.0',capabilities:{}});
 assert(C.releaseIdentity().resolutionMode==='FALLBACK','unknown next-major WebAPI must not inherit incompatible source fields even within the same qB major');
 assert(C.upstreamTorrentFilter('all')==='','source-unresolved qB must allow the safe default all-torrent GET without an invented filter parameter');
