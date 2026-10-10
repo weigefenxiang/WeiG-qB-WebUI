@@ -454,6 +454,14 @@
     "app.back": "뒤로",
     "app.refresh": "새로고침",
     "app.close": "닫기",
-    "app.loading": "불러오는 중…"
+    "app.loading": "불러오는 중…",
+    "header.instance.title": "인스턴스",
+    "header.instance.name": "인스턴스 이름",
+    "header.instance.url": "인스턴스 URL",
+    "header.instance.add": "인스턴스 추가",
+    "header.instance.remove": "삭제",
+    "header.instance.empty": "이 주소에 저장된 인스턴스가 없습니다.",
+    "header.instance.hint": "인스턴스 주소는 현재 WebUI 주소에만 저장됩니다. 전환하면 페이지를 새로 고치고 대상 인스턴스의 로그인 세션을 사용합니다.",
+    "settings.runtime.unmappedReadOnly": "인식되지 않은 WebAPI 옵션은 제어 및 쓰기 규칙이 소스 코드로 검증될 때까지 읽기 전용으로 표시됩니다."
   }
 }

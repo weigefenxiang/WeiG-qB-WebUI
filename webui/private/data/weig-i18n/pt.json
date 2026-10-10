@@ -451,6 +451,14 @@
     "settings.readFailed": "Não foi possível carregar as definições: {error}",
     "app.refresh": "Atualizar",
     "app.close": "Fechar",
-    "app.loading": "A carregar…"
+    "app.loading": "A carregar…",
+    "header.instance.title": "Instâncias",
+    "header.instance.name": "Nome da instância",
+    "header.instance.url": "URL da instância",
+    "header.instance.add": "Adicionar instância",
+    "header.instance.remove": "Remover",
+    "header.instance.empty": "Não há instâncias guardadas neste endereço.",
+    "header.instance.hint": "Os endereços das instâncias são guardados apenas neste endereço do WebUI. A mudança recarrega a página e utiliza a sessão da instância de destino.",
+    "settings.runtime.unmappedReadOnly": "As opções da WebAPI não reconhecidas são apresentadas apenas para leitura até que as regras de controlo e escrita sejam confirmadas no código-fonte."
   }
 }
