@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  actions: read
 
 concurrency:
   group: a72-test-publication
@@ -37,6 +38,34 @@ jobs:
           npm run test:simulator
           test "$(cat VERSION)" = "1.2.1"
           test "$(cat webui/VERSION)" = "1.2.1"
+      - name: Require successful exact-SHA push CI before creating any prerelease Tag
+        timeout-minutes: 35
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          validated=0
+          for attempt in $(seq 1 120); do
+            record="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?branch=test%2FA72&event=push&per_page=60" \
+              | jq -c --arg sha "$GITHUB_SHA" '[.workflow_runs[] | select(.head_sha == $sha and .event == "push")] | sort_by(.id) | last // empty')"
+            if [ -z "$record" ]; then sleep 10; continue; fi
+            status="$(jq -r '.status' <<<"$record")"
+            conclusion="$(jq -r '.conclusion // ""' <<<"$record")"
+            if [ "$status" = completed ]; then
+              if [ "$conclusion" != success ]; then
+                echo "A72 exact-SHA CI is not successful: $conclusion" >&2
+                exit 1
+              fi
+              validated=1
+              break
+            fi
+            sleep 10
+          done
+          if [ "$validated" -ne 1 ]; then
+            echo 'No successful completed CI for exact A72 publish SHA; Tag creation is blocked.' >&2
+            exit 1
+          fi
       - name: Materialize exact-SHA WebUI archive with canonical builder
         run: |
           set -euo pipefail
