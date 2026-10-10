@@ -85,20 +85,25 @@ async function verifyInstanceSettings(page,q){
  const snapshot=await page.evaluate(async origin=>{
    const registry=window.WeiG?.CapabilityRegistry;
    const identity=registry?.releaseIdentity?.(),settingsDomain=registry?.domainResolution?.('settings');
+   const schema=window.WeiG?.SettingsSchema,nativeTabs=schema?.nativeSurfaces?.()||[];
+   const webuiGraph=schema?.controlGraph?.('webui'),nativeWebuiRows=webuiGraph?.rows?.length||0;
+   const localeSource=!!schema?.sourcePreference?.('locale');
    const [res,webApi]=await Promise.all([
      fetch(new URL('api/v2/app/preferences',origin),{credentials:'same-origin',cache:'no-store'}),
      fetch(new URL('api/v2/app/webapiVersion',origin),{credentials:'same-origin',cache:'no-store'})
    ]);
    if(res.status!==200||webApi.status!==200)return{identity,settingsDomain,status:res.status,apiStatus:webApi.status,keys:0};
    const prefs=await res.json(),apiVersion=(await webApi.text()).trim();
-   return{identity,settingsDomain,status:res.status,apiStatus:webApi.status,apiVersion,keys:Object.keys(prefs||{}).length,hasAltPath:Object.prototype.hasOwnProperty.call(prefs||{},'alternative_webui_path')};
+   return{identity,settingsDomain,nativeTabs,nativeWebuiRows,localeSource,status:res.status,apiStatus:webApi.status,apiVersion,keys:Object.keys(prefs||{}).length,hasAltPath:Object.prototype.hasOwnProperty.call(prefs||{},'alternative_webui_path')};
  },q.url);
  assert(snapshot.status===200&&snapshot.keys>0&&snapshot.hasAltPath,'Real qB '+q.version+' authenticated Settings GET unavailable');
  assert(snapshot.apiStatus===200&&/^\d+\.\d+/.test(snapshot.apiVersion),'Real qB '+q.version+' WebAPI version GET unavailable');
  assert(snapshot.identity&&snapshot.identity.detectedQbVersion===q.version,'Real qB '+q.version+' Settings retained wrong CapabilityRegistry identity');
  assert(snapshot.identity.detectedWebApiVersion===snapshot.apiVersion,'Real qB '+q.version+' registry used another server WebAPI identity');
  assert(snapshot.settingsDomain&&snapshot.settingsDomain.fallback===false&&snapshot.settingsDomain.detectedWebApiVersion===snapshot.apiVersion,'Real qB '+q.version+' Settings mapped to unproven source domain');
- return{qb_version:q.version,webapi_version:snapshot.apiVersion,settings_get:'PASS',settings_source_identity:'PASS',settings_domain_source:'PASS'};
+ assert(JSON.stringify(snapshot.nativeTabs)===JSON.stringify(['behavior','downloads','connection','speed','bittorrent','rss','webui','advanced']),'Real qB '+q.version+' canonical eight native Settings surfaces missing');
+ assert(snapshot.nativeWebuiRows>0&&snapshot.localeSource,'Real qB '+q.version+' source-native WebUI/locale graph not consumed');
+ return{qb_version:q.version,webapi_version:snapshot.apiVersion,settings_get:'PASS',settings_source_identity:'PASS',settings_domain_source:'PASS',native_settings_graph:'PASS'};
 }
 async function test(){
  assert(/^[a-f0-9]{40}$/i.test(sha)&&sh('git',['rev-parse','HEAD'])===sha,'Exact SHA identity missing');
