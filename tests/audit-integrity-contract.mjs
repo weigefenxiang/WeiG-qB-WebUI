@@ -54,4 +54,14 @@ assert.deepEqual(missing,[],`Audit package entry points reference missing files:
 const routine=fs.readdirSync(path.join(root,'tests')).filter(name=>/^a\d+-/.test(name));
 assert.deepEqual(routine,[],'Milestone-numbered tests must not return to the routine blocking surface');
 
+const fixtureOwners=[
+  ['audits/compat-matrix.mjs','tests/fixtures/qb-compat-matrix.json'],
+  ['audits/qb-settings-native-lkg-contract.mjs','tests/fixtures/qb-release-catalog.lkg.json']
+];
+for(const [owner,fixture] of fixtureOwners){
+  assert.ok(fs.existsSync(path.join(root,fixture)),`${owner}: canonical checked-in fixture missing: ${fixture}`);
+  const source=fs.readFileSync(path.join(root,owner),'utf8');
+  assert.ok(source.includes(`tests/fixtures/${path.basename(fixture)}`),`${owner}: must read canonical tests/fixtures asset after A61 audit relocation`);
+  assert.ok(!source.includes("here,'fixtures/"),`${owner}: must not read removed audits/fixtures directory`);
+}
 console.log(`Audit integrity contract passed: ${files.length} audit modules have closed relative imports and ${auditScripts.length} grouped entry points resolve to real files.`);

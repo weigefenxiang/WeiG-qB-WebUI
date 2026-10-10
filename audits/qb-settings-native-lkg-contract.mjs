@@ -6,7 +6,7 @@ import {fileURLToPath} from 'node:url';
 import {applyQbSettingsTranslationLkg,buildQbSettingsTranslationLkg,validateDetailUi} from '../tools/qb-settings-translation-lkg.mjs';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
-const catalogText=fs.readFileSync(path.join(here,'fixtures/qb-release-catalog.lkg.json'),'utf8').replace(/\r\n/g,'\n');
+const catalogText=fs.readFileSync(path.join(here,'../tests/fixtures/qb-release-catalog.lkg.json'),'utf8').replace(/\r\n/g,'\n');
 const localeEvidence=JSON.parse(fs.readFileSync(path.join(here,'../tools/data/qb-locale-lkg.json'),'utf8'));
 const behaviorEvidence=JSON.parse(fs.readFileSync(path.join(here,'../tools/data/qb-translator-behavior-lkg.json'),'utf8'));
 const catalogSha256=crypto.createHash('sha256').update(catalogText,'utf8').digest('hex');

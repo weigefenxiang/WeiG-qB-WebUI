@@ -6,7 +6,7 @@ import {readSettingsRuntime} from '../tools/qb-compact-runtime.mjs';
 import {expandQbPreferencesCompact} from '../tools/qb-preferences-compact.mjs';
 
 const here=path.dirname(fileURLToPath(import.meta.url)),root=path.resolve(here,'..');
-const matrix=JSON.parse(await fs.readFile(path.join(here,'fixtures/qb-compat-matrix.json'),'utf8'));
+const matrix=JSON.parse(await fs.readFile(path.join(root,'tests/fixtures/qb-compat-matrix.json'),'utf8'));
 const client=await fs.readFile(path.join(root,'webui/private/scripts/qb-client.js'),'utf8');
 const settingsSchemaSource=await fs.readFile(path.join(root,'webui/private/scripts/settings-schema.js'),'utf8');
 const docs=await fs.readFile(path.join(root,'docs/COMPATIBILITY.md'),'utf8').catch(()=>Promise.resolve(''));
