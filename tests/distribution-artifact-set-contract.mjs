@@ -13,6 +13,7 @@ assert.ok(sh.includes("command -v tar")&&sh.includes("has_busybox_applet tar"));
 assert.ok(sh.includes('PACKAGE_NAME="WeiG-qB-WebUI.zip"'),'historical stable Releases keep one bounded legacy ZIP reader');
 assert.ok(sh.includes("missing manifest.json; refusing legacy/raw fallback"),'dev must require the canonical artifact manifest');
 assert.ok(sh.includes("package_name=$3"),'checksum owner must verify the selected artifact by filename');
-assert.equal((sh.match(/verify_release_checksum "\$TMP\/SHA256SUMS" "\$TMP\/manifest\.json" "manifest\.json"/g)||[]).length,2,'stable canonical and dev manifest consumers must verify manifest.json against SHA256SUMS before parsing/selection');
+assert.equal((sh.match(/verify_release_checksum "\$TMP\/SHA256SUMS" "\$TMP\/manifest\.json" "manifest\.json"/g)||[]).length,3,'stable, test Prerelease and dev manifest consumers must verify manifest.json against SHA256SUMS before parsing/selection');
+assert.ok(sh.includes('TEST_TAG="test-$DEV_TARGET"')&&sh.includes('Expected an isolated test Prerelease.'),'test distribution must prove its exact Prerelease identity');
 assert.ok(site.includes("downloads/dev/manifest.json")&&site.includes("downloads/dev/weig-qb-webui.tar.gz")&&site.includes("downloads/dev/weig-qb-webui.zip"));
 console.log('Distribution artifact-set contract passed.');

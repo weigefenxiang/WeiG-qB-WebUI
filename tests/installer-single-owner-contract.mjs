@@ -16,7 +16,7 @@ function cli(args){
 }
 if(process.platform!=='win32'){
 for(const args of [
-  ['--dev'],['--version','1.2.0'],['--version=1.2.0'],['--output','/tmp/weig'],['--output=/tmp/weig'],
+  ['--dev'],['-dev','not-A72'],['--version','1.2.0'],['--version=1.2.0'],['--output','/tmp/weig'],['--output=/tmp/weig'],
   ['--configure'],['--rollback'],['--uninstall'],['--purge'],['--help'],['-h'],
   ['-update'],['--update'],['--channel=dev'],['--channel=release'],['--dir=/tmp/weig']
 ]){
@@ -25,7 +25,7 @@ for(const args of [
   assert.match(result.stderr,/Unknown option:/);
 }
 for(const args of [
-  ['-dev'],['-version','1.2.0'],['-o','/tmp/weig'],['-configure'],['-rollback'],
+  ['-dev'],['-dev','A72'],['-version','1.2.0'],['-o','/tmp/weig'],['-configure'],['-rollback'],
   ['-uninstall'],['-purge'],['--container=qbittorrent'],['--config-root=/tmp'],['--list-containers']
 ]){
   const result=cli(args);
