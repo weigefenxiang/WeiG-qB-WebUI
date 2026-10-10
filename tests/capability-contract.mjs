@@ -56,6 +56,11 @@ for(const channel of ['5.3.0beta1','5.3.0rc1']){
     assert(!C.hasAction(action),channel+': newly observed upstream action must not be auto-admitted from the stable compatibility catalog: '+action);
   }
 }
+await C.bind({qbVersion:newest.qbVersion,webApiVersion:'3.0.0',capabilities:{}});
+assert(C.releaseIdentity().resolutionMode==='FALLBACK'&&C.domainResolution('torrent').fallback&&C.domainResolution('settings').fallback,'known qB with incompatible WebAPI major must not project frozen source facts');
+assert(C.upstreamTorrentFilter('all')===''&&!C.hasAction('torrentscontroller.h:categoriesAction'),'incompatible WebAPI major must retain only safe default Torrent GET and no old endpoint projection');
+await C.bind({qbVersion:newest.qbVersion,webApiVersion:'0',capabilities:{}});
+assert(C.releaseIdentity().resolutionMode==='FALLBACK'&&!C.hasExactSourceFacts(),'unavailable WebAPI identity must not impersonate known-source read contract');
 await C.bind({qbVersion:'5.3.0-rc1',webApiVersion:'3.0.0',capabilities:{}});
 assert(C.releaseIdentity().resolutionMode==='FALLBACK','unknown next-major WebAPI must not inherit incompatible source fields even within the same qB major');
 assert(C.upstreamTorrentFilter('all')==='','source-unresolved qB must allow the safe default all-torrent GET without an invented filter parameter');
