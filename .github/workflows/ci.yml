@@ -357,6 +357,43 @@ jobs:
           Write-Host 'PowerShell installer syntax parsed.'
 
 
+  a72_distribution_integrity:
+    name: A72 exact-SHA distribution verification (unpublished)
+    if: ${{ github.ref == 'refs/heads/test/A72' && needs.smoke.result == 'success' }}
+    needs: smoke
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install canonical builder dependencies
+        run: npm ci --no-audit --no-fund --prefer-offline
+      - name: Build and verify temporary A72 distribution without releasing
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(tr -d '\r\n' < VERSION)"
+          test "$VERSION" = 1.2.1
+          test "$(tr -d '\r\n' < webui/VERSION)" = "$VERSION"
+          out="$RUNNER_TEMP/a72-distribution-verify"
+          node tools/build-webui-dist.mjs --webui-root=webui --out="$out" --sha="$GITHUB_SHA" --version="$VERSION"
+          cp "$out/weig-qb-webui.zip" "$out/A72.zip"
+          cmp -s "$out/A72.zip" "$out/weig-qb-webui.zip"
+          (cd "$out" && sha256sum A72.zip >> SHA256SUMS && sha256sum -c SHA256SUMS)
+          jq -e --arg sha "$GITHUB_SHA" --arg version "$VERSION" \
+            '.schemaVersion == 6 and .kind == "materialized-webui-dist" and .gitSha == $sha and .version == $version and .artifacts.zip.file == "weig-qb-webui.zip" and .artifacts.tarGz.file == "weig-qb-webui.tar.gz"' "$out/manifest.json"
+          test "$(unzip -p "$out/A72.zip" weig-qb-webui/GIT_SHA | tr -d '\r\n')" = "$GITHUB_SHA"
+          test "$(unzip -p "$out/A72.zip" weig-qb-webui/VERSION | tr -d '\r\n')" = "$VERSION"
+          test "$(tar -xOzf "$out/weig-qb-webui.tar.gz" weig-qb-webui/GIT_SHA | tr -d '\r\n')" = "$GITHUB_SHA"
+          test "$(tar -xOzf "$out/weig-qb-webui.tar.gz" weig-qb-webui/VERSION | tr -d '\r\n')" = "$VERSION"
+          echo "A72 source archive and alias verified locally on CI runner; no Tag, Release, or distributable asset was published."
+
   installer_lifecycle_linux:
     name: Linux installer lifecycle
     needs: classify

@@ -61,6 +61,10 @@ for(const [name,next] of [['torrent_runtime_materialize','settings_runtime_mater
   assert(job.includes("github.ref == 'refs/heads/dev'")&&!job.includes("github.ref == 'refs/heads/test/A72'"),'Writable/materializing '+name+' must remain dev-only during isolated A72');
 }
 
+const a72Distribution=jobSection(ci,'a72_distribution_integrity','installer_lifecycle_linux');
+assert(a72Distribution.includes("github.ref == 'refs/heads/test/A72'")&&a72Distribution.includes("needs.smoke.result == 'success'"),'A72 distribution integrity must be scoped to the isolated test branch and its successful smoke');
+assert(a72Distribution.includes('tools/build-webui-dist.mjs')&&a72Distribution.includes('sha256sum -c SHA256SUMS')&&a72Distribution.includes('weig-qb-webui/GIT_SHA')&&a72Distribution.includes('A72.zip'),'A72 must prove the self-contained builder identity and alias before publishing anything');
+assert(!a72Distribution.includes('gh release')&&!a72Distribution.includes('upload-artifact')&&!a72Distribution.includes('contents: write'),'A72 distribution verification must not publish a Tag, Release, or intermediate ZIP');
 const a72TestRelease=read('.github/workflows/a72-test-release.yml');
 assert(a72TestRelease.includes("contains(github.event.head_commit.message, '[A72-publish]')")&&a72TestRelease.includes('test "$actual" = "$GITHUB_SHA"'),'A72 must never publish without the final explicit marker and fresh target ref');
 assert(a72TestRelease.includes('git/ref/tags/test-A72')&&a72TestRelease.includes("gh api --method POST \"repos/$GITHUB_REPOSITORY/git/refs\"")&&a72TestRelease.includes("-f sha=\"$GITHUB_SHA\"")&&a72TestRelease.includes('--verify-tag'),'A72 one-time prerelease must reserve a previously unused Tag at exact Git SHA rather than silently reusing or moving an existing tag');
