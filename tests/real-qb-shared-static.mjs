@@ -179,6 +179,16 @@ async function test(){
  // return trip must preserve both independent sessions without carrying SID.
  assert(await first.evaluate(()=>window.WeiG.InstanceRegistry.list().length)===0,'Destination origin unexpectedly inherited the source registry');
  await first.evaluate(url=>window.WeiG.InstanceRegistry.add('Previous qB',url),qbs[0].url);
+ const returnAuthRequests={protectedGet:0,credentialPosts:0};
+ const onReturnAuthRequest=request=>{
+   try{
+     const url=new URL(request.url());
+     if(url.origin!==new URL(qbs[0].url).origin)return;
+     if(url.pathname.endsWith('/api/v2/app/preferences')&&request.method()==='GET')returnAuthRequests.protectedGet++;
+     if(url.pathname.endsWith('/api/v2/auth/login')&&request.method()==='POST')returnAuthRequests.credentialPosts++;
+   }catch{}
+ };
+ first.on('request',onReturnAuthRequest);
  const returnDocumentTask=first.waitForResponse(response=>{
    try{return new URL(response.url()).origin===new URL(qbs[0].url).origin&&response.request().isNavigationRequest()&&response.request().resourceType()==='document';}catch{return false;}
  },{timeout:20000});
@@ -191,6 +201,9 @@ async function test(){
  assert(!Object.prototype.hasOwnProperty.call(returnHeaders,'referer'),'Return navigation leaked destination qB Referer');
  await awaitRealApp(first,qbs[0],'after-return-to-original-instance');
  await first.waitForFunction(expected=>document.querySelector('#qb-version')?.textContent?.includes(expected),qbs[0].version,{timeout:20000});
+ first.off('request',onReturnAuthRequest);
+ assert(returnAuthRequests.protectedGet>0,'qB 4.6.7 Strict public entry did not perform protected same-origin session proof');
+ assert(returnAuthRequests.credentialPosts===0,'Cross-instance session recovery must not replay a password or POST auth/login');
  assert((await first.locator('#qb-version').innerText()).includes(qbs[0].version),'Returning to first qB lost the original version identity');
  assert((await context.cookies(qbs[0].url)).find(c=>c.name===qbs[0].sessionCookieName)?.value===sidA,'Original qB session changed during round trip');
  assert((await context.cookies(qbs[1].url)).find(c=>c.name===qbs[1].sessionCookieName)?.value===sidB,'Destination qB session changed during round trip');
@@ -200,7 +213,7 @@ async function test(){
  assert(roundTripSettings.every(row=>row.settings_get==='PASS'&&row.settings_source_identity==='PASS'),'Post-round-trip Settings identity lost');
  await context.close();
  fs.mkdirSync('artifacts/real-qb-full',{recursive:true});
- fs.writeFileSync('artifacts/real-qb-full/'+sha+'-shared-static.json',JSON.stringify({status:'PASS',weig_sha:sha,qb_versions:versions,scenario:'two-real-qb-one-shared-static-root',sid_isolation:'PASS',cross_origin_registry:'PASS',whole_page_switch:'PASS',return_navigation:'PASS',strict_cookie_handoff:'PASS',sessions_preserved:'PASS',settings_after_return:'PASS',shared_private_assets:'PASS',navigation_http_200:'PASS',navigation_referer_suppressed:'PASS',settings_per_origin:'PASS',private_docker_network:'internal',static_sha256:checks[0].sha256,checks,settingsChecks,roundTripSettings},null,2)+'\n');
+ fs.writeFileSync('artifacts/real-qb-full/'+sha+'-shared-static.json',JSON.stringify({status:'PASS',weig_sha:sha,qb_versions:versions,scenario:'two-real-qb-one-shared-static-root',sid_isolation:'PASS',cross_origin_registry:'PASS',whole_page_switch:'PASS',return_navigation:'PASS',strict_cookie_handoff:'PASS',protected_session_probe:'PASS',no_credential_replay:'PASS',sessions_preserved:'PASS',settings_after_return:'PASS',shared_private_assets:'PASS',navigation_http_200:'PASS',navigation_referer_suppressed:'PASS',settings_per_origin:'PASS',private_docker_network:'internal',static_sha256:checks[0].sha256,checks,settingsChecks,roundTripSettings},null,2)+'\n');
  console.log('A72 real shared static and cross-instance session PASS');
 }
 try{await test();}catch(e){console.error('A72 real shared static failed: '+String(e?.message||e));process.exitCode=1;}
