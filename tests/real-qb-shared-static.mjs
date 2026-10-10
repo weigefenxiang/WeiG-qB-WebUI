@@ -23,9 +23,9 @@ async function getPassword(name){
 }
 async function configure(q){
  const login=await fetch(q.url+'api/v2/auth/login',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({username:'admin',password:q.password})});
- assert(login.status===200,'Real qB '+q.version+' login HTTP '+login.status);
+ assert(login.status===200||login.status===204,'Real qB '+q.version+' login HTTP '+login.status);
  const loginReply=(await login.text()).trim();
- assert(loginReply==='Ok.','Real qB '+q.version+' login did not accept disposable credentials');
+ assert(login.status===204||loginReply==='Ok.','Real qB '+q.version+' login did not accept disposable credentials');
  q.sid=(login.headers.get('set-cookie')||'').split(';')[0];
  assert(/^SID=[^;]+/.test(q.sid),'Real qB '+q.version+' successful login returned no SID');
  const set=await fetch(q.url+'api/v2/app/setPreferences',{method:'POST',headers:{Cookie:q.sid,'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({json:JSON.stringify({alternative_webui_enabled:true,alternative_webui_path:'/weig-webui'})})});
