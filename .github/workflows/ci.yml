@@ -397,7 +397,7 @@ jobs:
   installer_lifecycle_linux:
     name: Linux installer lifecycle
     needs: classify
-    if: ${{ always() && ((github.event_name == 'push' && needs.classify.outputs.installer == 'true') || (github.event_name == 'workflow_dispatch' && (inputs.validation_mode == 'smoke' || inputs.validation_mode == 'candidate' || (inputs.validation_mode == 'change-aware' && needs.classify.outputs.installer == 'true')))) }}
+    if: ${{ always() && ((github.event_name == 'push' && (needs.classify.outputs.installer == 'true' || (github.ref == 'refs/heads/test/A72' && contains(github.event.head_commit.message, '[A72-platform]')))) || (github.event_name == 'workflow_dispatch' && (inputs.validation_mode == 'smoke' || inputs.validation_mode == 'candidate' || (inputs.validation_mode == 'change-aware' && needs.classify.outputs.installer == 'true')))) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -413,7 +413,7 @@ jobs:
   installer_lifecycle_busybox:
     name: Linux installer lifecycle · BusyBox ash/userland
     needs: classify
-    if: ${{ always() && ((github.event_name == 'push' && needs.classify.outputs.installer == 'true') || (github.event_name == 'workflow_dispatch' && (inputs.validation_mode == 'smoke' || inputs.validation_mode == 'candidate' || (inputs.validation_mode == 'change-aware' && needs.classify.outputs.installer == 'true')))) }}
+    if: ${{ always() && ((github.event_name == 'push' && (needs.classify.outputs.installer == 'true' || (github.ref == 'refs/heads/test/A72' && contains(github.event.head_commit.message, '[A72-platform]')))) || (github.event_name == 'workflow_dispatch' && (inputs.validation_mode == 'smoke' || inputs.validation_mode == 'candidate' || (inputs.validation_mode == 'change-aware' && needs.classify.outputs.installer == 'true')))) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -432,7 +432,7 @@ jobs:
   installer_lifecycle_windows:
     name: Windows installer lifecycle
     needs: classify
-    if: ${{ always() && ((github.event_name == 'push' && needs.classify.outputs.installer == 'true') || (github.event_name == 'workflow_dispatch' && (inputs.validation_mode == 'smoke' || inputs.validation_mode == 'candidate' || (inputs.validation_mode == 'change-aware' && needs.classify.outputs.installer == 'true')))) }}
+    if: ${{ always() && ((github.event_name == 'push' && (needs.classify.outputs.installer == 'true' || (github.ref == 'refs/heads/test/A72' && contains(github.event.head_commit.message, '[A72-platform]')))) || (github.event_name == 'workflow_dispatch' && (inputs.validation_mode == 'smoke' || inputs.validation_mode == 'candidate' || (inputs.validation_mode == 'change-aware' && needs.classify.outputs.installer == 'true')))) }}
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
@@ -1059,7 +1059,7 @@ jobs:
 
   windows_browser:
     name: Windows browser candidate
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' && github.ref == 'refs/heads/dev' }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'candidate' && github.ref == 'refs/heads/dev') || (github.event_name == 'push' && github.ref == 'refs/heads/test/A72' && contains(github.event.head_commit.message, '[A72-platform]')) }}
     runs-on: windows-2025
     needs: smoke
     env:

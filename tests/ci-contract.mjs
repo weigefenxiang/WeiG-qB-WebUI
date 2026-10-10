@@ -61,6 +61,13 @@ for(const [name,next] of [['torrent_runtime_materialize','settings_runtime_mater
   assert(job.includes("github.ref == 'refs/heads/dev'")&&!job.includes("github.ref == 'refs/heads/test/A72'"),'Writable/materializing '+name+' must remain dev-only during isolated A72');
 }
 
+for(const [jobName,next] of [['installer_lifecycle_linux','installer_lifecycle_busybox'],['installer_lifecycle_busybox','installer_lifecycle_windows'],['installer_lifecycle_windows','ui_browser'],['windows_browser','release_candidate']]){
+  const job=jobSection(ci,jobName,next);
+  assert(job.includes("[A72-platform]")&&job.includes("github.ref == 'refs/heads/test/A72'"),'Read-only A72 platform gate missing '+jobName);
+  assert(!job.includes('gh release')&&!job.includes('contents: write'),'A72 platform validation must never publish from '+jobName);
+}
+const oldCandidate=jobSection(ci,'release_candidate','native_surface_source_base');
+assert(oldCandidate.includes("github.ref == 'refs/heads/dev'")&&!oldCandidate.includes("refs/heads/test/A72"),'dev candidate publication/deployment dispatch must remain inaccessible from A72');
 const a72Distribution=jobSection(ci,'a72_distribution_integrity','installer_lifecycle_linux');
 assert(a72Distribution.includes("github.ref == 'refs/heads/test/A72'")&&a72Distribution.includes("needs.smoke.result == 'success'"),'A72 distribution integrity must be scoped to the isolated test branch and its successful smoke');
 assert(a72Distribution.includes('tools/build-webui-dist.mjs')&&a72Distribution.includes('sha256sum -c SHA256SUMS')&&a72Distribution.includes('weig-qb-webui/GIT_SHA')&&a72Distribution.includes('A72.zip'),'A72 must prove the self-contained builder identity and alias before publishing anything');
