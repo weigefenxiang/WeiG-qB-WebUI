@@ -13,6 +13,7 @@
   function asset(path){return W.buildAssetUrl?W.buildAssetUrl(path):path;}
   function rawVersion(value){return String(value||'0').trim().replace(/^v/i,'');}
   function normalizedVersion(value){return rawVersion(value).split(/[+-]/)[0];}
+  function exactWebApiIdentity(actual,base){var value=rawVersion(actual),expected=rawVersion(base);return value!=='0'&&value===expected;}
   function sameSeries(a,b){var x=parts(a),y=parts(b);return(x[0]||0)===(y[0]||0)&&(x[1]||0)===(y[1]||0);}
   function sameMajor(a,b){var x=parts(a),y=parts(b);return(x[0]||0)===(y[0]||0)&&(x[0]||0)>0;}
   function compatibleApiMajor(a,b){var x=parts(a),y=parts(b);return(x[0]||0)>0&&(x[0]||0)===(y[0]||0);}
@@ -67,7 +68,7 @@
   function sourceActionValue(action){var resolution=domainResolution('actions');if(!resolution||resolution.fallback||!data||!data.sourceActions)return null;return changeValue(data.sourceActions[String(action||'')],resolution.qbVersion);}
   function hasAction(action){return !!(action&&sourceActionValue(action));}
   function actionDescriptor(action){var key=String(action||''),spec=sourceActionValue(key);if(!spec)return null;var name=(key.split(':')[1]||'').replace(/Action$/,'');return{sourceAction:key,endpoint:name,parameters:Array.isArray(spec.parameters)?spec.parameters.map(String):[],required:Array.isArray(spec.required)?spec.required.map(String):[],optional:Array.isArray(spec.optional)?spec.optional.map(String):[],parameterOptions:spec.parameterOptions&&typeof spec.parameterOptions==='object'?Object.assign({},spec.parameterOptions):{}};}
-  function isResolutionCertified(value){return !!(value&&!value.fallback&&value.officialWeiGSupport!==false&&(value.resolutionMode==='EXACT'||value.resolutionMode==='EQUIVALENT')&&value.detectedWebApiVersion&&value.detectedWebApiVersion!=='0'&&normalizedVersion(value.detectedWebApiVersion)===normalizedVersion(value.webApiVersion));}
+  function isResolutionCertified(value){return !!(value&&!value.fallback&&value.officialWeiGSupport!==false&&(value.resolutionMode==='EXACT'||value.resolutionMode==='EQUIVALENT')&&value.detectedWebApiVersion&&value.detectedWebApiVersion!=='0'&&exactWebApiIdentity(value.detectedWebApiVersion,value.webApiVersion));}
   function isCertified(domainName){return domainName?isResolutionCertified(domainResolution(domainName)):isResolutionCertified(current);}
   // HTTP method does not define the semantics of the operation. The source
   // action is required in addition to exact inherited WebAPI identity.
@@ -75,7 +76,7 @@
   function inheritedActionProof(){
     if(!domains.actions)return false;
     var release=domainResolution('actions');
-    return !!(release&&!release.fallback&&release.resolutionMode==='INHERITED'&&release.sourceSha&&normalizedVersion(release.detectedWebApiVersion)===normalizedVersion(release.webApiVersion));
+    return !!(release&&!release.fallback&&release.resolutionMode==='INHERITED'&&release.sourceSha&&exactWebApiIdentity(release.detectedWebApiVersion,release.webApiVersion));
   }
   function allowsReadOperation(path,method){
     if(String(method||'').toUpperCase()!=='POST')return false;
