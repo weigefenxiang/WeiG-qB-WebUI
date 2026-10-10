@@ -34,8 +34,12 @@ jobs:
           set -euo pipefail
           npm ci --no-audit --no-fund
           npm test
-          npm run test:compat
           npm run test:simulator
+          # A61 separates external-source/exhaustive test:compat from the release-critical
+          # gates; those require source-stage catalogs and an upstream checkout.
+          # Preserve checked-in compatibility and Frozen translation evidence here.
+          node audits/compat-matrix.mjs
+          node audits/qb-settings-native-lkg-contract.mjs
           test "$(cat VERSION)" = "1.2.1"
           test "$(cat webui/VERSION)" = "1.2.1"
       - name: Require successful exact-SHA push CI before creating any prerelease Tag

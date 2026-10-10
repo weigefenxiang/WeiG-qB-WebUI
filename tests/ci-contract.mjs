@@ -68,7 +68,19 @@ for(const [jobName,next] of [['installer_lifecycle_linux','installer_lifecycle_b
 }
 const oldCandidate=jobSection(ci,'release_candidate','native_surface_source_base');
 assert(oldCandidate.includes("github.ref == 'refs/heads/dev'")&&!oldCandidate.includes("refs/heads/test/A72"),'dev candidate publication/deployment dispatch must remain inaccessible from A72');
+const smokeA72=jobSection(ci,'smoke','a72_prerelease_source_audit');
+assert(smokeA72.includes("if: ${{ github.ref == 'refs/heads/test/A72' }}")&&
+  smokeA72.includes('npm run test:simulator')&&
+  smokeA72.includes('node audits/compat-matrix.mjs')&&
+  smokeA72.includes('node audits/qb-settings-native-lkg-contract.mjs'),
+  'A72 smoke must test committed compatibility and simulator before publication, without changing dev behavior');
 const a72TestRelease=read('.github/workflows/a72-test-release.yml');
+assert(a72TestRelease.includes('npm test')&&a72TestRelease.includes('npm run test:simulator')&&
+  a72TestRelease.includes('node audits/compat-matrix.mjs')&&a72TestRelease.includes('node audits/qb-settings-native-lkg-contract.mjs'),
+  'A72 publisher must validate core, simulator and committed compatibility evidence before tag creation');
+assert(!a72TestRelease.includes('npm run test:compat'),
+  'A61 external-input Full Frozen/source audit cannot be silently treated as a self-contained prerelease smoke; its independent manual lane remains intact');
+
 const prerelease=jobSection(ci,'a72_prerelease_source_audit','a72_real_qb');
 assert(prerelease.includes('[A72-source]')&&prerelease.includes('repository: qbittorrent/qBittorrent')&&prerelease.includes('audits/qb-prerelease-source-audit.mjs')&&prerelease.includes('persist-credentials: false'),'A72 Beta/RC audit must use original upstream exact tags and must not mutate public stable assets');
 assert(prerelease.includes('contents: read')&&!prerelease.includes('contents: write')&&!prerelease.includes('gh release'),'A72 prerelease source observation is never a publication owner');

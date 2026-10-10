@@ -355,6 +355,13 @@ jobs:
         run: |
           $null = [scriptblock]::Create((Get-Content 'installers/install.ps1' -Raw))
           Write-Host 'PowerShell installer syntax parsed.'
+      - name: A72 prerelease committed compatibility and simulator preflight
+        if: ${{ github.ref == 'refs/heads/test/A72' }}
+        run: |
+          npm ci --no-audit --no-fund --prefer-offline
+          npm run test:simulator
+          node audits/compat-matrix.mjs
+          node audits/qb-settings-native-lkg-contract.mjs
 
 
   a72_prerelease_source_audit:
