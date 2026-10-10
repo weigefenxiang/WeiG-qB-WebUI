@@ -382,7 +382,7 @@ jobs:
           filter: blob:none
           persist-credentials: false
       - name: Audit prerelease source without admitting changes to Frozen stable
-        run: node tests/a72-prerelease-source-audit.mjs upstream-qb
+        run: node audits/qb-prerelease-source-audit.mjs upstream-qb
       - name: Retain source SHA, API version, and source-surface changes
         uses: actions/upload-artifact@v7
         with:
