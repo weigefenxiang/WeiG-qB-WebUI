@@ -637,6 +637,12 @@
     "header.instance.remove": "移除",
     "header.instance.empty": "此網址尚未儲存實例。",
     "header.instance.hint": "實例清單只儲存在目前的 WebUI 網址下。切換後會重新載入頁面，並使用目標實例各自的登入工作階段。",
-    "settings.runtime.unmappedReadOnly": "尚未辨識的 WebAPI 選項會以唯讀方式顯示，直到控件與寫入規則有來源證據。"
+    "settings.runtime.unmappedReadOnly": "尚未辨識的 WebAPI 選項會以唯讀方式顯示，直到控件與寫入規則有來源證據。",
+    "header.instance.export": "複製實例清單",
+    "header.instance.import": "匯入清單",
+    "header.instance.paste": "貼上實例清單（JSON）",
+    "header.instance.copied": "實例清單已複製。",
+    "header.instance.manual": "請從剪貼簿視窗手動複製實例清單。",
+    "header.instance.imported": "已匯入 {count} 個實例。"
   }
 }
