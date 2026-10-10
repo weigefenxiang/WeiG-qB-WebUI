@@ -435,6 +435,46 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  a72_shared_static:
+    name: A72 two real qB shared static browser isolation
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/test/A72' && contains(github.event.head_commit.message, '[A72-real-qb]') && needs.smoke.result == 'success' }}
+    needs: smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install existing Playwright dependency
+        run: npm ci --no-audit --no-fund --prefer-offline
+      - name: Verify hosted Chrome and integration syntax
+        run: |
+          command -v google-chrome
+          google-chrome --version
+          node --check tests/real-qb-shared-static.mjs
+          command -v docker
+      - name: Test shared materialized WebUI on two real qB instances
+        run: |
+          set -euo pipefail
+          node tests/real-qb-shared-static.mjs
+          evidence="artifacts/real-qb-full/$GITHUB_SHA-shared-static.json"
+          test -s "$evidence"
+          jq -e --arg sha "$GITHUB_SHA" '.status == "PASS" and .weig_sha == $sha and .sid_isolation == "PASS" and .cross_origin_registry == "PASS" and .whole_page_switch == "PASS" and (.qb_versions == ["4.6.7","5.2.4"])' "$evidence"
+      - name: Retain exact-SHA shared static evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: a72-shared-static-${{ github.sha }}
+          path: artifacts/real-qb-full/*-shared-static.json
+          if-no-files-found: warn
+          retention-days: 14
+
   a72_distribution_integrity:
     name: A72 exact-SHA distribution verification (unpublished)
     if: ${{ github.ref == 'refs/heads/test/A72' && needs.smoke.result == 'success' }}

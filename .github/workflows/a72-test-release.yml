@@ -92,6 +92,7 @@ jobs:
                 "A72 official Beta/RC source drift (read-only)",
                 "A72 isolated real qB 4.6.7 source and WebAPI smoke",
                 "A72 isolated real qB 5.2.4 source and WebAPI smoke",
+                "A72 two real qB shared static browser isolation",
                 "Linux installer lifecycle", "Linux installer lifecycle · BusyBox ash/userland",
                 "Windows installer lifecycle", "Windows browser candidate",
                 "qB admitted Settings browser aggregate",
