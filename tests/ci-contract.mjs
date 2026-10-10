@@ -72,6 +72,9 @@ const a72TestRelease=read('.github/workflows/a72-test-release.yml');
 const prerelease=jobSection(ci,'a72_prerelease_source_audit','a72_real_qb');
 assert(prerelease.includes('[A72-source]')&&prerelease.includes('repository: qbittorrent/qBittorrent')&&prerelease.includes('audits/qb-prerelease-source-audit.mjs')&&prerelease.includes('persist-credentials: false'),'A72 Beta/RC audit must use original upstream exact tags and must not mutate public stable assets');
 assert(prerelease.includes('contents: read')&&!prerelease.includes('contents: write')&&!prerelease.includes('gh release'),'A72 prerelease source observation is never a publication owner');
+const prereleaseAudit=read('audits/qb-prerelease-source-audit.mjs');
+assert(prereleaseAudit.includes('sourceBlobWitnesses')&&prereleaseAudit.includes('sourceActionDelta')&&prereleaseAudit.includes('getFreeSpaceAtPathAction')&&prereleaseAudit.includes('downloadFileAction')&&prereleaseAudit.includes('cloneRuleAction')&&prereleaseAudit.includes('exportRulesAction'),'A72 pinned Beta/RC official source deltas must be audited by the existing sole audits owner rather than a parallel test source loader');
+
 assert(a72TestRelease.includes('[A72-source]')&&a72TestRelease.includes('A72 official Beta/RC source drift (read-only)'),'Final A72 publish requires upstream prerelease source drift evidence on the same exact SHA');
 const a72RealQb=jobSection(ci,'a72_real_qb','a72_distribution_integrity');
 assert(a72RealQb.includes("github.ref == 'refs/heads/test/A72'")&&a72RealQb.includes('[A72-real-qb]')&&a72RealQb.includes("needs.smoke.result == 'success'"),'A72 real qB evidence must be explicit, exact-SHA and isolated from stable dev');
