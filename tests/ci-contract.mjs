@@ -74,6 +74,7 @@ assert(prerelease.includes('[A72-source]')&&prerelease.includes('repository: qbi
 assert(prerelease.includes('contents: read')&&!prerelease.includes('contents: write')&&!prerelease.includes('gh release'),'A72 prerelease source observation is never a publication owner');
 const prereleaseAudit=read('audits/qb-prerelease-source-audit.mjs');
 assert(prereleaseAudit.includes('extractPreferenceDescriptors')&&prereleaseAudit.includes('preferenceSourceDelta')&&prereleaseAudit.includes('writeCertified:false'),'Official qB prerelease Settings source drift must be observable and unadmitted through canonical parser, not silently treated as approved writes');
+assert(prereleaseAudit.includes('extractQbPreferencesNativeSurface')&&prereleaseAudit.includes('nativeSettingsDelta')&&prereleaseAudit.includes('ctrl.options')&&prereleaseAudit.includes('item.dependencies?.gates'),'A72 must reuse the existing exact-source Settings native renderer extraction for read-only Beta/RC control/enum/gate drift');
 
 assert(prereleaseAudit.includes('sourceBlobWitnesses')&&prereleaseAudit.includes('sourceActionDelta')&&prereleaseAudit.includes('getFreeSpaceAtPathAction')&&prereleaseAudit.includes('downloadFileAction')&&prereleaseAudit.includes('cloneRuleAction')&&prereleaseAudit.includes('exportRulesAction'),'A72 pinned Beta/RC official source deltas must be audited by the existing sole audits owner rather than a parallel test source loader');
 

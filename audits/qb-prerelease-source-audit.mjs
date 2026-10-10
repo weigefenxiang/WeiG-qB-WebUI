@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {extractPreferenceDescriptors} from '../tools/qb-source-parsers.mjs';
+import {extractQbPreferencesNativeSurface} from '../tools/qb-preferences-surface-source.mjs';
 
 const root=path.resolve(process.argv[2]||'');
 if(!fs.existsSync(path.join(root,'.git')))throw new Error('Usage: node tests/a72-prerelease-source-audit.mjs <upstream-qB-git-clone>');
@@ -135,6 +136,49 @@ const preferenceSourceDelta={
   'release-5.3.0beta1':preferenceDrift(preferenceSources['release-5.2.4'],preferenceSources['release-5.3.0beta1']),
   'release-5.3.0rc1':preferenceDrift(preferenceSources['release-5.3.0beta1'],preferenceSources['release-5.3.0rc1'])
 };
+// Native field types, source select options and gate dependencies remain
+// observation-only until the existing Settings compatibility owner admits them.
+function showOptional(tag,p){
+  try{return git('show','refs/tags/'+tag+':'+p);}catch{return'';}
+}
+function nativeIndex(tag){
+  const preferenceDescriptors=extractPreferenceDescriptors(git('show','refs/tags/'+tag+':src/webui/api/appcontroller.cpp'),'official '+tag);
+  const preferencesSource=git('show','refs/tags/'+tag+':src/webui/www/private/views/preferences.html');
+  const toolbarSource=showOptional(tag,'src/webui/www/private/views/preferencesToolbar.html');
+  const miscSource=showOptional(tag,'src/webui/www/private/scripts/misc.js');
+  const parsed=extractQbPreferencesNativeSurface({preferencesSource,toolbarSource,miscSource,preferenceDescriptors});
+  if(!Array.isArray(parsed.tabs)||parsed.tabs.length<6||parsed.mappedPreferences<30)throw new Error(tag+': official source-native Settings surface is unexpectedly incomplete');
+  const rows=new Map();
+  for(const [key,item] of Object.entries(parsed.preferences)){
+    const ctrl=item.control||{},details={
+      controlId:String(ctrl.id||''),semantic:String(ctrl.semantic||''),
+      attributes:ctrl.attributes||{},options:(ctrl.options||[]).map(option=>String(option.value??'')),
+      gates:(item.dependencies?.gates||[]).map(gate=>String(gate.controlId||'')).sort(),
+      projection:String(item.projection?.kind||''),
+      readType:item.descriptor?.readType||null,writeType:item.descriptor?.writeType||null
+    };
+    rows.set(key,details);
+  }
+  return{totalPreferences:parsed.totalPreferences,mappedPreferences:parsed.mappedPreferences,tabs:parsed.tabs.map(tab=>tab.id),rows};
+}
+const sourceNativeSurfaces=Object.fromEntries(expected.map(row=>[row.tag,nativeIndex(row.tag)]));
+function nativeDelta(before,after){
+  return{
+    added:[...after.rows.keys()].filter(key=>!before.rows.has(key)).sort(),
+    removed:[...before.rows.keys()].filter(key=>!after.rows.has(key)).sort(),
+    changed:[...after.rows.keys()].filter(key=>before.rows.has(key)&&JSON.stringify(before.rows.get(key))!==JSON.stringify(after.rows.get(key))).sort().map(key=>({
+      key,before:before.rows.get(key),after:after.rows.get(key)
+    })),
+    totalBefore:before.totalPreferences,totalAfter:after.totalPreferences,
+    mappedBefore:before.mappedPreferences,mappedAfter:after.mappedPreferences,
+    tabsBefore:before.tabs,tabsAfter:after.tabs,
+    sourceOnly:true,writeCertified:false
+  };
+}
+const nativeSettingsDelta={
+  'release-5.3.0beta1':nativeDelta(sourceNativeSurfaces['release-5.2.4'],sourceNativeSurfaces['release-5.3.0beta1']),
+  'release-5.3.0rc1':nativeDelta(sourceNativeSurfaces['release-5.3.0beta1'],sourceNativeSurfaces['release-5.3.0rc1'])
+};
 const result={
   schemaVersion:1,kind:'A72-upstream-prerelease-source-observation',
   productSha:String(process.env.GITHUB_SHA||''),
@@ -142,6 +186,7 @@ const result={
   observedPrereleaseTags:observed.sort(),
   sourceActionDelta,
   preferenceSourceDelta,
+  nativeSettingsDelta,
   snapshots
 };
 if(!/^[a-f0-9]{40}$/.test(result.productSha))throw new Error('A72 prerelease source evidence requires current exact product SHA');
