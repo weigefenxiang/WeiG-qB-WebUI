@@ -52,6 +52,10 @@ assert(direct.length===0,`Playwright ownership duplicated: ${direct.join(', ')}`
 
 const ci=read('.github/workflows/ci.yml');
 assert(ci.includes("github.ref == 'refs/heads/test/A72' && github.run_id || 'shared'")&&ci.includes("cancel-in-progress: ${{ github.ref != 'refs/heads/test/A72' }}"),'A72 unique per-run CI concurrency must preserve queued test runs without changing dev cancellation');
+const a72TestRelease=read('.github/workflows/a72-test-release.yml');
+assert(a72TestRelease.includes("contains(github.event.head_commit.message, '[A72-publish]')")&&a72TestRelease.includes('test "$actual" = "$GITHUB_SHA"'),'A72 must never publish without the final explicit marker and fresh target ref');
+assert(a72TestRelease.includes('git/ref/tags/test-A72')&&a72TestRelease.includes("gh api --method POST \"repos/$GITHUB_REPOSITORY/git/refs\"")&&a72TestRelease.includes("-f sha=\"$GITHUB_SHA\"")&&a72TestRelease.includes('--verify-tag'),'A72 one-time prerelease must reserve a previously unused Tag at exact Git SHA rather than silently reusing or moving an existing tag');
+assert(a72TestRelease.includes('release/A72.zip')&&a72TestRelease.includes('release/SHA256SUMS')&&a72TestRelease.includes('unzip -p release/A72.zip')&&a72TestRelease.includes('gh release create test-A72'),'A72 publication must use a materialized ZIP with exact-SHA and checksummed distribution identity');
 assert(ci.includes('node tests/qb-torrent-native-source-contract.mjs'),'Canonical Torrent/Action materializer must gate old qB native UI and locale facts');
 assert(!ci.includes('[candidate]'),'Candidate must be workflow_dispatch-only; retired commit-message marker must not return');
 const pages=read('.github/workflows/pages.yml'),pagesBuild=read('simulator/build/build-site.mjs');

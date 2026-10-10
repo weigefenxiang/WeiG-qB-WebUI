@@ -57,6 +57,14 @@ jobs:
             echo 'test-A72 Prerelease exists; refusing to replace immutable test assets' >&2
             exit 1
           fi
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/test-A72" >/dev/null 2>&1; then
+            echo 'test-A72 tag exists; refusing to repoint or attach assets to an existing tag' >&2
+            exit 1
+          fi
+          # Atomically reserve the previously unused Tag at the already-verified exact SHA.
+          # If the asset upload fails, the Tag remains for explicit recovery; never silently rewrite it.
+          gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+            -f ref='refs/tags/test-A72' -f sha="$GITHUB_SHA" >/dev/null
           gh release create test-A72 \
             release/A72.zip \
             release/weig-qb-webui.zip \
@@ -68,5 +76,5 @@ jobs:
             --target "$GITHUB_SHA" \
             --title "WeiG WebUI A72 (1.2.1 test)" \
             --notes "A72 isolated test build, exact Git SHA $GITHUB_SHA. This is not a stable release." \
-            --prerelease --latest=false
+            --prerelease --latest=false --verify-tag
           echo "A72: https://github.com/$GITHUB_REPOSITORY/releases/download/test-A72/A72.zip"
