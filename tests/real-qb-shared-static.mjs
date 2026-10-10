@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import {execFileSync} from 'node:child_process';
+import {execFileSync,spawnSync} from 'node:child_process';
 import {launchBrowser} from './browser-driver.mjs';
 const sha=process.env.GITHUB_SHA||'',versions=['4.6.7','5.2.4'];
 const id='weig-a72-shared-'+process.pid+'-'+Date.now();
@@ -18,7 +18,7 @@ async function ready(base){
  throw Error('Real qB listener unavailable');
 }
 async function getPassword(name){
- for(let i=0;i<30;i++){const m=sh('docker',['logs',name]).match(/temporary password is provided for this session:\s*(\S+)/i);if(m)return m[1];await sleep(1000);}
+ for(let i=0;i<30;i++){const logs=spawnSync('docker',['logs',name],{encoding:'utf8'});assert(logs.status===0,'Cannot inspect disposable qB startup logs');const m=(String(logs.stdout||'')+'\n'+String(logs.stderr||'')).match(/temporary password is provided for this session:\s*(\S+)/i);if(m)return m[1];await sleep(1000);}
  return 'adminadmin';
 }
 async function configure(q){
