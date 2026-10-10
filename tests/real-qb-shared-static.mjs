@@ -44,6 +44,21 @@ async function enter(context,q){
  assert((await page.locator('#qb-version').innerText()).includes(q.version),'Browser qB version mismatch');
  return page;
 }
+async function verifyInstanceSettings(page,q){
+ await page.locator('#app-nav [data-route="settings"]').click();
+ await page.waitForFunction(()=>location.hash.includes('settings'),null,{timeout:20000});
+ await page.locator('#settings-content[data-settings-renderer="canonical"]').waitFor({timeout:20000});
+ const snapshot=await page.evaluate(async origin=>{
+   const identity=window.WeiG?.CapabilityRegistry?.releaseIdentity?.();
+   const res=await fetch(new URL('api/v2/app/preferences',origin),{credentials:'same-origin'});
+   if(res.status!==200)return{identity,status:res.status,keys:0};
+   const prefs=await res.json();
+   return{identity,status:res.status,keys:Object.keys(prefs||{}).length,hasAltPath:Object.prototype.hasOwnProperty.call(prefs||{},'alternative_webui_path')};
+ },q.url);
+ assert(snapshot.status===200&&snapshot.keys>0&&snapshot.hasAltPath,'Real qB '+q.version+' authenticated Settings GET unavailable');
+ assert(snapshot.identity&&snapshot.identity.detectedQbVersion===q.version,'Real qB '+q.version+' Settings retained wrong CapabilityRegistry identity');
+ return{qb_version:q.version,settings_get:'PASS',settings_source_identity:'PASS'};
+}
 async function test(){
  assert(/^[a-f0-9]{40}$/i.test(sha)&&sh('git',['rev-parse','HEAD'])===sha,'Exact SHA identity missing');
  assert(fs.readFileSync('VERSION','utf8').trim()==='1.2.1','A72 VERSION drift');
@@ -88,6 +103,7 @@ async function test(){
  const first=await enter(context,qbs[0]);
  assert((await context.cookies(qbs[1].url)).every(c=>c.name!==qbs[0].sessionCookieName),'First instance session cookie leaked to second qB host');
  const second=await enter(context,qbs[1]);
+ const settingsChecks=await Promise.all([verifyInstanceSettings(first,qbs[0]),verifyInstanceSettings(second,qbs[1])]);
  const sidA=(await context.cookies(qbs[0].url)).find(c=>c.name===qbs[0].sessionCookieName)?.value;
  const sidB=(await context.cookies(qbs[1].url)).find(c=>c.name===qbs[1].sessionCookieName)?.value;
  assert(sidA&&sidB&&sidA!==sidB,'SID identities overlap');
@@ -102,7 +118,7 @@ async function test(){
  assert((await first.locator('#qb-version').innerText()).includes(qbs[1].version),'Instance navigation lost destination identity');
  await context.close();
  fs.mkdirSync('artifacts/real-qb-full',{recursive:true});
- fs.writeFileSync('artifacts/real-qb-full/'+sha+'-shared-static.json',JSON.stringify({status:'PASS',weig_sha:sha,qb_versions:versions,scenario:'two-real-qb-one-shared-static-root',sid_isolation:'PASS',cross_origin_registry:'PASS',whole_page_switch:'PASS',private_docker_network:'internal',static_sha256:checks[0].sha256,checks},null,2)+'\n');
+ fs.writeFileSync('artifacts/real-qb-full/'+sha+'-shared-static.json',JSON.stringify({status:'PASS',weig_sha:sha,qb_versions:versions,scenario:'two-real-qb-one-shared-static-root',sid_isolation:'PASS',cross_origin_registry:'PASS',whole_page_switch:'PASS',settings_per_origin:'PASS',private_docker_network:'internal',static_sha256:checks[0].sha256,checks,settingsChecks},null,2)+'\n');
  console.log('A72 real shared static and cross-instance session PASS');
 }
 try{await test();}catch(e){console.error('A72 real shared static failed: '+String(e?.message||e));process.exitCode=1;}
