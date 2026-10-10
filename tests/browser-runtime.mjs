@@ -51,7 +51,12 @@ try{
     const context=await browser.newContext({viewport:{width:1366,height:768},locale:'en-US'}),page=await context.newPage(),errors=[],entryRequests=[];
     page.on('request',req=>{try{const u=new URL(req.url());if(u.pathname.startsWith('/'+name+'/'))entryRequests.push(u.pathname.slice(0,130));}catch{}});
     page.on('pageerror',e=>errors.push(String(e)));page.on('console',m=>{if(m.type()==='error'&&!/favicon|Wei\.G\.ico/i.test(m.text()))errors.push(m.text());});
-    await page.goto(`http://${host}:${port}/${name}/login.html`,{waitUntil:'networkidle'});const initialErrors=errors.splice(0);
+    const protected403=page.waitForResponse(response=>{
+      try{return new URL(response.url()).pathname===`/${name}/api/v2/app/preferences`&&response.status()===403;}catch{return false;}
+    },{timeout:12000});
+    await page.goto(`http://${host}:${port}/${name}/login.html`,{waitUntil:'networkidle'});
+    await protected403; // A real denied request, not console output or navigation timing, is the security oracle.
+    const initialErrors=errors.splice(0);
     if(v.probeAfterLogout!==1){
       const entry=await page.evaluate(()=>({path:location.pathname,state:document.readyState,sessionContract:typeof window.WeiG?.SessionContract?.probe==='function',entryLocale:!!window.WeiGEntryLocale,errorText:document.querySelector('#error')?.textContent?.slice(0,160),scripts:[...document.querySelectorAll('script[src]')].map(x=>new URL(x.src).pathname).slice(0,12)}));
       throw new Error(`${name}: protected probe count differs: ${v.probeAfterLogout}; browserErrors=${JSON.stringify(initialErrors)}; requestPaths=${JSON.stringify(entryRequests.slice(0,24))}; entry=${JSON.stringify(entry)}`);
