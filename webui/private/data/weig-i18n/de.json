@@ -438,6 +438,14 @@
     "settings.readFailed": "Einstellungen konnten nicht geladen werden: {error}",
     "app.refresh": "Aktualisieren",
     "app.close": "Schließen",
-    "app.loading": "Wird geladen…"
+    "app.loading": "Wird geladen…",
+    "header.instance.title": "Instanzen",
+    "header.instance.name": "Instanzname",
+    "header.instance.url": "Instanz-URL",
+    "header.instance.add": "Instanz hinzufügen",
+    "header.instance.remove": "Entfernen",
+    "header.instance.empty": "Für diese Adresse sind keine Instanzen gespeichert.",
+    "header.instance.hint": "Instanzadressen werden nur für diese WebUI-Adresse gespeichert. Beim Wechsel wird die Seite neu geladen und die Anmeldung der Zielinstanz verwendet.",
+    "settings.runtime.unmappedReadOnly": "Unbekannte WebAPI-Optionen werden schreibgeschützt angezeigt, bis ihre Steuerelement- und Schreibregeln durch den Quellcode belegt sind."
   }
 }

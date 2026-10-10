@@ -453,6 +453,14 @@
     "app.back": "戻る",
     "app.refresh": "更新",
     "app.close": "閉じる",
-    "app.loading": "読み込み中…"
+    "app.loading": "読み込み中…",
+    "header.instance.title": "インスタンス",
+    "header.instance.name": "インスタンス名",
+    "header.instance.url": "インスタンスの URL",
+    "header.instance.add": "インスタンスを追加",
+    "header.instance.remove": "削除",
+    "header.instance.empty": "このアドレスに保存されたインスタンスはありません。",
+    "header.instance.hint": "インスタンスのアドレスは現在の WebUI のアドレスにのみ保存されます。切り替え時はページを再読み込みし、切り替え先のログインセッションを使用します。",
+    "settings.runtime.unmappedReadOnly": "未対応の WebAPI オプションは、操作と書き込みの仕様をソースコードで確認できるまで読み取り専用で表示します。"
   }
 }

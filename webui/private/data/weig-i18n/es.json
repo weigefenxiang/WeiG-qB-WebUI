@@ -451,6 +451,14 @@
     "settings.readFailed": "No se pudieron cargar los ajustes: {error}",
     "app.refresh": "Actualizar",
     "app.close": "Cerrar",
-    "app.loading": "Cargando…"
+    "app.loading": "Cargando…",
+    "header.instance.title": "Instancias",
+    "header.instance.name": "Nombre de la instancia",
+    "header.instance.url": "URL de la instancia",
+    "header.instance.add": "Añadir instancia",
+    "header.instance.remove": "Quitar",
+    "header.instance.empty": "No hay instancias guardadas para esta dirección.",
+    "header.instance.hint": "Las direcciones de las instancias se guardan solo para esta dirección de WebUI. Al cambiar se recarga la página y se utiliza la sesión de la instancia de destino.",
+    "settings.runtime.unmappedReadOnly": "Las opciones de WebAPI no reconocidas se muestran solo para lectura hasta verificar en el código sus controles y reglas de escritura."
   }
 }
