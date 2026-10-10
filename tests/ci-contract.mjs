@@ -51,6 +51,7 @@ const direct=playwrightFiles.filter(rel=>rel!=='tests/browser-driver.mjs'&&/from
 assert(direct.length===0,`Playwright ownership duplicated: ${direct.join(', ')}`);
 
 const ci=read('.github/workflows/ci.yml');
+assert(ci.includes("github.ref == 'refs/heads/test/A72' && github.run_id || 'shared'")&&ci.includes("cancel-in-progress: ${{ github.ref != 'refs/heads/test/A72' }}"),'A72 unique per-run CI concurrency must preserve queued test runs without changing dev cancellation');
 assert(ci.includes('node tests/qb-torrent-native-source-contract.mjs'),'Canonical Torrent/Action materializer must gate old qB native UI and locale facts');
 assert(!ci.includes('[candidate]'),'Candidate must be workflow_dispatch-only; retired commit-message marker must not return');
 const pages=read('.github/workflows/pages.yml'),pagesBuild=read('simulator/build/build-site.mjs');
