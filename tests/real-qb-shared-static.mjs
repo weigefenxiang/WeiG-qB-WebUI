@@ -59,10 +59,9 @@ async function enter(context,q){
  assert((await page.locator('#qb-version').innerText()).includes(q.version),'Browser qB version mismatch');
  return page;
 }
-// Fetch private materialized bytes in the authenticated browser, never with
-// a pre-Alternative-WebUI bootstrap SID that qB 4.x may have invalidated.
-async function browserPrivateAssetDigests(page,q){
- const paths=['bootstrap-plan.json','scripts/runtime-assets.js','scripts/capabilities.js'];
+// Materialized phase bundles replace individual source scripts. Read only
+// paths in the canonical archived bootstrap plan, using authenticated Chrome.
+async function browserPrivateAssetDigests(page,q,paths){
  const responses=await page.evaluate(async assets=>{
    const out=[];
    for(const asset of assets){
@@ -111,6 +110,18 @@ async function test(){
  assert(fs.readFileSync(path.join(shared,'GIT_SHA'),'utf8').trim()===sha,'Archive SHA drift');
  assert(fs.readFileSync(path.join(shared,'VERSION'),'utf8').trim()==='1.2.1','Archive VERSION drift');
  sh('node',['tools/qb-runtime-copy-product.mjs','validate',path.join(shared,'private/data')]);
+ const materializedPlan=JSON.parse(fs.readFileSync(path.join(shared,'private/bootstrap-plan.json'),'utf8'));
+ assert(materializedPlan.schemaVersion===1&&Array.isArray(materializedPlan.phases),'Canonical materialized bootstrap plan missing');
+ const assetPaths=['bootstrap-plan.json','scripts/runtime-assets.js'];
+ for(const name of ['transport','capability-data','shared-ui']){
+   const phase=materializedPlan.phases.find(row=>row.name===name);
+   assert(phase&&Array.isArray(phase.scripts)&&phase.scripts.length>0,'Canonical materialized phase missing: '+name);
+   for(const asset of phase.scripts){
+     assert(/^scripts\/[a-z0-9-]+\.js$/.test(asset),'Unexpected materialized JS path: '+asset);
+     assert(fs.statSync(path.join(shared,'private',asset)).isFile(),'Materialized JS file absent: '+asset);
+     if(!assetPaths.includes(asset))assetPaths.push(asset);
+   }
+ }
  sh('docker',['network','create','--internal',id]);
  const qbs=[];
  for(const version of versions){
@@ -149,7 +160,7 @@ async function test(){
  for(const [i,q] of qbs.entries()){
    const row=checks.find(item=>item.qb_version===q.version);
    assert(!!row,'Missing real qB distribution fact for '+q.version);
-   row.private_asset_sha256=await browserPrivateAssetDigests(i===0?first:second,q);
+   row.private_asset_sha256=await browserPrivateAssetDigests(i===0?first:second,q,assetPaths);
  }
  assert(JSON.stringify(checks[0].private_asset_sha256)===JSON.stringify(checks[1].private_asset_sha256),'Real authenticated browsers served nonidentical private bootstrap/capability bytes');
  const settingsChecks=await Promise.all([verifyInstanceSettings(first,qbs[0]),verifyInstanceSettings(second,qbs[1])]);
