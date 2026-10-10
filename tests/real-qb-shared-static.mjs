@@ -64,15 +64,22 @@ async function verifyInstanceSettings(page,q){
  await page.waitForFunction(()=>location.hash.includes('settings'),null,{timeout:20000});
  await page.locator('#settings-content[data-settings-renderer="canonical"]').waitFor({timeout:20000});
  const snapshot=await page.evaluate(async origin=>{
-   const identity=window.WeiG?.CapabilityRegistry?.releaseIdentity?.();
-   const res=await fetch(new URL('api/v2/app/preferences',origin),{credentials:'same-origin'});
-   if(res.status!==200)return{identity,status:res.status,keys:0};
-   const prefs=await res.json();
-   return{identity,status:res.status,keys:Object.keys(prefs||{}).length,hasAltPath:Object.prototype.hasOwnProperty.call(prefs||{},'alternative_webui_path')};
+   const registry=window.WeiG?.CapabilityRegistry;
+   const identity=registry?.releaseIdentity?.(),settingsDomain=registry?.domainResolution?.('settings');
+   const [res,webApi]=await Promise.all([
+     fetch(new URL('api/v2/app/preferences',origin),{credentials:'same-origin',cache:'no-store'}),
+     fetch(new URL('api/v2/app/webapiVersion',origin),{credentials:'same-origin',cache:'no-store'})
+   ]);
+   if(res.status!==200||webApi.status!==200)return{identity,settingsDomain,status:res.status,apiStatus:webApi.status,keys:0};
+   const prefs=await res.json(),apiVersion=(await webApi.text()).trim();
+   return{identity,settingsDomain,status:res.status,apiStatus:webApi.status,apiVersion,keys:Object.keys(prefs||{}).length,hasAltPath:Object.prototype.hasOwnProperty.call(prefs||{},'alternative_webui_path')};
  },q.url);
  assert(snapshot.status===200&&snapshot.keys>0&&snapshot.hasAltPath,'Real qB '+q.version+' authenticated Settings GET unavailable');
+ assert(snapshot.apiStatus===200&&/^\d+\.\d+/.test(snapshot.apiVersion),'Real qB '+q.version+' WebAPI version GET unavailable');
  assert(snapshot.identity&&snapshot.identity.detectedQbVersion===q.version,'Real qB '+q.version+' Settings retained wrong CapabilityRegistry identity');
- return{qb_version:q.version,settings_get:'PASS',settings_source_identity:'PASS'};
+ assert(snapshot.identity.detectedWebApiVersion===snapshot.apiVersion,'Real qB '+q.version+' registry used another server WebAPI identity');
+ assert(snapshot.settingsDomain&&snapshot.settingsDomain.fallback===false&&snapshot.settingsDomain.detectedWebApiVersion===snapshot.apiVersion,'Real qB '+q.version+' Settings mapped to unproven source domain');
+ return{qb_version:q.version,webapi_version:snapshot.apiVersion,settings_get:'PASS',settings_source_identity:'PASS',settings_domain_source:'PASS'};
 }
 async function test(){
  assert(/^[a-f0-9]{40}$/i.test(sha)&&sh('git',['rev-parse','HEAD'])===sha,'Exact SHA identity missing');
