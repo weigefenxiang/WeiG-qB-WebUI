@@ -311,6 +311,29 @@ test "$(backup_record_read "$FIRST_BACKUP" had-webui)" = 0
 backup_record_read "$FIRST_BACKUP" qBittorrent.conf | grep -Fx 'WebUI\AlternativeUIEnabled=false' >/dev/null
 backup_record_read "$FIRST_BACKUP" qBittorrent.conf | grep -Fx 'WebUI\RootFolder=/original/webui' >/dev/null
 
+# A tampered published checksum must fail before touching the installed
+# WebUI, qB configuration, or the last-good rollback pointer.
+RELEASE_TWO_SUMS="$FIXTURES/v9.9.91/SHA256SUMS"
+CHECKSUM_DENIAL_CFG_HASH=$(sha256sum "$CFG" | awk '{print $1}')
+CHECKSUM_DENIAL_BACKUP_HASH=$(sha256sum "$FIRST_BACKUP" | awk '{print $1}')
+CHECKSUM_DENIAL_BACKUPS=$(find "$STATE/backups" -type f -print | LC_ALL=C sort)
+CHECKSUM_DENIAL_DEST=$(cat "$STATE/last-dest")
+cp "$RELEASE_TWO_SUMS" "$TMP/release-two-valid-SHA256SUMS"
+printf '%064d  manifest.json\n' 0 > "$RELEASE_TWO_SUMS"
+if run_installer -version "$VERSION_TWO" -o "$DEST" > "$TMP/checksum-denial.log" 2>&1; then
+  echo "Installer accepted a release whose manifest checksum was forged." >&2
+  exit 1
+fi
+grep -E 'SHA256 verification failed|SHA256SUMS' "$TMP/checksum-denial.log" >/dev/null
+cp "$TMP/release-two-valid-SHA256SUMS" "$RELEASE_TWO_SUMS"
+assert_install "$VERSION_ONE" "$SHA_ONE" release-one
+assert_config_enabled
+test "$(cat "$STATE/last-backup")" = "$FIRST_BACKUP"
+test "$(cat "$STATE/last-dest")" = "$CHECKSUM_DENIAL_DEST"
+test "$(sha256sum "$CFG" | awk '{print $1}')" = "$CHECKSUM_DENIAL_CFG_HASH"
+test "$(sha256sum "$FIRST_BACKUP" | awk '{print $1}')" = "$CHECKSUM_DENIAL_BACKUP_HASH"
+test "$(find "$STATE/backups" -type f -print | LC_ALL=C sort)" = "$CHECKSUM_DENIAL_BACKUPS"
+
 CFG_BEFORE_PLAIN_UPDATE=$(sha256sum "$CFG" | awk '{print $1}')
 sleep 1
 run_installer -version "$VERSION_TWO" -o "$DEST"
