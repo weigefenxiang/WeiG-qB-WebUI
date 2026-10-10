@@ -58,9 +58,23 @@ untrusted.items.push({name:'Remote collision',url:'https://shared.example:9090/'
 saved.set('weig.instances.v1',JSON.stringify(untrusted));
 assert.deepEqual(Array.from(I.list(),x=>x.name),['NAS renamed','VPS','Remote'],'older saved conflicting entries must be excluded without persisting a mutation');
 assert.equal(JSON.parse(saved.get('weig.instances.v1')).items.length,4,'a read must not silently rewrite persisted user data');
+const compromised=saved.get('weig.instances.v1');
+assert.throws(()=>I.add('Would drop old entries','https://fresh.example/'),/refusing to overwrite/,'new writes must not silently discard rejected historical entries');
+assert.throws(()=>I.remove('https://shared.example:8080/'),/refusing to overwrite/,'removing a safe entry must not wipe unrelated rejected records');
+assert.throws(()=>I.importList(JSON.stringify({schemaVersion:1,items:[{name:'Another',url:'https://other.example/'}]})),/refusing to overwrite/,'import must not mutate an unsafe historical snapshot');
+assert.equal(saved.get('weig.instances.v1'),compromised,'blocked mutations must preserve raw storage bytes');
+saved.set('weig.instances.v1',JSON.stringify({schemaVersion:1,items:Array.from(I.list())}));
 I.remove('https://shared.example:8080/');
 for(const bad of ['javascript:alert(1)','https://user:pw@x.example/','https://x.example/?secret=1','https://x.example/#token','http://unsafe.example/','https://hub.example:8443/','https://hub.example/qb2/','https://nas.example/api/v2/app/version']){
   assert.throws(()=>I.add('bad',bad),'unsafe instance address must fail: '+bad);
+}
+for(const raw of ['{unparseable',JSON.stringify({schemaVersion:2,items:[{name:'Future',url:'https://future.example/'}]}),JSON.stringify({schemaVersion:1,items:[{name:'Existing',url:'https://good.example/',secret:'do-not-erase'}]})]){
+  const old=saved.get('weig.instances.v1');
+  saved.set('weig.instances.v1',raw);
+  assert.equal(I.list().length,raw.startsWith('{unparseable')?0:raw.includes('schemaVersion":2')?0:0,'a malformed/future saved snapshot must never be mistaken for authorized writable state');
+  assert.throws(()=>I.add('New','https://new.example/'),/refusing to overwrite/);
+  assert.equal(saved.get('weig.instances.v1'),raw,'future or damaged schema must survive rejected mutation byte-for-byte');
+  saved.set('weig.instances.v1',old);
 }
 const portable=I.exportList();
 const portableData=JSON.parse(portable);

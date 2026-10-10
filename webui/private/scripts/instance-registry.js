@@ -39,21 +39,35 @@
       if(target.origin===other.origin&&target.pathname!==other.pathname)throw new Error('Same-origin instances with different paths require a verified session-isolating gateway.');
     });
   }
-  function load(){
-    var parsed;
-    try{parsed=JSON.parse(store&&store.get(KEY,null)||'null');}catch(_error){return[];}
-    if(!parsed||parsed.schemaVersion!==1||!Array.isArray(parsed.items))return[];
+  function load(strict){
+    var raw,parsed;
+    try{raw=store&&store.get(KEY,null);}catch(_error){
+      if(strict)throw new Error('Cannot read saved instances; refusing to overwrite them.');
+      return[];
+    }
+    if(raw===null||raw===undefined||raw==='')return[];
+    try{parsed=JSON.parse(raw);}catch(_error){
+      if(strict)throw new Error('Saved instance JSON is damaged; refusing to overwrite it.');
+      return[];
+    }
+    if(!parsed||Array.isArray(parsed)||typeof parsed!=='object'||parsed.schemaVersion!==1||!Array.isArray(parsed.items)||Object.keys(parsed).some(function(key){return key!=='schemaVersion'&&key!=='items';})){
+      if(strict)throw new Error('Saved instance schema is unsupported; refusing to overwrite it.');
+      return[];
+    }
+    if(strict&&parsed.items.length>LIMIT)throw new Error('Saved instance list exceeds the safe limit; refusing to truncate it.');
     var seen=new Set(),next=[];
     parsed.items.slice(0,LIMIT).forEach(function(x){
-      if(!x||typeof x.name!=='string'||typeof x.url!=='string')return;
-      var name=x.name.trim().slice(0,48);
-      if(!name)return;
       try{
+        if(!x||Array.isArray(x)||typeof x!=='object'||Object.keys(x).some(function(key){return key!=='name'&&key!=='url';})||typeof x.name!=='string'||typeof x.url!=='string')throw new Error('Unsupported entry.');
+        var name=x.name.trim();
+        if(!name||name.length>48)throw new Error('Invalid instance name.');
         var url=canonicalUrl(x.url);
-        if(seen.has(url))return;
+        if(seen.has(url))throw new Error('Duplicate instance.');
         assertIsolated(next,url);
         seen.add(url);next.push({name:name,url:url});
-      }catch(_error){}
+      }catch(_error){
+        if(strict)throw new Error('Saved instances contain unsafe or conflicting entries; refusing to overwrite them.');
+      }
     });
     return next;
   }
@@ -64,14 +78,14 @@
     name=String(name||'').trim().slice(0,48);
     if(!name)throw new Error('Instance name is required.');
     url=canonicalUrl(url);
-    var items=load();assertIsolated(items,url);var idx=items.findIndex(function(x){return x.url===url;});
+    var items=load(true);assertIsolated(items,url);var idx=items.findIndex(function(x){return x.url===url;});
     if(idx>=0)items[idx]={name:name,url:url};
     else{if(items.length>=LIMIT)throw new Error('Instance list is full.');items.push({name:name,url:url});}
     write(items);
     return{name:name,url:url};
   }
   function remove(url){
-    var canonical=canonicalUrl(url),items=load(),next=items.filter(function(x){return x.url!==canonical;});
+    var canonical=canonicalUrl(url),items=load(true),next=items.filter(function(x){return x.url!==canonical;});
     if(next.length!==items.length)write(next);
     return next.length!==items.length;
   }
@@ -81,7 +95,7 @@
     var input;
     try{input=JSON.parse(text);}catch(_error){throw new Error('Instance list must be valid JSON.');}
     if(!input||Array.isArray(input)||typeof input!=='object'||input.schemaVersion!==1||!Array.isArray(input.items)||input.items.length>LIMIT||Object.keys(input).some(function(key){return key!=='schemaVersion'&&key!=='items';}))throw new Error('Unsupported instance list schema.');
-    var next=load(),seen=new Set(),added=0,updated=0;
+    var next=load(true),seen=new Set(),added=0,updated=0;
     input.items.forEach(function(row){
       if(!row||typeof row!=='object'||Array.isArray(row)||Object.keys(row).some(function(key){return key!=='name'&&key!=='url';})||typeof row.name!=='string'||typeof row.url!=='string')throw new Error('Instance list contains unsupported fields.');
       var name=row.name.trim();
