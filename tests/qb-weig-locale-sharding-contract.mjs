@@ -38,6 +38,7 @@ for(const locale of overlays){
   assert.equal(data.schemaVersion,1);assert.equal(data.source,'WeiG-runtime-locale-overlay');assert.equal(data.locale,locale);
   assert.ok(data.messages&&typeof data.messages==='object'&&!Array.isArray(data.messages));
   assert.ok(Object.keys(data.messages).length>0,locale+' overlay must contain translated deltas');
+  if(locale==='fr')assert.equal(data.messages['header.instance.title'],'Gestion des instances','French A72 instance heading must be distinct from English');
   for(const [key,value] of Object.entries(data.messages)){
     assert.ok(Object.hasOwn(en,key),locale+' overlay contains unknown key '+key);
     assert.notEqual(value,en[key],locale+' overlay must not duplicate the English baseline for '+key);

@@ -443,7 +443,7 @@
     "app.refresh": "Actualiser",
     "app.close": "Fermer",
     "app.loading": "Chargement…",
-    "header.instance.title": "Instances",
+    "header.instance.title": "Gestion des instances",
     "header.instance.name": "Nom de l’instance",
     "header.instance.url": "URL de l’instance",
     "header.instance.add": "Ajouter une instance",
