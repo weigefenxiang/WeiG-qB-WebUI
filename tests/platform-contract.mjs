@@ -120,6 +120,8 @@ assert.doesNotMatch(ps,/Set-Content -Path \$cfg -Value \$text -Encoding UTF8/,'W
 assert.match(ps,/function Move-OutOfInstallTarget/,'Windows installer must protect self-hosted installs whose shell starts inside the destination directory');
 assert.match(ps,/Working directory moved outside install target before atomic swap/,'Windows installer must expose the self-hosted directory escape for diagnostics');
 assert.ok(ps.indexOf('Move-OutOfInstallTarget $Destination')<ps.indexOf('Install-WebUiStage $new $Destination'),'Windows installer must leave a self-hosted working directory before the shared live deployment primitive mutates files in place');
+assert.match(ps,/if\(\$Mode -eq 'Rollback'\)\{[\s\S]*?New-Item -ItemType Directory -Force -Path \$Backups/,'Windows rollback preserves the explicit legacy-state initialization');
+assert.match(ps,/function Backup-Current\(\[string\]\$ConfigPath=''\) \{\s*New-Item -ItemType Directory -Force -Path \$Backups/,'Windows backup root is created only when Backup-Current is invoked');
 const installStart=ps.indexOf('$tmp=Join-Path ([IO.Path]::GetTempPath()) ("weig-qb-"+');
 assert.ok(installStart>=0,'Windows installer install payload staging was not found');
 const installFlow=ps.slice(installStart);

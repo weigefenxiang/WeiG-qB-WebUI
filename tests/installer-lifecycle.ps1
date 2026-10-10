@@ -190,6 +190,27 @@ try {
     }
   }
 
+  # A bad checksum on a fresh installation must not even create an empty backup root.
+  $freshSum=Join-Path (Join-Path $Fixtures "v$VersionOne") 'SHA256SUMS'
+  $freshGoodSum=[IO.File]::ReadAllBytes($freshSum)
+  $freshCfgHash=(Get-FileHash -Algorithm SHA256 -LiteralPath $Cfg).Hash
+  Assert-True (!(Test-Path -LiteralPath $State)) 'Unexpected pre-install state directory.'
+  try {
+    Write-Utf8NoBom $freshSum (('0' * 64)+"  WeiG-qB-WebUI.zip"+[Environment]::NewLine)
+    $freshChecksumRejected=$false
+    try {
+      & $Installer -Version $VersionOne -Configure -o $Destination
+    } catch {
+      $freshChecksumRejected=($_.Exception.Message -like '*SHA256 verification failed*')
+    }
+    Assert-True $freshChecksumRejected 'Fresh install accepted tampered checksum.'
+    Assert-True (!(Test-Path -LiteralPath $State)) 'Rejected fresh install created installer backup state.'
+    Assert-True (!(Test-Path -LiteralPath $Destination)) 'Rejected fresh install created WebUI destination.'
+    Assert-True ((Get-FileHash -Algorithm SHA256 -LiteralPath $Cfg).Hash -eq $freshCfgHash) 'Rejected fresh install changed qB config.'
+  } finally {
+    [IO.File]::WriteAllBytes($freshSum,$freshGoodSum)
+  }
+
   & $Installer -Version $VersionOne -Configure -o $Destination
   Assert-Install $VersionOne $ShaOne 'release-one'
   Assert-ConfigEnabled

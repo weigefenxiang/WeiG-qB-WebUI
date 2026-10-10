@@ -125,7 +125,10 @@ $State=Join-Path $env:APPDATA 'weig-qb-webui'
 $LegacyState=Join-Path $env:APPDATA 'WeiG_qB-WebUI'
 $Backups=Join-Path $State 'backups'
 $LegacyBackups=Join-Path $LegacyState 'backups'
-New-Item -ItemType Directory -Force -Path $Backups | Out-Null
+if($Mode -eq 'Rollback'){
+  # Preserve historical rollback-state migration without creating state for unverified installs.
+  New-Item -ItemType Directory -Force -Path $Backups | Out-Null
+}
 
 function Get-InstallerStateMarker([string]$Name) {
   foreach($root in @($State,$LegacyState)){
@@ -930,6 +933,7 @@ function Restore-WebUiBackup([string]$Backup,[string]$Target) {
 }
 
 function Backup-Current([string]$ConfigPath='') {
+  New-Item -ItemType Directory -Force -Path $Backups | Out-Null
   $b=New-BackupArchivePath
   $lock="$b.lock"
   $record=Join-Path ([IO.Path]::GetTempPath()) ("weig-qb-backup-record-"+[guid]::NewGuid().ToString('N'))
