@@ -24,6 +24,28 @@ assert.equal(I.list()[0].name,'NAS renamed');
 for(const bad of ['javascript:alert(1)','https://user:pw@x.example/','https://x.example/?secret=1','https://x.example/#token','http://unsafe.example/','https://hub.example:8443/','https://hub.example/qb2/','https://nas.example/api/v2/app/version']){
   assert.throws(()=>I.add('bad',bad),'unsafe instance address must fail: '+bad);
 }
+const portable=I.exportList();
+const portableData=JSON.parse(portable);
+assert.equal(portableData.schemaVersion,1);
+assert.deepEqual(portableData.items.map(x=>x.name),['NAS renamed','VPS']);
+const otherSaved=new Map(),otherWindow={location:{href:'https://vps.example/private/index.html',assign(){}},WeiG:{StorageRuntime:{local:{get:(k,d)=>otherSaved.has(k)?otherSaved.get(k):d,set:(k,v)=>{otherSaved.set(k,v);return true;}}}}};
+vm.runInNewContext(source,{window:otherWindow,URL});
+const other=otherWindow.WeiG.InstanceRegistry;
+const first=other.importList(portable);
+assert.equal(first.added,2,'portable nonsecret list should initialize a different origin without accessing Cookies');
+assert.equal(other.list().length,2);
+assert.equal(other.importList(portable).updated,2,'reimport must update known entries without duplicating them');
+const snapshot=other.exportList();
+for(const invalid of [
+  '{bad json',JSON.stringify({schemaVersion:2,items:[]}),
+  JSON.stringify({schemaVersion:1,items:[{name:'Bad',url:'https://bad.example/',password:'hidden'}]}),
+  JSON.stringify({schemaVersion:1,items:[{name:'Bad',url:'http://downgrade.example/'}]}),
+  JSON.stringify({schemaVersion:1,items:[{name:'A',url:'https://a.example/'},{name:'B',url:'https://a.example/'}]}),
+  'x'.repeat(32769)
+]){
+  assert.throws(()=>other.importList(invalid),'invalid imported registry must be rejected atomically');
+  assert.equal(other.exportList(),snapshot,'invalid registry must not mutate stored instances');
+}
 I.switchTo('https://nas.example/');
 assert.deepEqual(navigations,['https://nas.example/'],'switching must navigate the full document, never reuse existing qB Cookies/client state');
 assert.ok(I.remove('https://vps.example/'));

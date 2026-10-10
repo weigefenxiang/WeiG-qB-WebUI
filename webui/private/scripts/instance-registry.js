@@ -54,6 +54,28 @@
     if(next.length!==items.length)write(next);
     return next.length!==items.length;
   }
+  function exportList(){return JSON.stringify({schemaVersion:1,items:load()});}
+  function importList(text){
+    if(typeof text!=='string'||text.length>32768)throw new Error('Instance list exceeds the safe import limit.');
+    var input;
+    try{input=JSON.parse(text);}catch(_error){throw new Error('Instance list must be valid JSON.');}
+    if(!input||Array.isArray(input)||typeof input!=='object'||input.schemaVersion!==1||!Array.isArray(input.items)||input.items.length>LIMIT||Object.keys(input).some(function(key){return key!=='schemaVersion'&&key!=='items';}))throw new Error('Unsupported instance list schema.');
+    var next=load(),seen=new Set(),added=0,updated=0;
+    input.items.forEach(function(row){
+      if(!row||typeof row!=='object'||Array.isArray(row)||Object.keys(row).some(function(key){return key!=='name'&&key!=='url';})||typeof row.name!=='string'||typeof row.url!=='string')throw new Error('Instance list contains unsupported fields.');
+      var name=row.name.trim();
+      if(!name||name.length>48)throw new Error('Instance name is missing or too long.');
+      var url=canonicalUrl(row.url);
+      if(seen.has(url))throw new Error('Instance list contains duplicate addresses.');
+      seen.add(url);
+      var index=next.findIndex(function(item){return item.url===url;});
+      if(index>=0){next[index]={name:name,url:url};updated++;}
+      else{if(next.length>=LIMIT)throw new Error('Instance list exceeds the maximum saved entries.');next.push({name:name,url:url});added++;}
+    });
+    if(!input.items.length)return{added:0,updated:0,total:next.length};
+    write(next);
+    return{added:added,updated:updated,total:next.length};
+  }
   function switchTo(url){
     var canonical=canonicalUrl(url),record=load().find(function(x){return x.url===canonical;});
     if(!record)throw new Error('Choose a registered instance.');
@@ -62,6 +84,6 @@
   }
   W.InstanceRegistry=Object.freeze({
     schemaVersion:1,currentUrl:function(){return currentUrl().href;},
-    list:load,add:add,remove:remove,switchTo:switchTo
+    list:load,add:add,remove:remove,exportList:exportList,importList:importList,switchTo:switchTo
   });
 })(window);
