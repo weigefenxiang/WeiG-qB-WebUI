@@ -66,6 +66,39 @@ jobs:
             echo 'No successful completed CI for exact A72 publish SHA; Tag creation is blocked.' >&2
             exit 1
           fi
+      - name: Require every essential exact-SHA A72 CI job
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          message="$(git log -1 --format=%B)"
+          for marker in '[ui]' '[settings-matrix]' '[A72-platform]' '[A72-real-qb]'; do
+            case "$message" in
+              *"$marker"*) ;;
+              *) echo "A72 publish commit lacks mandatory CI marker $marker" >&2; exit 1 ;;
+            esac
+          done
+          run_id="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?branch=test%2FA72&event=push&per_page=60" |
+            jq -r --arg sha "$GITHUB_SHA" '[.workflow_runs[] | select(.head_sha == $sha and .event == "push")] | sort_by(.id) | last // empty | .id // empty')"
+          test -n "$run_id"
+          jobs="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/jobs?per_page=100")"
+          jq -e --arg sha "$GITHUB_SHA" '
+            (.total_count <= 100) and
+            (.jobs | all(.head_sha == $sha)) and
+            ([.jobs[] | select(.conclusion == "success") | .name] as $passed |
+              ([
+                "smoke", "A72 exact-SHA distribution verification (unpublished)",
+                "A72 isolated real qB 5.2.4 source and WebAPI smoke",
+                "Linux installer lifecycle", "Linux installer lifecycle · BusyBox ash/userland",
+                "Windows installer lifecycle", "Windows browser candidate",
+                "qB admitted Settings browser aggregate",
+                "Linux semantic UI · route-modules", "Linux semantic UI · runtime",
+                "Linux semantic UI · settings-fidelity", "Linux semantic UI · feature-parity",
+                "Linux semantic UI · torrent-workspace", "Linux semantic UI · adaptive-ui"
+              ] + [range(0;16) | "qB admitted Settings browser shard \(.)"]) as $required |
+              ($required | all(. as $name | $passed | index($name) != null)))
+          ' <<<"$jobs" || { echo 'Missing essential successful A72 CI job/shard' >&2; exit 1; }
       - name: Materialize exact-SHA WebUI archive with canonical builder
         run: |
           set -euo pipefail
