@@ -111,9 +111,20 @@ async function test(){
    assert(sh('docker',['exec',q.name,'cat','/weig-webui/GIT_SHA'])===sha,'Container-mounted SHA drift');
    const response=await fetch(q.url);assert(response.ok,'Real Alternative WebUI hosting failed');
    const html=await response.text();assert(html.includes('name="weig-build-sha" content="'+sha+'"'),'Real qB served wrong build');
-   checks.push({qb_version:q.version,sha256:crypto.createHash('sha256').update(html).digest('hex'),readonly_mount:true});
+   // HTML alone is insufficient: prove each qB serves the SAME private
+   // bootstrap and capability owner bytes from the shared read-only mount.
+   const assets={};
+   for(const asset of ['bootstrap-plan.json','scripts/runtime-assets.js','scripts/capabilities.js']){
+     const response=await fetch(q.url+asset,{headers:{Cookie:q.sid}});
+     assert(response.status===200,'Real qB '+q.version+' shared private asset '+asset+' HTTP '+response.status);
+     const bytes=Buffer.from(await response.arrayBuffer());
+     assert(bytes.length>100,'Real qB '+q.version+' shared private asset is truncated: '+asset);
+     assets[asset]=crypto.createHash('sha256').update(bytes).digest('hex');
+   }
+   checks.push({qb_version:q.version,sha256:crypto.createHash('sha256').update(html).digest('hex'),readonly_mount:true,private_asset_sha256:assets});
  }));
  assert(checks.length===2&&checks[0].sha256===checks[1].sha256,'Different static HTML served');
+ assert(JSON.stringify(checks[0].private_asset_sha256)===JSON.stringify(checks[1].private_asset_sha256),'Two real qB instances did not serve identical private bootstrap/capability bytes');
  browser=await launchBrowser();const context=await browser.newContext({viewport:{width:1280,height:800},locale:'en-US'});
  const first=await enter(context,qbs[0]);
  assert((await context.cookies(qbs[1].url)).every(c=>c.name!==qbs[0].sessionCookieName),'First instance session cookie leaked to second qB host');
@@ -164,7 +175,7 @@ async function test(){
  assert(roundTripSettings.every(row=>row.settings_get==='PASS'&&row.settings_source_identity==='PASS'),'Post-round-trip Settings identity lost');
  await context.close();
  fs.mkdirSync('artifacts/real-qb-full',{recursive:true});
- fs.writeFileSync('artifacts/real-qb-full/'+sha+'-shared-static.json',JSON.stringify({status:'PASS',weig_sha:sha,qb_versions:versions,scenario:'two-real-qb-one-shared-static-root',sid_isolation:'PASS',cross_origin_registry:'PASS',whole_page_switch:'PASS',return_navigation:'PASS',sessions_preserved:'PASS',settings_after_return:'PASS',navigation_http_200:'PASS',navigation_referer_suppressed:'PASS',settings_per_origin:'PASS',private_docker_network:'internal',static_sha256:checks[0].sha256,checks,settingsChecks,roundTripSettings},null,2)+'\n');
+ fs.writeFileSync('artifacts/real-qb-full/'+sha+'-shared-static.json',JSON.stringify({status:'PASS',weig_sha:sha,qb_versions:versions,scenario:'two-real-qb-one-shared-static-root',sid_isolation:'PASS',cross_origin_registry:'PASS',whole_page_switch:'PASS',return_navigation:'PASS',sessions_preserved:'PASS',settings_after_return:'PASS',shared_private_assets:'PASS',navigation_http_200:'PASS',navigation_referer_suppressed:'PASS',settings_per_origin:'PASS',private_docker_network:'internal',static_sha256:checks[0].sha256,checks,settingsChecks,roundTripSettings},null,2)+'\n');
  console.log('A72 real shared static and cross-instance session PASS');
 }
 try{await test();}catch(e){console.error('A72 real shared static failed: '+String(e?.message||e));process.exitCode=1;}
