@@ -450,6 +450,12 @@
     "header.instance.remove": "Supprimer",
     "header.instance.empty": "Aucune instance enregistrée pour cette adresse.",
     "header.instance.hint": "Les adresses des instances sont enregistrées uniquement pour cette adresse WebUI. Changer d’instance recharge la page et utilise la session de connexion de l’instance cible.",
-    "settings.runtime.unmappedReadOnly": "Les options WebAPI non reconnues sont affichées en lecture seule tant que leurs règles de contrôle et d’écriture ne sont pas confirmées par le code source."
+    "settings.runtime.unmappedReadOnly": "Les options WebAPI non reconnues sont affichées en lecture seule tant que leurs règles de contrôle et d’écriture ne sont pas confirmées par le code source.",
+    "header.instance.export": "Copier la liste des instances",
+    "header.instance.import": "Importer une liste",
+    "header.instance.paste": "Coller une liste d’instances (JSON)",
+    "header.instance.copied": "Liste des instances copiée.",
+    "header.instance.manual": "Copiez la liste depuis la fenêtre du presse-papiers.",
+    "header.instance.imported": "{count} instances importées."
   }
 }

@@ -446,6 +446,12 @@
     "header.instance.remove": "Entfernen",
     "header.instance.empty": "Für diese Adresse sind keine Instanzen gespeichert.",
     "header.instance.hint": "Instanzadressen werden nur für diese WebUI-Adresse gespeichert. Beim Wechsel wird die Seite neu geladen und die Anmeldung der Zielinstanz verwendet.",
-    "settings.runtime.unmappedReadOnly": "Unbekannte WebAPI-Optionen werden schreibgeschützt angezeigt, bis ihre Steuerelement- und Schreibregeln durch den Quellcode belegt sind."
+    "settings.runtime.unmappedReadOnly": "Unbekannte WebAPI-Optionen werden schreibgeschützt angezeigt, bis ihre Steuerelement- und Schreibregeln durch den Quellcode belegt sind.",
+    "header.instance.export": "Instanzliste kopieren",
+    "header.instance.import": "Liste importieren",
+    "header.instance.paste": "Instanzliste einfügen (JSON)",
+    "header.instance.copied": "Instanzliste kopiert.",
+    "header.instance.manual": "Kopieren Sie die Instanzliste aus dem Zwischenablage-Dialog.",
+    "header.instance.imported": "{count} Instanzen importiert."
   }
 }

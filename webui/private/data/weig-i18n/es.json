@@ -459,6 +459,12 @@
     "header.instance.remove": "Quitar",
     "header.instance.empty": "No hay instancias guardadas para esta dirección.",
     "header.instance.hint": "Las direcciones de las instancias se guardan solo para esta dirección de WebUI. Al cambiar se recarga la página y se utiliza la sesión de la instancia de destino.",
-    "settings.runtime.unmappedReadOnly": "Las opciones de WebAPI no reconocidas se muestran solo para lectura hasta verificar en el código sus controles y reglas de escritura."
+    "settings.runtime.unmappedReadOnly": "Las opciones de WebAPI no reconocidas se muestran solo para lectura hasta verificar en el código sus controles y reglas de escritura.",
+    "header.instance.export": "Copiar lista de instancias",
+    "header.instance.import": "Importar lista",
+    "header.instance.paste": "Pegar lista de instancias (JSON)",
+    "header.instance.copied": "Lista de instancias copiada.",
+    "header.instance.manual": "Copia la lista desde el cuadro del portapapeles.",
+    "header.instance.imported": "Se han importado {count} instancias."
   }
 }
