@@ -26,15 +26,32 @@
     if(url.origin===current.origin&&url.pathname!==current.pathname)throw new Error('Same-origin instances with different paths require a verified session-isolating gateway.');
     return url.href;
   }
+  function assertIsolated(items,url){
+    var target=new URL(url);
+    (items||[]).forEach(function(item){
+      if(!item||item.url===url)return;
+      var other=new URL(item.url);
+      if(target.hostname===other.hostname&&target.origin!==other.origin)throw new Error('Instances on different ports of one hostname may share qB cookies; use distinct hostnames.');
+      if(target.origin===other.origin&&target.pathname!==other.pathname)throw new Error('Same-origin instances with different paths require a verified session-isolating gateway.');
+    });
+  }
   function load(){
     var parsed;
     try{parsed=JSON.parse(store&&store.get(KEY,null)||'null');}catch(_error){return[];}
     if(!parsed||parsed.schemaVersion!==1||!Array.isArray(parsed.items))return[];
-    var seen=new Set();
-    return parsed.items.slice(0,LIMIT).filter(function(x){
-      if(!x||typeof x.name!=='string'||typeof x.url!=='string')return false;
-      try{var url=canonicalUrl(x.url);if(seen.has(url))return false;seen.add(url);return true;}catch(_error){return false;}
-    }).map(function(x){return{name:x.name.slice(0,48),url:canonicalUrl(x.url)};});
+    var seen=new Set(),next=[];
+    parsed.items.slice(0,LIMIT).forEach(function(x){
+      if(!x||typeof x.name!=='string'||typeof x.url!=='string')return;
+      var name=x.name.trim().slice(0,48);
+      if(!name)return;
+      try{
+        var url=canonicalUrl(x.url);
+        if(seen.has(url))return;
+        assertIsolated(next,url);
+        seen.add(url);next.push({name:name,url:url});
+      }catch(_error){}
+    });
+    return next;
   }
   function write(items){
     if(!store||!store.set(KEY,JSON.stringify({schemaVersion:1,items:items})))throw new Error('Browser instance storage is unavailable.');
@@ -43,7 +60,7 @@
     name=String(name||'').trim().slice(0,48);
     if(!name)throw new Error('Instance name is required.');
     url=canonicalUrl(url);
-    var items=load(),idx=items.findIndex(function(x){return x.url===url;});
+    var items=load();assertIsolated(items,url);var idx=items.findIndex(function(x){return x.url===url;});
     if(idx>=0)items[idx]={name:name,url:url};
     else{if(items.length>=LIMIT)throw new Error('Instance list is full.');items.push({name:name,url:url});}
     write(items);
@@ -68,6 +85,7 @@
       var url=canonicalUrl(row.url);
       if(seen.has(url))throw new Error('Instance list contains duplicate addresses.');
       seen.add(url);
+      assertIsolated(next,url);
       var index=next.findIndex(function(item){return item.url===url;});
       if(index>=0){next[index]={name:name,url:url};updated++;}
       else{if(next.length>=LIMIT)throw new Error('Instance list exceeds the maximum saved entries.');next.push({name:name,url:url});added++;}

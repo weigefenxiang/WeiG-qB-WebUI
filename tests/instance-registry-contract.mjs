@@ -22,6 +22,16 @@ assert.equal(I.list()[0].url,'https://nas.example/');
 I.add('NAS renamed','https://nas.example/');
 assert.equal(I.list().length,2,'updating an instance must not duplicate its identity');
 assert.equal(I.list()[0].name,'NAS renamed');
+I.add('Remote','https://shared.example:8080/');
+assert.throws(()=>I.add('Remote port','https://shared.example:9090/'),/different ports/,'saved instances must be mutually cookie-isolated even when neither is the current origin');
+assert.throws(()=>I.add('Remote path','https://shared.example:8080/qb2/'),/different paths/,'saved instances must not use unverified path-based routing');
+assert.equal(I.list().length,3,'rejected conflicting instances must leave the saved registry intact');
+const untrusted=JSON.parse(saved.get('weig.instances.v1'));
+untrusted.items.push({name:'Remote collision',url:'https://shared.example:9090/'});
+saved.set('weig.instances.v1',JSON.stringify(untrusted));
+assert.deepEqual(I.list().map(x=>x.name),['NAS renamed','VPS','Remote'],'older saved conflicting entries must be excluded without persisting a mutation');
+assert.equal(JSON.parse(saved.get('weig.instances.v1')).items.length,4,'a read must not silently rewrite persisted user data');
+I.remove('https://shared.example:8080/');
 for(const bad of ['javascript:alert(1)','https://user:pw@x.example/','https://x.example/?secret=1','https://x.example/#token','http://unsafe.example/','https://hub.example:8443/','https://hub.example/qb2/','https://nas.example/api/v2/app/version']){
   assert.throws(()=>I.add('bad',bad),'unsafe instance address must fail: '+bad);
 }
@@ -42,6 +52,8 @@ for(const invalid of [
   JSON.stringify({schemaVersion:1,items:[{name:'Bad',url:'https://bad.example/',password:'hidden'}]}),
   JSON.stringify({schemaVersion:1,items:[{name:'Bad',url:'http://downgrade.example/'}]}),
   JSON.stringify({schemaVersion:1,items:[{name:'A',url:'https://a.example/'},{name:'B',url:'https://a.example/'}]}),
+  JSON.stringify({schemaVersion:1,items:[{name:'A',url:'https://remote.example:8080/'},{name:'B',url:'https://remote.example:9090/'}]}),
+  JSON.stringify({schemaVersion:1,items:[{name:'A',url:'https://remote.example/qb1/'},{name:'B',url:'https://remote.example/qb2/'}]}),
   'x'.repeat(32769)
 ]){
   assert.throws(()=>other.importList(invalid),'invalid imported registry must be rejected atomically');
