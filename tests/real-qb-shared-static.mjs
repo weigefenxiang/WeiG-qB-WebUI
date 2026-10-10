@@ -127,13 +127,23 @@ async function test(){
  assert((await first.locator('#qb-version').innerText()).includes(qbs[0].version),'First instance identity failed to stabilize after second login');
  await first.evaluate(url=>window.WeiG.InstanceRegistry.add('Other qB',url),qbs[1].url);
  assert(await second.evaluate(()=>window.WeiG.InstanceRegistry.list().length)===0,'Cross-origin localStorage leaked');
+ // Real browser network proof: qB rejects cross-instance top-level GET with
+ // a foreign Referer, even if the destination's session Cookie is valid.
+ const targetOrigin=new URL(qbs[1].url).origin;
+ const targetDocumentTask=first.waitForResponse(response=>{
+   try{return new URL(response.url()).origin===targetOrigin&&response.request().isNavigationRequest()&&response.request().resourceType()==='document';}catch{return false;}
+ },{timeout:20000});
  await Promise.all([first.waitForURL(qbs[1].url,{timeout:20000}),first.evaluate(url=>window.WeiG.InstanceRegistry.switchTo(url),qbs[1].url)]);
+ const targetDocument=await targetDocumentTask;
+ assert(targetDocument.status()===200,'Cross-instance qB root navigation HTTP '+targetDocument.status());
+ const navigationHeaders=await targetDocument.request().allHeaders();
+ assert(!Object.prototype.hasOwnProperty.call(navigationHeaders,'referer'),'Cross-instance navigation leaked foreign Referer to real qB');
  await awaitRealApp(first,qbs[1],'after-full-document-switch');
  await first.waitForFunction(expected=>document.querySelector('#qb-version')?.textContent?.includes(expected),qbs[1].version,{timeout:20000});
  assert((await first.locator('#qb-version').innerText()).includes(qbs[1].version),'Instance navigation lost destination identity');
  await context.close();
  fs.mkdirSync('artifacts/real-qb-full',{recursive:true});
- fs.writeFileSync('artifacts/real-qb-full/'+sha+'-shared-static.json',JSON.stringify({status:'PASS',weig_sha:sha,qb_versions:versions,scenario:'two-real-qb-one-shared-static-root',sid_isolation:'PASS',cross_origin_registry:'PASS',whole_page_switch:'PASS',settings_per_origin:'PASS',private_docker_network:'internal',static_sha256:checks[0].sha256,checks,settingsChecks},null,2)+'\n');
+ fs.writeFileSync('artifacts/real-qb-full/'+sha+'-shared-static.json',JSON.stringify({status:'PASS',weig_sha:sha,qb_versions:versions,scenario:'two-real-qb-one-shared-static-root',sid_isolation:'PASS',cross_origin_registry:'PASS',whole_page_switch:'PASS',navigation_http_200:'PASS',navigation_referer_suppressed:'PASS',settings_per_origin:'PASS',private_docker_network:'internal',static_sha256:checks[0].sha256,checks,settingsChecks},null,2)+'\n');
  console.log('A72 real shared static and cross-instance session PASS');
 }
 try{await test();}catch(e){console.error('A72 real shared static failed: '+String(e?.message||e));process.exitCode=1;}
