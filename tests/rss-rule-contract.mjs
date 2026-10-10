@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import vm from 'node:vm';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -47,6 +48,27 @@ assert.doesNotMatch(rss,/release\.certified!==true/,'bounded INHERITED RSS read/
 assert.match(rss,/state\.manifest\.fields\|\|\[\]\)\.forEach|state\.manifest\.fields\|\|\[\]/,'RSS editor must render exact source manifest fields rather than returned-object-shape branches.');
 assert.match(rss,/readPath\(rule,fieldDef\.path\)/,'RSS reads must follow the exact source-proven field path.');
 assert.match(rss,/writePath\(rule,fieldDef\.path,next\)/,'RSS writes must follow the exact source-proven field path.');
+assert.match(rss,/unprovenRulePaths\(state\.draft,state\.manifest\)\.length/,'Unknown RSS rule fields must fail closed before rename or rule mutation');
+assert.match(rss,/saveBtn\.disabled=unproven\.length>0/,'Unknown RSS rule source data must visibly disable Save');
+const isolated={WeiG:{QBClient:function(){},Components:{selectControl(){}},CapabilityRegistry:{}},addEventListener(){}};
+const documentMock={readyState:'loading',addEventListener(){}};
+const exposed=rss.replace('  W.RSSRules={install:install','  W.__rssUnprovenRulePaths=unprovenRulePaths;\n  W.RSSRules={install:install');
+assert.notEqual(exposed,rss,'RSS pure contract helper must remain in the existing module');
+vm.runInNewContext(exposed,{window:isolated,document:documentMock,structuredClone,JSON,Set,Map,Array});
+const unknownPaths=isolated.WeiG.__rssUnprovenRulePaths;
+assert.equal(typeof unknownPaths,'function');
+for(const surface of [q460,q500]){
+  const canonical={enabled:true,lastMatch:'',torrentParams:{}};
+  for(const field of surface.fields){
+    const [scope,key]=field.path;if(scope==='rule')canonical[key]=null;
+    else if(scope==='torrentParams')canonical.torrentParams[key]=null;
+  }
+  assert.deepEqual(Array.from(unknownPaths(canonical,surface)),[],'Source-proven qB RSS fields must remain writable without spurious unknown warnings');
+  assert.deepEqual(Array.from(unknownPaths({...canonical,futureOption:'observed-only'},surface)),['futureOption'],'Unknown top-level rule options must be blocked on save');
+  assert.deepEqual(Array.from(unknownPaths({...canonical,torrentParams:{...canonical.torrentParams,futureParam:{nested:true}}},surface)),['torrentParams.futureParam'],'Unproven nested torrentParams must not be silently round-tripped');
+}
+assert.ok(unknownPaths({enabled:true,torrentParams:[]},q460).length>0,'Malformed nested RSS source shape must fail closed before writes');
+
 assert.match(rss,/item&&ownKey\(item,'writeValue'\)\?clone\(item\.writeValue\):current/,'RSS select/tri-state writes must use source-proven option writeValue including null/default.');
 assert.match(rss,/state\.draft=clone\(state\.rules\[name\]\|\|\{\}\)/,'RSS editing must preserve the complete source-returned rule object before patching source-owned fields.');
 assert.doesNotMatch(rss,/function pathIn\(/,'returned-object-shape path guessing must be retired after manifest cutover.');
