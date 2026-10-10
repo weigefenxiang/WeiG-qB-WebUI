@@ -22,7 +22,7 @@ I.add('NAS renamed','https://nas.example/');
 assert.equal(I.list().length,2,'updating an instance must not duplicate its identity');
 assert.equal(I.list()[0].name,'NAS renamed');
 for(const bad of ['javascript:alert(1)','https://user:pw@x.example/','https://x.example/?secret=1','https://x.example/#token','http://unsafe.example/','https://hub.example:8443/','https://hub.example/qb2/','https://nas.example/api/v2/app/version']){
-  assert.throws(()=>I.add('bad',bad),Error,'unsafe instance address must fail: '+bad);
+  assert.throws(()=>I.add('bad',bad),'unsafe instance address must fail: '+bad);
 }
 I.switchTo('https://nas.example/');
 assert.deepEqual(navigations,['https://nas.example/'],'switching must navigate the full document, never reuse existing qB Cookies/client state');

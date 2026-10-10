@@ -54,7 +54,7 @@ assert.equal(R.supports('altSpeedLimitWrite'),true,'missing normal-only setter m
 await bind('4.1.1',apiFor('4.1.1'));
 assert.equal(R.supports('globalSpeedLimitWrite'),true,'normal Apply must not depend on setPreferences');
 assert.equal(R.supports('altSpeedLimitWrite'),false,'alternative Apply must fail closed when setPreferences provenance is absent');
-await bind('4.1.10','9.9.9');
+await bind('4.1.10',apiFor('4.1.9'));
 assert.equal(R.releaseIdentity().resolutionMode,'INHERITED','unadmitted same-series release must resolve inherited');
 assert.equal(R.supports('globalSpeedLimitWrite'),false,'inherited release must not expose historical normal rate writes');
 assert.equal(R.supports('altSpeedLimitWrite'),false,'inherited release must not expose historical alternative rate writes');
