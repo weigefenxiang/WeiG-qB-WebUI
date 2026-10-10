@@ -9,10 +9,10 @@ const root=path.resolve(here,'../webui/private');
 const publicRoot=path.resolve(here,'../webui/public');
 const productVersion=(await fs.readFile(path.resolve(here,'../VERSION'),'utf8')).trim();
 const host='127.0.0.1',port=8774;
-const variants={legacy:{qb:'v4.1.9.1',api:'2.1.0'},modern:{qb:'v5.2.0',api:'2.11.4'}};
 const frozenCatalog=JSON.parse(await fs.readFile(path.resolve(here,'fixtures/qb-release-catalog.lkg.json'),'utf8'));
 const profiles=['4.1.9.1','5.2.0'].map(qbVersion=>frozenCatalog.find(profile=>profile.qbVersion===qbVersion));
-if(profiles.some(profile=>!profile))throw new Error('Workspace browser fixture requires frozen qB 4.1.9.1 and 5.2.0 release profiles.');
+if(profiles.some(profile=>!profile?.sourceSha||!profile?.webApiVersion))throw new Error('Workspace browser fixture requires frozen qB 4.1.9.1 and 5.2.0 release and WebAPI source identities.');
+const variants={legacy:{qb:'v4.1.9.1',api:String(profiles[0].webApiVersion)},modern:{qb:'v5.2.0',api:String(profiles[1].webApiVersion)}};
 const visualStates=[
   {state:'downloading',progress:.45,dlspeed:1200,upspeed:0},
   {state:'uploading',progress:1,dlspeed:0,upspeed:240},
