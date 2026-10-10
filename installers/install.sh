@@ -195,7 +195,8 @@ STATE="${HOME}/.config/weig-qb-webui"
 LEGACY_STATE="${HOME}/.config/weig_qb-webui"
 BACKUPS="$STATE/backups"
 LEGACY_BACKUPS="$LEGACY_STATE/backups"
-mkdir -p "$BACKUPS"
+# Installs initialize backup state only after verified package staging.
+if [ "$MODE" = "rollback" ]; then mkdir -p "$BACKUPS"; fi
 
 state_marker_value() {
   marker_name=$1
@@ -1304,6 +1305,7 @@ backup_target() {
   dest=$1
   index=$2
   qb_root=$3
+  mkdir -p "$BACKUPS" || return 1
   b=$(reserve_backup_path "$BACKUP_STAMP") || return 1
   lock="$b.lock"
   record=$(portable_mktemp_dir) || { rmdir "$lock" 2>/dev/null || true; return 1; }

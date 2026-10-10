@@ -303,6 +303,22 @@ assert_archive_backup() {
 }
 
 
+# An invalid checksum on a fresh Unix install must not create empty backup state.
+FRESH_SUMS="$FIXTURES/v9.9.90/SHA256SUMS"
+FRESH_CFG_HASH=$(sha256sum "$CFG" | awk '{print $1}')
+cp "$FRESH_SUMS" "$TMP/fresh-valid-SHA256SUMS"
+test ! -e "$STATE"
+printf '%064d  WeiG-qB-WebUI.zip\n' 0 > "$FRESH_SUMS"
+if run_installer -version "$VERSION_ONE" -configure -o "$DEST" > "$TMP/fresh-checksum-denial.log" 2>&1; then
+  echo "Unix fresh installation accepted a forged checksum." >&2
+  exit 1
+fi
+grep -E 'SHA256 verification failed|SHA256SUMS' "$TMP/fresh-checksum-denial.log" >/dev/null
+cp "$TMP/fresh-valid-SHA256SUMS" "$FRESH_SUMS"
+test ! -e "$STATE"
+test ! -e "$DEST"
+test "$(sha256sum "$CFG" | awk '{print $1}')" = "$FRESH_CFG_HASH"
+
 run_installer -version "$VERSION_ONE" -configure -o "$DEST"
 assert_install "$VERSION_ONE" "$SHA_ONE" release-one
 assert_config_enabled

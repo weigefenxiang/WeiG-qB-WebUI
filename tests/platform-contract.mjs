@@ -38,6 +38,9 @@ assert.match(sh,/-version and -dev cannot be used together/,'Linux installer mus
 assert.match(sh,/CHANNEL="\$\{WEIG_QB_CHANNEL:-main\}"/,'Linux installer must default to the stable main channel');
 assert.match(sh,/BACKUP_RETENTION=3/,'Linux installer must retain exactly three installer backups per target');
 assert.match(sh,/latest_backup_for_dest/,'Linux rollback must resolve backups by explicit install target');
+assert.match(sh,/if \[ "\$MODE" = "rollback" \]; then mkdir -p "\$BACKUPS"; fi/,'Unix installer must not initialize backup state before checksum verification except rollback migration');
+assert.match(sh,/backup_target\(\) \{[\s\S]*?mkdir -p "\$BACKUPS" \|\| return 1[\s\S]*?reserve_backup_path/,'Unix backup state initialization must belong to the verified-deployment backup owner');
+
 assert.match(sh,/prune_backups_for_dest/,'Linux backup pruning must be target-scoped');
 assert.match(sh,/Multiple -o targets cannot be combined with -configure/,'Linux multi-target mode must refuse ambiguous qB config mutation');
 assert.match(sh,/Updated \$TARGET_COUNT WebUI targets with one verified payload/,'Linux multi-target mode must share one verified payload');
