@@ -34,12 +34,27 @@ async function configure(q){
  const set=await fetch(q.url+'api/v2/app/setPreferences',{method:'POST',headers:{Cookie:q.sid,'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({json:JSON.stringify({alternative_webui_enabled:true,alternative_webui_path:'/weig-webui'})})});
  assert(set.ok,'Real qB Alternative WebUI setting failed');await set.text();
 }
+async function awaitRealApp(page,q,stage){
+ try{await page.locator('#app').waitFor({timeout:20000});}
+ catch(error){
+   let diagnosis={};
+   try{diagnosis=await page.evaluate(async()=>{
+     let apiStatus=0;
+     try{apiStatus=(await fetch('/api/v2/app/preferences',{credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(3500)})).status;}catch(_e){}
+     const app=document.querySelector('#app'),login=document.querySelector('#login-form');
+     return{path:location.pathname,hash:location.hash,apiStatus,loginVisible:!!(login&&login.getClientRects().length),appPresent:!!app,appHidden:!!(app&&(app.hidden||app.getAttribute('aria-hidden')==='true')),sessionLocked:document.documentElement.dataset.sessionLocked||'',sessionState:window.WeiG?.SessionController?.state?.()||'unknown',buildSha:document.querySelector('meta[name="weig-build-sha"]')?.content||'',qbLabel:document.querySelector('#qb-version')?.textContent?.trim()||''};
+   });}catch(_e){diagnosis={inspection:'unavailable'};}
+   const cookies=await page.context().cookies(q.url).catch(()=>[]);
+   diagnosis.browserSessionCookiePresent=cookies.some(c=>c.name===q.sessionCookieName);
+   throw new Error('Real qB '+q.version+' '+stage+' app invisible: '+JSON.stringify(diagnosis));
+ }
+}
 async function enter(context,q){
  const page=await context.newPage();await page.goto(q.url,{waitUntil:'domcontentloaded',timeout:30000});
  await page.locator('#login-form').waitFor({timeout:20000});
  assert(await page.locator('meta[name="weig-build-sha"]').getAttribute('content')===sha,'Public WebUI SHA mismatch');
  await page.locator('#username').fill('admin');await page.locator('#password').fill(q.password);await page.locator('#login-btn').click();
- await page.locator('#app').waitFor({timeout:20000});
+ await awaitRealApp(page,q,'first-login');
  await page.waitForFunction(()=>document.querySelector('#qb-version')?.textContent?.includes('.'),null,{timeout:20000});
  assert((await page.locator('#qb-version').innerText()).includes(q.version),'Browser qB version mismatch');
  return page;
@@ -107,13 +122,13 @@ async function test(){
  const sidA=(await context.cookies(qbs[0].url)).find(c=>c.name===qbs[0].sessionCookieName)?.value;
  const sidB=(await context.cookies(qbs[1].url)).find(c=>c.name===qbs[1].sessionCookieName)?.value;
  assert(sidA&&sidB&&sidA!==sidB,'SID identities overlap');
- await first.reload({waitUntil:'domcontentloaded'});await first.locator('#app').waitFor({timeout:20000});
+ await first.reload({waitUntil:'domcontentloaded'});await awaitRealApp(first,qbs[0],'after-other-instance-login-reload');
  await first.waitForFunction(expected=>document.querySelector('#qb-version')?.textContent?.includes(expected),qbs[0].version,{timeout:20000});
  assert((await first.locator('#qb-version').innerText()).includes(qbs[0].version),'First instance identity failed to stabilize after second login');
  await first.evaluate(url=>window.WeiG.InstanceRegistry.add('Other qB',url),qbs[1].url);
  assert(await second.evaluate(()=>window.WeiG.InstanceRegistry.list().length)===0,'Cross-origin localStorage leaked');
  await Promise.all([first.waitForURL(qbs[1].url,{timeout:20000}),first.evaluate(url=>window.WeiG.InstanceRegistry.switchTo(url),qbs[1].url)]);
- await first.locator('#app').waitFor({timeout:20000});
+ await awaitRealApp(first,qbs[1],'after-full-document-switch');
  await first.waitForFunction(expected=>document.querySelector('#qb-version')?.textContent?.includes(expected),qbs[1].version,{timeout:20000});
  assert((await first.locator('#qb-version').innerText()).includes(qbs[1].version),'Instance navigation lost destination identity');
  await context.close();
