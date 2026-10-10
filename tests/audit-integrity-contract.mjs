@@ -64,4 +64,10 @@ for(const [owner,fixture] of fixtureOwners){
   assert.ok(source.includes(`tests/fixtures/${path.basename(fixture)}`),`${owner}: must read canonical tests/fixtures asset after A61 audit relocation`);
   assert.ok(!source.includes("here,'fixtures/"),`${owner}: must not read removed audits/fixtures directory`);
 }
+const nativeFrozenAudit=fs.readFileSync(path.join(root,'audits/qb-settings-native-lkg-contract.mjs'),'utf8');
+assert.ok(nativeFrozenAudit.includes('stableManifest.profileCount')&&nativeFrozenAudit.includes('stableManifest.latestAdmittedStable')&&
+  nativeFrozenAudit.includes('stableManifest.catalogSha256'),
+  'Native Settings audit must bind count, latest stable and exact catalog digest to the Frozen manifest instead of obsolete release snapshots');
+assert.ok(!/profileCount,\s*65\b/.test(nativeFrozenAudit),
+  'Native Settings audit must not resurrect a hard-coded 65-release assumption');
 console.log(`Audit integrity contract passed: ${files.length} audit modules have closed relative imports and ${auditScripts.length} grouped entry points resolve to real files.`);

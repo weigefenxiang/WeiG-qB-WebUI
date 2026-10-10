@@ -9,17 +9,21 @@ const here=path.dirname(fileURLToPath(import.meta.url));
 const catalogText=fs.readFileSync(path.join(here,'../tests/fixtures/qb-release-catalog.lkg.json'),'utf8').replace(/\r\n/g,'\n');
 const localeEvidence=JSON.parse(fs.readFileSync(path.join(here,'../tools/data/qb-locale-lkg.json'),'utf8'));
 const behaviorEvidence=JSON.parse(fs.readFileSync(path.join(here,'../tools/data/qb-translator-behavior-lkg.json'),'utf8'));
+const stableManifest=JSON.parse(fs.readFileSync(path.join(here,'../tools/data/qb-stable-lkg.json'),'utf8'));
 const catalogSha256=crypto.createHash('sha256').update(catalogText,'utf8').digest('hex');
 
 assert.equal(localeEvidence.schemaVersion,1);
 assert.equal(behaviorEvidence.schemaVersion,1);
+assert.equal(stableManifest.catalogSha256,catalogSha256,'Frozen manifest and checked-in catalog must have the same LF-canonical exact digest');
 assert.equal(localeEvidence.baseCatalogSha256,catalogSha256,'frozen locale evidence must remain bound to the LF-canonical stable base catalog on every platform');
-assert.equal(localeEvidence.profileCount,65,'locale evidence must cover all admitted stable releases');
-assert.equal(behaviorEvidence.profileCount,65,'translator behavior evidence must cover all admitted stable releases');
-assert.equal(localeEvidence.supportFloor,'4.1.0');
-assert.equal(behaviorEvidence.supportFloor,'4.1.0');
-assert.equal(localeEvidence.latestAdmittedStable,'5.2.3');
-assert.equal(behaviorEvidence.latestAdmittedStable,'5.2.3');
+assert.equal(localeEvidence.profileCount,stableManifest.profileCount,'locale evidence must cover the exact Frozen manifest release count');
+assert.equal(localeEvidence.profiles.length,stableManifest.profileCount,'locale evidence profile entries must match the Frozen manifest count');
+assert.equal(behaviorEvidence.profileCount,stableManifest.profileCount,'translator behavior evidence must cover the exact Frozen manifest release count');
+assert.equal(behaviorEvidence.profiles.length,stableManifest.profileCount,'translator evidence profile entries must match the Frozen manifest count');
+assert.equal(localeEvidence.supportFloor,stableManifest.supportFloor);
+assert.equal(behaviorEvidence.supportFloor,stableManifest.supportFloor);
+assert.equal(localeEvidence.latestAdmittedStable,stableManifest.latestAdmittedStable);
+assert.equal(behaviorEvidence.latestAdmittedStable,stableManifest.latestAdmittedStable);
 
 const localeByVersion=new Map(localeEvidence.profiles.map(profile=>[String(profile.qbVersion),profile]));
 let nativeCapableLocaleRoutes=0;
@@ -45,10 +49,10 @@ for(const profile of behaviorEvidence.profiles){
   }
 }
 
-assert.equal(localeByVersion.size,65,'locale evidence must not contain duplicate/missing stable versions');
+assert.equal(localeByVersion.size,stableManifest.profileCount,'locale evidence must not contain duplicate/missing stable versions');
 assert.equal(altDisabledProfiles,11,'4.5.0 through 4.6.4 must remain the 11-release mandatory compatibility-bridge family');
 for(const version of ['4.5.0','4.6.4'])assert.equal(behaviorEvidence.profiles.find(profile=>profile.qbVersion===version)?.family,'dedicated-alt-disabled',`${version}: hard Alternative WebUI translation hole boundary changed`);
-for(const version of ['4.4.5','4.6.5','5.0.0','5.2.3'])assert.notEqual(behaviorEvidence.profiles.find(profile=>profile.qbVersion===version)?.family,'dedicated-alt-disabled',`${version}: native-capable boundary changed`);
+for(const version of ['4.4.5','4.6.5','5.0.0',stableManifest.latestAdmittedStable])assert.notEqual(behaviorEvidence.profiles.find(profile=>profile.qbVersion===version)?.family,'dedicated-alt-disabled',`${version}: native-capable boundary changed`);
 assert.ok(nativeCapableLocaleRoutes>0&&mandatoryBridgeLocaleRoutes>0,'stable evidence must retain both native-capable and mandatory-bridge routes');
 
 const artifactResolver=fs.readFileSync(path.join(here,'../tools/qb-settings-translation-artifact.mjs'),'utf8');
@@ -153,4 +157,4 @@ assert.throws(()=>buildQbSettingsTranslationLkg(duplicateColumns,frozen,{recover
 const duplicateDetailColumns=structuredClone(enriched);duplicateDetailColumns[0].torrentDetailUi.tables.peers.push(structuredClone(duplicateDetailColumns[0].torrentDetailUi.tables.peers[0]));
 assert.throws(()=>buildQbSettingsTranslationLkg(duplicateDetailColumns,frozen,{recoveryEvidence}),/duplicate column key/,'Torrent detail column key drift must fail closed');
 
-console.log(`Native Settings stable routing evidence passed: 65 releases, ${nativeCapableLocaleRoutes} native-capable locale routes, ${mandatoryBridgeLocaleRoutes} mandatory exact-TS bridge routes, 11 Alternative WebUI gap releases; Settings/source LKG v2 freezes exact native columns, source-proven General layout, Torrent detail UI facts and deterministic full-TS recovery while resolver reuse remains bounded.`);
+console.log(`Native Settings stable routing evidence passed: ${stableManifest.profileCount} releases, ${nativeCapableLocaleRoutes} native-capable locale routes, ${mandatoryBridgeLocaleRoutes} mandatory exact-TS bridge routes, 11 Alternative WebUI gap releases; Settings/source LKG v2 freezes exact native columns, source-proven General layout, Torrent detail UI facts and deterministic full-TS recovery while resolver reuse remains bounded.`);
