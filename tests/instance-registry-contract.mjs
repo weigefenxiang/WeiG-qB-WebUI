@@ -29,7 +29,7 @@ assert.equal(I.list().length,3,'rejected conflicting instances must leave the sa
 const untrusted=JSON.parse(saved.get('weig.instances.v1'));
 untrusted.items.push({name:'Remote collision',url:'https://shared.example:9090/'});
 saved.set('weig.instances.v1',JSON.stringify(untrusted));
-assert.deepEqual(I.list().map(x=>x.name),['NAS renamed','VPS','Remote'],'older saved conflicting entries must be excluded without persisting a mutation');
+assert.deepEqual(Array.from(I.list(),x=>x.name),['NAS renamed','VPS','Remote'],'older saved conflicting entries must be excluded without persisting a mutation');
 assert.equal(JSON.parse(saved.get('weig.instances.v1')).items.length,4,'a read must not silently rewrite persisted user data');
 I.remove('https://shared.example:8080/');
 for(const bad of ['javascript:alert(1)','https://user:pw@x.example/','https://x.example/?secret=1','https://x.example/#token','http://unsafe.example/','https://hub.example:8443/','https://hub.example/qb2/','https://nas.example/api/v2/app/version']){
