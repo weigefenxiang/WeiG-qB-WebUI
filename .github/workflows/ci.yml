@@ -384,13 +384,16 @@ jobs:
           qb_version="$(node -p "require('./tools/data/qb-stable-lkg.json').latestAdmittedStable")"
           test "$qb_version" = 5.2.4
           bash tests/real-qb-docker.sh --version "$qb_version" --full-matrix
+          evidence="artifacts/real-qb-full/$GITHUB_SHA-$qb_version-runtime.json"
+          test -s "$evidence"
+          jq -e --arg sha "$GITHUB_SHA" --arg qb "$qb_version" '.status == "PASS" and .weig_sha == $sha and .expected_qb_version == $qb and .cleanup_result == "PASS"' "$evidence"
       - name: Retain exact-SHA real qB evidence without publishing a Release
         if: ${{ always() }}
         uses: actions/upload-artifact@v7
         with:
           name: a72-real-qb-${{ github.sha }}
           path: artifacts/real-qb-full/
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 14
 
   a72_distribution_integrity:
