@@ -3,6 +3,10 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 const source=fs.readFileSync(new URL('../webui/private/scripts/instance-registry.js',import.meta.url),'utf8');
 const head=fs.readFileSync(new URL('../webui/private/scripts/header.js',import.meta.url),'utf8');
+const headerCss=fs.readFileSync(new URL('../webui/private/css/header.css',import.meta.url),'utf8');
+assert.ok(headerCss.includes('@media(max-width:479px){#instances-btn{display:none!important}}'),'Narrow Header must hide the duplicate Instances action to preserve viewport geometry');
+assert.ok(head.includes("nav.appendChild(mobileLink(instanceCopy('title','Instances')"),'A narrow Header may hide the button only while the single mobile Drawer entry remains available');
+
 const plan=JSON.parse(fs.readFileSync(new URL('../webui/private/bootstrap-plan.json',import.meta.url),'utf8'));
 assert.ok(plan.phases.some(x=>x.name==='shared-ui'&&x.scripts.includes('scripts/instance-registry.js')),'one instance registry must load before the Header owner');
 assert.ok(head.includes('function installInstancesButton()')&&head.includes('function openInstances()')&&head.includes('D.create({className:'),'Header must consume the canonical DialogRuntime and InstanceRegistry');
