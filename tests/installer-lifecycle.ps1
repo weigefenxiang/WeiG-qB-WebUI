@@ -199,6 +199,40 @@ try {
   Assert-True ($firstCfg.Contains('WebUI\AlternativeUIEnabled=false')) 'First backup lost original AlternativeUIEnabled.'
   Assert-True ($firstCfg.Contains('WebUI\RootFolder=C:\original\webui')) 'First backup lost original RootFolder.'
 
+  # An invalid package checksum must not create/prune backups or touch live state.
+  $sumPath=Join-Path (Join-Path $Fixtures "v$VersionTwo") 'SHA256SUMS'
+  $validSums=[IO.File]::ReadAllBytes($sumPath)
+  $originalCfgHash=(Get-FileHash -Algorithm SHA256 -LiteralPath $Cfg).Hash
+  $originalWebVersionHash=(Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $Destination 'VERSION')).Hash
+  $originalWebShaHash=(Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $Destination 'GIT_SHA')).Hash
+  $originalWebMarkerHash=(Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $Destination 'private\lifecycle-marker.txt')).Hash
+  $originalBackupMarker=(Get-Content -LiteralPath (Join-Path $State 'last-backup') -Raw)
+  $originalDestMarker=(Get-Content -LiteralPath (Join-Path $State 'last-dest') -Raw)
+  $backupRoot=Join-Path $State 'backups'
+  $originalBackups=@(Get-ChildItem -LiteralPath $backupRoot -File | Sort-Object Name | ForEach-Object { $_.Name+'|'+(Get-FileHash -Algorithm SHA256 -LiteralPath $_.FullName).Hash })
+  try {
+    Write-Utf8NoBom $sumPath (('0' * 64)+"  WeiG-qB-WebUI.zip"+[Environment]::NewLine)
+    $rejectedBadChecksum=$false
+    try {
+      & $Installer -Version $VersionTwo -Configure -o $Destination
+    } catch {
+      $rejectedBadChecksum=($_.Exception.Message -like '*SHA256 verification failed*')
+    }
+    Assert-True $rejectedBadChecksum 'Invalid SHA256SUMS did not reject Windows installation.'
+    Assert-Install $VersionOne $ShaOne 'release-one'
+    Assert-ConfigEnabled
+    Assert-True ((Get-FileHash -Algorithm SHA256 -LiteralPath $Cfg).Hash -eq $originalCfgHash) 'Checksum rejection changed qB config.'
+    Assert-True ((Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $Destination 'VERSION')).Hash -eq $originalWebVersionHash) 'Checksum rejection changed installed VERSION.'
+    Assert-True ((Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $Destination 'GIT_SHA')).Hash -eq $originalWebShaHash) 'Checksum rejection changed installed GIT_SHA.'
+    Assert-True ((Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $Destination 'private\lifecycle-marker.txt')).Hash -eq $originalWebMarkerHash) 'Checksum rejection changed installed marker.'
+    Assert-True ((Get-Content -LiteralPath (Join-Path $State 'last-backup') -Raw) -ceq $originalBackupMarker) 'Checksum rejection modified last-backup.'
+    Assert-True ((Get-Content -LiteralPath (Join-Path $State 'last-dest') -Raw) -ceq $originalDestMarker) 'Checksum rejection modified last-dest.'
+    $backupsAfter=@(Get-ChildItem -LiteralPath $backupRoot -File | Sort-Object Name | ForEach-Object { $_.Name+'|'+(Get-FileHash -Algorithm SHA256 -LiteralPath $_.FullName).Hash })
+    Assert-True (($backupsAfter -join [Environment]::NewLine) -ceq ($originalBackups -join [Environment]::NewLine)) 'Checksum rejection changed existing backup files.'
+  } finally {
+    [IO.File]::WriteAllBytes($sumPath,$validSums)
+  }
+
   $cfgBeforePlainUpdate=(Get-FileHash -Algorithm SHA256 -LiteralPath $Cfg).Hash
   Start-Sleep -Milliseconds 1100
   & $Installer -Version $VersionTwo -o $Destination

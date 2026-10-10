@@ -1100,7 +1100,6 @@ if($Configure){
   $null=Assert-QBConfigMutationSafe $cfg
 }
 
-$deploymentBackup=Backup-Current $cfg
 $tmp=Join-Path ([IO.Path]::GetTempPath()) ("weig-qb-"+[guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Force -Path $tmp | Out-Null
 try {
@@ -1257,6 +1256,8 @@ try {
   }
   $meta | ConvertTo-Json | Set-Content -Path (Join-Path $new 'private\weig-install.json') -Encoding UTF8
 
+  # The verified package and deployment staging must be ready before changing backup state.
+  $deploymentBackup=Backup-Current $cfg
   Move-OutOfInstallTarget $Destination
   try {
     Install-WebUiStage $new $Destination
