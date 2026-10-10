@@ -120,6 +120,17 @@ assert.doesNotMatch(ps,/Set-Content -Path \$cfg -Value \$text -Encoding UTF8/,'W
 assert.match(ps,/function Move-OutOfInstallTarget/,'Windows installer must protect self-hosted installs whose shell starts inside the destination directory');
 assert.match(ps,/Working directory moved outside install target before atomic swap/,'Windows installer must expose the self-hosted directory escape for diagnostics');
 assert.ok(ps.indexOf('Move-OutOfInstallTarget $Destination')<ps.indexOf('Install-WebUiStage $new $Destination'),'Windows installer must leave a self-hosted working directory before the shared live deployment primitive mutates files in place');
+const installStart=ps.indexOf('$tmp=Join-Path ([IO.Path]::GetTempPath()) ("weig-qb-"+');
+assert.ok(installStart>=0,'Windows installer install payload staging was not found');
+const installFlow=ps.slice(installStart);
+const firstBackup=installFlow.indexOf('$deploymentBackup=Backup-Current $cfg');
+const lastChecksum=installFlow.lastIndexOf('Verify-PackageChecksum $archive $sumFile $archiveName',firstBackup);
+const stagedMetadata=installFlow.indexOf("$meta | ConvertTo-Json | Set-Content -Path (Join-Path $new 'private\\weig-install.json')");
+const leaveTarget=installFlow.indexOf('Move-OutOfInstallTarget $Destination',firstBackup);
+const deploy=installFlow.indexOf('Install-WebUiStage $new $Destination',leaveTarget);
+assert.ok(lastChecksum>=0&&lastChecksum<stagedMetadata&&stagedMetadata<firstBackup&&firstBackup<leaveTarget&&leaveTarget<deploy,
+  'Windows installer must verify checksums and complete staging before backup state/pruning, then backup before live replacement');
+assert.equal(installFlow.split('$deploymentBackup=Backup-Current $cfg').length,2,'Windows install flow must back up exactly once');
 
 assert.match(live,/BACKUP_RETENTION=3/,'LIVE deploy must retain exactly three rollback backups');
 assert.match(live,/prune_target_backups/,'LIVE deploy must prune old sibling rollback backups');
