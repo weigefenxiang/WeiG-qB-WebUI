@@ -459,6 +459,12 @@
     "header.instance.remove": "Remover",
     "header.instance.empty": "Não há instâncias guardadas neste endereço.",
     "header.instance.hint": "Os endereços das instâncias são guardados apenas neste endereço do WebUI. A mudança recarrega a página e utiliza a sessão da instância de destino.",
-    "settings.runtime.unmappedReadOnly": "As opções da WebAPI não reconhecidas são apresentadas apenas para leitura até que as regras de controlo e escrita sejam confirmadas no código-fonte."
+    "settings.runtime.unmappedReadOnly": "As opções da WebAPI não reconhecidas são apresentadas apenas para leitura até que as regras de controlo e escrita sejam confirmadas no código-fonte.",
+    "header.instance.export": "Copiar lista de instâncias",
+    "header.instance.import": "Importar lista",
+    "header.instance.paste": "Colar lista de instâncias (JSON)",
+    "header.instance.copied": "Lista de instâncias copiada.",
+    "header.instance.manual": "Copie a lista de instâncias da janela da área de transferência.",
+    "header.instance.imported": "{count} instâncias importadas."
   }
 }

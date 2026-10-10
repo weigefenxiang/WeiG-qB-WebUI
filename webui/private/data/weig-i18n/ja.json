@@ -461,6 +461,12 @@
     "header.instance.remove": "削除",
     "header.instance.empty": "このアドレスに保存されたインスタンスはありません。",
     "header.instance.hint": "インスタンスのアドレスは現在の WebUI のアドレスにのみ保存されます。切り替え時はページを再読み込みし、切り替え先のログインセッションを使用します。",
-    "settings.runtime.unmappedReadOnly": "未対応の WebAPI オプションは、操作と書き込みの仕様をソースコードで確認できるまで読み取り専用で表示します。"
+    "settings.runtime.unmappedReadOnly": "未対応の WebAPI オプションは、操作と書き込みの仕様をソースコードで確認できるまで読み取り専用で表示します。",
+    "header.instance.export": "インスタンス一覧をコピー",
+    "header.instance.import": "一覧をインポート",
+    "header.instance.paste": "インスタンス一覧（JSON）を貼り付け",
+    "header.instance.copied": "インスタンス一覧をコピーしました。",
+    "header.instance.manual": "クリップボードのダイアログから一覧をコピーしてください。",
+    "header.instance.imported": "{count} 件のインスタンスをインポートしました。"
   }
 }
