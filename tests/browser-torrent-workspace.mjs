@@ -411,6 +411,10 @@ try{
     assert(cardState&&cardState.top.length===3&&cardState.top[1].includes('torrent-title-line')&&cardState.top[2].includes('mobile-more'),`${name}: Mobile first line is not selection + title + More: ${JSON.stringify(cardState&&cardState.top)}`);
     assert(cardState.meta.includes('%')&&cardState.hasProgress&&cardState.percent.endsWith('%')&&cardState.height<100,`${name}: Mobile card is not compact inline-progress presentation: ${JSON.stringify(cardState)}`);
 
+    // The same InstanceRegistry is available from the mobile drawer; its duplicate
+    // Header action must not push Search or Logout outside a narrow viewport.
+    assert(await page.locator('#instances-btn').isHidden(),`${name}: narrow Header must defer the duplicate Instances button to the mobile Drawer`);
+    assert(await page.locator('#sidebar [data-header-links] button.header-utility-link').filter({hasText:'Instances'}).count()===1,`${name}: hiding the narrow Header control must preserve the mobile Drawer instance manager`);
     // Search is anchored below the header; opening it must not move/clip header actions.
     const before=await page.evaluate(()=>{const top=document.querySelector('.topbar').getBoundingClientRect(),buttons=[...document.querySelectorAll('.topbar button,.topbar a')].filter(n=>getComputedStyle(n).display!=='none').map(n=>n.getBoundingClientRect());return{top,buttons:buttons.map(r=>({l:r.left,r:r.right,t:r.top,b:r.bottom}))};});
     await page.locator('#mobile-search-btn').click();await page.waitForFunction(()=>document.querySelector('.topbar')?.classList.contains('search-open')&&document.activeElement?.id==='search-input');
