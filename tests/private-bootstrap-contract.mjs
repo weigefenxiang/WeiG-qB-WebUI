@@ -13,7 +13,7 @@ assert.ok(!index.includes('var styles=[')&&!index.includes('var scripts=['),'ind
 for(const token of ["SEED='scripts/runtime-assets.js'","PLAN='bootstrap-plan.json'","seedRuntime","executePlanFile(PLAN)","asset-load-failed:","__WEIG_GIT_SHA__"])assert.ok(index.includes(token),'bootstrap seed contract missing '+token);
 for(const retired of ['function loadStyles','function loadScripts','STYLE_CONCURRENCY'])assert.equal(index.includes(retired),false,'retired general bootstrap loader leaked back into index: '+retired);
 const startup=plan.phases.flatMap(phase=>phase.scripts),unique=new Set(startup);
-assert.equal(startup.length,40);assert.equal(unique.size,startup.length,'bootstrap plan script inventory must be unique');
+assert.equal(startup.length,41);assert.equal(unique.size,startup.length,'bootstrap plan script inventory must be unique');
 for(const deferred of ['scripts/settings.js','scripts/rss.js','scripts/logs.js'])assert.equal(unique.has(deferred),false,'route-only module leaked into startup plan: '+deferred);
 assert.equal(unique.has('scripts/runtime-assets.js'),false,'RuntimeAssets seed must not duplicate itself inside its own plan');
 assert.ok(plan.phases.at(-1).name==='application'&&plan.phases.at(-1).scripts.length===1&&plan.phases.at(-1).scripts[0]==='scripts/app.js','App must be the final dependency phase');
