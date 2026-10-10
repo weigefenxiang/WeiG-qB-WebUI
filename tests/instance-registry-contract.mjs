@@ -11,10 +11,26 @@ const plan=JSON.parse(fs.readFileSync(new URL('../webui/private/bootstrap-plan.j
 assert.ok(plan.phases.some(x=>x.name==='shared-ui'&&x.scripts.includes('scripts/instance-registry.js')),'one instance registry must load before the Header owner');
 assert.ok(head.includes('function installInstancesButton()')&&head.includes('function openInstances()')&&head.includes('D.create({className:'),'Header must consume the canonical DialogRuntime and InstanceRegistry');
 assert.ok(head.includes('registry.exportList()')&&head.includes('registry.importList(paste.value)')&&head.includes('W.Clipboard.copyText'),'Header must expose the portable instance list through the canonical registry and clipboard owner');
+function safeNavigationDocument(navigations){
+  return{
+    body:{appendChild(anchor){assert.equal(anchor.tagName,'A');}},
+    createElement(tag){
+      assert.equal(tag,'a');
+      return{tagName:'A',href:'',target:'',rel:'',referrerPolicy:'',hidden:false,
+        click(){
+          assert.equal(this.rel,'noreferrer','cross-qB navigation must not send Referer');
+          assert.equal(this.referrerPolicy,'no-referrer','cross-qB navigation must suppress Referrer by policy');
+          assert.equal(this.target,'_self','cross-qB navigation must replace the entire page');
+          navigations.push(this.href);
+        },remove(){}
+      };
+    }
+  };
+}
 const saved=new Map(),navigations=[];
 const storage={get:(k,d)=>saved.has(k)?saved.get(k):d,set:(k,v)=>{saved.set(k,v);return true;}};
 const location={href:'https://hub.example/public/index.html',protocol:'https:',hostname:'hub.example',assign:(v)=>navigations.push(v)};
-const w={location,WeiG:{StorageRuntime:{local:storage}}};
+const w={location,document:safeNavigationDocument(navigations),WeiG:{StorageRuntime:{local:storage}}};
 vm.runInNewContext(source,{window:w,URL});
 const I=w.WeiG.InstanceRegistry;
 assert.equal(I.currentUrl(),'https://hub.example/');
@@ -25,7 +41,8 @@ for(const [href,expected] of [
   ['https://site.example/qb/public/','https://site.example/qb/']
 ]){
   const navigated=[],savedRoot=new Map(),browser={
-    location:{href,assign:url=>navigated.push(url)},
+    location:{href,assign:url=>navigated.push('unsafe:'+url)},
+    document:safeNavigationDocument(navigated),
     WeiG:{StorageRuntime:{local:{
       get:(key,fallback)=>savedRoot.has(key)?savedRoot.get(key):fallback,
       set:(key,value)=>{savedRoot.set(key,value);return true;}
@@ -80,7 +97,7 @@ const portable=I.exportList();
 const portableData=JSON.parse(portable);
 assert.equal(portableData.schemaVersion,1);
 assert.deepEqual(portableData.items.map(x=>x.name),['NAS renamed','VPS']);
-const otherSaved=new Map(),otherWindow={location:{href:'https://vps.example/private/index.html',assign(){}},WeiG:{StorageRuntime:{local:{get:(k,d)=>otherSaved.has(k)?otherSaved.get(k):d,set:(k,v)=>{otherSaved.set(k,v);return true;}}}}};
+const otherSaved=new Map(),otherWindow={location:{href:'https://vps.example/private/index.html',assign(){}},document:safeNavigationDocument([]),WeiG:{StorageRuntime:{local:{get:(k,d)=>otherSaved.has(k)?otherSaved.get(k):d,set:(k,v)=>{otherSaved.set(k,v);return true;}}}}};
 vm.runInNewContext(source,{window:otherWindow,URL});
 const other=otherWindow.WeiG.InstanceRegistry;
 const first=other.importList(portable);
@@ -101,7 +118,7 @@ for(const invalid of [
   assert.equal(other.exportList(),snapshot,'invalid registry must not mutate stored instances');
 }
 I.switchTo('https://nas.example/');
-assert.deepEqual(navigations,['https://nas.example/'],'switching must navigate the full document, never reuse existing qB Cookies/client state');
+assert.deepEqual(navigations,['https://nas.example/'],'switching must navigate with no Referrer in the current tab; never reuse qB Cookies or client state');
 assert.ok(I.remove('https://vps.example/'));
 assert.equal(I.list().length,1);
 assert.ok(!source.includes('password:')&&!source.includes('token:'),'instance registry must only persist names and safe URLs, never credentials');

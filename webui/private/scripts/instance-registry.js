@@ -112,10 +112,21 @@
     write(next);
     return{added:added,updated:updated,total:next.length};
   }
+  // qB validates Referer even for top-level GET. location.assign() from a
+  // different instance may therefore be rejected as cross-site traffic.
+  // Keep the full-page boundary and suppress Referer at browser navigation.
+  function navigateIsolated(url){
+    var doc=global.document;
+    if(!doc||!doc.createElement||!doc.body)throw new Error('Safe cross-instance navigation is unavailable.');
+    var link=doc.createElement('a');
+    link.href=url;link.target='_self';link.rel='noreferrer';link.referrerPolicy='no-referrer';link.hidden=true;
+    doc.body.appendChild(link);
+    try{link.click();}finally{link.remove();}
+  }
   function switchTo(url){
     var canonical=canonicalUrl(url),record=load().find(function(x){return x.url===canonical;});
     if(!record)throw new Error('Choose a registered instance.');
-    if(canonical!==currentUrl().href)global.location.assign(canonical);
+    if(canonical!==currentUrl().href)navigateIsolated(canonical);
     return true;
   }
   W.InstanceRegistry=Object.freeze({
