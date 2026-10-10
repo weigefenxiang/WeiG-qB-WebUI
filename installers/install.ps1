@@ -11,6 +11,8 @@ param(
 )
 
 $ErrorActionPreference='Stop'
+$DevTarget=''
+if($Dev -and $args.Count -eq 1 -and [string]$args[0] -ceq 'A72'){$DevTarget='A72';$args=@()}
 if($args.Count -gt 0){throw "Unknown installer argument(s): $($args -join ' ')"}
 $Repo='weigefenxiang/WeiG-qB-WebUI'
 $DevDistBase='https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev'
@@ -23,7 +25,7 @@ Default: install the latest stable GitHub Release.
 
 Options:
   -version VERSION          Install a specific Release, for example 1.2.0.
-  -dev                      Install the current dev exact Git SHA.
+  -dev [A72]                Install current dev, or the immutable A72 test Prerelease.
   -o PATH, -output PATH     WebUI install path.
   -qbconfig PATH            Exact qBittorrent config path for custom/portable profiles.
   -configure                Enable qBittorrent Alternative WebUI and set Root Folder.
@@ -1164,6 +1166,127 @@ try {
     if($packageVersion -ne $releaseVersion){throw "$releaseLabel maps to VERSION=$releaseVersion but the package reports VERSION=$packageVersion; refusing mismatched Release content."}
     if($sourceSha -ne $releaseExpectedSha){throw "$releaseLabel points to Git SHA $releaseExpectedSha but the package reports GIT_SHA=$sourceSha; refusing mismatched Release content."}
     Write-Host "Source: $releaseLabel at $releaseExpectedSha ($archiveName; checksum and Release identity verified)"
+  } elseif($DevTarget -eq 'A72') {
+    $testTag='test-A72'
+    $testBase="https://github.com/$Repo/releases/download/$testTag"
+    $headers=@{'User-Agent'='WeiG-qB-WebUI-installer'}
+    try {$testMeta=Invoke-RestMethod -UseBasicParsing -Headers $headers "https://api.github.com/repos/$Repo/releases/tags/$testTag"} catch {throw "Test Prerelease $testTag is unavailable; refusing fallback to dev or stable."}
+    if([string]$testMeta.tag_name -cne $testTag -or !$testMeta.prerelease -or $testMeta.draft){throw 'Test release identity must be an exact published Prerelease.'}
+    try {$testCommit=Invoke-RestMethod -UseBasicParsing -Headers $headers "https://api.github.com/repos/$Repo/commits/$testTag"} catch {throw 'Test tag commit identity is unavailable.'}
+    $testSha=([string]$testCommit.sha).ToLowerInvariant()
+    if($testSha -notmatch '^[0-9a-f]{40} catch {throw 'Unable to resolve the current dev commit.'}
+    $devHeadSha=([string]$commit.sha).ToLowerInvariant()
+    if($devHeadSha -notmatch '^[0-9a-f]{40}$'){throw 'GitHub did not return a valid dev commit SHA.'}
+    $publishedShaFile=Join-Path $tmp 'DEV_GIT_SHA'
+    try {Invoke-WebRequest -UseBasicParsing "$DevDistBase/GIT_SHA" -OutFile $publishedShaFile} catch {throw 'The materialized dev WebUI payload is not published yet. Wait for Virtual qB Pages to finish and retry.'}
+    $publishedSha=(Get-Content $publishedShaFile -Raw).Trim().ToLowerInvariant()
+    if($publishedSha -notmatch '^[0-9a-f]{40}$'){throw 'The materialized dev payload does not publish a valid GIT_SHA.'}
+    $sourceSha=$publishedSha
+    if($publishedSha -ne $devHeadSha){
+      if(Test-DevPayloadCanRepresentHead $publishedSha $devHeadSha){Write-Host "Current dev HEAD $devHeadSha differs from materialized SHA $publishedSha only by Pages-irrelevant changes; reusing the verified payload."}
+      else {throw "The materialized dev payload is still at $publishedSha while dev is $devHeadSha, and at least one Pages-relevant change is not published. Wait for the exact Pages build and retry; refusing raw-source fallback."}
+    }
+    $manifestFile=Join-Path $tmp 'manifest.json'
+    $sumFile=Join-Path $tmp 'SHA256SUMS'
+    try {
+      Invoke-WebRequest -UseBasicParsing "$DevDistBase/manifest.json" -OutFile $manifestFile
+      Invoke-WebRequest -UseBasicParsing "$DevDistBase/SHA256SUMS" -OutFile $sumFile
+    } catch {throw "Unable to download the canonical materialized dev manifest for exact SHA $sourceSha."}
+    Verify-PackageChecksum $manifestFile $sumFile 'manifest.json'
+    try {$manifest=Get-Content $manifestFile -Raw | ConvertFrom-Json} catch {throw 'Materialized dev manifest.json is invalid.'}
+    if([string]$manifest.rootFolder -ne 'weig-qb-webui' -or [string]$manifest.zipArchive -ne 'weig-qb-webui.zip'){throw 'Materialized dev distribution manifest is unsupported.'}
+    $archiveName=[string]$manifest.zipArchive
+    $archive=Join-Path $tmp $archiveName
+    try {Invoke-WebRequest -UseBasicParsing "$DevDistBase/$archiveName" -OutFile $archive} catch {throw "Unable to download the materialized dev archive $archiveName for exact SHA $sourceSha."}
+    Verify-PackageChecksum $archive $sumFile $archiveName
+    $root=Join-Path $tmp 'dev'
+    Expand-Archive $archive $root -Force
+    $web=Join-Path $root ([string]$manifest.rootFolder)
+    $packageSha=(Get-Content (Join-Path $web 'GIT_SHA') -Raw).Trim().ToLowerInvariant()
+    if($packageSha -ne $sourceSha){throw "Dev package Git SHA $packageSha does not match materialized dev SHA $sourceSha."}
+    Assert-MaterializedWebUI $web
+    if($sourceSha -eq $devHeadSha){Write-Host "Source: dev exact SHA $sourceSha ($archiveName; materialized Pages payload; checksum verified)"}
+    else {Write-Host "Source: dev materialized SHA $sourceSha for current HEAD $devHeadSha ($archiveName; only Pages-irrelevant changes are newer; checksum verified)"}
+  }
+  if(!$web -or !(Test-Path $web)){ throw 'WebUI payload not found.' }
+  if(!(Test-Path (Join-Path $web 'public\index.html')) -or !(Test-Path (Join-Path $web 'public\login.html')) -or !(Test-Path (Join-Path $web 'private\index.html'))){ throw 'Source package is not a valid qBittorrent Alternate WebUI.' }
+
+  $new="$Destination.new"
+  if(Test-Path $new){Remove-Item $new -Recurse -Force}
+  New-Item -ItemType Directory -Force -Path $new | Out-Null
+  Copy-Item (Join-Path $web '*') $new -Recurse -Force
+  Inject-BuildSha $new $sourceSha
+  if($Channel -eq 'Dev'){ Assert-MaterializedWebUI $new }
+  if(!(Test-Path (Join-Path $new 'public\index.html')) -or !(Test-Path (Join-Path $new 'public\login.html')) -or !(Test-Path (Join-Path $new 'private\index.html')) -or !(Test-Path (Join-Path $new 'VERSION')) -or !(Test-Path (Join-Path $new 'GIT_SHA'))){ throw 'Invalid WebUI package.' }
+
+  $version=(Get-Content (Join-Path $new 'VERSION') -Raw).Trim()
+  $meta=[ordered]@{
+    version=$version
+    gitSha=$sourceSha
+    channel=$Channel.ToLowerInvariant()
+    container=$null
+    qbPath=$Destination
+    hostPath=$Destination
+    installedAt=[DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')
+    installer='windows'
+    materialized=$true
+  }
+  $meta | ConvertTo-Json | Set-Content -Path (Join-Path $new 'private\weig-install.json') -Encoding UTF8
+
+  Move-OutOfInstallTarget $Destination
+  try {
+    Install-WebUiStage $new $Destination
+  } catch {
+    $deploymentFailure=$_.Exception
+    try {
+      Restore-WebUiBackup $deploymentBackup $Destination
+    } catch {
+      throw "Live WebUI deployment failed and automatic file rollback also failed. Deployment error: $($deploymentFailure.Message) Rollback error: $($_.Exception.Message)"
+    }
+    throw $deploymentFailure
+  }
+
+  Write-Host "Installed: $Destination"
+  Write-Host "Channel: $($Channel.ToLowerInvariant())"
+  Write-Host "Installed version: $version"
+  Write-Host "Installed Git SHA: $sourceSha"
+  Write-Host "Install metadata: $(Join-Path $Destination 'private\weig-install.json')"
+
+  if($Configure){
+    Configure-QBWebUI $cfg $Destination
+    Write-Host "Configured: $cfg"
+    Write-Host "qBittorrent Root Folder: $Destination"
+  } else {
+    Write-Host 'qBittorrent -> Tools -> Preferences -> Web UI -> Use alternative WebUI'
+    Write-Host "WebUI Root Folder: $Destination"
+  }
+  Write-Host 'Rollback: powershell -ExecutionPolicy Bypass -File .\install.ps1 -rollback'
+} finally {
+  if(Test-Path $tmp){Remove-Item $tmp -Recurse -Force}
+}
+){throw 'Invalid immutable test tag SHA.'}
+    $sumFile=Join-Path $tmp 'SHA256SUMS'
+    $manifestFile=Join-Path $tmp 'manifest.json'
+    try {
+      Invoke-WebRequest -UseBasicParsing "$testBase/SHA256SUMS" -OutFile $sumFile
+      Invoke-WebRequest -UseBasicParsing "$testBase/manifest.json" -OutFile $manifestFile
+    }catch{throw 'Test Prerelease is missing its verified distribution assets.'}
+    Verify-PackageChecksum $manifestFile $sumFile 'manifest.json'
+    try {$manifest=Get-Content $manifestFile -Raw | ConvertFrom-Json} catch {throw 'Test distribution manifest is invalid.'}
+    if([string]$manifest.rootFolder -cne 'weig-qb-webui' -or [string]$manifest.zipArchive -cne 'weig-qb-webui.zip'){throw 'Unsupported test distribution manifest.'}
+    $archiveName=[string]$manifest.zipArchive
+    $archive=Join-Path $tmp $archiveName
+    try {Invoke-WebRequest -UseBasicParsing "$testBase/$archiveName" -OutFile $archive} catch {throw 'Canonical test archive is missing.'}
+    Verify-PackageChecksum $archive $sumFile $archiveName
+    $root=Join-Path $tmp 'test-A72'
+    Expand-Archive $archive $root -Force
+    $web=Join-Path $root ([string]$manifest.rootFolder)
+    if(!(Test-Path (Join-Path $web 'GIT_SHA'))){throw 'Test package has no exact SHA identity.'}
+    $sourceSha=(Get-Content (Join-Path $web 'GIT_SHA') -Raw).Trim().ToLowerInvariant()
+    if($sourceSha -cne $testSha){throw 'Test ZIP identity does not match immutable test tag SHA.'}
+    if((Get-Content (Join-Path $web 'VERSION') -Raw).Trim() -cne '1.2.1'){throw 'Test package VERSION mismatch.'}
+    Assert-MaterializedWebUI $web
+    Write-Host "Source: $testTag exact SHA $sourceSha (checksum verified)"
   } else {
     try {$commit=Invoke-RestMethod -UseBasicParsing -Headers @{'User-Agent'='WeiG-qB-WebUI-installer'} "https://api.github.com/repos/$Repo/commits/dev"} catch {throw 'Unable to resolve the current dev commit.'}
     $devHeadSha=([string]$commit.sha).ToLowerInvariant()
