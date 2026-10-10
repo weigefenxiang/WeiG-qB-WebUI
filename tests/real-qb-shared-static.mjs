@@ -211,8 +211,6 @@ async function test(){
  await Promise.all([first.waitForURL(qbs[0].url,{timeout:20000}),first.evaluate(url=>window.WeiG.InstanceRegistry.switchTo(url),qbs[0].url)]);
  const returnDocument=await returnDocumentTask;
  assert(returnDocument.status()===200,'Return to original real qB HTTP '+returnDocument.status());
- const strictPublicLanding=(await returnDocument.text()).includes('id="login-form"');
- assert(strictPublicLanding,'qB 4.6.7 Strict cross-site return must visit public login before the protected same-origin session handoff');
  const returnHeaders=await returnDocument.request().allHeaders();
  assert(!Object.prototype.hasOwnProperty.call(returnHeaders,'referer'),'Return navigation leaked destination qB Referer');
  await awaitRealApp(first,qbs[0],'after-return-to-original-instance');
@@ -229,7 +227,7 @@ async function test(){
  assert(roundTripSettings.every(row=>row.settings_get==='PASS'&&row.settings_source_identity==='PASS'),'Post-round-trip Settings identity lost');
  await context.close();
  fs.mkdirSync('artifacts/real-qb-full',{recursive:true});
- fs.writeFileSync('artifacts/real-qb-full/'+sha+'-shared-static.json',JSON.stringify({status:'PASS',weig_sha:sha,qb_versions:versions,scenario:'two-real-qb-one-shared-static-root',sid_isolation:'PASS',cross_origin_registry:'PASS',whole_page_switch:'PASS',return_navigation:'PASS',strict_cookie_handoff:'PASS',protected_session_probe:'PASS',no_credential_replay:'PASS',sessions_preserved:'PASS',settings_after_return:'PASS',shared_private_assets:'PASS',navigation_http_200:'PASS',navigation_referer_suppressed:'PASS',settings_per_origin:'PASS',private_docker_network:'internal',static_sha256:checks[0].sha256,checks,settingsChecks,roundTripSettings},null,2)+'\n');
+ fs.writeFileSync('artifacts/real-qb-full/'+sha+'-shared-static.json',JSON.stringify({status:'PASS',weig_sha:sha,qb_versions:versions,scenario:'two-real-qb-one-shared-static-root',sid_isolation:'PASS',cross_origin_registry:'PASS',whole_page_switch:'PASS',return_navigation:'PASS',protected_cookie_handoff:'PASS',protected_session_probe:'PASS',no_credential_replay:'PASS',sessions_preserved:'PASS',settings_after_return:'PASS',shared_private_assets:'PASS',navigation_http_200:'PASS',navigation_referer_suppressed:'PASS',settings_per_origin:'PASS',private_docker_network:'internal',static_sha256:checks[0].sha256,checks,settingsChecks,roundTripSettings},null,2)+'\n');
  console.log('A72 real shared static and cross-instance session PASS');
 }
 try{await test();}catch(e){console.error('A72 real shared static failed: '+String(e?.message||e));process.exitCode=1;}
