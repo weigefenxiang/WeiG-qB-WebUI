@@ -73,6 +73,8 @@ const prerelease=jobSection(ci,'a72_prerelease_source_audit','a72_real_qb');
 assert(prerelease.includes('[A72-source]')&&prerelease.includes('repository: qbittorrent/qBittorrent')&&prerelease.includes('audits/qb-prerelease-source-audit.mjs')&&prerelease.includes('persist-credentials: false'),'A72 Beta/RC audit must use original upstream exact tags and must not mutate public stable assets');
 assert(prerelease.includes('contents: read')&&!prerelease.includes('contents: write')&&!prerelease.includes('gh release'),'A72 prerelease source observation is never a publication owner');
 const prereleaseAudit=read('audits/qb-prerelease-source-audit.mjs');
+assert(prereleaseAudit.includes('extractPreferenceDescriptors')&&prereleaseAudit.includes('preferenceSourceDelta')&&prereleaseAudit.includes('writeCertified:false'),'Official qB prerelease Settings source drift must be observable and unadmitted through canonical parser, not silently treated as approved writes');
+
 assert(prereleaseAudit.includes('sourceBlobWitnesses')&&prereleaseAudit.includes('sourceActionDelta')&&prereleaseAudit.includes('getFreeSpaceAtPathAction')&&prereleaseAudit.includes('downloadFileAction')&&prereleaseAudit.includes('cloneRuleAction')&&prereleaseAudit.includes('exportRulesAction'),'A72 pinned Beta/RC official source deltas must be audited by the existing sole audits owner rather than a parallel test source loader');
 
 assert(a72TestRelease.includes('[A72-source]')&&a72TestRelease.includes('A72 official Beta/RC source drift (read-only)'),'Final A72 publish requires upstream prerelease source drift evidence on the same exact SHA');

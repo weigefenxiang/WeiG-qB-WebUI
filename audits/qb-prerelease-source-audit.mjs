@@ -3,6 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
+import {extractPreferenceDescriptors} from '../tools/qb-source-parsers.mjs';
 
 const root=path.resolve(process.argv[2]||'');
 if(!fs.existsSync(path.join(root,'.git')))throw new Error('Usage: node tests/a72-prerelease-source-audit.mjs <upstream-qB-git-clone>');
@@ -109,16 +110,42 @@ for(const [tag,previous] of [['release-5.3.0beta1','release-5.2.4'],['release-5.
     sourceActionDelta[tag][file]=change;
   }
 }
+// Reuse the canonical Settings source parser to observe GET/SET type drift
+// without emitting runtime bindings or assuming any new field is safe to write.
+function sourcePreferenceIndex(tag){
+  const source=git('show','refs/tags/'+tag+':src/webui/api/appcontroller.cpp');
+  const descriptors=extractPreferenceDescriptors(source,'official '+tag);
+  if(descriptors.length<50)throw new Error(tag+': unexpectedly sparse Preferences extraction; source format needs review');
+  return new Map(descriptors.map(row=>[row.key,{
+    readType:row.readType||null,writeType:row.writeType||null,
+    getterPresent:row.getterPresent===true,setterPresent:row.setterPresent===true,
+    typeAgreement:row.typeAgreement||'UNRESOLVED'
+  }]));
+}
+function preferenceDrift(before,after){
+  const added=[...after.keys()].filter(key=>!before.has(key)).sort();
+  const removed=[...before.keys()].filter(key=>!after.has(key)).sort();
+  const changed=[...after.keys()].filter(key=>before.has(key)&&JSON.stringify(after.get(key))!==JSON.stringify(before.get(key))).sort().map(key=>({
+    key,before:before.get(key),after:after.get(key)
+  }));
+  return{added,removed,changed,sourceOnly:true,writeCertified:false};
+}
+const preferenceSources=Object.fromEntries(expected.map(row=>[row.tag,sourcePreferenceIndex(row.tag)]));
+const preferenceSourceDelta={
+  'release-5.3.0beta1':preferenceDrift(preferenceSources['release-5.2.4'],preferenceSources['release-5.3.0beta1']),
+  'release-5.3.0rc1':preferenceDrift(preferenceSources['release-5.3.0beta1'],preferenceSources['release-5.3.0rc1'])
+};
 const result={
   schemaVersion:1,kind:'A72-upstream-prerelease-source-observation',
   productSha:String(process.env.GITHUB_SHA||''),
   stableFrozenUnaffected:true,sourceReadOnly:true,
   observedPrereleaseTags:observed.sort(),
   sourceActionDelta,
+  preferenceSourceDelta,
   snapshots
 };
 if(!/^[a-f0-9]{40}$/.test(result.productSha))throw new Error('A72 prerelease source evidence requires current exact product SHA');
 const output=path.resolve(process.env.A72_UPSTREAM_SOURCE_OUTPUT||'artifacts/a72-prerelease-source/source-audit.json');
 fs.mkdirSync(path.dirname(output),{recursive:true});
 fs.writeFileSync(output,JSON.stringify(result,null,2)+'\n');
-console.log('A72 official exact-source prerelease audit:',JSON.stringify(snapshots.map(s=>({tag:s.tag,commit:s.commit,webApi:s.webApi,changedVsStable:s.changedVsStable?.length||0,certified:s.certifiedByWeiG===true}))));
+console.log('A72 official exact-source prerelease audit:',JSON.stringify(snapshots.map(s=>({tag:s.tag,commit:s.commit,webApi:s.webApi,changedVsStable:s.changedVsStable?.length||0,certified:s.certifiedByWeiG===true}))),JSON.stringify(Object.fromEntries(Object.entries(preferenceSourceDelta).map(([tag,x])=>[tag,{added:x.added.length,removed:x.removed.length,changed:x.changed.length,writeCertified:false}]))));
