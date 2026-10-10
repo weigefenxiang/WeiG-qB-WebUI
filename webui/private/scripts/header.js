@@ -8,6 +8,7 @@
     if(kind==='theme')return '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.8"/><path fill="currentColor" d="M12 4a8 8 0 0 0 0 16Z"/></svg>';
     if(kind==='github')return '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 .7a11.3 11.3 0 0 0-3.57 22c.57.1.78-.24.78-.55v-2.15c-3.18.69-3.85-1.35-3.85-1.35-.52-1.32-1.27-1.67-1.27-1.67-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.75 2.68 1.24 3.33.95.1-.74.4-1.24.73-1.52-2.54-.29-5.21-1.27-5.21-5.65 0-1.25.45-2.27 1.18-3.07-.12-.29-.51-1.45.11-3.02 0 0 .96-.31 3.13 1.17A10.9 10.9 0 0 1 12 6.94c.97 0 1.94.13 2.85.38 2.17-1.48 3.13-1.17 3.13-1.17.62 1.57.23 2.73.11 3.02.73.8 1.18 1.82 1.18 3.07 0 4.39-2.68 5.35-5.23 5.64.41.36.78 1.06.78 2.13v3.14c0 .31.21.66.79.55A11.3 11.3 0 0 0 12 .7Z"/></svg>';
     if(kind==='blog')return '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" d="M4 5.5h16v13H4zM8 9h8M8 12h8M8 15h5"/><path fill="currentColor" d="M6.5 7.2h1.2v1.2H6.5z"/></svg>';
+    if(kind==='server')return '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="8" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><rect x="3" y="13" width="18" height="8" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="7" cy="7" r="1" fill="currentColor"/><circle cx="7" cy="17" r="1" fill="currentColor"/></svg>';
     if(kind==='logout')return '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" d="M10 5H5.5v14H10M14 8l4 4-4 4M18 12H9"/></svg>';
     return '';
   }
@@ -27,9 +28,51 @@
   function setDrawer(on){var button=document.getElementById('menu-btn'),sidebar=document.getElementById('sidebar'),scrim=document.getElementById('drawer-scrim');if(!sidebar||!scrim)return false;var open=!!on;sidebar.classList.toggle('is-open',open);scrim.classList.toggle('is-open',open);if(button)button.setAttribute('aria-expanded',open?'true':'false');return open;}
   function toggleDrawer(){var sidebar=document.getElementById('sidebar');return setDrawer(!(sidebar&&sidebar.classList.contains('is-open')));}
   function installDrawerToggle(){var button=document.getElementById('menu-btn'),sidebar=document.getElementById('sidebar'),scrim=document.getElementById('drawer-scrim');if(!button||!sidebar||!scrim||button.dataset.drawerToggleReady==='1')return;button.dataset.drawerToggleReady='1';button.setAttribute('aria-controls','sidebar');button.setAttribute('aria-expanded',sidebar.classList.contains('is-open')?'true':'false');button.addEventListener('click',toggleDrawer);scrim.addEventListener('click',function(){setDrawer(false);});}
-  function installDesktop(){var actions=document.querySelector('.topbar__actions');if(!actions)return;installTheme();installSearch();if(document.getElementById('github-link'))return;var theme=document.getElementById('theme-btn');var github=external('github-link','GitHub','https://github.com/weigefenxiang/WeiG-qB-WebUI','github');var blog=external('blog-link',tr('header.blog'),'https://www.weigshare.com/','blog');var logout=runtime('logout-btn',tr('header.logout'),'logout',function(){if(W.SessionController)W.SessionController.logout(W.AppState&&W.AppState.client);});if(theme&&theme.nextSibling){actions.insertBefore(github,theme.nextSibling);actions.insertBefore(blog,github.nextSibling);}else{actions.appendChild(github);actions.appendChild(blog);}actions.appendChild(logout);}
+  function instanceCopy(key,fallback){var value=tr('header.instance.'+key);return value&&value!=='header.instance.'+key?value:fallback;}
+  function openInstances(){
+    var registry=W.InstanceRegistry,D=W.DialogRuntime;
+    if(!registry||!D)return;
+    var dialog=D.create({className:'dialog surface surface--modal instance-manager-dialog',draggable:true,backdropClose:true,escapeClose:true,removeOnClose:true});
+    var head=document.createElement('div');head.className='dialog__head';
+    var title=document.createElement('h2');title.textContent=instanceCopy('title','Instances');
+    var close=document.createElement('button');close.type='button';close.className='icon-btn';close.textContent='×';close.setAttribute('aria-label',tr('app.close'));close.addEventListener('click',function(){D.close(dialog,'close');});head.append(title,close);
+    var body=document.createElement('div');body.className='dialog__body';
+    var hint=document.createElement('p');hint.className='text-description';hint.textContent=instanceCopy('hint','Instance addresses are saved on this WebUI origin only. Switching reloads the page with the destination’s own login session.');
+    var list=document.createElement('div');list.className='instance-manager__list';
+    var form=document.createElement('form');form.className='instance-manager__form';form.noValidate=true;
+    var name=document.createElement('input');name.type='text';name.className='field-input';name.maxLength=48;name.required=true;name.placeholder=instanceCopy('name','Instance name');name.setAttribute('aria-label',name.placeholder);
+    var url=document.createElement('input');url.type='url';url.className='field-input';url.required=true;url.placeholder='https://qb.example/';url.setAttribute('aria-label',instanceCopy('url','Instance URL'));
+    var notice=document.createElement('p');notice.className='text-description';notice.setAttribute('role','status');
+    var submit=document.createElement('button');submit.type='submit';submit.className='btn btn--primary';submit.textContent=instanceCopy('add','Add instance');
+    var nameLabel=document.createElement('label');nameLabel.className='field';var nameCaption=document.createElement('span');nameCaption.textContent=instanceCopy('name','Instance name');nameLabel.append(nameCaption,name);
+    var urlLabel=document.createElement('label');urlLabel.className='field';var urlCaption=document.createElement('span');urlCaption.textContent=instanceCopy('url','Instance URL');urlLabel.append(urlCaption,url);
+    form.append(nameLabel,urlLabel,notice,submit);
+    function renderList(){
+      list.textContent='';
+      var records=registry.list(),current=registry.currentUrl();
+      if(!records.length){var empty=document.createElement('p');empty.className='text-description';empty.textContent=instanceCopy('empty','No saved instances on this address.');list.appendChild(empty);}
+      records.forEach(function(item){
+        var row=document.createElement('div');row.className='instance-manager__row';
+        var go=document.createElement('button');go.type='button';go.className='btn btn--ghost';go.textContent=item.name+(item.url===current?' ✓':'')+' · '+item.url;go.setAttribute('aria-label',item.name+' '+item.url);go.addEventListener('click',function(){try{registry.switchTo(item.url);D.close(dialog,'switch');}catch(error){notice.textContent=error.message;}});
+        var remove=document.createElement('button');remove.type='button';remove.className='btn btn--ghost';remove.textContent=instanceCopy('remove','Remove');remove.setAttribute('aria-label',instanceCopy('remove','Remove')+' '+item.name);remove.addEventListener('click',function(){try{registry.remove(item.url);notice.textContent='';renderList();}catch(error){notice.textContent=error.message;}});
+        row.append(go,remove);list.appendChild(row);
+      });
+    }
+    form.addEventListener('submit',function(event){
+      event.preventDefault();
+      try{registry.add(name.value,url.value);name.value='';url.value='';notice.textContent='';renderList();}catch(error){notice.textContent=error.message;}
+    });
+    body.append(hint,list,form);dialog.append(head,body);renderList();D.open(dialog,{draggable:true,backdropClose:true,escapeClose:true,removeOnClose:true,focus:name});
+  }
+  function installInstancesButton(){
+    var actions=document.querySelector('.topbar__actions'),host=document.getElementById('theme-btn');
+    if(!W.InstanceRegistry||!actions||document.getElementById('instances-btn'))return;
+    var button=runtime('instances-btn',instanceCopy('title','Instances'),'server',openInstances);
+    actions.insertBefore(button,host||actions.firstChild);
+  }
+  function installDesktop(){var actions=document.querySelector('.topbar__actions');if(!actions)return;installTheme();installSearch();installInstancesButton();if(document.getElementById('github-link'))return;var theme=document.getElementById('theme-btn');var github=external('github-link','GitHub','https://github.com/weigefenxiang/WeiG-qB-WebUI','github');var blog=external('blog-link',tr('header.blog'),'https://www.weigshare.com/','blog');var logout=runtime('logout-btn',tr('header.logout'),'logout',function(){if(W.SessionController)W.SessionController.logout(W.AppState&&W.AppState.client);});if(theme&&theme.nextSibling){actions.insertBefore(github,theme.nextSibling);actions.insertBefore(blog,github.nextSibling);}else{actions.appendChild(github);actions.appendChild(blog);}actions.appendChild(logout);}
   function mobileLink(label,href,kind,handler){var node=href?document.createElement('a'):document.createElement('button');if(!href)node.type='button';node.className='nav-item header-utility-link';if(href){node.href=href;node.target='_blank';node.rel='noopener noreferrer';}var icon=document.createElement('span');icon.className='header-utility-icon';icon.innerHTML=iconSvg(kind);var text=document.createElement('span');text.textContent=label;node.append(icon,text);if(handler)node.addEventListener('click',handler);return node;}
-  function installMobile(){var sidebar=document.getElementById('sidebar');if(!sidebar||sidebar.querySelector('[data-header-links]'))return;var section=document.createElement('div');section.className='sidebar__section';section.dataset.headerLinks='1';var title=document.createElement('div');title.className='eyebrow';title.textContent=tr('header.links');var nav=document.createElement('nav');nav.className='nav-list';nav.append(mobileLink('GitHub','https://github.com/weigefenxiang/WeiG-qB-WebUI','github'),mobileLink('WeiG Share','https://www.weigshare.com/','blog'),mobileLink(tr('header.logout'),'', 'logout',function(){if(W.SessionController)W.SessionController.logout(W.AppState&&W.AppState.client);}));section.append(title,nav);sidebar.appendChild(section);}
+  function installMobile(){var sidebar=document.getElementById('sidebar');if(!sidebar||sidebar.querySelector('[data-header-links]'))return;var section=document.createElement('div');section.className='sidebar__section';section.dataset.headerLinks='1';var title=document.createElement('div');title.className='eyebrow';title.textContent=tr('header.links');var nav=document.createElement('nav');nav.className='nav-list';if(W.InstanceRegistry)nav.appendChild(mobileLink(instanceCopy('title','Instances'),'', 'server',openInstances));nav.append(mobileLink('GitHub','https://github.com/weigefenxiang/WeiG-qB-WebUI','github'),mobileLink('WeiG Share','https://www.weigshare.com/','blog'),mobileLink(tr('header.logout'),'', 'logout',function(){if(W.SessionController)W.SessionController.logout(W.AppState&&W.AppState.client);}));section.append(title,nav);sidebar.appendChild(section);}
   function syncText(){var labelNode=document.querySelector('#add-btn [data-header-add-short]');if(labelNode)labelNode.textContent=tr('header.add');if(W.Theme)installTheme();var theme=document.getElementById('theme-utility-btn');if(theme&&W.Theme)hoverHint(theme,W.Theme.title());var blog=document.getElementById('blog-link');if(blog){var blogText=tr('header.blog');blog.setAttribute('aria-label',blogText);hoverHint(blog,blogText);}var logout=document.getElementById('logout-btn');if(logout){var logoutText=tr('header.logout');logout.setAttribute('aria-label',logoutText);hoverHint(logout,logoutText);}syncSearchContext();}
   function init(){setTimeout(function(){installDesktop();installMobile();installDrawerToggle();installSearchRouting();syncText();},0);}
   W.HeaderUtilities={installDesktop:installDesktop,installMobile:installMobile,installTheme:installTheme,installSearch:installSearch,installDrawerToggle:installDrawerToggle,setDrawer:setDrawer,toggleDrawer:toggleDrawer,setSearchOpen:setSearchOpen,syncSearchContext:syncSearchContext,syncText:syncText};

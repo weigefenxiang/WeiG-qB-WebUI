@@ -1,0 +1,32 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+const source=fs.readFileSync(new URL('../webui/private/scripts/instance-registry.js',import.meta.url),'utf8');
+const head=fs.readFileSync(new URL('../webui/private/scripts/header.js',import.meta.url),'utf8');
+const plan=JSON.parse(fs.readFileSync(new URL('../webui/private/bootstrap-plan.json',import.meta.url),'utf8'));
+assert.ok(plan.phases.some(x=>x.name==='shared-ui'&&x.scripts.includes('scripts/instance-registry.js')),'one instance registry must load before the Header owner');
+assert.ok(head.includes('function installInstancesButton()')&&head.includes('function openInstances()')&&head.includes('D.create({className:'),'Header must consume the canonical DialogRuntime and InstanceRegistry');
+const saved=new Map(),navigations=[];
+const storage={get:(k,d)=>saved.has(k)?saved.get(k):d,set:(k,v)=>{saved.set(k,v);return true;}};
+const location={href:'https://hub.example/public/index.html',protocol:'https:',hostname:'hub.example',assign:(v)=>navigations.push(v)};
+const w={location,WeiG:{StorageRuntime:{local:storage}}};
+vm.runInNewContext(source,{window:w,URL});
+const I=w.WeiG.InstanceRegistry;
+assert.equal(I.currentUrl(),'https://hub.example/');
+assert.deepEqual(Array.from(I.list()),[]);
+I.add('NAS','https://nas.example/private/index.html');
+I.add('VPS','https://vps.example/');
+assert.equal(I.list().length,2);
+assert.equal(I.list()[0].url,'https://nas.example/');
+I.add('NAS renamed','https://nas.example/');
+assert.equal(I.list().length,2,'updating an instance must not duplicate its identity');
+assert.equal(I.list()[0].name,'NAS renamed');
+for(const bad of ['javascript:alert(1)','https://user:pw@x.example/','https://x.example/?secret=1','https://x.example/#token','http://unsafe.example/','https://hub.example:8443/','https://hub.example/qb2/','https://nas.example/api/v2/app/version']){
+  assert.throws(()=>I.add('bad',bad),Error,'unsafe instance address must fail: '+bad);
+}
+I.switchTo('https://nas.example/');
+assert.deepEqual(navigations,['https://nas.example/'],'switching must navigate the full document, never reuse existing qB Cookies/client state');
+assert.ok(I.remove('https://vps.example/'));
+assert.equal(I.list().length,1);
+assert.ok(!source.includes('password:')&&!source.includes('token:'),'instance registry must only persist names and safe URLs, never credentials');
+console.log('Instance registry contract passed: origin-local storage, URL validation, full-navigation isolation and header ownership.');

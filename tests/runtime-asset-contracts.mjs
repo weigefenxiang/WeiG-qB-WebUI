@@ -15,6 +15,7 @@ const files=[
   './js-bundle-materializer-contract.mjs',
   './bootstrap-topology-contract.mjs',
   './private-bootstrap-contract.mjs',
+  './instance-registry-contract.mjs',
 ];
 for(const file of files)await import(new URL(file,import.meta.url));
 console.log(`Runtime asset grouped contracts passed: ${files.length} focused owners.`);
