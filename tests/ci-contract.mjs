@@ -68,6 +68,10 @@ for(const [jobName,next] of [['installer_lifecycle_linux','installer_lifecycle_b
 }
 const oldCandidate=jobSection(ci,'release_candidate','native_surface_source_base');
 assert(oldCandidate.includes("github.ref == 'refs/heads/dev'")&&!oldCandidate.includes("refs/heads/test/A72"),'dev candidate publication/deployment dispatch must remain inaccessible from A72');
+const a72RealQb=jobSection(ci,'a72_real_qb','a72_distribution_integrity');
+assert(a72RealQb.includes("github.ref == 'refs/heads/test/A72'")&&a72RealQb.includes('[A72-real-qb]')&&a72RealQb.includes("needs.smoke.result == 'success'"),'A72 real qB evidence must be explicit, exact-SHA and isolated from stable dev');
+assert(a72RealQb.includes('tests/real-qb-docker.sh --version "$qb_version" --full-matrix')&&a72RealQb.includes('latestAdmittedStable')&&!a72RealQb.includes('--allow-writes'),'Real-qB A72 must reuse its exact-version Docker owner without enabling destructive product writes');
+assert(!a72RealQb.includes('gh release')&&!a72RealQb.includes('contents: write'),'Real-qB A72 evidence must not publish any release artifact');
 const a72Distribution=jobSection(ci,'a72_distribution_integrity','installer_lifecycle_linux');
 assert(a72Distribution.includes("github.ref == 'refs/heads/test/A72'")&&a72Distribution.includes("needs.smoke.result == 'success'"),'A72 distribution integrity must be scoped to the isolated test branch and its successful smoke');
 assert(a72Distribution.includes('tools/build-webui-dist.mjs')&&a72Distribution.includes('sha256sum -c SHA256SUMS')&&a72Distribution.includes('weig-qb-webui/GIT_SHA')&&a72Distribution.includes('A72.zip'),'A72 must prove the self-contained builder identity and alias before publishing anything');
