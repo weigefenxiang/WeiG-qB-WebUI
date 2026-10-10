@@ -50,8 +50,20 @@ await detected524.detect();
 assert.equal(detected524.qbVersion,'v5.2.4','detected identity must preserve the daemon-reported qB version');
 assert.equal(detected524.webApiVersion,'2.15.1','WebAPI identity must come from app/webapiVersion instead of qB version inference');
 assert.equal(detected524.major,5,'v-prefixed qB 5.2.4 identity must normalize for structural major detection');
-const missingApi=new Client();missingApi.request=async path=>{if(path==='app/version')return'6.0.0-rc1';throw new Error('unsupported WebAPI identity');};await missingApi.detect();
-assert.equal(missingApi.webApiVersion,'0','missing WebAPI version must remain UNKNOWN instead of fabricating an older certified version');
+const missingApi=new Client();missingApi.request=async path=>{if(path==='app/version')return'6.0.0-rc1';throw Object.assign(new Error('WebAPI identity endpoint missing'),{status:404,code:'HTTP'});};await missingApi.detect();
+assert.equal(missingApi.webApiVersion,'0','a genuinely absent WebAPI identity endpoint must remain UNKNOWN instead of fabricating an older certified version');
+for(const status of [405,501]){
+  const absent=new Client();
+  absent.request=async path=>path==='app/version'?'6.0.0-dev':Promise.reject(Object.assign(new Error('not implemented'),{status,code:'HTTP'}));
+  await absent.detect();
+  assert.equal(absent.webApiVersion,'0','an unsupported version endpoint must be classified as UNKNOWN, not as a supported old API');
+}
+for(const [status,code] of [[403,'SESSION_EXPIRED'],[503,'HTTP'],[0,'NETWORK'],[0,'TIMEOUT'],[0,'ABORTED']]){
+  const broken=new Client(),failure=Object.assign(new Error('WebAPI version request failed'),{status,code});
+  broken.request=async path=>path==='app/version'?'6.0.0-rc1':Promise.reject(failure);
+  await assert.rejects(broken.detect(),error=>error===failure,'WebAPI '+code+' failure must propagate instead of masquerading as UNKNOWN');
+  assert.equal(broken.qbVersion,'0.0.0','failed detection must not commit a partial version identity');
+}
 
 const client=new Client();
 client.qbVersion='6.0.0';client.webApiVersion='3.0.0';client.major=6;
