@@ -408,7 +408,7 @@ jobs:
 
   ui_browser:
     name: Linux semantic UI · ${{ matrix.suite.name }}
-    if: ${{ (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/dev' && (inputs.validation_mode == 'ui' || (inputs.validation_mode == 'change-aware' && needs.classify.outputs.ui == 'true'))) || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[ui]')) }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/test/A72') && (inputs.validation_mode == 'ui' || (inputs.validation_mode == 'change-aware' && needs.classify.outputs.ui == 'true'))) || (github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/test/A72') && contains(github.event.head_commit.message, '[ui]')) }}
     runs-on: ubuntu-24.04
     needs: [classify, smoke]
     strategy:
@@ -455,7 +455,7 @@ jobs:
 
   settings_browser_matrix:
     name: qB admitted Settings browser shard ${{ matrix.shard }}
-    if: ${{ (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/dev' && (inputs.validation_mode == 'settings-matrix' || (inputs.validation_mode == 'change-aware' && needs.classify.outputs.settings_ui == 'true'))) || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[settings-matrix]')) }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/test/A72') && (inputs.validation_mode == 'settings-matrix' || (inputs.validation_mode == 'change-aware' && needs.classify.outputs.settings_ui == 'true'))) || (github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/test/A72') && contains(github.event.head_commit.message, '[settings-matrix]')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     needs: [classify, smoke]
@@ -498,7 +498,7 @@ jobs:
 
   settings_browser_matrix_aggregate:
     name: qB admitted Settings browser aggregate
-    if: ${{ always() && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/dev' && inputs.validation_mode == 'settings-matrix') || (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'change-aware' && needs.settings_browser_matrix.result == 'success') || (github.event_name == 'push' && github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, '[settings-matrix]'))) }}
+    if: ${{ always() && ((github.event_name == 'workflow_dispatch' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/test/A72') && inputs.validation_mode == 'settings-matrix') || (github.event_name == 'workflow_dispatch' && inputs.validation_mode == 'change-aware' && needs.settings_browser_matrix.result == 'success') || (github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/test/A72') && contains(github.event.head_commit.message, '[settings-matrix]'))) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     needs:

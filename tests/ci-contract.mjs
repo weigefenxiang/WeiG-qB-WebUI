@@ -52,6 +52,15 @@ assert(direct.length===0,`Playwright ownership duplicated: ${direct.join(', ')}`
 
 const ci=read('.github/workflows/ci.yml');
 assert(ci.includes("github.ref == 'refs/heads/test/A72' && github.run_id || 'shared'")&&ci.includes("cancel-in-progress: ${{ github.ref != 'refs/heads/test/A72' }}"),'A72 unique per-run CI concurrency must preserve queued test runs without changing dev cancellation');
+for(const [name,next] of [['ui_browser','settings_browser_matrix'],['settings_browser_matrix','settings_browser_matrix_aggregate'],['settings_browser_matrix_aggregate','release_catalog_extract']]){
+  const job=jobSection(ci,name,next);
+  assert(job.includes("github.ref == 'refs/heads/test/A72'")&&job.includes("github.ref == 'refs/heads/dev'"),'A72 must be able to run the existing read-only '+name+' validation without changing dev support');
+}
+for(const [name,next] of [['torrent_runtime_materialize','settings_runtime_materialize'],['settings_runtime_materialize','smoke'],['release_catalog_extract','release_catalog_base'],['release_candidate','native_surface_source_base']]){
+  const job=jobSection(ci,name,next);
+  assert(job.includes("github.ref == 'refs/heads/dev'")&&!job.includes("github.ref == 'refs/heads/test/A72'"),'Writable/materializing '+name+' must remain dev-only during isolated A72');
+}
+
 const a72TestRelease=read('.github/workflows/a72-test-release.yml');
 assert(a72TestRelease.includes("contains(github.event.head_commit.message, '[A72-publish]')")&&a72TestRelease.includes('test "$actual" = "$GITHUB_SHA"'),'A72 must never publish without the final explicit marker and fresh target ref');
 assert(a72TestRelease.includes('git/ref/tags/test-A72')&&a72TestRelease.includes("gh api --method POST \"repos/$GITHUB_REPOSITORY/git/refs\"")&&a72TestRelease.includes("-f sha=\"$GITHUB_SHA\"")&&a72TestRelease.includes('--verify-tag'),'A72 one-time prerelease must reserve a previously unused Tag at exact Git SHA rather than silently reusing or moving an existing tag');
