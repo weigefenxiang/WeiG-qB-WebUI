@@ -67,8 +67,10 @@ async function test(){
  const checks=[];
  await Promise.all(qbs.map(async q=>{
    await ready(q.url);q.password=await getPassword(q.name);await configure(q);await ready(q.url);
-   const version=await fetch(q.url+'api/v2/app/version',{headers:{Cookie:q.sid}}).then(r=>r.text());
-   assert(version.trim()===q.version,'qB runtime version mismatch');
+   const identityResponse=await fetch(q.url+'api/v2/app/version',{headers:{Cookie:q.sid}});
+   assert(identityResponse.status===200,'Real qB runtime version HTTP '+identityResponse.status+' for '+q.version);
+   const version=String(await identityResponse.text()).trim().replace(/^v/i,'').split(/[+-]/)[0];
+   assert(version===q.version,'Real qB runtime version mismatch: expected '+q.version+', observed '+version);
    const mounts=JSON.parse(sh('docker',['inspect',q.name,'--format','{{json .Mounts}}']));
    assert(mounts.some(m=>m.Source===shared&&m.Destination==='/weig-webui'&&m.RW===false),'qB must mount the SAME read-only host directory');
    assert(sh('docker',['exec',q.name,'cat','/weig-webui/GIT_SHA'])===sha,'Container-mounted SHA drift');
