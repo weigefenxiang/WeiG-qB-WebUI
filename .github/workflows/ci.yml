@@ -358,11 +358,15 @@ jobs:
 
 
   a72_real_qb:
-    name: A72 isolated real qB 5.2.4 source and WebAPI smoke
+    name: A72 isolated real qB ${{ matrix.qb }} source and WebAPI smoke
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/test/A72' && contains(github.event.head_commit.message, '[A72-real-qb]') && needs.smoke.result == 'success' }}
     needs: smoke
     runs-on: ubuntu-24.04
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        qb: ['4.6.7', '5.2.4']
     permissions:
       contents: read
     steps:
@@ -381,8 +385,9 @@ jobs:
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           command -v docker
-          qb_version="$(node -p "require('./tools/data/qb-stable-lkg.json').latestAdmittedStable")"
-          test "$qb_version" = 5.2.4
+          latest="$(node -p "require('./tools/data/qb-stable-lkg.json').latestAdmittedStable")"
+          test "$latest" = 5.2.4
+          qb_version="${{ matrix.qb }}"
           bash tests/real-qb-docker.sh --version "$qb_version" --full-matrix
           evidence="artifacts/real-qb-full/$GITHUB_SHA-$qb_version-runtime.json"
           test -s "$evidence"
@@ -391,7 +396,7 @@ jobs:
         if: ${{ always() }}
         uses: actions/upload-artifact@v7
         with:
-          name: a72-real-qb-${{ github.sha }}
+          name: a72-real-qb-${{ github.sha }}-${{ matrix.qb }}
           path: artifacts/real-qb-full/
           if-no-files-found: error
           retention-days: 14
