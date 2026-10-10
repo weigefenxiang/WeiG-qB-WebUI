@@ -65,6 +65,18 @@ for(const [status,code] of [[403,'SESSION_EXPIRED'],[503,'HTTP'],[0,'NETWORK'],[
   assert.equal(broken.qbVersion,'0.0.0','failed detection must not commit a partial version identity');
 }
 
+const boundedOptions=new Client(),stringProvider={kind:'api-options',endpoint:'app/networkInterfaceList',responseShape:'string-array'};
+boundedOptions.request=async()=>['eth0','wlan0'];
+assert.equal(JSON.stringify(await boundedOptions.settingsDynamicOptions(stringProvider)),JSON.stringify([{value:'eth0',label:'eth0'},{value:'wlan0',label:'wlan0'}]),'bounded option read must preserve valid source-driven interface values');
+for(const invalid of [Array.from({length:513},(_,i)=>'option-'+i),['x'.repeat(513)],[[1,2]]]){
+  boundedOptions.request=async()=>invalid;
+  await assert.rejects(boundedOptions.settingsDynamicOptions(stringProvider),error=>error.status===200&&error.path==='app/networkInterfaceList','unbounded or nested runtime option responses must fail explicitly without partial projection');
+}
+const objectProvider={kind:'api-options',endpoint:'app/networkInterfaceList',responseShape:'object-array',valueField:'value',labelField:'label'};
+boundedOptions.request=async()=>[{value:'eth0',label:'Ethernet'}];
+assert.equal(JSON.stringify(await boundedOptions.settingsDynamicOptions(objectProvider)),JSON.stringify([{value:'eth0',label:'Ethernet'}]),'bounded object option response must preserve canonical value and label');
+boundedOptions.request=async()=>[{value:{nested:'unsafe'},label:'Nested'}];
+await assert.rejects(boundedOptions.settingsDynamicOptions(objectProvider),error=>error.status===200&&error.path==='app/networkInterfaceList','nested object option values must not be rendered as invented scalar choices');
 const client=new Client();
 client.qbVersion='6.0.0';client.webApiVersion='3.0.0';client.major=6;
 
