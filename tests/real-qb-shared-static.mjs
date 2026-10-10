@@ -27,7 +27,10 @@ async function configure(q){
  const loginReply=(await login.text()).trim();
  assert(login.status===204||loginReply==='Ok.','Real qB '+q.version+' login did not accept disposable credentials');
  q.sid=(login.headers.get('set-cookie')||'').split(';')[0];
- assert(/^SID=[^;]+/.test(q.sid),'Real qB '+q.version+' successful login returned no SID');
+ const cookieMatch=q.sid.match(/^([A-Za-z0-9_]+)=([^;]+)$/);
+ const expected=q.version==='5.2.4'?/^QBT_SID_[0-9]+$/:/^SID$/;
+ assert(cookieMatch&&expected.test(cookieMatch[1]),'Real qB '+q.version+' successful login returned unexpected cookie identity');
+ q.sessionCookieName=cookieMatch[1];
  const set=await fetch(q.url+'api/v2/app/setPreferences',{method:'POST',headers:{Cookie:q.sid,'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({json:JSON.stringify({alternative_webui_enabled:true,alternative_webui_path:'/weig-webui'})})});
  assert(set.ok,'Real qB Alternative WebUI setting failed');await set.text();
 }
@@ -83,10 +86,10 @@ async function test(){
  assert(checks.length===2&&checks[0].sha256===checks[1].sha256,'Different static HTML served');
  browser=await launchBrowser();const context=await browser.newContext({viewport:{width:1280,height:800},locale:'en-US'});
  const first=await enter(context,qbs[0]);
- assert((await context.cookies(qbs[1].url)).every(c=>c.name!=='SID'),'SID leaked across host');
+ assert((await context.cookies(qbs[1].url)).every(c=>c.name!==qbs[0].sessionCookieName),'First instance session cookie leaked to second qB host');
  const second=await enter(context,qbs[1]);
- const sidA=(await context.cookies(qbs[0].url)).find(c=>c.name==='SID')?.value;
- const sidB=(await context.cookies(qbs[1].url)).find(c=>c.name==='SID')?.value;
+ const sidA=(await context.cookies(qbs[0].url)).find(c=>c.name===qbs[0].sessionCookieName)?.value;
+ const sidB=(await context.cookies(qbs[1].url)).find(c=>c.name===qbs[1].sessionCookieName)?.value;
  assert(sidA&&sidB&&sidA!==sidB,'SID identities overlap');
  await first.reload({waitUntil:'domcontentloaded'});await first.locator('#app').waitFor({timeout:20000});
  assert((await first.locator('#qb-version').innerText()).includes(qbs[0].version),'First login session changed after second login');
