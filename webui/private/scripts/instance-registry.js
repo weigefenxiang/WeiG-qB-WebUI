@@ -4,12 +4,17 @@
   if(W.InstanceRegistry)return;
   var KEY='weig.instances.v1',LIMIT=16,store=W.StorageRuntime&&W.StorageRuntime.local;
 
+  // A qB Alternative WebUI may serve either / or /index.html (also
+  // under a reverse-proxy prefix). Both must identify the same qB root.
+  function normalizeRoot(url){
+    url.pathname=url.pathname.replace(/(?:public|private)\/(?:index\.html)?$/,'').replace(/(?:^|\/)index\.html$/,'/');
+    if(!url.pathname.endsWith('/'))url.pathname+='/';
+    return url;
+  }
   function currentUrl(){
     var url=new URL(global.location.href);
     url.search='';url.hash='';
-    url.pathname=url.pathname.replace(/(?:public|private)\/(?:index\.html)?$/,'');
-    if(!url.pathname.endsWith('/'))url.pathname+='/';
-    return url;
+    return normalizeRoot(url);
   }
   function canonicalUrl(value){
     var source=String(value||'').trim(),url;
@@ -18,8 +23,7 @@
     if(url.protocol!=='https:'&&url.protocol!=='http:')throw new Error('Only HTTP(S) instances are supported.');
     if(url.username||url.password||url.search||url.hash)throw new Error('Instance URLs must not contain credentials, query strings or fragments.');
     if(/\/api\/v2(?:\/|$)/i.test(url.pathname))throw new Error('Use the WebUI root, not an API endpoint.');
-    url.pathname=url.pathname.replace(/(?:public|private)\/(?:index\.html)?$/,'');
-    if(!url.pathname.endsWith('/'))url.pathname+='/';
+    normalizeRoot(url);
     var current=currentUrl();
     if(current.protocol==='https:'&&url.protocol!=='https:')throw new Error('Refusing a downgrade from HTTPS to HTTP.');
     if(url.hostname===current.hostname&&url.origin!==current.origin)throw new Error('Instances on different ports of one hostname may share qB cookies; use distinct hostnames.');

@@ -18,6 +18,29 @@ const w={location,WeiG:{StorageRuntime:{local:storage}}};
 vm.runInNewContext(source,{window:w,URL});
 const I=w.WeiG.InstanceRegistry;
 assert.equal(I.currentUrl(),'https://hub.example/');
+for(const [href,expected] of [
+  ['https://site.example/index.html','https://site.example/'],
+  ['https://site.example/qb/index.html','https://site.example/qb/'],
+  ['https://site.example/qb/private/index.html','https://site.example/qb/'],
+  ['https://site.example/qb/public/','https://site.example/qb/']
+]){
+  const navigated=[],savedRoot=new Map(),browser={
+    location:{href,assign:url=>navigated.push(url)},
+    WeiG:{StorageRuntime:{local:{
+      get:(key,fallback)=>savedRoot.has(key)?savedRoot.get(key):fallback,
+      set:(key,value)=>{savedRoot.set(key,value);return true;}
+    }}}
+  };
+  vm.runInNewContext(source,{window:browser,URL});
+  const owner=browser.WeiG.InstanceRegistry;
+  assert.equal(owner.currentUrl(),expected,'Current URL must normalize the actual Alternative WebUI entry route: '+href);
+  assert.equal(owner.add('This server',href).url,expected,'Saved instances must identify the same canonical server root');
+  assert.equal(owner.add('This server',expected).url,expected,'Adding the canonical root must update instead of duplicating');
+  assert.equal(owner.list().length,1);
+  assert.equal(owner.switchTo(href),true);
+  assert.deepEqual(navigated,[],'Same-origin normalized index.html must not need a session-destroying navigation');
+}
+
 assert.deepEqual(Array.from(I.list()),[]);
 I.add('NAS','https://nas.example/private/index.html');
 I.add('VPS','https://vps.example/');
