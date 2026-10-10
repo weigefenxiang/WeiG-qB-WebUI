@@ -110,6 +110,19 @@
     feeds.forEach(function(feed){var block=document.createElement('div');block.className='rss-rule-matches';var name=document.createElement('strong');name.textContent=feed;block.appendChild(name);var list=document.createElement('ul');(Array.isArray(state.matching[feed])?state.matching[feed]:[]).forEach(function(article){var li=document.createElement('li');li.textContent=String(article);list.appendChild(li);});block.appendChild(list);root.appendChild(block);});
   }
   async function loadMatchingArticles(){var client=currentClient();if(!client||!state.selected||!hasAction('rsscontroller.h:matchingArticlesAction')){state.matching={};renderMatchingArticles();return;}try{var data=await client.rssMatchingArticles(state.selected);state.matching=data&&typeof data==='object'&&!Array.isArray(data)?data:{};renderMatchingArticles();}catch(error){state.matching={};renderMatchingArticles();setStatus(tr('rss.rule.matchLoadFailedPrefix')+(error&&error.message||error),true);}}
+  function runtimeRuleFields(rule,manifest){
+    var knownRule=new Set(['lastMatch','torrentParams']),knownParams=new Set();
+    (manifest&&manifest.fields||[]).forEach(function(item){var path=item&&item.path;if(!Array.isArray(path)||path.length!==2)return;if(path[0]==='torrentParams')knownParams.add(String(path[1]));else if(path[0]==='rule')knownRule.add(String(path[1]));});
+    var found=[];
+    function scan(obj,known,prefix){if(!obj||typeof obj!=='object'||Array.isArray(obj))return;Object.keys(obj).sort().forEach(function(key){
+      if(found.length>=32||known.has(key)||!/^[A-Za-z][A-Za-z0-9_.-]{0,127}$/.test(key)||/(password|passwd|secret|token|credential|cookie|api[_-]?key|private[_-]?key)/i.test(key))return;
+      var value=obj[key],type=typeof value;
+      if(type!=='string'&&type!=='boolean'&&!(type==='number'&&Number.isFinite(value)))return;
+      found.push({name:prefix+key,value:type==='string'?value.slice(0,256):String(value)});
+    });}
+    scan(rule,knownRule,'');scan(rule&&rule.torrentParams,knownParams,'torrentParams.');
+    return found;
+  }
   function renderEditor(){
     var root=state.editor;if(!root)return;root.textContent='';state.matchingRoot=null;state.controls={};
     if(!state.draft){var p=document.createElement('p');p.className='text-description';p.textContent=tr('rss.rule.selectOrCreate');root.appendChild(p);return;}
@@ -117,6 +130,8 @@
     var form=document.createElement('div');form.className='settings-grid';var nameControl=input('text',state.newDraft?'':state.selected);nameControl.placeholder=tr('rss.rule.newName');nameControl.dataset.rssRuleField='name';form.appendChild(field(tr('rss.rule.name'),nameControl));state.controls.name=nameControl;
     (state.manifest.fields||[]).forEach(function(fieldDef){var control=controlFor(fieldDef,rule),labelText=sourceText(fieldDef.translation,fieldDef.key);state.controls[fieldDef.controlId||fieldDef.key]=control;form.appendChild(field(labelText,control));});
     root.appendChild(form);
+    var extras=runtimeRuleFields(rule,state.manifest);
+    if(extras.length){var section=document.createElement('details');section.className='rss-rule-extras';var summary=document.createElement('summary');summary.textContent='WebAPI';section.appendChild(summary);extras.forEach(function(item){var row=document.createElement('div');row.className='rss-rule-extra';var label=document.createElement('span');label.textContent=item.name;var output=document.createElement('output');output.textContent=item.value;row.append(label,output);section.appendChild(row);});root.appendChild(section);}
     var actions=document.createElement('div');actions.className='dialog__actions';var saveBtn=button(nativeCopy('save','Save'),'btn--primary');saveBtn.dataset.rssRuleSave='1';saveBtn.disabled=!canWrite('rsscontroller.h:setRuleAction');saveBtn.addEventListener('click',saveRule);actions.appendChild(saveBtn);
     root.appendChild(actions);
     if(ownKey(rule,'lastMatch')&&rule.lastMatch){var last=document.createElement('p');last.className='text-description';last.textContent=tr('rss.rule.lastMatchPrefix')+String(rule.lastMatch);root.appendChild(last);}

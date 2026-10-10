@@ -70,4 +70,6 @@ assert.ok(app.includes("W.RSSWorkspace.load()")&&app.includes("W.RSSWorkspace.ad
 assert.ok(rss.includes("rss-workspace__pane rss-workspace__feeds")&&rss.includes("rss-workspace__pane rss-workspace__articles"),'RSS workspace must render distinct Feed and Article semantic panes.');
 assert.ok(layout.includes('#rss-content.rss-workspace')&&layout.includes('.rss-workspace__pane')&&layout.includes('.rss-rules-dialog'),'RSS Feed/Article panes and Downloader must consume one shared responsive layout contract without per-pane CSS owners.');
 
+assert.ok(rss.includes('function runtimeRuleFields(rule,manifest)')&&rss.includes("scan(rule,knownRule,'');scan(rule&&rule.torrentParams,knownParams,'torrentParams.')")&&rss.includes("section.className='rss-rule-extras'"),'RSS must surface bounded unknown primitive fields only as a read-only WebAPI extension without replacing source-proven rule controls');
+assert.ok(!rss.includes('JSON.stringify(rule.torrentParams)'),'RSS read-only extension must not serialize unknown nested objects into the UI');
 console.log('RSS native projection contract passed: exact source change points, per-domain bounded read projection, source-gated writes, fail-closed unresolved releases, and old shape owners retired.');
