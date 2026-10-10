@@ -62,7 +62,14 @@
       event.preventDefault();
       try{registry.add(name.value,url.value);name.value='';url.value='';notice.textContent='';renderList();}catch(error){notice.textContent=error.message;}
     });
-    body.append(hint,list,form);dialog.append(head,body);renderList();D.open(dialog,{draggable:true,backdropClose:true,escapeClose:true,removeOnClose:true,focus:name});
+    var portable=document.createElement('section');portable.className='instance-manager__portable';
+    var copy=document.createElement('button');copy.type='button';copy.className='btn btn--ghost';copy.textContent=instanceCopy('export','Copy instance list');
+    copy.addEventListener('click',async function(){try{var result=await W.Clipboard.copyText(registry.exportList(),{title:instanceCopy('export','Copy instance list')});notice.textContent=result&&result.copied?instanceCopy('copied','Instance list copied.'):instanceCopy('manual','Copy the instance list from the clipboard dialog.');}catch(error){notice.textContent=error.message;}});
+    var paste=document.createElement('textarea');paste.className='field-input';paste.rows=3;paste.maxLength=32768;paste.placeholder=instanceCopy('paste','Paste an instance list (JSON)');paste.setAttribute('aria-label',paste.placeholder);paste.autocomplete='off';paste.spellcheck=false;
+    var importButton=document.createElement('button');importButton.type='button';importButton.className='btn btn--ghost';importButton.textContent=instanceCopy('import','Import list');
+    importButton.addEventListener('click',function(){try{var imported=registry.importList(paste.value);paste.value='';notice.textContent=tr('header.instance.imported',{count:imported.added+imported.updated});renderList();}catch(error){notice.textContent=error.message;}});
+    portable.append(copy,paste,importButton);
+    body.append(hint,list,form,portable);dialog.append(head,body);renderList();D.open(dialog,{draggable:true,backdropClose:true,escapeClose:true,removeOnClose:true,focus:name});
   }
   function installInstancesButton(){
     var actions=document.querySelector('.topbar__actions'),host=document.getElementById('theme-btn');

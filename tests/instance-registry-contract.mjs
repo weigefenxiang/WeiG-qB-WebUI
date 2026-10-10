@@ -6,6 +6,7 @@ const head=fs.readFileSync(new URL('../webui/private/scripts/header.js',import.m
 const plan=JSON.parse(fs.readFileSync(new URL('../webui/private/bootstrap-plan.json',import.meta.url),'utf8'));
 assert.ok(plan.phases.some(x=>x.name==='shared-ui'&&x.scripts.includes('scripts/instance-registry.js')),'one instance registry must load before the Header owner');
 assert.ok(head.includes('function installInstancesButton()')&&head.includes('function openInstances()')&&head.includes('D.create({className:'),'Header must consume the canonical DialogRuntime and InstanceRegistry');
+assert.ok(head.includes('registry.exportList()')&&head.includes('registry.importList(paste.value)')&&head.includes('W.Clipboard.copyText'),'Header must expose the portable instance list through the canonical registry and clipboard owner');
 const saved=new Map(),navigations=[];
 const storage={get:(k,d)=>saved.has(k)?saved.get(k):d,set:(k,v)=>{saved.set(k,v);return true;}};
 const location={href:'https://hub.example/public/index.html',protocol:'https:',hostname:'hub.example',assign:(v)=>navigations.push(v)};
