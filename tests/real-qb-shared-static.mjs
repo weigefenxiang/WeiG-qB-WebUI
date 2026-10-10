@@ -92,11 +92,13 @@ async function test(){
  const sidB=(await context.cookies(qbs[1].url)).find(c=>c.name===qbs[1].sessionCookieName)?.value;
  assert(sidA&&sidB&&sidA!==sidB,'SID identities overlap');
  await first.reload({waitUntil:'domcontentloaded'});await first.locator('#app').waitFor({timeout:20000});
- assert((await first.locator('#qb-version').innerText()).includes(qbs[0].version),'First login session changed after second login');
+ await first.waitForFunction(expected=>document.querySelector('#qb-version')?.textContent?.includes(expected),qbs[0].version,{timeout:20000});
+ assert((await first.locator('#qb-version').innerText()).includes(qbs[0].version),'First instance identity failed to stabilize after second login');
  await first.evaluate(url=>window.WeiG.InstanceRegistry.add('Other qB',url),qbs[1].url);
  assert(await second.evaluate(()=>window.WeiG.InstanceRegistry.list().length)===0,'Cross-origin localStorage leaked');
  await Promise.all([first.waitForURL(qbs[1].url,{timeout:20000}),first.evaluate(url=>window.WeiG.InstanceRegistry.switchTo(url),qbs[1].url)]);
  await first.locator('#app').waitFor({timeout:20000});
+ await first.waitForFunction(expected=>document.querySelector('#qb-version')?.textContent?.includes(expected),qbs[1].version,{timeout:20000});
  assert((await first.locator('#qb-version').innerText()).includes(qbs[1].version),'Instance navigation lost destination identity');
  await context.close();
  fs.mkdirSync('artifacts/real-qb-full',{recursive:true});
