@@ -39,6 +39,7 @@ await C.bind({qbVersion:newest.qbVersion,webApiVersion:'2.15.9',capabilities:{}}
 assert(!C.isCertified()&&C.domainResolution('settings').certified===false,'mismatched exact qB WebAPI identity must not certify raw Settings domain');
 await C.bind({qbVersion:newest.qbVersion,webApiVersion:newest.webApiVersion+'-rc1',capabilities:{}});
 assert(!C.isCertified()&&!C.domainResolution('settings').certified,'an unadmitted WebAPI prerelease must not impersonate a source-certified stable contract');
+assert(C.releaseIdentity().detectedWebApiVersion===newest.webApiVersion+'-rc1','the detected WebAPI identity must retain its prerelease suffix through domain resolution');
 await C.bind({qbVersion:'5.2.5',webApiVersion:newest.webApiVersion+'-rc1',capabilities:{}});
 assert(!C.allowsReadOperation('clientdata/load','POST'),'unproven WebAPI prerelease must not inherit POST read semantics');
 assert(!C.allowsWriteOperation('torrents/add','POST','torrentscontroller.h:addAction',allowedTorrentFields),'unproven WebAPI prerelease must not inherit additive POST writes');
