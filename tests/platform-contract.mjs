@@ -26,7 +26,8 @@ assert.match(sh,/QBT_ROOT_FOLDER="\/config\/\$rel"/,'Linux Docker install must m
 assert.match(sh,/WebUI\\\\AlternativeUIEnabled=true/,'Linux installer must enable Alternative WebUI only when configured');
 assert.match(sh,/WebUI\\\\RootFolder=/,'Linux installer must persist qB-visible RootFolder');
 assert.match(sh,/-version VERSION\s+Install a specific verified Release/,'Linux installer must expose the canonical Release version option');
-assert.match(sh,/-dev\s+Install\/update the current dev exact Git SHA/,'Linux installer must expose the canonical dev option');
+assert.match(sh,/-dev \[A72\]\s+Install current dev, or the immutable A72 test Prerelease/,'Linux installer must retain the canonical -dev flag and document the optional A72 target');
+assert.match(sh,/TEST_TAG="test-\$DEV_TARGET"/,'Linux A72 installer must pin the test Tag rather than fall back to dev');
 assert.match(sh,/-o PATH\s+WebUI install path\. Repeat -o/,'Linux installer must expose the canonical repeatable output option');
 assert.match(sh,/while \[ "\$target" != "\/" \] && \[ "\$\{target%\/\}" != "\$target" \]; do/,'Linux installer must normalize trailing slashes on explicit install targets');
 assert.match(sh,/deploy_staged_webui\(\)[\s\S]*mv -f "\$deploy_tmp" "\$deploy_dst"/s,'Linux installer must keep the active Alternative WebUI root present and atomically replace staged files in place with POSIX fileutils syntax.');
