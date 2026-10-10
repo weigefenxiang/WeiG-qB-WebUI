@@ -6,7 +6,7 @@ import {fileURLToPath} from 'node:url';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const plan=JSON.parse(fs.readFileSync(path.join(root,'webui/private/bootstrap-plan.json'),'utf8'));
 const scripts=plan.phases.flatMap(phase=>phase.scripts),widths=plan.phases.map(phase=>phase.scripts.length);
-assert.equal(plan.schemaVersion,1);assert.equal(scripts.length,40);assert.equal(new Set(scripts).size,40);
+assert.equal(plan.schemaVersion,1);assert.equal(scripts.length,41);assert.equal(new Set(scripts).size,41);
 assert.ok(plan.styleConcurrency>=2&&plan.styleConcurrency<=8,'style concurrency must remain bounded');
 assert.ok(plan.phases.length<=16,'startup dependency graph regressed into too many network barriers');
 assert.ok(Math.max(...widths)>=4,'bootstrap plan no longer exposes meaningful independent concurrency');
