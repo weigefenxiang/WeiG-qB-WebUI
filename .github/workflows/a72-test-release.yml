@@ -73,7 +73,7 @@ jobs:
         run: |
           set -euo pipefail
           message="$(git log -1 --format=%B)"
-          for marker in '[ui]' '[settings-matrix]' '[A72-platform]' '[A72-real-qb]'; do
+          for marker in '[ui]' '[settings-matrix]' '[A72-platform]' '[A72-real-qb]' '[A72-source]'; do
             case "$message" in
               *"$marker"*) ;;
               *) echo "A72 publish commit lacks mandatory CI marker $marker" >&2; exit 1 ;;
@@ -89,6 +89,7 @@ jobs:
             ([.jobs[] | select(.conclusion == "success") | .name] as $passed |
               ([
                 "smoke", "A72 exact-SHA distribution verification (unpublished)",
+                "A72 official Beta/RC source drift (read-only)",
                 "A72 isolated real qB 4.6.7 source and WebAPI smoke",
                 "A72 isolated real qB 5.2.4 source and WebAPI smoke",
                 "Linux installer lifecycle", "Linux installer lifecycle · BusyBox ash/userland",

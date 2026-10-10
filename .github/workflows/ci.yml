@@ -357,6 +357,40 @@ jobs:
           Write-Host 'PowerShell installer syntax parsed.'
 
 
+  a72_prerelease_source_audit:
+    name: A72 official Beta/RC source drift (read-only)
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/test/A72' && contains(github.event.head_commit.message, '[A72-source]') && needs.smoke.result == 'success' }}
+    needs: smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Read annotated exact official qB upstream prerelease tags
+        uses: actions/checkout@v7
+        with:
+          repository: qbittorrent/qBittorrent
+          path: upstream-qb
+          fetch-depth: 0
+          fetch-tags: true
+          filter: blob:none
+          persist-credentials: false
+      - name: Audit prerelease source without admitting changes to Frozen stable
+        run: node tests/a72-prerelease-source-audit.mjs upstream-qb
+      - name: Retain source SHA, API version, and source-surface changes
+        uses: actions/upload-artifact@v7
+        with:
+          name: a72-prerelease-source-${{ github.sha }}
+          path: artifacts/a72-prerelease-source/source-audit.json
+          if-no-files-found: error
+          retention-days: 14
+
   a72_real_qb:
     name: A72 isolated real qB ${{ matrix.qb }} source and WebAPI smoke
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/test/A72' && contains(github.event.head_commit.message, '[A72-real-qb]') && needs.smoke.result == 'success' }}

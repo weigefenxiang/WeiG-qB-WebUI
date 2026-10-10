@@ -68,6 +68,10 @@ for(const [jobName,next] of [['installer_lifecycle_linux','installer_lifecycle_b
 }
 const oldCandidate=jobSection(ci,'release_candidate','native_surface_source_base');
 assert(oldCandidate.includes("github.ref == 'refs/heads/dev'")&&!oldCandidate.includes("refs/heads/test/A72"),'dev candidate publication/deployment dispatch must remain inaccessible from A72');
+const prerelease=jobSection(ci,'a72_prerelease_source_audit','a72_real_qb');
+assert(prerelease.includes('[A72-source]')&&prerelease.includes('repository: qbittorrent/qBittorrent')&&prerelease.includes('tests/a72-prerelease-source-audit.mjs')&&prerelease.includes('persist-credentials: false'),'A72 Beta/RC audit must use original upstream exact tags and must not mutate public stable assets');
+assert(prerelease.includes('contents: read')&&!prerelease.includes('contents: write')&&!prerelease.includes('gh release'),'A72 prerelease source observation is never a publication owner');
+assert(a72TestRelease.includes('[A72-source]')&&a72TestRelease.includes('A72 official Beta/RC source drift (read-only)'),'Final A72 publish requires upstream prerelease source drift evidence on the same exact SHA');
 const a72RealQb=jobSection(ci,'a72_real_qb','a72_distribution_integrity');
 assert(a72RealQb.includes("github.ref == 'refs/heads/test/A72'")&&a72RealQb.includes('[A72-real-qb]')&&a72RealQb.includes("needs.smoke.result == 'success'"),'A72 real qB evidence must be explicit, exact-SHA and isolated from stable dev');
 assert(a72RealQb.includes('tests/real-qb-docker.sh --version "$qb_version" --full-matrix')&&a72RealQb.includes('latestAdmittedStable')&&!a72RealQb.includes('--allow-writes'),'Real-qB A72 must reuse its exact-version Docker owner without enabling destructive product writes');
