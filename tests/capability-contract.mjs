@@ -49,4 +49,6 @@ await C.bind({qbVersion:'5.3.0-rc1',webApiVersion:newest.webApiVersion,capabilit
 assert(C.releaseIdentity().resolutionMode==='INHERITED'&&!C.isCertified(),'future minor release with matching API may inherit read facts but not certified writes');
 await C.bind({qbVersion:'5.3.0-rc1',webApiVersion:'3.0.0',capabilities:{}});
 assert(C.releaseIdentity().resolutionMode==='FALLBACK','unknown next-major WebAPI must not inherit incompatible source fields even within the same qB major');
+assert(C.upstreamTorrentFilter('all')==='','source-unresolved qB must allow the safe default all-torrent GET without an invented filter parameter');
+assert(C.supportsTorrentFilter('all')===true&&C.upstreamTorrentFilter('downloading')===null,'unproven server-side filters must remain unavailable even when the default read can proceed');
 console.log('Capability compact-contract test passed: detected/catalog identity stays separate from per-domain EXACT/EQUIVALENT/INHERITED/FALLBACK bases, source-proven special stables resolve per domain, bounded inherited reads remain available, and dangerous writes fail closed outside exact/equivalent provenance.');

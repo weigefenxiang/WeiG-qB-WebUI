@@ -51,7 +51,7 @@
   function torrentFilters(){return Array.from(new Set(rawTorrentFilters().map(canonicalFilter)));}
   function torrentVisibleFilters(){var list=sourceFact('torrentVisibleFilters');return Array.isArray(list)?list.filter(function(item){return item&&typeof item==='object'&&item.name;}).map(function(item){return clone(item);}):[];}
   function facetSpecialRows(kind){var value=sourceFact('facetSpecialRows');if(!value||typeof value!=='object'||Array.isArray(value))return kind?{}:{};if(kind){var rows=value[String(kind||'')];return rows&&typeof rows==='object'&&!Array.isArray(rows)?clone(rows):{};}return clone(value);}
-  function upstreamTorrentFilter(name){if(!current)return undefined;name=String(name||'all');var list=rawTorrentFilters();if(list.indexOf(name)>=0)return name;if(name==='stopped'&&list.indexOf('paused')>=0)return'paused';if(name==='running'&&list.indexOf('resumed')>=0)return'resumed';return null;}
+  function upstreamTorrentFilter(name){if(!current)return undefined;name=String(name||'all');var list=rawTorrentFilters();if(name==='all'&&!list.length)return'';if(list.indexOf(name)>=0)return name;if(name==='stopped'&&list.indexOf('paused')>=0)return'paused';if(name==='running'&&list.indexOf('resumed')>=0)return'resumed';return null;}
   function supportsTorrentFilter(name){return upstreamTorrentFilter(name)!==null;}
   function factList(name){var list=sourceFact(name);return Array.isArray(list)?list.map(String):[];}
   function hasTorrentInfoParameter(name){return factList('torrentInfoParameters').indexOf(String(name||''))>=0;}
