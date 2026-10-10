@@ -15,6 +15,7 @@ BACKUP_RETENTION=3
 MODE="install"
 CHANNEL="${WEIG_QB_CHANNEL:-main}"
 REQUEST_DEV=0
+DEV_TARGET=""
 RELEASE_VERSION=""
 RELEASE_TAG=""
 CONFIGURE=0
@@ -33,7 +34,7 @@ Usage: install.sh [options]
 Default: install/update the stable main version using the latest verified GitHub Release.
 
 Options:
-  -dev                      Install/update the current dev exact Git SHA.
+  -dev [A72]                Install current dev, or the immutable A72 test Prerelease.
   -version VERSION          Install a specific verified Release, for example 1.2.0.
   -o PATH                   WebUI install path. Repeat -o to update multiple targets with one download.
   -configure                Enable qBittorrent Alternative WebUI and set Root Folder (single target only).
@@ -82,6 +83,7 @@ while [ "$#" -gt 0 ]; do
   case "$1" in
     -dev)
       REQUEST_DEV=1
+      if [ "${2-}" = "A72" ]; then DEV_TARGET=A72; shift; fi
       ;;
     -version)
       [ "$#" -ge 2 ] || { echo "$1 requires a value, for example -version 1.2.0." >&2; exit 2; }
@@ -1577,7 +1579,25 @@ PACKAGE=""
 PACKAGE_NAME=""
 SRC=""
 
-if [ "$CHANNEL" = "main" ]; then
+if [ -n "$DEV_TARGET" ]; then
+  TEST_TAG="test-$DEV_TARGET"
+  TEST_BASE="https://github.com/$REPO/releases/download/$TEST_TAG"
+  download_file "https://api.github.com/repos/$REPO/releases/tags/$TEST_TAG" "$TMP/test-release.json" || { echo "$TEST_TAG Prerelease not found; refusing fallback." >&2; exit 1; }
+  [ "$(sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$TMP/test-release.json" | head -n 1)" = "$TEST_TAG" ] || { echo "Test release tag identity mismatch." >&2; exit 1; }
+  grep -Eq '"prerelease"[[:space:]]*:[[:space:]]*true' "$TMP/test-release.json" || { echo "Expected an isolated test Prerelease." >&2; exit 1; }
+  download_file "https://api.github.com/repos/$REPO/commits/$TEST_TAG" "$TMP/test-commit.json" || { echo "Test tag commit identity missing." >&2; exit 1; }
+  TEST_SHA=$(sed -n 's/^[[:space:]]*"sha"[[:space:]]*:[[:space:]]*"\([0-9a-fA-F]\{40\}\)".*/\1/p' "$TMP/test-commit.json" | head -n 1 | tr 'A-F' 'a-f')
+  valid_sha "$TEST_SHA" || { echo "Invalid test tag commit SHA." >&2; exit 1; }
+  download_file "$TEST_BASE/SHA256SUMS" "$TMP/SHA256SUMS" || { echo "Test checksum manifest missing." >&2; exit 1; }
+  download_file "$TEST_BASE/manifest.json" "$TMP/manifest.json" || { echo "Test distribution manifest missing." >&2; exit 1; }
+  verify_release_checksum "$TMP/SHA256SUMS" "$TMP/manifest.json" "manifest.json" || exit 1
+  prepare_manifest_dist "$TEST_BASE" "$TMP/manifest.json" "$TMP/SHA256SUMS" "$TMP/test" || exit 1
+  SOURCE_SHA=$(tr -d '\r\n' < "$SRC/GIT_SHA" | tr 'A-F' 'a-f')
+  [ "$SOURCE_SHA" = "$TEST_SHA" ] || { echo "Test package SHA differs from immutable $TEST_TAG tag." >&2; exit 1; }
+  [ "$(tr -d '\r\n' < "$SRC/VERSION")" = "1.2.1" ] || { echo "Test package VERSION mismatch." >&2; exit 1; }
+  assert_materialized_webui "$SRC" || exit 1
+  echo "Source: $TEST_TAG exact SHA $SOURCE_SHA (checksum verified)"
+elif [ "$CHANNEL" = "main" ]; then
   REQUESTED_RELEASE_VERSION="$RELEASE_VERSION"
   REQUESTED_RELEASE_TAG="$RELEASE_TAG"
   RELEASE_META="$TMP/release.json"
