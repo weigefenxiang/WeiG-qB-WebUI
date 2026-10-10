@@ -50,9 +50,24 @@ const watched=[
   'src/webui/www/private/views/rssDownloader.html',
   'src/webui/www/private/views/rssCloneRule.html'
 ];
-const observed=git('tag','--list','release-5.3.0*').split(/\r?\n/).filter(tag=>/^release-5\.3\.0(?:alpha|beta|rc)\d+$/.test(tag));
-const unknown=observed.filter(tag=>!expected.some(row=>row.tag===tag));
-if(unknown.length)throw new Error('Official qB 5.3 prerelease tag(s) need source review before claiming coverage: '+unknown.join(', '));
+// One source-census owner for ALL future official release tags, not merely
+// 5.3.0*. New stable or prerelease tags require explicit official-source review
+// before A72 can claim coverage; discovery NEVER admits a write contract.
+function futureOfficialTag(tag){
+  const match=/^release-(\d+)\.(\d+)\.(\d+)(?:[-._]?(alpha|beta|rc|pre|dev|nightly)(?:[-._]?(\d+))?)?$/i.exec(String(tag||''));
+  if(!match)return null;
+  const version=match.slice(1,4).map(Number);
+  const floor=[5,2,4];
+  for(let i=0;i<3;i++){
+    if(version[i]>floor[i])return{tag,channel:(match[4]||'stable').toLowerCase()};
+    if(version[i]<floor[i])return null;
+  }
+  return null;
+}
+const discovered=git('tag','--list','release-*').split(/\r?\n/).map(futureOfficialTag).filter(Boolean);
+const observed=discovered.filter(row=>row.channel!=='stable').map(row=>row.tag).sort();
+const unknown=discovered.map(row=>row.tag).filter(tag=>!expected.some(row=>row.tag===tag)).sort();
+if(unknown.length)throw new Error('New official qB stable/prerelease tags require source review before A72 compatibility claims: '+unknown.join(', '));
 const blobs=(tag,p)=>{
   try{return git('rev-parse','refs/tags/'+tag+':'+p);}
   catch{return null;}
