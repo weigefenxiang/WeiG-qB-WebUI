@@ -19,12 +19,12 @@ console.log('Distribution artifact-set contract passed.');
 
 // Rolling Dev A73 uses the canonical Pages owner, not the retired Test release job.
 const pagesWorkflow=fs.readFileSync(new URL('../.github/workflows/pages.yml',import.meta.url),'utf8');
-const publishJob=pagesWorkflow.split('  publish_dev_a73:')[1]||'';
+const publishJob=pagesWorkflow.split('  publish_dev_stage:')[1]||'';
 const gateBegin=publishJob.indexOf('jq -e --arg sha "$GITHUB_SHA"');
 const expressionStart=publishJob.indexOf("'",gateBegin)+1;
 const expressionEnd=publishJob.indexOf("' >/dev/null",expressionStart);
 assert.ok(gateBegin>=0&&expressionStart>gateBegin&&expressionEnd>expressionStart,
-  'A73 Dev release must validate every actual CI job against the source SHA');
+  'Dev release must validate each actual CI job against the source SHA');
 const gateExpr=publishJob.slice(expressionStart,expressionEnd);
 const lookupMarker='jq -c --arg sha "$GITHUB_SHA" ';
 const lookupBegin=publishJob.indexOf(lookupMarker);
@@ -52,6 +52,9 @@ if(process.platform==='linux'){
   assert.equal(green.status,0,'A73 Dev gate must accept complete exact-SHA CI jobs: '+green.stderr);
   assert.equal(check({...success,jobs:success.jobs.slice(0,-1)}).status,1,
     'A73 Dev release gate must reject missing Runtime browser verification');
+  const payloadOnly={total_count:3,jobs:[{name:'smoke',head_sha:'a73-exact',conclusion:'success'},{name:'Linux semantic UI · ${{ matrix.suite.name }}',head_sha:'a73-exact',conclusion:'skipped'},{name:'release candidate',head_sha:'a73-exact',conclusion:'skipped'}]};
+  assert.equal(check(payloadOnly).status,0,'Tools-only CI must accept smoke PASS and legitimately skipped semantic jobs');
+  assert.equal(check({...payloadOnly,jobs:payloadOnly.jobs.slice(1)}).status,1,'Tools-only CI without successful smoke must never publish');
   assert.equal(check({...success,jobs:success.jobs.map(job=>({...job,head_sha:'wrong'}))}).status,1,
     'A73 Dev release gate must reject different job SHA');
 }
