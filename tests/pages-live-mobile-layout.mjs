@@ -388,6 +388,29 @@ try{
     },offset);
     assert.ok(result.length>0&&result.every(item=>item.font>=12+offset-.1&&item.natural<=item.visible+1&&item.height>=34),`Russian Settings helper action must honor +${offset} font size without clipping: ${JSON.stringify(result)}`);
   }
+
+  // Validate actual shared Select presentation with source-shaped, no-write fixture.
+  await page.evaluate(()=>{
+    const root=document.getElementById('settings-content'),row=document.createElement('div'),copy=document.createElement('div'),title=document.createElement('span'),slot=document.createElement('span'),item=document.createElement('span');
+    row.id='a73-long-native-select-probe';row.className='setting-row setting-row--compound';
+    copy.className='setting-copy';title.className='setting-title';title.textContent='По смене пути сохранения по умолчанию:';copy.append(title);
+    slot.className='setting-control-slot setting-control-slot--compound setting-inline-controls';item.className='setting-inline-item';
+    item.appendChild(WeiG.Components.selectControl({value:'long',options:[{value:'long',label:'Перевести затронутые торренты в ручной режим'}],ariaLabel:title.textContent,intrinsicValue:true,onChange:()=>{}}));
+    slot.append(item);row.append(copy,slot);root.append(row);
+  });
+  for(const width of [320,360,390,430]){
+    await page.setViewportSize({width,height:844});
+    const metric=await page.evaluate(()=>{
+      const row=document.getElementById('a73-long-native-select-probe');
+      WeiG.SettingsRenderer.syncAdaptiveRows(document.getElementById('settings-content'));WeiG.MobileAdaptive.fitAdaptiveRails();
+      const select=row.querySelector('.ui-select'),value=row.querySelector('.ui-select__value'),copy=row.querySelector('.setting-copy'),slot=row.querySelector('.setting-control-slot');
+      const r=node=>{const box=node.getBoundingClientRect();return{top:box.top,bottom:box.bottom,left:box.left,right:box.right,height:box.height,width:box.width}};
+      return{stacked:row.classList.contains('is-stacked'),row:r(row),copy:r(copy),slot:r(slot),select:r(select),font:parseFloat(getComputedStyle(value).fontSize),valueWrap:getComputedStyle(value).whiteSpace,valueClipped:value.scrollWidth>value.clientWidth+1,valueText:value.textContent};
+    });
+    assert.ok(metric.stacked&&metric.slot.top>=metric.copy.bottom-1&&metric.select.right<=width+1&&metric.select.left>=-1&&metric.row.height<180&&metric.valueWrap!=='nowrap'&&!metric.valueClipped&&metric.valueText.includes('Перевести затронутые'),`Nested source Select must stack, shrink then wrap without clipping or giant blank rows at ${width}px: ${JSON.stringify(metric)}`);
+  }
+  await page.evaluate(()=>document.getElementById('a73-long-native-select-probe')?.remove());
+
   await page.evaluate(()=>document.getElementById('a73-long-helper-presentation-probe')?.remove());
   await page.evaluate(async()=>{await WeiG.I18n.loadWeiGLocale('zh-CN');WeiG.I18n.applyLocale('zh-CN',{reload:false});});
   await page.waitForFunction(()=>document.documentElement.lang==='zh-CN');
