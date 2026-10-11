@@ -78,4 +78,16 @@ for(const width of [320,390,430]){
       `${name}: real horizontal wheel must reveal final Russian Delete control ${JSON.stringify(reached)}`);
   }
 }
+await page.setViewportSize({width:390,height:844});await page.evaluate(()=>WeiG.Transfer.open());await page.waitForSelector('#transfer-stats-dialog[open] .transfer-stat');
+const russianTransfer=await page.evaluate(()=>{
+  const d=document.querySelector('#transfer-stats-dialog'),head=d?.querySelector('.transfer-panel-dialog__head'),title=head?.querySelector('h2'),copy=head?.firstElementChild,actions=head?.querySelector('.transfer-dialog-head-actions'),statsButton=actions?.querySelector('[data-open-native-statistics]'),close=actions?.querySelector('.icon-btn'),cards=[...d.querySelectorAll('.transfer-stat')],grid=d.querySelector('.transfer-stats');
+  if(!d||!head||!title||!copy||!actions||!statsButton||!close||cards.length!==4)throw new Error('Canonical Russian Transfer controls missing');
+  const box=node=>{const r=node.getBoundingClientRect();return{left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height};};
+  return{title:title.textContent.trim(),head:box(head),copy:box(copy),titleBox:box(title),actions:box(actions),statsButton:box(statsButton),close:box(close),columns:getComputedStyle(grid).gridTemplateColumns.split(' ').length,values:cards.map(card=>{const value=card.querySelector('strong'),r=box(card),v=box(value);return{text:value.textContent.trim(),card:r,value:v,textOverflow:getComputedStyle(value).textOverflow,whiteSpace:getComputedStyle(value).whiteSpace,scrollHeight:value.scrollHeight,clientHeight:value.clientHeight};})};
+});
+assert(russianTransfer.head&&russianTransfer.titleBox.bottom<=russianTransfer.actions.top+1&&russianTransfer.statsButton.top>=russianTransfer.copy.bottom-1&&
+  Math.abs(russianTransfer.statsButton.top-russianTransfer.close.top)<7&&russianTransfer.statsButton.right<russianTransfer.close.right&&
+  russianTransfer.actions.right<=russianTransfer.head.right+1&&russianTransfer.columns===1&&russianTransfer.values.every(v=>v.textOverflow!=='ellipsis'&&v.whiteSpace==='normal'&&v.scrollHeight<=v.clientHeight+2&&v.value.right<=v.card.right+1),
+  `${name}: Russian mobile Realtime Transfer must have full-width title, adjacent second-row Statistics/Close and readable responsive stats ${JSON.stringify(russianTransfer)}`);
+await page.evaluate(()=>WeiG.Transfer.panel.close());await page.waitForFunction(()=>!document.querySelector('#transfer-stats-dialog')?.open);
 assert(errors.length===0,`${name}: browser errors: ${errors.join(' | ')}`);await context.close();}console.log('Adaptive UI browser gate passed: exact qB source facts preserve status filters and capability-gated Private / PT Tracker facet across Desktop/Mobile while canonical controls, Settings and header geometry adapt only by presentation.');}finally{await browser.close();await new Promise(r=>server.close(r));}
