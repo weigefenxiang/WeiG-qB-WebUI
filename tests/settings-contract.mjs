@@ -93,7 +93,7 @@ console.log('Settings Control Graph runtime contract passed: bounded source-owne
 
 // A74: performance card columns follow actual available width, not a fixed mobile single column.
 const a74PerformanceCss=read('webui/private/css/settings.css');
-assert(a74PerformanceCss.includes('.diagnostic-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,132px),1fr))}'),'Performance facts should auto-fit one or two columns on narrow viewports');
+assert(a74PerformanceCss.includes('.diagnostic-grid{grid-template-columns:repeat(auto-fit,minmax(132px,1fr))}'),'Performance facts should auto-fit one or two columns on narrow viewports');
 assert(!a74PerformanceCss.includes('.diagnostic-grid{grid-template-columns:minmax(0,1fr)}'),'Retire fixed mobile one-column performance layout');
 
 // A74: the installed Axx identity belongs to an exact Dev materialized build, not the latest remote stage.
@@ -135,3 +135,7 @@ await a74Reporter.prepareLink({},a74HongKong);
 assert(new URL(a74HongKong.href).searchParams.get('template')==='bug_report_zh-TW.yml'&&new URL(a74HongKong.href).searchParams.get('webui_locale')==='zh-HK','Traditional Hong Kong display may share template while preserving actual WebUI locale');
 a74TestLocale='it';
 assert(new URL(a74Reporter.issueUrl({})).searchParams.get('template')==='bug_report.yml','Unsupported locales must fall back to English');
+
+// A74-6: browser proved percentage-based auto-repeat stays a single column at 300px;
+// definite min tracks let auto-fit place two 132px columns plus the 8px gap.
+assert(!a74PerformanceCss.includes('minmax(min(100%,132px),1fr)'),'Avoid circular percentage sizing in auto-repeat of diagnostic cards');
