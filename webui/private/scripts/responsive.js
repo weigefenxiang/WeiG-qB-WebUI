@@ -25,7 +25,6 @@
   ];
   var adaptiveScheduled=false,adaptiveObserved=new WeakSet();
   var adaptiveResizeObserver=global.ResizeObserver?new global.ResizeObserver(scheduleAdaptiveRails):null;
-  var adaptiveTextObserver=global.MutationObserver?new global.MutationObserver(scheduleAdaptiveRails):null;
   function fitAdaptiveRail(host,selector){
     host.style.removeProperty('--adaptive-rail-font-size');
     if(!isMobile()||!host.getClientRects().length||host.clientWidth<1)return;
@@ -44,7 +43,6 @@
       if(!adaptiveObserved.has(host)){
         adaptiveObserved.add(host);
         if(adaptiveResizeObserver)adaptiveResizeObserver.observe(host);
-        if(adaptiveTextObserver)adaptiveTextObserver.observe(host,{subtree:true,childList:true,characterData:true});
       }
       fitAdaptiveRail(host,spec[1]);
     });
