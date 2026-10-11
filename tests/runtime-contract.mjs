@@ -83,6 +83,7 @@ assert(!transferCss.includes('.transfer-stat strong{display:block;overflow:hidde
 assert(logsCss.includes('inset:-5px 0')&&logsCss.includes('.logs-toolbar .logs-follow .ui-check__label{display:inline;white-space:nowrap}')&&!logsCss.includes('.logs-follow{min-height:44px}'),
   'Logs visual chips and extended hit areas must not resurrect the 44px visual-height override');
 const responsiveRuntime=read('webui/private/scripts/responsive.js');
+assert(settingsRuntime.includes(".setting-inline-item > .ui-select'")&&settingsCss.includes('.setting-row--compound.is-stacked .setting-inline-item>.ui-select .ui-select__value')&&responsiveRuntime.includes('fitAdaptiveSettingsSelects()'),'Nested qB Settings Selects must use canonical stacked row / readable multiline value owner');
 assert(responsiveRuntime.includes('fitAdaptiveActionLabels()')&&responsiveRuntime.includes('adaptiveReadableFloor()')&&settingsCss.includes('.setting-inline-action{box-sizing:border-box;flex:0 1 auto')&&!settingsCss.includes('.setting-inline-action{min-height:34px;height:34px'),
   'Mobile native Settings helper buttons must share font measurement, remain bounded and permit multiline text');
 assert(!settingsCss.includes('max-width:min(240px,48vw)')&&settingsRuntime.includes('G.triggerIntrinsicWidth(wrap,trigger,value.textContent'),

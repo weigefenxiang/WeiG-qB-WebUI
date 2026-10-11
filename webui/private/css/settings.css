@@ -64,3 +64,13 @@ html[data-theme=light]{--settings-section-surface:linear-gradient(180deg,#fff,#f
 
 /* Mobile source-owned action labels share the responsive font floor and wrap as needed. */
 @media(max-width:820px){.setting-inline-action{max-width:min(100%,65vw,260px)}.setting-inline-controls{max-width:100%;min-width:0}}
+
+/* Settings native Selects: only overflowed compound rows may wrap their selected value. */
+@media(max-width:820px){
+  .setting-row--compound.is-stacked{align-content:start;min-height:0;grid-auto-rows:max-content}
+  .setting-row--compound.is-stacked>.setting-control-slot{min-width:0;max-width:100%;flex-wrap:wrap;align-items:flex-start}
+  .setting-row--compound.is-stacked .setting-inline-item:has(>.ui-select){display:flex;flex-direction:column;align-items:stretch;gap:7px;width:100%;min-width:0;max-width:100%}
+  .setting-row--compound.is-stacked .setting-inline-item>.ui-select{display:block;box-sizing:border-box;min-width:0;width:min(100%,300px)!important;max-width:100%!important;flex:0 1 auto}
+  .setting-row--compound.is-stacked .setting-inline-item>.ui-select .ui-select__trigger{box-sizing:border-box;min-height:38px;height:auto;max-width:100%;grid-template-columns:auto minmax(0,1fr) auto}
+  .setting-row--compound.is-stacked .setting-inline-item>.ui-select .ui-select__value{font-size:var(--adaptive-select-font-size,var(--text-input));white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;word-break:normal;line-height:1.35}
+}

@@ -146,15 +146,18 @@
       if(!mobile)return;
       var desc=row.querySelector('.setting-description'),style=desc&&global.getComputedStyle(desc),line=parseFloat(style&&style.lineHeight)||18;
       var descriptionTall=!!(desc&&String(desc.textContent||'').trim()&&desc.scrollHeight>line*2.15);
-      var wrap=row.querySelector(':scope > .setting-control-slot > .ui-select'),trigger=wrap&&wrap.querySelector('.ui-select__trigger'),value=trigger&&trigger.querySelector('.ui-select__value');
+      var wrap=row.querySelector(':scope > .setting-control-slot > .ui-select, :scope > .setting-control-slot > .setting-inline-item > .ui-select'),trigger=wrap&&wrap.querySelector('.ui-select__trigger'),value=trigger&&trigger.querySelector('.ui-select__value');
       if(wrap&&typeof wrap.__syncIntrinsicTrigger==='function')wrap.__syncIntrinsicTrigger();
       var selectedNeedsSpace=false;
       if(wrap&&trigger&&value&&G&&G.triggerIntrinsicWidth){
         var rowStyle=global.getComputedStyle(row),available=row.clientWidth-(parseFloat(rowStyle.paddingLeft)||0)-(parseFloat(rowStyle.paddingRight)||0);
         var title=row.querySelector('.setting-title'),copyNatural=title&&G.measureText?G.measureText(title.textContent||'',title)+16:0;
         var copyBudget=Math.min(copyNatural,available*.42),gap=parseFloat(rowStyle.columnGap)||0;
+        var localLabel=wrap.closest('.setting-inline-item')?.querySelector('.setting-inline-label');
+        if(localLabel&&G.measureText)copyBudget=Math.min(G.measureText(localLabel.textContent||'',localLabel)+16,available*.42);
         var required=G.triggerIntrinsicWidth(wrap,trigger,value.textContent||'');
         selectedNeedsSpace=required+copyBudget+gap>available+1;
+        if(row.classList.contains('setting-row--compound')&&localLabel&&wrap&&required>available*.62)selectedNeedsSpace=true;
       }
       if(descriptionTall||selectedNeedsSpace)row.classList.add('is-stacked');
     });

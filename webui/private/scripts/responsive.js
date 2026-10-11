@@ -71,6 +71,27 @@
       fitAdaptiveRail(host,spec[1]);
     });
     fitAdaptiveActionLabels();
+    fitAdaptiveSettingsSelects();
+  }
+  // Use the existing measured-font policy for source-owned nested Settings Selects.
+  // The compound row decides when stacking is needed; this only sizes visible copy.
+  function fitAdaptiveSettingsSelects(){
+    var host=document.getElementById('settings-content');if(!host)return;
+    Array.from(host.querySelectorAll('.setting-row--compound.is-stacked .setting-inline-item > .ui-select')).forEach(function(select){
+      select.style.removeProperty('--adaptive-select-font-size');
+      if(!isMobile()||!adaptiveActionContext||!select.getClientRects().length)return;
+      var trigger=select.querySelector('.ui-select__trigger'),value=trigger&&trigger.querySelector('.ui-select__value');
+      if(!trigger||!value)return;
+      var style=global.getComputedStyle(value),font=parseFloat(style.fontSize),label=String(value.textContent||'').trim();
+      if(!label||!Number.isFinite(font)||font<=0)return;
+      var available=value.getBoundingClientRect().width;
+      if(available<=0)return;
+      adaptiveActionContext.font=style.font;
+      var natural=adaptiveActionContext.measureText(label).width,tracking=parseFloat(style.letterSpacing)||0;
+      natural+=Math.max(0,label.length-1)*tracking;
+      var floor=adaptiveReadableFloor(),base=Math.max(font,floor),target=natural>available+1?Math.max(floor,Math.min(base,base*available/natural)):base;
+      if(Math.abs(target-font)>.1)select.style.setProperty('--adaptive-select-font-size',target.toFixed(2)+'px');
+    });
   }
   function scheduleAdaptiveRails(){
     if(adaptiveScheduled)return;
