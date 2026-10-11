@@ -17,27 +17,23 @@ assert.equal((sh.match(/verify_release_checksum "\$TMP\/SHA256SUMS" "\$TMP\/mani
 assert.ok(site.includes("downloads/dev/manifest.json")&&site.includes("downloads/dev/weig-qb-webui.tar.gz")&&site.includes("downloads/dev/weig-qb-webui.zip"));
 console.log('Distribution artifact-set contract passed.');
 
-// A73 immutable test publication must reject missing exact-SHA shards, not fail
-// on jq syntax once a release-only workflow is finally authorized.
-const a73Workflow=fs.readFileSync(new URL('../.github/workflows/a73-test-release.yml',import.meta.url),'utf8');
-const gateMatch=a73Workflow.match(/jq -e --arg sha "\$GITHUB_SHA" '\r?\n([\s\S]*?)\r?\n\s*' <<<"\$jobs"/);
-assert.ok(gateMatch,'A73 release must have a real exact-SHA jq job matrix gate');
+// Rolling Dev A73 uses the canonical Pages owner, not the retired Test release job.
+const pagesWorkflow=fs.readFileSync(new URL('../.github/workflows/pages.yml',import.meta.url),'utf8');
+const publishJob=pagesWorkflow.split('  publish_dev_a73:')[1]||'';
+const gateMatch=publishJob.match(/jq -e --arg sha "\\$GITHUB_SHA" '([\\s\\S]*?)' >\\/dev\\/null/);
+assert.ok(gateMatch,'A73 Dev release must validate every actual CI job against the source SHA');
 if(process.platform==='linux'){
   const {spawnSync}=await import('node:child_process');
-  const required=['smoke','Linux semantic UI · route-modules','Linux semantic UI · runtime',
-    'Linux semantic UI · settings-fidelity','Linux semantic UI · feature-parity',
-    'Linux semantic UI · torrent-workspace','Linux semantic UI · adaptive-ui',
-    'qB admitted Settings browser aggregate',
-    ...Array.from({length:16},(_,i)=>'qB admitted Settings browser shard '+i)];
+  const required=['smoke','Linux semantic UI · adaptive-ui','Linux semantic UI · runtime'];
   const success={total_count:required.length,jobs:required.map(name=>({name,head_sha:'a73-exact',conclusion:'success'}))};
   const check=fixture=>spawnSync('jq',['-e','--arg','sha','a73-exact',gateMatch[1]],{
     input:JSON.stringify(fixture),encoding:'utf8',timeout:3000});
   const green=check(success);
-  assert.equal(green.status,0,'A73 complete gate must compile and accept every required exact-SHA job: '+green.stderr);
-  assert.equal(check({...success,total_count:success.total_count-1,jobs:success.jobs.slice(0,-1)}).status,1,
-    'A73 release gate must reject one missing Settings shard');
-  assert.equal(check({...success,jobs:success.jobs.map(job=>({...job,head_sha:'wrong-sha'}))}).status,1,
-    'A73 release gate must reject incorrect job SHA');
+  assert.equal(green.status,0,'A73 Dev gate must accept complete exact-SHA CI jobs: '+green.stderr);
+  assert.equal(check({...success,jobs:success.jobs.slice(0,-1)}).status,1,
+    'A73 Dev release gate must reject missing Runtime browser verification');
+  assert.equal(check({...success,jobs:success.jobs.map(job=>({...job,head_sha:'wrong'}))}).status,1,
+    'A73 Dev release gate must reject different job SHA');
 }
 
 // A73 Pages preview uses the canonical distribution archive and must satisfy its own
