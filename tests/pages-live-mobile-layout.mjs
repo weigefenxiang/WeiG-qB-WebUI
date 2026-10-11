@@ -261,6 +261,17 @@ try{
 
   await page.locator('#mobile-bottom-nav [data-route="settings"]').click();
   await page.waitForFunction(()=>document.getElementById('settings-view')?.classList.contains('is-active')&&document.querySelectorAll('#settings-tabs [data-settings-tab]').length>2&&window.WeiG?.SettingsSchema?.nativeSurfaces?.().length>0,null,{timeout:30000});
+  // Full source-derived Settings row contract; the adaptive fixture is intentionally smaller.
+  await page.waitForFunction(()=>document.querySelector('#settings-content .setting-row[data-setting-key="weig_theme"] .ui-select__value'),null,{timeout:30000});
+  const selectedLabels=await page.evaluate(()=>['weig_language','weig_theme','weig_timezone'].map(key=>{
+    const row=document.querySelector('.setting-row[data-setting-key="'+key+'"]');
+    const control=row?.querySelector('.setting-control-slot>.ui-select');
+    const text=control?.querySelector('.ui-select__value');
+    if(!row||!control||!text)throw new Error('Missing Settings current value: '+key);
+    return{key,value:text.textContent.trim(),intrinsic:control.dataset.uiSelectIntrinsicValue,natural:text.scrollWidth,visible:text.clientWidth};
+  }));
+  assert.ok(selectedLabels.every(x=>x.intrinsic==='1'&&x.value.length>0&&x.natural<=x.visible+2),
+    `Mobile Settings canonical language/theme/timezone values must not clip early: ${JSON.stringify(selectedLabels)}`);
   const settingsWidths=[320,360,390,430];
   for(const width of settingsWidths){
     await page.setViewportSize({width,height:844});
