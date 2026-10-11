@@ -1,5 +1,6 @@
 import fs from 'node:fs';import path from 'node:path';import vm from 'node:vm';import {fileURLToPath} from 'node:url';import {readSettingsRuntime,packSettingsRuntime} from '../tools/qb-compact-runtime.mjs';
 import {expandQbPreferencesCompact} from '../tools/qb-preferences-compact.mjs';
+import {renderIssueForm,issueFormPaths} from '../tools/bug-report-templates.mjs';
 const here=path.dirname(fileURLToPath(import.meta.url)),root=path.resolve(here,'..'),read=rel=>fs.readFileSync(path.join(root,rel),'utf8'),assert=(ok,msg)=>{if(!ok)throw new Error(msg);};
 const runtime=readSettingsRuntime(),manifest=runtime.manifest,compat=runtime.settingsData;
 assert(manifest.schemaVersion===3&&manifest.source==='qb-upstream-preferences-native-surface-runtime'&&manifest.encoding==='deflate-raw-base64-json','Settings runtime manifest must own the bounded source-native payload');
@@ -108,3 +109,29 @@ const a74Mismatched=a74Update.normalizeIdentity({version:a74DevStage.version,git
 assert(a74Mismatched.devStage===''&&a74Update.identityValue(a74Mismatched)===a74DevStage.version+'(aaaaaaa)','Mismatched installer SHA must drop stage rather than infer it');
 assert(a74Update.normalizeIdentity({version:a74DevStage.version,gitSha:shaA,devStage:a74DevStage.plan},{channel:'stable'}).devStage==='','Stable must not inherit Dev stage');
 assert(a74Update.normalizeIdentity({version:a74DevStage.version,gitSha:shaA,devStage:'forged'},{channel:'dev'}).devStage==='','Unknown stages fail closed');
+
+// A74: ten generated issue forms share IDs, selected WebUI locale, and native anchor semantics.
+const a74IssueForms=issueFormPaths();
+assert(a74IssueForms.length===10&&a74IssueForms.some(x=>x.code==='ru')&&a74IssueForms.some(x=>x.code==='ja'),'Issue Forms must cover all ten WeiG language families');
+for(const item of a74IssueForms){
+  const source=read(item.path);
+  assert(source===renderIssueForm(item.code),'Issue Form output must be reproducible: '+item.path);
+  for(const id of ['problem','surface','other_environment','weig_version','qb_version','browser_os','webui_locale','attachments']){
+    assert(source.includes('id: '+id),'Issue Form field ID missing: '+item.path+' / '+id);
+  }
+}
+const a74ReportSource=read('webui/private/scripts/bug-report.js');
+let a74TestLocale='ru',a74LookupCount=0;
+const a74ReportWindow={WeiG:{I18n:{getLocale:()=>a74TestLocale}},navigator:{userAgent:'Chrome 154'},fetch:async()=>{a74LookupCount++;return{ok:true};},open:()=>({})};
+vm.runInNewContext(a74ReportSource,{window:a74ReportWindow,URL});
+const a74Reporter=a74ReportWindow.WeiG.BugReport;
+const a74Before=new URL(a74Reporter.issueUrl({version:'1.2.2',gitSha:'a'.repeat(40)}));
+assert(a74Before.searchParams.get('template')==='bug_report.yml'&&a74Before.searchParams.get('webui_locale')==='ru','Before Main publishes a locale template the native Bug link must fall back to the live default, but record selected locale');
+const a74ReportAnchor={isConnected:true,href:a74Before.href};
+assert(await a74Reporter.prepareLink({version:'1.2.2',gitSha:'a'.repeat(40)},a74ReportAnchor),'Verified Main Issue Form should enable localized native href');
+assert(new URL(a74ReportAnchor.href).searchParams.get('template')==='bug_report_ru.yml'&&a74LookupCount===1,'Localized form must link only after one successful Main template probe');
+a74TestLocale='zh-HK';const a74HongKong={isConnected:true,href:''};
+await a74Reporter.prepareLink({},a74HongKong);
+assert(new URL(a74HongKong.href).searchParams.get('template')==='bug_report_zh-TW.yml'&&new URL(a74HongKong.href).searchParams.get('webui_locale')==='zh-HK','Traditional Hong Kong display may share template while preserving actual WebUI locale');
+a74TestLocale='it';
+assert(new URL(a74Reporter.issueUrl({})).searchParams.get('template')==='bug_report.yml','Unsupported locales must fall back to English');
