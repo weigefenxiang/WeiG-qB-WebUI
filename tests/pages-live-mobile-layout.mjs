@@ -205,7 +205,7 @@ try{
     if(!toolbar||!filters||!actions||!searchButton||!searchInput||!pager)throw new Error('Logs canonical toolbar/Header Search/Pager controls are missing');
     const rect=n=>{const r=n.getBoundingClientRect();return{top:r.top,bottom:r.bottom,left:r.left,right:r.right,width:r.width,height:r.height,display:getComputedStyle(n).display};};
     const pagerMeta=pager.querySelector('[data-pager-meta]'),pagerAux=pager.querySelector('.pager__aux'),label=pager.querySelector('[data-pager-label]'),jump=pager.querySelector('[data-pager-page-jump]'),copies=[...pager.querySelectorAll('.pager__copy')],chipRects=chips.map(rect),chipRadii=chips.map(node=>getComputedStyle(node).borderRadius);
-    const compact=label?.querySelector('.pager-index-copy--compact');return{toolbar:rect(toolbar),filters:rect(filters),actions:rect(actions),searchButton:rect(searchButton),chips:chips.length,chipRects,chipRadii,sizeMode:!!document.getElementById('logs-size-mode'),refresh:!!document.querySelector('.logs-refresh'),searchOpen:document.querySelector('.topbar')?.classList.contains('search-open')||false,placeholder:searchInput.placeholder,overflow:toolbar.scrollWidth-toolbar.clientWidth,pagerLabel:String(compact?.textContent||'').trim(),pagerCompactDisplay:compact?getComputedStyle(compact).display:'missing',pagerMetaDisplay:pagerMeta?getComputedStyle(pagerMeta).display:'missing',pagerAuxDisplay:pagerAux?getComputedStyle(pagerAux).display:'missing',copyDisplays:copies.map(node=>getComputedStyle(node).display),jumpText:String(jump?.textContent||'').trim()};
+    const compact=label?.querySelector('.pager-index-copy--compact');return{toolbar:rect(toolbar),filters:rect(filters),actions:rect(actions),searchButton:rect(searchButton),chips:chips.length,chipRects,chipRadii,sizeMode:!!document.getElementById('logs-size-mode'),refresh:!!document.querySelector('.logs-refresh'),searchOpen:document.querySelector('.topbar')?.classList.contains('search-open')||false,placeholder:searchInput.placeholder,overflow:toolbar.scrollWidth-toolbar.clientWidth,scrollMode:getComputedStyle(toolbar).overflowX,documentOverflow:document.documentElement.scrollWidth-innerWidth,pagerLabel:String(compact?.textContent||'').trim(),pagerCompactDisplay:compact?getComputedStyle(compact).display:'missing',pagerMetaDisplay:pagerMeta?getComputedStyle(pagerMeta).display:'missing',pagerAuxDisplay:pagerAux?getComputedStyle(pagerAux).display:'missing',copyDisplays:copies.map(node=>getComputedStyle(node).display),jumpText:String(jump?.textContent||'').trim()};
   });
   assert.equal(logs.chips,4,`Logs toolbar must keep Normal/Info/Warning/Critical filters: ${JSON.stringify(logs)}`);
   assert.ok(logs.chipRadii.every(value=>parseFloat(value)>0)&&logs.chipRects.slice(1).every((item,index)=>item.left>=logs.chipRects[index].right-0.5),`Logs severity filters must use separate rounded canonical chips without overlap: ${JSON.stringify(logs)}`);
@@ -213,7 +213,8 @@ try{
   assert.notEqual(logs.searchButton.display,'none','phone Logs must expose the canonical Header Search button');
   assert.equal(logs.searchOpen,false,'phone Logs Header Search must start collapsed');
   assert.match(logs.placeholder,/日志|logs/i,`Logs Header Search must expose the route-specific placeholder: ${JSON.stringify(logs)}`);
-  assert.ok(logs.overflow<=1,`Logs mobile toolbar must not overflow: ${JSON.stringify(logs)}`);
+  assert.ok(logs.scrollMode==='auto'||logs.scrollMode==='scroll','Logs horizontal toolbar must own native scroll: '+JSON.stringify(logs));
+  assert.ok(logs.documentOverflow<=1,'Logs toolbar must not create document overflow: '+JSON.stringify(logs));
   assert.match(logs.pagerLabel,/^\d+\s*\/\s*\d+$/,`phone Logs pager must expose only editable current / total pages: ${JSON.stringify(logs)}`);assert.notEqual(logs.pagerCompactDisplay,'none',`phone Logs pager compact copy must be the visible presentation owner: ${JSON.stringify(logs)}`);
   assert.equal(logs.pagerMetaDisplay,'none',`phone Logs pager must hide retained-history meta: ${JSON.stringify(logs)}`);assert.equal(logs.pagerAuxDisplay,'none',`phone Logs pager must hide page-size auxiliary control: ${JSON.stringify(logs)}`);assert.ok(logs.copyDisplays.every(display=>display==='none'),`phone Logs pager must hide Previous/Next copy and keep arrows only: ${JSON.stringify(logs)}`);
   await page.locator('.logs-pager .pager-index-copy--compact [data-pager-page-jump]').click();
@@ -395,6 +396,41 @@ try{
   assert.match(trackerEllipsis.text,/\(\d+\)$/,'selected Tracker trigger must retain its contextual count');
   assert.equal(trackerEllipsis.overflow,'hidden');assert.equal(trackerEllipsis.textOverflow,'ellipsis');assert.equal(trackerEllipsis.whiteSpace,'nowrap');
   assert.ok(trackerEllipsis.scroll>trackerEllipsis.client,'long selected Tracker labels must visibly ellipsize within the mobile facet cell: '+JSON.stringify(trackerEllipsis));
+
+
+  // A73: Russian locale and real viewport widths; never fake a layout PASS by clipping labels.
+  await page.evaluate(()=>{
+    WeiG.HeaderUtilities?.setDrawer(false);
+    document.querySelector('#mobile-bottom-nav [data-route=""]')?.click();
+    WeiG.I18n?.setLocale?.('ru');
+  });
+  await page.waitForFunction(()=>document.getElementById('list-view')?.classList.contains('is-active'));
+  for(const width of [320,360,390,430]){
+    await page.setViewportSize({width,height:844});
+    await page.waitForTimeout(220);
+    const adaptive=await page.evaluate(()=>{
+      WeiG.MobileAdaptive?.fitAdaptiveRails?.();
+      const box=node=>{const r=node.getBoundingClientRect();return{left:r.left,right:r.right,top:r.top,bottom:r.bottom};};
+      const buttons=[...document.querySelectorAll('#torrent-selection-toolbar .btn')];
+      const core=['menu-btn','brand-btn','mobile-search-btn','add-btn','theme-btn'].map(id=>document.getElementById(id)).filter(Boolean);
+      const visible=core.filter(n=>n.getClientRects().length).map(n=>({id:n.id,...box(n)})).sort((a,b)=>a.left-b.left);
+      const host=document.getElementById('mobile-pager-actions-slot');
+      return{docOverflow:document.documentElement.scrollWidth-innerWidth,core:visible,
+        drawer:['github-link','blog-link','logout-btn'].map(id=>document.getElementById(id)?.parentElement?.dataset.headerUtilityNav||''),
+        rail:host&&{...box(host),client:host.clientWidth,scroll:host.scrollWidth,overflow:getComputedStyle(host).overflowX},
+        buttons:buttons.map(n=>({font:parseFloat(getComputedStyle(n).fontSize),client:n.clientWidth,scroll:n.scrollWidth}))
+      };
+    });
+    assert.ok(adaptive.docOverflow<=1,'A73 Russian page overflow at '+width+': '+JSON.stringify(adaptive));
+    assert.equal(adaptive.core.length,5,'A73 Header primary control count at '+width+': '+JSON.stringify(adaptive));
+    assert.ok(adaptive.core.every(n=>n.left>=-1&&n.right<=width+1),'A73 Header offscreen at '+width+': '+JSON.stringify(adaptive));
+    assert.ok(adaptive.core.slice(1).every((n,i)=>n.left>=adaptive.core[i].right-1),'A73 Header overlap at '+width+': '+JSON.stringify(adaptive));
+    assert.ok(adaptive.drawer.every(x=>x==='1'),'A73 same utility nodes must move into mobile Drawer: '+JSON.stringify(adaptive));
+    assert.ok(adaptive.rail&&adaptive.rail.client>0&&adaptive.rail.left>=-1&&adaptive.rail.right<=width+1,'A73 action rail offscreen: '+JSON.stringify(adaptive));
+    assert.equal(adaptive.rail.overflow,'auto','A73 action rail must scroll independently: '+JSON.stringify(adaptive));
+    assert.equal(adaptive.buttons.length,4,'A73 action inventory changed: '+JSON.stringify(adaptive));
+    assert.ok(adaptive.buttons.every(n=>n.font>=12&&n.scroll<=n.client+1),'A73 buttons illegible or text clipped: '+JSON.stringify(adaptive));
+  }
 
   assert.deepEqual(errors,[],`deployed mobile layout produced browser errors: ${errors.join('\n')}`);
   await context.close();
