@@ -30,3 +30,10 @@ for(const [name,text] of [['installers/README',installGuide],['README',readme]])
 assert.ok(!readme.includes('raw.githubusercontent.com/weigefenxiang/WeiG-qB-WebUI/main/installers/install.sh'),'English README must not bootstrap Linux from raw main');
 assert.match(readme,/-dev/);assert.match(installGuide,/-dev/);
 console.log('Dev distribution contract passed: raw dev WebUI owns compact compatibility/copy assets directly; exact-SHA packaging adds identity only, Linux bootstrap is served from Pages while defaulting to stable main unless -dev is requested, installers preserve checksum/SHA safety, and legacy release-profile materialization is isolated to historical main simulator preview.');
+
+// A74-8: a superseded run before any remote release mutation is not a product failure.
+assert.ok(prereleaseOwner.includes('function skipSupersededBeforeMutation()'),'Centralized pre-mutation supersession classification must exist');
+assert.ok(prereleaseOwner.includes('if(skipSupersededBeforeMutation())return null;')&&prereleaseOwner.includes('if(!files)return;'),'Preflight may safely stop before fetching/using stale assets');
+assert.ok(prereleaseOwner.includes('const history=await archivePreviousDevZips();\\n  if(skipSupersededBeforeMutation())return;'.replace('\\n','\n')),'History read must recheck Dev before release operations');
+assert.ok(prereleaseOwner.includes('if(!release){\\n    if(skipSupersededBeforeMutation())return;'.replace('\\n','\n')),'Absent-tag path must recheck Dev before first mutation');
+assert.ok(prereleaseOwner.includes('for(const name of names){\\n      checkHead();'.replace('\\n','\n'))&&prereleaseOwner.includes('if(switched){'),'After asset mutations begin, exact SHA checks and restoration remain fail-closed');

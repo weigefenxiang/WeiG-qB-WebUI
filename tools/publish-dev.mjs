@@ -19,6 +19,14 @@ const cli=(...args)=>execFileSync('gh',args,{encoding:'utf8',maxBuffer:8388608})
 const api=(path,...args)=>JSON.parse(cli('api','repos/'+repository+'/'+path,...args));
 const head=()=>api('branches/dev').commit.sha;
 const checkHead=()=>assert.equal(head(),sha,'Dev refuses stale promotion');
+// Before ANY release/tag/asset mutation, a superseded run is a harmless no-op.
+// Once mutation begins the existing checkHead() and rollback stay fail-closed.
+function skipSupersededBeforeMutation(){
+  const live=head();
+  if(live===sha)return false;
+  console.log('Superseded Dev SHA '+sha+' by '+live+' before release mutation; skip publisher.');
+  return true;
+}
 const list=id=>api('releases/'+id+'/assets?per_page=100');
 const rename=(id,name)=>cli('api','--method','PATCH','repos/'+repository+'/releases/assets/'+id,'-f','name='+name);
 const drop=id=>cli('api','--method','DELETE','repos/'+repository+'/releases/assets/'+id);
@@ -28,7 +36,7 @@ async function prepare(){
   assert.equal(repository,'weigefenxiang/WeiG-qB-WebUI');
   assert.match(sha||'',/^[0-9a-f]{40}$/);
   assert(token,'GH_TOKEN is required');
-  checkHead();
+  if(skipSupersededBeforeMutation())return null;
   await mkdir(root,{recursive:true});
   const files={};
   for(const name of ['weig-qb-webui.zip','weig-qb-webui.tar.gz','install.sh','install.ps1','manifest.json','SHA256SUMS','GIT_SHA','VERSION',stage.plan+'/preview.json',stage.plan+'/weig-qb-webui.zip',stage.plan+'/'+stage.namedZip]){
@@ -62,7 +70,7 @@ async function prepare(){
   files[stage.namedZip]=files[stage.plan+'/'+stage.namedZip];
   files.SHA256SUMS=Buffer.from(files.SHA256SUMS.toString().trimEnd()+'\n'+hash(files[stage.namedZip])+'  '+stage.namedZip+'\n');
   for(const name of names)await writeFile(join(root,name),files[name]);
-  checkHead();
+  if(skipSupersededBeforeMutation())return null;
   return files;
 }
 
@@ -88,7 +96,9 @@ async function archivePreviousDevZips(){
 
 async function publish(){
   const files=await prepare();
+  if(!files)return;
   const history=await archivePreviousDevZips();
+  if(skipSupersededBeforeMutation())return;
   for(const [name,record] of history.archives){
     assert(!names.includes(name),'Historical Dev ZIP collides with active stage '+name);
     names.push(name);files[name]=record.bytes;
@@ -104,7 +114,7 @@ async function publish(){
   catch(error){if(!String(error.stderr||error).includes('404'))throw error;}
   if(!release)release=api('releases?per_page=100').find(item=>item.tag_name===tag&&item.draft);
   if(!release){
-    checkHead();
+    if(skipSupersededBeforeMutation())return;
     let tagExists=false;
     try{
       const existing=ref();
