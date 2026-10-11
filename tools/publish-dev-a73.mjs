@@ -71,10 +71,21 @@ async function publish(){
   let release;
   try{release=api('releases/tags/'+tag);}
   catch(error){if(!String(error.stderr||error).includes('404'))throw error;}
+  if(!release)release=api('releases?per_page=100').find(item=>item.tag_name===tag&&item.draft);
   if(!release){
     checkHead();
-    cli('release','create',tag,'--draft','--target',sha,'--title',title,'--notes',notes,'--prerelease','--latest=false');
-    release=api('releases/tags/'+tag);
+    let tagExists=false;
+    try{
+      const existing=ref();
+      const compare=api('compare/'+existing+'...'+sha);
+      assert(['ahead','identical'].includes(compare.status),'Orphan A73 tag is not a Dev ancestor');
+      if(existing!==sha)cli('api','--method','PATCH','repos/'+repository+'/git/refs/tags/'+tag,'-f','sha='+sha,'-F','force=true');
+      tagExists=true;
+    }catch(error){
+      if(!String(error.stderr||error).includes('404'))throw error;
+    }
+    if(!tagExists)cli('api','--method','POST','repos/'+repository+'/git/refs','-f','ref=refs/tags/'+tag,'-f','sha='+sha);
+    release=api('releases','--method','POST','-f','tag_name='+tag,'-f','target_commitish=main','-f','name='+title,'-f','body='+notes,'-F','draft=true','-F','prerelease=true','-f','make_latest=false');
   }
   assert.equal(release.tag_name,tag);
   assert.equal(release.prerelease,true,'A73 release is not a prerelease');
