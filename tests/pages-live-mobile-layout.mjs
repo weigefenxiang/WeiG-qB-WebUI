@@ -284,6 +284,12 @@ try{
       const tops=br.map(item=>Math.round(item.top));
       return{host:rect(host),buttons:br,native,qbTabs:qb.map(button=>button.dataset.settingsTab),rows:[...new Set(tops)],hostOverflow:host.scrollWidth-host.clientWidth,documentOverflow:document.documentElement.scrollWidth-window.innerWidth,groupDisplay:getComputedStyle(document.querySelector('#settings-tabs .settings-nav-group')).display,qbDisplay:getComputedStyle(document.getElementById('settings-qb-tabs')).display,scrollLeft:host.scrollLeft};
     });
+    const currentValues=await page.evaluate(()=>['weig_language','weig_theme','weig_timezone'].map(key=>{
+      const row=document.querySelector('.setting-row[data-setting-key="'+key+'"]'),control=row?.querySelector('.setting-control-slot>.ui-select'),text=control?.querySelector('.ui-select__value');
+      if(!row||!control||!text)throw new Error('Missing current-value Select on '+key);
+      return{key,actual:text.clientWidth,natural:text.scrollWidth,rowWidth:row.clientWidth,stacked:row.classList.contains('is-stacked')};
+    }));
+    assert.ok(currentValues.every(x=>x.natural<=x.actual+2),`Settings must not clip intrinsic values at ${width}px: ${JSON.stringify(currentValues)}`);
     assert.deepEqual(rail.qbTabs,rail.native,`mobile Settings qB tabs must exactly follow source-native surfaces at ${width}px: ${JSON.stringify(rail)}`);
     assert.equal(rail.rows.length,1,`all Settings tabs must stay on one physical row at ${width}px: ${JSON.stringify(rail)}`);
     assert.equal(rail.groupDisplay,'contents',`WeiG Settings group must flatten into the one mobile rail at ${width}px: ${JSON.stringify(rail)}`);

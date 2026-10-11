@@ -146,6 +146,7 @@
       var desc=row.querySelector('.setting-description'),style=desc&&global.getComputedStyle(desc),line=parseFloat(style&&style.lineHeight)||18;
       var descriptionTall=!!(desc&&String(desc.textContent||'').trim()&&desc.scrollHeight>line*2.15);
       var wrap=row.querySelector(':scope > .setting-control-slot > .ui-select'),trigger=wrap&&wrap.querySelector('.ui-select__trigger'),value=trigger&&trigger.querySelector('.ui-select__value');
+      if(wrap&&typeof wrap.__syncIntrinsicTrigger==='function')wrap.__syncIntrinsicTrigger();
       var selectedNeedsSpace=false;
       if(wrap&&trigger&&value&&G&&G.triggerIntrinsicWidth){
         var rowStyle=global.getComputedStyle(row),available=row.clientWidth-(parseFloat(rowStyle.paddingLeft)||0)-(parseFloat(rowStyle.paddingRight)||0);
