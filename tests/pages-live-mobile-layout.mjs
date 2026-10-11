@@ -217,6 +217,14 @@ try{
   assert.ok(logs.documentOverflow<=1,'Logs toolbar must not create document overflow: '+JSON.stringify(logs));
   const logsReadability=await page.evaluate(()=>{const toolbar=document.querySelector('.logs-toolbar'),nodes=[...toolbar.querySelectorAll('[data-log-type],.logs-follow,.logs-refresh')].filter(n=>n.getClientRects().length);return{fonts:nodes.map(n=>parseFloat(getComputedStyle(n).fontSize)),labels:nodes.map(n=>String(n.textContent||'').trim()),overflow:toolbar.scrollWidth-toolbar.clientWidth};});
   assert.ok(logsReadability.fonts.length>=5&&logsReadability.fonts.every(font=>font>=12),'A73 Logs text must not be shrunk below the shared readable floor: '+JSON.stringify(logsReadability));
+  const logsFullLabels=await page.evaluate(()=>{
+    const follow=document.querySelector('.logs-filters .logs-follow'),text=follow?.querySelector('.ui-check__label'),refresh=document.querySelector('.logs-actions .logs-refresh');
+    return{followText:String(text?.textContent||'').trim(),followVisible:!!text&&getComputedStyle(text).display!=='none',
+      refreshText:String(refresh?.textContent||'').trim(),refreshFont:refresh&&parseFloat(getComputedStyle(refresh).fontSize),
+      followClip:!!follow&&follow.scrollWidth>follow.clientWidth+1,refreshClip:!!refresh&&refresh.scrollWidth>refresh.clientWidth+1};
+  });
+  assert.ok(logsFullLabels.followVisible&&logsFullLabels.followText.length>2&&logsFullLabels.refreshText.length>2&&logsFullLabels.refreshFont>=12&&!logsFullLabels.followClip&&!logsFullLabels.refreshClip,
+    'A73 Logs Follow and Refresh full text must remain visible and untruncated: '+JSON.stringify(logsFullLabels));
   assert.match(logs.pagerLabel,/^\d+\s*\/\s*\d+$/,`phone Logs pager must expose only editable current / total pages: ${JSON.stringify(logs)}`);assert.notEqual(logs.pagerCompactDisplay,'none',`phone Logs pager compact copy must be the visible presentation owner: ${JSON.stringify(logs)}`);
   assert.equal(logs.pagerMetaDisplay,'none',`phone Logs pager must hide retained-history meta: ${JSON.stringify(logs)}`);assert.equal(logs.pagerAuxDisplay,'none',`phone Logs pager must hide page-size auxiliary control: ${JSON.stringify(logs)}`);assert.ok(logs.copyDisplays.every(display=>display==='none'),`phone Logs pager must hide Previous/Next copy and keep arrows only: ${JSON.stringify(logs)}`);
   await page.locator('.logs-pager .pager-index-copy--compact [data-pager-page-jump]').click();
