@@ -367,8 +367,8 @@ jobs:
           timeout --signal=TERM --kill-after=10s 240s node "$WEIG_VERIFY_SCRIPT"
 
 
-  publish_dev_a73:
-    name: Publish rolling A73 after verification
+  publish_dev_stage:
+    name: Publish rolling Dev stage after verification
     needs: [build, deploy, verify]
     if: ${{ always() && github.ref_name == 'dev' && needs.build.result == 'success' && needs.verify.result == 'success' && (needs.deploy.result == 'success' || needs.build.outputs.reuse_deployed == 'true') }}
     runs-on: ubuntu-latest
@@ -391,8 +391,9 @@ jobs:
         run: |
           set -euo pipefail
           echo 'approved=false' >> "$GITHUB_OUTPUT"
-          if [ "$(cat VERSION)" != "1.2.1" ]; then
-            echo 'Dev has advanced beyond A73; do not touch the A73 prerelease.'
+          configured_version="$(node --input-type=module -e 'import {readDevStage} from "./tools/dev-release-stage.mjs";console.log((await readDevStage()).version)')"
+          if [ "$(cat VERSION)" != "$configured_version" ]; then
+            echo 'Dev no longer matches configured stage; skip stage publication.'
             exit 0
           fi
           head="$(gh api "repos/$GITHUB_REPOSITORY/branches/dev" --jq '.commit.sha')"
@@ -416,12 +417,14 @@ jobs:
           gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/jobs?per_page=100" |
             jq -e --arg sha "$GITHUB_SHA" '(.total_count<=100) and (.jobs | all(.head_sha==$sha)) and
               ([.jobs[] | select(.conclusion=="success") | .name] as $passed |
-              (["smoke","Linux semantic UI · adaptive-ui","Linux semantic UI · runtime"] |
-              all(. as $name | $passed | index($name)!=null)))' >/dev/null ||
+              ($passed | index("smoke")!=null) and
+              (([.jobs[] | select(.name | startswith("Linux semantic UI")) | select(.conclusion!="skipped")] | length)==0 or
+               (["Linux semantic UI · adaptive-ui","Linux semantic UI · runtime"] |
+                all(. as $name | $passed | index($name)!=null))))' >/dev/null ||
               { echo 'Required Dev browser and smoke gates did not PASS.' >&2; exit 1; }
           echo 'approved=true' >> "$GITHUB_OUTPUT"
-      - name: Publish only exact verified Dev A73
+      - name: Publish only exact verified Dev stage
         if: ${{ steps.gate.outputs.approved == 'true' }}
         env:
           GH_TOKEN: ${{ github.token }}
-        run: node tools/publish-dev-a73.mjs
+        run: node tools/publish-dev.mjs

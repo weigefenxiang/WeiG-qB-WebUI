@@ -128,7 +128,7 @@ async function publish(){
   }
   const existing=list(id);
   if(old===sha&&history.releases.length===0&&retiredNames.every(n=>!existing.some(x=>x.name===n))&&names.every(n=>{const a=existing.find(x=>x.name===n);return a&&a.size===files[n].length&&a.digest==='sha256:'+hash(files[n]);})){
-    console.log('A73 already matches the same exact SHA; no-op');return;
+    console.log('Dev stage already matches the same exact SHA; no-op');return;
   }
   const nonce=sha.slice(0,12), staged=[], backups=[];
   let switched=false;
@@ -171,9 +171,9 @@ async function publish(){
       assert.equal(asset.size,files[name].length);
       if(asset.digest)assert.equal(asset.digest,'sha256:'+hash(files[name]));
     }
-    // Retire legacy A73.zip only after the replacement assets verify against the Dev SHA.
+    // Retire obsolete stage shorthand only after the replacement assets verify against the Dev SHA.
     for(const name of retiredNames){const obsolete=lookup(name);if(obsolete)drop(obsolete.id);}
-    assert(retiredNames.every(name=>!lookup(name)),'Obsolete A73 ZIP asset still exposed');
+    assert(retiredNames.every(name=>!lookup(name)),'Obsolete Dev shorthand ZIP asset still exposed');
     for(const b of backups){try{drop(b.id);}catch(error){console.warn('Deferred old asset cleanup',error.message);}}
     // Only now may a superseded Dev release/tag be retired: all named historical
     // ZIPs have been transferred and verified on the new current Dev release.
