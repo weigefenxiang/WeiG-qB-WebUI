@@ -76,12 +76,15 @@ assert(!navTheme.includes('.mobile-bottom-nav__item small{')&&!navTheme.includes
   'Retired duplicate mobile bottom navigation clipping owner returned');
 assert(navRuntime.includes('function installBottomNavTextScroll()')&&navRuntime.includes('e.stopImmediatePropagation()')&&navRuntime.includes("e.key==='ArrowRight'"),
   'Canonical Navigation must guard swipe-versus-click and keyboard label reveal');
-assert(!transferRuntime.includes('stats.style.gridTemplateColumns')&&transferCss.includes('.transfer-panel-dialog .transfer-dialog-head-actions{grid-column:1;justify-self:end'),
-  'Transfer responsive grid and adjacent second-row Statistics/Close must have one CSS owner');
+assert(!transferRuntime.includes('stats.style.gridTemplateColumns')&&transferCss.includes("grid-template-areas:'eyebrow actions' 'heading heading' 'description description'")&&transferCss.includes('.transfer-panel-dialog>.dialog__head>div:first-child{display:contents}')&&!transferCss.includes('.transfer-dialog-head-actions{grid-column:1;justify-self:end'),
+  'Transfer responsive grid must keep Statistics and Close adjacent in the first mobile header row with one CSS owner');
 assert(!transferCss.includes('.transfer-stat strong{display:block;overflow:hidden;text-overflow:ellipsis'),
   'Transfer value ellipsis must not hide full statistics on mobile');
 assert(logsCss.includes('inset:-5px 0')&&logsCss.includes('.logs-toolbar .logs-follow .ui-check__label{display:inline;white-space:nowrap}')&&!logsCss.includes('.logs-follow{min-height:44px}'),
   'Logs visual chips and extended hit areas must not resurrect the 44px visual-height override');
+const responsiveRuntime=read('webui/private/scripts/responsive.js');
+assert(responsiveRuntime.includes('fitAdaptiveActionLabels()')&&responsiveRuntime.includes('adaptiveReadableFloor()')&&settingsCss.includes('.setting-inline-action{box-sizing:border-box;flex:0 1 auto')&&!settingsCss.includes('.setting-inline-action{min-height:34px;height:34px'),
+  'Mobile native Settings helper buttons must share font measurement, remain bounded and permit multiline text');
 assert(!settingsCss.includes('max-width:min(240px,48vw)')&&settingsRuntime.includes('G.triggerIntrinsicWidth(wrap,trigger,value.textContent'),
   'Settings selects must use the shared current-value geometry instead of a viewport cap');
 
