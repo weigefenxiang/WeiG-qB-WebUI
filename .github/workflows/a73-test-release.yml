@@ -1,0 +1,162 @@
+name: A73 Test Prerelease
+
+on:
+  push:
+    branches:
+      - dev
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: a73-test-publication
+  cancel-in-progress: false
+
+jobs:
+  verify_windows:
+    if: ${{ contains(github.event.head_commit.message, '[A73-publish]') }}
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - run: npm ci --no-audit --no-fund
+      - name: Windows installer lifecycle at exact prerelease SHA
+        shell: pwsh
+        run: ./tests/installer-lifecycle.ps1
+  publish:
+    needs: verify_windows
+    if: ${{ contains(github.event.head_commit.message, '[A73-publish]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact test-branch SHA
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Verify final complete A73 test source
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+          npm test
+          npm run test:simulator
+          # A61 separates external-source/exhaustive test:compat from the release-critical
+          # gates; those require source-stage catalogs and an upstream checkout.
+          # Preserve checked-in compatibility and Frozen translation evidence here.
+          node audits/compat-matrix.mjs
+          node audits/qb-settings-native-lkg-contract.mjs
+          bash tests/installer-lifecycle.sh
+          test "$(cat VERSION)" = "1.2.1"
+          test "$(cat webui/VERSION)" = "1.2.1"
+      - name: Require successful exact-SHA push CI before creating any prerelease Tag
+        timeout-minutes: 35
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          validated=0
+          for attempt in $(seq 1 120); do
+            record="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?branch=dev&event=push&per_page=60" \
+              | jq -c --arg sha "$GITHUB_SHA" '[.workflow_runs[] | select(.head_sha == $sha and .event == "push")] | sort_by(.id) | last // empty')"
+            if [ -z "$record" ]; then sleep 10; continue; fi
+            status="$(jq -r '.status' <<<"$record")"
+            conclusion="$(jq -r '.conclusion // ""' <<<"$record")"
+            if [ "$status" = completed ]; then
+              if [ "$conclusion" != success ]; then
+                echo "A73 exact-SHA CI is not successful: $conclusion" >&2
+                exit 1
+              fi
+              validated=1
+              break
+            fi
+            sleep 10
+          done
+          if [ "$validated" -ne 1 ]; then
+            echo 'No successful completed CI for exact A73 publish SHA; Tag creation is blocked.' >&2
+            exit 1
+          fi
+      - name: Require every essential exact-SHA A73 CI job
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          message="$(git log -1 --format=%B)"
+          for marker in '[ui]' '[settings-matrix]' '[A73-platform]' '[A73-real-qb]' '[A73-source]'; do
+            case "$message" in
+              *"$marker"*) ;;
+              *) echo "A73 publish commit lacks mandatory CI marker $marker" >&2; exit 1 ;;
+            esac
+          done
+          run_id="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?branch=dev&event=push&per_page=60" |
+            jq -r --arg sha "$GITHUB_SHA" '[.workflow_runs[] | select(.head_sha == $sha and .event == "push")] | sort_by(.id) | last // empty | .id // empty')"
+          test -n "$run_id"
+          jobs="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/jobs?per_page=100")"
+          jq -e --arg sha "$GITHUB_SHA" '
+            (.total_count <= 100) and
+            (.jobs | all(.head_sha == $sha)) and
+            ([.jobs[] | select(.conclusion == "success") | .name] as $passed |
+              ([
+                "smoke",
+                "Linux semantic UI · route-modules",
+                "Linux semantic UI · runtime",
+                "Linux semantic UI · settings-fidelity",
+                "Linux semantic UI · feature-parity",
+                "Linux semantic UI · torrent-workspace",
+                "Linux semantic UI · adaptive-ui"
+              ] | all(. as $name | $passed | index($name) != null)))
+          ' <<<"$jobs" || { echo 'A73 exact SHA lacks a successful dev UI job.' >&2; exit 1; }
+      - name: Materialize exact-SHA WebUI archive with canonical builder
+        run: |
+          set -euo pipefail
+          node tools/build-webui-dist.mjs --webui-root=webui --out=release --sha="$GITHUB_SHA" --version=1.2.1
+          cp release/weig-qb-webui.zip release/A73.zip
+          cp release/weig-qb-webui.zip release/weig-qb-webui_v1.2.1_A73.zip
+          (cd release && sha256sum A73.zip weig-qb-webui_v1.2.1_A73.zip >> SHA256SUMS && sha256sum -c SHA256SUMS)
+          test "$(unzip -p release/A73.zip weig-qb-webui/GIT_SHA | tr -d '\r\n')" = "$GITHUB_SHA"
+          test "$(unzip -p release/A73.zip weig-qb-webui/VERSION | tr -d '\r\n')" = '1.2.1'
+          test "$(jq -r .gitSha release/manifest.json)" = "$GITHUB_SHA"
+      - name: Publish immutable A73 Prerelease only at final verified SHA
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          actual="$(gh api "repos/$GITHUB_REPOSITORY/branches/dev" --jq '.commit.sha')"
+          test "$actual" = "$GITHUB_SHA" || { echo 'dev advanced; refusing stale publication' >&2; exit 1; }
+          if gh release view test-A73 >/dev/null 2>&1; then
+            echo 'test-A73 Prerelease exists; refusing to replace immutable test assets' >&2
+            exit 1
+          fi
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/test-A73" >/dev/null 2>&1; then
+            echo 'test-A73 tag exists; refusing to repoint or attach assets to an existing tag' >&2
+            exit 1
+          fi
+          # Atomically reserve the previously unused Tag at the already-verified exact SHA.
+          # If the asset upload fails, the Tag remains for explicit recovery; never silently rewrite it.
+          gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+            -f ref='refs/tags/test-A73' -f sha="$GITHUB_SHA" >/dev/null
+          gh release create test-A73 \
+            release/A73.zip \
+            release/weig-qb-webui_v1.2.1_A73.zip \
+            release/weig-qb-webui.zip \
+            release/weig-qb-webui.tar.gz \
+            release/manifest.json \
+            release/SHA256SUMS \
+            release/install.sh \
+            release/install.ps1 \
+            --target "$GITHUB_SHA" \
+            --title "WeiG WebUI A73 (1.2.1 test)" \
+            --notes "A73 isolated test build, exact Git SHA $GITHUB_SHA. This is not a stable release." \
+            --prerelease --latest=false --verify-tag
+          echo "A73: https://github.com/$GITHUB_REPOSITORY/releases/download/test-A73/A73.zip"
