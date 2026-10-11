@@ -20,13 +20,17 @@ console.log('Distribution artifact-set contract passed.');
 // Rolling Dev A73 uses the canonical Pages owner, not the retired Test release job.
 const pagesWorkflow=fs.readFileSync(new URL('../.github/workflows/pages.yml',import.meta.url),'utf8');
 const publishJob=pagesWorkflow.split('  publish_dev_a73:')[1]||'';
-const gateMatch=publishJob.match(/jq -e --arg sha "\\$GITHUB_SHA" '([\\s\\S]*?)' >\\/dev\\/null/);
-assert.ok(gateMatch,'A73 Dev release must validate every actual CI job against the source SHA');
+const gateBegin=publishJob.indexOf('jq -e --arg sha "$GITHUB_SHA"');
+const expressionStart=publishJob.indexOf("'",gateBegin)+1;
+const expressionEnd=publishJob.indexOf("' >/dev/null",expressionStart);
+assert.ok(gateBegin>=0&&expressionStart>gateBegin&&expressionEnd>expressionStart,
+  'A73 Dev release must validate every actual CI job against the source SHA');
+const gateExpr=publishJob.slice(expressionStart,expressionEnd);
 if(process.platform==='linux'){
   const {spawnSync}=await import('node:child_process');
   const required=['smoke','Linux semantic UI · adaptive-ui','Linux semantic UI · runtime'];
   const success={total_count:required.length,jobs:required.map(name=>({name,head_sha:'a73-exact',conclusion:'success'}))};
-  const check=fixture=>spawnSync('jq',['-e','--arg','sha','a73-exact',gateMatch[1]],{
+  const check=fixture=>spawnSync('jq',['-e','--arg','sha','a73-exact',gateExpr],{
     input:JSON.stringify(fixture),encoding:'utf8',timeout:3000});
   const green=check(success);
   assert.equal(green.status,0,'A73 Dev gate must accept complete exact-SHA CI jobs: '+green.stderr);
