@@ -56,6 +56,33 @@ for(const rel of ['tests/browser-adaptive-ui.mjs','tests/pages-live-mobile-layou
   assert(browser.includes("'.topbar__start .brand-cluster .brand-mark-home'"),
     rel+' must measure the live canonical Brand child instead of a retired startup ID');
 }
+// A73 shared mobile-layout owner retirement: keep one fixed four-entry dock,
+// one dialog/state owner and the canonical current-value Select measurement.
+const navBase=read('webui/private/css/base.css');
+const navTheme=read('webui/private/css/theme.css');
+const navRuntime=read('webui/private/scripts/navigation.js');
+const transferRuntime=read('webui/private/scripts/transfer.js');
+const transferCss=read('webui/private/css/transfer.css');
+const logsCss=read('webui/private/css/logs.css');
+const settingsCss=read('webui/private/css/settings.css');
+const settingsRuntime=read('webui/private/scripts/settings.js');
+assert(navBase.includes('.mobile-bottom-nav__item{display:flex;flex:0 1 max-content')&&!navBase.includes('grid-template-columns:repeat(4,1fr)'),
+  'Mobile bottom navigation must retain intrinsic widths without equal fourths');
+assert(navBase.includes('touch-action:pan-x')&&navBase.includes('overflow-x:auto')&&!navBase.includes('.mobile-bottom-nav__item small{font-size:11px'),
+  'Only each label must scroll, without ignoring font-scale or shrinking all labels');
+assert(!navTheme.includes('.mobile-bottom-nav__item small{')&&!navTheme.includes('--mobile-nav-font:11px'),
+  'Retired duplicate mobile bottom navigation clipping owner returned');
+assert(navRuntime.includes('function installBottomNavTextScroll()')&&navRuntime.includes('e.stopImmediatePropagation()')&&navRuntime.includes("e.key==='ArrowRight'"),
+  'Canonical Navigation must guard swipe-versus-click and keyboard label reveal');
+assert(!transferRuntime.includes('stats.style.gridTemplateColumns')&&transferCss.includes('.transfer-panel-dialog .transfer-dialog-head-actions{grid-column:1;justify-self:end'),
+  'Transfer responsive grid and adjacent second-row Statistics/Close must have one CSS owner');
+assert(!transferCss.includes('.transfer-stat strong{display:block;overflow:hidden;text-overflow:ellipsis'),
+  'Transfer value ellipsis must not hide full statistics on mobile');
+assert(logsCss.includes('inset:-5px 0')&&!logsCss.includes('.logs-follow{min-height:44px}'),
+  'Logs visual chips and extended hit areas must not resurrect the 44px visual-height override');
+assert(!settingsCss.includes('max-width:min(240px,48vw)')&&settingsRuntime.includes('G.triggerIntrinsicWidth(wrap,trigger,value.textContent'),
+  'Settings selects must use the shared current-value geometry instead of a viewport cap');
+
 const adaptiveBrowser=read('tests/browser-adaptive-ui.mjs');
 assert(adaptiveBrowser.includes(".feedback-toast:not(.is-leaving) .feedback-toast__dismiss")&&adaptiveBrowser.includes('page.mouse.wheel(1000,0)'),
   'Mobile rail verification must acknowledge Feedback through its UI, then exercise native horizontal wheel input');
