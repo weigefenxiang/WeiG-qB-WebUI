@@ -66,8 +66,34 @@ async function prepare(){
   return files;
 }
 
+async function archivePreviousDevZips(){
+  const past=api('releases?per_page=100').filter(item=>item.prerelease&&!item.draft&&/^dev-A[1-9][0-9]*$/.test(item.tag_name)&&item.tag_name!==tag);
+  const archives=new Map();
+  for(const item of past){
+    const releaseAssets=list(item.id).filter(asset=>/^weig-qb-webui-A[1-9][0-9]*\.zip$/.test(asset.name));
+    assert(releaseAssets.some(asset=>asset.name==='weig-qb-webui-'+item.tag_name.slice(4)+'.zip'),'Missing previous Dev stage identity asset: '+item.tag_name);
+    for(const asset of releaseAssets){
+      if(archives.has(asset.name)){assert.equal(archives.get(asset.name).digest,asset.digest,'Conflicting historical Dev ZIP '+asset.name);continue;}
+      assert(/^sha256:[0-9a-f]{64}$/.test(asset.digest||''),'No digest for Dev ZIP '+asset.name);
+      const response=await fetch(asset.url,{headers:{Authorization:'Bearer '+token,Accept:'application/octet-stream','X-GitHub-Api-Version':'2022-11-28'},signal:AbortSignal.timeout(120000)});
+      assert(response.ok,'Cannot fetch historical Dev ZIP '+asset.name+' HTTP '+response.status);
+      const bytes=Buffer.from(await response.arrayBuffer());
+      assert.equal(bytes.length,asset.size,'Historical Dev ZIP byte count '+asset.name);
+      assert.equal('sha256:'+hash(bytes),asset.digest,'Historical Dev ZIP digest '+asset.name);
+      archives.set(asset.name,{bytes,digest:asset.digest});
+    }
+  }
+  return{releases:past,archives};
+}
+
 async function publish(){
   const files=await prepare();
+  const history=await archivePreviousDevZips();
+  for(const [name,record] of history.archives){
+    assert(!names.includes(name),'Historical Dev ZIP collides with active stage '+name);
+    names.push(name);files[name]=record.bytes;
+    files.SHA256SUMS=Buffer.from(files.SHA256SUMS.toString().trimEnd()+'\n'+record.digest.slice(7)+'  '+name+'\n');
+  }
   const notes=stage.plan+' rolling Dev Pre-release (WeiG qB WebUI '+stage.version+').\n\nExact Git SHA: '+sha+
     '\n\nAutomatically published after exact-SHA CI and Pages verification. Not Test or Stable.'+
     '\n\nPages ZIP: '+base+'/'+stage.plan+'/weig-qb-webui.zip'+
@@ -101,7 +127,7 @@ async function publish(){
     if(old!==sha)assert.equal(api('compare/'+old+'...'+sha).status,'ahead','Dev tag cannot move backward');
   }
   const existing=list(id);
-  if(old===sha&&retiredNames.every(n=>!existing.some(x=>x.name===n))&&names.every(n=>{const a=existing.find(x=>x.name===n);return a&&a.size===files[n].length&&a.digest==='sha256:'+hash(files[n]);})){
+  if(old===sha&&history.releases.length===0&&retiredNames.every(n=>!existing.some(x=>x.name===n))&&names.every(n=>{const a=existing.find(x=>x.name===n);return a&&a.size===files[n].length&&a.digest==='sha256:'+hash(files[n]);})){
     console.log('A73 already matches the same exact SHA; no-op');return;
   }
   const nonce=sha.slice(0,12), staged=[], backups=[];
@@ -149,6 +175,13 @@ async function publish(){
     for(const name of retiredNames){const obsolete=lookup(name);if(obsolete)drop(obsolete.id);}
     assert(retiredNames.every(name=>!lookup(name)),'Obsolete A73 ZIP asset still exposed');
     for(const b of backups){try{drop(b.id);}catch(error){console.warn('Deferred old asset cleanup',error.message);}}
+    // Only now may a superseded Dev release/tag be retired: all named historical
+    // ZIPs have been transferred and verified on the new current Dev release.
+    for(const predecessor of history.releases){
+      checkHead();
+      try{cli('release','delete',predecessor.tag_name,'--yes','--cleanup-tag');}
+      catch(error){console.warn('Deferred retired Dev release cleanup',predecessor.tag_name,error.message);}
+    }
     console.log('Updated unique '+stage.plan+' Dev Pre-release: '+sha);
   }catch(error){
     console.error('Dev publish failed; attempting restoration:',error.message);
