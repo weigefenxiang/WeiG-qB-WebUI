@@ -320,6 +320,38 @@ try{
     assert.equal(rows.filter(x=>x.native==='A').length,3,'External About values must be native links');
     assert.equal(rows.filter(x=>x.actionTag==='A').length,1,'Feedback action must offer the browser native long-press link menu');
   }
+  // A73 Russian full Pages fixture: wrapping belongs to text measurement,
+  // not language/viewport-specific truncation or an extra About renderer.
+  await page.evaluate(async()=>{await WeiG.I18n.loadWeiGLocale('ru');WeiG.I18n.applyLocale('ru',{reload:false});});
+  await page.waitForFunction(()=>document.documentElement.lang==='ru');
+  await page.locator('#settings-tabs [data-settings-tab="weig"]').click();
+  await page.locator('#settings-tabs [data-settings-tab="about"]').click();
+  await page.waitForSelector('#settings-content .about-surface .fact-row--action');
+  for(const width of [320,360,390,430]){
+    await page.setViewportSize({width,height:844});await page.waitForTimeout(80);
+    const geometry=await page.evaluate(()=>{
+      const rect=node=>{const r=node.getBoundingClientRect();return{left:r.left,right:r.right,centerY:(r.top+r.bottom)/2};};
+      return[...document.querySelectorAll('#settings-content .about-surface .fact-row')].map(row=>{
+        const label=row.querySelector('strong'),value=row.querySelector('.fact-value'),action=row.querySelector('.fact-action');
+        return{label:label?.textContent?.trim(),value:value?.textContent?.trim(),labelRect:rect(label),valueRect:rect(value),
+          clipped:value.scrollWidth>value.clientWidth+2||getComputedStyle(value).textOverflow==='ellipsis',
+          action:action&&{text:action.textContent.trim(),...rect(action),clipped:action.scrollWidth>action.clientWidth+2},
+          external:value.tagName==='A',rel:value.getAttribute('rel'),target:value.getAttribute('target')};
+      });
+    });
+    for(const label of ['qBittorrent','WebAPI','Version']){
+      const item=geometry.find(row=>row.label===label);
+      assert.ok(item&&!item.clipped&&Math.abs(item.labelRect.centerY-item.valueRect.centerY)<=3,
+        `Russian About short label/value must share one row at ${width}px: ${JSON.stringify(geometry)}`);
+    }
+    assert.ok(geometry.every(row=>!row.clipped&&row.valueRect.left>=-1&&row.valueRect.right<=width+1&&
+      (!row.action||!row.action.clipped&&row.action.right<=width+1)),
+      `Russian About must retain full text and whole action buttons at ${width}px: ${JSON.stringify(geometry)}`);
+    assert.equal(geometry.filter(row=>row.external&&row.rel?.includes('noopener')&&row.target==='_blank').length,3,
+      'Russian About long-pressable links must retain native browser semantics');
+  }
+  await page.evaluate(async()=>{await WeiG.I18n.loadWeiGLocale('zh-CN');WeiG.I18n.applyLocale('zh-CN',{reload:false});});
+  await page.waitForFunction(()=>document.documentElement.lang==='zh-CN');
   await page.setViewportSize({width:360,height:844});
   await page.locator('#settings-tabs [data-settings-tab="weig"]').click();
   await page.waitForSelector('#settings-content .setting-row[data-setting-key="weig_theme"]');
