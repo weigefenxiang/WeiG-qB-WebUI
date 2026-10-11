@@ -25,7 +25,7 @@ for(const args of [
   assert.match(result.stderr,/Unknown option:/);
 }
 for(const args of [
-  ['-dev'],['-version','1.2.0'],['-o','/tmp/weig'],['-configure'],['-rollback'],
+  ['-dev'],['-dev','A73'],['-version','1.2.0'],['-o','/tmp/weig'],['-configure'],['-rollback'],
   ['-uninstall'],['-purge'],['--container=qbittorrent'],['--config-root=/tmp'],['--list-containers']
 ]){
   const result=cli(args);
@@ -53,3 +53,9 @@ assert.ok(candidate.includes('bash "$LINUX_INSTALLER" -version "$VERSION" -confi
 assert.ok(candidate.includes('"$ROOT/tools/data/qb-stable-lkg.json"'),'Candidate catalog assertion must consume the authoritative exact-SHA admitted source identity');
 assert.doesNotMatch(candidate,/identity\.latestAdmittedStable!=='5\.2\.3'|identity\.releaseCount!==65/,'Release evidence must not pin obsolete admitted-source counts');
 console.log('Installer single-owner contract passed: duplicated lifecycle tail retired and Docker defaults migrate safely.');
+
+const ps=fs.readFileSync(new URL('../installers/install.ps1',import.meta.url),'utf8');
+assert.match(sh,/DEV_TARGET=A73/,'A73 Linux prerelease must be selected explicitly');
+assert.match(sh,/test-\$DEV_TARGET/,'A73 Linux prerelease must use exact tag');
+assert.match(ps,/\$DevTarget='A73'/,'A73 PowerShell prerelease must be selected explicitly');
+assert.match(ps,/Verify-PackageChecksum \$archive \$sumFile/,'A73 Windows must verify canonical checksum');
