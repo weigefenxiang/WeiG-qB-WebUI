@@ -215,6 +215,8 @@ try{
   assert.match(logs.placeholder,/日志|logs/i,`Logs Header Search must expose the route-specific placeholder: ${JSON.stringify(logs)}`);
   assert.ok(logs.scrollMode==='auto'||logs.scrollMode==='scroll','Logs horizontal toolbar must own native scroll: '+JSON.stringify(logs));
   assert.ok(logs.documentOverflow<=1,'Logs toolbar must not create document overflow: '+JSON.stringify(logs));
+  const logsReadability=await page.evaluate(()=>{const toolbar=document.querySelector('.logs-toolbar'),nodes=[...toolbar.querySelectorAll('[data-log-type],.logs-follow,.logs-refresh')].filter(n=>n.getClientRects().length);return{fonts:nodes.map(n=>parseFloat(getComputedStyle(n).fontSize)),labels:nodes.map(n=>String(n.textContent||'').trim()),overflow:toolbar.scrollWidth-toolbar.clientWidth};});
+  assert.ok(logsReadability.fonts.length>=5&&logsReadability.fonts.every(font=>font>=12),'A73 Logs text must not be shrunk below the shared readable floor: '+JSON.stringify(logsReadability));
   assert.match(logs.pagerLabel,/^\d+\s*\/\s*\d+$/,`phone Logs pager must expose only editable current / total pages: ${JSON.stringify(logs)}`);assert.notEqual(logs.pagerCompactDisplay,'none',`phone Logs pager compact copy must be the visible presentation owner: ${JSON.stringify(logs)}`);
   assert.equal(logs.pagerMetaDisplay,'none',`phone Logs pager must hide retained-history meta: ${JSON.stringify(logs)}`);assert.equal(logs.pagerAuxDisplay,'none',`phone Logs pager must hide page-size auxiliary control: ${JSON.stringify(logs)}`);assert.ok(logs.copyDisplays.every(display=>display==='none'),`phone Logs pager must hide Previous/Next copy and keep arrows only: ${JSON.stringify(logs)}`);
   await page.locator('.logs-pager .pager-index-copy--compact [data-pager-page-jump]').click();
