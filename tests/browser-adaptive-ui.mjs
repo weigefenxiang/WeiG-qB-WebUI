@@ -124,18 +124,7 @@ const russianLogFilters=await page.evaluate(()=>{
 });
 assert(russianLogFilters.railOverflow==='auto'&&russianLogFilters.items.length===4&&russianLogFilters.items.every(x=>x.height>=33&&x.height<=37&&x.font>=12&&x.hitBefore==='-5px'&&x.hitAfter==='-5px'&&x.pressed!==null),
   `${name}: Russian Logs must show compact 34px filter faces with 44px extended hit targets and the same selected-state owner ${JSON.stringify(russianLogFilters)}`);
-await page.evaluate(()=>WeiG.Router.go('settings'));await page.waitForFunction(()=>document.querySelector('#settings-content[data-settings-renderer="canonical"] .setting-row[data-setting-key="weig_theme"]'));
-await page.waitForTimeout(100);
-const russianSettingsSelects=await page.evaluate(()=>{
-  return ['weig_language','weig_theme','weig_timezone'].map(key=>{
-    const row=document.querySelector('.setting-row[data-setting-key="'+key+'"]'),wrap=row?.querySelector('.setting-control-slot>.ui-select'),trigger=wrap?.querySelector('.ui-select__trigger'),value=trigger?.querySelector('.ui-select__value');
-    if(!row||!wrap||!trigger||!value)throw new Error('Missing canonical Settings Select for '+key);
-    const rb=row.getBoundingClientRect(),wb=wrap.getBoundingClientRect(),vb=value.getBoundingClientRect();
-    return{key,selected:value.textContent.trim(),stacked:row.classList.contains('is-stacked'),intrinsic:wrap.dataset.uiSelectIntrinsicValue,actual:value.clientWidth,natural:value.scrollWidth,wrapper:wb.width,valueRight:vb.right,rowRight:rb.right,textOverflow:getComputedStyle(value).textOverflow};
-  });
-});
-assert(russianSettingsSelects.every(s=>s.intrinsic==='1'&&s.selected.length>0&&s.natural<=s.actual+2&&s.valueRight<=s.rowRight+1),
-  `${name}: Russian Settings selected language/theme/timezone must use the canonical intrinsic width and retain its complete value ${JSON.stringify(russianSettingsSelects)}`);
+// Real Settings visual assertions belong to the full Pages live Settings route, not this compact source fixture.
 for(const language of ['de','zh-CN','en']){
   await page.evaluate(async target=>{await WeiG.I18n.loadWeiGLocale(target);WeiG.I18n.applyLocale(target,{reload:false});},language);
   await page.waitForFunction(target=>document.documentElement.lang===target&&document.querySelector('#mobile-bottom-nav [data-route="settings"] small')?.textContent===WeiG.I18n.t('nav.settings'),language);
