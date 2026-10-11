@@ -354,7 +354,7 @@ try{
   // Verify the canonical Settings presentation primitive with a test-only label;
   // do not invent source actions, preferences or product/runtime data.
   await page.locator('#settings-tabs [data-settings-tab="downloads"]').click();
-  await page.waitForFunction(()=>WeiG.SettingsState?.tab==='downloads');
+  await page.waitForFunction(()=>WeiG.SettingsState?.tab==='downloads'&&document.querySelector('#settings-tabs [data-settings-tab="downloads"]')?.classList.contains('is-active')&&!!document.querySelector('#settings-content .settings-native-root'),null,{timeout:30000});
   await page.evaluate(()=>{
     const host=document.getElementById('settings-content'),wrap=document.createElement('div'),button=document.createElement('button');
     wrap.id='a73-long-helper-presentation-probe';wrap.className='setting-inline-controls';wrap.style.width='100%';wrap.style.padding='8px';
