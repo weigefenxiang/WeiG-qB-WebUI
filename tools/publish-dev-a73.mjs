@@ -114,7 +114,7 @@ async function publish(){
   try{
     for(const name of names){
       checkHead();
-      const temp='.A73-next-'+nonce+'-'+name;
+      const temp='A73-next-'+nonce+'-'+name;
       const leftover=lookup(temp);if(leftover)drop(leftover.id);
       const assetId=await upload(name,temp);
       staged.push({name,temp,assetId});
@@ -123,7 +123,7 @@ async function publish(){
     for(const a of staged){
       const previous=lookup(a.name);
       if(previous){
-        const backup='.A73-old-'+nonce+'-'+a.name;
+        const backup='A73-old-'+nonce+'-'+a.name;
         assert(!lookup(backup),'Unresolved earlier publish backup '+backup);
         rename(previous.id,backup);backups.push({name:a.name,backup,id:previous.id});
       }
@@ -147,7 +147,7 @@ async function publish(){
     if(switched){
       for(const a of staged){
         const canonical=lookup(a.name);
-        if(canonical&&canonical.id===a.assetId)try{rename(canonical.id,'.A73-failed-'+nonce+'-'+a.name);}catch{}
+        if(canonical&&canonical.id===a.assetId)try{rename(canonical.id,'A73-failed-'+nonce+'-'+a.name);}catch{}
       }
       for(const b of backups){
         if(lookup(b.backup))try{rename(b.id,b.name);}catch{}
