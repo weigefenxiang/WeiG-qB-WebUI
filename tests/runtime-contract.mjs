@@ -47,6 +47,8 @@ assert(startupIndex('scripts/qb-client.js')>=0&&startupIndex('scripts/qb-client.
 for(const deferred of ['scripts/settings.js','scripts/rss.js','scripts/logs.js'])assert(!startupScripts.includes(deferred),deferred+' must remain route-demand loaded instead of leaking into startup');
 assert(startupIndex('scripts/i18n.js')>=0&&startupIndex('scripts/capabilities.js')>=0,'i18n and capability consumers must remain inside the RuntimeAssets-owned startup plan');
 
+const headerSource=read('webui/private/scripts/header.js');
+assert(headerSource.includes("actions.insertBefore(github,theme.nextSibling)")&&!headerSource.includes('mobileUtilityMode')&&!headerSource.includes('syncUtilityPlacement'),'Canonical Header utilities must remain on the same action rail');
 const brandRuntime=read('webui/private/scripts/brand.js');
 assert(startupIndex('scripts/brand.js')>=0&&index.includes('id="brand-btn"'),'Brand startup button and its canonical owner must remain part of bootstrap');
 assert(brandRuntime.includes("homeButton('brand-mark-home'")&&brandRuntime.includes('old.replaceWith(cluster)'),
