@@ -121,6 +121,29 @@ assert(russianTransfer.head&&russianTransfer.titleBox.top>=russianTransfer.actio
   Math.abs(russianTransfer.statsButton.top-russianTransfer.close.top)<7&&russianTransfer.statsButton.right<=russianTransfer.close.left+1&&
   russianTransfer.actions.right<=russianTransfer.head.right+1&&russianTransfer.columns===1&&russianTransfer.values.every(v=>v.textOverflow!=='ellipsis'&&v.whiteSpace==='normal'&&v.scrollHeight<=v.clientHeight+2&&v.value.right<=v.card.right+1),
   `${name}: Russian mobile Transfer must put adjacent Statistics/Close on first eyebrow row with the full title/description below and readable stats ${JSON.stringify(russianTransfer)}`);
+
+const a74ResponsiveProof=await page.evaluate(()=>{
+  const grid=document.querySelector('#transfer-stats-dialog .transfer-stats'),sample=grid?.querySelector('.transfer-stat');
+  if(!grid||!sample)throw new Error('A74 stat card source not mounted');
+  const make=(label,value,width)=>{const node=sample.cloneNode(true),small=node.querySelector('small'),strong=node.querySelector('strong');small.textContent=label;strong.textContent=value;if(width)node.style.width=width+'px';grid.appendChild(node);return node;};
+  const short=make('DHT','7'),shortLabel=short.querySelector('small').getBoundingClientRect(),shortValue=short.querySelector('strong').getBoundingClientRect();
+  const sameBaseline=Math.abs(shortLabel.bottom-shortValue.bottom)<6;
+  const long=make('An exceptionally long localized diagnostic description that must wrap','1234',112),label=long.querySelector('small');
+  const longWrap=label.getBoundingClientRect().height>parseFloat(getComputedStyle(label).lineHeight||'16')*1.3;
+  const overflow=long.scrollWidth-long.clientWidth;
+  short.remove();long.remove();
+  const host=document.createElement('div');host.className='settings-grid diagnostic-grid';host.style.cssText='position:absolute;top:-2000px;left:0;width:290px;max-width:none';
+  for(let i=0;i<6;i++){const fact=document.createElement('div');fact.className='diagnostic-fact';fact.textContent=i?'API pages':'A very long translated performance diagnostic label';host.appendChild(fact);}
+  document.body.appendChild(host);
+  const columns=()=>getComputedStyle(host).gridTemplateColumns.trim().split(/\\s+/).length;
+  const at290=columns();host.style.width='250px';const at250=columns();
+  const factOverflow=[...host.children].some(node=>node.scrollWidth>node.clientWidth+2);
+  host.remove();
+  return{sameBaseline,longWrap,overflow,at290,at250,factOverflow};
+});
+assert(a74ResponsiveProof.sameBaseline&&a74ResponsiveProof.longWrap&&a74ResponsiveProof.overflow<=2&&
+  a74ResponsiveProof.at290===2&&a74ResponsiveProof.at250===1&&!a74ResponsiveProof.factOverflow,
+  `${name}: A74 Transfer and performance facts must share a line when content fits and wrap only when needed ${JSON.stringify(a74ResponsiveProof)}`);
 await page.evaluate(()=>WeiG.Transfer.panel.close());await page.waitForFunction(()=>!document.querySelector('#transfer-stats-dialog')?.open);
 await page.evaluate(()=>WeiG.Router.go('logs'));await page.waitForFunction(()=>document.getElementById('logs-view')?.classList.contains('is-active')&&document.querySelectorAll('.logs-filters [data-log-type]').length===4);
 const russianLogFilters=await page.evaluate(()=>{
