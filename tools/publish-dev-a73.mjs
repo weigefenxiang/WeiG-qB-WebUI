@@ -10,7 +10,8 @@ const token=process.env.GH_TOKEN;
 const base='https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev';
 const root=join(process.env.RUNNER_TEMP||'/tmp','weig-a73-release');
 const tag='dev-A73';
-const names=['A73.zip','weig-qb-webui.zip','weig-qb-webui.tar.gz','install.sh','install.ps1','manifest.json','SHA256SUMS','GIT_SHA','VERSION'];
+const names=['weig-qb-webui.zip','weig-qb-webui-A73.zip','weig-qb-webui.tar.gz','install.sh','install.ps1','manifest.json','SHA256SUMS','GIT_SHA','VERSION'];
+const retiredNames=['A73.zip'];
 const hash=value=>createHash('sha256').update(value).digest('hex');
 const cli=(...args)=>execFileSync('gh',args,{encoding:'utf8',maxBuffer:8388608}).trim();
 const api=(path,...args)=>JSON.parse(cli('api','repos/'+repository+'/'+path,...args));
@@ -28,7 +29,7 @@ async function prepare(){
   checkHead();
   await mkdir(root,{recursive:true});
   const files={};
-  for(const name of ['weig-qb-webui.zip','weig-qb-webui.tar.gz','install.sh','install.ps1','manifest.json','SHA256SUMS','GIT_SHA','VERSION','A73/preview.json','A73/weig-qb-webui.zip']){
+  for(const name of ['weig-qb-webui.zip','weig-qb-webui.tar.gz','install.sh','install.ps1','manifest.json','SHA256SUMS','GIT_SHA','VERSION','A73/preview.json','A73/weig-qb-webui.zip','A73/weig-qb-webui-A73.zip']){
     const result=await fetch(base+'/'+name+'?release='+sha,{signal:AbortSignal.timeout(90000),cache:'no-store'});
     assert(result.ok,'Pages asset unavailable: '+name+' HTTP '+result.status);
     files[name]=Buffer.from(await result.arrayBuffer());
@@ -44,8 +45,9 @@ async function prepare(){
   assert.equal(files.VERSION.toString().trim(),'1.2.1');
   assert.equal(preview.plan,'A73');assert.equal(preview.mutable,true);
   assert.equal(preview.gitSha,sha);assert.equal(preview.version,'1.2.1');
+  assert.deepEqual(preview.archives,['weig-qb-webui.zip','weig-qb-webui-A73.zip']);
   assert.equal(preview.sha256,hash(files['weig-qb-webui.zip']));
-  assert.equal(hash(files['A73/weig-qb-webui.zip']),preview.sha256);
+  for(const name of preview.archives)assert.equal(hash(files['A73/'+name]),preview.sha256,'Pages alias bytes differ: '+name);
   assert.equal(manifest.artifacts.zip.sha256,preview.sha256);
   assert.equal(manifest.artifacts.zip.bytes,files['weig-qb-webui.zip'].length);
   assert.equal(manifest.artifacts.tarGz.sha256,hash(files['weig-qb-webui.tar.gz']));
@@ -55,8 +57,8 @@ async function prepare(){
     assert(match,'Bad SHA256SUMS entry');
     assert.equal(hash(files[match[2]]),match[1],'Bad checksum '+match[2]);
   }
-  files['A73.zip']=files['weig-qb-webui.zip'];
-  files.SHA256SUMS=Buffer.from(files.SHA256SUMS.toString().trimEnd()+'\n'+hash(files['A73.zip'])+'  A73.zip\n');
+  files['weig-qb-webui-A73.zip']=files['A73/weig-qb-webui-A73.zip'];
+  files.SHA256SUMS=Buffer.from(files.SHA256SUMS.toString().trimEnd()+'\n'+hash(files['weig-qb-webui-A73.zip'])+'  weig-qb-webui-A73.zip\n');
   for(const name of names)await writeFile(join(root,name),files[name]);
   checkHead();
   return files;
@@ -66,7 +68,8 @@ async function publish(){
   const files=await prepare();
   const notes='A73 rolling Dev Pre-release (WeiG qB WebUI 1.2.1).\n\nExact Git SHA: '+sha+
     '\n\nAutomatically published after exact-SHA CI and Pages verification. Not Test or Stable.'+
-    '\n\nPages ZIP: '+base+'/A73/weig-qb-webui.zip';
+    '\n\nPages ZIP: '+base+'/A73/weig-qb-webui.zip'+
+    '\nNamed A73 ZIP: '+base+'/A73/weig-qb-webui-A73.zip';
   const title='WeiG qB WebUI A73 (1.2.1 dev)';
   let release;
   try{release=api('releases/tags/'+tag);}
@@ -96,7 +99,7 @@ async function publish(){
     if(old!==sha)assert.equal(api('compare/'+old+'...'+sha).status,'ahead','A73 tag cannot move backward');
   }
   const existing=list(id);
-  if(old===sha&&names.every(n=>{const a=existing.find(x=>x.name===n);return a&&a.size===files[n].length&&a.digest==='sha256:'+hash(files[n]);})){
+  if(old===sha&&retiredNames.every(n=>!existing.some(x=>x.name===n))&&names.every(n=>{const a=existing.find(x=>x.name===n);return a&&a.size===files[n].length&&a.digest==='sha256:'+hash(files[n]);})){
     console.log('A73 already matches the same exact SHA; no-op');return;
   }
   const nonce=sha.slice(0,12), staged=[], backups=[];
@@ -140,6 +143,9 @@ async function publish(){
       assert.equal(asset.size,files[name].length);
       if(asset.digest)assert.equal(asset.digest,'sha256:'+hash(files[name]));
     }
+    // Retire legacy A73.zip only after the replacement assets verify against the Dev SHA.
+    for(const name of retiredNames){const obsolete=lookup(name);if(obsolete)drop(obsolete.id);}
+    assert(retiredNames.every(name=>!lookup(name)),'Obsolete A73 ZIP asset still exposed');
     for(const b of backups){try{drop(b.id);}catch(error){console.warn('Deferred old asset cleanup',error.message);}}
     console.log('Updated unique A73 Dev Pre-release: '+sha);
   }catch(error){

@@ -6,6 +6,7 @@ const changeClassifier=fs.readFileSync(new URL('../tools/change-classifier.mjs',
 const prereleaseOwner=fs.readFileSync(new URL('../tools/publish-dev-a73.mjs',import.meta.url),'utf8');
 const a73PagesOwner=pagesWorkflow.split('  publish_dev_a73:')[1]||'';
 assert.ok(a73PagesOwner.includes("needs.verify.result == 'success'")&&a73PagesOwner.includes("needs.build.result == 'success'")&&a73PagesOwner.includes("contents: write")&&a73PagesOwner.includes("Require exact-SHA successful Dev CI")&&a73PagesOwner.includes("node tools/publish-dev-a73.mjs"),'One Dev A73 release may run only after successful exact-SHA Pages and CI');
+assert.ok(prereleaseOwner.includes("const retiredNames=['A73.zip']")&&prereleaseOwner.includes("'weig-qb-webui-A73.zip'")&&prereleaseOwner.includes("preview.archives")&&!prereleaseOwner.includes("files['A73.zip']="),'A73 release must serve two canonical names and retire legacy A73.zip');
 assert.ok(prereleaseOwner.includes("const tag='dev-A73'")&&prereleaseOwner.includes("checkHead()")&&prereleaseOwner.includes("manifest.gitSha,sha")&&prereleaseOwner.includes("A73-next-")&&prereleaseOwner.includes("A73-old-")&&!prereleaseOwner.includes("test-A72"),'Rolling Dev publisher must preserve Test, verified SHA and staged asset identity');
 
 const retiredCopyRegistry=['qb-settings','native.txt'].join('-');
