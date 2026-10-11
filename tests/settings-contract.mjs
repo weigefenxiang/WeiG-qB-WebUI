@@ -126,15 +126,15 @@ const a74ReportWindow={WeiG:{I18n:{getLocale:()=>a74TestLocale}},navigator:{user
 vm.runInNewContext(a74ReportSource,{window:a74ReportWindow,URL});
 const a74Reporter=a74ReportWindow.WeiG.BugReport;
 const a74Before=new URL(a74Reporter.issueUrl({version:'1.2.2',gitSha:'a'.repeat(40)}));
-assert(a74Before.searchParams.get('template')==='bug_report.yml'&&a74Before.searchParams.get('webui_locale')==='ru','Before Main publishes a locale template the native Bug link must fall back to the live default, but record selected locale');
+assert(a74Before.searchParams.get('template')==='bug_report.yml'&&a74Before.searchParams.get('webui_locale')==='ru'&&a74Before.searchParams.get('problem')==='WebUI language: ru\n\n','Main default form lacks webui_locale: preserve language in its known problem field');
 const a74ReportAnchor={isConnected:true,href:a74Before.href};
 assert(await a74Reporter.prepareLink({version:'1.2.2',gitSha:'a'.repeat(40)},a74ReportAnchor),'Verified Main Issue Form should enable localized native href');
-assert(new URL(a74ReportAnchor.href).searchParams.get('template')==='bug_report_ru.yml'&&a74LookupCount===1,'Localized form must link only after one successful Main template probe');
+assert(new URL(a74ReportAnchor.href).searchParams.get('template')==='bug_report_ru.yml'&&new URL(a74ReportAnchor.href).searchParams.get('problem')===null&&a74LookupCount===1,'Localized forms use webui_locale alone, without an extra problem-prefill line');
 a74TestLocale='zh-HK';const a74HongKong={isConnected:true,href:''};
 await a74Reporter.prepareLink({},a74HongKong);
 assert(new URL(a74HongKong.href).searchParams.get('template')==='bug_report_zh-TW.yml'&&new URL(a74HongKong.href).searchParams.get('webui_locale')==='zh-HK','Traditional Hong Kong display may share template while preserving actual WebUI locale');
 a74TestLocale='it';
-assert(new URL(a74Reporter.issueUrl({})).searchParams.get('template')==='bug_report.yml','Unsupported locales must fall back to English');
+assert(new URL(a74Reporter.issueUrl({})).searchParams.get('template')==='bug_report.yml'&&new URL(a74Reporter.issueUrl({})).searchParams.get('problem')==='WebUI language: it\n\n','Unsupported locales must use English while recording the selected locale');
 
 // A74-6: browser proved percentage-based auto-repeat stays a single column at 300px;
 // definite min tracks let auto-fit place two 132px columns plus the 8px gap.

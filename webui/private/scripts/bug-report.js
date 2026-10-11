@@ -15,12 +15,16 @@
   function snapshot(input){input=input||{};var app=W.AppState||{},client=input.client||app.client||{},build=identity(input),version=clean(build&&build.version||input.version,64),sha=clean(build&&build.gitSha||'',40);return{surface:input.surface||currentSurface(),weigVersion:version+(sha?' · '+sha:''),qbVersion:clean(input.qbVersion||client.qbVersion||'',64),browserOS:clean(input.browserOS||browserOS(),220),webuiLocale:locale()};}
   function issueUrl(input){var data=snapshot(input),url=new URL('https://github.com/'+REPOSITORY+'/issues/new'),filename=templateFor(data.webuiLocale);
     // GitHub Issue Forms are read from Main. Never link to a Dev-only template.
-    url.searchParams.set('template',filename===TEMPLATE||available[filename]===true?filename:TEMPLATE);
+    var effectiveTemplate=filename===TEMPLATE||available[filename]===true?filename:TEMPLATE;
+    url.searchParams.set('template',effectiveTemplate);
     if(data.surface)url.searchParams.set('surface',data.surface);
     if(data.weigVersion)url.searchParams.set('weig_version',data.weigVersion);
     if(data.qbVersion)url.searchParams.set('qb_version',data.qbVersion);
     if(data.browserOS)url.searchParams.set('browser_os',data.browserOS);
     url.searchParams.set('webui_locale',data.webuiLocale);
+    // Current public Main template has no webui_locale input. Its existing
+    // problem textarea is the only reliable backward-compatible prefill owner.
+    if(effectiveTemplate===TEMPLATE)url.searchParams.set('problem','WebUI language: '+data.webuiLocale+'\n\n');
     return url.toString();}
   function checkTemplate(filename){if(filename===TEMPLATE)return Promise.resolve(true);if(available[filename]===true)return Promise.resolve(true);
     if(requests[filename])return requests[filename];
