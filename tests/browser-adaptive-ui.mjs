@@ -21,7 +21,7 @@ for(const width of [320,390,430]){
   const proof=await page.evaluate(()=>{
     WeiG.MobileAdaptive?.fitAdaptiveRails?.();
     const rect=node=>{const r=node.getBoundingClientRect();return{left:r.left,right:r.right,top:r.top,bottom:r.bottom};};
-    const core=['menu-btn','brand-mark-home','mobile-search-btn','add-btn','theme-btn'].map(id=>document.getElementById(id)).filter(n=>n?.getClientRects().length).map(n=>({id:n.id,...rect(n)})).sort((a,b)=>a.left-b.left);
+    const core=['menu-btn','brand-btn','mobile-search-btn','add-btn','theme-btn'].map(id=>{const node=document.getElementById(id);if(!node)throw new Error('Canonical Header control absent: '+id);return node;}).filter(n=>n.getClientRects().length).map(n=>({id:n.id,...rect(n)})).sort((a,b)=>a.left-b.left);
     const host=document.getElementById('mobile-pager-actions-slot'),actions=[...document.querySelectorAll('#torrent-selection-toolbar .btn')];
     return{viewport:innerWidth,documentOverflow:document.documentElement.scrollWidth-innerWidth,core,
       testLocale:document.documentElement.lang,rail:host&&{...rect(host),x:getComputedStyle(host).overflowX},
