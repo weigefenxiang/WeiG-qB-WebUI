@@ -437,7 +437,7 @@ try{
       WeiG.MobileAdaptive?.fitAdaptiveRails?.();
       const box=node=>{const r=node.getBoundingClientRect();return{left:r.left,right:r.right,top:r.top,bottom:r.bottom};};
       const buttons=[...document.querySelectorAll('#torrent-selection-toolbar .btn')];
-      const core=['menu-btn','brand-btn','mobile-search-btn','add-btn','theme-btn'].map(id=>{const node=document.getElementById(id);if(!node)throw new Error('Canonical Header control absent: '+id);return node;});
+      const core=['#menu-btn','.topbar__start .brand-cluster .brand-mark-home','#mobile-search-btn','#add-btn','#theme-btn'].map(id=>{const node=document.querySelector(id);if(!node)throw new Error('Canonical Header control absent: '+id);return node;});
       const visible=core.filter(n=>n.getClientRects().length).map(n=>({id:n.id,...box(n)})).sort((a,b)=>a.left-b.left);
       const host=document.getElementById('mobile-pager-actions-slot');
       return{docOverflow:document.documentElement.scrollWidth-innerWidth,core:visible,
