@@ -22,6 +22,8 @@ for(const width of [320,390,430]){
     WeiG.MobileAdaptive?.fitAdaptiveRails?.();
     const rect=node=>{const r=node.getBoundingClientRect();return{left:r.left,right:r.right,top:r.top,bottom:r.bottom};};
     const core=['#menu-btn','.topbar__start .brand-cluster .brand-mark-home','#mobile-search-btn','#add-btn','#theme-btn'].map(id=>{const node=document.querySelector(id);if(!node)throw new Error('Canonical Header control absent: '+id);return node;}).filter(n=>n.getClientRects().length).map(n=>({id:n.id,...rect(n)})).sort((a,b)=>a.left-b.left);
+    const topbar=document.querySelector('.topbar'),start=document.querySelector('.topbar__start'),actionRow=document.querySelector('.topbar__actions'),brandText=start?.querySelector('.brand-name-home');
+    const headerBoxes=topbar&&start&&actionRow?{top:rect(topbar),start:rect(start),actions:rect(actionRow),brandText:brandText&&rect(brandText),hitActions:['#mobile-search-btn','#add-btn','#theme-btn'].map(s=>{const el=document.querySelector(s),r=el.getBoundingClientRect(),hit=document.elementFromPoint((r.left+r.right)/2,(r.top+r.bottom)/2);return hit===el||el.contains(hit);})}:null;
     const bottom=document.getElementById('mobile-bottom-nav');
     const bottomItems=bottom?[...bottom.querySelectorAll('.mobile-bottom-nav__item')].map(button=>{
       const icon=button.querySelector('span'),label=button.querySelector('small'),br=button.getBoundingClientRect(),ir=icon.getBoundingClientRect(),lr=label.getBoundingClientRect();
@@ -29,11 +31,15 @@ for(const width of [320,390,430]){
     }):[];
     const host=document.getElementById('mobile-pager-actions-slot'),actions=[...document.querySelectorAll('#torrent-selection-toolbar .btn')];
     return{viewport:innerWidth,documentOverflow:document.documentElement.scrollWidth-innerWidth,core,
-      testLocale:document.documentElement.lang,bottomNav:bottom&&{width:bottom.clientWidth,scroll:bottom.scrollWidth,items:bottomItems},rail:host&&{...rect(host),x:getComputedStyle(host).overflowX},
+      testLocale:document.documentElement.lang,headerBoxes,bottomNav:bottom&&{width:bottom.clientWidth,scroll:bottom.scrollWidth,items:bottomItems},rail:host&&{...rect(host),x:getComputedStyle(host).overflowX},
       labelBoxes:actions.map(n=>({width:n.clientWidth,scroll:n.scrollWidth,font:parseFloat(getComputedStyle(n).fontSize)}))};
   });
   assert(proof.documentOverflow<=1&&proof.core.length===5&&proof.core.every(x=>x.left>=-1&&x.right<=width+1)&&proof.core.slice(1).every((x,i)=>x.left>=proof.core[i].right-1),
     `${name}: real Russian Header controls must not overlap or escape at ${width}px ${JSON.stringify(proof)}`);
+  assert(proof.headerBoxes&&proof.headerBoxes.start.left>=proof.headerBoxes.top.left-1&&
+    proof.headerBoxes.start.right<=proof.headerBoxes.actions.left+1&&proof.headerBoxes.actions.right<=proof.headerBoxes.top.right+1&&
+    proof.headerBoxes.hitActions.every(Boolean)&&(!proof.headerBoxes.brandText||proof.headerBoxes.brandText.right<=proof.headerBoxes.actions.left+1),
+    `${name}: Russian mobile Header must use all available flexible start space while the three actions remain hittable ${JSON.stringify(proof.headerBoxes)}`);
   assert(proof.bottomNav?.items.length===4&&proof.bottomNav.scroll<=proof.bottomNav.width+1&&
     proof.bottomNav.items.every(item=>item.left>=-1&&item.right<=width+1&&item.iconRight<=item.labelLeft+2&&Math.abs(item.iconY-item.labelY)<4&&item.hit&&item.aria===item.text&&item.textOverflow!=='ellipsis'&&item.overflow==='auto')&&
     proof.bottomNav.items[1].text==='RSS'&&proof.bottomNav.items[1].right-proof.bottomNav.items[1].left<proof.bottomNav.items[0].right-proof.bottomNav.items[0].left,
