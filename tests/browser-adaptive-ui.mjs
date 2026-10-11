@@ -31,5 +31,19 @@ for(const width of [320,390,430]){
     `${name}: real Russian Header controls must not overlap or escape at ${width}px ${JSON.stringify(proof)}`);
   assert(proof.rail?.x==='auto'&&proof.rail.left>=-1&&proof.rail.right<=width+1&&proof.labelBoxes.length===4&&proof.labelBoxes.every(x=>x.font>=12&&x.scroll<=x.width+1),
     `${name}: real Russian full-width labels require a readable independent mobile scroll rail at ${width}px ${JSON.stringify(proof)}`);
+  if(width===320){
+    const rail=page.locator('#mobile-pager-actions-slot'),bounds=await rail.boundingBox();
+    assert(bounds&&bounds.width>40&&bounds.height>20,`${name}: Russian action rail has no wheel target`);
+    const extent=await rail.evaluate(node=>Math.max(0,node.scrollWidth-node.clientWidth));
+    assert(extent>5,`${name}: 320px Russian action rail must expose real horizontal overflow`);
+    await page.mouse.move(bounds.x+bounds.width/2,bounds.y+bounds.height/2);
+    await page.mouse.wheel(1000,0);await page.waitForTimeout(120);
+    const reached=await rail.evaluate(node=>{
+      const host=node.getBoundingClientRect(),last=document.getElementById('delete-btn')?.getBoundingClientRect();
+      return{scrollLeft:node.scrollLeft,extent:node.scrollWidth-node.clientWidth,hostRight:host.right,lastRight:last?.right};
+    });
+    assert(reached.scrollLeft>0&&reached.lastRight<=reached.hostRight+2,
+      `${name}: real horizontal wheel must reveal final Russian Delete control ${JSON.stringify(reached)}`);
+  }
 }
 assert(errors.length===0,`${name}: browser errors: ${errors.join(' | ')}`);await context.close();}console.log('Adaptive UI browser gate passed: exact qB source facts preserve status filters and capability-gated Private / PT Tracker facet across Desktop/Mobile while canonical controls, Settings and header geometry adapt only by presentation.');}finally{await browser.close();await new Promise(r=>server.close(r));}

@@ -215,6 +215,17 @@ try{
   assert.match(logs.placeholder,/日志|logs/i,`Logs Header Search must expose the route-specific placeholder: ${JSON.stringify(logs)}`);
   assert.ok(logs.scrollMode==='auto'||logs.scrollMode==='scroll','Logs horizontal toolbar must own native scroll: '+JSON.stringify(logs));
   assert.ok(logs.documentOverflow<=1,'Logs toolbar must not create document overflow: '+JSON.stringify(logs));
+  const logsTrack=page.locator('.logs-toolbar'),logsBounds=await logsTrack.boundingBox();
+  const logsExtent=await logsTrack.evaluate(node=>Math.max(0,node.scrollWidth-node.clientWidth));
+  if(logsExtent>5){
+    assert.ok(logsBounds&&logsBounds.width>60&&logsBounds.height>20,'Logs horizontal rail lacks native browser wheel target');
+    await page.mouse.move(logsBounds.x+logsBounds.width/2,logsBounds.y+logsBounds.height/2);
+    await page.mouse.wheel(900,0);await page.waitForTimeout(120);
+    const logsWheel=await logsTrack.evaluate(node=>({left:node.scrollLeft,max:node.scrollWidth-node.clientWidth}));
+    assert.ok(logsWheel.left>0&&logsWheel.left<=logsWheel.max+1,'Logs browser wheel must move only the own horizontal rail: '+JSON.stringify(logsWheel));
+    await logsTrack.evaluate(node=>{node.scrollLeft=0;});
+  }
+
   const logsReadability=await page.evaluate(()=>{const toolbar=document.querySelector('.logs-toolbar'),nodes=[...toolbar.querySelectorAll('[data-log-type],.logs-follow,.logs-refresh')].filter(n=>n.getClientRects().length);return{fonts:nodes.map(n=>parseFloat(getComputedStyle(n).fontSize)),labels:nodes.map(n=>String(n.textContent||'').trim()),overflow:toolbar.scrollWidth-toolbar.clientWidth};});
   assert.ok(logsReadability.fonts.length>=5&&logsReadability.fonts.every(font=>font>=12),'A73 Logs text must not be shrunk below the shared readable floor: '+JSON.stringify(logsReadability));
   const logsFullLabels=await page.evaluate(()=>{
