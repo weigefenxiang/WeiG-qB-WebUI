@@ -31,7 +31,7 @@ for(const width of [320,390,430]){
     }):[];
     const host=document.getElementById('mobile-pager-actions-slot'),actions=[...document.querySelectorAll('#torrent-selection-toolbar .btn')];
     return{viewport:innerWidth,documentOverflow:document.documentElement.scrollWidth-innerWidth,core,
-      testLocale:document.documentElement.lang,headerBoxes,bottomNav:bottom&&{width:bottom.clientWidth,scroll:bottom.scrollWidth,items:bottomItems},rail:host&&{...rect(host),x:getComputedStyle(host).overflowX},
+      testLocale:document.documentElement.lang,headerBoxes,bottomNav:bottom&&{width:bottom.clientWidth,scroll:bottom.scrollWidth,height:bottom.getBoundingClientRect().height,boxSizing:getComputedStyle(bottom).boxSizing,paddingTop:parseFloat(getComputedStyle(bottom).paddingTop),paddingBottom:parseFloat(getComputedStyle(bottom).paddingBottom),items:bottomItems},rail:host&&{...rect(host),x:getComputedStyle(host).overflowX},
       labelBoxes:actions.map(n=>({width:n.clientWidth,scroll:n.scrollWidth,font:parseFloat(getComputedStyle(n).fontSize)}))};
   });
   assert(proof.documentOverflow<=1&&proof.core.length===5&&proof.core.every(x=>x.left>=-1&&x.right<=width+1)&&proof.core.slice(1).every((x,i)=>x.left>=proof.core[i].right-1),
@@ -40,6 +40,7 @@ for(const width of [320,390,430]){
     proof.headerBoxes.start.right<=proof.headerBoxes.actions.left+1&&proof.headerBoxes.actions.right<=proof.headerBoxes.top.right+1&&
     proof.headerBoxes.hitActions.every(Boolean)&&(!proof.headerBoxes.brandText||proof.headerBoxes.brandText.right<=proof.headerBoxes.actions.left+1),
     `${name}: Russian mobile Header must use all available flexible start space while the three actions remain hittable ${JSON.stringify(proof.headerBoxes)}`);
+  assert(proof.bottomNav?.boxSizing==='border-box'&&Math.abs(proof.bottomNav.height-(44+proof.bottomNav.paddingTop+proof.bottomNav.paddingBottom))<=2,`${name}: Bottom Nav must be 44px hit area plus only its own vertical padding/safe-area, not an extra Grid min-height: ${JSON.stringify(proof.bottomNav)}`);
   assert(proof.bottomNav?.items.length===4&&proof.bottomNav.scroll<=proof.bottomNav.width+1&&
     proof.bottomNav.items.every(item=>item.left>=-1&&item.right<=width+1&&item.iconRight<=item.labelLeft+2&&Math.abs(item.iconY-item.labelY)<4&&item.hit&&item.aria===item.text&&item.textOverflow!=='ellipsis'&&item.overflow==='auto')&&
     proof.bottomNav.items[1].text==='RSS'&&proof.bottomNav.items[1].right-proof.bottomNav.items[1].left<proof.bottomNav.items[0].right-proof.bottomNav.items[0].left,
