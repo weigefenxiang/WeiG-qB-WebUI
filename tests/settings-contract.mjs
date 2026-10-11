@@ -89,3 +89,8 @@ assert(!/async function saveQb\(\)[\s\S]{0,1400}await writeQbVerified\(\{notice:
 assert(settings.includes("tab:'weig',query:'',config:null")&&settings.includes('function setSettingsQuery(value)')&&settings.includes("input.dataset.settingsQueryOwner='1'")&&settings.includes('applySettingsQuery(root);syncSettingsSearchInput();')&&settings.includes('setQuery:setSettingsQuery,query:function(){return controller.query;}'),'Settings must own one query state/adapter shared by header and local Settings search presentations and reapply it after canonical rerenders');
 assert(!ux.includes('syncSettingsSearch')&&!ux.includes('filterSettings'),'Settings filtering must not remain owned by UX after domain-adapter migration');
 console.log('Settings Control Graph runtime contract passed: bounded source-owned graph transport, structural composition, helper/content/projection-gate/predicate semantics, canonical Product Identity, generic renderer ownership, and fail-closed writes are all source-proven.');
+
+// A74: performance card columns follow actual available width, not a fixed mobile single column.
+const a74PerformanceCss=read('webui/private/css/settings.css');
+assert(a74PerformanceCss.includes('.diagnostic-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,132px),1fr))}'),'Performance facts should auto-fit one or two columns on narrow viewports');
+assert(!a74PerformanceCss.includes('.diagnostic-grid{grid-template-columns:minmax(0,1fr)}'),'Retire fixed mobile one-column performance layout');

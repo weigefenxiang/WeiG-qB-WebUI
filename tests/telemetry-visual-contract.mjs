@@ -52,3 +52,7 @@ assert(progressCss.includes('@keyframes weig-progress-sweep{0%,28%{left:-34%;opa
 assert(progressCss.includes('@media(prefers-reduced-motion:reduce)')&&progressCss.includes('html[data-motion="reduced"] .progress-fill::before')&&progressCss.includes('animation:none!important;opacity:0!important'),'Reduced Motion must remain authoritative over progress motion');
 
 console.log('Telemetry visual contract passed: completed smoothing buckets freeze incrementally, realtime/session semantics stay separated, Android transfer typography matches Connected, and Reduced Motion remains protected.');
+
+// A74 mobile stats: natural same-line content, wrapping only when width is genuinely insufficient.
+assert(transferCss.includes('.transfer-stat{display:flex;flex-wrap:wrap;')&&transferCss.includes('.transfer-stat small{display:inline;flex:0 1 auto;')&&transferCss.includes('.transfer-stat strong{display:inline;flex:0 0 auto;'),'Stat labels and values must share available inline space before wrapping');
+assert(!transferCss.includes('.transfer-stat small{display:block')&&!transferCss.includes('.transfer-stat strong{display:block'),'Retire always-two-line Transfer stats');
