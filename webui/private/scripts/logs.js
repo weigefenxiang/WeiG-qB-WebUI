@@ -44,6 +44,8 @@
     var list=document.createElement('div');list.className='logs-list';list.setAttribute('role','list');list.appendChild(head);
     var empty=document.createElement('div');empty.className='logs-empty is-hidden';empty.textContent=tr('logs.ui.empty',null,'No logs match the current filters.');
     panel.append(list,empty,state.pager.root);shell.append(toolbar,panel);root.appendChild(shell);state.root=root;bindLogHeader(list,head);
+    // Logs mounts asynchronously after the route changes; request the shared rail projection.
+    requestAnimationFrame(function(){if(W.MobileAdaptive&&W.MobileAdaptive.fitAdaptiveRails)W.MobileAdaptive.fitAdaptiveRails();});
 
     filters.addEventListener('click',function(e){var b=e.target.closest('[data-log-type]');if(!b)return;var type=Number(b.dataset.logType);if(state.types.has(type))state.types.delete(type);else state.types.add(type);state.page=0;b.classList.toggle('is-active',state.types.has(type));b.setAttribute('aria-pressed',state.types.has(type)?'true':'false');renderRows(true,0);});
     list.addEventListener('scroll',function(){if(state.programmaticScroll||!state.follow)return;if(list.scrollTop>40){state.follow=false;syncFollowControl();}},{passive:true});

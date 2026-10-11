@@ -119,6 +119,8 @@
   global.addEventListener('weig:route-state',function(){syncDetailTitleContract();scheduleAdaptiveRails();});
   global.addEventListener('weig:languagechange',scheduleAdaptiveRails);
   global.addEventListener('weig:themechange',scheduleAdaptiveRails);
+  global.addEventListener('weig:settings-render',scheduleAdaptiveRails);
+  global.addEventListener('weig:qbcopychange',scheduleAdaptiveRails);
   global.addEventListener('weig:detail-content',syncDetailPrimaryScrollOwner);
   global.addEventListener('weig:library-state',function(){requestAnimationFrame(syncResponsiveSystem);});
   global.addEventListener('weig:transfer',function(){requestAnimationFrame(mountStatusTelemetry);});
