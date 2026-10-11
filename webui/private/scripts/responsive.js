@@ -48,9 +48,10 @@
     Array.from(host.querySelectorAll('.setting-inline-action')).forEach(function(button){
       button.style.removeProperty('--adaptive-action-font-size');
       if(!isMobile()||!button.getClientRects().length||!adaptiveActionContext)return;
-      var style=global.getComputedStyle(button),label=String(button.textContent||'').trim(),font=parseFloat(style.fontSize),cap=parseFloat(style.maxWidth),parent=button.parentElement;
+      var style=global.getComputedStyle(button),label=String(button.textContent||'').trim(),font=parseFloat(style.fontSize),parent=button.parentElement;
       if(!label||!parent||!Number.isFinite(font)||font<=0)return;
-      var outer=Math.min(parent.clientWidth,Number.isFinite(cap)&&cap>0?cap:parent.clientWidth);
+      // Computed max-width may retain unresolved min()/percent syntax; use the laid-out box.
+      var outer=Math.min(parent.clientWidth,button.getBoundingClientRect().width);
       var available=outer-(parseFloat(style.paddingLeft)||0)-(parseFloat(style.paddingRight)||0)-(parseFloat(style.borderLeftWidth)||0)-(parseFloat(style.borderRightWidth)||0);
       if(available<=0)return;
       adaptiveActionContext.font=style.font;
