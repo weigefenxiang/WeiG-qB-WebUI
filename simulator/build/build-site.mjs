@@ -7,6 +7,7 @@ import {applyLocaleOverlay} from '../../tools/qb-locale-overlay.mjs';
 import {applyQbSettingsTranslationLkg} from '../../tools/qb-settings-translation-lkg.mjs';
 import {buildStableIndex} from './stable-index.mjs';
 import {publishDevPreviewZip} from '../../tools/pages-dev-download-alias.mjs';
+import {readDevStage} from '../../tools/dev-release-stage.mjs';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const projectRoot=path.resolve(here,'../..');
@@ -114,6 +115,7 @@ await fs.rm(buildDir,{recursive:true,force:true});
 await fs.cp(path.join(projectRoot,'simulator/lab'),path.join(out,'lab'),{recursive:true,force:true});
 for(const branch of branches){
   const meta={branch:branch.name,exactSha:branch.sha,productVersion:branch.version,simulatorSha,webuiSource:`refs/heads/${branch.name}:webui/**`};
+  if(branch.name==='dev'){const stage=await readDevStage();if(stage.version===branch.version)meta.stage=stage.plan;}
   await fs.writeFile(path.join(out,'metadata',`${branch.name}.json`),JSON.stringify(meta,null,2)+'\n','utf8');
 }
 const descriptorTotals=(Array.isArray(catalogData)?catalogData:[]).reduce((sum,item)=>{

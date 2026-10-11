@@ -94,3 +94,17 @@ console.log('Settings Control Graph runtime contract passed: bounded source-owne
 const a74PerformanceCss=read('webui/private/css/settings.css');
 assert(a74PerformanceCss.includes('.diagnostic-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,132px),1fr))}'),'Performance facts should auto-fit one or two columns on narrow viewports');
 assert(!a74PerformanceCss.includes('.diagnostic-grid{grid-template-columns:minmax(0,1fr)}'),'Retire fixed mobile one-column performance layout');
+
+// A74: the installed Axx identity belongs to an exact Dev materialized build, not the latest remote stage.
+const a74DevStage=JSON.parse(read('tools/dev-stage.json'));
+assert(productIdentity.devStage===a74DevStage.plan&&productIdentity.version===a74DevStage.version,'Product Identity must be reproducible from the single Dev stage configuration');
+assert(identityTool.includes('validateDevStage')&&updateCheck.includes('sameInstallSha')&&updateCheck.includes('sameInstallVersion'),'Stage identity must validate installation provenance and source-generated stage');
+const a74UpdateWindow={WeiG:{}};
+vm.runInNewContext(updateCheck,{window:a74UpdateWindow});
+const a74Update=a74UpdateWindow.WeiG.UpdateCheck,shaA='a'.repeat(40),shaB='b'.repeat(40);
+const a74Current=a74Update.normalizeIdentity({version:a74DevStage.version,gitSha:shaA,devStage:a74DevStage.plan},{channel:'dev',version:a74DevStage.version,gitSha:shaA});
+assert(a74Update.identityValue(a74Current)===a74DevStage.version+'-'+a74DevStage.plan+'(aaaaaaa)','Exact Dev install must show version-plan-shortSha');
+const a74Mismatched=a74Update.normalizeIdentity({version:a74DevStage.version,gitSha:shaA,devStage:a74DevStage.plan},{channel:'dev',version:a74DevStage.version,gitSha:shaB});
+assert(a74Mismatched.devStage===''&&a74Update.identityValue(a74Mismatched)===a74DevStage.version+'(aaaaaaa)','Mismatched installer SHA must drop stage rather than infer it');
+assert(a74Update.normalizeIdentity({version:a74DevStage.version,gitSha:shaA,devStage:a74DevStage.plan},{channel:'stable'}).devStage==='','Stable must not inherit Dev stage');
+assert(a74Update.normalizeIdentity({version:a74DevStage.version,gitSha:shaA,devStage:'forged'},{channel:'dev'}).devStage==='','Unknown stages fail closed');

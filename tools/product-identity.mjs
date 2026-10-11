@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {validateDevStage} from './dev-release-stage.mjs';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const defaultRoot=path.resolve(here,'..');
@@ -12,7 +13,10 @@ export function canonicalProductIdentity(root=defaultRoot){
   const version=readVersion(path.join(root,'VERSION'));
   const webVersion=readVersion(path.join(root,'webui/VERSION'));
   if(webVersion!==version)throw new Error('Product VERSION owners disagree: '+version+' != '+webVersion);
-  return{schemaVersion:1,source:'canonical-version',version};
+  const stage=validateDevStage(JSON.parse(fs.readFileSync(path.join(root,'tools/dev-stage.json'),'utf8')));
+  const identity={schemaVersion:1,source:'canonical-version',version};
+  if(stage.version===version)identity.devStage=stage.plan;
+  return identity;
 }
 export function productIdentityPath(root=defaultRoot){return path.join(path.resolve(root),'webui/private/product-identity.json');}
 export function writeProductIdentity(root=defaultRoot){
