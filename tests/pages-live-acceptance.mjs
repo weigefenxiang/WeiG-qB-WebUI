@@ -679,15 +679,15 @@ try{
     const logsLayout=await page.evaluate(()=>{
       const toolbar=document.querySelector('.logs-toolbar'),filters=document.querySelector('.logs-filters'),actions=document.querySelector('.logs-actions'),chips=[...document.querySelectorAll('.logs-filters>[data-log-type]')],follow=document.querySelector('.logs-follow'),select=document.querySelector('.logs-size-mode .ui-select__trigger'),refresh=document.querySelector('.logs-refresh');
       const rect=n=>{const r=n.getBoundingClientRect();return{top:r.top,bottom:r.bottom,left:r.left,right:r.right,width:r.width,height:r.height};};
-      const ts=getComputedStyle(toolbar),ss=getComputedStyle(select),before=getComputedStyle(select,'::before'),rs=getComputedStyle(refresh),rb=getComputedStyle(refresh,'::before');
-      return{toolbar:rect(toolbar),filters:rect(filters),actions:rect(actions),chips:chips.map(rect),follow:rect(follow),select:rect(select),refresh:rect(refresh),overflowX:ts.overflowX,scrollOverflow:toolbar.scrollWidth-toolbar.clientWidth,selectBorder:ss.borderTopWidth,selectBefore:before.content,refreshFont:parseFloat(rs.fontSize),refreshBefore:rb.content};
+      const ts=getComputedStyle(toolbar),ss=getComputedStyle(select),before=getComputedStyle(select,'::before'),rs=getComputedStyle(refresh),followText=follow.querySelector('.ui-check__label');
+      return{toolbar:rect(toolbar),filters:rect(filters),actions:rect(actions),chips:chips.map(rect),follow:rect(follow),select:rect(select),refresh:rect(refresh),overflowX:ts.overflowX,scrollOverflow:toolbar.scrollWidth-toolbar.clientWidth,selectBorder:ss.borderTopWidth,selectBefore:before.content,refreshFont:parseFloat(rs.fontSize),refreshText:refresh.textContent.trim(),refreshClip:refresh.scrollWidth>refresh.clientWidth+1,followText:followText?.textContent.trim(),followVisible:!!followText&&getComputedStyle(followText).display!=='none',followClip:follow.scrollWidth>follow.clientWidth+1};
     });
     assert.equal(logsLayout.chips.length,4,`Logs must expose four level list items: ${JSON.stringify(logsLayout)}`);
     assert.ok(Math.max(...logsLayout.chips.map(x=>x.top))-Math.min(...logsLayout.chips.map(x=>x.top))<=2,`Normal/Info/Warning/Critical must stay on one segmented list row: ${JSON.stringify(logsLayout.chips)}`);
     assert.ok(Math.abs(logsLayout.filters.top-logsLayout.actions.top)<=6,`Log level list, Latest, Auto and Refresh must stay on one physical toolbar row: ${JSON.stringify(logsLayout)}`);
     assert.ok(logsLayout.overflowX==='auto'||logsLayout.overflowX==='scroll',`Narrow Logs toolbar must own horizontal overflow instead of wrapping: ${JSON.stringify(logsLayout)}`);
     assert.ok(logsLayout.selectBorder!=='0px'&&(logsLayout.selectBefore==='none'||logsLayout.selectBefore==='normal'),`Logs Auto Select must have one canonical visible box and no inherited pseudo-shell: ${JSON.stringify(logsLayout)}`);
-    assert.ok(logsLayout.refreshFont===0&&/↻/.test(logsLayout.refreshBefore),`390px Logs Refresh must collapse to the icon-only presentation: ${JSON.stringify(logsLayout)}`);
+    assert.ok(logsLayout.refreshFont>=12&&logsLayout.refreshText.length>2&&!logsLayout.refreshClip&&logsLayout.followVisible&&logsLayout.followText.length>2&&!logsLayout.followClip,`A73 390px Logs must retain complete Follow/Refresh labels in the scrollable rail: ${JSON.stringify(logsLayout)}`);
 
     assert.deepEqual(pageErrors,[],`Android Pages layout emitted browser errors:\n${pageErrors.join('\n')}`);
     await context.close();

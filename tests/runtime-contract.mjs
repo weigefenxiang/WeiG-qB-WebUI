@@ -78,7 +78,7 @@ assert(!transferRuntime.includes('stats.style.gridTemplateColumns')&&transferCss
   'Transfer responsive grid and adjacent second-row Statistics/Close must have one CSS owner');
 assert(!transferCss.includes('.transfer-stat strong{display:block;overflow:hidden;text-overflow:ellipsis'),
   'Transfer value ellipsis must not hide full statistics on mobile');
-assert(logsCss.includes('inset:-5px 0')&&!logsCss.includes('.logs-follow{min-height:44px}'),
+assert(logsCss.includes('inset:-5px 0')&&logsCss.includes('.logs-toolbar .logs-follow .ui-check__label{display:inline;white-space:nowrap}')&&!logsCss.includes('.logs-follow{min-height:44px}'),
   'Logs visual chips and extended hit areas must not resurrect the 44px visual-height override');
 assert(!settingsCss.includes('max-width:min(240px,48vw)')&&settingsRuntime.includes('G.triggerIntrinsicWidth(wrap,trigger,value.textContent'),
   'Settings selects must use the shared current-value geometry instead of a viewport cap');

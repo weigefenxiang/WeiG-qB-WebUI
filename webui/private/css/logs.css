@@ -59,4 +59,7 @@ html[data-theme=light]{--logs-toolbar-surface:var(--surface-raised);--logs-toolb
     content:"";position:absolute;inset:-5px 0;z-index:1
   }
   .logs-toolbar>.logs-actions .logs-refresh{padding-inline:9px}
+  /* Shared checkControl hides every label at <=560px. Logs has its own
+     scrollable rail, so the entire Follow label must stay visible. */
+  .logs-toolbar .logs-follow .ui-check__label{display:inline;white-space:nowrap}
 }
