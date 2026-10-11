@@ -365,3 +365,25 @@ jobs:
         run: |
           set -euo pipefail
           timeout --signal=TERM --kill-after=10s 240s node "$WEIG_VERIFY_SCRIPT"
+
+
+  publish_dev_a73:
+    name: Publish rolling A73 after verification
+    needs: [build, deploy, verify]
+    if: ${{ always() && github.ref_name == 'dev' && needs.build.result == 'success' && needs.verify.result == 'success' && (needs.deploy.result == 'success' || needs.build.outputs.reuse_deployed == 'true') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - name: Publish only exact verified Dev A73
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node tools/publish-dev-a73.mjs
