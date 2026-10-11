@@ -33,8 +33,10 @@
     });
     if(!items.length)return;
     var natural=host.scrollWidth,available=host.clientWidth;
-    var base=Math.max(12,...items.map(function(node){return parseFloat(global.getComputedStyle(node).fontSize)||12;}));
-    var target=natural>available+1?Math.max(12,Math.min(base,base*available/natural)):base;
+    var offset=parseFloat(global.getComputedStyle(document.documentElement).getPropertyValue('--font-scale-offset'))||0;
+    var readableFloor=12+Math.max(0,offset);
+    var base=Math.max(readableFloor,...items.map(function(node){return parseFloat(global.getComputedStyle(node).fontSize)||readableFloor;}));
+    var target=natural>available+1?Math.max(readableFloor,Math.min(base,base*available/natural)):base;
     host.style.setProperty('--adaptive-rail-font-size',target.toFixed(2)+'px');
   }
   function syncAdaptiveRails(){

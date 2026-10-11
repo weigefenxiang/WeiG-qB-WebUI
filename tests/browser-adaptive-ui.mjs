@@ -78,6 +78,33 @@ for(const width of [320,390,430]){
       `${name}: real horizontal wheel must reveal final Russian Delete control ${JSON.stringify(reached)}`);
   }
 }
+await page.setViewportSize({width:320,height:844});
+const innerScrollTarget=page.locator('#mobile-bottom-nav [data-route="settings"] small');
+const textExtent=await innerScrollTarget.evaluate(node=>node.scrollWidth-node.clientWidth);
+if(textExtent>2){
+  const previousHash=await page.evaluate(()=>location.hash),labelBox=await innerScrollTarget.boundingBox();
+  assert(labelBox&&labelBox.width>8,'Russian Settings bottom label must expose a native scroll target');
+  await page.mouse.move(labelBox.x+labelBox.width/2,labelBox.y+labelBox.height/2);
+  await page.mouse.wheel(160,0);
+  await page.waitForFunction(()=>document.querySelector('#mobile-bottom-nav [data-route="settings"] small')?.scrollLeft>0,null,{timeout:1600});
+  const dockScroll=await page.evaluate(()=>({dock:document.getElementById('mobile-bottom-nav').scrollLeft,label:document.querySelector('#mobile-bottom-nav [data-route="settings"] small').scrollLeft,route:location.hash}));
+  assert(dockScroll.dock===0&&dockScroll.label>0&&dockScroll.route===previousHash,`${name}: native wheel must scroll only selected label, never whole Bottom Nav nor route ${JSON.stringify(dockScroll)}`);
+  await innerScrollTarget.evaluate(node=>{node.scrollLeft=0;});
+  await page.locator('#mobile-bottom-nav [data-route="settings"]').focus();
+  await page.keyboard.press('ArrowRight');
+  await page.waitForFunction(()=>document.querySelector('#mobile-bottom-nav [data-route="settings"] small')?.scrollLeft>0,null,{timeout:1000});
+}
+const enlarged=await page.evaluate(()=>{
+  document.documentElement.style.setProperty('--font-scale-offset','3px');
+  WeiG.MobileAdaptive.fitAdaptiveRails();
+  const dock=document.querySelector('#mobile-bottom-nav [data-route="settings"] small');
+  const action=document.querySelector('#mobile-pager-actions-slot .btn');
+  const result={dock:parseFloat(getComputedStyle(dock).fontSize),actions:action?parseFloat(getComputedStyle(action).fontSize):null};
+  document.documentElement.style.removeProperty('--font-scale-offset');
+  WeiG.MobileAdaptive.fitAdaptiveRails();
+  return result;
+});
+assert(enlarged.dock>=15&&(!enlarged.actions||enlarged.actions>=15),`${name}: a positive user font-scale offset must survive rail adaptation ${JSON.stringify(enlarged)}`);
 await page.setViewportSize({width:390,height:844});await page.evaluate(()=>WeiG.Transfer.open());await page.waitForSelector('#transfer-stats-dialog[open] .transfer-stat');
 const russianTransfer=await page.evaluate(()=>{
   const d=document.querySelector('#transfer-stats-dialog'),head=d?.querySelector('.transfer-panel-dialog__head'),title=head?.querySelector('h2'),copy=head?.firstElementChild,actions=head?.querySelector('.transfer-dialog-head-actions'),statsButton=actions?.querySelector('[data-open-native-statistics]'),close=actions?.querySelector('.icon-btn'),cards=[...d.querySelectorAll('.transfer-stat')],grid=d.querySelector('.transfer-stats');
