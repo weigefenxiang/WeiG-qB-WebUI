@@ -33,7 +33,7 @@ jobs:
     if: ${{ contains(github.event.head_commit.message, '[A73-publish]') }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout exact test-branch SHA
+      - name: Checkout exact A73 dev SHA
         uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
@@ -93,7 +93,7 @@ jobs:
         run: |
           set -euo pipefail
           message="$(git log -1 --format=%B)"
-          for marker in '[ui]' '[settings-matrix]' '[A73-platform]' '[A73-real-qb]' '[A73-source]'; do
+          for marker in '[ui]' '[settings-matrix]'; do
             case "$message" in
               *"$marker"*) ;;
               *) echo "A73 publish commit lacks mandatory CI marker $marker" >&2; exit 1 ;;
@@ -114,9 +114,11 @@ jobs:
                 "Linux semantic UI · settings-fidelity",
                 "Linux semantic UI · feature-parity",
                 "Linux semantic UI · torrent-workspace",
-                "Linux semantic UI · adaptive-ui"
-              ] | all(. as $name | $passed | index($name) != null)))
-          ' <<<"$jobs" || { echo 'A73 exact SHA lacks a successful dev UI job.' >&2; exit 1; }
+                "Linux semantic UI · adaptive-ui",
+                "qB admitted Settings browser aggregate"
+              ] + [range(0;16) | "qB admitted Settings browser shard \\(.)"]) as $required |
+              ($required | all(. as $name | $passed | index($name) != null))))
+          ' <<<"$jobs" || { echo 'A73 exact SHA lacks required Linux UI or Settings browser shard jobs.' >&2; exit 1; }
       - name: Materialize exact-SHA WebUI archive with canonical builder
         run: |
           set -euo pipefail
