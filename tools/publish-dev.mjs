@@ -68,11 +68,11 @@ async function prepare(){
 
 async function publish(){
   const files=await prepare();
-  const notes='A73 rolling Dev Pre-release (WeiG qB WebUI 1.2.1).\n\nExact Git SHA: '+sha+
+  const notes=stage.plan+' rolling Dev Pre-release (WeiG qB WebUI '+stage.version+').\n\nExact Git SHA: '+sha+
     '\n\nAutomatically published after exact-SHA CI and Pages verification. Not Test or Stable.'+
-    '\n\nPages ZIP: '+base+'/A73/weig-qb-webui.zip'+
-    '\nNamed A73 ZIP: '+base+'/A73/weig-qb-webui-A73.zip';
-  const title='WeiG qB WebUI A73 (1.2.1 dev)';
+    '\n\nPages ZIP: '+base+'/'+stage.plan+'/weig-qb-webui.zip'+
+    '\nNamed ZIP: '+base+'/'+stage.plan+'/'+stage.namedZip;
+  const title='WeiG qB WebUI '+stage.plan+' ('+stage.version+' dev)';
   let release;
   try{release=api('releases/tags/'+tag);}
   catch(error){if(!String(error.stderr||error).includes('404'))throw error;}
@@ -83,7 +83,7 @@ async function publish(){
     try{
       const existing=ref();
       const compare=api('compare/'+existing+'...'+sha);
-      assert(['ahead','identical'].includes(compare.status),'Orphan A73 tag is not a Dev ancestor');
+      assert(['ahead','identical'].includes(compare.status),'Orphan Dev tag is not a Dev ancestor');
       if(existing!==sha)cli('api','--method','PATCH','repos/'+repository+'/git/refs/tags/'+tag,'-f','sha='+sha,'-F','force=true');
       tagExists=true;
     }catch(error){
@@ -119,7 +119,7 @@ async function publish(){
   try{
     for(const name of names){
       checkHead();
-      const temp='A73-next-'+nonce+'-'+name;
+      const temp=stage.plan+'-next-'+nonce+'-'+name;
       const leftover=lookup(temp);if(leftover)drop(leftover.id);
       const assetId=await upload(name,temp);
       staged.push({name,temp,assetId});
@@ -128,7 +128,7 @@ async function publish(){
     for(const a of staged){
       const previous=lookup(a.name);
       if(previous){
-        const backup='A73-old-'+nonce+'-'+a.name;
+        const backup=stage.plan+'-old-'+nonce+'-'+a.name;
         assert(!lookup(backup),'Unresolved earlier publish backup '+backup);
         rename(previous.id,backup);backups.push({name:a.name,backup,id:previous.id});
       }
@@ -149,13 +149,13 @@ async function publish(){
     for(const name of retiredNames){const obsolete=lookup(name);if(obsolete)drop(obsolete.id);}
     assert(retiredNames.every(name=>!lookup(name)),'Obsolete A73 ZIP asset still exposed');
     for(const b of backups){try{drop(b.id);}catch(error){console.warn('Deferred old asset cleanup',error.message);}}
-    console.log('Updated unique A73 Dev Pre-release: '+sha);
+    console.log('Updated unique '+stage.plan+' Dev Pre-release: '+sha);
   }catch(error){
-    console.error('A73 publish failed; attempting restoration:',error.message);
+    console.error('Dev publish failed; attempting restoration:',error.message);
     if(switched){
       for(const a of staged){
         const canonical=lookup(a.name);
-        if(canonical&&canonical.id===a.assetId)try{rename(canonical.id,'A73-failed-'+nonce+'-'+a.name);}catch{}
+        if(canonical&&canonical.id===a.assetId)try{rename(canonical.id,stage.plan+'-failed-'+nonce+'-'+a.name);}catch{}
       }
       for(const b of backups){
         if(lookup(b.backup))try{rename(b.id,b.name);}catch{}
