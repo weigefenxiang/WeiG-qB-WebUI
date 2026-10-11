@@ -136,4 +136,20 @@ const russianSettingsSelects=await page.evaluate(()=>{
 });
 assert(russianSettingsSelects.every(s=>s.intrinsic==='1'&&s.selected.length>0&&s.natural<=s.actual+2&&s.valueRight<=s.rowRight+1),
   `${name}: Russian Settings selected language/theme/timezone must use the canonical intrinsic width and retain its complete value ${JSON.stringify(russianSettingsSelects)}`);
+for(const language of ['de','zh-CN','en']){
+  await page.evaluate(async target=>{await WeiG.I18n.loadWeiGLocale(target);WeiG.I18n.applyLocale(target,{reload:false});},language);
+  await page.waitForFunction(target=>document.documentElement.lang===target&&document.querySelector('#mobile-bottom-nav [data-route="settings"] small')?.textContent===WeiG.I18n.t('nav.settings'),language);
+  for(const width of [320,390,430]){
+    await page.setViewportSize({width,height:844});
+    const navCheck=await page.evaluate(()=>{
+      const dock=document.getElementById('mobile-bottom-nav'),buttons=Array.from(dock.querySelectorAll('.mobile-bottom-nav__item'));
+      return{outerOverflow:document.documentElement.scrollWidth-innerWidth,dockOverflow:dock.scrollWidth-dock.clientWidth,items:buttons.map(button=>{
+        const bounds=button.getBoundingClientRect(),icon=button.querySelector('span').getBoundingClientRect(),label=button.querySelector('small'),text=label.getBoundingClientRect();
+        return{left:bounds.left,right:bounds.right,iconRight:icon.right,textLeft:text.left,font:parseFloat(getComputedStyle(label).fontSize),text:label.textContent.trim(),aria:button.getAttribute('aria-label')};
+      })};
+    });
+    assert(navCheck.items.length===4&&navCheck.outerOverflow<=1&&navCheck.dockOverflow<=1&&navCheck.items.every(i=>i.left>=-1&&i.right<=width+1&&i.iconRight<=i.textLeft+2&&i.font>=12&&i.text===i.aria),
+      `${name}: ${language} bottom navigation at ${width}px must keep four horizontal readable links ${JSON.stringify(navCheck)}`);
+  }
+}
 assert(errors.length===0,`${name}: browser errors: ${errors.join(' | ')}`);await context.close();}console.log('Adaptive UI browser gate passed: exact qB source facts preserve status filters and capability-gated Private / PT Tracker facet across Desktop/Mobile while canonical controls, Settings and header geometry adapt only by presentation.');}finally{await browser.close();await new Promise(r=>server.close(r));}
