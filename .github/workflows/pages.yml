@@ -403,7 +403,7 @@ jobs:
           record=""
           for attempt in $(seq 1 60); do
             record="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?branch=dev&event=push&per_page=100" |
-              jq -c --arg sha "$GITHUB_SHA" '[.workflow_runs[] | select(.head_sha == $sha && .event == "push")] | sort_by(.id) | last // empty')"
+              jq -c --arg sha "$GITHUB_SHA" '[.workflow_runs[] | select(.head_sha == $sha and .event == "push")] | sort_by(.id) | last // empty')"
             if [ -n "$record" ]; then
               state="$(jq -r .status <<<"$record")"
               if [ "$state" = completed ]; then break; fi
