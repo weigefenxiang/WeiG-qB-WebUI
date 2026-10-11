@@ -401,12 +401,16 @@ try{
 
 
   // A73: Russian locale and real viewport widths; never fake a layout PASS by clipping labels.
-  await page.evaluate(()=>{
+  await page.evaluate(async()=>{
     WeiG.HeaderUtilities?.setDrawer(false);
     document.querySelector('#mobile-bottom-nav [data-route=""]')?.click();
-    WeiG.I18n?.setLocale?.('ru');
+    // Locale must be fully loaded and painted before measuring any label.
+    await WeiG.I18n.loadWeiGLocale('ru');
+    WeiG.I18n.applyLocale('ru',{reload:false});
   });
   await page.waitForFunction(()=>document.getElementById('list-view')?.classList.contains('is-active'));
+  await page.waitForFunction(()=>WeiG.I18n.getLocale()==='ru'&&
+    document.querySelector('#mobile-bottom-nav [data-route="logs"] small')?.textContent?.trim()==='Журнал');
   for(const width of [320,360,390,430]){
     await page.setViewportSize({width,height:844});
     await page.waitForTimeout(220);
@@ -434,6 +438,25 @@ try{
     assert.ok(adaptive.buttons.every(n=>n.font>=12&&n.scroll<=n.client+1),'A73 buttons illegible or text clipped: '+JSON.stringify(adaptive));
   }
 
+
+  // A73: German must exercise another independently loaded long-label overlay.
+  await page.evaluate(async()=>{
+    await WeiG.I18n.loadWeiGLocale('de');
+    WeiG.I18n.applyLocale('de',{reload:false});
+  });
+  await page.waitForFunction(()=>WeiG.I18n.getLocale()==='de'&&
+    document.querySelector('#mobile-bottom-nav [data-route="settings"] small')?.textContent?.trim()==='Einstellungen');
+  await page.setViewportSize({width:360,height:844});
+  await page.waitForTimeout(180);
+  const deRail=await page.evaluate(()=>{
+    WeiG.MobileAdaptive.fitAdaptiveRails();
+    const node=document.getElementById('mobile-pager-actions-slot');
+    const buttons=[...document.querySelectorAll('#torrent-selection-toolbar .btn')];
+    return{pageOverflow:document.documentElement.scrollWidth-innerWidth,railOverflow:getComputedStyle(node).overflowX,
+      labelWidths:buttons.map(b=>({scroll:b.scrollWidth,width:b.clientWidth,font:parseFloat(getComputedStyle(b).fontSize)}))};
+  });
+  assert.ok(deRail.pageOverflow<=1&&deRail.railOverflow==='auto'&&deRail.labelWidths.every(v=>v.scroll<=v.width+1&&v.font>=12),
+    'A73 German complete labels must fit their independently scrollable rail: '+JSON.stringify(deRail));
   assert.deepEqual(errors,[],`deployed mobile layout produced browser errors: ${errors.join('\n')}`);
   await context.close();
   console.log(`Virtual qB Pages mobile layout acceptance passed for ${expectedSha}: stacked progress, single-line pager/actions, RSS header actions + Add Feed dialog, Header-owned Logs search layout, a single-row source-derived Settings rail, and a Drawer with fixed telemetry plus hidden mobile version metadata.`);
