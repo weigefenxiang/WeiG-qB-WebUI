@@ -28,43 +28,9 @@
   function toggleDrawer(){var sidebar=document.getElementById('sidebar');return setDrawer(!(sidebar&&sidebar.classList.contains('is-open')));}
   function installDrawerToggle(){var button=document.getElementById('menu-btn'),sidebar=document.getElementById('sidebar'),scrim=document.getElementById('drawer-scrim');if(!button||!sidebar||!scrim||button.dataset.drawerToggleReady==='1')return;button.dataset.drawerToggleReady='1';button.setAttribute('aria-controls','sidebar');button.setAttribute('aria-expanded',sidebar.classList.contains('is-open')?'true':'false');button.addEventListener('click',toggleDrawer);scrim.addEventListener('click',function(){setDrawer(false);});}
   function installDesktop(){var actions=document.querySelector('.topbar__actions');if(!actions)return;installTheme();installSearch();if(document.getElementById('github-link'))return;var theme=document.getElementById('theme-btn');var github=external('github-link','GitHub','https://github.com/weigefenxiang/WeiG-qB-WebUI','github');var blog=external('blog-link',tr('header.blog'),'https://www.weigshare.com/','blog');var logout=runtime('logout-btn',tr('header.logout'),'logout',function(){if(W.SessionController)W.SessionController.logout(W.AppState&&W.AppState.client);});if(theme&&theme.nextSibling){actions.insertBefore(github,theme.nextSibling);actions.insertBefore(blog,github.nextSibling);}else{actions.appendChild(github);actions.appendChild(blog);}actions.appendChild(logout);}
-  // The same Header utility nodes move between Desktop and the Mobile Drawer.
-  // Do not create a second logout handler or duplicate external-link controls.
-  function mobileUtilityMode(){
-    if(!global.matchMedia||!global.matchMedia('(max-width: 820px)').matches)return false;
-    return !global.matchMedia('(min-width: 480px) and (max-width: 820px) and (hover: hover) and (pointer: fine)').matches;
-  }
-  function installMobile(){
-    var sidebar=document.getElementById('sidebar');
-    if(!sidebar||sidebar.querySelector('[data-header-links]'))return;
-    var section=document.createElement('div');section.className='sidebar__section';section.dataset.headerLinks='1';section.hidden=true;
-    var title=document.createElement('div');title.className='eyebrow';title.textContent=tr('header.links');
-    var nav=document.createElement('nav');nav.className='nav-list';nav.dataset.headerUtilityNav='1';
-    section.append(title,nav);sidebar.appendChild(section);
-  }
-  function syncUtilityPlacement(){
-    var actions=document.querySelector('.topbar__actions'),nav=document.querySelector('[data-header-utility-nav]');
-    if(!actions||!nav)return;
-    var compact=mobileUtilityMode(),target=compact?nav:actions,section=nav.closest('[data-header-links]');
-    ['github-link','blog-link','logout-btn'].forEach(function(id){
-      var node=document.getElementById(id);if(!node)return;
-      var label=id==='github-link'?'GitHub':id==='blog-link'?tr('header.blog'):tr('header.logout');
-      var text=node.querySelector('.header-utility-label');
-      if(compact){
-        node.className='nav-item header-utility-link';
-        if(!text){text=document.createElement('span');text.className='header-utility-label';node.appendChild(text);}
-        text.textContent=label;
-      }else{
-        if(text)text.remove();
-        node.className='icon-btn header-utility-action';
-      }
-      if(node.parentElement!==target)target.appendChild(node);
-    });
-    if(section)section.hidden=!compact;
-  }
-  function syncText(){var labelNode=document.querySelector('#add-btn [data-header-add-short]');if(labelNode)labelNode.textContent=tr('header.add');if(W.Theme)installTheme();var theme=document.getElementById('theme-utility-btn');if(theme&&W.Theme)hoverHint(theme,W.Theme.title());var blog=document.getElementById('blog-link');if(blog){var blogText=tr('header.blog');blog.setAttribute('aria-label',blogText);hoverHint(blog,blogText);}var logout=document.getElementById('logout-btn');if(logout){var logoutText=tr('header.logout');logout.setAttribute('aria-label',logoutText);hoverHint(logout,logoutText);}syncSearchContext();syncUtilityPlacement();}
-  function init(){setTimeout(function(){installDesktop();installMobile();installDrawerToggle();installSearchRouting();syncText();},0);}
-  W.HeaderUtilities={installDesktop:installDesktop,installMobile:installMobile,installTheme:installTheme,installSearch:installSearch,syncUtilityPlacement:syncUtilityPlacement,installDrawerToggle:installDrawerToggle,setDrawer:setDrawer,toggleDrawer:toggleDrawer,setSearchOpen:setSearchOpen,syncSearchContext:syncSearchContext,syncText:syncText};
+  function syncText(){var labelNode=document.querySelector('#add-btn [data-header-add-short]');if(labelNode)labelNode.textContent=tr('header.add');if(W.Theme)installTheme();var theme=document.getElementById('theme-utility-btn');if(theme&&W.Theme)hoverHint(theme,W.Theme.title());var blog=document.getElementById('blog-link');if(blog){var blogText=tr('header.blog');blog.setAttribute('aria-label',blogText);hoverHint(blog,blogText);}var logout=document.getElementById('logout-btn');if(logout){var logoutText=tr('header.logout');logout.setAttribute('aria-label',logoutText);hoverHint(logout,logoutText);}syncSearchContext();}
+  function init(){setTimeout(function(){installDesktop();installDrawerToggle();installSearchRouting();syncText();},0);}
+  W.HeaderUtilities={installDesktop:installDesktop,installTheme:installTheme,installSearch:installSearch,installDrawerToggle:installDrawerToggle,setDrawer:setDrawer,toggleDrawer:toggleDrawer,setSearchOpen:setSearchOpen,syncSearchContext:syncSearchContext,syncText:syncText};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
   global.addEventListener('weig:languagechange',syncText);
   global.addEventListener('weig:route-state',function(){setSearchOpen(false);setDrawer(false);syncSearchContext();requestAnimationFrame(syncSearchContext);});
