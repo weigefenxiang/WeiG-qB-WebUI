@@ -514,7 +514,7 @@ try{
       const visible=core.filter(n=>n.getClientRects().length).map(n=>({id:n.id,...box(n)})).sort((a,b)=>a.left-b.left);
       const host=document.getElementById('mobile-pager-actions-slot');
       return{docOverflow:document.documentElement.scrollWidth-innerWidth,core:visible,
-        drawer:['github-link','blog-link','logout-btn'].map(id=>document.getElementById(id)?.parentElement?.dataset.headerUtilityNav||''),
+        utilities:['github-link','blog-link','logout-btn'].map(id=>{const node=document.getElementById(id);return{id,header:node?.parentElement?.classList.contains('topbar__actions'),tag:node?.tagName,rel:node?.getAttribute('rel')};}),
         rail:host&&{...box(host),client:host.clientWidth,scroll:host.scrollWidth,overflow:getComputedStyle(host).overflowX},
         buttons:buttons.map(n=>({font:parseFloat(getComputedStyle(n).fontSize),client:n.clientWidth,scroll:n.scrollWidth}))
       };
@@ -523,7 +523,10 @@ try{
     assert.equal(adaptive.core.length,5,'A73 Header primary control count at '+width+': '+JSON.stringify(adaptive));
     assert.ok(adaptive.core.every(n=>n.left>=-1&&n.right<=width+1),'A73 Header offscreen at '+width+': '+JSON.stringify(adaptive));
     assert.ok(adaptive.core.slice(1).every((n,i)=>n.left>=adaptive.core[i].right-1),'A73 Header overlap at '+width+': '+JSON.stringify(adaptive));
-    assert.ok(adaptive.drawer.every(x=>x==='1'),'A73 same utility nodes must move into mobile Drawer: '+JSON.stringify(adaptive));
+    assert.ok(adaptive.utilities.length===3&&adaptive.utilities.every(x=>x.header)&&adaptive.utilities.filter(x=>x.tag==='A').every(x=>x.rel?.includes('noopener')),'A73 Header must own all three original external/logout utilities: '+JSON.stringify(adaptive));
+    const endControl=await page.evaluate(()=>{const rail=document.querySelector('.topbar__actions');rail.scrollLeft=rail.scrollWidth;return new Promise(resolve=>requestAnimationFrame(()=>{const node=document.getElementById('logout-btn'),a=node.getBoundingClientRect(),b=rail.getBoundingClientRect(),hit=document.elementFromPoint((a.left+a.right)/2,(a.top+a.bottom)/2);resolve({scroll:rail.scrollLeft,extent:rail.scrollWidth-rail.clientWidth,inside:a.left>=b.left-1&&a.right<=b.right+1,hit:hit===node||node.contains(hit)});}));});
+    assert.ok(endControl.inside&&endControl.hit&&(width!==320||endControl.extent>0&&endControl.scroll>0),'A73 narrow Header must reveal and hit final Logout through its own horizontal rail: '+JSON.stringify(endControl));
+    await page.evaluate(()=>{document.querySelector('.topbar__actions').scrollLeft=0;});
     assert.ok(adaptive.rail&&adaptive.rail.client>0&&adaptive.rail.left>=-1&&adaptive.rail.right<=width+1,'A73 action rail offscreen: '+JSON.stringify(adaptive));
     assert.equal(adaptive.rail.overflow,'auto','A73 action rail must scroll independently: '+JSON.stringify(adaptive));
     assert.equal(adaptive.buttons.length,4,'A73 action inventory changed: '+JSON.stringify(adaptive));
