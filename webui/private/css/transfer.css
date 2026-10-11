@@ -87,7 +87,14 @@ html[data-theme=light]{--transfer-stat-surface:linear-gradient(180deg,#fff,#f7fa
   .transfer-panel-dialog,.transfer-statistics-dialog,.transfer-limit-dialog{--dialog-width:calc(100vw - 16px);--dialog-max-width:calc(100vw - 16px);--dialog-max-height:calc(100dvh - 16px);margin:auto;border-radius:18px}
   .transfer-panel-dialog>.dialog__head,.transfer-statistics-dialog>.dialog__head,.transfer-limit-dialog>.dialog__head{padding:18px 18px 14px}
   .transfer-panel-dialog>.dialog__body,.transfer-statistics-dialog>.dialog__body,.transfer-limit-dialog>.dialog__body{padding:0 18px 16px}
-  .transfer-panel-dialog>.dialog__head{grid-template-columns:minmax(0,1fr);row-gap:8px}.transfer-panel-dialog .transfer-dialog-head-actions{grid-column:1;justify-self:end;justify-content:flex-end;max-width:100%}.transfer-dialog-head-actions{gap:6px}.transfer-statistics-button{min-height:40px;padding-inline:10px}
+  /* Put Statistics and Close together on the first row, alongside the eyebrow. */
+  .transfer-panel-dialog>.dialog__head{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:'eyebrow actions' 'heading heading' 'description description';align-items:center;column-gap:8px;row-gap:6px}
+  .transfer-panel-dialog>.dialog__head>div:first-child{display:contents}
+  .transfer-panel-dialog>.dialog__head .eyebrow{grid-area:eyebrow;min-width:0;overflow-wrap:anywhere}
+  .transfer-panel-dialog>.dialog__head h2{grid-area:heading;margin:0}
+  .transfer-panel-dialog>.dialog__head p{grid-area:description;margin:0}
+  .transfer-panel-dialog .transfer-dialog-head-actions{grid-area:actions;align-self:center;justify-self:end;justify-content:flex-end;max-width:100%}
+  .transfer-dialog-head-actions{gap:6px}.transfer-statistics-button{min-height:40px;padding-inline:10px}
   .transfer-limit-dialog>.dialog__actions{padding:0 18px 18px}
   .transfer-native-statistics{grid-template-columns:1fr}
   .transfer-stats{grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr))}
