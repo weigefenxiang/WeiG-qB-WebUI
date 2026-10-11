@@ -26,12 +26,28 @@ const expressionEnd=publishJob.indexOf("' >/dev/null",expressionStart);
 assert.ok(gateBegin>=0&&expressionStart>gateBegin&&expressionEnd>expressionStart,
   'A73 Dev release must validate every actual CI job against the source SHA');
 const gateExpr=publishJob.slice(expressionStart,expressionEnd);
+const lookupMarker='jq -c --arg sha "$GITHUB_SHA" ';
+const lookupBegin=publishJob.indexOf(lookupMarker);
+const lookupExpressionStart=publishJob.indexOf("'",lookupBegin)+1;
+const lookupExpressionEnd=publishJob.indexOf("')\"",lookupExpressionStart);
+assert.ok(lookupBegin>=0&&lookupExpressionStart>lookupBegin&&lookupExpressionEnd>lookupExpressionStart,
+  'A73 Dev exact CI selection must be a valid jq query');
+const lookupExpr=publishJob.slice(lookupExpressionStart,lookupExpressionEnd);
+
 if(process.platform==='linux'){
   const {spawnSync}=await import('node:child_process');
   const required=['smoke','Linux semantic UI · adaptive-ui','Linux semantic UI · runtime'];
   const success={total_count:required.length,jobs:required.map(name=>({name,head_sha:'a73-exact',conclusion:'success'}))};
   const check=fixture=>spawnSync('jq',['-e','--arg','sha','a73-exact',gateExpr],{
     input:JSON.stringify(fixture),encoding:'utf8',timeout:3000});
+  const lookups={workflow_runs:[
+    {id:1,head_sha:'a73-exact',event:'push',status:'completed',conclusion:'success'},
+    {id:2,head_sha:'a73-exact',event:'workflow_dispatch',status:'completed',conclusion:'success'},
+    {id:3,head_sha:'other',event:'push',status:'completed',conclusion:'success'}]};
+  const chosen=spawnSync('jq',['-c','--arg','sha','a73-exact',lookupExpr],{
+    input:JSON.stringify(lookups),encoding:'utf8',timeout:3000});
+  assert.equal(chosen.status,0,'Dev CI selection jq must compile: '+chosen.stderr);
+  assert.equal(JSON.parse(chosen.stdout).id,1,'Dev CI selection must reject another event/SHA');
   const green=check(success);
   assert.equal(green.status,0,'A73 Dev gate must accept complete exact-SHA CI jobs: '+green.stderr);
   assert.equal(check({...success,jobs:success.jobs.slice(0,-1)}).status,1,
