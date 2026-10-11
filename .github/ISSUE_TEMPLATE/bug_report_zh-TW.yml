@@ -1,0 +1,63 @@
+name: "Bug feedback / 問題回報"
+description: "Report a WeiG qB WebUI problem. / 回報使用 WeiG WebUI 時遇到的問題。"
+title: "[Bug] "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: "What happened? / 發生了什麼事？"
+      description: "Describe the problem, the expected result, and how to reproduce it. / 描述問題、預期結果與重現步驟。"
+      placeholder: "Example: After generating an API key, the page jumps down; it should stay in place. / 例如：產生 API 金鑰後頁面往下跳，預期保持原位。"
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: "Interface / 介面類型"
+      description: "Choose the layout where you saw the problem. / 選擇發生問題時使用的介面版面。"
+      options:
+        - Mobile
+        - Desktop
+        - Other or unsure
+    validations:
+      required: true
+  - type: input
+    id: other_environment
+    attributes:
+      label: "Other environment (optional) / 其他環境（選填）"
+      description: "Only needed if you selected Other or unsure. / 只有選取 Other or unsure 時才需要補充。"
+      placeholder: "TV browser, tablet, embedded browser / 電視瀏覽器、平板、內嵌瀏覽器"
+  - type: input
+    id: weig_version
+    attributes:
+      label: "WeiG WebUI version / WeiG WebUI 版本"
+      description: "Find this under Settings → About. / 可在「設定 → 關於」中查看。"
+      placeholder: "1.2.2-A74(abcdef0)"
+    validations:
+      required: true
+  - type: input
+    id: qb_version
+    attributes:
+      label: "qBittorrent version / qBittorrent 版本"
+      placeholder: "5.2.4"
+    validations:
+      required: true
+  - type: input
+    id: browser_os
+    attributes:
+      label: "Browser and OS (optional) / 瀏覽器與系統（選填）"
+      placeholder: "Chrome 154 · Windows 11 / Chrome 154 · Windows 11"
+  - type: input
+    id: webui_locale
+    attributes:
+      label: "WebUI language (optional) / WebUI 語言（選填）"
+      description: "Filled automatically when reporting from WebUI; no need to change it. / 從 WebUI 開啟時會自動填入，無須修改。"
+      placeholder: "zh-TW"
+  - type: upload
+    id: attachments
+    attributes:
+      label: "Screenshot or log (optional) / 截圖或紀錄（選填）"
+      description: "Attach a screenshot or short log if it helps. / 有助於說明問題時再附上截圖或簡短紀錄。"
+    validations:
+      required: false
+      accept: ".png,.jpg,.jpeg,.gif,.webp,.log,.txt,.json,.zip"

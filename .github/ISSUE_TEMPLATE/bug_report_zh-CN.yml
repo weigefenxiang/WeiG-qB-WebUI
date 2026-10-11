@@ -1,0 +1,63 @@
+name: "Bug feedback / 问题反馈"
+description: "Report a WeiG qB WebUI problem. / 反馈 WeiG WebUI 使用中遇到的问题。"
+title: "[Bug] "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: "What happened? / 发生了什么？"
+      description: "Describe the problem, the expected result, and how to reproduce it. / 描述遇到的问题、预期结果和复现步骤。"
+      placeholder: "Example: After generating an API key, the page jumps down; it should stay in place. / 例如：生成 API 密钥后页面向下跳动，预期保持原位。"
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: "Interface / 界面类型"
+      description: "Choose the layout where you saw the problem. / 选择出现问题时使用的界面布局。"
+      options:
+        - Mobile
+        - Desktop
+        - Other or unsure
+    validations:
+      required: true
+  - type: input
+    id: other_environment
+    attributes:
+      label: "Other environment (optional) / 其他环境（可选）"
+      description: "Only needed if you selected Other or unsure. / 仅在选择 Other or unsure 时补充说明。"
+      placeholder: "TV browser, tablet, embedded browser / 电视浏览器、平板电脑、内嵌浏览器"
+  - type: input
+    id: weig_version
+    attributes:
+      label: "WeiG WebUI version / WeiG WebUI 版本"
+      description: "Find this under Settings → About. / 可在“设置 → 关于”中查看。"
+      placeholder: "1.2.2-A74(abcdef0)"
+    validations:
+      required: true
+  - type: input
+    id: qb_version
+    attributes:
+      label: "qBittorrent version / qBittorrent 版本"
+      placeholder: "5.2.4"
+    validations:
+      required: true
+  - type: input
+    id: browser_os
+    attributes:
+      label: "Browser and OS (optional) / 浏览器与系统（可选）"
+      placeholder: "Chrome 154 · Windows 11 / Chrome 154 · Windows 11"
+  - type: input
+    id: webui_locale
+    attributes:
+      label: "WebUI language (optional) / WebUI 语言（可选）"
+      description: "Filled automatically when reporting from WebUI; no need to change it. / 从 WebUI 打开时自动填写，无需修改。"
+      placeholder: "zh-CN"
+  - type: upload
+    id: attachments
+    attributes:
+      label: "Screenshot or log (optional) / 截图或日志（可选）"
+      description: "Attach a screenshot or short log if it helps. / 确有帮助时再附上截图或简短日志。"
+    validations:
+      required: false
+      accept: ".png,.jpg,.jpeg,.gif,.webp,.log,.txt,.json,.zip"

@@ -1,0 +1,63 @@
+name: "Bug feedback / Reportar erro"
+description: "Report a WeiG qB WebUI problem. / Comunique um problema do WeiG WebUI."
+title: "[Bug] "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: "What happened? / O que aconteceu?"
+      description: "Describe the problem, the expected result, and how to reproduce it. / Descreva o problema, o resultado esperado e como reproduzi-lo."
+      placeholder: "Example: After generating an API key, the page jumps down; it should stay in place. / Exemplo: após gerar uma chave de API, a página desloca-se para baixo."
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: "Interface / Interface"
+      description: "Choose the layout where you saw the problem. / Escolha o layout em que ocorreu o problema."
+      options:
+        - Mobile
+        - Desktop
+        - Other or unsure
+    validations:
+      required: true
+  - type: input
+    id: other_environment
+    attributes:
+      label: "Other environment (optional) / Outro ambiente (opcional)"
+      description: "Only needed if you selected Other or unsure. / Preencha apenas se escolheu Other or unsure."
+      placeholder: "TV browser, tablet, embedded browser / Navegador de TV, tablet, navegador integrado"
+  - type: input
+    id: weig_version
+    attributes:
+      label: "WeiG WebUI version / Versão do WeiG WebUI"
+      description: "Find this under Settings → About. / Consulte em Definições → Acerca de."
+      placeholder: "1.2.2-A74(abcdef0)"
+    validations:
+      required: true
+  - type: input
+    id: qb_version
+    attributes:
+      label: "qBittorrent version / Versão do qBittorrent"
+      placeholder: "5.2.4"
+    validations:
+      required: true
+  - type: input
+    id: browser_os
+    attributes:
+      label: "Browser and OS (optional) / Navegador e sistema operativo (opcional)"
+      placeholder: "Chrome 154 · Windows 11 / Chrome 154 · Windows 11"
+  - type: input
+    id: webui_locale
+    attributes:
+      label: "WebUI language (optional) / Idioma da WebUI (opcional)"
+      description: "Filled automatically when reporting from WebUI; no need to change it. / Preenchido automaticamente ao abrir a partir da WebUI."
+      placeholder: "pt"
+  - type: upload
+    id: attachments
+    attributes:
+      label: "Screenshot or log (optional) / Captura de ecrã ou registo (opcional)"
+      description: "Attach a screenshot or short log if it helps. / Anexe apenas se ajudar a explicar o problema."
+    validations:
+      required: false
+      accept: ".png,.jpg,.jpeg,.gif,.webp,.log,.txt,.json,.zip"
