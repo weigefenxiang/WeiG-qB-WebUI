@@ -54,10 +54,10 @@
       var available=outer-(parseFloat(style.paddingLeft)||0)-(parseFloat(style.paddingRight)||0)-(parseFloat(style.borderLeftWidth)||0)-(parseFloat(style.borderRightWidth)||0);
       if(available<=0)return;
       adaptiveActionContext.font=style.font;
-      var tracking=parseFloat(style.letterSpacing)||0,natural=adaptiveActionContext.measureText(label).width+Math.max(0,label.length-1)*tracking;
-      if(natural<=available+1)return;
-      var floor=adaptiveReadableFloor(),target=Math.max(Math.min(font,floor),Math.min(font,font*available/natural));
-      if(target<font-.1)button.style.setProperty('--adaptive-action-font-size',target.toFixed(2)+'px');
+      var tracking=parseFloat(style.letterSpacing)||0,floor=adaptiveReadableFloor(),base=Math.max(font,floor);
+      var natural=(adaptiveActionContext.measureText(label).width+Math.max(0,label.length-1)*tracking)*base/font;
+      var target=natural>available+1?Math.max(floor,Math.min(base,base*available/natural)):base;
+      if(Math.abs(target-font)>.1)button.style.setProperty('--adaptive-action-font-size',target.toFixed(2)+'px');
     });
   }
   function syncAdaptiveRails(){

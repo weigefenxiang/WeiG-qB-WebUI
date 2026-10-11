@@ -365,6 +365,19 @@ try{
     assert.ok(result.length>0&&result.some(item=>item.text.length>20),`Missing native Russian long actions at ${width}px: ${JSON.stringify(result)}`);
     assert.ok(result.every(item=>item.full&&item.wrap!=='nowrap'&&item.width<=item.maxWidth+2&&item.height>=34&&item.font>=12&&item.left>=-1&&item.right<=width+1&&item.hostOverflow<=2),`Source-owned Settings action must be bounded and fully wrapped at ${width}px: ${JSON.stringify(result)}`);
   }
+  // User +2/+3 font-scale preferences must survive button fitting, not get scaled away.
+  for(const offset of [2,3]){
+    const result=await page.evaluate(value=>{
+      document.documentElement.style.setProperty('--font-scale-offset',value+'px');
+      WeiG.MobileAdaptive.fitAdaptiveRails();
+      const buttons=[...document.querySelectorAll('#settings-content .setting-inline-action')].filter(button=>button.getClientRects().length);
+      const metrics=buttons.map(button=>({font:parseFloat(getComputedStyle(button).fontSize),natural:button.scrollWidth,visible:button.clientWidth,height:button.getBoundingClientRect().height}));
+      document.documentElement.style.removeProperty('--font-scale-offset');
+      WeiG.MobileAdaptive.fitAdaptiveRails();
+      return metrics;
+    },offset);
+    assert.ok(result.length>0&&result.every(item=>item.font>=12+offset-.1&&item.natural<=item.visible+1&&item.height>=34),`Russian Settings helper action must honor +${offset} font size without clipping: ${JSON.stringify(result)}`);
+  }
   await page.evaluate(async()=>{await WeiG.I18n.loadWeiGLocale('zh-CN');WeiG.I18n.applyLocale('zh-CN',{reload:false});});
   await page.waitForFunction(()=>document.documentElement.lang==='zh-CN');
   await page.setViewportSize({width:360,height:844});
