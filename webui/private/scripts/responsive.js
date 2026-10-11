@@ -11,6 +11,50 @@
   function syncDetailPrimaryScrollOwner(event){var mode=event&&event.detail&&event.detail.mode==='dock'?'dock':'route',view=document.getElementById(mode==='dock'?'torrent-detail-dock':'detail-view'),root=document.getElementById(mode==='dock'?'torrent-detail-dock-content':'detail-content');if(!view||!root)return null;primaryScrollOwners(view).forEach(function(node){delete node.dataset.primaryScroll;});var owner=root.querySelector(':scope > .shared-table__viewport, :scope > .general-detail')||root;owner.dataset.primaryScroll='1';return owner;}
   function installPageContracts(){pageContracts.forEach(function(spec){var view=document.getElementById(spec[0]),owner=document.getElementById(spec[1]);if(!view||!owner)return;view.dataset.pageLayout=spec[2];owner.dataset.primaryScroll='1';});var detailView=document.getElementById('detail-view');if(detailView)detailView.dataset.pageLayout='scroll';syncDetailPrimaryScrollOwner();}
 
+
+  // A73: shared width-aware font and horizontal rail presentation. Never infer
+  // label length from locale or duplicate action/selection state.
+  var adaptiveRailSpecs=[
+    ['#mobile-pager-actions-slot','#torrent-selection-toolbar .btn'],
+    ['#settings-tabs','[data-settings-tab]'],
+    ['.logs-toolbar','[data-log-type],.logs-follow,.logs-refresh'],
+    ['#detail-view>.detail-tabs','.tab'],
+    ['#torrent-detail-tabs','.tab'],
+    ['.rss-header-actions','.btn'],
+    ['.topbar__rail','#app-nav .app-nav__item']
+  ];
+  var adaptiveScheduled=false,adaptiveObserved=new WeakSet();
+  var adaptiveResizeObserver=global.ResizeObserver?new global.ResizeObserver(scheduleAdaptiveRails):null;
+  var adaptiveTextObserver=global.MutationObserver?new global.MutationObserver(scheduleAdaptiveRails):null;
+  function fitAdaptiveRail(host,selector){
+    host.style.removeProperty('--adaptive-rail-font-size');
+    if(!isMobile()||!host.getClientRects().length||host.clientWidth<1)return;
+    var items=Array.from(host.querySelectorAll(selector)).filter(function(node){
+      return node.getClientRects().length&&global.getComputedStyle(node).visibility!=='hidden';
+    });
+    if(!items.length)return;
+    var natural=host.scrollWidth,available=host.clientWidth;
+    var base=Math.max(12,...items.map(function(node){return parseFloat(global.getComputedStyle(node).fontSize)||12;}));
+    var target=natural>available+1?Math.max(12,Math.min(base,base*available/natural)):base;
+    host.style.setProperty('--adaptive-rail-font-size',target.toFixed(2)+'px');
+  }
+  function syncAdaptiveRails(){
+    adaptiveRailSpecs.forEach(function(spec){
+      var host=document.querySelector(spec[0]);if(!host)return;
+      if(!adaptiveObserved.has(host)){
+        adaptiveObserved.add(host);
+        if(adaptiveResizeObserver)adaptiveResizeObserver.observe(host);
+        if(adaptiveTextObserver)adaptiveTextObserver.observe(host,{subtree:true,childList:true,characterData:true});
+      }
+      fitAdaptiveRail(host,spec[1]);
+    });
+  }
+  function scheduleAdaptiveRails(){
+    if(adaptiveScheduled)return;
+    adaptiveScheduled=true;
+    global.requestAnimationFrame(function(){adaptiveScheduled=false;syncAdaptiveRails();});
+  }
+
   function mobileRowHeight(){var density=document.documentElement.dataset.density||'standard';if(global.innerHeight<=680)return 94;if(density==='compact')return 94;if(density==='comfortable')return 104;return 98;}
   function desktopRowHeight(){var density=document.documentElement.dataset.density||'standard';return density==='compact'?48:density==='comfortable'?64:56;}
   function syncTorrentRowHeight(){var list=document.getElementById('torrent-list'),instance=list&&list.__weigTorrentVirtual;if(!instance||!instance.setRowHeight)return;var next=isMobile()?mobileRowHeight():desktopRowHeight();if(instance.rowHeight!==next)instance.setRowHeight(next);}
@@ -69,12 +113,14 @@
   function installConnectionTrigger(){var footer=document.getElementById('status-connection');if(!footer||footer.dataset.connectionTrigger==='1')return footer;footer.dataset.connectionTrigger='1';footer.setAttribute('role','button');footer.tabIndex=0;footer.addEventListener('click',openConnectionDialog);footer.addEventListener('keydown',function(event){if(event.key==='Enter'||event.key===' '){event.preventDefault();openConnectionDialog();}});return footer;}
   function paintConnection(status){lastConnection=normalizeConnection(status);var label=connectionLabel(lastConnection),footer=installConnectionTrigger(),footerLabel=document.getElementById('status-connection-label');if(footer){footer.dataset.connection=lastConnection;footer.removeAttribute('data-tooltip');footer.setAttribute('aria-label',label+' — '+connectionReason(lastConnection));}if(footerLabel&&footerLabel.textContent!==label)footerLabel.textContent=label;mountStatusTelemetry();}
 
-  function syncResponsiveSystem(){if(W.HeaderUtilities&&W.HeaderUtilities.syncUtilityPlacement)W.HeaderUtilities.syncUtilityPlacement();installPageContracts();mountSelectionToolbar();installMobileDetailRail();syncTorrentRowHeight();fitVisibleMobileMeta();syncPagerCopy();syncDetailTitleContract();mountStatusTelemetry();}
+  function syncResponsiveSystem(){if(W.HeaderUtilities&&W.HeaderUtilities.syncUtilityPlacement)W.HeaderUtilities.syncUtilityPlacement();installPageContracts();mountSelectionToolbar();installMobileDetailRail();syncTorrentRowHeight();fitVisibleMobileMeta();syncPagerCopy();syncDetailTitleContract();mountStatusTelemetry();scheduleAdaptiveRails();}
   function init(){installStorageStatus();refreshStorage();installConnectionTrigger();paintConnection(lastConnection);syncResponsiveSystem();}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
   document.addEventListener('visibilitychange',function(){if(!document.hidden){syncResponsiveSystem();refreshStorage();}});
   global.addEventListener('resize',function(){requestAnimationFrame(syncResponsiveSystem);},{passive:true});
-  global.addEventListener('weig:route-state',function(){syncDetailTitleContract();});
+  global.addEventListener('weig:route-state',function(){syncDetailTitleContract();scheduleAdaptiveRails();});
+  global.addEventListener('weig:languagechange',scheduleAdaptiveRails);
+  global.addEventListener('weig:themechange',scheduleAdaptiveRails);
   global.addEventListener('weig:detail-content',syncDetailPrimaryScrollOwner);
   global.addEventListener('weig:library-state',function(){requestAnimationFrame(syncResponsiveSystem);});
   global.addEventListener('weig:transfer',function(){requestAnimationFrame(mountStatusTelemetry);});
@@ -83,5 +129,5 @@
   global.addEventListener('weig:languagechange',function(){localizeStorage(document.getElementById('status-free-space'));paintConnection(lastConnection);syncPagerCopy();mountStatusTelemetry();if(connectionDialog&&connectionDialog.open)openConnectionDialog();});
   global.addEventListener('weig:qbcopychange',function(){localizeStorage(document.getElementById('status-free-space'));});
 
-  W.MobileAdaptive={mobileRowHeight:mobileRowHeight,fitMobileMeta:fitMobileMeta,refreshStorage:refreshStorage,paintConnection:paintConnection,openConnectionDialog:openConnectionDialog,installPageContracts:installPageContracts,primaryScrollOwners:primaryScrollOwners,syncDetailPrimaryScrollOwner:syncDetailPrimaryScrollOwner,mountSelectionToolbar:mountSelectionToolbar,installMobileDetailRail:installMobileDetailRail,setDetailRailCollapsed:setMobileDetailRailCollapsed,mountStatusTelemetry:mountStatusTelemetry,syncPagerCopy:syncPagerCopy,installDetailTitleInteraction:installDetailTitleInteraction};
+  W.MobileAdaptive={fitAdaptiveRails:syncAdaptiveRails,mobileRowHeight:mobileRowHeight,fitMobileMeta:fitMobileMeta,refreshStorage:refreshStorage,paintConnection:paintConnection,openConnectionDialog:openConnectionDialog,installPageContracts:installPageContracts,primaryScrollOwners:primaryScrollOwners,syncDetailPrimaryScrollOwner:syncDetailPrimaryScrollOwner,mountSelectionToolbar:mountSelectionToolbar,installMobileDetailRail:installMobileDetailRail,setDetailRailCollapsed:setMobileDetailRailCollapsed,mountStatusTelemetry:mountStatusTelemetry,syncPagerCopy:syncPagerCopy,installDetailTitleInteraction:installDetailTitleInteraction};
 })(window);
