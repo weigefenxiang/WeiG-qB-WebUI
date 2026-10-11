@@ -22,13 +22,22 @@ for(const width of [320,390,430]){
     WeiG.MobileAdaptive?.fitAdaptiveRails?.();
     const rect=node=>{const r=node.getBoundingClientRect();return{left:r.left,right:r.right,top:r.top,bottom:r.bottom};};
     const core=['#menu-btn','.topbar__start .brand-cluster .brand-mark-home','#mobile-search-btn','#add-btn','#theme-btn'].map(id=>{const node=document.querySelector(id);if(!node)throw new Error('Canonical Header control absent: '+id);return node;}).filter(n=>n.getClientRects().length).map(n=>({id:n.id,...rect(n)})).sort((a,b)=>a.left-b.left);
+    const bottom=document.getElementById('mobile-bottom-nav');
+    const bottomItems=bottom?[...bottom.querySelectorAll('.mobile-bottom-nav__item')].map(button=>{
+      const icon=button.querySelector('span'),label=button.querySelector('small'),br=button.getBoundingClientRect(),ir=icon.getBoundingClientRect(),lr=label.getBoundingClientRect();
+      return {route:button.dataset.route,text:(label.textContent||'').trim(),left:br.left,right:br.right,iconLeft:ir.left,iconRight:ir.right,iconY:(ir.top+ir.bottom)/2,labelLeft:lr.left,labelY:(lr.top+lr.bottom)/2,scroll:label.scrollWidth,client:label.clientWidth,overflow:getComputedStyle(label).overflowX,textOverflow:getComputedStyle(label).textOverflow,aria:button.getAttribute('aria-label'),hit:document.elementFromPoint((br.left+br.right)/2,(br.top+br.bottom)/2)?.closest('.mobile-bottom-nav__item')===button};
+    }):[];
     const host=document.getElementById('mobile-pager-actions-slot'),actions=[...document.querySelectorAll('#torrent-selection-toolbar .btn')];
     return{viewport:innerWidth,documentOverflow:document.documentElement.scrollWidth-innerWidth,core,
-      testLocale:document.documentElement.lang,rail:host&&{...rect(host),x:getComputedStyle(host).overflowX},
+      testLocale:document.documentElement.lang,bottomNav:bottom&&{width:bottom.clientWidth,scroll:bottom.scrollWidth,items:bottomItems},rail:host&&{...rect(host),x:getComputedStyle(host).overflowX},
       labelBoxes:actions.map(n=>({width:n.clientWidth,scroll:n.scrollWidth,font:parseFloat(getComputedStyle(n).fontSize)}))};
   });
   assert(proof.documentOverflow<=1&&proof.core.length===5&&proof.core.every(x=>x.left>=-1&&x.right<=width+1)&&proof.core.slice(1).every((x,i)=>x.left>=proof.core[i].right-1),
     `${name}: real Russian Header controls must not overlap or escape at ${width}px ${JSON.stringify(proof)}`);
+  assert(proof.bottomNav?.items.length===4&&proof.bottomNav.scroll<=proof.bottomNav.width+1&&
+    proof.bottomNav.items.every(item=>item.left>=-1&&item.right<=width+1&&item.iconRight<=item.labelLeft+2&&Math.abs(item.iconY-item.labelY)<4&&item.hit&&item.aria===item.text&&item.textOverflow!=='ellipsis'&&item.overflow==='auto')&&
+    proof.bottomNav.items[1].text==='RSS'&&proof.bottomNav.items[1].right-proof.bottomNav.items[1].left<proof.bottomNav.items[0].right-proof.bottomNav.items[0].left,
+    `${name}: fixed four-entry Russian bottom dock must allocate width by label and scroll only text ${JSON.stringify(proof.bottomNav)}`);
   assert(proof.rail?.x==='auto'&&proof.rail.left>=-1&&proof.rail.right<=width+1&&proof.labelBoxes.length===4&&proof.labelBoxes.every(x=>x.font>=12&&x.scroll<=x.width+1),
     `${name}: real Russian full-width labels require a readable independent mobile scroll rail at ${width}px ${JSON.stringify(proof)}`);
   if(width===320){

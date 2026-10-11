@@ -39,7 +39,45 @@
   global.addEventListener('resize',function(){requestAnimationFrame(sync);},{passive:true});
   global.addEventListener('hashchange',function(){if(warmStarted)warmRouteModules();});
   document.addEventListener('visibilitychange',function(){if(warmStarted)warmRouteModules();});
-  function init(){sync();setTimeout(sync,400);}
+  // Route owner also owns the native horizontal text viewport in the fixed bottom dock.
+  // Dragging a label must not accidentally activate its route; icons/buttons stay fixed.
+  function installBottomNavTextScroll(){
+    var dock=document.getElementById('mobile-bottom-nav');
+    if(!dock||dock.dataset.textScrollReady==='1')return;
+    dock.dataset.textScrollReady='1';
+    var gesture=null;
+    function labelFor(target){return target&&target.closest?target.closest('.mobile-bottom-nav__item small'):null;}
+    function refreshLabels(){
+      Array.from(dock.querySelectorAll('.mobile-bottom-nav__item')).forEach(function(button){
+        var label=button.querySelector('small');
+        if(label)button.setAttribute('aria-label',String(label.textContent||'').trim());
+      });
+    }
+    dock.addEventListener('pointerdown',function(e){
+      var label=labelFor(e.target);
+      gesture=label&&e.isPrimary!==false?{label:label,id:e.pointerId,x:e.clientX,initialScroll:label.scrollLeft,moved:false}:null;
+    },true);
+    dock.addEventListener('pointermove',function(e){
+      if(gesture&&e.pointerId===gesture.id&&(Math.abs(e.clientX-gesture.x)>7||Math.abs(gesture.label.scrollLeft-gesture.initialScroll)>2))gesture.moved=true;
+    },true);
+    dock.addEventListener('click',function(e){
+      if(gesture&&gesture.moved&&gesture.label.closest('.mobile-bottom-nav__item')===e.target.closest('.mobile-bottom-nav__item')){
+        e.preventDefault();e.stopImmediatePropagation();
+      }
+      gesture=null;
+    },true);
+    dock.addEventListener('pointercancel',function(){gesture=null;},true);
+    dock.addEventListener('keydown',function(e){
+      if(e.key!=='ArrowRight'&&e.key!=='ArrowLeft')return;
+      var button=e.target.closest&&e.target.closest('.mobile-bottom-nav__item'),label=button&&button.querySelector('small');
+      if(!label||label.scrollWidth<=label.clientWidth+1)return;
+      e.preventDefault();
+      label.scrollBy({left:e.key==='ArrowRight'?Math.max(24,label.clientWidth*.6):-Math.max(24,label.clientWidth*.6),behavior:'auto'});
+    });
+    global.addEventListener('weig:languagechange',function(){refreshLabels();dock.querySelectorAll('.mobile-bottom-nav__item small').forEach(function(label){label.scrollLeft=0;});});
+    refreshLabels();
+  }
+  function init(){installBottomNavTextScroll();sync();setTimeout(sync,400);}
   W.Navigation={goHome:function(){if(W.Router)W.Router.home();else location.hash='#/';},backFromDetail:back,restoreListContext:restore,syncDetailBack:sync,loadRouteModule:loadRouteModule,warmRouteModules:warmRouteModules,routeModulePaths:function(name){return(ROUTE_MODULES[String(name||'')]||[]).slice();}};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })(window);
