@@ -319,6 +319,14 @@ C:\Users\<your-username>\AppData\Local\weig-qb-webui
 
 </details>
 
+### A73 development ZIP (testing, moving link)
+
+A73 testers may download the exact checksum-verified dev materialization from
+[downloads/dev/A73/weig-qb-webui.zip](https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/A73/weig-qb-webui.zip).
+The adjacent `GIT_SHA`, `VERSION`, `SHA256SUMS`, and `preview.json` identify the exact build.
+This is a **moving A73-only development preview** while dev VERSION remains `1.2.1`, not a permanent/immutable `test-A73` Release.
+For the current development installer use `-dev`; `-dev A73` explicitly requires a separately authorized `test-A73` GitHub Prerelease.
+
 ## Common Options
 Linux and Windows use the same public option names where practical. Documentation uses lowercase; PowerShell parameter names are case-insensitive.
 
