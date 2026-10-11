@@ -47,6 +47,20 @@ assert(startupIndex('scripts/qb-client.js')>=0&&startupIndex('scripts/qb-client.
 for(const deferred of ['scripts/settings.js','scripts/rss.js','scripts/logs.js'])assert(!startupScripts.includes(deferred),deferred+' must remain route-demand loaded instead of leaking into startup');
 assert(startupIndex('scripts/i18n.js')>=0&&startupIndex('scripts/capabilities.js')>=0,'i18n and capability consumers must remain inside the RuntimeAssets-owned startup plan');
 
+const brandRuntime=read('webui/private/scripts/brand.js');
+assert(startupIndex('scripts/brand.js')>=0&&index.includes('id="brand-btn"'),'Brand startup button and its canonical owner must remain part of bootstrap');
+assert(brandRuntime.includes("homeButton('brand-mark-home'")&&brandRuntime.includes('old.replaceWith(cluster)'),
+  'Brand.js must normalize the bootstrap button into the live brand-cluster control');
+for(const rel of ['tests/browser-adaptive-ui.mjs','tests/pages-live-mobile-layout.mjs']){
+  const browser=read(rel);
+  assert(browser.includes("'.topbar__start .brand-cluster .brand-mark-home'"),
+    rel+' must measure the live canonical Brand child instead of a retired startup ID');
+}
+const adaptiveBrowser=read('tests/browser-adaptive-ui.mjs');
+assert(adaptiveBrowser.includes(".feedback-toast:not(.is-leaving) .feedback-toast__dismiss")&&adaptiveBrowser.includes('page.mouse.wheel(1000,0)'),
+  'Mobile rail verification must acknowledge Feedback through its UI, then exercise native horizontal wheel input');
+
+
 const runtimeAssetSource=read('webui/private/scripts/runtime-assets.js');
 const capabilitiesSource=read('webui/private/scripts/capabilities.js');
 assert(runtimeAssetSource.includes("DB_NAME='weig-runtime-assets'")&&runtimeAssetSource.includes('global.indexedDB'),'runtime asset persistence must use one IndexedDB owner');
