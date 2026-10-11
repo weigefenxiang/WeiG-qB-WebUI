@@ -39,3 +39,7 @@ if(process.platform==='linux'){
   assert.equal(check({...success,jobs:success.jobs.map(job=>({...job,head_sha:'wrong-sha'}))}).status,1,
     'A73 release gate must reject incorrect job SHA');
 }
+
+// A73 Pages preview uses the canonical distribution archive and must satisfy its own
+// exact-SHA/sha256 contract without consuming an extra CI smoke command.
+await import('./pages-plan-download-alias-contract.mjs');
