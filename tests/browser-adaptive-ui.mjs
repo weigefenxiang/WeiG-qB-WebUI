@@ -90,4 +90,11 @@ assert(russianTransfer.head&&russianTransfer.titleBox.bottom<=russianTransfer.ac
   russianTransfer.actions.right<=russianTransfer.head.right+1&&russianTransfer.columns===1&&russianTransfer.values.every(v=>v.textOverflow!=='ellipsis'&&v.whiteSpace==='normal'&&v.scrollHeight<=v.clientHeight+2&&v.value.right<=v.card.right+1),
   `${name}: Russian mobile Realtime Transfer must have full-width title, adjacent second-row Statistics/Close and readable responsive stats ${JSON.stringify(russianTransfer)}`);
 await page.evaluate(()=>WeiG.Transfer.panel.close());await page.waitForFunction(()=>!document.querySelector('#transfer-stats-dialog')?.open);
+await page.evaluate(()=>WeiG.Router.go('logs'));await page.waitForFunction(()=>document.getElementById('logs-view')?.classList.contains('is-active')&&document.querySelectorAll('.logs-filters [data-log-type]').length===4);
+const russianLogFilters=await page.evaluate(()=>{
+  const rail=document.querySelector('.logs-toolbar'),chips=[...document.querySelectorAll('.logs-filters [data-log-type]')];
+  return{railOverflow:getComputedStyle(rail).overflowX,viewport:rail.clientWidth,scroll:rail.scrollWidth,items:chips.map(el=>{const r=el.getBoundingClientRect(),after=getComputedStyle(el,'::after');return{title:el.textContent.trim(),height:r.height,font:parseFloat(getComputedStyle(el).fontSize),hitBefore:after.top,hitAfter:after.bottom,pressed:el.getAttribute('aria-pressed')};})};
+});
+assert(russianLogFilters.railOverflow==='auto'&&russianLogFilters.items.length===4&&russianLogFilters.items.every(x=>x.height>=33&&x.height<=37&&x.font>=12&&x.hitBefore==='-5px'&&x.hitAfter==='-5px'&&x.pressed!==null),
+  `${name}: Russian Logs must show compact 34px filter faces with 44px extended hit targets and the same selected-state owner ${JSON.stringify(russianLogFilters)}`);
 assert(errors.length===0,`${name}: browser errors: ${errors.join(' | ')}`);await context.close();}console.log('Adaptive UI browser gate passed: exact qB source facts preserve status filters and capability-gated Private / PT Tracker facet across Desktop/Mobile while canonical controls, Settings and header geometry adapt only by presentation.');}finally{await browser.close();await new Promise(r=>server.close(r));}
