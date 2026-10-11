@@ -143,7 +143,33 @@
     const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
     if(!g)return{error:'missing graph'};
     const helperTarget=item=>item&&item.action&&item.action.targetControlId&&S.preferenceKeyForControl?S.preferenceKeyForControl(item.action.targetControlId):null;
-    const relevant=item=>{if(!item)return false;if(item.kind==='content')return !!(item.label||(item.items&&item.items.length));if(item.kind==='helper'){const key=helperTarget(item);return !!(key&&own(prefs,key))||item.action&&item.action.kind==='source-action';}if(item.kind==='control'&&S.projectionAuxForControl){const p=S.projectionAuxForControl(item.id,state,aux);if(p&&own(prefs,p.key))return true;}if(item.preferenceKey)return own(prefs,item.preferenceKey);if(item.kind==='control'&&item.writeOnly&&S.writeOnlyForControl)return !!S.writeOnlyForControl(item.id);if(item.kind==='control'&&S.gateForControl){const gate=S.gateForControl(item.id,state);return !!(gate&&own(prefs,gate.key));}return false;};
+    // Independent Settings coverage: client-data, approved source actions and
+    // source-proven write-only controls are displayed without a preference key.
+    // The old fixture expected only preference-backed rows and misreported
+    // legitimate qB 5.2.x native controls as silentDrop.
+    const relevant=item=>{
+      if(!item)return false;
+      if(item.kind==='content')return !!(item.label||(item.items&&item.items.length));
+      if(item.kind==='helper'){
+        const key=helperTarget(item),action=item.action||{};
+        const supportedSourceAction=action.kind==='source-action'&&
+          String(action.owner||'')+'.'+String(action.name||'')==='Rss.openRssDownloader'&&
+          !!WeiG.ActionRegistry;
+        const nativeAction=action.kind==='clipboard-preference'||action.kind==='confirm-source-action';
+        return !!(key&&own(prefs,key))||supportedSourceAction||nativeAction;
+      }
+      if(item.kind==='control'&&item.clientData)return true;
+      if(item.kind==='control'&&S.projectionAuxForControl){
+        const p=S.projectionAuxForControl(item.id,state,aux);
+        if(p&&own(prefs,p.key))return true;
+      }
+      if(item.preferenceKey&&own(prefs,item.preferenceKey))return true;
+      if(item.kind==='control'){
+        if(item.writeOnly&&S.writeOnlyForControl&&S.writeOnlyForControl(item.id))return true;
+        if(S.gateForControl){const gate=S.gateForControl(item.id,state);if(gate&&own(prefs,gate.key))return true;}
+      }
+      return false;
+    };
     const rows=(g.rows||[]).filter(row=>(row.items||[]).some(relevant)),rowByField=new Map();
     for(const row of rows){const key=row.parentFieldsetId||'';if(!rowByField.has(key))rowByField.set(key,[]);rowByField.get(key).push(row.id);}
     const memo=new Map(),fields=g.fieldsets||[],fieldRelevant=field=>{if(memo.has(field.id))return memo.get(field.id);const direct=(field.legendControls||[]).some(item=>relevant(Object.assign({kind:'control'},item)))||(rowByField.get(field.id)||[]).length>0,child=fields.some(candidate=>candidate.parentId===field.id&&fieldRelevant(candidate)),yes=direct||child;memo.set(field.id,yes);return yes;};
