@@ -350,6 +350,21 @@ try{
     assert.equal(geometry.filter(row=>row.external&&row.rel?.includes('noopener')&&row.target==='_blank').length,3,
       'Russian About long-pressable links must retain native browser semantics');
   }
+  // Russian qB-native helper actions: don't allow a single long control to monopolize Settings.
+  await page.locator('#settings-tabs [data-settings-tab="downloads"]').click();
+  await page.waitForSelector('#settings-content .setting-inline-action',{timeout:30000});
+  for(const width of [320,360,390,430]){
+    await page.setViewportSize({width,height:844});await page.waitForTimeout(120);
+    const result=await page.evaluate(()=>{
+      WeiG.MobileAdaptive.fitAdaptiveRails();
+      return[...document.querySelectorAll('#settings-content .setting-inline-action')].filter(button=>button.getClientRects().length).map(button=>{
+        const r=button.getBoundingClientRect(),style=getComputedStyle(button),host=document.getElementById('settings-content');
+        return{text:button.textContent.trim(),width:r.width,height:r.height,left:r.left,right:r.right,maxWidth:Math.min(innerWidth*.65,260),font:parseFloat(style.fontSize),wrap:style.whiteSpace,full:button.scrollWidth<=button.clientWidth+1,hostOverflow:host.scrollWidth-host.clientWidth};
+      });
+    });
+    assert.ok(result.length>0&&result.some(item=>item.text.length>20),`Missing native Russian long actions at ${width}px: ${JSON.stringify(result)}`);
+    assert.ok(result.every(item=>item.full&&item.wrap!=='nowrap'&&item.width<=item.maxWidth+2&&item.height>=34&&item.font>=12&&item.left>=-1&&item.right<=width+1&&item.hostOverflow<=2),`Source-owned Settings action must be bounded and fully wrapped at ${width}px: ${JSON.stringify(result)}`);
+  }
   await page.evaluate(async()=>{await WeiG.I18n.loadWeiGLocale('zh-CN');WeiG.I18n.applyLocale('zh-CN',{reload:false});});
   await page.waitForFunction(()=>document.documentElement.lang==='zh-CN');
   await page.setViewportSize({width:360,height:844});

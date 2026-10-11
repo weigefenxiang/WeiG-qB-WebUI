@@ -24,6 +24,8 @@
     ['.topbar__rail','#app-nav .app-nav__item']
   ];
   var adaptiveScheduled=false,adaptiveObserved=new WeakSet();
+  var adaptiveActionCanvas=document.createElement('canvas'),adaptiveActionContext=adaptiveActionCanvas.getContext('2d');
+  function adaptiveReadableFloor(){var offset=parseFloat(global.getComputedStyle(document.documentElement).getPropertyValue('--font-scale-offset'))||0;return 12+Math.max(0,offset);}
   var adaptiveResizeObserver=global.ResizeObserver?new global.ResizeObserver(scheduleAdaptiveRails):null;
   function fitAdaptiveRail(host,selector){
     host.style.removeProperty('--adaptive-rail-font-size');
@@ -33,11 +35,30 @@
     });
     if(!items.length)return;
     var natural=host.scrollWidth,available=host.clientWidth;
-    var offset=parseFloat(global.getComputedStyle(document.documentElement).getPropertyValue('--font-scale-offset'))||0;
-    var readableFloor=12+Math.max(0,offset);
+    var readableFloor=adaptiveReadableFloor();
     var base=Math.max(readableFloor,...items.map(function(node){return parseFloat(global.getComputedStyle(node).fontSize)||readableFloor;}));
     var target=natural>available+1?Math.max(readableFloor,Math.min(base,base*available/natural)):base;
     host.style.setProperty('--adaptive-rail-font-size',target.toFixed(2)+'px');
+  }
+  // The same responsive/observer owner also sizes intrinsic action labels.
+  // First shrink within the readable font floor; CSS then wraps if still too long.
+  function fitAdaptiveActionLabels(){
+    var host=document.getElementById('settings-content');if(!host)return;
+    if(!adaptiveObserved.has(host)){adaptiveObserved.add(host);if(adaptiveResizeObserver)adaptiveResizeObserver.observe(host);}
+    Array.from(host.querySelectorAll('.setting-inline-action')).forEach(function(button){
+      button.style.removeProperty('--adaptive-action-font-size');
+      if(!isMobile()||!button.getClientRects().length||!adaptiveActionContext)return;
+      var style=global.getComputedStyle(button),label=String(button.textContent||'').trim(),font=parseFloat(style.fontSize),cap=parseFloat(style.maxWidth),parent=button.parentElement;
+      if(!label||!parent||!Number.isFinite(font)||font<=0)return;
+      var outer=Math.min(parent.clientWidth,Number.isFinite(cap)&&cap>0?cap:parent.clientWidth);
+      var available=outer-(parseFloat(style.paddingLeft)||0)-(parseFloat(style.paddingRight)||0)-(parseFloat(style.borderLeftWidth)||0)-(parseFloat(style.borderRightWidth)||0);
+      if(available<=0)return;
+      adaptiveActionContext.font=style.font;
+      var tracking=parseFloat(style.letterSpacing)||0,natural=adaptiveActionContext.measureText(label).width+Math.max(0,label.length-1)*tracking;
+      if(natural<=available+1)return;
+      var floor=adaptiveReadableFloor(),target=Math.max(Math.min(font,floor),Math.min(font,font*available/natural));
+      if(target<font-.1)button.style.setProperty('--adaptive-action-font-size',target.toFixed(2)+'px');
+    });
   }
   function syncAdaptiveRails(){
     adaptiveRailSpecs.forEach(function(spec){
@@ -48,6 +69,7 @@
       }
       fitAdaptiveRail(host,spec[1]);
     });
+    fitAdaptiveActionLabels();
   }
   function scheduleAdaptiveRails(){
     if(adaptiveScheduled)return;
