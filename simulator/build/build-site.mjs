@@ -6,7 +6,7 @@ import {fileURLToPath} from 'node:url';
 import {applyLocaleOverlay} from '../../tools/qb-locale-overlay.mjs';
 import {applyQbSettingsTranslationLkg} from '../../tools/qb-settings-translation-lkg.mjs';
 import {buildStableIndex} from './stable-index.mjs';
-import {publishA73PreviewZip} from '../../tools/pages-plan-download-alias.mjs';
+import {publishDevPreviewZip} from '../../tools/pages-dev-download-alias.mjs';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const projectRoot=path.resolve(here,'../..');
@@ -100,7 +100,7 @@ runNode(path.join(projectRoot,'tools/build-webui-dist.mjs'),[
 ]);
 
 // This is a convenient moving A73 preview, not test-A73 or an immutable Release.
-const a73Preview=await publishA73PreviewZip({siteRoot:out,devSha:devBranch.sha,devVersion:devBranch.version});
+const a73Preview=await publishDevPreviewZip({siteRoot:out,devSha:devBranch.sha,devVersion:devBranch.version});
 if(a73Preview)console.log('Published A73 plan-scoped ZIP preview: '+a73Preview.path+' sha256:'+a73Preview.sha256);
 
 // Top-level Pages metadata is a navigation surface, not the full simulator evidence store.

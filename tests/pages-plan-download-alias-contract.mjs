@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import {publishA73PreviewZip} from '../tools/pages-plan-download-alias.mjs';
+import {publishDevPreviewZip} from '../tools/pages-dev-download-alias.mjs';
 
 const root=await fs.mkdtemp(path.join(os.tmpdir(),'weig-a73-pages-'));
 const sha='a'.repeat(40),dist=path.join(root,'downloads','dev'),file='weig-qb-webui.zip';
@@ -22,9 +22,9 @@ try{
     fs.writeFile(path.join(dist,'VERSION'),'1.2.1\n'),
     writeManifest()
   ]);
-  assert.equal(await publishA73PreviewZip({siteRoot:root,devSha:sha,devVersion:'1.2.2'}),null,'A74 must not silently replace A73 ZIP');
-  await assert.rejects(publishA73PreviewZip({siteRoot:root,devSha:'b'.repeat(40),devVersion:'1.2.1'}),/mismatched/);
-  const result=await publishA73PreviewZip({siteRoot:root,devSha:sha,devVersion:'1.2.1'});
+  assert.equal(await publishDevPreviewZip({siteRoot:root,devSha:sha,devVersion:'1.2.2'}),null,'A new Dev version requires an explicit stage configuration update');
+  await assert.rejects(publishDevPreviewZip({siteRoot:root,devSha:'b'.repeat(40),devVersion:'1.2.1'}),/mismatched/);
+  const result=await publishDevPreviewZip({siteRoot:root,devSha:sha,devVersion:'1.2.1'});
   assert.equal(result.path,'downloads/dev/A73/'+file);
   const target=path.join(dist,'A73'),named='weig-qb-webui-A73.zip';
   assert.deepEqual(result.paths,['downloads/dev/A73/'+file,'downloads/dev/A73/'+named]);
@@ -34,7 +34,7 @@ try{
   assert.deepEqual(JSON.parse(await fs.readFile(path.join(target,'preview.json'),'utf8')),
     {schemaVersion:1,kind:'moving-plan-preview',plan:'A73',mutable:true,channel:'dev',gitSha:sha,version:'1.2.1',archive:file,archives:[file,named],sha256:digest,bytes:zip.length});
   await fs.writeFile(path.join(dist,file),Buffer.from('tampered ZIP'));
-  await assert.rejects(publishA73PreviewZip({siteRoot:root,devSha:sha,devVersion:'1.2.1'}),/differs/,'Tampering must fail closed');
+  await assert.rejects(publishDevPreviewZip({siteRoot:root,devSha:sha,devVersion:'1.2.1'}),/differs/,'Tampering must fail closed');
   console.log('A73 Pages alias contract passed: exact SHA, identical checksum-verified ZIP, mutable preview semantics, no A74 masquerade.');
 }finally{
   await fs.rm(root,{recursive:true,force:true});
