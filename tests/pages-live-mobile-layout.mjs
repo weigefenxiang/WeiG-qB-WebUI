@@ -614,6 +614,34 @@ try{
   });
   assert.ok(deRail.pageOverflow<=1&&deRail.railOverflow==='auto'&&deRail.labelWidths.every(v=>v.scroll<=v.width+1&&v.font>=12),
     'A73 German complete labels must fit their independently scrollable rail: '+JSON.stringify(deRail));
+
+  // A74: assert the deployed CSS with test-only DOM; no WebUI business state is altered.
+  for(const width of [320,360,390,430]){
+    await page.setViewportSize({width,height:844});
+    const a74Geometry=await page.evaluate(()=>{
+      const root=document.createElement('div');
+      root.style.cssText='position:absolute;top:-4000px;left:0;width:100%;pointer-events:none';
+      const transfer=document.createElement('div');transfer.className='transfer-stats';transfer.style.width=Math.max(230,innerWidth-60)+'px';
+      const make=(text,value)=>{const card=document.createElement('div'),label=document.createElement('small'),num=document.createElement('strong');card.className='transfer-stat';label.textContent=text;num.textContent=value;card.append(label,num);transfer.appendChild(card);return{card,label,num};};
+      const short=make('DHT','7'),long=make('Long localized text that needs more than one row in a narrow card','123456789');
+      long.card.style.width='136px';
+      const perf=document.createElement('div');perf.className='settings-grid diagnostic-grid';perf.style.width=Math.max(230,innerWidth-60)+'px';
+      for(let i=0;i<6;i++){const fact=document.createElement('div');fact.className='diagnostic-fact';fact.textContent='Long translated diagnostic card label '+i;perf.appendChild(fact);}
+      root.append(transfer,perf);document.body.appendChild(root);
+      const box=node=>node.getBoundingClientRect();
+      const labelStyle=getComputedStyle(long.label),lineHeight=parseFloat(labelStyle.lineHeight)||parseFloat(labelStyle.fontSize)*1.25;
+      const proof={width:innerWidth,transferDisplay:getComputedStyle(short.card).display,shortAligned:Math.abs(box(short.label).bottom-box(short.num).bottom)<6,
+        longWrap:box(long.label).height>lineHeight*1.3,longOverflow:long.card.scrollWidth-long.card.clientWidth,
+        perfWidth:perf.getBoundingClientRect().width,columns:getComputedStyle(perf).gridTemplateColumns.trim().split(/\\s+/).length,
+        perfOverflow:[...perf.children].some(x=>x.scrollWidth>x.clientWidth+2)};
+      root.remove();return proof;
+    });
+    const expectedColumns=a74Geometry.perfWidth>=272?2:1;
+    assert.ok(a74Geometry.transferDisplay==='flex'&&a74Geometry.shortAligned&&a74Geometry.longWrap&&a74Geometry.longOverflow<=2&&
+      a74Geometry.columns===expectedColumns&&!a74Geometry.perfOverflow,
+      'A74 live responsive stats/performance layout at '+width+'px: '+JSON.stringify(a74Geometry));
+  }
+  await page.setViewportSize({width:360,height:844});
   assert.deepEqual(errors,[],`deployed mobile layout produced browser errors: ${errors.join('\n')}`);
   await context.close();
   console.log(`Virtual qB Pages mobile layout acceptance passed for ${expectedSha}: stacked progress, single-line pager/actions, RSS header actions + Add Feed dialog, Header-owned Logs search layout, a single-row source-derived Settings rail, and a Drawer with fixed telemetry plus hidden mobile version metadata.`);
