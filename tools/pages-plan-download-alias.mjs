@@ -10,6 +10,7 @@ export async function publishA73PreviewZip({siteRoot,devSha,devVersion}){
   const dist=path.join(siteRoot,'downloads','dev');
   const manifest=JSON.parse(await fs.readFile(path.join(dist,'manifest.json'),'utf8'));
   const archive='weig-qb-webui.zip';
+  const archives=[archive,'weig-qb-webui-A73.zip'];
   const artifact=manifest.artifacts?.zip;
   if(manifest.schemaVersion!==6||manifest.kind!=='materialized-webui-dist'
     ||manifest.gitSha!==devSha||manifest.version!==devVersion||manifest.zipArchive!==archive
@@ -25,14 +26,15 @@ export async function publishA73PreviewZip({siteRoot,devSha,devVersion}){
     throw new Error('A73 preview ZIP differs from the exact-SHA dev distribution');
   const target=path.join(dist,'A73');
   await fs.mkdir(target,{recursive:true});
-  await fs.writeFile(path.join(target,archive),bytes);
-  await fs.writeFile(path.join(target,'SHA256SUMS'),actual+'  '+archive+'\n','utf8');
+  // Both Pages names contain the same exact-SHA, manifest-verified Dev ZIP.
+  for(const name of archives)await fs.writeFile(path.join(target,name),bytes);
+  await fs.writeFile(path.join(target,'SHA256SUMS'),archives.map(name=>actual+'  '+name).join('\n')+'\n','utf8');
   await fs.writeFile(path.join(target,'GIT_SHA'),devSha+'\n','utf8');
   await fs.writeFile(path.join(target,'VERSION'),devVersion+'\n','utf8');
   await fs.writeFile(path.join(target,'preview.json'),JSON.stringify({
     schemaVersion:1,kind:'moving-plan-preview',plan:'A73',mutable:true,
     channel:'dev',gitSha:devSha,version:devVersion,
-    archive,sha256:actual,bytes:bytes.length
+    archive,archives,sha256:actual,bytes:bytes.length
   },null,2)+'\n','utf8');
-  return{path:'downloads/dev/A73/'+archive,sha256:actual,bytes:bytes.length};
+  return{path:'downloads/dev/A73/'+archive,paths:archives.map(name=>'downloads/dev/A73/'+name),sha256:actual,bytes:bytes.length};
 }

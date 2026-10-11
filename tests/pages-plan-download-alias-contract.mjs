@@ -26,12 +26,13 @@ try{
   await assert.rejects(publishA73PreviewZip({siteRoot:root,devSha:'b'.repeat(40),devVersion:'1.2.1'}),/mismatched/);
   const result=await publishA73PreviewZip({siteRoot:root,devSha:sha,devVersion:'1.2.1'});
   assert.equal(result.path,'downloads/dev/A73/'+file);
-  const target=path.join(dist,'A73');
-  assert.deepEqual(await fs.readFile(path.join(target,file)),zip,'Alias must contain identical verified bytes');
-  assert.equal(await fs.readFile(path.join(target,'SHA256SUMS'),'utf8'),digest+'  '+file+'\n');
+  const target=path.join(dist,'A73'),named='weig-qb-webui-A73.zip';
+  assert.deepEqual(result.paths,['downloads/dev/A73/'+file,'downloads/dev/A73/'+named]);
+  for(const name of [file,named])assert.deepEqual(await fs.readFile(path.join(target,name)),zip,'Both Pages names must contain the same verified payload');
+  assert.equal(await fs.readFile(path.join(target,'SHA256SUMS'),'utf8'),digest+'  '+file+'\n'+digest+'  '+named+'\n');
   assert.equal((await fs.readFile(path.join(target,'GIT_SHA'),'utf8')).trim(),sha);
   assert.deepEqual(JSON.parse(await fs.readFile(path.join(target,'preview.json'),'utf8')),
-    {schemaVersion:1,kind:'moving-plan-preview',plan:'A73',mutable:true,channel:'dev',gitSha:sha,version:'1.2.1',archive:file,sha256:digest,bytes:zip.length});
+    {schemaVersion:1,kind:'moving-plan-preview',plan:'A73',mutable:true,channel:'dev',gitSha:sha,version:'1.2.1',archive:file,archives:[file,named],sha256:digest,bytes:zip.length});
   await fs.writeFile(path.join(dist,file),Buffer.from('tampered ZIP'));
   await assert.rejects(publishA73PreviewZip({siteRoot:root,devSha:sha,devVersion:'1.2.1'}),/differs/,'Tampering must fail closed');
   console.log('A73 Pages alias contract passed: exact SHA, identical checksum-verified ZIP, mutable preview semantics, no A74 masquerade.');
