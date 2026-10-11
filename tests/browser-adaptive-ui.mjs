@@ -36,30 +36,29 @@ for(const width of [320,390,430]){
     assert(bounds&&bounds.width>40&&bounds.height>20,`${name}: Russian action rail has no wheel target`);
     const extent=await rail.evaluate(node=>Math.max(0,node.scrollWidth-node.clientWidth));
     assert(extent>5,`${name}: 320px Russian action rail must expose real horizontal overflow`);
+    // Previous UI interactions emit real Feedback toasts. Their owned surface is
+    // intentionally interactive; acknowledge it through the actual dismiss button
+    // before validating an unrelated Pager wheel target. Do not bypass the toast.
+    for(let i=0;i<5;i++){
+      const dismiss=page.locator('.feedback-toast:not(.is-leaving) .feedback-toast__dismiss').first();
+      if(!(await dismiss.count()))break;
+      await dismiss.click();
+    }
+    await page.waitForFunction(()=>!document.querySelector('.feedback-toast:not(.is-leaving)'));
     const point={x:bounds.x+bounds.width/2,y:bounds.y+bounds.height/2};
-    const hitProbe=await page.evaluate(({x,y})=>{
-      const rail=document.getElementById('mobile-pager-actions-slot');
-      const trace=window.__a73WheelHit={documentEvents:0,railEvents:0,target:'',dx:null,defaultPrevented:false};
-      document.addEventListener('wheel',function(event){
-        trace.documentEvents++;trace.target=event.target?.id||String(event.target?.className||event.target?.tagName||'');
-        trace.dx=event.deltaX;trace.defaultPrevented=event.defaultPrevented;
-      },{capture:true,passive:true,once:true});
-      rail.addEventListener('wheel',function(){trace.railEvents++;},{passive:true,once:true});
-      return document.elementsFromPoint(x,y).slice(0,8).map(el=>({
-        tag:el.tagName,id:el.id,classes:String(el.className||'').slice(0,150),
-        disabled:!!el.disabled,pointer:getComputedStyle(el).pointerEvents,
-        inRail:el===rail||rail.contains(el)
-      }));
+    const hit=await page.evaluate(({x,y})=>{
+      const rail=document.getElementById('mobile-pager-actions-slot'),target=document.elementFromPoint(x,y);
+      return{target:target?.id||String(target?.className||target?.tagName||''),
+        inside:!!target&&(target===rail||rail.contains(target))};
     },point);
+    assert(hit.inside,`${name}: native wheel must target the action rail after UI-owned Feedback dismissal ${JSON.stringify(hit)}`);
     await page.mouse.move(point.x,point.y);
     await page.mouse.wheel(1000,0);
-    await page.waitForFunction(()=>document.getElementById('mobile-pager-actions-slot')?.scrollLeft>0,null,{timeout:1200}).catch(()=>{});
+    await page.waitForFunction(()=>document.getElementById('mobile-pager-actions-slot')?.scrollLeft>0,null,{timeout:1200});
     const reached=await rail.evaluate(node=>{
       const host=node.getBoundingClientRect(),last=document.getElementById('delete-btn')?.getBoundingClientRect();
-      return{scrollLeft:node.scrollLeft,extent:node.scrollWidth-node.clientWidth,hostRight:host.right,lastRight:last?.right,
-        sameNode:node===document.getElementById('mobile-pager-actions-slot'),wheel:window.__a73WheelHit};
+      return{scrollLeft:node.scrollLeft,extent:node.scrollWidth-node.clientWidth,hostRight:host.right,lastRight:last?.right};
     });
-    reached.hitStack=hitProbe;
     assert(reached.scrollLeft>0&&reached.lastRight<=reached.hostRight+2,
       `${name}: real horizontal wheel must reveal final Russian Delete control ${JSON.stringify(reached)}`);
   }
