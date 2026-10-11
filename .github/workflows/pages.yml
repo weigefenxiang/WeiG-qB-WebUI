@@ -414,7 +414,8 @@ jobs:
           test "$(jq -r .conclusion <<<"$record")" = success || { echo 'Dev exact-SHA CI did not PASS.' >&2; exit 1; }
           run_id="$(jq -r .id <<<"$record")"
           gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/jobs?per_page=100" |
-            jq -e '([.jobs[] | select(.conclusion=="success") | .name] as $passed |
+            jq -e --arg sha "$GITHUB_SHA" '(.total_count<=100) and (.jobs | all(.head_sha==$sha)) and
+              ([.jobs[] | select(.conclusion=="success") | .name] as $passed |
               (["smoke","Linux semantic UI · adaptive-ui","Linux semantic UI · runtime"] |
               all(. as $name | $passed | index($name)!=null)))' >/dev/null ||
               { echo 'Required Dev browser and smoke gates did not PASS.' >&2; exit 1; }
