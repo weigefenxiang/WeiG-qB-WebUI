@@ -129,7 +129,7 @@ const a74ResponsiveProof=await page.evaluate(()=>{
   const short=make('DHT','7'),shortLabel=short.querySelector('small').getBoundingClientRect(),shortValue=short.querySelector('strong').getBoundingClientRect();
   const sameBaseline=Math.abs(shortLabel.bottom-shortValue.bottom)<6;
   const long=make('An exceptionally long localized diagnostic description that must wrap','1234',112),label=long.querySelector('small');
-  const longWrap=label.getBoundingClientRect().height>parseFloat(getComputedStyle(label).lineHeight||'16')*1.3;
+  const style=getComputedStyle(label),lineHeight=parseFloat(style.lineHeight)||parseFloat(style.fontSize)*1.25;const longWrap=label.getBoundingClientRect().height>lineHeight*1.3;
   const overflow=long.scrollWidth-long.clientWidth;
   short.remove();long.remove();
   const host=document.createElement('div');host.className='settings-grid diagnostic-grid';host.style.cssText='position:absolute;top:-2000px;left:0;width:290px;max-width:none';
