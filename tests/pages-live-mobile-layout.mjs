@@ -299,6 +299,29 @@ try{
     assert.ok(rail.documentOverflow<=1,`Settings rail must not create page-level horizontal overflow at ${width}px: ${JSON.stringify(rail)}`);
     if(width===320)assert.ok(rail.hostOverflow>20,`narrow mobile Settings must overflow only inside its horizontal rail: ${JSON.stringify(rail)}`);
   }
+  // A73: About label/value must share a visual line whenever their combined text fits;
+  // long localized actions wrap as whole controls, never squeeze 1.2.1 to 1...
+  await page.locator('#settings-tabs [data-settings-tab="about"]').click();
+  await page.waitForSelector('#settings-content .about-surface .fact-row');
+  for(const width of [320,360,390,430]){
+    await page.setViewportSize({width,height:844});await page.waitForTimeout(90);
+    const rows=await page.evaluate(()=>[...document.querySelectorAll('#settings-content .about-surface .fact-row')].map(row=>{
+      const label=row.querySelector('strong'),value=row.querySelector('.fact-value'),action=row.querySelector('.fact-action');
+      const lr=label?.getBoundingClientRect(),vr=value?.getBoundingClientRect(),ar=action?.getBoundingClientRect();
+      const inside=n=>{const r=n.getBoundingClientRect();return r.left>=-1&&r.right<=innerWidth+1;};
+      return{label:label?.textContent.trim(),value:value?.textContent.trim(),sameLine:!!lr&&!!vr&&Math.abs(lr.top-vr.top)<=3,visible:value?.scrollWidth<=value?.clientWidth+2,actionInside:!action||inside(action),valueInside:!!value&&inside(value),native:row.querySelector('.fact-value--link')?.tagName||null,actionTag:action?.tagName||null,actionTop:ar?.top||0};
+    }));
+    for(const title of ['qBittorrent','WebAPI','Version','Git SHA']){
+      const item=rows.find(x=>x.label===title);
+      assert.ok(item&&item.sameLine&&item.visible&&item.valueInside,`A73 About ${title} value must stay fully visible immediately after label at ${width}px: ${JSON.stringify(rows)}`);
+    }
+    assert.ok(rows.filter(x=>x.actionTag).every(x=>x.actionInside),'About actions must wrap as whole buttons/links inside mobile viewport: '+JSON.stringify(rows));
+    assert.equal(rows.filter(x=>x.native==='A').length,3,'External About values must be native links');
+    assert.equal(rows.filter(x=>x.actionTag==='A').length,1,'Feedback action must offer the browser native long-press link menu');
+  }
+  await page.setViewportSize({width:360,height:844});
+  await page.locator('#settings-tabs [data-settings-tab="weig"]').click();
+  await page.waitForSelector('#settings-content .setting-row[data-setting-key="weig_theme"]');
   await page.setViewportSize({width:320,height:844});
   await page.evaluate(()=>{const buttons=[...document.querySelectorAll('#settings-tabs [data-settings-tab]')];buttons.at(-1)?.click();});
   await page.waitForTimeout(220);
