@@ -383,7 +383,44 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: '22'
+      - name: Require exact-SHA successful Dev CI
+        id: gate
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          echo 'approved=false' >> "$GITHUB_OUTPUT"
+          if [ "$(cat VERSION)" != "1.2.1" ]; then
+            echo 'Dev has advanced beyond A73; do not touch the A73 prerelease.'
+            exit 0
+          fi
+          head="$(gh api "repos/$GITHUB_REPOSITORY/branches/dev" --jq '.commit.sha')"
+          if [ "$head" != "$GITHUB_SHA" ]; then
+            echo "Superseded Dev SHA $GITHUB_SHA; leave its release unchanged."
+            exit 0
+          fi
+          record=""
+          for attempt in $(seq 1 60); do
+            record="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?branch=dev&event=push&per_page=100" |
+              jq -c --arg sha "$GITHUB_SHA" '[.workflow_runs[] | select(.head_sha == $sha && .event == "push")] | sort_by(.id) | last // empty')"
+            if [ -n "$record" ]; then
+              state="$(jq -r .status <<<"$record")"
+              if [ "$state" = completed ]; then break; fi
+            fi
+            sleep 10
+          done
+          test -n "$record" || { echo 'Missing Dev exact-SHA CI.' >&2; exit 1; }
+          test "$(jq -r .conclusion <<<"$record")" = success || { echo 'Dev exact-SHA CI did not PASS.' >&2; exit 1; }
+          run_id="$(jq -r .id <<<"$record")"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/jobs?per_page=100" |
+            jq -e '([.jobs[] | select(.conclusion=="success") | .name] as $passed |
+              (["smoke","Linux semantic UI · adaptive-ui","Linux semantic UI · runtime"] |
+              all(. as $name | $passed | index($name)!=null)))' >/dev/null ||
+              { echo 'Required Dev browser and smoke gates did not PASS.' >&2; exit 1; }
+          echo 'approved=true' >> "$GITHUB_OUTPUT"
       - name: Publish only exact verified Dev A73
+        if: ${{ steps.gate.outputs.approved == 'true' }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: node tools/publish-dev-a73.mjs
