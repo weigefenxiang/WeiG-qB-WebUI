@@ -309,12 +309,13 @@ try{
       const label=row.querySelector('strong'),value=row.querySelector('.fact-value'),action=row.querySelector('.fact-action');
       const lr=label?.getBoundingClientRect(),vr=value?.getBoundingClientRect(),ar=action?.getBoundingClientRect();
       const inside=n=>{const r=n.getBoundingClientRect();return r.left>=-1&&r.right<=innerWidth+1;};
-      return{label:label?.textContent.trim(),value:value?.textContent.trim(),sameLine:!!lr&&!!vr&&Math.abs(lr.top-vr.top)<=3,visible:value?.scrollWidth<=value?.clientWidth+2,actionInside:!action||inside(action),valueInside:!!value&&inside(value),native:row.querySelector('.fact-value--link')?.tagName||null,actionTag:action?.tagName||null,actionTop:ar?.top||0};
+      return{label:label?.textContent.trim(),value:value?.textContent.trim(),sameLine:!!lr&&!!vr&&Math.abs((lr.top+lr.bottom)/2-(vr.top+vr.bottom)/2)<=3,visible:value?.scrollWidth<=value?.clientWidth+2,actionInside:!action||inside(action),valueInside:!!value&&inside(value),native:row.querySelector('.fact-value--link')?.tagName||null,actionTag:action?.tagName||null,actionTop:ar?.top||0};
     }));
-    for(const title of ['qBittorrent','WebAPI','Version','Git SHA']){
+    for(const title of ['qBittorrent','WebAPI','Version']){
       const item=rows.find(x=>x.label===title);
       assert.ok(item&&item.sameLine&&item.visible&&item.valueInside,`A73 About ${title} value must stay fully visible immediately after label at ${width}px: ${JSON.stringify(rows)}`);
     }
+    assert.ok(rows.find(x=>x.label==='Git SHA')?.visible&&rows.find(x=>x.label==='Git SHA')?.valueInside,'Long Git SHA must wrap inside the row without truncation');
     assert.ok(rows.filter(x=>x.actionTag).every(x=>x.actionInside),'About actions must wrap as whole buttons/links inside mobile viewport: '+JSON.stringify(rows));
     assert.equal(rows.filter(x=>x.native==='A').length,3,'External About values must be native links');
     assert.equal(rows.filter(x=>x.actionTag==='A').length,1,'Feedback action must offer the browser native long-press link menu');

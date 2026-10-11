@@ -207,13 +207,13 @@ try{
   assert(aboutIdentity.value==='—'&&!aboutIdentity.text.includes('__WEIG_GIT_SHA__'),'About must not expose the source Git SHA sentinel as a fake materialized build identity: '+JSON.stringify(aboutIdentity));
   const bugReportButton=page.locator('#settings-content [data-bug-report-owner="canonical"] .fact-action');
   assert(await bugReportButton.count()===1,'About must expose exactly one canonical Bug feedback action');
-  assert.equal(await bugReportButton.evaluate(node=>node.tagName),'A','Bug report must be a native long-pressable link');
-  assert.equal(await bugReportButton.getAttribute('target'),'_blank');
-  assert.ok((await bugReportButton.getAttribute('rel')).includes('noopener'));
+  assert((await bugReportButton.evaluate(node=>node.tagName))==='A','Bug report must be a native long-pressable link');
+  assert((await bugReportButton.getAttribute('target'))==='_blank','Bug report must open in a separate browser tab');
+  assert((await bugReportButton.getAttribute('rel')).includes('noopener'));
   const bugReportUrl=await bugReportButton.getAttribute('href');
   const ordinaryAboutLinks=await page.evaluate(()=>[...document.querySelectorAll('#settings-content .fact-value--link')].map(a=>({tag:a.tagName,href:a.href,target:a.target,rel:a.rel,icon:a.querySelector('.fact-external-icon')?.getAttribute('aria-hidden'),label:a.querySelector('.fact-value__text')?.textContent}))); 
-  assert.equal(ordinaryAboutLinks.length,3,'GitHub/Blog/License values must be whole native links');
-  assert.ok(ordinaryAboutLinks.every(x=>x.tag==='A'&&x.href.startsWith('https://')&&x.target==='_blank'&&x.rel.includes('noopener')&&x.icon==='true'&&x.label),'Links must preserve native browser long-press semantics: '+JSON.stringify(ordinaryAboutLinks));
+  assert(ordinaryAboutLinks.length===3,'GitHub/Blog/License values must be whole native links');
+  assert(ordinaryAboutLinks.every(x=>x.tag==='A'&&x.href.startsWith('https://')&&x.target==='_blank'&&x.rel.includes('noopener')&&x.icon==='true'&&x.label),'Links must preserve native browser long-press semantics: '+JSON.stringify(ordinaryAboutLinks));
   const bugReportFacts=(()=>{const url=new URL(bugReportUrl);return{host:url.host,path:url.pathname,template:url.searchParams.get('template'),surface:url.searchParams.get('surface'),weig:url.searchParams.get('weig_version'),qb:url.searchParams.get('qb_version'),browser:url.searchParams.get('browser_os'),raw:url.toString()};})();
   assert(bugReportFacts.host==='github.com'&&bugReportFacts.path==='/weigefenxiang/WeiG-qB-WebUI/issues/new'&&bugReportFacts.template==='bug_report.yml','About Bug feedback must open the canonical GitHub Issue Form: '+JSON.stringify(bugReportFacts));
   assert(bugReportFacts.surface==='Desktop'&&bugReportFacts.weig===productVersion&&bugReportFacts.qb==='v'+exactProfile.qbVersion&&bugReportFacts.browser,'About Bug feedback must prefill current surface/product/qB/browser without asking the reporter to retype them: '+JSON.stringify(bugReportFacts));
