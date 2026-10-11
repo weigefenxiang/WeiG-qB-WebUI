@@ -116,7 +116,7 @@ jobs:
                 "Linux semantic UI · torrent-workspace",
                 "Linux semantic UI · adaptive-ui",
                 "qB admitted Settings browser aggregate"
-              ] + [range(0;16) | "qB admitted Settings browser shard \\(.)"]) as $required |
+              ] + [range(0;16) | ("qB admitted Settings browser shard " + tostring)]) as $required |
               ($required | all(. as $name | $passed | index($name) != null))))
           ' <<<"$jobs" || { echo 'A73 exact SHA lacks required Linux UI or Settings browser shard jobs.' >&2; exit 1; }
       - name: Materialize exact-SHA WebUI archive with canonical builder
