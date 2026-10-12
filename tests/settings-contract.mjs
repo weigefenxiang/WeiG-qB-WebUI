@@ -134,9 +134,9 @@ a74TestLocale='zh-HK';const a74HongKong={isConnected:true,href:''};
 await a74Reporter.prepareLink({},a74HongKong);
 assert(new URL(a74HongKong.href).searchParams.get('template')==='bug_report_zh-TW.yml'&&new URL(a74HongKong.href).searchParams.get('webui_locale')==='zh-HK','Traditional Hong Kong display may share template while preserving actual WebUI locale');
 a74TestLocale='zh-CN';const missingLocalized={isConnected:true,href:''};
-assert.equal(await a74Reporter.prepareLink({},missingLocalized),false,'A missing Main language form must not be requested by filename');
-assert.equal(new URL(a74Reporter.issueUrl({})).searchParams.get('template'),'bug_report.yml','Missing Main template falls back to the existing English form');
-assert.equal(a74LookupCount,1,'All locale checks share one Main inventory request');
+assert((await a74Reporter.prepareLink({},missingLocalized))===false,'A missing Main language form must not be requested by filename');
+assert(new URL(a74Reporter.issueUrl({})).searchParams.get('template')==='bug_report.yml','Missing Main template falls back to the existing English form');
+assert(a74LookupCount===1,'All locale checks share one Main inventory request');
 a74TestLocale='it';
 assert(new URL(a74Reporter.issueUrl({})).searchParams.get('template')==='bug_report.yml'&&new URL(a74Reporter.issueUrl({})).searchParams.get('problem')==='WebUI language: it\n\n','Unsupported locales must use English while recording the selected locale');
 
