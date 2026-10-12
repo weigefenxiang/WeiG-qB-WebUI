@@ -214,6 +214,19 @@ try{
   });
   assert(a75DialogFrame.frame==='scroll'&&a75DialogFrame.dialogBottom<=a75DialogFrame.viewport-8&&a75DialogFrame.footerBottom<=a75DialogFrame.viewport-8&&a75DialogFrame.bodyBottom<=a75DialogFrame.footerTop+2&&a75DialogFrame.scrollable&&a75DialogFrame.scrollTop>0&&a75DialogFrame.lastBottom<=a75DialogFrame.bodyBottom+2,
     'Mobile Density Dialog must retain a visible Footer and scroll all content inside Body: '+JSON.stringify(a75DialogFrame));
+  // A75-13: short and narrow visual viewports must not hide the shared Footer.
+  for(const [width,height] of [[320,568],[430,680]]){
+    await page.setViewportSize({width,height});
+    const proof=await page.evaluate(()=>{
+      const root=document.querySelector('dialog.density-dialog[open]'),body=root.querySelector(':scope>.dialog__body'),footer=root.querySelector(':scope>.dialog__actions');
+      body.scrollTop=body.scrollHeight;
+      const last=body.querySelector('.density-dialog__preview-pane:last-child .density-dialog__sample:last-child');
+      const d=root.getBoundingClientRect(),b=body.getBoundingClientRect(),f=footer.getBoundingClientRect(),l=last.getBoundingClientRect();
+      return{viewport:visualViewport?.height||innerHeight,dialogBottom:d.bottom,bodyBottom:b.bottom,footerTop:f.top,footerBottom:f.bottom,lastBottom:l.bottom,scrollTop:body.scrollTop};
+    });
+    assert(proof.dialogBottom<=proof.viewport-8&&proof.footerBottom<=proof.viewport-8&&proof.bodyBottom<=proof.footerTop+2&&proof.lastBottom<=proof.bodyBottom+2&&proof.scrollTop>0,
+      'A75-13 mobile dialog scroll+footer at '+width+'x'+height+': '+JSON.stringify(proof));
+  }
   await page.setViewportSize({width:1366,height:900});
 
   await page.locator('.density-dialog__preset').first().click();
