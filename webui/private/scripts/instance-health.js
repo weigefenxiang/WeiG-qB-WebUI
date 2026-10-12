@@ -52,7 +52,7 @@
     finally{clearTimeout(timeout);}
   }
   function numericCount(text){var s=String(text||'').trim(),n=Number(s);return /^\d+$/.test(s)&&Number.isSafeInteger(n)&&n>=0?n:null;}
-  function verifiedVersion(value){return /^(?:[1-9]\d*)(?:\.\d+){1,3}(?:[-+._][A-Za-z0-9.-]+)?$/.test(String(value||'').trim());}
+  function verifiedVersion(value){return /^v?(?:[1-9]\d*)(?:\.\d+){1,3}(?:[-+._][A-Za-z0-9.-]+)?$/i.test(String(value||'').trim());}
   // An opaque response has no inspectable HTTP status or body; never call it qB online.
   async function reachable(url){
     var controller=new AbortController(),timeout=setTimeout(function(){controller.abort();},5000);
