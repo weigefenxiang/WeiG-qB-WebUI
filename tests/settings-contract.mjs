@@ -218,3 +218,14 @@ const a75QmOwner=read('tools/qb-settings-native-bundle.mjs');
 assert(a75QmOwner.includes("behavior.altWebuiTranslation===true&&behavior.translatorResource==='active-webui-root/translations/webui_<locale>.qm'"),'QM asset requirement must follow proven upstream disk loader');
 assert(a75QmOwner.includes('const set=requiredQmRefs.get(locale)||new Set()')&&a75QmOwner.includes('if(native){'),'Official QM must be provisioned for dedicated fallback locales, not merely native Copy routes');
 assert(a75QmOwner.includes('const item=unionMap.get(identity);if(!item)continue;'),'Do not invent native QM translations without official recovery evidence');
+
+
+// A75-11: virtual row pitch and CSS border-box must share symmetric, policy-derived block padding.
+const a75DesktopCss=read('webui/private/css/app.css');
+assert(a75DesktopCss.includes('.torrent-row{box-sizing:border-box;padding-block:var(--weig-torrent-row-padding-block,6px);'),'Desktop torrent row box must equal DataViewport pitch and center content in both block directions');
+a75Density.apply({overall:8,torrent:null,logs:null},2);
+assert(a75Density.height('torrent',56,40)===64&&a75Density.padding('torrent',6,56,40)===10,'+8px must add 4px to both top and bottom of the original row');
+a75Density.apply({overall:-16,torrent:null,logs:null},2);
+assert(a75Density.height('torrent',56,40)===40&&a75Density.padding('torrent',6,56,40)===0,'Compact density must reduce symmetric padding without negative values');
+a75Density.apply({overall:0,torrent:null,logs:null},2);
+assert(a75Density.padding('torrent',6,56,40)===6,'Standard density must preserve original symmetric padding');
