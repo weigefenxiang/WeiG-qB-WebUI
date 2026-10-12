@@ -479,6 +479,7 @@
     "instances.rename": "Переименовать",
     "instances.reachable": "Адрес доступен · qB не подтверждён",
     "instances.loopbackWarning": "127.0.0.1 / localhost — это устройство с браузером, а не удалённый сервер.",
+    "instances.lastVerified": "Последняя проверка: {time}",
     "instances.add": "Добавить",
     "instances.refresh": "Проверить сейчас",
     "instances.manage": "Управление экземплярами",

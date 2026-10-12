@@ -18,6 +18,7 @@ assert.ok(ui.includes('R.importList(json)')&&ui.includes('importOffered'),'Untru
 assert.ok(!ui.includes("function openInterval(")&&!ui.includes("sidebar-instances__interval"),'Instance interval must be owned only by Settings');
 assert.ok(read('webui/private/scripts/settings.js').includes("instanceCheckRow()"),'Settings must own the interval row');
 assert.ok(ui.includes("addEventListener('weig:instance-health',updateHealth)")&&ui.includes('liveRows.forEach(paintHealth)'),'Health events must preserve row DOM, focus and context menu');
+assert.ok(health.includes('lastVerifiedAt')&&health.includes("row.status!=='online'"),'History is a bounded previous WebAPI proof, never stored as live online');
 assert.ok(health.includes("global.addEventListener('weig:app-ready'")&&health.includes('inspect(url).then'),'Current qB must reconcile even when initial remote probe is in flight');
 assert.ok(ui.includes('syncAddressHint')&&ui.includes('loopbackWarning'),'Loopback addresses require an explicit user-facing browser-device hint');
 assert.ok(ui.includes('bindContextMenuTrigger')&&ui.includes('R.update(')&&ui.includes('currentSuffix'),'Reuse shared ContextMenu and registry identity for rename');
@@ -72,7 +73,7 @@ const coreI18n=read('webui/private/scripts/i18n.js');
 const enMatch=coreI18n.match(/\bvar EN=(\{[^\n]+\});/);
 assert.ok(enMatch,'Canonical English WeiG dictionary must be present');
 const english=JSON.parse(enMatch[1]),instanceKeys=Object.keys(english).filter(k=>k.startsWith('instances.')).sort();
-assert.equal(instanceKeys.length,27,'The instance feature must have one complete semantic English dictionary');
+assert.equal(instanceKeys.length,28,'The instance feature must have one complete semantic English dictionary');
 const placeholders=s=>[...String(s).matchAll(/\{([a-z]+)\}/g)].map(m=>m[1]).sort();
 for(const locale of ['de','es','fr','ja','ko','pt','ru','zh-CN','zh-TW']){
   const file=JSON.parse(read('webui/private/data/weig-i18n/'+locale+'.json'));

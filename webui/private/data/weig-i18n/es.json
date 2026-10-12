@@ -472,6 +472,7 @@
     "instances.rename": "Cambiar nombre",
     "instances.reachable": "Dirección accesible · qB sin verificar",
     "instances.loopbackWarning": "127.0.0.1 / localhost apunta al equipo del navegador, no al servidor remoto.",
+    "instances.lastVerified": "Última verificación: {time}",
     "instances.add": "Añadir",
     "instances.refresh": "Comprobar ahora",
     "instances.manage": "Gestionar instancias",

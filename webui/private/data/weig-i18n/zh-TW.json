@@ -651,6 +651,7 @@
     "instances.rename": "重新命名",
     "instances.reachable": "位址可連線 · 尚未驗證 qB",
     "instances.loopbackWarning": "127.0.0.1 / localhost 指瀏覽器所在裝置，並非遠端伺服器。",
+    "instances.lastVerified": "上次確認上線：{time}",
     "instances.add": "新增",
     "instances.refresh": "立即檢查",
     "instances.manage": "管理執行個體",

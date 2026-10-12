@@ -3,7 +3,33 @@
   var W=global.WeiG=global.WeiG||{},store=W.StorageRuntime&&W.StorageRuntime.local;
   if(W.InstanceHealth)return;
   var KEY=W.StorageKeys&&W.StorageKeys.instanceProbeInterval||'weig.instances.probeMinutes';
+  var HISTORY_KEY=W.StorageKeys&&W.StorageKeys.instanceHealthHistory||'weig.instances.lastVerified.v1',HISTORY_AGE=24*60*60000;
   var lastRun=0,inFlight=null,started=false,results=new Map(),tick=null;
+  // This is a timestamp of a verified WebAPI response, not a persistent online state.
+  function readHistory(){
+    try{
+      var raw=store&&store.get(HISTORY_KEY,null);
+      if(!raw||raw.length>4096)return new Map();
+      var body=JSON.parse(raw);
+      if(!body||body.schemaVersion!==1||!Array.isArray(body.items)||body.items.length>16)return new Map();
+      var rows=new Map(),now=Date.now();
+      body.items.forEach(function(item){
+        if(!item||typeof item.url!=='string'||typeof item.at!=='number'||!Number.isFinite(item.at))return;
+        if(item.at>now||now-item.at>HISTORY_AGE||!/^https?:\/\//.test(item.url))return;
+        rows.set(item.url,item.at);
+      });
+      return rows;
+    }catch(_error){return new Map();}
+  }
+  var history=readHistory();
+  function remember(url,row){
+    if(!row||row.status!=='online')return;
+    var now=Date.now();
+    history.set(String(url),now);
+    var valid=Array.from(history.entries()).filter(function(x){return now>=x[1]&&now-x[1]<=HISTORY_AGE;}).slice(-16);
+    history=new Map(valid);
+    try{if(store)store.set(HISTORY_KEY,JSON.stringify({schemaVersion:1,items:valid.map(function(x){return{url:x[0],at:x[1]};})}));}catch(_e){}
+  }
   function parseMinutes(raw){if(raw===null||raw===undefined||String(raw).trim()==='')return null;var n=Number(raw);return Number.isInteger(n)&&(n===0||n>=5&&n<=1440)?n:null;}
   function minutes(){var value=store&&store.get(KEY,'30'),parsed=parseMinutes(value);return parsed===null?30:parsed;}
   function setMinutes(value){
@@ -15,9 +41,10 @@
   function same(a,b){try{return new URL(a).href===new URL(b).href;}catch(_e){return false;}}
   function current(){return W.InstanceRegistry&&W.InstanceRegistry.currentUrl?W.InstanceRegistry.currentUrl():global.location.origin+'/';}
   function get(url){
-    var row=results.get(String(url||''));if(!row)return null;
+    var key=String(url||''),row=results.get(key),lastVerifiedAt=history.get(key)||null;
     var ttl=Math.max(5,minutes()||30)*2*60000;
-    return Date.now()-row.checkedAt<=ttl?Object.assign({},row):null;
+    if(row&&Date.now()-row.checkedAt<=ttl)return Object.assign({},row,{lastVerifiedAt:lastVerifiedAt});
+    return lastVerifiedAt?{status:'unverified',count:null,checkedAt:0,lastVerifiedAt:lastVerifiedAt}:null;
   }
   async function remoteGet(url,endpoint){
     var api=new URL('api/v2/'+endpoint,url),controller=new AbortController(),timeout=setTimeout(function(){controller.abort();},5000);
@@ -73,7 +100,7 @@
       await Promise.all(Array.from({length:Math.min(2,items.length)},async function(){
         while(cursor<items.length){
           var item=items[cursor++],value=await inspect(item.url);
-          results.set(item.url,value);emit();
+          results.set(item.url,value);remember(item.url,value);emit();
         }
       }));
       return true;
@@ -91,7 +118,7 @@
       // The first full probe may still be in flight. Refresh current qB
       // separately instead of losing this readiness transition to dedupe.
       var url=current();
-      inspect(url).then(function(row){results.set(url,row);emit();}).catch(function(){emit();});
+      inspect(url).then(function(row){results.set(url,row);remember(url,row);emit();}).catch(function(){emit();});
     });
     var session=W.SessionController;
     if(session&&session.ready)session.ready().then(function(ok){if(ok)tickIfDue();}).catch(function(){});

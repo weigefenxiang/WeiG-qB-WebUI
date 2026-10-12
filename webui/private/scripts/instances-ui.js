@@ -45,7 +45,8 @@
     var status=state==='online'?tr('online'):state==='reachable'?tr('reachable'):state==='denied'?tr('denied'):tr('unverified');
     view.dot.dataset.state=state;
     view.total.textContent=count==null?'—':String(count);
-    view.select.title=view.item.name+' · '+view.item.url+' · '+status+(count==null?'':' · '+tr('torrentCount',{count:count}));
+    var previous=health&&health.lastVerifiedAt&&state!=='online'?tr('lastVerified',{time:new Date(health.lastVerifiedAt).toLocaleString()}):'';
+    view.select.title=view.item.name+' · '+view.item.url+' · '+status+(count==null?'':' · '+tr('torrentCount',{count:count}))+(previous?' · '+previous:'');
     view.select.setAttribute('aria-label',view.select.title);
   }
   function updateHealth(){liveRows.forEach(paintHealth);}
