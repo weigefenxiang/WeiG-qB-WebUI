@@ -470,7 +470,7 @@
     "instances.off": "Aus",
     "instances.every": "{minutes} Min.",
     "instances.changeInterval": "Prüfintervall ändern",
-    "instances.online": "Online",
+    "instances.online": "Erreichbar",
     "instances.denied": "Anmeldung erforderlich",
     "instances.unverified": "Nicht überprüfbar",
     "instances.torrentCount": "{count} Torrents",
