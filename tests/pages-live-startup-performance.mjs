@@ -149,7 +149,13 @@ try{
   }));
   assert.equal(bootstrapEvidence.state,'ready','deployed private bootstrap must reach ready before product acceptance');
   assert.deepEqual(bootstrapEvidence.seeds,['scripts/runtime-assets.js'],'private index must own exactly one RuntimeAssets seed');
-  assert.deepEqual([...bootstrapEvidence.scripts].sort(),[...bootstrapScripts].sort(),'RuntimeAssets DOM script ownership must exactly match the deployed bootstrap plan');
+  const startupNames=new Set(bootstrapScripts);
+  const deferredModules=bootstrapEvidence.scripts.filter(name=>!startupNames.has(name));
+  const expectedDeferred=['scripts/instance-registry.js','scripts/instance-health.js','scripts/instances-ui.js'];
+  assert.deepEqual(deferredModules,expectedDeferred,
+    'Deferred Sidebar modules must have exactly one ordered Registry/Health/UI owner');
+  assert.deepEqual(bootstrapEvidence.scripts.filter(name=>startupNames.has(name)).sort(),[...bootstrapScripts].sort(),
+    'RuntimeAssets initial DOM script ownership must exactly match deployed startup plan');
   assert.deepEqual([...bootstrapEvidence.styles].sort(),[...bootstrapPlan.styles].sort(),'RuntimeAssets DOM stylesheet ownership must exactly match the deployed bootstrap plan');
 
   const resourceFor=relative=>bootstrapEvidence.resources.find(entry=>{try{return new URL(entry.name).pathname.endsWith('/dev/app/'+relative);}catch{return false;}});
@@ -174,7 +180,10 @@ try{
   }
 
   const scriptTiming=new Map(bootstrapScripts.map(path=>[path,resourceFor(path)]));assert.ok([...scriptTiming.values()].every(Boolean),'every startup script must have one browser resource timing entry');
-  const scriptTransport=bootstrapEvidence.transport.scripts;
+  const scriptTransport=bootstrapEvidence.transport.scripts.filter(entry=>startupNames.has(entry.path));
+  const deferredTransport=bootstrapEvidence.transport.scripts.filter(entry=>!startupNames.has(entry.path));
+  assert.deepEqual(deferredTransport.map(entry=>entry.path),expectedDeferred,
+    'The one deferred Sidebar feature must not change initial script wave accounting');
   assert.deepEqual(scriptTransport.map(entry=>entry.path),bootstrapScripts,'RuntimeAssets must enqueue startup scripts in canonical phase order');
   let scriptOffset=0,previousScriptPhase=null;
   for(let i=0;i<bootstrapPlan.phases.length;i++){

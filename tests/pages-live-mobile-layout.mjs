@@ -636,7 +636,7 @@ try{
       const labelStyle=getComputedStyle(long.label),lineHeight=parseFloat(labelStyle.lineHeight)||parseFloat(labelStyle.fontSize)*1.25;
       const proof={width:innerWidth,transferDisplay:getComputedStyle(short.card).display,shortAligned:Math.abs(box(short.label).bottom-box(short.num).bottom)<6,
         longWrap:box(long.label).height>lineHeight*1.3,longOverflow:long.card.scrollWidth-long.card.clientWidth,
-        perfWidth:perf.getBoundingClientRect().width,perfDisplay:getComputedStyle(perf).display,columns:getComputedStyle(perf).gridTemplateColumns.trim().split(/\\s+/).length,
+        perfWidth:perf.getBoundingClientRect().width,perfDisplay:getComputedStyle(perf).display,columns:getComputedStyle(perf).gridTemplateColumns.trim().split(/\s+/).length,
         perfOverflow:[...perf.children].some(x=>x.scrollWidth>x.clientWidth+2)};
       root.remove();return proof;
     });
