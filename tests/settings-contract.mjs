@@ -229,3 +229,13 @@ a75Density.apply({overall:-16,torrent:null,logs:null},2);
 assert(a75Density.height('torrent',56,40)===40&&a75Density.padding('torrent',6,56,40)===0,'Compact density must reduce symmetric padding without negative values');
 a75Density.apply({overall:0,torrent:null,logs:null},2);
 assert(a75Density.padding('torrent',6,56,40)===6,'Standard density must preserve original symmetric padding');
+
+// A75-12: mobile card outer box and internal spacing must derive from one effective density height.
+const a75MobilePolicy=a75Density.mobileGeometry(82);
+assert(a75MobilePolicy.height===82&&a75MobilePolicy.gap===2&&a75MobilePolicy.padding===2&&a75MobilePolicy.innerGap===1,'Minimum mobile pitch must compress gaps before text or touch targets');
+assert(a75Density.mobileGeometry(98).gap===6&&a75Density.mobileGeometry(98).padding===5,'Standard mobile density must retain its readable base geometry');
+const a75MobileCss=read('webui/private/css/layout.css');
+assert(a75MobileCss.includes('box-sizing:border-box!important;height:calc(var(--mobile-torrent-row-h) - var(--mobile-torrent-card-gap,6px))!important'),'Card border box must fit inside DataViewport pitch');
+assert(a75MobileCss.includes('gap:var(--mobile-torrent-card-content-gap,2px)!important')&&!a75MobileCss.includes('.torrent-mobile-card{padding-block:4px 7px!important}'),'No conflicting short-screen card padding owner may override the shared density projection');
+const a75MobileResponsive=read('webui/private/scripts/responsive.js');
+assert(a75MobileResponsive.includes('W.DensityPolicy.projectMobile(h)'),'Mobile responsive height must project card geometry via the same density owner');

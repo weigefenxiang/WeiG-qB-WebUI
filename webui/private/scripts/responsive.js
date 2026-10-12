@@ -99,7 +99,7 @@
     global.requestAnimationFrame(function(){adaptiveScheduled=false;syncAdaptiveRails();});
   }
 
-  function mobileRowHeight(){var h=W.DensityPolicy.height('torrent',global.innerHeight<=680?94:98,82);document.documentElement.style.setProperty('--mobile-torrent-row-h',h+'px');return h;}
+  function mobileRowHeight(){var h=W.DensityPolicy.height('torrent',global.innerHeight<=680?94:98,82);return W.DensityPolicy.projectMobile(h);}
   function desktopRowHeight(){return W.DensityPolicy.height('torrent',56,40);}
   function syncTorrentRowHeight(){var list=document.getElementById('torrent-list'),instance=list&&list.__weigTorrentDataViewport;if(!instance||!instance.setRowHeight)return;var next=isMobile()?mobileRowHeight():desktopRowHeight();if(instance.rowHeight!==next)instance.setRowHeight(next);}
 
