@@ -5,7 +5,7 @@
   var REPOSITORY='weigefenxiang/WeiG-qB-WebUI',TEMPLATE='bug_report.yml';
   // Route metadata only; bilingual copy belongs to tools/bug-report-templates.mjs.
   var FORM_ROUTES=Object.freeze({en:TEMPLATE,'zh-CN':'bug_report_zh-CN.yml','zh-TW':'bug_report_zh-TW.yml','zh-HK':'bug_report_zh-TW.yml',ja:'bug_report_ja.yml',ko:'bug_report_ko.yml',de:'bug_report_de.yml',fr:'bug_report_fr.yml',es:'bug_report_es.yml',pt:'bug_report_pt.yml',ru:'bug_report_ru.yml'});
-  var available={},requests={};
+  var available=Object.create(null),listingTask=null;
   function clean(value,max){value=String(value==null?'':value).replace(/\s+/g,' ').trim();return max&&value.length>max?value.slice(0,max):value;}
   function currentSurface(){return U&&typeof U.isMobile==='function'&&U.isMobile()?'Mobile':'Desktop';}
   function browserOS(){var nav=global.navigator||{};return clean(nav.userAgent||'',220);}
@@ -26,11 +26,26 @@
     // problem textarea is the only reliable backward-compatible prefill owner.
     if(effectiveTemplate===TEMPLATE)url.searchParams.set('problem','WebUI language: '+data.webuiLocale+'\n\n');
     return url.toString();}
-  function checkTemplate(filename){if(filename===TEMPLATE)return Promise.resolve(true);if(available[filename]===true)return Promise.resolve(true);
-    if(requests[filename])return requests[filename];
-    var endpoint='https://api.github.com/repos/'+REPOSITORY+'/contents/.github/ISSUE_TEMPLATE/'+encodeURIComponent(filename)+'?ref=main';
-    requests[filename]=Promise.resolve().then(function(){return global.fetch(endpoint,{headers:{Accept:'application/vnd.github+json'},cache:'no-store'});}).then(function(res){available[filename]=!!(res&&res.ok);return available[filename];}).catch(function(){available[filename]=false;return false;});
-    return requests[filename];}
+  // GitHub's directory contents endpoint returns an authoritative Main file
+  // inventory without generating noisy 404 requests for Dev-only languages.
+  // One bounded Promise owns the listing for all active locale routes.
+  function listMainTemplates(){
+    if(listingTask)return listingTask;
+    var endpoint='https://api.github.com/repos/'+REPOSITORY+'/contents/.github/ISSUE_TEMPLATE?ref=main';
+    listingTask=Promise.resolve().then(function(){return global.fetch(endpoint,{headers:{Accept:'application/vnd.github+json'},cache:'no-store'});})
+      .then(function(res){if(!res||!res.ok)return null;return res.json();})
+      .then(function(items){
+        if(!Array.isArray(items))return false;
+        items.forEach(function(item){if(item&&item.type==='file'&&typeof item.name==='string')available[item.name]=true;});
+        return true;
+      }).catch(function(){return false;});
+    return listingTask;
+  }
+  function checkTemplate(filename){
+    if(filename===TEMPLATE)return Promise.resolve(true);
+    if(available[filename]===true)return Promise.resolve(true);
+    return listMainTemplates().then(function(){return available[filename]===true;});
+  }
   function prepareLink(input,anchor){var code=locale(),filename=templateFor(code);if(!anchor||filename===TEMPLATE)return Promise.resolve(false);
     return checkTemplate(filename).then(function(ok){if(ok&&anchor.isConnected&&locale()===code){anchor.href=issueUrl(input);return true;}return false;});}
   function open(input){var url=issueUrl(input),opened=global.open(url,'_blank','noopener,noreferrer');return{url:url,opened:!!opened};}

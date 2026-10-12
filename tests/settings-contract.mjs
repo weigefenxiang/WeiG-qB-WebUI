@@ -122,7 +122,7 @@ for(const item of a74IssueForms){
 }
 const a74ReportSource=read('webui/private/scripts/bug-report.js');
 let a74TestLocale='ru',a74LookupCount=0;
-const a74ReportWindow={WeiG:{I18n:{getLocale:()=>a74TestLocale}},navigator:{userAgent:'Chrome 154'},fetch:async()=>{a74LookupCount++;return{ok:true};},open:()=>({})};
+const a74ReportWindow={WeiG:{I18n:{getLocale:()=>a74TestLocale}},navigator:{userAgent:'Chrome 154'},fetch:async url=>{a74LookupCount++;assert(url.includes('/contents/.github/ISSUE_TEMPLATE?ref=main'),'Main directory listing must be the one Issue Form truth');return{ok:true,json:async()=>[{type:'file',name:'bug_report.yml'},{type:'file',name:'bug_report_ru.yml'},{type:'file',name:'bug_report_zh-TW.yml'}]};},open:()=>({})};
 vm.runInNewContext(a74ReportSource,{window:a74ReportWindow,URL});
 const a74Reporter=a74ReportWindow.WeiG.BugReport;
 const a74Before=new URL(a74Reporter.issueUrl({version:'1.2.2',gitSha:'a'.repeat(40)}));
@@ -133,6 +133,10 @@ assert(new URL(a74ReportAnchor.href).searchParams.get('template')==='bug_report_
 a74TestLocale='zh-HK';const a74HongKong={isConnected:true,href:''};
 await a74Reporter.prepareLink({},a74HongKong);
 assert(new URL(a74HongKong.href).searchParams.get('template')==='bug_report_zh-TW.yml'&&new URL(a74HongKong.href).searchParams.get('webui_locale')==='zh-HK','Traditional Hong Kong display may share template while preserving actual WebUI locale');
+a74TestLocale='zh-CN';const missingLocalized={isConnected:true,href:''};
+assert.equal(await a74Reporter.prepareLink({},missingLocalized),false,'A missing Main language form must not be requested by filename');
+assert.equal(new URL(a74Reporter.issueUrl({})).searchParams.get('template'),'bug_report.yml','Missing Main template falls back to the existing English form');
+assert.equal(a74LookupCount,1,'All locale checks share one Main inventory request');
 a74TestLocale='it';
 assert(new URL(a74Reporter.issueUrl({})).searchParams.get('template')==='bug_report.yml'&&new URL(a74Reporter.issueUrl({})).searchParams.get('problem')==='WebUI language: it\n\n','Unsupported locales must use English while recording the selected locale');
 
