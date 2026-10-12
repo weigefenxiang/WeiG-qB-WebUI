@@ -1,0 +1,45 @@
+name: A76 Dual qB Shared Static
+on:
+  push:
+    branches: [dev]
+permissions:
+  contents: read
+jobs:
+  dual_shared_static:
+    name: A76 two real qB shared WebUI and registry consent
+    if: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[A76-real-qb]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install browser dependencies
+        run: npm ci --no-audit --no-fund --prefer-offline
+      - name: Verify Chrome Docker and syntax
+        run: |
+          set -euo pipefail
+          command -v google-chrome
+          google-chrome --version
+          command -v docker
+          node --check tests/real-qb-shared-static.mjs
+      - name: Verify dual real qB shared static and consent
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          node tests/real-qb-shared-static.mjs
+          evidence="artifacts/real-qb-full/$GITHUB_SHA-shared-static.json"
+          test -s "$evidence"
+          jq -e --arg sha "$GITHUB_SHA" '.status == "PASS" and .weig_sha == $sha and .sid_isolation == "PASS" and .cross_origin_registry == "PASS" and .whole_page_switch == "PASS" and .noncredential_handoff == "PASS" and .handoff_requires_consent == "PASS" and (.qb_versions == ["4.6.7","5.2.4"])' "$evidence"
+      - name: Retain exact-SHA evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: a76-dual-qb-${{ github.sha }}
+          path: artifacts/real-qb-full/*-shared-static.json
+          if-no-files-found: warn
+          retention-days: 14
