@@ -1,7 +1,7 @@
 (function(global){
   'use strict';
   var W=global.WeiG=global.WeiG||{},SESSION_STORE=W.StorageRuntime&&W.StorageRuntime.session;
-  var KEY=(W.StorageKeys&&W.StorageKeys.torrentListContext)||'weig.torrentListContext',ROUTE_MODULES={settings:['scripts/update-check.js','scripts/settings.js'],rss:['scripts/rss.js'],logs:['scripts/logs.js']},routeModules={};
+  var KEY=(W.StorageKeys&&W.StorageKeys.torrentListContext)||'weig.torrentListContext',ROUTE_MODULES={settings:['scripts/update-check.js','scripts/bug-report.js','scripts/settings.js'],rss:['scripts/rss.js'],logs:['scripts/logs.js']},routeModules={};
   function route(){return W.Router&&W.Router.route?W.Router.route():{name:'home'};}
   function isMobile(){return !!(global.matchMedia&&global.matchMedia('(max-width: 820px)').matches);}
   function read(){try{return JSON.parse((SESSION_STORE?SESSION_STORE.get(KEY,null):null)||'null');}catch(_e){return null;}}

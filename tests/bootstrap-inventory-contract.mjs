@@ -8,7 +8,7 @@ const plan=JSON.parse(fs.readFileSync(path.join(privateRoot,'bootstrap-plan.json
 const navigation=fs.readFileSync(path.join(privateRoot,'scripts/navigation.js'),'utf8');
 const routeBlock=(navigation.match(/ROUTE_MODULES=\{([^}]+)\}/)||[])[1]||'';
 const routeModules=[...routeBlock.matchAll(/'([^']+\.js)'/g)].map(match=>match[1]);
-assert.deepEqual(routeModules.sort(),['scripts/logs.js','scripts/rss.js','scripts/settings.js','scripts/update-check.js'],'route-demand module inventory drifted');
+assert.deepEqual(routeModules.sort(),['scripts/bug-report.js','scripts/logs.js','scripts/rss.js','scripts/settings.js','scripts/update-check.js'],'route-demand module inventory drifted');
 const sidebarSource=(navigation.match(/var modules=\[([^\]]+)\];/)||[])[1]||'';
 const sidebarModules=[...sidebarSource.matchAll(/'([^']+\.js)'/g)].map(match=>match[1]);
 assert.deepEqual(sidebarModules.sort(),['scripts/instance-health.js','scripts/instance-registry.js','scripts/instances-ui.js'],
@@ -31,7 +31,7 @@ const allExpected=new Set(Object.values(categories).flatMap(set=>[...set]));
 const allActual=new Set(walk(webui).map(file=>path.relative(webui,file).replaceAll('\\','/')));
 assert.deepEqual([...allActual].sort(),[...allExpected].sort(),'every shipped WebUI JavaScript file must have exactly one declared lifecycle owner: seed, startup phase, route demand, sidebar demand, or public entry');
 for(const [name,set] of Object.entries(categories))for(const file of set)for(const [other,otherSet] of Object.entries(categories))if(name!==other)assert.equal(otherSet.has(file),false,file+' is classified by both '+name+' and '+other);
-assert.equal(categories.seed.size,1);assert.equal(categories.startup.size,40);assert.equal(categories.routeDemand.size,4);assert.equal(categories.sidebarDemand.size,3);assert.equal(categories.publicEntry.size,2);
+assert.equal(categories.seed.size,1);assert.equal(categories.startup.size,39);assert.equal(categories.routeDemand.size,5);assert.equal(categories.sidebarDemand.size,3);assert.equal(categories.publicEntry.size,2);
 const cssActual=fs.readdirSync(path.join(privateRoot,'css'),{withFileTypes:true}).filter(entry=>entry.isFile()&&entry.name.endsWith('.css')).map(entry=>'css/'+entry.name).sort();
 assert.deepEqual([...plan.styles].sort(),cssActual,'every shipped private stylesheet must be owned by the bootstrap plan');
 // All shipped CSS must declare UTF-8 as its first byte-level rule. qB's own

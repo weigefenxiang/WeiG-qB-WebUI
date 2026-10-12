@@ -7,7 +7,7 @@ const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const read=relative=>fs.readFileSync(path.join(root,relative),'utf8');
 const index=read('webui/private/index.html'),runtime=read('webui/private/scripts/runtime-assets.js'),navigation=read('webui/private/scripts/navigation.js'),app=read('webui/private/scripts/app.js'),header=read('webui/private/scripts/header.js');
 const plan=JSON.parse(read('webui/private/bootstrap-plan.json')),startup=['scripts/runtime-assets.js',...plan.phases.flatMap(phase=>phase.scripts)];
-const routes={settings:['scripts/update-check.js','scripts/settings.js'],rss:['scripts/rss.js'],logs:['scripts/logs.js']};
+const routes={settings:['scripts/update-check.js','scripts/bug-report.js','scripts/settings.js'],rss:['scripts/rss.js'],logs:['scripts/logs.js']};
 for(const [route,modules] of Object.entries(routes)){
   const source=route+':['+modules.map(x=>"'"+x+"'").join(',')+']';
   assert.ok(navigation.includes(source),route+' must retain the ordered source-owned route-module dependency map');

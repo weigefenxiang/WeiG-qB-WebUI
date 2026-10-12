@@ -92,7 +92,6 @@
     {
       "name": "field-ui",
       "scripts": [
-        "scripts/bug-report.js",
         "scripts/torrent-fields.js"
       ]
     },
