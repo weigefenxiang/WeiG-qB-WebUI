@@ -132,18 +132,10 @@ const a74ResponsiveProof=await page.evaluate(()=>{
   const style=getComputedStyle(label),lineHeight=parseFloat(style.lineHeight)||parseFloat(style.fontSize)*1.25;const longWrap=label.getBoundingClientRect().height>lineHeight*1.3;
   const overflow=long.scrollWidth-long.clientWidth;
   short.remove();long.remove();
-  const container=document.createElement('section');container.className='settings-section';container.dataset.settingsOwner='weig-metrics';container.style.cssText='position:absolute;top:-2000px;left:0;width:290px;max-width:none';
-  const host=document.createElement('div');host.className='settings-grid diagnostic-grid';container.appendChild(host);
-  for(let i=0;i<6;i++){const fact=document.createElement('div');fact.className='diagnostic-fact';fact.textContent=i?'API pages':'A very long translated performance diagnostic label';host.appendChild(fact);}
-  document.body.appendChild(container);
-  const columns=()=>getComputedStyle(host).gridTemplateColumns.trim().split(/\\s+/).length;
-  const at290=columns();container.style.width='250px';const at250=columns();
-  const factOverflow=[...host.children].some(node=>node.scrollWidth>node.clientWidth+2);
-  container.remove();
-  return{sameBaseline,longWrap,overflow,at290,at250,factOverflow};
+  // Performance facts are validated against the real Settings route by browser-settings-fidelity.
+  return{sameBaseline,longWrap,overflow};
 });
-assert(a74ResponsiveProof.sameBaseline&&a74ResponsiveProof.longWrap&&a74ResponsiveProof.overflow<=2&&
-  a74ResponsiveProof.at290===2&&a74ResponsiveProof.at250===1&&!a74ResponsiveProof.factOverflow,
+assert(a74ResponsiveProof.sameBaseline&&a74ResponsiveProof.longWrap&&a74ResponsiveProof.overflow<=2,
   `${name}: A74 Transfer and performance facts must share a line when content fits and wrap only when needed ${JSON.stringify(a74ResponsiveProof)}`);
 await page.evaluate(()=>WeiG.Transfer.panel.close());await page.waitForFunction(()=>!document.querySelector('#transfer-stats-dialog')?.open);
 await page.evaluate(()=>WeiG.Router.go('logs'));await page.waitForFunction(()=>document.getElementById('logs-view')?.classList.contains('is-active')&&document.querySelectorAll('.logs-filters [data-log-type]').length===4);

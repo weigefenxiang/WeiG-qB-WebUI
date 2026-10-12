@@ -180,6 +180,24 @@ try{
   await page.goto('http://'+host+':'+port+'/en/#/',{waitUntil:'networkidle'});await page.waitForSelector('#torrent-list');await openSettings(page);
   // A75-4: exercise the real themed Density Dialog as a transactional interface setting.
   await selectTab(page,'weig');
+
+  // A75-9: prove Performance columns on the real Settings owner and its rendered CSS.
+  await page.waitForSelector('#settings-content .settings-section[data-settings-owner="weig-metrics"] .diagnostic-grid');
+  const performanceColumns=await page.evaluate(()=>{
+    const section=document.querySelector('#settings-content .settings-section[data-settings-owner="weig-metrics"]');
+    const grid=section&&section.querySelector('.diagnostic-grid');
+    if(!section||!grid)throw new Error('WeiG Performance section is not mounted');
+    const before=section.style.width,css=getComputedStyle(section).containerType;
+    const cols=()=>getComputedStyle(grid).gridTemplateColumns.trim().split(/\s+/).length;
+    section.style.width='290px';const at290=cols();
+    section.style.width='250px';const at250=cols();
+    const width=section.clientWidth;
+    section.style.width=before;
+    return{at290,at250,containerType:css,lastWidth:width};
+  });
+  assert(performanceColumns.containerType==='inline-size'&&performanceColumns.at290===2&&performanceColumns.at250===1,
+    'Real Settings Performance columns must respond to available section width: '+JSON.stringify(performanceColumns));
+
   const a75Before=await page.evaluate(()=>WeiG.Config.load().density);
   await page.locator('[data-setting-key="weig_density"] .density-trigger').click();
   await page.waitForSelector('dialog.density-dialog[open]');
