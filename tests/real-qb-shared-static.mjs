@@ -80,19 +80,19 @@ async function browserPrivateAssetDigests(page,q,paths){
  return result;
 }
 async function verifyInstanceSidebar(page,q){
- await page.waitForSelector('#sidebar-instances .sidebar-instances__interval',{timeout:20000});
+ await page.waitForSelector('#sidebar-instances .sidebar-instances__row',{timeout:20000});
  const before=await page.evaluate(()=>{
    const node=document.getElementById('sidebar-instances');
    const slot=document.getElementById('sidebar-facet-slot');
-   const interval=node?.querySelector('.sidebar-instances__interval');
+   const oldInterval=node?.querySelector('.sidebar-instances__interval');
    const border=node&&getComputedStyle(node);
    return{parent:node?.parentElement===slot?.parentElement,
      order:slot?.nextElementSibling===node,collapsed:node?.dataset.expanded,
-     interval:window.WeiG?.InstanceHealth?.minutes?.(),copy:interval?.textContent?.trim(),
+     interval:window.WeiG?.InstanceHealth?.minutes?.(),hasOldInterval:!!oldInterval,
      borderStyle:border?.borderTopStyle,borderWidth:border?.borderTopWidth,
      itemCount:node?.querySelectorAll('.sidebar-instances__row').length};
  });
- assert(before.parent&&before.order&&before.collapsed==='1'&&before.interval===30&&before.itemCount>=1
+ assert(before.parent&&before.order&&before.collapsed==='1'&&before.interval===30&&!before.hasOldInterval&&before.itemCount>=1
    &&before.borderStyle==='solid'&&before.borderWidth==='1px',
    'A76 real qB '+q.version+' Sidebar owner/order/divider/default interval: '+JSON.stringify(before));
  await page.locator('#sidebar-instances .sidebar-instances__heading').click();
@@ -102,19 +102,6 @@ async function verifyInstanceSidebar(page,q){
  });
  assert(closed.expanded==='0'&&closed.hidden,'A76 real qB '+q.version+' collapsed Sidebar still exposes instances');
  await page.locator('#sidebar-instances .sidebar-instances__heading').click();
- await page.locator('#sidebar-instances .sidebar-instances__interval').click();
- const input=page.locator('.instance-manager-dialog[open] input[type="number"]');
- await input.waitFor({timeout:10000});
- await input.fill('15');
- await page.locator('.instance-manager-dialog[open] .dialog__footer .btn--primary').click();
- await page.waitForFunction(()=>WeiG.InstanceHealth.minutes()===15
-   &&document.querySelector('#sidebar-instances .sidebar-instances__interval')?.textContent.includes('15'),null,{timeout:10000});
- // Restore the owner through its UI; no other instance preferences are changed.
- await page.locator('#sidebar-instances .sidebar-instances__interval').click();
- const reset=page.locator('.instance-manager-dialog[open] input[type="number"]');
- await reset.fill('30');
- await page.locator('.instance-manager-dialog[open] .dialog__footer .btn--primary').click();
- await page.waitForFunction(()=>WeiG.InstanceHealth.minutes()===30,null,{timeout:10000});
  const themeBefore=await page.evaluate(()=>WeiG.Theme.state().mode);
  await page.evaluate(()=>WeiG.Theme.setMode('light'));
  const light=await page.locator('#sidebar-instances').evaluate(node=>getComputedStyle(node).borderTopColor);
@@ -122,13 +109,25 @@ async function verifyInstanceSidebar(page,q){
  const dark=await page.locator('#sidebar-instances').evaluate(node=>getComputedStyle(node).borderTopColor);
  await page.evaluate(mode=>WeiG.Theme.setMode(mode),themeBefore);
  assert(light!==dark,'A76 Sidebar separator must follow actual light/dark theme tokens: '+light+'/'+dark);
- return{version:q.version,default_minutes:30,custom_minutes:15,collapse:'PASS',
+ return{version:q.version,default_minutes:30,collapse:'PASS',
    placement:'below-facets',theme_border:'PASS'};
 }
 async function verifyInstanceSettings(page,q){
  await page.locator('#app-nav [data-route="settings"]').click();
  await page.waitForFunction(()=>location.hash.includes('settings'),null,{timeout:20000});
  await page.locator('#settings-content[data-settings-renderer="canonical"]').waitFor({timeout:20000});
+ // A76-25: interval moved to WeiG Interface Settings, not a sidebar Dialog.
+ await page.locator('#settings-tabs [data-settings-tab="weig"]').click();
+ const interval=page.locator('#settings-content [data-setting-key="weig_instance_check"] .ui-select__trigger');
+ await interval.waitFor({timeout:20000});
+ assert((await interval.innerText()).includes('30 min'),'Default interval should be 30 min in WeiG Settings');
+ await interval.click();
+ await page.locator('.ui-select__menu:not([hidden]) .ui-select__option[data-value="15"]').click();
+ await page.waitForFunction(()=>WeiG.InstanceHealth.minutes()===15,null,{timeout:10000});
+ assert((await interval.innerText()).includes('15 min'),'Interval Select must display invariant min');
+ await interval.click();
+ await page.locator('.ui-select__menu:not([hidden]) .ui-select__option[data-value="30"]').click();
+ await page.waitForFunction(()=>WeiG.InstanceHealth.minutes()===30,null,{timeout:10000});
  const snapshot=await page.evaluate(async origin=>{
    const registry=window.WeiG?.CapabilityRegistry;
    const identity=registry?.releaseIdentity?.(),settingsDomain=registry?.domainResolution?.('settings');
@@ -150,7 +149,7 @@ async function verifyInstanceSettings(page,q){
  assert(snapshot.settingsDomain&&snapshot.settingsDomain.fallback===false&&snapshot.settingsDomain.detectedWebApiVersion===snapshot.apiVersion,'Real qB '+q.version+' Settings mapped to unproven source domain');
  assert(JSON.stringify(snapshot.nativeTabs)===JSON.stringify(['behavior','downloads','connection','speed','bittorrent','rss','webui','advanced']),'Real qB '+q.version+' canonical eight native Settings surfaces missing');
  assert(snapshot.nativeWebuiRows>0&&snapshot.localeSource,'Real qB '+q.version+' source-native WebUI/locale graph not consumed');
- return{qb_version:q.version,webapi_version:snapshot.apiVersion,settings_get:'PASS',settings_source_identity:'PASS',settings_domain_source:'PASS',native_settings_graph:'PASS'};
+ return{qb_version:q.version,webapi_version:snapshot.apiVersion,settings_get:'PASS',settings_source_identity:'PASS',settings_domain_source:'PASS',native_settings_graph:'PASS',instance_interval_settings:'PASS'};
 }
 async function test(){
  assert(/^[a-f0-9]{40}$/i.test(sha)&&sh('git',['rev-parse','HEAD'])===sha,'Exact SHA identity missing');
