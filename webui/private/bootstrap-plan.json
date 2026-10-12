@@ -83,6 +83,7 @@
         "scripts/time.js",
         "scripts/brand.js",
         "scripts/session.js",
+        "scripts/instance-registry.js",
         "scripts/update-check.js",
         "scripts/navigation.js"
       ],
