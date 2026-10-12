@@ -75,11 +75,15 @@
       select.append(label,total);
       var view={item:item,select:select,dot:dot,total:total};
       liveRows.set(item.url,view);paintHealth(view);
-      var more=button('···','sidebar-instances__more',function(){
+      var more=button('···','sidebar-instances__more',function(event){
+        // ContextMenu is owned by the shared floating layer; keep this opening click
+        // from reaching its document-level outside-click closer in the same event.
+        event.stopPropagation();
         var r=more.getBoundingClientRect();
         if(W.Components&&W.Components.openContextMenu)W.Components.openContextMenu({x:r.left,y:r.bottom,items:instanceMenu(item,active)});
       });
       more.setAttribute('aria-label',tr('manage')+' · '+item.name);
+      more.setAttribute('aria-haspopup','menu');
       row.append(select,more);
       if(W.Components&&W.Components.bindContextMenuTrigger)W.Components.bindContextMenuTrigger(row,function(){return instanceMenu(item,active);});
       content.appendChild(row);

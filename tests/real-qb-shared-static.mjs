@@ -95,6 +95,15 @@ async function verifyInstanceSidebar(page,q){
  assert(before.parent&&before.order&&before.collapsed==='1'&&before.interval===30&&!before.hasOldInterval&&before.itemCount>=1
    &&before.borderStyle==='solid'&&before.borderWidth==='1px',
    'A76 real qB '+q.version+' Sidebar owner/order/divider/default interval: '+JSON.stringify(before));
+ // Opening an instance menu must not be canceled by the shared document click closer.
+ await page.locator('#sidebar-instances .sidebar-instances__more').first().click();
+ const menu=page.locator('#weig-floating-layer .ui-context-menu[role="menu"]');
+ await menu.waitFor({state:'visible',timeout:5000});
+ assert((await menu.locator('[role="menuitem"]').count())===3,'Instance menu must have Rename/Edit/Remove');
+ await page.waitForTimeout(60);
+ assert(await menu.isVisible(),'Opening click closed instance menu');
+ await page.keyboard.press('Escape');
+ await menu.waitFor({state:'hidden'});
  await page.locator('#sidebar-instances .sidebar-instances__heading').click();
  const closed=await page.evaluate(()=>{
    const node=document.getElementById('sidebar-instances');
