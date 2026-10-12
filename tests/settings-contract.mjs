@@ -139,3 +139,12 @@ assert(new URL(a74Reporter.issueUrl({})).searchParams.get('template')==='bug_rep
 // A74-6: browser proved percentage-based auto-repeat stays a single column at 300px;
 // definite min tracks let auto-fit place two 132px columns plus the 8px gap.
 assert(!a74PerformanceCss.includes('minmax(min(100%,132px),1fr)'),'Avoid circular percentage sizing in auto-repeat of diagnostic cards');
+
+// A75-1: multilingual update summary must wrap all three semantic cells, never overlap or truncate.
+const a75UpdateCss=read('webui/private/css/settings.css');
+assert(/\.update-check__row\{[^}]*grid-template-columns:minmax\(0,1\.1fr\) minmax\(0,1\.3fr\) minmax\(0,\.9fr\)/.test(a75UpdateCss),'Update summary grid must allow every desktop column to shrink and wrap');
+for(const part of ['label','value','state']){
+  const rule=a75UpdateCss.match(new RegExp('\\.update-check__'+part+'\\{([^}]*)\\}'));
+  assert(rule&&/white-space:normal/.test(rule[1])&&/overflow-wrap:anywhere/.test(rule[1]),'Update summary '+part+' must wrap long locale strings');
+}
+assert(!/\.update-check__value\{[^}]*text-overflow:ellipsis/.test(a75UpdateCss),'Do not silently hide installed version or SHA');
