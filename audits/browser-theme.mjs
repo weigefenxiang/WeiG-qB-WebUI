@@ -72,11 +72,29 @@ try{
     const rolledNumeric=await page.evaluate(()=>({saved:WeiG.Config.load(),font:getComputedStyle(document.documentElement).getPropertyValue('--font-scale-offset').trim(),pageSize:WeiG.AppState.pageSize}));
     assert(rolledNumeric.saved.fontSize===savedBeforePreview.fontSize&&rolledNumeric.saved.pageSize===savedBeforePreview.pageSize&&rolledNumeric.saved.refresh===savedBeforePreview.refresh&&rolledNumeric.pageSize===savedBeforePreview.pageSize,`${name}: leaving WeiG Interface did not roll back unsaved preview: ${JSON.stringify(rolledNumeric)}`);
     await page.locator('#settings-tabs [data-settings-tab="weig"]').click();await page.waitForSelector('[data-setting-key="weig_theme"]');
-    await choose(page,'[data-setting-key="weig_density"]','compact');
-    const routePreview=await page.evaluate(()=>({draft:WeiG.SettingsState.weigDraft.density,saved:WeiG.Config.load().density,runtime:document.documentElement.dataset.density}));
-    assert(routePreview.draft==='compact'&&routePreview.saved===savedBeforePreview.density&&routePreview.runtime==='compact',`${name}: Settings-route preview did not stay transient before navigation: ${JSON.stringify(routePreview)}`);
+    // A75-4: density is a dedicated themed dialog; live intent stays transient until Apply.
+    await page.locator('[data-setting-key="weig_density"] .density-trigger').click();
+    await page.waitForSelector('dialog.density-dialog[open]');
+    assert(await page.locator('.density-dialog__preview-pane').count()===2,name+': one density dialog must preview torrent and logs independently');
+    await page.locator('.density-dialog__preset').first().click();
+    const routePreview=await page.evaluate(()=>({draft:WeiG.SettingsState.weigDraft.density,saved:WeiG.Config.load().density,runtime:WeiG.DensityPolicy.current(),firstRow:WeiG.DensityPolicy.height('torrent',56,40)}));
+    assert(routePreview.draft.overall===-8&&routePreview.saved.overall===savedBeforePreview.density.overall&&routePreview.runtime.overall===-8&&routePreview.firstRow===48,name+': density preview must use relative offset without early persistence: '+JSON.stringify(routePreview));
+    await page.locator('.density-dialog__actions .btn').nth(1).click();
+    await page.waitForFunction(expected=>!document.querySelector('dialog.density-dialog[open]')&&WeiG.DensityPolicy.current().overall===expected.density.overall&&Object.keys(WeiG.SettingsState.weigDraft||{}).length===0,savedBeforePreview);
+    await page.locator('[data-setting-key="weig_density"] .density-trigger').click();
+    await page.waitForSelector('dialog.density-dialog[open]');
+    await page.locator('.density-dialog__preset').last().click();
+    await page.locator('.density-dialog__range').focus();
+    for(let k=0;k<3;k++)await page.keyboard.press('ArrowLeft'); // +8 -> +5, real keyboard input
+    await choose(page,'.density-dialog__scope:nth-child(2)','custom');
+    await page.locator('.density-dialog__scope:nth-child(2) .density-dialog__number').fill('-2');
+    await page.locator('.density-dialog__scope:nth-child(2) .density-dialog__number').press('Tab');
+    const customPreview=await page.evaluate(()=>({draft:WeiG.SettingsState.weigDraft.density,saved:WeiG.Config.load().density,rows:[WeiG.DensityPolicy.height('torrent',56,40),WeiG.DensityPolicy.height('logs',54,42)]}));
+    assert(customPreview.draft.overall===5&&customPreview.draft.logs===-2&&customPreview.draft.torrent===null&&customPreview.saved.overall===savedBeforePreview.density.overall&&JSON.stringify(customPreview.rows)==='[61,52]',name+': independent density preview drift: '+JSON.stringify(customPreview));
+    await page.locator('.density-dialog__actions .btn').last().click();
+    await page.waitForFunction(()=>!document.querySelector('dialog.density-dialog[open]')&&WeiG.Config.load().density.overall===5&&WeiG.Config.load().density.logs===-2);
     await page.locator('#app-nav [data-route=""]').click();await page.waitForFunction(()=>document.getElementById('list-view')?.classList.contains('is-active'));
-    await page.waitForFunction(expected=>Object.keys(WeiG.SettingsState.weigDraft||{}).length===0&&WeiG.Config.load().density===expected.density&&document.documentElement.dataset.density===expected.density,savedBeforePreview);
+    await page.waitForFunction(()=>WeiG.DensityPolicy.current().overall===5&&WeiG.DensityPolicy.height('torrent',56,40)===61);
     await openSettings(page);await page.waitForSelector('[data-setting-key="weig_theme"]');
     await choose(page,'[data-setting-key="weig_theme"]','time');
     const beforeSave=await page.evaluate(()=>({draft:WeiG.SettingsState.weigDraft.theme,state:WeiG.Theme.state(),saved:WeiG.Config.load().theme,header:document.getElementById('theme-control')?.getValue?.()}));
