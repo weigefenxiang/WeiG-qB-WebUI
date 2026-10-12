@@ -646,6 +646,7 @@
     "instances.currentSuffix": "（当前）",
     "instances.rename": "重命名",
     "instances.reachable": "地址可达 · 未验证 qB",
+    "instances.loopbackWarning": "127.0.0.1 / localhost 指浏览器所在设备，不是远程服务器。",
     "instances.add": "添加",
     "instances.refresh": "立即检测",
     "instances.manage": "管理实例",

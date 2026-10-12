@@ -471,6 +471,7 @@
     "instances.currentSuffix": " (atual)",
     "instances.rename": "Renomear",
     "instances.reachable": "Endereço acessível · qB não verificado",
+    "instances.loopbackWarning": "127.0.0.1 / localhost aponta para o dispositivo deste navegador, não para o servidor remoto.",
     "instances.add": "Adicionar",
     "instances.refresh": "Verificar agora",
     "instances.manage": "Gerir instâncias",

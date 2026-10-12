@@ -475,6 +475,7 @@
     "instances.currentSuffix": " (현재)",
     "instances.rename": "이름 변경",
     "instances.reachable": "주소 접속 가능 · qB 확인 안 됨",
+    "instances.loopbackWarning": "127.0.0.1 / localhost는 원격 서버가 아닌 이 브라우저가 실행 중인 기기를 가리킵니다.",
     "instances.add": "추가",
     "instances.refresh": "지금 확인",
     "instances.manage": "인스턴스 관리",

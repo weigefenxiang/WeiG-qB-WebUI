@@ -123,9 +123,16 @@
     name.type='text';name.maxLength=48;name.required=true;
     url.type='url';url.required=true;url.placeholder='http://192.168.1.72:8080/';
     var nameLabel=el('label','',tr('name')),urlLabel=el('label','',tr('url'));nameLabel.append(name);urlLabel.append(url);
+    var localHint=el('p','instance-manager__feedback');localHint.setAttribute('role','note');
+    function syncAddressHint(){
+      var host='';
+      try{host=new URL(url.value).hostname;}catch(_error){}
+      localHint.textContent=/^(127\.0\.0\.1|localhost|\[::1\])$/i.test(host)?tr('loopbackWarning'):'';
+    }
+    url.addEventListener('input',syncAddressHint);
     var status=el('p','instance-manager__feedback');status.setAttribute('role','status');
     var save=button(tr('save'),'btn btn--primary');save.type='submit';
-    form.append(nameLabel,urlLabel,status,save);
+    form.append(nameLabel,urlLabel,localHint,status,save);
     var editingUrl=null;
     function showRows(){
       list.textContent='';
@@ -152,7 +159,7 @@
       editingUrl=existing?initial.url:null;
       name.value=initial.name;url.value=initial.url;
     }
-    m.show(name);
+    syncAddressHint();m.show(name);
   }
   function offerIncoming(){
     if(importOffered||!W.InstanceHandoff)return;

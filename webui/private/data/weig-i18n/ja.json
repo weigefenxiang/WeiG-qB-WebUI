@@ -474,6 +474,7 @@
     "instances.currentSuffix": "（現在）",
     "instances.rename": "名前を変更",
     "instances.reachable": "アドレスに接続可能 · qB 未確認",
+    "instances.loopbackWarning": "127.0.0.1 / localhost はリモートサーバーではなく、このブラウザの端末を指します。",
     "instances.add": "追加",
     "instances.refresh": "今すぐ確認",
     "instances.manage": "インスタンスを管理",
