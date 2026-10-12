@@ -3,7 +3,7 @@
   var W=global.WeiG=global.WeiG||{},R=W.InstanceRegistry,H=W.InstanceHealth,D=W.DialogRuntime,STORE=W.StorageRuntime&&W.StorageRuntime.local;
   if(W.InstancesUI||!R||!D)return;
   var KEY=W.StorageKeys&&W.StorageKeys.instancesCollapsed||'weig.instances.collapsed';
-  var host=null,expanded=!(STORE&&STORE.get(KEY,'0')==='1'),importOffered=false;
+  var host=null,expanded=!(STORE&&STORE.get(KEY,'0')==='1'),importOffered=false,liveRows=new Map();
   function tr(key,vars){return W.I18n&&W.I18n.t?W.I18n.t('instances.'+key,vars):String(key);}
   function el(tag,cls,text){var node=document.createElement(tag);if(cls)node.className=cls;if(text!==undefined)node.textContent=String(text);return node;}
   function button(label,cls,callback){var b=el('button',cls,label);b.type='button';if(callback)b.addEventListener('click',callback);return b;}
@@ -40,8 +40,18 @@
     }
     action(false);
   }
+  function paintHealth(view){
+    var health=H&&H.get(view.item.url),state=health&&health.status||'unknown',count=health&&health.count;
+    var status=state==='online'?tr('online'):state==='reachable'?tr('reachable'):state==='denied'?tr('denied'):tr('unverified');
+    view.dot.dataset.state=state;
+    view.total.textContent=count==null?'—':String(count);
+    view.select.title=view.item.name+' · '+view.item.url+' · '+status+(count==null?'':' · '+tr('torrentCount',{count:count}));
+    view.select.setAttribute('aria-label',view.select.title);
+  }
+  function updateHealth(){liveRows.forEach(paintHealth);}
   function render(){
     if(!host)return;
+    liveRows.clear();
     host.dataset.expanded=expanded?'1':'0';host.textContent='';
     var top=el('div','sidebar-instances__head');
     var heading=button('','sidebar-instances__heading',function(){
@@ -54,17 +64,16 @@
     var items=[];try{items=records();}catch(error){notice(error.message);}
     items.forEach(function(item){
       var active=item.url===R.currentUrl(),saved=R.list(true).some(function(x){return x.url===item.url;});
-      var health=H&&H.get(item.url),state=health&&health.status||'unknown',count=health&&health.count;
       var row=el('div','sidebar-instances__row'),select=button('','sidebar-instances__select',function(){transferAndSwitch(item);});
       if(active)row.classList.add('is-active');
       select.setAttribute('aria-current',active?'page':'false');
       var label=el('span','sidebar-instances__name');
-      var dot=el('span','sidebar-instances__dot');dot.dataset.state=state;dot.setAttribute('aria-hidden','true');
+      var dot=el('span','sidebar-instances__dot');dot.setAttribute('aria-hidden','true');
       label.append(dot,el('span','',item.name+(active&&saved?tr('currentSuffix'):'')));
-      var total=el('span','sidebar-instances__count',count==null?'—':String(count));
-      var status=state==='online'?tr('online'):state==='reachable'?tr('reachable'):state==='denied'?tr('denied'):tr('unverified');
-      select.title=item.name+' · '+item.url+' · '+status+(count==null?'':' · '+tr('torrentCount',{count:count}));
-      select.setAttribute('aria-label',select.title);select.append(label,total);
+      var total=el('span','sidebar-instances__count');
+      select.append(label,total);
+      var view={item:item,select:select,dot:dot,total:total};
+      liveRows.set(item.url,view);paintHealth(view);
       var more=button('···','sidebar-instances__more',function(){
         var r=more.getBoundingClientRect();
         if(W.Components&&W.Components.openContextMenu)W.Components.openContextMenu({x:r.left,y:r.bottom,items:instanceMenu(item,active)});
@@ -170,5 +179,5 @@
   W.InstancesUI=Object.freeze({render:render,openManager:openManager});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
   global.addEventListener('weig:languagechange',render);
-  global.addEventListener('weig:instance-health',render);
+  global.addEventListener('weig:instance-health',updateHealth);
 })(window);

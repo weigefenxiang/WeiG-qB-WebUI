@@ -17,6 +17,8 @@ assert.ok(ui.includes('W.AppState.initialized')&&ui.includes("'weig:app-ready'")
 assert.ok(ui.includes('R.importList(json)')&&ui.includes('importOffered'),'Untrusted URL handoff must require user confirmation');
 assert.ok(!ui.includes("function openInterval(")&&!ui.includes("sidebar-instances__interval"),'Instance interval must be owned only by Settings');
 assert.ok(read('webui/private/scripts/settings.js').includes("instanceCheckRow()"),'Settings must own the interval row');
+assert.ok(ui.includes("addEventListener('weig:instance-health',updateHealth)")&&ui.includes('liveRows.forEach(paintHealth)'),'Health events must preserve row DOM, focus and context menu');
+assert.ok(health.includes("global.addEventListener('weig:app-ready'")&&health.includes('inspect(url).then'),'Current qB must reconcile even when initial remote probe is in flight');
 assert.ok(ui.includes('bindContextMenuTrigger')&&ui.includes('R.update(')&&ui.includes('currentSuffix'),'Reuse shared ContextMenu and registry identity for rename');
 assert.ok(!ui.includes('localStorage.')&&!ui.includes('fetch('),'UI is a presentation-only consumer');
 assert.ok(css.includes('var(--border)')&&css.includes('var(--selected-control-surface)'),'Sidebar color/selection must use shared theme tokens');

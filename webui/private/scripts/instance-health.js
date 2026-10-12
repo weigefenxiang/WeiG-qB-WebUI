@@ -87,7 +87,12 @@
     tick=setInterval(tickIfDue,60000);
     global.addEventListener('visibilitychange',tickIfDue);
     // Session readiness predates app.detect(); reconcile when WebAPI identity is real.
-    global.addEventListener('weig:app-ready',function(){checkNow().catch(function(){emit();});});
+    global.addEventListener('weig:app-ready',function(){
+      // The first full probe may still be in flight. Refresh current qB
+      // separately instead of losing this readiness transition to dedupe.
+      var url=current();
+      inspect(url).then(function(row){results.set(url,row);emit();}).catch(function(){emit();});
+    });
     var session=W.SessionController;
     if(session&&session.ready)session.ready().then(function(ok){if(ok)tickIfDue();}).catch(function(){});
     else tickIfDue();
