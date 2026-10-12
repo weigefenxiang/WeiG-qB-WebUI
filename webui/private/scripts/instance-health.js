@@ -40,10 +40,24 @@
   function emit(){global.dispatchEvent(new CustomEvent('weig:instance-health'));}
   function same(a,b){try{return new URL(a).href===new URL(b).href;}catch(_e){return false;}}
   function current(){return W.InstanceRegistry&&W.InstanceRegistry.currentUrl?W.InstanceRegistry.currentUrl():global.location.origin+'/';}
+  function trustedCurrentCount(){
+    // The App's completed unfiltered catalog is already a verified full-torrent
+    // snapshot. Reuse it rather than issuing an extra unsupported qB count API.
+    var app=W.AppState;
+    if(!app||app.catalogReady!==true||!Array.isArray(app.catalog))return null;
+    return Number.isSafeInteger(app.catalog.length)?app.catalog.length:null;
+  }
   function get(url){
     var key=String(url||''),row=results.get(key),lastVerifiedAt=history.get(key)||null;
     var ttl=Math.max(5,minutes()||30)*2*60000;
-    if(row&&Date.now()-row.checkedAt<=ttl)return Object.assign({},row,{lastVerifiedAt:lastVerifiedAt});
+    if(row&&Date.now()-row.checkedAt<=ttl){
+      var copy=Object.assign({},row,{lastVerifiedAt:lastVerifiedAt});
+      if(copy.status==='online'&&same(key,current())){
+        var total=trustedCurrentCount();
+        if(total!==null)copy.count=total;
+      }
+      return copy;
+    }
     return lastVerifiedAt?{status:'unverified',count:null,checkedAt:0,lastVerifiedAt:lastVerifiedAt}:null;
   }
   async function remoteGet(url,endpoint){

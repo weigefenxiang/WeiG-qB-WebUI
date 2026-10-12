@@ -104,6 +104,16 @@ async function verifyInstanceSidebar(page,q){
  assert(await menu.isVisible(),'Opening click closed instance menu');
  await page.keyboard.press('Escape');
  await menu.waitFor({state:'hidden'});
+ await page.waitForFunction(()=>{
+   const W=window.WeiG,url=W?.InstanceRegistry?.currentUrl();
+   return W?.AppState?.initialized&&W.InstanceHealth?.get(url)?.status==='online'
+     &&document.querySelector('#sidebar-instances .sidebar-instances__row.is-active .sidebar-instances__dot')?.dataset.state==='online';
+ },null,{timeout:20000});
+ const known=await page.evaluate(()=>{
+   const a=window.WeiG.AppState;
+   return{ready:a.catalogReady,total:a.catalog?.length,ui:document.querySelector('#sidebar-instances .sidebar-instances__row.is-active .sidebar-instances__count')?.textContent?.trim()};
+ });
+ if(known.ready)assert(known.ui===String(known.total),'Full verified catalog total must be reused by sidebar: '+JSON.stringify(known));
  await page.locator('#sidebar-instances .sidebar-instances__heading').click();
  const closed=await page.evaluate(()=>{
    const node=document.getElementById('sidebar-instances');

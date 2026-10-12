@@ -192,4 +192,7 @@
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
   global.addEventListener('weig:languagechange',render);
   global.addEventListener('weig:instance-health',updateHealth);
+  // App's full catalog may finish after the first health probe; reuse its
+  // verified count without creating another network probe or replacing rows.
+  global.addEventListener('weig:library-state',updateHealth);
 })(window);
