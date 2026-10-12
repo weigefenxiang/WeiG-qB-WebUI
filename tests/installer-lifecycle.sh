@@ -321,8 +321,12 @@ chmod +x "$MOCK_BIN/docker"
 export WEIGG_INSTALLER_DOCKER_LOG="$TMP/docker-probe.log"
 : > "$WEIGG_INSTALLER_DOCKER_LOG"
 PLAIN_DEST="$TMP/plain-files-only/weig-qb-webui"
+PLAIN_HOME="$TMP/plain-home"
+mkdir -p "$PLAIN_HOME"
 CFG_BEFORE_FILES_ONLY=$(sha256sum "$CFG" | awk '{print $1}')
-run_installer -version "$VERSION_TWO" -o "$PLAIN_DEST"
+# Isolate installer state and backups so the main lifecycle retention/purge
+# assertions continue to describe only their own install target.
+HOME="$PLAIN_HOME" XDG_CONFIG_HOME="$PLAIN_HOME/.config" run_installer -version "$VERSION_TWO" -o "$PLAIN_DEST"
 test -s "$PLAIN_DEST/public/index.html"
 test -s "$PLAIN_DEST/private/index.html"
 test "$(tr -d '\r\n' < "$PLAIN_DEST/VERSION")" = "$VERSION_TWO"
