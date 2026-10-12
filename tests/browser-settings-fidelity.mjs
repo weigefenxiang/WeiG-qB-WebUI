@@ -178,6 +178,36 @@ try{
   const context=await browser.newContext({viewport:{width:1366,height:900},locale:'en-US'}),page=await context.newPage(),errors=[];
   page.on('pageerror',error=>errors.push(String(error)));page.on('console',message=>{if(message.type()==='error'&&!/favicon|Wei\.G\.ico/i.test(message.text()))errors.push(message.text());});
   await page.goto('http://'+host+':'+port+'/en/#/',{waitUntil:'networkidle'});await page.waitForSelector('#torrent-list');await openSettings(page);
+  // A75-4: exercise the real themed Density Dialog as a transactional interface setting.
+  await selectTab(page,'weig');
+  const a75Before=await page.evaluate(()=>WeiG.Config.load().density);
+  await page.locator('[data-setting-key="weig_density"] .density-trigger').click();
+  await page.waitForSelector('dialog.density-dialog[open]');
+  assert(await page.locator('.density-dialog__preview-pane').count()===2,'Density dialog must present independent Torrent/Log previews');
+  await page.locator('.density-dialog__preset').first().click();
+  const a75Transient=await page.evaluate(()=>({draft:WeiG.SettingsState.weigDraft.density,saved:WeiG.Config.load().density,live:WeiG.DensityPolicy.current()}));
+  assert(a75Transient.draft.overall===-8&&a75Transient.live.overall===-8&&a75Transient.saved.overall===a75Before.overall,'Density preview must not write storage before Apply: '+JSON.stringify(a75Transient));
+  await page.locator('.density-dialog__actions .btn').nth(1).click();
+  await page.waitForFunction(expected=>!document.querySelector('dialog.density-dialog[open]')&&WeiG.DensityPolicy.current().overall===expected.overall&&!Object.hasOwn(WeiG.SettingsState.weigDraft,'density'),a75Before);
+  await page.locator('[data-setting-key="weig_density"] .density-trigger').click();
+  await page.waitForSelector('dialog.density-dialog[open]');
+  await page.locator('.density-dialog__preset').last().click();
+  await page.locator('.density-dialog__range').focus();
+  for(let k=0;k<3;k++)await page.keyboard.press('ArrowLeft');
+  await page.locator('.density-dialog__scope').nth(1).locator('.ui-select__trigger').click();
+  await page.locator('#weig-floating-layer .ui-select__option[data-value="custom"]').click();
+  await page.locator('.density-dialog__scope').nth(1).locator('.density-dialog__number').fill('-2');
+  await page.locator('.density-dialog__scope').nth(1).locator('.density-dialog__number').press('Tab');
+  const a75Custom=await page.evaluate(()=>({draft:WeiG.SettingsState.weigDraft.density,saved:WeiG.Config.load().density,torrent:WeiG.DensityPolicy.height('torrent',56,40),logs:WeiG.DensityPolicy.height('logs',54,42)}));
+  assert(a75Custom.draft.overall===5&&a75Custom.draft.logs===-2&&a75Custom.draft.torrent===null&&a75Custom.torrent===61&&a75Custom.logs===52&&a75Custom.saved.overall===a75Before.overall,'Independent density offset or live row height is incorrect: '+JSON.stringify(a75Custom));
+  await page.locator('.density-dialog__actions .btn').last().click();
+  await page.waitForFunction(()=>!document.querySelector('dialog.density-dialog[open]')&&WeiG.Config.load().density.overall===5&&WeiG.Config.load().density.logs===-2);
+  await page.locator('[data-setting-key="weig_density"] .density-trigger').click();
+  await page.waitForSelector('dialog.density-dialog[open]');
+  await page.locator('.density-dialog__actions .btn').first().click();
+  await page.locator('.density-dialog__actions .btn').last().click();
+  await page.waitForFunction(()=>!document.querySelector('dialog.density-dialog[open]')&&WeiG.Config.load().density.overall===0&&WeiG.Config.load().density.torrent===null&&WeiG.Config.load().density.logs===null);
+
 
   // A39: Brand Header/About share one restrained motion owner and one circular favicon presentation.
   await selectTab(page,'about');
