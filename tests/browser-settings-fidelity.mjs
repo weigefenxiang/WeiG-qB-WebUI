@@ -202,6 +202,20 @@ try{
   await page.locator('[data-setting-key="weig_density"] .density-trigger').click();
   await page.waitForSelector('dialog.density-dialog[open]');
   assert(await page.locator('.density-dialog__preview-pane').count()===2,'Density dialog must present independent Torrent/Log previews');
+
+  // A75-10: canonical Dialog frame must bound tall content and keep actions visible on mobile.
+  await page.setViewportSize({width:390,height:680});
+  const a75DialogFrame=await page.evaluate(()=>{
+    const dialog=document.querySelector('dialog.density-dialog[open]'),body=dialog?.querySelector(':scope > .dialog__body'),footer=dialog?.querySelector(':scope > .dialog__actions');
+    if(!dialog||!body||!footer)throw new Error('Density dialog frame missing');
+    const before=body.scrollTop;body.scrollTop=body.scrollHeight;const last=body.querySelector('.density-dialog__preview-pane:last-child .density-dialog__sample:last-child');
+    const d=dialog.getBoundingClientRect(),b=body.getBoundingClientRect(),f=footer.getBoundingClientRect(),l=last.getBoundingClientRect();
+    return{frame:dialog.dataset.dialogFrame,dialogBottom:d.bottom,footerBottom:f.bottom,bodyBottom:b.bottom,footerTop:f.top,scrollable:body.scrollHeight>body.clientHeight,scrollTop:body.scrollTop,lastBottom:l.bottom,viewport:visualViewport?.height||innerHeight,before};
+  });
+  assert(a75DialogFrame.frame==='scroll'&&a75DialogFrame.dialogBottom<=a75DialogFrame.viewport-8&&a75DialogFrame.footerBottom<=a75DialogFrame.viewport-8&&a75DialogFrame.bodyBottom<=a75DialogFrame.footerTop+2&&a75DialogFrame.scrollable&&a75DialogFrame.scrollTop>0&&a75DialogFrame.lastBottom<=a75DialogFrame.bodyBottom+2,
+    'Mobile Density Dialog must retain a visible Footer and scroll all content inside Body: '+JSON.stringify(a75DialogFrame));
+  await page.setViewportSize({width:1366,height:900});
+
   await page.locator('.density-dialog__preset').first().click();
   const a75Transient=await page.evaluate(()=>({draft:WeiG.SettingsState.weigDraft.density,saved:WeiG.Config.load().density,live:WeiG.DensityPolicy.current()}));
   assert(a75Transient.draft.overall===-8&&a75Transient.live.overall===-8&&a75Transient.saved.overall===a75Before.overall,'Density preview must not write storage before Apply: '+JSON.stringify(a75Transient));

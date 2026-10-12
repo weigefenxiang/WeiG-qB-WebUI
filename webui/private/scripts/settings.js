@@ -71,6 +71,7 @@
   function openDensityDialog(){
     if(!W.DialogRuntime||!W.DensityPolicy)return;
     var P=W.DensityPolicy,hadDraft=own(controller.weigDraft,'density'),before=hadDraft?controller.weigDraft.density:controller.config.density,draft=P.normalize(before),applied=false,dialog=W.DialogRuntime.create({className:'dialog surface surface--modal density-dialog',removeOnClose:true,backdropClose:true,escapeClose:true});
+    dialog.dataset.dialogFrame='scroll';
     var header=document.createElement('header'),title=document.createElement('h2'),body=document.createElement('div'),footer=document.createElement('div'),intro=document.createElement('p'),overall=document.createElement('section'),overallTitle=document.createElement('strong'),amount=document.createElement('strong'),range=document.createElement('input'),rangeLabels=document.createElement('div'),presetBar=document.createElement('div'),scopes=document.createElement('div'),preview=document.createElement('section'),previewTitle=document.createElement('strong'),previewGrid=document.createElement('div');
     header.className='dialog__head';title.textContent=tr('settings.weig.density.title');header.appendChild(title);
     body.className='dialog__body density-dialog__body';intro.className='text-description';intro.textContent=tr('settings.weig.density.description');
