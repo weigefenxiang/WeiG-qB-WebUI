@@ -456,6 +456,18 @@
     "app.close": "닫기",
     "app.loading": "불러오는 중…",
     "settings.weig.option.small": "작게 (-2px)",
-    "settings.weig.option.xsmall": "매우 작게 (-3px)"
+    "settings.weig.option.xsmall": "매우 작게 (-3px)",
+    "settings.weig.density.description": "글자 크기나 열 너비는 바꾸지 않고 목록 행의 세로 간격을 조절합니다.",
+    "settings.weig.density.overall": "전체 간격",
+    "settings.weig.density.torrent": "토렌트 목록 간격",
+    "settings.weig.density.logs": "로그 목록 간격",
+    "settings.weig.density.follow": "전체 간격 따르기",
+    "settings.weig.density.custom": "개별 설정",
+    "settings.weig.density.preview": "실시간 미리보기",
+    "settings.weig.density.reset": "초기화",
+    "settings.weig.density.cancel": "취소",
+    "settings.weig.density.apply": "적용",
+    "settings.weig.density.torrentExample": "토렌트",
+    "settings.weig.density.logsExample": "로그"
   }
 }

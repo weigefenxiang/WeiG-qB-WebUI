@@ -159,3 +159,32 @@ for(const locale of ['de','es','fr','ja','ko','pt','ru','zh-CN','zh-TW']){
   for(const k of ['small','xsmall'])assert(typeof shard.messages['settings.weig.option.'+k]==='string','Missing '+locale+' signed font label '+k);
 }
 assert(a75Core.includes('FONT_SCALE_MIN=-8,FONT_SCALE_MAX=16'),'Signed numeric range must remain available');
+
+// A75-4: relative density is a single policy; desktop/mobile consumers share effective row heights.
+const a75DensityCore=read('webui/private/scripts/core.js'),a75DensitySettings=read('webui/private/scripts/settings.js');
+const a75DensityStart=a75DensityCore.indexOf('  // Single owner for persisted, relative row-spacing intent');
+const a75DensityEnd=a75DensityCore.indexOf('  W.Config=',a75DensityStart);
+assert(a75DensityStart>=0&&a75DensityEnd>a75DensityStart,'Density policy must have one canonical owner');
+const a75DensityDocument={documentElement:{style:{setProperty:function(){}}}};
+const a75DensityVM={W:{},global:{innerHeight:900},document:a75DensityDocument,FONT_SCALE_DEFAULT:2,normalizeFontScale:function(v){return Math.max(-8,Math.min(16,Number(v)||0));}};
+vm.runInNewContext(a75DensityCore.slice(a75DensityStart,a75DensityEnd),a75DensityVM);
+const a75Density=a75DensityVM.W.DensityPolicy;
+assert(a75Density.normalize('standard').overall===0&&a75Density.normalize('compact').overall===-8&&a75Density.normalize('comfortable').overall===8,'Legacy density migration must be deterministic');
+assert(a75Density.normalize({overall:99,torrent:-99,logs:null}).overall===24&&a75Density.normalize({overall:99,torrent:-99,logs:null}).torrent===-16,'Custom spacing must be clamped');
+a75Density.apply({overall:5,torrent:null,logs:-2},2);
+assert(a75Density.height('torrent',56,40)===61&&a75Density.height('logs',54,42)===52,'Overall and independent overrides must not add to each other');
+a75Density.apply({overall:0,torrent:3,logs:null},2);
+assert(a75Density.height('torrent',56,40)===59&&a75Density.height('logs',54,42)===54,'Independent values must not affect other rows');
+assert(a75DensitySettings.includes('function openDensityDialog()')&&a75DensitySettings.includes("dialog.addEventListener('close'")&&a75DensitySettings.includes('W.Config.save(next)'),'Density editor must support live preview, cancel rollback, and direct Apply');
+assert(a75DensitySettings.includes('densityRow(ctx)')&&!a75DensitySettings.includes("configSelectRow(ctx,'density'"),'Replace obsolete density preset select with canonical dialog');
+const a75DensityApp=read('webui/private/scripts/app.js'),a75DensityLogs=read('webui/private/scripts/logs.js'),a75DensityResponsive=read('webui/private/scripts/responsive.js');
+assert(a75DensityApp.includes("W.DensityPolicy.height('torrent'")&&a75DensityLogs.includes("W.DensityPolicy.height('logs'")&&a75DensityResponsive.includes("W.DensityPolicy.height('torrent'"),'All row geometry must consume one density policy');
+assert(a75DensityLogs.includes("e.detail.key==='density'"),'Logs viewport must respond to live density updates');
+const a75DensityLayout=read('webui/private/css/layout.css'),a75DensityLogCss=read('webui/private/css/logs.css');
+assert(!a75DensityLayout.includes('html[data-density=compact]')&&!a75DensityLayout.includes('html[data-density=comfortable]'),'Retire legacy density CSS owners');
+assert(!/\.logs-row\{align-items:center;min-height:(?:54|72)px/.test(a75DensityLogCss),'Log row must not fight virtualized density height');
+for(const locale of ['de','es','fr','ja','ko','pt','ru','zh-CN','zh-TW']){
+  const overlay=JSON.parse(read('webui/private/data/weig-i18n/'+locale+'.json'));
+  for(const suffix of ['description','overall','torrent','logs','follow','custom','preview','reset','cancel','apply','torrentExample','logsExample'])
+    assert(typeof overlay.messages['settings.weig.density.'+suffix]==='string','Missing density dialog translation '+locale+' '+suffix);
+}

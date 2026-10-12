@@ -455,6 +455,18 @@
     "app.close": "閉じる",
     "app.loading": "読み込み中…",
     "settings.weig.option.small": "小（-2px）",
-    "settings.weig.option.xsmall": "極小（-3px）"
+    "settings.weig.option.xsmall": "極小（-3px）",
+    "settings.weig.density.description": "文字サイズや列幅を変えずに、一覧の行間を調整します。",
+    "settings.weig.density.overall": "全体の間隔",
+    "settings.weig.density.torrent": "トレント一覧の間隔",
+    "settings.weig.density.logs": "ログ一覧の間隔",
+    "settings.weig.density.follow": "全体の設定に従う",
+    "settings.weig.density.custom": "個別に設定",
+    "settings.weig.density.preview": "リアルタイムプレビュー",
+    "settings.weig.density.reset": "リセット",
+    "settings.weig.density.cancel": "キャンセル",
+    "settings.weig.density.apply": "適用",
+    "settings.weig.density.torrentExample": "トレント",
+    "settings.weig.density.logsExample": "ログ"
   }
 }

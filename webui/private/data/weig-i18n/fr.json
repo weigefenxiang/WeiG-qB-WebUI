@@ -444,6 +444,18 @@
     "app.close": "Fermer",
     "app.loading": "Chargement…",
     "settings.weig.option.small": "Petit (-2px)",
-    "settings.weig.option.xsmall": "Très petit (-3px)"
+    "settings.weig.option.xsmall": "Très petit (-3px)",
+    "settings.weig.density.description": "Ajustez l’espacement vertical des lignes sans changer la taille du texte ni la largeur des colonnes.",
+    "settings.weig.density.overall": "Espacement général",
+    "settings.weig.density.torrent": "Espacement des torrents",
+    "settings.weig.density.logs": "Espacement du journal",
+    "settings.weig.density.follow": "Suivre l’espacement général",
+    "settings.weig.density.custom": "Espacement personnalisé",
+    "settings.weig.density.preview": "Aperçu en direct",
+    "settings.weig.density.reset": "Réinitialiser",
+    "settings.weig.density.cancel": "Annuler",
+    "settings.weig.density.apply": "Appliquer",
+    "settings.weig.density.torrentExample": "Torrent",
+    "settings.weig.density.logsExample": "Journal"
   }
 }

@@ -631,6 +631,18 @@
     "detail.duration.seconds": "{seconds} 秒",
     "detail.piecesHave": "已有 {count} 個",
     "settings.weig.option.small": "小（-2px）",
-    "settings.weig.option.xsmall": "特小（-3px）"
+    "settings.weig.option.xsmall": "特小（-3px）",
+    "settings.weig.density.description": "調整清單每行的垂直間距，不改變字體大小或欄寬。",
+    "settings.weig.density.overall": "整體密度",
+    "settings.weig.density.torrent": "種子清單間距",
+    "settings.weig.density.logs": "日誌清單間距",
+    "settings.weig.density.follow": "跟隨整體密度",
+    "settings.weig.density.custom": "個別自訂",
+    "settings.weig.density.preview": "即時效果預覽",
+    "settings.weig.density.reset": "重設",
+    "settings.weig.density.cancel": "取消",
+    "settings.weig.density.apply": "套用",
+    "settings.weig.density.torrentExample": "種子",
+    "settings.weig.density.logsExample": "日誌"
   }
 }

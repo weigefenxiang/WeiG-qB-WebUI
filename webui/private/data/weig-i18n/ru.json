@@ -459,6 +459,18 @@
     "app.close": "Закрыть",
     "app.loading": "Загрузка…",
     "settings.weig.option.small": "Мелкий (-2px)",
-    "settings.weig.option.xsmall": "Очень мелкий (-3px)"
+    "settings.weig.option.xsmall": "Очень мелкий (-3px)",
+    "settings.weig.density.description": "Изменяет расстояние между строками списков, не затрагивая размер текста и ширину столбцов.",
+    "settings.weig.density.overall": "Общий интервал",
+    "settings.weig.density.torrent": "Интервал списка торрентов",
+    "settings.weig.density.logs": "Интервал журнала",
+    "settings.weig.density.follow": "Как в общих настройках",
+    "settings.weig.density.custom": "Свой интервал",
+    "settings.weig.density.preview": "Предпросмотр",
+    "settings.weig.density.reset": "Сбросить",
+    "settings.weig.density.cancel": "Отмена",
+    "settings.weig.density.apply": "Применить",
+    "settings.weig.density.torrentExample": "Торрент",
+    "settings.weig.density.logsExample": "Журнал"
   }
 }

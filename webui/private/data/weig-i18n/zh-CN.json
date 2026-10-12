@@ -627,6 +627,18 @@
     "language.zh-TW": "繁体中文（台湾）",
     "language.zh-HK": "繁体中文（香港）",
     "settings.weig.option.small": "小（-2px）",
-    "settings.weig.option.xsmall": "特小（-3px）"
+    "settings.weig.option.xsmall": "特小（-3px）",
+    "settings.weig.density.description": "调整列表每行的垂直间距，不改变字体大小或列宽。",
+    "settings.weig.density.overall": "整体密度",
+    "settings.weig.density.torrent": "种子列表间距",
+    "settings.weig.density.logs": "日志列表间距",
+    "settings.weig.density.follow": "跟随整体密度",
+    "settings.weig.density.custom": "单独自定义",
+    "settings.weig.density.preview": "实时效果示意",
+    "settings.weig.density.reset": "重置",
+    "settings.weig.density.cancel": "取消",
+    "settings.weig.density.apply": "应用",
+    "settings.weig.density.torrentExample": "种子",
+    "settings.weig.density.logsExample": "日志"
   }
 }

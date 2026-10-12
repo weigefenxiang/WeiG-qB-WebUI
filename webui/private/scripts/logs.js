@@ -12,7 +12,7 @@
   function typeTone(type){return type===8?'danger':type===4?'warning':type===2?'info':'normal';}
   function itemId(x){return Number(x&&x.id);}
   function rowKey(x){return String(itemId(x));}
-  function baseRowHeight(){return U.isMobile&&U.isMobile()?72:54;}
+  function baseRowHeight(){var mobile=U.isMobile&&U.isMobile();return W.DensityPolicy.height('logs',mobile?72:54,mobile?58:42);}
   function timestampMs(x){var v=Number(x&&x.timestamp);if(!Number.isFinite(v)||v<=0)return 0;return v>=1e12?v:v*1000;}
   function formatTime(x){var ms=timestampMs(x);if(!ms)return '';return W.Time&&W.Time.format?W.Time.format(ms):new Date(ms).toLocaleString();}
   function logColumnSource(){return[{key:'message',label:tr('logs.ui.log',null,'Log'),defaultWidth:720,min:220,defaultVisible:true,align:'start'},{key:'time',label:tr('logs.ui.time',null,'Time'),defaultWidth:190,min:140,defaultVisible:true,align:'start'},{key:'level',label:tr('logs.ui.level',null,'Level'),defaultWidth:110,min:84,defaultVisible:true,align:'center'}];}
@@ -65,7 +65,7 @@
 
   function activate(){if(!onLogsRoute()){state.active=false;stopPoll();return;}state.active=true;var root=U.$('logs-content');if(!root)return;if(!root.querySelector('[data-weig-log-shell]')){state.viewport=null;buildShell(root);}fetchInitial();}
   function rebuildShell(){if(!onLogsRoute())return;var root=U.$('logs-content');if(!root)return;if(state.viewport&&state.viewport.destroy)state.viewport.destroy();state.viewport=null;state.head=null;state.columns=null;buildShell(root);renderRows(false,0);}
-  function init(){global.addEventListener('weig:route-state',function(e){if(e.detail&&e.detail.name!=='logs'){state.active=false;stopPoll();}});document.addEventListener('visibilitychange',function(){if(state.active)schedulePoll();});global.addEventListener('resize',U.debounce(function(){if(state.active&&state.viewport&&state.viewport.setRowHeight)state.viewport.setRowHeight(baseRowHeight());},120));global.addEventListener('weig:languagechange',rebuildShell);global.addEventListener('weig:timezonechange',function(){if(state.active)renderRows(false,0);});global.addEventListener('weig:timeformatrefresh',function(){if(state.active)renderRows(false,0);});if(onLogsRoute())activate();}
+  function init(){global.addEventListener('weig:route-state',function(e){if(e.detail&&e.detail.name!=='logs'){state.active=false;stopPoll();}});document.addEventListener('visibilitychange',function(){if(state.active)schedulePoll();});global.addEventListener('resize',U.debounce(function(){if(state.active&&state.viewport&&state.viewport.setRowHeight)state.viewport.setRowHeight(baseRowHeight());},120));global.addEventListener('weig:configchange',function(e){if(e.detail&&e.detail.key==='density'&&state.viewport&&state.viewport.setRowHeight)state.viewport.setRowHeight(baseRowHeight());});global.addEventListener('weig:languagechange',rebuildShell);global.addEventListener('weig:timezonechange',function(){if(state.active)renderRows(false,0);});global.addEventListener('weig:timeformatrefresh',function(){if(state.active)renderRows(false,0);});if(onLogsRoute())activate();}
   W.Logs={setQuery:setQuery,query:function(){return state.query;},refresh:fetchInitial,activate:activate};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })(window);

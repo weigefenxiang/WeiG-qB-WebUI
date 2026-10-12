@@ -453,6 +453,18 @@
     "app.close": "Cerrar",
     "app.loading": "Cargando…",
     "settings.weig.option.small": "Pequeño (-2px)",
-    "settings.weig.option.xsmall": "Muy pequeño (-3px)"
+    "settings.weig.option.xsmall": "Muy pequeño (-3px)",
+    "settings.weig.density.description": "Ajusta el espacio vertical entre filas sin cambiar el tamaño del texto ni el ancho de las columnas.",
+    "settings.weig.density.overall": "Espaciado general",
+    "settings.weig.density.torrent": "Espaciado de torrents",
+    "settings.weig.density.logs": "Espaciado del registro",
+    "settings.weig.density.follow": "Seguir espaciado general",
+    "settings.weig.density.custom": "Espaciado personalizado",
+    "settings.weig.density.preview": "Vista previa en vivo",
+    "settings.weig.density.reset": "Restablecer",
+    "settings.weig.density.cancel": "Cancelar",
+    "settings.weig.density.apply": "Aplicar",
+    "settings.weig.density.torrentExample": "Torrent",
+    "settings.weig.density.logsExample": "Registro"
   }
 }

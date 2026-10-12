@@ -440,6 +440,18 @@
     "app.close": "Schließen",
     "app.loading": "Wird geladen…",
     "settings.weig.option.small": "Klein (-2px)",
-    "settings.weig.option.xsmall": "Sehr klein (-3px)"
+    "settings.weig.option.xsmall": "Sehr klein (-3px)",
+    "settings.weig.density.description": "Vertikalen Abstand zwischen Listeneinträgen ändern, ohne Schriftgröße oder Spaltenbreite anzupassen.",
+    "settings.weig.density.overall": "Gesamtabstand",
+    "settings.weig.density.torrent": "Abstand der Torrentliste",
+    "settings.weig.density.logs": "Abstand des Protokolls",
+    "settings.weig.density.follow": "Gesamtabstand übernehmen",
+    "settings.weig.density.custom": "Eigener Abstand",
+    "settings.weig.density.preview": "Live-Vorschau",
+    "settings.weig.density.reset": "Zurücksetzen",
+    "settings.weig.density.cancel": "Abbrechen",
+    "settings.weig.density.apply": "Anwenden",
+    "settings.weig.density.torrentExample": "Torrent",
+    "settings.weig.density.logsExample": "Protokoll"
   }
 }
