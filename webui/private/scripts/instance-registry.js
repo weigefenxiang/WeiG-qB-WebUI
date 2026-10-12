@@ -83,6 +83,18 @@
     write(items);
     return{name:name,url:url};
   }
+  function update(original,name,url){
+    original=canonicalUrl(original);name=String(name||'').trim();
+    if(!name||name.length>48)throw new Error('Instance name must be 1–48 characters.');
+    url=canonicalUrl(url);
+    var items=load(true),index=items.findIndex(function(x){return x.url===original;});
+    if(index<0)throw new Error('The instance to edit no longer exists.');
+    var others=items.filter(function(_row,i){return i!==index;});
+    assertIsolated(others,url);
+    if(others.some(function(x){return x.url===url;}))throw new Error('Duplicate instance.');
+    items[index]={name:name,url:url};write(items);
+    return items[index];
+  }
   function remove(url){
     var canonical=canonicalUrl(url),items=load(true),next=items.filter(function(x){return x.url!==canonical;});
     if(next.length!==items.length)write(next);
@@ -147,6 +159,6 @@
   }
   W.InstanceRegistry=Object.freeze({
     schemaVersion:1,currentUrl:function(){return currentUrl().href;},
-    list:load,add:add,remove:remove,exportList:exportList,importList:importList,switchTo:switchTo
+    list:load,add:add,update:update,remove:remove,exportList:exportList,importList:importList,switchTo:switchTo
   });
 })(window);

@@ -1,7 +1,7 @@
 (function(global){
   'use strict';
   var W=global.WeiG=global.WeiG||{},SESSION_STORE=W.StorageRuntime&&W.StorageRuntime.session;
-  var KEY=(W.StorageKeys&&W.StorageKeys.torrentListContext)||'weig.torrentListContext',ROUTE_MODULES={settings:['scripts/settings.js'],rss:['scripts/rss.js'],logs:['scripts/logs.js']},routeModules={};
+  var KEY=(W.StorageKeys&&W.StorageKeys.torrentListContext)||'weig.torrentListContext',ROUTE_MODULES={settings:['scripts/update-check.js','scripts/settings.js'],rss:['scripts/rss.js'],logs:['scripts/logs.js']},routeModules={};
   function route(){return W.Router&&W.Router.route?W.Router.route():{name:'home'};}
   function isMobile(){return !!(global.matchMedia&&global.matchMedia('(max-width: 820px)').matches);}
   function read(){try{return JSON.parse((SESSION_STORE?SESSION_STORE.get(KEY,null):null)||'null');}catch(_e){return null;}}
@@ -77,7 +77,31 @@
     global.addEventListener('weig:languagechange',function(){refreshLabels();dock.querySelectorAll('.mobile-bottom-nav__item small').forEach(function(label){label.scrollLeft=0;});});
     refreshLabels();
   }
-  function init(){installBottomNavTextScroll();sync();setTimeout(sync,400);}
-  W.Navigation={goHome:function(){if(W.Router)W.Router.home();else location.hash='#/';},backFromDetail:back,restoreListContext:restore,syncDetailBack:sync,loadRouteModule:loadRouteModule,warmRouteModules:warmRouteModules,routeModulePaths:function(name){return(ROUTE_MODULES[String(name||'')]||[]).slice();}};
+  var instancesTask=null;
+  function loadInstances(){
+    if(W.InstancesUI)return Promise.resolve(W.InstancesUI);
+    if(instancesTask)return instancesTask;
+    var asset=W.RuntimeAssets&&W.RuntimeAssets.loadScript;
+    if(typeof asset!=='function')return Promise.reject(new Error('Shared module loader unavailable.'));
+    var modules=['scripts/instance-registry.js','scripts/instance-health.js','scripts/instances-ui.js'];
+    instancesTask=modules.reduce(function(p,path){return p.then(function(){
+      return asset(path,{namespace:'sidebar-feature',identity:'instances'});
+    });},Promise.resolve()).then(function(){
+      if(!W.InstancesUI)throw new Error('Instance UI owner did not initialize.');
+      return W.InstancesUI;
+    }).catch(function(error){instancesTask=null;throw error;});
+    return instancesTask;
+  }
+  function afterFirstPaint(){
+    var start=function(){loadInstances().catch(function(error){
+      var box=document.getElementById('sidebar-instances');
+      if(box)box.textContent=W.I18n&&W.I18n.t?W.I18n.t('instances.loadFailed'):'Instances unavailable';
+      console.error('[WeiG instance modules]',error);
+    });};
+    if(global.requestAnimationFrame)global.requestAnimationFrame(function(){global.requestAnimationFrame(start);});
+    else setTimeout(start,0);
+  }
+  function init(){installBottomNavTextScroll();sync();setTimeout(sync,400);afterFirstPaint();}
+  W.Navigation={goHome:function(){if(W.Router)W.Router.home();else location.hash='#/';},backFromDetail:back,restoreListContext:restore,syncDetailBack:sync,loadRouteModule:loadRouteModule,warmRouteModules:warmRouteModules,loadInstances:loadInstances,routeModulePaths:function(name){return(ROUTE_MODULES[String(name||'')]||[]).slice();}};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })(window);

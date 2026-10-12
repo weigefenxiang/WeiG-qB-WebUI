@@ -25,7 +25,8 @@
     "css/settings.css",
     "css/feedback.css",
     "css/action-editor.css",
-    "css/sidebar.css"
+    "css/sidebar.css",
+    "css/sidebar-instances.css"
   ],
   "phases": [
     {
@@ -84,8 +85,6 @@
         "scripts/time.js",
         "scripts/brand.js",
         "scripts/session.js",
-        "scripts/instance-registry.js",
-        "scripts/update-check.js",
         "scripts/navigation.js"
       ],
       "requiresStyles": true

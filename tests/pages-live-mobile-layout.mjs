@@ -625,20 +625,24 @@ try{
       const make=(text,value)=>{const card=document.createElement('div'),label=document.createElement('small'),num=document.createElement('strong');card.className='transfer-stat';label.textContent=text;num.textContent=value;card.append(label,num);transfer.appendChild(card);return{card,label,num};};
       const short=make('DHT','7'),long=make('Long localized text that needs more than one row in a narrow card','123456789');
       long.card.style.width='136px';
-      const perf=document.createElement('div');perf.className='settings-grid diagnostic-grid';perf.style.width=Math.max(230,innerWidth-60)+'px';
+      // A75 moved the Metrics grid to a real container-query owner. Exercise
+      // the production .settings-section ancestry, not a detached body fixture.
+      const perfSection=document.createElement('section');perfSection.className='settings-section';perfSection.dataset.settingsOwner='weig-metrics';
+      perfSection.style.width=Math.max(230,innerWidth-60)+'px';
+      const perf=document.createElement('div');perf.className='settings-grid diagnostic-grid';perf.style.width='100%';
       for(let i=0;i<6;i++){const fact=document.createElement('div');fact.className='diagnostic-fact';fact.textContent='Long translated diagnostic card label '+i;perf.appendChild(fact);}
-      root.append(transfer,perf);document.body.appendChild(root);
+      perfSection.appendChild(perf);root.append(transfer,perfSection);document.body.appendChild(root);
       const box=node=>node.getBoundingClientRect();
       const labelStyle=getComputedStyle(long.label),lineHeight=parseFloat(labelStyle.lineHeight)||parseFloat(labelStyle.fontSize)*1.25;
       const proof={width:innerWidth,transferDisplay:getComputedStyle(short.card).display,shortAligned:Math.abs(box(short.label).bottom-box(short.num).bottom)<6,
         longWrap:box(long.label).height>lineHeight*1.3,longOverflow:long.card.scrollWidth-long.card.clientWidth,
-        perfWidth:perf.getBoundingClientRect().width,columns:getComputedStyle(perf).gridTemplateColumns.trim().split(/\\s+/).length,
+        perfWidth:perf.getBoundingClientRect().width,perfDisplay:getComputedStyle(perf).display,columns:getComputedStyle(perf).gridTemplateColumns.trim().split(/\\s+/).length,
         perfOverflow:[...perf.children].some(x=>x.scrollWidth>x.clientWidth+2)};
       root.remove();return proof;
     });
     const expectedColumns=a74Geometry.perfWidth>=272?2:1;
     assert.ok(a74Geometry.transferDisplay==='flex'&&a74Geometry.shortAligned&&a74Geometry.longWrap&&a74Geometry.longOverflow<=2&&
-      a74Geometry.columns===expectedColumns&&!a74Geometry.perfOverflow,
+      a74Geometry.perfDisplay==='grid'&&a74Geometry.columns===expectedColumns&&!a74Geometry.perfOverflow,
       'A74 live responsive stats/performance layout at '+width+'px: '+JSON.stringify(a74Geometry));
   }
   await page.setViewportSize({width:360,height:844});

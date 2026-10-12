@@ -118,6 +118,11 @@ assert.deepEqual(navigations,['https://nas.example/'],'switching must navigate w
 assert.ok(I.remove('https://vps.example/'));
 assert.equal(I.list().length,1);
 assert.ok(!source.includes('password:')&&!source.includes('token:'),'instance registry must only persist names and safe URLs, never credentials');
+const beforeEdit=I.list().length;
+const edited=I.update('https://nas.example/','NAS moved','https://nas-moved.example/');
+assert.equal(edited.url,'https://nas-moved.example/');
+assert.equal(I.list().length,beforeEdit,'Atomic editing must not add a second record');
+assert.throws(()=>I.update('https://nas.example/','Old','https://again.example/'),/no longer exists/);
 console.log('Instance registry contract passed: origin-local storage, URL validation, full-navigation isolation and header ownership.');
 
 assert.ok(source.includes("options.transfer===true"),'Only explicit navigation can request a nonsecret list handoff');
