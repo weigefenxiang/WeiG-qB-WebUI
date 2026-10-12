@@ -1,7 +1,7 @@
 (function(global){
   'use strict';
   var W=global.WeiG=global.WeiG||{},K=W.StorageKeys||{};
-  var HANDOFF=K.loginHandshake||'weig.loginHandshake',FAILURE=K.loginFailure||'weig.loginFailure',LOGOUT_GUARD=K.logoutGuard||'weig.logoutGuard',LOCALE_INTENT=K.loginLocaleIntent||'weig.loginLocaleIntent',PROBE='api/v2/app/preferences',HANDOFF_PARAM=K.handoffParam||'__weig_handoff',AUTH_FAILURE_PARAM=K.authFailureParam||'__weig_auth_failure',MAX_HANDOFF_AGE=120000;
+  var HANDOFF=K.loginHandshake||'weig.loginHandshake',FAILURE=K.loginFailure||'weig.loginFailure',LOGOUT_GUARD=K.logoutGuard||'weig.logoutGuard',LOCALE_INTENT=K.loginLocaleIntent||'weig.loginLocaleIntent',PROBE='api/v2/app/preferences',HANDOFF_PARAM=K.handoffParam||'__weig_handoff',AUTH_FAILURE_PARAM=K.authFailureParam||'__weig_auth_failure',MAX_HANDOFF_AGE=120000,REENTRY_HINT=K.sessionReentryHint||'weig.session.reentryHint',REENTRY_MAX_AGE=24*60*60*1000;
   function loginKind(status,text){status=Number(status)||0;text=String(text||'').trim();if(status===204||(status>=200&&status<300&&text==='Ok.'))return'accepted';if(status===401||(status>=200&&status<300&&text==='Fails.'))return'credentials-rejected';if(status===403)return'login-blocked';if(status===0)return'offline';if(status<200||status>=300)return'login-rejected';return'unexpected-login-response';}
   function probeKind(status){status=Number(status)||0;if(status>=200&&status<300)return'authenticated';if(status===403)return'session-missing';if(status===401)return'request-rejected';if(status===0)return'offline';return'unexpected-probe-response';}
   async function probe(){try{var response=await fetch(PROBE,{credentials:'same-origin',cache:'no-store'});return{ok:response.ok,status:response.status,kind:probeKind(response.status)};}catch(error){return{ok:false,status:0,kind:'offline',error:error};}}
@@ -20,16 +20,34 @@
   function clearHandoff(){try{sessionStorage.removeItem(HANDOFF);}catch(_e){}}
   function authenticatedEntryUrl(record){var url=new URL('index.html',BASE);if(record&&record.nonce)url.searchParams.set(HANDOFF_PARAM,record.nonce);return url;}
   function publicEntryUrl(){return new URL('login.html',BASE);}
+  // A short-lived tab/origin-local hint, NOT an authentication state. Only
+  // positively authenticated qB4 private startup may set it; public entry
+  // must still prove SID via SessionContract.probe() before any redirect.
+  function clearReentryHint(){try{sessionStorage.removeItem(REENTRY_HINT);}catch(_e){}}
+  function markReentryCandidate(qbVersion){
+    var candidate=/^v?4\.[0-9]+(?:\.[0-9]+)*$/.test(String(qbVersion||'').trim());
+    if(!candidate){clearReentryHint();return false;}
+    try{sessionStorage.setItem(REENTRY_HINT,String(Date.now()));return true;}catch(_e){return false;}
+  }
+  function hasReentryCandidate(){
+    try{var value=sessionStorage.getItem(REENTRY_HINT),when=Number(value),age=Date.now()-when;
+      if(!value||!Number.isSafeInteger(when)||age<0||age>REENTRY_MAX_AGE){if(value)clearReentryHint();return false;}
+      return true;
+    }catch(_e){return false;}
+  }
+
   // A cross-origin top-level qB4 SameSite=Strict return can show the public
   // *root* despite a valid SID. Do not probe normal explicit login.html:
   // an unauthenticated user receives an expected HTTP 403 console error.
   function autoRecoverPublicEntry(){
     try{
       var pathname=new URL(global.location.href).pathname;
-      return pathname===BASE.pathname||pathname===new URL('index.html',BASE).pathname;
+      var crossOriginProposal=W.InstanceHandoff&&W.InstanceHandoff.peek&&W.InstanceHandoff.peek();
+      var atRoot=pathname===BASE.pathname||pathname===new URL('index.html',BASE).pathname;
+      return !!(atRoot&&(hasReentryCandidate()||crossOriginProposal));
     }catch(_error){return false;}
   }
-  function setLogoutGuard(){try{sessionStorage.setItem(LOGOUT_GUARD,String(Date.now()));return true;}catch(_e){return false;}}
+  function setLogoutGuard(){clearReentryHint();try{sessionStorage.setItem(LOGOUT_GUARD,String(Date.now()));return true;}catch(_e){return false;}}
   function clearLogoutGuard(){try{sessionStorage.removeItem(LOGOUT_GUARD);}catch(_e){}}
   function logoutGuarded(){try{return !!sessionStorage.getItem(LOGOUT_GUARD);}catch(_e){return false;}}
   function completePublicEntry(){clearLogoutGuard();return true;}
@@ -40,5 +58,5 @@
   function navigatePublicFailure(){var url=publicEntryUrl();url.searchParams.set(AUTH_FAILURE_PARAM,'1');global.location.replace(url.href);}
   function recordFailure(kind,status,stage){return write(FAILURE,{schemaVersion:1,kind:String(kind||'unknown'),status:Number(status)||0,stage:String(stage||''),createdAt:Date.now()});}
   function consumeFailure(){return read(FAILURE,true);}
-  W.SessionContract={probeEndpoint:PROBE,loginKind:loginKind,probeKind:probeKind,probe:probe,handoff:handoff,pendingHandoff:pendingHandoff,clearHandoff:clearHandoff,authenticatedEntryUrl:authenticatedEntryUrl,publicEntryUrl:publicEntryUrl,autoRecoverPublicEntry:autoRecoverPublicEntry,setLogoutGuard:setLogoutGuard,clearLogoutGuard:clearLogoutGuard,logoutGuarded:logoutGuarded,completePublicEntry:completePublicEntry,navigatePublic:navigatePublic,beginAuthenticatedHandoff:beginAuthenticatedHandoff,matchesAuthenticatedEntry:matchesAuthenticatedEntry,completeHandoff:completeHandoff,navigatePublicFailure:navigatePublicFailure,recordFailure:recordFailure,consumeFailure:consumeFailure,localeIntent:localeIntent,setLocaleIntent:setLocaleIntent,consumeLocaleIntent:consumeLocaleIntent,clearLocaleIntent:clearLocaleIntent};
+  W.SessionContract={probeEndpoint:PROBE,loginKind:loginKind,probeKind:probeKind,probe:probe,handoff:handoff,pendingHandoff:pendingHandoff,clearHandoff:clearHandoff,authenticatedEntryUrl:authenticatedEntryUrl,publicEntryUrl:publicEntryUrl,autoRecoverPublicEntry:autoRecoverPublicEntry,markReentryCandidate:markReentryCandidate,setLogoutGuard:setLogoutGuard,clearLogoutGuard:clearLogoutGuard,logoutGuarded:logoutGuarded,completePublicEntry:completePublicEntry,navigatePublic:navigatePublic,beginAuthenticatedHandoff:beginAuthenticatedHandoff,matchesAuthenticatedEntry:matchesAuthenticatedEntry,completeHandoff:completeHandoff,navigatePublicFailure:navigatePublicFailure,recordFailure:recordFailure,consumeFailure:consumeFailure,localeIntent:localeIntent,setLocaleIntent:setLocaleIntent,consumeLocaleIntent:consumeLocaleIntent,clearLocaleIntent:clearLocaleIntent};
 })(window);
