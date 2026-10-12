@@ -25,11 +25,21 @@
     finally{clearTimeout(timeout);}
   }
   function numericCount(text){var s=String(text||'').trim(),n=Number(s);return /^\d+$/.test(s)&&Number.isSafeInteger(n)&&n>=0?n:null;}
+  function verifiedVersion(value){return /^(?:[1-9]\d*)(?:\.\d+){1,3}(?:[-+._][A-Za-z0-9.-]+)?$/.test(String(value||'').trim());}
+  // An opaque response has no inspectable HTTP status or body; never call it qB online.
+  async function reachable(url){
+    var controller=new AbortController(),timeout=setTimeout(function(){controller.abort();},5000);
+    try{
+      var response=await fetch(new URL('api/v2/app/version',url).href,{method:'GET',mode:'no-cors',credentials:'omit',referrerPolicy:'no-referrer',redirect:'error',cache:'no-store',signal:controller.signal});
+      return !!(response&&response.type==='opaque');
+    }catch(_error){return false;}
+    finally{clearTimeout(timeout);}
+  }
   async function inspect(url){
     var checkedAt=Date.now(),row={status:'unverified',count:null,checkedAt:checkedAt};
     if(same(url,current())){
       var client=W.AppState&&W.AppState.client;
-      if(client&&client.qbVersion&&client.qbVersion!=='0'){
+      if(client&&verifiedVersion(client.qbVersion)){
         row.status='online';
         try{if(typeof client.torrentCount==='function')row.count=numericCount(await client.torrentCount());}catch(_error){}
       }
@@ -41,13 +51,13 @@
       if(version.status===401||version.status===403){row.status='denied';return row;}
       if(!version.ok){row.status='unverified';return row;}
       var text=String(await version.text()).trim();
-      if(!text||text.length>100){row.status='unverified';return row;}
+      if(!verifiedVersion(text)){row.status='reachable';return row;}
       row.status='online';
       try{var count=await remoteGet(url,'torrents/count');if(count.ok)row.count=numericCount(await count.text());}catch(_error){}
     }catch(_error){
-      // CORS, Private Network Access, mixed content, unavailable host and timeout are
-      // indistinguishable in many browsers; do not claim 'offline'.
-      row.status='unverified';
+      // CORS, blocked private networks and network errors cannot prove offline.
+      // Opaque HTTP reachability is weaker evidence than a verified qB WebAPI.
+      row.status=await reachable(url)?'reachable':'unverified';
     }
     return row;
   }
@@ -76,6 +86,8 @@
     if(started)return;started=true;
     tick=setInterval(tickIfDue,60000);
     global.addEventListener('visibilitychange',tickIfDue);
+    // Session readiness predates app.detect(); reconcile when WebAPI identity is real.
+    global.addEventListener('weig:app-ready',function(){checkNow().catch(function(){emit();});});
     var session=W.SessionController;
     if(session&&session.ready)session.ready().then(function(ok){if(ok)tickIfDue();}).catch(function(){});
     else tickIfDue();

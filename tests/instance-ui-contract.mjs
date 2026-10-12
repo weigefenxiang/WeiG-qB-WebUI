@@ -23,18 +23,18 @@ const saved=new Map(),observed=[],registry={
   list:()=>[{name:'Other',url:'https://two.example/'}]
 };
 const store={get:(key,def)=>saved.has(key)?saved.get(key):def,set:(key,value)=>{saved.set(key,value);return true;}};
-const client={qbVersion:'5.2.4',torrentCount:async()=>42};
+const client={qbVersion:'0.0.0',torrentCount:async()=>42};
 const window={
   WeiG:{StorageRuntime:{local:store},StorageKeys:{instanceProbeInterval:'weig.instances.probeMinutes'},InstanceRegistry:registry,AppState:{client}},
   location:{origin:'https://one.example'},
   addEventListener(){},dispatchEvent(){},
 };
 const document={readyState:'loading',visibilityState:'visible',addEventListener(){}};
-let blocked=false;
+let blocked=false,opaque=false;
 async function fetch(url,opts){
   assert.equal(opts.credentials,'omit');assert.equal(opts.referrerPolicy,'no-referrer');
   observed.push(url);
-  if(blocked)throw new TypeError('Failed to fetch');
+  if(blocked){if(opts.mode==='no-cors'&&opaque)return{type:'opaque'};throw new TypeError('Failed to fetch');}
   return url.endsWith('/app/version')?{ok:true,status:200,text:async()=> '5.2.4'}:{ok:true,status:200,text:async()=> '67'};
 }
 vm.runInNewContext(health,{window,document,URL,Number,Map,CustomEvent:class{},AbortController,fetch,setTimeout,clearTimeout,setInterval:()=>1,clearInterval:()=>{},Date});
@@ -46,14 +46,20 @@ assert.throws(()=>H.setMinutes('1441'));
 assert.equal(H.setMinutes(0),0);
 assert.equal(H.minutes(),0);
 await H.checkNow();
+assert.equal(H.get('https://one.example/').status,'unverified','Undetected 0.0.0 qB must not count as online');
+client.qbVersion='5.2.4';
+await H.checkNow();
 assert.equal(H.get('https://one.example/').status,'online');
 assert.equal(H.get('https://one.example/').count,42);
 assert.equal(H.get('https://two.example/').status,'online');
 assert.equal(H.get('https://two.example/').count,67);
-assert.equal(observed.length,2,'Remote one-version + one-count GET only');
+assert.equal(observed.length,4,'Each check performs only one version and one count GET for remote qB');
 blocked=true;await H.checkNow();
 assert.equal(H.get('https://two.example/').status,'unverified','CORS/mixed-content/network failure cannot be mislabelled offline');
 assert.equal(H.get('https://two.example/').count,null);
+opaque=true;await H.checkNow();
+assert.equal(H.get('https://two.example/').status,'reachable','Opaque HTTP response is reachability, not qB online.');
+assert.equal(H.get('https://two.example/').count,null,'Opaque response must not imply a torrent count.');
 
 const coreI18n=read('webui/private/scripts/i18n.js');
 const enMatch=coreI18n.match(/\bvar EN=(\{[^\n]+\});/);
