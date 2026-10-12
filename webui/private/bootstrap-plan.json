@@ -32,7 +32,8 @@
       "name": "foundation",
       "scripts": [
         "scripts/brand-favicon.js",
-        "storage-migration.js"
+        "storage-migration.js",
+        "instance-handoff.js"
       ]
     },
     {

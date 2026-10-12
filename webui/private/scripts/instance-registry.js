@@ -25,7 +25,6 @@
     if(/\/api\/v2(?:\/|$)/i.test(url.pathname))throw new Error('Use the WebUI root, not an API endpoint.');
     normalizeRoot(url);
     var current=currentUrl();
-    if(current.protocol==='https:'&&url.protocol!=='https:')throw new Error('Refusing a downgrade from HTTPS to HTTP.');
     if(url.hostname===current.hostname&&url.origin!==current.origin)throw new Error('Instances on different ports of one hostname may share qB cookies; use distinct hostnames.');
     if(url.origin===current.origin&&url.pathname!==current.pathname)throw new Error('Same-origin instances with different paths require a verified session-isolating gateway.');
     return url.href;
@@ -123,10 +122,27 @@
     doc.body.appendChild(link);
     try{link.click();}finally{link.remove();}
   }
-  function switchTo(url){
-    var canonical=canonicalUrl(url),record=load().find(function(x){return x.url===canonical;});
+  function switchTo(url,options){
+    options=options||{};
+    var canonical=canonicalUrl(url),record=load(true).find(function(x){return x.url===canonical;});
     if(!record)throw new Error('Choose a registered instance.');
-    if(canonical!==currentUrl().href)navigateIsolated(canonical);
+    var current=currentUrl(),target=new URL(canonical);
+    if(current.protocol==='https:'&&target.protocol==='http:'&&options.allowDowngrade!==true)
+      throw new Error('Switching from HTTPS to HTTP requires explicit confirmation.');
+    if(canonical!==current.href){
+      var destination=canonical;
+      if(options.transfer===true){
+        var handoff=W.InstanceHandoff;
+        if(!handoff||!handoff.urlFor)throw new Error('Instance handoff is unavailable.');
+        var items=load(true).slice();
+        if(!items.some(function(x){return x.url===current.href})){
+          if(items.length>=LIMIT)throw new Error('Instance list is full. Export it manually.');
+          items.unshift({name:options.currentName||'Current qBittorrent',url:current.href});
+        }
+        destination=handoff.urlFor(canonical,items,current.href);
+      }
+      navigateIsolated(destination);
+    }
     return true;
   }
   W.InstanceRegistry=Object.freeze({

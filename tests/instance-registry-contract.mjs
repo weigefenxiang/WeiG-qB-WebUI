@@ -76,7 +76,10 @@ assert.throws(()=>I.importList(JSON.stringify({schemaVersion:1,items:[{name:'Ano
 assert.equal(saved.get('weig.instances.v1'),compromised,'blocked mutations must preserve raw storage bytes');
 saved.set('weig.instances.v1',JSON.stringify({schemaVersion:1,items:Array.from(I.list())}));
 I.remove('https://shared.example:8080/');
-for(const bad of ['javascript:alert(1)','https://user:pw@x.example/','https://x.example/?secret=1','https://x.example/#token','http://unsafe.example/','https://hub.example:8443/','https://hub.example/qb2/','https://nas.example/api/v2/app/version']){
+assert.equal(I.add('HTTP LAN','http://lan.example/').url,'http://lan.example/');
+assert.throws(()=>I.switchTo('http://lan.example/'),/explicit confirmation/);
+assert.ok(I.remove('http://lan.example/'));
+for(const bad of ['javascript:alert(1)','https://user:pw@x.example/','https://x.example/?secret=1','https://x.example/#token','https://hub.example:8443/','https://hub.example/qb2/','https://nas.example/api/v2/app/version']){
   assert.throws(()=>I.add('bad',bad),'unsafe instance address must fail: '+bad);
 }
 for(const raw of ['{unparseable',JSON.stringify({schemaVersion:2,items:[{name:'Future',url:'https://future.example/'}]}),JSON.stringify({schemaVersion:1,items:[{name:'Existing',url:'https://good.example/',secret:'do-not-erase'}]})]){
@@ -102,7 +105,6 @@ const snapshot=other.exportList();
 for(const invalid of [
   '{bad json',JSON.stringify({schemaVersion:2,items:[]}),
   JSON.stringify({schemaVersion:1,items:[{name:'Bad',url:'https://bad.example/',password:'hidden'}]}),
-  JSON.stringify({schemaVersion:1,items:[{name:'Bad',url:'http://downgrade.example/'}]}),
   JSON.stringify({schemaVersion:1,items:[{name:'A',url:'https://a.example/'},{name:'B',url:'https://a.example/'}]}),
   JSON.stringify({schemaVersion:1,items:[{name:'A',url:'https://remote.example:8080/'},{name:'B',url:'https://remote.example:9090/'}]}),
   JSON.stringify({schemaVersion:1,items:[{name:'A',url:'https://remote.example/qb1/'},{name:'B',url:'https://remote.example/qb2/'}]}),
@@ -117,3 +119,5 @@ assert.ok(I.remove('https://vps.example/'));
 assert.equal(I.list().length,1);
 assert.ok(!source.includes('password:')&&!source.includes('token:'),'instance registry must only persist names and safe URLs, never credentials');
 console.log('Instance registry contract passed: origin-local storage, URL validation, full-navigation isolation and header ownership.');
+
+assert.ok(source.includes("options.transfer===true"),'Only explicit navigation can request a nonsecret list handoff');
