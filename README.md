@@ -34,6 +34,16 @@ Download the latest stable release [**weig-qb-webui.zip**](https://github.com/we
   <img src="assets/screenshots/weig-qb-webui-mobile-overview.gif" alt="WeiG qB WebUI mobile animation" height="341"><img src="assets/screenshots/weig-qb-webui-mobile-overview.png" alt="WeiG qB WebUI mobile interface" height="341">
 </p>
 
+## Development preview: A76 multi-instance sidebar
+
+In **Dev A76**, several independent qBittorrent instances may serve the same **read-only** materialized WeiG folder. Mount the host folder into each Docker container, for example `/root/weig-qb-webui:/weig-qb-webui:ro`, then set each qBittorrent Alternative WebUI root to `/weig-qb-webui`. Each instance still keeps its own torrent database, settings and login.
+
+The sidebar's **Instances** section allows registration, full-page switching and renaming (right-click or use the row menu). Name the current instance, for example `524 (current)`; the current marker follows the actual URL, not a stored suffix. The automatic check interval is in **Settings → WeiG WebUI → Interface**, defaults to `30 min`, and supports Off or 5–1440 min.
+
+**Health evidence is intentionally conservative:** verified same-origin WebAPI means qB is online; a credentials-free cross-origin `no-cors` response means only that an HTTP address is reachable, possibly even returning 403/404. No cross-origin Cookie/SID reading, password or session transfer, CORS bypass or backend gateway is provided. A timestamp saved after previous qB verification is **historical evidence**, never proof of current online status. A browser's `127.0.0.1` refers to the device running that browser, not a remote VPS.
+
+The Dev A76 release is experimental and requires real-user validation; stable releases are separate.
+
 ## New User Installation
 
 <details>

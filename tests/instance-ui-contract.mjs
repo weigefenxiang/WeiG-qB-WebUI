@@ -68,6 +68,19 @@ assert.equal(H.get('https://two.example/').count,null);
 opaque=true;await H.checkNow();
 assert.equal(H.get('https://two.example/').status,'reachable','Opaque HTTP response is reachability, not qB online.');
 assert.equal(H.get('https://two.example/').count,null,'Opaque response must not imply a torrent count.');
+const historyKey='weig.instances.lastVerified.v1',history=JSON.parse(saved.get(historyKey));
+assert.equal(history.schemaVersion,1);
+assert.ok(history.items.length<=16&&history.items.some(x=>x.url==='https://one.example/'&&x.at>0));
+assert.ok(history.items.every(x=>Object.keys(x).sort().join(',')==='at,url'),'Persist verified timestamp only, never Cookie/SID/count');
+const reloadWindow={
+  WeiG:{StorageRuntime:{local:store},StorageKeys:{instanceHealthHistory:historyKey},InstanceRegistry:registry,AppState:{client}},
+  location:{origin:'https://one.example'},addEventListener(){},dispatchEvent(){}
+};
+vm.runInNewContext(health,{window:reloadWindow,document,URL,Number,Map,CustomEvent:class{},AbortController,fetch,setTimeout,clearTimeout,setInterval:()=>1,clearInterval:()=>{},Date});
+const previous=reloadWindow.WeiG.InstanceHealth.get('https://one.example/');
+assert.equal(previous.status,'unverified','Persisted history must not be projected as live online');
+assert.equal(previous.count,null,'Persisted history must not carry a torrent count');
+assert.ok(previous.lastVerifiedAt>0,'Show a bounded previous evidence timestamp');
 
 const coreI18n=read('webui/private/scripts/i18n.js');
 const enMatch=coreI18n.match(/\bvar EN=(\{[^\n]+\});/);
