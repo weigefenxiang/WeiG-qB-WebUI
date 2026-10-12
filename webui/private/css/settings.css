@@ -104,3 +104,9 @@ html[data-theme=light]{--settings-section-surface:linear-gradient(180deg,#fff,#f
 .density-dialog__actions>.btn:first-child{margin-right:auto}
 @media(max-width:560px){.density-dialog__body{padding:12px;gap:13px}.density-dialog__preview-grid{grid-template-columns:1fr}.density-dialog__scope-controls{grid-template-columns:minmax(0,1fr) 100px}.density-dialog__actions{padding:10px;gap:5px}.density-dialog__actions>.btn{padding-inline:9px;font-size:var(--text-label)}}
 @media(prefers-reduced-motion:reduce){.density-dialog__sample{transition:none}}html[data-motion=reduced] .density-dialog__sample{transition:none}
+
+/* A75-5: a noninteractive capsule shows the canonical unsaved motion policy. */
+.setting-control-slot.motion-preview-slot{display:flex;flex-wrap:wrap;gap:9px;align-items:center;justify-content:flex-end;min-width:0}
+.motion-preview-capsule{display:inline-flex;align-items:center;justify-content:center;min-height:32px;padding:4px 12px;box-sizing:border-box;white-space:nowrap;border:1px solid var(--border-strong);border-radius:999px;background:var(--surface-raised);color:var(--text-secondary);font-size:var(--text-label);font-variant-numeric:tabular-nums;box-shadow:var(--shadow-sm);pointer-events:none;transform-origin:center}
+.motion-preview-capsule[data-mode=full]{border-color:var(--accent-primary);background:color-mix(in srgb,var(--surface-raised) 88%,var(--accent-primary))}
+@media(max-width:540px){.setting-control-slot.motion-preview-slot{justify-content:flex-start;max-width:100%;gap:6px}.motion-preview-capsule{min-height:30px;padding-inline:9px;font-size:var(--text-caption)}}

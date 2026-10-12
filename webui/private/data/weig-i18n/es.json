@@ -464,7 +464,6 @@
     "settings.weig.density.reset": "Restablecer",
     "settings.weig.density.cancel": "Cancelar",
     "settings.weig.density.apply": "Aplicar",
-    "settings.weig.density.torrentExample": "Torrent",
     "settings.weig.density.logsExample": "Registro"
   }
 }

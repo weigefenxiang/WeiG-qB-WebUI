@@ -451,7 +451,6 @@
     "settings.weig.density.reset": "Zurücksetzen",
     "settings.weig.density.cancel": "Abbrechen",
     "settings.weig.density.apply": "Anwenden",
-    "settings.weig.density.torrentExample": "Torrent",
     "settings.weig.density.logsExample": "Protokoll"
   }
 }

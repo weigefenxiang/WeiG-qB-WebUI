@@ -71,6 +71,32 @@
       return Promise.all([settled(fadeTarget),settled(fadeGhost)]).then(function(){stop(fadeTarget);stop(fadeGhost);if(previousOpacity)target.style.opacity=previousOpacity;else target.style.removeProperty('opacity');removeGhost(node);return true;});
     }).catch(function(){stop(move);if(previousOpacity)target.style.opacity=previousOpacity;else target.style.removeProperty('opacity');removeGhost(node);return false;});
   }
+
+  // Visual-only demonstration: applies the current shared motion policy without touching qB state.
+  function preview(node,kind){
+    if(!node||!node.isConnected)return Promise.resolve(false);
+    cancel(node);
+    var p=policy(kind||'dock'),rect=capture(node);
+    if(p.duration<=0||!rect)return Promise.resolve(false);
+    var full=p.mode==='full';
+    var frames=full?[
+      {offset:0,opacity:1,transform:'translateY(0) scale(1,1)',filter:'blur(0px)'},
+      {offset:.23,opacity:1,transform:'translateY(-3px) scale(1.09,1.17)',filter:'blur(.35px)'},
+      {offset:.57,opacity:1,transform:'translateY(1px) scale(.97,.97)',filter:'blur(0px)'},
+      {offset:.8,opacity:1,transform:'translateY(-1px) scale(1.025,1.045)',filter:'blur(0px)'},
+      {offset:1,opacity:1,transform:'translateY(0) scale(1,1)',filter:'blur(0px)'}
+    ]:[
+      {offset:0,opacity:1,transform:'scale(1,1)'},
+      {offset:.45,opacity:1,transform:'scale(1.035,1.07)'},
+      {offset:1,opacity:1,transform:'scale(1,1)'}
+    ];
+    var animation=animate(node,frames,{duration:Math.round(p.duration*(full?1.6:1.25)),easing:'cubic-bezier(.2,.75,.25,1)'});
+    if(!animation)return Promise.resolve(false);
+    if(node.dataset)node.dataset.surfaceTransition='preview';
+    var entry={animation:animation,cleanup:function(){if(node.dataset)delete node.dataset.surfaceTransition;}};
+    active.set(node,entry);
+    return settled(animation).then(function(){if(active.get(node)!==entry)return false;active.delete(node);stop(animation);entry.cleanup();return true;}).catch(function(){if(active.get(node)===entry)active.delete(node);stop(animation);entry.cleanup();return false;});
+  }
   function clear(){Array.from(ghosts).forEach(removeGhost);}
-  W.SurfaceTransition={policy:policy,capture:capture,enter:enter,slide:slide,exitSnapshot:exitSnapshot,morph:morph,cancel:cancel,clear:clear};
+  W.SurfaceTransition={policy:policy,capture:capture,enter:enter,slide:slide,exitSnapshot:exitSnapshot,morph:morph,preview:preview,cancel:cancel,clear:clear};
 })(window);

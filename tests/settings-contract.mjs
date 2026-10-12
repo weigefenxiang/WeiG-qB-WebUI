@@ -180,11 +180,35 @@ assert(a75DensitySettings.includes('densityRow(ctx)')&&!a75DensitySettings.inclu
 const a75DensityApp=read('webui/private/scripts/app.js'),a75DensityLogs=read('webui/private/scripts/logs.js'),a75DensityResponsive=read('webui/private/scripts/responsive.js');
 assert(a75DensityApp.includes("W.DensityPolicy.height('torrent'")&&a75DensityLogs.includes("W.DensityPolicy.height('logs'")&&a75DensityResponsive.includes("W.DensityPolicy.height('torrent'"),'All row geometry must consume one density policy');
 assert(a75DensityLogs.includes("e.detail.key==='density'"),'Logs viewport must respond to live density updates');
+const a75DensityI18n=read('webui/private/scripts/i18n.js');
 const a75DensityLayout=read('webui/private/css/layout.css'),a75DensityLogCss=read('webui/private/css/logs.css');
 assert(!a75DensityLayout.includes('html[data-density=compact]')&&!a75DensityLayout.includes('html[data-density=comfortable]'),'Retire legacy density CSS owners');
 assert(!/\.logs-row\{align-items:center;min-height:(?:54|72)px/.test(a75DensityLogCss),'Log row must not fight virtualized density height');
 for(const locale of ['de','es','fr','ja','ko','pt','ru','zh-CN','zh-TW']){
   const overlay=JSON.parse(read('webui/private/data/weig-i18n/'+locale+'.json'));
   for(const suffix of ['description','overall','torrent','logs','follow','custom','preview','reset','cancel','apply','torrentExample','logsExample'])
-    assert(typeof overlay.messages['settings.weig.density.'+suffix]==='string','Missing density dialog translation '+locale+' '+suffix);
+    assert(typeof overlay.messages['settings.weig.density.'+suffix]==='string'||a75DensityI18n.includes('"settings.weig.density.'+suffix+'":'),'Missing density dialog localized or English fallback '+locale+' '+suffix);
 }
+
+// A75-5: unsaved motion must use one SurfaceTransition policy and demonstrate dock motion.
+const a75MotionSource=read('webui/private/scripts/surface-transition.js'),a75MotionSettings=read('webui/private/scripts/settings.js');
+const a75MotionContext={WeiG:{},document:{documentElement:{dataset:{motion:'full'}}},matchMedia:function(){return{matches:false}}};
+a75MotionContext.window=a75MotionContext;
+vm.runInNewContext(a75MotionSource,a75MotionContext);
+const a75Motion=a75MotionContext.WeiG.SurfaceTransition;
+assert(typeof a75Motion.preview==='function','Motion showcase must reuse shared SurfaceTransition');
+const a75Full=a75Motion.policy('dock');assert(a75Full.duration>200&&a75Full.mode==='full','Full motion must have a distinctive dock policy');
+a75MotionContext.document.documentElement.dataset.motion='system';
+const a75System=a75Motion.policy('dock');
+assert(a75System.duration<a75Full.duration,'Full motion must differ from normal system motion');
+a75MotionContext.document.documentElement.dataset.motion='reduced';
+assert(a75Motion.policy('dock').duration===0,'Reduced motion must not create animated movement');
+let a75AnimationCalls=0;
+const a75MotionNode={isConnected:true,dataset:{},getBoundingClientRect:function(){return{left:0,top:0,width:160,height:34}},animate:function(){a75AnimationCalls++;return{finished:Promise.resolve(),cancel:function(){}}}};
+await a75Motion.preview(a75MotionNode,'dock');
+assert(a75AnimationCalls===0,'Reduced motion preview must be static');
+a75MotionContext.document.documentElement.dataset.motion='full';
+await a75Motion.preview(a75MotionNode,'dock');
+assert(a75AnimationCalls===1,'Full motion preview must visibly animate the capsule');
+assert(a75MotionSettings.includes("if(key==='motion'&&W.SurfaceTransition")&&a75MotionSettings.includes("document.querySelector('.transfer-runtime-capsule')")&&a75MotionSettings.includes("document.querySelector('.motion-preview-capsule')"),'Selecting motion without Save must preview actual and demo capsules');
+assert(a75MotionSettings.includes("function motionRow(ctx)")&&!a75MotionSettings.includes("configSelectRow(ctx,'motion',tr('settings.weig.motion.title'),globalDesc"),'Only one motion Settings presentation owner');
