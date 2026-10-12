@@ -20,6 +20,15 @@
   function clearHandoff(){try{sessionStorage.removeItem(HANDOFF);}catch(_e){}}
   function authenticatedEntryUrl(record){var url=new URL('index.html',BASE);if(record&&record.nonce)url.searchParams.set(HANDOFF_PARAM,record.nonce);return url;}
   function publicEntryUrl(){return new URL('login.html',BASE);}
+  // A cross-origin top-level qB4 SameSite=Strict return can show the public
+  // *root* despite a valid SID. Do not probe normal explicit login.html:
+  // an unauthenticated user receives an expected HTTP 403 console error.
+  function autoRecoverPublicEntry(){
+    try{
+      var pathname=new URL(global.location.href).pathname;
+      return pathname===BASE.pathname||pathname===new URL('index.html',BASE).pathname;
+    }catch(_error){return false;}
+  }
   function setLogoutGuard(){try{sessionStorage.setItem(LOGOUT_GUARD,String(Date.now()));return true;}catch(_e){return false;}}
   function clearLogoutGuard(){try{sessionStorage.removeItem(LOGOUT_GUARD);}catch(_e){}}
   function logoutGuarded(){try{return !!sessionStorage.getItem(LOGOUT_GUARD);}catch(_e){return false;}}
@@ -31,5 +40,5 @@
   function navigatePublicFailure(){var url=publicEntryUrl();url.searchParams.set(AUTH_FAILURE_PARAM,'1');global.location.replace(url.href);}
   function recordFailure(kind,status,stage){return write(FAILURE,{schemaVersion:1,kind:String(kind||'unknown'),status:Number(status)||0,stage:String(stage||''),createdAt:Date.now()});}
   function consumeFailure(){return read(FAILURE,true);}
-  W.SessionContract={probeEndpoint:PROBE,loginKind:loginKind,probeKind:probeKind,probe:probe,handoff:handoff,pendingHandoff:pendingHandoff,clearHandoff:clearHandoff,authenticatedEntryUrl:authenticatedEntryUrl,publicEntryUrl:publicEntryUrl,setLogoutGuard:setLogoutGuard,clearLogoutGuard:clearLogoutGuard,logoutGuarded:logoutGuarded,completePublicEntry:completePublicEntry,navigatePublic:navigatePublic,beginAuthenticatedHandoff:beginAuthenticatedHandoff,matchesAuthenticatedEntry:matchesAuthenticatedEntry,completeHandoff:completeHandoff,navigatePublicFailure:navigatePublicFailure,recordFailure:recordFailure,consumeFailure:consumeFailure,localeIntent:localeIntent,setLocaleIntent:setLocaleIntent,consumeLocaleIntent:consumeLocaleIntent,clearLocaleIntent:clearLocaleIntent};
+  W.SessionContract={probeEndpoint:PROBE,loginKind:loginKind,probeKind:probeKind,probe:probe,handoff:handoff,pendingHandoff:pendingHandoff,clearHandoff:clearHandoff,authenticatedEntryUrl:authenticatedEntryUrl,publicEntryUrl:publicEntryUrl,autoRecoverPublicEntry:autoRecoverPublicEntry,setLogoutGuard:setLogoutGuard,clearLogoutGuard:clearLogoutGuard,logoutGuarded:logoutGuarded,completePublicEntry:completePublicEntry,navigatePublic:navigatePublic,beginAuthenticatedHandoff:beginAuthenticatedHandoff,matchesAuthenticatedEntry:matchesAuthenticatedEntry,completeHandoff:completeHandoff,navigatePublicFailure:navigatePublicFailure,recordFailure:recordFailure,consumeFailure:consumeFailure,localeIntent:localeIntent,setLocaleIntent:setLocaleIntent,consumeLocaleIntent:consumeLocaleIntent,clearLocaleIntent:clearLocaleIntent};
 })(window);

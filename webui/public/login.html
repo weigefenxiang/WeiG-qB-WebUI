@@ -47,7 +47,7 @@
       var manuallySigningIn=false,previousFailure=SC.consumeFailure(),lostHandoff=SC.handoff&&SC.handoff();
       if(previousFailure)err.textContent=(previousFailure.kind==='navigation-mismatch')?tr('routeFallback'):((previousFailure.stage==='post-navigation'||previousFailure.stage==='post-reload')?probeMessage(previousFailure.kind,previousFailure.status):tr('reloadLost'));
       else if(lostHandoff){btn.disabled=true;SC.probe().then(function(probe){SC.clearHandoff();err.textContent=probe.kind==='authenticated'?tr('routeFallback'):probeMessage(probe.kind,probe.status);}).catch(function(){SC.clearHandoff();err.textContent=tr('offline');}).then(function(){btn.disabled=false;});}
-      else if(!wasLoggingOut){
+      else if(!wasLoggingOut&&SC.autoRecoverPublicEntry()){
         // qB 4.x SameSite=Strict: foreign navigation can show a login page
         // with an intact SID. Only this origin's protected probe may recover.
         SC.probe().then(function(probe){
