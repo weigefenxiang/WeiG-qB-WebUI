@@ -13,7 +13,10 @@ for(const [label,entry] of [['public',publicIndex],['login',login]]){
     &&entry.includes('else if(!wasLoggingOut&&SC.autoRecoverPublicEntry())')
     &&entry.includes("probe.kind==='authenticated'&&!manuallySigningIn")
     &&entry.includes("if(!SC.beginAuthenticatedHandoff())"),label+' must use consent-neutral protected qB4 Strict reentry');
-  const recovery=entry.slice(entry.indexOf('else if(!wasLoggingOut)'),entry.indexOf("form.addEventListener('submit'"));
+  const start=entry.indexOf('else if(!wasLoggingOut&&SC.autoRecoverPublicEntry())');
+  const end=entry.indexOf("form.addEventListener('submit'",start);
+  assert.ok(start>=0&&end>start,label+' session range must be valid');
+  const recovery=entry.slice(start,end);
   assert.ok(recovery.includes('SC.probe()')&&!recovery.includes('auth/login')
     &&!recovery.includes('password')&&!recovery.includes('Cookie'),
     label+' protected recovery must not replay credentials or copy SID');
