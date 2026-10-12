@@ -37,6 +37,14 @@ Development build:
 sh install.sh -dev -configure
 ```
 
+Download, verify, and extract WebUI files **without configuring qBittorrent or scanning Docker**:
+
+```sh
+sh install.sh -dev -o /root/weig-qb-webui/
+```
+
+`-configure` is opt-in. Without it, an explicit `-o` path is a host directory; the installer does not choose any qBittorrent instance. The folder must be mounted or otherwise visible inside each container before setting its Alternative WebUI Root Folder manually.
+
 Custom install directory:
 
 ```sh

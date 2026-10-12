@@ -891,8 +891,12 @@ fi
 
 if [ "$MODE" != "rollback" ]; then
   if [ "$TARGET_COUNT" -le 1 ]; then
-    select_qb_docker || true
-    map_docker_destination
+    # A files-only install must not depend on Docker or qBittorrent discovery.
+    # Explicit Docker selectors still opt in to host/container path mapping.
+    if [ "$CONFIGURE" -eq 1 ] || [ -n "$CONTAINER_REQUESTED" ] || [ -n "$CONFIG_ROOT_REQUESTED" ]; then
+      select_qb_docker || true
+      map_docker_destination
+    fi
     TARGETS="$DEST"
     TARGET_COUNT=1
   else
@@ -1746,20 +1750,16 @@ echo "Backup retention: latest $BACKUP_RETENTION per install target"
 if [ "$TARGET_COUNT" -eq 1 ]; then
   DEST=$(sed -n '1p' "$TARGET_FILE")
   QBT_ROOT_FOLDER="$SINGLE_QBT_ROOT_FOLDER"
-  cfg=$(find_config || true)
   if [ "$CONFIGURE" -eq 1 ]; then
+    cfg=$(find_config || true)
     [ -n "$cfg" ] || { echo "No safe qBittorrent config was found; WebUI files are installed but configuration was not changed." >&2; exit 2; }
     configure_qb_webui_file "$cfg" "$QBT_ROOT_FOLDER"
     echo "Configured: $cfg"
     echo "qBittorrent Root Folder: $QBT_ROOT_FOLDER"
   else
-    echo "qBittorrent -> Tools -> Preferences -> Web UI -> Use alternative WebUI"
-    echo "WebUI Root Folder: $QBT_ROOT_FOLDER"
-    if [ -n "$cfg" ]; then
-      echo "Detected safe config: $cfg"
-    else
-      echo "No safe host qBittorrent config auto-detected; set the Root Folder manually."
-    fi
+    echo "WebUI files installed only; qBittorrent configuration was not changed."
+    echo "To enable manually: qBittorrent -> Tools -> Preferences -> Web UI -> Use alternative WebUI"
+    echo "WebUI Root Folder (must be visible to qBittorrent): $QBT_ROOT_FOLDER"
   fi
   echo "Rollback:"
   echo "  sh $0 -o '$DEST' -rollback"

@@ -303,6 +303,36 @@ assert_archive_backup() {
 }
 
 
+# Three running qB Docker containers must not block an explicit files-only -o install.
+cat > "$MOCK_BIN/docker" <<'EOF_DOCKER'
+#!/bin/sh
+printf '%s\n' "$*" >> "$WEIGG_INSTALLER_DOCKER_LOG"
+case "$1" in
+  ps)
+    printf '%s\n' \
+      'a1|lscr.io/linuxserver/qbittorrent:5.2.4|qb524' \
+      'b2|linuxserver/qbittorrent:5.2.0|q3' \
+      'c3|linuxserver/qbittorrent:4.1.9|qbittorrent'
+    ;;
+  *) exit 97 ;;
+esac
+EOF_DOCKER
+chmod +x "$MOCK_BIN/docker"
+export WEIGG_INSTALLER_DOCKER_LOG="$TMP/docker-probe.log"
+: > "$WEIGG_INSTALLER_DOCKER_LOG"
+PLAIN_DEST="$TMP/plain-files-only/weig-qb-webui"
+CFG_BEFORE_FILES_ONLY=$(sha256sum "$CFG" | awk '{print $1}')
+run_installer -version "$VERSION_TWO" -o "$PLAIN_DEST"
+test -s "$PLAIN_DEST/public/index.html"
+test -s "$PLAIN_DEST/private/index.html"
+test "$(tr -d '\r\n' < "$PLAIN_DEST/VERSION")" = "$VERSION_TWO"
+test ! -s "$WEIGG_INSTALLER_DOCKER_LOG" || {
+  echo "Files-only install unexpectedly invoked Docker discovery." >&2
+  exit 1
+}
+test "$(sha256sum "$CFG" | awk '{print $1}')" = "$CFG_BEFORE_FILES_ONLY"
+rm -f "$MOCK_BIN/docker"
+
 run_installer -version "$VERSION_ONE" -configure -o "$DEST"
 assert_install "$VERSION_ONE" "$SHA_ONE" release-one
 assert_config_enabled
