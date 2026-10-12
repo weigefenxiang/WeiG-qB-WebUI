@@ -75,12 +75,13 @@ export function buildNativeSettingsBundle(catalog,behaviorEvidence,{recoveryUnio
       for(const locale of localeValues(profile)){
         let native=false;
         if(behavior.altWebuiTranslation===true)native=behavior.family==='qapp-native'||dedicatedLocaleCompatible(profile,locale,behavior,recoveryLocaleMap(union,locale),allSets);
+        // qB loads an active-root QM even when semantic Copy must use its exact-source bridge.
+        // Keep disk-resource provisioning separate from the native-vs-fallback UI routing decision.
+        if(behavior.altWebuiTranslation===true&&behavior.translatorResource==='active-webui-root/translations/webui_<locale>.qm'){
+          const set=requiredQmRefs.get(locale)||new Set();for(const ref of profileRefs)set.add(refKey(ref.context,ref.source));requiredQmRefs.set(locale,set);
+        }
         if(native){
           nativeLocales.push(locale);
-          const activeRoot=behavior.translatorResource&&String(behavior.translatorResource).includes('active-webui-root');
-          if(activeRoot&&!isPlainEnglish(locale)){
-            const set=requiredQmRefs.get(locale)||new Set();for(const ref of profileRefs)set.add(refKey(ref.context,ref.source));requiredQmRefs.set(locale,set);
-          }
         }else{
           bridgeLocales.push(locale);
           const bridge=canonicalBridgeSet(profile,locale,allSets,recoveryLocaleMap(union,locale),rememberRef),normalized=stableObject(bridge),setId=contentId('t',normalized);

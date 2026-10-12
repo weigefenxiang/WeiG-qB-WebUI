@@ -212,3 +212,9 @@ await a75Motion.preview(a75MotionNode,'dock');
 assert(a75AnimationCalls===1,'Full motion preview must visibly animate the capsule');
 assert(a75MotionSettings.includes("if(key==='motion'&&W.SurfaceTransition")&&a75MotionSettings.includes("document.querySelector('.transfer-runtime-capsule')")&&a75MotionSettings.includes("document.querySelector('.motion-preview-capsule')"),'Selecting motion without Save must preview actual and demo capsules');
 assert(a75MotionSettings.includes("function motionRow(ctx)")&&!a75MotionSettings.includes("configSelectRow(ctx,'motion',tr('settings.weig.motion.title'),globalDesc"),'Only one motion Settings presentation owner');
+
+// A75-2: Qt's active-root translator resource load is independent from semantic Copy routing.
+const a75QmOwner=read('tools/qb-settings-native-bundle.mjs');
+assert(a75QmOwner.includes("behavior.altWebuiTranslation===true&&behavior.translatorResource==='active-webui-root/translations/webui_<locale>.qm'"),'QM asset requirement must follow proven upstream disk loader');
+assert(a75QmOwner.includes('const set=requiredQmRefs.get(locale)||new Set()')&&a75QmOwner.includes('if(native){'),'Official QM must be provisioned for dedicated fallback locales, not merely native Copy routes');
+assert(a75QmOwner.includes('const item=unionMap.get(identity);if(!item)continue;'),'Do not invent native QM translations without official recovery evidence');
