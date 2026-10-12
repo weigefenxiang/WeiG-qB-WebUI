@@ -4,11 +4,11 @@
   if(W.InstanceHealth)return;
   var KEY=W.StorageKeys&&W.StorageKeys.instanceProbeInterval||'weig.instances.probeMinutes';
   var lastRun=0,inFlight=null,started=false,results=new Map(),tick=null;
-  function parseMinutes(raw){var n=Number(raw);return Number.isInteger(n)&&(n===0||n>=5&&n<=1440)?n:null;}
+  function parseMinutes(raw){if(raw===null||raw===undefined||String(raw).trim()==='')return null;var n=Number(raw);return Number.isInteger(n)&&(n===0||n>=5&&n<=1440)?n:null;}
   function minutes(){var value=store&&store.get(KEY,'30'),parsed=parseMinutes(value);return parsed===null?30:parsed;}
   function setMinutes(value){
     var n=parseMinutes(value);if(n===null)throw new Error('Check interval must be 5–1440 minutes or disabled.');
-    if(store&&!store.set(KEY,String(n)))throw new Error('Browser settings storage is unavailable.');
+    if(!store||!store.set(KEY,String(n)))throw new Error('Browser settings storage is unavailable.');
     global.dispatchEvent(new CustomEvent('weig:instance-interval',{detail:{minutes:n}}));return n;
   }
   function emit(){global.dispatchEvent(new CustomEvent('weig:instance-health'));}

@@ -46,6 +46,15 @@
     "file.priorityUpdatedMessage": "檔案優先次序已更新",
     "file.priorityUpdatedTitle": "優先次序已更新",
     "file.priorityFailedTitle": "更新優先次序失敗",
-    "api.editTrackerParameterUnsupported": "目前 editTracker 原始碼契約需要此客戶端無法安全提供的參數。"
+    "api.editTrackerParameterUnsupported": "目前 editTracker 原始碼契約需要此客戶端無法安全提供的參數。",
+    "instances.title": "實例",
+    "instances.manage": "管理實例",
+    "instances.name": "實例名稱",
+    "instances.url": "WebUI 地址",
+    "instances.insecureWarning": "目標使用未加密的 HTTP，請只在可信任的網絡繼續。密碼及登入狀態不會被複製。",
+    "instances.importTitle": "要匯入實例清單嗎？",
+    "instances.importHint": "外部網頁提供來自 {source} 的 {count} 個實例地址。儲存前請先確認；不包含密碼或登入狀態。",
+    "instances.intervalTitle": "實例自動檢查",
+    "instances.loadFailed": "無法載入實例管理功能。"
   }
 }

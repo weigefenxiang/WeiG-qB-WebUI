@@ -209,8 +209,10 @@ async function main(){
       if(!descriptor.ok)throw new Error('qB static bootstrap-plan HTTP '+descriptor.status);
       const plan=await descriptor.json();
       const css=[...document.querySelectorAll('link[data-weig-runtime-style]')];
-      const js=[...document.querySelectorAll('script[data-weig-runtime-module]')]
-        .filter(node=>node.dataset.weigRuntimeModule!=='scripts/settings.js'&&node.dataset.weigRuntimeModule!=='scripts/rss.js'&&node.dataset.weigRuntimeModule!=='scripts/logs.js');
+      const initial=plan.phases.flatMap(phase=>phase.scripts),initialSet=new Set(initial);
+      const allScripts=[...document.querySelectorAll('script[data-weig-runtime-module]')];
+      const js=allScripts.filter(node=>initialSet.has(node.dataset.weigRuntimeModule));
+      const deferred=allScripts.filter(node=>!initialSet.has(node.dataset.weigRuntimeModule));
       const resources=await Promise.all([...css,...js].map(async node=>{
         const kind=node.tagName==='LINK'?'css':'js';
         const relative=kind==='css'?node.dataset.weigRuntimeStyle:node.dataset.weigRuntimeModule;
@@ -218,7 +220,7 @@ async function main(){
         const response=await fetch(url,{cache:'force-cache'});
         return{kind,relative,status:response.status,mime:response.headers.get('content-type')||'',exactSha:new URL(url).searchParams.get('v')};
       }));
-      return{plan,css:css.map(x=>x.dataset.weigRuntimeStyle),js:js.map(x=>x.dataset.weigRuntimeModule),resources};
+      return{plan,css:css.map(x=>x.dataset.weigRuntimeStyle),js:js.map(x=>x.dataset.weigRuntimeModule),deferred:deferred.map(x=>x.dataset.weigRuntimeModule),resources};
     });
     const scriptsInPlan=stagedAssets.plan.phases.flatMap(phase=>phase.scripts);
     assert(stagedAssets.plan.styles.length>=2&&stagedAssets.plan.styles.length<=5,'Real qB must serve bounded materialized CSS groups');
@@ -226,7 +228,10 @@ async function main(){
     assert(stagedAssets.plan.styles.every(p=>/^css\/startup-\d+\.css$/.test(p)),'Real qB must serve distribution CSS bundles, not 19 raw CSS files');
     assert(scriptsInPlan.some(p=>/^scripts\/startup-[a-z0-9-]+\.js$/.test(p)),'Real qB must execute distribution JS bundles');
     assert(JSON.stringify(stagedAssets.css)===JSON.stringify(stagedAssets.plan.styles),'Real qB CSS DOM order diverges from installed canonical bootstrap');
-    assert(JSON.stringify(stagedAssets.js)===JSON.stringify(scriptsInPlan),'Real qB JS DOM order diverges from installed canonical bootstrap');
+    assert(JSON.stringify(stagedAssets.js)===JSON.stringify(scriptsInPlan),'Real qB initial JS DOM order diverges from installed canonical bootstrap');
+    const sanctionedDeferred=new Set(['scripts/settings.js','scripts/rss.js','scripts/logs.js','scripts/update-check.js','scripts/instance-registry.js','scripts/instance-health.js','scripts/instances-ui.js']);
+    assert(stagedAssets.deferred.every(p=>sanctionedDeferred.has(p)),
+      'Real qB executed an unregistered deferred module: '+JSON.stringify(stagedAssets.deferred));
     for(const resource of stagedAssets.resources){
       assert(resource.status===200,'Real qB static file '+resource.relative+' returned HTTP '+resource.status);
       assert(resource.exactSha===weigSha,'Real qB static file '+resource.relative+' lost exact-SHA cache identity');

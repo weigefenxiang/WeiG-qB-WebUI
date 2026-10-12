@@ -7,11 +7,14 @@ const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const read=relative=>fs.readFileSync(path.join(root,relative),'utf8');
 const index=read('webui/private/index.html'),runtime=read('webui/private/scripts/runtime-assets.js'),navigation=read('webui/private/scripts/navigation.js'),app=read('webui/private/scripts/app.js'),header=read('webui/private/scripts/header.js');
 const plan=JSON.parse(read('webui/private/bootstrap-plan.json')),startup=['scripts/runtime-assets.js',...plan.phases.flatMap(phase=>phase.scripts)];
-const routes={settings:'scripts/settings.js',rss:'scripts/rss.js',logs:'scripts/logs.js'};
-for(const [route,module] of Object.entries(routes)){
-  assert.equal(startup.includes(module),false,route+' module must not be in ordered initial bootstrap');
-  assert.ok(navigation.includes(route+':['+"'"+module+"'"+']')||navigation.includes("'"+route+"':['"+module+"']"),route+' must be owned by the route-module map');
-  assert.ok(fs.existsSync(path.join(root,'webui/private',module)),route+' module file missing');
+const routes={settings:['scripts/update-check.js','scripts/settings.js'],rss:['scripts/rss.js'],logs:['scripts/logs.js']};
+for(const [route,modules] of Object.entries(routes)){
+  const source=route+':['+modules.map(x=>"'"+x+"'").join(',')+']';
+  assert.ok(navigation.includes(source),route+' must retain the ordered source-owned route-module dependency map');
+  for(const module of modules){
+    assert.equal(startup.includes(module),false,route+' module '+module+' must not be in ordered initial bootstrap');
+    assert.ok(fs.existsSync(path.join(root,'webui/private',module)),route+' module file missing: '+module);
+  }
 }
 assert.ok(index.includes("SEED='scripts/runtime-assets.js'")&&index.includes("PLAN='bootstrap-plan.json'"),'private bootstrap must seed RuntimeAssets then hand off to the declarative plan');
 assert.ok(startup.includes('scripts/navigation.js')&&startup.includes('scripts/app.js'),'bootstrap plan must retain Navigation and App owners');
@@ -28,7 +31,7 @@ const sharedSearch=(index.match(/<input id="search-input"[^>]*>/)||[])[0]||'';as
 assert.ok(rss.includes('W.AppState')&&rss.includes('client'),'lazy RSS must resolve the canonical current client at use time');
 assert.ok(logs.includes('var app=W.AppState;if(app&&app.client)return app.client'),'lazy Logs must resolve the canonical current client at use time');
 for(const source of [settings,rss,logs])assert.ok(source.includes("document.readyState==='loading'"),'route module must self-initialize correctly when injected after DOMContentLoaded');
-const deferredBytes=Object.values(routes).reduce((sum,module)=>sum+fs.statSync(path.join(root,'webui/private',module)).size,0);
+const deferredBytes=Object.values(routes).flat().reduce((sum,module)=>sum+fs.statSync(path.join(root,'webui/private',module)).size,0);
 assert.ok(deferredBytes>140000,'route sharding must defer a material amount of route-only JavaScript from home startup');
 assert.ok(runtime.includes('function prefetchScript(path,options)')&&runtime.includes("node.rel='prefetch'")&&runtime.includes('prefetchScript:prefetchScript'),'Shared RuntimeAssets must own inert script hints without pretending they are loaded modules');
 assert.ok(navigation.includes('function warmRouteModules()')&&navigation.includes('loader.prefetchScript(path,')&&navigation.includes('warmRouteModules:warmRouteModules'),'Navigation must own idle route inventory prefetch rather than feature-local hints');

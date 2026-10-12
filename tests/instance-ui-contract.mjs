@@ -54,4 +54,22 @@ assert.equal(observed.length,2,'Remote one-version + one-count GET only');
 blocked=true;await H.checkNow();
 assert.equal(H.get('https://two.example/').status,'unverified','CORS/mixed-content/network failure cannot be mislabelled offline');
 assert.equal(H.get('https://two.example/').count,null);
-console.log('A76 Instance Sidebar and no-credential bounded Health owner contract passed.');
+
+const coreI18n=read('webui/private/scripts/i18n.js');
+const enMatch=coreI18n.match(/\bvar EN=(\{[^\n]+\});/);
+assert.ok(enMatch,'Canonical English WeiG dictionary must be present');
+const english=JSON.parse(enMatch[1]),instanceKeys=Object.keys(english).filter(k=>k.startsWith('instances.')).sort();
+assert.equal(instanceKeys.length,29,'The instance feature must have one complete semantic English dictionary');
+const placeholders=s=>[...String(s).matchAll(/\{([a-z]+)\}/g)].map(m=>m[1]).sort();
+for(const locale of ['de','es','fr','ja','ko','pt','ru','zh-CN','zh-TW']){
+  const file=JSON.parse(read('webui/private/data/weig-i18n/'+locale+'.json'));
+  assert.equal(file.locale,locale);
+  for(const key of instanceKeys){
+    assert.ok(typeof file.messages[key]==='string'&&file.messages[key].trim(),'Missing '+locale+'/'+key);
+    assert.deepEqual(placeholders(file.messages[key]),placeholders(english[key]),'I18n placeholder mismatch '+locale+'/'+key);
+  }
+}
+const hk=JSON.parse(read('webui/private/data/weig-i18n/zh-HK.json'));
+assert.ok(Object.keys(hk.messages).filter(key=>key.startsWith('instances.')).length<instanceKeys.length,
+  'Hong Kong copy remains a sparse override of zh-TW');
+console.log('A76 Instance Sidebar, bounded Health and semantic locale coverage contract passed.');
