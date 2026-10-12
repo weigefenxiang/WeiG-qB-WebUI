@@ -94,7 +94,7 @@ console.log('Settings Control Graph runtime contract passed: bounded source-owne
 // A74: performance card columns follow actual available width, not a fixed mobile single column.
 const a74PerformanceCss=read('webui/private/css/settings.css');
 assert(a74PerformanceCss.includes('.diagnostic-grid{grid-template-columns:repeat(auto-fit,minmax(132px,1fr))}'),'Performance facts should auto-fit one or two columns on narrow viewports');
-assert(!a74PerformanceCss.includes('.diagnostic-grid{grid-template-columns:minmax(0,1fr)}'),'Retire fixed mobile one-column performance layout');
+assert(a74PerformanceCss.includes('@container (max-width:411px){.diagnostic-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}')&&a74PerformanceCss.includes('@container (max-width:271px){.diagnostic-grid{grid-template-columns:minmax(0,1fr)}}'),'Only genuinely narrow Settings sections may fall back to two or one performance columns');
 
 // A74: the installed Axx identity belongs to an exact Dev materialized build, not the latest remote stage.
 const a74DevStage=JSON.parse(read('tools/dev-stage.json'));
