@@ -159,7 +159,13 @@
     host=document.getElementById('sidebar-instances');if(!host)return;
     render();if(H&&H.start)H.start();
     var session=W.SessionController;
-    if(session&&session.ready)session.ready().then(function(ok){if(ok)offerIncoming();}).catch(function(){});
+    if(session&&session.ready)session.ready().then(function(ok){
+      if(!ok)return;
+      // Session-ready is earlier than preferences.locale / the WeiG locale shard.
+      // Wait for the canonical app startup barrier; the initial Dialog is not reactive.
+      if(W.AppState&&W.AppState.initialized)offerIncoming();
+      else global.addEventListener('weig:app-ready',offerIncoming,{once:true});
+    }).catch(function(){});
   }
   W.InstancesUI=Object.freeze({render:render,openManager:openManager});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
