@@ -79,6 +79,52 @@ async function browserPrivateAssetDigests(page,q,paths){
  }
  return result;
 }
+async function verifyInstanceSidebar(page,q){
+ await page.waitForSelector('#sidebar-instances .sidebar-instances__interval',{timeout:20000});
+ const before=await page.evaluate(()=>{
+   const node=document.getElementById('sidebar-instances');
+   const slot=document.getElementById('sidebar-facet-slot');
+   const interval=node?.querySelector('.sidebar-instances__interval');
+   const border=node&&getComputedStyle(node);
+   return{parent:node?.parentElement===slot?.parentElement,
+     order:slot?.nextElementSibling===node,collapsed:node?.dataset.expanded,
+     interval:window.WeiG?.InstanceHealth?.minutes?.(),copy:interval?.textContent?.trim(),
+     borderStyle:border?.borderTopStyle,borderWidth:border?.borderTopWidth,
+     itemCount:node?.querySelectorAll('.sidebar-instances__row').length};
+ });
+ assert(before.parent&&before.order&&before.collapsed==='1'&&before.interval===30&&before.itemCount>=1
+   &&before.borderStyle==='solid'&&before.borderWidth==='1px',
+   'A76 real qB '+q.version+' Sidebar owner/order/divider/default interval: '+JSON.stringify(before));
+ await page.locator('#sidebar-instances .sidebar-instances__heading').click();
+ const closed=await page.evaluate(()=>{
+   const node=document.getElementById('sidebar-instances');
+   return{expanded:node.dataset.expanded,hidden:getComputedStyle(node.querySelector('.sidebar-instances__body')).display==='none'};
+ });
+ assert(closed.expanded==='0'&&closed.hidden,'A76 real qB '+q.version+' collapsed Sidebar still exposes instances');
+ await page.locator('#sidebar-instances .sidebar-instances__heading').click();
+ await page.locator('#sidebar-instances .sidebar-instances__interval').click();
+ const input=page.locator('.instance-manager-dialog[open] input[type="number"]');
+ await input.waitFor({timeout:10000});
+ await input.fill('15');
+ await page.locator('.instance-manager-dialog[open] .dialog__footer .btn--primary').click();
+ await page.waitForFunction(()=>WeiG.InstanceHealth.minutes()===15
+   &&document.querySelector('#sidebar-instances .sidebar-instances__interval')?.textContent.includes('15'),null,{timeout:10000});
+ // Restore the owner through its UI; no other instance preferences are changed.
+ await page.locator('#sidebar-instances .sidebar-instances__interval').click();
+ const reset=page.locator('.instance-manager-dialog[open] input[type="number"]');
+ await reset.fill('30');
+ await page.locator('.instance-manager-dialog[open] .dialog__footer .btn--primary').click();
+ await page.waitForFunction(()=>WeiG.InstanceHealth.minutes()===30,null,{timeout:10000});
+ const themeBefore=await page.evaluate(()=>WeiG.Theme.state().mode);
+ await page.evaluate(()=>WeiG.Theme.setMode('light'));
+ const light=await page.locator('#sidebar-instances').evaluate(node=>getComputedStyle(node).borderTopColor);
+ await page.evaluate(()=>WeiG.Theme.setMode('dark'));
+ const dark=await page.locator('#sidebar-instances').evaluate(node=>getComputedStyle(node).borderTopColor);
+ await page.evaluate(mode=>WeiG.Theme.setMode(mode),themeBefore);
+ assert(light!==dark,'A76 Sidebar separator must follow actual light/dark theme tokens: '+light+'/'+dark);
+ return{version:q.version,default_minutes:30,custom_minutes:15,collapse:'PASS',
+   placement:'below-facets',theme_border:'PASS'};
+}
 async function verifyInstanceSettings(page,q){
  await page.locator('#app-nav [data-route="settings"]').click();
  await page.waitForFunction(()=>location.hash.includes('settings'),null,{timeout:20000});
@@ -163,6 +209,7 @@ async function test(){
  const first=await enter(context,qbs[0]);
  assert((await context.cookies(qbs[1].url)).every(c=>c.name!==qbs[0].sessionCookieName),'First instance session cookie leaked to second qB host');
  const second=await enter(context,qbs[1]);
+ const sidebarChecks=await Promise.all([verifyInstanceSidebar(first,qbs[0]),verifyInstanceSidebar(second,qbs[1])]);
  for(const [i,q] of qbs.entries()){
    const row=checks.find(item=>item.qb_version===q.version);
    assert(!!row,'Missing real qB distribution fact for '+q.version);
@@ -245,7 +292,7 @@ async function test(){
  assert((await context.cookies(qbs[1].url)).find(c=>c.name===qbs[1].sessionCookieName)?.value===sidB,'Handoff changed destination qB session');
  await context.close();
  fs.mkdirSync('artifacts/real-qb-full',{recursive:true});
- fs.writeFileSync('artifacts/real-qb-full/'+sha+'-shared-static.json',JSON.stringify({status:'PASS',weig_sha:sha,qb_versions:versions,scenario:'two-real-qb-one-shared-static-root',sid_isolation:'PASS',cross_origin_registry:'PASS',whole_page_switch:'PASS',return_navigation:'PASS',protected_cookie_handoff:'PASS',protected_session_probe:'PASS',no_credential_replay:'PASS',sessions_preserved:'PASS',settings_after_return:'PASS',shared_private_assets:'PASS',noncredential_handoff:'PASS',handoff_requires_consent:'PASS',navigation_http_200:'PASS',navigation_referer_suppressed:'PASS',settings_per_origin:'PASS',private_docker_network:'internal',static_sha256:checks[0].sha256,checks,settingsChecks,roundTripSettings},null,2)+'\n');
+ fs.writeFileSync('artifacts/real-qb-full/'+sha+'-shared-static.json',JSON.stringify({status:'PASS',weig_sha:sha,qb_versions:versions,scenario:'two-real-qb-one-shared-static-root',sid_isolation:'PASS',cross_origin_registry:'PASS',whole_page_switch:'PASS',return_navigation:'PASS',protected_cookie_handoff:'PASS',protected_session_probe:'PASS',no_credential_replay:'PASS',sessions_preserved:'PASS',settings_after_return:'PASS',shared_private_assets:'PASS',noncredential_handoff:'PASS',handoff_requires_consent:'PASS',navigation_http_200:'PASS',navigation_referer_suppressed:'PASS',settings_per_origin:'PASS',private_docker_network:'internal',static_sha256:checks[0].sha256,checks,settingsChecks,roundTripSettings,sidebarChecks},null,2)+'\n');
  console.log('A76 real shared static and cross-instance session PASS');
 }
 try{await test();}catch(e){console.error('A76 real shared static failed: '+String(e?.message||e));process.exitCode=1;}
