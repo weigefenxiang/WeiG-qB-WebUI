@@ -625,6 +625,8 @@
     "dialog.delete.eyebrow": "危险操作",
     "dialog.action.eyebrow": "操作",
     "language.zh-TW": "繁体中文（台湾）",
-    "language.zh-HK": "繁体中文（香港）"
+    "language.zh-HK": "繁体中文（香港）",
+    "settings.weig.option.small": "小（-2px）",
+    "settings.weig.option.xsmall": "特小（-3px）"
   }
 }

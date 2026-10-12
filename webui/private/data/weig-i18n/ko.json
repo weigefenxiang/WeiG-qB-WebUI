@@ -454,6 +454,8 @@
     "app.back": "뒤로",
     "app.refresh": "새로고침",
     "app.close": "닫기",
-    "app.loading": "불러오는 중…"
+    "app.loading": "불러오는 중…",
+    "settings.weig.option.small": "작게 (-2px)",
+    "settings.weig.option.xsmall": "매우 작게 (-3px)"
   }
 }

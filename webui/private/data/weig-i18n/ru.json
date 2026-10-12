@@ -457,6 +457,8 @@
     "settings.readFailed": "Не удалось загрузить настройки: {error}",
     "app.refresh": "Обновить",
     "app.close": "Закрыть",
-    "app.loading": "Загрузка…"
+    "app.loading": "Загрузка…",
+    "settings.weig.option.small": "Мелкий (-2px)",
+    "settings.weig.option.xsmall": "Очень мелкий (-3px)"
   }
 }

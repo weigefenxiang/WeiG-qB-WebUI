@@ -438,6 +438,8 @@
     "settings.readFailed": "Einstellungen konnten nicht geladen werden: {error}",
     "app.refresh": "Aktualisieren",
     "app.close": "Schließen",
-    "app.loading": "Wird geladen…"
+    "app.loading": "Wird geladen…",
+    "settings.weig.option.small": "Klein (-2px)",
+    "settings.weig.option.xsmall": "Sehr klein (-3px)"
   }
 }

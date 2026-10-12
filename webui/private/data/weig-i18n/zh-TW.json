@@ -629,6 +629,8 @@
     "detail.duration.hoursMinutes": "{hours} 小時 {minutes} 分鐘",
     "detail.duration.minutesSeconds": "{minutes} 分鐘 {seconds} 秒",
     "detail.duration.seconds": "{seconds} 秒",
-    "detail.piecesHave": "已有 {count} 個"
+    "detail.piecesHave": "已有 {count} 個",
+    "settings.weig.option.small": "小（-2px）",
+    "settings.weig.option.xsmall": "特小（-3px）"
   }
 }

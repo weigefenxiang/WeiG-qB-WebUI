@@ -451,6 +451,8 @@
     "settings.readFailed": "Não foi possível carregar as definições: {error}",
     "app.refresh": "Atualizar",
     "app.close": "Fechar",
-    "app.loading": "A carregar…"
+    "app.loading": "A carregar…",
+    "settings.weig.option.small": "Pequeno (-2px)",
+    "settings.weig.option.xsmall": "Muito pequeno (-3px)"
   }
 }

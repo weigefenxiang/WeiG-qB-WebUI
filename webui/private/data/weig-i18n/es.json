@@ -451,6 +451,8 @@
     "settings.readFailed": "No se pudieron cargar los ajustes: {error}",
     "app.refresh": "Actualizar",
     "app.close": "Cerrar",
-    "app.loading": "Cargando…"
+    "app.loading": "Cargando…",
+    "settings.weig.option.small": "Pequeño (-2px)",
+    "settings.weig.option.xsmall": "Muy pequeño (-3px)"
   }
 }

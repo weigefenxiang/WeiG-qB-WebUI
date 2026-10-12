@@ -148,3 +148,14 @@ for(const part of ['label','value','state']){
   assert(rule&&/white-space:normal/.test(rule[1])&&/overflow-wrap:anywhere/.test(rule[1]),'Update summary '+part+' must wrap long locale strings');
 }
 assert(!/\.update-check__value\{[^}]*text-overflow:ellipsis/.test(a75UpdateCss),'Do not silently hide installed version or SHA');
+
+// A75-3: font preset values share the canonical signed FontScalePolicy and localizable labels.
+const a75Core=read('webui/private/scripts/core.js'),a75Settings=read('webui/private/scripts/settings.js'),a75I18n=read('webui/private/scripts/i18n.js');
+assert(a75Core.includes('FONT_SCALE_PRESETS=Object.freeze([3,2,0,-2,-3])'),'Expose negative font presets in canonical policy');
+assert(a75Settings.includes('fontPolicy.presets.map(function(value)'),'Render font options from canonical policy');
+for(const k of ['small','xsmall'])assert(a75I18n.includes('"settings.weig.option.'+k+'":'),'Signed font label missing English baseline');
+for(const locale of ['de','es','fr','ja','ko','pt','ru','zh-CN','zh-TW']){
+  const shard=JSON.parse(read('webui/private/data/weig-i18n/'+locale+'.json'));
+  for(const k of ['small','xsmall'])assert(typeof shard.messages['settings.weig.option.'+k]==='string','Missing '+locale+' signed font label '+k);
+}
+assert(a75Core.includes('FONT_SCALE_MIN=-8,FONT_SCALE_MAX=16'),'Signed numeric range must remain available');

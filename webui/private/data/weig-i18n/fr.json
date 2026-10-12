@@ -442,6 +442,8 @@
     "settings.readFailed": "Impossible de charger les paramètres : {error}",
     "app.refresh": "Actualiser",
     "app.close": "Fermer",
-    "app.loading": "Chargement…"
+    "app.loading": "Chargement…",
+    "settings.weig.option.small": "Petit (-2px)",
+    "settings.weig.option.xsmall": "Très petit (-3px)"
   }
 }
