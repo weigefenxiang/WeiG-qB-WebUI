@@ -195,7 +195,7 @@ try{
   await page.locator('.density-dialog__range').focus();
   for(let k=0;k<3;k++)await page.keyboard.press('ArrowLeft');
   await page.locator('.density-dialog__scope').nth(1).locator('.ui-select__trigger').click();
-  await page.locator('#weig-floating-layer .ui-select__option[data-value="custom"]').click();
+  await page.locator('dialog.density-dialog[open] .weig-floating-layer--dialog .ui-select__option[data-value="custom"]').click();
   await page.locator('.density-dialog__scope').nth(1).locator('.density-dialog__number').fill('-2');
   await page.locator('.density-dialog__scope').nth(1).locator('.density-dialog__number').press('Tab');
   const a75Custom=await page.evaluate(()=>({draft:WeiG.SettingsState.weigDraft.density,saved:WeiG.Config.load().density,torrent:WeiG.DensityPolicy.height('torrent',56,40),logs:WeiG.DensityPolicy.height('logs',54,42)}));

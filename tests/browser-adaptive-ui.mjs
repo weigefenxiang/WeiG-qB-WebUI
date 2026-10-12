@@ -132,13 +132,14 @@ const a74ResponsiveProof=await page.evaluate(()=>{
   const style=getComputedStyle(label),lineHeight=parseFloat(style.lineHeight)||parseFloat(style.fontSize)*1.25;const longWrap=label.getBoundingClientRect().height>lineHeight*1.3;
   const overflow=long.scrollWidth-long.clientWidth;
   short.remove();long.remove();
-  const host=document.createElement('div');host.className='settings-grid diagnostic-grid';host.style.cssText='position:absolute;top:-2000px;left:0;width:290px;max-width:none';
+  const container=document.createElement('section');container.className='settings-section';container.dataset.settingsOwner='weig-metrics';container.style.cssText='position:absolute;top:-2000px;left:0;width:290px;max-width:none';
+  const host=document.createElement('div');host.className='settings-grid diagnostic-grid';container.appendChild(host);
   for(let i=0;i<6;i++){const fact=document.createElement('div');fact.className='diagnostic-fact';fact.textContent=i?'API pages':'A very long translated performance diagnostic label';host.appendChild(fact);}
-  document.body.appendChild(host);
+  document.body.appendChild(container);
   const columns=()=>getComputedStyle(host).gridTemplateColumns.trim().split(/\\s+/).length;
-  const at290=columns();host.style.width='250px';const at250=columns();
+  const at290=columns();container.style.width='250px';const at250=columns();
   const factOverflow=[...host.children].some(node=>node.scrollWidth>node.clientWidth+2);
-  host.remove();
+  container.remove();
   return{sameBaseline,longWrap,overflow,at290,at250,factOverflow};
 });
 assert(a74ResponsiveProof.sameBaseline&&a74ResponsiveProof.longWrap&&a74ResponsiveProof.overflow<=2&&
