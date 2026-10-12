@@ -49,10 +49,7 @@
     });
     heading.setAttribute('aria-expanded',expanded?'true':'false');
     heading.append(el('span','sidebar-instances__chevron','⌄'),el('span','',tr('title')));
-    var value=H?H.minutes():30;
-    var interval=button(value===0?tr('off'):tr('every',{minutes:value}),'btn btn--ghost sidebar-instances__interval',openInterval);
-    interval.setAttribute('aria-label',tr('changeInterval'));
-    top.append(heading,interval);host.append(top);
+    top.appendChild(heading);host.append(top);
     var content=el('div','sidebar-instances__body');
     var items=[];try{items=records();}catch(error){notice(error.message);}
     items.forEach(function(item){
@@ -148,25 +145,6 @@
     }
     m.show(name);
   }
-  function openInterval(){
-    if(!H)return;
-    var m=modal(tr('intervalTitle')),form=el('form','instance-manager__fields');
-    var label=el('label','',tr('minutes')),input=el('input','field-input');
-    input.type='number';input.min='5';input.max='1440';input.step='1';input.value=String(H.minutes()||30);label.append(input);
-    var disableLabel=el('label',''),disabled=el('input');disabled.type='checkbox';disabled.checked=H.minutes()===0;
-    disableLabel.append(disabled,document.createTextNode(' '+tr('disable')));
-    disabled.addEventListener('change',function(){input.disabled=disabled.checked;});
-    input.disabled=disabled.checked;
-    var message=el('p','instance-manager__feedback');message.setAttribute('role','alert');
-    form.append(label,disableLabel,message);
-    m.body.append(form);
-    m.footer.append(button(tr('cancel'),'btn btn--ghost',function(){D.close(m.dialog,'cancel');}));
-    var save=button(tr('save'),'btn btn--primary',function(){
-      try{H.setMinutes(disabled.checked?0:input.value);render();D.close(m.dialog,'save');}
-      catch(error){message.textContent=error.message;}
-    });
-    m.footer.append(save);m.show(input);
-  }
   function offerIncoming(){
     if(importOffered||!W.InstanceHandoff)return;
     var proposal=W.InstanceHandoff.peek();if(!proposal)return;
@@ -187,5 +165,4 @@
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
   global.addEventListener('weig:languagechange',render);
   global.addEventListener('weig:instance-health',render);
-  global.addEventListener('weig:instance-interval',render);
 })(window);
