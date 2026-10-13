@@ -18,7 +18,7 @@
 .sidebar-instances__dot{width:7px;height:7px;flex:0 0 7px;border-radius:50%;background:var(--text-muted)}
 .sidebar-instances__dot[data-state="online"]{background:var(--success)}
 .sidebar-instances__dot[data-state="denied"]{background:var(--warning)}
-.sidebar-instances__dot[data-state="reachable"]{background:var(--accent)}
+.sidebar-instances__dot[data-state="reachable"]{background:var(--accent-primary)}
 .sidebar-instances__count{flex:0 0 auto;color:var(--text-muted);font-variant-numeric:tabular-nums;font-size:var(--text-meta-size)}
 .sidebar-instances__actions{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
 .sidebar-instances__actions>.btn{flex:1 1 auto;min-width:0;min-height:30px;padding:4px 7px;font-size:var(--text-meta-size)}

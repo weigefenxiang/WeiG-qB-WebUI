@@ -24,6 +24,7 @@ assert.ok(ui.includes('syncAddressHint')&&ui.includes('loopbackWarning'),'Loopba
 assert.ok(ui.includes('bindContextMenuTrigger')&&ui.includes('R.update(')&&ui.includes('currentSuffix'),'Reuse shared ContextMenu and registry identity for rename');
 assert.ok(!ui.includes('localStorage.')&&!ui.includes('fetch('),'UI is a presentation-only consumer');
 assert.ok(css.includes('var(--border)')&&css.includes('var(--selected-control-surface)'),'Sidebar color/selection must use shared theme tokens');
+assert.ok(css.includes('var(--accent-primary)')&&!css.includes('var(--accent)'), 'Reachability dot must use a defined canonical accent token, not an undefined alias');
 assert.ok(health.includes("credentials:'omit'")&&health.includes("redirect:'error'"),'Cross-Origin probes cannot send qB credentials or follow redirect');
 assert.ok(!health.includes("credentials:'include'")&&health.includes("mode:'no-cors'")&&health.includes("response.type==='opaque'")&&health.includes("'reachable'"),'Opaque HTTP reachability must have a distinct non-online status and no credentials');
 const saved=new Map(),observed=[],registry={
