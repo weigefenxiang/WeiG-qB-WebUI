@@ -241,6 +241,42 @@ async function test(){
  const first=await enter(context,qbs[0]);
  assert((await context.cookies(qbs[1].url)).every(c=>c.name!==qbs[0].sessionCookieName),'First instance session cookie leaked to second qB host');
  const second=await enter(context,qbs[1]);
+
+ // A76-42: prove a host-updated authenticated static status feed is readable
+ // through BOTH real qB servers, without changing the read-only Docker mounts.
+ const statusName='weig-instance-status.json',statusFile=path.join(shared,'private',statusName);
+ const publishStatus=(generation)=>{
+   const data={schemaVersion:1,generatedAt:new Date().toISOString(),generation,
+     instances:qbs.map((q,i)=>({url:q.url,status:'online',count:i+generation,checkedAt:new Date().toISOString()}))};
+   const next=statusFile+'.next';
+   fs.writeFileSync(next,JSON.stringify(data)+'\n',{mode:0o644});
+   fs.renameSync(next,statusFile);
+   return data;
+ };
+ const round1=publishStatus(1);
+ for(const q of qbs){
+   assert(sh('docker',['exec',q.name,'cat','/weig-webui/private/'+statusName]).includes('"generation":1'),
+     'Read-only qB container cannot observe host-generated regular file');
+   const guest=await fetch(q.url+statusName,{redirect:'manual'});
+   assert(guest.status!==200,'Anonymous guest accessed authenticated instance status file in '+q.version);
+ }
+ for(const page of [first,second]){
+   const status=await page.evaluate(async name=>{
+     const response=await fetch('/'+name,{credentials:'same-origin',cache:'no-store'});
+     return{status:response.status,data:response.ok?await response.json():null};
+   },statusName);
+   assert(status.status===200&&status.data?.generation===1&&status.data?.instances?.length===2,
+     'Authenticated qB did not serve shared host-generated status: '+JSON.stringify(status));
+ }
+ const round2=publishStatus(2);
+ for(const page of [first,second]){
+   const data=await page.evaluate(async name=>{
+     const response=await fetch('/'+name,{credentials:'same-origin',cache:'no-store'});
+     return response.ok?await response.json():null;
+   },statusName);
+   assert(data?.generation===2&&data?.instances[0]?.count===round2.instances[0].count,
+     'qB served stale or corrupt status after atomic host rename');
+ }
  const sidebarChecks=await Promise.all([verifyInstanceSidebar(first,qbs[0]),verifyInstanceSidebar(second,qbs[1])]);
  for(const [i,q] of qbs.entries()){
    const row=checks.find(item=>item.qb_version===q.version);
