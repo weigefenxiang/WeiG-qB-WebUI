@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {collectStatus,readConfig,publishStatus,validateConfig} from '../tools/instance-status-collector.mjs';
+import {collectStatus,readConfig,publishStatus,readSessions,publishSessions,validateConfig} from '../tools/instance-status-collector.mjs';
 
 const config={schemaVersion:1,instances:[
   {url:'https://first.example/',username:'admin',password:'password-one'},
@@ -34,7 +34,8 @@ async function fakeFetch(input,options){
   if(pathname.endsWith('/torrents/info'))return new Response(JSON.stringify([{hash:'a'},{hash:'b'}]));
   throw new Error('Unexpected endpoint: '+pathname);
 }
-const payload=await collectStatus(items,{fetcher:fakeFetch,now:()=>1720000000000});
+const sessions=new Map();
+const payload=await collectStatus(items,{fetcher:fakeFetch,now:()=>1720000000000,sessions});
 assert.equal(payload.schemaVersion,1);
 assert.equal(payload.maxAgeMs,90000);
 assert.equal(payload.instances.length,3);
@@ -42,6 +43,26 @@ assert.deepEqual(payload.instances.map(x=>x.status),['online','online','unverifi
 assert.deepEqual(payload.instances.map(x=>x.count),[0,2,null]);
 assert(!JSON.stringify(payload).includes('password-one')&&!JSON.stringify(payload).includes('secret-session'));
 assert.equal(calls.filter(x=>x.pathname.endsWith('/torrents/info')).length,1,'Only unsupported count gets full-list fallback');
+assert.equal(sessions.size,2,'Only authenticated targets get reusable sessions');
+await collectStatus(items,{fetcher:fakeFetch,now:()=>1720000005000,sessions});
+assert.equal(calls.filter(x=>x.pathname.endsWith('/auth/login')&&x.host!=='offline.example').length,2,
+  'A second host collector run must reuse existing valid qB sessions');
+const alternate=validateConfig({schemaVersion:1,instances:[{...config.instances[0],probeUrl:'http://127.0.0.1:18080/'}]});
+assert.equal(alternate[0].url,'https://first.example/','Public browser identity is unchanged by local probing');
+assert.equal(alternate[0].probeUrl,'http://127.0.0.1:18080/');
+const probeRequests=[];
+const proxyFetch=async(input,options)=>{
+  const url=new URL(input);
+  probeRequests.push(url.hostname);
+  if(url.hostname==='127.0.0.1')
+    return fakeFetch(new URL(url.pathname,'https://first.example/'),options);
+  return fakeFetch(input,options);
+};
+const localProbe=await collectStatus(alternate,{fetcher:proxyFetch,now:()=>1720000006000,sessions});
+assert.equal(localProbe.instances[0].status,'online');
+assert.equal(localProbe.instances[0].url,'https://first.example/','Published identity is always the browser URL');
+assert.ok(probeRequests.every(host=>host==='127.0.0.1'),'All requests must use the configured host-local probe address');
+
 
 const temp=fs.mkdtempSync(path.join(os.tmpdir(),'weig-collector-'));
 try{
@@ -55,6 +76,14 @@ try{
   publishStatus(file,payload);
   assert.deepEqual(JSON.parse(fs.readFileSync(file,'utf8')),payload);
   assert.equal(fs.readdirSync(priv).length,1,'No transient file must remain');
+  const authCache=path.join(temp,'sessions.json');
+  publishSessions(authCache,sessions);
+  assert.equal(fs.statSync(authCache).mode&0o077,0,'Host SID cache must be mode 600');
+  assert.equal(readSessions(authCache).size,2,'Root-only cache survives process restart');
+  assert.ok(!fs.readFileSync(authCache,'utf8').includes('password-one'),'Credential password must not leak into reusable SID cache');
+  fs.chmodSync(authCache,0o644);
+  assert.throws(()=>readSessions(authCache),/chmod 600/,'World-readable SID cache must fail closed');
+  fs.chmodSync(authCache,0o600);
   const next={...payload,generatedAt:payload.generatedAt+30000};
   publishStatus(file,next);
   assert.deepEqual(JSON.parse(fs.readFileSync(file,'utf8')),next,'Atomic publish must replace previous snapshot');

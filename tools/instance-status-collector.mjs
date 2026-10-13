@@ -25,7 +25,7 @@ export function validateConfig(config){
     seen.add(url);
     ensure(typeof item.username==='string'&&item.username.length<=128,'Invalid qB username');
     ensure(typeof item.password==='string'&&item.password.length<=512,'Invalid qB password');
-    return{url,username:item.username,password:item.password};
+    return{url,probeUrl:item.probeUrl?canonicalAddress(item.probeUrl):url,username:item.username,password:item.password};
   });
   return instances;
 }
@@ -54,43 +54,85 @@ async function readText(response,limit=MAX_RESPONSE){
 async function request(fetcher,url,init={}){
   return fetcher(url,{...init,redirect:'manual',signal:AbortSignal.timeout(TIMEOUT_MS)});
 }
-async function pollOne(item,fetcher,now){
-  const checkedAt=now();
+async function pollOne(item,fetcher,now,sessions){
+  const checkedAt=now(),base=item.probeUrl||item.url;
   const row={url:item.url,status:'unverified',count:null,checkedAt};
   try{
-    const login=await request(fetcher,new URL('api/v2/auth/login',item.url),{
-      method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
-      body:new URLSearchParams({username:item.username,password:item.password})
-    });
-    const reply=await readText(login,256);
-    if(!([200,204].includes(login.status)&&(login.status===204||reply.trim()==='Ok.')))return row;
-    const cookie=(login.headers.get('set-cookie')||'').split(';')[0].trim();
-    if(cookie&&!/^[A-Za-z0-9_]+=[^;\r\n]+$/.test(cookie))return row;
-    const headers=cookie?{Cookie:cookie}:{};
-    const version=await request(fetcher,new URL('api/v2/app/version',item.url),{headers});
-    if(!version.ok)return row;
-    const value=(await readText(version,128)).trim();
-    if(!/^v?[1-9]\d*(?:\.\d+){1,3}(?:[-+._][A-Za-z0-9.-]+)?$/i.test(value))return row;
+    let cookie='',value='',known=sessions?.get(item.url);
+    // Session reuse is host-private. A stale cookie is never exposed to WebUI;
+    // an invalid qB response forces one fresh login.
+    if(known?.probeUrl===base&&/^[A-Za-z0-9_]+=[^;\r\n]+$/.test(known.cookie)){
+      const response=await request(fetcher,new URL('api/v2/app/version',base),{headers:{Cookie:known.cookie}});
+      if(response.ok){
+        value=(await readText(response,128)).trim();
+        if(/^v?[1-9]\d*(?:\.\d+){1,3}(?:[-+._][A-Za-z0-9.-]+)?$/i.test(value))cookie=known.cookie;
+      }
+    }
+    if(!cookie){
+      sessions?.delete(item.url);
+      const login=await request(fetcher,new URL('api/v2/auth/login',base),{
+        method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
+        body:new URLSearchParams({username:item.username,password:item.password})
+      });
+      const reply=await readText(login,256);
+      if(!([200,204].includes(login.status)&&(login.status===204||reply.trim()==='Ok.')))return row;
+      cookie=(login.headers.get('set-cookie')||'').split(';')[0].trim();
+      if(cookie&&!/^[A-Za-z0-9_]+=[^;\r\n]+$/.test(cookie))return row;
+      const response=await request(fetcher,new URL('api/v2/app/version',base),{headers:cookie?{Cookie:cookie}:{}});
+      if(!response.ok)return row;
+      value=(await readText(response,128)).trim();
+      if(!/^v?[1-9]\d*(?:\.\d+){1,3}(?:[-+._][A-Za-z0-9.-]+)?$/i.test(value))return row;
+      if(cookie)sessions?.set(item.url,{probeUrl:base,cookie});
+    }
     row.status='online';
-    const count=await request(fetcher,new URL('api/v2/torrents/count',item.url),{headers});
+    const headers=cookie?{Cookie:cookie}:{};
+    const count=await request(fetcher,new URL('api/v2/torrents/count',base),{headers});
     if(count.ok){
-      const text=(await readText(count,128)).trim();
-      const n=Number(text);
+      const text=(await readText(count,128)).trim(),n=Number(text);
       if(/^\d+$/.test(text)&&Number.isSafeInteger(n))row.count=n;
     }else if(count.status===404||count.status===405){
-      // Older qB lacks torrents/count; one bounded full listing is required.
-      const listing=await request(fetcher,new URL('api/v2/torrents/info',item.url),{headers});
+      const listing=await request(fetcher,new URL('api/v2/torrents/info',base),{headers});
       if(listing.ok){
         const torrents=JSON.parse(await readText(listing));
         if(Array.isArray(torrents))row.count=torrents.length;
       }
     }
-  }catch(_error){/* A failed qB count is unknown; never synthesize zero/offline. */}
+  }catch(_error){/* Network or count failure cannot be confused with a verified zero. */}
   return row;
 }
-export async function collectStatus(instances,{fetcher=fetch,now=Date.now}={}){
-  const rows=await Promise.all(instances.map(item=>pollOne(item,fetcher,now)));
+export async function collectStatus(instances,{fetcher=fetch,now=Date.now,sessions}={}){
+  const rows=await Promise.all(instances.map(item=>pollOne(item,fetcher,now,sessions)));
   return{schemaVersion:1,generatedAt:now(),maxAgeMs:90000,instances:rows};
+}
+export function readSessions(filename){
+  try{
+    const stat=fs.statSync(filename);
+    ensure(stat.isFile()&&(stat.mode&0o077)===0,'Session cache must be a private regular file (chmod 600)');
+    ensure(stat.size<=8192,'Session cache exceeds size limit');
+    const data=JSON.parse(fs.readFileSync(filename,'utf8'));
+    ensure(data?.schemaVersion===1&&Array.isArray(data.items)&&data.items.length<=MAX_INSTANCES,'Invalid session cache schema');
+    const sessions=new Map();
+    for(const item of data.items){
+      ensure(typeof item.url==='string'&&typeof item.probeUrl==='string'
+        &&typeof item.cookie==='string'&&/^[A-Za-z0-9_]+=[^;\r\n]+$/.test(item.cookie),'Invalid session cache record');
+      sessions.set(canonicalAddress(item.url),{probeUrl:canonicalAddress(item.probeUrl),cookie:item.cookie});
+    }
+    return sessions;
+  }catch(error){
+    if(error?.code==='ENOENT')return new Map();
+    throw error;
+  }
+}
+export function publishSessions(filename,sessions){
+  const data={schemaVersion:1,items:Array.from(sessions.entries()).slice(0,MAX_INSTANCES)
+    .map(([url,item])=>({url,probeUrl:item.probeUrl,cookie:item.cookie}))};
+  const payload=JSON.stringify(data)+'\n';
+  ensure(Buffer.byteLength(payload)<=8192,'Session cache too large');
+  const tmp=filename+'.'+process.pid+'.tmp';
+  try{
+    fs.writeFileSync(tmp,payload,{flag:'wx',mode:0o600});
+    fs.renameSync(tmp,filename);
+  }finally{try{fs.unlinkSync(tmp);}catch(_e){}}
 }
 export function publishStatus(output,data){
   ensure(path.basename(output)==='weig-instance-status.json'&&path.basename(path.dirname(output))==='private',
@@ -118,10 +160,26 @@ async function main(){
     ensure(index>2&&arg.startsWith('--'),'Use --config=... --output=...');
     return[arg.slice(2,index),arg.slice(index+1)];
   }));
-  ensure(args.size===2&&args.has('config')&&args.has('output'),'Provide --config and --output');
+  ensure((args.size===2||args.size===3)&&args.has('config')&&args.has('output')
+    &&(args.size===2||args.has('sessions')),'Provide --config, --output, optional --sessions');
   const instances=readConfig(args.get('config'));
-  const snapshot=await collectStatus(instances);
-  publishStatus(args.get('output'),snapshot);
+  const sessionFile=args.get('sessions'),output=args.get('output');
+  if(sessionFile){
+    const webuiRoot=path.resolve(path.dirname(path.dirname(output)));
+    const relative=path.relative(webuiRoot,path.resolve(sessionFile));
+    ensure(relative.startsWith('..'+path.sep)||relative==='..',
+      'Session cache must live outside the publicly served WebUI directory');
+    // Resolve real parent directories too: a symlinked private cache folder
+    // must not redirect SID writes into the public WebUI static tree.
+    const realWebui=fs.realpathSync(webuiRoot),realParent=fs.realpathSync(path.dirname(path.resolve(sessionFile)));
+    const realRelative=path.relative(realWebui,realParent);
+    ensure(realRelative.startsWith('..'+path.sep)||realRelative==='..',
+      'Session cache parent resolves inside the public WebUI directory');
+  }
+  const sessions=sessionFile?readSessions(sessionFile):undefined;
+  const snapshot=await collectStatus(instances,{sessions});
+  if(sessionFile)publishSessions(sessionFile,sessions);
+  publishStatus(output,snapshot);
   console.log('WeiG instance status updated: '+snapshot.instances.filter(x=>x.status==='online').length+'/'+instances.length+' verified');
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url))
