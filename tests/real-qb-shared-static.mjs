@@ -114,20 +114,20 @@ async function verifyInstanceSidebar(page,q){
    return{ready:a.catalogReady,total:a.catalog?.length,ui:document.querySelector('#sidebar-instances .sidebar-instances__row.is-active .sidebar-instances__count')?.textContent?.trim()};
  });
  if(known.ready)assert(known.ui===String(known.total),'Full verified catalog total must be reused by sidebar: '+JSON.stringify(known));
- // Verify actual reachability indicator color in Chrome (not just a data-state).
- const reachable=await page.evaluate(()=>{
+ // The removed anonymous-reachability blue state must not become an
+ // orphaned test. Verify the real authenticated current qB online color.
+ const onlineColor=await page.evaluate(()=>{
    const sidebar=document.getElementById('sidebar-instances');
-   const dot=document.createElement('i'),standard=document.createElement('i');
-   dot.className='sidebar-instances__dot';dot.dataset.state='reachable';
-   standard.style.background='var(--accent-primary)';
-   sidebar.append(dot,standard);
-   const actual=getComputedStyle(dot).backgroundColor;
-   const expected=getComputedStyle(standard).backgroundColor;
-   dot.remove();standard.remove();
-   return{actual,expected};
+   const dot=sidebar.querySelector('.sidebar-instances__row.is-active .sidebar-instances__dot');
+   const standard=document.createElement('i');standard.style.background='var(--success)';
+   sidebar.appendChild(standard);
+   const actual=getComputedStyle(dot).backgroundColor,expected=getComputedStyle(standard).backgroundColor;
+   standard.remove();
+   return{actual,expected,state:dot.dataset.state};
  });
- assert(reachable.actual===reachable.expected&&reachable.actual!=='rgba(0, 0, 0, 0)',
-   'Reachability dot must display the canonical accent color: '+JSON.stringify(reachable));
+ assert(onlineColor.state==='online'&&onlineColor.actual===onlineColor.expected
+   &&onlineColor.actual!=='rgba(0, 0, 0, 0)',
+   'Authenticated current qB must display canonical green online state: '+JSON.stringify(onlineColor));
  await page.locator('#sidebar-instances .sidebar-instances__heading').click();
  const closed=await page.evaluate(()=>{
    const node=document.getElementById('sidebar-instances');
