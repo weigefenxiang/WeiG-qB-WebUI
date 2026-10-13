@@ -170,11 +170,45 @@
     if(importOffered||!W.InstanceHandoff)return;
     var proposal=W.InstanceHandoff.peek();if(!proposal)return;
     importOffered=true;var finished=false,bridge=W.InstanceHandoff;
-    var m=ask(tr('importTitle'),tr('importHint',{count:proposal.items.length,source:proposal.source}),tr('import'),function(){
-      var json=JSON.stringify({schemaVersion:1,items:proposal.items});
-      R.importList(json);finished=true;bridge.consume();render();
-    },function(){finished=true;bridge.consume();});
+    var json=JSON.stringify({schemaVersion:1,items:proposal.items}),preview;
+    try{preview=R.previewIncoming(json);}catch(error){notice(error.message);bridge.consume();return;}
+    // A fully synchronized destination does not need another consent dialog.
+    if(!preview.pending.length){bridge.consume();return;}
+    var selected=new Set(preview.pending.map(function(item){return item.url;}));
+    var m=modal(tr('importTitle'));
+    m.body.appendChild(el('p','text-description',tr('importHint',{count:proposal.items.length,source:proposal.source})));
+    var list=el('div','instance-import__list'),feedback=el('p','instance-manager__feedback');
+    feedback.setAttribute('role','alert');m.body.append(list,feedback);
+    var accept=button('','btn btn--primary',function(){
+      try{
+        var chosen=preview.pending.filter(function(item){return selected.has(item.url);}).map(function(item){return{name:item.name,url:item.url};});
+        if(!chosen.length)return;
+        // Revalidate the selected subset at the point of the atomic write.
+        R.importMissing(JSON.stringify({schemaVersion:1,items:chosen}));
+        finished=true;bridge.consume();render();D.close(m.dialog,'confirm');
+      }catch(error){feedback.textContent=error.message;}
+    });
+    function paintPreview(){
+      list.textContent='';
+      preview.items.forEach(function(item){
+        if(!item.existing&&!selected.has(item.url))return;
+        var row=el('div','instance-import__row'),details=el('div','instance-import__details');
+        details.append(el('strong','',item.name),el('span','instance-import__url',item.url));
+        row.appendChild(details);
+        if(item.existing){row.classList.add('is-existing');row.appendChild(el('span','instance-import__existing','✓'));}
+        else{
+          var remove=button('×','icon-btn',function(){selected.delete(item.url);paintPreview();});
+          remove.setAttribute('aria-label',tr('remove')+' · '+item.name);
+          row.appendChild(remove);
+        }
+        list.appendChild(row);
+      });
+      accept.disabled=selected.size===0;
+      accept.textContent=tr('import')+' ('+selected.size+')';
+    }
+    m.footer.append(button(tr('cancel'),'btn btn--ghost',function(){finished=true;bridge.consume();D.close(m.dialog,'cancel');}),accept);
     m.dialog.addEventListener('close',function(){if(!finished)bridge.consume();});
+    paintPreview();m.show(accept);
   }
   function init(){
     host=document.getElementById('sidebar-instances');if(!host)return;

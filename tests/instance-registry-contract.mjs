@@ -103,6 +103,23 @@ const first=other.importList(portable);
 assert.equal(first.added,2,'portable nonsecret list should initialize a different origin without accessing Cookies');
 assert.equal(other.list().length,2);
 assert.equal(other.importList(portable).updated,2,'reimport must update known entries without duplicating them');
+const previousBytes=otherSaved.get('weig.instances.v1');
+assert.equal(other.previewIncoming(portable).pending.length,0,'Existing entries must not trigger another import dialog');
+assert.equal(other.importMissing(portable).added,0);
+assert.equal(otherSaved.get('weig.instances.v1'),previousBytes,'No change must avoid storage writes');
+const proposal=JSON.stringify({schemaVersion:1,items:[
+  {name:'Another name for VPS',url:'https://vps.example/'},
+  {name:'New 1',url:'https://fresh.example/'},
+  {name:'New 2',url:'https://fresh2.example/'}
+]});
+assert.equal(other.previewIncoming(proposal).pending.length,2);
+assert.equal(other.previewIncoming(proposal).items.length,3,'Preview must include existing rows alongside new rows');
+const selected=JSON.stringify({schemaVersion:1,items:[{name:'New 2',url:'https://fresh2.example/'}]});
+assert.equal(other.importMissing(selected).added,1,'Only selected new rows are imported');
+assert.equal(other.list().some(item=>item.url==='https://fresh.example/'),false,'Excluded URL must never be saved');
+other.update('https://fresh2.example/','My nickname','https://fresh2.example/');
+assert.equal(other.importMissing(selected).added,0);
+assert.equal(other.list().find(item=>item.url==='https://fresh2.example/').name,'My nickname','Existing name is never overwritten by a handoff');
 const snapshot=other.exportList();
 for(const invalid of [
   '{bad json',JSON.stringify({schemaVersion:2,items:[]}),

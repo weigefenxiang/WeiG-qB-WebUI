@@ -29,5 +29,15 @@
 .instance-manager__feedback{min-height:1.2em;color:var(--text-secondary);overflow-wrap:anywhere}
 .instance-manager__footer{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
 @media(max-width:820px){.sidebar-instances{margin-top:14px;padding-inline:2px}.sidebar-instances__more{opacity:1}}
+
+/* A76: Review uses shared Dialog/Button skins and one bounded scroll surface. */
+.instance-import__list{display:grid;gap:0;max-height:min(44vh,380px);overflow:auto;overscroll-behavior:contain;border:1px solid var(--border);border-radius:10px}
+.instance-import__row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 11px;min-width:0}
+.instance-import__row+.instance-import__row{border-top:1px solid var(--border)}
+.instance-import__row.is-existing{opacity:.62}
+.instance-import__details{display:grid;gap:3px;min-width:0;flex:1}
+.instance-import__url{font-size:var(--text-meta-size);color:var(--text-secondary);overflow-wrap:anywhere;user-select:text}
+.instance-import__existing{color:var(--text-secondary);font-size:17px}
+.instance-import__row>.icon-btn{flex-shrink:0}
 @media(prefers-reduced-motion:reduce){.sidebar-instances__chevron{transition:none}}
 html[data-motion="reduced"] .sidebar-instances__chevron{transition:none}

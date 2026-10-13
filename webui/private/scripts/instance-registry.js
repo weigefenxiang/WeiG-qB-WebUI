@@ -101,12 +101,16 @@
     return next.length!==items.length;
   }
   function exportList(){return JSON.stringify({schemaVersion:1,items:load()});}
-  function importList(text){
+  // All import paths share the same strict URL/schema validation and identity
+  // reconciliation. Preview is read-only; incoming handoffs never rename an
+  // existing entry and never store the destination's own implicit identity.
+  function reconcileImport(text,options){
+    options=options||{};
     if(typeof text!=='string'||text.length>32768)throw new Error('Instance list exceeds the safe import limit.');
     var input;
     try{input=JSON.parse(text);}catch(_error){throw new Error('Instance list must be valid JSON.');}
     if(!input||Array.isArray(input)||typeof input!=='object'||input.schemaVersion!==1||!Array.isArray(input.items)||input.items.length>LIMIT||Object.keys(input).some(function(key){return key!=='schemaVersion'&&key!=='items';}))throw new Error('Unsupported instance list schema.');
-    var next=load(true),seen=new Set(),added=0,updated=0;
+    var next=load(true),seen=new Set(),proposed=[],added=0,updated=0,items=[],current=currentUrl().href;
     input.items.forEach(function(row){
       if(!row||typeof row!=='object'||Array.isArray(row)||Object.keys(row).some(function(key){return key!=='name'&&key!=='url';})||typeof row.name!=='string'||typeof row.url!=='string')throw new Error('Instance list contains unsupported fields.');
       var name=row.name.trim();
@@ -115,14 +119,20 @@
       if(seen.has(url))throw new Error('Instance list contains duplicate addresses.');
       seen.add(url);
       assertIsolated(next,url);
-      var index=next.findIndex(function(item){return item.url===url;});
+      assertIsolated(proposed,url);
+      proposed.push({name:name,url:url});
+      var index=next.findIndex(function(item){return item.url===url;}),own=url===current,existing=index>=0||(options.preserveExisting&&own);
+      items.push({name:name,url:url,existing:existing,current:own});
+      if(options.preview||(options.preserveExisting&&existing))return;
       if(index>=0){next[index]={name:name,url:url};updated++;}
       else{if(next.length>=LIMIT)throw new Error('Instance list exceeds the maximum saved entries.');next.push({name:name,url:url});added++;}
     });
-    if(!input.items.length)return{added:0,updated:0,total:next.length};
-    write(next);
-    return{added:added,updated:updated,total:next.length};
+    if(!options.preview&&(added||updated))write(next);
+    return{added:added,updated:updated,total:next.length,items:items,pending:items.filter(function(item){return !item.existing;})};
   }
+  function importList(text){var result=reconcileImport(text);return{added:result.added,updated:result.updated,total:result.total};}
+  function previewIncoming(text){return reconcileImport(text,{preview:true,preserveExisting:true});}
+  function importMissing(text){var result=reconcileImport(text,{preserveExisting:true});return{added:result.added,updated:result.updated,total:result.total};}
   // qB validates Referer even for top-level GET. location.assign() from a
   // different instance may therefore be rejected as cross-site traffic.
   // Keep the full-page boundary and suppress Referer at browser navigation.
@@ -159,6 +169,6 @@
   }
   W.InstanceRegistry=Object.freeze({
     schemaVersion:1,currentUrl:function(){return currentUrl().href;},
-    list:load,add:add,update:update,remove:remove,exportList:exportList,importList:importList,switchTo:switchTo
+    list:load,add:add,update:update,remove:remove,exportList:exportList,importList:importList,previewIncoming:previewIncoming,importMissing:importMissing,switchTo:switchTo
   });
 })(window);

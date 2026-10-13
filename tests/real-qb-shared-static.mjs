@@ -310,6 +310,9 @@ async function test(){
  assert(roundTripSettings.every(row=>row.settings_get==='PASS'&&row.settings_source_identity==='PASS'),'Post-round-trip Settings identity lost');
  // A76: a noncredential registry handoff is an untrusted proposal until
  // the destination user explicitly consents in the existing dialog owner.
+ // Clear the destination's previously stored source to exercise a genuinely
+ // novel handoff; the repeated no-delta path is covered by the registry contract.
+ await second.evaluate(url=>window.WeiG.InstanceRegistry.remove(url),qbs[0].url);
  const pendingImport=first.waitForResponse(response=>{
    try{return new URL(response.url()).origin===new URL(qbs[1].url).origin&&response.request().isNavigationRequest()&&response.request().resourceType()==='document';}catch{return false;}
  },{timeout:20000});
@@ -317,9 +320,9 @@ async function test(){
  assert((await pendingImport).status()===200,'A76 handoff document must return HTTP 200');
  await awaitRealApp(first,qbs[1],'after-explicit-list-handoff');
  await first.waitForFunction(()=>!!window.WeiG?.InstancesUI&&!!window.WeiG?.InstanceHandoff?.peek?.(),null,{timeout:20000});
- assert(await first.evaluate(()=>window.WeiG.InstanceRegistry.list().length)===1,'Untrusted handoff must not preempt destination registry');
- await first.getByRole('button',{name:'Import',exact:true}).click({timeout:20000});
- await first.waitForFunction(()=>window.WeiG.InstanceRegistry.list().length===2&&window.WeiG.InstanceHandoff.peek()===null,null,{timeout:20000});
+ assert(await first.evaluate(()=>window.WeiG.InstanceRegistry.list().length)===0,'Untrusted handoff must not preempt destination registry');
+ await first.getByRole('button',{name:/^Import [(]/}).click({timeout:20000});
+ await first.waitForFunction(()=>window.WeiG.InstanceRegistry.list().length===1&&window.WeiG.InstanceHandoff.peek()===null,null,{timeout:20000});
  assert((await context.cookies(qbs[0].url)).find(c=>c.name===qbs[0].sessionCookieName)?.value===sidA,'Handoff changed original qB session');
  assert((await context.cookies(qbs[1].url)).find(c=>c.name===qbs[1].sessionCookieName)?.value===sidB,'Handoff changed destination qB session');
  await context.close();
