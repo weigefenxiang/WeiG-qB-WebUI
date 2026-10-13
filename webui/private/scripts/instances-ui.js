@@ -42,7 +42,7 @@
   }
   function paintHealth(view){
     var health=H&&H.get(view.item.url),state=health&&health.status||'unknown',count=health&&health.count;
-    var status=state==='online'?tr('online'):state==='reachable'?tr('reachable'):state==='denied'?tr('denied'):tr('unverified');
+    var status=state==='online'?tr('online'):tr('unverified');
     view.dot.dataset.state=state;
     view.total.textContent=count==null?'—':String(count);
     var previous=health&&health.lastVerifiedAt&&state!=='online'?tr('lastVerified',{time:new Date(health.lastVerifiedAt).toLocaleString()}):'';

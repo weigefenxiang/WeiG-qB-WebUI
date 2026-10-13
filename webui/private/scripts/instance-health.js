@@ -4,7 +4,7 @@
   if(W.InstanceHealth)return;
   var KEY=W.StorageKeys&&W.StorageKeys.instanceProbeInterval||'weig.instances.probeMinutes';
   var HISTORY_KEY=W.StorageKeys&&W.StorageKeys.instanceHealthHistory||'weig.instances.lastVerified.v1',HISTORY_AGE=24*60*60000;
-  var lastRun=0,inFlight=null,started=false,results=new Map(),tick=null;
+  var lastRun=0,inFlight=null,sharedTask=null,lastSharedRead=0,started=false,results=new Map(),tick=null;
   // This is a timestamp of a verified WebAPI response, not a persistent online state.
   function readHistory(){
     try{
@@ -53,7 +53,7 @@
   function get(url){
     var key=String(url||''),row=results.get(key),lastVerifiedAt=history.get(key)||null;
     var ttl=Math.max(5,minutes()||30)*2*60000;
-    if(row&&Date.now()-row.checkedAt<=ttl){
+    if(row&&(row.source==='shared'?Date.now()<row.expiresAt:Date.now()-row.checkedAt<=ttl)){
       var copy=Object.assign({},row,{lastVerifiedAt:lastVerifiedAt});
       if(copy.status==='online'&&same(key,current())){
         var total=trustedCurrentCount();
@@ -63,79 +63,85 @@
     }
     return lastVerifiedAt?{status:'unverified',count:null,checkedAt:0,lastVerifiedAt:lastVerifiedAt}:null;
   }
-  async function remoteGet(url,endpoint){
-    var api=new URL('api/v2/'+endpoint,url),controller=new AbortController(),timeout=setTimeout(function(){controller.abort();},5000);
-    try{return await fetch(api.href,{method:'GET',mode:'cors',credentials:'omit',referrerPolicy:'no-referrer',redirect:'error',cache:'no-store',signal:controller.signal});}
-    finally{clearTimeout(timeout);}
-  }
   function numericCount(text){var s=String(text==null?'':text).trim(),n=Number(s);return /^\d+$/.test(s)&&Number.isSafeInteger(n)&&n>=0?n:null;}
   function verifiedVersion(value){return /^v?(?:[1-9]\d*)(?:\.\d+){1,3}(?:[-+._][A-Za-z0-9.-]+)?$/i.test(String(value||'').trim());}
-  // An opaque response has no inspectable HTTP status or body; never call it qB online.
-  async function reachable(url){
-    var controller=new AbortController(),timeout=setTimeout(function(){controller.abort();},5000);
-    try{
-      var response=await fetch(new URL('api/v2/app/version',url).href,{method:'GET',mode:'no-cors',credentials:'omit',referrerPolicy:'no-referrer',redirect:'error',cache:'no-store',signal:controller.signal});
-      return !!(response&&response.type==='opaque');
-    }catch(_error){return false;}
-    finally{clearTimeout(timeout);}
-  }
-  async function inspect(url){
+  async function inspectCurrent(){
     var checkedAt=Date.now(),row={status:'unverified',count:null,checkedAt:checkedAt};
-    if(same(url,current())){
-      var client=W.AppState&&W.AppState.client;
-      if(client&&verifiedVersion(client.qbVersion)){
-        row.status='online';
-        try{if(typeof client.torrentCount==='function')row.count=numericCount(await client.torrentCount());}catch(_error){}
-      }
-      return row;
-    }
-    try{
-      // A different Origin cannot inherit qB's SID. Never request with credentials/include.
-      var version=await remoteGet(url,'app/version');
-      if(version.status===401||version.status===403){row.status='denied';return row;}
-      if(!version.ok){row.status='unverified';return row;}
-      var text=String(await version.text()).trim();
-      if(!verifiedVersion(text)){row.status='reachable';return row;}
+    var client=W.AppState&&W.AppState.client;
+    if(client&&verifiedVersion(client.qbVersion)){
       row.status='online';
-      try{var count=await remoteGet(url,'torrents/count');if(count.ok)row.count=numericCount(await count.text());}catch(_error){}
-    }catch(_error){
-      // CORS, blocked private networks and network errors cannot prove offline.
-      // Opaque HTTP reachability is weaker evidence than a verified qB WebAPI.
-      row.status=await reachable(url)?'reachable':'unverified';
+      try{if(typeof client.torrentCount==='function')row.count=numericCount(await client.torrentCount());}catch(_error){}
     }
     return row;
   }
+  // Same-origin authenticated static snapshot. The host owns all remote WebAPI
+  // requests. The browser never sends credentials to another qB origin.
+  async function refreshShared(){
+    if(sharedTask)return sharedTask;
+    lastSharedRead=Date.now();
+    sharedTask=(async function(){
+      var abort=new AbortController(),timeout=setTimeout(function(){abort.abort();},5000);
+      try{
+        var response=await fetch(new URL('weig-instance-status.json',current()).href,{
+          method:'GET',mode:'same-origin',credentials:'same-origin',redirect:'error',
+          cache:'no-store',signal:abort.signal
+        });
+        if(!response.ok)return false;
+        var text=await response.text();
+        if(text.length>16384)return false;
+        var data=JSON.parse(text),now=Date.now();
+        if(!data||data.schemaVersion!==1||!Array.isArray(data.instances)||data.instances.length>16
+          ||!Number.isFinite(data.generatedAt)||!Number.isSafeInteger(data.maxAgeMs)
+          ||data.maxAgeMs<30000||data.maxAgeMs>300000||data.generatedAt>now+60000
+          ||now>=data.generatedAt+data.maxAgeMs)return false;
+        var registry=W.InstanceRegistry,known=new Set(registry&&registry.list(true).map(function(x){return x.url;})||[]);
+        var pending=[],seen=new Set();
+        for(var item of data.instances){
+          if(!item||typeof item.url!=='string'||seen.has(item.url)||item.status!=='online'&&item.status!=='unverified'
+            ||!Number.isFinite(item.checkedAt)||item.checkedAt>now+60000||item.checkedAt<data.generatedAt-60000
+            ||item.checkedAt>data.generatedAt+60000)return false;
+          seen.add(item.url);
+          if(item.count!==null&&(!Number.isSafeInteger(item.count)||item.count<0))return false;
+          if(item.status!=='online'&&item.count!==null)return false;
+          if(!known.has(item.url)||same(item.url,current()))continue;
+          pending.push({url:item.url,row:{status:item.status,count:item.count,checkedAt:item.checkedAt,
+            source:'shared',expiresAt:data.generatedAt+data.maxAgeMs}});
+        }
+        pending.forEach(function(entry){results.set(entry.url,entry.row);remember(entry.url,entry.row);});
+        emit();
+        return true;
+      }catch(_error){return false;}
+      finally{clearTimeout(timeout);emit();}
+    })();
+    try{return await sharedTask;}finally{sharedTask=null;}
+  }
   async function checkNow(){
     if(inFlight)return inFlight;
-    var registry=W.InstanceRegistry,items=[];
-    try{items=registry&&registry.list(true)||[];}catch(_error){emit();return false;}
-    var url=current();
-    if(!items.some(function(x){return x.url===url}))items.unshift({url:url,name:'Current qBittorrent'});
     lastRun=Date.now();
-    var cursor=0;
     inFlight=(async function(){
-      await Promise.all(Array.from({length:Math.min(2,items.length)},async function(){
-        while(cursor<items.length){
-          var item=items[cursor++],value=await inspect(item.url);
-          results.set(item.url,value);remember(item.url,value);emit();
-        }
-      }));
+      await Promise.all([
+        inspectCurrent().then(function(row){var url=current();results.set(url,row);remember(url,row);emit();}),
+        refreshShared()
+      ]);
       return true;
     })();
     try{return await inFlight;}finally{inFlight=null;}
   }
   function due(){return minutes()>0&&(!lastRun||Date.now()-lastRun>=minutes()*60000);}
-  function tickIfDue(){if(document.visibilityState!=='hidden'&&due())checkNow().catch(function(){emit();});}
+  function tickIfDue(){
+    if(document.visibilityState==='hidden'||minutes()===0)return;
+    if(due())checkNow().catch(function(){emit();});
+    else if(Date.now()-lastSharedRead>=30000)refreshShared().catch(function(){emit();});
+  }
   function start(){
     if(started)return;started=true;
-    tick=setInterval(tickIfDue,60000);
+    tick=setInterval(tickIfDue,30000);
     global.addEventListener('visibilitychange',tickIfDue);
     // Session readiness predates app.detect(); reconcile when WebAPI identity is real.
     global.addEventListener('weig:app-ready',function(){
-      // The first full probe may still be in flight. Refresh current qB
-      // separately instead of losing this readiness transition to dedupe.
+      // App authentication becomes authoritative after early deferred loading.
       var url=current();
-      inspect(url).then(function(row){results.set(url,row);remember(url,row);emit();}).catch(function(){emit();});
+      inspectCurrent().then(function(row){results.set(url,row);remember(url,row);emit();}).catch(function(){emit();});
     });
     var session=W.SessionController;
     if(session&&session.ready)session.ready().then(function(ok){if(ok)tickIfDue();}).catch(function(){});

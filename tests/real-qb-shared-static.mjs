@@ -246,8 +246,9 @@ async function test(){
  // through BOTH real qB servers, without changing the read-only Docker mounts.
  const statusName='weig-instance-status.json',statusFile=path.join(shared,'private',statusName);
  const publishStatus=(generation)=>{
-   const data={schemaVersion:1,generatedAt:new Date().toISOString(),generation,
-     instances:qbs.map((q,i)=>({url:q.url,status:'online',count:i+generation,checkedAt:new Date().toISOString()}))};
+   const generatedAt=Date.now();
+   const data={schemaVersion:1,generatedAt,maxAgeMs:90000,generation,
+     instances:qbs.map((q,i)=>({url:q.url,status:'online',count:i+generation,checkedAt:generatedAt}))};
    const next=statusFile+'.next';
    fs.writeFileSync(next,JSON.stringify(data)+'\n',{mode:0o644});
    fs.renameSync(next,statusFile);
@@ -276,6 +277,28 @@ async function test(){
    },statusName);
    assert(data?.generation===2&&data?.instances[0]?.count===round2.instances[0].count,
      'qB served stale or corrupt status after atomic host rename');
+ }
+ // Verify the actual A76-44 product consumer, not just direct fetch() of the file.
+ for(const [page,remote] of [[first,qbs[1]],[second,qbs[0]]]){
+   await page.evaluate(url=>{
+     window.WeiG.InstanceRegistry.add('Remote qB',url);
+     window.WeiG.InstancesUI.render();
+   },remote.url);
+   await page.evaluate(()=>window.WeiG.InstanceHealth.checkNow());
+   const report=await page.evaluate(url=>{
+     const H=window.WeiG.InstanceHealth.get(url);
+     const rows=[...document.querySelectorAll('#sidebar-instances .sidebar-instances__row')];
+     const row=rows.find(item=>item.querySelector('.sidebar-instances__select')?.title.includes(url));
+     return{status:H?.status,count:H?.count,dot:row?.querySelector('.sidebar-instances__dot')?.dataset.state,
+       displayed:row?.querySelector('.sidebar-instances__count')?.textContent?.trim()};
+   },remote.url);
+   const expected=qbs.findIndex(q=>q.url===remote.url)+2;
+   assert(report.status==='online'&&report.count===expected&&report.dot==='online'
+     &&report.displayed===String(expected),'Shared host feed did not update real remote Sidebar: '+JSON.stringify(report));
+   await page.evaluate(url=>{
+     window.WeiG.InstanceRegistry.remove(url);
+     window.WeiG.InstancesUI.render();
+   },remote.url);
  }
  const sidebarChecks=await Promise.all([verifyInstanceSidebar(first,qbs[0]),verifyInstanceSidebar(second,qbs[1])]);
  for(const [i,q] of qbs.entries()){
