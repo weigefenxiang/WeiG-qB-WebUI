@@ -8,6 +8,12 @@ const health=read('webui/private/scripts/instance-health.js'),css=read('webui/pr
 assert.ok(shell.includes('id="sidebar-instances"'),'Single Sidebar placement must be below the Facet owner');
 assert.ok(shell.indexOf('id="sidebar-instances"')>shell.indexOf('id="facet-controls"'));
 assert.ok(plan.styles.includes('css/sidebar-instances.css'));
+const dormant=JSON.parse(read('webui/private/weig-instance-status.json'));
+assert.equal(dormant.schemaVersion,1,'The optional collector must have a regular, distributable status resource');
+assert.equal(dormant.generatedAt,0,'The no-collector resource must never claim fresh online evidence');
+assert.equal(dormant.maxAgeMs,90000);
+assert.deepEqual(dormant.instances,[],'The default resource must never fabricate peer instances or torrent counts');
+
 const nav=read('webui/private/scripts/navigation.js');
 assert.ok(!plan.phases.some(x=>x.scripts.includes('scripts/instance-registry.js')||x.scripts.includes('scripts/instance-health.js')||x.scripts.includes('scripts/instances-ui.js')),'Instance feature must not regrow the bounded initial bootstrap');
 assert.ok(nav.includes("['scripts/instance-registry.js','scripts/instance-health.js','scripts/instances-ui.js']")&&nav.includes('loadInstances:loadInstances'),'Navigation must load the canonical feature via RuntimeAssets after first paint');
