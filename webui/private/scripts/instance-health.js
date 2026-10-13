@@ -44,8 +44,11 @@
     // The App's completed unfiltered catalog is already a verified full-torrent
     // snapshot. Reuse it rather than issuing an extra unsupported qB count API.
     var app=W.AppState;
-    if(!app||app.catalogReady!==true||!Array.isArray(app.catalog))return null;
-    return Number.isSafeInteger(app.catalog.length)?app.catalog.length:null;
+    if(!app)return null;
+    if(app.catalogReady===true&&Array.isArray(app.catalog))return Number.isSafeInteger(app.catalog.length)?app.catalog.length:null;
+    var unfiltered=String(app.filter||'all')==='all'&&!app.tracker&&!app.savePath&&!app.category&&!app.tag&&!app.search;
+    if(unfiltered&&app.knownTotalFresh===true&&Number.isSafeInteger(app.knownTotal)&&app.knownTotal>=0)return app.knownTotal;
+    return null;
   }
   function get(url){
     var key=String(url||''),row=results.get(key),lastVerifiedAt=history.get(key)||null;
@@ -65,7 +68,7 @@
     try{return await fetch(api.href,{method:'GET',mode:'cors',credentials:'omit',referrerPolicy:'no-referrer',redirect:'error',cache:'no-store',signal:controller.signal});}
     finally{clearTimeout(timeout);}
   }
-  function numericCount(text){var s=String(text||'').trim(),n=Number(s);return /^\d+$/.test(s)&&Number.isSafeInteger(n)&&n>=0?n:null;}
+  function numericCount(text){var s=String(text==null?'':text).trim(),n=Number(s);return /^\d+$/.test(s)&&Number.isSafeInteger(n)&&n>=0?n:null;}
   function verifiedVersion(value){return /^v?(?:[1-9]\d*)(?:\.\d+){1,3}(?:[-+._][A-Za-z0-9.-]+)?$/i.test(String(value||'').trim());}
   // An opaque response has no inspectable HTTP status or body; never call it qB online.
   async function reachable(url){
