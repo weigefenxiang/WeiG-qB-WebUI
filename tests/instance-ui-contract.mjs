@@ -15,6 +15,7 @@ assert.ok(nav.includes("settings:['scripts/update-check.js','scripts/bug-report.
 assert.ok(ui.includes('R.switchTo(item.url,{transfer:true,allowDowngrade:insecure===true'),'UI must opt in to transfer and HTTPS downgrade per explicit user gesture');
 assert.ok(ui.includes('W.AppState.initialized')&&ui.includes("'weig:app-ready'"),'Incoming cross-origin consent must wait for the target qB locale startup barrier');
 assert.ok(ui.includes('R.previewIncoming(json)')&&ui.includes('importOffered'),'Only novel cross-origin records require consent');
+assert.ok(ui.includes('R.defaultName(current)')&&ui.includes("active?tr('currentSuffix')"),'Unregistered current instances use stable host identity and current badge');
 assert.ok(ui.includes('selected.delete(item.url)')&&ui.includes('R.importMissing(JSON.stringify'),'A review row can exclude an instance, committing only the selected set');
 assert.ok(!ui.includes("function openInterval(")&&!ui.includes("sidebar-instances__interval"),'Instance interval must be owned only by Settings');
 assert.ok(read('webui/private/scripts/settings.js').includes("instanceCheckRow()"),'Settings must own the interval row');

@@ -100,10 +100,11 @@
     if(next.length!==items.length)write(next);
     return next.length!==items.length;
   }
+  function defaultName(url){return new URL(url||currentUrl().href).host;}
   function exportList(){return JSON.stringify({schemaVersion:1,items:load()});}
   // All import paths share the same strict URL/schema validation and identity
   // reconciliation. Preview is read-only; incoming handoffs never rename an
-  // existing entry and never store the destination's own implicit identity.
+  // existing entry and treat an unregistered current URL as new until it is explicitly accepted.
   function reconcileImport(text,options){
     options=options||{};
     if(typeof text!=='string'||text.length>32768)throw new Error('Instance list exceeds the safe import limit.');
@@ -121,7 +122,7 @@
       assertIsolated(next,url);
       assertIsolated(proposed,url);
       proposed.push({name:name,url:url});
-      var index=next.findIndex(function(item){return item.url===url;}),own=url===current,existing=index>=0||(options.preserveExisting&&own);
+      var index=next.findIndex(function(item){return item.url===url;}),own=url===current,existing=index>=0;
       items.push({name:name,url:url,existing:existing,current:own});
       if(options.preview||(options.preserveExisting&&existing))return;
       if(index>=0){next[index]={name:name,url:url};updated++;}
@@ -159,7 +160,7 @@
         var items=load(true).slice();
         if(!items.some(function(x){return x.url===current.href})){
           if(items.length>=LIMIT)throw new Error('Instance list is full. Export it manually.');
-          items.unshift({name:options.currentName||'Current qBittorrent',url:current.href});
+          items.unshift({name:options.currentName||defaultName(current.href),url:current.href});
         }
         destination=handoff.urlFor(canonical,items,current.href);
       }
@@ -169,6 +170,6 @@
   }
   W.InstanceRegistry=Object.freeze({
     schemaVersion:1,currentUrl:function(){return currentUrl().href;},
-    list:load,add:add,update:update,remove:remove,exportList:exportList,importList:importList,previewIncoming:previewIncoming,importMissing:importMissing,switchTo:switchTo
+    list:load,add:add,update:update,remove:remove,defaultName:defaultName,exportList:exportList,importList:importList,previewIncoming:previewIncoming,importMissing:importMissing,switchTo:switchTo
   });
 })(window);

@@ -26,7 +26,7 @@
   }
   function records(){
     var current=R.currentUrl(),saved=R.list(true),own=saved.find(function(x){return x.url===current;});
-    return [own||{name:tr('current'),url:current}].concat(saved.filter(function(x){return x.url!==current;}));
+    return [own||{name:R.defaultName(current),url:current}].concat(saved.filter(function(x){return x.url!==current;}));
   }
   function transferAndSwitch(item){
     if(item.url===R.currentUrl())return;
@@ -64,13 +64,13 @@
     var content=el('div','sidebar-instances__body');
     var items=[];try{items=records();}catch(error){notice(error.message);}
     items.forEach(function(item){
-      var active=item.url===R.currentUrl(),saved=R.list(true).some(function(x){return x.url===item.url;});
+      var active=item.url===R.currentUrl();
       var row=el('div','sidebar-instances__row'),select=button('','sidebar-instances__select',function(){transferAndSwitch(item);});
       if(active)row.classList.add('is-active');
       select.setAttribute('aria-current',active?'page':'false');
       var label=el('span','sidebar-instances__name');
       var dot=el('span','sidebar-instances__dot');dot.setAttribute('aria-hidden','true');
-      label.append(dot,el('span','',item.name+(active&&saved?tr('currentSuffix'):'')));
+      label.append(dot,el('span','',item.name+(active?tr('currentSuffix'):'')));
       var total=el('span','sidebar-instances__count');
       select.append(label,total);
       var view={item:item,select:select,dot:dot,total:total};

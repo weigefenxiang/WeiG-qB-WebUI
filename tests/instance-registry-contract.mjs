@@ -99,6 +99,20 @@ assert.deepEqual(portableData.items.map(x=>x.name),['NAS renamed','VPS']);
 const otherSaved=new Map(),otherWindow={location:{href:'https://vps.example/private/index.html',assign(){}},document:safeNavigationDocument([]),WeiG:{StorageRuntime:{local:{get:(k,d)=>otherSaved.has(k)?otherSaved.get(k):d,set:(k,v)=>{otherSaved.set(k,v);return true;}}}}};
 vm.runInNewContext(source,{window:otherWindow,URL});
 const other=otherWindow.WeiG.InstanceRegistry;
+// An unregistered current URL is a real missing name, not an implicit saved record.
+const ownSaved=new Map(),ownWindow={location:{href:'https://vps.example/private/index.html'},document:safeNavigationDocument([]),WeiG:{StorageRuntime:{local:{
+  get:(k,d)=>ownSaved.has(k)?ownSaved.get(k):d,set:(k,v)=>{ownSaved.set(k,v);return true;}
+}}}};
+vm.runInNewContext(source,{window:ownWindow,URL});
+const ownRegistry=ownWindow.WeiG.InstanceRegistry;
+assert.equal(ownRegistry.defaultName('https://vps.example/'),'vps.example');
+assert.equal(ownRegistry.previewIncoming(portable).pending.length,2,'Own unsaved URL must not be marked existing');
+const ownChoice=JSON.stringify({schemaVersion:1,items:[{name:'520',url:'https://vps.example/'}]});
+assert.equal(ownRegistry.importMissing(ownChoice).added,1,'First approved transfer must save current nickname');
+assert.equal(ownRegistry.list().find(item=>item.url==='https://vps.example/').name,'520');
+assert.equal(ownRegistry.previewIncoming(portable).pending.length,1,'Saved current nickname is no longer pending');
+assert.equal(ownRegistry.importMissing(ownChoice).added,0,'Repeat must not reimport current nickname');
+assert.equal(ownRegistry.list().find(item=>item.url==='https://vps.example/').name,'520','Local nickname wins over foreign proposal');
 const first=other.importList(portable);
 assert.equal(first.added,2,'portable nonsecret list should initialize a different origin without accessing Cookies');
 assert.equal(other.list().length,2);

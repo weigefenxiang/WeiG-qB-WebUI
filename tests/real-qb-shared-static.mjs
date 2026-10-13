@@ -322,7 +322,10 @@ async function test(){
  await first.waitForFunction(()=>!!window.WeiG?.InstancesUI&&!!window.WeiG?.InstanceHandoff?.peek?.(),null,{timeout:20000});
  assert(await first.evaluate(()=>window.WeiG.InstanceRegistry.list().length)===0,'Untrusted handoff must not preempt destination registry');
  await first.getByRole('button',{name:/^Import [(]/}).click({timeout:20000});
- await first.waitForFunction(()=>window.WeiG.InstanceRegistry.list().length===1&&window.WeiG.InstanceHandoff.peek()===null,null,{timeout:20000});
+ await first.waitForFunction(()=>window.WeiG.InstanceRegistry.list().length===2&&window.WeiG.InstanceHandoff.peek()===null,null,{timeout:20000});
+ const acceptedNames=await first.evaluate(()=>({current:window.WeiG.InstanceRegistry.list().find(x=>x.url===window.WeiG.InstanceRegistry.currentUrl())?.name,
+    currentLabel:document.querySelector('#sidebar-instances .sidebar-instances__row.is-active .sidebar-instances__name')?.textContent}));
+ assert(acceptedNames.current==='Other qB'&&acceptedNames.currentLabel?.includes('Other qB')&&acceptedNames.currentLabel?.includes('(current)'),'Incoming current instance was not named/persisted after accepted first import: '+JSON.stringify(acceptedNames));
  assert((await context.cookies(qbs[0].url)).find(c=>c.name===qbs[0].sessionCookieName)?.value===sidA,'Handoff changed original qB session');
  assert((await context.cookies(qbs[1].url)).find(c=>c.name===qbs[1].sessionCookieName)?.value===sidB,'Handoff changed destination qB session');
  await context.close();
