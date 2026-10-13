@@ -1,4 +1,6 @@
 import fs from 'node:fs';
+// Keep host-collector runtime checks inside the existing bounded core owner.
+import './instance-status-collector-contract.mjs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import vm from 'node:vm';
